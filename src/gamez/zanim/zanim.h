@@ -281,6 +281,7 @@ public:
     void PauseSequence(const char *name);
     int UnloadCmdSet(int index);
     bool CmdTick(float *dT);
+    zdb::CNode *GetDatabaseNode(const char *name, int scope);
     /* (out of line in SOCOM 1, 0x40 bytes; inlined everywhere here) */
     zanim_cmd *GetCmdEntry(unsigned short id)
     {

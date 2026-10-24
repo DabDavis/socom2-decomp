@@ -1,0 +1,43 @@
+/* <vector>: just enough of Metrowerks' MSL C++ std::vector (CodeWarrior PS2 3.0) to give the
+ * matched functions their code. A reconstruction, not MSL: the class shapes are SOCOM 1's DWARF
+ * (vector : __vector_imp : __vector_deleter, the allocator folded into capacity_'s
+ * compressed_pair at 0, size_ at 4, data_ at 8), the member bodies are whatever compiles to the
+ * shipped bytes. A vector of pointers is __vector_imp<T *, allocator<T *>, 1> -- the flag in the
+ * name of zdb::CNodeVector's base destructor. */
+
+#ifndef _MSL_VECTOR
+#define _MSL_VECTOR
+
+#include <memory>
+
+namespace std {
+
+template <class T, class Allocator>
+class __vector_deleter {
+protected:
+    unsigned int capacity_;
+    unsigned int size_;
+    T *data_;
+};
+
+template <class T, class Allocator, bool IsPOD>
+class __vector_imp : public __vector_deleter<T, Allocator> {
+public:
+    typedef T *iterator;
+
+    iterator begin() { return this->data_; }
+    iterator end() { return this->data_ + this->size_; }
+    unsigned int size() const { return this->size_; }
+};
+
+template <class T, class Allocator = allocator<T> >
+class vector : public __vector_imp<T, Allocator, false> {
+};
+
+template <class T, class Allocator>
+class vector<T *, Allocator> : public __vector_imp<T *, Allocator, true> {
+};
+
+}
+
+#endif

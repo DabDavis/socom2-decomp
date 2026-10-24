@@ -6,8 +6,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_00198B80(s32, M2C_UNK *);                  /* extern */
 s32 func_00575410();                                /* extern */
+s32 strcasecmp(s32, M2C_UNK *);                     /* extern */
 extern M2C_UNK data_0065FE38;
 extern M2C_UNK data_0065FE48;
 extern M2C_UNK data_0065FE58;
@@ -23,23 +23,23 @@ s32 func_005D8CC0(s32 arg0) {
 
     var_s0 = func_00575410();
     if ((arg0 != 0) && !(var_s0 & 0xFF)) {
-        if (func_00198B80(arg0, &data_0065FE38) == 0) {
+        if (strcasecmp(arg0, &data_0065FE38) == 0) {
             var_s0 = 9;
-        } else if (func_00198B80(arg0, &data_0065FE48) == 0) {
+        } else if (strcasecmp(arg0, &data_0065FE48) == 0) {
             var_s0 = 3;
-        } else if (func_00198B80(arg0, &data_0065FE58) == 0) {
+        } else if (strcasecmp(arg0, &data_0065FE58) == 0) {
             var_s0 = 0xA;
-        } else if (func_00198B80(arg0, &data_0065FE68) == 0) {
+        } else if (strcasecmp(arg0, &data_0065FE68) == 0) {
             var_s0 = 4;
-        } else if (func_00198B80(arg0, &data_0065FE78) == 0) {
+        } else if (strcasecmp(arg0, &data_0065FE78) == 0) {
             var_s0 = 2;
-        } else if (func_00198B80(arg0, &data_0065FE80) == 0) {
+        } else if (strcasecmp(arg0, &data_0065FE80) == 0) {
             var_s0 = 0x14;
-        } else if (func_00198B80(arg0, &data_0065FE90) == 0) {
+        } else if (strcasecmp(arg0, &data_0065FE90) == 0) {
             var_s0 = 0x14;
-        } else if (func_00198B80(arg0, &data_0065FEA0) == 0) {
+        } else if (strcasecmp(arg0, &data_0065FEA0) == 0) {
             var_s0 = 0x1D;
-        } else if (func_00198B80(arg0, &data_0065FEA8) == 0) {
+        } else if (strcasecmp(arg0, &data_0065FEA8) == 0) {
             var_s0 = 0x17;
         }
     }

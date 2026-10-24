@@ -7,6 +7,8 @@
 #ifndef ZNODE_H
 #define ZNODE_H
 
+#include <vector>
+
 #include "../zmath/zmath.h"
 
 namespace zdb {
@@ -52,8 +54,9 @@ public:
 
 struct _opaque_vector_c { unsigned char _[0xc]; };   // vector (a template instance, or unresolved)
 
-class CNodeVector : public _opaque_vector_c {
+class CNodeVector : public std::vector<CNode *> {
 public:
+    CNode *GetNode(const char *name);
 };   // 0xc bytes
 
 class CDIVector : public _opaque_vector_c {
@@ -134,11 +137,18 @@ public:
     unsigned int m_region_mask;   // 0xb8
 };   // 0xc0 bytes
 
-/* the scene's root; SOCOM 1's DWARF has its 0x6BE0 bytes of members, none needed yet */
+/* the scene's root; SOCOM 1's DWARF has its 0x6BE0 bytes of members. SOCOM II's landmark list
+ * is 12 bytes further on (GetDatabaseNode reads it at 0x6B98): something grew in between. */
 class CWorld : public CNode {
 public:
     static CWorld *m_world;
+    static CNode *GetModel(const char *name);
+
+    unsigned char _c0[0x6B98 - 0xC0];   // 0xc0: SOCOM 1's m_camera .. m_grid, not yet needed
+    CNodeVector m_landmarks;   // 0x6b98
 };
+
+extern CNodeVector *NodeUniverse;
 
 
 }

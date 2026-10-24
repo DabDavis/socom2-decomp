@@ -13,9 +13,9 @@ struct VC_0 {
     virtual M2C_UNK v_C(s32);
 };
 extern "C" {
+s32 GetDatabase__Fv();                              /* extern */
 M2C_UNK Open__8CMissionFPCci(M2C_UNK *, s32);       /* extern */
 s32 func_001E91C0(s32);                             /* extern */
-s32 func_0027F800();                                /* extern */
 s32 func_002B3580();                                /* extern */
 M2C_UNK func_0032C2B0(M2C_UNK *, M2C_UNK *);        /* extern */
 M2C_UNK func_003D37D0();                            /* extern */
@@ -30,7 +30,7 @@ extern s32 data_0048DB48;
 s32 func_001EA720(void) {
     s32 temp_s0;
 
-    temp_s0 = func_0027F800();
+    temp_s0 = GetDatabase__Fv();
     func_0032C2B0(&data_003E1DA8, &data_003E1DB8);
     if (func_001E91C0(temp_s0) == 0) {
         return 0;

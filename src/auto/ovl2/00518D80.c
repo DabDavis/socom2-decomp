@@ -6,7 +6,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_00198B80(s32, M2C_UNK *);                  /* extern */
+s32 strcasecmp(s32, M2C_UNK *);                     /* extern */
 extern M2C_UNK data_0065ABF8;
 extern M2C_UNK data_0065AC00;
 extern M2C_UNK data_0065AC08;
@@ -55,7 +55,7 @@ loop_2:
             var_a1 = &data_0065AC38;
             break;
         }
-        if (func_00198B80(arg0, var_a1) == 0) {
+        if (strcasecmp(arg0, var_a1) == 0) {
             return temp_s0;
         }
         var_s1 += 1;

@@ -107,6 +107,9 @@ public:
 
 class CQuat;
 
+/* 16-byte aligned, which no DWARF says outright: SOCOM 1's CNode is 0xC0 bytes with its last
+ * member ending at 0xBC, every CMatrix member its DWARF lists sits on a 16-byte boundary, and
+ * GetDatabaseNode finds CWorld's landmarks where a 0xC0-byte CNode puts them. */
 class CMatrix {
 public:
     float m_matrix[4][4];
@@ -122,7 +125,7 @@ public:
     void ToEuler(CPnt3D *out) const;
 
     static const CMatrix identity;
-};
+} __attribute__((aligned(16)));
 
 /* The matrix stack: m_top points into m_stack, m_pointer counts the pushes. Multiply is a
  * member that never reads `this` (a0 is taken and dropped). */

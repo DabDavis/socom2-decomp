@@ -15,6 +15,7 @@ extern char *_local_wildcard_str;
 extern int data_00414D78;
 extern int data_00414DB8;
 extern "C" void func_0026C240(CZAnimSet *set, int x);
+zdb::CNode *GetMenuNode();
 
 int CZAnimMain::Unload()
 {
@@ -516,6 +517,44 @@ bool CZAnimMain::SeqRunning()
         break;
     }
     return r;
+}
+
+/* a node by name in one search scope (GetNodeSearchScope's GLOBAL 0, LOCAL 1, MODEL 2, WORLD 3,
+ * MENU 4): the world and its landmarks, the models, the menu, then the node universe */
+zdb::CNode *CZAnimMain::GetDatabaseNode(const char *name, int scope)
+{
+    zdb::CWorld *world = zdb::CWorld::m_world;
+    zdb::CNode *node = 0;
+    bool world_scope = scope == 3;
+    bool global = scope == 0;
+
+    if (world && (world_scope || global)) {
+        if (!strcmp(world->m_name, name))
+            node = world;
+        if (!node)
+            node = world->FindChild(name, true);
+        if (!node) {
+            zdb::CNodeVector &landmarks = world->m_landmarks;
+
+            for (zdb::CNodeVector::iterator it = landmarks.begin(); it != landmarks.end() && !node; it++) {
+                if (!strcmp((*it)->m_name, name))
+                    node = *it;
+                else
+                    node = (*it)->FindChild(name, true);
+            }
+        }
+    }
+    if (!node && world && (scope == 2 || global))
+        node = zdb::CWorld::GetModel(name);
+    if (!node && scope == 4) {
+        if (GetMenuNode())
+            node = GetMenuNode()->FindChild(name, true);
+    }
+    if (!node && scope == 0) {
+        if (zdb::NodeUniverse)
+            node = zdb::NodeUniverse->GetNode(name);
+    }
+    return node;
 }
 
 /* a direction in a node's frame turned into the world's, normalised */

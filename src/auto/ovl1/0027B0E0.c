@@ -7,10 +7,10 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 s32 GetName__6CZAnimFi(s32, u16);                   /* extern */
-s32 func_00198B80(s32, M2C_UNK *);                  /* extern */
 char *func_003857C0(M2C_UNK *, M2C_UNK *, M2C_UNK, M2C_UNK); /* extern */
 M2C_UNK func_003A1730(M2C_UNK *, s32);              /* extern */
 M2C_UNK func_005E7FB0(M2C_UNK);                     /* extern */
+s32 strcasecmp(s32, M2C_UNK *);                     /* extern */
 extern M2C_UNK data_003EEE38;
 extern M2C_UNK data_003EEF20;
 extern s32 data_00414BE8;
@@ -31,7 +31,7 @@ s32 UILoadConfig__FP13C2DAnimCmdHdrPf(char *arg0) {
         } else {
             var_a0 = 0;
         }
-        if (func_00198B80(var_a0, &data_003EEE38) == 0) {
+        if (strcasecmp(var_a0, &data_003EEE38) == 0) {
             func_005E7FB0(0);
         } else {
             func_005E7FB0(1);

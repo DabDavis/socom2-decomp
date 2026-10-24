@@ -6,11 +6,12 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_0026A490(s32 arg0, s32 arg1, s32 arg2);
-s32 GetAnimSet__10CZAnimMainFPCc(s32 arg0, s32 arg1) {
+s32 GetAnimSet__10CZAnimMainFPCc(char * arg0, char * arg1);
+s32 GetAnimSetIndex__10CZAnimMainFPCcb(char * arg0, char * arg1, u8 arg2);
+s32 GetAnimSet__10CZAnimMainFPCc(char *arg0, char *arg1) {
     s32 temp_v0;
 
-    temp_v0 = func_0026A490(arg0, arg1, 0);
+    temp_v0 = GetAnimSetIndex__10CZAnimMainFPCcb(arg0, arg1, 0U);
     if ((temp_v0 < 0) || (temp_v0 >= M2C_FIELD(arg0, s32 *, 0x20))) {
         return 0;
     }
