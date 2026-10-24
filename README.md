@@ -199,6 +199,21 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   helper. A function inlined everywhere and absent out of line was `inline` (NewAnimSet).
 - **Two-byte copies show the type's alignment**: a halfword union copies with lhu/sh, a
   two-char struct bytewise (a command's id).
+- **-inline auto stops at depth 3, and a unit can turn it off.** `new CZAnimExVector` inlines
+  three constructor levels and calls a fourth (include/vector zeroes one level up). In
+  `zanim_anim.cpp` nothing is inlined automatically -- CZAnim::Start at all four of its sites,
+  an 8-byte accessor at all four of its own -- while elsewhere a 0x124-byte OpenZAR is: the
+  unit says `#pragma auto_inline off`. Calls that do not inline, and `inline` functions absent
+  out of line, are unit-boundary evidence: LoadZAR calls GetAnimSet(int), which anim_main.cpp
+  inlines, so the ZAR loaders are a unit of their own (zanim_zar.cpp).
+- **A call in an argument list runs before the plain loads of the same call; a call made as a
+  statement keeps a load written before it in place.** `GetName()` reads the index before
+  fetching the set, so its set comes from a statement of its own (probe: build/scratch/probe).
+- **MW folds `begin == begin + n` into `n == 0` unless the iterator converts**: walks over a
+  vector hold a const_iterator made from begin(). A class iterator's `!=` (as `!(==)`)
+  materialises when it is the whole loop test and branches inside `&&`.
+- **Block order follows the early return**: `if (!archive) {...} else return 0; return 1;` and
+  `if (a >= b && !Reserve()) return 0;` each put their return-0 block where the target has it.
 - **The same inline written two ways serves different callers**: `CZAnim::GetArgPnt3D` must be
   a ternary (TranslateState, RangeTest), `CZAnimMain::CmdHdr` a ternary for BreakTick,
   GoToEndIf and FOR_CHILDREN -- while IfTick reads the current command the if-assign way.
@@ -380,9 +395,12 @@ follows without MW's 16-byte padding (131 drafts had every byte right).
   UPDATE_SHADOW_MAP_LIGHTING, each diagnosed in its source. Unwritten: SCROLL_MOTION's tick (an
   inlined VU0 transform), the motion handlers and the big ones (Light, ParticleSource, Camera,
   Sound, CallAnimBegin).
-- **CZAnimMain (`anim_main.cpp`) and the name tables (`zanim_names.cpp`): 43 written, 39
-  byte-exact.** Open: SequenceRunning, GetCmd, GetAnimSetIndex, CZAnimNameTable::Load.
-  Unwritten: LoadZAR, SeqTick, GetDatabaseNode, ActivateBegin and the wildcard search.
+- **CZAnimMain (`anim_main.cpp`, `zanim_zar.cpp`), the name tables (`zanim_names.cpp`), CZAnimSet
+  (`zanim_set.cpp`) and CZAnim (`zanim_anim.cpp`, started): all written byte-exact but four.**
+  Open: SequenceRunning, GetCmd, GetAnimSetIndex, Open (registers in the inlined NewAnimSet --
+  the permuter found nothing in Open's own text). Unwritten: the wildcard search, CZAnimSet's
+  Unload and SaveNodeStates and CZAnimSetSave (MSL vector destructors inline to different
+  depths per instance), most of CZAnim.
 - **`CZWeaponList::GetWeapon` (`0x3C4B40`)** -- 2 instructions from exact with an `int`
   parameter, but SOCOM 1's mangled name says `EQUIP_ITEM`, and every enum-typed variant sinks
   the zero-extension into the loop preheader.

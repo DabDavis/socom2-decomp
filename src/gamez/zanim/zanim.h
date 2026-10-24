@@ -107,6 +107,8 @@ class CZAnim : public _zanim_anim_params {
 public:
     const char *GetName(int index);
     const char *GetName();
+    int AddValve(const char *name);
+    int AddName(const char *name);
     _zanim_call_anim_ref *GetCallAnimRef(int index);
     _zanim_call_anim_ref *GetCallAnimRef(int index, int local);
     bool Running();
@@ -120,6 +122,16 @@ public:
     void Start();
     void MakeClones();
     void RestartClones();
+    void Refresh(bool chain);
+    void GetNodes();
+    void Activate(CZAnim *by);
+    void OnWeaponHitInit();
+    bool SequenceRunning(const char *name);
+    bool SequenceExists(const char *name);
+    void ResumeSequence(const char *name);
+    void PauseSequence(const char *name);
+    void StopSequence(const char *name);
+    void ActivateSequence(const char *name);
     int Load(zar::CZAR &archive);
     float GetHealth();
     CNode *GetNode(int index, bool create);
@@ -129,10 +141,10 @@ public:
     }
 
     CZAnimArgList* m_arg_list;   // 0x18
-    CZAnimNameIndexTable m_nameindex_table;   // 0x1c
-    CZAnimEx* m_animEx;   // 0x24
-    CZAnimHealth* m_health;   // 0x28
-    unsigned char _socom2_2c[8];   // 0x2c: SOCOM II's 8 new bytes before the flags (what they hold is not known)
+    unsigned char _socom2_1c[8];   // 0x1c: SOCOM II's 8 new bytes (GetName finds the name index table after them)
+    CZAnimNameIndexTable m_nameindex_table;   // 0x24 (SOCOM 1: 0x1c; every offset below moved by 8)
+    CZAnimEx* m_animEx;   // 0x2c
+    CZAnimHealth* m_health;   // 0x30
     unsigned int m_invalid : 1;   // 0x34 (SOCOM 1: 0x2c; every offset below moved by 8)
     unsigned int m_added_to_world_internally : 1;   // 0x2c
     unsigned int m_debug : 1;   // 0x2c
@@ -405,6 +417,46 @@ public:
     int m_RunningAnimCount;   // 0x1c0 (SOCOM 1: 0x1bc; Open clears both)
     int m_CurrentFrame;   // 0x1c4
 };   // 0x1c8 bytes (SOCOM 1's 0x1c4; ZAnim ends where the wildcard state starts, 0x414D78)
+
+namespace Particle {
+class Source {
+public:
+    ~Source();
+};
+}
+
+/* an anim's references (SOCOM 1's DWARF) */
+class _zanim_node_ref {
+public:
+    unsigned int parent_index : 8;   // 0x0
+    unsigned int name_index : 11;   // 0x0
+    unsigned int node_search : 3;   // 0x0
+    unsigned int is_light : 1;   // 0x0
+    unsigned int created_here : 1;   // 0x0
+    unsigned int stop_on_exit : 1;   // 0x0
+    unsigned int on_world_lightlist : 1;   // 0x0
+    unsigned int save_translation : 1;   // 0x0
+    unsigned int save_rotation : 1;   // 0x0
+    unsigned int save_active : 1;   // 0x0
+    unsigned int save_parent : 1;   // 0x0
+    unsigned int is_local_light : 1;   // 0x0
+    unsigned int set_inactive : 1;   // 0x0
+    CNode* node_ptr;   // 0x4
+};   // 0x8 bytes
+
+class CValve;
+
+class _zanim_valve_ref {
+public:
+    int name_index;   // 0x0
+    CValve* valve;   // 0x4
+};   // 0x8 bytes
+
+class _zanim_particle {
+public:
+    int name_index;   // 0x0
+    Particle::Source* particle;   // 0x4
+};   // 0x8 bytes
 
 class _zanim_call_anim_ref {
 public:

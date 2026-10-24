@@ -6,9 +6,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_002717C0(s32);                             /* extern */
+s32 SequenceExists__6CZAnimFPCc(s32);               /* extern */
 
-s32 func_005F4360(void *arg0) {
+s32 func_005F4360(char *arg0) {
     s32 temp_a0;
     s32 var_v0;
 
@@ -16,7 +16,7 @@ s32 func_005F4360(void *arg0) {
     if (((u64) ((s64) M2C_FIELD(arg0, u8 *, 0x4A) << 0x3E) >> 0x3F) != 0) {
         temp_a0 = M2C_FIELD(arg0, s32 *, 0x58);
         if (temp_a0 != 0) {
-            var_v0 = func_002717C0(temp_a0) & 0xFF;
+            var_v0 = SequenceExists__6CZAnimFPCc(temp_a0) & 0xFF;
         }
     }
     return var_v0;

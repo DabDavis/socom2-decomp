@@ -2980,8 +2980,8 @@
 0x0026E900 0x11C GetTexture__6CZAnimFi  # OVL1; s1:align
 0x0026EA20 0x108 GetParticleSource__6CZAnimFi  # OVL1; s1:align
 0x0026EB30 0x130 GetValve__6CZAnimFi  # OVL1; s1:align
-0x0026EC60 0x4C func_0026EC60  # OVL1
-0x0026ECB0 0x4C func_0026ECB0  # OVL1
+0x0026EC60 0x4C AddValve__6CZAnimFPCc  # OVL1; s1:order (SOCOM 1's AddValve, AddName -- one body twice -- then GetName x2 and Name; SOCOM II adds one after them)
+0x0026ECB0 0x4C AddName__6CZAnimFPCc  # OVL1; s1:order (as AddValve)
 0x0026ED00 0x54 func_0026ED00  # OVL1
 0x0026ED60 0x4C GetName__6CZAnimFi  # OVL1; s1:callee
 0x0026EDB0 0x4C GetName__6CZAnimFv  # OVL1; s1:align
@@ -3015,13 +3015,13 @@
 0x00271390 0x58 RestartClones__6CZAnimFv  # OVL1; s1:callee by hand (CZAnimSet::Start calls it on a cloning anim of a set started before, where SOCOM 1's calls RestartClones; the same activation test, 3 bits wide here)
 0x002713F0 0xA8 Start__6CZAnimFv  # OVL1; s1:callee by hand (CZAnimSet::Start calls it on every other anim and its chain, where SOCOM 1's calls Start; RestartClones calls it too)
 0x002714A0 0x1A4 Reset__6CZAnimFv  # OVL1; s1:callee by hand (CZAnimSet::Reset calls it on every anim where SOCOM 1's does)
-0x00271650 0xFC func_00271650  # OVL1
-0x00271750 0x64 func_00271750  # OVL1
-0x002717C0 0x64 func_002717C0  # OVL1
-0x00271830 0x60 func_00271830  # OVL1
-0x00271890 0x60 func_00271890  # OVL1
-0x002718F0 0x60 func_002718F0  # OVL1
-0x00271950 0x60 func_00271950  # OVL1
+0x00271650 0xFC Refresh__6CZAnimFb  # OVL1; s1:order (after Reset in both; the node pointers cleared but a cloning anim's root and the nodes it made, GetNodes, the valves cleared, the chain on request)
+0x00271750 0x64 SequenceRunning__6CZAnimFPCc  # OVL1; s1:order (SOCOM 1's six per-anim sequence calls after Refresh, in this order; each runs CZAnimMain's on this anim)
+0x002717C0 0x64 SequenceExists__6CZAnimFPCc  # OVL1; s1:order (as SequenceRunning)
+0x00271830 0x60 ResumeSequence__6CZAnimFPCc  # OVL1; s1:order (as SequenceRunning)
+0x00271890 0x60 PauseSequence__6CZAnimFPCc  # OVL1; s1:order (as SequenceRunning)
+0x002718F0 0x60 StopSequence__6CZAnimFPCc  # OVL1; s1:order (as SequenceRunning)
+0x00271950 0x60 ActivateSequence__6CZAnimFPCc  # OVL1; s1:order (as SequenceRunning)
 0x002719B0 0x128 __dt__13CZAnimArgListFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00271AE0 0x4C __dt__9CZAnimArgFv  # OVL1; s1:align
 0x00271B30 0x3B0 func_00271B30  # OVL1
@@ -3047,7 +3047,7 @@
 0x00272C30 0x68C func_00272C30  # OVL1
 0x002732C0 0x5C func_002732C0  # OVL1
 0x00273320 0x184 ActivateEx__6CZAnimFie  # OVL1; s1:align
-0x002734B0 0x2C8 func_002734B0  # OVL1
+0x002734B0 0x2C8 Activate__6CZAnimFP6CZAnim  # OVL1; s1:callee by hand (CZAnim::Start calls it with 0 on an anim that activates on start, where SOCOM 1's calls Activate)
 0x00273780 0x1C4 func_00273780  # OVL1
 0x00273950 0x8 func_00273950  # OVL1
 0x00273960 0x14 func_00273960  # OVL1
@@ -5747,7 +5747,7 @@
 0x00329AB0 0xC func_00329AB0  # OVL1
 0x00329AC0 0x7C func_00329AC0  # OVL1
 0x00329B40 0xB68 func_00329B40  # OVL1
-0x0032A6B0 0x150 func_0032A6B0  # OVL1
+0x0032A6B0 0x150 __dt__Q28Particle6SourceFv  # OVL1; s1:callee by hand (CZAnim::DeleteParticleSources calls it with the delete flag on each source where SOCOM 1's calls Particle::Source's destructor)
 0x0032A800 0x58 func_0032A800  # OVL1
 0x0032A860 0x70 func_0032A860  # OVL1
 0x0032A8D0 0x38 func_0032A8D0  # OVL1
