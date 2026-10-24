@@ -3,7 +3,12 @@
  * (vector : __vector_imp : __vector_deleter, the allocator folded into capacity_'s
  * compressed_pair at 0, size_ at 4, data_ at 8), the member bodies are whatever compiles to the
  * shipped bytes. A vector of pointers is __vector_imp<T *, allocator<T *>, 1> -- the flag in the
- * name of zdb::CNodeVector's base destructor. */
+ * name of zdb::CNodeVector's base destructor.
+ *
+ * The constructor zeroes the three words one level above the deleter: MW's -inline auto stops at
+ * depth 3, and CZAnimSet::AddAnimEx inlines all of `new CZAnimExVector` (CZAnimExVector, vector,
+ * then the zeroing) where a zeroing deleter constructor, at depth 4, stays a call. SOCOM 1's
+ * names put a vector of pointers on __vector_pod<unsigned int> -- the real chain, as deep. */
 
 #ifndef _MSL_VECTOR
 #define _MSL_VECTOR
@@ -23,6 +28,7 @@ protected:
 template <class T, class Allocator, bool IsPOD>
 class __vector_imp : public __vector_deleter<T, Allocator> {
 public:
+    __vector_imp() { this->capacity_ = 0; this->size_ = 0; this->data_ = 0; }
     typedef T *iterator;
 
     iterator begin() { return this->data_; }

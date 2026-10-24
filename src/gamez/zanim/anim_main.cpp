@@ -7,14 +7,13 @@
 
 #include "zanim.h"
 
-extern "C" char *func_001801E0(const char *s, const char *file, int line);
-extern "C" const char *func_0026C8E0(CZAnimSet *set, int index);
 
 extern char *_local_wildcard_str;
 extern int data_00414D78;
 extern int data_00414DB8;
 extern "C" void func_0026C240(CZAnimSet *set, int x);
 zdb::CNode *GetMenuNode();
+extern "C" float expf(float x);
 
 int CZAnimMain::Unload()
 {
@@ -187,6 +186,46 @@ bool CZAnimMain::CmdTick(float *dT)
     return done;
 }
 
+/* the interpreter set up afresh (closed first when open): SOCOM II's version and gravity,
+ * the exp tables (e^x - 1 over e^10 - 1, x from 0 to 10 by 0.25, and one less it), the core
+ * commands and eight free anim sets (SOCOM 1's three).
+ * OPEN, 18 instructions, registers only: the inlined NewAnimSet keeps the set count in v1 where
+ * the target (and SOCOM 1's NewAnimSet out of line) has v0 with count + 1 in v1, and the eight
+ * flags' 1 lands in a0 not v0. The permuter found nothing in Open's own text (44,496 tries). */
+void CZAnimMain::Open()
+{
+    if (m_IsOpen)
+        Close();
+    m_version = 72;
+    m_gravity = -98.0f;
+    m_Lod = HIGH;
+    m_search_external_nodes = 0;
+    m_animset_count = 0;
+    m_animset_list = 0;
+    m_cmdset_count = 0;
+    m_cmdset_list = 0;
+    m_UserActionAnimIndex = 0;
+    m_block_activation_callback = 0;
+    float x = 0.0f;
+
+    for (int i = 0; i < 41; i++) {
+        m_inv_exp[i] = 1.0f - (expf(x) - 1.0f) / (expf(10.0f) - 1.0f);
+        m_exp[i] = (expf(x) - 1.0f) / (expf(10.0f) - 1.0f);
+        x += 0.25f;
+    }
+    InitCommands();
+    NewAnimSet(7);
+    for (int i = 0; i < 8; i++)
+        m_animset_list[i].m_IsAvailable = 1;
+    m_CurrentFrame = 0;
+    m_RunningAnimCount = 0;
+    m_IsOpen = 1;
+}
+
+void CZAnimMain::AddPath(const char *path)
+{
+}
+
 void CZAnimMain::Close()
 {
     Unload();
@@ -197,12 +236,12 @@ void CZAnimMain::Close()
     data_00414D78 = 0;
     data_00414DB8 = 0;
     FreeNetworkPacketBuffer();
-    m_socom2_12 = 0;
-    m_socom2_13 = 0;
+    m_IsOpen = 0;
+    m_IsStarted = 0;
 }
 
 /* the inverse exponent table, by a 0..1 value in 40 steps */
-extern "C" float func_0026B0D0(CZAnimMain *main, float x)
+float CZAnimMain::InvExp(float x)
 {
     int i = (int)(40.0f * x);
 
@@ -210,7 +249,7 @@ extern "C" float func_0026B0D0(CZAnimMain *main, float x)
         i = 40;
     else if (i < 0)
         i = 0;
-    return main->m_inv_exp[i];
+    return m_inv_exp[i];
 }
 
 void CZAnimMain::ActivateSequence(const char *name)

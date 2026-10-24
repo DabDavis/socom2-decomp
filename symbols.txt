@@ -2871,7 +2871,7 @@
 0x002679E0 0x8 zAnimQuadAlignTick__FP14_zanim_cmd_hdrPf  # OVL1; ZAnim QUAD_ALIGN tick (InitCommands' #0, file id 0x1); s1:cmd (registered under "QUAD_ALIGN" tick in both builds' InitCommands)
 0x002679F0 0x68 func_002679F0  # OVL1
 0x00267A60 0x50 func_00267A60  # OVL1
-0x00267AB0 0x30C func_00267AB0  # OVL1
+0x00267AB0 0x30C LoadZAR__10CZAnimMainFPCcPCc  # OVL1; s1:order (SOCOM 1's LoadZAR(const char *, const char *) stands first before ~CZAnimZAR, CloseZAR, OpenZAR, LoadZAR(CZAnimZAR *, const char *); it opens, loads and closes)
 0x00267DC0 0x60 __dt__9CZAnimZARFv  # OVL1; s1:align
 0x00267E20 0x4C CloseZAR__10CZAnimMainFP9CZAnimZAR  # OVL1; s1:align
 0x00267E70 0x124 OpenZAR__10CZAnimMainFPCc  # OVL1; s1:calls
@@ -2926,12 +2926,12 @@
 0x0026AC20 0x180 GetCmdSet__10CZAnimMainFPcb  # OVL1; s1:align
 0x0026ADA0 0x80 func_0026ADA0  # OVL1
 0x0026AE20 0x200 ActivateBegin__10CZAnimMainFP6CZAnim  # OVL1; s1:align
-0x0026B020 0x8 func_0026B020  # OVL1
+0x0026B020 0x8 AddPath__10CZAnimMainFPCc  # OVL1; s1:order (SOCOM 1's ActivateBegin, OpenFile, AddPath, FreeNetworkPacketBuffer; OpenFile is gone, AddPath empty in both)
 0x0026B030 0x3C FreeNetworkPacketBuffer__10CZAnimMainFv  # OVL1; s1:align
 0x0026B070 0x58 GetNetworkPacket__10CZAnimMainFi  # OVL1; s1:align
-0x0026B0D0 0x50 func_0026B0D0  # OVL1
+0x0026B0D0 0x50 InvExp__10CZAnimMainFf  # OVL1; s1:order (between GetNetworkPacket and Close in both; the same clamp to 0..40 and m_inv_exp lookup, the conversion inline here)
 0x0026B120 0x7C Close__10CZAnimMainFv  # OVL1; s1:align
-0x0026B1A0 0x288 func_0026B1A0  # OVL1
+0x0026B1A0 0x288 Open__10CZAnimMainFv  # OVL1; s1:order (after Close in both; Close inlined, the version, gravity and exp tables set)
 0x0026B430 0x1A8 Reset__13CZAnimSetSaveFv  # OVL1; s1:calls
 0x0026B5E0 0x3D4 Add__13CZAnimSetSaveFP15_zanim_node_ref  # OVL1; s1:align
 0x0026B9C0 0xE8 func_0026B9C0  # OVL1
@@ -2954,8 +2954,8 @@
 0x0026C7D0 0x44 Init__9CZAnimSetFv  # OVL1; s1:align
 0x0026C820 0x40 SIScript__9CZAnimSetFi  # OVL1; s1:align
 0x0026C860 0x68 AddAnimEx__9CZAnimSetFP8CZAnimEx  # OVL1; s1:align
-0x0026C8D0 0x8 func_0026C8D0  # OVL1
-0x0026C8E0 0x8 func_0026C8E0  # OVL1
+0x0026C8D0 0x8 AddName__9CZAnimSetFPCc  # OVL1; s1:exact (SOCOM 1's AddName: the same jump to the name table's AddName, this + 8)
+0x0026C8E0 0x8 GetName__9CZAnimSetFi  # OVL1; s1:exact (SOCOM 1's GetName: the same jump to the name table's GetName, this + 8)
 0x0026C8F0 0xAC Anim__9CZAnimSetFPCc  # OVL1; s1:align
 0x0026C9A0 0x48 Anim__9CZAnimSetFi  # OVL1; s1:align
 0x0026C9F0 0x58 Name__9CZAnimSetFPCc  # OVL1; s1:align

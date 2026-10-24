@@ -71,6 +71,7 @@ public:
 /* the engine's allocator: free and strdup with a file and line (both 0 here), the pool-backed
  * forms of SOCOM 1's _free__FPvPCci and _strdup__FPCcPCci -- not named until proven */
 extern "C" void func_00180280(void *p, const char *file, int line);
+extern "C" char *func_001801E0(const char *s, const char *file, int line);
 
 class CZAnimNameIndexTable {
 public:
@@ -105,6 +106,7 @@ public:
 class CZAnim : public _zanim_anim_params {
 public:
     const char *GetName(int index);
+    const char *GetName();
     _zanim_call_anim_ref *GetCallAnimRef(int index);
     _zanim_call_anim_ref *GetCallAnimRef(int index, int local);
     bool Running();
@@ -167,6 +169,11 @@ public:
 };   // 0x8 bytes
 
 /* a set of anims (one ZAR's): SOCOM II's is 0x34 bytes, SOCOM 1's 0x30 */
+class CZAnimExVector;
+class CZAnimSetSave;
+class CSched_Manager;
+
+/* a named set of anims (SOCOM 1's DWARF; SOCOM II added the gravity at 0x1C) */
 class CZAnimSet {
 public:
     CZAnim *Anim(int index);
@@ -177,12 +184,33 @@ public:
     int Unload();
     void Init();
     void Name(const char *name);
+    void AddAnimEx(CZAnimEx *ex);
+    int AddName(const char *name);
+    const char *GetName(int index);
+    _zanim_si_script *SIScript(int index);
+    int GarbageCollect();
+    int Stop();
 
     unsigned char m_WasStarted;   // 0x0
     unsigned char m_IsStarted;   // 0x1
     unsigned char m_IsAvailable;   // 0x2
-    char *m_name;   // 0x4
-    unsigned char _8[0x2C];   // SOCOM II's set is 0x34 bytes (SOCOM 1's 0x30)
+    char* m_name;   // 0x4
+    CZAnimNameTable m_name_table;   // 0x8
+    int m_si_script_count;   // 0x10
+    _zanim_si_script* m_si_script;   // 0x14
+    CZAnimExVector* m_AnimExList;   // 0x18
+    float m_gravity;   // 0x1c: SOCOM II's, ZAnim's copied in (Init, Load)
+    int m_anim_count;   // 0x20 (SOCOM 1: 0x1c; every offset below moved by 4)
+    int m_anim_max;   // 0x24
+    CZAnim* m_anim_list;   // 0x28
+    CZAnimSetSave* m_node_states;   // 0x2c
+    CSched_Manager* m_task_scheduler;   // 0x30
+};   // 0x34 bytes (SOCOM 1's 0x30)
+
+/* the set's CZAnimEx list, an MSL vector of pointers (SOCOM 1's DWARF) */
+class CZAnimExVector : public std::vector<CZAnimEx *> {
+public:
+    void Add(CZAnimEx *ex);
 };
 
 enum LOD {LOW = 0, MEDIUM = 1, HIGH = 2};   // 1 byte(s)
@@ -258,11 +286,15 @@ public:
     int CloseZAR(CZAnimZAR *zar);
     CZAnimZAR *OpenZAR(const char *name);
     int LoadZAR(CZAnimZAR *archive, const char *set_name);
-    static bool m_LoadFromZAR;
+    int LoadZAR(const char *name, const char *set_name);
     int UnloadSIScript(_zanim_si_script *script);
     ZAnimNetworkPacket *GetNetworkPacket(int size);
     void FreeNetworkPacketBuffer();
     void Close();
+    void Open();
+    void InitCommands();
+    float InvExp(float x);
+    void AddPath(const char *path);
     int Unload();
     CZAnimSet *GetAnimSet(int index);
     bool GetAnimIndex(CZAnim *anim, int *set, int *index);
@@ -306,10 +338,12 @@ public:
     /* the command the current sequence is on */
     _zanim_cmd_hdr *CmdHdr() { return m_CurSeq ? (_zanim_cmd_hdr *)m_CurSeq->cmd_pc : 0; }
 
-    unsigned char m_IsOpen;   // 0x10
-    unsigned char m_IsStarted;   // 0x11
-    unsigned char m_socom2_12;   // 0x12: SOCOM II's, in SOCOM 1's hole (Close clears both)
-    unsigned char m_socom2_13;   // 0x13
+    /* SOCOM 1's static, a member here: the anim_main.cpp initialiser sets ZAnim+0x10 among the
+     * constructor's stores, and every reader -- CZAnimMain's own included -- names ZAnim's */
+    bool m_LoadFromZAR;   // 0x10
+    unsigned char m_socom2_11;   // 0x11: SOCOM II's (the constructor clears it)
+    unsigned char m_IsOpen;   // 0x12 (SOCOM 1: 0x10; Open tests and sets it, Close clears both)
+    unsigned char m_IsStarted;   // 0x13
     CZAnimNameTable m_name_table;   // 0x14
     CZAnimSet* m_animset_list;   // 0x1c
     int m_animset_count;   // 0x20
@@ -322,7 +356,8 @@ public:
     _zsequence* m_CurSeq;   // 0x3c
     unsigned char m_anim_complete;   // 0x40
     unsigned char m_debug;   // 0x41
-    unsigned char _pad42[0x2];   // 0x42: a hole
+    unsigned char m_socom2_42;   // 0x42: SOCOM II's, in SOCOM 1's hole (the constructor clears it)
+    unsigned char _pad43;   // 0x43
     CZAnim* m_UserActionAnim;   // 0x44
     LOD m_Lod;   // 0x48
     void * m_network_activation_callback;   // 0x4c
@@ -337,9 +372,12 @@ public:
     float m_inv_exp[41];   // 0x110
     ZAnimNetworkPacket* m_NetworkPacket;   // 0x1b4
     int m_NetworkPacketMaxSize;   // 0x1b8
-    int m_RunningAnimCount;   // 0x1bc
-    int m_CurrentFrame;   // 0x1c0
-};   // 0x1c4 bytes
+    unsigned char m_socom2_1bc;   // 0x1bc: SOCOM II's (the constructor clears both)
+    unsigned char m_socom2_1bd;   // 0x1bd
+    unsigned char _pad1be[2];   // 0x1be
+    int m_RunningAnimCount;   // 0x1c0 (SOCOM 1: 0x1bc; Open clears both)
+    int m_CurrentFrame;   // 0x1c4
+};   // 0x1c8 bytes (SOCOM 1's 0x1c4; ZAnim ends where the wildcard state starts, 0x414D78)
 
 class _zanim_call_anim_ref {
 public:

@@ -7,8 +7,6 @@
 
 #include "zanim.h"
 
-extern "C" const char *func_0026C8E0(CZAnimSet *set, int index);
-extern "C" int func_0026C8D0(CZAnimSet *set, const char *name);   /* the set's name table's AddName */
 
 inline void CZAnimNameTable::Append(const char *name)
 {
@@ -36,10 +34,10 @@ int CZAnimNameIndexTable::AddName(CZAnimSet *set, const char *name)
 {
     if (!name)
         return 0;
-    int index = func_0026C8D0(set, name);
+    int index = set->AddName(name);
 
     if (m_count == 0) {
-        int none = func_0026C8D0(set, "NA");
+        int none = set->AddName("NA");
 
         m_index = (unsigned short *)_realloc(m_index, (m_count + 1) * 2, 0, 0);
         m_index[m_count] = none;
@@ -57,7 +55,7 @@ int CZAnimNameIndexTable::AddName(CZAnimSet *set, const char *name)
 const char *CZAnimNameIndexTable::GetName(CZAnimSet *set, int index)
 {
     if (index >= 0 && index < m_count)
-        return func_0026C8E0(set, m_index[index]);
+        return set->GetName(m_index[index]);
     return 0;
 }
 

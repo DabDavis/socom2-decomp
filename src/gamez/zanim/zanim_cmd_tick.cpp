@@ -887,7 +887,6 @@ struct zanim_cmd_ripplegroup {
 
 extern "C" void *func_003C2120(char *owner, const char *name);
 extern "C" void func_003C20A0(void *group, zdb::CNode *node);
-extern "C" void *func_001801E0(const char *pattern, int a, int b);
 extern "C" const char *func_00268790(void *pattern);
 extern "C" const char *func_00268680();
 

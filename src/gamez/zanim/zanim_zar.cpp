@@ -12,6 +12,51 @@
 #include "zanim.h"
 
 extern "C" void func_00258CE0(CZAnimZAR *zar);
+/* a ZAR by name, its sets loaded and the file closed again: LoadZAR's walk written out once
+ * more, without its open-file test or its null test of the sets' key */
+int CZAnimMain::LoadZAR(const char *name, const char *set_name)
+{
+    _zanim_main_params params;
+    int set_count;
+    CZAnimZAR *archive = OpenZAR(name);
+
+    if (archive) {
+        bool ok = archive->Fetch("Anim_Main_Params", &params, sizeof(params));
+
+        if (ok && params.m_version != 72)
+            ok = false;
+        if (ok) {
+            archive->Fetch("Anim_Main_Params", (_zanim_main_params *)this, sizeof(_zanim_main_params));
+            m_name_table.Load(*archive);
+            archive->Fetch("Anim_Set_Count", &set_count, 4);
+            archive->GetOpenKey();
+            zar::CKey *sets = archive->OpenKey("Anim_Sets");
+
+            for (zar::CKeyRing::const_iterator it = sets->begin(); it != sets->end(); ++it) {
+                if (archive->OpenKey(*it)) {
+                    bool load = true;
+
+                    if (set_name && strcasecmp((*it)->m_name, set_name))
+                        load = false;
+                    if (load) {
+                        CZAnimSet *set = GetAnimSet(GetAnimSetIndex((*it)->m_name, true));
+
+                        m_CurAnimSet = set;
+                        m_CurAnim = 0;
+                        m_CurSeq = 0;
+                        set->Load(*archive);
+                    }
+                    archive->CloseKey(*it);
+                }
+            }
+            archive->CloseKey(sets);
+        }
+        CloseZAR(archive);
+    } else
+        return 0;
+    return 1;
+}
+
 /* zar::CZAR::Open with a fifth argument SOCOM 1's did not have: not named */
 extern "C" int func_00258920(zar::CZAR *zar, const char *name, int mode, unsigned int flags, unsigned int a, int b);
 
@@ -22,7 +67,7 @@ int CZAnimMain::LoadZAR(CZAnimZAR *archive, const char *set_name)
     _zanim_main_params params;
     int set_count;
 
-    if (!m_LoadFromZAR)
+    if (!ZAnim.m_LoadFromZAR)
         return 1;
     if (!archive->IsOpen())
         return 0;
@@ -64,7 +109,7 @@ int CZAnimMain::LoadZAR(CZAnimZAR *archive, const char *set_name)
 /* a ZAR by file or directory name (the directory's zanim.zar) */
 CZAnimZAR *CZAnimMain::OpenZAR(const char *name)
 {
-    if (!m_LoadFromZAR)
+    if (!ZAnim.m_LoadFromZAR)
         return 0;
     CZAnimZAR *zar = new CZAnimZAR;
 
