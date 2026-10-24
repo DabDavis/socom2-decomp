@@ -1777,8 +1777,9 @@
 0x00208AD0 0xB0 __dt__17CZClaymoreMapItemFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00208B80 0x8 PostDraw__9CZMapItemFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00208B90 0x8 Clip__9CZMapItemFP11CZNewHudMap  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00208BA0 0x340 Tick__17CZClaymoreMapItemFP11CZNewHudMapf  # OVL1; s1:calls
-0x00208EE0 0x78 func_00208EE0  # OVL1
+0x00208BA0 0x14 Draw__17CZClaymoreMapItemFPQ23zdb7CCamera  # OVL1; s1:size (SOCOM 1's Draw, 0x14: a tail call through the graphic's vtable, the vtable's slot 2; the row had run on into Tick)
+0x00208BC0 0x320 Tick__17CZClaymoreMapItemFP11CZNewHudMapf  # OVL1; s1:calls (the vtable's slot 1)
+0x00208EE0 0x78 __ct__17CZClaymoreMapItemFP10CZSealBodyP12CZProjectile  # OVL1; s1:exact by hand (hud_claymoremapitem.cpp; the flag and size 4 lower than SOCOM 1's)
 0x00208F60 0x4C __dt__9CZMapItemFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00208FB0 0x8 Tick__9CZMapItemFP11CZNewHudMapf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00208FC0 0x8 Draw__9CZMapItemFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -1821,7 +1822,8 @@
 0x0020CE70 0x70 __dt__Q227@unnamed@hud_newhudmap_cpp@12COverlayLineFv  # OVL1; s1:ref (taken by address where SOCOM 1 takes __dt__Q227@unnamed@hud_newhudmap_cpp@12COverlayLineFv's)
 0x0020CEE0 0x54 func_0020CEE0  # OVL1
 0x0020CF40 0xB0 __dt__15CZMPBombMapItemFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0020CFF0 0x320 Tick__15CZMPBombMapItemFP11CZNewHudMapf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0020CFF0 0x14 Draw__15CZMPBombMapItemFPQ23zdb7CCamera  # OVL1; s1:size (SOCOM 1's Draw, 0x14: a tail call through the graphic's vtable, the vtable's slot 2; the row had run on into Tick)
+0x0020D010 0x300 Tick__15CZMPBombMapItemFP11CZNewHudMapf  # OVL1; s1:vtable (the vtable's slot 1, code alike)
 0x0020D310 0x80 __ct__15CZMPBombMapItemFPQ23zdb5CNode  # OVL1; s1:calls
 0x0020D390 0x248 Draw__9CZLineMapFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0020D5E0 0x8 Draw__9CPlainBmpFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)

@@ -184,6 +184,7 @@ public:
     /* the corners, clockwise from the top left as MapCompass::SetPos passes them */
     void Load(float x1, float y1, float x2, float y2, float x3, float y3, float x4, float y4,
               zdb::CTexture *tex);
+    void SetColor(float r, float g, float b);
 
     int x1;   // 0x24
     int x2;   // 0x28
