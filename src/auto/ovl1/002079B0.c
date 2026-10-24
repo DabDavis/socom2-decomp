@@ -6,13 +6,13 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_001EC940(M2C_UNK *);                       /* extern */
+s32 GetTexHandle__Q23zdb6CWorldFPCc(M2C_UNK *);     /* extern */
 extern M2C_UNK data_003E3F90;
 extern M2C_UNK data_003E3FA8;
 extern M2C_UNK data_003E3FC0;
 
 void Init__15CZObjectiveListFv(char *arg0) {
-    M2C_FIELD(arg0, s32 *, 0x724) = func_001EC940(&data_003E3F90);
-    M2C_FIELD(arg0, s32 *, 0x728) = func_001EC940(&data_003E3FA8);
-    M2C_FIELD(arg0, s32 *, 0x720) = func_001EC940(&data_003E3FC0);
+    M2C_FIELD(arg0, s32 *, 0x724) = GetTexHandle__Q23zdb6CWorldFPCc(&data_003E3F90);
+    M2C_FIELD(arg0, s32 *, 0x728) = GetTexHandle__Q23zdb6CWorldFPCc(&data_003E3FA8);
+    M2C_FIELD(arg0, s32 *, 0x720) = GetTexHandle__Q23zdb6CWorldFPCc(&data_003E3FC0);
 }
