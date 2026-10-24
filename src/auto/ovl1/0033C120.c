@@ -7,7 +7,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK __dl__FPv(char *);                          /* extern */
-M2C_UNK func_00180280(s32, M2C_UNK, M2C_UNK);       /* extern */
+M2C_UNK _free__FPvPCci(s32, M2C_UNK, M2C_UNK);      /* extern */
 M2C_UNK func_003378A0(char *, M2C_UNK);             /* extern */
 M2C_UNK func_0033C3D0(char *);                      /* extern */
 M2C_UNK func_0033C3E0(char *, M2C_UNK);             /* extern */
@@ -20,7 +20,7 @@ char *func_0033C120(char *arg0, s64 arg1) {
     if (arg0 != NULL) {
         temp_a0 = M2C_FIELD(arg0, s32 *, 0x668);
         if (temp_a0 != 0) {
-            func_00180280(temp_a0, 0, 0);
+            _free__FPvPCci(temp_a0, 0, 0);
         }
         func_0033C3D0(arg0 + 0x674);
         func_0033D110(arg0 + 0x688, -1);

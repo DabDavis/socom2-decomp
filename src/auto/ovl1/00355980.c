@@ -6,7 +6,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_00180280(s32, M2C_UNK, M2C_UNK);       /* extern */
+M2C_UNK _free__FPvPCci(s32, M2C_UNK, M2C_UNK);      /* extern */
 M2C_UNK func_0033C350(char *);                      /* extern */
 extern char **data_0049E888;
 
@@ -20,7 +20,7 @@ void ClearAll__Q23zdb15CBatchRelocatorFv(void) {
     func_0033C350(temp_s0 + 0x1C);
     temp_a0 = M2C_FIELD(temp_s0, s32 *, 0);
     if (temp_a0 != 0) {
-        func_00180280(temp_a0, 0, 0);
+        _free__FPvPCci(temp_a0, 0, 0);
     }
     M2C_FIELD(temp_s0, s32 *, 0) = 0;
 }

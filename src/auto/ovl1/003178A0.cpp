@@ -19,11 +19,11 @@ struct VC_60 {
     virtual M2C_UNK v_20(void);
 };
 extern "C" {
-M2C_UNK func_003127F0(char *, s32);                 /* extern */
-
+s32 SetModel__Q23zdb5CNodeFPQ23zdb6CModel(char * arg0, char * arg1);
+M2C_UNK SetModelname__Q23zdb5CNodeFPCc(char * arg0, char * arg1);
 s32 SetModel__Q23zdb5CNodeFPQ23zdb6CModel(char *arg0, char *arg1) {
-    s32 var_a1;
     u16 temp_v1;
+    char *var_a1;
 
     temp_v1 = M2C_FIELD(arg0, u16 *, 0x58);
     if ((temp_v1 != 3) && (temp_v1 != 2)) {
@@ -37,11 +37,11 @@ s32 SetModel__Q23zdb5CNodeFPQ23zdb6CModel(char *arg0, char *arg1) {
     }
     M2C_FIELD(arg0, char **, 0xB4) = arg1;
     if (arg1 != NULL) {
-        var_a1 = M2C_FIELD(arg1, s32 *, 0x90);
+        var_a1 = M2C_FIELD(arg1, char **, 0x90);
     } else {
-        var_a1 = 0;
+        var_a1 = NULL;
     }
-    func_003127F0(arg0, var_a1);
+    SetModelname__Q23zdb5CNodeFPCc(arg0, var_a1);
     return 1;
 }
 }

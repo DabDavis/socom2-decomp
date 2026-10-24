@@ -213,6 +213,10 @@ public:
 /* the allocator's entry points; a release build passes no file and line (SOCOM 1's passed them) */
 void *_malloc(unsigned int size, const char *file, int line);
 void *_realloc(void *p, unsigned int size, const char *file, int line);
+/* free and strdup with a file and line, both 0 here (SOCOM 1's _free__FPvPCci and
+ * _strdup__FPCcPCci: CNode::SetName and SetModelname call them where SOCOM II's call these) */
+void _free(void *p, const char *file, int line);
+char *_strdup(const char *s, const char *file, int line);
 
 /* A variable-length bit set (zmath_bits.h in SOCOM 1's asserts). */
 class CBits {

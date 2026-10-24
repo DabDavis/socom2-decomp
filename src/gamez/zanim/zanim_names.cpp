@@ -64,8 +64,8 @@ void CZAnimNameTable::Unload()
     if (m_name) {
         for (int i = 0; i < m_count; i++)
             if (m_name[i])
-                func_00180280(m_name[i], 0, 0);
-        func_00180280(m_name, 0, 0);
+                _free(m_name[i], 0, 0);
+        _free(m_name, 0, 0);
     }
     m_name = 0;
     m_count = 0;
@@ -96,7 +96,7 @@ const char *CZAnimNameTable::GetName(int index)
 void CZAnimNameIndexTable::Unload()
 {
     if (m_index)
-        func_00180280(m_index, 0, 0);
+        _free(m_index, 0, 0);
     m_index = 0;
     m_count = 0;
 }

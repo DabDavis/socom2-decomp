@@ -174,4 +174,14 @@ bool CNodeVector::Remove(const CNode *node)
     return it != e;
 }
 
+/* the name of the model the node is an instance of: its own copy, the old one freed */
+void CNode::SetModelname(const char *name)
+{
+    if (m_modelname) {
+        _free(m_modelname, 0, 0);
+        m_modelname = 0;
+    }
+    m_modelname = name ? _strdup(name, 0, 0) : 0;
+}
+
 }

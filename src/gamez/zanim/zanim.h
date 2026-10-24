@@ -37,11 +37,6 @@ class _zanim_sound;
 class _zanim_tex_ref;
 class _zanim_valve_ref;
 
-/* the engine's allocator: free and strdup with a file and line (both 0 here), the pool-backed
- * forms of SOCOM 1's _free__FPvPCci and _strdup__FPCcPCci -- not named until proven */
-extern "C" void func_00180280(void *p, const char *file, int line);
-extern "C" char *func_001801E0(const char *s, const char *file, int line);
-
 /* An anim's argument: a value a caller passes when it starts the anim (SOCOM 1's class names;
  * the layouts read off the copies and destructors -- the type a byte at 4 under -enum min, a
  * word at 8 the base zeroes, the value at 12). The base's destructor is inline, its out-of-line
@@ -130,13 +125,13 @@ class CZAnimArgCharP : public CZAnimArg {
 public:
     CZAnimArgCharP(TYPE type, const char *str)
     {
-        m_str = func_001801E0(str, 0, 0);
+        m_str = _strdup(str, 0, 0);
         m_type = type;
     }
     ~CZAnimArgCharP()
     {
         if (m_str)
-            func_00180280(m_str, 0, 0);
+            _free(m_str, 0, 0);
         m_str = 0;
     }
     CZAnimArg *Copy();

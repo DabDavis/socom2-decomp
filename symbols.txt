@@ -5,8 +5,8 @@
 0x00180008 0x1C0 func_00180008  # MAIN unaligned
 0x001801C8 0x8 func_001801C8  # MAIN unaligned
 0x001801D0 0x10 func_001801D0  # MAIN; s1~ ExitThread (one of 2)
-0x001801E0 0x9C func_001801E0  # MAIN
-0x00180280 0x314 func_00180280  # MAIN
+0x001801E0 0x9C _strdup__FPCcPCci  # MAIN; s1:calls (SOCOM 1's CNode::SetName and SetModelname call _strdup where SOCOM II's call this)
+0x00180280 0x314 _free__FPvPCci  # MAIN; s1:calls (SOCOM 1's CNode::SetName and SetModelname call _free where SOCOM II's call this; file and line passed as 0 here)
 0x001805A0 0x500 func_001805A0  # MAIN
 0x00180AA0 0x2C __dla__FPv  # MAIN; s1:calls
 0x00180AD0 0x324 __dl__FPv  # MAIN; s1:callee
@@ -5415,7 +5415,7 @@
 0x00312480 0x6C remove_copy<Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iterator,Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iterator,PCQ23zdb5CNode>__3stdFQ33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorQ33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorQ33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorRCPCQ23zdb5CNode_Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iterator  # OVL1; std::remove_copy for CNodeVector::Remove, out of line (the iterators by value, homed on the stack)
 0x003124F0 0x1B0 func_003124F0  # OVL1
 0x003126A0 0x144 func_003126A0  # OVL1
-0x003127F0 0x64 func_003127F0  # OVL1
+0x003127F0 0x64 SetModelname__Q23zdb5CNodeFPCc  # OVL1; s1:exact by hand (SOCOM 1's SetModelname: the old name freed, a copy kept at 0xb8)
 0x00312860 0x204 func_00312860  # OVL1
 0x00312A70 0x24 SetActive__Q23zdb6CLightFb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00312AA0 0x180 func_00312AA0  # OVL1

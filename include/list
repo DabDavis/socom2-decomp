@@ -59,6 +59,7 @@ public:
     iterator erase(iterator first, iterator last);
     iterator insert(iterator position, const T &x);
     void push_back(const T &x) { insert(end(), x); }
+    unsigned int size() const { return size_; }
 
 protected:
     unsigned int size_;
@@ -109,8 +110,10 @@ class list<T *, Allocator> : public __list_imp<const void *, allocator<const voi
     typedef __list_imp<const void *, allocator<const void *> > base;
 
 public:
-    /* the reference passed on as the base's, no temporary (the pointer stays where it is) */
-    void push_back(T *const &x) { base::push_back((const void *const &)x); }
+    /* the reference passed on as the base's, no temporary (the pointer stays where it is), to
+     * the base's insert at the end: a level shorter than through the base's push_back, which
+     * CModel::AddInstance's inlining needs */
+    void push_back(T *const &x) { base::insert(base::end(), (const void *const &)x); }
 };
 
 }

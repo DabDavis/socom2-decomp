@@ -809,7 +809,7 @@ void CZAnim::CreateInstanceNode()
 
         sprintf(name, "%s:zanim_instance", src);
         m_instance_node->SetName(name);
-        func_00180280(name, 0, 0);
+        _free(name, 0, 0);
         int root_index = m_root_node_index;
 
         if (root_index) {
@@ -998,7 +998,7 @@ int CZAnim::GarbageCollect()
         delete m_arg_list;
     m_arg_list = 0;
     if (m_user_cmd) {
-        func_00180280(m_user_cmd, 0, 0);
+        _free(m_user_cmd, 0, 0);
         m_user_cmd = 0;
     }
     if (m_sibling_anim) {
@@ -1006,12 +1006,12 @@ int CZAnim::GarbageCollect()
             m_sibling_anim->GarbageCollect();
         else {
             m_sibling_anim->Unload();
-            func_00180280(m_sibling_anim, 0, 0);
+            _free(m_sibling_anim, 0, 0);
             m_sibling_anim = 0;
         }
     }
     if (m_particle_list) {
-        func_00180280(m_particle_list, 0, 0);
+        _free(m_particle_list, 0, 0);
         m_particle_list = 0;
         m_particle_count = 0;
     }
@@ -1028,22 +1028,22 @@ int CZAnim::GarbageCollect()
         }
     }
     if (m_sound_ref_list) {
-        func_00180280(m_sound_ref_list, 0, 0);
+        _free(m_sound_ref_list, 0, 0);
         m_sound_ref_list = 0;
         m_sound_ref_count = 0;
     }
     if (m_tex_ref_list) {
-        func_00180280(m_tex_ref_list, 0, 0);
+        _free(m_tex_ref_list, 0, 0);
         m_tex_ref_list = 0;
         m_tex_ref_count = 0;
     }
     if (m_valve_ref_list) {
-        func_00180280(m_valve_ref_list, 0, 0);
+        _free(m_valve_ref_list, 0, 0);
         m_valve_ref_list = 0;
         m_valve_ref_count = 0;
     }
     if (m_call_anim_ref_list) {
-        func_00180280(m_call_anim_ref_list, 0, 0);
+        _free(m_call_anim_ref_list, 0, 0);
         m_call_anim_ref_list = 0;
         m_call_anim_ref_count = 0;
     }
@@ -1343,7 +1343,7 @@ int CZAnim::Unload()
 {
     if (m_sibling_anim) {
         m_sibling_anim->Unload();
-        func_00180280(m_sibling_anim, 0, 0);
+        _free(m_sibling_anim, 0, 0);
         m_sibling_anim = 0;
     }
     func_002707C0(this, false);
@@ -1373,41 +1373,41 @@ int CZAnim::Unload()
                 }
             }
         }
-        func_00180280(m_node_ref_list, 0, 0);
+        _free(m_node_ref_list, 0, 0);
         m_node_ref_list = 0;
         m_node_ref_count = 0;
     }
     if (m_sound_ref_list) {
-        func_00180280(m_sound_ref_list, 0, 0);
+        _free(m_sound_ref_list, 0, 0);
         m_sound_ref_list = 0;
         m_sound_ref_count = 0;
     }
     if (m_tex_ref_list) {
-        func_00180280(m_tex_ref_list, 0, 0);
+        _free(m_tex_ref_list, 0, 0);
         m_tex_ref_list = 0;
         m_tex_ref_count = 0;
     }
     if (m_call_anim_ref_list) {
-        func_00180280(m_call_anim_ref_list, 0, 0);
+        _free(m_call_anim_ref_list, 0, 0);
         m_call_anim_ref_list = 0;
         m_call_anim_ref_count = 0;
     }
     if (m_valve_ref_list) {
-        func_00180280(m_valve_ref_list, 0, 0);
+        _free(m_valve_ref_list, 0, 0);
         m_valve_ref_list = 0;
         m_valve_ref_count = 0;
     }
     if (m_particle_list) {
-        func_00180280(m_particle_list, 0, 0);
+        _free(m_particle_list, 0, 0);
         m_particle_list = 0;
         m_particle_count = 0;
     }
     if (m_user_cmd) {
-        func_00180280(m_user_cmd, 0, 0);
+        _free(m_user_cmd, 0, 0);
         m_user_cmd = 0;
     }
     if (m_seq_data)
-        func_00180280(m_seq_data, 0, 0);
+        _free(m_seq_data, 0, 0);
     m_seq_data = 0;
     m_seq_data_size = 0;
     if (m_instance_node) {

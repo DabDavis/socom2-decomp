@@ -1100,7 +1100,7 @@ extern "C" bool func_00263E20(_zanim_cmd_hdr *hdr, float *dT)
         const char *name = anim->GetName(cmd->name[i]);
 
         if (strstr(name, "*")) {
-            char *pattern = func_001801E0(name, 0, 0);
+            char *pattern = _strdup(name, 0, 0);
 
             for (const char *n = ZAnimWildcardInit(pattern); n; n = ZAnimWildcardNext()) {
                 CNode *node = zdb::CWorld::m_world->FindChild(n, true);
@@ -1108,7 +1108,7 @@ extern "C" bool func_00263E20(_zanim_cmd_hdr *hdr, float *dT)
                 if (node)
                     func_003C20A0(group, node);
             }
-            func_00180280(pattern, 0, 0);
+            _free(pattern, 0, 0);
         } else {
             CNode *node = zdb::CWorld::m_world->FindChild(name, true);
 

@@ -224,8 +224,8 @@ float CNode::GetRadius()
 void CNode::SetName(const char *name)
 {
     if (m_name && m_name != UNNAMED_NODE)
-        func_00180280(m_name, 0, 0);
-    m_name = name ? func_001801E0(name, 0, 0) : UNNAMED_NODE;
+        _free(m_name, 0, 0);
+    m_name = name ? _strdup(name, 0, 0) : UNNAMED_NODE;
 }
 
 /* every child let go of, each deleted that nothing else holds */
@@ -260,7 +260,7 @@ void CNode::ShrinkAtomBasePtrs()
         CGridAtom **atoms = (CGridAtom **)_malloc(m_AtomCnt * 4, 0, 0);
 
         memcpy(atoms, m_Atom, m_AtomCnt * 4);
-        func_00180280(m_Atom, 0, 0);
+        _free(m_Atom, 0, 0);
         m_Atom = atoms;
         m_AtomAlloc = m_AtomCnt;
     }
@@ -270,7 +270,7 @@ void CNode::ShrinkAtomBasePtrs()
 void CNode::FreeAtom()
 {
     if (m_Atom)
-        func_00180280(m_Atom, 0, 0);
+        _free(m_Atom, 0, 0);
     m_Atom = 0;
     m_Atom = 0;
     m_AtomAlloc = 0;

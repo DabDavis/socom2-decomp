@@ -25,7 +25,7 @@ int CZAnimMain::Unload()
         for (int i = 0; i < m_animset_count; i++)
             if (i >= 0 && i < m_animset_count)
                 m_animset_list[i].Unload();
-        func_00180280(m_animset_list, 0, 0);
+        _free(m_animset_list, 0, 0);
         m_animset_list = 0;
     }
     m_animset_count = 0;
@@ -33,7 +33,7 @@ int CZAnimMain::Unload()
     if (m_cmdset_list) {
         for (int i = 0; i < m_cmdset_count; i++)
             UnloadCmdSet(i);
-        func_00180280(m_cmdset_list, 0, 0);
+        _free(m_cmdset_list, 0, 0);
         m_cmdset_list = 0;
     }
     m_cmdset_count = 0;
@@ -53,15 +53,15 @@ int CZAnimMain::UnloadCmdSet(int index)
             zanim_cmd *cmd = &set->cmd_list[i];
 
             if (cmd->name)
-                func_00180280(cmd->name, 0, 0);
+                _free(cmd->name, 0, 0);
             cmd->name = 0;
         }
-        func_00180280(set->cmd_list, 0, 0);
+        _free(set->cmd_list, 0, 0);
         set->cmd_list = 0;
         set->count = 0;
     }
     if (set->name)
-        func_00180280(set->name, 0, 0);
+        _free(set->name, 0, 0);
     set->name = 0;
     return 1;
 }
@@ -82,7 +82,7 @@ int CZAnimMain::GetCmd(int set, char *name, bool create)
         s->cmd_list = (zanim_cmd *)_realloc(s->cmd_list, (s->count + 1) * 0x14, 0, 0);
         cmd = &s->cmd_list[s->count];
         memset(cmd, 0, 0x14);
-        cmd->name = func_001801E0(name, 0, 0);
+        cmd->name = _strdup(name, 0, 0);
         cmd->id.b.set = set;
         cmd->id.b.index = s->count;
         return s->count++;
@@ -116,7 +116,7 @@ int CZAnimMain::GetCmdSet(char *name, bool create)
         m_cmdset_list = (_zanim_cmd_set *)_realloc(m_cmdset_list, (m_cmdset_count + 1) * 0xC, 0, 0);
         memset(&m_cmdset_list[m_cmdset_count], 0, 0xC);
         if (name)
-            m_cmdset_list[m_cmdset_count].name = func_001801E0(name, 0, 0);
+            m_cmdset_list[m_cmdset_count].name = _strdup(name, 0, 0);
         index = m_cmdset_count++;
         GetCmd(index, "Reserved", true);
     }
@@ -140,7 +140,7 @@ unsigned short CZAnimMain::AddCmd(const char *name, _zanim_cmd_hdr *(*parse)(_zr
     if (!name)
         cmd_name = 0;
     else if (strstr(name, "::")) {
-        set_name = func_001801E0(name, 0, 0);
+        set_name = _strdup(name, 0, 0);
         char *sep = strstr(set_name, "::");
 
         *sep = 0;
@@ -153,7 +153,7 @@ unsigned short CZAnimMain::AddCmd(const char *name, _zanim_cmd_hdr *(*parse)(_zr
     id.b.set = set;
     id.b.index = index;
     if (set_name)
-        func_00180280(set_name, 0, 0);
+        _free(set_name, 0, 0);
     u.id = id.id;
     zanim_cmd *cmd = &m_cmdset_list[u.b.set].cmd_list[u.b.index];
 
@@ -488,7 +488,7 @@ ZAnimNetworkPacket *CZAnimMain::GetNetworkPacket(int size)
 void CZAnimMain::FreeNetworkPacketBuffer()
 {
     if (m_NetworkPacket) {
-        func_00180280(m_NetworkPacket, 0, 0);
+        _free(m_NetworkPacket, 0, 0);
         m_NetworkPacket = 0;
     }
     m_NetworkPacketMaxSize = 0;
@@ -556,7 +556,7 @@ CZAnim *CZAnimMain::GetAnim(const char *name, const char *set_name)
         if (!name)
             anim_name = 0;
         else if (strstr(name, "::")) {
-            copy = func_001801E0(name, 0, 0);
+            copy = _strdup(name, 0, 0);
             char *sep = strstr(copy, "::");
 
             *sep = 0;
@@ -565,7 +565,7 @@ CZAnim *CZAnimMain::GetAnim(const char *name, const char *set_name)
             anim_name = name;
         if (copy) {
             set = GetAnimSetIndex(copy, true);
-            func_00180280(copy, 0, 0);
+            _free(copy, 0, 0);
         } else {
             set = m_CurAnimSet ? m_CurAnimSet - m_animset_list : 0;
         }
@@ -774,7 +774,7 @@ const char *ZAnimWildcardApply(const char *name)
 extern "C" void func_002684D0()
 {
     if (_local_wildcard_str) {
-        func_00180280(_local_wildcard_str, 0, 0);
+        _free(_local_wildcard_str, 0, 0);
         _local_wildcard_str = 0;
     }
     _input_str_ptr = 0;
@@ -784,7 +784,7 @@ extern "C" void func_002684D0()
 int CZAnimMain::UnloadSIScript(_zanim_si_script *script)
 {
     if (script->script_data)
-        func_00180280(script->script_data, 0, 0);
+        _free(script->script_data, 0, 0);
     script->script_data = 0;
     script->script_data_size = 0;
     script->total_frame_count = 0;

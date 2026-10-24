@@ -43,8 +43,8 @@ int CZAnimSet::GetAnimIndex(CZAnim *anim)
 void CZAnimSet::Name(const char *name)
 {
     if (m_name)
-        func_00180280(m_name, 0, 0);
-    m_name = func_001801E0(name, 0, 0);
+        _free(m_name, 0, 0);
+    m_name = _strdup(name, 0, 0);
 }
 
 CZAnim *CZAnimSet::Anim(int index)
@@ -202,7 +202,7 @@ int CZAnimSet::Unload()
     if (m_si_script) {
         for (int i = 0; i < m_si_script_count; i++)
             ZAnim.UnloadSIScript(&m_si_script[i]);
-        func_00180280(m_si_script, 0, 0);
+        _free(m_si_script, 0, 0);
         m_si_script = 0;
         m_si_script_count = 0;
     }
@@ -214,7 +214,7 @@ int CZAnimSet::Unload()
     if (m_anim_list) {
         for (int i = 0; i < m_anim_count; i++)
             m_anim_list[i].Unload();
-        func_00180280(m_anim_list, 0, 0);
+        _free(m_anim_list, 0, 0);
         m_anim_list = 0;
         m_anim_count = 0;
         m_anim_max = 0;
@@ -225,7 +225,7 @@ int CZAnimSet::Unload()
         m_node_states = 0;
     }
     if (m_name)
-        func_00180280(m_name, 0, 0);
+        _free(m_name, 0, 0);
     m_name = 0;
     m_task_scheduler = 0;
     m_IsAvailable = 1;

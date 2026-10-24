@@ -7,6 +7,7 @@
 #ifndef ZNODE_H
 #define ZNODE_H
 
+#include <list>
 #include <vector>
 
 #include "../zmath/zmath.h"
@@ -166,6 +167,7 @@ public:
     CSubMesh *GetSubMesh();
     CMesh *GetMesh();
     CNode *Copy() const;
+    void SetModelname(const char *name);
     void ShrinkAtomBasePtrs();
     void AllocateAtomBasePtrs(int x, int z);
     void SetNodeEx(CNodeEx *ex, bool b);
@@ -275,12 +277,28 @@ public:
     _RenderPhase m_renderphase;   // 0x2f (SOCOM 1: 0x2b)
 };
 
-/* a model: SOCOM 1's DWARF has m_variant (0xC0), m_bForceExport, a CRefList (0xC8), m_bbox_valid
- * and the asset library at 0xD8 -- only the library placed */
+/* a model's instances (SOCOM 1's DWARF: CRefList : list) */
+class CRefList : public std::list<CNode *> {
+public:
+};   // 0xc bytes
+
+/* a model (SOCOM 1's DWARF) */
 class CModel : public CNode {
 public:
-    unsigned char _c0[0xd8 - 0xc0];
+    int m_variant;   // 0xc0
+    unsigned char m_bForceExport;   // 0xc4
+    CRefList m_list;   // 0xc8
+    unsigned char m_bbox_valid;   // 0xd4
     CAssetLib *m_AssetLib;   // 0xd8
+
+    /* an instance listed, taken by value, and the model's parent the first one: CreateInstance's
+     * target keeps its node in a register and re-reads this copy for the parent after the push
+     * (SOCOM 1's too; the name is ours) */
+    void AddInstance(CNode *node)
+    {
+        m_list.push_back(node);
+        m_parent = m_list.size() == 1 ? node : 0;
+    }
 };
 
 /* a rectangle in x/z (SOCOM 1's DWARF) */

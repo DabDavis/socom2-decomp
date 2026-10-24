@@ -43,6 +43,30 @@ CVisual *CNode::GetFirstVisual()
     return v.empty() ? 0 : v[0];
 }
 
+/* an instance of a model: a copy of it, placed and turned as asked, on the model's list (the
+ * model's parent the first one), the model's and named after it -- type 2; one of the common
+ * character set's also gets the 4 flag and a bump map */
+CNode *CNode::CreateInstance(CModel *model, const CPnt3D *pos, const CQuat *rot)
+{
+    if (!model)
+        return 0;
+    CNode *node = model->Copy();
+
+    if (pos)
+        node->SetPosition(pos);
+    if (rot)
+        node->SetRotation(rot);
+    model->AddInstance(node);
+    node->m_model = model;
+    node->SetModelname(model->m_name);
+    node->m_type = 2;
+    if (model->m_AssetLib->m_renderphase == CHARSETCOMMON) {
+        node->m_socom2_a1_bits.bit2 = 1;
+        node->m_bumpmap = 1;
+    }
+    return node;
+}
+
 /* a cross-reference to a model: a new type-3 node named "XRef", placed and turned as asked, with the
  * model its child; one of the common character set's also gets the 4 flag and a bump map */
 CNode *CNode::CreateXRef(CModel *model, const CPnt3D *pos, const CQuat *rot)
