@@ -1,6 +1,8 @@
 /* node_main.cpp -- zdb::CNode, the scene graph's node: its place in the world, its bounds, its
- * children, its grid atoms (OVL1 0x310980-...). The unit name is SOCOM 1's (CNode::SetName's
- * allocations name it). Defined in reverse of their image order (-inline deferred). */
+ * children, its grid atoms (OVL1 0x310980-0x31789F; node_model.cpp follows). The unit name is
+ * SOCOM 1's (CNode::SetName's allocations name it). Defined in reverse of their image order
+ * (-inline deferred), as the map has them: a function this unit calls without inlining, though
+ * small, is evidence of a unit boundary (CreateXRef's SetName and SetPosition were). */
 
 #include <string.h>
 
@@ -19,69 +21,10 @@ extern "C" void func_00313620(CNode *node, int a);
  * at 0x580 (new in SOCOM II, not named yet; CWorld::AddChild calls it too) */
 extern "C" void func_0031F500(CWorld *world, CNode *node);
 
-/* a position set: the translation, the grid told, the matrix marked changed */
-void CNode::SetPosition(float x, float y, float z)
-{
-    m_matrix.m_matrix[3][0] = x;
-    m_matrix.m_matrix[3][1] = y;
-    m_matrix.m_matrix[3][2] = z;
-    UpdateGrid();
-    m_socom2_a1 |= 2;
-}
-
-/* the squared radius of the bounds about the node's origin: the further corner's */
-float CNode::GetRadiusSq()
-{
-    float a = m_bbox.m_min.x * m_bbox.m_min.x + m_bbox.m_min.y * m_bbox.m_min.y + m_bbox.m_min.z * m_bbox.m_min.z;
-    float b = m_bbox.m_max.x * m_bbox.m_max.x + m_bbox.m_max.y * m_bbox.m_max.y + m_bbox.m_max.z * m_bbox.m_max.z;
-
-    return MAX(a, b);
-}
-
-float CNode::GetRadius()
-{
-    return sqrtf(GetRadiusSq());
-}
-
-/* the first visual as a mesh, if it is one (type 1) */
-CMesh *CNode::GetMesh()
-{
-    CVisual *v = GetFirstVisual();
-
-    if (v && v->m_type == 1)
-        return (CMesh *)v;
-    return 0;
-}
-
 /* a copy of the node: _Copy into a new one */
 CNode *CNode::Copy() const
 {
     return _Copy(0);
-}
-
-/* the first visual as a sub-mesh, if it is one */
-CSubMesh *CNode::GetSubMesh()
-{
-    CVisual *v = GetFirstVisual();
-
-    if (v && v->m_type == 2)
-        return dynamic_cast<CSubMesh *>(v);
-    return 0;
-}
-
-/* the node's bounds made current; the node's own are, a borrowed parent's are fetched (the base
- * class's virtual) */
-CBBox *CNode::UpdateBBox(bool up)
-{
-    return (CBBox *)GetBBox();
-}
-
-/* the first of the node's visuals, if it has one */
-CVisual *CNode::GetFirstVisual()
-{
-    CVisualVector &v = m_visual;
-
-    return v.empty() ? 0 : v[0];
 }
 
 /* a reference given back; never below none */
@@ -113,101 +56,6 @@ bool CNode::AddVisual(CVisual *visual)
         SetParentHasVisuals();
     }
     return added;
-}
-
-/* the node's name, its own copy (or the shared default when given none); a name of its own freed */
-void CNode::SetName(const char *name)
-{
-    if (m_name && m_name != UNNAMED_NODE)
-        func_00180280(m_name, 0, 0);
-    m_name = name ? func_001801E0(name, 0, 0) : UNNAMED_NODE;
-}
-
-/* an extension attached to the node and, when told to, to every node below it. The recursion
- * inlines itself twice, and the copies call the child vector's pieces out of line (begin, end,
- * the iterator's ==, !=, *, ++ and copy) where MW's inline budget runs out -- the walk's ++ is
- * the postfix one, its copy and the prefix ++ called in the second copy (include/vector) */
-void CNode::SetNodeEx(CNodeEx *ex, bool recurse)
-{
-    m_nodeEx = ex;
-    if (recurse) {
-        for (CNodeVector::iterator it = m_child.begin(); it != m_child.end(); it++)
-            (*it)->SetNodeEx(ex, recurse);
-    }
-}
-
-/* a child by name (its length first, then its text), among the children and then, when deep,
- * below each. The second walk's iterator is its own, initialised from begin(): the address of
- * the list's storage it reloads begin through is computed once, before the first walk (an
- * iterator assigned from begin() leaves data() a call) */
-CNode *CNode::FindChild(const char *name, bool deep)
-{
-    if (!name)
-        return 0;
-    CNode *found = 0;
-    size_t len = strlen(name);
-    CNodeVector::iterator it = m_child.begin();
-
-    for (; !found && it != m_child.end(); ++it) {
-        CNode *child = *it;
-
-        if (strlen(child->m_name) == len && !strcmp(child->m_name, name))
-            found = child;
-    }
-    if (!found && deep) {
-        for (CNodeVector::iterator i2 = m_child.begin(); !found && i2 != m_child.end(); ++i2)
-            found = (*i2)->FindChild(name, deep);
-    }
-    return found;
-}
-
-/* a node among the children and then, when deep, below each. The first walk's `!found` is always
- * true (a hit returns) and folds away, but not before MW has laid the loop out as a compound
- * test's (a branch to the test at the bottom, where a lone compare is tested once on entry too) */
-CNode *CNode::FindChild(CNode *node, bool deep)
-{
-    if (!node)
-        return 0;
-    CNode *found = 0;
-    CNodeVector::iterator it = m_child.begin();
-
-    for (; !found && it != m_child.end(); ++it)
-        if (*it == node)
-            return *it;
-    if (!found && deep) {
-        for (CNodeVector::iterator i2 = m_child.begin(); !found && i2 != m_child.end(); ++i2)
-            found = (*i2)->FindChild(node, deep);
-    }
-    return found;
-}
-
-/* a child by name from the given index on (a negative one counting as 0), and where it stood: the
- * index after it. Then, when deep, the same search below every child, all of them -- the walk
- * does not stop at a hit, and what it returns is the last child's answer. */
-CNode *CNode::FindChild(const char *name, int start, int *index, bool deep)
-{
-    CNode *found = 0;
-
-    if (name) {
-        CNode *child;
-        unsigned int n = m_child.size();
-        unsigned int i = start > 0 ? start : 0;
-        size_t len = strlen(name);
-
-        for (; !found && i < n; i++) {
-            child = m_child[i];
-
-            if (strlen(child->m_name) == len && !strcmp(child->m_name, name)) {
-                found = child;
-                *index = i + 1;
-            }
-        }
-        if (!found && deep) {
-            for (i = 0; i < n; i++)
-                found = m_child[i]->FindChild(name, start, index, deep);
-        }
-    }
-    return found;
 }
 
 /* a child taken in: a shadow caster told to the world, a character's common flag copied into a
@@ -259,6 +107,125 @@ int CNode::DeleteChild(CNode *child)
         }
     }
     return count;
+}
+
+/* a child by name (its length first, then its text), among the children and then, when deep,
+ * below each. The second walk's iterator is its own, initialised from begin(): the address of
+ * the list's storage it reloads begin through is computed once, before the first walk (an
+ * iterator assigned from begin() leaves data() a call) */
+CNode *CNode::FindChild(const char *name, bool deep)
+{
+    if (!name)
+        return 0;
+    CNode *found = 0;
+    size_t len = strlen(name);
+    CNodeVector::iterator it = m_child.begin();
+
+    for (; !found && it != m_child.end(); ++it) {
+        CNode *child = *it;
+
+        if (strlen(child->m_name) == len && !strcmp(child->m_name, name))
+            found = child;
+    }
+    if (!found && deep) {
+        for (CNodeVector::iterator i2 = m_child.begin(); !found && i2 != m_child.end(); ++i2)
+            found = (*i2)->FindChild(name, deep);
+    }
+    return found;
+}
+
+/* a child by name from the given index on (a negative one counting as 0), and where it stood: the
+ * index after it. Then, when deep, the same search below every child, all of them -- the walk
+ * does not stop at a hit, and what it returns is the last child's answer. */
+CNode *CNode::FindChild(const char *name, int start, int *index, bool deep)
+{
+    CNode *found = 0;
+
+    if (name) {
+        CNode *child;
+        unsigned int n = m_child.size();
+        unsigned int i = start > 0 ? start : 0;
+        size_t len = strlen(name);
+
+        for (; !found && i < n; i++) {
+            child = m_child[i];
+
+            if (strlen(child->m_name) == len && !strcmp(child->m_name, name)) {
+                found = child;
+                *index = i + 1;
+            }
+        }
+        if (!found && deep) {
+            for (i = 0; i < n; i++)
+                found = m_child[i]->FindChild(name, start, index, deep);
+        }
+    }
+    return found;
+}
+
+/* a node among the children and then, when deep, below each. The first walk's `!found` is always
+ * true (a hit returns) and folds away, but not before MW has laid the loop out as a compound
+ * test's (a branch to the test at the bottom, where a lone compare is tested once on entry too) */
+CNode *CNode::FindChild(CNode *node, bool deep)
+{
+    if (!node)
+        return 0;
+    CNode *found = 0;
+    CNodeVector::iterator it = m_child.begin();
+
+    for (; !found && it != m_child.end(); ++it)
+        if (*it == node)
+            return *it;
+    if (!found && deep) {
+        for (CNodeVector::iterator i2 = m_child.begin(); !found && i2 != m_child.end(); ++i2)
+            found = (*i2)->FindChild(node, deep);
+    }
+    return found;
+}
+
+/* an extension attached to the node and, when told to, to every node below it. The recursion
+ * inlines itself twice, and the copies call the child vector's pieces out of line (begin, end,
+ * the iterator's ==, !=, *, ++ and copy) where MW's inline budget runs out -- the walk's ++ is
+ * the postfix one, its copy and the prefix ++ called in the second copy (include/vector) */
+void CNode::SetNodeEx(CNodeEx *ex, bool recurse)
+{
+    m_nodeEx = ex;
+    if (recurse) {
+        for (CNodeVector::iterator it = m_child.begin(); it != m_child.end(); it++)
+            (*it)->SetNodeEx(ex, recurse);
+    }
+}
+
+/* a position set: the translation, the grid told, the matrix marked changed */
+void CNode::SetPosition(float x, float y, float z)
+{
+    m_matrix.m_matrix[3][0] = x;
+    m_matrix.m_matrix[3][1] = y;
+    m_matrix.m_matrix[3][2] = z;
+    UpdateGrid();
+    m_socom2_a1 |= 2;
+}
+
+/* the squared radius of the bounds about the node's origin: the further corner's */
+float CNode::GetRadiusSq()
+{
+    float a = m_bbox.m_min.x * m_bbox.m_min.x + m_bbox.m_min.y * m_bbox.m_min.y + m_bbox.m_min.z * m_bbox.m_min.z;
+    float b = m_bbox.m_max.x * m_bbox.m_max.x + m_bbox.m_max.y * m_bbox.m_max.y + m_bbox.m_max.z * m_bbox.m_max.z;
+
+    return MAX(a, b);
+}
+
+float CNode::GetRadius()
+{
+    return sqrtf(GetRadiusSq());
+}
+
+/* the node's name, its own copy (or the shared default when given none); a name of its own freed */
+void CNode::SetName(const char *name)
+{
+    if (m_name && m_name != UNNAMED_NODE)
+        func_00180280(m_name, 0, 0);
+    m_name = name ? func_001801E0(name, 0, 0) : UNNAMED_NODE;
 }
 
 /* every child let go of, each deleted that nothing else holds */

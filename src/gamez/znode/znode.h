@@ -181,6 +181,12 @@ public:
     void GetRotation(CPnt3D *out) const;
     void SetRotation(const CPnt3D *euler);
     void SetRotation(const CQuat &q);
+    /* the pointer form, null tested (CreateXRef tests twice, as for SetPosition's) */
+    void SetRotation(const CQuat *q)
+    {
+        if (q)
+            SetRotation(*q);
+    }
     void SetPosition(float x, float y, float z);
     void SetPosition(const PNT3D *p)      /* the base pointer keeps MW from folding the null test */
     {
@@ -254,8 +260,27 @@ public:
 class CCell : public CNode {
 };
 
+/* the render phase an asset library belongs to (SOCOM 1's DWARF; a byte under -enum min) */
+enum _RenderPhase {
+    WORLD, HUD_OBSOLETE, CHARSETCOMMON, CHARSET1, CHARSET2, CHARSET3, CHARSET4, CHARSET5,
+    CHARSET6, CHARSET7, CHARSET8, ALPHA, HUDSET1, HUDSET2, HUDSETSMALL, SHADOW, CHARSETCUSTOM,
+    NUM_RENDER_PHASES
+};
+
+/* a library of models and textures: only its render phase placed (SOCOM 1's DWARF has it at
+ * 0x2B, after the name and three lists; CNode::CreateXRef reads it at 0x2F here) */
+class CAssetLib {
+public:
+    unsigned char _0[0x2f];
+    _RenderPhase m_renderphase;   // 0x2f (SOCOM 1: 0x2b)
+};
+
+/* a model: SOCOM 1's DWARF has m_variant (0xC0), m_bForceExport, a CRefList (0xC8), m_bbox_valid
+ * and the asset library at 0xD8 -- only the library placed */
 class CModel : public CNode {
 public:
+    unsigned char _c0[0xd8 - 0xc0];
+    CAssetLib *m_AssetLib;   // 0xd8
 };
 
 /* a rectangle in x/z (SOCOM 1's DWARF) */

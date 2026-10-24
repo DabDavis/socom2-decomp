@@ -500,11 +500,15 @@ follows without MW's 16-byte padding (131 drafts had every byte right).
   and at() match from include/vector; insert does not yet (the pod one 8 bytes short:
   build/scratch/ins/BEST-pod-insert-0x418.txt -- the target reloads the capacity in the growth
   path, where every form tried keeps it).
-- **zdb::CNode (`node_main.cpp`) and the typed lists (`node_vector.cpp`, the name ours).** CNode:
-  25 written, all byte-exact -- the FindChild trio, AddChild, SetNodeEx, DeleteChild(ren), the
-  atoms, the radius, SetName and the small accessors. Unwritten: the destructor and constructor,
-  _Copy, InitNodeParams, AddVisual and SetParentHasVisuals, Read, CreateXRef/CreateInstance,
-  ComputeFacadeMatrix, BuildMTW, and the CLight/CLightMap code in between. The lists: CNodeVector
+- **zdb::CNode (`node_main.cpp` to 0x31789F, then `node_model.cpp`, the name ours) and the typed
+  lists (`node_vector.cpp`, the name ours).** CNode: 30 written, all byte-exact -- the FindChild
+  trio, AddChild, AddVisual, SetNodeEx, DeleteChild(ren), Copy, GetMesh/GetSubMesh, CreateXRef, the
+  atoms, the radius, SetName and the small accessors. The boundary: CreateXRef calls SetName and
+  SetPosition, which every caller in node_main's range inlines where it can (probe:
+  build/scratch/inl/t9.cpp -- MW's deferred inlining takes a function defined later). Unwritten:
+  the destructor and constructor, _Copy, InitNodeParams, SetParentHasVisuals and DeleteVisual(s)
+  (std::list walks: the open iterator copy), Read, CreateInstance, ComputeFacadeMatrix, BuildMTW,
+  and the CLight/CLightMap code in between. The lists: CNodeVector
   (Remove, Exists, GetNode), the DI/visual/light map Exists, CModelVector::GetModel, CNodeUniverse's
   four, all byte-exact but Remove (std::remove inlined: two copies MW keeps there and drops
   here; diagnosed in its source). MSL's std::find/find_if/remove/remove_copy and the pod erase
