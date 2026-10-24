@@ -144,6 +144,21 @@ public:
     float m_matrix[4][4];
 
     CMatrix() { sceVu0UnitMatrix(m_matrix); }
+    /* copied on VU0 (CNode::ComputeFacadeMatrix: a product's return copied out, then assigned) */
+    CMatrix(const CMatrix &m) { sceVu0CopyMatrix(m_matrix, (float (*)[4])m.m_matrix); }
+    CMatrix &operator=(const CMatrix &m)
+    {
+        sceVu0CopyMatrix(m_matrix, (float (*)[4])m.m_matrix);
+        return *this;
+    }
+    /* by value, the product kept in a named local (so copied out) */
+    CMatrix operator*(const CMatrix &b) const
+    {
+        CMatrix r;
+
+        sceVu0MulMatrix(r.m_matrix, (float (*)[4])m_matrix, (float (*)[4])b.m_matrix);
+        return r;
+    }
     /* an element (SOCOM 1 links an out-of-line copy, __cl__7CMatrixCFUiUi) */
     float &operator()(unsigned int r, unsigned int c) const { return (float &)m_matrix[r][c]; }
     CMatrix(float m00, float m01, float m02, float m03, float m10, float m11, float m12, float m13,
@@ -157,6 +172,10 @@ public:
     /* points through the matrix in place, one at a time on VU0 (SOCOM 1's zmath_matrix.h has it
      * inline; SOCOM II calls one copy, 0x308640) */
     void Transform(CPnt3D *inout, int count) const;
+    /* four-element vectors through the matrix, n of them (VU0; SOCOM II's 0x308580, new since
+     * SOCOM 1 inlined its one use; the name is ours) */
+    void Transform(const CPnt4D *in, CPnt4D *out, int n) const;
+    void Transform(const CPnt3D *in, CPnt3D *out, int n) const;   /* w = 1 (SOCOM 1's) */
 
     static const CMatrix identity;
 } __attribute__((aligned(16)));

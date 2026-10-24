@@ -8,6 +8,62 @@
 
 namespace zdb {
 
+/* a facade's rotation (a billboard): its first three rows turned to face from the viewer's
+ * position to its own -- about y only (facade 1), or about y and then x (facade 2: the direction
+ * turned into the yz plane to find the x angle).
+ * OPEN (0x238 of 0x240): the target keeps &m(2,0) in s2 on both paths and copies the third row
+ * out through it -- the address shared with facade 2's stores -- while copying each row as a
+ * block (four loads, four stores). A source through the accessor shares the address but
+ * copies element by element; through the array it copies by blocks and shares nothing. */
+void CNode::ComputeFacadeMatrix(const CMatrix *view, CMatrix *out)
+{
+    CMatrix m;
+    CPnt3D dir = *(const CPnt3D *)out->m_matrix[3] - *(const CPnt3D *)view->m_matrix[3];
+
+    switch (m_facade) {
+    case 1:
+        dir.y = 0.0f;
+        dir.Normalize();
+        m(0, 0) = dir.z;
+        m(0, 2) = -dir.x;
+        m(2, 0) = dir.x;
+        m(2, 2) = dir.z;
+        break;
+    case 2: {
+        dir.Normalize();
+        CPnt3D flat = dir;
+
+        flat.y = 0.0f;
+        flat.Normalize();
+        m(0, 0) = flat.x;
+        m(0, 2) = -flat.z;
+        m(2, 0) = flat.z;
+        m(2, 2) = flat.x;
+        CPnt4D v(dir.x, dir.y, dir.z, 0.0f);
+        CPnt4D r;
+
+        m.Transform(&v, &r, 1);
+        m(0, 0) = flat.z;
+        m(0, 2) = -flat.x;
+        m(2, 0) = flat.x;
+        m(2, 2) = flat.z;
+        CMatrix rx;
+
+        rx(1, 1) = r.x;
+        rx(1, 2) = -r.y;
+        rx(2, 1) = r.y;
+        rx(2, 2) = r.x;
+        m = m * rx;
+        break;
+    }
+    default:
+        return;
+    }
+    *(CPnt4D *)out->m_matrix[0] = *(CPnt4D *)m.m_matrix[0];
+    *(CPnt4D *)out->m_matrix[1] = *(CPnt4D *)m.m_matrix[1];
+    *(CPnt4D *)out->m_matrix[2] = *(CPnt4D *)m.m_matrix[2];
+}
+
 /* the node's bounds made current; the node's own are, a borrowed parent's are fetched (the base
  * class's virtual) */
 CBBox *CNode::UpdateBBox(bool up)

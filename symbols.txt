@@ -5211,8 +5211,8 @@
 0x00308210 0x1B0 ToQuat__7CMatrixCFP5CQuat  # OVL1; s1:order (sqrtf inlined here; 0x20C -> 0x1B0)
 0x003083C0 0x124 SetRotate__7CMatrixFPC6CPnt3D  # OVL1; s1:calls
 0x003084F0 0x84 func_003084F0  # OVL1
-0x00308580 0x40 func_00308580  # OVL1
-0x003085C0 0x80 func_003085C0  # OVL1
+0x00308580 0x40 Transform__7CMatrixCFPC6CPnt4DP6CPnt4Di  # OVL1; CMatrix::Transform for four-element vectors (CNode::ComputeFacadeMatrix's one use, count 1; SOCOM 1 inlined it there; the name ours)
+0x003085C0 0x80 Transform__7CMatrixCFPC6CPnt3DP6CPnt3Di  # OVL1; s1:exact by hand (SOCOM 1's Transform of points through the matrix, the same 0x80; its stack slots swapped)
 0x00308640 0x7C Transform__7CMatrixCFP6CPnt3Di  # OVL1; SOCOM 1 name (inline in its zmath_matrix.h, the same 0x7C)
 0x003086C0 0x68 __ct__7CMatrixFffffffffffffffff  # OVL1; s1:exact
 0x00308730 0x9C SetRows__7CMatrixFPC6CPnt3DPC6CPnt3DPC6CPnt3DPC6CPnt3D  # OVL1; s1:gap

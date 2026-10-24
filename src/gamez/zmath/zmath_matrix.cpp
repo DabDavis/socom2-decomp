@@ -98,8 +98,8 @@ extern "C" {
 
 /* SOCOM II's additions, no SOCOM 1 names: VU0 loops over a point array, hand-written. */
 
-/* out[i] = m * in[i], n CPnt3D points (w = 1) */
-asm void func_003085C0(CMatrix *m, const CPnt3D *in, CPnt3D *out, int n)
+/* out[i] = m * in[i], n CPnt3D points (w = 1): SOCOM 1's Transform, its stack slots swapped */
+asm void CMatrix::Transform(const CPnt3D *in, CPnt3D *out, int n) const
 {
     addiu sp, sp, -32
     lqc2 vf4, 0(a0)
@@ -137,7 +137,7 @@ loop:
 }
 
 /* out[i] = m * in[i], n CPnt4D vectors */
-asm void func_00308580(CMatrix *m, const CPnt4D *in, CPnt4D *out, int n)
+asm void CMatrix::Transform(const CPnt4D *in, CPnt4D *out, int n) const
 {
     lqc2 vf4, 0(a0)
     lqc2 vf5, 16(a0)

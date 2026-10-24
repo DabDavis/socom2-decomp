@@ -180,6 +180,7 @@ public:
     static CNode *CreateInstance(const char *name, const CPnt3D *pos, const CQuat *rot);
     static CNode *Delete(CNode *node);
     void RemoveFromParent();
+    void ComputeFacadeMatrix(const CMatrix *view, CMatrix *out);
     void TransformToWorld(CPnt3D &p) const;
     void BuildMTW(CMatrix &m);
     void SetMatrix(const CMatrix *m);

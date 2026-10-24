@@ -6,8 +6,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_003085C0(s32 arg0, s32 arg1, s32 arg2, s32 arg3);
-s32 func_0056AE10(s32 arg0, s32 arg1) {
-    func_003085C0(arg0, arg1, arg1, 8);
+M2C_UNK Transform__7CMatrixCFPC6CPnt3DP6CPnt3Di(char * arg0, char * arg1, char * arg2, s32 arg3);
+char *func_0056AE10(char *arg0, char *arg1) {
+    Transform__7CMatrixCFPC6CPnt3DP6CPnt3Di(arg0, arg1, arg1, 8);
     return arg1;
 }

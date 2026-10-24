@@ -10,6 +10,7 @@ typedef float sceVu0FMATRIX[4][4] __attribute__((aligned(16)));
 extern "C" {
 #endif
 void sceVu0MulMatrix(sceVu0FMATRIX m0, sceVu0FMATRIX m1, sceVu0FMATRIX m2);
+void sceVu0CopyMatrix(sceVu0FMATRIX m0, sceVu0FMATRIX m1);
 void sceVu0OuterProduct(sceVu0FVECTOR v0, sceVu0FVECTOR v1, sceVu0FVECTOR v2);
 float sceVu0InnerProduct(sceVu0FVECTOR v0, sceVu0FVECTOR v1);
 void sceVu0TransposeMatrix(sceVu0FMATRIX m0, sceVu0FMATRIX m1);
