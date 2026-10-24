@@ -277,13 +277,48 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
 - **A call in an argument list runs before the plain loads of the same call; a call made as a
   statement keeps a load written before it in place.** `GetName()` reads the index before
   fetching the set, so its set comes from a statement of its own (probe: build/scratch/probe).
-- **A pointer vector's begin() is three levels deep, and the walks show it**: begin()/end()
-  convert the base's raw pointers through a member taking them by reference (include/vector).
-  The depth keeps a walk's first test (begin against begin + size) a compare -- under a
-  one-level begin() MW folded it into `n == 0`, and every walk held a const_iterator to stop it
-  (now plain iterators). An iterator *assigned* from begin() is a level deeper than one
-  *initialised* from it. A class iterator's `!=` (as `!(==)`) materialises when it is the whole
-  loop test and branches inside `&&`.
+- **A pointer vector's begin() is three high, and the walks show it**: begin()/end() convert
+  the base's raw pointers through a member taking them by reference (include/vector), and
+  begin() takes the base's pointer into a *const local* first. Three constraints fix that
+  shape: SetDynamicLight's partial inline calls the base's begin() and then __iter, out of
+  line (so begin() calls both); FindChild by name keeps &data_ in a register (so the base's
+  begin() reads through data()'s reference); and SetDynamic and SetUseParentBBoxTree, which
+  assign begin() to a declared iterator, inline it whole in their outer copies (so it is three
+  high, not four -- passed straight to __iter, the call sat a level deeper; a plain local
+  instead of a const one swaps two of SetDynamic's registers). A one-level begin() folded a
+  walk's first test (begin against begin + size) into `n == 0`. An iterator *assigned* from
+  begin() is a level deeper than one *initialised* from it. A class iterator's `!=` (as
+  `!(==)`) materialises when it is the whole loop test and branches inside `&&`.
+- **A cluster of template instances and inline functions' copies closes a unit**, in reverse
+  of their first use: node_main.cpp ends with one (0x3176B0, remove_copy and list pieces), and
+  so does node_vector.cpp -- SetModeTree's iterator copy constructor, postfix ++, assignment,
+  default constructor and its inline setter's copy (0x313450-0x3134BB) put node_main.cpp's
+  start at 0x3134C0. An instance an earlier unit already emitted is not repeated (the linker
+  keeps the first copy), so a cluster holds only what is new in link order.
+- **A call's argument set-up follows its parameter order**, so it can recover a prototype the
+  callee's own code cannot (registers are allotted per class, ints and floats apart): zmath's
+  two projectors take the matrix last, as SOCOM 1's CalcWorldToUV did -- only that order puts
+  CNode::ApplyDecal's `mov.s $f13` ahead of the matrix's `addiu`; ScrollTexture's call to the
+  texture effects takes InitScrollTexture's order. A value threaded through calls stays in v0
+  (ScrollTexture passes each call's returned index to the next, and returns it).
+- **-inline auto refuses a function holding a call that cannot inline whole**: without its call
+  to SetDynamicLight (recursive, self-inlined twice), SetApplyClutterFlag inlines itself twice;
+  with it, not at all, as in the target. SetApplyDecals and SetApplyMultipassEffects have no
+  such call and count twelve statements, yet the target never inlines them (nor did SOCOM 1's
+  beta, no asserts in either), so they are pinned with `#pragma auto_inline off`.
+- **The vtable pointer sits where the first virtual is declared among the data members**:
+  CGameState declares its virtuals first (vptr at 0), CGameMenu its members first (vptr at
+  0x910), CNode after tag_NODE_PARAMS (0x60), CDI after its 12 bytes of parameters (0xc).
+- **Small tells from the game-state and HUD units** (the agents' notes): a derived destructor
+  that calls the base destructor in its body runs the base teardown twice, and both builds do
+  (CCoreState); an empty `default:` or `break` leaves no block, so CLetterBox::Tick needs
+  `default: return;`; narrowing an argument to an unsigned-char enum folds into an `lbu` at the
+  call, while `lb` plus `andi 0xff` in the callee is an int parameter narrowed inside it; MW
+  never loads a float constant from memory for a store, so a float read with `lwc1` from data
+  is a variable; a `!flag` materialised (sltu, xori) inside `&&` is an inline returning
+  `!m_loading`; a global pointer read twice is re-read after a char store, and taken into a
+  local once it stays in a register (CCoreState::OnPush); MW calls a member object's virtuals
+  through its vtable.
 - **MW's inline budget, measured** (build/scratch/inl, mwtest.py): a callee whose inline tree is
   at most 4 high inlines whole, a taller one only its own body (its calls stay calls). A
   function's height ignores calls made as arguments, but a call written as an argument of an
@@ -423,6 +458,19 @@ the work happens here and `tools/publish.sh` pushes the committed state (`--dry-
 to look first). It refuses a tracked line that looks private, as claude-eqoa's
 `_publish.py` does.
 
+## Working in parallel
+
+Agents (or people) can work at once in git worktrees of claude-socom, each on its own units, with
+the integrator merging their branches into master. The tools take turns where they share state:
+`tools/try.py` builds in `$SC_TRY_WORK` (one scratch tree each), scdiff names its object after
+the source's whole path and its process, `tools/rename.py` changes the map under a lock, and
+`./sccheck.py --files REGEX --build-dir DIR` builds and scores only the units named, into a
+private directory, its regression check covering only them. Only the integrator runs the whole
+check, `--baseline` and `tools/automatch.py` (after a merge: `--stale`, twice if it reports
+superseded drafts), and only the integrator publishes. A change under `include/` is proved on
+every hand-written unit (`--files '^(?!auto/)'`) before it is committed. A worktree needs
+`extracted/` and `decomp/toolchains/` linked in from the main tree.
+
 ## The generated tier: `src/auto/`
 
 `tools/automatch.py` hands every unnamed 16-aligned overlay function up to 0x100 bytes to
@@ -505,21 +553,26 @@ follows without MW's 16-byte padding (131 drafts had every byte right).
   and at() match from include/vector; insert does not yet (the pod one 8 bytes short:
   build/scratch/ins/BEST-pod-insert-0x418.txt -- the target reloads the capacity in the growth
   path, where every form tried keeps it).
-- **zdb::CNode: `node_vector.cpp` (from 0x310980, the typed lists and the code around them),
-  `node_main.cpp` (to 0x31789F) and `node_model.cpp` -- the first and last names ours.** The
-  boundaries are inlining evidence: DeleteChild and AddVisual call the lists' Exists and Remove,
-  which MW inlines when they share a unit; CreateXRef calls SetName and SetPosition. CNode: 30 written, all byte-exact -- the FindChild
-  trio, AddChild, AddVisual, SetNodeEx, DeleteChild(ren), Copy, GetMesh/GetSubMesh, CreateXRef, the
-  atoms, the radius, SetName and the small accessors. The boundary: CreateXRef calls SetName and
-  SetPosition, which every caller in node_main's range inlines where it can (probe:
-  build/scratch/inl/t9.cpp -- MW's deferred inlining takes a function defined later). Unwritten:
-  the destructor and constructor, _Copy, InitNodeParams, SetParentHasVisuals and DeleteVisual(s)
-  (std::list walks: the open iterator copy), Read, CreateInstance, ComputeFacadeMatrix, BuildMTW,
-  and the CLight/CLightMap code in between. The lists: CNodeVector
-  (Remove, Exists, GetNode), the DI/visual/light map Exists, CModelVector::GetModel, CNodeUniverse's
-  four, all byte-exact but Remove (std::remove inlined: two copies MW keeps there and drops
-  here; diagnosed in its source). MSL's std::find/find_if/remove/remove_copy and the pod erase
-  are in include/.
+- **zdb::CNode: `node_vector.cpp` (0x310980-0x3134BB, the typed lists and the code around
+  them), `node_main.cpp` (0x3134C0-0x31789F) and `node_model.cpp` -- the first and last names
+  ours.** The boundaries are inlining evidence (DeleteChild and AddVisual call the lists'
+  Exists and Remove, which MW inlines within a unit; CreateXRef calls SetName and SetPosition)
+  and the instance clusters that close node_vector.cpp and node_main.cpp. Byte-exact: the
+  FindChild trio, AddChild, AddVisual, AddDI, SetNodeEx, DeleteChild(ren), Copy, the atoms, the
+  radius, SetName, the setters through the tree (SetDynamic and its pair, the SetApply four,
+  SetUseParentBBoxTree, SetModeTree, SetDescendantVisuals/DI), ScrollTexture, RemoveDecals,
+  DeleteDI, BuildMatrixPalette, VisualEffectsTick, the CLight and CLightMap code, and
+  node_model.cpp's GetMesh/GetSubMesh/GetFirstVisual, CreateXRef, CreateInstance and Delete.
+  Open: ApplyDecal (two instructions), InheritRegionMasks (four), BuildMTW,
+  ComputeFacadeMatrix, CNodeVector::Remove -- each diagnosed in its source. Unwritten: the
+  destructor and constructor, _Copy, InitNodeParams, SetParentHasVisuals and DeleteVisual(s)
+  (std::list walks), Read, SetBlendMode, FindMeshTextures and the functions between them.
+- **The game states and the HUD (`src/Apps/FTS/`, the DWARF's directory), written in parallel
+  in worktrees**: st_core, st_exit, st_load and st_mpexit (CCoreState, CExitState, CLoadState,
+  CMPExitState, the cinematic state; fts_state.h), and hud_fader, hud_missioncams,
+  hud_letterbox and hud_posebitmap (hud_2d.h holds SOCOM II's C2D layouts) -- 43 functions
+  newly byte-exact in the first round. Open: CEntityItr::Advance (a list const_iterator
+  include/list lacks), CFlashFXVector::Reset (a pointer vector's swap).
 - **`CZWeaponList::GetWeapon` (`0x3C4B40`)** -- 2 instructions from exact with an `int`
   parameter, but SOCOM 1's mangled name says `EQUIP_ITEM`, and every enum-typed variant sinks
   the zero-extension into the loop preheader.
