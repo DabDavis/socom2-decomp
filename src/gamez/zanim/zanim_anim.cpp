@@ -20,6 +20,12 @@ extern "C" bool func_00270BC0(Particle::Source *source);
 extern "C" CNode *func_002703D0(CZAnim *anim, int find);
 extern "C" int func_00270460(CZAnim *anim, CNode *node);
 
+/* SOCOM II's: alive, and its shield no more than the given amount (not named) */
+extern "C" bool func_002739B0(CZAnimEx *ex, float amount)
+{
+    return ex->m_health > 0.0f && !(ex->m_shield > amount);
+}
+
 /* the extension's armour and health from the given values, or their maxima */
 void CZAnimEx::Reset(float *armor, float *health)
 {
