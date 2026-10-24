@@ -423,8 +423,8 @@ follows without MW's 16-byte padding (131 drafts had every byte right).
   (`zanim_set.cpp`) and CZAnim (`zanim_anim.cpp`): all written byte-exact but five.**
   Open: SequenceRunning, GetCmd, GetAnimSetIndex, Open (registers in the inlined NewAnimSet --
   the permuter found nothing in Open's own text), CZAnim::LoadNodeNames (a strength-reduced
-  index). Unwritten: the wildcard search, CZAnimSetSave's Reset and Add and the vector<CPnt3D>
-  insert/reserve they call (MSL bodies to reconstruct), the rest of CZAnim.
+  index). Unwritten: the wildcard search, the vector<CPnt3D> insert and reserve CZAnimSetSave::Add
+  calls (MSL bodies to reconstruct), the rest of CZAnim.
 - **`CZWeaponList::GetWeapon` (`0x3C4B40`)** -- 2 instructions from exact with an `int`
   parameter, but SOCOM 1's mangled name says `EQUIP_ITEM`, and every enum-typed variant sinks
   the zero-extension into the loop preheader.

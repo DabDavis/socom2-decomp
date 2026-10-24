@@ -116,6 +116,9 @@ public:
     {
         return *(const CPnt3D *)m_matrix.m_matrix[3];
     }
+    /* by value: CZAnimSetSave::Add pushes the parent through a temporary (allocated after its
+     * named locals), where the member itself would be passed by address */
+    CNode *GetParent() const { return m_parent; }
 
     CNode* m_parent;   // 0x64
     CNodeVector m_child;   // 0x68

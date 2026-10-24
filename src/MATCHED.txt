@@ -453,6 +453,7 @@
 0x002677D0 zAnimTimerTick__FP14_zanim_cmd_hdrPf
 0x002678F0 zAnimDestructorTick__FP14_zanim_cmd_hdrPf
 0x002679E0 zAnimQuadAlignTick__FP14_zanim_cmd_hdrPf
+0x002679F0 at__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FUi
 0x00267AB0 LoadZAR__10CZAnimMainFPCcPCc
 0x00267DC0 __dt__9CZAnimZARFv
 0x00267E20 CloseZAR__10CZAnimMainFP9CZAnimZAR
@@ -507,6 +508,8 @@
 0x0026B070 GetNetworkPacket__10CZAnimMainFi
 0x0026B0D0 InvExp__10CZAnimMainFf
 0x0026B120 Close__10CZAnimMainFv
+0x0026B430 Reset__13CZAnimSetSaveFP16_zanim_node_save
+0x0026B5E0 Add__13CZAnimSetSaveFP15_zanim_node_ref
 0x0026B9C0 Free__13CZAnimSetSaveFv
 0x0026BAB0 LoadSIScript__9CZAnimSetFRQ23zar4CZAR
 0x0026BC50 Load__9CZAnimSetFRQ23zar4CZAR
@@ -535,6 +538,7 @@
 0x0026CA50 GetAnimIndex__9CZAnimSetFP6CZAnim
 0x0026CAA0 func_0026CAA0
 0x0026CBE0 TaskScheduler__9CZAnimSetFv
+0x0026CC10 at__Q23std50__vector_imp<6CPnt3D,Q23std18allocator<6CPnt3D>,0>FUi
 0x0026D2F0 clear__Q23std50__vector_imp<6CPnt3D,Q23std18allocator<6CPnt3D>,0>Fv
 0x0026D300 __dt__Q23std52__vector_deleter<6CPnt3D,Q23std18allocator<6CPnt3D>>Fv
 0x0026D370 Load__6CZAnimFRQ23zar4CZAR

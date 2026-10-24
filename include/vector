@@ -34,6 +34,15 @@
 #define _MSL_VECTOR
 
 #include <memory>
+#include <stdio.h>
+#include <stdlib.h>
+
+/* MSL's error report with exceptions off: the message to stderr, then abort */
+#define __msl_error(str) \
+    {                    \
+        fprintf(stderr, str); \
+        abort();         \
+    }
 
 namespace std {
 
@@ -139,6 +148,7 @@ class __vector_imp : public __vector_deleter<T, Allocator> {
     T &at(unsigned int n);
     void reserve(unsigned int n);
     T *insert(T *position, unsigned int n, const T &x);
+    void push_back(const T &x) { insert(this->data_ + this->size_, 1, x); }
 };
 
 template <class T, class Allocator>
@@ -154,6 +164,24 @@ class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, all
         __vector_pod<unsigned int, allocator<unsigned int> >::push_back((const unsigned int &)x);
     }
 };
+
+/* the bounds-checked element reads, out of line (a template member defined outside its class is
+ * never auto-inlined here): each unit that calls one emits its copy, with its own message */
+template <class T, class Allocator>
+T &__vector_pod<T, Allocator>::at(unsigned int n)
+{
+    if (n >= size_)
+        __msl_error("vector::at index out of range");
+    return data_[n];
+}
+
+template <class T, class Allocator, bool IsPOD>
+T &__vector_imp<T, Allocator, IsPOD>::at(unsigned int n)
+{
+    if (n >= this->size_)
+        __msl_error("vector::at index out of range");
+    return this->data_[n];
+}
 
 template <class T, class Allocator = allocator<T> >
 class vector : public __vector_imp<T, Allocator, false> {

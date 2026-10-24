@@ -335,3 +335,88 @@ void CZAnimSetSave::Free()
         delete *it;
     clear();
 }
+
+/* a node reference's states kept: a record of which, and the activity bit, the parent, the
+ * translation and the rotation rows each on its own list (grown by 5), the record on the save's
+ * own; a node set to go inactive is deactivated first */
+void CZAnimSetSave::Add(_zanim_node_ref *ref)
+{
+    if (!ref)
+        return;
+    _zanim_node_save *save = new _zanim_node_save;
+
+    save->node = ref->node_ptr;
+    if (ref->set_inactive)
+        ref->node_ptr->SetActive(false);
+    if (ref->save_active) {
+        save->active = ref->node_ptr->m_active != 0;
+        save->has_active = 1;
+    } else
+        save->has_active = 0;
+    if (ref->save_parent) {
+        save->parent_index = m_parentList.size();
+        if (m_parentList.size() == m_parentList.capacity())
+            m_parentList.reserve(m_parentList.size() + 5);
+        m_parentList.push_back(ref->node_ptr->GetParent());
+        save->has_parent = 1;
+    } else
+        save->has_parent = 0;
+    if (ref->save_translation) {
+        save->translation_index = m_translationList.size();
+        if (m_translationList.size() == m_translationList.capacity())
+            m_translationList.reserve(m_translationList.size() + 5);
+        m_translationList.push_back(*(const CPnt3D *)ref->node_ptr->m_matrix.m_matrix[3]);
+        save->has_translation = 1;
+    } else
+        save->has_translation = 0;
+    if (ref->save_rotation) {
+        _zanim_node_rotation *rot = new _zanim_node_rotation;
+
+        rot->x = *(const CPnt3D *)ref->node_ptr->m_matrix.m_matrix[0];
+        rot->y = *(const CPnt3D *)ref->node_ptr->m_matrix.m_matrix[1];
+        rot->z = *(const CPnt3D *)ref->node_ptr->m_matrix.m_matrix[2];
+        save->rotation_index = m_rotationList.size();
+        if (m_rotationList.size() == m_rotationList.capacity())
+            m_rotationList.reserve(m_rotationList.size() + 5);
+        m_rotationList.push_back(rot);
+        save->has_rotation = 1;
+    } else
+        save->has_rotation = 0;
+    if (size() == capacity())
+        reserve(size() + 5);
+    push_back(save);
+}
+
+/* a node's saved states put back: its activity (fully opaque when active), its parent, its
+ * translation, and its rotation (the saved rows around the node's current position) */
+void CZAnimSetSave::Reset(_zanim_node_save *save)
+{
+    if (save->has_active) {
+        save->node->SetActive(save->active);
+        if (save->active)
+            save->node->m_Opacity = 1.0f;
+    }
+    if (save->has_parent) {
+        CNode *parent = m_parentList.at(save->parent_index);
+
+        if (save->node->m_parent != parent) {
+            if (save->node->m_parent)
+                save->node->m_parent->DeleteChild(save->node);
+            if (parent)
+                parent->AddChild(save->node);
+        }
+    }
+    if (save->has_translation) {
+        CPnt3D p = m_translationList.at(save->translation_index);
+
+        save->node->SetPosition(p.x, p.y, p.z);
+    }
+    if (save->has_rotation) {
+        _zanim_node_rotation *rot = m_rotationList.at(save->rotation_index);
+        CNode *node = save->node;
+        CMatrix m;
+
+        m.SetRows(&rot->x, &rot->y, &rot->z, (const CPnt3D *)node->m_matrix.m_matrix[3]);
+        save->node->SetMatrix(&m);
+    }
+}
