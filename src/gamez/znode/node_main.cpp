@@ -393,6 +393,44 @@ CGridAtom *CNode::GetAtom(int i)
     return m_Atom[i];
 }
 
+/* moving and lit as a dynamic node, or not; below too when told to (each recursion inlines itself
+ * twice, as SetNodeEx's does).
+ * OPEN (SetDynamic, 0x280 of 0x270): its walk declares the iterator, then assigns begin() to it
+ * (the second copy calls the iterator's default constructor, 0x313490, and its assignment,
+ * 0x313480) -- and still inlines begin() whole in its own body. That needs the vector base's
+ * begin() to read data_ directly: with it SetDynamic matches byte for byte, but FindChild by
+ * name loses the register holding &data_ that data()'s reference gives it. One model fits
+ * either, none both yet. */
+void CNode::SetDynamic(bool on, bool recurse)
+{
+    m_dynamic_motion = on;
+    m_dynamic_light = on;
+    if (recurse) {
+        CNodeVector::iterator it;
+
+        for (it = m_child.begin(); it != m_child.end(); it++)
+            (*it)->SetDynamic(on, recurse);
+    }
+}
+
+void CNode::SetDynamicMotion(bool on, bool recurse)
+{
+    m_dynamic_motion = on;
+    if (recurse) {
+        for (CNodeVector::iterator it = m_child.begin(); it != m_child.end(); it++)
+            (*it)->SetDynamicMotion(on, recurse);
+    }
+}
+
+void CNode::SetDynamicLight(bool on, bool recurse)
+{
+    m_dynamic_light = on;
+    if (recurse) {
+        for (CNodeVector::iterator it = m_child.begin(); it != m_child.end(); it++)
+            (*it)->SetDynamicLight(on, recurse);
+    }
+}
+
 /* a point in the node's frame into the world's: each matrix up the tree, to the world's node
  * (type 6) */
 void CNode::TransformToWorld(CPnt3D &p) const

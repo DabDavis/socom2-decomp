@@ -181,6 +181,9 @@ public:
     static CNode *Delete(CNode *node);
     void RemoveFromParent();
     bool Rendered(int frames);
+    void SetDynamic(bool on, bool recurse);
+    void SetDynamicMotion(bool on, bool recurse);
+    void SetDynamicLight(bool on, bool recurse);
     void ComputeFacadeMatrix(const CMatrix *view, CMatrix *out);
     void TransformToWorld(CPnt3D &p) const;
     void BuildMTW(CMatrix &m);

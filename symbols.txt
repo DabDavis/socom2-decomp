@@ -5441,9 +5441,9 @@
 0x00313EE0 0x110 func_00313EE0  # OVL1
 0x00313FF0 0x110 func_00313FF0  # OVL1
 0x00314100 0x214 func_00314100  # OVL1
-0x00314320 0x218 func_00314320  # OVL1
-0x00314540 0x218 func_00314540  # OVL1
-0x00314760 0x270 func_00314760  # OVL1
+0x00314320 0x218 SetDynamicLight__Q23zdb5CNodeFbb  # OVL1; s1:order (SOCOM 1's SetDynamicLight, SetDynamicMotion, SetDynamic, as here; the light bit)
+0x00314540 0x218 SetDynamicMotion__Q23zdb5CNodeFbb  # OVL1; s1:order (SOCOM 1's SetDynamicLight, SetDynamicMotion, SetDynamic, as here; the motion bit)
+0x00314760 0x270 SetDynamic__Q23zdb5CNodeFbb  # OVL1; s1:order (SOCOM 1's SetDynamicLight, SetDynamicMotion, SetDynamic, then SetAtomCnt and GetAtom, as here; both dynamic bits set, the recursion inlined)
 0x003149D0 0x8 func_003149D0  # OVL1
 0x003149E0 0x30 GetAtom__Q23zdb5CNodeFi  # OVL1; s1:align
 0x00314A10 0x20 InsertAtom__Q23zdb5CNodeFPQ23zdb9CGridAtom  # OVL1; tu: node_main.cpp~ (1.0 beta); s1:align
