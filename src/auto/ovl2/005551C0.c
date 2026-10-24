@@ -6,7 +6,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-f32 func_001B38F8(f32);                             /* extern */
+f32 expf(f32);                                      /* extern */
 
 /* Warning: Gap in callee-saved word stack region.
  * Saved: [0x0, 0x10, 0x14, 0x18, 0x1c, 0x20, 0x24], gap at: 0x8. */
@@ -14,6 +14,6 @@ f32 *func_005551C0(f32 *arg0, f32 *arg1, f32 fparg0, f32 fparg1) {
     f32 temp_f20;
 
     temp_f20 = *arg1;
-    *arg0 = temp_f20 + ((*arg0 - temp_f20) * func_001B38F8(fparg0 * fparg1));
+    *arg0 = temp_f20 + ((*arg0 - temp_f20) * expf(fparg0 * fparg1));
     return arg0;
 }

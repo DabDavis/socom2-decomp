@@ -40,6 +40,9 @@ and data reference resolved to the address the shipped code uses.
 | `tools/dwarf1.py` | the demo's Metrowerks DWARF 1: units, signatures, class layouts, enums |
 | `tools/beta_tu.py` | which source file a function was in, out of the press beta's asserts |
 | `tools/rename.py` | rename map rows by hand, keeping the note, refusing a taken name, listing the source still using the old one |
+| `tools/s1units.py` | SOCOM II's translation units: its static initialisers against SOCOM 1's named `__sinit_<file>`s |
+| `tools/try.py` | compile one unit with one textual substitution at a time and score one symbol, in a scratch copy of `src/` |
+| `tools/scperm.py` | the permuter: EQOA's tree-sitter mutations of one function, MW-compiled and alignment-scored (needs `.venv`) |
 | `symbols.txt` | **the map** — `0xADDR SIZE name  # note`, kept by hand from here on |
 | `data.txt` | the map of global data, the same format and namespace |
 | `src/` | the reconstructed source; `MATCHED.txt` (the baseline), `ABSENT.txt` (dead-stripped) |
@@ -107,7 +110,9 @@ rejected a matching decomp because "mwccps2 2.4.1.01 is a discontinued commercia
 So the game was built with a 3.0.0-reporting build from mid-2003 — three months before the
 Oct 11 2003 build — and the `.comment` comes from something else in the link (a prebuilt
 runtime object is the likely carrier). **3.0b50 and 3.0b52 are not yet told apart**; the
-default is 3.0b52 (the nearer date). A function that separates them settles it.
+default is 3.0b52 (the nearer date). A function that separates them settles it (the float
+code tried so far -- Slerp, the normalisers, the trig tables -- compiles the same under both,
+and under 3.0b38).
 
 **The flags, each by its own evidence** (`scdiff.FLAGS`):
 
@@ -119,6 +124,7 @@ Each flag is necessary: drop any one and zlib's score falls (3.0b52, the others 
 | `-sdatathreshold 0` | 18 | the target addresses zlib's 6-byte version string with `lui/addiu`; the default (8) puts it in `$gp` small data |
 | `-inline auto,deferred` | `auto` 20, `deferred` 18, `on` 17 | `inflateReset` is absent from the image — inlined into both callers and stripped (`auto`); functions emit in **reverse definition order**, exactly as the image holds them (`deferred`) |
 | `-enum min` | 13 | `inflate`'s `mode` field is stored with `sb` |
+| `-Cpp_exceptions off` | (C++ only) | `CMatrix::SetZero` is `j memset`: with exceptions on, MW keeps a frame around every C++ call, while C tail-calls either way; every C++ match held when it went on |
 
 Driven through **wibo** (decompals' minimal Win32 loader, as decomp.me does): ~10 ms a
 compile against wine's ~2 s, and the 2003 builds — which wait forever on a FlexLM licence
@@ -139,6 +145,28 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   tail. 16-aligned rows in the map, an UPPER bound on the code that is ours (half of GCC's
   8-aligned functions land on 16 by chance): MAIN 868 (178 KB), OVL1 6,904 (1.94 MB), OVL2
   3,615 (1.31 MB) — against 8-aligned MAIN 497, OVL1 196, OVL2 1,149.
+- **The game's units link in project order, which the initialiser tables record.** Every unit
+  with dynamic initialisation has a `__sinit_<file>`; the MWo3 header's ctors range lists them in
+  link order (OVL1 125, OVL2 16), and SOCOM 1's demo names its 296. `tools/s1units.py` pairs
+  them (exact pairs, then by shared names; a shape alone is only a hint): zMath is four units,
+  `zmath_main.cpp`, `zmath_matrix.cpp`, `zmath_pnt3d.cpp`, `zmath_pnt4d.cpp`, in that order.
+  The thunks live in the data area and are compared like any function (all four zMath ones
+  match, which pins the statics and their inline constructors -- CQuat's stores `w` first).
+- **`-inline auto` inlines within a unit and never across**, so the image's inlining reads
+  unit boundaries: `CPnt3D::Interp` is `Scale(1 - t, out); b->Scale(t, &tmp); out->Add(&tmp,
+  out);` with both calls inlined, while CQuat's code in `zmath_main.cpp` calls `Scale`/`Add`.
+- **Return types are not mangled but they move registers**: both `CPnt3D::Normalize`s return
+  the length (kept in `$f0`, it fixes every other register; void, MW numbers them the other
+  way round), a bit test returns `bool` (an `int` adds `andi 0xff`).
+- **MW 3.0 mangles a function template's return type** (`_close_enough<f>__FRCfRCfRCf_b`);
+  SOCOM 1's 2.4-era compiler did not, so every carried template-function name needs it.
+  A 128-bit type mangles as `1` (`CVU::Code(u_long128 *)` is `Code__3CVUFP1`).
+- **Hand-written VU0 code is a CodeWarrior `asm` function** (`asm void f(...) { ... }`), which
+  reproduces it exactly, delay slots and `addi` included (`Vu0MatrixInverseWithUniformScale`
+  and three point-transform loops, first try). GCC-style `asm("...")` strings are scheduled
+  instruction by instruction with the C around them; an `asm { }` block is a barrier, but
+  drops a repeated `qmtc2.i` -- `CBBox::GetIntersect`'s last two instructions are still open
+  on exactly that.
 - `long` is 64 bits (zlib's `uLong` argument is `lwu`-loaded into a 64-bit slot).
 - Small params: a callee's prototype changes the caller's scheduling — the loader matched only
   once its DNAS callees took `unsigned int` lengths.
@@ -258,19 +286,19 @@ check verifies them; none reads a literal address.
 
 ## Open, and next
 
-- **`CZWeaponList::GetWeapon` (`0x3C4B40`)** — 2 instructions from exact with an `int`
-  parameter, but SOCOM 1's mangled name says the parameter is `EQUIP_ITEM`, and every
-  enum-typed variant sinks the parameter's zero-extension into the loop preheader where the
-  target computes it before the loop guard. A permuter's job (EQOA's `eqperm.py` is the model).
-- **SOCOM 1's beta, `SCUS_972.05`** (May 2002, "SOCOM:2002 Public Beta") ships its full
-  `.symtab` (9,703 functions), Metrowerks DWARF 1 (`.debug`, 5 MB) and `.line` — **types,
-  struct layouts and translation-unit names**. Not on this machine. It is the single biggest
-  accelerator available: it names the files this tree should have, and every shared engine
-  class's layout.
-- Tell 3.0b50 from 3.0b52.
-- Measure the game's TU order (alphabetical?) and read TU boundaries off the image.
-- Port the permuter; port eqrefcheck's data-reference audit to absolute addresses.
-- The MSL runtime in MAIN (`_delete_vec` and friends) is MW-built library code — a second
+- **zMath (OVL1 0x306670-0x30954C, 4 units): 46 of 54 functions byte-exact.** Open:
+  `CMatrix::SetRotate` (callee-saved registers right, two scratch temporaries and one `madd`
+  operand order not), `CQuat::Align` (right size; where MW keeps `&half.y` in an `s` register),
+  `CBits::Resize` (the 8x-unrolled clear loop saves one register fewer), `CPnt3D::Reflect`
+  (a by-value operator chain MW keeps four copies of), `init_trig_table` (`$f0`/`$f1` swapped
+  around the angle), `CBBox::GetIntersect` (above). Unwritten: the two `DistToVector`s.
+- **`CZWeaponList::GetWeapon` (`0x3C4B40`)** -- 2 instructions from exact with an `int`
+  parameter, but SOCOM 1's mangled name says `EQUIP_ITEM`, and every enum-typed variant sinks
+  the zero-extension into the loop preheader.
+- **`tools/scperm.py`** (EQOA's tree-sitter mutations driven by MW, ~195 candidates a second
+  on 6 cores) has not yet closed a function: its finds so far trade correctness for score.
+- Tell 3.0b50 from 3.0b52; port eqrefcheck's data-reference audit to absolute addresses.
+- The MSL runtime in MAIN (`_delete_vec` and friends) is MW-built library code -- a second
   calibration set once its source is pinned down.
 
 ## Credits and licence scope

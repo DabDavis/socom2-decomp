@@ -7,8 +7,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK func_0018F8A0();                            /* extern */
-M2C_UNK func_001AAC68(s32);                         /* extern */
 M2C_UNK sceClose(s32);                              /* extern */
+M2C_UNK sceSifFreeIopHeap(s32);                     /* extern */
 extern s32 data_00455F30;
 extern s32 data_00455F3C;
 extern s32 data_00455F40;
@@ -16,7 +16,7 @@ extern s32 data_00455F40;
 s32 func_0030BA90(void) {
     if (data_00455F30 != 0) {
         func_0018F8A0();
-        func_001AAC68(data_00455F3C);
+        sceSifFreeIopHeap(data_00455F3C);
     } else {
         sceClose(data_00455F40);
     }

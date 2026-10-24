@@ -48,10 +48,12 @@ TOOLCHAINS = HERE / "toolchains"
 # 3.0b22-020926: 17), and only at -O4,p (-O3,p: 18; -O4,s/-O4/-O3: 6). -sdatathreshold 0:
 # no $gp small data (the target addresses zlib's version string absolutely); -inline
 # auto,deferred: inflateReset is inlined and gone, and functions emit in REVERSE
-# definition order, as the image holds them; -enum min: inflate's mode is stored by sb.
+# definition order, as the image holds them; -enum min: inflate's mode is stored by sb;
+# -Cpp_exceptions off: C++ tail calls (CMatrix::SetZero is `j memset`; with exceptions on, MW
+# keeps a frame around every C++ call, while C code tail-calls either way).
 # README "The compiler" has the derivation.
 COMPILER = os.environ.get("SC_COMPILER", "mwcps2-3.0b52-030722")
-FLAGS = os.environ.get("SC_FLAGS", "-O4,p -sdatathreshold 0 -inline auto,deferred -enum min").split()
+FLAGS = os.environ.get("SC_FLAGS", "-O4,p -sdatathreshold 0 -inline auto,deferred -enum min -Cpp_exceptions off").split()
 BASE_FLAGS = ["-c", "-nostdinc", "-gccinc", "-msgstyle", "gcc"]   # -gccinc: -I paths serve <...> too
 
 
@@ -119,7 +121,7 @@ class RelocFinding:
     symbol: str
     want: int | None      # the address the target's field resolves to
     got: int | None       # the address the candidate's relocation names
-    status: str           # ok | MISMATCH | content-ok | CONTENT-MISMATCH | unchecked
+    status: str           # ok | MISMATCH | content-ok | CONTENT-MISMATCH | UNKNOWN | unchecked
 
     def __str__(self) -> str:
         w = f"0x{self.want:08X}" if self.want is not None else "?"
@@ -216,6 +218,11 @@ def reloc_check(elf: E.Elf, fsym: E.ElfSymbol, relocs: list[E.Reloc], target: by
             if addr is not None:
                 got = addr + add
                 out.append(RelocFinding(r.offset, r.type, name, want, got, "ok" if got == want else "MISMATCH"))
+            elif r.sym.bind != 0 and r.sym.name:
+                # a global callee the map does not name: the call cannot be shown right, and a
+                # misspelt name (SOCOM 1's template mangling, without MW 3.0's return suffix)
+                # must not pass as a match
+                out.append(RelocFinding(r.offset, r.type, name, want, None, "UNKNOWN"))
             else:
                 # an unnamed static callee: its address is only knowable once the map names it
                 out.append(RelocFinding(r.offset, r.type, name, want, None, "unchecked"))
@@ -235,6 +242,8 @@ def reloc_check(elf: E.Elf, fsym: E.ElfSymbol, relocs: list[E.Reloc], target: by
             if addr is not None:
                 got = (addr + add) & 0xFFFFFFFF
                 out.append(RelocFinding(r.offset, r.type, name, want, got, "ok" if got == want else "MISMATCH"))
+            elif r.sym.bind != 0 and r.sym.name:
+                out.append(RelocFinding(r.offset, r.type, name, want, None, "UNKNOWN"))   # see R_MIPS_26
             elif local_sec is not None:
                 size = r.sym.size if (r.sym.type == "OBJECT" and add == 0) else 0
                 ok = local_object_ok(elf, local_sec, local_base + add, want, fsym, taddr, st, img, size)
@@ -263,7 +272,7 @@ class Result:
 
     @property
     def reloc_bad(self) -> list[RelocFinding]:
-        return [f for f in self.relocs if f.status in ("MISMATCH", "CONTENT-MISMATCH")]
+        return [f for f in self.relocs if f.status in ("MISMATCH", "CONTENT-MISMATCH", "UNKNOWN")]
 
     @property
     def reloc_unchecked(self) -> list[RelocFinding]:

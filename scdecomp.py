@@ -98,7 +98,7 @@ class ElfSymbol:
     value: int
     size: int
     type: str
-    bind: int        # 0 local, 1 global, 2 weak
+    bind: int        # 0 local, 1 global, 2 weak; MW gives a template instance 13 (one copy kept at link)
     shndx: int
 
 
@@ -141,7 +141,9 @@ class Elf:
                 names = self.sections[sec.link]
                 for j in range(sec.size // 16):
                     nm, val, size, info, _other, shndx = struct.unpack_from("<IIIBBH", sec.data, j * 16)
-                    self.symbols.append(ElfSymbol(self._cstr(names.offset + nm), val, size,
+                    # MW pads a static initialiser's name with spaces (`__sinit_zmath_main.cpp    `);
+                    # the linker's table, like the demo's, has them stripped
+                    self.symbols.append(ElfSymbol(self._cstr(names.offset + nm).rstrip(" "), val, size,
                                                   STT_NAMES.get(info & 0xF, str(info & 0xF)),
                                                   info >> 4, shndx))
 

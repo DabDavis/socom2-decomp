@@ -39,7 +39,11 @@ class __list_imp : public __list_deleter<T, Allocator> {
 };
 
 template <class T, class Allocator = allocator<T> >
-class list : public __list_imp<const void *, allocator<const void *> > {
+class list : public __list_imp<T, Allocator> {
+};
+
+template <class T, class Allocator>
+class list<T *, Allocator> : public __list_imp<const void *, allocator<const void *> > {
 };
 
 }

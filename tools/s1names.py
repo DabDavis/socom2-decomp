@@ -93,7 +93,8 @@ def run(demo: Demo, img: E.Image, st: E.SymbolTable):
     ours = defaultdict(list)
     for s in st.symbols:
         seg = img.segment(s.addr)
-        if seg is None or s.size < 16 or not (img.is_code(s.addr) or seg.name == "MAIN"):
+        if seg is None or s.size < 16 or not (img.is_code(s.addr) or seg.name == "MAIN"
+                                              or "static initialiser" in s.note):
             continue
         ours[(s.size, sig(img.read(s.addr, s.size)))].append(s)
     # unique BOTH ways: one SOCOM II function for the demo function, and one demo name for the
@@ -110,6 +111,12 @@ def run(demo: Demo, img: E.Image, st: E.SymbolTable):
         want = masked(b, m)
         hits = [s for s in cands if masked(img.read(s.addr, s.size), m) == want
                 and not callee_conflict(demo, img, st, f.value, s.addr, s.size)]
+        if len(hits) > 1:
+            # a thin wrapper (`asinf: j __ieee754_asinf`) masks like every other one; the one
+            # whose call both builds name alike is it, when exactly one does
+            agree = [s for s in hits if callee_agree(demo, img, st, f.value, s.addr, s.size)]
+            if len(agree) == 1:
+                hits = agree
         if len(hits) == 1:
             hit_by[hits[0].addr].append(f)
     exact: dict[int, str] = {}                     # SOCOM II address -> demo name
@@ -161,6 +168,20 @@ def callee_conflict(demo: Demo, img: E.Image, st: E.SymbolTable, demo_a: int, ou
         t2 = ((demo_a + i + 4) & 0xF0000000) | ((w2 & 0x3FFFFFF) << 2)
         s1, n2 = st.at_addr(t1), demo.name_at.get(t2)
         if s1 is not None and n2 and not E.is_placeholder(s1.name) and s1.name != n2:
+            return True
+    return False
+
+
+def callee_agree(demo: Demo, img: E.Image, st: E.SymbolTable, demo_a: int, ours_a: int, size: int) -> bool:
+    """Some call at the same instruction has a target both builds name, alike."""
+    for i in range(0, size, 4):
+        w1, w2 = img.word(ours_a + i), struct.unpack_from("<I", demo.data, demo_a - demo.base + i)[0]
+        if w1 >> 26 not in (2, 3) or w2 >> 26 not in (2, 3):
+            continue
+        t1 = ((ours_a + i + 4) & 0xF0000000) | ((w1 & 0x3FFFFFF) << 2)
+        t2 = ((demo_a + i + 4) & 0xF0000000) | ((w2 & 0x3FFFFFF) << 2)
+        s1, n2 = st.at_addr(t1), demo.name_at.get(t2)
+        if s1 is not None and n2 and s1.name == n2:
             return True
     return False
 

@@ -1,7 +1,8 @@
-/* CSaveManager (OVL1 0x33E4D0): the save/load driver over a CIO file, keeping a list of the
- * modules that save. The layout is SOCOM 1's DWARF (SCUS_972.05), whose constructor is byte-
- * identical; SOCOM 1 kept it with Save, RegisterModule and the destructor. The file name is
- * a placeholder. */
+/* zsav_manager.cpp -- CSaveManager (OVL1 0x33E4D0): the save/load driver over a CIO file,
+ * keeping a list of the modules that save. The layout is SOCOM 1's DWARF (SCUS_972.05), whose
+ * constructor is byte-identical; SOCOM 1 kept it with Save, RegisterModule and the destructor.
+ * The file name is an inference: the press beta's asserts name a zsav_manager.cpp (beside
+ * zsav_module.cpp), and this is the class it would hold. */
 
 #include <list>
 
