@@ -67,11 +67,16 @@ public:
     unsigned int m_cleanup_seq_offset : 16;   // 0x14
 };   // 0x18 bytes
 
+class CIO;
+
 namespace zar {
 class CZAR {
 public:
+    CZAR(const char *name, CIO *io);
     virtual ~CZAR();
     int Fetch(const char *name, void *buf, int size);
+
+    unsigned char _4[0xB4];   /* SOCOM II's CZAR is 0xB8 bytes (OpenZAR's new); SOCOM 1's 0xA4 */
 };
 }
 
@@ -93,6 +98,7 @@ public:
 /* a ZAR the interpreter opened (zar::CZAR is polymorphic: the vtable pointer is at 0) */
 class CZAnimZAR : public zar::CZAR {
 public:
+    CZAnimZAR() : zar::CZAR(0, 0) {}
     virtual ~CZAnimZAR();
 };
 
@@ -250,6 +256,8 @@ public:
     bool StateRunning(int state);
     bool SeqRunning();
     int CloseZAR(CZAnimZAR *zar);
+    CZAnimZAR *OpenZAR(const char *name);
+    static bool m_LoadFromZAR;
     int UnloadSIScript(_zanim_si_script *script);
     ZAnimNetworkPacket *GetNetworkPacket(int size);
     void FreeNetworkPacketBuffer();

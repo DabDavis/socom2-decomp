@@ -2,6 +2,7 @@
  * loaded ZARs (OVL1 0x2678F0-...). The unit name is SOCOM 1's (the press beta's asserts name it
  * for CmdValid and its neighbours). Defined in reverse of their image order (-inline deferred). */
 
+#include <stdio.h>
 #include <string.h>
 
 #include "zanim.h"
@@ -462,6 +463,31 @@ extern "C" int func_002681C0(CZAnimMain *main, int delta)
     else
         main->m_CurSeq->m_IF_NestLevel += delta;
     return main->m_CurSeq->m_IF_NestLevel;
+}
+
+/* zar::CZAR::Open with a fifth argument SOCOM 1's did not have: not named */
+extern "C" int func_00258920(zar::CZAR *zar, const char *name, int mode, unsigned int flags, unsigned int a, int b);
+
+/* a ZAR by file or directory name (the directory's zanim.zar) */
+CZAnimZAR *CZAnimMain::OpenZAR(const char *name)
+{
+    if (!m_LoadFromZAR)
+        return 0;
+    CZAnimZAR *zar = new CZAnimZAR;
+
+    if (zar) {
+        char path[128];
+
+        if (!strstr(name, "zanim.zar"))
+            sprintf(path, "%s/%s", name, "zanim.zar");
+        else
+            sprintf(path, "%s", name);
+        if (func_00258920(zar, path, 0, 1, 16, 0))
+            return zar;
+        delete zar;
+        return 0;
+    }
+    return 0;
 }
 
 int CZAnimMain::CloseZAR(CZAnimZAR *zar)
