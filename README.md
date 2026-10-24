@@ -289,12 +289,14 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   walk's first test (begin against begin + size) into `n == 0`. An iterator *assigned* from
   begin() is a level deeper than one *initialised* from it. A class iterator's `!=` (as
   `!(==)`) materialises when it is the whole loop test and branches inside `&&`.
-- **A cluster of template instances and inline functions' copies closes a unit**, in reverse
-  of their first use: node_main.cpp ends with one (0x3176B0, remove_copy and list pieces), and
-  so does node_vector.cpp -- SetModeTree's iterator copy constructor, postfix ++, assignment,
-  default constructor and its inline setter's copy (0x313450-0x3134BB) put node_main.cpp's
-  start at 0x3134C0. An instance an earlier unit already emitted is not repeated (the linker
-  keeps the first copy), so a cluster holds only what is new in link order.
+- **Template instances close a unit; an inline function's out-of-line copies follow the first
+  function that calls them.** node_vector.cpp ends with std::remove_copy's instance (0x312480),
+  node_main.cpp with its remove_copy and list instances (from 0x3176B0); but SetModeTree's
+  iterator copy constructor, postfix ++, assignment, default constructor and its inline setter's
+  copy (0x313450-0x3134BB) sit right after SetModeTree, mid-unit, in reverse of their first use
+  -- which an earlier boundary misread as a unit's end (Create, inlining node_main.cpp's
+  SetName, and the press beta's file references corrected it). An instance an earlier unit
+  already emitted is not repeated (the linker keeps the first copy).
 - **A call's argument set-up follows its parameter order**, so it can recover a prototype the
   callee's own code cannot (registers are allotted per class, ints and floats apart): zmath's
   two projectors take the matrix last, as SOCOM 1's CalcWorldToUV did -- only that order puts
@@ -553,11 +555,11 @@ follows without MW's 16-byte padding (131 drafts had every byte right).
   and at() match from include/vector; insert does not yet (the pod one 8 bytes short:
   build/scratch/ins/BEST-pod-insert-0x418.txt -- the target reloads the capacity in the growth
   path, where every form tried keeps it).
-- **zdb::CNode: `node_vector.cpp` (0x310980-0x3134BB, the typed lists and the code around
-  them), `node_main.cpp` (0x3134C0-0x31789F) and `node_model.cpp` -- the first and last names
+- **zdb::CNode: `node_vector.cpp` (0x310980-0x3124EB, the typed lists and the code before
+  them), `node_main.cpp` (0x3124F0-0x31789F) and `node_model.cpp` -- the first and last names
   ours.** The boundaries are inlining evidence (DeleteChild and AddVisual call the lists'
-  Exists and Remove, which MW inlines within a unit; CreateXRef calls SetName and SetPosition)
-  and the instance clusters that close node_vector.cpp and node_main.cpp. Byte-exact: the
+  Exists and Remove, which MW inlines within a unit; Create inlines SetName; CreateXRef calls
+  SetName and SetPosition) and the template instances that close each unit. Byte-exact: the
   FindChild trio, AddChild, AddVisual, AddDI, SetNodeEx, DeleteChild(ren), Copy, the atoms, the
   radius, SetName, the setters through the tree (SetDynamic and its pair, the SetApply four,
   SetUseParentBBoxTree, SetModeTree, SetDescendantVisuals/DI), ScrollTexture, RemoveDecals,
