@@ -1,0 +1,12 @@
+# Functions the source defines that the image does not hold: dead-stripped by the
+# linker, or inlined into every caller and then stripped. sccheck reports them as
+# `absent` instead of `no-target`, and refuses if one of them appears in symbols.txt.
+# name                        # why
+inflateReset                  # zlib inflate.c: inlined into inflateInit2_ and inflate (-inline auto), then stripped
+inflateSetDictionary          # zlib inflate.c: never referenced
+inflateSync                   # zlib inflate.c: never referenced
+inflateSyncPoint              # zlib inflate.c: never referenced
+inflate_set_dictionary        # zlib infblock.c: only inflateSetDictionary calls it
+inflate_blocks_sync_point     # zlib infblock.c: only inflateSyncPoint calls it
+zlibVersion                   # zlib zutil.c: never referenced
+zError                        # zlib zutil.c: never referenced

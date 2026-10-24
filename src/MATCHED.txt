@@ -1,0 +1,26 @@
+# byte-exact functions; rewritten by ./sccheck.py --baseline
+MakeXRot__5CQuatFf
+MakeYRot__5CQuatFf
+MakeZRot__5CQuatFf
+adler32
+func_001C5DA0
+huft_build
+inflate
+inflateEnd
+inflateInit2_
+inflateInit_
+inflate_blocks
+inflate_blocks_free
+inflate_blocks_new
+inflate_blocks_reset
+inflate_codes
+inflate_codes_free
+inflate_codes_new
+inflate_fast
+inflate_flush
+inflate_trees_bits
+inflate_trees_dynamic
+inflate_trees_fixed
+uncompress
+zcalloc
+zcfree
