@@ -6,6 +6,81 @@
 
 #include "zanim.h"
 
+int CZAnimSet::GarbageCollect()
+{
+    func_002684D0();
+    if (m_anim_list)
+        for (int i = 0; i < m_anim_count; i++)
+            m_anim_list[i].GarbageCollect();
+    return 1;
+}
+
+/* every anim stopped, and every anim it chains to */
+int CZAnimSet::Stop()
+{
+    for (int i = 0; i < m_anim_count; i++) {
+        CZAnim *anim = Anim(i);
+
+        func_002707C0(anim, false);
+        anim->StopLights(true);
+        anim->DeleteParticleSources();
+        while (anim->m_sibling_anim) {
+            anim = anim->m_sibling_anim;
+            func_002707C0(anim, false);
+            anim->StopLights(true);
+            anim->DeleteParticleSources();
+        }
+    }
+    m_IsStarted = 0;
+    return 1;
+}
+
+/* the saved node states put back, the CZAnimEx list and every anim reset */
+void CZAnimSet::Reset()
+{
+    CZAnimSetSave *save = m_node_states;
+
+    if (save)
+        for (CZAnimSetSave::const_iterator it = save->begin(); it != save->end(); ++it)
+            save->Reset(*it);
+    if (m_AnimExList)
+        m_AnimExList->Reset();
+    for (int i = 0; i < m_anim_count; i++)
+        Anim(i)->Reset();
+}
+
+extern "C" int func_0026C240(CZAnimSet *set, int x)
+{
+    for (int i = 0; i < set->m_anim_count; i++)
+        func_00270570(set->Anim(i), x);
+    return 1;
+}
+
+/* SOCOM II's: SOCOM 1's NewAnim without the slot's allocation -- an anim given its slot,
+ * cleared, named and set going; the set itself is not read */
+extern "C" CZAnim *func_0026CAA0(CZAnimSet *set, CZAnim *anim, const char *name)
+{
+    if (!anim)
+        return 0;
+    ZAnim.m_CurAnim = anim;
+    ZAnim.m_CurSeq = 0;
+    memset(anim, 0, sizeof(CZAnim));
+    anim->m_root_node_index = 0;
+    if (!ZAnim.m_search_external_nodes)
+        anim->node_search_scope = 1;
+    else
+        anim->node_search_scope = 0;
+    anim->m_animset_index = ZAnim.m_CurAnimSet ? ZAnim.m_CurAnimSet - ZAnim.m_animset_list : 0;
+    anim->Name(name);
+    anim->State(1);
+    anim->Priority(3.0f);
+    anim->m_damage_seq_offset = 0;
+    anim->m_activation_seq_offset = 0;
+    anim->m_execution_seq_offset = 0;
+    anim->m_cleanup_seq_offset = 0;
+    return anim;
+}
+
 int CZAnimSet::GetAnimIndex(CZAnim *anim)
 {
     int i = anim - m_anim_list;

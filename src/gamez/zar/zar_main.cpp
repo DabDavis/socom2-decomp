@@ -13,7 +13,7 @@ namespace zar {
 inline void CKeyRing::push(CKey *key)
 {
     if (key)
-        func_001FE340(this, m_data + m_size, 1, &key);
+        func_001FE340(this, end().m_p, 1, &key);
 }
 
 /* SOCOM 1's took the key to close; SOCOM II's pops the innermost, whichever it is */

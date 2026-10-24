@@ -2932,7 +2932,7 @@
 0x0026B0D0 0x50 InvExp__10CZAnimMainFf  # OVL1; s1:order (between GetNetworkPacket and Close in both; the same clamp to 0..40 and m_inv_exp lookup, the conversion inline here)
 0x0026B120 0x7C Close__10CZAnimMainFv  # OVL1; s1:align
 0x0026B1A0 0x288 Open__10CZAnimMainFv  # OVL1; s1:order (after Close in both; Close inlined, the version, gravity and exp tables set)
-0x0026B430 0x1A8 Reset__13CZAnimSetSaveFv  # OVL1; s1:calls
+0x0026B430 0x1A8 Reset__13CZAnimSetSaveFP15_zanim_node_ref  # OVL1; s1:calls; s1:calls, the parameter SOCOM II's (CZAnimSet::Reset passes each element of the save's vector; SOCOM 1's Reset() walked them itself)
 0x0026B5E0 0x3D4 Add__13CZAnimSetSaveFP15_zanim_node_ref  # OVL1; s1:align
 0x0026B9C0 0xE8 func_0026B9C0  # OVL1
 0x0026BAB0 0x198 LoadSIScript__9CZAnimSetFRQ23zar4CZAR  # OVL1; s1:callee by hand (CZAnimSet::Load calls it after its name table where SOCOM 1's calls LoadSIScript)
@@ -2949,7 +2949,7 @@
 0x0026C490 0x14 func_0026C490  # OVL1
 0x0026C4B0 0x14 func_0026C4B0  # OVL1
 0x0026C4D0 0x14 func_0026C4D0  # OVL1
-0x0026C4F0 0x110 func_0026C4F0  # OVL1
+0x0026C4F0 0x110 Reset__9CZAnimSetFv  # OVL1; s1:order (between SaveNodeStates and Start in both; the node states, the CZAnimEx list, then every anim reset)
 0x0026C600 0x1CC Start__9CZAnimSetFv  # OVL1; s1:align
 0x0026C7D0 0x44 Init__9CZAnimSetFv  # OVL1; s1:align
 0x0026C820 0x40 SIScript__9CZAnimSetFi  # OVL1; s1:align
@@ -2991,7 +2991,7 @@
 0x0026F210 0x218 GetNodes__6CZAnimFv  # OVL1; s1:align
 0x0026F430 0xB0 func_0026F430  # OVL1
 0x0026F4E0 0x340 GetNode__6CZAnimFib  # OVL1; s1:callee by hand (called where SOCOM 1's node-test handlers call GetNode(int, bool); the same arguments)
-0x0026F820 0x8 func_0026F820  # OVL1
+0x0026F820 0x8 Priority__6CZAnimFf  # OVL1; s1:callee by hand (func_0026CAA0 calls it with 3.0 where SOCOM 1's NewAnim calls Priority; the same store of m_priority)
 0x0026F830 0x24C GarbageCollect__6CZAnimFv  # OVL1; s1:align
 0x0026FA80 0x168 func_0026FA80  # OVL1
 0x0026FBF0 0x130 StopLights__6CZAnimFb  # OVL1; s1:align
@@ -3014,7 +3014,7 @@
 0x00271250 0x134 func_00271250  # OVL1
 0x00271390 0x58 func_00271390  # OVL1
 0x002713F0 0xA8 func_002713F0  # OVL1
-0x002714A0 0x1A4 func_002714A0  # OVL1
+0x002714A0 0x1A4 Reset__6CZAnimFv  # OVL1; s1:callee by hand (CZAnimSet::Reset calls it on every anim where SOCOM 1's does)
 0x00271650 0xFC func_00271650  # OVL1
 0x00271750 0x64 func_00271750  # OVL1
 0x002717C0 0x64 func_002717C0  # OVL1
@@ -3055,7 +3055,7 @@
 0x002739B0 0x44 func_002739B0  # OVL1
 0x00273A00 0x48 Reset__8CZAnimExFPfPf  # OVL1; s1:align
 0x00273A50 0x48C OnWeaponHit__8CZAnimExFPQ23zdb5CNodePQ23zdb15IntersectStructP12CZProjectile  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00273EE0 0xA8 func_00273EE0  # OVL1
+0x00273EE0 0xA8 Reset__14CZAnimExVectorFv  # OVL1; s1:callee by hand (CZAnimSet::Reset calls it on the CZAnimEx list where SOCOM 1's does)
 0x00273F90 0xE8 func_00273F90  # OVL1
 0x00274080 0x58 Add__14CZAnimExVectorFP8CZAnimEx  # OVL1; s1:align
 0x002740E0 0x20C OnWeaponHitInit__6CZAnimFv  # OVL1; s1:calls

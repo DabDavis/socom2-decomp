@@ -11,7 +11,6 @@
 extern char *_local_wildcard_str;
 extern int data_00414D78;
 extern int data_00414DB8;
-extern "C" void func_0026C240(CZAnimSet *set, int x);
 zdb::CNode *GetMenuNode();
 extern "C" float expf(float x);
 
@@ -229,12 +228,7 @@ void CZAnimMain::AddPath(const char *path)
 void CZAnimMain::Close()
 {
     Unload();
-    if (_local_wildcard_str) {
-        func_00180280(_local_wildcard_str, 0, 0);
-        _local_wildcard_str = 0;
-    }
-    data_00414D78 = 0;
-    data_00414DB8 = 0;
+    func_002684D0();
     FreeNetworkPacketBuffer();
     m_IsOpen = 0;
     m_IsStarted = 0;
@@ -672,6 +666,16 @@ extern "C" void func_00269170(CPnt3D *dir, zdb::CNode *node)
     func_00308640(&m, &origin, 1);
     *dir = *dir - origin;
     dir->Normalize();
+}
+
+extern "C" void func_002684D0()
+{
+    if (_local_wildcard_str) {
+        func_00180280(_local_wildcard_str, 0, 0);
+        _local_wildcard_str = 0;
+    }
+    data_00414D78 = 0;
+    data_00414DB8 = 0;
 }
 
 int CZAnimMain::UnloadSIScript(_zanim_si_script *script)

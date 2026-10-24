@@ -48,6 +48,7 @@ public:
     unsigned char m_state;   // 0x3
     unsigned int m_activation : 2;   // 0x4
     unsigned int m_network_anim : 1;   // 0x4
+    unsigned int m_socom2_bit3 : 2;   // 0x4: SOCOM II's -- func_0026CAA0 sets node_search_scope at bit 5
     unsigned int node_search_scope : 2;   // 0x4
     unsigned int m_auto_copy_anim : 1;   // 0x4
     unsigned int m_auto_add_to_world : 1;   // 0x4
@@ -56,8 +57,7 @@ public:
     unsigned int m_clone_anim : 1;   // 0x4
     unsigned int m_create_root : 1;   // 0x4
     unsigned int m_max_anim_copies : 6;   // 0x4
-    unsigned int m_unused_a : 2;   // 0x4
-    unsigned int m_nest_error : 1;   // 0x4: SOCOM II's, set when an IF nests below 0 or past 255
+    unsigned int m_nest_error : 1;   // 0x4: SOCOM II's (bit 19), set when an IF nests below 0 or past 255
     unsigned int m_unused : 12;   // 0x4
     float m_timer;   // 0x8
     float m_priority;   // 0xc
@@ -111,6 +111,12 @@ public:
     _zanim_call_anim_ref *GetCallAnimRef(int index, int local);
     bool Running();
     void State(int state);
+    int GarbageCollect();
+    void StopLights(bool now);
+    void DeleteParticleSources();
+    void Name(const char *name);
+    void Priority(float priority);
+    void Reset();
     float GetHealth();
     CNode *GetNode(int index, bool create);
     CPnt3D *GetArgPnt3D()
@@ -190,6 +196,7 @@ public:
     _zanim_si_script *SIScript(int index);
     int GarbageCollect();
     int Stop();
+    void Reset();
 
     unsigned char m_WasStarted;   // 0x0
     unsigned char m_IsStarted;   // 0x1
@@ -211,7 +218,20 @@ public:
 class CZAnimExVector : public std::vector<CZAnimEx *> {
 public:
     void Add(CZAnimEx *ex);
+    void Reset();
 };
+
+/* the node states a set restores: the node refs, and what each had (SOCOM 1's DWARF; the
+ * lists' element types are not known) */
+class CZAnimSetSave : public std::vector<_zanim_node_ref *> {
+public:
+    void Reset(_zanim_node_ref *ref);
+    void Add(_zanim_node_ref *ref);
+
+    std::vector<CPnt3D> m_translationList;   // 0xc
+    std::vector<CPnt3D> m_rotationList;   // 0x18
+    std::vector<void *> m_parentList;   // 0x24
+};   // 0x30 bytes
 
 enum LOD {LOW = 0, MEDIUM = 1, HIGH = 2};   // 1 byte(s)
 
@@ -401,6 +421,14 @@ extern CZAnimMain ZAnim;
  * narrowed: not a bool) -- their mangled names wait on its type */
 extern "C" void func_002709B0(CZAnim *anim, int arg);
 extern "C" void func_00270BE0(CZAnim *anim, int arg);
+
+/* SOCOM II's: the wildcard search's state dropped (anim_main.cpp; Close and Open inline it) */
+extern "C" void func_002684D0();
+
+/* SOCOM II's: an anim's function of one int (0x270570), every anim of a set's (0x26C240) and
+ * of every set's (CZAnimMain, 0x26ADA0) -- not named */
+extern "C" void func_00270570(CZAnim *anim, int x);
+extern "C" int func_0026C240(CZAnimSet *set, int x);
 
 /* CZAnim::Stop, which SOCOM II gave a flag (SOCOM 1: Stop__6CZAnimFv) */
 extern "C" void func_002707C0(CZAnim *anim, bool now);

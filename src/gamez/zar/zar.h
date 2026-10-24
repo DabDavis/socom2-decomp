@@ -5,6 +5,8 @@
 #ifndef ZAR_H
 #define ZAR_H
 
+#include <vector>
+
 /* the engine's file interface, abstract: its slots SOCOM 1's (CFileIO's and CMemCardIO's
  * vtables name them), those read so far */
 class CIO {
@@ -18,47 +20,11 @@ namespace zar {
 
 class CKey;
 
-/* a vector of keys: a count at 4, the array at 8. Its iterators are classes, != being !(==)
- * (the walks materialise the compare). The walks hold a const_iterator made from begin(): the
- * conversion keeps MW from folding a walk's first test (begin against begin + count) into a
- * test of the count, which an iterator's copy of begin() does not. */
-class CKeyRing {
+/* a key's children and the archive's open keys: SOCOM 1's std::list<CKey *>, a vector here (a
+ * count at 4, the array at 8) */
+class CKeyRing : public std::vector<CKey *> {
 public:
-    class iterator {
-    public:
-        iterator(CKey **p) : m_p(p) {}
-        bool operator==(const iterator &o) const { return m_p == o.m_p; }
-        bool operator!=(const iterator &o) const { return !(*this == o); }
-        iterator &operator++() { ++m_p; return *this; }
-        iterator operator-(int n) const { return iterator(m_p - n); }
-        CKey *operator*() const { return *m_p; }
-
-        CKey **m_p;
-    };
-
-    class const_iterator {
-    public:
-        const_iterator(CKey *const *p) : m_p(p) {}
-        const_iterator(const iterator &i) : m_p(i.m_p) {}
-        bool operator==(const const_iterator &o) const { return m_p == o.m_p; }
-        bool operator!=(const const_iterator &o) const { return !(*this == o); }
-        const_iterator &operator++() { ++m_p; return *this; }
-        CKey *operator*() const { return *m_p; }
-
-        CKey *const *m_p;
-    };
-
-    iterator begin() { return iterator(m_data); }
-    iterator end() { return iterator(m_data + m_size); }
-    unsigned int size() const { return m_size; }
-    bool empty() const { return m_size == 0; }
-    CKey *back() { return *(end() - 1); }
-    void pop_back() { m_size--; }
     void push(CKey *key);
-
-    unsigned int m_capacity;   // 0x0
-    unsigned int m_size;   // 0x4
-    CKey **m_data;   // 0x8
 };   // 0xc bytes
 
 class CKey : public CKeyRing {
