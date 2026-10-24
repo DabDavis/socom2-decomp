@@ -103,4 +103,35 @@ CNode *CNode::CreateXRef(CModel *model, const CPnt3D *pos, const CQuat *rot)
     return node;
 }
 
+/* a node deleted: an instance taken off its model's list first, a type-4 node's first child
+ * handed to its parent in its place */
+CNode *CNode::Delete(CNode *node)
+{
+    if (!node)
+        return 0;
+    switch (node->GetType()) {
+    case 2: {
+        CModel *model = node->m_model;
+
+        if (model)
+            model->RemoveInstance(node);
+        node->RemoveFromParent();
+        break;
+    }
+    case 4: {
+        CNode *parent = node->m_parent;
+        CNode *child = node->m_child.empty() ? 0 : node->m_child[0];
+
+        node->RemoveFromParent();
+        if (child)
+            child->RemoveFromParent();
+        if (parent)
+            parent->AddChild(child);
+        break;
+    }
+    }
+    delete node;
+    return 0;
+}
+
 }

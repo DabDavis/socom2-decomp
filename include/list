@@ -14,6 +14,7 @@
 #ifndef _MSL_LIST
 #define _MSL_LIST
 
+#include <functional>
 #include <memory>
 
 namespace std {
@@ -99,7 +100,37 @@ __list_deleter<T, Allocator>::erase(iterator first, iterator last)
 
 template <class T, class Allocator>
 class __list_imp : public __list_deleter<T, Allocator> {
+public:
+    /* defined outside the class, so called (SOCOM II's for the pointer lists is 0x20CB50) */
+    template <class Predicate>
+    void remove_if(Predicate pred);
+    /* the binder made here, not through bind2nd: a level shorter, which CModel::RemoveInstance's
+     * inlining in CNode::Delete needs */
+    void remove(const T &value) { remove_if(binder2nd<equal_to<T>, T>(equal_to<T>(), value)); }
 };
+
+/* the runs that satisfy the predicate erased, one after another (SOCOM 1's shape; SOCOM II's
+ * inlines the erase, not reproduced yet) */
+template <class T, class Allocator>
+template <class Predicate>
+void __list_imp<T, Allocator>::remove_if(Predicate pred)
+{
+    typename __list_deleter<T, Allocator>::iterator e = this->end();
+    typename __list_deleter<T, Allocator>::iterator i = this->begin();
+
+    while (i != e) {
+        if (pred(*i)) {
+            typename __list_deleter<T, Allocator>::iterator j = i;
+
+            for (++j; j != e && pred(*j); ++j)
+                ;
+            i = this->erase(i, j);
+            if (i == e)
+                break;
+        }
+        ++i;
+    }
+}
 
 template <class T, class Allocator = allocator<T> >
 class list : public __list_imp<T, Allocator> {
@@ -118,6 +149,7 @@ public:
     {
         base::insert(typename base::iterator(&this->end_), (const void *const &)x);
     }
+    void remove(T *const &x) { base::remove((const void *const &)x); }
 };
 
 }

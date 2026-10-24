@@ -1,0 +1,43 @@
+/* <functional>: the part of MSL the matched functions inline. A reconstruction: binder2nd takes
+ * its operation and value types both, as SOCOM 1's mangled names have it
+ * (binder2nd<equal_to<PCv>,PCv>), and SOCOM II's keeps the value by reference -- CNode::Delete
+ * stores the address of the node it removes in the binder's second word, and the list's
+ * remove_if (0x20CB50) loads through it. */
+
+#ifndef _MSL_FUNCTIONAL
+#define _MSL_FUNCTIONAL
+
+namespace std {
+
+template <class Arg, class Result>
+struct unary_function {
+};
+
+template <class Arg1, class Arg2, class Result>
+struct binary_function {
+};
+
+template <class T>
+struct equal_to : public binary_function<T, T, bool> {
+    bool operator()(const T &x, const T &y) const { return x == y; }
+};
+
+template <class Operation, class T>
+class binder2nd : public unary_function<T, bool> {
+public:
+    binder2nd(const Operation &x, const T &y) : op(x), value(y) {}
+    bool operator()(const T &x) const { return op(x, value); }
+
+    Operation op;
+    const T &value;
+};
+
+template <class Operation, class T>
+inline binder2nd<Operation, T> bind2nd(const Operation &op, const T &x)
+{
+    return binder2nd<Operation, T>(op, x);
+}
+
+}
+
+#endif

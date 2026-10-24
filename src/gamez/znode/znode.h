@@ -178,6 +178,8 @@ public:
     static CNode *CreateXRef(CModel *model, const CPnt3D *pos, const CQuat *rot);
     static CNode *CreateInstance(CModel *model, const CPnt3D *pos, const CQuat *rot);
     static CNode *CreateInstance(const char *name, const CPnt3D *pos, const CQuat *rot);
+    static CNode *Delete(CNode *node);
+    void RemoveFromParent();
     void TransformToWorld(CPnt3D &p) const;
     void BuildMTW(CMatrix &m);
     void SetMatrix(const CMatrix *m);
@@ -299,6 +301,14 @@ public:
     {
         m_list.push_back(node);
         m_parent = m_list.size() == 1 ? node : 0;
+    }
+    /* an instance taken off, by value (the remove's binder holds this copy's address, and the
+     * parent test re-reads it: CNode::Delete; the name is ours) */
+    void RemoveInstance(CNode *node)
+    {
+        m_list.remove(node);
+        if (m_parent == node)
+            m_parent = 0;
     }
 };
 

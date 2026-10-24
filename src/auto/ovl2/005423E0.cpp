@@ -18,7 +18,7 @@ struct VC_60 {
     virtual M2C_UNK v_1C(char *);
 };
 extern "C" {
-M2C_UNK func_00317950(char *);                      /* extern */
+M2C_UNK Delete__Q23zdb5CNodeFPQ23zdb5CNode(char *); /* extern */
 M2C_UNK func_0031D0A0(s32, M2C_UNK, char *);        /* extern */
 extern u8 data_0044D4A8;
 extern char *m_mpbombnode__7CPickup;
@@ -36,7 +36,7 @@ void func_005423E0(void) {
                 ((VC_60 *)(temp_a0))->v_1C(temp_s0);
             }
             func_0031D0A0(m_world__Q23zdb6CWorld, 2, temp_s0);
-            func_00317950(temp_s0);
+            Delete__Q23zdb5CNodeFPQ23zdb5CNode(temp_s0);
             m_mpbombnode__7CPickup = NULL;
         }
         data_0044D4A8 = 0;

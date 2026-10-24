@@ -1810,7 +1810,7 @@
 0x0020BC20 0x1D4 func_0020BC20  # OVL1
 0x0020BE00 0x274 func_0020BE00  # OVL1
 0x0020C080 0xAC4 func_0020C080  # OVL1
-0x0020CB50 0xF8 func_0020CB50  # OVL1
+0x0020CB50 0xF8 remove_if<Q23std36binder2nd<Q23std13equal_to<PCv>,PCv>>__Q23std38__list_imp<PCv,Q23std14allocator<PCv>>FQ23std36binder2nd<Q23std13equal_to<PCv>,PCv>_v  # OVL1; s1:name (SOCOM 1's remove_if of the pointer lists with an equal_to binder; CNode::Delete's list remove calls it; SOCOM II's inlines the erase)
 0x0020CC50 0x74 func_0020CC50  # OVL1
 0x0020CCD0 0x60 __dt__7C2DLineFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0020CD30 0x1C func_0020CD30  # OVL1
@@ -5501,7 +5501,7 @@
 0x003177C0 0x60 __dt__Q23zdb14CTickLightListFv  # OVL1; s1:align
 0x00317820 0x80 func_00317820  # OVL1
 0x003178A0 0xA4 SetModel__Q23zdb5CNodeFPQ23zdb6CModel  # OVL1; s1:align
-0x00317950 0x138 func_00317950  # OVL1
+0x00317950 0x138 Delete__Q23zdb5CNodeFPQ23zdb5CNode  # OVL1; s1:exact by hand (SOCOM 1's Delete: an instance off its model's list, a type-4 node's first child to its parent, then deleted; after SetModel as there)
 0x00317A90 0x5C CreateXRef__Q23zdb5CNodeFv  # OVL1; s1:calls
 0x00317AF0 0x124 CreateXRef__Q23zdb5CNodeFPQ23zdb6CModelPC6CPnt3DPC5CQuat  # OVL1; s1:calls
 0x00317C20 0x164 CreateInstance__Q23zdb5CNodeFPCcPC6CPnt3DPC5CQuat  # OVL1; s1:order (SOCOM 1's CreateInstance by name sits between CreateXRef and CreateInstance by model, as here; the model's found through CWorld::GetModel and the other inlined)
