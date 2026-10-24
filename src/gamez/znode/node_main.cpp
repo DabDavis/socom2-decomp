@@ -75,6 +75,31 @@ int CNode::Release()
     return m_count;
 }
 
+/* the node and its parents marked as having visuals, as far up as one already is; a model's
+ * instances too, walked over a copy of the model's list (SOCOM 1's).
+ * OPEN (0xF4 of 0x154): needs include/list's pointer-list copy constructor -- inline, a
+ * deleter built from the allocator (0x3177A0) and the range init over const iterators
+ * (0x317720), both out of line -- and list<T *>'s own iterator, which the walk keeps in memory
+ * after a bitwise (lwc1/swc1) copy */
+void CNode::SetParentHasVisuals()
+{
+    m_hasVisuals = 1;
+    if (m_parent && !m_parent->m_hasVisuals)
+        m_parent->SetParentHasVisuals();
+    CModel *model = dynamic_cast<CModel *>(this);
+
+    if (model) {
+        CRefList instances(model->m_list);
+
+        for (CRefList::iterator it = instances.begin(); it != instances.end(); ++it) {
+            CNode *node = (CNode *)*it;
+
+            if (node && !node->m_hasVisuals)
+                node->SetParentHasVisuals();
+        }
+    }
+}
+
 /* a visual taken on, once: counted, listed, the node marked changed; a transparent one makes the
  * node transparent, a mesh (type 1) gives it a mesh, and it and its parents have visuals now.
  * The transparency test is a bitwise & of the two flag tests, both computed (SOCOM 1's too) */
@@ -268,6 +293,28 @@ bool CNode::Rendered(int frames)
     return false;
 }
 
+/* a light map copied into another node (a new light map when none): the light's part, then the
+ * texture (through SetTexture), the projection, the direction, the flags, the blend and the fade */
+CNode *CLightMap::_Copy(CNode *to) const
+{
+    CLightMap *map;
+
+    if (!to) {
+        map = new CLightMap;
+        to = map;
+    } else
+        map = dynamic_cast<CLightMap *>(to);
+    CLight::_Copy(to);
+    map->SetTexture(m_pTex);
+    map->m_worldToUV = m_worldToUV;
+    map->m_dir = m_dir;
+    map->m_isShadow = m_isShadow;
+    map->m_isReflection = m_isReflection;
+    map->m_blendmode = m_blendmode;
+    map->m_SpecularFade = m_SpecularFade;
+    return to;
+}
+
 /* a light copied into another node (a new light when none): the node's part, then the light's --
  * the ranges, the colour, the opacity; not yet applied to anything */
 CNode *CLight::_Copy(CNode *to) const
@@ -320,6 +367,22 @@ CBBox *CLight::UpdateBBox(bool up)
     m_bbox.m_min.y = -r;
     m_bbox.m_min.z = -r;
     return (CBBox *)GetBBox();
+}
+
+/* a light map: a light (type 8) that projects the default light-map texture, white, its blend
+ * word 0x44, moving and lit as a dynamic node (SOCOM 1 set the two bits itself) */
+CLightMap::CLightMap()
+{
+    m_blendmode.m_alphaWORD = 68;
+    m_isShadow = 0;
+    m_isReflection = 0;
+    m_dir.w = 1.0f;
+    m_dir.z = 1.0f;
+    m_dir.y = 1.0f;
+    m_dir.x = 1.0f;
+    m_SpecularFade = 1.0f;
+    m_pTex = CVisual::m_lightMapTexture->m_texture;
+    SetDynamic(true, false);
 }
 
 CLightMap::~CLightMap()

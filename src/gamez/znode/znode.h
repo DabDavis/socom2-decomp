@@ -145,6 +145,8 @@ public:
     unsigned char GetType() const { return m_type; }
     /* one holder fewer, the count left given back (SOCOM 1's, by name) */
     int Release();
+    /* the texture light maps project by default (SOCOM 1's static) */
+    static CTexHandle *m_lightMapTexture;
     /* the decals of one view let go of (SOCOM 1's, by name) */
     void DereferenceDecals(unsigned int vid);
     /* a decal projected onto the visual (SOCOM 1's, by name) */
@@ -416,7 +418,9 @@ public:
 /* a light that projects a texture (SOCOM 1's DWARF) */
 class CLightMap : public CLight {
 public:
+    CLightMap();
     virtual ~CLightMap();
+    virtual CNode *_Copy(CNode *to) const;
     void SetTexture(CTexture *tex);
 
     CTexture *m_pTex;   // 0x100
