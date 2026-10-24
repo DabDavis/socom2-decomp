@@ -1606,7 +1606,7 @@
 0x001F77A0 0x1C func_001F77A0  # OVL1
 0x001F77C0 0x2C4 func_001F77C0  # OVL1
 0x001F7A90 0x3C0 func_001F7A90  # OVL1
-0x001F7E50 0x20 func_001F7E50  # OVL1
+0x001F7E50 0x1C func_001F7E50  # OVL1; size 0x1c (a tail call through t9; the seed ran on into the padding)
 0x001F7E70 0x10 func_001F7E70  # OVL1
 0x001F7E80 0xF8 func_001F7E80  # OVL1
 0x001F7F80 0x70 __dt__6CFaderFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -1887,7 +1887,7 @@
 0x002114C0 0x48 func_002114C0  # OVL1
 0x00211510 0xC18 func_00211510  # OVL1
 0x00212130 0x8 func_00212130  # OVL1
-0x00212140 0x20 func_00212140  # OVL1
+0x00212140 0x14 func_00212140  # OVL1; size 0x14 (a tail call through t9; the seed ran on into the padding)
 0x00212160 0x40 func_00212160  # OVL1
 0x002121A0 0xB8 func_002121A0  # OVL1
 0x00212260 0x40 func_00212260  # OVL1
@@ -2182,7 +2182,7 @@
 0x00231F80 0x4C func_00231F80  # OVL1
 0x00231FD0 0x60 func_00231FD0  # OVL1
 0x00232030 0xA8 func_00232030  # OVL1
-0x002320E0 0x20 func_002320E0  # OVL1
+0x002320E0 0x18 func_002320E0  # OVL1; size 0x18 (a tail call through t9; the seed ran on into the padding)
 0x00232100 0x64 func_00232100  # OVL1
 0x00232170 0xC0 func_00232170  # OVL1
 0x00232230 0x8 func_00232230  # OVL1
@@ -2277,7 +2277,7 @@
 0x0023B540 0x310 func_0023B540  # OVL1
 0x0023B850 0x44 func_0023B850  # OVL1
 0x0023B8A0 0xF0 func_0023B8A0  # OVL1
-0x0023B990 0x20 func_0023B990  # OVL1
+0x0023B990 0x14 func_0023B990  # OVL1; size 0x14 (a tail call through t9; the seed ran on into the padding)
 0x0023B9B0 0x2A0 func_0023B9B0  # OVL1
 0x0023BC50 0x2B4 func_0023BC50  # OVL1
 0x0023BF10 0x10 func_0023BF10  # OVL1; tu: zui_2d.cpp~ (1.0 beta)
@@ -2738,7 +2738,7 @@
 0x00258BD0 0x70 func_00258BD0  # OVL1
 0x00258C40 0xA0 func_00258C40  # OVL1
 0x00258CE0 0x17C func_00258CE0  # OVL1
-0x00258E60 0x20 func_00258E60  # OVL1
+0x00258E60 0x14 func_00258E60  # OVL1; size 0x14 (a tail call through t9; the seed ran on into the padding)
 0x00258E80 0x9C func_00258E80  # OVL1
 0x00258F20 0x17C __dt__Q23zar4CZARFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002590A0 0x190 __ct__Q23zar4CZARFPCcP3CIO  # OVL1; s1:callee by hand (OpenZAR calls it on the fresh CZAnimZAR with (0, 0) where SOCOM 1's OpenZAR calls zar::CZAR::CZAR(const char *, CIO *))
@@ -2767,7 +2767,7 @@
 0x0025AF10 0x114 func_0025AF10  # OVL1
 0x0025B030 0x280 func_0025B030  # OVL1
 0x0025B2B0 0x8 func_0025B2B0  # OVL1
-0x0025B2C0 0x20 func_0025B2C0  # OVL1
+0x0025B2C0 0x14 func_0025B2C0  # OVL1; size 0x14 (a tail call through t9; the seed ran on into the padding)
 0x0025B2E0 0x8 func_0025B2E0  # OVL1
 0x0025B2F0 0x8 func_0025B2F0  # OVL1
 0x0025B300 0x240 func_0025B300  # OVL1
@@ -5492,7 +5492,7 @@
 0x00316770 0x80 func_00316770  # OVL1
 0x003167F0 0x28 Release__Q23zdb5CNodeFv  # OVL1; s1:align
 0x00316820 0x5E4 _Copy__Q23zdb5CNodeCFPQ23zdb5CNode  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00316E10 0x20 func_00316E10  # OVL1
+0x00316E10 0x14 Copy__Q23zdb5CNodeCFv  # OVL1; size 0x14 (a tail call through t9; the seed ran on into the padding); s1:exact by hand (SOCOM 1's Copy, word for word: _Copy(0) through the vtable)
 0x00316E30 0x224 __ct__Q23zdb5CNodeFv  # OVL1; s1:callee by hand (CZAnim::GetNodes news 0xC0 bytes -- sizeof CNode -- and calls it, as SOCOM 1's CNode constructor stores __vt__Q23zdb5CNode)
 0x00317060 0x64C InitNodeParams__3zdbFPQ23zdb15tag_NODE_PARAMSPCQ23zdb15tag_NODE_PARAMS  # OVL1; s1:align
 0x003176B0 0x6C func_003176B0  # OVL1
@@ -5508,7 +5508,7 @@
 0x00317D90 0x12C CreateInstance__Q23zdb5CNodeFPQ23zdb6CModelPC6CPnt3DPC5CQuat  # OVL1; s1:order by hand (after CreateXRef in both; CreateInstanceNode calls it for an anim that copies its instance where SOCOM 1's calls CreateInstance)
 0x00317EC0 0x24 GetFirstVisual__Q23zdb5CNodeFv  # OVL1; s1:align
 0x00317EF0 0x74 GetSubMesh__Q23zdb5CNodeFv  # OVL1; s1:align
-0x00317F70 0x50 func_00317F70  # OVL1
+0x00317F70 0x50 GetMesh__Q23zdb5CNodeFv  # OVL1; s1:exact by hand (SOCOM 1's GetMesh: the first visual when its type is 1; GetFirstVisual inlined)
 0x00317FC0 0x240 ComputeFacadeMatrix__Q23zdb5CNodeFPC7CMatrixP7CMatrix  # OVL1; s1:align
 0x00318200 0x30 UpdateBBox__Q23zdb5CNodeFb  # OVL1; s1:vtable by hand (slot 13 of CNode's table; the demo's inlines one more parent level, 2.5x the size, so the pass's size guard skipped it)
 0x00318230 0x478 UpdateBBoxFromDI__Q23zdb5CNodeFb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -6675,7 +6675,7 @@
 0x00363030 0xB0 Load__9C2DStringFPCcP7C2DFontiiii  # OVL1; s1:align
 0x003630E0 0xB4 Load__9C2DStringFPCcP7C2DFontii  # OVL1; s1:align
 0x003631A0 0x20 func_003631A0  # OVL1
-0x003631C0 0x30 func_003631C0  # OVL1
+0x003631C0 0x2C func_003631C0  # OVL1; size 0x2c (a tail call through t9; the seed ran on into the padding)
 0x003631F0 0x26C func_003631F0  # OVL1
 0x00363460 0x154 func_00363460  # OVL1
 0x003635C0 0x26C func_003635C0  # OVL1
@@ -7403,7 +7403,7 @@
 0x00394520 0x2A4 func_00394520  # OVL1
 0x003947D0 0x64 func_003947D0  # OVL1
 0x00394840 0xA8 func_00394840  # OVL1
-0x003948F0 0x30 func_003948F0  # OVL1
+0x003948F0 0x28 func_003948F0  # OVL1; size 0x28 (a tail call through t9; the seed ran on into the padding)
 0x00394920 0x94 func_00394920  # OVL1
 0x003949C0 0x3D4 func_003949C0  # OVL1
 0x00394DA0 0x1B4 func_00394DA0  # OVL1
@@ -10016,7 +10016,7 @@
 0x00547350 0x21C func_00547350  # OVL2
 0x00547570 0x190 PickupObject__10CZSealBodyFP7CPickup  # OVL2; s1:calls
 0x00547700 0x7C func_00547700  # OVL2
-0x00547780 0x20 ResetToInitialState__10CZSealBodyFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00547780 0x14 ResetToInitialState__10CZSealBodyFv  # OVL2; size 0x14 (a tail call through t9; the seed ran on into the padding); s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005477A0 0xB4 func_005477A0  # OVL2
 0x00547860 0x22C func_00547860  # OVL2
 0x00547A90 0x8 func_00547A90  # OVL2
@@ -11381,7 +11381,7 @@
 0x005EA550 0x80 func_005EA550  # OVL2
 0x005EA5D0 0x1AC func_005EA5D0  # OVL2
 0x005EA780 0x38 func_005EA780  # OVL2
-0x005EA7C0 0x20 func_005EA7C0  # OVL2
+0x005EA7C0 0x14 func_005EA7C0  # OVL2; size 0x14 (a tail call through t9; the seed ran on into the padding)
 0x005EA7E0 0x88 __ct__9CAiMapLocFRC9CAiMapLoc  # OVL2; s1:exact
 0x005EA870 0x8 func_005EA870  # OVL2
 0x005EA880 0x34 func_005EA880  # OVL2

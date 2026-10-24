@@ -1559,6 +1559,7 @@
 0x003164E0 AddVisual__Q23zdb5CNodeFPQ23zdb7CVisual
 0x00316600 ReserveVisuals__Q23zdb5CNodeFi
 0x003167F0 Release__Q23zdb5CNodeFv
+0x00316E10 Copy__Q23zdb5CNodeCFv
 0x003177A0 func_003177A0
 0x003177C0 __dt__Q23zdb14CTickLightListFv
 0x00317820 func_00317820
@@ -1566,6 +1567,7 @@
 0x00317A90 CreateXRef__Q23zdb5CNodeFv
 0x00317EC0 GetFirstVisual__Q23zdb5CNodeFv
 0x00317EF0 GetSubMesh__Q23zdb5CNodeFv
+0x00317F70 GetMesh__Q23zdb5CNodeFv
 0x00318200 UpdateBBox__Q23zdb5CNodeFb
 0x00318C30 func_00318C30
 0x00318C40 __ct__Q23zdb6CModelFPCc

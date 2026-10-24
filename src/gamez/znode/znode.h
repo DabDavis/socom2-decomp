@@ -111,6 +111,10 @@ class CSubMesh : public CVisual {
 public:
 };
 
+class CMesh : public CVisual {
+public:
+};
+
 class CVisualVector : public std::vector<CVisual *> {
 public:
     bool Exists(const CVisual *visual);
@@ -135,7 +139,7 @@ class CNode : public tag_NODE_PARAMS {
 public:
     /* SOCOM II's vtable order (__vt__Q23zdb5CNode, 0x4067B0); the pointer is at 0x60 */
     virtual ~CNode();                                   /* +0x08 */
-    virtual void _Copy(CNode *to) const;
+    virtual CNode *_Copy(CNode *to) const;   /* +0x0C: into `to`, or a new node when 0 */
     virtual void UpdateGrid();
     virtual void ReserveChildren(int n);
     virtual void AddChild(CNode *child);                /* +0x18 */
@@ -160,6 +164,8 @@ public:
     int Release();
     CVisual *GetFirstVisual();
     CSubMesh *GetSubMesh();
+    CMesh *GetMesh();
+    CNode *Copy() const;
     void ShrinkAtomBasePtrs();
     void AllocateAtomBasePtrs(int x, int z);
     void SetNodeEx(CNodeEx *ex, bool b);

@@ -43,6 +43,22 @@ float CNode::GetRadius()
     return sqrtf(GetRadiusSq());
 }
 
+/* the first visual as a mesh, if it is one (type 1) */
+CMesh *CNode::GetMesh()
+{
+    CVisual *v = GetFirstVisual();
+
+    if (v && v->m_type == 1)
+        return (CMesh *)v;
+    return 0;
+}
+
+/* a copy of the node: _Copy into a new one */
+CNode *CNode::Copy() const
+{
+    return _Copy(0);
+}
+
 /* the first visual as a sub-mesh, if it is one */
 CSubMesh *CNode::GetSubMesh()
 {
