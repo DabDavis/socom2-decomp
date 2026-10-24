@@ -226,6 +226,9 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   function inlines itself twice, the outer copies carrying their own callees (Resume and Pause
   inline Running into the first two copies and Running's Source test into the outer one, then
   call the sibling accessor and the Source test -- hence those out-of-line copies).
+- **MW evaluates a call's arguments right to left** (inlined constructors included): CZAnim::
+  OnWeaponHitInit computes the root node before it loads the health's values, so CZAnimEx's
+  constructor takes the root last.
 - **Declaration order picks the argument registers too** -- the later-declared pointer takes the
   lower one: vector<CPnt3D>::reserve's copy loop matched only as `T *d = temp.data_; T *p =
   this->data_; T *last = p + this->size_;`. A loop whose end is re-read each pass (a member that

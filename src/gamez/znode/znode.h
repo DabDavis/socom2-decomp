@@ -11,13 +11,27 @@
 
 #include "../zmath/zmath.h"
 
+class CZProjectile;
+
 namespace zdb {
 
 class CGridAtom;
 class CLightMap;
 class CModel;
 class CNode;
-class CNodeEx;
+struct IntersectStruct;
+
+/* a node's extension: SOCOM 1's DWARF has it as its vtable pointer alone, with seven virtual
+ * functions in the demo's names; SOCOM II's table (__vt__Q23zdb7CNodeEx) keeps three, all inline
+ * -- their out-of-line copies come out wherever an extension is constructed (CZAnim's at
+ * 0x2742F0 and 0x274300; the third's linked copy is an earlier unit's, 0x216760). The last two
+ * are not named */
+class CNodeEx {
+public:
+    virtual int OnWeaponHit(CNode *node, IntersectStruct *hit, CZProjectile *projectile) { return -1; }
+    virtual int Slot0C() { return 0; }
+    virtual bool Slot10(float amount) { return false; }
+};   // 4 bytes
 
 class tag_NODE_PARAMS {
 public:
@@ -94,6 +108,7 @@ public:
 
     CNode();
     void SetName(const char *name);
+    void SetNodeEx(CNodeEx *ex, bool b);
     static CNode *CreateXRef(CModel *model, const CPnt3D *pos, const CQuat *rot);
     static CNode *CreateInstance(CModel *model, const CPnt3D *pos, const CQuat *rot);
     void TransformToWorld(CPnt3D &p) const;

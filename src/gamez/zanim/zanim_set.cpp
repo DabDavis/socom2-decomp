@@ -187,10 +187,10 @@ int CZAnimSet::Stop()
     return 1;
 }
 
-extern "C" int func_0026C240(CZAnimSet *set, int x)
+extern "C" int func_0026C240(CZAnimSet *set, CNode *node)
 {
     for (int i = 0; i < set->m_anim_count; i++)
-        func_00270570(set->Anim(i), x);
+        func_00270570(set->Anim(i), node);
     return 1;
 }
 

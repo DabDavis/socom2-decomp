@@ -1915,7 +1915,7 @@
 0x002151F0 0x54 func_002151F0  # OVL1
 0x00215250 0x9B8 func_00215250  # OVL1
 0x00215C10 0xB50 func_00215C10  # OVL1
-0x00216760 0x8 func_00216760  # OVL1
+0x00216760 0x8 Slot10__Q23zdb7CNodeExFf  # OVL1; by vtable (CNodeEx's third slot, inline, returns false; CZAnimEx overrides it with 0x2739B0 -- the name ours, the float CZAnimEx's)
 0x00216770 0x664 func_00216770  # OVL1
 0x00216DE0 0x76C func_00216DE0  # OVL1
 0x00217550 0x364 func_00217550  # OVL1
@@ -3059,8 +3059,8 @@
 0x00273F90 0xE8 Free__14CZAnimExVectorFv  # OVL1; s1:order (between CZAnimExVector's Reset and Add in both; every extension deleted, the size zeroed)
 0x00274080 0x58 Add__14CZAnimExVectorFP8CZAnimEx  # OVL1; s1:align
 0x002740E0 0x20C OnWeaponHitInit__6CZAnimFv  # OVL1; s1:calls
-0x002742F0 0x8 func_002742F0  # OVL1; s1~ OnWeaponHit__Q23zdb7CNodeExFPQ23zdb5CNodePQ23zdb15IntersectStructP12CZProjectile (one of 2 out-of-line copies of an inline, by s1:vtable)
-0x00274300 0x8 func_00274300  # OVL1; s1~ OnAction__Q23zdb7CNodeExFPQ23zdb5CNodePv (one of 2 out-of-line copies of an inline, by s1:vtable)
+0x002742F0 0x8 OnWeaponHit__Q23zdb7CNodeExFPQ23zdb5CNodePQ23zdb15IntersectStructP12CZProjectile  # OVL1; s1~ OnWeaponHit__Q23zdb7CNodeExFPQ23zdb5CNodePQ23zdb15IntersectStructP12CZProjectile (one of 2 out-of-line copies of an inline, by s1:vtable); s1:vtable (CNodeEx's first slot, inline, returns -1: its out-of-line copy where OnWeaponHitInit constructs an extension)
+0x00274300 0x8 Slot0C__Q23zdb7CNodeExFv  # OVL1; s1~ OnAction__Q23zdb7CNodeExFPQ23zdb5CNodePv (one of 2 out-of-line copies of an inline, by s1:vtable); by vtable (CNodeEx's second slot, inline, returns 0; CZAnimEx keeps it -- the name and parameters ours)
 0x00274310 0x5C func_00274310  # OVL1
 0x00274370 0x5C __dt__14CZAnimArgPnt3DFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002743D0 0x5C __dt__12CZAnimArgCmdFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -5476,7 +5476,7 @@
 0x003157D0 0x44 SetPosition__Q23zdb5CNodeFfff  # OVL1; s1:align
 0x00315820 0x40 SetMatrix__Q23zdb5CNodeFPC7CMatrix  # OVL1; s1:align
 0x00315860 0x4C UpdateGrid__Q23zdb5CNodeFv  # OVL1; s1:align
-0x003158B0 0x1C4 func_003158B0  # OVL1
+0x003158B0 0x1C4 SetNodeEx__Q23zdb5CNodeFPQ23zdb7CNodeExb  # OVL1; s1:name (SOCOM 1's SetNodeEx; CZAnim::OnWeaponHitInit attaches an extension through it, CZAnimEx's destructor detaches)
 0x00315A80 0x10C FindChild__Q23zdb5CNodeFPQ23zdb5CNodeb  # OVL1; s1:align
 0x00315B90 0x164 func_00315B90  # OVL1
 0x00315D00 0x164 FindChild__Q23zdb5CNodeFPCcb  # OVL1; s1:align

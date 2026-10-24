@@ -465,10 +465,10 @@ bool CZAnimMain::GetAnimIndex(CZAnim *anim, int *set, int *index)
 }
 
 /* (each anim set's function at 0x26C240, not named yet) */
-extern "C" int func_0026ADA0(CZAnimMain *main, int x)
+extern "C" int func_0026ADA0(CZAnimMain *main, CNode *node)
 {
     for (int i = 0; i < main->m_animset_count; i++)
-        func_0026C240(&main->m_animset_list[i], x);
+        func_0026C240(&main->m_animset_list[i], node);
     return 1;
 }
 

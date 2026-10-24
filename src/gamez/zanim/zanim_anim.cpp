@@ -26,6 +26,31 @@ extern "C" bool func_00270BC0(Particle::Source *source);
 extern "C" CNode *func_002703D0(CZAnim *anim, int find);
 extern "C" int func_00270460(CZAnim *anim, CNode *node);
 
+/* the extension a weapon hit reaches the anim through: made for its health's node (else its own
+ * node) unless that node has one already -- from the anim's health when it has one -- and
+ * attached to the node and to the current set */
+void CZAnim::OnWeaponHitInit()
+{
+    CNode *node = 0;
+
+    if (m_health)
+        node = GetNode(m_health->m_health_node_index, false);
+    if (!node)
+        node = GetRootNode();
+    if (node && !node->m_nodeEx) {
+        if (m_health)
+            m_animEx = new CZAnimEx(this, node, m_health->shield, m_health->armor, m_health->health,
+                                    GetRootNode());
+        else
+            m_animEx = new CZAnimEx(this, node, GetRootNode());
+        if (m_animEx) {
+            node->SetNodeEx(m_animEx, true);
+            if (ZAnim.m_CurAnimSet)
+                ZAnim.m_CurAnimSet->AddAnimEx(m_animEx);
+        }
+    }
+}
+
 /* SOCOM II's: alive, and its shield no more than the given amount (not named) */
 extern "C" bool func_002739B0(CZAnimEx *ex, float amount)
 {
@@ -465,6 +490,52 @@ extern "C" void func_002707C0(CZAnim *anim, bool now)
                 func_00329AA0(anim->m_particle_list[i].particle);
     ZAnim.m_CurAnim = cur;
     ZAnim.m_CurSeq = seq;
+}
+
+/* an argument's use of a node, by the argument list (0x2722A0; not named) */
+extern "C" bool func_002722A0(CZAnimArgList *list, CNode *node);
+
+/* the reference to a node, if the anim has one (inlined into func_00270570; the name ours) */
+inline _zanim_node_ref *CZAnim::GetNodeRef(CNode *node)
+{
+    _zanim_node_ref *ref = 0;
+
+    if (!node)
+        return 0;
+    for (int i = 0; !ref && i < m_node_ref_count; i++)
+        if (m_node_ref_list[i].node_ptr == node)
+            ref = &m_node_ref_list[i];
+    return ref;
+}
+
+/* SOCOM II's: a node going away -- a running anim that references it (or whose arguments do)
+ * stopped, its lights and particle sources let go, unless it is cleaning up already, when its
+ * references to the node are only dropped; the chain likewise. Not named */
+extern "C" void func_00270570(CZAnim *anim, CNode *node)
+{
+    if (anim->Running()) {
+        if (anim->GetNodeRef(node) || (anim->m_arg_list && func_002722A0(anim->m_arg_list, node))) {
+            if (!anim->m_in_cleanup) {
+                func_002707C0(anim, true);
+                anim->StopLights(true);
+                for (int i = 0; i < anim->m_particle_count; i++) {
+                    if (anim->m_particle_list[i].particle) {
+                        delete anim->m_particle_list[i].particle;
+                        anim->m_particle_list[i].particle = 0;
+                    }
+                }
+            } else {
+                for (int i = 0; i < anim->m_node_ref_count; i++) {
+                    _zanim_node_ref *ref = &anim->m_node_ref_list[i];
+
+                    if (ref->node_ptr == node)
+                        ref->node_ptr = 0;
+                }
+            }
+        }
+    }
+    if (anim->m_sibling_anim)
+        func_00270570(anim->m_sibling_anim, node);
 }
 
 

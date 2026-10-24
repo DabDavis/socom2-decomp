@@ -148,6 +148,7 @@ public:
     void Activate(CZAnim *by);
     void SaveNodeStates(bool refresh);
     _zanim_node_ref *GetNodeRef(int index);
+    _zanim_node_ref *GetNodeRef(CNode *node);
     int AddNewNodeRef(int name_index, int parent_index, int search);
     int LoadNodeNames(_zrdr *rdr, const char *name, int parent, int search);
     int FindNodeRef(const char *name, int parent, int &search);
@@ -609,24 +610,30 @@ public:
     float shield;   // 0x14
 };   // 0x18 bytes
 
-namespace zdb { struct IntersectStruct; }
-class CZProjectile;
-
-/* SOCOM II's helpers of an extension: its node let go (0x3158B0), not named */
-extern "C" void func_003158B0(CNode *node, int a, int b);
-
-class CZAnimEx {
+/* an anim's extension of a node (SOCOM 1's DWARF: CZAnimEx : zdb::CNodeEx, 0x24 bytes). Its table
+ * (__vt__8CZAnimEx) overrides the first and last of CNodeEx's slots; CZAnim::OnWeaponHitInit
+ * inlines both constructors (CNodeEx's vtable stored, then CZAnimEx's) */
+class CZAnimEx : public zdb::CNodeEx {
 public:
+    /* the root last: MW evaluates the arguments right to left, and OnWeaponHitInit computes the
+     * root node before it loads the health's three values */
+    CZAnimEx(CZAnim *anim, CNode *node, float shield, float armor, float health, CNode *root)
+        : m_anim(anim), m_nodeEx(node), m_root_node(root), m_shield(shield), m_armor(armor),
+          m_armor_max(armor), m_health(health), m_health_max(health)
+    {
+    }
+    CZAnimEx(CZAnim *anim, CNode *node, CNode *root)
+        : m_anim(anim), m_nodeEx(node), m_root_node(root), m_shield(0.0f), m_armor(0.0f),
+          m_armor_max(0.0f), m_health(0.0f), m_health_max(0.0f)
+    {
+    }
     /* non-virtual (not in __vt__8CZAnimEx), inline: Free deletes the extensions through it */
     ~CZAnimEx()
     {
         if (m_nodeEx)
-            func_003158B0(m_nodeEx, 0, 1);
+            m_nodeEx->SetNodeEx(0, true);
     }
-    /* __vt__8CZAnimEx's three slots (the vtable pointer at 0, zdb::CNodeEx's in SOCOM 1's DWARF);
-     * the last two not named -- 0x274300 and 0x2739B0 */
-    virtual void OnWeaponHit(CNode *node, zdb::IntersectStruct *hit, CZProjectile *projectile);
-    virtual void Slot0C();
+    virtual int OnWeaponHit(CNode *node, zdb::IntersectStruct *hit, CZProjectile *projectile);
     virtual bool Slot10(float amount);
     void Reset(float *armor, float *health);
 
@@ -671,8 +678,8 @@ extern "C" CZAnim *func_0026CAA0(CZAnimSet *set, CZAnim *anim, const char *name)
 
 /* SOCOM II's: an anim's function of one int (0x270570), every anim of a set's (0x26C240) and
  * of every set's (CZAnimMain, 0x26ADA0) -- not named */
-extern "C" void func_00270570(CZAnim *anim, int x);
-extern "C" int func_0026C240(CZAnimSet *set, int x);
+extern "C" void func_00270570(CZAnim *anim, CNode *node);
+extern "C" int func_0026C240(CZAnimSet *set, CNode *node);
 
 /* CZAnim::Stop, which SOCOM II gave a flag (SOCOM 1: Stop__6CZAnimFv) */
 extern "C" void func_002707C0(CZAnim *anim, bool now);
