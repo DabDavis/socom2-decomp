@@ -32,6 +32,16 @@ extern void *data_00408C10;                      /* the load thread's stack */
 
 void zVid_Sync0();
 
+/* zdb's task scheduler: a list of tasks (SOCOM 1's DWARF: 0x20 bytes) */
+class CSched_Manager {
+public:
+    void ClearFreeList(bool all);
+
+    unsigned char _0[0x20];
+};
+
+extern CSched_Manager zTaskScheduler;
+
 class CMission {
 public:
     void ReOpen_Load();

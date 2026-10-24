@@ -50,18 +50,36 @@ public:
     static CPad *m_pads[2];
 };
 
-/* zdb's task scheduler: a list of tasks (SOCOM 1's DWARF: 0x20 bytes) */
-class CSched_Manager {
-public:
-    void ClearFreeList(bool all);
-
-    unsigned char _0[0x20];
-};
-
-extern CSched_Manager zTaskScheduler;
-
 class CHUD;
 class CWorld;
+class CZAnimZAR;
+
+/* the anims (gamez/zanim's; only the archive calls) */
+class CZAnimMain {
+public:
+    int CloseZAR(CZAnimZAR *zar);
+    CZAnimZAR *OpenZAR(const char *name);
+};
+
+extern CZAnimMain ZAnim;
+
+/* a menu screen: SOCOM 1's CGameMenu is 0x890 bytes with its vtable pointer at 0x884, after
+ * every member; SOCOM II's at 0x910 (CExitState's delete, CExitMenu's constructor) */
+class CGameMenu {
+public:
+    unsigned char _0[0x910];
+
+    CGameMenu();
+    virtual ~CGameMenu();
+    void Draw2dOnly();
+
+    unsigned char _914[0x920 - 0x914];
+};
+
+class CExitMenu : public CGameMenu {
+public:
+    CExitMenu() {}
+};
 
 /* a state of the game's stack: named, and told when it is pushed, popped, set up and torn down.
  * SOCOM II added two virtuals after OnPop (the second takes a dialog's arguments) */
@@ -129,6 +147,35 @@ public:
     float m_c0;   // 0xc0 (SOCOM II's three: one, its reciprocal, it again)
     float m_c4;   // 0xc4
     float m_c8;   // 0xc8
+};
+
+/* MSL's basic_string as the states hold it: three words, all zero when made (SOCOM II's library
+ * makes it inline). A stand-in until a string model exists: the calls on it are the map's
+ * (assign is func_001EEB40) */
+struct CStateString {
+    CStateString()
+    {
+        w[0] = 0;
+        w[1] = 0;
+        w[2] = 0;
+    }
+
+    unsigned int w[3];
+};
+
+/* the end of a mission: its stats shown on the splash screen's menu. SOCOM II's strings are
+ * 0xC bytes (two at 8 and 0x14), so the menu is at 0x24 */
+class CExitState : public CGameState {
+public:
+    CExitState();
+    virtual bool Init();
+    virtual bool Tick(float dT);
+    virtual void UnInit();
+
+    CStateString m_libname;   // 0x8
+    CStateString m_texname;   // 0x14
+    void *m_plib;   // 0x20
+    CExitMenu *m_menu;   // 0x24
 };
 
 /* the game: its state stack, then its states (SOCOM 1's CGame is 0x7C bytes; SOCOM II's states
