@@ -109,6 +109,7 @@ public:
 
 class CZAnim : public _zanim_anim_params {
 public:
+    int Unload();
     const char *GetName(int index);
     const char *GetName();
     int AddValve(const char *name);
@@ -272,16 +273,42 @@ public:
     void Free();
 };
 
-/* the node states a set restores: the node refs, and what each had (SOCOM 1's DWARF; the
- * lists' element types are not known) */
-class CZAnimSetSave : public std::vector<_zanim_node_ref *> {
+/* a node's saved state: one of 12 bytes per node reference a set saves (SOCOM 1's
+ * CZAnimSetSave::Add makes the same; the type is in no DWARF, so its names are ours) -- the node,
+ * which states were kept, and each one's index into the save's lists */
+class _zanim_node_save {
 public:
-    void Reset(_zanim_node_ref *ref);
+    CNode *node;   // 0x0
+    unsigned int active : 1;   // 0x4: the node's activity, when kept
+    unsigned int has_active : 1;
+    unsigned int has_parent : 1;
+    unsigned int has_translation : 1;
+    unsigned int has_rotation : 1;
+    unsigned int parent_index : 14;
+    unsigned int translation_index : 14;   // 0x8
+    unsigned int rotation_index : 14;
+};   // 0xc bytes
+
+/* a node's saved rotation: its matrix's three rows (Add's new of 36 bytes; ours) */
+class _zanim_node_rotation {
+public:
+    CPnt3D x;   // 0x0
+    CPnt3D y;   // 0xc
+    CPnt3D z;   // 0x18
+};   // 0x24 bytes
+
+/* the node states a set restores: one save record per node reference, and the states the
+ * records index (SOCOM 1's DWARF has the four vectors; their element types are read off Add,
+ * Reset and the destructors -- the records and the rotations are deleted one by one) */
+class CZAnimSetSave : public std::vector<_zanim_node_save *> {
+public:
+    void Reset(_zanim_node_save *save);
     void Add(_zanim_node_ref *ref);
+    void Free();
 
     std::vector<CPnt3D> m_translationList;   // 0xc
-    std::vector<CPnt3D> m_rotationList;   // 0x18
-    std::vector<void *> m_parentList;   // 0x24
+    std::vector<_zanim_node_rotation *> m_rotationList;   // 0x18
+    std::vector<CNode *> m_parentList;   // 0x24
 };   // 0x30 bytes
 
 enum LOD {LOW = 0, MEDIUM = 1, HIGH = 2};   // 1 byte(s)

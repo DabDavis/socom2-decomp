@@ -51,12 +51,16 @@ TOOLCHAINS = HERE / "toolchains"
 # definition order, as the image holds them; bottomup: inlining starts at the leaves of the
 # call graph, so a callee arrives with its own callees already in it (CZAnimExVector::Free's
 # destructor inside std::for_each's function object, the recursive CZAnim walks one level
-# deeper -- zlib is the same either way); -enum min: inflate's mode is stored by sb;
+# deeper -- zlib is the same either way); level=4: bottom-up, a function whose whole inline
+# chain is four or fewer deep takes all of it, a deeper one only its own callees -- `new
+# CZAnimExVector` inlines its vector's constructors and `new CZAnimSetSave` calls its four
+# vectors' (and their destructors likewise in CZAnimSet::Unload); -enum min: inflate's mode is
+# stored by sb;
 # -Cpp_exceptions off: C++ tail calls (CMatrix::SetZero is `j memset`; with exceptions on, MW
 # keeps a frame around every C++ call, while C code tail-calls either way).
 # README "The compiler" has the derivation.
 COMPILER = os.environ.get("SC_COMPILER", "mwcps2-3.0b52-030722")
-FLAGS = os.environ.get("SC_FLAGS", "-O4,p -sdatathreshold 0 -inline auto,deferred,bottomup -enum min -Cpp_exceptions off").split()
+FLAGS = os.environ.get("SC_FLAGS", "-O4,p -sdatathreshold 0 -inline auto,deferred,bottomup,level=4 -enum min -Cpp_exceptions off").split()
 BASE_FLAGS = ["-c", "-nostdinc", "-gccinc", "-msgstyle", "gcc"]   # -gccinc: -I paths serve <...> too
 
 

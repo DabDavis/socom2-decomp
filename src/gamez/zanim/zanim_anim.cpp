@@ -43,6 +43,14 @@ void CZAnimExVector::Reset()
     std::for_each(begin(), end(), CZAnimExReset());
 }
 
+/* an extension added, the list grown by 15 when full */
+void CZAnimExVector::Add(CZAnimEx *ex)
+{
+    if (size() == capacity())
+        reserve(size() + 15);
+    push_back(ex);
+}
+
 /* the list's extensions deleted, CZAnimEx's destructor inlined into each delete, and the list
  * emptied (the function object ours, as Reset's) */
 struct CZAnimExDelete {

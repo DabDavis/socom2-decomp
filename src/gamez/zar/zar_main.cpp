@@ -4,16 +4,13 @@
 
 #include "zar.h"
 
-/* the ring's insert(position, n, x): MSL's vector<CKey *>, not named */
-extern "C" void func_001FE340(zar::CKeyRing *ring, zar::CKey **pos, unsigned int n, zar::CKey *const *x);
-
 namespace zar {
 
 /* a key pushed when there is one: SOCOM 1's (a list's push_front) tests twice too */
 inline void CKeyRing::push(CKey *key)
 {
     if (key)
-        func_001FE340(this, end().m_p, 1, &key);
+        push_back(key);
 }
 
 /* SOCOM 1's took the key to close; SOCOM II's pops the innermost, whichever it is */

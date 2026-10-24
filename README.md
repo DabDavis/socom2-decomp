@@ -120,7 +120,7 @@ and under 3.0b38).
 **The flags, each by its own evidence** (`scdiff.FLAGS`):
 
 Each flag is necessary: drop any one and zlib's score falls (3.0b52, the others held) -- but
-`bottomup`, which zlib cannot see and SOCOM II's C++ needs.
+`bottomup` and `level=4`, which zlib cannot see and SOCOM II's C++ needs.
 
 | flag | without it | evidence |
 |---|---|---|
@@ -128,6 +128,7 @@ Each flag is necessary: drop any one and zlib's score falls (3.0b52, the others 
 | `-sdatathreshold 0` | 18 | the target addresses zlib's 6-byte version string with `lui/addiu`; the default (8) puts it in `$gp` small data |
 | `-inline auto,deferred` | `auto` 20, `deferred` 18, `on` 17 | `inflateReset` is absent from the image — inlined into both callers and stripped (`auto`); functions emit in **reverse definition order**, exactly as the image holds them (`deferred`) |
 | `-inline bottomup` | (zlib alike) | inlining starts at the leaves of the call graph, so a callee arrives with its own callees in it: `CZAnimExVector::Free`'s `delete` inlines CZAnimEx's destructor inside `std::for_each`'s function object, and the recursive `CZAnim::Reset`, Pause and Resume inline themselves twice with their callees in the outer copies -- four functions that matched only with it, nothing lost |
+| `-inline level=4` | (zlib alike) | a call whose callee's whole inline tree is at most four high inlines all of it; a taller one inlines only the callee's own body and calls what it calls. `new CZAnimExVector` (a vector of pointers, three constructors deep) inlines whole in `CZAnimSet::AddAnimEx`, while `new CZAnimSetSave` (four high or more under its vector of CPnt3D) inlines its own implicit constructor and calls its four vectors' -- and `delete` does the same in `CZAnimSet::Unload` (CZAnimExVector's four nested `this` tests inline, CZAnimSetSave's vectors' destructors are calls); at level 5 and up (or none) SaveNodeStates, Unload and CZAnimSetSave::Free inline everything and the out-of-line copies they call vanish; level 3 loses ten others (the ZAR key walks, LoadZAR, AddAnimEx) |
 | `-enum min` | 13 | `inflate`'s `mode` field is stored with `sb` |
 | `-Cpp_exceptions off` | (C++ only) | `CMatrix::SetZero` is `j memset`: with exceptions on, MW keeps a frame around every C++ call, while C tail-calls either way; every C++ match held when it went on |
 
@@ -214,12 +215,17 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   definitions reproduces them (probe: build/scratch/probe/q.cpp). Calls that do not inline are
   unit-boundary evidence: LoadZAR calls GetAnimSet(int), which anim_main.cpp inlines, so the ZAR
   loaders are a unit of their own (zanim_zar.cpp).
-- **Inlining is bottom-up** (`-inline bottomup`): MW inlines the leaves first, so there is no
-  depth limit to work around -- `new CZAnimExVector` inlines the whole MSL constructor chain,
-  a function object's call inlines inside `std::for_each`, and a recursive function inlines
-  itself twice, the outer copies carrying their own callees (Resume and Pause inline Running
-  into the first two copies and Running's Source test into the outer one, then call the
-  sibling accessor and the Source test -- hence those out-of-line copies).
+- **Inlining is bottom-up to level 4** (`-inline bottomup,level=4`). At each call site, a callee
+  whose whole inline tree is at most four functions high (it counts as one; an empty inline
+  function counts too) is inlined entirely; a taller callee is inlined ONE level -- its own
+  body, its callees called out of line, where each of those copies inlines by the same rule
+  (probe: build/scratch/ctor/chain.cpp, chain2.cpp). So a deep MSL chain shows up as calls to
+  tiny out-of-line copies -- the 78 three-word zeroing constructors in the image are mostly
+  that -- and the header's levels must be the real ones (include/vector carries the counts it
+  was fitted to). A function object's call inlines inside `std::for_each`, and a recursive
+  function inlines itself twice, the outer copies carrying their own callees (Resume and Pause
+  inline Running into the first two copies and Running's Source test into the outer one, then
+  call the sibling accessor and the Source test -- hence those out-of-line copies).
 - **SOCOM 1's DWARF never says `bool`: MW's DWARF 1 writes it as `unsigned char`** (none of its
   77,784 members is bool; `std::basic_string::makeUnique` mangles a `b` its DWARF calls
   `unsigned char copy`). A DWARF `unsigned char` may be a bool: CZAnimMain::m_anim_complete is,
@@ -417,9 +423,8 @@ follows without MW's 16-byte padding (131 drafts had every byte right).
   (`zanim_set.cpp`) and CZAnim (`zanim_anim.cpp`): all written byte-exact but five.**
   Open: SequenceRunning, GetCmd, GetAnimSetIndex, Open (registers in the inlined NewAnimSet --
   the permuter found nothing in Open's own text), CZAnim::LoadNodeNames (a strength-reduced
-  index). Unwritten: the wildcard search, CZAnimSet's Unload and SaveNodeStates and
-  CZAnimSetSave (MSL vector destructors, which looked like different inline depths per instance
-  before bottom-up inlining), the rest of CZAnim.
+  index). Unwritten: the wildcard search, CZAnimSetSave's Reset and Add and the vector<CPnt3D>
+  insert/reserve they call (MSL bodies to reconstruct), the rest of CZAnim.
 - **`CZWeaponList::GetWeapon` (`0x3C4B40`)** -- 2 instructions from exact with an `int`
   parameter, but SOCOM 1's mangled name says `EQUIP_ITEM`, and every enum-typed variant sinks
   the zero-extension into the loop preheader.

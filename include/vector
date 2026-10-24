@@ -2,8 +2,13 @@
  * matched functions their code. A reconstruction, not MSL: the class shapes are SOCOM 1's DWARF
  * (vector : __vector_imp : __vector_deleter, the allocator folded into capacity_'s
  * compressed_pair at 0, size_ at 4, data_ at 8), the member bodies are whatever compiles to the
- * shipped bytes. A vector of pointers is __vector_imp<T *, allocator<T *>, 1> -- the flag in the
- * name of zdb::CNodeVector's base destructor.
+ * shipped bytes.
+ *
+ * A vector of pointers is __vector_imp<T *, allocator<T *>, 1> (the flag in the name of SOCOM 1's
+ * zdb::CNodeVector base destructor), and every one of them runs on the one implementation,
+ * __vector_pod<unsigned int>: SOCOM 1's push_back, reserve and insert of it are the only ones a
+ * pointer vector calls, and SOCOM II's CZAnimExVector::Add calls the same two out of line
+ * (reserve 0x1EEBA0, insert 0x1FE340 -- the demo's calls, fprintf/abort/new/delete, alike).
  *
  * The iterators are classes, != being !(==): a walk whose whole test is the compare
  * materialises it (LoadZAR, CZAnimSet::Reset), one inside && branches on it
@@ -11,9 +16,19 @@
  * folding their first test (begin against begin + size) into a test of the size, which a copy
  * of begin() as an iterator does not.
  *
- * The deleter's constructor zeroes the three words; inlining bottom-up brings it through the
- * whole chain into CZAnimSet::AddAnimEx's `new CZAnimExVector`. SOCOM 1's names put a vector
- * of pointers on __vector_pod<unsigned int> -- the real chain, at least as deep. */
+ * The inline LEVELS are load-bearing (-inline level=4: a call whose callee's inline tree is at
+ * most four high inlines all of it, a taller one only the callee's own body). Counted from the
+ * vector down:
+ *   vector of pointers  constructor 3 (vector, __vector_imp, __vector_pod)
+ *                       destructor  3 (each with its this test), clear() 3
+ *   vector of a class   constructor 4 (the capacity member's own constructor)
+ *                       destructor  6 (__vector_deleter's clear, and its two destroy levels)
+ *                       clear()     5
+ * So `new CZAnimExVector` and its delete inline whole (CZAnimSet::AddAnimEx and Unload), while
+ * CZAnimSetSave's implicit constructor and destructor, four high or more under its vector of
+ * CPnt3D, inline only themselves and call all four vectors' (SaveNodeStates, Unload); the
+ * out-of-line ~vector<CPnt3D> calls the deleter's destructor, and CZAnimSetSave::Free inlines the
+ * pointer vectors' clear() but calls __vector_imp<CPnt3D>::clear(). */
 
 #ifndef _MSL_VECTOR
 #define _MSL_VECTOR
@@ -22,58 +37,134 @@
 
 namespace std {
 
+/* the capacity, its own member as SOCOM 1's DWARF has it (a compressed_pair with the allocator):
+ * the extra constructor level a vector of a class has and a vector of pointers has not */
+template <class Allocator>
+class __vector_capacity {
+public:
+    __vector_capacity() { n_ = 0; }
+    operator unsigned int() const { return n_; }
+
+    unsigned int n_;
+};
+
 template <class T, class Allocator>
 class __vector_deleter {
 public:
-    __vector_deleter() { capacity_ = 0; size_ = 0; data_ = 0; }
+    __vector_deleter() { size_ = 0; data_ = 0; }
+    ~__vector_deleter()
+    {
+        clear();
+        if (data_)
+            operator delete(data_);
+    }
+    void clear()
+    {
+        destroy(data_, data_ + size_);
+        size_ = 0;
+    }
+    /* the elements' destructors: nothing for a trivially destructible class -- SOCOM II's MSL
+     * keeps no loop for CPnt3D, where SOCOM 1's kept an empty one -- but two inline levels all the
+     * same (an empty inline function still counts as one) */
+    static void destroy(T *first, T *last) { __destroy(first, last); }
+    static void __destroy(T *, T *) {}
+protected:
+    __vector_capacity<Allocator> capacity_;
+    unsigned int size_;
+    T *data_;
+};
+
+template <class T, class Allocator>
+class __vector_pod {
+public:
+    __vector_pod() { capacity_ = 0; size_ = 0; data_ = 0; }
+    ~__vector_pod()
+    {
+        if (data_)
+            operator delete(data_);
+    }
+    void clear() { size_ = 0; }
+    void reserve(unsigned int n);
+    T *insert(T *position, unsigned int n, const T &x);
+    T &at(unsigned int n);
+    void push_back(const T &x) { insert(data_ + size_, 1, x); }
 protected:
     unsigned int capacity_;
     unsigned int size_;
     T *data_;
 };
 
+/* what every vector shows its users: the iterators and accessors over its storage (a macro, so
+ * that neither kind of vector carries a class of its own for them) */
+#define __MSL_VECTOR_ACCESS(ELEMENT)                                                              \
+public:                                                                                         \
+    typedef ELEMENT elem_t;                                                                     \
+    class iterator {                                                                            \
+    public:                                                                                     \
+        iterator(elem_t *p) : m_p(p) {}                                                         \
+        bool operator==(const iterator &o) const { return m_p == o.m_p; }                       \
+        bool operator!=(const iterator &o) const { return !(*this == o); }                      \
+        iterator &operator++() { ++m_p; return *this; }                                         \
+        iterator operator++(int) { iterator t = *this; ++m_p; return t; }                       \
+        iterator operator-(int n) const { return iterator(m_p - n); }                           \
+        elem_t &operator*() const { return *m_p; }                                              \
+                                                                                                \
+        elem_t *m_p;                                                                            \
+    };                                                                                          \
+                                                                                                \
+    class const_iterator {                                                                      \
+    public:                                                                                     \
+        const_iterator(const elem_t *p) : m_p(p) {}                                             \
+        const_iterator(const iterator &i) : m_p(i.m_p) {}                                       \
+        bool operator==(const const_iterator &o) const { return m_p == o.m_p; }                 \
+        bool operator!=(const const_iterator &o) const { return !(*this == o); }                \
+        const_iterator &operator++() { ++m_p; return *this; }                                   \
+        const elem_t &operator*() const { return *m_p; }                                        \
+                                                                                                \
+        const elem_t *m_p;                                                                      \
+    };                                                                                          \
+                                                                                                \
+    iterator begin() { return iterator((elem_t *)this->data_); }                                \
+    iterator end() { return iterator((elem_t *)this->data_ + this->size_); }                    \
+    unsigned int size() const { return this->size_; }                                           \
+    unsigned int capacity() const { return this->capacity_; }                                   \
+    bool empty() const { return this->size_ == 0; }                                             \
+    elem_t &back() { return *(end() - 1); }                                                     \
+    void pop_back() { this->size_--; }
+
 template <class T, class Allocator, bool IsPOD>
 class __vector_imp : public __vector_deleter<T, Allocator> {
-public:
-    class iterator {
-    public:
-        iterator(T *p) : m_p(p) {}
-        bool operator==(const iterator &o) const { return m_p == o.m_p; }
-        bool operator!=(const iterator &o) const { return !(*this == o); }
-        iterator &operator++() { ++m_p; return *this; }
-        iterator operator++(int) { iterator t = *this; ++m_p; return t; }
-        iterator operator-(int n) const { return iterator(m_p - n); }
-        T &operator*() const { return *m_p; }
+    __MSL_VECTOR_ACCESS(T)
+    void clear() { __vector_deleter<T, Allocator>::clear(); }
+    T &at(unsigned int n);
+    void reserve(unsigned int n);
+    T *insert(T *position, unsigned int n, const T &x);
+};
 
-        T *m_p;
-    };
-
-    class const_iterator {
-    public:
-        const_iterator(const T *p) : m_p(p) {}
-        const_iterator(const iterator &i) : m_p(i.m_p) {}
-        bool operator==(const const_iterator &o) const { return m_p == o.m_p; }
-        bool operator!=(const const_iterator &o) const { return !(*this == o); }
-        const_iterator &operator++() { ++m_p; return *this; }
-        const T &operator*() const { return *m_p; }
-
-        const T *m_p;
-    };
-
-    iterator begin() { return iterator(this->data_); }
-    iterator end() { return iterator(this->data_ + this->size_); }
-    unsigned int size() const { return this->size_; }
-    bool empty() const { return this->size_ == 0; }
-    T &back() { return *(end() - 1); }
-    void pop_back() { this->size_--; }
+template <class T, class Allocator>
+class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, allocator<unsigned int> > {
+    __MSL_VECTOR_ACCESS(T *)
+    void clear() { __vector_pod<unsigned int, allocator<unsigned int> >::clear(); }
+    T *&at(unsigned int n)
+    {
+        return (T *&)__vector_pod<unsigned int, allocator<unsigned int> >::at(n);
+    }
+    void push_back(T *const &x)
+    {
+        __vector_pod<unsigned int, allocator<unsigned int> >::push_back((const unsigned int &)x);
+    }
 };
 
 template <class T, class Allocator = allocator<T> >
 class vector : public __vector_imp<T, Allocator, false> {
+public:
+    void clear() { __vector_imp<T, Allocator, false>::clear(); }
 };
 
 template <class T, class Allocator>
 class vector<T *, Allocator> : public __vector_imp<T *, Allocator, true> {
+public:
+    void clear() { __vector_imp<T *, Allocator, true>::clear(); }
 };
 
 }
