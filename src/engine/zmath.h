@@ -21,12 +21,17 @@ extern "C" float acosf(float);
 class CPnt3D {
 public:
     float x, y, z;
+
+    void Interp(const CPnt3D *b, float t, CPnt3D *out) const;
 };
 
 /* A VU0 vector, 16-byte aligned for lqc2 (SOCOM 1 names CPnt4D::Rotate_AxisX/Y). */
 class CPnt4D {
 public:
     float x, y, z, w;
+
+    void Rotate_AxisX(float a);
+    void Rotate_AxisY(float a);
 } __attribute__((aligned(16)));
 
 /* Fill a VU0 vector from four floats. MW evaluates the arguments right to left, so a
