@@ -85,6 +85,49 @@ void CNode::SetName(const char *name)
     m_name = name ? func_001801E0(name, 0, 0) : UNNAMED_NODE;
 }
 
+/* a child by name (its length first, then its text), among the children and then, when deep,
+ * below each */
+CNode *CNode::FindChild(const char *name, bool deep)
+{
+    if (!name)
+        return 0;
+    CNode *found = 0;
+    size_t len = strlen(name);
+    CNodeVector::iterator it = m_child.begin();
+
+    for (; !found && it != m_child.end(); ++it) {
+        CNode *child = *it;
+
+        if (strlen(child->m_name) == len && !strcmp(child->m_name, name))
+            found = child;
+    }
+    if (!found && deep) {
+        for (it = m_child.begin(); !found && it != m_child.end(); ++it)
+            found = (*it)->FindChild(name, deep);
+    }
+    return found;
+}
+
+/* a node among the children and then, when deep, below each. The first walk's `!found` is always
+ * true (a hit returns) and folds away, but not before MW has laid the loop out as a compound
+ * test's (a branch to the test at the bottom, where a lone compare is tested once on entry too) */
+CNode *CNode::FindChild(CNode *node, bool deep)
+{
+    if (!node)
+        return 0;
+    CNode *found = 0;
+    CNodeVector::iterator it = m_child.begin();
+
+    for (; !found && it != m_child.end(); ++it)
+        if (*it == node)
+            return *it;
+    if (!found && deep) {
+        for (it = m_child.begin(); !found && it != m_child.end(); ++it)
+            found = (*it)->FindChild(node, deep);
+    }
+    return found;
+}
+
 /* a child let go of: its reference given back (a type-3 node's children are not counted) and
  * the child out of the list; its count after, or -1 */
 int CNode::DeleteChild(CNode *child)

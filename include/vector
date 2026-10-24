@@ -14,7 +14,11 @@
  * materialises it (LoadZAR, CZAnimSet::Reset), one inside && branches on it
  * (GetDatabaseNode). The walks that hold a const_iterator made from begin() keep MW from
  * folding their first test (begin against begin + size) into a test of the size, which a copy
- * of begin() as an iterator does not.
+ * of begin() as an iterator does not. begin() reads the storage through data(), the reference
+ * to the field (SOCOM 1 keeps out-of-line copies of it), and end() reads the field itself: the
+ * reference leaves an address MW keeps, so a second walk after calls reloads its begin through
+ * a register holding &data_ (CNode::FindChild by name, in SOCOM 1 and II alike), while end()'s
+ * loads fold their offsets.
  *
  * The inline LEVELS are load-bearing (-inline level=4: a call whose callee's inline tree is at
  * most four high inlines all of it, a taller one only the callee's own body). Counted from the
@@ -74,6 +78,8 @@ public:
         destroy(data_, data_ + size_);
         size_ = 0;
     }
+    /* the reference begin() reads through, as __vector_pod's */
+    T *&data() { return data_; }
     /* the elements' destructors: nothing for a trivially destructible class -- SOCOM II's MSL
      * keeps no loop for CPnt3D, where SOCOM 1's kept an empty one -- but two inline levels all the
      * same (an empty inline function still counts as one) */
@@ -170,7 +176,7 @@ public:                                                                         
         const elem_t *m_p;                                                                      \
     };                                                                                          \
                                                                                                 \
-    iterator begin() { return iterator((elem_t *)this->data_); }                                \
+    iterator begin() { return iterator((elem_t *)this->data()); }                               \
     iterator end() { return iterator((elem_t *)this->data_ + this->size_); }                    \
     unsigned int size() const { return this->size_; }                                           \
     unsigned int capacity() const { return this->capacity_; }                                   \
