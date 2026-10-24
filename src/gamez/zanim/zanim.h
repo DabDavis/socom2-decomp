@@ -10,6 +10,7 @@
 
 using zdb::CNode;
 
+namespace zar { class CZAR; }
 class CZAnim;
 class CZAnimEx;
 class CZAnimHealth;
@@ -82,6 +83,7 @@ class CZAnimNameIndexTable {
 public:
     const char *GetName(CZAnimSet *set, int index);
     int Load(zar::CZAR &zar);
+    int AddName(CZAnimSet *set, const char *name);
     void Unload();
 
     unsigned short* m_index;   // 0x0
@@ -161,6 +163,9 @@ class CZAnimNameTable {
 public:
     const char *GetName(int index);
     void Unload();
+    int AddName(const char *name);
+    int Load(zar::CZAR &zar);
+    void Append(const char *name);
 
     char** m_name;   // 0x0
     int m_count;   // 0x4
