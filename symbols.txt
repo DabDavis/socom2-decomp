@@ -5613,7 +5613,7 @@
 0x0031F9B0 0xD8 GarbageCollect__Q23zdb6CWorldFv  # OVL1; s1:align
 0x0031FA90 0x28 func_0031FA90  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
 0x0031FAC0 0x8C AddShadow__Q23zdb6CWorldFPQ23zdb5CNode  # OVL1; s1:align
-0x0031FB50 0x138 func_0031FB50  # OVL1
+0x0031FB50 0x138 DeleteLightMap__Q23zdb6CWorldFPQ23zdb9CLightMap  # OVL1; s1:callee by hand (CZAnim::StopLights calls it on m_world with a light node on the world's list, where SOCOM 1's calls CWorld::DeleteLightMap)
 0x0031FC90 0x80 AddLightMap__Q23zdb6CWorldFPQ23zdb9CLightMap  # OVL1; s1:align
 0x0031FD10 0x10 GetModel__Q23zdb6CWorldFPCc  # OVL1; s1:exact
 0x0031FD20 0xDC Initalize__Q23zdb6CWorldFv  # OVL1; s1:align

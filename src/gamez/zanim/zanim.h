@@ -132,6 +132,7 @@ public:
     void PauseSequence(const char *name);
     void StopSequence(const char *name);
     void ActivateSequence(const char *name);
+    bool ExecuteSpecialSequence(int offset);
     int Load(zar::CZAR &archive);
     float GetHealth();
     CNode *GetNode(int index, bool create);
@@ -419,9 +420,16 @@ public:
 };   // 0x1c8 bytes (SOCOM 1's 0x1c4; ZAnim ends where the wildcard state starts, 0x414D78)
 
 namespace Particle {
+/* a particle source (SOCOM 1's DWARF, 0x134 bytes; SOCOM II's has 4 more before m_shuttingoff) */
 class Source {
 public:
     ~Source();
+    /* our name: neither emitting nor fading out (CZAnim::Running; out of line at 0x270BC0) */
+    bool Done() { return !(m_active || m_shuttingoff); }
+
+    unsigned char m_active;   // 0x0
+    unsigned char _1[0x12C - 0x1];   // 0x1: m_goodPos .. m_particleEx, grown by 4
+    unsigned char m_shuttingoff;   // 0x12c (SOCOM 1: 0x128)
 };
 }
 

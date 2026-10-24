@@ -14,6 +14,7 @@
 namespace zdb {
 
 class CGridAtom;
+class CLightMap;
 class CModel;
 class CNode;
 class CNodeEx;
@@ -143,6 +144,7 @@ class CWorld : public CNode {
 public:
     static CWorld *m_world;
     static CNode *GetModel(const char *name);
+    void DeleteLightMap(CLightMap *light);
 
     unsigned char _c0[0x6B98 - 0xC0];   // 0xc0: SOCOM 1's m_camera .. m_grid, not yet needed
     CNodeVector m_landmarks;   // 0x6b98
