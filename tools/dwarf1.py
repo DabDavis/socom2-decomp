@@ -150,8 +150,59 @@ class Debug:
             raise SystemExit(f"{path}: no .debug section (stripped?)")
         self.dies, self.by_off = parse(sec[".debug"].data)
 
+    def array_parts(self, t: Die) -> tuple[str, str]:
+        """(element type, "[n][m]...") of an array_type, from its AT_subscr_data: a list of
+        FMT_FT_C_C items (fund type, low, high: one dimension each) closed by FMT_ET and the
+        element type as an embedded attribute."""
+        b = t.get("subscr_data", b"")
+        p, dims, elem = 0, [], "?"
+        while p < len(b):
+            fmt = b[p]
+            p += 1
+            if fmt == 0x0:                                         # FMT_FT_C_C
+                lo, hi = struct.unpack_from("<ii", b, p + 2)
+                dims.append(hi - lo + 1)
+                p += 10
+            elif fmt == 0x8:                                       # FMT_ET
+                an = struct.unpack_from("<H", b, p)[0]
+                p += 2
+                form, aname = an & 0xF, ATTRS.get(an >> 4, "")
+                if form == 5:
+                    v = struct.unpack_from("<H", b, p)[0]; p += 2
+                elif form == 2:
+                    v = struct.unpack_from("<I", b, p)[0]; p += 4
+                elif form == 3:
+                    n = struct.unpack_from("<H", b, p)[0]; v = b[p + 2:p + 2 + n]; p += 2 + n
+                else:
+                    break
+                inner = self.by_off.get(v) if aname == "user_def_type" else None
+                if inner is not None and inner.tag == 0x01:        # float m[4][4]: an array OF arrays
+                    elem, more = self.array_parts(inner)
+                    return elem, "".join(f"[{n}]" for n in dims) + more
+                elem = self.typename(Die(0, 0, {aname: v}))
+            else:
+                break                                              # bounds given by location: rare
+        return elem, "".join(f"[{n}]" for n in dims)
+
+    def enum_values(self, e: Die) -> list[tuple[str, int]]:
+        """AT_element_list: (value, name) pairs, each value as wide as the enum (MW's -enum min
+        makes most of them one byte), signed."""
+        b, width = e.get("element_list", b""), e.get("byte_size", 4)
+        out, p = [], 0
+        while p + width <= len(b):
+            v = int.from_bytes(b[p:p + width], "little", signed=True)
+            q = b.index(b"\0", p + width)
+            out.append((b[p + width:q].decode("latin-1"), v))
+            p = q + 1
+        return out
+
     def typename(self, d: Die, name: str = "") -> str:
         """C declaration of `name` with this entry's type."""
+        if "user_def_type" in d.attrs:
+            t = self.by_off.get(d.get("user_def_type"))
+            if t is not None and t.tag == 0x01:                    # an array: the dimensions go after the name
+                elem, dims = self.array_parts(t)
+                return f"{elem} {name}{dims}".rstrip()
         def ref(off):
             t = self.by_off.get(off)
             if t is None:
@@ -241,6 +292,12 @@ def main(argv=None) -> int:
     elif a.cmd == "types":
         seen = set()
         for d in dbg.dies:
+            if d.tag == 0x04 and d.name and (not rx or rx.search(d.name)) and (d.name, 0) not in seen:
+                seen.add((d.name, 0))
+                vals = dbg.enum_values(d)
+                print(f"enum {d.name} {{   // {d.get('byte_size')} byte(s)")
+                print("".join(f"    {n} = {v},\n" for n, v in vals) + "};\n")
+                continue
             if d.tag in (0x02, 0x13, 0x17) and d.name and (not rx or rx.search(d.name)):
                 key = (d.name, d.get("byte_size"))
                 if key in seen:

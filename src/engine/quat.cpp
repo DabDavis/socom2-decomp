@@ -8,31 +8,31 @@
 void CQuat::MakeXRot(float angle)
 {
     float half = 0.5f * angle;
-    v.x = sinf(half);
+    vec.x = sinf(half);
     w = cosf(half);
-    v.y = 0.0f;
-    v.z = 0.0f;
+    vec.y = 0.0f;
+    vec.z = 0.0f;
 }
 
 void CQuat::MakeYRot(float angle)
 {
     float half = 0.5f * angle;
-    v.y = sinf(half);
+    vec.y = sinf(half);
     w = cosf(half);
-    v.x = 0.0f;
-    v.z = 0.0f;
+    vec.x = 0.0f;
+    vec.z = 0.0f;
 }
 
 void CQuat::MakeZRot(float angle)
 {
     float half = 0.5f * angle;
-    v.z = sinf(half);
+    vec.z = sinf(half);
     w = cosf(half);
-    v.x = 0.0f;
-    v.y = 0.0f;
+    vec.x = 0.0f;
+    vec.y = 0.0f;
 }
 
-void func_00307470(CQuat *q, float a, float b)
+void CQuat::MakeYXRot(float a, float b)
 {
     float h = 0.5f * a;
     float sa = sinf(h);
@@ -42,10 +42,10 @@ void func_00307470(CQuat *q, float a, float b)
     h = 0.5f * b;
     sb = sinf(h);
     cb = cosf(h);
-    q->w = ca * cb;
-    q->v.x = ca * sb;
-    q->v.y = sa * cb;
-    q->v.z = -sa * sb;
+    w = ca * cb;
+    vec.x = ca * sb;
+    vec.y = sa * cb;
+    vec.z = -sa * sb;
 }
 
 void CQuat::MakeYXZRot(float ry, float rx, float rz)
@@ -67,16 +67,16 @@ void CQuat::MakeYXZRot(float ry, float rx, float rz)
     sz = sinf(h);
     cz = cosf(h);
     w = cycx * cz + sysx * sz;
-    v.x = cysx * cz + sycx * sz;
-    v.y = sycx * cz - cysx * sz;
-    v.z = -sysx * cz + cycx * sz;
+    vec.x = cysx * cz + sycx * sz;
+    vec.y = sycx * cz - cysx * sz;
+    vec.z = -sysx * cz + cycx * sz;
 }
 
-void func_003072E0(const CQuat *q, CQuat *out)
+void CQuat::Normalize(CQuat *out) const
 {
-    float ww = q->w;
-    sceVu0ScaleVector((float *)out, (float *)q,
-                      1.0f / sqrtf(ww * ww + sceVu0InnerProduct((float *)q, (float *)q)));
+    float ww = w;
+    sceVu0ScaleVector((float *)out, (float *)this,
+                      1.0f / sqrtf(ww * ww + sceVu0InnerProduct((float *)this, (float *)this)));
 }
 
 CQuat *CQuat::Normalize()
@@ -87,23 +87,23 @@ CQuat *CQuat::Normalize()
     return this;
 }
 
-/* The rotation matrix of q, 3x3 part only (callers start from a unit matrix). The
+/* The rotation matrix, 3x3 part only (callers start from a unit matrix). The
  * products' order is one the permuter found (tools/perm.py); others compile differently. */
-void func_00307170(const CQuat *q, CMatrix *mat)
+void CQuat::ToMatrix(CMatrix *mat) const
 {
-    CPnt3D v2 = q->v + q->v;
-    float *p = &mat->m[0][0];
+    CPnt3D v2 = vec + vec;
+    float *p = &mat->m_matrix[0][0];
     float xx, zz, yy, xy, yz, xz, wx, wz, wy;
 
-    xx = q->v.x * v2.x;
-    yy = q->v.y * v2.y;
-    xy = q->v.x * v2.y;
-    zz = q->v.z * v2.z;
-    wx = q->w * v2.x;
-    yz = q->v.y * v2.z;
-    xz = q->v.z * v2.x;
-    wy = q->w * v2.y;
-    wz = q->w * v2.z;
+    xx = vec.x * v2.x;
+    yy = vec.y * v2.y;
+    xy = vec.x * v2.y;
+    zz = vec.z * v2.z;
+    wx = w * v2.x;
+    yz = vec.y * v2.z;
+    xz = vec.z * v2.x;
+    wy = w * v2.y;
+    wz = w * v2.z;
     *p++ = 1.0f - yy - zz;
     *p++ = xy + wz;
     *p++ = xz - wy;
@@ -133,8 +133,8 @@ void CQuat::ToEuler(CPnt3D *out) const
 {
     CMatrix m;
 
-    sceVu0UnitMatrix(m.m);
-    func_00307170(this, &m);
+    sceVu0UnitMatrix(m.m_matrix);
+    ToMatrix(&m);
     m.ToEuler(out);
 }
 
@@ -196,9 +196,9 @@ void CQuat::Slerp(const CQuat *b, float t, CQuat *out) const
     if (cosom < 0.0f) {
         cosom = -cosom;
         to.w = -bw;
-        to.v.x = -b->v.x;
-        to.v.y = -b->v.y;
-        to.v.z = -b->v.z;
+        to.vec.x = -b->vec.x;
+        to.vec.y = -b->vec.y;
+        to.vec.z = -b->vec.z;
     } else {
         to = *b;
     }
@@ -245,14 +245,14 @@ int CQuat::SlerpFaster(const CQuat *b, float t, CQuat *out) const
         neg = true;
     s = 1.0f - t;
     if (neg) {
-        out->v.x = v.x * s - b->v.x * t;
-        out->v.y = v.y * s - b->v.y * t;
-        out->v.z = v.z * s - b->v.z * t;
+        out->vec.x = vec.x * s - b->vec.x * t;
+        out->vec.y = vec.y * s - b->vec.y * t;
+        out->vec.z = vec.z * s - b->vec.z * t;
         out->w = w * s - b->w * t;
     } else {
-        out->v.x = v.x * s + b->v.x * t;
-        out->v.y = v.y * s + b->v.y * t;
-        out->v.z = v.z * s + b->v.z * t;
+        out->vec.x = vec.x * s + b->vec.x * t;
+        out->vec.y = vec.y * s + b->vec.y * t;
+        out->vec.z = vec.z * s + b->vec.z * t;
         out->w = w * s + b->w * t;
     }
     float ww = out->w;
@@ -270,31 +270,31 @@ void CQuat::Exp(const CPnt3D *axis)
 
     if (!len2) {
         w = 1.0f;
-        v.x = data_003F64C0.x;
-        v.y = data_003F64C0.y;
-        v.z = data_003F64C0.z;
+        vec.x = data_003F64C0.x;
+        vec.y = data_003F64C0.y;
+        vec.z = data_003F64C0.z;
     } else {
         float len = sqrtf(len2);
         float s = sinf(len);
         w = cosf(len);
-        func_00309180(axis, &v, s / len);
+        axis->Scale(s / len, &vec);
     }
 }
 
-void func_003066D0(CQuat *q, const CPnt3D *axis, float t)
+void CQuat::Exp(const CPnt3D *axis, float t)
 {
     float len2 = axis->x * axis->x + axis->y * axis->y + axis->z * axis->z;
 
     if (!len2) {
-        q->w = 1.0f;
-        q->v.x = data_003F64C0.x;
-        q->v.y = data_003F64C0.y;
-        q->v.z = data_003F64C0.z;
+        w = 1.0f;
+        vec.x = data_003F64C0.x;
+        vec.y = data_003F64C0.y;
+        vec.z = data_003F64C0.z;
     } else {
         float len = sqrtf(len2);
         float a = t * len;
         float s = sinf(a);
-        q->w = cosf(a);
-        func_00309180(axis, &q->v, s / len);
+        w = cosf(a);
+        axis->Scale(s / len, &vec);
     }
 }

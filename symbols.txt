@@ -103,7 +103,7 @@
 0x001857D0 0x60 func_001857D0  # MAIN
 0x00185830 0x68 func_00185830  # MAIN
 0x001858A0 0x10 func_001858A0  # MAIN
-0x001858B0 0x10 func_001858B0  # MAIN
+0x001858B0 0x10 setbuf__Q23std39basic_filebuf<c,Q23std14char_traits<c>>FPcl  # MAIN; s1:exact
 0x001858C0 0x8 func_001858C0  # MAIN
 0x001858D0 0x8 func_001858D0  # MAIN
 0x001858E0 0x8 func_001858E0  # MAIN
@@ -145,7 +145,7 @@
 0x001873F0 0xE0 func_001873F0  # MAIN
 0x001874D0 0x1C4 func_001874D0  # MAIN
 0x001876A0 0x20C func_001876A0  # MAIN
-0x001878B0 0x18 func_001878B0  # MAIN
+0x001878B0 0x18 showmanyc__Q23std39basic_filebuf<c,Q23std14char_traits<c>>Fv  # MAIN; s1:exact
 0x001878D0 0x134 func_001878D0  # MAIN
 0x00187A10 0xE0 func_00187A10  # MAIN
 0x00187AF0 0x8 func_00187AF0  # MAIN
@@ -228,9 +228,9 @@
 0x0018CFC0 0xD8 func_0018CFC0  # MAIN
 0x0018D0A0 0x60 func_0018D0A0  # MAIN
 0x0018D100 0x80 func_0018D100  # MAIN
-0x0018D180 0x14 func_0018D180  # MAIN
+0x0018D180 0x14 do_toupper__Q23std8ctype<c>CFc  # MAIN; s1:exact
 0x0018D1A0 0x40 func_0018D1A0  # MAIN
-0x0018D1E0 0x14 func_0018D1E0  # MAIN
+0x0018D1E0 0x14 do_tolower__Q23std8ctype<c>CFc  # MAIN; s1:exact
 0x0018D200 0x40 func_0018D200  # MAIN
 0x0018D240 0x8 func_0018D240  # MAIN
 0x0018D250 0x30 func_0018D250  # MAIN
@@ -302,13 +302,13 @@
 0x00190BA0 0x28 func_00190BA0  # MAIN
 0x00190BC8 0x70 func_00190BC8  # MAIN unaligned
 0x00190C38 0x84 func_00190C38  # MAIN unaligned
-0x00190CC0 0x28 func_00190CC0  # MAIN
-0x00190CE8 0x34 func_00190CE8  # MAIN unaligned
+0x00190CC0 0x28 CheckAddress  # MAIN; s1:exact
+0x00190CE8 0x34 memclr  # MAIN unaligned; s1:exact
 0x00190D20 0x28 func_00190D20  # MAIN
 0x00190D48 0xDC func_00190D48  # MAIN unaligned
 0x00190E28 0x1D8 func_00190E28  # MAIN unaligned
 0x00191000 0x38 func_00191000  # MAIN
-0x00191038 0x14 func_00191038  # MAIN unaligned
+0x00191038 0x14 sceDmaPutStallAddr  # MAIN unaligned; s1:exact
 0x00191050 0x68 func_00191050  # MAIN
 0x001910B8 0x74 func_001910B8  # MAIN unaligned
 0x00191130 0x74 func_00191130  # MAIN
@@ -318,9 +318,9 @@
 0x001912F0 0x38 func_001912F0  # MAIN
 0x00191328 0x34 func_00191328  # MAIN unaligned
 0x00191360 0x98 func_00191360  # MAIN
-0x001913F8 0x14 func_001913F8  # MAIN unaligned
+0x001913F8 0x14 sceDmaRestart  # MAIN unaligned; s1:exact
 0x00191410 0x18 func_00191410  # MAIN
-0x00191428 0x14 func_00191428  # MAIN unaligned
+0x00191428 0x14 abs  # MAIN unaligned; s1:exact
 0x00191440 0x34 func_00191440  # MAIN
 0x00191478 0x18 func_00191478  # MAIN unaligned
 0x00191490 0x28 func_00191490  # MAIN
@@ -376,15 +376,15 @@
 0x00194CD0 0x258 func_00194CD0  # MAIN
 0x00194F28 0x728 func_00194F28  # MAIN unaligned
 0x00195650 0x34 func_00195650  # MAIN
-0x00195688 0xE0 func_00195688  # MAIN unaligned
-0x00195768 0x94 func_00195768  # MAIN unaligned
+0x00195688 0xE0 memchr  # MAIN unaligned; s1:exact
+0x00195768 0x94 memcmp  # MAIN unaligned; s1:exact
 0x00195800 0xB0 memcpy  # MAIN
 0x001958B0 0x104 func_001958B0  # MAIN
 0x001959B8 0xC0 func_001959B8  # MAIN unaligned
 0x00195A78 0x7C func_00195A78  # MAIN unaligned
 0x00195AF8 0x4C func_00195AF8  # MAIN unaligned
 0x00195B48 0xA4 func_00195B48  # MAIN unaligned
-0x00195BF0 0x2C func_00195BF0  # MAIN
+0x00195BF0 0x2C _Bfree  # MAIN; s1:exact
 0x00195C20 0x108 func_00195C20  # MAIN
 0x00195D28 0x130 func_00195D28  # MAIN unaligned
 0x00195E58 0x80 func_00195E58  # MAIN unaligned
@@ -414,14 +414,14 @@
 0x00197E10 0x34 func_00197E10  # MAIN
 0x00197E48 0x17C func_00197E48  # MAIN unaligned
 0x00197FC8 0x48 func_00197FC8  # MAIN unaligned
-0x00198010 0x44 func_00198010  # MAIN
-0x00198058 0x48 func_00198058  # MAIN unaligned
-0x001980A0 0x3C func_001980A0  # MAIN
+0x00198010 0x44 copysign  # MAIN; s1:exact
+0x00198058 0x48 isinf  # MAIN unaligned; s1:exact
+0x001980A0 0x3C isnan  # MAIN; s1:exact
 0x001980E0 0x1E4 func_001980E0  # MAIN
 0x001982C8 0x58 func_001982C8  # MAIN unaligned
 0x00198320 0x58 func_00198320  # MAIN
 0x00198378 0x64 func_00198378  # MAIN unaligned
-0x001983E0 0x3C func_001983E0  # MAIN
+0x001983E0 0x3C copysignf  # MAIN; s1:exact
 0x00198420 0xC8 func_00198420  # MAIN
 0x001984E8 0x70 func_001984E8  # MAIN unaligned
 0x00198558 0x80 func_00198558  # MAIN unaligned
@@ -443,17 +443,17 @@
 0x00198B60 0x1C func_00198B60  # MAIN
 0x00198B80 0xD8 func_00198B80  # MAIN
 0x00198C58 0x12C func_00198C58  # MAIN unaligned
-0x00198D88 0x190 func_00198D88  # MAIN unaligned
-0x00198F18 0x144 func_00198F18  # MAIN unaligned
+0x00198D88 0x190 strchr  # MAIN unaligned; s1:exact
+0x00198F18 0x144 strcmp  # MAIN unaligned; s1:exact
 0x00199060 0x114 func_00199060  # MAIN
 0x00199178 0x7C func_00199178  # MAIN unaligned
 0x001991F8 0x8C func_001991F8  # MAIN unaligned
-0x00199288 0x138 func_00199288  # MAIN unaligned
+0x00199288 0x138 strlen  # MAIN unaligned; s1:exact
 0x001993C0 0xD8 func_001993C0  # MAIN
-0x00199498 0x1AC func_00199498  # MAIN unaligned
-0x00199648 0x1B8 func_00199648  # MAIN unaligned
+0x00199498 0x1AC strncat  # MAIN unaligned; s1:exact
+0x00199648 0x1B8 strncmp  # MAIN unaligned; s1:exact
 0x00199800 0x1BC func_00199800  # MAIN
-0x001999C0 0x50 func_001999C0  # MAIN
+0x001999C0 0x50 strrchr  # MAIN; s1:exact
 0x00199A10 0x84 func_00199A10  # MAIN
 0x00199A98 0xF14 func_00199A98  # MAIN unaligned
 0x0019A9B0 0x24 func_0019A9B0  # MAIN
@@ -484,7 +484,7 @@
 0x0019E898 0x110 func_0019E898  # MAIN unaligned
 0x0019E9A8 0x60 func_0019E9A8  # MAIN unaligned
 0x0019EA08 0x10C func_0019EA08  # MAIN unaligned
-0x0019EB18 0x74 func_0019EB18  # MAIN unaligned
+0x0019EB18 0x74 __muldi3  # MAIN unaligned; s1:exact
 0x0019EB90 0x694 func_0019EB90  # MAIN
 0x0019F228 0x690 func_0019F228  # MAIN unaligned
 0x0019F8B8 0x57C func_0019F8B8  # MAIN unaligned
@@ -492,18 +492,18 @@
 0x001A03A0 0xA8 func_001A03A0  # MAIN
 0x001A0448 0x118 func_001A0448  # MAIN unaligned
 0x001A0560 0x78 func_001A0560  # MAIN
-0x001A05D8 0xB4 func_001A05D8  # MAIN unaligned
-0x001A0690 0x5C func_001A0690  # MAIN
+0x001A05D8 0xB4 __pack_f  # MAIN unaligned; s1:exact
+0x001A0690 0x5C __unpack_f  # MAIN; s1:exact
 0x001A06F0 0x2C func_001A06F0  # MAIN
 0x001A0720 0x3C func_001A0720  # MAIN
-0x001A0760 0xD8 func_001A0760  # MAIN
-0x001A0838 0xBC func_001A0838  # MAIN unaligned
+0x001A0760 0xD8 __pack_d  # MAIN; s1:exact
+0x001A0838 0xBC __unpack_d  # MAIN unaligned; s1:exact
 0x001A08F8 0x25C func_001A08F8  # MAIN unaligned
 0x001A0B58 0x58 func_001A0B58  # MAIN unaligned
 0x001A0BB0 0x64 func_001A0BB0  # MAIN
 0x001A0C18 0x284 func_001A0C18  # MAIN unaligned
 0x001A0EA0 0x140 func_001A0EA0  # MAIN
-0x001A0FE0 0x120 func_001A0FE0  # MAIN
+0x001A0FE0 0x120 __fpcmp_parts_d  # MAIN; s1:exact
 0x001A1100 0x4C func_001A1100  # MAIN
 0x001A1150 0xB8 func_001A1150  # MAIN
 0x001A1208 0x9C func_001A1208  # MAIN unaligned
@@ -514,18 +514,18 @@
 0x001A1560 0xC func_001A1560  # MAIN
 0x001A1570 0x68 func_001A1570  # MAIN
 0x001A15D8 0xA0 func_001A15D8  # MAIN unaligned
-0x001A1678 0x10 func_001A1678  # MAIN unaligned
+0x001A1678 0x10 _GetGsDxDyOffset  # MAIN unaligned; s1:exact
 0x001A1688 0x374 func_001A1688  # MAIN unaligned
 0x001A1A00 0xBC func_001A1A00  # MAIN
 0x001A1AC0 0xC8 func_001A1AC0  # MAIN
 0x001A1B88 0x1E4 func_001A1B88  # MAIN unaligned
-0x001A1D70 0x104 func_001A1D70  # MAIN
+0x001A1D70 0x104 sceGsSetDefClear  # MAIN; s1:exact
 0x001A1E78 0x298 func_001A1E78  # MAIN unaligned
 0x001A2110 0x94 func_001A2110  # MAIN
 0x001A21A8 0x314 func_001A21A8  # MAIN unaligned
-0x001A24C0 0x5C func_001A24C0  # MAIN
+0x001A24C0 0x5C sceGsSetDefAlphaEnv  # MAIN; s1:exact
 0x001A2520 0x1E4 func_001A2520  # MAIN
-0x001A2708 0x140 func_001A2708  # MAIN unaligned
+0x001A2708 0x140 sceGsSetDefStoreImage  # MAIN unaligned; s1:exact
 0x001A2848 0x17C func_001A2848  # MAIN unaligned
 0x001A29C8 0x68C func_001A29C8  # MAIN unaligned
 0x001A3058 0x3C func_001A3058  # MAIN unaligned
@@ -534,147 +534,147 @@
 0x001A3130 0x74 func_001A3130  # MAIN
 0x001A31A8 0xE4 func_001A31A8  # MAIN unaligned
 0x001A3290 0x150 func_001A3290  # MAIN
-0x001A33E0 0x68 func_001A33E0  # MAIN
+0x001A33E0 0x68 sceIpuSync  # MAIN; s1:exact
 0x001A3448 0x64 func_001A3448  # MAIN unaligned
 0x001A34B0 0x238 func_001A34B0  # MAIN
-0x001A3700 0x10 func_001A3700  # MAIN
-0x001A3710 0x10 func_001A3710  # MAIN
-0x001A3720 0x10 func_001A3720  # MAIN
-0x001A3730 0x10 func_001A3730  # MAIN
-0x001A3740 0x10 func_001A3740  # MAIN
-0x001A3750 0x10 func_001A3750  # MAIN
-0x001A3760 0x10 func_001A3760  # MAIN
-0x001A3770 0x10 func_001A3770  # MAIN
-0x001A3780 0x10 func_001A3780  # MAIN
-0x001A3790 0x10 func_001A3790  # MAIN
-0x001A37A0 0x10 func_001A37A0  # MAIN
-0x001A37B0 0x10 func_001A37B0  # MAIN
-0x001A37C0 0x10 func_001A37C0  # MAIN
-0x001A37D0 0x10 func_001A37D0  # MAIN
-0x001A37E0 0x10 func_001A37E0  # MAIN
-0x001A37F0 0x10 func_001A37F0  # MAIN
+0x001A3700 0x10 RFU000_FullReset  # MAIN; s1:exact
+0x001A3710 0x10 ResetEE  # MAIN; s1:exact
+0x001A3720 0x10 SetGsCrt  # MAIN; s1:exact
+0x001A3730 0x10 RFU003  # MAIN; s1:exact
+0x001A3740 0x10 _Exit  # MAIN; s1:exact
+0x001A3750 0x10 RFU005  # MAIN; s1:exact
+0x001A3760 0x10 _LoadExecPS2  # MAIN; s1:exact
+0x001A3770 0x10 _ExecPS2  # MAIN; s1:exact
+0x001A3780 0x10 RFU008  # MAIN; s1:exact
+0x001A3790 0x10 RFU009  # MAIN; s1:exact
+0x001A37A0 0x10 AddSbusIntcHandler  # MAIN; s1:exact
+0x001A37B0 0x10 RemoveSbusIntcHandler  # MAIN; s1:exact
+0x001A37C0 0x10 Interrupt2Iop  # MAIN; s1:exact
+0x001A37D0 0x10 SetVTLBRefillHandler  # MAIN; s1:exact
+0x001A37E0 0x10 SetVCommonHandler  # MAIN; s1:exact
+0x001A37F0 0x10 SetVInterruptHandler  # MAIN; s1:exact
 0x001A3800 0x10 func_001A3800  # MAIN
 0x001A3810 0x10 func_001A3810  # MAIN
-0x001A3820 0x10 func_001A3820  # MAIN
+0x001A3820 0x10 RemoveIntcHandler  # MAIN; s1:exact
 0x001A3830 0x10 func_001A3830  # MAIN
 0x001A3840 0x10 func_001A3840  # MAIN
-0x001A3850 0x10 func_001A3850  # MAIN
-0x001A3860 0x10 func_001A3860  # MAIN
-0x001A3870 0x10 func_001A3870  # MAIN
-0x001A3880 0x10 func_001A3880  # MAIN
-0x001A3890 0x10 func_001A3890  # MAIN
-0x001A38A0 0x10 func_001A38A0  # MAIN
-0x001A38B0 0x10 func_001A38B0  # MAIN
-0x001A38C0 0x10 func_001A38C0  # MAIN
-0x001A38D0 0x10 func_001A38D0  # MAIN
-0x001A38E0 0x10 func_001A38E0  # MAIN
-0x001A38F0 0x10 func_001A38F0  # MAIN
-0x001A3900 0x10 func_001A3900  # MAIN
-0x001A3910 0x10 func_001A3910  # MAIN
-0x001A3920 0x10 func_001A3920  # MAIN
-0x001A3930 0x10 func_001A3930  # MAIN
-0x001A3940 0x10 func_001A3940  # MAIN
-0x001A3950 0x10 func_001A3950  # MAIN
-0x001A3960 0x10 func_001A3960  # MAIN
-0x001A3970 0x10 func_001A3970  # MAIN
-0x001A3980 0x10 func_001A3980  # MAIN
-0x001A3990 0x10 func_001A3990  # MAIN
-0x001A39A0 0x10 func_001A39A0  # MAIN
-0x001A39B0 0x10 func_001A39B0  # MAIN
-0x001A39C0 0x10 func_001A39C0  # MAIN
-0x001A39D0 0x10 func_001A39D0  # MAIN
-0x001A39E0 0x10 func_001A39E0  # MAIN
-0x001A39F0 0x10 func_001A39F0  # MAIN
-0x001A3A00 0x10 func_001A3A00  # MAIN
-0x001A3A10 0x10 func_001A3A10  # MAIN
-0x001A3A20 0x10 func_001A3A20  # MAIN
-0x001A3A30 0x10 func_001A3A30  # MAIN
-0x001A3A40 0x10 func_001A3A40  # MAIN
-0x001A3A50 0x10 func_001A3A50  # MAIN
-0x001A3A60 0x10 func_001A3A60  # MAIN
-0x001A3A70 0x10 func_001A3A70  # MAIN
-0x001A3A80 0x10 func_001A3A80  # MAIN
-0x001A3A90 0x10 func_001A3A90  # MAIN
-0x001A3AA0 0x10 func_001A3AA0  # MAIN
-0x001A3AB0 0x10 func_001A3AB0  # MAIN
-0x001A3AC0 0x10 func_001A3AC0  # MAIN
-0x001A3AD0 0x10 func_001A3AD0  # MAIN
-0x001A3AE0 0x10 func_001A3AE0  # MAIN
-0x001A3AF0 0x10 func_001A3AF0  # MAIN
-0x001A3B00 0x10 func_001A3B00  # MAIN
-0x001A3B10 0x10 func_001A3B10  # MAIN
-0x001A3B20 0x10 func_001A3B20  # MAIN
-0x001A3B30 0x10 func_001A3B30  # MAIN
-0x001A3B40 0x10 func_001A3B40  # MAIN
-0x001A3B50 0x10 func_001A3B50  # MAIN
-0x001A3B60 0x10 func_001A3B60  # MAIN
-0x001A3B70 0x10 func_001A3B70  # MAIN
-0x001A3B80 0x10 func_001A3B80  # MAIN
-0x001A3B90 0x10 func_001A3B90  # MAIN
-0x001A3BA0 0x10 func_001A3BA0  # MAIN
-0x001A3BB0 0x10 func_001A3BB0  # MAIN
-0x001A3BC0 0x10 func_001A3BC0  # MAIN
-0x001A3BD0 0x10 func_001A3BD0  # MAIN
-0x001A3BE0 0x10 func_001A3BE0  # MAIN
-0x001A3BF0 0x10 func_001A3BF0  # MAIN
-0x001A3C00 0x10 func_001A3C00  # MAIN
-0x001A3C10 0x10 func_001A3C10  # MAIN
-0x001A3C20 0x10 func_001A3C20  # MAIN
-0x001A3C30 0x10 func_001A3C30  # MAIN
-0x001A3C40 0x10 func_001A3C40  # MAIN
-0x001A3C50 0x10 func_001A3C50  # MAIN
-0x001A3C60 0x10 func_001A3C60  # MAIN
+0x001A3850 0x10 RemoveDmacHandler  # MAIN; s1:exact
+0x001A3860 0x10 _EnableIntc  # MAIN; s1:exact
+0x001A3870 0x10 _DisableIntc  # MAIN; s1:exact
+0x001A3880 0x10 _EnableDmac  # MAIN; s1:exact
+0x001A3890 0x10 _DisableDmac  # MAIN; s1:exact
+0x001A38A0 0x10 SetAlarm  # MAIN; s1:exact
+0x001A38B0 0x10 ReleaseAlarm  # MAIN; s1:exact
+0x001A38C0 0x10 _iEnableIntc  # MAIN; s1:exact
+0x001A38D0 0x10 _iDisableIntc  # MAIN; s1:exact
+0x001A38E0 0x10 _iEnableDmac  # MAIN; s1:exact
+0x001A38F0 0x10 _iDisableDmac  # MAIN; s1:exact
+0x001A3900 0x10 iSetAlarm  # MAIN; s1:exact
+0x001A3910 0x10 iReleaseAlarm  # MAIN; s1:exact
+0x001A3920 0x10 CreateThread  # MAIN; s1:exact
+0x001A3930 0x10 DeleteThread  # MAIN; s1:exact
+0x001A3940 0x10 StartThread  # MAIN; s1:exact
+0x001A3950 0x10 ExitThread  # MAIN; s1:exact
+0x001A3960 0x10 ExitDeleteThread  # MAIN; s1:exact
+0x001A3970 0x10 TerminateThread  # MAIN; s1:exact
+0x001A3980 0x10 iTerminateThread  # MAIN; s1:exact
+0x001A3990 0x10 DisableDispatchThread  # MAIN; s1:exact
+0x001A39A0 0x10 EnableDispatchThread  # MAIN; s1:exact
+0x001A39B0 0x10 ChangeThreadPriority  # MAIN; s1:exact
+0x001A39C0 0x10 iChangeThreadPriority  # MAIN; s1:exact
+0x001A39D0 0x10 RotateThreadReadyQueue  # MAIN; s1:exact
+0x001A39E0 0x10 _iRotateThreadReadyQueue  # MAIN; s1:exact
+0x001A39F0 0x10 ReleaseWaitThread  # MAIN; s1:exact
+0x001A3A00 0x10 iReleaseWaitThread  # MAIN; s1:exact
+0x001A3A10 0x10 GetThreadId  # MAIN; s1:exact
+0x001A3A20 0x10 ReferThreadStatus  # MAIN; s1:exact
+0x001A3A30 0x10 iReferThreadStatus  # MAIN; s1:exact
+0x001A3A40 0x10 SleepThread  # MAIN; s1:exact
+0x001A3A50 0x10 WakeupThread  # MAIN; s1:exact
+0x001A3A60 0x10 _iWakeupThread  # MAIN; s1:exact
+0x001A3A70 0x10 CancelWakeupThread  # MAIN; s1:exact
+0x001A3A80 0x10 iCancelWakeupThread  # MAIN; s1:exact
+0x001A3A90 0x10 SuspendThread  # MAIN; s1:exact
+0x001A3AA0 0x10 _iSuspendThread  # MAIN; s1:exact
+0x001A3AB0 0x10 ResumeThread  # MAIN; s1:exact
+0x001A3AC0 0x10 iResumeThread  # MAIN; s1:exact
+0x001A3AD0 0x10 JoinThread  # MAIN; s1:exact
+0x001A3AE0 0x10 RFU060  # MAIN; s1:exact
+0x001A3AF0 0x10 RFU061  # MAIN; s1:exact
+0x001A3B00 0x10 EndOfHeap  # MAIN; s1:exact
+0x001A3B10 0x10 RFU063  # MAIN; s1:exact
+0x001A3B20 0x10 CreateSema  # MAIN; s1:exact
+0x001A3B30 0x10 DeleteSema  # MAIN; s1:exact
+0x001A3B40 0x10 SignalSema  # MAIN; s1:exact
+0x001A3B50 0x10 iSignalSema  # MAIN; s1:exact
+0x001A3B60 0x10 WaitSema  # MAIN; s1:exact
+0x001A3B70 0x10 PollSema  # MAIN; s1:exact
+0x001A3B80 0x10 iPollSema  # MAIN; s1:exact
+0x001A3B90 0x10 ReferSemaStatus  # MAIN; s1:exact
+0x001A3BA0 0x10 iReferSemaStatus  # MAIN; s1:exact
+0x001A3BB0 0x10 RFU073  # MAIN; s1:exact
+0x001A3BC0 0x10 SetOsdConfigParam  # MAIN; s1:exact
+0x001A3BD0 0x10 GetOsdConfigParam  # MAIN; s1:exact
+0x001A3BE0 0x10 GetGsHParam  # MAIN; s1:exact
+0x001A3BF0 0x10 GetGsVParam  # MAIN; s1:exact
+0x001A3C00 0x10 SetGsHParam  # MAIN; s1:exact
+0x001A3C10 0x10 SetGsVParam  # MAIN; s1:exact
+0x001A3C20 0x10 RFU080_CreateEventFlag  # MAIN; s1:exact
+0x001A3C30 0x10 RFU081_DeleteEventFlag  # MAIN; s1:exact
+0x001A3C40 0x10 RFU082_SetEventFlag  # MAIN; s1:exact
+0x001A3C50 0x10 RFU083_iSetEventFlag  # MAIN; s1:exact
+0x001A3C60 0x10 RFU084_ClearEventFlag  # MAIN; s1:exact
 0x001A3C70 0x10 func_001A3C70  # MAIN
 0x001A3C80 0x10 func_001A3C80  # MAIN
 0x001A3C90 0x10 func_001A3C90  # MAIN
 0x001A3CA0 0x10 func_001A3CA0  # MAIN
 0x001A3CB0 0x10 func_001A3CB0  # MAIN
-0x001A3CC0 0x10 func_001A3CC0  # MAIN
+0x001A3CC0 0x10 RFU090_iReferEventFlagStatus  # MAIN; s1:exact
 0x001A3CD0 0x10 func_001A3CD0  # MAIN
-0x001A3CE0 0x10 func_001A3CE0  # MAIN
-0x001A3CF0 0x10 func_001A3CF0  # MAIN
-0x001A3D00 0x10 func_001A3D00  # MAIN
-0x001A3D10 0x10 func_001A3D10  # MAIN
-0x001A3D20 0x10 func_001A3D20  # MAIN
-0x001A3D30 0x10 func_001A3D30  # MAIN
-0x001A3D40 0x10 func_001A3D40  # MAIN
-0x001A3D50 0x10 func_001A3D50  # MAIN
-0x001A3D60 0x10 func_001A3D60  # MAIN
-0x001A3D70 0x10 func_001A3D70  # MAIN
-0x001A3D80 0x10 func_001A3D80  # MAIN
-0x001A3D90 0x10 func_001A3D90  # MAIN
-0x001A3DA0 0x10 func_001A3DA0  # MAIN
-0x001A3DB0 0x10 func_001A3DB0  # MAIN
-0x001A3DC0 0x10 func_001A3DC0  # MAIN
-0x001A3DD0 0x10 func_001A3DD0  # MAIN
-0x001A3DE0 0x10 func_001A3DE0  # MAIN
-0x001A3DF0 0x10 func_001A3DF0  # MAIN
-0x001A3E00 0x10 func_001A3E00  # MAIN
-0x001A3E10 0x10 func_001A3E10  # MAIN
-0x001A3E20 0x10 func_001A3E20  # MAIN
-0x001A3E30 0x10 func_001A3E30  # MAIN
-0x001A3E40 0x10 func_001A3E40  # MAIN
-0x001A3E50 0x10 func_001A3E50  # MAIN
-0x001A3E60 0x10 func_001A3E60  # MAIN
-0x001A3E70 0x10 func_001A3E70  # MAIN
-0x001A3E80 0x10 func_001A3E80  # MAIN
-0x001A3E90 0x10 func_001A3E90  # MAIN
+0x001A3CE0 0x10 EnableIntcHandler  # MAIN; s1:exact
+0x001A3CF0 0x10 iEnableIntcHandler  # MAIN; s1:exact
+0x001A3D00 0x10 DisableIntcHandler  # MAIN; s1:exact
+0x001A3D10 0x10 iDisableIntcHandler  # MAIN; s1:exact
+0x001A3D20 0x10 EnableDmacHandler  # MAIN; s1:exact
+0x001A3D30 0x10 iEnableDmacHandler  # MAIN; s1:exact
+0x001A3D40 0x10 DisableDmacHandler  # MAIN; s1:exact
+0x001A3D50 0x10 iDisableDmacHandler  # MAIN; s1:exact
+0x001A3D60 0x10 KSeg0  # MAIN; s1:exact
+0x001A3D70 0x10 EnableCache  # MAIN; s1:exact
+0x001A3D80 0x10 DisableCache  # MAIN; s1:exact
+0x001A3D90 0x10 GetCop0  # MAIN; s1:exact
+0x001A3DA0 0x10 FlushCache  # MAIN; s1:exact
+0x001A3DB0 0x10 CpuConfig  # MAIN; s1:exact
+0x001A3DC0 0x10 iGetCop0  # MAIN; s1:exact
+0x001A3DD0 0x10 iFlushCache  # MAIN; s1:exact
+0x001A3DE0 0x10 iCpuConfig  # MAIN; s1:exact
+0x001A3DF0 0x10 sceSifStopDma  # MAIN; s1:exact
+0x001A3E00 0x10 SetCPUTimerHandler  # MAIN; s1:exact
+0x001A3E10 0x10 SetCPUTimer  # MAIN; s1:exact
+0x001A3E20 0x10 SetOsdConfigParam2  # MAIN; s1:exact
+0x001A3E30 0x10 GetOsdConfigParam2  # MAIN; s1:exact
+0x001A3E40 0x10 GsGetIMR  # MAIN; s1:exact
+0x001A3E50 0x10 iGsGetIMR  # MAIN; s1:exact
+0x001A3E60 0x10 GsPutIMR  # MAIN; s1:exact
+0x001A3E70 0x10 iGsPutIMR  # MAIN; s1:exact
+0x001A3E80 0x10 SetPgifHandler  # MAIN; s1:exact
+0x001A3E90 0x10 SetVSyncFlag  # MAIN; s1:exact
 0x001A3EA0 0x10 func_001A3EA0  # MAIN
-0x001A3EB0 0x10 func_001A3EB0  # MAIN
-0x001A3EC0 0x10 func_001A3EC0  # MAIN
-0x001A3ED0 0x10 func_001A3ED0  # MAIN
-0x001A3EE0 0x10 func_001A3EE0  # MAIN
-0x001A3EF0 0x10 func_001A3EF0  # MAIN
-0x001A3F00 0x10 func_001A3F00  # MAIN
-0x001A3F10 0x10 func_001A3F10  # MAIN
-0x001A3F20 0x10 func_001A3F20  # MAIN
-0x001A3F30 0x10 func_001A3F30  # MAIN
-0x001A3F40 0x10 func_001A3F40  # MAIN
-0x001A3F50 0x10 func_001A3F50  # MAIN
-0x001A3F60 0x10 func_001A3F60  # MAIN
-0x001A3F70 0x10 func_001A3F70  # MAIN
-0x001A3F80 0x10 func_001A3F80  # MAIN
-0x001A3F90 0x10 func_001A3F90  # MAIN
+0x001A3EB0 0x10 _print  # MAIN; s1:exact
+0x001A3EC0 0x10 sceSifDmaStat  # MAIN; s1:exact
+0x001A3ED0 0x10 isceSifDmaStat  # MAIN; s1:exact
+0x001A3EE0 0x10 sceSifSetDma  # MAIN; s1:exact
+0x001A3EF0 0x10 isceSifSetDma  # MAIN; s1:exact
+0x001A3F00 0x10 sceSifSetDChain  # MAIN; s1:exact
+0x001A3F10 0x10 isceSifSetDChain  # MAIN; s1:exact
+0x001A3F20 0x10 sceSifSetReg  # MAIN; s1:exact
+0x001A3F30 0x10 sceSifGetReg  # MAIN; s1:exact
+0x001A3F40 0x10 _ExecOSD  # MAIN; s1:exact
+0x001A3F50 0x10 Deci2Call  # MAIN; s1:exact
+0x001A3F60 0x10 PSMode  # MAIN; s1:exact
+0x001A3F70 0x10 MachineType  # MAIN; s1:exact
+0x001A3F80 0x10 GetMemorySize  # MAIN; s1:exact
+0x001A3F90 0x10 _InitTLB  # MAIN; s1:exact
 0x001A3FA0 0xC func_001A3FA0  # MAIN
 0x001A3FB0 0x90 func_001A3FB0  # MAIN
 0x001A4040 0xA4 func_001A4040  # MAIN
@@ -686,18 +686,18 @@
 0x001A4218 0x8 func_001A4218  # MAIN unaligned
 0x001A4220 0xAC func_001A4220  # MAIN
 0x001A42D0 0x8 func_001A42D0  # MAIN
-0x001A42D8 0x14 func_001A42D8  # MAIN unaligned
+0x001A42D8 0x14 fstat  # MAIN unaligned; s1:exact
 0x001A42F0 0x8 func_001A42F0  # MAIN
 0x001A42F8 0x28 func_001A42F8  # MAIN unaligned
 0x001A4320 0x28 func_001A4320  # MAIN
 0x001A4348 0x28 func_001A4348  # MAIN unaligned
-0x001A4370 0xA4 func_001A4370  # MAIN
+0x001A4370 0xA4 _sceSDC  # MAIN; s1:exact
 0x001A4418 0x7C func_001A4418  # MAIN unaligned
 0x001A4498 0x14 func_001A4498  # MAIN unaligned
-0x001A44B0 0xA4 func_001A44B0  # MAIN
+0x001A44B0 0xA4 _sceIDC  # MAIN; s1:exact
 0x001A4558 0x7C func_001A4558  # MAIN unaligned
 0x001A45D8 0x14 func_001A45D8  # MAIN unaligned
-0x001A45F0 0x10 func_001A45F0  # MAIN
+0x001A45F0 0x10 QueryIntrContext  # MAIN; s1:exact
 0x001A4600 0x68 func_001A4600  # MAIN
 0x001A4668 0x68 func_001A4668  # MAIN unaligned
 0x001A46D0 0x68 func_001A46D0  # MAIN
@@ -722,21 +722,21 @@
 0x001A4D10 0x24 func_001A4D10  # MAIN
 0x001A4D38 0x24 func_001A4D38  # MAIN unaligned
 0x001A4D60 0x24 func_001A4D60  # MAIN
-0x001A4D88 0x3C func_001A4D88  # MAIN unaligned
-0x001A4DC8 0x3C func_001A4DC8  # MAIN unaligned
+0x001A4D88 0x3C QueuePeekWriteDone  # MAIN unaligned; s1:exact
+0x001A4DC8 0x3C QueuePeekReadDone  # MAIN unaligned; s1:exact
 0x001A4E08 0x194 func_001A4E08  # MAIN unaligned
 0x001A4FA0 0x150 func_001A4FA0  # MAIN
 0x001A50F0 0xD0 func_001A50F0  # MAIN
 0x001A51C0 0xBC func_001A51C0  # MAIN
-0x001A5280 0x38 func_001A5280  # MAIN
+0x001A5280 0x38 kputchar  # MAIN; s1:exact
 0x001A52B8 0xB0 func_001A52B8  # MAIN unaligned
 0x001A5368 0x34 func_001A5368  # MAIN unaligned
-0x001A53A0 0x90 func_001A53A0  # MAIN
+0x001A53A0 0x90 ftoi  # MAIN; s1:exact
 0x001A5430 0x168 func_001A5430  # MAIN
 0x001A5598 0x5EC func_001A5598  # MAIN unaligned
 0x001A5B88 0x38 func_001A5B88  # MAIN unaligned
 0x001A5BC0 0x60 func_001A5BC0  # MAIN
-0x001A5C20 0x1C func_001A5C20  # MAIN
+0x001A5C20 0x1C _set_sreg  # MAIN; s1:exact
 0x001A5C40 0xC func_001A5C40  # MAIN
 0x001A5C50 0x18 func_001A5C50  # MAIN
 0x001A5C68 0x1C func_001A5C68  # MAIN unaligned
@@ -758,18 +758,18 @@
 0x001A6508 0x24 func_001A6508  # MAIN unaligned
 0x001A6530 0xA8 func_001A6530  # MAIN
 0x001A65D8 0x1C func_001A65D8  # MAIN unaligned
-0x001A65F8 0x30 func_001A65F8  # MAIN unaligned
+0x001A65F8 0x30 _sceRpcGetFPacket  # MAIN unaligned; s1:exact
 0x001A6628 0x40 func_001A6628  # MAIN unaligned
 0x001A6668 0xB4 func_001A6668  # MAIN unaligned
 0x001A6720 0x60 func_001A6720  # MAIN
 0x001A6780 0xD0 func_001A6780  # MAIN
 0x001A6850 0x158 func_001A6850  # MAIN
-0x001A69A8 0x4C func_001A69A8  # MAIN unaligned
+0x001A69A8 0x4C _search_svdata  # MAIN unaligned; s1:exact
 0x001A69F8 0xB0 func_001A69F8  # MAIN unaligned
 0x001A6AA8 0x140 func_001A6AA8  # MAIN unaligned
 0x001A6BE8 0x8C func_001A6BE8  # MAIN unaligned
 0x001A6C78 0x1EC func_001A6C78  # MAIN unaligned
-0x001A6E68 0x3C func_001A6E68  # MAIN unaligned
+0x001A6E68 0x3C sceSifCheckStatRpc  # MAIN unaligned; s1:exact
 0x001A6EA8 0x94 func_001A6EA8  # MAIN unaligned
 0x001A6F40 0xD0 func_001A6F40  # MAIN
 0x001A7010 0x94 func_001A7010  # MAIN
@@ -785,7 +785,7 @@
 0x001A78E8 0x2C func_001A78E8  # MAIN unaligned
 0x001A7918 0xC func_001A7918  # MAIN unaligned
 0x001A7928 0x98 func_001A7928  # MAIN unaligned
-0x001A79C0 0x2C func_001A79C0  # MAIN
+0x001A79C0 0x2C _sceFs_Poff_Intr  # MAIN; s1:exact
 0x001A79F0 0x204 func_001A79F0  # MAIN
 0x001A7BF8 0x8C func_001A7BF8  # MAIN unaligned
 0x001A7C88 0x34 func_001A7C88  # MAIN unaligned
@@ -857,26 +857,26 @@
 0x001AC108 0x10 func_001AC108  # MAIN unaligned
 0x001AC118 0x10 func_001AC118  # MAIN unaligned
 0x001AC128 0xC4 func_001AC128  # MAIN unaligned
-0x001AC1F0 0x10 func_001AC1F0  # MAIN
+0x001AC1F0 0x10 PutTLBEntry  # MAIN; s1:exact
 0x001AC200 0x10 func_001AC200  # MAIN
 0x001AC210 0x10 func_001AC210  # MAIN
 0x001AC220 0x30 func_001AC220  # MAIN
-0x001AC250 0x10 func_001AC250  # MAIN
+0x001AC250 0x10 iSetTLBEntry  # MAIN; s1:exact
 0x001AC260 0x10 func_001AC260  # MAIN
-0x001AC270 0x10 func_001AC270  # MAIN
-0x001AC280 0x10 func_001AC280  # MAIN
+0x001AC270 0x10 iGetTLBEntry  # MAIN; s1:exact
+0x001AC280 0x10 ProbeTLBEntry  # MAIN; s1:exact
 0x001AC290 0x10 func_001AC290  # MAIN
 0x001AC2A0 0x10 func_001AC2A0  # MAIN
 0x001AC2B0 0x40 func_001AC2B0  # MAIN
 0x001AC2F0 0x1F4 func_001AC2F0  # MAIN
 0x001AC500 0x360 func_001AC500  # MAIN
-0x001AC860 0x48 func_001AC860  # MAIN
-0x001AC8A8 0x18 func_001AC8A8  # MAIN unaligned
+0x001AC860 0x48 DIntr  # MAIN; s1:exact
+0x001AC8A8 0x18 EIntr  # MAIN unaligned; s1:exact
 0x001AC8C0 0x48 func_001AC8C0  # MAIN
 0x001AC908 0x10 func_001AC908  # MAIN unaligned
 0x001AC918 0x38 func_001AC918  # MAIN unaligned
-0x001AC950 0x40 func_001AC950  # MAIN
-0x001AC990 0x10 func_001AC990  # MAIN
+0x001AC950 0x40 kFindAddress  # MAIN; s1:exact
+0x001AC990 0x10 FindAddress  # MAIN; s1:exact
 0x001AC9A0 0x34 func_001AC9A0  # MAIN
 0x001AC9D8 0xFC func_001AC9D8  # MAIN unaligned
 0x001ACAD8 0x10 func_001ACAD8  # MAIN unaligned
@@ -888,7 +888,7 @@
 0x001ACB90 0x68 func_001ACB90  # MAIN
 0x001ACBF8 0xAC func_001ACBF8  # MAIN unaligned
 0x001ACCA8 0x10 func_001ACCA8  # MAIN unaligned
-0x001ACCB8 0x30 func_001ACCB8  # MAIN unaligned
+0x001ACCB8 0x30 kCopy  # MAIN unaligned; s1:exact
 0x001ACCE8 0x10 func_001ACCE8  # MAIN unaligned
 0x001ACCF8 0x118 func_001ACCF8  # MAIN unaligned
 0x001ACE10 0x8 func_001ACE10  # MAIN
@@ -913,25 +913,25 @@
 0x001AFC30 0xE4 func_001AFC30  # MAIN
 0x001AFD18 0x7E0 func_001AFD18  # MAIN unaligned
 0x001B04F8 0x3B0 func_001B04F8  # MAIN unaligned
-0x001B08A8 0xCC func_001B08A8  # MAIN unaligned
+0x001B08A8 0xCC __ieee754_sqrtf  # MAIN unaligned; s1:exact
 0x001B0978 0x2D4 func_001B0978  # MAIN unaligned
 0x001B0C50 0xB4C func_001B0C50  # MAIN
 0x001B17A0 0x238 func_001B17A0  # MAIN
 0x001B19D8 0x568 func_001B19D8  # MAIN unaligned
-0x001B1F40 0x150 func_001B1F40  # MAIN
+0x001B1F40 0x150 __kernel_cosf  # MAIN; s1:exact
 0x001B2090 0x864 func_001B2090  # MAIN
-0x001B28F8 0x104 func_001B28F8  # MAIN unaligned
+0x001B28F8 0x104 __kernel_sinf  # MAIN unaligned; s1:exact
 0x001B2A00 0x284 func_001B2A00  # MAIN
 0x001B2C88 0x124 func_001B2C88  # MAIN unaligned
-0x001B2DB0 0x34 func_001B2DB0  # MAIN
+0x001B2DB0 0x34 fabs  # MAIN; s1:exact
 0x001B2DE8 0x214 func_001B2DE8  # MAIN unaligned
 0x001B3000 0x134 func_001B3000  # MAIN
 0x001B3138 0xA8 func_001B3138  # MAIN unaligned
 0x001B31E0 0x28C func_001B31E0  # MAIN
-0x001B3470 0xD8 func_001B3470  # MAIN
+0x001B3470 0xD8 ceilf  # MAIN; s1:exact
 0x001B3548 0xD4 cosf  # MAIN unaligned
 0x001B3620 0x28 fabsf  # MAIN; by body: clears the sign bit
-0x001B3648 0xD8 func_001B3648  # MAIN unaligned
+0x001B3648 0xD8 floorf  # MAIN unaligned; s1:exact
 0x001B3720 0xE8 sinf  # MAIN
 0x001B3808 0x78 func_001B3808  # MAIN unaligned
 0x001B3880 0x14 func_001B3880  # MAIN
@@ -953,7 +953,7 @@
 0x001B3E68 0x34 func_001B3E68  # MAIN unaligned
 0x001B3EA0 0xB8 func_001B3EA0  # MAIN
 0x001B3F58 0xD8 func_001B3F58  # MAIN unaligned
-0x001B4030 0x90 func_001B4030  # MAIN
+0x001B4030 0x90 mceIntrReadFixAlign  # MAIN; s1:exact
 0x001B40C0 0x114 func_001B40C0  # MAIN
 0x001B41D8 0x174 func_001B41D8  # MAIN unaligned
 0x001B4350 0x8 func_001B4350  # MAIN
@@ -976,35 +976,35 @@
 0x001B53B0 0x704 func_001B53B0  # MAIN
 0x001B5AB8 0x41C func_001B5AB8  # MAIN unaligned
 0x001B5ED8 0x21C func_001B5ED8  # MAIN unaligned
-0x001B60F8 0x74 func_001B60F8  # MAIN unaligned
-0x001B6170 0x94 func_001B6170  # MAIN
-0x001B6208 0xB4 func_001B6208  # MAIN unaligned
-0x001B62C0 0xCC func_001B62C0  # MAIN
-0x001B6390 0xAC func_001B6390  # MAIN
-0x001B6440 0xB8 func_001B6440  # MAIN
-0x001B64F8 0xF8 func_001B64F8  # MAIN unaligned
-0x001B65F0 0xFC func_001B65F0  # MAIN
-0x001B66F0 0x9C func_001B66F0  # MAIN
-0x001B6790 0xAC func_001B6790  # MAIN
-0x001B6840 0xDC func_001B6840  # MAIN
-0x001B6920 0xE4 func_001B6920  # MAIN
-0x001B6A08 0xD4 func_001B6A08  # MAIN unaligned
-0x001B6AE0 0xD0 func_001B6AE0  # MAIN
-0x001B6BB0 0x120 func_001B6BB0  # MAIN
-0x001B6CD0 0x114 func_001B6CD0  # MAIN
+0x001B60F8 0x74 _rix_000  # MAIN unaligned; s1:exact
+0x001B6170 0x94 _ri0_000  # MAIN; s1:exact
+0x001B6208 0xB4 _rix_001  # MAIN unaligned; s1:exact
+0x001B62C0 0xCC _ri0_001  # MAIN; s1:exact
+0x001B6390 0xAC _rix_010  # MAIN; s1:exact
+0x001B6440 0xB8 _ri0_010  # MAIN; s1:exact
+0x001B64F8 0xF8 _rix_011  # MAIN unaligned; s1:exact
+0x001B65F0 0xFC _ri0_011  # MAIN; s1:exact
+0x001B66F0 0x9C _rix_100  # MAIN; s1:exact
+0x001B6790 0xAC _ri0_100  # MAIN; s1:exact
+0x001B6840 0xDC _rix_101  # MAIN; s1:exact
+0x001B6920 0xE4 _ri0_101  # MAIN; s1:exact
+0x001B6A08 0xD4 _rix_110  # MAIN unaligned; s1:exact
+0x001B6AE0 0xD0 _ri0_110  # MAIN; s1:exact
+0x001B6BB0 0x120 _rix_111  # MAIN; s1:exact
+0x001B6CD0 0x114 _ri0_111  # MAIN; s1:exact
 0x001B6DE8 0x5C func_001B6DE8  # MAIN unaligned
 0x001B6E48 0x60 func_001B6E48  # MAIN unaligned
-0x001B6EA8 0x28 func_001B6EA8  # MAIN unaligned
+0x001B6EA8 0x28 _ipuSetMPEG1  # MAIN unaligned; s1:exact
 0x001B6ED0 0x29C func_001B6ED0  # MAIN
 0x001B7170 0x1C func_001B7170  # MAIN
-0x001B7190 0x184 func_001B7190  # MAIN
+0x001B7190 0x184 _dualPrimeVector  # MAIN; s1:exact
 0x001B7318 0x110 func_001B7318  # MAIN unaligned
 0x001B7428 0x120 func_001B7428  # MAIN unaligned
 0x001B7548 0x12C func_001B7548  # MAIN unaligned
 0x001B7678 0x1F8 func_001B7678  # MAIN unaligned
 0x001B7870 0xBC func_001B7870  # MAIN
 0x001B7930 0x4A8 func_001B7930  # MAIN
-0x001B7DD8 0x88 func_001B7DD8  # MAIN unaligned
+0x001B7DD8 0x88 _decode_motion_vector  # MAIN unaligned; s1:exact
 0x001B7E60 0x19C func_001B7E60  # MAIN
 0x001B8000 0x14C func_001B8000  # MAIN
 0x001B8150 0x2C func_001B8150  # MAIN
@@ -1021,17 +1021,17 @@
 0x001B8A58 0x128 func_001B8A58  # MAIN unaligned
 0x001B8B80 0x1F0 func_001B8B80  # MAIN
 0x001B8D70 0x48 func_001B8D70  # MAIN
-0x001B8DB8 0x74 func_001B8DB8  # MAIN unaligned
+0x001B8DB8 0x74 _updateTempTackData  # MAIN unaligned; s1:exact
 0x001B8E30 0xA0 func_001B8E30  # MAIN
 0x001B8ED0 0xC4 func_001B8ED0  # MAIN
 0x001B8F98 0xF4 func_001B8F98  # MAIN unaligned
 0x001B9090 0x90 func_001B9090  # MAIN
 0x001B9120 0xCC func_001B9120  # MAIN
 0x001B91F0 0x90 func_001B91F0  # MAIN
-0x001B9280 0x2B4 func_001B9280  # MAIN
+0x001B9280 0x2B4 _updateRefImage  # MAIN; s1:exact
 0x001B9538 0xA0 func_001B9538  # MAIN unaligned
 0x001B95D8 0x290 func_001B95D8  # MAIN unaligned
-0x001B9868 0x28 func_001B9868  # MAIN unaligned
+0x001B9868 0x28 _markOutput  # MAIN unaligned; s1:exact
 0x001B9890 0x18C func_001B9890  # MAIN
 0x001B9A20 0x110 func_001B9A20  # MAIN
 0x001B9B30 0x1B8 func_001B9B30  # MAIN
@@ -1043,12 +1043,12 @@
 0x001BA310 0xD4 func_001BA310  # MAIN
 0x001BA3E8 0x288 func_001BA3E8  # MAIN unaligned
 0x001BA670 0x34 func_001BA670  # MAIN
-0x001BA6A8 0x1C func_001BA6A8  # MAIN unaligned
-0x001BA6C8 0x98 func_001BA6C8  # MAIN unaligned
+0x001BA6A8 0x1C _sysbitNext  # MAIN unaligned; s1:exact
+0x001BA6C8 0x98 _sysbitFlush  # MAIN unaligned; s1:exact
 0x001BA760 0x4C func_001BA760  # MAIN
 0x001BA7B0 0x44 func_001BA7B0  # MAIN
 0x001BA7F8 0x54 func_001BA7F8  # MAIN unaligned
-0x001BA850 0x2C func_001BA850  # MAIN
+0x001BA850 0x2C _sysbitPtr  # MAIN; s1:exact
 0x001BA880 0x88 func_001BA880  # MAIN
 0x001BA908 0x1FC func_001BA908  # MAIN unaligned
 0x001BAB08 0x2F8 func_001BAB08  # MAIN unaligned
@@ -1065,14 +1065,14 @@
 0x001BB9D8 0x44 func_001BB9D8  # MAIN unaligned
 0x001BBA20 0x50 func_001BBA20  # MAIN
 0x001BBA70 0x10 func_001BBA70  # MAIN
-0x001BBA80 0x14 func_001BBA80  # MAIN
-0x001BBA98 0x20 func_001BBA98  # MAIN unaligned
+0x001BBA80 0x14 sceMpegSetDecodeMode  # MAIN; s1:exact
+0x001BBA98 0x20 sceMpegGetDecodeMode  # MAIN unaligned; s1:exact
 0x001BBAB8 0xC func_001BBAB8  # MAIN unaligned
-0x001BBAC8 0x10 func_001BBAC8  # MAIN unaligned
+0x001BBAC8 0x10 sceMpegIsRefBuffEmpty  # MAIN unaligned; s1:exact
 0x001BBAD8 0x58 func_001BBAD8  # MAIN unaligned
-0x001BBB30 0x54 func_001BBB30  # MAIN
-0x001BBB88 0x24 func_001BBB88  # MAIN unaligned
-0x001BBBB0 0x50 func_001BBBB0  # MAIN
+0x001BBB30 0x54 sceMpegClearRefBuff  # MAIN; s1:exact
+0x001BBB88 0x24 sceMpegAddCallback  # MAIN unaligned; s1:exact
+0x001BBBB0 0x50 _dispatchMpegCallback  # MAIN; s1:exact
 0x001BBC00 0x28 func_001BBC00  # MAIN
 0x001BBC28 0x18 func_001BBC28  # MAIN unaligned
 0x001BBC40 0x14 func_001BBC40  # MAIN
@@ -1081,13 +1081,13 @@
 0x001BBC78 0xC func_001BBC78  # MAIN unaligned
 0x001BBC88 0xC func_001BBC88  # MAIN unaligned
 0x001BBC98 0xC func_001BBC98  # MAIN unaligned
-0x001BBCA8 0x10 func_001BBCA8  # MAIN unaligned
+0x001BBCA8 0x10 sceSetBrokenLink  # MAIN unaligned; s1:exact
 0x001BBCB8 0x18 func_001BBCB8  # MAIN unaligned
-0x001BBCD0 0x14 func_001BBCD0  # MAIN
+0x001BBCD0 0x14 _alalcInit  # MAIN; s1:exact
 0x001BBCE8 0xC func_001BBCE8  # MAIN unaligned
 0x001BBCF8 0xC func_001BBCF8  # MAIN unaligned
 0x001BBD08 0x6C func_001BBD08  # MAIN unaligned
-0x001BBD78 0x18 func_001BBD78  # MAIN unaligned
+0x001BBD78 0x18 _alalcRest  # MAIN unaligned; s1:exact
 0x001BBD90 0x170 func_001BBD90  # MAIN
 0x001BBF00 0x114 func_001BBF00  # MAIN
 0x001BC018 0x44 func_001BC018  # MAIN unaligned
@@ -1101,10 +1101,10 @@
 0x001BC3F0 0x34 func_001BC3F0  # MAIN
 0x001BC428 0x54 func_001BC428  # MAIN unaligned
 0x001BC480 0x100 func_001BC480  # MAIN
-0x001BC580 0x20 func_001BC580  # MAIN
+0x001BC580 0x20 _RefImageInit  # MAIN; s1:exact
 0x001BC5A0 0x124 func_001BC5A0  # MAIN
 0x001BC6C8 0x2A8 func_001BC6C8  # MAIN unaligned
-0x001BC970 0xE0 func_001BC970  # MAIN
+0x001BC970 0xE0 _initRefImages  # MAIN; s1:exact
 0x001BCA50 0xE0 func_001BCA50  # MAIN
 0x001BCB30 0x130 func_001BCB30  # MAIN
 0x001BCC60 0x8C func_001BCC60  # MAIN
@@ -1148,13 +1148,13 @@
 0x001BE040 0x64 func_001BE040  # MAIN
 0x001BE0A8 0x68 func_001BE0A8  # MAIN unaligned
 0x001BE110 0x68 func_001BE110  # MAIN
-0x001BE178 0x2C func_001BE178  # MAIN unaligned
-0x001BE1A8 0x20 func_001BE1A8  # MAIN unaligned
+0x001BE178 0x2C tobcd  # MAIN unaligned; s1:exact
+0x001BE1A8 0x20 frombcd  # MAIN unaligned; s1:exact
 0x001BE1C8 0x68 func_001BE1C8  # MAIN unaligned
 0x001BE230 0x68 func_001BE230  # MAIN
 0x001BE298 0xB4 func_001BE298  # MAIN unaligned
 0x001BE350 0xA4 func_001BE350  # MAIN
-0x001BE3F8 0x30 func_001BE3F8  # MAIN unaligned
+0x001BE3F8 0x30 addhour  # MAIN unaligned; s1:exact
 0x001BE428 0x24 func_001BE428  # MAIN unaligned
 0x001BE450 0x8C func_001BE450  # MAIN
 0x001BE4E0 0x8 func_001BE4E0  # MAIN
@@ -1188,47 +1188,47 @@
 0x001BFA38 0x70 func_001BFA38  # MAIN unaligned
 0x001BFAA8 0x6C func_001BFAA8  # MAIN unaligned
 0x001BFB18 0xE8 func_001BFB18  # MAIN unaligned
-0x001BFC00 0x2C func_001BFC00  # MAIN
+0x001BFC00 0x2C sceVu0ApplyMatrix  # MAIN; s1:exact
 0x001BFC30 0x44 sceVu0MulMatrix  # MAIN; libvu0 (Sony SDK, GCC-built): SOCOM 1 name (exact fingerprint)
 0x001BFC78 0x1C sceVu0OuterProduct  # MAIN unaligned; libvu0 (Sony SDK, GCC-built): by body: vopmula/vopmsub, w cleared
 0x001BFC98 0x24 sceVu0InnerProduct  # MAIN unaligned; libvu0 (Sony SDK, GCC-built): by body: vmul.xyz + vaddy.x + vaddz.x -> $f0
 0x001BFCC0 0x3C sceVu0Normalize  # MAIN; libvu0 by body: vsqrt/vdiv/vmulq
 0x001BFD00 0x44 sceVu0TransposeMatrix  # MAIN; libvu0 (Sony SDK, GCC-built): SOCOM 1 name (exact fingerprint)
 0x001BFD48 0x6C sceVu0InversMatrix  # MAIN unaligned; libvu0 (Sony SDK, GCC-built): SOCOM 1 name (exact fingerprint)
-0x001BFDB8 0x20 func_001BFDB8  # MAIN unaligned
-0x001BFDD8 0x20 func_001BFDD8  # MAIN unaligned
-0x001BFDF8 0x28 func_001BFDF8  # MAIN unaligned
+0x001BFDB8 0x20 sceVu0DivVector  # MAIN unaligned; s1:exact
+0x001BFDD8 0x20 sceVu0DivVectorXYZ  # MAIN unaligned; s1:exact
+0x001BFDF8 0x28 sceVu0InterVector  # MAIN unaligned; s1:exact
 0x001BFE20 0x14 sceVu0AddVector  # MAIN; libvu0 (Sony SDK, GCC-built): by body: vadd.xyzw
-0x001BFE38 0x14 func_001BFE38  # MAIN unaligned
-0x001BFE50 0x14 func_001BFE50  # MAIN
+0x001BFE38 0x14 sceVu0SubVector  # MAIN unaligned; s1:exact
+0x001BFE50 0x14 sceVu0MulVector  # MAIN; s1:exact
 0x001BFE68 0x18 sceVu0ScaleVector  # MAIN unaligned; libvu0 (Sony SDK, GCC-built): by body: vmulx.xyzw by a float
 0x001BFE80 0x2C sceVu0TransMatrix  # MAIN; libvu0: sceVu0CameraMatrix calls it between the normalises and the inverse
 0x001BFEB0 0xC func_001BFEB0  # MAIN
-0x001BFEC0 0x24 func_001BFEC0  # MAIN
-0x001BFEE8 0x10 func_001BFEE8  # MAIN unaligned
-0x001BFEF8 0x10 func_001BFEF8  # MAIN unaligned
-0x001BFF08 0x10 func_001BFF08  # MAIN unaligned
-0x001BFF18 0x10 func_001BFF18  # MAIN unaligned
+0x001BFEC0 0x24 sceVu0CopyMatrix  # MAIN; s1:exact
+0x001BFEE8 0x10 sceVu0FTOI4Vector  # MAIN unaligned; s1:exact
+0x001BFEF8 0x10 sceVu0FTOI0Vector  # MAIN unaligned; s1:exact
+0x001BFF08 0x10 sceVu0ITOF4Vector  # MAIN unaligned; s1:exact
+0x001BFF18 0x10 sceVu0ITOF0Vector  # MAIN unaligned; s1:exact
 0x001BFF28 0x28 sceVu0UnitMatrix  # MAIN unaligned; libvu0 (Sony SDK, GCC-built): by body: identity via vsub/vadd.w/vmr32
 0x001BFF50 0x74 _sceVu0ecossin  # MAIN; libvu0 (Sony SDK, GCC-built): SOCOM 1 name (exact fingerprint)
 0x001BFFC8 0xA4 sceVu0RotMatrixZ  # MAIN unaligned; libvu0 (Sony SDK, GCC-built): SOCOM 1 name (exact fingerprint)
 0x001C0070 0xA8 func_001C0070  # MAIN
 0x001C0118 0xA8 func_001C0118  # MAIN unaligned
 0x001C01C0 0x50 func_001C01C0  # MAIN
-0x001C0210 0x24 func_001C0210  # MAIN
+0x001C0210 0x24 sceVu0ClampVector  # MAIN; s1:exact
 0x001C0238 0xB0 sceVu0CameraMatrix  # MAIN unaligned; libvu0 by body: unit, outer product, normalise x2, outer, trans, invert
 0x001C02E8 0xC0 func_001C02E8  # MAIN unaligned
 0x001C03A8 0x68 func_001C03A8  # MAIN unaligned
 0x001C0410 0x104 func_001C0410  # MAIN
-0x001C0518 0x190 func_001C0518  # MAIN unaligned
-0x001C06A8 0x58 func_001C06A8  # MAIN unaligned
-0x001C0700 0x44 func_001C0700  # MAIN
-0x001C0748 0x1C func_001C0748  # MAIN unaligned
-0x001C0768 0x2C func_001C0768  # MAIN unaligned
-0x001C0798 0x18 func_001C0798  # MAIN unaligned
-0x001C07B0 0x48 func_001C07B0  # MAIN
-0x001C07F8 0x60 func_001C07F8  # MAIN unaligned
-0x001C0858 0x8C func_001C0858  # MAIN unaligned
+0x001C0518 0x190 sceVu0DropShadowMatrix  # MAIN unaligned; s1:exact
+0x001C06A8 0x58 sceVu0RotTransPersN  # MAIN unaligned; s1:exact
+0x001C0700 0x44 sceVu0RotTransPers  # MAIN; s1:exact
+0x001C0748 0x1C sceVu0CopyVectorXYZ  # MAIN unaligned; s1:exact
+0x001C0768 0x2C sceVu0InterVectorXYZ  # MAIN unaligned; s1:exact
+0x001C0798 0x18 sceVu0ScaleVectorXYZ  # MAIN unaligned; s1:exact
+0x001C07B0 0x48 sceVu0ClipScreen  # MAIN; s1:exact
+0x001C07F8 0x60 sceVu0ClipScreen3  # MAIN unaligned; s1:exact
+0x001C0858 0x8C sceVu0ClipAll  # MAIN unaligned; s1:exact
 0x001C08E8 0x5C func_001C08E8  # MAIN unaligned
 0x001C0948 0x34 func_001C0948  # MAIN unaligned
 0x001C0980 0x34 func_001C0980  # MAIN
@@ -1407,7 +1407,7 @@
 0x001E8408 0x20 func_001E8408  # OVL1 unaligned
 0x001E8428 0x20 func_001E8428  # OVL1 unaligned
 0x001E8448 0x5C func_001E8448  # OVL1 unaligned
-0x001E84A8 0x1C func_001E84A8  # OVL1 unaligned
+0x001E84A8 0x1C SidGetSamplesLeft  # OVL1 unaligned; s1:exact
 0x001E84C8 0x68 func_001E84C8  # OVL1 unaligned
 0x001E8530 0xC8 func_001E8530  # OVL1
 0x001E85F8 0x88 func_001E85F8  # OVL1 unaligned
@@ -1542,7 +1542,7 @@
 0x001F1B40 0x68 func_001F1B40  # OVL1
 0x001F1BB0 0x1B4 func_001F1BB0  # OVL1
 0x001F1D70 0xA0 func_001F1D70  # OVL1
-0x001F1E10 0x2C func_001F1E10  # OVL1
+0x001F1E10 0x2C GetSeal__10CEntityItrCFv  # OVL1; s1:exact
 0x001F1E40 0x94 func_001F1E40  # OVL1
 0x001F1EE0 0x48 func_001F1EE0  # OVL1
 0x001F1F30 0x78 func_001F1F30  # OVL1
@@ -1696,7 +1696,7 @@
 0x001FEBE0 0x68 func_001FEBE0  # OVL1
 0x001FEC50 0x8 func_001FEC50  # OVL1
 0x001FEC60 0xC func_001FEC60  # OVL1
-0x001FEC70 0x48 func_001FEC70  # OVL1
+0x001FEC70 0x48 AddLetterbox__10CLetterBoxFv  # OVL1; s1:exact
 0x001FECC0 0x1D0 func_001FECC0  # OVL1
 0x001FEE90 0x7C func_001FEE90  # OVL1
 0x001FEF10 0x144 func_001FEF10  # OVL1
@@ -1765,7 +1765,7 @@
 0x00207A00 0x460 func_00207A00  # OVL1
 0x00207E60 0xF8 func_00207E60  # OVL1
 0x00207F60 0x2C func_00207F60  # OVL1
-0x00207F90 0x40 func_00207F90  # OVL1
+0x00207F90 0x40 swap__Q23std30vector<b,Q23std12allocator<b>>FRQ23std30vector<b,Q23std12allocator<b>>  # OVL1; s1:exact
 0x00207FD0 0x6C func_00207FD0  # OVL1
 0x00208040 0x214 func_00208040  # OVL1
 0x00208260 0x8 func_00208260  # OVL1
@@ -1867,7 +1867,7 @@
 0x00210850 0x14 func_00210850  # OVL1
 0x00210870 0x1E8 func_00210870  # OVL1
 0x00210A60 0x8 func_00210A60  # OVL1
-0x00210A70 0x30 func_00210A70  # OVL1
+0x00210A70 0x30 GetPt__Q225@unnamed@hud_linemap_cpp@12CAiLinePtItrCFv  # OVL1; s1:exact
 0x00210AA0 0x104 func_00210AA0  # OVL1
 0x00210BB0 0x80 func_00210BB0  # OVL1
 0x00210C30 0x150 func_00210C30  # OVL1
@@ -2047,10 +2047,10 @@
 0x002287F0 0xA0 func_002287F0  # OVL1
 0x00228890 0x7C func_00228890  # OVL1
 0x00228910 0x184 func_00228910  # OVL1
-0x00228AA0 0x50 func_00228AA0  # OVL1
-0x00228AF0 0x54 func_00228AF0  # OVL1
-0x00228B50 0x28 func_00228B50  # OVL1
-0x00228B80 0x40 func_00228B80  # OVL1
+0x00228AA0 0x50 Reset__8CFlashFXFv  # OVL1; s1:exact
+0x00228AF0 0x54 Flash__8CFlashFXFfff  # OVL1; s1:exact
+0x00228B50 0x28 SetMinBrightness__6CFaderFf  # OVL1; s1:exact
+0x00228B80 0x40 FadeIn__6CFaderFf  # OVL1; s1:exact
 0x00228BC0 0x240 func_00228BC0  # OVL1
 0x00228E00 0xD0 func_00228E00  # OVL1
 0x00228ED0 0xC func_00228ED0  # OVL1
@@ -2378,10 +2378,10 @@
 0x00245568 0x58 func_00245568  # OVL1 unaligned
 0x002455C0 0xCC func_002455C0  # OVL1
 0x00245690 0xB8 func_00245690  # OVL1
-0x00245748 0x40 func_00245748  # OVL1 unaligned
+0x00245748 0x40 libnetb_udp_init_buffer  # OVL1 unaligned; s1:exact
 0x00245788 0x68 func_00245788  # OVL1 unaligned
 0x002457F0 0x228 func_002457F0  # OVL1
-0x00245A18 0xC0 func_00245A18  # OVL1 unaligned
+0x00245A18 0xC0 libnetb_get_valid_data_header_ptr  # OVL1 unaligned; s1:exact
 0x00245AD8 0x7C func_00245AD8  # OVL1 unaligned
 0x00245B58 0x58 func_00245B58  # OVL1 unaligned
 0x00245BB0 0x58 func_00245BB0  # OVL1
@@ -2906,7 +2906,7 @@
 0x00269CC0 0x48 func_00269CC0  # OVL1
 0x00269D10 0x40 func_00269D10  # OVL1
 0x00269D50 0x1C func_00269D50  # OVL1; tu: anim_main.cpp~ (1.0 beta)
-0x00269D70 0x14 func_00269D70  # OVL1; tu: anim_main.cpp~ (1.0 beta)
+0x00269D70 0x14 SeqNext__10CZAnimMainFv  # OVL1; tu: anim_main.cpp~ (1.0 beta); s1:exact
 0x00269D90 0x10 func_00269D90  # OVL1; tu: anim_main.cpp~ (1.0 beta)
 0x00269DA0 0x29C func_00269DA0  # OVL1
 0x0026A040 0xB8 func_0026A040  # OVL1
@@ -2917,10 +2917,10 @@
 0x0026A450 0x40 func_0026A450  # OVL1
 0x0026A490 0x244 func_0026A490  # OVL1
 0x0026A6E0 0x164 func_0026A6E0  # OVL1
-0x0026A850 0x18 func_0026A850  # OVL1; tu: anim_main.cpp~ (1.0 beta)
-0x0026A870 0x1C func_0026A870  # OVL1; tu: anim_main.cpp~ (1.0 beta)
-0x0026A890 0x20 func_0026A890  # OVL1; tu: anim_main.cpp~ (1.0 beta)
-0x0026A8B0 0x2C func_0026A8B0  # OVL1; tu: anim_main.cpp~ (1.0 beta)
+0x0026A850 0x18 CmdValid__10CZAnimMainFv  # OVL1; tu: anim_main.cpp~ (1.0 beta); s1:exact
+0x0026A870 0x1C CmdSet__10CZAnimMainFi  # OVL1; tu: anim_main.cpp~ (1.0 beta); s1:exact
+0x0026A890 0x20 CmdNext__10CZAnimMainFi  # OVL1; tu: anim_main.cpp~ (1.0 beta); s1:exact
+0x0026A8B0 0x2C CmdNext__10CZAnimMainFv  # OVL1; tu: anim_main.cpp~ (1.0 beta); s1:exact
 0x0026A8E0 0x144 func_0026A8E0  # OVL1
 0x0026AA30 0x1EC func_0026AA30  # OVL1
 0x0026AC20 0x180 func_0026AC20  # OVL1
@@ -3351,10 +3351,10 @@
 0x00286B80 0x108 func_00286B80  # OVL1
 0x00286C90 0xB0 func_00286C90  # OVL1
 0x00286D40 0x28 func_00286D40  # OVL1
-0x00286D70 0x14 func_00286D70  # OVL1
-0x00286D90 0x1C func_00286D90  # OVL1
+0x00286D70 0x14 Clear__9CSequenceFv  # OVL1; s1:exact
+0x00286D90 0x1C Start__9CSequenceFfff  # OVL1; s1:exact
 0x00286DB0 0x6C func_00286DB0  # OVL1
-0x00286E20 0x30 func_00286E20  # OVL1
+0x00286E20 0x30 PlaneConstant__FRC6CPnt3DRC6CPnt3D  # OVL1; s1:exact
 0x00286E50 0x3C0 func_00286E50  # OVL1
 0x00287210 0x2D8 func_00287210  # OVL1
 0x002874F0 0x60 func_002874F0  # OVL1
@@ -3545,8 +3545,8 @@
 0x00290B20 0xC func_00290B20  # OVL1
 0x00290B30 0x48 func_00290B30  # OVL1
 0x00290B80 0x48 func_00290B80  # OVL1
-0x00290BD0 0x28 func_00290BD0  # OVL1
-0x00290C00 0x28 func_00290C00  # OVL1
+0x00290BD0 0x28 SetPlayerCanSeeRegions__Q23zdb7CCameraFUi  # OVL1; s1:exact
+0x00290C00 0x28 SetCameraCanSeeRegions__Q23zdb7CCameraFUi  # OVL1; s1:exact
 0x00290C30 0xDC func_00290C30  # OVL1
 0x00290D10 0xD4 func_00290D10  # OVL1
 0x00290DF0 0x260 func_00290DF0  # OVL1
@@ -3644,13 +3644,13 @@
 0x0029D860 0x8 func_0029D860  # OVL1
 0x0029D870 0x8 func_0029D870  # OVL1
 0x0029D880 0x18 func_0029D880  # OVL1
-0x0029D8A0 0x44 func_0029D8A0  # OVL1
-0x0029D8F0 0x20 func_0029D8F0  # OVL1
+0x0029D8A0 0x44 GetArg__10CPacketMsgCFUi  # OVL1; s1:exact
+0x0029D8F0 0x20 GetArgCount__10CPacketMsgCFv  # OVL1; s1:exact
 0x0029D910 0xA0 func_0029D910  # OVL1
 0x0029D9B0 0x64 func_0029D9B0  # OVL1
-0x0029DA20 0x20 func_0029DA20  # OVL1
-0x0029DA40 0x20 func_0029DA40  # OVL1
-0x0029DA60 0x20 func_0029DA60  # OVL1
+0x0029DA20 0x20 GetPacketID__7CPacketCFv  # OVL1; s1:exact
+0x0029DA40 0x20 GetFlags__7CPacketCFv  # OVL1; s1:exact
+0x0029DA60 0x20 GetPacketType__7CPacketCFv  # OVL1; s1:exact
 0x0029DA80 0x50 func_0029DA80  # OVL1
 0x0029DAD0 0x78 func_0029DAD0  # OVL1
 0x0029DB50 0xE0 func_0029DB50  # OVL1
@@ -4219,9 +4219,9 @@
 0x002C6ED0 0x70 func_002C6ED0  # OVL1
 0x002C6F40 0xB4 func_002C6F40  # OVL1
 0x002C7000 0x68 func_002C7000  # OVL1
-0x002C7070 0x24 func_002C7070  # OVL1
+0x002C7070 0x24 IsInvalid__20CMissionObjectiveCamCFv  # OVL1; s1:exact
 0x002C70A0 0x24 func_002C70A0  # OVL1
-0x002C70D0 0x24 func_002C70D0  # OVL1
+0x002C70D0 0x24 IsComplete__20CMissionObjectiveCamCFv  # OVL1; s1:exact
 0x002C7100 0xDC func_002C7100  # OVL1
 0x002C71E0 0xAC func_002C71E0  # OVL1
 0x002C7290 0x70 func_002C7290  # OVL1
@@ -4234,7 +4234,7 @@
 0x002C7530 0x110 func_002C7530  # OVL1
 0x002C7640 0x1D0 func_002C7640  # OVL1
 0x002C7810 0xC8 func_002C7810  # OVL1
-0x002C78E0 0x24 func_002C78E0  # OVL1
+0x002C78E0 0x24 __ct__11CMissionCamFv  # OVL1; s1:exact
 0x002C7910 0xD0 func_002C7910  # OVL1
 0x002C79E0 0xC func_002C79E0  # OVL1
 0x002C79F0 0x6C func_002C79F0  # OVL1
@@ -4516,7 +4516,7 @@
 0x002D7370 0x150 func_002D7370  # OVL1
 0x002D74C0 0xB4 func_002D74C0  # OVL1
 0x002D7580 0x314 func_002D7580  # OVL1
-0x002D78A0 0x58 func_002D78A0  # OVL1
+0x002D78A0 0x58 gridGetAtomBasePtr__Q23zdb5CGridFii  # OVL1; s1:exact
 0x002D7900 0x70 func_002D7900  # OVL1
 0x002D7970 0x60 func_002D7970  # OVL1
 0x002D79D0 0x8 func_002D79D0  # OVL1
@@ -4542,7 +4542,7 @@
 0x002D8C60 0x374 func_002D8C60  # OVL1
 0x002D8FE0 0x3B8 func_002D8FE0  # OVL1
 0x002D93A0 0xE4 func_002D93A0  # OVL1
-0x002D9490 0x20 func_002D9490  # OVL1
+0x002D9490 0x20 GetTranslate__Q23zdb8CClutterFv  # OVL1; s1:exact
 0x002D94B0 0xB0 func_002D94B0  # OVL1
 0x002D9560 0x14C func_002D9560  # OVL1
 0x002D96B0 0xF8 func_002D96B0  # OVL1
@@ -4941,7 +4941,7 @@
 0x002F5020 0x1B8 func_002F5020  # OVL1
 0x002F51E0 0xA8 func_002F51E0  # OVL1
 0x002F5290 0x420 func_002F5290  # OVL1
-0x002F56B0 0x50 func_002F56B0  # OVL1
+0x002F56B0 0x50 swap__Q210Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>FRQ210Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>  # OVL1; s1:exact
 0x002F5700 0x238 func_002F5700  # OVL1
 0x002F5940 0xE4 func_002F5940  # OVL1
 0x002F5A30 0xD8 func_002F5A30  # OVL1
@@ -5183,7 +5183,7 @@
 0x00306620 0x28 func_00306620  # OVL1
 0x00306650 0x18 func_00306650  # OVL1
 0x00306670 0x54 func_00306670  # OVL1
-0x003066D0 0xD4 func_003066D0  # OVL1
+0x003066D0 0xD4 Exp__5CQuatFPC6CPnt3Df  # OVL1; s1:order (same position in the same TU, signature fits the code)
 0x003067B0 0xD4 Exp__5CQuatFPC6CPnt3D  # OVL1; SOCOM 1 name
 0x00306890 0x248 SlerpFaster__5CQuatCFPC5CQuatfP5CQuat  # OVL1; SOCOM 1 name
 0x00306AE0 0x254 Slerp__5CQuatCFPC5CQuatfP5CQuat  # OVL1; SOCOM 1 name (callgraph carry)
@@ -5191,15 +5191,15 @@
 0x00306FD0 0x9C Apply__5CQuatCFPC6CPnt3DP6CPnt3Di  # OVL1; SOCOM 1 name
 0x00307070 0x4C ToEuler__5CQuatCFP6CPnt3D  # OVL1; SOCOM 1 name
 0x003070C0 0xA8 Mul__5CQuatCFPC5CQuatP5CQuat  # OVL1; SOCOM 1 name
-0x00307170 0x100 func_00307170  # OVL1
+0x00307170 0x100 ToMatrix__5CQuatCFP7CMatrix  # OVL1; s1:order (same position in the same TU, signature fits the code)
 0x00307270 0x70 Normalize__5CQuatFv  # OVL1; SOCOM 1 name
-0x003072E0 0x78 func_003072E0  # OVL1
+0x003072E0 0x78 Normalize__5CQuatCFP5CQuat  # OVL1; s1:order (same position in the same TU, signature fits the code)
 0x00307360 0x104 MakeYXZRot__5CQuatFfff  # OVL1; SOCOM 1 name (callgraph carry)
-0x00307470 0xB0 func_00307470  # OVL1
+0x00307470 0xB0 MakeYXRot__5CQuatFff  # OVL1; s1:order (same position in the same TU, signature fits the code)
 0x00307520 0x54 MakeZRot__5CQuatFf  # OVL1; SOCOM 1 name (exact fingerprint)
 0x00307580 0x54 MakeYRot__5CQuatFf  # OVL1; SOCOM 1 name (exact fingerprint)
 0x003075E0 0x54 MakeXRot__5CQuatFf  # OVL1; SOCOM 1 name (exact fingerprint)
-0x00307640 0xB8 func_00307640  # OVL1
+0x00307640 0xB8 GetIntersect__5CBBoxFP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4Db  # OVL1; s1:order (same position in the same TU, signature fits the code)
 0x00307700 0x110 func_00307700  # OVL1
 0x00307810 0x1B0 func_00307810  # OVL1
 0x003079C0 0x180 func_003079C0  # OVL1
@@ -5207,27 +5207,27 @@
 0x00307FA0 0x7C func_00307FA0  # OVL1
 0x00308020 0x130 ToEuler__7CMatrixCFP6CPnt3D  # OVL1; SOCOM 1 name
 0x00308150 0xC func_00308150  # OVL1
-0x00308160 0xA4 func_00308160  # OVL1
+0x00308160 0xA4 Vu0MatrixInverseWithUniformScale__FP7CMatrixP7CMatrix  # OVL1; s1:exact
 0x00308210 0x1B0 func_00308210  # OVL1
 0x003083C0 0x124 func_003083C0  # OVL1
 0x003084F0 0x84 func_003084F0  # OVL1
 0x00308580 0x40 func_00308580  # OVL1
 0x003085C0 0x80 func_003085C0  # OVL1
 0x00308640 0x7C func_00308640  # OVL1
-0x003086C0 0x68 func_003086C0  # OVL1
+0x003086C0 0x68 __ct__7CMatrixFffffffffffffffff  # OVL1; s1:exact
 0x00308730 0x9C func_00308730  # OVL1
 0x003087D0 0x28 func_003087D0  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
 0x00308800 0x300 func_00308800  # OVL1
 0x00308B00 0x3E8 func_00308B00  # OVL1
 0x00308EF0 0xD0 func_00308EF0  # OVL1
 0x00308FC0 0xD8 Interp__6CPnt3DCFPC6CPnt3DfP6CPnt3D  # OVL1; SOCOM 1 name
-0x003090A0 0x70 func_003090A0  # OVL1
-0x00309110 0x70 func_00309110  # OVL1
-0x00309180 0x28 func_00309180  # OVL1
-0x003091B0 0x1C func_003091B0  # OVL1
-0x003091D0 0x24 func_003091D0  # OVL1
-0x00309200 0x34 func_00309200  # OVL1
-0x00309240 0x34 func_00309240  # OVL1
+0x003090A0 0x70 Normalize__6CPnt3DCFP6CPnt3D  # OVL1; s1:order (same position in the same TU, signature fits the code)
+0x00309110 0x70 Normalize__6CPnt3DFv  # OVL1; s1:order (same position in the same TU, signature fits the code)
+0x00309180 0x28 Scale__6CPnt3DCFfP6CPnt3D  # OVL1; s1:exact
+0x003091B0 0x1C ToRightXZ__6CPnt3DCFP6CPnt3D  # OVL1; s1:exact
+0x003091D0 0x24 SubXZ__6CPnt3DCFPC6CPnt3DP6CPnt3D  # OVL1; s1:exact
+0x00309200 0x34 Sub__6CPnt3DCFPC6CPnt3DP6CPnt3D  # OVL1; s1:exact
+0x00309240 0x34 Add__6CPnt3DCFPC6CPnt3DP6CPnt3D  # OVL1; s1:exact
 0x00309280 0x2C func_00309280  # OVL1
 0x003092B0 0x5C Rotate_AxisY__6CPnt4DFf  # OVL1; SOCOM 1 name
 0x00309310 0x60 Rotate_AxisX__6CPnt4DFf  # OVL1; SOCOM 1 name
@@ -5246,7 +5246,7 @@
 0x00309F60 0x370 func_00309F60  # OVL1
 0x0030A2D0 0xD8 func_0030A2D0  # OVL1
 0x0030A3B0 0x1B4 func_0030A3B0  # OVL1
-0x0030A570 0x14 func_0030A570  # OVL1
+0x0030A570 0x14 audioDecIsPreset__FP8AudioDec  # OVL1; s1:exact
 0x0030A590 0x8C func_0030A590  # OVL1
 0x0030A620 0xC0 func_0030A620  # OVL1
 0x0030A6E0 0x44 func_0030A6E0  # OVL1
@@ -5266,7 +5266,7 @@
 0x0030B4D0 0x21C func_0030B4D0  # OVL1
 0x0030B6F0 0xC func_0030B6F0  # OVL1
 0x0030B700 0x38 func_0030B700  # OVL1
-0x0030B740 0x28 func_0030B740  # OVL1
+0x0030B740 0x28 loadImage__FPUi  # OVL1; s1:exact
 0x0030B770 0x23C func_0030B770  # OVL1
 0x0030B9B0 0x18 func_0030B9B0  # OVL1
 0x0030B9D0 0xB8 func_0030B9D0  # OVL1
@@ -5467,7 +5467,7 @@
 0x00315640 0x58 func_00315640  # OVL1
 0x003156A0 0x28 func_003156A0  # OVL1; tu: node_main.cpp~ (1.0 beta)
 0x003156D0 0x8 func_003156D0  # OVL1
-0x003156E0 0x20 func_003156E0  # OVL1; tu: node_main.cpp~ (1.0 beta)
+0x003156E0 0x20 GetScale__Q23zdb5CNodeFP6CPnt3D  # OVL1; tu: node_main.cpp~ (1.0 beta); s1:exact
 0x00315700 0x8 func_00315700  # OVL1
 0x00315710 0x28 func_00315710  # OVL1
 0x00315740 0x1C func_00315740  # OVL1
@@ -5483,7 +5483,7 @@
 0x00315E70 0xC4 func_00315E70  # OVL1
 0x00315F40 0x170 func_00315F40  # OVL1
 0x003160B0 0x10 func_003160B0  # OVL1
-0x003160C0 0x34 func_003160C0  # OVL1; tu: node_main.cpp~ (1.0 beta)
+0x003160C0 0x34 RemoveFromParent__Q23zdb5CNodeFv  # OVL1; tu: node_main.cpp~ (1.0 beta); s1:exact
 0x00316100 0x1A8 func_00316100  # OVL1
 0x003162B0 0x22C func_003162B0  # OVL1
 0x003164E0 0x114 func_003164E0  # OVL1
@@ -5520,11 +5520,11 @@
 0x00318C40 0x6C func_00318C40  # OVL1
 0x00318CB0 0xEC func_00318CB0  # OVL1
 0x00318DA0 0x7D8 func_00318DA0  # OVL1
-0x00319580 0x20 func_00319580  # OVL1
+0x00319580 0x20 SetStance__11CSealCtrlAiF11SEAL_STANCE  # OVL1; s1:exact
 0x003195A0 0xF8 func_003195A0  # OVL1
 0x003196A0 0x13C func_003196A0  # OVL1
 0x003197E0 0x1D8 func_003197E0  # OVL1
-0x003199C0 0x2C4 func_003199C0  # OVL1
+0x003199C0 0x2C4 DoSetStance__11CSealCtrlAiF11SEAL_STANCE  # OVL1; s1:callee
 0x00319C90 0x274 func_00319C90  # OVL1
 0x00319F10 0x8 func_00319F10  # OVL1
 0x00319F20 0x1B4 func_00319F20  # OVL1
@@ -5576,8 +5576,8 @@
 0x0031D820 0x114 func_0031D820  # OVL1
 0x0031D940 0x34C func_0031D940  # OVL1
 0x0031DC90 0xA8 func_0031DC90  # OVL1
-0x0031DD40 0x20 func_0031DD40  # OVL1; tu: node_world.cpp~ (1.0 beta)
-0x0031DD60 0x30 func_0031DD60  # OVL1; tu: node_world.cpp~ (1.0 beta)
+0x0031DD40 0x20 ClearIgnoreNodeDelayed__Q23zdb6CWorldFPQ23zdb11DiIntersect  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:exact
+0x0031DD60 0x30 RegIgnoreNodeDelayed__Q23zdb6CWorldFPQ23zdb11DiIntersectPQ23zdb5CNode  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:exact
 0x0031DD90 0xA0 func_0031DD90  # OVL1
 0x0031DE30 0x3C func_0031DE30  # OVL1
 0x0031DE70 0x8 func_0031DE70  # OVL1
@@ -5721,7 +5721,7 @@
 0x00328A50 0xB8 func_00328A50  # OVL1
 0x00328B10 0xB8 func_00328B10  # OVL1
 0x00328BD0 0x184 func_00328BD0  # OVL1
-0x00328D60 0x28 func_00328D60  # OVL1
+0x00328D60 0x28 __ct__6CPnt4DFRC6CPnt4D  # OVL1; s1:exact
 0x00328D90 0x4C func_00328D90  # OVL1
 0x00328DE0 0x54 func_00328DE0  # OVL1
 0x00328E40 0x4C func_00328E40  # OVL1
@@ -5774,7 +5774,7 @@
 0x0032C570 0x80 func_0032C570  # OVL1
 0x0032C5F0 0x60 func_0032C5F0  # OVL1
 0x0032C650 0x10 func_0032C650  # OVL1
-0x0032C660 0x10 func_0032C660  # OVL1; tu: zanim_cmd_parse.cpp~ (1.0 beta)
+0x0032C660 0x10 IsArray__5_zrdrCFv  # OVL1; tu: zanim_cmd_parse.cpp~ (1.0 beta); s1:exact
 0x0032C670 0xA0 func_0032C670  # OVL1
 0x0032C710 0x1F8 func_0032C710  # OVL1
 0x0032C910 0x6C func_0032C910  # OVL1
@@ -6067,7 +6067,7 @@
 0x0033F1E0 0x3C func_0033F1E0  # OVL1
 0x0033F220 0x3C func_0033F220  # OVL1
 0x0033F260 0x40 func_0033F260  # OVL1
-0x0033F2A0 0x34 func_0033F2A0  # OVL1
+0x0033F2A0 0x34 snd_SetReverbType  # OVL1; s1:exact
 0x0033F2E0 0x34 func_0033F2E0  # OVL1
 0x0033F320 0xF4 func_0033F320  # OVL1
 0x0033F420 0x128 func_0033F420  # OVL1
@@ -6078,12 +6078,12 @@
 0x0033F720 0x168 func_0033F720  # OVL1
 0x0033F890 0xC func_0033F890  # OVL1
 0x0033F8A0 0x10 func_0033F8A0  # OVL1
-0x0033F8B0 0x3E4 func_0033F8B0  # OVL1
+0x0033F8B0 0x3E4 snd_SendIOPCommandNoWait__FiiPcPFUiUl_vUl  # OVL1; s1:callee
 0x0033FCA0 0x428 func_0033FCA0  # OVL1
 0x003400D0 0x3C func_003400D0  # OVL1
 0x00340110 0x44 func_00340110  # OVL1
 0x00340160 0x34 func_00340160  # OVL1
-0x003401A0 0x38 func_003401A0  # OVL1
+0x003401A0 0x38 snd_SetSoundVolPan  # OVL1; s1:exact
 0x003401E0 0x30 func_003401E0  # OVL1
 0x00340210 0x30 func_00340210  # OVL1
 0x00340240 0x30 func_00340240  # OVL1
@@ -6190,7 +6190,7 @@
 0x003461F0 0x68 func_003461F0  # OVL1
 0x00346260 0x8 func_00346260  # OVL1
 0x00346270 0x90 func_00346270  # OVL1
-0x00346300 0x10 func_00346300  # OVL1
+0x00346300 0x10 PlaySoundCallback__12CSndInstanceFUiUl  # OVL1; s1:exact
 0x00346310 0x70 func_00346310  # OVL1
 0x00346380 0x1C4 func_00346380  # OVL1
 0x00346550 0xF4 func_00346550  # OVL1
@@ -6262,13 +6262,13 @@
 0x00349A70 0x28 func_00349A70  # OVL1
 0x00349AA0 0x44 func_00349AA0  # OVL1
 0x00349AF0 0x44 func_00349AF0  # OVL1
-0x00349B40 0x48 func_00349B40  # OVL1
+0x00349B40 0x48 Play__17CSndSequenceEntryFv  # OVL1; s1:exact
 0x00349B90 0xC0 func_00349B90  # OVL1
-0x00349C50 0x14 func_00349C50  # OVL1
+0x00349C50 0x14 __ct__17CSndSequenceEntryFP4CSndf  # OVL1; s1:exact
 0x00349C70 0x80 func_00349C70  # OVL1
 0x00349CF0 0x34 func_00349CF0  # OVL1
 0x00349D30 0x54 func_00349D30  # OVL1
-0x00349D90 0x14 func_00349D90  # OVL1
+0x00349D90 0x14 Play__12CSndSequenceFv  # OVL1; s1:exact
 0x00349DB0 0xDC func_00349DB0  # OVL1
 0x00349E90 0x188 func_00349E90  # OVL1
 0x0034A020 0x80 func_0034A020  # OVL1
@@ -6462,7 +6462,7 @@
 0x00354BB0 0x48 func_00354BB0  # OVL1
 0x00354C00 0x74 func_00354C00  # OVL1
 0x00354C80 0xE8 func_00354C80  # OVL1
-0x00354D70 0x14 func_00354D70  # OVL1; tu: ztex_main.cpp~ (1.0 beta)
+0x00354D70 0x14 Release_HTEX__Q23zdb8CTextureFv  # OVL1; tu: ztex_main.cpp~ (1.0 beta); s1:exact
 0x00354D90 0x1B0 func_00354D90  # OVL1
 0x00354F40 0x38 func_00354F40  # OVL1
 0x00354F80 0x1D0 func_00354F80  # OVL1
@@ -6598,7 +6598,7 @@
 0x0035D240 0x130 func_0035D240  # OVL1
 0x0035D370 0xA8 func_0035D370  # OVL1
 0x0035D420 0x6C func_0035D420  # OVL1
-0x0035D490 0x1C func_0035D490  # OVL1
+0x0035D490 0x1C end__Q23std106__vector_imp<Q28Particle22SequenceEntry<6CPnt4D>,Q23std46allocator<Q28Particle22SequenceEntry<6CPnt4D>>,0>CFv  # OVL1; s1:exact
 0x0035D4B0 0x8 func_0035D4B0  # OVL1
 0x0035D4C0 0x14 func_0035D4C0  # OVL1
 0x0035D4E0 0x8 func_0035D4E0  # OVL1
@@ -6624,11 +6624,11 @@
 0x003602F0 0x8C func_003602F0  # OVL1
 0x00360380 0x118 func_00360380  # OVL1
 0x003604A0 0x5C func_003604A0  # OVL1
-0x00360500 0x1C func_00360500  # OVL1
+0x00360500 0x1C SetUV__7C2DLineFffff  # OVL1; s1:exact
 0x00360520 0xBC func_00360520  # OVL1
 0x003605E0 0xF8 func_003605E0  # OVL1
 0x003606E0 0xA0 func_003606E0  # OVL1
-0x00360780 0x1C func_00360780  # OVL1
+0x00360780 0x1C SetColor__7C2DLineFfff  # OVL1; s1:exact
 0x003607A0 0x50 func_003607A0  # OVL1
 0x003607F0 0x50 func_003607F0  # OVL1
 0x00360840 0x50 func_00360840  # OVL1
@@ -6641,13 +6641,13 @@
 0x00360CA0 0x2B8 func_00360CA0  # OVL1
 0x00360F60 0x54 func_00360F60  # OVL1
 0x00360FC0 0x38 func_00360FC0  # OVL1
-0x00361000 0x28 func_00361000  # OVL1
+0x00361000 0x28 SetUV__7C2DPolyFffffff  # OVL1; s1:exact
 0x00361030 0x48 func_00361030  # OVL1
 0x00361080 0x8 func_00361080  # OVL1
 0x00361090 0x90 func_00361090  # OVL1
 0x00361120 0x98 func_00361120  # OVL1
-0x003611C0 0x40 func_003611C0  # OVL1
-0x00361200 0x28 func_00361200  # OVL1
+0x003611C0 0x40 GetColor__7C2DPolyFv  # OVL1; s1:exact
+0x00361200 0x28 SetColor__7C2DPolyFfff  # OVL1; s1:exact
 0x00361230 0x50 func_00361230  # OVL1
 0x00361280 0x50 func_00361280  # OVL1
 0x003612D0 0x50 func_003612D0  # OVL1
@@ -6701,12 +6701,12 @@
 0x00364680 0x50 func_00364680  # OVL1
 0x003646D0 0x98 func_003646D0  # OVL1
 0x00364770 0xB8 func_00364770  # OVL1
-0x00364830 0x1C func_00364830  # OVL1
+0x00364830 0x1C SetUV__9C2DBitmapFffff  # OVL1; s1:exact
 0x00364850 0x8 func_00364850  # OVL1
 0x00364860 0x90 func_00364860  # OVL1
 0x003648F0 0x8 func_003648F0  # OVL1
 0x00364900 0x28 func_00364900  # OVL1
-0x00364930 0x1C func_00364930  # OVL1
+0x00364930 0x1C SetColor__9C2DBitmapFfff  # OVL1; s1:exact
 0x00364950 0xDC func_00364950  # OVL1
 0x00364A30 0xCC func_00364A30  # OVL1
 0x00364B00 0x50 func_00364B00  # OVL1
@@ -6762,7 +6762,7 @@
 0x003698C0 0x2A0 func_003698C0  # OVL1
 0x00369B60 0x348 func_00369B60  # OVL1
 0x00369EB0 0xC0 func_00369EB0  # OVL1
-0x00369F70 0x24 func_00369F70  # OVL1; tu: zui.cpp~ (1.0 beta)
+0x00369F70 0x24 __ct__10ActionItemFv  # OVL1; tu: zui.cpp~ (1.0 beta); s1:exact
 0x00369FA0 0xB8 func_00369FA0  # OVL1
 0x0036A060 0x1A0 func_0036A060  # OVL1
 0x0036A200 0xC func_0036A200  # OVL1
@@ -7158,7 +7158,7 @@
 0x00387C70 0x80 func_00387C70  # OVL1
 0x00387CF0 0x268 func_00387CF0  # OVL1
 0x00387F60 0x28 func_00387F60  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
-0x00387F90 0x20 func_00387F90  # OVL1
+0x00387F90 0x20 __ct__6CPnt3DFRC6CPnt3D  # OVL1; s1:exact
 0x00387FB0 0x28 func_00387FB0  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
 0x00387FE0 0xA0 func_00387FE0  # OVL1
 0x00388080 0x64 func_00388080  # OVL1
@@ -7591,7 +7591,7 @@
 0x003A0390 0xA0 func_003A0390  # OVL1
 0x003A0430 0x80 func_003A0430  # OVL1
 0x003A04B0 0x8 func_003A04B0  # OVL1
-0x003A04C0 0x10 func_003A04C0  # OVL1
+0x003A04C0 0x10 IsOpen__10CMemCardIOCFv  # OVL1; s1:exact
 0x003A04D0 0xD0 func_003A04D0  # OVL1
 0x003A05A0 0x224 func_003A05A0  # OVL1
 0x003A07D0 0xB4 func_003A07D0  # OVL1
@@ -8055,15 +8055,15 @@
 0x003C3420 0x90 func_003C3420  # OVL1
 0x003C34B0 0xC0 func_003C34B0  # OVL1
 0x003C3570 0x140 func_003C3570  # OVL1
-0x003C36B0 0x10 func_003C36B0  # OVL1; tu: vis_main.cpp~ (1.0 beta)
+0x003C36B0 0x10 UpdateCentroid__Q23zdb7CVisualFv  # OVL1; tu: vis_main.cpp~ (1.0 beta); s1:exact
 0x003C36C0 0x8 func_003C36C0  # OVL1
 0x003C36D0 0x1EC func_003C36D0  # OVL1
 0x003C38C0 0x370 func_003C38C0  # OVL1
 0x003C3C30 0xA4 func_003C3C30  # OVL1
-0x003C3CE0 0xA8 func_003C3CE0  # OVL1; tu: vis_main.cpp~ (1.0 beta)
+0x003C3CE0 0xA8 GetTextureSelectBlock_ver2__Q23zdb7CVisualFUiPP8_word128P8_word128P8_word128  # OVL1; tu: vis_main.cpp~ (1.0 beta); s1:exact
 0x003C3D90 0xFC func_003C3D90  # OVL1
 0x003C3E90 0x290 func_003C3E90  # OVL1
-0x003C4120 0x14 func_003C4120  # OVL1
+0x003C4120 0x14 Release__Q23zdb7CVisualFv  # OVL1; s1:exact
 0x003C4140 0x44 func_003C4140  # OVL1
 0x003C4190 0x140 func_003C4190  # OVL1
 0x003C42D0 0xB4 func_003C42D0  # OVL1
@@ -8099,7 +8099,7 @@
 0x003C5830 0x5C func_003C5830  # OVL1
 0x003C5890 0x98 func_003C5890  # OVL1
 0x003C5930 0x20 func_003C5930  # OVL1
-0x003C5950 0x10 func_003C5950  # OVL1
+0x003C5950 0x10 ResolveFTSDamage__11CZFTSWeaponFf  # OVL1; s1:exact
 0x003C5960 0x8 func_003C5960  # OVL1
 0x003C5970 0x8 func_003C5970  # OVL1
 0x003C5980 0x38 func_003C5980  # OVL1
@@ -8233,9 +8233,9 @@
 0x003CBB30 0x12C func_003CBB30  # OVL1
 0x003CBC60 0x188 func_003CBC60  # OVL1
 0x003CBDF0 0x188 func_003CBDF0  # OVL1
-0x003CBF80 0x38 func_003CBF80  # OVL1
+0x003CBF80 0x38 ReleaseIndirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi  # OVL1; s1:exact
 0x003CBFC0 0xE8 func_003CBFC0  # OVL1
-0x003CC0B0 0x38 func_003CC0B0  # OVL1
+0x003CC0B0 0x38 ReleaseDirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi  # OVL1; s1:exact
 0x003CC0F0 0xF8 func_003CC0F0  # OVL1
 0x003CC1F0 0xD4 func_003CC1F0  # OVL1
 0x003CC2D0 0xE4 func_003CC2D0  # OVL1
@@ -8313,7 +8313,7 @@
 0x003D19E0 0x78 func_003D19E0  # OVL1
 0x003D1A60 0x210 func_003D1A60  # OVL1
 0x003D1C70 0x1C func_003D1C70  # OVL1
-0x003D1C90 0x1C func_003D1C90  # OVL1; tu: zwep_weapon.cpp~ (1.0 beta)
+0x003D1C90 0x1C UnpackItemAndAmmoEnums__8CZWeaponFUsP10EQUIP_ITEMP10EQUIP_AMMO  # OVL1; tu: zwep_weapon.cpp~ (1.0 beta); s1:exact
 0x003D1CB0 0x28 func_003D1CB0  # OVL1
 0x003D1CE0 0x28 func_003D1CE0  # OVL1
 0x003D1D10 0x74 func_003D1D10  # OVL1
@@ -8481,7 +8481,7 @@
 0x004C57F8 0x168 func_004C57F8  # OVL2 unaligned
 0x004C5960 0x184 func_004C5960  # OVL2
 0x004C5AE8 0x184 func_004C5AE8  # OVL2 unaligned
-0x004C5C70 0x10 func_004C5C70  # OVL2
+0x004C5C70 0x10 ContextAPIDeActivate  # OVL2; s1:exact
 0x004C5C80 0x44 func_004C5C80  # OVL2
 0x004C5CC8 0xC func_004C5CC8  # OVL2 unaligned
 0x004C5CD8 0x8C func_004C5CD8  # OVL2 unaligned
@@ -8587,7 +8587,7 @@
 0x004CC820 0x138 func_004CC820  # OVL2
 0x004CC958 0x138 func_004CC958  # OVL2 unaligned
 0x004CCA90 0x3C func_004CCA90  # OVL2
-0x004CCAD0 0x14 func_004CCAD0  # OVL2
+0x004CCAD0 0x14 asrspi_GetUswVersion  # OVL2; s1:exact
 0x004CCAE8 0x44 func_004CCAE8  # OVL2 unaligned
 0x004CCB30 0x120 func_004CCB30  # OVL2
 0x004CCC50 0x18 func_004CCC50  # OVL2
@@ -8596,8 +8596,8 @@
 0x004CCCB0 0x8C func_004CCCB0  # OVL2
 0x004CCD40 0x38 func_004CCD40  # OVL2
 0x004CCD78 0x20 func_004CCD78  # OVL2 unaligned
-0x004CCD98 0x2C func_004CCD98  # OVL2 unaligned
-0x004CCDC8 0x2C func_004CCDC8  # OVL2 unaligned
+0x004CCD98 0x2C ASRSPICBTS  # OVL2 unaligned; s1:exact
+0x004CCDC8 0x2C ASRSPICBSTARTDET  # OVL2 unaligned; s1:exact
 0x004CCDF8 0x98 func_004CCDF8  # OVL2 unaligned
 0x004CCE90 0x300 func_004CCE90  # OVL2
 0x004CD190 0x48C func_004CD190  # OVL2
@@ -8634,7 +8634,7 @@
 0x004D5718 0x114 func_004D5718  # OVL2 unaligned
 0x004D5830 0x184 func_004D5830  # OVL2
 0x004D59B8 0xF0 func_004D59B8  # OVL2 unaligned
-0x004D5AA8 0x10 func_004D5AA8  # OVL2 unaligned
+0x004D5AA8 0x10 CompareIDs  # OVL2 unaligned; s1:exact
 0x004D5AB8 0x60 func_004D5AB8  # OVL2 unaligned
 0x004D5B18 0x888 func_004D5B18  # OVL2 unaligned
 0x004D63A0 0x36C func_004D63A0  # OVL2
@@ -8698,7 +8698,7 @@
 0x004DEAB0 0x34 func_004DEAB0  # OVL2
 0x004DEAE8 0x34 func_004DEAE8  # OVL2 unaligned
 0x004DEB20 0x28 func_004DEB20  # OVL2
-0x004DEB48 0x10 func_004DEB48  # OVL2 unaligned
+0x004DEB48 0x10 cbRegisterInputQueue  # OVL2 unaligned; s1:exact
 0x004DEB58 0x44 func_004DEB58  # OVL2 unaligned
 0x004DEBA0 0x64 func_004DEBA0  # OVL2
 0x004DEC08 0x5C func_004DEC08  # OVL2 unaligned
@@ -8711,10 +8711,10 @@
 0x004DF0B8 0xC func_004DF0B8  # OVL2 unaligned
 0x004DF0C8 0x90 func_004DF0C8  # OVL2 unaligned
 0x004DF158 0x90 func_004DF158  # OVL2 unaligned
-0x004DF1E8 0x18 func_004DF1E8  # OVL2 unaligned
+0x004DF1E8 0x18 cbDoSecondPass  # OVL2 unaligned; s1:exact
 0x004DF200 0x58 func_004DF200  # OVL2
-0x004DF258 0x20 func_004DF258  # OVL2 unaligned
-0x004DF278 0x10 func_004DF278  # OVL2 unaligned
+0x004DF258 0x20 cbNewUserWordUtterance  # OVL2 unaligned; s1:exact
+0x004DF278 0x10 cbDTMFDetected  # OVL2 unaligned; s1:exact
 0x004DF288 0x40 func_004DF288  # OVL2 unaligned
 0x004DF2C8 0x154 func_004DF2C8  # OVL2 unaligned
 0x004DF420 0x4C func_004DF420  # OVL2
@@ -8765,7 +8765,7 @@
 0x004E5668 0x27C func_004E5668  # OVL2 unaligned
 0x004E58E8 0x5C func_004E58E8  # OVL2 unaligned
 0x004E5948 0x8 func_004E5948  # OVL2 unaligned
-0x004E5950 0x10 func_004E5950  # OVL2
+0x004E5950 0x10 MakeUserWordsActiveDist  # OVL2; s1:exact
 0x004E5960 0x1D4 func_004E5960  # OVL2
 0x004E5B38 0x234 func_004E5B38  # OVL2 unaligned
 0x004E5D70 0x28C func_004E5D70  # OVL2
@@ -8863,7 +8863,7 @@
 0x004F5708 0x238 func_004F5708  # OVL2 unaligned
 0x004F5940 0x52C func_004F5940  # OVL2
 0x004F5E70 0x3C func_004F5E70  # OVL2
-0x004F5EB0 0x6C func_004F5EB0  # OVL2
+0x004F5EB0 0x6C ResetGender  # OVL2; s1:exact
 0x004F5F20 0xDC func_004F5F20  # OVL2
 0x004F6000 0x10C func_004F6000  # OVL2
 0x004F6110 0x808 func_004F6110  # OVL2
@@ -8874,8 +8874,8 @@
 0x004F6CE0 0x32C func_004F6CE0  # OVL2
 0x004F7010 0x24 func_004F7010  # OVL2
 0x004F7038 0x50 func_004F7038  # OVL2 unaligned
-0x004F7088 0x18 func_004F7088  # OVL2 unaligned
-0x004F70A0 0x24 func_004F70A0  # OVL2
+0x004F7088 0x18 mtxAssociateEntr  # OVL2 unaligned; s1:exact
+0x004F70A0 0x24 mtxAssociateAll  # OVL2; s1:exact
 0x004F70C8 0x80 func_004F70C8  # OVL2 unaligned
 0x004F7148 0x1B8 func_004F7148  # OVL2 unaligned
 0x004F7300 0x124 func_004F7300  # OVL2
@@ -8956,7 +8956,7 @@
 0x00501690 0x284 func_00501690  # OVL2
 0x00501918 0x3C func_00501918  # OVL2 unaligned
 0x00501958 0x54 func_00501958  # OVL2 unaligned
-0x005019B0 0x18 func_005019B0  # OVL2
+0x005019B0 0x18 Median_Reset  # OVL2; s1:exact
 0x005019C8 0xC4 func_005019C8  # OVL2 unaligned
 0x00501A90 0x38C func_00501A90  # OVL2
 0x00501E20 0x114 func_00501E20  # OVL2
@@ -9003,7 +9003,7 @@
 0x00508140 0xA4 func_00508140  # OVL2
 0x005081E8 0x6C func_005081E8  # OVL2 unaligned
 0x00508258 0xD8 func_00508258  # OVL2 unaligned
-0x00508330 0x14 func_00508330  # OVL2
+0x00508330 0x14 _contextCheckDataType  # OVL2; s1:exact
 0x00508348 0xC func_00508348  # OVL2 unaligned
 0x00508358 0xC func_00508358  # OVL2 unaligned
 0x00508368 0xC func_00508368  # OVL2 unaligned
@@ -9017,8 +9017,8 @@
 0x005083E8 0xC func_005083E8  # OVL2 unaligned
 0x005083F8 0xC func_005083F8  # OVL2 unaligned
 0x00508408 0xC func_00508408  # OVL2 unaligned
-0x00508418 0x14 func_00508418  # OVL2 unaligned
-0x00508430 0x14 func_00508430  # OVL2
+0x00508418 0x14 _contextIsSpellingContext  # OVL2 unaligned; s1:exact
+0x00508430 0x14 _contextIsIsoWordContext  # OVL2; s1:exact
 0x00508448 0xC func_00508448  # OVL2 unaligned
 0x00508458 0x28 func_00508458  # OVL2 unaligned
 0x00508480 0x38 func_00508480  # OVL2
@@ -9027,13 +9027,13 @@
 0x00508718 0xE8 func_00508718  # OVL2 unaligned
 0x00508800 0x80 func_00508800  # OVL2
 0x00508880 0x24 func_00508880  # OVL2
-0x005088A8 0x10 func_005088A8  # OVL2 unaligned
-0x005088B8 0x14 func_005088B8  # OVL2 unaligned
+0x005088A8 0x10 _langCheckBitField  # OVL2 unaligned; s1:exact
+0x005088B8 0x14 _langCheckDataType  # OVL2 unaligned; s1:exact
 0x005088D0 0xC func_005088D0  # OVL2
 0x005088E0 0xC func_005088E0  # OVL2
 0x005088F0 0xC func_005088F0  # OVL2
 0x00508900 0xC func_00508900  # OVL2
-0x00508910 0x14 func_00508910  # OVL2
+0x00508910 0x14 _langGetNbrPhenome  # OVL2; s1:exact
 0x00508928 0xC func_00508928  # OVL2 unaligned
 0x00508938 0xC func_00508938  # OVL2 unaligned
 0x00508948 0xC func_00508948  # OVL2 unaligned
@@ -9076,14 +9076,14 @@
 0x00509438 0x98 func_00509438  # OVL2 unaligned
 0x005094D0 0x18 func_005094D0  # OVL2
 0x005094E8 0x8 func_005094E8  # OVL2 unaligned
-0x005094F0 0x14 func_005094F0  # OVL2
+0x005094F0 0x14 _transwGetpBeginOfTransWords  # OVL2; s1:exact
 0x00509508 0x8 func_00509508  # OVL2 unaligned
 0x00509510 0x20 func_00509510  # OVL2
 0x00509530 0x30 func_00509530  # OVL2
 0x00509560 0x40 func_00509560  # OVL2
 0x005095A0 0x74 func_005095A0  # OVL2
-0x00509618 0x34 func_00509618  # OVL2 unaligned
-0x00509650 0x10 func_00509650  # OVL2
+0x00509618 0x34 _cdbGetProbMatrixSize  # OVL2 unaligned; s1:exact
+0x00509650 0x10 _cdbGetSmoothMatrixSize  # OVL2; s1:exact
 0x00509660 0x8 func_00509660  # OVL2
 0x00509668 0x8 func_00509668  # OVL2 unaligned
 0x00509670 0x8 func_00509670  # OVL2
@@ -9097,8 +9097,8 @@
 0x005096B0 0x8 func_005096B0  # OVL2
 0x005096B8 0x20 func_005096B8  # OVL2 unaligned
 0x005096D8 0x8 func_005096D8  # OVL2 unaligned
-0x005096E0 0x20 func_005096E0  # OVL2
-0x00509700 0x30 func_00509700  # OVL2
+0x005096E0 0x20 _GetNbrStatesInPhenome  # OVL2; s1:exact
+0x00509700 0x30 _ConvPhenomesToStates  # OVL2; s1:exact
 0x00509730 0x3BC func_00509730  # OVL2
 0x00509AF0 0xF8 func_00509AF0  # OVL2
 0x00509BE8 0x31C func_00509BE8  # OVL2 unaligned
@@ -9160,7 +9160,7 @@
 0x0050DB88 0xC0 func_0050DB88  # OVL2 unaligned
 0x0050DC50 0x1C8 func_0050DC50  # OVL2
 0x0050DE20 0xF0 func_0050DE20  # OVL2
-0x0050DF10 0x20 func_0050DF10  # OVL2
+0x0050DF10 0x20 elevate__2aiFR6CPnt3Dff  # OVL2; s1:exact
 0x0050DF30 0xC func_0050DF30  # OVL2
 0x0050DF40 0x4C func_0050DF40  # OVL2
 0x0050DF90 0xC func_0050DF90  # OVL2
@@ -9227,7 +9227,7 @@
 0x00510740 0x70 func_00510740  # OVL2
 0x005107B0 0x194 func_005107B0  # OVL2
 0x00510950 0x14 func_00510950  # OVL2
-0x00510970 0x38 func_00510970  # OVL2
+0x00510970 0x38 find<Q33std48list<P9CAiVisMap,Q23std22allocator<P9CAiVisMap>>19generic_iterator<0>,P9CAiVisMap>__3stdFQ33std48list<P9CAiVisMap,Q23std22allocator<P9CAiVisMap>>19generic_iterator<0>Q33std48list<P9CAiVisMap,Q23std22allocator<P9CAiVisMap>>19generic_iterator<0>RCP9CAiVisMap  # OVL2; s1:exact
 0x005109B0 0xC func_005109B0  # OVL2
 0x005109C0 0xC func_005109C0  # OVL2
 0x005109D0 0x1AC func_005109D0  # OVL2
@@ -9317,7 +9317,7 @@
 0x00517850 0x654 func_00517850  # OVL2
 0x00517EB0 0x1F8 func_00517EB0  # OVL2
 0x005180B0 0xD0 func_005180B0  # OVL2
-0x00518180 0x28 func_00518180  # OVL2
+0x00518180 0x28 _reset_rtflag__6CAiMapFRC18MAP_FOREACH_STRUCTPv  # OVL2; s1:exact
 0x005181B0 0x38 func_005181B0  # OVL2
 0x005181F0 0x258 func_005181F0  # OVL2
 0x00518450 0x1DC func_00518450  # OVL2
@@ -9334,8 +9334,8 @@
 0x00518EA0 0x1D8 func_00518EA0  # OVL2
 0x00519080 0xA8 func_00519080  # OVL2
 0x00519130 0x118 func_00519130  # OVL2
-0x00519250 0x18 func_00519250  # OVL2
-0x00519270 0x18 func_00519270  # OVL2
+0x00519250 0x18 _max<Us>__2aiFRCUsRCUs  # OVL2; s1:exact
+0x00519270 0x18 _min<Us>__2aiFRCUsRCUs  # OVL2; s1:exact
 0x00519290 0x50 func_00519290  # OVL2
 0x005192E0 0x420 func_005192E0  # OVL2
 0x00519700 0x9C func_00519700  # OVL2
@@ -9470,7 +9470,7 @@
 0x005281B0 0x188 func_005281B0  # OVL2
 0x00528340 0xE4 func_00528340  # OVL2
 0x00528430 0xDC func_00528430  # OVL2
-0x00528510 0x18 func_00528510  # OVL2
+0x00528510 0x18 _min<Ui>__2aiFRCUiRCUi  # OVL2; s1:exact
 0x00528530 0xBC func_00528530  # OVL2
 0x005285F0 0x1DC func_005285F0  # OVL2
 0x005287D0 0x460 func_005287D0  # OVL2
@@ -9517,7 +9517,7 @@
 0x0052CC80 0xAC func_0052CC80  # OVL2
 0x0052CD30 0xDC func_0052CD30  # OVL2
 0x0052CE10 0x3E8 func_0052CE10  # OVL2
-0x0052D200 0x6C func_0052D200  # OVL2
+0x0052D200 0x6C __ct__9CAiMapLocFUiUiUi  # OVL2; s1:exact
 0x0052D270 0x10 func_0052D270  # OVL2
 0x0052D280 0x10 func_0052D280  # OVL2
 0x0052D290 0x1F0 func_0052D290  # OVL2
@@ -9545,7 +9545,7 @@
 0x0052EA10 0xE8 func_0052EA10  # OVL2
 0x0052EB00 0x14 func_0052EB00  # OVL2
 0x0052EB20 0x14 func_0052EB20  # OVL2
-0x0052EB40 0x18 func_0052EB40  # OVL2
+0x0052EB40 0x18 _max<Ui>__2aiFRCUiRCUi  # OVL2; s1:exact
 0x0052EB60 0x38 func_0052EB60  # OVL2
 0x0052EBA0 0xB4 func_0052EBA0  # OVL2
 0x0052EC60 0x240 func_0052EC60  # OVL2
@@ -9566,10 +9566,10 @@
 0x0052F8F0 0x348 func_0052F8F0  # OVL2
 0x0052FC40 0x44 func_0052FC40  # OVL2
 0x0052FC90 0xD4 func_0052FC90  # OVL2
-0x0052FD70 0x14 func_0052FD70  # OVL2
+0x0052FD70 0x14 __ct__Q26CAiMap6readerFv  # OVL2; s1:exact
 0x0052FD90 0xD0 func_0052FD90  # OVL2
 0x0052FE60 0xE0 func_0052FE60  # OVL2
-0x0052FF40 0x78 func_0052FF40  # OVL2
+0x0052FF40 0x78 GetCenter__Q26CAiMap6regionCFR9CAiMapLoc  # OVL2; s1:exact
 0x0052FFC0 0xD4 func_0052FFC0  # OVL2
 0x005300A0 0x190 func_005300A0  # OVL2
 0x00530230 0x140 func_00530230  # OVL2
@@ -9578,7 +9578,7 @@
 0x00530500 0x1E4 func_00530500  # OVL2
 0x005306F0 0xB0 func_005306F0  # OVL2
 0x005307A0 0x1E0 func_005307A0  # OVL2
-0x00530980 0x20 func_00530980  # OVL2
+0x00530980 0x20 back__Q23std68__vector_imp<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>,0>Fv  # OVL2; s1:exact
 0x005309A0 0x24 func_005309A0  # OVL2
 0x005309D0 0x20 func_005309D0  # OVL2
 0x005309F0 0xB0 func_005309F0  # OVL2
@@ -10835,7 +10835,7 @@
 0x005B97A0 0x120 func_005B97A0  # OVL2
 0x005B98C0 0xC4 func_005B98C0  # OVL2
 0x005B9990 0x14 func_005B9990  # OVL2
-0x005B99B0 0x1C func_005B99B0  # OVL2
+0x005B99B0 0x1C SetWeaponInfoChanged__5CZKitFv  # OVL2; s1:exact
 0x005B99D0 0x24 func_005B99D0  # OVL2
 0x005B9A00 0x1A8 func_005B9A00  # OVL2
 0x005B9BB0 0x258 func_005B9BB0  # OVL2
@@ -10978,7 +10978,7 @@
 0x005C8A20 0x778 func_005C8A20  # OVL2
 0x005C91A0 0xC func_005C91A0  # OVL2
 0x005C91B0 0x7C func_005C91B0  # OVL2
-0x005C9230 0x14 func_005C9230  # OVL2
+0x005C9230 0x14 __ct__Q222@unnamed@seal_kit_cpp@18CSavedFireModeInfoFv  # OVL2; s1:exact
 0x005C9250 0x18 func_005C9250  # OVL2
 0x005C9270 0xCC func_005C9270  # OVL2
 0x005C9340 0x74 func_005C9340  # OVL2
@@ -11159,11 +11159,11 @@
 0x005DFE30 0x188 func_005DFE30  # OVL2
 0x005DFFC0 0x2C func_005DFFC0  # OVL2
 0x005DFFF0 0x14 func_005DFFF0  # OVL2
-0x005E0010 0x14 func_005E0010  # OVL2
+0x005E0010 0x14 GetWeaponState__10CZSealBodyCFv  # OVL2; s1:exact
 0x005E0030 0x420 func_005E0030  # OVL2
 0x005E0450 0x240 func_005E0450  # OVL2
 0x005E0690 0x130C func_005E0690  # OVL2
-0x005E19A0 0x28 func_005E19A0  # OVL2
+0x005E19A0 0x28 SetPistolAnim__10CAnimsByFPF8AnimType8AnimType  # OVL2; s1:exact
 0x005E19D0 0x40 func_005E19D0  # OVL2
 0x005E1A10 0x40 func_005E1A10  # OVL2
 0x005E1A50 0x40 func_005E1A50  # OVL2
@@ -11260,7 +11260,7 @@
 0x005EA5D0 0x1AC func_005EA5D0  # OVL2
 0x005EA780 0x38 func_005EA780  # OVL2
 0x005EA7C0 0x20 func_005EA7C0  # OVL2
-0x005EA7E0 0x88 func_005EA7E0  # OVL2
+0x005EA7E0 0x88 __ct__9CAiMapLocFRC9CAiMapLoc  # OVL2; s1:exact
 0x005EA870 0x8 func_005EA870  # OVL2
 0x005EA880 0x34 func_005EA880  # OVL2
 0x005EA8C0 0x1B0 func_005EA8C0  # OVL2
@@ -11305,7 +11305,7 @@
 0x005ED920 0x14 func_005ED920  # OVL2
 0x005ED940 0xC func_005ED940  # OVL2
 0x005ED950 0x2C func_005ED950  # OVL2
-0x005ED980 0x1C func_005ED980  # OVL2
+0x005ED980 0x1C __ct__Q33std42list<P6CAiMap,Q23std19allocator<P6CAiMap>>19generic_iterator<1>FQ33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<1>  # OVL2; s1:exact
 0x005ED9A0 0xC func_005ED9A0  # OVL2
 0x005ED9B0 0x1F8 func_005ED9B0  # OVL2
 0x005EDBB0 0x108 func_005EDBB0  # OVL2
@@ -11505,7 +11505,7 @@
 0x005FF2F0 0xAB8 func_005FF2F0  # OVL2
 0x005FFDB0 0xC func_005FFDB0  # OVL2
 0x005FFDC0 0x8 func_005FFDC0  # OVL2
-0x005FFDD0 0x18 func_005FFDD0  # OVL2
+0x005FFDD0 0x18 __ct__6CPnt4DFffff  # OVL2; s1:exact
 0x005FFDF0 0x118 func_005FFDF0  # OVL2
 0x005FFF10 0x24 func_005FFF10  # OVL2
 0x005FFF40 0x124 func_005FFF40  # OVL2
@@ -11530,7 +11530,7 @@
 0x00601200 0x128 func_00601200  # OVL2
 0x00601330 0xD0 func_00601330  # OVL2
 0x00601400 0x404 func_00601400  # OVL2
-0x00601810 0x10 func_00601810  # OVL2
+0x00601810 0x10 SetScanRate__9CSealCtrlFf  # OVL2; s1:exact
 0x00601820 0x8 func_00601820  # OVL2
 0x00601830 0x20 func_00601830  # OVL2
 0x00601850 0x8 func_00601850  # OVL2
@@ -11813,8 +11813,8 @@
 0x00613FC8 0x8 func_00613FC8  # OVL2 unaligned
 0x00613FD0 0x194 func_00613FD0  # OVL2
 0x00614168 0xF4 func_00614168  # OVL2 unaligned
-0x00614260 0x20 func_00614260  # OVL2
-0x00614280 0x10 func_00614280  # OVL2
+0x00614260 0x20 DmeToRtMsgConnectionIndex  # OVL2; s1:exact
+0x00614280 0x10 RtMsgToDmeConnectionIndex  # OVL2; s1:exact
 0x00614290 0x18 func_00614290  # OVL2
 0x006142A8 0xD8 func_006142A8  # OVL2 unaligned
 0x00614380 0x11C func_00614380  # OVL2
@@ -12124,7 +12124,7 @@
 0x006269A8 0x8C func_006269A8  # OVL2 unaligned
 0x00626A38 0xD4 func_00626A38  # OVL2 unaligned
 0x00626B10 0xBC func_00626B10  # OVL2
-0x00626BD0 0x10 func_00626BD0  # OVL2
+0x00626BD0 0x10 IsEven  # OVL2; s1:exact
 0x00626BE0 0x38 func_00626BE0  # OVL2
 0x00626C18 0x50 func_00626C18  # OVL2 unaligned
 0x00626C68 0x44 func_00626C68  # OVL2 unaligned
@@ -12277,7 +12277,7 @@
 0x0062D538 0x90 func_0062D538  # OVL2 unaligned
 0x0062D5C8 0x6C func_0062D5C8  # OVL2 unaligned
 0x0062D638 0x2C func_0062D638  # OVL2 unaligned
-0x0062D668 0x18 func_0062D668  # OVL2 unaligned
+0x0062D668 0x18 rt_comm_get_channel  # OVL2 unaligned; s1:exact
 0x0062D680 0x4C func_0062D680  # OVL2
 0x0062D6D0 0x30 func_0062D6D0  # OVL2
 0x0062D700 0x84 func_0062D700  # OVL2
@@ -12327,7 +12327,7 @@
 0x0062EC78 0x4C func_0062EC78  # OVL2 unaligned
 0x0062ECC8 0x64 func_0062ECC8  # OVL2 unaligned
 0x0062ED30 0x80 func_0062ED30  # OVL2
-0x0062EDB0 0x38 func_0062EDB0  # OVL2
+0x0062EDB0 0x38 AppendKeyChain  # OVL2; s1:exact
 0x0062EDE8 0x34 func_0062EDE8  # OVL2 unaligned
 0x0062EE20 0x4C func_0062EE20  # OVL2
 0x0062EE70 0x40 func_0062EE70  # OVL2
@@ -12394,7 +12394,7 @@
 0x00632498 0x70 func_00632498  # OVL2 unaligned
 0x00632508 0x50 func_00632508  # OVL2 unaligned
 0x00632558 0x18 func_00632558  # OVL2 unaligned
-0x00632570 0x48 func_00632570  # OVL2
+0x00632570 0x48 rt_memory_get_aligned_address  # OVL2; s1:exact
 0x006325B8 0x54 func_006325B8  # OVL2 unaligned
 0x00632610 0xC func_00632610  # OVL2
 0x00632620 0x158 func_00632620  # OVL2
@@ -12445,7 +12445,7 @@
 0x006347C8 0x88 func_006347C8  # OVL2 unaligned
 0x00634850 0x8C func_00634850  # OVL2
 0x006348E0 0x74 func_006348E0  # OVL2
-0x00634958 0x18 func_00634958  # OVL2 unaligned
+0x00634958 0x18 rt_comm_set_default_options  # OVL2 unaligned; s1:exact
 0x00634970 0x38 func_00634970  # OVL2
 0x006349A8 0x5C func_006349A8  # OVL2 unaligned
 0x00634A08 0xCC func_00634A08  # OVL2 unaligned
@@ -12504,17 +12504,17 @@
 0x00638798 0x44 func_00638798  # OVL2 unaligned
 0x006387E0 0x48 func_006387E0  # OVL2
 0x00638828 0x54 func_00638828  # OVL2 unaligned
-0x00638880 0x20 func_00638880  # OVL2
+0x00638880 0x20 rt_msg_set_byte  # OVL2; s1:exact
 0x006388A0 0x24 func_006388A0  # OVL2
-0x006388C8 0x1C func_006388C8  # OVL2 unaligned
+0x006388C8 0x1C rt_msg_set_ubyte  # OVL2 unaligned; s1:exact
 0x006388E8 0x24 func_006388E8  # OVL2 unaligned
-0x00638910 0x28 func_00638910  # OVL2
+0x00638910 0x28 rt_msg_set_2byte  # OVL2; s1:exact
 0x00638938 0x38 func_00638938  # OVL2 unaligned
-0x00638970 0x24 func_00638970  # OVL2
+0x00638970 0x24 rt_msg_set_u2byte  # OVL2; s1:exact
 0x00638998 0x38 func_00638998  # OVL2 unaligned
-0x006389D0 0x38 func_006389D0  # OVL2
+0x006389D0 0x38 rt_msg_set_4byte  # OVL2; s1:exact
 0x00638A08 0x60 func_00638A08  # OVL2 unaligned
-0x00638A68 0x38 func_00638A68  # OVL2 unaligned
+0x00638A68 0x38 rt_msg_set_u4byte  # OVL2 unaligned; s1:exact
 0x00638AA0 0x60 func_00638AA0  # OVL2
 0x00638B00 0x28 func_00638B00  # OVL2
 0x00638B28 0x34 func_00638B28  # OVL2 unaligned
@@ -12614,9 +12614,9 @@
 0x0063D100 0x5C func_0063D100  # OVL2
 0x0063D160 0x50 func_0063D160  # OVL2
 0x0063D1B0 0xD4 func_0063D1B0  # OVL2
-0x0063D288 0x4C func_0063D288  # OVL2 unaligned
-0x0063D2D8 0x6C func_0063D2D8  # OVL2 unaligned
-0x0063D348 0x44 func_0063D348  # OVL2 unaligned
+0x0063D288 0x4C rt_time_timestamp_to_secs  # OVL2 unaligned; s1:exact
+0x0063D2D8 0x6C rt_time_timestamp_to_msecs  # OVL2 unaligned; s1:exact
+0x0063D348 0x44 rt_time_timestamp_to_usecs  # OVL2 unaligned; s1:exact
 0x0063D390 0x58 func_0063D390  # OVL2
 0x0063D3E8 0x5C func_0063D3E8  # OVL2 unaligned
 0x0063D448 0x14 func_0063D448  # OVL2 unaligned
@@ -13213,7 +13213,7 @@
 0x0064DAC8 0x8 func_0064DAC8  # OVL2 unaligned
 0x0064DAD0 0x2C func_0064DAD0  # OVL2
 0x0064DB00 0x18D8 func_0064DB00  # OVL2
-0x0064F3D8 0x24 func_0064F3D8  # OVL2 unaligned
+0x0064F3D8 0x24 iTerminateString  # OVL2 unaligned; s1:exact
 0x0064F400 0x30 func_0064F400  # OVL2
 0x0064F430 0xAC func_0064F430  # OVL2
 0x0064F4E0 0xA0 func_0064F4E0  # OVL2

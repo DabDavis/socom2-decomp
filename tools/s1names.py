@@ -1,0 +1,168 @@
+#!/usr/bin/env python3
+"""
+Carry SOCOM 1's symbol names onto SOCOM II, out of the May 13 2002 demo.
+
+    ./tools/s1names.py                 # report what would be named, and how
+    ./tools/s1names.py --write         # rename placeholders in symbols.txt (provenance in the note)
+    ./tools/s1names.py --compare CSV   # agreement with another name table (Address,Name,Mangled,...)
+
+The demo (extracted/socom1-demo-020513/SCUS_972.05, sha256 00c9cee7...) is unstripped:
+9,703 named, sized functions, and `.relmain`, every relocation the linker applied. That
+last part is what makes a match exact rather than plausible:
+
+  exact     same size; identical once the fields the DEMO's relocations name are masked on
+            both sides -- and nothing else is. Struct offsets, stack offsets and constants
+            stay compared, so MakeXRot cannot be mistaken for MakeYRot.
+  callee    a placeholder SOCOM II function called from the same instruction of an exact
+            pair takes the demo callee's name (iterated: exact pairs only).
+
+A name that would land on two SOCOM II addresses (an inline's out-of-line copies, template
+instances) is withheld: the map needs unique names; the rows get an `s1~` note instead.
+Names are written only over placeholders, and every one says how it was found.
+"""
+
+from __future__ import annotations
+
+import argparse
+import csv
+import re
+import struct
+import sys
+from collections import defaultdict
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE / "tools"))
+import scdecomp as E
+from beta_tu import sig
+
+DEMO = E.ROOT / "extracted" / "socom1-demo-020513" / "SCUS_972.05"
+DEMO_SHA = "00c9cee7f75b921fda1e848d04f64881b5a0b7841300591cac91371bb23d4f8a"
+FIELD = {"R_MIPS_26": 0x03FFFFFF, "R_MIPS_HI16": 0xFFFF, "R_MIPS_LO16": 0xFFFF,
+         "R_MIPS_GPREL16": 0xFFFF, "R_MIPS_32": 0xFFFFFFFF}
+
+
+class Demo:
+    def __init__(self, path: Path = DEMO):
+        import hashlib
+        raw = path.read_bytes()
+        if hashlib.sha256(raw).hexdigest() != DEMO_SHA:
+            raise SystemExit(f"{path}: not the May 13 2002 demo this was measured on")
+        self.elf = E.Elf(raw, str(path))
+        main = next(s for s in self.elf.sections if s.name == "main")
+        self.base, self.data, self.sec = main.addr, main.data, main.index
+        self.funcs = sorted((s for s in self.elf.symbols if s.type == "FUNC" and s.size and s.shndx == main.index),
+                            key=lambda s: s.value)
+        self.relocs: dict[int, str] = {}          # absolute address -> relocation type
+        rel = next(s for s in self.elf.sections if s.name == ".relmain")
+        for j in range(rel.size // 8):
+            off, info = struct.unpack_from("<II", rel.data, j * 8)
+            self.relocs[self.base + off] = E.R_MIPS.get(info & 0xFF, "?")
+
+    def read(self, a: int, n: int) -> bytes:
+        return self.data[a - self.base:a - self.base + n]
+
+    def mask_of(self, a: int, n: int) -> list[int]:
+        return [FIELD.get(self.relocs.get(a + i, ""), 0) for i in range(0, n, 4)]
+
+
+def masked(b: bytes, mask: list[int]) -> tuple:
+    ws = struct.unpack(f"<{len(b) // 4}I", b[:len(b) // 4 * 4])
+    return tuple(w & ~m & 0xFFFFFFFF for w, m in zip(ws, mask))
+
+
+def run(demo: Demo, img: E.Image, st: E.SymbolTable):
+    # candidates by (size, opcode skeleton), confirmed under the demo's exact relocation mask
+    ours = defaultdict(list)
+    for s in st.symbols:
+        seg = img.segment(s.addr)
+        if seg is None or s.size < 16 or not (img.is_code(s.addr) or seg.name == "MAIN"):
+            continue
+        ours[(s.size, sig(img.read(s.addr, s.size)))].append(s)
+    exact: dict[int, str] = {}                     # SOCOM II address -> demo name
+    demo_of: dict[int, int] = {}                   # SOCOM II address -> demo address
+    for f in demo.funcs:
+        if f.size < 16:
+            continue
+        b = demo.read(f.value, f.size)
+        cands = ours.get((f.size, sig(b)), [])
+        if not cands:
+            continue
+        m = demo.mask_of(f.value, f.size)
+        want = masked(b, m)
+        hits = [s for s in cands if masked(img.read(s.addr, s.size), m) == want]
+        if len(hits) == 1:
+            exact.setdefault(hits[0].addr, f.name)
+            demo_of[hits[0].addr] = f.value
+    # callees, from identical call sites of exact pairs, iterated
+    names_at = {f.value: f.name for f in demo.funcs}
+    callee: dict[int, str] = {}
+    frontier = dict(demo_of)
+    while frontier:
+        nxt = {}
+        for ours_a, demo_a in frontier.items():
+            size = st.at_addr(ours_a).size
+            for i in range(0, size, 4):
+                w1 = img.word(ours_a + i)
+                w2 = struct.unpack_from("<I", demo.data, demo_a - demo.base + i)[0]
+                if w1 >> 26 != 3 or w2 >> 26 != 3:
+                    continue
+                t1 = ((ours_a + i + 4) & 0xF0000000) | ((w1 & 0x3FFFFFF) << 2)
+                t2 = ((demo_a + i + 4) & 0xF0000000) | ((w2 & 0x3FFFFFF) << 2)
+                n = names_at.get(t2)
+                if n and t1 not in exact and t1 not in callee and st.at_addr(t1) is not None:
+                    callee[t1] = n
+                    if (s1 := st.at_addr(t1)) is not None and s1.size == next(
+                            (f.size for f in demo.funcs if f.value == t2), -1):
+                        nxt[t1] = t2
+        frontier = nxt
+    return exact, callee
+
+
+def main(argv=None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--write", action="store_true")
+    ap.add_argument("--compare", type=Path)
+    a = ap.parse_args(argv)
+    img, st, demo = E.image(), E.symbols(), Demo()
+    exact, callee = run(demo, img, st)
+    allp = {**callee, **exact}
+    by_name = defaultdict(list)
+    for addr, n in allp.items():
+        by_name[n].append(addr)
+    unique = {addr: n for addr, n in allp.items() if len(by_name[n]) == 1}
+    multi = {addr: n for addr, n in allp.items() if len(by_name[n]) > 1}
+    taken = {s.name for s in st.symbols if not E.is_placeholder(s.name)}
+    print(f"demo: {len(demo.funcs)} functions, {len(demo.relocs)} relocations")
+    print(f"exact {len(exact)}, callee {len(callee)}; {len(unique)} unique names, "
+          f"{len(multi)} rows share a name (withheld)")
+    if a.compare:
+        other = {int(r["Address"], 16): r.get("Mangled") or r["Name"] for r in csv.DictReader(open(a.compare))}
+        both = [x for x in unique if x in other]
+        agree = sum(1 for x in both if other[x] == unique[x])
+        print(f"vs {a.compare.name}: {len(both)} addresses both name, {agree} agree, "
+              f"{len(unique) - len(both)} new here, {len(set(other) - set(unique))} only there")
+    if a.write:
+        text = E.SYMBOLS.read_text().splitlines()
+        named = withheld = 0
+        for i, line in enumerate(text):
+            m = re.match(r"^(0x[0-9A-Fa-f]+)\s+(\S+)\s+(\S+)(.*)$", line)
+            if not m:
+                continue
+            addr, cur, note = int(m.group(1), 16), m.group(3), m.group(4)
+            sep = "; " if "#" in note else "  # "
+            if addr in unique and E.is_placeholder(cur) and unique[addr] not in taken:
+                how = "exact" if addr in exact else "callee"
+                text[i] = f"{m.group(1)} {m.group(2)} {unique[addr]}{note}{sep}s1:{how}"
+                named += 1
+            elif addr in multi and E.is_placeholder(cur) and "s1~" not in note:
+                text[i] = f"{line}{sep}s1~ {multi[addr]} (one of {len(by_name[multi[addr]])})"
+                withheld += 1
+        E.SYMBOLS.write_text("\n".join(text) + "\n")
+        print(f"named {named} placeholders, noted {withheld} shared names")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

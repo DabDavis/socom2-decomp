@@ -18,18 +18,30 @@ extern "C" float sqrtf(float);
 extern "C" float fabsf(float);
 extern "C" float acosf(float);
 
-class CPnt3D {
-public:
+/* SOCOM 1's DWARF: CPnt3D derives from the C struct PNT3D, CPnt4D from PNT4D. */
+struct PNT3D {
     float x, y, z;
+};
 
+struct PNT4D {
+    float x, y, z, w;
+};
+
+class CPnt3D : public PNT3D {
+public:
     void Interp(const CPnt3D *b, float t, CPnt3D *out) const;
+    void Normalize(CPnt3D *out) const;
+    void Normalize();
+    void Scale(float s, CPnt3D *out) const;
+    void ToRightXZ(CPnt3D *out) const;
+    void SubXZ(const CPnt3D *b, CPnt3D *out) const;
+    void Sub(const CPnt3D *b, CPnt3D *out) const;
+    void Add(const CPnt3D *b, CPnt3D *out) const;
 };
 
 /* A VU0 vector, 16-byte aligned for lqc2 (SOCOM 1 names CPnt4D::Rotate_AxisX/Y). */
-class CPnt4D {
+class CPnt4D : public PNT4D {
 public:
-    float x, y, z, w;
-
     void Rotate_AxisX(float a);
     void Rotate_AxisY(float a);
 } __attribute__((aligned(16)));
@@ -47,9 +59,18 @@ inline void VecSet(float *v, float x, float y, float z, float w)
     v[3] = w;
 }
 
+/* SOCOM 1's DWARF: two corners, 24 bytes */
+class CBBox {
+public:
+    CPnt3D m_min;
+    CPnt3D m_max;
+
+    int GetIntersect(CPnt4D *a, CPnt4D *b, CPnt4D *out, CPnt4D *out2, bool flag);
+};
+
 class CMatrix {
 public:
-    float m[4][4];
+    float m_matrix[4][4];
 
     void ToEuler(CPnt3D *out) const;
 };
@@ -59,15 +80,19 @@ public:
  * struct. Derived from CPnt3D, or as four floats, MW copies all four interleaved. */
 class CQuat {
 public:
-    CPnt3D v;
+    CPnt3D vec;
     float w;
 
+    void Exp(const CPnt3D *axis, float t);
     void Exp(const CPnt3D *axis);
     void MakeYXZRot(float ry, float rx, float rz);
     void MakeXRot(float angle);
     void MakeYRot(float angle);
     void MakeZRot(float angle);
     CQuat *Normalize();
+    void Normalize(CQuat *out) const;
+    void MakeYXRot(float ry, float rx);
+    void ToMatrix(CMatrix *m) const;
     void Mul(const CQuat *b, CQuat *out) const;
     void Apply(const CPnt3D *in, CPnt3D *out, int n) const;
     void Slerp(const CQuat *b, float t, CQuat *out) const;
@@ -77,16 +102,8 @@ public:
 
 /* Placeholders are extern "C" so they keep the map's name: C++ would mangle them. */
 extern "C" {
-/* CPnt3D helpers in the CPnt3D translation unit (not yet named) */
-void func_00309180(const CPnt3D *v, CPnt3D *out, float s);    /* out = v * s */
 
-void func_00309240(const CPnt3D *a, const CPnt3D *b, CPnt3D *out);   /* out = a + b */
 
-/* CQuat's own, not yet named */
-void func_003066D0(CQuat *q, const CPnt3D *axis, float t);       /* Exp of v scaled by t */
-void func_00307170(const CQuat *q, CMatrix *m);               /* the rotation matrix of q */
-void func_003072E0(const CQuat *q, CQuat *out);               /* out = q normalised */
-void func_00307470(CQuat *q, float a, float b);               /* q = Y(a) * X(b) */
 
 extern const CPnt3D data_003F64C0;                             /* a zero vector */
 extern const float data_003DF320;                              /* 1.0f */
@@ -102,7 +119,7 @@ int func_0028F1E0(const float *a, const float *b, const float *eps);
 inline CPnt3D operator+(const CPnt3D &a, const CPnt3D &b)
 {
     CPnt3D r;
-    func_00309240(&a, &b, &r);
+    a.Add(&b, &r);
     return r;
 }
 

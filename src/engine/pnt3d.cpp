@@ -30,7 +30,7 @@ void CPnt4D::Rotate_AxisY(float a)
 
 extern "C" {
 
-/* VU0: out.xyz = a * s + b, out.w kept */
+/* VU0: out.xyz = a * s + b, out.w kept (new in SOCOM II: no SOCOM 1 name) */
 void func_00309280(float *out, const float *a, const float *b, float s)
 {
     float w = out[3];
@@ -47,40 +47,42 @@ void func_00309280(float *out, const float *a, const float *b, float s)
     out[3] = w;
 }
 
-void func_00309240(const CPnt3D *a, const CPnt3D *b, CPnt3D *out)
-{
-    out->x = a->x + b->x;
-    out->y = a->y + b->y;
-    out->z = a->z + b->z;
 }
 
-void func_00309200(const CPnt3D *a, const CPnt3D *b, CPnt3D *out)
+void CPnt3D::Add(const CPnt3D *b, CPnt3D *out) const
 {
-    out->x = a->x - b->x;
-    out->y = a->y - b->y;
-    out->z = a->z - b->z;
+    out->x = x + b->x;
+    out->y = y + b->y;
+    out->z = z + b->z;
+}
+
+void CPnt3D::Sub(const CPnt3D *b, CPnt3D *out) const
+{
+    out->x = x - b->x;
+    out->y = y - b->y;
+    out->z = z - b->z;
 }
 
 /* the difference in the ground plane: y is left alone */
-void func_003091D0(const CPnt3D *a, const CPnt3D *b, CPnt3D *out)
+void CPnt3D::SubXZ(const CPnt3D *b, CPnt3D *out) const
 {
-    out->x = a->x - b->x;
-    out->z = a->z - b->z;
+    out->x = x - b->x;
+    out->z = z - b->z;
 }
 
 /* a perpendicular in the ground plane */
-void func_003091B0(const CPnt3D *a, CPnt3D *out)
+void CPnt3D::ToRightXZ(CPnt3D *out) const
 {
-    out->x = -a->z;
-    out->z = a->x;
+    out->x = -z;
+    out->z = x;
     out->y = 0.0f;
 }
 
-void func_00309180(const CPnt3D *v, CPnt3D *out, float s)
+void CPnt3D::Scale(float s, CPnt3D *out) const
 {
-    out->x = v->x * s;
-    out->y = v->y * s;
-    out->z = v->z * s;
+    out->x = x * s;
+    out->y = y * s;
+    out->z = z * s;
 }
 
 /* OPEN (both normalisers): instruction for instruction the target's, but y*y and the
@@ -89,31 +91,29 @@ void func_00309180(const CPnt3D *v, CPnt3D *out, float s)
  * numbering; whatever settles one settles the other. */
 
 /* normalise in place; a zero vector is left as it is */
-void func_00309110(CPnt3D *v)
+void CPnt3D::Normalize()
 {
-    float len = sqrtf(v->x * v->x + v->y * v->y + v->z * v->z);
+    float len = sqrtf(x * x + y * y + z * z);
 
     if (len != 0.0f) {
         float inv = 1.0f / len;
-        v->x = v->x * inv;
-        v->y = v->y * inv;
-        v->z = v->z * inv;
+        x = x * inv;
+        y = y * inv;
+        z = z * inv;
     }
 }
 
 /* normalise into out; nothing is written for a zero vector */
-void func_003090A0(const CPnt3D *v, CPnt3D *out)
+void CPnt3D::Normalize(CPnt3D *out) const
 {
-    float len = sqrtf(v->x * v->x + v->y * v->y + v->z * v->z);
+    float len = sqrtf(x * x + y * y + z * z);
 
     if (len != 0.0f) {
         float inv = 1.0f / len;
-        out->x = v->x * inv;
-        out->y = v->y * inv;
-        out->z = v->z * inv;
+        out->x = x * inv;
+        out->y = y * inv;
+        out->z = z * inv;
     }
-}
-
 }
 
 /* OPEN, 14 instructions off at the right size: the target loads b's three components

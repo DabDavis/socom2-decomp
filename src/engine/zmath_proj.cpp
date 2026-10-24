@@ -103,19 +103,12 @@ extern "C" void func_00307700(sceVu0FVECTOR zd, sceVu0FVECTOR p, sceVu0FMATRIX o
     sceVu0CameraMatrix(out, p, zd, yd);
 }
 
-/* A bounding box, as the VU0 test below reads it: two corners, 24 bytes. */
-struct CBox {
-    CPnt3D min;
-    CPnt3D max;
-};
-
 /* OPEN, 2 instructions off: a segment (a, b) against box through the VU0 microprogram at
  * 0x30; out[3] comes back 1.0 on a hit. The target loads out[3] before materialising the
  * 1.0f; MW (which schedules inline asm instruction by instruction) hoists the constant
  * here, and no statement order (tools/perm.py, 30,800 variants), comparison form or asm
  * qualifier has moved it. */
-extern "C" int func_00307640(const CBox *box, sceVu0FVECTOR a, sceVu0FVECTOR b, sceVu0FVECTOR out,
-                             sceVu0FVECTOR out2, int flag)
+int CBBox::GetIntersect(CPnt4D *pa, CPnt4D *pb, CPnt4D *pout, CPnt4D *pout2, bool flag)
 {
     sceVu0FVECTOR vmin;
     sceVu0FVECTOR vmax;
@@ -123,12 +116,17 @@ extern "C" int func_00307640(const CBox *box, sceVu0FVECTOR a, sceVu0FVECTOR b, 
     float *pmax = vmax;
     int *w = (int *)&pmax[3];
 
-    vmin[0] = box->min.x;
-    vmin[1] = box->min.y;
-    vmin[2] = box->min.z;
-    vmax[0] = box->max.x;
-    vmax[1] = box->max.y;
-    vmax[2] = box->max.z;
+    float *a = &pa->x;
+    float *b = &pb->x;
+    float *out = &pout->x;
+    float *out2 = &pout2->x;
+
+    vmin[0] = m_min.x;
+    vmin[1] = m_min.y;
+    vmin[2] = m_min.z;
+    vmax[0] = m_max.x;
+    vmax[1] = m_max.y;
+    vmax[2] = m_max.z;
     if (!flag)
         *w = 0xE0;
     else
@@ -145,7 +143,7 @@ extern "C" int func_00307640(const CBox *box, sceVu0FVECTOR a, sceVu0FVECTOR b, 
         "sqc2 $vf10, 0(%5)\n"
         "sqc2 $vf30, 0(%6)\n"
         "qmtc2.i %0, $vf0\n"
-        : : "r"(box), "r"(a), "r"(b), "r"(pmin), "r"(pmax), "r"(out), "r"(out2) : "memory");
+        : : "r"(this), "r"(a), "r"(b), "r"(pmin), "r"(pmax), "r"(out), "r"(out2) : "memory");
     if (out[3] == 1.0f)
         return 1;
     return 0;
