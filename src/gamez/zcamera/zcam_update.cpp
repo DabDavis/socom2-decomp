@@ -8,6 +8,30 @@
 
 namespace zdb {
 
+/* how far the fog lets p2 be seen from p1, 0 to 1: the fog's A + B times their distance, held to
+ * 0..255, scaled by how far the lower of them stands into the altitude fog. SOCOM 1's locals */
+float CCamera::GetFogVisibility(const CPnt3D *p1, const CPnt3D *p2) const
+{
+    CPnt3D vec = *p2 - *p1;
+    float vis = m_fogA + m_fogB * vec.Length();
+    float wy;
+
+    vis = MAX(0.0f, vis);
+    vis = MIN(255.0f, vis);
+    if (m_fog_alt_enabled) {
+        if (p2->y < p1->y)
+            wy = p2->y;
+        else
+            wy = p1->y;
+        wy -= m_fog_bottom;
+        wy *= m_fog_alt[1].y;
+        wy = MAX(0.0f, wy);
+        wy = MIN(1.0f, wy);
+        vis *= wy;
+    }
+    return (1.0f / 255.0f) * vis;
+}
+
 /* the altitude fog's vectors as the VU takes them -- the bottom and 1 / the depth, the fog's A and
  * B in w -- twice over, the altitude pushed out of reach when the altitude fog is off (SOCOM II's;
  * Update and the constructor call it; the name is ours) */

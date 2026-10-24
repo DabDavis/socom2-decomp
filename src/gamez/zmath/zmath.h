@@ -23,6 +23,15 @@ extern "C" float atan2f(float, float);
 extern "C" double fabs(double);
 extern "C" double exp(double);
 
+/* MIN and MAX, as macros: CCamera::GetFogVisibility clamps with a MAX then a MIN, the two
+ * ternaries a pair of ifs does not compile to */
+#ifndef MIN
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#endif
+#ifndef MAX
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#endif
+
 /* The C structs the classes extend (SOCOM 1's DWARF). */
 struct PNT3D {
     float x, y, z;
@@ -53,6 +62,8 @@ public:
     void SubXZ(const CPnt3D *b, CPnt3D *out) const;
     void Sub(const CPnt3D *b, CPnt3D *out) const;
     void Add(const CPnt3D *b, CPnt3D *out) const;
+    /* inline (GetFogVisibility's distance arrives in a register of its own; the name is ours) */
+    float Length() const { return sqrtf(x * x + y * y + z * z); }
 
     static const CPnt3D zero;
     static const CPnt3D unit_x;

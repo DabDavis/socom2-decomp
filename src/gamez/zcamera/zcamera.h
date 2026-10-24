@@ -167,6 +167,7 @@ public:
     }
     void RestoreParams();
     void UpdateDirectionalFog();
+    float GetFogVisibility(const CPnt3D *p1, const CPnt3D *p2) const;
     void UpdateFogAltVU();
     /* the parameters copied aside (CmdBeginParams; inline in both builds -- SOCOM 1's is one
      * line of it; SOCOM II's saves the fog colour too; the name is ours) */
