@@ -65,12 +65,18 @@ extern CZAnimMain ZAnim;
 
 /* a menu screen: SOCOM 1's CGameMenu is 0x890 bytes with its vtable pointer at 0x884, after
  * every member; SOCOM II's at 0x910 (CExitState's delete, CExitMenu's constructor) */
+class CTextureRelocMgr;
+
 class CGameMenu {
 public:
     unsigned char _0[0x910];
 
     CGameMenu();
     virtual ~CGameMenu();
+    virtual void MyTick(float dT);
+    virtual const char *GetReaderFileName();
+    virtual int Slot14();   /* SOCOM II's, before PrepControls (the name ours) */
+    virtual void PrepControls(CTextureRelocMgr *reloc);
     void Draw2dOnly();
 
     unsigned char _914[0x920 - 0x914];
@@ -79,6 +85,7 @@ public:
 class CExitMenu : public CGameMenu {
 public:
     CExitMenu() {}
+    virtual const char *GetReaderFileName();
 };
 
 /* a state of the game's stack: named, and told when it is pushed, popped, set up and torn down.
@@ -126,6 +133,9 @@ public:
     virtual void OnPop(int userdata);
     virtual void SetSkipSwap(int swap) { m_skip_swap = swap; }
 
+    /* whether the mission is done loading (the load state's tests materialise the bool: the
+     * name ours) */
+    bool IsLoaded() { return !m_loading; }
     void Load(bool async);
     void Unload();
     void auxUnload();
@@ -147,6 +157,34 @@ public:
     float m_c0;   // 0xc0 (SOCOM II's three: one, its reciprocal, it again)
     float m_c4;   // 0xc4
     float m_c8;   // 0xc8
+};
+
+class CLoadMenu : public CGameMenu {
+public:
+    CLoadMenu() {}
+    virtual const char *GetReaderFileName();
+};
+
+/* the mission's load: its screen while the core state loads (SOCOM 1's DWARF, without the E3
+ * build's config; SOCOM II's is 0x24 bytes, its abort flag at 0x1A) */
+class CLoadState : public CGameState {
+public:
+    CLoadState();
+    virtual ~CLoadState();
+    virtual bool Init();
+    virtual bool Tick(float dT);
+    virtual void UnInit();
+
+    CLoadMenu *m_menu;   // 0x8
+    unsigned char m_fadeup;   // 0xc
+    unsigned char m_fadedown;   // 0xd
+    float m_time_elapsed;   // 0x10
+    int m_14;   // 0x14
+    unsigned char m_18;   // 0x18
+    unsigned char m_19;   // 0x19
+    unsigned char m_abort;   // 0x1a
+    int m_1c;   // 0x1c
+    int m_20;   // 0x20
 };
 
 /* MSL's basic_string as the states hold it: three words, all zero when made (SOCOM II's library
@@ -178,13 +216,62 @@ public:
     CExitMenu *m_menu;   // 0x24
 };
 
-/* the game: its state stack, then its states (SOCOM 1's CGame is 0x7C bytes; SOCOM II's states
- * start 0x10 further on) */
+/* a film between missions (SOCOM 1's DWARF: the movie's name at 0xC) */
+class CCinematicState : public CGameState {
+public:
+    virtual ~CCinematicState();
+    virtual bool Init();
+    virtual bool Tick(float dT);
+    virtual void UnInit();
+
+    unsigned char m_movierunning;   // 0x8
+    char *m_moviename;   // 0xc
+};
+
+/* the game: its state stack, then its states -- SOCOM 1's at 0x7C, 0xE0, 0x100, 0x1C0, 0x1D8,
+ * 0x1F0; SOCOM II's menu state at 0x78 (its m_skip at 0x84), load state at 0xEC, core state at
+ * 0x110, exit state at 0x1E0, multiplayer exit state at 0x208 */
 class COurGame {
 public:
-    unsigned char _0[0x110];
+    unsigned char _0[0x84];
+    int m_menuSkip;   // 0x84 (the menu state's m_skip)
+    unsigned char _88[0xec - 0x88];
+    unsigned char m_loadState[0x24];   // 0xec
     CCoreState m_coreState;   // 0x110
+    unsigned char _1e0[0x208 - 0x1e0];
+    unsigned char m_MPexitState[0x28];   // 0x208
 };
+
+/* the game's state stack (SOCOM 1's CGame; unnamed yet) */
+extern "C" {
+void func_002CF2F0(COurGame *game, unsigned int arg);                      /* CGame::Pop */
+void func_002CF410(COurGame *game, void *state, unsigned int arg);         /* CGame::Switch */
+}
+
+/* the mission: only what the states touch */
+class CMissionInfo {
+public:
+    unsigned int _0;
+    unsigned short m_4;   // 0x4: 2 when the mission ends the game
+};
+
+class CMission {
+public:
+    void ReOpen_Load();
+    void ReOpen_Unload1();
+    void ReOpen_Unload2();
+
+    unsigned char _0[0x108];
+    float m_108;   // 0x108
+    unsigned char _10c[0x1ac - 0x10c];
+    CMissionInfo *m_1ac;   // 0x1ac
+    unsigned char _1b0[0x1854 - 0x1b0];
+    unsigned char m_objectives[0xc];   // 0x1854: a list of the mission's objectives
+};
+
+/* theMission is 0x4364E0 (no data.txt row yet) */
+extern "C" CMission data_004364E0;
+#define theMission data_004364E0
 
 /* theGame is at 0x4084C0 (what 43 references take as the object; data.txt's row says 0x4084CC) */
 extern "C" COurGame data_004084C0;

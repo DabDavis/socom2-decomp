@@ -17,6 +17,12 @@ void func_002D9E40(float dT);                    /* CInput::Tick */
 void func_003654C0(CGameMenu *menu, float dT);   /* CGameMenu::Tick */
 void func_003AFF30(bool a, bool b);              /* zVid_Swap */
 void func_001EEB40(CStateString *s, const char *text);   /* std::string::assign */
+void func_0032C1E0(const char *name, const char *path);   /* CRdrArchive::AddArchive */
+void func_0032C570();                            /* CRdrArchive::OpenAll */
+void *func_003A4460();
+void func_003A3900(void *snd, const char *bank, void *arg);
+void func_00368570(CGameMenu *menu, void *reloc, CZAnimZAR *zar);   /* CGameMenu::Init */
+void func_003AFD50(int r, int g, int b, int a, int z);   /* CVideo::Clear */
 
 extern unsigned char data_004A4511;
 extern CZAnimZAR *data_00408D80;                 /* animfile (the unit's, in an unnamed namespace) */
@@ -89,6 +95,71 @@ CZSealBody &CEntityItr::GetSeal() const
     CEntity *e = (CEntity *)*_it;
 
     return *(CZSealBody *)(e && e->m_type == 2 ? e : 0);
+}
+
+const char *CExitMenu::GetReaderFileName()
+{
+    return "dlgExitState.rdr";
+}
+
+/* the mission's objectives counted: complete and total, and the fraction complete, for the
+ * primary, the secondary and the third kind (SOCOM 1 counted two in Init itself) */
+struct CObjectiveCount {
+    CObjectiveCount()
+    {
+        complete = 0;
+        total = 0;
+    }
+
+    float fraction;
+    int complete;
+    int total;
+};
+
+struct CObjectiveCounts {
+    CObjectiveCount primary;
+    CObjectiveCount secondary;
+    CObjectiveCount third;
+};
+
+extern "C" {
+void func_001F38F0(CObjectiveCounts *counts, void *objectives);
+void func_001F21B0(CObjectiveCounts *counts);   /* SetRoundStatUiVars */
+}
+
+void zVid_Sync0();
+
+/* the stats screen up: the objectives counted, the mission unloaded around the stats being set,
+ * and -- unless the mission ends the game (popped) or the menu is skipped (popped and the load
+ * state switched to) -- the reader archive, the menu, its anims, the UI's sound bank */
+bool CExitState::Init()
+{
+    CObjectiveCounts counts;
+
+    func_001F38F0(&counts, theMission.m_objectives);
+    theMission.ReOpen_Unload1();
+    func_001F21B0(&counts);
+    theMission.ReOpen_Unload2();
+    if (theMission.m_1ac->m_4 == 2) {
+        func_002CF2F0(&theGame, 1);
+        return true;
+    }
+    if (theGame.m_menuSkip) {
+        func_002CF2F0(&theGame, 0);
+        func_002CF410(&theGame, theGame.m_loadState, 0);
+        return true;
+    }
+    func_0032C1E0("readerx.zar", "run/ui");
+    func_0032C570();
+    if (!m_menu)
+        m_menu = new CExitMenu;
+    data_00408D80 = ZAnim.OpenZAR("run/extzanim.zar");
+    func_003A3900(func_00361BC0(), "UIX", func_003A4460());
+    func_00368570(m_menu, 0, data_00408D80);
+    func_003AFD50(0, 0, 0, 0, 0);
+    data_004A4511 = 1;
+    zVid_Sync0();
+    return true;
 }
 
 /* the splash screen's asset library named; no menu yet */

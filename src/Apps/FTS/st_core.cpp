@@ -26,7 +26,6 @@ extern unsigned char data_004A4511;
 extern int data_0049E940;                        /* zdb::CTexManager::TexPhase's */
 extern int data_0049E950;
 extern unsigned char data_0045A0C1;              /* theNetwork's +9 (an online game) */
-extern char data_004364E0[];                     /* theMission */
 extern void *data_00408C10;                      /* the load thread's stack */
 }
 
@@ -42,11 +41,6 @@ public:
 
 extern CSched_Manager zTaskScheduler;
 
-class CMission {
-public:
-    void ReOpen_Load();
-};
-
 /* the mission's texture buffers: a vector of them */
 struct TexBufferVector {
     unsigned int capacity_;
@@ -57,6 +51,14 @@ struct TexBufferVector {
 extern "C" TexBufferVector data_0049E880;          /* zdb::CTexManager::m_texmanager */
 
 static void LoadThreadEntry(void *arg);
+
+/* the film's name let go of */
+CCinematicState::~CCinematicState()
+{
+    if (m_moviename)
+        _free(m_moviename, 0, 0);
+    m_moviename = 0;
+}
 
 /* a pad's actuators stopped (the first pad's) */
 void CCoreState::OnPush(int userdata)
@@ -76,11 +78,11 @@ void CCoreState::OnPop(int userdata)
     func_00356BE0(data_0049E880.data_[data_0049E940], true);
     func_00356BE0(data_0049E880.data_[data_0049E950], true);
     zVid_Sync0();
-    *(float *)(data_004364E0 + 0x108) = 10.0f;
+    theMission.m_108 = 10.0f;
     if (userdata == 1) {
         func_001F1820(1.0f);
-        ((CMission *)data_004364E0)->ReOpen_Load();
-        func_002A7D40(data_004364E0);
+        theMission.ReOpen_Load();
+        func_002A7D40(&theMission);
         func_001F1870(func_002B3580());
         func_001FB420(m_hud);
     }
@@ -136,9 +138,9 @@ static void LoadThreadEntry(void *arg)
     if (!func_001EA720())
         func_00192BF8(0);
     if (data_0045A0C1)
-        func_00223290((char *)&theGame + 0x208);
+        func_00223290(theGame.m_MPexitState);
     theGame.m_coreState.m_loading = false;
-    func_002A6950(data_004364E0);
+    func_002A6950(&theMission);
     ExitDeleteThread();
 }
 
@@ -193,7 +195,7 @@ void CCoreState::Load(bool async)
     if (!func_001EA720())
         func_00192BF8(0);
     if (data_0045A0C1)
-        func_00223290((char *)&theGame + 0x208);
+        func_00223290(theGame.m_MPexitState);
     m_loading = false;
 }
 
