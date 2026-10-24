@@ -1,0 +1,11 @@
+/* <new>: MSL's placement new. Its empty exception specification is why MW tests the pointer for
+ * null before constructing (vector<CPnt3D>::reserve's copy loop). */
+
+#ifndef _MSL_NEW
+#define _MSL_NEW
+
+#include <stddef.h>
+
+inline void *operator new(size_t, void *p) throw() { return p; }
+
+#endif

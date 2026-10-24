@@ -204,8 +204,11 @@ def reloc_check(elf: E.Elf, fsym: E.ElfSymbol, relocs: list[E.Reloc], target: by
         resolves through the map; a string literal or section symbol has only its content."""
         s = r.sym
         # a TU-local object the data map names (a static table) resolves by its address, as a
-        # global does; an unnamed one -- a string literal, a float constant -- by content
-        if s.name and (s.bind != 0 or s.type == "FUNC" or s.name in st.data_by_name):
+        # global does; an unnamed one -- a string literal, a float constant -- by content, and so
+        # does MW's string pool of an inline function (@STRING@<function>, not local-bound so the
+        # units that emit the function can share it)
+        if (s.name and not s.name.startswith("@STRING@")
+                and (s.bind != 0 or s.type == "FUNC" or s.name in st.data_by_name)):
             a = _sym_address(st, s.name)
             if a is not None or s.bind != 0:
                 return s.name, a, None, 0
@@ -249,7 +252,7 @@ def reloc_check(elf: E.Elf, fsym: E.ElfSymbol, relocs: list[E.Reloc], target: by
             if addr is not None:
                 got = (addr + add) & 0xFFFFFFFF
                 out.append(RelocFinding(r.offset, r.type, name, want, got, "ok" if got == want else "MISMATCH"))
-            elif r.sym.bind != 0 and r.sym.name:
+            elif r.sym.bind != 0 and r.sym.name and not r.sym.name.startswith("@STRING@"):
                 out.append(RelocFinding(r.offset, r.type, name, want, None, "UNKNOWN"))   # see R_MIPS_26
             elif local_sec is not None:
                 size = r.sym.size if (r.sym.type == "OBJECT" and add == 0) else 0

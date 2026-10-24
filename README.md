@@ -226,6 +226,14 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   function inlines itself twice, the outer copies carrying their own callees (Resume and Pause
   inline Running into the first two copies and Running's Source test into the outer one, then
   call the sibling accessor and the Source test -- hence those out-of-line copies).
+- **Declaration order picks the argument registers too** -- the later-declared pointer takes the
+  lower one: vector<CPnt3D>::reserve's copy loop matched only as `T *d = temp.data_; T *p =
+  this->data_; T *last = p + this->size_;`. A loop whose end is re-read each pass (a member that
+  a store might alias) is never unrolled; computed once into a local, MW unrolls it 8x (the
+  vector reserves' copies).
+- **An inline function's string literal is MW's `@STRING@<function>` pool**, not local-bound so
+  every unit emitting the function can share it; scdiff compares it by content as it does an
+  anonymous literal (MSL's "Memory allocation failure" in the inlined allocate).
 - **SOCOM 1's DWARF never says `bool`: MW's DWARF 1 writes it as `unsigned char`** (none of its
   77,784 members is bool; `std::basic_string::makeUnique` mangles a `b` its DWARF calls
   `unsigned char copy`). A DWARF `unsigned char` may be a bool: CZAnimMain::m_anim_complete is,
@@ -423,8 +431,10 @@ follows without MW's 16-byte padding (131 drafts had every byte right).
   (`zanim_set.cpp`) and CZAnim (`zanim_anim.cpp`): all written byte-exact but five.**
   Open: SequenceRunning, GetCmd, GetAnimSetIndex, Open (registers in the inlined NewAnimSet --
   the permuter found nothing in Open's own text), CZAnim::LoadNodeNames (a strength-reduced
-  index). Unwritten: the wildcard search, the vector<CPnt3D> insert and reserve CZAnimSetSave::Add
-  calls (MSL bodies to reconstruct), the rest of CZAnim.
+  index). Unwritten: the wildcard search, the rest of CZAnim. MSL's vector reserve (pod and class)
+  and at() match from include/vector; insert does not yet (the pod one 8 bytes short:
+  build/scratch/ins/BEST-pod-insert-0x418.txt -- the target reloads the capacity in the growth
+  path, where every form tried keeps it).
 - **`CZWeaponList::GetWeapon` (`0x3C4B40`)** -- 2 instructions from exact with an `int`
   parameter, but SOCOM 1's mangled name says `EQUIP_ITEM`, and every enum-typed variant sinks
   the zero-extension into the loop preheader.

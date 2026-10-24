@@ -34,6 +34,7 @@
 #define _MSL_VECTOR
 
 #include <memory>
+#include <new>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -77,7 +78,28 @@ public:
      * same (an empty inline function still counts as one) */
     static void destroy(T *first, T *last) { __destroy(first, last); }
     static void __destroy(T *, T *) {}
-protected:
+    static T *allocate(unsigned int n)
+    {
+        T *p = (T *)operator new(n * sizeof(T));
+        if (!p)
+            __msl_error("Memory allocation failure");
+        return p;
+    }
+    void swap(__vector_deleter &x)
+    {
+        if (this != &x) {
+            unsigned int c = capacity_.n_;
+            capacity_.n_ = x.capacity_.n_;
+            x.capacity_.n_ = c;
+            T *d = data_;
+            data_ = x.data_;
+            x.data_ = d;
+            unsigned int z = size_;
+            size_ = x.size_;
+            x.size_ = z;
+        }
+    }
+
     __vector_capacity<Allocator> capacity_;
     unsigned int size_;
     T *data_;
@@ -93,8 +115,19 @@ public:
             operator delete(data_);
     }
     void clear() { size_ = 0; }
+    /* references to the fields (SOCOM 1 keeps out-of-line copies: data() is this + 8, cap() this) */
+    T *&data() { return data_; }
+    unsigned int &cap() { return capacity_; }
+    static unsigned int max_size() { return (unsigned int)-1 / sizeof(T); }
+    static T *allocate(unsigned int n)
+    {
+        T *p = (T *)operator new(n * sizeof(T));
+        if (!p)
+            __msl_error("Memory allocation failure");
+        return p;
+    }
     void reserve(unsigned int n);
-    T *insert(T *position, unsigned int n, const T &x);
+    void insert(T *position, unsigned int n, const T &x);
     T &at(unsigned int n);
     void push_back(const T &x) { insert(data_ + size_, 1, x); }
 protected:
@@ -145,6 +178,7 @@ template <class T, class Allocator, bool IsPOD>
 class __vector_imp : public __vector_deleter<T, Allocator> {
     __MSL_VECTOR_ACCESS(T)
     void clear() { __vector_deleter<T, Allocator>::clear(); }
+    static unsigned int max_size() { return (unsigned int)-1 / sizeof(T); }
     T &at(unsigned int n);
     void reserve(unsigned int n);
     T *insert(T *position, unsigned int n, const T &x);
@@ -173,6 +207,50 @@ T &__vector_pod<T, Allocator>::at(unsigned int n)
     if (n >= size_)
         __msl_error("vector::at index out of range");
     return data_[n];
+}
+
+/* reserve: the old elements copied into a fresh block -- word by word for the POD storage, by
+ * copy construction into a temporary deleter, swapped in, for a class */
+template <class T, class Allocator>
+void __vector_pod<T, Allocator>::reserve(unsigned int n)
+{
+    if (n > cap()) {
+        if (n > max_size())
+            __msl_error("vector::reserve length error\n");
+        T *old = data_;
+
+        data() = allocate(n);
+        if (old) {
+            T *last = old + size_;
+
+            for (T *p = old, *d = data_; p < last; ++p, ++d)
+                *d = *p;
+            operator delete(old);
+        }
+        cap() = n;
+    }
+}
+
+template <class T, class Allocator, bool IsPOD>
+void __vector_imp<T, Allocator, IsPOD>::reserve(unsigned int n)
+{
+    if (n > this->capacity_) {
+        if (n > max_size())
+            __msl_error("vector::reserve length error\n");
+        __vector_deleter<T, Allocator> temp;
+
+        temp.data_ = temp.allocate(n);
+        temp.capacity_.n_ = n;
+        T *d = temp.data_;
+        T *p = this->data_;
+        T *last = p + this->size_;
+
+        for (; p < last; ++p, ++d) {
+            new (d) T(*p);
+            temp.size_++;
+        }
+        temp.swap(*this);
+    }
 }
 
 template <class T, class Allocator, bool IsPOD>
