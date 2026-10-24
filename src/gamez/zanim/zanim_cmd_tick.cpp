@@ -13,13 +13,75 @@
  * command's clock */
 struct zanim_cmd_aim {
     _zanim_cmd_hdr hdr;
-    unsigned short flags;
+    unsigned short flags;           /* 1: keep the axes 2/4/8 name (x/y/z) from the forward */
     unsigned char node;
-    unsigned char _7[0x19];
+    unsigned char target;
+    PNT3D at;                       /* 0x8: in the target node's frame */
+    PNT3D forward;                  /* 0x14: in the node's frame */
     CQuat from;                     /* 0x20 */
     CQuat to;                       /* 0x30 */
     float time;                     /* 0x40 */
 };
+
+extern "C" void func_003156D0(zdb::CNode *node, CQuat *q);    /* the rotation as a quaternion */
+
+/* OBJECT_AIM's begin: the turn that takes the node's forward onto the line to a point in the
+ * target node's frame, as the tick's from and to orientations */
+extern "C" void func_002634A0(_zanim_cmd_hdr *hdr)
+{
+    zanim_cmd_aim *cmd = (zanim_cmd_aim *)hdr;
+    CZAnim *anim = ZAnim.m_CurAnim;
+    CNode *node = anim->GetNode(cmd->node, false);
+    CNode *target = anim->GetNode(cmd->target, false);
+
+    if (node && target) {
+        CMatrix m;
+        CMatrix *inv = 0;
+
+        if (node->m_parent) {
+            node->m_parent->BuildMTW(m);
+            Vu0MatrixInverseWithUniformScale(&m, &m);
+            inv = &m;
+        }
+        CPnt3D origin(0.0f, 0.0f, 0.0f);
+
+        func_00308640(&node->m_matrix, &origin, 1);
+        CPnt3D fwd(cmd->forward.x, cmd->forward.y, cmd->forward.z);
+
+        func_00308640(&node->m_matrix, &fwd, 1);
+        CPnt3D at(cmd->at.x, cmd->at.y, cmd->at.z);
+
+        target->TransformToWorld(at);
+        if (inv)
+            func_00308640(inv, &at, 1);
+        fwd.Sub(&origin, &fwd);
+        fwd.Normalize();
+        at.Sub(&origin, &at);
+        at.Normalize();
+        if (cmd->flags & 1) {
+            if (cmd->flags & 2)
+                at.x = fwd.x;
+            if (cmd->flags & 4)
+                at.y = fwd.y;
+            if (cmd->flags & 8)
+                at.z = fwd.z;
+        }
+        CQuat turn;
+
+        turn.Align(fwd, at);
+        turn.Normalize();
+        CQuat cur;
+
+        func_003156D0(node, &cur);
+        CQuat to;
+
+        to = turn * cur;                    /* (assigned: the temporary's copy is kept) */
+
+        to.Normalize();
+        cmd->from = cur;
+        cmd->to = to;
+    }
+}
 
 extern "C" bool func_002633A0(_zanim_cmd_hdr *hdr, float *dT)
 {
@@ -301,6 +363,89 @@ bool zAnimMessageTick(_zanim_cmd_hdr *hdr, float *dT)
     return true;
 }
 
+/* TRUE_COLOR_SCALE: set the four true-colour scales (one per channel bit 0-3) -- their rgb
+ * (flag 0x10) and/or their a (0x20) -- and/or drive them by an expression, seeded from the
+ * first chosen channel, over a time (the table and the expression's function not named yet).
+ * OPEN, 8 bytes short, in the channel search alone: the target enters it through a jump to
+ * the `i < 4` test and reloads `channels` each pass, where this hoists the load, converts the
+ * bit to a bool (sltu/xori) and runs the first pass straight. Tried: while, no-break with
+ * `first < 0` in the test (right size, 31 off), continue, an inline helper returning i. */
+struct zanim_cmd_truecolor {
+    _zanim_cmd_hdr hdr;
+    unsigned char channels;
+    unsigned char pad[3];
+    float r, g, b, a;
+    short expr_len;
+    short expr_off;                 /* from the record */
+    float time;
+};
+
+extern PNT4D data_004B4D40[4];
+
+static inline void SetRGB(PNT4D *c, float r, float g, float b)
+{
+    c->x = r;
+    c->y = g;
+    c->z = b;
+}
+extern "C" void func_0025C6E0(PNT4D *color, char *expr, int len, int channel, float t);
+
+extern "C" bool func_002642F0(_zanim_cmd_hdr *hdr, float *dT)
+{
+    bool done = true;
+    zanim_cmd_truecolor *cmd = (zanim_cmd_truecolor *)hdr;
+
+    if ((cmd->channels & 0x10) || (cmd->channels & 0x20)) {
+        for (int i = 0; i < 4; i++) {
+            if (cmd->channels & (1 << i)) {
+                if (cmd->channels & 0x10)
+                    SetRGB(&data_004B4D40[i], cmd->r, cmd->g, cmd->b);
+                if (cmd->channels & 0x20)
+                    data_004B4D40[i].w = cmd->a;
+            }
+        }
+    }
+    if (cmd->expr_len > 0) {
+        char *expr = (char *)cmd + cmd->expr_off;
+        float t = *dT + ZAnim.m_CurSeq->cmd_timer;
+
+        if (!(cmd->time <= 0.0f) && !(t <= cmd->time))
+            t = cmd->time;
+        int first = -1;
+
+        for (int i = 0; i < 4; i++) {
+            if (cmd->channels & (1 << i)) {
+                first = i;
+                break;
+            }
+        }
+        PNT4D c = { 0.0f, 0.0f, 0.0f, 0.0f };
+
+        if (first >= 0) {
+            PNT4D from = data_004B4D40[first];
+
+            c = from;
+        }
+        func_0025C6E0(&c, expr, cmd->expr_len, first, t);
+        for (int i = 0; i < 4; i++)
+            if (cmd->channels & (1 << i))
+                data_004B4D40[i] = c;
+    }
+    if (!(cmd->time <= 0.0f)) {
+        float step = *dT;
+        float t = ZAnim.m_CurSeq->cmd_timer;
+
+        if (!(step + t <= cmd->time)) {
+            done = true;
+            *dT = step - (cmd->time - t);
+        } else {
+            done = false;
+            *dT = 0.0f;
+        }
+    }
+    return done;
+}
+
 /* SCALE_COLOR: scale a colour's channels -- all of them (flag 0x10), or each one whose bit
  * (0-3) is set -- by a factor; the colour object's two functions are not named yet */
 struct zanim_cmd_scalecolor {
@@ -335,6 +480,142 @@ struct zanim_cmd_nodetest {
     unsigned short node;
 };
 
+extern char data_004B5170[];       /* the ripple manager */
+
+/* the ripple manager's ripple, as far as RIPPLE touches it */
+struct CRipple {
+    unsigned char _0[8];
+    zdb::CNode *node;               /* 0x8 */
+    unsigned char _c[0x34];
+    unsigned char _b0 : 2;          /* 0x40 */
+    unsigned char has_offset : 1;
+    unsigned char timed : 1;
+    unsigned char _b4 : 1;
+    unsigned char b5 : 1;
+    unsigned char b6 : 1;
+    unsigned char _b7 : 1;
+    unsigned char _41[3];
+    PNT3D offset;                   /* 0x44 */
+    unsigned char _50[0x24];
+    float f74;                      /* 0x74 */
+    float _78;
+    float rate;                     /* 0x7C */
+    float _80;
+    float period;                   /* 0x84 */
+
+    void SetOffset(const PNT3D *p)
+    {
+        if (p) {
+            has_offset = true;
+            offset.x = p->x;
+            offset.y = p->y;
+            offset.z = p->z;
+        } else
+            has_offset = false;
+    }
+    void SetPeriod(float p)
+    {
+        timed = true;
+        period = p;
+        if (b5 && !b6)
+            rate = f74 / period;
+    }
+};
+
+/* RIPPLE: start a ripple -- or find the one of that name -- at a point (plus the call
+ * argument, flag 0x80) in a node's frame, then set what the flags say; the manager's functions
+ * are not named yet */
+struct zanim_cmd_ripple {
+    _zanim_cmd_hdr hdr;
+    unsigned short flags;
+    unsigned char name;
+    unsigned char group;            /* an anim name (flag 1) or node */
+    unsigned char node;
+    unsigned char at;
+    unsigned char pad[2];
+    CPnt3D pos;                     /* 0xC */
+    PNT3D offset;                   /* 0x18 */
+    float a, b, c;                  /* 0x24 */
+    float f30;
+    float period;                   /* 0x34 */
+    float f38;
+    float f3C;
+};
+
+extern "C" CRipple *func_003C2950(char *owner, const char *name);
+extern "C" CRipple *func_003C2410(char *owner, const char *group, CPnt3D *pos, float *p, float a, float b, float c);
+extern "C" CRipple *func_003C26E0(char *owner, zdb::CNode *node, CPnt3D *pos, float *p, float a, float b, float c);
+extern "C" CRipple *func_003C2250(char *owner, CPnt3D *pos, float *p, float a, float b, float c);
+extern "C" void func_003C1BE0(CRipple *r, const char *name);
+extern "C" void func_003C1A40(CRipple *r, float v);
+extern "C" void func_003C19D0(CRipple *r, float *p, float v);
+
+extern "C" bool func_00263F90(_zanim_cmd_hdr *hdr, float *dT)
+{
+    zanim_cmd_ripple *cmd = (zanim_cmd_ripple *)hdr;
+    CRipple *r;
+    bool found;
+    const char *name;
+    CNode *at;
+    CZAnim *anim = ZAnim.m_CurAnim;
+    CPnt3D pos = CPnt3D::zero;
+
+    at = anim->GetNode(cmd->at, false);
+    pos = cmd->pos;
+    if (cmd->flags & 0x80) {
+        CPnt3D *arg = anim->GetArgPnt3D();
+
+        if (arg)
+            pos.Add(arg, &pos);
+    }
+    if (at)
+        at->TransformToWorld(pos);
+    r = 0;
+    found = false;
+    name = 0;
+    if (cmd->name > 0) {
+        name = anim->GetName(cmd->name);
+        if (name)
+            r = func_003C2950(data_004B5170, name);
+    }
+    if (r)
+        found = true;
+    if (!r) {
+        if (cmd->flags & 1)
+            r = func_003C2410(data_004B5170, anim->GetName(cmd->group), &pos, &cmd->period, cmd->a, cmd->b, cmd->c);
+        else {
+            CNode *n = anim->GetNode(cmd->group, false);
+
+            if (n)
+                r = func_003C26E0(data_004B5170, n, &pos, &cmd->period, cmd->a, cmd->b, cmd->c);
+        }
+        if (!r)
+            r = func_003C2250(data_004B5170, &pos, &cmd->period, cmd->a, cmd->b, cmd->c);
+    }
+    if (r) {
+        if (name && !found)
+            func_003C1BE0(r, name);
+        CNode *node = anim->GetNode(cmd->node, false);
+
+        if (cmd->flags & 8)
+            r->SetOffset(&cmd->offset);
+        if ((cmd->flags & 0x40) && !found)
+            func_003C1A40(r, cmd->f30);
+        if (node)
+            r->node = node;
+        if (cmd->flags & 0x10) {
+            float *p = 0;
+
+            if (cmd->flags & 0x20)
+                p = &cmd->f3C;
+            func_003C19D0(r, p, cmd->f38);
+        }
+        if (cmd->flags & 2)
+            r->SetPeriod(cmd->period);
+    }
+    return true;
+}
+
 /* RIPPLE_NODE_GROUP: gather world nodes into a ripple group named by one of the anim's names
  * -- each name in the record a node's, or with a `*` a pattern every match of which is taken
  * (the group's and the pattern's functions are not named yet) */
@@ -346,7 +627,6 @@ struct zanim_cmd_ripplegroup {
     int name[1];
 };
 
-extern char data_004B5170[];
 extern "C" void *func_003C2120(char *owner, const char *name);
 extern "C" void func_003C20A0(void *group, zdb::CNode *node);
 extern "C" void *func_001801E0(const char *pattern, int a, int b);
@@ -546,14 +826,80 @@ extern "C" void func_00260FB0(_zanim_cmd_hdr *hdr)
     }
 }
 
-/* WHEEL_MOTION's begin: the wheel's node's place in the world, kept in the record */
+/* WHEEL_MOTION: turn a wheel by the distance its node has moved since the last frame -- the
+ * wheel's place kept in the record -- forwards or back by the side of a reference node it went */
 struct zanim_cmd_wheel {
     _zanim_cmd_hdr hdr;
-    unsigned short flags;
-    unsigned char node;
+    unsigned char flags;            /* 1: timed */
     unsigned char pad;
-    CPnt3D pos;
+    unsigned char node;
+    unsigned char ref;
+    CPnt3D pos;                     /* 0x8: where the wheel was */
+    PNT3D forward;                  /* 0x14: in the reference node's frame */
+    CPnt3D axis;                    /* 0x20 */
+    float scale;                    /* 0x2C: turn per unit moved */
+    float time;                     /* 0x30 */
 };
+
+extern "C" void func_003156D0(zdb::CNode *node, CQuat *q);    /* the rotation as a quaternion */
+
+extern "C" bool func_00261080(_zanim_cmd_hdr *hdr, float *dT)
+{
+    zanim_cmd_wheel *cmd = (zanim_cmd_wheel *)hdr;
+    bool done = false;
+    CNode *wheel = ZAnim.m_CurAnim->GetNode(cmd->node, false);
+
+    if (!wheel)
+        return true;
+    CNode *ref = ZAnim.m_CurAnim->GetNode(cmd->ref, false);
+
+    if (!ref)
+        return true;
+    CPnt3D pos(0.0f, 0.0f, 0.0f);
+
+    wheel->TransformToWorld(pos);
+    CPnt3D at(0.0f, 0.0f, 0.0f);
+
+    ref->TransformToWorld(at);
+    CPnt3D fwd(cmd->forward.x, cmd->forward.y, cmd->forward.z);
+
+    ref->TransformToWorld(fwd);
+    float dz = fwd.z - at.z;
+    float dx = fwd.x - at.x;
+    CPnt3D moved = pos - cmd->pos;
+    float len = sqrtf(moved.x * moved.x + moved.y * moved.y + moved.z * moved.z);
+    float angle = -(len * cmd->scale);
+
+    if (dx * moved.x + dz * moved.z < 0.0f)
+        angle *= -1.0f;
+    CPnt3D rot = cmd->axis * angle;
+    CQuat cur;
+
+    func_003156D0(wheel, &cur);
+    CQuat spin;
+
+    spin.MakeYXZRot(rot.y, rot.x, rot.z);
+    CQuat q;
+
+    cur.Mul(&spin, &q);
+    q.Normalize();
+    wheel->SetRotation(q);
+    cmd->pos = pos;
+    if (cmd->flags & 1) {
+        float t = ZAnim.m_CurSeq->cmd_timer;
+        float time = cmd->time;
+        float step = *dT;
+
+        if (!(step + t <= time)) {
+            done = true;
+            *dT = step - (time - t);
+        } else {
+            *dT = 0.0f;
+            done = false;
+        }
+    }
+    return done;
+}
 
 extern "C" void func_00261300(_zanim_cmd_hdr *hdr)
 {

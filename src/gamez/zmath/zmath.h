@@ -224,6 +224,14 @@ inline bool operator==(const CPnt3D &a, const CPnt3D &b)
     return a.x == b.x && a.y == b.y && a.z == b.z;
 }
 
+/* by value through a temporary, as operator+: OBJECT_AIM's begin keeps both copies */
+inline CQuat operator*(const CQuat &a, const CQuat &b)
+{
+    CQuat r;
+    a.Mul(&b, &r);
+    return r;
+}
+
 inline float Dot(const CPnt3D &a, const CPnt3D &b)
 {
     return a.x * b.x + a.y * b.y + a.z * b.z;
