@@ -119,13 +119,15 @@ and under 3.0b38).
 
 **The flags, each by its own evidence** (`scdiff.FLAGS`):
 
-Each flag is necessary: drop any one and zlib's score falls (3.0b52, the others held).
+Each flag is necessary: drop any one and zlib's score falls (3.0b52, the others held) -- but
+`bottomup`, which zlib cannot see and SOCOM II's C++ needs.
 
 | flag | without it | evidence |
 |---|---|---|
 | `-O4,p` | `-O3,p` 18; `-O4,s`, `-O4`, `-O3` 6; `-O2` 0 | the only level at 21/21 |
 | `-sdatathreshold 0` | 18 | the target addresses zlib's 6-byte version string with `lui/addiu`; the default (8) puts it in `$gp` small data |
 | `-inline auto,deferred` | `auto` 20, `deferred` 18, `on` 17 | `inflateReset` is absent from the image — inlined into both callers and stripped (`auto`); functions emit in **reverse definition order**, exactly as the image holds them (`deferred`) |
+| `-inline bottomup` | (zlib alike) | inlining starts at the leaves of the call graph, so a callee arrives with its own callees in it: `CZAnimExVector::Free`'s `delete` inlines CZAnimEx's destructor inside `std::for_each`'s function object, and the recursive `CZAnim::Reset`, Pause and Resume inline themselves twice with their callees in the outer copies -- four functions that matched only with it, nothing lost |
 | `-enum min` | 13 | `inflate`'s `mode` field is stored with `sb` |
 | `-Cpp_exceptions off` | (C++ only) | `CMatrix::SetZero` is `j memset`: with exceptions on, MW keeps a frame around every C++ call, while C tail-calls either way; every C++ match held when it went on |
 
@@ -199,15 +201,25 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   helper. A function inlined everywhere and absent out of line was `inline` (NewAnimSet).
 - **Two-byte copies show the type's alignment**: a halfword union copies with lhu/sh, a
   two-char struct bytewise (a command's id).
-- **-inline auto inlines to depth 2 and calls at depth 3; the pragma state at a callee's
-  definition decides whether it can be inlined at all.** `new CZAnimExVector` inlines its
-  constructor chain to the zeroing level (include/vector zeroes one level up). Resume and Pause
-  inline themselves twice and CZAnim::Running into the first copy, then call Running, the
-  sibling accessor and the Source test -- hence their out-of-line copies. CZAnim::Start alone is
-  never inlined (no bigger than Running, in no cycle): `#pragma auto_inline off` around its
-  definition only (probe: build/scratch/probe/q.cpp). Calls that do not inline are unit-boundary
-  evidence: LoadZAR calls GetAnimSet(int), which anim_main.cpp inlines, so the ZAR loaders are a
-  unit of their own (zanim_zar.cpp).
+- **-inline auto takes a function of at most 15 statements, by MW's own count** (the
+  `inline_max_auto_size` pragma's default; `tools/autoprobe.py` measures any shape): every
+  statement of the lowered body but its labels -- an expression statement, a return (a void
+  function's closing one too), each branch (`a || b` is two), the goto of an else or of a loop's
+  entry, a switch -- counted before anything is inlined into the function. Code compiled to
+  nothing still counts (`(void)0;` 1, `if (0) f();` 2; `;`, `{}`, `do {} while (0);` 0). So
+  CZAnim::Running (10) and GetNodeRef (11) inline, but Start (11), StopAnims (12) and
+  ExecuteSpecialSequence (15), never inlined in the target, would too: the original's had more
+  statements (debug code?) or a pin. **The pragma state at a callee's definition decides
+  whether it can be inlined at all**, so `#pragma auto_inline off` around those three
+  definitions reproduces them (probe: build/scratch/probe/q.cpp). Calls that do not inline are
+  unit-boundary evidence: LoadZAR calls GetAnimSet(int), which anim_main.cpp inlines, so the ZAR
+  loaders are a unit of their own (zanim_zar.cpp).
+- **Inlining is bottom-up** (`-inline bottomup`): MW inlines the leaves first, so there is no
+  depth limit to work around -- `new CZAnimExVector` inlines the whole MSL constructor chain,
+  a function object's call inlines inside `std::for_each`, and a recursive function inlines
+  itself twice, the outer copies carrying their own callees (Resume and Pause inline Running
+  into the first two copies and Running's Source test into the outer one, then call the
+  sibling accessor and the Source test -- hence those out-of-line copies).
 - **SOCOM 1's DWARF never says `bool`: MW's DWARF 1 writes it as `unsigned char`** (none of its
   77,784 members is bool; `std::basic_string::makeUnique` mangles a `b` its DWARF calls
   `unsigned char copy`). A DWARF `unsigned char` may be a bool: CZAnimMain::m_anim_complete is,
@@ -402,11 +414,12 @@ follows without MW's 16-byte padding (131 drafts had every byte right).
   inlined VU0 transform), the motion handlers and the big ones (Light, ParticleSource, Camera,
   Sound, CallAnimBegin).
 - **CZAnimMain (`anim_main.cpp`, `zanim_zar.cpp`), the name tables (`zanim_names.cpp`), CZAnimSet
-  (`zanim_set.cpp`) and CZAnim (`zanim_anim.cpp`, started): all written byte-exact but four.**
+  (`zanim_set.cpp`) and CZAnim (`zanim_anim.cpp`): all written byte-exact but five.**
   Open: SequenceRunning, GetCmd, GetAnimSetIndex, Open (registers in the inlined NewAnimSet --
-  the permuter found nothing in Open's own text). Unwritten: the wildcard search, CZAnimSet's
-  Unload and SaveNodeStates and CZAnimSetSave (MSL vector destructors inline to different
-  depths per instance), most of CZAnim.
+  the permuter found nothing in Open's own text), CZAnim::LoadNodeNames (a strength-reduced
+  index). Unwritten: the wildcard search, CZAnimSet's Unload and SaveNodeStates and
+  CZAnimSetSave (MSL vector destructors, which looked like different inline depths per instance
+  before bottom-up inlining), the rest of CZAnim.
 - **`CZWeaponList::GetWeapon` (`0x3C4B40`)** -- 2 instructions from exact with an `int`
   parameter, but SOCOM 1's mangled name says `EQUIP_ITEM`, and every enum-typed variant sinks
   the zero-extension into the loop preheader.

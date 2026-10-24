@@ -48,12 +48,15 @@ TOOLCHAINS = HERE / "toolchains"
 # 3.0b22-020926: 17), and only at -O4,p (-O3,p: 18; -O4,s/-O4/-O3: 6). -sdatathreshold 0:
 # no $gp small data (the target addresses zlib's version string absolutely); -inline
 # auto,deferred: inflateReset is inlined and gone, and functions emit in REVERSE
-# definition order, as the image holds them; -enum min: inflate's mode is stored by sb;
+# definition order, as the image holds them; bottomup: inlining starts at the leaves of the
+# call graph, so a callee arrives with its own callees already in it (CZAnimExVector::Free's
+# destructor inside std::for_each's function object, the recursive CZAnim walks one level
+# deeper -- zlib is the same either way); -enum min: inflate's mode is stored by sb;
 # -Cpp_exceptions off: C++ tail calls (CMatrix::SetZero is `j memset`; with exceptions on, MW
 # keeps a frame around every C++ call, while C code tail-calls either way).
 # README "The compiler" has the derivation.
 COMPILER = os.environ.get("SC_COMPILER", "mwcps2-3.0b52-030722")
-FLAGS = os.environ.get("SC_FLAGS", "-O4,p -sdatathreshold 0 -inline auto,deferred -enum min -Cpp_exceptions off").split()
+FLAGS = os.environ.get("SC_FLAGS", "-O4,p -sdatathreshold 0 -inline auto,deferred,bottomup -enum min -Cpp_exceptions off").split()
 BASE_FLAGS = ["-c", "-nostdinc", "-gccinc", "-msgstyle", "gcc"]   # -gccinc: -I paths serve <...> too
 
 

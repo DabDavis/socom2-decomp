@@ -2,13 +2,18 @@
  * 0x26D370-...). The unit name is SOCOM 1's (__sinit_zanim_anim.cpp, which follows
  * anim_main.cpp's). Defined in reverse of their image order (-inline deferred).
  *
- * -inline auto works here as elsewhere, to depth 3: Resume and Pause inline themselves twice
- * and CZAnim::Running twice, then call both -- which is where the out-of-line copies of the
- * sibling accessor (0x270BB0) and the Source test (0x270BC0) come from. CZAnim::Start,
- * ExecuteSpecialSequence, StopAnims and SaveNodeStates are never inlined (RestartClones and
- * func_00271110; Tick and State; State; Start), Start no bigger than Running, none in a cycle; a pragma around each
- * definition reproduces that (the pragma state at the callee decides). The original's means is
- * unknown -- debug code compiled to nothing would count against -inline auto the same way. */
+ * Inlining is bottom-up (-inline bottomup: a callee arrives with its own callees in it), and
+ * -inline auto takes a function of at most 15 statements of MW's own count -- every statement
+ * of its lowered body but the labels, the closing return included, measured before anything
+ * is inlined into it (tools/autoprobe.py measures it). Resume and Pause inline
+ * themselves twice and CZAnim::Running (10) into the first copy, then call -- which is where
+ * the out-of-line copies of the sibling accessor (0x270BB0) and the Source test (0x270BC0)
+ * come from. CZAnim::Start (11 by that count), StopAnims (12) and ExecuteSpecialSequence (15)
+ * are never inlined (RestartClones and func_00271110; State; Tick and State), while
+ * GetNodeRef (11) is, into GetNodes: no one limit separates them, so the original's three had
+ * more statements than these -- debug code compiled to nothing still counts (`if (0) f();`
+ * is two) -- or a pin. A pragma around each definition reproduces that (the pragma state at
+ * the callee decides). */
 
 #include <algorithm>
 #include <stdio.h>
@@ -28,14 +33,9 @@ extern "C" bool func_002739B0(CZAnimEx *ex, float amount)
 }
 
 /* the list's extensions reset to full: an MSL for_each over the vector (its class iterators
- * kept in stack slots), the function object ours -- its body CZAnimEx::Reset(0, 0)'s, which
- * a call would leave one inlining level too deep */
+ * kept in stack slots), the function object ours */
 struct CZAnimExReset {
-    void operator()(CZAnimEx *ex) const
-    {
-        ex->m_armor = ex->m_armor_max;
-        ex->m_health = ex->m_health_max;
-    }
+    void operator()(CZAnimEx *ex) const { ex->Reset(0, 0); }
 };
 
 void CZAnimExVector::Reset()
@@ -43,10 +43,8 @@ void CZAnimExVector::Reset()
     std::for_each(begin(), end(), CZAnimExReset());
 }
 
-/* the list's extensions deleted, the list emptied (the function object ours, as Reset's).
- * OPEN: the target inlines CZAnimEx's destructor (its vtable store, the node let go) into the
- * function object; MW here calls it -- the nesting that keeps CZAnimEx::Reset out of Reset's
- * function object, which a written-out body fixed; a destructor cannot be written out. */
+/* the list's extensions deleted, CZAnimEx's destructor inlined into each delete, and the list
+ * emptied (the function object ours, as Reset's) */
 struct CZAnimExDelete {
     void operator()(CZAnimEx *ex) const { delete ex; }
 };
@@ -70,8 +68,8 @@ void CZAnimEx::Reset(float *armor, float *health)
         m_health = m_health_max;
 }
 
-/* SOCOM II's: a health back to its maxima -- inlined but where CZAnim::Reset has inlined itself
- * to depth 3; its name is not known */
+/* SOCOM II's: a health back to its maxima -- inlined but in CZAnim::Reset's innermost copy;
+ * its name is not known */
 extern "C" void func_00273960(CZAnimHealth *health)
 {
     health->health = health->max_health;
@@ -156,10 +154,8 @@ bool CZAnim::SequenceRunning(const char *name)
 
 
 /* health back to full (the chain's too, when it has health), the extension's from it, and the
- * anim reset to state 1.
- * OPEN, as Resume: the target inlines itself twice and the health and extension resets into
- * both copies, calling them only at depth 3; MW here inlines itself once and calls the
- * extension's reset at depth 2 (3.0b50 alike; the 3.0.1 builds break State). */
+ * anim reset to state 1. It inlines itself twice, the health and extension resets into both
+ * outer copies, and calls them from the innermost. */
 void CZAnim::Reset()
 {
     if (m_health) {
@@ -384,10 +380,10 @@ bool CZAnim::Running()
 
 /* CZAnim::Pause and Resume, which SOCOM II gave a flag (CZAnimMain's handlers pass 0): the
  * anim, and its chain when asked, paused (if running) or resumed; whether any was paused, or
- * still runs.
- * OPEN, both: the target inlines each into itself twice and Running into the first copy (its
- * Source test called there, depth 3) -- MW here inlines the recursion three deep and calls
- * Running in every copy, member function or not. */
+ * still runs. Each inlines itself twice, Running into the first two copies (Running's Source
+ * test inlined into the outer one only) -- bottom-up inlining's shape. Resume's flag is set
+ * by if/else as Pause's: assigned straight from Running, the inlined result lands in the
+ * variable unnormalised, and the return narrows it instead. */
 extern "C" bool func_00270BE0(CZAnim *anim, int chain)
 {
     bool paused;
@@ -408,8 +404,8 @@ extern "C" bool func_00270BC0(Particle::Source *source)
 }
 
 /* the anim it chains to, and a particle source that has stopped (neither emitting nor fading
- * out): SOCOM II's, inlined but where Resume and Pause have inlined themselves to depth 3 --
- * their names are not known */
+ * out): SOCOM II's, inlined but in the innermost copies of Resume and Pause -- their names are
+ * not known */
 extern "C" CZAnim *func_00270BB0(CZAnim *anim)
 {
     return anim->m_sibling_anim;
@@ -417,9 +413,13 @@ extern "C" CZAnim *func_00270BB0(CZAnim *anim)
 
 extern "C" bool func_002709B0(CZAnim *anim, int chain)
 {
-    anim->m_paused = 0;
-    bool running = anim->Running();
+    bool running;
 
+    anim->m_paused = 0;
+    if (anim->Running())
+        running = true;
+    else
+        running = false;
     if (chain && func_00270BB0(anim))
         running |= func_002709B0(func_00270BB0(anim), chain);
     return running;
@@ -528,7 +528,6 @@ void CZAnim::StopAnims()
 
 /* the anim's nodes that save a state (translation, rotation, activity, parent) handed to its
  * set to keep, refreshed first when asked */
-#pragma auto_inline off
 void CZAnim::SaveNodeStates(bool refresh)
 {
     if (refresh)
@@ -546,7 +545,6 @@ void CZAnim::SaveNodeStates(bool refresh)
             ZAnim.GetAnimSet(m_animset_index)->SaveNodeStates(ref);
     }
 }
-#pragma auto_inline reset
 
 /* the anim's instance of its root model, when it makes one: a copy of the model or a cross
  * reference to it, named <model>:zanim_instance, made the root reference and the nodes looked
