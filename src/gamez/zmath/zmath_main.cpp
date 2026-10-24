@@ -30,8 +30,8 @@ int CBits::Resize(unsigned int bits)
     return 1;
 }
 
-extern "C" void func_003079C0(const CPnt3D *eye, const CPnt3D *at, const CPnt3D *dir, sceVu0FMATRIX out,
-                              float a, float b)
+extern "C" void func_003079C0(const CPnt3D *eye, const CPnt3D *at, const CPnt3D *dir, float a, float b,
+                              sceVu0FMATRIX out)
 {
     sceVu0FVECTOR xc;
     sceVu0FVECTOR p;
@@ -63,7 +63,7 @@ extern "C" void func_003079C0(const CPnt3D *eye, const CPnt3D *at, const CPnt3D 
 /* The same projector, its up axis the one dir leans on least -- the source's two tests
  * run straight-line (the last one updates no minimum, and fabsf is no pure function to
  * MW, so that was never a dead call), with `up` otherwise uninitialised. */
-extern "C" void func_00307810(const CPnt3D *eye, const CPnt3D *dir, sceVu0FMATRIX out, float a, float b)
+extern "C" void func_00307810(const CPnt3D *eye, const CPnt3D *dir, float a, float b, sceVu0FMATRIX out)
 {
     float min;
     sceVu0FVECTOR up;

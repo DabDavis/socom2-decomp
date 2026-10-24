@@ -197,7 +197,28 @@ public:
  * member that never reads `this` (a0 is taken and dropped). */
 class CStack {
 public:
+    /* an owner pushes the unit matrix and pops it again (the destructor's out-of-line copy is
+     * 0x2D4FE0; the member's name is ours) */
+    CStack() : m_own(true) { Push(&CMatrix::identity); }
+    ~CStack()
+    {
+        if (m_own)
+            Pop();
+    }
+    void Push(const CMatrix *m)
+    {
+        m_pointer++;
+        m_top++;
+        sceVu0CopyMatrix(m_top->m_matrix, (float (*)[4])m->m_matrix);
+    }
+    void Pop()
+    {
+        m_pointer--;
+        m_top--;
+    }
     CMatrix *Multiply(const CMatrix *m, bool push);
+
+    bool m_own;
 
     static CMatrix m_stack[64];
     static int m_pointer;

@@ -2,10 +2,10 @@
  * CModelVector, CNodeUniverse, CLightMapVector, in SOCOM 1's order -- and the CNode code around
  * them, from TransformToWorld (OVL1 0x310980) on: a unit of its own, as DeleteChild and AddVisual
  * show by calling Exists and Remove (with them in node_main.cpp MW inlines both), and AddDI
- * (0x313D60) by calling the DI list's. So node_main.cpp begins between SetModelname and
- * VisualEffectsTick (0x313C60); the functions between are placed here until something says
- * otherwise. The unit name is ours. Defined in reverse of their image order (-inline
- * deferred). */
+ * (0x313D60) by calling the DI list's. It ends at 0x3134BB: SetModeTree's out-of-line pieces
+ * (0x313450-0x3134BB) are the cluster of template instances and inline copies that closes a unit
+ * (node_main.cpp's own closes it at 0x3176B0), so node_main.cpp begins at 0x3134C0. The unit name
+ * is ours. Defined in reverse of their image order (-inline deferred). */
 
 #include <algorithm>
 #include <string.h>
@@ -177,6 +177,22 @@ bool CNodeVector::Remove(const CNode *node)
 
     erase(it, e);
     return it != e;
+}
+
+/* the node's mode (SOCOM II's two bits) set through the whole tree: SetDynamic's walk, over the
+ * children through a reference (the recursion inlines itself twice; its out-of-line pieces end
+ * the unit, in reverse of their first use here -- the iterator's copy constructor, postfix ++,
+ * assignment and default constructor, then SetMode's copy). The name is ours */
+void CNode::SetModeTree(int mode)
+{
+    if (!this)
+        return;
+    SetMode(mode);
+    CNodeVector::iterator it;
+    CNodeVector &children = GetChildren();
+
+    for (it = children.begin(); it != children.end(); it++)
+        (*it)->SetModeTree(mode);
 }
 
 /* the same for collision data (DIs): the twin of SetDescendantVisuals */

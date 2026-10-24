@@ -1454,7 +1454,7 @@
 0x001EA840 0x8 __ml__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorCFv  # OVL1; CNodeVector's iterator * (the element's address)
 0x001EA850 0x18 end__Q23std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>Fv  # OVL1; CNodeVector's end() out of line, the hidden return written with data_ + size_
 0x001EA870 0xC begin__Q23std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>Fv  # OVL1; CNodeVector's begin() out of line
-0x001EA880 0x8 func_001EA880  # OVL1
+0x001EA880 0x8 GetChildren__Q23zdb5CNodeFv  # OVL1; the inline accessor's out-of-line copy (SetModeTree's innermost copy and func_00319C90 call it; the name ours)
 0x001EA890 0x14 end__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>Fv  # OVL1; tu: ztex_manager.cpp~ (1.0 beta); the pointer vectors' base's raw end(), as SOCOM 1's end__ of __vector_pod<Ui> word for word (func_00319C90's end() inlined one level calls it)
 0x001EA8B0 0xC __iter__Q23std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>FRCPUi  # OVL1; the pointer vector's iterator made from its base's raw pointer, taken by reference (a hidden return, this, the pointer's address); begin() and end() inlined one level call it -- the name is ours
 0x001EA8C0 0x8 begin__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>Fv  # OVL1; the pointer vectors' base's raw begin(), as SOCOM 1's begin__ of __vector_pod<Ui> word for word
@@ -4487,7 +4487,7 @@
 0x002D4E10 0x158 func_002D4E10  # OVL1
 0x002D4F70 0x60 func_002D4F70  # OVL1
 0x002D4FD0 0xC func_002D4FD0  # OVL1
-0x002D4FE0 0x74 func_002D4FE0  # OVL1
+0x002D4FE0 0x74 __dt__6CStackFv  # OVL1; CStack's destructor, out of line (BuildMatrixPalette's static registers it): pops what an owner pushed
 0x002D5060 0x3BC func_002D5060  # OVL1
 0x002D5420 0xC4 Read__Q23zdb5CGridFRQ23zdb9CSaveLoad  # OVL1; s1:calls
 0x002D54F0 0x28 GetCell__Q23zdb9CGridAtomFv  # OVL1; s1:align
@@ -4590,7 +4590,7 @@
 0x002DC210 0xD0 Read__Q23zdb3CDIFRQ23zdb9CSaveLoad  # OVL1; s1:calls
 0x002DC2E0 0xA0 Create__Q23zdb3CDIFRQ23zdb9CSaveLoad  # OVL1; s1:align
 0x002DC380 0x5C Free__Q23zdb3CDIFv  # OVL1; s1:align
-0x002DC3E0 0x14 func_002DC3E0  # OVL1
+0x002DC3E0 0x14 Release__Q23zdb3CDIFv  # OVL1; s1:calls (SOCOM 1's, 0x14 bytes in both: the count dropped and given back; DeleteDI tests it)
 0x002DC400 0x50 Allocate__Q23zdb3CDIFi  # OVL1; s1:align
 0x002DC450 0x68 __dt__Q23zdb3CDIFv  # OVL1; s1:align
 0x002DC4C0 0x158 func_002DC4C0  # OVL1
@@ -5201,8 +5201,8 @@
 0x003075E0 0x54 MakeXRot__5CQuatFf  # OVL1; SOCOM 1 name (exact fingerprint)
 0x00307640 0xB8 GetIntersect__5CBBoxFP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4Db  # OVL1; s1:order (same position in the same TU, signature fits the code)
 0x00307700 0x110 func_00307700  # OVL1
-0x00307810 0x1B0 func_00307810  # OVL1; s1~ CalcWorldToUV__3zdbFP6CPnt3DP6CPnt3DPQ23zdb8CTexturefP7CMatrix by behaviour, but the signature changed: SOCOM 1 passes a CTexture* third and the matrix fifth, SOCOM II the matrix third and two floats, so the mangled name differs
-0x003079C0 0x180 func_003079C0  # OVL1; s1~ CalcWorldToUV__3zdbFP6CPnt3DP6CPnt3DP6CPnt3DPQ23zdb8CTexturefP7CMatrix by behaviour, but the signature changed: SOCOM 1 passes a CTexture* third and the matrix fifth, SOCOM II the matrix third and two floats, so the mangled name differs
+0x00307810 0x1B0 func_00307810  # OVL1; s1~ CalcWorldToUV__3zdbFP6CPnt3DP6CPnt3DPQ23zdb8CTexturefP7CMatrix by behaviour, but the signature changed: SOCOM 1 passes a CTexture* third, SOCOM II a float (the texture's width) -- the matrix last in both (CNode::ApplyDecal's argument set-up shows the order), so the mangled name differs
+0x003079C0 0x180 func_003079C0  # OVL1; s1~ CalcWorldToUV__3zdbFP6CPnt3DP6CPnt3DP6CPnt3DPQ23zdb8CTexturefP7CMatrix by behaviour, but the signature changed: SOCOM 1 passes a CTexture* fourth, SOCOM II a float (the texture's width) -- the matrix last in both (CNode::ApplyDecal's argument set-up shows the order), so the mangled name differs
 0x00307B40 0x45C Resize__5CBitsFUi  # OVL1; s1:order (calls _malloc and _realloc as SOCOM 1's; 0x448 -> 0x45C)
 0x00307FA0 0x7C Multiply__6CStackFPC7CMatrixb  # OVL1; s1:order (the same push-and-multiply; gp-relative there, absolute here)
 0x00308020 0x130 ToEuler__7CMatrixCFP6CPnt3D  # OVL1; SOCOM 1 name
@@ -5423,18 +5423,18 @@
 0x00312D00 0x21C func_00312D00  # OVL1
 0x00312F20 0x190 SetDescendantVisuals__Q23zdb5CNodeFb  # OVL1; s1:exact by hand (SOCOM 1's SetDescendantVisuals, after Create and FindMeshTextures as here; the answers ORed as bools)
 0x003130B0 0x190 SetDescendantDI__Q23zdb5CNodeFb  # OVL1; s1:exact by hand (SOCOM 1's SetDescendantDI, after SetDescendantVisuals as here)
-0x00313240 0x208 func_00313240  # OVL1
+0x00313240 0x208 SetModeTree__Q23zdb5CNodeFi  # OVL1; SOCOM II's: two bits at 0x5a set through a tree (OVL2 sets 2 on loaded models); the name ours
 0x00313450 0x10 __ct__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorFRCQ33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iterator  # OVL1; tu: char_type.cpp~ (1.0 beta); CNodeVector's iterator copy constructor (implicit; called where SetNodeEx's second level stops inlining)
 0x00313460 0x14 __pp__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorFi  # OVL1; CNodeVector's iterator postfix ++ (the copy, the prefix ++ and the copy out), SetNodeEx's third level
 0x00313480 0x10 __as__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorFRCQ33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iterator  # OVL1; tu: char_type.cpp~ (1.0 beta); CNodeVector's iterator assignment (implicit), out of line in the same copies
 0x00313490 0x8 __ct__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorFv  # OVL1; CNodeVector's iterator default constructor, out of line where SetDynamic's and SetUseParentBBoxTree's second self-inlined copies declare their walk's iterator (our MSL reconstruction's name)
-0x003134A0 0x1C func_003134A0  # OVL1
-0x003134C0 0x158 func_003134C0  # OVL1
-0x00313620 0x144 func_00313620  # OVL1
-0x00313770 0x264 func_00313770  # OVL1
-0x003139E0 0x278 func_003139E0  # OVL1
+0x003134A0 0x1C SetMode__Q23zdb5CNodeFi  # OVL1; SetModeTree's inline setter, out of line where its innermost copy calls it (the name ours)
+0x003134C0 0x158 ScrollTexture__Q23zdb5CNodeFPQ23zdb5CNodeffbi  # OVL1; s1:order (SOCOM 1's ScrollTexture__Q23zdb5CNodeFPQ23zdb5CNodeffb with an int after: every caller passes 0, the floats, true, -1)
+0x00313620 0x144 RemoveDecals__Q23zdb5CNodeFUi  # OVL1; s1:order (SOCOM 1's RemoveDecals__Q23zdb5CNodeFv, given the view; DeleteChild passes 0, SOCOM II's callers -1 or a view)
+0x00313770 0x264 BuildMatrixPalette__Q23zdb5CNodeFPQ23zdb5CMesh  # OVL1; SOCOM II's: a mesh's sub-mesh matrices through the tree (the sub-mesh decal call 0x3B8680 starts it); the name ours
+0x003139E0 0x278 ApplyDecal__Q23zdb5CNodeFPQ23zdb5CNodefP6CPnt3DP6CPnt3DP6CPnt3DPQ23zdb10CTexHandlefP6CPnt3D  # OVL1; s1:order (SOCOM 1's ApplyDecal, its eight arguments passed on alike)
 0x00313C60 0x40 VisualEffectsTick__Q23zdb5CNodeFfPv  # OVL1; s1:exact by hand (SOCOM 1's VisualEffectsTick: the decal, ripple and texture-effect ticks in this order)
-0x00313CA0 0xB8 func_00313CA0  # OVL1
+0x00313CA0 0xB8 DeleteDI__Q23zdb5CNodeFv  # OVL1; the DI deleter SOCOM 1's destructor inlines (the destructor and 0x3C88CC call it; the name ours)
 0x00313D60 0xAC AddDI__Q23zdb5CNodeFPQ23zdb3CDI  # OVL1; s1:exact by hand (SOCOM 1's AddDI, after VisualEffectsTick and before ReserveDI as here; the DI's count at 4 now)
 0x00313E10 0x10 ReserveDI__Q23zdb5CNodeFi  # OVL1; s1:exact
 0x00313E20 0xB8 SetApplyClutterFlag__Q23zdb5CNodeFb  # OVL1

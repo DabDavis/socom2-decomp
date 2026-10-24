@@ -40,7 +40,10 @@ public:
     CMatrix m_matrix;   // 0x0
     CBBox m_bbox;   // 0x40
     unsigned short m_type;   // 0x58 (SOCOM II's CNode code reads a halfword; SOCOM 1's DWARF: an int)
-    unsigned short m_socom2_5a;   // 0x5a
+    /* SOCOM II's: two bits set through a whole tree (OVL2 sets 2 on models it loads), the rest
+     * unread here -- the names are ours */
+    unsigned short m_socom2_mode : 2;   // 0x5a
+    unsigned short m_socom2_5a : 14;   // 0x5a
     unsigned int m_active : 1;   // 0x5c
     unsigned int m_dynamic_motion : 1;   // 0x5c
     unsigned int m_dynamic_light : 1;   // 0x5c
@@ -80,11 +83,19 @@ public:
 };   // 0xc bytes
 
 /* a node's collision piece: only its reference count placed (SOCOM 1's DWARF has it at 0x14 of
- * DI_PARAMS; SOCOM II's AddDI counts at 4) */
-class CDI {
-public:
+ * DI_PARAMS; SOCOM II's AddDI counts at 4) and its vtable pointer -- at 0xc, where SOCOM 1's
+ * sat at 0x1c, after its parameters (DeleteDI deletes through the first slot) */
+struct tag_DI_HEAD {
     unsigned int _0;
     unsigned int m_refcount;   // 0x4
+    unsigned int _8;
+};
+
+class CDI : public tag_DI_HEAD {
+public:
+    virtual ~CDI();
+    /* one holder fewer, the count left given back (SOCOM 1's, 0x14 bytes in both) */
+    int Release();
 };
 
 class CDIVector : public std::vector<CDI *> {
@@ -120,17 +131,33 @@ struct tag_VISUAL_HEAD {
     unsigned char _1c[0x20 - 0x1c];
 };
 
+class CTexHandle;
+
 class CVisual : public tag_VISUAL_HEAD {
 public:
     virtual ~CVisual();
+    /* the type as a byte: ScrollTexture and the decal walk test it with lbu where GetMesh and
+     * AddVisual's test of the member loads it signed (SOCOM 1's split the same way; the name is
+     * ours) */
+    unsigned char GetType() const { return m_type; }
+    /* the decals of one view let go of (SOCOM 1's, by name) */
+    void DereferenceDecals(unsigned int vid);
+    /* a decal projected onto the visual (SOCOM 1's, by name) */
+    void ApplyDecalRender(CMatrix *mtw, CNode *node, float size, CPnt3D *pos, CPnt3D *normal,
+                          CTexHandle *tex, CMatrix *uv);
 };
 
 class CSubMesh : public CVisual {
 public:
+    unsigned char _24[0x68 - 0x24];
+    int m_index;   // 0x68: its place in its mesh's matrices (the names ours)
+    CVisual *m_mesh;   // 0x6c
 };
 
 class CMesh : public CVisual {
 public:
+    unsigned char _24[0x90 - 0x24];
+    CMatrix **m_palette;   // 0x90: its sub-meshes' matrices, by index (the name ours)
 };
 
 class CVisualVector : public std::vector<CVisual *> {
@@ -195,11 +222,22 @@ public:
     int InheritRegionMasks(unsigned int regions, unsigned int lights);
     bool SetDescendantVisuals(bool set);
     bool SetDescendantDI(bool set);
+    void SetModeTree(int mode);
+    int ScrollTexture(CNode *node, float u, float v, bool b, int index);
+    void RemoveDecals(unsigned int vid);
+    void BuildMatrixPalette(CMesh *mesh);
+    void ApplyDecal(CNode *node, float size, CPnt3D *pos, CPnt3D *dir, CPnt3D *normal,
+                    CTexHandle *tex, float depth, CPnt3D *up);
+    /* inline: SetModeTree's innermost copy calls the out-of-line copies (0x3134A0, and 0x1EA880,
+     * an earlier unit's) -- the names are ours */
+    void SetMode(int mode) { m_socom2_mode = mode; }
+    CNodeVector &GetChildren() { return m_child; }
     void ShrinkAtomBasePtrs();
     void AllocateAtomBasePtrs(int x, int z);
     void SetNodeEx(CNodeEx *ex, bool b);
     bool AddVisual(CVisual *visual);
     bool AddDI(CDI *di);
+    void DeleteDI();
     void ReserveDI(int n);
     void ReserveVisuals(int n);
     static int VisualEffectsTick(float dt, void *data);
@@ -327,6 +365,16 @@ public:
     unsigned short m_width;   // 0x0
     unsigned short m_height;   // 0x2
 };
+
+/* a texture's handle (SOCOM 1's DWARF) */
+class CTexHandle {
+public:
+    char *m_name;   // 0x0
+    int m_count;   // 0x4
+    unsigned int m_gsAddr;   // 0x8
+    CTexture *m_texture;   // 0xc
+    unsigned char m_libref;   // 0x10
+};   // 0x14 bytes
 
 /* a GS alpha blend, its register word (SOCOM 1's DWARF: sceGsAlpha and the word, one union) */
 class BLENDMODE {

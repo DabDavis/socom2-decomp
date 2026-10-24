@@ -1,8 +1,10 @@
 /* node_main.cpp -- zdb::CNode, the scene graph's node: its place in the world, its bounds, its
- * children, its grid atoms (OVL1 to 0x31789F, after node_vector.cpp's; node_model.cpp follows). The unit name is
- * SOCOM 1's (CNode::SetName's allocations name it). Defined in reverse of their image order
- * (-inline deferred), as the map has them: a function this unit calls without inlining, though
- * small, is evidence of a unit boundary (CreateXRef's SetName and SetPosition were). */
+ * children, its grid atoms (OVL1 0x3134C0-0x31789F, after node_vector.cpp's; node_model.cpp
+ * follows). The unit name is SOCOM 1's (CNode::SetName's allocations name it). Defined in reverse
+ * of their image order (-inline deferred), as the map has them: a function this unit calls
+ * without inlining, though small, is evidence of a unit boundary (CreateXRef's SetName and
+ * SetPosition were), and so is a cluster of template instances and inline functions' copies,
+ * which close a unit (this one's from 0x3176B0; node_vector.cpp's at 0x313450). */
 
 #include <string.h>
 
@@ -16,8 +18,16 @@ extern char *UNNAMED_NODE;
 
 namespace zdb {
 
-/* a node's visuals let go of (not named yet) */
-extern "C" void func_00313620(CNode *node, int a);
+/* a mesh's decals all freed (SOCOM 1's mesh took the view as other visuals do; not named yet) */
+extern "C" void func_003B8440(CVisual *mesh);
+/* the world-to-texture projectors (zmath_main.cpp: SOCOM 1's CalcWorldToUV pair, given the
+ * texture's width where SOCOM 1 passed the texture) */
+extern "C" void func_003079C0(const CPnt3D *eye, const CPnt3D *at, const CPnt3D *dir, float a, float b,
+                              sceVu0FMATRIX out);
+extern "C" void func_00307810(const CPnt3D *eye, const CPnt3D *dir, float a, float b, sceVu0FMATRIX out);
+/* a decal onto a sub-mesh, through its mesh and its place there (new in SOCOM II; not named yet) */
+extern "C" void func_003B8680(CVisual *mesh, CMatrix *mtw, int index, float size, CPnt3D *normal,
+                              CTexHandle *tex, CMatrix *uv);
 /* the world told of a shadow-casting node: a new 0x70-byte object made from it, pushed on a list
  * at 0x580 (new in SOCOM II, not named yet; CWorld::AddChild calls it too) */
 extern "C" void func_0031F500(CWorld *world, CNode *node);
@@ -32,6 +42,12 @@ public:
     static void Tick(float dt);
 };
 extern "C" void func_003C0120(void *fx, float dt);
+/* a scrolling texture handed to the texture effects (SOCOM 1 took a CTextureFX from its pool and
+ * initialised it in CNode::ScrollTexture; SOCOM II's call takes InitScrollTexture's arguments in
+ * its order and an index, on the same object as the tick, and gives an index back -- not named
+ * yet; the order is the one the target's argument set-up follows) */
+extern "C" int func_003C0460(void *fx, float u, float v, bool b, CVisual *visual, CNode *node,
+                             int index);
 extern "C" char data_004B50D0[];
 
 /* a copy of the node: _Copy into a new one */
@@ -107,7 +123,7 @@ int CNode::DeleteChild(CNode *child)
     int count = child->m_count;
 
     if (m_child.Exists(child)) {
-        func_00313620(child, 0);
+        child->RemoveDecals(0);
         if (m_type == 3) {
             m_child.Remove(child);
             m_socom2_a1 |= 2;
@@ -512,6 +528,61 @@ bool CNode::AddDI(CDI *di)
     return added;
 }
 
+/* every DI let go of, each deleted that nothing else holds, the list emptied and the node marked
+ * changed (SOCOM 1's destructor inlined it, so no name survives: ours) */
+void CNode::DeleteDI()
+{
+    for (CDIVector::iterator it = m_di.begin(); it != m_di.end(); ++it) {
+        CDI *di = *it;
+
+        if (!di->Release())
+            delete di;
+    }
+    m_di.clear();
+    m_socom2_a1 |= 2;
+}
+
+/* a decal projected onto the node's visuals that take decals (0x10000), and below unless one of
+ * them is a sub-mesh: the projection from the texture's width, the world matrix built only once
+ * a visual needs it (SOCOM 1 built it first), a sub-mesh handed to its mesh.
+ * OPEN (2 of 0x278): the sub-mesh call loads its mesh (0x6c) before its index (0x68), the target
+ * the index first -- not moved by locals for either, the call as the mesh's member, an inline
+ * wrapper, accessors, or reading either through the iterator */
+void CNode::ApplyDecal(CNode *node, float size, CPnt3D *pos, CPnt3D *dir, CPnt3D *normal,
+                       CTexHandle *tex, float depth, CPnt3D *up)
+{
+    CSubMesh *submesh = 0;
+
+    if (m_hasVisuals) {
+        CMatrix uv;
+        CMatrix mtw;
+        bool build = true;
+
+        if (up)
+            func_003079C0(pos, dir, up, (int)tex->m_texture->m_width, depth, uv);
+        else
+            func_00307810(pos, dir, (int)tex->m_texture->m_width, depth, uv);
+        for (CVisualVector::iterator it = m_visual.begin(); it != m_visual.end(); ++it) {
+            if ((*it)->m_flags & 0x10000) {
+                if ((*it)->GetType() == 2) {
+                    submesh = (CSubMesh *)*it;
+                    func_003B8680(submesh->m_mesh, &mtw, submesh->m_index, size, normal, tex, &uv);
+                } else {
+                    if (build) {
+                        BuildMTW(mtw);
+                        build = false;
+                    }
+                    (*it)->ApplyDecalRender(&mtw, node, size, pos, normal, tex, &uv);
+                }
+            }
+        }
+    }
+    if (!submesh && m_child.size()) {
+        for (CNodeVector::iterator i = m_child.begin(), end = m_child.end(); i != end; ++i)
+            (*i)->ApplyDecal(node, size, pos, dir, normal, tex, depth, up);
+    }
+}
+
 /* the scene's visual effects ticked: decals, ripples, texture effects */
 int CNode::VisualEffectsTick(float dt, void *data)
 {
@@ -519,6 +590,88 @@ int CNode::VisualEffectsTick(float dt, void *data)
     CRipple::Tick(dt);
     func_003C0120(data_004B50D0, dt);
     return 0;
+}
+
+/* the matrices of a mesh's sub-meshes, through the tree: each active node's own pushed on the
+ * stack over its parent's, a sub-mesh's copied into its mesh's palette (by the uncached
+ * address), a mesh starting a palette of its own from the unit matrix; only children holding a
+ * mesh or a sub-mesh are walked (SOCOM II's, for decals on skinned meshes; the name is ours).
+ * The node's matrix is popped only if there is one -- the test of the node's own address -- and
+ * the stack is a function static (the guard, the object and its destructor's record are this
+ * unit's own .bss, which scdiff cannot check by content) */
+void CNode::BuildMatrixPalette(CMesh *mesh)
+{
+    static CStack stack;
+
+    if (!m_active)
+        return;
+    CMesh *own = GetMesh();
+    CMatrix *m = stack.Multiply(GetMatrix(), true);
+
+    if (own) {
+        mesh = own;
+        stack.Push(&CMatrix::identity);
+    }
+    CSubMesh *sub = GetSubMesh();
+
+    if (sub)
+        sceVu0CopyMatrix((float (*)[4])((unsigned int)mesh->m_palette[sub->m_index] | 0x20000000),
+                         m->m_matrix);
+    CNodeVector &children = m_child;
+
+    for (CNodeVector::iterator it = children.begin(); it != children.end(); ++it) {
+        CNode *child = *it;
+
+        if (child->GetSubMesh() || child->GetMesh())
+            child->BuildMatrixPalette(mesh);
+    }
+    if (GetMatrix())
+        stack.Pop();
+    if (own)
+        stack.Pop();
+}
+
+/* the decals on the node's visuals and below let go of: a mesh frees all of its own, any other
+ * visual those of one view -- an instance's own view unless told -1 (SOCOM 1's took no view and
+ * passed the node's every time) */
+void CNode::RemoveDecals(unsigned int vid)
+{
+    if (m_visual.size()) {
+        if (vid != -1 && GetType() == 2)
+            vid = m_vid;
+        CVisualVector &visuals = m_visual;
+
+        for (CVisualVector::iterator it = visuals.begin(); it != visuals.end(); ++it) {
+            CVisual *visual = *it;
+
+            if (visual->GetType() == 1)
+                func_003B8440(visual);
+            else
+                visual->DereferenceDecals(vid);
+        }
+    }
+    for (CNodeVector::iterator it = m_child.begin(); it != m_child.end(); ++it)
+        (*it)->RemoveDecals(vid);
+}
+
+/* a scrolling texture started on every visual below -- handed to the texture effects with an
+ * index new since SOCOM 1 (every caller passes -1), the index each hand-over gives back passed on
+ * to the next and returned (so MW keeps it in v0 throughout); a mesh among a node's own visuals
+ * stops the whole walk there, as in SOCOM 1. The children's end is read once */
+int CNode::ScrollTexture(CNode *node, float u, float v, bool b, int index)
+{
+    for (CVisualVector::iterator it = m_visual.begin(); it != m_visual.end(); ++it) {
+        CVisual *visual = *it;
+
+        if (visual->GetType() == 1)
+            return index;
+        index = func_003C0460(data_004B50D0, u, v, b, visual, node, index);
+    }
+    if (m_child.size()) {
+        for (CNodeVector::iterator i = m_child.begin(), end = m_child.end(); i != end; ++i)
+            index = (*i)->ScrollTexture(node, u, v, b, index);
+    }
+    return index;
 }
 
 }

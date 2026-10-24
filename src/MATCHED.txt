@@ -59,7 +59,7 @@
 0x001EA840 __ml__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorCFv
 0x001EA850 end__Q23std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>Fv
 0x001EA870 begin__Q23std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>Fv
-0x001EA880 func_001EA880
+0x001EA880 GetChildren__Q23zdb5CNodeFv
 0x001EA890 end__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>Fv
 0x001EA8B0 __iter__Q23std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>FRCPUi
 0x001EA8C0 begin__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>Fv
@@ -1161,7 +1161,7 @@
 0x002D2810 func_002D2810
 0x002D2830 func_002D2830
 0x002D4FD0 func_002D4FD0
-0x002D4FE0 func_002D4FE0
+0x002D4FE0 __dt__6CStackFv
 0x002D54F0 GetCell__Q23zdb9CGridAtomFv
 0x002D61A0 func_002D61A0
 0x002D7970 __ct__Q23zdb5CGridFv
@@ -1187,7 +1187,7 @@
 0x002DBFA0 func_002DBFA0
 0x002DC180 IsInside__Q23zdb15IntersectStructFv
 0x002DC1B0 GetRegion__Q23zdb15IntersectStructFv
-0x002DC3E0 func_002DC3E0
+0x002DC3E0 Release__Q23zdb3CDIFv
 0x002DC620 func_002DC620
 0x002DC680 __dt__Q23zdb11DiIntersectFv
 0x002DD020 GetAltitude__Q23zdb7CDIBBoxFPQ23zdb11DiIntersect
@@ -1524,11 +1524,17 @@
 0x00312A70 SetActive__Q23zdb6CLightFb
 0x00312F20 SetDescendantVisuals__Q23zdb5CNodeFb
 0x003130B0 SetDescendantDI__Q23zdb5CNodeFb
+0x00313240 SetModeTree__Q23zdb5CNodeFi
 0x00313450 __ct__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorFRCQ33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iterator
 0x00313460 __pp__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorFi
 0x00313480 __as__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorFRCQ33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iterator
 0x00313490 __ct__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorFv
+0x003134A0 SetMode__Q23zdb5CNodeFi
+0x003134C0 ScrollTexture__Q23zdb5CNodeFPQ23zdb5CNodeffbi
+0x00313620 RemoveDecals__Q23zdb5CNodeFUi
+0x00313770 BuildMatrixPalette__Q23zdb5CNodeFPQ23zdb5CMesh
 0x00313C60 VisualEffectsTick__Q23zdb5CNodeFfPv
+0x00313CA0 DeleteDI__Q23zdb5CNodeFv
 0x00313D60 AddDI__Q23zdb5CNodeFPQ23zdb3CDI
 0x00313E10 ReserveDI__Q23zdb5CNodeFi
 0x00313E20 SetApplyClutterFlag__Q23zdb5CNodeFb
