@@ -3009,7 +3009,7 @@
 0x00270BC0 0x20 func_00270BC0  # OVL1
 0x00270BE0 0x260 func_00270BE0  # OVL1
 0x00270E40 0xB0 Running__6CZAnimFv  # OVL1; s1:order by hand (called where SOCOM 1's Pause/Resume handlers call Running; the same one argument)
-0x00270EF0 0x218 func_00270EF0  # OVL1
+0x00270EF0 0x218 GetAvailable__6CZAnimFv  # OVL1; s1:order (after Running in both; the chain walked to an anim not running, else one copied while copies are allowed)
 0x00271110 0x13C FindClones__6CZAnimFPQ23zdb5CNodePQ23zdb5CNodeP6CZAnim  # OVL1; s1:callee by hand (MakeClones calls it for each of the world's children with the root and the last anim, where SOCOM 1's calls FindClones; it returns the new last and recurses)
 0x00271250 0x134 MakeClones__6CZAnimFv  # OVL1; s1:callee by hand (CZAnimSet::Start calls it on a cloning anim of a fresh set, where SOCOM 1's calls MakeClones)
 0x00271390 0x58 RestartClones__6CZAnimFv  # OVL1; s1:callee by hand (CZAnimSet::Start calls it on a cloning anim of a set started before, where SOCOM 1's calls RestartClones; the same activation test, 3 bits wide here)

@@ -169,6 +169,34 @@ void CZAnim::Start()
 
 #pragma auto_inline reset
 
+/* an anim of the chain free to run: the first not running, else -- if it copies itself and
+ * the copies are unlimited or fewer than its maximum -- a new copy chained on; none otherwise,
+ * or when the anim is invalid */
+CZAnim *CZAnim::GetAvailable()
+{
+    if (m_invalid)
+        return 0;
+    int count = 1;
+    CZAnim *anim = this;
+
+    while (anim->Running() && anim->m_sibling_anim) {
+        anim = anim->m_sibling_anim;
+        count++;
+    }
+    if (anim->Running()) {
+        if (anim->m_auto_copy_anim) {
+            if (m_max_anim_copies && count >= m_max_anim_copies)
+                anim = 0;
+            else {
+                anim->m_sibling_anim = anim->Copy();
+                anim = anim->m_sibling_anim;
+            }
+        } else
+            anim = 0;
+    }
+    return anim;
+}
+
 /* the nodes under one named like the root: the root itself made this anim's root and started,
  * every other match a copy's -- chained after the last anim, unless the anim activates on a
  * weapon hit (3), which marks it instead -- and started; the new last returned */
