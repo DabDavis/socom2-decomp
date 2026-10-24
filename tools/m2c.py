@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import os
 import re
+import struct
 import subprocess
 import sys
 import tempfile
@@ -29,12 +30,18 @@ HERE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(HERE))
 import scdecomp as E
 
-M2C = Path(os.environ.get("M2C") or Path.home() / "claude-eqoa" / "decomp" / "tools" / "m2c" / "m2c.py")
+# build/m2c (tools/m2c_setup.sh: claude-eqoa's checkout plus the R5900 accumulator ops) when it
+# exists, else claude-eqoa's own
+_PRIVATE = HERE / "build" / "m2c" / "m2c.py"
+M2C = Path(os.environ.get("M2C") or (_PRIVATE if _PRIVATE.exists() else
+                                     Path.home() / "claude-eqoa" / "decomp" / "tools" / "m2c" / "m2c.py"))
 
 REGS = ("zero at v0 v1 a0 a1 a2 a3 t0 t1 t2 t3 t4 t5 t6 t7 t8 t9 s0 s1 s2 s3 s4 s5 s6 s7 "
         "s8 fp k0 k1 gp sp ra").split()
 _REG = re.compile(r"(?<![\w$.])(" + "|".join(REGS) + r")(?![\w])")
 BRANCHES = {"b", "beq", "bne", "beqz", "bnez", "blez", "bgtz", "bltz", "bgez", "beql", "bnel",
+            "beqzl", "bnezl",       # objdump's names for beql/bnel against $zero: left out, their
+                                    # targets stayed raw addresses and m2c refused 74 functions
             "blezl", "bgtzl", "bltzl", "bgezl", "bal", "bltzal", "bgezal", "bc1t", "bc1f",
             "bc1tl", "bc1fl", "bc0t", "bc0f"}
 
@@ -76,6 +83,7 @@ def export(img: E.Image, st: E.SymbolTable, sym: E.Symbol) -> str:
             targets.add(int(text.split(",")[-1].split()[-1], 16))
     # %hi/%lo: a lui whose register a later instruction uses as a base or addiu source
     pair: dict[int, str] = {}                  # instruction address -> symbol of its pair
+    pair_value: dict[int, tuple[int, int]] = {}   # lo instruction -> (its lui, the address)
     live: dict[int, tuple[int, int]] = {}      # reg -> (lui address, hi)
     for addr, w, text in rows:
         opc, rs, rt, rd = w >> 26, (w >> 21) & 31, (w >> 16) & 31, (w >> 11) & 31
@@ -89,9 +97,67 @@ def export(img: E.Image, st: E.SymbolTable, sym: E.Symbol) -> str:
             if img.in_memory(full):
                 name = symname(st, full, img.is_code(full))
                 pair[lui_at] = pair[addr] = name
+                pair_value[addr] = (lui_at, full)
         written = gpr_written(w)
         if written in live:
             live.pop(written, None)
+    # a switch's jump table. MW forms its address with a lui/addiu pair, adds the scaled index
+    # and loads from offset 0 (`lui v1,hi; sll v0,v0,2; addiu v1,v1,lo; addu v0,v0,v1;
+    # lw v0,0(v0); jr v0`); IDO-style code folds lo into the load (`lui at,hi; addu at,at,v0;
+    # lw v0,lo(at)`). m2c reads one only as a symbol named jtbl_* whose entries it can see, so
+    # the table is exported too, each entry a label in this function; its length is the bound
+    # check's (`sltiu _, _, N`) or the run of entries that land in the function
+    jtbl: dict[int, str] = {}                  # instruction address -> table symbol
+    tables: dict[str, list[int]] = {}
+
+    def writer(i0: int, reg: int, back: int, pred) -> int | None:
+        return next((i for i in range(i0 - 1, max(i0 - back, -1), -1)
+                     if gpr_written(rows[i][1]) == reg and pred(rows[i][1])), None)
+
+    for k, (addr, w, text) in enumerate(rows):
+        if not (w >> 26 == 0 and (w & 0x3F) == 8 and (w >> 21) & 31 != 31):
+            continue
+        lw_i = writer(k, (w >> 21) & 31, 6, lambda x: x >> 26 == 0x23)
+        if lw_i is None:
+            continue
+        lw = rows[lw_i][1]
+        add_i = writer(lw_i, (lw >> 21) & 31, 6, lambda x: x >> 26 == 0 and x & 0x3F in (0x21, 0x2D))
+        if add_i is None:
+            continue
+        add = rows[add_i][1]
+        table = lui_i = lo_i = None
+        for src in ((add >> 21) & 31, (add >> 16) & 31):
+            ai = writer(add_i, src, 8, lambda x: x >> 26 == 0x09)
+            if ai is not None and rows[ai][0] in pair_value and lw & 0xFFFF == 0:
+                lui_at, table = pair_value[rows[ai][0]]
+                lo_i = ai
+                break
+            li = writer(add_i, src, 8, lambda x: x >> 26 == 0x0F)
+            if li is not None and src == (add >> 11) & 31:
+                lo = lw & 0xFFFF
+                table = (((rows[li][1] & 0xFFFF) << 16) + (lo - 0x10000 if lo & 0x8000 else lo)) & 0xFFFFFFFF
+                lui_at, lo_i = rows[li][0], lw_i
+                break
+        if table is None:
+            continue
+        bound = next((rows[i][1] & 0xFFFF for i in range(add_i - 1, max(add_i - 12, -1), -1)
+                      if rows[i][1] >> 26 == 0x0B), None)
+        entries = []
+        while bound is None or len(entries) < bound:
+            if not img.in_memory(table + 4 * len(entries)):
+                break
+            e = struct.unpack("<I", img.read(table + 4 * len(entries), 4))[0]
+            if not (sym.addr <= e < sym.addr + sym.size):
+                break
+            entries.append(e)
+        if not entries or (bound is not None and len(entries) != bound):
+            continue
+        name = f"jtbl_{table:08X}"
+        tables[name] = entries
+        targets.update(entries)
+        for a in (lui_at, rows[lo_i][0]):
+            pair.pop(a, None)
+            jtbl[a] = name
     # a tail call -- `j f` with the argument set up in its delay slot -- is rewritten as the
     # delay instruction, a call and a return: m2c reads the delay slot of a jal but not of a
     # j, and drops what it does (an MI thunk's `this` adjustment, a loaded argument)
@@ -102,7 +168,12 @@ def export(img: E.Image, st: E.SymbolTable, sym: E.Symbol) -> str:
             if st.at_addr(t) is not None and t != sym.addr and rows[i + 1][0] not in targets:
                 tail[addr] = rows[i + 1]
     skip = {d[0] for d in tail.values()}
-    out = [f"glabel {sym.name}"]
+    out = []
+    for name, entries in tables.items():
+        out += [".section .rodata", f"glabel {name}"] + [f".word .L{e:08X}" for e in entries]
+    if tables:
+        out.append(".section .text")
+    out.append(f"glabel {sym.name}")
     for addr, w, text in rows:
         if addr in targets:
             out.append(f".L{addr:08X}:")
@@ -135,6 +206,13 @@ def export(img: E.Image, st: E.SymbolTable, sym: E.Symbol) -> str:
         elif op in ("jal", "j"):
             t = int(args.split()[0], 16)
             args = symname(st, t, True) if (op == "jal" or st.at_addr(t)) else f".L{t:08X}"
+        elif addr in jtbl:
+            if op == "lui":
+                args = re.sub(r",\s*\S+$", f", %hi({jtbl[addr]})", args)
+            elif "(" in args:
+                args = re.sub(r"(-?0x[0-9a-f]+|-?\d+)(\(\$\w+\))", f"%lo({jtbl[addr]})\\2", args, count=1)
+            else:
+                args = re.sub(r",\s*-?(0x[0-9a-f]+|\d+)$", f", %lo({jtbl[addr]})", args)
         elif addr in pair:
             if op == "lui":
                 args = re.sub(r",\s*\S+$", f", %hi({pair[addr]})", args)

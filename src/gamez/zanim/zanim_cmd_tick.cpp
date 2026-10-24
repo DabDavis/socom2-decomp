@@ -5,8 +5,50 @@
  * layouts are read off the handlers. Defined in reverse of their image order (-inline deferred). */
 
 #include <stdio.h>
+#include <string.h>
 
 #include "zanim.h"
+
+/* OBJECT_AIM's tick: turn a node from one orientation to another over a time on the
+ * command's clock */
+struct zanim_cmd_aim {
+    _zanim_cmd_hdr hdr;
+    unsigned short flags;
+    unsigned char node;
+    unsigned char _7[0x19];
+    CQuat from;                     /* 0x20 */
+    CQuat to;                       /* 0x30 */
+    float time;                     /* 0x40 */
+};
+
+extern "C" bool func_002633A0(_zanim_cmd_hdr *hdr, float *dT)
+{
+    zanim_cmd_aim *cmd = (zanim_cmd_aim *)hdr;
+    CNode *node = ZAnim.m_CurAnim->GetNode(cmd->node, false);
+    bool done = true;
+
+    if (node) {
+        float step = *dT;
+        float t = ZAnim.m_CurSeq->cmd_timer;
+
+        if (!(step + t <= cmd->time)) {
+            step = cmd->time - t;
+            *dT -= step;
+        } else {
+            *dT = 0.0f;
+            done = false;
+        }
+        if (done)
+            node->SetRotation(cmd->to);
+        else {
+            CQuat q;
+
+            cmd->from.Slerp(&cmd->to, (step + ZAnim.m_CurSeq->cmd_timer) / cmd->time, &q);
+            node->SetRotation(q);
+        }
+    }
+    return done;
+}
 
 /* move a node: to a point (flag 1), by it from where the node is (flag 4), and by the anim's
  * call argument (flag 2), in another node's frame if there is one; flags 8, 0x10 and 0x20 keep
@@ -144,6 +186,53 @@ extern "C" bool func_00263B30(_zanim_cmd_hdr *hdr, float *dT)
     return true;
 }
 
+/* TIMER: the anims' shared timer against a value -- ==, !=, >=, <=, >, < -- or set it (6) */
+struct zanim_cmd_timer {
+    _zanim_cmd_hdr hdr;
+    unsigned char op;
+    unsigned char pad[3];
+    float value;
+};
+
+extern float data_004365C8;
+
+bool zAnimTimerTick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    zanim_cmd_timer *cmd = (zanim_cmd_timer *)hdr;
+    float timer = data_004365C8;
+
+    switch (cmd->op) {
+    case 6:
+        data_004365C8 = cmd->value;
+        return true;
+    case 0:
+        if (timer == cmd->value)
+            return true;
+        return false;
+    case 1:
+        if (timer != cmd->value)
+            return true;
+        return false;
+    case 2:
+        if (timer >= cmd->value)
+            return true;
+        return false;
+    case 3:
+        if (timer <= cmd->value)
+            return true;
+        return false;
+    case 4:
+        if (timer > cmd->value)
+            return true;
+        return false;
+    case 5:
+        if (timer < cmd->value)
+            return true;
+        return false;
+    }
+    return true;
+}
+
 /* DESTRUCTOR: break a node of the current anim apart through the particle system's
  * destruction manager, under the name of one of the anim's names */
 struct zanim_cmd_destructor {
@@ -212,12 +301,174 @@ bool zAnimMessageTick(_zanim_cmd_hdr *hdr, float *dT)
     return true;
 }
 
+/* SCALE_COLOR: scale a colour's channels -- all of them (flag 0x10), or each one whose bit
+ * (0-3) is set -- by a factor; the colour object's two functions are not named yet */
+struct zanim_cmd_scalecolor {
+    _zanim_cmd_hdr hdr;
+    unsigned char channels;
+    unsigned char pad[3];
+    unsigned char color[0x10];
+    float scale;
+};
+
+extern "C" void func_003B78D0(void *color, float scale);
+extern "C" void func_003B76B0(void *color, int channel, float scale);
+
+extern "C" bool func_00264580(_zanim_cmd_hdr *hdr, float *dT)
+{
+    zanim_cmd_scalecolor *cmd = (zanim_cmd_scalecolor *)hdr;
+
+    if (cmd->channels & 0x10)
+        func_003B78D0(cmd->color, cmd->scale);
+    else {
+        for (int i = 0; i < 4; i++)
+            if (cmd->channels & (1 << i))
+                func_003B76B0(cmd->color, i, cmd->scale);
+    }
+    return true;
+}
+
 /* a node of the current anim and a 16-bit argument: ACTIVE_STATE's state, NODE_ACTIVE's mode */
 struct zanim_cmd_nodetest {
     _zanim_cmd_hdr hdr;
     unsigned short mode;
     unsigned short node;
 };
+
+/* RIPPLE_NODE_GROUP: gather world nodes into a ripple group named by one of the anim's names
+ * -- each name in the record a node's, or with a `*` a pattern every match of which is taken
+ * (the group's and the pattern's functions are not named yet) */
+struct zanim_cmd_ripplegroup {
+    _zanim_cmd_hdr hdr;
+    unsigned char group;
+    unsigned char count;
+    unsigned char pad[2];
+    int name[1];
+};
+
+extern char data_004B5170[];
+extern "C" void *func_003C2120(char *owner, const char *name);
+extern "C" void func_003C20A0(void *group, zdb::CNode *node);
+extern "C" void *func_001801E0(const char *pattern, int a, int b);
+extern "C" void func_00180280(void *pattern, int a, int b);
+extern "C" const char *func_00268790(void *pattern);
+extern "C" const char *func_00268680();
+
+extern "C" bool func_00263E20(_zanim_cmd_hdr *hdr, float *dT)
+{
+    zanim_cmd_ripplegroup *cmd = (zanim_cmd_ripplegroup *)hdr;
+    CZAnim *anim = ZAnim.m_CurAnim;
+    void *group = func_003C2120(data_004B5170, anim->GetName(cmd->group));
+
+    for (int i = 0; i < cmd->count; i++) {
+        const char *name = anim->GetName(cmd->name[i]);
+
+        if (strstr(name, "*")) {
+            void *pattern = func_001801E0(name, 0, 0);
+
+            for (const char *n = func_00268790(pattern); n; n = func_00268680()) {
+                CNode *node = zdb::CWorld::m_world->FindChild(n, true);
+
+                if (node)
+                    func_003C20A0(group, node);
+            }
+            func_00180280(pattern, 0, 0);
+        } else {
+            CNode *node = zdb::CWorld::m_world->FindChild(name, true);
+
+            if (node)
+                func_003C20A0(group, node);
+        }
+    }
+    return true;
+}
+
+/* the GS ALPHA register (sceGsAlpha's layout): (A - B) * C + D, C or D the FIX alpha */
+struct GsAlpha {
+    unsigned long A : 2;
+    unsigned long B : 2;
+    unsigned long C : 2;
+    unsigned long D : 2;
+    unsigned long pad8 : 24;
+    unsigned long FIX : 8;
+    unsigned long pad40 : 24;
+};
+
+/* OBJECT_BLENDMODE: a node's alpha blend -- the four selectors two bits each, the fixed alpha
+ * 128 * `alpha` -- optionally driven by an expression (flag 8) over a time; flags 1, 2, 4
+ * passed on to the node (the two functions are not named yet) */
+struct zanim_cmd_blendmode {
+    _zanim_cmd_hdr hdr;
+    unsigned long flags : 16;       /* (64-bit bitfields: the selectors are read with dsll32/dsrl32) */
+    unsigned long node : 8;
+    unsigned long A : 2;
+    unsigned long B : 2;
+    unsigned long C : 2;
+    unsigned long D : 2;
+    float alpha;
+    short expr_len;
+    short expr_off;                 /* from the record */
+    float time;
+};
+
+extern "C" void func_0025C5F0(GsAlpha *alpha, char *expr, int len, float t);
+extern "C" void func_00312860(zdb::CNode *node, GsAlpha *alpha, bool a, bool b, bool c);
+
+bool zAnimObjectBlendModeTick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    bool done;
+    zanim_cmd_blendmode *cmd = (zanim_cmd_blendmode *)hdr;
+    GsAlpha alpha;
+
+    *(unsigned long *)&alpha = 0x44;        /* A 0, B 1, C 0, D 1: Cs - Cd, by As, plus Cd */
+    done = true;
+    CNode *node = ZAnim.m_CurAnim->GetNode(cmd->node, false);
+    float step = *dT;
+    bool b1 = false;
+    bool b2 = false;
+    bool b3 = false;
+
+    if (!node)
+        return true;
+    float time = cmd->time;
+
+    if (!(time <= 0.0f)) {
+        float t = ZAnim.m_CurSeq->cmd_timer;
+
+        if (!(step + t <= time)) {
+            step = time - t;
+            *dT -= step;
+        } else {
+            done = false;
+            *dT = 0.0f;
+        }
+    }
+    if (cmd->flags & 1)
+        b1 = true;
+    if (cmd->flags & 2)
+        b2 = true;
+    if (cmd->flags & 4)
+        b3 = true;
+    int fix = (int)(128.0f * cmd->alpha);
+    if (fix < 0)
+        fix = 0;
+    if (fix > 255)
+        fix = 255;
+    unsigned char d = cmd->D;               /* (read last to first, into bytes: one load) */
+    unsigned char c = cmd->C;
+    unsigned char b = cmd->B;
+    unsigned char a = cmd->A;
+
+    alpha.FIX = fix;
+    alpha.A = a;
+    alpha.B = b;
+    alpha.C = c;
+    alpha.D = d;
+    if (cmd->flags & 8)
+        func_0025C5F0(&alpha, (char *)cmd + cmd->expr_off, cmd->expr_len, step + ZAnim.m_CurSeq->cmd_timer);
+    func_00312860(node, &alpha, b1, b2, b3);
+    return done;
+}
 
 /* make a node of the current anim active (state 1) or inactive (anything else) */
 bool zAnimObjectActiveStateTick(_zanim_cmd_hdr *hdr, float *dT)
@@ -259,6 +510,41 @@ struct zanim_cmd_weight {
     float weight;                   /* the chance of going on, 0 to 1 */
 };
 
+
+/* SCROLL_MOTION's begin: the reference node's place in the world kept in the record, and
+ * something started on the moving node (two calls not named yet) whose handle is kept too */
+struct zanim_cmd_scroll {
+    _zanim_cmd_hdr hdr;
+    unsigned short flags;
+    unsigned char node;
+    unsigned char ref;
+    CPnt3D pos;
+    unsigned char _14[0x2C];
+    int handle;                     /* 0x40 */
+};
+
+extern char data_004B50D0[];
+extern "C" int func_003134C0(zdb::CNode *node, int a, int b, int c, float d, float e);
+extern "C" void func_003C0340(char *owner, int handle, float a, float b);
+
+extern "C" void func_00260FB0(_zanim_cmd_hdr *hdr)
+{
+    zanim_cmd_scroll *cmd = (zanim_cmd_scroll *)hdr;
+    CNode *node;
+    CZAnim *anim = ZAnim.m_CurAnim;
+
+    node = anim->GetNode(cmd->node, false);
+    if (node) {
+        CNode *ref = anim->GetNode(cmd->ref, false);
+
+        if (ref) {
+            cmd->pos = CPnt3D::zero;
+            ref->TransformToWorld(cmd->pos);
+            cmd->handle = func_003134C0(node, 0, 1, -1, 0.0f, 0.0f);
+            func_003C0340(data_004B50D0, cmd->handle, 0.0f, 0.0f);
+        }
+    }
+}
 
 /* WHEEL_MOTION's begin: the wheel's node's place in the world, kept in the record */
 struct zanim_cmd_wheel {
@@ -357,6 +643,31 @@ void zAnimMultiObjectMotionScriptBegin(_zanim_cmd_hdr *hdr)
             s->done = 0;
         }
     }
+}
+
+bool zAnimObjectMotionScriptTick(_zanim_cmd_hdr *hdr, float *dT);
+
+/* each node's script run on the same frame time; done when all are, with the least time left */
+bool zAnimMultiObjectMotionScriptTick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    zanim_cmd_multiscript *cmd = (zanim_cmd_multiscript *)hdr;
+
+    if (cmd == 0 || cmd->count <= 0)
+        return true;
+    float t = *dT;
+    float left = t;
+    int i;
+    bool done = true;
+
+    for (i = 0; i < cmd->count; i++) {
+        *dT = t;
+        if (!zAnimObjectMotionScriptTick((_zanim_cmd_hdr *)&cmd->script[i], dT))
+            done = false;
+        if (*dT < left)
+            left = *dT;
+    }
+    *dT = left;
+    return done;
 }
 
 /* parent one node of the current anim to another (flag 1: keep its place in the world) */

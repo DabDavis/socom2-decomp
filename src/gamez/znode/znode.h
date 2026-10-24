@@ -93,6 +93,7 @@ public:
     void SetMatrix(const CMatrix *m);
     void GetRotation(CPnt3D *out) const;
     void SetRotation(const CPnt3D *euler);
+    void SetRotation(const CQuat &q);
     void SetPosition(float x, float y, float z);
     void SetPosition(const PNT3D *p)      /* the base pointer keeps MW from folding the null test */
     {

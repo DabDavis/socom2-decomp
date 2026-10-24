@@ -18,6 +18,7 @@ GENERATED tier, counted apart by sccheck, and hand-written source always superse
 from __future__ import annotations
 
 import argparse
+import os
 import random
 import re
 import subprocess
@@ -69,7 +70,7 @@ def attempt(addr: int):
     # again, told the callees' prototypes (tools/sigs.py): m2c cannot see an argument passed
     # straight through in its register, nor one the caller loads that the callee ignores
     for triple, out in first.items():
-        decls = prototypes(out, img, st)
+        decls = prototypes(out, img, st, st.at_addr(addr))
         if not decls:
             continue
         (tmp / "ctx.h").write_text(TYPES + decls)
@@ -280,14 +281,23 @@ EXTERN = re.compile(r"^(?P<ret>[^(\n]*?)\s*\b(?P<name>[A-Za-z_]\w*)\((?P<args>[^
 _live = None
 
 
-def prototypes(draft: str, img, st) -> str:
+def prototypes(draft: str, img, st, own=None) -> str:
     """Declarations of the draft's callees whose parameters tools/sigs.py can tell, each with
-    the return type m2c's draft gave it (what the caller does with the result)."""
+    the return type m2c's draft gave it (what the caller does with the result) -- and, given
+    `own` (the drafted symbol), the function itself when its mangled name lists its parameters:
+    m2c then types them as declared (a bool, a short) instead of by their use."""
     global _live
     import sigs
     if _live is None:
         _live = sigs.Live(img, st)
     out = []
+    if own is not None and os.environ.get("SC_OWN_PROTO", "1") == "1":
+        params = sigs.prototype(own.addr, own.name, _live) if sigs.demangle(own.name) else None
+        d = re.search(rf"^(?P<ret>[^\n(]*?)\s*\b{re.escape(own.name if C_IDENT.match(own.name) else f'func_{own.addr:08X}')}\(", draft, re.M)
+        if params is not None and d:
+            name = own.name if C_IDENT.match(own.name) else f"func_{own.addr:08X}"
+            args = ", ".join(f"{p} arg{i}" for i, p in enumerate(params)) or "void"
+            out.append(f"{d.group('ret').strip()} {name}({args});\n")
     for m in EXTERN.finditer(draft):
         name = m.group("name")
         try:
@@ -302,7 +312,7 @@ def prototypes(draft: str, img, st) -> str:
         params = sigs.prototype(s.addr, s.name, _live)
         if params is None:
             continue
-        ret = re.sub(r"\bvoid(\s*\*)", r"char\1", m.group("ret").strip()) or "s32"
+        ret = m.group("ret").strip() or "s32"
         args = ", ".join(f"{p} arg{i}" for i, p in enumerate(params)) or "void"
         out.append(f"{ret} {name}({args});\n")
     return "".join(out)
