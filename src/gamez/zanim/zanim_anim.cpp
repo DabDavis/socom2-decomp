@@ -636,6 +636,67 @@ void CZAnim::GetNodes()
     CreateInstanceNode();
 }
 
+/* an argument's node, by index: the argument list's (CZAnimArgList, 0x272390; not named) */
+extern "C" CNode *func_00272390(CZAnimArgList *list, int index);
+
+/* the anim's own node: its instance, else its root reference's node (SOCOM II's; inlined into
+ * GetNode, the name ours) */
+inline CNode *CZAnim::GetRootNode()
+{
+    if (m_instance_node)
+        return m_instance_node;
+    int root = m_root_node_index;
+
+    if (!root)
+        return 0;
+    return m_node_ref_list[root].node_ptr;
+}
+
+/* the node a reference names, looked up when asked and not yet known -- under its parent's node,
+ * else under the root's, else (unless it searches under a root it has) the world's model for an
+ * instanced root or the database's node; world lights are found elsewhere. 250 is an argument's
+ * node, 249 the instance node or the root's */
+CNode *CZAnim::GetNode(int index, bool lookup)
+{
+    if (!index)
+        return 0;
+    if (index == 250)
+        return m_arg_list ? func_00272390(m_arg_list, 250) : 0;
+    if (index == 249)
+        return GetRootNode();
+    while (index >= m_node_ref_count)
+        AddNewNodeRef(0, 0, 0);
+    CNode *node = m_node_ref_list[index].node_ptr;
+
+    if (lookup && !node && (!m_node_ref_list[index].is_light || m_node_ref_list[index].is_local_light)) {
+        int parent_index = m_node_ref_list[index].parent_index;
+
+        if (parent_index) {
+            CNode *parent = GetNode(parent_index, lookup);
+
+            if (parent)
+                node = parent->FindChild(GetName(m_node_ref_list[index].name_index), true);
+        } else {
+            if (index != m_root_node_index) {
+                CNode *root = GetNode(m_root_node_index, lookup);
+
+                if (root)
+                    node = root->FindChild(GetName(m_node_ref_list[index].name_index), true);
+            }
+            if (!node && !(m_node_ref_list[index].node_search == 1 && index != m_root_node_index
+                           && (index == m_root_node_index || m_root_node_index))) {
+                if (m_create_instance && index == m_root_node_index)
+                    node = zdb::CWorld::GetModel(GetName(m_node_ref_list[index].name_index));
+                else
+                    node = ZAnim.GetDatabaseNode(GetName(m_node_ref_list[index].name_index),
+                                                 m_node_ref_list[index].node_search);
+            }
+        }
+        m_node_ref_list[index].node_ptr = node;
+    }
+    return node;
+}
+
 /* a node reference by its index, the references grown to reach it, its node looked up when
  * not known; none for 0 and 250 */
 _zanim_node_ref *CZAnim::GetNodeRef(int index)
@@ -700,6 +761,67 @@ void CZAnim::StopLights(bool force)
             }
         }
     }
+}
+
+/* what the anim can rebuild let go: its arguments and user commands, its chain (garbage
+ * collected when it clones itself and does not activate on a weapon hit, unloaded otherwise),
+ * its particle list, the nodes it made for world lights, and its other lists */
+int CZAnim::GarbageCollect()
+{
+    if (m_arg_list)
+        delete m_arg_list;
+    m_arg_list = 0;
+    if (m_user_cmd) {
+        func_00180280(m_user_cmd, 0, 0);
+        m_user_cmd = 0;
+    }
+    if (m_sibling_anim) {
+        if (m_clone_anim && m_activation != 3)
+            m_sibling_anim->GarbageCollect();
+        else {
+            m_sibling_anim->Unload();
+            func_00180280(m_sibling_anim, 0, 0);
+            m_sibling_anim = 0;
+        }
+    }
+    if (m_particle_list) {
+        func_00180280(m_particle_list, 0, 0);
+        m_particle_list = 0;
+        m_particle_count = 0;
+    }
+    if (m_node_ref_list) {
+        for (int i = 0; i < m_node_ref_count; i++) {
+            if (m_node_ref_list[i].node_ptr && m_node_ref_list[i].is_light) {
+                if (m_node_ref_list[i].on_world_lightlist)
+                    zdb::CWorld::m_world->DeleteLightMap((zdb::CLightMap *)m_node_ref_list[i].node_ptr);
+                if (m_node_ref_list[i].created_here) {
+                    delete m_node_ref_list[i].node_ptr;
+                    m_node_ref_list[i].node_ptr = 0;
+                }
+            }
+        }
+    }
+    if (m_sound_ref_list) {
+        func_00180280(m_sound_ref_list, 0, 0);
+        m_sound_ref_list = 0;
+        m_sound_ref_count = 0;
+    }
+    if (m_tex_ref_list) {
+        func_00180280(m_tex_ref_list, 0, 0);
+        m_tex_ref_list = 0;
+        m_tex_ref_count = 0;
+    }
+    if (m_valve_ref_list) {
+        func_00180280(m_valve_ref_list, 0, 0);
+        m_valve_ref_list = 0;
+        m_valve_ref_count = 0;
+    }
+    if (m_call_anim_ref_list) {
+        func_00180280(m_call_anim_ref_list, 0, 0);
+        m_call_anim_ref_list = 0;
+        m_call_anim_ref_count = 0;
+    }
+    return 1;
 }
 
 void CZAnim::Priority(float priority)
@@ -986,6 +1108,88 @@ int CZAnim::AddName(const char *name)
 int CZAnim::AddValve(const char *name)
 {
     return m_nameindex_table.AddName(ZAnim.GetAnimSet(m_animset_index), name);
+}
+
+/* everything the anim holds let go: its chain first, its particle sources, arguments and health,
+ * the nodes it made (a world light's map taken off first), every list, its sequences, and the
+ * instance node */
+int CZAnim::Unload()
+{
+    if (m_sibling_anim) {
+        m_sibling_anim->Unload();
+        func_00180280(m_sibling_anim, 0, 0);
+        m_sibling_anim = 0;
+    }
+    func_002707C0(this, false);
+    for (int i = 0; i < m_particle_count; i++) {
+        if (m_particle_list[i].particle) {
+            delete m_particle_list[i].particle;
+            m_particle_list[i].particle = 0;
+        }
+    }
+    m_animEx = 0;
+    if (m_arg_list)
+        delete m_arg_list;
+    m_arg_list = 0;
+    if (m_health) {
+        delete m_health;
+        m_health = 0;
+    }
+    if (m_node_ref_list) {
+        for (int i = 0; i < m_node_ref_count; i++) {
+            if (m_node_ref_list[i].node_ptr) {
+                if (m_node_ref_list[i].is_light && m_node_ref_list[i].on_world_lightlist)
+                    zdb::CWorld::m_world->DeleteLightMap((zdb::CLightMap *)m_node_ref_list[i].node_ptr);
+                if (m_node_ref_list[i].created_here) {
+                    if (m_node_ref_list[i].node_ptr == m_instance_node)
+                        m_instance_node = 0;
+                    delete m_node_ref_list[i].node_ptr;
+                }
+            }
+        }
+        func_00180280(m_node_ref_list, 0, 0);
+        m_node_ref_list = 0;
+        m_node_ref_count = 0;
+    }
+    if (m_sound_ref_list) {
+        func_00180280(m_sound_ref_list, 0, 0);
+        m_sound_ref_list = 0;
+        m_sound_ref_count = 0;
+    }
+    if (m_tex_ref_list) {
+        func_00180280(m_tex_ref_list, 0, 0);
+        m_tex_ref_list = 0;
+        m_tex_ref_count = 0;
+    }
+    if (m_call_anim_ref_list) {
+        func_00180280(m_call_anim_ref_list, 0, 0);
+        m_call_anim_ref_list = 0;
+        m_call_anim_ref_count = 0;
+    }
+    if (m_valve_ref_list) {
+        func_00180280(m_valve_ref_list, 0, 0);
+        m_valve_ref_list = 0;
+        m_valve_ref_count = 0;
+    }
+    if (m_particle_list) {
+        func_00180280(m_particle_list, 0, 0);
+        m_particle_list = 0;
+        m_particle_count = 0;
+    }
+    if (m_user_cmd) {
+        func_00180280(m_user_cmd, 0, 0);
+        m_user_cmd = 0;
+    }
+    if (m_seq_data)
+        func_00180280(m_seq_data, 0, 0);
+    m_seq_data = 0;
+    m_seq_data_size = 0;
+    if (m_instance_node) {
+        delete m_instance_node;
+        m_instance_node = 0;
+    }
+    m_nameindex_table.Unload();
+    return 1;
 }
 
 /* the anim from its ZAR key: its parameters, health (made when missing), name index table,

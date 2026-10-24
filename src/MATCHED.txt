@@ -544,6 +544,7 @@
 0x0026D2F0 clear__Q23std50__vector_imp<6CPnt3D,Q23std18allocator<6CPnt3D>,0>Fv
 0x0026D300 __dt__Q23std52__vector_deleter<6CPnt3D,Q23std18allocator<6CPnt3D>>Fv
 0x0026D370 Load__6CZAnimFRQ23zar4CZAR
+0x0026D560 Unload__6CZAnimFv
 0x0026D870 ExecuteSpecialSequence__6CZAnimFi
 0x0026E2D0 func_0026E2D0
 0x0026E2F0 AddNewNodeRef__6CZAnimFiii
@@ -563,7 +564,9 @@
 0x0026F120 SaveNodeStates__6CZAnimFb
 0x0026F210 GetNodes__6CZAnimFv
 0x0026F430 GetNodeRef__6CZAnimFi
+0x0026F4E0 GetNode__6CZAnimFib
 0x0026F820 Priority__6CZAnimFf
+0x0026F830 GarbageCollect__6CZAnimFv
 0x0026FA80 StopAnims__6CZAnimFv
 0x0026FBF0 StopLights__6CZAnimFb
 0x0026FD20 StopSounds__6CZAnimFv

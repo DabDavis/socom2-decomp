@@ -5,6 +5,8 @@
 #ifndef ZANIM_H
 #define ZANIM_H
 
+#include <list>
+
 #include "../zmath/zmath.h"
 #include "../znode/znode.h"
 #include "../zar/zar.h"
@@ -37,12 +39,14 @@ public:
     };
 };
 
-class CZAnimArgList {
+/* the arguments, an MSL list (SOCOM 1's DWARF: 0x10 bytes, list : 0xc) with a virtual destructor
+ * -- __vt__13CZAnimArgList holds it alone, the vtable pointer after the list at 0xc
+ * (CZAnim::Unload deletes through it) */
+class CZAnimArgList : public std::list<CZAnimArg *> {
 public:
+    virtual ~CZAnimArgList();
     CPnt3D *GetPnt3D(CZAnimArg::TYPE type);
-
-    unsigned char _list[0x10];  /* an MSL std::list (SOCOM 1's DWARF: 0x10 bytes) */
-};
+};   // 0x10 bytes
 
 class _zanim_anim_params {
 public:
@@ -158,6 +162,7 @@ public:
     int Load(zar::CZAR &archive);
     float GetHealth();
     CNode *GetNode(int index, bool create);
+    CNode *GetRootNode();
     CPnt3D *GetArgPnt3D()
     {
         return m_arg_list ? m_arg_list->GetPnt3D(CZAnimArg::TYPE_PNT3D) : 0;
