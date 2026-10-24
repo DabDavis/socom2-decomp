@@ -391,6 +391,53 @@ void CZAnimMain::FreeNetworkPacketBuffer()
     m_NetworkPacketMaxSize = 0;
 }
 
+/* (out of line in SOCOM 1; inline here: there is none in the image) */
+inline int CZAnimMain::NewAnimSet(int index)
+{
+    while (m_animset_count <= index) {
+        m_animset_list = (CZAnimSet *)_realloc(m_animset_list, (m_animset_count + 1) * 0x34, 0, 0);
+        CZAnimSet *s = &m_animset_list[m_animset_count];
+
+        memset(s, 0, 0x34);
+        s->Init();
+        s->Name("None");
+        m_animset_count++;
+    }
+    return 1;
+}
+
+/* a set by name (0: an unnamed or "None" one), made when asked -- in a set left available, or
+ * a new one at the end. OPEN, 6 instructions short: the target walks the available sets with a
+ * pointer and indexes the found one afresh (SOCOM 1's has the same shape, NewAnimSet called). */
+int CZAnimMain::GetAnimSetIndex(const char *name, bool create)
+{
+    for (int i = 0; i < m_animset_count; i++) {
+        if (!name) {
+            if (!m_animset_list[i].m_name || !strcasecmp(m_animset_list[i].m_name, "None"))
+                return i;
+        } else if (m_animset_list[i].m_name && !strcasecmp(name, m_animset_list[i].m_name))
+            return i;
+    }
+    int index;
+
+    if (create) {
+        for (index = 0; index < m_animset_count; index++) {
+            if (m_animset_list[index].m_IsAvailable) {
+                m_animset_list[index].m_IsAvailable = 0;
+                goto named;
+            }
+        }
+        index = m_animset_count;
+        NewAnimSet(index);
+        m_animset_list[index].m_IsAvailable = 0;
+    named:
+        if (name)
+            m_animset_list[index].Name(name);
+    } else
+        index = -1;
+    return index;
+}
+
 /* an anim by name -- `set::name`, in the given set, or in the current one -- and failing that
  * in any other set */
 CZAnim *CZAnimMain::GetAnim(const char *name, const char *set_name)

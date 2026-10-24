@@ -441,7 +441,7 @@
 0x00198A78 0x80 func_00198A78  # MAIN unaligned
 0x00198AF8 0x64 func_00198AF8  # MAIN unaligned
 0x00198B60 0x1C func_00198B60  # MAIN
-0x00198B80 0xD8 func_00198B80  # MAIN
+0x00198B80 0xD8 strcasecmp  # MAIN; s1:callee by hand (GetAnimSetIndex compares set names with it where SOCOM 1's calls strcasecmp; MAIN libc)
 0x00198C58 0x12C strcat  # MAIN unaligned; s1:exact
 0x00198D88 0x190 strchr  # MAIN unaligned; s1:exact
 0x00198F18 0x144 strcmp  # MAIN unaligned; s1:exact

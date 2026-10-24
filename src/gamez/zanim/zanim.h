@@ -184,8 +184,14 @@ public:
     CZAnim *Anim(const char *name);
     int GetAnimIndex(CZAnim *anim);
     int Unload();
+    void Init();
+    void Name(const char *name);
 
-    unsigned char _0[0x34];
+    unsigned char m_WasStarted;   // 0x0
+    unsigned char m_IsStarted;   // 0x1
+    unsigned char m_IsAvailable;   // 0x2
+    char *m_name;   // 0x4
+    unsigned char _8[0x2C];   // SOCOM II's set is 0x34 bytes (SOCOM 1's 0x30)
 };
 
 enum LOD {LOW = 0, MEDIUM = 1, HIGH = 2};   // 1 byte(s)
@@ -286,6 +292,7 @@ public:
     int GetCmdSet(char *name, bool create);
     int GetCmd(int set, char *name, bool create);
     int GetAnimSetIndex(const char *name, bool create);
+    int NewAnimSet(int index);
     CZAnim *GetAnim(const char *name, const char *set_name);
     CZAnim *AnimInSet(int set, const char *name)
     {
