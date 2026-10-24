@@ -1,6 +1,10 @@
-/* Camera and projector matrices (OVL1 0x307700-0x307B40), built on libvu0. A separate
- * translation unit from CQuat's as far as anything shows; the file name is a placeholder.
- * Defined in reverse of their image order (-inline deferred). */
+/* Camera and projector matrices (OVL1 0x307700-0x307B40), built on libvu0, and the VU0
+ * box test. The two projectors are SOCOM 1's zdb::CalcWorldToUV overloads by behaviour
+ * (the same calls; s1names' calls pass), which in 2002 sat in the zdb visual code and
+ * took a CTexture* third and the matrix fifth: SOCOM II moved them beside zMath and
+ * passes the matrix third and two floats, so they keep placeholders until their own
+ * mangled names are known. The file name is a placeholder. Defined in reverse of their
+ * image order (-inline deferred). */
 
 #include "zmath.h"
 

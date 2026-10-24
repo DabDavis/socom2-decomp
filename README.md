@@ -149,10 +149,34 @@ the address in its name, so source can call `func_001C5EC0` before that function
 Data symbols go in the same file (`inflate_mask`). `src/ABSENT.txt` lists what the source
 defines and the image does not hold.
 
-Names so far come from certainty only: zlib's own (by matched bytes), runtime callees named
-off matched call sites (`free`, `memcpy`, `calloc`, `__umoddi3`, `sinf`, `cosf`), and SOCOM 1's
-symbols carried by exact body fingerprint (`CQuat::*`, from socom-unzipped's
-`recomp/socom2_names.csv`, which credits the derivation to SOCOM 1's beta `SCUS_972.05`).
+### Names from SOCOM 1 (`tools/s1names.py`)
+
+SOCOM 1's May 13 2002 demo (`extracted/socom1-demo-020513/SCUS_972.05`, sha256 `00c9cee7...`,
+from the owner's copy of the Hidden Palace prototype) is unstripped: 9,703 named, sized
+functions, `.relmain` (115,142 relocations) and Metrowerks DWARF 1 (`tools/dwarf1.py`: 959
+units, class layouts, enums). Every carried name says how it was found in its note:
+
+| note | how | count |
+|---|---|---|
+| `s1:exact` | same size, identical with only the fields the demo's own relocations name masked | 383 |
+| `s1:callee` | called from the same instruction of an exact pair | 2 |
+| `s1:syscall` | a kernel stub with the same syscall number | 6 |
+| `s1:gap` | between two exact anchors, equal counts, sizes within 35 %, paired in order | 116 |
+| `s1:calls` | the same sequence of known callees and the same strings, unique, both Metrowerks | 212 |
+| `s1:order` | by hand: same position in the same unit, signature checked against the code | 7 |
+
+Against socom-unzipped's independent table, 375 of 379 shared addresses agree; the four
+others are its own labels (`netbEx*`, `_StartThread`) against SOCOM 1's real names.
+
+**A non-exact name carries SOCOM 1's SIGNATURE, which may have changed.** The two projector
+builders are SOCOM 1's `zdb::CalcWorldToUV` by behaviour, but SOCOM II passes the matrix
+third and two floats where SOCOM 1 passed a `CTexture *` and the matrix fifth -- so their
+rows keep placeholders with an `s1~` note. When source for a `gap`/`calls` name compiles to
+a different mangled name, rename the row to what the source defines. (An earlier note said
+the projectors were absent from the 2002 builds: they were in another unit, `zdb`'s.)
+
+The July 9 2002 press beta (`SCUS_971.34`) is stripped but kept its asserts:
+`tools/beta_tu.py` turns them into `tu:` hints -- which source file a function was in.
 
 ## Inputs (none of them in git)
 

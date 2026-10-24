@@ -5201,8 +5201,8 @@
 0x003075E0 0x54 MakeXRot__5CQuatFf  # OVL1; SOCOM 1 name (exact fingerprint)
 0x00307640 0xB8 GetIntersect__5CBBoxFP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4Db  # OVL1; s1:order (same position in the same TU, signature fits the code)
 0x00307700 0x110 func_00307700  # OVL1
-0x00307810 0x1B0 CalcWorldToUV__3zdbFP6CPnt3DP6CPnt3DPQ23zdb8CTexturefP7CMatrix  # OVL1; s1:calls
-0x003079C0 0x180 CalcWorldToUV__3zdbFP6CPnt3DP6CPnt3DP6CPnt3DPQ23zdb8CTexturefP7CMatrix  # OVL1; s1:calls
+0x00307810 0x1B0 func_00307810  # OVL1; s1~ CalcWorldToUV__3zdbFP6CPnt3DP6CPnt3DPQ23zdb8CTexturefP7CMatrix by behaviour, but the signature changed: SOCOM 1 passes a CTexture* third and the matrix fifth, SOCOM II the matrix third and two floats, so the mangled name differs
+0x003079C0 0x180 func_003079C0  # OVL1; s1~ CalcWorldToUV__3zdbFP6CPnt3DP6CPnt3DP6CPnt3DPQ23zdb8CTexturefP7CMatrix by behaviour, but the signature changed: SOCOM 1 passes a CTexture* third and the matrix fifth, SOCOM II the matrix third and two floats, so the mangled name differs
 0x00307B40 0x45C func_00307B40  # OVL1
 0x00307FA0 0x7C func_00307FA0  # OVL1
 0x00308020 0x130 ToEuler__7CMatrixCFP6CPnt3D  # OVL1; SOCOM 1 name
