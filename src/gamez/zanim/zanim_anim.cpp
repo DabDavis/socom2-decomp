@@ -10,6 +10,7 @@
  * definition reproduces that (the pragma state at the callee decides). The original's means is
  * unknown -- debug code compiled to nothing would count against -inline auto the same way. */
 
+#include <algorithm>
 #include <stdio.h>
 #include <string.h>
 
@@ -24,6 +25,36 @@ extern "C" int func_00270460(CZAnim *anim, CNode *node);
 extern "C" bool func_002739B0(CZAnimEx *ex, float amount)
 {
     return ex->m_health > 0.0f && !(ex->m_shield > amount);
+}
+
+/* the list's extensions reset to full: an MSL for_each over the vector (its class iterators
+ * kept in stack slots), the function object ours -- its body CZAnimEx::Reset(0, 0)'s, which
+ * a call would leave one inlining level too deep */
+struct CZAnimExReset {
+    void operator()(CZAnimEx *ex) const
+    {
+        ex->m_armor = ex->m_armor_max;
+        ex->m_health = ex->m_health_max;
+    }
+};
+
+void CZAnimExVector::Reset()
+{
+    std::for_each(begin(), end(), CZAnimExReset());
+}
+
+/* the list's extensions deleted, the list emptied (the function object ours, as Reset's).
+ * OPEN: the target inlines CZAnimEx's destructor (its vtable store, the node let go) into the
+ * function object; MW here calls it -- the nesting that keeps CZAnimEx::Reset out of Reset's
+ * function object, which a written-out body fixed; a destructor cannot be written out. */
+struct CZAnimExDelete {
+    void operator()(CZAnimEx *ex) const { delete ex; }
+};
+
+void CZAnimExVector::Free()
+{
+    std::for_each(begin(), end(), CZAnimExDelete());
+    size_ = 0;
 }
 
 /* the extension's armour and health from the given values, or their maxima */

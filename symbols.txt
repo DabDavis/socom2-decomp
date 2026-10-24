@@ -3056,7 +3056,7 @@
 0x00273A00 0x48 Reset__8CZAnimExFPfPf  # OVL1; s1:align
 0x00273A50 0x48C OnWeaponHit__8CZAnimExFPQ23zdb5CNodePQ23zdb15IntersectStructP12CZProjectile  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00273EE0 0xA8 Reset__14CZAnimExVectorFv  # OVL1; s1:callee by hand (CZAnimSet::Reset calls it on the CZAnimEx list where SOCOM 1's does)
-0x00273F90 0xE8 func_00273F90  # OVL1
+0x00273F90 0xE8 Free__14CZAnimExVectorFv  # OVL1; s1:order (between CZAnimExVector's Reset and Add in both; every extension deleted, the size zeroed)
 0x00274080 0x58 Add__14CZAnimExVectorFP8CZAnimEx  # OVL1; s1:align
 0x002740E0 0x20C OnWeaponHitInit__6CZAnimFv  # OVL1; s1:calls
 0x002742F0 0x8 func_002742F0  # OVL1; s1~ OnWeaponHit__Q23zdb7CNodeExFPQ23zdb5CNodePQ23zdb15IntersectStructP12CZProjectile (one of 2 out-of-line copies of an inline, by s1:vtable)

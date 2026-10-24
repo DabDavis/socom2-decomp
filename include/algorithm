@@ -1,0 +1,20 @@
+/* <algorithm>: the part of MSL the matched functions inline. A reconstruction: for_each takes
+ * its iterators and function object by value, so with class iterators they live in stack
+ * slots, copied with lwc1/swc1 as MW copies 4-byte objects (CZAnimExVector::Reset). */
+
+#ifndef _MSL_ALGORITHM
+#define _MSL_ALGORITHM
+
+namespace std {
+
+template <class InputIterator, class Function>
+inline Function for_each(InputIterator first, InputIterator last, Function f)
+{
+    for (; first != last; ++first)
+        f(*first);
+    return f;
+}
+
+}
+
+#endif

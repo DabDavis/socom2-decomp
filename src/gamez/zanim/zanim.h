@@ -269,6 +269,7 @@ class CZAnimExVector : public std::vector<CZAnimEx *> {
 public:
     void Add(CZAnimEx *ex);
     void Reset();
+    void Free();
 };
 
 /* the node states a set restores: the node refs, and what each had (SOCOM 1's DWARF; the
@@ -576,11 +577,27 @@ public:
     float shield;   // 0x14
 };   // 0x18 bytes
 
+namespace zdb { struct IntersectStruct; }
+class CZProjectile;
+
+/* SOCOM II's helpers of an extension: its node let go (0x3158B0), not named */
+extern "C" void func_003158B0(CNode *node, int a, int b);
+
 class CZAnimEx {
 public:
+    /* non-virtual (not in __vt__8CZAnimEx), inline: Free deletes the extensions through it */
+    ~CZAnimEx()
+    {
+        if (m_nodeEx)
+            func_003158B0(m_nodeEx, 0, 1);
+    }
+    /* __vt__8CZAnimEx's three slots (the vtable pointer at 0, zdb::CNodeEx's in SOCOM 1's DWARF);
+     * the last two not named -- 0x274300 and 0x2739B0 */
+    virtual void OnWeaponHit(CNode *node, zdb::IntersectStruct *hit, CZProjectile *projectile);
+    virtual void Slot0C();
+    virtual bool Slot10(float amount);
     void Reset(float *armor, float *health);
 
-    void *_vt;   // 0x0: zdb::CNodeEx's (4 bytes in SOCOM 1's DWARF)
     CZAnim* m_anim;   // 0x4
     CNode* m_nodeEx;   // 0x8
     CNode* m_root_node;   // 0xc
