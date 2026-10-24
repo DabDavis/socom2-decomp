@@ -6,11 +6,11 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK Initalize__8CConsoleFv(char *);             /* extern */
 M2C_UNK func_001EAAF0(M2C_UNK *, char *, s32 *, char **); /* extern */
 M2C_UNK func_001EABB0(char *);                      /* extern */
 M2C_UNK func_002396F0(char *);                      /* extern */
-M2C_UNK func_0029E0D0(char *);                      /* extern */
-extern M2C_UNK data_00406180;
+extern M2C_UNK __vt__8CConsole;
 
 char *func_0029D7B0(char *arg0) {
     M2C_UNK sp3C;
@@ -20,7 +20,7 @@ char *func_0029D7B0(char *arg0) {
     s32 sp2C;
     char *sp28;
 
-    M2C_FIELD(arg0, M2C_UNK **, 0) = &data_00406180;
+    M2C_FIELD(arg0, M2C_UNK **, 0) = &__vt__8CConsole;
     func_002396F0(arg0 + 4);
     func_001EABB0(arg0 + 0x10);
     M2C_FIELD(arg0, s32 *, 0x1C) = 0x41200000;
@@ -32,6 +32,6 @@ char *func_0029D7B0(char *arg0) {
     sp28 = arg0 + 0x14;
     sp2C = M2C_FIELD(arg0, s32 *, 0x18);
     func_001EAAF0(&sp30, arg0 + 0x10, &sp2C, &sp28);
-    func_0029E0D0(arg0);
+    Initalize__8CConsoleFv(arg0);
     return arg0;
 }

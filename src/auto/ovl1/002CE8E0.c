@@ -6,11 +6,11 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_0034EBC0(M2C_UNK, M2C_UNK, M2C_UNK, M2C_UNK); /* extern */
+s32 _memalign__FUiUiPCci(M2C_UNK, M2C_UNK, M2C_UNK, M2C_UNK); /* extern */
 extern s32 data_0044D6A0;
 
 void func_002CE8E0(void) {
     if (data_0044D6A0 == 0) {
-        data_0044D6A0 = func_0034EBC0(0x10, 0x11000, 0, 0);
+        data_0044D6A0 = _memalign__FUiUiPCci(0x10, 0x11000, 0, 0);
     }
 }

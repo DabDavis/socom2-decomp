@@ -6,7 +6,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_00350950(char *, s32, s32);            /* extern */
+M2C_UNK Copy__4CSPRFP8_word128P8_word128i(char *, s32, s32); /* extern */
 M2C_UNK sceDmaSendN(s32, s32, s32);                 /* extern */
 M2C_UNK sceGsSyncPath(M2C_UNK, M2C_UNK);            /* extern */
 M2C_UNK zSysFifoKick__FP1Ui(char *, s32);           /* extern */
@@ -21,7 +21,7 @@ void func_003B13B0(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
         M2C_FIELD(temp_v0, s32 *, 8) = 0x13000000;
         M2C_FIELD(temp_v0, s32 *, 0xC) = (s32) (arg1 | 0x50000000);
         if (arg3 != 0) {
-            func_00350950(temp_v0 + 0x10, arg0, arg1);
+            Copy__4CSPRFP8_word128P8_word128i(temp_v0 + 0x10, arg0, arg1);
             M2C_FIELD(temp_v0, s32 *, 0) = (s32) (arg1 | 0x10000000);
             zSysFifoKick__FP1Ui(temp_v0, arg1 + 1);
             return;

@@ -24,6 +24,11 @@ last part is what makes a match exact rather than plausible:
             builds' addresses), the same number of functions on each side with every pair's
             sizes within 35 %: paired in order. Units keep their functions' order across the
             builds; this is how CQuat's ToMatrix..MakeYXRot were named by hand first.
+  align     the same stretch with unequal counts (SOCOM II added and dropped functions),
+            anchored on every name the map holds: a dynamic programme aligns the two runs on
+            instruction-skeleton similarity (>= 0.5, sizes within 2x, a clear margin over any
+            rival). Against socom-unzipped's table: 163 of 165 agree, the two others its
+            role labels (`cull`, `flush`) against SOCOM 1's real names.
 
 A name that would land on two SOCOM II addresses (an inline's out-of-line copies, template
 instances) is withheld: the map needs unique names; the rows get an `s1~` note instead.
@@ -228,6 +233,76 @@ def gaps(demo: Demo, img: E.Image, st: E.SymbolTable, demo_of: dict[int, int],
     return out
 
 
+def _skeleton(b: bytes) -> tuple:
+    """Opcodes with immediates, offsets and targets masked; lui and nop dropped (the demo reaches
+    small data through $gp where SOCOM II spends a lui, and schedules its own nops)."""
+    from beta_tu import maskw
+    return tuple(maskw(w) for w in struct.unpack(f"<{len(b) // 4}I", b[:len(b) // 4 * 4])
+                 if w and w >> 26 != 0x0F)
+
+
+def aligned(demo: Demo, img: E.Image, st: E.SymbolTable, demo_of: dict[int, int],
+            max_gap: int = 40, floor: float = 0.72) -> dict[int, tuple[str, float]]:
+    """Between two consecutive anchors, the functions of both builds aligned in order by a
+    dynamic programme that may skip on either side (SOCOM II added and dropped functions): a
+    pair scores its instruction-skeleton similarity, and is kept at `floor` or above with sizes
+    within 2x. What the gap pass does for equal counts, for unequal ones."""
+    import bisect
+    import difflib
+    ours = [s for s in st.symbols if img.segment(s.addr) is not None and s.size >= 0x20
+            and (img.is_code(s.addr) or img.segment(s.addr).name == "MAIN")]
+    ours_addrs = [s.addr for s in ours]
+    dem = [f for f in demo.funcs if f.size >= 0x20]
+    dem_addrs = [f.value for f in dem]
+    # anchors: every pair the map already names (exact, gap, calls, by hand), not just exact
+    # ones -- near-identical wrappers between two anchors would otherwise slide by one
+    by_name = {f.name: f.value for f in demo.funcs}
+    pairs = dict(demo_of)
+    for x in st.symbols:
+        if not E.is_placeholder(x.name) and x.name in by_name:
+            pairs.setdefault(x.addr, by_name[x.name])
+    chain = lis(sorted(pairs.items()))
+    out = {}
+    for (a1, d1), (a2, d2) in zip(chain, chain[1:]):
+        i1, i2 = bisect.bisect_right(ours_addrs, a1), bisect.bisect_left(ours_addrs, a2)
+        j1, j2 = bisect.bisect_right(dem_addrs, d1), bisect.bisect_left(dem_addrs, d2)
+        S, D = ours[i1:i2], dem[j1:j2]
+        S = [x for x in S if E.is_placeholder(x.name)]
+        if not S or not D or len(S) > max_gap or len(D) > max_gap:
+            continue
+        sk_s = [_skeleton(img.read(x.addr, x.size)) for x in S]
+        sk_d = [_skeleton(demo.read(y.value, y.size)) for y in D]
+        sc = {}
+        for i, x in enumerate(S):
+            for j, y in enumerate(D):
+                if max(x.size, y.size) <= 2 * min(x.size, y.size):
+                    r = difflib.SequenceMatcher(None, sk_s[i], sk_d[j], autojunk=False).ratio()
+                    if r >= floor:
+                        sc[(i, j)] = r
+        n, m = len(S), len(D)
+        best = [[0.0] * (m + 1) for _ in range(n + 1)]
+        for i in range(n - 1, -1, -1):
+            for j in range(m - 1, -1, -1):
+                v = max(best[i + 1][j], best[i][j + 1])
+                if (i, j) in sc:
+                    v = max(v, best[i + 1][j + 1] + sc[(i, j)])
+                best[i][j] = v
+        i = j = 0
+        while i < n and j < m:
+            if (i, j) in sc and best[i][j] == best[i + 1][j + 1] + sc[(i, j)]:
+                # a clear winner: no other function on either side within 0.03 of it
+                rival = max([sc.get((i, k), 0) for k in range(m) if k != j] +
+                            [sc.get((k, j), 0) for k in range(n) if k != i] + [0])
+                if sc[(i, j)] >= rival + 0.03:
+                    out[S[i].addr] = (D[j].name, sc[(i, j)])
+                i, j = i + 1, j + 1
+            elif best[i][j] == best[i + 1][j]:
+                i += 1
+            else:
+                j += 1
+    return out
+
+
 def _features(read_word, start: int, size: int, callee_name, string_at) -> tuple:
     """(callee tokens in call order, referenced strings in order): what a function DOES,
     which survives a compiler change that rewrites its bytes."""
@@ -364,7 +439,8 @@ def main(argv=None) -> int:
     exact, callee, demo_of = run(demo, img, st)
     gap = gaps(demo, img, st, {a: d for a, d in demo_of.items()})
     sysc = syscalls(demo, img, st)
-    allp = {**gap, **callee, **sysc, **exact}
+    align = {a: n for a, (n, _) in aligned(demo, img, st, dict(demo_of), floor=0.5).items()}
+    allp = {**align, **gap, **callee, **sysc, **exact}
     behav = calls_pass(demo, img, st, allp)
     allp = {**behav, **allp}
     by_name = defaultdict(list)
@@ -406,7 +482,8 @@ def main(argv=None) -> int:
                 continue
             if addr in unique and E.is_placeholder(cur) and unique[addr] not in taken:
                 how = ("exact" if addr in exact else "syscall" if addr in sysc
-                       else "callee" if addr in callee else "gap" if addr in gap else "calls")
+                       else "callee" if addr in callee else "gap" if addr in gap
+                       else "align" if addr in align else "calls")
                 text[i] = f"{m.group(1)} {m.group(2)} {unique[addr]}{note}{sep}s1:{how}"
                 named += 1
             elif addr in multi and E.is_placeholder(cur) and "s1~" not in note:

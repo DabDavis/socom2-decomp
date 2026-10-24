@@ -6,16 +6,16 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_0026A250(M2C_UNK *, M2C_UNK *, M2C_UNK);   /* extern */
-s32 func_00320F10(s32, M2C_UNK *);                  /* extern */
+s32 GetAnim__10CZAnimMainFPCcPCc(M2C_UNK *, M2C_UNK *, M2C_UNK); /* extern */
+s32 GetModel__Q23zdb10CAssetListFPCc(s32, M2C_UNK *); /* extern */
 s32 func_00321660();                                /* extern */
+extern M2C_UNK ZAnim;
 extern u8 data_003E1568;
 extern M2C_UNK data_003FD5C0;
 extern M2C_UNK data_003FD5C8;
 extern M2C_UNK data_003FD5D8;
 extern M2C_UNK data_003FD5F0;
 extern M2C_UNK data_003FD610;
-extern M2C_UNK data_00414BB0;
 extern s32 data_004B5320;
 extern s32 data_004B5328;
 extern s32 data_004B5330;
@@ -24,13 +24,13 @@ extern s32 data_004B5340;
 extern s32 data_004B5348;
 
 void func_003D5520(void) {
-    data_004B5328 = func_00320F10(func_00321660(), &data_003FD5C0);
-    data_004B5330 = func_00320F10(func_00321660(), &data_003FD5C8);
-    data_004B5338 = func_00320F10(func_00321660(), &data_003FD5D8);
+    data_004B5328 = GetModel__Q23zdb10CAssetListFPCc(func_00321660(), &data_003FD5C0);
+    data_004B5330 = GetModel__Q23zdb10CAssetListFPCc(func_00321660(), &data_003FD5C8);
+    data_004B5338 = GetModel__Q23zdb10CAssetListFPCc(func_00321660(), &data_003FD5D8);
     data_004B5320 = data_004B5328;
     if (data_003E1568 != 0) {
-        data_004B5348 = func_0026A250(&data_00414BB0, &data_003FD5F0, 0);
-        data_004B5340 = func_0026A250(&data_00414BB0, &data_003FD610, 0);
+        data_004B5348 = GetAnim__10CZAnimMainFPCcPCc(&ZAnim, &data_003FD5F0, 0);
+        data_004B5340 = GetAnim__10CZAnimMainFPCcPCc(&ZAnim, &data_003FD610, 0);
         return;
     }
     data_004B5340 = 0;

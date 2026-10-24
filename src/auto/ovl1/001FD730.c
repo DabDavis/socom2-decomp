@@ -6,15 +6,15 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK __destroy_arr(char *, M2C_UNK *, M2C_UNK, M2C_UNK); /* extern */
 M2C_UNK __dl__FPv(char *);                          /* extern */
-M2C_UNK func_00181ED0(char *, M2C_UNK *, M2C_UNK, M2C_UNK); /* extern */
 M2C_UNK func_00365060(char *, M2C_UNK);             /* extern */
+extern M2C_UNK __dt__9C2DStringFv;
+extern M2C_UNK __vt__9C2DBitmap;
 extern M2C_UNK data_00405680;
-extern M2C_UNK data_00406E80;
 extern M2C_UNK func_001FC990;
 extern M2C_UNK func_001FCB10;
 extern M2C_UNK func_00242300;
-extern M2C_UNK func_00363DB0;
 
 char *func_001FD730(char *arg0, s64 arg1) {
     char *temp_a0;
@@ -22,20 +22,20 @@ char *func_001FD730(char *arg0, s64 arg1) {
 
     if (arg0 != NULL) {
         M2C_FIELD(arg0, M2C_UNK **, 0xC) = &data_00405680;
-        func_00181ED0(arg0 + 0xD30, &func_001FCB10, 0x80, 4);
-        func_00181ED0(arg0 + 0x5F0, &func_00242300, 0x1D0, 4);
+        __destroy_arr(arg0 + 0xD30, &func_001FCB10, 0x80, 4);
+        __destroy_arr(arg0 + 0x5F0, &func_00242300, 0x1D0, 4);
         temp_a0 = arg0 + 0x570;
         if (temp_a0 != NULL) {
-            M2C_FIELD(arg0, M2C_UNK **, 0x57C) = &data_00406E80;
+            M2C_FIELD(arg0, M2C_UNK **, 0x57C) = &__vt__9C2DBitmap;
             func_00365060(temp_a0, 0);
         }
         temp_a0_2 = arg0 + 0x4F0;
         if (temp_a0_2 != NULL) {
-            M2C_FIELD(arg0, M2C_UNK **, 0x4FC) = &data_00406E80;
+            M2C_FIELD(arg0, M2C_UNK **, 0x4FC) = &__vt__9C2DBitmap;
             func_00365060(temp_a0_2, 0);
         }
-        func_00181ED0(arg0 + 0x288, &func_00363DB0, 0x98, 4);
-        func_00181ED0(arg0 + 0x28, &func_001FC990, 0x98, 4);
+        __destroy_arr(arg0 + 0x288, &__dt__9C2DStringFv, 0x98, 4);
+        __destroy_arr(arg0 + 0x28, &func_001FC990, 0x98, 4);
         func_00365060(arg0, 0);
         if (((s64) (arg1 << 0x30) >> 0x30) > 0) {
             __dl__FPv(arg0);

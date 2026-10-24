@@ -6,14 +6,14 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_003CD6B0(s32, M2C_UNK);                /* extern */
-extern s32 data_004B5220;
+M2C_UNK __dt__16CZProjectileListFv(s32, M2C_UNK);   /* extern */
+extern s32 m_pProjectilelist__8CZWeapon;
 
 s32 func_003D3930(void) {
-    if (data_004B5220 == 0) {
+    if (m_pProjectilelist__8CZWeapon == 0) {
         return 0;
     }
-    func_003CD6B0(data_004B5220, 1);
-    data_004B5220 = 0;
+    __dt__16CZProjectileListFv(m_pProjectilelist__8CZWeapon, 1);
+    m_pProjectilelist__8CZWeapon = 0;
     return 1;
 }

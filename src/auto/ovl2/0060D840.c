@@ -6,10 +6,10 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+s32 GetAnim__10CZAnimMainFPCcPCc(M2C_UNK *, s32, M2C_UNK); /* extern */
 char *__nw__FUi(M2C_UNK);                           /* extern */
-s32 func_0026A250(M2C_UNK *, s32, M2C_UNK);         /* extern */
 M2C_UNK func_0050FAD0(M2C_UNK *, s32, s32 *, char **); /* extern */
-extern M2C_UNK data_00414BB0;
+extern M2C_UNK ZAnim;
 extern M2C_UNK data_00669EE0;
 extern M2C_UNK data_00669F00;
 
@@ -23,7 +23,7 @@ void func_0060D840(char *arg0, s32 arg1, s32 arg2, f32 fparg0) {
     s32 temp_s0;
     char *temp_v0;
 
-    temp_s0 = func_0026A250(&data_00414BB0, arg2, 0);
+    temp_s0 = GetAnim__10CZAnimMainFPCcPCc(&ZAnim, arg2, 0);
     temp_v0 = __nw__FUi(0x14);
     if (temp_v0 != NULL) {
         M2C_FIELD(temp_v0, M2C_UNK **, 0) = &data_00669EE0;

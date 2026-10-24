@@ -34,7 +34,7 @@ and data reference resolved to the address the shipped code uses.
 | `tools/callnames.py` | name placeholders off byte-exact functions' own call sites (eqcallnames.py) |
 | `tools/m2c.py` | a target function as m2c-ready assembly (labels, callees by map name, `%hi/%lo` as `data_<VA>`), and m2c's draft |
 | `tools/perm.py` | the permuter: reorders `// PERM_BEGIN/END` lines and `// PERM_DECL` names until a function matches |
-| `tools/automatch.py` | compiles m2c's draft of every small function as it stands; `--emit` writes the hits to `src/auto/`; `--stale` redoes the drafts a rename left behind |
+| `tools/automatch.py` | compiles m2c's draft of every small function as it stands; `--emit` writes the hits to `src/auto/`; `--stale` redoes the drafts a rename left behind; a template-named row is drafted under its placeholder and renamed in the object (`/* sc: as=OLD NEW */`) |
 | `tools/s1names.py` | SOCOM 1's function names, out of the May 2002 demo's symbols and relocations |
 | `tools/s1data.py` | SOCOM 1's global data names, through the functions s1names paired |
 | `tools/dwarf1.py` | the demo's Metrowerks DWARF 1: units, signatures, class layouts, enums |
@@ -193,15 +193,17 @@ that hand-written source defines or that already carries an `s1~` verdict:
 
 | note | how | count |
 |---|---|---|
-| `s1:exact` | same size, identical with only the fields the demo's own relocations name masked; unique BOTH ways; no call whose target both builds name differently | 941 |
-| `s1:callee` | called from the same instruction of an exact pair, by every such call site alike | 139 |
-| `s1:syscall` | a kernel stub with the same syscall number (all six found are withheld, below) | 0 |
-| `s1:gap` | between two exact anchors, equal counts, sizes within 35 %, paired in order | 71 |
-| `s1:calls` | the same sequence of known callees and the same strings, unique, both Metrowerks | 228 |
-| `s1:order` | by hand: same position in the same unit, signature checked against the code | 11 |
-| `s1~` | judged and NOT applied: a name landing on several rows (static copies of the `Copy`/`kCopy`/`ExitThread` stubs in the GCC-built SDK; one of three identical `std::list` iterator constructors), a signature that changed, or a name the bug below gave | 33 |
+| `s1:exact` | same size, identical with only the fields the demo's own relocations name masked; unique BOTH ways; no call whose target both builds name differently (a single agreeing call breaks a tie between wrappers) | 973 |
+| `s1:callee` | called from the same instruction of an exact pair, by every such call site alike | 137 |
+| `s1:gap` | between two exact anchors, equal counts, sizes within 35 %, paired in order | 74 |
+| `s1:align` | the same stretch with unequal counts, anchored on every name: a dynamic programme on instruction-skeleton similarity (>= 0.5, sizes within 2x, a margin over any rival) | 851 |
+| `s1:calls` | the same sequence of known callees and the same strings, unique, both Metrowerks | 277 |
+| `s1:order` | by hand: same position in the same unit, signature checked against the code | 23 |
+| `s1:ref` | taken by address (a handler, a callback) where SOCOM 1 takes that function's (`tools/s1data.py`) | 31 |
+| `s1:unit` | a static initialiser paired with SOCOM 1's `__sinit_<file>` (`tools/s1units.py`) | 7 |
+| `s1~` | judged and NOT applied: a name landing on several rows (static copies of SDK stubs; identical template instances), a signature that changed, or a name the relocation bug gave | 73 |
 
-1,448 of the map's 13,232 rows are named. A weaker tag is upgraded when the exact pass later
+2,431 of the map's 13,370 rows are named (the 138 extra rows are the static initialisers). A weaker tag is upgraded when the exact pass later
 confirms the same name; no name was contradicted when the passes were corrected.
 
 **The relocation keying bug (fixed 2026-10-24).** `.relmain`'s `r_offset` is already a virtual
@@ -213,7 +215,8 @@ were unproven or wrong and are back to placeholders with `s1~` notes -- `SetStan
 builds strings with `strlen` where the demo's queries AI states. `test_scdecomp.py` now holds
 every `R_MIPS_26` to a j/jal and the wrapper to "not exact".
 
-Against socom-unzipped's independent table, 690 of 698 shared addresses agree; the eight
+Against socom-unzipped's independent table, 704 of 712 shared addresses agree (the align
+pass alone: 163 of 165, its two others role labels, `cull` and `flush`); the eight
 others are its own labels (`netbEx*`, `_StartThread`, a command-string guess) or Ghidra's
 syscall-slot names, against SOCOM 1's real symbols -- e.g. both `AddDmacHandler` stubs load
 syscall 18, and the call site says which one the code calls.

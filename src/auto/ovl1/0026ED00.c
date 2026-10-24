@@ -6,14 +6,14 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK AddName__20CZAnimNameIndexTableFP9CZAnimSetPCc(char *, s32, s32); /* extern */
+s32 GetAnimSet__10CZAnimMainFi(M2C_UNK *, u8);      /* extern */
 s32 func_00268520(s32);                             /* extern */
-M2C_UNK func_00268A60(char *, s32, s32);            /* extern */
-s32 func_0026A170(M2C_UNK *, u8);                   /* extern */
-extern M2C_UNK data_00414BB0;
+extern M2C_UNK ZAnim;
 
 void func_0026ED00(char *arg0, s32 arg1) {
     s32 temp_s0;
 
     temp_s0 = func_00268520(arg1);
-    func_00268A60(arg0 + 0x24, func_0026A170(&data_00414BB0, M2C_FIELD(arg0, u8 *, 0x35)), temp_s0);
+    AddName__20CZAnimNameIndexTableFP9CZAnimSetPCc(arg0 + 0x24, GetAnimSet__10CZAnimMainFi(&ZAnim, M2C_FIELD(arg0, u8 *, 0x35)), temp_s0);
 }

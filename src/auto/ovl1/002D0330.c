@@ -7,15 +7,15 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK Clear__14CSched_ManagerFv(M2C_UNK *);       /* extern */
+M2C_UNK Close__10CZAnimMainFv(M2C_UNK *);           /* extern */
+M2C_UNK DeletePad__6CInputFUi(M2C_UNK);             /* extern */
+M2C_UNK DestroyPool__19CGameStateChangeCmdFv();     /* extern */
+M2C_UNK Uninit__4CSndFv();                          /* extern */
 M2C_UNK Uninit__5CPipeFv();                         /* extern */
-M2C_UNK func_0026B120(M2C_UNK *);                   /* extern */
-M2C_UNK func_002CF4C0();                            /* extern */
-M2C_UNK func_002D9CC0(M2C_UNK);                     /* extern */
+M2C_UNK Uninit__Q23zdb7CRippleFv();                 /* extern */
 M2C_UNK func_002D9EA0();                            /* extern */
 M2C_UNK func_00320760();                            /* extern */
-M2C_UNK func_003221C0();                            /* extern */
 M2C_UNK func_0032C4F0();                            /* extern */
-M2C_UNK func_00345200();                            /* extern */
 M2C_UNK func_0034B8C0();                            /* extern */
 M2C_UNK func_00351E60();                            /* extern */
 M2C_UNK func_0038A210();                            /* extern */
@@ -27,30 +27,30 @@ M2C_UNK func_005E5070();                            /* extern */
 M2C_UNK uninit_trig_table__Fv();                    /* extern */
 M2C_UNK zUISchedulerClear__Fv();                    /* extern */
 extern M2C_UNK ZAnim;
-extern M2C_UNK data_0049E260;
 extern M2C_UNK data_004B50D0;
+extern M2C_UNK zTaskScheduler;
 
 void StopEngine__5CGameFv(void) {
     func_00320760();
-    func_0026B120(&ZAnim);
+    Close__10CZAnimMainFv(&ZAnim);
     func_0038A210();
     func_003C0620(&data_004B50D0);
-    func_003221C0();
+    Uninit__Q23zdb7CRippleFv();
     Uninit__5CPipeFv();
-    func_0026B120(&ZAnim);
+    Close__10CZAnimMainFv(&ZAnim);
     func_005E5070();
     func_00576120();
     func_00351E60();
-    func_00345200();
+    Uninit__4CSndFv();
     func_0034B8C0();
-    Clear__14CSched_ManagerFv(&data_0049E260);
+    Clear__14CSched_ManagerFv(&zTaskScheduler);
     zUISchedulerClear__Fv();
     func_0032C4F0();
     func_002D9EA0();
-    func_002D9CC0(0);
-    func_002D9CC0(1);
+    DeletePad__6CInputFUi(0);
+    DeletePad__6CInputFUi(1);
     func_003B11F0();
     func_0039C6F0();
-    func_002CF4C0();
+    DestroyPool__19CGameStateChangeCmdFv();
     uninit_trig_table__Fv();
 }

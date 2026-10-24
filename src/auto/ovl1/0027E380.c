@@ -6,10 +6,10 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_002B7A20();                            /* extern */
+M2C_UNK ftsNetworkGameInit__Fv();                   /* extern */
 s32 func_002B83E0();                                /* extern */
-M2C_UNK func_002C00F0(void *);                      /* extern */
-extern void *data_00437CE8;
+M2C_UNK func_002C00F0(char *);                      /* extern */
+extern char *data_00437CE8;
 extern s32 data_00441470;
 extern u8 data_0045A0C0;
 
@@ -21,7 +21,7 @@ s32 func_0027E380(void) {
         if ((data_0045A0C0 == 0) && (data_00441470 == 0)) {
             return 0;
         }
-        func_002B7A20();
+        ftsNetworkGameInit__Fv();
         goto block_9;
     }
 block_9:

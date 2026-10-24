@@ -8,7 +8,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define NULL 0
 char *__nw__FUi(M2C_UNK);                           /* extern */
 M2C_UNK func_001EABB0();                            /* extern */
-extern M2C_UNK data_00406520;
+extern M2C_UNK __vt__3CIO;
 extern M2C_UNK data_00406760;
 
 char *func_0033EE20(char *arg0) {
@@ -23,7 +23,7 @@ char *func_0033EE20(char *arg0) {
     M2C_FIELD(arg0, s32 *, 0x24) = 0;
     temp_v0 = __nw__FUi(0x9C);
     if (temp_v0 != NULL) {
-        M2C_FIELD(temp_v0, M2C_UNK **, 0) = &data_00406520;
+        M2C_FIELD(temp_v0, M2C_UNK **, 0) = &__vt__3CIO;
         M2C_FIELD(temp_v0, M2C_UNK **, 0) = &data_00406760;
         M2C_FIELD(temp_v0, s32 *, 4) = 0;
         M2C_FIELD(temp_v0, s8 *, 0x8C) = 0;

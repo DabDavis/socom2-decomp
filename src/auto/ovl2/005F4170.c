@@ -6,7 +6,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK *func_0026EDB0(s32);                        /* extern */
+M2C_UNK *GetName__6CZAnimFv(s32);                   /* extern */
 M2C_UNK strcat(M2C_UNK *, M2C_UNK *);               /* extern */
 M2C_UNK strcpy(M2C_UNK *, M2C_UNK *);               /* extern */
 extern M2C_UNK data_00662AE0;
@@ -19,7 +19,7 @@ M2C_UNK *GetStatus__10CAiSScriptCFv(char *arg0) {
 
     temp_a0 = M2C_FIELD(arg0, s32 *, 0x58);
     if (temp_a0 != 0) {
-        var_v0 = func_0026EDB0(temp_a0);
+        var_v0 = GetName__6CZAnimFv(temp_a0);
     } else {
         var_v0 = &data_00662AE0;
     }

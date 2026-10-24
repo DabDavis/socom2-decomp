@@ -38,8 +38,8 @@
 0x00181C90 0xF0 func_00181C90  # MAIN
 0x00181D80 0x80 func_00181D80  # MAIN
 0x00181E00 0x24 func_00181E00  # MAIN
-0x00181E30 0x9C func_00181E30  # MAIN
-0x00181ED0 0x6C func_00181ED0  # MAIN
+0x00181E30 0x9C __destroy_new_array  # MAIN; s1:align
+0x00181ED0 0x6C __destroy_arr  # MAIN; s1:align
 0x00181F40 0x12C __construct_array  # MAIN; s1:callee by hand (called where SOCOM 1's __sinit_zmath_matrix.cpp calls __construct_array; MW's runtime)
 0x00182070 0x154 func_00182070  # MAIN
 0x001821D0 0x23C __dynamic_cast  # MAIN; s1:calls
@@ -47,54 +47,54 @@
 0x00182460 0x5C func_00182460  # MAIN
 0x001824C0 0xC func_001824C0  # MAIN
 0x001824D0 0xC func_001824D0  # MAIN
-0x001824E0 0x278 func_001824E0  # MAIN
+0x001824E0 0x278 __throw_catch_compare  # MAIN; s1:align
 0x00182760 0x24 func_00182760  # MAIN
 0x00182790 0x24 func_00182790  # MAIN
 0x001827C0 0x24 func_001827C0  # MAIN
 0x001827F0 0x1C func_001827F0  # MAIN
 0x00182810 0x24 __register_global_object  # MAIN; s1:exact
-0x00182840 0x54 func_00182840  # MAIN
+0x00182840 0x54 __initialize_cpp_rts  # MAIN; s1:align
 0x001828A0 0x40 __ptmf_scall  # MAIN; s1:callee
 0x001828E0 0x4C func_001828E0  # MAIN
-0x00182930 0xA8 func_00182930  # MAIN
-0x001829E0 0xA8 func_001829E0  # MAIN
+0x00182930 0xA8 __DecodeUnsignedNumber__FPcPUi  # MAIN; s1:align
+0x001829E0 0xA8 __DecodeSignedNumber__FPcPi  # MAIN; s1:align
 0x00182A90 0x3C __end__catch  # MAIN; s1:callee
-0x00182AD0 0x1A4 func_00182AD0  # MAIN
-0x00182C80 0x33C func_00182C80  # MAIN
+0x00182AD0 0x1A4 __ThrowHandler__FP12ThrowContext  # MAIN; s1:align
+0x00182C80 0x33C FindExceptionHandler__FP12ThrowContextP13ExceptionInfoPl  # MAIN; s1:align
 0x00182FC0 0x204 __unexpected  # MAIN; s1:calls
-0x001831D0 0x5C func_001831D0  # MAIN
-0x00183230 0x174 func_00183230  # MAIN
-0x001833B0 0x844 func_001833B0  # MAIN
-0x00183C00 0x344 func_00183C00  # MAIN
-0x00183F50 0x1C0 func_00183F50  # MAIN
+0x001831D0 0x5C __dt__Q23std13bad_exceptionFv  # MAIN; s1:align
+0x00183230 0x174 FindMostRecentException__FP12ThrowContextP13ExceptionInfo  # MAIN; s1:align
+0x001833B0 0x844 UnwindStack__FP12ThrowContextP13ExceptionInfoPc  # MAIN; s1:align
+0x00183C00 0x344 NextAction__FP14ActionIterator  # MAIN; s1:align
+0x00183F50 0x1C0 FindExceptionRecord__FPcP13ExceptionInfo  # MAIN; s1:align
 0x00184110 0xC func_00184110  # MAIN
-0x00184120 0x70 func_00184120  # MAIN
-0x00184190 0x80 func_00184190  # MAIN
-0x00184210 0x50 func_00184210  # MAIN
-0x00184260 0x20 func_00184260  # MAIN
-0x00184280 0xB4 func_00184280  # MAIN
+0x00184120 0x70 __TransferControl__FP12ThrowContextP13ExceptionInfoPc  # MAIN; s1:align
+0x00184190 0x80 __throw  # MAIN; s1:align
+0x00184210 0x50 __SkipUnwindInfo__FPc  # MAIN; s1:align
+0x00184260 0x20 __FindExceptionTable__FP13ExceptionInfoPc  # MAIN; s1:align
+0x00184280 0xB4 __SetupFrameInfo__FP12ThrowContextP13ExceptionInfo  # MAIN; s1:align
 0x00184340 0x2B8 func_00184340  # MAIN
 0x00184600 0x58 __dt__Q23std6localeFv  # MAIN; s1:ref (taken by address where SOCOM 1 takes __dt__Q23std6localeFv's)
-0x00184660 0x78 func_00184660  # MAIN
+0x00184660 0x78 __dt__Q33std8ios_base7failureFv  # MAIN; s1:calls
 0x001846E0 0xD4 __dt__Q23std8ios_baseFv  # MAIN; s1:calls
 0x001847C0 0x8 func_001847C0  # MAIN
 0x001847D0 0x8 func_001847D0  # MAIN
 0x001847E0 0xD0 init__Q23std8ios_baseFPv  # MAIN; s1:exact
 0x001848B0 0x8 func_001848B0  # MAIN
 0x001848C0 0x30 __ct__Q23std80_RefCountedPtr<Q23std15__locale_imp<1>,Q23std32_Single<Q23std15__locale_imp<1>>>FRCQ23std80_RefCountedPtr<Q23std15__locale_imp<1>,Q23std32_Single<Q23std15__locale_imp<1>>>  # MAIN; s1:callee
-0x001848F0 0x78 func_001848F0  # MAIN
+0x001848F0 0x78 __dt__Q23std34_RefCountedPtr<c,Q23std9_Array<c>>Fv  # MAIN; s1:align
 0x00184970 0x8C __ct__Q23std34_RefCountedPtr<c,Q23std9_Array<c>>FPc  # MAIN; s1:calls
 0x00184A00 0x80 __dt__Q23std80_RefCountedPtr<Q23std15__locale_imp<1>,Q23std32_Single<Q23std15__locale_imp<1>>>Fv  # MAIN; s1:calls
 0x00184A80 0x140 __dt__Q23std15__locale_imp<1>Fv  # MAIN; s1:calls
-0x00184BC0 0x4C func_00184BC0  # MAIN
+0x00184BC0 0x4C __dt__Q33std6locale5facetFv  # MAIN; s1:align
 0x00184C10 0x68 func_00184C10  # MAIN
 0x00184C80 0x29C __ct__Q23std7__nInitFv  # MAIN; s1:calls
-0x00184F20 0x78 func_00184F20  # MAIN
+0x00184F20 0x78 __dt__Q23std39basic_filebuf<c,Q23std14char_traits<c>>Fv  # MAIN; s1:align
 0x00184FA0 0xE0 __dt__Q23std7__nInitFv  # MAIN; s1:calls
 0x00185080 0x98 func_00185080  # MAIN
 0x00185120 0x98 func_00185120  # MAIN
 0x001851C0 0x29C __ct__Q23std7__wInitFv  # MAIN; s1:calls
-0x00185460 0x78 func_00185460  # MAIN
+0x00185460 0x78 __dt__Q23std39basic_filebuf<w,Q23std14char_traits<w>>Fv  # MAIN; s1:align
 0x001854E0 0xE0 __dt__Q23std7__wInitFv  # MAIN; s1:calls
 0x001855C0 0x98 func_001855C0  # MAIN
 0x00185660 0x98 func_00185660  # MAIN
@@ -150,61 +150,61 @@
 0x00187A10 0xE0 imbue__Q23std39basic_filebuf<w,Q23std14char_traits<w>>FRCQ23std6locale  # MAIN; s1:calls
 0x00187AF0 0x8 func_00187AF0  # MAIN
 0x00187B00 0x1C func_00187B00  # MAIN
-0x00187B20 0xB4 func_00187B20  # MAIN
-0x00187BE0 0x1C8 func_00187BE0  # MAIN
+0x00187B20 0xB4 sync__Q23std39basic_filebuf<w,Q23std14char_traits<w>>Fv  # MAIN; s1:align
+0x00187BE0 0x1C8 seekpos__Q23std39basic_filebuf<w,Q23std14char_traits<w>>FQ23std7fpos<i>Q33std8ios_base8openmode  # MAIN; s1:align
 0x00187DB0 0x8 func_00187DB0  # MAIN
 0x00187DC0 0x278 seekoff__Q23std39basic_filebuf<w,Q23std14char_traits<w>>FlQ33std8ios_base7seekdirQ33std8ios_base8openmode  # MAIN; s1:calls
 0x00188040 0x4C4 overflow__Q23std39basic_filebuf<w,Q23std14char_traits<w>>Fi  # MAIN; s1:calls
-0x00188510 0xE0 func_00188510  # MAIN
-0x001885F0 0x1C4 func_001885F0  # MAIN
-0x001887C0 0x21C func_001887C0  # MAIN
-0x001889E0 0x28 func_001889E0  # MAIN
+0x00188510 0xE0 pbackfail__Q23std39basic_filebuf<w,Q23std14char_traits<w>>Fi  # MAIN; s1:align
+0x001885F0 0x1C4 uflow__Q23std39basic_filebuf<w,Q23std14char_traits<w>>Fv  # MAIN; s1:align
+0x001887C0 0x21C underflow__Q23std39basic_filebuf<w,Q23std14char_traits<w>>Fv  # MAIN; s1:align
+0x001889E0 0x28 showmanyc__Q23std39basic_filebuf<w,Q23std14char_traits<w>>Fv  # MAIN; s1:align
 0x00188A10 0x134 func_00188A10  # MAIN
 0x00188B50 0x98 __as__Q23std80_RefCountedPtr<Q23std15__locale_imp<1>,Q23std32_Single<Q23std15__locale_imp<1>>>FRCQ23std80_RefCountedPtr<Q23std15__locale_imp<1>,Q23std32_Single<Q23std15__locale_imp<1>>>  # MAIN; s1:calls
-0x00188BF0 0xB8 func_00188BF0  # MAIN
-0x00188CB0 0x1B4 func_00188CB0  # MAIN
-0x00188E70 0xB8 func_00188E70  # MAIN
+0x00188BF0 0xB8 read1__Q23std39basic_filebuf<w,Q23std14char_traits<w>>Fb  # MAIN; s1:align
+0x00188CB0 0x1B4 unshift__Q23std39basic_filebuf<c,Q23std14char_traits<c>>Fv  # MAIN; s1:align
+0x00188E70 0xB8 read1__Q23std39basic_filebuf<c,Q23std14char_traits<c>>Fb  # MAIN; s1:align
 0x00188F30 0x190 func_00188F30  # MAIN
 0x001890C0 0x1E0 func_001890C0  # MAIN
-0x001892A0 0x1C4 func_001892A0  # MAIN
-0x00189470 0xE0 func_00189470  # MAIN
-0x00189550 0xD8 func_00189550  # MAIN
+0x001892A0 0x1C4 write2__Q23std39basic_filebuf<c,Q23std14char_traits<c>>Fic  # MAIN; s1:align
+0x00189470 0xE0 __use_facet<Q23std8ctype<c>>__3stdFRCQ23std6localeQ23std12__chooser<1>  # MAIN; s1:calls
+0x00189550 0xD8 __use_facet<Q23std8ctype<w>>__3stdFRCQ23std6localeQ23std12__chooser<1>  # MAIN; s1:calls
 0x00189630 0xDC func_00189630  # MAIN
 0x00189710 0xDC func_00189710  # MAIN
 0x001897F0 0x10 func_001897F0  # MAIN
 0x00189800 0x10 func_00189800  # MAIN
 0x00189810 0xC func_00189810  # MAIN
-0x00189820 0x1C4 func_00189820  # MAIN
+0x00189820 0x1C4 write2__Q23std39basic_filebuf<w,Q23std14char_traits<w>>Fiw  # MAIN; s1:align
 0x001899F0 0x1E0 func_001899F0  # MAIN
 0x00189BD0 0x190 func_00189BD0  # MAIN
-0x00189D60 0x1B4 func_00189D60  # MAIN
+0x00189D60 0x1B4 unshift__Q23std39basic_filebuf<w,Q23std14char_traits<w>>Fv  # MAIN; s1:align
 0x00189F20 0xC func_00189F20  # MAIN
 0x00189F30 0x2D4 func_00189F30  # MAIN
 0x0018A210 0x2D4 func_0018A210  # MAIN
 0x0018A4F0 0x8 func_0018A4F0  # MAIN
-0x0018A500 0x30 func_0018A500  # MAIN
+0x0018A500 0x30 do_length__Q23std14codecvt<c,c,i>CFRiPCcPCcUi  # MAIN; s1:align
 0x0018A530 0x18 func_0018A530  # MAIN
 0x0018A550 0x5C func_0018A550  # MAIN
 0x0018A5B0 0x5C func_0018A5B0  # MAIN
-0x0018A610 0xA0 func_0018A610  # MAIN
+0x0018A610 0xA0 do_out__Q23std14codecvt<w,c,i>CFRiPCwPCwRPCwPcPcRPc  # MAIN; s1:align
 0x0018A6B0 0xA0 func_0018A6B0  # MAIN
-0x0018A750 0x3C func_0018A750  # MAIN
+0x0018A750 0x3C do_length__Q23std14codecvt<w,c,i>CFRiPCcPCcUi  # MAIN; s1:align
 0x0018A790 0x8 func_0018A790  # MAIN
 0x0018A7A0 0x290 func_0018A7A0  # MAIN
-0x0018AA30 0x10C func_0018AA30  # MAIN
+0x0018AA30 0x10C replace__Q23std15__locale_imp<1>FRCQ33std6locale5facetUi  # MAIN; s1:calls
 0x0018AB40 0x110 func_0018AB40  # MAIN
-0x0018AC50 0x44 func_0018AC50  # MAIN
-0x0018ACA0 0x70 func_0018ACA0  # MAIN
-0x0018AD10 0x80 func_0018AD10  # MAIN
-0x0018AD90 0x80 func_0018AD90  # MAIN
+0x0018AC50 0x44 do_is__Q23std8ctype<w>CFUcw  # MAIN; s1:align
+0x0018ACA0 0x70 do_is__Q23std8ctype<w>CFPCwPCwPUc  # MAIN; s1:align
+0x0018AD10 0x80 do_scan_is__Q23std8ctype<w>CFUcPCwPCw  # MAIN; s1:align
+0x0018AD90 0x80 do_scan_not__Q23std8ctype<w>CFUcPCwPCw  # MAIN; s1:align
 0x0018AE10 0x24 func_0018AE10  # MAIN
 0x0018AE40 0x64 func_0018AE40  # MAIN
 0x0018AEB0 0x24 func_0018AEB0  # MAIN
 0x0018AEE0 0x64 func_0018AEE0  # MAIN
-0x0018AF50 0x38 func_0018AF50  # MAIN
+0x0018AF50 0x38 do_widen__Q23std8ctype<w>CFPCcPCcPw  # MAIN; s1:align
 0x0018AF90 0x28 func_0018AF90  # MAIN
-0x0018AFC0 0x8C func_0018AFC0  # MAIN
-0x0018B050 0x6C func_0018B050  # MAIN
+0x0018AFC0 0x8C do_narrow__Q23std8ctype<w>CFPCwPCwcPc  # MAIN; s1:align
+0x0018B050 0x6C resize__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FUiRCUi  # MAIN; s1:align
 0x0018B0C0 0x260 func_0018B0C0  # MAIN
 0x0018B320 0x240 func_0018B320  # MAIN
 0x0018B560 0xB8 func_0018B560  # MAIN
@@ -225,9 +225,9 @@
 0x0018CF00 0x10 func_0018CF00  # MAIN
 0x0018CF10 0x10 func_0018CF10  # MAIN
 0x0018CF20 0x94 global__Q23std6localeFv  # MAIN; s1:callee
-0x0018CFC0 0xD8 func_0018CFC0  # MAIN
-0x0018D0A0 0x60 func_0018D0A0  # MAIN
-0x0018D100 0x80 func_0018D100  # MAIN
+0x0018CFC0 0xD8 classic__Q23std6localeFv  # MAIN; s1:align
+0x0018D0A0 0x60 __ct__Q23std8ctype<c>FPCUcbUi  # MAIN; s1:align
+0x0018D100 0x80 __dt__Q23std8ctype<c>Fv  # MAIN; s1:align
 0x0018D180 0x14 do_toupper__Q23std8ctype<c>CFc  # MAIN; s1:exact
 0x0018D1A0 0x40 do_toupper__Q23std8ctype<c>CFPcPCc  # MAIN; s1:gap
 0x0018D1E0 0x14 do_tolower__Q23std8ctype<c>CFc  # MAIN; s1:exact
@@ -239,7 +239,7 @@
 0x0018D2C0 0x78 func_0018D2C0  # MAIN
 0x0018D340 0x94 __ct__Q23std80_RefCountedPtr<Q23std15__locale_imp<1>,Q23std32_Single<Q23std15__locale_imp<1>>>FPQ23std15__locale_imp<1>  # MAIN; s1:calls
 0x0018D3E0 0x450 func_0018D3E0  # MAIN
-0x0018D830 0x88 func_0018D830  # MAIN
+0x0018D830 0x88 __dt__Q23std12out_of_rangeFv  # MAIN; s1:align
 0x0018D8C0 0x278 func_0018D8C0  # MAIN
 0x0018DB40 0x4C func_0018DB40  # MAIN
 0x0018DB90 0x24 CB_DelayTh  # MAIN; s1:exact
@@ -954,8 +954,8 @@
 0x001B3EA0 0xB8 sceMcClose  # MAIN; s1:gap
 0x001B3F58 0xD8 sceMcSeek  # MAIN unaligned; s1:gap
 0x001B4030 0x90 mceIntrReadFixAlign  # MAIN; s1:exact
-0x001B40C0 0x114 func_001B40C0  # MAIN
-0x001B41D8 0x174 func_001B41D8  # MAIN unaligned
+0x001B40C0 0x114 sceMcRead  # MAIN; s1:align
+0x001B41D8 0x174 sceMcWrite  # MAIN unaligned; s1:align
 0x001B4350 0x8 func_001B4350  # MAIN
 0x001B4358 0x38 func_001B4358  # MAIN unaligned
 0x001B4390 0xE0 sceMcSync  # MAIN; s1:exact
@@ -1539,7 +1539,7 @@
 0x001F1880 0x17C func_001F1880  # OVL1
 0x001F1A00 0xD4 func_001F1A00  # OVL1
 0x001F1AE0 0x60 func_001F1AE0  # OVL1
-0x001F1B40 0x68 func_001F1B40  # OVL1
+0x001F1B40 0x68 Tick__10CExitStateFf  # OVL1; s1:calls
 0x001F1BB0 0x1B4 func_001F1BB0  # OVL1
 0x001F1D70 0xA0 func_001F1D70  # OVL1
 0x001F1E10 0x2C GetSeal__10CEntityItrCFv  # OVL1; s1:exact
@@ -1630,7 +1630,7 @@
 0x001FBAE0 0xA40 func_001FBAE0  # OVL1
 0x001FC520 0x78 func_001FC520  # OVL1
 0x001FC5A0 0x78 func_001FC5A0  # OVL1
-0x001FC620 0x60 func_001FC620  # OVL1
+0x001FC620 0x60 __dt__7C2DPolyFv  # OVL1; s1:ref (taken by address where SOCOM 1 takes __dt__7C2DPolyFv's)
 0x001FC680 0x80 func_001FC680  # OVL1
 0x001FC700 0x108 func_001FC700  # OVL1
 0x001FC810 0xA0 func_001FC810  # OVL1
@@ -1652,7 +1652,7 @@
 0x001FD6C0 0x70 func_001FD6C0  # OVL1
 0x001FD730 0x108 func_001FD730  # OVL1
 0x001FD840 0x80 func_001FD840  # OVL1
-0x001FD8C0 0x148 func_001FD8C0  # OVL1
+0x001FD8C0 0x148 __dt__16CInGameWeaponSelFv  # OVL1; s1:calls
 0x001FDA10 0x1D0 func_001FDA10  # OVL1
 0x001FDBE0 0xA0 func_001FDBE0  # OVL1
 0x001FDC80 0x60 func_001FDC80  # OVL1
@@ -1893,8 +1893,8 @@
 0x00212260 0x40 func_00212260  # OVL1
 0x002122A0 0xC4 func_002122A0  # OVL1
 0x00212370 0x8 func_00212370  # OVL1
-0x00212380 0x110 func_00212380  # OVL1
-0x00212490 0x90 func_00212490  # OVL1
+0x00212380 0x110 __dt__10MapCompassFv  # OVL1; s1:calls
+0x00212490 0x90 __dt__17CHudCompassAnchorFv  # OVL1; s1:calls
 0x00212520 0x60 func_00212520  # OVL1
 0x00212580 0x40 func_00212580  # OVL1
 0x002125C0 0x8 func_002125C0  # OVL1
@@ -1984,8 +1984,8 @@
 0x00221F50 0xB4 func_00221F50  # OVL1
 0x00222010 0x120 func_00222010  # OVL1
 0x00222130 0x60 func_00222130  # OVL1
-0x00222190 0x118 func_00222190  # OVL1
-0x002222B0 0x2C func_002222B0  # OVL1
+0x00222190 0x118 __dt__15CZPlayerMapItemFv  # OVL1; s1:calls
+0x002222B0 0x2C MissionEndCleanup__15CZPlayerMapItemFv  # OVL1; s1:exact
 0x002222E0 0x4D0 func_002222E0  # OVL1
 0x002227B0 0x4C8 func_002227B0  # OVL1
 0x00222C80 0x224 func_00222C80  # OVL1
@@ -2245,7 +2245,7 @@
 0x00238D00 0x248 func_00238D00  # OVL1
 0x00238F50 0x2FC func_00238F50  # OVL1
 0x00239250 0x19C func_00239250  # OVL1
-0x002393F0 0x17C func_002393F0  # OVL1
+0x002393F0 0x17C HudTick__19CZStaticRadioBitmapF10MENU_STATE  # OVL1; s1:calls
 0x00239570 0x178 func_00239570  # OVL1
 0x002396F0 0x78 func_002396F0  # OVL1
 0x00239770 0x80 func_00239770  # OVL1
@@ -2798,43 +2798,43 @@
 0x0025CC70 0x8 func_0025CC70  # OVL1
 0x0025CC80 0x28 func_0025CC80  # OVL1
 0x0025CCB0 0x57C func_0025CCB0  # OVL1
-0x0025D230 0x38 func_0025D230  # OVL1
-0x0025D270 0x38 func_0025D270  # OVL1
-0x0025D2B0 0x80 func_0025D2B0  # OVL1
-0x0025D330 0x94 func_0025D330  # OVL1
-0x0025D3D0 0xB4 func_0025D3D0  # OVL1
+0x0025D230 0x38 zAnimStopSequenceTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:exact
+0x0025D270 0x38 zAnimCallSequenceTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:exact
+0x0025D2B0 0x80 zAnimInvalidateAnimTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:align
+0x0025D330 0x94 zAnimResumeAnimTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:align
+0x0025D3D0 0xB4 zAnimPauseAnimTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:align
 0x0025D490 0xB8 func_0025D490  # OVL1
-0x0025D550 0x6C func_0025D550  # OVL1
+0x0025D550 0x6C zAnimCallAnimTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:align
 0x0025D5C0 0x714 func_0025D5C0  # OVL1
 0x0025DCE0 0x8 func_0025DCE0  # OVL1
-0x0025DCF0 0x50 func_0025DCF0  # OVL1
-0x0025DD40 0xB8 func_0025DD40  # OVL1
-0x0025DE00 0x88 func_0025DE00  # OVL1
+0x0025DCF0 0x50 zAnimRandomWeightTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:align
+0x0025DD40 0xB8 zAnimLODTestTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:align
+0x0025DE00 0x88 zAnimHealthTestTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:align
 0x0025DE90 0x334 zAnimRangeTestTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:calls
-0x0025E1D0 0x54 func_0025E1D0  # OVL1
-0x0025E230 0x98 func_0025E230  # OVL1
+0x0025E1D0 0x54 zAnimNodeRenderedTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:align
+0x0025E230 0x98 zAnimNodeActiveTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:align
 0x0025E2D0 0x88 func_0025E2D0  # OVL1
 0x0025E360 0x68 func_0025E360  # OVL1
 0x0025E3D0 0x1C func_0025E3D0  # OVL1
 0x0025E3F0 0x12C func_0025E3F0  # OVL1
-0x0025E520 0xDC func_0025E520  # OVL1
-0x0025E600 0x28 func_0025E600  # OVL1
+0x0025E520 0xDC zAnimBreakTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:align
+0x0025E600 0x28 zAnimEndWhileTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:align
 0x0025E630 0x70 zAnimWhileTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:calls
 0x0025E6A0 0x28 func_0025E6A0  # OVL1
-0x0025E6D0 0xC8 func_0025E6D0  # OVL1
-0x0025E7A0 0x1C0 func_0025E7A0  # OVL1
-0x0025E960 0x2F0 func_0025E960  # OVL1
-0x0025EC50 0x100 func_0025EC50  # OVL1
-0x0025ED50 0x8C func_0025ED50  # OVL1
-0x0025EDE0 0xDC func_0025EDE0  # OVL1
-0x0025EEC0 0x74 func_0025EEC0  # OVL1
-0x0025EF40 0x10C func_0025EF40  # OVL1
+0x0025E6D0 0xC8 zAnimGoToEndIf__FP14_zanim_cmd_hdrPf  # OVL1; s1:align
+0x0025E7A0 0x1C0 zAnimIfTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:align
+0x0025E960 0x2F0 ProcExpr__16CZAnimExpressionFPf  # OVL1; s1:align
+0x0025EC50 0x100 zAnimWaitTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:align
+0x0025ED50 0x8C zAnimWaitBegin__FP14_zanim_cmd_hdr  # OVL1; s1:align
+0x0025EDE0 0xDC zAnimLoopTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:align
+0x0025EEC0 0x74 zAnimObjectDeleteChildTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:align
+0x0025EF40 0x10C zAnimObjectAddChildTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:align
 0x0025F050 0xE8 func_0025F050  # OVL1
 0x0025F140 0x68 func_0025F140  # OVL1
-0x0025F1B0 0x210 func_0025F1B0  # OVL1
+0x0025F1B0 0x210 zAnimObjectMotionScriptTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:calls
 0x0025F3C0 0x4BC apply_script_frame__FP27_zanim_object_motion_scriptP16_zanim_si_scriptPQ23zdb5CNodeP25zanim_script_frame_headerfPf  # OVL1; s1:calls
-0x0025F880 0xD4 func_0025F880  # OVL1
-0x0025F960 0x48 func_0025F960  # OVL1
+0x0025F880 0xD4 zAnimObjectOpacityFromToTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:align
+0x0025F960 0x48 zAnimObjectOpacityFromToBegin__FP14_zanim_cmd_hdr  # OVL1; s1:align
 0x0025F9B0 0x4BC func_0025F9B0  # OVL1
 0x0025FE70 0x880 func_0025FE70  # OVL1
 0x002606F0 0x214 func_002606F0  # OVL1
@@ -2843,14 +2843,14 @@
 0x00260FB0 0xD0 func_00260FB0  # OVL1
 0x00261080 0x274 func_00261080  # OVL1
 0x00261300 0x68 func_00261300  # OVL1
-0x00261370 0x11DC func_00261370  # OVL1
+0x00261370 0x11DC zAnimObjectMotionTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:align
 0x00262550 0x13C func_00262550  # OVL1
-0x00262690 0xD10 func_00262690  # OVL1
+0x00262690 0xD10 zAnimObjectMotionBegin__FP14_zanim_cmd_hdr  # OVL1; s1:align
 0x002633A0 0xF8 func_002633A0  # OVL1
 0x002634A0 0x288 func_002634A0  # OVL1
-0x00263730 0x158 func_00263730  # OVL1
-0x00263890 0x20C func_00263890  # OVL1
-0x00263AA0 0x84 func_00263AA0  # OVL1
+0x00263730 0x158 zAnimObjectRotateStateTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:align
+0x00263890 0x20C zAnimObjectTranslateStateTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:align
+0x00263AA0 0x84 zAnimObjectActiveStateTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:align
 0x00263B30 0xB0 func_00263B30  # OVL1
 0x00263BE0 0x240 func_00263BE0  # OVL1
 0x00263E20 0x170 func_00263E20  # OVL1
@@ -2865,139 +2865,139 @@
 0x00265F20 0x400 func_00265F20  # OVL1
 0x00266320 0x504 func_00266320  # OVL1
 0x00266830 0xF30 func_00266830  # OVL1
-0x00267760 0x6C func_00267760  # OVL1
+0x00267760 0x6C zAnimMessageTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:align
 0x002677D0 0x120 func_002677D0  # OVL1
-0x002678F0 0xF0 func_002678F0  # OVL1
+0x002678F0 0xF0 zAnimDestructorTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:align
 0x002679E0 0x8 func_002679E0  # OVL1
 0x002679F0 0x68 func_002679F0  # OVL1
 0x00267A60 0x50 func_00267A60  # OVL1
 0x00267AB0 0x30C func_00267AB0  # OVL1
-0x00267DC0 0x60 func_00267DC0  # OVL1
-0x00267E20 0x4C func_00267E20  # OVL1
+0x00267DC0 0x60 __dt__9CZAnimZARFv  # OVL1; s1:align
+0x00267E20 0x4C CloseZAR__10CZAnimMainFP9CZAnimZAR  # OVL1; s1:align
 0x00267E70 0x124 OpenZAR__10CZAnimMainFPCc  # OVL1; s1:calls
-0x00267FA0 0x21C func_00267FA0  # OVL1
+0x00267FA0 0x21C LoadZAR__10CZAnimMainFP9CZAnimZARPCc  # OVL1; s1:align
 0x002681C0 0x84 func_002681C0  # OVL1
 0x00268250 0x8 func_00268250  # OVL1
-0x00268260 0xFC func_00268260  # OVL1
-0x00268360 0x48 func_00268360  # OVL1
-0x002683B0 0x118 func_002683B0  # OVL1
+0x00268260 0xFC UnloadCmdSet__10CZAnimMainFi  # OVL1; s1:align
+0x00268360 0x48 UnloadSIScript__10CZAnimMainFP16_zanim_si_script  # OVL1; s1:align
+0x002683B0 0x118 Unload__10CZAnimMainFv  # OVL1; s1:align
 0x002684D0 0x44 func_002684D0  # OVL1
 0x00268520 0x160 func_00268520  # OVL1
 0x00268680 0x110 func_00268680  # OVL1
 0x00268790 0x198 func_00268790  # OVL1
 0x00268930 0x2C AnimSchedulerTick__10CZAnimMainFfPv  # OVL1; tu: anim_main.cpp~ (1.0 beta); s1:exact
-0x00268960 0xB8 func_00268960  # OVL1
-0x00268A20 0x40 func_00268A20  # OVL1
-0x00268A60 0x138 func_00268A60  # OVL1
-0x00268BA0 0x54 func_00268BA0  # OVL1
-0x00268C00 0x2D4 func_00268C00  # OVL1
-0x00268EE0 0xA0 func_00268EE0  # OVL1
-0x00268F80 0x1A4 func_00268F80  # OVL1
-0x00269130 0x40 func_00269130  # OVL1
+0x00268960 0xB8 Load__20CZAnimNameIndexTableFRQ23zar4CZAR  # OVL1; s1:align
+0x00268A20 0x40 Unload__20CZAnimNameIndexTableFv  # OVL1; s1:align
+0x00268A60 0x138 AddName__20CZAnimNameIndexTableFP9CZAnimSetPCc  # OVL1; s1:align
+0x00268BA0 0x54 GetName__20CZAnimNameIndexTableFP9CZAnimSeti  # OVL1; s1:align
+0x00268C00 0x2D4 Load__15CZAnimNameTableFRQ23zar4CZAR  # OVL1; s1:align
+0x00268EE0 0xA0 Unload__15CZAnimNameTableFv  # OVL1; s1:align
+0x00268F80 0x1A4 AddName__15CZAnimNameTableFPCc  # OVL1; s1:align
+0x00269130 0x40 GetName__15CZAnimNameTableFi  # OVL1; s1:align
 0x00269170 0xB4 func_00269170  # OVL1
-0x00269230 0x1EC func_00269230  # OVL1
+0x00269230 0x1EC GetDatabaseNode__10CZAnimMainFPCci  # OVL1; s1:align
 0x00269420 0xFC GetNodeSearchScope__10CZAnimMainFPCcPi  # OVL1; s1:calls
-0x00269520 0x10C func_00269520  # OVL1
-0x00269630 0xE4 func_00269630  # OVL1
-0x00269720 0xE0 func_00269720  # OVL1
-0x00269800 0x128 func_00269800  # OVL1
-0x00269930 0x1D0 func_00269930  # OVL1
-0x00269B00 0x1B8 func_00269B00  # OVL1
-0x00269CC0 0x48 func_00269CC0  # OVL1
-0x00269D10 0x40 func_00269D10  # OVL1
+0x00269520 0x10C SequenceRunning__10CZAnimMainFPCc  # OVL1; s1:align
+0x00269630 0xE4 SequenceExists__10CZAnimMainFPCc  # OVL1; s1:align
+0x00269720 0xE0 ResumeSequence__10CZAnimMainFPCc  # OVL1; s1:align
+0x00269800 0x128 PauseSequence__10CZAnimMainFPCc  # OVL1; s1:align
+0x00269930 0x1D0 StopSequence__10CZAnimMainFPCc  # OVL1; s1:align
+0x00269B00 0x1B8 ActivateSequence__10CZAnimMainFPCc  # OVL1; s1:align
+0x00269CC0 0x48 SeqRunning__10CZAnimMainFv  # OVL1; s1:align
+0x00269D10 0x40 StateRunning__10CZAnimMainFi  # OVL1; s1:align
 0x00269D50 0x1C func_00269D50  # OVL1; tu: anim_main.cpp~ (1.0 beta)
 0x00269D70 0x14 SeqNext__10CZAnimMainFv  # OVL1; tu: anim_main.cpp~ (1.0 beta); s1:exact
 0x00269D90 0x10 func_00269D90  # OVL1; tu: anim_main.cpp~ (1.0 beta)
-0x00269DA0 0x29C func_00269DA0  # OVL1
-0x0026A040 0xB8 func_0026A040  # OVL1
-0x0026A100 0x68 func_0026A100  # OVL1
-0x0026A170 0x48 func_0026A170  # OVL1
-0x0026A1C0 0x90 func_0026A1C0  # OVL1
-0x0026A250 0x200 func_0026A250  # OVL1
-0x0026A450 0x40 func_0026A450  # OVL1
+0x00269DA0 0x29C SeqTick__10CZAnimMainFf  # OVL1; s1:align
+0x0026A040 0xB8 SeqSetState__10CZAnimMainFi  # OVL1; s1:align
+0x0026A100 0x68 GetAnimSet__10CZAnimMainFPCc  # OVL1; s1:align
+0x0026A170 0x48 GetAnimSet__10CZAnimMainFi  # OVL1; s1:align
+0x0026A1C0 0x90 GetAnimIndex__10CZAnimMainFP6CZAnimPiPi  # OVL1; s1:align
+0x0026A250 0x200 GetAnim__10CZAnimMainFPCcPCc  # OVL1; s1:align
+0x0026A450 0x40 GetAnim__10CZAnimMainFii  # OVL1; s1:align
 0x0026A490 0x244 func_0026A490  # OVL1
-0x0026A6E0 0x164 func_0026A6E0  # OVL1
+0x0026A6E0 0x164 CmdTick__10CZAnimMainFPf  # OVL1; s1:align
 0x0026A850 0x18 CmdValid__10CZAnimMainFv  # OVL1; tu: anim_main.cpp~ (1.0 beta); s1:exact
 0x0026A870 0x1C CmdSet__10CZAnimMainFi  # OVL1; tu: anim_main.cpp~ (1.0 beta); s1:exact
 0x0026A890 0x20 CmdNext__10CZAnimMainFi  # OVL1; tu: anim_main.cpp~ (1.0 beta); s1:exact
 0x0026A8B0 0x2C CmdNext__10CZAnimMainFv  # OVL1; tu: anim_main.cpp~ (1.0 beta); s1:exact
 0x0026A8E0 0x144 AddCmd__10CZAnimMainFPCcPFP5_zrdr_P14_zanim_cmd_hdrPFP14_zanim_cmd_hdr_vPFP14_zanim_cmd_hdrPf_bPFP14_zanim_cmd_hdr_v  # OVL1; s1:callee
 0x0026AA30 0x1EC func_0026AA30  # OVL1
-0x0026AC20 0x180 func_0026AC20  # OVL1
+0x0026AC20 0x180 GetCmdSet__10CZAnimMainFPcb  # OVL1; s1:align
 0x0026ADA0 0x80 func_0026ADA0  # OVL1
-0x0026AE20 0x200 func_0026AE20  # OVL1
+0x0026AE20 0x200 ActivateBegin__10CZAnimMainFP6CZAnim  # OVL1; s1:align
 0x0026B020 0x8 func_0026B020  # OVL1
-0x0026B030 0x3C func_0026B030  # OVL1
-0x0026B070 0x58 func_0026B070  # OVL1
+0x0026B030 0x3C FreeNetworkPacketBuffer__10CZAnimMainFv  # OVL1; s1:align
+0x0026B070 0x58 GetNetworkPacket__10CZAnimMainFi  # OVL1; s1:align
 0x0026B0D0 0x50 func_0026B0D0  # OVL1
-0x0026B120 0x7C func_0026B120  # OVL1
+0x0026B120 0x7C Close__10CZAnimMainFv  # OVL1; s1:align
 0x0026B1A0 0x288 func_0026B1A0  # OVL1
 0x0026B430 0x1A8 Reset__13CZAnimSetSaveFv  # OVL1; s1:calls
-0x0026B5E0 0x3D4 func_0026B5E0  # OVL1
+0x0026B5E0 0x3D4 Add__13CZAnimSetSaveFP15_zanim_node_ref  # OVL1; s1:align
 0x0026B9C0 0xE8 func_0026B9C0  # OVL1
 0x0026BAB0 0x198 func_0026BAB0  # OVL1
 0x0026BC50 0x234 func_0026BC50  # OVL1
-0x0026BE90 0x7C func_0026BE90  # OVL1
+0x0026BE90 0x7C GarbageCollect__9CZAnimSetFv  # OVL1; s1:align
 0x0026BF10 0x1E4 func_0026BF10  # OVL1
 0x0026C100 0x70 func_0026C100  # OVL1
 0x0026C170 0x60 func_0026C170  # OVL1
 0x0026C1D0 0x70 func_0026C1D0  # OVL1
 0x0026C240 0xA0 func_0026C240  # OVL1
-0x0026C2E0 0xF4 func_0026C2E0  # OVL1
-0x0026C3E0 0x90 func_0026C3E0  # OVL1
+0x0026C2E0 0xF4 Stop__9CZAnimSetFv  # OVL1; s1:calls
+0x0026C3E0 0x90 SaveNodeStates__9CZAnimSetFP15_zanim_node_ref  # OVL1; s1:calls
 0x0026C470 0x14 func_0026C470  # OVL1
 0x0026C490 0x14 func_0026C490  # OVL1
 0x0026C4B0 0x14 func_0026C4B0  # OVL1
 0x0026C4D0 0x14 func_0026C4D0  # OVL1
 0x0026C4F0 0x110 func_0026C4F0  # OVL1
-0x0026C600 0x1CC func_0026C600  # OVL1
-0x0026C7D0 0x44 func_0026C7D0  # OVL1
-0x0026C820 0x40 func_0026C820  # OVL1
-0x0026C860 0x68 func_0026C860  # OVL1
+0x0026C600 0x1CC Start__9CZAnimSetFv  # OVL1; s1:align
+0x0026C7D0 0x44 Init__9CZAnimSetFv  # OVL1; s1:align
+0x0026C820 0x40 SIScript__9CZAnimSetFi  # OVL1; s1:align
+0x0026C860 0x68 AddAnimEx__9CZAnimSetFP8CZAnimEx  # OVL1; s1:align
 0x0026C8D0 0x8 func_0026C8D0  # OVL1
 0x0026C8E0 0x8 func_0026C8E0  # OVL1
-0x0026C8F0 0xAC func_0026C8F0  # OVL1
-0x0026C9A0 0x48 func_0026C9A0  # OVL1
-0x0026C9F0 0x58 func_0026C9F0  # OVL1
-0x0026CA50 0x48 func_0026CA50  # OVL1; tu: zanim_set.cpp~ (1.0 beta)
+0x0026C8F0 0xAC Anim__9CZAnimSetFPCc  # OVL1; s1:align
+0x0026C9A0 0x48 Anim__9CZAnimSetFi  # OVL1; s1:align
+0x0026C9F0 0x58 Name__9CZAnimSetFPCc  # OVL1; s1:align
+0x0026CA50 0x48 GetAnimIndex__9CZAnimSetFP6CZAnim  # OVL1; tu: zanim_set.cpp~ (1.0 beta); s1:align
 0x0026CAA0 0x134 func_0026CAA0  # OVL1
-0x0026CBE0 0x24 func_0026CBE0  # OVL1
-0x0026CC10 0x70 func_0026CC10  # OVL1
+0x0026CBE0 0x24 TaskScheduler__9CZAnimSetFv  # OVL1; s1:align
+0x0026CC10 0x70 at__Q23std50__vector_imp<6CPnt3D,Q23std18allocator<6CPnt3D>,0>FUi  # OVL1; s1:align
 0x0026CC80 0x4C4 func_0026CC80  # OVL1
 0x0026D150 0x198 func_0026D150  # OVL1
 0x0026D2F0 0x8 func_0026D2F0  # OVL1
-0x0026D300 0x68 func_0026D300  # OVL1
+0x0026D300 0x68 __dt__Q23std52__vector_deleter<6CPnt3D,Q23std18allocator<6CPnt3D>>Fv  # OVL1; s1:align
 0x0026D370 0x1E4 func_0026D370  # OVL1
-0x0026D560 0x304 func_0026D560  # OVL1
-0x0026D870 0xD0 func_0026D870  # OVL1
+0x0026D560 0x304 Unload__6CZAnimFv  # OVL1; s1:align
+0x0026D870 0xD0 ExecuteSpecialSequence__6CZAnimFi  # OVL1; s1:calls
 0x0026D940 0x560 func_0026D940  # OVL1
 0x0026DEA0 0x430 func_0026DEA0  # OVL1
 0x0026E2D0 0x20 func_0026E2D0  # OVL1
 0x0026E2F0 0x1C4 func_0026E2F0  # OVL1
-0x0026E4C0 0x18C func_0026E4C0  # OVL1
-0x0026E650 0x168 func_0026E650  # OVL1
-0x0026E7C0 0x138 func_0026E7C0  # OVL1
-0x0026E900 0x11C func_0026E900  # OVL1
-0x0026EA20 0x108 func_0026EA20  # OVL1
-0x0026EB30 0x130 func_0026EB30  # OVL1
+0x0026E4C0 0x18C GetCallAnimRef__6CZAnimFi  # OVL1; s1:align
+0x0026E650 0x168 GetCallAnimRef__6CZAnimFii  # OVL1; s1:align
+0x0026E7C0 0x138 GetSoundRef__6CZAnimFi  # OVL1; s1:align
+0x0026E900 0x11C GetTexture__6CZAnimFi  # OVL1; s1:align
+0x0026EA20 0x108 GetParticleSource__6CZAnimFi  # OVL1; s1:align
+0x0026EB30 0x130 GetValve__6CZAnimFi  # OVL1; s1:align
 0x0026EC60 0x4C func_0026EC60  # OVL1
 0x0026ECB0 0x4C func_0026ECB0  # OVL1
 0x0026ED00 0x54 func_0026ED00  # OVL1
-0x0026ED60 0x4C func_0026ED60  # OVL1
-0x0026EDB0 0x4C func_0026EDB0  # OVL1
-0x0026EE00 0x64 func_0026EE00  # OVL1
+0x0026ED60 0x4C GetName__6CZAnimFi  # OVL1; s1:callee
+0x0026EDB0 0x4C GetName__6CZAnimFv  # OVL1; s1:align
+0x0026EE00 0x64 Name__6CZAnimFPCc  # OVL1; s1:align
 0x0026EE70 0x2A4 func_0026EE70  # OVL1
 0x0026F120 0xF0 func_0026F120  # OVL1
-0x0026F210 0x218 func_0026F210  # OVL1
+0x0026F210 0x218 GetNodes__6CZAnimFv  # OVL1; s1:align
 0x0026F430 0xB0 func_0026F430  # OVL1
 0x0026F4E0 0x340 func_0026F4E0  # OVL1
 0x0026F820 0x8 func_0026F820  # OVL1
-0x0026F830 0x24C func_0026F830  # OVL1
+0x0026F830 0x24C GarbageCollect__6CZAnimFv  # OVL1; s1:align
 0x0026FA80 0x168 func_0026FA80  # OVL1
-0x0026FBF0 0x130 func_0026FBF0  # OVL1
-0x0026FD20 0x170 func_0026FD20  # OVL1
-0x0026FE90 0x88 func_0026FE90  # OVL1
-0x0026FF20 0x2FC func_0026FF20  # OVL1
+0x0026FBF0 0x130 StopLights__6CZAnimFb  # OVL1; s1:align
+0x0026FD20 0x170 StopSounds__6CZAnimFv  # OVL1; s1:align
+0x0026FE90 0x88 DeleteParticleSources__6CZAnimFv  # OVL1; s1:align
+0x0026FF20 0x2FC State__6CZAnimFi  # OVL1; s1:calls
 0x00270220 0x1A4 Tick__6CZAnimFf  # OVL1; s1:callee
 0x002703D0 0x90 func_002703D0  # OVL1
 0x00270460 0x10C func_00270460  # OVL1
@@ -3023,9 +3023,9 @@
 0x002718F0 0x60 func_002718F0  # OVL1
 0x00271950 0x60 func_00271950  # OVL1
 0x002719B0 0x128 func_002719B0  # OVL1
-0x00271AE0 0x4C func_00271AE0  # OVL1
+0x00271AE0 0x4C __dt__9CZAnimArgFv  # OVL1; s1:align
 0x00271B30 0x3B0 func_00271B30  # OVL1
-0x00271EE0 0x1FC func_00271EE0  # OVL1
+0x00271EE0 0x1FC AddNetworkPacketArgs__13CZAnimArgListFP6CZAnimP18ZAnimNetworkPacket  # OVL1; s1:align
 0x002720E0 0xD8 func_002720E0  # OVL1
 0x002721C0 0xD8 func_002721C0  # OVL1
 0x002722A0 0xF0 func_002722A0  # OVL1
@@ -3041,24 +3041,24 @@
 0x00272990 0x68 Copy__14CZAnimArgValveFv  # OVL1; tu: zanim_anim.cpp~ (1.0 beta); s1:exact
 0x00272A00 0x60 Copy__13CZAnimArgNodeFv  # OVL1; s1:gap
 0x00272A60 0x30 __ct__13CZAnimArgNodeFQ29CZAnimArg4TYPEPQ23zdb5CNode  # OVL1; tu: zanim_anim.cpp~ (1.0 beta); s1:exact
-0x00272A90 0x88 func_00272A90  # OVL1
-0x00272B20 0x88 func_00272B20  # OVL1
-0x00272BB0 0x7C func_00272BB0  # OVL1
+0x00272A90 0x88 __dt__14CZAnimArgCharPFv  # OVL1; s1:align
+0x00272B20 0x88 Copy__14CZAnimArgCharPFv  # OVL1; s1:align
+0x00272BB0 0x7C ActivateArg__6CZAnimFie  # OVL1; s1:align
 0x00272C30 0x68C func_00272C30  # OVL1
 0x002732C0 0x5C func_002732C0  # OVL1
-0x00273320 0x184 func_00273320  # OVL1
+0x00273320 0x184 ActivateEx__6CZAnimFie  # OVL1; s1:align
 0x002734B0 0x2C8 func_002734B0  # OVL1
 0x00273780 0x1C4 func_00273780  # OVL1
 0x00273950 0x8 func_00273950  # OVL1
 0x00273960 0x14 func_00273960  # OVL1
-0x00273980 0x24 func_00273980  # OVL1
+0x00273980 0x24 GetHealth__6CZAnimFv  # OVL1; s1:align
 0x002739B0 0x44 func_002739B0  # OVL1
-0x00273A00 0x48 func_00273A00  # OVL1
+0x00273A00 0x48 Reset__8CZAnimExFPfPf  # OVL1; s1:align
 0x00273A50 0x48C func_00273A50  # OVL1
 0x00273EE0 0xA8 func_00273EE0  # OVL1
 0x00273F90 0xE8 func_00273F90  # OVL1
-0x00274080 0x58 func_00274080  # OVL1
-0x002740E0 0x20C func_002740E0  # OVL1
+0x00274080 0x58 Add__14CZAnimExVectorFP8CZAnimEx  # OVL1; s1:align
+0x002740E0 0x20C OnWeaponHitInit__6CZAnimFv  # OVL1; s1:calls
 0x002742F0 0x8 func_002742F0  # OVL1
 0x00274300 0x8 func_00274300  # OVL1
 0x00274310 0x5C func_00274310  # OVL1
@@ -3066,11 +3066,11 @@
 0x002743D0 0x5C func_002743D0  # OVL1
 0x00274430 0x5C func_00274430  # OVL1
 0x00274490 0x5C func_00274490  # OVL1
-0x002744F0 0xA0 func_002744F0  # OVL1
+0x002744F0 0xA0 Advance__Q224@unnamed@zanim_menu_cpp@17CSelectedCharsItrFv  # OVL1; s1:align
 0x00274590 0x8 func_00274590  # OVL1
-0x002745A0 0x2B4 func_002745A0  # OVL1
+0x002745A0 0x2B4 zAnimUIMenuTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:align
 0x00274860 0x8 func_00274860  # OVL1
-0x00274870 0xC0 func_00274870  # OVL1
+0x00274870 0xC0 GetUICommandType__FPCc  # OVL1; s1:align
 0x00274930 0xC func_00274930  # OVL1
 0x00274940 0x2B8 func_00274940  # OVL1
 0x00274C00 0x154 func_00274C00  # OVL1
@@ -3099,19 +3099,19 @@
 0x00277150 0xC8 func_00277150  # OVL1
 0x00277220 0x98 func_00277220  # OVL1
 0x002772C0 0x40 func_002772C0  # OVL1
-0x00277300 0x84 func_00277300  # OVL1
-0x00277390 0x64 func_00277390  # OVL1
+0x00277300 0x84 UISysLoadIRX__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
+0x00277390 0x64 UISysPostInit__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
 0x00277400 0x20 UIPasswordSecurity__FP13C2DAnimCmdHdrPf  # OVL1; s1:exact
 0x00277420 0xC func_00277420  # OVL1
 0x00277430 0x84 UITransferLeadership__FP13C2DAnimCmdHdrPf  # OVL1; s1:gap
 0x002774C0 0x90 UIDeclineInvitation__FP13C2DAnimCmdHdrPf  # OVL1; s1:gap
 0x00277550 0x90 UIAcceptInvitation__FP13C2DAnimCmdHdrPf  # OVL1; s1:gap
 0x002775E0 0x28 UINotOnCorrectClanTeam__FP13C2DAnimCmdHdrPf  # OVL1; s1:exact
-0x00277610 0x24 func_00277610  # OVL1
+0x00277610 0x24 UIUpdateClanStats__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
 0x00277640 0x68 UISetPlayerDescription__FP13C2DAnimCmdHdrPf  # OVL1; s1:calls
-0x002776B0 0x24 func_002776B0  # OVL1
-0x002776E0 0xE0 func_002776E0  # OVL1
-0x002777C0 0x2C func_002777C0  # OVL1
+0x002776B0 0x24 UIForceMediusStatusReport__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
+0x002776E0 0xE0 UINetCensorText__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
+0x002777C0 0x2C AuxNetCensorText__FPCcPv  # OVL1; s1:align
 0x002777F0 0x118 func_002777F0  # OVL1
 0x00277910 0x20 func_00277910  # OVL1
 0x00277930 0x20 func_00277930  # OVL1
@@ -3124,9 +3124,9 @@
 0x00277DD0 0x250 func_00277DD0  # OVL1
 0x00278020 0x20 func_00278020  # OVL1
 0x00278040 0x20 func_00278040  # OVL1
-0x00278060 0x38 func_00278060  # OVL1
+0x00278060 0x38 UIAbortLoad__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
 0x002780A0 0x15C func_002780A0  # OVL1
-0x00278200 0x16C func_00278200  # OVL1
+0x00278200 0x16C UITestUIVar__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
 0x00278370 0x160 func_00278370  # OVL1
 0x002784D0 0x278 func_002784D0  # OVL1
 0x00278750 0x230 func_00278750  # OVL1
@@ -3134,7 +3134,7 @@
 0x00278C20 0xDC func_00278C20  # OVL1
 0x00278D00 0x24 func_00278D00  # OVL1
 0x00278D30 0x24 func_00278D30  # OVL1
-0x00278D60 0x88 func_00278D60  # OVL1
+0x00278D60 0x88 UISetDefaultMenuScreen__FP13C2DAnimCmdHdrPf  # OVL1; s1:calls
 0x00278DF0 0xB0 func_00278DF0  # OVL1
 0x00278EA0 0x8 func_00278EA0  # OVL1
 0x00278EB0 0x330 func_00278EB0  # OVL1
@@ -3176,9 +3176,9 @@
 0x0027A740 0xE8 func_0027A740  # OVL1
 0x0027A830 0xC func_0027A830  # OVL1
 0x0027A840 0x44 UIRemovePlayerFromClan__FP13C2DAnimCmdHdrPf  # OVL1; s1:exact
-0x0027A890 0x80 func_0027A890  # OVL1
+0x0027A890 0x80 UIIsLeaderOfClan__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
 0x0027A910 0xC func_0027A910  # OVL1
-0x0027A920 0x24 func_0027A920  # OVL1
+0x0027A920 0x24 UIDisbandClan__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
 0x0027A950 0xA4 UICreateClan__FP13C2DAnimCmdHdrPf  # OVL1; s1:calls
 0x0027AA00 0x24 func_0027AA00  # OVL1
 0x0027AA30 0x24 func_0027AA30  # OVL1
@@ -3188,8 +3188,8 @@
 0x0027AD60 0x290 func_0027AD60  # OVL1
 0x0027AFF0 0xC func_0027AFF0  # OVL1
 0x0027B000 0xDC func_0027B000  # OVL1
-0x0027B0E0 0xA8 func_0027B0E0  # OVL1
-0x0027B190 0x24 func_0027B190  # OVL1
+0x0027B0E0 0xA8 UILoadConfig__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
+0x0027B190 0x24 UIMC_CreateIconFiles__FP13C2DAnimCmdHdrPf  # OVL1; s1:exact
 0x0027B1C0 0x34 func_0027B1C0  # OVL1
 0x0027B200 0x60 func_0027B200  # OVL1
 0x0027B260 0x60 func_0027B260  # OVL1
@@ -3198,29 +3198,29 @@
 0x0027B340 0x88 func_0027B340  # OVL1
 0x0027B3D0 0x50 func_0027B3D0  # OVL1
 0x0027B420 0x368 func_0027B420  # OVL1
-0x0027B790 0x1CC func_0027B790  # OVL1
+0x0027B790 0x1CC UISetStickPreset__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
 0x0027B960 0x5B0 func_0027B960  # OVL1
 0x0027BF10 0x7C func_0027BF10  # OVL1
-0x0027BF90 0xDC func_0027BF90  # OVL1
-0x0027C070 0xF0 func_0027C070  # OVL1
+0x0027BF90 0xDC UISwitchProgressiveVideo__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
+0x0027C070 0xF0 UICheckVideoMode__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
 0x0027C160 0xF8 func_0027C160  # OVL1
 0x0027C260 0xF8 func_0027C260  # OVL1
 0x0027C360 0xF8 func_0027C360  # OVL1
 0x0027C460 0x2EC UISetFilters__FP13C2DAnimCmdHdrPf  # OVL1; s1:calls
-0x0027C750 0x84 func_0027C750  # OVL1
+0x0027C750 0x84 UIToggleAutoMessages__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
 0x0027C7E0 0x8 func_0027C7E0  # OVL1
 0x0027C7F0 0xDC func_0027C7F0  # OVL1
-0x0027C8D0 0x118 func_0027C8D0  # OVL1
-0x0027C9F0 0xF8 func_0027C9F0  # OVL1
-0x0027CAF0 0x88 func_0027CAF0  # OVL1
+0x0027C8D0 0x118 __dt__12CPopUpDialogFv  # OVL1; s1:align
+0x0027C9F0 0xF8 UISetMenuState__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
+0x0027CAF0 0x88 UIReadyToLoad__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
 0x0027CB80 0x28 func_0027CB80  # OVL1
 0x0027CBB0 0x3C func_0027CBB0  # OVL1
 0x0027CBF0 0x47C func_0027CBF0  # OVL1
-0x0027D070 0x90 func_0027D070  # OVL1
-0x0027D100 0x60 func_0027D100  # OVL1
+0x0027D070 0x90 UIForceMPLaunch__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
+0x0027D100 0x60 UISwitchSides__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
 0x0027D160 0x24 func_0027D160  # OVL1
-0x0027D190 0x60 func_0027D190  # OVL1
-0x0027D1F0 0x24 func_0027D1F0  # OVL1
+0x0027D190 0x60 UIKillPopUp__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
+0x0027D1F0 0x24 UIGetMediusAnnouncements__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
 0x0027D220 0x28 func_0027D220  # OVL1
 0x0027D250 0x18 func_0027D250  # OVL1
 0x0027D270 0x98 UIJoinMPRoom__FP13C2DAnimCmdHdrPf  # OVL1; s1:calls
@@ -3349,7 +3349,7 @@
 0x00286160 0x868 func_00286160  # OVL1
 0x002869D0 0x1A4 PartInSpace__5CBodyCFP10CZBodyPartPC6CPnt3DP6CPnt3DP5CQuat  # OVL1; s1:calls
 0x00286B80 0x108 func_00286B80  # OVL1
-0x00286C90 0xB0 func_00286C90  # OVL1
+0x00286C90 0xB0 LinearWeight__9CSequenceFv  # OVL1; s1:align
 0x00286D40 0x28 func_00286D40  # OVL1
 0x00286D70 0x14 Clear__9CSequenceFv  # OVL1; s1:exact
 0x00286D90 0x1C Start__9CSequenceFfff  # OVL1; s1:exact
@@ -3547,14 +3547,14 @@
 0x00290B80 0x48 func_00290B80  # OVL1
 0x00290BD0 0x28 SetPlayerCanSeeRegions__Q23zdb7CCameraFUi  # OVL1; s1:exact
 0x00290C00 0x28 SetCameraCanSeeRegions__Q23zdb7CCameraFUi  # OVL1; s1:exact
-0x00290C30 0xDC func_00290C30  # OVL1
+0x00290C30 0xDC TestFOV__Q23zdb7CCameraFP5PNT4DPUib  # OVL1; s1:align
 0x00290D10 0xD4 func_00290D10  # OVL1
 0x00290DF0 0x260 func_00290DF0  # OVL1
 0x00291050 0x130 func_00291050  # OVL1
-0x00291180 0x28 func_00291180  # OVL1
-0x002911B0 0x10C func_002911B0  # OVL1
+0x00291180 0x28 SetMidClip__Q23zdb7CCameraFf  # OVL1; s1:align
+0x002911B0 0x10C SetHalfVerticalFOVRadians__Q23zdb7CCameraFf  # OVL1; s1:align
 0x002912C0 0x128 func_002912C0  # OVL1
-0x002913F0 0x9C func_002913F0  # OVL1
+0x002913F0 0x9C SetHalfHorizontalFOVRadians__Q23zdb7CCameraFf  # OVL1; s1:align
 0x00291490 0xB8 func_00291490  # OVL1
 0x00291550 0x50 func_00291550  # OVL1
 0x002915A0 0x50 func_002915A0  # OVL1
@@ -3628,7 +3628,7 @@
 0x0029BF70 0xC38 func_0029BF70  # OVL1
 0x0029CBB0 0x164 func_0029CBB0  # OVL1
 0x0029CD20 0x198 GetNearestIntersectCamPoint__FPQ23zdb11DiIntersectP6CPnt3D  # OVL1; s1:calls
-0x0029CEC0 0x44 func_0029CEC0  # OVL1
+0x0029CEC0 0x44 Dispatch__8CHandlerFP7CPacketP8CConsole  # OVL1; s1:align
 0x0029CF10 0x60 __dt__8CHandlerFv  # OVL1; s1:calls
 0x0029CF70 0x50 __ct__8CHandlerFPCcUiPFP7CPacketP8CConsolePv_vPv  # OVL1; s1:exact
 0x0029CFC0 0xBC func_0029CFC0  # OVL1
@@ -3636,10 +3636,10 @@
 0x0029D160 0x88 func_0029D160  # OVL1
 0x0029D1F0 0x7C func_0029D1F0  # OVL1
 0x0029D270 0xCC Debug__8CConsoleFiP7CPacketPCc  # OVL1; s1:calls
-0x0029D340 0x7C func_0029D340  # OVL1
+0x0029D340 0x7C Debug__8CConsoleFiPCce  # OVL1; s1:align
 0x0029D3C0 0x2B4 func_0029D3C0  # OVL1
 0x0029D680 0x8 func_0029D680  # OVL1
-0x0029D690 0x114 func_0029D690  # OVL1
+0x0029D690 0x114 __dt__8CConsoleFv  # OVL1; s1:align
 0x0029D7B0 0xA4 func_0029D7B0  # OVL1
 0x0029D860 0x8 func_0029D860  # OVL1
 0x0029D870 0x8 func_0029D870  # OVL1
@@ -3657,13 +3657,13 @@
 0x0029DC30 0xB4 __ct__7CPacketFP7CPacketUiUi  # OVL1; s1:exact
 0x0029DCF0 0x198 OnRecvPacket__7CPacketFPCv  # OVL1; s1:calls
 0x0029DE90 0x108 Send__8CConsoleFP7CPacket  # OVL1; s1:calls
-0x0029DFA0 0xB4 func_0029DFA0  # OVL1
+0x0029DFA0 0xB4 Tick__8CConsoleFv  # OVL1; s1:align
 0x0029E060 0x8 func_0029E060  # OVL1
 0x0029E070 0x8 func_0029E070  # OVL1
-0x0029E080 0x44 func_0029E080  # OVL1
-0x0029E0D0 0x90 func_0029E0D0  # OVL1
-0x0029E160 0x114 func_0029E160  # OVL1
-0x0029E280 0xA4 func_0029E280  # OVL1
+0x0029E080 0x44 Disconnect__8CConsoleFv  # OVL1; s1:align
+0x0029E0D0 0x90 Initalize__8CConsoleFv  # OVL1; s1:align
+0x0029E160 0x114 CheckEvent__8CConsoleFv  # OVL1; s1:align
+0x0029E280 0xA4 FindPacket__8CAckListFP7CPacket  # OVL1; s1:align
 0x0029E330 0xAC func_0029E330  # OVL1
 0x0029E3E0 0x90 func_0029E3E0  # OVL1
 0x0029E470 0x70 func_0029E470  # OVL1
@@ -3675,42 +3675,42 @@
 0x0029E6A0 0x8 func_0029E6A0  # OVL1
 0x0029E6B0 0x80 func_0029E6B0  # OVL1
 0x0029E730 0x174 func_0029E730  # OVL1
-0x0029E8B0 0x38 func_0029E8B0  # OVL1
+0x0029E8B0 0x38 OnDeath__7CEntityFv  # OVL1; s1:align
 0x0029E8F0 0x8 func_0029E8F0  # OVL1
 0x0029E900 0x8 func_0029E900  # OVL1
 0x0029E910 0x20 func_0029E910  # OVL1; tu: node_main.cpp~ (1.0 beta)
 0x0029E930 0x20 func_0029E930  # OVL1; tu: node_main.cpp~ (1.0 beta)
 0x0029E950 0x20 func_0029E950  # OVL1; tu: node_main.cpp~ (1.0 beta)
 0x0029E970 0x180 TeleportTo__7CEntityFPC6CPnt3DPC5CQuat  # OVL1; s1:calls
-0x0029EAF0 0x124 func_0029EAF0  # OVL1
+0x0029EAF0 0x124 TeleportTo__7CEntityFPC7CMatrix  # OVL1; s1:align
 0x0029EC20 0x20 func_0029EC20  # OVL1
 0x0029EC40 0x8 func_0029EC40  # OVL1
 0x0029EC50 0x8 func_0029EC50  # OVL1
 0x0029EC60 0x8 func_0029EC60  # OVL1
-0x0029EC70 0x6C func_0029EC70  # OVL1
-0x0029ECE0 0x28 func_0029ECE0  # OVL1; tu: ent_main.cpp~ (1.0 beta)
+0x0029EC70 0x6C SetDisplayName__7CEntityFPCc  # OVL1; s1:align
+0x0029ECE0 0x28 JoinTeam__7CEntityFUi  # OVL1; tu: ent_main.cpp~ (1.0 beta); s1:align
 0x0029ED10 0x8 func_0029ED10  # OVL1
 0x0029ED20 0x8 func_0029ED20  # OVL1
-0x0029ED30 0xD8 func_0029ED30  # OVL1
+0x0029ED30 0xD8 __dt__7CEntityFv  # OVL1; s1:align
 0x0029EE10 0x370 func_0029EE10  # OVL1
 0x0029F180 0x14 func_0029F180  # OVL1
 0x0029F1A0 0x1A8 func_0029F1A0  # OVL1
 0x0029F350 0xE0 func_0029F350  # OVL1
 0x0029F430 0xE0 func_0029F430  # OVL1
-0x0029F510 0xF8 func_0029F510  # OVL1
-0x0029F610 0x238 func_0029F610  # OVL1
-0x0029F850 0x1A0 func_0029F850  # OVL1
-0x0029F9F0 0x11C func_0029F9F0  # OVL1
+0x0029F510 0xF8 PreTickAll__7CEntityFfPv  # OVL1; s1:align
+0x0029F610 0x238 RemoveAll__7CEntityFv  # OVL1; s1:align
+0x0029F850 0x1A0 DoRecycleEntity__7CEntityFP7CEntity  # OVL1; s1:align
+0x0029F9F0 0x11C CreateRecycler__7CEntityFv  # OVL1; s1:align
 0x0029FB10 0xA4 func_0029FB10  # OVL1
-0x0029FBC0 0x4C func_0029FBC0  # OVL1
-0x0029FC10 0x98 func_0029FC10  # OVL1
+0x0029FBC0 0x4C RecycleEntity__7CEntityFP7CEntity  # OVL1; s1:align
+0x0029FC10 0x98 CreateEntity__7CEntityFP7CEntityb  # OVL1; s1:align
 0x0029FCB0 0xCC func_0029FCB0  # OVL1
 0x0029FD80 0x44 func_0029FD80  # OVL1
 0x0029FDD0 0x78 func_0029FDD0  # OVL1
 0x0029FE50 0x10 func_0029FE50  # OVL1
 0x0029FE60 0xC func_0029FE60  # OVL1
 0x0029FE70 0xE4 func_0029FE70  # OVL1
-0x0029FF60 0x68 func_0029FF60  # OVL1
+0x0029FF60 0x68 __dt__Q23std54__vector_deleter<7CTarget,Q23std19allocator<7CTarget>>Fv  # OVL1; s1:align
 0x0029FFD0 0xB8 func_0029FFD0  # OVL1
 0x002A0090 0x8 func_002A0090  # OVL1
 0x002A00A0 0xC func_002A00A0  # OVL1
@@ -3725,9 +3725,9 @@
 0x002A08C0 0x148 func_002A08C0  # OVL1
 0x002A0A10 0x3C8 func_002A0A10  # OVL1
 0x002A0DE0 0x18C func_002A0DE0  # OVL1
-0x002A0F70 0x150 func_002A0F70  # OVL1
-0x002A10C0 0x74 func_002A10C0  # OVL1
-0x002A1140 0x20 func_002A1140  # OVL1
+0x002A0F70 0x150 SetIncludeInTargetList__7CEntityFb  # OVL1; s1:align
+0x002A10C0 0x74 SetUpdateTargetList__7CEntityFb  # OVL1; s1:align
+0x002A1140 0x20 _sort_target__FRC7CTargetRC7CTarget  # OVL1; s1:align
 0x002A1160 0xAC func_002A1160  # OVL1
 0x002A1210 0xC4 func_002A1210  # OVL1
 0x002A12E0 0x59C func_002A12E0  # OVL1
@@ -3737,7 +3737,7 @@
 0x002A1AD0 0x6FC func_002A1AD0  # OVL1
 0x002A21D0 0x19C func_002A21D0  # OVL1
 0x002A2370 0x198 func_002A2370  # OVL1
-0x002A2510 0x44 func_002A2510  # OVL1
+0x002A2510 0x44 UpdateNextPosition__7CEntityFv  # OVL1; s1:align
 0x002A2560 0x104 ComputeNextPosition__7CEntityFf  # OVL1; s1:calls
 0x002A2670 0x8 func_002A2670  # OVL1
 0x002A2680 0x8 func_002A2680  # OVL1
@@ -3747,11 +3747,11 @@
 0x002A26C0 0x8 func_002A26C0  # OVL1
 0x002A26D0 0x8 func_002A26D0  # OVL1
 0x002A26E0 0x10 func_002A26E0  # OVL1
-0x002A26F0 0x30 func_002A26F0  # OVL1
+0x002A26F0 0x30 SetController__7CEntityFP11CEntityCtrl  # OVL1; s1:align
 0x002A2720 0x8 func_002A2720  # OVL1
 0x002A2730 0x8 func_002A2730  # OVL1
-0x002A2740 0x4C func_002A2740  # OVL1
-0x002A2790 0x44 func_002A2790  # OVL1
+0x002A2740 0x4C __dt__11CEntityCtrlFv  # OVL1; s1:align
+0x002A2790 0x44 __ct__11CEntityCtrlFi  # OVL1; s1:align
 0x002A27E0 0x110 func_002A27E0  # OVL1
 0x002A28F0 0x1C4 func_002A28F0  # OVL1
 0x002A2AC0 0x4C func_002A2AC0  # OVL1
@@ -3773,7 +3773,7 @@
 0x002A3B00 0x8 func_002A3B00  # OVL1
 0x002A3B10 0x8 func_002A3B10  # OVL1
 0x002A3B20 0x8 func_002A3B20  # OVL1
-0x002A3B30 0x60 func_002A3B30  # OVL1
+0x002A3B30 0x60 __dt__8CDIDummyFv  # OVL1; s1:align
 0x002A3B90 0x24 func_002A3B90  # OVL1
 0x002A3BC0 0x25C func_002A3BC0  # OVL1
 0x002A3E20 0x38 func_002A3E20  # OVL1
@@ -3784,7 +3784,7 @@
 0x002A4290 0xC func_002A4290  # OVL1
 0x002A42A0 0x8 func_002A42A0  # OVL1
 0x002A42B0 0x338 func_002A42B0  # OVL1
-0x002A45F0 0x1BC func_002A45F0  # OVL1
+0x002A45F0 0x1BC _RecoverFromNetError__8CMissionFi  # OVL1; s1:align
 0x002A47B0 0x168 func_002A47B0  # OVL1
 0x002A4920 0xE8 func_002A4920  # OVL1
 0x002A4A10 0x288 func_002A4A10  # OVL1
@@ -3797,7 +3797,7 @@
 0x002A6960 0x158 func_002A6960  # OVL1
 0x002A6AC0 0xC func_002A6AC0  # OVL1
 0x002A6AD0 0xC0 func_002A6AD0  # OVL1
-0x002A6B90 0xB8 func_002A6B90  # OVL1
+0x002A6B90 0xB8 TenSecondLaunch__9CZNetGameFb  # OVL1; s1:align
 0x002A6C50 0x64C func_002A6C50  # OVL1
 0x002A72A0 0x30 func_002A72A0  # OVL1
 0x002A72D0 0x64 func_002A72D0  # OVL1
@@ -3806,97 +3806,97 @@
 0x002A7420 0x64 func_002A7420  # OVL1
 0x002A7490 0xC func_002A7490  # OVL1
 0x002A74A0 0x6C func_002A74A0  # OVL1
-0x002A7510 0x4C func_002A7510  # OVL1
+0x002A7510 0x4C SetE3RoundCount__9CZNetGameFi  # OVL1; s1:align
 0x002A7560 0x90 func_002A7560  # OVL1
 0x002A75F0 0xD4 func_002A75F0  # OVL1
-0x002A76D0 0x664 func_002A76D0  # OVL1
+0x002A76D0 0x664 Initialize__9CZNetGameFv  # OVL1; s1:align
 0x002A7D40 0x3F4 func_002A7D40  # OVL1
 0x002A8140 0xB48 func_002A8140  # OVL1
 0x002A8C90 0x298 func_002A8C90  # OVL1
 0x002A8F30 0x14 func_002A8F30  # OVL1
 0x002A8F50 0x19C func_002A8F50  # OVL1
 0x002A90F0 0x11C func_002A90F0  # OVL1
-0x002A9210 0x50 func_002A9210  # OVL1
+0x002A9210 0x50 GetLadderByIndex__11CLadderListFi  # OVL1; s1:align
 0x002A9260 0x280 func_002A9260  # OVL1
 0x002A94E0 0x68 func_002A94E0  # OVL1
 0x002A9550 0x128 func_002A9550  # OVL1
-0x002A9680 0x30 func_002A9680  # OVL1
+0x002A9680 0x30 __dt__Q23std62__vector_imp<11CLadderData,Q23std24allocator<11CLadderData>,0>Fv  # OVL1; s1:align
 0x002A96B0 0x108 func_002A96B0  # OVL1
 0x002A97C0 0xD4 FadeToEndMission__8CMissionFfi  # OVL1; s1:calls
 0x002A98A0 0x8 func_002A98A0  # OVL1
-0x002A98B0 0x1B8 func_002A98B0  # OVL1
+0x002A98B0 0x1B8 FadeToEndMissionTick__8CMissionFf  # OVL1; s1:align
 0x002A9A70 0xC0 func_002A9A70  # OVL1
 0x002A9B30 0x3AC func_002A9B30  # OVL1
 0x002A9EE0 0x8 func_002A9EE0  # OVL1
 0x002A9EF0 0x8 func_002A9EF0  # OVL1
-0x002A9F00 0x2C func_002A9F00  # OVL1
+0x002A9F00 0x2C CreateNetGame__8CMissionFv  # OVL1; s1:align
 0x002A9F30 0x558 func_002A9F30  # OVL1
-0x002AA490 0x3F8 func_002AA490  # OVL1
+0x002AA490 0x3F8 Tick__8CMissionFf  # OVL1; s1:align
 0x002AA890 0x7C func_002AA890  # OVL1
 0x002AA910 0x1F0 func_002AA910  # OVL1
-0x002AAB00 0x20 func_002AAB00  # OVL1
+0x002AAB00 0x20 tick__8CMissionFfPv  # OVL1; s1:align
 0x002AAB20 0x734 func_002AAB20  # OVL1
 0x002AB260 0xFC func_002AB260  # OVL1
 0x002AB360 0x84 func_002AB360  # OVL1
 0x002AB3F0 0x604 func_002AB3F0  # OVL1
-0x002ABA00 0x60 func_002ABA00  # OVL1
+0x002ABA00 0x60 swap<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>>__3stdFRQ23std82__vector_deleter<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>>RQ23std82__vector_deleter<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>>  # OVL1; s1:align
 0x002ABA60 0x40 func_002ABA60  # OVL1
 0x002ABAA0 0x8 func_002ABAA0  # OVL1
 0x002ABAB0 0x14 func_002ABAB0  # OVL1
-0x002ABAD0 0x26C func_002ABAD0  # OVL1
-0x002ABD40 0x31C func_002ABD40  # OVL1
-0x002AC060 0x74 func_002AC060  # OVL1
-0x002AC0E0 0x324 func_002AC0E0  # OVL1
-0x002AC410 0x614 func_002AC410  # OVL1
+0x002ABAD0 0x26C ZAnimLoad__8CMissionFv  # OVL1; s1:align
+0x002ABD40 0x31C ReOpen_Load__8CMissionFv  # OVL1; s1:align
+0x002AC060 0x74 ReOpen_Unload2__8CMissionFv  # OVL1; s1:align
+0x002AC0E0 0x324 ReOpen_Unload1__8CMissionFv  # OVL1; s1:align
+0x002AC410 0x614 Open__8CMissionFPCci  # OVL1; s1:align
 0x002ACA30 0x98 func_002ACA30  # OVL1
-0x002ACAD0 0x138 func_002ACAD0  # OVL1
+0x002ACAD0 0x138 CreateCompassNavPoints__8CMissionFv  # OVL1; s1:align
 0x002ACC10 0x680 func_002ACC10  # OVL1
-0x002AD290 0x6A4 func_002AD290  # OVL1
+0x002AD290 0x6A4 Init__8CMissionFv  # OVL1; s1:align
 0x002AD940 0x27C func_002AD940  # OVL1
 0x002ADBC0 0x350 func_002ADBC0  # OVL1
 0x002ADF10 0x140 func_002ADF10  # OVL1
 0x002AE050 0x2F0 func_002AE050  # OVL1
 0x002AE340 0x5C func_002AE340  # OVL1
 0x002AE3A0 0x148 func_002AE3A0  # OVL1
-0x002AE4F0 0x20 func_002AE4F0  # OVL1; tu: fts_mission.cpp~ (1.0 beta)
+0x002AE4F0 0x20 HUDStartDefuseTimerTick__FP14_zanim_cmd_hdrPf  # OVL1; tu: fts_mission.cpp~ (1.0 beta); s1:align
 0x002AE510 0x6C func_002AE510  # OVL1
 0x002AE580 0x2C func_002AE580  # OVL1; tu: fts_mission.cpp~ (1.0 beta)
 0x002AE5B0 0x1A4 func_002AE5B0  # OVL1
-0x002AE760 0x64 func_002AE760  # OVL1
-0x002AE7D0 0x50 func_002AE7D0  # OVL1
-0x002AE820 0x148 func_002AE820  # OVL1
-0x002AE970 0x7C func_002AE970  # OVL1
+0x002AE760 0x64 HUDTriggerMissionCamTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:align
+0x002AE7D0 0x50 HUDTriggerMissionCamBegin__FP14_zanim_cmd_hdr  # OVL1; s1:calls
+0x002AE820 0x148 HUDTriggerMissionCamParse__FP5_zrdr  # OVL1; s1:align
+0x002AE970 0x7C HUDLetterBoxCmdTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:align
 0x002AE9F0 0x7C func_002AE9F0  # OVL1
 0x002AEA70 0x84 func_002AEA70  # OVL1
 0x002AEB00 0xA0 func_002AEB00  # OVL1
 0x002AEBA0 0x7C func_002AEBA0  # OVL1
 0x002AEC20 0x84 func_002AEC20  # OVL1
 0x002AECB0 0x8 func_002AECB0  # OVL1
-0x002AECC0 0x6C func_002AECC0  # OVL1
+0x002AECC0 0x6C StopImageRecorderParse__FP5_zrdr  # OVL1; s1:align
 0x002AED30 0x8 func_002AED30  # OVL1
 0x002AED40 0x250 func_002AED40  # OVL1
-0x002AEF90 0x1FC func_002AEF90  # OVL1
+0x002AEF90 0x1FC UpdateMissionArchive__25@unnamed@fts_mission_cpp@FPCcPCc  # OVL1; s1:align
 0x002AF190 0x1C8 func_002AF190  # OVL1
 0x002AF360 0xA8 func_002AF360  # OVL1
 0x002AF410 0x140 func_002AF410  # OVL1
 0x002AF550 0x204 func_002AF550  # OVL1
 0x002AF760 0x14 GetDefCharTypeName__Fi  # OVL1; s1:exact
-0x002AF780 0x28 func_002AF780  # OVL1
+0x002AF780 0x28 GetCustomCharTypeName__Fi  # OVL1; s1:align
 0x002AF7B0 0x90 func_002AF7B0  # OVL1
-0x002AF840 0x20 func_002AF840  # OVL1
+0x002AF840 0x20 ftsGetVisibleMap__FUii  # OVL1; s1:align
 0x002AF860 0xC func_002AF860  # OVL1
 0x002AF870 0xC func_002AF870  # OVL1
 0x002AF880 0xC func_002AF880  # OVL1
-0x002AF890 0x28 func_002AF890  # OVL1
-0x002AF8C0 0x14C func_002AF8C0  # OVL1
-0x002AFA10 0x18C func_002AFA10  # OVL1
+0x002AF890 0x28 ftsGetNumVisibleMaps__FUi  # OVL1; s1:align
+0x002AF8C0 0x14C CreateCustomCharTypes__25@unnamed@fts_mission_cpp@FP5_zrdr  # OVL1; s1:align
+0x002AFA10 0x18C CreateCustomCharTypes__25@unnamed@fts_mission_cpp@FP11CVehicleRdrP5_zrdr  # OVL1; s1:align
 0x002AFBA0 0xC func_002AFBA0  # OVL1
 0x002AFBB0 0x8 func_002AFBB0  # OVL1
 0x002AFBC0 0x78 func_002AFBC0  # OVL1
 0x002AFC40 0x18 func_002AFC40  # OVL1
-0x002AFC60 0x2C func_002AFC60  # OVL1
-0x002AFC90 0x444 func_002AFC90  # OVL1
-0x002B00E0 0x180 func_002B00E0  # OVL1
+0x002AFC60 0x2C _min<f>__2aiFRCfRCf  # OVL1; s1:align
+0x002AFC90 0x444 insert__Q23std80__vector_imp<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>,0>FP20SObjectiveCam_AnchorUiRC20SObjectiveCam_Anchor  # OVL1; s1:align
+0x002B00E0 0x180 reserve__Q23std80__vector_imp<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>,0>FUi  # OVL1; s1:align
 0x002B0260 0x684 func_002B0260  # OVL1
 0x002B08F0 0x734 func_002B08F0  # OVL1
 0x002B1030 0x1F0 func_002B1030  # OVL1
@@ -3914,37 +3914,37 @@
 0x002B18A0 0x68 func_002B18A0  # OVL1
 0x002B1910 0x60 func_002B1910  # OVL1
 0x002B1970 0x60 func_002B1970  # OVL1
-0x002B19D0 0x3C func_002B19D0  # OVL1
+0x002B19D0 0x3C __ct__12CUIVarSTableFv  # OVL1; s1:align
 0x002B1A10 0x2C func_002B1A10  # OVL1
-0x002B1A40 0x190 func_002B1A40  # OVL1
+0x002B1A40 0x190 erase__Q23std62__vector_imp<11CUIVariable,Q23std24allocator<11CUIVariable>,0>FP11CUIVariableP11CUIVariable  # OVL1; s1:align
 0x002B1BD0 0x510 func_002B1BD0  # OVL1
 0x002B20E0 0x84 func_002B20E0  # OVL1
 0x002B2170 0x8 func_002B2170  # OVL1
 0x002B2180 0x8 func_002B2180  # OVL1
 0x002B2190 0x38 Clear__9CSpawnersFv  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:exact
-0x002B21D0 0x13C func_002B21D0  # OVL1
+0x002B21D0 0x13C Tick__9CSpawnersFf  # OVL1; s1:align
 0x002B2310 0x90 func_002B2310  # OVL1
 0x002B23A0 0x4A0 func_002B23A0  # OVL1
 0x002B2840 0x88 InitalizeTeamValves__8CMissionFv  # OVL1; s1:calls
 0x002B28D0 0x450 func_002B28D0  # OVL1
 0x002B2D20 0x124 func_002B2D20  # OVL1
 0x002B2E50 0x5D8 func_002B2E50  # OVL1
-0x002B3430 0x38 func_002B3430  # OVL1
+0x002B3430 0x38 CloseVehicleRdr__8CMissionFv  # OVL1; s1:align
 0x002B3470 0x2C OpenVehicleRdr__8CMissionFv  # OVL1; s1:calls
 0x002B34A0 0xE0 func_002B34A0  # OVL1
 0x002B3580 0xC func_002B3580  # OVL1
 0x002B3590 0xC func_002B3590  # OVL1
-0x002B35A0 0xA4 func_002B35A0  # OVL1
-0x002B3650 0xF0 func_002B3650  # OVL1
-0x002B3740 0x70 func_002B3740  # OVL1
-0x002B37B0 0xD0 func_002B37B0  # OVL1
+0x002B35A0 0xA4 CmdTickIsPlayerNode__10CftsPlayerFP14_zanim_cmd_hdrPf  # OVL1; s1:align
+0x002B3650 0xF0 CmdParseIsPlayerNode__10CftsPlayerFP5_zrdr  # OVL1; s1:align
+0x002B3740 0x70 CmdTickControls__10CftsPlayerFP14_zanim_cmd_hdrPf  # OVL1; s1:align
+0x002B37B0 0xD0 CmdParseControls__10CftsPlayerFP5_zrdr  # OVL1; s1:align
 0x002B3880 0x38 func_002B3880  # OVL1
-0x002B38C0 0x6C func_002B38C0  # OVL1
+0x002B38C0 0x6C CmdParseIndoorsTest__10CftsPlayerFP5_zrdr  # OVL1; s1:align
 0x002B3930 0x98 RegisterAnimCommands__10CftsPlayerFv  # OVL1; s1:calls
 0x002B39D0 0x30 func_002B39D0  # OVL1
-0x002B3A00 0x154 func_002B3A00  # OVL1
+0x002B3A00 0x154 ftsCreateSeal__FPC14CCharacterTypePCc17SEAL_CONTROL_TYPE  # OVL1; s1:align
 0x002B3B60 0xC func_002B3B60  # OVL1
-0x002B3B70 0x60 func_002B3B70  # OVL1
+0x002B3B70 0x60 __dt__13CSealCtrlCopyFv  # OVL1; s1:align
 0x002B3BD0 0x8 func_002B3BD0  # OVL1
 0x002B3BE0 0x8 func_002B3BE0  # OVL1
 0x002B3BF0 0x8 func_002B3BF0  # OVL1
@@ -3954,14 +3954,14 @@
 0x002B3C60 0x8 func_002B3C60  # OVL1
 0x002B3C70 0x20 func_002B3C70  # OVL1
 0x002B3C90 0xBC erase__Q23std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>FQ33std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>19generic_iterator<0>Q33std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>19generic_iterator<0>  # OVL1; s1:callee
-0x002B3D50 0x74 func_002B3D50  # OVL1
+0x002B3D50 0x74 erase__Q23std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>FQ33std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>19generic_iterator<0>  # OVL1; s1:align
 0x002B3DD0 0x108 func_002B3DD0  # OVL1
 0x002B3EE0 0x18 func_002B3EE0  # OVL1
 0x002B3F00 0x18 func_002B3F00  # OVL1
 0x002B3F20 0x60 func_002B3F20  # OVL1
-0x002B3F80 0xB0 func_002B3F80  # OVL1
+0x002B3F80 0xB0 __dt__Q23std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>Fv  # OVL1; s1:align
 0x002B4030 0xA0 func_002B4030  # OVL1
-0x002B40D0 0xBC func_002B40D0  # OVL1
+0x002B40D0 0xBC erase__Q23std40__list_deleter<Ui,Q23std13allocator<Ui>>FQ33std40__list_deleter<Ui,Q23std13allocator<Ui>>19generic_iterator<0>Q33std40__list_deleter<Ui,Q23std13allocator<Ui>>19generic_iterator<0>  # OVL1; s1:align
 0x002B4190 0x2C func_002B4190  # OVL1; tu: node_world.cpp~ (1.0 beta)
 0x002B41C0 0x64 func_002B41C0  # OVL1
 0x002B4230 0x144 func_002B4230  # OVL1
@@ -3987,14 +3987,14 @@
 0x002B55E0 0x154 func_002B55E0  # OVL1
 0x002B5740 0x8 func_002B5740  # OVL1
 0x002B5750 0x8 func_002B5750  # OVL1
-0x002B5760 0x70 func_002B5760  # OVL1
-0x002B57D0 0x60 func_002B57D0  # OVL1
+0x002B5760 0x70 _actionValveCallback__FP6CValvePv  # OVL1; s1:align
+0x002B57D0 0x60 __dt__Q211CNodeAction9ContainerFv  # OVL1; s1:align
 0x002B5830 0x580 func_002B5830  # OVL1
 0x002B5DB0 0x5FC func_002B5DB0  # OVL1
-0x002B63B0 0x78 func_002B63B0  # OVL1
+0x002B63B0 0x78 __dt__16C2DMessageStringFv  # OVL1; s1:calls
 0x002B6430 0xF4 func_002B6430  # OVL1
 0x002B6530 0x7CC func_002B6530  # OVL1
-0x002B6D00 0x60 func_002B6D00  # OVL1
+0x002B6D00 0x60 SetBkgColor__12C2DMessage_QFfff  # OVL1; s1:align
 0x002B6D60 0x78 func_002B6D60  # OVL1
 0x002B6DE0 0xF4 func_002B6DE0  # OVL1
 0x002B6EE0 0xE0 func_002B6EE0  # OVL1
@@ -4002,27 +4002,27 @@
 0x002B7520 0xC func_002B7520  # OVL1
 0x002B7530 0xD8 func_002B7530  # OVL1
 0x002B7610 0x110 func_002B7610  # OVL1
-0x002B7720 0x74 func_002B7720  # OVL1
+0x002B7720 0x74 SetString__16C2DMessageStringFPCc  # OVL1; s1:align
 0x002B77A0 0x1A8 func_002B77A0  # OVL1
 0x002B7950 0x98 func_002B7950  # OVL1
-0x002B79F0 0x28 func_002B79F0  # OVL1
-0x002B7A20 0x70 func_002B7A20  # OVL1
+0x002B79F0 0x28 ftsNetworkGameUninit__Fv  # OVL1; s1:align
+0x002B7A20 0x70 ftsNetworkGameInit__Fv  # OVL1; s1:align
 0x002B7A90 0x200 func_002B7A90  # OVL1
 0x002B7C90 0x60 func_002B7C90  # OVL1
 0x002B7CF0 0x68 func_002B7CF0  # OVL1
-0x002B7D60 0x174 func_002B7D60  # OVL1
+0x002B7D60 0x174 ftsNetworkPlayerInit__Fv  # OVL1; s1:align
 0x002B7EE0 0x218 func_002B7EE0  # OVL1
 0x002B8100 0x284 func_002B8100  # OVL1
-0x002B8390 0x44 func_002B8390  # OVL1
+0x002B8390 0x44 DMEDisconnectFromGameServer__Fv  # OVL1; s1:align
 0x002B83E0 0x19C func_002B83E0  # OVL1
-0x002B8580 0x40 func_002B8580  # OVL1
+0x002B8580 0x40 DMEConnectToGameServer__Fv  # OVL1; s1:align
 0x002B85C0 0x9C func_002B85C0  # OVL1
 0x002B8660 0xAE4 func_002B8660  # OVL1
 0x002B9150 0x694 func_002B9150  # OVL1
-0x002B97F0 0xC0 func_002B97F0  # OVL1
+0x002B97F0 0xC0 SendGameSignalMessage__FiUcUcUcib  # OVL1; s1:align
 0x002B98B0 0x60 func_002B98B0  # OVL1
 0x002B9910 0xF0 SendBombStateRequest__FiUcPC6CPnt3D  # OVL1; s1:callee
-0x002B9A00 0x40 func_002B9A00  # OVL1
+0x002B9A00 0x40 BombStatePacketHandler__FiiiPv  # OVL1; s1:align
 0x002B9A40 0xDC func_002B9A40  # OVL1
 0x002B9B20 0x38 func_002B9B20  # OVL1
 0x002B9B60 0x6C func_002B9B60  # OVL1
@@ -4033,44 +4033,44 @@
 0x002B9F10 0x44 func_002B9F10  # OVL1
 0x002B9F60 0xD8 func_002B9F60  # OVL1
 0x002BA040 0x100 func_002BA040  # OVL1
-0x002BA140 0x5C func_002BA140  # OVL1
-0x002BA1A0 0x4C func_002BA1A0  # OVL1
-0x002BA1F0 0x64 func_002BA1F0  # OVL1
-0x002BA260 0x54 func_002BA260  # OVL1
+0x002BA140 0x5C SendVoteMessage__Fiib  # OVL1; s1:align
+0x002BA1A0 0x4C PickupAckPacketHandler__FiiiPv  # OVL1; s1:align
+0x002BA1F0 0x64 SendPickupAckMessage__FiUsUc8AckUnion  # OVL1; s1:align
+0x002BA260 0x54 PickupMayIPacketHandler__FiiiPv  # OVL1; s1:align
 0x002BA2C0 0xA4 func_002BA2C0  # OVL1
-0x002BA370 0x74 func_002BA370  # OVL1
+0x002BA370 0x74 AmmoPUPacketHandler__FiiiPv  # OVL1; s1:align
 0x002BA3F0 0xF0 func_002BA3F0  # OVL1
-0x002BA4E0 0x174 func_002BA4E0  # OVL1
+0x002BA4E0 0x174 WeaponPUPacketHandler__FiiiPv  # OVL1; s1:align
 0x002BA660 0x1E4 func_002BA660  # OVL1
 0x002BA850 0x1C SendChatMsg__FPCc  # OVL1; s1:exact
 0x002BA870 0x154 AuxSendChatMsg__FPCcPv  # OVL1; s1:ref (taken by address where SOCOM 1 takes AuxSendChatMsg__FPCcPv's)
 0x002BA9D0 0x264 func_002BA9D0  # OVL1
 0x002BAC40 0x100 func_002BAC40  # OVL1
-0x002BAD40 0x58 func_002BAD40  # OVL1
+0x002BAD40 0x58 SendMessageMessage__Fi9R_SEND_TOi  # OVL1; s1:align
 0x002BADA0 0x14 func_002BADA0  # OVL1
 0x002BADC0 0x8 func_002BADC0  # OVL1
-0x002BADD0 0x98 func_002BADD0  # OVL1
-0x002BAE70 0x30 func_002BAE70  # OVL1
-0x002BAEA0 0x90 func_002BAEA0  # OVL1
+0x002BADD0 0x98 NetSendRequestTeamSwitch__Fi  # OVL1; s1:align
+0x002BAE70 0x30 TeamSwitchPacketHandler__FiiiPv  # OVL1; s1:align
+0x002BAEA0 0x90 NetSendE3Index__FiUiib  # OVL1; s1:align
 0x002BAF30 0x184 func_002BAF30  # OVL1
 0x002BB0C0 0x104 func_002BB0C0  # OVL1
 0x002BB1D0 0x140 func_002BB1D0  # OVL1
 0x002BB310 0x2A0 func_002BB310  # OVL1
 0x002BB5B0 0x1C0 func_002BB5B0  # OVL1
-0x002BB770 0x80 func_002BB770  # OVL1
-0x002BB7F0 0x84 func_002BB7F0  # OVL1
-0x002BB880 0x54 func_002BB880  # OVL1
+0x002BB770 0x80 ActionAnimPacketHandler__FiiiPv  # OVL1; s1:align
+0x002BB7F0 0x84 ZAnimNetworkPacketHandler__FiiiPv  # OVL1; s1:align
+0x002BB880 0x54 SendZAnimNetworkPacket__FPvi  # OVL1; s1:align
 0x002BB8E0 0x88 func_002BB8E0  # OVL1
 0x002BB970 0x104 func_002BB970  # OVL1
-0x002BBA80 0x6C func_002BBA80  # OVL1
+0x002BBA80 0x6C PushBlendAnimPacketHandler__FiiiPv  # OVL1; s1:align
 0x002BBAF0 0xE0 func_002BBAF0  # OVL1
 0x002BBBD0 0x1C4 HitPacketHandler__FiiiPv  # OVL1; s1:calls
 0x002BBDA0 0x170 func_002BBDA0  # OVL1
-0x002BBF10 0x84 func_002BBF10  # OVL1
-0x002BBFA0 0xE0 func_002BBFA0  # OVL1
-0x002BC080 0x380 func_002BC080  # OVL1
-0x002BC400 0x84 func_002BC400  # OVL1
-0x002BC490 0x9C func_002BC490  # OVL1
+0x002BBF10 0x84 SaveFireMessage__FP10CZSealBodyPC6CPnt3D  # OVL1; s1:align
+0x002BBFA0 0xE0 zRemoteDelayedAction__FPQ29CZNetwork18TypeRTimeFixStruct  # OVL1; s1:align
+0x002BC080 0x380 zDoClientLeavesCallback__Fi  # OVL1; s1:align
+0x002BC400 0x84 zRemoteClientLeavesCallback__Fii  # OVL1; s1:align
+0x002BC490 0x9C zRemoteClientJoinsCallback__Fii  # OVL1; s1:align
 0x002BC530 0xEC func_002BC530  # OVL1
 0x002BC620 0x9F4 func_002BC620  # OVL1
 0x002BD020 0x3C func_002BD020  # OVL1
@@ -4083,20 +4083,20 @@
 0x002BD1E0 0x3C func_002BD1E0  # OVL1
 0x002BD220 0x50 func_002BD220  # OVL1
 0x002BD270 0x110 func_002BD270  # OVL1
-0x002BD380 0x44 func_002BD380  # OVL1
-0x002BD3D0 0x4C func_002BD3D0  # OVL1
+0x002BD380 0x44 RemoveNetSeal__11CZSealStateFib  # OVL1; s1:align
+0x002BD3D0 0x4C GetPackedWeaponData__11CZSealStateFP10CZSealBody  # OVL1; s1:align
 0x002BD420 0xA4 func_002BD420  # OVL1
 0x002BD4D0 0x84 GetBodyFromObjectIndex__11CZSealStateFi  # OVL1; s1:calls
 0x002BD560 0xD0 func_002BD560  # OVL1
 0x002BD630 0xC func_002BD630  # OVL1
 0x002BD640 0x754 func_002BD640  # OVL1
-0x002BDDA0 0xF8 func_002BDDA0  # OVL1
-0x002BDEA0 0x178 func_002BDEA0  # OVL1
+0x002BDDA0 0xF8 CreateLocalSeal__11CZSealStateFP10CZSealBodyb  # OVL1; s1:align
+0x002BDEA0 0x178 UpdateRollandsUnitStuff__11CZSealStateFP10CZSealBodyPQ211CZSealState13TypeSealState  # OVL1; s1:align
 0x002BE020 0x12C func_002BE020  # OVL1
 0x002BE150 0xCB4 func_002BE150  # OVL1
 0x002BEE10 0x10C func_002BEE10  # OVL1
-0x002BEF20 0x3C func_002BEF20  # OVL1
-0x002BEF60 0x108 func_002BEF60  # OVL1
+0x002BEF20 0x3C SealDeleteCleanup__11CZSealStateFi  # OVL1; s1:align
+0x002BEF60 0x108 RemoteSealDeletionCallback__11CZSealStateFii  # OVL1; s1:align
 0x002BF070 0x248 func_002BF070  # OVL1
 0x002BF2C0 0x6C0 func_002BF2C0  # OVL1
 0x002BF980 0x43C func_002BF980  # OVL1
@@ -4113,21 +4113,21 @@
 0x002C07B0 0x98 func_002C07B0  # OVL1
 0x002C0850 0x8CC func_002C0850  # OVL1
 0x002C1120 0x2FC func_002C1120  # OVL1
-0x002C1420 0xE4 func_002C1420  # OVL1
-0x002C1510 0xC4 func_002C1510  # OVL1
-0x002C15E0 0x84 func_002C15E0  # OVL1
-0x002C1670 0x2C func_002C1670  # OVL1
+0x002C1420 0xE4 UpdateLocalGrenade__14CZGrenadeStateFP12CZProjectile  # OVL1; s1:align
+0x002C1510 0xC4 CreateLocalGrenade__14CZGrenadeStateFP12CZProjectile  # OVL1; s1:align
+0x002C15E0 0x84 RemoteGrenadeDeletionCallback__14CZGrenadeStateFii  # OVL1; s1:align
+0x002C1670 0x2C RemoteGrenadePostUpdateCallback__14CZGrenadeStateFiii  # OVL1; s1:align
 0x002C16A0 0x10C func_002C16A0  # OVL1
-0x002C17B0 0xA0 func_002C17B0  # OVL1
-0x002C1850 0x118 func_002C1850  # OVL1
-0x002C1970 0x110 func_002C1970  # OVL1
-0x002C1A80 0x168 func_002C1A80  # OVL1
+0x002C17B0 0xA0 RemoteGrenadeCreationCallback__14CZGrenadeStateFii  # OVL1; s1:align
+0x002C1850 0x118 zNetRegisterGrenade__14CZGrenadeStateFv  # OVL1; s1:align
+0x002C1970 0x110 UninitBomb__11CZBombStateFv  # OVL1; s1:align
+0x002C1A80 0x168 InitBomb__11CZBombStateFv  # OVL1; s1:align
 0x002C1BF0 0x3C CreateBombHere__11CZBombStateFP6CPnt3D  # OVL1; s1:exact
 0x002C1C30 0x2E0 ChangeBombState__11CZBombStateFv  # OVL1; s1:gap
 0x002C1F10 0x178 HandleBombStateRequest__11CZBombStateFiUcP6CPnt3D  # OVL1; s1:gap
 0x002C2090 0x2C RequestNewBombState__11CZBombStateFiQ211CZBombState13EnumBombStatePC6CPnt3D  # OVL1; s1:exact
-0x002C20C0 0x194 func_002C20C0  # OVL1
-0x002C2260 0x13C func_002C2260  # OVL1
+0x002C20C0 0x194 UpdateLocalBomb__11CZBombStateFv  # OVL1; s1:align
+0x002C2260 0x13C CreateLocalBomb__11CZBombStateFv  # OVL1; s1:align
 0x002C23A0 0xC func_002C23A0  # OVL1
 0x002C23B0 0x94 func_002C23B0  # OVL1
 0x002C2450 0x134 func_002C2450  # OVL1
@@ -4222,17 +4222,17 @@
 0x002C7070 0x24 IsInvalid__20CMissionObjectiveCamCFv  # OVL1; s1:exact
 0x002C70A0 0x24 IsDisplayOn__20CMissionObjectiveCamCFv  # OVL1; s1:gap
 0x002C70D0 0x24 IsComplete__20CMissionObjectiveCamCFv  # OVL1; s1:exact
-0x002C7100 0xDC func_002C7100  # OVL1
+0x002C7100 0xDC Set__20CMissionObjectiveCamFPCcPCcPCcPCcPCcPCcPCcPCcPCcPCcPC5PNT2D  # OVL1; s1:align
 0x002C71E0 0xAC func_002C71E0  # OVL1
 0x002C7290 0x70 func_002C7290  # OVL1
 0x002C7300 0x40 func_002C7300  # OVL1
 0x002C7340 0x8 func_002C7340  # OVL1
 0x002C7350 0x14 func_002C7350  # OVL1
-0x002C7370 0xA0 func_002C7370  # OVL1
+0x002C7370 0xA0 IsAvailable__20CMissionObjectiveCamCFv  # OVL1; s1:align
 0x002C7410 0x78 func_002C7410  # OVL1
 0x002C7490 0x98 func_002C7490  # OVL1
 0x002C7530 0x110 func_002C7530  # OVL1
-0x002C7640 0x1D0 func_002C7640  # OVL1
+0x002C7640 0x1D0 Set__11CMissionCamFPCcPCcPCcPCcPCcPCcPCc  # OVL1; s1:align
 0x002C7810 0xC8 func_002C7810  # OVL1
 0x002C78E0 0x24 __ct__11CMissionCamFv  # OVL1; s1:exact
 0x002C7910 0xD0 func_002C7910  # OVL1
@@ -4361,7 +4361,7 @@
 0x002CE800 0xDC func_002CE800  # OVL1
 0x002CE8E0 0x44 func_002CE8E0  # OVL1
 0x002CE930 0xA4 NetTickThreadEntry__FPv  # OVL1; s1:calls
-0x002CE9E0 0x32C func_002CE9E0  # OVL1
+0x002CE9E0 0x32C Tick__5CGameFf  # OVL1; s1:align
 0x002CED10 0x80 func_002CED10  # OVL1
 0x002CED90 0x68 func_002CED90  # OVL1
 0x002CEE00 0x30 func_002CEE00  # OVL1
@@ -4377,31 +4377,31 @@
 0x002CF2F0 0x88 func_002CF2F0  # OVL1
 0x002CF380 0x90 func_002CF380  # OVL1
 0x002CF410 0xB0 func_002CF410  # OVL1
-0x002CF4C0 0x44 func_002CF4C0  # OVL1
-0x002CF510 0x60 func_002CF510  # OVL1
+0x002CF4C0 0x44 DestroyPool__19CGameStateChangeCmdFv  # OVL1; s1:align
+0x002CF510 0x60 swap<19CGameStateChangeCmd,Q23std32allocator<19CGameStateChangeCmd>>__3stdFRQ23std80__vector_deleter<19CGameStateChangeCmd,Q23std32allocator<19CGameStateChangeCmd>>RQ23std80__vector_deleter<19CGameStateChangeCmd,Q23std32allocator<19CGameStateChangeCmd>>  # OVL1; s1:align
 0x002CF570 0x40 func_002CF570  # OVL1
 0x002CF5B0 0x8 func_002CF5B0  # OVL1
 0x002CF5C0 0x14 func_002CF5C0  # OVL1
-0x002CF5E0 0xA4 func_002CF5E0  # OVL1
+0x002CF5E0 0xA4 CreatePool__19CGameStateChangeCmdFUi  # OVL1; s1:align
 0x002CF690 0x64 Release__19CGameStateChangeCmdFP19CGameStateChangeCmd  # OVL1; s1:exact
-0x002CF700 0x120 func_002CF700  # OVL1
-0x002CF820 0xCC func_002CF820  # OVL1
+0x002CF700 0x120 Acquire__19CGameStateChangeCmdFUiP10CGameStateUi  # OVL1; s1:align
+0x002CF820 0xCC resize__Q23std78__vector_imp<19CGameStateChangeCmd,Q23std32allocator<19CGameStateChangeCmd>,0>FUi  # OVL1; s1:align
 0x002CF8F0 0x8 func_002CF8F0  # OVL1
-0x002CF900 0x68 func_002CF900  # OVL1
+0x002CF900 0x68 __dt__Q23std80__vector_deleter<19CGameStateChangeCmd,Q23std32allocator<19CGameStateChangeCmd>>Fv  # OVL1; s1:align
 0x002CF970 0x290 func_002CF970  # OVL1
 0x002CFC00 0x1D8 func_002CFC00  # OVL1
-0x002CFDE0 0x4C4 func_002CFDE0  # OVL1
-0x002D02B0 0x80 func_002D02B0  # OVL1
+0x002CFDE0 0x4C4 insert__Q23std78__vector_imp<19CGameStateChangeCmd,Q23std32allocator<19CGameStateChangeCmd>,0>FP19CGameStateChangeCmdUiRC19CGameStateChangeCmd  # OVL1; s1:align
+0x002D02B0 0x80 __dt__5CPoolFv  # OVL1; s1:align
 0x002D0330 0xD4 StopEngine__5CGameFv  # OVL1; s1:calls
-0x002D0410 0xAC func_002D0410  # OVL1
+0x002D0410 0xAC StartEngine__5CGameFv  # OVL1; s1:align
 0x002D04C0 0x8 func_002D04C0  # OVL1
 0x002D04D0 0x14 StartPlay__5CGameFv  # OVL1; s1:exact
 0x002D04F0 0xA8 func_002D04F0  # OVL1
-0x002D05A0 0x78 func_002D05A0  # OVL1
+0x002D05A0 0x78 GetNodeByNodeEx__6CGraphFPCv  # OVL1; s1:align
 0x002D0620 0x54 func_002D0620  # OVL1
-0x002D0680 0xF8 func_002D0680  # OVL1
+0x002D0680 0xF8 CreateEdge__6CGraphFP6CGNodeP6CGNode  # OVL1; s1:align
 0x002D0780 0x1A8 func_002D0780  # OVL1
-0x002D0930 0x5C func_002D0930  # OVL1
+0x002D0930 0x5C CreateNode__6CGraphFPCc  # OVL1; s1:align
 0x002D0990 0x1E0 func_002D0990  # OVL1
 0x002D0B70 0x80 func_002D0B70  # OVL1
 0x002D0BF0 0x8 func_002D0BF0  # OVL1
@@ -4490,38 +4490,38 @@
 0x002D4FE0 0x74 func_002D4FE0  # OVL1
 0x002D5060 0x3BC func_002D5060  # OVL1
 0x002D5420 0xC4 Read__Q23zdb5CGridFRQ23zdb9CSaveLoad  # OVL1; s1:calls
-0x002D54F0 0x28 func_002D54F0  # OVL1
-0x002D5520 0xA0 func_002D5520  # OVL1
+0x002D54F0 0x28 GetCell__Q23zdb9CGridAtomFv  # OVL1; s1:align
+0x002D5520 0xA0 DeleteClutter__Q23zdb5CGridFv  # OVL1; s1:align
 0x002D55C0 0x2E8 func_002D55C0  # OVL1
 0x002D58B0 0x2A0 func_002D58B0  # OVL1
 0x002D5B50 0x130 func_002D5B50  # OVL1
 0x002D5C80 0x380 func_002D5C80  # OVL1
-0x002D6000 0xD8 func_002D6000  # OVL1
-0x002D60E0 0xBC func_002D60E0  # OVL1
+0x002D6000 0xD8 Update__Q23zdb5CGridFPQ23zdb5CNode  # OVL1; s1:align
+0x002D60E0 0xBC Remove__Q23zdb5CGridFPQ23zdb5CNode  # OVL1; s1:calls
 0x002D61A0 0x8 func_002D61A0  # OVL1
-0x002D61B0 0xA8 func_002D61B0  # OVL1
-0x002D6260 0x118 func_002D6260  # OVL1
-0x002D6380 0xB0 func_002D6380  # OVL1
-0x002D6430 0x1D8 func_002D6430  # OVL1
-0x002D6610 0x30 func_002D6610  # OVL1
-0x002D6640 0x6C func_002D6640  # OVL1
+0x002D61B0 0xA8 GetNextAtomOrdered__Q23zdb5CGridFv  # OVL1; s1:align
+0x002D6260 0x118 GetNextAtom__Q23zdb5CGridFv  # OVL1; s1:align
+0x002D6380 0xB0 gridGetGridXandZIndex__Q23zdb5CGridFPiPiff  # OVL1; s1:align
+0x002D6430 0x1D8 gridGetNextIndex__Q23zdb5CGridFv  # OVL1; s1:align
+0x002D6610 0x30 StartTraversalOrdered__Q23zdb5CGridFv  # OVL1; s1:align
+0x002D6640 0x6C StartTraversal__Q23zdb5CGridFv  # OVL1; s1:align
 0x002D66B0 0x148 func_002D66B0  # OVL1
 0x002D6800 0x11C func_002D6800  # OVL1
 0x002D6920 0x18C func_002D6920  # OVL1
 0x002D6AB0 0x184 func_002D6AB0  # OVL1
 0x002D6C40 0x1FC func_002D6C40  # OVL1
 0x002D6E40 0x1E8 func_002D6E40  # OVL1
-0x002D7030 0x188 func_002D7030  # OVL1
+0x002D7030 0x188 addOrderedCellAtom__Q23zdb5CGridFiib  # OVL1; s1:align
 0x002D71C0 0x1B0 func_002D71C0  # OVL1
-0x002D7370 0x150 func_002D7370  # OVL1
-0x002D74C0 0xB4 func_002D74C0  # OVL1
+0x002D7370 0x150 SetCellBoundary__Q23zdb5CGridF6CPnt3D6CPnt3D  # OVL1; s1:align
+0x002D74C0 0xB4 gridRemoveNodeFromGrids__Q23zdb5CGridFPQ23zdb5CNode  # OVL1; s1:align
 0x002D7580 0x314 func_002D7580  # OVL1
 0x002D78A0 0x58 gridGetAtomBasePtr__Q23zdb5CGridFii  # OVL1; s1:exact
-0x002D7900 0x70 func_002D7900  # OVL1
-0x002D7970 0x60 func_002D7970  # OVL1
+0x002D7900 0x70 __dt__Q23zdb5CGridFv  # OVL1; s1:align
+0x002D7970 0x60 __ct__Q23zdb5CGridFv  # OVL1; s1:align
 0x002D79D0 0x8 func_002D79D0  # OVL1
 0x002D79E0 0x8 func_002D79E0  # OVL1
-0x002D79F0 0xB8 func_002D79F0  # OVL1
+0x002D79F0 0xB8 GetMidPoint__Q23zdb5CCellFP6CPnt3D  # OVL1; s1:align
 0x002D7AB0 0x40 func_002D7AB0  # OVL1
 0x002D7AF0 0xC func_002D7AF0  # OVL1
 0x002D7B00 0x84 func_002D7B00  # OVL1
@@ -4529,18 +4529,18 @@
 0x002D7BC0 0x180 func_002D7BC0  # OVL1
 0x002D7D40 0x30 func_002D7D40  # OVL1
 0x002D7D70 0x12C func_002D7D70  # OVL1
-0x002D7EA0 0x84 func_002D7EA0  # OVL1
-0x002D7F30 0xD8 func_002D7F30  # OVL1
-0x002D8010 0x2C func_002D8010  # OVL1
-0x002D8040 0x2F0 func_002D8040  # OVL1
-0x002D8330 0x440 func_002D8330  # OVL1
+0x002D7EA0 0x84 UnRegisterEffector__Q23zdb19CClutterAnimManagerFPCv  # OVL1; s1:align
+0x002D7F30 0xD8 RegisterEffector__Q23zdb19CClutterAnimManagerFPCvPC6CPnt3DfPC6CPnt3D  # OVL1; s1:align
+0x002D8010 0x2C Tick__Q23zdb19CClutterAnimManagerFfPv  # OVL1; s1:align
+0x002D8040 0x2F0 l_Tick__Q23zdb19CClutterAnimManagerFfPv  # OVL1; s1:align
+0x002D8330 0x440 ClutterTick__Q23zdb19CClutterAnimManagerFPQ23zdb8CClutter  # OVL1; s1:align
 0x002D8770 0x148 func_002D8770  # OVL1
-0x002D88C0 0x8C func_002D88C0  # OVL1
-0x002D8950 0x114 func_002D8950  # OVL1
+0x002D88C0 0x8C ClearEffectors__Q23zdb19CClutterAnimManagerFv  # OVL1; s1:align
+0x002D8950 0x114 ClearAnimations__Q23zdb19CClutterAnimManagerFb  # OVL1; s1:align
 0x002D8A70 0x14C func_002D8A70  # OVL1
 0x002D8BC0 0x9C __ct__Q23zdb19CClutterAnimManagerFv  # OVL1; s1:calls
-0x002D8C60 0x374 func_002D8C60  # OVL1
-0x002D8FE0 0x3B8 func_002D8FE0  # OVL1
+0x002D8C60 0x374 TickForce__Q23zdb12CClutterAnimFP6CPnt3DP6CPnt3Dff  # OVL1; s1:align
+0x002D8FE0 0x3B8 Render__Q23zdb8CClutterFP6CPnt3D  # OVL1; s1:align
 0x002D93A0 0xE4 func_002D93A0  # OVL1
 0x002D9490 0x20 GetTranslate__Q23zdb8CClutterFv  # OVL1; s1:exact
 0x002D94B0 0xB0 Read__Q23zdb8CClutterFPQ23zar4CZAR  # OVL1; s1:calls
@@ -4548,28 +4548,28 @@
 0x002D96B0 0xF8 func_002D96B0  # OVL1
 0x002D97B0 0x2E4 func_002D97B0  # OVL1
 0x002D9AA0 0x220 func_002D9AA0  # OVL1
-0x002D9CC0 0x3C func_002D9CC0  # OVL1
-0x002D9D00 0xF8 func_002D9D00  # OVL1
-0x002D9E00 0x34 func_002D9E00  # OVL1
+0x002D9CC0 0x3C DeletePad__6CInputFUi  # OVL1; s1:align
+0x002D9D00 0xF8 CreatePad__6CInputFUi  # OVL1; s1:align
+0x002D9E00 0x34 Uninit__6CInputFv  # OVL1; s1:align
 0x002D9E40 0x58 func_002D9E40  # OVL1
 0x002D9EA0 0x7C func_002D9EA0  # OVL1
-0x002D9F20 0x7C func_002D9F20  # OVL1
+0x002D9F20 0x7C Init__6CInputFv  # OVL1; s1:calls
 0x002D9FA0 0x48 func_002D9FA0  # OVL1
 0x002D9FF0 0x168 func_002D9FF0  # OVL1
-0x002DA160 0x20 func_002DA160  # OVL1
-0x002DA180 0x38 func_002DA180  # OVL1
+0x002DA160 0x20 SetButtonState__4CPadF10PAD_BUTTON9KEY_STATE  # OVL1; s1:align
+0x002DA180 0x38 GetTwoButtons__4CPadF10PAD_BUTTON10PAD_BUTTON  # OVL1; s1:align
 0x002DA1C0 0x40 func_002DA1C0  # OVL1
-0x002DA200 0x19C func_002DA200  # OVL1
+0x002DA200 0x19C Dilate__4CPadFRfRfi  # OVL1; s1:align
 0x002DA3A0 0x240 func_002DA3A0  # OVL1
-0x002DA5E0 0xE0 func_002DA5E0  # OVL1
+0x002DA5E0 0xE0 ReadControlFile__10CStickTypeFi  # OVL1; s1:align
 0x002DA6C0 0xD8 func_002DA6C0  # OVL1
 0x002DA7A0 0x24 func_002DA7A0  # OVL1
-0x002DA7D0 0x2C func_002DA7D0  # OVL1
+0x002DA7D0 0x2C SetDeadZone__4CPadFif  # OVL1; s1:align
 0x002DA800 0xA0 func_002DA800  # OVL1
 0x002DA8A0 0x8C func_002DA8A0  # OVL1
 0x002DA930 0x10B4 func_002DA930  # OVL1
-0x002DB9F0 0x68 func_002DB9F0  # OVL1
-0x002DBA60 0x11C func_002DBA60  # OVL1
+0x002DB9F0 0x68 __dt__4CPadFv  # OVL1; s1:align
+0x002DBA60 0x11C Flush__4CPadFv  # OVL1; s1:align
 0x002DBB80 0x10 func_002DBB80  # OVL1
 0x002DBB90 0x148 func_002DBB90  # OVL1
 0x002DBCE0 0x2C func_002DBCE0  # OVL1
@@ -4579,25 +4579,25 @@
 0x002DBEF0 0x8 func_002DBEF0  # OVL1
 0x002DBF00 0x40 func_002DBF00  # OVL1
 0x002DBF40 0x8 func_002DBF40  # OVL1
-0x002DBF50 0x44 func_002DBF50  # OVL1
+0x002DBF50 0x44 __dt__9CKeyboardFv  # OVL1; s1:align
 0x002DBFA0 0xC func_002DBFA0  # OVL1
 0x002DBFB0 0xD8 func_002DBFB0  # OVL1
 0x002DC090 0xBC func_002DC090  # OVL1
 0x002DC150 0x30 func_002DC150  # OVL1
-0x002DC180 0x2C func_002DC180  # OVL1
-0x002DC1B0 0x20 func_002DC1B0  # OVL1
-0x002DC1D0 0x38 func_002DC1D0  # OVL1
+0x002DC180 0x2C IsInside__Q23zdb15IntersectStructFv  # OVL1; s1:align
+0x002DC1B0 0x20 GetRegion__Q23zdb15IntersectStructFv  # OVL1; s1:align
+0x002DC1D0 0x38 GetMaterial__Q23zdb15IntersectStructFv  # OVL1; s1:align
 0x002DC210 0xD0 Read__Q23zdb3CDIFRQ23zdb9CSaveLoad  # OVL1; s1:calls
-0x002DC2E0 0xA0 func_002DC2E0  # OVL1
-0x002DC380 0x5C func_002DC380  # OVL1
+0x002DC2E0 0xA0 Create__Q23zdb3CDIFRQ23zdb9CSaveLoad  # OVL1; s1:align
+0x002DC380 0x5C Free__Q23zdb3CDIFv  # OVL1; s1:align
 0x002DC3E0 0x14 func_002DC3E0  # OVL1
-0x002DC400 0x50 func_002DC400  # OVL1
-0x002DC450 0x68 func_002DC450  # OVL1
+0x002DC400 0x50 Allocate__Q23zdb3CDIFi  # OVL1; s1:align
+0x002DC450 0x68 __dt__Q23zdb3CDIFv  # OVL1; s1:align
 0x002DC4C0 0x158 func_002DC4C0  # OVL1
 0x002DC620 0x38 func_002DC620  # OVL1
 0x002DC660 0x20 func_002DC660  # OVL1
-0x002DC680 0x60 func_002DC680  # OVL1
-0x002DC6E0 0xB4 func_002DC6E0  # OVL1
+0x002DC680 0x60 __dt__Q23zdb11DiIntersectFv  # OVL1; s1:align
+0x002DC6E0 0xB4 __ct__Q23zdb11DiIntersectFi  # OVL1; s1:align
 0x002DC7A0 0x52C func_002DC7A0  # OVL1
 0x002DCCD0 0xC4 func_002DCCD0  # OVL1
 0x002DCDA0 0x280 func_002DCDA0  # OVL1
@@ -5445,71 +5445,71 @@
 0x00314540 0x218 func_00314540  # OVL1
 0x00314760 0x270 func_00314760  # OVL1
 0x003149D0 0x8 func_003149D0  # OVL1
-0x003149E0 0x30 func_003149E0  # OVL1
-0x00314A10 0x20 func_00314A10  # OVL1; tu: node_main.cpp~ (1.0 beta)
-0x00314A30 0x44 func_00314A30  # OVL1
-0x00314A80 0x7C func_00314A80  # OVL1
-0x00314B00 0xB8 func_00314B00  # OVL1
-0x00314BC0 0x84 func_00314BC0  # OVL1
+0x003149E0 0x30 GetAtom__Q23zdb5CNodeFi  # OVL1; s1:align
+0x00314A10 0x20 InsertAtom__Q23zdb5CNodeFPQ23zdb9CGridAtom  # OVL1; tu: node_main.cpp~ (1.0 beta); s1:align
+0x00314A30 0x44 FreeAtom__Q23zdb5CNodeFv  # OVL1; s1:align
+0x00314A80 0x7C ShrinkAtomBasePtrs__Q23zdb5CNodeFv  # OVL1; s1:align
+0x00314B00 0xB8 AllocateAtomBasePtrs__Q23zdb5CNodeFii  # OVL1; s1:align
+0x00314BC0 0x84 DeleteChildren__Q23zdb5CNodeFv  # OVL1; s1:align
 0x00314C50 0x208 func_00314C50  # OVL1
 0x00314E60 0x80 func_00314E60  # OVL1
-0x00314EE0 0x74 func_00314EE0  # OVL1
+0x00314EE0 0x74 SetName__Q23zdb5CNodeFPCc  # OVL1; s1:align
 0x00314F60 0x134 SetTexture__Q23zdb9CLightMapFPQ23zdb8CTexture  # OVL1; s1:calls
-0x003150A0 0x70 func_003150A0  # OVL1
+0x003150A0 0x70 __dt__Q23zdb9CLightMapFv  # OVL1; s1:align
 0x00315110 0xE4 func_00315110  # OVL1
-0x00315200 0x6C func_00315200  # OVL1
-0x00315270 0x60 func_00315270  # OVL1
-0x003152D0 0x60 func_003152D0  # OVL1
+0x00315200 0x6C UpdateBBox__Q23zdb6CLightFb  # OVL1; s1:align
+0x00315270 0x60 __dt__Q23zdb6CLightFv  # OVL1; s1:align
+0x003152D0 0x60 __ct__Q23zdb6CLightFv  # OVL1; s1:align
 0x00315330 0x124 func_00315330  # OVL1
 0x00315460 0x114 _Copy__Q23zdb6CLightCFPQ23zdb5CNode  # OVL1; s1:calls
 0x00315580 0x48 func_00315580  # OVL1
 0x003155D0 0x6C func_003155D0  # OVL1
-0x00315640 0x58 func_00315640  # OVL1
+0x00315640 0x58 GetRadiusSq__Q23zdb5CNodeFv  # OVL1; s1:align
 0x003156A0 0x28 GetRotation__Q23zdb5CNodeCFP6CPnt3D  # OVL1; tu: node_main.cpp~ (1.0 beta); s1:exact
 0x003156D0 0x8 func_003156D0  # OVL1
 0x003156E0 0x20 GetScale__Q23zdb5CNodeFP6CPnt3D  # OVL1; tu: node_main.cpp~ (1.0 beta); s1:exact
 0x00315700 0x8 func_00315700  # OVL1
 0x00315710 0x28 func_00315710  # OVL1
 0x00315740 0x1C func_00315740  # OVL1
-0x00315760 0x30 func_00315760  # OVL1
-0x00315790 0x38 func_00315790  # OVL1
-0x003157D0 0x44 func_003157D0  # OVL1
-0x00315820 0x40 func_00315820  # OVL1
-0x00315860 0x4C func_00315860  # OVL1
+0x00315760 0x30 SetRotation__Q23zdb5CNodeFPC6CPnt3D  # OVL1; s1:align
+0x00315790 0x38 SetRotation__Q23zdb5CNodeFRC5CQuat  # OVL1; s1:align
+0x003157D0 0x44 SetPosition__Q23zdb5CNodeFfff  # OVL1; s1:align
+0x00315820 0x40 SetMatrix__Q23zdb5CNodeFPC7CMatrix  # OVL1; s1:align
+0x00315860 0x4C UpdateGrid__Q23zdb5CNodeFv  # OVL1; s1:align
 0x003158B0 0x1C4 func_003158B0  # OVL1
-0x00315A80 0x10C func_00315A80  # OVL1
+0x00315A80 0x10C FindChild__Q23zdb5CNodeFPQ23zdb5CNodeb  # OVL1; s1:align
 0x00315B90 0x164 func_00315B90  # OVL1
-0x00315D00 0x164 func_00315D00  # OVL1
+0x00315D00 0x164 FindChild__Q23zdb5CNodeFPCcb  # OVL1; s1:align
 0x00315E70 0xC4 func_00315E70  # OVL1
-0x00315F40 0x170 func_00315F40  # OVL1
+0x00315F40 0x170 AddChild__Q23zdb5CNodeFPQ23zdb5CNode  # OVL1; s1:align
 0x003160B0 0x10 func_003160B0  # OVL1
 0x003160C0 0x34 RemoveFromParent__Q23zdb5CNodeFv  # OVL1; tu: node_main.cpp~ (1.0 beta); s1:exact
 0x00316100 0x1A8 func_00316100  # OVL1
 0x003162B0 0x22C func_003162B0  # OVL1
-0x003164E0 0x114 func_003164E0  # OVL1
+0x003164E0 0x114 AddVisual__Q23zdb5CNodeFPQ23zdb7CVisual  # OVL1; s1:align
 0x00316600 0x10 ReserveVisuals__Q23zdb5CNodeFi  # OVL1; s1:exact
-0x00316610 0x154 func_00316610  # OVL1
+0x00316610 0x154 SetParentHasVisuals__Q23zdb5CNodeFv  # OVL1; s1:align
 0x00316770 0x80 func_00316770  # OVL1
-0x003167F0 0x28 func_003167F0  # OVL1
+0x003167F0 0x28 Release__Q23zdb5CNodeFv  # OVL1; s1:align
 0x00316820 0x5E4 func_00316820  # OVL1
 0x00316E10 0x20 func_00316E10  # OVL1
 0x00316E30 0x224 func_00316E30  # OVL1
-0x00317060 0x64C func_00317060  # OVL1
+0x00317060 0x64C InitNodeParams__3zdbFPQ23zdb15tag_NODE_PARAMSPCQ23zdb15tag_NODE_PARAMS  # OVL1; s1:align
 0x003176B0 0x6C func_003176B0  # OVL1
 0x00317720 0x78 func_00317720  # OVL1
 0x003177A0 0x18 func_003177A0  # OVL1
-0x003177C0 0x60 func_003177C0  # OVL1
+0x003177C0 0x60 __dt__Q23zdb14CTickLightListFv  # OVL1; s1:align
 0x00317820 0x80 func_00317820  # OVL1
-0x003178A0 0xA4 func_003178A0  # OVL1
+0x003178A0 0xA4 SetModel__Q23zdb5CNodeFPQ23zdb6CModel  # OVL1; s1:align
 0x00317950 0x138 func_00317950  # OVL1
-0x00317A90 0x5C func_00317A90  # OVL1
-0x00317AF0 0x124 func_00317AF0  # OVL1
+0x00317A90 0x5C CreateXRef__Q23zdb5CNodeFv  # OVL1; s1:calls
+0x00317AF0 0x124 CreateXRef__Q23zdb5CNodeFPQ23zdb6CModelPC6CPnt3DPC5CQuat  # OVL1; s1:calls
 0x00317C20 0x164 func_00317C20  # OVL1
 0x00317D90 0x12C func_00317D90  # OVL1
-0x00317EC0 0x24 func_00317EC0  # OVL1
-0x00317EF0 0x74 func_00317EF0  # OVL1
+0x00317EC0 0x24 GetFirstVisual__Q23zdb5CNodeFv  # OVL1; s1:align
+0x00317EF0 0x74 GetSubMesh__Q23zdb5CNodeFv  # OVL1; s1:align
 0x00317F70 0x50 func_00317F70  # OVL1
-0x00317FC0 0x240 func_00317FC0  # OVL1
+0x00317FC0 0x240 ComputeFacadeMatrix__Q23zdb5CNodeFPC7CMatrixP7CMatrix  # OVL1; s1:align
 0x00318200 0x30 func_00318200  # OVL1
 0x00318230 0x478 func_00318230  # OVL1
 0x003186B0 0x214 func_003186B0  # OVL1
@@ -5517,7 +5517,7 @@
 0x00318930 0x1AC func_00318930  # OVL1
 0x00318AE0 0x150 func_00318AE0  # OVL1
 0x00318C30 0x8 func_00318C30  # OVL1
-0x00318C40 0x6C func_00318C40  # OVL1
+0x00318C40 0x6C __ct__Q23zdb6CModelFPCc  # OVL1; s1:calls
 0x00318CB0 0xEC func_00318CB0  # OVL1
 0x00318DA0 0x7D8 func_00318DA0  # OVL1
 0x00319580 0x20 func_00319580  # OVL1; s1~ SetStance__11CSealCtrlAiF11SEAL_STANCE was given by the exact pass while its relocation masks sat 1 MB off; a `return g(x);` wrapper, unproven
@@ -5528,23 +5528,23 @@
 0x00319C90 0x274 func_00319C90  # OVL1
 0x00319F10 0x8 func_00319F10  # OVL1
 0x00319F20 0x1B4 func_00319F20  # OVL1
-0x0031A0E0 0x60 func_0031A0E0  # OVL1
-0x0031A140 0x3C func_0031A140  # OVL1
+0x0031A0E0 0x60 __dt__Q23zdb9CSaveLoadFv  # OVL1; s1:align
+0x0031A140 0x3C __ct__Q23zdb9CSaveLoadFv  # OVL1; s1:align
 0x0031A180 0x78C func_0031A180  # OVL1
-0x0031A910 0x90 func_0031A910  # OVL1
+0x0031A910 0x90 __dt__Q23zdb10CRenderMapFv  # OVL1; s1:align
 0x0031A9A0 0x488 func_0031A9A0  # OVL1
 0x0031AE30 0x90 func_0031AE30  # OVL1
-0x0031AEC0 0xA4 func_0031AEC0  # OVL1
+0x0031AEC0 0xA4 SetDIBBox__FPQ23zdb5CNodePC5CBBoxb  # OVL1; s1:align
 0x0031AF70 0xB0 func_0031AF70  # OVL1
 0x0031B020 0x6C func_0031B020  # OVL1
 0x0031B090 0x2C func_0031B090  # OVL1; tu: node_world.cpp~ (1.0 beta)
 0x0031B0C0 0x64 func_0031B0C0  # OVL1
-0x0031B130 0x80 func_0031B130  # OVL1
-0x0031B1B0 0x198 func_0031B1B0  # OVL1
+0x0031B130 0x80 Reset__5CWindFv  # OVL1; s1:align
+0x0031B1B0 0x198 TickGoal__5CWindFf  # OVL1; s1:align
 0x0031B350 0x418 Tick__5CWindFf  # OVL1; s1:calls
-0x0031B770 0x230 func_0031B770  # OVL1
-0x0031B9A0 0x94C func_0031B9A0  # OVL1
-0x0031C2F0 0x2C func_0031C2F0  # OVL1; tu: node_world.cpp~ (1.0 beta)
+0x0031B770 0x230 CmdTickWind__5CWindFP14_zanim_cmd_hdrPf  # OVL1; s1:align
+0x0031B9A0 0x94C CmdParseWind__5CWindFP5_zrdr  # OVL1; s1:align
+0x0031C2F0 0x2C RegisterAnimCommands__5CWindFv  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:align
 0x0031C320 0x11C func_0031C320  # OVL1
 0x0031C440 0x324 func_0031C440  # OVL1
 0x0031C770 0x10C func_0031C770  # OVL1
@@ -5559,64 +5559,64 @@
 0x0031CCE0 0x40 func_0031CCE0  # OVL1
 0x0031CD20 0x8 func_0031CD20  # OVL1
 0x0031CD30 0x14 func_0031CD30  # OVL1
-0x0031CD50 0x124 func_0031CD50  # OVL1
+0x0031CD50 0x124 WipeoutTextureAssetCharacters__Q23zdb6CWorldFv  # OVL1; s1:align
 0x0031CE80 0x40 func_0031CE80  # OVL1
 0x0031CEC0 0x8 func_0031CEC0  # OVL1
 0x0031CED0 0x80 func_0031CED0  # OVL1
 0x0031CF50 0x144 func_0031CF50  # OVL1
 0x0031D0A0 0x88 func_0031D0A0  # OVL1
 0x0031D130 0x88 func_0031D130  # OVL1
-0x0031D1C0 0x60 func_0031D1C0  # OVL1
+0x0031D1C0 0x60 AddTextureAssetDecals__Q23zdb6CWorldFPQ23zdb10CTexHandle  # OVL1; s1:align
 0x0031D220 0x38 func_0031D220  # OVL1
 0x0031D260 0x330 func_0031D260  # OVL1
 0x0031D590 0x48 func_0031D590  # OVL1; tu: node_world.cpp~ (1.0 beta)
 0x0031D5E0 0x48 func_0031D5E0  # OVL1; tu: node_world.cpp~ (1.0 beta)
 0x0031D630 0xB8 func_0031D630  # OVL1
-0x0031D6F0 0x12C func_0031D6F0  # OVL1
-0x0031D820 0x114 func_0031D820  # OVL1
+0x0031D6F0 0x12C DismemberWorldModel__Q23zdb6CWorldFv  # OVL1; s1:align
+0x0031D820 0x114 Segregate_CCells__Q23zdb6CWorldFPQ23zdb5CNodeRQ23zdb11CNodeVectorRQ23zdb11CNodeVector  # OVL1; s1:align
 0x0031D940 0x34C func_0031D940  # OVL1
 0x0031DC90 0xA8 func_0031DC90  # OVL1
 0x0031DD40 0x20 ClearIgnoreNodeDelayed__Q23zdb6CWorldFPQ23zdb11DiIntersect  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:exact
 0x0031DD60 0x30 RegIgnoreNodeDelayed__Q23zdb6CWorldFPQ23zdb11DiIntersectPQ23zdb5CNode  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:exact
-0x0031DD90 0xA0 func_0031DD90  # OVL1
-0x0031DE30 0x3C func_0031DE30  # OVL1
+0x0031DD90 0xA0 RegIntersectDelayed__Q23zdb6CWorldFPQ23zdb11DiIntersectPC6CPnt3DPC6CPnt3D  # OVL1; s1:align
+0x0031DE30 0x3C diTick__Q23zdb6CWorldFfPv  # OVL1; s1:align
 0x0031DE70 0x8 func_0031DE70  # OVL1
 0x0031DE80 0x8 func_0031DE80  # OVL1
 0x0031DE90 0x10 func_0031DE90  # OVL1
 0x0031DEA0 0xA8 func_0031DEA0  # OVL1
-0x0031DF50 0x78 func_0031DF50  # OVL1; tu: node_world.cpp~ (1.0 beta)
+0x0031DF50 0x78 GetAltitude__Q23zdb6CWorldFPC6CPnt3Df  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:align
 0x0031DFD0 0xC8 func_0031DFD0  # OVL1
 0x0031E0A0 0xB8 func_0031E0A0  # OVL1
-0x0031E160 0x68 func_0031E160  # OVL1; tu: node_world.cpp~ (1.0 beta)
-0x0031E1D0 0x7C func_0031E1D0  # OVL1; tu: node_world.cpp~ (1.0 beta)
+0x0031E160 0x68 GetIntersects__Q23zdb6CWorldFPC6CPnt3DPC6CPnt3D  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:align
+0x0031E1D0 0x7C GetIntersect__Q23zdb6CWorldFPC6CPnt3DPC6CPnt3D  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:align
 0x0031E250 0xCC func_0031E250  # OVL1
-0x0031E320 0xAC func_0031E320  # OVL1
-0x0031E3D0 0x4C func_0031E3D0  # OVL1; tu: node_world.cpp~ (1.0 beta)
-0x0031E420 0x78 func_0031E420  # OVL1
+0x0031E320 0xAC FindLandmark__Q23zdb6CWorldFPCc  # OVL1; s1:align
+0x0031E3D0 0x4C DeleteLandmark__Q23zdb6CWorldFPQ23zdb5CNode  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:align
+0x0031E420 0x78 AddLandmark__Q23zdb6CWorldFPQ23zdb5CNode  # OVL1; s1:align
 0x0031E4A0 0xA4 func_0031E4A0  # OVL1
 0x0031E550 0x128 func_0031E550  # OVL1
-0x0031E680 0x38 func_0031E680  # OVL1; tu: node_world.cpp~ (1.0 beta)
+0x0031E680 0x38 ReleaseLightList__Q23zdb6CWorldFv  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:align
 0x0031E6C0 0x1D4 func_0031E6C0  # OVL1
 0x0031E8A0 0x1F4 func_0031E8A0  # OVL1
-0x0031EAA0 0x80 func_0031EAA0  # OVL1
-0x0031EB20 0x174 func_0031EB20  # OVL1
-0x0031ECA0 0x160 func_0031ECA0  # OVL1
+0x0031EAA0 0x80 ReleaseLandmarkList__Q23zdb6CWorldFv  # OVL1; s1:align
+0x0031EB20 0x174 GenerateLandmarkList__Q23zdb6CWorldFv  # OVL1; s1:align
+0x0031ECA0 0x160 LandmarkList_Search__Q23zdb6CWorldFPQ23zdb5CNodeR6CStackRQ23zdb11CNodeVector  # OVL1; s1:align
 0x0031EE00 0x94 Update__Q23zdb6CWorldFv  # OVL1; s1:calls
 0x0031EEA0 0x274 func_0031EEA0  # OVL1
 0x0031F120 0x114 func_0031F120  # OVL1
-0x0031F240 0x1E8 func_0031F240  # OVL1
+0x0031F240 0x1E8 AddChild__Q23zdb6CWorldFPQ23zdb5CNode  # OVL1; s1:align
 0x0031F430 0x10 func_0031F430  # OVL1
 0x0031F440 0xB8 func_0031F440  # OVL1
 0x0031F500 0x68 func_0031F500  # OVL1
 0x0031F570 0x204 func_0031F570  # OVL1
 0x0031F780 0x228 func_0031F780  # OVL1
-0x0031F9B0 0xD8 func_0031F9B0  # OVL1
+0x0031F9B0 0xD8 GarbageCollect__Q23zdb6CWorldFv  # OVL1; s1:align
 0x0031FA90 0x28 func_0031FA90  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
-0x0031FAC0 0x8C func_0031FAC0  # OVL1
+0x0031FAC0 0x8C AddShadow__Q23zdb6CWorldFPQ23zdb5CNode  # OVL1; s1:align
 0x0031FB50 0x138 func_0031FB50  # OVL1
-0x0031FC90 0x80 func_0031FC90  # OVL1
-0x0031FD10 0x10 func_0031FD10  # OVL1
-0x0031FD20 0xDC func_0031FD20  # OVL1
+0x0031FC90 0x80 AddLightMap__Q23zdb6CWorldFPQ23zdb9CLightMap  # OVL1; s1:align
+0x0031FD10 0x10 GetModel__Q23zdb6CWorldFPCc  # OVL1; s1:exact
+0x0031FD20 0xDC Initalize__Q23zdb6CWorldFv  # OVL1; s1:align
 0x0031FE00 0x50C func_0031FE00  # OVL1
 0x00320310 0x344 func_00320310  # OVL1
 0x00320660 0x78 func_00320660  # OVL1
@@ -5628,11 +5628,11 @@
 0x00320800 0x110 func_00320800  # OVL1
 0x00320910 0xE4 func_00320910  # OVL1
 0x00320A00 0xB4 func_00320A00  # OVL1
-0x00320AC0 0x94 func_00320AC0  # OVL1
+0x00320AC0 0x94 ReleaseLibRef__Q23zdb9CAssetMgrFPQ23zdb9CAssetLib  # OVL1; s1:align
 0x00320B60 0x208 func_00320B60  # OVL1
 0x00320D70 0x128 func_00320D70  # OVL1
 0x00320EA0 0x64 func_00320EA0  # OVL1
-0x00320F10 0xA4 func_00320F10  # OVL1
+0x00320F10 0xA4 GetModel__Q23zdb10CAssetListFPCc  # OVL1; s1:align
 0x00320FC0 0x88 func_00320FC0  # OVL1
 0x00321050 0x88 func_00321050  # OVL1
 0x003210E0 0x48 func_003210E0  # OVL1
@@ -5642,10 +5642,10 @@
 0x00321400 0xC4 func_00321400  # OVL1
 0x003214D0 0x2C func_003214D0  # OVL1
 0x00321500 0xD0 func_00321500  # OVL1
-0x003215D0 0x88 func_003215D0  # OVL1
+0x003215D0 0x88 AddPalette__Q23zdb9CAssetLibFPQ23zdb11CTexPaletteb  # OVL1; s1:align
 0x00321660 0xC func_00321660  # OVL1
 0x00321670 0x90 func_00321670  # OVL1
-0x00321700 0xBC func_00321700  # OVL1
+0x00321700 0xBC AddTexture__Q23zdb9CAssetLibFPCc  # OVL1; s1:align
 0x003217C0 0x140 IsNamed__Q23zdb9CAssetLibFPCc  # OVL1; s1:calls
 0x00321900 0x88 func_00321900  # OVL1
 0x00321990 0x2E8 func_00321990  # OVL1
@@ -5654,22 +5654,22 @@
 0x00321D40 0x68 func_00321D40  # OVL1
 0x00321DB0 0x48 func_00321DB0  # OVL1
 0x00321E00 0x98 func_00321E00  # OVL1
-0x00321EA0 0x44 func_00321EA0  # OVL1
+0x00321EA0 0x44 __dt__Q23zdb8CVisDataFv  # OVL1; s1:align
 0x00321EF0 0x4C func_00321EF0  # OVL1
 0x00321F40 0x10 func_00321F40  # OVL1
 0x00321F50 0x180 func_00321F50  # OVL1
 0x003220D0 0xF0 func_003220D0  # OVL1
-0x003221C0 0x2C func_003221C0  # OVL1
+0x003221C0 0x2C Uninit__Q23zdb7CRippleFv  # OVL1; s1:align
 0x003221F0 0x8 func_003221F0  # OVL1
 0x00322200 0x90 func_00322200  # OVL1
 0x00322290 0xD8 func_00322290  # OVL1
 0x00322370 0x60 func_00322370  # OVL1
-0x003223D0 0x9C func_003223D0  # OVL1
-0x00322470 0x104 func_00322470  # OVL1
-0x00322580 0x278 func_00322580  # OVL1
+0x003223D0 0x9C ReleaseInstance__8ParticleFPQ23zdb5CNode  # OVL1; s1:align
+0x00322470 0x104 GetFreeInstance__8ParticleFv  # OVL1; s1:align
+0x00322580 0x278 DestructionManager__8ParticleFPQ23zdb5CNodePcP6CPnt4DfP6CPnt3DP6CPnt3DP6CPnt3DP6CPnt3Dif  # OVL1; s1:align
 0x00322800 0x5E4 func_00322800  # OVL1
 0x00322DF0 0x17BC func_00322DF0  # OVL1
-0x003245B0 0x13C func_003245B0  # OVL1
+0x003245B0 0x13C PullVisuals__8ParticleFPQ23zdb5CNodePQ23zdb9CDIVector  # OVL1; s1:align
 0x003246F0 0x2C func_003246F0  # OVL1
 0x00324720 0x7C func_00324720  # OVL1
 0x003247A0 0x7C func_003247A0  # OVL1
@@ -5678,13 +5678,13 @@
 0x003249D0 0x34 func_003249D0  # OVL1
 0x00324A10 0x50 AddDynTexture__8ParticleFPQ23zdb10CTexHandle  # OVL1; s1:exact
 0x00324A60 0xC func_00324A60  # OVL1
-0x00324A70 0xAC func_00324A70  # OVL1
+0x00324A70 0xAC Tick__8ParticleFfPv  # OVL1; s1:align
 0x00324B20 0x104 Open__8ParticleFv  # OVL1; s1:calls
-0x00324C30 0x34 func_00324C30  # OVL1
-0x00324C70 0x13C func_00324C70  # OVL1
+0x00324C30 0x34 Init__8ParticleFv  # OVL1; s1:align
+0x00324C70 0x13C DrawRange__8ParticleFff  # OVL1; s1:align
 0x00324DB0 0x2CC func_00324DB0  # OVL1
 0x00325080 0x28 func_00325080  # OVL1
-0x003250B0 0xFC func_003250B0  # OVL1
+0x003250B0 0xFC DrawFlush__8ParticleFv  # OVL1; s1:align
 0x003251B0 0x3CC func_003251B0  # OVL1
 0x00325580 0x73C func_00325580  # OVL1
 0x00325CC0 0x68C func_00325CC0  # OVL1
@@ -5697,7 +5697,7 @@
 0x00326FB0 0x40 func_00326FB0  # OVL1
 0x00326FF0 0x140 func_00326FF0  # OVL1
 0x00327130 0x9C func_00327130  # OVL1
-0x003271D0 0x38C func_003271D0  # OVL1
+0x003271D0 0x38C Tick__Q28Particle20Destruction_InstanceFf  # OVL1; s1:align
 0x00327560 0x4C func_00327560  # OVL1
 0x003275B0 0x70 func_003275B0  # OVL1
 0x00327620 0x14C func_00327620  # OVL1
@@ -5805,25 +5805,25 @@
 0x0032DF80 0x11C func_0032DF80  # OVL1
 0x0032E0A0 0xD0 func_0032E0A0  # OVL1
 0x0032E170 0xD8 func_0032E170  # OVL1
-0x0032E250 0x1AC func_0032E250  # OVL1
+0x0032E250 0x1AC zrdr_tobool__FPC5_zrdrPb  # OVL1; s1:align
 0x0032E400 0x1F8 func_0032E400  # OVL1
 0x0032E600 0x218 func_0032E600  # OVL1
 0x0032E820 0x108 func_0032E820  # OVL1
-0x0032E930 0x34 func_0032E930  # OVL1
+0x0032E930 0x34 zrdr_finduint__FPC5_zrdrPCcPUii  # OVL1; s1:align
 0x0032E970 0x108 func_0032E970  # OVL1
 0x0032EA80 0x100 func_0032EA80  # OVL1
 0x0032EB80 0xA0 func_0032EB80  # OVL1
 0x0032EC20 0x1E8 func_0032EC20  # OVL1
 0x0032EE10 0x10C func_0032EE10  # OVL1
-0x0032EF20 0x70 func_0032EF20  # OVL1
-0x0032EF90 0x13C func_0032EF90  # OVL1
+0x0032EF20 0x70 zrdr_nexttag__FPC5_zrdrPCcP5_zrdr  # OVL1; s1:align
+0x0032EF90 0x13C _zrdr_nexttag__FPC5_zrdrPCciP5_zrdr  # OVL1; s1:align
 0x0032F0D0 0x8 func_0032F0D0  # OVL1
 0x0032F0E0 0x11C func_0032F0E0  # OVL1
 0x0032F200 0xFC func_0032F200  # OVL1
-0x0032F300 0x44 func_0032F300  # OVL1
+0x0032F300 0x44 __dt__5_zrdrFv  # OVL1; s1:align
 0x0032F350 0x3C func_0032F350  # OVL1
 0x0032F390 0x218 func_0032F390  # OVL1
-0x0032F5B0 0x4C func_0032F5B0  # OVL1
+0x0032F5B0 0x4C zrdr_findfile__FPCcPCc  # OVL1; s1:align
 0x0032F600 0x20 func_0032F600  # OVL1
 0x0032F620 0x8 func_0032F620  # OVL1
 0x0032F630 0x4D8 zrdr_read__FPCcPCci  # OVL1; s1:callee
@@ -5957,17 +5957,17 @@
 0x00336A10 0x44 func_00336A10  # OVL1
 0x00336A60 0x1A8 func_00336A60  # OVL1
 0x00336C10 0x9C RenderUiNode__5CPipeFPQ23zdb5CNode  # OVL1; s1:callee
-0x00336CB0 0x2A4 func_00336CB0  # OVL1
+0x00336CB0 0x2A4 Render__Q25CPipe6CAlphaFv  # OVL1; s1:align
 0x00336F60 0x244 func_00336F60  # OVL1
 0x003371B0 0x1F8 func_003371B0  # OVL1
 0x003373B0 0x10C func_003373B0  # OVL1
 0x003374C0 0x3DC func_003374C0  # OVL1
 0x003378A0 0x100 func_003378A0  # OVL1
 0x003379A0 0x60 func_003379A0  # OVL1
-0x00337A00 0x2D0 func_00337A00  # OVL1
+0x00337A00 0x2D0 RenderMeshShadow__5CPipeFPQ23zdb5CNodePQ23zdb5CMeshP7CMatrix  # OVL1; s1:align
 0x00337CD0 0x264 func_00337CD0  # OVL1
 0x00337F40 0x2AC func_00337F40  # OVL1
-0x003381F0 0x1FC func_003381F0  # OVL1
+0x003381F0 0x1FC SaveDelayedNode__5CPipeFP7CMatrixPQ23zdb5CNodeQ23zdb12tag_ZVIS_FOV  # OVL1; s1:align
 0x003383F0 0x88 func_003383F0  # OVL1
 0x00338480 0x538 func_00338480  # OVL1
 0x003389C0 0x5E0 func_003389C0  # OVL1
@@ -5977,14 +5977,14 @@
 0x00339AD0 0x218 func_00339AD0  # OVL1
 0x00339CF0 0xE8 func_00339CF0  # OVL1
 0x00339DE0 0x1328 func_00339DE0  # OVL1
-0x0033B110 0x114 func_0033B110  # OVL1
+0x0033B110 0x114 RenderAtom__5CPipeFPQ23zdb5CNode  # OVL1; s1:align
 0x0033B230 0x134 func_0033B230  # OVL1
 0x0033B370 0xB0 func_0033B370  # OVL1
 0x0033B420 0xE0 func_0033B420  # OVL1
 0x0033B500 0x68 func_0033B500  # OVL1
 0x0033B570 0x40 func_0033B570  # OVL1
 0x0033B5B0 0x40 func_0033B5B0  # OVL1
-0x0033B5F0 0x12C func_0033B5F0  # OVL1
+0x0033B5F0 0x12C RenderLineWorld__F6CPnt4D6CPnt4D6CPnt4D6CPnt4D  # OVL1; s1:align
 0x0033B720 0x154 func_0033B720  # OVL1
 0x0033B880 0x70 func_0033B880  # OVL1
 0x0033B8F0 0x40 func_0033B8F0  # OVL1
@@ -6007,10 +6007,10 @@
 0x0033BC70 0x8 func_0033BC70  # OVL1
 0x0033BC80 0x14 func_0033BC80  # OVL1
 0x0033BCA0 0x2C Uninit__5CPipeFv  # OVL1; s1:calls
-0x0033BCD0 0x50 func_0033BCD0  # OVL1
+0x0033BCD0 0x50 Init__5CPipeFv  # OVL1; s1:align
 0x0033BD20 0x68 func_0033BD20  # OVL1
 0x0033BD90 0xD4 func_0033BD90  # OVL1
-0x0033BE70 0xB4 func_0033BE70  # OVL1
+0x0033BE70 0xB4 FIFO_Signal__5CPipeFPQ23zdb12CGSTexBuffer  # OVL1; s1:align
 0x0033BF30 0xD4 FIFO_Signal__5CPipeFPQ23zdb12CGSTexBufferPUi  # OVL1; s1:calls
 0x0033C010 0x104 func_0033C010  # OVL1
 0x0033C120 0xA0 func_0033C120  # OVL1
@@ -6068,9 +6068,9 @@
 0x0033F220 0x3C snd_AutoReverb  # OVL1; s1:exact
 0x0033F260 0x40 func_0033F260  # OVL1
 0x0033F2A0 0x34 snd_SetReverbType  # OVL1; s1:exact
-0x0033F2E0 0x34 func_0033F2E0  # OVL1
+0x0033F2E0 0x34 snd_StreamSafeCdGetError  # OVL1; s1:align
 0x0033F320 0xF4 func_0033F320  # OVL1
-0x0033F420 0x128 func_0033F420  # OVL1
+0x0033F420 0x128 snd_StreamSafeCdRead  # OVL1; s1:align
 0x0033F550 0x28 snd_StreamSafeCheckCDIdle  # OVL1; s1:exact
 0x0033F580 0x6C snd_PlayVAGStreamByLoc_CB  # OVL1; s1:gap
 0x0033F5F0 0x110 snd_CloseVAGStreaming  # OVL1; s1:gap
@@ -6084,7 +6084,7 @@
 0x00340110 0x44 snd_SetSoundParams_CB  # OVL1; s1:exact
 0x00340160 0x34 snd_SetSoundPitch  # OVL1; s1:exact
 0x003401A0 0x38 snd_SetSoundVolPan  # OVL1; s1:exact
-0x003401E0 0x30 func_003401E0  # OVL1
+0x003401E0 0x30 snd_SoundIsStillPlaying_CB  # OVL1; s1:align
 0x00340210 0x30 func_00340210  # OVL1
 0x00340240 0x30 func_00340240  # OVL1
 0x00340270 0x18 func_00340270  # OVL1
@@ -6102,9 +6102,9 @@
 0x003404E0 0x34 snd_SetMasterVolume  # OVL1; s1:exact
 0x00340520 0x30 snd_UnloadBank  # OVL1; s1:exact
 0x00340550 0x18 snd_ResolveBankXREFS  # OVL1; s1:exact
-0x00340570 0x1E4 func_00340570  # OVL1
-0x00340760 0x160 func_00340760  # OVL1
-0x003408C0 0x2C func_003408C0  # OVL1
+0x00340570 0x1E4 snd_BankLoadByLoc  # OVL1; s1:align
+0x00340760 0x160 snd_BankLoad  # OVL1; s1:align
+0x003408C0 0x2C snd_StopSoundSystem  # OVL1; s1:align
 0x003408F0 0x484 func_003408F0  # OVL1
 0x00340D80 0x1F0 snd_StartSoundSystem  # OVL1; s1:calls
 0x00340F70 0x1C func_00340F70  # OVL1
@@ -6120,17 +6120,17 @@
 0x003414D0 0x24 func_003414D0  # OVL1
 0x00341500 0x1B0 func_00341500  # OVL1
 0x003416B0 0x1B0 func_003416B0  # OVL1
-0x00341860 0x70 func_00341860  # OVL1
+0x00341860 0x70 SetGroupVol__4CSndFif  # OVL1; s1:align
 0x003418D0 0x4C func_003418D0  # OVL1
 0x00341920 0x8 func_00341920  # OVL1
 0x00341930 0x8 func_00341930  # OVL1
 0x00341940 0x7C WaitForCDRead__4CSndFv  # OVL1; s1:calls
-0x003419C0 0x3C func_003419C0  # OVL1
+0x003419C0 0x3C PlayErrorSound__4CSndFv  # OVL1; s1:align
 0x00341A00 0x14 func_00341A00  # OVL1
 0x00341A20 0xC func_00341A20  # OVL1
-0x00341A30 0x2C func_00341A30  # OVL1
+0x00341A30 0x2C OnListenerDeath__4CSndFv  # OVL1; s1:align
 0x00341A60 0x4AC func_00341A60  # OVL1
-0x00341F10 0x180 func_00341F10  # OVL1
+0x00341F10 0x180 UnloadAllSounds__4CSndFv  # OVL1; s1:align
 0x00342090 0x70 func_00342090  # OVL1
 0x00342100 0x40 func_00342100  # OVL1
 0x00342140 0x8 func_00342140  # OVL1
@@ -6149,8 +6149,8 @@
 0x00342AA0 0x80 func_00342AA0  # OVL1
 0x00342B20 0x620 func_00342B20  # OVL1
 0x00343140 0x3B4 func_00343140  # OVL1
-0x00343500 0x44 func_00343500  # OVL1
-0x00343550 0x4C func_00343550  # OVL1
+0x00343500 0x44 PlaySoundVol__4CSndFfP12CSndInstanceUi  # OVL1; s1:align
+0x00343550 0x4C PlaySound__4CSndFP12CSndInstanceUi  # OVL1; s1:align
 0x003435A0 0xC func_003435A0  # OVL1
 0x003435B0 0xC func_003435B0  # OVL1
 0x003435C0 0x810 func_003435C0  # OVL1
@@ -6174,10 +6174,10 @@
 0x00345040 0xA4 func_00345040  # OVL1
 0x003450F0 0x7C func_003450F0  # OVL1
 0x00345170 0x84 NetOpen__4CSndFv  # OVL1; s1:calls
-0x00345200 0x28 func_00345200  # OVL1
+0x00345200 0x28 Uninit__4CSndFv  # OVL1; s1:align
 0x00345230 0x294 func_00345230  # OVL1
 0x003454D0 0xF8 func_003454D0  # OVL1
-0x003455D0 0x4C func_003455D0  # OVL1
+0x003455D0 0x4C clear__Q23std503__tree<Q23std81pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P4CSnd>,Q33std271map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P4CSnd,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std100allocator<Q23std81pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P4CSnd>>>13value_compare,Q23std100allocator<Q23std81pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P4CSnd>>>Fv  # OVL1; s1:align
 0x00345620 0x1D8 func_00345620  # OVL1
 0x00345800 0xC func_00345800  # OVL1
 0x00345810 0x5A4 func_00345810  # OVL1
@@ -6213,31 +6213,31 @@
 0x00347120 0x114 func_00347120  # OVL1
 0x00347240 0x58 func_00347240  # OVL1
 0x003472A0 0x174 func_003472A0  # OVL1
-0x00347420 0x30 func_00347420  # OVL1
-0x00347450 0x6C func_00347450  # OVL1
-0x003474C0 0x74 func_003474C0  # OVL1
-0x00347540 0xC8 func_00347540  # OVL1
-0x00347610 0x74 func_00347610  # OVL1
+0x00347420 0x30 SetPos__12CSndInstanceFPC6CPnt3D  # OVL1; s1:align
+0x00347450 0x6C SetPitch__12CSndInstanceFi  # OVL1; s1:align
+0x003474C0 0x74 SetPan__12CSndInstanceFi  # OVL1; s1:align
+0x00347540 0xC8 SetVol__12CSndInstanceFf  # OVL1; s1:align
+0x00347610 0x74 Stop__12CSndInstanceFv  # OVL1; s1:align
 0x00347690 0x174 func_00347690  # OVL1
 0x00347810 0x14C func_00347810  # OVL1
-0x00347960 0xE8 func_00347960  # OVL1
+0x00347960 0xE8 AcquireSoundInstance__12CSndInstanceFUiP4CSnd  # OVL1; s1:align
 0x00347A50 0x40 func_00347A50  # OVL1
 0x00347A90 0xC func_00347A90  # OVL1
-0x00347AA0 0x78 func_00347AA0  # OVL1
-0x00347B20 0x80 func_00347B20  # OVL1
-0x00347BA0 0xC8 func_00347BA0  # OVL1
+0x00347AA0 0x78 __dt__15CSndInstanceVecFv  # OVL1; s1:align
+0x00347B20 0x80 __dt__Q23std56list<P12CSndInstance,Q23std26allocator<P12CSndInstance>>Fv  # OVL1; s1:align
+0x00347BA0 0xC8 __dt__9CSndGroupFv  # OVL1; s1:align
 0x00347C70 0x8 func_00347C70  # OVL1
 0x00347C80 0x30 func_00347C80  # OVL1
 0x00347CB0 0x8C func_00347CB0  # OVL1
-0x00347D40 0x1B8 func_00347D40  # OVL1
-0x00347F00 0x224 func_00347F00  # OVL1
+0x00347D40 0x1B8 NormalizeWeights__9CSndGroupFv  # OVL1; s1:align
+0x00347F00 0x224 LoadCSndGroup__9CSndGroupFP5_zrdr  # OVL1; s1:align
 0x00348130 0x134 func_00348130  # OVL1
 0x00348270 0x70 func_00348270  # OVL1
 0x003482E0 0x170 func_003482E0  # OVL1
 0x00348450 0x170 func_00348450  # OVL1
 0x003485C0 0x150 func_003485C0  # OVL1
 0x00348710 0x144 func_00348710  # OVL1
-0x00348860 0x80 func_00348860  # OVL1
+0x00348860 0x80 Stop__11CSndJukeboxFv  # OVL1; s1:align
 0x003488E0 0x20 func_003488E0  # OVL1
 0x00348900 0x218 func_00348900  # OVL1
 0x00348B20 0x1C0 func_00348B20  # OVL1
@@ -6248,7 +6248,7 @@
 0x00349100 0x1A4 func_00349100  # OVL1
 0x003492B0 0x1DC func_003492B0  # OVL1
 0x00349490 0x1DC func_00349490  # OVL1
-0x00349670 0x114 func_00349670  # OVL1
+0x00349670 0x114 LoadPlaylists__11CSndJukeboxFPCc  # OVL1; s1:align
 0x00349790 0x148 func_00349790  # OVL1
 0x003498E0 0x40 func_003498E0  # OVL1
 0x00349920 0x8 func_00349920  # OVL1
@@ -6270,11 +6270,11 @@
 0x00349D30 0x54 Stop__12CSndSequenceFv  # OVL1; s1:gap
 0x00349D90 0x14 Play__12CSndSequenceFv  # OVL1; s1:exact
 0x00349DB0 0xDC Tick__12CSndSequenceFf  # OVL1; s1:calls
-0x00349E90 0x188 func_00349E90  # OVL1
-0x0034A020 0x80 func_0034A020  # OVL1
+0x00349E90 0x188 CreateSequence__12CSndSequenceFP5_zrdr  # OVL1; s1:align
+0x0034A020 0x80 __dt__12CSndSequenceFv  # OVL1; s1:align
 0x0034A0A0 0x24 func_0034A0A0  # OVL1
-0x0034A0D0 0x4CC func_0034A0D0  # OVL1
-0x0034A5A0 0x68 func_0034A5A0  # OVL1
+0x0034A0D0 0x4CC insert__Q23std74__vector_imp<17CSndSequenceEntry,Q23std30allocator<17CSndSequenceEntry>,0>FP17CSndSequenceEntryUiRC17CSndSequenceEntry  # OVL1; s1:align
+0x0034A5A0 0x68 __dt__Q23std76__vector_deleter<17CSndSequenceEntry,Q23std30allocator<17CSndSequenceEntry>>Fv  # OVL1; s1:align
 0x0034A610 0x8 func_0034A610  # OVL1
 0x0034A620 0x20 func_0034A620  # OVL1
 0x0034A640 0xC func_0034A640  # OVL1
@@ -6287,7 +6287,7 @@
 0x0034AAC0 0x23C func_0034AAC0  # OVL1
 0x0034AD00 0x2C4 func_0034AD00  # OVL1
 0x0034AFD0 0x3D4 func_0034AFD0  # OVL1
-0x0034B3B0 0x54 func_0034B3B0  # OVL1
+0x0034B3B0 0x54 Tick__7HeadsetFf  # OVL1; s1:align
 0x0034B410 0xD0 SoundSysCallback__7HeadsetFUi  # OVL1; s1:callee
 0x0034B4E0 0x2C StaticSoundSysCallback__7HeadsetFUiUl  # OVL1; s1:exact
 0x0034B510 0x1B0 func_0034B510  # OVL1
@@ -6353,15 +6353,15 @@
 0x0034E410 0x68 _task_cleanup__FP11CSched_Task  # OVL1; s1:ref (taken by address where SOCOM 1 takes _task_cleanup__FP11CSched_Task's)
 0x0034E480 0xD4 Clear__14CSched_ManagerFv  # OVL1; s1:callee
 0x0034E560 0x80 func_0034E560  # OVL1
-0x0034E5E0 0xC4 func_0034E5E0  # OVL1
-0x0034E6B0 0x1B0 func_0034E6B0  # OVL1
+0x0034E5E0 0xC4 RemoveTask__14CSched_ManagerFPCcb  # OVL1; s1:align
+0x0034E6B0 0x1B0 AddTask__14CSched_ManagerFPCcPFfPv_bfPv  # OVL1; s1:align
 0x0034E860 0x5C func_0034E860  # OVL1
-0x0034E8C0 0xE4 func_0034E8C0  # OVL1
-0x0034E9B0 0xB8 func_0034E9B0  # OVL1
+0x0034E8C0 0xE4 remove_if<Q33std54list<P11CSched_Task,Q23std25allocator<P11CSched_Task>>19generic_iterator<0>,PFP11CSched_Task_b>__3stdFQ33std54list<P11CSched_Task,Q23std25allocator<P11CSched_Task>>19generic_iterator<0>Q33std54list<P11CSched_Task,Q23std25allocator<P11CSched_Task>>19generic_iterator<0>PFP11CSched_Task_b  # OVL1; s1:align
+0x0034E9B0 0xB8 remove_copy_if<Q33std54list<P11CSched_Task,Q23std25allocator<P11CSched_Task>>19generic_iterator<0>,Q33std54list<P11CSched_Task,Q23std25allocator<P11CSched_Task>>19generic_iterator<0>,PFP11CSched_Task_b>__3stdFQ33std54list<P11CSched_Task,Q23std25allocator<P11CSched_Task>>19generic_iterator<0>Q33std54list<P11CSched_Task,Q23std25allocator<P11CSched_Task>>19generic_iterator<0>Q33std54list<P11CSched_Task,Q23std25allocator<P11CSched_Task>>19generic_iterator<0>PFP11CSched_Task_b  # OVL1; s1:align
 0x0034EA70 0x70 func_0034EA70  # OVL1
 0x0034EAE0 0x70 func_0034EAE0  # OVL1
 0x0034EB50 0x68 _realloc__FPvUiPCci  # OVL1; s1:order (called by CBits::Resize where SOCOM 1 calls _realloc)
-0x0034EBC0 0x68 func_0034EBC0  # OVL1
+0x0034EBC0 0x68 _memalign__FUiUiPCci  # OVL1; s1:align
 0x0034EC30 0x60 _malloc__FUiPCci  # OVL1; s1:order (called by CBits::Resize where SOCOM 1 calls _malloc; DIntr, malloc, EIntr, assert)
 0x0034EC90 0x64 zsys_FullAllocAndFree__Fv  # OVL1; s1:calls
 0x0034ED00 0x1AC func_0034ED00  # OVL1
@@ -6373,10 +6373,10 @@
 0x0034F130 0xAC func_0034F130  # OVL1
 0x0034F1E0 0x48 func_0034F1E0  # OVL1
 0x0034F230 0x188 func_0034F230  # OVL1
-0x0034F3C0 0x374 func_0034F3C0  # OVL1
+0x0034F3C0 0x374 zSysReset__Fv  # OVL1; s1:align
 0x0034F740 0x84 func_0034F740  # OVL1
 0x0034F7D0 0xE0 func_0034F7D0  # OVL1
-0x0034F8B0 0x68 func_0034F8B0  # OVL1
+0x0034F8B0 0x68 zSysLoadIRX__FPciPcb  # OVL1; s1:align
 0x0034F920 0x2C func_0034F920  # OVL1
 0x0034F950 0x8 func_0034F950  # OVL1
 0x0034F960 0x48 func_0034F960  # OVL1
@@ -6385,18 +6385,18 @@
 0x00350300 0xE4 func_00350300  # OVL1
 0x003503F0 0x1F0 func_003503F0  # OVL1
 0x003505E0 0xC4 func_003505E0  # OVL1
-0x003506B0 0x198 func_003506B0  # OVL1
-0x00350850 0x68 func_00350850  # OVL1
-0x003508C0 0x80 func_003508C0  # OVL1
+0x003506B0 0x198 reserve__Q23std92__vector_imp<Q211CIOPManager11CRegistrant,Q23std39allocator<Q211CIOPManager11CRegistrant>,0>FUi  # OVL1; s1:align
+0x00350850 0x68 __dt__Q23std94__vector_deleter<Q211CIOPManager11CRegistrant,Q23std39allocator<Q211CIOPManager11CRegistrant>>Fv  # OVL1; s1:align
+0x003508C0 0x80 __dt__11CIOPManagerFv  # OVL1; s1:align
 0x00350940 0x8 func_00350940  # OVL1
-0x00350950 0x4C func_00350950  # OVL1
-0x003509A0 0x110 func_003509A0  # OVL1
+0x00350950 0x4C Copy__4CSPRFP8_word128P8_word128i  # OVL1; s1:align
+0x003509A0 0x110 Kick__4CSPRFP8_word128b  # OVL1; s1:align
 0x00350AB0 0x204 zSysFifoKick__FP1Ui  # OVL1; s1:callee
 0x00350CC0 0xC func_00350CC0  # OVL1
-0x00350CD0 0xB8 func_00350CD0  # OVL1
+0x00350CD0 0xB8 zSysFifoEnd__Fv  # OVL1; s1:align
 0x00350D90 0xA0 zSysSprGetPacket__FPP1  # OVL1; s1:callee
 0x00350E30 0x180 func_00350E30  # OVL1
-0x00350FB0 0x48 func_00350FB0  # OVL1
+0x00350FB0 0x48 zSysFifoDisable__Fv  # OVL1; s1:align
 0x00351000 0x2C func_00351000  # OVL1
 0x00351030 0x7C func_00351030  # OVL1
 0x003510B0 0x84 func_003510B0  # OVL1
@@ -6408,15 +6408,15 @@
 0x003515A0 0x30 InterruptFromVIF0__Fi  # OVL1; s1:order (the handler CVU::CVU registers, in both builds)
 0x003515D0 0x2EC func_003515D0  # OVL1
 0x003518C0 0x98 DeleteCallbacks__6CValveFv  # OVL1; s1:callee
-0x00351960 0x88 func_00351960  # OVL1
+0x00351960 0x88 AddCallback__6CValveFUiPFP6CValvePv_vPv  # OVL1; s1:align
 0x003519F0 0xA0 func_003519F0  # OVL1
 0x00351A90 0x190 func_00351A90  # OVL1
 0x00351C20 0x84 func_00351C20  # OVL1
 0x00351CB0 0x84 func_00351CB0  # OVL1
-0x00351D40 0x120 func_00351D40  # OVL1
+0x00351D40 0x120 Open__6CValveFPCc10VALVE_TYPE  # OVL1; s1:align
 0x00351E60 0x80 func_00351E60  # OVL1
 0x00351EE0 0x8 func_00351EE0  # OVL1
-0x00351EF0 0xC0 func_00351EF0  # OVL1
+0x00351EF0 0xC0 GetByName__6CValveFPCc  # OVL1; s1:align
 0x00351FB0 0x34 Destroy__6CValveFP6CValve  # OVL1; s1:exact
 0x00351FF0 0xD8 func_00351FF0  # OVL1
 0x003520D0 0x154 func_003520D0  # OVL1
@@ -6429,25 +6429,25 @@
 0x003526C0 0xC func_003526C0  # OVL1
 0x003526D0 0x14 func_003526D0  # OVL1
 0x003526F0 0x14 func_003526F0  # OVL1
-0x00352710 0x158 func_00352710  # OVL1
+0x00352710 0x158 remove_copy_if<Q33std42list<P6CValve,Q23std19allocator<P6CValve>>19generic_iterator<0>,Q33std42list<P6CValve,Q23std19allocator<P6CValve>>19generic_iterator<0>,14CValveOpDelete>__3stdFQ33std42list<P6CValve,Q23std19allocator<P6CValve>>19generic_iterator<0>Q33std42list<P6CValve,Q23std19allocator<P6CValve>>19generic_iterator<0>Q33std42list<P6CValve,Q23std19allocator<P6CValve>>19generic_iterator<0>14CValveOpDelete  # OVL1; s1:align
 0x00352870 0x88 func_00352870  # OVL1
 0x00352900 0x60 func_00352900  # OVL1
-0x00352960 0xD4 func_00352960  # OVL1
+0x00352960 0xD4 UnSerialize__17CValveSaveManagerFPCcP8CRdrFilei  # OVL1; s1:align
 0x00352A40 0x50 func_00352A40  # OVL1
-0x00352A90 0xE4 func_00352A90  # OVL1
-0x00352B80 0x70 func_00352B80  # OVL1
-0x00352BF0 0xB8 func_00352BF0  # OVL1
-0x00352CB0 0x94 func_00352CB0  # OVL1
+0x00352A90 0xE4 Serialize__17CValveSaveManagerFi  # OVL1; s1:align
+0x00352B80 0x70 FreeName__6CValveFv  # OVL1; s1:align
+0x00352BF0 0xB8 SetName__6CValveFPCc  # OVL1; s1:align
+0x00352CB0 0x94 AssignName__6CValveFPc  # OVL1; s1:align
 0x00352D50 0x144 func_00352D50  # OVL1
 0x00352EA0 0x184 func_00352EA0  # OVL1
 0x00353030 0xA0 func_00353030  # OVL1
 0x003530D0 0x184 func_003530D0  # OVL1
 0x00353260 0x8 func_00353260  # OVL1
 0x00353270 0x360 func_00353270  # OVL1
-0x003535D0 0x69C func_003535D0  # OVL1
-0x00353C70 0x8C func_00353C70  # OVL1
+0x003535D0 0x69C CmdParseCmp__6CValveFP5_zrdr  # OVL1; s1:align
+0x00353C70 0x8C ParseValveName__14VALVE_CMD_DATAFPCcRi  # OVL1; s1:align
 0x00353D00 0x8 func_00353D00  # OVL1
-0x00353D10 0x2C0 func_00353D10  # OVL1
+0x00353D10 0x2C0 ParseOperator__6CValveFPCc  # OVL1; s1:align
 0x00353FD0 0x498 func_00353FD0  # OVL1
 0x00354470 0x98 func_00354470  # OVL1
 0x00354510 0xD4 func_00354510  # OVL1
@@ -6460,30 +6460,30 @@
 0x00354A90 0xC func_00354A90  # OVL1
 0x00354AA0 0x110 func_00354AA0  # OVL1
 0x00354BB0 0x48 func_00354BB0  # OVL1
-0x00354C00 0x74 func_00354C00  # OVL1
-0x00354C80 0xE8 func_00354C80  # OVL1
+0x00354C00 0x74 SetName__Q23zdb8CTextureFPCc  # OVL1; s1:align
+0x00354C80 0xE8 __dt__Q23zdb8CTextureFv  # OVL1; s1:align
 0x00354D70 0x14 Release_HTEX__Q23zdb8CTextureFv  # OVL1; tu: ztex_main.cpp~ (1.0 beta); s1:exact
 0x00354D90 0x1B0 func_00354D90  # OVL1
-0x00354F40 0x38 func_00354F40  # OVL1
-0x00354F80 0x1D0 func_00354F80  # OVL1
-0x00355150 0x250 func_00355150  # OVL1
-0x003553A0 0xF4 func_003553A0  # OVL1
+0x00354F40 0x38 Init__Q23zdb8CTextureFv  # OVL1; s1:align
+0x00354F80 0x1D0 Read__Q23zdb8CTextureFRQ23zdb9CSaveLoad  # OVL1; s1:align
+0x00355150 0x250 SetupSpecialTextures__Q23zdb8CTextureFv  # OVL1; s1:align
+0x003553A0 0xF4 LoadGS__Q23zdb8CTextureFUiPcPvUiUiUi  # OVL1; s1:align
 0x003554A0 0xE0 func_003554A0  # OVL1
-0x00355580 0xA0 func_00355580  # OVL1
-0x00355620 0x98 func_00355620  # OVL1
-0x003556C0 0xD0 func_003556C0  # OVL1
-0x00355790 0xAC func_00355790  # OVL1
-0x00355840 0x90 func_00355840  # OVL1
-0x003558D0 0xA4 func_003558D0  # OVL1
-0x00355980 0x54 func_00355980  # OVL1
-0x003559E0 0x3C func_003559E0  # OVL1
+0x00355580 0xA0 SetTexture__Q23zdb10CTexHandleFPQ23zdb8CTexture  # OVL1; s1:align
+0x00355620 0x98 Destroy__Q23zdb10CTexHandleFPQ23zdb10CTexHandle  # OVL1; s1:align
+0x003556C0 0xD0 Create__Q23zdb10CTexHandleFPQ23zdb8CTexture  # OVL1; s1:align
+0x00355790 0xAC Read__Q23zdb11CTexPaletteFRQ23zdb9CSaveLoad  # OVL1; s1:align
+0x00355840 0x90 __dt__Q23zdb11CTexPaletteFv  # OVL1; s1:align
+0x003558D0 0xA4 __ct__Q23zdb11CTexPaletteFPCc  # OVL1; s1:align
+0x00355980 0x54 ClearAll__Q23zdb15CBatchRelocatorFv  # OVL1; s1:align
+0x003559E0 0x3C StartBatchReloc__Q23zdb15CBatchRelocatorCFv  # OVL1; s1:align
 0x00355A20 0x8 func_00355A20  # OVL1
 0x00355A30 0x14 func_00355A30  # OVL1
 0x00355A50 0x1C func_00355A50  # OVL1
 0x00355A70 0x1F8 func_00355A70  # OVL1
 0x00355C70 0x168 func_00355C70  # OVL1
 0x00355DE0 0x140 func_00355DE0  # OVL1
-0x00355F20 0xB8 func_00355F20  # OVL1
+0x00355F20 0xB8 ClearPktBufs__Q23zdb11CTexManagerFRQ23zdb11CTexManagerb  # OVL1; s1:align
 0x00355FE0 0x94 func_00355FE0  # OVL1
 0x00356080 0xAC func_00356080  # OVL1
 0x00356130 0x3B8 func_00356130  # OVL1
@@ -6493,10 +6493,10 @@
 0x00356940 0xA8 func_00356940  # OVL1
 0x003569F0 0x140 func_003569F0  # OVL1
 0x00356B30 0x54 func_00356B30  # OVL1
-0x00356B90 0x4C func_00356B90  # OVL1; tu: ztex_manager.cpp~ (1.0 beta)
+0x00356B90 0x4C swap__Q23std40__vector_deleter<1,Q23std12allocator<1>>FRQ23std40__vector_deleter<1,Q23std12allocator<1>>  # OVL1; tu: ztex_manager.cpp~ (1.0 beta); s1:align
 0x00356BE0 0x140 func_00356BE0  # OVL1
 0x00356D20 0x168 func_00356D20  # OVL1
-0x00356E90 0x228 func_00356E90  # OVL1
+0x00356E90 0x228 MakeChain__Q23zdb12CGSTexBufferFP1i  # OVL1; s1:align
 0x003570C0 0x108 func_003570C0  # OVL1
 0x003571D0 0x29C func_003571D0  # OVL1
 0x00357470 0x50 func_00357470  # OVL1
@@ -6508,7 +6508,7 @@
 0x00357860 0xF0 Add__Q23zdb11CDynTexListFPQ23zdb11CTexPaletteb  # OVL1; s1:callee
 0x00357950 0xA4 Add__Q23zdb11CDynTexListFPQ23zdb10CTexHandleb  # OVL1; s1:callee
 0x00357A00 0xF8 func_00357A00  # OVL1
-0x00357B00 0xB8 func_00357B00  # OVL1
+0x00357B00 0xB8 __dt__Q23zdb12CGSTexBufferFv  # OVL1; s1:align
 0x00357BC0 0x4C func_00357BC0  # OVL1
 0x00357C10 0xC func_00357C10  # OVL1
 0x00357C20 0x6C func_00357C20  # OVL1
@@ -6528,14 +6528,14 @@
 0x00358CC0 0x84 func_00358CC0  # OVL1
 0x00358D50 0xC4 func_00358D50  # OVL1
 0x00358E20 0xC4 func_00358E20  # OVL1
-0x00358EF0 0x6C func_00358EF0  # OVL1
+0x00358EF0 0x6C SetUseFrameBufferAlpha__13C2DBitmapPolyFb  # OVL1; s1:align
 0x00358F60 0x8 func_00358F60  # OVL1
 0x00358F70 0xFC func_00358F70  # OVL1
-0x00359070 0x68 func_00359070  # OVL1
+0x00359070 0x68 SetTrans__13C2DBitmapPolyFf  # OVL1; s1:align
 0x003590E0 0x60 SetColor__13C2DBitmapPolyFfff  # OVL1; s1:exact
 0x00359140 0x90 SetUV__13C2DBitmapPolyFffffffff  # OVL1; s1:exact
 0x003591D0 0x84 SetUV__13C2DBitmapPolyFffff  # OVL1; s1:exact
-0x00359260 0xAC func_00359260  # OVL1
+0x00359260 0xAC SetCenterPos__13C2DBitmapPolyF5PNT2Dff  # OVL1; s1:align
 0x00359310 0x180 func_00359310  # OVL1
 0x00359490 0x90 SetPos__13C2DBitmapPolyFffffffff  # OVL1; s1:exact
 0x00359520 0x6C Draw__13C2DBitmapPolyFPQ23zdb7CCamera  # OVL1; s1:gap
@@ -6625,7 +6625,7 @@
 0x00360380 0x118 MakePacket__7C2DLineFPQ23zdb7CCamera  # OVL1; s1:callee
 0x003604A0 0x5C Draw__7C2DLineFPQ23zdb7CCamera  # OVL1; s1:exact
 0x00360500 0x1C SetUV__7C2DLineFffff  # OVL1; s1:exact
-0x00360520 0xBC func_00360520  # OVL1
+0x00360520 0xBC SetPos__7C2DLineFiiii  # OVL1; s1:align
 0x003605E0 0xF8 func_003605E0  # OVL1
 0x003606E0 0xA0 func_003606E0  # OVL1
 0x00360780 0x1C SetColor__7C2DLineFfff  # OVL1; s1:exact
@@ -6635,11 +6635,11 @@
 0x00360890 0x60 func_00360890  # OVL1
 0x003608F0 0x128 func_003608F0  # OVL1
 0x00360A20 0xC8 func_00360A20  # OVL1
-0x00360AF0 0xC8 func_00360AF0  # OVL1
-0x00360BC0 0x90 func_00360BC0  # OVL1
+0x00360AF0 0xC8 Draw__9C2DTriFanFPQ23zdb7CCamera  # OVL1; s1:align
+0x00360BC0 0x90 __dt__9C2DTriFanFv  # OVL1; s1:align
 0x00360C50 0x4C func_00360C50  # OVL1
 0x00360CA0 0x2B8 func_00360CA0  # OVL1
-0x00360F60 0x54 func_00360F60  # OVL1
+0x00360F60 0x54 Draw__7C2DPolyFPQ23zdb7CCamera  # OVL1; s1:align
 0x00360FC0 0x38 SetPos__7C2DPolyFffffff  # OVL1; s1:callee
 0x00361000 0x28 SetUV__7C2DPolyFffffff  # OVL1; s1:exact
 0x00361030 0x48 Load__7C2DPolyFffffffPQ23zdb8CTexture  # OVL1; s1:callee
@@ -6656,8 +6656,8 @@
 0x00361500 0xC8 func_00361500  # OVL1
 0x003615D0 0x1BC func_003615D0  # OVL1
 0x00361790 0x20C func_00361790  # OVL1
-0x003619A0 0x8C func_003619A0  # OVL1
-0x00361A30 0xC8 func_00361A30  # OVL1
+0x003619A0 0x8C clear__Q23std54__vector_deleter<7C2DPoly,Q23std19allocator<7C2DPoly>>Fv  # OVL1; s1:align
+0x00361A30 0xC8 __dt__Q23std54__vector_deleter<7C2DPoly,Q23std19allocator<7C2DPoly>>Fv  # OVL1; s1:align
 0x00361B00 0x18 func_00361B00  # OVL1
 0x00361B20 0x14 func_00361B20  # OVL1
 0x00361B40 0x14 func_00361B40  # OVL1
@@ -6667,38 +6667,38 @@
 0x00362350 0x290 func_00362350  # OVL1
 0x003625E0 0x320 func_003625E0  # OVL1
 0x00362900 0x220 func_00362900  # OVL1
-0x00362B20 0x4C func_00362B20  # OVL1
+0x00362B20 0x4C SetFont__9C2DStringFP7C2DFont  # OVL1; s1:align
 0x00362B70 0x250 func_00362B70  # OVL1
 0x00362DC0 0x30 func_00362DC0  # OVL1
 0x00362DF0 0x8 func_00362DF0  # OVL1
 0x00362E00 0x228 func_00362E00  # OVL1
-0x00363030 0xB0 func_00363030  # OVL1
-0x003630E0 0xB4 func_003630E0  # OVL1
+0x00363030 0xB0 Load__9C2DStringFPCcP7C2DFontiiii  # OVL1; s1:align
+0x003630E0 0xB4 Load__9C2DStringFPCcP7C2DFontii  # OVL1; s1:align
 0x003631A0 0x20 func_003631A0  # OVL1
 0x003631C0 0x30 func_003631C0  # OVL1
 0x003631F0 0x26C func_003631F0  # OVL1
 0x00363460 0x154 func_00363460  # OVL1
 0x003635C0 0x26C func_003635C0  # OVL1
-0x00363830 0x184 func_00363830  # OVL1
+0x00363830 0x184 Format__9C2DStringFPCce  # OVL1; s1:align
 0x003639C0 0xB0 Draw__9C2DStringFPQ23zdb7CCamera  # OVL1; s1:callee
 0x00363A70 0xBC func_00363A70  # OVL1
-0x00363B30 0xC8 func_00363B30  # OVL1
+0x00363B30 0xC8 Tick__9C2DStringFf  # OVL1; s1:align
 0x00363C00 0x8 func_00363C00  # OVL1
 0x00363C10 0x8 Off__9C2DStringFv  # OVL1; s1:callee
 0x00363C20 0x124 func_00363C20  # OVL1
-0x00363D50 0x60 func_00363D50  # OVL1
-0x00363DB0 0x98 func_00363DB0  # OVL1
+0x00363D50 0x60 ClearAndWipe__9C2DStringFv  # OVL1; s1:align
+0x00363DB0 0x98 __dt__9C2DStringFv  # OVL1; s1:align
 0x00363E50 0xC func_00363E50  # OVL1
 0x00363E60 0xC func_00363E60  # OVL1
 0x00363E70 0xF0 func_00363E70  # OVL1
 0x00363F60 0x210 func_00363F60  # OVL1
 0x00364170 0x78 func_00364170  # OVL1
 0x003641F0 0xD8 func_003641F0  # OVL1
-0x003642D0 0xB4 func_003642D0  # OVL1
+0x003642D0 0xB4 TickFade__9C2DBitmapFv  # OVL1; s1:align
 0x00364390 0x18 func_00364390  # OVL1
 0x003643B0 0x2AC func_003643B0  # OVL1
 0x00364660 0x1C func_00364660  # OVL1
-0x00364680 0x50 func_00364680  # OVL1
+0x00364680 0x50 SetPos__9C2DBitmapFii  # OVL1; s1:align
 0x003646D0 0x98 func_003646D0  # OVL1
 0x00364770 0xB8 func_00364770  # OVL1
 0x00364830 0x1C SetUV__9C2DBitmapFffff  # OVL1; s1:exact
@@ -6830,7 +6830,7 @@
 0x0036D140 0x198 func_0036D140  # OVL1
 0x0036D2E0 0x228 func_0036D2E0  # OVL1
 0x0036D510 0x210 func_0036D510  # OVL1
-0x0036D720 0x128 func_0036D720  # OVL1
+0x0036D720 0x128 __dt__11CZPauseTestFv  # OVL1; s1:calls
 0x0036D850 0x5C func_0036D850  # OVL1
 0x0036D8B0 0xB4 func_0036D8B0  # OVL1
 0x0036D970 0xA8 GetZAnimCmdType__12CPopUpDialogFPCc  # OVL1; s1:calls
@@ -7110,7 +7110,7 @@
 0x003859D0 0x88 func_003859D0  # OVL1
 0x00385A60 0x1CC func_00385A60  # OVL1
 0x00385C30 0xA4 func_00385C30  # OVL1
-0x00385CE0 0xA8 func_00385CE0  # OVL1
+0x00385CE0 0xA8 __dt__13CUIVarManagerFv  # OVL1; s1:calls
 0x00385D90 0x5C func_00385D90  # OVL1
 0x00385DF0 0x5C func_00385DF0  # OVL1
 0x00385E50 0x48 func_00385E50  # OVL1
@@ -7504,33 +7504,33 @@
 0x0039BD30 0x2C func_0039BD30  # OVL1
 0x0039BD60 0x7C func_0039BD60  # OVL1
 0x0039BDE0 0x88 func_0039BDE0  # OVL1
-0x0039BE70 0xA8 func_0039BE70  # OVL1
-0x0039BF20 0xD4 func_0039BF20  # OVL1
-0x0039C000 0x34 func_0039C000  # OVL1
-0x0039C040 0x50 func_0039C040  # OVL1
-0x0039C090 0xF4 func_0039C090  # OVL1
-0x0039C190 0xC0 func_0039C190  # OVL1
+0x0039BE70 0xA8 fread__9CBufferIOFPvi  # OVL1; s1:calls
+0x0039BF20 0xD4 fseek__9CBufferIOFii  # OVL1; s1:align
+0x0039C000 0x34 ftell__9CBufferIOCFv  # OVL1; s1:align
+0x0039C040 0x50 Close__9CBufferIOFv  # OVL1; s1:align
+0x0039C090 0xF4 LoadBuffer__9CBufferIOFv  # OVL1; s1:align
+0x0039C190 0xC0 Open__9CBufferIOFPCcUi  # OVL1; s1:align
 0x0039C250 0x14 func_0039C250  # OVL1
 0x0039C270 0x70 func_0039C270  # OVL1
-0x0039C2E0 0x44 func_0039C2E0  # OVL1
+0x0039C2E0 0x44 __ct__9CBufferIOFv  # OVL1; s1:align
 0x0039C330 0x94 func_0039C330  # OVL1
 0x0039C3D0 0xC func_0039C3D0  # OVL1
 0x0039C3E0 0xC func_0039C3E0  # OVL1
 0x0039C3F0 0x4C func_0039C3F0  # OVL1
 0x0039C440 0xBC func_0039C440  # OVL1
-0x0039C500 0x78 func_0039C500  # OVL1
+0x0039C500 0x78 __dt__7COutputFv  # OVL1; s1:align
 0x0039C580 0xC func_0039C580  # OVL1
 0x0039C590 0x80 func_0039C590  # OVL1
-0x0039C610 0x6C func_0039C610  # OVL1
+0x0039C610 0x6C RegisterRebootCallback__11CIOPManagerFPFQ211CIOPManager11RebootPhaseQ211CIOPManager10RebootModePv_bPv  # OVL1; s1:align
 0x0039C680 0x6C func_0039C680  # OVL1
 0x0039C6F0 0x8 func_0039C6F0  # OVL1
 0x0039C700 0x8 func_0039C700  # OVL1
 0x0039C710 0xE0 func_0039C710  # OVL1
-0x0039C7F0 0x4BC func_0039C7F0  # OVL1
+0x0039C7F0 0x4BC insert__Q23std92__vector_imp<Q211CIOPManager11CRegistrant,Q23std39allocator<Q211CIOPManager11CRegistrant>,0>FPQ211CIOPManager11CRegistrantUiRCQ211CIOPManager11CRegistrant  # OVL1; s1:align
 0x0039CCB0 0x8C func_0039CCB0  # OVL1
 0x0039CD40 0x78 func_0039CD40  # OVL1
 0x0039CDC0 0x8 func_0039CDC0  # OVL1
-0x0039CDD0 0x94 func_0039CDD0  # OVL1
+0x0039CDD0 0x94 fwrite__7CFileIOFPCc  # OVL1; s1:align
 0x0039CE70 0xC func_0039CE70  # OVL1
 0x0039CE80 0x194 func_0039CE80  # OVL1
 0x0039D020 0x24 func_0039D020  # OVL1
@@ -7539,8 +7539,8 @@
 0x0039D650 0x268 func_0039D650  # OVL1
 0x0039D8C0 0x44 func_0039D8C0  # OVL1
 0x0039D910 0x48 func_0039D910  # OVL1
-0x0039D960 0x334 func_0039D960  # OVL1
-0x0039DCA0 0x110 func_0039DCA0  # OVL1
+0x0039D960 0x334 Read__7CFileCDFPci  # OVL1; s1:calls
+0x0039DCA0 0x110 XferSectorsToCaller__7CFileCDFPci  # OVL1; s1:calls
 0x0039DDB0 0x8 func_0039DDB0  # OVL1
 0x0039DDC0 0x78 func_0039DDC0  # OVL1
 0x0039DE40 0x60 func_0039DE40  # OVL1
@@ -7552,16 +7552,16 @@
 0x0039E600 0x8 func_0039E600  # OVL1
 0x0039E610 0x8 func_0039E610  # OVL1
 0x0039E620 0x70 func_0039E620  # OVL1
-0x0039E690 0x8C func_0039E690  # OVL1
+0x0039E690 0x8C fread__7CFileIOFPvi  # OVL1; s1:calls
 0x0039E720 0x178 func_0039E720  # OVL1
-0x0039E8A0 0x104 func_0039E8A0  # OVL1
+0x0039E8A0 0x104 Close__7CFileIOFv  # OVL1; s1:align
 0x0039E9B0 0x4A0 func_0039E9B0  # OVL1
 0x0039EE50 0x104 func_0039EE50  # OVL1
 0x0039EF60 0xC func_0039EF60  # OVL1
 0x0039EF70 0xC func_0039EF70  # OVL1
-0x0039EF80 0x50 func_0039EF80  # OVL1
-0x0039EFD0 0x34 func_0039EFD0  # OVL1
-0x0039F010 0xA0 func_0039F010  # OVL1
+0x0039EF80 0x50 IsOpen__7CFileIOCFv  # OVL1; s1:align
+0x0039EFD0 0x34 __ct__7CFileIOFv  # OVL1; s1:align
+0x0039F010 0xA0 SetRootPath__7CFileIOFPCc  # OVL1; s1:align
 0x0039F0B0 0xC func_0039F0B0  # OVL1
 0x0039F0C0 0x98 func_0039F0C0  # OVL1
 0x0039F160 0x50 func_0039F160  # OVL1
@@ -7573,9 +7573,9 @@
 0x0039F680 0x40 func_0039F680  # OVL1
 0x0039F6C0 0x8 func_0039F6C0  # OVL1
 0x0039F6D0 0x14 func_0039F6D0  # OVL1
-0x0039F6F0 0x240 func_0039F6F0  # OVL1
+0x0039F6F0 0x240 Pack__7CSTableFPFP7CSTablePv_vPv  # OVL1; s1:align
 0x0039F930 0x110 func_0039F930  # OVL1
-0x0039FA40 0xF0 func_0039FA40  # OVL1
+0x0039FA40 0xF0 LoadTable__7CSTableFPvUib  # OVL1; s1:align
 0x0039FB30 0x98 func_0039FB30  # OVL1
 0x0039FBD0 0x88 func_0039FBD0  # OVL1
 0x0039FC60 0x120 func_0039FC60  # OVL1
@@ -7584,27 +7584,27 @@
 0x0039FEC0 0x80 func_0039FEC0  # OVL1
 0x0039FF40 0xE0 func_0039FF40  # OVL1
 0x003A0020 0xE0 func_003A0020  # OVL1
-0x003A0100 0x54 func_003A0100  # OVL1
+0x003A0100 0x54 fflush__10CMemCardIOFv  # OVL1; s1:align
 0x003A0160 0x10C func_003A0160  # OVL1
 0x003A0270 0x10C func_003A0270  # OVL1
 0x003A0380 0xC func_003A0380  # OVL1
-0x003A0390 0xA0 func_003A0390  # OVL1
-0x003A0430 0x80 func_003A0430  # OVL1
+0x003A0390 0xA0 fseek__10CMemCardIOFii  # OVL1; s1:align
+0x003A0430 0x80 ftell__10CMemCardIOCFv  # OVL1; s1:align
 0x003A04B0 0x8 func_003A04B0  # OVL1
 0x003A04C0 0x10 IsOpen__10CMemCardIOCFv  # OVL1; s1:exact
 0x003A04D0 0xD0 func_003A04D0  # OVL1
-0x003A05A0 0x224 func_003A05A0  # OVL1
+0x003A05A0 0x224 Open__10CMemCardIOFPCcUi  # OVL1; s1:align
 0x003A07D0 0xB4 func_003A07D0  # OVL1
 0x003A0890 0xBC func_003A0890  # OVL1
 0x003A0950 0xB8 func_003A0950  # OVL1
-0x003A0A10 0x4C4 func_003A0A10  # OVL1
-0x003A0EE0 0x17C func_003A0EE0  # OVL1
+0x003A0A10 0x4C4 CreateIconFiles__8CMemCardFv  # OVL1; s1:align
+0x003A0EE0 0x17C Ascii2Sjis__FUc  # OVL1; s1:align
 0x003A1060 0x1A8 func_003A1060  # OVL1
 0x003A1210 0xC4 func_003A1210  # OVL1
-0x003A12E0 0x88 func_003A12E0  # OVL1
+0x003A12E0 0x88 Format__8CMemCardFv  # OVL1; s1:align
 0x003A1370 0x208 func_003A1370  # OVL1
-0x003A1580 0xC8 func_003A1580  # OVL1
-0x003A1650 0xE0 func_003A1650  # OVL1
+0x003A1580 0xC8 IsFormatted__8CMemCardFv  # OVL1; s1:align
+0x003A1650 0xE0 IsInserted__8CMemCardFv  # OVL1; s1:align
 0x003A1730 0xA4 func_003A1730  # OVL1
 0x003A17E0 0xA0 func_003A17E0  # OVL1
 0x003A1880 0xF8 func_003A1880  # OVL1
@@ -7617,7 +7617,7 @@
 0x003A1F40 0xA4 func_003A1F40  # OVL1
 0x003A1FF0 0x13C func_003A1FF0  # OVL1
 0x003A2130 0x134 func_003A2130  # OVL1
-0x003A2270 0x68 func_003A2270  # OVL1
+0x003A2270 0x68 __dt__8CMemCardFv  # OVL1; s1:align
 0x003A22E0 0x90 __ct__8CMemCardFv  # OVL1; s1:calls
 0x003A2370 0x94 func_003A2370  # OVL1
 0x003A2410 0x100 func_003A2410  # OVL1
@@ -7795,12 +7795,12 @@
 0x003AFBE0 0x164 func_003AFBE0  # OVL1
 0x003AFD50 0x11C func_003AFD50  # OVL1
 0x003AFE70 0x54 zVid_ZTestOnWriteSet__Fb  # OVL1; s1:exact
-0x003AFED0 0x54 func_003AFED0  # OVL1
+0x003AFED0 0x54 zVid_FrameRestore__Fv  # OVL1; s1:align
 0x003AFF30 0x590 func_003AFF30  # OVL1
-0x003B04C0 0x120 func_003B04C0  # OVL1
+0x003B04C0 0x120 SetDynamicLOD__Fi  # OVL1; s1:align
 0x003B05E0 0x80 func_003B05E0  # OVL1
 0x003B0660 0xA0 func_003B0660  # OVL1
-0x003B0700 0x60 func_003B0700  # OVL1
+0x003B0700 0x60 zVid_Sync0__Fv  # OVL1; s1:align
 0x003B0760 0x4C func_003B0760  # OVL1
 0x003B07B0 0x224 func_003B07B0  # OVL1
 0x003B09E0 0x90 func_003B09E0  # OVL1
@@ -7815,12 +7815,12 @@
 0x003B0E30 0x18 func_003B0E30  # OVL1
 0x003B0E50 0x20 func_003B0E50  # OVL1
 0x003B0E70 0x130 func_003B0E70  # OVL1
-0x003B0FA0 0x118 func_003B0FA0  # OVL1
-0x003B10C0 0x94 func_003B10C0  # OVL1
+0x003B0FA0 0x118 zVid_Scissor__Fiiii  # OVL1; s1:align
+0x003B10C0 0x94 SetGSReg__FsUl  # OVL1; s1:align
 0x003B1160 0x18 func_003B1160  # OVL1
 0x003B1180 0x64 func_003B1180  # OVL1
 0x003B11F0 0x8 func_003B11F0  # OVL1
-0x003B1200 0x1A4 func_003B1200  # OVL1
+0x003B1200 0x1A4 zVid_Init__F10_zvid_mode  # OVL1; s1:align
 0x003B13B0 0xE4 func_003B13B0  # OVL1
 0x003B14A0 0x2B4 func_003B14A0  # OVL1
 0x003B1760 0x6C func_003B1760  # OVL1
@@ -7834,13 +7834,13 @@
 0x003B2450 0x68 func_003B2450  # OVL1
 0x003B24C0 0x410 func_003B24C0  # OVL1
 0x003B28D0 0x3B0 func_003B28D0  # OVL1
-0x003B2C80 0x24 func_003B2C80  # OVL1
+0x003B2C80 0x24 Fade__6CVideoFfUcUcUc  # OVL1; s1:align
 0x003B2CB0 0x1E8 func_003B2CB0  # OVL1
 0x003B2EA0 0x144 func_003B2EA0  # OVL1
 0x003B2FF0 0x700 func_003B2FF0  # OVL1
-0x003B36F0 0xB0 func_003B36F0  # OVL1
+0x003B36F0 0xB0 DereferenceDecals__Q23zdb7CVisualFUi  # OVL1; s1:align
 0x003B37A0 0x60 func_003B37A0  # OVL1
-0x003B3800 0x14C func_003B3800  # OVL1
+0x003B3800 0x14C AttachDecal__Q23zdb7CVisualFUifUiPPQ23zdb10AddonPointPQ23zdb10CTexHandle  # OVL1; s1:align
 0x003B3950 0x160 ApplyDecalRender__Q23zdb7CVisualFP7CMatrixPQ23zdb5CNodefP6CPnt3DP6CPnt3DPQ23zdb10CTexHandleP7CMatrix  # OVL1; s1:calls
 0x003B3AB0 0x714 func_003B3AB0  # OVL1
 0x003B41D0 0x3A4 func_003B41D0  # OVL1
@@ -7866,10 +7866,10 @@
 0x003B6820 0x4C func_003B6820  # OVL1
 0x003B6870 0x2A8 func_003B6870  # OVL1
 0x003B6B20 0x1E4 func_003B6B20  # OVL1
-0x003B6D10 0xF4 func_003B6D10  # OVL1
+0x003B6D10 0xF4 NodeSetup__Q23zdb7CVisualFPQ23zdb5CNodePQ23zdb5CNodeP7CMatrixi  # OVL1; s1:align
 0x003B6E10 0x190 func_003B6E10  # OVL1
 0x003B6FA0 0xE0 func_003B6FA0  # OVL1
-0x003B7080 0xA4 func_003B7080  # OVL1
+0x003B7080 0xA4 AddLocalLight__Q23zdb7CVisualFPQ23zdb6CLightP6CPnt3D  # OVL1; s1:align
 0x003B7130 0x1C func_003B7130  # OVL1
 0x003B7150 0x18 func_003B7150  # OVL1
 0x003B7170 0x414 func_003B7170  # OVL1
@@ -7877,11 +7877,11 @@
 0x003B7620 0x84 func_003B7620  # OVL1
 0x003B76B0 0x214 func_003B76B0  # OVL1
 0x003B78D0 0x2B4 func_003B78D0  # OVL1
-0x003B7B90 0x100 func_003B7B90  # OVL1
-0x003B7C90 0x60 func_003B7C90  # OVL1
+0x003B7B90 0x100 DrawLOD__Q23zdb7CVisualFPQ23zdb9CLOD_bandfPf  # OVL1; s1:align
+0x003B7C90 0x60 __dt__8CVisBaseFv  # OVL1; s1:align
 0x003B7CF0 0x58 __ct__Q23zdb10AddonPointFv  # OVL1; s1:exact
-0x003B7D50 0x60 func_003B7D50  # OVL1
-0x003B7DB0 0x78 func_003B7DB0  # OVL1
+0x003B7D50 0x60 __dt__Q23zdb19CProjectedMapVectorFv  # OVL1; s1:align
+0x003B7DB0 0x78 __dt__Q23std49stack<Ui,Q23std31deque<Ui,Q23std13allocator<Ui>>>Fv  # OVL1; s1:align
 0x003B7E30 0xB0 func_003B7E30  # OVL1
 0x003B7EE0 0x5C func_003B7EE0  # OVL1
 0x003B7F40 0x5C func_003B7F40  # OVL1
@@ -7898,30 +7898,30 @@
 0x003B8C20 0x4C Read__Q23zdb8CSubMeshFRQ23zar4CZAR  # OVL1; s1:exact
 0x003B8C70 0x60 __dt__Q23zdb8CSubMeshFv  # OVL1; s1:gap
 0x003B8CD0 0x5C __ct__Q23zdb8CSubMeshFPQ23zdb5CMesh  # OVL1; s1:exact
-0x003B8D30 0xA8 func_003B8D30  # OVL1
+0x003B8D30 0xA8 SetMeshTextureSelects__Q23zdb5CMeshFP8_word128P8_word128  # OVL1; s1:align
 0x003B8DE0 0x150 func_003B8DE0  # OVL1
 0x003B8F30 0x8 func_003B8F30  # OVL1
 0x003B8F40 0x208 func_003B8F40  # OVL1
 0x003B9150 0x8 func_003B9150  # OVL1
 0x003B9160 0x8 func_003B9160  # OVL1
 0x003B9170 0x10 func_003B9170  # OVL1
-0x003B9180 0x18C func_003B9180  # OVL1
+0x003B9180 0x18C Clone__Q23zdb5CMeshFv  # OVL1; s1:align
 0x003B9310 0x28 func_003B9310  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
 0x003B9340 0x54 func_003B9340  # OVL1
 0x003B93A0 0xD4 func_003B93A0  # OVL1
 0x003B9480 0x1C func_003B9480  # OVL1
-0x003B94A0 0x44 func_003B94A0  # OVL1
+0x003B94A0 0x44 SetLOD__Q23zdb5CMeshFUiUi  # OVL1; s1:align
 0x003B94F0 0xA0 func_003B94F0  # OVL1
-0x003B9590 0x130 func_003B9590  # OVL1
-0x003B96C0 0x98 func_003B96C0  # OVL1
+0x003B9590 0x130 AddLOD__Q23zdb5CMeshFPQ23zdb5CMeshf  # OVL1; s1:align
+0x003B96C0 0x98 InitMatrices__Q23zdb5CMeshFv  # OVL1; s1:align
 0x003B9760 0xB4 func_003B9760  # OVL1
-0x003B9820 0x2C func_003B9820  # OVL1
+0x003B9820 0x2C Init__Q23zdb5CMeshFv  # OVL1; s1:align
 0x003B9850 0x378 func_003B9850  # OVL1
 0x003B9BD0 0x4FC func_003B9BD0  # OVL1
-0x003BA0D0 0x1A8 func_003BA0D0  # OVL1
-0x003BA280 0x68 func_003BA280  # OVL1
+0x003BA0D0 0x1A8 reserve__Q23std78__vector_imp<Q33zdb5CMesh8CMeshLOD,Q23std32allocator<Q33zdb5CMesh8CMeshLOD>,0>FUi  # OVL1; s1:align
+0x003BA280 0x68 __dt__Q23std80__vector_deleter<Q33zdb5CMesh8CMeshLOD,Q23std32allocator<Q33zdb5CMesh8CMeshLOD>>Fv  # OVL1; s1:align
 0x003BA2F0 0x8 func_003BA2F0  # OVL1
-0x003BA300 0xE4 func_003BA300  # OVL1
+0x003BA300 0xE4 ColConvTo3D__FUi  # OVL1; s1:align
 0x003BA3F0 0xE4 func_003BA3F0  # OVL1
 0x003BA4E0 0xB4 func_003BA4E0  # OVL1
 0x003BA5A0 0x1C func_003BA5A0  # OVL1
@@ -7929,7 +7929,7 @@
 0x003BA6A0 0xF4 func_003BA6A0  # OVL1
 0x003BA7A0 0x174 func_003BA7A0  # OVL1
 0x003BA920 0x74 func_003BA920  # OVL1
-0x003BA9A0 0xCC func_003BA9A0  # OVL1
+0x003BA9A0 0xCC NextVertex__Q23zdb8CVisDataFUi  # OVL1; s1:align
 0x003BAA70 0x78 func_003BAA70  # OVL1
 0x003BAAF0 0xA0 func_003BAAF0  # OVL1
 0x003BAB90 0x20C func_003BAB90  # OVL1
@@ -7937,12 +7937,12 @@
 0x003BAE40 0x98 func_003BAE40  # OVL1
 0x003BAEE0 0x8C func_003BAEE0  # OVL1
 0x003BAF70 0x8C func_003BAF70  # OVL1
-0x003BB000 0x44 func_003BB000  # OVL1
+0x003BB000 0x44 Clear__Q23zdb8CVisDataFv  # OVL1; s1:align
 0x003BB050 0xC0 Read__Q23zdb24CScrollingTexture_ObjectFPQ23zdb9CSaveLoad  # OVL1; s1:calls
-0x003BB110 0x68 func_003BB110  # OVL1
+0x003BB110 0x68 __dt__Q23zdb24CScrollingTexture_ObjectFv  # OVL1; s1:align
 0x003BB180 0x1C func_003BB180  # OVL1
-0x003BB1A0 0x90 func_003BB1A0  # OVL1
-0x003BB230 0x68 func_003BB230  # OVL1
+0x003BB1A0 0x90 __dt__Q23std68list<PQ23zdb12FILTER_PLANE,Q23std32allocator<PQ23zdb12FILTER_PLANE>>Fv  # OVL1; s1:align
+0x003BB230 0x68 __dt__Q23zdb16CPreLight_ObjectFv  # OVL1; s1:calls
 0x003BB2A0 0x1C func_003BB2A0  # OVL1
 0x003BB2C0 0x1B0 func_003BB2C0  # OVL1
 0x003BB470 0x68 func_003BB470  # OVL1
@@ -7951,19 +7951,19 @@
 0x003BB620 0x68 func_003BB620  # OVL1
 0x003BB690 0x1C func_003BB690  # OVL1
 0x003BB6B0 0x98 Read__Q23zdb11CLOD_ObjectFPQ23zdb9CSaveLoad  # OVL1; s1:calls
-0x003BB750 0x68 func_003BB750  # OVL1
+0x003BB750 0x68 __dt__Q23zdb11CLOD_ObjectFv  # OVL1; s1:align
 0x003BB7C0 0x1C func_003BB7C0  # OVL1
-0x003BB7E0 0x75C func_003BB7E0  # OVL1
+0x003BB7E0 0x75C insert__Q23std96__vector_imp<Q23zdb22CScrollingTexture_band,Q23std41allocator<Q23zdb22CScrollingTexture_band>,0>FPQ23zdb22CScrollingTexture_bandUiRCQ23zdb22CScrollingTexture_band  # OVL1; s1:align
 0x003BBF40 0x9C func_003BBF40  # OVL1
 0x003BBFE0 0x5CC func_003BBFE0  # OVL1
-0x003BC5B0 0xC4 func_003BC5B0  # OVL1
+0x003BC5B0 0xC4 resize__Q23std68__vector_imp<Q23zdb9CLOD_band,Q23std27allocator<Q23zdb9CLOD_band>,0>FUi  # OVL1; s1:align
 0x003BC680 0x460 func_003BC680  # OVL1
 0x003BCAE0 0x1BC func_003BCAE0  # OVL1
 0x003BCCA0 0x68 func_003BCCA0  # OVL1
 0x003BCD10 0x68 func_003BCD10  # OVL1
 0x003BCD80 0x68 func_003BCD80  # OVL1
 0x003BCDF0 0x68 func_003BCDF0  # OVL1
-0x003BCE60 0x68 func_003BCE60  # OVL1
+0x003BCE60 0x68 __dt__Q23std82__vector_deleter<Q23zdb14CPreLight_band,Q23std33allocator<Q23zdb14CPreLight_band>>Fv  # OVL1; s1:calls
 0x003BCED0 0x4E0 func_003BCED0  # OVL1
 0x003BD3B0 0x310 func_003BD3B0  # OVL1
 0x003BD6C0 0x180 func_003BD6C0  # OVL1
@@ -7971,16 +7971,16 @@
 0x003BD850 0x8 func_003BD850  # OVL1
 0x003BD860 0x8 func_003BD860  # OVL1
 0x003BD870 0xA4 func_003BD870  # OVL1
-0x003BD920 0x7C func_003BD920  # OVL1
+0x003BD920 0x7C clear__Q23std82__vector_deleter<Q23zdb14CPreLight_band,Q23std33allocator<Q23zdb14CPreLight_band>>Fv  # OVL1; s1:align
 0x003BD9A0 0x38 Uninit__Q23zdb14CMeshDecalPoolFv  # OVL1; s1:exact
 0x003BD9E0 0xC08 func_003BD9E0  # OVL1
 0x003BE5F0 0x1B8 func_003BE5F0  # OVL1
-0x003BE7B0 0x4C func_003BE7B0  # OVL1
-0x003BE800 0xBC func_003BE800  # OVL1
+0x003BE7B0 0x4C FreeMem__Q23zdb10CMeshDecalFv  # OVL1; s1:align
+0x003BE800 0xBC RecycleTick__Q23zdb14CMeshDecalPoolFv  # OVL1; s1:align
 0x003BE8C0 0x24 func_003BE8C0  # OVL1
-0x003BE8F0 0x40 func_003BE8F0  # OVL1
+0x003BE8F0 0x40 PutTempDecal__Q23zdb10CMeshDecalFPQ23zdb10CMeshDecal  # OVL1; s1:align
 0x003BE930 0x80 func_003BE930  # OVL1
-0x003BE9B0 0x6C func_003BE9B0  # OVL1
+0x003BE9B0 0x6C Init__Q23zdb14CMeshDecalPoolFUiUi  # OVL1; s1:align
 0x003BEA20 0x3C func_003BEA20  # OVL1
 0x003BEA60 0x98 func_003BEA60  # OVL1
 0x003BEB00 0xB0 func_003BEB00  # OVL1
@@ -7989,12 +7989,12 @@
 0x003BEC40 0x50 func_003BEC40  # OVL1
 0x003BEC90 0x8 func_003BEC90  # OVL1
 0x003BECA0 0x334 func_003BECA0  # OVL1
-0x003BEFE0 0x24 func_003BEFE0  # OVL1
-0x003BF010 0x40 func_003BF010  # OVL1
+0x003BEFE0 0x24 PutPermDecal__Q23zdb6CDecalFPQ23zdb6CDecal  # OVL1; s1:align
+0x003BF010 0x40 PutTempDecal__Q23zdb6CDecalFPQ23zdb6CDecal  # OVL1; s1:align
 0x003BF050 0xBC func_003BF050  # OVL1
-0x003BF110 0x8C func_003BF110  # OVL1
-0x003BF1A0 0x80 func_003BF1A0  # OVL1
-0x003BF220 0x6C func_003BF220  # OVL1
+0x003BF110 0x8C RecycleTick__Q23zdb10CDecalPoolFv  # OVL1; s1:align
+0x003BF1A0 0x80 Get__Q23zdb10CDecalPoolFb  # OVL1; s1:align
+0x003BF220 0x6C Init__Q23zdb10CDecalPoolFUiUi  # OVL1; s1:align
 0x003BF290 0x140 func_003BF290  # OVL1
 0x003BF3D0 0x64 func_003BF3D0  # OVL1
 0x003BF440 0x7C func_003BF440  # OVL1
@@ -8171,12 +8171,12 @@
 0x003C62B0 0x50 func_003C62B0  # OVL1
 0x003C6300 0x8 func_003C6300  # OVL1
 0x003C6310 0x8 func_003C6310  # OVL1
-0x003C6320 0xA4 func_003C6320  # OVL1
+0x003C6320 0xA4 __ct__11CZFTSWeaponFv  # OVL1; s1:align
 0x003C63D0 0x8C func_003C63D0  # OVL1
-0x003C6460 0xB0 func_003C6460  # OVL1
+0x003C6460 0xB0 RemoveWeaponEventCallback__8CZWeaponFPFP12CZProjectileUiPv_v  # OVL1; s1:align
 0x003C6510 0x44 AddWeaponEventCallback__8CZWeaponFPFP12CZProjectileUiPv_vUiPv  # OVL1; s1:exact
-0x003C6560 0xB0 func_003C6560  # OVL1
-0x003C6610 0xBC func_003C6610  # OVL1
+0x003C6560 0xB0 remove_if<Q33std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>19generic_iterator<0>,17_compare_callback>__3stdFQ33std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>19generic_iterator<0>Q33std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>19generic_iterator<0>17_compare_callback  # OVL1; s1:align
+0x003C6610 0xBC erase__Q23std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>FQ33std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>19generic_iterator<0>Q33std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>19generic_iterator<0>  # OVL1; s1:align
 0x003C66D0 0x110 insert__Q23std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>FQ33std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>19generic_iterator<0>RC22WEAPON_CALLBACK_STRUCT  # OVL1; s1:callee
 0x003C67E0 0x80 func_003C67E0  # OVL1
 0x003C6860 0x18 func_003C6860  # OVL1
@@ -8237,15 +8237,15 @@
 0x003CBFC0 0xE8 func_003CBFC0  # OVL1
 0x003CC0B0 0x38 ReleaseDirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi  # OVL1; s1:exact
 0x003CC0F0 0xF8 func_003CC0F0  # OVL1
-0x003CC1F0 0xD4 func_003CC1F0  # OVL1
+0x003CC1F0 0xD4 GetNumRemoteExplosives__16CZProjectileListFi  # OVL1; s1:align
 0x003CC2D0 0xE4 func_003CC2D0  # OVL1
 0x003CC3C0 0x134 func_003CC3C0  # OVL1
 0x003CC500 0x17C func_003CC500  # OVL1
 0x003CC680 0xF0 func_003CC680  # OVL1
 0x003CC770 0x218 func_003CC770  # OVL1
-0x003CC990 0x100 func_003CC990  # OVL1
-0x003CCA90 0x124 func_003CCA90  # OVL1
-0x003CCBC0 0xCC func_003CCBC0  # OVL1
+0x003CC990 0x100 PreTick__16CZProjectileListFf  # OVL1; s1:align
+0x003CCA90 0x124 GetNextFreeProjectile__16CZProjectileListFv  # OVL1; s1:align
+0x003CCBC0 0xCC UnInit__16CZProjectileListFv  # OVL1; s1:align
 0x003CCC90 0xF8 func_003CCC90  # OVL1
 0x003CCD90 0x118 func_003CCD90  # OVL1
 0x003CCEB0 0x2A0 func_003CCEB0  # OVL1
@@ -8255,12 +8255,12 @@
 0x003CD450 0x8 func_003CD450  # OVL1
 0x003CD460 0x14 func_003CD460  # OVL1
 0x003CD480 0x22C Init__16CZProjectileListFv  # OVL1; s1:calls
-0x003CD6B0 0x88 func_003CD6B0  # OVL1
+0x003CD6B0 0x88 __dt__16CZProjectileListFv  # OVL1; s1:align
 0x003CD740 0xD0 func_003CD740  # OVL1
 0x003CD810 0x220 func_003CD810  # OVL1
 0x003CDA30 0x137C func_003CDA30  # OVL1
 0x003CEDB0 0x3DC func_003CEDB0  # OVL1
-0x003CF190 0x44 func_003CF190  # OVL1
+0x003CF190 0x44 __dt__10ZWepReaderFv  # OVL1; s1:align
 0x003CF1E0 0x8 func_003CF1E0  # OVL1
 0x003CF1F0 0x90C func_003CF1F0  # OVL1
 0x003CFB00 0x8 func_003CFB00  # OVL1
@@ -8276,7 +8276,7 @@
 0x003CFFC0 0xC func_003CFFC0  # OVL1
 0x003CFFD0 0x50 func_003CFFD0  # OVL1
 0x003D0020 0xC func_003D0020  # OVL1
-0x003D0030 0x30 func_003D0030  # OVL1
+0x003D0030 0x30 RetrieveTimerRegistration__8CZWeaponFPPfPfPb  # OVL1; s1:align
 0x003D0060 0x30 func_003D0060  # OVL1
 0x003D0090 0xC func_003D0090  # OVL1
 0x003D00A0 0x30 func_003D00A0  # OVL1
@@ -8287,27 +8287,27 @@
 0x003D01C0 0x14 func_003D01C0  # OVL1
 0x003D01E0 0xA8 func_003D01E0  # OVL1
 0x003D0290 0xBC func_003D0290  # OVL1
-0x003D0350 0x64 func_003D0350  # OVL1
+0x003D0350 0x64 Close__8CZWeaponFv  # OVL1; s1:align
 0x003D03C0 0xC func_003D03C0  # OVL1
-0x003D03D0 0x44 func_003D03D0  # OVL1
+0x003D03D0 0x44 Open__8CZWeaponFv  # OVL1; s1:calls
 0x003D0420 0x4C func_003D0420  # OVL1
 0x003D0470 0x1C0 func_003D0470  # OVL1
 0x003D0630 0x238 func_003D0630  # OVL1
 0x003D0870 0xB8 OpenDecals__8CZWeaponFv  # OVL1; s1:calls
-0x003D0930 0xA0 func_003D0930  # OVL1
-0x003D09D0 0xF0 func_003D09D0  # OVL1
+0x003D0930 0xA0 GetDecalSetByName__10CZDecalSetFPCc  # OVL1; s1:align
+0x003D09D0 0xF0 DestroyDecalSet__10CZDecalSetFv  # OVL1; s1:align
 0x003D0AC0 0x70 func_003D0AC0  # OVL1
 0x003D0B30 0x40 func_003D0B30  # OVL1
 0x003D0B70 0x8 func_003D0B70  # OVL1
 0x003D0B80 0x14 func_003D0B80  # OVL1
 0x003D0BA0 0x424 AddNewMark__10CZMarkListFPQ23zdb15IntersectStructP12CZProjectilef  # OVL1; s1:calls
 0x003D0FD0 0x40 func_003D0FD0  # OVL1
-0x003D1010 0x48 func_003D1010  # OVL1
+0x003D1010 0x48 GetDecalNode__FPQ23zdb5CNode  # OVL1; s1:align
 0x003D1060 0x190 ReadBloodDecals__10CZMarkListFP5_zrdr  # OVL1; s1:calls
 0x003D11F0 0x1B0 ReadWeaponDecals__10CZMarkListFP5_zrdr  # OVL1; s1:calls
-0x003D13A0 0x220 func_003D13A0  # OVL1
-0x003D15C0 0xE8 func_003D15C0  # OVL1
-0x003D16B0 0x120 func_003D16B0  # OVL1
+0x003D13A0 0x220 ReadDecalNames__10CZMarkListFPc  # OVL1; s1:align
+0x003D15C0 0xE8 UnInit__10CZMarkListFv  # OVL1; s1:align
+0x003D16B0 0x120 Init__10CZMarkListFv  # OVL1; s1:align
 0x003D17D0 0x1D0 func_003D17D0  # OVL1
 0x003D19A0 0x3C func_003D19A0  # OVL1; tu: zwep_weapon.cpp~ (1.0 beta)
 0x003D19E0 0x78 GetWeaponId__8CZWeaponFPCc  # OVL1; s1:calls
@@ -8593,8 +8593,8 @@
 0x00404C10 0xC0 func_00404C10  # OVL1 data area; a static initialiser; s1~ zwep_weapon.cpp (shape 0.47, a hint)
 0x00404CD0 0x3C func_00404CD0  # OVL1 data area; a static initialiser; s1~ zwep_ammo.cpp (shape 0.55, a hint)
 0x004C53C0 0x8 func_004C53C0  # OVL2
-0x004C5400 0x210 func_004C5400  # OVL2
-0x004C5610 0x60 func_004C5610  # OVL2
+0x004C5400 0x210 asrspi_cbResult  # OVL2; s1:calls
+0x004C5610 0x60 asrspi_cbAbnorm  # OVL2; s1:align
 0x004C5670 0x8 func_004C5670  # OVL2
 0x004C5678 0x60 func_004C5678  # OVL2 unaligned
 0x004C56D8 0x60 func_004C56D8  # OVL2 unaligned
@@ -8602,32 +8602,32 @@
 0x004C5798 0x60 func_004C5798  # OVL2 unaligned
 0x004C57F8 0x168 ContextActivate  # OVL2 unaligned; s1:calls
 0x004C5960 0x184 func_004C5960  # OVL2
-0x004C5AE8 0x184 func_004C5AE8  # OVL2 unaligned
+0x004C5AE8 0x184 ContextSetGcdData  # OVL2 unaligned; s1:align
 0x004C5C70 0x10 ContextAPIDeActivate  # OVL2; s1:exact
-0x004C5C80 0x44 func_004C5C80  # OVL2
+0x004C5C80 0x44 ContextDeActivate  # OVL2; s1:align
 0x004C5CC8 0xC func_004C5CC8  # OVL2 unaligned
-0x004C5CD8 0x8C func_004C5CD8  # OVL2 unaligned
+0x004C5CD8 0x8C ContextSetWrdData  # OVL2 unaligned; s1:align
 0x004C5D68 0x3C func_004C5D68  # OVL2 unaligned
-0x004C5DA8 0xA0 func_004C5DA8  # OVL2 unaligned
+0x004C5DA8 0xA0 ContextUnLoad  # OVL2 unaligned; s1:align
 0x004C5E48 0x48 func_004C5E48  # OVL2 unaligned
 0x004C5E90 0x94 func_004C5E90  # OVL2
 0x004C5F28 0x150 func_004C5F28  # OVL2 unaligned
 0x004C6078 0x80 func_004C6078  # OVL2 unaligned
 0x004C60F8 0x20 ExtAudioClose  # OVL2 unaligned; s1:exact
-0x004C6118 0x38 func_004C6118  # OVL2 unaligned
+0x004C6118 0x38 ExtAudioInit  # OVL2 unaligned; s1:align
 0x004C6150 0x10 func_004C6150  # OVL2
 0x004C6160 0xC func_004C6160  # OVL2
-0x004C6170 0x2C func_004C6170  # OVL2
+0x004C6170 0x2C ExtAudioGetSamples  # OVL2; s1:align
 0x004C61A0 0x8 func_004C61A0  # OVL2
-0x004C61A8 0x88 func_004C61A8  # OVL2 unaligned
-0x004C6230 0x1C8 func_004C6230  # OVL2
+0x004C61A8 0x88 InitDefaultParams  # OVL2 unaligned; s1:align
+0x004C6230 0x1C8 ProcessAudio  # OVL2; s1:align
 0x004C63F8 0xD0 CreateWordIdList  # OVL2 unaligned; s1:calls
 0x004C64C8 0x104 func_004C64C8  # OVL2 unaligned
 0x004C65D0 0x144 gsapi_ContextActivate  # OVL2; s1:calls
-0x004C6718 0x120 func_004C6718  # OVL2 unaligned
+0x004C6718 0x120 gsapi_ContextDeActivate  # OVL2 unaligned; s1:calls
 0x004C6838 0x108 func_004C6838  # OVL2 unaligned
 0x004C6940 0x108 func_004C6940  # OVL2
-0x004C6A48 0x108 func_004C6A48  # OVL2 unaligned
+0x004C6A48 0x108 gsapi_ContextUnLoad  # OVL2 unaligned; s1:calls
 0x004C6B50 0xD8 func_004C6B50  # OVL2
 0x004C6C28 0xAC func_004C6C28  # OVL2 unaligned
 0x004C6CD8 0x118 func_004C6CD8  # OVL2 unaligned
@@ -8657,19 +8657,19 @@
 0x004C7F30 0xC0 func_004C7F30  # OVL2
 0x004C7FF0 0x134 func_004C7FF0  # OVL2
 0x004C8128 0x104 func_004C8128  # OVL2 unaligned
-0x004C8230 0xC0 func_004C8230  # OVL2
+0x004C8230 0xC0 gsapi_ExecServer  # OVL2; s1:calls
 0x004C82F0 0x13C func_004C82F0  # OVL2
-0x004C8430 0x5C func_004C8430  # OVL2
+0x004C8430 0x5C gsapi_NotifySetCallback  # OVL2; s1:align
 0x004C8490 0xE8 func_004C8490  # OVL2
 0x004C8578 0xE8 func_004C8578  # OVL2 unaligned
 0x004C8660 0xF4 func_004C8660  # OVL2
-0x004C8758 0x68 func_004C8758  # OVL2 unaligned
-0x004C87C0 0x60 func_004C87C0  # OVL2
-0x004C8820 0x5C func_004C8820  # OVL2
+0x004C8758 0x68 gsapi_GetHeapHandle  # OVL2 unaligned; s1:align
+0x004C87C0 0x60 gsapi_SetHeapUserData  # OVL2; s1:align
+0x004C8820 0x5C gsapi_UseExternalAudio  # OVL2; s1:align
 0x004C8880 0xC func_004C8880  # OVL2
 0x004C8890 0xC func_004C8890  # OVL2
 0x004C88A0 0x11C func_004C88A0  # OVL2
-0x004C89C0 0xBC func_004C89C0  # OVL2
+0x004C89C0 0xBC RestartEngine  # OVL2; s1:align
 0x004C8A80 0x14 func_004C8A80  # OVL2
 0x004C8A98 0xD0 func_004C8A98  # OVL2 unaligned
 0x004C8B68 0xD0 func_004C8B68  # OVL2 unaligned
@@ -8677,54 +8677,54 @@
 0x004C8CB8 0x58 func_004C8CB8  # OVL2 unaligned
 0x004C8D10 0x158 func_004C8D10  # OVL2
 0x004C8E68 0xA4 func_004C8E68  # OVL2 unaligned
-0x004C8F10 0x30 func_004C8F10  # OVL2
+0x004C8F10 0x30 WrdDestroyWordList  # OVL2; s1:align
 0x004C8F40 0x264 func_004C8F40  # OVL2
-0x004C91A8 0x12C func_004C91A8  # OVL2 unaligned
+0x004C91A8 0x12C ASRSPICBTRAIN  # OVL2 unaligned; s1:align
 0x004C92D8 0x2A8 asrspi_UswStartRecording  # OVL2 unaligned; s1:calls
-0x004C9580 0x1F8 func_004C9580  # OVL2
-0x004C9778 0x224 func_004C9778  # OVL2 unaligned
-0x004C99A0 0x158 func_004C99A0  # OVL2
-0x004C9AF8 0x1C4 func_004C9AF8  # OVL2 unaligned
-0x004C9CC0 0x13C func_004C9CC0  # OVL2
+0x004C9580 0x1F8 asrspi_UswContinue  # OVL2; s1:align
+0x004C9778 0x224 asrspi_UswCheckConfusion  # OVL2 unaligned; s1:align
+0x004C99A0 0x158 asrspi_UswStopRecording  # OVL2; s1:align
+0x004C9AF8 0x1C4 asrspi_UswAbort  # OVL2 unaligned; s1:align
+0x004C9CC0 0x13C asrspi_UswGetNbrRecsNeeded  # OVL2; s1:align
 0x004C9E00 0x12C asrspi_OpenEngine  # OVL2; s1:calls
-0x004C9F30 0x1E4 func_004C9F30  # OVL2
-0x004CA118 0x284 func_004CA118  # OVL2 unaligned
+0x004C9F30 0x1E4 asrspi_CloseEngine  # OVL2; s1:align
+0x004CA118 0x284 asrspi_ActivateLng  # OVL2 unaligned; s1:align
 0x004CA3A0 0x280 asrspi_ActivateCtx  # OVL2; s1:calls
-0x004CA620 0x438 func_004CA620  # OVL2
+0x004CA620 0x438 asrspi_SetParamList  # OVL2; s1:align
 0x004CAA58 0x2E0 func_004CAA58  # OVL2 unaligned
 0x004CAD38 0x200 asrspi_GetActiveWords  # OVL2 unaligned; s1:calls
-0x004CAF38 0x5A0 func_004CAF38  # OVL2 unaligned
-0x004CB4D8 0x390 func_004CB4D8  # OVL2 unaligned
-0x004CB868 0x28C func_004CB868  # OVL2 unaligned
-0x004CBAF8 0x170 func_004CBAF8  # OVL2 unaligned
+0x004CAF38 0x5A0 asrspi_ActivateWords  # OVL2 unaligned; s1:calls
+0x004CB4D8 0x390 asrspi_DeActivateWords  # OVL2 unaligned; s1:align
+0x004CB868 0x28C asrspi_Start  # OVL2 unaligned; s1:align
+0x004CBAF8 0x170 asrspi_Stop  # OVL2 unaligned; s1:align
 0x004CBC68 0x104 func_004CBC68  # OVL2 unaligned
-0x004CBD70 0x1F4 func_004CBD70  # OVL2
+0x004CBD70 0x1F4 intAcquisition  # OVL2; s1:align
 0x004CBF68 0x178 func_004CBF68  # OVL2 unaligned
 0x004CC0E0 0x178 func_004CC0E0  # OVL2
-0x004CC258 0x10C func_004CC258  # OVL2 unaligned
-0x004CC368 0xF8 func_004CC368  # OVL2 unaligned
+0x004CC258 0x10C asrspi_EnableAGC  # OVL2 unaligned; s1:align
+0x004CC368 0xF8 asrspi_DisableAGC  # OVL2 unaligned; s1:align
 0x004CC460 0x1C0 asrspi_ExportSessionData  # OVL2; s1:calls
-0x004CC620 0x1F0 func_004CC620  # OVL2
+0x004CC620 0x1F0 asrspi_ActivateSessionData  # OVL2; s1:align
 0x004CC810 0xC func_004CC810  # OVL2
 0x004CC820 0x138 func_004CC820  # OVL2
 0x004CC958 0x138 func_004CC958  # OVL2 unaligned
-0x004CCA90 0x3C func_004CCA90  # OVL2
+0x004CCA90 0x3C asrspi_GetVersion  # OVL2; s1:align
 0x004CCAD0 0x14 asrspi_GetUswVersion  # OVL2; s1:exact
 0x004CCAE8 0x44 func_004CCAE8  # OVL2 unaligned
-0x004CCB30 0x120 func_004CCB30  # OVL2
+0x004CCB30 0x120 asrspi_UswGetRecordingInfo  # OVL2; s1:align
 0x004CCC50 0x18 func_004CCC50  # OVL2
 0x004CCC68 0x18 func_004CCC68  # OVL2 unaligned
 0x004CCC80 0x2C func_004CCC80  # OVL2
-0x004CCCB0 0x8C func_004CCCB0  # OVL2
-0x004CCD40 0x38 func_004CCD40  # OVL2
-0x004CCD78 0x20 func_004CCD78  # OVL2 unaligned
+0x004CCCB0 0x8C ASRSPICBABNORM  # OVL2; s1:align
+0x004CCD40 0x38 ASRSPICBAGC  # OVL2; s1:align
+0x004CCD78 0x20 ASRSPICBASKCURRENTGAIN  # OVL2 unaligned; s1:align
 0x004CCD98 0x2C ASRSPICBTS  # OVL2 unaligned; s1:exact
 0x004CCDC8 0x2C ASRSPICBSTARTDET  # OVL2 unaligned; s1:exact
-0x004CCDF8 0x98 func_004CCDF8  # OVL2 unaligned
+0x004CCDF8 0x98 ASRSPICBRESULT  # OVL2 unaligned; s1:align
 0x004CCE90 0x300 func_004CCE90  # OVL2
 0x004CD190 0x48C func_004CD190  # OVL2
 0x004CD620 0xC34 CreateCtxInfo  # OVL2; s1:calls
-0x004CE258 0x1D4 func_004CE258  # OVL2 unaligned
+0x004CE258 0x1D4 FreeCtxInfo  # OVL2 unaligned; s1:align
 0x004CE430 0xB8 func_004CE430  # OVL2
 0x004CE4E8 0x104 func_004CE4E8  # OVL2 unaligned
 0x004CE5F0 0x764 func_004CE5F0  # OVL2
@@ -8742,7 +8742,7 @@
 0x004D1C18 0x284 func_004D1C18  # OVL2 unaligned
 0x004D1EA0 0x2F8 func_004D1EA0  # OVL2
 0x004D2198 0x1180 CreateSecondPassTreeContext  # OVL2 unaligned; s1:calls
-0x004D3318 0x134 func_004D3318  # OVL2 unaligned
+0x004D3318 0x134 AllocateNodeAndFreePrevious  # OVL2 unaligned; s1:align
 0x004D3450 0x30C func_004D3450  # OVL2
 0x004D3760 0x8EC func_004D3760  # OVL2
 0x004D4050 0x554 intCreateCtxTree  # OVL2; s1:callee
@@ -8757,7 +8757,7 @@
 0x004D5830 0x184 func_004D5830  # OVL2
 0x004D59B8 0xF0 func_004D59B8  # OVL2 unaligned
 0x004D5AA8 0x10 CompareIDs  # OVL2 unaligned; s1:exact
-0x004D5AB8 0x60 func_004D5AB8  # OVL2 unaligned
+0x004D5AB8 0x60 CreateActiveWordsCtxTree  # OVL2 unaligned; s1:align
 0x004D5B18 0x888 func_004D5B18  # OVL2 unaligned
 0x004D63A0 0x36C func_004D63A0  # OVL2
 0x004D6710 0x4AC func_004D6710  # OVL2
@@ -8766,66 +8766,66 @@
 0x004D7460 0xDC func_004D7460  # OVL2
 0x004D7540 0xC00 func_004D7540  # OVL2
 0x004D8140 0x24 func_004D8140  # OVL2
-0x004D8168 0x100 func_004D8168  # OVL2 unaligned
-0x004D8268 0x130 func_004D8268  # OVL2 unaligned
+0x004D8168 0x100 Calculate_NbrOfStatesInDict_ForChinese_TreeCtx  # OVL2 unaligned; s1:align
+0x004D8268 0x130 Calculate_NbrOfItemNodes_In_FinalSwappedTranslatedTree_TreeCtx  # OVL2 unaligned; s1:align
 0x004D8398 0xEE0 func_004D8398  # OVL2 unaligned
 0x004D9278 0x678 func_004D9278  # OVL2 unaligned
 0x004D98F0 0x1D8 func_004D98F0  # OVL2
 0x004D9AC8 0x400 func_004D9AC8  # OVL2 unaligned
-0x004D9EC8 0x210 func_004D9EC8  # OVL2 unaligned
+0x004D9EC8 0x210 casrOpen  # OVL2 unaligned; s1:align
 0x004DA0D8 0x1C4 func_004DA0D8  # OVL2 unaligned
-0x004DA2A0 0x158 func_004DA2A0  # OVL2
-0x004DA3F8 0x184 func_004DA3F8  # OVL2 unaligned
+0x004DA2A0 0x158 casrClose  # OVL2; s1:align
+0x004DA3F8 0x184 casrStart  # OVL2 unaligned; s1:align
 0x004DA580 0x178 casrReadLabelInQueue  # OVL2; s1:calls
-0x004DA6F8 0x134 func_004DA6F8  # OVL2 unaligned
-0x004DA830 0x1D0 func_004DA830  # OVL2
-0x004DAA00 0xDC func_004DAA00  # OVL2
+0x004DA6F8 0x134 casrStop  # OVL2 unaligned; s1:align
+0x004DA830 0x1D0 casrGetActiveWords  # OVL2; s1:align
+0x004DAA00 0xDC InitParamList  # OVL2; s1:align
 0x004DAAE0 0x1C8 func_004DAAE0  # OVL2
-0x004DACA8 0xE4 func_004DACA8  # OVL2 unaligned
-0x004DAD90 0x5C0 func_004DAD90  # OVL2
+0x004DACA8 0xE4 UpdateExevStatus  # OVL2 unaligned; s1:align
+0x004DAD90 0x5C0 casrSetParam  # OVL2; s1:align
 0x004DB350 0x620 func_004DB350  # OVL2
 0x004DB970 0x43C casrActivateContext  # OVL2; s1:calls
 0x004DBDB0 0x1BC casrDoNormalSecondPass  # OVL2; s1:calls
-0x004DBF70 0x204 func_004DBF70  # OVL2
+0x004DBF70 0x204 casrDoIsoWordSecondPass  # OVL2; s1:align
 0x004DC178 0x958 func_004DC178  # OVL2 unaligned
-0x004DCAD0 0x184 func_004DCAD0  # OVL2
+0x004DCAD0 0x184 casrInitSampleFormat  # OVL2; s1:align
 0x004DCC58 0x418 casrAcquisition  # OVL2 unaligned; s1:calls
-0x004DD070 0x164 func_004DD070  # OVL2
+0x004DD070 0x164 casrStartUserWordTraining  # OVL2; s1:align
 0x004DD1D8 0x42C cbCheckConfusion  # OVL2 unaligned; s1:ref (taken by address where SOCOM 1 takes cbCheckConfusion's)
 0x004DD608 0x93C casrCheckUserWordConfusion  # OVL2 unaligned; s1:calls
 0x004DDF48 0xFC func_004DDF48  # OVL2 unaligned
-0x004DE048 0xDC func_004DE048  # OVL2 unaligned
+0x004DE048 0xDC casrAcknowledge  # OVL2 unaligned; s1:align
 0x004DE128 0x24 func_004DE128  # OVL2 unaligned
 0x004DE150 0x24 func_004DE150  # OVL2
-0x004DE178 0xE0 func_004DE178  # OVL2 unaligned
-0x004DE258 0x68 func_004DE258  # OVL2 unaligned
-0x004DE2C0 0x34 func_004DE2C0  # OVL2
-0x004DE2F8 0xC4 func_004DE2F8  # OVL2 unaligned
-0x004DE3C0 0xCC func_004DE3C0  # OVL2
+0x004DE178 0xE0 casrExportData  # OVL2 unaligned; s1:align
+0x004DE258 0x68 casrGainSet  # OVL2 unaligned; s1:align
+0x004DE2C0 0x34 casrGetActivatedContext  # OVL2; s1:align
+0x004DE2F8 0xC4 casrGetActivatedData  # OVL2 unaligned; s1:align
+0x004DE3C0 0xCC casrGetUserWordNbrRecsNeeded  # OVL2; s1:align
 0x004DE490 0x40 func_004DE490  # OVL2
 0x004DE4D0 0x40 func_004DE4D0  # OVL2
-0x004DE510 0x60 func_004DE510  # OVL2
-0x004DE570 0x80 func_004DE570  # OVL2
+0x004DE510 0x60 casrGetSignalLevel  # OVL2; s1:align
+0x004DE570 0x80 casrGetSNR  # OVL2; s1:align
 0x004DE5F0 0x8 func_004DE5F0  # OVL2
-0x004DE5F8 0x5C func_004DE5F8  # OVL2 unaligned
+0x004DE5F8 0x5C casrGetState  # OVL2 unaligned; s1:align
 0x004DE658 0x60 func_004DE658  # OVL2 unaligned
 0x004DE6B8 0x54 func_004DE6B8  # OVL2 unaligned
 0x004DE710 0x1C0 func_004DE710  # OVL2
-0x004DE8D0 0x40 func_004DE8D0  # OVL2
+0x004DE8D0 0x40 casrGetCallbackErr  # OVL2; s1:align
 0x004DE910 0x20 func_004DE910  # OVL2
-0x004DE930 0x54 func_004DE930  # OVL2
-0x004DE988 0x4C func_004DE988  # OVL2 unaligned
-0x004DE9D8 0x60 func_004DE9D8  # OVL2 unaligned
-0x004DEA38 0x74 func_004DEA38  # OVL2 unaligned
+0x004DE930 0x54 casrStoreSegmentation  # OVL2; s1:align
+0x004DE988 0x4C casrEnableLabelInQueue  # OVL2 unaligned; s1:align
+0x004DE9D8 0x60 casrDoSecondPass  # OVL2 unaligned; s1:align
+0x004DEA38 0x74 cbStateHandler  # OVL2 unaligned; s1:align
 0x004DEAB0 0x34 func_004DEAB0  # OVL2
 0x004DEAE8 0x34 func_004DEAE8  # OVL2 unaligned
-0x004DEB20 0x28 func_004DEB20  # OVL2
+0x004DEB20 0x28 cbInitArchitectureQueues  # OVL2; s1:align
 0x004DEB48 0x10 cbRegisterInputQueue  # OVL2 unaligned; s1:exact
 0x004DEB58 0x44 func_004DEB58  # OVL2 unaligned
 0x004DEBA0 0x64 func_004DEBA0  # OVL2
 0x004DEC08 0x5C func_004DEC08  # OVL2 unaligned
 0x004DEC68 0x58 func_004DEC68  # OVL2 unaligned
-0x004DECC0 0x164 func_004DECC0  # OVL2
+0x004DECC0 0x164 CalcSentenceConfidence  # OVL2; s1:align
 0x004DEE28 0x74 func_004DEE28  # OVL2 unaligned
 0x004DEEA0 0x80 func_004DEEA0  # OVL2
 0x004DEF20 0x74 func_004DEF20  # OVL2
@@ -8834,10 +8834,10 @@
 0x004DF0C8 0x90 func_004DF0C8  # OVL2 unaligned
 0x004DF158 0x90 func_004DF158  # OVL2 unaligned
 0x004DF1E8 0x18 cbDoSecondPass  # OVL2 unaligned; s1:exact
-0x004DF200 0x58 func_004DF200  # OVL2
+0x004DF200 0x58 cbTrain  # OVL2; s1:align
 0x004DF258 0x20 cbNewUserWordUtterance  # OVL2 unaligned; s1:exact
 0x004DF278 0x10 cbDTMFDetected  # OVL2 unaligned; s1:exact
-0x004DF288 0x40 func_004DF288  # OVL2 unaligned
+0x004DF288 0x40 cbGenderDisable  # OVL2 unaligned; s1:align
 0x004DF2C8 0x154 func_004DF2C8  # OVL2 unaligned
 0x004DF420 0x4C func_004DF420  # OVL2
 0x004DF470 0x424 func_004DF470  # OVL2
@@ -8846,107 +8846,107 @@
 0x004E0050 0xCB0 func_004E0050  # OVL2
 0x004E0D00 0x2D4 func_004E0D00  # OVL2
 0x004E0FD8 0x1F8 func_004E0FD8  # OVL2 unaligned
-0x004E11D0 0x84 func_004E11D0  # OVL2
+0x004E11D0 0x84 TrainFree  # OVL2; s1:align
 0x004E1258 0x10C func_004E1258  # OVL2 unaligned
 0x004E1368 0x178 func_004E1368  # OVL2 unaligned
 0x004E14E0 0x228 func_004E14E0  # OVL2
 0x004E1708 0x420 func_004E1708  # OVL2 unaligned
-0x004E1B28 0x1DC func_004E1B28  # OVL2 unaligned
+0x004E1B28 0x1DC userwordAcknowledge  # OVL2 unaligned; s1:align
 0x004E1D08 0x124 func_004E1D08  # OVL2 unaligned
-0x004E1E30 0xD4 func_004E1E30  # OVL2
+0x004E1E30 0xD4 ExitUserWordTraining  # OVL2; s1:align
 0x004E1F08 0x100 func_004E1F08  # OVL2 unaligned
 0x004E2008 0x238 func_004E2008  # OVL2 unaligned
 0x004E2240 0x398 func_004E2240  # OVL2
 0x004E25D8 0x6A0 DoDurationModeling  # OVL2 unaligned; s1:calls
-0x004E2C78 0x950 func_004E2C78  # OVL2 unaligned
+0x004E2C78 0x950 ScoreTranscriptions  # OVL2 unaligned; s1:calls
 0x004E35C8 0x230 func_004E35C8  # OVL2 unaligned
 0x004E37F8 0x22C func_004E37F8  # OVL2 unaligned
 0x004E3A28 0x2A0 DoUserWordTraining  # OVL2 unaligned; s1:calls
-0x004E3CC8 0x54 func_004E3CC8  # OVL2 unaligned
-0x004E3D20 0xE8 func_004E3D20  # OVL2
+0x004E3CC8 0x54 userwordStartUserWordTraining  # OVL2 unaligned; s1:align
+0x004E3D20 0xE8 SendPartOfLabelsToEngine  # OVL2; s1:align
 0x004E3E08 0xCC cbUserWordResultAvailable  # OVL2 unaligned; s1:calls
 0x004E3ED8 0x50 func_004E3ED8  # OVL2 unaligned
-0x004E3F28 0x50 func_004E3F28  # OVL2 unaligned
-0x004E3F78 0x50 func_004E3F78  # OVL2 unaligned
-0x004E3FC8 0x3C func_004E3FC8  # OVL2 unaligned
+0x004E3F28 0x50 DoLabelStop  # OVL2 unaligned; s1:align
+0x004E3F78 0x50 DoLabelStart  # OVL2 unaligned; s1:align
+0x004E3FC8 0x3C cbCancelUserWordTraining  # OVL2 unaligned; s1:align
 0x004E4008 0x84 func_004E4008  # OVL2 unaligned
 0x004E4090 0xE0 func_004E4090  # OVL2
 0x004E4170 0xE4 func_004E4170  # OVL2
-0x004E4258 0x4C func_004E4258  # OVL2 unaligned
-0x004E42A8 0x16C func_004E42A8  # OVL2 unaligned
-0x004E4418 0x3C func_004E4418  # OVL2 unaligned
-0x004E4458 0xF4 func_004E4458  # OVL2 unaligned
-0x004E4550 0xD8 func_004E4550  # OVL2
+0x004E4258 0x4C cbDoUserWordTraining  # OVL2 unaligned; s1:align
+0x004E42A8 0x16C ProcessDelayBlock  # OVL2 unaligned; s1:align
+0x004E4418 0x3C ConstructDelayBlock  # OVL2 unaligned; s1:align
+0x004E4458 0xF4 ControlDelayBlock  # OVL2 unaligned; s1:align
+0x004E4550 0xD8 InitDelayBlock  # OVL2; s1:align
 0x004E4628 0x1D0 func_004E4628  # OVL2 unaligned
-0x004E47F8 0x248 func_004E47F8  # OVL2 unaligned
-0x004E4A40 0x120 func_004E4A40  # OVL2
+0x004E47F8 0x248 InitViterbi  # OVL2 unaligned; s1:align
+0x004E4A40 0x120 InitDpGenUw  # OVL2; s1:align
 0x004E4B60 0x260 func_004E4B60  # OVL2
 0x004E4DC0 0x61C func_004E4DC0  # OVL2
-0x004E53E0 0x158 func_004E53E0  # OVL2
+0x004E53E0 0x158 DpGenUwProcess  # OVL2; s1:align
 0x004E5538 0x12C func_004E5538  # OVL2 unaligned
-0x004E5668 0x27C func_004E5668  # OVL2 unaligned
-0x004E58E8 0x5C func_004E58E8  # OVL2 unaligned
+0x004E5668 0x27C ControlDpScoreUw  # OVL2 unaligned; s1:calls
+0x004E58E8 0x5C ConstructDpGenUw  # OVL2 unaligned; s1:align
 0x004E5948 0x8 func_004E5948  # OVL2 unaligned
 0x004E5950 0x10 MakeUserWordsActiveDist  # OVL2; s1:exact
 0x004E5960 0x1D4 func_004E5960  # OVL2
 0x004E5B38 0x234 func_004E5B38  # OVL2 unaligned
-0x004E5D70 0x28C func_004E5D70  # OVL2
+0x004E5D70 0x28C SendResultScoreUserWords  # OVL2; s1:align
 0x004E6000 0x4DC func_004E6000  # OVL2
-0x004E64E0 0x12C func_004E64E0  # OVL2
+0x004E64E0 0x12C DpScoreUwProcess  # OVL2; s1:align
 0x004E6610 0x1A0 func_004E6610  # OVL2
 0x004E67B0 0x22C func_004E67B0  # OVL2
-0x004E69E0 0x5C func_004E69E0  # OVL2
-0x004E6A40 0x8 func_004E6A40  # OVL2
-0x004E6A48 0xA8 func_004E6A48  # OVL2 unaligned
-0x004E6AF0 0xCC func_004E6AF0  # OVL2
+0x004E69E0 0x5C ConstructDpScoreUw  # OVL2; s1:align
+0x004E6A40 0x8 IdleDpScoreUwProcess  # OVL2; s1:ref (taken by address where SOCOM 1 takes IdleDpScoreUwProcess's)
+0x004E6A48 0xA8 InitDpScoreUw  # OVL2 unaligned; s1:align
+0x004E6AF0 0xCC MakeScoreUserWordsActiveDist  # OVL2; s1:align
 0x004E6BC0 0x60 func_004E6BC0  # OVL2
 0x004E6C20 0x2C8 func_004E6C20  # OVL2
-0x004E6EE8 0x234 func_004E6EE8  # OVL2 unaligned
-0x004E7120 0x3C func_004E7120  # OVL2
-0x004E7160 0x58 func_004E7160  # OVL2
-0x004E71B8 0x40 func_004E71B8  # OVL2 unaligned
+0x004E6EE8 0x234 ControlExtraEventDP  # OVL2 unaligned; s1:align
+0x004E7120 0x3C ConstructExtraEventDp  # OVL2; s1:align
+0x004E7160 0x58 ProcessExtraEventDP  # OVL2; s1:align
+0x004E71B8 0x40 InitExtraEventDP  # OVL2 unaligned; s1:align
 0x004E71F8 0x8BC func_004E71F8  # OVL2 unaligned
 0x004E7AB8 0x1C0 func_004E7AB8  # OVL2 unaligned
 0x004E7C78 0x410 func_004E7C78  # OVL2 unaligned
 0x004E8088 0x684 func_004E8088  # OVL2 unaligned
 0x004E8710 0x2AC func_004E8710  # OVL2
-0x004E89C0 0x8C func_004E89C0  # OVL2
-0x004E8A50 0x94 func_004E8A50  # OVL2
+0x004E89C0 0x8C ConstructFFTMod  # OVL2; s1:align
+0x004E8A50 0x94 ControlFFTMod  # OVL2; s1:align
 0x004E8AE8 0x28C func_004E8AE8  # OVL2 unaligned
-0x004E8D78 0x130 func_004E8D78  # OVL2 unaligned
-0x004E8EA8 0x1D4 func_004E8EA8  # OVL2 unaligned
-0x004E9080 0x2DC func_004E9080  # OVL2
+0x004E8D78 0x130 FreeIsoWordTokenDp  # OVL2 unaligned; s1:align
+0x004E8EA8 0x1D4 InitNewUtterance  # OVL2 unaligned; s1:align
+0x004E9080 0x2DC ExtendNodeWheel  # OVL2; s1:calls
 0x004E9360 0xD98 func_004E9360  # OVL2
 0x004EA0F8 0x92C func_004EA0F8  # OVL2 unaligned
 0x004EAA28 0x104 func_004EAA28  # OVL2 unaligned; s1~ ExpandGarbageArrays (one of 2)
 0x004EAB30 0x308 func_004EAB30  # OVL2
 0x004EAE38 0x23C func_004EAE38  # OVL2 unaligned
-0x004EB078 0x328 func_004EB078  # OVL2 unaligned
-0x004EB3A0 0x3C func_004EB3A0  # OVL2
-0x004EB3E0 0xC4 func_004EB3E0  # OVL2
+0x004EB078 0x328 ControlIsoWordTokenDp  # OVL2 unaligned; s1:align
+0x004EB3A0 0x3C ConstructIsoWordTokenDp  # OVL2; s1:align
+0x004EB3E0 0xC4 InitIsoWordTokenDpProcess  # OVL2; s1:align
 0x004EB4A8 0x118 func_004EB4A8  # OVL2 unaligned
 0x004EB5C0 0x8 func_004EB5C0  # OVL2
 0x004EB5C8 0x20 func_004EB5C8  # OVL2 unaligned
 0x004EB5E8 0x1EC func_004EB5E8  # OVL2 unaligned
 0x004EB7D8 0x3C0 func_004EB7D8  # OVL2 unaligned
-0x004EBB98 0x114 func_004EBB98  # OVL2 unaligned
+0x004EBB98 0x114 InitNBestDynProgProcess  # OVL2 unaligned; s1:align
 0x004EBCB0 0x47C func_004EBCB0  # OVL2
 0x004EC130 0xC8 func_004EC130  # OVL2
 0x004EC1F8 0x1A8 func_004EC1F8  # OVL2 unaligned
 0x004EC3A0 0x1F4 func_004EC3A0  # OVL2
 0x004EC598 0x1144 func_004EC598  # OVL2 unaligned
 0x004ED6E0 0x198C func_004ED6E0  # OVL2
-0x004EF070 0x11C func_004EF070  # OVL2
-0x004EF190 0x534 func_004EF190  # OVL2
+0x004EF070 0x11C CopyParBT  # OVL2; s1:align
+0x004EF190 0x534 BacktraceWordsParBT  # OVL2; s1:align
 0x004EF6C8 0x288 func_004EF6C8  # OVL2 unaligned
-0x004EF950 0x1C4 func_004EF950  # OVL2
+0x004EF950 0x1C4 FindBestRecognised  # OVL2; s1:calls
 0x004EFB18 0x144 func_004EFB18  # OVL2 unaligned; s1~ ExpandGarbageArrays (one of 2)
-0x004EFC60 0x308 func_004EFC60  # OVL2
+0x004EFC60 0x308 NBestDynProgProcess  # OVL2; s1:align
 0x004EFF68 0xC54 func_004EFF68  # OVL2 unaligned
-0x004F0BC0 0x3C func_004F0BC0  # OVL2
-0x004F0C00 0x7C func_004F0C00  # OVL2
+0x004F0BC0 0x3C ConstructNBestDynProg  # OVL2; s1:align
+0x004F0C00 0x7C ExtendBacktraceStack  # OVL2; s1:align
 0x004F0C80 0x30 func_004F0C80  # OVL2
-0x004F0CB0 0x8 func_004F0CB0  # OVL2
+0x004F0CB0 0x8 IdleProcess  # OVL2; s1:ref (taken by address where SOCOM 1 takes IdleProcess's)
 0x004F0CB8 0x404 func_004F0CB8  # OVL2 unaligned
 0x004F10C0 0x438 func_004F10C0  # OVL2
 0x004F14F8 0x39C func_004F14F8  # OVL2 unaligned
@@ -8955,108 +8955,108 @@
 0x004F1D80 0x1DC func_004F1D80  # OVL2
 0x004F1F60 0x594 func_004F1F60  # OVL2
 0x004F24F8 0x3C4 func_004F24F8  # OVL2 unaligned
-0x004F28C0 0x3C func_004F28C0  # OVL2
-0x004F2900 0x22C func_004F2900  # OVL2
+0x004F28C0 0x3C ConstructPitchDP  # OVL2; s1:align
+0x004F2900 0x22C CreateWindow  # OVL2; s1:align
 0x004F2B30 0x1F4 func_004F2B30  # OVL2
-0x004F2D28 0x3C func_004F2D28  # OVL2 unaligned
-0x004F2D68 0x138 func_004F2D68  # OVL2 unaligned
-0x004F2EA0 0xEC func_004F2EA0  # OVL2
-0x004F2F90 0x174 func_004F2F90  # OVL2
-0x004F3108 0x3C func_004F3108  # OVL2 unaligned
+0x004F2D28 0x3C ConstructPitchWindow  # OVL2 unaligned; s1:align
+0x004F2D68 0x138 ProcessPitchWindow  # OVL2 unaligned; s1:align
+0x004F2EA0 0xEC ControlPitchWindow  # OVL2; s1:align
+0x004F2F90 0x174 InitStacker  # OVL2; s1:align
+0x004F3108 0x3C ConstructStacker  # OVL2 unaligned; s1:align
 0x004F3148 0xFC func_004F3148  # OVL2 unaligned
-0x004F3248 0xE4 func_004F3248  # OVL2 unaligned
-0x004F3330 0x3C func_004F3330  # OVL2
+0x004F3248 0xE4 ControlStacker  # OVL2 unaligned; s1:align
+0x004F3330 0x3C ConstructUndersampler  # OVL2; s1:align
 0x004F3370 0x124 func_004F3370  # OVL2
-0x004F3498 0x30 func_004F3498  # OVL2 unaligned
+0x004F3498 0x30 ControlUndersampler  # OVL2 unaligned; s1:align
 0x004F34C8 0xD8 func_004F34C8  # OVL2 unaligned
 0x004F35A0 0xF0 Reset  # OVL2; s1:calls
 0x004F3690 0x194 func_004F3690  # OVL2
-0x004F3828 0x680 func_004F3828  # OVL2 unaligned
-0x004F3EA8 0x2A8 func_004F3EA8  # OVL2 unaligned
+0x004F3828 0x680 ProcessAcne  # OVL2 unaligned; s1:align
+0x004F3EA8 0x2A8 ControlAcne  # OVL2 unaligned; s1:align
 0x004F4150 0x250 InitAcne  # OVL2; s1:calls
 0x004F43A0 0x3C func_004F43A0  # OVL2
 0x004F43E0 0x30C func_004F43E0  # OVL2
 0x004F46F0 0x3C func_004F46F0  # OVL2
 0x004F4730 0x1CC func_004F4730  # OVL2
-0x004F4900 0x4C func_004F4900  # OVL2
+0x004F4900 0x4C ControlDCTLift  # OVL2; s1:align
 0x004F4950 0x58C ControlGender  # OVL2; s1:calls
 0x004F4EE0 0x548 func_004F4EE0  # OVL2
 0x004F5428 0x2DC func_004F5428  # OVL2 unaligned
-0x004F5708 0x238 func_004F5708  # OVL2 unaligned
-0x004F5940 0x52C func_004F5940  # OVL2
-0x004F5E70 0x3C func_004F5E70  # OVL2
+0x004F5708 0x238 InitGender  # OVL2 unaligned; s1:align
+0x004F5940 0x52C ProcessGender  # OVL2; s1:align
+0x004F5E70 0x3C ConstructGender  # OVL2; s1:align
 0x004F5EB0 0x6C ResetGender  # OVL2; s1:exact
-0x004F5F20 0xDC func_004F5F20  # OVL2
+0x004F5F20 0xDC HLnOnePlusExpHFloat  # OVL2; s1:align
 0x004F6000 0x10C func_004F6000  # OVL2
-0x004F6110 0x808 func_004F6110  # OVL2
-0x004F6918 0x3C func_004F6918  # OVL2 unaligned
+0x004F6110 0x808 MelInitBands  # OVL2; s1:align
+0x004F6918 0x3C ConstructMel  # OVL2 unaligned; s1:align
 0x004F6958 0x1AC func_004F6958  # OVL2 unaligned
-0x004F6B08 0x170 func_004F6B08  # OVL2 unaligned
-0x004F6C78 0x64 func_004F6C78  # OVL2 unaligned
+0x004F6B08 0x170 ControlMel  # OVL2 unaligned; s1:calls
+0x004F6C78 0x64 InitMel  # OVL2 unaligned; s1:align
 0x004F6CE0 0x32C func_004F6CE0  # OVL2
-0x004F7010 0x24 func_004F7010  # OVL2
+0x004F7010 0x24 mtxConstruct  # OVL2; s1:align
 0x004F7038 0x50 func_004F7038  # OVL2 unaligned
 0x004F7088 0x18 mtxAssociateEntr  # OVL2 unaligned; s1:exact
 0x004F70A0 0x24 mtxAssociateAll  # OVL2; s1:exact
-0x004F70C8 0x80 func_004F70C8  # OVL2 unaligned
-0x004F7148 0x1B8 func_004F7148  # OVL2 unaligned
+0x004F70C8 0x80 mtxDeleteCol  # OVL2 unaligned; s1:align
+0x004F7148 0x1B8 mtxCompress  # OVL2 unaligned; s1:align
 0x004F7300 0x124 func_004F7300  # OVL2
 0x004F7428 0x98 mtxInit  # OVL2 unaligned; s1:calls
-0x004F74C0 0xBC func_004F74C0  # OVL2
-0x004F7580 0xF4 func_004F7580  # OVL2
-0x004F7678 0x24 func_004F7678  # OVL2 unaligned
+0x004F74C0 0xBC mtxInitCopy  # OVL2; s1:align
+0x004F7580 0xF4 mtxMax  # OVL2; s1:align
+0x004F7678 0x24 imtxConstruct  # OVL2 unaligned; s1:align
 0x004F76A0 0x50 func_004F76A0  # OVL2
 0x004F76F0 0x88 func_004F76F0  # OVL2
-0x004F7778 0x80 func_004F7778  # OVL2 unaligned
-0x004F77F8 0x88 func_004F77F8  # OVL2 unaligned
+0x004F7778 0x80 imtxDeleteCol  # OVL2 unaligned; s1:align
+0x004F77F8 0x88 mtxFillX  # OVL2 unaligned; s1:align
 0x004F7880 0x24 func_004F7880  # OVL2
 0x004F78A8 0x19C func_004F78A8  # OVL2 unaligned
 0x004F7A48 0x200 smtConstruct  # OVL2 unaligned; s1:calls
-0x004F7C48 0x45C func_004F7C48  # OVL2 unaligned
+0x004F7C48 0x45C Smoothing  # OVL2 unaligned; s1:calls
 0x004F80A8 0x84 func_004F80A8  # OVL2 unaligned
 0x004F8130 0x244 func_004F8130  # OVL2
-0x004F8378 0xF0 func_004F8378  # OVL2 unaligned
+0x004F8378 0xF0 SpecSubGetSession  # OVL2 unaligned; s1:align
 0x004F8468 0x1208 func_004F8468  # OVL2 unaligned
-0x004F9670 0x224 func_004F9670  # OVL2
+0x004F9670 0x224 ControlSpecSub  # OVL2; s1:align
 0x004F9898 0x40C func_004F9898  # OVL2 unaligned
-0x004F9CA8 0x3C func_004F9CA8  # OVL2 unaligned
+0x004F9CA8 0x3C ConstructSpecSub  # OVL2 unaligned; s1:align
 0x004F9CE8 0xD4 func_004F9CE8  # OVL2 unaligned
 0x004F9DC0 0x2D8 ChangeMike  # OVL2; s1:calls
-0x004FA098 0x164 func_004FA098  # OVL2 unaligned
+0x004FA098 0x164 TestChangeMike  # OVL2 unaligned; s1:align
 0x004FA200 0x240 CheckForAbnormalConditions  # OVL2; s1:calls
-0x004FA440 0x1E0 func_004FA440  # OVL2
-0x004FA620 0x1E0 func_004FA620  # OVL2
-0x004FA800 0x754 func_004FA800  # OVL2
-0x004FAF58 0x264 func_004FAF58  # OVL2 unaligned
-0x004FB1C0 0x35C func_004FB1C0  # OVL2
+0x004FA440 0x1E0 VadGetSession  # OVL2; s1:align
+0x004FA620 0x1E0 VadPutSession  # OVL2; s1:align
+0x004FA800 0x754 VadFastTrackProcess  # OVL2; s1:align
+0x004FAF58 0x264 ProcessVad  # OVL2 unaligned; s1:align
+0x004FB1C0 0x35C ControlVad  # OVL2; s1:align
 0x004FB520 0x478 InitVad  # OVL2; s1:calls
-0x004FB998 0x9C func_004FB998  # OVL2 unaligned
-0x004FBA38 0x160 func_004FBA38  # OVL2 unaligned
+0x004FB998 0x9C ConstructVad  # OVL2 unaligned; s1:align
+0x004FBA38 0x160 LoadCodeBooks  # OVL2 unaligned; s1:align
 0x004FBB98 0x46C func_004FBB98  # OVL2 unaligned
-0x004FC008 0x3C func_004FC008  # OVL2 unaligned
-0x004FC048 0x58 func_004FC048  # OVL2 unaligned
-0x004FC0A0 0x38 func_004FC0A0  # OVL2
+0x004FC008 0x3C ConstructVq  # OVL2 unaligned; s1:align
+0x004FC048 0x58 InitVq1500Process  # OVL2 unaligned; s1:align
+0x004FC0A0 0x38 FreeCodeBooks  # OVL2; s1:align
 0x004FC0D8 0x8 func_004FC0D8  # OVL2 unaligned
 0x004FC0E0 0x84 func_004FC0E0  # OVL2
-0x004FC168 0x98 func_004FC168  # OVL2 unaligned
+0x004FC168 0x98 Vq1500Process  # OVL2 unaligned; s1:align
 0x004FC200 0x40 func_004FC200  # OVL2
-0x004FC240 0x3E0 func_004FC240  # OVL2
+0x004FC240 0x3E0 WindowFlush  # OVL2; s1:align
 0x004FC620 0x50C func_004FC620  # OVL2
 0x004FCB30 0x274 func_004FCB30  # OVL2
-0x004FCDA8 0x3C func_004FCDA8  # OVL2 unaligned
-0x004FCDE8 0xBC func_004FCDE8  # OVL2 unaligned
+0x004FCDA8 0x3C ConstructWindow  # OVL2 unaligned; s1:align
+0x004FCDE8 0xBC ControlWindow  # OVL2 unaligned; s1:align
 0x004FCEA8 0x3FC func_004FCEA8  # OVL2 unaligned
-0x004FD2A8 0x3C func_004FD2A8  # OVL2 unaligned
+0x004FD2A8 0x3C ConstructCombiner  # OVL2 unaligned; s1:align
 0x004FD2E8 0xFC func_004FD2E8  # OVL2 unaligned
 0x004FD3E8 0xFC CombinerControl  # OVL2 unaligned; s1:calls
-0x004FD4E8 0xDC func_004FD4E8  # OVL2 unaligned
+0x004FD4E8 0xDC ResizeQueues  # OVL2 unaligned; s1:align
 0x004FD5C8 0x22C func_004FD5C8  # OVL2 unaligned
-0x004FD7F8 0x60C func_004FD7F8  # OVL2 unaligned
+0x004FD7F8 0x60C LoadLanguage  # OVL2 unaligned; s1:align
 0x004FDE08 0x8C0 func_004FDE08  # OVL2 unaligned
 0x004FE6C8 0xA90 func_004FE6C8  # OVL2 unaligned
 0x004FF158 0x228 func_004FF158  # OVL2 unaligned
 0x004FF380 0x224 func_004FF380  # OVL2
-0x004FF5A8 0x518 func_004FF5A8  # OVL2 unaligned
+0x004FF5A8 0x518 InitDistSilProcess  # OVL2 unaligned; s1:align
 0x004FFAC0 0x224 func_004FFAC0  # OVL2
 0x004FFCE8 0x22C func_004FFCE8  # OVL2 unaligned
 0x004FFF18 0x7CC func_004FFF18  # OVL2 unaligned
@@ -9067,64 +9067,64 @@
 0x00500EC8 0x12C func_00500EC8  # OVL2 unaligned
 0x00500FF8 0x1B4 func_00500FF8  # OVL2 unaligned
 0x005011B0 0x8 func_005011B0  # OVL2
-0x005011B8 0x74 func_005011B8  # OVL2 unaligned
+0x005011B8 0x74 ConstructGenderFilter  # OVL2 unaligned; s1:align
 0x00501230 0x124 func_00501230  # OVL2
-0x00501358 0x30 func_00501358  # OVL2 unaligned
-0x00501388 0x8C func_00501388  # OVL2 unaligned
-0x00501418 0x3C func_00501418  # OVL2 unaligned
-0x00501458 0x10C func_00501458  # OVL2 unaligned
-0x00501568 0x64 func_00501568  # OVL2 unaligned
-0x005015D0 0xC0 func_005015D0  # OVL2
+0x00501358 0x30 ControlGenderFilter  # OVL2 unaligned; s1:align
+0x00501388 0x8C InitGenderFilter  # OVL2 unaligned; s1:align
+0x00501418 0x3C ConstructLookAhead  # OVL2 unaligned; s1:align
+0x00501458 0x10C ProcessLookAhead  # OVL2 unaligned; s1:align
+0x00501568 0x64 ControlLookAhead  # OVL2 unaligned; s1:align
+0x005015D0 0xC0 InitLookAhead  # OVL2; s1:align
 0x00501690 0x284 func_00501690  # OVL2
-0x00501918 0x3C func_00501918  # OVL2 unaligned
-0x00501958 0x54 func_00501958  # OVL2 unaligned
+0x00501918 0x3C ConstructMedian  # OVL2 unaligned; s1:align
+0x00501958 0x54 ControlMedian  # OVL2 unaligned; s1:align
 0x005019B0 0x18 Median_Reset  # OVL2; s1:exact
-0x005019C8 0xC4 func_005019C8  # OVL2 unaligned
+0x005019C8 0xC4 InitMedian  # OVL2 unaligned; s1:align
 0x00501A90 0x38C func_00501A90  # OVL2
-0x00501E20 0x114 func_00501E20  # OVL2
+0x00501E20 0x114 NormE_Processing  # OVL2; s1:align
 0x00501F38 0x35C FlushPitchCombiner  # OVL2 unaligned; s1:calls
 0x00502298 0x3BC func_00502298  # OVL2 unaligned
 0x00502658 0x298 func_00502658  # OVL2 unaligned
 0x005028F0 0x114 func_005028F0  # OVL2
 0x00502A08 0x508 func_00502A08  # OVL2 unaligned
-0x00502F10 0x3C func_00502F10  # OVL2
+0x00502F10 0x3C ConstructPitchCombiner  # OVL2; s1:align
 0x00502F50 0x4C0 func_00502F50  # OVL2
 0x00503410 0x398 Lin_2_Log  # OVL2; s1:calls
 0x005037A8 0x3D4 func_005037A8  # OVL2 unaligned
 0x00503B80 0x640 ProcessSHS_VUV  # OVL2; s1:calls
-0x005041C0 0xF8 func_005041C0  # OVL2
+0x005041C0 0xF8 ControlSHS_VUV  # OVL2; s1:align
 0x005042B8 0x264 func_005042B8  # OVL2 unaligned
 0x00504520 0x45C func_00504520  # OVL2
-0x00504980 0x3C func_00504980  # OVL2
-0x005049C0 0x100 func_005049C0  # OVL2
-0x00504AC0 0x19C func_00504AC0  # OVL2
+0x00504980 0x3C ConstructSHS_VUV  # OVL2; s1:align
+0x005049C0 0x100 SlidingHisto_NewItem  # OVL2; s1:align
+0x00504AC0 0x19C SlidingHisto_Init  # OVL2; s1:align
 0x00504C60 0x104 func_00504C60  # OVL2
-0x00504D68 0x7C func_00504D68  # OVL2 unaligned
+0x00504D68 0x7C SlidingHisto_Clear  # OVL2 unaligned; s1:align
 0x00504DE8 0x60 func_00504DE8  # OVL2 unaligned
 0x00504E48 0x10 func_00504E48  # OVL2 unaligned
 0x00504E58 0x114 func_00504E58  # OVL2 unaligned
 0x00504F70 0x3C func_00504F70  # OVL2
 0x00504FB0 0x2D8 func_00504FB0  # OVL2
-0x00505288 0x13C func_00505288  # OVL2 unaligned
-0x005053C8 0x3C func_005053C8  # OVL2 unaligned
-0x00505408 0x78 func_00505408  # OVL2 unaligned
+0x00505288 0x13C InitStationarity  # OVL2 unaligned; s1:align
+0x005053C8 0x3C ConstructStationarity  # OVL2 unaligned; s1:align
+0x00505408 0x78 ControlStationarity  # OVL2 unaligned; s1:align
 0x00505480 0x2AC func_00505480  # OVL2
 0x00505730 0x174 func_00505730  # OVL2
 0x005058A8 0x348 Subsampler_Init  # OVL2 unaligned; s1:calls
 0x00505BF0 0xD8 func_00505BF0  # OVL2
-0x00505CC8 0xC4 func_00505CC8  # OVL2 unaligned
-0x00505D90 0x630 func_00505D90  # OVL2
-0x005063C0 0x18C func_005063C0  # OVL2
-0x00506550 0x424 func_00506550  # OVL2
-0x00506978 0x3E0 func_00506978  # OVL2 unaligned
-0x00506D58 0x3C func_00506D58  # OVL2 unaligned
-0x00506D98 0xA48 func_00506D98  # OVL2 unaligned
+0x00505CC8 0xC4 Subsampler_Free  # OVL2 unaligned; s1:align
+0x00505D90 0x630 TriggerLR_FindSpeech  # OVL2; s1:align
+0x005063C0 0x18C ProcessTriggerLR  # OVL2; s1:align
+0x00506550 0x424 ControlTriggerLR  # OVL2; s1:align
+0x00506978 0x3E0 InitTriggerLR  # OVL2 unaligned; s1:align
+0x00506D58 0x3C ConstructTriggerLR  # OVL2 unaligned; s1:align
+0x00506D98 0xA48 Voicing_GetMaxVoicing  # OVL2 unaligned; s1:align
 0x005077E0 0x360 func_005077E0  # OVL2
 0x00507B40 0x318 func_00507B40  # OVL2
 0x00507E58 0x2E4 func_00507E58  # OVL2 unaligned
-0x00508140 0xA4 func_00508140  # OVL2
-0x005081E8 0x6C func_005081E8  # OVL2 unaligned
-0x00508258 0xD8 func_00508258  # OVL2 unaligned
+0x00508140 0xA4 Voicing_Reset  # OVL2; s1:align
+0x005081E8 0x6C Voicing_Free  # OVL2 unaligned; s1:align
+0x00508258 0xD8 FillContextV2VirtualTable  # OVL2 unaligned; s1:align
 0x00508330 0x14 _contextCheckDataType  # OVL2; s1:exact
 0x00508348 0xC func_00508348  # OVL2 unaligned
 0x00508358 0xC func_00508358  # OVL2 unaligned
@@ -9144,9 +9144,9 @@
 0x00508448 0xC func_00508448  # OVL2 unaligned
 0x00508458 0x28 func_00508458  # OVL2 unaligned
 0x00508480 0x38 func_00508480  # OVL2
-0x005084B8 0x4C func_005084B8  # OVL2 unaligned
+0x005084B8 0x4C _contextGetpSyntax  # OVL2 unaligned; s1:align
 0x00508508 0x210 func_00508508  # OVL2 unaligned
-0x00508718 0xE8 func_00508718  # OVL2 unaligned
+0x00508718 0xE8 FillLanguageVirtualTable  # OVL2 unaligned; s1:align
 0x00508800 0x80 func_00508800  # OVL2
 0x00508880 0x24 func_00508880  # OVL2
 0x005088A8 0x10 _langCheckBitField  # OVL2 unaligned; s1:exact
@@ -9185,7 +9185,7 @@
 0x00508A98 0xC func_00508A98  # OVL2 unaligned
 0x00508AA8 0xC func_00508AA8  # OVL2 unaligned
 0x00508AB8 0x18 func_00508AB8  # OVL2 unaligned
-0x00508AD0 0x2C func_00508AD0  # OVL2
+0x00508AD0 0x2C _langGetpErgodicPhenomes  # OVL2; s1:align
 0x00508B00 0x3C func_00508B00  # OVL2
 0x00508B40 0x4C func_00508B40  # OVL2
 0x00508B90 0x188 func_00508B90  # OVL2
@@ -10772,7 +10772,7 @@
 0x005A31C0 0x58 func_005A31C0  # OVL2
 0x005A3220 0x58 func_005A3220  # OVL2
 0x005A3280 0x12C func_005A3280  # OVL2
-0x005A33B0 0x1B8 func_005A33B0  # OVL2
+0x005A33B0 0x1B8 HandleBloodDrip__10CZSealBodyFf  # OVL2; s1:calls
 0x005A3570 0x434 func_005A3570  # OVL2
 0x005A39B0 0x198 func_005A39B0  # OVL2
 0x005A3B50 0x58 func_005A3B50  # OVL2
@@ -11481,7 +11481,7 @@
 0x005F1AD0 0x80 func_005F1AD0  # OVL2
 0x005F1B50 0x9C func_005F1B50  # OVL2
 0x005F1BF0 0x80 func_005F1BF0  # OVL2
-0x005F1C70 0x1CC func_005F1C70  # OVL2
+0x005F1C70 0x1CC Tick__13CAiSSuspendedFfP11CSealCtrlAi  # OVL2; s1:calls
 0x005F1E40 0x2E0 func_005F1E40  # OVL2
 0x005F2120 0xFE0 func_005F2120  # OVL2
 0x005F3100 0x170 func_005F3100  # OVL2
@@ -12381,9 +12381,9 @@
 0x0062CB68 0x3C func_0062CB68  # OVL2 unaligned
 0x0062CBA8 0x114 func_0062CBA8  # OVL2 unaligned
 0x0062CCC0 0x60 rt_comm_destroy  # OVL2; s1:calls
-0x0062CD20 0x10C func_0062CD20  # OVL2
+0x0062CD20 0x10C rt_comm_send  # OVL2; s1:align
 0x0062CE30 0xC8 rt_comm_send_to  # OVL2; s1:calls
-0x0062CEF8 0xA4 func_0062CEF8  # OVL2 unaligned
+0x0062CEF8 0xA4 rt_comm_receive  # OVL2 unaligned; s1:align
 0x0062CFA0 0x10C func_0062CFA0  # OVL2
 0x0062D0B0 0xC8 rt_comm_receive_from  # OVL2; s1:exact
 0x0062D178 0xC8 func_0062D178  # OVL2 unaligned
@@ -12397,7 +12397,7 @@
 0x0062D478 0x5C func_0062D478  # OVL2 unaligned
 0x0062D4D8 0x5C func_0062D4D8  # OVL2 unaligned
 0x0062D538 0x90 func_0062D538  # OVL2 unaligned
-0x0062D5C8 0x6C func_0062D5C8  # OVL2 unaligned
+0x0062D5C8 0x6C rt_comm_get_new_channel_id  # OVL2 unaligned; s1:align
 0x0062D638 0x2C rt_comm_release_channel_id  # OVL2 unaligned; s1:exact
 0x0062D668 0x18 rt_comm_get_channel  # OVL2 unaligned; s1:exact
 0x0062D680 0x4C rt_comm_get_valid_channel  # OVL2; s1:exact
@@ -12447,23 +12447,23 @@
 0x0062EBF8 0x40 func_0062EBF8  # OVL2 unaligned
 0x0062EC38 0x40 IsNullRCKey  # OVL2 unaligned; s1:callee
 0x0062EC78 0x4C GetKeyMaster  # OVL2 unaligned; s1:callee
-0x0062ECC8 0x64 func_0062ECC8  # OVL2 unaligned
-0x0062ED30 0x80 func_0062ED30  # OVL2
+0x0062ECC8 0x64 NewKeyChain  # OVL2 unaligned; s1:align
+0x0062ED30 0x80 DeleteKeyChain  # OVL2; s1:align
 0x0062EDB0 0x38 AppendKeyChain  # OVL2; s1:exact
-0x0062EDE8 0x34 func_0062EDE8  # OVL2 unaligned
-0x0062EE20 0x4C func_0062EE20  # OVL2
-0x0062EE70 0x40 func_0062EE70  # OVL2
+0x0062EDE8 0x34 GetKeyChain  # OVL2 unaligned; s1:align
+0x0062EE20 0x4C RemoveKeyChain  # OVL2; s1:align
+0x0062EE70 0x40 InitializePRNG  # OVL2; s1:align
 0x0062EEB0 0xC func_0062EEB0  # OVL2
 0x0062EEC0 0x6C func_0062EEC0  # OVL2
 0x0062EF30 0xA0 func_0062EF30  # OVL2
 0x0062EFD0 0x2A8 func_0062EFD0  # OVL2
-0x0062F278 0x138 func_0062F278  # OVL2 unaligned
+0x0062F278 0x138 KM_Create  # OVL2 unaligned; s1:align
 0x0062F3B0 0x2C KM_SetLocalClientID  # OVL2; s1:exact
 0x0062F3E0 0x158 KM_SetPublicKey  # OVL2; s1:calls
 0x0062F538 0x104 KM_GetPublicKey  # OVL2 unaligned; s1:calls
 0x0062F640 0x1D8 KM_SetLocalKeyPair  # OVL2; s1:calls
 0x0062F818 0x11C func_0062F818  # OVL2 unaligned
-0x0062F938 0x140 func_0062F938  # OVL2 unaligned
+0x0062F938 0x140 KM_SetGameSessionKey  # OVL2 unaligned; s1:align
 0x0062FA78 0xE4 KM_GetGameSessionKey  # OVL2 unaligned; s1:exact
 0x0062FB60 0x178 KM_AddSymmetricKey  # OVL2; s1:calls
 0x0062FCD8 0x100 func_0062FCD8  # OVL2 unaligned
@@ -12472,12 +12472,12 @@
 0x0062FF10 0x278 KM_CopyKeys  # OVL2; s1:calls
 0x00630188 0xEC KM_DigiSign  # OVL2 unaligned; s1:calls
 0x00630278 0xF4 KM_DigiVerify  # OVL2 unaligned; s1:calls
-0x00630370 0x6C func_00630370  # OVL2
+0x00630370 0x6C KM_DeleteKeys  # OVL2; s1:align
 0x006303E0 0x124 KM_Destroy  # OVL2; s1:calls
 0x00630508 0xBC KM_Cleanup  # OVL2 unaligned; s1:callee
 0x006305C8 0x38 func_006305C8  # OVL2 unaligned
 0x00630600 0x38 func_00630600  # OVL2
-0x00630638 0x58 func_00630638  # OVL2 unaligned
+0x00630638 0x58 KM_CreateRandomRCKey  # OVL2 unaligned; s1:align
 0x00630690 0x2A8 func_00630690  # OVL2
 0x00630938 0x258 func_00630938  # OVL2 unaligned
 0x00630B90 0x260 func_00630B90  # OVL2
@@ -12519,15 +12519,15 @@
 0x00632570 0x48 rt_memory_get_aligned_address  # OVL2; s1:exact
 0x006325B8 0x54 func_006325B8  # OVL2 unaligned
 0x00632610 0xC func_00632610  # OVL2
-0x00632620 0x158 func_00632620  # OVL2
+0x00632620 0x158 rt_msg_client_get_build_timestamp  # OVL2; s1:align
 0x00632778 0xB8 rt_msg_client_startup  # OVL2 unaligned; s1:calls
 0x00632830 0xB0 rt_msg_client_shutdown  # OVL2; s1:exact
 0x006328E0 0x78 func_006328E0  # OVL2
-0x00632958 0x8C func_00632958  # OVL2 unaligned
-0x006329E8 0xA0 func_006329E8  # OVL2 unaligned
+0x00632958 0x8C rt_msg_client_enable_udp  # OVL2 unaligned; s1:align
+0x006329E8 0xA0 rt_msg_client_connect  # OVL2 unaligned; s1:align
 0x00632A88 0x8C rt_msg_client_disconnect  # OVL2 unaligned; s1:exact
 0x00632B18 0x78 rt_msg_client_disconnect_all  # OVL2 unaligned; s1:exact
-0x00632B90 0xA0 func_00632B90  # OVL2
+0x00632B90 0xA0 rt_msg_client_update  # OVL2; s1:align
 0x00632C30 0x78 rt_msg_client_udp_disable_heartbeat  # OVL2; s1:exact
 0x00632CA8 0x8C rt_msg_client_update_all  # OVL2 unaligned; s1:exact
 0x00632D38 0xCC rt_msg_client_send_target  # OVL2 unaligned; s1:exact
@@ -12538,11 +12538,11 @@
 0x00633108 0x8C func_00633108  # OVL2 unaligned
 0x00633198 0xA0 rt_msg_client_get_host_by_name  # OVL2 unaligned; s1:calls
 0x00633238 0xA0 rt_msg_client_get_connection_ip  # OVL2 unaligned; s1:calls
-0x006332D8 0xA0 func_006332D8  # OVL2 unaligned
+0x006332D8 0xA0 rt_msg_client_receive_broadcasts  # OVL2 unaligned; s1:align
 0x00633378 0xA0 rt_msg_client_get_metrics  # OVL2 unaligned; s1:callee
 0x00633418 0xA0 func_00633418  # OVL2 unaligned
 0x006334B8 0xA0 func_006334B8  # OVL2 unaligned
-0x00633558 0x8C func_00633558  # OVL2 unaligned
+0x00633558 0x8C rt_msg_client_udp_set_default_options  # OVL2 unaligned; s1:calls
 0x006335E8 0x8C func_006335E8  # OVL2 unaligned
 0x00633678 0x78 rt_msg_client_display_comm_state  # OVL2 unaligned; s1:exact
 0x006336F0 0xA0 func_006336F0  # OVL2
@@ -12566,7 +12566,7 @@
 0x00634708 0xBC rt_msg_client_iget_metrics  # OVL2 unaligned; s1:callee
 0x006347C8 0x88 func_006347C8  # OVL2 unaligned
 0x00634850 0x8C func_00634850  # OVL2
-0x006348E0 0x74 func_006348E0  # OVL2
+0x006348E0 0x74 rt_msg_client_iudp_set_default_options  # OVL2; s1:align
 0x00634958 0x18 rt_comm_set_default_options  # OVL2 unaligned; s1:exact
 0x00634970 0x38 rt_msg_client_idisplay_comm_state  # OVL2; s1:exact
 0x006349A8 0x5C func_006349A8  # OVL2 unaligned
@@ -12588,19 +12588,19 @@
 0x00635A70 0x25C func_00635A70  # OVL2
 0x00635CD0 0x20 func_00635CD0  # OVL2
 0x00635CF0 0x1C func_00635CF0  # OVL2
-0x00635D10 0x84 func_00635D10  # OVL2
+0x00635D10 0x84 rt_msg_client_send_disconnect  # OVL2; s1:align
 0x00635D98 0xC4 func_00635D98  # OVL2 unaligned
 0x00635E60 0x1E0 func_00635E60  # OVL2
-0x00636040 0x1C8 func_00636040  # OVL2
-0x00636208 0xE8 func_00636208  # OVL2 unaligned
-0x006362F0 0x1CC func_006362F0  # OVL2
+0x00636040 0x1C8 rt_msg_client_store_msg_in_send_buf  # OVL2; s1:align
+0x00636208 0xE8 rt_msg_client_create_send_buf_space  # OVL2 unaligned; s1:align
+0x006362F0 0x1CC rt_msg_client_process_recv_buf  # OVL2; s1:align
 0x006364C0 0x390 func_006364C0  # OVL2
-0x00636850 0x2E0 func_00636850  # OVL2
+0x00636850 0x2E0 rt_msg_client_process_connect_result  # OVL2; s1:align
 0x00636B30 0x228 func_00636B30  # OVL2
 0x00636D58 0x10C func_00636D58  # OVL2 unaligned
-0x00636E68 0x1E4 func_00636E68  # OVL2 unaligned
-0x00637050 0x100 func_00637050  # OVL2
-0x00637150 0xE0 func_00637150  # OVL2
+0x00636E68 0x1E4 rt_msg_client_process_client_connect_notify  # OVL2 unaligned; s1:align
+0x00637050 0x100 rt_msg_client_process_app_message  # OVL2; s1:align
+0x00637150 0xE0 rt_msg_client_process_disconnect_message  # OVL2; s1:align
 0x00637230 0xE8 func_00637230  # OVL2
 0x00637318 0x11C func_00637318  # OVL2 unaligned
 0x00637438 0xD4 func_00637438  # OVL2 unaligned
@@ -12608,12 +12608,12 @@
 0x00637900 0xB0 func_00637900  # OVL2
 0x006379B0 0x90 rt_msg_client_set_header  # OVL2; s1:exact
 0x00637A40 0x90 rt_msg_client_get_header  # OVL2; s1:exact
-0x00637AD0 0xEC func_00637AD0  # OVL2
-0x00637BC0 0x18C func_00637BC0  # OVL2
+0x00637AD0 0xEC rt_msg_client_send_buffer  # OVL2; s1:align
+0x00637BC0 0x18C rt_msg_client_recv_circ_buf  # OVL2; s1:align
 0x00637D50 0x218 func_00637D50  # OVL2
-0x00637F68 0xB8 func_00637F68  # OVL2 unaligned
-0x00638020 0x24 func_00638020  # OVL2
-0x00638048 0x68 func_00638048  # OVL2 unaligned
+0x00637F68 0xB8 rt_msg_client_is_valid_outgoing_msg  # OVL2 unaligned; s1:align
+0x00638020 0x24 rt_msg_client_change_state  # OVL2; s1:align
+0x00638048 0x68 rt_msg_client_is_wait_state  # OVL2 unaligned; s1:align
 0x006380B0 0xC rt_msg_client_map_comm_error  # OVL2; s1:callee
 0x006380C0 0xB4 func_006380C0  # OVL2
 0x00638178 0x8C func_00638178  # OVL2 unaligned
@@ -12637,7 +12637,7 @@
 0x006389D0 0x38 rt_msg_set_4byte  # OVL2; s1:exact
 0x00638A08 0x60 rt_msg_get_4byte  # OVL2 unaligned; s1:gap
 0x00638A68 0x38 rt_msg_set_u4byte  # OVL2 unaligned; s1:exact
-0x00638AA0 0x60 func_00638AA0  # OVL2
+0x00638AA0 0x60 rt_msg_get_u4byte  # OVL2; s1:align
 0x00638B00 0x28 func_00638B00  # OVL2
 0x00638B28 0x34 func_00638B28  # OVL2 unaligned
 0x00638B60 0x24 func_00638B60  # OVL2

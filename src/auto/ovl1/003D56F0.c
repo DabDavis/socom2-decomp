@@ -6,8 +6,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK __destroy_new_array(s32, M2C_UNK *);        /* extern */
 M2C_UNK __dl__FPv(char *);                          /* extern */
-M2C_UNK func_00181E30(s32, M2C_UNK *);              /* extern */
 extern M2C_UNK func_003D5800;
 
 char *func_003D56F0(char *arg0, s64 arg1) {
@@ -22,7 +22,7 @@ char *func_003D56F0(char *arg0, s64 arg1) {
         M2C_FIELD(arg0, s32 *, 0x14) = 0;
         temp_a0 = M2C_FIELD(arg0, s32 *, 0);
         if (temp_a0 != 0) {
-            func_00181E30(temp_a0, &func_003D5800);
+            __destroy_new_array(temp_a0, &func_003D5800);
             M2C_FIELD(arg0, s32 *, 0) = 0;
         }
         temp_v0 = arg0 + 0x10;

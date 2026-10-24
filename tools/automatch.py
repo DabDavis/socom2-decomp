@@ -48,6 +48,9 @@ TRIPLES = ("mipsee-gcc-c", "mipsee-mwcc-c")   # the second converts about 1 % mo
 def attempt(addr: int):
     img, st = E.image(), E.symbols()
     sym = st.at_addr(addr)
+    real = sym.name
+    if not C_IDENT.match(real):                 # a template instance: draft the placeholder,
+        sym = E.Symbol(f"func_{addr:08X}", sym.addr, sym.size, sym.note)   # rename the object
     asm = M.export(img, st, sym)
     tmp = OUT / "work" / f"{addr:08X}"
     tmp.mkdir(parents=True, exist_ok=True)
@@ -65,11 +68,16 @@ def attempt(addr: int):
         (tmp / "f.c").write_text(src)
         try:
             D.compile_obj(tmp / "f.c", tmp / "f.o")
-            res = D.compare(tmp / "f.o", sym.name, sym, img, st)
+            if real != sym.name:
+                import sccheck
+                sccheck.rename_symbol(tmp / "f.o", sym.name, real)
+            res = D.compare(tmp / "f.o", real, st.at_addr(addr), img, st)
         except Exception:
             worst = "build" if worst == "m2c" else worst
             continue
         if res.match:
+            if real != sym.name:
+                src = f"/* sc: as={sym.name} {real} */\n" + src
             return addr, "hit", src
         worst = "miss"
     return addr, worst, None
@@ -95,7 +103,7 @@ def main(argv=None) -> int:
         want_stale = stale(st)
         print(f"{len(want_stale)} drafts spell a name the map no longer has")
     cands = [s.addr for s in st.symbols
-             if C_IDENT.match(s.name) and img.is_code(s.addr) and a.min_size < s.size <= a.max_size
+             if img.is_code(s.addr) and a.min_size < s.size <= a.max_size
              and img.segment(s.addr).name != "MAIN" and s.addr % 16 == 0]
     if a.range:
         cands = [x for x in cands if a.range[0] <= x < a.range[1]]
@@ -144,8 +152,9 @@ def stale(st: E.SymbolTable) -> set[int]:
     for f in AUTO.rglob("*.c"):
         a, txt = int(f.stem, 16), f.read_text()
         s = st.at_addr(a)
-        gone = any(r not in names for r in re.findall(r"\b(func_[0-9A-F]{8})\b", txt))
-        if s is None or f"{s.name}(" not in txt or gone:
+        own = f"func_{a:08X}"
+        gone = any(r not in names and r != own for r in re.findall(r"\b(func_[0-9A-F]{8})\b", txt))
+        if s is None or not (f"{s.name}(" in txt or f" {s.name} */" in txt) or gone:
             out.add(a)
     return out
 
@@ -179,7 +188,9 @@ def emit(hits: dict[int, str], img: E.Image, st: E.SymbolTable) -> None:
     hand = hand_defined()
     for f in AUTO.rglob("*.c"):
         s = st.at_addr(int(f.stem, 16))
-        if s is None or not C_IDENT.match(s.name) or s.name in hand or f"{s.name}(" not in f.read_text():
+        txt = f.read_text()
+        defines = (f"{s.name}(" in txt or f" {s.name} */" in txt) if s is not None else False
+        if s is None or s.name in hand or not defines:
             f.unlink()                      # gone, hand-written now, or renamed since (re-emitted below)
             stale += 1
     print(f"emitted {written} into {AUTO}; removed {stale} superseded")

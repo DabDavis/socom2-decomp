@@ -6,26 +6,26 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK __destroy_arr(char *, M2C_UNK *, M2C_UNK, M2C_UNK); /* extern */
 M2C_UNK __dl__FPv(char *);                          /* extern */
-M2C_UNK func_00181ED0(char *, M2C_UNK *, M2C_UNK, M2C_UNK); /* extern */
 M2C_UNK func_002B6DE0();                            /* extern */
 M2C_UNK func_00365060(char *, M2C_UNK);             /* extern */
+extern M2C_UNK __dt__7C2DPolyFv;
+extern M2C_UNK __vt__13C2DBitmapPoly;
 extern M2C_UNK data_004063B0;
-extern M2C_UNK data_00406C30;
-extern M2C_UNK func_001FC620;
 
 char *func_002B6EE0(char *arg0, s64 arg1) {
     if (arg0 != NULL) {
         M2C_FIELD(arg0, M2C_UNK **, 0xC) = &data_004063B0;
         func_002B6DE0();
         if ((arg0 + 0x210) != NULL) {
-            M2C_FIELD(arg0, M2C_UNK **, 0x21C) = &data_00406C30;
-            func_00181ED0(arg0 + 0x250, &func_001FC620, 0xD0, 2);
+            M2C_FIELD(arg0, M2C_UNK **, 0x21C) = &__vt__13C2DBitmapPoly;
+            __destroy_arr(arg0 + 0x250, &__dt__7C2DPolyFv, 0xD0, 2);
             func_00365060(arg0 + 0x210, 0);
         }
         if ((arg0 + 0x20) != NULL) {
-            M2C_FIELD(arg0, M2C_UNK **, 0x2C) = &data_00406C30;
-            func_00181ED0(arg0 + 0x60, &func_001FC620, 0xD0, 2);
+            M2C_FIELD(arg0, M2C_UNK **, 0x2C) = &__vt__13C2DBitmapPoly;
+            __destroy_arr(arg0 + 0x60, &__dt__7C2DPolyFv, 0xD0, 2);
             func_00365060(arg0 + 0x20, 0);
         }
         func_00365060(arg0, 0);

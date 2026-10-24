@@ -7,9 +7,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK __dl__FPv(char *);                          /* extern */
-M2C_UNK func_00363DB0(char *, M2C_UNK);             /* extern */
+M2C_UNK __dt__9C2DStringFv(char *, M2C_UNK);        /* extern */
 M2C_UNK func_00365060(char *, M2C_UNK);             /* extern */
-extern M2C_UNK data_00406E80;
+extern M2C_UNK __vt__9C2DBitmap;
 
 char *func_00220B50(char *arg0, s64 arg1) {
     char *temp_a0;
@@ -19,15 +19,15 @@ char *func_00220B50(char *arg0, s64 arg1) {
     if (arg0 != NULL) {
         temp_a0 = arg0 + 0x130;
         if (temp_a0 != NULL) {
-            M2C_FIELD(arg0, M2C_UNK **, 0x13C) = &data_00406E80;
+            M2C_FIELD(arg0, M2C_UNK **, 0x13C) = &__vt__9C2DBitmap;
             func_00365060(temp_a0, 0);
         }
         temp_a0_2 = arg0 + 0xB0;
         if (temp_a0_2 != NULL) {
-            M2C_FIELD(arg0, M2C_UNK **, 0xBC) = &data_00406E80;
+            M2C_FIELD(arg0, M2C_UNK **, 0xBC) = &__vt__9C2DBitmap;
             func_00365060(temp_a0_2, 0);
         }
-        func_00363DB0(arg0 + 0x14, -1);
+        __dt__9C2DStringFv(arg0 + 0x14, -1);
         if ((arg0 != NULL) && (arg0 != NULL) && (arg0 != NULL)) {
             temp_a0_3 = M2C_FIELD(arg0, char **, 8);
             if (temp_a0_3 != NULL) {

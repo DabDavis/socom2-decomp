@@ -6,9 +6,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK DMEDisconnectFromGameServer__Fv();          /* extern */
+M2C_UNK ftsNetworkGameUninit__Fv();                 /* extern */
 M2C_UNK func_002A9EF0(M2C_UNK *);                   /* extern */
-M2C_UNK func_002B79F0();                            /* extern */
-M2C_UNK func_002B8390();                            /* extern */
 M2C_UNK func_002DF6A0(M2C_UNK *);                   /* extern */
 M2C_UNK func_002E3730(M2C_UNK *);                   /* extern */
 M2C_UNK func_002F80C0(M2C_UNK *);                   /* extern */
@@ -23,8 +23,8 @@ s32 func_0027E420(void) {
     if ((func_003045B0(&data_0044FE10) == 0) && (data_0045A0C0 != 0) && (func_0030D510(&data_0045A0C0) == 1)) {
         func_002F80C0(&data_0044F370);
     }
-    func_002B79F0();
-    func_002B8390();
+    ftsNetworkGameUninit__Fv();
+    DMEDisconnectFromGameServer__Fv();
     func_002E3730(&data_0044F370);
     func_002A9EF0(&data_004364E0);
     if (func_003045B0(&data_0044FE10) != 0) {

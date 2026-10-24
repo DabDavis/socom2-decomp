@@ -135,6 +135,34 @@ def parse(data: bytes, base: int = 0) -> tuple[list[Die], dict[int, Die]]:
     return dies, by_off
 
 
+def location_text(block: bytes) -> str:
+    """A DWARF 1 location expression as text: OP_REG n, OP_BASEREG n + const, OP_ADDR."""
+    out, p = [], 0
+    while p < len(block):
+        op = block[p]; p += 1
+        if op in (0x01, 0x02):                       # OP_REG, OP_BASEREG
+            r = struct.unpack_from("<I", block, p)[0]; p += 4
+            out.append(("reg" if op == 1 else "base") + f" {REGNAMES.get(r, r)}")
+        elif op == 0x03:                             # OP_ADDR
+            out.append(f"addr {struct.unpack_from('<I', block, p)[0]:#x}"); p += 4
+        elif op == 0x04:                             # OP_CONST
+            out.append(f"{struct.unpack_from('<i', block, p)[0]}"); p += 4
+        elif op == 0x05:
+            out.append("deref2")
+        elif op == 0x06:
+            out.append("deref")
+        elif op == 0x07:
+            out.append("+")
+        else:
+            out.append(f"op{op:#x}")
+    return " ".join(out)
+
+
+REGNAMES = {i: n for i, n in enumerate(
+    "zero at v0 v1 a0 a1 a2 a3 t0 t1 t2 t3 t4 t5 t6 t7 s0 s1 s2 s3 s4 s5 s6 s7 t8 t9 k0 k1 gp sp fp ra".split())}
+REGNAMES.update({32 + i: f"f{i}" for i in range(32)})
+
+
 def location_offset(block: bytes) -> int | None:
     """A member's AT_location: OP_CONST n (0x04 + u32) OP_ADD (0x07) -> n."""
     if len(block) >= 5 and block[0] == 0x04:
@@ -232,6 +260,47 @@ class Debug:
     def units(self):
         return [d for d in self.dies if d.tag == 0x11]
 
+    def lines(self, cu: Die) -> list[tuple[int, int]]:
+        """(address, source line) for a unit, from .line at its AT_stmt_list: a 4-byte length,
+        a 4-byte base address, then (line 4, column 2, address delta 4) entries to line 0."""
+        sec = {x.name: x for x in self.elf.sections}.get(".line")
+        off = cu.get("stmt_list")
+        if sec is None or off is None:
+            return []
+        data = sec.data
+        length, base = struct.unpack_from("<II", data, off)
+        out, p = [], off + 8
+        while p + 10 <= off + length:
+            line, _col, delta = struct.unpack_from("<IHI", data, p)
+            p += 10
+            if line == 0:
+                break
+            out.append((base + delta, line))
+        return out
+
+    def dump(self, f: Die, cu: Die | None) -> str:
+        """A function's signature, parameters, locals (in lexical blocks) and line table."""
+        out = [self.signature(f) + f"   // {f.get('low_pc'):#x}-{f.get('high_pc'):#x}"]
+
+        def walk(d: Die, depth: int):
+            for c in d.children:
+                if c.tag in (0x05, 0x0C):              # formal_parameter, local_variable
+                    loc = location_text(c.get("location", b"")) if "location" in c.attrs else ""
+                    kind = "param" if c.tag == 0x05 else "local"
+                    out.append("    " * depth + f"{kind} {self.typename(c, c.name)};" + (f"   // {loc}" if loc else ""))
+                elif c.tag == 0x0B:                    # lexical_block
+                    lo, hi = c.get("low_pc"), c.get("high_pc")
+                    out.append("    " * depth + "{" + (f"   // {lo:#x}-{hi:#x}" if lo is not None else ""))
+                    walk(c, depth + 1)
+                    out.append("    " * depth + "}")
+        walk(f, 1)
+        if cu is not None:
+            lo, hi = f.get("low_pc"), f.get("high_pc")
+            rows = [(a, l) for a, l in self.lines(cu) if lo <= a < hi]
+            if rows:
+                out.append("    lines: " + " ".join(f"{a - lo:#x}:{l}" for a, l in rows))
+        return "\n".join(out)
+
     def functions(self):
         for d in self.dies:
             if d.tag in (0x06, 0x14) and "low_pc" in d.attrs:
@@ -264,9 +333,10 @@ class Debug:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", choices=["units", "funcs", "types", "census"])
+    ap.add_argument("cmd", choices=["units", "funcs", "func", "types", "census"])
     ap.add_argument("elf", type=Path)
     ap.add_argument("pattern", nargs="?")
+    ap.add_argument("--tu", help="funcs/func: only functions in units whose file matches this regex")
     a = ap.parse_args(argv)
     dbg = Debug(a.elf)
     rx = re.compile(a.pattern) if a.pattern else None
@@ -281,11 +351,18 @@ def main(argv=None) -> int:
             lo, hi = cu.get("low_pc"), cu.get("high_pc")
             rng = f"{lo:#010x}-{hi:#010x}" if lo is not None and hi is not None else "-" * 21
             print(f"{rng}  {per.get(cu.off, 0):>4} funcs  {cu.name}")
-    elif a.cmd == "funcs":
+    elif a.cmd in ("funcs", "func"):
+        turx = re.compile(a.tu) if a.tu else None
         for f, cu in sorted(dbg.functions(), key=lambda x: x[0].get("low_pc")):
             lo, hi = f.get("low_pc"), f.get("high_pc", 0)
             name = f.get("MW_mangled") or f.name
             if rx and not rx.search(name) and not rx.search(f.name):
+                continue
+            if turx and not (cu is not None and turx.search(cu.name)):
+                continue
+            if a.cmd == "func":
+                print(dbg.dump(f, cu))
+                print()
                 continue
             tu = Path(cu.name.replace("\\", "/")).name if cu is not None else "?"
             print(f"{lo:#010x} {hi - lo:#06x} {tu:<24} {name:<50} {dbg.signature(f)}")

@@ -6,12 +6,12 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK __destroy_arr(char *, M2C_UNK *, M2C_UNK, M2C_UNK); /* extern */
 M2C_UNK __dl__FPv(char *);                          /* extern */
-M2C_UNK func_00181ED0(char *, M2C_UNK *, M2C_UNK, M2C_UNK); /* extern */
 M2C_UNK func_00232490(char *, M2C_UNK);             /* extern */
 M2C_UNK func_00365060(char *, M2C_UNK);             /* extern */
-extern M2C_UNK data_00406C30;
-extern M2C_UNK func_001FC620;
+extern M2C_UNK __dt__7C2DPolyFv;
+extern M2C_UNK __vt__13C2DBitmapPoly;
 
 char *func_00237580(char *arg0, s64 arg1) {
     char *temp_a0;
@@ -19,33 +19,33 @@ char *func_00237580(char *arg0, s64 arg1) {
 
     if (arg0 != NULL) {
         if ((arg0 + 0x11C0) != 0) {
-            M2C_FIELD(arg0, M2C_UNK **, 0x11CC) = &data_00406C30;
-            func_00181ED0(arg0 + 0x1200, &func_001FC620, 0xD0, 2);
+            M2C_FIELD(arg0, M2C_UNK **, 0x11CC) = &__vt__13C2DBitmapPoly;
+            __destroy_arr(arg0 + 0x1200, &__dt__7C2DPolyFv, 0xD0, 2);
             func_00365060(arg0 + 0x11C0, 0);
         }
         if ((arg0 + 0xFD0) != NULL) {
-            M2C_FIELD(arg0, M2C_UNK **, 0xFDC) = &data_00406C30;
-            func_00181ED0(arg0 + 0x1010, &func_001FC620, 0xD0, 2);
+            M2C_FIELD(arg0, M2C_UNK **, 0xFDC) = &__vt__13C2DBitmapPoly;
+            __destroy_arr(arg0 + 0x1010, &__dt__7C2DPolyFv, 0xD0, 2);
             func_00365060(arg0 + 0xFD0, 0);
         }
         if ((arg0 + 0xDE0) != NULL) {
-            M2C_FIELD(arg0, M2C_UNK **, 0xDEC) = &data_00406C30;
-            func_00181ED0(arg0 + 0xE20, &func_001FC620, 0xD0, 2);
+            M2C_FIELD(arg0, M2C_UNK **, 0xDEC) = &__vt__13C2DBitmapPoly;
+            __destroy_arr(arg0 + 0xE20, &__dt__7C2DPolyFv, 0xD0, 2);
             func_00365060(arg0 + 0xDE0, 0);
         }
         if ((arg0 + 0xBB0) != NULL) {
-            M2C_FIELD(arg0, M2C_UNK **, 0xBBC) = &data_00406C30;
-            func_00181ED0(arg0 + 0xBF0, &func_001FC620, 0xD0, 2);
+            M2C_FIELD(arg0, M2C_UNK **, 0xBBC) = &__vt__13C2DBitmapPoly;
+            __destroy_arr(arg0 + 0xBF0, &__dt__7C2DPolyFv, 0xD0, 2);
             func_00365060(arg0 + 0xBB0, 0);
         }
         if ((arg0 + 0x9C0) != NULL) {
-            M2C_FIELD(arg0, M2C_UNK **, 0x9CC) = &data_00406C30;
-            func_00181ED0(arg0 + 0xA00, &func_001FC620, 0xD0, 2);
+            M2C_FIELD(arg0, M2C_UNK **, 0x9CC) = &__vt__13C2DBitmapPoly;
+            __destroy_arr(arg0 + 0xA00, &__dt__7C2DPolyFv, 0xD0, 2);
             func_00365060(arg0 + 0x9C0, 0);
         }
         if ((arg0 + 0x7D0) != NULL) {
-            M2C_FIELD(arg0, M2C_UNK **, 0x7DC) = &data_00406C30;
-            func_00181ED0(arg0 + 0x810, &func_001FC620, 0xD0, 2);
+            M2C_FIELD(arg0, M2C_UNK **, 0x7DC) = &__vt__13C2DBitmapPoly;
+            __destroy_arr(arg0 + 0x810, &__dt__7C2DPolyFv, 0xD0, 2);
             func_00365060(arg0 + 0x7D0, 0);
         }
         temp_v0 = arg0 + 0x754;

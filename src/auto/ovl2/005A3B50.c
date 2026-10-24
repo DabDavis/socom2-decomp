@@ -6,8 +6,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK RemoveWeaponEventCallback__8CZWeaponFPFP12CZProjectileUiPv_v(M2C_UNK *); /* extern */
 M2C_UNK func_00180280(s32, M2C_UNK, M2C_UNK);       /* extern */
-M2C_UNK func_003C6460(M2C_UNK *);                   /* extern */
 extern s32 data_0044D508;
 extern s32 data_0044D510;
 extern s32 data_0044D518;
@@ -22,5 +22,5 @@ void func_005A3B50(void) {
         func_00180280(data_0044D548, 0, 0);
     }
     data_0044D548 = 0;
-    func_003C6460(&func_005A4F80);
+    RemoveWeaponEventCallback__8CZWeaponFPFP12CZProjectileUiPv_v(&func_005A4F80);
 }

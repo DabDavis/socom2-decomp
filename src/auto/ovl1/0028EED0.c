@@ -6,8 +6,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_00315790(s32, char *);                 /* extern */
-M2C_UNK func_003157D0(s32, f32, f32, f32);          /* extern */
+M2C_UNK SetPosition__Q23zdb5CNodeFfff(s32, f32, f32, f32); /* extern */
+M2C_UNK SetRotation__Q23zdb5CNodeFRC5CQuat(s32, char *); /* extern */
 
 void func_0028EED0(char *arg0) {
     s32 temp_s0;
@@ -15,10 +15,10 @@ void func_0028EED0(char *arg0) {
 
     temp_s0 = M2C_FIELD(arg0, s32 *, 0xC);
     if (arg0 != NULL) {
-        func_003157D0(temp_s0, M2C_FIELD(arg0, f32 *, 0), M2C_FIELD(arg0, f32 *, 4), M2C_FIELD(arg0, f32 *, 8));
+        SetPosition__Q23zdb5CNodeFfff(temp_s0, M2C_FIELD(arg0, f32 *, 0), M2C_FIELD(arg0, f32 *, 4), M2C_FIELD(arg0, f32 *, 8));
     }
     temp_a1 = arg0 + 0x20;
     if (temp_a1 != NULL) {
-        func_00315790(temp_s0, temp_a1);
+        SetRotation__Q23zdb5CNodeFRC5CQuat(temp_s0, temp_a1);
     }
 }

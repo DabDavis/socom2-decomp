@@ -6,17 +6,17 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-void *func_00351EF0(M2C_UNK *);                     /* extern */
+char *GetByName__6CValveFPCc(M2C_UNK *);            /* extern */
 extern M2C_UNK data_003F5730;
 extern u8 data_004413D8;
-extern void *data_0044FA90;
+extern char *data_0044FA90;
 
 s32 func_002F6D00(void) {
     s32 var_s0;
 
     var_s0 = 0;
     if (data_0044FA90 == NULL) {
-        data_0044FA90 = func_00351EF0(&data_003F5730);
+        data_0044FA90 = GetByName__6CValveFPCc(&data_003F5730);
     }
     if (data_0044FA90 != NULL) {
         var_s0 = M2C_FIELD(data_0044FA90, u16 *, 4) != 0;

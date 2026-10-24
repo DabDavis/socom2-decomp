@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -48,15 +49,23 @@ def sources() -> list[Path]:
 
 
 def tu_options(src: Path) -> dict[str, str]:
-    first = src.read_text(errors="replace").splitlines()[:1]
-    m = _DIRECTIVE.search(first[0]) if first else None
     opts = {}
-    if m:
-        for part in m.group(1).split(";"):
-            if "=" in part:
-                k, v = part.split("=", 1)
-                opts[k.strip()] = v.strip()
+    for line in src.read_text(errors="replace").splitlines()[:3]:
+        m = _DIRECTIVE.search(line)
+        if m:
+            for part in m.group(1).split(";"):
+                if "=" in part:
+                    k, v = part.split("=", 1)
+                    opts[k.strip()] = v.strip()
+            break
     return opts
+
+
+def rename_symbol(obj: Path, old: str, new: str) -> None:
+    """A generated draft defines its row's placeholder when the map's name is no C identifier
+    (a template instance); the object then carries the map's name, as the original's did."""
+    subprocess.run([E.tool("objcopy"), f"--redefine-sym={old}={new}", str(obj)], check=True,
+                   capture_output=True)
 
 
 def build_one(src: Path) -> tuple[Path, Path | None, str]:
@@ -66,6 +75,9 @@ def build_one(src: Path) -> tuple[Path, Path | None, str]:
     try:
         D.compile_obj(src, obj, opts.get("compiler", D.COMPILER),
                       opts["flags"].split() if "flags" in opts else None, [INCLUDE, SRC])
+        if "as" in opts:
+            old_name, new_name = opts["as"].split(None, 1)
+            rename_symbol(obj, old_name, new_name)
         return src, obj, ""
     except RuntimeError as e:
         return src, None, str(e)

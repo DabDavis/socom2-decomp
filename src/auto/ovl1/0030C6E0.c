@@ -8,7 +8,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define NULL 0
 M2C_UNK func_001E8530();                            /* extern */
 M2C_UNK func_0030C430();                            /* extern */
-s32 func_0034F8B0(M2C_UNK *, M2C_UNK, M2C_UNK, M2C_UNK); /* extern */
+s32 zSysLoadIRX__FPciPcb(M2C_UNK *, M2C_UNK, M2C_UNK, M2C_UNK); /* extern */
 extern M2C_UNK data_003F66E0;
 extern s32 data_00458080;
 extern u8 data_00458088;
@@ -18,7 +18,7 @@ s32 func_0030C6E0(void) {
 
     if (data_00458088 == 0) {
         func_0030C430();
-        temp_v0 = func_0034F8B0(&data_003F66E0, 0, 0, 1);
+        temp_v0 = zSysLoadIRX__FPciPcb(&data_003F66E0, 0, 0, 1);
         data_00458080 = temp_v0;
         if (temp_v0 < 0) {
             return 0;

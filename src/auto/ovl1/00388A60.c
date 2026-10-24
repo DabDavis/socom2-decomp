@@ -6,8 +6,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK SetFont__9C2DStringFP7C2DFont(s32, s32);    /* extern */
 s32 __nw__FUi(M2C_UNK);                             /* extern */
-M2C_UNK func_00362B20(s32, s32);                    /* extern */
 M2C_UNK func_003792F0(s32, s32);                    /* extern */
 s32 func_0037A770(s32);                             /* extern */
 
@@ -18,7 +18,7 @@ s32 func_00388A60(s32 arg0, s32 arg1) {
     if (var_s0 != 0) {
         var_s0 = func_0037A770(var_s0);
     }
-    func_00362B20(var_s0, arg1);
+    SetFont__9C2DStringFP7C2DFont(var_s0, arg1);
     func_003792F0(var_s0, arg0);
     return var_s0;
 }

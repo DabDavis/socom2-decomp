@@ -6,13 +6,13 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_0039C610(M2C_UNK *, M2C_UNK *, M2C_UNK);   /* extern */
+s32 RegisterRebootCallback__11CIOPManagerFPFQ211CIOPManager11RebootPhaseQ211CIOPManager10RebootModePv_bPv(M2C_UNK *, M2C_UNK *, M2C_UNK); /* extern */
 extern s32 data_003E0640;
 extern M2C_UNK data_0049E2A0;
 extern M2C_UNK func_0039D910;
 
 void func_0039D8C0(void) {
     if (data_003E0640 == -1) {
-        data_003E0640 = func_0039C610(&data_0049E2A0, &func_0039D910, 0);
+        data_003E0640 = RegisterRebootCallback__11CIOPManagerFPFQ211CIOPManager11RebootPhaseQ211CIOPManager10RebootModePv_bPv(&data_0049E2A0, &func_0039D910, 0);
     }
 }
