@@ -83,7 +83,22 @@ public:
     unsigned char m_padding : 6;   // 0xc
 };   // 0x10 bytes
 
-class CVisual;
+/* a node's visual: only what CNode's code reads -- a type at 4 (2 a sub-mesh), and the vtable
+ * pointer at 0x20 (GetSubMesh's dynamic_cast), after members not placed yet */
+struct tag_VISUAL_HEAD {
+    unsigned char _0[4];
+    signed char m_type;   // 0x4
+    unsigned char _5[0x20 - 5];
+};
+
+class CVisual : public tag_VISUAL_HEAD {
+public:
+    virtual ~CVisual();
+};
+
+class CSubMesh : public CVisual {
+public:
+};
 
 class CVisualVector : public std::vector<CVisual *> {
 public:
@@ -99,7 +114,7 @@ public:
     virtual void UpdateGrid();
     virtual void ReserveChildren(int n);
     virtual void AddChild(CNode *child);                /* +0x18 */
-    virtual void DeleteChild(CNode *child);
+    virtual int DeleteChild(CNode *child);
     virtual void DeleteChildren();
     virtual CNode *FindChild(const char *name, bool deep);
     virtual CNode *FindChild(CNode *node, bool deep);   /* +0x28 */
@@ -117,6 +132,9 @@ public:
     void FreeAtom();
     int Release();
     CVisual *GetFirstVisual();
+    CSubMesh *GetSubMesh();
+    void ShrinkAtomBasePtrs();
+    void AllocateAtomBasePtrs(int x, int z);
     void SetNodeEx(CNodeEx *ex, bool b);
     float GetRadius();
     float GetRadiusSq();

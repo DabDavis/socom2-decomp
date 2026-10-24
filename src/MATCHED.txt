@@ -1515,6 +1515,9 @@
 0x003149E0 GetAtom__Q23zdb5CNodeFi
 0x00314A10 InsertAtom__Q23zdb5CNodeFPQ23zdb9CGridAtom
 0x00314A30 FreeAtom__Q23zdb5CNodeFv
+0x00314A80 ShrinkAtomBasePtrs__Q23zdb5CNodeFv
+0x00314B00 AllocateAtomBasePtrs__Q23zdb5CNodeFii
+0x00314BC0 DeleteChildren__Q23zdb5CNodeFv
 0x00314E60 func_00314E60
 0x00314EE0 SetName__Q23zdb5CNodeFPCc
 0x00315270 __dt__Q23zdb6CLightFv
@@ -1532,6 +1535,7 @@
 0x003157D0 SetPosition__Q23zdb5CNodeFfff
 0x00315820 SetMatrix__Q23zdb5CNodeFPC7CMatrix
 0x00315860 UpdateGrid__Q23zdb5CNodeFv
+0x00315E70 DeleteChild__Q23zdb5CNodeFPQ23zdb5CNode
 0x003160B0 ReserveChildren__Q23zdb5CNodeFi
 0x003160C0 RemoveFromParent__Q23zdb5CNodeFv
 0x00316600 ReserveVisuals__Q23zdb5CNodeFi
@@ -1542,6 +1546,7 @@
 0x003178A0 SetModel__Q23zdb5CNodeFPQ23zdb6CModel
 0x00317A90 CreateXRef__Q23zdb5CNodeFv
 0x00317EC0 GetFirstVisual__Q23zdb5CNodeFv
+0x00317EF0 GetSubMesh__Q23zdb5CNodeFv
 0x00318200 UpdateBBox__Q23zdb5CNodeFb
 0x00318C30 func_00318C30
 0x00318C40 __ct__Q23zdb6CModelFPCc
