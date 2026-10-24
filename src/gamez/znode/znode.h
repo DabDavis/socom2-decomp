@@ -15,6 +15,7 @@ class CZProjectile;
 
 namespace zdb {
 
+class CCamera;
 class CGridAtom;
 class CLightMap;
 class CModel;
@@ -219,7 +220,9 @@ public:
     static CNode *GetModel(const char *name);
     void DeleteLightMap(CLightMap *light);
 
-    unsigned char _c0[0x684 - 0xC0];   // 0xc0: SOCOM 1's m_camera .. m_shadow_vector, not yet needed
+    unsigned char _c0[0x128 - 0xC0];   // 0xc0: SOCOM II's, not yet read
+    CCamera *m_camera;   // 0x128 (CCamera::CmdBeginParams; SOCOM 1: 0xc0)
+    unsigned char _12c[0x684 - 0x12C];   // SOCOM 1's m_default_soiltype .. m_shadow_vector
     CGrid m_grid;   // 0x684 (SOCOM 1: 0x670)
     CNodeVector m_landmarks;   // 0x6b98
 

@@ -4,6 +4,8 @@
  * in reverse of their image order (-inline deferred). */
 
 #include "zcamera.h"
+#include "../zanim/zanim.h"
+#include "../zsys/zsys.h"
 
 /* fov.cpp's VU0 code */
 unsigned int sceVu0ClipBBox(float lc[4][4], PNT4D *v);
@@ -13,6 +15,251 @@ namespace zdb {
 
 /* fog is tested at all (SOCOM 1's file static, 0x3DE210 here) */
 static bool fogCheck = true;
+
+/* the PARAMS command: what to save, restore and switch at its start, then the run time and the
+ * keyed tracks of fov, clip planes, fog range and altitude and LOD scale (offsets and counts into
+ * the command's data) -- SOCOM 1's DWARF */
+class _camera_params_cmd {
+public:
+    _zanim_cmd_hdr hdr;   // 0x0
+    unsigned int save_params : 1;   // 0x4
+    unsigned int restore_params : 1;
+    unsigned int fog_enabled_set : 1;
+    unsigned int fog_enabled : 1;
+    unsigned int fog_altitude_enabled_set : 1;
+    unsigned int fog_altitude_enabled : 1;
+    float run_time;   // 0x8
+    unsigned int fov_offset : 16;   // 0xc
+    unsigned int fov_count : 16;
+    unsigned int clip_offset : 16;   // 0x10
+    unsigned int clip_count : 16;
+    unsigned int clip_all_offset : 16;   // 0x14
+    unsigned int clip_all_count : 16;
+    unsigned int fog_range_offset : 16;   // 0x18
+    unsigned int fog_range_count : 16;
+    unsigned int fog_altitude_offset : 16;   // 0x1c
+    unsigned int fog_altitude_count : 16;
+    unsigned int lod_multiplier_offset : 16;   // 0x20
+    unsigned int lod_multiplier_count : 16;
+};   // 0x24 bytes
+
+/* SET_REGIONS: the region test on or off */
+class _camera_set_regions_cmd {
+public:
+    _zanim_cmd_hdr hdr;   // 0x0
+    int set_on : 1;   // 0x4
+};   // 0x8 bytes
+
+/* ACQUIRE and RELEASE: who drives the camera */
+class _camera_control_cmd {
+public:
+    _zanim_cmd_hdr hdr;   // 0x0
+    int release : 1;   // 0x4
+    int acquire : 1;
+};   // 0x8 bytes
+
+/* the camera's defaults: a 70 x 49 degree view from 4 to 300, the fog from 0.4 to 0.9 of the far
+ * plane under an altitude fog 20 high (the landmarks' from 100 to 120), every region seen, the
+ * screen from zVid, and the VU's frame block in scratchpad */
+CCamera::CCamera()
+{
+    SetHorizontalFOV(70.0f);
+    SetVerticalFOV(49.0f);
+    SetNearClip(4.0f);
+    SetFarClip(300.0f);
+    m_mid_plane = 300.0f;
+    m_landmark_far_plane = 300.0f;
+    m_fullfrustum_points = 0;
+    m_Zmin = zVid.minZ;
+    m_Zmax = zVid.maxZ;
+
+    m_fog_enabled = true;
+    m_fog_near = 0.4f * m_far_plane;
+    m_fog_far = 0.9f * m_far_plane;
+    m_fog_mid = m_fog_far;
+    m_fog_density = 1.0f;
+    m_fog_color = CPnt4D(0.4f, 0.0f, 0.0f, 1.0f);
+    m_directional_fog_enabled = false;
+    m_px_fog_color = CPnt3D(1.0f, 0.0f, 0.0f);
+    m_nx_fog_color = CPnt3D(0.0f, 1.0f, 0.0f);
+    m_pz_fog_color = CPnt3D(1.0f, 0.0f, 1.0f);
+    m_nz_fog_color = CPnt3D(1.0f, 1.0f, 0.0f);
+    m_fog_alt_enabled = true;
+    m_fog_top = 20.0f;
+    m_fog_bottom = 0.0f;
+    m_landmark_fog_top = 120.0f;
+    m_landmark_fog_bottom = 100.0f;
+    m_ZoomedRangeScale = 1.0f;
+    m_RangeScale = 1.0f;
+    m_fog_alt[0] = CPnt4D(0.0f, m_fog_bottom, 0.0f, 1.0f);
+    m_fog_alt[1] = CPnt4D(0.0f, 1.0f / (m_fog_top - m_fog_bottom), 0.0f, 0.0f);
+    m_landmark_fog_alt[0] = CPnt4D(0.0f, m_landmark_fog_bottom, 0.0f, 1.0f);
+    m_landmark_fog_alt[1] = CPnt4D(0.0f, 1.0f / (m_landmark_fog_top - m_landmark_fog_bottom), 0.0f, 0.0f);
+    UpdateFogAlt();
+    UpdateFogAltVU();
+    m_flags_unused = 0;
+
+    m_PlayerCanSeeRegions = 0;
+    m_CameraCanSeeRegions = 0;
+    m_SeeRegions = 1;
+
+    m_screenAspect[0] = zVid.aspect[0];
+    m_screenAspect[1] = zVid.aspect[1];
+    m_screenCenter[0] = 2048.0f;
+    m_screenCenter[1] = 2048.0f;
+    m_screenOffset[0] = 0.0f;
+    m_screenOffset[1] = 0.0f;
+    m_screen.left = zVid.screenLeft;
+    m_screen.right = zVid.screenRight;
+    m_screen.top = zVid.screenTop;
+    m_screen.bottom = zVid.screenBottom;
+    m_screenConstant[0] = (m_screen.right - m_screen.left) / zVid.renderWidth;
+    m_screenConstant[1] = (m_screen.bottom - m_screen.top) / zVid.renderHeight;
+    *(CPnt4D *)m_guardBand_min = CPnt4D(0.0f, 0.0f, 0.0f, m_near_plane);
+    *(CPnt4D *)m_guardBand_max = CPnt4D(4096.0f, 4096.0f, 0.0f, m_far_plane);
+    m_vecClipVolume[0] = zVid.renderWidth / 2;
+    m_vecClipVolume[1] = zVid.renderHeight;
+    m_vecClipVolume[2] = m_Zmin;
+    m_vecClipVolume[3] = m_Zmax;
+    m_mtxSet.m_vu = (tag_FrameSetup *)0x70003E60;
+    m_fovMask = 0x3F3F;
+}
+
+/* the lens-flare lists go with the camera (their destructors inline, three levels each) */
+CCamera::~CCamera()
+{
+}
+
+/* the camera's ZAnim commands */
+void CCamera::RegisterAnimCommands()
+{
+    ZAnim.AddCmd("DYNAMICS_RELEASE_CAMERA", CmdParseRelease, 0, CmdTickControlSwitch, 0);
+    ZAnim.AddCmd("DYNAMICS_ACQUIRE_CAMERA", CmdParseAcquire, 0, CmdTickControlSwitch, 0);
+    ZAnim.AddCmd("CAMERA_INDOORS", CmdParseIndoorsTest, 0, CmdTickIndoorsTest, 0);
+    ZAnim.AddCmd("SET_CAMERA_REGION_TEST", CmdParseSetRegions, 0, CmdTickSetRegions, 0);
+    ZAnim.AddCmd("GET_CAMERA_REGION_TEST", CmdParseGetRegions, 0, CmdTickGetRegions, 0);
+    ZAnim.AddCmd("CAMERA_PARAMS", CmdParseParams, CmdBeginParams, CmdTickParams, 0);
+}
+
+/* RELEASE: a timeless command the camera's control switch reads */
+_zanim_cmd_hdr *CCamera::CmdParseRelease(_zrdr *rdr)
+{
+    _camera_control_cmd *cmd;
+
+    if (!rdr)
+        return 0;
+    cmd = (_camera_control_cmd *)_calloc(1, sizeof(_camera_control_cmd), 0, 0);
+    cmd->hdr.data_size = sizeof(_camera_control_cmd);
+    cmd->hdr.timeless = 1;
+    cmd->release = 1;
+    return (_zanim_cmd_hdr *)cmd;
+}
+
+/* ACQUIRE: the same, the other way */
+_zanim_cmd_hdr *CCamera::CmdParseAcquire(_zrdr *rdr)
+{
+    _camera_control_cmd *cmd;
+
+    if (!rdr)
+        return 0;
+    cmd = (_camera_control_cmd *)_calloc(1, sizeof(_camera_control_cmd), 0, 0);
+    cmd->hdr.data_size = sizeof(_camera_control_cmd);
+    cmd->hdr.timeless = 1;
+    cmd->acquire = 1;
+    return (_zanim_cmd_hdr *)cmd;
+}
+
+/* ACQUIRE / RELEASE: the camera's dynamics control taken or given back */
+bool CCamera::CmdTickControlSwitch(_zanim_cmd_hdr *hdr, float *dT)
+{
+    _camera_control_cmd *cmd = (_camera_control_cmd *)hdr;
+
+    if (cmd->release)
+        m_dynamics_controlled = false;
+    else if (cmd->acquire)
+        m_dynamics_controlled = true;
+    return true;
+}
+
+/* INDOORS_TEST: a bare timeless command */
+_zanim_cmd_hdr *CCamera::CmdParseIndoorsTest(_zrdr *rdr)
+{
+    _zanim_cmd_hdr *cmd;
+
+    if (!rdr)
+        return 0;
+    cmd = (_zanim_cmd_hdr *)_calloc(1, sizeof(_zanim_cmd_hdr), 0, 0);
+    cmd->data_size = sizeof(_zanim_cmd_hdr);
+    cmd->timeless = 1;
+    return cmd;
+}
+
+/* INDOORS_TEST: whether the world's camera is indoors */
+bool CCamera::CmdTickIndoorsTest(_zanim_cmd_hdr *hdr, float *dT)
+{
+    return CWorld::m_world->m_camera->m_IsInside;
+}
+
+/* SET_REGIONS: ON switches the region test on */
+_zanim_cmd_hdr *CCamera::CmdParseSetRegions(_zrdr *rdr)
+{
+    _camera_set_regions_cmd *cmd;
+
+    if (!rdr)
+        return 0;
+    cmd = (_camera_set_regions_cmd *)_calloc(1, sizeof(_camera_set_regions_cmd), 0, 0);
+    cmd->hdr.data_size = sizeof(_camera_set_regions_cmd);
+    cmd->hdr.timeless = 1;
+    if (func_0032F0D0(rdr, "ON"))
+        cmd->set_on = 1;
+    else
+        cmd->set_on = 0;
+    return (_zanim_cmd_hdr *)cmd;
+}
+
+bool CCamera::CmdTickSetRegions(_zanim_cmd_hdr *hdr, float *dT)
+{
+    if (((_camera_set_regions_cmd *)hdr)->set_on)
+        m_do_region_test = true;
+    else
+        m_do_region_test = false;
+    return true;
+}
+
+/* GET_REGIONS: a bare timeless command */
+_zanim_cmd_hdr *CCamera::CmdParseGetRegions(_zrdr *rdr)
+{
+    _zanim_cmd_hdr *cmd;
+
+    if (!rdr)
+        return 0;
+    cmd = (_zanim_cmd_hdr *)_calloc(1, sizeof(_zanim_cmd_hdr), 0, 0);
+    cmd->data_size = sizeof(_zanim_cmd_hdr);
+    cmd->timeless = 1;
+    return cmd;
+}
+
+/* GET_REGIONS: whether the region test is on */
+bool CCamera::CmdTickGetRegions(_zanim_cmd_hdr *hdr, float *dT)
+{
+    return m_do_region_test;
+}
+
+/* the PARAMS command's start: the parameters saved if asked, and the fog switches set */
+void CCamera::CmdBeginParams(_zanim_cmd_hdr *hdr)
+{
+    CCamera *cam = CWorld::m_world->m_camera;
+    _camera_params_cmd *cmd_ptr = (_camera_params_cmd *)hdr;
+
+    if (!cam)
+        return;
+    if (cmd_ptr->save_params)
+        cam->SaveParams();
+    if (cmd_ptr->fog_enabled_set)
+        cam->SetFogEnabled(cmd_ptr->fog_enabled);
+    if (cmd_ptr->fog_altitude_enabled_set)
+        cam->SetFogAltEnabled(cmd_ptr->fog_altitude_enabled);
+}
 
 /* the parameters CmdBeginParams saved, put back through their setters (SOCOM II's; CmdTickParams
  * calls it; the name is ours). SetMidClip inlines here, as the FOV setters do */
@@ -70,12 +317,16 @@ void CCamera::SetHalfHorizontalFOVRadians(float f, bool tan)
     m_scrZ = m_vecClipVolume[0] * m_cot[0];
 }
 
-/* the horizontal field of view, in degrees (SOCOM II's; the name is ours) */
+/* the horizontal field of view, in degrees (SOCOM II's; the name is ours). Pinned, as is
+ * SetVerticalFOV: three statements, but the constructor and CmdTickParams call both */
+#pragma auto_inline off
 void CCamera::SetHorizontalFOV(float fov)
 {
     m_hfov = 0.017453292f * (0.5f * fov);
     SetHalfHorizontalFOVRadians(m_hfov, true);
 }
+
+#pragma auto_inline reset
 
 /* the vertical half angle from the horizontal one and the render size: the angle passed in is
  * replaced, as SOCOM 1 replaced it (its aspect fixed at 448/640). Both calls take the value, which
@@ -95,11 +346,14 @@ void CCamera::SetHalfVerticalFOVRadians(float f, bool tan)
 
 /* the vertical field of view, in degrees -- set, and then derived again from the horizontal one
  * (SOCOM II's; the name is ours) */
+#pragma auto_inline off
 void CCamera::SetVerticalFOV(float fov)
 {
     m_vfov = 0.017453292f * (0.5f * fov);
     SetHalfVerticalFOVRadians(m_vfov, true);
 }
+
+#pragma auto_inline reset
 
 /* the mid plane, the far plane pushed out to it */
 void CCamera::SetMidClip(float f)

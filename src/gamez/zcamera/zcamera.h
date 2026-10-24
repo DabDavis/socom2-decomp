@@ -13,6 +13,9 @@
 #include "../znode/znode.h"
 #include "../zvid/zvid.h"
 
+class _zanim_cmd_hdr;
+struct _zrdr;
+
 namespace zdb {
 
 enum tag_ZCAM_TYPE {
@@ -116,6 +119,9 @@ public:
 
 class CCamera : public CNode, public tag_CAMERA_PARAMS {
 public:
+    CCamera();
+    virtual ~CCamera();
+
     /* inline reads of the parameters, which the evaluation order shows (InsideMidPlane's mid
      * plane and TestFOG's fog loaded ahead of inlined code, TestFOG's altitude switch converted to
      * a bool before it is tested); the names are ours */
@@ -160,6 +166,40 @@ public:
         UpdateFogAlt();
     }
     void RestoreParams();
+    void UpdateDirectionalFog();
+    void UpdateFogAltVU();
+    /* the parameters copied aside (CmdBeginParams; inline in both builds -- SOCOM 1's is one
+     * line of it; SOCOM II's saves the fog colour too; the name is ours) */
+    void SaveParams()
+    {
+        m_saveParams.m_CameraParams.m_fog_enabled = m_fog_enabled;
+        m_saveParams.m_CameraParams.m_fog_alt_enabled = m_fog_alt_enabled;
+        m_saveParams.m_CameraParams.m_hfov = m_hfov;
+        m_saveParams.m_CameraParams.m_vfov = m_vfov;
+        m_saveParams.m_CameraParams.m_near_plane = m_near_plane;
+        m_saveParams.m_CameraParams.m_mid_plane = m_mid_plane;
+        m_saveParams.m_CameraParams.m_far_plane = m_far_plane;
+        m_saveParams.m_CameraParams.m_fog_color = m_fog_color;
+        m_saveParams.m_CameraParams.m_fog_near = m_fog_near;
+        m_saveParams.m_CameraParams.m_fog_far = m_fog_far;
+        m_saveParams.m_CameraParams.m_fog_mid = m_fog_mid;
+        m_saveParams.m_CameraParams.m_fog_bottom = m_fog_bottom;
+        m_saveParams.m_CameraParams.m_fog_top = m_fog_top;
+        m_saveParams.m_RangeScale = m_RangeScale;
+    }
+    static bool CmdTickParams(_zanim_cmd_hdr *hdr, float *dT);
+    static void CmdBeginParams(_zanim_cmd_hdr *hdr);
+    static _zanim_cmd_hdr *CmdParseParams(_zrdr *rdr);
+    static bool CmdTickGetRegions(_zanim_cmd_hdr *hdr, float *dT);
+    static _zanim_cmd_hdr *CmdParseGetRegions(_zrdr *rdr);
+    static bool CmdTickSetRegions(_zanim_cmd_hdr *hdr, float *dT);
+    static _zanim_cmd_hdr *CmdParseSetRegions(_zrdr *rdr);
+    static bool CmdTickIndoorsTest(_zanim_cmd_hdr *hdr, float *dT);
+    static _zanim_cmd_hdr *CmdParseIndoorsTest(_zrdr *rdr);
+    static bool CmdTickControlSwitch(_zanim_cmd_hdr *hdr, float *dT);
+    static _zanim_cmd_hdr *CmdParseAcquire(_zrdr *rdr);
+    static _zanim_cmd_hdr *CmdParseRelease(_zrdr *rdr);
+    static void RegisterAnimCommands();
     void SetHalfVerticalFOVRadians(float f, bool tan);
     void SetVerticalFOV(float fov);
     void SetHalfHorizontalFOVRadians(float f, bool tan);
@@ -185,7 +225,9 @@ public:
     int find_convex_hull_xz(CPnt3D *pnts, int pnt_count);
     void UpdateFrustum();
 
-    static unsigned char m_do_region_test;
+    /* bools (MW's DWARF writes bool as unsigned char): the ticks return them as they are */
+    static bool m_dynamics_controlled;
+    static bool m_do_region_test;
 
     CPnt3D m_frustum[3];   // 0x150
     CPnt3D m_fullfrustum[6];   // 0x174
@@ -202,7 +244,7 @@ public:
     unsigned int m_CameraCanSeeRegions;   // 0x2a4
     unsigned int m_SeeRegions;   // 0x2a8
     unsigned char _socom2_2ac[0x2b8 - 0x2ac];
-    unsigned char m_IsInside;   // 0x2b8 (CmdTickIndoorsTest; SOCOM 1: 0x2ac)
+    bool m_IsInside;   // 0x2b8 (CmdTickIndoorsTest; SOCOM 1: 0x2ac)
     unsigned char _socom2_2b9[0x2c4 - 0x2b9];   // SOCOM 1's m_AboveMaterial among them
     float m_landmark_far_plane;   // 0x2c4 (GetLandmarkFarPlane; SOCOM 1: 0x2b4)
     float m_ZoomedRangeScale;   // 0x2c8: SOCOM II's, the range scale over the zoom (CAppCamera
@@ -225,8 +267,11 @@ public:
     float m_farCorner[2][4];   // 0x4c0
     CPnt4D m_fog_alt[2];   // 0x4e0: the altitude fog's bottom (y) and 1 / its depth (y)
     CPnt4D m_landmark_fog_alt[2];   // 0x500: the same for the landmarks
-    tag_ZCAM_TYPE m_type;   // 0x520
-    unsigned char _socom2_524[0x564 - 0x524];
+    /* SOCOM II's: the altitude fog's vectors as the VU takes them, the fog's A and B in w, twice
+     * (UpdateFogAltVU; the names are ours) */
+    CPnt4D m_vuFogAlt[2];   // 0x520
+    CPnt4D m_vuLandmarkFogAlt[2];   // 0x540
+    tag_ZCAM_TYPE m_type;   // 0x560 (SOCOM 1: 0x510)
     unsigned int m_fovMask;   // 0x564 (SOCOM 1: 0x514)
 };
 

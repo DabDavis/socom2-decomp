@@ -6,8 +6,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+s32 __ct__Q23zdb7CCameraFv(s32);                    /* extern */
 s32 __nw__FUi(M2C_UNK);                             /* extern */
-s32 func_00293A80(s32);                             /* extern */
 extern s32 data_0049E9E0;
 
 void func_00364EE0(void) {
@@ -16,7 +16,7 @@ void func_00364EE0(void) {
     if (data_0049E9E0 == 0) {
         var_a0 = __nw__FUi(0x570);
         if (var_a0 != 0) {
-            var_a0 = func_00293A80(var_a0);
+            var_a0 = __ct__Q23zdb7CCameraFv(var_a0);
         }
         data_0049E9E0 = var_a0;
     }
