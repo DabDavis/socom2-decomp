@@ -6,13 +6,13 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK Draw__3C2DFPQ23zdb7CCamera(s32, s32);       /* extern */
+s32 IsOn__3C2DCFv();                                /* extern */
 M2C_UNK func_00360CA0(s32, s32);                    /* extern */
-s32 func_00364E10();                                /* extern */
-M2C_UNK func_00364E70(s32, s32);                    /* extern */
 
 void func_00360F60(s32 arg0, s32 arg1) {
-    if (func_00364E10() & 0xFF) {
+    if (IsOn__3C2DCFv() & 0xFF) {
         func_00360CA0(arg0, arg1);
-        func_00364E70(arg0, arg1);
+        Draw__3C2DFPQ23zdb7CCamera(arg0, arg1);
     }
 }

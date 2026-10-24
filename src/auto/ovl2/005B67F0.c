@@ -6,8 +6,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_001BFEC0(s32, M2C_UNK *);              /* extern */
 M2C_UNK func_005B6490(s32, s32);                    /* extern */
+M2C_UNK sceVu0CopyMatrix(s32, M2C_UNK *);           /* extern */
 extern s32 data_003DF330;
 extern s32 data_003DF338;
 extern M2C_UNK data_003F6470;
@@ -15,7 +15,7 @@ extern M2C_UNK data_003F6470;
 s32 func_005B67F0(s32 arg0, s32 arg1) {
     data_003DF330 += 1;
     data_003DF338 += 0x40;
-    func_001BFEC0(data_003DF338, &data_003F6470);
+    sceVu0CopyMatrix(data_003DF338, &data_003F6470);
     func_005B6490(arg0, arg1);
     data_003DF330 -= 1;
     data_003DF338 -= 0x40;

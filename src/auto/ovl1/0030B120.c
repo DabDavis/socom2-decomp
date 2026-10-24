@@ -6,9 +6,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK audioDecReset__FP8AudioDec(M2C_UNK *);      /* extern */
 M2C_UNK func_001BB948(s32);                         /* extern */
 M2C_UNK func_001BBAD8(s32);                         /* extern */
-M2C_UNK func_0030A6E0(M2C_UNK *);                   /* extern */
 extern s32 data_00451D38;
 extern M2C_UNK data_00451D40;
 extern s8 data_00451DC0;
@@ -16,7 +16,7 @@ extern s8 data_00455E38;
 
 void func_0030B120(s32 arg0) {
     data_00455E38 = 1;
-    func_0030A6E0(&data_00451D40);
+    audioDecReset__FP8AudioDec(&data_00451D40);
     data_00451D38 = 0;
     data_00451DC0 = 0;
     func_001BBAD8(arg0);

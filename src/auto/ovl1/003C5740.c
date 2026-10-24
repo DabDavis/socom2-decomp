@@ -6,11 +6,11 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_00180AD0(char *);                      /* extern */
+M2C_UNK ReleaseDirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi(s32, char *, char *); /* extern */
+M2C_UNK ReleaseIndirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi(s32, char *, char *); /* extern */
+M2C_UNK __dl__FPv(char *);                          /* extern */
 M2C_UNK func_0031D0A0(s32, M2C_UNK, s32);           /* extern */
 M2C_UNK func_003CB7E0(char *, M2C_UNK);             /* extern */
-M2C_UNK func_003CBF80(s32, char *, char *);         /* extern */
-M2C_UNK func_003CC0B0(s32, char *, char *);         /* extern */
 extern M2C_UNK data_004083A0;
 extern s32 data_0045C380;
 extern s32 data_004B5220;
@@ -21,17 +21,17 @@ char *func_003C5740(char *arg0, s64 arg1) {
         func_0031D0A0(data_0045C380, 2, M2C_FIELD(arg0, s32 *, 0x20));
         if (M2C_FIELD(arg0, u8 *, 9) == 1) {
             if (M2C_FIELD(arg0, s32 *, 0x28) != 0) {
-                func_003CC0B0(data_004B5220, arg0 + 0x28, arg0 + 0x2C);
+                ReleaseDirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi(data_004B5220, arg0 + 0x28, arg0 + 0x2C);
             }
         } else if (M2C_FIELD(arg0, s32 *, 0x28) != 0) {
-            func_003CBF80(data_004B5220, arg0 + 0x28, arg0 + 0x2C);
+            ReleaseIndirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi(data_004B5220, arg0 + 0x28, arg0 + 0x2C);
         }
         if (M2C_FIELD(arg0, s32 *, 0x30) != 0) {
-            func_003CC0B0(data_004B5220, arg0 + 0x30, arg0 + 0x34);
+            ReleaseDirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi(data_004B5220, arg0 + 0x30, arg0 + 0x34);
         }
         func_003CB7E0(arg0, 0);
         if (((s64) (arg1 << 0x30) >> 0x30) > 0) {
-            func_00180AD0(arg0);
+            __dl__FPv(arg0);
         }
     }
     return arg0;

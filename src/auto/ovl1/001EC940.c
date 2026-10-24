@@ -6,9 +6,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_00321390(M2C_UNK *, s32);              /* extern */
+M2C_UNK GetTexHandle__Q23zdb10CAssetListFPCc(M2C_UNK *, s32); /* extern */
 extern M2C_UNK data_0045C3C0;
 
 void func_001EC940(s32 arg0) {
-    func_00321390(&data_0045C3C0, arg0);
+    GetTexHandle__Q23zdb10CAssetListFPCc(&data_0045C3C0, arg0);
 }

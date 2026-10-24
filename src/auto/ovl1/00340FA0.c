@@ -6,10 +6,10 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_001A0720(f32);                             /* extern */
-M2C_UNK func_001A1208(s32);                         /* extern */
-s32 func_001B2DE8(s32);                             /* extern */
+M2C_UNK dptoli(s32);                                /* extern */
+s32 floor(s32);                                     /* extern */
+s32 fptodp(f32);                                    /* extern */
 
 void func_00340FA0(f32 fparg0, f32 fparg1, f32 fparg2) {
-    func_001A1208(func_001B2DE8(func_001A0720(((fparg0 - fparg1) / 1609.344f) / (fparg2 / 60.0f))));
+    dptoli(floor(fptodp(((fparg0 - fparg1) / 1609.344f) / (fparg2 / 60.0f))));
 }

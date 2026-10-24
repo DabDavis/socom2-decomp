@@ -6,8 +6,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK ExitDeleteThread();                         /* extern */
 M2C_UNK func_00192BF8(M2C_UNK);                     /* extern */
-M2C_UNK func_001A3960();                            /* extern */
 s32 func_001EA720();                                /* extern */
 M2C_UNK func_00223290(M2C_UNK *);                   /* extern */
 M2C_UNK func_002A6950(M2C_UNK *);                   /* extern */
@@ -34,5 +34,5 @@ void func_001EBDA0(void) {
     }
     data_00408684 = 0;
     func_002A6950(&data_004364E0);
-    func_001A3960();
+    ExitDeleteThread();
 }

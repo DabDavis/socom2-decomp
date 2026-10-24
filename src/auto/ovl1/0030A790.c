@@ -6,13 +6,13 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_0033F1C0();                            /* extern */
 M2C_UNK func_00341A00(s32);                         /* extern */
+M2C_UNK snd_CloseMovieSound();                      /* extern */
 extern s32 data_00451D30;
 
 s32 func_0030A790(void) {
     func_00341A00(data_00451D30);
     data_00451D30 = 0;
-    func_0033F1C0();
+    snd_CloseMovieSound();
     return 1;
 }

@@ -27,7 +27,9 @@ last part is what makes a match exact rather than plausible:
 
 A name that would land on two SOCOM II addresses (an inline's out-of-line copies, template
 instances) is withheld: the map needs unique names; the rows get an `s1~` note instead.
-Names are written only over placeholders, and every one says how it was found.
+Names are written only over placeholders, and every one says how it was found. A row
+hand-written source defines, or one already carrying an `s1~` note (a name judged and
+refused), is never touched.
 """
 
 from __future__ import annotations
@@ -49,7 +51,7 @@ from beta_tu import sig
 DEMO = E.ROOT / "extracted" / "socom1-demo-020513" / "SCUS_972.05"
 DEMO_SHA = "00c9cee7f75b921fda1e848d04f64881b5a0b7841300591cac91371bb23d4f8a"
 FIELD = {"R_MIPS_26": 0x03FFFFFF, "R_MIPS_HI16": 0xFFFF, "R_MIPS_LO16": 0xFFFF,
-         "R_MIPS_GPREL16": 0xFFFF, "R_MIPS_32": 0xFFFFFFFF}
+         "R_MIPS_GPREL16": 0xFFFF, "R_MIPS_32": 0xFFFFFFFF, "?": 0xFFFF}
 
 
 class Demo:
@@ -63,11 +65,16 @@ class Demo:
         self.base, self.data, self.sec = main.addr, main.data, main.index
         self.funcs = sorted((s for s in self.elf.symbols if s.type == "FUNC" and s.size and s.shndx == main.index),
                             key=lambda s: s.value)
-        self.relocs: dict[int, str] = {}          # absolute address -> relocation type
+        self.name_at = {f.value: f.name for f in self.funcs}
+        # address -> relocation type. r_offset is already a VIRTUAL ADDRESS in this executable,
+        # not an offset into `main` (adding the base put every mask 1 MB away from its field --
+        # test_scdecomp checks each R_MIPS_26 lands on a j/jal). Type 123 (ten of them, on beq)
+        # is Metrowerks' own: a branch displacement, masked like the 16-bit fields.
+        self.relocs: dict[int, str] = {}
         rel = next(s for s in self.elf.sections if s.name == ".relmain")
         for j in range(rel.size // 8):
             off, info = struct.unpack_from("<II", rel.data, j * 8)
-            self.relocs[self.base + off] = E.R_MIPS.get(info & 0xFF, "?")
+            self.relocs[off] = E.R_MIPS.get(info & 0xFF, "?")
 
     def read(self, a: int, n: int) -> bytes:
         return self.data[a - self.base:a - self.base + n]
@@ -89,8 +96,9 @@ def run(demo: Demo, img: E.Image, st: E.SymbolTable):
         if seg is None or s.size < 16 or not (img.is_code(s.addr) or seg.name == "MAIN"):
             continue
         ours[(s.size, sig(img.read(s.addr, s.size)))].append(s)
-    exact: dict[int, str] = {}                     # SOCOM II address -> demo name
-    demo_of: dict[int, int] = {}                   # SOCOM II address -> demo address
+    # unique BOTH ways: one SOCOM II function for the demo function, and one demo name for the
+    # SOCOM II function -- a `return g(x);` wrapper masks to the same words as every other one
+    hit_by: dict[int, list] = defaultdict(list)    # SOCOM II address -> demo functions that hit it alone
     for f in demo.funcs:
         if f.size < 16:
             continue
@@ -100,14 +108,24 @@ def run(demo: Demo, img: E.Image, st: E.SymbolTable):
             continue
         m = demo.mask_of(f.value, f.size)
         want = masked(b, m)
-        hits = [s for s in cands if masked(img.read(s.addr, s.size), m) == want]
+        hits = [s for s in cands if masked(img.read(s.addr, s.size), m) == want
+                and not callee_conflict(demo, img, st, f.value, s.addr, s.size)]
         if len(hits) == 1:
-            exact.setdefault(hits[0].addr, f.name)
-            demo_of[hits[0].addr] = f.value
+            hit_by[hits[0].addr].append(f)
+    exact: dict[int, str] = {}                     # SOCOM II address -> demo name
+    demo_of: dict[int, int] = {}                   # SOCOM II address -> demo address
+    for addr, fs in hit_by.items():
+        if len({f.name for f in fs}) == 1:
+            exact[addr] = fs[0].name
+            demo_of[addr] = fs[0].value
     # callees, from identical call sites of exact pairs, iterated
+    # callees, from identical call sites of exact pairs, iterated; a target proposed two
+    # different names by two call sites is withheld
     names_at = {f.value: f.name for f in demo.funcs}
-    callee: dict[int, str] = {}
+    size_at = {f.value: f.size for f in demo.funcs}
+    proposed: dict[int, set] = defaultdict(set)
     frontier = dict(demo_of)
+    seen = set(frontier)
     while frontier:
         nxt = {}
         for ours_a, demo_a in frontier.items():
@@ -120,13 +138,31 @@ def run(demo: Demo, img: E.Image, st: E.SymbolTable):
                 t1 = ((ours_a + i + 4) & 0xF0000000) | ((w1 & 0x3FFFFFF) << 2)
                 t2 = ((demo_a + i + 4) & 0xF0000000) | ((w2 & 0x3FFFFFF) << 2)
                 n = names_at.get(t2)
-                if n and t1 not in exact and t1 not in callee and st.at_addr(t1) is not None:
-                    callee[t1] = n
-                    if (s1 := st.at_addr(t1)) is not None and s1.size == next(
-                            (f.size for f in demo.funcs if f.value == t2), -1):
-                        nxt[t1] = t2
+                if not n or t1 in exact or st.at_addr(t1) is None:
+                    continue
+                proposed[t1].add((n, t2))
+                # recurse only through a callee of the same size: its call sites line up too
+                if t1 not in seen and st.at_addr(t1).size == size_at.get(t2):
+                    nxt[t1] = t2
+                    seen.add(t1)
         frontier = nxt
+    callee = {t: next(iter(ns))[0] for t, ns in proposed.items() if len({n for n, _ in ns}) == 1}
     return exact, callee, demo_of
+
+
+def callee_conflict(demo: Demo, img: E.Image, st: E.SymbolTable, demo_a: int, ours_a: int, size: int) -> bool:
+    """A call at the same instruction whose target BOTH builds name, differently: masked words
+    cannot tell `return f(x);` from `return g(x);`, but the names can. Only ever rejects."""
+    for i in range(0, size, 4):
+        w1, w2 = img.word(ours_a + i), struct.unpack_from("<I", demo.data, demo_a - demo.base + i)[0]
+        if w1 >> 26 not in (2, 3) or w2 >> 26 not in (2, 3):
+            continue
+        t1 = ((ours_a + i + 4) & 0xF0000000) | ((w1 & 0x3FFFFFF) << 2)
+        t2 = ((demo_a + i + 4) & 0xF0000000) | ((w2 & 0x3FFFFFF) << 2)
+        s1, n2 = st.at_addr(t1), demo.name_at.get(t2)
+        if s1 is not None and n2 and not E.is_placeholder(s1.name) and s1.name != n2:
+            return True
+    return False
 
 
 def lis(pairs: list[tuple[int, int]]) -> list[tuple[int, int]]:
@@ -316,6 +352,10 @@ def main(argv=None) -> int:
     unique = {addr: n for addr, n in allp.items() if len(by_name[n]) == 1}
     multi = {addr: n for addr, n in allp.items() if len(by_name[n]) > 1}
     taken = {s.name for s in st.symbols if not E.is_placeholder(s.name)}
+    # a placeholder hand-written source defines stays put: renaming the row would orphan the
+    # definition (the CalcWorldToUV lesson -- a behavioural name carries SOCOM 1's signature)
+    from automatch import hand_defined
+    hand = hand_defined()
     print(f"demo: {len(demo.funcs)} functions, {len(demo.relocs)} relocations")
     print(f"exact {len(exact)}, callee {len(callee)}, syscall {len(set(sysc) - set(exact))}, "
           f"gap {len(set(gap) - set(exact) - set(callee) - set(sysc))}, calls {len(behav)}; "
@@ -329,13 +369,20 @@ def main(argv=None) -> int:
               f"{len(unique) - len(both)} new here, {len(set(other) - set(unique))} only there")
     if a.write:
         text = E.SYMBOLS.read_text().splitlines()
-        named = withheld = 0
+        named = withheld = upgraded = 0
         for i, line in enumerate(text):
             m = re.match(r"^(0x[0-9A-Fa-f]+)\s+(\S+)\s+(\S+)(.*)$", line)
             if not m:
                 continue
             addr, cur, note = int(m.group(1), 16), m.group(3), m.group(4)
             sep = "; " if "#" in note else "  # "
+            if cur in hand or "s1~" in note:
+                continue
+            weaker = re.search(r"s1:(gap|calls|callee|order)\b", note)
+            if weaker and exact.get(addr) == cur:        # the same name, now on the strongest evidence
+                text[i] = line.replace(weaker.group(0), "s1:exact")
+                upgraded += 1
+                continue
             if addr in unique and E.is_placeholder(cur) and unique[addr] not in taken:
                 how = ("exact" if addr in exact else "syscall" if addr in sysc
                        else "callee" if addr in callee else "gap" if addr in gap else "calls")
@@ -345,7 +392,8 @@ def main(argv=None) -> int:
                 text[i] = f"{line}{sep}s1~ {multi[addr]} (one of {len(by_name[multi[addr]])})"
                 withheld += 1
         E.SYMBOLS.write_text("\n".join(text) + "\n")
-        print(f"named {named} placeholders, noted {withheld} shared names")
+        print(f"named {named} placeholders, noted {withheld} shared names, "
+              f"{upgraded} names now confirmed exact")
     return 0
 
 

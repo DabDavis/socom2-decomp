@@ -6,7 +6,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_001AA240();                                /* extern */
+s32 sceUmount();                                    /* extern */
 extern s32 data_0049E2DC;
 extern u8 data_0049E2E0;
 
@@ -15,7 +15,7 @@ s32 func_0034F1E0(void) {
 
     var_v0 = 0;
     if (data_0049E2E0 != 0) {
-        var_v0 = func_001AA240();
+        var_v0 = sceUmount();
         data_0049E2E0 = 0;
         data_0049E2DC = -1;
     }

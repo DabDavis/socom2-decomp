@@ -6,10 +6,10 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_00180E10(M2C_UNK);                         /* extern */
+s32 __ct__15CZMPBombMapItemFPQ23zdb5CNode(s32, s32); /* extern */
+s32 __nw__FUi(M2C_UNK);                             /* extern */
 M2C_UNK func_001FEAE0(M2C_UNK *, s32, s32 *, s32 *); /* extern */
 s32 func_00209100();                                /* extern */
-s32 func_0020D310(s32, s32);                        /* extern */
 extern s32 data_0044D4A0;
 
 void func_002091B0(s32 arg0) {
@@ -19,9 +19,9 @@ void func_002091B0(s32 arg0) {
     s32 var_v0;
 
     if ((data_0044D4A0 != 0) && (func_00209100() == 0)) {
-        var_v0 = func_00180E10(0x240);
+        var_v0 = __nw__FUi(0x240);
         if (var_v0 != 0) {
-            var_v0 = func_0020D310(var_v0, data_0044D4A0);
+            var_v0 = __ct__15CZMPBombMapItemFPQ23zdb5CNode(var_v0, data_0044D4A0);
         }
         sp2C = var_v0;
         sp24 = arg0 + 0x1C;

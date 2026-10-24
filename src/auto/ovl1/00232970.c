@@ -6,13 +6,13 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_00344F30(M2C_UNK *);                       /* extern */
+s32 GetSoundByName__4CSndFPCc(M2C_UNK *);           /* extern */
 extern M2C_UNK data_003E5DB0;
 extern M2C_UNK data_003E5DC0;
 
-void func_00232970(void *arg0) {
+void func_00232970(char *arg0) {
     M2C_FIELD(arg0, s8 *, 0) = 1;
-    M2C_FIELD(arg0, s32 *, 8) = func_00344F30(&data_003E5DB0);
-    M2C_FIELD(arg0, s32 *, 0xC) = func_00344F30(&data_003E5DC0);
-    M2C_FIELD(arg0, s32 *, 4) = func_00344F30(&data_003E5DC0);
+    M2C_FIELD(arg0, s32 *, 8) = GetSoundByName__4CSndFPCc(&data_003E5DB0);
+    M2C_FIELD(arg0, s32 *, 0xC) = GetSoundByName__4CSndFPCc(&data_003E5DC0);
+    M2C_FIELD(arg0, s32 *, 4) = GetSoundByName__4CSndFPCc(&data_003E5DC0);
 }

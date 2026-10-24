@@ -6,9 +6,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_00198F18(char *, M2C_UNK *);               /* extern */
 s32 func_0030CD90(M2C_UNK *, s32);                  /* extern */
 s32 func_00622818(char **, s32);                    /* extern */
+s32 strcmp(char *, M2C_UNK *);                      /* extern */
 extern M2C_UNK data_003F27D0;
 extern M2C_UNK data_0045A0C0;
 
@@ -25,7 +25,7 @@ s32 func_002BD420(s32 arg0) {
         temp_v0_2 = func_00622818(&sp1C, temp_v0);
         if ((sp1C == NULL) || (temp_v0_2 != 0)) {
             var_v0 = 0;
-        } else if (func_00198F18(sp1C + 0xC, &data_003F27D0) != 0) {
+        } else if (strcmp(sp1C + 0xC, &data_003F27D0) != 0) {
             var_v0 = 0;
         } else {
             temp_v0_3 = M2C_FIELD(sp1C, char **, 0x1C);

@@ -136,11 +136,18 @@ def main(argv=None) -> int:
             continue                         # the generated tier's matches are counted, not listed
         print(f"{status:<10} {tu:<28} {name:<48} {note}")
 
-    baseline = set()
+    # the baseline is keyed by ADDRESS: renaming a row (s1names does, by the hundred) must not
+    # read as losing its match, nor a new name hide a real loss
+    baseline: dict[int, str] = {}
     if MATCHED.exists():
-        baseline = {l.strip() for l in MATCHED.read_text().splitlines() if l.strip() and not l.startswith("#")}
-    regressions = sorted(baseline - set(matched)) if not rx else sorted(
-        n for n in baseline - set(matched) if rx.search(n))
+        for l in MATCHED.read_text().splitlines():
+            if l.strip() and not l.startswith("#"):
+                addr, name = l.split()
+                baseline[int(addr, 16)] = name
+    now = {st.get(n).addr for n in matched}
+    regressions = sorted(f"{a:#x} {baseline[a]}" + (f" (now {st.at_addr(a).name})" if st.at_addr(a)
+                         and st.at_addr(a).name != baseline[a] else "")
+                         for a in set(baseline) - now if not rx or rx.search(baseline[a]))
     total_code = sum(s.size for s in st.symbols)
     matched_bytes = sum(st.get(n).size for n in matched)
     n_auto = sum(1 for n in matched if n in auto_names and n not in hand_names)
@@ -155,8 +162,8 @@ def main(argv=None) -> int:
     if regressions:
         print(f"REGRESSIONS against {MATCHED.name}: {', '.join(regressions)}")
     if a.baseline:
-        MATCHED.write_text("# byte-exact functions; rewritten by ./sccheck.py --baseline\n"
-                           + "".join(f"{n}\n" for n in sorted(set(matched))))
+        MATCHED.write_text("# byte-exact functions, address and name; rewritten by ./sccheck.py --baseline\n"
+                           + "".join(f"0x{a:08X} {st.at_addr(a).name}\n" for a in sorted(now)))
         print(f"wrote {MATCHED} ({len(set(matched))} functions)")
     return 1 if regressions or failed_builds else 0
 

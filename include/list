@@ -1,0 +1,47 @@
+/* <list>: just enough of Metrowerks' MSL C++ std::list (CodeWarrior PS2 3.0) to give the
+ * matched functions their code and their mangled names. A reconstruction, not MSL: the class
+ * shapes are SOCOM 1's DWARF (list : __list_imp : __list_deleter, size_ at 0, the end node at
+ * 4 with prev_/next_), the member bodies are whatever compiles to the shipped bytes. A pointer
+ * list shares one implementation over const void * -- hence __list_deleter<PCv,...> in the
+ * names of every list<T *>'s calls. */
+
+#ifndef _MSL_LIST
+#define _MSL_LIST
+
+#include <memory>
+
+namespace std {
+
+template <class T, class Allocator>
+class __list_deleter {
+public:
+    struct node_base {
+        node_base *prev_;
+        node_base *next_;
+    };
+
+    __list_deleter();
+
+protected:
+    unsigned int size_;
+    node_base end_;
+};
+
+template <class T, class Allocator>
+__list_deleter<T, Allocator>::__list_deleter()
+    : size_(0)
+{
+    end_.prev_ = end_.next_ = &end_;
+}
+
+template <class T, class Allocator>
+class __list_imp : public __list_deleter<T, Allocator> {
+};
+
+template <class T, class Allocator = allocator<T> >
+class list : public __list_imp<const void *, allocator<const void *> > {
+};
+
+}
+
+#endif

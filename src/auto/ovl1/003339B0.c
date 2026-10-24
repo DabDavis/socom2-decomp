@@ -6,18 +6,18 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-void *func_00180E10(M2C_UNK);                       /* extern */
-M2C_UNK func_002CF970(s32, void **);                /* extern */
+char *__nw__FUi(M2C_UNK);                           /* extern */
+M2C_UNK func_002CF970(s32, char **);                /* extern */
 M2C_UNK func_00333610();                            /* extern */
 
 s32 func_003339B0(s32 arg0, s8 *arg1) {
-    void *sp2C;
-    void *temp_v0;
+    char *sp2C;
+    char *temp_v0;
 
     if ((arg1 != NULL) && (*arg1 != 0)) {
         func_00333610();
     }
-    temp_v0 = func_00180E10(0xC);
+    temp_v0 = __nw__FUi(0xC);
     if (temp_v0 != NULL) {
         M2C_FIELD(temp_v0, s32 *, 0) = 0;
         M2C_FIELD(temp_v0, s32 *, 4) = 0;

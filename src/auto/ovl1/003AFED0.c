@@ -6,17 +6,17 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_00350AB0(void *, M2C_UNK);             /* extern */
-void *func_00350D90(M2C_UNK);                       /* extern */
+M2C_UNK zSysFifoKick__FP1Ui(char *, M2C_UNK);       /* extern */
+char *zSysSprGetPacket__FPP1(M2C_UNK);              /* extern */
 extern M2C_UNK data_003E0980;
 
 void func_003AFED0(void) {
-    void *temp_v0;
+    char *temp_v0;
 
-    temp_v0 = func_00350D90(0);
+    temp_v0 = zSysSprGetPacket__FPP1(0);
     M2C_FIELD(temp_v0, s32 *, 0) = 0x30000008;
     M2C_FIELD(temp_v0, M2C_UNK **, 4) = &data_003E0980;
     M2C_FIELD(temp_v0, s32 *, 8) = 0x11000000;
     M2C_FIELD(temp_v0, s32 *, 0xC) = 0x50000008;
-    func_00350AB0(temp_v0, 1);
+    zSysFifoKick__FP1Ui(temp_v0, 1);
 }

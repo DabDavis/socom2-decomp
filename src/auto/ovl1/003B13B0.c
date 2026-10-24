@@ -6,31 +6,31 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_001910B8(s32, s32, s32);               /* extern */
-M2C_UNK func_001A21A8(M2C_UNK, M2C_UNK);            /* extern */
 M2C_UNK func_00350950(char *, s32, s32);            /* extern */
-M2C_UNK func_00350AB0(char *, s32);                 /* extern */
-char *func_00350D90(M2C_UNK);                       /* extern */
+M2C_UNK sceDmaSendN(s32, s32, s32);                 /* extern */
+M2C_UNK sceGsSyncPath(M2C_UNK, M2C_UNK);            /* extern */
+M2C_UNK zSysFifoKick__FP1Ui(char *, s32);           /* extern */
+char *zSysSprGetPacket__FPP1(M2C_UNK);              /* extern */
 extern s32 data_0049E2B8;
 
 void func_003B13B0(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
     char *temp_v0;
 
     if (arg2 != 0) {
-        temp_v0 = func_00350D90(0);
+        temp_v0 = zSysSprGetPacket__FPP1(0);
         M2C_FIELD(temp_v0, s32 *, 8) = 0x13000000;
         M2C_FIELD(temp_v0, s32 *, 0xC) = (s32) (arg1 | 0x50000000);
         if (arg3 != 0) {
             func_00350950(temp_v0 + 0x10, arg0, arg1);
             M2C_FIELD(temp_v0, s32 *, 0) = (s32) (arg1 | 0x10000000);
-            func_00350AB0(temp_v0, arg1 + 1);
+            zSysFifoKick__FP1Ui(temp_v0, arg1 + 1);
             return;
         }
         M2C_FIELD(temp_v0, s32 *, 0) = (s32) (arg1 | 0x30000000);
         M2C_FIELD(temp_v0, s32 *, 4) = arg0;
-        func_00350AB0(temp_v0, 1);
+        zSysFifoKick__FP1Ui(temp_v0, 1);
         return;
     }
-    func_001910B8(data_0049E2B8, arg0, arg1);
-    func_001A21A8(0, 0);
+    sceDmaSendN(data_0049E2B8, arg0, arg1);
+    sceGsSyncPath(0, 0);
 }

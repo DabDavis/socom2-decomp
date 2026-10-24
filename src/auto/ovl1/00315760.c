@@ -6,9 +6,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_003083C0();                            /* extern */
+M2C_UNK SetRotate__7CMatrixFPC6CPnt3D();            /* extern */
 
-void func_00315760(void *arg0) {
-    func_003083C0();
+void func_00315760(char *arg0) {
+    SetRotate__7CMatrixFPC6CPnt3D();
     M2C_FIELD(arg0, u8 *, 0xA1) = (u8) (M2C_FIELD(arg0, u8 *, 0xA1) | 2);
 }

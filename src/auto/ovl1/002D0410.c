@@ -6,16 +6,14 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK Clear__14CSched_ManagerFv(M2C_UNK *);       /* extern */
 M2C_UNK func_002CF5E0(M2C_UNK);                     /* extern */
 M2C_UNK func_002D9D00(M2C_UNK);                     /* extern */
 M2C_UNK func_002D9F20();                            /* extern */
-M2C_UNK func_00306670();                            /* extern */
 M2C_UNK func_00320770();                            /* extern */
 M2C_UNK func_003221F0();                            /* extern */
-M2C_UNK func_00335FD0();                            /* extern */
 M2C_UNK func_0033BCD0();                            /* extern */
 M2C_UNK func_00346380(M2C_UNK);                     /* extern */
-M2C_UNK func_0034E480(M2C_UNK *);                   /* extern */
 M2C_UNK func_00351EE0();                            /* extern */
 M2C_UNK func_00354F40();                            /* extern */
 M2C_UNK func_00364EE0();                            /* extern */
@@ -23,11 +21,13 @@ M2C_UNK func_00364F30();                            /* extern */
 M2C_UNK func_003C0740(M2C_UNK *, M2C_UNK);          /* extern */
 M2C_UNK func_005128F0();                            /* extern */
 M2C_UNK func_005761B0();                            /* extern */
+M2C_UNK zMath_Init__Fv();                           /* extern */
+M2C_UNK zRndrInit__Fv();                            /* extern */
 extern M2C_UNK data_0049E260;
 extern M2C_UNK data_004B50D0;
 
 s32 func_002D0410(void) {
-    func_0034E480(&data_0049E260);
+    Clear__14CSched_ManagerFv(&data_0049E260);
     func_003221F0();
     func_003C0740(&data_004B50D0, 0x14);
     func_00351EE0();
@@ -36,10 +36,10 @@ s32 func_002D0410(void) {
     func_00320770();
     func_00364EE0();
     func_002D9F20();
-    func_00335FD0();
+    zRndrInit__Fv();
     func_00346380(0x30);
     func_002D9D00(0);
-    func_00306670();
+    zMath_Init__Fv();
     func_0033BCD0();
     func_005761B0();
     func_002CF5E0(0x10);

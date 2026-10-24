@@ -6,9 +6,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_003AAAB0(M2C_UNK *, s32, s32);         /* extern */
+M2C_UNK Init__7CTurretFPCcPCc(M2C_UNK *, s32, s32); /* extern */
 extern M2C_UNK data_004A4038;
 
 void func_003AAA90(s32 arg0, s32 arg1) {
-    func_003AAAB0(&data_004A4038, arg0, arg1);
+    Init__7CTurretFPCcPCc(&data_004A4038, arg0, arg1);
 }

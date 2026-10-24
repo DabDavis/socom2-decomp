@@ -189,6 +189,43 @@ def test_padding_after_a_function_must_be_zero():
     ck(not r.match, "a wrong size in the map cannot match")
 
 
+# --- SOCOM 1's demo, the name source --------------------------------------------------
+
+def test_demo_relocations_land_on_their_fields():
+    """`.relmain`'s r_offset is a virtual address: keyed one section base off, every exact
+    comparison masked words 1 MB away from the real fields (and named SetStance wrongly)."""
+    import s1names as N
+    if not N.DEMO.exists():
+        print("      (skipped: the May 2002 demo is not extracted)")
+        return
+    demo = N.Demo()
+    by_type = {}
+    for a, t in demo.relocs.items():
+        by_type.setdefault(t, []).append(struct.unpack_from("<I", demo.data, a - demo.base)[0] >> 26)
+    ck(len(by_type["R_MIPS_26"]) > 50000 and all(op in (2, 3) for op in by_type["R_MIPS_26"]),
+       "every R_MIPS_26 is on a j/jal")
+    ck(all(op == 0x0F for op in by_type["R_MIPS_HI16"]), "every R_MIPS_HI16 is on a lui")
+    ck(all(op == 0x09 or op >= 0x1A for op in by_type["R_MIPS_LO16"]), "every R_MIPS_LO16 is on an addiu or a load/store")
+    # negative control: one section base off, almost none would be
+    off = sum(1 for a, t in demo.relocs.items() if t == "R_MIPS_26" and a + 0x100000 - demo.base < len(demo.data)
+              and struct.unpack_from("<I", demo.data, a + 0x100000 - demo.base)[0] >> 26 in (2, 3))
+    ck(off < len(by_type["R_MIPS_26"]) // 10, "the same table read one base off lands on calls by chance only")
+
+
+def test_exact_pass_refuses_a_thin_wrapper():
+    """`return DoSetStance(x);` masks to the same words as every `return f(x);`: the exact
+    pass must not name it, and the callee pass must not inherit a name through it."""
+    import s1names as N
+    if not N.DEMO.exists():
+        print("      (skipped: the May 2002 demo is not extracted)")
+        return
+    img, st, demo = E.image(), E.symbols(), N.Demo()
+    exact, callee, _ = N.run(demo, img, st)
+    ck(0x319580 not in exact, "the SetStance-shaped wrapper is not exact")
+    ck(0x3199C0 not in callee, "nor is its callee named through it")
+    ck(exact.get(0x3070C0) == "Mul__5CQuatCFPC5CQuatP5CQuat", "positive control: CQuat::Mul is exact")
+
+
 # --- the tree ---------------------------------------------------------------------
 
 def test_everything_baselined_still_matches():

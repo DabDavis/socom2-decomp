@@ -6,14 +6,14 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_00180E10(M2C_UNK);                         /* extern */
+s32 __nw__FUi(M2C_UNK);                             /* extern */
 s32 func_003CD740(s32, s32);                        /* extern */
 extern s32 data_004B5220;
 
 s32 func_003D3980(s32 arg0) {
     s32 var_v0;
 
-    var_v0 = func_00180E10(0x208);
+    var_v0 = __nw__FUi(0x208);
     if (var_v0 != 0) {
         var_v0 = func_003CD740(var_v0, arg0);
     }

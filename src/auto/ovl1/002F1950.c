@@ -6,8 +6,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_00198F18(s32, s32);                        /* extern */
+s32 strcmp(s32, s32);                               /* extern */
 
 s32 func_002F1950(s32 arg0, s32 arg1) {
-    return func_00198F18(arg0 + 0x20, arg1 + 0x20) <= 0;
+    return strcmp(arg0 + 0x20, arg1 + 0x20) <= 0;
 }

@@ -6,12 +6,12 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK FadeOut__11CSndJukeboxFv();                 /* extern */
 M2C_UNK func_00346A50(M2C_UNK);                     /* extern */
-M2C_UNK func_00349080();                            /* extern */
 extern s8 data_003DFFA8;
 
 void func_00341A30(void) {
-    func_00349080();
+    FadeOut__11CSndJukeboxFv();
     func_00346A50(3);
     data_003DFFA8 = 0;
 }

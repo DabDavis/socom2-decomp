@@ -6,20 +6,20 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_001988D0(M2C_UNK *, M2C_UNK *, s32);   /* extern */
 s32 func_0026ED60(s32, u16);                        /* extern */
 s32 func_003A0950(M2C_UNK *, M2C_UNK *);            /* extern */
 M2C_UNK func_003A17E0(M2C_UNK *, s32, M2C_UNK);     /* extern */
 M2C_UNK func_003A1880(M2C_UNK *);                   /* extern */
 M2C_UNK func_003A1C60(M2C_UNK *);                   /* extern */
 M2C_UNK func_003A1EA0(M2C_UNK *, M2C_UNK *, M2C_UNK *); /* extern */
+M2C_UNK sprintf(M2C_UNK *, M2C_UNK *, s32);         /* extern */
 extern M2C_UNK data_003EEEF0;
 extern M2C_UNK data_003EEF00;
 extern s32 data_00414BE8;
 extern M2C_UNK data_00414E50;
 extern M2C_UNK data_00436460;
 
-s32 func_0027B000(void *arg0) {
+s32 func_0027B000(char *arg0) {
     s32 temp_s0;
     s32 var_s0;
 
@@ -28,9 +28,9 @@ s32 func_0027B000(void *arg0) {
     func_003A17E0(&data_00436460, temp_s0, 0);
     var_s0 = 0;
     do {
-        func_001988D0(&data_00414E50, &data_003EEEF0, var_s0);
+        sprintf(&data_00414E50, &data_003EEEF0, var_s0);
         if (func_003A0950(&data_00436460, &data_00414E50) == 0) {
-            func_001988D0(&data_00414E50, &data_003EEEF0, var_s0);
+            sprintf(&data_00414E50, &data_003EEEF0, var_s0);
             func_003A1EA0(&data_00436460, &data_00414E50, &data_003EEF00);
         }
         var_s0 += 1;

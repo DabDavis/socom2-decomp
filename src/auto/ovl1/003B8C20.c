@@ -6,11 +6,11 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_0025AA30(s32, M2C_UNK *, s32);         /* extern */
-M2C_UNK func_003C3570(s32, s32);                    /* extern */
+M2C_UNK Fetch__Q23zar4CZARFPCcPUi(s32, M2C_UNK *, s32); /* extern */
+M2C_UNK Read__Q23zdb7CVisualFRQ23zar4CZAR(s32, s32); /* extern */
 extern M2C_UNK data_003FC2D0;
 
 void Read__Q23zdb8CSubMeshFRQ23zar4CZAR(s32 arg0, s32 arg1) {
-    func_0025AA30(arg1, &data_003FC2D0, arg0 + 0x68);
-    func_003C3570(arg0, arg1);
+    Fetch__Q23zar4CZARFPCcPUi(arg1, &data_003FC2D0, arg0 + 0x68);
+    Read__Q23zdb7CVisualFRQ23zar4CZAR(arg0, arg1);
 }

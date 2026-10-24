@@ -7,8 +7,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 s32 func_0018F8D8(s32, s32, M2C_UNK, M2C_UNK *);    /* extern */
-M2C_UNK func_001A8300(s32, s32, s32);               /* extern */
-M2C_UNK func_001A8820(s32, M2C_UNK, s32 *);         /* extern */
+M2C_UNK sceIoctl(s32, M2C_UNK, s32 *);              /* extern */
+M2C_UNK sceRead(s32, s32, s32);                     /* extern */
 extern s32 data_00455F20;
 extern s32 data_00455F30;
 extern s32 data_00455F40;
@@ -21,10 +21,10 @@ s32 func_0030B9D0(s32 arg0, s32 arg1) {
         return func_0018F8D8(arg1 >> 0xB, arg0, 0, &sp2C) << 0xB;
     }
     if (data_00455F20 == 0) {
-        func_001A8300(data_00455F40, arg0, arg1);
+        sceRead(data_00455F40, arg0, arg1);
         data_00455F20 = 1;
     }
-    func_001A8820(data_00455F40, 1, &sp28);
+    sceIoctl(data_00455F40, 1, &sp28);
     if (sp28 == 0) {
         data_00455F20 = 0;
         return arg1;

@@ -1,0 +1,14 @@
+/* <memory>: the part of MSL's std::allocator the matched functions need (its name). */
+
+#ifndef _MSL_MEMORY
+#define _MSL_MEMORY
+
+namespace std {
+
+template <class T>
+class allocator {
+};
+
+}
+
+#endif

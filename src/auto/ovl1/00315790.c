@@ -6,9 +6,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_00307170(s32, void *);                 /* extern */
+M2C_UNK ToMatrix__5CQuatCFP7CMatrix(s32, char *);   /* extern */
 
-void func_00315790(void *arg0, s32 arg1) {
-    func_00307170(arg1, arg0);
+void func_00315790(char *arg0, s32 arg1) {
+    ToMatrix__5CQuatCFP7CMatrix(arg1, arg0);
     M2C_FIELD(arg0, u8 *, 0xA1) = (u8) (M2C_FIELD(arg0, u8 *, 0xA1) | 2);
 }

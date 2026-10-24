@@ -6,7 +6,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_0018F4C0();                                /* extern */
+s32 sceCdGetError();                                /* extern */
 extern s32 data_00488FB0;
 extern s32 data_0048DA10;
 
@@ -14,5 +14,5 @@ s32 func_0033F2E0(void) {
     if (data_00488FB0 != 0) {
         return data_0048DA10;
     }
-    return func_0018F4C0();
+    return sceCdGetError();
 }

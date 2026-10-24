@@ -6,7 +6,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_00359640(char *);                      /* extern */
+M2C_UNK __ct__13C2DBitmapPolyFv(char *);            /* extern */
 M2C_UNK func_00360C50(char *);                      /* extern */
 extern M2C_UNK data_00405400;
 extern M2C_UNK data_00405420;
@@ -14,7 +14,7 @@ extern M2C_UNK data_00405420;
 char *func_00208EE0(char *arg0, s32 arg1, s32 arg2) {
     M2C_FIELD(arg0, M2C_UNK **, 0) = &data_00405420;
     M2C_FIELD(arg0, M2C_UNK **, 0) = &data_00405400;
-    func_00359640(arg0 + 0x10);
+    __ct__13C2DBitmapPolyFv(arg0 + 0x10);
     func_00360C50(arg0 + 0x200);
     M2C_FIELD(arg0, s32 *, 4) = arg1;
     M2C_FIELD(arg0, s32 *, 8) = arg2;

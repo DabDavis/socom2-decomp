@@ -6,8 +6,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK __dl__FPv(char *);                          /* extern */
 M2C_UNK func_00180280(s32, M2C_UNK, M2C_UNK);       /* extern */
-M2C_UNK func_00180AD0(char *);                      /* extern */
 M2C_UNK func_001FC520(char *, M2C_UNK);             /* extern */
 M2C_UNK func_001FC5A0(char *, M2C_UNK);             /* extern */
 M2C_UNK func_0033C350(char *);                      /* extern */
@@ -35,7 +35,7 @@ char *func_00357B00(char *arg0, s64 arg1) {
             func_0033C360(temp_a0_2, 0);
         }
         if (((s64) (arg1 << 0x30) >> 0x30) > 0) {
-            func_00180AD0(arg0);
+            __dl__FPv(arg0);
         }
     }
     return arg0;

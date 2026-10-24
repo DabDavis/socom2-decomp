@@ -6,12 +6,12 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_001959B8(char *, M2C_UNK, M2C_UNK);    /* extern */
+M2C_UNK memset(char *, M2C_UNK, M2C_UNK);           /* extern */
 extern M2C_UNK data_00406230;
 
 char *func_002A2790(char *arg0) {
     M2C_FIELD(arg0, M2C_UNK **, 0) = &data_00406230;
     M2C_FIELD(arg0, s32 *, 4) = 0;
-    func_001959B8(arg0 + 8, 0, 0x10);
+    memset(arg0 + 8, 0, 0x10);
     return arg0;
 }

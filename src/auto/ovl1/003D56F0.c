@@ -6,7 +6,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_00180AD0(char *);                      /* extern */
+M2C_UNK __dl__FPv(char *);                          /* extern */
 M2C_UNK func_00181E30(s32, M2C_UNK *);              /* extern */
 extern M2C_UNK func_003D5800;
 
@@ -29,18 +29,18 @@ char *func_003D56F0(char *arg0, s64 arg1) {
         if ((temp_v0 != NULL) && (temp_v0 != NULL) && (temp_v0 != NULL) && (temp_v0 != NULL)) {
             temp_a0_2 = M2C_FIELD(arg0, char **, 0x18);
             if (temp_a0_2 != NULL) {
-                func_00180AD0(temp_a0_2);
+                __dl__FPv(temp_a0_2);
             }
         }
         temp_v0_2 = arg0 + 4;
         if ((temp_v0_2 != NULL) && (temp_v0_2 != NULL) && (temp_v0_2 != NULL) && (temp_v0_2 != NULL)) {
             temp_a0_3 = M2C_FIELD(arg0, char **, 0xC);
             if (temp_a0_3 != NULL) {
-                func_00180AD0(temp_a0_3);
+                __dl__FPv(temp_a0_3);
             }
         }
         if (((s64) (arg1 << 0x30) >> 0x30) > 0) {
-            func_00180AD0(arg0);
+            __dl__FPv(arg0);
         }
     }
     return arg0;

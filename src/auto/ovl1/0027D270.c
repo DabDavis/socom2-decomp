@@ -6,8 +6,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+s32 GetCharP__13CZAnimArgListFi(s32, M2C_UNK);      /* extern */
 s32 func_0026ED60(char *, u16);                     /* extern */
-s32 func_00272480(s32, M2C_UNK);                    /* extern */
 M2C_UNK func_002E3790(M2C_UNK *, s32);              /* extern */
 s32 strcmp(s32, M2C_UNK *);                         /* extern */
 extern M2C_UNK data_003EE898;
@@ -21,7 +21,7 @@ void UIJoinMPRoom__FP13C2DAnimCmdHdrPf(char *arg0) {
 
     temp_v0 = func_0026ED60(data_00414BE8, M2C_FIELD(arg0, u16 *, 8));
     if (strcmp(temp_v0, &data_003EE898) == 0) {
-        var_v0 = func_00272480(M2C_FIELD(data_00414BE8, s32 *, 0x18), 0);
+        var_v0 = GetCharP__13CZAnimArgListFi(M2C_FIELD(data_00414BE8, s32 *, 0x18), 0);
     } else if (strcmp(temp_v0, &data_003EF348) == 0) {
         var_v0 = 0;
     } else {

@@ -6,9 +6,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_003D0870(M2C_UNK *);                   /* extern */
+M2C_UNK OpenDecals__8CZWeaponFv(M2C_UNK *);         /* extern */
 extern M2C_UNK data_003FD318;
 
 void func_003D03C0(void) {
-    func_003D0870(&data_003FD318);
+    OpenDecals__8CZWeaponFv(&data_003FD318);
 }

@@ -6,8 +6,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_0032F630(M2C_UNK *, M2C_UNK, M2C_UNK);     /* extern */
 M2C_UNK func_0033F720(M2C_UNK, M2C_UNK, M2C_UNK, M2C_UNK); /* extern */
+s32 zrdr_read__FPCcPCci(M2C_UNK *, M2C_UNK, M2C_UNK); /* extern */
 extern M2C_UNK data_003F7948;
 extern s32 data_0048DD98;
 extern u8 data_0048DDA0;
@@ -17,7 +17,7 @@ extern s8 data_004A1798;
 void func_003450F0(void) {
     if (data_0048DD98 == 0) {
         if (data_0048DF18 == 0) {
-            data_0048DF18 = func_0032F630(&data_003F7948, 0, 0);
+            data_0048DF18 = zrdr_read__FPCcPCci(&data_003F7948, 0, 0);
         }
         if (data_0048DDA0 != 0) {
             data_004A1798 = 1;

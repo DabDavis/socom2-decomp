@@ -25,7 +25,7 @@ and data reference resolved to the address the shipped code uses.
 |---|---|
 | `scdecomp.py` | the image (MAIN + the two MWo3 overlays, digests pinned), ELF reading, the map, disassembly |
 | `scdiff.py` | the compiler driver (wibo + mwccps2) and the differ: masks the object's own relocation fields, then **resolves every relocation** — calls by map address, `%hi/%lo` pairs by value, string literals by text, switch tables by target |
-| `sccheck.py` | builds `src/`, scores every function, holds `src/MATCHED.txt` (a regression is rc 1) |
+| `sccheck.py` | builds `src/`, scores every function, holds `src/MATCHED.txt` (keyed by address, so a rename is not a regression; a regression is rc 1) |
 | `scd.py` | `show` / `list` / `where` / `census` |
 | `test_scdecomp.py` | the canary: each check paired with a negative control that proves it can fail |
 | `tools/decrypt_overlays.py` | your disc -> the two decrypted overlays (the target) |
@@ -154,19 +154,35 @@ defines and the image does not hold.
 SOCOM 1's May 13 2002 demo (`extracted/socom1-demo-020513/SCUS_972.05`, sha256 `00c9cee7...`,
 from the owner's copy of the Hidden Palace prototype) is unstripped: 9,703 named, sized
 functions, `.relmain` (115,142 relocations) and Metrowerks DWARF 1 (`tools/dwarf1.py`: 959
-units, class layouts, enums). Every carried name says how it was found in its note:
+units, class layouts, enums). Every carried name says how it was found in its note, and `s1names.py` never renames a row
+that hand-written source defines or that already carries an `s1~` verdict:
 
 | note | how | count |
 |---|---|---|
-| `s1:exact` | same size, identical with only the fields the demo's own relocations name masked | 383 |
-| `s1:callee` | called from the same instruction of an exact pair | 2 |
-| `s1:syscall` | a kernel stub with the same syscall number | 6 |
-| `s1:gap` | between two exact anchors, equal counts, sizes within 35 %, paired in order | 116 |
-| `s1:calls` | the same sequence of known callees and the same strings, unique, both Metrowerks | 212 |
-| `s1:order` | by hand: same position in the same unit, signature checked against the code | 7 |
+| `s1:exact` | same size, identical with only the fields the demo's own relocations name masked; unique BOTH ways; no call whose target both builds name differently | 941 |
+| `s1:callee` | called from the same instruction of an exact pair, by every such call site alike | 139 |
+| `s1:syscall` | a kernel stub with the same syscall number (all six found are withheld, below) | 0 |
+| `s1:gap` | between two exact anchors, equal counts, sizes within 35 %, paired in order | 71 |
+| `s1:calls` | the same sequence of known callees and the same strings, unique, both Metrowerks | 228 |
+| `s1:order` | by hand: same position in the same unit, signature checked against the code | 11 |
+| `s1~` | judged and NOT applied: a name landing on several rows (static copies of the `Copy`/`kCopy`/`ExitThread` stubs in the GCC-built SDK; one of three identical `std::list` iterator constructors), a signature that changed, or a name the bug below gave | 33 |
 
-Against socom-unzipped's independent table, 375 of 379 shared addresses agree; the four
-others are its own labels (`netbEx*`, `_StartThread`) against SOCOM 1's real names.
+1,448 of the map's 13,232 rows are named. A weaker tag is upgraded when the exact pass later
+confirms the same name; no name was contradicted when the passes were corrected.
+
+**The relocation keying bug (fixed 2026-10-24).** `.relmain`'s `r_offset` is already a virtual
+address; the first version added `main`'s base to it, so every "exact" comparison masked words
+1 MB away from the real relocation fields. Only functions with no relocations, or whose stray
+mask happened to cover the differing words, matched: 383 instead of 941. Three names it gave
+were unproven or wrong and are back to placeholders with `s1~` notes -- `SetStance`, a
+`return f(x);` wrapper that masks like every other, and `DoSetStance`, named through it, which
+builds strings with `strlen` where the demo's queries AI states. `test_scdecomp.py` now holds
+every `R_MIPS_26` to a j/jal and the wrapper to "not exact".
+
+Against socom-unzipped's independent table, 690 of 698 shared addresses agree; the eight
+others are its own labels (`netbEx*`, `_StartThread`, a command-string guess) or Ghidra's
+syscall-slot names, against SOCOM 1's real symbols -- e.g. both `AddDmacHandler` stubs load
+syscall 18, and the call site says which one the code calls.
 
 **A non-exact name carries SOCOM 1's SIGNATURE, which may have changed.** The two projector
 builders are SOCOM 1's `zdb::CalcWorldToUV` by behaviour, but SOCOM II passes the matrix

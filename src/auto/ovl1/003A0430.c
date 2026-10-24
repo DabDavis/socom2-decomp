@@ -6,9 +6,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_001B3F58(s32, M2C_UNK, M2C_UNK);           /* extern */
-M2C_UNK func_001B4390(M2C_UNK, M2C_UNK *, s32 *);   /* extern */
 M2C_UNK func_001F3BF0(M2C_UNK *, M2C_UNK *, M2C_UNK); /* extern */
+s32 sceMcSeek(s32, M2C_UNK, M2C_UNK);               /* extern */
+M2C_UNK sceMcSync(M2C_UNK, M2C_UNK *, s32 *);       /* extern */
 extern M2C_UNK data_003FBC78;
 extern M2C_UNK data_00408538;
 
@@ -18,11 +18,11 @@ s32 func_003A0430(char *arg0) {
     s32 var_s0;
 
     var_s0 = 0;
-    if (func_001B3F58(M2C_FIELD(arg0, s32 *, 4), 0, 1) < 0) {
+    if (sceMcSeek(M2C_FIELD(arg0, s32 *, 4), 0, 1) < 0) {
         func_001F3BF0(&data_00408538, &data_003FBC78, 0);
         return 0;
     }
-    func_001B4390(0, &sp2C, &sp28);
+    sceMcSync(0, &sp2C, &sp28);
     if (sp28 >= 0) {
         var_s0 = sp28;
     }
