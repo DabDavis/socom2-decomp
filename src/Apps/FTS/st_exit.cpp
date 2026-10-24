@@ -24,10 +24,14 @@ void func_003A3900(void *snd, const char *bank, void *arg);
 void func_00368570(CGameMenu *menu, void *reloc, CZAnimZAR *zar);   /* CGameMenu::Init */
 void func_003AFD50(int r, int g, int b, int a, int z);   /* CVideo::Clear */
 
-extern CZAnimZAR *data_00408D80;                 /* animfile (the unit's, in an unnamed namespace) */
 }
 
 extern char theUIVarManager[];
+
+namespace {
+/* the stats screen's anims */
+CZAnimZAR *animfile;
+}
 
 const char *CExitMenu::GetReaderFileName()
 {
@@ -156,9 +160,9 @@ bool CExitState::Init()
     func_0032C570();
     if (!m_menu)
         m_menu = new CExitMenu;
-    data_00408D80 = ZAnim.OpenZAR("run/extzanim.zar");
+    animfile = ZAnim.OpenZAR("run/extzanim.zar");
     func_003A3900(func_00361BC0(), "UIX", func_003A4460());
-    func_00368570(m_menu, 0, data_00408D80);
+    func_00368570(m_menu, 0, animfile);
     func_003AFD50(0, 0, 0, 0, 0);
     zVid.m_91 = 1;
     zVid_Sync0();
@@ -192,9 +196,9 @@ void CExitState::UnInit()
     sceGsSyncPath(0, 0);
     zVid.m_91 = 0;
     func_003A3740(func_00361BC0(), "UIX");
-    if (data_00408D80) {
-        ZAnim.CloseZAR(data_00408D80);
-        data_00408D80 = 0;
+    if (animfile) {
+        ZAnim.CloseZAR(animfile);
+        animfile = 0;
     }
     if (m_menu)
         delete m_menu;

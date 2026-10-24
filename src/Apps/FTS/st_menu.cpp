@@ -21,11 +21,6 @@ void func_003A3740(void *snd, const char *bank);
 void func_00366A00(CMenuStateMenu *menu, int arg);   /* CGameMenu::RestartBackgroundMPEG */
 void func_00366B10(CMenuStateMenu *menu);            /* CGameMenu::HaltBackgroundMPEG */
 
-extern char data_00408DC0[];                     /* g_relocDblBuf (the unit's) */
-extern zdb::CAssetLib *data_00408DB8;            /* g_pSkbLib (the unit's) */
-extern CZAnimZAR *data_00408DE8;                 /* animfile (the unit's) */
-extern char data_0049E2A0[];                     /* theIOPManager */
-extern unsigned char data_00488ED4;              /* thePipe's (SOCOM 1: +0x640) */
 }
 
 /* a message from the network's queue: its type, then its text */
@@ -48,14 +43,24 @@ void func_0033BF30(CPipe *pipe, void *texbuffer);   /* CPipe::FIFO_Signal */
 void func_00339DE0(CPipe *pipe, zdb::CWorld *world);   /* CPipe::RenderWorld */
 void func_003AFF30(bool a, bool b);              /* zVid_Swap */
 
-extern char data_00437690[];                     /* the network's message queue */
-extern int data_0049E8B0;                        /* zdb::CTexManager::TexPhase */
-extern int data_00408DD4;
-extern int data_00408DD8;
-extern int data_00408DDC;
 }
 
-extern unsigned char theNetwork[];
+extern char theIOPManager[];
+
+namespace {
+/* the menus' double-buffered texture relocation (SOCOM 1's: 0x1C bytes; the words at 0x14-0x1C
+ * the tick clears after each texture load) */
+struct CRelocDblBuf {
+    unsigned char _0[0x14];
+    int m_14;   // 0x14
+    int m_18;   // 0x18
+    int m_1c;   // 0x1c
+};
+
+zdb::CAssetLib *g_pSkbLib;
+CRelocDblBuf g_relocDblBuf;
+CZAnimZAR *animfile;
+}
 
 void zUISchedulerClear();
 
@@ -80,33 +85,33 @@ bool CMenuState::Tick(float dT)
     func_00341A60(dT, 0);
     func_00341250(dT);
     func_003654C0(m_menu, dT);
-    void *queue = data_00437690;
+    void *queue = theMission.m_netQueue;
 
     func_002A4290(&msg);
     while (func_002A4270(queue)) {
         func_002A3E60(queue, &msg);
         DisplayMessage(msg.text, 0, 0, 0, 0, 1, 0, msg.type);
     }
-    data_004887C0.m_uiNode = m_menu->m_pBackplaneNode;
-    data_004887C0.m_renderingUi = 1;
-    data_004887C0.RenderUiNode(m_menu->m_pBackplaneNode);
-    data_004887C0.m_renderingUi = 0;
-    func_00356BE0(data_0049E880.data_[0], true);
-    data_00408DD4 = 0;
-    data_00408DD8 = 0;
-    data_00408DDC = 0;
+    thePipe.m_uiNode = m_menu->m_pBackplaneNode;
+    thePipe.m_renderingUi = 1;
+    thePipe.RenderUiNode(m_menu->m_pBackplaneNode);
+    thePipe.m_renderingUi = 0;
+    func_00356BE0(zdb::CTexManager::m_texmanager.data_[0], true);
+    g_relocDblBuf.m_14 = 0;
+    g_relocDblBuf.m_18 = 0;
+    g_relocDblBuf.m_1c = 0;
     if (zdb::CWorld::m_world) {
-        func_0033BF30(&data_004887C0, data_0049E880.data_[data_0049E8B0]);
+        func_0033BF30(&thePipe, zdb::CTexManager::m_texmanager.data_[zdb::CTexManager::TexPhase[0]]);
         if (zdb::CWorld::m_world->m_camera)
             zdb::CWorld::m_world->m_camera->Update(zdb::ZCAM_TYPE_0);
-        func_00339DE0(&data_004887C0, zdb::CWorld::m_world);
+        func_00339DE0(&thePipe, zdb::CWorld::m_world);
     }
     m_menu->DrawForeplane();
-    func_00356BE0(data_0049E880.data_[0], true);
-    data_00408DD4 = 0;
-    data_00408DD8 = 0;
+    func_00356BE0(zdb::CTexManager::m_texmanager.data_[0], true);
+    g_relocDblBuf.m_14 = 0;
+    g_relocDblBuf.m_18 = 0;
     zSysFifoEnd();
-    data_00408DDC = 0;
+    g_relocDblBuf.m_1c = 0;
     if (m_skip_swap > 0) {
         m_skip_swap--;
         func_003AFF30(false, true);
@@ -135,28 +140,28 @@ void CMenuState::OnPush(int userdata)
  * anims, the UI's sound bank */
 void CMenuState::UnInit()
 {
-    if (!theNetwork[9])
-        func_0030E300(theNetwork + 8);
+    if (!theNetwork.m_9)
+        func_0030E300(&theNetwork.m_8);
     zSysFifoEnd();
     zVid.m_7d = 1;
     sceGsSyncPath(0, 0);
-    func_00356080(&data_0049E880, false);
-    func_003654A0(data_00408DC0);
+    func_00356080(&zdb::CTexManager::m_texmanager, false);
+    func_003654A0(&g_relocDblBuf);
     delete m_menu;
     m_menu = 0;
-    zdb::CAssetMgr::ReleaseLibRef(data_00408DB8);
-    data_00408DB8 = 0;
+    zdb::CAssetMgr::ReleaseLibRef(g_pSkbLib);
+    g_pSkbLib = 0;
     func_0038D4E0();
     func_001E8FE0();
     func_0027EDF0(func_00274930(), true);
     zUISchedulerClear();
     SelectionSound = 0;
-    func_0039C590(data_0049E2A0, m_iopregh);
-    data_00488ED4 = 0;
+    func_0039C590(theIOPManager, m_iopregh);
+    thePipe.m_714 = 0;
     func_00350CC0(0);
-    if (data_00408DE8) {
-        ZAnim.CloseZAR(data_00408DE8);
-        data_00408DE8 = 0;
+    if (animfile) {
+        ZAnim.CloseZAR(animfile);
+        animfile = 0;
     }
     func_0033ED10(func_002AFBA0());
     func_003A3740(func_00361BC0(), "UIMn");
