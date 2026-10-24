@@ -19,6 +19,12 @@ byte-exact; a function in it that no longer matches is a REGRESSION and a
 non-zero exit, so a source change made for function N cannot quietly break N-1.
 
 A TU may carry its own flags on its first line:   /* sc: flags=-O4,s */
+
+An inline function's out-of-line copy (MW's binding 13: every unit that needs one emits one,
+and the linker keeps the first) is scored like any function, but when it misses and its map
+address lies outside its own unit's span it is `elsewhere`, not WRONG: the linked copy is an
+earlier unit's, made where it was inlined differently (zcam_main.cpp's CNode::GetBBox against
+zanim_cmd_tick.cpp's, 0x262550), and this unit's was dropped.
 """
 
 from __future__ import annotations
@@ -83,6 +89,24 @@ def build_one(src: Path) -> tuple[Path, Path | None, str]:
         return src, None, str(e)
 
 
+MULTIDEF = 13   # MW's binding for an inline function's (or a template's) out-of-line copy
+
+
+def unit_span(obj: Path, st) -> tuple[int, int] | None:
+    """The map addresses the unit's own (non-inline) functions cover."""
+    lo = hi = None
+    for f in E.Elf.read(obj).functions():
+        if f.bind == MULTIDEF:
+            continue
+        try:
+            sym = st.get(f.name)
+        except KeyError:
+            continue
+        lo = sym.addr if lo is None else min(lo, sym.addr)
+        hi = sym.addr + sym.size if hi is None else max(hi, sym.addr + sym.size)
+    return (lo, hi) if lo is not None else None
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("-f", "--filter", help="regex over symbol names")
@@ -117,6 +141,7 @@ def main(argv=None) -> int:
             rows.append(("BUILD-FAIL", src.name, "", err.strip().splitlines()[-1] if err.strip() else ""))
             continue
         is_auto = "auto" in src.relative_to(SRC).parts
+        span = unit_span(obj, st)
         for fs in E.Elf.read(obj).functions():
             if rx and not rx.search(fs.name):
                 continue
@@ -131,6 +156,9 @@ def main(argv=None) -> int:
                 rows.append(("no-target", src.name, fs.name, ""))
                 continue
             res = D.compare(obj, fs.name, sym, img, st)
+            if not res.match and fs.bind == MULTIDEF and span and not span[0] <= sym.addr < span[1]:
+                rows.append(("elsewhere", src.name, fs.name, f"inline copy; linked at {sym.addr:#x}"))
+                continue
             if res.match:
                 matched.append(fs.name)
                 note = f"{len(res.relocs)} relocs" + (f", {len(res.reloc_unchecked)} unchecked"

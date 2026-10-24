@@ -59,15 +59,15 @@ extern "C" void func_002634A0(_zanim_cmd_hdr *hdr)
         }
         CPnt3D origin(0.0f, 0.0f, 0.0f);
 
-        func_00308640(&node->m_matrix, &origin, 1);
+        node->m_matrix.Transform(&origin, 1);
         CPnt3D fwd(cmd->forward.x, cmd->forward.y, cmd->forward.z);
 
-        func_00308640(&node->m_matrix, &fwd, 1);
+        node->m_matrix.Transform(&fwd, 1);
         CPnt3D at(cmd->at.x, cmd->at.y, cmd->at.z);
 
         target->TransformToWorld(at);
         if (inv)
-            func_00308640(inv, &at, 1);
+            inv->Transform(&at, 1);
         fwd.Sub(&origin, &fwd);
         fwd.Normalize();
         at.Sub(&origin, &at);
@@ -407,7 +407,7 @@ extern "C" bool func_002656F0(_zanim_cmd_hdr *hdr, float *dT)
             CPnt3D p(0.0f, 0.0f, 0.0f);
             int cell;
 
-            func_00308640(&node->m_matrix, &p, 1);
+            node->m_matrix.Transform(&p, 1);
             if (func_0052DC70(AiMaps, &p, &cell)) {
                 float light = func_0052CE10(AiMaps, &cell, &p, 0);
 
@@ -1283,7 +1283,7 @@ bool zAnimObjectAddChildTick(_zanim_cmd_hdr *hdr, float *dT)
 
             parent->BuildMTW(m);
             Vu0MatrixInverseWithUniformScale(&m, &m);
-            func_00308640(&m, &pos, 1);
+            m.Transform(&pos, 1);
             child->SetPosition(&pos);
         }
     }

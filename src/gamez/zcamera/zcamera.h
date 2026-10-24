@@ -91,6 +91,13 @@ public:
 
 class CCamera : public CNode, public tag_CAMERA_PARAMS {
 public:
+    /* an inline read of the mid plane (InsideMidPlane's evaluation order shows one; the name is
+     * ours) */
+    float GetMidPlane() { return m_mid_plane; }
+    float GetZ(CPnt3D *pos);
+    bool InsideMidPlane(CNode *node);
+    bool InsideMidPlane(CCell *cell);
+    float GetScaledRangeSquared(CPnt3D *Pos);
     unsigned int GetCameraCanSeeRegion();
     unsigned int GetPlayerCanSeeRegion();
     bool PlayerCanSeeRegion(unsigned int region);
@@ -118,8 +125,9 @@ public:
     unsigned char m_IsInside;   // 0x2ac
     int m_AboveMaterial;   // 0x2b0
     float m_landmark_far_plane;   // 0x2b4
-    float m_RangeScale;   // 0x2b8
-    unsigned char _socom2_2bc[0x2d0 - 0x2bc];
+    unsigned char _socom2_2b8[0x2c8 - 0x2b8];
+    float m_RangeScale;   // 0x2c8 (SOCOM 1: 0x2b8; the constructor sets it and 0x2cc to 1)
+    float m_socom2_2cc;   // 0x2cc
     float m_guardBand_min[4];   // 0x2d0 (SOCOM 1: 0x480)
     float m_guardBand_max[4];   // 0x2e0 (SOCOM 1: 0x490)
     tag_ZCAM_MTX_SET m_mtxSet;   // 0x2f0 (SOCOM 1: 0x2c0)

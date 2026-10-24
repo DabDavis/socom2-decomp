@@ -46,46 +46,57 @@ CMatrix::CMatrix(float m00, float m01, float m02, float m03, float m10, float m1
     m_matrix[3][3] = m33;
 }
 
+/* SOCOM 1's zmath_matrix.h VU0 helpers, inline: a matrix's rows into vf4-vf7, then a point
+ * through them (w = 1), as often as wanted. SOCOM 1's line table puts each helper's code on its
+ * caller's one line. The point's is GCC-style (its operands bound left to right: Transform loads
+ * &input before &output; an asm block takes them in the arguments' right-to-left order) */
+inline void _LoadMatrix(const CMatrix *m)
+{
+    asm __volatile__(
+        "lqc2 $vf4, 0x0(%0)\n"
+        "lqc2 $vf5, 0x10(%0)\n"
+        "lqc2 $vf6, 0x20(%0)\n"
+        "lqc2 $vf7, 0x30(%0)\n"
+        : : "r"(m) : "memory");
+}
+
+inline void _TransformPointXYZ(const CPnt4D *in, CPnt4D *out)
+{
+    asm __volatile__(
+        "lqc2 $vf8, 0(%0)\n"
+        "vmulax.xyz $ACC, $vf4, $vf8\n"
+        "vmadday.xyz $ACC, $vf5, $vf8\n"
+        "vmaddaz.xyz $ACC, $vf6, $vf8\n"
+        "vmaddw.xyz $vf9, $vf7, $vf0\n"
+        "sqc2 $vf9, 0(%1)\n"
+        : : "r"(in), "r"(out) : "memory");
+}
+
+/* points through the matrix in place, each copied into an aligned vector and back. SOCOM 1's
+ * zmath_matrix.h has it inline (these locals, these lines); SOCOM II calls one copy */
+void CMatrix::Transform(CPnt3D *inout, int count) const
+{
+    CPnt4D input;
+    CPnt4D output;
+
+    _LoadMatrix(this);
+    do {
+        input.x = inout->x;
+        input.y = inout->y;
+        input.z = inout->z;
+
+        _TransformPointXYZ(&input, &output);
+
+        inout->x = output.x;
+        inout->y = output.y;
+        inout->z = output.z;
+        inout++;
+    } while (--count);
+}
+
 extern "C" {
 
 /* SOCOM II's additions, no SOCOM 1 names: VU0 loops over a point array, hand-written. */
-
-/* p[i] = m * p[i] in place, n CPnt3D points (w = 1), through a 16-byte aligned scratch */
-asm void func_00308640(CMatrix *m, CPnt3D *p, int n)
-{
-    addiu sp, sp, -32
-    lqc2 vf4, 0(a0)
-    lqc2 vf5, 16(a0)
-    lqc2 vf6, 32(a0)
-    lqc2 vf7, 48(a0)
-    addiu a0, sp, 16
-    addiu v1, sp, 0
-    nop
-loop:
-    lwc1 f0, 0(a1)
-    swc1 f0, 16(sp)
-    lwc1 f0, 4(a1)
-    swc1 f0, 20(sp)
-    lwc1 f0, 8(a1)
-    swc1 f0, 24(sp)
-    lqc2 vf8, 0(a0)
-    vmulax.xyz ACC, vf4, vf8
-    vmadday.xyz ACC, vf5, vf8
-    vmaddaz.xyz ACC, vf6, vf8
-    vmaddw.xyz vf9, vf7, vf0
-    sqc2 vf9, 0(v1)
-    addiu a2, a2, -1
-    lwc1 f0, 0(sp)
-    swc1 f0, 0(a1)
-    lwc1 f0, 4(sp)
-    swc1 f0, 4(a1)
-    lwc1 f0, 8(sp)
-    swc1 f0, 8(a1)
-    bnez a2, loop
-    addiu a1, a1, 12
-    jr ra
-    addiu sp, sp, 32
-}
 
 /* out[i] = m * in[i], n CPnt3D points (w = 1) */
 asm void func_003085C0(CMatrix *m, const CPnt3D *in, CPnt3D *out, int n)

@@ -662,8 +662,8 @@ extern "C" void func_00269170(CPnt3D *dir, zdb::CNode *node)
     CMatrix m;
 
     node->BuildMTW(m);
-    func_00308640(&m, dir, 1);
-    func_00308640(&m, &origin, 1);
+    m.Transform(dir, 1);
+    m.Transform(&origin, 1);
     *dir = *dir - origin;
     dir->Normalize();
 }

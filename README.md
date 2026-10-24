@@ -25,7 +25,7 @@ and data reference resolved to the address the shipped code uses.
 |---|---|
 | `scdecomp.py` | the image (MAIN + the two MWo3 overlays, digests pinned), ELF reading, the map, disassembly |
 | `scdiff.py` | the compiler driver (wibo + mwccps2) and the differ: masks the object's own relocation fields, then **resolves every relocation** — calls by map address, `%hi/%lo` pairs by value, string literals by text, switch tables by target |
-| `sccheck.py` | builds `src/`, scores every function, holds `src/MATCHED.txt` (keyed by address, so a rename is not a regression; a regression is rc 1) |
+| `sccheck.py` | builds `src/`, scores every function, holds `src/MATCHED.txt` (keyed by address, so a rename is not a regression; a regression is rc 1); an inline function's out-of-line copy that misses and whose map address lies outside its unit is `elsewhere` (the linked copy is another unit's) |
 | `scd.py` | `show` / `list` / `where` / `census` |
 | `test_scdecomp.py` | the canary: each check paired with a negative control that proves it can fail |
 | `tools/decrypt_overlays.py` | your disc -> the two decrypted overlays (the target) |
@@ -173,6 +173,22 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   instruction by instruction with the C around them; an `asm { }` block is a barrier, but
   drops a repeated `qmtc2.i` -- `CBBox::GetIntersect`'s last two instructions are still open
   on exactly that.
+- **VU0 code inside a C function costs -inline auto by its form** (autoprobe): a GCC-style
+  `asm("..." : : "r"(a), ...)` counts each instruction AND each operand, an `asm { }` block
+  (Metrowerks' syntax, naming the C variables) its instructions only. `CCamera::GetZ` is four
+  locals, nine VU0 instructions and a return: 17 as GCC asm, 14 as a block -- and InsideMidPlane
+  inlines it in the target, so it is a block. It must be **`asm volatile { }`**: a plain block
+  lets MW see that `aPosPtr` is `&aPos` and fold it into the return (an instruction longer),
+  where `volatile` (or GCC asm, which takes its operands as clobbered) keeps the pointer. SOCOM
+  1's line table agrees -- each instruction of a block has its own line, while GCC asm strings
+  give the first two one line. GCC-style asm binds its operands left to right, a block's named
+  variables follow the arguments' right-to-left evaluation (`CMatrix::Transform`'s helper is
+  GCC-style: &input is set up before &output).
+- **An inline call in an expression is expanded ahead of the expression**, out-of-line calls
+  included: `if (GetMidPlane() > DistToCell - cell->GetRadius())` loads the plane before
+  GetRadius is called and keeps it in `$f20` across the call, where `m_mid_plane` read as a
+  member is loaded after the call (and `this` is kept instead). An evaluation order that only
+  an accessor explains is an accessor (InsideMidPlane, both overloads).
 - `long` is 64 bits (zlib's `uLong` argument is `lwu`-loaded into a 64-bit slot).
 - Small params: a callee's prototype changes the caller's scheduling — the loader matched only
   once its DNAS callees took `unsigned int` lengths.

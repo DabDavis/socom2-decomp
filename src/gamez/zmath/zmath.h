@@ -103,6 +103,10 @@ public:
     CPnt3D m_max;
 
     int GetIntersect(CPnt4D *a, CPnt4D *b, CPnt4D *out, CPnt4D *out2, bool flag);
+    /* the centre and the size, each from one read of the box (CCamera::InsideMidPlane reads its
+     * node's box once per line; the names are ours) */
+    void GetCenter(CPnt3D *out) const { m_min.Interp(&m_max, 0.5f, out); }
+    void GetSize(CPnt3D *out) const { m_max.Sub(&m_min, out); }
 };
 
 class CQuat;
@@ -123,6 +127,9 @@ public:
     CQuat *ToQuat(CQuat *q) const;
     void SetZero();
     void ToEuler(CPnt3D *out) const;
+    /* points through the matrix in place, one at a time on VU0 (SOCOM 1's zmath_matrix.h has it
+     * inline; SOCOM II calls one copy, 0x308640) */
+    void Transform(CPnt3D *inout, int count) const;
 
     static const CMatrix identity;
 } __attribute__((aligned(16)));
@@ -241,7 +248,6 @@ inline float Dot(const CPnt3D &a, const CPnt3D &b)
 }
 
 void Vu0MatrixInverseWithUniformScale(CMatrix *dst, CMatrix *src);
-extern "C" void func_00308640(CMatrix *m, CPnt3D *p, int n);
 
 float exp_tl(float x);
 void uninit_trig_table();

@@ -109,6 +109,7 @@ public:
     CNode();
     void SetName(const char *name);
     void SetNodeEx(CNodeEx *ex, bool b);
+    float GetRadius();
     static CNode *CreateXRef(CModel *model, const CPnt3D *pos, const CQuat *rot);
     static CNode *CreateInstance(CModel *model, const CPnt3D *pos, const CQuat *rot);
     void TransformToWorld(CPnt3D &p) const;
@@ -134,6 +135,14 @@ public:
     /* by value: CZAnimSetSave::Add pushes the parent through a temporary (allocated after its
      * named locals), where the member itself would be passed by address */
     CNode *GetParent() const { return m_parent; }
+    /* the node's bounds, or its parent's when it borrows them (SOCOM 1 links a local copy,
+     * GetBBox__Q23zdb5CNodeCFv; SOCOM II's is zanim_cmd_tick.cpp's, 0x262550) */
+    const CBBox *GetBBox() const
+    {
+        if (!m_use_parent_bbox)
+            return &m_bbox;
+        return m_parent->GetBBox();
+    }
 
     CNode* m_parent;   // 0x64
     CNodeVector m_child;   // 0x68
@@ -173,6 +182,10 @@ public:
 };   // 0xc0 bytes
 
 /* a model node: what CZAnim::CreateInstanceNode instances (dynamic_cast from CNode) */
+/* a cell of the world's grid (SOCOM 1's names; its own members not read yet) */
+class CCell : public CNode {
+};
+
 class CModel : public CNode {
 public:
 };
