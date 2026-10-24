@@ -35,6 +35,31 @@ extern char data_001DD2F0[];
 }
 
 void zSysFifoEnd();
+void zSysFifoDisable();
+void zVid_Sync0();
+
+/* zVid as the states see it: SOCOM 1's fields at 0x30, 0x34 and 0x58 (the frame's clear and the
+ * film's restore); SOCOM II's struct runs past SOCOM 1's 0x80 bytes to the flags at 0x90-0x92.
+ * The field names are ours */
+struct CZVidState {
+    unsigned char _0[0x30];
+    int m_30;   // 0x30
+    int m_34;   // 0x34
+    unsigned char _38[0x44 - 0x38];
+    int m_44;   // 0x44
+    int m_48;   // 0x48
+    unsigned char _4c[0x75 - 0x4c];
+    unsigned char m_75;   // 0x75
+    unsigned char _76[0x7c - 0x76];
+    unsigned char m_7c;   // 0x7c
+    unsigned char m_7d;   // 0x7d
+    unsigned char _7e[0x90 - 0x7e];
+    unsigned char m_90;   // 0x90
+    unsigned char m_91;   // 0x91: set while a state's screen is up
+    unsigned char m_92;   // 0x92
+};
+
+extern CZVidState zVid;
 void zsys_FullAllocAndFree();
 void *_memalign(unsigned int align, unsigned int size, const char *file, int line);
 
@@ -51,7 +76,6 @@ public:
 };
 
 class CHUD;
-class CWorld;
 class CZAnimZAR;
 
 /* the anims (gamez/zanim's; only the archive calls) */
@@ -67,9 +91,82 @@ extern CZAnimMain ZAnim;
  * every member; SOCOM II's at 0x910 (CExitState's delete, CExitMenu's constructor) */
 class CTextureRelocMgr;
 
+#include <vector>
+
+namespace zdb {
+class CNode;
+class CTexHandle;
+class CAssetLib;
+class CWorld;
+
+class CAssetList {
+public:
+    CTexHandle *GetTexHandle(const char *name);
+};
+
+class CAssetMgr {
+public:
+    static void ReleaseLibRef(CAssetLib *lib);
+
+    static CAssetList m_assets;
+};
+
+enum tag_ZCAM_TYPE {
+    ZCAM_TYPE_0
+};
+
+class CCamera {
+public:
+    void Update(tag_ZCAM_TYPE type);
+    float GetLandmarkFarPlane(CWorld *world);
+};
+
+/* the world: only what the states touch -- its nodes' vector at 0x68 (reserved ahead by the
+ * core state), its camera at 0x128 (SOCOM 1's at 0xC0) */
+class CWorld {
+public:
+    static CTexHandle *GetTexHandle(const char *name);
+
+    unsigned char _0[0x68];
+    std::vector<CNode *> m_nodes;   // 0x68
+    unsigned char _74[0x128 - 0x74];
+    CCamera *m_camera;   // 0x128
+
+    static CWorld *m_world;
+};
+}
+
+/* the mission's texture buffers: a vector of them (zdb::CTexManager::m_texmanager's) */
+struct TexBufferVector {
+    unsigned int capacity_;
+    unsigned int size_;
+    void **data_;
+};
+
+/* the render pipe (SOCOM 1's CPipe: the camera at 0x628, the UI node it draws at 0x630, a flag at
+ * 0x63D -- SOCOM II's at 0x628, 0x630 and 0x711) */
+class CPipe {
+public:
+    void RenderUiNode(zdb::CNode *node);
+
+    unsigned char _0[0x628];
+    zdb::CCamera *m_camera;   // 0x628
+    unsigned char _62c[0x630 - 0x62c];
+    zdb::CNode *m_uiNode;   // 0x630
+    unsigned char _634[0x711 - 0x634];
+    unsigned char m_renderingUi;   // 0x711
+};
+
+extern "C" {
+extern TexBufferVector data_0049E880;            /* zdb::CTexManager::m_texmanager */
+extern CPipe data_004887C0;                      /* thePipe */
+}
+
 class CGameMenu {
 public:
-    unsigned char _0[0x910];
+    unsigned char _0[0xc4];
+    zdb::CNode *m_pBackplaneNode;   // 0xc4 (SOCOM 1's DWARF)
+    unsigned char _c8[0x910 - 0xc8];
 
     CGameMenu();
     virtual ~CGameMenu();
@@ -78,6 +175,7 @@ public:
     virtual int Slot14();   /* SOCOM II's, before PrepControls (the name ours) */
     virtual void PrepControls(CTextureRelocMgr *reloc);
     void Draw2dOnly();
+    void DrawForeplane();
 
     unsigned char _914[0x920 - 0x914];
 };
@@ -106,7 +204,11 @@ public:
     virtual void OnPush(int userdata) {}
     virtual void OnPop(int userdata) {}
     virtual void SetSkipSwap(int swap) {}
-    virtual void Slot2C() {}
+    /* SOCOM II's: a message for the player (the menu state's tick passes the network's queued
+     * ones: the text, no sender, the flag 1, the message's type last). The name and the middle
+     * parameters' meaning are ours */
+    virtual void DisplayMessage(const char *text, const char *who, int a, int b, int c,
+                        unsigned char d, unsigned char e, char type) {}
 
     void SetName(const char *name)
     {
@@ -147,7 +249,7 @@ public:
     unsigned char m_showingTB;   // 0x10
     CMatrix objMtx1;   // 0x20
     CMatrix objMtx2;   // 0x60
-    CWorld *m_world;   // 0xa0
+    zdb::CWorld *m_world;   // 0xa0
     unsigned int skyColor[3];   // 0xa4
     int m_LoadThreadId;   // 0xb0
     unsigned char m_loading;   // 0xb4
@@ -175,6 +277,8 @@ public:
     virtual bool Tick(float dT);
     virtual void UnInit();
 
+    void AbortLoad(const char *dlgname);
+
     CLoadMenu *m_menu;   // 0x8
     unsigned char m_fadeup;   // 0xc
     unsigned char m_fadedown;   // 0xd
@@ -197,6 +301,9 @@ struct CStateString {
         w[1] = 0;
         w[2] = 0;
     }
+    /* the short form: its text in place after the first byte (bit 0 of the first word clear) */
+    bool IsShort() const { return !(w[0] & 1); }
+    const char *c_str() const { return IsShort() ? (const char *)this + 1 : (const char *)w[2]; }
 
     unsigned int w[3];
 };
@@ -242,7 +349,42 @@ public:
     int m_28;   // 0x28
 };
 
+class CMenuStateMenu : public CGameMenu {
+public:
+    CMenuStateMenu() {}
+    virtual const char *GetReaderFileName();
+};
+
+/* the front end's menus (SOCOM 1's DWARF; SOCOM II's two sound names are 0xC-byte strings, so the
+ * selection sound is at 0x2C, the default menu at 0x30, the reboot handle at 0x70) */
+class CMenuState : public CGameState {
+public:
+    virtual bool Init();
+    virtual bool Tick(float dT);
+    virtual void UnInit();
+    virtual void OnPush(int userdata);
+    virtual void OnPop(int userdata);
+
+    bool RunEventAnim(const char *eventname, const char *argument);
+
+    CMenuStateMenu *m_menu;   // 0x8
+    int m_skip;   // 0xc
+    int m_skip_swap;   // 0x10
+    CStateString TtySoundString;   // 0x14
+    CStateString BackSoundString;   // 0x20
+    void *SelectionSound;   // 0x2c
+    char m_DefaultMenu[64];   // 0x30
+    int m_iopregh;   // 0x70
+};
+
 /* a film between missions (SOCOM 1's DWARF: the movie's name at 0xC) */
+/* something the film screen draws (its vtable pointer at 0xC: a 2D element) */
+class CCinematicItem {
+public:
+    unsigned char _0[0xc];
+    virtual ~CCinematicItem();
+};
+
 class CCinematicState : public CGameState {
 public:
     virtual ~CCinematicState();
@@ -252,6 +394,15 @@ public:
 
     unsigned char m_movierunning;   // 0x8
     char *m_moviename;   // 0xc
+    int m_savedFrameRate;   // 0x10
+    int m_videoSave[2];   // 0x14 (SOCOM 1's)
+    int m_1c;   // 0x1c
+    int m_20;   // 0x20
+    unsigned char _24[0x29 - 0x24];
+    unsigned char m_29;   // 0x29
+    unsigned char m_2a;   // 0x2a: the film is up
+    unsigned char _2b[0x30 - 0x2b];
+    CCinematicItem *m_items[3];   // 0x30
 };
 
 /* the game: its state stack, then its states -- SOCOM 1's at 0x7C, 0xE0, 0x100, 0x1C0, 0x1D8,
@@ -259,13 +410,12 @@ public:
  * 0x110, exit state at 0x1E0, multiplayer exit state at 0x208 */
 class COurGame {
 public:
-    unsigned char _0[0x84];
-    int m_menuSkip;   // 0x84 (the menu state's m_skip)
-    unsigned char _88[0xec - 0x88];
-    unsigned char m_loadState[0x24];   // 0xec
+    unsigned char _0[0x78];
+    CMenuState m_menuState;   // 0x78
+    CLoadState m_loadState;   // 0xec
     CCoreState m_coreState;   // 0x110
-    unsigned char _1e0[0x208 - 0x1e0];
-    unsigned char m_MPexitState[0x28];   // 0x208
+    CExitState m_exitState;   // 0x1e0
+    CMPExitState m_MPexitState;   // 0x208
 };
 
 /* the game's state stack (SOCOM 1's CGame; unnamed yet) */
@@ -283,11 +433,18 @@ public:
 
 class CMission {
 public:
+    static void _RecoverFromNetError(int error);
     void ReOpen_Load();
     void ReOpen_Unload1();
     void ReOpen_Unload2();
 
-    unsigned char _0[0x108];
+    unsigned char _0[0x18];
+    unsigned char m_18;   // 0x18: 4 in an online game (SOCOM 1's too)
+    unsigned char _19[0x1c - 0x19];
+    const char *m_1c;   // 0x1c: the mission's database name
+    unsigned char _20[0xe8 - 0x20];
+    float m_e8;   // 0xe8 (-1 when the mission starts; SOCOM 1's at 0x68)
+    unsigned char _ec[0x108 - 0xec];
     float m_108;   // 0x108
     unsigned char _10c[0x1ac - 0x10c];
     CMissionInfo *m_1ac;   // 0x1ac
@@ -295,12 +452,7 @@ public:
     unsigned char m_objectives[0xc];   // 0x1854: a list of the mission's objectives
 };
 
-/* theMission is 0x4364E0 (no data.txt row yet) */
-extern "C" CMission data_004364E0;
-#define theMission data_004364E0
-
-/* theGame is at 0x4084C0 (what 43 references take as the object; data.txt's row says 0x4084CC) */
-extern "C" COurGame data_004084C0;
-#define theGame data_004084C0
+extern CMission theMission;
+extern COurGame theGame;
 
 #endif

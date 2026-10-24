@@ -9,7 +9,6 @@ extern "C" {
 void func_00356BE0(void *texbuffer, bool now);   /* zdb::CGSTexBuffer::Load */
 void func_001F1820(float goal);                  /* CameraZoom::SetGoal */
 void func_001F1870(void *seal);                  /* CameraZoom::AttachSeal */
-void *func_002B3580();                           /* ftsGetPlayer */
 void func_002A7D40(void *mission);               /* CMission::OnMissionStart */
 void func_001FB420(CHUD *hud);                   /* CHUD::ReInit_Init */
 void func_00356130(void *texmanager);            /* zdb::CTexManager::doSetupBuffers */
@@ -22,18 +21,121 @@ void func_003B1760(int a, int b, int c, float d);
 void func_00351CB0();                            /* CValve::Reset */
 void func_005B61A0();
 
-extern unsigned char data_004A4511;
 extern int data_0049E940;                        /* zdb::CTexManager::TexPhase's */
 extern int data_0049E950;
 extern unsigned char data_0045A0C1;              /* theNetwork's +9 (an online game) */
 extern void *data_00408C10;                      /* the load thread's stack */
 }
 
-void zVid_Sync0();
+void ftsNetworkGameUninit();
+void DMEDisconnectFromGameServer();
+
+class CZProjectileList {
+public:
+    void UnInit();
+};
+
+class CZMarkList {
+public:
+    void UnInit();
+};
+
+class CZWeapon {
+public:
+    static CZProjectileList *m_pProjectilelist;
+};
+
+class CEntity {
+public:
+    static bool PreTickAll(float dT, void *data);
+};
+
+/* the app's camera: its zdb camera at 0xB4 (SOCOM 1's at 0x34) */
+class CAppCamera {
+public:
+    unsigned char _0[0xb4];
+    zdb::CCamera *m_camera;   // 0xb4
+};
+
+const char *GetDatabase();
+
+/* a seal's controller (CEntity's at 0xC0) */
+class CZSealBody {
+public:
+    unsigned char _0[0xc0];
+    void *m_control;   // 0xc0
+};
+
+extern "C" {
+void func_00309A10();
+void func_003B7150(int arg);
+void func_00356B30(void *texbuffer);
+void func_001ED000(void *v);
+void func_001ECF60(void *v);
+int func_00288930();
+void func_003B1990(int addr, int buffer, int size);   /* CVideo::ReadGsMemory */
+void func_003B0B90(int a, int b, int w, int h);
+void func_003B09E0(int a, int b, int w, int h);
+void func_00592CA0(void *control);
+void func_003466F0();
+CZSealBody *func_002B3580();                     /* ftsGetPlayer */
+
+extern int data_0049E988;                        /* zdb::CTexManager::TexPhase's */
+extern char data_00408BD0[];
+}
+
+extern "C" {
+CHUD *func_001FCD80(CHUD *hud);                  /* CHUD::CHUD */
+void func_001FA360(CHUD *hud, zdb::CWorld *world);   /* CHUD::Init */
+void func_0032C4F0();                            /* CRdrArchive::CloseAll */
+void func_00356B90(void *texbuffer, int size);
+void func_0031CED0(zdb::CWorld *world);
+void func_0033B420(CPipe *pipe, zdb::CTexHandle *tex);
+
+/* the tick tasks (SOCOM 1's in the comments, where it had them) */
+bool func_005E7FD0(float dT, void *data);        /* CSealUnit::TickAll */
+bool func_005CCCD0(float dT, void *data);        /* CSealCtrlAi::PreTick */
+bool func_003D1F90(float dT, void *data);        /* CZWeapon::PreTick */
+bool func_0050ECD0(float dT, void *data);        /* CAiEvent::Tick */
+bool func_0029F430(float dT, void *data);        /* CEntity::TickAll */
+bool func_0054F570(float dT, void *data);
+bool func_0029F350(float dT, void *data);        /* CSealCtrlAi::PrePostTick's place */
+bool func_0060BC40(float dT, void *data);
+bool func_0029F1A0(float dT, void *data);        /* CEntity::PostTickAll */
+bool func_003D1F50(float dT, void *data);        /* CZWeapon::PostTick */
+bool func_00510570(float dT, void *data);        /* ai::TickPathPlanner */
+bool func_0060B8F0(float dT, void *data);
+bool func_005CCA30(float dT, void *data);        /* CSealCtrlAi::PostTick */
+bool func_00341A60(float dT, void *data);        /* CSnd::PostTick */
+bool func_00299C10(float dT, void *data);
+
+extern CAppCamera *data_00415FF0;                /* appCamera */
+extern zdb::CCamera *data_004B4810;              /* zdb::CVisual::m_camera */
+extern unsigned char data_003DC3D0;              /* gopt's first byte */
+extern int data_003E13F8;                        /* CVideo::m_defaultFrameRate */
+extern int data_0049E934;                        /* zdb::CTexManager::TexPhase's */
+extern int data_0049E938;
+}
+
+extern CHUD *theHUD;
+
+extern "C" {
+int func_001EA6E0();                             /* testUnload */
+void func_001F1840(CHUD *hud);                   /* CameraZoom::AttachHud */
+void func_001FCB70(CHUD **hud);                  /* CHUD::ReleaseHUD */
+void func_002B3590(void *seal);                  /* ftsSetPlayer */
+void func_003D3930();                            /* CZWeapon::DestroyProjectileList */
+void func_003D37E0();                            /* CZWeapon::DestroyMarkList */
+void func_0032C2B0(const char *name, const char *path);   /* CRdrArchive::RemoveArchive */
+
+extern CZMarkList *data_004B5248;                /* CZWeapon::m_pMarklist */
+}
 
 /* zdb's task scheduler: a list of tasks (SOCOM 1's DWARF: 0x20 bytes) */
 class CSched_Manager {
 public:
+    bool AddTask(const char *name, bool (*task)(float, void *), float priority, void *data);
+    bool RemoveTask(const char *name, bool all);
     void ClearFreeList(bool all);
 
     unsigned char _0[0x20];
@@ -41,14 +143,7 @@ public:
 
 extern CSched_Manager zTaskScheduler;
 
-/* the mission's texture buffers: a vector of them */
-struct TexBufferVector {
-    unsigned int capacity_;
-    unsigned int size_;
-    void **data_;
-};
-
-extern "C" TexBufferVector data_0049E880;          /* zdb::CTexManager::m_texmanager */
+extern "C" void func_00356080(TexBufferVector *texmanager, bool all);   /* zdb::CTexManager::DestroyBuffers */
 
 static void LoadThreadEntry(void *arg);
 
@@ -58,6 +153,60 @@ CCinematicState::~CCinematicState()
     if (m_moviename)
         _free(m_moviename, 0, 0);
     m_moviename = 0;
+}
+
+/* the film let go of: the film player, its items, its texture buffer and list, and -- if it was
+ * up -- the GS memory it borrowed restored, the frame rate, the screen's mode or clear, path 3;
+ * the film's name, the fade, the player's controller told */
+void CCinematicState::UnInit()
+{
+    func_00309A10();
+    func_003B7150(0);
+    for (int i = 0; i < 3; i++) {
+        if (m_items[i]) {
+            delete m_items[i];
+            m_items[i] = 0;
+        }
+    }
+    func_00356B30(data_0049E880.data_[data_0049E988]);
+    func_001ED000(data_00408BD0);
+    func_001ECF60(data_00408BD0);
+    if (m_2a) {
+        zSysFifoEnd();
+        zSysFifoDisable();
+        func_003B1990(0x2400, func_00288930(), 0x1c0000);
+        func_003B17D0(m_savedFrameRate);
+        if (m_29) {
+            if (zVid.m_75 == 2) {
+                func_003B0B90(0, 0, zVid.m_44, zVid.m_48);
+                func_003B09E0(0, 0, zVid.m_44, zVid.m_48);
+            } else {
+                if (m_1c != zVid.m_48) {
+                    zVid.m_30 = 0;
+                    zVid.m_34 = m_videoSave[0] > m_videoSave[1] ? m_videoSave[0] : m_videoSave[1];
+                    zVid.m_48 = m_1c;
+                }
+                zVid.m_90 = 1;
+            }
+        } else {
+            zVid.m_92 = m_20 != 0;
+        }
+        zVid.m_7c = 0;
+        *(volatile unsigned int *)0x10003010 |= 4;
+        asm volatile {
+            sync
+        }
+    }
+    if (m_moviename)
+        _free(m_moviename, 0, 0);
+    m_moviename = 0;
+    func_003B1760(0, 0, 0, 1.0f);
+    CZSealBody *player = func_002B3580();
+    void *control = player ? player->m_control : 0;
+
+    if (control)
+        func_00592CA0(control);
+    func_003466F0();
 }
 
 /* a pad's actuators stopped (the first pad's) */
@@ -108,6 +257,75 @@ CCoreState::~CCoreState()
     CGameState::~CGameState();
 }
 
+/* the asset manager's handle for a texture by name (out of line: every caller calls it) */
+#pragma auto_inline off
+zdb::CTexHandle *zdb::CWorld::GetTexHandle(const char *name)
+{
+    return CAssetMgr::m_assets.GetTexHandle(name);
+}
+
+#pragma auto_inline reset
+
+/* the mission set up: the world and its camera, the HUD, the player under the camera, the
+ * reader archives, the tick tasks, the camera's far plane, room for 300 more nodes, the texture
+ * buffers, the mission started, the pipe's noise texture, the GIF's path 3 opened, the frame rate
+ * back to the default */
+bool CCoreState::Init()
+{
+    m_world = zdb::CWorld::m_world;
+    data_004B4810 = data_004887C0.m_camera = m_world->m_camera;
+    CHUD *hud = (CHUD *)operator new(0x1acd0);
+
+    if (hud)
+        hud = func_001FCD80(hud);
+    theHUD = m_hud = hud;
+    if (data_003DC3D0) {
+        CHUD &h = *m_hud;
+
+        func_001FA360(&h, m_world);
+        func_001F1840(&h);
+    }
+    func_001F1870(func_002B3580());
+    func_0032C4F0();
+    func_0032C2B0("readerm.zar", GetDatabase());
+    zTaskScheduler.AddTask("UnitTick", func_005E7FD0, 0.8f, 0);
+    zTaskScheduler.AddTask("ai_pre_tick", func_005CCCD0, 0.9f, 0);
+    zTaskScheduler.AddTask("entity_pre_tick", CEntity::PreTickAll, 1.0f, 0);
+    zTaskScheduler.AddTask("weapon_pre_tick", func_003D1F90, 3.0f, 0);
+    zTaskScheduler.AddTask("CAiEventTick", func_0050ECD0, 4.5f, 0);
+    zTaskScheduler.AddTask("entity_tick", func_0029F430, 4.6f, 0);
+    zTaskScheduler.AddTask("body_collide_tick", func_0054F570, 4.65f, 0);
+    zTaskScheduler.AddTask("entity_preposttick", func_0029F350, 4.7f, 0);
+    zTaskScheduler.AddTask("target_pretick", func_0060BC40, 4.8f, 0);
+    zTaskScheduler.AddTask("entity_post_tick", func_0029F1A0, 6.0f, 0);
+    zTaskScheduler.AddTask("weapon_post_tick", func_003D1F50, 8.0f, 0);
+    zTaskScheduler.AddTask("ai_route_planner", func_00510570, 10.5f, 0);
+    zTaskScheduler.AddTask("target_post_tick", func_0060B8F0, 10.6f, 0);
+    zTaskScheduler.AddTask("ai_posttick", func_005CCA30, 10.7f, 0);
+    zTaskScheduler.AddTask("sound_post_tick", func_00341A60, 11.0f, 0);
+    zTaskScheduler.AddTask("appCamera_tick", func_00299C10, 12.0f, 0);
+    data_00415FF0->m_camera->GetLandmarkFarPlane(m_world);
+    std::vector<zdb::CNode *> &nodes = m_world->m_nodes;
+    unsigned int n = nodes.size() + 300;
+
+    if (nodes.capacity() < n)
+        nodes.reserve(n);
+    func_00356B90(data_0049E880.data_[data_0049E934], 2048);
+    func_00356B90(data_0049E880.data_[data_0049E938], 2048);
+    func_0031CED0(m_world);
+    func_00356BE0(data_0049E880.data_[data_0049E940], true);
+    func_00356BE0(data_0049E880.data_[data_0049E950], true);
+    func_002A7D40(&theMission);
+    theMission.m_e8 = -1.0f;
+    func_0033B420(&data_004887C0, zdb::CWorld::GetTexHandle("noise50.tif"));
+    *(volatile unsigned int *)0x10003010 |= 4;
+    zSysFifoEnd();
+    zVid.m_91 = 0;
+    func_003B17D0(data_003E13F8);
+    zVid_Sync0();
+    return true;
+}
+
 /* torn down: the GIF's path 3 masked again, the frame rate freed, the mission unloaded, the
  * valves reset and the scheduler's free list cleared */
 void CCoreState::UnInit()
@@ -118,7 +336,7 @@ void CCoreState::UnInit()
     }
     func_003B17D0(-1);
     func_003B1760(0, 0, 0, 1.0f);
-    data_004A4511 = 1;
+    zVid.m_91 = 1;
     m_loading = false;
     m_loadstarted = false;
     auxUnload();
@@ -138,7 +356,7 @@ static void LoadThreadEntry(void *arg)
     if (!func_001EA720())
         func_00192BF8(0);
     if (data_0045A0C1)
-        func_00223290(theGame.m_MPexitState);
+        func_00223290(&theGame.m_MPexitState);
     theGame.m_coreState.m_loading = false;
     func_002A6950(&theMission);
     ExitDeleteThread();
@@ -195,7 +413,7 @@ void CCoreState::Load(bool async)
     if (!func_001EA720())
         func_00192BF8(0);
     if (data_0045A0C1)
-        func_00223290(theGame.m_MPexitState);
+        func_00223290(&theGame.m_MPexitState);
     m_loading = false;
 }
 
@@ -204,4 +422,53 @@ void CCoreState::Unload()
     m_loading = false;
     m_loadstarted = false;
     auxUnload();
+}
+
+/* the mission let go of: an online game's network, the tick tasks, the projectiles and the marks,
+ * the loaded data (exiting if that fails), the world's texture buffers, the HUD, the player, the
+ * camera's seal, the weapons' lists, the mission's reader archive, the scheduler's free list */
+void CCoreState::auxUnload()
+{
+    if (data_0045A0C1 && theMission.m_18 == 4) {
+        ftsNetworkGameUninit();
+        DMEDisconnectFromGameServer();
+    }
+    zTaskScheduler.RemoveTask("CAiEventTick", false);
+    zTaskScheduler.RemoveTask("UnitTick", false);
+    zTaskScheduler.RemoveTask("ai_pre_tick", false);
+    zTaskScheduler.RemoveTask("ai_posttick", false);
+    zTaskScheduler.RemoveTask("entity_pre_tick", false);
+    zTaskScheduler.RemoveTask("target_pretick", false);
+    zTaskScheduler.RemoveTask("target_post_tick", false);
+    zTaskScheduler.RemoveTask("weapon_pre_tick", false);
+    zTaskScheduler.RemoveTask("ai_post_tick", false);
+    zTaskScheduler.RemoveTask("ai_direg_tick", false);
+    zTaskScheduler.RemoveTask("entity_post_tick", false);
+    zTaskScheduler.RemoveTask("entity_tick", false);
+    zTaskScheduler.RemoveTask("body_collide_tick", false);
+    zTaskScheduler.RemoveTask("entity_preposttick", false);
+    zTaskScheduler.RemoveTask("weapon_post_tick", false);
+    zTaskScheduler.RemoveTask("ai_route_planner", false);
+    zTaskScheduler.RemoveTask("sound_post_tick", false);
+    zTaskScheduler.RemoveTask("light_tick", false);
+    zTaskScheduler.RemoveTask("appCamera_tick", false);
+    CZProjectileList *proj = CZWeapon::m_pProjectilelist;
+    CZMarkList *marks = data_004B5248;
+
+    if (proj)
+        proj->UnInit();
+    if (!func_001EA6E0())
+        func_00192BF8(0);
+    if (marks)
+        marks->UnInit();
+    m_world = 0;
+    func_00356080(&data_0049E880, false);
+    func_001F1840(0);
+    func_001FCB70(&m_hud);
+    func_002B3590(0);
+    func_001F1870(0);
+    func_003D3930();
+    func_003D37E0();
+    func_0032C2B0("readerm.zar", 0);
+    zTaskScheduler.ClearFreeList(true);
 }
