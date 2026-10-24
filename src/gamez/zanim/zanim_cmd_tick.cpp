@@ -887,8 +887,6 @@ struct zanim_cmd_ripplegroup {
 
 extern "C" void *func_003C2120(char *owner, const char *name);
 extern "C" void func_003C20A0(void *group, zdb::CNode *node);
-extern "C" const char *func_00268790(void *pattern);
-extern "C" const char *func_00268680();
 
 extern "C" bool func_00263E20(_zanim_cmd_hdr *hdr, float *dT)
 {
@@ -900,9 +898,9 @@ extern "C" bool func_00263E20(_zanim_cmd_hdr *hdr, float *dT)
         const char *name = anim->GetName(cmd->name[i]);
 
         if (strstr(name, "*")) {
-            void *pattern = func_001801E0(name, 0, 0);
+            char *pattern = func_001801E0(name, 0, 0);
 
-            for (const char *n = func_00268790(pattern); n; n = func_00268680()) {
+            for (const char *n = ZAnimWildcardInit(pattern); n; n = ZAnimWildcardNext()) {
                 CNode *node = zdb::CWorld::m_world->FindChild(n, true);
 
                 if (node)

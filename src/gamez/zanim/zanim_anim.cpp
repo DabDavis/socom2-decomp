@@ -462,6 +462,59 @@ void CZAnim::Priority(float priority)
 extern "C" Particle::Source *func_0032B120();
 extern "C" CTexHandle *func_001EC940(const char *name);
 
+/* a node reference by name under a parent, made when missing (ours; inline in both
+ * branches of LoadNodeNames -- its returns are their jumps on) */
+inline int CZAnim::FindNodeRef(const char *name, int parent, int &search)
+{
+    const char *expanded = ZAnimWildcardApply(name);
+    int index = m_nameindex_table.AddName(ZAnim.GetAnimSet(m_animset_index), expanded);
+
+    for (int i = 0; i < m_node_ref_count; i++)
+        if (m_node_ref_list[i].name_index == index && m_node_ref_list[i].parent_index == parent)
+            return i;
+    return AddNewNodeRef(index, parent, search);
+}
+
+/* a node reference's index for a name -- or for a ZRDR path of them (its NAME, or itself), each
+ * the child of the one before, a scope keyword among them setting the search -- under a
+ * parent; INPUT_NODE and ROOT_NODE are 250 and 249.
+ * OPEN: one saved register too many -- MW here strength-reduces the path walk's index (an i*8
+ * register beside i), the target shifts i at each Item; an unsigned i, an unsigned Item index,
+ * i hoisted and the continue as an else leave it. The array's count is unsigned (the target's
+ * sltu) and the search is read late (by reference). */
+int CZAnim::LoadNodeNames(_zrdr *rdr, const char *name, int parent, int search)
+{
+    if (!rdr && !name)
+        return 0;
+    if (!m_root_node_index && search == 1)
+        search = 0;
+    if (name) {
+        if (!strcasecmp(name, "INPUT_NODE"))
+            return 250;
+        if (!strcasecmp(name, "ROOT_NODE"))
+            return 249;
+        return FindNodeRef(name, parent, search);
+    }
+    _zrdr *path = func_0032F0D0(rdr, "NAME");
+
+    if (!path)
+        path = rdr;
+    if (path->type != 4)
+        return 0;
+    for (int i = 0; i < path->Count(); i++) {
+        if (path->Item(i)->type != 3)
+            break;
+        if (ZAnim.GetNodeSearchScope(path->Item(i)->String(), &search))
+            continue;
+        if (!strcasecmp(path->Item(i)->String(), "INPUT_NODE"))
+            return 250;
+        if (!strcasecmp(path->Item(i)->String(), "ROOT_NODE"))
+            return 249;
+        parent = FindNodeRef(path->Item(i)->String(), parent, search);
+    }
+    return parent;
+}
+
 /* a node reference appended, its index returned: entry 0 is made first, empty; none when the
  * name or parent index will not fit its bitfield */
 int CZAnim::AddNewNodeRef(int name_index, int parent_index, int search)
@@ -644,8 +697,7 @@ CValve *CZAnim::GetValve(int name_index)
     return valve;
 }
 
-/* SOCOM II's: a name run through the wildcard expansion (0x268520) first */
-extern "C" const char *func_00268520(const char *name);
+/* SOCOM II's: a name run through the wildcard expansion first */
 
 /* GetName(int)'s body, written out: the index read before the set is fetched */
 const char *CZAnim::GetName()
@@ -665,7 +717,7 @@ const char *CZAnim::GetName(int index)
 
 extern "C" int func_0026ED00(CZAnim *anim, const char *name)
 {
-    const char *expanded = func_00268520(name);
+    const char *expanded = ZAnimWildcardApply(name);
 
     return anim->m_nameindex_table.AddName(ZAnim.GetAnimSet(anim->m_animset_index), expanded);
 }

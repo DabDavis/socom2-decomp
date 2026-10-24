@@ -14,6 +14,7 @@ using zdb::CNode;
 class CZAnim;
 class CTexHandle;
 class CValve;
+struct _zrdr;
 class CZAnimEx;
 namespace Particle { class Source; }
 class CZAnimHealth;
@@ -139,6 +140,8 @@ public:
     void SaveNodeStates(bool refresh);
     _zanim_node_ref *GetNodeRef(int index);
     int AddNewNodeRef(int name_index, int parent_index, int search);
+    int LoadNodeNames(_zrdr *rdr, const char *name, int parent, int search);
+    int FindNodeRef(const char *name, int parent, int &search);
     void OnWeaponHitInit();
     bool SequenceRunning(const char *name);
     bool SequenceExists(const char *name);
@@ -302,7 +305,33 @@ public:
     float loop_timer;   // 0x18
 };   // 0x1c bytes
 
-struct _zrdr;
+/* a ZRDR value (SOCOM 1's DWARF): a typed word -- 3 a string, 4 an array of length values */
+struct _zrdr {
+    unsigned int type : 8;   // 0x0
+    unsigned int isclone : 1;   // 0x0
+    unsigned int packed : 1;   // 0x0
+    unsigned int unused : 6;   // 0x0
+    unsigned int length : 16;   // 0x0
+    union {
+        float real;
+        int integer;
+        char *string;
+        _zrdr *array;
+    };   // 0x4
+
+    /* (ours; the count unsigned: LoadNodeNames' walk compares with sltu) */
+    unsigned int Count() { return type == 4 ? length : 0; }
+    _zrdr *Item(int i) { return i < Count() ? &array[i] : 0; }
+    char *String() { return type == 3 ? string : 0; }
+};   // 0x8 bytes
+
+/* SOCOM 1's zrdr_findtag, matched in its own unit under its address's name */
+extern "C" _zrdr *func_0032F0D0(_zrdr *rdr, const char *tag);
+
+/* the wildcard search over node names (anim_main.cpp) */
+const char *ZAnimWildcardApply(const char *name);
+const char *ZAnimWildcardNext();
+const char *ZAnimWildcardInit(char *pattern);
 
 /* a command's id, as a file's records carry it: its index in its set, and the set (a halfword:
  * CmdTick copies it with lhu/sh) */
@@ -371,6 +400,7 @@ public:
     int UnloadCmdSet(int index);
     bool CmdTick(float *dT);
     zdb::CNode *GetDatabaseNode(const char *name, int scope);
+    int GetNodeSearchScope(const char *name, int *scope);
     /* (out of line in SOCOM 1, 0x40 bytes; inlined everywhere here) */
     zanim_cmd *GetCmdEntry(unsigned short id)
     {

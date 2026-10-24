@@ -2882,9 +2882,9 @@
 0x00268360 0x48 UnloadSIScript__10CZAnimMainFP16_zanim_si_script  # OVL1; s1:align
 0x002683B0 0x118 Unload__10CZAnimMainFv  # OVL1; s1:align
 0x002684D0 0x44 func_002684D0  # OVL1
-0x00268520 0x160 func_00268520  # OVL1
-0x00268680 0x110 func_00268680  # OVL1
-0x00268790 0x198 func_00268790  # OVL1
+0x00268520 0x160 ZAnimWildcardApply__FPCc  # OVL1; s1:order by hand (SOCOM 1's ZAnimWildcardApply, Next, Init stand after Unload in both; LoadNodeNames runs each name through it where SOCOM 1's does)
+0x00268680 0x110 ZAnimWildcardNext__Fv  # OVL1; s1:order (as ZAnimWildcardApply; RIPPLE_NODE_GROUP walks the matches with it)
+0x00268790 0x198 ZAnimWildcardInit__FPc  # OVL1; s1:order (as ZAnimWildcardApply; RIPPLE_NODE_GROUP starts the walk with it)
 0x00268930 0x2C AnimSchedulerTick__10CZAnimMainFfPv  # OVL1; tu: anim_main.cpp~ (1.0 beta); s1:exact
 0x00268960 0xB8 Load__20CZAnimNameIndexTableFRQ23zar4CZAR  # OVL1; s1:align
 0x00268A20 0x40 Unload__20CZAnimNameIndexTableFv  # OVL1; s1:align
@@ -2971,7 +2971,7 @@
 0x0026D560 0x304 Unload__6CZAnimFv  # OVL1; s1:align
 0x0026D870 0xD0 ExecuteSpecialSequence__6CZAnimFi  # OVL1; s1:calls
 0x0026D940 0x560 func_0026D940  # OVL1
-0x0026DEA0 0x430 func_0026DEA0  # OVL1
+0x0026DEA0 0x430 LoadNodeNames__6CZAnimFP5_zrdrPCcii  # OVL1; s1:order by hand (before AddNewNodeRef in both, the same four arguments; a name, or a ZRDR list of them, made a chain of node references)
 0x0026E2D0 0x20 func_0026E2D0  # OVL1
 0x0026E2F0 0x1C4 AddNewNodeRef__6CZAnimFiii  # OVL1; s1:order (after GetNodeRefName and before the GetCallAnimRefs in both; entry 0 made first, the name and parent bounded by their bitfields)
 0x0026E4C0 0x18C GetCallAnimRef__6CZAnimFi  # OVL1; s1:align
