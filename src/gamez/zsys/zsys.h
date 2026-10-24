@@ -26,4 +26,20 @@ public:
     int m_unk10;
 };
 
+/* a vector emptied and its storage given up: cleared, then traded for an empty one's. SOCOM 1
+ * writes it on one source line wherever it frees a vector (CFlashFXVector::Reset, CZObjectiveList::
+ * FreeList -- its DWARF's line tables put the temporary, the clear, the swap and the temporary's
+ * destructor on one line), and SOCOM II calls all four pieces out of line: an inline function
+ * taller than the budget (the swap is four high), inlined one level. SOCOM 1 frees some thirty
+ * vectors so (CMission::Close, CWorld's lists, Particle, CSnd, MapCompass's nav packages...).
+ * The name is ours */
+template <class V>
+inline void FreeVector(V &v)
+{
+    V tmp;
+
+    v.clear();
+    v.swap(tmp);
+}
+
 #endif

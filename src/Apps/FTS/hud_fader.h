@@ -6,21 +6,8 @@
 
 #include <vector>
 
+#include "../../gamez/zsys/zsys.h"
 #include "../../gamez/ztwod/ztwod.h"
-
-/* a vector emptied and its storage given up: cleared, then traded for an empty one's. SOCOM 1
- * writes it on one source line wherever it frees a vector (CFlashFXVector::Reset, CZObjectiveList::
- * FreeList -- its DWARF's line tables put the temporary, the clear, the swap and the temporary's
- * destructor on one line), and SOCOM II calls all four pieces out of line: an inline function
- * taller than the budget (the swap is four high), inlined one level. The name is ours */
-template <class V>
-inline void FreeVector(V &v)
-{
-    V tmp;
-
-    v.clear();
-    v.swap(tmp);
-}
 
 enum FADE_DIRECTION {
     IN = 0,
