@@ -6,6 +6,85 @@
 
 #include "zanim.h"
 
+/* the set's SoftImage scripts, each grown onto the list as its key opens */
+int CZAnimSet::LoadSIScript(zar::CZAR &archive)
+{
+    int count;
+    zar::CKey *key = archive.GetOpenKey();
+
+    archive.Fetch("SoftImage_Script_Count", &count, 4);
+    zar::CKey *list = key->FindKey("SoftImage_Script_List");
+
+    if (list) {
+        int i = 0;
+
+        for (zar::CKeyRing::const_iterator it = list->begin(); it != list->end(); ++it) {
+            if (archive.OpenKey(*it)) {
+                m_si_script = (_zanim_si_script *)_realloc(m_si_script, (m_si_script_count + 1) * sizeof(_zanim_si_script), 0, 0);
+                m_si_script_count++;
+                _zanim_si_script *script = &m_si_script[i];
+
+                archive.Fetch("Script_Params", script, sizeof(_zanim_si_script));
+                if (script->script_data_size > 0) {
+                    script->script_data = (char *)_malloc(script->script_data_size, 0, 0);
+                    archive.Fetch("Script_Data", script->script_data, script->script_data_size);
+                } else
+                    script->script_data = 0;
+                archive.CloseKey(*it);
+                i++;
+            }
+        }
+    }
+    return 1;
+}
+
+/* room for count anims; SOCOM 1's NewAnim grew the list the same way, inline in Load too */
+inline bool CZAnimSet::Reserve(int count)
+{
+    if (m_anim_max < count) {
+        m_anim_max = count;
+        m_anim_list = (CZAnim *)_realloc(m_anim_list, m_anim_max * sizeof(CZAnim), 0, 0);
+        return m_anim_list != 0;
+    }
+    return true;
+}
+
+/* the next slot's anim, the list grown 25 at a time (SOCOM 1's, out of line there) */
+inline CZAnim *CZAnimSet::NewAnim(const char *name)
+{
+    if (m_anim_count >= m_anim_max && !Reserve(m_anim_count + 25))
+        return 0;
+    CZAnim *anim = func_0026CAA0(this, &m_anim_list[m_anim_count], name);
+
+    m_anim_count++;
+    return anim;
+}
+
+/* the set's name table, its scripts and every anim in its ZAR key */
+int CZAnimSet::Load(zar::CZAR &archive)
+{
+    int count;
+
+    m_gravity = ZAnim.m_gravity;
+    zar::CKey *key = archive.GetOpenKey();
+    m_name_table.Load(archive);
+    LoadSIScript(archive);
+    archive.Fetch("Animation_List_Count", &count, 4);
+    if (!Reserve(count))
+        return 0;
+    zar::CKey *list = key->FindKey("Animation_List");
+
+    if (list) {
+        for (zar::CKeyRing::const_iterator it = list->begin(); it != list->end(); ++it) {
+            if (archive.OpenKey(*it)) {
+                NewAnim(0)->Load(archive);
+                archive.CloseKey(*it);
+            }
+        }
+    }
+    return 1;
+}
+
 int CZAnimSet::GarbageCollect()
 {
     func_002684D0();
@@ -32,6 +111,42 @@ int CZAnimSet::Stop()
         }
     }
     m_IsStarted = 0;
+    return 1;
+}
+
+/* the set's anims started, unless it is a free slot or running: an anim is invalid when its IF
+ * nesting went wrong (SOCOM II's), and a cloning anim makes its clones once, restarts them after */
+int CZAnimSet::Start()
+{
+    int i;
+
+    if (m_IsAvailable)
+        return 0;
+    if (m_IsStarted)
+        return 0;
+    m_IsStarted = 1;
+    ZAnim.m_CurAnimSet = this;
+    ZAnim.m_CurAnim = 0;
+    ZAnim.m_CurSeq = 0;
+    for (i = 0; i < m_anim_count; i++)
+        for (CZAnim *anim = Anim(i); anim; anim = anim->m_sibling_anim)
+            anim->m_invalid = anim->m_nest_error;
+    for (i = 0; i < m_anim_count; i++) {
+        CZAnim *anim = Anim(i);
+
+        if (anim->m_clone_anim) {
+            if (m_WasStarted)
+                anim->RestartClones();
+            else
+                anim->MakeClones();
+        } else {
+            while (anim) {
+                anim->Start();
+                anim = anim->m_sibling_anim;
+            }
+        }
+    }
+    m_WasStarted = 1;
     return 1;
 }
 

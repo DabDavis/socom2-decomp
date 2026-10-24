@@ -46,9 +46,9 @@ public:
     unsigned char m_root_node_index;   // 0x1
     unsigned char m_paused;   // 0x2
     unsigned char m_state;   // 0x3
-    unsigned int m_activation : 2;   // 0x4
+    unsigned int m_activation : 3;   // 0x4: 3 bits in SOCOM II (RestartClones masks 7; SOCOM 1's 2)
     unsigned int m_network_anim : 1;   // 0x4
-    unsigned int m_socom2_bit3 : 2;   // 0x4: SOCOM II's -- func_0026CAA0 sets node_search_scope at bit 5
+    unsigned int m_socom2_bit4 : 1;   // 0x4: SOCOM II's -- func_0026CAA0 sets node_search_scope at bit 5
     unsigned int node_search_scope : 2;   // 0x4
     unsigned int m_auto_copy_anim : 1;   // 0x4
     unsigned int m_auto_add_to_world : 1;   // 0x4
@@ -117,6 +117,10 @@ public:
     void Name(const char *name);
     void Priority(float priority);
     void Reset();
+    void Start();
+    void MakeClones();
+    void RestartClones();
+    int Load(zar::CZAR &archive);
     float GetHealth();
     CNode *GetNode(int index, bool create);
     CPnt3D *GetArgPnt3D()
@@ -197,6 +201,9 @@ public:
     int GarbageCollect();
     int Stop();
     void Reset();
+    int Start();
+    bool Reserve(int count);
+    CZAnim *NewAnim(const char *name);
 
     unsigned char m_WasStarted;   // 0x0
     unsigned char m_IsStarted;   // 0x1
@@ -424,6 +431,9 @@ extern "C" void func_00270BE0(CZAnim *anim, int arg);
 
 /* SOCOM II's: the wildcard search's state dropped (anim_main.cpp; Close and Open inline it) */
 extern "C" void func_002684D0();
+
+/* SOCOM II's: SOCOM 1's NewAnim without the slot's allocation (zanim_set.cpp) */
+extern "C" CZAnim *func_0026CAA0(CZAnimSet *set, CZAnim *anim, const char *name);
 
 /* SOCOM II's: an anim's function of one int (0x270570), every anim of a set's (0x26C240) and
  * of every set's (CZAnimMain, 0x26ADA0) -- not named */

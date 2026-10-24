@@ -4,6 +4,15 @@
 
 #include "zanim.h"
 
+/* the anim and its chain started again, unless it activates on demand (3) */
+void CZAnim::RestartClones()
+{
+    if (m_activation == 3)
+        return;
+    for (CZAnim *anim = this; anim; anim = anim->m_sibling_anim)
+        anim->Start();
+}
+
 void CZAnim::Priority(float priority)
 {
     m_priority = priority;

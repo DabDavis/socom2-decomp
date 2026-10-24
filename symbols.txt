@@ -2967,7 +2967,7 @@
 0x0026D150 0x198 func_0026D150  # OVL1
 0x0026D2F0 0x8 func_0026D2F0  # OVL1
 0x0026D300 0x68 __dt__Q23std52__vector_deleter<6CPnt3D,Q23std18allocator<6CPnt3D>>Fv  # OVL1; s1:align
-0x0026D370 0x1E4 func_0026D370  # OVL1
+0x0026D370 0x1E4 Load__6CZAnimFRQ23zar4CZAR  # OVL1; s1:callee by hand (CZAnimSet::Load calls it on each new anim where SOCOM 1's calls CZAnim::Load; the same opening: the open key, the 0x18-byte params fetched into the anim, State(1))
 0x0026D560 0x304 Unload__6CZAnimFv  # OVL1; s1:align
 0x0026D870 0xD0 ExecuteSpecialSequence__6CZAnimFi  # OVL1; s1:calls
 0x0026D940 0x560 func_0026D940  # OVL1
@@ -3011,9 +3011,9 @@
 0x00270E40 0xB0 Running__6CZAnimFv  # OVL1; s1:order by hand (called where SOCOM 1's Pause/Resume handlers call Running; the same one argument)
 0x00270EF0 0x218 func_00270EF0  # OVL1
 0x00271110 0x13C func_00271110  # OVL1
-0x00271250 0x134 func_00271250  # OVL1
-0x00271390 0x58 func_00271390  # OVL1
-0x002713F0 0xA8 func_002713F0  # OVL1
+0x00271250 0x134 MakeClones__6CZAnimFv  # OVL1; s1:callee by hand (CZAnimSet::Start calls it on a cloning anim of a fresh set, where SOCOM 1's calls MakeClones)
+0x00271390 0x58 RestartClones__6CZAnimFv  # OVL1; s1:callee by hand (CZAnimSet::Start calls it on a cloning anim of a set started before, where SOCOM 1's calls RestartClones; the same activation test, 3 bits wide here)
+0x002713F0 0xA8 Start__6CZAnimFv  # OVL1; s1:callee by hand (CZAnimSet::Start calls it on every other anim and its chain, where SOCOM 1's calls Start; RestartClones calls it too)
 0x002714A0 0x1A4 Reset__6CZAnimFv  # OVL1; s1:callee by hand (CZAnimSet::Reset calls it on every anim where SOCOM 1's does)
 0x00271650 0xFC func_00271650  # OVL1
 0x00271750 0x64 func_00271750  # OVL1
