@@ -42,6 +42,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 """
 
 
+TRIPLES = ("mipsee-gcc-c", "mipsee-mwcc-c")   # the second converts about 1 % more of the misses
+
+
 def attempt(addr: int):
     img, st = E.image(), E.symbols()
     sym = st.at_addr(addr)
@@ -49,18 +52,27 @@ def attempt(addr: int):
     tmp = OUT / "work" / f"{addr:08X}"
     tmp.mkdir(parents=True, exist_ok=True)
     (tmp / "f.s").write_text(asm)
-    r = subprocess.run([sys.executable, str(M.M2C), "-t", "mipsee-gcc-c", "--valid-syntax", str(tmp / "f.s")],
-                       capture_output=True, text=True)
-    if r.returncode != 0 or "M2C_ERROR" in r.stdout:
-        return addr, "m2c", None
-    src = PRELUDE + r.stdout
-    (tmp / "f.c").write_text(src)
-    try:
-        D.compile_obj(tmp / "f.c", tmp / "f.o")
-        res = D.compare(tmp / "f.o", sym.name, sym, img, st)
-    except Exception:
-        return addr, "build", None
-    return addr, ("hit" if res.match else "miss"), (src if res.match else None)
+    worst = "m2c"
+    for triple in TRIPLES:
+        r = subprocess.run([sys.executable, str(M.M2C), "-t", triple, "--valid-syntax", str(tmp / "f.s")],
+                           capture_output=True, text=True)
+        if r.returncode != 0 or "M2C_ERROR" in r.stdout:
+            continue
+        # m2c leans on GNU C's arithmetic on void *, which MW rejects; char * means the same
+        # byte offsets and compiles to the same code
+        body = re.sub(r"\bvoid(\s*\*)", r"char\1", r.stdout)
+        src = PRELUDE + body
+        (tmp / "f.c").write_text(src)
+        try:
+            D.compile_obj(tmp / "f.c", tmp / "f.o")
+            res = D.compare(tmp / "f.o", sym.name, sym, img, st)
+        except Exception:
+            worst = "build" if worst == "m2c" else worst
+            continue
+        if res.match:
+            return addr, "hit", src
+        worst = "miss"
+    return addr, worst, None
 
 
 def main(argv=None) -> int:
@@ -71,6 +83,7 @@ def main(argv=None) -> int:
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--jobs", type=int, default=7)
     ap.add_argument("--emit", action="store_true", help="write hits into src/auto/")
+    ap.add_argument("--redo", action="store_true", help="retry functions src/auto already holds")
     a = ap.parse_args(argv)
     img, st = E.image(), E.symbols()
     cands = [s.addr for s in st.symbols
@@ -81,7 +94,8 @@ def main(argv=None) -> int:
     if a.sample and len(cands) > a.sample:
         cands = random.Random(a.seed).sample(cands, a.sample)
     hand = hand_defined()
-    cands = [x for x in cands if st.at_addr(x).name not in hand]
+    have = {int(f.stem, 16) for f in AUTO.rglob("*.c")} if not a.redo else set()
+    cands = [x for x in cands if st.at_addr(x).name not in hand and x not in have]
     OUT.mkdir(parents=True, exist_ok=True)
     tally = {}
     hits = {}
@@ -121,6 +135,8 @@ def hand_defined() -> set[str]:
 
 def emit(hits: dict[int, str], img: E.Image, st: E.SymbolTable) -> None:
     written = 0
+    if not hits:
+        print("no new hits")
     for addr, src in sorted(hits.items()):
         seg = img.segment(addr).name.lower()
         d = AUTO / seg
