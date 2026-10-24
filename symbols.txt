@@ -936,7 +936,7 @@
 0x001B3808 0x78 func_001B3808  # MAIN unaligned
 0x001B3880 0x14 func_001B3880  # MAIN
 0x001B3898 0x14 func_001B3898  # MAIN unaligned
-0x001B38B0 0x14 func_001B38B0  # MAIN
+0x001B38B0 0x14 acosf  # MAIN; a thunk into 0x1AED50; CQuat::Slerp takes the angle of its quaternions\' dot product with it
 0x001B38C8 0x14 func_001B38C8  # MAIN unaligned
 0x001B38E0 0x14 func_001B38E0  # MAIN
 0x001B38F8 0x14 func_001B38F8  # MAIN unaligned
@@ -5185,10 +5185,10 @@
 0x00306670 0x54 func_00306670  # OVL1
 0x003066D0 0xD4 func_003066D0  # OVL1
 0x003067B0 0xD4 Exp__5CQuatFPC6CPnt3D  # OVL1; SOCOM 1 name
-0x00306890 0x248 func_00306890  # OVL1
-0x00306AE0 0x254 func_00306AE0  # OVL1
+0x00306890 0x248 SlerpFaster__5CQuatCFPC5CQuatfP5CQuat  # OVL1; SOCOM 1 name
+0x00306AE0 0x254 Slerp__5CQuatCFPC5CQuatfP5CQuat  # OVL1; SOCOM 1 name (callgraph carry)
 0x00306D40 0x288 func_00306D40  # OVL1
-0x00306FD0 0x9C func_00306FD0  # OVL1
+0x00306FD0 0x9C Apply__5CQuatCFPC6CPnt3DP6CPnt3Di  # OVL1; SOCOM 1 name
 0x00307070 0x4C ToEuler__5CQuatCFP6CPnt3D  # OVL1; SOCOM 1 name
 0x003070C0 0xA8 Mul__5CQuatCFPC5CQuatP5CQuat  # OVL1; SOCOM 1 name
 0x00307170 0x100 func_00307170  # OVL1
@@ -8467,6 +8467,8 @@
 0x003D57D0 0x24 func_003D57D0  # OVL1
 0x003D5800 0x60 func_003D5800  # OVL1
 0x003D5860 0xE8 func_003D5860  # OVL1
+0x003DF320 0x4 data_003DF320  # OVL1 data: 1.0f, the unit length SlerpFaster checks against
+0x003DF328 0x4 data_003DF328  # OVL1 data: 0.004f, its tolerance
 0x003F64C0 0xC data_003F64C0  # OVL1 data: a zero CPnt3D (CQuat::Exp copies x, y, z)
 0x004C53C0 0x8 func_004C53C0  # OVL2
 0x004C5400 0x210 func_004C5400  # OVL2

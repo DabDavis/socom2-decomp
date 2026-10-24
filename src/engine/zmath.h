@@ -15,6 +15,8 @@
 extern "C" float sinf(float);
 extern "C" float cosf(float);
 extern "C" float sqrtf(float);
+extern "C" float fabsf(float);
+extern "C" float acosf(float);
 
 class CPnt3D {
 public:
@@ -47,17 +49,24 @@ public:
     void ToEuler(CPnt3D *out) const;
 };
 
+/* A quaternion is a CPnt3D member plus w: `*out = *this` in Slerp copies x, y, z as one
+ * block (loads first) and then w -- the implicit copy of a class whose first member is a
+ * struct. Derived from CPnt3D, or as four floats, MW copies all four interleaved. */
 class CQuat {
 public:
-    float x, y, z, w;
+    CPnt3D v;
+    float w;
 
-    void Exp(const CPnt3D *v);
+    void Exp(const CPnt3D *axis);
     void MakeYXZRot(float ry, float rx, float rz);
     void MakeXRot(float angle);
     void MakeYRot(float angle);
     void MakeZRot(float angle);
     CQuat *Normalize();
     void Mul(const CQuat *b, CQuat *out) const;
+    void Apply(const CPnt3D *in, CPnt3D *out, int n) const;
+    void Slerp(const CQuat *b, float t, CQuat *out) const;
+    int SlerpFaster(const CQuat *b, float t, CQuat *out) const;
     void ToEuler(CPnt3D *out) const;
 };
 
@@ -69,12 +78,17 @@ void func_00309180(const CPnt3D *v, CPnt3D *out, float s);    /* out = v * s */
 void func_00309240(const CPnt3D *a, const CPnt3D *b, CPnt3D *out);   /* out = a + b */
 
 /* CQuat's own, not yet named */
-void func_003066D0(CQuat *q, const CPnt3D *v, float t);       /* Exp of v scaled by t */
+void func_003066D0(CQuat *q, const CPnt3D *axis, float t);       /* Exp of v scaled by t */
 void func_00307170(const CQuat *q, CMatrix *m);               /* the rotation matrix of q */
 void func_003072E0(const CQuat *q, CQuat *out);               /* out = q normalised */
 void func_00307470(CQuat *q, float a, float b);               /* q = Y(a) * X(b) */
 
 extern const CPnt3D data_003F64C0;                             /* a zero vector */
+extern const float data_003DF320;                              /* 1.0f */
+extern const float data_003DF328;                              /* 0.004f */
+
+/* |*a - *b| <= *eps, as two comparisons (OVL1, in another translation unit) */
+int func_0028F1E0(const float *a, const float *b, const float *eps);
 }
 
 /* By value through a temporary: CQuat::ToMatrix keeps exactly this copy (ld/sd + lwc1/swc1
