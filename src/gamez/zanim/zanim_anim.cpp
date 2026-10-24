@@ -192,6 +192,50 @@ CZAnimArgList::~CZAnimArgList()
     clear();
 }
 
+/* what SOCOM II's network activation adds after the packet: a value at 4 the anim gets as an
+ * integer argument (not named) */
+struct ZAnimNetworkExtra {
+    int _0;
+    int value;   // 0x4
+};
+
+/* SOCOM II's CZAnimMain::NetworkReceive (SOCOM 1's, given a third argument; not named): the
+ * packet's anim found, an available copy given the packet's arguments and the extra value,
+ * and activated with the activation callback held off; the packet's size.
+ * OPEN, registers only (19 instructions): the target gives the extra argument s0 and the anim
+ * s1, as if the anim were declared first -- declaration order, an outer `value`, and an inlined
+ * helper (cut by the inline level) do not swap them */
+extern "C" int func_00273780(CZAnimMain *main, ZAnimNetworkPacket *packet, ZAnimNetworkExtra *extra)
+{
+    CZAnim *anim = ZAnim.GetAnim(packet->anim_set_index, packet->anim_index);
+
+    if (anim) {
+        main->m_block_activation_callback = 1;
+        anim = anim->GetAvailable();
+        if (anim) {
+            if (anim->m_arg_list)
+                delete anim->m_arg_list;
+            anim->m_arg_list = 0;
+            if (packet->packet_size > sizeof(ZAnimNetworkPacket)) {
+                if (!anim->m_arg_list)
+                    anim->m_arg_list = new CZAnimArgList;
+                anim->m_arg_list->ParseNetworkPacketArgs(anim, packet);
+            }
+            if (extra) {
+                int value = extra->value;
+                CZAnimArg *arg = new CZAnimArgInt(CZAnimArg::TYPE_INT, value);
+
+                if (!anim->m_arg_list)
+                    anim->m_arg_list = new CZAnimArgList;
+                anim->m_arg_list->push_back(arg);
+            }
+            anim->Activate(0);
+        }
+        main->m_block_activation_callback = 0;
+    }
+    return packet->packet_size;
+}
+
 /* SOCOM II's: an available copy activated with commands (SOCOM 1's ActivateEx, its list read by
  * ActivateExV now) */
 CZAnim *CZAnim::ActivateEx(int cmd, ...)

@@ -21,7 +21,13 @@ class CZAnimEx;
 namespace Particle { class Source; }
 class CZAnimHealth;
 class CZAnimSet;
-class ZAnimNetworkPacket;
+/* an anim activation sent over the network (SOCOM 1's DWARF; the arguments follow) */
+class ZAnimNetworkPacket {
+public:
+    int packet_size;   // 0x0
+    unsigned short anim_set_index;   // 0x4
+    unsigned short anim_index;   // 0x6
+};   // 0x8 bytes
 class _zanim_call_anim_ref;
 class _zanim_cmd_hdr;
 class _zanim_cmd_set;
@@ -46,7 +52,8 @@ public:
         TYPE_NONE = 0,
         TYPE_CMD = 1,           /* our names, by the copies that set them */
         TYPE_VALVE = 4,
-        TYPE_PNT3D = 5          /* a point (zAnimRangeTestTick) */
+        TYPE_PNT3D = 5,         /* a point (zAnimRangeTestTick) */
+        TYPE_INT = 9            /* SOCOM II's network activation adds one */
     };
 
     CZAnimArg() : m_type(TYPE_NONE), m_8(0) {}
@@ -144,6 +151,7 @@ class CZAnimArgList : public std::list<CZAnimArg *> {
 public:
     virtual ~CZAnimArgList();
     CPnt3D *GetPnt3D(CZAnimArg::TYPE type);
+    void ParseNetworkPacketArgs(CZAnim *anim, ZAnimNetworkPacket *packet);
 };   // 0x10 bytes
 
 class _zanim_anim_params {

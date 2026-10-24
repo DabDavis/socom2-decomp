@@ -9,8 +9,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 s32 __nw__FUi(M2C_UNK);                             /* extern */
 M2C_UNK func_001FEAE0(M2C_UNK *, M2C_UNK *, M2C_UNK **, s32 *); /* extern */
 s32 func_00321C80(s32, s32);                        /* extern */
-extern M2C_UNK data_0045C3C0;
 extern M2C_UNK data_0045C3C4;
+extern M2C_UNK m_assets__Q23zdb9CAssetMgr;
 
 s32 func_00320EA0(s32 arg0) {
     s32 sp2C;
@@ -24,6 +24,6 @@ s32 func_00320EA0(s32 arg0) {
     }
     sp2C = var_v0;
     sp24 = &data_0045C3C4;
-    func_001FEAE0(&sp28, &data_0045C3C0, &sp24, &sp2C);
+    func_001FEAE0(&sp28, &m_assets__Q23zdb9CAssetMgr, &sp24, &sp2C);
     return sp2C;
 }

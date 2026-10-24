@@ -1692,7 +1692,7 @@
 0x001FEA70 0x3C func_001FEA70  # OVL1
 0x001FEAB0 0x8 func_001FEAB0  # OVL1
 0x001FEAC0 0x20 func_001FEAC0  # OVL1
-0x001FEAE0 0x100 func_001FEAE0  # OVL1
+0x001FEAE0 0x100 insert__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>FQ33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<0>RCPCv  # OVL1; s1:name (SOCOM 1's single insert of the pointer lists; push_back is insert(end(), x) -- the network receive and ActivateExV push arguments through it)
 0x001FEBE0 0x68 func_001FEBE0  # OVL1
 0x001FEC50 0x8 func_001FEC50  # OVL1
 0x001FEC60 0xC func_001FEC60  # OVL1
@@ -3024,7 +3024,7 @@
 0x00271950 0x60 ActivateSequence__6CZAnimFPCc  # OVL1; s1:order (as SequenceRunning)
 0x002719B0 0x128 __dt__13CZAnimArgListFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00271AE0 0x4C __dt__9CZAnimArgFv  # OVL1; s1:align
-0x00271B30 0x3B0 func_00271B30  # OVL1
+0x00271B30 0x3B0 ParseNetworkPacketArgs__13CZAnimArgListFP6CZAnimP18ZAnimNetworkPacket  # OVL1; s1:calls (SOCOM 1's NetworkReceive calls it on the copy's list, as SOCOM II's func_00273780 does)
 0x00271EE0 0x1FC AddNetworkPacketArgs__13CZAnimArgListFP6CZAnimP18ZAnimNetworkPacket  # OVL1; s1:align
 0x002720E0 0xD8 func_002720E0  # OVL1
 0x002721C0 0xD8 func_002721C0  # OVL1

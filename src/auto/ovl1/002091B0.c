@@ -10,7 +10,7 @@ s32 __ct__15CZMPBombMapItemFPQ23zdb5CNode(s32, s32); /* extern */
 s32 __nw__FUi(M2C_UNK);                             /* extern */
 M2C_UNK func_001FEAE0(M2C_UNK *, s32, s32 *, s32 *); /* extern */
 s32 func_00209100();                                /* extern */
-extern s32 data_0044D4A0;
+extern s32 m_mpbombnode__7CPickup;
 
 void func_002091B0(s32 arg0) {
     s32 sp2C;
@@ -18,10 +18,10 @@ void func_002091B0(s32 arg0) {
     s32 sp24;
     s32 var_v0;
 
-    if ((data_0044D4A0 != 0) && (func_00209100() == 0)) {
+    if ((m_mpbombnode__7CPickup != 0) && (func_00209100() == 0)) {
         var_v0 = __nw__FUi(0x240);
         if (var_v0 != 0) {
-            var_v0 = __ct__15CZMPBombMapItemFPQ23zdb5CNode(var_v0, data_0044D4A0);
+            var_v0 = __ct__15CZMPBombMapItemFPQ23zdb5CNode(var_v0, m_mpbombnode__7CPickup);
         }
         sp2C = var_v0;
         sp24 = arg0 + 0x1C;

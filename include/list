@@ -58,6 +58,7 @@ public:
     void clear() { erase(begin(), end()); }
     iterator erase(iterator first, iterator last);
     iterator insert(iterator position, const T &x);
+    void push_back(const T &x) { insert(end(), x); }
 
 protected:
     unsigned int size_;
@@ -105,6 +106,11 @@ class list : public __list_imp<T, Allocator> {
 
 template <class T, class Allocator>
 class list<T *, Allocator> : public __list_imp<const void *, allocator<const void *> > {
+    typedef __list_imp<const void *, allocator<const void *> > base;
+
+public:
+    /* the reference passed on as the base's, no temporary (the pointer stays where it is) */
+    void push_back(T *const &x) { base::push_back((const void *const &)x); }
 };
 
 }
