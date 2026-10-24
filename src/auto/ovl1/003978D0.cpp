@@ -25,7 +25,7 @@ struct VC_60 {
     virtual M2C_UNK v_38(M2C_UNK);
 };
 extern "C" {
-char *func_00312C20(char *);                        /* extern */
+char *Create__Q23zdb5CNodeFPCc(char *);             /* extern */
 extern char *data_0049ED50;
 
 char *func_003978D0(char *arg0) {
@@ -37,7 +37,7 @@ char *func_003978D0(char *arg0) {
     } else {
         var_a0 = arg0 + 1;
     }
-    temp_v0 = func_00312C20(var_a0);
+    temp_v0 = Create__Q23zdb5CNodeFPCc(var_a0);
     ((VC_60 *)(data_0049ED50))->v_18(temp_v0);
     ((VC_60 *)(temp_v0))->v_38(0);
     return temp_v0;

@@ -1,10 +1,11 @@
 /* node_main.cpp -- zdb::CNode, the scene graph's node: its place in the world, its bounds, its
- * children, its grid atoms (OVL1 0x3134C0-0x31789F, after node_vector.cpp's; node_model.cpp
- * follows). The unit name is SOCOM 1's (CNode::SetName's allocations name it). Defined in reverse
- * of their image order (-inline deferred), as the map has them: a function this unit calls
- * without inlining, though small, is evidence of a unit boundary (CreateXRef's SetName and
- * SetPosition were), and so is a cluster of template instances and inline functions' copies,
- * which close a unit (this one's from 0x3176B0; node_vector.cpp's at 0x313450). */
+ * children, its grid atoms (OVL1 0x3124F0-0x31789F, after node_vector.cpp's; node_model.cpp
+ * follows). The unit name is SOCOM 1's (CNode::SetName's allocations name it; the press beta's
+ * SetModelname and Create reference it too). Defined in reverse of their image order (-inline
+ * deferred), as the map has them: a function this unit calls without inlining, though small, is
+ * evidence of a unit boundary (CreateXRef's SetName and SetPosition were). An inline function's
+ * out-of-line copies follow the first function to call them (SetModeTree's iterator pieces and
+ * SetMode, 0x313450-0x3134BB); template instances close the unit (from 0x3176B0). */
 
 #include <algorithm>
 #include <string.h>
@@ -810,6 +811,190 @@ int CNode::ScrollTexture(CNode *node, float u, float v, bool b, int index)
             index = (*i)->ScrollTexture(node, u, v, b, index);
     }
     return index;
+}
+
+/* the node's mode (SOCOM II's two bits) set through the whole tree: SetDynamic's walk, over the
+ * children through a reference (the recursion inlines itself twice; its out-of-line pieces end
+ * the unit, in reverse of their first use here -- the iterator's copy constructor, postfix ++,
+ * assignment and default constructor, then SetMode's copy). The name is ours */
+void CNode::SetModeTree(int mode)
+{
+    if (!this)
+        return;
+    SetMode(mode);
+    CNodeVector::iterator it;
+    CNodeVector &children = GetChildren();
+
+    for (it = children.begin(); it != children.end(); it++)
+        (*it)->SetModeTree(mode);
+}
+
+/* the same for collision data (DIs): the twin of SetDescendantVisuals */
+bool CNode::SetDescendantDI(bool set)
+{
+    if (!this)
+        return false;
+    CNodeVector &children = m_child;
+
+    if (set == false) {
+        m_hasDI = 0;
+        for (CNodeVector::iterator it = children.begin(); it != children.end(); ++it)
+            (*it)->SetDescendantDI(false);
+        return false;
+    }
+    bool any = false;
+    bool own = m_di.size() != 0;
+
+    for (CNodeVector::iterator it = children.begin(); it != children.end(); ++it)
+        any |= (*it)->SetDescendantDI(true);
+    m_hasDI = own || any;
+    return own || any;
+}
+
+/* whether the node or anything below it has visuals, marked on each node on the way back up; or
+ * the mark cleared through the whole tree (SOCOM 1's, the answers ORed as bools now; the flag is
+ * compared with false, which masks it to a byte first) */
+bool CNode::SetDescendantVisuals(bool set)
+{
+    if (!this)
+        return false;
+    CNodeVector &children = m_child;
+
+    if (set == false) {
+        m_hasVisuals = 0;
+        for (CNodeVector::iterator it = children.begin(); it != children.end(); ++it)
+            (*it)->SetDescendantVisuals(false);
+        return false;
+    }
+    bool own = m_visual.size() != 0;
+    bool any = false;
+
+    for (CNodeVector::iterator it = children.begin(); it != children.end(); ++it)
+        any |= (*it)->SetDescendantVisuals(true);
+    m_hasVisuals = own || any;
+    return own || any;
+}
+
+/* a new node, named as given or "Node" (SOCOM 1's) */
+CNode *CNode::Create(const char *name)
+{
+    CNode *node = new CNode;
+
+    if (name)
+        node->SetName(name);
+    else
+        node->SetName("Node");
+    return node;
+}
+
+/* the node's parameters, name, opacity, model and flags copied into another (_Copy's first part;
+ * SOCOM 1's _Copy inlined it, so the name is ours) */
+void CNode::CopyParams(CNode *to) const
+{
+    if (!to)
+        return;
+    InitNodeParams(to, this);
+    to->SetName(m_name);
+    to->m_Opacity = m_Opacity;
+    to->SetModelname(m_modelname);
+    to->SetModel(m_model);
+    to->m_socom2_a1_bits.bit0 = (m_socom2_a1 & 1) != 0;
+    to->m_region_mask = m_region_mask;
+    to->m_socom2_a1_bits.bit5 = m_socom2_a1_bits.bit5 == 1;
+    bool character = (m_socom2_a1 & 4) != 0;
+
+    to->m_socom2_a1_bits.bit2 = character;
+    if (character)
+        to->m_bumpmap = 1;
+    to->m_vid = m_vid;
+}
+
+/* a light switched on or off, the old setting given back (the node's own, word for word) */
+bool CLight::SetActive(bool on)
+{
+    bool was = m_active;
+
+    m_active = on;
+    return was;
+}
+
+/* a blend written into every blend word of the node's visuals (when told), and below (when told);
+ * the first flag is only handed on (SOCOM 1's). The counts are read once, so the inner copy is
+ * unrolled eight times */
+void CNode::SetBlendMode(const BLENDMODE &mode, bool b, bool visuals, bool recurse)
+{
+    if (visuals) {
+        CVisualVector &v = m_visual;
+        unsigned int n = v.size();
+
+        for (unsigned int i = 0; i < n; i++) {
+            std::vector<BLENDMODE *> &modes = v[i]->m_blendmodes;
+            unsigned int m = modes.size();
+
+            for (unsigned int j = 0; j < m; j++)
+                *modes[j] = mode;
+        }
+    }
+    if (recurse) {
+        CNodeVector &children = m_child;
+
+        if (children.size()) {
+            for (CNodeVector::iterator i = children.begin(), end = children.end(); i != end; ++i)
+                (*i)->SetBlendMode(mode, b, visuals, recurse);
+        }
+    }
+}
+
+/* the name of the model the node is an instance of: its own copy, the old one freed */
+void CNode::SetModelname(const char *name)
+{
+    if (m_modelname) {
+        _free(m_modelname, 0, 0);
+        m_modelname = 0;
+    }
+    m_modelname = name ? _strdup(name, 0, 0) : 0;
+}
+
+/* the regions (a bit for the node's own) and the lights handed down the tree: a light keeps the
+ * lights, anything else the regions, a type-10 node neither and nothing below it. Over a copy
+ * of the child list, its size read once; how many lights below took some.
+ * OPEN (4 differing): the mask and the constant 1 take each other's registers (a1, v1) -- not
+ * moved by the statements' order, either spelling of the ORs, locals, inline accessors, or the
+ * permuter's 21,048 candidates */
+int CNode::InheritRegionMasks(unsigned int regions, unsigned int lights)
+{
+    if (m_type == 10)
+        return 0;
+    regions |= 1 << m_region_shift;
+    lights |= m_region_mask;
+    if (m_type == 8)
+        m_region_mask = lights;
+    else
+        m_region_mask = regions;
+    CNodeVector children(m_child);
+    unsigned int n = children.size();
+    int count = 0;
+
+    for (unsigned int i = 0; i < n; i++)
+        count += children[i]->InheritRegionMasks(regions, lights);
+    if (m_type == 8 && lights)
+        count++;
+    return count;
+}
+
+/* whether a segment surely misses the node's bounds (both ends past one face); a node that
+ * borrows its parent's bounds never says so. One expression: the six tests flat in one ||
+ * chain, MW keeping a flag per level (new in SOCOM II; its callers, the grid's intersection
+ * code, are not placed, so it keeps its placeholder) */
+extern "C" bool func_003124F0(CNode *node, const CPnt3D *a, const CPnt3D *b)
+{
+    return !node->m_use_parent_bbox &&
+           ((a->x < node->m_bbox.m_min.x && b->x < node->m_bbox.m_min.x) ||
+           (a->x > node->m_bbox.m_max.x && b->x > node->m_bbox.m_max.x) ||
+           (a->y < node->m_bbox.m_min.y && b->y < node->m_bbox.m_min.y) ||
+           (a->y > node->m_bbox.m_max.y && b->y > node->m_bbox.m_max.y) ||
+           (a->z < node->m_bbox.m_min.z && b->z < node->m_bbox.m_min.z) ||
+           (a->z > node->m_bbox.m_max.z && b->z > node->m_bbox.m_max.z));
 }
 
 }

@@ -19,6 +19,10 @@ extern int numNodes;
 
 namespace zdb {
 
+class tag_NODE_PARAMS;
+/* a node's parameters set: from another's, or the defaults when given none (SOCOM 1's) */
+void InitNodeParams(tag_NODE_PARAMS *to, const tag_NODE_PARAMS *from);
+
 class CCamera;
 class CGridAtom;
 class CLightMap;
@@ -267,6 +271,9 @@ public:
     static CNode *CreateInstance(CModel *model, const CPnt3D *pos, const CQuat *rot);
     static CNode *CreateInstance(const char *name, const CPnt3D *pos, const CQuat *rot);
     static CNode *Delete(CNode *node);
+    static CNode *Create(const char *name);
+    void CopyParams(CNode *to) const;
+    void SetModel(CModel *model);
     void RemoveFromParent();
     bool Rendered(int frames);
     void SetDynamic(bool on, bool recurse);
@@ -337,7 +344,10 @@ public:
             unsigned char bit0 : 1;
             unsigned char bit1 : 1;   /* SetPosition ORs it into the byte */
             unsigned char bit2 : 1;
-            unsigned char hi : 5;
+            unsigned char bit3 : 1;
+            unsigned char bit4 : 1;
+            unsigned char bit5 : 1;
+            unsigned char hi : 2;
         } m_socom2_a1_bits;
     };
     unsigned char _socom2_a2[2];   // 0xa2
