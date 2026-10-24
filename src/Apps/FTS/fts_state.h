@@ -51,7 +51,6 @@ public:
 };
 
 class CHUD;
-class CWorld;
 class CZAnimZAR;
 
 /* the anims (gamez/zanim's; only the archive calls) */
@@ -67,9 +66,82 @@ extern CZAnimMain ZAnim;
  * every member; SOCOM II's at 0x910 (CExitState's delete, CExitMenu's constructor) */
 class CTextureRelocMgr;
 
+#include <vector>
+
+namespace zdb {
+class CNode;
+class CTexHandle;
+class CAssetLib;
+class CWorld;
+
+class CAssetList {
+public:
+    CTexHandle *GetTexHandle(const char *name);
+};
+
+class CAssetMgr {
+public:
+    static void ReleaseLibRef(CAssetLib *lib);
+
+    static CAssetList m_assets;
+};
+
+enum tag_ZCAM_TYPE {
+    ZCAM_TYPE_0
+};
+
+class CCamera {
+public:
+    void Update(tag_ZCAM_TYPE type);
+    float GetLandmarkFarPlane(CWorld *world);
+};
+
+/* the world: only what the states touch -- its nodes' vector at 0x68 (reserved ahead by the
+ * core state), its camera at 0x128 (SOCOM 1's at 0xC0) */
+class CWorld {
+public:
+    static CTexHandle *GetTexHandle(const char *name);
+
+    unsigned char _0[0x68];
+    std::vector<CNode *> m_nodes;   // 0x68
+    unsigned char _74[0x128 - 0x74];
+    CCamera *m_camera;   // 0x128
+
+    static CWorld *m_world;
+};
+}
+
+/* the mission's texture buffers: a vector of them (zdb::CTexManager::m_texmanager's) */
+struct TexBufferVector {
+    unsigned int capacity_;
+    unsigned int size_;
+    void **data_;
+};
+
+/* the render pipe (SOCOM 1's CPipe: the camera at 0x628, the UI node it draws at 0x630, a flag at
+ * 0x63D -- SOCOM II's at 0x628, 0x630 and 0x711) */
+class CPipe {
+public:
+    void RenderUiNode(zdb::CNode *node);
+
+    unsigned char _0[0x628];
+    zdb::CCamera *m_camera;   // 0x628
+    unsigned char _62c[0x630 - 0x62c];
+    zdb::CNode *m_uiNode;   // 0x630
+    unsigned char _634[0x711 - 0x634];
+    unsigned char m_renderingUi;   // 0x711
+};
+
+extern "C" {
+extern TexBufferVector data_0049E880;            /* zdb::CTexManager::m_texmanager */
+extern CPipe data_004887C0;                      /* thePipe */
+}
+
 class CGameMenu {
 public:
-    unsigned char _0[0x910];
+    unsigned char _0[0xc4];
+    zdb::CNode *m_pBackplaneNode;   // 0xc4 (SOCOM 1's DWARF)
+    unsigned char _c8[0x910 - 0xc8];
 
     CGameMenu();
     virtual ~CGameMenu();
@@ -78,6 +150,7 @@ public:
     virtual int Slot14();   /* SOCOM II's, before PrepControls (the name ours) */
     virtual void PrepControls(CTextureRelocMgr *reloc);
     void Draw2dOnly();
+    void DrawForeplane();
 
     unsigned char _914[0x920 - 0x914];
 };
@@ -106,7 +179,11 @@ public:
     virtual void OnPush(int userdata) {}
     virtual void OnPop(int userdata) {}
     virtual void SetSkipSwap(int swap) {}
-    virtual void Slot2C() {}
+    /* SOCOM II's: a message for the player (the menu state's tick passes the network's queued
+     * ones: the text, no sender, the flag 1, the message's type last). The name and the middle
+     * parameters' meaning are ours */
+    virtual void Slot2C(const char *text, const char *who, int a, int b, int c,
+                        unsigned char d, unsigned char e, char type) {}
 
     void SetName(const char *name)
     {
@@ -147,7 +224,7 @@ public:
     unsigned char m_showingTB;   // 0x10
     CMatrix objMtx1;   // 0x20
     CMatrix objMtx2;   // 0x60
-    CWorld *m_world;   // 0xa0
+    zdb::CWorld *m_world;   // 0xa0
     unsigned int skyColor[3];   // 0xa4
     int m_LoadThreadId;   // 0xb0
     unsigned char m_loading;   // 0xb4
@@ -314,7 +391,11 @@ public:
     void ReOpen_Unload1();
     void ReOpen_Unload2();
 
-    unsigned char _0[0x108];
+    unsigned char _0[0x18];
+    unsigned char m_18;   // 0x18: 4 in an online game (SOCOM 1's too)
+    unsigned char _19[0xe8 - 0x19];
+    float m_e8;   // 0xe8 (-1 when the mission starts; SOCOM 1's at 0x68)
+    unsigned char _ec[0x108 - 0xec];
     float m_108;   // 0x108
     unsigned char _10c[0x1ac - 0x10c];
     CMissionInfo *m_1ac;   // 0x1ac

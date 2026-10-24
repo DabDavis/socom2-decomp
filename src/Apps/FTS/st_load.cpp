@@ -4,14 +4,6 @@
 
 #include "fts_state.h"
 
-namespace zdb {
-class CAssetLib;
-class CAssetMgr {
-public:
-    static void ReleaseLibRef(CAssetLib *lib);
-};
-}
-
 /* unnamed yet (SOCOM 1's names in the comments) */
 extern "C" {
 int InitThread(void);
