@@ -160,7 +160,16 @@ symbols carried by exact body fingerprint (`CQuat::*`, from socom-unzipped's
 | wibo | `toolchains/bin/wibo` | github.com/decompals/wibo releases (1.2.0) |
 | objdump/readelf | `$PS2DEV/ee/bin/` | ps2dev (default `~/ps2dev/ps2dev`) |
 
-`$SOCOM_ROOT` defaults to this directory's parent.
+`$SOCOM_ROOT` defaults to this directory's parent — set it when working from a clone
+of the published repository rather than inside claude-socom.
+
+## Publishing
+
+`decomp/` is mirrored to a **private** repository, github.com/DabDavis/socom2-decomp
+(created 2026-10-24), as `git subtree split --prefix=decomp` of claude-socom's history:
+the work happens here and `tools/publish.sh` pushes the committed state (`--dry-run`
+to look first). It refuses a tracked line that looks private, as claude-eqoa's
+`_publish.py` does.
 
 ## Open, and next
 
