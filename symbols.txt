@@ -5493,7 +5493,7 @@
 0x003167F0 0x28 Release__Q23zdb5CNodeFv  # OVL1; s1:align
 0x00316820 0x5E4 _Copy__Q23zdb5CNodeCFPQ23zdb5CNode  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00316E10 0x20 func_00316E10  # OVL1
-0x00316E30 0x224 func_00316E30  # OVL1
+0x00316E30 0x224 __ct__Q23zdb5CNodeFv  # OVL1; s1:callee by hand (CZAnim::GetNodes news 0xC0 bytes -- sizeof CNode -- and calls it, as SOCOM 1's CNode constructor stores __vt__Q23zdb5CNode)
 0x00317060 0x64C InitNodeParams__3zdbFPQ23zdb15tag_NODE_PARAMSPCQ23zdb15tag_NODE_PARAMS  # OVL1; s1:align
 0x003176B0 0x6C func_003176B0  # OVL1
 0x00317720 0x78 func_00317720  # OVL1

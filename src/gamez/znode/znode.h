@@ -92,6 +92,8 @@ public:
     virtual void UpdateBBox(bool up);
     virtual void UpdateBBoxFromDI(bool up);
 
+    CNode();
+    void SetName(const char *name);
     void TransformToWorld(CPnt3D &p) const;
     void BuildMTW(CMatrix &m);
     void SetMatrix(const CMatrix *m);

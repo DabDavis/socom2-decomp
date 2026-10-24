@@ -549,6 +549,7 @@
 0x0026EDB0 GetName__6CZAnimFv
 0x0026EE00 Name__6CZAnimFPCc
 0x0026F120 SaveNodeStates__6CZAnimFb
+0x0026F210 GetNodes__6CZAnimFv
 0x0026F430 GetNodeRef__6CZAnimFi
 0x0026F820 Priority__6CZAnimFf
 0x0026FA80 StopAnims__6CZAnimFv

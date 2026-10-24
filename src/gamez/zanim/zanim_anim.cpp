@@ -10,6 +10,7 @@
  * definition reproduces that (the pragma state at the callee decides). The original's means is
  * unknown -- debug code compiled to nothing would count against -inline auto the same way. */
 
+#include <stdio.h>
 #include <string.h>
 
 #include "zanim.h"
@@ -511,6 +512,35 @@ void CZAnim::SaveNodeStates(bool refresh)
     }
 }
 #pragma auto_inline reset
+
+/* the anim's nodes looked up: a root made first when the anim makes its own (named
+ * <anim>::created_root), then the root, then every reference still without a node */
+void CZAnim::GetNodes()
+{
+    if (m_create_root) {
+        if (!m_root_node_index)
+            m_root_node_index = AddNewNodeRef(0, 0, 0);
+        _zanim_node_ref *ref = GetNodeRef(m_root_node_index);
+
+        if (!ref->node_ptr) {
+            char name[128];
+
+            ref->node_ptr = new CNode;
+            sprintf(name, "%s::created_root", GetName());
+            ref->node_ptr->SetName(name);
+            ref->name_index = m_nameindex_table.AddName(ZAnim.GetAnimSet(m_animset_index), name);
+            ref->created_here = 1;
+        }
+    }
+    int root = m_root_node_index;
+
+    if (root)
+        GetNode(root, true);
+    for (int i = 0; i < m_node_ref_count; i++)
+        if (!m_node_ref_list[i].node_ptr)
+            GetNode(i, true);
+    func_0026EE70(this);
+}
 
 /* a node reference by its index, the references grown to reach it, its node looked up when
  * not known; none for 0 and 250 */
