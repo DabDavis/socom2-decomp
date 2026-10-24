@@ -199,13 +199,15 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   helper. A function inlined everywhere and absent out of line was `inline` (NewAnimSet).
 - **Two-byte copies show the type's alignment**: a halfword union copies with lhu/sh, a
   two-char struct bytewise (a command's id).
-- **-inline auto stops at depth 3, and a unit can turn it off.** `new CZAnimExVector` inlines
-  three constructor levels and calls a fourth (include/vector zeroes one level up). In
-  `zanim_anim.cpp` nothing is inlined automatically -- CZAnim::Start at all four of its sites,
-  an 8-byte accessor at all four of its own -- while elsewhere a 0x124-byte OpenZAR is: the
-  unit says `#pragma auto_inline off`. Calls that do not inline, and `inline` functions absent
-  out of line, are unit-boundary evidence: LoadZAR calls GetAnimSet(int), which anim_main.cpp
-  inlines, so the ZAR loaders are a unit of their own (zanim_zar.cpp).
+- **-inline auto inlines to depth 2 and calls at depth 3; the pragma state at a callee's
+  definition decides whether it can be inlined at all.** `new CZAnimExVector` inlines its
+  constructor chain to the zeroing level (include/vector zeroes one level up). Resume and Pause
+  inline themselves twice and CZAnim::Running into the first copy, then call Running, the
+  sibling accessor and the Source test -- hence their out-of-line copies. CZAnim::Start alone is
+  never inlined (no bigger than Running, in no cycle): `#pragma auto_inline off` around its
+  definition only (probe: build/scratch/probe/q.cpp). Calls that do not inline are unit-boundary
+  evidence: LoadZAR calls GetAnimSet(int), which anim_main.cpp inlines, so the ZAR loaders are a
+  unit of their own (zanim_zar.cpp).
 - **A call in an argument list runs before the plain loads of the same call; a call made as a
   statement keeps a load written before it in place.** `GetName()` reads the index before
   fetching the set, so its set comes from a statement of its own (probe: build/scratch/probe).
