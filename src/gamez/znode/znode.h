@@ -176,6 +176,8 @@ public:
     CNode *Copy() const;
     void SetModelname(const char *name);
     int InheritRegionMasks(unsigned int regions, unsigned int lights);
+    bool SetDescendantVisuals(bool set);
+    bool SetDescendantDI(bool set);
     void ShrinkAtomBasePtrs();
     void AllocateAtomBasePtrs(int x, int z);
     void SetNodeEx(CNodeEx *ex, bool b);

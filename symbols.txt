@@ -5421,8 +5421,8 @@
 0x00312AA0 0x180 func_00312AA0  # OVL1
 0x00312C20 0xE0 func_00312C20  # OVL1
 0x00312D00 0x21C func_00312D00  # OVL1
-0x00312F20 0x190 func_00312F20  # OVL1
-0x003130B0 0x190 func_003130B0  # OVL1
+0x00312F20 0x190 SetDescendantVisuals__Q23zdb5CNodeFb  # OVL1; s1:exact by hand (SOCOM 1's SetDescendantVisuals, after Create and FindMeshTextures as here; the answers ORed as bools)
+0x003130B0 0x190 SetDescendantDI__Q23zdb5CNodeFb  # OVL1; s1:exact by hand (SOCOM 1's SetDescendantDI, after SetDescendantVisuals as here)
 0x00313240 0x208 func_00313240  # OVL1
 0x00313450 0x10 __ct__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorFRCQ33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iterator  # OVL1; tu: char_type.cpp~ (1.0 beta); CNodeVector's iterator copy constructor (implicit; called where SetNodeEx's second level stops inlining)
 0x00313460 0x14 __pp__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorFi  # OVL1; CNodeVector's iterator postfix ++ (the copy, the prefix ++ and the copy out), SetNodeEx's third level

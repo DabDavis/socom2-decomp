@@ -177,6 +177,52 @@ bool CNodeVector::Remove(const CNode *node)
     return it != e;
 }
 
+/* the same for collision data (DIs): the twin of SetDescendantVisuals */
+bool CNode::SetDescendantDI(bool set)
+{
+    if (!this)
+        return false;
+    CNodeVector &children = m_child;
+
+    if (set == false) {
+        m_hasDI = 0;
+        for (CNodeVector::iterator it = children.begin(); it != children.end(); ++it)
+            (*it)->SetDescendantDI(false);
+        return false;
+    }
+    bool any = false;
+    bool own = m_di.size() != 0;
+
+    for (CNodeVector::iterator it = children.begin(); it != children.end(); ++it)
+        any |= (*it)->SetDescendantDI(true);
+    m_hasDI = own || any;
+    return own || any;
+}
+
+/* whether the node or anything below it has visuals, marked on each node on the way back up; or
+ * the mark cleared through the whole tree (SOCOM 1's, the answers ORed as bools now; the flag is
+ * compared with false, which masks it to a byte first) */
+bool CNode::SetDescendantVisuals(bool set)
+{
+    if (!this)
+        return false;
+    CNodeVector &children = m_child;
+
+    if (set == false) {
+        m_hasVisuals = 0;
+        for (CNodeVector::iterator it = children.begin(); it != children.end(); ++it)
+            (*it)->SetDescendantVisuals(false);
+        return false;
+    }
+    bool own = m_visual.size() != 0;
+    bool any = false;
+
+    for (CNodeVector::iterator it = children.begin(); it != children.end(); ++it)
+        any |= (*it)->SetDescendantVisuals(true);
+    m_hasVisuals = own || any;
+    return own || any;
+}
+
 /* a light switched on or off, the old setting given back (the node's own, word for word) */
 bool CLight::SetActive(bool on)
 {
