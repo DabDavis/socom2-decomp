@@ -24,7 +24,6 @@ void func_003A3900(void *snd, const char *bank, void *arg);
 void func_00368570(CGameMenu *menu, void *reloc, CZAnimZAR *zar);   /* CGameMenu::Init */
 void func_003AFD50(int r, int g, int b, int a, int z);   /* CVideo::Clear */
 
-extern unsigned char data_004A4511;
 extern CZAnimZAR *data_00408D80;                 /* animfile (the unit's, in an unnamed namespace) */
 }
 
@@ -69,7 +68,12 @@ public:
  * OPEN (0x68 of 0x78): the target builds the list's end in a temporary and copies it bitwise
  * (lwc1/swc1) into a second before comparing -- SOCOM 1 called the const end(), then
  * list<CEntity *>'s const_iterator built from the base's by value (0x321240 in the demo);
- * include/list has no such wrapper iterator yet */
+ * include/list has no such wrapper iterator yet. Probed (build/scratch/states/adv_T2.cpp): a
+ * wrapper DERIVED from the base's const_iterator, built from it by value, the base's end() const
+ * making a named local and returning it, the test `&GetSeal() == 0` -- gives the target's 0x78
+ * with the store inside the loop, every instruction but the sentinel and the node trading t1/t0
+ * (a wrapper holding the base's, or comparisons of its own, inlines a level less: SOCOM 1's
+ * out-of-line calls come back) */
 void CEntityItr::Advance()
 {
     do {
@@ -127,7 +131,6 @@ void func_001F38F0(CObjectiveCounts *counts, void *objectives);
 void func_001F21B0(CObjectiveCounts *counts);   /* SetRoundStatUiVars */
 }
 
-void zVid_Sync0();
 
 /* the stats screen up: the objectives counted, the mission unloaded around the stats being set,
  * and -- unless the mission ends the game (popped) or the menu is skipped (popped and the load
@@ -157,7 +160,7 @@ bool CExitState::Init()
     func_003A3900(func_00361BC0(), "UIX", func_003A4460());
     func_00368570(m_menu, 0, data_00408D80);
     func_003AFD50(0, 0, 0, 0, 0);
-    data_004A4511 = 1;
+    zVid.m_91 = 1;
     zVid_Sync0();
     return true;
 }
@@ -187,7 +190,7 @@ void CExitState::UnInit()
 {
     zSysFifoEnd();
     sceGsSyncPath(0, 0);
-    data_004A4511 = 0;
+    zVid.m_91 = 0;
     func_003A3740(func_00361BC0(), "UIX");
     if (data_00408D80) {
         ZAnim.CloseZAR(data_00408D80);

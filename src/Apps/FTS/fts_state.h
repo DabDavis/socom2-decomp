@@ -35,6 +35,31 @@ extern char data_001DD2F0[];
 }
 
 void zSysFifoEnd();
+void zSysFifoDisable();
+void zVid_Sync0();
+
+/* zVid as the states see it: SOCOM 1's fields at 0x30, 0x34 and 0x58 (the frame's clear and the
+ * film's restore); SOCOM II's struct runs past SOCOM 1's 0x80 bytes to the flags at 0x90-0x92.
+ * The field names are ours */
+struct CZVidState {
+    unsigned char _0[0x30];
+    int m_30;   // 0x30
+    int m_34;   // 0x34
+    unsigned char _38[0x44 - 0x38];
+    int m_44;   // 0x44
+    int m_48;   // 0x48
+    unsigned char _4c[0x75 - 0x4c];
+    unsigned char m_75;   // 0x75
+    unsigned char _76[0x7c - 0x76];
+    unsigned char m_7c;   // 0x7c
+    unsigned char m_7d;   // 0x7d
+    unsigned char _7e[0x90 - 0x7e];
+    unsigned char m_90;   // 0x90
+    unsigned char m_91;   // 0x91: set while a state's screen is up
+    unsigned char m_92;   // 0x92
+};
+
+extern CZVidState zVid;
 void zsys_FullAllocAndFree();
 void *_memalign(unsigned int align, unsigned int size, const char *file, int line);
 
@@ -353,6 +378,13 @@ public:
 };
 
 /* a film between missions (SOCOM 1's DWARF: the movie's name at 0xC) */
+/* something the film screen draws (its vtable pointer at 0xC: a 2D element) */
+class CCinematicItem {
+public:
+    unsigned char _0[0xc];
+    virtual ~CCinematicItem();
+};
+
 class CCinematicState : public CGameState {
 public:
     virtual ~CCinematicState();
@@ -362,6 +394,15 @@ public:
 
     unsigned char m_movierunning;   // 0x8
     char *m_moviename;   // 0xc
+    int m_savedFrameRate;   // 0x10
+    int m_videoSave[2];   // 0x14 (SOCOM 1's)
+    int m_1c;   // 0x1c
+    int m_20;   // 0x20
+    unsigned char _24[0x29 - 0x24];
+    unsigned char m_29;   // 0x29
+    unsigned char m_2a;   // 0x2a: the film is up
+    unsigned char _2b[0x30 - 0x2b];
+    CCinematicItem *m_items[3];   // 0x30
 };
 
 /* the game: its state stack, then its states -- SOCOM 1's at 0x7C, 0xE0, 0x100, 0x1C0, 0x1D8,

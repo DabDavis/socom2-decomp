@@ -56,7 +56,6 @@ extern int data_00408DDC;
 }
 
 extern unsigned char theNetwork[];
-extern unsigned char zVid[];
 
 void zUISchedulerClear();
 
@@ -139,7 +138,7 @@ void CMenuState::UnInit()
     if (!theNetwork[9])
         func_0030E300(theNetwork + 8);
     zSysFifoEnd();
-    zVid[0x7d] = 1;
+    zVid.m_7d = 1;
     sceGsSyncPath(0, 0);
     func_00356080(&data_0049E880, false);
     func_003654A0(data_00408DC0);

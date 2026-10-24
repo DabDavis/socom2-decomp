@@ -20,7 +20,6 @@ extern char theUIVarManager[];
 extern "C" char *strncpy(char *dst, const char *src, unsigned int n);
 extern "C" int strcmp(const char *a, const char *b);
 const char *GetDatabase();
-void zVid_Sync0();
 
 /* the online game's state (unnamed: only its flags here) */
 class CNetGame {

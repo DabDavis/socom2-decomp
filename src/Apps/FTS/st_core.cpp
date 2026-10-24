@@ -9,7 +9,6 @@ extern "C" {
 void func_00356BE0(void *texbuffer, bool now);   /* zdb::CGSTexBuffer::Load */
 void func_001F1820(float goal);                  /* CameraZoom::SetGoal */
 void func_001F1870(void *seal);                  /* CameraZoom::AttachSeal */
-void *func_002B3580();                           /* ftsGetPlayer */
 void func_002A7D40(void *mission);               /* CMission::OnMissionStart */
 void func_001FB420(CHUD *hud);                   /* CHUD::ReInit_Init */
 void func_00356130(void *texmanager);            /* zdb::CTexManager::doSetupBuffers */
@@ -22,14 +21,12 @@ void func_003B1760(int a, int b, int c, float d);
 void func_00351CB0();                            /* CValve::Reset */
 void func_005B61A0();
 
-extern unsigned char data_004A4511;
 extern int data_0049E940;                        /* zdb::CTexManager::TexPhase's */
 extern int data_0049E950;
 extern unsigned char data_0045A0C1;              /* theNetwork's +9 (an online game) */
 extern void *data_00408C10;                      /* the load thread's stack */
 }
 
-void zVid_Sync0();
 void ftsNetworkGameUninit();
 void DMEDisconnectFromGameServer();
 
@@ -61,6 +58,31 @@ public:
 };
 
 const char *GetDatabase();
+
+/* a seal's controller (CEntity's at 0xC0) */
+class CZSealBody {
+public:
+    unsigned char _0[0xc0];
+    void *m_control;   // 0xc0
+};
+
+extern "C" {
+void func_00309A10();
+void func_003B7150(int arg);
+void func_00356B30(void *texbuffer);
+void func_001ED000(void *v);
+void func_001ECF60(void *v);
+int func_00288930();
+void func_003B1990(int addr, int buffer, int size);   /* CVideo::ReadGsMemory */
+void func_003B0B90(int a, int b, int w, int h);
+void func_003B09E0(int a, int b, int w, int h);
+void func_00592CA0(void *control);
+void func_003466F0();
+CZSealBody *func_002B3580();                     /* ftsGetPlayer */
+
+extern int data_0049E988;                        /* zdb::CTexManager::TexPhase's */
+extern char data_00408BD0[];
+}
 
 extern "C" {
 CHUD *func_001FCD80(CHUD *hud);                  /* CHUD::CHUD */
@@ -131,6 +153,60 @@ CCinematicState::~CCinematicState()
     if (m_moviename)
         _free(m_moviename, 0, 0);
     m_moviename = 0;
+}
+
+/* the film let go of: the film player, its items, its texture buffer and list, and -- if it was
+ * up -- the GS memory it borrowed restored, the frame rate, the screen's mode or clear, path 3;
+ * the film's name, the fade, the player's controller told */
+void CCinematicState::UnInit()
+{
+    func_00309A10();
+    func_003B7150(0);
+    for (int i = 0; i < 3; i++) {
+        if (m_items[i]) {
+            delete m_items[i];
+            m_items[i] = 0;
+        }
+    }
+    func_00356B30(data_0049E880.data_[data_0049E988]);
+    func_001ED000(data_00408BD0);
+    func_001ECF60(data_00408BD0);
+    if (m_2a) {
+        zSysFifoEnd();
+        zSysFifoDisable();
+        func_003B1990(0x2400, func_00288930(), 0x1c0000);
+        func_003B17D0(m_savedFrameRate);
+        if (m_29) {
+            if (zVid.m_75 == 2) {
+                func_003B0B90(0, 0, zVid.m_44, zVid.m_48);
+                func_003B09E0(0, 0, zVid.m_44, zVid.m_48);
+            } else {
+                if (m_1c != zVid.m_48) {
+                    zVid.m_30 = 0;
+                    zVid.m_34 = m_videoSave[0] > m_videoSave[1] ? m_videoSave[0] : m_videoSave[1];
+                    zVid.m_48 = m_1c;
+                }
+                zVid.m_90 = 1;
+            }
+        } else {
+            zVid.m_92 = m_20 != 0;
+        }
+        zVid.m_7c = 0;
+        *(volatile unsigned int *)0x10003010 |= 4;
+        asm volatile {
+            sync
+        }
+    }
+    if (m_moviename)
+        _free(m_moviename, 0, 0);
+    m_moviename = 0;
+    func_003B1760(0, 0, 0, 1.0f);
+    CZSealBody *player = func_002B3580();
+    void *control = player ? player->m_control : 0;
+
+    if (control)
+        func_00592CA0(control);
+    func_003466F0();
 }
 
 /* a pad's actuators stopped (the first pad's) */
@@ -244,7 +320,7 @@ bool CCoreState::Init()
     func_0033B420(&data_004887C0, zdb::CWorld::GetTexHandle("noise50.tif"));
     *(volatile unsigned int *)0x10003010 |= 4;
     zSysFifoEnd();
-    data_004A4511 = 0;
+    zVid.m_91 = 0;
     func_003B17D0(data_003E13F8);
     zVid_Sync0();
     return true;
@@ -260,7 +336,7 @@ void CCoreState::UnInit()
     }
     func_003B17D0(-1);
     func_003B1760(0, 0, 0, 1.0f);
-    data_004A4511 = 1;
+    zVid.m_91 = 1;
     m_loading = false;
     m_loadstarted = false;
     auxUnload();
