@@ -15,6 +15,10 @@ last part is what makes a match exact rather than plausible:
             stay compared, so MakeXRot cannot be mistaken for MakeYRot.
   callee    a placeholder SOCOM II function called from the same instruction of an exact
             pair takes the demo callee's name (iterated: exact pairs only).
+  calls     the same sequence of known callees and the same referenced strings, unique in
+            both builds, informative (two known callees, or a string of 6+ characters), sizes
+            within 2x: what a function does survives the compiler change that rewrote its
+            bytes. Iterated, so each round's names inform the next.
   syscall   a kernel stub (li v1,N; syscall) takes the name of the demo's stub for N.
   gap       between two consecutive exact anchors (of the longest chain increasing in both
             builds' addresses), the same number of functions on each side with every pair's
@@ -167,6 +171,105 @@ def gaps(demo: Demo, img: E.Image, st: E.SymbolTable, demo_of: dict[int, int],
     return out
 
 
+def _features(read_word, start: int, size: int, callee_name, string_at) -> tuple:
+    """(callee tokens in call order, referenced strings in order): what a function DOES,
+    which survives a compiler change that rewrites its bytes."""
+    calls, strs = [], []
+    live = {}
+    for a in range(start, start + size, 4):
+        w = read_word(a)
+        op = w >> 26
+        if op == 3:
+            calls.append(callee_name(((a + 4) & 0xF0000000) | ((w & 0x3FFFFFF) << 2)))
+        elif op == 0x0F:
+            live[(w >> 16) & 31] = w & 0xFFFF
+        elif op == 0x09 and (w >> 21) & 31 in live:
+            lo = w & 0xFFFF
+            t = ((live[(w >> 21) & 31] << 16) + (lo - 0x10000 if lo & 0x8000 else lo)) & 0xFFFFFFFF
+            st_ = string_at(t)
+            if st_:
+                strs.append(st_)
+    return tuple(calls), tuple(strs)
+
+
+def _cstring(read, addr: int) -> str | None:
+    try:
+        b = read(addr, 64)
+    except Exception:
+        return None
+    if not b:
+        return None
+    end = b.find(b"\0")
+    if end < 4:
+        return None
+    t = b[:end]
+    if all(32 <= c < 127 for c in t):
+        return t.decode()
+    return None
+
+
+def ra_first(b: bytes) -> bool | None:
+    """Is ra the first register the prologue saves (Metrowerks), or not (GCC)? None for a
+    leaf that saves nothing."""
+    for w in struct.unpack(f"<{len(b) // 4}I", b[:len(b) // 4 * 4]):
+        if w >> 26 in (0x3F, 0x1F, 0x2B) and (w >> 21) & 31 == 29:     # sd / sq / sw  x,(sp)
+            return (w >> 16) & 31 == 31
+    return None
+
+
+def calls_pass(demo: Demo, img: E.Image, st: E.SymbolTable, named: dict[int, str],
+               rounds: int = 6) -> dict[int, str]:
+    """Pair unnamed SOCOM II functions with demo functions doing the same thing: the same
+    sequence of known callees and the same referenced strings, unique on both sides, at
+    least two known callees or one string of 6+ characters, sizes within 2x."""
+    names = {s.addr: s.name for s in st.symbols if not E.is_placeholder(s.name)}
+    names.update(named)
+    demo_name_at = {f.value: f.name for f in demo.funcs}
+    dwrd = lambda a: struct.unpack_from("<I", demo.data, a - demo.base)[0]
+    dread = lambda a, n: demo.read(a, n)
+    def iread(a, n):
+        if not img.covers(a, n):
+            return b""
+        return img.read(a, n)
+    found = {}
+    for _ in range(rounds):
+        known = set(names.values()) | set(found.values())
+        dfeat = defaultdict(list)
+        for f in demo.funcs:
+            if f.name in known or f.size < 0x20:
+                continue
+            key = _features(dwrd, f.value, f.size,
+                            lambda t: demo_name_at.get(t) if demo_name_at.get(t) in known else "?",
+                            lambda t: _cstring(dread, t))
+            dfeat[key].append(f)
+        ofeat = defaultdict(list)
+        cur = {**names, **found}
+        for sym in st.symbols:
+            if sym.addr in cur or sym.size < 0x20 or not img.is_code(sym.addr):
+                continue
+            key = _features(img.word, sym.addr, sym.size, lambda t: cur.get(t, "?"),
+                            lambda t: _cstring(iread, t))
+            ofeat[key].append(sym)
+        new = {}
+        for key, ds in dfeat.items():
+            calls, strs = key
+            # two DISTINCT known callees: one function called twice (DeleteSema, DeleteSema)
+            # paired the memory card library's end with a voice server's shutdown
+            informative = len({c for c in calls if c != "?"}) >= 2 or any(len(x) >= 6 for x in strs)
+            if not informative or len(ds) != 1 or len(ofeat.get(key, [])) != 1:
+                continue
+            o, d = ofeat[key][0], ds[0]
+            if max(o.size, d.size) > 2 * min(o.size, d.size):
+                continue
+            if ra_first(img.read(o.addr, min(o.size, 64))) != ra_first(demo.read(d.value, min(d.size, 64))):
+                continue                    # Metrowerks saves ra first, GCC does not: other code
+            new[o.addr] = d.name
+        if not new:
+            break
+        found.update(new)
+    return found
+
+
 def syscall_no(b: bytes) -> int | None:
     """`li v1,N; syscall` (in either order with a jr ra): the stub's syscall number."""
     ws = struct.unpack(f"<{len(b) // 4}I", b)
@@ -205,6 +308,8 @@ def main(argv=None) -> int:
     gap = gaps(demo, img, st, {a: d for a, d in demo_of.items()})
     sysc = syscalls(demo, img, st)
     allp = {**gap, **callee, **sysc, **exact}
+    behav = calls_pass(demo, img, st, allp)
+    allp = {**behav, **allp}
     by_name = defaultdict(list)
     for addr, n in allp.items():
         by_name[n].append(addr)
@@ -213,7 +318,7 @@ def main(argv=None) -> int:
     taken = {s.name for s in st.symbols if not E.is_placeholder(s.name)}
     print(f"demo: {len(demo.funcs)} functions, {len(demo.relocs)} relocations")
     print(f"exact {len(exact)}, callee {len(callee)}, syscall {len(set(sysc) - set(exact))}, "
-          f"gap {len(set(gap) - set(exact) - set(callee) - set(sysc))}; "
+          f"gap {len(set(gap) - set(exact) - set(callee) - set(sysc))}, calls {len(behav)}; "
           f"{len(unique)} unique names, "
           f"{len(multi)} rows share a name (withheld)")
     if a.compare:
@@ -233,7 +338,7 @@ def main(argv=None) -> int:
             sep = "; " if "#" in note else "  # "
             if addr in unique and E.is_placeholder(cur) and unique[addr] not in taken:
                 how = ("exact" if addr in exact else "syscall" if addr in sysc
-                       else "callee" if addr in callee else "gap")
+                       else "callee" if addr in callee else "gap" if addr in gap else "calls")
                 text[i] = f"{m.group(1)} {m.group(2)} {unique[addr]}{note}{sep}s1:{how}"
                 named += 1
             elif addr in multi and E.is_placeholder(cur) and "s1~" not in note:

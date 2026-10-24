@@ -6,12 +6,14 @@ CmdNext__10CZAnimMainFi
 CmdSet__10CZAnimMainFi
 Exp__5CQuatFPC6CPnt3D
 Exp__5CQuatFPC6CPnt3Df
+Extrapolate__3CAiFPC6CPnt3DPC6CPnt3DfP6CPnt3D
 FadeIn__6CFaderFf
 GetArgCount__10CPacketMsgCFv
 GetFlags__7CPacketCFv
 GetPacketID__7CPacketCFv
 GetPacketType__7CPacketCFv
 GetScale__Q23zdb5CNodeFP6CPnt3D
+Init__15CZObjectiveListFv
 IsArray__5_zrdrCFv
 IsComplete__20CMissionObjectiveCamCFv
 IsDisplayOn__20CMissionObjectiveCamCFv
@@ -26,7 +28,9 @@ MakeZRot__5CQuatFf
 Mul__5CQuatCFPC5CQuatP5CQuat
 Normalize__5CQuatCFP5CQuat
 Normalize__5CQuatFv
+OpenVehicleRdr__8CMissionFv
 Play__12CSndSequenceFv
+Read__Q23zdb8CSubMeshFRQ23zar4CZAR
 Release_HTEX__Q23zdb8CTextureFv
 Release__Q23zdb7CVisualFv
 Reset__8CFlashFXFv
@@ -54,6 +58,8 @@ Sub__6CPnt3DCFPC6CPnt3DP6CPnt3D
 ToEuler__5CQuatCFP6CPnt3D
 ToMatrix__5CQuatCFP7CMatrix
 ToRightXZ__6CPnt3DCFP6CPnt3D
+UIJoinMPRoom__FP13C2DAnimCmdHdrPf
+Uninit__5CPipeFv
 UpdateCentroid__Q23zdb7CVisualFv
 __ct__10ActionItemFv
 __ct__11CMissionCamFv
@@ -192,7 +198,6 @@ func_002074F0
 func_00207530
 func_00207540
 func_00207560
-func_002079B0
 func_00208260
 func_00208B80
 func_00208B90
@@ -461,7 +466,6 @@ func_0027C750
 func_0027C7E0
 func_0027D1F0
 func_0027D250
-func_0027D270
 func_0027D7D0
 func_0027D8C0
 func_0027DC80
@@ -657,7 +661,6 @@ func_002B17C0
 func_002B18A0
 func_002B1A10
 func_002B3430
-func_002B3470
 func_002B3580
 func_002B3590
 func_002B3B60
@@ -986,8 +989,6 @@ func_00305F80
 func_00306620
 func_00306650
 func_00307700
-func_00307810
-func_003079C0
 func_00309280
 func_00309400
 func_00309550
@@ -1195,7 +1196,6 @@ func_0033BBC0
 func_0033BC30
 func_0033BC70
 func_0033BC80
-func_0033BCA0
 func_0033BCD0
 func_0033BD20
 func_0033C120
@@ -1308,7 +1308,6 @@ func_0034E410
 func_0034EA70
 func_0034F000
 func_0034F060
-func_0034F0E0
 func_0034F1E0
 func_0034F920
 func_0034F950
@@ -1667,7 +1666,6 @@ func_003B7CF0
 func_003B7FA0
 func_003B83B0
 func_003B8430
-func_003B8C20
 func_003B8CD0
 func_003B8F30
 func_003B9150
@@ -1915,7 +1913,6 @@ func_004C6160
 func_004CC810
 func_005088E0
 func_0050D810
-func_0050E540
 func_0050F120
 func_0050F150
 func_0050F770
@@ -2160,7 +2157,6 @@ func_00574BD0
 func_005750A0
 func_005750B0
 func_005750C0
-func_00575210
 func_00575950
 func_00575990
 func_00575AA0
@@ -2483,6 +2479,7 @@ func_00611E60
 func_0062D6D0
 func_0062EEB0
 func_00631EA0
+get_aiseq__6sealaiFUi
 huft_build
 inflate
 inflateEnd
@@ -2501,5 +2498,6 @@ inflate_trees_bits
 inflate_trees_dynamic
 inflate_trees_fixed
 uncompress
+zSysSleep__Fi
 zcalloc
 zcfree
