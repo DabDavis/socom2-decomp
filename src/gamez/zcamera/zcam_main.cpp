@@ -610,7 +610,7 @@ void CCamera::GetLandmarkFarPlane(CWorld *world)
 {
     float maxRadius = 0.0f;
 
-    for (CNodeVector::const_iterator it = world->GetLandmarks()->begin();
+    for (CNodeVector::iterator it = world->GetLandmarks()->begin();
          it != world->GetLandmarks()->end(); ++it) {
         float lmRadius = (*it)->GetRadiusSq();
 

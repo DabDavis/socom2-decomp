@@ -1448,16 +1448,16 @@
 0x001EA6D0 0x8 func_001EA6D0  # OVL1
 0x001EA6E0 0x38 func_001EA6E0  # OVL1
 0x001EA720 0xB8 func_001EA720  # OVL1
-0x001EA7E0 0x14 func_001EA7E0  # OVL1
-0x001EA800 0x18 func_001EA800  # OVL1
-0x001EA820 0x14 func_001EA820  # OVL1
-0x001EA840 0x8 func_001EA840  # OVL1
-0x001EA850 0x18 func_001EA850  # OVL1
-0x001EA870 0xC func_001EA870  # OVL1
+0x001EA7E0 0x14 __eq__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorCFRCQ33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iterator  # OVL1; CNodeVector's iterator ==, out of line where SetNodeEx's second self-inlined level stops inlining (our MSL reconstruction's name)
+0x001EA800 0x18 __ne__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorCFRCQ33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iterator  # OVL1; CNodeVector's iterator != (== inlined in it); SetNodeEx's third level calls it
+0x001EA820 0x14 __pp__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorFv  # OVL1; CNodeVector's iterator prefix ++ (the postfix's copy, SetNodeEx's second level)
+0x001EA840 0x8 __ml__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorCFv  # OVL1; CNodeVector's iterator * (the element's address)
+0x001EA850 0x18 end__Q23std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>Fv  # OVL1; CNodeVector's end() out of line, the hidden return written with data_ + size_
+0x001EA870 0xC begin__Q23std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>Fv  # OVL1; CNodeVector's begin() out of line
 0x001EA880 0x8 func_001EA880  # OVL1
-0x001EA890 0x14 func_001EA890  # OVL1; tu: ztex_manager.cpp~ (1.0 beta)
-0x001EA8B0 0xC func_001EA8B0  # OVL1
-0x001EA8C0 0x8 func_001EA8C0  # OVL1
+0x001EA890 0x14 end__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>Fv  # OVL1; tu: ztex_manager.cpp~ (1.0 beta); the pointer vectors' base's raw end(), as SOCOM 1's end__ of __vector_pod<Ui> word for word (func_00319C90's end() inlined one level calls it)
+0x001EA8B0 0xC __iter__Q23std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>FRCPUi  # OVL1; the pointer vector's iterator made from its base's raw pointer, taken by reference (a hidden return, this, the pointer's address); begin() and end() inlined one level call it -- the name is ours
+0x001EA8C0 0x8 begin__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>Fv  # OVL1; the pointer vectors' base's raw begin(), as SOCOM 1's begin__ of __vector_pod<Ui> word for word
 0x001EA8D0 0x198 func_001EA8D0  # OVL1
 0x001EAA70 0x8 func_001EAA70  # OVL1
 0x001EAA80 0x68 func_001EAA80  # OVL1
@@ -5424,8 +5424,8 @@
 0x00312F20 0x190 func_00312F20  # OVL1
 0x003130B0 0x190 func_003130B0  # OVL1
 0x00313240 0x208 func_00313240  # OVL1
-0x00313450 0x10 func_00313450  # OVL1; tu: char_type.cpp~ (1.0 beta)
-0x00313460 0x14 func_00313460  # OVL1
+0x00313450 0x10 __ct__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorFRCQ33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iterator  # OVL1; tu: char_type.cpp~ (1.0 beta); CNodeVector's iterator copy constructor (implicit; called where SetNodeEx's second level stops inlining)
+0x00313460 0x14 __pp__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorFi  # OVL1; CNodeVector's iterator postfix ++ (the copy, the prefix ++ and the copy out), SetNodeEx's third level
 0x00313480 0x10 func_00313480  # OVL1; tu: char_type.cpp~ (1.0 beta)
 0x00313490 0x8 func_00313490  # OVL1
 0x003134A0 0x1C func_003134A0  # OVL1
@@ -5478,7 +5478,7 @@
 0x00315860 0x4C UpdateGrid__Q23zdb5CNodeFv  # OVL1; s1:align
 0x003158B0 0x1C4 SetNodeEx__Q23zdb5CNodeFPQ23zdb7CNodeExb  # OVL1; s1:name (SOCOM 1's SetNodeEx; CZAnim::OnWeaponHitInit attaches an extension through it, CZAnimEx's destructor detaches)
 0x00315A80 0x10C FindChild__Q23zdb5CNodeFPQ23zdb5CNodeb  # OVL1; s1:align
-0x00315B90 0x164 func_00315B90  # OVL1
+0x00315B90 0x164 FindChild__Q23zdb5CNodeFPCciPib  # OVL1; vtable slot +0x2C between the two FindChild overloads; by name from an index, the index after the hit given back (name ours)
 0x00315D00 0x164 FindChild__Q23zdb5CNodeFPCcb  # OVL1; s1:align
 0x00315E70 0xC4 DeleteChild__Q23zdb5CNodeFPQ23zdb5CNode  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00315F40 0x170 AddChild__Q23zdb5CNodeFPQ23zdb5CNode  # OVL1; s1:align

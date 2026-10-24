@@ -277,9 +277,19 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
 - **A call in an argument list runs before the plain loads of the same call; a call made as a
   statement keeps a load written before it in place.** `GetName()` reads the index before
   fetching the set, so its set comes from a statement of its own (probe: build/scratch/probe).
-- **MW folds `begin == begin + n` into `n == 0` unless the iterator converts**: walks over a
-  vector hold a const_iterator made from begin(). A class iterator's `!=` (as `!(==)`)
-  materialises when it is the whole loop test and branches inside `&&`.
+- **A pointer vector's begin() is three levels deep, and the walks show it**: begin()/end()
+  convert the base's raw pointers through a member taking them by reference (include/vector).
+  The depth keeps a walk's first test (begin against begin + size) a compare -- under a
+  one-level begin() MW folded it into `n == 0`, and every walk held a const_iterator to stop it
+  (now plain iterators). An iterator *assigned* from begin() is a level deeper than one
+  *initialised* from it. A class iterator's `!=` (as `!(==)`) materialises when it is the whole
+  loop test and branches inside `&&`.
+- **MW's inline budget, measured** (build/scratch/inl, mwtest.py): a callee whose inline tree is
+  at most 4 high inlines whole, a taller one only its own body (its calls stay calls). A
+  function's height ignores calls made as arguments, but a call written as an argument of an
+  inline call at the top is checked a level deeper (`f1(w2(p))` inlines w2 one level where
+  `1 + w2(p)` inlines it whole). A recursive function inlines itself until the budget runs out
+  (CNode::SetNodeEx: twice) and the innermost copies call the vector's pieces out of line.
 - **Block order follows the early return**: `if (!archive) {...} else return 0; return 1;` and
   `if (a >= b && !Reserve()) return 0;` each put their return-0 block where the target has it.
 - **The same inline written two ways serves different callers**: `CZAnim::GetArgPnt3D` must be

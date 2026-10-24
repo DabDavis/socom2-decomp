@@ -12,13 +12,25 @@
  *
  * The iterators are classes, != being !(==): a walk whose whole test is the compare
  * materialises it (LoadZAR, CZAnimSet::Reset), one inside && branches on it
- * (GetDatabaseNode). The walks that hold a const_iterator made from begin() keep MW from
- * folding their first test (begin against begin + size) into a test of the size, which a copy
- * of begin() as an iterator does not. begin() reads the storage through data(), the reference
- * to the field (SOCOM 1 keeps out-of-line copies of it), and end() reads the field itself: the
- * reference leaves an address MW keeps, so a second walk after calls reloads its begin through
- * a register holding &data_ (CNode::FindChild by name, in SOCOM 1 and II alike), while end()'s
- * loads fold their offsets.
+ * (GetDatabaseNode).
+ *
+ * A vector of pointers makes its iterators out of its base's: begin() and end() are a member
+ * that takes __vector_pod's raw pointer by reference and returns the iterator (SOCOM II's
+ * 0x1EA8B0: a hidden return, `this`, the pointer's address -- the name __iter is ours), applied
+ * to __vector_pod's own begin() and end() (0x1EA8C0 and 0x1EA890, SOCOM 1's begin__/end__ of
+ * __vector_pod<Ui> word for word); the base's begin() reads through data(), the reference.
+ * CNode::SetNodeEx inlines itself twice and func_00319C90 itself once, and where MW stops
+ * inlining their copies call every piece of it out of line -- begin, end, ==, !=, *, both ++,
+ * and the iterator's implicit copy constructor (0x313450), which the postfix ++ (the copy, the
+ * prefix ++, the copy out: 0x313460) uses. What the depth does to the matched walks:
+ *   - a walk's first test (begin against begin + size) stays a compare: MW folded it into a
+ *     test of the size when begin() was one level, and every walk held a const_iterator to
+ *     stop it (GetLandmarkFarPlane, LoadZAR, CZAnimSet's, FindClones: plain iterators now);
+ *   - an iterator initialised from begin() inlines all of it, one assigned from begin() leaves
+ *     data() a call (the assignment is a level more): CNode::FindChild's second walks declare
+ *     an iterator of their own, and the by-name one keeps &data_ in a register for it;
+ *   - back() is the base's, cast (through end() it would be a level taller than
+ *     CZAR::GetOpenKey's inlining allows).
  *
  * The inline LEVELS are load-bearing (-inline level=4: a call whose callee's inline tree is at
  * most four high inlines all of it, a taller one only the callee's own body). Counted from the
@@ -78,8 +90,6 @@ public:
         destroy(data_, data_ + size_);
         size_ = 0;
     }
-    /* the reference begin() reads through, as __vector_pod's */
-    T *&data() { return data_; }
     /* the elements' destructors: nothing for a trivially destructible class -- SOCOM II's MSL
      * keeps no loop for CPnt3D, where SOCOM 1's kept an empty one -- but two inline levels all the
      * same (an empty inline function still counts as one) */
@@ -126,6 +136,10 @@ public:
     /* references to the fields (SOCOM 1 keeps out-of-line copies: data() is this + 8, cap() this) */
     T *&data() { return data_; }
     unsigned int &cap() { return capacity_; }
+    /* the raw iterators a vector of pointers makes its own from */
+    T *begin() { return data(); }
+    T *end() { return data_ + size_; }
+    T &back() { return *(end() - 1); }
     static unsigned int max_size() { return (unsigned int)-1 / sizeof(T); }
     static T *allocate(unsigned int n)
     {
@@ -157,7 +171,7 @@ public:                                                                         
         bool operator==(const iterator &o) const { return m_p == o.m_p; }                       \
         bool operator!=(const iterator &o) const { return !(*this == o); }                      \
         iterator &operator++() { ++m_p; return *this; }                                         \
-        iterator operator++(int) { iterator t = *this; ++m_p; return t; }                       \
+        iterator operator++(int) { iterator t(*this); ++*this; return t; }                      \
         iterator operator-(int n) const { return iterator(m_p - n); }                           \
         elem_t &operator*() const { return *m_p; }                                              \
                                                                                                 \
@@ -176,18 +190,18 @@ public:                                                                         
         const elem_t *m_p;                                                                      \
     };                                                                                          \
                                                                                                 \
-    iterator begin() { return iterator((elem_t *)this->data()); }                               \
-    iterator end() { return iterator((elem_t *)this->data_ + this->size_); }                    \
     unsigned int size() const { return this->size_; }                                           \
     unsigned int capacity() const { return this->capacity_; }                                   \
     bool empty() const { return this->size_ == 0; }                                             \
-    elem_t &back() { return *(end() - 1); }                                                     \
     elem_t &operator[](unsigned int n) { return ((elem_t *)this->data_)[n]; }                   \
     void pop_back() { this->size_--; }
 
 template <class T, class Allocator, bool IsPOD>
 class __vector_imp : public __vector_deleter<T, Allocator> {
     __MSL_VECTOR_ACCESS(T)
+    iterator begin() { return iterator(this->data_); }
+    iterator end() { return iterator(this->data_ + this->size_); }
+    T &back() { return *(end() - 1); }
     void clear() { __vector_deleter<T, Allocator>::clear(); }
     static unsigned int max_size() { return (unsigned int)-1 / sizeof(T); }
     T &at(unsigned int n);
@@ -198,7 +212,13 @@ class __vector_imp : public __vector_deleter<T, Allocator> {
 
 template <class T, class Allocator>
 class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, allocator<unsigned int> > {
+    typedef __vector_pod<unsigned int, allocator<unsigned int> > __base;
     __MSL_VECTOR_ACCESS(T *)
+    iterator __iter(unsigned int *const &p) { return iterator((elem_t *)p); }
+    iterator begin() { return __iter(__base::begin()); }
+    iterator end() { return __iter(__base::end()); }
+    /* the base's, cast: through end() it would be a level taller (CZAR::GetOpenKey inlines it) */
+    T *&back() { return (T *&)__base::back(); }
     void clear() { __vector_pod<unsigned int, allocator<unsigned int> >::clear(); }
     T *&at(unsigned int n)
     {

@@ -431,7 +431,7 @@ CZAnim *CZAnim::FindClones(CNode *root, CNode *node, CZAnim *last)
             last->Start();
         }
     }
-    for (zdb::CNodeVector::const_iterator it = node->m_child.begin(), end = node->m_child.end(); it != end; ++it)
+    for (zdb::CNodeVector::iterator it = node->m_child.begin(), end = node->m_child.end(); it != end; ++it)
         last = FindClones(root, *it, last);
     return last;
 }
@@ -450,7 +450,7 @@ void CZAnim::MakeClones()
             last = m_sibling_anim;
         zdb::CNodeVector &children = zdb::CWorld::m_world->m_child;
 
-        for (zdb::CNodeVector::const_iterator it = children.begin(), end = children.end(); it != end; ++it)
+        for (zdb::CNodeVector::iterator it = children.begin(), end = children.end(); it != end; ++it)
             last = FindClones(root, *it, last);
     }
 }

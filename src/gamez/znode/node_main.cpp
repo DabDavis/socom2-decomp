@@ -18,6 +18,9 @@ extern "C" bool func_00311E10(CNodeVector *v, CNode *node);
 extern "C" void func_00311CC0(CNodeVector *v, CNode *node);
 /* a node's visuals let go of (not named yet) */
 extern "C" void func_00313620(CNode *node, int a);
+/* the world told of a shadow-casting node: a new 0x70-byte object made from it, pushed on a list
+ * at 0x580 (new in SOCOM II, not named yet; CWorld::AddChild calls it too) */
+extern "C" void func_0031F500(CWorld *world, CNode *node);
 
 /* a position set: the translation, the grid told, the matrix marked changed */
 void CNode::SetPosition(float x, float y, float z)
@@ -85,8 +88,23 @@ void CNode::SetName(const char *name)
     m_name = name ? func_001801E0(name, 0, 0) : UNNAMED_NODE;
 }
 
+/* an extension attached to the node and, when told to, to every node below it. The recursion
+ * inlines itself twice, and the copies call the child vector's pieces out of line (begin, end,
+ * the iterator's ==, !=, *, ++ and copy) where MW's inline budget runs out -- the walk's ++ is
+ * the postfix one, its copy and the prefix ++ called in the second copy (include/vector) */
+void CNode::SetNodeEx(CNodeEx *ex, bool recurse)
+{
+    m_nodeEx = ex;
+    if (recurse) {
+        for (CNodeVector::iterator it = m_child.begin(); it != m_child.end(); it++)
+            (*it)->SetNodeEx(ex, recurse);
+    }
+}
+
 /* a child by name (its length first, then its text), among the children and then, when deep,
- * below each */
+ * below each. The second walk's iterator is its own, initialised from begin(): the address of
+ * the list's storage it reloads begin through is computed once, before the first walk (an
+ * iterator assigned from begin() leaves data() a call) */
 CNode *CNode::FindChild(const char *name, bool deep)
 {
     if (!name)
@@ -102,8 +120,8 @@ CNode *CNode::FindChild(const char *name, bool deep)
             found = child;
     }
     if (!found && deep) {
-        for (it = m_child.begin(); !found && it != m_child.end(); ++it)
-            found = (*it)->FindChild(name, deep);
+        for (CNodeVector::iterator i2 = m_child.begin(); !found && i2 != m_child.end(); ++i2)
+            found = (*i2)->FindChild(name, deep);
     }
     return found;
 }
@@ -122,10 +140,68 @@ CNode *CNode::FindChild(CNode *node, bool deep)
         if (*it == node)
             return *it;
     if (!found && deep) {
-        for (it = m_child.begin(); !found && it != m_child.end(); ++it)
-            found = (*it)->FindChild(node, deep);
+        for (CNodeVector::iterator i2 = m_child.begin(); !found && i2 != m_child.end(); ++i2)
+            found = (*i2)->FindChild(node, deep);
     }
     return found;
+}
+
+/* a child by name from the given index on (a negative one counting as 0), and where it stood: the
+ * index after it. Then, when deep, the same search below every child, all of them -- the walk
+ * does not stop at a hit, and what it returns is the last child's answer. */
+CNode *CNode::FindChild(const char *name, int start, int *index, bool deep)
+{
+    CNode *found = 0;
+
+    if (name) {
+        CNode *child;
+        unsigned int n = m_child.size();
+        unsigned int i = start > 0 ? start : 0;
+        size_t len = strlen(name);
+
+        for (; !found && i < n; i++) {
+            child = m_child[i];
+
+            if (strlen(child->m_name) == len && !strcmp(child->m_name, name)) {
+                found = child;
+                *index = i + 1;
+            }
+        }
+        if (!found && deep) {
+            for (i = 0; i < n; i++)
+                found = m_child[i]->FindChild(name, start, index, deep);
+        }
+    }
+    return found;
+}
+
+/* a child taken in: a shadow caster told to the world, a character's common flag copied into a
+ * cell, the child taken from its old parent and counted (not by a type-3 node), and put on the
+ * list -- which grows by a hundred at a time once past a thousand. A child with visuals marks
+ * the node as having them. */
+void CNode::AddChild(CNode *child)
+{
+    if (!child)
+        return;
+    if (child->m_shadow == 1)
+        func_0031F500(CWorld::m_world, child);
+    if (child->GetType() == 7 && GetType() == 3)
+        m_char_common = child->m_char_common != 0;
+    if (child->m_parent == this)
+        return;
+    if (m_type != 3) {
+        if (child->m_parent)
+            child->m_parent->DeleteChild(child);
+        child->m_parent = this;
+        child->m_count++;
+    }
+    int n = m_child.size();
+    if (n == m_child.capacity() && n > 1000)
+        m_child.reserve(n + 100);
+    m_child.push_back(child);
+    if (child->m_hasVisuals)
+        m_hasVisuals = 1;
+    m_socom2_a1 |= 2;
 }
 
 /* a child let go of: its reference given back (a type-3 node's children are not counted) and

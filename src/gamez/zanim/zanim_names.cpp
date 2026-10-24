@@ -101,8 +101,7 @@ void CZAnimNameIndexTable::Unload()
     m_count = 0;
 }
 
-/* the walk holds a const_iterator (zar.h: an iterator's copy of begin() lets MW fold the
- * first test), and AddName's own null test is the only one */
+/* AddName's own null test is the only one */
 int CZAnimNameTable::Load(zar::CZAR &archive)
 {
     int count;
@@ -114,7 +113,7 @@ int CZAnimNameTable::Load(zar::CZAR &archive)
         zar::CKey *table = root->FindKey("Name_Table");
 
         if (table) {
-            for (zar::CKeyRing::const_iterator it = table->begin(); it != table->end(); ++it) {
+            for (zar::CKeyRing::iterator it = table->begin(); it != table->end(); ++it) {
                 if (archive.OpenKey(*it)) {
                     AddName((*it)->m_name);
                     archive.CloseKey(*it);

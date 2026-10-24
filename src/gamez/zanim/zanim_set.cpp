@@ -150,7 +150,7 @@ void CZAnimSet::Reset()
     CZAnimSetSave *save = m_node_states;
 
     if (save)
-        for (CZAnimSetSave::const_iterator it = save->begin(); it != save->end(); ++it)
+        for (CZAnimSetSave::iterator it = save->begin(); it != save->end(); ++it)
             save->Reset(*it);
     if (m_AnimExList)
         m_AnimExList->Reset();
@@ -279,7 +279,7 @@ int CZAnimSet::Load(zar::CZAR &archive)
     zar::CKey *list = key->FindKey("Animation_List");
 
     if (list) {
-        for (zar::CKeyRing::const_iterator it = list->begin(); it != list->end(); ++it) {
+        for (zar::CKeyRing::iterator it = list->begin(); it != list->end(); ++it) {
             if (archive.OpenKey(*it)) {
                 NewAnim(0)->Load(archive);
                 archive.CloseKey(*it);
@@ -301,7 +301,7 @@ int CZAnimSet::LoadSIScript(zar::CZAR &archive)
     if (list) {
         int i = 0;
 
-        for (zar::CKeyRing::const_iterator it = list->begin(); it != list->end(); ++it) {
+        for (zar::CKeyRing::iterator it = list->begin(); it != list->end(); ++it) {
             if (archive.OpenKey(*it)) {
                 m_si_script = (_zanim_si_script *)_realloc(m_si_script, (m_si_script_count + 1) * sizeof(_zanim_si_script), 0, 0);
                 m_si_script_count++;
@@ -327,11 +327,11 @@ void CZAnimSetSave::Free()
 {
     m_parentList.clear();
     m_translationList.clear();
-    for (std::vector<_zanim_node_rotation *>::const_iterator it = m_rotationList.begin();
+    for (std::vector<_zanim_node_rotation *>::iterator it = m_rotationList.begin();
          it != m_rotationList.end(); ++it)
         delete *it;
     m_rotationList.clear();
-    for (const_iterator it = begin(); it != end(); ++it)
+    for (iterator it = begin(); it != end(); ++it)
         delete *it;
     clear();
 }

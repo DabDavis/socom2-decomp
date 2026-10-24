@@ -32,7 +32,7 @@ int CZAnimMain::LoadZAR(const char *name, const char *set_name)
             archive->GetOpenKey();
             zar::CKey *sets = archive->OpenKey("Anim_Sets");
 
-            for (zar::CKeyRing::const_iterator it = sets->begin(); it != sets->end(); ++it) {
+            for (zar::CKeyRing::iterator it = sets->begin(); it != sets->end(); ++it) {
                 if (archive->OpenKey(*it)) {
                     bool load = true;
 
@@ -83,7 +83,7 @@ int CZAnimMain::LoadZAR(CZAnimZAR *archive, const char *set_name)
         zar::CKey *sets = archive->OpenKey("Anim_Sets");
 
         if (sets) {
-            for (zar::CKeyRing::const_iterator it = sets->begin(); it != sets->end(); ++it) {
+            for (zar::CKeyRing::iterator it = sets->begin(); it != sets->end(); ++it) {
                 if (archive->OpenKey(*it)) {
                     bool load = true;
 

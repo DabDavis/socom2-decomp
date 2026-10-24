@@ -118,7 +118,9 @@ public:
     virtual void DeleteChildren();
     virtual CNode *FindChild(const char *name, bool deep);
     virtual CNode *FindChild(CNode *node, bool deep);   /* +0x28 */
-    virtual void func_00315B90();                       /* +0x2C: new in SOCOM II, unread */
+    /* +0x2C, new in SOCOM II: by name from an index on, the index after the hit given back (the
+     * name is ours: an overload, between the two SOCOM 1 had) */
+    virtual CNode *FindChild(const char *name, int start, int *index, bool deep);
     virtual bool IsCell();
     virtual void Read(CSaveLoad &io);
     virtual void SetActive(bool on);
@@ -160,6 +162,9 @@ public:
     {
         return *(const CPnt3D *)m_matrix.m_matrix[3];
     }
+    /* the type as a byte: AddChild and UpdateGrid test it with lbu where a test of the member
+     * itself loads the halfword (SOCOM 1's took a halfword of its int; the name is ours) */
+    unsigned char GetType() const { return m_type; }
     /* by value: CZAnimSetSave::Add pushes the parent through a temporary (allocated after its
      * named locals), where the member itself would be passed by address */
     CNode *GetParent() const { return m_parent; }
