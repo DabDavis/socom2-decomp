@@ -2938,7 +2938,7 @@
 0x0026BAB0 0x198 func_0026BAB0  # OVL1
 0x0026BC50 0x234 func_0026BC50  # OVL1
 0x0026BE90 0x7C GarbageCollect__9CZAnimSetFv  # OVL1; s1:align
-0x0026BF10 0x1E4 func_0026BF10  # OVL1
+0x0026BF10 0x1E4 Unload__9CZAnimSetFv  # OVL1; s1:callee by hand (CZAnimMain::Unload calls it where SOCOM 1's calls Unload__9CZAnimSetFv, its second call; and it follows GarbageCollect as SOCOM 1's does)
 0x0026C100 0x70 func_0026C100  # OVL1
 0x0026C170 0x60 func_0026C170  # OVL1
 0x0026C1D0 0x70 func_0026C1D0  # OVL1

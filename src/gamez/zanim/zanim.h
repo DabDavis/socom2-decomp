@@ -82,13 +82,7 @@ class CZAnimNameIndexTable {
 public:
     const char *GetName(CZAnimSet *set, int index);
     int Load(zar::CZAR &zar);
-    void Unload()
-    {
-        if (m_index)
-            func_00180280(m_index, 0, 0);
-        m_index = 0;
-        m_count = 0;
-    }
+    void Unload();
 
     unsigned short* m_index;   // 0x0
     int m_count;   // 0x4
@@ -177,6 +171,7 @@ class CZAnimSet {
 public:
     CZAnim *Anim(int index);
     int GetAnimIndex(CZAnim *anim);
+    int Unload();
 
     unsigned char _0[0x34];
 };
@@ -224,7 +219,7 @@ public:
     ZAnimNetworkPacket *GetNetworkPacket(int size);
     void FreeNetworkPacketBuffer();
     void Close();
-    void Unload();
+    int Unload();
     CZAnimSet *GetAnimSet(int index);
     bool GetAnimIndex(CZAnim *anim, int *set, int *index);
     bool SeqValid();
@@ -234,6 +229,7 @@ public:
     void ResumeSequence(const char *name);
     bool SequenceRunning(const char *name);
     void PauseSequence(const char *name);
+    int UnloadCmdSet(int index);
 
     /* the command the current sequence is on */
     _zanim_cmd_hdr *CmdHdr() { return m_CurSeq ? (_zanim_cmd_hdr *)m_CurSeq->cmd_pc : 0; }
@@ -272,6 +268,22 @@ public:
     int m_RunningAnimCount;   // 0x1bc
     int m_CurrentFrame;   // 0x1c0
 };   // 0x1c4 bytes
+
+/* a registered command (CZAnimMain::AddCmd): its name and four handlers, 0x14 bytes */
+struct zanim_cmd {
+    char *name;
+    void *parse;
+    void *begin;
+    void *tick;
+    void *end;
+};
+
+class _zanim_cmd_set {
+public:
+    char *name;   // 0x0
+    int count;   // 0x4
+    zanim_cmd *cmd_list;   // 0x8
+};
 
 class _zanim_call_anim_ref {
 public:

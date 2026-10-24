@@ -14,6 +14,54 @@ extern int data_00414D78;
 extern int data_00414DB8;
 extern "C" void func_0026C240(CZAnimSet *set, int x);
 
+int CZAnimMain::Unload()
+{
+    m_name_table.Unload();
+    if (m_animset_list) {
+        for (int i = 0; i < m_animset_count; i++)
+            if (i >= 0 && i < m_animset_count)
+                m_animset_list[i].Unload();
+        func_00180280(m_animset_list, 0, 0);
+        m_animset_list = 0;
+    }
+    m_animset_count = 0;
+    m_CurAnimSet = 0;
+    if (m_cmdset_list) {
+        for (int i = 0; i < m_cmdset_count; i++)
+            UnloadCmdSet(i);
+        func_00180280(m_cmdset_list, 0, 0);
+        m_cmdset_list = 0;
+    }
+    m_cmdset_count = 0;
+    m_CurAnim = 0;
+    m_CurSeq = 0;
+    return 1;
+}
+
+int CZAnimMain::UnloadCmdSet(int index)
+{
+    if (index < 0 || index >= m_cmdset_count)
+        return 0;
+    _zanim_cmd_set *set = &m_cmdset_list[index];
+
+    if (set->cmd_list) {
+        for (int i = 0; i < set->count; i++) {
+            zanim_cmd *cmd = &set->cmd_list[i];
+
+            if (cmd->name)
+                func_00180280(cmd->name, 0, 0);
+            cmd->name = 0;
+        }
+        func_00180280(set->cmd_list, 0, 0);
+        set->cmd_list = 0;
+        set->count = 0;
+    }
+    if (set->name)
+        func_00180280(set->name, 0, 0);
+    set->name = 0;
+    return 1;
+}
+
 void CZAnimMain::Close()
 {
     Unload();
@@ -255,30 +303,6 @@ bool CZAnimMain::SeqRunning()
     return r;
 }
 
-const char *CZAnimNameTable::GetName(int index)
-{
-    if (index >= 0 && index < m_count)
-        return m_name[index];
-    return 0;
-}
-
-extern "C" void func_00258570(zar::CZAR *zar);
-
-int CZAnimNameIndexTable::Load(zar::CZAR &zar)
-{
-    int count;
-
-    func_00258570(&zar);
-    zar.Fetch("Name_Index_Table_Count", &count, 4);
-    if (count > 0) {
-        Unload();
-        m_index = (unsigned short *)_realloc(m_index, count * 2, 0, 0);
-        zar.Fetch("Name_Index_Table", m_index, count * 2);
-        m_count = count;
-    }
-    return 1;
-}
-
 /* a direction in a node's frame turned into the world's, normalised */
 extern "C" void func_00269170(CPnt3D *dir, zdb::CNode *node)
 {
@@ -290,25 +314,6 @@ extern "C" void func_00269170(CPnt3D *dir, zdb::CNode *node)
     func_00308640(&m, &origin, 1);
     *dir = *dir - origin;
     dir->Normalize();
-}
-
-void CZAnimNameTable::Unload()
-{
-    if (m_name) {
-        for (int i = 0; i < m_count; i++)
-            if (m_name[i])
-                func_00180280(m_name[i], 0, 0);
-        func_00180280(m_name, 0, 0);
-    }
-    m_name = 0;
-    m_count = 0;
-}
-
-const char *CZAnimNameIndexTable::GetName(CZAnimSet *set, int index)
-{
-    if (index >= 0 && index < m_count)
-        return func_0026C8E0(set, m_index[index]);
-    return 0;
 }
 
 int CZAnimMain::UnloadSIScript(_zanim_si_script *script)
