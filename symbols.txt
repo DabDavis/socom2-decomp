@@ -2749,8 +2749,8 @@
 0x002599B0 0x7C func_002599B0  # OVL1
 0x00259A30 0xB8 func_00259A30  # OVL1
 0x00259AF0 0x4C func_00259AF0  # OVL1
-0x00259B40 0x4C func_00259B40  # OVL1
-0x00259B90 0x190 func_00259B90  # OVL1
+0x00259B40 0x4C __ct__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FRCQ23std38__vector_pod<Ui,Q23std13allocator<Ui>>  # OVL1 ; SOCOM 1 name (its copy of the pointer vectors' implementation, the same 0x4C: zeroed, then init over the other's elements)
+0x00259B90 0x190 init<PCUi>__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPCUiPCUiQ23std20forward_iterator_tag_v  # OVL1 ; SOCOM 1 name with MW 3.0's return type (_v); the copy calls it as SOCOM 1's does
 0x00259D20 0x1C0 func_00259D20  # OVL1
 0x00259EE0 0x11C func_00259EE0  # OVL1
 0x0025A000 0x11C func_0025A000  # OVL1

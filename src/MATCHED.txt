@@ -388,6 +388,8 @@
 0x00258720 CloseKey__Q23zar4CZARFPQ23zar4CKey
 0x00259230 func_00259230
 0x00259240 func_00259240
+0x00259B40 __ct__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FRCQ23std38__vector_pod<Ui,Q23std13allocator<Ui>>
+0x00259B90 init<PCUi>__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPCUiPCUiQ23std20forward_iterator_tag_v
 0x0025B2B0 func_0025B2B0
 0x0025B2E0 func_0025B2E0
 0x0025B2F0 func_0025B2F0
@@ -423,6 +425,7 @@
 0x0025E2D0 func_0025E2D0
 0x0025E360 func_0025E360
 0x0025E3D0 func_0025E3D0
+0x0025E3F0 func_0025E3F0
 0x0025E520 zAnimBreakTick__FP14_zanim_cmd_hdrPf
 0x0025E600 zAnimEndWhileTick__FP14_zanim_cmd_hdrPf
 0x0025E630 zAnimWhileTick__FP14_zanim_cmd_hdrPf

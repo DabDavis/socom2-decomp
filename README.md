@@ -258,7 +258,9 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   lower one: vector<CPnt3D>::reserve's copy loop matched only as `T *d = temp.data_; T *p =
   this->data_; T *last = p + this->size_;`. A loop whose end is re-read each pass (a member that
   a store might alias) is never unrolled; computed once into a local, MW unrolls it 8x (the
-  vector reserves' copies).
+  vector reserves' copies). Nor is a loop whose counter is a parameter: the pod vector's range
+  init walks a local copy of its `first` (`for (InputIterator p = first; ...)`), and only so is it
+  unrolled as the target's is.
 - **SOCOM 1's DWARF describes MSL's out-of-line template functions** -- 41 from `<vector>`,
   11 from `<list>`, 11 from `<algorithm>`, 18 from `msl_utility`, under `C:\apps\cw301\PS2
   Support\Msl\...` (CodeWarrior 3.01's headers): their signatures (a class iterator by value

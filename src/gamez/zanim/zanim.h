@@ -791,7 +791,8 @@ extern "C" int func_0026C240(CZAnimSet *set, CNode *node);
 extern "C" void func_002707C0(CZAnim *anim, bool now);
 
 /* SOCOM II's own: steps a FOR_CHILDREN loop to the next child of its node */
-extern "C" void func_0025E3F0(_zanim_cmd_hdr *cmd, CZAnim *anim);
+struct zanim_cmd_forchildren;
+extern "C" zdb::CNode *func_0025E3F0(zanim_cmd_forchildren *cmd, CZAnim *anim);
 
 /* SOCOM II's own CZAnimMain method (SOCOM 1's if/while had no nesting): moves the current
  * sequence's if-nesting level by `delta`, flags the anim when it leaves 0..255, returns it */

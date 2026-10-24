@@ -33,6 +33,7 @@
 #ifndef _MSL_VECTOR
 #define _MSL_VECTOR
 
+#include <iterator>
 #include <memory>
 #include <new>
 #include <stdio.h>
@@ -109,6 +110,7 @@ template <class T, class Allocator>
 class __vector_pod {
 public:
     __vector_pod() { capacity_ = 0; size_ = 0; data_ = 0; }
+    __vector_pod(const __vector_pod &x);
     ~__vector_pod()
     {
         if (data_)
@@ -129,6 +131,8 @@ public:
     void reserve(unsigned int n);
     void insert(T *position, unsigned int n, const T &x);
     T &at(unsigned int n);
+    template <class InputIterator>
+    void init(InputIterator first, InputIterator last, forward_iterator_tag);
     void push_back(const T &x) { insert(data_ + size_, 1, x); }
 protected:
     unsigned int capacity_;
@@ -207,6 +211,34 @@ T &__vector_pod<T, Allocator>::at(unsigned int n)
     if (n >= size_)
         __msl_error("vector::at index out of range");
     return data_[n];
+}
+
+/* the copy: the other's elements copied in, by the range init (SOCOM 1 links both, the copy at
+ * the same 0x4C as SOCOM II's 0x259B40; init's error and allocation now inline in it) */
+template <class T, class Allocator>
+__vector_pod<T, Allocator>::__vector_pod(const __vector_pod &x)
+{
+    capacity_ = 0;
+    size_ = 0;
+    data_ = 0;
+    init((const T *)x.data_, (const T *)x.data_ + x.size_, forward_iterator_tag());
+}
+
+template <class T, class Allocator>
+template <class InputIterator>
+void __vector_pod<T, Allocator>::init(InputIterator first, InputIterator last, forward_iterator_tag)
+{
+    size_ = cap() = last - first;
+    if (size_ > max_size())
+        __msl_error("vector length error\n");
+    if (size_) {
+        data() = allocate(size_);
+        T *d = data_;
+
+        /* a local walks the range: MW unrolls a loop 8x on a local, never on a parameter */
+        for (InputIterator p = first; p < last; ++p, ++d)
+            *d = *p;
+    }
 }
 
 /* reserve: the old elements copied into a fresh block -- word by word for the POD storage, by

@@ -1831,9 +1831,9 @@ bool zAnimFailTick(_zanim_cmd_hdr *hdr, float *dT)
  * next child and leaves past the matching end_for_children when there is none */
 struct zanim_cmd_forchildren {
     _zanim_cmd_hdr hdr;
-    unsigned char pad;
-    unsigned char node;
-    unsigned char pad2;
+    unsigned char parent;           /* the node whose children are walked */
+    unsigned char node;             /* the node reference that walks them */
+    unsigned char index;            /* the child it is on */
     unsigned char first : 1;
     unsigned short end;             /* past the matching END_FOR_CHILDREN */
 };
@@ -1845,12 +1845,41 @@ struct zanim_cmd_endfor {
     unsigned short target;
 };
 
+/* a pass's step: on from the child the reference holds (while it is still the parent's), to the
+ * next in a copy of the parent's children, into the reference -- 0 past the last */
+extern "C" CNode *func_0025E3F0(zanim_cmd_forchildren *cmd, CZAnim *anim)
+{
+    CNode *child;
+
+    if (cmd->first) {
+        cmd->index = 0;
+        cmd->first = 0;
+    } else {
+        CNode *parent = anim->GetNode(cmd->parent, false);
+        CNode *cur = anim->GetNodeRef(cmd->node)->node_ptr;
+
+        if (cur && parent->FindChild(cur, false))
+            cmd->index++;
+    }
+    child = 0;
+    CNode *parent = anim->GetNode(cmd->parent, false);
+
+    if (parent) {
+        zdb::CNodeVector children = parent->m_child;
+
+        if (cmd->index < children.size())
+            child = children.at(cmd->index);
+    }
+    anim->GetNodeRef(cmd->node)->node_ptr = child;
+    return child;
+}
+
 extern "C" bool func_0025E2D0(_zanim_cmd_hdr *hdr, float *dT)
 {
     ZAnim.CmdSet(((zanim_cmd_endfor *)hdr)->target);
     zanim_cmd_forchildren *cmd = (zanim_cmd_forchildren *)ZAnim.CmdHdr();
     CZAnim *anim = ZAnim.m_CurAnim;
-    func_0025E3F0(&cmd->hdr, anim);
+    func_0025E3F0(cmd, anim);
     if (!anim->GetNode(cmd->node, false))
         ZAnim.CmdSet(cmd->end);
     return true;
@@ -1861,7 +1890,7 @@ extern "C" bool func_0025E360(_zanim_cmd_hdr *hdr, float *dT)
     zanim_cmd_forchildren *cmd = (zanim_cmd_forchildren *)hdr;
     CZAnim *anim = ZAnim.m_CurAnim;
 
-    func_0025E3F0(hdr, anim);
+    func_0025E3F0(cmd, anim);
     if (!anim->GetNode(cmd->node, false))
         ZAnim.CmdSet(cmd->end);
     return true;
