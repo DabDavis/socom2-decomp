@@ -6352,7 +6352,7 @@
 0x0034E1D0 0x240 ClearFreeList__14CSched_ManagerFb  # OVL1; s1:callee
 0x0034E410 0x68 _task_cleanup__FP11CSched_Task  # OVL1; s1:ref (taken by address where SOCOM 1 takes _task_cleanup__FP11CSched_Task's)
 0x0034E480 0xD4 Clear__14CSched_ManagerFv  # OVL1; s1:callee
-0x0034E560 0x80 func_0034E560  # OVL1
+0x0034E560 0x80 RemoveTask__14CSched_ManagerFPvb  # OVL1; s1:callee by hand (CZAnim's flagged Stop removes the anim from its set's scheduler with it, false, where SOCOM 1's Stop calls RemoveTask)
 0x0034E5E0 0xC4 RemoveTask__14CSched_ManagerFPCcb  # OVL1; s1:align
 0x0034E6B0 0x1B0 AddTask__14CSched_ManagerFPCcPFfPv_bfPv  # OVL1; s1:align
 0x0034E860 0x5C func_0034E860  # OVL1

@@ -194,7 +194,12 @@ public:
 /* a set of anims (one ZAR's): SOCOM II's is 0x34 bytes, SOCOM 1's 0x30 */
 class CZAnimExVector;
 class CZAnimSetSave;
-class CSched_Manager;
+
+/* the anims' task scheduler (SOCOM 1's names; only what is called) */
+class CSched_Manager {
+public:
+    bool RemoveTask(void *task, bool all);
+};
 
 /* a named set of anims (SOCOM 1's DWARF; SOCOM II added the gravity at 0x1C) */
 class CZAnimSet {
@@ -217,6 +222,7 @@ public:
     int Start();
     bool Reserve(int count);
     CZAnim *NewAnim(const char *name);
+    CSched_Manager *TaskScheduler();
 
     unsigned char m_WasStarted;   // 0x0
     unsigned char m_IsStarted;   // 0x1
@@ -424,8 +430,6 @@ namespace Particle {
 class Source {
 public:
     ~Source();
-    /* our name: neither emitting nor fading out (CZAnim::Running; out of line at 0x270BC0) */
-    bool Done() { return !(m_active || m_shuttingoff); }
 
     unsigned char m_active;   // 0x0
     unsigned char _1[0x12C - 0x1];   // 0x1: m_goodPos .. m_particleEx, grown by 4
@@ -486,8 +490,8 @@ extern CZAnimMain ZAnim;
 
 /* CZAnim::Resume and Pause, which SOCOM II gave a second parameter (passed 0 here, never
  * narrowed: not a bool) -- their mangled names wait on its type */
-extern "C" void func_002709B0(CZAnim *anim, int arg);
-extern "C" void func_00270BE0(CZAnim *anim, int arg);
+extern "C" bool func_002709B0(CZAnim *anim, int arg);
+extern "C" bool func_00270BE0(CZAnim *anim, int arg);
 
 /* SOCOM II's: the wildcard search's state dropped (anim_main.cpp; Close and Open inline it) */
 extern "C" void func_002684D0();
