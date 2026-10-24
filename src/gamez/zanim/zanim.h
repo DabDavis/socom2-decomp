@@ -217,7 +217,7 @@ public:
     void CmdNext();
     bool CmdValid();
     CZAnim *GetAnim(int set, int anim);
-    int StateRunning(int state);
+    bool StateRunning(int state);
     bool SeqRunning();
     int CloseZAR(CZAnimZAR *zar);
     int UnloadSIScript(_zanim_si_script *script);
@@ -227,6 +227,13 @@ public:
     void Unload();
     CZAnimSet *GetAnimSet(int index);
     bool GetAnimIndex(CZAnim *anim, int *set, int *index);
+    bool SeqValid();
+    void SeqNext();
+    void SeqFirst();
+    bool SequenceExists(const char *name);
+    void ResumeSequence(const char *name);
+    bool SequenceRunning(const char *name);
+    void PauseSequence(const char *name);
 
     /* the command the current sequence is on */
     _zanim_cmd_hdr *CmdHdr() { return m_CurSeq ? (_zanim_cmd_hdr *)m_CurSeq->cmd_pc : 0; }

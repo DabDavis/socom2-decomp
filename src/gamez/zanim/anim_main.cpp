@@ -2,6 +2,8 @@
  * loaded ZARs (OVL1 0x2678F0-...). The unit name is SOCOM 1's (the press beta's asserts name it
  * for CmdValid and its neighbours). Defined in reverse of their image order (-inline deferred). */
 
+#include <string.h>
+
 #include "zanim.h"
 
 extern "C" void func_00258CE0(CZAnimZAR *zar);
@@ -36,6 +38,121 @@ extern "C" float func_0026B0D0(CZAnimMain *main, float x)
     else if (i < 0)
         i = 0;
     return main->m_inv_exp[i];
+}
+
+void CZAnimMain::ActivateSequence(const char *name)
+{
+    if (name) {
+        _zsequence *save = m_CurSeq;
+
+        for (SeqFirst(); SeqValid(); SeqNext()) {
+            if (!strcmp(m_CurAnim->GetName(m_CurSeq->name_index), name) && !StateRunning(m_CurSeq->state)) {
+                SeqSetState(2);
+                m_anim_complete = 0;
+                break;
+            }
+        }
+        m_CurSeq = save;
+    }
+}
+
+void CZAnimMain::StopSequence(const char *name)
+{
+    if (name) {
+        _zsequence *save = m_CurSeq;
+
+        for (SeqFirst(); SeqValid(); SeqNext()) {
+            if (!strcmp(m_CurAnim->GetName(m_CurSeq->name_index), name)) {
+                m_CurSeq->paused = false;
+                if (StateRunning(m_CurSeq->state)) {
+                    SeqSetState(5);
+                    break;
+                }
+            }
+        }
+        m_CurSeq = save;
+    }
+}
+
+void CZAnimMain::PauseSequence(const char *name)
+{
+    if (name) {
+        _zsequence *save = m_CurSeq;
+
+        for (SeqFirst(); SeqValid(); SeqNext()) {
+            if (!strcmp(m_CurAnim->GetName(m_CurSeq->name_index), name) && StateRunning(m_CurSeq->state)) {
+                m_CurSeq->paused = true;
+                break;
+            }
+        }
+        m_CurSeq = save;
+    }
+}
+
+void CZAnimMain::ResumeSequence(const char *name)
+{
+    if (name) {
+        _zsequence *save = m_CurSeq;
+
+        for (SeqFirst(); SeqValid(); SeqNext()) {
+            if (!strcmp(m_CurAnim->GetName(m_CurSeq->name_index), name)) {
+                m_CurSeq->paused = false;
+                break;
+            }
+        }
+        m_CurSeq = save;
+    }
+}
+
+/* OPEN, 8 bytes long: the target enters the loop through a jump to its test and leaves with a
+ * break, where `for`/`while` with a break (SequenceExists' shape, which matches) duplicate the
+ * test at the top, and `!found` in the condition (this, the closest) tests found each pass. */
+bool CZAnimMain::SequenceRunning(const char *name)
+{
+    bool found = false;
+    _zsequence *save = m_CurSeq;
+
+    if (!name)
+        return false;
+    for (SeqFirst(); !found && SeqValid(); SeqNext()) {
+        if (!strcmp(m_CurAnim->GetName(m_CurSeq->name_index), name) && StateRunning(m_CurSeq->state))
+            found = true;
+    }
+    m_CurSeq = save;
+    return found;
+}
+
+bool CZAnimMain::SequenceExists(const char *name)
+{
+    bool found = false;
+    _zsequence *save = m_CurSeq;
+
+    if (!name)
+        return false;
+    for (SeqFirst(); SeqValid(); SeqNext()) {
+        if (!strcmp(m_CurAnim->GetName(m_CurSeq->name_index), name)) {
+            found = true;
+            break;
+        }
+    }
+    m_CurSeq = save;
+    return found;
+}
+
+/* the current anim's sequences, walked with m_CurSeq itself */
+void CZAnimMain::SeqFirst()
+{
+    m_CurSeq = (_zsequence *)m_CurAnim->m_seq_data;
+}
+
+void CZAnimMain::SeqNext()
+{
+    m_CurSeq = (_zsequence *)((char *)m_CurSeq + m_CurSeq->seq_data_size);
+}
+
+bool CZAnimMain::SeqValid()
+{
+    return (char *)m_CurSeq < m_CurAnim->m_seq_data + m_CurAnim->m_seq_data_size;
 }
 
 void CZAnimMain::SeqSetState(int state)
@@ -108,16 +225,17 @@ CZAnim *CZAnimMain::GetAnim(int set, int anim)
     return s ? s->Anim(anim) : 0;
 }
 
-/* (int, where SeqRunning's is a bool: `li` against `daddiu`) */
-int CZAnimMain::StateRunning(int state)
+/* (a bool: out of line its `return true` is li, inlined -- SequenceRunning, PauseSequence --
+ * it is assigned, daddiu) */
+bool CZAnimMain::StateRunning(int state)
 {
     switch (state) {
     case 2:
     case 4:
     case 3:
-        return 1;
+        return true;
     }
-    return 0;
+    return false;
 }
 
 bool CZAnimMain::SeqRunning()

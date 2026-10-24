@@ -2905,9 +2905,9 @@
 0x00269B00 0x1B8 ActivateSequence__10CZAnimMainFPCc  # OVL1; s1:align
 0x00269CC0 0x48 SeqRunning__10CZAnimMainFv  # OVL1; s1:align
 0x00269D10 0x40 StateRunning__10CZAnimMainFi  # OVL1; s1:align
-0x00269D50 0x1C func_00269D50  # OVL1; tu: anim_main.cpp~ (1.0 beta)
+0x00269D50 0x1C SeqValid__10CZAnimMainFv  # OVL1; tu: anim_main.cpp~ (1.0 beta); s1:order (SOCOM 1's SeqValid, SeqNext, SeqFirst stand in this order with these sizes, 0x1C/0x14/0x10)
 0x00269D70 0x14 SeqNext__10CZAnimMainFv  # OVL1; tu: anim_main.cpp~ (1.0 beta); s1:exact
-0x00269D90 0x10 func_00269D90  # OVL1; tu: anim_main.cpp~ (1.0 beta)
+0x00269D90 0x10 SeqFirst__10CZAnimMainFv  # OVL1; tu: anim_main.cpp~ (1.0 beta); s1:order (as SeqValid: the third of the three)
 0x00269DA0 0x29C SeqTick__10CZAnimMainFf  # OVL1; s1:align
 0x0026A040 0xB8 SeqSetState__10CZAnimMainFi  # OVL1; s1:align
 0x0026A100 0x68 GetAnimSet__10CZAnimMainFPCc  # OVL1; s1:align
