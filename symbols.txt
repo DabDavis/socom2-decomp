@@ -5504,7 +5504,7 @@
 0x00317950 0x138 func_00317950  # OVL1
 0x00317A90 0x5C CreateXRef__Q23zdb5CNodeFv  # OVL1; s1:calls
 0x00317AF0 0x124 CreateXRef__Q23zdb5CNodeFPQ23zdb6CModelPC6CPnt3DPC5CQuat  # OVL1; s1:calls
-0x00317C20 0x164 func_00317C20  # OVL1
+0x00317C20 0x164 CreateInstance__Q23zdb5CNodeFPCcPC6CPnt3DPC5CQuat  # OVL1; s1:order (SOCOM 1's CreateInstance by name sits between CreateXRef and CreateInstance by model, as here; the model's found through CWorld::GetModel and the other inlined)
 0x00317D90 0x12C CreateInstance__Q23zdb5CNodeFPQ23zdb6CModelPC6CPnt3DPC5CQuat  # OVL1; s1:order by hand (after CreateXRef in both; CreateInstanceNode calls it for an anim that copies its instance where SOCOM 1's calls CreateInstance)
 0x00317EC0 0x24 GetFirstVisual__Q23zdb5CNodeFv  # OVL1; s1:align
 0x00317EF0 0x74 GetSubMesh__Q23zdb5CNodeFv  # OVL1; s1:align

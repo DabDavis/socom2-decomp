@@ -290,6 +290,10 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   inline call at the top is checked a level deeper (`f1(w2(p))` inlines w2 one level where
   `1 + w2(p)` inlines it whole). A recursive function inlines itself until the budget runs out
   (CNode::SetNodeEx: twice) and the innermost copies call the vector's pieces out of line.
+  That fallback is for functions declared `inline`: a function MW takes under `-inline auto`
+  (one defined in the unit) is inlined whole or not at all -- CNode::CreateInstance(name)
+  inlines CreateInstance(model) only once the pointer list's push_back is short enough to keep
+  the whole tree four high.
   An assignment's right side nests a level too (`first = find(...)`): MSL's std::find tests
   `==`, not `!=` (which calls `==`), or the inlined std::remove in CNodeVector::Remove could not
   inline it whole. Measure with probes before theorising: three models of this died in one

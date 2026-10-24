@@ -67,6 +67,20 @@ CNode *CNode::CreateInstance(CModel *model, const CPnt3D *pos, const CQuat *rot)
     return node;
 }
 
+/* an instance of a model the world has by name: the instance code inlined -- its whole tree four
+ * high, so the list's push_back makes the end iterator itself (include/list); found, then passed,
+ * the model (passed straight from GetModel's call, the inlined body schedules otherwise) */
+CNode *CNode::CreateInstance(const char *name, const CPnt3D *pos, const CQuat *rot)
+{
+    if (!name)
+        return 0;
+    if (!CWorld::m_world)
+        return 0;
+    CModel *model = (CModel *)CWorld::GetModel(name);
+
+    return CreateInstance(model, pos, rot);
+}
+
 /* a cross-reference to a model: a new type-3 node named "XRef", placed and turned as asked, with the
  * model its child; one of the common character set's also gets the 4 flag and a bump map */
 CNode *CNode::CreateXRef(CModel *model, const CPnt3D *pos, const CQuat *rot)

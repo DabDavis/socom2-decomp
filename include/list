@@ -111,9 +111,13 @@ class list<T *, Allocator> : public __list_imp<const void *, allocator<const voi
 
 public:
     /* the reference passed on as the base's, no temporary (the pointer stays where it is), to
-     * the base's insert at the end: a level shorter than through the base's push_back, which
-     * CModel::AddInstance's inlining needs */
-    void push_back(T *const &x) { base::insert(base::end(), (const void *const &)x); }
+     * the base's insert, the end iterator made here: two levels shorter than through the base's
+     * push_back and end(), which CNode::CreateInstance's auto-inlining needs (an auto-inline
+     * callee more than four high is not inlined at all -- no one-level fallback) */
+    void push_back(T *const &x)
+    {
+        base::insert(typename base::iterator(&this->end_), (const void *const &)x);
+    }
 };
 
 }

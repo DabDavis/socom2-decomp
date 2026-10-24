@@ -177,6 +177,7 @@ public:
     float GetRadiusSq();
     static CNode *CreateXRef(CModel *model, const CPnt3D *pos, const CQuat *rot);
     static CNode *CreateInstance(CModel *model, const CPnt3D *pos, const CQuat *rot);
+    static CNode *CreateInstance(const char *name, const CPnt3D *pos, const CQuat *rot);
     void TransformToWorld(CPnt3D &p) const;
     void BuildMTW(CMatrix &m);
     void SetMatrix(const CMatrix *m);
