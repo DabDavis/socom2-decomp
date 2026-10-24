@@ -3541,10 +3541,10 @@
 0x00290890 0x158 func_00290890  # OVL1
 0x002909F0 0xA4 func_002909F0  # OVL1
 0x00290AA0 0x6C func_00290AA0  # OVL1
-0x00290B10 0xC func_00290B10  # OVL1
-0x00290B20 0xC func_00290B20  # OVL1
-0x00290B30 0x48 func_00290B30  # OVL1
-0x00290B80 0x48 func_00290B80  # OVL1
+0x00290B10 0xC GetCameraCanSeeRegion__Q23zdb7CCameraFv  # OVL1; by order (SOCOM II's, before SOCOM 1's GetPlayerCanSeeRegion: the camera's mask | 1 -- the name ours, by its twin)
+0x00290B20 0xC GetPlayerCanSeeRegion__Q23zdb7CCameraFv  # OVL1; s1:order (SOCOM 1's zcam_main.cpp order, before PlayerCanSeeRegion; the player's mask | 1)
+0x00290B30 0x48 PlayerCanSeeRegion__Q23zdb7CCameraFUi  # OVL1; s1:order (SOCOM 1's zcam_main.cpp order; the player's mask tested, region 0 as 1)
+0x00290B80 0x48 CanSeeRegion__Q23zdb7CCameraFUi  # OVL1; s1:order (SOCOM 1's zcam_main.cpp order; the combined mask tested)
 0x00290BD0 0x28 SetPlayerCanSeeRegions__Q23zdb7CCameraFUi  # OVL1; s1:exact
 0x00290C00 0x28 SetCameraCanSeeRegions__Q23zdb7CCameraFUi  # OVL1; s1:exact
 0x00290C30 0xDC TestFOV__Q23zdb7CCameraFP5PNT4DPUib  # OVL1; s1:align
@@ -3578,8 +3578,8 @@
 0x00293F90 0xD4 func_00293F90  # OVL1
 0x00294070 0x854 func_00294070  # OVL1
 0x002948D0 0x158 func_002948D0  # OVL1
-0x00294A30 0x90 func_00294A30  # OVL1
-0x00294AC0 0x74 func_00294AC0  # OVL1
+0x00294A30 0x90 _OutsideGuardBand__FPfPfPA4_fPA4_fi  # OVL1; s1:name (SOCOM 1's fov.cpp, the same VU0 code; CCamera::TestFOV calls it on the guard band)
+0x00294AC0 0x74 sceVu0ClipBBox__FPA4_fP5PNT4D  # OVL1; s1:name (SOCOM 1's fov.cpp, the same VU0 code; CCamera::TestFOV's clip word)
 0x00294B40 0x3FC func_00294B40  # OVL1
 0x00294F40 0x318 func_00294F40  # OVL1
 0x00295260 0x3B0 func_00295260  # OVL1

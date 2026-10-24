@@ -234,6 +234,12 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   this->data_; T *last = p + this->size_;`. A loop whose end is re-read each pass (a member that
   a store might alias) is never unrolled; computed once into a local, MW unrolls it 8x (the
   vector reserves' copies).
+- **SOCOM 1's DWARF describes MSL's out-of-line template functions** -- 41 from `<vector>`,
+  11 from `<list>`, 11 from `<algorithm>`, 18 from `msl_utility`, under `C:\apps\cw301\PS2
+  Support\Msl\...` (CodeWarrior 3.01's headers): their signatures (a class iterator by value
+  shows as a reference -- MW passes it by address when its copy constructor is user-declared),
+  their registers and their header line numbers (`dwarf1.py func`). The shapes include/list
+  copies come from there.
 - **An inline function's string literal is MW's `@STRING@<function>` pool**, not local-bound so
   every unit emitting the function can share it; scdiff compares it by content as it does an
   anonymous literal (MSL's "Memory allocation failure" in the inlined allocate).
