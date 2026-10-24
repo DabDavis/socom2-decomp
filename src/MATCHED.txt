@@ -534,6 +534,12 @@
 0x0026D2F0 func_0026D2F0
 0x0026D300 __dt__Q23std52__vector_deleter<6CPnt3D,Q23std18allocator<6CPnt3D>>Fv
 0x0026D870 ExecuteSpecialSequence__6CZAnimFi
+0x0026E4C0 GetCallAnimRef__6CZAnimFi
+0x0026E650 GetCallAnimRef__6CZAnimFii
+0x0026E7C0 GetSoundRef__6CZAnimFi
+0x0026E900 GetTexture__6CZAnimFi
+0x0026EA20 GetParticleSource__6CZAnimFi
+0x0026EB30 GetValve__6CZAnimFi
 0x0026EC60 AddValve__6CZAnimFPCc
 0x0026ECB0 AddName__6CZAnimFPCc
 0x0026ED00 func_0026ED00

@@ -6418,7 +6418,7 @@
 0x00351EE0 0x8 func_00351EE0  # OVL1
 0x00351EF0 0xC0 GetByName__6CValveFPCc  # OVL1; s1:align
 0x00351FB0 0x34 Destroy__6CValveFP6CValve  # OVL1; s1:exact
-0x00351FF0 0xD8 func_00351FF0  # OVL1
+0x00351FF0 0xD8 Create__6CValveFPCc10VALVE_TYPE  # OVL1; s1:callee by hand (CZAnim::GetValve creates the valve by name with type 2 where SOCOM 1's calls CValve::Create)
 0x003520D0 0x154 func_003520D0  # OVL1
 0x00352230 0x18C Acquire__10CValvePoolFPCc10VALVE_TYPE  # OVL1; s1:calls
 0x003523C0 0x60 func_003523C0  # OVL1

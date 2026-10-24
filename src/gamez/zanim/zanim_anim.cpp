@@ -10,6 +10,8 @@
  * definition reproduces that (the pragma state at the callee decides). The original's means is
  * unknown -- debug code compiled to nothing would count against -inline auto the same way. */
 
+#include <string.h>
+
 #include "zanim.h"
 
 extern "C" CZAnim *func_00270BB0(CZAnim *anim);
@@ -438,6 +440,169 @@ void CZAnim::StopLights(bool force)
 void CZAnim::Priority(float priority)
 {
     m_priority = priority;
+}
+
+/* SOCOM 1's Particle::Source::Create and CWorld::GetTexHandle, both matched in units of their
+ * own under their addresses' names */
+extern "C" Particle::Source *func_0032B120();
+extern "C" CTexHandle *func_001EC940(const char *name);
+
+/* a new call reference's anim looked up: none when there is no such anim (name ours; inline
+ * in both GetCallAnimRefs -- its early return is their jump to the end) */
+inline _zanim_call_anim_ref *CZAnim::ResolveCallAnim(_zanim_call_anim_ref *ref, int name_index)
+{
+    if (ref && !ref->base_anim) {
+        ref->base_anim = ZAnim.GetAnim(GetName(name_index), 0);
+        if (!ref->base_anim)
+            return 0;
+    }
+    return ref;
+}
+
+/* the anim called by a name's index and its local name's, the reference made when missing */
+_zanim_call_anim_ref *CZAnim::GetCallAnimRef(int name_index, int local_index)
+{
+    _zanim_call_anim_ref *ref = 0;
+
+    for (int i = 0; i < m_call_anim_ref_count; i++)
+        if (name_index == m_call_anim_ref_list[i].name_index && local_index == m_call_anim_ref_list[i].local_name_index)
+            ref = &m_call_anim_ref_list[i];
+    if (!ref) {
+        m_call_anim_ref_list = (_zanim_call_anim_ref *)_realloc(m_call_anim_ref_list, (m_call_anim_ref_count + 1) * sizeof(_zanim_call_anim_ref), 0, 0);
+        ref = &m_call_anim_ref_list[m_call_anim_ref_count];
+        memset(ref, 0, sizeof(_zanim_call_anim_ref));
+        ref->name_index = name_index;
+        ref->local_name_index = local_index;
+        m_call_anim_ref_count++;
+        ref = ResolveCallAnim(ref, name_index);
+    }
+    return ref;
+}
+
+/* the anim called by a name's index (the last reference by local name, else by name); a new
+ * reference gets its anim looked up, and is none when there is no such anim */
+_zanim_call_anim_ref *CZAnim::GetCallAnimRef(int name_index)
+{
+    _zanim_call_anim_ref *ref = 0;
+
+    for (int i = 0; i < m_call_anim_ref_count; i++)
+        if (name_index == m_call_anim_ref_list[i].local_name_index)
+            ref = &m_call_anim_ref_list[i];
+    if (!ref)
+        for (int i = 0; i < m_call_anim_ref_count; i++)
+            if (name_index == m_call_anim_ref_list[i].name_index)
+                ref = &m_call_anim_ref_list[i];
+    if (!ref) {
+        m_call_anim_ref_list = (_zanim_call_anim_ref *)_realloc(m_call_anim_ref_list, (m_call_anim_ref_count + 1) * sizeof(_zanim_call_anim_ref), 0, 0);
+        ref = &m_call_anim_ref_list[m_call_anim_ref_count];
+        memset(ref, 0, sizeof(_zanim_call_anim_ref));
+        ref->name_index = name_index;
+        ref->local_name_index = 0;
+        m_call_anim_ref_count++;
+        ref = ResolveCallAnim(ref, name_index);
+    }
+    return ref;
+}
+
+/* the sound by its name's index (the last reference to it), the reference made -- with its
+ * handle -- when missing; none when the sound is not found */
+_zanim_sound *CZAnim::GetSoundRef(int name_index)
+{
+    _zanim_sound *ref = 0;
+
+    for (int i = 0; i < m_sound_ref_count; i++)
+        if (name_index == m_sound_ref_list[i].name_index)
+            ref = &m_sound_ref_list[i];
+    if (!ref) {
+        m_sound_ref_list = (_zanim_sound *)_realloc(m_sound_ref_list, (m_sound_ref_count + 1) * sizeof(_zanim_sound), 0, 0);
+        ref = &m_sound_ref_list[m_sound_ref_count];
+        memset(ref, 0, sizeof(_zanim_sound));
+        ref->fade = -0.1f;
+        ref->name_index = name_index;
+        ref->sound_handle = CSnd::GetSoundByName(GetName(name_index));
+        m_sound_ref_count++;
+    }
+    if (ref && ref->sound_handle)
+        return ref;
+    return 0;
+}
+
+/* the particle source by its name's index, made with its reference when missing */
+Particle::Source *CZAnim::GetParticleSource(int name_index)
+{
+    _zanim_particle *ref = 0;
+    Particle::Source *source = 0;
+
+    for (int i = 0; i < m_particle_count; i++) {
+        if (name_index == m_particle_list[i].name_index) {
+            ref = &m_particle_list[i];
+            break;
+        }
+    }
+    if (!ref) {
+        m_particle_list = (_zanim_particle *)_realloc(m_particle_list, (m_particle_count + 1) * sizeof(_zanim_particle), 0, 0);
+        ref = &m_particle_list[m_particle_count];
+        memset(ref, 0, sizeof(_zanim_particle));
+        ref->name_index = name_index;
+        ref->particle = 0;
+        m_particle_count++;
+    }
+    if (ref) {
+        if (!ref->particle)
+            ref->particle = func_0032B120();
+        source = ref->particle;
+    }
+    return source;
+}
+
+/* the texture by its name's index (the last reference to it), its handle found on first use */
+CTexHandle *CZAnim::GetTexture(int name_index)
+{
+    _zanim_tex_ref *ref = 0;
+
+    for (int i = 0; i < m_tex_ref_count; i++)
+        if (name_index == m_tex_ref_list[i].name_index)
+            ref = &m_tex_ref_list[i];
+    if (!ref) {
+        m_tex_ref_list = (_zanim_tex_ref *)_realloc(m_tex_ref_list, (m_tex_ref_count + 1) * sizeof(_zanim_tex_ref), 0, 0);
+        ref = &m_tex_ref_list[m_tex_ref_count];
+        memset(ref, 0, sizeof(_zanim_tex_ref));
+        ref->name_index = name_index;
+        ref->texh = 0;
+        m_tex_ref_count++;
+    }
+    if (ref && !ref->texh)
+        ref->texh = func_001EC940(GetName(name_index));
+    return ref->texh;
+}
+
+/* the valve by its name's index: its reference made when it has none, the valve created on
+ * first use */
+CValve *CZAnim::GetValve(int name_index)
+{
+    _zanim_valve_ref *ref = 0;
+    CValve *valve = 0;
+
+    for (int i = 0; i < m_valve_ref_count; i++) {
+        if (name_index == m_valve_ref_list[i].name_index) {
+            ref = &m_valve_ref_list[i];
+            break;
+        }
+    }
+    if (!ref) {
+        m_valve_ref_list = (_zanim_valve_ref *)_realloc(m_valve_ref_list, (m_valve_ref_count + 1) * sizeof(_zanim_valve_ref), 0, 0);
+        ref = &m_valve_ref_list[m_valve_ref_count];
+        memset(ref, 0, sizeof(_zanim_valve_ref));
+        ref->name_index = name_index;
+        ref->valve = 0;
+        m_valve_ref_count++;
+    }
+    if (ref) {
+        if (!ref->valve)
+            ref->valve = CValve::Create(GetName(ref->name_index), (VALVE_TYPE)2);
+        valve = ref->valve;
+    }
+    return valve;
 }
 
 /* SOCOM II's: a name run through the wildcard expansion (0x268520) first */

@@ -12,7 +12,10 @@
 using zdb::CNode;
 
 class CZAnim;
+class CTexHandle;
+class CValve;
 class CZAnimEx;
+namespace Particle { class Source; }
 class CZAnimHealth;
 class CZAnimSet;
 class ZAnimNetworkPacket;
@@ -111,6 +114,11 @@ public:
     int AddName(const char *name);
     _zanim_call_anim_ref *GetCallAnimRef(int index);
     _zanim_call_anim_ref *GetCallAnimRef(int index, int local);
+    _zanim_call_anim_ref *ResolveCallAnim(_zanim_call_anim_ref *ref, int name_index);
+    CValve *GetValve(int name_index);
+    Particle::Source *GetParticleSource(int name_index);
+    CTexHandle *GetTexture(int name_index);
+    _zanim_sound *GetSoundRef(int name_index);
     bool Running();
     void State(int state);
     int GarbageCollect();
@@ -462,12 +470,40 @@ public:
     CNode* node_ptr;   // 0x4
 };   // 0x8 bytes
 
-class CValve;
+enum VALVE_TYPE {};   // its values are not in SOCOM 1's DWARF, only its name in CValve::Create's
+
+class CValve {
+public:
+    static CValve *Create(const char *name, VALVE_TYPE type);
+};
 
 class _zanim_valve_ref {
 public:
     int name_index;   // 0x0
     CValve* valve;   // 0x4
+};   // 0x8 bytes
+
+class CSnd {
+public:
+    static CSnd *GetSoundByName(const char *name);
+};
+
+class CSndInstance;
+
+/* SOCOM II's sound reference: SOCOM 1's with a fade time at 4 (GetSoundRef starts it at -0.1) */
+class _zanim_sound {
+public:
+    short name_index;   // 0x0
+    short stop_on_exit;   // 0x2
+    float fade;   // 0x4: SOCOM II's (name ours)
+    CSnd* sound_handle;   // 0x8
+    CSndInstance* sound_instance;   // 0xc
+};   // 0x10 bytes (SOCOM 1's 0xc)
+
+class _zanim_tex_ref {
+public:
+    int name_index;   // 0x0
+    CTexHandle* texh;   // 0x4
 };   // 0x8 bytes
 
 class _zanim_particle {
