@@ -2057,12 +2057,12 @@
 0x00228EE0 0x54C PlayCamera__16CZHudMissionCamsFP11CMissionCamb  # OVL1; s1:callee
 0x00229430 0x40 PlayCamera__16CZHudMissionCamsFPCc  # OVL1; s1:exact
 0x00229470 0xAC Draw__16CZHudMissionCamsFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00229520 0x2F0 func_00229520  # OVL1
-0x00229810 0x1E0 func_00229810  # OVL1
-0x002299F0 0x7C func_002299F0  # OVL1
-0x00229A70 0x104 func_00229A70  # OVL1
+0x00229520 0x2F0 CleanupCamera__16CZHudMissionCamsFP4CPad  # OVL1; s1:order (hud_missioncams.cpp's order; HudTick calls it when the camera's animation stops, as SOCOM 1's)
+0x00229810 0x1E0 HudTick__16CZHudMissionCamsFP4CPadf  # OVL1; s1:order (hud_missioncams.cpp's order; it calls CleanupCamera)
+0x002299F0 0x7C UnInit__16CZHudMissionCamsFv  # OVL1; s1:exact by hand (hud_missioncams.cpp)
+0x00229A70 0x104 Init__16CZHudMissionCamsFv  # OVL1; s1:exact by hand (hud_missioncams.cpp)
 0x00229B80 0xA0 __dt__16CZHudMissionCamsFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00229C20 0x78 func_00229C20  # OVL1
+0x00229C20 0x78 __ct__16CZHudMissionCamsFv  # OVL1; s1:exact by hand (hud_missioncams.cpp)
 0x00229CA0 0x60 func_00229CA0  # OVL1
 0x00229D00 0x590 func_00229D00  # OVL1
 0x0022A290 0x614 func_0022A290  # OVL1
@@ -6690,7 +6690,7 @@
 0x00363DB0 0x98 __dt__9C2DStringFv  # OVL1; s1:align
 0x00363E50 0xC func_00363E50  # OVL1
 0x00363E60 0xC func_00363E60  # OVL1
-0x00363E70 0xF0 func_00363E70  # OVL1
+0x00363E70 0xF0 __ct__9C2DStringFv  # OVL1; s1:callee (it calls C2D's constructor and stores __vt__9C2DString; CZHudMissionCams constructs its strings with it)
 0x00363F60 0x210 func_00363F60  # OVL1
 0x00364170 0x78 func_00364170  # OVL1
 0x003641F0 0xD8 GetAssetLibs__9C2DBitmapFRQ23C2D8CLibList  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -6723,7 +6723,7 @@
 0x00364EE0 0x4C func_00364EE0  # OVL1
 0x00364F30 0x124 func_00364F30  # OVL1
 0x00365060 0x98 __dt__3C2DFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00365100 0xFC func_00365100  # OVL1
+0x00365100 0xFC __ct__3C2DFv  # OVL1; s1:callee (every C2D constructor's first call; it constructs the list and stores __vt__3C2D)
 0x00365200 0xC TakeDrawPacket__23CDblBufTextureRelocatorFP1Ui  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00365210 0x1AC PreGetSprPacket__23CDblBufTextureRelocatorFPQ23zdb10CTexHandle  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003653C0 0xE0 func_003653C0  # OVL1

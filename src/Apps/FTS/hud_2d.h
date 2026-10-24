@@ -14,6 +14,8 @@
 #ifndef HUD_2D_H
 #define HUD_2D_H
 
+#include <list>
+
 #include "../../gamez/zmath/zmath.h"
 
 namespace zdb {
@@ -28,16 +30,18 @@ class C2DAnimCmdHdr;
 struct _zrdr;
 struct _zanim_cmd_hdr;
 
-/* SOCOM 1's DWARF: `class C2Dlist : public list` (0xC bytes); its contents are C2D's business */
-class C2Dlist {
-public:
-    unsigned char _list[0xc];
+class C2D;
+
+/* SOCOM 1's DWARF: `class C2Dlist : public list` (0xC bytes) -- a pointer list (CZHudMissionCams::
+ * Init pushes its strings through __list_deleter<PCv>'s insert, 0x1FEAE0) */
+class C2Dlist : public std::list<C2D *> {
 };
 
 class C2D : public C2Dlist {
 public:
     class CLibList;
 
+    C2D();
     virtual ~C2D();
     virtual void Draw(zdb::CCamera *cam);
     virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
@@ -78,6 +82,38 @@ public:
     unsigned int m_active_and_handling_input : 1;
     unsigned int m_unused : 24;
 };   // 0x18 bytes
+
+class C2DFont;
+
+/* a text string: 0x98 bytes in SOCOM II (an array's stride; SOCOM 1's 0x88), its vtable 34 slots
+ * (0x406DF0): C2D's 26, then SOCOM 1's eight with one new after SetString and the scaled Load
+ * gone -- slot 29 now takes a scale and a float position and calls slot 30 with them as ints.
+ * The parameter lists of 26, 27, 29 and 30 and the names of 26 and 27 are ours (slot 26 takes a
+ * string and a flag that sends it through a lookup; 27 an int). SetPos stores two floats at
+ * 0x90. Its members past C2D are not placed yet */
+class C2DString : public C2D {
+public:
+    C2DString();
+    virtual ~C2DString();
+    virtual void Draw(zdb::CCamera *cam);
+    virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
+    virtual void Off();
+    virtual void On();
+    virtual void SetTrans(float trans);
+    virtual void Tick(float dT);
+    virtual void SetString(const char *s, bool translate);
+    virtual void SetStringLength(int len);
+    virtual void Format(const char *fmt, ...);
+    virtual void Load(float scale, const char *s, C2DFont *font, float x, float y, int flags);
+    virtual void Load(const char *s, C2DFont *font, int x, int y, int flags);
+    virtual void Load(const char *s, C2DFont *font, int x, int y, int w, int h);
+    virtual float GetSpacing();
+    virtual void ClearAndWipe();
+
+    void SetPos(int x, int y);
+
+    unsigned char _18[0x98 - 0x18];
+};   // 0x98 bytes
 
 class C2DFade {
 public:
