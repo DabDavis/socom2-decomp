@@ -150,6 +150,7 @@ public:
     }
     void reserve(unsigned int n);
     void insert(T *position, unsigned int n, const T &x);
+    T *erase(T *first, T *last);
     T &at(unsigned int n);
     template <class InputIterator>
     void init(InputIterator first, InputIterator last, forward_iterator_tag);
@@ -219,6 +220,10 @@ class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, all
     iterator end() { return __iter(__base::end()); }
     /* the base's, cast: through end() it would be a level taller (CZAR::GetOpenKey inlines it) */
     T *&back() { return (T *&)__base::back(); }
+    iterator erase(iterator first, iterator last)
+    {
+        return __iter(__base::erase((unsigned int *)first.m_p, (unsigned int *)last.m_p));
+    }
     void clear() { __vector_pod<unsigned int, allocator<unsigned int> >::clear(); }
     T *&at(unsigned int n)
     {
@@ -242,6 +247,26 @@ T &__vector_pod<T, Allocator>::at(unsigned int n)
 
 /* the copy: the other's elements copied in, by the range init (SOCOM 1 links both, the copy at
  * the same 0x4C as SOCOM II's 0x259B40; init's error and allocation now inline in it) */
+/* the tail moved down over the range (SOCOM 1's erase__ of __vector_pod<Ui>, line for line; MW
+ * 3.0 unrolls the copy 8x, its walker a local). The source walker is declared first and the
+ * destination initialised first: their registers and their moves' order each follow one */
+template <class T, class Allocator>
+T *__vector_pod<T, Allocator>::erase(T *first, T *last)
+{
+    if (first == last)
+        return first;
+    T *e = data_ + size_;
+
+    if (e - last) {
+        T *s, *d = first;
+
+        for (s = last; s < e; ++s, ++d)
+            *d = *s;
+    }
+    size_ -= last - first;
+    return first;
+}
+
 template <class T, class Allocator>
 __vector_pod<T, Allocator>::__vector_pod(const __vector_pod &x)
 {

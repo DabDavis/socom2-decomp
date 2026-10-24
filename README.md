@@ -290,6 +290,17 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   inline call at the top is checked a level deeper (`f1(w2(p))` inlines w2 one level where
   `1 + w2(p)` inlines it whole). A recursive function inlines itself until the budget runs out
   (CNode::SetNodeEx: twice) and the innermost copies call the vector's pieces out of line.
+  An assignment's right side nests a level too (`first = find(...)`): MSL's std::find tests
+  `==`, not `!=` (which calls `==`), or the inlined std::remove in CNodeVector::Remove could not
+  inline it whole. Measure with probes before theorising: three models of this died in one
+  sitting.
+- **A bool that only an inline function explains**: CModelVector::GetModel's predicate
+  materialises `!strcasecmp(...)` (sltu, xori) and then branches on it -- what a call to an
+  inline `bool` function compiles to, where the test written in the `if` branches on the call's
+  result and a bool local adds an `andi 0xff` (CNodeNamed has that one: SOCOM 1's too).
+- **A local the found iterator lives in**: `iterator it = std::find(...); return it != end();`
+  schedules the temporaries' stores with their copies; `return std::find(...) != end();` does
+  not (the four Exists).
 - **Block order follows the early return**: `if (!archive) {...} else return 0; return 1;` and
   `if (a >= b && !Reserve()) return 0;` each put their return-0 block where the target has it.
 - **The same inline written two ways serves different callers**: `CZAnim::GetArgPnt3D` must be
@@ -489,6 +500,15 @@ follows without MW's 16-byte padding (131 drafts had every byte right).
   and at() match from include/vector; insert does not yet (the pod one 8 bytes short:
   build/scratch/ins/BEST-pod-insert-0x418.txt -- the target reloads the capacity in the growth
   path, where every form tried keeps it).
+- **zdb::CNode (`node_main.cpp`) and the typed lists (`node_vector.cpp`, the name ours).** CNode:
+  25 written, all byte-exact -- the FindChild trio, AddChild, SetNodeEx, DeleteChild(ren), the
+  atoms, the radius, SetName and the small accessors. Unwritten: the destructor and constructor,
+  _Copy, InitNodeParams, AddVisual and SetParentHasVisuals, Read, CreateXRef/CreateInstance,
+  ComputeFacadeMatrix, BuildMTW, and the CLight/CLightMap code in between. The lists: CNodeVector
+  (Remove, Exists, GetNode), the DI/visual/light map Exists, CModelVector::GetModel, CNodeUniverse's
+  four, all byte-exact but Remove (std::remove inlined: two copies MW keeps there and drops
+  here; diagnosed in its source). MSL's std::find/find_if/remove/remove_copy and the pod erase
+  are in include/.
 - **`CZWeaponList::GetWeapon` (`0x3C4B40`)** -- 2 instructions from exact with an `int`
   parameter, but SOCOM 1's mangled name says `EQUIP_ITEM`, and every enum-typed variant sinks
   the zero-extension into the loop preheader.

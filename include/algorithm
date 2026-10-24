@@ -15,6 +15,37 @@ inline Function for_each(InputIterator first, InputIterator last, Function f)
     return f;
 }
 
+template <class InputIterator, class T>
+inline InputIterator find(InputIterator first, InputIterator last, const T &value)
+{
+    while (!(first == last) && !(*first == value))
+        ++first;
+    return first;
+}
+
+/* out of line wherever it is used (CNodeVector::Remove calls 0x312480): the iterators by value,
+ * homed on the stack */
+template <class InputIterator, class OutputIterator, class T>
+OutputIterator remove_copy(InputIterator first, InputIterator last, OutputIterator result, const T &value)
+{
+    for (; first != last; ++first)
+        if (!(*first == value)) {
+            *result = *first;
+            ++result;
+        }
+    return result;
+}
+
+template <class ForwardIterator, class T>
+inline ForwardIterator remove(ForwardIterator first, ForwardIterator last, const T &value)
+{
+    first = find(first, last, value);
+    if (first == last)
+        return first;
+    ForwardIterator i = first;
+    return remove_copy(++i, last, first, value);
+}
+
 template <class InputIterator, class Predicate>
 inline InputIterator find_if(InputIterator first, InputIterator last, Predicate pred)
 {

@@ -73,10 +73,17 @@ struct _opaque_vector_c { unsigned char _[0xc]; };   // vector (a template insta
 
 class CNodeVector : public std::vector<CNode *> {
 public:
+    bool Remove(const CNode *node);
+    bool Exists(const CNode *node);
     CNode *GetNode(const char *name);
 };   // 0xc bytes
 
-class CDIVector : public _opaque_vector_c {
+class CDI;
+
+class CDIVector : public std::vector<CDI *> {
+public:
+    bool Exists(const CDI *di);
+
 public:
     unsigned char m_bStopAtFirstIntersection : 1;   // 0xc
     unsigned char m_bReturnBackFaceIntersections : 1;   // 0xc
@@ -102,6 +109,17 @@ public:
 
 class CVisualVector : public std::vector<CVisual *> {
 public:
+    bool Exists(const CVisual *visual);
+};   // 0xc bytes
+
+class CModelVector : public std::vector<CModel *> {
+public:
+    CModel *GetModel(const char *name);
+};   // 0xc bytes
+
+class CLightMapVector : public std::vector<CLightMap *> {
+public:
+    bool Exists(const CLightMap *light);
 };   // 0xc bytes
 
 class CSaveLoad;
@@ -264,7 +282,18 @@ public:
     CNodeVector *GetLandmarks() { return &m_landmarks; }
 };
 
-extern CNodeVector *NodeUniverse;
+/* every node by index (SOCOM 1's DWARF: a CNodeVector and a lock byte) */
+class CNodeUniverse : public CNodeVector {
+public:
+    CNode *GetElement(int i);
+    int GetIndex(CNode *node);
+    void RemoveNode(CNode *node);
+    bool AddNode(CNode *node);
+
+    unsigned char m_locked;   // 0xc
+};   // 0x10 bytes
+
+extern CNodeUniverse *NodeUniverse;
 
 
 }

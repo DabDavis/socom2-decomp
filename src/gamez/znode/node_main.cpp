@@ -13,9 +13,6 @@ extern char *UNNAMED_NODE;
 
 namespace zdb {
 
-/* the child list's search and removal (CNodeVector's, not named yet) */
-extern "C" bool func_00311E10(CNodeVector *v, CNode *node);
-extern "C" void func_00311CC0(CNodeVector *v, CNode *node);
 /* a node's visuals let go of (not named yet) */
 extern "C" void func_00313620(CNode *node, int a);
 /* the world told of a shadow-casting node: a new 0x70-byte object made from it, pushed on a list
@@ -210,15 +207,15 @@ int CNode::DeleteChild(CNode *child)
 {
     int count = child->m_count;
 
-    if (func_00311E10(&m_child, child)) {
+    if (m_child.Exists(child)) {
         func_00313620(child, 0);
         if (m_type == 3) {
-            func_00311CC0(&m_child, child);
+            m_child.Remove(child);
             m_socom2_a1 |= 2;
             count = -1;
         } else {
             count = child->Release();
-            func_00311CC0(&m_child, child);
+            m_child.Remove(child);
             child->m_parent = 0;
             m_socom2_a1 |= 2;
         }

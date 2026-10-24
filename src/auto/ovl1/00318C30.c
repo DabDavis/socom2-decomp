@@ -6,8 +6,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_00312120(s32);                         /* extern */
+M2C_UNK GetModel__Q23zdb12CModelVectorFPCc(s32);    /* extern */
 
 void func_00318C30(s32 arg0) {
-    func_00312120(arg0 + 8);
+    GetModel__Q23zdb12CModelVectorFPCc(arg0 + 8);
 }
