@@ -77,6 +77,28 @@ int CNode::Release()
     return m_count;
 }
 
+/* a visual taken on, once: counted, listed, the node marked changed; a transparent one makes the
+ * node transparent, a mesh (type 1) gives it a mesh, and it and its parents have visuals now.
+ * The transparency test is a bitwise & of the two flag tests, both computed (SOCOM 1's too) */
+bool CNode::AddVisual(CVisual *visual)
+{
+    bool added = false;
+
+    if (visual && !m_visual.Exists(visual)) {
+        visual->m_refs++;
+        added = true;
+        m_visual.Add(visual);
+        m_socom2_a1 |= 2;
+        if ((visual->m_flags & 1) & ((visual->m_flags & 0x100) == 0))
+            m_transparent = 1;
+        if (visual->m_type == 1)
+            m_hasMesh = 1;
+        m_hasVisuals = 1;
+        SetParentHasVisuals();
+    }
+    return added;
+}
+
 /* the node's name, its own copy (or the shared default when given none); a name of its own freed */
 void CNode::SetName(const char *name)
 {

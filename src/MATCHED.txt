@@ -1556,6 +1556,7 @@
 0x00315F40 AddChild__Q23zdb5CNodeFPQ23zdb5CNode
 0x003160B0 ReserveChildren__Q23zdb5CNodeFi
 0x003160C0 RemoveFromParent__Q23zdb5CNodeFv
+0x003164E0 AddVisual__Q23zdb5CNodeFPQ23zdb7CVisual
 0x00316600 ReserveVisuals__Q23zdb5CNodeFi
 0x003167F0 Release__Q23zdb5CNodeFv
 0x003177A0 func_003177A0

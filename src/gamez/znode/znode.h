@@ -90,12 +90,16 @@ public:
     unsigned char m_padding : 6;   // 0xc
 };   // 0x10 bytes
 
-/* a node's visual: only what CNode's code reads -- a type at 4 (2 a sub-mesh), and the vtable
- * pointer at 0x20 (GetSubMesh's dynamic_cast), after members not placed yet */
+/* a node's visual: only what CNode's code reads -- a flag word (AddVisual: bit 0 without bit 8
+ * makes the node transparent), a type at 4 (1 a mesh, 2 a sub-mesh), a reference count at
+ * 0x18, and the vtable pointer at 0x20 (GetSubMesh's dynamic_cast). Not in SOCOM 1's DWARF: the
+ * names are ours */
 struct tag_VISUAL_HEAD {
-    unsigned char _0[4];
+    unsigned int m_flags;   // 0x0: tested by mask, the whole word loaded (AddVisual)
     signed char m_type;   // 0x4
-    unsigned char _5[0x20 - 5];
+    unsigned char _5[0x18 - 5];
+    int m_refs;   // 0x18
+    unsigned char _1c[0x20 - 0x1c];
 };
 
 class CVisual : public tag_VISUAL_HEAD {
@@ -110,6 +114,9 @@ public:
 class CVisualVector : public std::vector<CVisual *> {
 public:
     bool Exists(const CVisual *visual);
+    /* a visual pushed, taken by value: AddVisual's target keeps its parameter in a register and
+     * pushes this copy of it, where push_back on the parameter would spill it (the name ours) */
+    void Add(CVisual *visual) { push_back(visual); }
 };   // 0xc bytes
 
 class CModelVector : public std::vector<CModel *> {
@@ -156,6 +163,8 @@ public:
     void ShrinkAtomBasePtrs();
     void AllocateAtomBasePtrs(int x, int z);
     void SetNodeEx(CNodeEx *ex, bool b);
+    bool AddVisual(CVisual *visual);
+    void SetParentHasVisuals();
     float GetRadius();
     float GetRadiusSq();
     static CNode *CreateXRef(CModel *model, const CPnt3D *pos, const CQuat *rot);

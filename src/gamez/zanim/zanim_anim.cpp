@@ -174,7 +174,14 @@ struct CZAnimArgFind {
  * OPEN, as the destructor below: the target keeps the found iterator (and the destructor's walk)
  * in a stack slot, copied bitwise out of a temporary, where <list>'s iterators here stay in
  * registers -- every shape tried (const_iterator, assignment, a pointer-list wrapper, a
- * destructor, free comparisons) either keeps that or stops the inlining */
+ * destructor, free comparisons) either keeps that or stops the inlining. Known since: the copy
+ * is the bitwise one of a trivially copied iterator out of a returned temporary (find_if's
+ * return slot here, begin()'s in the destructor), which MW elided in every probe
+ * (build/scratch/inl/t8.cpp: a wrapper over a raw node built from the base's by value or by
+ * reference, derived from or holding the base's, begin() converting implicitly or not, no
+ * begin() of its own, a const_iterator, an assigned iterator); a destructor on the iterator
+ * keeps the temporary but stops begin() inlining. erase takes its iterators by address in
+ * SOCOM 1 too (the base iterator's copy is user-declared, const_iterator's implicit). */
 CPnt3D *CZAnimArgList::GetPnt3D(CZAnimArg::TYPE type)
 {
     iterator it = std::find_if(begin(), end(), CZAnimArgFind(type, 0));
