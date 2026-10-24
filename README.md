@@ -208,6 +208,10 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   definition only (probe: build/scratch/probe/q.cpp). Calls that do not inline are unit-boundary
   evidence: LoadZAR calls GetAnimSet(int), which anim_main.cpp inlines, so the ZAR loaders are a
   unit of their own (zanim_zar.cpp).
+- **SOCOM 1's DWARF never says `bool`: MW's DWARF 1 writes it as `unsigned char`** (none of its
+  77,784 members is bool; `std::basic_string::makeUnique` mangles a `b` its DWARF calls
+  `unsigned char copy`). A DWARF `unsigned char` may be a bool: CZAnimMain::m_anim_complete is,
+  by CZAnim::Tick returning it unconverted as the scheduler callback's bool.
 - **A call in an argument list runs before the plain loads of the same call; a call made as a
   statement keeps a load written before it in place.** `GetName()` reads the index before
   fetching the set, so its set comes from a statement of its own (probe: build/scratch/probe).
