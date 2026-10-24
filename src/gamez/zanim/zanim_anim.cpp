@@ -349,6 +349,31 @@ extern "C" void func_002707C0(CZAnim *anim, bool now)
     ZAnim.m_CurSeq = seq;
 }
 
+/* SOCOM II's: the anim's instance node, not named */
+extern "C" void func_0026EE70(CZAnim *anim);
+
+/* SOCOM II's: a node made the anim's root -- the pointers cleared, an instance node deleted,
+ * the nodes looked up again; none without a node or a root reference */
+extern "C" int func_00270460(CZAnim *anim, CNode *node)
+{
+    if (!node || !anim->m_root_node_index)
+        return 0;
+    for (int i = 0; i < anim->m_node_ref_count; i++) {
+        if (i == anim->m_root_node_index && anim->m_clone_anim)
+            continue;
+        if (!anim->m_node_ref_list[i].created_here)
+            anim->m_node_ref_list[i].node_ptr = 0;
+    }
+    if (anim->m_instance_node) {
+        delete anim->m_instance_node;
+        anim->m_instance_node = 0;
+    }
+    anim->m_node_ref_list[anim->m_root_node_index].node_ptr = node;
+    anim->GetNodes();
+    func_0026EE70(anim);
+    return 1;
+}
+
 /* CZAnim::GetRootNode, which SOCOM II gave a flag: look the root node up when it is not
  * known yet (its one caller passes 0; the type waits on another) */
 extern "C" CNode *func_002703D0(CZAnim *anim, int find)
@@ -513,6 +538,12 @@ int CZAnim::LoadNodeNames(_zrdr *rdr, const char *name, int parent, int search)
         parent = FindNodeRef(path->Item(i)->String(), parent, search);
     }
     return parent;
+}
+
+/* SOCOM II's: a ZRDR path's node reference, searched as the current anim searches */
+extern "C" int func_0026E2D0(CZAnim *anim, _zrdr *rdr)
+{
+    return anim->LoadNodeNames(rdr, 0, 0, ZAnim.m_CurAnim->node_search_scope);
 }
 
 /* a node reference appended, its index returned: entry 0 is made first, empty; none when the
