@@ -56,23 +56,256 @@ def attempt(addr: int):
     tmp.mkdir(parents=True, exist_ok=True)
     (tmp / "f.s").write_text(asm)
     worst = "m2c"
+    first = {}
     for triple in TRIPLES:
-        r = subprocess.run([sys.executable, str(M.M2C), "-t", triple, "--valid-syntax", str(tmp / "f.s")],
-                           capture_output=True, text=True)
-        if r.returncode != 0 or "M2C_ERROR" in r.stdout:
+        out = run_m2c(triple, tmp / "f.s")
+        if out is None:
             continue
-        # m2c leans on GNU C's arithmetic on void *, which MW rejects; char * means the same
-        # byte offsets and compiles to the same code
-        body = fill_params(re.sub(r"\bvoid(\s*\*)", r"char\1", r.stdout), sym.name)
-        for variant in variants(body):
-            src = PRELUDE + variant
-            hit = try_one(tmp, src, sym, real, addr, img, st)
-            if hit == "hit":
-                if real != sym.name:
-                    src = f"/* sc: as={sym.name} {real} */\n" + src
-                return addr, "hit", src
-            worst = hit if worst in ("m2c", "build") else worst
+        first[triple] = out
+        hit, src = try_draft(tmp, out, sym, real, addr, img, st)
+        if hit == "hit":
+            return addr, "hit", src
+        worst = hit if worst in ("m2c", "build") else worst
+    # again, told the callees' prototypes (tools/sigs.py): m2c cannot see an argument passed
+    # straight through in its register, nor one the caller loads that the callee ignores
+    for triple, out in first.items():
+        decls = prototypes(out, img, st)
+        if not decls:
+            continue
+        (tmp / "ctx.h").write_text(TYPES + decls)
+        out2 = run_m2c(triple, tmp / "f.s", tmp / "ctx.h")
+        if out2 is None:
+            continue
+        hit, src = try_draft(tmp, decls + out2, sym, real, addr, img, st)
+        if hit == "hit":
+            return addr, "hit", src
+        worst = hit if worst in ("m2c", "build") else worst
     return addr, worst, None
+
+
+def run_m2c(triple: str, asm: Path, ctx: Path | None = None) -> str | None:
+    cmd = [sys.executable, str(M.M2C), "-t", triple, "--valid-syntax", str(asm)]
+    if ctx is not None:
+        cmd += ["--context", str(ctx)]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if r.returncode != 0 or "M2C_ERROR" in r.stdout:
+        return None
+    return r.stdout
+
+
+def try_draft(tmp: Path, out: str, sym, real: str, addr: int, img, st) -> tuple[str, str | None]:
+    # m2c leans on GNU C's arithmetic on void *, which MW rejects; char * means the same
+    # byte offsets and compiles to the same code
+    body = fill_params(re.sub(r"\bvoid(\s*\*)", r"char\1", out), sym.name)
+    worst = "build"
+    for variant in variants(body):
+        src = PRELUDE + variant
+        hit = try_one(tmp, src, sym, real, addr, img, st)
+        if hit == "hit":
+            if real != sym.name:
+                src = f"/* sc: as={sym.name} {real} */\n" + src
+            return "hit", src
+        worst = hit if worst == "build" else worst
+    # as C++: its member calls made as member calls, its virtual calls as virtual calls
+    cpp = cxx_draft(body, sym.name, img, st)
+    if cpp is not None:
+        hit = try_one(tmp, cpp, sym, real, addr, img, st, suffix=".cpp")
+        if hit == "hit":
+            cpp = "/* sc: c++ */\n" + cpp          # (emit's marker; sccheck reads `as=` in the first 3 lines)
+            if real != sym.name:
+                cpp = f"/* sc: as={sym.name} {real} */\n" + cpp
+            return "hit", cpp
+        worst = hit if worst == "build" else worst
+    return worst, None
+
+
+def cxx_draft(body: str, own: str, img, st) -> str | None:
+    """The draft as C++ (tools/cxx.py): each call of a mangled, non-static member function
+    rewritten as a member call on a class declared to mangle back to that name, each m2c
+    virtual call (a function pointer two loads from the object) made on a declared class
+    with the vtable pointer at that offset. None when there is nothing to rewrite."""
+    global _live
+    import cxx
+    import sigs
+    if _live is None:
+        _live = sigs.Live(img, st)
+    decls, n = cxx.Decls(), 0
+    for m in list(EXTERN.finditer(body)):
+        name = m.group("name")
+        if name == own:
+            continue
+        s = _lookup(st, name)
+        f = cxx.parse(s.name) if s is not None else None
+        if f is None or not f.scope:
+            continue
+        proto = sigs.prototype(s.addr, s.name, _live)
+        if proto is None or len(proto) != len(f.params) + 1:
+            continue                                   # static (or unknown): a plain call is right
+        new, k = _member_calls(body, name, f)
+        if not k:
+            continue
+        ret = m.group("ret").strip() or "int"
+        decls.add(f, "int" if ret == "M2C_UNK" else ret)
+        body = new.replace(m.group(0), "")
+        n += k
+    v = _virtualize(body)
+    if v is not None:
+        structs, body = v
+        n += 1
+    else:
+        structs = ""
+    if not n:
+        return None
+    try:
+        classes = decls.render()
+    except cxx.Unsupported:
+        return None
+    return PRELUDE + classes + structs + 'extern "C" {\n' + body + "}\n"
+
+
+def _lookup(st, name: str):
+    try:
+        return st.get(name)
+    except KeyError:
+        mm = re.match(r"^func_([0-9A-F]{8})$", name)
+        return st.at_addr(int(mm.group(1), 16)) if mm else None
+
+
+def _args(s: str, i: int):
+    """s[i] == '(' -> (the top-level arguments, the index past the matching ')')."""
+    depth, start, out = 0, i + 1, []
+    for j in range(i, len(s)):
+        c = s[j]
+        if c in "([{":
+            depth += 1
+        elif c in ")]}":
+            depth -= 1
+            if depth == 0:
+                last = s[start:j].strip()
+                if last or out:
+                    out.append(last)
+                return out, j + 1
+        elif c == "," and depth == 1:
+            out.append(s[start:j].strip())
+            start = j + 1
+    return None
+
+
+def _member_calls(body: str, name: str, f) -> tuple[str, int]:
+    """`name(obj, a, b)` -> `((::C *)(obj))->m(a, b)`; pointers, references and enums cast."""
+    out, i, k = [], 0, 0
+    cls = "::" + "::".join(f.scope)
+    pat = re.compile(rf"\b{re.escape(name)}\(")
+    while True:
+        m = pat.search(body, i)
+        if not m:
+            break
+        a = _args(body, m.end() - 1)
+        if a is None or len(a[0]) != len(f.params) + 1:
+            out.append(body[i:m.end()])
+            i = m.end()
+            continue
+        args = []
+        for p, x in zip(f.params, a[0][1:]):
+            d = p.decl()
+            if d.endswith("&"):
+                args.append(f"*({d[:-1].strip()} *)({x})")
+            elif "*" in d or p.by_value:
+                args.append(f"({d})({x})")
+            else:
+                args.append(x)
+        out.append(body[i:m.start()])
+        out.append(f"(({cls} *)({a[0][0]}))->{f.name}({', '.join(args)})")
+        i = a[1]
+        k += 1
+    out.append(body[i:])
+    return "".join(out), k
+
+
+_FN = re.compile(r"^(?P<ret>.*?)\s*\(\*\*\)\((?P<params>.*)\)$", re.S)
+
+
+def _virtualize(body: str):
+    """m2c's `M2C_FIELD(M2C_FIELD(obj, T **, VPTR), R (**)(P...), SLOT)(obj, ...)` -> a call
+    of slot SLOT on a class whose vtable pointer is at VPTR: (struct text, body) or None."""
+    classes, out, i, n = {}, [], 0, 0
+    while True:
+        k = body.find("M2C_FIELD(M2C_FIELD(", i)
+        if k < 0:
+            break
+        outer = _args(body, k + len("M2C_FIELD"))
+        ok = outer is not None and len(outer[0]) == 3
+        if ok:
+            (inner_txt, fntype, slot), end = outer
+            inner = _args(inner_txt, len("M2C_FIELD"))
+            m = _FN.match(fntype)
+            ok = inner is not None and len(inner[0]) == 3 and m is not None and body[end:end + 1] == "("
+        if ok:
+            obj, _, vptr = inner[0]
+            call = _args(body, end)
+            ok = call is not None and call[0][:1] == [obj]
+        if ok:
+            try:
+                vptr_off, slot_off = int(vptr, 0), int(slot, 0)
+            except ValueError:
+                ok = False
+        if not ok or slot_off < 8 or slot_off % 4:
+            out.append(body[i:k + 1])
+            i = k + 1
+            continue
+        params = [x.strip() for x in m.group("params").split(",")][1:]
+        classes.setdefault(vptr_off, {}).setdefault(slot_off, (m.group("ret").strip(), params))
+        out.append(body[i:k])
+        out.append(f"((VC_{vptr_off:X} *)({obj}))->v_{slot_off:X}({', '.join(call[0][1:])})")
+        i = call[1]
+        n += 1
+    if not n:
+        return None
+    out.append(body[i:])
+    structs = []
+    for off, slots in sorted(classes.items()):
+        lines = [f"struct VC_{off:X} {{"] + ([f"    char pad[0x{off:X}];"] if off else [])
+        for so in range(8, max(slots) + 4, 4):
+            if so in slots:
+                ret, params = slots[so]
+                lines.append(f"    virtual {ret} v_{so:X}({', '.join(x for x in params if x) or 'void'});")
+            else:
+                lines.append(f"    virtual void v_{so:X}();")
+        structs.append("\n".join(lines + ["};"]))
+    return "\n".join(structs) + "\n", "".join(out)
+
+
+TYPES = PRELUDE.split("#define")[0]
+EXTERN = re.compile(r"^(?P<ret>[^(\n]*?)\s*\b(?P<name>[A-Za-z_]\w*)\((?P<args>[^)]*)\);\s*/\* extern \*/", re.M)
+_live = None
+
+
+def prototypes(draft: str, img, st) -> str:
+    """Declarations of the draft's callees whose parameters tools/sigs.py can tell, each with
+    the return type m2c's draft gave it (what the caller does with the result)."""
+    global _live
+    import sigs
+    if _live is None:
+        _live = sigs.Live(img, st)
+    out = []
+    for m in EXTERN.finditer(draft):
+        name = m.group("name")
+        try:
+            s = st.get(name)
+        except KeyError:
+            s = None
+        if s is None:
+            mm = re.match(r"^func_([0-9A-F]{8})$", name)
+            s = st.at_addr(int(mm.group(1), 16)) if mm else None
+        if s is None:
+            continue
+        params = sigs.prototype(s.addr, s.name, _live)
+        if params is None:
+            continue
+        ret = re.sub(r"\bvoid(\s*\*)", r"char\1", m.group("ret").strip()) or "s32"
+        args = ", ".join(f"{p} arg{i}" for i, p in enumerate(params)) or "void"
+        out.append(f"{ret} {name}({args});\n")
+    return "".join(out)
 
 
 def fill_params(body: str, name: str) -> str:
@@ -101,10 +334,10 @@ def variants(body: str):
         yield u
 
 
-def try_one(tmp: Path, src: str, sym, real: str, addr: int, img, st) -> str:
-    (tmp / "f.c").write_text(src)
+def try_one(tmp: Path, src: str, sym, real: str, addr: int, img, st, suffix: str = ".c") -> str:
+    (tmp / f"f{suffix}").write_text(src)
     try:
-        D.compile_obj(tmp / "f.c", tmp / "f.o")
+        D.compile_obj(tmp / f"f{suffix}", tmp / "f.o")
         if real != sym.name:
             import sccheck
             sccheck.rename_symbol(tmp / "f.o", sym.name, real)
@@ -146,7 +379,7 @@ def main(argv=None) -> int:
     if a.sample and len(cands) > a.sample:
         cands = random.Random(a.seed).sample(cands, a.sample)
     hand = hand_defined()
-    have = {int(f.stem, 16) for f in AUTO.rglob("*.c")} if not a.redo else set()
+    have = {int(f.stem, 16) for f in auto_files()} if not a.redo else set()
     cands = [x for x in cands if st.at_addr(x).name not in hand and x not in have]
     OUT.mkdir(parents=True, exist_ok=True)
     tally = {}
@@ -175,12 +408,16 @@ HEADER = """/* GENERATED by tools/automatch.py: m2c's draft of {name}, byte-exac
 """
 
 
+def auto_files():
+    return [f for f in AUTO.rglob("*") if f.suffix in (".c", ".cpp")]
+
+
 def stale(st: E.SymbolTable) -> set[int]:
     """Drafts that define a name other than their row's, or call/reference a placeholder
     the map renamed since."""
     names = {s.name for s in st.symbols}
     out = set()
-    for f in AUTO.rglob("*.c"):
+    for f in auto_files():
         a, txt = int(f.stem, 16), f.read_text()
         s = st.at_addr(a)
         own = f"func_{a:08X}"
@@ -213,11 +450,14 @@ def emit(hits: dict[int, str], img: E.Image, st: E.SymbolTable) -> None:
         d = AUTO / seg
         d.mkdir(parents=True, exist_ok=True)
         name = st.at_addr(addr).name
-        (d / f"{addr:08X}.c").write_text(HEADER.format(name=name) + src)
+        ext = ".cpp" if "/* sc: c++ */" in src[:200] else ".c"
+        for old in d.glob(f"{addr:08X}.c*"):
+            old.unlink()
+        (d / f"{addr:08X}{ext}").write_text(HEADER.format(name=name) + src)
         written += 1
     stale = 0
     hand = hand_defined()
-    for f in AUTO.rglob("*.c"):
+    for f in auto_files():
         s = st.at_addr(int(f.stem, 16))
         txt = f.read_text()
         defines = (f"{s.name}(" in txt or f" {s.name} */" in txt) if s is not None else False

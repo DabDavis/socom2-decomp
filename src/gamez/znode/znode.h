@@ -91,11 +91,21 @@ public:
     void TransformToWorld(CPnt3D &p) const;
     void BuildMTW(CMatrix &m);
     void SetMatrix(const CMatrix *m);
+    void GetRotation(CPnt3D *out) const;
+    void SetRotation(const CPnt3D *euler);
     void SetPosition(float x, float y, float z);
     void SetPosition(const PNT3D *p)      /* the base pointer keeps MW from folding the null test */
     {
         if (p)
             SetPosition(p->x, p->y, p->z);
+    }
+    /* by value, copied out of the matrix's translation row: zAnimObjectTranslateStateTick keeps
+     * the copy in memory, stored through one pointer (v0) -- which neither the three-float
+     * constructor (scalarised), a brace-initialised PNT3D (zeroed first) nor a named return
+     * value (four instructions more) gives */
+    CPnt3D GetPosition() const
+    {
+        return *(const CPnt3D *)m_matrix.m_matrix[3];
     }
 
     CNode* m_parent;   // 0x64

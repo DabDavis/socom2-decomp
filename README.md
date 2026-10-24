@@ -1,10 +1,10 @@
 # `decomp/` — matching decomp of SOCOM II (SCUS-97275 r0001)
 
-**2,383 functions byte-exact** (2026-10-24): **48 hand-written** -- zlib 1.1.4 in MAIN (the
-calibration), the boot loader's overlay decode, and the engine's zMath (CQuat, the
-projector matrices, CPnt3D/CPnt4D) -- and **2,335 generated**, m2c's drafts that are
-byte-exact as they stand (`src/auto/`, counted apart; see "The generated tier"). Four
-functions are open, each diagnosed in its source. Canary: `./test_scdecomp.py`.
+**3,178 functions byte-exact** (2026-10-24, 4.19 % of the map's bytes): **110 hand-written** --
+zlib 1.1.4 in MAIN (the calibration), the boot loader's overlay decode, the engine's zMath
+(CQuat, the projector matrices, CPnt3D/CPnt4D) and 37 of ZAnim's command handlers -- and
+**3,068 generated**, m2c's drafts that are byte-exact as they stand (`src/auto/`, counted
+apart; see "The generated tier"). Ten functions are open, each diagnosed in its source. Canary: `./test_scdecomp.py`.
 
 This is the start of a function-by-function, byte-exact decomp of the game, built the way
 `~/claude-eqoa/decomp` (github.com/DabDavis/eqoa-decomp) is: offline Python tooling, a
@@ -34,7 +34,9 @@ and data reference resolved to the address the shipped code uses.
 | `tools/callnames.py` | name placeholders off byte-exact functions' own call sites (eqcallnames.py) |
 | `tools/m2c.py` | a target function as m2c-ready assembly (labels, callees by map name, `%hi/%lo` as `data_<VA>`), and m2c's draft |
 | `tools/perm.py` | the permuter: reorders `// PERM_BEGIN/END` lines and `// PERM_DECL` names until a function matches |
-| `tools/automatch.py` | compiles m2c's draft of every small function as it stands; `--emit` writes the hits to `src/auto/`; `--stale` redoes the drafts a rename left behind; a template-named row is drafted under its placeholder and renamed in the object (`/* sc: as=OLD NEW */`) |
+| `tools/automatch.py` | compiles m2c's draft of every small function as it stands; `--emit` writes the hits to `src/auto/`; `--stale` redoes the drafts a rename left behind; a template-named row is drafted under its placeholder and renamed in the object (`/* sc: as=OLD NEW */`); a miss is redrafted with its callees' prototypes, then as C++ |
+| `tools/sigs.py` | a function's parameters for m2c: the mangled name's list, or the argument registers live at its entry (backward dataflow over its blocks) |
+| `tools/cxx.py` | C++ declarations that mangle back to a Metrowerks name, for drafts that must make member and virtual calls |
 | `tools/s1names.py` | SOCOM 1's function names, out of the May 2002 demo's symbols and relocations |
 | `tools/s1data.py` | SOCOM 1's global data names, through the functions s1names paired |
 | `tools/dwarf1.py` | the demo's Metrowerks DWARF 1: units, signatures, class layouts, enums; `func` (one function's parameters, locals, blocks, source lines); `header` (compilable C++ declarations of a type and all it embeds, offsets annotated, holes -- MW's vtable pointer -- padded) |
@@ -171,6 +173,25 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
 - `long` is 64 bits (zlib's `uLong` argument is `lwu`-loaded into a 64-bit slot).
 - Small params: a callee's prototype changes the caller's scheduling — the loader matched only
   once its DNAS callees took `unsigned int` lengths.
+- **Scheduling is global: a mismatch far from the tail can be the tail's.** `zAnimRangeTestTick`
+  left eleven delay slots unfilled and came out fourteen instructions long, all of them in its
+  first half, until its six tests were written `if (d2 < r) return true;` falling through to
+  one `return false` instead of `return d2 < r;`. Fix the return shape before the middle.
+- **A member call evaluates its arguments before it loads `this`**; called through a cached
+  local (`CZAnim *anim = ZAnim.m_CurAnim;` -- the ZAnim handlers all read it once), the
+  register shapes follow. **A virtual call goes through t9**, a function pointer through v0.
+- **Declaration order assigns the callee-saved registers**: `zAnimObjectTranslateStateTick`
+  matched once `node`, `ref` and `moved` were declared ahead of `anim` (otherwise the same
+  code with s1-s4 permuted).
+- **MW scalarises a local struct unless something keeps it in memory**: a copy out of an
+  inline that returns by value from an lvalue (`CNode::GetPosition`) stays on the stack,
+  stored through one pointer; a named return value, the three-float constructor or a
+  brace-initialised `PNT3D` (zeroed first) all differ.
+- **`(bool)x == false` keeps the bool conversion** (an `sltu` before the branch) where `!x` and
+  `x == 0` test the bit -- likely a bool accessor's result compared in the original.
+- **The same inline written two ways serves different callers**: `CZAnim::GetArgPnt3D` must be
+  a ternary (TranslateState, RangeTest), `CZAnimMain::CmdHdr` a ternary for BreakTick,
+  GoToEndIf and FOR_CHILDREN -- while IfTick reads the current command the if-assign way.
 
 ## The map: `symbols.txt`
 
@@ -288,12 +309,14 @@ to look first). It refuses a tracked line that looks private, as claude-eqoa's
 `tools/automatch.py` hands every unnamed 16-aligned overlay function up to 0x100 bytes to
 m2c, compiles the draft **as it stands** with the settled toolchain, and keeps it only if
 it is byte-exact with every relocation resolved -- the same `scdiff.compare` hand-written
-source must pass. 2,335 of 7,007 do (61 % of those up to 0x40 bytes, 33 % overall). They
+source must pass. 2,335 of 7,007 did on the first pass (61 % of those up to 0x40 bytes, 33 %
+overall); with the corrections below, 3,068 do (the last run, over everything up to 0x400: 149
+from callee prototypes, 37 as C++). They
 live one per file in `src/auto/<segment>/<VA>.c` (two drafts' prototypes can disagree),
 are counted apart by `sccheck.py`, and are **not finished source**: placeholder names,
 `void *` and `M2C_FIELD` offsets, C rather than the game's C++, and no TU grouping. They are:
 
-- a regression guard for the toolchain: 2,335 functions across both overlays compile on
+- a regression guard for the toolchain: 3,068 functions across both overlays compile on
   every check, so a wrong flag or build fails loudly (one build and one flag set match all
   of them -- the overlays were built with the toolchain zlib settled, throughout);
 - a correct starting body for whoever writes the real TU;
@@ -314,20 +337,40 @@ misses -- drafts that compile at the right size and miss by an instruction or th
 - **narrow fields**: a byte stored as 0xFF is `li 255` to an unsigned char and `li -1` to a
   signed one; a miss is retried with `s8`/`s16` made unsigned;
 - **template names**: a row whose name is no C identifier is drafted under its placeholder
-  and renamed in the object (`/* sc: as=OLD NEW */`).
+  and renamed in the object (`/* sc: as=OLD NEW */`);
+- **callee prototypes** (`tools/sigs.py`): m2c sees a call's arguments only in registers the
+  caller writes, so a destructor handing `this` on untouched in a0 and writing a1 = 0 is
+  drafted as `f(0)`. A miss is redrafted with its callees declared in an m2c context file:
+  the parameters a mangled name lists (MW marks no static member -- `this` is read off the
+  code), or else the argument registers live at the callee's entry, by backward dataflow;
+- **member and virtual calls as C++** (`tools/cxx.py`): MW evaluates a member call's
+  arguments before it loads `this`, where the C call of the mangled name loads `this` first;
+  and a virtual call goes through t9, a function pointer -- all C has -- through v0. A
+  remaining miss is redrafted as C++: each non-static member function it calls declared in
+  a class that mangles back to its name (scopes as namespaces) and called as a member; each
+  m2c virtual call (a function pointer two loads from the object) made on a declared class
+  with the vtable pointer at that offset (MW puts it after the class's own data) and a slot
+  per offset. The draft's functions stay `extern "C"` under the map's names, in `<VA>.cpp`.
 
-Not yet: a `bool` (MW's C has none -- `daddiu v0,zero,1` against `li`), which needs C++ drafts.
+Not yet: a `bool` (MW's C has none -- `daddiu v0,zero,1` against `li`); the C++ drafts could
+declare one now.
 The differ also stopped refusing the last function of a unit that an 8-aligned GCC object
 follows without MW's 16-byte padding (131 drafts had every byte right).
 
 ## Open, and next
 
-- **zMath (OVL1 0x306670-0x30954C, 4 units): 46 of 54 functions byte-exact.** Open:
+- **zMath (OVL1 0x306670-0x30954C, 4 units): 47 of 54 functions byte-exact.** Open:
   `CMatrix::SetRotate` (callee-saved registers right, two scratch temporaries and one `madd`
   operand order not), `CQuat::Align` (right size; where MW keeps `&half.y` in an `s` register),
   `CBits::Resize` (the 8x-unrolled clear loop saves one register fewer), `CPnt3D::Reflect`
-  (a by-value operator chain MW keeps four copies of), `init_trig_table` (`$f0`/`$f1` swapped
-  around the angle), `CBBox::GetIntersect` (above). Unwritten: the two `DistToVector`s.
+  (a by-value operator chain MW keeps four copies of), `CBBox::GetIntersect` (above), and the
+  two `DistToVector`s (written; far).
+- **ZAnim's command handlers (`zanim_cmd_tick.cpp`): 37 of 40 written are byte-exact.** Open:
+  `zAnimIfTick` (8 bytes long: the current command read the if-assign way fixes its three type
+  tests, not the expression test before them), `zAnimLODTestTick` (its last two tests: one
+  register pair and a delay slot), `zAnimObjectOpacityFromToTick` (the blend's two registers).
+  Unwritten: BlendMode, OBJECT_AIM, the RIPPLE pair, TRUE_COLOR_SCALE, Timer, the motion
+  handlers and the big ones (Light, ParticleSource, Camera, Sound).
 - **`CZWeaponList::GetWeapon` (`0x3C4B40`)** -- 2 instructions from exact with an `int`
   parameter, but SOCOM 1's mangled name says `EQUIP_ITEM`, and every enum-typed variant sinks
   the zero-extension into the loop preheader.

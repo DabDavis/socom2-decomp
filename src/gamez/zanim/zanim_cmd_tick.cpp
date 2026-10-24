@@ -4,7 +4,116 @@
  * is SOCOM 1's (__sinit_zanim_cmd_tick.cpp; the press beta's asserts); the command records'
  * layouts are read off the handlers. Defined in reverse of their image order (-inline deferred). */
 
+#include <stdio.h>
+
 #include "zanim.h"
+
+/* move a node: to a point (flag 1), by it from where the node is (flag 4), and by the anim's
+ * call argument (flag 2), in another node's frame if there is one; flags 8, 0x10 and 0x20 keep
+ * the node's own x, y and z */
+struct zanim_cmd_transstate {
+    _zanim_cmd_hdr hdr;
+    unsigned short flags;
+    unsigned char node;
+    unsigned char ref;
+    CPnt3D pos;
+};
+
+bool zAnimObjectTranslateStateTick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    zanim_cmd_transstate *cmd = (zanim_cmd_transstate *)hdr;
+    CNode *node;
+    CNode *ref;
+    bool moved;
+    CZAnim *anim = ZAnim.m_CurAnim;
+
+    node = anim->GetNode(cmd->node, false);
+    ref = anim->GetNode(cmd->ref, false);
+    if (node) {
+        CPnt3D pos(0.0f, 0.0f, 0.0f);
+        moved = false;
+
+        if (cmd->flags & 4) {
+            pos.x = node->m_matrix.m_matrix[3][0];
+            pos.y = node->m_matrix.m_matrix[3][1];
+            pos.z = node->m_matrix.m_matrix[3][2];
+            pos.Add(&cmd->pos, &pos);
+            moved = true;
+        } else if (cmd->flags & 1) {
+            pos.Add(&cmd->pos, &pos);
+            moved = true;
+        }
+        if (cmd->flags & 2) {
+            CPnt3D *arg = anim->GetArgPnt3D();
+
+            if (arg) {
+                pos = pos + *arg;
+                moved = true;
+            }
+        }
+        if (moved || ref) {
+            if (ref)
+                ref->TransformToWorld(pos);
+            CPnt3D cur = node->GetPosition();
+
+            if (!(cmd->flags & 8))
+                cur.x = pos.x;
+            if (!(cmd->flags & 0x10))
+                cur.y = pos.y;
+            if (!(cmd->flags & 0x20))
+                cur.z = pos.z;
+            node->SetPosition(cur.x, cur.y, cur.z);
+        }
+    }
+    return true;
+}
+
+/* set (flag 1) or add to (flag 2) a node's rotation, after giving it another node's matrix
+ * -- that node's own (flag 4) or its world one -- and keep it where it was */
+struct zanim_cmd_rotstate {
+    _zanim_cmd_hdr hdr;
+    unsigned short flags;
+    unsigned char node;
+    unsigned char ref;
+    CPnt3D rot;
+};
+
+bool zAnimObjectRotateStateTick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    zanim_cmd_rotstate *cmd = (zanim_cmd_rotstate *)hdr;
+    CZAnim *anim = ZAnim.m_CurAnim;
+    CNode *node = anim->GetNode(cmd->node, false);
+    CNode *ref = anim->GetNode(cmd->ref, false);
+
+    if (node) {
+        CPnt3D rot(0.0f, 0.0f, 0.0f);
+        float x = node->m_matrix.m_matrix[3][0];
+        float y = node->m_matrix.m_matrix[3][1];
+        float z = node->m_matrix.m_matrix[3][2];
+
+        if (ref) {
+            if (cmd->flags & 4)
+                node->SetMatrix(&ref->m_matrix);
+            else {
+                CMatrix m;
+
+                ref->BuildMTW(m);
+                node->SetMatrix(&m);
+            }
+        }
+        if (cmd->flags & 1) {
+            rot.Add(&cmd->rot, &rot);
+            node->SetRotation(&rot);
+        }
+        if (cmd->flags & 2) {
+            node->GetRotation(&rot);
+            rot.Add(&cmd->rot, &rot);
+            node->SetRotation(&rot);
+        }
+        node->SetPosition(x, y, z);
+    }
+    return true;
+}
 
 /* a node of the current anim */
 struct zanim_cmd_node {
@@ -32,6 +141,74 @@ extern "C" bool func_00263B30(_zanim_cmd_hdr *hdr, float *dT)
             node->SetMatrix(&m);
         }
     }
+    return true;
+}
+
+/* DESTRUCTOR: break a node of the current anim apart through the particle system's
+ * destruction manager, under the name of one of the anim's names */
+struct zanim_cmd_destructor {
+    _zanim_cmd_hdr hdr;
+    unsigned char node;
+    unsigned char name;
+    unsigned char count;
+    unsigned char pad;
+    PNT4D color;                    /* (CPnt4D's 16-byte alignment would put it at +0x10) */
+    float scale;
+    float range[3][2];              /* per axis, low and high */
+    CPnt3D spin;
+    CPnt3D velocity;
+    float life;
+};
+
+namespace Particle {
+void DestructionManager(zdb::CNode *node, char *name, CPnt4D *color, float scale, CPnt3D *lo,
+                        CPnt3D *hi, CPnt3D *spin, CPnt3D *velocity, int count, float life);
+}
+
+bool zAnimDestructorTick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    zanim_cmd_destructor *cmd = (zanim_cmd_destructor *)hdr;
+    CZAnim *anim = ZAnim.m_CurAnim;
+    CPnt3D lo(cmd->range[0][0], cmd->range[1][0], cmd->range[2][0]);
+    CPnt3D hi(cmd->range[0][1], cmd->range[1][1], cmd->range[2][1]);
+    CPnt3D spin(cmd->spin.x, cmd->spin.y, cmd->spin.z);
+    CPnt3D velocity(cmd->velocity.x, cmd->velocity.y, cmd->velocity.z);
+    char name[144];                 /* (129 to 144 all fit the frame) */
+
+    sprintf(name, "%s", anim->GetName(cmd->name));
+    Particle::DestructionManager(anim->GetNode(cmd->node, false), name, (CPnt4D *)&cmd->color, cmd->scale,
+                                 &lo, &hi, &spin, &velocity, cmd->count, cmd->life);
+    return true;
+}
+
+/* MESSAGE: put up a message -- string `text` of the game's text table, or else the anim's name
+ * number `name` -- for `time` seconds. SOCOM 1 called C2DMessage_Q::Add_Message on its
+ * message queue; SOCOM II calls a six-argument function at 0x2B6530 (this, the text, 0, the
+ * byte at +11, 0 in t0, the time) whose name is not carried. */
+struct zanim_cmd_message {
+    _zanim_cmd_hdr hdr;
+    unsigned short name;
+    unsigned short text;
+    unsigned char pad[3];
+    unsigned char style;
+    float time;
+};
+
+extern char data_004366A0[];
+extern "C" const char *func_00361B40(int id);
+extern "C" void func_002B6530(char *queue, const char *text, int a, int style, int b, float time);
+
+bool zAnimMessageTick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    zanim_cmd_message *cmd = (zanim_cmd_message *)hdr;
+    CZAnim *anim = ZAnim.m_CurAnim;
+    const char *text;
+
+    if (cmd->text > 0)
+        text = func_00361B40(cmd->text);
+    else
+        text = anim->GetName(cmd->name);
+    func_002B6530(data_004366A0, text, 0, cmd->style, 0, cmd->time);
     return true;
 }
 
@@ -83,6 +260,26 @@ struct zanim_cmd_weight {
 };
 
 
+/* WHEEL_MOTION's begin: the wheel's node's place in the world, kept in the record */
+struct zanim_cmd_wheel {
+    _zanim_cmd_hdr hdr;
+    unsigned short flags;
+    unsigned char node;
+    unsigned char pad;
+    CPnt3D pos;
+};
+
+extern "C" void func_00261300(_zanim_cmd_hdr *hdr)
+{
+    zanim_cmd_wheel *cmd = (zanim_cmd_wheel *)hdr;
+    CNode *node = ZAnim.m_CurAnim->GetNode(cmd->node, false);
+
+    if (node) {
+        cmd->pos = CPnt3D::zero;
+        node->TransformToWorld(cmd->pos);
+    }
+}
+
 /* fade a node's opacity from one value to another over a time on the command's clock */
 struct zanim_cmd_opacity {
     _zanim_cmd_hdr hdr;
@@ -127,6 +324,39 @@ bool zAnimObjectOpacityFromToTick(_zanim_cmd_hdr *hdr, float *dT)
     else
         node->m_Opacity += cmd->rate * step;
     return done;
+}
+
+/* OBJECT_MOTION_SI_SCRIPT: several nodes each run a motion script; 0x3C bytes a node */
+struct zanim_object_motion_script {
+    unsigned char _0[0xC];
+    int frame;                      /* 0xC */
+    int timer;                      /* 0x10 */
+    unsigned char _14[0x24];
+    int done;                       /* 0x38 */
+};
+
+struct zanim_cmd_multiscript {
+    _zanim_cmd_hdr hdr;
+    unsigned short count;
+    unsigned short pad;
+    zanim_object_motion_script script[1];
+};
+
+void zAnimMultiObjectMotionScriptBegin(_zanim_cmd_hdr *hdr)
+{
+    zanim_cmd_multiscript *cmd = (zanim_cmd_multiscript *)hdr;
+
+    if (cmd == 0 || cmd->count <= 0)
+        return;
+    for (int i = 0; i < cmd->count; i++) {
+        zanim_object_motion_script *s = &cmd->script[i];
+
+        if (s) {                    /* (tested, as SOCOM 1's is too) */
+            s->timer = 0;
+            s->frame = 0;
+            s->done = 0;
+        }
+    }
 }
 
 /* parent one node of the current anim to another (flag 1: keep its place in the world) */
@@ -174,8 +404,9 @@ bool zAnimObjectDeleteChildTick(_zanim_cmd_hdr *hdr, float *dT)
 
 /* whether a node of the current anim is active (mode 1) or inactive (mode 2): zanim_cmd_nodetest */
 
-/* OPEN, 5 instructions: mode 2 turns the flag into a bool (sltu) before testing it, as SOCOM 1
- * did too; neither a cast, a bool local nor an inline accessor gives it. */
+/* Mode 2 turns the flag into a bool (sltu) before testing it, as SOCOM 1 did too: a bool
+ * compared with `false` keeps the conversion, where `!` and `== 0` test the bit itself (the
+ * original likely compared a bool accessor's result). */
 bool zAnimNodeActiveTick(_zanim_cmd_hdr *hdr, float *dT)
 {
     zanim_cmd_nodetest *cmd = (zanim_cmd_nodetest *)hdr;
@@ -186,7 +417,7 @@ bool zAnimNodeActiveTick(_zanim_cmd_hdr *hdr, float *dT)
             if (node->m_active)
                 return true;
         } else if (cmd->mode == 2) {
-            if (!node->m_active)
+            if ((bool)node->m_active == false)
                 return true;
         }
     }
@@ -215,55 +446,67 @@ struct zanim_cmd_range {
     float range;                    /* squared */
 };
 
-/* OPEN, 0x28 long: the points' address registers are assigned the other way round and the
- * two GetArgPnt3D tests keep a nop the target fills. */
+/* Three things it took, each moving the whole function: the tests as `if (d2 < r) return
+ * true;` falling through to one `return false` (`return d2 < r;` left eleven delay slots
+ * unfilled and fourteen instructions over, all far from the tail), the argument and node
+ * pointers scoped to their blocks, and the squared length as Dot(a, a) (spelt out, the a and b
+ * field-address registers swap). */
 bool zAnimRangeTestTick(_zanim_cmd_hdr *hdr, float *dT)
 {
     zanim_cmd_range *cmd = (zanim_cmd_range *)hdr;
     CZAnim *anim = ZAnim.m_CurAnim;
     CPnt3D a(0.0f, 0.0f, 0.0f);
     CPnt3D b(0.0f, 0.0f, 0.0f);
-    CPnt3D *arg;
-    CNode *node;
 
     if (cmd->flags & 2)
         a.Add(&cmd->offset_a, &a);
     if (cmd->flags & 4) {
-        arg = anim->GetArgPnt3D();
+        CPnt3D *arg = anim->GetArgPnt3D();
+
         if (arg)
             a = a + *arg;
     }
     if (cmd->flags & 1) {
-        node = ZAnim.m_CurAnim->GetNode(cmd->node_a, false);
+        CNode *node = ZAnim.m_CurAnim->GetNode(cmd->node_a, false);
+
         if (node)
             node->TransformToWorld(a);
     }
     if (cmd->flags & 0x10)
         b.Add(&cmd->offset_b, &b);
     if (cmd->flags & 0x20) {
-        arg = anim->GetArgPnt3D();
+        CPnt3D *arg = anim->GetArgPnt3D();
+
         if (arg)
             b = b + *arg;
     }
     if (cmd->flags & 8) {
-        node = ZAnim.m_CurAnim->GetNode(cmd->node_b, false);
+        CNode *node = ZAnim.m_CurAnim->GetNode(cmd->node_b, false);
+
         if (node)
             node->TransformToWorld(b);
     }
     a = a - b;
-    float d2 = a.x * a.x + a.y * a.y + a.z * a.z;
-    if (cmd->flags & 0x40)
-        return d2 < cmd->range;
-    if (cmd->flags & 0x80)
-        return d2 <= cmd->range;
-    if (cmd->flags & 0x100)
-        return d2 > cmd->range;
-    if (cmd->flags & 0x200)
-        return d2 >= cmd->range;
-    if (cmd->flags & 0x400)
-        return d2 == cmd->range;
-    if (cmd->flags & 0x800)
-        return d2 != cmd->range;
+    float d2 = Dot(a, a);
+    if (cmd->flags & 0x40) {
+        if (d2 < cmd->range)
+            return true;
+    } else if (cmd->flags & 0x80) {
+        if (d2 <= cmd->range)
+            return true;
+    } else if (cmd->flags & 0x100) {
+        if (d2 > cmd->range)
+            return true;
+    } else if (cmd->flags & 0x200) {
+        if (d2 >= cmd->range)
+            return true;
+    } else if (cmd->flags & 0x400) {
+        if (d2 == cmd->range)
+            return true;
+    } else if (cmd->flags & 0x800) {
+        if (d2 != cmd->range)
+            return true;
+    }
     return false;
 }
 
@@ -296,8 +539,10 @@ struct zanim_cmd_lod {
     unsigned char level;
 };
 
-/* OPEN, 8 bytes long: the target loads the level before narrowing the LOD (SOCOM 1 the same),
- * which neither order of the operands nor reading m_Lod per test reproduces. */
+/* OPEN, 8 bytes short, in the last two tests only: `>` takes the level into v0 where the target
+ * keeps the LOD there (SOCOM 1 the same), and the last test's branch carries `return false` in
+ * its delay slot where the target leaves a nop and a block of its own. Neither order of the
+ * operands, reading m_Lod per test, else-if, nor one result variable (worse) gives it. */
 bool zAnimLODTestTick(_zanim_cmd_hdr *hdr, float *dT)
 {
     zanim_cmd_lod *cmd = (zanim_cmd_lod *)hdr;
@@ -566,8 +811,11 @@ static inline int NestLevelOf(_zanim_cmd_hdr *hdr)
 
 /* an if: its expression follows the record; false skips to the matching else, elseif (whose
  * expression is tried in turn) or endif. OPEN, 8 bytes long: the target loads m_CurSeq once and
- * re-tests it for each of the three type comparisons; every spelling tried reloads it, or (with
- * the type in a local) shares the read and comes out 0x20 short. */
+ * re-tests it for each of the three type comparisons, each read the if-assign way (h = 0 in the
+ * delay slot, then the load) where CmdHdr's ternary -- which BreakTick, GoToEndIf and the
+ * FOR_CHILDREN handler need -- branches over; an if-assign accessor here fixes the comparisons
+ * but not the ProcExpr test before them (two delay slots unfilled), still 0x1C8. Every other
+ * spelling tried reloads it, or (with the type in a local) shares the read, 0x20 short. */
 bool zAnimIfTick(_zanim_cmd_hdr *hdr, float *dT)
 {
     bool found;

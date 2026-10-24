@@ -80,10 +80,7 @@ public:
     CNode *GetNode(int index, bool create);
     CPnt3D *GetArgPnt3D()
     {
-        CPnt3D *p = 0;
-        if (m_arg_list)
-            p = m_arg_list->GetPnt3D(CZAnimArg::TYPE_PNT3D);
-        return p;
+        return m_arg_list ? m_arg_list->GetPnt3D(CZAnimArg::TYPE_PNT3D) : 0;
     }
 
     CZAnimArgList* m_arg_list;   // 0x18
