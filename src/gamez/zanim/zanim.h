@@ -55,7 +55,9 @@ public:
     unsigned int m_clone_anim : 1;   // 0x4
     unsigned int m_create_root : 1;   // 0x4
     unsigned int m_max_anim_copies : 6;   // 0x4
-    unsigned int m_unused : 15;   // 0x4
+    unsigned int m_unused_a : 2;   // 0x4
+    unsigned int m_nest_error : 1;   // 0x4: SOCOM II's, set when an IF nests below 0 or past 255
+    unsigned int m_unused : 12;   // 0x4
     float m_timer;   // 0x8
     float m_priority;   // 0xc
     unsigned int m_damage_seq_offset : 16;   // 0x10
@@ -64,11 +66,51 @@ public:
     unsigned int m_cleanup_seq_offset : 16;   // 0x14
 };   // 0x18 bytes
 
+namespace zar {
+class CZAR {
+public:
+    virtual ~CZAR();
+    int Fetch(const char *name, void *buf, int size);
+};
+}
+
+/* the engine's allocator: free and strdup with a file and line (both 0 here), the pool-backed
+ * forms of SOCOM 1's _free__FPvPCci and _strdup__FPCcPCci -- not named until proven */
+extern "C" void func_00180280(void *p, const char *file, int line);
+
 class CZAnimNameIndexTable {
 public:
+    const char *GetName(CZAnimSet *set, int index);
+    int Load(zar::CZAR &zar);
+    void Unload()
+    {
+        if (m_index)
+            func_00180280(m_index, 0, 0);
+        m_index = 0;
+        m_count = 0;
+    }
+
     unsigned short* m_index;   // 0x0
     int m_count;   // 0x4
 };   // 0x8 bytes
+
+/* a ZAR the interpreter opened (zar::CZAR is polymorphic: the vtable pointer is at 0) */
+class CZAnimZAR : public zar::CZAR {
+public:
+    virtual ~CZAnimZAR();
+};
+
+/* an object's motion script: SOCOM II's has 4 bytes more than SOCOM 1's before the counts */
+class _zanim_si_script {
+public:
+    unsigned short script_pathname_index;   // 0x0
+    unsigned short script_object_name_index;   // 0x2
+    unsigned int spline_interp : 1;   // 0x4
+    int _socom2_8;   // 0x8
+    int total_frame_count;   // 0xc
+    int script_data_size;   // 0x10
+    char* script_data;   // 0x14
+};
 
 class CZAnim : public _zanim_anim_params {
 public:
@@ -91,6 +133,7 @@ public:
     unsigned int m_invalid : 1;   // 0x34 (SOCOM 1: 0x2c; every offset below moved by 8)
     unsigned int m_added_to_world_internally : 1;   // 0x2c
     unsigned int m_debug : 1;   // 0x2c
+    unsigned int m_socom2_3 : 5;   // SOCOM II's: GetAnimIndex reads the set index as the byte at 0x35
     unsigned int m_animset_index : 8;   // 0x2c
     unsigned int m_node_ref_count : 8;   // 0x2c
     unsigned int m_tex_ref_count : 8;   // 0x2c
@@ -122,9 +165,21 @@ public:
 
 class CZAnimNameTable {
 public:
+    const char *GetName(int index);
+    void Unload();
+
     char** m_name;   // 0x0
     int m_count;   // 0x4
 };   // 0x8 bytes
+
+/* a set of anims (one ZAR's): SOCOM II's is 0x34 bytes, SOCOM 1's 0x30 */
+class CZAnimSet {
+public:
+    CZAnim *Anim(int index);
+    int GetAnimIndex(CZAnim *anim);
+
+    unsigned char _0[0x34];
+};
 
 enum LOD {LOW = 0, MEDIUM = 1, HIGH = 2};   // 1 byte(s)
 
@@ -161,13 +216,25 @@ public:
     void SeqSetState(int state);
     void CmdNext();
     bool CmdValid();
+    CZAnim *GetAnim(int set, int anim);
+    int StateRunning(int state);
+    bool SeqRunning();
+    int CloseZAR(CZAnimZAR *zar);
+    int UnloadSIScript(_zanim_si_script *script);
+    ZAnimNetworkPacket *GetNetworkPacket(int size);
+    void FreeNetworkPacketBuffer();
+    void Close();
+    void Unload();
+    CZAnimSet *GetAnimSet(int index);
+    bool GetAnimIndex(CZAnim *anim, int *set, int *index);
 
     /* the command the current sequence is on */
     _zanim_cmd_hdr *CmdHdr() { return m_CurSeq ? (_zanim_cmd_hdr *)m_CurSeq->cmd_pc : 0; }
 
     unsigned char m_IsOpen;   // 0x10
     unsigned char m_IsStarted;   // 0x11
-    unsigned char _pad12[0x2];   // 0x12: a hole
+    unsigned char m_socom2_12;   // 0x12: SOCOM II's, in SOCOM 1's hole (Close clears both)
+    unsigned char m_socom2_13;   // 0x13
     CZAnimNameTable m_name_table;   // 0x14
     CZAnimSet* m_animset_list;   // 0x1c
     int m_animset_count;   // 0x20
