@@ -7,10 +7,10 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK __ct__13C2DBitmapPolyFv(char * arg0);
-M2C_UNK func_00363E70(s32 arg0);
+M2C_UNK __ct__9C2DStringFv(char * arg0);
 char *func_002126B0(char *arg0) {
     __ct__13C2DBitmapPolyFv(arg0);
-    func_00363E70((s32) (arg0 + 0x1F0));
+    __ct__9C2DStringFv(arg0 + 0x1F0);
     M2C_FIELD(arg0, s32 *, 0x288) = 0;
     M2C_FIELD(arg0, s32 *, 0x28C) = 0;
     M2C_FIELD(arg0, s32 *, 0x290) = 0;

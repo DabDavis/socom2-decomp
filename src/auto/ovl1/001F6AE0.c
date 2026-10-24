@@ -6,7 +6,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_003631A0(s32 arg0, s32 arg1, s32 arg2);
-void func_001F6AE0(s32 arg0, f32 fparg0, f32 fparg1) {
-    func_003631A0(arg0, (s32) fparg0, (s32) fparg1);
+M2C_UNK SetPos__9C2DStringFii(char * arg0, s32 arg1, s32 arg2);
+void func_001F6AE0(char *arg0, f32 fparg0, f32 fparg1) {
+    SetPos__9C2DStringFii(arg0, (s32) fparg0, (s32) fparg1);
 }

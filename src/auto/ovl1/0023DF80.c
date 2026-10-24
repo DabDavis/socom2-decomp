@@ -6,17 +6,17 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_00363E70(char *);                      /* extern */
-M2C_UNK func_00364C50(char *);                      /* extern */
-M2C_UNK func_00365100();                            /* extern */
-extern M2C_UNK data_00405D80;
-extern M2C_UNK data_00405E00;
+M2C_UNK __ct__3C2DFv();                             /* extern */
+M2C_UNK __ct__9C2DBitmapFv(char *);                 /* extern */
+M2C_UNK __ct__9C2DStringFv(char *);                 /* extern */
+extern M2C_UNK __vt__11CWeaponSlot;
+extern M2C_UNK __vt__12CategorySlot;
 
 char *func_0023DF80(char *arg0) {
-    func_00365100();
-    M2C_FIELD(arg0, M2C_UNK **, 0xC) = &data_00405E00;
-    M2C_FIELD(arg0, M2C_UNK **, 0xC) = &data_00405D80;
-    func_00364C50(arg0 + 0x20);
-    func_00363E70(arg0 + 0xA0);
+    __ct__3C2DFv();
+    M2C_FIELD(arg0, M2C_UNK **, 0xC) = &__vt__11CWeaponSlot;
+    M2C_FIELD(arg0, M2C_UNK **, 0xC) = &__vt__12CategorySlot;
+    __ct__9C2DBitmapFv(arg0 + 0x20);
+    __ct__9C2DStringFv(arg0 + 0xA0);
     return arg0;
 }

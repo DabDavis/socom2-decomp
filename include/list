@@ -61,6 +61,9 @@ public:
     iterator insert(iterator position, const T &x);
     void push_back(const T &x) { insert(end(), x); }
     unsigned int size() const { return size_; }
+    /* the sentinel by reference (CZHudMissionCams::Init keeps the end node in a register outside
+     * its loop only so; the name is ours) */
+    node_base &end_node() { return end_; }
 
 protected:
     unsigned int size_;
@@ -142,12 +145,12 @@ class list<T *, Allocator> : public __list_imp<const void *, allocator<const voi
 
 public:
     /* the reference passed on as the base's, no temporary (the pointer stays where it is), to
-     * the base's insert, the end iterator made here: two levels shorter than through the base's
-     * push_back and end(), which CNode::CreateInstance's auto-inlining needs (an auto-inline
-     * callee more than four high is not inlined at all -- no one-level fallback) */
+     * the base's insert, the end iterator made here from the sentinel: shorter than through the
+     * base's push_back and end(), which CNode::CreateInstance's auto-inlining needs (an
+     * auto-inline callee more than four high is not inlined at all -- no one-level fallback) */
     void push_back(T *const &x)
     {
-        base::insert(typename base::iterator(&this->end_), (const void *const &)x);
+        base::insert(typename base::iterator(&this->end_node()), (const void *const &)x);
     }
     void remove(T *const &x) { base::remove((const void *const &)x); }
 };

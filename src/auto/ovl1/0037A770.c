@@ -6,19 +6,19 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_00363E70();                            /* extern */
-extern f32 data_003F64C0;
+M2C_UNK __ct__9C2DStringFv();                       /* extern */
+extern M2C_UNK __vt__10UIVarMixin;
+extern M2C_UNK __vt__17CRenderableString;
 extern f32 data_003F64C4;
 extern f32 data_003F64C8;
-extern M2C_UNK data_004050B0;
-extern M2C_UNK data_00407A90;
 extern M2C_UNK data_00407B20;
+extern f32 zero__6CPnt3D;
 
-void *func_0037A770(void *arg0) {
-    func_00363E70();
-    M2C_FIELD(arg0, M2C_UNK **, 0x98) = &data_004050B0;
+char *func_0037A770(char *arg0) {
+    __ct__9C2DStringFv();
+    M2C_FIELD(arg0, M2C_UNK **, 0x98) = &__vt__10UIVarMixin;
     M2C_FIELD(arg0, s32 *, 0x9C) = 0;
-    M2C_FIELD(arg0, M2C_UNK **, 0xC) = &data_00407A90;
+    M2C_FIELD(arg0, M2C_UNK **, 0xC) = &__vt__17CRenderableString;
     M2C_FIELD(arg0, M2C_UNK **, 0x98) = &data_00407B20;
     M2C_FIELD(arg0, s32 *, 0xA0) = 0;
     M2C_FIELD(arg0, s32 *, 0xBC) = 0;
@@ -26,7 +26,7 @@ void *func_0037A770(void *arg0) {
     M2C_FIELD(arg0, s32 *, 0x48) = 0x437F0000;
     M2C_FIELD(arg0, s32 *, 0x4C) = 0x437F0000;
     M2C_FIELD(arg0, s32 *, 0x50) = 0x437F0000;
-    M2C_FIELD(arg0, f32 *, 0xA4) = (f32) data_003F64C0;
+    M2C_FIELD(arg0, f32 *, 0xA4) = (f32) zero__6CPnt3D;
     M2C_FIELD(arg0, f32 *, 0xA8) = (f32) data_003F64C4;
     M2C_FIELD(arg0, f32 *, 0xAC) = (f32) data_003F64C8;
     return arg0;

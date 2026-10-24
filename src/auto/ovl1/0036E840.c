@@ -6,7 +6,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_003646D0(s32 arg0, s32 arg1, f32 arg2, f32 arg3, f32 arg4, f32 arg5);
-void func_0036E840(char *arg0, s32 arg1) {
-    func_003646D0((s32) (arg0 + 0x1A0), arg1, 0.0f, 0.0f, M2C_FIELD(arg0, f32 *, 0x240), M2C_FIELD(arg0, f32 *, 0x244));
+M2C_UNK Load__9C2DBitmapFffffPQ23zdb10CTexHandle(char * arg0, f32 arg1, f32 arg2, f32 arg3, f32 arg4, char * arg5);
+void func_0036E840(char *arg0, char *arg1) {
+    Load__9C2DBitmapFffffPQ23zdb10CTexHandle(arg0 + 0x1A0, 0.0f, 0.0f, M2C_FIELD(arg0, f32 *, 0x240), M2C_FIELD(arg0, f32 *, 0x244), arg1);
 }

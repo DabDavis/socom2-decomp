@@ -1990,7 +1990,8 @@
 0x002227B0 0x4C8 func_002227B0  # OVL1
 0x00222C80 0x224 func_00222C80  # OVL1
 0x00222EB0 0x58 DrawAlphaBravo__15CZPlayerMapItemFPQ23zdb7CCamera  # OVL1; s1:exact
-0x00222F10 0xC0 Draw__15CZPlayerMapItemFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00222F10 0x14 PostDraw__15CZPlayerMapItemFPQ23zdb7CCamera  # OVL1; s1:size (SOCOM 1's PostDraw, 0x14: a tail call through a member object's vtable; the row had run on into Draw)
+0x00222F30 0xA0 Draw__15CZPlayerMapItemFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike; SOCOM 1's is 0xA0 too)
 0x00222FD0 0x8 Clip__15CZPlayerMapItemFP11CZNewHudMap  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00222FE0 0xD0 Tick__15CZPlayerMapItemFP11CZNewHudMapf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002230B0 0x12C __ct__15CZPlayerMapItemFP7CEntity  # OVL1; s1:calls

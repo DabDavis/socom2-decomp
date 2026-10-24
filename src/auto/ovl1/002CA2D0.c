@@ -6,16 +6,16 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_00363E70(s32 arg0);
-M2C_UNK func_00364C50(s32 arg0);
-M2C_UNK func_00365100(s32 arg0);
+M2C_UNK __ct__3C2DFv(char * arg0);
+M2C_UNK __ct__9C2DBitmapFv(char * arg0);
+M2C_UNK __ct__9C2DStringFv(char * arg0);
 extern M2C_UNK __vt__10CMsgEditor;
 
-s32 func_002CA2D0(s32 arg0) {
-    func_00365100(arg0);
+char *func_002CA2D0(char *arg0) {
+    __ct__3C2DFv(arg0);
     M2C_FIELD(arg0, M2C_UNK **, 0xC) = &__vt__10CMsgEditor;
-    func_00364C50(arg0 + 0x20);
-    func_00363E70(arg0 + 0xA4);
+    __ct__9C2DBitmapFv(arg0 + 0x20);
+    __ct__9C2DStringFv(arg0 + 0xA4);
     M2C_FIELD(arg0, s32 *, 0xA0) = 0;
     M2C_FIELD(arg0, s32 *, 0x13C) = 0;
     M2C_FIELD(arg0, s32 *, 0x140) = 5;
