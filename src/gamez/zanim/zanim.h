@@ -209,15 +209,6 @@ public:
 
 struct _zrdr;
 
-/* a registered command (CZAnimMain::AddCmd): its name and four handlers, 0x14 bytes */
-struct zanim_cmd {
-    char *name;
-    _zanim_cmd_hdr *(*parse)(_zrdr *rdr);
-    void (*begin)(_zanim_cmd_hdr *hdr);
-    bool (*tick)(_zanim_cmd_hdr *hdr, float *dT);
-    void (*end)(_zanim_cmd_hdr *hdr);
-};
-
 /* a command's id, as a file's records carry it: its index in its set, and the set (a halfword:
  * CmdTick copies it with lhu/sh) */
 union _zanim_cmd_id {
@@ -227,6 +218,17 @@ union _zanim_cmd_id {
         unsigned char set;
     } b;
 };
+
+/* a registered command (CZAnimMain::AddCmd): its name and four handlers, 0x14 bytes */
+struct zanim_cmd {
+    char *name;
+    _zanim_cmd_id id;               /* its own (GetCmd fills it) */
+    unsigned short pad;
+    void (*begin)(_zanim_cmd_hdr *hdr);
+    bool (*tick)(_zanim_cmd_hdr *hdr, float *dT);
+    void (*end)(_zanim_cmd_hdr *hdr);
+};
+
 
 class _zanim_cmd_set {
 public:
@@ -264,7 +266,8 @@ public:
     void PauseSequence(const char *name);
     int UnloadCmdSet(int index);
     bool CmdTick(float *dT);
-    zanim_cmd *Cmd(unsigned short id)
+    /* (out of line in SOCOM 1, 0x40 bytes; inlined everywhere here) */
+    zanim_cmd *GetCmdEntry(unsigned short id)
     {
         _zanim_cmd_id u;
 
@@ -272,6 +275,7 @@ public:
         return &m_cmdset_list[u.b.set].cmd_list[u.b.index];
     }
     int GetCmdSet(char *name, bool create);
+    int GetCmd(int set, char *name, bool create);
     unsigned short AddCmd(const char *name, _zanim_cmd_hdr *(*parse)(_zrdr *),
                           void (*begin)(_zanim_cmd_hdr *), bool (*tick)(_zanim_cmd_hdr *, float *),
                           void (*end)(_zanim_cmd_hdr *));

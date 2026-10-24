@@ -2922,7 +2922,7 @@
 0x0026A890 0x20 CmdNext__10CZAnimMainFi  # OVL1; tu: anim_main.cpp~ (1.0 beta); s1:exact
 0x0026A8B0 0x2C CmdNext__10CZAnimMainFv  # OVL1; tu: anim_main.cpp~ (1.0 beta); s1:exact
 0x0026A8E0 0x144 AddCmd__10CZAnimMainFPCcPFP5_zrdr_P14_zanim_cmd_hdrPFP14_zanim_cmd_hdr_vPFP14_zanim_cmd_hdrPf_bPFP14_zanim_cmd_hdr_v  # OVL1; s1:callee
-0x0026AA30 0x1EC func_0026AA30  # OVL1
+0x0026AA30 0x1EC GetCmd__10CZAnimMainFiPcb  # OVL1; s1:order (SOCOM 1's GetCmd(int set, char *name, bool create) stands between AddCmd and GetCmdSet, 0x1CC to SOCOM II's 0x1EC; GetCmdSet calls it as SOCOM 1's does)
 0x0026AC20 0x180 GetCmdSet__10CZAnimMainFPcb  # OVL1; s1:align
 0x0026ADA0 0x80 func_0026ADA0  # OVL1
 0x0026AE20 0x200 ActivateBegin__10CZAnimMainFP6CZAnim  # OVL1; s1:align

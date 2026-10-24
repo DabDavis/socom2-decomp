@@ -63,7 +63,62 @@ int CZAnimMain::UnloadCmdSet(int index)
 }
 
 extern "C" char *func_001801E0(const char *s, const char *file, int line);
-extern "C" unsigned char func_0026AA30(CZAnimMain *main, int set, const char *name, int create);
+
+/* a command by name in a set, made when asked; not made, it is looked for in the other sets.
+ * OPEN, 8 instructions: the second search's set, command and index registers permuted (s2/s3/s0
+ * against the target's s3/s2/s0); reusing s and cmd, or hoisting its locals, is further off. */
+int CZAnimMain::GetCmd(int set, char *name, bool create)
+{
+    _zanim_cmd_set *s = &m_cmdset_list[set];
+    zanim_cmd *cmd = s->cmd_list;
+
+    for (int i = 0; i < s->count; i++, cmd++)
+        if (cmd->name && !strcmp(name, cmd->name))
+            return i;
+    if (create) {
+        s->cmd_list = (zanim_cmd *)_realloc(s->cmd_list, (s->count + 1) * 0x14, 0, 0);
+        cmd = &s->cmd_list[s->count];
+        memset(cmd, 0, 0x14);
+        cmd->name = func_001801E0(name, 0, 0);
+        cmd->id.b.set = set;
+        cmd->id.b.index = s->count;
+        return s->count++;
+    }
+    for (int j = 0; j < m_cmdset_count; j++) {
+        if (j != set) {
+            _zanim_cmd_set *o = &m_cmdset_list[j];
+            zanim_cmd *c = o->cmd_list;
+
+            for (int i = 0; i < o->count; i++, c++)
+                if (!strcmp(name, c->name))
+                    return i;
+        }
+    }
+    return 0;
+}
+
+/* a command set by name (0: the unnamed one), made when asked -- its command 0 "Reserved" */
+int CZAnimMain::GetCmdSet(char *name, bool create)
+{
+    for (int i = 0; i < m_cmdset_count; i++) {
+        if (!name) {
+            if (!m_cmdset_list[i].name)
+                return i;
+        } else if (m_cmdset_list[i].name && !strcmp(name, m_cmdset_list[i].name))
+            return i;
+    }
+    int index = 0;
+
+    if (create) {
+        m_cmdset_list = (_zanim_cmd_set *)_realloc(m_cmdset_list, (m_cmdset_count + 1) * 0xC, 0, 0);
+        memset(&m_cmdset_list[m_cmdset_count], 0, 0xC);
+        if (name)
+            m_cmdset_list[m_cmdset_count].name = func_001801E0(name, 0, 0);
+        index = m_cmdset_count++;
+        GetCmd(index, "Reserved", true);
+    }
+    return index;
+}
 
 /* register a command, `set::name` or just `name`; the id it gets is what records carry */
 unsigned short CZAnimMain::AddCmd(const char *name, _zanim_cmd_hdr *(*parse)(_zrdr *),
@@ -90,7 +145,7 @@ unsigned short CZAnimMain::AddCmd(const char *name, _zanim_cmd_hdr *(*parse)(_zr
     } else
         cmd_name = name;
     set = GetCmdSet(set_name, true);
-    index = func_0026AA30(this, set, cmd_name, 1);
+    index = GetCmd(set, (char *)cmd_name, true);
 
     id.b.set = set;
     id.b.index = index;
@@ -110,7 +165,7 @@ bool CZAnimMain::CmdTick(float *dT)
 {
     bool done = true;
     _zanim_cmd_hdr *hdr = CmdHdr();
-    zanim_cmd *cmd = Cmd(hdr->data_type);
+    zanim_cmd *cmd = GetCmdEntry(hdr->data_type);
 
     if (m_CurSeq->cmd_state == 2) {
         m_CurSeq->cmd_timer = 0.0f;
