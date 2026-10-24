@@ -1919,8 +1919,8 @@
 0x00216770 0x664 func_00216770  # OVL1
 0x00216DE0 0x76C func_00216DE0  # OVL1
 0x00217550 0x364 func_00217550  # OVL1
-0x002178C0 0x1488 func_002178C0  # OVL1
-0x00218D50 0x50 func_00218D50  # OVL1
+0x002178C0 0x1488 Init__14BitmapReticuleFPQ23zdb6CWorldP7C2DFont  # OVL1; s1:order (hud_bitmapreticule.cpp: before UnInit, as SOCOM 1's; 0xDB4 then, 0x1488 now)
+0x00218D50 0x50 UnInit__14BitmapReticuleFv  # OVL1; s1:exact by hand (hud_bitmapreticule.cpp: the three strings wiped, as SOCOM 1's)
 0x00218DA0 0x34 Draw__14BitmapReticuleFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00218DE0 0x2B0 func_00218DE0  # OVL1
 0x00219090 0x2A0 __dt__14BitmapReticuleFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
