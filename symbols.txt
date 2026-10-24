@@ -1472,31 +1472,31 @@
 0x001EAFF0 0x8 func_001EAFF0  # OVL1
 0x001EB000 0x2C func_001EB000  # OVL1
 0x001EB030 0x8 func_001EB030  # OVL1
-0x001EB040 0x8 func_001EB040  # OVL1
+0x001EB040 0x8 SetSkipSwap__10CCoreStateFi  # OVL1; the name ours (CGameState's new slot 0x28, set in CCoreState: m_skip_swap)
 0x001EB050 0x8 PreInit__10CCoreStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001EB060 0x8 PreUnInit__10CCoreStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001EB070 0x848 func_001EB070  # OVL1
-0x001EB8C0 0x2D0 func_001EB8C0  # OVL1
-0x001EBB90 0xC func_001EBB90  # OVL1
-0x001EBBA0 0xB4 func_001EBBA0  # OVL1
-0x001EBC60 0x3C func_001EBC60  # OVL1
-0x001EBCA0 0xF8 func_001EBCA0  # OVL1
-0x001EBDA0 0x90 func_001EBDA0  # OVL1
+0x001EB8C0 0x2D0 auxUnload__10CCoreStateFv  # OVL1; s1:calls (UnInit and Unload call it after clearing the loading flags, as SOCOM 1's)
+0x001EBB90 0xC Unload__10CCoreStateFv  # OVL1; s1:exact (SOCOM 1's three words)
+0x001EBBA0 0xB4 Load__10CCoreStateFb  # OVL1; s1:calls (CLoadState::Tick's; the flags, zsys_FullAllocAndFree, the sky colour 190/220/250 as SOCOM 1's)
+0x001EBC60 0x3C FreeLoadThread__10CCoreStateFv  # OVL1; the name ours (CLoadState::UnInit's: the load thread's id reset, its stack freed -- SOCOM II's stack is allocated)
+0x001EBCA0 0xF8 StartLoadThread__10CCoreStateFv  # OVL1; the name ours (Load's async branch: SOCOM 1's stack fill and CreateThread, the stack allocated once)
+0x001EBDA0 0x90 LoadThreadEntry__FPv  # OVL1; s1:calls (the thread entry StartLoadThread passes; SOCOM 1's body, ExitDeleteThread last)
 0x001EBE30 0x98 UnInit__10CCoreStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x001EBED0 0x578 func_001EBED0  # OVL1
+0x001EBED0 0x578 Tick__10CCoreStateFf  # OVL1; s1:vtable (CCoreState's Tick slot)
 0x001EC450 0x24 SetActive__Q23zdb5CNodeFb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001EC480 0x4B8 Init__10CCoreStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x001EC940 0x10 func_001EC940  # OVL1
+0x001EC940 0x10 GetTexHandle__Q23zdb6CWorldFPCc  # OVL1; s1:exact (CAssetMgr::m_assets' GetTexHandle, SOCOM 1's four words; CCoreState::Init's inline copy, linked)
 0x001EC950 0xF8 __dt__10CCoreStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x001ECA50 0xB8 func_001ECA50  # OVL1
+0x001ECA50 0xB8 __ct__10CCoreStateFv  # OVL1; s1:calls (stores CGameState's then CCoreState's vtable; the two unit matrices)
 0x001ECB10 0xE4 OnPop__10CCoreStateFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001ECC00 0x38 OnPush__10CCoreStateFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001ECC40 0xA8 func_001ECC40  # OVL1
-0x001ECCF0 0x264 func_001ECCF0  # OVL1
+0x001ECCF0 0x264 UnInit__15CCinematicStateFv  # OVL1; s1:vtable (CCinematicState's UnInit slot)
 0x001ECF60 0x94 func_001ECF60  # OVL1
 0x001ED000 0x8 func_001ED000  # OVL1
-0x001ED010 0x54C func_001ED010  # OVL1
-0x001ED560 0x4F4 func_001ED560  # OVL1
+0x001ED010 0x54C Tick__15CCinematicStateFf  # OVL1; s1:vtable (CCinematicState's Tick slot)
+0x001ED560 0x4F4 Init__15CCinematicStateFv  # OVL1; s1:vtable (CCinematicState's Init slot)
 0x001EDA60 0x408 func_001EDA60  # OVL1
 0x001EDE70 0x18 func_001EDE70  # OVL1
 0x001EDE90 0xC func_001EDE90  # OVL1
@@ -1997,10 +1997,10 @@
 0x002231E0 0x3C func_002231E0  # OVL1
 0x00223220 0x6C InitStaticItems__15CZPlayerMapItemFv  # OVL1; s1:exact
 0x00223290 0x8 func_00223290  # OVL1
-0x002232A0 0x374 func_002232A0  # OVL1
+0x002232A0 0x374 UnInit__12CMPExitStateFv  # OVL1; s1:vtable (CMPExitState's UnInit slot)
 0x00223620 0x60 __dt__11CMPExitMenuFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00223680 0x2EC Tick__12CMPExitStateFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00223970 0x79C func_00223970  # OVL1
+0x00223970 0x79C Init__12CMPExitStateFv  # OVL1; s1:vtable (CMPExitState's Init slot)
 0x00224110 0xA4 func_00224110  # OVL1
 0x002241C0 0x48 func_002241C0  # OVL1
 0x00224210 0x460 func_00224210  # OVL1
