@@ -144,6 +144,19 @@ public:
     float m_matrix[4][4];
 
     CMatrix() { sceVu0UnitMatrix(m_matrix); }
+    /* the elements as the array VU0 takes (SOCOM 1 links the const one, __opRA4_A4_Cf__7CMatrixCFv;
+     * CNode::BuildMTW's inner copies call both) */
+    typedef float Rows[4][4];
+    typedef const float CRows[4][4];
+    operator Rows &() { return m_matrix; }
+    operator CRows &() const { return m_matrix; }
+    /* the unit matrix (BuildMTW's innermost copy calls it; the name is ours) */
+    void SetIdentity() { sceVu0UnitMatrix(m_matrix); }
+    /* out = b * this (SOCOM 1's Multiply, out of line wherever an inlining runs out) */
+    void Multiply(const CMatrix *b, CMatrix *out) const
+    {
+        sceVu0MulMatrix((Rows &)*out, (float (*)[4])(CRows &)*b, (float (*)[4])(CRows &)*this);
+    }
     /* copied on VU0 (CNode::ComputeFacadeMatrix: a product's return copied out, then assigned) */
     CMatrix(const CMatrix &m) { sceVu0CopyMatrix(m_matrix, (float (*)[4])m.m_matrix); }
     CMatrix &operator=(const CMatrix &m)

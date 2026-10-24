@@ -187,6 +187,25 @@ void CNode::SetModelname(const char *name)
     m_modelname = name ? _strdup(name, 0, 0) : 0;
 }
 
+/* the node-to-world matrix: this node's, then each parent's up to the world (type 6, whose own
+ * is the unit), multiplied in; none if the chain never reaches it. The recursion inlines itself
+ * three times; the innermost copies call CMatrix's pieces out of line.
+ * OPEN (right size, 44 differing): the third copy converts Multiply's arguments right to left
+ * (this, b, then out: 0x310C60, 0x310C60, 0x310C50), where MW converts call arguments left to
+ * right (probe build/scratch/inl/t10.cpp) -- so out first here, in every form tried (explicit
+ * casts, implicit conversions to row pointers under a const prototype, a local) */
+CMatrix *CNode::BuildMTW(CMatrix &m)
+{
+    if (m_type == 6) {
+        m.SetIdentity();
+        return &m;
+    }
+    m.Multiply(GetMatrix(), &m);
+    if (m_parent && m_parent->m_type == 6)
+        return &m;
+    return m_parent ? m_parent->BuildMTW(m) : 0;
+}
+
 /* a point in the node's frame into the world's: each matrix up the tree, to the world's node
  * (type 6) */
 void CNode::TransformToWorld(CPnt3D &p) const

@@ -186,7 +186,9 @@ public:
     void SetDynamicLight(bool on, bool recurse);
     void ComputeFacadeMatrix(const CMatrix *view, CMatrix *out);
     void TransformToWorld(CPnt3D &p) const;
-    void BuildMTW(CMatrix &m);
+    CMatrix *BuildMTW(CMatrix &m);
+    /* the node's own matrix (BuildMTW's inner copies call it out of line; the name is ours) */
+    CMatrix *GetMatrix() { return &m_matrix; }
     void SetMatrix(const CMatrix *m);
     void GetRotation(CPnt3D *out) const;
     void SetRotation(const CPnt3D *euler);
