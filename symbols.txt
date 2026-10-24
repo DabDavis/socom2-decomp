@@ -3576,7 +3576,7 @@
 0x00293A80 0x434 __ct__Q23zdb7CCameraFv  # OVL1
 0x00293EC0 0xD0 UpdateDirectionalFog__Q23zdb7CCameraFv  # OVL1
 0x00293F90 0xD4 UpdateFogAltVU__Q23zdb7CCameraFv  # OVL1
-0x00294070 0x854 func_00294070  # OVL1
+0x00294070 0x854 Update__Q23zdb7CCameraFQ23zdb13tag_ZCAM_TYPE  # OVL1
 0x002948D0 0x158 GetFogVisibility__Q23zdb7CCameraCFPC6CPnt3DPC6CPnt3D  # OVL1
 0x00294A30 0x90 _OutsideGuardBand__FPfPfPA4_fPA4_fi  # OVL1; s1:name (SOCOM 1's fov.cpp, the same VU0 code; CCamera::TestFOV calls it on the guard band)
 0x00294AC0 0x74 sceVu0ClipBBox__FPA4_fP5PNT4D  # OVL1; s1:name (SOCOM 1's fov.cpp, the same VU0 code; CCamera::TestFOV's clip word)

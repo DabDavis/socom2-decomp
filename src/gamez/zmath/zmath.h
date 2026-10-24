@@ -86,6 +86,20 @@ public:
 
     void Rotate_AxisX(float a);
     void Rotate_AxisY(float a);
+    /* by value through VU0, each result copied out of its temporary (CCamera::Update's near
+     * plane point) */
+    CPnt4D operator*(float s) const
+    {
+        CPnt4D r;
+        sceVu0ScaleVector((float *)&r, (float *)this, s);
+        return r;
+    }
+    CPnt4D operator+(const CPnt4D &b) const
+    {
+        CPnt4D r;
+        sceVu0AddVector((float *)&r, (float *)this, (float *)&b);
+        return r;
+    }
 
     static const CPnt4D zero;
     static const CPnt4D unit_x;

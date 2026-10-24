@@ -166,6 +166,7 @@ public:
         UpdateFogAlt();
     }
     void RestoreParams();
+    void Update(tag_ZCAM_TYPE type);
     void UpdateDirectionalFog();
     float GetFogVisibility(const CPnt3D *p1, const CPnt3D *p2) const;
     void UpdateFogAltVU();
@@ -244,7 +245,8 @@ public:
     unsigned int m_PlayerCanSeeRegions;   // 0x2a0
     unsigned int m_CameraCanSeeRegions;   // 0x2a4
     unsigned int m_SeeRegions;   // 0x2a8
-    unsigned char _socom2_2ac[0x2b8 - 0x2ac];
+    CPnt3D m_worldPos;   // 0x2ac: SOCOM II's, the camera's origin in the world (Update; the name
+                         //   is ours)
     bool m_IsInside;   // 0x2b8 (CmdTickIndoorsTest; SOCOM 1: 0x2ac)
     unsigned char _socom2_2b9[0x2c4 - 0x2b9];   // SOCOM 1's m_AboveMaterial among them
     float m_landmark_far_plane;   // 0x2c4 (GetLandmarkFarPlane; SOCOM 1: 0x2b4)
