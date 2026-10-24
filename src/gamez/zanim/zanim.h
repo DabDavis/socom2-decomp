@@ -116,6 +116,7 @@ public:
     int GarbageCollect();
     void StopLights(bool force);
     void StopAnims();
+    void StopSounds();
     bool Tick(float dT);
     void DeleteParticleSources();
     void Name(const char *name);
@@ -144,14 +145,16 @@ public:
     }
 
     CZAnimArgList* m_arg_list;   // 0x18
-    unsigned char _socom2_1c[8];   // 0x1c: SOCOM II's 8 new bytes (GetName finds the name index table after them)
+    void (*m_done_callback)(CZAnim *anim, void *arg);   // 0x1c: SOCOM II's, called once after the cleanup (State; name ours)
+    void *m_done_arg;   // 0x20
     CZAnimNameIndexTable m_nameindex_table;   // 0x24 (SOCOM 1: 0x1c; every offset below moved by 8)
     CZAnimEx* m_animEx;   // 0x2c
     CZAnimHealth* m_health;   // 0x30
-    unsigned int m_invalid : 1;   // 0x34 (SOCOM 1: 0x2c; every offset below moved by 8)
-    unsigned int m_added_to_world_internally : 1;   // 0x2c
-    unsigned int m_debug : 1;   // 0x2c
-    unsigned int m_socom2_3 : 5;   // SOCOM II's: GetAnimIndex reads the set index as the byte at 0x35
+    unsigned int m_invalid : 1;   // 0x34 bit 0 (SOCOM 1: 0x2c; every offset below moved by 8)
+    unsigned int m_in_cleanup : 1;   // bit 1: SOCOM II's, State's guard around the cleanup (name ours)
+    unsigned int m_socom2_bits2 : 4;   // bits 2-5: unread so far (SOCOM 1's m_debug among them?)
+    unsigned int m_added_to_world_internally : 1;   // bit 6 (SOCOM 1: bit 1): State takes the root out of the world
+    unsigned int m_socom2_bit7 : 1;   // bit 7; GetAnimIndex reads the set index as the byte at 0x35
     unsigned int m_animset_index : 8;   // 0x2c
     unsigned int m_node_ref_count : 8;   // 0x2c
     unsigned int m_tex_ref_count : 8;   // 0x2c

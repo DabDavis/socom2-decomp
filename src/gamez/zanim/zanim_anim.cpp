@@ -4,15 +4,17 @@
  *
  * -inline auto works here as elsewhere, to depth 3: Resume and Pause inline themselves twice
  * and CZAnim::Running twice, then call both -- which is where the out-of-line copies of the
- * sibling accessor (0x270BB0) and the Source test (0x270BC0) come from. CZAnim::Start and
- * ExecuteSpecialSequence are never inlined (RestartClones and func_00271110; Tick and State),
- * though no bigger than Running and in no call cycle; a pragma around each definition
- * reproduces that (the pragma state at the callee decides) -- the original's means unknown. */
+ * sibling accessor (0x270BB0) and the Source test (0x270BC0) come from. CZAnim::Start,
+ * ExecuteSpecialSequence and StopAnims are never inlined (RestartClones and func_00271110; Tick
+ * and State; State), Start no bigger than Running and none in a call cycle; a pragma around each
+ * definition reproduces that (the pragma state at the callee decides). The original's means is
+ * unknown -- debug code compiled to nothing would count against -inline auto the same way. */
 
 #include "zanim.h"
 
 extern "C" CZAnim *func_00270BB0(CZAnim *anim);
 extern "C" bool func_00270BC0(Particle::Source *source);
+extern "C" CNode *func_002703D0(CZAnim *anim, int find);
 
 /* the interpreter's sequence calls made on this anim: SOCOM II keeps the current sequence as
  * well as the current anim around them (SOCOM 1 cleared it) */
@@ -135,6 +137,57 @@ void CZAnim::RestartClones()
         return;
     for (CZAnim *anim = this; anim; anim = anim->m_sibling_anim)
         anim->Start();
+}
+
+/* SOCOM II's: a particle source stopped by the particle manager (0x329AB0), and a world call on
+ * a node it held (0x31D0A0) -- not named */
+extern "C" void func_00329AB0(Particle::Source *source);
+extern "C" void func_0031D0A0(zdb::CWorld *world, int what, zdb::CNode *node);
+
+/* a new state: stopping (5) a running anim runs its cleanup; stopping or resetting (1) lets go
+ * of its sources, sounds, lights and called anims and takes a root it added out of the world;
+ * starting (2) unpauses it. The cleanup runs once, then the done callback, if any. */
+void CZAnim::State(int state)
+{
+    bool cleanup = false;
+
+    switch (state) {
+    case 5:
+        if (Running())
+            cleanup = true;
+    case 1:
+        for (int i = 0; i < m_particle_count; i++)
+            if (m_particle_list[i].particle && !func_00270BC0(m_particle_list[i].particle))
+                func_00329AB0(m_particle_list[i].particle);
+        StopSounds();
+        StopLights(false);
+        StopAnims();
+        if (m_added_to_world_internally) {
+            CNode *root = func_002703D0(this, 0);
+
+            if (root) {
+                zdb::CWorld::m_world->DeleteChild(root);
+                m_added_to_world_internally = 0;
+                if (((unsigned char *)root)[0xA1] & 4)
+                    func_0031D0A0(zdb::CWorld::m_world, 2, root);
+            }
+        }
+    case 2:
+        m_paused = 0;
+        if (state == 2)
+            m_in_cleanup = 0;
+        break;
+    }
+    if (cleanup && !m_in_cleanup) {
+        m_in_cleanup = 1;
+        ExecuteSpecialSequence(m_cleanup_seq_offset);
+        if (m_done_callback)
+            m_done_callback(this, m_done_arg);
+        m_done_callback = 0;
+        m_done_arg = 0;
+        m_in_cleanup = 0;
+    }
+    m_state = state;
 }
 
 /* a frame of the anim: its execution sequence, then (once activated) every sequence while it
@@ -284,6 +337,7 @@ void CZAnim::DeleteParticleSources()
 }
 
 /* the anims it called let go: those it stops on exit stopped first, if still running */
+#pragma auto_inline off
 void CZAnim::StopAnims()
 {
     for (int i = 0; i < m_call_anim_ref_count; i++) {
@@ -299,6 +353,7 @@ void CZAnim::StopAnims()
         }
     }
 }
+#pragma auto_inline reset
 
 /* the anim's lights put out: those it stops on exit, or all when forced -- a local light
  * deactivated, a world light's map deleted */
