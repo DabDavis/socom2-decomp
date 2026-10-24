@@ -1461,7 +1461,7 @@
 0x001EA8D0 0x198 func_001EA8D0  # OVL1
 0x001EAA70 0x8 func_001EAA70  # OVL1
 0x001EAA80 0x68 func_001EAA80  # OVL1
-0x001EAAF0 0xBC func_001EAAF0  # OVL1
+0x001EAAF0 0xBC erase__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>FQ33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<0>Q33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<0>  # OVL1; s1:name (SOCOM 1's range erase of the pointer lists; CZAnimArgList's destructor clears through it, twice)
 0x001EABB0 0x18 __ct__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>Fv  # OVL1; s1:callee
 0x001EABD0 0xA4 func_001EABD0  # OVL1
 0x001EAC80 0x60 func_001EAC80  # OVL1

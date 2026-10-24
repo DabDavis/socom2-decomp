@@ -149,6 +149,49 @@ CZAnimArg *CZAnimArgInt::Copy()
     return new CZAnimArgInt(GetType(), m_value);
 }
 
+/* find_if's test for the n-th argument of a type, kept by value in the walk (SOCOM II's
+ * function object; the name ours) */
+struct CZAnimArgFind {
+    CZAnimArgFind(CZAnimArg::TYPE type, int n) : type(type), n(n), count(0) {}
+    bool operator()(const void *p)
+    {
+        CZAnimArg *arg = (CZAnimArg *)p;
+
+        if (arg->m_type == type) {
+            if (count == n)
+                return true;
+            count++;
+        }
+        return false;
+    }
+
+    CZAnimArg::TYPE type;
+    int n;
+    int count;
+};
+
+/* the first point argument of a type.
+ * OPEN, as the destructor below: the target keeps the found iterator (and the destructor's walk)
+ * in a stack slot, copied bitwise out of a temporary, where <list>'s iterators here stay in
+ * registers -- every shape tried (const_iterator, assignment, a pointer-list wrapper, a
+ * destructor, free comparisons) either keeps that or stops the inlining */
+CPnt3D *CZAnimArgList::GetPnt3D(CZAnimArg::TYPE type)
+{
+    iterator it = std::find_if(begin(), end(), CZAnimArgFind(type, 0));
+
+    if (it == end())
+        return 0;
+    return &((CZAnimArgPnt3D *)*it)->m_pnt;
+}
+
+/* the arguments deleted with the list */
+CZAnimArgList::~CZAnimArgList()
+{
+    for (iterator it = begin(); it != end(); ++it)
+        delete (CZAnimArg *)*it;
+    clear();
+}
+
 /* SOCOM II's: an available copy activated with commands (SOCOM 1's ActivateEx, its list read by
  * ActivateExV now) */
 CZAnim *CZAnim::ActivateEx(int cmd, ...)

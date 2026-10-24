@@ -1,9 +1,15 @@
 /* <list>: just enough of Metrowerks' MSL C++ std::list (CodeWarrior PS2 3.0) to give the
  * matched functions their code and their mangled names. A reconstruction, not MSL: the class
  * shapes are SOCOM 1's DWARF (list : __list_imp : __list_deleter, size_ at 0, the end node at
- * 4 with prev_/next_), the member bodies are whatever compiles to the shipped bytes. A pointer
- * list shares one implementation over const void * -- hence __list_deleter<PCv,...> in the
- * names of every list<T *>'s calls. */
+ * 4 with prev_/next_, a node's value after its links), the member bodies are whatever compiles
+ * to the shipped bytes. A pointer list shares one implementation over const void * -- hence
+ * __list_deleter<PCv,...> in the names of every list<T *>'s calls -- and wraps its iterators
+ * (SOCOM 1's list<T *>::generic_iterator<0> is built from the base's).
+ *
+ * The constructor and erase are defined outside the class, so neither is ever auto-inlined:
+ * CSaveManager's and CZAnimArgList's constructors call the deleter's (0x1EABB0), and clear() is
+ * a call to the range erase (0x1EAAF0 for the pointer lists). The destructor chain is three
+ * this-tested levels above clear() (CZAnimArgList's destructor shows all three). */
 
 #ifndef _MSL_LIST
 #define _MSL_LIST
@@ -19,8 +25,39 @@ public:
         node_base *prev_;
         node_base *next_;
     };
+    struct node : public node_base {
+        T data_;
+    };
+
+    template <bool IsConst>
+    class generic_iterator {
+    public:
+        generic_iterator() {}
+        generic_iterator(node_base *n) : node_(n) {}
+        /* iterator's copy constructor, so iterators are passed by address (erase's are); the
+         * copy assignment stays implicit, a bitwise copy (lwc1/swc1) */
+        generic_iterator(const generic_iterator<false> &x) : node_(x.node_) {}
+        T &operator*() const { return ((node *)node_)->data_; }
+        generic_iterator &operator++()
+        {
+            node_ = node_->next_;
+            return *this;
+        }
+        bool operator==(const generic_iterator &x) const { return node_ == x.node_; }
+        bool operator!=(const generic_iterator &x) const { return node_ != x.node_; }
+
+        node_base *node_;
+    };
+    typedef generic_iterator<false> iterator;
+    typedef generic_iterator<true> const_iterator;
 
     __list_deleter();
+    ~__list_deleter() { erase(iterator(end_.next_), iterator(&end_)); }
+    iterator begin() { return iterator(end_.next_); }
+    iterator end() { return iterator(&end_); }
+    void clear() { erase(begin(), end()); }
+    iterator erase(iterator first, iterator last);
+    iterator insert(iterator position, const T &x);
 
 protected:
     unsigned int size_;
@@ -32,6 +69,30 @@ __list_deleter<T, Allocator>::__list_deleter()
     : size_(0)
 {
     end_.prev_ = end_.next_ = &end_;
+}
+
+/* the nodes [first, last) unlinked around the last one's links, then freed one by one.
+ * OPEN (0x1EAAF0, and every type's 0xBC copy): 7 instructions -- first's node and the last
+ * node take each other's registers (a2/a1), whatever the declaration order or loop shape */
+template <class T, class Allocator>
+typename __list_deleter<T, Allocator>::iterator
+__list_deleter<T, Allocator>::erase(iterator first, iterator last)
+{
+    if (first == last)
+        return last;
+    node_base *f = first.node_;
+    node_base *l = last.node_->prev_;
+
+    f->prev_->next_ = l->next_;
+    l->next_->prev_ = f->prev_;
+    while (first != last) {
+        node_base *n = first.node_;
+
+        first.node_ = n->next_;
+        operator delete(n);
+        --size_;
+    }
+    return last;
 }
 
 template <class T, class Allocator>

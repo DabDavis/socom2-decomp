@@ -15,6 +15,14 @@ inline Function for_each(InputIterator first, InputIterator last, Function f)
     return f;
 }
 
+template <class InputIterator, class Predicate>
+inline InputIterator find_if(InputIterator first, InputIterator last, Predicate pred)
+{
+    while (first != last && !pred(*first))
+        ++first;
+    return first;
+}
+
 }
 
 #endif
