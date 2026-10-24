@@ -5462,7 +5462,7 @@
 0x003152D0 0x60 __ct__Q23zdb6CLightFv  # OVL1; s1:align
 0x00315330 0x124 func_00315330  # OVL1
 0x00315460 0x114 _Copy__Q23zdb6CLightCFPQ23zdb5CNode  # OVL1; s1:calls
-0x00315580 0x48 func_00315580  # OVL1
+0x00315580 0x48 Rendered__Q23zdb5CNodeFi  # OVL1; s1:order (SOCOM 1's Rendered, after CLight::_Copy as here; SOCOM II's compares a word stamp with zVid.frameNumber and takes a frame count, 2 from every caller)
 0x003155D0 0x6C GetRadius__Q23zdb5CNodeFv  # OVL1; s1:calls (SOCOM 1's InsideMidPlane(CCell *) calls GetRadius on the cell where SOCOM II's calls this; the larger of its bounds' corners' lengths)
 0x00315640 0x58 GetRadiusSq__Q23zdb5CNodeFv  # OVL1; s1:align
 0x003156A0 0x28 GetRotation__Q23zdb5CNodeCFP6CPnt3D  # OVL1; tu: node_main.cpp~ (1.0 beta); s1:exact

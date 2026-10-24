@@ -9,6 +9,7 @@
 #include "znode.h"
 #include "../zanim/zanim.h"
 #include "../zsys/zsys.h"
+#include "../zvid/zvid.h"
 
 /* the name a node without one shares (SOCOM 1's file static, 0x3DFD10 here) */
 extern char *UNNAMED_NODE;
@@ -218,6 +219,69 @@ float CNode::GetRadiusSq()
 float CNode::GetRadius()
 {
     return sqrtf(GetRadiusSq());
+}
+
+/* whether the node was drawn this frame, or (asked for two frames, as every caller does) the
+ * frame before */
+bool CNode::Rendered(int frames)
+{
+    if (m_frameRendered == zVid.frameNumber || (frames == 2 && m_frameRendered == zVid.frameNumber - 1))
+        return true;
+    return false;
+}
+
+/* a light copied into another node (a new light when none): the node's part, then the light's --
+ * the ranges, the colour, the opacity; not yet applied to anything */
+CNode *CLight::_Copy(CNode *to) const
+{
+    CLight *light;
+
+    if (!to) {
+        light = new CLight;
+        to = light;
+    } else
+        light = dynamic_cast<CLight *>(to);
+    CNode::_Copy(to);
+    light->m_minRange = m_minRange;
+    light->m_maxRange = m_maxRange;
+    light->m_maxRangeSq = m_maxRangeSq;
+    light->m_invMaxRange = m_invMaxRange;
+    light->m_invDeltaRange = m_invDeltaRange;
+    light->m_diffuse = m_diffuse;
+    light->m_opacity = m_opacity;
+    light->m_appliedToNode = 0;
+    return to;
+}
+
+/* a light: type 8, no range, a mid grey, half opaque (64 of 128) */
+CLight::CLight()
+{
+    m_type = 8;
+    m_maxRangeSq = 0.0f;
+    m_minRange = 0.0f;
+    m_diffuse.x = 128.0f;
+    m_diffuse.y = 128.0f;
+    m_diffuse.z = 128.0f;
+    m_opacity = 64.0f;
+    m_appliedToNode = 0;
+}
+
+CLight::~CLight()
+{
+}
+
+/* a light's bounds: a cube about it, its half side the larger of its two ranges */
+CBBox *CLight::UpdateBBox(bool up)
+{
+    float r = MAX(m_maxRange, m_minRange);
+
+    m_bbox.m_max.x = r;
+    m_bbox.m_max.y = r;
+    m_bbox.m_max.z = r;
+    m_bbox.m_min.x = -r;
+    m_bbox.m_min.y = -r;
+    m_bbox.m_min.z = -r;
+    return (CBBox *)GetBBox();
 }
 
 /* the node's name, its own copy (or the shared default when given none); a name of its own freed */

@@ -180,6 +180,7 @@ public:
     static CNode *CreateInstance(const char *name, const CPnt3D *pos, const CQuat *rot);
     static CNode *Delete(CNode *node);
     void RemoveFromParent();
+    bool Rendered(int frames);
     void ComputeFacadeMatrix(const CMatrix *view, CMatrix *out);
     void TransformToWorld(CPnt3D &p) const;
     void BuildMTW(CMatrix &m);
@@ -228,13 +229,10 @@ public:
     CVisualVector m_visual;   // 0x84
     char* m_name;   // 0x90
     CNodeEx* m_nodeEx;   // 0x94
-    char m_customGlobalLight;   // 0x98
-    unsigned char m_frameRendered;   // 0x99
-    unsigned short m_flatten : 1;   // 0x9a
-    unsigned short m_modified : 1;   // 0x9a
-    unsigned short m_character : 1;   // 0x9a
-    unsigned short m_character_infov : 1;   // 0x9a
-    unsigned short m_unused : 12;   // 0x9a
+    /* the frame the node was last drawn in: SOCOM II's word, where SOCOM 1 kept a byte at 0x99
+     * (CNode::Rendered compares it with zVid.frameNumber; the constructor clears the word).
+     * SOCOM 1's flags at 0x9a moved to 0xa1 (m_modified is the bit SetPosition sets) */
+    unsigned int m_frameRendered;   // 0x98
     float m_Opacity;   // 0x9c
     /* SOCOM II's at 0xa0, where SOCOM 1's DWARF has m_Atom: CZAnim::State and CreateInstanceNode
      * test the byte at 0xa1 with a mask (4) and CreateInstanceNode sets that bit as a bitfield on
@@ -260,6 +258,25 @@ public:
     char* m_modelname;   // 0xb8 (SOCOM 1: 0xb4)
     unsigned int m_region_mask;   // 0xbc (SOCOM 1: 0xb8)
 };   // 0xc0 bytes
+
+/* a light: a node with a range (SOCOM 1's DWARF) */
+class CLight : public CNode {
+public:
+    CLight();
+    virtual ~CLight();
+    virtual CNode *_Copy(CNode *to) const;
+    virtual CBBox *UpdateBBox(bool up);
+
+    float m_maxRangeSq;   // 0xc0
+    float m_maxRange;   // 0xc4
+    float m_minRange;   // 0xc8
+    float m_invMaxRange;   // 0xcc
+    float m_invDeltaRange;   // 0xd0
+    float m_opacity;   // 0xd4
+    CPnt3D m_diffuse;   // 0xd8
+    unsigned int m_appliedToNode;   // 0xe4
+    CPnt3D m_WorldPosition;   // 0xe8
+};   // 0x100 bytes (16-aligned)
 
 /* a model node: what CZAnim::CreateInstanceNode instances (dynamic_cast from CNode) */
 /* a cell of the world's grid (SOCOM 1's names; its own members not read yet) */

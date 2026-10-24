@@ -794,7 +794,6 @@ extern "C" zdb::CNode *func_0025E3F0(zanim_cmd_forchildren *cmd, CZAnim *anim);
 extern "C" int func_002681C0(CZAnimMain *main, int delta);
 
 /* CNode::Rendered, which SOCOM II gave a parameter (2 here) */
-extern "C" bool func_00315580(CNode *node, int how);
 
 extern "C" int rand(void);
 

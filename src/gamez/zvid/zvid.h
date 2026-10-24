@@ -7,7 +7,14 @@
 #define ZVID_H
 
 struct _zvid_public {
-    unsigned char _0[0x28];   // SOCOM 1's wireFrameFlag .. procTime
+    unsigned int wireFrameFlag;   // 0x0
+    int showTextureBuffer;   // 0x4
+    int showTextureBufferFormat;   // 0x8
+    unsigned long frameNumber;   // 0x10 (64 bits; CNode::Rendered compares nodes' stamps with it)
+    unsigned int frameRate;   // 0x18
+    float frameTime;   // 0x1c
+    float runTime;   // 0x20
+    float procTime;   // 0x24
     float aspect[2];   // 0x28
     unsigned char _30[0x44 - 0x30];   // SOCOM 1's displayBuf, renderBuf, with 0xC more
     unsigned int renderWidth;   // 0x44 (SOCOM 1: 0x38)

@@ -1529,7 +1529,7 @@ bool zAnimNodeRenderedTick(_zanim_cmd_hdr *hdr, float *dT)
 {
     CNode *node = ZAnim.m_CurAnim->GetNode(((zanim_cmd_nodetest *)hdr)->mode, false);
 
-    if (node && func_00315580(node, 2))
+    if (node && node->Rendered(2))
         return true;
     return false;
 }
