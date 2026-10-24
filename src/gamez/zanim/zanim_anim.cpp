@@ -4,9 +4,10 @@
  *
  * -inline auto works here as elsewhere, to depth 3: Resume and Pause inline themselves twice
  * and CZAnim::Running twice, then call both -- which is where the out-of-line copies of the
- * sibling accessor (0x270BB0) and Source::Done (0x270BC0) come from. CZAnim::Start alone is
- * never inlined (RestartClones, func_00271110), though it is no bigger than Running and in no
- * call cycle; a pragma around its definition reproduces that, the original's means unknown. */
+ * sibling accessor (0x270BB0) and the Source test (0x270BC0) come from. CZAnim::Start and
+ * ExecuteSpecialSequence are never inlined (RestartClones and func_00271110; Tick and State),
+ * though no bigger than Running and in no call cycle; a pragma around each definition
+ * reproduces that (the pragma state at the callee decides) -- the original's means unknown. */
 
 #include "zanim.h"
 
@@ -136,6 +137,38 @@ void CZAnim::RestartClones()
         anim->Start();
 }
 
+/* a frame of the anim: its execution sequence, then (once activated) every sequence while it
+ * neither stops nor pauses; finished when no sequence is left running */
+bool CZAnim::Tick(float dT)
+{
+    if (m_paused)
+        return false;
+    CZAnim *cur = ZAnim.m_CurAnim;
+    _zsequence *seq = ZAnim.m_CurSeq;
+
+    ZAnim.m_anim_complete = 1;
+    ZAnim.m_CurAnim = this;
+    ZAnim.m_CurSeq = 0;
+    if (ExecuteSpecialSequence(m_execution_seq_offset)) {
+        if (m_state == 2)
+            ZAnim.ActivateBegin(this);
+        for (ZAnim.SeqFirst(); ZAnim.SeqValid() && m_state != 5 && (bool)m_paused == false; ZAnim.SeqNext()) {
+            ZAnim.SeqTick(dT);
+            if (ZAnim.SeqRunning())
+                ZAnim.m_anim_complete = 0;
+        }
+        m_timer += dT;
+        if (ZAnim.m_anim_complete && (bool)m_paused == false)
+            State(5);
+        ZAnim.m_CurAnim = 0;
+        ZAnim.m_CurSeq = 0;
+    } else
+        ZAnim.m_anim_complete = 0;
+    ZAnim.m_CurAnim = cur;
+    ZAnim.m_CurSeq = seq;
+    return ZAnim.m_anim_complete;
+}
+
 /* in a running state, or with a particle source still going */
 bool CZAnim::Running()
 {
@@ -250,6 +283,23 @@ void CZAnim::DeleteParticleSources()
     }
 }
 
+/* the anims it called let go: those it stops on exit stopped first, if still running */
+void CZAnim::StopAnims()
+{
+    for (int i = 0; i < m_call_anim_ref_count; i++) {
+        _zanim_call_anim_ref *ref = &m_call_anim_ref_list[i];
+
+        if (ref->executing_anim) {
+            if (ref->stop_on_exit) {
+                if (ref->executing_anim->Running())
+                    func_002707C0(ref->executing_anim, false);
+                ref->stop_on_exit = 0;
+            }
+            ref->executing_anim = 0;
+        }
+    }
+}
+
 /* the anim's lights put out: those it stops on exit, or all when forced -- a local light
  * deactivated, a world light's map deleted */
 void CZAnim::StopLights(bool force)
@@ -313,6 +363,7 @@ int CZAnim::AddValve(const char *name)
 
 /* one of the anim's special sequences (damage, activation, execution, cleanup -- an offset
  * into its sequence data) run for a frame: whether it finished */
+#pragma auto_inline off
 bool CZAnim::ExecuteSpecialSequence(int offset)
 {
     bool done = true;
@@ -333,3 +384,4 @@ bool CZAnim::ExecuteSpecialSequence(int offset)
     ZAnim.m_CurSeq = seq;
     return done;
 }
+#pragma auto_inline reset

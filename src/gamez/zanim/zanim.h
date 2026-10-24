@@ -114,7 +114,9 @@ public:
     bool Running();
     void State(int state);
     int GarbageCollect();
-    void StopLights(bool now);
+    void StopLights(bool force);
+    void StopAnims();
+    bool Tick(float dT);
     void DeleteParticleSources();
     void Name(const char *name);
     void Priority(float priority);
@@ -400,7 +402,7 @@ public:
     CZAnimSet* m_CurAnimSet;   // 0x34
     CZAnim* m_CurAnim;   // 0x38
     _zsequence* m_CurSeq;   // 0x3c
-    unsigned char m_anim_complete;   // 0x40
+    bool m_anim_complete;   // 0x40: a bool (CZAnim::Tick returns it, unconverted, as the scheduler's bool)
     unsigned char m_debug;   // 0x41
     unsigned char m_socom2_42;   // 0x42: SOCOM II's, in SOCOM 1's hole (the constructor clears it)
     unsigned char _pad43;   // 0x43

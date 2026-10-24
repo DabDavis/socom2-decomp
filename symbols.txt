@@ -2993,7 +2993,7 @@
 0x0026F4E0 0x340 GetNode__6CZAnimFib  # OVL1; s1:callee by hand (called where SOCOM 1's node-test handlers call GetNode(int, bool); the same arguments)
 0x0026F820 0x8 Priority__6CZAnimFf  # OVL1; s1:callee by hand (func_0026CAA0 calls it with 3.0 where SOCOM 1's NewAnim calls Priority; the same store of m_priority)
 0x0026F830 0x24C GarbageCollect__6CZAnimFv  # OVL1; s1:align
-0x0026FA80 0x168 func_0026FA80  # OVL1
+0x0026FA80 0x168 StopAnims__6CZAnimFv  # OVL1; s1:order (between GarbageCollect and StopLights in both; the called anims stopped on exit and let go)
 0x0026FBF0 0x130 StopLights__6CZAnimFb  # OVL1; s1:align
 0x0026FD20 0x170 StopSounds__6CZAnimFv  # OVL1; s1:align
 0x0026FE90 0x88 DeleteParticleSources__6CZAnimFv  # OVL1; s1:align
