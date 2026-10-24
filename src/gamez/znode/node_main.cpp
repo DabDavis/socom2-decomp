@@ -406,13 +406,9 @@ CGridAtom *CNode::GetAtom(int i)
 }
 
 /* moving and lit as a dynamic node, or not; below too when told to (each recursion inlines itself
- * twice, as SetNodeEx's does).
- * OPEN (SetDynamic, 0x280 of 0x270): its walk declares the iterator, then assigns begin() to it
- * (the second copy calls the iterator's default constructor, 0x313490, and its assignment,
- * 0x313480) -- and still inlines begin() whole in its own body. That needs the vector base's
- * begin() to read data_ directly: with it SetDynamic matches byte for byte, but FindChild by
- * name loses the register holding &data_ that data()'s reference gives it. One model fits
- * either, none both yet. */
+ * twice, as SetNodeEx's does). SetDynamic's walk declares the iterator, then assigns begin() to
+ * it: the second copy calls the iterator's default constructor (0x313490) and its assignment
+ * (0x313480), the outer copy inlines begin() whole -- three high only so (include/vector) */
 void CNode::SetDynamic(bool on, bool recurse)
 {
     m_dynamic_motion = on;
@@ -443,9 +439,7 @@ void CNode::SetDynamicLight(bool on, bool recurse)
     }
 }
 
-/* bounds borrowed from the parent, or not, through the whole tree.
- * OPEN (0x224 of 0x214): SetDynamic's walk (the iterator declared, then assigned begin()) and
- * SetDynamic's problem -- the target inlines begin() whole in the outer copy */
+/* bounds borrowed from the parent, or not, through the whole tree (SetDynamic's walk) */
 void CNode::SetUseParentBBoxTree(bool on)
 {
     m_use_parent_bbox = on;
@@ -455,33 +449,38 @@ void CNode::SetUseParentBBoxTree(bool on)
         (*it)->SetUseParentBBoxTree(on);
 }
 
-/* decals let onto the node's visuals, or not, through the whole tree.
- * OPEN (0x34C of 0x110): written so, MW inlines the recursion twice; the target does not, so the
- * original was too big for -inline auto (over 15 statements) or called something that cannot
- * inline whole -- and its visual walk re-reads the vector through a register of its own
- * (&m_visual in t0), as through a reference. A helper taking the vector by reference stops the
- * recursion (0x13C) but calls the walk's begin/end out of line */
+/* decals let onto the node's visuals, or not, through the whole tree (the walk over the visuals
+ * re-reads the vector through a reference: &m_visual stays in a register of its own). Pinned,
+ * as is SetApplyMultipassEffects: twelve statements and every piece inlinable, so MW would
+ * inline the recursion twice, where the target calls itself from the outer copy -- SOCOM 1's
+ * (the beta's too, no asserts in it) inlined it once */
+#pragma auto_inline off
 void CNode::SetApplyDecals(bool on)
 {
     if (m_visual.size()) {
-        for (CVisualVector::iterator v = m_visual.begin(); v != m_visual.end(); ++v)
+        CVisualVector &visuals = m_visual;
+
+        for (CVisualVector::iterator v = visuals.begin(); v != visuals.end(); ++v)
             (*v)->m_bits.m_decals = on;
     }
     for (CNodeVector::iterator it = m_child.begin(); it != m_child.end(); ++it)
         (*it)->SetApplyDecals(on);
 }
 
-/* multipass effects let onto the node's visuals, or not, through the whole tree.
- * OPEN: SetApplyDecals' twin (its byte 1 bit 6 for byte 2 bit 0), open the same way */
+/* multipass effects let onto the node's visuals, or not, through the whole tree */
 void CNode::SetApplyMultipassEffects(bool on)
 {
     if (m_visual.size()) {
-        for (CVisualVector::iterator v = m_visual.begin(); v != m_visual.end(); ++v)
+        CVisualVector &visuals = m_visual;
+
+        for (CVisualVector::iterator v = visuals.begin(); v != visuals.end(); ++v)
             (*v)->m_bits.m_multipass = on;
     }
     for (CNodeVector::iterator it = m_child.begin(); it != m_child.end(); ++it)
         (*it)->SetApplyMultipassEffects(on);
 }
+
+#pragma auto_inline reset
 
 /* clutter, or not, through the whole tree: lit as a dynamic node (only the node itself told) */
 void CNode::SetApplyClutterFlag(bool on)
