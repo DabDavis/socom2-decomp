@@ -2973,7 +2973,7 @@
 0x0026D940 0x560 func_0026D940  # OVL1
 0x0026DEA0 0x430 func_0026DEA0  # OVL1
 0x0026E2D0 0x20 func_0026E2D0  # OVL1
-0x0026E2F0 0x1C4 func_0026E2F0  # OVL1
+0x0026E2F0 0x1C4 AddNewNodeRef__6CZAnimFiii  # OVL1; s1:order (after GetNodeRefName and before the GetCallAnimRefs in both; entry 0 made first, the name and parent bounded by their bitfields)
 0x0026E4C0 0x18C GetCallAnimRef__6CZAnimFi  # OVL1; s1:align
 0x0026E650 0x168 GetCallAnimRef__6CZAnimFii  # OVL1; s1:align
 0x0026E7C0 0x138 GetSoundRef__6CZAnimFi  # OVL1; s1:align
@@ -2987,9 +2987,9 @@
 0x0026EDB0 0x4C GetName__6CZAnimFv  # OVL1; s1:align
 0x0026EE00 0x64 Name__6CZAnimFPCc  # OVL1; s1:align
 0x0026EE70 0x2A4 func_0026EE70  # OVL1
-0x0026F120 0xF0 func_0026F120  # OVL1
+0x0026F120 0xF0 SaveNodeStates__6CZAnimFb  # OVL1; s1:order (CreateRootNode, SaveNodeStates(bool), GetNodes, GetNodeRef, GetNode in both; the same four save flags tested, refreshed first when asked)
 0x0026F210 0x218 GetNodes__6CZAnimFv  # OVL1; s1:align
-0x0026F430 0xB0 func_0026F430  # OVL1
+0x0026F430 0xB0 GetNodeRef__6CZAnimFi  # OVL1; s1:order (as SaveNodeStates; index 0 and 250 none, the refs grown to reach it, its node looked up)
 0x0026F4E0 0x340 GetNode__6CZAnimFib  # OVL1; s1:callee by hand (called where SOCOM 1's node-test handlers call GetNode(int, bool); the same arguments)
 0x0026F820 0x8 Priority__6CZAnimFf  # OVL1; s1:callee by hand (func_0026CAA0 calls it with 3.0 where SOCOM 1's NewAnim calls Priority; the same store of m_priority)
 0x0026F830 0x24C GarbageCollect__6CZAnimFv  # OVL1; s1:align

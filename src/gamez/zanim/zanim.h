@@ -136,6 +136,9 @@ public:
     void Refresh(bool chain);
     void GetNodes();
     void Activate(CZAnim *by);
+    void SaveNodeStates(bool refresh);
+    _zanim_node_ref *GetNodeRef(int index);
+    int AddNewNodeRef(int name_index, int parent_index, int search);
     void OnWeaponHitInit();
     bool SequenceRunning(const char *name);
     bool SequenceExists(const char *name);

@@ -5,7 +5,7 @@
  * -inline auto works here as elsewhere, to depth 3: Resume and Pause inline themselves twice
  * and CZAnim::Running twice, then call both -- which is where the out-of-line copies of the
  * sibling accessor (0x270BB0) and the Source test (0x270BC0) come from. CZAnim::Start,
- * ExecuteSpecialSequence, StopAnims and func_0026F120 are never inlined (RestartClones and
+ * ExecuteSpecialSequence, StopAnims and SaveNodeStates are never inlined (RestartClones and
  * func_00271110; Tick and State; State; Start), Start no bigger than Running, none in a cycle; a pragma around each
  * definition reproduces that (the pragma state at the callee decides). The original's means is
  * unknown -- debug code compiled to nothing would count against -inline auto the same way. */
@@ -17,7 +17,6 @@
 extern "C" CZAnim *func_00270BB0(CZAnim *anim);
 extern "C" bool func_00270BC0(Particle::Source *source);
 extern "C" CNode *func_002703D0(CZAnim *anim, int find);
-extern "C" void func_0026F120(CZAnim *anim, bool refresh);
 
 /* the extension's armour and health from the given values, or their maxima */
 void CZAnimEx::Reset(float *armor, float *health)
@@ -158,7 +157,7 @@ void CZAnim::Start()
 {
     Refresh(false);
     if (!ZAnim.GetAnimSet(m_animset_index)->m_WasStarted)
-        func_0026F120(this, false);
+        SaveNodeStates(false);
     if (m_state == 1 || m_state == 5) {
         if (m_activation == 1)
             Activate(0);
@@ -394,28 +393,44 @@ void CZAnim::StopAnims()
 }
 #pragma auto_inline reset
 
-/* SOCOM II's: the anim's nodes that save a state (translation, rotation, activity, parent)
- * handed to its set to keep, refreshed first when asked */
+/* the anim's nodes that save a state (translation, rotation, activity, parent) handed to its
+ * set to keep, refreshed first when asked */
 #pragma auto_inline off
-extern "C" void func_0026F120(CZAnim *anim, bool refresh)
+void CZAnim::SaveNodeStates(bool refresh)
 {
     if (refresh)
-        anim->Refresh(false);
-    _zanim_node_ref *ref = anim->m_node_ref_list;
+        Refresh(false);
+    _zanim_node_ref *ref = m_node_ref_list;
 
-    for (int i = 0; i < anim->m_node_ref_count; i++, ref++) {
+    for (int i = 0; i < m_node_ref_count; i++, ref++) {
         bool save;
 
         if (ref->save_active || ref->save_parent || ref->save_rotation || ref->save_translation)
             save = true;
         else
             save = false;
-
         if (save && ref->node_ptr)
-            ZAnim.GetAnimSet(anim->m_animset_index)->SaveNodeStates(ref);
+            ZAnim.GetAnimSet(m_animset_index)->SaveNodeStates(ref);
     }
 }
 #pragma auto_inline reset
+
+/* a node reference by its index, the references grown to reach it, its node looked up when
+ * not known; none for 0 and 250 */
+_zanim_node_ref *CZAnim::GetNodeRef(int index)
+{
+    if (!index)
+        return 0;
+    if (index == 250)
+        return 0;
+    while (index >= m_node_ref_count)
+        AddNewNodeRef(0, 0, 0);
+    _zanim_node_ref *ref = &m_node_ref_list[index];
+
+    if (!ref->node_ptr)
+        GetNode(index, false);
+    return ref;
+}
 
 /* the anim's lights put out: those it stops on exit, or all when forced -- a local light
  * deactivated, a world light's map deleted */
@@ -446,6 +461,30 @@ void CZAnim::Priority(float priority)
  * own under their addresses' names */
 extern "C" Particle::Source *func_0032B120();
 extern "C" CTexHandle *func_001EC940(const char *name);
+
+/* a node reference appended, its index returned: entry 0 is made first, empty; none when the
+ * name or parent index will not fit its bitfield */
+int CZAnim::AddNewNodeRef(int name_index, int parent_index, int search)
+{
+    if (m_node_ref_count == 0) {
+        m_node_ref_list = (_zanim_node_ref *)_realloc(m_node_ref_list, (m_node_ref_count + 1) * sizeof(_zanim_node_ref), 0, 0);
+        memset(&m_node_ref_list[m_node_ref_count], 0, sizeof(_zanim_node_ref));
+        m_node_ref_list[m_node_ref_count].node_search = 0;
+        m_node_ref_count++;
+    }
+    if (name_index > 2047)
+        return 0;
+    if (parent_index > 255)
+        return 0;
+    m_node_ref_list = (_zanim_node_ref *)_realloc(m_node_ref_list, (m_node_ref_count + 1) * sizeof(_zanim_node_ref), 0, 0);
+    memset(&m_node_ref_list[m_node_ref_count], 0, sizeof(_zanim_node_ref));
+    m_node_ref_list[m_node_ref_count].node_search = search;
+    m_node_ref_list[m_node_ref_count].name_index = name_index;
+    m_node_ref_list[m_node_ref_count].node_ptr = 0;
+    m_node_ref_list[m_node_ref_count].parent_index = parent_index;
+    m_node_ref_count++;
+    return m_node_ref_count - 1;
+}
 
 /* a new call reference's anim looked up: none when there is no such anim (name ours; inline
  * in both GetCallAnimRefs -- its early return is their jump to the end) */

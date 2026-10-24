@@ -6,10 +6,10 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK Create__6CValveFPCc10VALVE_TYPE(s32, M2C_UNK); /* extern */
 s32 GetName__6CZAnimFi(s32, u16);                   /* extern */
-M2C_UNK func_00351FF0(s32, M2C_UNK);                /* extern */
 extern s32 data_00414BE8;
 
 void func_002846F0(char *arg0) {
-    func_00351FF0(GetName__6CZAnimFi(data_00414BE8, M2C_FIELD(arg0, u16 *, 8)), 2);
+    Create__6CValveFPCc10VALVE_TYPE(GetName__6CZAnimFi(data_00414BE8, M2C_FIELD(arg0, u16 *, 8)), 2);
 }
