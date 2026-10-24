@@ -26,6 +26,15 @@ ROW = re.compile(r"^(0x[0-9A-Fa-f]+)\s+(\S+)\s+(\S+)(.*)$")
 
 
 def rename(pairs: list[tuple[int, str, str]]) -> int:
+    # concurrent renamers (agents) take turns: the map is read, changed and written under a lock
+    import fcntl
+    (HERE / "build").mkdir(exist_ok=True)
+    with open(HERE / "build" / "symbols.lock", "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        return _rename(pairs)
+
+
+def _rename(pairs: list[tuple[int, str, str]]) -> int:
     lines = E.SYMBOLS.read_text().splitlines()
     cur = {}
     for line in lines:

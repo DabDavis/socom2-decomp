@@ -8,8 +8,8 @@ Try source variants of one function: each substitution is compiled on its own an
     ./tools/try.py src/gamez/zmath/zmath_pnt3d.cpp Interp__6CPnt3DCFPC6CPnt3DfP6CPnt3D -d   # as it is, with the diff
 
 FILE is the file the substitutions apply to (a header or the unit); the unit compiled is
---unit, or FILE itself. Every variant is built in a scratch copy of src/ (build/try/), so the
-tree is never touched. Prints one line per variant: MATCH, or the differ's verdict.
+--unit, or FILE itself. Every variant is built in a scratch copy of src/ (build/try/, or
+$SC_TRY_WORK -- one per concurrent user), so the tree is never touched. Prints one line per variant: MATCH, or the differ's verdict.
 """
 
 from __future__ import annotations
@@ -24,7 +24,11 @@ sys.path.insert(0, str(HERE))
 import scdecomp as E
 import scdiff as D
 
-SRC, INCLUDE, WORK = HERE / "src", HERE / "include", HERE / "build" / "try"
+import os
+
+# SC_TRY_WORK gives each concurrent user (an agent) a scratch tree of its own
+SRC, INCLUDE = HERE / "src", HERE / "include"
+WORK = Path(os.environ["SC_TRY_WORK"]).resolve() if os.environ.get("SC_TRY_WORK") else HERE / "build" / "try"
 
 
 def score(file: Path, unit: Path, symbol: str, text: str | None, show: bool = False) -> str:

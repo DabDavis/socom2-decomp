@@ -380,10 +380,15 @@ def main(argv=None) -> int:
         if E.is_placeholder(key):
             raise SystemExit(f"{key} is not in symbols.txt (no size known)")
         raise
-    obj = HERE / "build" / "scdiff" / (a.src.stem + ".o")
+    # named after the whole path (and the process): concurrent diffs never share an object
+    tag = str(a.src.resolve()).strip("/").replace("/", "_")
+    obj = HERE / "build" / "scdiff" / f"{tag}.{os.getpid()}.o"
     compile_obj(a.src, obj, a.compiler, a.flags.split() if a.flags else None,
                 [HERE / "include"] + a.includes)
-    res = compare(obj, a.symbol, sym, img, st)
+    try:
+        res = compare(obj, a.symbol, sym, img, st)
+    finally:
+        obj.unlink(missing_ok=True)
     print(report(res, a.verbose))
     return 0 if res.match else 1
 

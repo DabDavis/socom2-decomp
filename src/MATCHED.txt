@@ -1531,6 +1531,7 @@
 0x00313C60 VisualEffectsTick__Q23zdb5CNodeFfPv
 0x00313D60 AddDI__Q23zdb5CNodeFPQ23zdb3CDI
 0x00313E10 ReserveDI__Q23zdb5CNodeFi
+0x00313E20 SetApplyClutterFlag__Q23zdb5CNodeFb
 0x00314320 SetDynamicLight__Q23zdb5CNodeFbb
 0x00314540 SetDynamicMotion__Q23zdb5CNodeFbb
 0x003149D0 func_003149D0

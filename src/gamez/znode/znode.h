@@ -104,7 +104,16 @@ public:
  * 0x18, and the vtable pointer at 0x20 (GetSubMesh's dynamic_cast). Not in SOCOM 1's DWARF: the
  * names are ours */
 struct tag_VISUAL_HEAD {
-    unsigned int m_flags;   // 0x0: tested by mask, the whole word loaded (AddVisual)
+    union {
+        unsigned int m_flags;   // 0x0: tested by mask, the whole word loaded (AddVisual)
+        struct {
+            unsigned int _b0 : 14;
+            unsigned int m_multipass : 1;   /* bit 14: SetApplyMultipassEffects sets it by byte */
+            unsigned int _b15 : 1;
+            unsigned int m_decals : 1;   /* bit 16: SetApplyDecals' */
+            unsigned int _b17 : 15;
+        } m_bits;
+    };
     signed char m_type;   // 0x4
     unsigned char _5[0x18 - 5];
     int m_refs;   // 0x18
@@ -191,7 +200,13 @@ public:
     void SetNodeEx(CNodeEx *ex, bool b);
     bool AddVisual(CVisual *visual);
     bool AddDI(CDI *di);
+    void ReserveDI(int n);
+    void ReserveVisuals(int n);
     static int VisualEffectsTick(float dt, void *data);
+    void SetApplyClutterFlag(bool on);
+    void SetApplyMultipassEffects(bool on);
+    void SetApplyDecals(bool on);
+    void SetUseParentBBoxTree(bool on);
     void SetParentHasVisuals();
     float GetRadius();
     float GetRadiusSq();

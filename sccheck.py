@@ -11,6 +11,9 @@ relocation resolved to the address the target uses).
   ./sccheck.py -f LoadOverlay   # only symbols matching a regex
   ./sccheck.py --wrong          # and show the instruction diff of each mismatch
   ./sccheck.py --baseline       # rewrite src/MATCHED.txt from this run
+  ./sccheck.py --files znode/ --build-dir build/obj-me   # only those units, built privately
+                                (what a concurrent user -- an agent -- runs: no baseline, and
+                                the regression check covers only the units built)
 
 A symbol in the source that is NOT in symbols.txt is reported as `no-target`,
 never skipped silently -- a typo'd mangled name would otherwise read as "nothing
@@ -74,9 +77,9 @@ def rename_symbol(obj: Path, old: str, new: str) -> None:
                    capture_output=True)
 
 
-def build_one(src: Path) -> tuple[Path, Path | None, str]:
+def build_one(src: Path, build: Path = BUILD) -> tuple[Path, Path | None, str]:
     rel = src.relative_to(SRC)
-    obj = BUILD / rel.with_suffix(".o")
+    obj = build / rel.with_suffix(".o")
     opts = tu_options(src)
     try:
         D.compile_obj(src, obj, opts.get("compiler", D.COMPILER),
@@ -114,7 +117,12 @@ def main(argv=None) -> int:
     ap.add_argument("--baseline", action="store_true", help="rewrite MATCHED.txt")
     ap.add_argument("-j", "--jobs", type=int, default=6)
     ap.add_argument("-v", "--verbose", action="store_true", help="list the generated tier's matches too")
+    ap.add_argument("--files", help="regex over source paths (relative to src/): build and score only those")
+    ap.add_argument("--build-dir", type=Path, default=BUILD, help="where the objects go (one per concurrent user)")
     a = ap.parse_args(argv)
+    if a.files and a.baseline:
+        raise SystemExit("--baseline needs the whole tree (no --files)")
+    frx = re.compile(a.files) if a.files else None
 
     img, st = E.image(), E.symbols()
     rx = re.compile(a.filter) if a.filter else None
@@ -125,7 +133,8 @@ def main(argv=None) -> int:
     if clash:
         raise SystemExit(f"{ABSENT.name} lists names symbols.txt maps: {clash}")
     with ThreadPoolExecutor(a.jobs) as ex:
-        built = list(ex.map(build_one, sources()))
+        units = [p for p in sources() if not frx or frx.search(str(p.relative_to(SRC)))]
+        built = list(ex.map(lambda p: build_one(p, a.build_dir.resolve()), units))
 
     rows, matched, failed_builds = [], [], 0
     auto_names: set[str] = set()
@@ -185,9 +194,20 @@ def main(argv=None) -> int:
                 addr, name = l.split()
                 baseline[int(addr, 16)] = name
     now = {st.get(n).addr for n in matched}
+    # a partial build (--files) can only lose what it scored: the addresses its units define
+    scored_addrs = None
+    if frx:
+        scored_addrs = set()
+        for r in rows:
+            if r[0] in ("match", "WRONG"):
+                try:
+                    scored_addrs.add(st.get(r[2]).addr)
+                except KeyError:
+                    pass
     regressions = sorted(f"{a:#x} {baseline[a]}" + (f" (now {st.at_addr(a).name})" if st.at_addr(a)
                          and st.at_addr(a).name != baseline[a] else "")
-                         for a in set(baseline) - now if not rx or rx.search(baseline[a]))
+                         for a in set(baseline) - now if (not rx or rx.search(baseline[a]))
+                         and (scored_addrs is None or a in scored_addrs))
     total_code = sum(s.size for s in st.symbols)
     # a template instance two units emit (an MSL vector's reserve) is one function: count names
     matched = sorted(set(matched))

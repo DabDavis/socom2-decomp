@@ -5437,10 +5437,10 @@
 0x00313CA0 0xB8 func_00313CA0  # OVL1
 0x00313D60 0xAC AddDI__Q23zdb5CNodeFPQ23zdb3CDI  # OVL1; s1:exact by hand (SOCOM 1's AddDI, after VisualEffectsTick and before ReserveDI as here; the DI's count at 4 now)
 0x00313E10 0x10 ReserveDI__Q23zdb5CNodeFi  # OVL1; s1:exact
-0x00313E20 0xB8 func_00313E20  # OVL1
-0x00313EE0 0x110 func_00313EE0  # OVL1
-0x00313FF0 0x110 func_00313FF0  # OVL1
-0x00314100 0x214 func_00314100  # OVL1
+0x00313E20 0xB8 SetApplyClutterFlag__Q23zdb5CNodeFb  # OVL1
+0x00313EE0 0x110 SetApplyMultipassEffects__Q23zdb5CNodeFb  # OVL1
+0x00313FF0 0x110 SetApplyDecals__Q23zdb5CNodeFb  # OVL1
+0x00314100 0x214 SetUseParentBBoxTree__Q23zdb5CNodeFb  # OVL1
 0x00314320 0x218 SetDynamicLight__Q23zdb5CNodeFbb  # OVL1; s1:order (SOCOM 1's SetDynamicLight, SetDynamicMotion, SetDynamic, as here; the light bit)
 0x00314540 0x218 SetDynamicMotion__Q23zdb5CNodeFbb  # OVL1; s1:order (SOCOM 1's SetDynamicLight, SetDynamicMotion, SetDynamic, as here; the motion bit)
 0x00314760 0x270 SetDynamic__Q23zdb5CNodeFbb  # OVL1; s1:order (SOCOM 1's SetDynamicLight, SetDynamicMotion, SetDynamic, then SetAtomCnt and GetAtom, as here; both dynamic bits set, the recursion inlined)

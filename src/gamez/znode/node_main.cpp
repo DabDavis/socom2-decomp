@@ -443,6 +443,61 @@ void CNode::SetDynamicLight(bool on, bool recurse)
     }
 }
 
+/* bounds borrowed from the parent, or not, through the whole tree.
+ * OPEN (0x224 of 0x214): SetDynamic's walk (the iterator declared, then assigned begin()) and
+ * SetDynamic's problem -- the target inlines begin() whole in the outer copy */
+void CNode::SetUseParentBBoxTree(bool on)
+{
+    m_use_parent_bbox = on;
+    CNodeVector::iterator it;
+
+    for (it = m_child.begin(); it != m_child.end(); it++)
+        (*it)->SetUseParentBBoxTree(on);
+}
+
+/* decals let onto the node's visuals, or not, through the whole tree.
+ * OPEN (0x34C of 0x110): written so, MW inlines the recursion twice; the target does not, so the
+ * original was too big for -inline auto (over 15 statements) or called something that cannot
+ * inline whole -- and its visual walk re-reads the vector through a register of its own
+ * (&m_visual in t0), as through a reference. A helper taking the vector by reference stops the
+ * recursion (0x13C) but calls the walk's begin/end out of line */
+void CNode::SetApplyDecals(bool on)
+{
+    if (m_visual.size()) {
+        for (CVisualVector::iterator v = m_visual.begin(); v != m_visual.end(); ++v)
+            (*v)->m_bits.m_decals = on;
+    }
+    for (CNodeVector::iterator it = m_child.begin(); it != m_child.end(); ++it)
+        (*it)->SetApplyDecals(on);
+}
+
+/* multipass effects let onto the node's visuals, or not, through the whole tree.
+ * OPEN: SetApplyDecals' twin (its byte 1 bit 6 for byte 2 bit 0), open the same way */
+void CNode::SetApplyMultipassEffects(bool on)
+{
+    if (m_visual.size()) {
+        for (CVisualVector::iterator v = m_visual.begin(); v != m_visual.end(); ++v)
+            (*v)->m_bits.m_multipass = on;
+    }
+    for (CNodeVector::iterator it = m_child.begin(); it != m_child.end(); ++it)
+        (*it)->SetApplyMultipassEffects(on);
+}
+
+/* clutter, or not, through the whole tree: lit as a dynamic node (only the node itself told) */
+void CNode::SetApplyClutterFlag(bool on)
+{
+    m_clutter = on;
+    SetDynamicLight(on, false);
+    for (CNodeVector::iterator it = m_child.begin(); it != m_child.end(); ++it)
+        (*it)->SetApplyClutterFlag(on);
+}
+
+/* room for n more DIs */
+void CNode::ReserveDI(int n)
+{
+    m_di.reserve(m_di.size() + n);
+}
+
 /* a DI taken on, once: counted, listed, the node marked changed and holding collision data */
 bool CNode::AddDI(CDI *di)
 {
