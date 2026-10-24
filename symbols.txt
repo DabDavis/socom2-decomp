@@ -5426,8 +5426,8 @@
 0x00313240 0x208 func_00313240  # OVL1
 0x00313450 0x10 __ct__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorFRCQ33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iterator  # OVL1; tu: char_type.cpp~ (1.0 beta); CNodeVector's iterator copy constructor (implicit; called where SetNodeEx's second level stops inlining)
 0x00313460 0x14 __pp__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorFi  # OVL1; CNodeVector's iterator postfix ++ (the copy, the prefix ++ and the copy out), SetNodeEx's third level
-0x00313480 0x10 func_00313480  # OVL1; tu: char_type.cpp~ (1.0 beta)
-0x00313490 0x8 func_00313490  # OVL1
+0x00313480 0x10 __as__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorFRCQ33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iterator  # OVL1; tu: char_type.cpp~ (1.0 beta); CNodeVector's iterator assignment (implicit), out of line in the same copies
+0x00313490 0x8 __ct__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorFv  # OVL1; CNodeVector's iterator default constructor, out of line where SetDynamic's and SetUseParentBBoxTree's second self-inlined copies declare their walk's iterator (our MSL reconstruction's name)
 0x003134A0 0x1C func_003134A0  # OVL1
 0x003134C0 0x158 func_003134C0  # OVL1
 0x00313620 0x144 func_00313620  # OVL1
