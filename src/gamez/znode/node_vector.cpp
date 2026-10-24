@@ -177,6 +177,15 @@ bool CNodeVector::Remove(const CNode *node)
     return it != e;
 }
 
+/* a light switched on or off, the old setting given back (the node's own, word for word) */
+bool CLight::SetActive(bool on)
+{
+    bool was = m_active;
+
+    m_active = on;
+    return was;
+}
+
 /* the regions (a bit for the node's own) and the lights handed down the tree: a light keeps the
  * lights, anything else the regions, a type-10 node neither and nothing below it. Over a copy
  * of the child list, its size read once; how many lights below took some.

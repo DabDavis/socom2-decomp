@@ -81,6 +81,7 @@
 0x001EBB90 func_001EBB90
 0x001EBC60 func_001EBC60
 0x001EBDA0 func_001EBDA0
+0x001EC450 SetActive__Q23zdb5CNodeFb
 0x001EC940 func_001EC940
 0x001ED000 func_001ED000
 0x001EDE70 func_001EDE70
@@ -1520,6 +1521,7 @@
 0x00312480 remove_copy<Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iterator,Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iterator,PCQ23zdb5CNode>__3stdFQ33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorQ33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorQ33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorRCPCQ23zdb5CNode_Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iterator
 0x003124F0 func_003124F0
 0x003127F0 SetModelname__Q23zdb5CNodeFPCc
+0x00312A70 SetActive__Q23zdb6CLightFb
 0x00313450 __ct__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorFRCQ33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iterator
 0x00313460 __pp__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorFi
 0x00313480 func_00313480

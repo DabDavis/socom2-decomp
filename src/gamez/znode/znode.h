@@ -153,7 +153,14 @@ public:
     virtual CNode *FindChild(const char *name, int start, int *index, bool deep);
     virtual bool IsCell();
     virtual void Read(CSaveLoad &io);
-    virtual void SetActive(bool on);
+    /* the old setting given back (SOCOM 1's DWARF: inline in znode.h, returning the bit) */
+    virtual bool SetActive(bool on)
+    {
+        bool was = m_active;
+
+        m_active = on;
+        return was;
+    }
     virtual CBBox *UpdateBBox(bool up);
     virtual void UpdateBBoxFromDI(bool up);
 
@@ -271,6 +278,7 @@ public:
     CLight();
     virtual ~CLight();
     virtual CNode *_Copy(CNode *to) const;
+    virtual bool SetActive(bool on);
     virtual CBBox *UpdateBBox(bool up);
     /* inline (CLightMap::SetTexture's range is loaded ahead of its constant: the name ours) */
     float GetMaxRange() const { return m_maxRange; }
