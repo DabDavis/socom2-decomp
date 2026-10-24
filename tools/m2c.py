@@ -85,7 +85,11 @@ def export(img: E.Image, st: E.SymbolTable, sym: E.Symbol) -> str:
     pair: dict[int, str] = {}                  # instruction address -> symbol of its pair
     pair_value: dict[int, tuple[int, int]] = {}   # lo instruction -> (its lui, the address)
     live: dict[int, tuple[int, int]] = {}      # reg -> (lui address, hi)
+    after_jump = False
     for addr, w, text in rows:
+        if after_jump is True:                 # past an unconditional jump and its delay slot,
+            live.clear()                       # nothing falls through to here
+            after_jump = False
         opc, rs, rt, rd = w >> 26, (w >> 21) & 31, (w >> 16) & 31, (w >> 11) & 31
         if opc == 0x0F:                        # lui
             live[rt] = (addr, w & 0xFFFF)
@@ -101,6 +105,35 @@ def export(img: E.Image, st: E.SymbolTable, sym: E.Symbol) -> str:
         written = gpr_written(w)
         if written in live:
             live.pop(written, None)
+        if text.split()[0] in ("b", "j", "jr"):
+            after_jump = "pending"
+        elif after_jump == "pending":
+            after_jump = True
+    # a lui MW hoisted into a branch's delay slot serves the branch target too (`beqz v0,L;
+    # lui at,hi` then `L: lw v0,lo(at)`): followed into the target, or m2c reads the load as an
+    # absolute address -- 37 drafts missed by exactly these words
+    index = {addr: i for i, (addr, _, _) in enumerate(rows)}
+    for i, (addr, w, text) in enumerate(rows):
+        if w >> 26 != 0x0F or addr in pair or i == 0 or text.split()[0] in ("j", "jal"):
+            continue
+        prev = rows[i - 1][2].split()
+        if not prev or prev[0] not in BRANCHES:
+            continue
+        reg = (w >> 16) & 31
+        tgt = index.get(int(prev[-1].split(",")[-1], 16))
+        for k in range(tgt, len(rows)) if tgt is not None else ():
+            w2 = rows[k][1]
+            opc, rs = w2 >> 26, (w2 >> 21) & 31
+            if rs == reg and (opc == 0x09 or 0x20 <= opc <= 0x3F):
+                lo = w2 & 0xFFFF
+                full = (((w & 0xFFFF) << 16) + (lo - 0x10000 if lo & 0x8000 else lo)) & 0xFFFFFFFF
+                if img.in_memory(full):
+                    name = symname(st, full, img.is_code(full))
+                    if rows[k][0] not in pair or pair[rows[k][0]] == name:
+                        pair[addr] = pair[rows[k][0]] = name
+                break
+            if gpr_written(w2) == reg or rows[k][2].split()[0] in BRANCHES | {"j", "jr", "jal", "jalr"}:
+                break
     # a switch's jump table. MW forms its address with a lui/addiu pair, adds the scaled index
     # and loads from offset 0 (`lui v1,hi; sll v0,v0,2; addiu v1,v1,lo; addu v0,v0,v1;
     # lw v0,0(v0); jr v0`); IDO-style code folds lo into the load (`lui at,hi; addu at,at,v0;

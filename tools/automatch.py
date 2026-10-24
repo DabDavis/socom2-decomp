@@ -107,6 +107,18 @@ def try_draft(tmp: Path, out: str, sym, real: str, addr: int, img, st) -> tuple[
                 src = f"/* sc: as={sym.name} {real} */\n" + src
             return "hit", src
         worst = hit if worst == "build" else worst
+    # as C++ with real bools, when the target materialises a `true` (daddiu r,zero,1)
+    if any(w >> 26 == 0x19 and (w >> 21) & 31 == 0 and w & 0xFFFF == 1
+           for w in E.words(img.read(addr, sym.size))):
+        bsrc = bool_draft(body, sym.name)
+        if bsrc is not None:
+            hit = try_one(tmp, bsrc, sym, real, addr, img, st, suffix=".cpp")
+            if hit == "hit":
+                bsrc = "/* sc: c++ */\n" + bsrc
+                if real != sym.name:
+                    bsrc = f"/* sc: as={sym.name} {real} */\n" + bsrc
+                return "hit", bsrc
+            worst = hit if worst == "build" else worst
     # as C++: its member calls made as member calls, its virtual calls as virtual calls
     cpp = cxx_draft(body, sym.name, img, st)
     if cpp is not None:
@@ -336,12 +348,49 @@ def fill_params(body: str, name: str) -> str:
 
 
 def variants(body: str):
-    """The draft, then with narrow fields unsigned (a byte stored as 0xFF is `li 255` to an
-    unsigned char, `li -1` to a signed one), then signed."""
+    """The draft, then retries each a near-miss survey measured: narrow fields unsigned (a byte
+    stored as 0xFF is `li 255` to an unsigned char, `li -1` to a signed one) or signed (`lb`
+    against `lbu`); and every `(i * n) + p` address sum the other way round -- MW emits the
+    operands of an address addu in the reverse of the source's order, and m2c's choice is
+    the opposite of the original's about as often as not (24 drafts missed by that addu)."""
     yield body
     u = re.sub(r"\bs(8|16)\b", r"u\1", body)
     if u != body:
         yield u
+    s = re.sub(r"\bu(8|16)\b", r"s\1", body)
+    if s != body:
+        yield s
+    sw = _ADDR_SUM.sub(lambda m: f"({m.group(3)} + ({m.group(1)} * {m.group(2)}))", body)
+    sw = _ADDR_SUM2.sub(lambda m: f"(({m.group(2)} * {m.group(3)}) + {m.group(1)})", sw) if sw == body else sw
+    if sw != body:
+        yield sw
+
+
+_ADDR_SUM = re.compile(r"\(\((\w+) \* (\d+|0x[0-9A-Fa-f]+)\) \+ (\w+)\)")
+_ADDR_SUM2 = re.compile(r"\((\w+) \+ \((\w+) \* (\d+|0x[0-9A-Fa-f]+)\)\)")
+
+
+def bool_draft(body: str, name: str) -> str | None:
+    """The draft as C++ with its 0/1 locals as bool (and the function's result when it only
+    returns those or 0/1): MW's C has no bool, and C++ materialises `true` as `daddiu r,zero,1`
+    where an int 1 is `li` -- 11 near misses differed in that word alone."""
+    locs = re.findall(r"^    s32 (\w+);$", body, re.M)
+    flags = [v for v in locs
+             if re.search(rf"\b{v} = [01];", body)
+             and not re.search(rf"\b{v} = (?![01];)", body)
+             and not re.search(rf"\b{v} (\+|-|\*|/|&|\||\^|<<|>>)=", body)
+             and not re.search(rf"\b{v}(\+\+|--)", body)]
+    if not flags:
+        return None
+    for v in flags:
+        body = re.sub(rf"^    s32 {v};$", f"    bool {v};", body, flags=re.M)
+        body = re.sub(rf"\b{v} = 1;", f"{v} = true;", body)
+        body = re.sub(rf"\b{v} = 0;", f"{v} = false;", body)
+    rets = re.findall(r"\breturn ([^;]+);", body)
+    if rets and all(r.strip() in flags or r.strip() in ("0", "1") for r in rets):
+        body = re.sub(rf"^s32 ({re.escape(name)}\()", r"bool \1", body, flags=re.M)
+        body = body.replace("return 1;", "return true;").replace("return 0;", "return false;")
+    return PRELUDE + 'extern "C" {\n' + body + "}\n"
 
 
 def try_one(tmp: Path, src: str, sym, real: str, addr: int, img, st, suffix: str = ".c") -> str:

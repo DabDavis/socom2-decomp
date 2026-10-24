@@ -442,6 +442,7 @@
 0x00263E20 func_00263E20
 0x00263F90 func_00263F90
 0x00264580 func_00264580
+0x00264610 func_00264610
 0x00267760 zAnimMessageTick__FP14_zanim_cmd_hdrPf
 0x002677D0 zAnimTimerTick__FP14_zanim_cmd_hdrPf
 0x002678F0 zAnimDestructorTick__FP14_zanim_cmd_hdrPf

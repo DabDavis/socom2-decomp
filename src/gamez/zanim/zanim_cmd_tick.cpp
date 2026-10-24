@@ -9,6 +9,20 @@
 
 #include "zanim.h"
 
+/* the GS ALPHA register (sceGsAlpha's layout): (A - B) * C + D, C or D the FIX alpha */
+struct GsAlpha {
+    unsigned long A : 2;
+    unsigned long B : 2;
+    unsigned long C : 2;
+    unsigned long D : 2;
+    unsigned long pad8 : 24;
+    unsigned long FIX : 8;
+    unsigned long pad40 : 24;
+};
+
+/* an alpha driven by an expression (not named yet) */
+extern "C" void func_0025C5F0(GsAlpha *alpha, char *expr, int len, float t);
+
 /* OBJECT_AIM's tick: turn a node from one orientation to another over a time on the
  * command's clock */
 struct zanim_cmd_aim {
@@ -332,6 +346,118 @@ bool zAnimDestructorTick(_zanim_cmd_hdr *hdr, float *dT)
     return true;
 }
 
+/* the node's light level, a signed byte at 0xA0: SOCOM II's, past SOCOM 1's layout */
+static inline signed char &NodeLight(zdb::CNode *node)
+{
+    return ((signed char *)node)[0xA0];
+}
+
+/* a value curve: (time, value) keys */
+struct zanim_key {
+    float t;
+    float v;
+};
+
+/* UPDATE_SHADOW_MAP_LIGHTING: a node's two shadow-map switches (flags 1/2 and 4/8; the node's
+ * functions not named yet) and its light level -- set (0x10), taken from the AI map at the node
+ * (0x20), or read off a curve over the command's time. OPEN, 5 instructions: the curve's key
+ * count and count - 1 take each other's registers (a0/v1); an int count, a `last` local before
+ * or after it, and other declaration orders are all further off. */
+struct zanim_cmd_shadowlight {
+    _zanim_cmd_hdr hdr;
+    unsigned char flags;
+    unsigned char level;
+    unsigned short node;
+    unsigned short count;
+    unsigned short keys;            /* the curve's offset from the record */
+    float time;
+};
+
+extern char AiMaps[];
+extern const float data_003DD018;
+extern const float data_003DD020;
+extern "C" void func_00314540(zdb::CNode *node, int on, int a);
+extern "C" void func_00314320(zdb::CNode *node, int on, int a);
+extern "C" int func_0052DC70(char *maps, CPnt3D *p, int *cell);
+extern "C" float func_0052CE10(char *maps, int *cell, CPnt3D *p, int a);
+extern "C" void func_00267A60(float *v, const float *lo, const float *hi);
+
+extern "C" bool func_002656F0(_zanim_cmd_hdr *hdr, float *dT)
+{
+    bool done = true;
+    zanim_cmd_shadowlight *cmd = (zanim_cmd_shadowlight *)hdr;
+    CNode *node = ZAnim.m_CurAnim->GetNode(cmd->node, false);
+
+    if (node) {
+        if (cmd->flags & 1) {
+            if (cmd->flags & 2)
+                func_00314540(node, 1, 1);
+            else
+                func_00314540(node, 0, 1);
+        }
+        if (cmd->flags & 4) {
+            if (cmd->flags & 8)
+                func_00314320(node, 1, 1);
+            else
+                func_00314320(node, 0, 1);
+        }
+        if (cmd->flags & 0x10)
+            NodeLight(node) = 127 - cmd->level;
+        if (cmd->flags & 0x20) {
+            CPnt3D p(0.0f, 0.0f, 0.0f);
+            int cell;
+
+            func_00308640(&node->m_matrix, &p, 1);
+            if (func_0052DC70(AiMaps, &p, &cell)) {
+                float light = func_0052CE10(AiMaps, &cell, &p, 0);
+
+                func_00267A60(&light, &data_003DD018, &data_003DD020);
+                NodeLight(node) = (int)(127.0f * (1.0f - light));
+            }
+        }
+        if (cmd->keys > 0) {
+            zanim_key *key = (zanim_key *)((char *)cmd + cmd->keys);
+            float v = 0.0f;
+            float t = *dT + ZAnim.m_CurSeq->cmd_timer;
+
+            if (!(t <= key[0].t)) {
+                bool found;
+                int i;
+                unsigned short n = cmd->count;
+
+                found = false;
+                for (i = 0; i < n - 1; i++) {
+                    bool in = t <= key[i + 1].t;
+
+                    if (in) {
+                        found = true;
+                        v = key[i].v + (t - key[i].t) / (key[i + 1].t - key[i].t) * (key[i + 1].v - key[i].v);
+                        break;
+                    }
+                }
+                if (!found)
+                    v = key[n - 1].v;
+            }
+            NodeLight(node) = 127 - (int)v;
+        }
+    }
+    float time = cmd->time;
+
+    if (!(time <= 0.0f)) {
+        float t = ZAnim.m_CurSeq->cmd_timer;
+        float step = *dT;
+
+        if (!(step + t <= time)) {
+            done = true;
+            *dT -= time - t;
+        } else {
+            done = false;
+            *dT = 0.0f;
+        }
+    }
+    return done;
+}
+
 /* MESSAGE: put up a message -- string `text` of the game's text table, or else the anim's name
  * number `name` -- for `time` seconds. SOCOM 1 called C2DMessage_Q::Add_Message on its
  * message queue; SOCOM II calls a six-argument function at 0x2B6530 (this, the text, 0, the
@@ -361,6 +487,138 @@ bool zAnimMessageTick(_zanim_cmd_hdr *hdr, float *dT)
         text = anim->GetName(cmd->name);
     func_002B6530(data_004366A0, text, 0, cmd->style, 0, cmd->time);
     return true;
+}
+
+/* the screen's iris effect (one global; its two functions not named yet) */
+struct IrisEffect {
+    int mode;                       /* 0x0 */
+    float f4;
+    float f8;
+    float fC;
+    float f10;
+    int i14;
+    float rate18;                   /* -1 / time */
+    float rate1C;
+    int i20;
+    unsigned char b24;
+    unsigned char _25[3];
+    unsigned long alpha;            /* 0x28: a GS ALPHA register */
+    unsigned char _30[2];
+    unsigned char b32;
+};
+
+extern IrisEffect data_00488E48;
+extern "C" void func_0033D100(IrisEffect *iris, int on);
+
+/* IRIS_EFFECT: set the iris effect's fields the flags name, its blend from the record's
+ * selectors and alpha (0x8000) or an expression (0x10000), over a time */
+struct zanim_cmd_iris {
+    _zanim_cmd_hdr hdr;
+    unsigned int flags : 24;
+    unsigned int i20 : 8;
+    unsigned char mode;
+    unsigned char A : 2;
+    unsigned char B : 2;
+    unsigned char C : 2;
+    unsigned char D : 2;
+    unsigned char pad[2];
+    float f4, f8, fC, f10;          /* 0xC */
+    float time18, time1C;           /* 0x1C */
+    float alpha;                    /* 0x24 */
+    int i14;                        /* 0x28 */
+    short expr_len;
+    short expr_off;                 /* from the record */
+    float time;                     /* 0x30 */
+};
+
+extern "C" bool func_00264610(_zanim_cmd_hdr *hdr, float *dT)
+{
+    bool done = true;
+    zanim_cmd_iris *cmd = (zanim_cmd_iris *)hdr;
+    GsAlpha alpha;
+
+    *(unsigned long *)&alpha = 0x44;
+
+    if (cmd->flags & 1) {
+        if (cmd->flags & 2)
+            func_0033D100(&data_00488E48, 1);
+        else
+            func_0033D100(&data_00488E48, 0);
+    }
+    if (cmd->flags & 4)
+        data_00488E48.i20 = cmd->i20;
+    if (cmd->flags & 8)
+        data_00488E48.f4 = cmd->f4;
+    if (cmd->flags & 0x10)
+        data_00488E48.f8 = cmd->f8;
+    if (cmd->flags & 0x20)
+        data_00488E48.mode = cmd->mode;
+    if (cmd->flags & 0x40)
+        data_00488E48.i14 = cmd->i14;
+    if (cmd->flags & 0x80)
+        data_00488E48.fC = cmd->fC;
+    if (cmd->flags & 0x100)
+        data_00488E48.f10 = cmd->f10;
+    if (cmd->flags & 0x200)
+        data_00488E48.rate18 = -1.0f / cmd->time18;
+    if (cmd->flags & 0x400)
+        data_00488E48.rate1C = -1.0f / cmd->time1C;
+    if (cmd->flags & 0x800) {
+        if (cmd->flags & 0x1000)
+            data_00488E48.b32 = 1;
+        else
+            data_00488E48.b32 = 0;
+    }
+    if (cmd->flags & 0x2000) {
+        if (cmd->flags & 0x4000)
+            data_00488E48.b24 = 1;
+        else
+            data_00488E48.b24 = 0;
+    }
+    if (cmd->flags & 0x8000) {
+        int fix = (int)(128.0f * cmd->alpha);
+
+        if (fix < 0)
+            fix = 0;
+        if (fix > 255)
+            fix = 255;
+        unsigned char d = cmd->D;
+        unsigned char c = cmd->C;
+        unsigned char b = cmd->B;
+        unsigned char a = cmd->A;
+
+        alpha.FIX = fix;
+        alpha.A = a;
+        alpha.B = b;
+        alpha.C = c;
+        alpha.D = d;
+        unsigned long v;
+
+        memcpy(&v, &alpha, sizeof v);
+        data_00488E48.alpha = v;
+    }
+    if (cmd->flags & 0x10000) {
+        func_0025C5F0(&alpha, (char *)cmd + cmd->expr_off, cmd->expr_len, *dT + ZAnim.m_CurSeq->cmd_timer);
+        unsigned long v;
+
+        memcpy(&v, &alpha, sizeof v);
+        data_00488E48.alpha = v;
+    }
+    float time = cmd->time;
+
+    if (!(time <= 0.0f)) {
+        float t = ZAnim.m_CurSeq->cmd_timer;
+        float step = *dT;
+
+        if (!(step + t <= time)) {
+            done = true;
+            *dT -= time - t;
+        } else {
+            done = false;
+            *dT = 0.0f;
+        }
+    }
+    return done;
 }
 
 /* TRUE_COLOR_SCALE: set the four true-colour scales (one per channel bit 0-3) -- their rgb
@@ -663,17 +921,6 @@ extern "C" bool func_00263E20(_zanim_cmd_hdr *hdr, float *dT)
     return true;
 }
 
-/* the GS ALPHA register (sceGsAlpha's layout): (A - B) * C + D, C or D the FIX alpha */
-struct GsAlpha {
-    unsigned long A : 2;
-    unsigned long B : 2;
-    unsigned long C : 2;
-    unsigned long D : 2;
-    unsigned long pad8 : 24;
-    unsigned long FIX : 8;
-    unsigned long pad40 : 24;
-};
-
 /* OBJECT_BLENDMODE: a node's alpha blend -- the four selectors two bits each, the fixed alpha
  * 128 * `alpha` -- optionally driven by an expression (flag 8) over a time; flags 1, 2, 4
  * passed on to the node (the two functions are not named yet) */
@@ -691,7 +938,6 @@ struct zanim_cmd_blendmode {
     float time;
 };
 
-extern "C" void func_0025C5F0(GsAlpha *alpha, char *expr, int len, float t);
 extern "C" void func_00312860(zdb::CNode *node, GsAlpha *alpha, bool a, bool b, bool c);
 
 bool zAnimObjectBlendModeTick(_zanim_cmd_hdr *hdr, float *dT)
