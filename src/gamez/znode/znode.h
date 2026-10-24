@@ -140,6 +140,8 @@ public:
      * AddVisual's test of the member loads it signed (SOCOM 1's split the same way; the name is
      * ours) */
     unsigned char GetType() const { return m_type; }
+    /* one holder fewer, the count left given back (SOCOM 1's, by name) */
+    int Release();
     /* the decals of one view let go of (SOCOM 1's, by name) */
     void DereferenceDecals(unsigned int vid);
     /* a decal projected onto the visual (SOCOM 1's, by name) */
@@ -238,6 +240,8 @@ public:
     bool AddVisual(CVisual *visual);
     bool AddDI(CDI *di);
     void DeleteDI();
+    void DeleteVisuals();
+    static void DeleteDeferredVisuals();
     void ReserveDI(int n);
     void ReserveVisuals(int n);
     static int VisualEffectsTick(float dt, void *data);
@@ -335,11 +339,35 @@ public:
     CModel* m_model;   // 0xb4 (SetModel; SOCOM 1: 0xb0)
     char* m_modelname;   // 0xb8 (SOCOM 1: 0xb4)
     unsigned int m_region_mask;   // 0xbc (SOCOM 1: 0xb8)
+
+    /* visuals let go of while still drawn this frame, deleted later (SOCOM II's, node_main.cpp's
+     * second static at 0x45C2D8; the name is ours) */
+    static std::list<CVisual *> m_deferred_visuals;
 };   // 0xc0 bytes
 
 /* a light: a node with a range (SOCOM 1's DWARF) */
+class CLight;
+
+/* a light in the tick list (SOCOM 1's DWARF) */
+class CTickLight {
+public:
+    CLight *m_pLight;   // 0x0
+    unsigned char m_state;   // 0x4
+    float m_scale;   // 0x8
+};   // 0xc bytes
+
+/* OPEN (its destructor, 0x317820): the target's inlines four this-tested levels, the size
+ * cleared and the block freed -- a vector of a class is six high here (only one level
+ * inlines), a vector of pointers clears nothing; SOCOM II's MSL may give a POD class its own
+ * path. SOCOM 1's DWARF: a vector of CTickLight */
+class CTickLightList : public std::vector<CTickLight> {
+};   // 0xc bytes
+
 class CLight : public CNode {
 public:
+    /* the lights being ticked (SOCOM 1's; node_main.cpp's first static, 0x45C2B8) */
+    static CTickLightList m_tick_list;
+
     CLight();
     virtual ~CLight();
     virtual CNode *_Copy(CNode *to) const;

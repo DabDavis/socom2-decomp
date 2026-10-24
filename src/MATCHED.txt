@@ -225,7 +225,7 @@
 0x0020B000 func_0020B000
 0x0020B1F0 func_0020B1F0
 0x0020B7E0 func_0020B7E0
-0x0020CC50 func_0020CC50
+0x0020CC50 erase__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>FQ33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<0>
 0x0020CCD0 __dt__7C2DLineFv
 0x0020CD30 func_0020CD30
 0x0020CE10 func_0020CE10
@@ -1594,7 +1594,7 @@
 0x00314A80 ShrinkAtomBasePtrs__Q23zdb5CNodeFv
 0x00314B00 AllocateAtomBasePtrs__Q23zdb5CNodeFii
 0x00314BC0 DeleteChildren__Q23zdb5CNodeFv
-0x00314E60 func_00314E60
+0x00314E60 DeleteDeferredVisuals__Q23zdb5CNodeFv
 0x00314EE0 SetName__Q23zdb5CNodeFPCc
 0x00314F60 SetTexture__Q23zdb9CLightMapFPQ23zdb8CTexture
 0x003150A0 __dt__Q23zdb9CLightMapFv
@@ -1629,8 +1629,8 @@
 0x003167F0 Release__Q23zdb5CNodeFv
 0x00316E10 Copy__Q23zdb5CNodeCFv
 0x003177A0 func_003177A0
-0x003177C0 __dt__Q23zdb14CTickLightListFv
-0x00317820 func_00317820
+0x003177C0 __dt__Q23std56list<PQ23zdb7CVisual,Q23std26allocator<PQ23zdb7CVisual>>Fv
+0x00317820 __dt__Q23zdb14CTickLightListFv
 0x003178A0 SetModel__Q23zdb5CNodeFPQ23zdb6CModel
 0x00317950 Delete__Q23zdb5CNodeFPQ23zdb5CNode
 0x00317A90 CreateXRef__Q23zdb5CNodeFv

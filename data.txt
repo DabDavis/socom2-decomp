@@ -597,6 +597,8 @@
 0x004518B0 0x404 costbl  # OVL1 bss; s1:data-order by hand (the cosf table, after sintbl)
 0x0045A0B8 0x1264 theNetwork  # OVL1 bss; s1:data-seq (size SOCOM 1's; via HandleBombStateRequest__11CZBombStateFiUcP6CPnt3D)
 0x0045C298 0x4 NodeUniverse__3zdb  # OVL1 bss; s1:by hand (GetDatabaseNode tests and searches it where SOCOM 1's reads NodeUniverse__3zdb)
+0x0045C2B8 0xC m_tick_list__Q23zdb6CLight  # OVL1 bss; s1:unit (node_main.cpp's first static, as SOCOM 1's CLight::m_tick_list: __sinit_node_main.cpp zeroes it and registers its destructor; its record at 0x45C2A8)
+0x0045C2D8 0xC m_deferred_visuals__Q23zdb5CNode  # OVL1 bss; node_main.cpp's second static, new in SOCOM II: a pointer list (the deleter's constructor builds it) of visuals let go of while drawn, which DeleteVisuals fills and 0x314E60 empties; the name ours
 0x0045C380 0x4 m_world__Q23zdb6CWorld  # OVL1 bss; s1:data-seq (size SOCOM 1's; via AddNewMark__10CZMarkListFPQ23zdb15IntersectStructP12CZProjectilef +4)
 0x0045C3C0 0x10 m_assets__Q23zdb9CAssetMgr  # OVL1 bss; s1:data-exact (size SOCOM 1's; via DismemberWorldModel__Q23zdb6CWorldFv +1)
 0x0045C3F0 0x4 m_ripplefreepool__Q23zdb7CRipple  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Uninit__Q23zdb7CRippleFv)

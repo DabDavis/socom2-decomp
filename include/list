@@ -58,8 +58,10 @@ public:
     iterator end() { return iterator(&end_); }
     void clear() { erase(begin(), end()); }
     iterator erase(iterator first, iterator last);
+    iterator erase(iterator position);
     iterator insert(iterator position, const T &x);
     void push_back(const T &x) { insert(end(), x); }
+
     unsigned int size() const { return size_; }
     /* the sentinel by reference (CZHudMissionCams::Init keeps the end node in a register outside
      * its loop only so; the name is ours) */
@@ -99,6 +101,22 @@ __list_deleter<T, Allocator>::erase(iterator first, iterator last)
         --size_;
     }
     return last;
+}
+
+/* one node unlinked and freed, the iterator after it given back (SOCOM II's for the pointer lists
+ * is 0x20CC50) */
+template <class T, class Allocator>
+typename __list_deleter<T, Allocator>::iterator
+__list_deleter<T, Allocator>::erase(iterator position)
+{
+    node_base *n = position.node_;
+
+    ++position;
+    n->prev_->next_ = n->next_;
+    n->next_->prev_ = n->prev_;
+    operator delete(n);
+    --size_;
+    return position;
 }
 
 template <class T, class Allocator>
@@ -153,6 +171,11 @@ public:
         base::insert(typename base::iterator(&this->end_node()), (const void *const &)x);
     }
     void remove(T *const &x) { base::remove((const void *const &)x); }
+    /* the last element, and taking it off (CNode::DeleteDeferredVisuals empties its list so; on
+     * the pointer list only, where the node is always complete -- ai_events.cpp instantiates a
+     * deleter over an incomplete type) */
+    T *&back() { return (T *&)((typename base::node *)this->end_.prev_)->data_; }
+    void pop_back() { this->erase(typename base::iterator(this->end_.prev_)); }
 };
 
 }

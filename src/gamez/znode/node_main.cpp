@@ -6,6 +6,7 @@
  * SetPosition were), and so is a cluster of template instances and inline functions' copies,
  * which close a unit (this one's from 0x3176B0; node_vector.cpp's at 0x313450). */
 
+#include <algorithm>
 #include <string.h>
 
 #include "znode.h"
@@ -17,6 +18,13 @@
 extern char *UNNAMED_NODE;
 
 namespace zdb {
+
+/* the unit's statics, CLight::m_tick_list and CNode::m_deferred_visuals, which its __sinit builds
+ * in that order (0x4028D0), are not defined here yet: defined, this unit emits their destructors,
+ * whose generated drafts match (0x317820, 0x3177C0) where these do not -- CTickLightList's vector
+ * is constructed as a vector of pointers is and destroyed clearing its size, which no vector in
+ * include/vector does, and the list's destructor calls the deleter's after two levels where
+ * list<T *>'s inlines all three. With a vector of pointers in its place the initialiser matches */
 
 /* a mesh's decals all freed (SOCOM 1's mesh took the view as other visuals do; not named yet) */
 extern "C" void func_003B8440(CVisual *mesh);
@@ -353,6 +361,18 @@ void CLightMap::SetTexture(CTexture *tex)
     sceVu0MulMatrix(m_worldToUV.m_matrix, proj.m_matrix, view.m_matrix);
 }
 
+/* the visuals let go of while drawn, deleted now: the deferred list emptied from its end (SOCOM
+ * II's; the name is ours) */
+void CNode::DeleteDeferredVisuals()
+{
+    while (m_deferred_visuals.size()) {
+        CVisual *visual = m_deferred_visuals.back();
+
+        m_deferred_visuals.pop_back();
+        delete visual;
+    }
+}
+
 /* the node's name, its own copy (or the shared default when given none); a name of its own freed */
 void CNode::SetName(const char *name)
 {
@@ -526,6 +546,33 @@ bool CNode::AddDI(CDI *di)
         m_hasDI = 1;
     }
     return added;
+}
+
+/* every visual let go of, each deleted that nothing else holds -- unless the node was drawn this
+ * frame, when it waits on the deferred list (once) for DeleteDeferredVisuals; then the list
+ * emptied, the node marked changed and holding no mesh.
+ * OPEN (0x1A4 of 0x1A8): the final erase's end is the target's begin load (through &data_,
+ * kept since entry) plus the size the loop's last test scaled, where here it is the loop's whole
+ * end; and the insert's temporaries take the stack slots below the erase's there, above them
+ * here. Not moved by begin() + size() for the end */
+void CNode::DeleteVisuals()
+{
+    bool drawn = m_frameRendered == zVid.frameNumber;
+
+    for (CVisualVector::iterator it = m_visual.begin(); it != m_visual.end(); ++it) {
+        CVisual *visual = *it;
+
+        if (!visual->Release()) {
+            if (!drawn)
+                delete visual;
+            else if (std::find(m_deferred_visuals.begin(), m_deferred_visuals.end(), visual) ==
+                     m_deferred_visuals.end())
+                m_deferred_visuals.push_back(visual);
+        }
+    }
+    m_visual.erase(m_visual.begin(), m_visual.end());
+    m_socom2_a1 |= 2;
+    m_hasMesh = 0;
 }
 
 /* every DI let go of, each deleted that nothing else holds, the list emptied and the node marked

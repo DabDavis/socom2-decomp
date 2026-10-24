@@ -25,15 +25,16 @@ struct VC_60 {
     virtual M2C_UNK v_38(M2C_UNK);
 };
 extern "C" {
+void ReleaseInstance__8ParticleFPQ23zdb5CNode(char * arg0, char * arg1);
+M2C_UNK DeleteVisuals__Q23zdb5CNodeFv(char * arg0);
 M2C_UNK func_001EEBA0(s32 *, s32);                  /* extern */
 M2C_UNK func_001FE340(s32 *, s32, M2C_UNK, char **); /* extern */
-M2C_UNK func_00316100(char *);                      /* extern */
 extern s32 data_0045C440;
 extern s32 data_0045C444;
 extern s32 data_0045C448;
 extern char *m_world__Q23zdb6CWorld;
 
-void ReleaseInstance__8ParticleFPQ23zdb5CNode(char *arg0) {
+void ReleaseInstance__8ParticleFPQ23zdb5CNode(char *arg0, char *arg1) {
     char *sp1C;
 
     sp1C = arg0;
@@ -42,7 +43,7 @@ void ReleaseInstance__8ParticleFPQ23zdb5CNode(char *arg0) {
     }
     func_001FE340(&data_0045C440, data_0045C448 + (data_0045C444 * 4), 1, &sp1C);
     ((VC_60 *)(sp1C))->v_38(0);
-    func_00316100(sp1C);
+    DeleteVisuals__Q23zdb5CNodeFv(sp1C);
     ((VC_60 *)(m_world__Q23zdb6CWorld))->v_1C(sp1C);
 }
 }

@@ -1429,7 +1429,7 @@
 0x001E9120 0x94 func_001E9120  # OVL1
 0x001E91C0 0x1090 func_001E91C0  # OVL1
 0x001EA250 0x78 func_001EA250  # OVL1
-0x001EA2D0 0x70 func_001EA2D0  # OVL1
+0x001EA2D0 0x70 func_001EA2D0  # OVL1; the pointer lists' deleter destructor out of line (__dt__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>Fv: the range erase over end_.next_..&end_, then delete; 0x3177C0 calls it) -- left unnamed so the generated drafts calling it can spell it
 0x001EA340 0x78 func_001EA340  # OVL1
 0x001EA3C0 0x70 __dt__Q23std54vector<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>>Fv  # OVL1; by hand (Unload destroys the save's parents at 0x24 with it: the one copy linked, an earlier unit's)
 0x001EA430 0x80 func_001EA430  # OVL1
@@ -1811,7 +1811,7 @@
 0x0020BE00 0x274 func_0020BE00  # OVL1
 0x0020C080 0xAC4 func_0020C080  # OVL1
 0x0020CB50 0xF8 remove_if<Q23std36binder2nd<Q23std13equal_to<PCv>,PCv>>__Q23std38__list_imp<PCv,Q23std14allocator<PCv>>FQ23std36binder2nd<Q23std13equal_to<PCv>,PCv>_v  # OVL1; s1:name (SOCOM 1's remove_if of the pointer lists with an equal_to binder; CNode::Delete's list remove calls it; SOCOM II's inlines the erase)
-0x0020CC50 0x74 func_0020CC50  # OVL1
+0x0020CC50 0x74 erase__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>FQ33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<0>  # OVL1; the pointer lists' single erase, out of line (DeleteDeferredVisuals' pop_back calls it)
 0x0020CCD0 0x60 __dt__7C2DLineFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0020CD30 0x1C func_0020CD30  # OVL1
 0x0020CD50 0xB4 func_0020CD50  # OVL1
@@ -5453,7 +5453,7 @@
 0x00314B00 0xB8 AllocateAtomBasePtrs__Q23zdb5CNodeFii  # OVL1; s1:align
 0x00314BC0 0x84 DeleteChildren__Q23zdb5CNodeFv  # OVL1; s1:align
 0x00314C50 0x208 __dt__Q23zdb5CNodeFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00314E60 0x80 func_00314E60  # OVL1
+0x00314E60 0x80 DeleteDeferredVisuals__Q23zdb5CNodeFv  # OVL1; SOCOM II's: the deferred visuals deleted, the list emptied from its end; the name ours
 0x00314EE0 0x74 SetName__Q23zdb5CNodeFPCc  # OVL1; s1:align
 0x00314F60 0x134 SetTexture__Q23zdb9CLightMapFPQ23zdb8CTexture  # OVL1; s1:calls
 0x003150A0 0x70 __dt__Q23zdb9CLightMapFv  # OVL1; s1:align
@@ -5485,7 +5485,7 @@
 0x00315F40 0x170 AddChild__Q23zdb5CNodeFPQ23zdb5CNode  # OVL1; s1:align
 0x003160B0 0x10 ReserveChildren__Q23zdb5CNodeFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003160C0 0x34 RemoveFromParent__Q23zdb5CNodeFv  # OVL1; tu: node_main.cpp~ (1.0 beta); s1:exact
-0x00316100 0x1A8 func_00316100  # OVL1
+0x00316100 0x1A8 DeleteVisuals__Q23zdb5CNodeFv  # OVL1; s1:order (SOCOM 1's DeleteVisuals, a visual drawn this frame deferred to a list now)
 0x003162B0 0x22C func_003162B0  # OVL1
 0x003164E0 0x114 AddVisual__Q23zdb5CNodeFPQ23zdb7CVisual  # OVL1; s1:align
 0x00316600 0x10 ReserveVisuals__Q23zdb5CNodeFi  # OVL1; s1:exact
@@ -5499,8 +5499,8 @@
 0x003176B0 0x6C func_003176B0  # OVL1
 0x00317720 0x78 func_00317720  # OVL1
 0x003177A0 0x18 func_003177A0  # OVL1
-0x003177C0 0x60 __dt__Q23zdb14CTickLightListFv  # OVL1; s1:align
-0x00317820 0x80 func_00317820  # OVL1
+0x003177C0 0x60 __dt__Q23std56list<PQ23zdb7CVisual,Q23std26allocator<PQ23zdb7CVisual>>Fv  # OVL1; s1:align; the deferred visuals' destructor (registered for 0x45C2D8 by __sinit_node_main.cpp; it calls the pointer list deleter's, 0x1EA2D0)
+0x00317820 0x80 __dt__Q23zdb14CTickLightListFv  # OVL1; s1:unit (registered for CLight::m_tick_list by __sinit_node_main.cpp, as SOCOM 1's registers CTickLightList's destructor; was 0x3177C0's name by alignment)
 0x003178A0 0xA4 SetModel__Q23zdb5CNodeFPQ23zdb6CModel  # OVL1; s1:align
 0x00317950 0x138 Delete__Q23zdb5CNodeFPQ23zdb5CNode  # OVL1; s1:exact by hand (SOCOM 1's Delete: an instance off its model's list, a type-4 node's first child to its parent, then deleted; after SetModel as there)
 0x00317A90 0x5C CreateXRef__Q23zdb5CNodeFv  # OVL1; s1:calls
@@ -8548,7 +8548,7 @@
 0x004026C0 0x84 __sinit_zmath_pnt3d.cpp  # OVL1 data area; a static initialiser; s1:unit zmath_pnt3d.cpp (exact)
 0x00402750 0xA8 __sinit_zmath_pnt4d.cpp  # OVL1 data area; a static initialiser; s1:unit zmath_pnt4d.cpp (exact)
 0x00402800 0xD0 func_00402800  # OVL1 data area; a static initialiser
-0x004028D0 0x70 func_004028D0  # OVL1 data area; a static initialiser; s1~ node_main.cpp (shape 0.46, a hint)
+0x004028D0 0x70 __sinit_node_main.cpp  # OVL1 data area; a static initialiser; s1~ node_main.cpp (shape 0.46, a hint); s1:unit node_main.cpp (its two statics, CLight::m_tick_list and the deferred visuals, built in that order)
 0x00402940 0x20 func_00402940  # OVL1 data area; a static initialiser
 0x00402960 0x30 __sinit_node_util.cpp  # OVL1 data area; a static initialiser; s1:unit node_util.cpp (exact)
 0x00402990 0x64 func_00402990  # OVL1 data area; a static initialiser; s1~ node_world.cpp (shape 0.46, a hint)
