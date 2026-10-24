@@ -161,9 +161,12 @@ def main(argv=None) -> int:
                          and st.at_addr(a).name != baseline[a] else "")
                          for a in set(baseline) - now if not rx or rx.search(baseline[a]))
     total_code = sum(s.size for s in st.symbols)
+    # a template instance two units emit (an MSL vector's reserve) is one function: count names
+    matched = sorted(set(matched))
+    scored = {r[2] for r in rows if r[0] in ('match', 'WRONG')}
     matched_bytes = sum(st.get(n).size for n in matched)
     n_auto = sum(1 for n in matched if n in auto_names and n not in hand_names)
-    print(f"\n{len(matched)} byte-exact of {sum(1 for r in rows if r[0] in ('match', 'WRONG'))} scored"
+    print(f"\n{len(matched)} byte-exact of {len(scored)} scored"
           f" ({matched_bytes:,} of {total_code:,} bytes in the map, {100 * matched_bytes / max(total_code, 1):.2f} %)")
     print(f"  {len(matched) - n_auto} hand-written, {n_auto} generated (src/auto, m2c drafts byte-exact as they stand)")
     if superseded:
