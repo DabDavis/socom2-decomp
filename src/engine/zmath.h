@@ -21,6 +21,25 @@ public:
     float x, y, z;
 };
 
+/* A VU0 vector, 16-byte aligned for lqc2 (SOCOM 1 names CPnt4D::Rotate_AxisX/Y). */
+class CPnt4D {
+public:
+    float x, y, z, w;
+} __attribute__((aligned(16)));
+
+/* Fill a VU0 vector from four floats. MW evaluates the arguments right to left, so a
+ * copy through this loads z, y, x and stores x, y, z with w among them, through the
+ * same element addresses later code reuses -- the projector code's pattern, which an
+ * element-by-element fill (interleaved load/store) does not give. An inline leaves no
+ * symbol: the name is ours. */
+inline void VecSet(float *v, float x, float y, float z, float w)
+{
+    v[0] = x;
+    v[1] = y;
+    v[2] = z;
+    v[3] = w;
+}
+
 class CMatrix {
 public:
     float m[4][4];

@@ -416,7 +416,9 @@ def disasm(data: bytes, vma: int = 0) -> list[tuple[int, int, str]]:
     if not data:
         return []
     import tempfile
-    with tempfile.NamedTemporaryFile(suffix=".bin", dir=os.environ.get("SC_TMP")) as f:
+    tmp = Path(os.environ.get("SC_TMP") or HERE / "build" / "tmp")   # never /tmp: it fills up here
+    tmp.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(suffix=".bin", dir=tmp) as f:
         f.write(data)
         f.flush()
         out = subprocess.run(

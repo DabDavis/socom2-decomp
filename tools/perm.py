@@ -134,6 +134,7 @@ def main(argv=None) -> int:
     ap.add_argument("--jobs", type=int, default=max(1, (os.cpu_count() or 2) - 1))
     ap.add_argument("--seed", type=int, default=None)
     ap.add_argument("-I", dest="includes", action="append", default=[])
+    ap.add_argument("--out", type=Path, help="write the best source here too")
     a = ap.parse_args(argv)
     st = E.symbols()
     target = int(a.target, 16) if a.target else st.get(a.func).addr
@@ -160,6 +161,8 @@ def main(argv=None) -> int:
                 best, order = scores[k], cands[k]
     print(f"\nbest {best} after {steps} steps\n")
     print(render(template, blocks, order))
+    if a.out:
+        a.out.write_text(render(template, blocks, order))
     return 0 if best == 0 else 1
 
 
