@@ -475,6 +475,32 @@ public:
     Particle::Source* particle;   // 0x4
 };   // 0x8 bytes
 
+/* an anim's health, and the extension node that carries it (SOCOM 1's DWARF) */
+class CZAnimHealth {
+public:
+    unsigned char m_health_node_index;   // 0x0
+    float health;   // 0x4
+    float max_health;   // 0x8
+    float armor;   // 0xc
+    float max_armor;   // 0x10
+    float shield;   // 0x14
+};   // 0x18 bytes
+
+class CZAnimEx {
+public:
+    void Reset(float *armor, float *health);
+
+    void *_vt;   // 0x0: zdb::CNodeEx's (4 bytes in SOCOM 1's DWARF)
+    CZAnim* m_anim;   // 0x4
+    CNode* m_nodeEx;   // 0x8
+    CNode* m_root_node;   // 0xc
+    float m_shield;   // 0x10
+    float m_armor;   // 0x14
+    float m_armor_max;   // 0x18
+    float m_health;   // 0x1c
+    float m_health_max;   // 0x20
+};   // 0x24 bytes
+
 class _zanim_call_anim_ref {
 public:
     unsigned char name_index;   // 0x0

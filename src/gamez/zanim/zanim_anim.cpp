@@ -16,6 +16,27 @@ extern "C" CZAnim *func_00270BB0(CZAnim *anim);
 extern "C" bool func_00270BC0(Particle::Source *source);
 extern "C" CNode *func_002703D0(CZAnim *anim, int find);
 
+/* the extension's armour and health from the given values, or their maxima */
+void CZAnimEx::Reset(float *armor, float *health)
+{
+    if (armor)
+        m_armor = *armor;
+    else
+        m_armor = m_armor_max;
+    if (health)
+        m_health = *health;
+    else
+        m_health = m_health_max;
+}
+
+/* SOCOM II's: a health back to its maxima -- inlined but where CZAnim::Reset has inlined itself
+ * to depth 3; its name is not known */
+extern "C" void func_00273960(CZAnimHealth *health)
+{
+    health->health = health->max_health;
+    health->armor = health->max_armor;
+}
+
 /* the interpreter's sequence calls made on this anim: SOCOM II keeps the current sequence as
  * well as the current anim around them (SOCOM 1 cleared it) */
 void CZAnim::ActivateSequence(const char *name)
@@ -94,6 +115,23 @@ bool CZAnim::SequenceRunning(const char *name)
 
 /* SOCOM II's: the node states of the anim's saved refs kept by its set (0x26F120) */
 extern "C" void func_0026F120(CZAnim *anim, bool refresh);
+
+/* health back to full (the chain's too, when it has health), the extension's from it, and the
+ * anim reset to state 1.
+ * OPEN, as Resume: the target inlines itself twice and the health and extension resets into
+ * both copies, calling them only at depth 3; MW here inlines itself once and calls the
+ * extension's reset at depth 2 (3.0b50 alike; the 3.0.1 builds break State). */
+void CZAnim::Reset()
+{
+    if (m_health) {
+        func_00273960(m_health);
+        if (m_sibling_anim)
+            m_sibling_anim->Reset();
+    }
+    if (m_animEx)
+        m_animEx->Reset(&m_health->armor, &m_health->health);
+    State(1);
+}
 
 /* the node and valve pointers looked up afresh -- but a cloning anim's root and the nodes the
  * anim made -- and the chain's too when asked */
