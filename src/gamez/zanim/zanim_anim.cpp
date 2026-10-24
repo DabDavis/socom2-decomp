@@ -285,7 +285,7 @@ void CZAnim::State(int state)
             if (root) {
                 zdb::CWorld::m_world->DeleteChild(root);
                 m_added_to_world_internally = 0;
-                if (((unsigned char *)root)[0xA1] & 4)
+                if (root->m_socom2_a1 & 4)
                     func_0031D0A0(zdb::CWorld::m_world, 2, root);
             }
         }
@@ -428,8 +428,6 @@ extern "C" void func_002707C0(CZAnim *anim, bool now)
     ZAnim.m_CurSeq = seq;
 }
 
-/* SOCOM II's: the anim's instance node, not named */
-extern "C" void func_0026EE70(CZAnim *anim);
 
 /* SOCOM II's: a node made the anim's root -- the pointers cleared, an instance node deleted,
  * the nodes looked up again; none without a node or a root reference */
@@ -449,7 +447,7 @@ extern "C" int func_00270460(CZAnim *anim, CNode *node)
     }
     anim->m_node_ref_list[anim->m_root_node_index].node_ptr = node;
     anim->GetNodes();
-    func_0026EE70(anim);
+    anim->CreateInstanceNode();
     return 1;
 }
 
@@ -519,6 +517,59 @@ void CZAnim::SaveNodeStates(bool refresh)
 }
 #pragma auto_inline reset
 
+/* the anim's instance of its root model, when it makes one: a copy of the model or a cross
+ * reference to it, named <model>:zanim_instance, made the root reference and the nodes looked
+ * up under it; the anim is then added to the world */
+void CZAnim::CreateInstanceNode()
+{
+    if (!m_create_instance)
+        return;
+    if (m_instance_node)
+        return;
+    CNode *root = func_002703D0(this, 1);
+
+    if (!root)
+        return;
+    zdb::CModel *model = dynamic_cast<zdb::CModel *>(root);
+
+    if (!model)
+        return;
+    if (m_copy_instance)
+        m_instance_node = zdb::CNode::CreateInstance(model, 0, 0);
+    else
+        m_instance_node = zdb::CNode::CreateXRef(model, 0, 0);
+    if (m_instance_node) {
+        char *name;
+        char *src = model->m_name;
+
+        name = (char *)_malloc(strlen(src) + 18, 0, 0);
+
+        sprintf(name, "%s:zanim_instance", src);
+        m_instance_node->SetName(name);
+        func_00180280(name, 0, 0);
+        int root_index = m_root_node_index;
+
+        if (root_index) {
+            m_node_ref_list[root_index].node_ptr = m_instance_node;
+            m_node_ref_list[m_root_node_index].created_here = 1;
+        }
+        for (int i = 0; i < m_node_ref_count; i++) {
+            if (i == m_root_node_index && m_clone_anim)
+                continue;
+            if (!m_node_ref_list[i].created_here)
+                m_node_ref_list[i].node_ptr = 0;
+        }
+        GetNodes();
+        if (root->m_socom2_a1 & 4) {
+            CNode *instance = m_instance_node;
+
+            instance->m_socom2_a1_bits.bit2 = 1;
+            instance->m_bumpmap = 1;
+        }
+    }
+    m_auto_add_to_world = 1;
+}
+
 /* the anim's nodes looked up: a root made first when the anim makes its own (named
  * <anim>::created_root), then the root, then every reference still without a node */
 void CZAnim::GetNodes()
@@ -545,7 +596,7 @@ void CZAnim::GetNodes()
     for (int i = 0; i < m_node_ref_count; i++)
         if (!m_node_ref_list[i].node_ptr)
             GetNode(i, true);
-    func_0026EE70(this);
+    CreateInstanceNode();
 }
 
 /* a node reference by its index, the references grown to reach it, its node looked up when

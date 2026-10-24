@@ -6,8 +6,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+s32 CreateInstance__Q23zdb5CNodeFPQ23zdb6CModelPC6CPnt3DPC5CQuat(s32, M2C_UNK, M2C_UNK); /* extern */
 M2C_UNK SetName__Q23zdb5CNodeFPCc(s32, s32);        /* extern */
-s32 func_00317D90(s32, M2C_UNK, M2C_UNK);           /* extern */
 
 s32 func_0053C940(char *arg0, s32 arg1) {
     s32 temp_a0;
@@ -15,7 +15,7 @@ s32 func_0053C940(char *arg0, s32 arg1) {
 
     temp_a0 = M2C_FIELD(arg0, s32 *, 0x18);
     if (temp_a0 != 0) {
-        var_v0 = func_00317D90(temp_a0, 0, 0);
+        var_v0 = CreateInstance__Q23zdb5CNodeFPQ23zdb6CModelPC6CPnt3DPC5CQuat(temp_a0, 0, 0);
     } else {
         var_v0 = 0;
     }

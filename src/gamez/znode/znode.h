@@ -94,6 +94,8 @@ public:
 
     CNode();
     void SetName(const char *name);
+    static CNode *CreateXRef(CModel *model, const CPnt3D *pos, const CQuat *rot);
+    static CNode *CreateInstance(CModel *model, const CPnt3D *pos, const CQuat *rot);
     void TransformToWorld(CPnt3D &p) const;
     void BuildMTW(CMatrix &m);
     void SetMatrix(const CMatrix *m);
@@ -129,7 +131,19 @@ public:
     unsigned short m_character_infov : 1;   // 0x9a
     unsigned short m_unused : 12;   // 0x9a
     float m_Opacity;   // 0x9c
-    CGridAtom** m_Atom;   // 0xa0
+    /* SOCOM II's at 0xa0, where SOCOM 1's DWARF has m_Atom: CZAnim::State and CreateInstanceNode
+     * test the byte at 0xa1 with a mask (4) and CreateInstanceNode sets that bit as a bitfield on
+     * an instance -- both views, names unknown */
+    unsigned char m_socom2_a0;   // 0xa0
+    union {
+        unsigned char m_socom2_a1;   // 0xa1
+        struct {
+            unsigned char lo : 2;
+            unsigned char bit2 : 1;
+            unsigned char hi : 5;
+        } m_socom2_a1_bits;
+    };
+    unsigned char _socom2_a2[2];   // 0xa2
     int m_TickNum;   // 0xa4
     short m_AtomCnt;   // 0xa8
     short m_AtomAlloc;   // 0xaa
@@ -139,6 +153,11 @@ public:
     char* m_modelname;   // 0xb4
     unsigned int m_region_mask;   // 0xb8
 };   // 0xc0 bytes
+
+/* a model node: what CZAnim::CreateInstanceNode instances (dynamic_cast from CNode) */
+class CModel : public CNode {
+public:
+};
 
 /* the scene's root; SOCOM 1's DWARF has its 0x6BE0 bytes of members. SOCOM II's landmark list
  * is 12 bytes further on (GetDatabaseNode reads it at 0x6B98): something grew in between. */

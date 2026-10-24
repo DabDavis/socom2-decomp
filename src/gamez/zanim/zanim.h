@@ -136,6 +136,7 @@ public:
     CZAnim *FindClones(zdb::CNode *root, zdb::CNode *node, CZAnim *last);
     CZAnim *Copy();
     CZAnim *GetAvailable();
+    void CreateInstanceNode();
     void RestartClones();
     void Refresh(bool chain);
     void GetNodes();

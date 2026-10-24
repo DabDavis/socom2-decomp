@@ -2986,7 +2986,7 @@
 0x0026ED60 0x4C GetName__6CZAnimFi  # OVL1; s1:callee
 0x0026EDB0 0x4C GetName__6CZAnimFv  # OVL1; s1:align
 0x0026EE00 0x64 Name__6CZAnimFPCc  # OVL1; s1:align
-0x0026EE70 0x2A4 func_0026EE70  # OVL1
+0x0026EE70 0x2A4 CreateInstanceNode__6CZAnimFv  # OVL1; s1:order (before SaveNodeStates(bool) in both; the root cast to a CModel and instanced or cross-referenced, named <model>:zanim_instance)
 0x0026F120 0xF0 SaveNodeStates__6CZAnimFb  # OVL1; s1:order (CreateRootNode, SaveNodeStates(bool), GetNodes, GetNodeRef, GetNode in both; the same four save flags tested, refreshed first when asked)
 0x0026F210 0x218 GetNodes__6CZAnimFv  # OVL1; s1:align
 0x0026F430 0xB0 GetNodeRef__6CZAnimFi  # OVL1; s1:order (as SaveNodeStates; index 0 and 250 none, the refs grown to reach it, its node looked up)
@@ -5505,7 +5505,7 @@
 0x00317A90 0x5C CreateXRef__Q23zdb5CNodeFv  # OVL1; s1:calls
 0x00317AF0 0x124 CreateXRef__Q23zdb5CNodeFPQ23zdb6CModelPC6CPnt3DPC5CQuat  # OVL1; s1:calls
 0x00317C20 0x164 func_00317C20  # OVL1
-0x00317D90 0x12C func_00317D90  # OVL1
+0x00317D90 0x12C CreateInstance__Q23zdb5CNodeFPQ23zdb6CModelPC6CPnt3DPC5CQuat  # OVL1; s1:order by hand (after CreateXRef in both; CreateInstanceNode calls it for an anim that copies its instance where SOCOM 1's calls CreateInstance)
 0x00317EC0 0x24 GetFirstVisual__Q23zdb5CNodeFv  # OVL1; s1:align
 0x00317EF0 0x74 GetSubMesh__Q23zdb5CNodeFv  # OVL1; s1:align
 0x00317F70 0x50 func_00317F70  # OVL1
