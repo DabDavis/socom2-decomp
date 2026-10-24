@@ -2040,20 +2040,20 @@
 0x00227AD0 0x9E4 func_00227AD0  # OVL1
 0x002284C0 0x194 func_002284C0  # OVL1
 0x00228660 0x80 __dt__8CFlashFXFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x002286E0 0xA0 func_002286E0  # OVL1
+0x002286E0 0xA0 Reset__14CFlashFXVectorFv  # OVL1; s1:order (hud_fader.cpp's order, SOCOM 1's code: the elements deleted through slot 0, then a temporary vector, clear, swap)
 0x00228780 0x40 func_00228780  # OVL1
 0x002287C0 0x8 func_002287C0  # OVL1
 0x002287D0 0x14 func_002287D0  # OVL1
-0x002287F0 0xA0 func_002287F0  # OVL1
-0x00228890 0x7C func_00228890  # OVL1
+0x002287F0 0xA0 Draw__14CFlashFXVectorFPQ23zdb7CCamera  # OVL1; s1:exact by hand (hud_fader.cpp)
+0x00228890 0x7C Tick__14CFlashFXVectorFf  # OVL1; s1:exact by hand (hud_fader.cpp)
 0x00228910 0x184 Tick__8CFlashFXFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00228AA0 0x50 Reset__8CFlashFXFv  # OVL1; s1:exact
 0x00228AF0 0x54 Flash__8CFlashFXFfff  # OVL1; s1:exact
 0x00228B50 0x28 SetMinBrightness__6CFaderFf  # OVL1; s1:exact
 0x00228B80 0x40 FadeIn__6CFaderFf  # OVL1; s1:exact
 0x00228BC0 0x240 Tick__6CFaderFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00228E00 0xD0 func_00228E00  # OVL1
-0x00228ED0 0xC func_00228ED0  # OVL1
+0x00228E00 0xD0 __ct__6CFaderFv  # OVL1; s1:exact by hand (hud_fader.cpp; SOCOM 1's calls, its bit stores now SOCOM II's new C2D slots)
+0x00228ED0 0xC IsPlaying__16CZHudMissionCamsFv  # OVL1; s1:order (hud_missioncams.cpp's first function as in SOCOM 1; m_animhandle at 0x1C now, C2D 4 bytes shorter)
 0x00228EE0 0x54C PlayCamera__16CZHudMissionCamsFP11CMissionCamb  # OVL1; s1:callee
 0x00229430 0x40 PlayCamera__16CZHudMissionCamsFPCc  # OVL1; s1:exact
 0x00229470 0xAC Draw__16CZHudMissionCamsFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -6699,7 +6699,7 @@
 0x003643B0 0x2AC func_003643B0  # OVL1
 0x00364660 0x1C func_00364660  # OVL1
 0x00364680 0x50 SetPos__9C2DBitmapFii  # OVL1; s1:align
-0x003646D0 0x98 func_003646D0  # OVL1
+0x003646D0 0x98 Load__9C2DBitmapFffffPQ23zdb10CTexHandle  # OVL1; s1:callee (CFader's constructor's second call, as SOCOM 1's)
 0x00364770 0xB8 func_00364770  # OVL1
 0x00364830 0x1C SetUV__9C2DBitmapFffff  # OVL1; s1:exact
 0x00364850 0x8 func_00364850  # OVL1
@@ -6713,7 +6713,7 @@
 0x00364B50 0x50 func_00364B50  # OVL1
 0x00364BA0 0x50 func_00364BA0  # OVL1
 0x00364BF0 0x60 func_00364BF0  # OVL1
-0x00364C50 0x110 func_00364C50  # OVL1
+0x00364C50 0x110 __ct__9C2DBitmapFv  # OVL1; s1:callee (CFader's constructor calls it first, as SOCOM 1's; it stores __vt__9C2DBitmap)
 0x00364D60 0x90 func_00364D60  # OVL1
 0x00364DF0 0x20 func_00364DF0  # OVL1; s1~ Enable__3C2DFb (one of 2 out-of-line copies of an inline, by s1:vtable)
 0x00364E10 0x14 IsOn__3C2DCFv  # OVL1; s1:callee
