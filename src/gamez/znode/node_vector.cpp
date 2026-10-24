@@ -177,6 +177,48 @@ bool CNodeVector::Remove(const CNode *node)
     return it != e;
 }
 
+/* the regions (a bit for the node's own) and the lights handed down the tree: a light keeps the
+ * lights, anything else the regions, a type-10 node neither and nothing below it. Over a copy
+ * of the child list, its size read once; how many lights below took some.
+ * OPEN (4 differing): the mask and the constant 1 take each other's registers (a1, v1) -- not
+ * moved by the statements' order, either spelling of the ORs, locals, inline accessors, or the
+ * permuter's 21,048 candidates */
+int CNode::InheritRegionMasks(unsigned int regions, unsigned int lights)
+{
+    if (m_type == 10)
+        return 0;
+    regions |= 1 << m_region_shift;
+    lights |= m_region_mask;
+    if (m_type == 8)
+        m_region_mask = lights;
+    else
+        m_region_mask = regions;
+    CNodeVector children(m_child);
+    unsigned int n = children.size();
+    int count = 0;
+
+    for (unsigned int i = 0; i < n; i++)
+        count += children[i]->InheritRegionMasks(regions, lights);
+    if (m_type == 8 && lights)
+        count++;
+    return count;
+}
+
+/* whether a segment surely misses the node's bounds (both ends past one face); a node that
+ * borrows its parent's bounds never says so. One expression: the six tests flat in one ||
+ * chain, MW keeping a flag per level (new in SOCOM II; its callers, the grid's intersection
+ * code, are not placed, so it keeps its placeholder) */
+extern "C" bool func_003124F0(CNode *node, const CPnt3D *a, const CPnt3D *b)
+{
+    return !node->m_use_parent_bbox &&
+           ((a->x < node->m_bbox.m_min.x && b->x < node->m_bbox.m_min.x) ||
+           (a->x > node->m_bbox.m_max.x && b->x > node->m_bbox.m_max.x) ||
+           (a->y < node->m_bbox.m_min.y && b->y < node->m_bbox.m_min.y) ||
+           (a->y > node->m_bbox.m_max.y && b->y > node->m_bbox.m_max.y) ||
+           (a->z < node->m_bbox.m_min.z && b->z < node->m_bbox.m_min.z) ||
+           (a->z > node->m_bbox.m_max.z && b->z > node->m_bbox.m_max.z));
+}
+
 /* the name of the model the node is an instance of: its own copy, the old one freed */
 void CNode::SetModelname(const char *name)
 {

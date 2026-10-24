@@ -5414,7 +5414,7 @@
 0x003123F0 0x90 Exists__Q23zdb15CLightMapVectorFPCQ23zdb9CLightMap  # OVL1; s1:order (after CNodeUniverse's four, as SOCOM 1's; the light map code calls it)
 0x00312480 0x6C remove_copy<Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iterator,Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iterator,PCQ23zdb5CNode>__3stdFQ33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorQ33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorQ33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorRCPCQ23zdb5CNode_Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iterator  # OVL1; std::remove_copy for CNodeVector::Remove, out of line (the iterators by value, homed on the stack)
 0x003124F0 0x1B0 func_003124F0  # OVL1
-0x003126A0 0x144 func_003126A0  # OVL1
+0x003126A0 0x144 InheritRegionMasks__Q23zdb5CNodeFUiUi  # OVL1; s1:exact by hand (SOCOM 1's InheritRegionMasks, before SetModelname as here; the mask at 0xbc)
 0x003127F0 0x64 SetModelname__Q23zdb5CNodeFPCc  # OVL1; s1:exact by hand (SOCOM 1's SetModelname: the old name freed, a copy kept at 0xb8)
 0x00312860 0x204 func_00312860  # OVL1
 0x00312A70 0x24 SetActive__Q23zdb6CLightFb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
