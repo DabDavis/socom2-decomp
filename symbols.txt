@@ -1986,16 +1986,16 @@
 0x00222130 0x60 __ct__10PoseBitmapFv  # OVL1; s1:order by hand (hud_posebitmap.cpp's last)
 0x00222190 0x118 __dt__15CZPlayerMapItemFv  # OVL1; s1:calls
 0x002222B0 0x2C MissionEndCleanup__15CZPlayerMapItemFv  # OVL1; s1:exact
-0x002222E0 0x4D0 func_002222E0  # OVL1
-0x002227B0 0x4C8 func_002227B0  # OVL1
-0x00222C80 0x224 func_00222C80  # OVL1
+0x002222E0 0x4D0 SetViewCone__15CZPlayerMapItemFP11CZNewHudMapPC6CPnt3DPC6CPnt3DUiff  # OVL1; s1:order (hud_playermapitem.cpp's order: after MissionEndCleanup, as SOCOM 1's)
+0x002227B0 0x4C8 TickSealCone__15CZPlayerMapItemFP11CZNewHudMap  # OVL1; s1:callee (CZPlayerMapItem::Tick's last call, as SOCOM 1's)
+0x00222C80 0x224 GetBlipID__15CZPlayerMapItemFP10CZSealBody  # OVL1; s1:order (hud_playermapitem.cpp's order: before DrawAlphaBravo, as SOCOM 1's)
 0x00222EB0 0x58 DrawAlphaBravo__15CZPlayerMapItemFPQ23zdb7CCamera  # OVL1; s1:exact
 0x00222F10 0x14 PostDraw__15CZPlayerMapItemFPQ23zdb7CCamera  # OVL1; s1:size (SOCOM 1's PostDraw, 0x14: a tail call through a member object's vtable; the row had run on into Draw)
 0x00222F30 0xA0 Draw__15CZPlayerMapItemFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike; SOCOM 1's is 0xA0 too)
 0x00222FD0 0x8 Clip__15CZPlayerMapItemFP11CZNewHudMap  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00222FE0 0xD0 Tick__15CZPlayerMapItemFP11CZNewHudMapf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002230B0 0x12C __ct__15CZPlayerMapItemFP7CEntity  # OVL1; s1:calls
-0x002231E0 0x3C func_002231E0  # OVL1
+0x002231E0 0x3C UnInitStaticItems__15CZPlayerMapItemFv  # OVL1; s1:exact by hand (hud_playermapitem.cpp)
 0x00223220 0x6C InitStaticItems__15CZPlayerMapItemFv  # OVL1; s1:exact
 0x00223290 0x8 func_00223290  # OVL1
 0x002232A0 0x374 UnInit__12CMPExitStateFv  # OVL1; s1:vtable (CMPExitState's UnInit slot)
@@ -3707,7 +3707,7 @@
 0x0029FC10 0x98 CreateEntity__7CEntityFP7CEntityb  # OVL1; s1:align
 0x0029FCB0 0xCC func_0029FCB0  # OVL1
 0x0029FD80 0x44 func_0029FD80  # OVL1
-0x0029FDD0 0x78 func_0029FDD0  # OVL1
+0x0029FDD0 0x78 EntityIsValid__7CEntityFP7CEntity  # OVL1; s1:callee (CZPlayerMapItem::Tick's first call, as SOCOM 1's; it walks CEntity::m_list)
 0x0029FE50 0x10 func_0029FE50  # OVL1
 0x0029FE60 0xC func_0029FE60  # OVL1
 0x0029FE70 0xE4 func_0029FE70  # OVL1
@@ -6638,7 +6638,7 @@
 0x00360A20 0xC8 GetAssetLibs__9C2DTriFanFRQ23C2D8CLibList  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00360AF0 0xC8 Draw__9C2DTriFanFPQ23zdb7CCamera  # OVL1; s1:align
 0x00360BC0 0x90 __dt__9C2DTriFanFv  # OVL1; s1:align
-0x00360C50 0x4C func_00360C50  # OVL1
+0x00360C50 0x4C __ct__9C2DTriFanFv  # OVL1; s1:callee (CZPlayerMapItem's constructor builds its tri-fan arrays with it and __dt__9C2DTriFanFv)
 0x00360CA0 0x2B8 func_00360CA0  # OVL1
 0x00360F60 0x54 Draw__7C2DPolyFPQ23zdb7CCamera  # OVL1; s1:align
 0x00360FC0 0x38 SetPos__7C2DPolyFffffff  # OVL1; s1:callee
@@ -6677,7 +6677,7 @@
 0x003630E0 0xB4 Load__9C2DStringFPCcP7C2DFontii  # OVL1; s1:align
 0x003631A0 0x20 SetPos__9C2DStringFii  # OVL1; s1:align (the string's position as two floats at 0x90; PoseBitmap sets it from its own)
 0x003631C0 0x2C func_003631C0  # OVL1; size 0x2c (a tail call through t9; the seed ran on into the padding)
-0x003631F0 0x26C func_003631F0  # OVL1
+0x003631F0 0x26C SetString__9C2DStringFPCcb  # OVL1; s1:vtable by hand (C2DString's slot 26, SOCOM 1's SetString with a flag that sends the string through a lookup; UnInitStaticItems calls it)
 0x00363460 0x154 func_00363460  # OVL1
 0x003635C0 0x26C func_003635C0  # OVL1
 0x00363830 0x184 Format__9C2DStringFPCce  # OVL1; s1:align
@@ -8486,7 +8486,7 @@
 0x003FE500 0x48 func_003FE500  # OVL1 data area; a static initialiser
 0x003FE550 0x1B0 func_003FE550  # OVL1 data area; a static initialiser
 0x003FE700 0xEC func_003FE700  # OVL1 data area; a static initialiser
-0x003FE7F0 0x64 func_003FE7F0  # OVL1 data area; a static initialiser; s1~ zanim_anim.cpp (shape 0.46, a hint)
+0x003FE7F0 0x64 __sinit_hud_playermapitem.cpp  # OVL1 data area; a static initialiser; s1~ zanim_anim.cpp (shape 0.46, a hint); hud_playermapitem.cpp by hand (it constructs CZPlayerMapItem::m_ablestring and m_bravostring, this unit's statics, and registers their destructors)
 0x003FE860 0xD4 func_003FE860  # OVL1 data area; a static initialiser
 0x003FE940 0x34 func_003FE940  # OVL1 data area; a static initialiser
 0x003FE980 0x9D0 func_003FE980  # OVL1 data area; a static initialiser

@@ -21,6 +21,7 @@ namespace zdb {
 class CAssetLib;
 class CCamera;
 class CTexHandle;
+class CTexture;
 class CTextureRelocMgr;
 }
 class CPad;
@@ -150,5 +151,56 @@ public:
     int m_iWidth;   // 0x74
     int m_iHeight;   // 0x78
 } __attribute__((aligned(16)));   // 0x80 bytes
+
+/* a textured triangle: 0xD0 bytes in SOCOM II as in SOCOM 1 (CZPlayerMapItem's arrays' stride),
+ * its members past C2D not placed; its destructor is implicit (an out-of-line copy is emitted
+ * wherever an array of them is destroyed: hud_main.cpp's is linked, 0x1FC620) */
+class C2DPoly : public C2D {
+public:
+    virtual void Draw(zdb::CCamera *cam);
+    virtual void SetHasTexture(bool on);
+    virtual void SetAA(bool on);
+    virtual void SetIsTrans(bool on);
+    virtual void SetGouraud(bool on);
+    virtual void SetTrans(float trans);
+    virtual void GetAssetLibs(CLibList &liblist);
+
+    unsigned char _18[0xd0 - 0x18];
+} __attribute__((aligned(16)));   // 0xd0 bytes
+
+/* a bitmap of two triangles (SOCOM 1's DWARF; the offsets unchanged, the 16-alignment absorbing
+ * C2D's lost 4 bytes); its destructor is implicit too */
+class C2DBitmapPoly : public C2D, public C2DFade {
+public:
+    C2DBitmapPoly();
+    virtual void Draw(zdb::CCamera *cam);
+    virtual void SetHasTexture(bool on);
+    virtual void SetAA(bool on);
+    virtual void SetIsTrans(bool on);
+    virtual void SetGouraud(bool on);
+    virtual void SetTrans(float trans);
+    virtual void SetUseFrameBufferAlpha(bool isFrameAlpha);
+    virtual void GetAssetLibs(CLibList &liblist);
+
+    int x1;   // 0x24
+    int x2;   // 0x28
+    int y1;   // 0x2c
+    int y2;   // 0x30
+    C2DPoly m_tris[2];   // 0x40
+    zdb::CTexture *m_texture;   // 0x1e0
+} __attribute__((aligned(16)));   // 0x1f0 bytes
+
+/* a fan of triangles clipped out of a bitmap: 0x28 bytes in SOCOM II (SOCOM 1's 0x2C less C2D's
+ * 4); its constructor and destructor are ztwod's own */
+class C2DTriFan : public C2D {
+public:
+    C2DTriFan();
+    virtual ~C2DTriFan();
+    virtual void Draw(zdb::CCamera *cam);
+    virtual void GetAssetLibs(CLibList &liblist);
+
+    unsigned char m_polylist[0xc];   // 0x18: SOCOM 1's `vector m_polylist`
+    zdb::CTexture *m_texture;   // 0x24
+};   // 0x28 bytes
 
 #endif
