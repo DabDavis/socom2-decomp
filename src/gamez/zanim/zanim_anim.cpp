@@ -17,6 +17,7 @@
 extern "C" CZAnim *func_00270BB0(CZAnim *anim);
 extern "C" bool func_00270BC0(Particle::Source *source);
 extern "C" CNode *func_002703D0(CZAnim *anim, int find);
+extern "C" int func_00270460(CZAnim *anim, CNode *node);
 
 /* the extension's armour and health from the given values, or their maxima */
 void CZAnimEx::Reset(float *armor, float *health)
@@ -167,6 +168,49 @@ void CZAnim::Start()
 }
 
 #pragma auto_inline reset
+
+/* the nodes under one named like the root: the root itself made this anim's root and started,
+ * every other match a copy's -- chained after the last anim, unless the anim activates on a
+ * weapon hit (3), which marks it instead -- and started; the new last returned */
+CZAnim *CZAnim::FindClones(CNode *root, CNode *node, CZAnim *last)
+{
+    if (node->m_name && !strcmp(node->m_name, root->m_name)) {
+        if (node == root) {
+            func_00270460(this, root);
+            Start();
+        } else {
+            if (m_activation != 3) {
+                last->m_sibling_anim = last->Copy();
+                last = last->m_sibling_anim;
+            } else
+                m_auto_copy_anim = 1;
+            func_00270460(last, node);
+            last->Start();
+        }
+    }
+    for (zdb::CNodeVector::const_iterator it = node->m_child.begin(), end = node->m_child.end(); it != end; ++it)
+        last = FindClones(root, *it, last);
+    return last;
+}
+
+/* the anim cloned for every node in the world matching its root, chained after its last anim
+ * (the walk to the last re-reads this anim's own link -- as SOCOM 1's does) */
+void CZAnim::MakeClones()
+{
+    Refresh(false);
+    CNode *root = func_002703D0(this, 0);
+
+    if (root && root->m_name) {
+        CZAnim *last = this;
+
+        while (m_sibling_anim)
+            last = m_sibling_anim;
+        zdb::CNodeVector &children = zdb::CWorld::m_world->m_child;
+
+        for (zdb::CNodeVector::const_iterator it = children.begin(), end = children.end(); it != end; ++it)
+            last = FindClones(root, *it, last);
+    }
+}
 
 /* the anim and its chain started again, unless it activates on demand (3) */
 void CZAnim::RestartClones()

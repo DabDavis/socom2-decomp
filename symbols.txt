@@ -2970,7 +2970,7 @@
 0x0026D370 0x1E4 Load__6CZAnimFRQ23zar4CZAR  # OVL1; s1:callee by hand (CZAnimSet::Load calls it on each new anim where SOCOM 1's calls CZAnim::Load; the same opening: the open key, the 0x18-byte params fetched into the anim, State(1))
 0x0026D560 0x304 Unload__6CZAnimFv  # OVL1; s1:align
 0x0026D870 0xD0 ExecuteSpecialSequence__6CZAnimFi  # OVL1; s1:calls
-0x0026D940 0x560 func_0026D940  # OVL1
+0x0026D940 0x560 Copy__6CZAnimFv  # OVL1; s1:order (after ExecuteSpecialSequence in both; FindClones chains its result as the last anim's sibling where SOCOM 1's does)
 0x0026DEA0 0x430 LoadNodeNames__6CZAnimFP5_zrdrPCcii  # OVL1; s1:order by hand (before AddNewNodeRef in both, the same four arguments; a name, or a ZRDR list of them, made a chain of node references)
 0x0026E2D0 0x20 func_0026E2D0  # OVL1
 0x0026E2F0 0x1C4 AddNewNodeRef__6CZAnimFiii  # OVL1; s1:order (after GetNodeRefName and before the GetCallAnimRefs in both; entry 0 made first, the name and parent bounded by their bitfields)
@@ -3010,7 +3010,7 @@
 0x00270BE0 0x260 func_00270BE0  # OVL1
 0x00270E40 0xB0 Running__6CZAnimFv  # OVL1; s1:order by hand (called where SOCOM 1's Pause/Resume handlers call Running; the same one argument)
 0x00270EF0 0x218 func_00270EF0  # OVL1
-0x00271110 0x13C func_00271110  # OVL1
+0x00271110 0x13C FindClones__6CZAnimFPQ23zdb5CNodePQ23zdb5CNodeP6CZAnim  # OVL1; s1:callee by hand (MakeClones calls it for each of the world's children with the root and the last anim, where SOCOM 1's calls FindClones; it returns the new last and recurses)
 0x00271250 0x134 MakeClones__6CZAnimFv  # OVL1; s1:callee by hand (CZAnimSet::Start calls it on a cloning anim of a fresh set, where SOCOM 1's calls MakeClones)
 0x00271390 0x58 RestartClones__6CZAnimFv  # OVL1; s1:callee by hand (CZAnimSet::Start calls it on a cloning anim of a set started before, where SOCOM 1's calls RestartClones; the same activation test, 3 bits wide here)
 0x002713F0 0xA8 Start__6CZAnimFv  # OVL1; s1:callee by hand (CZAnimSet::Start calls it on every other anim and its chain, where SOCOM 1's calls Start; RestartClones calls it too)
