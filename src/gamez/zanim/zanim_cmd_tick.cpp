@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include "zanim.h"
+#include "../zcamera/zcamera.h"
 
 /* the GS ALPHA register (sceGsAlpha's layout): (A - B) * C + D, C or D the FIX alpha */
 struct GsAlpha {
@@ -376,6 +377,189 @@ struct zanim_cmd_shadowlight {
 extern char AiMaps[];
 extern const float data_003DD018;
 extern const float data_003DD020;
+/* CAMERA: the world camera's view, clip planes and fog colour, each moved from a start to an
+ * end over the command's time (a rate per second) -- per parameter two flag bits, 2 moved and 1
+ * the start given (else taken from the camera), then 0x10000/0x20000 the fog on/off */
+struct zanim_cmd_camera_param {
+    float start;
+    float end;
+    float rate;
+};
+
+struct zanim_cmd_camera {
+    _zanim_cmd_hdr hdr;
+    unsigned int flags : 24;
+    unsigned int node : 8;
+    zanim_cmd_camera_param hfov;        /* 0x8: half angles, radians */
+    zanim_cmd_camera_param vfov;        /* 0x14 */
+    zanim_cmd_camera_param near_plane;  /* 0x20 */
+    zanim_cmd_camera_param mid_plane;   /* 0x2C */
+    zanim_cmd_camera_param far_plane;   /* 0x38 */
+    zanim_cmd_camera_param fog_near;    /* 0x44 */
+    zanim_cmd_camera_param fog_far;     /* 0x50 */
+    zanim_cmd_camera_param fog_color[3];    /* 0x5C: red, green, blue */
+    float time;                         /* 0x80 */
+};
+
+void zAnimCameraBegin(_zanim_cmd_hdr *hdr)
+{
+    zanim_cmd_camera *cmd = (zanim_cmd_camera *)hdr;
+    zdb::CCamera *cam = (zdb::CCamera *)ZAnim.m_CurAnim->GetNode(cmd->node, false);
+
+    if (!cam)
+        return;
+    if (cmd->flags & 2) {
+        if (cmd->flags & 1)
+            cam->SetHalfHorizontalFOVRadians(cmd->hfov.start, true);
+        else
+            cmd->hfov.start = cam->m_hfov;
+        if (!(cmd->flags & 1))
+            cmd->hfov.rate = (1.0f / cmd->time) * (cmd->hfov.end - cmd->hfov.start);
+    }
+    if (cmd->flags & 8) {
+        if (cmd->flags & 4)
+            cam->SetHalfVerticalFOVRadians(cmd->vfov.start, true);
+        else
+            cmd->vfov.start = cam->m_vfov;
+        if (!(cmd->flags & 4))
+            cmd->vfov.rate = (1.0f / cmd->time) * (cmd->vfov.end - cmd->vfov.start);
+    }
+    if (cmd->flags & 0x20) {
+        if (cmd->flags & 0x10)
+            cam->SetNearClip(cmd->near_plane.start);
+        else
+            cmd->near_plane.start = cam->m_near_plane;
+        if (!(cmd->flags & 0x10))
+            cmd->near_plane.rate = (1.0f / cmd->time) * (cmd->near_plane.end - cmd->near_plane.start);
+    }
+    if (cmd->flags & 0x80) {
+        if (cmd->flags & 0x40)
+            cam->SetMidClip(cmd->mid_plane.start);
+        else
+            cmd->mid_plane.start = cam->m_mid_plane;
+        if (!(cmd->flags & 0x40))
+            cmd->mid_plane.rate = (1.0f / cmd->time) * (cmd->mid_plane.end - cmd->mid_plane.start);
+    }
+    if (cmd->flags & 0x200) {
+        if (cmd->flags & 0x100)
+            cam->SetFarClip(cmd->far_plane.start);
+        else
+            cmd->far_plane.start = cam->m_far_plane;
+        if (!(cmd->flags & 0x100))
+            cmd->far_plane.rate = (1.0f / cmd->time) * (cmd->far_plane.end - cmd->far_plane.start);
+    }
+    if (cmd->flags & 0x800) {
+        if (cmd->flags & 0x400)
+            cam->m_fog_near = cmd->fog_near.start;
+        else
+            cmd->fog_near.start = cam->m_fog_near;
+        if (!(cmd->flags & 0x400))
+            cmd->fog_near.rate = (1.0f / cmd->time) * (cmd->fog_near.end - cmd->fog_near.start);
+    }
+    if (cmd->flags & 0x2000) {
+        if (cmd->flags & 0x1000)
+            cam->m_fog_far = cmd->fog_far.start;
+        else
+            cmd->fog_far.start = cam->m_fog_far;
+        if (!(cmd->flags & 0x1000))
+            cmd->fog_far.rate = (1.0f / cmd->time) * (cmd->fog_far.end - cmd->fog_far.start);
+    }
+    if (cmd->flags & 0x8000) {
+        if (cmd->flags & 0x4000)
+            cam->m_fog_color = CPnt4D(cmd->fog_color[0].start, cmd->fog_color[1].start,
+                                      cmd->fog_color[2].start, 0.0f);
+        else {
+            CPnt4D c = cam->GetFogColor();
+
+            cmd->fog_color[0].start = c.x;
+            cmd->fog_color[1].start = c.y;
+            cmd->fog_color[2].start = c.z;
+        }
+        if (!(cmd->flags & 0x4000)) {
+            float inv = 1.0f / cmd->time;
+
+            cmd->fog_color[0].rate = inv * (cmd->fog_color[0].end - cmd->fog_color[0].start);
+            cmd->fog_color[1].rate = inv * (cmd->fog_color[1].end - cmd->fog_color[1].start);
+            cmd->fog_color[2].rate = inv * (cmd->fog_color[2].end - cmd->fog_color[2].start);
+        }
+    }
+    if (cmd->flags & 0x10000)
+        cam->m_fog_enabled = true;
+    if (cmd->flags & 0x20000)
+        cam->m_fog_enabled = false;
+}
+
+/* a value moved at a rate for a time (the CAMERA tick's step, each parameter's value in a
+ * register of its own; the name is ours) */
+static inline float zAnimStep(float v, float rate, float step)
+{
+    v += rate * step;
+    return v;
+}
+
+bool zAnimCameraTick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    zanim_cmd_camera *cmd = (zanim_cmd_camera *)hdr;
+    zdb::CCamera *cam = (zdb::CCamera *)ZAnim.m_CurAnim->GetNode(cmd->node, false);
+    bool done;
+
+    if (!cam)
+        return true;
+    float step = *dT;
+    float t = ZAnim.m_CurSeq->cmd_timer;
+    if (!(step + t <= cmd->time)) {
+        done = true;
+        step = cmd->time - t;
+        *dT -= step;
+    } else {
+        *dT = 0.0f;
+        done = false;
+    }
+    if (done) {
+        if (cmd->flags & 2)
+            cam->SetHalfHorizontalFOVRadians(cmd->hfov.end, true);
+        if (cmd->flags & 8)
+            cam->SetHalfVerticalFOVRadians(cmd->vfov.end, true);
+        if (cmd->flags & 0x20)
+            cam->SetNearClip(cmd->near_plane.end);
+        if (cmd->flags & 0x80)
+            cam->SetMidClip(cmd->mid_plane.end);
+        if (cmd->flags & 0x200)
+            cam->SetFarClip(cmd->far_plane.end);
+        if (cmd->flags & 0x800)
+            cam->m_fog_near = cmd->fog_near.end;
+        if (cmd->flags & 0x2000)
+            cam->m_fog_far = cmd->fog_far.end;
+        if (cmd->flags & 0x8000)
+            cam->m_fog_color = CPnt4D(cmd->fog_color[0].end, cmd->fog_color[1].end, cmd->fog_color[2].end,
+                                      0.0f);
+    } else {
+        if (cmd->flags & 2)
+            cam->SetHalfHorizontalFOVRadians(zAnimStep(cam->m_hfov, cmd->hfov.rate, step), true);
+        if (cmd->flags & 8)
+            cam->SetHalfVerticalFOVRadians(zAnimStep(cam->m_vfov, cmd->vfov.rate, step), true);
+        if (cmd->flags & 0x20)
+            cam->SetNearClip(zAnimStep(cam->m_near_plane, cmd->near_plane.rate, step));
+        if (cmd->flags & 0x80)
+            cam->SetMidClip(zAnimStep(cam->m_mid_plane, cmd->mid_plane.rate, step));
+        if (cmd->flags & 0x200)
+            cam->SetFarClip(zAnimStep(cam->m_far_plane, cmd->far_plane.rate, step));
+        if (cmd->flags & 0x800)
+            cam->m_fog_near = zAnimStep(cam->m_fog_near, cmd->fog_near.rate, step);
+        if (cmd->flags & 0x2000)
+            cam->m_fog_far = zAnimStep(cam->m_fog_far, cmd->fog_far.rate, step);
+        if (cmd->flags & 0x8000) {
+            CPnt4D c = cam->GetFogColor();
+
+            c.x += cmd->fog_color[0].rate * step;
+            c.y += cmd->fog_color[1].rate * step;
+            c.z += cmd->fog_color[2].rate * step;
+            cam->m_fog_color = CPnt4D(c.x, c.y, c.z, 0.0f);
+        }
+    }
+    return done;
+}
+
 extern "C" void func_00314540(zdb::CNode *node, int on, int a);
 extern "C" void func_00314320(zdb::CNode *node, int on, int a);
 extern "C" int func_0052DC70(char *maps, CPnt3D *p, int *cell);
