@@ -18,7 +18,9 @@
  * that takes __vector_pod's raw pointer by reference and returns the iterator (SOCOM II's
  * 0x1EA8B0: a hidden return, `this`, the pointer's address -- the name __iter is ours), applied
  * to __vector_pod's own begin() and end() (0x1EA8C0 and 0x1EA890, SOCOM 1's begin__/end__ of
- * __vector_pod<Ui> word for word); the base's begin() reads through data(), the reference.
+ * __vector_pod<Ui> word for word); the base's begin() reads through data(), the reference, and
+ * the pointer vector's begin() takes it into a const local before handing it on (where
+ * SetDynamicLight inlines begin() one level, it calls the base's begin() and then __iter).
  * CNode::SetNodeEx inlines itself twice and func_00319C90 itself once, and where MW stops
  * inlining their copies call every piece of it out of line -- begin, end, ==, !=, *, both ++,
  * and the iterator's implicit copy constructor (0x313450), which the postfix ++ (the copy, the
@@ -217,7 +219,17 @@ class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, all
     typedef __vector_pod<unsigned int, allocator<unsigned int> > __base;
     __MSL_VECTOR_ACCESS(T *)
     iterator __iter(unsigned int *const &p) { return iterator((elem_t *)p); }
-    iterator begin() { return __iter(__base::begin()); }
+    /* the base's pointer held in a const local first: begin() is three high so (SetDynamic and
+     * SetUseParentBBoxTree assign it to a declared iterator and inline it whole in their outer
+     * copies), while data()'s reference survives for CNode::FindChild by name to keep &data_ in a
+     * register. Passed straight to __iter, the call would sit a level deeper; a plain local
+     * swaps two of SetDynamic's registers */
+    iterator begin()
+    {
+        unsigned int *const p = __base::begin();
+
+        return __iter(p);
+    }
     iterator end() { return __iter(__base::end()); }
     /* the base's, cast: through end() it would be a level taller (CZAR::GetOpenKey inlines it) */
     T *&back() { return (T *&)__base::back(); }
