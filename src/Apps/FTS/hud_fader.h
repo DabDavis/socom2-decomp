@@ -6,7 +6,7 @@
 
 #include <vector>
 
-#include "hud_2d.h"
+#include "../../gamez/ztwod/ztwod.h"
 
 enum FADE_DIRECTION {
     IN = 0,

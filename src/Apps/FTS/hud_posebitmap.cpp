@@ -5,7 +5,7 @@
  * and the text is reset by another (ReInit; ours too). Defined in reverse of their image order
  * (-inline deferred). */
 
-#include "hud_2d.h"
+#include "../../gamez/ztwod/ztwod.h"
 
 namespace zdb {
 class CTexture;
@@ -55,6 +55,8 @@ public:
 class CHUD {
 public:
     static CZSealBody *GetHUDOwner();
+
+    static PNT4D m_hud_textcolor;   /* the HUD's text colour */
 };
 
 class CZNetwork {
@@ -68,9 +70,6 @@ public:
 extern CZNetwork theNetwork;
 
 zdb::CTexture *GetTextureByName(zdb::CWorld *world, const char *name);
-
-/* the HUD's text colour (no data row yet) */
-extern float data_00408E40[4];
 
 class PoseBitmap : public C2DBitmap {
 public:
@@ -120,10 +119,10 @@ void PoseBitmap::Init(zdb::CWorld *world)
     m_posetex[1] = GetTextureByName(world, "stance_crouch.tif");
     m_posetex[2] = GetTextureByName(world, "stance_prone.tif");
     m_text.Load(0.765f, "stand", m_myfont, m_textposx, m_textposy, 1);
-    m_text.m_color[0] = data_00408E40[0];
-    m_text.m_color[1] = data_00408E40[1];
-    m_text.m_color[2] = data_00408E40[2];
-    m_text.m_color[3] = data_00408E40[3];
+    m_text.m_color[0] = CHUD::m_hud_textcolor.x;
+    m_text.m_color[1] = CHUD::m_hud_textcolor.y;
+    m_text.m_color[2] = CHUD::m_hud_textcolor.z;
+    m_text.m_color[3] = CHUD::m_hud_textcolor.w;
     m_posx = -1.0f;
     m_posy = -1.0f;
     push_back(&m_text);
@@ -134,10 +133,10 @@ void PoseBitmap::Init(zdb::CWorld *world)
 void PoseBitmap::ReInit()
 {
     m_text.Load(0.765f, "stand", m_myfont, m_textposx, m_textposy, 1);
-    m_text.m_color[0] = data_00408E40[0];
-    m_text.m_color[1] = data_00408E40[1];
-    m_text.m_color[2] = data_00408E40[2];
-    m_text.m_color[3] = data_00408E40[3];
+    m_text.m_color[0] = CHUD::m_hud_textcolor.x;
+    m_text.m_color[1] = CHUD::m_hud_textcolor.y;
+    m_text.m_color[2] = CHUD::m_hud_textcolor.z;
+    m_text.m_color[3] = CHUD::m_hud_textcolor.w;
     m_posx = -1.0f;
     m_posy = -1.0f;
     SetPose(POSE_STAND);

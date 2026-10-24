@@ -12,8 +12,7 @@ public:
     CMissionCam *GetMissionCamByIdentifier(const char *id);
 };
 
-/* SOCOM 1's theMission (no data row yet) */
-extern CMission data_004364E0;
+extern CMission theMission;
 
 CZHudMissionCams::CZHudMissionCams()
 {
@@ -69,7 +68,7 @@ void CZHudMissionCams::Draw(zdb::CCamera *theCamera)
 /* a camera of the mission's, by its identifier, played with the lens swap */
 void CZHudMissionCams::PlayCamera(const char *camname)
 {
-    CMissionCam *cam = data_004364E0.GetMissionCamByIdentifier(camname);
+    CMissionCam *cam = theMission.GetMissionCamByIdentifier(camname);
 
     if (cam)
         PlayCamera(cam, true);

@@ -553,8 +553,11 @@
 0x004083E0 0x10 __vt__8CZWeapon  # vtable of CZWeapon: found by its RTTI's name
 0x004083F0 0x14 __vt__17CProjectileNodeEx  # vtable of CProjectileNodeEx: found by its RTTI's name
 0x004084C0 0x210 theGame  # OVL1 bss; size SOCOM 1's; at 0x4084C0, not the data-seq pass's 0x4084CC (a field): 43 references take 0x4084C0 as the object
+0x00408E40 0x10 m_hud_textcolor__4CHUD  # OVL1 bss; SOCOM 1's static (16 bytes; PoseBitmap's Init and ReInit copy it into the stance text's colour, as SOCOM 1's Init did): 32 references in 18 functions take 0x408E40, about as many again each of its other three floats
 0x00408E58 0x4 theHUD  # OVL1 bss; s1:data-seq (size SOCOM 1's; via HUDLetterBoxCmdTick__FP14_zanim_cmd_hdrPf +2)
 0x00409F20 0x460 g_arrHorGridLines__27@unnamed@hud_newhudmap_cpp@  # OVL1 bss; s1:data-exact (size SOCOM 1's; via __arraydtor$2546)
+0x0040DA40 0x98 m_ablestring__15CZPlayerMapItem  # OVL1 bss; SOCOM 1's static (a C2DString, 0x98 in SOCOM II): 7 references in 5 functions take 0x40DA40 (CZPlayerMapItem's InitStaticItems, UnInitStaticItems, DrawAlphaBravo and MissionEndCleanup among them)
+0x0040DAF0 0x98 m_bravostring__15CZPlayerMapItem  # OVL1 bss; SOCOM 1's static (a C2DString): 7 references in 5 functions take 0x40DAF0 (the same functions, in the same pairs)
 0x00414980 0x0 cdUA  # OVL1 bss; s1:data-exact (size SOCOM 1's; via lgAudASync +5)
 0x00414BB0 0x1C8 ZAnim  # OVL1 bss; SOCOM II's CZAnimMain is 0x1C8 (Open clears m_CurrentFrame at 0x1C4); s1:data-exact (SOCOM 1's 0x1C4; via CheckForRegionTrigger__10CZSealBodyFUi +8)
 0x00414D78 0x4 _input_str_ptr  # OVL1 bss; SOCOM 1 name (the wildcard search's pattern; ZAnimWildcardInit sets it)
@@ -565,6 +568,7 @@
 0x00414E00 0x40 database  # OVL1 bss; s1:data-exact (size SOCOM 1's; via SetDatabase__FPCc)
 0x00414E40 0x4 g_menuRootNode  # OVL1 bss; s1:by hand (GetMenuNode and its register pair read and write it where SOCOM 1's use g_menuRootNode)
 0x00414E90 0x4 g_can_use_switch  # OVL1 bss; s1:data-seq (size SOCOM 1's; via UISwitchSides__FP13C2DAnimCmdHdrPf)
+0x00415FF0 0x4 appCamera  # OVL1 bss; SOCOM 1's (CHUD::GetHUDOwner reads its owner, as SOCOM 1's read gp-29416): 87 references in 61 functions take 0x415FF0
 0x00416038 0x1 camera_tether_intersects_something  # OVL1 bss; s1:data-seq (size SOCOM 1's; via GetNearestIntersectCamPoint__FPQ23zdb11DiIntersectP6CPnt3D)
 0x00416220 0x4 _counter  # OVL1 bss; s1:data-seq (size SOCOM 1's; via OnRecvPacket__7CPacketFPCv +1)
 0x004162C0 0x10000 _wbuf  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Initalize__8CConsoleFv +1)
