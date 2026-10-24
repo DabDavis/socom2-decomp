@@ -3533,10 +3533,10 @@
 0x00290360 0x8 IsCell__Q23zdb5CNodeFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00290370 0xD8 func_00290370  # OVL1
 0x00290450 0x88 func_00290450  # OVL1
-0x002904E0 0x8 func_002904E0  # OVL1
-0x002904F0 0x110 func_002904F0  # OVL1
-0x00290600 0xF4 func_00290600  # OVL1
-0x00290700 0x130 func_00290700  # OVL1
+0x002904E0 0x8 GetVuMtxSet__Q23zdb7CCameraFv  # OVL1; SOCOM 1 name (zcam_main.cpp, in its order; matched)
+0x002904F0 0x110 TestLandmarkFOG__Q23zdb7CCameraFPC6CPnt3Df  # OVL1; SOCOM 1 name (zcam_main.cpp, in its order; matched)
+0x00290600 0xF4 TestFOG__Q23zdb7CCameraFPC6CPnt3Df  # OVL1; SOCOM 1 name (zcam_main.cpp, in its order; matched)
+0x00290700 0x130 GetLandmarkFarPlane__Q23zdb7CCameraFPQ23zdb6CWorld  # OVL1; SOCOM 1 name (zcam_main.cpp, in its order; matched)
 0x00290830 0x60 GetZ__Q23zdb7CCameraFP6CPnt3D  # OVL1; s1:order (SOCOM 1's zcam_main.cpp order, the same VU0 dot product; SOCOM 1's GetScaledZSquared beside it has no copy here)
 0x00290890 0x158 InsideMidPlane__Q23zdb7CCameraFPQ23zdb5CNode  # OVL1; SOCOM 1 name (zcam_main.cpp)
 0x002909F0 0xA4 InsideMidPlane__Q23zdb7CCameraFPQ23zdb5CCell  # OVL1; s1:order (SOCOM 1's zcam_main.cpp order; GetZ inlined, the cell's radius, the mid plane)
@@ -3548,17 +3548,17 @@
 0x00290BD0 0x28 SetPlayerCanSeeRegions__Q23zdb7CCameraFUi  # OVL1; s1:exact
 0x00290C00 0x28 SetCameraCanSeeRegions__Q23zdb7CCameraFUi  # OVL1; s1:exact
 0x00290C30 0xDC TestFOV__Q23zdb7CCameraFP5PNT4DPUib  # OVL1; s1:align
-0x00290D10 0xD4 func_00290D10  # OVL1
-0x00290DF0 0x260 func_00290DF0  # OVL1
-0x00291050 0x130 func_00291050  # OVL1
+0x00290D10 0xD4 theta_x_z__Q23zdb7CCameraFP6CPnt3DP6CPnt3DPfPf  # OVL1; SOCOM 1 name (zcam_main.cpp, in its order; matched)
+0x00290DF0 0x260 find_convex_hull_xz__Q23zdb7CCameraFP6CPnt3Di  # OVL1; SOCOM 1 name (zcam_main.cpp, in its order; matched)
+0x00291050 0x130 UpdateFrustum__Q23zdb7CCameraFv  # OVL1; SOCOM 1 name (zcam_main.cpp, in its order; matched)
 0x00291180 0x28 SetMidClip__Q23zdb7CCameraFf  # OVL1; s1:align
-0x002911B0 0x10C SetHalfVerticalFOVRadians__Q23zdb7CCameraFf  # OVL1; s1:align
-0x002912C0 0x128 func_002912C0  # OVL1
-0x002913F0 0x9C SetHalfHorizontalFOVRadians__Q23zdb7CCameraFf  # OVL1; s1:align
-0x00291490 0xB8 func_00291490  # OVL1
-0x00291550 0x50 func_00291550  # OVL1
-0x002915A0 0x50 func_002915A0  # OVL1
-0x002915F0 0x2B8 func_002915F0  # OVL1
+0x002911B0 0x10C SetVerticalFOV__Q23zdb7CCameraFf  # OVL1; SOCOM II's (degrees, then SetHalfVerticalFOVRadians inlined; called by CmdTickParams and the constructor -- the name ours; s1:align had given it SOCOM 1's setter's)
+0x002912C0 0x128 SetHalfVerticalFOVRadians__Q23zdb7CCameraFfb  # OVL1; SOCOM 1's setter with a flag (zAnimCameraTick/Begin call it where SOCOM 1's call SetHalfVerticalFOVRadians, with (f, true))
+0x002913F0 0x9C SetHorizontalFOV__Q23zdb7CCameraFf  # OVL1; SOCOM II's (degrees, then SetHalfHorizontalFOVRadians inlined; called by CmdTickParams and the constructor -- the name ours; s1:align had given it SOCOM 1's setter's)
+0x00291490 0xB8 SetHalfHorizontalFOVRadians__Q23zdb7CCameraFfb  # OVL1; SOCOM 1's setter with a flag (zAnimCameraTick/Begin and CSaveLoad::Load call it where SOCOM 1's call SetHalfHorizontalFOVRadians, with (f, true))
+0x00291550 0x50 SetScreenOffsetY__Q23zdb7CCameraFf  # OVL1; SOCOM II's (m_screenOffset.y held within 200; the name ours)
+0x002915A0 0x50 SetScreenOffsetX__Q23zdb7CCameraFf  # OVL1; SOCOM II's (m_screenOffset.x held within 200; the name ours)
+0x002915F0 0x2B8 RestoreParams__Q23zdb7CCameraFv  # OVL1
 0x002918B0 0x9E8 CmdTickParams__Q23zdb7CCameraFP14_zanim_cmd_hdrPf  # OVL1; s1:ref (taken by address where SOCOM 1 takes CmdTickParams__Q23zdb7CCameraFP14_zanim_cmd_hdrPf's)
 0x002922A0 0x168 CmdBeginParams__Q23zdb7CCameraFP14_zanim_cmd_hdr  # OVL1; s1:ref (taken by address where SOCOM 1 takes CmdBeginParams__Q23zdb7CCameraFP14_zanim_cmd_hdr's)
 0x00292410 0x1120 CmdParseParams__Q23zdb7CCameraFP5_zrdr  # OVL1; s1:ref (taken by address where SOCOM 1 takes CmdParseParams__Q23zdb7CCameraFP5_zrdr's)

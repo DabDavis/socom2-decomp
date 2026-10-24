@@ -184,6 +184,15 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   give the first two one line. GCC-style asm binds its operands left to right, a block's named
   variables follow the arguments' right-to-left evaluation (`CMatrix::Transform`'s helper is
   GCC-style: &input is set up before &output).
+- **SOCOM 1's CPnt3D has a written copy constructor and assignment; SOCOM II's has neither**
+  (SOCOM 1 links out-of-line copies of both; adding them here regresses 12 matched functions).
+  So a struct copy is the compiler's: an assignment from a pointer copies field by field and
+  scalarises its target, while copy construction puts it in memory -- find_convex_hull_xz's
+  swap assigns (`t = pnts[m];`), and `CPnt3D t(pnts[m])` misses.
+- **An `s1:align` name is a prediction**: CCamera's FOV setters at 0x2911B0/0x2913F0 carried
+  SOCOM 1's names by position, but the code that calls SOCOM 1's setters (zAnimCameraTick and
+  Begin, CSaveLoad::Load) calls 0x2912C0/0x291490 in SOCOM II, with (f, true): those are SOCOM 1's
+  setters with a flag added, and the pair that had their names are new wrappers taking degrees.
 - **An inline call in an expression is expanded ahead of the expression**, out-of-line calls
   included: `if (GetMidPlane() > DistToCell - cell->GetRadius())` loads the plane before
   GetRadius is called and keeps it in `$f20` across the call, where `m_mid_plane` read as a

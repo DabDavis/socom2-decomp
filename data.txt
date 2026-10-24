@@ -148,6 +148,7 @@
 0x003DD4D0 0x6F0 UICommandTable  # OVL1; s1:data-seq (size SOCOM 1's; via GetUICommandType__FPCc)
 0x003DE200 0x1 m_dynamics_controlled__Q23zdb7CCamera  # OVL1; s1:data-seq (size SOCOM 1's; via CmdTickControlSwitch__Q23zdb7CCameraFP14_zanim_cmd_hdrPf)
 0x003DE208 0x1 m_do_region_test__Q23zdb7CCamera  # OVL1; s1:data-seq (size SOCOM 1's; via CmdTickGetRegions__Q23zdb7CCameraFP14_zanim_cmd_hdrPf +1)
+0x003DE210 0x1 fogCheck  # OVL1; SOCOM 1 name (zcam_main.cpp's file static, 1; TestFOG and TestLandmarkFOG read it)
 0x003DE2D0 0x4 m_debug__8CConsole  # OVL1; s1:data-seq (size SOCOM 1's; via Debug__8CConsoleFiP7CPacketPCc)
 0x003DE2E0 0x4 recycler_index  # OVL1; s1:data-seq (size SOCOM 1's; via CreateEntity__7CEntityFP7CEntityb)
 0x003DE5F8 0x4 LADDER_MASK  # OVL1; s1:data-seq (size SOCOM 1's; via GetLadderByIndex__11CLadderListFi)

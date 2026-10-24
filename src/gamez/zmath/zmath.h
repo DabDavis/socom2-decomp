@@ -119,6 +119,8 @@ public:
     float m_matrix[4][4];
 
     CMatrix() { sceVu0UnitMatrix(m_matrix); }
+    /* an element (SOCOM 1 links an out-of-line copy, __cl__7CMatrixCFUiUi) */
+    float &operator()(unsigned int r, unsigned int c) const { return (float &)m_matrix[r][c]; }
     CMatrix(float m00, float m01, float m02, float m03, float m10, float m11, float m12, float m13,
             float m20, float m21, float m22, float m23, float m30, float m31, float m32, float m33);
 

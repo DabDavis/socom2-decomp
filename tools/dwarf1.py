@@ -140,6 +140,10 @@ def location_text(block: bytes) -> str:
     out, p = [], 0
     while p < len(block):
         op = block[p]; p += 1
+        if op in (0x01, 0x02, 0x03, 0x04) and p + 4 > len(block):
+            # MW's own ops (0x80...) take operands of their own: show the rest raw
+            out.append(f"op{op:#x} " + block[p:].hex())
+            break
         if op in (0x01, 0x02):                       # OP_REG, OP_BASEREG
             r = struct.unpack_from("<I", block, p)[0]; p += 4
             out.append(("reg" if op == 1 else "base") + f" {REGNAMES.get(r, r)}")

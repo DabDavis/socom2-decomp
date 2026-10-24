@@ -110,6 +110,7 @@ public:
     void SetName(const char *name);
     void SetNodeEx(CNodeEx *ex, bool b);
     float GetRadius();
+    float GetRadiusSq();
     static CNode *CreateXRef(CModel *model, const CPnt3D *pos, const CQuat *rot);
     static CNode *CreateInstance(CModel *model, const CPnt3D *pos, const CQuat *rot);
     void TransformToWorld(CPnt3D &p) const;
@@ -190,16 +191,41 @@ class CModel : public CNode {
 public:
 };
 
-/* the scene's root; SOCOM 1's DWARF has its 0x6BE0 bytes of members. SOCOM II's landmark list
- * is 12 bytes further on (GetDatabaseNode reads it at 0x6B98): something grew in between. */
+/* a rectangle in x/z (SOCOM 1's DWARF) */
+class CFRect {
+public:
+    float top;   // 0x0
+    float bottom;   // 0x4
+    float left;   // 0x8
+    float right;   // 0xc
+};   // 0x10 bytes
+
+/* the world's grid of cells: SOCOM 1's DWARF has CGrid : tag_GRID_PARAMS, 0x651C bytes, its
+ * extents at 0x14. SOCOM II's extents sit 0x14 later in CWorld and its landmark list 0xC later,
+ * so 8 bytes went from the grid or from what follows it; only the head is placed yet */
+class CGrid {
+public:
+    unsigned char _0[0x14];   // tag_GRID_PARAMS
+    CFRect m_extents;   // 0x14
+    unsigned char _24[0x6514 - 0x24];
+};
+
+/* the scene's root; SOCOM 1's DWARF has its 0x6BE0 bytes of members. SOCOM II's grid is 0x14
+ * bytes further on (CCamera::GetLandmarkFarPlane reads its extents at 0x698), its landmark list
+ * 0xC (GetDatabaseNode reads it at 0x6B98). */
 class CWorld : public CNode {
 public:
     static CWorld *m_world;
     static CNode *GetModel(const char *name);
     void DeleteLightMap(CLightMap *light);
 
-    unsigned char _c0[0x6B98 - 0xC0];   // 0xc0: SOCOM 1's m_camera .. m_grid, not yet needed
+    unsigned char _c0[0x684 - 0xC0];   // 0xc0: SOCOM 1's m_camera .. m_shadow_vector, not yet needed
+    CGrid m_grid;   // 0x684 (SOCOM 1: 0x670)
     CNodeVector m_landmarks;   // 0x6b98
+
+    /* the landmark list, inline (CCamera::GetLandmarkFarPlane's loop keeps its address in a
+     * register; the name is ours) */
+    CNodeVector *GetLandmarks() { return &m_landmarks; }
 };
 
 extern CNodeVector *NodeUniverse;
