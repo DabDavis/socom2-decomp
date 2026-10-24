@@ -1643,7 +1643,7 @@
 0x001FCD00 0x6C func_001FCD00  # OVL1
 0x001FCD70 0x10 GetHUDOwner__4CHUDFv  # OVL1; s1:exact (SOCOM 1's: the app camera's owner, the camera's member 0x80 further on)
 0x001FCD80 0x514 func_001FCD80  # OVL1
-0x001FD2A0 0x70 func_001FD2A0  # OVL1
+0x001FD2A0 0x70 __dt__Q23std48vector<P8CFlashFX,Q23std21allocator<P8CFlashFX>>Fv  # OVL1; by hand (the linked copy CFlashFXVector::Reset calls; three this tests, the pointer vector's destructor chain)
 0x001FD310 0x80 __dt__10CLetterBoxFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FD390 0x190 func_001FD390  # OVL1
 0x001FD520 0x70 func_001FD520  # OVL1
@@ -2042,9 +2042,9 @@
 0x002284C0 0x194 func_002284C0  # OVL1
 0x00228660 0x80 __dt__8CFlashFXFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002286E0 0xA0 Reset__14CFlashFXVectorFv  # OVL1; s1:order (hud_fader.cpp's order, SOCOM 1's code: the elements deleted through slot 0, then a temporary vector, clear, swap)
-0x00228780 0x40 func_00228780  # OVL1
-0x002287C0 0x8 func_002287C0  # OVL1
-0x002287D0 0x14 func_002287D0  # OVL1
+0x00228780 0x40 swap__Q23std48vector<P8CFlashFX,Q23std21allocator<P8CFlashFX>>FRQ23std48vector<P8CFlashFX,Q23std21allocator<P8CFlashFX>>  # OVL1; by hand (CFlashFXVector::Reset's out-of-line swap, hud_fader.cpp's copy: include/vector's four-level swap)
+0x002287C0 0x8 clear__Q23std48vector<P8CFlashFX,Q23std21allocator<P8CFlashFX>>Fv  # OVL1; by hand (CFlashFXVector::Reset's out-of-line clear, hud_fader.cpp's copy)
+0x002287D0 0x14 __ct__Q23std48vector<P8CFlashFX,Q23std21allocator<P8CFlashFX>>Fv  # OVL1; by hand (CFlashFXVector::Reset's out-of-line constructor, hud_fader.cpp's copy)
 0x002287F0 0xA0 Draw__14CFlashFXVectorFPQ23zdb7CCamera  # OVL1; s1:exact by hand (hud_fader.cpp)
 0x00228890 0x7C Tick__14CFlashFXVectorFf  # OVL1; s1:exact by hand (hud_fader.cpp)
 0x00228910 0x184 Tick__8CFlashFXFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)

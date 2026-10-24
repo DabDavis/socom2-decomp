@@ -145,3 +145,13 @@ void CFlashFXVector::Draw(zdb::CCamera *cam)
             m_FlashFX[i]->Draw(cam);
     }
 }
+
+/* every flash deleted and the list freed (SOCOM 1's DWARF names the locals index and count) */
+void CFlashFXVector::Reset()
+{
+    int count = m_FlashFX.size();
+
+    for (int index = 0; index < count; index++)
+        delete m_FlashFX[index];
+    FreeVector(m_FlashFX);
+}
