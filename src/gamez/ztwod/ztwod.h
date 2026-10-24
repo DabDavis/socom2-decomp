@@ -1,6 +1,6 @@
-/* The 2D display objects (ztwod) as the HUD units use them: C2D, C2DFade, C2DBitmap. Their own
- * code is ztwod's (OVL1 0x3630xx-0x365xxx), not written here; this is only what the HUD needs
- * declared, in SOCOM II's layout -- which is not SOCOM 1's DWARF:
+/* ztwod -- the 2D display objects (SOCOM 1's gamez/ztwod/ztwod.h, its DWARF's file): C2D, C2DFade,
+ * C2DBitmap, C2DString, as their users see them. Their own code (OVL1 0x3630xx-0x365xxx) is not
+ * written yet; the layout is SOCOM II's, which is not SOCOM 1's DWARF:
  *   - C2D is 0x18 bytes, not 0x1C: SOCOM 1's m_active_and_handling_input byte became the top
  *     bit of the flag byte at 0x14 (CanHandleInput reads bit 7 there), and C2DFade follows at
  *     0x18 (C2DBitmap's constructor zeroes its byte at 0x18 and sets its limit, 128, at 0x20);
@@ -9,19 +9,19 @@
  *     with AA1 (0x80), bit 2 with ABE (0x40), bit 5 with IIP (0x08) -- SOCOM 1's m_hasTexture,
  *     m_isAA and m_isTrans bits, and a new one. Slot 10 is empty in C2D. Their names are ours.
  * C2DBitmap is 16-aligned (its colour rows are VU0 vectors): SOCOM 1's CFader is 0xA0 bytes with
- * its last member ending at 0x98, CFlashFX 0xC0 with its at 0xB4.
- * This belongs in src/gamez/ztwod/ztwod.h, which does not exist yet. */
-#ifndef HUD_2D_H
-#define HUD_2D_H
+ * its last member ending at 0x98, CFlashFX 0xC0 with its at 0xB4. */
+#ifndef ZTWOD_H
+#define ZTWOD_H
 
 #include <list>
 
-#include "../../gamez/zmath/zmath.h"
+#include "../zmath/zmath.h"
 
 namespace zdb {
 class CAssetLib;
 class CCamera;
 class CTexHandle;
+class CTexture;
 class CTextureRelocMgr;
 }
 class CPad;
@@ -70,6 +70,10 @@ public:
     virtual void SetMapOffset(int x, int y);
 
     bool IsOn() const;
+
+    /* the screen's offset every 2D position is moved by (SOCOM 1's statics) */
+    static float m_topx;
+    static float m_topy;
 
     CUIVariable *m_uivar;   // 0x10
     unsigned int first : 1;   // 0x14
@@ -151,5 +155,60 @@ public:
     int m_iWidth;   // 0x74
     int m_iHeight;   // 0x78
 } __attribute__((aligned(16)));   // 0x80 bytes
+
+/* a textured triangle: 0xD0 bytes in SOCOM II as in SOCOM 1 (CZPlayerMapItem's arrays' stride),
+ * its members past C2D not placed; its destructor is implicit (an out-of-line copy is emitted
+ * wherever an array of them is destroyed: hud_main.cpp's is linked, 0x1FC620) */
+class C2DPoly : public C2D {
+public:
+    virtual void Draw(zdb::CCamera *cam);
+    virtual void SetHasTexture(bool on);
+    virtual void SetAA(bool on);
+    virtual void SetIsTrans(bool on);
+    virtual void SetGouraud(bool on);
+    virtual void SetTrans(float trans);
+    virtual void GetAssetLibs(CLibList &liblist);
+
+    unsigned char _18[0xd0 - 0x18];
+} __attribute__((aligned(16)));   // 0xd0 bytes
+
+/* a bitmap of two triangles (SOCOM 1's DWARF; the offsets unchanged, the 16-alignment absorbing
+ * C2D's lost 4 bytes); its destructor is implicit too */
+class C2DBitmapPoly : public C2D, public C2DFade {
+public:
+    C2DBitmapPoly();
+    virtual void Draw(zdb::CCamera *cam);
+    virtual void SetHasTexture(bool on);
+    virtual void SetAA(bool on);
+    virtual void SetIsTrans(bool on);
+    virtual void SetGouraud(bool on);
+    virtual void SetTrans(float trans);
+    virtual void SetUseFrameBufferAlpha(bool isFrameAlpha);
+    virtual void GetAssetLibs(CLibList &liblist);
+    /* the corners, clockwise from the top left as MapCompass::SetPos passes them */
+    void Load(float x1, float y1, float x2, float y2, float x3, float y3, float x4, float y4,
+              zdb::CTexture *tex);
+    void SetColor(float r, float g, float b);
+
+    int x1;   // 0x24
+    int x2;   // 0x28
+    int y1;   // 0x2c
+    int y2;   // 0x30
+    C2DPoly m_tris[2];   // 0x40
+    zdb::CTexture *m_texture;   // 0x1e0
+} __attribute__((aligned(16)));   // 0x1f0 bytes
+
+/* a fan of triangles clipped out of a bitmap: 0x28 bytes in SOCOM II (SOCOM 1's 0x2C less C2D's
+ * 4); its constructor and destructor are ztwod's own */
+class C2DTriFan : public C2D {
+public:
+    C2DTriFan();
+    virtual ~C2DTriFan();
+    virtual void Draw(zdb::CCamera *cam);
+    virtual void GetAssetLibs(CLibList &liblist);
+
+    unsigned char m_polylist[0xc];   // 0x18: SOCOM 1's `vector m_polylist`
+    zdb::CTexture *m_texture;   // 0x24
+};   // 0x28 bytes
 
 #endif

@@ -4,7 +4,7 @@
 #ifndef HUD_LETTERBOX_H
 #define HUD_LETTERBOX_H
 
-#include "hud_2d.h"
+#include "../../gamez/ztwod/ztwod.h"
 
 enum SLIDE_DIRECTION {
     SLIDE_NONE = 0,

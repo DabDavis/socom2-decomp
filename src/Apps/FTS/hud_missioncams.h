@@ -6,7 +6,7 @@
 #ifndef HUD_MISSIONCAMS_H
 #define HUD_MISSIONCAMS_H
 
-#include "hud_2d.h"
+#include "../../gamez/ztwod/ztwod.h"
 
 class CMissionCam;
 class CPad;

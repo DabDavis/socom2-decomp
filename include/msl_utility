@@ -1,0 +1,20 @@
+/* <msl_utility>: the piece of Metrowerks' MSL utility header the decomp needs -- std::swap (SOCOM 1's
+ * DWARF keeps an out-of-line swap<Ui> under MSL_Common\Include\msl_utility). A reconstruction. */
+
+#ifndef _MSL_UTILITY
+#define _MSL_UTILITY
+
+namespace std {
+
+template <class T>
+inline void swap(T &a, T &b)
+{
+    T t(a);
+
+    a = b;
+    b = t;
+}
+
+}
+
+#endif
