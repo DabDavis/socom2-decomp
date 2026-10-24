@@ -635,7 +635,7 @@
 0x0049EA00 0x4 m_topx__3C2D  # OVL1 bss; SOCOM 1's static (CZNewHudMap::SetMapScreenPos adds it to the clipping circle's x, as SOCOM 1's did from gp-26216): 13 references in 9 functions take 0x49EA00, C2DLine::SetPos among them
 0x0049EA04 0x4 m_topy__3C2D  # OVL1 bss; SOCOM 1's static (the circle's y; 8 after m_topx in SOCOM 1, 4 now): 12 references in 8 functions take 0x49EA04
 0x004A1798 0x1 m_streamingSndActive__7CFileCD  # OVL1 bss; s1:data-seq (size SOCOM 1's; via UISysPostInit__FP13C2DAnimCmdHdrPf)
-0x004A4480 0x80 zVid  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Update__Q23zdb6CWorldFv)
+0x004A4480 0x94 zVid  # OVL1 bss; s1:data-seq (via Update__Q23zdb6CWorldFv); SOCOM 1's _zvid_public is 0x80, SOCOM II's runs to at least 0x92 (the game states set the byte at 0x91), so 0x94 to the word
 0x004B4C68 0x4 m_local_light_cnt__Q23zdb7CVisual  # OVL1 bss; s1:data-seq (size SOCOM 1's; via AddLocalLight__Q23zdb7CVisualFPQ23zdb6CLightP6CPnt3D)
 0x004B4D80 0xC m_addColor__Q23zdb7CVisual  # OVL1 bss; s1:data-seq (size SOCOM 1's; via SaveDelayedNode__5CPipeFP7CMatrixPQ23zdb5CNodeQ23zdb12tag_ZVIS_FOV)
 0x004B4DC8 0x4 m_lightMapTexture__Q23zdb7CVisual  # OVL1 bss; s1:data-seq (size SOCOM 1's; via AddLightMap__Q23zdb6CWorldFPQ23zdb9CLightMap)
