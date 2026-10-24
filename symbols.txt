@@ -3034,7 +3034,7 @@
 0x00272560 0xD8 func_00272560  # OVL1
 0x00272640 0xD8 func_00272640  # OVL1
 0x00272720 0xD8 GetPnt3D__13CZAnimArgListFQ29CZAnimArg4TYPE  # OVL1; s1:callee by hand (called where SOCOM 1's zAnimRangeTestTick calls it)
-0x00272800 0x60 func_00272800  # OVL1
+0x00272800 0x60 Copy__12CZAnimArgIntFv  # OVL1; by vtable (__vt__12CZAnimArgInt's second slot: a copy, the type and the value at 12)
 0x00272860 0x70 Copy__14CZAnimArgPnt3DFv  # OVL1; tu: zanim_anim.cpp~ (1.0 beta); s1:exact
 0x002728D0 0x44 __ct__14CZAnimArgPnt3DFQ29CZAnimArg4TYPEPC6CPnt3D  # OVL1; tu: zanim_anim.cpp~ (1.0 beta); s1:exact
 0x00272920 0x68 Copy__12CZAnimArgCmdFv  # OVL1; tu: zanim_anim.cpp~ (1.0 beta); s1:exact
@@ -3044,9 +3044,9 @@
 0x00272A90 0x88 __dt__14CZAnimArgCharPFv  # OVL1; s1:align
 0x00272B20 0x88 Copy__14CZAnimArgCharPFv  # OVL1; s1:align
 0x00272BB0 0x7C ActivateArg__6CZAnimFie  # OVL1; s1:align
-0x00272C30 0x68C func_00272C30  # OVL1
-0x002732C0 0x5C func_002732C0  # OVL1
-0x00273320 0x184 ActivateEx__6CZAnimFie  # OVL1; s1:align
+0x00272C30 0x68C ActivateArgV__6CZAnimFPc  # OVL1; s1:calls (SOCOM 1's ActivateArg hands its va_list to ActivateArgV, as SOCOM II's does here)
+0x002732C0 0x5C ActivateEx__6CZAnimFie  # OVL1; s1:name (SOCOM 1's varargs ActivateEx; SOCOM II's builds the va_list and hands it to ActivateExV)
+0x00273320 0x184 ActivateExV__6CZAnimFPc  # OVL1; s1:align; by analogy (SOCOM 1's ActivateEx(int, ...) split in two, as ActivateArg/ActivateArgV: this reads the va_list -- the commands, zero-ended -- and activates an available copy; the V name ours)
 0x002734B0 0x2C8 Activate__6CZAnimFP6CZAnim  # OVL1; s1:callee by hand (CZAnim::Start calls it with 0 on an anim that activates on start, where SOCOM 1's calls Activate)
 0x00273780 0x1C4 func_00273780  # OVL1
 0x00273950 0x8 func_00273950  # OVL1
@@ -3061,7 +3061,7 @@
 0x002740E0 0x20C OnWeaponHitInit__6CZAnimFv  # OVL1; s1:calls
 0x002742F0 0x8 OnWeaponHit__Q23zdb7CNodeExFPQ23zdb5CNodePQ23zdb15IntersectStructP12CZProjectile  # OVL1; s1~ OnWeaponHit__Q23zdb7CNodeExFPQ23zdb5CNodePQ23zdb15IntersectStructP12CZProjectile (one of 2 out-of-line copies of an inline, by s1:vtable); s1:vtable (CNodeEx's first slot, inline, returns -1: its out-of-line copy where OnWeaponHitInit constructs an extension)
 0x00274300 0x8 Slot0C__Q23zdb7CNodeExFv  # OVL1; s1~ OnAction__Q23zdb7CNodeExFPQ23zdb5CNodePv (one of 2 out-of-line copies of an inline, by s1:vtable); by vtable (CNodeEx's second slot, inline, returns 0; CZAnimEx keeps it -- the name and parameters ours)
-0x00274310 0x5C func_00274310  # OVL1
+0x00274310 0x5C __dt__12CZAnimArgIntFv  # OVL1; by vtable (__vt__12CZAnimArgInt's first slot: the destructor, CZAnimArg's inlined)
 0x00274370 0x5C __dt__14CZAnimArgPnt3DFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002743D0 0x5C __dt__12CZAnimArgCmdFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00274430 0x5C __dt__14CZAnimArgValveFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)

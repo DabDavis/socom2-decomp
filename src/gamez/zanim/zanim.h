@@ -31,13 +31,111 @@ class _zanim_sound;
 class _zanim_tex_ref;
 class _zanim_valve_ref;
 
-/* An anim's arguments: values a caller passes when it starts the anim. */
+/* the engine's allocator: free and strdup with a file and line (both 0 here), the pool-backed
+ * forms of SOCOM 1's _free__FPvPCci and _strdup__FPCcPCci -- not named until proven */
+extern "C" void func_00180280(void *p, const char *file, int line);
+extern "C" char *func_001801E0(const char *s, const char *file, int line);
+
+/* An anim's argument: a value a caller passes when it starts the anim (SOCOM 1's class names;
+ * the layouts read off the copies and destructors -- the type a byte at 4 under -enum min, a
+ * word at 8 the base zeroes, the value at 12). The base's destructor is inline, its out-of-line
+ * copy the vtable's (0x271AE0); Copy is pure */
 class CZAnimArg {
 public:
     enum TYPE {
-        TYPE_PNT3D = 5          /* our name: the only value read so far (a point, zAnimRangeTestTick) */
+        TYPE_NONE = 0,
+        TYPE_CMD = 1,           /* our names, by the copies that set them */
+        TYPE_VALVE = 4,
+        TYPE_PNT3D = 5          /* a point (zAnimRangeTestTick) */
     };
+
+    CZAnimArg() : m_type(TYPE_NONE), m_8(0) {}
+    virtual ~CZAnimArg() {}
+    virtual CZAnimArg *Copy() = 0;
+    TYPE GetType() const { return m_type; }
+
+    TYPE m_type;   // 0x4
+    int m_8;   // 0x8: zeroed by the base, not read so far
 };
+
+/* SOCOM II's: an integer argument (not in SOCOM 1; the name ours, by the value at 12) */
+class CZAnimArgInt : public CZAnimArg {
+public:
+    CZAnimArgInt(TYPE type, int value)
+    {
+        m_type = type;
+        m_value = value;
+    }
+    CZAnimArg *Copy();
+
+    int m_value;   // 0xc
+};   // 0x10 bytes
+
+class CZAnimArgPnt3D : public CZAnimArg {
+public:
+    CZAnimArgPnt3D(TYPE type, const CPnt3D *pnt)
+    {
+        m_type = type;
+        m_pnt = *pnt;
+    }
+    CZAnimArg *Copy();
+
+    CPnt3D m_pnt;   // 0xc
+};   // 0x18 bytes
+
+class CZAnimArgCmd : public CZAnimArg {
+public:
+    CZAnimArgCmd(int cmd)
+    {
+        m_type = TYPE_CMD;
+        m_cmd = cmd;
+    }
+    CZAnimArg *Copy();
+
+    int m_cmd;   // 0xc
+};   // 0x10 bytes
+
+class CZAnimArgValve : public CZAnimArg {
+public:
+    CZAnimArgValve(CValve *valve)
+    {
+        m_type = TYPE_VALVE;
+        m_valve = valve;
+    }
+    CZAnimArg *Copy();
+
+    CValve *m_valve;   // 0xc
+};   // 0x10 bytes
+
+class CZAnimArgNode : public CZAnimArg {
+public:
+    CZAnimArgNode(TYPE type, CNode *node)
+    {
+        m_type = type;
+        m_node = node;
+    }
+    CZAnimArg *Copy();
+
+    CNode *m_node;   // 0xc
+};   // 0x10 bytes
+
+class CZAnimArgCharP : public CZAnimArg {
+public:
+    CZAnimArgCharP(TYPE type, const char *str)
+    {
+        m_str = func_001801E0(str, 0, 0);
+        m_type = type;
+    }
+    ~CZAnimArgCharP()
+    {
+        if (m_str)
+            func_00180280(m_str, 0, 0);
+        m_str = 0;
+    }
+    CZAnimArg *Copy();
+
+    char *m_str;   // 0xc
+};   // 0x10 bytes
 
 /* the arguments, an MSL list (SOCOM 1's DWARF: 0x10 bytes, list : 0xc) with a virtual destructor
  * -- __vt__13CZAnimArgList holds it alone, the vtable pointer after the list at 0xc
@@ -76,10 +174,6 @@ public:
 };   // 0x18 bytes
 
 
-/* the engine's allocator: free and strdup with a file and line (both 0 here), the pool-backed
- * forms of SOCOM 1's _free__FPvPCci and _strdup__FPCcPCci -- not named until proven */
-extern "C" void func_00180280(void *p, const char *file, int line);
-extern "C" char *func_001801E0(const char *s, const char *file, int line);
 
 class CZAnimNameIndexTable {
 public:
@@ -145,7 +239,11 @@ public:
     void RestartClones();
     void Refresh(bool chain);
     void GetNodes();
-    void Activate(CZAnim *by);
+    CZAnim *Activate(CZAnim *by);
+    CZAnim *ActivateArg(int type, ...);
+    CZAnim *ActivateArgV(char *args);
+    CZAnim *ActivateEx(int cmd, ...);
+    CZAnim *ActivateExV(char *args);
     void SaveNodeStates(bool refresh);
     _zanim_node_ref *GetNodeRef(int index);
     _zanim_node_ref *GetNodeRef(CNode *node);

@@ -16,6 +16,7 @@
  * the callee decides). */
 
 #include <algorithm>
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -107,6 +108,66 @@ extern "C" void func_00273960(CZAnimHealth *health)
 {
     health->health = health->max_health;
     health->armor = health->max_armor;
+}
+
+/* the arguments' copies (Copy__12CZAnimArgCmdFv and its kind): a new argument of the same type
+ * and value -- the command and valve kinds construct with their own type and are given the
+ * original's after */
+CZAnimArg *CZAnimArgCharP::Copy()
+{
+    return new CZAnimArgCharP(GetType(), m_str);
+}
+
+CZAnimArg *CZAnimArgNode::Copy()
+{
+    return new CZAnimArgNode(GetType(), m_node);
+}
+
+CZAnimArg *CZAnimArgValve::Copy()
+{
+    CZAnimArg *arg = new CZAnimArgValve(m_valve);
+
+    arg->m_type = m_type;
+    return arg;
+}
+
+CZAnimArg *CZAnimArgCmd::Copy()
+{
+    CZAnimArg *arg = new CZAnimArgCmd(m_cmd);
+
+    arg->m_type = m_type;
+    return arg;
+}
+
+CZAnimArg *CZAnimArgPnt3D::Copy()
+{
+    return new CZAnimArgPnt3D(m_type, &m_pnt);
+}
+
+CZAnimArg *CZAnimArgInt::Copy()
+{
+    return new CZAnimArgInt(GetType(), m_value);
+}
+
+/* SOCOM II's: an available copy activated with commands (SOCOM 1's ActivateEx, its list read by
+ * ActivateExV now) */
+CZAnim *CZAnim::ActivateEx(int cmd, ...)
+{
+    va_list args;
+
+    va_start(args, cmd);
+    return ActivateExV(args);
+}
+
+/* activated with arguments -- none, or a list ActivateArgV reads */
+CZAnim *CZAnim::ActivateArg(int type, ...)
+{
+    if (!type)
+        return Activate(0);
+    va_list args;
+
+    va_start(args, type);
+    return ActivateArgV(args);
 }
 
 /* the interpreter's sequence calls made on this anim: SOCOM II keeps the current sequence as
