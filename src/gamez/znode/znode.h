@@ -38,7 +38,8 @@ class tag_NODE_PARAMS {
 public:
     CMatrix m_matrix;   // 0x0
     CBBox m_bbox;   // 0x40
-    unsigned int m_type;   // 0x58
+    unsigned short m_type;   // 0x58 (SOCOM II's CNode code reads a halfword; SOCOM 1's DWARF: an int)
+    unsigned short m_socom2_5a;   // 0x5a
     unsigned int m_active : 1;   // 0x5c
     unsigned int m_dynamic_motion : 1;   // 0x5c
     unsigned int m_dynamic_light : 1;   // 0x5c
@@ -82,7 +83,9 @@ public:
     unsigned char m_padding : 6;   // 0xc
 };   // 0x10 bytes
 
-class CVisualVector : public _opaque_vector_c {
+class CVisual;
+
+class CVisualVector : public std::vector<CVisual *> {
 public:
 };   // 0xc bytes
 
@@ -104,11 +107,16 @@ public:
     virtual bool IsCell();
     virtual void Read(CSaveLoad &io);
     virtual void SetActive(bool on);
-    virtual void UpdateBBox(bool up);
+    virtual CBBox *UpdateBBox(bool up);
     virtual void UpdateBBoxFromDI(bool up);
 
     CNode();
     void SetName(const char *name);
+    CGridAtom *GetAtom(int i);
+    void InsertAtom(CGridAtom *atom);
+    void FreeAtom();
+    int Release();
+    CVisual *GetFirstVisual();
     void SetNodeEx(CNodeEx *ex, bool b);
     float GetRadius();
     float GetRadiusSq();
@@ -167,7 +175,8 @@ public:
     union {
         unsigned char m_socom2_a1;   // 0xa1
         struct {
-            unsigned char lo : 2;
+            unsigned char bit0 : 1;
+            unsigned char bit1 : 1;   /* SetPosition ORs it into the byte */
             unsigned char bit2 : 1;
             unsigned char hi : 5;
         } m_socom2_a1_bits;
@@ -178,9 +187,10 @@ public:
     short m_AtomAlloc;   // 0xaa
     short m_count;   // 0xac
     short m_vid;   // 0xae
-    CModel* m_model;   // 0xb0
-    char* m_modelname;   // 0xb4
-    unsigned int m_region_mask;   // 0xb8
+    CGridAtom **m_Atom;   // 0xb0 (GetAtom; SOCOM 1: 0xa0)
+    CModel* m_model;   // 0xb4 (SetModel; SOCOM 1: 0xb0)
+    char* m_modelname;   // 0xb8 (SOCOM 1: 0xb4)
+    unsigned int m_region_mask;   // 0xbc (SOCOM 1: 0xb8)
 };   // 0xc0 bytes
 
 /* a model node: what CZAnim::CreateInstanceNode instances (dynamic_cast from CNode) */

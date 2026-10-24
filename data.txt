@@ -158,6 +158,7 @@
 0x003DF330 0x4 m_pointer__6CStack  # OVL1; s1:data-seq (size SOCOM 1's; via Multiply__6CStackFPC7CMatrixb)
 0x003DF338 0x4 m_top__6CStack  # OVL1; s1:data-seq (size SOCOM 1's; via Multiply__6CStackFPC7CMatrixb)
 0x003DF340 0x4 m_exp_scl  # OVL1; s1:data-seq (size SOCOM 1's; via exp_tl__Ff)
+0x003DFD10 0x4 UNNAMED_NODE  # OVL1; SOCOM 1 name (node_main.cpp's file static: the name nameless nodes share; CNode::SetName reads it)
 0x003DFE10 0x4 m_scale__Q23zdb6CWorld  # OVL1; s1:data-seq (size SOCOM 1's; via Load__17CharacterDynamicsFRC8CRdrFile)
 0x003E0070 0x4 m_mastervol__12CSndInstance  # OVL1; s1:data-seq (size SOCOM 1's; via SetVol__12CSndInstanceFf)
 0x003E0980 0xC0 framecode  # OVL1; s1:data-seq (size SOCOM 1's; via zVid_FrameRestore__Fv)
