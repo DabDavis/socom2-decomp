@@ -5433,9 +5433,9 @@
 0x00313620 0x144 func_00313620  # OVL1
 0x00313770 0x264 func_00313770  # OVL1
 0x003139E0 0x278 func_003139E0  # OVL1
-0x00313C60 0x40 func_00313C60  # OVL1
+0x00313C60 0x40 VisualEffectsTick__Q23zdb5CNodeFfPv  # OVL1; s1:exact by hand (SOCOM 1's VisualEffectsTick: the decal, ripple and texture-effect ticks in this order)
 0x00313CA0 0xB8 func_00313CA0  # OVL1
-0x00313D60 0xAC func_00313D60  # OVL1
+0x00313D60 0xAC AddDI__Q23zdb5CNodeFPQ23zdb3CDI  # OVL1; s1:exact by hand (SOCOM 1's AddDI, after VisualEffectsTick and before ReserveDI as here; the DI's count at 4 now)
 0x00313E10 0x10 ReserveDI__Q23zdb5CNodeFi  # OVL1; s1:exact
 0x00313E20 0xB8 func_00313E20  # OVL1
 0x00313EE0 0x110 func_00313EE0  # OVL1
@@ -5657,7 +5657,7 @@
 0x00321EA0 0x44 __dt__Q23zdb8CVisDataFv  # OVL1; s1:align
 0x00321EF0 0x4C func_00321EF0  # OVL1
 0x00321F40 0x10 func_00321F40  # OVL1
-0x00321F50 0x180 func_00321F50  # OVL1
+0x00321F50 0x180 Tick__Q23zdb7CRippleFf  # OVL1; s1:calls (SOCOM 1's VisualEffectsTick calls CRipple::Tick second)
 0x003220D0 0xF0 func_003220D0  # OVL1
 0x003221C0 0x2C Uninit__Q23zdb7CRippleFv  # OVL1; s1:align
 0x003221F0 0x8 func_003221F0  # OVL1
@@ -7987,7 +7987,7 @@
 0x003BEBB0 0x1C func_003BEBB0  # OVL1
 0x003BEBD0 0x70 func_003BEBD0  # OVL1
 0x003BEC40 0x50 func_003BEC40  # OVL1
-0x003BEC90 0x8 func_003BEC90  # OVL1
+0x003BEC90 0x8 Tick__Q23zdb6CDecalFf  # OVL1; s1:calls (SOCOM 1's VisualEffectsTick calls CDecal::Tick first; SOCOM II's is empty)
 0x003BECA0 0x334 func_003BECA0  # OVL1
 0x003BEFE0 0x24 PutPermDecal__Q23zdb6CDecalFPQ23zdb6CDecal  # OVL1; s1:align
 0x003BF010 0x40 PutTempDecal__Q23zdb6CDecalFPQ23zdb6CDecal  # OVL1; s1:align

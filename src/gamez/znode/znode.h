@@ -79,11 +79,19 @@ public:
     CNode *GetNode(const char *name);
 };   // 0xc bytes
 
-class CDI;
+/* a node's collision piece: only its reference count placed (SOCOM 1's DWARF has it at 0x14 of
+ * DI_PARAMS; SOCOM II's AddDI counts at 4) */
+class CDI {
+public:
+    unsigned int _0;
+    unsigned int m_refcount;   // 0x4
+};
 
 class CDIVector : public std::vector<CDI *> {
 public:
     bool Exists(const CDI *di);
+    /* a DI pushed, taken by value (AddDI's target pushes a copy, as AddVisual's; the name ours) */
+    void Add(CDI *di) { push_back(di); }
 
 public:
     unsigned char m_bStopAtFirstIntersection : 1;   // 0xc
@@ -182,6 +190,8 @@ public:
     void AllocateAtomBasePtrs(int x, int z);
     void SetNodeEx(CNodeEx *ex, bool b);
     bool AddVisual(CVisual *visual);
+    bool AddDI(CDI *di);
+    static int VisualEffectsTick(float dt, void *data);
     void SetParentHasVisuals();
     float GetRadius();
     float GetRadiusSq();

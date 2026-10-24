@@ -1,9 +1,11 @@
 /* node_vector.cpp -- the scene graph's typed lists: CNodeVector, CDIVector, CVisualVector,
  * CModelVector, CNodeUniverse, CLightMapVector, in SOCOM 1's order -- and the CNode code around
  * them, from TransformToWorld (OVL1 0x310980) on: a unit of its own, as DeleteChild and AddVisual
- * show by calling Exists and Remove (with them in node_main.cpp MW inlines both). Where it ends
- * and node_main.cpp begins, between SetModelname and GetAtom, is not placed yet. The unit name is
- * ours. Defined in reverse of their image order (-inline deferred). */
+ * show by calling Exists and Remove (with them in node_main.cpp MW inlines both), and AddDI
+ * (0x313D60) by calling the DI list's. So node_main.cpp begins between SetModelname and
+ * VisualEffectsTick (0x313C60); the functions between are placed here until something says
+ * otherwise. The unit name is ours. Defined in reverse of their image order (-inline
+ * deferred). */
 
 #include <algorithm>
 #include <string.h>

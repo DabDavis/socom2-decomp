@@ -21,6 +21,18 @@ extern "C" void func_00313620(CNode *node, int a);
 /* the world told of a shadow-casting node: a new 0x70-byte object made from it, pushed on a list
  * at 0x580 (new in SOCOM II, not named yet; CWorld::AddChild calls it too) */
 extern "C" void func_0031F500(CWorld *world, CNode *node);
+/* the visual effects' ticks (SOCOM 1's VisualEffectsTick calls CDecal's, CRipple's and CTextureFX's
+ * in this order; SOCOM II's third runs on an object of its own, not placed) */
+class CDecal {
+public:
+    static void Tick(float dt);
+};
+class CRipple {
+public:
+    static void Tick(float dt);
+};
+extern "C" void func_003C0120(void *fx, float dt);
+extern "C" char data_004B50D0[];
 
 /* a copy of the node: _Copy into a new one */
 CNode *CNode::Copy() const
@@ -431,5 +443,28 @@ void CNode::SetDynamicLight(bool on, bool recurse)
     }
 }
 
+/* a DI taken on, once: counted, listed, the node marked changed and holding collision data */
+bool CNode::AddDI(CDI *di)
+{
+    bool added = false;
+
+    if (di && !m_di.Exists(di)) {
+        di->m_refcount++;
+        added = true;
+        m_di.Add(di);
+        m_socom2_a1 |= 2;
+        m_hasDI = 1;
+    }
+    return added;
+}
+
+/* the scene's visual effects ticked: decals, ripples, texture effects */
+int CNode::VisualEffectsTick(float dt, void *data)
+{
+    CDecal::Tick(dt);
+    CRipple::Tick(dt);
+    func_003C0120(data_004B50D0, dt);
+    return 0;
+}
 
 }
