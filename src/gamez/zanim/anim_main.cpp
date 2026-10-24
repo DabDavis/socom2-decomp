@@ -62,6 +62,75 @@ int CZAnimMain::UnloadCmdSet(int index)
     return 1;
 }
 
+extern "C" char *func_001801E0(const char *s, const char *file, int line);
+extern "C" unsigned char func_0026AA30(CZAnimMain *main, int set, const char *name, int create);
+
+/* register a command, `set::name` or just `name`; the id it gets is what records carry */
+unsigned short CZAnimMain::AddCmd(const char *name, _zanim_cmd_hdr *(*parse)(_zrdr *),
+                                  void (*begin)(_zanim_cmd_hdr *), bool (*tick)(_zanim_cmd_hdr *, float *),
+                                  void (*end)(_zanim_cmd_hdr *))
+{
+    _zanim_cmd_id u;                /* (Cmd's lookup written out: its local takes the higher slot) */
+    const char *cmd_name;
+    _zanim_cmd_id id;
+    int set;
+    char *set_name;
+    unsigned char index;
+
+    cmd_name = name;
+    set_name = 0;
+    if (!name)
+        cmd_name = 0;
+    else if (strstr(name, "::")) {
+        set_name = func_001801E0(name, 0, 0);
+        char *sep = strstr(set_name, "::");
+
+        *sep = 0;
+        cmd_name = sep + 2;
+    } else
+        cmd_name = name;
+    set = GetCmdSet(set_name, true);
+    index = func_0026AA30(this, set, cmd_name, 1);
+
+    id.b.set = set;
+    id.b.index = index;
+    if (set_name)
+        func_00180280(set_name, 0, 0);
+    u.id = id.id;
+    zanim_cmd *cmd = &m_cmdset_list[u.b.set].cmd_list[u.b.index];
+
+    cmd->begin = begin;
+    cmd->tick = tick;
+    cmd->end = end;
+    return id.id;
+}
+
+/* run the current command: begin it on its first frame, tick it, end it when it says it is done */
+bool CZAnimMain::CmdTick(float *dT)
+{
+    bool done = true;
+    _zanim_cmd_hdr *hdr = CmdHdr();
+    zanim_cmd *cmd = Cmd(hdr->data_type);
+
+    if (m_CurSeq->cmd_state == 2) {
+        m_CurSeq->cmd_timer = 0.0f;
+        if (cmd->begin)
+            cmd->begin(hdr);
+        m_CurSeq->cmd_state = 4;
+    }
+    if (m_CurSeq->cmd_state == 4 && cmd->tick) {
+        float t = *dT;
+
+        done = cmd->tick(hdr, dT);
+        if (m_CurSeq->state == 5)
+            return false;
+        m_CurSeq->cmd_timer += t - *dT;
+    }
+    if (done && cmd->end)
+        cmd->end(hdr);
+    return done;
+}
+
 void CZAnimMain::Close()
 {
     Unload();

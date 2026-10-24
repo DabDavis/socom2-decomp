@@ -207,6 +207,34 @@ public:
     float loop_timer;   // 0x18
 };   // 0x1c bytes
 
+struct _zrdr;
+
+/* a registered command (CZAnimMain::AddCmd): its name and four handlers, 0x14 bytes */
+struct zanim_cmd {
+    char *name;
+    _zanim_cmd_hdr *(*parse)(_zrdr *rdr);
+    void (*begin)(_zanim_cmd_hdr *hdr);
+    bool (*tick)(_zanim_cmd_hdr *hdr, float *dT);
+    void (*end)(_zanim_cmd_hdr *hdr);
+};
+
+/* a command's id, as a file's records carry it: its index in its set, and the set (a halfword:
+ * CmdTick copies it with lhu/sh) */
+union _zanim_cmd_id {
+    unsigned short id;
+    struct {
+        unsigned char index;
+        unsigned char set;
+    } b;
+};
+
+class _zanim_cmd_set {
+public:
+    char *name;   // 0x0
+    int count;   // 0x4
+    zanim_cmd *cmd_list;   // 0x8
+};
+
 class CZAnimMain : public _zanim_main_params {
 public:
     void StopSequence(const char *name);
@@ -235,6 +263,18 @@ public:
     bool SequenceRunning(const char *name);
     void PauseSequence(const char *name);
     int UnloadCmdSet(int index);
+    bool CmdTick(float *dT);
+    zanim_cmd *Cmd(unsigned short id)
+    {
+        _zanim_cmd_id u;
+
+        u.id = id;
+        return &m_cmdset_list[u.b.set].cmd_list[u.b.index];
+    }
+    int GetCmdSet(char *name, bool create);
+    unsigned short AddCmd(const char *name, _zanim_cmd_hdr *(*parse)(_zrdr *),
+                          void (*begin)(_zanim_cmd_hdr *), bool (*tick)(_zanim_cmd_hdr *, float *),
+                          void (*end)(_zanim_cmd_hdr *));
 
     /* the command the current sequence is on */
     _zanim_cmd_hdr *CmdHdr() { return m_CurSeq ? (_zanim_cmd_hdr *)m_CurSeq->cmd_pc : 0; }
@@ -273,22 +313,6 @@ public:
     int m_RunningAnimCount;   // 0x1bc
     int m_CurrentFrame;   // 0x1c0
 };   // 0x1c4 bytes
-
-/* a registered command (CZAnimMain::AddCmd): its name and four handlers, 0x14 bytes */
-struct zanim_cmd {
-    char *name;
-    void *parse;
-    void *begin;
-    void *tick;
-    void *end;
-};
-
-class _zanim_cmd_set {
-public:
-    char *name;   // 0x0
-    int count;   // 0x4
-    zanim_cmd *cmd_list;   // 0x8
-};
 
 class _zanim_call_anim_ref {
 public:
