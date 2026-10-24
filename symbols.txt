@@ -6204,7 +6204,7 @@
 0x00346B30 0xC4 func_00346B30  # OVL1
 0x00346C00 0x2C func_00346C00  # OVL1
 0x00346C30 0xFC func_00346C30  # OVL1
-0x00346D30 0x1C func_00346D30  # OVL1
+0x00346D30 0x1C TerminateOnFinish__12CSndInstanceFv  # OVL1; s1:callee by hand (CZAnim::StopSounds lets a fading or still-playing instance finish with it where SOCOM 1's calls TerminateOnFinish; the flag a bit at 0x1C here)
 0x00346D50 0x20 func_00346D50  # OVL1
 0x00346D70 0x2C func_00346D70  # OVL1
 0x00346DA0 0x24 IsFading__12CSndInstanceFv  # OVL1; s1:callee
@@ -6219,7 +6219,7 @@
 0x00347540 0xC8 SetVol__12CSndInstanceFf  # OVL1; s1:align
 0x00347610 0x74 Stop__12CSndInstanceFv  # OVL1; s1:align
 0x00347690 0x174 func_00347690  # OVL1
-0x00347810 0x14C func_00347810  # OVL1
+0x00347810 0x14C ReleaseSoundInstance__12CSndInstanceFP12CSndInstance  # OVL1; s1:callee by hand (CZAnim::StopSounds releases a stopped instance with it where SOCOM 1's calls the static ReleaseSoundInstance)
 0x00347960 0xE8 AcquireSoundInstance__12CSndInstanceFUiP4CSnd  # OVL1; s1:align
 0x00347A50 0x40 func_00347A50  # OVL1
 0x00347A90 0xC func_00347A90  # OVL1

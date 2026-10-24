@@ -533,6 +533,7 @@
 0x0026CBE0 TaskScheduler__9CZAnimSetFv
 0x0026D2F0 func_0026D2F0
 0x0026D300 __dt__Q23std52__vector_deleter<6CPnt3D,Q23std18allocator<6CPnt3D>>Fv
+0x0026D370 Load__6CZAnimFRQ23zar4CZAR
 0x0026D870 ExecuteSpecialSequence__6CZAnimFi
 0x0026E2D0 func_0026E2D0
 0x0026E2F0 AddNewNodeRef__6CZAnimFiii
@@ -554,6 +555,7 @@
 0x0026F820 Priority__6CZAnimFf
 0x0026FA80 StopAnims__6CZAnimFv
 0x0026FBF0 StopLights__6CZAnimFb
+0x0026FD20 StopSounds__6CZAnimFv
 0x0026FE90 DeleteParticleSources__6CZAnimFv
 0x0026FF20 State__6CZAnimFi
 0x00270220 Tick__6CZAnimFf

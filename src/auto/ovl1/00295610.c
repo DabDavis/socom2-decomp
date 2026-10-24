@@ -6,14 +6,14 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK ReleaseSoundInstance__12CSndInstanceFP12CSndInstance(s32); /* extern */
 M2C_UNK Stop__12CSndInstanceFv(s32);                /* extern */
-M2C_UNK func_00347810(s32);                         /* extern */
 extern s32 data_00416010;
 
 void func_00295610(void) {
     if (data_00416010 != 0) {
         Stop__12CSndInstanceFv(data_00416010);
-        func_00347810(data_00416010);
+        ReleaseSoundInstance__12CSndInstanceFP12CSndInstance(data_00416010);
     }
     data_00416010 = 0;
 }

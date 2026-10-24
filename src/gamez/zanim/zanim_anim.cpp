@@ -559,6 +559,35 @@ _zanim_node_ref *CZAnim::GetNodeRef(int index)
     return ref;
 }
 
+/* the anim's sounds let go: those it stops on exit faded out or stopped, the others left to
+ * finish (or released when done); a sound with no instance stopped through the manager */
+void CZAnim::StopSounds()
+{
+    for (int i = 0; i < m_sound_ref_count; i++) {
+        if (m_sound_ref_list[i].sound_instance) {
+            if (m_sound_ref_list[i].stop_on_exit) {
+                if (m_sound_ref_list[i].fade > 0.0f) {
+                    func_00346DD0(m_sound_ref_list[i].sound_instance, m_sound_ref_list[i].fade);
+                    m_sound_ref_list[i].sound_instance->TerminateOnFinish();
+                } else {
+                    m_sound_ref_list[i].sound_instance->Stop();
+                    CSndInstance::ReleaseSoundInstance(m_sound_ref_list[i].sound_instance);
+                }
+            } else if (!func_00346D70(m_sound_ref_list[i].sound_instance))
+                CSndInstance::ReleaseSoundInstance(m_sound_ref_list[i].sound_instance);
+            else
+                m_sound_ref_list[i].sound_instance->TerminateOnFinish();
+            m_sound_ref_list[i].sound_instance = 0;
+        } else if (m_sound_ref_list[i].sound_handle && m_sound_ref_list[i].sound_handle->m_socom2_bit3) {
+            void *manager = func_0034BB80();
+
+            if (manager)
+                func_0034A910(manager, 255, m_sound_ref_list[i].sound_handle);
+        }
+        m_sound_ref_list[i].stop_on_exit = 0;
+    }
+}
+
 /* the anim's lights put out: those it stops on exit, or all when forced -- a local light
  * deactivated, a world light's map deleted */
 void CZAnim::StopLights(bool force)
@@ -863,6 +892,45 @@ int CZAnim::AddName(const char *name)
 int CZAnim::AddValve(const char *name)
 {
     return m_nameindex_table.AddName(ZAnim.GetAnimSet(m_animset_index), name);
+}
+
+/* the anim from its ZAR key: its parameters, health (made when missing), name index table,
+ * node references (their nodes looked up later) and sequence data */
+int CZAnim::Load(zar::CZAR &archive)
+{
+    int count;
+    zar::CKey *key = archive.GetOpenKey();
+
+    archive.Fetch("Anim_Params", (_zanim_anim_params *)this, sizeof(_zanim_anim_params));
+    State(1);
+    if (key->FindKey("Anim_Health")) {
+        if (!m_health) {
+            m_health = new CZAnimHealth;
+            memset(m_health, 0, sizeof(CZAnimHealth));
+            m_health->m_health_node_index = m_root_node_index;
+        }
+        archive.Fetch("Anim_Health", m_health, sizeof(CZAnimHealth));
+    }
+    m_nameindex_table.Load(archive);
+    archive.Fetch("Node_Ref_Count", &count, 4);
+    m_node_ref_count = count;
+    if (count > 0) {
+        int size = m_node_ref_count * sizeof(_zanim_node_ref);
+
+        m_node_ref_list = (_zanim_node_ref *)_malloc(size, 0, 0);
+        archive.Fetch("Node_Ref_List", m_node_ref_list, size);
+        for (int i = 0; i < m_node_ref_count; i++)
+            m_node_ref_list[i].node_ptr = 0;
+    } else
+        m_node_ref_list = 0;
+    archive.Fetch("Seq_Data_Size", &count, 4);
+    m_seq_data_size = count;
+    if (count > 0) {
+        m_seq_data = (char *)_malloc(m_seq_data_size, 0, 0);
+        archive.Fetch("Seq_Data", m_seq_data, m_seq_data_size);
+    } else
+        m_seq_data = 0;
+    return 1;
 }
 
 /* one of the anim's special sequences (damage, activation, execution, cleanup -- an offset

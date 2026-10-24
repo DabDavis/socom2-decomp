@@ -8,12 +8,12 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define NULL 0
 char * __ct__Q23zdb6CModelFPCc(char * arg0, char * arg1);
 M2C_UNK SetName__Q23zdb5CNodeFPCc(char * arg0, char * arg1);
-M2C_UNK func_00316E30(s32 arg0);
+M2C_UNK __ct__Q23zdb5CNodeFv(char * arg0);
 M2C_UNK func_001EABB0(char *);                      /* extern */
 extern M2C_UNK __vt__Q23zdb6CModel;
 
 char *__ct__Q23zdb6CModelFPCc(char *arg0, char *arg1) {
-    func_00316E30((s32) arg0);
+    __ct__Q23zdb5CNodeFv(arg0);
     M2C_FIELD(arg0, M2C_UNK **, 0x60) = &__vt__Q23zdb6CModel;
     func_001EABB0(arg0 + 0xC8);
     M2C_FIELD(arg0, s32 *, 0xD8) = 0;

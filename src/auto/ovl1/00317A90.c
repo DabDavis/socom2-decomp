@@ -7,8 +7,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK SetName__Q23zdb5CNodeFPCc(char *, M2C_UNK *); /* extern */
+char *__ct__Q23zdb5CNodeFv(char *);                 /* extern */
 char *__nw__FUi(M2C_UNK);                           /* extern */
-char *func_00316E30(char *);                        /* extern */
 extern M2C_UNK data_003F6B90;
 
 char *CreateXRef__Q23zdb5CNodeFv(void) {
@@ -16,7 +16,7 @@ char *CreateXRef__Q23zdb5CNodeFv(void) {
 
     var_s0 = __nw__FUi(0xC0);
     if (var_s0 != NULL) {
-        var_s0 = func_00316E30(var_s0);
+        var_s0 = __ct__Q23zdb5CNodeFv(var_s0);
     }
     M2C_FIELD(var_s0, s16 *, 0x58) = 3;
     SetName__Q23zdb5CNodeFPCc(var_s0, &data_003F6B90);

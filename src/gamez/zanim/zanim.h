@@ -522,9 +522,25 @@ public:
 class CSnd {
 public:
     static CSnd *GetSoundByName(const char *name);
+
+    unsigned char _0[0x1c];   // 0x0: SOCOM 1's m_vol .. m_ID
+    unsigned int m_socom2_bits0 : 3;   // 0x1c: SOCOM II packs SOCOM 1's flag bytes here
+    unsigned int m_socom2_bit3 : 1;   // 0x1c: CZAnim::StopSounds stops such a sound's stream by hand (name unknown)
 };
 
-class CSndInstance;
+class CSndInstance {
+public:
+    void Stop();
+    void TerminateOnFinish();
+    static void ReleaseSoundInstance(CSndInstance *instance);
+};
+
+/* SOCOM II's sound calls: SOCOM 1's CSndInstance::IsPlaying (matched in its unit under its
+ * address's name), a fade out, and a sound manager and its stop -- not named */
+extern "C" bool func_00346D70(CSndInstance *instance);
+extern "C" void func_00346DD0(CSndInstance *instance, float time);
+extern "C" void *func_0034BB80();
+extern "C" void func_0034A910(void *manager, int channel, CSnd *sound);
 
 /* SOCOM II's sound reference: SOCOM 1's with a fade time at 4 (GetSoundRef starts it at -0.1) */
 class _zanim_sound {
