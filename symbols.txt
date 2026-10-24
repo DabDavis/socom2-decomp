@@ -5377,8 +5377,8 @@
 0x00310830 0x130 func_00310830  # OVL1
 0x00310960 0x8 func_00310960  # OVL1
 0x00310970 0x8 func_00310970  # OVL1
-0x00310980 0x6C func_00310980  # OVL1
-0x003109F0 0x234 func_003109F0  # OVL1
+0x00310980 0x6C TransformToWorld__Q23zdb5CNodeCFR6CPnt3D  # OVL1; s1:callee by hand (called where SOCOM 1's zAnimObjectAddChildTick calls it; the same arguments)
+0x003109F0 0x234 BuildMTW__Q23zdb5CNodeFR7CMatrix  # OVL1; s1:callee by hand (called where SOCOM 1's zAnimObjectAddChildTick calls it)
 0x00310C30 0x10 Multiply__7CMatrixCFPC7CMatrixP7CMatrix  # OVL1; s1:exact
 0x00310C40 0x8 func_00310C40  # OVL1
 0x00310C50 0x8 func_00310C50  # OVL1

@@ -229,6 +229,9 @@ inline float Dot(const CPnt3D &a, const CPnt3D &b)
     return a.x * b.x + a.y * b.y + a.z * b.z;
 }
 
+void Vu0MatrixInverseWithUniformScale(CMatrix *dst, CMatrix *src);
+extern "C" void func_00308640(CMatrix *m, CPnt3D *p, int n);
+
 float exp_tl(float x);
 void uninit_trig_table();
 void init_trig_table();

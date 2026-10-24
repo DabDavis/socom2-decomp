@@ -1,6 +1,6 @@
 /* zdb::CNode -- the scene graph's node (the zdb namespace is the mangled names'), its layout
- * SOCOM 1's DWARF as tools/dwarf1.py header writes it: the hole at 0x60 is the vtable pointer
- * of a class whose virtual functions are not declared yet. SOCOM II keeps tag_NODE_PARAMS' flags
+ * SOCOM 1's DWARF as tools/dwarf1.py header writes it, and its virtual functions are SOCOM 1's
+ * vtable's, in its order (MW puts the pointer at 0x60, after tag_NODE_PARAMS). SOCOM II keeps tag_NODE_PARAMS' flags
  * at 0x5C (zAnimNodeActiveTick reads m_active there). The header's name is ours. */
 #ifndef ZNODE_H
 #define ZNODE_H
@@ -65,9 +65,35 @@ class CVisualVector : public _opaque_vector_c {
 public:
 };   // 0xc bytes
 
+class CSaveLoad;
+
 class CNode : public tag_NODE_PARAMS {
 public:
-    unsigned char _pad60[0x4];   // 0x60: the vtable pointer?
+    /* SOCOM 1's vtable order (__vt__Q23zdb5CNode); the pointer is at 0x60 */
+    virtual ~CNode();
+    virtual void _Copy(CNode *to) const;
+    virtual void UpdateGrid();
+    virtual void ReserveChildren(int n);
+    virtual void AddChild(CNode *child);
+    virtual void DeleteChild(CNode *child);
+    virtual void DeleteChildren();
+    virtual CNode *FindChild(const char *name, bool deep);
+    virtual CNode *FindChild(CNode *node, bool deep);
+    virtual bool IsCell();
+    virtual void Read(CSaveLoad &io);
+    virtual void SetActive(bool on);
+    virtual void UpdateBBox(bool up);
+    virtual void UpdateBBoxFromDI(bool up);
+
+    void TransformToWorld(CPnt3D &p) const;
+    void BuildMTW(CMatrix &m);
+    void SetPosition(float x, float y, float z);
+    void SetPosition(const PNT3D *p)      /* the base pointer keeps MW from folding the null test */
+    {
+        if (p)
+            SetPosition(p->x, p->y, p->z);
+    }
+
     CNode* m_parent;   // 0x64
     CNodeVector m_child;   // 0x68
     CDIVector m_di;   // 0x74

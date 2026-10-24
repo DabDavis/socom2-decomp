@@ -32,6 +32,94 @@ struct zanim_cmd_weight {
 };
 
 
+/* fade a node's opacity from one value to another over a time on the command's clock */
+struct zanim_cmd_opacity {
+    _zanim_cmd_hdr hdr;
+    unsigned short node;
+    unsigned short pad;
+    float from;
+    float to;
+    float rate;                     /* per second */
+    float time;
+};
+
+void zAnimObjectOpacityFromToBegin(_zanim_cmd_hdr *hdr)
+{
+    zanim_cmd_opacity *cmd = (zanim_cmd_opacity *)hdr;
+    CNode *node = ZAnim.m_CurAnim->GetNode(cmd->node, false);
+
+    if (node)
+        node->m_Opacity = cmd->from;
+}
+
+bool zAnimObjectOpacityFromToTick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    zanim_cmd_opacity *cmd = (zanim_cmd_opacity *)hdr;
+    CNode *node = ZAnim.m_CurAnim->GetNode(cmd->node, false);
+    bool done;
+
+    if (!node)
+        return true;
+    float step = *dT;
+    float t = ZAnim.m_CurSeq->cmd_timer;
+    if (!(step + t <= cmd->time)) {
+        done = true;
+        step = cmd->time - t;
+        *dT -= step;
+    } else {
+        *dT = 0.0f;
+        done = false;
+    }
+    if (done)
+        node->m_Opacity = cmd->to;
+    else
+        node->m_Opacity += cmd->rate * step;
+    return done;
+}
+
+/* parent one node of the current anim to another (flag 1: keep its place in the world) */
+struct zanim_cmd_child {
+    _zanim_cmd_hdr hdr;
+    unsigned short flags;
+    unsigned char parent;
+    unsigned char child;
+};
+
+bool zAnimObjectAddChildTick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    zanim_cmd_child *cmd = (zanim_cmd_child *)hdr;
+    CNode *parent = ZAnim.m_CurAnim->GetNode(cmd->parent, false);
+    CNode *child = ZAnim.m_CurAnim->GetNode(cmd->child, false);
+
+    if (parent && child) {
+        CPnt3D pos(0.0f, 0.0f, 0.0f);
+
+        if (cmd->flags & 1)
+            child->TransformToWorld(pos);
+        parent->AddChild(child);
+        if (cmd->flags & 1) {
+            CMatrix m;
+
+            parent->BuildMTW(m);
+            Vu0MatrixInverseWithUniformScale(&m, &m);
+            func_00308640(&m, &pos, 1);
+            child->SetPosition(&pos);
+        }
+    }
+    return true;
+}
+
+bool zAnimObjectDeleteChildTick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    zanim_cmd_child *cmd = (zanim_cmd_child *)hdr;
+    CNode *parent = ZAnim.m_CurAnim->GetNode(cmd->parent, false);
+    CNode *child = ZAnim.m_CurAnim->GetNode(cmd->child, false);
+
+    if (parent && child)
+        parent->DeleteChild(child);
+    return true;
+}
+
 /* whether a node of the current anim is active (mode 1) or inactive (mode 2) */
 struct zanim_cmd_nodetest {
     _zanim_cmd_hdr hdr;
