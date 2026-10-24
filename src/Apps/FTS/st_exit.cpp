@@ -144,9 +144,9 @@ bool CExitState::Init()
         func_002CF2F0(&theGame, 1);
         return true;
     }
-    if (theGame.m_menuSkip) {
+    if (theGame.m_menuState.m_skip) {
         func_002CF2F0(&theGame, 0);
-        func_002CF410(&theGame, theGame.m_loadState, 0);
+        func_002CF410(&theGame, &theGame.m_loadState, 0);
         return true;
     }
     func_0032C1E0("readerx.zar", "run/ui");

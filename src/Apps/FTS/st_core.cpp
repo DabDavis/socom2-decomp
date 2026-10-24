@@ -138,7 +138,7 @@ static void LoadThreadEntry(void *arg)
     if (!func_001EA720())
         func_00192BF8(0);
     if (data_0045A0C1)
-        func_00223290(theGame.m_MPexitState);
+        func_00223290(&theGame.m_MPexitState);
     theGame.m_coreState.m_loading = false;
     func_002A6950(&theMission);
     ExitDeleteThread();
@@ -195,7 +195,7 @@ void CCoreState::Load(bool async)
     if (!func_001EA720())
         func_00192BF8(0);
     if (data_0045A0C1)
-        func_00223290(theGame.m_MPexitState);
+        func_00223290(&theGame.m_MPexitState);
     m_loading = false;
 }
 

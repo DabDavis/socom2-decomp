@@ -242,6 +242,34 @@ public:
     int m_28;   // 0x28
 };
 
+class CMenuStateMenu : public CGameMenu {
+public:
+    CMenuStateMenu() {}
+    virtual const char *GetReaderFileName();
+};
+
+/* the front end's menus (SOCOM 1's DWARF; SOCOM II's two sound names are 0xC-byte strings, so the
+ * selection sound is at 0x2C, the default menu at 0x30, the reboot handle at 0x70) */
+class CMenuState : public CGameState {
+public:
+    virtual bool Init();
+    virtual bool Tick(float dT);
+    virtual void UnInit();
+    virtual void OnPush(int userdata);
+    virtual void OnPop(int userdata);
+
+    bool RunEventAnim(const char *eventname, const char *argument);
+
+    CMenuStateMenu *m_menu;   // 0x8
+    int m_skip;   // 0xc
+    int m_skip_swap;   // 0x10
+    CStateString TtySoundString;   // 0x14
+    CStateString BackSoundString;   // 0x20
+    void *SelectionSound;   // 0x2c
+    char m_DefaultMenu[64];   // 0x30
+    int m_iopregh;   // 0x70
+};
+
 /* a film between missions (SOCOM 1's DWARF: the movie's name at 0xC) */
 class CCinematicState : public CGameState {
 public:
@@ -259,13 +287,12 @@ public:
  * 0x110, exit state at 0x1E0, multiplayer exit state at 0x208 */
 class COurGame {
 public:
-    unsigned char _0[0x84];
-    int m_menuSkip;   // 0x84 (the menu state's m_skip)
-    unsigned char _88[0xec - 0x88];
-    unsigned char m_loadState[0x24];   // 0xec
+    unsigned char _0[0x78];
+    CMenuState m_menuState;   // 0x78
+    CLoadState m_loadState;   // 0xec
     CCoreState m_coreState;   // 0x110
-    unsigned char _1e0[0x208 - 0x1e0];
-    unsigned char m_MPexitState[0x28];   // 0x208
+    CExitState m_exitState;   // 0x1e0
+    CMPExitState m_MPexitState;   // 0x208
 };
 
 /* the game's state stack (SOCOM 1's CGame; unnamed yet) */
@@ -295,12 +322,7 @@ public:
     unsigned char m_objectives[0xc];   // 0x1854: a list of the mission's objectives
 };
 
-/* theMission is 0x4364E0 (no data.txt row yet) */
-extern "C" CMission data_004364E0;
-#define theMission data_004364E0
-
-/* theGame is at 0x4084C0 (what 43 references take as the object; data.txt's row says 0x4084CC) */
-extern "C" COurGame data_004084C0;
-#define theGame data_004084C0
+extern CMission theMission;
+extern COurGame theGame;
 
 #endif

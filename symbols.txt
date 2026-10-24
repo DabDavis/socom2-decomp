@@ -1384,14 +1384,14 @@
 0x001E7B50 0xC func_001E7B50  # OVL1
 0x001E7B60 0x14 func_001E7B60  # OVL1
 0x001E7B80 0x80 func_001E7B80  # OVL1
-0x001E7C00 0x8 func_001E7C00  # OVL1
+0x001E7C00 0x8 PreInit__10CGameStateFv  # OVL1; s1:vtable by hand (CGameState's PreInit slot, 0xC: the base's empty inline, linked from this unit; the demo's PreInit__10CGameStateFv)
 0x001E7C10 0x8 Init__10CGameStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001E7C20 0x8 Tick__10CGameStateFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x001E7C30 0x8 func_001E7C30  # OVL1
-0x001E7C40 0x8 func_001E7C40  # OVL1
-0x001E7C50 0x8 func_001E7C50  # OVL1
-0x001E7C60 0x8 func_001E7C60  # OVL1
-0x001E7C70 0x8 func_001E7C70  # OVL1
+0x001E7C30 0x8 PreUnInit__10CGameStateFv  # OVL1; s1:vtable by hand (CGameState's PreUnInit slot, 0x18: the base's empty inline)
+0x001E7C40 0x8 UnInit__10CGameStateFv  # OVL1; s1:vtable by hand (CGameState's UnInit slot, 0x1C: the base's empty inline)
+0x001E7C50 0x8 OnPush__10CGameStateFi  # OVL1; s1:vtable by hand (CGameState's OnPush slot, 0x20: the base's empty inline)
+0x001E7C60 0x8 OnPop__10CGameStateFi  # OVL1; s1:vtable by hand (CGameState's OnPop slot, 0x24: the base's empty inline)
+0x001E7C70 0x8 SetSkipSwap__10CGameStateFi  # OVL1; the name ours (CGameState's new slot 0x28, empty; CCoreState's sets m_skip_swap)
 0x001E7C80 0x8 func_001E7C80  # OVL1
 0x001E7C90 0x258 func_001E7C90  # OVL1
 0x001E7EF0 0x68 func_001E7EF0  # OVL1
@@ -1561,7 +1561,7 @@
 0x001F3BB0 0x18 func_001F3BB0  # OVL1
 0x001F3BD0 0x8 func_001F3BD0  # OVL1
 0x001F3BE0 0x8 func_001F3BE0  # OVL1
-0x001F3BF0 0x850 func_001F3BF0  # OVL1
+0x001F3BF0 0x850 RunEventAnim__10CMenuStateFPCcPCc  # OVL1; s1:calls (OnPop's ON_STATE_POP event and the message handler's MP_SYSTEM_MESSAGE go through it, as SOCOM 1's RunEventAnim(eventname, argument))
 0x001F4440 0x140 UnInit__10CMenuStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F4580 0x60 __dt__14CMenuStateMenuFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F45E0 0x48 OnPop__10CMenuStateFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
