@@ -1,6 +1,9 @@
 /* node_vector.cpp -- the scene graph's typed lists: CNodeVector, CDIVector, CVisualVector,
- * CModelVector, CNodeUniverse, CLightMapVector (OVL1 0x311CC0-...), in SOCOM 1's order. The unit
- * name is ours. Defined in reverse of their image order (-inline deferred). */
+ * CModelVector, CNodeUniverse, CLightMapVector, in SOCOM 1's order -- and the CNode code around
+ * them, from TransformToWorld (OVL1 0x310980) on: a unit of its own, as DeleteChild and AddVisual
+ * show by calling Exists and Remove (with them in node_main.cpp MW inlines both). Where it ends
+ * and node_main.cpp begins, between SetModelname and GetAtom, is not placed yet. The unit name is
+ * ours. Defined in reverse of their image order (-inline deferred). */
 
 #include <algorithm>
 #include <string.h>
@@ -182,6 +185,14 @@ void CNode::SetModelname(const char *name)
         m_modelname = 0;
     }
     m_modelname = name ? _strdup(name, 0, 0) : 0;
+}
+
+/* a point in the node's frame into the world's: each matrix up the tree, to the world's node
+ * (type 6) */
+void CNode::TransformToWorld(CPnt3D &p) const
+{
+    for (const CNode *n = this; n && n->m_type != 6; n = n->m_parent)
+        n->m_matrix.Transform(&p, 1);
 }
 
 }

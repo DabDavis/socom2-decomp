@@ -1,5 +1,5 @@
 /* node_main.cpp -- zdb::CNode, the scene graph's node: its place in the world, its bounds, its
- * children, its grid atoms (OVL1 0x310980-0x31789F; node_model.cpp follows). The unit name is
+ * children, its grid atoms (OVL1 to 0x31789F, after node_vector.cpp's; node_model.cpp follows). The unit name is
  * SOCOM 1's (CNode::SetName's allocations name it). Defined in reverse of their image order
  * (-inline deferred), as the map has them: a function this unit calls without inlining, though
  * small, is evidence of a unit boundary (CreateXRef's SetName and SetPosition were). */
@@ -431,12 +431,5 @@ void CNode::SetDynamicLight(bool on, bool recurse)
     }
 }
 
-/* a point in the node's frame into the world's: each matrix up the tree, to the world's node
- * (type 6) */
-void CNode::TransformToWorld(CPnt3D &p) const
-{
-    for (const CNode *n = this; n && n->m_type != 6; n = n->m_parent)
-        n->m_matrix.Transform(&p, 1);
-}
 
 }

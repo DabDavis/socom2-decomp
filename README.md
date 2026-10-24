@@ -504,8 +504,10 @@ follows without MW's 16-byte padding (131 drafts had every byte right).
   and at() match from include/vector; insert does not yet (the pod one 8 bytes short:
   build/scratch/ins/BEST-pod-insert-0x418.txt -- the target reloads the capacity in the growth
   path, where every form tried keeps it).
-- **zdb::CNode (`node_main.cpp` to 0x31789F, then `node_model.cpp`, the name ours) and the typed
-  lists (`node_vector.cpp`, the name ours).** CNode: 30 written, all byte-exact -- the FindChild
+- **zdb::CNode: `node_vector.cpp` (from 0x310980, the typed lists and the code around them),
+  `node_main.cpp` (to 0x31789F) and `node_model.cpp` -- the first and last names ours.** The
+  boundaries are inlining evidence: DeleteChild and AddVisual call the lists' Exists and Remove,
+  which MW inlines when they share a unit; CreateXRef calls SetName and SetPosition. CNode: 30 written, all byte-exact -- the FindChild
   trio, AddChild, AddVisual, SetNodeEx, DeleteChild(ren), Copy, GetMesh/GetSubMesh, CreateXRef, the
   atoms, the radius, SetName and the small accessors. The boundary: CreateXRef calls SetName and
   SetPosition, which every caller in node_main's range inlines where it can (probe:
