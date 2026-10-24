@@ -43,6 +43,8 @@ ROOT = Path(os.environ.get("SOCOM_ROOT") or HERE.parent)
 LOADER = Path(os.environ.get("SOCOM_LOADER") or ROOT / "extracted" / "SCUS_972.75")
 OVERLAYS = Path(os.environ.get("SOCOM_OVERLAYS") or ROOT / "extracted" / "overlays")
 SYMBOLS = HERE / "symbols.txt"
+DATA = HERE / "data.txt"          # global data, the same row format; kept apart so every
+                                  # tool that walks the function map stays a function walk
 
 # (size, sha256) of each input, for the r0001 disc. The overlay digests agree with
 # what socom-unzipped pins for the same disc (tools_py/disc_to_elf_expected.json).
@@ -340,27 +342,57 @@ class SymbolTable:
 
     _LINE = re.compile(r"^(0x[0-9A-Fa-f]+)\s+(0x[0-9A-Fa-f]+|\d+)\s+(\S+)\s*(?:#\s?(.*))?$")
 
-    def __init__(self, path: Path = SYMBOLS):
+    def __init__(self, path: Path = SYMBOLS, data_path: Path | None = None):
         self.path = path
         self.symbols: list[Symbol] = []
         self._by_name: dict[str, Symbol] = {}
         self._by_addr: dict[int, Symbol] = {}
+        # global data (data.txt): names the differ resolves, never walked as functions
+        self.data: list[Symbol] = []
+        self.data_by_name: dict[str, Symbol] = {}
+        self.data_by_addr: dict[int, Symbol] = {}
+        self._addrs = []
         if not path.exists():
             return
+        for s in self._rows(path):
+            self.symbols.append(s)
+            if s.name in self._by_name:
+                raise ValueError(f"{path}: {s.name} defined twice")
+            self._by_name[s.name] = s
+            self._by_addr.setdefault(s.addr, s)
+        self.symbols.sort(key=lambda s: s.addr)
+        self._addrs = [s.addr for s in self.symbols]
+        data_path = data_path or (DATA if path == SYMBOLS else None)
+        if data_path is not None and data_path.exists():
+            for s in self._rows(data_path):
+                if s.name in self._by_name or s.name in self.data_by_name:
+                    raise ValueError(f"{data_path}: {s.name} named twice (functions and data share one namespace)")
+                self.data.append(s)
+                self.data_by_name[s.name] = s
+                self.data_by_addr.setdefault(s.addr, s)
+            self.data.sort(key=lambda s: s.addr)
+
+    def _rows(self, path: Path):
         for n, line in enumerate(path.read_text(errors="replace").splitlines(), 1):
             if not line.startswith("0x"):
                 continue
             m = self._LINE.match(line)
             if not m:
                 raise ValueError(f"{path}:{n}: unparseable map row: {line!r}")
-            s = Symbol(m.group(3), int(m.group(1), 16), int(m.group(2), 0), (m.group(4) or "").strip())
-            self.symbols.append(s)
-            if s.name in self._by_name:
-                raise ValueError(f"{path}:{n}: {s.name} defined twice")
-            self._by_name[s.name] = s
-            self._by_addr.setdefault(s.addr, s)
-        self.symbols.sort(key=lambda s: s.addr)
-        self._addrs = [s.addr for s in self.symbols]
+            yield Symbol(m.group(3), int(m.group(1), 16), int(m.group(2), 0), (m.group(4) or "").strip())
+
+    def address_of(self, name: str) -> int | None:
+        """A function's or a global's address, or None."""
+        s = self._by_name.get(name) or self.data_by_name.get(name)
+        return s.addr if s is not None else None
+
+    def data_containing(self, addr: int) -> Symbol | None:
+        import bisect
+        keys = [s.addr for s in self.data]
+        i = bisect.bisect_right(keys, addr) - 1
+        if i >= 0 and self.data[i].addr <= addr < self.data[i].end + (self.data[i].size == 0):
+            return self.data[i]
+        return None
 
     def __len__(self) -> int:
         return len(self.symbols)

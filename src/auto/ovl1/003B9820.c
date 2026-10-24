@@ -6,9 +6,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_0034EC30(M2C_UNK, M2C_UNK, M2C_UNK);       /* extern */
+s32 _malloc__FUiPCci(M2C_UNK, M2C_UNK, M2C_UNK);    /* extern */
 extern s32 data_004B5018;
 
 void func_003B9820(void) {
-    data_004B5018 = func_0034EC30(0x4A0, 0, 0);
+    data_004B5018 = _malloc__FUiPCci(0x4A0, 0, 0);
 }

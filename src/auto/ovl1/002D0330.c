@@ -12,7 +12,6 @@ M2C_UNK func_0026B120(M2C_UNK *);                   /* extern */
 M2C_UNK func_002CF4C0();                            /* extern */
 M2C_UNK func_002D9CC0(M2C_UNK);                     /* extern */
 M2C_UNK func_002D9EA0();                            /* extern */
-M2C_UNK func_00309400();                            /* extern */
 M2C_UNK func_00320760();                            /* extern */
 M2C_UNK func_003221C0();                            /* extern */
 M2C_UNK func_0032C4F0();                            /* extern */
@@ -25,19 +24,20 @@ M2C_UNK func_003B11F0();                            /* extern */
 M2C_UNK func_003C0620(M2C_UNK *);                   /* extern */
 M2C_UNK func_00576120();                            /* extern */
 M2C_UNK func_005E5070();                            /* extern */
+M2C_UNK uninit_trig_table__Fv();                    /* extern */
 M2C_UNK zUISchedulerClear__Fv();                    /* extern */
-extern M2C_UNK data_00414BB0;
+extern M2C_UNK ZAnim;
 extern M2C_UNK data_0049E260;
 extern M2C_UNK data_004B50D0;
 
 void StopEngine__5CGameFv(void) {
     func_00320760();
-    func_0026B120(&data_00414BB0);
+    func_0026B120(&ZAnim);
     func_0038A210();
     func_003C0620(&data_004B50D0);
     func_003221C0();
     Uninit__5CPipeFv();
-    func_0026B120(&data_00414BB0);
+    func_0026B120(&ZAnim);
     func_005E5070();
     func_00576120();
     func_00351E60();
@@ -52,5 +52,5 @@ void StopEngine__5CGameFv(void) {
     func_003B11F0();
     func_0039C6F0();
     func_002CF4C0();
-    func_00309400();
+    uninit_trig_table__Fv();
 }

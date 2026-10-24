@@ -8,7 +8,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define NULL 0
 M2C_UNK func_001EABB0();                            /* extern */
 
-void *func_003214D0(void *arg0) {
+char *func_003214D0(char *arg0) {
     func_001EABB0();
     M2C_FIELD(arg0, s32 *, 0xC) = 0;
     return arg0;

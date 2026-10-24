@@ -61,9 +61,9 @@ def gpr_written(w: int) -> int | None:
 
 
 def symname(st: E.SymbolTable, addr: int, func: bool) -> str:
-    s = st.at_addr(addr)
-    if s is not None:
-        return s.name
+    s = st.at_addr(addr) or (None if func else st.data_by_addr.get(addr))
+    if s is not None and re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", s.name):
+        return s.name                      # a template or anonymous-namespace name m2c cannot read
     return f"func_{addr:08X}" if func else f"data_{addr:08X}"
 
 

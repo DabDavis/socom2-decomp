@@ -128,9 +128,9 @@ class RelocFinding:
 
 
 def _sym_address(st: E.SymbolTable, name: str) -> int | None:
-    s = st._by_name.get(name)
-    if s is not None:
-        return s.addr
+    a = st.address_of(name)                 # a function, or a global data.txt names
+    if a is not None:
+        return a
     if E.is_placeholder(name):
         return int(name[-8:], 16)
     return None
@@ -194,7 +194,9 @@ def reloc_check(elf: E.Elf, fsym: E.ElfSymbol, relocs: list[E.Reloc], target: by
         the symbol's offset in that section). A named function -- static ones included --
         resolves through the map; a string literal or section symbol has only its content."""
         s = r.sym
-        if s.name and (s.bind != 0 or s.type == "FUNC"):
+        # a TU-local object the data map names (a static table) resolves by its address, as a
+        # global does; an unnamed one -- a string literal, a float constant -- by content
+        if s.name and (s.bind != 0 or s.type == "FUNC" or s.name in st.data_by_name):
             a = _sym_address(st, s.name)
             if a is not None or s.bind != 0:
                 return s.name, a, None, 0

@@ -34,8 +34,14 @@ and data reference resolved to the address the shipped code uses.
 | `tools/callnames.py` | name placeholders off byte-exact functions' own call sites (eqcallnames.py) |
 | `tools/m2c.py` | a target function as m2c-ready assembly (labels, callees by map name, `%hi/%lo` as `data_<VA>`), and m2c's draft |
 | `tools/perm.py` | the permuter: reorders `// PERM_BEGIN/END` lines and `// PERM_DECL` names until a function matches |
-| `tools/automatch.py` | compiles m2c's draft of every small function as it stands; `--emit` writes the hits to `src/auto/` |
+| `tools/automatch.py` | compiles m2c's draft of every small function as it stands; `--emit` writes the hits to `src/auto/`; `--stale` redoes the drafts a rename left behind |
+| `tools/s1names.py` | SOCOM 1's function names, out of the May 2002 demo's symbols and relocations |
+| `tools/s1data.py` | SOCOM 1's global data names, through the functions s1names paired |
+| `tools/dwarf1.py` | the demo's Metrowerks DWARF 1: units, signatures, class layouts, enums |
+| `tools/beta_tu.py` | which source file a function was in, out of the press beta's asserts |
+| `tools/rename.py` | rename map rows by hand, keeping the note, refusing a taken name, listing the source still using the old one |
 | `symbols.txt` | **the map** — `0xADDR SIZE name  # note`, kept by hand from here on |
+| `data.txt` | the map of global data, the same format and namespace |
 | `src/` | the reconstructed source; `MATCHED.txt` (the baseline), `ABSENT.txt` (dead-stripped) |
 | `include/` | minimal libc headers in our own words |
 
@@ -190,6 +196,20 @@ third and two floats where SOCOM 1 passed a `CTexture *` and the matrix fifth --
 rows keep placeholders with an `s1~` note. When source for a `gap`/`calls` name compiles to
 a different mangled name, rename the row to what the source defines. (An earlier note said
 the projectors were absent from the 2002 builds: they were in another unit, `zdb`'s.)
+
+### Global data names (`data.txt`, `tools/s1data.py`)
+
+`data.txt` maps global data the way `symbols.txt` maps functions (same row format, one shared
+namespace; the differ resolves a name from either, and a TU-local static the data map names
+resolves by address rather than by content). `tools/s1data.py` fills it from the demo: every
+function pair s1names made addresses the same globals, so the references are paired -- at the
+same instruction for an exact pair; otherwise by how each target is used (the sorted access
+kinds of its references), because two compilers order the accesses differently and the demo
+reaches small data through `$gp` where SOCOM II never does. A name is written when every
+proposal agrees both ways and an exact pair, a uniquely-used target, or two functions support
+it: 215 globals (`theGame`'s neighbours, `CStack::m_top`, `exptbl`, `vu0_CodeSegment`, libcdvd's
+state), and 25 functions named because SOCOM 1 takes their address at the same place (the
+camera's ZAnim command handlers, interrupt handlers). m2c drafts use these names.
 
 The July 9 2002 press beta (`SCUS_971.34`) is stripped but kept its asserts:
 `tools/beta_tu.py` turns them into `tu:` hints -- which source file a function was in.
