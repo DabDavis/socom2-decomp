@@ -6,7 +6,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_001F3BF0(M2C_UNK *, M2C_UNK *, M2C_UNK); /* extern */
+M2C_UNK RunEventAnim__10CMenuStateFPCcPCc(M2C_UNK *, M2C_UNK *, M2C_UNK); /* extern */
 s32 sceMcSeek(s32, M2C_UNK, M2C_UNK);               /* extern */
 M2C_UNK sceMcSync(M2C_UNK, M2C_UNK *, s32 *);       /* extern */
 extern M2C_UNK data_003FBC78;
@@ -19,7 +19,7 @@ s32 ftell__10CMemCardIOCFv(char *arg0) {
 
     var_s0 = 0;
     if (sceMcSeek(M2C_FIELD(arg0, s32 *, 4), 0, 1) < 0) {
-        func_001F3BF0(&data_00408538, &data_003FBC78, 0);
+        RunEventAnim__10CMenuStateFPCcPCc(&data_00408538, &data_003FBC78, 0);
         return 0;
     }
     sceMcSync(0, &sp2C, &sp28);

@@ -6,12 +6,12 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK AbortLoad__10CLoadStateFPCc(M2C_UNK *, s32); /* extern */
 s32 GetName__6CZAnimFi(s32, u16);                   /* extern */
-M2C_UNK func_001F5D00(M2C_UNK *, s32);              /* extern */
 extern M2C_UNK data_004085AC;
 extern s32 data_00414BE8;
 
 s32 UIAbortLoad__FP13C2DAnimCmdHdrPf(char *arg0) {
-    func_001F5D00(&data_004085AC, GetName__6CZAnimFi(data_00414BE8, M2C_FIELD(arg0, u16 *, 8)));
+    AbortLoad__10CLoadStateFPCc(&data_004085AC, GetName__6CZAnimFi(data_00414BE8, M2C_FIELD(arg0, u16 *, 8)));
     return 0;
 }

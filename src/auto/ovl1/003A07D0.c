@@ -6,8 +6,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK RunEventAnim__10CMenuStateFPCcPCc(M2C_UNK *, M2C_UNK *, M2C_UNK); /* extern */
 s32 func_001B4888(s32, s32, s32, M2C_UNK);          /* extern */
-M2C_UNK func_001F3BF0(M2C_UNK *, M2C_UNK *, M2C_UNK); /* extern */
 M2C_UNK sceMcSync(M2C_UNK, M2C_UNK *, s32 *);       /* extern */
 extern M2C_UNK data_003FBC78;
 extern M2C_UNK data_00408538;
@@ -20,12 +20,12 @@ s32 func_003A07D0(char *arg0, s32 arg1) {
 
     sceMcSync(0, &data_004A37C0, &data_004A37C8);
     if (func_001B4888(M2C_FIELD(arg0, s32 *, 0x20), M2C_FIELD(arg0, s32 *, 0x24), arg1, 0) < 0) {
-        func_001F3BF0(&data_00408538, &data_003FBC78, 0);
+        RunEventAnim__10CMenuStateFPCcPCc(&data_00408538, &data_003FBC78, 0);
         return 0;
     }
     sceMcSync(0, &sp3C, &sp38);
     if (sp38 != 0) {
-        func_001F3BF0(&data_00408538, &data_003FBC78, 0);
+        RunEventAnim__10CMenuStateFPCcPCc(&data_00408538, &data_003FBC78, 0);
     }
     return 1;
 }
