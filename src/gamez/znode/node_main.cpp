@@ -284,6 +284,47 @@ CBBox *CLight::UpdateBBox(bool up)
     return (CBBox *)GetBBox();
 }
 
+CLightMap::~CLightMap()
+{
+}
+
+/* the texture a light map projects, and its world-to-texture matrix: a camera at the light looking
+ * down -y, then a scale from its range to the texture's half (a texel in from the edge) and a
+ * half's offset. The width converts as an int; the range comes through an inline accessor (it is
+ * loaded ahead of the 2.0, whose register it would otherwise take) */
+void CLightMap::SetTexture(CTexture *tex)
+{
+    m_pTex = tex;
+    CMatrix view;
+    sceVu0FVECTOR yd = {0.0f, 0.0f, -1.0f, 1.0f};
+    sceVu0FVECTOR zd = {0.0f, -1.0f, 0.0f, 1.0f};
+    sceVu0FVECTOR p = {0};
+
+    sceVu0CameraMatrix(view.m_matrix, p, zd, yd);
+    CMatrix proj;
+    float s = (1.0f - 1.0f / (int)m_pTex->m_width) / 1.414f;
+
+    s /= 2.0f * GetMaxRange();
+
+    proj(0, 0) = s;
+    proj(0, 1) = 0.0f;
+    proj(0, 2) = 0.0f;
+    proj(0, 3) = 0.0f;
+    proj(1, 0) = 0.0f;
+    proj(1, 1) = s;
+    proj(1, 2) = 0.0f;
+    proj(1, 3) = 0.0f;
+    proj(2, 0) = 0.0f;
+    proj(2, 1) = 0.0f;
+    proj(2, 2) = 1.0f;
+    proj(2, 3) = 0.0f;
+    proj(3, 0) = 0.5f;
+    proj(3, 1) = 0.5f;
+    proj(3, 2) = 0.0f;
+    proj(3, 3) = 1.0f;
+    sceVu0MulMatrix(m_worldToUV.m_matrix, proj.m_matrix, view.m_matrix);
+}
+
 /* the node's name, its own copy (or the shared default when given none); a name of its own freed */
 void CNode::SetName(const char *name)
 {

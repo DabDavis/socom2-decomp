@@ -266,6 +266,8 @@ public:
     virtual ~CLight();
     virtual CNode *_Copy(CNode *to) const;
     virtual CBBox *UpdateBBox(bool up);
+    /* inline (CLightMap::SetTexture's range is loaded ahead of its constant: the name ours) */
+    float GetMaxRange() const { return m_maxRange; }
 
     float m_maxRangeSq;   // 0xc0
     float m_maxRange;   // 0xc4
@@ -277,6 +279,35 @@ public:
     unsigned int m_appliedToNode;   // 0xe4
     CPnt3D m_WorldPosition;   // 0xe8
 };   // 0x100 bytes (16-aligned)
+
+/* a texture: only its size placed (SOCOM 1's DWARF: CTexture : TEXTURE_PARAMS, the width first) */
+class CTexture {
+public:
+    unsigned short m_width;   // 0x0
+    unsigned short m_height;   // 0x2
+};
+
+/* a GS alpha blend, its register word (SOCOM 1's DWARF: sceGsAlpha and the word, one union) */
+class BLENDMODE {
+public:
+    unsigned long m_alphaWORD;   // 0x0
+};   // 8 bytes
+
+/* a light that projects a texture (SOCOM 1's DWARF) */
+class CLightMap : public CLight {
+public:
+    virtual ~CLightMap();
+    void SetTexture(CTexture *tex);
+
+    CTexture *m_pTex;   // 0x100
+    CMatrix m_worldToUV;   // 0x110
+    CPnt4D m_dir;   // 0x150
+    unsigned int m_isShadow : 1;   // 0x160
+    unsigned int m_isReflection : 1;   // 0x160
+    BLENDMODE m_blendmode;   // 0x168
+    float m_SpecularFade;   // 0x170
+    CNode *m_instance;   // 0x174
+};   // 0x180 bytes
 
 /* a model node: what CZAnim::CreateInstanceNode instances (dynamic_cast from CNode) */
 /* a cell of the world's grid (SOCOM 1's names; its own members not read yet) */

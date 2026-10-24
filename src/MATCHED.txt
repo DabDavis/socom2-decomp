@@ -1534,6 +1534,8 @@
 0x00314BC0 DeleteChildren__Q23zdb5CNodeFv
 0x00314E60 func_00314E60
 0x00314EE0 SetName__Q23zdb5CNodeFPCc
+0x00314F60 SetTexture__Q23zdb9CLightMapFPQ23zdb8CTexture
+0x003150A0 __dt__Q23zdb9CLightMapFv
 0x00315200 UpdateBBox__Q23zdb6CLightFb
 0x00315270 __dt__Q23zdb6CLightFv
 0x003152D0 __ct__Q23zdb6CLightFv
