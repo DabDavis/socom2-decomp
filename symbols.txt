@@ -1885,23 +1885,23 @@
 0x002113D0 0x20 func_002113D0  # OVL1
 0x002113F0 0xCC func_002113F0  # OVL1
 0x002114C0 0x48 func_002114C0  # OVL1
-0x00211510 0xC18 func_00211510  # OVL1
-0x00212130 0x8 func_00212130  # OVL1
-0x00212140 0x14 func_00212140  # OVL1; size 0x14 (a tail call through t9; the seed ran on into the padding)
-0x00212160 0x40 func_00212160  # OVL1
-0x002121A0 0xB8 func_002121A0  # OVL1
-0x00212260 0x40 func_00212260  # OVL1
-0x002122A0 0xC4 func_002122A0  # OVL1
-0x00212370 0x8 func_00212370  # OVL1
+0x00211510 0xC18 Tick__10MapCompassFP10CZSealBody  # OVL1; s1:order (hud_mapcompass.cpp's first, as SOCOM 1's; grown from 0xA28 to 0xC18)
+0x00212130 0x8 Draw__10MapCompassFPQ23zdb7CCamera  # OVL1; s1:order by hand (hud_mapcompass.cpp, after Tick; empty in SOCOM II)
+0x00212140 0x14 SetTrans__10MapCompassFf  # OVL1; size 0x14 (a tail call through t9; the seed ran on into the padding); s1:exact by hand (hud_mapcompass.cpp)
+0x00212160 0x40 SetTexture__10MapCompassFPQ23zdb8CTexture  # OVL1; s1:exact by hand (hud_mapcompass.cpp)
+0x002121A0 0xB8 SetPos__10MapCompassFffff  # OVL1; s1:order by hand (hud_mapcompass.cpp; scaled by ztwod's screen scale now)
+0x00212260 0x40 Off__10MapCompassFv  # OVL1; s1:exact by hand (hud_mapcompass.cpp)
+0x002122A0 0xC4 On__10MapCompassFv  # OVL1; s1:order by hand (hud_mapcompass.cpp; SOCOM II tests the HUD owner first)
+0x00212370 0x8 SetScale__10MapCompassFf  # OVL1; s1:exact by hand (hud_mapcompass.cpp)
 0x00212380 0x110 __dt__10MapCompassFv  # OVL1; s1:calls
 0x00212490 0x90 __dt__17CHudCompassAnchorFv  # OVL1; s1:calls
 0x00212520 0x60 func_00212520  # OVL1
 0x00212580 0x40 func_00212580  # OVL1
 0x002125C0 0x8 func_002125C0  # OVL1
 0x002125D0 0x14 func_002125D0  # OVL1
-0x002125F0 0xB4 func_002125F0  # OVL1
+0x002125F0 0xB4 __ct__10MapCompassFv  # OVL1; s1:order (hud_mapcompass.cpp, as SOCOM 1's: its anchors built 38 to a table)
 0x002126B0 0x40 func_002126B0  # OVL1
-0x002126F0 0x75C func_002126F0  # OVL1
+0x002126F0 0x75C InitHUD_Compass__10MapCompassFPQ23zdb6CWorld  # OVL1; s1:order (hud_mapcompass.cpp's last, as SOCOM 1's)
 0x00212E50 0x584 func_00212E50  # OVL1
 0x002133E0 0x1B0 func_002133E0  # OVL1
 0x00213590 0x8 func_00213590  # OVL1
