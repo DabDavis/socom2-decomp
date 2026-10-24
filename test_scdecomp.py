@@ -226,6 +226,29 @@ def test_exact_pass_refuses_a_thin_wrapper():
     ck(exact.get(0x3070C0) == "Mul__5CQuatCFPC5CQuatP5CQuat", "positive control: CQuat::Mul is exact")
 
 
+def test_vtables_are_found_by_their_rtti():
+    """CNode's table is found from its RTTI's name alone, with SOCOM II's extra slot; its
+    destructor is recognised by writing the table; the aligner refuses to swap CBatchRelocator's
+    slots the way an anchor on the align pass's wrong StartBatchReloc once did."""
+    import s1names as N
+    import s1vtables as V
+    if not N.DEMO.exists():
+        print("      (skipped: the May 2002 demo is not extracted)")
+        return
+    img, st, demo = E.image(), E.symbols(), N.Demo()
+    tables = {cls: (vt, slots) for vt, _, cls, slots in V.our_vtables(img)}
+    vt, slots = tables.get("zdb::CNode", (0, []))
+    ck(vt == 0x4067B0 and len(slots) == 15, "CNode's vtable at 0x4067B0, 15 slots (SOCOM 1: 14)")
+    al = V.Aligner(img, st, demo, 0.5, 0.03)
+    ck(al.writes_vtable(slots[0], vt) if slots else False, "CNode's destructor stores its own vtable")
+    ck(V.mangle_class("zdb::CCell") == "Q23zdb5CCell", "class names mangle as the demo's symbols")
+    al.hand = set()
+    th = V.demo_vtables(demo)["Q23zdb15CBatchRelocator"]
+    vt, slots = tables["zdb::CBatchRelocator"]
+    got = al.align(vt, slots, th, hide=0x3559E0).get(0x3559E0)
+    ck(got is not None and got[0].startswith("AddToBatch__") and got[2], "slot 0 is AddToBatch, forced")
+
+
 # --- the tree ---------------------------------------------------------------------
 
 def test_everything_baselined_still_matches():

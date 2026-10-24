@@ -7,9 +7,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK __destroy_arr(M2C_UNK *, M2C_UNK *, M2C_UNK, M2C_UNK); /* extern */
+extern M2C_UNK __dt__9C2DBitmapFv;
 extern M2C_UNK data_00409410;
-extern M2C_UNK func_001FCB10;
 
 void func_00208AB0(void) {
-    __destroy_arr(&data_00409410, &func_001FCB10, 0x80, 4);
+    __destroy_arr(&data_00409410, &__dt__9C2DBitmapFv, 0x80, 4);
 }

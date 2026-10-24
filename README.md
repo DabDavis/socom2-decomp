@@ -41,6 +41,7 @@ and data reference resolved to the address the shipped code uses.
 | `tools/beta_tu.py` | which source file a function was in, out of the press beta's asserts |
 | `tools/rename.py` | rename map rows by hand, keeping the note, refusing a taken name, listing the source still using the old one |
 | `tools/s1units.py` | SOCOM II's translation units: its static initialisers against SOCOM 1's named `__sinit_<file>`s |
+| `tools/s1vtables.py` | virtual functions named slot by slot: SOCOM II's vtables found by their RTTI's class-name string, aligned with the demo's `__vt__` tables; `--holdout` measures it on names the map already has |
 | `tools/try.py` | compile one unit with one textual substitution at a time and score one symbol, in a scratch copy of `src/` |
 | `tools/scperm.py` | the permuter: EQOA's tree-sitter mutations of one function, MW-compiled and alignment-scored (needs `.venv`) |
 | `symbols.txt` | **the map** — `0xADDR SIZE name  # note`, kept by hand from here on |
@@ -201,10 +202,25 @@ that hand-written source defines or that already carries an `s1~` verdict:
 | `s1:order` | by hand: same position in the same unit, signature checked against the code | 23 |
 | `s1:ref` | taken by address (a handler, a callback) where SOCOM 1 takes that function's (`tools/s1data.py`) | 31 |
 | `s1:unit` | a static initialiser paired with SOCOM 1's `__sinit_<file>` (`tools/s1units.py`) | 7 |
+| `s1:vtable` | the same slot of the same class's vtable (`tools/s1vtables.py`): tables found by the RTTI's class-name string, aligned by a dynamic programme anchored on exact names (and on a destructor writing its own table), other pairs scored on opcode similarity (>= 0.5, sizes within 2x), each pair forced by a 0.03 margin, every table inheriting the function agreeing | 504 |
 | `s1~` | judged and NOT applied: a name landing on several rows (static copies of SDK stubs; identical template instances), a signature that changed, or a name the relocation bug gave | 73 |
 
-2,431 of the map's 13,370 rows are named (141 of the rows are the static initialisers). A weaker tag is upgraded when the exact pass later
-confirms the same name; no name was contradicted when the passes were corrected.
+2,957 of the map's 13,370 rows are named (141 of the rows are the static initialisers). A weaker tag is upgraded when the exact pass later
+confirms the same name.
+
+**The vtables check the weaker passes.** `s1vtables.py` anchors only on exact names and scores
+every `align`/`calls`/`gap`/`order`/`ref` name like a placeholder, so the alignment can disagree
+with it: it confirms 90 and contradicted three, each then read in the code. `clear__tree<...CSnd*>`
+(align) stores CSnd's own vtable and calls `operator delete` -- it is `CSnd::~CSnd`;
+`CBatchRelocator::StartBatchReloc` (align) passes a `CTexHandle *` through as the demo's
+`AddToBatch` does; `CZPauseTest::~CZPauseTest` (calls) is slot 0 of CUIMapCtrl's table, and
+CZPauseTest's own table has its real one. Held out one at a time, the 49 exact names in vtables
+are all re-derived (opcode similarity; s1names' register-keeping skeleton gets 40 and leaves 9:
+one inlined level more re-allocates every register -- CNode::UpdateBBox scores 0.09 with
+registers, 0.60 without). Tables that disagree with each other are withheld (the C2D, CAiState
+and CEntity families changed shape and their many identical stubs could slide), and a name two
+SOCOM II functions would take -- an inline's out-of-line copies, one per overlay -- is an `s1~`.
+The tables themselves are in `data.txt` (`__vt__`/`__RTTI__`, 436 rows).
 
 **The relocation keying bug (fixed 2026-10-24).** `.relmain`'s `r_offset` is already a virtual
 address; the first version added `main`'s base to it, so every "exact" comparison masked words

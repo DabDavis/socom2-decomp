@@ -6,7 +6,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_0039E610();                                /* extern */
+s32 ftell__7CFileIOCFv();                           /* extern */
 
 s32 ftell__9CBufferIOCFv(char *arg0) {
     s32 temp_v1;
@@ -15,5 +15,5 @@ s32 ftell__9CBufferIOCFv(char *arg0) {
     if (temp_v1 != 0) {
         return M2C_FIELD(arg0, s32 *, 0x20) - temp_v1;
     }
-    return func_0039E610();
+    return ftell__7CFileIOCFv();
 }

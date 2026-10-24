@@ -1368,25 +1368,25 @@
 0x001D4BF0 0x28 func_001D4BF0  # MAIN
 0x001D4C20 0x370 func_001D4C20  # MAIN
 0x001E7040 0xB4 func_001E7040  # OVL1
-0x001E7100 0x2D8 func_001E7100  # OVL1
-0x001E73E0 0x8 func_001E73E0  # OVL1
-0x001E73F0 0x8 func_001E73F0  # OVL1
+0x001E7100 0x2D8 __dt__8COurGameFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001E73E0 0x8 StopPlay__8COurGameFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001E73F0 0x8 StartPlay__8COurGameFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001E7400 0x28 StopEngine__8COurGameFv  # OVL1; s1:exact
-0x001E7430 0xF4 func_001E7430  # OVL1
+0x001E7430 0xF4 StartEngine__8COurGameFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001E7530 0x16C func_001E7530  # OVL1
 0x001E76A0 0xA8 func_001E76A0  # OVL1
 0x001E7750 0xA8 func_001E7750  # OVL1
-0x001E7800 0xC0 func_001E7800  # OVL1
-0x001E78C0 0xC0 func_001E78C0  # OVL1
-0x001E7980 0xD0 func_001E7980  # OVL1
+0x001E7800 0xC0 __dt__12CMPExitStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001E78C0 0xC0 __dt__10CExitStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001E7980 0xD0 __dt__10CMenuStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001E7A50 0x58 func_001E7A50  # OVL1
-0x001E7AB0 0x98 func_001E7AB0  # OVL1
+0x001E7AB0 0x98 __dt__10CGameStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001E7B50 0xC func_001E7B50  # OVL1
 0x001E7B60 0x14 func_001E7B60  # OVL1
 0x001E7B80 0x80 func_001E7B80  # OVL1
 0x001E7C00 0x8 func_001E7C00  # OVL1
-0x001E7C10 0x8 func_001E7C10  # OVL1
-0x001E7C20 0x8 func_001E7C20  # OVL1
+0x001E7C10 0x8 Init__10CGameStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001E7C20 0x8 Tick__10CGameStateFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001E7C30 0x8 func_001E7C30  # OVL1
 0x001E7C40 0x8 func_001E7C40  # OVL1
 0x001E7C50 0x8 func_001E7C50  # OVL1
@@ -1473,8 +1473,8 @@
 0x001EB000 0x2C func_001EB000  # OVL1
 0x001EB030 0x8 func_001EB030  # OVL1
 0x001EB040 0x8 func_001EB040  # OVL1
-0x001EB050 0x8 func_001EB050  # OVL1
-0x001EB060 0x8 func_001EB060  # OVL1
+0x001EB050 0x8 PreInit__10CCoreStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001EB060 0x8 PreUnInit__10CCoreStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001EB070 0x848 func_001EB070  # OVL1
 0x001EB8C0 0x2D0 func_001EB8C0  # OVL1
 0x001EBB90 0xC func_001EBB90  # OVL1
@@ -1482,15 +1482,15 @@
 0x001EBC60 0x3C func_001EBC60  # OVL1
 0x001EBCA0 0xF8 func_001EBCA0  # OVL1
 0x001EBDA0 0x90 func_001EBDA0  # OVL1
-0x001EBE30 0x98 func_001EBE30  # OVL1
+0x001EBE30 0x98 UnInit__10CCoreStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001EBED0 0x578 func_001EBED0  # OVL1
-0x001EC450 0x24 func_001EC450  # OVL1
-0x001EC480 0x4B8 func_001EC480  # OVL1
+0x001EC450 0x24 SetActive__Q23zdb5CNodeFb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001EC480 0x4B8 Init__10CCoreStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001EC940 0x10 func_001EC940  # OVL1
-0x001EC950 0xF8 func_001EC950  # OVL1
+0x001EC950 0xF8 __dt__10CCoreStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001ECA50 0xB8 func_001ECA50  # OVL1
-0x001ECB10 0xE4 func_001ECB10  # OVL1
-0x001ECC00 0x38 func_001ECC00  # OVL1
+0x001ECB10 0xE4 OnPop__10CCoreStateFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001ECC00 0x38 OnPush__10CCoreStateFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001ECC40 0xA8 func_001ECC40  # OVL1
 0x001ECCF0 0x264 func_001ECCF0  # OVL1
 0x001ECF60 0x94 func_001ECF60  # OVL1
@@ -1505,7 +1505,7 @@
 0x001EDED0 0x3C func_001EDED0  # OVL1
 0x001EDF10 0x8 func_001EDF10  # OVL1
 0x001EDF20 0x1C func_001EDF20  # OVL1
-0x001EDF40 0xC0 func_001EDF40  # OVL1
+0x001EDF40 0xC0 __dt__15CCinematicStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001EE000 0x77C func_001EE000  # OVL1
 0x001EE780 0x3BC func_001EE780  # OVL1
 0x001EEB40 0x30 func_001EEB40  # OVL1
@@ -1537,10 +1537,10 @@
 0x001F1840 0x24 func_001F1840  # OVL1
 0x001F1870 0xC func_001F1870  # OVL1
 0x001F1880 0x17C func_001F1880  # OVL1
-0x001F1A00 0xD4 func_001F1A00  # OVL1
-0x001F1AE0 0x60 func_001F1AE0  # OVL1
+0x001F1A00 0xD4 UnInit__10CExitStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001F1AE0 0x60 __dt__9CExitMenuFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F1B40 0x68 Tick__10CExitStateFf  # OVL1; s1:calls
-0x001F1BB0 0x1B4 func_001F1BB0  # OVL1
+0x001F1BB0 0x1B4 Init__10CExitStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F1D70 0xA0 func_001F1D70  # OVL1
 0x001F1E10 0x2C GetSeal__10CEntityItrCFv  # OVL1; s1:exact
 0x001F1E40 0x94 func_001F1E40  # OVL1
@@ -1553,43 +1553,43 @@
 0x001F3290 0x2B8 func_001F3290  # OVL1
 0x001F3550 0x394 func_001F3550  # OVL1
 0x001F38F0 0x20C func_001F38F0  # OVL1
-0x001F3B00 0xC func_001F3B00  # OVL1
+0x001F3B00 0xC GetReaderFileName__9CExitMenuFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F3B10 0x8 func_001F3B10  # OVL1
-0x001F3B20 0x8 func_001F3B20  # OVL1
-0x001F3B30 0x8 func_001F3B30  # OVL1
+0x001F3B20 0x8 MyTick__9CGameMenuFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001F3B30 0x8 PrepControls__9CGameMenuFPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F3B40 0x68 func_001F3B40  # OVL1
 0x001F3BB0 0x18 func_001F3BB0  # OVL1
 0x001F3BD0 0x8 func_001F3BD0  # OVL1
 0x001F3BE0 0x8 func_001F3BE0  # OVL1
 0x001F3BF0 0x850 func_001F3BF0  # OVL1
-0x001F4440 0x140 func_001F4440  # OVL1
-0x001F4580 0x60 func_001F4580  # OVL1
-0x001F45E0 0x48 func_001F45E0  # OVL1
-0x001F4630 0x8 func_001F4630  # OVL1
-0x001F4640 0x220 func_001F4640  # OVL1
-0x001F4860 0x4BC func_001F4860  # OVL1
+0x001F4440 0x140 UnInit__10CMenuStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001F4580 0x60 __dt__14CMenuStateMenuFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001F45E0 0x48 OnPop__10CMenuStateFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001F4630 0x8 OnPush__10CMenuStateFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001F4640 0x220 Tick__10CMenuStateFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001F4860 0x4BC Init__10CMenuStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F4D20 0xC4 func_001F4D20  # OVL1
 0x001F4DF0 0x224 func_001F4DF0  # OVL1
 0x001F5020 0x3AC func_001F5020  # OVL1
 0x001F53D0 0x24C func_001F53D0  # OVL1
-0x001F5620 0xC func_001F5620  # OVL1
+0x001F5620 0xC GetReaderFileName__14CMenuStateMenuFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F5630 0x8 func_001F5630  # OVL1
 0x001F5640 0x5E4 func_001F5640  # OVL1
 0x001F5C30 0x68 func_001F5C30  # OVL1
 0x001F5CA0 0x8 func_001F5CA0  # OVL1
-0x001F5CB0 0x8 func_001F5CB0  # OVL1
-0x001F5CC0 0x8 func_001F5CC0  # OVL1
-0x001F5CD0 0x8 func_001F5CD0  # OVL1
-0x001F5CE0 0x8 func_001F5CE0  # OVL1
-0x001F5CF0 0x8 func_001F5CF0  # OVL1
+0x001F5CB0 0x8 AddToBatch__Q23zdb16CTextureRelocMgrCFPQ23zdb10CTexHandle  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001F5CC0 0x8 EndBatchReloc__Q23zdb16CTextureRelocMgrCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001F5CD0 0x8 PreGetSprPacket__Q23zdb16CTextureRelocMgrFPQ23zdb10CTexHandle  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001F5CE0 0x8 StartBatchReloc__Q23zdb16CTextureRelocMgrCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001F5CF0 0x8 ClearAll__Q23zdb16CTextureRelocMgrFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F5D00 0x38 func_001F5D00  # OVL1
-0x001F5D40 0xCC func_001F5D40  # OVL1
-0x001F5E10 0x60 func_001F5E10  # OVL1
-0x001F5E70 0x7F0 func_001F5E70  # OVL1
-0x001F6660 0x2BC func_001F6660  # OVL1
-0x001F6920 0xD0 func_001F6920  # OVL1
+0x001F5D40 0xCC UnInit__10CLoadStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001F5E10 0x60 __dt__9CLoadMenuFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001F5E70 0x7F0 Tick__10CLoadStateFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001F6660 0x2BC Init__10CLoadStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001F6920 0xD0 __dt__10CLoadStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F69F0 0x7C func_001F69F0  # OVL1
-0x001F6A70 0xC func_001F6A70  # OVL1
+0x001F6A70 0xC GetReaderFileName__9CLoadMenuFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F6A80 0x8 func_001F6A80  # OVL1
 0x001F6A90 0x3C func_001F6A90  # OVL1
 0x001F6AD0 0x10 func_001F6AD0  # OVL1
@@ -1598,7 +1598,7 @@
 0x001F6B60 0x17C func_001F6B60  # OVL1
 0x001F6CE0 0x128 func_001F6CE0  # OVL1
 0x001F6E10 0x1B8 func_001F6E10  # OVL1
-0x001F6FD0 0x60 func_001F6FD0  # OVL1
+0x001F6FD0 0x60 GetAssetLibs__3C2DFRQ23C2D8CLibList  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F7030 0x190 func_001F7030  # OVL1
 0x001F71C0 0x198 func_001F71C0  # OVL1
 0x001F7360 0x1FC func_001F7360  # OVL1
@@ -1609,9 +1609,9 @@
 0x001F7E50 0x20 func_001F7E50  # OVL1
 0x001F7E70 0x10 func_001F7E70  # OVL1
 0x001F7E80 0xF8 func_001F7E80  # OVL1
-0x001F7F80 0x70 func_001F7F80  # OVL1
+0x001F7F80 0x70 __dt__6CFaderFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F7FF0 0x1158 func_001F7FF0  # OVL1
-0x001F9150 0x8 func_001F9150  # OVL1
+0x001F9150 0x8 SetTrans__9C2DStringFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F9160 0x260 func_001F9160  # OVL1
 0x001F93C0 0x3E4 func_001F93C0  # OVL1
 0x001F97B0 0x764 func_001F97B0  # OVL1
@@ -1631,31 +1631,31 @@
 0x001FC520 0x78 func_001FC520  # OVL1
 0x001FC5A0 0x78 func_001FC5A0  # OVL1
 0x001FC620 0x60 __dt__7C2DPolyFv  # OVL1; s1:ref (taken by address where SOCOM 1 takes __dt__7C2DPolyFv's)
-0x001FC680 0x80 func_001FC680  # OVL1
+0x001FC680 0x80 __dt__13C2DBitmapPolyFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FC700 0x108 func_001FC700  # OVL1
 0x001FC810 0xA0 func_001FC810  # OVL1
 0x001FC8B0 0x60 func_001FC8B0  # OVL1
 0x001FC910 0x80 func_001FC910  # OVL1
-0x001FC990 0x60 func_001FC990  # OVL1
+0x001FC990 0x60 __dt__14CHudBrightTextFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FC9F0 0x120 func_001FC9F0  # OVL1
-0x001FCB10 0x60 func_001FCB10  # OVL1
+0x001FCB10 0x60 __dt__9C2DBitmapFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FCB70 0x190 func_001FCB70  # OVL1
 0x001FCD00 0x6C func_001FCD00  # OVL1
 0x001FCD70 0x10 func_001FCD70  # OVL1
 0x001FCD80 0x514 func_001FCD80  # OVL1
 0x001FD2A0 0x70 func_001FD2A0  # OVL1
-0x001FD310 0x80 func_001FD310  # OVL1
+0x001FD310 0x80 __dt__10CLetterBoxFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FD390 0x190 func_001FD390  # OVL1
 0x001FD520 0x70 func_001FD520  # OVL1
 0x001FD590 0x70 func_001FD590  # OVL1
 0x001FD600 0xC0 func_001FD600  # OVL1
-0x001FD6C0 0x70 func_001FD6C0  # OVL1
-0x001FD730 0x108 func_001FD730  # OVL1
-0x001FD840 0x80 func_001FD840  # OVL1
+0x001FD6C0 0x70 __dt__14CZActionBitmapFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001FD730 0x108 __dt__10CTeamNamesFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001FD840 0x80 __dt__10PoseBitmapFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FD8C0 0x148 __dt__16CInGameWeaponSelFv  # OVL1; s1:calls
-0x001FDA10 0x1D0 func_001FDA10  # OVL1
-0x001FDBE0 0xA0 func_001FDBE0  # OVL1
-0x001FDC80 0x60 func_001FDC80  # OVL1
+0x001FDA10 0x1D0 __dt__10CWeaponSelFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001FDBE0 0xA0 __dt__9CPlainBmpFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001FDC80 0x60 __dt__10UIVarMixinFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FDCE0 0xC0 func_001FDCE0  # OVL1
 0x001FDDA0 0x70 func_001FDDA0  # OVL1
 0x001FDE10 0x20 func_001FDE10  # OVL1
@@ -1663,25 +1663,25 @@
 0x001FDEB0 0x28 func_001FDEB0  # OVL1
 0x001FDEE0 0x240 func_001FDEE0  # OVL1
 0x001FE120 0x6C func_001FE120  # OVL1
-0x001FE190 0x8 func_001FE190  # OVL1
-0x001FE1A0 0xC func_001FE1A0  # OVL1
+0x001FE190 0x8 Draw__9C2DStringFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001FE1A0 0xC GetSpacing__9C2DStringFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FE1B0 0x20 func_001FE1B0  # OVL1
 0x001FE1D0 0x20 func_001FE1D0  # OVL1
 0x001FE1F0 0x20 func_001FE1F0  # OVL1
-0x001FE210 0x20 func_001FE210  # OVL1
+0x001FE210 0x20 func_001FE210  # OVL1; s1~ Enable__3C2DFb (one of 2 out-of-line copies of an inline, by s1:vtable)
 0x001FE230 0x8 func_001FE230  # OVL1
 0x001FE240 0x8 func_001FE240  # OVL1
 0x001FE250 0x8 func_001FE250  # OVL1
 0x001FE260 0x8 func_001FE260  # OVL1
 0x001FE270 0x14 func_001FE270  # OVL1
-0x001FE290 0x8 func_001FE290  # OVL1
-0x001FE2A0 0x8 func_001FE2A0  # OVL1
-0x001FE2B0 0x20 func_001FE2B0  # OVL1
-0x001FE2D0 0x8 func_001FE2D0  # OVL1
-0x001FE2E0 0x8 func_001FE2E0  # OVL1
-0x001FE2F0 0x8 func_001FE2F0  # OVL1
-0x001FE300 0x8 func_001FE300  # OVL1
-0x001FE310 0x8 func_001FE310  # OVL1
+0x001FE290 0x8 SetActive__3C2DFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001FE2A0 0x8 SetNormal__3C2DFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001FE2B0 0x20 SetUseFrameBufferAlpha__3C2DFb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001FE2D0 0x8 ParseZAnimCmd__3C2DFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001FE2E0 0x8 TickZAnimCmd__3C2DFP14_zanim_cmd_hdrPfPb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001FE2F0 0x8 GetZAnimCmdType__3C2DFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001FE300 0x8 SetMapOffset__3C2DFii  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001FE310 0x8 Draw__3C2DFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FE320 0x8 func_001FE320  # OVL1
 0x001FE330 0x8 func_001FE330  # OVL1
 0x001FE340 0x420 func_001FE340  # OVL1
@@ -1697,8 +1697,8 @@
 0x001FEC50 0x8 func_001FEC50  # OVL1
 0x001FEC60 0xC func_001FEC60  # OVL1
 0x001FEC70 0x48 AddLetterbox__10CLetterBoxFv  # OVL1; s1:exact
-0x001FECC0 0x1D0 func_001FECC0  # OVL1
-0x001FEE90 0x7C func_001FEE90  # OVL1
+0x001FECC0 0x1D0 Tick__10CLetterBoxFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x001FEE90 0x7C Draw__10CLetterBoxFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FEF10 0x144 func_001FEF10  # OVL1
 0x001FF060 0x94 func_001FF060  # OVL1
 0x001FF100 0x154 func_001FF100  # OVL1
@@ -1718,9 +1718,9 @@
 0x00200F30 0x118 func_00200F30  # OVL1
 0x00201050 0x1A0 func_00201050  # OVL1
 0x002011F0 0x384 func_002011F0  # OVL1
-0x00201580 0xC func_00201580  # OVL1
-0x00201590 0x8 func_00201590  # OVL1
-0x002015A0 0xF0 func_002015A0  # OVL1
+0x00201580 0xC On__11CZPauseTestFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00201590 0x8 Off__11CZPauseTestFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x002015A0 0xF0 Draw__11CZPauseTestFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00201690 0xB78 func_00201690  # OVL1
 0x00202210 0x154 func_00202210  # OVL1
 0x00202370 0x1B0 func_00202370  # OVL1
@@ -1730,18 +1730,18 @@
 0x002041E0 0x854 func_002041E0  # OVL1
 0x00204A40 0x7B4 func_00204A40  # OVL1
 0x00205200 0x278 func_00205200  # OVL1
-0x00205480 0x318 func_00205480  # OVL1
+0x00205480 0x318 __dt__11CZPauseTestFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002057A0 0x58 func_002057A0  # OVL1
 0x00205800 0x170 func_00205800  # OVL1
 0x00205970 0xF8 func_00205970  # OVL1
 0x00205A70 0x1D0 func_00205A70  # OVL1
-0x00205C40 0x1C0 func_00205C40  # OVL1
+0x00205C40 0x1C0 __dt__15CZObjectiveListFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00205E00 0x990 func_00205E00  # OVL1
 0x00206790 0x18 func_00206790  # OVL1
 0x002067B0 0x118 func_002067B0  # OVL1
 0x002068D0 0x8 func_002068D0  # OVL1
 0x002068E0 0xC8 func_002068E0  # OVL1
-0x002069B0 0xAC func_002069B0  # OVL1
+0x002069B0 0xAC Draw__15CZObjectiveListFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00206A60 0x140 func_00206A60  # OVL1
 0x00206BA0 0xD0 func_00206BA0  # OVL1
 0x00206C70 0x13C func_00206C70  # OVL1
@@ -1760,7 +1760,7 @@
 0x00207540 0x14 func_00207540  # OVL1
 0x00207560 0x8 func_00207560  # OVL1
 0x00207570 0x300 func_00207570  # OVL1
-0x00207870 0x138 func_00207870  # OVL1
+0x00207870 0x138 Tick__15CZObjectiveListFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002079B0 0x50 Init__15CZObjectiveListFv  # OVL1; s1:calls
 0x00207A00 0x460 func_00207A00  # OVL1
 0x00207E60 0xF8 func_00207E60  # OVL1
@@ -1774,21 +1774,21 @@
 0x00208600 0x48C func_00208600  # OVL1
 0x00208A90 0x1C func_00208A90  # OVL1
 0x00208AB0 0x1C func_00208AB0  # OVL1
-0x00208AD0 0xB0 func_00208AD0  # OVL1
-0x00208B80 0x8 func_00208B80  # OVL1
-0x00208B90 0x8 func_00208B90  # OVL1
+0x00208AD0 0xB0 __dt__17CZClaymoreMapItemFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00208B80 0x8 PostDraw__9CZMapItemFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00208B90 0x8 Clip__9CZMapItemFP11CZNewHudMap  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00208BA0 0x340 Tick__17CZClaymoreMapItemFP11CZNewHudMapf  # OVL1; s1:calls
 0x00208EE0 0x78 func_00208EE0  # OVL1
-0x00208F60 0x4C func_00208F60  # OVL1
-0x00208FB0 0x8 func_00208FB0  # OVL1
-0x00208FC0 0x8 func_00208FC0  # OVL1
+0x00208F60 0x4C __dt__9CZMapItemFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00208FB0 0x8 Tick__9CZMapItemFP11CZNewHudMapf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00208FC0 0x8 Draw__9CZMapItemFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00208FD0 0x7C func_00208FD0  # OVL1
 0x00209050 0xAC func_00209050  # OVL1
 0x00209100 0xA8 func_00209100  # OVL1
 0x002091B0 0x78 func_002091B0  # OVL1
 0x00209230 0x11C func_00209230  # OVL1
 0x00209350 0x434 func_00209350  # OVL1
-0x00209790 0x348 func_00209790  # OVL1
+0x00209790 0x348 Draw__11CZNewHudMapFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00209AE0 0x3F8 func_00209AE0  # OVL1
 0x00209EE0 0x234 func_00209EE0  # OVL1
 0x0020A120 0x208 func_0020A120  # OVL1
@@ -1806,13 +1806,13 @@
 0x0020B2C0 0x520 func_0020B2C0  # OVL1
 0x0020B7E0 0x18 func_0020B7E0  # OVL1
 0x0020B800 0x1FC func_0020B800  # OVL1
-0x0020BA00 0x218 func_0020BA00  # OVL1
+0x0020BA00 0x218 __dt__11CZNewHudMapFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0020BC20 0x1D4 func_0020BC20  # OVL1
 0x0020BE00 0x274 func_0020BE00  # OVL1
 0x0020C080 0xAC4 func_0020C080  # OVL1
 0x0020CB50 0xF8 func_0020CB50  # OVL1
 0x0020CC50 0x74 func_0020CC50  # OVL1
-0x0020CCD0 0x60 func_0020CCD0  # OVL1
+0x0020CCD0 0x60 __dt__7C2DLineFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0020CD30 0x1C func_0020CD30  # OVL1
 0x0020CD50 0xB4 func_0020CD50  # OVL1
 0x0020CE10 0x1C func_0020CE10  # OVL1
@@ -1820,18 +1820,18 @@
 0x0020CE50 0x1C __arraydtor$2546  # OVL1; s1:exact
 0x0020CE70 0x70 __dt__Q227@unnamed@hud_newhudmap_cpp@12COverlayLineFv  # OVL1; s1:ref (taken by address where SOCOM 1 takes __dt__Q227@unnamed@hud_newhudmap_cpp@12COverlayLineFv's)
 0x0020CEE0 0x54 func_0020CEE0  # OVL1
-0x0020CF40 0xB0 func_0020CF40  # OVL1
-0x0020CFF0 0x320 func_0020CFF0  # OVL1
+0x0020CF40 0xB0 __dt__15CZMPBombMapItemFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0020CFF0 0x320 Tick__15CZMPBombMapItemFP11CZNewHudMapf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0020D310 0x80 __ct__15CZMPBombMapItemFPQ23zdb5CNode  # OVL1; s1:calls
-0x0020D390 0x248 func_0020D390  # OVL1
-0x0020D5E0 0x8 func_0020D5E0  # OVL1
-0x0020D5F0 0x4D0 func_0020D5F0  # OVL1
+0x0020D390 0x248 Draw__9CZLineMapFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0020D5E0 0x8 Draw__9CPlainBmpFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0020D5F0 0x4D0 Clip__9CZLineMapFP11CZNewHudMap  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0020DAC0 0x4B0 func_0020DAC0  # OVL1
 0x0020DF70 0x3F8 func_0020DF70  # OVL1
 0x0020E370 0x100 func_0020E370  # OVL1
 0x0020E470 0x2DC func_0020E470  # OVL1
 0x0020E750 0x474 func_0020E750  # OVL1
-0x0020EBD0 0x374 func_0020EBD0  # OVL1
+0x0020EBD0 0x374 Tick__9CZLineMapFP11CZNewHudMapf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0020EF50 0x1AC func_0020EF50  # OVL1
 0x0020F100 0xB4 func_0020F100  # OVL1
 0x0020F1C0 0x28 func_0020F1C0  # OVL1
@@ -1850,7 +1850,7 @@
 0x0020FA10 0x60 func_0020FA10  # OVL1
 0x0020FA70 0x228 func_0020FA70  # OVL1
 0x0020FCA0 0x48 func_0020FCA0  # OVL1
-0x0020FCF0 0x334 func_0020FCF0  # OVL1
+0x0020FCF0 0x334 __dt__9CZLineMapFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00210030 0xE8 func_00210030  # OVL1
 0x00210120 0x8 func_00210120  # OVL1
 0x00210130 0xC func_00210130  # OVL1
@@ -1921,9 +1921,9 @@
 0x00217550 0x364 func_00217550  # OVL1
 0x002178C0 0x1488 func_002178C0  # OVL1
 0x00218D50 0x50 func_00218D50  # OVL1
-0x00218DA0 0x34 func_00218DA0  # OVL1
+0x00218DA0 0x34 Draw__14BitmapReticuleFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00218DE0 0x2B0 func_00218DE0  # OVL1
-0x00219090 0x2A0 func_00219090  # OVL1
+0x00219090 0x2A0 __dt__14BitmapReticuleFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00219330 0x54 func_00219330  # OVL1
 0x00219390 0x28 func_00219390  # OVL1
 0x002193C0 0x8 func_002193C0  # OVL1
@@ -1968,16 +1968,16 @@
 0x00220C30 0x68 func_00220C30  # OVL1
 0x00220CA0 0x54 func_00220CA0  # OVL1
 0x00220D00 0x288 func_00220D00  # OVL1
-0x00220F90 0x8 func_00220F90  # OVL1
-0x00220FA0 0x8 func_00220FA0  # OVL1
+0x00220F90 0x8 func_00220F90  # OVL1; s1~ GetSealCtrlAi__9CSealCtrlFv (one of 2 out-of-line copies of an inline, by s1:vtable)
+0x00220FA0 0x8 func_00220FA0  # OVL1; s1~ IsAi__9CSealCtrlCFv (one of 2 out-of-line copies of an inline, by s1:vtable)
 0x00220FB0 0xB4 func_00220FB0  # OVL1
 0x00221070 0x658 func_00221070  # OVL1
 0x002216D0 0x29C func_002216D0  # OVL1
 0x00221970 0x1A0 func_00221970  # OVL1
 0x00221B10 0xD4 func_00221B10  # OVL1
 0x00221BF0 0x4C func_00221BF0  # OVL1
-0x00221C40 0xF0 func_00221C40  # OVL1
-0x00221D30 0x8 func_00221D30  # OVL1
+0x00221C40 0xF0 Tick__10PoseBitmapFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00221D30 0x8 func_00221D30  # OVL1; s1~ IsRemote__9CSealCtrlCFv (one of 2 out-of-line copies of an inline, by s1:vtable)
 0x00221D40 0x4C Draw__10PoseBitmapFPQ23zdb7CCamera  # OVL1; s1:exact
 0x00221D90 0x160 func_00221D90  # OVL1
 0x00221EF0 0x54 func_00221EF0  # OVL1
@@ -1990,16 +1990,16 @@
 0x002227B0 0x4C8 func_002227B0  # OVL1
 0x00222C80 0x224 func_00222C80  # OVL1
 0x00222EB0 0x58 DrawAlphaBravo__15CZPlayerMapItemFPQ23zdb7CCamera  # OVL1; s1:exact
-0x00222F10 0xC0 func_00222F10  # OVL1
-0x00222FD0 0x8 func_00222FD0  # OVL1
-0x00222FE0 0xD0 func_00222FE0  # OVL1
+0x00222F10 0xC0 Draw__15CZPlayerMapItemFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00222FD0 0x8 Clip__15CZPlayerMapItemFP11CZNewHudMap  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00222FE0 0xD0 Tick__15CZPlayerMapItemFP11CZNewHudMapf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002230B0 0x12C __ct__15CZPlayerMapItemFP7CEntity  # OVL1; s1:calls
 0x002231E0 0x3C func_002231E0  # OVL1
 0x00223220 0x6C InitStaticItems__15CZPlayerMapItemFv  # OVL1; s1:exact
 0x00223290 0x8 func_00223290  # OVL1
 0x002232A0 0x374 func_002232A0  # OVL1
-0x00223620 0x60 func_00223620  # OVL1
-0x00223680 0x2EC func_00223680  # OVL1
+0x00223620 0x60 __dt__11CMPExitMenuFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00223680 0x2EC Tick__12CMPExitStateFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00223970 0x79C func_00223970  # OVL1
 0x00224110 0xA4 func_00224110  # OVL1
 0x002241C0 0x48 func_002241C0  # OVL1
@@ -2039,29 +2039,29 @@
 0x00227960 0x170 func_00227960  # OVL1
 0x00227AD0 0x9E4 func_00227AD0  # OVL1
 0x002284C0 0x194 func_002284C0  # OVL1
-0x00228660 0x80 func_00228660  # OVL1
+0x00228660 0x80 __dt__8CFlashFXFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002286E0 0xA0 func_002286E0  # OVL1
 0x00228780 0x40 func_00228780  # OVL1
 0x002287C0 0x8 func_002287C0  # OVL1
 0x002287D0 0x14 func_002287D0  # OVL1
 0x002287F0 0xA0 func_002287F0  # OVL1
 0x00228890 0x7C func_00228890  # OVL1
-0x00228910 0x184 func_00228910  # OVL1
+0x00228910 0x184 Tick__8CFlashFXFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00228AA0 0x50 Reset__8CFlashFXFv  # OVL1; s1:exact
 0x00228AF0 0x54 Flash__8CFlashFXFfff  # OVL1; s1:exact
 0x00228B50 0x28 SetMinBrightness__6CFaderFf  # OVL1; s1:exact
 0x00228B80 0x40 FadeIn__6CFaderFf  # OVL1; s1:exact
-0x00228BC0 0x240 func_00228BC0  # OVL1
+0x00228BC0 0x240 Tick__6CFaderFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00228E00 0xD0 func_00228E00  # OVL1
 0x00228ED0 0xC func_00228ED0  # OVL1
 0x00228EE0 0x54C PlayCamera__16CZHudMissionCamsFP11CMissionCamb  # OVL1; s1:callee
 0x00229430 0x40 PlayCamera__16CZHudMissionCamsFPCc  # OVL1; s1:exact
-0x00229470 0xAC func_00229470  # OVL1
+0x00229470 0xAC Draw__16CZHudMissionCamsFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00229520 0x2F0 func_00229520  # OVL1
 0x00229810 0x1E0 func_00229810  # OVL1
 0x002299F0 0x7C func_002299F0  # OVL1
 0x00229A70 0x104 func_00229A70  # OVL1
-0x00229B80 0xA0 func_00229B80  # OVL1
+0x00229B80 0xA0 __dt__16CZHudMissionCamsFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00229C20 0x78 func_00229C20  # OVL1
 0x00229CA0 0x60 func_00229CA0  # OVL1
 0x00229D00 0x590 func_00229D00  # OVL1
@@ -2740,7 +2740,7 @@
 0x00258CE0 0x17C func_00258CE0  # OVL1
 0x00258E60 0x20 func_00258E60  # OVL1
 0x00258E80 0x9C func_00258E80  # OVL1
-0x00258F20 0x17C func_00258F20  # OVL1
+0x00258F20 0x17C __dt__Q23zar4CZARFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002590A0 0x190 func_002590A0  # OVL1
 0x00259230 0xC func_00259230  # OVL1
 0x00259240 0xC func_00259240  # OVL1
@@ -3022,7 +3022,7 @@
 0x00271890 0x60 func_00271890  # OVL1
 0x002718F0 0x60 func_002718F0  # OVL1
 0x00271950 0x60 func_00271950  # OVL1
-0x002719B0 0x128 func_002719B0  # OVL1
+0x002719B0 0x128 __dt__13CZAnimArgListFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00271AE0 0x4C __dt__9CZAnimArgFv  # OVL1; s1:align
 0x00271B30 0x3B0 func_00271B30  # OVL1
 0x00271EE0 0x1FC AddNetworkPacketArgs__13CZAnimArgListFP6CZAnimP18ZAnimNetworkPacket  # OVL1; s1:align
@@ -3033,7 +3033,7 @@
 0x00272480 0xD8 GetCharP__13CZAnimArgListFi  # OVL1; s1:callee
 0x00272560 0xD8 func_00272560  # OVL1
 0x00272640 0xD8 func_00272640  # OVL1
-0x00272720 0xD8 func_00272720  # OVL1
+0x00272720 0xD8 GetPnt3D__13CZAnimArgListFQ29CZAnimArg4TYPE  # OVL1; s1:callee by hand (called where SOCOM 1's zAnimRangeTestTick calls it)
 0x00272800 0x60 func_00272800  # OVL1
 0x00272860 0x70 Copy__14CZAnimArgPnt3DFv  # OVL1; tu: zanim_anim.cpp~ (1.0 beta); s1:exact
 0x002728D0 0x44 __ct__14CZAnimArgPnt3DFQ29CZAnimArg4TYPEPC6CPnt3D  # OVL1; tu: zanim_anim.cpp~ (1.0 beta); s1:exact
@@ -3054,22 +3054,22 @@
 0x00273980 0x24 GetHealth__6CZAnimFv  # OVL1; s1:align
 0x002739B0 0x44 func_002739B0  # OVL1
 0x00273A00 0x48 Reset__8CZAnimExFPfPf  # OVL1; s1:align
-0x00273A50 0x48C func_00273A50  # OVL1
+0x00273A50 0x48C OnWeaponHit__8CZAnimExFPQ23zdb5CNodePQ23zdb15IntersectStructP12CZProjectile  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00273EE0 0xA8 func_00273EE0  # OVL1
 0x00273F90 0xE8 func_00273F90  # OVL1
 0x00274080 0x58 Add__14CZAnimExVectorFP8CZAnimEx  # OVL1; s1:align
 0x002740E0 0x20C OnWeaponHitInit__6CZAnimFv  # OVL1; s1:calls
-0x002742F0 0x8 func_002742F0  # OVL1
-0x00274300 0x8 func_00274300  # OVL1
+0x002742F0 0x8 func_002742F0  # OVL1; s1~ OnWeaponHit__Q23zdb7CNodeExFPQ23zdb5CNodePQ23zdb15IntersectStructP12CZProjectile (one of 2 out-of-line copies of an inline, by s1:vtable)
+0x00274300 0x8 func_00274300  # OVL1; s1~ OnAction__Q23zdb7CNodeExFPQ23zdb5CNodePv (one of 2 out-of-line copies of an inline, by s1:vtable)
 0x00274310 0x5C func_00274310  # OVL1
-0x00274370 0x5C func_00274370  # OVL1
-0x002743D0 0x5C func_002743D0  # OVL1
-0x00274430 0x5C func_00274430  # OVL1
-0x00274490 0x5C func_00274490  # OVL1
+0x00274370 0x5C __dt__14CZAnimArgPnt3DFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x002743D0 0x5C __dt__12CZAnimArgCmdFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00274430 0x5C __dt__14CZAnimArgValveFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00274490 0x5C __dt__13CZAnimArgNodeFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002744F0 0xA0 Advance__Q224@unnamed@zanim_menu_cpp@17CSelectedCharsItrFv  # OVL1; s1:align
 0x00274590 0x8 zAnimUIAppMenuTick__FP14_zanim_cmd_hdrPf  # OVL1; ZAnim ui::UI_APP_COMMAND tick (InitCommands' #59, file id 0x3c); s1:cmd (registered under "ui::UI_APP_COMMAND" tick in both builds' InitCommands)
 0x002745A0 0x2B4 zAnimUIMenuTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:align
-0x00274860 0x8 func_00274860  # OVL1
+0x00274860 0x8 Get2DVisual__Q23zdb7CVisualFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00274870 0xC0 GetUICommandType__FPCc  # OVL1; s1:align
 0x00274930 0xC func_00274930  # OVL1
 0x00274940 0x2B8 func_00274940  # OVL1
@@ -3407,15 +3407,15 @@
 0x00289E20 0x1C8 func_00289E20  # OVL1
 0x00289FF0 0x70 func_00289FF0  # OVL1
 0x0028A060 0x9C func_0028A060  # OVL1
-0x0028A100 0x158 func_0028A100  # OVL1
+0x0028A100 0x158 ReadLIP__10CZSIScriptFRQ23zar4CZARPCcPviPv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0028A260 0x108 func_0028A260  # OVL1
 0x0028A370 0xF8 func_0028A370  # OVL1
 0x0028A470 0x70 func_0028A470  # OVL1
 0x0028A4E0 0x40 func_0028A4E0  # OVL1
 0x0028A520 0x8 func_0028A520  # OVL1
 0x0028A530 0x14 func_0028A530  # OVL1
-0x0028A550 0x6C func_0028A550  # OVL1
-0x0028A5C0 0x29C func_0028A5C0  # OVL1
+0x0028A550 0x6C __dt__10CZSIScriptFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0028A5C0 0x29C Read__10CZSIScriptFRQ23zar4CZARi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0028A860 0x18C func_0028A860  # OVL1
 0x0028A9F0 0x2C func_0028A9F0  # OVL1
 0x0028AA20 0x98 func_0028AA20  # OVL1
@@ -3435,9 +3435,9 @@
 0x0028B5C0 0x8 func_0028B5C0  # OVL1
 0x0028B5D0 0x14 func_0028B5D0  # OVL1
 0x0028B5F0 0x80 func_0028B5F0  # OVL1
-0x0028B670 0x60 func_0028B670  # OVL1
+0x0028B670 0x60 __dt__10CZBodyAnimFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0028B6D0 0x42C func_0028B6D0  # OVL1
-0x0028BB00 0x150 func_0028BB00  # OVL1
+0x0028BB00 0x150 __dt__5CBodyFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0028BC50 0x40 func_0028BC50  # OVL1
 0x0028BC90 0x48 func_0028BC90  # OVL1
 0x0028BCE0 0x80 func_0028BCE0  # OVL1
@@ -3491,7 +3491,7 @@
 0x0028EB60 0x8 func_0028EB60  # OVL1
 0x0028EB70 0x68 func_0028EB70  # OVL1
 0x0028EBE0 0x40 func_0028EBE0  # OVL1
-0x0028EC20 0x8 func_0028EC20  # OVL1
+0x0028EC20 0x8 NullNode__5CBodyCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0028EC30 0xBC func_0028EC30  # OVL1
 0x0028ECF0 0xD8 func_0028ECF0  # OVL1
 0x0028EDD0 0xB0 func_0028EDD0  # OVL1
@@ -3530,7 +3530,7 @@
 0x00290240 0x44 func_00290240  # OVL1
 0x00290290 0xB0 func_00290290  # OVL1
 0x00290340 0x14 func_00290340  # OVL1
-0x00290360 0x8 func_00290360  # OVL1
+0x00290360 0x8 IsCell__Q23zdb5CNodeFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00290370 0xD8 func_00290370  # OVL1
 0x00290450 0x88 func_00290450  # OVL1
 0x002904E0 0x8 func_002904E0  # OVL1
@@ -3572,7 +3572,7 @@
 0x00293780 0x7C CmdParseAcquire__Q23zdb7CCameraFP5_zrdr  # OVL1; s1:ref (taken by address where SOCOM 1 takes CmdParseAcquire__Q23zdb7CCameraFP5_zrdr's)
 0x00293800 0x84 CmdParseRelease__Q23zdb7CCameraFP5_zrdr  # OVL1; s1:ref (taken by address where SOCOM 1 takes CmdParseRelease__Q23zdb7CCameraFP5_zrdr's)
 0x00293890 0x120 RegisterAnimCommands__Q23zdb7CCameraFv  # OVL1; s1:exact
-0x002939B0 0xC8 func_002939B0  # OVL1
+0x002939B0 0xC8 __dt__Q23zdb7CCameraFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00293A80 0x434 func_00293A80  # OVL1
 0x00293EC0 0xD0 func_00293EC0  # OVL1
 0x00293F90 0xD4 func_00293F90  # OVL1
@@ -3602,7 +3602,7 @@
 0x002994E0 0x21C func_002994E0  # OVL1
 0x00299700 0xE4 func_00299700  # OVL1
 0x002997F0 0xFC func_002997F0  # OVL1
-0x002998F0 0x310 func_002998F0  # OVL1
+0x002998F0 0x310 Tick__10CAppCameraFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00299C00 0xC func_00299C00  # OVL1
 0x00299C10 0x30 func_00299C10  # OVL1
 0x00299C40 0x288 func_00299C40  # OVL1
@@ -3615,7 +3615,7 @@
 0x0029B0C0 0x224 func_0029B0C0  # OVL1
 0x0029B2F0 0x40 func_0029B2F0  # OVL1
 0x0029B330 0x88 func_0029B330  # OVL1
-0x0029B3C0 0x1B0 func_0029B3C0  # OVL1
+0x0029B3C0 0x1B0 AttachTo__10CAppCameraFP10CZSealBody  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0029B570 0x5C func_0029B570  # OVL1
 0x0029B5D0 0x2F4 func_0029B5D0  # OVL1
 0x0029B8D0 0x1C4 func_0029B8D0  # OVL1
@@ -3638,7 +3638,7 @@
 0x0029D270 0xCC Debug__8CConsoleFiP7CPacketPCc  # OVL1; s1:calls
 0x0029D340 0x7C Debug__8CConsoleFiPCce  # OVL1; s1:align
 0x0029D3C0 0x2B4 func_0029D3C0  # OVL1
-0x0029D680 0x8 func_0029D680  # OVL1
+0x0029D680 0x8 GetPacketMsg__7CPacketFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0029D690 0x114 __dt__8CConsoleFv  # OVL1; s1:align
 0x0029D7B0 0xA4 func_0029D7B0  # OVL1
 0x0029D860 0x8 func_0029D860  # OVL1
@@ -3658,8 +3658,8 @@
 0x0029DCF0 0x198 OnRecvPacket__7CPacketFPCv  # OVL1; s1:calls
 0x0029DE90 0x108 Send__8CConsoleFP7CPacket  # OVL1; s1:calls
 0x0029DFA0 0xB4 Tick__8CConsoleFv  # OVL1; s1:align
-0x0029E060 0x8 func_0029E060  # OVL1
-0x0029E070 0x8 func_0029E070  # OVL1
+0x0029E060 0x8 OnDestroy__8CConsoleFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0029E070 0x8 OnDisconnect__8CConsoleFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0029E080 0x44 Disconnect__8CConsoleFv  # OVL1; s1:align
 0x0029E0D0 0x90 Initalize__8CConsoleFv  # OVL1; s1:align
 0x0029E160 0x114 CheckEvent__8CConsoleFv  # OVL1; s1:align
@@ -3677,7 +3677,7 @@
 0x0029E730 0x174 func_0029E730  # OVL1
 0x0029E8B0 0x38 OnDeath__7CEntityFv  # OVL1; s1:align
 0x0029E8F0 0x8 func_0029E8F0  # OVL1
-0x0029E900 0x8 func_0029E900  # OVL1
+0x0029E900 0x8 UpdateAiMapLoc__7CEntityFRb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0029E910 0x20 func_0029E910  # OVL1; tu: node_main.cpp~ (1.0 beta)
 0x0029E930 0x20 func_0029E930  # OVL1; tu: node_main.cpp~ (1.0 beta)
 0x0029E950 0x20 func_0029E950  # OVL1; tu: node_main.cpp~ (1.0 beta)
@@ -3685,7 +3685,7 @@
 0x0029EAF0 0x124 TeleportTo__7CEntityFPC7CMatrix  # OVL1; s1:align
 0x0029EC20 0x20 func_0029EC20  # OVL1
 0x0029EC40 0x8 func_0029EC40  # OVL1
-0x0029EC50 0x8 func_0029EC50  # OVL1
+0x0029EC50 0x8 OnMissionStart__7CEntityFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0029EC60 0x8 func_0029EC60  # OVL1
 0x0029EC70 0x6C SetDisplayName__7CEntityFPCc  # OVL1; s1:align
 0x0029ECE0 0x28 JoinTeam__7CEntityFUi  # OVL1; tu: ent_main.cpp~ (1.0 beta); s1:align
@@ -3740,16 +3740,16 @@
 0x002A2510 0x44 UpdateNextPosition__7CEntityFv  # OVL1; s1:align
 0x002A2560 0x104 ComputeNextPosition__7CEntityFf  # OVL1; s1:calls
 0x002A2670 0x8 func_002A2670  # OVL1
-0x002A2680 0x8 func_002A2680  # OVL1
+0x002A2680 0x8 PrePostTick__7CEntityFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002A2690 0x8 func_002A2690  # OVL1
-0x002A26A0 0x8 func_002A26A0  # OVL1
-0x002A26B0 0x8 func_002A26B0  # OVL1
-0x002A26C0 0x8 func_002A26C0  # OVL1
-0x002A26D0 0x8 func_002A26D0  # OVL1
-0x002A26E0 0x10 func_002A26E0  # OVL1
+0x002A26A0 0x8 Tick__7CEntityFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x002A26B0 0x8 PreTick__7CEntityFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x002A26C0 0x8 PostMortemPreTick__11CEntityCtrlFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x002A26D0 0x8 func_002A26D0  # OVL1; s1~ GetRemoteControl__11CEntityCtrlFv (one of 2 out-of-line copies of an inline, by s1:vtable)
+0x002A26E0 0x10 func_002A26E0  # OVL1; s1~ SetThrottle__11CEntityCtrlFUif (one of 2 out-of-line copies of an inline, by s1:vtable)
 0x002A26F0 0x30 SetController__7CEntityFP11CEntityCtrl  # OVL1; s1:align
-0x002A2720 0x8 func_002A2720  # OVL1
-0x002A2730 0x8 func_002A2730  # OVL1
+0x002A2720 0x8 Tick__11CEntityCtrlFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x002A2730 0x8 PreTick__11CEntityCtrlFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002A2740 0x4C __dt__11CEntityCtrlFv  # OVL1; s1:align
 0x002A2790 0x44 __ct__11CEntityCtrlFi  # OVL1; s1:align
 0x002A27E0 0x110 func_002A27E0  # OVL1
@@ -3770,11 +3770,11 @@
 0x002A3930 0x14 func_002A3930  # OVL1
 0x002A3950 0x198 func_002A3950  # OVL1
 0x002A3AF0 0x8 func_002A3AF0  # OVL1
-0x002A3B00 0x8 func_002A3B00  # OVL1
-0x002A3B10 0x8 func_002A3B10  # OVL1
-0x002A3B20 0x8 func_002A3B20  # OVL1
+0x002A3B00 0x8 GetIntersect__8CDIDummyFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x002A3B10 0x8 GetAltitude__8CDIDummyFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x002A3B20 0x8 LoadTipAndTail__8CDIDummyFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002A3B30 0x60 __dt__8CDIDummyFv  # OVL1; s1:align
-0x002A3B90 0x24 func_002A3B90  # OVL1
+0x002A3B90 0x24 TestFlags__11CSaveModuleCFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002A3BC0 0x25C func_002A3BC0  # OVL1
 0x002A3E20 0x38 func_002A3E20  # OVL1
 0x002A3E60 0x1F0 func_002A3E60  # OVL1
@@ -3852,7 +3852,7 @@
 0x002ACAD0 0x138 CreateCompassNavPoints__8CMissionFv  # OVL1; s1:align
 0x002ACC10 0x680 func_002ACC10  # OVL1
 0x002AD290 0x6A4 Init__8CMissionFv  # OVL1; s1:align
-0x002AD940 0x27C func_002AD940  # OVL1
+0x002AD940 0x27C __dt__8CMissionFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002ADBC0 0x350 func_002ADBC0  # OVL1
 0x002ADF10 0x140 func_002ADF10  # OVL1
 0x002AE050 0x2F0 func_002AE050  # OVL1
@@ -3912,7 +3912,7 @@
 0x002B17C0 0x18 func_002B17C0  # OVL1
 0x002B17E0 0xB4 func_002B17E0  # OVL1
 0x002B18A0 0x68 func_002B18A0  # OVL1
-0x002B1910 0x60 func_002B1910  # OVL1
+0x002B1910 0x60 __dt__17CValveSaveManagerFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002B1970 0x60 func_002B1970  # OVL1
 0x002B19D0 0x3C __ct__12CUIVarSTableFv  # OVL1; s1:align
 0x002B1A10 0x2C func_002B1A10  # OVL1
@@ -3945,9 +3945,9 @@
 0x002B3A00 0x154 ftsCreateSeal__FPC14CCharacterTypePCc17SEAL_CONTROL_TYPE  # OVL1; s1:align
 0x002B3B60 0xC func_002B3B60  # OVL1
 0x002B3B70 0x60 __dt__13CSealCtrlCopyFv  # OVL1; s1:align
-0x002B3BD0 0x8 func_002B3BD0  # OVL1
+0x002B3BD0 0x8 IsPlayer__13CSealCtrlCopyCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002B3BE0 0x8 func_002B3BE0  # OVL1
-0x002B3BF0 0x8 func_002B3BF0  # OVL1
+0x002B3BF0 0x8 func_002B3BF0  # OVL1; s1~ SetAiNetState__9CSealCtrlFUi (one of 2 out-of-line copies of an inline, by s1:vtable)
 0x002B3C00 0x1C func_002B3C00  # OVL1
 0x002B3C20 0x1C func_002B3C20  # OVL1
 0x002B3C40 0x1C func_002B3C40  # OVL1
@@ -3970,7 +3970,7 @@
 0x002B44E0 0x1F0 func_002B44E0  # OVL1
 0x002B46D0 0x14 func_002B46D0  # OVL1
 0x002B46F0 0x5C func_002B46F0  # OVL1
-0x002B4750 0xC func_002B4750  # OVL1
+0x002B4750 0xC OnAction__11CNodeActionFPQ23zdb5CNodePv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002B4760 0xC0 func_002B4760  # OVL1
 0x002B4820 0xB8 func_002B4820  # OVL1
 0x002B48E0 0xB8 func_002B48E0  # OVL1
@@ -3990,20 +3990,20 @@
 0x002B5760 0x70 _actionValveCallback__FP6CValvePv  # OVL1; s1:align
 0x002B57D0 0x60 __dt__Q211CNodeAction9ContainerFv  # OVL1; s1:align
 0x002B5830 0x580 func_002B5830  # OVL1
-0x002B5DB0 0x5FC func_002B5DB0  # OVL1
+0x002B5DB0 0x5FC Tick__12C2DMessage_QFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002B63B0 0x78 __dt__16C2DMessageStringFv  # OVL1; s1:calls
 0x002B6430 0xF4 func_002B6430  # OVL1
 0x002B6530 0x7CC func_002B6530  # OVL1
 0x002B6D00 0x60 SetBkgColor__12C2DMessage_QFfff  # OVL1; s1:align
 0x002B6D60 0x78 func_002B6D60  # OVL1
 0x002B6DE0 0xF4 func_002B6DE0  # OVL1
-0x002B6EE0 0xE0 func_002B6EE0  # OVL1
+0x002B6EE0 0xE0 __dt__12C2DMessage_QFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002B6FC0 0x558 func_002B6FC0  # OVL1
 0x002B7520 0xC func_002B7520  # OVL1
 0x002B7530 0xD8 func_002B7530  # OVL1
 0x002B7610 0x110 func_002B7610  # OVL1
 0x002B7720 0x74 SetString__16C2DMessageStringFPCc  # OVL1; s1:align
-0x002B77A0 0x1A8 func_002B77A0  # OVL1
+0x002B77A0 0x1A8 Tick__16C2DMessageStringFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002B7950 0x98 func_002B7950  # OVL1
 0x002B79F0 0x28 ftsNetworkGameUninit__Fv  # OVL1; s1:align
 0x002B7A20 0x70 ftsNetworkGameInit__Fv  # OVL1; s1:align
@@ -4239,7 +4239,7 @@
 0x002C79E0 0xC func_002C79E0  # OVL1
 0x002C79F0 0x6C func_002C79F0  # OVL1
 0x002C7A60 0x180 func_002C7A60  # OVL1
-0x002C7BE0 0x8 func_002C7BE0  # OVL1
+0x002C7BE0 0x8 GetPosW__7CTurretCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002C7BF0 0xE4 func_002C7BF0  # OVL1
 0x002C7CE0 0x8 func_002C7CE0  # OVL1
 0x002C7CF0 0x8 func_002C7CF0  # OVL1
@@ -4299,7 +4299,7 @@
 0x002CB460 0x3FC func_002CB460  # OVL1
 0x002CB860 0xC8 func_002CB860  # OVL1
 0x002CB930 0xE0 func_002CB930  # OVL1
-0x002CBA10 0x94 func_002CBA10  # OVL1
+0x002CBA10 0x94 fwrite__3CIOFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002CBAB0 0x8 func_002CBAB0  # OVL1
 0x002CBAC0 0x8 func_002CBAC0  # OVL1
 0x002CBAD0 0x8 func_002CBAD0  # OVL1
@@ -4362,7 +4362,7 @@
 0x002CE8E0 0x44 func_002CE8E0  # OVL1
 0x002CE930 0xA4 NetTickThreadEntry__FPv  # OVL1; s1:calls
 0x002CE9E0 0x32C Tick__5CGameFf  # OVL1; s1:align
-0x002CED10 0x80 func_002CED10  # OVL1
+0x002CED10 0x80 __dt__5CGameFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002CED90 0x68 func_002CED90  # OVL1
 0x002CEE00 0x30 func_002CEE00  # OVL1
 0x002CEE30 0x8 func_002CEE30  # OVL1
@@ -4394,7 +4394,7 @@
 0x002D02B0 0x80 __dt__5CPoolFv  # OVL1; s1:align
 0x002D0330 0xD4 StopEngine__5CGameFv  # OVL1; s1:calls
 0x002D0410 0xAC StartEngine__5CGameFv  # OVL1; s1:align
-0x002D04C0 0x8 func_002D04C0  # OVL1
+0x002D04C0 0x8 StopPlay__5CGameFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002D04D0 0x14 StartPlay__5CGameFv  # OVL1; s1:exact
 0x002D04F0 0xA8 func_002D04F0  # OVL1
 0x002D05A0 0x78 GetNodeByNodeEx__6CGraphFPCv  # OVL1; s1:align
@@ -4409,14 +4409,14 @@
 0x002D0C90 0x250 Read__6CGraphFR7CFileIOPFP6CGraphP6CGNodebRUiPv_vPFP6CGraphP6CGEdgebRUiPv_vPv  # OVL1; s1:calls
 0x002D0EE0 0xA4 Create__6CGraphFR7CFileIOPFP6CGraphP6CGNodebRUiPv_vPFP6CGraphP6CGEdgebRUiPv_vPv  # OVL1; s1:calls
 0x002D0F90 0xC8 func_002D0F90  # OVL1
-0x002D1060 0xD0 func_002D1060  # OVL1
+0x002D1060 0xD0 __dt__6CGNodeFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002D1130 0x48 func_002D1130  # OVL1
 0x002D1180 0x8 func_002D1180  # OVL1
 0x002D1190 0x38 func_002D1190  # OVL1
 0x002D11D0 0x34 func_002D11D0  # OVL1
 0x002D1210 0xBC func_002D1210  # OVL1
 0x002D12D0 0x28 func_002D12D0  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
-0x002D1300 0x4C func_002D1300  # OVL1
+0x002D1300 0x4C __dt__6CGEdgeFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002D1350 0xB4 func_002D1350  # OVL1
 0x002D1410 0x60 func_002D1410  # OVL1
 0x002D1470 0x2C func_002D1470  # OVL1
@@ -4519,15 +4519,15 @@
 0x002D78A0 0x58 gridGetAtomBasePtr__Q23zdb5CGridFii  # OVL1; s1:exact
 0x002D7900 0x70 __dt__Q23zdb5CGridFv  # OVL1; s1:align
 0x002D7970 0x60 __ct__Q23zdb5CGridFv  # OVL1; s1:align
-0x002D79D0 0x8 func_002D79D0  # OVL1
-0x002D79E0 0x8 func_002D79E0  # OVL1
+0x002D79D0 0x8 Copy__Q23zdb5CCellCFPQ23zdb5CNode  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x002D79E0 0x8 IsCell__Q23zdb5CCellFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002D79F0 0xB8 GetMidPoint__Q23zdb5CCellFP6CPnt3D  # OVL1; s1:align
 0x002D7AB0 0x40 func_002D7AB0  # OVL1
 0x002D7AF0 0xC func_002D7AF0  # OVL1
 0x002D7B00 0x84 func_002D7B00  # OVL1
 0x002D7B90 0x30 func_002D7B90  # OVL1
-0x002D7BC0 0x180 func_002D7BC0  # OVL1
-0x002D7D40 0x30 func_002D7D40  # OVL1
+0x002D7BC0 0x180 __dt__Q23zdb5CCellFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x002D7D40 0x30 UpdateBBox__Q23zdb5CCellFb  # OVL1; s1:vtable by hand (slot 13 of CCell's table, CNode's UpdateBBox overridden; same shape as CNode's at 0x318200)
 0x002D7D70 0x12C func_002D7D70  # OVL1
 0x002D7EA0 0x84 UnRegisterEffector__Q23zdb19CClutterAnimManagerFPCv  # OVL1; s1:align
 0x002D7F30 0xD8 RegisterEffector__Q23zdb19CClutterAnimManagerFPCvPC6CPnt3DfPC6CPnt3D  # OVL1; s1:align
@@ -4600,19 +4600,19 @@
 0x002DC6E0 0xB4 __ct__Q23zdb11DiIntersectFi  # OVL1; s1:align
 0x002DC7A0 0x52C func_002DC7A0  # OVL1
 0x002DCCD0 0xC4 func_002DCCD0  # OVL1
-0x002DCDA0 0x280 func_002DCDA0  # OVL1
-0x002DD020 0x8 func_002DD020  # OVL1
+0x002DCDA0 0x280 GetIntersect__Q23zdb7CDIBBoxFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x002DD020 0x8 GetAltitude__Q23zdb7CDIBBoxFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002DD030 0xF4 SetEdgeVecsAndNorm__Q23zdb3CDIFv  # OVL1; s1:calls
 0x002DD130 0x1C func_002DD130  # OVL1
-0x002DD150 0xC0 func_002DD150  # OVL1
+0x002DD150 0xC0 GetIntersect__Q23zdb7CDIPolyFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002DD210 0x9C func_002DD210  # OVL1
 0x002DD2B0 0x21C func_002DD2B0  # OVL1
 0x002DD4D0 0x1BC func_002DD4D0  # OVL1
 0x002DD690 0x244 func_002DD690  # OVL1
-0x002DD8E0 0x1D0 func_002DD8E0  # OVL1
-0x002DDAB0 0x78 func_002DDAB0  # OVL1
+0x002DD8E0 0x1D0 GetAltitude__Q23zdb7CDIPolyFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x002DDAB0 0x78 __dt__Q23zdb7CDIBBoxFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002DDB30 0x38 func_002DDB30  # OVL1
-0x002DDB70 0x78 func_002DDB70  # OVL1
+0x002DDB70 0x78 __dt__Q23zdb7CDIPolyFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002DDBF0 0x34 func_002DDBF0  # OVL1
 0x002DDC30 0x1E4 func_002DDC30  # OVL1
 0x002DDE20 0x8 func_002DDE20  # OVL1
@@ -4695,7 +4695,7 @@
 0x002E1E00 0x8 func_002E1E00  # OVL1
 0x002E1E10 0x108 func_002E1E10  # OVL1
 0x002E1F20 0x5A0 func_002E1F20  # OVL1
-0x002E24C0 0x8 func_002E24C0  # OVL1
+0x002E24C0 0x8 IsPersistent__8RoomGameFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002E24D0 0x400 func_002E24D0  # OVL1
 0x002E28D0 0x4C func_002E28D0  # OVL1
 0x002E2920 0x1D4 func_002E2920  # OVL1
@@ -5384,13 +5384,13 @@
 0x00310C50 0x8 func_00310C50  # OVL1
 0x00310C60 0x8 func_00310C60  # OVL1
 0x00310C70 0x8 func_00310C70  # OVL1
-0x00310C80 0x114 func_00310C80  # OVL1
+0x00310C80 0x114 Read__Q23zdb6CLightFRQ23zdb9CSaveLoad  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00310DA0 0x17C func_00310DA0  # OVL1
-0x00310F20 0x2FC func_00310F20  # OVL1
+0x00310F20 0x2FC Read__Q23zdb5CNodeFRQ23zdb9CSaveLoad  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00311220 0x104 func_00311220  # OVL1
 0x00311330 0x1EC func_00311330  # OVL1
 0x00311520 0x35C func_00311520  # OVL1
-0x00311880 0x120 func_00311880  # OVL1
+0x00311880 0x120 Read__Q23zdb6CModelFRQ23zdb9CSaveLoad  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003119A0 0x124 func_003119A0  # OVL1
 0x00311AD0 0x8 func_00311AD0  # OVL1
 0x00311AE0 0x8 func_00311AE0  # OVL1
@@ -5417,7 +5417,7 @@
 0x003126A0 0x144 func_003126A0  # OVL1
 0x003127F0 0x64 func_003127F0  # OVL1
 0x00312860 0x204 func_00312860  # OVL1
-0x00312A70 0x24 func_00312A70  # OVL1
+0x00312A70 0x24 SetActive__Q23zdb6CLightFb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00312AA0 0x180 func_00312AA0  # OVL1
 0x00312C20 0xE0 func_00312C20  # OVL1
 0x00312D00 0x21C func_00312D00  # OVL1
@@ -5451,7 +5451,7 @@
 0x00314A80 0x7C ShrinkAtomBasePtrs__Q23zdb5CNodeFv  # OVL1; s1:align
 0x00314B00 0xB8 AllocateAtomBasePtrs__Q23zdb5CNodeFii  # OVL1; s1:align
 0x00314BC0 0x84 DeleteChildren__Q23zdb5CNodeFv  # OVL1; s1:align
-0x00314C50 0x208 func_00314C50  # OVL1
+0x00314C50 0x208 __dt__Q23zdb5CNodeFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00314E60 0x80 func_00314E60  # OVL1
 0x00314EE0 0x74 SetName__Q23zdb5CNodeFPCc  # OVL1; s1:align
 0x00314F60 0x134 SetTexture__Q23zdb9CLightMapFPQ23zdb8CTexture  # OVL1; s1:calls
@@ -5480,9 +5480,9 @@
 0x00315A80 0x10C FindChild__Q23zdb5CNodeFPQ23zdb5CNodeb  # OVL1; s1:align
 0x00315B90 0x164 func_00315B90  # OVL1
 0x00315D00 0x164 FindChild__Q23zdb5CNodeFPCcb  # OVL1; s1:align
-0x00315E70 0xC4 func_00315E70  # OVL1
+0x00315E70 0xC4 DeleteChild__Q23zdb5CNodeFPQ23zdb5CNode  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00315F40 0x170 AddChild__Q23zdb5CNodeFPQ23zdb5CNode  # OVL1; s1:align
-0x003160B0 0x10 func_003160B0  # OVL1
+0x003160B0 0x10 ReserveChildren__Q23zdb5CNodeFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003160C0 0x34 RemoveFromParent__Q23zdb5CNodeFv  # OVL1; tu: node_main.cpp~ (1.0 beta); s1:exact
 0x00316100 0x1A8 func_00316100  # OVL1
 0x003162B0 0x22C func_003162B0  # OVL1
@@ -5491,7 +5491,7 @@
 0x00316610 0x154 SetParentHasVisuals__Q23zdb5CNodeFv  # OVL1; s1:align
 0x00316770 0x80 func_00316770  # OVL1
 0x003167F0 0x28 Release__Q23zdb5CNodeFv  # OVL1; s1:align
-0x00316820 0x5E4 func_00316820  # OVL1
+0x00316820 0x5E4 _Copy__Q23zdb5CNodeCFPQ23zdb5CNode  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00316E10 0x20 func_00316E10  # OVL1
 0x00316E30 0x224 func_00316E30  # OVL1
 0x00317060 0x64C InitNodeParams__3zdbFPQ23zdb15tag_NODE_PARAMSPCQ23zdb15tag_NODE_PARAMS  # OVL1; s1:align
@@ -5510,15 +5510,15 @@
 0x00317EF0 0x74 GetSubMesh__Q23zdb5CNodeFv  # OVL1; s1:align
 0x00317F70 0x50 func_00317F70  # OVL1
 0x00317FC0 0x240 ComputeFacadeMatrix__Q23zdb5CNodeFPC7CMatrixP7CMatrix  # OVL1; s1:align
-0x00318200 0x30 func_00318200  # OVL1
-0x00318230 0x478 func_00318230  # OVL1
+0x00318200 0x30 UpdateBBox__Q23zdb5CNodeFb  # OVL1; s1:vtable by hand (slot 13 of CNode's table; the demo's inlines one more parent level, 2.5x the size, so the pass's size guard skipped it)
+0x00318230 0x478 UpdateBBoxFromDI__Q23zdb5CNodeFb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003186B0 0x214 func_003186B0  # OVL1
 0x003188D0 0x60 func_003188D0  # OVL1
-0x00318930 0x1AC func_00318930  # OVL1
+0x00318930 0x1AC __dt__Q23zdb6CModelFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00318AE0 0x150 func_00318AE0  # OVL1
 0x00318C30 0x8 func_00318C30  # OVL1
 0x00318C40 0x6C __ct__Q23zdb6CModelFPCc  # OVL1; s1:calls
-0x00318CB0 0xEC func_00318CB0  # OVL1
+0x00318CB0 0xEC Read__Q23zdb6CWorldFRQ23zdb9CSaveLoad  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00318DA0 0x7D8 func_00318DA0  # OVL1
 0x00319580 0x20 func_00319580  # OVL1; s1~ SetStance__11CSealCtrlAiF11SEAL_STANCE was given by the exact pass while its relocation masks sat 1 MB off; a `return g(x);` wrapper, unproven
 0x003195A0 0xF8 func_003195A0  # OVL1
@@ -5602,10 +5602,10 @@
 0x0031EB20 0x174 GenerateLandmarkList__Q23zdb6CWorldFv  # OVL1; s1:align
 0x0031ECA0 0x160 LandmarkList_Search__Q23zdb6CWorldFPQ23zdb5CNodeR6CStackRQ23zdb11CNodeVector  # OVL1; s1:align
 0x0031EE00 0x94 Update__Q23zdb6CWorldFv  # OVL1; s1:calls
-0x0031EEA0 0x274 func_0031EEA0  # OVL1
-0x0031F120 0x114 func_0031F120  # OVL1
+0x0031EEA0 0x274 DeleteChildren__Q23zdb6CWorldFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0031F120 0x114 DeleteChild__Q23zdb6CWorldFPQ23zdb5CNode  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0031F240 0x1E8 AddChild__Q23zdb6CWorldFPQ23zdb5CNode  # OVL1; s1:align
-0x0031F430 0x10 func_0031F430  # OVL1
+0x0031F430 0x10 ReserveChildren__Q23zdb6CWorldFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0031F440 0xB8 func_0031F440  # OVL1
 0x0031F500 0x68 func_0031F500  # OVL1
 0x0031F570 0x204 func_0031F570  # OVL1
@@ -5617,7 +5617,7 @@
 0x0031FC90 0x80 AddLightMap__Q23zdb6CWorldFPQ23zdb9CLightMap  # OVL1; s1:align
 0x0031FD10 0x10 GetModel__Q23zdb6CWorldFPCc  # OVL1; s1:exact
 0x0031FD20 0xDC Initalize__Q23zdb6CWorldFv  # OVL1; s1:align
-0x0031FE00 0x50C func_0031FE00  # OVL1
+0x0031FE00 0x50C __dt__Q23zdb6CWorldFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00320310 0x344 func_00320310  # OVL1
 0x00320660 0x78 func_00320660  # OVL1
 0x003206E0 0x78 func_003206E0  # OVL1
@@ -5653,7 +5653,7 @@
 0x00321D30 0xC func_00321D30  # OVL1
 0x00321D40 0x68 func_00321D40  # OVL1
 0x00321DB0 0x48 func_00321DB0  # OVL1
-0x00321E00 0x98 func_00321E00  # OVL1
+0x00321E00 0x98 __dt__Q23zdb10CLensFlareFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00321EA0 0x44 __dt__Q23zdb8CVisDataFv  # OVL1; s1:align
 0x00321EF0 0x4C func_00321EF0  # OVL1
 0x00321F40 0x10 func_00321F40  # OVL1
@@ -5698,12 +5698,12 @@
 0x00326FF0 0x140 func_00326FF0  # OVL1
 0x00327130 0x9C func_00327130  # OVL1
 0x003271D0 0x38C Tick__Q28Particle20Destruction_InstanceFf  # OVL1; s1:align
-0x00327560 0x4C func_00327560  # OVL1
+0x00327560 0x4C Render__Q28Particle20Destruction_InstanceFRC7CMatrix  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003275B0 0x70 func_003275B0  # OVL1
 0x00327620 0x14C func_00327620  # OVL1
 0x00327770 0x90 func_00327770  # OVL1
 0x00327800 0x10C func_00327800  # OVL1
-0x00327910 0x35C func_00327910  # OVL1
+0x00327910 0x35C Render__Q28Particle8InstanceFRC7CMatrix  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00327C70 0x58 func_00327C70  # OVL1
 0x00327CD0 0x16C func_00327CD0  # OVL1
 0x00327E40 0xCC func_00327E40  # OVL1
@@ -5712,7 +5712,7 @@
 0x00328040 0x58 func_00328040  # OVL1
 0x003280A0 0xCC func_003280A0  # OVL1
 0x00328170 0x140 func_00328170  # OVL1
-0x003282B0 0x2C0 func_003282B0  # OVL1
+0x003282B0 0x2C0 Tick__Q28Particle8InstanceFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00328570 0x74 func_00328570  # OVL1
 0x003285F0 0xDC func_003285F0  # OVL1
 0x003286D0 0x80 func_003286D0  # OVL1
@@ -5768,7 +5768,7 @@
 0x0032C040 0x194 func_0032C040  # OVL1
 0x0032C1E0 0xCC func_0032C1E0  # OVL1
 0x0032C2B0 0x11C func_0032C2B0  # OVL1
-0x0032C3D0 0x60 func_0032C3D0  # OVL1
+0x0032C3D0 0x60 __dt__11CRdrArchiveFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0032C430 0xB8 func_0032C430  # OVL1
 0x0032C4F0 0x78 func_0032C4F0  # OVL1
 0x0032C570 0x80 func_0032C570  # OVL1
@@ -6028,7 +6028,7 @@
 0x0033D110 0x44 func_0033D110  # OVL1
 0x0033D160 0x80 func_0033D160  # OVL1
 0x0033D1E0 0x4C func_0033D1E0  # OVL1
-0x0033D230 0x8 func_0033D230  # OVL1
+0x0033D230 0x8 UnSerialize__11CSaveModuleFPCcPQ23zar4CZARi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0033D240 0x8 func_0033D240  # OVL1
 0x0033D250 0x3C SaveRdr__11CSaveModuleFPCcP8CRdrFile  # OVL1; s1:exact
 0x0033D290 0x70 func_0033D290  # OVL1
@@ -6147,8 +6147,8 @@
 0x00342990 0x84 func_00342990  # OVL1
 0x00342A20 0x80 func_00342A20  # OVL1
 0x00342AA0 0x80 func_00342AA0  # OVL1
-0x00342B20 0x620 func_00342B20  # OVL1
-0x00343140 0x3B4 func_00343140  # OVL1
+0x00342B20 0x620 PlaySound3D__4CSndFPC6CPnt3DfiP12CSndInstanceUi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00343140 0x3B4 PlaySoundVolPanPitch__4CSndFfiiP12CSndInstanceUi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00343500 0x44 PlaySoundVol__4CSndFfP12CSndInstanceUi  # OVL1; s1:align
 0x00343550 0x4C PlaySound__4CSndFP12CSndInstanceUi  # OVL1; s1:align
 0x003435A0 0xC func_003435A0  # OVL1
@@ -6177,7 +6177,7 @@
 0x00345200 0x28 Uninit__4CSndFv  # OVL1; s1:align
 0x00345230 0x294 func_00345230  # OVL1
 0x003454D0 0xF8 func_003454D0  # OVL1
-0x003455D0 0x4C clear__Q23std503__tree<Q23std81pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P4CSnd>,Q33std271map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P4CSnd,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std100allocator<Q23std81pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P4CSnd>>>13value_compare,Q23std100allocator<Q23std81pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P4CSnd>>>Fv  # OVL1; s1:align
+0x003455D0 0x4C __dt__4CSndFv  # OVL1; s1:align; s1:vtable (the same slot of the same class's vtable in both builds, code alike); was clear__Q23std503__tree<Q23std81pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P4CSnd>,Q33std271map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P4CSnd,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std100allocator<Q23std81pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P4CSnd>>>13value_compare,Q23std100allocator<Q23std81pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P4CSnd>>>Fv
 0x00345620 0x1D8 func_00345620  # OVL1
 0x00345800 0xC func_00345800  # OVL1
 0x00345810 0x5A4 func_00345810  # OVL1
@@ -6233,10 +6233,10 @@
 0x00347F00 0x224 LoadCSndGroup__9CSndGroupFP5_zrdr  # OVL1; s1:align
 0x00348130 0x134 func_00348130  # OVL1
 0x00348270 0x70 func_00348270  # OVL1
-0x003482E0 0x170 func_003482E0  # OVL1
-0x00348450 0x170 func_00348450  # OVL1
-0x003485C0 0x150 func_003485C0  # OVL1
-0x00348710 0x144 func_00348710  # OVL1
+0x003482E0 0x170 PlaySoundVolPanPitch__9CSndGroupFfiiP12CSndInstanceUi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00348450 0x170 PlaySound3D__9CSndGroupFPC6CPnt3DfiP12CSndInstanceUi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x003485C0 0x150 PlaySoundVol__9CSndGroupFfP12CSndInstanceUi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00348710 0x144 PlaySound__9CSndGroupFP12CSndInstanceUi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00348860 0x80 Stop__11CSndJukeboxFv  # OVL1; s1:align
 0x003488E0 0x20 func_003488E0  # OVL1
 0x00348900 0x218 func_00348900  # OVL1
@@ -6476,10 +6476,10 @@
 0x00355840 0x90 __dt__Q23zdb11CTexPaletteFv  # OVL1; s1:align
 0x003558D0 0xA4 __ct__Q23zdb11CTexPaletteFPCc  # OVL1; s1:align
 0x00355980 0x54 ClearAll__Q23zdb15CBatchRelocatorFv  # OVL1; s1:align
-0x003559E0 0x3C StartBatchReloc__Q23zdb15CBatchRelocatorCFv  # OVL1; s1:align
+0x003559E0 0x3C AddToBatch__Q23zdb15CBatchRelocatorCFPQ23zdb10CTexHandle  # OVL1; s1:align; s1:vtable (the same slot of the same class's vtable in both builds, code alike); was StartBatchReloc__Q23zdb15CBatchRelocatorCFv
 0x00355A20 0x8 func_00355A20  # OVL1
-0x00355A30 0x14 func_00355A30  # OVL1
-0x00355A50 0x1C func_00355A50  # OVL1
+0x00355A30 0x14 EndBatchReloc__Q23zdb15CBatchRelocatorCFv  # OVL1; s1:vtable by hand (slot 1 of CBatchRelocator's six; slots 0 and 3 read against the demo's code; SOCOM II tail-calls what the demo inlined, so sizes differ 14x)
+0x00355A50 0x1C StartBatchReloc__Q23zdb15CBatchRelocatorCFv  # OVL1; s1:vtable by hand (slot 3 of six: zeroes +24 as the demo's does, with the two list clears inlined)
 0x00355A70 0x1F8 func_00355A70  # OVL1
 0x00355C70 0x168 func_00355C70  # OVL1
 0x00355DE0 0x140 func_00355DE0  # OVL1
@@ -6510,14 +6510,14 @@
 0x00357A00 0xF8 func_00357A00  # OVL1
 0x00357B00 0xB8 __dt__Q23zdb12CGSTexBufferFv  # OVL1; s1:align
 0x00357BC0 0x4C func_00357BC0  # OVL1
-0x00357C10 0xC func_00357C10  # OVL1
+0x00357C10 0xC TakeDrawPacket__Q23zdb15CBatchRelocatorFP1Ui  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00357C20 0x6C func_00357C20  # OVL1
 0x00357C90 0x178 func_00357C90  # OVL1
 0x00357E10 0x78 func_00357E10  # OVL1
 0x00357E90 0x50 func_00357E90  # OVL1
 0x00357EE0 0x50 func_00357EE0  # OVL1
 0x00357F30 0x670 func_00357F30  # OVL1
-0x003585A0 0xC8 func_003585A0  # OVL1
+0x003585A0 0xC8 GetAssetLibs__13C2DBitmapPolyFRQ23C2D8CLibList  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00358670 0x1C func_00358670  # OVL1
 0x00358690 0x14 func_00358690  # OVL1
 0x003586B0 0x44 func_003586B0  # OVL1
@@ -6615,7 +6615,7 @@
 0x0035F840 0x8C func_0035F840  # OVL1
 0x0035F8D0 0x8 func_0035F8D0  # OVL1
 0x0035F8E0 0x8 func_0035F8E0  # OVL1
-0x0035F8F0 0xC8 func_0035F8F0  # OVL1
+0x0035F8F0 0xC8 GetAssetLibs__7C2DLineFRQ23C2D8CLibList  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0035F9C0 0x100 func_0035F9C0  # OVL1
 0x0035FAC0 0x21C func_0035FAC0  # OVL1
 0x0035FCE0 0x344 Draw2DLine__FP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4D  # OVL1; s1:calls
@@ -6634,7 +6634,7 @@
 0x00360840 0x50 func_00360840  # OVL1
 0x00360890 0x60 func_00360890  # OVL1
 0x003608F0 0x128 func_003608F0  # OVL1
-0x00360A20 0xC8 func_00360A20  # OVL1
+0x00360A20 0xC8 GetAssetLibs__9C2DTriFanFRQ23C2D8CLibList  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00360AF0 0xC8 Draw__9C2DTriFanFPQ23zdb7CCamera  # OVL1; s1:align
 0x00360BC0 0x90 __dt__9C2DTriFanFv  # OVL1; s1:align
 0x00360C50 0x4C func_00360C50  # OVL1
@@ -6653,7 +6653,7 @@
 0x003612D0 0x50 func_003612D0  # OVL1
 0x00361320 0x60 func_00361320  # OVL1
 0x00361380 0x174 func_00361380  # OVL1
-0x00361500 0xC8 func_00361500  # OVL1
+0x00361500 0xC8 GetAssetLibs__7C2DPolyFRQ23C2D8CLibList  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003615D0 0x1BC func_003615D0  # OVL1
 0x00361790 0x20C func_00361790  # OVL1
 0x003619A0 0x8C clear__Q23std54__vector_deleter<7C2DPoly,Q23std19allocator<7C2DPoly>>Fv  # OVL1; s1:align
@@ -6683,7 +6683,7 @@
 0x003639C0 0xB0 Draw__9C2DStringFPQ23zdb7CCamera  # OVL1; s1:callee
 0x00363A70 0xBC func_00363A70  # OVL1
 0x00363B30 0xC8 Tick__9C2DStringFf  # OVL1; s1:align
-0x00363C00 0x8 func_00363C00  # OVL1
+0x00363C00 0x8 On__9C2DStringFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00363C10 0x8 Off__9C2DStringFv  # OVL1; s1:callee
 0x00363C20 0x124 func_00363C20  # OVL1
 0x00363D50 0x60 ClearAndWipe__9C2DStringFv  # OVL1; s1:align
@@ -6693,9 +6693,9 @@
 0x00363E70 0xF0 func_00363E70  # OVL1
 0x00363F60 0x210 func_00363F60  # OVL1
 0x00364170 0x78 func_00364170  # OVL1
-0x003641F0 0xD8 func_003641F0  # OVL1
+0x003641F0 0xD8 GetAssetLibs__9C2DBitmapFRQ23C2D8CLibList  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003642D0 0xB4 TickFade__9C2DBitmapFv  # OVL1; s1:align
-0x00364390 0x18 func_00364390  # OVL1
+0x00364390 0x18 Reset__9C2DBitmapFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003643B0 0x2AC func_003643B0  # OVL1
 0x00364660 0x1C func_00364660  # OVL1
 0x00364680 0x50 SetPos__9C2DBitmapFii  # OVL1; s1:align
@@ -6707,25 +6707,25 @@
 0x003648F0 0x8 func_003648F0  # OVL1
 0x00364900 0x28 func_00364900  # OVL1
 0x00364930 0x1C SetColor__9C2DBitmapFfff  # OVL1; s1:exact
-0x00364950 0xDC func_00364950  # OVL1
-0x00364A30 0xCC func_00364A30  # OVL1
+0x00364950 0xDC Draw__9C2DBitmapFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00364A30 0xCC Draw__9C2DBitmapFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00364B00 0x50 func_00364B00  # OVL1
 0x00364B50 0x50 func_00364B50  # OVL1
 0x00364BA0 0x50 func_00364BA0  # OVL1
 0x00364BF0 0x60 func_00364BF0  # OVL1
 0x00364C50 0x110 func_00364C50  # OVL1
 0x00364D60 0x90 func_00364D60  # OVL1
-0x00364DF0 0x20 func_00364DF0  # OVL1
+0x00364DF0 0x20 func_00364DF0  # OVL1; s1~ Enable__3C2DFb (one of 2 out-of-line copies of an inline, by s1:vtable)
 0x00364E10 0x14 IsOn__3C2DCFv  # OVL1; s1:callee
-0x00364E30 0x1C func_00364E30  # OVL1
-0x00364E50 0x20 func_00364E50  # OVL1
+0x00364E30 0x1C On__3C2DFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00364E50 0x20 Off__3C2DFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00364E70 0x70 Draw__3C2DFPQ23zdb7CCamera  # OVL1; s1:callee
 0x00364EE0 0x4C func_00364EE0  # OVL1
 0x00364F30 0x124 func_00364F30  # OVL1
-0x00365060 0x98 func_00365060  # OVL1
+0x00365060 0x98 __dt__3C2DFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00365100 0xFC func_00365100  # OVL1
-0x00365200 0xC func_00365200  # OVL1
-0x00365210 0x1AC func_00365210  # OVL1
+0x00365200 0xC TakeDrawPacket__23CDblBufTextureRelocatorFP1Ui  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00365210 0x1AC PreGetSprPacket__23CDblBufTextureRelocatorFPQ23zdb10CTexHandle  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003653C0 0xE0 func_003653C0  # OVL1
 0x003654A0 0x1C func_003654A0  # OVL1
 0x003654C0 0x538 func_003654C0  # OVL1
@@ -6748,9 +6748,9 @@
 0x003677F0 0x14 func_003677F0  # OVL1
 0x00367810 0x138 func_00367810  # OVL1
 0x00367950 0xBE8 func_00367950  # OVL1
-0x00368540 0x8 func_00368540  # OVL1
-0x00368550 0x8 func_00368550  # OVL1
-0x00368560 0x8 func_00368560  # OVL1
+0x00368540 0x8 NumChildren__11CDlgObjSpecCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00368550 0x8 GetChild__11CDlgObjSpecCFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00368560 0x8 HasChildren__11CDlgObjSpecCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00368570 0xB4 func_00368570  # OVL1
 0x00368630 0x1C func_00368630  # OVL1
 0x00368650 0xB20 func_00368650  # OVL1
@@ -6759,7 +6759,7 @@
 0x00369210 0x4BC func_00369210  # OVL1
 0x003696D0 0x1A4 func_003696D0  # OVL1
 0x00369880 0x40 func_00369880  # OVL1
-0x003698C0 0x2A0 func_003698C0  # OVL1
+0x003698C0 0x2A0 __dt__9CGameMenuFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00369B60 0x348 __ct__9CGameMenuFv  # OVL1; s1:calls
 0x00369EB0 0xC0 func_00369EB0  # OVL1
 0x00369F70 0x24 __ct__10ActionItemFv  # OVL1; tu: zui.cpp~ (1.0 beta); s1:exact
@@ -6786,9 +6786,9 @@
 0x0036ADD0 0x7C func_0036ADD0  # OVL1
 0x0036AE50 0xD4 func_0036AE50  # OVL1
 0x0036AF30 0x70 func_0036AF30  # OVL1
-0x0036AFA0 0x8 func_0036AFA0  # OVL1
+0x0036AFA0 0x8 Tick__17CRenderableStringFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0036AFB0 0x8 func_0036AFB0  # OVL1
-0x0036AFC0 0x24 func_0036AFC0  # OVL1
+0x0036AFC0 0x24 SetMapOffset__17CRenderableStringFii  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0036AFF0 0xAC func_0036AFF0  # OVL1
 0x0036B0A0 0x128 func_0036B0A0  # OVL1
 0x0036B1D0 0x28 func_0036B1D0  # OVL1
@@ -6798,7 +6798,7 @@
 0x0036B310 0x8 func_0036B310  # OVL1
 0x0036B320 0x8 func_0036B320  # OVL1
 0x0036B330 0xC8 func_0036B330  # OVL1
-0x0036B400 0x4C func_0036B400  # OVL1
+0x0036B400 0x4C __dt__17CListItemTypeImplFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0036B450 0x58 func_0036B450  # OVL1
 0x0036B4B0 0x114 func_0036B4B0  # OVL1
 0x0036B5D0 0x8 func_0036B5D0  # OVL1
@@ -6823,119 +6823,119 @@
 0x0036C530 0xD0 GetZAnimCmdType__10CUIMapCtrlFPCc  # OVL1; s1:calls
 0x0036C600 0x144 func_0036C600  # OVL1
 0x0036C750 0xC func_0036C750  # OVL1
-0x0036C760 0x2CC func_0036C760  # OVL1
+0x0036C760 0x2CC ParseZAnimCmd__10CUIMapCtrlFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0036CA30 0x498 func_0036CA30  # OVL1
 0x0036CED0 0x18C func_0036CED0  # OVL1
-0x0036D060 0xD4 func_0036D060  # OVL1
+0x0036D060 0xD4 Draw__10CUIMapCtrlFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0036D140 0x198 func_0036D140  # OVL1
-0x0036D2E0 0x228 func_0036D2E0  # OVL1
+0x0036D2E0 0x228 HandlePad__10CUIMapCtrlFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0036D510 0x210 func_0036D510  # OVL1
-0x0036D720 0x128 __dt__11CZPauseTestFv  # OVL1; s1:calls
+0x0036D720 0x128 __dt__10CUIMapCtrlFv  # OVL1; s1:calls; s1:vtable (the same slot of the same class's vtable in both builds, code alike); was __dt__11CZPauseTestFv
 0x0036D850 0x5C func_0036D850  # OVL1
-0x0036D8B0 0xB4 func_0036D8B0  # OVL1
+0x0036D8B0 0xB4 Render__9C2DVisualFP7CMatrix  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0036D970 0xA8 GetZAnimCmdType__12CPopUpDialogFPCc  # OVL1; s1:calls
-0x0036DA20 0xC2C func_0036DA20  # OVL1
+0x0036DA20 0xC2C TickZAnimCmd__12CPopUpDialogFP14_zanim_cmd_hdrPfPb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0036E650 0x60 func_0036E650  # OVL1
-0x0036E6B0 0x80 func_0036E6B0  # OVL1
+0x0036E6B0 0x80 SetCanHandleInput__9C2DButtonFb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0036E730 0x60 func_0036E730  # OVL1
 0x0036E790 0x9C func_0036E790  # OVL1
 0x0036E830 0x8 func_0036E830  # OVL1
 0x0036E840 0x20 func_0036E840  # OVL1
 0x0036E860 0x1C func_0036E860  # OVL1
-0x0036E880 0x1390 func_0036E880  # OVL1
-0x0036FC10 0xA8 func_0036FC10  # OVL1
+0x0036E880 0x1390 ParseZAnimCmd__12CPopUpDialogFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0036FC10 0xA8 GetZAnimCmdType__17CRenderableStringFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0036FCC0 0x17C func_0036FCC0  # OVL1
 0x0036FE40 0x320 func_0036FE40  # OVL1
 0x00370160 0x54 __ct__9C2DVisualFP3C2DPQ23zdb16CTextureRelocMgr  # OVL1; tu: zui_2d.cpp~ (1.0 beta); s1:exact
-0x003701C0 0xB4 func_003701C0  # OVL1
+0x003701C0 0xB4 HandlePad__11CScrollTextFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00370280 0xBC Tick__11CScrollTextFf  # OVL1; s1:calls
 0x00370340 0x8 func_00370340  # OVL1
-0x00370350 0x2BC func_00370350  # OVL1
+0x00370350 0x2BC Draw__11CScrollTextFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00370610 0x74 func_00370610  # OVL1; tu: zui_2d.cpp~ (1.0 beta)
-0x00370690 0x28C func_00370690  # OVL1
+0x00370690 0x28C Draw__12CPopUpDialogFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00370920 0x6C func_00370920  # OVL1
-0x00370990 0x284 func_00370990  # OVL1
+0x00370990 0x284 HandlePad__12CPopUpDialogFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00370C20 0x88 func_00370C20  # OVL1
 0x00370CB0 0x58 func_00370CB0  # OVL1
 0x00370D10 0x9C func_00370D10  # OVL1
 0x00370DB0 0x1B0 func_00370DB0  # OVL1
 0x00370F60 0x15C func_00370F60  # OVL1
 0x003710C0 0xC func_003710C0  # OVL1
-0x003710D0 0xCC func_003710D0  # OVL1
-0x003711A0 0xE8 func_003711A0  # OVL1
-0x00371290 0x108 func_00371290  # OVL1
-0x003713A0 0x1A8 func_003713A0  # OVL1
+0x003710D0 0xCC TickZAnimCmd__11CRadioStripFP14_zanim_cmd_hdrPfPb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x003711A0 0xE8 ParseZAnimCmd__11CRadioStripFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00371290 0x108 GetZAnimCmdType__11CRadioStripFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x003713A0 0x1A8 Draw__9CCheckBoxFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00371550 0x128 func_00371550  # OVL1
-0x00371680 0x134 func_00371680  # OVL1
-0x003717C0 0x21C func_003717C0  # OVL1
-0x003719E0 0x30 func_003719E0  # OVL1
+0x00371680 0x134 HandlePad__9CCheckBoxFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x003717C0 0x21C Draw__13CHProgressBarFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x003719E0 0x30 Tick__13CHProgressBarFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00371A10 0x18C func_00371A10  # OVL1
 0x00371BA0 0xA8 func_00371BA0  # OVL1
 0x00371C50 0xB0 func_00371C50  # OVL1
 0x00371D00 0x4D8 func_00371D00  # OVL1
 0x003721E0 0x3C func_003721E0  # OVL1
-0x00372220 0x18C func_00372220  # OVL1
-0x003723B0 0x13C func_003723B0  # OVL1
+0x00372220 0x18C Draw__10CSliderBarFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x003723B0 0x13C Tick__9C2DButtonFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003724F0 0x148 func_003724F0  # OVL1
-0x00372640 0x138 func_00372640  # OVL1
-0x00372780 0xE8 func_00372780  # OVL1
-0x00372870 0x108 func_00372870  # OVL1
+0x00372640 0x138 TickZAnimCmd__10CSliderBarFP14_zanim_cmd_hdrPfPb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00372780 0xE8 ParseZAnimCmd__10CSliderBarFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00372870 0x108 GetZAnimCmdType__10CSliderBarFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00372980 0x584 func_00372980  # OVL1
 0x00372F10 0x730 func_00372F10  # OVL1
 0x00373640 0x210 func_00373640  # OVL1
-0x00373850 0x6CC func_00373850  # OVL1
+0x00373850 0x6CC Draw__10CUIListBoxFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00373F20 0xE4 func_00373F20  # OVL1
 0x00374010 0x2D8 func_00374010  # OVL1
 0x003742F0 0x2E8 func_003742F0  # OVL1
-0x003745E0 0x46C func_003745E0  # OVL1
+0x003745E0 0x46C HandlePad__10CUIListBoxFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00374A50 0x100 func_00374A50  # OVL1
 0x00374B50 0x15C func_00374B50  # OVL1
 0x00374CB0 0x388 func_00374CB0  # OVL1
-0x00375040 0x488 func_00375040  # OVL1
+0x00375040 0x488 Tick__10CUIListBoxFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003754D0 0x238 func_003754D0  # OVL1
-0x00375710 0x554 func_00375710  # OVL1
+0x00375710 0x554 __dt__10CUIListBoxFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00375C70 0x1A8 func_00375C70  # OVL1
 0x00375E20 0x5F8 func_00375E20  # OVL1
-0x00376420 0x110 func_00376420  # OVL1
+0x00376420 0x110 SetNormal__10CUIListBoxFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00376530 0x68 func_00376530  # OVL1
-0x003765A0 0xEC func_003765A0  # OVL1
+0x003765A0 0xEC HandlePad__14CHandlerButtonFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00376690 0x8 func_00376690  # OVL1
 0x003766A0 0x120 func_003766A0  # OVL1
-0x003767C0 0xA8 func_003767C0  # OVL1
+0x003767C0 0xA8 GetZAnimCmdType__9C2DButtonFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00376870 0x150 func_00376870  # OVL1
-0x003769C0 0x180 func_003769C0  # OVL1
+0x003769C0 0x180 ParseZAnimCmd__9C2DButtonFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00376B40 0x90 func_00376B40  # OVL1
 0x00376BD0 0x464 func_00376BD0  # OVL1
-0x00377040 0x338 func_00377040  # OVL1
+0x00377040 0x338 HandlePad__9C2DButtonFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00377380 0x6C func_00377380  # OVL1
 0x003773F0 0x114 func_003773F0  # OVL1
-0x00377510 0x2E8 func_00377510  # OVL1
+0x00377510 0x2E8 __dt__9C2DButtonFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00377800 0x22C func_00377800  # OVL1
-0x00377A30 0x70 func_00377A30  # OVL1
-0x00377AA0 0xE0 func_00377AA0  # OVL1
-0x00377B80 0x8DC func_00377B80  # OVL1
-0x00378460 0x198 func_00378460  # OVL1
-0x00378600 0x194 func_00378600  # OVL1
+0x00377A30 0x70 __dt__13C3StateButtonFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00377AA0 0xE0 Draw__13C3StateButtonFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00377B80 0x8DC Tick__9CTeleTypeFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00378460 0x198 GetZAnimCmdType__9CTeleTypeFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00378600 0x194 TickZAnimCmd__9CTeleTypeFP14_zanim_cmd_hdrPfPb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003787A0 0x264 func_003787A0  # OVL1
-0x00378A10 0xE4 func_00378A10  # OVL1
+0x00378A10 0xE4 SetString__9CTeleTypeFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00378B00 0xF8 func_00378B00  # OVL1
-0x00378C00 0x3B4 func_00378C00  # OVL1
-0x00378FC0 0xB8 func_00378FC0  # OVL1
+0x00378C00 0x3B4 Draw__9CTeleTypeFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00378FC0 0xB8 Tick__9CPlainBmpFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00379080 0xDC func_00379080  # OVL1
-0x00379160 0xFC func_00379160  # OVL1
+0x00379160 0xFC Draw__9CPlainBmpFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00379260 0x90 func_00379260  # OVL1
 0x003792F0 0x1B4 func_003792F0  # OVL1
 0x003794B0 0x4C0 func_003794B0  # OVL1
 0x00379970 0x138 func_00379970  # OVL1
 0x00379AB0 0x60 func_00379AB0  # OVL1
-0x00379B10 0x134 func_00379B10  # OVL1
-0x00379C50 0x140 func_00379C50  # OVL1
-0x00379D90 0x1E0 func_00379D90  # OVL1
-0x00379F70 0x4C0 func_00379F70  # OVL1
+0x00379B10 0x134 TickZAnimCmd__17CRenderableStringFP14_zanim_cmd_hdrPfPb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00379C50 0x140 ParseZAnimCmd__17CRenderableStringFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00379D90 0x1E0 __dt__12CWrappedTextFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00379F70 0x4C0 SetString__12CWrappedTextFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037A430 0x108 func_0037A430  # OVL1
-0x0037A540 0xF0 func_0037A540  # OVL1
+0x0037A540 0xF0 Draw__17CRenderableStringFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037A630 0x8 func_0037A630  # OVL1
-0x0037A640 0x12C func_0037A640  # OVL1
+0x0037A640 0x12C __dt__17CRenderableStringFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037A770 0x94 func_0037A770  # OVL1; tu: zui_2d.cpp~ (1.0 beta)
 0x0037A810 0x110 func_0037A810  # OVL1
 0x0037A920 0x264 func_0037A920  # OVL1
@@ -6944,10 +6944,10 @@
 0x0037AE00 0x8 func_0037AE00  # OVL1
 0x0037AE10 0x4E0 func_0037AE10  # OVL1
 0x0037B2F0 0x194 func_0037B2F0  # OVL1
-0x0037B490 0x124 func_0037B490  # OVL1
-0x0037B5C0 0x130 func_0037B5C0  # OVL1
-0x0037B6F0 0x150 func_0037B6F0  # OVL1
-0x0037B840 0x138 func_0037B840  # OVL1
+0x0037B490 0x124 TickZAnimCmd__10C2DCounterFP14_zanim_cmd_hdrPfPb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0037B5C0 0x130 Tick__10C2DCounterFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0037B6F0 0x150 ParseZAnimCmd__10C2DCounterFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0037B840 0x138 GetZAnimCmdType__10C2DCounterFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037B980 0xC func_0037B980  # OVL1
 0x0037B990 0xC func_0037B990  # OVL1
 0x0037B9A0 0xC8 func_0037B9A0  # OVL1
@@ -6979,20 +6979,20 @@
 0x0037BE70 0x14 func_0037BE70  # OVL1
 0x0037BE90 0x8C func_0037BE90  # OVL1
 0x0037BF20 0xFC func_0037BF20  # OVL1
-0x0037C020 0x70 func_0037C020  # OVL1
+0x0037C020 0x70 __dt__8C2DClockFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037C090 0x8 func_0037C090  # OVL1
-0x0037C0A0 0x60 func_0037C0A0  # OVL1
-0x0037C100 0x8 func_0037C100  # OVL1
-0x0037C110 0x70 func_0037C110  # OVL1
+0x0037C0A0 0x60 __dt__9C2DVisualFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0037C100 0x8 Get2DVisual__9C2DVisualFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0037C110 0x70 __dt__11CScrollTextFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037C180 0x14 SetMapOffset__9CPlainBmpFii  # OVL1; tu: zui_2d.cpp~ (1.0 beta); s1:exact
 0x0037C1A0 0x8 func_0037C1A0  # OVL1
-0x0037C1B0 0x70 func_0037C1B0  # OVL1
-0x0037C220 0xA0 func_0037C220  # OVL1
+0x0037C1B0 0x70 __dt__11CRadioStripFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0037C220 0xA0 DrawBackground__9C2DButtonFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037C2C0 0x118 func_0037C2C0  # OVL1
 0x0037C3E0 0x8 func_0037C3E0  # OVL1
-0x0037C3F0 0xD0 func_0037C3F0  # OVL1
-0x0037C4C0 0xD0 func_0037C4C0  # OVL1
-0x0037C590 0x70 func_0037C590  # OVL1
+0x0037C3F0 0xD0 __dt__13CHProgressBarFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0037C4C0 0xD0 __dt__10CSliderBarFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0037C590 0x70 __dt__14CHandlerButtonFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037C600 0x108 func_0037C600  # OVL1
 0x0037C710 0x18 func_0037C710  # OVL1
 0x0037C730 0x148 func_0037C730  # OVL1
@@ -7010,7 +7010,7 @@
 0x0037CDC0 0xB8 func_0037CDC0  # OVL1
 0x0037CE80 0x80 func_0037CE80  # OVL1
 0x0037CF00 0x80 func_0037CF00  # OVL1
-0x0037CF80 0x70 func_0037CF80  # OVL1
+0x0037CF80 0x70 __dt__10C2DCounterFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037CFF0 0x8 func_0037CFF0  # OVL1
 0x0037D000 0x8 func_0037D000  # OVL1
 0x0037D010 0x8 func_0037D010  # OVL1
@@ -7035,29 +7035,29 @@
 0x0037D140 0x8 func_0037D140  # OVL1
 0x0037D150 0x8 func_0037D150  # OVL1
 0x0037D160 0x8 func_0037D160  # OVL1
-0x0037D170 0xA0 func_0037D170  # OVL1
-0x0037D210 0xC func_0037D210  # OVL1
-0x0037D220 0x84 func_0037D220  # OVL1
-0x0037D2B0 0xB0 func_0037D2B0  # OVL1
-0x0037D360 0x90 func_0037D360  # OVL1
+0x0037D170 0xA0 __dt__10CClockSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0037D210 0xC GetType__10CClockSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0037D220 0x84 CreateDisplayObj__10CClockSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0037D2B0 0xB0 Copy__10CClockSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0037D360 0x90 __dt__9CTextSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037D3F0 0x190 func_0037D3F0  # OVL1
-0x0037D580 0x80 func_0037D580  # OVL1
+0x0037D580 0x80 CreateDisplayObj__14CUIMapCtrlSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037D600 0x310 func_0037D600  # OVL1
 0x0037D910 0x94 func_0037D910  # OVL1
 0x0037D9B0 0x98 func_0037D9B0  # OVL1
 0x0037DA50 0x2D8 func_0037DA50  # OVL1
 0x0037DD30 0x130 func_0037DD30  # OVL1
-0x0037DE60 0x198 func_0037DE60  # OVL1
+0x0037DE60 0x198 CreateDisplayObj__13CCheckBoxSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037E000 0x188 func_0037E000  # OVL1
 0x0037E190 0x4C func_0037E190  # OVL1
 0x0037E1E0 0x28 func_0037E1E0  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
 0x0037E210 0x84 func_0037E210  # OVL1
 0x0037E2A0 0x1D0 func_0037E2A0  # OVL1
-0x0037E470 0x184 func_0037E470  # OVL1
+0x0037E470 0x184 CreateDisplayObj__17CHProgressBarSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037E600 0xB0 func_0037E600  # OVL1
 0x0037E6B0 0x78 func_0037E6B0  # OVL1
-0x0037E730 0x178 func_0037E730  # OVL1
-0x0037E8B0 0x1AC func_0037E8B0  # OVL1
+0x0037E730 0x178 CreateDisplayObj__14CSliderBarSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0037E8B0 0x1AC CreateDisplayObj__14CUIListBoxSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037EA60 0x14 func_0037EA60  # OVL1
 0x0037EA80 0x28 func_0037EA80  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
 0x0037EAB0 0x17D0 func_0037EAB0  # OVL1
@@ -7067,8 +7067,8 @@
 0x00380620 0xC8C func_00380620  # OVL1
 0x003812B0 0x2A0 func_003812B0  # OVL1
 0x00381550 0x688 func_00381550  # OVL1
-0x00381BE0 0x144 func_00381BE0  # OVL1
-0x00381D30 0xD8 func_00381D30  # OVL1
+0x00381BE0 0x144 CreateDisplayObj__12CCounterSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00381D30 0xD8 Copy__12CCounterSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00381E10 0x254 func_00381E10  # OVL1
 0x00382070 0x5F8 func_00382070  # OVL1
 0x00382670 0x21C func_00382670  # OVL1
@@ -7079,8 +7079,8 @@
 0x00383160 0x174 func_00383160  # OVL1
 0x003832E0 0x80 func_003832E0  # OVL1
 0x00383360 0x2B8 func_00383360  # OVL1
-0x00383620 0xB0 func_00383620  # OVL1
-0x003836D0 0xC func_003836D0  # OVL1
+0x00383620 0xB0 __dt__12CCounterSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x003836D0 0xC GetType__12CCounterSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003836E0 0x11C func_003836E0  # OVL1
 0x00383800 0xAC func_00383800  # OVL1
 0x003838B0 0xA4 func_003838B0  # OVL1
@@ -7142,93 +7142,93 @@
 0x00386E00 0x8 func_00386E00  # OVL1
 0x00386E10 0x8 func_00386E10  # OVL1
 0x00386E20 0x114 func_00386E20  # OVL1
-0x00386F40 0xC func_00386F40  # OVL1
+0x00386F40 0xC GetType__14CUIMapCtrlSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00386F50 0x98 func_00386F50  # OVL1
 0x00386FF0 0x258 func_00386FF0  # OVL1
 0x00387250 0x90 func_00387250  # OVL1
 0x003872E0 0x54 func_003872E0  # OVL1
-0x00387340 0x19C func_00387340  # OVL1
-0x003874E0 0xA4 func_003874E0  # OVL1
-0x00387590 0x64 func_00387590  # OVL1
+0x00387340 0x19C __dt__15CRadioStripSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x003874E0 0xA4 CreateDisplayObj__15CRadioStripSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00387590 0x64 Copy__15CRadioStripSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00387600 0x28 func_00387600  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
 0x00387630 0x3A8 func_00387630  # OVL1
-0x003879E0 0x38 func_003879E0  # OVL1; tu: zui_cleanup.cpp~ (1.0 beta)
+0x003879E0 0x38 Copy__13CCheckBoxSpecFv  # OVL1; tu: zui_cleanup.cpp~ (1.0 beta); s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00387A20 0x68 func_00387A20  # OVL1
 0x00387A90 0x1DC func_00387A90  # OVL1
-0x00387C70 0x80 func_00387C70  # OVL1
+0x00387C70 0x80 Copy__14CSliderBarSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00387CF0 0x268 func_00387CF0  # OVL1
 0x00387F60 0x28 func_00387F60  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
 0x00387F90 0x20 __ct__6CPnt3DFRC6CPnt3D  # OVL1; s1:exact
 0x00387FB0 0x28 func_00387FB0  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
-0x00387FE0 0xA0 func_00387FE0  # OVL1
-0x00388080 0x64 func_00388080  # OVL1
-0x003880F0 0xF0 func_003880F0  # OVL1
-0x003881E0 0xC func_003881E0  # OVL1
-0x003881F0 0x94 func_003881F0  # OVL1
-0x00388290 0x60 func_00388290  # OVL1
+0x00387FE0 0xA0 CreateDisplayObj__18CHandlerButtonSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00388080 0x64 Copy__18CHandlerButtonSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x003880F0 0xF0 __dt__18CHandlerButtonSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x003881E0 0xC HasChildren__18CHandlerButtonSpecCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x003881F0 0x94 CreateDisplayObj__11CScrollSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00388290 0x60 Copy__11CScrollSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003882F0 0x110 func_003882F0  # OVL1
-0x00388400 0xC4 func_00388400  # OVL1
+0x00388400 0xC4 CreateDisplayObj__9CWrapSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003884D0 0xD8 func_003884D0  # OVL1
 0x003885B0 0x200 func_003885B0  # OVL1
 0x003887B0 0x84 func_003887B0  # OVL1
 0x00388840 0x58 func_00388840  # OVL1
-0x003888A0 0x130 func_003888A0  # OVL1
+0x003888A0 0x130 CreateDisplayObj__8CTtySpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003889D0 0x90 func_003889D0  # OVL1
-0x00388A60 0x74 func_00388A60  # OVL1
-0x00388AE0 0x98 func_00388AE0  # OVL1
+0x00388A60 0x74 CreateDisplayObj__9CTextSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00388AE0 0x98 Copy__9CTextSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00388B80 0x1EC func_00388B80  # OVL1
 0x00388D70 0xE0 func_00388D70  # OVL1
-0x00388E50 0xCC func_00388E50  # OVL1
+0x00388E50 0xCC __dt__11CDlgObjSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00388F20 0x198 func_00388F20  # OVL1
 0x003890C0 0x78 func_003890C0  # OVL1
-0x00389140 0xC func_00389140  # OVL1
-0x00389150 0x8 func_00389150  # OVL1
-0x00389160 0x14 func_00389160  # OVL1; tu: zui_cleanup.cpp~ (1.0 beta)
-0x00389180 0xC func_00389180  # OVL1
-0x00389190 0x18C func_00389190  # OVL1
-0x00389320 0xC func_00389320  # OVL1
+0x00389140 0xC HasChildren__15CRadioStripSpecCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00389150 0x8 NumChildren__15CRadioStripSpecCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00389160 0x14 GetChild__15CRadioStripSpecCFi  # OVL1; tu: zui_cleanup.cpp~ (1.0 beta); s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00389180 0xC GetType__15CRadioStripSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00389190 0x18C __dt__13CCheckBoxSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00389320 0xC GetType__13CCheckBoxSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389330 0x10C func_00389330  # OVL1
-0x00389440 0xC func_00389440  # OVL1
-0x00389450 0xD8 func_00389450  # OVL1
-0x00389530 0xC func_00389530  # OVL1
+0x00389440 0xC GetType__17CHProgressBarSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00389450 0xD8 __dt__14CSliderBarSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00389530 0xC GetType__14CSliderBarSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389540 0x21C func_00389540  # OVL1
-0x00389760 0xC func_00389760  # OVL1
-0x00389770 0xC func_00389770  # OVL1
-0x00389780 0x28 func_00389780  # OVL1
-0x003897B0 0x8 func_003897B0  # OVL1
-0x003897C0 0x90 func_003897C0  # OVL1
-0x00389850 0xC func_00389850  # OVL1
-0x00389860 0xC func_00389860  # OVL1
+0x00389760 0xC GetType__14CUIListBoxSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00389770 0xC GetType__18CHandlerButtonSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00389780 0x28 NumChildren__18CHandlerButtonSpecCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x003897B0 0x8 GetChild__18CHandlerButtonSpecCFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x003897C0 0x90 __dt__11CScrollSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00389850 0xC GetType__11CScrollSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00389860 0xC GetType__9CWrapSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389870 0x114 func_00389870  # OVL1
 0x00389990 0xC func_00389990  # OVL1
 0x003899A0 0x114 func_003899A0  # OVL1
-0x00389AC0 0xC func_00389AC0  # OVL1
-0x00389AD0 0xC func_00389AD0  # OVL1
-0x00389AE0 0xC func_00389AE0  # OVL1
-0x00389AF0 0xC func_00389AF0  # OVL1
+0x00389AC0 0xC GetType__8CTtySpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00389AD0 0xC GetType__9CTextSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00389AE0 0xC GetType__10CImageSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00389AF0 0xC GetType__11CButtonSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389B00 0x15C func_00389B00  # OVL1
 0x00389C60 0x154 func_00389C60  # OVL1
-0x00389DC0 0xA8 func_00389DC0  # OVL1
-0x00389E70 0x9C func_00389E70  # OVL1
+0x00389DC0 0xA8 UpdateUIVar__12CDialogTunerFP11CUIVariable  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00389E70 0x9C UpdateUIVar__19CStickDeadzoneTunerFP11CUIVariable  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389F10 0x78 func_00389F10  # OVL1
-0x00389F90 0x6C func_00389F90  # OVL1
-0x0038A000 0x40 func_0038A000  # OVL1
-0x0038A040 0x5C func_0038A040  # OVL1
+0x00389F90 0x6C UpdateUIVar__22CStickSensitivityTunerFP11CUIVariable  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0038A000 0x40 UpdateUIVar__16CBrightnessTunerFP11CUIVariable  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0038A040 0x5C UpdateUIVar__11CMusicTunerFP11CUIVariable  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0038A0A0 0x168 func_0038A0A0  # OVL1
 0x0038A210 0x208 func_0038A210  # OVL1
-0x0038A420 0x80 func_0038A420  # OVL1
-0x0038A4A0 0x80 func_0038A4A0  # OVL1
+0x0038A420 0x80 __dt__12CDialogTunerFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0038A4A0 0x80 __dt__19CStickDeadzoneTunerFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0038A520 0x80 func_0038A520  # OVL1
-0x0038A5A0 0x80 func_0038A5A0  # OVL1
-0x0038A620 0x80 func_0038A620  # OVL1
-0x0038A6A0 0x80 func_0038A6A0  # OVL1
-0x0038A720 0x80 func_0038A720  # OVL1
+0x0038A5A0 0x80 __dt__22CStickSensitivityTunerFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0038A620 0x80 __dt__16CBrightnessTunerFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0038A6A0 0x80 __dt__11CMusicTunerFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0038A720 0x80 __dt__11CSoundTunerFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0038A7A0 0x84C func_0038A7A0  # OVL1
-0x0038AFF0 0x70 func_0038AFF0  # OVL1
+0x0038AFF0 0x70 __dt__11SystemTunerFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0038B060 0x24 func_0038B060  # OVL1
 0x0038B090 0x80 func_0038B090  # OVL1
 0x0038B110 0x5C func_0038B110  # OVL1
-0x0038B170 0x8 func_0038B170  # OVL1
+0x0038B170 0x8 UpdateUIVar__11SystemTunerFP11CUIVariable  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0038B180 0xCC func_0038B180  # OVL1
 0x0038B250 0x44 SetButtonState__Q221@unnamed@zui_skb_cpp@12CSkbKeyPropsFM9C2DButtonFPCvPv_v  # OVL1; s1:exact
 0x0038B2A0 0xF0 func_0038B2A0  # OVL1
@@ -7500,10 +7500,10 @@
 0x0039BB40 0x68 func_0039BB40  # OVL1
 0x0039BBB0 0x8 func_0039BBB0  # OVL1
 0x0039BBC0 0xD0 func_0039BBC0  # OVL1
-0x0039BC90 0xA0 func_0039BC90  # OVL1
-0x0039BD30 0x2C func_0039BD30  # OVL1
-0x0039BD60 0x7C func_0039BD60  # OVL1
-0x0039BDE0 0x88 func_0039BDE0  # OVL1
+0x0039BC90 0xA0 fwrite__9CBufferIOFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0039BD30 0x2C fflush__9CBufferIOFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0039BD60 0x7C freadchar__9CBufferIOFPc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0039BDE0 0x88 fread__9CBufferIOFiPPv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0039BE70 0xA8 fread__9CBufferIOFPvi  # OVL1; s1:calls
 0x0039BF20 0xD4 fseek__9CBufferIOFii  # OVL1; s1:align
 0x0039C000 0x34 ftell__9CBufferIOCFv  # OVL1; s1:align
@@ -7529,7 +7529,7 @@
 0x0039C7F0 0x4BC insert__Q23std92__vector_imp<Q211CIOPManager11CRegistrant,Q23std39allocator<Q211CIOPManager11CRegistrant>,0>FPQ211CIOPManager11CRegistrantUiRCQ211CIOPManager11CRegistrant  # OVL1; s1:align
 0x0039CCB0 0x8C func_0039CCB0  # OVL1
 0x0039CD40 0x78 func_0039CD40  # OVL1
-0x0039CDC0 0x8 func_0039CDC0  # OVL1
+0x0039CDC0 0x8 GetSize__7CFileIOCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0039CDD0 0x94 fwrite__7CFileIOFPCc  # OVL1; s1:align
 0x0039CE70 0xC func_0039CE70  # OVL1
 0x0039CE80 0x194 func_0039CE80  # OVL1
@@ -7549,20 +7549,20 @@
 0x0039DFC0 0xC func_0039DFC0  # OVL1
 0x0039DFD0 0x520 func_0039DFD0  # OVL1
 0x0039E4F0 0x110 CreatePath__7CFileCDFPcPc  # OVL1; s1:calls
-0x0039E600 0x8 func_0039E600  # OVL1
-0x0039E610 0x8 func_0039E610  # OVL1
+0x0039E600 0x8 fflush__7CFileIOFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0039E610 0x8 ftell__7CFileIOCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0039E620 0x70 func_0039E620  # OVL1
 0x0039E690 0x8C fread__7CFileIOFPvi  # OVL1; s1:calls
-0x0039E720 0x178 func_0039E720  # OVL1
+0x0039E720 0x178 fseek__7CFileIOFii  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0039E8A0 0x104 Close__7CFileIOFv  # OVL1; s1:align
 0x0039E9B0 0x4A0 func_0039E9B0  # OVL1
 0x0039EE50 0x104 func_0039EE50  # OVL1
 0x0039EF60 0xC func_0039EF60  # OVL1
-0x0039EF70 0xC func_0039EF70  # OVL1
+0x0039EF70 0xC IsOpen__9CBufferIOCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0039EF80 0x50 IsOpen__7CFileIOCFv  # OVL1; s1:align
 0x0039EFD0 0x34 __ct__7CFileIOFv  # OVL1; s1:align
 0x0039F010 0xA0 SetRootPath__7CFileIOFPCc  # OVL1; s1:align
-0x0039F0B0 0xC func_0039F0B0  # OVL1
+0x0039F0B0 0xC fread__7CFileIOFiPPv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0039F0C0 0x98 func_0039F0C0  # OVL1
 0x0039F160 0x50 func_0039F160  # OVL1
 0x0039F1B0 0x8 func_0039F1B0  # OVL1
@@ -7580,17 +7580,17 @@
 0x0039FBD0 0x88 func_0039FBD0  # OVL1
 0x0039FC60 0x120 func_0039FC60  # OVL1
 0x0039FD80 0x128 func_0039FD80  # OVL1
-0x0039FEB0 0x8 func_0039FEB0  # OVL1
-0x0039FEC0 0x80 func_0039FEC0  # OVL1
+0x0039FEB0 0x8 GetMode__10CMemCardIOCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0039FEC0 0x80 fwrite__10CMemCardIOFPCvi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0039FF40 0xE0 func_0039FF40  # OVL1
 0x003A0020 0xE0 func_003A0020  # OVL1
 0x003A0100 0x54 fflush__10CMemCardIOFv  # OVL1; s1:align
 0x003A0160 0x10C func_003A0160  # OVL1
 0x003A0270 0x10C func_003A0270  # OVL1
-0x003A0380 0xC func_003A0380  # OVL1
+0x003A0380 0xC fread__10CMemCardIOFiPPv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003A0390 0xA0 fseek__10CMemCardIOFii  # OVL1; s1:align
 0x003A0430 0x80 ftell__10CMemCardIOCFv  # OVL1; s1:align
-0x003A04B0 0x8 func_003A04B0  # OVL1
+0x003A04B0 0x8 GetSize__10CMemCardIOCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003A04C0 0x10 IsOpen__10CMemCardIOCFv  # OVL1; s1:exact
 0x003A04D0 0xD0 func_003A04D0  # OVL1
 0x003A05A0 0x224 Open__10CMemCardIOFPCcUi  # OVL1; s1:align
@@ -7735,7 +7735,7 @@
 0x003A9FB0 0x68 func_003A9FB0  # OVL1
 0x003AA020 0x80 func_003AA020  # OVL1
 0x003AA0A0 0x104 func_003AA0A0  # OVL1
-0x003AA1B0 0xB8 func_003AA1B0  # OVL1
+0x003AA1B0 0xB8 __dt__7CTurretFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003AA270 0x70 func_003AA270  # OVL1
 0x003AA2E0 0x40 func_003AA2E0  # OVL1
 0x003AA320 0x8 func_003AA320  # OVL1
@@ -7851,7 +7851,7 @@
 0x003B52A0 0x8 func_003B52A0  # OVL1
 0x003B52B0 0x10 func_003B52B0  # OVL1
 0x003B52C0 0x78 func_003B52C0  # OVL1
-0x003B5340 0x2C func_003B5340  # OVL1
+0x003B5340 0x2C Render__Q23zdb7CVisualFP7CMatrix  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003B5370 0x164 func_003B5370  # OVL1
 0x003B54E0 0x244 func_003B54E0  # OVL1
 0x003B5730 0x180 func_003B5730  # OVL1
@@ -7900,10 +7900,10 @@
 0x003B8CD0 0x5C __ct__Q23zdb8CSubMeshFPQ23zdb5CMesh  # OVL1; s1:exact
 0x003B8D30 0xA8 SetMeshTextureSelects__Q23zdb5CMeshFP8_word128P8_word128  # OVL1; s1:align
 0x003B8DE0 0x150 func_003B8DE0  # OVL1
-0x003B8F30 0x8 func_003B8F30  # OVL1
-0x003B8F40 0x208 func_003B8F40  # OVL1
-0x003B9150 0x8 func_003B9150  # OVL1
-0x003B9160 0x8 func_003B9160  # OVL1
+0x003B8F30 0x8 Read__Q23zdb5CMeshFRQ23zar4CZAR  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x003B8F40 0x208 __dt__Q23zdb5CMeshFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x003B9150 0x8 UpdateCentroid__Q23zdb5CMeshFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x003B9160 0x8 ComputeBBox__Q23zdb5CMeshFP5CBBox  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003B9170 0x10 func_003B9170  # OVL1
 0x003B9180 0x18C Clone__Q23zdb5CMeshFv  # OVL1; s1:align
 0x003B9310 0x28 func_003B9310  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
@@ -8056,13 +8056,13 @@
 0x003C34B0 0xC0 func_003C34B0  # OVL1
 0x003C3570 0x140 Read__Q23zdb7CVisualFRQ23zar4CZAR  # OVL1; s1:callee
 0x003C36B0 0x10 UpdateCentroid__Q23zdb7CVisualFv  # OVL1; tu: vis_main.cpp~ (1.0 beta); s1:exact
-0x003C36C0 0x8 func_003C36C0  # OVL1
+0x003C36C0 0x8 ComputeBBox__Q23zdb7CVisualFP5CBBox  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003C36D0 0x1EC func_003C36D0  # OVL1
 0x003C38C0 0x370 func_003C38C0  # OVL1
 0x003C3C30 0xA4 func_003C3C30  # OVL1
 0x003C3CE0 0xA8 GetTextureSelectBlock_ver2__Q23zdb7CVisualFUiPP8_word128P8_word128P8_word128  # OVL1; tu: vis_main.cpp~ (1.0 beta); s1:exact
 0x003C3D90 0xFC func_003C3D90  # OVL1
-0x003C3E90 0x290 func_003C3E90  # OVL1
+0x003C3E90 0x290 __dt__Q23zdb7CVisualFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003C4120 0x14 Release__Q23zdb7CVisualFv  # OVL1; s1:exact
 0x003C4140 0x44 func_003C4140  # OVL1
 0x003C4190 0x140 Create__Q23zdb7CVisualFRQ23zar4CZAR  # OVL1; s1:calls
@@ -8097,7 +8097,7 @@
 0x003C5730 0xC func_003C5730  # OVL1
 0x003C5740 0xF0 func_003C5740  # OVL1
 0x003C5830 0x5C func_003C5830  # OVL1
-0x003C5890 0x98 func_003C5890  # OVL1
+0x003C5890 0x98 __dt__11CZFTSWeaponFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003C5930 0x20 func_003C5930  # OVL1
 0x003C5950 0x10 ResolveFTSDamage__11CZFTSWeaponFf  # OVL1; s1:exact
 0x003C5960 0x8 func_003C5960  # OVL1
@@ -8164,7 +8164,7 @@
 0x003C6180 0x8 func_003C6180  # OVL1
 0x003C6190 0x8 func_003C6190  # OVL1
 0x003C61A0 0x8 func_003C61A0  # OVL1
-0x003C61B0 0x8 func_003C61B0  # OVL1
+0x003C61B0 0x8 Recoil__11CZFTSWeaponFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003C61C0 0x50 func_003C61C0  # OVL1
 0x003C6210 0x50 func_003C6210  # OVL1
 0x003C6260 0x50 func_003C6260  # OVL1
@@ -8220,7 +8220,7 @@
 0x003C9530 0x46C func_003C9530  # OVL1
 0x003C99A0 0x1D0 func_003C99A0  # OVL1
 0x003C9B70 0x440 func_003C9B70  # OVL1
-0x003C9FB0 0x5E4 func_003C9FB0  # OVL1
+0x003C9FB0 0x5E4 PostTick__12CZProjectileFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003CA5A0 0x63C func_003CA5A0  # OVL1
 0x003CABE0 0x300 func_003CABE0  # OVL1
 0x003CAEE0 0x80 func_003CAEE0  # OVL1
@@ -8411,7 +8411,7 @@
 0x003D38B0 0x78 func_003D38B0  # OVL1
 0x003D3930 0x44 func_003D3930  # OVL1
 0x003D3980 0x58 func_003D3980  # OVL1
-0x003D39E0 0x240 func_003D39E0  # OVL1
+0x003D39E0 0x240 __dt__8CZWeaponFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003D3C20 0x170 func_003D3C20  # OVL1
 0x003D3D90 0x4CC func_003D3D90  # OVL1
 0x003D4260 0x120 func_003D4260  # OVL1
@@ -9338,9 +9338,9 @@
 0x00510110 0xB0 func_00510110  # OVL2
 0x005101C0 0x60 __dt__20CAiEventCallbackListFv  # OVL2; s1:ref (taken by address where SOCOM 1 takes __dt__20CAiEventCallbackListFv's)
 0x00510220 0x60 __dt__12CAiEventListFv  # OVL2; s1:ref (taken by address where SOCOM 1 takes __dt__12CAiEventListFv's)
-0x00510280 0x8 func_00510280  # OVL2
+0x00510280 0x8 reset__10CAiPlannerFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00510290 0x50 func_00510290  # OVL2
-0x005102E0 0x6C func_005102E0  # OVL2
+0x005102E0 0x6C dist__10CAiPlannerFR6CAiMapRC9CAiMapLocRC9CAiMapLoc  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00510350 0x3C func_00510350  # OVL2
 0x00510390 0x14C func_00510390  # OVL2
 0x005104E0 0x44 func_005104E0  # OVL2
@@ -9923,17 +9923,17 @@
 0x00542E50 0x16C func_00542E50  # OVL2
 0x00542FC0 0x18 func_00542FC0  # OVL2
 0x00542FE0 0x8 func_00542FE0  # OVL2
-0x00542FF0 0x8 func_00542FF0  # OVL2
+0x00542FF0 0x8 PrePostTick__10CZSealBodyFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00543000 0x8 func_00543000  # OVL2
 0x00543010 0x8 func_00543010  # OVL2
 0x00543020 0x8 func_00543020  # OVL2
 0x00543030 0x1AC func_00543030  # OVL2
-0x005431E0 0x8 func_005431E0  # OVL2
-0x005431F0 0x8 func_005431F0  # OVL2
+0x005431E0 0x8 func_005431E0  # OVL2; s1~ GetSealCtrlAi__9CSealCtrlFv (one of 2 out-of-line copies of an inline, by s1:vtable)
+0x005431F0 0x8 IsPlayer__9CSealCtrlCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00543200 0xF0 func_00543200  # OVL2
 0x005432F0 0xC8 func_005432F0  # OVL2
 0x005433C0 0xA4 func_005433C0  # OVL2
-0x00543470 0x8 func_00543470  # OVL2
+0x00543470 0x8 func_00543470  # OVL2; s1~ GetRemoteControl__11CEntityCtrlFv (one of 2 out-of-line copies of an inline, by s1:vtable)
 0x00543480 0x2C func_00543480  # OVL2
 0x005434B0 0x1D0 func_005434B0  # OVL2
 0x00543680 0x150 func_00543680  # OVL2
@@ -9943,10 +9943,10 @@
 0x00543AD0 0x64 func_00543AD0  # OVL2
 0x00543B40 0x50 OpenHeartbeatSounds__10CZSealBodyFv  # OVL2; tu: seal.cpp~ (1.0 beta); s1:exact
 0x00543B90 0x1A4 func_00543B90  # OVL2
-0x00543D40 0x8 func_00543D40  # OVL2
+0x00543D40 0x8 func_00543D40  # OVL2; s1~ SetAiNetState__9CSealCtrlFUi (one of 2 out-of-line copies of an inline, by s1:vtable)
 0x00543D50 0x21C func_00543D50  # OVL2
 0x00543F70 0x288 func_00543F70  # OVL2
-0x00544200 0x8 func_00544200  # OVL2
+0x00544200 0x8 func_00544200  # OVL2; s1~ IsRemote__9CSealCtrlCFv (one of 2 out-of-line copies of an inline, by s1:vtable)
 0x00544210 0xAC func_00544210  # OVL2
 0x005442C0 0x138 NetworkPlayerCreate__10CZSealBodyFv  # OVL2; s1:calls
 0x00544400 0x150 func_00544400  # OVL2
@@ -10016,7 +10016,7 @@
 0x00547350 0x21C func_00547350  # OVL2
 0x00547570 0x190 PickupObject__10CZSealBodyFP7CPickup  # OVL2; s1:calls
 0x00547700 0x7C func_00547700  # OVL2
-0x00547780 0x20 func_00547780  # OVL2
+0x00547780 0x20 ResetToInitialState__10CZSealBodyFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005477A0 0xB4 func_005477A0  # OVL2
 0x00547860 0x22C func_00547860  # OVL2
 0x00547A90 0x8 func_00547A90  # OVL2
@@ -10025,7 +10025,7 @@
 0x00548050 0x34 func_00548050  # OVL2
 0x00548090 0x338 func_00548090  # OVL2
 0x005483D0 0x15F8 func_005483D0  # OVL2
-0x005499D0 0x8 func_005499D0  # OVL2
+0x005499D0 0x8 func_005499D0  # OVL2; s1~ IsAi__9CSealCtrlCFv (one of 2 out-of-line copies of an inline, by s1:vtable)
 0x005499E0 0x250 func_005499E0  # OVL2
 0x00549C30 0x300 func_00549C30  # OVL2
 0x00549F30 0x498 func_00549F30  # OVL2
@@ -10048,7 +10048,7 @@
 0x0054F7E0 0xB50 func_0054F7E0  # OVL2
 0x00550330 0x23C func_00550330  # OVL2
 0x00550570 0x124 func_00550570  # OVL2
-0x005506A0 0x3D4 func_005506A0  # OVL2
+0x005506A0 0x3D4 PostTick__10CZSealBodyFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00550A80 0x3D0 func_00550A80  # OVL2
 0x00550E50 0x98 func_00550E50  # OVL2; tu: seal.cpp~ (1.0 beta)
 0x00550EF0 0xFCC func_00550EF0  # OVL2
@@ -10058,19 +10058,19 @@
 0x00552D60 0x158 func_00552D60  # OVL2
 0x00552EC0 0x3C4 func_00552EC0  # OVL2
 0x00553290 0x14C func_00553290  # OVL2
-0x005533E0 0x974 func_005533E0  # OVL2
+0x005533E0 0x974 __dt__10CZSealBodyFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00553D60 0x44 func_00553D60  # OVL2
 0x00553DB0 0x8 func_00553DB0  # OVL2
 0x00553DC0 0x40 func_00553DC0  # OVL2
-0x00553E00 0x5C func_00553E00  # OVL2
-0x00553E60 0x3C func_00553E60  # OVL2
+0x00553E00 0x5C OnMissionEnd__10CZSealBodyFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00553E60 0x3C OnMissionStart__10CZSealBodyFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00553EA0 0x119C func_00553EA0  # OVL2
 0x00555040 0x70 func_00555040  # OVL2
 0x005550B0 0x10 func_005550B0  # OVL2; tu: orders.cpp~ (1.0 beta)
 0x005550C0 0x8 func_005550C0  # OVL2
 0x005550D0 0x68 SealInitCharacterDynamics__Fv  # OVL2; s1:exact
-0x00555140 0x8 func_00555140  # OVL2
-0x00555150 0x8 func_00555150  # OVL2
+0x00555140 0x8 func_00555140  # OVL2; s1~ OnWeaponHit__Q23zdb7CNodeExFPQ23zdb5CNodePQ23zdb15IntersectStructP12CZProjectile (one of 2 out-of-line copies of an inline, by s1:vtable)
+0x00555150 0x8 func_00555150  # OVL2; s1~ OnAction__Q23zdb7CNodeExFPQ23zdb5CNodePv (one of 2 out-of-line copies of an inline, by s1:vtable)
 0x00555160 0x8 func_00555160  # OVL2
 0x00555170 0x28 func_00555170  # OVL2
 0x005551A0 0x14 func_005551A0  # OVL2
@@ -10080,10 +10080,10 @@
 0x00555290 0x8 func_00555290  # OVL2
 0x005552A0 0x8 func_005552A0  # OVL2
 0x005552B0 0x8 func_005552B0  # OVL2
-0x005552C0 0x78 func_005552C0  # OVL2
-0x00555340 0x8 func_00555340  # OVL2
-0x00555350 0x8 func_00555350  # OVL2
-0x00555360 0xC func_00555360  # OVL2
+0x005552C0 0x78 __dt__11CAiSRescuedFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00555340 0x8 CanAttack__11CAiSRescuedCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00555350 0x8 CanScan__11CAiSRescuedCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00555360 0xC GetScriptResponse__11CAiSRescuedCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00555370 0x8 func_00555370  # OVL2
 0x00555380 0xC func_00555380  # OVL2
 0x00555390 0x8 func_00555390  # OVL2
@@ -10135,17 +10135,17 @@
 0x00558F80 0x24 func_00558F80  # OVL2
 0x00558FB0 0x4C func_00558FB0  # OVL2
 0x00559000 0x6C func_00559000  # OVL2
-0x00559070 0x3F4 func_00559070  # OVL2
+0x00559070 0x3F4 Tick__11CAiSRescuedFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00559470 0x40 func_00559470  # OVL2
-0x005594B0 0xCC func_005594B0  # OVL2
+0x005594B0 0xCC OnSignal__11CAiSRescuedFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00559580 0x3A8 func_00559580  # OVL2
-0x00559930 0xE28 func_00559930  # OVL2
+0x00559930 0xE28 Tick__10CAiSPursueFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0055A760 0x70 func_0055A760  # OVL2
 0x0055A7D0 0x34 func_0055A7D0  # OVL2
 0x0055A810 0xB8 GetStatus__10CAiSPursueCFv  # OVL2; s1:calls
-0x0055A8D0 0x50 func_0055A8D0  # OVL2
-0x0055A920 0x298 func_0055A920  # OVL2
-0x0055ABC0 0x58 func_0055ABC0  # OVL2
+0x0055A8D0 0x50 OnSignal__10CAiSPursueFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0055A920 0x298 Tick__11CAiSAnimateFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0055ABC0 0x58 OnSignal__11CAiSAnimateFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0055AC20 0x1710 func_0055AC20  # OVL2
 0x0055C330 0x148 func_0055C330  # OVL2
 0x0055C480 0x154 func_0055C480  # OVL2
@@ -10156,7 +10156,7 @@
 0x0055CCA0 0x30 func_0055CCA0  # OVL2
 0x0055CCD0 0xF0 func_0055CCD0  # OVL2
 0x0055CDC0 0x35C func_0055CDC0  # OVL2
-0x0055D120 0x1288 func_0055D120  # OVL2
+0x0055D120 0x1288 Tick__10CAiSDeployFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0055E3B0 0x2AC func_0055E3B0  # OVL2
 0x0055E660 0x8 func_0055E660  # OVL2
 0x0055E670 0x430 func_0055E670  # OVL2
@@ -10235,10 +10235,10 @@
 0x005664F0 0x48 func_005664F0  # OVL2
 0x00566540 0x3A8 func_00566540  # OVL2
 0x005668F0 0x48 func_005668F0  # OVL2
-0x00566940 0x3B0 func_00566940  # OVL2
+0x00566940 0x3B0 SlideTick__9CSealCtrlFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00566CF0 0xC4 func_00566CF0  # OVL2
-0x00566DC0 0x57C func_00566DC0  # OVL2
-0x00567340 0x10 func_00567340  # OVL2
+0x00566DC0 0x57C CreepTick__9CSealCtrlFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00567340 0x10 func_00567340  # OVL2; s1~ SetThrottle__11CEntityCtrlFUif (one of 2 out-of-line copies of an inline, by s1:vtable)
 0x00567350 0x33C func_00567350  # OVL2
 0x00567690 0x1AC func_00567690  # OVL2
 0x00567840 0xA4 func_00567840  # OVL2
@@ -10279,17 +10279,17 @@
 0x0056DAA0 0xF4 func_0056DAA0  # OVL2
 0x0056DBA0 0xF8 func_0056DBA0  # OVL2
 0x0056DCA0 0xA8 ClearGoal__9CSealCtrlF9GOAL_TYPE  # OVL2; s1:callee
-0x0056DD50 0x68 func_0056DD50  # OVL2
-0x0056DDC0 0x50 func_0056DDC0  # OVL2
+0x0056DD50 0x68 ResetToInitialState__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0056DDC0 0x50 OnRecycleEntity__11CSealCtrlAiFP7CEntity  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0056DE10 0x1064 func_0056DE10  # OVL2
-0x0056EE80 0x384 func_0056EE80  # OVL2
+0x0056EE80 0x384 PostMortemPreTick__11CSealCtrlAiFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0056F210 0x248 func_0056F210  # OVL2
-0x0056F460 0x60 func_0056F460  # OVL2
-0x0056F4C0 0x1FC func_0056F4C0  # OVL2
-0x0056F6C0 0x29C func_0056F6C0  # OVL2
-0x0056F960 0x8 func_0056F960  # OVL2
+0x0056F460 0x60 __dt__11CRemoteCtrlFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0056F4C0 0x1FC SetAiNetState__11CRemoteCtrlFUi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0056F6C0 0x29C GetAiNetState__11CSealCtrlAiCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0056F960 0x8 GetAiNetState__9CSealCtrlCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0056F970 0x390 func_0056F970  # OVL2
-0x0056FD00 0x1010 func_0056FD00  # OVL2
+0x0056FD00 0x1010 Tick__11CSealCtrlAiFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00570D10 0x8 func_00570D10  # OVL2
 0x00570D20 0x28 func_00570D20  # OVL2
 0x00570D50 0xC func_00570D50  # OVL2
@@ -10304,23 +10304,23 @@
 0x005712F0 0x12C func_005712F0  # OVL2
 0x00571420 0x84 func_00571420  # OVL2
 0x005714B0 0x5F4 func_005714B0  # OVL2
-0x00571AB0 0x60 func_00571AB0  # OVL2
-0x00571B10 0x674 func_00571B10  # OVL2
+0x00571AB0 0x60 OnSetHealth__11CSealCtrlAiFff  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00571B10 0x674 OnStunDamage__11CSealCtrlAiF9STUN_TYPEfPC6CPnt3D  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00572190 0xAC func_00572190  # OVL2
 0x00572240 0xC4 func_00572240  # OVL2
 0x00572310 0x18 func_00572310  # OVL2
 0x00572330 0x550 func_00572330  # OVL2
 0x00572880 0x168 func_00572880  # OVL2
-0x005729F0 0x340 func_005729F0  # OVL2
+0x005729F0 0x340 OnWeaponEvent__11CSealCtrlAiFP12CZProjectileUiPv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00572D30 0x3C func_00572D30  # OVL2
 0x00572D70 0x228 func_00572D70  # OVL2
 0x00572FA0 0x164 func_00572FA0  # OVL2
 0x00573110 0x20 func_00573110  # OVL2
 0x00573130 0xA4C func_00573130  # OVL2
-0x00573B80 0x4C func_00573B80  # OVL2
+0x00573B80 0x4C OnMissionEnd__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00573BD0 0x144 func_00573BD0  # OVL2
-0x00573D20 0x134 func_00573D20  # OVL2
-0x00573E60 0xB8 func_00573E60  # OVL2
+0x00573D20 0x134 Initalize__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00573E60 0xB8 __dt__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00573F20 0x58 func_00573F20  # OVL2
 0x00573F80 0x70 func_00573F80  # OVL2
 0x00573FF0 0x88 func_00573FF0  # OVL2
@@ -10346,24 +10346,24 @@
 0x00575490 0x218 func_00575490  # OVL2
 0x005756B0 0xE0 func_005756B0  # OVL2
 0x00575790 0x140 func_00575790  # OVL2
-0x005758D0 0x78 func_005758D0  # OVL2
+0x005758D0 0x78 __dt__10CAiSPursueFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00575950 0x14 func_00575950  # OVL2
-0x00575970 0x14 func_00575970  # OVL2
+0x00575970 0x14 CanAttack__10CAiSPursueCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00575990 0x8 func_00575990  # OVL2
-0x005759A0 0xF8 func_005759A0  # OVL2
+0x005759A0 0xF8 __dt__11CAiSAnimateFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00575AA0 0x8 func_00575AA0  # OVL2
-0x00575AB0 0x78 func_00575AB0  # OVL2
+0x00575AB0 0x78 __dt__11CAiSGrenadeFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00575B30 0x8 func_00575B30  # OVL2
 0x00575B40 0x8 func_00575B40  # OVL2
-0x00575B50 0x78 func_00575B50  # OVL2
+0x00575B50 0x78 __dt__10CAiSDeployFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00575BD0 0x8 func_00575BD0  # OVL2
 0x00575BE0 0x8 func_00575BE0  # OVL2
-0x00575BF0 0x8 func_00575BF0  # OVL2
-0x00575C00 0x8 func_00575C00  # OVL2
+0x00575BF0 0x8 GetSealCtrlAi__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00575C00 0x8 OnActionButton__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00575C10 0x8 func_00575C10  # OVL2
 0x00575C20 0x8 func_00575C20  # OVL2
-0x00575C30 0x8 func_00575C30  # OVL2
-0x00575C40 0x8 func_00575C40  # OVL2
+0x00575C30 0x8 IsPlayer__11CSealCtrlAiCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00575C40 0x8 IsAi__11CSealCtrlAiCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00575C50 0x2C func_00575C50  # OVL2
 0x00575C80 0x2C func_00575C80  # OVL2
 0x00575CB0 0x38 func_00575CB0  # OVL2
@@ -10602,11 +10602,11 @@
 0x0058F960 0x10C func_0058F960  # OVL2
 0x0058FA70 0x164 func_0058FA70  # OVL2
 0x0058FBE0 0xEC4 func_0058FBE0  # OVL2
-0x00590AB0 0x8 func_00590AB0  # OVL2
+0x00590AB0 0x8 OnCommand__9CSealCtrlFP10CZSealBody10FT_COMMANDPvb  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00590AC0 0xF4 func_00590AC0  # OVL2
 0x00590BC0 0x570 func_00590BC0  # OVL2
 0x00591130 0xB0 func_00591130  # OVL2
-0x005911E0 0x8 func_005911E0  # OVL2
+0x005911E0 0x8 AllowCommand__9CSealCtrlFP10CZSealBody10FT_COMMANDPv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005911F0 0x18C func_005911F0  # OVL2
 0x00591380 0x1A0 func_00591380  # OVL2
 0x00591520 0x250 func_00591520  # OVL2
@@ -10616,12 +10616,12 @@
 0x00591FC0 0x1C func_00591FC0  # OVL2
 0x00591FE0 0x1C func_00591FE0  # OVL2
 0x00592000 0x1C func_00592000  # OVL2
-0x00592020 0x8 func_00592020  # OVL2
+0x00592020 0x8 SetTarget__9CSealCtrlFP7CTarget  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00592030 0x20 func_00592030  # OVL2
 0x00592050 0x48 func_00592050  # OVL2
 0x005920A0 0x20 func_005920A0  # OVL2
 0x005920C0 0x19C func_005920C0  # OVL2
-0x00592260 0x1A0 func_00592260  # OVL2
+0x00592260 0x1A0 PerturbAimVector__9CSealCtrlFP6CPnt3D  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00592400 0xA4 Cross__6CPnt3DCFPC6CPnt3DP6CPnt3Db  # OVL2; s1:calls
 0x005924B0 0xAC func_005924B0  # OVL2
 0x00592560 0x320 func_00592560  # OVL2
@@ -10639,10 +10639,10 @@
 0x00592C70 0x24 func_00592C70  # OVL2
 0x00592CA0 0x98 func_00592CA0  # OVL2
 0x00592D40 0x8 func_00592D40  # OVL2
-0x00592D50 0x7A8 func_00592D50  # OVL2
+0x00592D50 0x7A8 OnActionButton__9CSealCtrlFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00593500 0x2BC func_00593500  # OVL2
-0x005937C0 0x540 func_005937C0  # OVL2
-0x00593D00 0x9C func_00593D00  # OVL2
+0x005937C0 0x540 PerformProximityActions__9CSealCtrlFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00593D00 0x9C PerformReticleActions__9CSealCtrlFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00593DA0 0x330 func_00593DA0  # OVL2
 0x005940D0 0x278 func_005940D0  # OVL2
 0x00594350 0x124 func_00594350  # OVL2
@@ -10650,11 +10650,11 @@
 0x00594600 0x56C func_00594600  # OVL2
 0x00594B70 0x11C func_00594B70  # OVL2
 0x00594C90 0x5C func_00594C90  # OVL2
-0x00594CF0 0x19A8 func_00594CF0  # OVL2
+0x00594CF0 0x19A8 PreTick__9CSealCtrlFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005966A0 0x6C0 func_005966A0  # OVL2
 0x00596D60 0x1B0 func_00596D60  # OVL2
 0x00596F10 0x1A0 Tick__9CSealCtrlFf  # OVL2; s1:calls
-0x005970B0 0x43C func_005970B0  # OVL2
+0x005970B0 0x43C PostTick__9CSealCtrlFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005974F0 0x3C func_005974F0  # OVL2
 0x00597530 0x7C func_00597530  # OVL2
 0x005975B0 0x14 func_005975B0  # OVL2
@@ -10668,16 +10668,16 @@
 0x00597810 0x78 func_00597810  # OVL2
 0x00597890 0x8 func_00597890  # OVL2
 0x005978A0 0xF8 func_005978A0  # OVL2
-0x005979A0 0x160 func_005979A0  # OVL2
-0x00597B00 0xF8 func_00597B00  # OVL2
-0x00597C00 0x240 func_00597C00  # OVL2
-0x00597E40 0x40 func_00597E40  # OVL2
+0x005979A0 0x160 OnDeath__9CSealCtrlFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00597B00 0xF8 OnSetHealth__9CSealCtrlFff  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00597C00 0x240 OnStunDamage__9CSealCtrlF9STUN_TYPEfPC6CPnt3D  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00597E40 0x40 OnWeaponHit__9CSealCtrlFPQ23zdb15IntersectStructP12CZProjectile  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00597E80 0x24 func_00597E80  # OVL2
 0x00597EB0 0x98 func_00597EB0  # OVL2
 0x00597F50 0x9C func_00597F50  # OVL2
 0x00597FF0 0x8 func_00597FF0  # OVL2
-0x00598000 0x218 func_00598000  # OVL2
-0x00598220 0x60 func_00598220  # OVL2
+0x00598000 0x218 OnWeaponEvent__9CSealCtrlFP12CZProjectileUiPv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00598220 0x60 __dt__9CSealCtrlFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00598280 0x5B8 func_00598280  # OVL2
 0x00598840 0x20 func_00598840  # OVL2
 0x00598860 0x32C func_00598860  # OVL2
@@ -11105,7 +11105,7 @@
 0x005C9270 0xCC func_005C9270  # OVL2
 0x005C9340 0x74 func_005C9340  # OVL2
 0x005C93C0 0x38 func_005C93C0  # OVL2
-0x005C9400 0x118 func_005C9400  # OVL2
+0x005C9400 0x118 UpdateViewCone__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005C9520 0x200 func_005C9520  # OVL2
 0x005C9720 0x78 SetViewFOV__9CSealCtrlFf  # OVL2; s1:calls
 0x005C97A0 0x30 func_005C97A0  # OVL2
@@ -11113,8 +11113,8 @@
 0x005C9830 0x74 func_005C9830  # OVL2
 0x005C98B0 0x7C func_005C98B0  # OVL2
 0x005C9930 0x1CC func_005C9930  # OVL2
-0x005C9B00 0x8 func_005C9B00  # OVL2
-0x005C9B10 0x20 func_005C9B10  # OVL2
+0x005C9B00 0x8 NotifyTargetDown__9CSealCtrlFP10CZSealBody  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x005C9B10 0x20 NotifyTargetDown__11CSealCtrlAiFP10CZSealBody  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005C9B30 0x63C func_005C9B30  # OVL2
 0x005CA170 0x2E4 func_005CA170  # OVL2
 0x005CA460 0x8 func_005CA460  # OVL2
@@ -11326,19 +11326,19 @@
 0x005E5CC0 0x460 func_005E5CC0  # OVL2
 0x005E6120 0x68 func_005E6120  # OVL2
 0x005E6190 0x94 func_005E6190  # OVL2
-0x005E6230 0x8 func_005E6230  # OVL2
-0x005E6240 0x8 func_005E6240  # OVL2
-0x005E6250 0x8 func_005E6250  # OVL2
-0x005E6260 0x8 func_005E6260  # OVL2
-0x005E6270 0x8 func_005E6270  # OVL2
-0x005E6280 0x8 func_005E6280  # OVL2
+0x005E6230 0x8 GetRemoteControl__11CRemoteCtrlFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x005E6240 0x8 OnStunDamage__11CRemoteCtrlF9STUN_TYPEfPC6CPnt3D  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x005E6250 0x8 IsPlayer__11CRemoteCtrlCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x005E6260 0x8 IsRemote__11CRemoteCtrlCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x005E6270 0x8 OnMissionStart__9CSealCtrlFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x005E6280 0x8 OnMissionEnd__9CSealCtrlFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005E6290 0x6C func_005E6290  # OVL2
-0x005E6300 0x8 func_005E6300  # OVL2
-0x005E6310 0xE4 func_005E6310  # OVL2
-0x005E6400 0x578 func_005E6400  # OVL2
+0x005E6300 0x8 PostTick__11CRemoteCtrlFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x005E6310 0xE4 PostMortemPreTick__11CRemoteCtrlFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x005E6400 0x578 PreTick__11CRemoteCtrlFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005E6980 0x20 Tick__11CRemoteCtrlFf  # OVL2; s1:exact
-0x005E69A0 0x5C func_005E69A0  # OVL2
-0x005E6A00 0x4C func_005E6A00  # OVL2
+0x005E69A0 0x5C AllowCommand__11CRemoteCtrlFP10CZSealBody10FT_COMMANDPv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x005E6A00 0x4C OnCommand__11CRemoteCtrlFP10CZSealBody10FT_COMMANDPvb  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005E6A50 0x4C func_005E6A50  # OVL2
 0x005E6AA0 0x10 func_005E6AA0  # OVL2
 0x005E6AB0 0x1D4 func_005E6AB0  # OVL2
@@ -11374,10 +11374,10 @@
 0x005E8C80 0x8 func_005E8C80  # OVL2
 0x005E8C90 0x8 func_005E8C90  # OVL2
 0x005E8CA0 0x168 func_005E8CA0  # OVL2
-0x005E8E10 0x1640 func_005E8E10  # OVL2
-0x005EA450 0x68 func_005EA450  # OVL2
-0x005EA4C0 0x8 func_005EA4C0  # OVL2
-0x005EA4D0 0x78 func_005EA4D0  # OVL2
+0x005E8E10 0x1640 IssueCommand__9CSealUnitFP10CZSealBody10FT_COMMANDPvb  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x005EA450 0x68 __dt__8CAiStateFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x005EA4C0 0x8 OnSignal__8CAiStateFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x005EA4D0 0x78 __dt__10CAiSBreachFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005EA550 0x80 func_005EA550  # OVL2
 0x005EA5D0 0x1AC func_005EA5D0  # OVL2
 0x005EA780 0x38 func_005EA780  # OVL2
@@ -11456,7 +11456,7 @@
 0x005EF8D0 0x78 func_005EF8D0  # OVL2
 0x005EF950 0x58 func_005EF950  # OVL2
 0x005EF9B0 0x18 func_005EF9B0  # OVL2
-0x005EF9D0 0x78 func_005EF9D0  # OVL2
+0x005EF9D0 0x78 __dt__10CAiSActionFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005EFA50 0x730 func_005EFA50  # OVL2
 0x005F0180 0x204 func_005F0180  # OVL2
 0x005F0390 0xD8 func_005F0390  # OVL2
@@ -11477,21 +11477,21 @@
 0x005F1760 0x9C func_005F1760  # OVL2
 0x005F1800 0x14C func_005F1800  # OVL2
 0x005F1950 0xC func_005F1950  # OVL2
-0x005F1960 0x170 func_005F1960  # OVL2
-0x005F1AD0 0x80 func_005F1AD0  # OVL2
+0x005F1960 0x170 Tick__13CAiSCQBAttackFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x005F1AD0 0x80 OnSignal__13CAiSCQBAttackFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F1B50 0x9C func_005F1B50  # OVL2
 0x005F1BF0 0x80 func_005F1BF0  # OVL2
 0x005F1C70 0x1CC Tick__13CAiSSuspendedFfP11CSealCtrlAi  # OVL2; s1:calls
-0x005F1E40 0x2E0 func_005F1E40  # OVL2
-0x005F2120 0xFE0 func_005F2120  # OVL2
+0x005F1E40 0x2E0 OnSignal__13CAiSSuspendedFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x005F2120 0xFE0 Tick__10CAiSBreachFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F3100 0x170 func_005F3100  # OVL2
 0x005F3270 0x12C func_005F3270  # OVL2
-0x005F33A0 0x128 func_005F33A0  # OVL2
+0x005F33A0 0x128 GetStatus__10CAiSBreachCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F34D0 0x48 func_005F34D0  # OVL2
 0x005F3520 0xFC func_005F3520  # OVL2
-0x005F3620 0x1A0 func_005F3620  # OVL2
-0x005F37C0 0x3D4 func_005F37C0  # OVL2
-0x005F3BA0 0x414 func_005F3BA0  # OVL2
+0x005F3620 0x1A0 OnSignal__10CAiSBreachFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x005F37C0 0x3D4 Tick__10CAiSScriptFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x005F3BA0 0x414 OnSignal__10CAiSScriptFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F3FC0 0x28 func_005F3FC0  # OVL2
 0x005F3FF0 0x90 func_005F3FF0  # OVL2
 0x005F4080 0x8 func_005F4080  # OVL2
@@ -11501,12 +11501,12 @@
 0x005F41F0 0x16C ActivateSequence__10CAiSScriptFPCcUi  # OVL2; s1:calls
 0x005F4360 0x44 func_005F4360  # OVL2
 0x005F43B0 0xBC func_005F43B0  # OVL2
-0x005F4470 0xB9C func_005F4470  # OVL2
-0x005F5010 0x18C func_005F5010  # OVL2
+0x005F4470 0xB9C Tick__8CAiSGotoFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x005F5010 0x18C OnSignal__8CAiSGotoFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F51A0 0x130 func_005F51A0  # OVL2
-0x005F52D0 0x244 func_005F52D0  # OVL2
+0x005F52D0 0x244 Tick__10CAiSPickupFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F5520 0x68 func_005F5520  # OVL2
-0x005F5590 0x50 func_005F5590  # OVL2
+0x005F5590 0x50 OnSignal__10CAiSPickupFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F55E0 0x4E8 func_005F55E0  # OVL2
 0x005F5AD0 0x34 func_005F5AD0  # OVL2
 0x005F5B10 0x8 func_005F5B10  # OVL2
@@ -11549,7 +11549,7 @@
 0x005F7D80 0x15C func_005F7D80  # OVL2
 0x005F7EE0 0x144 func_005F7EE0  # OVL2
 0x005F8030 0x1A0 func_005F8030  # OVL2
-0x005F81D0 0x8 func_005F81D0  # OVL2
+0x005F81D0 0x8 Tick__8CAiStateFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F81E0 0x8C func_005F81E0  # OVL2
 0x005F8270 0xC0 func_005F8270  # OVL2
 0x005F8330 0x24 func_005F8330  # OVL2
@@ -11561,19 +11561,19 @@
 0x005F8570 0x138 func_005F8570  # OVL2
 0x005F86B0 0x8 func_005F86B0  # OVL2
 0x005F86C0 0xA8 func_005F86C0  # OVL2
-0x005F8770 0x78 func_005F8770  # OVL2
+0x005F8770 0x78 __dt__13CAiSCQBAttackFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F87F0 0x8 func_005F87F0  # OVL2
-0x005F8800 0x78 func_005F8800  # OVL2
-0x005F8880 0x78 func_005F8880  # OVL2
+0x005F8800 0x78 __dt__11CAiSUnknownFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x005F8880 0x78 __dt__13CAiSSuspendedFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F8900 0x8 func_005F8900  # OVL2
 0x005F8910 0x8 func_005F8910  # OVL2
 0x005F8920 0x8 func_005F8920  # OVL2
 0x005F8930 0x8 func_005F8930  # OVL2
-0x005F8940 0x78 func_005F8940  # OVL2
-0x005F89C0 0x78 func_005F89C0  # OVL2
+0x005F8940 0x78 __dt__10CAiSScriptFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x005F89C0 0x78 __dt__8CAiSGotoFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F8A40 0x8 func_005F8A40  # OVL2
 0x005F8A50 0x14 func_005F8A50  # OVL2
-0x005F8A70 0x78 func_005F8A70  # OVL2
+0x005F8A70 0x78 __dt__10CAiSPickupFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F8AF0 0x110 func_005F8AF0  # OVL2
 0x005F8C00 0x18 func_005F8C00  # OVL2
 0x005F8C20 0x18 func_005F8C20  # OVL2
@@ -11583,7 +11583,7 @@
 0x005FAAE0 0x218 func_005FAAE0  # OVL2
 0x005FAD00 0x4C func_005FAD00  # OVL2
 0x005FAD50 0x98 func_005FAD50  # OVL2
-0x005FADF0 0x78 func_005FADF0  # OVL2
+0x005FADF0 0x78 __dt__10CAiSFollowFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005FAE70 0x348 func_005FAE70  # OVL2
 0x005FB1C0 0x138C func_005FB1C0  # OVL2
 0x005FC550 0x38 func_005FC550  # OVL2
@@ -11607,21 +11607,21 @@
 0x005FDAD0 0x224 func_005FDAD0  # OVL2
 0x005FDD00 0x38 func_005FDD00  # OVL2
 0x005FDD40 0x180 func_005FDD40  # OVL2
-0x005FDEC0 0xB8 func_005FDEC0  # OVL2
+0x005FDEC0 0xB8 GetStatus__10CAiSFollowCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005FDF80 0x270 func_005FDF80  # OVL2
 0x005FE1F0 0x2C8 func_005FE1F0  # OVL2
 0x005FE4C0 0x364 func_005FE4C0  # OVL2
-0x005FE830 0x8 func_005FE830  # OVL2
-0x005FE840 0x8 func_005FE840  # OVL2
-0x005FE850 0x24 func_005FE850  # OVL2
-0x005FE880 0x690 func_005FE880  # OVL2
+0x005FE830 0x8 OnActionButton__15CSealCtrlSquirmFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x005FE840 0x8 PostMortemPreTick__15CSealCtrlSquirmFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x005FE850 0x24 Tick__15CSealCtrlSquirmFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x005FE880 0x690 PreTick__15CSealCtrlSquirmFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005FEF10 0x8 func_005FEF10  # OVL2
-0x005FEF20 0x8 func_005FEF20  # OVL2
+0x005FEF20 0x8 OnDeath__15CSealCtrlSquirmFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005FEF30 0x8 func_005FEF30  # OVL2
 0x005FEF40 0x8 func_005FEF40  # OVL2
 0x005FEF50 0x8 func_005FEF50  # OVL2
-0x005FEF60 0x128 func_005FEF60  # OVL2
-0x005FF090 0x60 func_005FF090  # OVL2
+0x005FEF60 0x128 Initalize__15CSealCtrlSquirmFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x005FF090 0x60 __dt__15CSealCtrlSquirmFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005FF0F0 0x104 func_005FF0F0  # OVL2
 0x005FF200 0xEC func_005FF200  # OVL2
 0x005FF2F0 0xAB8 func_005FF2F0  # OVL2
@@ -11658,43 +11658,43 @@
 0x00601850 0x8 func_00601850  # OVL2
 0x00601860 0x8 func_00601860  # OVL2
 0x00601870 0xC func_00601870  # OVL2
-0x00601880 0x78 func_00601880  # OVL2
+0x00601880 0x78 __dt__11CAiSHostageFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00601900 0x8 func_00601900  # OVL2
 0x00601910 0x538 func_00601910  # OVL2
 0x00601E50 0x58 func_00601E50  # OVL2
 0x00601EB0 0x8 func_00601EB0  # OVL2
 0x00601EC0 0x58 func_00601EC0  # OVL2
-0x00601F20 0x60 func_00601F20  # OVL2
+0x00601F20 0x60 OnSignal__11CAiSHostageFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00601F80 0x2EC func_00601F80  # OVL2
 0x00602270 0x8A4 func_00602270  # OVL2
 0x00602B20 0x1F0 func_00602B20  # OVL2
-0x00602D10 0x114 func_00602D10  # OVL2
+0x00602D10 0x114 OnSignal__9CAiSAvoidFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00602E30 0x860 func_00602E30  # OVL2
 0x00603690 0x1C func_00603690  # OVL2
 0x006036B0 0x29C func_006036B0  # OVL2
 0x00603950 0x9E8 func_00603950  # OVL2
 0x00604340 0x44 func_00604340  # OVL2
 0x00604390 0x5C func_00604390  # OVL2
-0x006043F0 0x98 func_006043F0  # OVL2
+0x006043F0 0x98 GetStatus__15CAiSPathRecoverCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00604490 0x11C func_00604490  # OVL2
 0x006045B0 0x270 func_006045B0  # OVL2
 0x00604820 0x8 func_00604820  # OVL2
-0x00604830 0x48 func_00604830  # OVL2
+0x00604830 0x48 OnSignal__8CAiSFleeFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00604880 0x364 func_00604880  # OVL2
 0x00604BF0 0x70 func_00604BF0  # OVL2
-0x00604C60 0x74 func_00604C60  # OVL2
+0x00604C60 0x74 OnSignal__10CAiSTargetFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00604CE0 0x8C8 func_00604CE0  # OVL2
 0x006055B0 0x1C0 func_006055B0  # OVL2
 0x00605770 0x88 func_00605770  # OVL2
 0x00605800 0x14C func_00605800  # OVL2
 0x00605950 0xAC func_00605950  # OVL2
-0x00605A00 0x8 func_00605A00  # OVL2
+0x00605A00 0x8 GetStatus__9CAiSEventCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00605A10 0x34 func_00605A10  # OVL2
 0x00605A50 0x8 func_00605A50  # OVL2
 0x00605A60 0x14 func_00605A60  # OVL2
 0x00605A80 0x1DC func_00605A80  # OVL2
-0x00605C60 0x324 func_00605C60  # OVL2
-0x00605F90 0x124 func_00605F90  # OVL2
+0x00605C60 0x324 Tick__16CAiSStunResponseFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00605F90 0x124 OnSignal__16CAiSStunResponseFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x006060C0 0x6D8 func_006060C0  # OVL2
 0x006067A0 0x604 func_006067A0  # OVL2
 0x00606DB0 0x10C func_00606DB0  # OVL2
@@ -11703,44 +11703,44 @@
 0x006075C0 0x84 func_006075C0  # OVL2
 0x00607650 0x1D8 func_00607650  # OVL2
 0x00607830 0x6C func_00607830  # OVL2
-0x006078A0 0x464 func_006078A0  # OVL2
+0x006078A0 0x464 Tick__13CAiSSurrenderFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00607D10 0x60 func_00607D10  # OVL2
-0x00607D70 0x2E0 func_00607D70  # OVL2
+0x00607D70 0x2E0 OnSignal__13CAiSSurrenderFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00608050 0x8 func_00608050  # OVL2
-0x00608060 0x230 func_00608060  # OVL2
-0x00608290 0x50 func_00608290  # OVL2
+0x00608060 0x230 Tick__10CAiSNoAmmoFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00608290 0x50 OnSignal__10CAiSNoAmmoFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x006082E0 0x1CC func_006082E0  # OVL2
 0x006084B0 0x10C func_006084B0  # OVL2
 0x006085C0 0x27C func_006085C0  # OVL2
 0x00608840 0x198 func_00608840  # OVL2
-0x006089E0 0x8 func_006089E0  # OVL2
-0x006089F0 0x798 func_006089F0  # OVL2
+0x006089E0 0x8 OnSignal__10CAiSReloadFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x006089F0 0x798 Tick__10CAiSShotAtFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00609190 0x1A4 func_00609190  # OVL2
 0x00609340 0xA4 func_00609340  # OVL2
-0x006093F0 0x13C func_006093F0  # OVL2
+0x006093F0 0x13C OnSignal__10CAiSShotAtFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00609530 0x1DC func_00609530  # OVL2
-0x00609710 0x78 func_00609710  # OVL2
-0x00609790 0x78 func_00609790  # OVL2
-0x00609810 0xA0 func_00609810  # OVL2
+0x00609710 0x78 __dt__9CAiSAvoidFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00609790 0x78 __dt__8CAiSRushFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00609810 0xA0 __dt__15CAiSPathRecoverFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x006098B0 0x8 func_006098B0  # OVL2
 0x006098C0 0x8 func_006098C0  # OVL2
-0x006098D0 0x78 func_006098D0  # OVL2
+0x006098D0 0x78 __dt__8CAiSFleeFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00609950 0x8 func_00609950  # OVL2
 0x00609960 0x8 func_00609960  # OVL2
-0x00609970 0x78 func_00609970  # OVL2
-0x006099F0 0x78 func_006099F0  # OVL2
-0x00609A70 0x78 func_00609A70  # OVL2
+0x00609970 0x78 __dt__10CAiSTargetFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x006099F0 0x78 __dt__9CAiSEventFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00609A70 0x78 __dt__16CAiSStunResponseFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00609AF0 0x8 func_00609AF0  # OVL2
-0x00609B00 0x78 func_00609B00  # OVL2
+0x00609B00 0x78 __dt__8CAiSHoldFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00609B80 0x14 func_00609B80  # OVL2
-0x00609BA0 0x78 func_00609BA0  # OVL2
+0x00609BA0 0x78 __dt__13CAiSSurrenderFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00609C20 0x8 func_00609C20  # OVL2
 0x00609C30 0xC func_00609C30  # OVL2
-0x00609C40 0x78 func_00609C40  # OVL2
+0x00609C40 0x78 __dt__10CAiSNoAmmoFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00609CC0 0x8 func_00609CC0  # OVL2
-0x00609CD0 0x78 func_00609CD0  # OVL2
+0x00609CD0 0x78 __dt__10CAiSReloadFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00609D50 0x8 func_00609D50  # OVL2
-0x00609D60 0x78 func_00609D60  # OVL2
+0x00609D60 0x78 __dt__10CAiSShotAtFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00609DE0 0x8 func_00609DE0  # OVL2
 0x00609DF0 0x20C CheckLineOfFire__2aiFPC7CEntityPC7CTargetf  # OVL2; s1:calls
 0x0060A000 0x2C8 func_0060A000  # OVL2

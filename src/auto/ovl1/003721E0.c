@@ -6,11 +6,11 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_003723B0();                            /* extern */
+M2C_UNK Tick__9C2DButtonFf();                       /* extern */
 
 /* Warning: Gap in callee-saved word stack region.
  * Saved: [0x0, 0x10, 0x14, 0x18, 0x1c, 0x20, 0x24], gap at: 0x8. */
-void func_003721E0(void *arg0, f32 fparg0) {
-    func_003723B0();
+void func_003721E0(char *arg0, f32 fparg0) {
+    Tick__9C2DButtonFf();
     M2C_FIELD(arg0, f32 *, 0x504) = (f32) (M2C_FIELD(arg0, f32 *, 0x504) + fparg0);
 }

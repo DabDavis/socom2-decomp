@@ -1,7 +1,9 @@
 /* zdb::CNode -- the scene graph's node (the zdb namespace is the mangled names'), its layout
- * SOCOM 1's DWARF as tools/dwarf1.py header writes it, and its virtual functions are SOCOM 1's
- * vtable's, in its order (MW puts the pointer at 0x60, after tag_NODE_PARAMS). SOCOM II keeps tag_NODE_PARAMS' flags
- * at 0x5C (zAnimNodeActiveTick reads m_active there). The header's name is ours. */
+ * SOCOM 1's DWARF as tools/dwarf1.py header writes it (MW puts the vtable pointer at 0x60, after
+ * tag_NODE_PARAMS). Its virtual functions are SOCOM II's table, __vt__Q23zdb5CNode at 0x4067B0
+ * (tools/s1vtables.py): SOCOM 1's fourteen with one new slot after the FindChild pair, so IsCell
+ * and everything after it sit 4 bytes further than the demo's. SOCOM II keeps tag_NODE_PARAMS'
+ * flags at 0x5C (zAnimNodeActiveTick reads m_active there). The header's name is ours. */
 #ifndef ZNODE_H
 #define ZNODE_H
 
@@ -69,16 +71,17 @@ class CSaveLoad;
 
 class CNode : public tag_NODE_PARAMS {
 public:
-    /* SOCOM 1's vtable order (__vt__Q23zdb5CNode); the pointer is at 0x60 */
-    virtual ~CNode();
+    /* SOCOM II's vtable order (__vt__Q23zdb5CNode, 0x4067B0); the pointer is at 0x60 */
+    virtual ~CNode();                                   /* +0x08 */
     virtual void _Copy(CNode *to) const;
     virtual void UpdateGrid();
     virtual void ReserveChildren(int n);
-    virtual void AddChild(CNode *child);
+    virtual void AddChild(CNode *child);                /* +0x18 */
     virtual void DeleteChild(CNode *child);
     virtual void DeleteChildren();
     virtual CNode *FindChild(const char *name, bool deep);
-    virtual CNode *FindChild(CNode *node, bool deep);
+    virtual CNode *FindChild(CNode *node, bool deep);   /* +0x28 */
+    virtual void func_00315B90();                       /* +0x2C: new in SOCOM II, unread */
     virtual bool IsCell();
     virtual void Read(CSaveLoad &io);
     virtual void SetActive(bool on);
@@ -87,6 +90,7 @@ public:
 
     void TransformToWorld(CPnt3D &p) const;
     void BuildMTW(CMatrix &m);
+    void SetMatrix(const CMatrix *m);
     void SetPosition(float x, float y, float z);
     void SetPosition(const PNT3D *p)      /* the base pointer keeps MW from folding the null test */
     {
@@ -118,6 +122,12 @@ public:
     char* m_modelname;   // 0xb4
     unsigned int m_region_mask;   // 0xb8
 };   // 0xc0 bytes
+
+/* the scene's root; SOCOM 1's DWARF has its 0x6BE0 bytes of members, none needed yet */
+class CWorld : public CNode {
+public:
+    static CWorld *m_world;
+};
 
 
 }

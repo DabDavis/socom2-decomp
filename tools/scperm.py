@@ -93,6 +93,8 @@ class Scorer:
         self.target = self.img.read(self.sym.addr, self.sym.size)
         # a scratch copy of the whole tree, so a unit's relative includes resolve as in src/
         self.wd = Path(tempfile.mkdtemp(prefix="scperm", dir=HERE / "build"))
+        import atexit
+        atexit.register(shutil.rmtree, self.wd, True)     # a run leaves no scratch behind
         shutil.copytree(HERE / "src", self.wd / "src", ignore=shutil.ignore_patterns("auto", "*.o"))
         self.src = self.wd / "src" / self.unit.relative_to((HERE / "src").resolve())
         self.obj = self.wd / "c.o"

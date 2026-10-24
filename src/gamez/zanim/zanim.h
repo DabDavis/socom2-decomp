@@ -11,7 +11,6 @@
 using zdb::CNode;
 
 class CZAnim;
-class CZAnimArgList;
 class CZAnimEx;
 class CZAnimHealth;
 class CZAnimSet;
@@ -24,6 +23,21 @@ class _zanim_particle;
 class _zanim_sound;
 class _zanim_tex_ref;
 class _zanim_valve_ref;
+
+/* An anim's arguments: values a caller passes when it starts the anim. */
+class CZAnimArg {
+public:
+    enum TYPE {
+        TYPE_PNT3D = 5          /* our name: the only value read so far (a point, zAnimRangeTestTick) */
+    };
+};
+
+class CZAnimArgList {
+public:
+    CPnt3D *GetPnt3D(CZAnimArg::TYPE type);
+
+    unsigned char _list[0x10];  /* an MSL std::list (SOCOM 1's DWARF: 0x10 bytes) */
+};
 
 class _zanim_anim_params {
 public:
@@ -64,6 +78,13 @@ public:
     bool Running();
     float GetHealth();
     CNode *GetNode(int index, bool create);
+    CPnt3D *GetArgPnt3D()
+    {
+        CPnt3D *p = 0;
+        if (m_arg_list)
+            p = m_arg_list->GetPnt3D(CZAnimArg::TYPE_PNT3D);
+        return p;
+    }
 
     CZAnimArgList* m_arg_list;   // 0x18
     CZAnimNameIndexTable m_nameindex_table;   // 0x1c

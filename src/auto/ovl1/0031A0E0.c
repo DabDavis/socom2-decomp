@@ -7,13 +7,13 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK __dl__FPv(s32);                             /* extern */
+M2C_UNK __dt__Q23zar4CZARFv(s32, M2C_UNK);          /* extern */
 M2C_UNK func_00258CE0(s32);                         /* extern */
-M2C_UNK func_00258F20(s32, M2C_UNK);                /* extern */
 
 s32 __dt__Q23zdb9CSaveLoadFv(s32 arg0, s64 arg1) {
     if (arg0 != 0) {
         func_00258CE0(arg0 + 4);
-        func_00258F20(arg0 + 4, -1);
+        __dt__Q23zar4CZARFv(arg0 + 4, -1);
         if (((s64) (arg1 << 0x30) >> 0x30) > 0) {
             __dl__FPv(arg0);
         }

@@ -6,6 +6,57 @@
 
 #include "zanim.h"
 
+/* a node of the current anim */
+struct zanim_cmd_node {
+    _zanim_cmd_hdr hdr;
+    unsigned char node;
+};
+
+/* OBJECT_MAKE_WORLDCHILD (new in SOCOM II): move a node of the current anim to the world's
+ * root, keeping where it is in the world */
+extern "C" bool func_00263B30(_zanim_cmd_hdr *hdr, float *dT)
+{
+    zanim_cmd_node *cmd = (zanim_cmd_node *)hdr;
+    CNode *node = ZAnim.m_CurAnim->GetNode(cmd->node, false);
+
+    if (node) {
+        CNode *parent = node->m_parent;
+
+        if (parent != zdb::CWorld::m_world) {
+            CMatrix m;
+
+            node->BuildMTW(m);
+            if (parent)
+                parent->DeleteChild(node);
+            zdb::CWorld::m_world->AddChild(node);
+            node->SetMatrix(&m);
+        }
+    }
+    return true;
+}
+
+/* a node of the current anim and a 16-bit argument: ACTIVE_STATE's state, NODE_ACTIVE's mode */
+struct zanim_cmd_nodetest {
+    _zanim_cmd_hdr hdr;
+    unsigned short mode;
+    unsigned short node;
+};
+
+/* make a node of the current anim active (state 1) or inactive (anything else) */
+bool zAnimObjectActiveStateTick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    zanim_cmd_nodetest *cmd = (zanim_cmd_nodetest *)hdr;
+    CNode *node = ZAnim.m_CurAnim->GetNode(cmd->node, false);
+
+    if (node) {
+        if (cmd->mode == 1)
+            node->SetActive(true);
+        else
+            node->SetActive(false);
+    }
+    return true;
+}
+
 struct zanim_cmd_sequence {
     _zanim_cmd_hdr hdr;
     unsigned char name;             /* a sequence or call-anim index; 0 is the current anim */
@@ -52,6 +103,7 @@ void zAnimObjectOpacityFromToBegin(_zanim_cmd_hdr *hdr)
         node->m_Opacity = cmd->from;
 }
 
+/* OPEN, 5 instructions: the blend's two registers swapped. */
 bool zAnimObjectOpacityFromToTick(_zanim_cmd_hdr *hdr, float *dT)
 {
     zanim_cmd_opacity *cmd = (zanim_cmd_opacity *)hdr;
@@ -120,12 +172,7 @@ bool zAnimObjectDeleteChildTick(_zanim_cmd_hdr *hdr, float *dT)
     return true;
 }
 
-/* whether a node of the current anim is active (mode 1) or inactive (mode 2) */
-struct zanim_cmd_nodetest {
-    _zanim_cmd_hdr hdr;
-    unsigned short mode;
-    unsigned short node;
-};
+/* whether a node of the current anim is active (mode 1) or inactive (mode 2): zanim_cmd_nodetest */
 
 /* OPEN, 5 instructions: mode 2 turns the flag into a bool (sltu) before testing it, as SOCOM 1
  * did too; neither a cast, a bool local nor an inline accessor gives it. */
@@ -152,6 +199,71 @@ bool zAnimNodeRenderedTick(_zanim_cmd_hdr *hdr, float *dT)
 
     if (node && func_00315580(node, 2))
         return true;
+    return false;
+}
+
+/* the squared distance between two points against a value: each point an offset, an anim
+ * argument and/or a node's place in the world, by flag; then <, <=, >, >=, ==, != by flag */
+struct zanim_cmd_range {
+    _zanim_cmd_hdr hdr;
+    unsigned int flags;
+    unsigned char node_a;
+    unsigned char node_b;
+    unsigned short pad;
+    CPnt3D offset_a;
+    CPnt3D offset_b;
+    float range;                    /* squared */
+};
+
+/* OPEN, 0x28 long: the points' address registers are assigned the other way round and the
+ * two GetArgPnt3D tests keep a nop the target fills. */
+bool zAnimRangeTestTick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    zanim_cmd_range *cmd = (zanim_cmd_range *)hdr;
+    CZAnim *anim = ZAnim.m_CurAnim;
+    CPnt3D a(0.0f, 0.0f, 0.0f);
+    CPnt3D b(0.0f, 0.0f, 0.0f);
+    CPnt3D *arg;
+    CNode *node;
+
+    if (cmd->flags & 2)
+        a.Add(&cmd->offset_a, &a);
+    if (cmd->flags & 4) {
+        arg = anim->GetArgPnt3D();
+        if (arg)
+            a = a + *arg;
+    }
+    if (cmd->flags & 1) {
+        node = ZAnim.m_CurAnim->GetNode(cmd->node_a, false);
+        if (node)
+            node->TransformToWorld(a);
+    }
+    if (cmd->flags & 0x10)
+        b.Add(&cmd->offset_b, &b);
+    if (cmd->flags & 0x20) {
+        arg = anim->GetArgPnt3D();
+        if (arg)
+            b = b + *arg;
+    }
+    if (cmd->flags & 8) {
+        node = ZAnim.m_CurAnim->GetNode(cmd->node_b, false);
+        if (node)
+            node->TransformToWorld(b);
+    }
+    a = a - b;
+    float d2 = a.x * a.x + a.y * a.y + a.z * a.z;
+    if (cmd->flags & 0x40)
+        return d2 < cmd->range;
+    if (cmd->flags & 0x80)
+        return d2 <= cmd->range;
+    if (cmd->flags & 0x100)
+        return d2 > cmd->range;
+    if (cmd->flags & 0x200)
+        return d2 >= cmd->range;
+    if (cmd->flags & 0x400)
+        return d2 == cmd->range;
+    if (cmd->flags & 0x800)
+        return d2 != cmd->range;
     return false;
 }
 

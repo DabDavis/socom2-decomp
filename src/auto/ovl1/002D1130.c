@@ -7,10 +7,10 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK func_001EABB0(char *);                      /* extern */
-extern M2C_UNK data_004065E0;
+extern M2C_UNK __vt__6CGNode;
 
 char *func_002D1130(char *arg0) {
-    M2C_FIELD(arg0, M2C_UNK **, 0) = &data_004065E0;
+    M2C_FIELD(arg0, M2C_UNK **, 0) = &__vt__6CGNode;
     M2C_FIELD(arg0, s32 *, 4) = 0;
     M2C_FIELD(arg0, s32 *, 8) = 0;
     func_001EABB0(arg0 + 0xC);

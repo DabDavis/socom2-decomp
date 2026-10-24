@@ -27,22 +27,35 @@ ROW = re.compile(r"^(0x[0-9A-Fa-f]+)\s+(\S+)\s+(\S+)(.*)$")
 
 def rename(pairs: list[tuple[int, str, str]]) -> int:
     lines = E.SYMBOLS.read_text().splitlines()
-    taken = {}
-    for i, line in enumerate(lines):
+    cur = {}
+    for line in lines:
         m = ROW.match(line)
         if m:
-            taken[m.group(3)] = int(m.group(1), 16)
+            cur[int(m.group(1), 16)] = m.group(3)
     old_names, bad = [], 0
     want = {a: (n, note) for a, n, note in pairs}
+    # a name may move within one batch (the rows being renamed give theirs up), but the map
+    # must end with every name once: refuse what would duplicate, until nothing does
+    new = {a: n for a, (n, _) in want.items() if a in cur and cur[a] != n}
+    while True:
+        holders = {}
+        for a, n in {**cur, **new}.items():
+            holders.setdefault(n, []).append(a)
+        clash = [a for a, n in new.items() if len(holders[n]) > 1]
+        if not clash:
+            break
+        for a in clash:
+            other = next(x for x in holders[new[a]] if x != a)
+            print(f"REFUSED {a:#x} {new[a]}: also the name of {other:#x}")
+            bad += 1
+            del new[a]
     for i, line in enumerate(lines):
         m = ROW.match(line)
         if not m or int(m.group(1), 16) not in want:
             continue
         addr = int(m.group(1), 16)
         name, note = want.pop(addr)
-        if name in taken and taken[name] != addr:
-            print(f"REFUSED {addr:#x} {name}: already the name of {taken[name]:#x}")
-            bad += 1
+        if addr not in new:
             continue
         rest = m.group(4)
         sep = "; " if "#" in rest else "  # "

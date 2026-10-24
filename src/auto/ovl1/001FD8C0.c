@@ -8,18 +8,18 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define NULL 0
 M2C_UNK __destroy_arr(char *, M2C_UNK (*)(char *, M2C_UNK), M2C_UNK, M2C_UNK); /* extern */
 M2C_UNK __dl__FPv(char *);                          /* extern */
+M2C_UNK __dt__13C2DBitmapPolyFv(char *, M2C_UNK);   /* extern */
+M2C_UNK __dt__3C2DFv(char *, M2C_UNK);              /* extern */
+M2C_UNK __dt__9C2DBitmapFv(char *, M2C_UNK);        /* extern */
 M2C_UNK __dt__9C2DStringFv(char *, M2C_UNK);        /* extern */
-M2C_UNK func_001FC680(char *, M2C_UNK);             /* extern */
-M2C_UNK func_001FCB10(char *, M2C_UNK);             /* extern */
-M2C_UNK func_00365060(char *, M2C_UNK);             /* extern */
+extern M2C_UNK __vt__16CInGameWeaponSel;
 extern M2C_UNK __vt__9C2DBitmap;
-extern M2C_UNK data_00405150;
 
 char *__dt__16CInGameWeaponSelFv(char *arg0, s64 arg1) {
     char *temp_a0;
 
     if (arg0 != NULL) {
-        M2C_FIELD(arg0, M2C_UNK **, 0xC) = &data_00405150;
+        M2C_FIELD(arg0, M2C_UNK **, 0xC) = &__vt__16CInGameWeaponSel;
         __dt__9C2DStringFv(arg0 + 0x1060, -1);
         __destroy_arr(arg0 + 0xD68, __dt__9C2DStringFv, 0x98, 5);
         __dt__9C2DStringFv(arg0 + 0xCD0, -1);
@@ -27,16 +27,16 @@ char *__dt__16CInGameWeaponSelFv(char *arg0, s64 arg1) {
         __dt__9C2DStringFv(arg0 + 0xBA0, -1);
         __dt__9C2DStringFv(arg0 + 0xB08, -1);
         __dt__9C2DStringFv(arg0 + 0xA70, -1);
-        __destroy_arr(arg0 + 0x690, func_001FC680, 0x1F0, 2);
-        __destroy_arr(arg0 + 0x490, func_001FCB10, 0x80, 4);
+        __destroy_arr(arg0 + 0x690, __dt__13C2DBitmapPolyFv, 0x1F0, 2);
+        __destroy_arr(arg0 + 0x490, __dt__9C2DBitmapFv, 0x80, 4);
         temp_a0 = arg0 + 0x410;
         if (temp_a0 != NULL) {
             M2C_FIELD(arg0, M2C_UNK **, 0x41C) = &__vt__9C2DBitmap;
-            func_00365060(temp_a0, 0);
+            __dt__3C2DFv(temp_a0, 0);
         }
         __destroy_arr(arg0 + 0x220, __dt__9C2DStringFv, 0x98, 3);
-        __destroy_arr(arg0 + 0x20, func_001FCB10, 0x80, 4);
-        func_00365060(arg0, 0);
+        __destroy_arr(arg0 + 0x20, __dt__9C2DBitmapFv, 0x80, 4);
+        __dt__3C2DFv(arg0, 0);
         if (((s64) (arg1 << 0x30) >> 0x30) > 0) {
             __dl__FPv(arg0);
         }

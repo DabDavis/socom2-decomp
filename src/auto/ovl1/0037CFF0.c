@@ -6,8 +6,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_0037CF80(s32);                         /* extern */
+M2C_UNK __dt__10C2DCounterFv(s32);                  /* extern */
 
 void func_0037CFF0(s32 arg0) {
-    func_0037CF80(arg0 - 0x98);
+    __dt__10C2DCounterFv(arg0 - 0x98);
 }
