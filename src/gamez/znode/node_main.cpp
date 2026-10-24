@@ -16,6 +16,8 @@
 
 /* the name a node without one shares (SOCOM 1's file static, 0x3DFD10 here) */
 extern char *UNNAMED_NODE;
+/* the name a node is left with as it goes (SOCOM 1's, the next word, 0x3DFD18 here) */
+extern char *DELETED_NODE;
 
 namespace zdb {
 
@@ -373,6 +375,28 @@ void CNode::DeleteDeferredVisuals()
     }
 }
 
+/* a node destroyed: its visuals and DIs let go of, its children deleted, its atoms, model and
+ * names given up, and it left out of the universe and the count (SOCOM 1's, but the visuals and
+ * DIs are calls now, and the world's texture characters are not consulted) */
+CNode::~CNode()
+{
+    DeleteVisuals();
+    if (m_hasDI)
+        DeleteDI();
+    DeleteChildren();
+    FreeAtom();
+    if (m_model)
+        m_model->Release(this);
+    if (m_modelname)
+        _free(m_modelname, 0, 0);
+    m_modelname = 0;
+    SetName(0);
+    m_name = DELETED_NODE;
+    if (NodeUniverse)
+        NodeUniverse->RemoveNode(this);
+    numNodes--;
+}
+
 /* the node's name, its own copy (or the shared default when given none); a name of its own freed */
 void CNode::SetName(const char *name)
 {
@@ -576,7 +600,9 @@ void CNode::DeleteVisuals()
 }
 
 /* every DI let go of, each deleted that nothing else holds, the list emptied and the node marked
- * changed (SOCOM 1's destructor inlined it, so no name survives: ours) */
+ * changed (SOCOM 1's destructor inlined it, so no name survives: ours). Pinned: SOCOM II's
+ * destructor calls it, where MW would inline it */
+#pragma auto_inline off
 void CNode::DeleteDI()
 {
     for (CDIVector::iterator it = m_di.begin(); it != m_di.end(); ++it) {
@@ -588,6 +614,8 @@ void CNode::DeleteDI()
     m_di.clear();
     m_socom2_a1 |= 2;
 }
+
+#pragma auto_inline reset
 
 /* a decal projected onto the node's visuals that take decals (0x10000), and below unless one of
  * them is a sub-mesh: the projection from the texture's width, the world matrix built only once

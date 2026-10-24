@@ -5514,7 +5514,7 @@
 0x00318200 0x30 UpdateBBox__Q23zdb5CNodeFb  # OVL1; s1:vtable by hand (slot 13 of CNode's table; the demo's inlines one more parent level, 2.5x the size, so the pass's size guard skipped it)
 0x00318230 0x478 UpdateBBoxFromDI__Q23zdb5CNodeFb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003186B0 0x214 func_003186B0  # OVL1
-0x003188D0 0x60 func_003188D0  # OVL1
+0x003188D0 0x60 Release__Q23zdb6CModelFPQ23zdb5CNode  # OVL1; s1:exact (SOCOM 1's CModel::Release(CNode *): the instance taken off the list, the model's 0x64 cleared if it was it; ~CNode calls it)
 0x00318930 0x1AC __dt__Q23zdb6CModelFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00318AE0 0x150 func_00318AE0  # OVL1
 0x00318C30 0x8 func_00318C30  # OVL1

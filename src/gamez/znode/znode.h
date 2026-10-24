@@ -14,6 +14,9 @@
 
 class CZProjectile;
 
+/* the node count (SOCOM 1's numNodes, a global outside zdb, after NodeUniverse) */
+extern int numNodes;
+
 namespace zdb {
 
 class CCamera;
@@ -470,6 +473,8 @@ public:
     }
     /* an instance taken off, by value (the remove's binder holds this copy's address, and the
      * parent test re-reads it: CNode::Delete; the name is ours) */
+    /* an instance let go of (SOCOM 1's, by name; ~CNode calls it) */
+    void Release(CNode *node);
     void RemoveInstance(CNode *node)
     {
         m_list.remove(node);

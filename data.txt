@@ -159,6 +159,7 @@
 0x003DF338 0x4 m_top__6CStack  # OVL1; s1:data-seq (size SOCOM 1's; via Multiply__6CStackFPC7CMatrixb)
 0x003DF340 0x4 m_exp_scl  # OVL1; s1:data-seq (size SOCOM 1's; via exp_tl__Ff)
 0x003DFD10 0x4 UNNAMED_NODE  # OVL1; SOCOM 1 name (node_main.cpp's file static: the name nameless nodes share; CNode::SetName reads it)
+0x003DFD18 0x4 DELETED_NODE  # OVL1; SOCOM 1 name (the name a node is left with as it is destroyed; ~CNode stores it after SetName(0), as SOCOM 1's)
 0x003DFE10 0x4 m_scale__Q23zdb6CWorld  # OVL1; s1:data-seq (size SOCOM 1's; via Load__17CharacterDynamicsFRC8CRdrFile)
 0x003E0070 0x4 m_mastervol__12CSndInstance  # OVL1; s1:data-seq (size SOCOM 1's; via SetVol__12CSndInstanceFf)
 0x003E0980 0xC0 framecode  # OVL1; s1:data-seq (size SOCOM 1's; via zVid_FrameRestore__Fv)
@@ -597,6 +598,7 @@
 0x004518B0 0x404 costbl  # OVL1 bss; s1:data-order by hand (the cosf table, after sintbl)
 0x0045A0B8 0x1264 theNetwork  # OVL1 bss; s1:data-seq (size SOCOM 1's; via HandleBombStateRequest__11CZBombStateFiUcP6CPnt3D)
 0x0045C298 0x4 NodeUniverse__3zdb  # OVL1 bss; s1:by hand (GetDatabaseNode tests and searches it where SOCOM 1's reads NodeUniverse__3zdb)
+0x0045C2A0 0x4 numNodes  # OVL1 bss; SOCOM 1 name (the node count, after NodeUniverse as in SOCOM 1; ~CNode counts it down)
 0x0045C2B8 0xC m_tick_list__Q23zdb6CLight  # OVL1 bss; s1:unit (node_main.cpp's first static, as SOCOM 1's CLight::m_tick_list: __sinit_node_main.cpp zeroes it and registers its destructor; its record at 0x45C2A8)
 0x0045C2D8 0xC m_deferred_visuals__Q23zdb5CNode  # OVL1 bss; node_main.cpp's second static, new in SOCOM II: a pointer list (the deleter's constructor builds it) of visuals let go of while drawn, which DeleteVisuals fills and 0x314E60 empties; the name ours
 0x0045C380 0x4 m_world__Q23zdb6CWorld  # OVL1 bss; s1:data-seq (size SOCOM 1's; via AddNewMark__10CZMarkListFPQ23zdb15IntersectStructP12CZProjectilef +4)
