@@ -63,24 +63,55 @@ def attempt(addr: int):
             continue
         # m2c leans on GNU C's arithmetic on void *, which MW rejects; char * means the same
         # byte offsets and compiles to the same code
-        body = re.sub(r"\bvoid(\s*\*)", r"char\1", r.stdout)
-        src = PRELUDE + body
-        (tmp / "f.c").write_text(src)
-        try:
-            D.compile_obj(tmp / "f.c", tmp / "f.o")
-            if real != sym.name:
-                import sccheck
-                sccheck.rename_symbol(tmp / "f.o", sym.name, real)
-            res = D.compare(tmp / "f.o", real, st.at_addr(addr), img, st)
-        except Exception:
-            worst = "build" if worst == "m2c" else worst
-            continue
-        if res.match:
-            if real != sym.name:
-                src = f"/* sc: as={sym.name} {real} */\n" + src
-            return addr, "hit", src
-        worst = "miss"
+        body = fill_params(re.sub(r"\bvoid(\s*\*)", r"char\1", r.stdout), sym.name)
+        for variant in variants(body):
+            src = PRELUDE + variant
+            hit = try_one(tmp, src, sym, real, addr, img, st)
+            if hit == "hit":
+                if real != sym.name:
+                    src = f"/* sc: as={sym.name} {real} */\n" + src
+                return addr, "hit", src
+            worst = hit if worst in ("m2c", "build") else worst
     return addr, worst, None
+
+
+def fill_params(body: str, name: str) -> str:
+    """m2c names a parameter by its register (arg0..arg3) and leaves out the unused ones, so
+    `f(s32 arg0, s32 arg2)` would pass arg2 in a1: put the skipped ones back, unused."""
+    m = re.search(rf"\b{re.escape(name)}\(([^)]*)\)\s*\{{", body)
+    if not m or not m.group(1).strip() or m.group(1).strip() == "void":
+        return body
+    parts = [x.strip() for x in m.group(1).split(",")]
+    idx = {}
+    for x in parts:
+        mm = re.match(r"^(.*?)\barg(\d)$", x)
+        if not mm:
+            return body                       # floats or stack arguments: leave it alone
+        idx[int(mm.group(2))] = x
+    full = [idx.get(i, f"s32 arg{i}") for i in range(max(idx) + 1)]
+    return body[:m.start(1)] + ", ".join(full) + body[m.end(1):]
+
+
+def variants(body: str):
+    """The draft, then with narrow fields unsigned (a byte stored as 0xFF is `li 255` to an
+    unsigned char, `li -1` to a signed one), then signed."""
+    yield body
+    u = re.sub(r"\bs(8|16)\b", r"u\1", body)
+    if u != body:
+        yield u
+
+
+def try_one(tmp: Path, src: str, sym, real: str, addr: int, img, st) -> str:
+    (tmp / "f.c").write_text(src)
+    try:
+        D.compile_obj(tmp / "f.c", tmp / "f.o")
+        if real != sym.name:
+            import sccheck
+            sccheck.rename_symbol(tmp / "f.o", sym.name, real)
+        res = D.compare(tmp / "f.o", real, st.at_addr(addr), img, st)
+    except Exception:
+        return "build"
+    return "hit" if res.match else "miss"
 
 
 def main(argv=None) -> int:

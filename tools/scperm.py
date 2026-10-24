@@ -46,15 +46,19 @@ MUT = Path(os.environ.get("EQPERM_MUT") or Path.home() / "claude-eqoa" / "decomp
 sys.path.insert(0, str(MUT))
 
 
-def find_function(text: str, symbol: str) -> tuple[int, int]:
-    """[start, end) of the definition the symbol names: `Class::Name(...) ... {...}`."""
-    m = re.match(r"^(?:__ct__|__dt__)?([A-Za-z_]\w*?)__(\d+)(\w+?)F", symbol)
-    if m and symbol.startswith(("__ct__", "__dt__")):
-        cls = symbol[6:].split("F")[0].lstrip("0123456789")
-        name = cls if symbol.startswith("__ct__") else "~" + cls
+def find_function(text: str, symbol: str, line: int | None = None) -> tuple[int, int]:
+    """[start, end) of the definition the symbol names: `Class::Name(...) ... {...}` -- the one
+    starting at `line` when overloads share the name."""
+    m = re.match(r"^(__ct__|__dt__|[A-Za-z_]\w*?)__(\d+)", symbol)
+    if m and m.group(1) in ("__ct__", "__dt__"):
+        n = int(re.match(r"\d+", symbol[6:]).group())
+        cls = symbol[6 + len(str(n)):6 + len(str(n)) + n]
+        name = cls if m.group(1) == "__ct__" else "~" + cls
         pat = rf"\b{cls}::{re.escape(name)}\s*\("
     elif m:
-        pat = rf"\b{m.group(3)}::{m.group(1)}\s*\("
+        n = int(m.group(2))
+        cls = symbol[m.end():m.end() + n]               # MW mangling: the class name, length-prefixed
+        pat = rf"\b{re.escape(cls)}::{re.escape(m.group(1))}\s*\("
     else:
         pat = rf"^[^\n;]*\b{re.escape(symbol.split('__')[0])}\s*\("
     hits = []
@@ -73,6 +77,11 @@ def find_function(text: str, symbol: str) -> tuple[int, int]:
         hits.append((a, i + 1))
     if not hits:
         raise SystemExit(f"no definition of {symbol} found")
+    if line is not None:
+        starts = [(text.count("\n", 0, a) + 1, (a, b)) for a, b in hits]
+        return min(starts, key=lambda x: abs(x[0] - line))[1]
+    if len(hits) > 1:
+        print(f"note: {len(hits)} definitions match; the first is taken (--line picks another)")
     return hits[0]
 
 
@@ -158,9 +167,10 @@ def main(argv=None) -> int:
     ap.add_argument("-j", "--jobs", type=int, default=6)
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--out", type=Path)
+    ap.add_argument("--line", type=int, help="the definition's line, when overloads share the name")
     a = ap.parse_args(argv)
     base = a.unit.read_text()
-    span = find_function(base, a.symbol)
+    span = find_function(base, a.symbol, a.line)
     fn = base[span[0]:span[1]]
     sc = Scorer(a.unit, a.symbol)
     best = sc.score(base)

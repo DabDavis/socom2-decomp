@@ -407,7 +407,7 @@
 0x00196D18 0x20 func_00196D18  # MAIN unaligned
 0x00196D38 0x9EC func_00196D38  # MAIN unaligned
 0x00197728 0x18 func_00197728  # MAIN unaligned
-0x00197740 0x64 func_00197740  # MAIN
+0x00197740 0x64 rand  # MAIN; s1:callee by hand (zAnimRandomWeightTick calls it where SOCOM 1 calls rand; newlib's 64-bit LCG)
 0x001977A8 0x60 func_001977A8  # MAIN unaligned
 0x00197808 0x64 func_00197808  # MAIN unaligned
 0x00197870 0x5A0 func_00197870  # MAIN
@@ -2990,7 +2990,7 @@
 0x0026F120 0xF0 func_0026F120  # OVL1
 0x0026F210 0x218 GetNodes__6CZAnimFv  # OVL1; s1:align
 0x0026F430 0xB0 func_0026F430  # OVL1
-0x0026F4E0 0x340 func_0026F4E0  # OVL1
+0x0026F4E0 0x340 GetNode__6CZAnimFib  # OVL1; s1:callee by hand (called where SOCOM 1's node-test handlers call GetNode(int, bool); the same arguments)
 0x0026F820 0x8 func_0026F820  # OVL1
 0x0026F830 0x24C GarbageCollect__6CZAnimFv  # OVL1; s1:align
 0x0026FA80 0x168 func_0026FA80  # OVL1
@@ -3008,7 +3008,7 @@
 0x00270BB0 0x8 func_00270BB0  # OVL1
 0x00270BC0 0x20 func_00270BC0  # OVL1
 0x00270BE0 0x260 func_00270BE0  # OVL1
-0x00270E40 0xB0 func_00270E40  # OVL1
+0x00270E40 0xB0 Running__6CZAnimFv  # OVL1; s1:order by hand (called where SOCOM 1's Pause/Resume handlers call Running; the same one argument)
 0x00270EF0 0x218 func_00270EF0  # OVL1
 0x00271110 0x13C func_00271110  # OVL1
 0x00271250 0x134 func_00271250  # OVL1

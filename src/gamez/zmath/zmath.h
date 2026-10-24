@@ -43,7 +43,7 @@ public:
     }
 
     int DistToVector(const CPnt3D *a, const CPnt3D *b, float *dist) const;
-    float DistToVector(const CPnt3D *a, const CPnt3D *b, CPnt3D *nearest, float *t) const;
+    int DistToVector(const CPnt3D *a, const CPnt3D *b, CPnt3D *nearest, float *dist) const;
     CPnt3D Reflect(const CPnt3D *n);
     void Interp(const CPnt3D *b, float t, CPnt3D *out) const;
     float Normalize(CPnt3D *out) const;
@@ -209,6 +209,13 @@ inline CPnt3D operator-(const CPnt3D &a, const CPnt3D &b)
 {
     CPnt3D r;
     a.Sub(&b, &r);
+    return r;
+}
+
+inline CPnt3D operator*(const CPnt3D &v, float s)
+{
+    CPnt3D r;
+    v.Scale(s, &r);
     return r;
 }
 

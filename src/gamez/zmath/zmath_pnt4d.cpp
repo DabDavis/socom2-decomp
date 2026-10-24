@@ -15,8 +15,10 @@ static float m_exp_scl = 25.6f;
 void init_trig_table()
 {
     if (!tableInit) {
+        float step = 0.024543693f;      /* one turn in 256 steps; a constant MW would fold */
+
         for (int i = 0; i < 257; i++) {
-            float a = i * 0.024543693f;
+            float a = i * step;
 
             sintbl[i] = sinf((double)a);
             costbl[i] = cosf((double)a);

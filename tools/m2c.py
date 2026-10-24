@@ -92,10 +92,40 @@ def export(img: E.Image, st: E.SymbolTable, sym: E.Symbol) -> str:
         written = gpr_written(w)
         if written in live:
             live.pop(written, None)
+    # a tail call -- `j f` with the argument set up in its delay slot -- is rewritten as the
+    # delay instruction, a call and a return: m2c reads the delay slot of a jal but not of a
+    # j, and drops what it does (an MI thunk's `this` adjustment, a loaded argument)
+    tail = {}
+    for i, (addr, w, text) in enumerate(rows):
+        if w >> 26 == 2 and i + 1 < len(rows):
+            t = int(text.split()[1], 16)
+            if st.at_addr(t) is not None and t != sym.addr and rows[i + 1][0] not in targets:
+                tail[addr] = rows[i + 1]
+    skip = {d[0] for d in tail.values()}
     out = [f"glabel {sym.name}"]
     for addr, w, text in rows:
         if addr in targets:
             out.append(f".L{addr:08X}:")
+        if addr in skip:
+            continue
+        if addr in tail:
+            d_addr, d_w, d_text = tail[addr]
+            t = int(text.split()[1], 16)
+            d_op, _, d_args = d_text.partition(" ")
+            d_args = _REG.sub(lambda m: "$" + ("fp" if m.group(1) == "s8" else m.group(1)), d_args)
+            if d_addr in pair:
+                d_args = re.sub(r"(-?0x[0-9a-f]+|-?\d+)(\(\$\w+\))", f"%lo({pair[d_addr]})\\2", d_args, count=1) \
+                    if "(" in d_args else re.sub(r",\s*-?(0x[0-9a-f]+|\d+)$", f", %lo({pair[d_addr]})", d_args)
+            if d_w:
+                out.append(f"  {d_op:<10} {d_args}".rstrip())
+            # an argument register the delay slot writes, above ones passed through untouched:
+            # make those visible to m2c, or it shifts the written one down into a0
+            written = gpr_written(d_w) if d_w else None
+            if written is not None and 5 <= written <= 7:
+                for r in range(4, written):
+                    out.append(f"  {'move':<10} ${REGS[r]}, ${REGS[r]}")
+            out += [f"  {'jal':<10} {symname(st, t, True)}", "  nop", f"  {'jr':<10} $ra", "  nop"]
+            continue
         op, _, args = text.partition(" ")
         args = _REG.sub(lambda m: "$" + ("fp" if m.group(1) == "s8" else m.group(1)), args)
         if op in BRANCHES:

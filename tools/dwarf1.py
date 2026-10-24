@@ -331,12 +331,183 @@ class Debug:
         return "\n".join(lines)
 
 
+class HeaderWriter:
+    """C++ declarations for a set of types and everything they embed BY VALUE (bases, members,
+    array elements), dependencies first; pointed-to types are only forward-declared. One
+    definition per name: the largest complete DIE. A template instance (DWARF 1 keeps only
+    `vector`, `compressed_pair`, ...) and anything unresolvable becomes an opaque struct of its
+    size, so the layout -- every member at its offset -- still compiles exactly."""
+
+    OPAQUE = {"vector", "compressed_pair", "list", "map", "basic_string", "pair", "__tree",
+              "__list_imp", "__vector_imp", "__vector_deleter", "__list_deleter", "__vector_pod"}
+
+    def __init__(self, dbg: "Debug"):
+        self.dbg = dbg
+        self.best: dict[str, Die] = {}
+        for d in dbg.dies:
+            if d.tag in (0x02, 0x13, 0x17, 0x04) and d.name:
+                cur = self.best.get(d.name)
+                if cur is None or (d.get("byte_size", 0), len(d.children)) > (cur.get("byte_size", 0), len(cur.children)):
+                    self.best[d.name] = d
+        self.done: set[str] = set()
+        self.fwd: set[str] = set()
+        self.out: list[str] = []
+
+    def opaque(self, name: str, size: int) -> str:
+        n = f"_opaque_{re.sub(r'[^A-Za-z0-9_]', '_', name)}_{size:x}"
+        if n not in self.done:
+            self.done.add(n)
+            self.out.append(f"struct {n} {{ unsigned char _[{size:#x}]; }};   // {name} (a template instance, or unresolved)\n")
+        return n
+
+    def use(self, d: Die) -> str:
+        """The type name a member of DIE d's type should be declared with, defining what it embeds."""
+        if "user_def_type" in d.attrs:
+            t = self.dbg.by_off.get(d.get("user_def_type"))
+            if t is not None and t.tag == 0x01:                 # an array: define its element
+                elem = self._array_elem(t)
+                if elem is not None:
+                    self.need(elem)
+            elif t is not None:
+                return self.need(t)
+        if "mod_u_d_type" in d.attrs:
+            blk = d.get("mod_u_d_type")
+            t = self.dbg.by_off.get(struct.unpack("<I", blk[-4:])[0])
+            if t is not None and t.name:
+                if blk[:-4] and all(m in (0x01, 0x02) for m in blk[:-4] if m not in (0x03, 0x04)):
+                    self.fwd.add(t.name) if t.tag != 0x04 else self.need(t)
+                else:
+                    self.need(t)
+        return ""
+
+    def _array_elem(self, t: Die) -> Die | None:
+        b = t.get("subscr_data", b"")
+        i = b.find(b"\x08")
+        while i >= 0:
+            an = struct.unpack_from("<H", b, i + 1)[0] if i + 3 <= len(b) else 0
+            if ATTRS.get(an >> 4) == "user_def_type" and an & 0xF == 2:
+                return self.dbg.by_off.get(struct.unpack_from("<I", b, i + 3)[0])
+            i = b.find(b"\x08", i + 1)
+        return None
+
+    exclude = None
+
+    def need(self, t: Die) -> str:
+        if t.name and self.exclude is not None and self.exclude.fullmatch(t.name):
+            self.done.add(t.name)
+            return t.name
+        if t.tag == 0x01:
+            e = self._array_elem(t)
+            return self.need(e) if e is not None else ""
+        if t.tag not in (0x02, 0x13, 0x17, 0x04) or not t.name:
+            return ""
+        # the DIE referenced, when it is complete: two different types can share a name (a
+        # `LOD` class and a 4-byte `LOD`), and the largest one is not always the one meant
+        complete = t.get("byte_size", 0) and (t.children or t.tag == 0x04)
+        best = t if complete else self.best.get(t.name, t)
+        if best.name in self.done:
+            return best.name
+        self.done.add(best.name)
+        if best.tag == 0x04:
+            vals = self.dbg.enum_values(best)
+            self.out.append(f"enum {best.name} {{" + ", ".join(f"{n} = {v}" for n, v in vals) + "};   "
+                            f"// {best.get('byte_size')} byte(s)\n")
+            return best.name
+        if best.name in self.OPAQUE or not best.children:
+            self.done.discard(best.name)
+            return self.opaque(best.name, best.get("byte_size", 0))
+        bases = []
+        for c in best.children:
+            if c.tag == 0x1C:
+                bt = self.dbg.by_off.get(c.get("user_def_type"))
+                if bt is not None:
+                    bases.append(self.need(bt) or bt.name)
+        members = []
+        for c in best.children:
+            if c.tag == 0x0D:
+                self.use(c)
+                members.append(c)
+        kw = {0x02: "class", 0x13: "struct", 0x17: "union"}[best.tag]
+        lines = [f"{kw} {best.name}" + (" : " + ", ".join(f"public {b}" for b in bases) if bases else "") + " {"]
+        if kw == "class":
+            lines.append("public:")
+        # where the members start: past the bases (each base's size, in order)
+        at = 0
+        for c in best.children:
+            if c.tag == 0x1C:
+                bt = self.best.get(getattr(self.dbg.by_off.get(c.get("user_def_type")), "name", ""), None)
+                at += bt.get("byte_size", 0) if bt is not None else 0
+        last_bits = None
+        for c in members:
+            off = location_offset(c.get("location", b""))
+            if off is not None and kw != "union" and off > at and off != last_bits:
+                # a hole DWARF 1 does not describe: MW's vtable pointer (after the bases), or padding
+                what = "the vtable pointer?" if off - at == 4 and at > 0 and not lines[-1].startswith("    ") else "a hole"
+                lines.append(f"    unsigned char _pad{at:x}[{off - at:#x}];   // {at:#x}: {what}")
+            if off is not None:
+                if "bit_size" in c.attrs:
+                    last_bits = off
+                    at = max(at, off + c.get("byte_size", 4))
+                else:
+                    t = self.dbg.by_off.get(c.get("user_def_type")) if "user_def_type" in c.attrs else None
+                    size = self._size_of(c)
+                    at = max(at, off + size) if size else max(at, off + 4)
+            decl = self.dbg.typename(c, c.name)
+            t = self.dbg.by_off.get(c.get("user_def_type")) if "user_def_type" in c.attrs else None
+            tt = t if (t is not None and t.get("byte_size", 0) and (t.children or t.tag == 0x04)) else \
+                (self.best.get(t.name, t) if t is not None else None)
+            if t is not None and t.tag != 0x01 and t.name and (t.name in self.OPAQUE or not tt.children) \
+                    and tt.tag != 0x04:
+                decl = f"{self.opaque(t.name, tt.get('byte_size', 0))} {c.name}"
+            if "<subroutine_type" in decl:
+                decl = re.sub(r"<subroutine_type@0x[0-9a-f]+>\*", "void *", decl)
+            bits = f" : {c.get('bit_size')}" if "bit_size" in c.attrs else ""
+            lines.append(f"    {decl}{bits};" + (f"   // {off:#x}" if off is not None else ""))
+        lines.append(f"}};   // {best.get('byte_size', 0):#x} bytes\n")
+        self.out.append("\n".join(lines))
+        return best.name
+
+    def _size_of(self, d: Die) -> int:
+        """The byte size of a member's type, when it can be told."""
+        if "fund_type" in d.attrs:
+            return {0x1: 1, 0x2: 1, 0x3: 1, 0x4: 2, 0x5: 2, 0x6: 2, 0x7: 4, 0x8: 4, 0x9: 4, 0xA: 8, 0xB: 8,
+                    0xC: 8, 0xD: 4, 0xE: 4, 0xF: 8, 0x15: 1, 0x8008: 16, 0x8208: 16}.get(d.get("fund_type"), 0)
+        if "mod_fund_type" in d.attrs or "mod_u_d_type" in d.attrs:
+            blk = d.get("mod_fund_type") or d.get("mod_u_d_type")
+            if any(m in (0x01, 0x02) for m in blk[:-2 if "mod_fund_type" in d.attrs else -4]):
+                return 4
+        if "user_def_type" in d.attrs:
+            t = self.dbg.by_off.get(d.get("user_def_type"))
+            if t is not None and t.tag == 0x01:
+                elem, dims = self.dbg.array_parts(t)
+                n = 1
+                for k in re.findall(r"\[(\d+)\]", dims):
+                    n *= int(k)
+                e = self._array_elem(t)
+                es = (self.best.get(e.name, e).get("byte_size", 0) if e is not None else
+                      {"float": 4, "int": 4, "unsigned int": 4, "char": 1, "unsigned char": 1, "short": 2,
+                       "unsigned short": 2, "signed char": 1}.get(elem, 0))
+                return n * es
+            if t is not None:
+                return self.best.get(t.name, t).get("byte_size", 0)
+        return 0
+
+    def text(self) -> str:
+        # every class reached through a pointer is declared up front: some are defined below,
+        # after a class that points at them
+        enums = {n for n, d in self.best.items() if d.tag == 0x04}
+        fwd = sorted(n for n in self.fwd if n not in enums and not n.startswith("_opaque_"))
+        head = "".join(f"class {n};\n" for n in fwd)
+        return head + ("\n" if head else "") + "\n".join(self.out)
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", choices=["units", "funcs", "func", "types", "census"])
+    ap.add_argument("cmd", choices=["units", "funcs", "func", "types", "census", "header"])
     ap.add_argument("elf", type=Path)
     ap.add_argument("pattern", nargs="?")
     ap.add_argument("--tu", help="funcs/func: only functions in units whose file matches this regex")
+    ap.add_argument("--exclude", help="header: types an existing header defines (regex over names)")
     a = ap.parse_args(argv)
     dbg = Debug(a.elf)
     rx = re.compile(a.pattern) if a.pattern else None
@@ -366,6 +537,13 @@ def main(argv=None) -> int:
                 continue
             tu = Path(cu.name.replace("\\", "/")).name if cu is not None else "?"
             print(f"{lo:#010x} {hi - lo:#06x} {tu:<24} {name:<50} {dbg.signature(f)}")
+    elif a.cmd == "header":
+        hw = HeaderWriter(dbg)
+        hw.exclude = re.compile(a.exclude) if a.exclude else None
+        for name, d in sorted(hw.best.items()):
+            if rx and rx.fullmatch(name):
+                hw.need(d)
+        print(hw.text())
     elif a.cmd == "types":
         seen = set()
         for d in dbg.dies:

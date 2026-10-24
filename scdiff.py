@@ -312,8 +312,15 @@ def compare(obj: Path, name: str, sym: E.Symbol, img: E.Image, st: E.SymbolTable
     cand, relocs, fsym = elf.function(name)
     target = img.read(sym.addr, max(sym.size, len(cand)))
     # MW pads each function to 16 bytes; whatever follows the candidate up to the
-    # next 16-byte boundary must be zero in the target, or the size is wrong
+    # next 16-byte boundary must be zero in the target, or the size is wrong -- unless the
+    # next object starts sooner: the last function of a unit can be followed directly by an
+    # 8-aligned GCC-built library object (func_001E7EF0, then flushbuffer at +0x68)
     pad_end = (sym.addr + len(cand) + 15) & ~15
+    import bisect
+    k = bisect.bisect_right(st._addrs, sym.addr)
+    nxt = st._addrs[k] if k < len(st._addrs) else None
+    if nxt is not None and sym.addr + sym.size <= nxt < pad_end:
+        pad_end = max(nxt, sym.addr + len(cand))
     padding = img.read(sym.addr + len(cand), pad_end - sym.addr - len(cand))
     t = mask(target[:len(cand)], relocs)
     c = mask(cand, relocs)

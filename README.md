@@ -37,7 +37,7 @@ and data reference resolved to the address the shipped code uses.
 | `tools/automatch.py` | compiles m2c's draft of every small function as it stands; `--emit` writes the hits to `src/auto/`; `--stale` redoes the drafts a rename left behind; a template-named row is drafted under its placeholder and renamed in the object (`/* sc: as=OLD NEW */`) |
 | `tools/s1names.py` | SOCOM 1's function names, out of the May 2002 demo's symbols and relocations |
 | `tools/s1data.py` | SOCOM 1's global data names, through the functions s1names paired |
-| `tools/dwarf1.py` | the demo's Metrowerks DWARF 1: units, signatures, class layouts, enums |
+| `tools/dwarf1.py` | the demo's Metrowerks DWARF 1: units, signatures, class layouts, enums; `func` (one function's parameters, locals, blocks, source lines); `header` (compilable C++ declarations of a type and all it embeds, offsets annotated, holes -- MW's vtable pointer -- padded) |
 | `tools/beta_tu.py` | which source file a function was in, out of the press beta's asserts |
 | `tools/rename.py` | rename map rows by hand, keeping the note, refusing a taken name, listing the source still using the old one |
 | `tools/s1units.py` | SOCOM II's translation units: its static initialisers against SOCOM 1's named `__sinit_<file>`s |
@@ -203,7 +203,7 @@ that hand-written source defines or that already carries an `s1~` verdict:
 | `s1:unit` | a static initialiser paired with SOCOM 1's `__sinit_<file>` (`tools/s1units.py`) | 7 |
 | `s1~` | judged and NOT applied: a name landing on several rows (static copies of SDK stubs; identical template instances), a signature that changed, or a name the relocation bug gave | 73 |
 
-2,431 of the map's 13,370 rows are named (the 138 extra rows are the static initialisers). A weaker tag is upgraded when the exact pass later
+2,431 of the map's 13,370 rows are named (141 of the rows are the static initialisers). A weaker tag is upgraded when the exact pass later
 confirms the same name; no name was contradicted when the passes were corrected.
 
 **The relocation keying bug (fixed 2026-10-24).** `.relmain`'s `r_offset` is already a virtual
@@ -284,8 +284,25 @@ are counted apart by `sccheck.py`, and are **not finished source**: placeholder 
 - disposable: hand-written source supersedes them (sccheck skips a generated function the
   hand tier defines and says so), and `automatch.py --emit` deletes superseded files.
 
-Data references in a draft are `data_<VA>` placeholders (BSS included), so the relocation
-check verifies them; none reads a literal address.
+Data references in a draft are `data_<VA>` placeholders (BSS included) or `data.txt` names,
+so the relocation check verifies them; none reads a literal address.
+
+What the generator corrects in m2c's output before compiling (each measured on the near
+misses -- drafts that compile at the right size and miss by an instruction or three):
+
+- **parameter gaps**: m2c names a parameter by its register and leaves out the unused ones,
+  so `f(s32 arg0, s32 arg2)` would pass `arg2` in a1; the skipped ones are put back;
+- **tail calls**: m2c reads a `jal`'s delay slot but not a `j`'s, losing an MI thunk's
+  `this` adjustment or a loaded argument; the exported assembly spells `j f; <delay>` as
+  `<delay>; jal f; jr ra`, with self-moves for argument registers passed through untouched;
+- **narrow fields**: a byte stored as 0xFF is `li 255` to an unsigned char and `li -1` to a
+  signed one; a miss is retried with `s8`/`s16` made unsigned;
+- **template names**: a row whose name is no C identifier is drafted under its placeholder
+  and renamed in the object (`/* sc: as=OLD NEW */`).
+
+Not yet: a `bool` (MW's C has none -- `daddiu v0,zero,1` against `li`), which needs C++ drafts.
+The differ also stopped refusing the last function of a unit that an 8-aligned GCC object
+follows without MW's 16-byte padding (131 drafts had every byte right).
 
 ## Open, and next
 
