@@ -77,6 +77,7 @@ def main(argv=None) -> int:
     ap.add_argument("--wrong", action="store_true", help="print the diff of every mismatch")
     ap.add_argument("--baseline", action="store_true", help="rewrite MATCHED.txt")
     ap.add_argument("-j", "--jobs", type=int, default=6)
+    ap.add_argument("-v", "--verbose", action="store_true", help="list the generated tier's matches too")
     a = ap.parse_args(argv)
 
     img, st = E.image(), E.symbols()
@@ -91,14 +92,24 @@ def main(argv=None) -> int:
         built = list(ex.map(build_one, sources()))
 
     rows, matched, failed_builds = [], [], 0
+    auto_names: set[str] = set()
+    hand_names: set[str] = set()
+    for src, obj, err in built:
+        if obj is not None:
+            names = {f.name for f in E.Elf.read(obj).functions()}
+            (auto_names if "auto" in src.relative_to(SRC).parts else hand_names).update(names)
+    superseded = sorted(auto_names & hand_names)
     for src, obj, err in built:
         if obj is None:
             failed_builds += 1
             rows.append(("BUILD-FAIL", src.name, "", err.strip().splitlines()[-1] if err.strip() else ""))
             continue
+        is_auto = "auto" in src.relative_to(SRC).parts
         for fs in E.Elf.read(obj).functions():
             if rx and not rx.search(fs.name):
                 continue
+            if is_auto and fs.name in hand_names:
+                continue                     # hand-written source supersedes the generated tier
             if fs.name in absent:
                 rows.append(("absent", src.name, fs.name, ""))
                 continue
@@ -119,7 +130,10 @@ def main(argv=None) -> int:
                     print(D.report(res))
                     print()
 
+    quiet = {"match"} if not a.verbose else set()
     for status, tu, name, note in rows:
+        if status in quiet and tu[:1].isdigit():
+            continue                         # the generated tier's matches are counted, not listed
         print(f"{status:<10} {tu:<28} {name:<48} {note}")
 
     baseline = set()
@@ -129,8 +143,13 @@ def main(argv=None) -> int:
         n for n in baseline - set(matched) if rx.search(n))
     total_code = sum(s.size for s in st.symbols)
     matched_bytes = sum(st.get(n).size for n in matched)
+    n_auto = sum(1 for n in matched if n in auto_names and n not in hand_names)
     print(f"\n{len(matched)} byte-exact of {sum(1 for r in rows if r[0] in ('match', 'WRONG'))} scored"
           f" ({matched_bytes:,} of {total_code:,} bytes in the map, {100 * matched_bytes / max(total_code, 1):.2f} %)")
+    print(f"  {len(matched) - n_auto} hand-written, {n_auto} generated (src/auto, m2c drafts byte-exact as they stand)")
+    if superseded:
+        print(f"  {len(superseded)} generated function(s) superseded by hand-written source -- "
+              f"run tools/automatch.py --emit to drop them: {', '.join(superseded[:5])}")
     if failed_builds:
         print(f"{failed_builds} TU(s) failed to build")
     if regressions:

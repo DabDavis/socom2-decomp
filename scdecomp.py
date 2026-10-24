@@ -286,6 +286,10 @@ class Image:
                 return s
         return None
 
+    def in_memory(self, addr: int) -> bool:
+        """Inside a segment's loaded extent, BSS included (no bytes there to read)."""
+        return any(s.base <= addr < s.base + s.memsz for s in self.segments)
+
     def covers(self, addr: int, length: int) -> bool:
         s = self.segment(addr)
         return s is not None and addr + length <= s.end

@@ -1,8 +1,10 @@
 # `decomp/` — matching decomp of SOCOM II (SCUS-97275 r0001)
 
-**25 of 25 scored functions byte-exact** (2026-10-24, phase 0): all 21 of zlib 1.1.4's
-functions in MAIN, the boot loader's overlay decode (`0x1C5DA0`), and the first engine
-code, `CQuat::MakeXRot/YRot/ZRot` in OVL1. Canary: `./test_scdecomp.py`, 10 tests.
+**2,383 functions byte-exact** (2026-10-24): **48 hand-written** -- zlib 1.1.4 in MAIN (the
+calibration), the boot loader's overlay decode, and the engine's zMath (CQuat, the
+projector matrices, CPnt3D/CPnt4D) -- and **2,335 generated**, m2c's drafts that are
+byte-exact as they stand (`src/auto/`, counted apart; see "The generated tier"). Four
+functions are open, each diagnosed in its source. Canary: `./test_scdecomp.py`.
 
 This is the start of a function-by-function, byte-exact decomp of the game, built the way
 `~/claude-eqoa/decomp` (github.com/DabDavis/eqoa-decomp) is: offline Python tooling, a
@@ -30,6 +32,9 @@ and data reference resolved to the address the shipped code uses.
 | `tools/seed_symbols.py` | the sweep that seeded `symbols.txt` |
 | `tools/identify.py` | compile a known-source TU, find each function in the image, verify, rename |
 | `tools/callnames.py` | name placeholders off byte-exact functions' own call sites (eqcallnames.py) |
+| `tools/m2c.py` | a target function as m2c-ready assembly (labels, callees by map name, `%hi/%lo` as `data_<VA>`), and m2c's draft |
+| `tools/perm.py` | the permuter: reorders `// PERM_BEGIN/END` lines and `// PERM_DECL` names until a function matches |
+| `tools/automatch.py` | compiles m2c's draft of every small function as it stands; `--emit` writes the hits to `src/auto/` |
 | `symbols.txt` | **the map** — `0xADDR SIZE name  # note`, kept by hand from here on |
 | `src/` | the reconstructed source; `MATCHED.txt` (the baseline), `ABSENT.txt` (dead-stripped) |
 | `include/` | minimal libc headers in our own words |
@@ -170,6 +175,26 @@ of the published repository rather than inside claude-socom.
 the work happens here and `tools/publish.sh` pushes the committed state (`--dry-run`
 to look first). It refuses a tracked line that looks private, as claude-eqoa's
 `_publish.py` does.
+
+## The generated tier: `src/auto/`
+
+`tools/automatch.py` hands every unnamed 16-aligned overlay function up to 0x100 bytes to
+m2c, compiles the draft **as it stands** with the settled toolchain, and keeps it only if
+it is byte-exact with every relocation resolved -- the same `scdiff.compare` hand-written
+source must pass. 2,335 of 7,007 do (61 % of those up to 0x40 bytes, 33 % overall). They
+live one per file in `src/auto/<segment>/<VA>.c` (two drafts' prototypes can disagree),
+are counted apart by `sccheck.py`, and are **not finished source**: placeholder names,
+`void *` and `M2C_FIELD` offsets, C rather than the game's C++, and no TU grouping. They are:
+
+- a regression guard for the toolchain: 2,335 functions across both overlays compile on
+  every check, so a wrong flag or build fails loudly (one build and one flag set match all
+  of them -- the overlays were built with the toolchain zlib settled, throughout);
+- a correct starting body for whoever writes the real TU;
+- disposable: hand-written source supersedes them (sccheck skips a generated function the
+  hand tier defines and says so), and `automatch.py --emit` deletes superseded files.
+
+Data references in a draft are `data_<VA>` placeholders (BSS included), so the relocation
+check verifies them; none reads a literal address.
 
 ## Open, and next
 

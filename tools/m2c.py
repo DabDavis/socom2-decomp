@@ -9,7 +9,8 @@ Draft C for a target function with m2c (the mips-to-c decompiler).
 The function is exported from the r0001 image as the assembly m2c reads (the splat
 style its tests use): `$` registers, `.L<VA>` branch labels, callees by their map
 names, and every lui/addiu|load|store pair as %hi/%lo of a symbol -- the map's name
-when it has one, `D_<VA>` otherwise. m2c is EQOA's checkout (M2C or
+when it has one, `data_<VA>` otherwise (BSS included), which the relocation check
+resolves by the address in the name. m2c is EQOA's checkout (M2C or
 ~/claude-eqoa/decomp/tools/m2c); the target triple is mipsee-gcc-c by default
 (`--triple`). A draft is a starting point to rewrite, never source to commit.
 """
@@ -38,11 +39,32 @@ BRANCHES = {"b", "beq", "bne", "beqz", "bnez", "blez", "bgtz", "bltz", "bgez", "
             "bc1tl", "bc1fl", "bc0t", "bc0f"}
 
 
+def gpr_written(w: int) -> int | None:
+    """The general register an instruction writes, or None. FPU and VU loads (lwc1,
+    lqc2) keep their destination in the rt field too -- it is not a GPR there."""
+    opc, rs, rt, rd = w >> 26, (w >> 21) & 31, (w >> 16) & 31, (w >> 11) & 31
+    if opc == 0:
+        return rd or None                                  # R-type
+    if opc == 0x1C:
+        return rd or None                                  # MMI
+    if opc == 3:
+        return 31                                          # jal
+    if 0x08 <= opc <= 0x0F or opc in (0x18, 0x19):
+        return rt or None                                  # I-type ALU, daddi(u)
+    if 0x20 <= opc <= 0x27 or opc in (0x1A, 0x1B, 0x1E, 0x37):
+        return rt or None                                  # loads into a GPR
+    if opc == 0x11 and rs in (0, 1, 2):
+        return rt or None                                  # mfc1/dmfc1/cfc1
+    if opc == 0x12 and rs in (1, 2):
+        return rt or None                                  # qmfc2/cfc2
+    return None
+
+
 def symname(st: E.SymbolTable, addr: int, func: bool) -> str:
     s = st.at_addr(addr)
     if s is not None:
         return s.name
-    return f"func_{addr:08X}" if func else f"D_{addr:08X}"
+    return f"func_{addr:08X}" if func else f"data_{addr:08X}"
 
 
 def export(img: E.Image, st: E.SymbolTable, sym: E.Symbol) -> str:
@@ -53,11 +75,10 @@ def export(img: E.Image, st: E.SymbolTable, sym: E.Symbol) -> str:
         if op in BRANCHES:
             targets.add(int(text.split(",")[-1].split()[-1], 16))
     # %hi/%lo: a lui whose register a later instruction uses as a base or addiu source
-    his: dict[int, tuple[int, int]] = {}       # lui address -> (reg, hi)
     pair: dict[int, str] = {}                  # instruction address -> symbol of its pair
     live: dict[int, tuple[int, int]] = {}      # reg -> (lui address, hi)
     for addr, w, text in rows:
-        opc, rs, rt = w >> 26, (w >> 21) & 31, (w >> 16) & 31
+        opc, rs, rt, rd = w >> 26, (w >> 21) & 31, (w >> 16) & 31, (w >> 11) & 31
         if opc == 0x0F:                        # lui
             live[rt] = (addr, w & 0xFFFF)
             continue
@@ -65,13 +86,12 @@ def export(img: E.Image, st: E.SymbolTable, sym: E.Symbol) -> str:
             lui_at, hi = live[rs]
             lo = w & 0xFFFF
             full = ((hi << 16) + (lo - 0x10000 if lo & 0x8000 else lo)) & 0xFFFFFFFF
-            if img.segment(full) is not None:
+            if img.in_memory(full):
                 name = symname(st, full, img.is_code(full))
                 pair[lui_at] = pair[addr] = name
-            if opc == 0x09 and rt == rs:
-                live.pop(rs, None)
-        elif opc != 0x0F and rt in live and opc not in (0x2B, 0x29, 0x28, 0x3F, 0x39, 0x1F):
-            live.pop(rt, None)                 # the register was overwritten
+        written = gpr_written(w)
+        if written in live:
+            live.pop(written, None)
     out = [f"glabel {sym.name}"]
     for addr, w, text in rows:
         if addr in targets:
