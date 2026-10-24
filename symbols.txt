@@ -1897,17 +1897,17 @@
 0x00212370 0x8 SetScale__10MapCompassFf  # OVL1; s1:exact by hand (hud_mapcompass.cpp)
 0x00212380 0x110 __dt__10MapCompassFv  # OVL1; s1:calls
 0x00212490 0x90 __dt__17CHudCompassAnchorFv  # OVL1; s1:calls
-0x00212520 0x60 func_00212520  # OVL1
-0x00212580 0x40 func_00212580  # OVL1
-0x002125C0 0x8 func_002125C0  # OVL1
-0x002125D0 0x14 func_002125D0  # OVL1
+0x00212520 0x60 __dt__Q23std54vector<11nav_package,Q23std24allocator<11nav_package>>Fv  # OVL1; by hand (navpoint_vec's destructor: the unit's initialiser registers it; MapCompass's destructor frees the vector through it)
+0x00212580 0x40 swap__Q23std64__vector_deleter<11nav_package,Q23std24allocator<11nav_package>>FRQ23std64__vector_deleter<11nav_package,Q23std24allocator<11nav_package>>  # OVL1; by hand (MapCompass's destructor's free of navpoint_vec: the deleter's swap, capacity, data, size)
+0x002125C0 0x8 clear__Q23std54vector<11nav_package,Q23std24allocator<11nav_package>>Fv  # OVL1; by hand (the same free's clear: five high, so its copy calls the next level's)
+0x002125D0 0x14 __ct__Q23std54vector<11nav_package,Q23std24allocator<11nav_package>>Fv  # OVL1; by hand (the same free's temporary)
 0x002125F0 0xB4 __ct__10MapCompassFv  # OVL1; s1:order (hud_mapcompass.cpp, as SOCOM 1's: its anchors built 38 to a table)
-0x002126B0 0x40 func_002126B0  # OVL1
+0x002126B0 0x40 __ct__17CHudCompassAnchorFv  # OVL1; by hand (an anchor's inline constructor: MapCompass's constructor builds both tables with it)
 0x002126F0 0x75C InitHUD_Compass__10MapCompassFPQ23zdb6CWorld  # OVL1; s1:order (hud_mapcompass.cpp's last, as SOCOM 1's)
 0x00212E50 0x584 func_00212E50  # OVL1
-0x002133E0 0x1B0 func_002133E0  # OVL1
-0x00213590 0x8 func_00213590  # OVL1
-0x002135A0 0x68 func_002135A0  # OVL1
+0x002133E0 0x1B0 reserve__Q23std62__vector_imp<11nav_package,Q23std24allocator<11nav_package>,0>FUi  # OVL1; by hand (MapCompass's constructor reserves 48)
+0x00213590 0x8 clear__Q23std64__vector_deleter<11nav_package,Q23std24allocator<11nav_package>>Fv  # OVL1; by hand (the deleter's clear, whole: vector<nav_package>::clear's copy calls it out of line)
+0x002135A0 0x68 __dt__Q23std64__vector_deleter<11nav_package,Q23std24allocator<11nav_package>>Fv  # OVL1; by hand (the vector's destructor's last level)
 0x00213610 0x70 func_00213610  # OVL1
 0x00213680 0x1BC func_00213680  # OVL1
 0x00213840 0x220 func_00213840  # OVL1
@@ -8483,7 +8483,7 @@
 0x003FDBC0 0x2BC func_003FDBC0  # OVL1 data area; a static initialiser
 0x003FDE80 0x308 func_003FDE80  # OVL1 data area; a static initialiser
 0x003FE190 0x2B4 func_003FE190  # OVL1 data area; a static initialiser
-0x003FE450 0x34 func_003FE450  # OVL1 data area; a static initialiser
+0x003FE450 0x34 __sinit_hud_mapcompass.cpp  # OVL1 data area; a static initialiser; hud_mapcompass.cpp by hand (it builds navpoint_vec, this unit's global, and registers its destructor)
 0x003FE490 0x64 func_003FE490  # OVL1 data area; a static initialiser
 0x003FE500 0x48 func_003FE500  # OVL1 data area; a static initialiser
 0x003FE550 0x1B0 func_003FE550  # OVL1 data area; a static initialiser

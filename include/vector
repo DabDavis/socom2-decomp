@@ -82,9 +82,12 @@ template <class T, class Allocator>
 class __vector_deleter {
 public:
     __vector_deleter() { size_ = 0; data_ = 0; }
+    /* the elements destroyed and the count cleared in place, not through clear(): a level
+     * shorter, which the class reserves' temporary needs (zanim_set.cpp's CPnt3D one) */
     ~__vector_deleter()
     {
-        clear();
+        destroy(data_, data_ + size_);
+        size_ = 0;
         if (data_)
             operator delete(data_);
     }
@@ -94,10 +97,13 @@ public:
         size_ = 0;
     }
     /* the elements' destructors: nothing for a trivially destructible class -- SOCOM II's MSL
-     * keeps no loop for CPnt3D, where SOCOM 1's kept an empty one -- but two inline levels all the
-     * same (an empty inline function still counts as one) */
+     * keeps no loop for CPnt3D, where SOCOM 1's kept an empty one -- but three inline levels all
+     * the same (an empty inline function still counts as one): vector<nav_package>::clear's copy
+     * (0x2125C0) calls the deleter's clear (0x213590) out of line, so __vector_imp's clear is five
+     * high and the deleter's four */
     static void destroy(T *first, T *last) { __destroy(first, last); }
-    static void __destroy(T *, T *) {}
+    static void __destroy(T *first, T *last) { __destroy_trivial(first, last); }
+    static void __destroy_trivial(T *, T *) {}
     static T *allocate(unsigned int n)
     {
         T *p = (T *)operator new(n * sizeof(T));

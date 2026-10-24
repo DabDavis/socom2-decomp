@@ -7,10 +7,36 @@
 
 #include "../../gamez/ztwod/ztwod.h"
 
+class CCompassAnchor;
+class CHudCompassAnchor;
 class CZSealBody;
+
+/* a compass anchor's place in the frame's list (SOCOM 1's DWARF; 0x14 bytes). Its constructor is
+ * user-declared: the vector's reserve copies it member by member (lw, sw, then the two bytes),
+ * where a POD would go as five words */
+class nav_package {
+public:
+    nav_package() {}
+
+    int m_dist;   // 0x0
+    CCompassAnchor *m_this_anchor;   // 0x4
+    CHudCompassAnchor *m_hud_anchor;   // 0x8
+    CHudCompassAnchor *m_hud_arrow;   // 0xc
+    unsigned char m_show_arrow;   // 0x10
+    unsigned char m_override_showme;   // 0x11
+};
 
 class CHudCompassAnchor {
 public:
+    /* inline: its out-of-line copy (0x2126B0) comes out where the anchor tables are built */
+    CHudCompassAnchor()
+    {
+        m_width = 0.0f;
+        m_height = 0.0f;
+        m_htex = 0;
+        m_texture = 0;
+    }
+
     C2DBitmapPoly m_icon;   // 0x0
     C2DString m_string;   // 0x1f0
     float m_width;   // 0x288

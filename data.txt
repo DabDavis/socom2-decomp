@@ -557,6 +557,7 @@
 0x00408E40 0x10 m_hud_textcolor__4CHUD  # OVL1 bss; SOCOM 1's static (16 bytes; PoseBitmap's Init and ReInit copy it into the stance text's colour, as SOCOM 1's Init did): 32 references in 18 functions take 0x408E40, about as many again each of its other three floats
 0x00408E58 0x4 theHUD  # OVL1 bss; s1:data-seq (size SOCOM 1's; via HUDLetterBoxCmdTick__FP14_zanim_cmd_hdrPf +2)
 0x00409F20 0x460 g_arrHorGridLines__27@unnamed@hud_newhudmap_cpp@  # OVL1 bss; s1:data-exact (size SOCOM 1's; via __arraydtor$2546)
+0x0040C060 0xC navpoint_vec  # OVL1 bss; SOCOM 1's global (a vector of nav packages: hud_mapcompass.cpp's initialiser builds it, MapCompass's constructor reserves it, its destructor frees it, Tick fills it): 7 references in 4 functions take 0x40C060
 0x0040DA18 0x4 m_conetex__15CZPlayerMapItem  # OVL1 bss; SOCOM 1's static (CZPlayerMapItem's constructor copies it into its own cone texture, as SOCOM 1's did): 3 references in 3 functions take 0x40DA18
 0x0040DA20 0x4 m_alivebliptex__15CZPlayerMapItem  # OVL1 bss; SOCOM 1's static (the constructor's blip texture, next after m_conetex as in SOCOM 1; the statics 8 apart now): 3 references in 3 functions take 0x40DA20
 0x0040DA28 0x4 m_deadbliptex__15CZPlayerMapItem  # OVL1 bss; SOCOM 1's static (the third of the three, which TickSealCone reads where the others are not): 3 references in 3 functions take 0x40DA28
