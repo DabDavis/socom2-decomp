@@ -182,7 +182,7 @@ public:
     /* SOCOM II's: a message for the player (the menu state's tick passes the network's queued
      * ones: the text, no sender, the flag 1, the message's type last). The name and the middle
      * parameters' meaning are ours */
-    virtual void Slot2C(const char *text, const char *who, int a, int b, int c,
+    virtual void DisplayMessage(const char *text, const char *who, int a, int b, int c,
                         unsigned char d, unsigned char e, char type) {}
 
     void SetName(const char *name)
@@ -252,6 +252,8 @@ public:
     virtual bool Tick(float dT);
     virtual void UnInit();
 
+    void AbortLoad(const char *dlgname);
+
     CLoadMenu *m_menu;   // 0x8
     unsigned char m_fadeup;   // 0xc
     unsigned char m_fadedown;   // 0xd
@@ -274,6 +276,9 @@ struct CStateString {
         w[1] = 0;
         w[2] = 0;
     }
+    /* the short form: its text in place after the first byte (bit 0 of the first word clear) */
+    bool IsShort() const { return !(w[0] & 1); }
+    const char *c_str() const { return IsShort() ? (const char *)this + 1 : (const char *)w[2]; }
 
     unsigned int w[3];
 };
@@ -387,13 +392,16 @@ public:
 
 class CMission {
 public:
+    static void _RecoverFromNetError(int error);
     void ReOpen_Load();
     void ReOpen_Unload1();
     void ReOpen_Unload2();
 
     unsigned char _0[0x18];
     unsigned char m_18;   // 0x18: 4 in an online game (SOCOM 1's too)
-    unsigned char _19[0xe8 - 0x19];
+    unsigned char _19[0x1c - 0x19];
+    const char *m_1c;   // 0x1c: the mission's database name
+    unsigned char _20[0xe8 - 0x20];
     float m_e8;   // 0xe8 (-1 when the mission starts; SOCOM 1's at 0x68)
     unsigned char _ec[0x108 - 0xec];
     float m_108;   // 0x108

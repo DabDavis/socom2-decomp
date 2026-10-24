@@ -86,7 +86,7 @@ bool CMenuState::Tick(float dT)
     func_002A4290(&msg);
     while (func_002A4270(queue)) {
         func_002A3E60(queue, &msg);
-        Slot2C(msg.text, 0, 0, 0, 0, 1, 0, msg.type);
+        DisplayMessage(msg.text, 0, 0, 0, 0, 1, 0, msg.type);
     }
     data_004887C0.m_uiNode = m_menu->m_pBackplaneNode;
     data_004887C0.m_renderingUi = 1;
