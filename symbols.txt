@@ -1794,18 +1794,18 @@
 0x00209EE0 0x234 func_00209EE0  # OVL1
 0x0020A120 0x208 func_0020A120  # OVL1
 0x0020A330 0x13C func_0020A330  # OVL1
-0x0020A470 0x304 func_0020A470  # OVL1
+0x0020A470 0x304 SwitchToCompassMap__11CZNewHudMapFv  # OVL1; s1:callee (ReInit's one call, as SOCOM 1's)
 0x0020A780 0x33C func_0020A780  # OVL1
 0x0020AAC0 0x38C func_0020AAC0  # OVL1
 0x0020AE50 0x1A8 CalcNewMatrix__11CZNewHudMapFv  # OVL1; s1:calls
-0x0020B000 0x18 func_0020B000  # OVL1
-0x0020B020 0x30 func_0020B020  # OVL1
-0x0020B050 0x80 func_0020B050  # OVL1
+0x0020B000 0x18 CalcDrawPos__11CZNewHudMapCFf  # OVL1; s1:exact by hand (hud_newhudmap.cpp; its fields 4 lower)
+0x0020B020 0x30 SetWorldWidth__11CZNewHudMapFf  # OVL1; s1:order by hand (hud_newhudmap.cpp; clamped to a minimum in SOCOM II)
+0x0020B050 0x80 SetMapScreenPos__11CZNewHudMapFffff  # OVL1; s1:exact by hand (hud_newhudmap.cpp; the clipper and flag moved up)
 0x0020B0D0 0x120 func_0020B0D0  # OVL1
-0x0020B1F0 0x2C func_0020B1F0  # OVL1
+0x0020B1F0 0x2C ReInit__11CZNewHudMapFv  # OVL1; s1:exact by hand (hud_newhudmap.cpp)
 0x0020B220 0x9C func_0020B220  # OVL1
 0x0020B2C0 0x520 func_0020B2C0  # OVL1
-0x0020B7E0 0x18 func_0020B7E0  # OVL1
+0x0020B7E0 0x18 GetZoomOut__11CZNewHudMapCFv  # OVL1; s1:exact by hand (hud_newhudmap.cpp)
 0x0020B800 0x1FC func_0020B800  # OVL1
 0x0020BA00 0x218 __dt__11CZNewHudMapFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0020BC20 0x1D4 func_0020BC20  # OVL1

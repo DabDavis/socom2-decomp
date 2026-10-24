@@ -71,6 +71,10 @@ public:
 
     bool IsOn() const;
 
+    /* the screen's offset every 2D position is moved by (SOCOM 1's statics) */
+    static float m_topx;
+    static float m_topy;
+
     CUIVariable *m_uivar;   // 0x10
     unsigned int first : 1;   // 0x14
     unsigned int m_isAA : 1;
