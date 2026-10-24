@@ -6,7 +6,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_00197740();                                /* extern */
+s32 rand();                                         /* extern */
 extern f32 data_003DE220;
 extern s32 data_003DE228;
 extern s32 data_003DE230;
@@ -20,7 +20,7 @@ extern f32 data_00416018;
 extern s32 data_00416020;
 extern s32 data_00416028;
 
-void func_00299700(void *arg0) {
+void func_00299700(char *arg0) {
     f32 var_f0;
     f32 var_f0_2;
 
@@ -33,13 +33,13 @@ void func_00299700(void *arg0) {
     data_003DE258 = 0xBF800000;
     data_003DE260 = 0xBF800000;
     M2C_FIELD(arg0, s8 *, 0x138) = 0;
-    if ((func_00197740() % 2) != 0) {
+    if ((rand() % 2) != 0) {
         var_f0 = 90.0f;
     } else {
         var_f0 = 270.0f;
     }
     data_003DE220 = var_f0;
-    if ((func_00197740() % 2) != 0) {
+    if ((rand() % 2) != 0) {
         var_f0_2 = 0.0f;
     } else {
         var_f0_2 = 180.0f;

@@ -363,6 +363,84 @@ bool zAnimWaitTick(_zanim_cmd_hdr *hdr, float *dT)
     return done;
 }
 
+/* a command that fails: the sequence stops here */
+bool zAnimFailTick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    return false;
+}
+
+/* for each child of a node (SOCOM II): the begin marks the first pass, each pass steps to the
+ * next child and leaves past the matching end_for_children when there is none */
+struct zanim_cmd_forchildren {
+    _zanim_cmd_hdr hdr;
+    unsigned char pad;
+    unsigned char node;
+    unsigned char pad2;
+    unsigned char first : 1;
+    unsigned short end;             /* past the matching END_FOR_CHILDREN */
+};
+
+/* back to the FOR_CHILDREN, which steps on */
+struct zanim_cmd_endfor {
+    _zanim_cmd_hdr hdr;
+    unsigned short pad;
+    unsigned short target;
+};
+
+extern "C" bool func_0025E2D0(_zanim_cmd_hdr *hdr, float *dT)
+{
+    ZAnim.CmdSet(((zanim_cmd_endfor *)hdr)->target);
+    zanim_cmd_forchildren *cmd = (zanim_cmd_forchildren *)ZAnim.CmdHdr();
+    CZAnim *anim = ZAnim.m_CurAnim;
+    func_0025E3F0(&cmd->hdr, anim);
+    if (!anim->GetNode(cmd->node, false))
+        ZAnim.CmdSet(cmd->end);
+    return true;
+}
+
+extern "C" bool func_0025E360(_zanim_cmd_hdr *hdr, float *dT)
+{
+    zanim_cmd_forchildren *cmd = (zanim_cmd_forchildren *)hdr;
+    CZAnim *anim = ZAnim.m_CurAnim;
+
+    func_0025E3F0(hdr, anim);
+    if (!anim->GetNode(cmd->node, false))
+        ZAnim.CmdSet(cmd->end);
+    return true;
+}
+
+extern "C" void func_0025E3D0(_zanim_cmd_hdr *hdr)
+{
+    ((zanim_cmd_forchildren *)hdr)->first = 1;
+}
+
+/* stop a called anim (flag 1: at once) */
+struct zanim_cmd_stopanim {
+    _zanim_cmd_hdr hdr;
+    unsigned char index;
+    unsigned char flags;
+};
+
+bool zAnimStopAnimTick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    zanim_cmd_stopanim *cmd = (zanim_cmd_stopanim *)hdr;
+    _zanim_call_anim_ref *ref = ZAnim.m_CurAnim->GetCallAnimRef(cmd->index);
+    bool now = false;
+
+    if ((cmd->flags & 1) == 1)
+        now = true;
+    if (ref) {
+        if (ref->executing_anim) {
+            if (ref->executing_anim->Running())
+                func_002707C0(ref->executing_anim, now);
+            ref->executing_anim = 0;
+        } else if (ref->base_anim && ref->base_anim->Running()) {
+            func_002707C0(ref->base_anim, now);
+        }
+    }
+    return true;
+}
+
 /* if, elseif, else and endif carry their nesting level */
 struct zanim_cmd_if {
     _zanim_cmd_hdr hdr;
@@ -412,6 +490,12 @@ bool zAnimIfTick(_zanim_cmd_hdr *hdr, float *dT)
             found = true;
         }
     } while (!found);
+    return true;
+}
+
+bool zAnimEndIfTick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    func_002681C0(&ZAnim, -1);
     return true;
 }
 
