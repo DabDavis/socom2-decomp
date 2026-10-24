@@ -5417,7 +5417,7 @@
 0x003124F0 0x1B0 func_003124F0  # OVL1
 0x003126A0 0x144 InheritRegionMasks__Q23zdb5CNodeFUiUi  # OVL1; s1:exact by hand (SOCOM 1's InheritRegionMasks, before SetModelname as here; the mask at 0xbc)
 0x003127F0 0x64 SetModelname__Q23zdb5CNodeFPCc  # OVL1; s1:exact by hand (SOCOM 1's SetModelname: the old name freed, a copy kept at 0xb8)
-0x00312860 0x204 func_00312860  # OVL1
+0x00312860 0x204 SetBlendMode__Q23zdb5CNodeFRCQ23zdb9BLENDMODEbbb  # OVL1; s1:order (SOCOM 1's SetBlendMode, alike but for the children's iterator)
 0x00312A70 0x24 SetActive__Q23zdb6CLightFb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00312AA0 0x180 func_00312AA0  # OVL1
 0x00312C20 0xE0 func_00312C20  # OVL1

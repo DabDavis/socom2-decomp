@@ -135,6 +135,7 @@ struct tag_VISUAL_HEAD {
 };
 
 class CTexHandle;
+class BLENDMODE;
 
 class CVisual : public tag_VISUAL_HEAD {
 public:
@@ -152,18 +153,22 @@ public:
     /* a decal projected onto the visual (SOCOM 1's, by name) */
     void ApplyDecalRender(CMatrix *mtw, CNode *node, float size, CPnt3D *pos, CPnt3D *normal,
                           CTexHandle *tex, CMatrix *uv);
+
+    unsigned char _24[0x3c - 0x24];
+    /* the blend words its packets use, each written by CNode::SetBlendMode (the name ours) */
+    std::vector<BLENDMODE *> m_blendmodes;   // 0x3c
 };
 
 class CSubMesh : public CVisual {
 public:
-    unsigned char _24[0x68 - 0x24];
+    unsigned char _48[0x68 - 0x48];
     int m_index;   // 0x68: its place in its mesh's matrices (the names ours)
     CVisual *m_mesh;   // 0x6c
 };
 
 class CMesh : public CVisual {
 public:
-    unsigned char _24[0x90 - 0x24];
+    unsigned char _48[0x90 - 0x48];
     CMatrix **m_palette;   // 0x90: its sub-meshes' matrices, by index (the name ours)
 };
 
@@ -230,6 +235,7 @@ public:
     bool SetDescendantVisuals(bool set);
     bool SetDescendantDI(bool set);
     void SetModeTree(int mode);
+    void SetBlendMode(const BLENDMODE &mode, bool b, bool visuals, bool recurse);
     int ScrollTexture(CNode *node, float u, float v, bool b, int index);
     void RemoveDecals(unsigned int vid);
     void BuildMatrixPalette(CMesh *mesh);

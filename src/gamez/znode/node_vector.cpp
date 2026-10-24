@@ -195,6 +195,33 @@ void CNode::SetModeTree(int mode)
         (*it)->SetModeTree(mode);
 }
 
+/* a blend written into every blend word of the node's visuals (when told), and below (when told);
+ * the first flag is only handed on (SOCOM 1's). The counts are read once, so the inner copy is
+ * unrolled eight times */
+void CNode::SetBlendMode(const BLENDMODE &mode, bool b, bool visuals, bool recurse)
+{
+    if (visuals) {
+        CVisualVector &v = m_visual;
+        unsigned int n = v.size();
+
+        for (unsigned int i = 0; i < n; i++) {
+            std::vector<BLENDMODE *> &modes = v[i]->m_blendmodes;
+            unsigned int m = modes.size();
+
+            for (unsigned int j = 0; j < m; j++)
+                *modes[j] = mode;
+        }
+    }
+    if (recurse) {
+        CNodeVector &children = m_child;
+
+        if (children.size()) {
+            for (CNodeVector::iterator i = children.begin(), end = children.end(); i != end; ++i)
+                (*i)->SetBlendMode(mode, b, visuals, recurse);
+        }
+    }
+}
+
 /* the same for collision data (DIs): the twin of SetDescendantVisuals */
 bool CNode::SetDescendantDI(bool set)
 {
