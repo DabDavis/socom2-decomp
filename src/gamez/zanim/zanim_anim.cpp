@@ -5,8 +5,8 @@
  * -inline auto works here as elsewhere, to depth 3: Resume and Pause inline themselves twice
  * and CZAnim::Running twice, then call both -- which is where the out-of-line copies of the
  * sibling accessor (0x270BB0) and the Source test (0x270BC0) come from. CZAnim::Start,
- * ExecuteSpecialSequence and StopAnims are never inlined (RestartClones and func_00271110; Tick
- * and State; State), Start no bigger than Running and none in a call cycle; a pragma around each
+ * ExecuteSpecialSequence, StopAnims and func_0026F120 are never inlined (RestartClones and
+ * func_00271110; Tick and State; State; Start), Start no bigger than Running, none in a cycle; a pragma around each
  * definition reproduces that (the pragma state at the callee decides). The original's means is
  * unknown -- debug code compiled to nothing would count against -inline auto the same way. */
 
@@ -15,6 +15,7 @@
 extern "C" CZAnim *func_00270BB0(CZAnim *anim);
 extern "C" bool func_00270BC0(Particle::Source *source);
 extern "C" CNode *func_002703D0(CZAnim *anim, int find);
+extern "C" void func_0026F120(CZAnim *anim, bool refresh);
 
 /* the extension's armour and health from the given values, or their maxima */
 void CZAnimEx::Reset(float *armor, float *health)
@@ -113,8 +114,6 @@ bool CZAnim::SequenceRunning(const char *name)
     return r;
 }
 
-/* SOCOM II's: the node states of the anim's saved refs kept by its set (0x26F120) */
-extern "C" void func_0026F120(CZAnim *anim, bool refresh);
 
 /* health back to full (the chain's too, when it has health), the extension's from it, and the
  * anim reset to state 1.
@@ -389,6 +388,29 @@ void CZAnim::StopAnims()
             }
             ref->executing_anim = 0;
         }
+    }
+}
+#pragma auto_inline reset
+
+/* SOCOM II's: the anim's nodes that save a state (translation, rotation, activity, parent)
+ * handed to its set to keep, refreshed first when asked */
+#pragma auto_inline off
+extern "C" void func_0026F120(CZAnim *anim, bool refresh)
+{
+    if (refresh)
+        anim->Refresh(false);
+    _zanim_node_ref *ref = anim->m_node_ref_list;
+
+    for (int i = 0; i < anim->m_node_ref_count; i++, ref++) {
+        bool save;
+
+        if (ref->save_active || ref->save_parent || ref->save_rotation || ref->save_translation)
+            save = true;
+        else
+            save = false;
+
+        if (save && ref->node_ptr)
+            ZAnim.GetAnimSet(anim->m_animset_index)->SaveNodeStates(ref);
     }
 }
 #pragma auto_inline reset

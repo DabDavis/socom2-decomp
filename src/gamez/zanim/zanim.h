@@ -228,6 +228,7 @@ public:
     bool Reserve(int count);
     CZAnim *NewAnim(const char *name);
     CSched_Manager *TaskScheduler();
+    void SaveNodeStates(_zanim_node_ref *ref);
 
     unsigned char m_WasStarted;   // 0x0
     unsigned char m_IsStarted;   // 0x1
