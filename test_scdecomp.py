@@ -85,6 +85,17 @@ def test_vu_tail_has_no_false_positive_on_r5900_code():
     ck(E.vu_tail(m.data, m.base, 0x1C5000, 0x1CA3D0) == 0x1CA3D0, "no VU1 microcode in MAIN's zlib/loader code")
 
 
+def test_disasm_keeps_every_word():
+    """objdump collapses zero runs to '...' in binary mode; every word must come back."""
+    img, st = E.image(), E.symbols()
+    s = st.lookup("0x307270")                       # CQuat::Normalize: nop nop before the jal
+    rows = E.disasm(img.read(s.addr, s.size), s.addr)
+    ck(len(rows) == s.size // 4, f"{len(rows)} rows for {s.size // 4} words")
+    ck([a for a, _, _ in rows] == list(range(s.addr, s.end, 4)), "no address skipped")
+    zeros = E.disasm(bytes(32), 0)
+    ck(len(zeros) == 8 and all(w == 0 for _, w, _ in zeros), "eight zero words disassemble as eight nops")
+
+
 # --- the map --------------------------------------------------------------------
 
 def test_symbol_map_is_sane():

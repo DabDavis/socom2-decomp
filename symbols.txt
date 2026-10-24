@@ -1189,19 +1189,19 @@
 0x001BFAA8 0x6C func_001BFAA8  # MAIN unaligned
 0x001BFB18 0xE8 func_001BFB18  # MAIN unaligned
 0x001BFC00 0x2C func_001BFC00  # MAIN
-0x001BFC30 0x44 func_001BFC30  # MAIN
-0x001BFC78 0x1C func_001BFC78  # MAIN unaligned
-0x001BFC98 0x24 func_001BFC98  # MAIN unaligned
+0x001BFC30 0x44 sceVu0MulMatrix  # MAIN; libvu0 (Sony SDK, GCC-built): SOCOM 1 name (exact fingerprint)
+0x001BFC78 0x1C sceVu0OuterProduct  # MAIN unaligned; libvu0 (Sony SDK, GCC-built): by body: vopmula/vopmsub, w cleared
+0x001BFC98 0x24 sceVu0InnerProduct  # MAIN unaligned; libvu0 (Sony SDK, GCC-built): by body: vmul.xyz + vaddy.x + vaddz.x -> $f0
 0x001BFCC0 0x3C func_001BFCC0  # MAIN
-0x001BFD00 0x44 func_001BFD00  # MAIN
-0x001BFD48 0x6C func_001BFD48  # MAIN unaligned
+0x001BFD00 0x44 sceVu0TransposeMatrix  # MAIN; libvu0 (Sony SDK, GCC-built): SOCOM 1 name (exact fingerprint)
+0x001BFD48 0x6C sceVu0InversMatrix  # MAIN unaligned; libvu0 (Sony SDK, GCC-built): SOCOM 1 name (exact fingerprint)
 0x001BFDB8 0x20 func_001BFDB8  # MAIN unaligned
 0x001BFDD8 0x20 func_001BFDD8  # MAIN unaligned
 0x001BFDF8 0x28 func_001BFDF8  # MAIN unaligned
-0x001BFE20 0x14 func_001BFE20  # MAIN
+0x001BFE20 0x14 sceVu0AddVector  # MAIN; libvu0 (Sony SDK, GCC-built): by body: vadd.xyzw
 0x001BFE38 0x14 func_001BFE38  # MAIN unaligned
 0x001BFE50 0x14 func_001BFE50  # MAIN
-0x001BFE68 0x18 func_001BFE68  # MAIN unaligned
+0x001BFE68 0x18 sceVu0ScaleVector  # MAIN unaligned; libvu0 (Sony SDK, GCC-built): by body: vmulx.xyzw by a float
 0x001BFE80 0x2C func_001BFE80  # MAIN
 0x001BFEB0 0xC func_001BFEB0  # MAIN
 0x001BFEC0 0x24 func_001BFEC0  # MAIN
@@ -1209,9 +1209,9 @@
 0x001BFEF8 0x10 func_001BFEF8  # MAIN unaligned
 0x001BFF08 0x10 func_001BFF08  # MAIN unaligned
 0x001BFF18 0x10 func_001BFF18  # MAIN unaligned
-0x001BFF28 0x28 func_001BFF28  # MAIN unaligned
-0x001BFF50 0x74 func_001BFF50  # MAIN
-0x001BFFC8 0xA4 func_001BFFC8  # MAIN unaligned
+0x001BFF28 0x28 sceVu0UnitMatrix  # MAIN unaligned; libvu0 (Sony SDK, GCC-built): by body: identity via vsub/vadd.w/vmr32
+0x001BFF50 0x74 _sceVu0ecossin  # MAIN; libvu0 (Sony SDK, GCC-built): SOCOM 1 name (exact fingerprint)
+0x001BFFC8 0xA4 sceVu0RotMatrixZ  # MAIN unaligned; libvu0 (Sony SDK, GCC-built): SOCOM 1 name (exact fingerprint)
 0x001C0070 0xA8 func_001C0070  # MAIN
 0x001C0118 0xA8 func_001C0118  # MAIN unaligned
 0x001C01C0 0x50 func_001C01C0  # MAIN
@@ -5184,17 +5184,17 @@
 0x00306650 0x18 func_00306650  # OVL1
 0x00306670 0x54 func_00306670  # OVL1
 0x003066D0 0xD4 func_003066D0  # OVL1
-0x003067B0 0xD4 func_003067B0  # OVL1
+0x003067B0 0xD4 Exp__5CQuatFPC6CPnt3D  # OVL1; SOCOM 1 name
 0x00306890 0x248 func_00306890  # OVL1
 0x00306AE0 0x254 func_00306AE0  # OVL1
 0x00306D40 0x288 func_00306D40  # OVL1
 0x00306FD0 0x9C func_00306FD0  # OVL1
-0x00307070 0x4C func_00307070  # OVL1
-0x003070C0 0xA8 func_003070C0  # OVL1
+0x00307070 0x4C ToEuler__5CQuatCFP6CPnt3D  # OVL1; SOCOM 1 name
+0x003070C0 0xA8 Mul__5CQuatCFPC5CQuatP5CQuat  # OVL1; SOCOM 1 name
 0x00307170 0x100 func_00307170  # OVL1
-0x00307270 0x70 func_00307270  # OVL1
+0x00307270 0x70 Normalize__5CQuatFv  # OVL1; SOCOM 1 name
 0x003072E0 0x78 func_003072E0  # OVL1
-0x00307360 0x104 func_00307360  # OVL1
+0x00307360 0x104 MakeYXZRot__5CQuatFfff  # OVL1; SOCOM 1 name (callgraph carry)
 0x00307470 0xB0 func_00307470  # OVL1
 0x00307520 0x54 MakeZRot__5CQuatFf  # OVL1; SOCOM 1 name (exact fingerprint)
 0x00307580 0x54 MakeYRot__5CQuatFf  # OVL1; SOCOM 1 name (exact fingerprint)
@@ -5205,7 +5205,7 @@
 0x003079C0 0x180 func_003079C0  # OVL1
 0x00307B40 0x45C func_00307B40  # OVL1
 0x00307FA0 0x7C func_00307FA0  # OVL1
-0x00308020 0x130 func_00308020  # OVL1
+0x00308020 0x130 ToEuler__7CMatrixCFP6CPnt3D  # OVL1; SOCOM 1 name
 0x00308150 0xC func_00308150  # OVL1
 0x00308160 0xA4 func_00308160  # OVL1
 0x00308210 0x1B0 func_00308210  # OVL1
@@ -8467,6 +8467,7 @@
 0x003D57D0 0x24 func_003D57D0  # OVL1
 0x003D5800 0x60 func_003D5800  # OVL1
 0x003D5860 0xE8 func_003D5860  # OVL1
+0x003F64C0 0xC data_003F64C0  # OVL1 data: a zero CPnt3D (CQuat::Exp copies x, y, z)
 0x004C53C0 0x8 func_004C53C0  # OVL2
 0x004C5400 0x210 func_004C5400  # OVL2
 0x004C5610 0x60 func_004C5610  # OVL2

@@ -420,7 +420,9 @@ def disasm(data: bytes, vma: int = 0) -> list[tuple[int, int, str]]:
         f.write(data)
         f.flush()
         out = subprocess.run(
-            [tool("objdump"), "-D", "-b", "binary", "-m", "mips:5900", "-EL",
+            # -z: objdump otherwise collapses a run of zero words (nop nop) into "...",
+            # silently dropping instructions -- CQuat::Normalize's two hazard nops were lost
+            [tool("objdump"), "-D", "-z", "-b", "binary", "-m", "mips:5900", "-EL",
              f"--adjust-vma=0x{vma:x}", f.name],
             capture_output=True, text=True, check=True).stdout
     rows = []

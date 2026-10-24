@@ -1,0 +1,71 @@
+/* zMath -- the engine's vector, quaternion and matrix types (OVL1 0x306670-0x3099xx).
+ * "zMath" is Zipper's own name (zMath_Init, SOCOM 1's symbols); the FILE names here are
+ * placeholders until SOCOM 1's debug info names the translation units.
+ *
+ * Layouts are read off the code: CPnt3D is 12 bytes (CQuat::ToMatrix copies one with
+ * ld/sd + lwc1/swc1), CQuat is x, y, z, w, and CMatrix is a 4x4 float matrix the
+ * libvu0 calls take directly. Functions whose names are not yet known keep their
+ * placeholder func_<VA> as free functions: a non-virtual const member passes `this`
+ * in a0 exactly as a first pointer argument, so the code is the same either way. */
+#ifndef ZMATH_H
+#define ZMATH_H
+
+#include <libvu0.h>
+
+extern "C" float sinf(float);
+extern "C" float cosf(float);
+extern "C" float sqrtf(float);
+
+class CPnt3D {
+public:
+    float x, y, z;
+};
+
+class CMatrix {
+public:
+    float m[4][4];
+
+    void ToEuler(CPnt3D *out) const;
+};
+
+class CQuat {
+public:
+    float x, y, z, w;
+
+    void Exp(const CPnt3D *v);
+    void MakeYXZRot(float ry, float rx, float rz);
+    void MakeXRot(float angle);
+    void MakeYRot(float angle);
+    void MakeZRot(float angle);
+    CQuat *Normalize();
+    void Mul(const CQuat *b, CQuat *out) const;
+    void ToEuler(CPnt3D *out) const;
+};
+
+/* Placeholders are extern "C" so they keep the map's name: C++ would mangle them. */
+extern "C" {
+/* CPnt3D helpers in the CPnt3D translation unit (not yet named) */
+void func_00309180(const CPnt3D *v, CPnt3D *out, float s);    /* out = v * s */
+
+void func_00309240(const CPnt3D *a, const CPnt3D *b, CPnt3D *out);   /* out = a + b */
+
+/* CQuat's own, not yet named */
+void func_003066D0(CQuat *q, const CPnt3D *v, float t);       /* Exp of v scaled by t */
+void func_00307170(const CQuat *q, CMatrix *m);               /* the rotation matrix of q */
+void func_003072E0(const CQuat *q, CQuat *out);               /* out = q normalised */
+void func_00307470(CQuat *q, float a, float b);               /* q = Y(a) * X(b) */
+
+extern const CPnt3D data_003F64C0;                             /* a zero vector */
+}
+
+/* By value through a temporary: CQuat::ToMatrix keeps exactly this copy (ld/sd + lwc1/swc1
+ * from the add's result slot into a second one), which a plain assignment would let the
+ * optimiser forward away. */
+inline CPnt3D operator+(const CPnt3D &a, const CPnt3D &b)
+{
+    CPnt3D r;
+    func_00309240(&a, &b, &r);
+    return r;
+}
+
+#endif
