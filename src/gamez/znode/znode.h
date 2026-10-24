@@ -44,6 +44,10 @@ public:
 
 class tag_NODE_PARAMS {
 public:
+    /* the facade cleared first (CNode's constructor, SOCOM 1's too, writes it with a word access
+     * ahead of the vtable pointer) */
+    tag_NODE_PARAMS() { m_facade = 0; }
+
     CMatrix m_matrix;   // 0x0
     CBBox m_bbox;   // 0x40
     unsigned short m_type;   // 0x58 (SOCOM II's CNode code reads a halfword; SOCOM 1's DWARF: an int)
@@ -107,6 +111,12 @@ public:
 
 class CDIVector : public std::vector<CDI *> {
 public:
+    /* the first intersection stops a search, back faces are not returned (CNode's constructor) */
+    CDIVector()
+    {
+        m_bStopAtFirstIntersection = 1;
+        m_bReturnBackFaceIntersections = 0;
+    }
     bool Exists(const CDI *di);
     /* a DI pushed, taken by value (AddDI's target pushes a copy, as AddVisual's; the name ours) */
     void Add(CDI *di) { push_back(di); }

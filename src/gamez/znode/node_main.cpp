@@ -61,6 +61,51 @@ extern "C" int func_003C0460(void *fx, float u, float v, bool b, CVisual *visual
                              int index);
 extern "C" char data_004B50D0[];
 
+/* a node: no parent, children, DIs (the first intersection stops a search) or visuals, no name,
+ * model or atoms, opaque, its parameters the defaults; then its flags, an empty box at the origin,
+ * and it counted into the universe with the shared default name (SOCOM 1's, but for SOCOM II's
+ * flags).
+ * OPEN (0x1D4 of 0x224, unscheduled): the base's facade is cleared with a word access (lw/sw at
+ * 0x5c, in SOCOM 1 too) where MW narrows every bitfield store here to a byte -- no field type,
+ * width or placement probed (build/scratch/inl/t12-t14) keeps the word; and the byte at 0x5d
+ * loses bit 2 by a mask alone (no OR), as `&= ~4` would, not as a bitfield store of 0 */
+CNode::CNode()
+    : m_parent(0)
+{
+    m_name = 0;
+    m_count = 0;
+    m_model = 0;
+    m_modelname = 0;
+    m_vid = 0;
+    m_nodeEx = 0;
+    m_Atom = 0;
+    m_AtomCnt = 0;
+    m_AtomAlloc = 0;
+    m_TickNum = -1;
+    m_socom2_a1_bits.bit2 = 0;
+    m_socom2_a1_bits.bit3 = 0;
+    m_Opacity = 1.0f;
+    m_reflective = 0;
+    InitNodeParams(this, 0);
+    m_socom2_a1 = 0;
+    m_socom2_a1_bits.bit0 = 1;
+    m_socom2_mode = 0;
+    m_frameRendered = 0;
+    m_socom2_a0 = 0xff;
+    m_region_mask = 0;
+    CPnt3D zero(CPnt3D::zero);
+    CPnt3D min(zero);
+    CPnt3D max;
+
+    max = zero;
+    m_bbox.m_min = min;
+    m_bbox.m_max = max;
+    if (NodeUniverse)
+        NodeUniverse->AddNode(this);
+    numNodes++;
+    m_name = UNNAMED_NODE;
+}
+
 /* a copy of the node: _Copy into a new one */
 CNode *CNode::Copy() const
 {
