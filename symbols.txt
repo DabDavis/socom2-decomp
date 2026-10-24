@@ -2915,7 +2915,7 @@
 0x0026A1C0 0x90 GetAnimIndex__10CZAnimMainFP6CZAnimPiPi  # OVL1; s1:align
 0x0026A250 0x200 GetAnim__10CZAnimMainFPCcPCc  # OVL1; s1:align
 0x0026A450 0x40 GetAnim__10CZAnimMainFii  # OVL1; s1:align
-0x0026A490 0x244 func_0026A490  # OVL1
+0x0026A490 0x244 GetAnimSetIndex__10CZAnimMainFPCcb  # OVL1; s1:order (SOCOM 1's GetAnimSetIndex(const char *, bool) is the last of the three between GetAnim(int, int) and CmdTick; GetAnim calls it with (set name, true) as SOCOM 1's does; 0x17C there, 0x244 here -- NewAnimSet inlined?)
 0x0026A6E0 0x164 CmdTick__10CZAnimMainFPf  # OVL1; s1:align
 0x0026A850 0x18 CmdValid__10CZAnimMainFv  # OVL1; tu: anim_main.cpp~ (1.0 beta); s1:exact
 0x0026A870 0x1C CmdSet__10CZAnimMainFi  # OVL1; tu: anim_main.cpp~ (1.0 beta); s1:exact

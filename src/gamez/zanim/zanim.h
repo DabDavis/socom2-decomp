@@ -181,6 +181,7 @@ public:
 class CZAnimSet {
 public:
     CZAnim *Anim(int index);
+    CZAnim *Anim(const char *name);
     int GetAnimIndex(CZAnim *anim);
     int Unload();
 
@@ -284,6 +285,18 @@ public:
     }
     int GetCmdSet(char *name, bool create);
     int GetCmd(int set, char *name, bool create);
+    int GetAnimSetIndex(const char *name, bool create);
+    CZAnim *GetAnim(const char *name, const char *set_name);
+    CZAnim *AnimInSet(int set, const char *name)
+    {
+        if (!name)
+            return 0;
+        CZAnimSet *s = &m_animset_list[set];
+
+        if (s)
+            return s->Anim(name);
+        return 0;
+    }
     unsigned short AddCmd(const char *name, _zanim_cmd_hdr *(*parse)(_zrdr *),
                           void (*begin)(_zanim_cmd_hdr *), bool (*tick)(_zanim_cmd_hdr *, float *),
                           void (*end)(_zanim_cmd_hdr *));

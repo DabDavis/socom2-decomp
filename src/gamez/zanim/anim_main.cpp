@@ -8,6 +8,7 @@
 #include "zanim.h"
 
 extern "C" void func_00258CE0(CZAnimZAR *zar);
+extern "C" char *func_001801E0(const char *s, const char *file, int line);
 extern "C" const char *func_0026C8E0(CZAnimSet *set, int index);
 
 extern char *_local_wildcard_str;
@@ -63,7 +64,6 @@ int CZAnimMain::UnloadCmdSet(int index)
     return 1;
 }
 
-extern "C" char *func_001801E0(const char *s, const char *file, int line);
 
 /* a command by name in a set, made when asked; not made, it is looked for in the other sets.
  * OPEN, 8 instructions: the second search's set, command and index registers permuted (s2/s3/s0
@@ -389,6 +389,49 @@ void CZAnimMain::FreeNetworkPacketBuffer()
         m_NetworkPacket = 0;
     }
     m_NetworkPacketMaxSize = 0;
+}
+
+/* an anim by name -- `set::name`, in the given set, or in the current one -- and failing that
+ * in any other set */
+CZAnim *CZAnimMain::GetAnim(const char *name, const char *set_name)
+{
+    int set;
+    const char *anim_name = name;
+
+    if (set_name)
+        set = GetAnimSetIndex(set_name, true);
+    else {
+        char *copy = 0;
+
+        if (!name)
+            anim_name = 0;
+        else if (strstr(name, "::")) {
+            copy = func_001801E0(name, 0, 0);
+            char *sep = strstr(copy, "::");
+
+            *sep = 0;
+            anim_name = sep + 2;
+        } else
+            anim_name = name;
+        if (copy) {
+            set = GetAnimSetIndex(copy, true);
+            func_00180280(copy, 0, 0);
+        } else {
+            set = m_CurAnimSet ? m_CurAnimSet - m_animset_list : 0;
+        }
+    }
+    CZAnim *anim = AnimInSet(set, anim_name);
+
+    if (!anim) {
+        for (int i = 0; i < m_animset_count; i++) {
+            if (i != set) {
+                anim = AnimInSet(i, anim_name);
+                if (anim)
+                    return anim;
+            }
+        }
+    }
+    return anim;
 }
 
 CZAnim *CZAnimMain::GetAnim(int set, int anim)

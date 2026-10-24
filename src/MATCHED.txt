@@ -482,6 +482,7 @@
 0x0026A100 GetAnimSet__10CZAnimMainFPCc
 0x0026A170 GetAnimSet__10CZAnimMainFi
 0x0026A1C0 GetAnimIndex__10CZAnimMainFP6CZAnimPiPi
+0x0026A250 GetAnim__10CZAnimMainFPCcPCc
 0x0026A450 GetAnim__10CZAnimMainFii
 0x0026A6E0 CmdTick__10CZAnimMainFPf
 0x0026A850 CmdValid__10CZAnimMainFv
