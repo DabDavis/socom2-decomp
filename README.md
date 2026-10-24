@@ -189,6 +189,16 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   brace-initialised `PNT3D` (zeroed first) all differ.
 - **`(bool)x == false` keeps the bool conversion** (an `sltu` before the branch) where `!x` and
   `x == 0` test the bit -- likely a bool accessor's result compared in the original.
+- **`return true` compiles to `li`, a bool assigned `true` to `daddiu`** -- and an inlined bool
+  function's `return true` becomes an assignment, so StateRunning (bool) is `li` out of line and
+  `daddiu` inside PauseSequence. A switch's case tests run in reverse source order.
+- **Inlining reads unit boundaries and declared sizes**: CZAnimMain::Unload calls
+  CZAnimNameTable::Unload, which -inline auto inlines from the same unit -- so the name tables
+  are a unit of their own. A function too big for -inline auto in the target's eyes but inlined
+  there (CZAnimNameTable::AddName into Load) was written smaller: its two appends one inline
+  helper. A function inlined everywhere and absent out of line was `inline` (NewAnimSet).
+- **Two-byte copies show the type's alignment**: a halfword union copies with lhu/sh, a
+  two-char struct bytewise (a command's id).
 - **The same inline written two ways serves different callers**: `CZAnim::GetArgPnt3D` must be
   a ternary (TranslateState, RangeTest), `CZAnimMain::CmdHdr` a ternary for BreakTick,
   GoToEndIf and FOR_CHILDREN -- while IfTick reads the current command the if-assign way.
@@ -365,12 +375,14 @@ follows without MW's 16-byte padding (131 drafts had every byte right).
   `CBits::Resize` (the 8x-unrolled clear loop saves one register fewer), `CPnt3D::Reflect`
   (a by-value operator chain MW keeps four copies of), `CBBox::GetIntersect` (above), and the
   two `DistToVector`s (written; far).
-- **ZAnim's command handlers (`zanim_cmd_tick.cpp`): 37 of 40 written are byte-exact.** Open:
-  `zAnimIfTick` (8 bytes long: the current command read the if-assign way fixes its three type
-  tests, not the expression test before them), `zAnimLODTestTick` (its last two tests: one
-  register pair and a delay slot), `zAnimObjectOpacityFromToTick` (the blend's two registers).
-  Unwritten: BlendMode, OBJECT_AIM, the RIPPLE pair, TRUE_COLOR_SCALE, Timer, the motion
-  handlers and the big ones (Light, ParticleSource, Camera, Sound).
+- **ZAnim's command handlers (`zanim_cmd_tick.cpp`): 49 of 54 written are byte-exact.** Open:
+  `zAnimIfTick`, `zAnimLODTestTick`, `zAnimObjectOpacityFromToTick`, TRUE_COLOR_SCALE and
+  UPDATE_SHADOW_MAP_LIGHTING, each diagnosed in its source. Unwritten: SCROLL_MOTION's tick (an
+  inlined VU0 transform), the motion handlers and the big ones (Light, ParticleSource, Camera,
+  Sound, CallAnimBegin).
+- **CZAnimMain (`anim_main.cpp`) and the name tables (`zanim_names.cpp`): 43 written, 39
+  byte-exact.** Open: SequenceRunning, GetCmd, GetAnimSetIndex, CZAnimNameTable::Load.
+  Unwritten: LoadZAR, SeqTick, GetDatabaseNode, ActivateBegin and the wildcard search.
 - **`CZWeaponList::GetWeapon` (`0x3C4B40`)** -- 2 instructions from exact with an `int`
   parameter, but SOCOM 1's mangled name says `EQUIP_ITEM`, and every enum-typed variant sinks
   the zero-extension into the loop preheader.
