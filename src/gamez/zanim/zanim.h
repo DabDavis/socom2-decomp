@@ -7,10 +7,10 @@
 
 #include "../zmath/zmath.h"
 #include "../znode/znode.h"
+#include "../zar/zar.h"
 
 using zdb::CNode;
 
-namespace zar { class CZAR; }
 class CZAnim;
 class CZAnimEx;
 class CZAnimHealth;
@@ -67,18 +67,6 @@ public:
     unsigned int m_cleanup_seq_offset : 16;   // 0x14
 };   // 0x18 bytes
 
-class CIO;
-
-namespace zar {
-class CZAR {
-public:
-    CZAR(const char *name, CIO *io);
-    virtual ~CZAR();
-    int Fetch(const char *name, void *buf, int size);
-
-    unsigned char _4[0xB4];   /* SOCOM II's CZAR is 0xB8 bytes (OpenZAR's new); SOCOM 1's 0xA4 */
-};
-}
 
 /* the engine's allocator: free and strdup with a file and line (both 0 here), the pool-backed
  * forms of SOCOM 1's _free__FPvPCci and _strdup__FPCcPCci -- not named until proven */
@@ -87,7 +75,7 @@ extern "C" void func_00180280(void *p, const char *file, int line);
 class CZAnimNameIndexTable {
 public:
     const char *GetName(CZAnimSet *set, int index);
-    int Load(zar::CZAR &zar);
+    int Load(zar::CZAR &archive);
     int AddName(CZAnimSet *set, const char *name);
     void Unload();
 
@@ -120,6 +108,7 @@ public:
     _zanim_call_anim_ref *GetCallAnimRef(int index);
     _zanim_call_anim_ref *GetCallAnimRef(int index, int local);
     bool Running();
+    void State(int state);
     float GetHealth();
     CNode *GetNode(int index, bool create);
     CPnt3D *GetArgPnt3D()
@@ -170,7 +159,7 @@ public:
     const char *GetName(int index);
     void Unload();
     int AddName(const char *name);
-    int Load(zar::CZAR &zar);
+    int Load(zar::CZAR &archive);
     void Append(const char *name);
 
     char** m_name;   // 0x0
@@ -182,6 +171,8 @@ class CZAnimSet {
 public:
     CZAnim *Anim(int index);
     CZAnim *Anim(const char *name);
+    int Load(zar::CZAR &archive);
+    int LoadSIScript(zar::CZAR &archive);
     int GetAnimIndex(CZAnim *anim);
     int Unload();
     void Init();
@@ -257,6 +248,8 @@ public:
     void CmdSet(int index);
     void CmdNext(int bytes);
     void SeqSetState(int state);
+    int SeqTick(float dT);
+    void ActivateBegin(CZAnim *anim);
     void CmdNext();
     bool CmdValid();
     CZAnim *GetAnim(int set, int anim);
@@ -264,6 +257,7 @@ public:
     bool SeqRunning();
     int CloseZAR(CZAnimZAR *zar);
     CZAnimZAR *OpenZAR(const char *name);
+    int LoadZAR(CZAnimZAR *archive, const char *set_name);
     static bool m_LoadFromZAR;
     int UnloadSIScript(_zanim_si_script *script);
     ZAnimNetworkPacket *GetNetworkPacket(int size);

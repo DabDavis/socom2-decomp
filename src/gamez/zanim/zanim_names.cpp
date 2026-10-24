@@ -7,34 +7,6 @@
 
 #include "zanim.h"
 
-struct ZarNode;
-
-/* a vector's iterator, as MSL's: != is !(==), which keeps MW from folding the first test */
-struct ZarIter {
-    ZarNode **p;
-
-    ZarIter(ZarNode **q) : p(q) {}
-    bool operator==(const ZarIter &o) const { return p == o.p; }
-    bool operator!=(const ZarIter &o) const { return !(*this == o); }
-    ZarIter &operator++() { ++p; return *this; }
-    ZarNode *operator*() const { return *p; }
-};
-
-/* a ZAR's directory node, as far as the tables read it: its children a vector */
-struct ZarNode {
-    unsigned char _0[4];
-    int count;                      /* 0x4: children */
-    ZarNode **child;                /* 0x8 */
-    char *data;                     /* 0xC */
-
-    ZarIter begin() { return ZarIter(child); }
-    ZarIter end() { return ZarIter(child + count); }
-};
-
-extern "C" ZarNode *func_00258570(zar::CZAR *zar);
-extern "C" ZarNode *func_0025AE00(ZarNode *node, const char *name);
-extern "C" int func_002585A0(zar::CZAR *zar, ZarNode *node);
-extern "C" void func_00258720(zar::CZAR *zar, ZarNode *node);
 extern "C" const char *func_0026C8E0(CZAnimSet *set, int index);
 extern "C" int func_0026C8D0(CZAnimSet *set, const char *name);   /* the set's name table's AddName */
 
@@ -101,16 +73,16 @@ void CZAnimNameTable::Unload()
     m_count = 0;
 }
 
-int CZAnimNameIndexTable::Load(zar::CZAR &zar)
+int CZAnimNameIndexTable::Load(zar::CZAR &archive)
 {
     int count;
 
-    func_00258570(&zar);
-    zar.Fetch("Name_Index_Table_Count", &count, 4);
+    archive.GetOpenKey();
+    archive.Fetch("Name_Index_Table_Count", &count, 4);
     if (count > 0) {
         Unload();
         m_index = (unsigned short *)_realloc(m_index, count * 2, 0, 0);
-        zar.Fetch("Name_Index_Table", m_index, count * 2);
+        archive.Fetch("Name_Index_Table", m_index, count * 2);
         m_count = count;
     }
     return 1;
@@ -131,26 +103,23 @@ void CZAnimNameIndexTable::Unload()
     m_count = 0;
 }
 
-/* OPEN, 16 instructions: MW folds the loop's first test (begin against begin + count) and
- * keeps AddName's own null test inside the caller's; the target does neither. */
-int CZAnimNameTable::Load(zar::CZAR &zar)
+/* the walk holds a const_iterator (zar.h: an iterator's copy of begin() lets MW fold the
+ * first test), and AddName's own null test is the only one */
+int CZAnimNameTable::Load(zar::CZAR &archive)
 {
     int count;
-    ZarNode *root = func_00258570(&zar);
+    zar::CKey *root = archive.GetOpenKey();
 
-    zar.Fetch("Name_Table_Count", &count, 4);
+    archive.Fetch("Name_Table_Count", &count, 4);
     if (count > 0) {
         Unload();
-        ZarNode *table = func_0025AE00(root, "Name_Table");
+        zar::CKey *table = root->FindKey("Name_Table");
 
         if (table) {
-            for (ZarIter it = table->begin(); it != table->end(); ++it) {
-                if (func_002585A0(&zar, *it)) {
-                    const char *name = (*it)->data;
-
-                    if (name)
-                        AddName(name);
-                    func_00258720(&zar, *it);
+            for (zar::CKeyRing::const_iterator it = table->begin(); it != table->end(); ++it) {
+                if (archive.OpenKey(*it)) {
+                    AddName((*it)->m_name);
+                    archive.CloseKey(*it);
                 }
             }
         }

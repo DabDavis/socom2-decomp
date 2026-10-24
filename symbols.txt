@@ -2727,11 +2727,11 @@
 0x00257F90 0x70 func_00257F90  # OVL1
 0x00258000 0x510 func_00258000  # OVL1
 0x00258510 0x58 func_00258510  # OVL1
-0x00258570 0x30 func_00258570  # OVL1
-0x002585A0 0x54 func_002585A0  # OVL1
-0x00258600 0x4C func_00258600  # OVL1
-0x00258650 0xD0 func_00258650  # OVL1
-0x00258720 0x20 func_00258720  # OVL1
+0x00258570 0x30 GetOpenKey__Q23zar4CZARFv  # OVL1; s1:callee by hand (LoadZAR, CZAnimSet::Load and the name tables call it where SOCOM 1's call GetOpenKey; the open-key stack's top or the root -- a vector here, SOCOM 1's a list)
+0x002585A0 0x54 OpenKey__Q23zar4CZARFPQ23zar4CKey  # OVL1; s1:callee by hand (LoadZAR opens each set's key with it where SOCOM 1's calls OpenKey(CKey *); pushes a non-null key)
+0x00258600 0x4C FindKey__Q23zar4CZARFPCc  # OVL1; s1:order (SOCOM 1's GetOpenKey, OpenKey(CKey *), FindKey(const char *), OpenKey(const char *), CloseKey; FindKey on the open key, as SOCOM 1's)
+0x00258650 0xD0 OpenKey__Q23zar4CZARFPCc  # OVL1; s1:callee by hand (LoadZAR opens Anim_Sets with it where SOCOM 1's calls OpenKey(const char *); FindKey on the open key, then the push)
+0x00258720 0x20 CloseKey__Q23zar4CZARFPQ23zar4CKey  # OVL1; s1:callee by hand (LoadZAR closes each key with it where SOCOM 1's calls CloseKey; pops the stack)
 0x00258740 0x1DC func_00258740  # OVL1
 0x00258920 0x21C func_00258920  # OVL1; s1~ Open__Q23zar4CZARFPCciUiUi (OpenZAR calls it where SOCOM 1's calls zar::CZAR::Open, but with a fifth argument, t1 = 0: the signature changed)
 0x00258B40 0x90 func_00258B40  # OVL1; tu: zar_main.cpp~ (1.0 beta)
@@ -2763,7 +2763,7 @@
 0x0025AA30 0x138 Fetch__Q23zar4CZARFPCcPUi  # OVL1; s1:callee
 0x0025AB70 0x138 func_0025AB70  # OVL1
 0x0025ACB0 0x144 func_0025ACB0  # OVL1
-0x0025AE00 0x108 func_0025AE00  # OVL1
+0x0025AE00 0x108 FindKey__Q23zar4CKeyFPCc  # OVL1; s1:callee by hand (OpenKey(const char *) calls it on the open key where SOCOM 1's calls zar::CKey::FindKey; the same search by name)
 0x0025AF10 0x114 func_0025AF10  # OVL1
 0x0025B030 0x280 func_0025B030  # OVL1
 0x0025B2B0 0x8 func_0025B2B0  # OVL1
@@ -2935,8 +2935,8 @@
 0x0026B430 0x1A8 Reset__13CZAnimSetSaveFv  # OVL1; s1:calls
 0x0026B5E0 0x3D4 Add__13CZAnimSetSaveFP15_zanim_node_ref  # OVL1; s1:align
 0x0026B9C0 0xE8 func_0026B9C0  # OVL1
-0x0026BAB0 0x198 func_0026BAB0  # OVL1
-0x0026BC50 0x234 func_0026BC50  # OVL1
+0x0026BAB0 0x198 LoadSIScript__9CZAnimSetFRQ23zar4CZAR  # OVL1; s1:callee by hand (CZAnimSet::Load calls it after its name table where SOCOM 1's calls LoadSIScript)
+0x0026BC50 0x234 Load__9CZAnimSetFRQ23zar4CZAR  # OVL1; s1:callee by hand (LoadZAR loads each set with it where SOCOM 1's calls CZAnimSet::Load; the same opening calls)
 0x0026BE90 0x7C GarbageCollect__9CZAnimSetFv  # OVL1; s1:align
 0x0026BF10 0x1E4 Unload__9CZAnimSetFv  # OVL1; s1:callee by hand (CZAnimMain::Unload calls it where SOCOM 1's calls Unload__9CZAnimSetFv, its second call; and it follows GarbageCollect as SOCOM 1's does)
 0x0026C100 0x70 func_0026C100  # OVL1

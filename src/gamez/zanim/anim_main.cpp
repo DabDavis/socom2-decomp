@@ -7,7 +7,6 @@
 
 #include "zanim.h"
 
-extern "C" void func_00258CE0(CZAnimZAR *zar);
 extern "C" char *func_001801E0(const char *s, const char *file, int line);
 extern "C" const char *func_0026C8E0(CZAnimSet *set, int index);
 
@@ -313,6 +312,72 @@ bool CZAnimMain::SequenceExists(const char *name)
     return found;
 }
 
+/* an anim's activation: each of its sequences that has a state starts (activation 1, on
+ * activate) or waits (any other), between the anim's two state changes */
+void CZAnimMain::ActivateBegin(CZAnim *anim)
+{
+    m_CurAnim = anim;
+    m_CurSeq = 0;
+    anim->State(2);
+    m_CurAnim->m_timer = 0.0f;
+    for (SeqFirst(); SeqValid(); SeqNext()) {
+        if (m_CurSeq->state) {
+            if (m_CurSeq->activation == 1)
+                SeqSetState(2);
+            else
+                SeqSetState(1);
+        }
+    }
+    anim->State(4);
+}
+
+/* one frame of the current sequence: started (2) or restarted (3) it runs from its first
+ * command; running (4) it ticks commands while time is left (or a command is timeless) and
+ * the anim runs -- stopped, SOCOM II goes on while an anim it called still runs */
+int CZAnimMain::SeqTick(float dT)
+{
+    switch (m_CurSeq->state) {
+    case 1:
+        break;
+    case 2:
+        m_CurSeq->loop_timer = 0.0f;
+        m_CurSeq->loop_counter = 0;
+        m_CurSeq->m_IF_NestLevel = 0;
+    case 3:
+        m_CurSeq->seq_timer = 0.0f;
+        SeqSetState(4);
+        m_CurSeq->cmd_pc = (char *)(m_CurSeq + 1);
+        m_CurSeq->cmd_state = 2;
+        if (!CmdValid()) {
+            m_CurSeq->state = 5;
+            break;
+        }
+    case 4:
+        if (!m_CurSeq->paused) {
+            bool done = true;
+
+            while (done && (dT > 0.0f || CmdHdr()->timeless)
+                   && (m_CurAnim->m_state != 5 || m_CurAnim->Running()) && (bool)m_CurAnim->m_paused == false) {
+                float t = dT;
+
+                done = CmdTick(&dT);
+                m_CurSeq->seq_timer += t - dT;
+                if (!done)
+                    break;
+                CmdNext();
+                if (!CmdValid()) {
+                    m_CurSeq->state = 5;
+                    break;
+                }
+            }
+        }
+        break;
+    case 5:
+        break;
+    }
+    return m_CurSeq->state;
+}
+
 /* the current anim's sequences, walked with m_CurSeq itself */
 void CZAnimMain::SeqFirst()
 {
@@ -594,37 +659,9 @@ extern "C" int func_002681C0(CZAnimMain *main, int delta)
     return main->m_CurSeq->m_IF_NestLevel;
 }
 
-/* zar::CZAR::Open with a fifth argument SOCOM 1's did not have: not named */
-extern "C" int func_00258920(zar::CZAR *zar, const char *name, int mode, unsigned int flags, unsigned int a, int b);
 
-/* a ZAR by file or directory name (the directory's zanim.zar) */
-CZAnimZAR *CZAnimMain::OpenZAR(const char *name)
-{
-    if (!m_LoadFromZAR)
-        return 0;
-    CZAnimZAR *zar = new CZAnimZAR;
 
-    if (zar) {
-        char path[128];
 
-        if (!strstr(name, "zanim.zar"))
-            sprintf(path, "%s/%s", name, "zanim.zar");
-        else
-            sprintf(path, "%s", name);
-        if (func_00258920(zar, path, 0, 1, 16, 0))
-            return zar;
-        delete zar;
-        return 0;
-    }
-    return 0;
-}
-
-int CZAnimMain::CloseZAR(CZAnimZAR *zar)
-{
-    func_00258CE0(zar);
-    delete zar;
-    return 1;
-}
 
 /* step past the current command (its record's size is in its header) */
 void CZAnimMain::CmdNext()
@@ -639,6 +676,3 @@ bool CZAnimMain::CmdValid()
     return m_CurSeq->cmd_pc < (char *)m_CurSeq + m_CurSeq->seq_data_size;
 }
 
-CZAnimZAR::~CZAnimZAR()
-{
-}
