@@ -1641,7 +1641,7 @@
 0x001FCB10 0x60 __dt__9C2DBitmapFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FCB70 0x190 func_001FCB70  # OVL1
 0x001FCD00 0x6C func_001FCD00  # OVL1
-0x001FCD70 0x10 func_001FCD70  # OVL1
+0x001FCD70 0x10 GetHUDOwner__4CHUDFv  # OVL1; s1:exact (SOCOM 1's: the app camera's owner, the camera's member 0x80 further on)
 0x001FCD80 0x514 func_001FCD80  # OVL1
 0x001FD2A0 0x70 func_001FD2A0  # OVL1
 0x001FD310 0x80 __dt__10CLetterBoxFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -1979,11 +1979,11 @@
 0x00221C40 0xF0 Tick__10PoseBitmapFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00221D30 0x8 func_00221D30  # OVL1; s1~ IsRemote__9CSealCtrlCFv (one of 2 out-of-line copies of an inline, by s1:vtable)
 0x00221D40 0x4C Draw__10PoseBitmapFPQ23zdb7CCamera  # OVL1; s1:exact
-0x00221D90 0x160 func_00221D90  # OVL1
-0x00221EF0 0x54 func_00221EF0  # OVL1
-0x00221F50 0xB4 func_00221F50  # OVL1
-0x00222010 0x120 func_00222010  # OVL1
-0x00222130 0x60 func_00222130  # OVL1
+0x00221D90 0x160 SetPose__10PoseBitmapFi  # OVL1; hud_posebitmap.cpp by hand (SOCOM II's own: the stance word placed and set, the stance an int; SOCOM 1's Tick did it inline; the name ours)
+0x00221EF0 0x54 Clear__10PoseBitmapFv  # OVL1; s1:order by hand (hud_posebitmap.cpp)
+0x00221F50 0xB4 ReInit__10PoseBitmapFv  # OVL1; hud_posebitmap.cpp by hand (SOCOM II's own: the word reloaded, standing; the name ours)
+0x00222010 0x120 Init__10PoseBitmapFPQ23zdb6CWorld  # OVL1; s1:order by hand (hud_posebitmap.cpp; its three stance textures by name, as SOCOM 1's)
+0x00222130 0x60 __ct__10PoseBitmapFv  # OVL1; s1:order by hand (hud_posebitmap.cpp's last)
 0x00222190 0x118 __dt__15CZPlayerMapItemFv  # OVL1; s1:calls
 0x002222B0 0x2C MissionEndCleanup__15CZPlayerMapItemFv  # OVL1; s1:exact
 0x002222E0 0x4D0 func_002222E0  # OVL1
@@ -6674,7 +6674,7 @@
 0x00362E00 0x228 func_00362E00  # OVL1
 0x00363030 0xB0 Load__9C2DStringFPCcP7C2DFontiiii  # OVL1; s1:align
 0x003630E0 0xB4 Load__9C2DStringFPCcP7C2DFontii  # OVL1; s1:align
-0x003631A0 0x20 func_003631A0  # OVL1
+0x003631A0 0x20 SetPos__9C2DStringFii  # OVL1; s1:align (the string's position as two floats at 0x90; PoseBitmap sets it from its own)
 0x003631C0 0x2C func_003631C0  # OVL1; size 0x2c (a tail call through t9; the seed ran on into the padding)
 0x003631F0 0x26C func_003631F0  # OVL1
 0x00363460 0x154 func_00363460  # OVL1
@@ -10470,7 +10470,7 @@
 0x00581C10 0x1AC func_00581C10  # OVL2
 0x00581DC0 0x104 func_00581DC0  # OVL2
 0x00581ED0 0x628 func_00581ED0  # OVL2
-0x00582500 0x38 func_00582500  # OVL2
+0x00582500 0x38 StanceChanged__10CZSealBodyFv  # OVL2; s1:exact (SOCOM 1's: the stance-changed bit tested and cleared; PoseBitmap::Tick calls it)
 0x00582540 0x7CC func_00582540  # OVL2
 0x00582D10 0x314 func_00582D10  # OVL2
 0x00583030 0x318 func_00583030  # OVL2
