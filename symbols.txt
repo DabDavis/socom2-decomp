@@ -2001,7 +2001,7 @@
 0x00223620 0x60 __dt__11CMPExitMenuFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00223680 0x2EC Tick__12CMPExitStateFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00223970 0x79C Init__12CMPExitStateFv  # OVL1; s1:vtable (CMPExitState's Init slot)
-0x00224110 0xA4 func_00224110  # OVL1
+0x00224110 0xA4 __ct__12CMPExitStateFv  # OVL1; s1:calls (CGameState's then CMPExitState's vtable, "MPExitState", the splash library's name assigned; COurGame's constructor calls it)
 0x002241C0 0x48 func_002241C0  # OVL1
 0x00224210 0x460 func_00224210  # OVL1
 0x00224670 0x578 func_00224670  # OVL1

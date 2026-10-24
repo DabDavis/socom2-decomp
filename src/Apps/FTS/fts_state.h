@@ -216,6 +216,32 @@ public:
     CExitMenu *m_menu;   // 0x24
 };
 
+/* the online stats screen's menu: whether the game is over (SOCOM 1's m_gameover at 0x890, after
+ * CGameMenu; SOCOM II's at 0x920) */
+class CMPExitMenu : public CGameMenu {
+public:
+    CMPExitMenu() {}
+    virtual const char *GetReaderFileName();
+
+    unsigned char m_gameover;   // 0x920
+};
+
+/* the end of an online game: its stats screen (SOCOM 1's DWARF; SOCOM II's strings are 0xC bytes,
+ * the menu at 0x24, a word more at 0x28) */
+class CMPExitState : public CGameState {
+public:
+    CMPExitState();
+    virtual bool Init();
+    virtual bool Tick(float dT);
+    virtual void UnInit();
+
+    CStateString m_libname;   // 0x8
+    CStateString m_texname;   // 0x14
+    void *m_plib;   // 0x20
+    CMPExitMenu *m_menu;   // 0x24
+    int m_28;   // 0x28
+};
+
 /* a film between missions (SOCOM 1's DWARF: the movie's name at 0xC) */
 class CCinematicState : public CGameState {
 public:

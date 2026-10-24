@@ -30,6 +30,11 @@ extern CZAnimZAR *data_00408D80;                 /* animfile (the unit's, in an 
 
 extern char theUIVarManager[];
 
+const char *CExitMenu::GetReaderFileName()
+{
+    return "dlgExitState.rdr";
+}
+
 #include <list>
 
 class CZSealBody;
@@ -95,11 +100,6 @@ CZSealBody &CEntityItr::GetSeal() const
     CEntity *e = (CEntity *)*_it;
 
     return *(CZSealBody *)(e && e->m_type == 2 ? e : 0);
-}
-
-const char *CExitMenu::GetReaderFileName()
-{
-    return "dlgExitState.rdr";
 }
 
 /* the mission's objectives counted: complete and total, and the fraction complete, for the
