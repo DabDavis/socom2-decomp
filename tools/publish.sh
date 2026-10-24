@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Push decomp/ to its PRIVATE GitHub repository, github.com/DabDavis/socom2-decomp, as main.
+# Push decomp/ to its PUBLIC GitHub repository, github.com/DabDavis/socom2-decomp, as main.
 #
 #   decomp/tools/publish.sh            # scan, split, push
 #   decomp/tools/publish.sh --dry-run  # scan and split only
@@ -8,10 +8,10 @@
 # split --prefix=decomp` of it, which re-derives the same commits every time, so a
 # push only ever appends. It pushes COMMITTED history only -- commit first.
 #
-# Before pushing it refuses any tracked decomp/ line that looks private (a home path,
-# a mail address, a LAN address, a token), as claude-eqoa's _publish.py does. The
-# tree carries no game code or data by construction: the target is built from the
-# owner's disc and nothing under extracted/ or toolchains/ is tracked.
+# The repository is public, so before pushing it refuses any tracked decomp/ line that looks
+# private (a home path, a mail address, a LAN address, a token), as claude-eqoa's
+# _publish.py does. The tree carries no game code or data by construction: the target is
+# built from the owner's disc and nothing under extracted/ or toolchains/ is tracked.
 set -euo pipefail
 cd "$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
 

@@ -416,8 +416,9 @@ of the published repository rather than inside claude-socom.
 
 ## Publishing
 
-`decomp/` is mirrored to a **private** repository, github.com/DabDavis/socom2-decomp
-(created 2026-10-24), as `git subtree split --prefix=decomp` of claude-socom's history:
+`decomp/` is mirrored to a **public** repository, github.com/DabDavis/socom2-decomp
+(created 2026-10-24, public since 2026-10-24), as `git subtree split --prefix=decomp` of
+claude-socom's history:
 the work happens here and `tools/publish.sh` pushes the committed state (`--dry-run`
 to look first). It refuses a tracked line that looks private, as claude-eqoa's
 `_publish.py` does.
