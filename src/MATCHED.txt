@@ -457,6 +457,7 @@
 0x002678F0 zAnimDestructorTick__FP14_zanim_cmd_hdrPf
 0x002679E0 zAnimQuadAlignTick__FP14_zanim_cmd_hdrPf
 0x002679F0 at__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FUi
+0x00267A60 func_00267A60
 0x00267AB0 LoadZAR__10CZAnimMainFPCcPCc
 0x00267DC0 __dt__9CZAnimZARFv
 0x00267E20 CloseZAR__10CZAnimMainFP9CZAnimZAR
@@ -468,6 +469,8 @@
 0x00268360 UnloadSIScript__10CZAnimMainFP16_zanim_si_script
 0x002683B0 Unload__10CZAnimMainFv
 0x002684D0 func_002684D0
+0x00268680 ZAnimWildcardNext__Fv
+0x00268790 ZAnimWildcardInit__FPc
 0x00268930 AnimSchedulerTick__10CZAnimMainFfPv
 0x00268960 Load__20CZAnimNameIndexTableFRQ23zar4CZAR
 0x00268A20 Unload__20CZAnimNameIndexTableFv

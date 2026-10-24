@@ -472,7 +472,8 @@ follows without MW's 16-byte padding (131 drafts had every byte right).
   (`zanim_set.cpp`) and CZAnim (`zanim_anim.cpp`): all written byte-exact but five.**
   Open: SequenceRunning, GetCmd, GetAnimSetIndex, Open (registers in the inlined NewAnimSet --
   the permuter found nothing in Open's own text), CZAnim::LoadNodeNames (a strength-reduced
-  index). Unwritten: the wildcard search, the rest of CZAnim. MSL's vector reserve (pod and class)
+  index), ZAnimWildcardApply (two registers and a strength reduction; the wildcard search's Init
+  and Next match, on SOCOM 1's statics). Unwritten: the rest of CZAnim. MSL's vector reserve (pod and class)
   and at() match from include/vector; insert does not yet (the pod one 8 bytes short:
   build/scratch/ins/BEST-pod-insert-0x418.txt -- the target reloads the capacity in the growth
   path, where every form tried keeps it).

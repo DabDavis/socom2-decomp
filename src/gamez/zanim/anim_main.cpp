@@ -6,11 +6,15 @@
 #include <string.h>
 
 #include "zanim.h"
+#include "../zsys/zsys.h"
 
-
+/* the wildcard search (SOCOM 1's statics): a pattern's stars, up to five, stand for digits that
+ * count up together, the last star the lowest */
+extern char *_input_str_ptr;
+extern char *_digit_ptr[5];
+extern int _digit_val[5];
+extern int _digit_count;
 extern char *_local_wildcard_str;
-extern int data_00414D78;
-extern int data_00414DB8;
 zdb::CNode *GetMenuNode();
 extern "C" float expf(float x);
 
@@ -668,14 +672,113 @@ extern "C" void func_00269170(CPnt3D *dir, zdb::CNode *node)
     dir->Normalize();
 }
 
+/* a pattern's stars found from its end (five at most), each standing for 0: the pattern with
+ * the digits written in, or 0 without a star */
+const char *ZAnimWildcardInit(char *str)
+{
+    int i;
+
+    _digit_count = 0;
+    if (!str)
+        return 0;
+    _input_str_ptr = str;
+    for (i = 0; i < 5; i++) {
+        _digit_ptr[i] = 0;
+        _digit_val[i] = 0;
+    }
+    for (i = strlen(str) - 1; i >= 0; i--) {
+        if (_input_str_ptr[i] == '*') {
+            _digit_ptr[_digit_count] = &_input_str_ptr[i];
+            _digit_count++;
+            if (_digit_count == 5)
+                i = -1;
+        }
+    }
+    if (!_digit_count)
+        return 0;
+    for (i = _digit_count - 1; i >= 0; i--) {
+        char digit[4];
+
+        sprintf(digit, "%d", _digit_val[i]);
+        *_digit_ptr[i] = digit[0];
+    }
+    return _input_str_ptr;
+}
+
+/* the next match: the digits counted up, the first star the lowest; 0 once all are 9 */
+const char *ZAnimWildcardNext()
+{
+    bool done = false;
+    int i;
+
+    for (i = 0; i < _digit_count; i++) {
+        done = true;
+        if (_digit_val[i] < 9) {
+            done = false;
+            _digit_val[i]++;
+            break;
+        }
+        _digit_val[i] = 0;
+    }
+    if (done)
+        return 0;
+    for (i = _digit_count - 1; i >= 0; i--) {
+        char digit[4];
+
+        sprintf(digit, "%d", _digit_val[i]);
+        *_digit_ptr[i] = digit[0];
+    }
+    return _input_str_ptr;
+}
+
+/* a name with stars given the search's current digits, in a buffer of its own; the name as it
+ * is without a search or a star.
+ * OPEN (0x268520), 14 instructions: the name and the digit index take each other's registers
+ * (s0/s4), and the target recomputes &name[i] in the second loop where this steps it -- as if
+ * MW could not hold the name invariant there; no declaration order or position changes either */
+const char *ZAnimWildcardApply(const char *name)
+{
+    int len;
+    bool found = false;
+    int n = 0;
+    int i;
+
+    if (_digit_count <= 0)
+        return name;
+    len = strlen(name);
+
+    for (i = len - 1; i >= 0; i--) {
+        if (name[i] == '*') {
+            found = true;
+            break;
+        }
+    }
+    if (found) {
+        _local_wildcard_str = (char *)_realloc(_local_wildcard_str, len + 1, 0, 0);
+        strcpy(_local_wildcard_str, name);
+        name = _local_wildcard_str;
+        for (i = len - 1; i >= 0; i--) {
+            if (name[i] == '*') {
+                char digit[4];
+
+                sprintf(digit, "%d", _digit_val[n]);
+                ((char *)name)[i] = digit[0];
+                if (n < _digit_count)
+                    n++;
+            }
+        }
+    }
+    return name;
+}
+
 extern "C" void func_002684D0()
 {
     if (_local_wildcard_str) {
         func_00180280(_local_wildcard_str, 0, 0);
         _local_wildcard_str = 0;
     }
-    data_00414D78 = 0;
-    data_00414DB8 = 0;
+    _input_str_ptr = 0;
+    _digit_count = 0;
 }
 
 int CZAnimMain::UnloadSIScript(_zanim_si_script *script)

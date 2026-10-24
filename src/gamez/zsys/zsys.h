@@ -10,6 +10,7 @@ extern "C" void FlushCache(int mode);
 /* the system allocator: zeroed, with a file and line SOCOM II passes as 0 (SOCOM 1's
  * _calloc__FUiUiPCci, 0x34EAE0) */
 void *_calloc(unsigned int n, unsigned int size, const char *file, int line);
+void *_realloc(void *p, unsigned int size, const char *file, int line);
 
 /* A vector unit: CVU(0) is VU0, built and destroyed around an upload (zMath_Init). */
 class CVU {
