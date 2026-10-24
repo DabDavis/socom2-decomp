@@ -14,6 +14,7 @@ GetPacketType__7CPacketCFv
 GetScale__Q23zdb5CNodeFP6CPnt3D
 IsArray__5_zrdrCFv
 IsComplete__20CMissionObjectiveCamCFv
+IsDisplayOn__20CMissionObjectiveCamCFv
 IsEven
 IsInvalid__20CMissionObjectiveCamCFv
 IsOpen__10CMemCardIOCFv
@@ -59,6 +60,7 @@ __ct__11CMissionCamFv
 __ct__17CSndSequenceEntryFP4CSndf
 __ct__6CPnt4DFffff
 __ct__7CMatrixFffffffffffffffff
+__ct__7CMatrixFv
 __ct__Q26CAiMap6readerFv
 _cdbGetSmoothMatrixSize
 adler32
@@ -706,7 +708,6 @@ func_002C6050
 func_002C6220
 func_002C6230
 func_002C6ED0
-func_002C70A0
 func_002C7290
 func_002C7300
 func_002C7340
@@ -987,7 +988,6 @@ func_00306650
 func_00307700
 func_00307810
 func_003079C0
-func_003087D0
 func_00309280
 func_00309400
 func_00309550

@@ -15,6 +15,11 @@ last part is what makes a match exact rather than plausible:
             stay compared, so MakeXRot cannot be mistaken for MakeYRot.
   callee    a placeholder SOCOM II function called from the same instruction of an exact
             pair takes the demo callee's name (iterated: exact pairs only).
+  syscall   a kernel stub (li v1,N; syscall) takes the name of the demo's stub for N.
+  gap       between two consecutive exact anchors (of the longest chain increasing in both
+            builds' addresses), the same number of functions on each side with every pair's
+            sizes within 35 %: paired in order. Units keep their functions' order across the
+            builds; this is how CQuat's ToMatrix..MakeYXRot were named by hand first.
 
 A name that would land on two SOCOM II addresses (an inline's out-of-line copies, template
 instances) is withheld: the map needs unique names; the rows get an `s1~` note instead.
@@ -117,7 +122,77 @@ def run(demo: Demo, img: E.Image, st: E.SymbolTable):
                             (f.size for f in demo.funcs if f.value == t2), -1):
                         nxt[t1] = t2
         frontier = nxt
-    return exact, callee
+    return exact, callee, demo_of
+
+
+def lis(pairs: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    """The longest chain increasing in BOTH addresses (pairs sorted by the first)."""
+    import bisect
+    tails, idx, prev = [], [], [-1] * len(pairs)
+    for i, (_, d) in enumerate(pairs):
+        k = bisect.bisect_left(tails, d)
+        if k == len(tails):
+            tails.append(d); idx.append(i)
+        else:
+            tails[k] = d; idx[k] = i
+        prev[i] = idx[k - 1] if k else -1
+    out, i = [], idx[-1] if idx else -1
+    while i >= 0:
+        out.append(pairs[i]); i = prev[i]
+    return out[::-1]
+
+
+def gaps(demo: Demo, img: E.Image, st: E.SymbolTable, demo_of: dict[int, int],
+         max_gap: int = 24, ratio: float = 1.35) -> dict[int, str]:
+    """Between two consecutive anchors of the increasing chain, equal counts of functions on
+    both sides, every pair's sizes within `ratio` of each other: pair them in order."""
+    ours = [s for s in st.symbols if img.segment(s.addr) is not None and s.size >= 8
+            and (img.is_code(s.addr) or img.segment(s.addr).name == "MAIN")]
+    ours_addrs = [s.addr for s in ours]
+    dem = demo.funcs
+    dem_addrs = [f.value for f in dem]
+    import bisect
+    chain = lis(sorted(demo_of.items()))
+    out = {}
+    for (a1, d1), (a2, d2) in zip(chain, chain[1:]):
+        i1, i2 = bisect.bisect_right(ours_addrs, a1), bisect.bisect_left(ours_addrs, a2)
+        j1, j2 = bisect.bisect_right(dem_addrs, d1), bisect.bisect_left(dem_addrs, d2)
+        S, D = ours[i1:i2], dem[j1:j2]
+        if not S or len(S) != len(D) or len(S) > max_gap:
+            continue
+        if all(max(x.size, y.size) <= ratio * min(x.size, y.size) for x, y in zip(S, D)):
+            for x, y in zip(S, D):
+                if min(x.size, y.size) >= 0x20:   # stubs and one-liners are positionally ambiguous
+                    out[x.addr] = y.name
+    return out
+
+
+def syscall_no(b: bytes) -> int | None:
+    """`li v1,N; syscall` (in either order with a jr ra): the stub's syscall number."""
+    ws = struct.unpack(f"<{len(b) // 4}I", b)
+    if len(ws) < 2 or not any(w & 0xFC00003F == 0x0000000C for w in ws):
+        return None
+    for w in ws:
+        if w >> 16 in (0x2403, 0x3403):             # addiu/ori v1, zero, N
+            return w & 0xFFFF
+    return None
+
+
+def syscalls(demo: Demo, img: E.Image, st: E.SymbolTable) -> dict[int, str]:
+    """Kernel stubs, named by the syscall number the demo's stub of that name uses."""
+    by_no = defaultdict(set)
+    for f in demo.funcs:
+        if f.size <= 0x10:
+            n = syscall_no(demo.read(f.value, f.size))
+            if n is not None:
+                by_no[n].add(f.name)
+    out = {}
+    for s in st.symbols:
+        if s.size <= 0x10 and img.segment(s.addr) is not None and img.segment(s.addr).name == "MAIN":
+            n = syscall_no(img.read(s.addr, s.size))
+            if n is not None and len(by_no.get(n, ())) == 1:
+                out[s.addr] = next(iter(by_no[n]))
+    return out
 
 
 def main(argv=None) -> int:
@@ -126,8 +201,10 @@ def main(argv=None) -> int:
     ap.add_argument("--compare", type=Path)
     a = ap.parse_args(argv)
     img, st, demo = E.image(), E.symbols(), Demo()
-    exact, callee = run(demo, img, st)
-    allp = {**callee, **exact}
+    exact, callee, demo_of = run(demo, img, st)
+    gap = gaps(demo, img, st, {a: d for a, d in demo_of.items()})
+    sysc = syscalls(demo, img, st)
+    allp = {**gap, **callee, **sysc, **exact}
     by_name = defaultdict(list)
     for addr, n in allp.items():
         by_name[n].append(addr)
@@ -135,7 +212,9 @@ def main(argv=None) -> int:
     multi = {addr: n for addr, n in allp.items() if len(by_name[n]) > 1}
     taken = {s.name for s in st.symbols if not E.is_placeholder(s.name)}
     print(f"demo: {len(demo.funcs)} functions, {len(demo.relocs)} relocations")
-    print(f"exact {len(exact)}, callee {len(callee)}; {len(unique)} unique names, "
+    print(f"exact {len(exact)}, callee {len(callee)}, syscall {len(set(sysc) - set(exact))}, "
+          f"gap {len(set(gap) - set(exact) - set(callee) - set(sysc))}; "
+          f"{len(unique)} unique names, "
           f"{len(multi)} rows share a name (withheld)")
     if a.compare:
         other = {int(r["Address"], 16): r.get("Mangled") or r["Name"] for r in csv.DictReader(open(a.compare))}
@@ -153,7 +232,8 @@ def main(argv=None) -> int:
             addr, cur, note = int(m.group(1), 16), m.group(3), m.group(4)
             sep = "; " if "#" in note else "  # "
             if addr in unique and E.is_placeholder(cur) and unique[addr] not in taken:
-                how = "exact" if addr in exact else "callee"
+                how = ("exact" if addr in exact else "syscall" if addr in sysc
+                       else "callee" if addr in callee else "gap")
                 text[i] = f"{m.group(1)} {m.group(2)} {unique[addr]}{note}{sep}s1:{how}"
                 named += 1
             elif addr in multi and E.is_placeholder(cur) and "s1~" not in note:

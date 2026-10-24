@@ -4,7 +4,7 @@
 
 0x00180008 0x1C0 func_00180008  # MAIN unaligned
 0x001801C8 0x8 func_001801C8  # MAIN unaligned
-0x001801D0 0x10 func_001801D0  # MAIN
+0x001801D0 0x10 func_001801D0  # MAIN; s1~ ExitThread (one of 2)
 0x001801E0 0x9C func_001801E0  # MAIN
 0x00180280 0x314 func_00180280  # MAIN
 0x001805A0 0x500 func_001805A0  # MAIN
@@ -229,7 +229,7 @@
 0x0018D0A0 0x60 func_0018D0A0  # MAIN
 0x0018D100 0x80 func_0018D100  # MAIN
 0x0018D180 0x14 do_toupper__Q23std8ctype<c>CFc  # MAIN; s1:exact
-0x0018D1A0 0x40 func_0018D1A0  # MAIN
+0x0018D1A0 0x40 do_toupper__Q23std8ctype<c>CFPcPCc  # MAIN; s1:gap
 0x0018D1E0 0x14 do_tolower__Q23std8ctype<c>CFc  # MAIN; s1:exact
 0x0018D200 0x40 func_0018D200  # MAIN
 0x0018D240 0x8 func_0018D240  # MAIN
@@ -515,16 +515,16 @@
 0x001A1570 0x68 func_001A1570  # MAIN
 0x001A15D8 0xA0 func_001A15D8  # MAIN unaligned
 0x001A1678 0x10 _GetGsDxDyOffset  # MAIN unaligned; s1:exact
-0x001A1688 0x374 func_001A1688  # MAIN unaligned
-0x001A1A00 0xBC func_001A1A00  # MAIN
-0x001A1AC0 0xC8 func_001A1AC0  # MAIN
-0x001A1B88 0x1E4 func_001A1B88  # MAIN unaligned
+0x001A1688 0x374 sceGsSetDefDispEnv  # MAIN unaligned; s1:gap
+0x001A1A00 0xBC sceGsPutDispEnv  # MAIN; s1:gap
+0x001A1AC0 0xC8 sceGszbufaddr  # MAIN; s1:gap
+0x001A1B88 0x1E4 sceGsSetDefDrawEnv  # MAIN unaligned; s1:gap
 0x001A1D70 0x104 sceGsSetDefClear  # MAIN; s1:exact
-0x001A1E78 0x298 func_001A1E78  # MAIN unaligned
-0x001A2110 0x94 func_001A2110  # MAIN
-0x001A21A8 0x314 func_001A21A8  # MAIN unaligned
+0x001A1E78 0x298 sceGsSetDefDBuff  # MAIN unaligned; s1:gap
+0x001A2110 0x94 sceGsSyncV  # MAIN; s1:gap
+0x001A21A8 0x314 sceGsSyncPath  # MAIN unaligned; s1:gap
 0x001A24C0 0x5C sceGsSetDefAlphaEnv  # MAIN; s1:exact
-0x001A2520 0x1E4 func_001A2520  # MAIN
+0x001A2520 0x1E4 sceGsSetDefLoadImage  # MAIN; s1:gap
 0x001A2708 0x140 sceGsSetDefStoreImage  # MAIN unaligned; s1:exact
 0x001A2848 0x17C func_001A2848  # MAIN unaligned
 0x001A29C8 0x68C func_001A29C8  # MAIN unaligned
@@ -676,87 +676,87 @@
 0x001A3F80 0x10 GetMemorySize  # MAIN; s1:exact
 0x001A3F90 0x10 _InitTLB  # MAIN; s1:exact
 0x001A3FA0 0xC func_001A3FA0  # MAIN
-0x001A3FB0 0x90 func_001A3FB0  # MAIN
-0x001A4040 0xA4 func_001A4040  # MAIN
-0x001A40E8 0x7C func_001A40E8  # MAIN unaligned
-0x001A4168 0x74 func_001A4168  # MAIN unaligned
-0x001A41E0 0x28 func_001A41E0  # MAIN
+0x001A3FB0 0x90 VSync  # MAIN; s1:gap
+0x001A4040 0xA4 VSync2  # MAIN; s1:gap
+0x001A40E8 0x7C write  # MAIN unaligned; s1:gap
+0x001A4168 0x74 read  # MAIN unaligned; s1:gap
+0x001A41E0 0x28 open  # MAIN; s1:gap
 0x001A4208 0x8 func_001A4208  # MAIN unaligned
 0x001A4210 0x8 func_001A4210  # MAIN
 0x001A4218 0x8 func_001A4218  # MAIN unaligned
-0x001A4220 0xAC func_001A4220  # MAIN
+0x001A4220 0xAC sbrk  # MAIN; s1:gap
 0x001A42D0 0x8 func_001A42D0  # MAIN
 0x001A42D8 0x14 fstat  # MAIN unaligned; s1:exact
 0x001A42F0 0x8 func_001A42F0  # MAIN
-0x001A42F8 0x28 func_001A42F8  # MAIN unaligned
-0x001A4320 0x28 func_001A4320  # MAIN
-0x001A4348 0x28 func_001A4348  # MAIN unaligned
+0x001A42F8 0x28 kill  # MAIN unaligned; s1:gap
+0x001A4320 0x28 stat  # MAIN; s1:gap
+0x001A4348 0x28 unlink  # MAIN unaligned; s1:gap
 0x001A4370 0xA4 _sceSDC  # MAIN; s1:exact
-0x001A4418 0x7C func_001A4418  # MAIN unaligned
+0x001A4418 0x7C SyncDCache  # MAIN unaligned; s1:gap
 0x001A4498 0x14 func_001A4498  # MAIN unaligned
 0x001A44B0 0xA4 _sceIDC  # MAIN; s1:exact
-0x001A4558 0x7C func_001A4558  # MAIN unaligned
+0x001A4558 0x7C InvalidDCache  # MAIN unaligned; s1:gap
 0x001A45D8 0x14 func_001A45D8  # MAIN unaligned
 0x001A45F0 0x10 QueryIntrContext  # MAIN; s1:exact
-0x001A4600 0x68 func_001A4600  # MAIN
-0x001A4668 0x68 func_001A4668  # MAIN unaligned
-0x001A46D0 0x68 func_001A46D0  # MAIN
-0x001A4738 0x68 func_001A4738  # MAIN unaligned
-0x001A47A0 0x20 func_001A47A0  # MAIN
-0x001A47C0 0x20 func_001A47C0  # MAIN
-0x001A47E0 0x20 func_001A47E0  # MAIN
-0x001A4800 0x20 func_001A4800  # MAIN
-0x001A4820 0xD8 func_001A4820  # MAIN
-0x001A48F8 0xD4 func_001A48F8  # MAIN unaligned
-0x001A49D0 0x94 func_001A49D0  # MAIN
-0x001A4A68 0x7C func_001A4A68  # MAIN unaligned
-0x001A4AE8 0x98 func_001A4AE8  # MAIN unaligned
-0x001A4B80 0x44 func_001A4B80  # MAIN
-0x001A4BC8 0x24 func_001A4BC8  # MAIN unaligned
-0x001A4BF0 0x30 func_001A4BF0  # MAIN
-0x001A4C20 0x24 func_001A4C20  # MAIN
-0x001A4C48 0x34 func_001A4C48  # MAIN unaligned
-0x001A4C80 0x34 func_001A4C80  # MAIN
-0x001A4CB8 0x30 func_001A4CB8  # MAIN unaligned
-0x001A4CE8 0x24 func_001A4CE8  # MAIN unaligned
-0x001A4D10 0x24 func_001A4D10  # MAIN
-0x001A4D38 0x24 func_001A4D38  # MAIN unaligned
-0x001A4D60 0x24 func_001A4D60  # MAIN
+0x001A4600 0x68 DisableIntc  # MAIN; s1:gap
+0x001A4668 0x68 EnableIntc  # MAIN unaligned; s1:gap
+0x001A46D0 0x68 DisableDmac  # MAIN; s1:gap
+0x001A4738 0x68 EnableDmac  # MAIN unaligned; s1:gap
+0x001A47A0 0x20 iEnableIntc  # MAIN; s1:gap
+0x001A47C0 0x20 iDisableIntc  # MAIN; s1:gap
+0x001A47E0 0x20 iEnableDmac  # MAIN; s1:gap
+0x001A4800 0x20 iDisableDmac  # MAIN; s1:gap
+0x001A4820 0xD8 topThread  # MAIN; s1:gap
+0x001A48F8 0xD4 InitThread  # MAIN unaligned; s1:gap
+0x001A49D0 0x94 iWakeupThread  # MAIN; s1:gap
+0x001A4A68 0x7C iRotateThreadReadyQueue  # MAIN unaligned; s1:gap
+0x001A4AE8 0x98 iSuspendThread  # MAIN unaligned; s1:gap
+0x001A4B80 0x44 sceDeci2Open  # MAIN; s1:gap
+0x001A4BC8 0x24 sceDeci2Close  # MAIN unaligned; s1:gap
+0x001A4BF0 0x30 sceDeci2ReqSend  # MAIN; s1:gap
+0x001A4C20 0x24 sceDeci2Poll  # MAIN; s1:gap
+0x001A4C48 0x34 sceDeci2ExRecv  # MAIN unaligned; s1:gap
+0x001A4C80 0x34 sceDeci2ExSend  # MAIN; s1:gap
+0x001A4CB8 0x30 sceDeci2ExReqSend  # MAIN unaligned; s1:gap
+0x001A4CE8 0x24 sceDeci2ExLock  # MAIN unaligned; s1:gap
+0x001A4D10 0x24 sceDeci2ExUnLock  # MAIN; s1:gap
+0x001A4D38 0x24 kputs  # MAIN unaligned; s1:gap
+0x001A4D60 0x24 QueueInit  # MAIN; s1:gap
 0x001A4D88 0x3C QueuePeekWriteDone  # MAIN unaligned; s1:exact
 0x001A4DC8 0x3C QueuePeekReadDone  # MAIN unaligned; s1:exact
-0x001A4E08 0x194 func_001A4E08  # MAIN unaligned
-0x001A4FA0 0x150 func_001A4FA0  # MAIN
-0x001A50F0 0xD0 func_001A50F0  # MAIN
-0x001A51C0 0xBC func_001A51C0  # MAIN
+0x001A4E08 0x194 sceTtyHandler  # MAIN unaligned; s1:gap
+0x001A4FA0 0x150 sceTtyWrite  # MAIN; s1:gap
+0x001A50F0 0xD0 sceTtyRead  # MAIN; s1:gap
+0x001A51C0 0xBC sceTtyInit  # MAIN; s1:gap
 0x001A5280 0x38 kputchar  # MAIN; s1:exact
-0x001A52B8 0xB0 func_001A52B8  # MAIN unaligned
-0x001A5368 0x34 func_001A5368  # MAIN unaligned
+0x001A52B8 0xB0 deci2Putchar  # MAIN unaligned; s1:gap
+0x001A5368 0x34 serialPutchar  # MAIN unaligned; s1:gap
 0x001A53A0 0x90 ftoi  # MAIN; s1:exact
-0x001A5430 0x168 func_001A5430  # MAIN
-0x001A5598 0x5EC func_001A5598  # MAIN unaligned
-0x001A5B88 0x38 func_001A5B88  # MAIN unaligned
-0x001A5BC0 0x60 func_001A5BC0  # MAIN
+0x001A5430 0x168 printfloat  # MAIN; s1:gap
+0x001A5598 0x5EC _printf  # MAIN unaligned; s1:gap
+0x001A5B88 0x38 kprintf  # MAIN unaligned; s1:gap
+0x001A5BC0 0x60 scePrintf  # MAIN; s1:gap
 0x001A5C20 0x1C _set_sreg  # MAIN; s1:exact
 0x001A5C40 0xC func_001A5C40  # MAIN
 0x001A5C50 0x18 func_001A5C50  # MAIN
 0x001A5C68 0x1C func_001A5C68  # MAIN unaligned
 0x001A5C88 0xC func_001A5C88  # MAIN unaligned
-0x001A5C98 0x280 func_001A5C98  # MAIN unaligned
-0x001A5F18 0x34 func_001A5F18  # MAIN unaligned
+0x001A5C98 0x280 sceSifInitCmd  # MAIN unaligned; s1:gap
+0x001A5F18 0x34 sceSifExitCmd  # MAIN unaligned; s1:gap
 0x001A5F50 0x18 func_001A5F50  # MAIN
 0x001A5F68 0x18 func_001A5F68  # MAIN unaligned
-0x001A5F80 0x2C func_001A5F80  # MAIN
-0x001A5FB0 0x28 func_001A5FB0  # MAIN
-0x001A5FD8 0x134 func_001A5FD8  # MAIN unaligned
-0x001A6110 0x3C func_001A6110  # MAIN
-0x001A6150 0x3C func_001A6150  # MAIN
-0x001A6190 0x128 func_001A6190  # MAIN
-0x001A62B8 0xAC func_001A62B8  # MAIN unaligned
+0x001A5F80 0x2C sceSifAddCmdHandler  # MAIN; s1:gap
+0x001A5FB0 0x28 sceSifRemoveCmdHandler  # MAIN; s1:gap
+0x001A5FD8 0x134 _sceSifSendCmd  # MAIN unaligned; s1:gap
+0x001A6110 0x3C sceSifSendCmd  # MAIN; s1:gap
+0x001A6150 0x3C isceSifSendCmd  # MAIN; s1:gap
+0x001A6190 0x128 _sceSifCmdIntrHdlr  # MAIN; s1:gap
+0x001A62B8 0xAC sceSifWriteBackDCache  # MAIN unaligned; s1:gap
 0x001A6364 0x4 func_001A6364  # MAIN unaligned
 0x001A6368 0x4 func_001A6368  # MAIN unaligned
-0x001A636C 0x198 func_001A636C  # MAIN unaligned
-0x001A6508 0x24 func_001A6508  # MAIN unaligned
-0x001A6530 0xA8 func_001A6530  # MAIN
+0x001A636C 0x198 sceSifInitRpc  # MAIN unaligned; s1:gap
+0x001A6508 0x24 sceSifExitRpc  # MAIN unaligned; s1:gap
+0x001A6530 0xA8 _sceRpcGetPacket  # MAIN; s1:gap
 0x001A65D8 0x1C func_001A65D8  # MAIN unaligned
 0x001A65F8 0x30 _sceRpcGetFPacket  # MAIN unaligned; s1:exact
 0x001A6628 0x40 func_001A6628  # MAIN unaligned
@@ -765,26 +765,26 @@
 0x001A6780 0xD0 func_001A6780  # MAIN
 0x001A6850 0x158 func_001A6850  # MAIN
 0x001A69A8 0x4C _search_svdata  # MAIN unaligned; s1:exact
-0x001A69F8 0xB0 func_001A69F8  # MAIN unaligned
-0x001A6AA8 0x140 func_001A6AA8  # MAIN unaligned
-0x001A6BE8 0x8C func_001A6BE8  # MAIN unaligned
-0x001A6C78 0x1EC func_001A6C78  # MAIN unaligned
+0x001A69F8 0xB0 _request_bind  # MAIN unaligned; s1:gap
+0x001A6AA8 0x140 sceSifBindRpc  # MAIN unaligned; s1:gap
+0x001A6BE8 0x8C _request_call  # MAIN unaligned; s1:gap
+0x001A6C78 0x1EC sceSifCallRpc  # MAIN unaligned; s1:gap
 0x001A6E68 0x3C sceSifCheckStatRpc  # MAIN unaligned; s1:exact
-0x001A6EA8 0x94 func_001A6EA8  # MAIN unaligned
-0x001A6F40 0xD0 func_001A6F40  # MAIN
-0x001A7010 0x94 func_001A7010  # MAIN
-0x001A70A8 0x90 func_001A70A8  # MAIN unaligned
-0x001A7138 0x58 func_001A7138  # MAIN unaligned
-0x001A7190 0x1C4 func_001A7190  # MAIN
-0x001A7358 0x40 func_001A7358  # MAIN unaligned
-0x001A7398 0x5C func_001A7398  # MAIN unaligned
-0x001A73F8 0x88 func_001A73F8  # MAIN unaligned
-0x001A7480 0x6C func_001A7480  # MAIN
-0x001A74F0 0x3A4 func_001A74F0  # MAIN
-0x001A7898 0x4C func_001A7898  # MAIN unaligned
-0x001A78E8 0x2C func_001A78E8  # MAIN unaligned
+0x001A6EA8 0x94 sceSifSetRpcQueue  # MAIN unaligned; s1:gap
+0x001A6F40 0xD0 sceSifRegisterRpc  # MAIN; s1:gap
+0x001A7010 0x94 sceSifRemoveRpc  # MAIN; s1:gap
+0x001A70A8 0x90 sceSifRemoveRpcQueue  # MAIN unaligned; s1:gap
+0x001A7138 0x58 sceSifGetNextRequest  # MAIN unaligned; s1:gap
+0x001A7190 0x1C4 sceSifExecRequest  # MAIN; s1:gap
+0x001A7358 0x40 sceSifRpcLoop  # MAIN unaligned; s1:gap
+0x001A7398 0x5C _sceFsIobSemaMK  # MAIN unaligned; s1:gap
+0x001A73F8 0x88 new_iob  # MAIN unaligned; s1:gap
+0x001A7480 0x6C get_iob  # MAIN; s1:gap
+0x001A74F0 0x3A4 _sceFs_Rcv_Intr  # MAIN; s1:gap
+0x001A7898 0x4C _sceFsSemInit  # MAIN unaligned; s1:gap
+0x001A78E8 0x2C _sceFsWaitS  # MAIN unaligned; s1:gap
 0x001A7918 0xC func_001A7918  # MAIN unaligned
-0x001A7928 0x98 func_001A7928  # MAIN unaligned
+0x001A7928 0x98 scePowerOffHandler  # MAIN unaligned; s1:gap
 0x001A79C0 0x2C _sceFs_Poff_Intr  # MAIN; s1:exact
 0x001A79F0 0x204 func_001A79F0  # MAIN
 0x001A7BF8 0x8C func_001A7BF8  # MAIN unaligned
@@ -852,7 +852,7 @@
 0x001ABEC8 0x110 func_001ABEC8  # MAIN unaligned
 0x001ABFD8 0x60 func_001ABFD8  # MAIN unaligned
 0x001AC038 0x84 func_001AC038  # MAIN unaligned
-0x001AC0C0 0x10 func_001AC0C0  # MAIN
+0x001AC0C0 0x10 func_001AC0C0  # MAIN; s1~ Copy (one of 5)
 0x001AC0D0 0x38 func_001AC0D0  # MAIN
 0x001AC108 0x10 func_001AC108  # MAIN unaligned
 0x001AC118 0x10 func_001AC118  # MAIN unaligned
@@ -860,7 +860,7 @@
 0x001AC1F0 0x10 PutTLBEntry  # MAIN; s1:exact
 0x001AC200 0x10 func_001AC200  # MAIN
 0x001AC210 0x10 func_001AC210  # MAIN
-0x001AC220 0x30 func_001AC220  # MAIN
+0x001AC220 0x30 SetTLBEntry  # MAIN; s1:gap
 0x001AC250 0x10 iSetTLBEntry  # MAIN; s1:exact
 0x001AC260 0x10 func_001AC260  # MAIN
 0x001AC270 0x10 iGetTLBEntry  # MAIN; s1:exact
@@ -872,22 +872,22 @@
 0x001AC500 0x360 func_001AC500  # MAIN
 0x001AC860 0x48 DIntr  # MAIN; s1:exact
 0x001AC8A8 0x18 EIntr  # MAIN unaligned; s1:exact
-0x001AC8C0 0x48 func_001AC8C0  # MAIN
-0x001AC908 0x10 func_001AC908  # MAIN unaligned
-0x001AC918 0x38 func_001AC918  # MAIN unaligned
+0x001AC8C0 0x48 supplement_crt0  # MAIN; s1:gap
+0x001AC908 0x10 func_001AC908  # MAIN unaligned; s1~ Copy (one of 5)
+0x001AC918 0x38 func_001AC918  # MAIN unaligned; s1~ kCopy (one of 3)
 0x001AC950 0x40 kFindAddress  # MAIN; s1:exact
 0x001AC990 0x10 FindAddress  # MAIN; s1:exact
-0x001AC9A0 0x34 func_001AC9A0  # MAIN
-0x001AC9D8 0xFC func_001AC9D8  # MAIN unaligned
+0x001AC9A0 0x34 GetSystemCallEntry  # MAIN; s1:gap
+0x001AC9D8 0xFC InitSystemCallTableAddress  # MAIN unaligned; s1:gap
 0x001ACAD8 0x10 func_001ACAD8  # MAIN unaligned
-0x001ACAE8 0x3C func_001ACAE8  # MAIN unaligned
+0x001ACAE8 0x3C _InitSys  # MAIN unaligned; s1:gap
 0x001ACB28 0x10 func_001ACB28  # MAIN unaligned
-0x001ACB38 0x10 func_001ACB38  # MAIN unaligned
-0x001ACB48 0x38 func_001ACB48  # MAIN unaligned
+0x001ACB38 0x10 func_001ACB38  # MAIN unaligned; s1~ Copy (one of 5)
+0x001ACB48 0x38 func_001ACB48  # MAIN unaligned; s1~ kCopy (one of 3)
 0x001ACB80 0x10 func_001ACB80  # MAIN
-0x001ACB90 0x68 func_001ACB90  # MAIN
-0x001ACBF8 0xAC func_001ACBF8  # MAIN unaligned
-0x001ACCA8 0x10 func_001ACCA8  # MAIN unaligned
+0x001ACB90 0x68 PatchIsNeeded  # MAIN; s1:gap
+0x001ACBF8 0xAC InitExecPS2  # MAIN unaligned; s1:gap
+0x001ACCA8 0x10 func_001ACCA8  # MAIN unaligned; s1~ Copy (one of 5)
 0x001ACCB8 0x30 kCopy  # MAIN unaligned; s1:exact
 0x001ACCE8 0x10 func_001ACCE8  # MAIN unaligned
 0x001ACCF8 0x118 func_001ACCF8  # MAIN unaligned
@@ -897,7 +897,7 @@
 0x001ACED0 0x28 func_001ACED0  # MAIN
 0x001ACEF8 0x4C func_001ACEF8  # MAIN unaligned
 0x001ACF48 0x10 func_001ACF48  # MAIN unaligned
-0x001ACF58 0x10 func_001ACF58  # MAIN unaligned
+0x001ACF58 0x10 func_001ACF58  # MAIN unaligned; s1~ Copy (one of 5)
 0x001ACF68 0x38 func_001ACF68  # MAIN unaligned
 0x001ACFA0 0x10 func_001ACFA0  # MAIN
 0x001ACFB0 0xD4 func_001ACFB0  # MAIN
@@ -914,12 +914,12 @@
 0x001AFD18 0x7E0 func_001AFD18  # MAIN unaligned
 0x001B04F8 0x3B0 func_001B04F8  # MAIN unaligned
 0x001B08A8 0xCC __ieee754_sqrtf  # MAIN unaligned; s1:exact
-0x001B0978 0x2D4 func_001B0978  # MAIN unaligned
-0x001B0C50 0xB4C func_001B0C50  # MAIN
-0x001B17A0 0x238 func_001B17A0  # MAIN
-0x001B19D8 0x568 func_001B19D8  # MAIN unaligned
+0x001B0978 0x2D4 __kernel_cos  # MAIN unaligned; s1:gap
+0x001B0C50 0xB4C __kernel_rem_pio2  # MAIN; s1:gap
+0x001B17A0 0x238 __kernel_sin  # MAIN; s1:gap
+0x001B19D8 0x568 __kernel_tan  # MAIN unaligned; s1:gap
 0x001B1F40 0x150 __kernel_cosf  # MAIN; s1:exact
-0x001B2090 0x864 func_001B2090  # MAIN
+0x001B2090 0x864 __kernel_rem_pio2f  # MAIN; s1:gap
 0x001B28F8 0x104 __kernel_sinf  # MAIN unaligned; s1:exact
 0x001B2A00 0x284 func_001B2A00  # MAIN
 0x001B2C88 0x124 func_001B2C88  # MAIN unaligned
@@ -3646,8 +3646,8 @@
 0x0029D880 0x18 func_0029D880  # OVL1
 0x0029D8A0 0x44 GetArg__10CPacketMsgCFUi  # OVL1; s1:exact
 0x0029D8F0 0x20 GetArgCount__10CPacketMsgCFv  # OVL1; s1:exact
-0x0029D910 0xA0 func_0029D910  # OVL1
-0x0029D9B0 0x64 func_0029D9B0  # OVL1
+0x0029D910 0xA0 __dt__10CPacketMsgFv  # OVL1; s1:gap
+0x0029D9B0 0x64 Compare__7CPacketFP7CPacketP7CPacket  # OVL1; s1:gap
 0x0029DA20 0x20 GetPacketID__7CPacketCFv  # OVL1; s1:exact
 0x0029DA40 0x20 GetFlags__7CPacketCFv  # OVL1; s1:exact
 0x0029DA60 0x20 GetPacketType__7CPacketCFv  # OVL1; s1:exact
@@ -4220,7 +4220,7 @@
 0x002C6F40 0xB4 func_002C6F40  # OVL1
 0x002C7000 0x68 func_002C7000  # OVL1
 0x002C7070 0x24 IsInvalid__20CMissionObjectiveCamCFv  # OVL1; s1:exact
-0x002C70A0 0x24 func_002C70A0  # OVL1
+0x002C70A0 0x24 IsDisplayOn__20CMissionObjectiveCamCFv  # OVL1; s1:gap
 0x002C70D0 0x24 IsComplete__20CMissionObjectiveCamCFv  # OVL1; s1:exact
 0x002C7100 0xDC func_002C7100  # OVL1
 0x002C71E0 0xAC func_002C71E0  # OVL1
@@ -5215,11 +5215,11 @@
 0x003085C0 0x80 func_003085C0  # OVL1
 0x00308640 0x7C func_00308640  # OVL1
 0x003086C0 0x68 __ct__7CMatrixFffffffffffffffff  # OVL1; s1:exact
-0x00308730 0x9C func_00308730  # OVL1
-0x003087D0 0x28 func_003087D0  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
-0x00308800 0x300 func_00308800  # OVL1
-0x00308B00 0x3E8 func_00308B00  # OVL1
-0x00308EF0 0xD0 func_00308EF0  # OVL1
+0x00308730 0x9C SetRows__7CMatrixFPC6CPnt3DPC6CPnt3DPC6CPnt3DPC6CPnt3D  # OVL1; s1:gap
+0x003087D0 0x28 __ct__7CMatrixFv  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); s1:gap
+0x00308800 0x300 DistToVector__6CPnt3DCFPC6CPnt3DPC6CPnt3DPf  # OVL1; s1:gap
+0x00308B00 0x3E8 DistToVector__6CPnt3DCFPC6CPnt3DPC6CPnt3DP6CPnt3DPf  # OVL1; s1:gap
+0x00308EF0 0xD0 Reflect__6CPnt3DFPC6CPnt3D  # OVL1; s1:gap
 0x00308FC0 0xD8 Interp__6CPnt3DCFPC6CPnt3DfP6CPnt3D  # OVL1; SOCOM 1 name
 0x003090A0 0x70 Normalize__6CPnt3DCFP6CPnt3D  # OVL1; s1:order (same position in the same TU, signature fits the code)
 0x00309110 0x70 Normalize__6CPnt3DFv  # OVL1; s1:order (same position in the same TU, signature fits the code)
@@ -6263,11 +6263,11 @@
 0x00349AA0 0x44 func_00349AA0  # OVL1
 0x00349AF0 0x44 func_00349AF0  # OVL1
 0x00349B40 0x48 Play__17CSndSequenceEntryFv  # OVL1; s1:exact
-0x00349B90 0xC0 func_00349B90  # OVL1
+0x00349B90 0xC0 Tick__17CSndSequenceEntryFf  # OVL1; s1:gap
 0x00349C50 0x14 __ct__17CSndSequenceEntryFP4CSndf  # OVL1; s1:exact
-0x00349C70 0x80 func_00349C70  # OVL1
-0x00349CF0 0x34 func_00349CF0  # OVL1
-0x00349D30 0x54 func_00349D30  # OVL1
+0x00349C70 0x80 FadeOut__12CSndSequenceFv  # OVL1; s1:gap
+0x00349CF0 0x34 IsFading__12CSndSequenceFv  # OVL1; s1:gap
+0x00349D30 0x54 Stop__12CSndSequenceFv  # OVL1; s1:gap
 0x00349D90 0x14 Play__12CSndSequenceFv  # OVL1; s1:exact
 0x00349DB0 0xDC func_00349DB0  # OVL1
 0x00349E90 0x188 func_00349E90  # OVL1
@@ -9079,9 +9079,9 @@
 0x005094F0 0x14 _transwGetpBeginOfTransWords  # OVL2; s1:exact
 0x00509508 0x8 func_00509508  # OVL2 unaligned
 0x00509510 0x20 func_00509510  # OVL2
-0x00509530 0x30 func_00509530  # OVL2
-0x00509560 0x40 func_00509560  # OVL2
-0x005095A0 0x74 func_005095A0  # OVL2
+0x00509530 0x30 _cdbGetpSecondCdb  # OVL2; s1:gap
+0x00509560 0x40 _cdbGetpProbMatrix  # OVL2; s1:gap
+0x005095A0 0x74 _cdbGetpSmoothMatrix  # OVL2; s1:gap
 0x00509618 0x34 _cdbGetProbMatrixSize  # OVL2 unaligned; s1:exact
 0x00509650 0x10 _cdbGetSmoothMatrixSize  # OVL2; s1:exact
 0x00509660 0x8 func_00509660  # OVL2
@@ -12505,15 +12505,15 @@
 0x006387E0 0x48 func_006387E0  # OVL2
 0x00638828 0x54 func_00638828  # OVL2 unaligned
 0x00638880 0x20 rt_msg_set_byte  # OVL2; s1:exact
-0x006388A0 0x24 func_006388A0  # OVL2
+0x006388A0 0x24 rt_msg_get_byte  # OVL2; s1:gap
 0x006388C8 0x1C rt_msg_set_ubyte  # OVL2 unaligned; s1:exact
-0x006388E8 0x24 func_006388E8  # OVL2 unaligned
+0x006388E8 0x24 rt_msg_get_ubyte  # OVL2 unaligned; s1:gap
 0x00638910 0x28 rt_msg_set_2byte  # OVL2; s1:exact
-0x00638938 0x38 func_00638938  # OVL2 unaligned
+0x00638938 0x38 rt_msg_get_2byte  # OVL2 unaligned; s1:gap
 0x00638970 0x24 rt_msg_set_u2byte  # OVL2; s1:exact
-0x00638998 0x38 func_00638998  # OVL2 unaligned
+0x00638998 0x38 rt_msg_get_u2byte  # OVL2 unaligned; s1:gap
 0x006389D0 0x38 rt_msg_set_4byte  # OVL2; s1:exact
-0x00638A08 0x60 func_00638A08  # OVL2 unaligned
+0x00638A08 0x60 rt_msg_get_4byte  # OVL2 unaligned; s1:gap
 0x00638A68 0x38 rt_msg_set_u4byte  # OVL2 unaligned; s1:exact
 0x00638AA0 0x60 func_00638AA0  # OVL2
 0x00638B00 0x28 func_00638B00  # OVL2
