@@ -2728,7 +2728,7 @@
 0x00257EC0 0x10 func_00257EC0  # OVL1; tu: char_type.cpp~ (1.0 beta)
 0x00257ED0 0x8 func_00257ED0  # OVL1
 0x00257EE0 0xAC func_00257EE0  # OVL1
-0x00257F90 0x70 func_00257F90  # OVL1
+0x00257F90 0x70 ReleaseDataBuffer__Q23zar4CZARFv  # OVL1; s1:calls by hand (the zdb-world lane: at SOCOM 1's call site)
 0x00258000 0x510 func_00258000  # OVL1
 0x00258510 0x58 func_00258510  # OVL1
 0x00258570 0x30 GetOpenKey__Q23zar4CZARFv  # OVL1; s1:callee by hand (LoadZAR, CZAnimSet::Load and the name tables call it where SOCOM 1's call GetOpenKey; the open-key stack's top or the root -- a vector here, SOCOM 1's a list)
@@ -2741,7 +2741,7 @@
 0x00258B40 0x90 func_00258B40  # OVL1; tu: zar_main.cpp~ (1.0 beta)
 0x00258BD0 0x70 func_00258BD0  # OVL1
 0x00258C40 0xA0 func_00258C40  # OVL1
-0x00258CE0 0x17C func_00258CE0  # OVL1
+0x00258CE0 0x17C Close__Q23zar4CZARFv  # OVL1; s1:calls by hand (the zdb-world lane: the loaders close their archives through it where SOCOM 1's call CZAR::Close)
 0x00258E60 0x14 func_00258E60  # OVL1; size 0x14 (a tail call through t9; the seed ran on into the padding)
 0x00258E80 0x9C func_00258E80  # OVL1
 0x00258F20 0x17C __dt__Q23zar4CZARFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -2762,11 +2762,11 @@
 0x0025A2F0 0x98 func_0025A2F0  # OVL1
 0x0025A390 0x23C func_0025A390  # OVL1
 0x0025A5D0 0x144 Fetch__Q23zar4CZARFPCcPvi  # OVL1; s1:callee
-0x0025A720 0x1C4 func_0025A720  # OVL1
-0x0025A8F0 0x138 func_0025A8F0  # OVL1
+0x0025A720 0x1C4 Fetch__Q23zar4CZARFPCcPPc  # OVL1; s1:calls by hand (the zdb-world lane: the string fetch, at SOCOM 1's call sites)
+0x0025A8F0 0x138 Fetch__Q23zar4CZARFPCcPf  # OVL1; s1:calls by hand (the zdb-world lane: the float fetch, at SOCOM 1's call sites)
 0x0025AA30 0x138 Fetch__Q23zar4CZARFPCcPUi  # OVL1; s1:callee
-0x0025AB70 0x138 func_0025AB70  # OVL1
-0x0025ACB0 0x144 func_0025ACB0  # OVL1
+0x0025AB70 0x138 Fetch__Q23zar4CZARFPCcPi  # OVL1; s1:calls by hand (the zdb-world lane: the int fetch, at SOCOM 1's call sites in the loaders)
+0x0025ACB0 0x144 Fetch__Q23zar4CZARFPCcPb  # OVL1; s1:calls by hand (the zdb-world lane: the bool fetch, at SOCOM 1's call sites)
 0x0025AE00 0x108 FindKey__Q23zar4CKeyFPCc  # OVL1; s1:callee by hand (OpenKey(const char *) calls it on the open key where SOCOM 1's calls zar::CKey::FindKey; the same search by name)
 0x0025AF10 0x114 func_0025AF10  # OVL1
 0x0025B030 0x280 func_0025B030  # OVL1
@@ -4481,14 +4481,14 @@
 0x002D2810 0x18 func_002D2810  # OVL1
 0x002D2830 0x60 func_002D2830  # OVL1
 0x002D2890 0x560 func_002D2890  # OVL1
-0x002D2DF0 0x114 func_002D2DF0  # OVL1
-0x002D2F10 0x114 func_002D2F10  # OVL1
+0x002D2DF0 0x114 InitDescendantsVisuals__Q23zdb5CGridFv  # OVL1; s1:calls by hand (the zdb-world lane: CWorld's InitDescendantsVisuals calls it where SOCOM 1's does)
+0x002D2F10 0x114 InitDescendantsDI__Q23zdb5CGridFv  # OVL1; s1:calls by hand (the zdb-world lane: CWorld's InitDescendantsDI calls it where SOCOM 1's does)
 0x002D3030 0xCB4 func_002D3030  # OVL1
-0x002D3CF0 0xA90 func_002D3CF0  # OVL1
-0x002D4780 0x23C func_002D4780  # OVL1
-0x002D49C0 0x254 func_002D49C0  # OVL1
-0x002D4C20 0xA0 func_002D4C20  # OVL1
-0x002D4CC0 0x150 func_002D4CC0  # OVL1
+0x002D3CF0 0xA90 GetIntersectBatch__Q23zdb5CGridFPPQ23zdb11DiIntersecti  # OVL1; s1:calls by hand (the zdb-world lane: CWorld::GetIntersectBatch calls it where SOCOM 1's does)
+0x002D4780 0x23C GetIntersect__Q23zdb5CGridFPQ23zdb11DiIntersect  # OVL1; s1:calls by hand (the zdb-world lane: CWorld::GetIntersect calls it where SOCOM 1's does)
+0x002D49C0 0x254 GetAltitude__Q23zdb5CGridFPQ23zdb11DiIntersect  # OVL1; s1:calls by hand (the zdb-world lane: CWorld::GetAltitude calls it where SOCOM 1's does)
+0x002D4C20 0xA0 GetHighestAltitude__Q23zdb11DiIntersectFPC6CPnt3Df  # OVL1; s1:calls by hand (the zdb-world lane: at SOCOM 1's call site in GetAltitude)
+0x002D4CC0 0x150 GetNearestIntersect__Q23zdb11DiIntersectFv  # OVL1; s1:calls by hand (the zdb-world lane: at SOCOM 1's call site in GetIntersect)
 0x002D4E10 0x158 func_002D4E10  # OVL1
 0x002D4F70 0x60 func_002D4F70  # OVL1
 0x002D4FD0 0xC func_002D4FD0  # OVL1
@@ -4616,7 +4616,7 @@
 0x002DD690 0x244 func_002DD690  # OVL1
 0x002DD8E0 0x1D0 GetAltitude__Q23zdb7CDIPolyFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002DDAB0 0x78 __dt__Q23zdb7CDIBBoxFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x002DDB30 0x38 func_002DDB30  # OVL1
+0x002DDB30 0x38 __ct__Q23zdb7CDIBBoxFv  # OVL1; s1:calls by hand (the zdb-world lane: at SOCOM 1's call site; 0x38 in both)
 0x002DDB70 0x78 __dt__Q23zdb7CDIPolyFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002DDBF0 0x34 func_002DDBF0  # OVL1
 0x002DDC30 0x1E4 func_002DDC30  # OVL1
@@ -5394,9 +5394,9 @@
 0x00310F20 0x2FC Read__Q23zdb5CNodeFRQ23zdb9CSaveLoad  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00311220 0x104 func_00311220  # OVL1
 0x00311330 0x1EC func_00311330  # OVL1
-0x00311520 0x35C func_00311520  # OVL1
+0x00311520 0x35C Read__Q23zdb5CNodeFRQ23zdb9CSaveLoadPQ23zdb5CNode  # OVL1; s1:calls by hand (the zdb-world lane: CWorld::Read calls it where SOCOM 1's calls the static Read(CSaveLoad&, CNode*); 0x35C against 0x34C)
 0x00311880 0x120 Read__Q23zdb6CModelFRQ23zdb9CSaveLoad  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x003119A0 0x124 func_003119A0  # OVL1
+0x003119A0 0x124 Create__Q23zdb6CModelFRQ23zdb9CSaveLoadPQ23zdb9CAssetLib  # OVL1; s1:calls by hand (the zdb-world lane: the model loader, at SOCOM 1's call site; 0x124 against 0x128)
 0x00311AD0 0x8 func_00311AD0  # OVL1
 0x00311AE0 0x8 func_00311AE0  # OVL1
 0x00311AF0 0xC func_00311AF0  # OVL1
@@ -5646,13 +5646,13 @@
 0x00321390 0x68 GetTexHandle__Q23zdb10CAssetListFPCc  # OVL1; s1:callee
 0x00321400 0xC4 func_00321400  # OVL1
 0x003214D0 0x2C func_003214D0  # OVL1
-0x00321500 0xD0 func_00321500  # OVL1
-0x003215D0 0x88 AddPalette__Q23zdb9CAssetLibFPQ23zdb11CTexPaletteb  # OVL1; s1:align
+0x00321500 0xD0 AddPalette__Q23zdb9CAssetLibFPQ23zdb11CTexPaletteb  # OVL1; s1:calls by hand (the zdb-world lane: takes a bool, and SOCOM 1's palette loader calls AddPalette(lib, pal, false) at the same place; the order matches SOCOM 1's)
+0x003215D0 0x88 AddModel__Q23zdb9CAssetLibFPQ23zdb6CModel  # OVL1; s1:align; s1:calls by hand (the zdb-world lane: it refuses a locked library and sets the model's m_AssetLib at 0xd8 -- AddModel, where s1:align had AddPalette; 0x88 against SOCOM 1's 0x280)
 0x00321660 0xC func_00321660  # OVL1
-0x00321670 0x90 func_00321670  # OVL1
+0x00321670 0x90 AddTexture__Q23zdb9CAssetLibFPQ23zdb8CTexture  # OVL1; s1:calls by hand (the zdb-world lane: at SOCOM 1's call site in LoadTextures_PS2)
 0x00321700 0xBC AddTexture__Q23zdb9CAssetLibFPCc  # OVL1; s1:align
 0x003217C0 0x140 IsNamed__Q23zdb9CAssetLibFPCc  # OVL1; s1:calls
-0x00321900 0x88 func_00321900  # OVL1
+0x00321900 0x88 RootName__Q23zdb9CAssetLibFv  # OVL1; s1:calls by hand (the zdb-world lane: at SOCOM 1's call site in the loaders)
 0x00321990 0x2E8 func_00321990  # OVL1
 0x00321C80 0xB0 func_00321C80  # OVL1
 0x00321D30 0xC func_00321D30  # OVL1
@@ -6468,7 +6468,7 @@
 0x00354C00 0x74 SetName__Q23zdb8CTextureFPCc  # OVL1; s1:align
 0x00354C80 0xE8 __dt__Q23zdb8CTextureFv  # OVL1; s1:align
 0x00354D70 0x14 Release_HTEX__Q23zdb8CTextureFv  # OVL1; tu: ztex_main.cpp~ (1.0 beta); s1:exact
-0x00354D90 0x1B0 func_00354D90  # OVL1
+0x00354D90 0x1B0 __ct__Q23zdb8CTextureFPCc  # OVL1; s1:calls by hand (the zdb-world lane: CWorld's constructor and the texture loader construct through it where SOCOM 1's do)
 0x00354F40 0x38 Init__Q23zdb8CTextureFv  # OVL1; s1:align
 0x00354F80 0x1D0 Read__Q23zdb8CTextureFRQ23zdb9CSaveLoad  # OVL1; s1:align
 0x00355150 0x250 SetupSpecialTextures__Q23zdb8CTextureFv  # OVL1; s1:align
@@ -7945,19 +7945,19 @@
 0x003BB000 0x44 Clear__Q23zdb8CVisDataFv  # OVL1; s1:align
 0x003BB050 0xC0 Read__Q23zdb24CScrollingTexture_ObjectFPQ23zdb9CSaveLoad  # OVL1; s1:calls
 0x003BB110 0x68 __dt__Q23zdb24CScrollingTexture_ObjectFv  # OVL1; s1:align
-0x003BB180 0x1C func_003BB180  # OVL1
+0x003BB180 0x1C __ct__Q23zdb24CScrollingTexture_ObjectFv  # OVL1; s1:calls by hand (CWorld's constructor builds m_ScrollingTexture_Object at 0x5cc through it)
 0x003BB1A0 0x90 __dt__Q23std68list<PQ23zdb12FILTER_PLANE,Q23std32allocator<PQ23zdb12FILTER_PLANE>>Fv  # OVL1; s1:align
 0x003BB230 0x68 __dt__Q23zdb16CPreLight_ObjectFv  # OVL1; s1:calls
-0x003BB2A0 0x1C func_003BB2A0  # OVL1
+0x003BB2A0 0x1C __ct__Q23zdb16CPreLight_ObjectFv  # OVL1; s1:calls by hand (CWorld's constructor builds m_PreLight_Object at 0x5bc through it)
 0x003BB2C0 0x1B0 func_003BB2C0  # OVL1
 0x003BB470 0x68 func_003BB470  # OVL1
-0x003BB4E0 0x1C func_003BB4E0  # OVL1
+0x003BB4E0 0x1C __ct__Q23zdb16CMaterial_ObjectFv  # OVL1; s1:calls by hand (CWorld's constructor builds m_Material_Object at 0x59c through it)
 0x003BB500 0x114 func_003BB500  # OVL1
 0x003BB620 0x68 func_003BB620  # OVL1
-0x003BB690 0x1C func_003BB690  # OVL1
+0x003BB690 0x1C __ct__Q23zdb15CSubSurf_ObjectFv  # OVL1; s1:calls by hand (CWorld's constructor builds m_SubSurf_Object at 0x5ac through it)
 0x003BB6B0 0x98 Read__Q23zdb11CLOD_ObjectFPQ23zdb9CSaveLoad  # OVL1; s1:calls
 0x003BB750 0x68 __dt__Q23zdb11CLOD_ObjectFv  # OVL1; s1:align
-0x003BB7C0 0x1C func_003BB7C0  # OVL1
+0x003BB7C0 0x1C __ct__Q23zdb11CLOD_ObjectFv  # OVL1; s1:calls by hand (CWorld's constructor builds m_LOD_Object at 0x58c through it; the five *_Object constructors keep SOCOM 1's relative order)
 0x003BB7E0 0x75C insert__Q23std96__vector_imp<Q23zdb22CScrollingTexture_band,Q23std41allocator<Q23zdb22CScrollingTexture_band>,0>FPQ23zdb22CScrollingTexture_bandUiRCQ23zdb22CScrollingTexture_band  # OVL1; s1:align
 0x003BBF40 0x9C func_003BBF40  # OVL1
 0x003BBFE0 0x5CC func_003BBFE0  # OVL1
