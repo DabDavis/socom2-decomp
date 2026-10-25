@@ -92,9 +92,15 @@ public:
     static void Init();
     static void Open();
 
-    /* the screen's offset every 2D position is moved by (SOCOM 1's statics) */
+    /* the screen's window in GS coordinates (SOCOM 1's statics: every 2D position is scaled by the
+     * pixel sizes and moved by the top corner) and the 2D camera C2D::Open makes */
+    static float m_fXPixel;
+    static float m_fYPixel;
     static float m_topx;
     static float m_topy;
+    static float m_botx;
+    static float m_boty;
+    static zdb::CCamera *m_p2dcamera;
 
     CUIVariable *m_uivar;   // 0x10
     unsigned int first : 1;   // 0x14
@@ -150,8 +156,16 @@ public:
     unsigned char _6b[0x98 - 0x6b];
 };   // 0x98 bytes
 
+/* a fade's state (SOCOM 1's DWARF); its constructor inline: off, no step, the limit opaque */
 class C2DFade {
 public:
+    C2DFade()
+    {
+        m_fade_enable = 0;
+        m_fade_dx = 0.0f;
+        m_fade_limit = 128.0f;
+    }
+
     unsigned char m_fade_enable;   // 0x0
     float m_fade_dx;   // 0x4
     float m_fade_limit;   // 0x8
@@ -170,7 +184,9 @@ public:
     virtual void SetTrans(float trans);
     virtual void Reset();
     virtual void GetAssetLibs(CLibList &liblist);
-    void Load(float x, float y, float w, float h, zdb::CTexHandle *tex);
+    void Load(float x1, float y1, float x2, float y2, zdb::CTexHandle *tex);
+    void Load(float x, float y, zdb::CTexHandle *tex);
+    void MakePacket(zdb::CCamera *cam, zdb::CTextureRelocMgr *mgr, const CMatrix *m);
     void SetColor(float r, float g, float b);
     void SetColor(const CPnt3D &color);
     float *GetColor();

@@ -6701,11 +6701,11 @@
 0x003641F0 0xD8 GetAssetLibs__9C2DBitmapFRQ23C2D8CLibList  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003642D0 0xB4 TickFade__9C2DBitmapFv  # OVL1; s1:align
 0x00364390 0x18 Reset__9C2DBitmapFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x003643B0 0x2AC func_003643B0  # OVL1
+0x003643B0 0x2AC MakePacket__9C2DBitmapFPQ23zdb7CCameraPQ23zdb16CTextureRelocMgrPC7CMatrix  # OVL1; s1:calls by hand (c2dbitmap.cpp: both Draws call it where SOCOM 1's call MakePacket, with (camera, relocator, matrix or 0); its first act is the relocator's PreGetSprPacket on the handle)
 0x00364660 0x1C SetPos__9C2DBitmapFiiii  # OVL1; s1:order by hand (c2dbitmap.cpp: SOCOM 1's SetPos(int,int,int,int), 0x1C in both, before SetPos(int,int) as there)
 0x00364680 0x50 SetPos__9C2DBitmapFii  # OVL1; s1:align
 0x003646D0 0x98 Load__9C2DBitmapFffffPQ23zdb10CTexHandle  # OVL1; s1:callee (CFader's constructor's second call, as SOCOM 1's)
-0x00364770 0xB8 func_00364770  # OVL1
+0x00364770 0xB8 Load__9C2DBitmapFffPQ23zdb10CTexHandle  # OVL1; s1:order by hand (c2dbitmap.cpp: SOCOM 1's Load(x, y, handle) right after Load by the corners as there; the handle stored, the missing-texture test, then SetPos(int, int) inlined)
 0x00364830 0x1C SetUV__9C2DBitmapFffff  # OVL1; s1:exact
 0x00364850 0x8 GetTrans__9C2DBitmapFv  # OVL1; s1:order by hand (c2dbitmap.cpp: SOCOM 1's GetTrans, 0x8 in both, after SetUV as there; the first row's alpha)
 0x00364860 0x90 SetTrans__9C2DBitmapFf  # OVL1; by hand (c2dbitmap.cpp: slot 11 of C2DBitmap's vtable 0x406E80, SOCOM 1's SetTrans in SOCOM 1's order after GetTrans; both rows' alpha, the blending flag re-derived)

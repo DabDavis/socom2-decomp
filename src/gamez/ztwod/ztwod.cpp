@@ -24,16 +24,10 @@ extern unsigned int data_004A44C4;
 extern unsigned int data_004A44C8;
 extern float data_004A44AC;
 
-/* C2D's statics past SOCOM 1's (OVL1 bss): two scales the HUD multiplies by (MapCompass::SetPos;
- * the first the screen's width over 640), SOCOM 1's two at 1.0, the window's far corner and the
- * 2D camera (SOCOM 1 kept them in small data: gp-26224..-26200). Placeholders until named */
-extern float data_0049E9F0;
-extern float data_0049E9F4;
+/* C2D's two statics past SOCOM 1's (OVL1 bss): set to 1.0 by Init and read nowhere else seen yet.
+ * Placeholders until named */
 extern float data_0049E9F8;
 extern float data_0049E9FC;
-extern float data_0049EA08;
-extern float data_0049EA0C;
-extern zdb::CCamera *data_0049E9E0;
 
 C2D::C2D()
 {
@@ -69,11 +63,11 @@ void C2D::Init()
     float hh = 0.5f * data_004A44C8;
 
     m_topx = 2048.0f - hw;
-    data_0049EA08 = 2048.0f + hw;
+    m_botx = 2048.0f + hw;
     m_topy = 2048.0f - hh;
-    data_0049EA0C = 2048.0f + hh;
-    data_0049E9F0 = data_004A44C4 / 640.0f;
-    data_0049E9F4 = data_004A44AC;
+    m_boty = 2048.0f + hh;
+    m_fXPixel = data_004A44C4 / 640.0f;
+    m_fYPixel = data_004A44AC;
     data_0049E9F8 = 1.0f;
     data_0049E9FC = 1.0f;
 }
@@ -81,8 +75,8 @@ void C2D::Init()
 /* the 2D camera, made once */
 void C2D::Open()
 {
-    if (!data_0049E9E0)
-        data_0049E9E0 = new zdb::CCamera;
+    if (!m_p2dcamera)
+        m_p2dcamera = new zdb::CCamera;
 }
 
 /* the children drawn while on */
