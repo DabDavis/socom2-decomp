@@ -352,6 +352,8 @@ public:
 
 namespace zdb {
 
+class CLight;
+
 class CVisual : public tag_VISUAL_HEAD {
 public:
     /* the holders and a word set by bit 10, CVisual's own ahead of its table: its constructor
@@ -386,6 +388,20 @@ public:
     static CCamera *m_camera;
     /* the decals of one view let go of (SOCOM 1's, by name) */
     void DereferenceDecals(unsigned int vid);
+    /* a light added to the local lights the VU code reads: its position and range, its colour and
+     * the inverse of its falloff, the light itself listed (SOCOM 1's static) */
+    static void AddLocalLight(CLight *light, CPnt3D *pos);
+    /* the local lights: two quadwords each -- position and squared range, colour and falloff --
+     * the lights and their count (SOCOM 1's statics, 320 and 40 bytes) */
+    struct LOCAL_LIGHT {
+        float m_pos[3];   // 0x0
+        float m_rangeSq;   // 0xc
+        float m_color[3];   // 0x10
+        float m_invFalloff;   // 0x1c
+    };
+    static LOCAL_LIGHT localLightBuf[10];
+    static CLight *localLightPtr[10];
+    static int m_local_light_cnt;
     /* a decal unlinked from its view's list (SOCOM 1's, 0x3B37A0) */
     void RemoveDecal(class CDecal *decal);
     /* a decal projected onto the visual (SOCOM 1's, by name) */
