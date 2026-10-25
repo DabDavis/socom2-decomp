@@ -17,6 +17,14 @@ extern unsigned char data_0044F4D0[0x40];
 
 void func_00300680();   /* the Medius connection closed */
 void func_006305C8(void *a, void *b);   /* (OVL2: the DME's set up) */
+
+extern unsigned char data_0044F568[];   /* the room list (the rooms' unit's) */
+extern BriefingRoom data_0044FAB0;   /* a room (the lobby unit's) */
+extern BriefingRoom *data_0044FE10;   /* the room we are in, if any */
+void func_002E4010(void *rooms);   /* the room list released */
+void func_002EC140(LadderList *list);   /* a player ladder deleted (LadderList::DeleteAll) */
+void func_002E81A0();   /* the clan team forgotten (the clan unit's) */
+void func_00305640();   /* (the unit after the friends') */
 }
 
 /* the DME set up, once (SOCOM II's; OVL1 0x2E05D0) */
@@ -27,6 +35,56 @@ void *CZOnlineLobby::DMEInit()
         data_0044F510 = 1;
     }
     return data_0044F490;
+}
+
+/* the lobby's lists given back: each deleted and its storage freed, the UI variables forgotten,
+ * the room we were in emptied (SOCOM 1's, which also freed the rooms' and games' own storage;
+ * OVL1 0x2DF8E0). Its ReleaseVector instances follow it, in reverse of their first use here. The
+ * UI variables cleared are those Init creates but the lobby's names (0xc0, 0xc4) and the clan's
+ * (0xec-0xf4) */
+void CZOnlineLobby::ReleaseUIResources()
+{
+    func_002E4010(data_0044F568);
+    func_002EC140(&LadderLeaders);
+    ReleaseVector(LadderLeaders);
+    func_002EC140(&LadderRanking);
+    ReleaseVector(LadderRanking);
+    ClanLadderRanking.DeleteAll();
+    ReleaseVector(ClanLadderRanking);
+    ClanLadderLeaders.DeleteAll();
+    ReleaseVector(ClanLadderLeaders);
+    InvitationVec.DeleteAll();
+    ReleaseVector(InvitationVec);
+    ClanInvitationVec.DeleteAll();
+    ReleaseVector(ClanInvitationVec);
+    ClanMemberVec.DeleteAll();
+    ReleaseVector(ClanMemberVec);
+    data_0044FAB0.m_games.DeleteAll();
+    ReleaseVector(data_0044FAB0.m_games);
+    FriendVec.DeleteAll();
+    ReleaseVector(FriendVec);
+    func_002E81A0();
+    func_00305640();
+    uiv_GameList = 0;
+    uiv_RoomList = 0;
+    uiv_RoomPlayerList = 0;
+    uiv_MediusChatRecvVar = 0;
+    uiv_MediusMOTD = 0;
+    uiv_ClanMessages = 0;
+    uiv_MediusMyInvites = 0;
+    uiv_ClanInvitations = 0;
+    uiv_ClanRoster = 0;
+    uiv_MediusLadderTop10 = 0;
+    uiv_MediusLadderRanking = 0;
+    uiv_ClanLadderLeaders = 0;
+    uiv_ClanLadderRanking = 0;
+    g_bJoiningRandomGame = false;
+    BriefingRoom *room = data_0044FE10;
+
+    if (room) {
+        room->m_games.DeleteAll();
+        ReleaseVector(room->m_games);
+    }
 }
 
 /* the state's handler called with the flag, when the state has one (SOCOM II's; OVL1 0x2DFE10) */

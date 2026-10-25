@@ -78,7 +78,6 @@ public:
 };
 
 extern "C" {
-extern unsigned char theUIVarManager[];
 CUIVariable *func_003857C0(void *mgr, const char *name, void *rdr, int longevity);   /* CUIVarManager::Add */
 }
 
@@ -88,7 +87,7 @@ void CZOnlineLobby::PasswordSecurity()
     CValve *valve = CValve::Create("SecurePassword", VALVE_TYPE_1);
 
     if (valve->IsOff())
-        func_003862A0(func_003857C0(theUIVarManager, "PLAYERPASSWORD", 0, 1), "");
+        func_003862A0(func_003857C0(&theUIVarManager, "PLAYERPASSWORD", 0, 1), "");
 }
 
 /* the session ended: the lobby's queue told to end it (SOCOM 1's, which ran the Medius calls

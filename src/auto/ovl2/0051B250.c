@@ -7,13 +7,13 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_0052F400(s32, s32);                        /* extern */
-s32 func_0052F470(s32, s32);                        /* extern */
+s32 GetRouteIndex__6CAiMapFPCQ26CAiMap5route(s32, s32); /* extern */
+s32 GetRoute__6CAiMapFUi(s32, s32);                 /* extern */
 
 void func_0051B250(s32 arg0, char *arg1, s32 arg2, s32 *arg3, s32 arg4) {
     if (arg2 != 0) {
-        SC_MEMBER(arg1, s32 *, 0x14) = func_0052F470(arg4, *arg3);
+        SC_MEMBER(arg1, s32 *, 0x14) = GetRoute__6CAiMapFUi(arg4, *arg3);
         return;
     }
-    *arg3 = func_0052F400(arg4, SC_MEMBER(arg1, s32 *, 0x14));
+    *arg3 = GetRouteIndex__6CAiMapFPCQ26CAiMap5route(arg4, SC_MEMBER(arg1, s32 *, 0x14));
 }

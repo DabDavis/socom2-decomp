@@ -316,7 +316,10 @@ static inline CCharacterType *nth_type(unsigned int n)
  * OPEN (0x84 against 0x88): the range test. The target materialises it (sltu v0, then bnez to the
  * walk, the base zeroed in the delay slot and a `b` to the self test; SOCOM 1's has the same
  * shape), this build branches on `sltu at`; the test as `size() > id`, an if/else, the base
- * zeroed first and an inline bool helper all compile to one of two shorter forms */
+ * zeroed first and an inline bool helper all compile to one of two shorter forms. An inline
+ * `type_at(n)` (`if (n >= size()) return 0; return nth_type(n);`) gives the target's sltu/bnez
+ * shape, but is an inline height too tall at level 4 (size() and the walk called); at level 5 it
+ * is 0x8C, the zero in v0 where the target's base is v1 (a result local in the helper: 0x7C) */
 char *CCharacterType::GetBaseName()
 {
     CCharacterType *base = m_parentID < m_char_list.size() ? nth_type(m_parentID) : 0;

@@ -1059,6 +1059,47 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - a 64-bit GIF-tag constant written as one literal matches li/dsll32/li/or (FIFO_Signal);
   - `new T` as an inline call's argument is checked a level deeper, as its own statement it
     inlines whole (CRdrEditor::push) -- an inline height, to recheck at the corrected level.
+- **Tells from the zdb render classes** (zvid_init.cpp, vis_mesh.cpp, vis_main.cpp, vis_decal.cpp):
+  - a pointer the target keeps in v0 throughout and stores at the end is the return value (the
+    mangled name does not carry it): declared void, GetTextureSelectBlock_ver2 spills a saved
+    register;
+  - `unsigned char *flag = &p->u8[2]` gives the target's address computed once and stored
+    through; a cast on the base does not;
+  - a loop count loaded from a halfword but declared `unsigned int` swaps the count's and the
+    counter's saved registers into the target's order;
+  - a single-case `switch` gives `beq; nop; b`;
+  - a GS packet written through a cursor apart from the packet's start, one `p++` per quadword,
+    gives SOCOM II's layout (SetGSReg, zVid_Scissor);
+  - MW 3.0 inlines float-to-unsigned conversion where SOCOM 1 called `fptoui`;
+  - zbody.h's RTArray serves the decal arrays too (the same 0x20 bytes).
+- **Tells from the AI maps** (ai_maptable.cpp, ai_mapio.cpp):
+  - a field compared with a parameter goes first in the `bne` only when read into a local first
+    (`aid = x.m_actionId; if (aid == id)`); both spellings of `x.f == id` put the parameter first;
+  - `i = m_index + (int)(x - m_start)` loads m_index before the subtraction; without the cast the
+    subtraction is scheduled first;
+  - a walk over `this->m_table` keeps `this` in a saved register only in a non-const member;
+    through a cast `this` or a reference local MW keeps the table's address (GetLocation is
+    non-const in SOCOM II);
+  - each class-vector deleter destructor in ai_map.cpp's tail calls its own clear out of line,
+    unlike include/vector's in-place destroy; SOCOM II's CAiMap::Read is 0x51AFE0, handing map
+    versions 19-23 to 0x51AD90, 0x51AB50, 0x51A910, 0x51A6D0, 0x51A490.
+- **Tells from the file I/O, round 2** (util_stable.cpp, util_sonyio.cpp, util_main.cpp):
+  - a const member walking a pointer vector through a cast `this` hoists `&size_`/`&data_` into
+    saved registers; the non-const member does not (CSTable::FindString is non-const in SOCOM II);
+  - an empty loop stepping a class iterator with postfix `i++` puts its entry test at the end of
+    the function (Relocate);
+  - MW puts a constant temporary bound to a const-reference parameter in static data: `resize(n,
+    0)` uses SOCOM 1's `@533`, SOCOM II's 0x3E0658;
+  - `p = buf = malloc()` keeps v0; `buf = malloc(); p = buf;` reloads from the spill slot (Pack);
+  - a literal passed on every loop pass inside an inline helper stays in a saved register only as
+    a local of that helper (`const char *delim`);
+  - `*s != 0` as a loop test lets the body's char compare reuse the loaded byte; a bare `*s`
+    re-extends it (CFileIO::Open); `(bool)c && ...` materialises the char test inside a loop's
+    `&&` (UTF8Strncpy);
+  - `s = f(); if (!s) return s;` avoids the `move v0,zero` of `return 0`, and `s = p;` falling
+    into a shared `return s` avoids a branch to the next instruction (CreateString);
+  - newlib's strtok tail-jumps into strtok_r right after it: the seed had them as one 0xE8 row
+    (split at 0x19AA20) -- a `j` to the next instruction is a tail call too.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
