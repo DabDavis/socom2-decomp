@@ -3677,8 +3677,8 @@
 0x0029E680 0x8 Virtual60__7CEntityFv  # OVL1; slot 0x60 of __vt__7CEntity, new in SOCOM II (returns 0) -- the name is ours; ent_main.cpp
 0x0029E690 0x8 Virtual64__7CEntityFv  # OVL1; slot 0x64 of __vt__7CEntity, new in SOCOM II (returns 0) -- the name is ours; ent_main.cpp
 0x0029E6A0 0x8 Virtual68__7CEntityFv  # OVL1; slot 0x68 of __vt__7CEntity, new in SOCOM II (returns 0) -- the name is ours; ent_main.cpp
-0x0029E6B0 0x80 func_0029E6B0  # OVL1
-0x0029E730 0x174 func_0029E730  # OVL1
+0x0029E6B0 0x80 UpdateCompassAnchor__7CEntityFv  # OVL1; slot 0x6C of __vt__7CEntity, new in SOCOM II: the entity's compass anchor (0xC4) moved to the entity's position and enabled while it lives, unless locked -- the name is ours; ent_main.cpp
+0x0029E730 0x174 CreateCompassAnchor__7CEntityFiPCc  # OVL1; new in SOCOM II: type 11 makes a "VEHICLE" anchor through CCompass::CreateAnchor (hidden and locked unless the name holds "Turret"), names and types it, keeps it at 0xC4 -- the name is ours; ent_main.cpp
 0x0029E8B0 0x30 OnDeath__7CEntityFv  # OVL1; s1:align; split from 0x38: the last 8 bytes are CEntityCtrl::OnDeath
 0x0029E8E0 0x8 OnDeath__11CEntityCtrlFv  # OVL1; slot 0x18 of __vt__11CEntityCtrl (0x406248) points here, inside the old OnDeath row; SOCOM 1 links the same pair in the same order (0x1EE390, 0x1EE3C0)
 0x0029E8F0 0x8 OnRecycleEntity__7CEntityFP7CEntity  # OVL1; s1:vtable by hand (slot 0x54 of __vt__7CEntity, SOCOM 1's slot 0x48 with SOCOM II's three new slots before it; empty as SOCOM 1's; ent_main.cpp)
@@ -3718,28 +3718,28 @@
 0x0029FF60 0x68 __dt__Q23std54__vector_deleter<7CTarget,Q23std19allocator<7CTarget>>Fv  # OVL1; s1:align
 0x0029FFD0 0xB8 remove_copy_if<Q33std44list<P7CEntity,Q23std20allocator<P7CEntity>>19generic_iterator<0>,Q33std44list<P7CEntity,Q23std20allocator<P7CEntity>>19generic_iterator<0>,PFP7CEntity_b>__3stdFQ33std44list<P7CEntity,Q23std20allocator<P7CEntity>>19generic_iterator<0>Q33std44list<P7CEntity,Q23std20allocator<P7CEntity>>19generic_iterator<0>Q33std44list<P7CEntity,Q23std20allocator<P7CEntity>>19generic_iterator<0>PFP7CEntity_b_Q33std44list<P7CEntity,Q23std20allocator<P7CEntity>>19generic_iterator<0>  # OVL1; MSL's remove_copy_if, called by the remove_if instance before it; ent_main.cpp
 0x002A0090 0x8 clear__Q23std54__vector_deleter<7CTarget,Q23std19allocator<7CTarget>>Fv  # OVL1; s1:callee (~__vector_deleter<CTarget> at 0x29FF60 calls it where SOCOM 1's calls clear__Q23std54__vector_deleter<7CTarget,...>Fv, 0x1EF830; the elements' destruction is empty, so only the count is cleared); SetUpdateTargetList calls it too
-0x002A00A0 0xC func_002A00A0  # OVL1
-0x002A00B0 0xC func_002A00B0  # OVL1
+0x002A00A0 0xC end__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>Fv  # OVL1; by hand (the pointer lists' end() out of line: iterator(this + 4), the sentinel, through the hidden return; the range init 0x317720 calls it before each insert as push_back does, 0x3C0C20's push_back copy and 0x33E510's clear too; ent_main.cpp's copy, the first linked)
+0x002A00B0 0xC begin__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>Fv  # OVL1; by hand (the pointer lists' begin() out of line: iterator(end_.next_) through the hidden return; 0x33E510's inlined clear calls it with end() before the range erase, as clear() does; ent_main.cpp's copy, the first linked)
 0x002A00C0 0x60 __dt__11CEntityListFv  # OVL1; s1:ref (taken by address where SOCOM 1 takes __dt__11CEntityListFv's)
-0x002A0120 0x38 func_002A0120  # OVL1
-0x002A0160 0x28 func_002A0160  # OVL1
-0x002A0190 0x70 func_002A0190  # OVL1
-0x002A0200 0x108 func_002A0200  # OVL1
-0x002A0310 0x140 func_002A0310  # OVL1
+0x002A0120 0x38 GetRange__7CTargetFv  # OVL1; s1:order by hand (SOCOM 1's GetRange, 0x1EF920, first of ent_target.cpp's: the range's square root taken once, flag bit 0 -- a word masked by hand at 0x2C in SOCOM II, sqrt.s inline); ent_target.cpp
+0x002A0160 0x28 __ct__7CTargetFv  # OVL1; s1:order by hand (SOCOM 1's CTarget(), 0x1EFAD0, out of line as there: the entity, the distances, three new words and the flags word cleared); ent_target.cpp
+0x002A0190 0x70 FindTarget__11CTargetListFP7CEntity  # OVL1; s1:order by hand (SOCOM 1's FindTarget, 0x1EFBA0, after the constructor as there: the target whose entity matches, stepping 48 -- SOCOM II's CTarget is 0x30 bytes); ent_target.cpp
+0x002A0200 0x108 AddTarget__11CTargetListFP7CEntityP7CEntity  # OVL1; new in SOCOM II (UpdateTargetList calls it): a default CTarget pushed (vector<CTarget>::insert out of line), then SOCOM 1's CTarget::Update inlined on the back -- the vector to the target off the positions at 0x1C, its square, the range stale, a new target's state cleared; the name is ours; ent_target.cpp
+0x002A0310 0x140 RemoveTarget__11CTargetListFP7CEntity  # OVL1; new in SOCOM II (UpdateTargetList calls it): std::remove over the targets on an entity (find inlined, remove_copy 0x2A1210 called), then erase 0x2A19C0; the name is ours; ent_target.cpp
 0x002A0450 0x468 UpdateTargetList__7CEntityFb  # OVL1; s1:callee (CEntity::PreTickAll calls it with false and func_0029FB10, SOCOM 1's RecycleEntity(Ui,CEntity*,b), with true, at the places SOCOM 1's call UpdateTargetList__7CEntityFb, 0x1EFBF0); ent_target.cpp
-0x002A08C0 0x148 func_002A08C0  # OVL1
+0x002A08C0 0x148 CountAwareness__7CEntityFv  # OVL1; new in SOCOM II (called from OVL2, 0x5CCCD0): every entity's aware counter (0xDC) cleared, then each live entity that keeps a target list counts itself on every aware (flag 0x200) target sharing none of its teams -- the name is ours; ent_target.cpp
 0x002A0A10 0x3C8 func_002A0A10  # OVL1
 0x002A0DE0 0x18C ReplaceTargetList__7CEntityFP7CEntityP7CEntity  # OVL1; s1:callee (DoRecycleEntity calls it with the recycled entity and the stand-in, where SOCOM 1's calls ReplaceTargetList__7CEntityFP7CEntityP7CEntity, 0x1F0930); ent_target.cpp
 0x002A0F70 0x150 SetIncludeInTargetList__7CEntityFb  # OVL1; s1:align
 0x002A10C0 0x74 SetUpdateTargetList__7CEntityFb  # OVL1; s1:align
 0x002A1140 0x20 _sort_target__FRC7CTargetRC7CTarget  # OVL1; s1:align
 0x002A1160 0xAC func_002A1160  # OVL1
-0x002A1210 0xC4 func_002A1210  # OVL1
+0x002A1210 0xC4 remove_copy<Q33std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>8iterator,Q33std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>8iterator,P7CEntity>__3stdFQ33std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>8iteratorQ33std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>8iteratorQ33std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>8iteratorRCP7CEntity_Q33std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>8iterator  # OVL1; MSL's remove_copy over vector<CTarget> iterators (by value, homed) with the entity by reference, the result through the hidden return; RemoveTarget's inlined std::remove calls it (SOCOM 1's remove_copy<P7CTarget,P7CTarget,P7CEntity>, 0x1F0EF0, over raw pointers); ent_target.cpp
 0x002A12E0 0x59C func_002A12E0  # OVL1
 0x002A1880 0x128 func_002A1880  # OVL1
 0x002A19B0 0x8 func_002A19B0  # OVL1
-0x002A19C0 0x110 func_002A19C0  # OVL1
-0x002A1AD0 0x6FC func_002A1AD0  # OVL1
+0x002A19C0 0x110 erase__Q23std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>FP7CTargetP7CTarget  # OVL1; s1:name by hand (SOCOM 1's erase of vector<CTarget>, 0x1F1470, over raw pointers: the tail assigned down, the size cut; RemoveTarget calls it); ent_target.cpp
+0x002A1AD0 0x6FC insert__Q23std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>FP7CTargetUiRC7CTarget  # OVL1; s1:name by hand (SOCOM 1's insert of vector<CTarget>, 0x1F15C0: the length error, then the grow-or-shift; AddTarget's push_back calls it, and 0x2A1160); ent_target.cpp
 0x002A21D0 0x19C func_002A21D0  # OVL1
 0x002A2370 0x198 func_002A2370  # OVL1
 0x002A2510 0x44 UpdateNextPosition__7CEntityFv  # OVL1; s1:align
@@ -3757,19 +3757,19 @@
 0x002A2730 0x8 PreTick__11CEntityCtrlFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002A2740 0x4C __dt__11CEntityCtrlFv  # OVL1; s1:align
 0x002A2790 0x44 __ct__11CEntityCtrlFi  # OVL1; s1:align
-0x002A27E0 0x110 func_002A27E0  # OVL1
-0x002A28F0 0x1C4 func_002A28F0  # OVL1
-0x002A2AC0 0x4C func_002A2AC0  # OVL1
-0x002A2B10 0x70 func_002A2B10  # OVL1
-0x002A2B80 0x40 func_002A2B80  # OVL1
-0x002A2BC0 0x8 func_002A2BC0  # OVL1
-0x002A2BD0 0x14 func_002A2BD0  # OVL1
-0x002A2BF0 0x8 func_002A2BF0  # OVL1
-0x002A2C00 0x64 func_002A2C00  # OVL1
-0x002A2C70 0xA0 func_002A2C70  # OVL1
-0x002A2D10 0x30 func_002A2D10  # OVL1
-0x002A2D40 0xE8 func_002A2D40  # OVL1
-0x002A2E30 0x80 func_002A2E30  # OVL1
+0x002A27E0 0x110 DeleteAnchor__8CCompassFP14CCompassAnchor  # OVL1; s1:calls by hand (SOCOM 1's CCompass::DeleteAnchor, 0x24E1A0: the anchor swapped to the end of the compass vector and popped, then deleted -- SOCOM II's frees the name and the point list; ~CEntity calls it on the entity's anchor); compass.cpp
+0x002A28F0 0x1C4 CreateAnchor__8CCompassFRC6CPnt3DPCc  # OVL1; s1:calls by hand (SOCOM 1's CCompass::CreateAnchor, 0x24E290: new, the anchor's inline constructor's bits, the position copied in, the name freed and strdup'd, push_back on the one compass vector -- 0x2C bytes now with SOCOM II's point list; CMission::CreateCompassNavPoints calls it where SOCOM 1's calls CreateAnchor); compass.cpp
+0x002A2AC0 0x4C Close__8CCompassFv  # OVL1; s1:order by hand (after CreateAnchor as SOCOM 1's Close, 0x24E440: the inline clear, then the free idiom's four pieces out of line -- the temporary a vector of anchors); compass.cpp
+0x002A2B10 0x70 __dt__Q23std62vector<P14CCompassAnchor,Q23std28allocator<P14CCompassAnchor>>Fv  # OVL1; by hand (Close's free idiom: the temporary's destructor, -1, three this-tests and the array freed; follows Close in reverse of first use); compass.cpp
+0x002A2B80 0x40 swap__Q23std62vector<P14CCompassAnchor,Q23std28allocator<P14CCompassAnchor>>FRQ23std62vector<P14CCompassAnchor,Q23std28allocator<P14CCompassAnchor>>  # OVL1; by hand (Close's free idiom: the swap, capacity, data, size); compass.cpp
+0x002A2BC0 0x8 clear__Q23std62vector<P14CCompassAnchor,Q23std28allocator<P14CCompassAnchor>>Fv  # OVL1; by hand (Close's free idiom: the clear, the size zeroed); compass.cpp
+0x002A2BD0 0x14 __ct__Q23std62vector<P14CCompassAnchor,Q23std28allocator<P14CCompassAnchor>>Fv  # OVL1; by hand (Close's free idiom: the temporary's constructor, three words zeroed); compass.cpp
+0x002A2BF0 0x8 Open__8CCompassFv  # OVL1; s1:exact by hand (SOCOM 1's Open, 0x24E490: reserve(48) as a tail call); compass.cpp
+0x002A2C00 0x64 SetName__14CCompassAnchorFPCc  # OVL1; new in SOCOM II out of line (SOCOM 1's CreateAnchor inlines the same free/strdup of m_name at 0x10) -- the name is ours; compass.cpp
+0x002A2C70 0xA0 GetPoint__14CCompassAnchorFP6CPnt3D  # OVL1; new in SOCOM II: the current point copied out (and noted as the last given), false for none; MapCompass::Tick calls it -- the name is ours; compass.cpp
+0x002A2D10 0x30 SetPoint__14CCompassAnchorFi  # OVL1; new in SOCOM II: the anchor's current point (0x18), -1 when the index is negative or past the point list's size -- the name is ours; compass.cpp
+0x002A2D40 0xE8 AddPoint__14CCompassAnchorFPC6CPnt3D  # OVL1; new in SOCOM II: a point found in the anchor's list or pushed on it, its index returned -- the name is ours; compass.cpp
+0x002A2E30 0x80 __dt__8CCompassFv  # OVL1; s1:align by hand (SOCOM 1's __dt__8CCompassFv, 0x259040: the implicit destructor; five this-tests here -- CCompass, CCompassAnchorVec, the pointer vector's three); __sinit_compass.cpp registers it; compass.cpp
 0x002A2EB0 0x2C0 func_002A2EB0  # OVL1
 0x002A3170 0x7B4 func_002A3170  # OVL1
 0x002A3930 0x14 func_002A3930  # OVL1
@@ -5501,8 +5501,8 @@
 0x00316E30 0x224 __ct__Q23zdb5CNodeFv  # OVL1; s1:callee by hand (CZAnim::GetNodes news 0xC0 bytes -- sizeof CNode -- and calls it, as SOCOM 1's CNode constructor stores __vt__Q23zdb5CNode)
 0x00317060 0x64C InitNodeParams__3zdbFPQ23zdb15tag_NODE_PARAMSPCQ23zdb15tag_NODE_PARAMS  # OVL1; s1:align
 0x003176B0 0x6C func_003176B0  # OVL1
-0x00317720 0x78 func_00317720  # OVL1
-0x003177A0 0x18 func_003177A0  # OVL1
+0x00317720 0x78 init<Q33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<1>>__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>FQ33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<1>Q33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<1>_v  # OVL1; by hand (the list copy constructor's range init over const iterators by value, homed: end() and the deleter's insert per element; CNode::SetParentHasVisuals calls it; include/list, open: the target calls end() out of line, 0x2A00A0)
+0x003177A0 0x18 __ct__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>FRCQ23std14allocator<PCv>  # OVL1; by hand (the pointer lists' deleter built from an allocator, out of line like the default one: the list copy constructor's first call -- CNode::SetParentHasVisuals hands it the model's list; include/list, the entity lane)
 0x003177C0 0x60 __dt__Q23std56list<PQ23zdb7CVisual,Q23std26allocator<PQ23zdb7CVisual>>Fv  # OVL1; s1:align; the deferred visuals' destructor (registered for 0x45C2D8 by __sinit_node_main.cpp; it calls the pointer list deleter's, 0x1EA2D0)
 0x00317820 0x80 __dt__Q23zdb14CTickLightListFv  # OVL1; s1:unit (registered for CLight::m_tick_list by __sinit_node_main.cpp, as SOCOM 1's registers CTickLightList's destructor; was 0x3177C0's name by alignment)
 0x003178A0 0xA4 SetModel__Q23zdb5CNodeFPQ23zdb6CModel  # OVL1; s1:align
@@ -8514,7 +8514,7 @@
 0x003FFF60 0x44 __sinit_con_ps2.cpp  # OVL1 data area; a static initialiser; s1~ body.cpp (shape 0.52, a hint); s1:unit by hand (the entity lane: builds CConsole::m_console with "default console" and registers ~CConsole -- con_ps2.cpp's initialiser, as s1units guessed; the s1~ body.cpp hint was wrong)
 0x003FFFB0 0x7C __sinit_ent_main.cpp  # OVL1 data area; a static initialiser; s1:unit ent_main.cpp (exact)
 0x00400030 0x8C __sinit_ent_target.cpp  # OVL1 data area; a static initialiser; s1~ ent_target.cpp (shape 0.60, a hint); s1:unit by hand (the entity lane: ent_target.cpp's own initialiser, emitted by the hand unit; s1units' guess)
-0x004000C0 0x34 func_004000C0  # OVL1 data area; a static initialiser
+0x004000C0 0x34 __sinit_compass.cpp  # OVL1 data area; a static initialiser; the compass unit's initialiser (the entity lane): theCompass's three words zeroed, ~CCompass registered with __register_global_object; the file name is ours
 0x00400100 0x5C func_00400100  # OVL1 data area; a static initialiser; s1~ fts_main.cpp (shape 0.47, a hint)
 0x00400160 0x1D0 func_00400160  # OVL1 data area; a static initialiser
 0x00400330 0x68 func_00400330  # OVL1 data area; a static initialiser

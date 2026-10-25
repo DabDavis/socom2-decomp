@@ -53,3 +53,78 @@ void CEntity::SetIncludeInTargetList(bool on)
     }
     m_include_in_targetlist = on;
 }
+
+/* how many enemies are aware of each entity: every live entity that keeps a target list counts
+ * itself against each target it is aware of (flag 0x200) that shares none of its teams (new in
+ * SOCOM II, called from OVL2; the names are ours). The const walk initialises its iterator from
+ * begin() (two copies, then a register; the ticks assign theirs); the target list's end is
+ * re-read every pass.
+ * OPEN, 8 bytes long: the outer walk's copies are right, but MW folds the target walk's first
+ * test (begin against begin + size) into a test of the size -- the README's one-level begin()
+ * tell, on the class vector this time (include/vector gives the pointer vector's begin() three
+ * levels, the class vector's one) -- and hoists &e->m_team; `!(t == end())`, a raw team test
+ * and a const entity pointer are no better */
+void CEntity::CountAwareness()
+{
+    for (CEntityList::const_iterator it = GetEntityList().begin(); it != GetEntityList().end(); ++it) {
+        CEntity *e = *it;
+
+        e->m_aware_counter = 0;
+        if (e->m_type != ENT_TYPE_RECYCLE && e->m_isAlive && e->m_update_targetlist)
+            for (CTargetList::iterator t = e->m_targets.begin(); t != e->m_targets.end(); ++t)
+                if ((*t).m_flags & 0x200) {
+                    CEntity *te = (*t).m_ent;
+
+                    if (te->IsEnemy(e))
+                        te->m_aware_counter++;
+                }
+    }
+}
+
+/* the targets on an entity dropped (new in SOCOM II, UpdateTargetList's: std::remove inlined,
+ * its remove_copy and the erase called; the name is ours). The erase (0x2A19C0) matches.
+ * OPEN, 4 bytes short: MW inlines std::remove one level here -- find's iterator ==, * and the
+ * entity compare, and the iterator's copy constructor, called out of line -- where the target
+ * inlines find whole with its iterators in memory. remove_copy's copy (0x2A1210) is 8 bytes long:
+ * the target stores the m_ent its compare loaded, MW reloads it (the compare taking the entity by
+ * reference or by value alike) */
+void CTargetList::RemoveTarget(CEntity *e)
+{
+    erase(std::remove(begin(), end(), e), end());
+}
+
+/* a target added for an entity and seen at once (new in SOCOM II, UpdateTargetList's; the name
+ * is ours) */
+void CTargetList::AddTarget(CEntity *self, CEntity *e)
+{
+    push_back(CTarget());
+    back().Update(self, e);
+}
+
+/* the target on an entity, or none (SOCOM 1's; the end taken once, the walk's test the iterator's
+ * != materialised) */
+CTarget *CTargetList::FindTarget(CEntity *e)
+{
+    iterator last = end();
+
+    for (iterator it = begin(); it != last; ++it)
+        if ((*it).m_ent == e)
+            return &*it;
+    return 0;
+}
+
+/* nothing known yet (SOCOM 1's, out of line as there; SOCOM II's clears the flags word whole) */
+CTarget::CTarget()
+    : m_ent(0), m_distSq(0), m_dist(0), m_visibility(0), m_unk20(0), m_unk24(0), m_unk28(0), m_flags(0)
+{
+}
+
+/* the range, its square root taken once (SOCOM 1's) */
+float CTarget::GetRange()
+{
+    if (!(m_flags & 1)) {
+        m_dist = sqrtf(m_distSq);
+        m_flags |= 1;
+    }
+    return m_dist;
+}

@@ -55,7 +55,14 @@ public:
     typedef generic_iterator<true> const_iterator;
 
     __list_deleter();
+    /* built from an allocator, out of line as the default one (the copy constructor's first
+     * step: CNode::SetParentHasVisuals calls it, 0x3177A0) */
+    __list_deleter(const Allocator &a);
     ~__list_deleter() { erase(iterator(end_.next_), iterator(&end_)); }
+    /* the elements of a range appended one by one, out of line (0x317720 for the pointer lists'
+     * const iterators: the iterators by value, homed, end() and insert called) */
+    template <class InputIterator>
+    void init(InputIterator first, InputIterator last);
     iterator begin() { return iterator(end_.next_); }
     iterator end() { return iterator(&end_); }
     const_iterator begin() const { return const_iterator(end_.next_); }
@@ -84,6 +91,21 @@ __list_deleter<T, Allocator>::__list_deleter()
     : size_(0)
 {
     end_.prev_ = end_.next_ = &end_;
+}
+
+template <class T, class Allocator>
+__list_deleter<T, Allocator>::__list_deleter(const Allocator &)
+    : size_(0)
+{
+    end_.prev_ = end_.next_ = &end_;
+}
+
+template <class T, class Allocator>
+template <class InputIterator>
+void __list_deleter<T, Allocator>::init(InputIterator first, InputIterator last)
+{
+    for (; first != last; ++first)
+        insert(end(), *first);
 }
 
 /* the nodes [first, last) unlinked around the last one's links, then freed one by one.
@@ -129,6 +151,15 @@ __list_deleter<T, Allocator>::erase(iterator position)
 template <class T, class Allocator>
 class __list_imp : public __list_deleter<T, Allocator> {
 public:
+    __list_imp() {}
+    /* a copy: a fresh deleter on the source's allocator, then the source's elements appended
+     * (CNode::SetParentHasVisuals copies a model's instance list so) */
+    __list_imp(const __list_imp &x) : __list_deleter<T, Allocator>(*(const Allocator *)&x)
+    {
+        typedef typename __list_deleter<T, Allocator>::const_iterator const_iterator;
+
+        this->init(const_iterator(x.end_.next_), const_iterator(&x.end_));
+    }
     /* defined outside the class, so called (SOCOM II's for the pointer lists is 0x20CB50) */
     template <class Predicate>
     void remove_if(Predicate pred);

@@ -283,6 +283,68 @@ int CEntity::GetEntityIndex(const CEntity *e)
     return e ? e->m_index : -1;
 }
 
+/* an entity of a type on a node: the next id, at rest, unit orientation, in the target lists'
+ * reach, alive (SOCOM 1's, with SOCOM II's position, anchor and three more flags set). The new
+ * bit 13 is cleared in the initialiser list -- a word written whole, where the body's flags are
+ * written a byte at a time (probe: build/scratch/ent/bf.cpp).
+ * OPEN, 4 bytes short: the target inlines m_targets' constructor whole (CTargetList, then the
+ * vector's three stores); include/vector's class vector is four constructor levels, so
+ * CTargetList's is five and MW calls vector<CTarget>'s. With a three-high class vector this
+ * matches byte for byte (all relocations but CAiMapLoc::invalid's, now in data.txt) -- see
+ * CCompass::CreateAnchor for why include/vector cannot simply change. Compiled out for the same
+ * reason as the destructor: a constructor emits its members' destructors, and this one's
+ * ~__vector_deleter<CTarget> would supersede 0x29FF60's draft and miss */
+#if 0
+CEntity::CEntity(TYPE type, zdb::CNode *node)
+    : m_type(type), m_node(node), m_control(0), m_team(0), m_bit13(0)
+{
+    m_quat = CQuat::identity;
+    m_next_quat = CQuat::identity;
+    m_velW = CPnt3D::zero;
+    m_velM = CPnt3D::zero;
+    m_velR = CPnt3D::zero;
+    m_posW = CPnt3D::zero;
+    m_next_velw = CPnt3D::zero;
+    m_UnitsSeenBy = 0;
+    m_id = nextEntityId;
+    nextEntityId++;
+    m_aware_counter = 0;
+    m_display_name = 0;
+    m_interpolate_animations = 1;
+    m_noshoot = 0;
+    m_update_targetlist = 1;
+    m_include_in_targetlist = 0;
+    m_max_target_range_sq = 25000000.0f;
+    m_isAlive = 1;
+    m_check_player_collision = 1;
+    m_get_new_altitude = 1;
+    m_anchor = 0;
+}
+#endif
+
+/* the name freed, out of the target lists, the compass anchor deleted (SOCOM 1's, the anchor
+ * new).
+ * OPEN, 0x10 bytes short: the target inlines ~CTargetList, ~vector and ~__vector_imp (three
+ * this-tests) and calls ~__vector_deleter<CTarget> (0x29FF60, which calls the deleter's clear out
+ * of line, 0x2A0090) -- as if the deleter's destructor could not be inlined at all; with
+ * include/vector's six-high class-vector destructor MW inlines ~CTargetList one level and calls
+ * ~vector<CTarget>. SetUpdateTargetList is the same problem: the deleter's clear() called
+ * directly. (CPnt3D's and nav_package's deleter destructors inline the clear, 0x26D300 and
+ * 0x2135A0: the element type decides). Compiled out: compiled, it makes this unit emit
+ * ~__vector_deleter<CTarget>, whose copy (inlining the clear) then supersedes 0x29FF60's draft and
+ * misses */
+#if 0
+CEntity::~CEntity()
+{
+    if (m_display_name)
+        _free(m_display_name, 0, 0);
+    m_display_name = 0;
+    SetIncludeInTargetList(false);
+    CCompass::DeleteAnchor(m_anchor);
+    SetCompassAnchor(0);
+}
+#endif
+
 zdb::CNode *CEntity::GetNode()
 {
     return m_node;
@@ -409,6 +471,45 @@ void CEntity::OnDeath()
 {
     m_isAlive = false;
     m_control->OnDeath();
+}
+
+/* the entity's anchor on the compass, made once: a vehicle's (type 11) at the origin, its point
+ * cursor cleared, hidden and locked unless it is a turret; then any anchor named and typed, and
+ * kept (new in SOCOM II; the name is ours) */
+CCompassAnchor *CEntity::CreateCompassAnchor(int type, const char *name)
+{
+    CCompassAnchor *anchor = 0;
+
+    if (m_anchor)
+        return 0;
+    switch (type) {
+    case 11:
+        anchor = CCompass::CreateAnchor(CPnt3D::zero, "VEHICLE");
+        anchor->SetPoint(-1);
+        if (name && !strstr(name, "Turret")) {
+            anchor->SetEnabled(false);
+            anchor->SetArrowEnabled(false);
+            anchor->m_locked = 1;
+        }
+        break;
+    }
+    if (anchor) {
+        if (name)
+            anchor->SetName(name);
+        anchor->m_type = type;
+    }
+    SetCompassAnchor(anchor);
+    return anchor;
+}
+
+/* the anchor moved to the entity and shown while it lives, unless it is locked (slot 0x6C, new in
+ * SOCOM II; the name is ours) */
+void CEntity::UpdateCompassAnchor()
+{
+    if (m_anchor && !m_anchor->m_locked) {
+        m_anchor->m_posW = m_posW;
+        m_anchor->SetEnabled(m_isAlive);
+    }
 }
 
 /* the four new virtuals that say no (the names are ours) */
