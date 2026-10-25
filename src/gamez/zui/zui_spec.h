@@ -35,6 +35,7 @@ bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
 bool zrdr_findint(const _zrdr *rdr, const char *tag, int *out, int n);
 bool zrdr_findPNT3D(const _zrdr *rdr, const char *tag, PNT3D *out);
 extern "C" int strcasecmp(const char *a, const char *b);
+extern "C" int strcmp(const char *a, const char *b);
 
 /* <string>'s out-of-line members, by address: include/string has neither the copy constructor
  * (0x22E560: the short form copied whole, the long form reserved and replaced in) nor the copy
@@ -160,6 +161,7 @@ public:
 /* a clock: a text spec drawn as a C2DClock (SOCOM 1's) */
 class CClockSpec : public CTextSpec {
 public:
+    CClockSpec(_zrdr *rdr);
     CDlgObjSpec *Copy();
     C2D *CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const;
     const char *GetType() { return "CLOCK"; }
@@ -215,6 +217,7 @@ public:
 /* a password: a text spec drawn as stars (SOCOM II's) */
 class CSecureTextSpec : public CTextSpec {
 public:
+    CSecureTextSpec(_zrdr *rdr) : CTextSpec(rdr) {}
     CDlgObjSpec *Copy();
     C2D *CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const;
     const char *GetType() { return "SECURETEXT"; }
@@ -223,17 +226,36 @@ public:
 /* a teletype: text typed out a character at a time (SOCOM 1's CTtySpec) */
 class CTtySpec : public CTextSpec {
 public:
+    /* the teletype's MAXHEIGHT (-1: unbounded), PULSERATE, SPACING, INTERVAL, MAXLENGTH and its
+     * cursor (SOCOM 1's; inlined one level in GetObjectSpec, no copy of it) */
+    CTtySpec(_zrdr *rdr)
+        : CTextSpec(rdr), m_interval(0.0f), m_maxLength(0.0f), m_spacing(0.0f), m_pulseRate(0.0f), m_maxHeight(-1)
+    {
+        zrdr_findint(rdr, "MAXHEIGHT", &m_maxHeight, 1);
+        zrdr_findreal(rdr, "PULSERATE", &m_pulseRate, 1);
+        zrdr_findreal(rdr, "SPACING", &m_spacing, 1);
+        zrdr_findreal(rdr, "INTERVAL", &m_interval, 1);
+        zrdr_findreal(rdr, "MAXLENGTH", &m_maxLength, 1);
+        if (zrdr_findtag(rdr, "NOCURSOR"))
+            m_noCursor = true;
+        else
+            m_noCursor = false;
+        if (zrdr_findtag(rdr, "FADECURSOR"))
+            m_fadeCursor = true;
+        else
+            m_fadeCursor = false;
+    }
     CDlgObjSpec *Copy();
     C2D *CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const;
     const char *GetType() { return "TELETYPE"; }
 
-    float m_34;                   // 0x34
-    float m_38;                   // 0x38
-    float m_3C;                   // 0x3C
-    float m_40;                   // 0x40
-    int m_44;                     // 0x44
-    bool m_48;                    // 0x48
-    bool m_49;                    // 0x49
+    float m_interval;             // 0x34: INTERVAL
+    float m_maxLength;            // 0x38: MAXLENGTH
+    float m_spacing;              // 0x3C: SPACING
+    float m_pulseRate;            // 0x40: PULSERATE
+    int m_maxHeight;              // 0x44: MAXHEIGHT (-1)
+    bool m_noCursor;              // 0x48: NOCURSOR
+    bool m_fadeCursor;            // 0x49: FADECURSOR
 };   // 0x4C bytes
 
 /* a bitmap (SOCOM 1's CImageSpec) */

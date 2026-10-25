@@ -7049,7 +7049,7 @@
 0x0037D220 0x84 CreateDisplayObj__10CClockSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037D2B0 0xB0 Copy__10CClockSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037D360 0x90 __dt__9CTextSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0037D3F0 0x190 func_0037D3F0  # OVL1
+0x0037D3F0 0x190 __ct__10CClockSpecFP5_zrdr  # OVL1; by hand (GetObjectSpec's CLOCK: new(0x34) then this; CTextSpec's constructor inlined one level, CClockSpec's vtable) -- zui_spec.cpp
 0x0037D580 0x80 CreateDisplayObj__14CUIMapCtrlSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037D600 0x310 func_0037D600  # OVL1
 0x0037D910 0x94 func_0037D910  # OVL1
@@ -7079,7 +7079,7 @@
 0x00381BE0 0x144 CreateDisplayObj__12CCounterSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00381D30 0xD8 Copy__12CCounterSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00381E10 0x254 __ct__12CCounterSpecFP5_zrdr  # OVL1; by hand (CTextSpec's constructor inlined one level, CCounterSpec's vtable, StartTime/ValVar/EndTime/Duration; GetObjectSpec's COUNTER) -- zui_spec.cpp
-0x00382070 0x5F8 func_00382070  # OVL1
+0x00382070 0x5F8 GetObjectSpec__FP5_zrdrPCc  # OVL1; s1:order by hand (SOCOM 1's GetObjectSpec__FP5_zrdrPCc after Copy__12CCounterSpecFv in zui_spec.cpp: TEXT, IMAGE, TELETYPE, WRAPPEDTEXT, PROGRESSBAR, COUNTER, CLOCK and SOCOM II's SECURETEXT) -- zui_spec.cpp
 0x00382670 0x21C __ct__9CTextSpecFP5_zrdr  # OVL1; s1:order by hand (SOCOM 1's __ct__9CTextSpecFP5_zrdr between GetObjectSpec and GetControlSpec, as here: CDlgObjSpec's constructor inlined, CTextSpec's vtable, CAPTION/SCALE/FONT/HCENTERED/RIGHT_JUSTIFIED/COLOR) -- zui_spec.cpp
 0x00382890 0x304 func_00382890  # OVL1
 0x00382BA0 0xC8 __dt__9CWrapSpecFv  # OVL1; s1:vtable (slot 0x08 of CWrapSpec's table 0x407EC0; SOCOM 1's __dt__9CWrapSpecFv; the implicit destructor emitted with CWrapSpec's constructor) -- zui_spec.cpp

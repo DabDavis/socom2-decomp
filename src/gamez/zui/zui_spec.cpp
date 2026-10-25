@@ -16,6 +16,34 @@ static inline float FindReal(_zrdr *rdr, const char *tag, float def)
     return f;
 }
 
+/* the spec an object's TYPE names, from its rdr (SOCOM 1's; SOCOM II added the secure text) *
+ * OPEN until three rows outside the lane are named: byte-exact with 0x22DCC0 as
+ * __as__9CSaferStrFPCc, 0x2A8F30 as __ct__6CPnt3DFfff and 0x20F1F0 as __as__6CPnt3DFRC6CPnt3D
+ * (CTextSpec's constructor inlined one level calls them; measured with the three renamed) */
+CDlgObjSpec *GetObjectSpec(_zrdr *rdr, const char *type)
+{
+    if (!type)
+        return 0;
+    CDlgObjSpec *spec = 0;
+    if (!strcmp("TEXT", type))
+        spec = new CTextSpec(rdr);
+    else if (!strcmp("IMAGE", type))
+        spec = new CImageSpec(rdr);
+    else if (!strcmp("TELETYPE", type))
+        spec = new CTtySpec(rdr);
+    else if (!strcmp("WRAPPEDTEXT", type))
+        spec = new CWrapSpec(rdr);
+    else if (!strcmp("PROGRESSBAR", type))
+        spec = new CHProgressBarSpec(rdr);
+    else if (!strcmp("COUNTER", type))
+        spec = new CCounterSpec(rdr);
+    else if (!strcmp("CLOCK", type))
+        spec = new CClockSpec(rdr);
+    else if (!strcmp("SECURETEXT", type))
+        spec = new CSecureTextSpec(rdr);
+    return spec;
+}
+
 /* the bitmap's FILENAME, its SIZE (or XSIZE and YSIZE) and a PULSE rate (SOCOM 1's; called out
  * of line by the progress bar's constructor, GetObjectSpec and the list box's: pinned) */
 #pragma auto_inline off
@@ -35,11 +63,12 @@ CImageSpec::CImageSpec(_zrdr *rdr) : CDlgObjSpec(rdr), m_pulse(false)
 #pragma auto_inline reset
 
 /* the wrapped text's WIDTH, line SPACING (10) and HEIGHT (-1: unbounded), its arrows' TEXTURE,
- * SIZE and OFFSET, AUTOSCROLL and DISPLAY_ONE_LINE (SOCOM 1's) *
+ * SIZE and OFFSET, AUTOSCROLL and DISPLAY_ONE_LINE (SOCOM 1's). Declared inline: GetObjectSpec
+ * inlines it one level, and GetControlSpec's inlined CScrollSpec calls this copy *
  * OPEN until three rows outside the lane are named: byte-exact with 0x22DCC0 as
  * __as__9CSaferStrFPCc, 0x2A8F30 as __ct__6CPnt3DFfff and 0x20F1F0 as __as__6CPnt3DFRC6CPnt3D
  * (CTextSpec's constructor inlined one level calls them; measured with the three renamed) */
-CWrapSpec::CWrapSpec(_zrdr *rdr) : CTextSpec(rdr), m_width(0.0f), m_spacing(10), m_height(-1.0f)
+inline CWrapSpec::CWrapSpec(_zrdr *rdr) : CTextSpec(rdr), m_width(0.0f), m_spacing(10), m_height(-1.0f)
 {
     zrdr_findreal(rdr, "WIDTH", &m_width, 1);
     zrdr_findint(rdr, "SPACING", &m_spacing, 1);
@@ -113,12 +142,15 @@ CDlgObjSpec *CCounterSpec::Copy()
     return new CCounterSpec(*this);
 }
 
-/* the bar's FILENAME_IS_UIVAR flag and the node its LEADING_EDGE follows (SOCOM 1's) */
+/* the bar's FILENAME_IS_UIVAR flag and the node its LEADING_EDGE follows (SOCOM 1's; GetObjectSpec
+ * calls it out of line: pinned) */
+#pragma auto_inline off
 CHProgressBarSpec::CHProgressBarSpec(_zrdr *rdr) : CImageSpec(rdr)
 {
     m_filenameIsUivar = zrdr_findtag(rdr, "FILENAME_IS_UIVAR") != 0;
     m_leadingEdgeNode = zrdr_findstring(rdr, "LEADING_EDGE_NODE");
 }
+#pragma auto_inline reset
 
 /* the spec's UI variable, if its rdr declares one (SOCOM 1's; inlined in each spec's constructor,
  * the copy at 0x3832E0) */
@@ -131,6 +163,14 @@ CDlgObjSpec::CDlgObjSpec(_zrdr *rdr)
         if (var)
             m_var = new CUIVariableSpec(var);
     }
+}
+
+/* (SOCOM II's; out of line, GetObjectSpec calls it) *
+ * OPEN until three rows outside the lane are named: byte-exact with 0x22DCC0 as
+ * __as__9CSaferStrFPCc, 0x2A8F30 as __ct__6CPnt3DFfff and 0x20F1F0 as __as__6CPnt3DFRC6CPnt3D
+ * (CTextSpec's constructor inlined one level calls them; measured with the three renamed) */
+CClockSpec::CClockSpec(_zrdr *rdr) : CTextSpec(rdr)
+{
 }
 
 /* a copy (SOCOM 1's; CDlgObjSpec's copy is zui_cleanup.cpp's, a call here, the rest inlined) */
