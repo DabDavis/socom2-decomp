@@ -1029,6 +1029,72 @@ extern "C" float func_005F5AD0(const CPnt3D *a, const CPnt3D *b)
     return dx * dx + dy * dy + dz * dz;
 }
 
+/* the animation a SEAL taking a stun response must not be blending in (OVL1 data 0x3DEE40, read
+ * as a variable with lh) */
+extern "C" AnimType data_003DEE40;
+
+/* neither of the controller's bits 8 and 9 set (an inline bool returning a negation: the target
+ * materialises it, sltu/xori, before its branch; the name ours) */
+inline bool AiFree(CSealCtrlAi *ai)
+{
+    return !(ai->m_aibit9 || ai->m_aibit8);
+}
+
+/* whether a state of a kind may be pushed, the flags bending the rules (SOCOM 1's
+ * CanPushAiState(AI_STATE), the flags new: 1 lets the current kind be pushed again, 2 any kind the
+ * stack's mask at 0xC lacks, 4 past the controller's bits 8 and 9, 8 past the stack's bit 2 that
+ * keeps only the urgent kinds); the current state has the last word (OVL2 0x5F5CD0) */
+bool CSealCtrlAi::CanPushAiState(AI_STATE state, unsigned int flags)
+{
+    CEntity *seal = m_entity;
+
+    if (state == AI_STATE_SUSPENDED)
+        return true;
+    if (!AiFree(this) && !(flags & 4))
+        return false;
+    if (!seal->m_isAlive)
+        return false;
+    CAiState *s = GetAiState();
+    AI_STATE cur = s->m_state;
+    unsigned int mask = m_stateStack.m_c;
+    bool ok = (flags & 2) != 0 || (mask & (1 << state)) != 0;
+
+    if (ok && !(flags & 1))
+        ok = cur != state;
+    if (ok && state != AI_STATE_SUSPENDED) {
+        if (!(flags & 8) && (m_stateStack.m_14 & 4)) {
+            switch (state) {
+            case AI_STATE_SCRIPT:
+            case AI_STATE_HOLD:
+            case AI_STATE_GOTO:
+            case AI_STATE_ACTION:
+            case AI_STATE_ANIMATE:
+            case AI_STATE_DEPLOY:
+            case AI_STATE_PATHRECOVER:
+            case AI_STATE_STUNRESPONSE:
+            case AI_STATE_SURRENDER:
+            case AI_STATE_RELOAD:
+            case AI_STATE_NOAMMO:
+                ok = true;
+                break;
+            case AI_STATE_HOSTAGE:
+                ok = cur == AI_STATE_SURRENDER;
+                break;
+            default:
+                ok = false;
+                break;
+            }
+        }
+        if (state == AI_STATE_CQBATTACK)
+            ok = true;
+        if (ok && state == AI_STATE_STUNRESPONSE)
+            ok = !((CZSealBody *)seal)->IsCurrentBlend(data_003DEE40);
+        if (ok)
+            ok = s->CanPushAiState(state, this);
+    }
+    return ok;
+}
+
 /* the stack's operations as the controller offers them (SOCOM 1's CSealCtrlAi members, their
  * bodies the stack's now; OVL2 0x5F5CB0 back to 0x5F5BA0) */
 AI_STATE CSealCtrlAi::PopAiState(AI_STATE state)

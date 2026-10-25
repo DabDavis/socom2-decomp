@@ -494,7 +494,10 @@ public:
      * bit 2 the one 0x56D890 sets, which a covered state keeps (0x5F6350); a breach clears 13 on
      * entry, then sets 16 from its own bit 13, clears 17 and sets 13 as it ends (0x5F3620) */
     unsigned int m_aibit2 : 1;
-    unsigned int m_bits3 : 10;
+    unsigned int m_bits3 : 5;
+    unsigned int m_aibit8 : 1;   // bits 8 and 9: either refuses a state push without flag 4
+    unsigned int m_aibit9 : 1;   // (0x5F5CD0)
+    unsigned int m_bits10 : 3;
     unsigned int m_aibit13 : 1;
     unsigned int m_bits14 : 2;
     unsigned int m_aibit16 : 1;
