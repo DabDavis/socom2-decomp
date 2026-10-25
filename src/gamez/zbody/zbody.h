@@ -387,6 +387,8 @@ extern "C" int func_0058CB30(const char *name);
  * destructor and NullNode, an inline returning -1. */
 class CBody {
 public:
+    /* (0x28EDD0, not written yet: declared so CZSealBody's constructor calls it) */
+    CBody();
     virtual ~CBody();
     virtual int NullNode() const { return -1; }
 
