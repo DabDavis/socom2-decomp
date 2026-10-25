@@ -711,4 +711,138 @@ inline void *CSealCtrlAi::GetSelect()
     return ((CZSealBody *)m_entity)->m_select;
 }
 
+/* the character's dynamics: its physics, its aim and look limits, its cameras, read once from its
+ * .rdr (SOCOM 1's DWARF: CharacterDynamics, 0x1bc bytes -- SOCOM II's Load writes every member at
+ * SOCOM 1's offset). The one instance is OVL1's theCharacterDynamics (bss 0x44C250, the size SOCOM
+ * 1's); seal_dyn.cpp reads it. */
+class CharacterDynamics {
+public:
+    /* a camera's place behind the SEAL and the point it looks at (SOCOM 1's DWARF, 0x18 bytes) */
+    class CCameraParams {
+    public:
+        CCameraParams(const CPnt3D &offset, const CPnt3D &aim) : m_cam_offset(offset), m_cam_aimpoint(aim) {}
+
+        CPnt3D m_cam_offset;   // 0x0
+        CPnt3D m_cam_aimpoint;   // 0xc
+    };
+
+    /* the camera's wiggle and the throw's limits (SOCOM 1's DWARF) */
+    struct cam_wiggle {
+        float amplitude;   // 0x0
+        float duration;   // 0x4
+        float rate;   // 0x8
+    };
+    struct throw_params {
+        float m_abort_threshold;   // 0x0
+        float max_distance_stand;   // 0x4
+        float max_distance_crouch;   // 0x8
+        float toss_power_threshold;   // 0xc
+        float toss_aim_threshold;   // 0x10
+    };
+
+    void Load(const CRdrFile &rdr);
+
+    float m_gravity;   // 0x0
+    float m_DamageToNewtons;   // 0x4
+    float m_jumpFactor;   // 0x8
+    float m_landFallRate;   // 0xc
+    float m_landHardFallRate;   // 0x10
+    float m_groundTouchDistance;   // 0x14
+    float m_maxSlopeCos;   // 0x18
+    float m_stepHeight;   // 0x1c
+    float m_blastBoostY;   // 0x20
+    float m_fallDist[3];   // 0x24
+    float m_landSpeed[3];   // 0x30
+    float m_standTurnFactor;   // 0x3c
+    float m_turn_maxRate;   // 0x40
+    float m_accelXMin;   // 0x44
+    float m_accelXMax;   // 0x48
+    float m_accelZMin;   // 0x4c
+    float m_accelZMax;   // 0x50
+    float m_initAimPitch;   // 0x54
+    float m_maxAimPitch;   // 0x58
+    float m_minAimPitch;   // 0x5c
+    float m_maxAimYaw;   // 0x60
+    float m_proneMaxAimPitch;   // 0x64
+    float m_proneMinAimPitch;   // 0x68
+    float m_proneMaxAimYaw;   // 0x6c
+    float m_proneZoomDeltaYaw;   // 0x70
+    float m_maxLookPitch;   // 0x74
+    float m_minLookPitch;   // 0x78
+    float m_maxLookYaw;   // 0x7c
+    float m_maxEyelookPitch;   // 0x80
+    float m_minEyelookPitch;   // 0x84
+    float m_maxEyelookYaw;   // 0x88
+    float m_maxBlinkRate;   // 0x8c
+    float m_maxBlinkAngle;   // 0x90
+    float m_cosMaxAimPitch;   // 0x94
+    float m_cosMinAimPitch;   // 0x98
+    float m_cosMaxAimYaw;   // 0x9c
+    float m_cosProneMaxAimPitch;   // 0xa0
+    float m_cosProneMinAimPitch;   // 0xa4
+    float m_cosProneMaxAimYaw;   // 0xa8
+    float m_cosMaxLookPitch;   // 0xac
+    float m_cosMinLookPitch;   // 0xb0
+    float m_cosMaxLookYaw;   // 0xb4
+    float m_cosMaxEyelookPitch;   // 0xb8
+    float m_cosMinEyelookPitch;   // 0xbc
+    float m_cosMaxEyelookYaw;   // 0xc0
+    float m_maxZoomAimPitch;   // 0xc4
+    float m_minZoomAimPitch;   // 0xc8
+    float m_maxZoomAimYaw;   // 0xcc
+    float m_proneMaxZoomAimPitch;   // 0xd0
+    float m_proneMinZoomAimPitch;   // 0xd4
+    float m_proneMaxZoomAimYaw;   // 0xd8
+    float m_cosMaxZoomAimPitch;   // 0xdc
+    float m_cosMinZoomAimPitch;   // 0xe0
+    float m_cosMaxZoomAimYaw;   // 0xe4
+    float m_cosProneMaxZoomAimPitch;   // 0xe8
+    float m_cosProneMinZoomAimPitch;   // 0xec
+    float m_cosProneMaxZoomAimYaw;   // 0xf0
+    float m_pitchRate;   // 0xf4
+    float m_turnThrottleA;   // 0xf8
+    float m_turnThrottleB;   // 0xfc
+    float m_pitchThrottleA;   // 0x100
+    float m_pitchThrottleB;   // 0x104
+    float m_minWaterFactor;   // 0x108
+    float m_waterFactorSlope;   // 0x10c
+    float m_fbStiffness;   // 0x110
+    float m_lrStiffness;   // 0x114
+    float m_throtExp;   // 0x118
+    float m_throtScale;   // 0x11c
+    float m_cameraRoll;   // 0x120
+    float m_zoomFactor;   // 0x124
+    float m_zoomRate;   // 0x128
+    float m_cameraSideHeight;   // 0x12c
+    float m_cameraSideDist;   // 0x130
+    float m_cameraSidePitch;   // 0x134
+    float m_cameraFrontHeight;   // 0x138
+    float m_cameraFrontDist;   // 0x13c
+    float m_cameraFrontPitch;   // 0x140
+    float m_cameraBackHeight;   // 0x144
+    float m_cameraBackDist;   // 0x148
+    float m_cameraBackPitch;   // 0x14c
+    float m_cameraDownHeight;   // 0x150
+    float m_cameraDownDist;   // 0x154
+    float m_cameraDownPitch;   // 0x158
+    float m_cameraTetherStiffness;   // 0x15c
+    float m_cameraLookDwell;   // 0x160
+    float m_cameraNetPosSmooth;   // 0x164
+    float m_cameraReleaseRad;   // 0x168
+    float m_cameraPeekDecayRate;   // 0x16c
+    float m_running_reload_speed;   // 0x170
+    float m_running_chgweapon_speed;   // 0x174
+    float m_lowHeight;   // 0x178
+    float m_medHeight;   // 0x17c
+    float m_highHeight;   // 0x180
+    float m_minStandHeight;   // 0x184
+    float m_minJumpHeight;   // 0x188
+    cam_wiggle m_cam_wiggle;   // 0x18c
+    throw_params m_throw_params;   // 0x198
+    unsigned char m_loaded;   // 0x1ac
+    std::vector<CCameraParams> m_cam_params;   // 0x1b0
+};   // 0x1bc bytes
+
+extern CharacterDynamics theCharacterDynamics;
+
 #endif

@@ -10703,10 +10703,10 @@
 0x0059B440 0x42C func_0059B440  # OVL2
 0x0059B870 0x208 func_0059B870  # OVL2
 0x0059BA80 0x148C Load__17CharacterDynamicsFRC8CRdrFile  # OVL2; s1:callee
-0x0059CF10 0x57C func_0059CF10  # OVL2
-0x0059D490 0x1A8 func_0059D490  # OVL2
-0x0059D640 0x68 func_0059D640  # OVL2
-0x0059D6B0 0x8 func_0059D6B0  # OVL2
+0x0059CF10 0x57C insert__Q23std108__vector_imp<Q217CharacterDynamics13CCameraParams,Q23std47allocator<Q217CharacterDynamics13CCameraParams>,0>FPQ217CharacterDynamics13CCameraParamsUiRCQ217CharacterDynamics13CCameraParams  # OVL2; s1:order (seal_dyn.cpp's tail, first after Load as SOCOM 1's insert of the camera vector is; Load's five push_backs call it with (end, 1, params)) (the SEAL lane, round 5)
+0x0059D490 0x1A8 reserve__Q23std108__vector_imp<Q217CharacterDynamics13CCameraParams,Q23std47allocator<Q217CharacterDynamics13CCameraParams>,0>FUi  # OVL2; s1:order (seal_dyn.cpp's tail: Load reserves 6 cameras through it; include/vector's class reserve compiles to its 0x1A8 bytes) (the SEAL lane, round 5)
+0x0059D640 0x68 __dt__Q23std110__vector_deleter<Q217CharacterDynamics13CCameraParams,Q23std47allocator<Q217CharacterDynamics13CCameraParams>>Fv  # OVL2; s1:order (seal_dyn.cpp's tail: the camera vector's deleter destructor, SOCOM 1's after reserve; it calls the clear at 0x59D6B0 and deletes data_ at +8) (the SEAL lane, round 5)
+0x0059D6B0 0x8 clear__Q23std110__vector_deleter<Q217CharacterDynamics13CCameraParams,Q23std47allocator<Q217CharacterDynamics13CCameraParams>>Fv  # OVL2; s1:order (seal_dyn.cpp's tail: the deleter's clear for a trivially destructible element, size_ = 0; the destructor before it calls it) (the SEAL lane, round 5)
 0x0059D6C0 0x90 func_0059D6C0  # OVL2
 0x0059D750 0xD8 func_0059D750  # OVL2
 0x0059D830 0x148 func_0059D830  # OVL2
