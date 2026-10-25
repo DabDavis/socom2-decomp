@@ -51,16 +51,20 @@ TOOLCHAINS = HERE / "toolchains"
 # definition order, as the image holds them; bottomup: inlining starts at the leaves of the
 # call graph, so a callee arrives with its own callees already in it (CZAnimExVector::Free's
 # destructor inside std::for_each's function object, the recursive CZAnim walks one level
-# deeper -- zlib is the same either way); level=4: bottom-up, a function whose whole inline
-# chain is four or fewer deep takes all of it, a deeper one only its own callees -- `new
-# CZAnimExVector` inlines its vector's constructors and `new CZAnimSetSave` calls its four
-# vectors' (and their destructors likewise in CZAnimSet::Unload); -enum min: inflate's mode is
-# stored by sb;
+# deeper -- zlib is the same either way); level=5: bottom-up, a callee whose whole inline
+# tree is five or fewer high takes all of it, a taller one only its own body -- the deque's
+# teardown inlines five this-tested destructor levels (impossible at 4), CCompass::CreateAnchor
+# inlines CCompassAnchor's constructor with its vector's whole, and CVisual's constructor
+# CDynTexList's five levels; level 4 had been fitted with every MSL header a level too shallow
+# (the inline-level lane, 2026-10-25: refitted at 5, every level-4 match kept but SaveNodeStates,
+# whose cut is MW's other limit, inline_max_size, at any level). A callee is also inlined only
+# one level when its expanded body exceeds #pragma inline_max_size (256 units by default; leaves
+# always inline); README "The compiler". -enum min: inflate's mode is stored by sb;
 # -Cpp_exceptions off: C++ tail calls (CMatrix::SetZero is `j memset`; with exceptions on, MW
 # keeps a frame around every C++ call, while C code tail-calls either way).
 # README "The compiler" has the derivation.
 COMPILER = os.environ.get("SC_COMPILER", "mwcps2-3.0b52-030722")
-FLAGS = os.environ.get("SC_FLAGS", "-O4,p -sdatathreshold 0 -inline auto,deferred,bottomup,level=4 -enum min -Cpp_exceptions off").split()
+FLAGS = os.environ.get("SC_FLAGS", "-O4,p -sdatathreshold 0 -inline auto,deferred,bottomup,level=5 -enum min -Cpp_exceptions off").split()
 BASE_FLAGS = ["-c", "-nostdinc", "-gccinc", "-msgstyle", "gcc"]   # -gccinc: -I paths serve <...> too
 
 

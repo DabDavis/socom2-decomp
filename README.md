@@ -123,7 +123,7 @@ and under 3.0b38).
 **The flags, each by its own evidence** (`scdiff.FLAGS`):
 
 Each flag is necessary: drop any one and zlib's score falls (3.0b52, the others held) -- but
-`bottomup` and `level=4`, which zlib cannot see and SOCOM II's C++ needs.
+`bottomup` and `level=5`, which zlib cannot see and SOCOM II's C++ needs.
 
 | flag | without it | evidence |
 |---|---|---|
@@ -131,7 +131,7 @@ Each flag is necessary: drop any one and zlib's score falls (3.0b52, the others 
 | `-sdatathreshold 0` | 18 | the target addresses zlib's 6-byte version string with `lui/addiu`; the default (8) puts it in `$gp` small data |
 | `-inline auto,deferred` | `auto` 20, `deferred` 18, `on` 17 | `inflateReset` is absent from the image — inlined into both callers and stripped (`auto`); functions emit in **reverse definition order**, exactly as the image holds them (`deferred`) |
 | `-inline bottomup` | (zlib alike) | inlining starts at the leaves of the call graph, so a callee arrives with its own callees in it: `CZAnimExVector::Free`'s `delete` inlines CZAnimEx's destructor inside `std::for_each`'s function object, and the recursive `CZAnim::Reset`, Pause and Resume inline themselves twice with their callees in the outer copies -- four functions that matched only with it, nothing lost |
-| `-inline level=4` | (zlib alike) | a call whose callee's whole inline tree is at most four high inlines all of it; a taller one inlines only the callee's own body and calls what it calls. `new CZAnimExVector` (a vector of pointers, three constructors deep) inlines whole in `CZAnimSet::AddAnimEx`, while `new CZAnimSetSave` (four high or more under its vector of CPnt3D) inlines its own implicit constructor and calls its four vectors' -- and `delete` does the same in `CZAnimSet::Unload` (CZAnimExVector's four nested `this` tests inline, CZAnimSetSave's vectors' destructors are calls); at level 5 and up (or none) SaveNodeStates, Unload and CZAnimSetSave::Free inline everything and the out-of-line copies they call vanish; level 3 loses ten others (the ZAR key walks, LoadZAR, AddAnimEx) |
+| `-inline level=5` | (zlib alike) | a call whose callee's whole inline tree is at most five high inlines all of it; a taller one inlines only the callee's own body and calls what it calls. Five, not four: the deque's teardown destructor inlines five this-tested levels, CCompass::CreateAnchor inlines CCompassAnchor's constructor with its vector<CPnt3D>'s, CVisual's constructor CDynTexList's five levels, ~C2D four destructor levels and the deleter's iterator temporaries -- all impossible at 4, which had been fitted (2026-10-24) with every MSL header a level too shallow to compensate. The inline-level lane (2026-10-25) refitted the headers at 5 -- each change following SOCOM 1's MSL where its DWARF shows it (the free swaps, the capacity pair's swap, alloc_ptr, the node allocator) -- and every level-4 match holds but SaveNodeStates (below); level 6 needs one level more in five chains (see "Open, and next"). **A second limit cuts as the level does: `#pragma inline_max_size`** (default 256 units, measured: a store is ~8, a wrapper level ~4) -- a callee whose expanded body (its own inlining done) exceeds it is inlined only one level; a leaf always inlines. `new CZAnimSetSave` (179 units here) is that cut in the target, at any level |
 | `-enum min` | 13 | `inflate`'s `mode` field is stored with `sb` |
 | `-Cpp_exceptions off` | (C++ only) | `CMatrix::SetZero` is `j memset`: with exceptions on, MW keeps a frame around every C++ call, while C tail-calls either way; every C++ match held when it went on |
 
@@ -243,14 +243,20 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   definitions reproduces them (probe: build/scratch/probe/q.cpp). Calls that do not inline are
   unit-boundary evidence: LoadZAR calls GetAnimSet(int), which anim_main.cpp inlines, so the ZAR
   loaders are a unit of their own (zanim_zar.cpp).
-- **Inlining is bottom-up to level 4** (`-inline bottomup,level=4`). At each call site, a callee
-  whose whole inline tree is at most four functions high (it counts as one; an empty inline
+- **Inlining is bottom-up to level 5** (`-inline bottomup,level=5`). At each call site, a callee
+  whose whole inline tree is at most five functions high (it counts as one; an empty inline
   function counts too) is inlined entirely; a taller callee is inlined ONE level -- its own
   body, its callees called out of line, where each of those copies inlines by the same rule
   (probe: build/scratch/ctor/chain.cpp, chain2.cpp). So a deep MSL chain shows up as calls to
   tiny out-of-line copies -- the 78 three-word zeroing constructors in the image are mostly
   that -- and the header's levels must be the real ones (include/vector carries the counts it
-  was fitted to). A function object's call inlines inside `std::for_each`, and a recursive
+  was fitted to). **The size limit cuts the same way**: a callee whose expanded body exceeds
+  `#pragma inline_max_size` (256 units by default) is inlined one level whatever its height
+  (`#pragma warn_notinlined on` makes MW name every inline call it leaves a call -- the quickest
+  way to read heights off a real unit; build/scratch/lvl/ has notinl.py, ubisect.py -- a
+  function's match range over inline_max_size -- and psize.py/csize.py for probes). Tail-code
+  cuts in the target are often this limit, not a level: a list's insert expands to 253 units
+  in an out-of-line push_back, 3 under. A function object's call inlines inside `std::for_each`, and a recursive
   function inlines itself twice, the outer copies carrying their own callees (Resume and Pause
   inline Running into the first two copies and Running's Source test into the outer one, then
   call the sibling accessor and the Source test -- hence those out-of-line copies).
@@ -324,8 +330,12 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   `!m_loading`; a global pointer read twice is re-read after a char store, and taken into a
   local once it stays in a register (CCoreState::OnPush); MW calls a member object's virtuals
   through its vtable.
-- **MW's inline budget, measured** (build/scratch/inl, mwtest.py): a callee whose inline tree is
-  at most 4 high inlines whole, a taller one only its own body (its calls stay calls). A
+- **MW's inline budget, measured** (build/scratch/inl, mwtest.py; at level 4 when written): a
+  callee whose inline tree is at most the level high inlines whole, a taller one only its own
+  body (its calls stay calls). A recursive function's self-copies grow by one per level (a
+  probe's r0 adds a copy each level from 3 to 8); a recursive auto-inline function of height H
+  (itself and its callees) inlines itself only from level H (SelectNextObjective never does in
+  the target: at level 6 it would). A
   function's height ignores calls made as arguments, but a call written as an argument of an
   inline call at the top is checked a level deeper (`f1(w2(p))` inlines w2 one level where
   `1 + w2(p)` inlines it whole). A recursive function inlines itself until the budget runs out
@@ -333,7 +343,7 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   That fallback is for functions declared `inline`: a function MW takes under `-inline auto`
   (one defined in the unit) is inlined whole or not at all -- CNode::CreateInstance(name)
   inlines CreateInstance(model) only once the pointer list's push_back is short enough to keep
-  the whole tree four high.
+  the whole tree within the level.
   An assignment's right side nests a level too (`first = find(...)`): MSL's std::find tests
   `==`, not `!=` (which calls `==`), or the inlined std::remove in CNodeVector::Remove could not
   inline it whole. Measure with probes before theorising: three models of this died in one
@@ -687,8 +697,10 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   destructors inline ~list one level and call ~__list_imp (~CEntityList, ~CAssetList: proven by
   removing RemoveAll/PurgeEntities/DoRecycleEntity, after which ~CEntityList inlines the whole
   chain). `#pragma inline_depth`/`always_inline` act only through their state at the unit's end.
-  Still unexplained: ~C2D and ~CHUD's flare list inline four destructor levels plus the deleter's
-  iterator temporaries, which every probe says costs a fifth.
+  ~C2D and ~CHUD's flare list inline four destructor levels plus the deleter's iterator
+  temporaries -- five high: the level is 5. A range erase the unit instantiated counts in tail
+  code, so the implicit list destructors there (~CEntityList, ~CAssetList, ~CAiEventList) are cut
+  below ~list -- the erase frees through the node allocator, one level taller (include/list).
 - **Tells from the HUD, round 8** (the MakePackets, the weapon selectors, the line map):
   - a cursor of a different pointer type than the packet (`sceVu0FVECTOR *` from the
     `u_long128 *`) keeps MW from substituting `p = packet` into later uses;
@@ -1520,20 +1532,33 @@ The work runs in lanes (see "Working in parallel"), each an address range with i
 their open functions are diagnosed in their sources (`grep -rn "OPEN" src/ --include=*.cpp`).
 What is open across lanes, and what comes next:
 
-- **The class vector's constructor** (include/vector): CCompass::CreateAnchor and CEntity's
-  constructor inline a vector<CPnt3D>/CTargetList member's constructor whole -- three levels --
-  while zanim_set.cpp's SaveNodeStates needs `new CZAnimSetSave` (a pointer vector base and three
-  vector members) to inline only its implicit constructor, which wants four, and AddAnimEx pins
-  the pointer vector's at three. No out-of-class piece explains it yet: every piece of the chain
-  is inlined into a unit's own function somewhere, which out-of-class members never are.
-- **The list destructor's height** (include/list): ~C2D and ~CHUD's flare list inline four
-  destructor levels plus the deleter's iterator temporaries, which every probe says costs a
-  fifth; the cut that ~CEntityList and ~CAssetList show is explained (a range erase the unit's own
-  code instantiated).
-- **MSL pieces not modelled yet**: deque<const void *> (CGame's state stack -- the states lane),
-  the class vector's destroy for elements with a virtual destructor (C2DPoly's deleter),
-  __vector_imp::resize out of line (CPool), and the pod vector's end() reusing begin()'s load
-  (AddPalette, ~CAssetLib, DeleteChildren).
+- **SaveNodeStates' size cut** (zanim_set.cpp, the one level-4 match level 5 loses, with its
+  three vector-constructor copies): `new CZAnimSetSave` is inlined one level in the target, while
+  CreateAnchor inlines CCompassAnchor's constructor (a class vector inside) and AddAnimEx `new
+  CZAnimExVector` whole -- no height does both at any level, so it is the inline_max_size cut:
+  CZAnimSetSave() expands to 179 units here and must pass 256, CCompassAnchor() (197) must not.
+  The original's vector constructors were fatter than include/vector's (~26 units more in each
+  pointer vector's); the shape that adds them unseen. CPnt3D's copy constructor (0x387F90,
+  vis_mesh.cpp's) was matched only through grid_main.cpp's level-4 mis-inlining of GetMidPoint;
+  at level 5 no unit emits it (a draft can take it).
+- **Level 6?** Two SOCOM II structures need a level more than 5: ~__list_deleter written
+  `erase(begin(), end())` (OVL2's ~__list_imp copy 0x510080 and ent_main's tail call begin() and
+  end() out of line) inlines whole in ~C2D only at 6, and SOCOM 1's push_back chain through the
+  base's push_back (ai_events.cpp's two copies, 0x50F810/0x50FE80, whose map names are swapped)
+  keeps CreateInstance(model) auto-inlined only at 6 (and costs the stack slots of Add2D,
+  CZHudMissionCams::Init and GetLoadedLibRefs at any level). Measured at 6 with both: ~C2D,
+  CreateInstance x2, Release, SetIncludeInTargetList and end()'s copy match, but every chain
+  fitted to 5 needs one level more -- the deleter's swap (the capacity pair as compressed_pair
+  over compressed_pair_imp), TrimVector's pieces, fts_state.h's string constructor, the erase's
+  node allocator (end_.first() through the pair), SelectNext/PreviousObjective's callees (their
+  self-inlining starts at 6) -- 27 functions to refit (build/scratch/lvl/w1_l6.txt). The
+  original's MSL is deeper than these headers everywhere SOCOM 1's DWARF shows it (compressed
+  pairs in the pod, the list's size and end node, alloc() accessors), so a level of 6 or more with
+  the real depths is likely; 5 is what these headers fit.
+- **MSL pieces not modelled yet**: the deque's copy constructor (the rdr lane's 0x333B30 and its
+  pieces; back() and pop_back() are in), the class vector's destroy for elements with a virtual
+  destructor (C2DPoly's deleter), __vector_imp::resize out of line (CPool), and the pod vector's
+  end() reusing begin()'s load (AddPalette, ~CAssetLib, DeleteChildren).
 - **zMath** (0x306670-0x30954C, 47 of 54): CMatrix::SetRotate, CQuat::Align, CBits::Resize,
   CPnt3D::Reflect, CBBox::GetIntersect and the two DistToVectors. **zcamera**: CCamera::Update
   (13 instructions, the near plane's VU0 temporaries' stack offsets). **ZAnim**: the big handlers

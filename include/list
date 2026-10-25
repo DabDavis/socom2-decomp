@@ -6,16 +6,35 @@
  * __list_deleter<PCv,...> in the names of every list<T *>'s calls -- and wraps its iterators
  * (SOCOM 1's list<T *>::generic_iterator<0> is built from the base's).
  *
- * The constructor and erase are defined outside the class, so neither is ever auto-inlined:
- * CSaveManager's and CZAnimArgList's constructors call the deleter's (0x1EABB0), and clear() is
- * a call to the range erase (0x1EAAF0 for the pointer lists). The destructor chain is three
- * this-tested levels above clear() (CZAnimArgList's destructor shows all three). */
+ * The constructor, insert and erase are defined outside the class, so none is ever inlined into
+ * a unit's own functions: CSaveManager's and CZAnimArgList's constructors call the deleter's
+ * (0x1EABB0), clear() is a call to the range erase (0x1EAAF0 for the pointer lists), push_back a
+ * call to insert. The destructor chain is three this-tested levels above clear() (CZAnimArgList's
+ * destructor shows all three). In tail code they count, and at -inline level=5 their depths are
+ * load-bearing (measured over every unit, 2026-10-25): the range erase frees through the node
+ * allocator (three high), so an implicit list destructor where the erase was instantiated inlines
+ * ~list one level (~CEntityList, ~CAssetList, ~CAiEventList); insert, written with MSL's alloc_ptr
+ * (its copies byte-exact in 21 units), expands past inline_max_size in an out-of-line push_back
+ * (253 units -- 3 under -- without the allocator's construct) and makes ai_events.cpp's remove_if
+ * cut find_if. */
 
 #ifndef _MSL_LIST
 #define _MSL_LIST
 
 #include <functional>
 #include <memory>
+#include <msl_utility>
+#include <new>
+#include <stdio.h>
+#include <stdlib.h>
+
+#ifndef __msl_error
+#define __msl_error(str) \
+    {                    \
+        fprintf(stderr, str); \
+        abort();         \
+    }
+#endif
 
 namespace std {
 
@@ -58,7 +77,14 @@ public:
     /* built from an allocator, out of line as the default one (the copy constructor's first
      * step: CNode::SetParentHasVisuals calls it, 0x3177A0) */
     __list_deleter(const Allocator &a);
-    ~__list_deleter() { erase(iterator(end_.next_), iterator(&end_)); }
+    /* the sentinel's address into a local first, as the constructor takes it (the rdr lane's
+     * measurement: CRdrArchive's ReadArray 23 -> 17 instructions off, nothing else moves) */
+    ~__list_deleter()
+    {
+        node_base *t = &end_;
+
+        erase(iterator(t->next_), iterator(t));
+    }
     /* the elements of a range appended one by one, out of line (0x317720 for the pointer lists'
      * const iterators: the iterators by value, homed, end() and insert called) */
     template <class InputIterator>
@@ -74,6 +100,27 @@ public:
     void push_back(const T &x) { insert(end(), x); }
 
     unsigned int size() const { return size_; }
+    /* the node allocator: MSL keeps it as the empty base of the end node's pair (SOCOM 1's DWARF:
+     * end_ is a compressed_pair whose compressed_pair_imp derives from the allocator), reached
+     * through the pair's first() -- the names are ours. Only the out-of-line members free nodes
+     * through it, so it counts only in tail code: the range erase is three high there, and an
+     * implicit list destructor in a unit that instantiated the erase (~CEntityList, ~CAssetList,
+     * ~CAiEventList) inlines ~list one level and calls ~__list_imp at -inline level=5 */
+    struct node_allocator {
+        node *allocate()
+        {
+            node *p = (node *)operator new(sizeof(node));
+
+            if (!p)
+                __msl_error("Memory allocation failure");
+            return p;
+        }
+        void deallocate(node_base *p) { operator delete(p); }
+        /* the value built in place (MSL's allocator construct: placement new, so a null test) */
+        void construct(T *p, const T &x) { new (p) T(x); }
+    };
+    node_allocator &node_alloc() { return end_first(); }
+    node_allocator &end_first() { return *(node_allocator *)&end_; }
     /* the sentinel by reference (CZHudMissionCams::Init keeps the end node in a register outside
      * its loop only so; the name is ours) */
     node_base &end_node() { return end_; }
@@ -145,10 +192,32 @@ __list_deleter<T, Allocator>::erase(iterator first, iterator last)
         node_base *n = first.node_;
 
         first.node_ = n->next_;
-        operator delete(n);
+        node_alloc().deallocate(n);
         --size_;
     }
     return last;
+}
+
+/* a node made for the value and linked in before position (SOCOM II's for the pointer lists is
+ * 0x1FEAE0, OVL2's 0x50FAD0): allocated by the node allocator and held in MSL's alloc_ptr while
+ * the value is built in it, released, then linked and counted */
+template <class T, class Allocator>
+typename __list_deleter<T, Allocator>::iterator
+__list_deleter<T, Allocator>::insert(iterator position, const T &x)
+{
+    node_allocator &a = node_alloc();
+    Metrowerks::alloc_ptr<node, node_allocator &> ap(a.allocate(), a);
+
+    a.construct(&ap.get()->data_, x);
+    node *n = ap.release();
+    node_base *p = position.node_;
+
+    p->prev_->next_ = n;
+    n->prev_ = p->prev_;
+    p->prev_ = n;
+    n->next_ = p;
+    ++size_;
+    return iterator(n);
 }
 
 /* one node unlinked and freed, the iterator after it given back (SOCOM II's for the pointer lists
@@ -222,7 +291,7 @@ public:
     /* the reference passed on as the base's, no temporary (the pointer stays where it is), to
      * the base's insert, the end iterator made here from the sentinel: shorter than through the
      * base's push_back and end(), which CNode::CreateInstance's auto-inlining needs (an
-     * auto-inline callee more than four high is not inlined at all -- no one-level fallback).
+     * auto-inline callee taller than the level is not inlined at all -- no one-level fallback).
      *
      * OPEN, the shape SOCOM II's own MSL has here (the entity lane, round 7; scratch in
      * build/scratch/list/, lv.py scoring every hand-written unit per variant). ai_events.cpp's
@@ -240,14 +309,15 @@ public:
      * but this push_back is then four high in own code, and CreateInstance(model) (AddInstance ->
      * push_back, auto-inlined into CreateInstance(name)), CreateEntity (into CreateRecycler) and
      * the stack slots of Add2D, CZHudMissionCams::Init and GetLoadedLibRefs are lost: at
-     * -inline level=4 no list shape satisfies both. At level=6 the same variant keeps
-     * CreateInstance x2 and CreateRecycler as well; and level 5 or 6 with the headers as they
-     * stand already matches ~C2D, CCompass::CreateAnchor, __sinit_compass.cpp,
-     * __sinit_game_state.cpp and CCell::GetMidPoint -- four of them the open "too tall by one"
-     * puzzles -- while losing 63 functions fitted to level 4 (node_world 13, zsnd_jukebox 7,
-     * zanim_set 5, compass 5, ai_events 5, ...; a sample of the drafts is unchanged). The level
-     * and the headers' heights were fitted together; a level above 4 with SOCOM 1's deeper MSL
-     * is the integrator's question. */
+     * -inline level=4 no list shape satisfies both.
+     * At level 5 (the inline-level lane, 2026-10-25) this shape stays: vc keeps CreateInstance(model)
+     * auto-inlined only at level 6 (measured there with ~__list_deleter as erase(begin(), end()),
+     * which OVL2's ~__list_imp copy 0x510080 shows and ~C2D allows only at 6: ~C2D, CreateInstance
+     * x2, Release, SetIncludeInTargetList and end()'s copy match, the three stack-slot losses stay,
+     * and every chain refitted for 5 wants a level more -- README "Open, and next"). With insert
+     * now written (its alloc_ptr), level 5 reproduces ai_events.cpp's remove_if (the wrapper
+     * iterator's copies) and this push_back's out-of-line copy (insert past inline_max_size: 0x50F810
+     * under its present map name); _tick::operator() and remove_copy_if stay open on vc. */
     void push_back(T *const &x)
     {
         base::insert(typename base::iterator(&this->end_node()), (const void *const &)x);
@@ -260,7 +330,9 @@ public:
     /* the first (CEntity::PreTickAll hands the recycler the first entity queued) */
     T *&front() { return (T *&)((typename base::node *)this->end_.next_)->data_; }
     void pop_back() { this->erase(typename base::iterator(this->end_.prev_)); }
-    void pop_front() { this->erase(typename base::iterator(this->end_.next_)); }
+    /* MSL's erase(begin()): the rdr lane's measurement puts its temporaries above the push_backs'
+     * as the target's are */
+    void pop_front() { this->erase(base::begin()); }
 
     /* the pointer list's own iterator: SOCOM 1's DWARF gives list<T *>::generic_iterator the
      * base's as its one member (i_), built from it by value (0x210C90 in the demo) and turned
