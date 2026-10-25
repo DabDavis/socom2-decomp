@@ -149,6 +149,7 @@
 0x003DC350 0x1 data_003DC350  # OVL1; SOCOM II's lens effect before the current one (a LENS_FX byte, 8 in data; thezoom.cpp's name for it ours): 43 references in 6 functions (SetLensFx, Reset, HandleNewZoom, 0x1EFA50, 0x1EFC30, 0x1F0030)
 0x003DC358 0x1 data_003DC358  # OVL1; SOCOM II's current lens effect (a LENS_FX byte, 8 in data): 44 references in 6 functions (SetLensFx, Reset, HandleNewZoom, 0x1EFA50, 0x1EFC30, 0x1F0030)
 0x003DC360 0x1 data_003DC360  # OVL1; SOCOM II's lens effects switch (1 in data; CameraZoom::LensFxOn returns it): 7 references in 3 functions (LensFxOn, HandleNewZoom, 0x1F0030)
+0x003DC380 0x4 g_fElemsFadeInTime  # OVL1 data; SOCOM 1's (hud_main.cpp's anonymous-namespace g_fElemsFadeInTime at gp-30524 in the demo, which SOCOM 1's CHUD::SwitchToCompassMap zeroes as SOCOM II's does here; global now, other units read it): -1.0 in data; 11 references in 7 functions (CHUD::SwitchToCompassMap, Tick, Init, CZHudMissionCams::PlayCamera and CleanupCamera, 0x341A60, 0x3CA5A0)
 0x003DC3D0 0x1B gopt  # OVL1; SOCOM 1's (27 bytes, the game options; CCoreState's Init and Tick test its first byte, as SOCOM 1's): 15 references in 10 functions take 0x3DC3D0-0x3DC3E0
 0x003DC468 0x4 m_U1__17CZClaymoreMapItem  # OVL1 data; SOCOM 1's static (1.0: CZClaymoreMapItem's Tick reads it where SOCOM 1's does, and a CZNewHudMap function (0x20B2C0) sets it): 2 references in 2 functions
 0x003DC470 0x4 m_V1__17CZClaymoreMapItem  # OVL1 data; SOCOM 1's static (1.0, after m_U1 as in SOCOM 1): 2 references in 2 functions

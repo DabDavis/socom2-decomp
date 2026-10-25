@@ -10,6 +10,9 @@ public:
     CAmmoDisplay();
     ~CAmmoDisplay();
     void Reset();
+    /* the counts and their bitmaps off (0x237DE0) and, in play, on (0x237E50) */
+    void Off();
+    void On();
 
     C2DBitmapPoly m_poly;   // 0x0
     C2DBitmap m_bitmap;   // 0x1f0

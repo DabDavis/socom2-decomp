@@ -1596,7 +1596,7 @@
 0x001F6AE0 0x1C func_001F6AE0  # OVL1
 0x001F6B00 0x60 func_001F6B00  # OVL1
 0x001F6B60 0x17C func_001F6B60  # OVL1
-0x001F6CE0 0x128 func_001F6CE0  # OVL1
+0x001F6CE0 0x128 SetupZoomText__4CHUDFv  # OVL1; by hand (hud_main.cpp: SOCOM 1's ZoomIn printed the zoom into its static zoomtext; SOCOM II's ZoomIn and ZoomOut both call this, which sprintf's 'ZOOM: %2.1fx' into the static at 0x3DC3F0 and loads m_zoomleveltext with it; the name ours, after SOCOM 1's Setup* pair)
 0x001F6E10 0x1B8 Add2D__4CHUDFP3C2Dib  # OVL1; s1:calls (SOCOM 1's Add2D(C2D *, int phase, bool add_to_back): the phase tested against -1, two list inserts; before the map switches)
 0x001F6FD0 0x60 GetAssetLibs__3C2DFRQ23C2D8CLibList  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F7030 0x190 SwitchToCompassMap__4CHUDFv  # OVL1; s1:calls (calls ZoomOut and ZoomIn as SOCOM 1's SwitchToCompassMap; before SwitchToFullScreenMap)
@@ -2232,8 +2232,8 @@
 0x00237760 0x3D8 func_00237760  # OVL1
 0x00237B40 0x1C0 func_00237B40  # OVL1
 0x00237D00 0xD8 func_00237D00  # OVL1
-0x00237DE0 0x6C func_00237DE0  # OVL1
-0x00237E50 0x10C func_00237E50  # OVL1
+0x00237DE0 0x6C Off__12CAmmoDisplayFv  # OVL1; by hand (CHUD::Off calls it on the ammo counts at CHUD+0x1A700; slot 4, Off, of its poly, bitmaps and strings)
+0x00237E50 0x10C On__12CAmmoDisplayFv  # OVL1; by hand (CHUD::On calls it on CHUD+0x1A700, as Off its pair; slot 5, On, unless spectating)
 0x00237F60 0x54 Reset__12CAmmoDisplayFv  # OVL1; by hand (CHUD's ReInit_Init and ReInit_Uninit call it on CHUD+0x1A700: both count strings wiped, the cached counts reset; the name ours)
 0x00237FC0 0x2FC func_00237FC0  # OVL1
 0x002382C0 0xF0 __dt__12CAmmoDisplayFv  # OVL1; by hand (CHUD's destructor calls it on CHUD+0x1A700, the member CAmmoDisplay's constructor builds: its arrays, strings, plain C2D, bitmap and poly destroyed in reverse; the implicit destructor)
@@ -2313,8 +2313,8 @@
 0x0023E030 0x340 func_0023E030  # OVL1
 0x0023E370 0x268 func_0023E370  # OVL1
 0x0023E5E0 0x11C func_0023E5E0  # OVL1
-0x0023E700 0xF8 func_0023E700  # OVL1
-0x0023E800 0x108 func_0023E800  # OVL1
+0x0023E700 0xF8 Off__12CMPWeaponSelFv  # OVL1; by hand (CHUD::Off calls it on the network weapon selector at CHUD+0x38E0 in a network game, among the other selectors' Off; it calls slot 4, Off, of each list and bitmap it holds)
+0x0023E800 0x108 On__12CMPWeaponSelFv  # OVL1; by hand (CHUD::On calls it on CHUD+0x38E0 in a network game, as Off its pair; slot 5, On, of each list and bitmap)
 0x0023E910 0x1C4 func_0023E910  # OVL1
 0x0023EAE0 0xE0 func_0023EAE0  # OVL1
 0x0023EBC0 0xD4 func_0023EBC0  # OVL1

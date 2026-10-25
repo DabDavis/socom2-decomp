@@ -57,7 +57,16 @@ public:
     MENU_STATE m_menustate;   // 0x221
 };
 
-/* the seal as the HUD reads it: its controller (CEntity's, at 0xC0) */
+/* the seal's kit (SOCOM 1's CZKit, at 0x520 there): its flag word, one bit past SOCOM 1's last
+ * (m_heartbeat_enabled was bit 14) */
+class CZKit {
+public:
+    unsigned int _b0 : 16;
+    unsigned int m_socom2_b16 : 1;   // bit 16: cleared when the HUD goes off
+    unsigned int _b17 : 15;
+};
+
+/* the seal as the HUD reads it: its controller (CEntity's, at 0xC0) and its kit */
 class CZSealBody {
 public:
     unsigned char _0[0xc0];
@@ -66,7 +75,29 @@ public:
     unsigned char _e1_0 : 4;
     unsigned char m_socom2_e1_4 : 1;   // 0xe1 bit 4 (MapCompass::On tests it too)
     unsigned char _e1_5 : 3;
+    unsigned char _e2[0x200 - 0xe2];
+    signed char m_socom2_200;   // 0x200: the seal's state (2-3 none, 4 the binoculars' 9x, 5-12 the kit's zoom)
+    unsigned char _201[0x5e0 - 0x201];
+    CZKit m_kit;   // 0x5e0
 };
+
+/* a weapon of the kit's: its type byte (11 for the one ZoomIn turns the ammo counts off for) */
+class CZFTSWeapon {
+public:
+    unsigned char _0[0x7c];
+    unsigned char m_type;   // 0x7c
+};
+
+/* the kit's own functions the HUD calls (OVL2; no rows named yet, so called as C) */
+extern "C" void func_005BE570(CZKit *kit, bool flag);   /* SOCOM 1's SetCurReticule, a flag added */
+extern "C" CZFTSWeapon *func_005C3780(CZKit *kit);     /* SOCOM 1's GetCurItem */
+extern "C" bool func_005B9990(CZKit *kit);             /* SOCOM 1's NVG_Enabled */
+extern "C" bool func_005C80F0(CZKit *kit);             /* SOCOM II's: tested with NVG_Enabled */
+extern "C" float func_005BE660(CZKit *kit);            /* SOCOM 1's GetCurZoom */
+
+/* the HUD's elements fade in from this time (SOCOM 1's g_fElemsFadeInTime, hud_main.cpp's own;
+ * other units read it in SOCOM II) */
+extern float g_fElemsFadeInTime;
 
 /* MSL's toupper (MAIN; no map row yet) */
 extern "C" int func_0019AFD0(int c);
@@ -186,44 +217,58 @@ public:
 
 
 /* the classes with constructors of their own */
-class CWeaponSel {
+/* the 2D classes as SOCOM 1's DWARF derives them (C2D's vtable at 0xC: CHUD's Off and On call
+ * slots 4 and 5 there). Their destructors are declared so that this unit emits none: their
+ * members are not placed (the linked copies, 0x1FD8C0-0x1FDA10 and the others, are implicit) */
+class CWeaponSel : public C2D {
 public:
     CWeaponSel();
+    virtual ~CWeaponSel();
     void UnInit();
-    unsigned char _0[0xce0];
+    unsigned char _18[0xce0 - 0x18];
 } __attribute__((aligned(16)));
 
-class CInGameWeaponSel {
+class CInGameWeaponSel : public C2D {
 public:
     CInGameWeaponSel();
+    virtual ~CInGameWeaponSel();
     void UnInit();
-    unsigned char _0[0x11b0];
+    unsigned char _18[0x11b0 - 0x18];
 } __attribute__((aligned(16)));
 
 /* the network game's weapon selector: slot lists honouring the server's weapon valves
  * (Enable_203FRAG and the rest), UnInit only in a network game (SOCOM II's; no vtable, so no
- * RTTI name: the name is ours) */
+ * RTTI name: the name is ours). Off and On are its own, not C2D's: they turn its lists and
+ * bitmaps off and on (0x23E700, 0x23E800) */
 class CMPWeaponSel {
 public:
     CMPWeaponSel();
     void UnInit();
+    void Off();
+    void On();
     unsigned char _0[0x1540];
 } __attribute__((aligned(16)));
 
-class PoseBitmap {
+class PoseBitmap : public C2DBitmap {
 public:
     PoseBitmap();
+    virtual ~PoseBitmap();
     void Clear();
     void ReInit();
-    unsigned char _0[0x150];
+    unsigned char _80[0x150 - 0x80];
 } __attribute__((aligned(16)));
 
-class BitmapReticule {
+/* the reticle's bitmaps and strings (0x47B0 bytes); 0x215180 turns on its bitmap at 0x34 (the
+ * paused HUD's Off keeps it) */
+class BitmapReticule : public C2D {
 public:
     BitmapReticule();
+    virtual ~BitmapReticule();
     void UnInit();
-    unsigned char _0[0x47b0];
+    unsigned char _18[0x47b0 - 0x18];
 } __attribute__((aligned(16)));
+
+extern "C" void func_00215180(BitmapReticule *reticule);
 
 class CTeamNames : public C2D {
 public:
@@ -252,7 +297,8 @@ public:
 } __attribute__((aligned(16)));
 
 enum HUD_MODE {
-    HUD_MODE_0 = 0
+    ZOOMIN = 0,
+    ZOOMOUT = 1,
 };
 
 /* the jukebox's, or so: a string table registered by name (no rows named yet) */
@@ -265,7 +311,12 @@ class CHUD {
 public:
     CHUD();
     ~CHUD();
+    void SetupZoomText();
     void Add2D(C2D *p2d, int phase, bool add_to_back);
+    void SwitchToCompassMap();
+    void SwitchToFullScreenMap();
+    void ZoomIn();
+    void ZoomOut();
     bool IsOn();
     void Off();
     void On();
@@ -463,14 +514,9 @@ void CHUD::ReInit_Uninit()
 }
 
 
-/* the app camera (the shake's stop only) and the seal the camera follows (SOCOM 1's
- * ftsGetPlayer, 0x2B3580: no row yet) */
+/* the app camera (the shake's stop only) and the seal the player is (SOCOM 1's ftsGetPlayer) */
 extern "C" void StopShake__10CAppCameraFv(CAppCamera *camera);
-extern "C" CZSealBody *func_002B3580();
-
-/* the HUD's own, before this unit's part of the range (no rows yet): On and ZoomOut */
-extern "C" void func_001F7A90(CHUD *hud);
-extern "C" void func_001F7560(CHUD *hud);
+CZSealBody *ftsGetPlayer();
 
 /* a server setting (SOCOM 1's CValve): its value a halfword at 4 */
 class CValve {
@@ -481,28 +527,34 @@ public:
     unsigned short m_value;   // 0x4
 };
 
-/* a queue of messages on screen (SOCOM 1's C2DMessage_Q): only its font placed */
-class C2DMessage_Q {
+/* a queue of messages on screen (SOCOM 1's C2DMessage_Q, a C2D: the HUD turns them off and on
+ * through C2D's slots): only its font placed */
+class C2DMessage_Q : public C2D {
 public:
-    unsigned char _0[0x18];
-    C2DFont *m_font;   // 0x18
-};
+    void SetBkgColor(float r, float g, float b);
 
-/* the mission: its three message queues, a block the HUD re-inits and the multiplayer flag */
+    C2DFont *m_font;   // 0x18
+    unsigned char _1c[0x4e0 - 0x1c];
+};   // 0x4e0 bytes (the queues' stride)
+
+/* the mission: its four message queues (the HUD re-inits the fourth) and the online game */
 class CMission {
 public:
     unsigned char _0[0x1c0];
     C2DMessage_Q m_messages;   // 0x1c0
-    unsigned char _1dc[0x6a0 - 0x1dc];
     C2DMessage_Q m_messages2;   // 0x6a0
-    unsigned char _6bc[0xb80 - 0x6bc];
     C2DMessage_Q m_messages3;   // 0xb80
-    unsigned char _b9c[0x1060 - 0xb9c];
-    unsigned char m_1060[0x1808 - 0x1060];   // 0x1060
+    C2DMessage_Q m_messages4;   // 0x1060
+    unsigned char _1540[0x1808 - 0x1540];
     void *m_1808;   // 0x1808
 };
 
 extern CMission theMission;
+/* the mission's round time, if any (0x2A6AD0: positive while the network game has a timer; no
+ * row named yet) */
+extern "C" int func_002A6AD0(CMission *mission);
+/* SOCOM II's spectator test, or so (0x2C2FA0: CAmmoDisplay::On asks it too; no row yet) */
+extern "C" bool func_002C2FA0();
 
 class CameraZoom {
 public:
@@ -517,7 +569,7 @@ extern "C" void func_0022D190();
 extern "C" void func_00202370(CZPauseTest *pause);
 extern "C" void func_00238710(CMPInfoBox *box);
 extern "C" void func_00242B20(CSpectatorInfo *info);
-extern "C" void func_002CA0B0(void *block);
+extern "C" void func_002CA0B0(C2DMessage_Q *q);
 extern "C" void func_002B6530(C2DMessage_Q *q, const char *text, int a, int b, int c, float time);
 extern "C" void func_00213610(BitmapReticule *reticule);
 extern "C" void func_002371A0(CHudNetState *state);
@@ -532,7 +584,7 @@ void CHUD::ReInit_Init()
     if (appCamera)
         StopShake__10CAppCameraFv(appCamera);
     func_003C6980();
-    func_001F7A90(theHUD);
+    theHUD->On();
     theHUD->m_letterbox.RemoveLetterbox();
     for (unsigned int i = 0; i < 6; i++) {
         m_piggyback_text[i].Off();
@@ -540,7 +592,7 @@ void CHUD::ReInit_Init()
     }
     m_socom2_1a0e8 = -1.0f;
     m_socom2_1a0f0 = -1;
-    func_001F7560(this);
+    ZoomOut();
     if (!theNetwork.m_bNetwork)
         m_teamnames.Init();
     else
@@ -559,7 +611,7 @@ void CHUD::ReInit_Init()
     theMission.m_messages2.m_font = m_myfont;
     theMission.m_messages.m_font = m_myfont;
     theMission.m_messages3.m_font = m_myfont;
-    func_002CA0B0(theMission.m_1060);
+    func_002CA0B0(&theMission.m_messages4);
     if (theMission.m_1808 && theNetwork.m_bNetwork) {
         CValve *max = CValve::GetByName("mp_max_rounds");
         CValve *count = CValve::GetByName("mp_round_count");
@@ -574,7 +626,7 @@ void CHUD::ReInit_Init()
         func_002B6530(&theMission.m_messages, text, 0, 1, 0, 0.9f);
     }
     if (!theNetwork.m_bNetwork) {
-        m_newmap->m_viewer = func_002B3580();
+        m_newmap->m_viewer = ftsGetPlayer();
         m_newmap->ReInit();
     }
     func_0022D190();
@@ -623,9 +675,248 @@ void CHUD::PostDITick(float dT)
     m_lensflares.Tick(dT);
 }
 
+/* the HUD shown: what the player's own view has (the action icon, the reticle and the stance)
+ * only on the player, the selectors and counts unless spectating, the team names in single
+ * player while the seal is in play, the zoom's state put back, the map in full screen if it was */
+void CHUD::On()
+{
+    CZSealBody *owner = GetHUDOwner();
+    CZSealBody *player = ftsGetPlayer();
+
+    m_ison = true;
+    if (theNetwork.m_bNetwork)
+        m_num_connected.On();
+    if (!theNetwork.m_bNetwork) {
+        if (func_002A6AD0(&theMission) > 0) {
+            m_timertext.On();
+            m_socom2_4ec0.On();
+        }
+    } else if (player == owner) {
+        m_timertext.On();
+        m_socom2_4ec0.On();
+    }
+    if (!theNetwork.m_bNetwork || theNetwork.m_bNetwork && !func_002C2FA0()) {
+        if (player == owner) {
+            m_actionbitmap.On();
+            m_bitmapReticule.On();
+            m_poseBitmap.On();
+        }
+        m_ingameweaponsel.On();
+        if (theNetwork.m_bNetwork)
+            m_mpweaponsel.On();
+        m_zoomleveltext.On();
+        m_socom2_0.On();
+        m_ammodisplay.On();
+        if (ftsGetPlayer()->m_socom2_e1_4)
+            theMission.m_messages3.On();
+    }
+    if (!theNetwork.m_bNetwork && !ftsGetPlayer()->m_socom2_e1_4)
+        m_teamnames.Off();
+    else
+        m_teamnames.On();
+    if (!theNetwork.m_bNetwork)
+        m_newmap->On();
+    m_rangetext.On();
+    m_weaponsel.On();
+    theMission.m_messages.On();
+    theMission.m_messages4.On();
+    if (m_hudmode == ZOOMOUT)
+        ZoomOut();
+    else
+        ZoomIn();
+    if (m_newmap ? m_newmap->m_isFullScreen : false)
+        SwitchToFullScreenMap();
+    m_teamMateNames.On();
+    if (theNetwork.m_bNetwork) {
+        m_infobox.On();
+        m_spectatorinfo.On();
+    }
+    m_mapcompass.On();
+}
+
+/* the HUD hidden: every item off (the timer and the connection count in single player, the
+ * network boxes in a network game -- the info box stays under the pause menu, where the
+ * reticle's bitmap comes back on), the message queues off and the kit's flag cleared */
+void CHUD::Off()
+{
+    if (!theNetwork.m_bNetwork) {
+        m_timertext.Off();
+        m_socom2_4ec0.Off();
+        m_num_connected.Off();
+    }
+    m_actionbitmap.Off();
+    m_teamnames.Off();
+    m_bitmapReticule.Off();
+    m_poseBitmap.Off();
+    if (!theNetwork.m_bNetwork)
+        m_newmap->Off();
+    m_rangetext.Off();
+    m_weaponsel.Off();
+    m_ingameweaponsel.Off();
+    if (theNetwork.m_bNetwork)
+        m_mpweaponsel.Off();
+    m_zoomleveltext.Off();
+    m_socom2_0.Off();
+    m_ammodisplay.Off();
+    m_teamMateNames.Off();
+    MENU_STATE menustate = ftsGetPlayer()->m_ctrl->GetMenuState();
+
+    if (theNetwork.m_bNetwork) {
+        if (menustate != statePauseTestMenu)
+            m_infobox.Off();
+        m_spectatorinfo.Off();
+    }
+    if (menustate == statePauseTestMenu)
+        func_00215180(&m_bitmapReticule);
+    m_ison = false;
+    theMission.m_messages.Off();
+    theMission.m_messages3.Off();
+    theMission.m_messages4.Off();
+    GetHUDOwner()->m_kit.m_socom2_b16 = false;
+    m_mapcompass.Off();
+}
+
 bool CHUD::IsOn()
 {
     return m_ison;
+}
+
+/* the ammo counts' piece the zoom puts back (0x237760; no row named yet) */
+extern "C" void func_00237760(CAmmoDisplay *ammo);
+
+/* zoomed out (the full view): unless the map is in full screen, the compass and the weapon back,
+ * the kit's reticle reset, the counts on unless the night vision or 0x5C80F0 holds, the message
+ * queues' backgrounds grey again, the team names and map (single player), the zoom text */
+void CHUD::ZoomOut()
+{
+    CZSealBody *owner = appCamera->m_bc;
+    CZKit *kit = &owner->m_kit;
+
+    func_005C3780(kit);
+    if (!theNetwork.m_bNetwork && m_newmap->m_isFullScreen)
+        return;
+    m_hudmode = ZOOMOUT;
+    if (!m_ison)
+        return;
+    m_mapcompass.On();
+    weapon.On();
+    if (!owner)
+        return;
+    func_005BE570(kit, false);
+    if (!func_005B9990(kit) && !func_005C80F0(kit))
+        m_ammodisplay.On();
+    func_00237760(&m_ammodisplay);
+    theMission.m_messages.SetBkgColor(128.0f, 128.0f, 128.0f);
+    theMission.m_messages3.SetBkgColor(128.0f, 128.0f, 128.0f);
+    if (!theNetwork.m_bNetwork) {
+        if (ftsGetPlayer()->m_socom2_e1_4)
+            m_teamnames.On();
+        m_newmap->On();
+    }
+    m_poseBitmap.On();
+    SetupZoomText();
+    m_actionbitmap.On();
+    if (theNetwork.m_bNetwork) {
+        m_teamMateNames.On();
+        m_infobox.On();
+        m_spectatorinfo.On();
+    }
+}
+
+/* zoomed in (a scope or the binoculars): unless the map is in full screen, the compass, the
+ * weapon, the counts, the team names, the stance and the map off, the kit's reticle set, the
+ * zoom text shown */
+void CHUD::ZoomIn()
+{
+    if (!theNetwork.m_bNetwork && m_newmap->m_isFullScreen)
+        return;
+    m_hudmode = ZOOMIN;
+    if (!m_ison)
+        return;
+    m_mapcompass.Off();
+    weapon.Off();
+    CZSealBody *owner = appCamera->m_bc;
+
+    if (!owner)
+        return;
+    func_005BE570(&owner->m_kit, false);
+    CZKit *kit = &owner->m_kit;
+    CZFTSWeapon *pItem = func_005C3780(kit);
+
+    if (pItem && pItem->m_type == 11)
+        m_ammodisplay.Off();
+    /* the target's block order: the night-vision path's Off first, jumping over the other's
+     * (an if/else with an Off in each arm puts the then-arm's whole; a goto reproduces it) */
+    if (!func_005B9990(kit)) {
+        func_005C80F0(kit);
+        goto off;
+    }
+    m_ammodisplay.Off();
+    goto counted;
+off:
+    m_ammodisplay.Off();
+counted:
+    if (!theNetwork.m_bNetwork)
+        m_teamnames.Off();
+    m_poseBitmap.Off();
+    if (!theNetwork.m_bNetwork)
+        m_newmap->Off();
+    SetupZoomText();
+    m_actionbitmap.Off();
+    if (theNetwork.m_bNetwork) {
+        m_infobox.Off();
+        m_spectatorinfo.Off();
+    }
+}
+
+/* the map in full screen: the reticle, the names, the timer, the counts, the stance, the zoom
+ * text and the message queues off, the map on (single player), the network boxes off */
+void CHUD::SwitchToFullScreenMap()
+{
+    m_bitmapReticule.Off();
+    m_teamnames.Off();
+    m_timertext.Off();
+    m_socom2_4ec0.Off();
+    m_ammodisplay.Off();
+    m_poseBitmap.Off();
+    if (!theNetwork.m_bNetwork)
+        m_newmap->On();
+    m_zoomleveltext.Off();
+    m_socom2_0.Off();
+    theMission.m_messages.Off();
+    theMission.m_messages2.Off();
+    theMission.m_messages4.Off();
+    m_actionbitmap.Off();
+    if (theNetwork.m_bNetwork) {
+        m_teamMateNames.Off();
+        m_infobox.Off();
+    }
+}
+
+/* back to the compass: everything the full-screen map hid shown again, the zoom's state put back,
+ * and the elements' fade-in restarted */
+void CHUD::SwitchToCompassMap()
+{
+    m_bitmapReticule.On();
+    m_teamnames.On();
+    m_timertext.On();
+    m_socom2_4ec0.On();
+    m_ammodisplay.On();
+    m_poseBitmap.On();
+    m_zoomleveltext.On();
+    m_socom2_0.On();
+    theMission.m_messages.On();
+    theMission.m_messages2.On();
+    theMission.m_messages4.On();
+    if (m_hudmode == ZOOMOUT)
+        ZoomOut();
+    else
+        ZoomIn();
+    if (theNetwork.m_bNetwork) {
+        m_teamMateNames.On();
+        m_infobox.On();
+    }
+    g_fElemsFadeInTime = 0.0f;
 }
 
 /* a 2D object put on one of the HUD's three phase lists, at the back or the front; phase -1 takes
@@ -664,3 +955,46 @@ void CHUD::Add2D(C2D *p2d, int phase, bool add_to_back)
     }
     m_phase[phase].push_front(p2d);
 }
+
+/* the zoom's text ("ZOOM: 2.0x"): the binoculars' fixed 9x or the kit's zoom by the seal's state,
+ * shown only above 1.01 (SOCOM 1's ZoomIn printed it into its static zoomtext; SOCOM II's ZoomIn
+ * and ZoomOut share this, the name ours) */
+void CHUD::SetupZoomText()
+{
+    static char zoomtext[32] = "uninit";
+    CZSealBody *owner = GetHUDOwner();
+
+    if (!owner)
+        return;
+    CZKit *kit = &owner->m_kit;
+    float zoom = 0.0f;
+
+    switch (owner->m_socom2_200) {
+    case 2:
+    case 3:
+        zoom = 0.0f;
+        break;
+    case 4:
+        zoom = 9.0f;
+        break;
+    case 5:
+    case 6:
+    case 7:
+    case 8:
+    case 9:
+    case 10:
+    case 11:
+    case 12:
+        zoom = func_005BE660(kit);
+        break;
+    }
+    if (zoom <= 1.01f) {
+        m_zoomleveltext.Off();
+        return;
+    }
+    sprintf(zoomtext, "ZOOM: %2.1fx", zoom);
+    m_zoomleveltext.On();
+    m_zoomleveltext.Load(0.9f, zoomtext, m_myfont, 20.0f, 420.0f, 1);
+}
+
+float g_fElemsFadeInTime = -1.0f;
