@@ -70,7 +70,14 @@ public:
     /* built from an allocator, out of line as the default one (the copy constructor's first
      * step: CNode::SetParentHasVisuals calls it, 0x3177A0) */
     __list_deleter(const Allocator &a);
-    ~__list_deleter() { erase(iterator(end_.next_), iterator(&end_)); }
+    /* the sentinel's address into a local first, as the constructor takes it (the rdr lane's
+     * measurement: CRdrArchive's ReadArray 23 -> 17 instructions off, nothing else moves) */
+    ~__list_deleter()
+    {
+        node_base *t = &end_;
+
+        erase(iterator(t->next_), iterator(t));
+    }
     /* the elements of a range appended one by one, out of line (0x317720 for the pointer lists'
      * const iterators: the iterators by value, homed, end() and insert called) */
     template <class InputIterator>
@@ -315,7 +322,9 @@ public:
     /* the first (CEntity::PreTickAll hands the recycler the first entity queued) */
     T *&front() { return (T *&)((typename base::node *)this->end_.next_)->data_; }
     void pop_back() { this->erase(typename base::iterator(this->end_.prev_)); }
-    void pop_front() { this->erase(typename base::iterator(this->end_.next_)); }
+    /* MSL's erase(begin()): the rdr lane's measurement puts its temporaries above the push_backs'
+     * as the target's are */
+    void pop_front() { this->erase(base::begin()); }
 
     /* the pointer list's own iterator: SOCOM 1's DWARF gives list<T *>::generic_iterator the
      * base's as its one member (i_), built from it by value (0x210C90 in the demo) and turned
