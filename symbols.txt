@@ -11816,7 +11816,7 @@
 0x0060EE00 0x78 __dt__14CAiSUseVehicleFv  # OVL2; by hand: CAiSUseVehicle's vtable slot +0x4C (the destructor's shape: its table, CAiState's, ~CAiStateStack(this + 8, -1); CAiSUseVehicle is new in SOCOM II)
 0x0060EE80 0x5EC Tick__14CAiSUseVehicleFfP11CSealCtrlAi  # OVL2; by hand: CAiSUseVehicle's vtable slot +0x10 (Tick)
 0x0060F470 0x14C func_0060F470  # OVL2
-0x0060F5C0 0xC func_0060F5C0  # OVL2
+0x0060F5C0 0xC SetTimeout__14CAiSUseVehicleFf  # OVL2; by hand: stores the float at 0x60 and zeroes 0x64 -- CAiSUseVehicle::OnSignal inlines it with CAiTimer::infinite on a reset; just before CanPushAiState and OnSignal (the name ours)
 0x0060F5D0 0x8 CanPushAiState__14CAiSUseVehicleF8AI_STATEP11CSealCtrlAi  # OVL2; by hand: CAiSUseVehicle's vtable slot +0x1C (CanPushAiState)
 0x0060F5E0 0xD8 OnSignal__14CAiSUseVehicleFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand: CAiSUseVehicle's vtable slot +0x8 (OnSignal)
 0x0060F6C0 0x94 func_0060F6C0  # OVL2

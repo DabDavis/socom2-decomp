@@ -73,7 +73,8 @@ public:
     AI_STATE m_state;   // 0x30
     unsigned char _31[0x34 - 0x31];
     unsigned int m_34;   // 0x34 (zeroed by the constructor; CAiSAction's phase)
-    unsigned char _38[0x58 - 0x38];
+    unsigned int m_38;   // 0x38 (zeroed by the constructor)
+    unsigned char _3c[0x58 - 0x3c];
 };
 
 /* the states whose code is this lane's (each class only what a written function needs) */
@@ -163,9 +164,18 @@ public:
     float m_f4;   // 0xf4
 };
 
+/* the vehicle state (new in SOCOM II; seal_aivehicle.cpp) */
 class CAiSUseVehicle : public CAiState {
 public:
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual ~CAiSUseVehicle();
+    void SetTimeout(float t);
+
+    unsigned int m_58;   // 0x58
+    unsigned int m_5c;   // 0x5c: an entity's id (CEntity::invalidId on a reset)
+    float m_60;   // 0x60: the timeout
+    unsigned int m_64;   // 0x64: its clock
 };
 
 /* seal_airesponse.cpp's states */
