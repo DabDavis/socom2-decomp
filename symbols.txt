@@ -10072,7 +10072,7 @@
 0x00555340 0x8 CanAttack__11CAiSRescuedCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00555350 0x8 CanScan__11CAiSRescuedCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00555360 0xC GetScriptResponse__11CAiSRescuedCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00555370 0x8 Virtual14__8CAiStateFP11CSealCtrlAii  # OVL2; s1:vtable by hand (slot 0x14 of __vt__8CAiState and of every state that keeps the base's, the slot's signature master's ai_states.h's: returns AI_RUNNING) (the SEAL lane, round 5)
+0x00555370 0x8 Virtual14__8CAiStateFP11CSealCtrlAiP8CAiState  # OVL2; s1:vtable by hand (slot 0x14 of __vt__8CAiState and of every state that keeps the base's, the slot's signature master's ai_states.h's: returns AI_RUNNING) (the SEAL lane, round 5); the kit lane, round 6: slot 0x14 returns int and takes the sub-stack's state (CAiStateStack::Tick passes its front or 0 in a2, keeps the result unextended)
 0x00555380 0xC GetStatus__8CAiStateCFv  # OVL2; slot 0x18 of __vt__8CAiState (0x669950), SOCOM 1's slot 0x10: SOCOM II inserted one virtual after OnSignal and one before this slot, aligned by the overrides both builds share (CAiSRescued's OnSignal, Tick, CanAttack, CanScan, GetScriptResponse; CAiSPursue's GetStatus here); an inline's copy returning an empty string, as SOCOM 1's (0xC bytes)
 0x00555390 0x8 CanPushAiState__8CAiStateF8AI_STATEP11CSealCtrlAi  # OVL2; slot 0x1C of __vt__8CAiState, SOCOM 1's slot 0x14 (aligned as GetStatus__8CAiStateCFv); returns true as SOCOM 1's
 0x005553A0 0x8 CanSwitchAiState__8CAiStateF8AI_STATEP11CSealCtrlAi  # OVL2; slot 0x20 of __vt__8CAiState, SOCOM 1's slot 0x18 (aligned as GetStatus__8CAiStateCFv); returns true as SOCOM 1's
@@ -10123,16 +10123,16 @@
 0x00558F80 0x24 func_00558F80  # OVL2
 0x00558FB0 0x4C func_00558FB0  # OVL2
 0x00559000 0x6C func_00559000  # OVL2
-0x00559070 0x3F4 Tick__11CAiSRescuedFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00559070 0x3F4 Tick__11CAiSRescuedFP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x00559470 0x40 func_00559470  # OVL2
 0x005594B0 0xCC OnSignal__11CAiSRescuedFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00559580 0x3A8 func_00559580  # OVL2
-0x00559930 0xE28 Tick__10CAiSPursueFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0055A760 0x70 Virtual14__10CAiSPursueFP11CSealCtrlAii  # OVL2; s1:vtable by hand (slot 0x14 of __vt__10CAiSPursue alone: the target dropped unless the AI's object at 0x67C says so, then Result()) (the SEAL lane, round 5)
+0x00559930 0xE28 Tick__10CAiSPursueFP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
+0x0055A760 0x70 Virtual14__10CAiSPursueFP11CSealCtrlAiP8CAiState  # OVL2; s1:vtable by hand (slot 0x14 of __vt__10CAiSPursue alone: the target dropped unless the AI's object at 0x67C says so, then Result()) (the SEAL lane, round 5); the kit lane, round 6: slot 0x14 returns int and takes the sub-stack's state (CAiStateStack::Tick passes its front or 0 in a2, keeps the result unextended)
 0x0055A7D0 0x34 Virtual48__10CAiSPursueFiP8CAiState  # OVL2; s1:vtable by hand (slot 0x48 of __vt__10CAiSPursue alone: the timer at 0x58 and the byte at 0x5C copied from another pursuit, true) (the SEAL lane, round 5)
 0x0055A810 0xB8 GetStatus__10CAiSPursueCFv  # OVL2; s1:calls
 0x0055A8D0 0x50 OnSignal__10CAiSPursueFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0055A920 0x298 Tick__11CAiSAnimateFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0055A920 0x298 Tick__11CAiSAnimateFP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x0055ABC0 0x58 OnSignal__11CAiSAnimateFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0055AC20 0x1710 func_0055AC20  # OVL2
 0x0055C330 0x148 func_0055C330  # OVL2
@@ -10144,7 +10144,7 @@
 0x0055CCA0 0x30 func_0055CCA0  # OVL2
 0x0055CCD0 0xF0 func_0055CCD0  # OVL2
 0x0055CDC0 0x35C func_0055CDC0  # OVL2
-0x0055D120 0x1288 Tick__10CAiSDeployFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x0055D120 0x1288 Tick__10CAiSDeployFP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x0055E3B0 0x2AC func_0055E3B0  # OVL2
 0x0055E660 0x8 func_0055E660  # OVL2
 0x0055E670 0x430 func_0055E670  # OVL2
@@ -11445,7 +11445,7 @@
 0x005EF950 0x58 func_005EF950  # OVL2
 0x005EF9B0 0x18 func_005EF9B0  # OVL2
 0x005EF9D0 0x78 __dt__10CAiSActionFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x005EFA50 0x730 Tick__10CAiSActionFfP11CSealCtrlAi  # OVL2; by hand: CAiSAction's vtable slot +0x10 (SOCOM II's CAiState table: OnSignal +8, new +0xC, Tick +0x10, new +0x14, GetStatus +0x18, CanPushAiState +0x1C, CanSwitchAiState +0x20, CanAttack +0x24, CanScan +0x28, CanPursue +0x2C, GetScriptResponse +0x30, six new, the destructor last at +0x4C -- every SOCOM 1 override of the 15 classes the demo names lands on its slot)
+0x005EFA50 0x730 Tick__10CAiSActionFP11CSealCtrlAi  # OVL2; by hand: CAiSAction's vtable slot +0x10 (SOCOM II's CAiState table: OnSignal +8, new +0xC, Tick +0x10, new +0x14, GetStatus +0x18, CanPushAiState +0x1C, CanSwitchAiState +0x20, CanAttack +0x24, CanScan +0x28, CanPursue +0x2C, GetScriptResponse +0x30, six new, the destructor last at +0x4C -- every SOCOM 1 override of the 15 classes the demo names lands on its slot); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x005F0180 0x204 func_005F0180  # OVL2
 0x005F0390 0xD8 GetStatus__10CAiSActionCFv  # OVL2; by hand: CAiSAction's vtable slot +0x18 (GetStatus, the CAiState table read from every SOCOM 1 override)
 0x005F0470 0x240 OnSignal__10CAiSActionFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand: CAiSAction's vtable slot +0x8 (OnSignal)
@@ -11460,28 +11460,28 @@
 0x005F0990 0x198 func_005F0990  # OVL2
 0x005F0B30 0x198 func_005F0B30  # OVL2
 0x005F0CD0 0x48C func_005F0CD0  # OVL2
-0x005F1160 0x440 Tick__8CAiSPlanFfP11CSealCtrlAi  # OVL2; by hand: CAiSPlan's vtable slot +0x10 (Tick; CAiSPlan is new in SOCOM II)
+0x005F1160 0x440 Tick__8CAiSPlanFP11CSealCtrlAi  # OVL2; by hand: CAiSPlan's vtable slot +0x10 (Tick; CAiSPlan is new in SOCOM II); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x005F15A0 0x1B4 func_005F15A0  # OVL2
 0x005F1760 0x9C func_005F1760  # OVL2
 0x005F1800 0x14C OnSignal__8CAiSPlanFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand: CAiSPlan's vtable slot +0x8 (OnSignal)
 0x005F1950 0xC GetStatus__8CAiSPlanCFv  # OVL2; by hand: CAiSPlan's vtable slot +0x18 (GetStatus: returns a string)
-0x005F1960 0x170 Tick__13CAiSCQBAttackFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x005F1960 0x170 Tick__13CAiSCQBAttackFP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x005F1AD0 0x80 OnSignal__13CAiSCQBAttackFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x005F1B50 0x9C Tick__11CAiSUnknownFfP11CSealCtrlAi  # OVL2; by hand: CAiSUnknown's vtable slot +0x10 (Tick; SOCOM 1's was an 8-byte stub)
+0x005F1B50 0x9C Tick__11CAiSUnknownFP11CSealCtrlAi  # OVL2; by hand: CAiSUnknown's vtable slot +0x10 (Tick; SOCOM 1's was an 8-byte stub); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x005F1BF0 0x80 OnSignal__11CAiSUnknownFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand: CAiSUnknown's vtable slot +0x8 (OnSignal; SOCOM 1's was an 8-byte stub)
-0x005F1C70 0x1CC Tick__13CAiSSuspendedFfP11CSealCtrlAi  # OVL2; s1:calls
+0x005F1C70 0x1CC Tick__13CAiSSuspendedFP11CSealCtrlAi  # OVL2; s1:calls; the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x005F1E40 0x2E0 OnSignal__13CAiSSuspendedFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x005F2120 0xFE0 Tick__10CAiSBreachFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x005F2120 0xFE0 Tick__10CAiSBreachFP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x005F3100 0x170 func_005F3100  # OVL2
 0x005F3270 0x12C func_005F3270  # OVL2
 0x005F33A0 0x128 GetStatus__10CAiSBreachCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F34D0 0x48 Virtual34__10CAiSBreachFP11CSealCtrlAiP8CAiEventP10CZSealBodyb  # OVL2; by hand (the kit lane, round 5): CAiSBreach's vtable slot +0x34 -- true for an event of kind 3 or 7 (the name ours, by slot)
 0x005F3520 0xFC CanPushAiState__10CAiSBreachF8AI_STATEP11CSealCtrlAi  # OVL2; by hand: CAiSBreach's vtable slot +0x1C (CanPushAiState)
 0x005F3620 0x1A0 OnSignal__10CAiSBreachFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x005F37C0 0x3D4 Tick__10CAiSScriptFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x005F37C0 0x3D4 Tick__10CAiSScriptFP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x005F3BA0 0x414 OnSignal__10CAiSScriptFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F3FC0 0x28 func_005F3FC0  # OVL2
-0x005F3FF0 0x90 func_005F3FF0  # OVL2
+0x005F3FF0 0x90 Virtual0C__10CAiSScriptFiiP11CSealCtrlAi  # OVL2; by hand (the kit lane, round 6): CAiSScript's vtable slot +0x0C (0x669860+0xC) -- its own sequence id (0x58) told an event: 1 clears the id, 2 and 3 set and clear the hold bit (0x5C bit 0) through a bool, the byte at 0x5F made 255
 0x005F4080 0x8 CanAttack__10CAiSScriptCFv  # OVL2; by hand: CAiSScript's vtable slot +0x24 (CanAttack)
 0x005F4090 0x60 CanPursue__10CAiSScriptCFP11CSealCtrlAi  # OVL2; by hand: CAiSScript's vtable slot +0x2C (CanPursue; SOCOM 1's 0x6C bytes, this 0x60)
 0x005F40F0 0x80 CanPushAiState__10CAiSScriptF8AI_STATEP11CSealCtrlAi  # OVL2; by hand: CAiSScript's vtable slot +0x1C (CanPushAiState)
@@ -11489,10 +11489,10 @@
 0x005F41F0 0x16C ActivateSequence__10CAiSScriptFPCcUi  # OVL2; s1:calls
 0x005F4360 0x44 func_005F4360  # OVL2
 0x005F43B0 0xBC func_005F43B0  # OVL2
-0x005F4470 0xB9C Tick__8CAiSGotoFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x005F4470 0xB9C Tick__8CAiSGotoFP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x005F5010 0x18C OnSignal__8CAiSGotoFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F51A0 0x130 func_005F51A0  # OVL2
-0x005F52D0 0x244 Tick__10CAiSPickupFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x005F52D0 0x244 Tick__10CAiSPickupFP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x005F5520 0x68 SetPickup__10CAiSPickupFP7CPickupUi  # OVL2; by hand: stores the pickup and its network id (what CAiSPickup::Tick checks at 0x58/0x5C) and the flags through SetFlags (the name ours; the kit lane, round 3)
 0x005F5590 0x50 OnSignal__10CAiSPickupFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F55E0 0x4E8 func_005F55E0  # OVL2
@@ -11537,7 +11537,7 @@
 0x005F7D80 0x15C Set__13CAiStateStackFP11CSealCtrlAi8AI_STATEUi  # OVL2; by hand (the kit lane, round 5): SOCOM 1's CSealCtrlAi::SetAiState moved onto the stack -- the top told 1, deleted and erased, the new one created at the front and told 0; the wrapper 0x5F5BA0 calls it after 0x5F5CD0 (the name ours); the third parameter a flags word (the kit lane, round 5): the wrapper 0x5F5BA0 hands the same register to 0x5F5CD0, which tests its bits 1, 2, 4 and 8
 0x005F7EE0 0x144 Push__13CAiStateStackFP11CSealCtrlAi8AI_STATEUi  # OVL2; by hand (the kit lane, round 5): SOCOM 1's CSealCtrlAi::PushAiState moved onto the stack -- the top told 2, Create, insert at the front, told 0, the script response run, 0x5F7470; the wrapper 0x5F5C00 calls it after 0x5F5CD0 (the name ours); the third parameter a flags word (the kit lane, round 5): the wrapper 0x5F5C00 hands the same register to 0x5F5CD0, which tests its bits 1, 2, 4 and 8
 0x005F8030 0x1A0 Tick__13CAiStateStackFfP11CSealCtrlAi  # OVL2; by hand (the kit lane, round 5): the stack's tick -- CAiState's frame time (OVL1 bss 0x44D620) set, the front state's own stack ticked first, then its Tick (slot 0x10) or its sub-step (slot 0x14), popped when done (the result kept at 0x1C, 2 returned), else the clocks run; recursive (SOCOM 1's CSealCtrlAi::StateTick's core; the name ours)
-0x005F81D0 0x8 Tick__8CAiStateFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x005F81D0 0x8 Tick__8CAiStateFP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x005F81E0 0x8C Remove__13CAiStateStackF8AI_STATE  # OVL2; by hand (the kit lane, round 5): every state of a kind deleted (remove_if, 0x5F8AF0, with a functor holding the kind) and erased; whether any was (the name ours)
 0x005F8270 0xC0 Find__13CAiStateStackCF8AI_STATE  # OVL2; by hand (the kit lane, round 5): the stack's state of a kind (a const walk, the iterator assigned from begin()) -- SOCOM 1's CSealCtrlAi::FindAiState, whose wrapper 0x5F5FC0 jumps here (the name ours)
 0x005F8330 0x24 GetState__13CAiStateStackCFv  # OVL2; by hand: a CAiStateStack's front state, 0 when its size (at 0) is 0 -- the SEAL units call it on a controller's stack (the SEAL lane's lead), CSealCtrlAi::GetAiState (0x5F5FD0/0x5F6010) inlines the same test; the first of two identical copies, taken as the const one by GetAiState's order (the name ours)
@@ -11573,7 +11573,7 @@
 0x005FAD50 0x98 func_005FAD50  # OVL2
 0x005FADF0 0x78 __dt__10CAiSFollowFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005FAE70 0x348 func_005FAE70  # OVL2
-0x005FB1C0 0x138C Tick__10CAiSFollowFfP11CSealCtrlAi  # OVL2; by hand: CAiSFollow's vtable slot +0x10 (Tick)
+0x005FB1C0 0x138C Tick__10CAiSFollowFP11CSealCtrlAi  # OVL2; by hand: CAiSFollow's vtable slot +0x10 (Tick); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x005FC550 0x38 func_005FC550  # OVL2
 0x005FC590 0x238 func_005FC590  # OVL2
 0x005FC7D0 0x140 func_005FC7D0  # OVL2
@@ -11648,30 +11648,30 @@
 0x00601870 0xC func_00601870  # OVL2
 0x00601880 0x78 __dt__11CAiSHostageFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00601900 0x8 CanAttack__11CAiSHostageCFv  # OVL2; by hand: CAiSHostage's vtable slot +0x24 (CanAttack)
-0x00601910 0x538 Tick__11CAiSHostageFfP11CSealCtrlAi  # OVL2; by hand: CAiSHostage's vtable slot +0x10 (Tick)
+0x00601910 0x538 Tick__11CAiSHostageFP11CSealCtrlAi  # OVL2; by hand: CAiSHostage's vtable slot +0x10 (Tick); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x00601E50 0x58 SetCaptor__11CAiSHostageFP7CEntityb  # OVL2; by hand (the kit lane, round 4): the flags' bit 0 set (SetFlags(1, 0)) when its bool asks, then the entity's id (CEntity 0x4) at 0x5C and its team (0xC8) at 0x58 -- the fields CAiSHostage::OnSignal's reset clears to invalidId and -1; CSealCtrlAi::OnCommand and 0x5784A0 call it on the AI's state of kind 23 (the name ours)
 0x00601EB0 0x8 CanScan__11CAiSHostageCFv  # OVL2; by hand: CAiSHostage's vtable slot +0x28 (CanScan)
 0x00601EC0 0x58 CanPushAiState__11CAiSHostageF8AI_STATEP11CSealCtrlAi  # OVL2; by hand: CAiSHostage's vtable slot +0x1C (CanPushAiState)
 0x00601F20 0x60 OnSignal__11CAiSHostageFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00601F80 0x2EC Tick__9CAiSAvoidFfP11CSealCtrlAi  # OVL2; by hand: CAiSAvoid's vtable slot +0x10 (Tick)
+0x00601F80 0x2EC Tick__9CAiSAvoidFP11CSealCtrlAi  # OVL2; by hand: CAiSAvoid's vtable slot +0x10 (Tick); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x00602270 0x8A4 func_00602270  # OVL2
 0x00602B20 0x1F0 func_00602B20  # OVL2
 0x00602D10 0x114 OnSignal__9CAiSAvoidFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00602E30 0x860 Tick__8CAiSRushFfP11CSealCtrlAi  # OVL2; by hand: CAiSRush's vtable slot +0x10 (Tick)
+0x00602E30 0x860 Tick__8CAiSRushFP11CSealCtrlAi  # OVL2; by hand: CAiSRush's vtable slot +0x10 (Tick); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x00603690 0x1C func_00603690  # OVL2
 0x006036B0 0x29C OnSignal__8CAiSRushFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand: CAiSRush's vtable slot +0x8 (OnSignal)
-0x00603950 0x9E8 Tick__15CAiSPathRecoverFfP11CSealCtrlAi  # OVL2; by hand: CAiSPathRecover's vtable slot +0x10 (Tick)
+0x00603950 0x9E8 Tick__15CAiSPathRecoverFP11CSealCtrlAi  # OVL2; by hand: CAiSPathRecover's vtable slot +0x10 (Tick); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x00604340 0x44 func_00604340  # OVL2
 0x00604390 0x5C func_00604390  # OVL2
 0x006043F0 0x98 GetStatus__15CAiSPathRecoverCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00604490 0x11C OnSignal__15CAiSPathRecoverFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand: CAiSPathRecover's vtable slot +0x8 (OnSignal)
-0x006045B0 0x270 Tick__8CAiSFleeFfP11CSealCtrlAi  # OVL2; by hand: CAiSFlee's vtable slot +0x10 (Tick)
+0x006045B0 0x270 Tick__8CAiSFleeFP11CSealCtrlAi  # OVL2; by hand: CAiSFlee's vtable slot +0x10 (Tick); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x00604820 0x8 CanAttack__8CAiSFleeCFv  # OVL2; by hand: CAiSFlee's vtable slot +0x24 (CanAttack; SOCOM 1's 0x10 bytes, this 8)
 0x00604830 0x48 OnSignal__8CAiSFleeFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00604880 0x364 Tick__10CAiSTargetFfP11CSealCtrlAi  # OVL2; by hand: CAiSTarget's vtable slot +0x10 (Tick)
+0x00604880 0x364 Tick__10CAiSTargetFP11CSealCtrlAi  # OVL2; by hand: CAiSTarget's vtable slot +0x10 (Tick); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x00604BF0 0x70 func_00604BF0  # OVL2
 0x00604C60 0x74 OnSignal__10CAiSTargetFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00604CE0 0x8C8 Tick__9CAiSEventFfP11CSealCtrlAi  # OVL2; by hand: CAiSEvent's vtable slot +0x10 (Tick)
+0x00604CE0 0x8C8 Tick__9CAiSEventFP11CSealCtrlAi  # OVL2; by hand: CAiSEvent's vtable slot +0x10 (Tick); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x006055B0 0x1C0 func_006055B0  # OVL2
 0x00605770 0x88 func_00605770  # OVL2
 0x00605800 0x14C func_00605800  # OVL2
@@ -11681,9 +11681,9 @@
 0x00605A50 0x8 CanPursue__9CAiSEventCFP11CSealCtrlAi  # OVL2; by hand: CAiSEvent's vtable slot +0x2C (CanPursue, as SOCOM 1's)
 0x00605A60 0x14 CanAttack__9CAiSEventCFv  # OVL2; by hand: CAiSEvent's vtable slot +0x24 (CanAttack; SOCOM 1's 0x2C bytes, this 0x14)
 0x00605A80 0x1DC OnSignal__9CAiSEventFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand: CAiSEvent's vtable slot +0x8 (OnSignal)
-0x00605C60 0x324 Tick__16CAiSStunResponseFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00605C60 0x324 Tick__16CAiSStunResponseFP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x00605F90 0x124 OnSignal__16CAiSStunResponseFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x006060C0 0x6D8 Tick__8CAiSHoldFfP11CSealCtrlAi  # OVL2; by hand: CAiSHold's vtable slot +0x10 (Tick)
+0x006060C0 0x6D8 Tick__8CAiSHoldFP11CSealCtrlAi  # OVL2; by hand: CAiSHold's vtable slot +0x10 (Tick); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x006067A0 0x604 func_006067A0  # OVL2
 0x00606DB0 0x10C func_00606DB0  # OVL2
 0x00606EC0 0x6A0 func_00606EC0  # OVL2
@@ -11691,18 +11691,18 @@
 0x006075C0 0x84 func_006075C0  # OVL2
 0x00607650 0x1D8 OnSignal__8CAiSHoldFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand: CAiSHold's vtable slot +0x8 (OnSignal)
 0x00607830 0x6C func_00607830  # OVL2
-0x006078A0 0x464 Tick__13CAiSSurrenderFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x006078A0 0x464 Tick__13CAiSSurrenderFP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x00607D10 0x60 CanPushAiState__13CAiSSurrenderF8AI_STATEP11CSealCtrlAi  # OVL2; by hand: CAiSSurrender's vtable slot +0x1C (CanPushAiState)
 0x00607D70 0x2E0 OnSignal__13CAiSSurrenderFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00608050 0x8 func_00608050  # OVL2
-0x00608060 0x230 Tick__10CAiSNoAmmoFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00608060 0x230 Tick__10CAiSNoAmmoFP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x00608290 0x50 OnSignal__10CAiSNoAmmoFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x006082E0 0x1CC func_006082E0  # OVL2
 0x006084B0 0x10C func_006084B0  # OVL2
-0x006085C0 0x27C Tick__10CAiSReloadFfP11CSealCtrlAi  # OVL2; by hand: CAiSReload's vtable slot +0x10 (Tick)
+0x006085C0 0x27C Tick__10CAiSReloadFP11CSealCtrlAi  # OVL2; by hand: CAiSReload's vtable slot +0x10 (Tick); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x00608840 0x198 func_00608840  # OVL2
 0x006089E0 0x8 OnSignal__10CAiSReloadFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x006089F0 0x798 Tick__10CAiSShotAtFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x006089F0 0x798 Tick__10CAiSShotAtFP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x00609190 0x1A4 func_00609190  # OVL2
 0x00609340 0xA4 func_00609340  # OVL2
 0x006093F0 0x13C OnSignal__10CAiSShotAtFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -11740,7 +11740,7 @@
 0x0060A5F0 0xAC func_0060A5F0  # OVL2
 0x0060A6A0 0x1A8 func_0060A6A0  # OVL2
 0x0060A850 0xE8 func_0060A850  # OVL2
-0x0060A940 0xDC func_0060A940  # OVL2
+0x0060A940 0xDC __ct__9CAiTargetFv  # OVL2; by hand (the kit lane, round 6): CAiTarget's constructor -- SEAL_AI_PARAMS's constructor (0x60BF40) calls it on +0x42C (the controller's 0x67C, after the event queue, as SOCOM 1's CSealCtrlAi constructor calls __ct__9CAiTargetFv on m_target after m_eventQueue), CTurret's constructor (0x3AA478) too; SOCOM 1's CheckLineOfFire/CAiTarget unit closes with it, and SOCOM II's sits after CheckLineOfFire (0x609DF0)
 0x0060AA20 0x57C func_0060AA20  # OVL2
 0x0060AFA0 0x174 func_0060AFA0  # OVL2
 0x0060B120 0x344 func_0060B120  # OVL2
@@ -11756,7 +11756,7 @@
 0x0060BC40 0x2CC func_0060BC40  # OVL2
 0x0060BF10 0x1C func_0060BF10  # OVL2
 0x0060BF30 0xC func_0060BF30  # OVL2
-0x0060BF40 0x224 func_0060BF40  # OVL2
+0x0060BF40 0x224 __ct__14SEAL_AI_PARAMSFv  # OVL2; by hand (the kit lane, round 6): SEAL_AI_PARAMS's constructor -- CSealCtrlAi's constructor (0x5740A4) calls it on this + 0x250, the second base CSealCtrlAi's RTTI lists there, before its table store; it builds the state stack at +0x1CC (0x5F8520), two CAiPaths, the CAiEvent, the event queue, the CAiTarget (0x60A940) and the trigger
 0x0060C170 0x18 func_0060C170  # OVL2
 0x0060C190 0x78 func_0060C190  # OVL2
 0x0060C210 0xC func_0060C210  # OVL2
@@ -11817,7 +11817,7 @@
 0x0060ED20 0x18 func_0060ED20  # OVL2
 0x0060ED40 0xB8 func_0060ED40  # OVL2
 0x0060EE00 0x78 __dt__14CAiSUseVehicleFv  # OVL2; by hand: CAiSUseVehicle's vtable slot +0x4C (the destructor's shape: its table, CAiState's, ~CAiStateStack(this + 8, -1); CAiSUseVehicle is new in SOCOM II)
-0x0060EE80 0x5EC Tick__14CAiSUseVehicleFfP11CSealCtrlAi  # OVL2; by hand: CAiSUseVehicle's vtable slot +0x10 (Tick)
+0x0060EE80 0x5EC Tick__14CAiSUseVehicleFP11CSealCtrlAi  # OVL2; by hand: CAiSUseVehicle's vtable slot +0x10 (Tick); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x0060F470 0x14C func_0060F470  # OVL2
 0x0060F5C0 0xC SetTimeout__14CAiSUseVehicleFf  # OVL2; by hand: stores the float at 0x60 and zeroes 0x64 -- CAiSUseVehicle::OnSignal inlines it with CAiTimer::infinite on a reset; just before CanPushAiState and OnSignal (the name ours)
 0x0060F5D0 0x8 CanPushAiState__14CAiSUseVehicleF8AI_STATEP11CSealCtrlAi  # OVL2; by hand: CAiSUseVehicle's vtable slot +0x1C (CanPushAiState)

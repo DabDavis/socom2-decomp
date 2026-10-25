@@ -489,8 +489,20 @@ public:
     float m_throttle_goal[3];   // 0x254 (as SOCOM 1's 0x274: the throttles the AI asks for)
     unsigned int m_260;   // 0x260
     unsigned int m_debug : 1;   // 0x264 (SOCOM 1's 0x280, the same bits as far as they are read)
-    unsigned int m_navyseal : 1;
-    unsigned int m_bits264 : 30;
+    unsigned int m_navyseal : 1;   // bit 1 (also no CQB delay: CAiSCQBAttack's entry reads it)
+    /* bits 2, 13, 16 and 17 as the AI states read them (the kit lane, round 6; the names ours):
+     * bit 2 the one 0x56D890 sets, which a covered state keeps (0x5F6350); a breach clears 13 on
+     * entry, then sets 16 from its own bit 13, clears 17 and sets 13 as it ends (0x5F3620) */
+    unsigned int m_aibit2 : 1;
+    unsigned int m_bits3 : 5;
+    unsigned int m_aibit8 : 1;   // bits 8 and 9: either refuses a state push without flag 4
+    unsigned int m_aibit9 : 1;   // (0x5F5CD0)
+    unsigned int m_bits10 : 3;
+    unsigned int m_aibit13 : 1;
+    unsigned int m_bits14 : 2;
+    unsigned int m_aibit16 : 1;
+    unsigned int m_aibit17 : 1;
+    unsigned int m_bits18 : 14;
     unsigned char _268[0x26c - 0x268];
     unsigned char m_26c;   // 0x26c: a mode byte (4: any target taken; the name ours)
     unsigned char _26d[0x270 - 0x26d];
@@ -547,6 +559,18 @@ public:
      * ClearAiState, the AI-states lane's 0x5F5F20) */
     void SetAiMode(AI_MODE mode);
     bool ClearAiState(bool all);   /* returns a bool (the kit lane: 0x5F5F20 sets v0) */
+    /* the state stack's operations as the controller offers them (SOCOM 1's, their bodies the
+     * stack's now: OVL2 0x5F5BA0-0x5F5CB0 and 0x5F5FC0, the AI-states lane's seal_aistate.cpp):
+     * a state set or pushed when CanPushAiState allows it -- SOCOM 1's bool now a flags word it
+     * tests (0x5F5CD0) -- popped to a state or a kind, popped, and found */
+    bool SetAiState(AI_STATE state, unsigned int flags);
+    bool PushAiState(AI_STATE state, unsigned int flags);
+    bool PopToAiState(CAiState *state, bool inclusive);
+    bool PopToAiState(AI_STATE state, bool inclusive);
+    AI_STATE PopAiState();
+    AI_STATE PopAiState(AI_STATE state);
+    CAiState *FindAiState(AI_STATE state) const;
+    bool CanPushAiState(AI_STATE state, unsigned int flags);
 
     /* the animations bound (SOCOM 1's; OVL2 0x562AD0) and a task begun: its kind, a flag, then the
      * task's own arguments (SOCOM 1's; OVL2 0x561F00) */
