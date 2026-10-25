@@ -198,6 +198,22 @@ public:
 
         return !(soil == 0 || soil == 10 || soil == 8 || soil == 9);
     }
+    /* whether the eye stops at it: soils 0, 8 and 10 (SOCOM 1's _SeeLineCallback tested them
+     * itself; the name ours). Two materialised ors, the outer bool declared first and the soil
+     * last -- only so do _SeeLineCallback's registers fall as the target's (a plain `||` chain
+     * becomes a bit test) */
+    bool IsOpaque() const
+    {
+        bool q = true;
+        bool r = true;
+        unsigned int soil = m_soil;
+
+        if (soil != 0 && soil != 8)
+            r = false;
+        if (!r && soil != 10)
+            q = false;
+        return q;
+    }
 
     /* every field to its start (SOCOM 1's CAiCell() body, 0x185200; SOCOM II's constructor calls
      * it out of line: fifteen statements and the return are past -inline auto's fifteen) */
@@ -300,7 +316,14 @@ class CAiMap;
 /* a cell handed to a walk's callback (below CAiMap: it points at a CAiMap::region) */
 struct MAP_FOREACH_STRUCT;
 /* a cell handed to a line walk's callback (SOCOM 1's; not laid out yet) */
-struct MAP_LINEWALK_STRUCT;
+struct MAP_LINEWALK_STRUCT {
+    CAiMap *m_map;   // 0x0
+    unsigned int m_unk4[2];   // 0x4
+    CAiMapLoc m_loc;   // 0xc: the cell reached
+    CAiCell *m_cell;   // 0x10
+    float m_dist;   // 0x14: how far along (the sighting callback squares it against its range)
+    CAiCell *m_prev;   // 0x18: the cell before (the travel callback's)
+};
 
 /* two cells are the same cell when x and y agree, the map aside: an inline bool, which the
  * walks materialise (x's test, then y's into the same register) before they branch -- SOCOM 1's

@@ -9782,7 +9782,7 @@
 0x005390B0 0x20 CanTravelLine__6CAiMapFRC9CAiMapLocRC9CAiMapLocP9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x1A8350: WalkLine(from, to, _TravelLineCallback 0x539580, out, 0.2f); CAiMaps::CanTravelLine calls it)
 0x005390D0 0x168 func_005390D0  # OVL2
 0x00539240 0x1B4 func_00539240  # OVL2
-0x00539400 0x17C func_00539400  # OVL2
+0x00539400 0x17C _SeeLineCallback__FRC19MAP_LINEWALK_STRUCTPv  # OVL2; s1:order by hand (the demo's _SeeLineCallback 0x1A8460, the eye's line callback CanSeeLine x2 hand WalkLine in both builds: opaque soils 0/8/10 stop it, and SOCOM II's shut doors (actions of kind 1 or 7 in state 0); the blocking cell handed back)
 0x00539580 0x138 func_00539580  # OVL2
 0x005396C0 0x3E0 func_005396C0  # OVL2
 0x00539AA0 0xD0 func_00539AA0  # OVL2

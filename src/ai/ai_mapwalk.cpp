@@ -92,10 +92,33 @@ static bool _tile_occupied(const MAP_FOREACH_STRUCT &s, void *data)
     return true;
 }
 
-/* the line walks' callbacks (SOCOM 1's _SeeLineCallback and _TravelLineCallback, static here:
- * placeholders until written) */
-extern "C" bool func_00539400(const MAP_LINEWALK_STRUCT &s, void *data);
+/* the travel walk's callback (SOCOM 1's _TravelLineCallback, static here: a placeholder until
+ * written) */
 extern "C" bool func_00539580(const MAP_LINEWALK_STRUCT &s, void *data);
+
+/* the eye stops at an opaque cell and at a shut door -- an action of kind 1 or 7 in state 0 --
+ * the blocking cell handed back (SOCOM 1's, the doors new) */
+static bool _SeeLineCallback(const MAP_LINEWALK_STRUCT &s, void *data)
+{
+    CAiMapLoc *out = (CAiMapLoc *)data;
+    bool clear = true;
+
+    if (s.m_cell->IsOpaque()) {
+        clear = false;
+    } else if (s.m_cell->m_action) {
+        CAiMap::action *a = s.m_map->GetCellAction(s.m_loc);
+
+        if (a) {
+            if (a->GetType() == CAiMap::action::DOOR && a->m_state == 0)
+                clear = false;
+            else if (a->GetType() == 7 && a->m_state == 0)
+                clear = false;
+        }
+    }
+    if (!clear && out)
+        *out = s.m_loc;
+    return clear;
+}
 
 bool CAiMap::CanTravelLine(const CAiMapLoc &from, const CAiMapLoc &to, CAiMapLoc *out)
 {
@@ -104,12 +127,12 @@ bool CAiMap::CanTravelLine(const CAiMapLoc &from, const CAiMapLoc &to, CAiMapLoc
 
 bool CAiMap::CanSeeLine(const CAiMapLoc &from, const CAiMapLoc &to, CAiMapLoc *out)
 {
-    return WalkLine(from, to, func_00539400, out, 0.2f);
+    return WalkLine(from, to, _SeeLineCallback, out, 0.2f);
 }
 
 bool CAiMap::CanSeeLine(const CAiMapLoc &from, const CPnt3D *dir, CAiMapLoc *out)
 {
-    return WalkLine(from, dir, func_00539400, out, 0.2f);
+    return WalkLine(from, dir, _SeeLineCallback, out, 0.2f);
 }
 
 /* what a visibility walk's callbacks read and add to: the line's two heights, the visibility
