@@ -524,6 +524,9 @@ extern LadderList LadderRanking;   /* 0x44F7E0 */
 class RoomGame {
 public:
     virtual bool IsPersistent();
+
+    unsigned char _4[0x198 - 0x4];
+    unsigned char m_unchecked;   // 0x198: set for every game as the game list is asked for again
 };
 
 class RoomGameVector : public std::vector<RoomGame *> {
