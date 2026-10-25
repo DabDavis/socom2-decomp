@@ -89,11 +89,19 @@ public:
     virtual bool IsRemote();   // 0x34 (the name ours: a remote SEAL's fire is not counted)
 };
 
+/* a node: only its name (znode.h's CNode, m_name at 0x90) */
+struct CNodeName {
+    unsigned char _0[0x90];
+    char *m_name;   // 0x90
+};
+
 class CZSealBody {
 public:
     unsigned char _0[4];
     int m_4;   // 0x4: the body's network object (SOCOM 1's m_NetObjectIndex)
-    unsigned char _8[0xc0 - 0x8];
+    unsigned char _8[0x28 - 0x8];
+    CNodeName *m_node;   // 0x28 (CEntity's)
+    unsigned char _2c[0xc0 - 0x2c];
     CEntityCtrl *m_ctrl;   // 0xc0
     unsigned char _c4[0x220 - 0xc4];
     unsigned char m_fire_count;   // 0x220 (SOCOM 1's at 0x17c)
@@ -231,7 +239,13 @@ void func_0059E830(CZSealBody *body, unsigned short who, int id, void *c, int ob
 void func_002C0040(bool on);
 void func_002C4290(int me);   /* CZPersonaState::RequestTeamSwitch (SOCOM II's one argument) */
 int func_002BAF30(int a, int b, int who, void *data);   /* E3IndexPacketHandler */
-int func_002B9BD0(int a, int b, int who, void *data);
+void func_002C34F0(int value);
+struct VotePacket;
+int func_002B9BD0(int a, int b, int who, VotePacket *p);
+void func_002C2F50(int client, bool ready);
+int func_002C2EF0();
+bool func_002C2E30();
+extern unsigned int data_00440E90;   /* (SOCOM II's: the spectators ejected) */
 int func_002BD420(int who);
 int func_00273950(CZAnimMain *zanim, void *data);
 void func_00273780(CZAnimMain *zanim, void *data, int who);
@@ -699,12 +713,60 @@ extern "C" void func_002BB0C0()
     }
 }
 
-/* the E3 index sent: handled here when it is our own (OVL1 0x2BAEA0) */
+/* the E3 index packet: SOCOM II's index 4 is an ejection, its flag the reason, shown through the
+ * lobby's UI event (MP_EJECT_SPECTATOR); any other index is the client's new index and flag, the
+ * persona then updated (SOCOM 1's E3IndexPacketHandler, grown; OVL1 0x2BAF30). The sixth reason's
+ * format is the original's "5s" */
 struct E3IndexPacket {
     unsigned int index;   // 0x0
     unsigned char flag;   // 0x4
 };
 
+extern "C" void (*data_0044F3C8)(const char *event, const char *arg);   /* (the lobby's UI event) */
+
+extern "C" int func_002BAF30(int, int, int, void *data)
+{
+    E3IndexPacket *p = (E3IndexPacket *)data;
+
+    if (theMission.m_pNetGame) {
+        if (p->index == 4) {
+            char text[48];
+
+            switch (p->flag) {
+            case 0:
+                sprintf(text, "%s", "General Protection Fault");
+                break;
+            case 1:
+                sprintf(text, "%s", "Password Error");
+                break;
+            case 2:
+                sprintf(text, "%s", "Too many spectators");
+                break;
+            case 3:
+                sprintf(text, "%s", "Too many players");
+                break;
+            case 4:
+                sprintf(text, "%s", "Closed clan game");
+                break;
+            case 5:
+                sprintf(text, "5s", "Team assignment error");
+                break;
+            default:
+                sprintf(text, "%s", "Totally unknown error");
+                break;
+            }
+            if (data_0044F3C8)
+                data_0044F3C8("MP_EJECT_SPECTATOR", text);
+        } else {
+            func_002C3330(p->index);
+            func_002C34F0(p->flag);
+            CZPersonaState::UpdateLocalPersona();
+        }
+    }
+    return 8;
+}
+
+/* the E3 index sent: handled here when it is our own (OVL1 0x2BAEA0) */
 void NetSendE3Index(int who, unsigned int index, int flag)
 {
     E3IndexPacket p;
@@ -916,7 +978,7 @@ void SendPickupAckMessage(unsigned short who, int id, int obj, AckUnion ack)
 
 /* a vote, sent to the voter's own client (OVL1 0x2BA140) */
 struct VotePacket {
-    short who;   // 0x0
+    unsigned short who;   // 0x0
     unsigned char vote;   // 0x2
 };
 
@@ -1044,6 +1106,39 @@ extern "C" int func_002B9D80(int, int, int, void *)
         func_002A47B0(&theMission, "dlgNetBanned.rdr");
     return 4;
 }
+
+/* a vote on the spectators: the voter's flag set and the votes against counted and shown; the
+ * session master, once enough are against, sends the count to everyone and throws the spectators
+ * out here too (func_002B9D80, inlined; SOCOM II's, SOCOM 1's VoterPacketHandler's place; OVL1
+ * 0x2B9BD0). func_002B9B60 calls it out of line: pinned */
+#pragma auto_inline off
+extern "C" int func_002B9BD0(int, int, int who, VotePacket *p)
+{
+    int count;
+    CZSealBody *body = CZSealState::GetBodyFromObjectIndex(p->who);
+
+    if (body) {
+        func_002C2F50(who, p->vote);
+        int votes = func_002C2EF0();
+        char text[128];
+
+        if (p->vote)
+            sprintf(text, " %s voting against spectators: %d votes against.", body->m_node->m_name,
+                    votes);
+        else
+            sprintf(text, " %s voting for spectators: %d votes against.", body->m_node->m_name,
+                    votes);
+        func_002B6530(theMission.m_messenger, text, 2, 0, 0, 0.0f);
+        if (theNetwork.m_bSessionMaster && func_002C2E30()) {
+            count = votes;
+            theNetwork.zNetSendApplicationMessage(64, theNetwork.GetGameConnectionIndex(), -1,
+                data_00440E90, 4, (unsigned char *)&count, true);
+            func_002B9D80(0, 0, 0, &count);
+        }
+    }
+    return 4;
+}
+#pragma auto_inline reset
 
 /* (SOCOM II's: a vote-like packet to everyone, and handled here too; OVL1 0x2B9B60) */
 extern "C" void func_002B9B60(int who, int vote)
