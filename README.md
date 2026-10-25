@@ -1642,6 +1642,19 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the weapons, round 8** (CMesh's decals and LODs, CZProjectileList, the decal pools):
+  - MW 3.0 pads a short loop's head with nops when the found block ends in `break`; with `return`
+    inside it gets no padding (RemoveMeshDecal, RemoveDecal);
+  - a local initialised from a member after the tests that read it takes the register those tests
+    loaded it into; declared before them it lands elsewhere (GetNextFreeProjectile);
+  - SOCOM II's class-vector operator[] reads the data pointer through begin() and keeps the index as
+    its own value (AddLOD's `m_lods[size()-2]`); a class-vector walk re-reads the data pointer each
+    pass (CMesh::SetLOD, 2 off: include/vector's class end() lets MW hoist the whole end) -- both
+    requests to the MSL lane, with the class iterator's missing operator->;
+  - `d = a(); d += b();` keeps a two-call float sum in the result's own register (GetDamage);
+  - SOCOM II inlines CZProjectileList's FreeIdx and FindLastUsed and keeps no copy; 0x3BF9B0-0x3C356F
+    (where vis_texfx.cpp should be) is ~0x3BC0 bytes against SOCOM 1's 0xAD0 -- mostly new code with
+    no vtables, CTextureFX's Tick/ScrollTexture/engine init among it.
 - **Tells from the UI, round 6** (the soft keyboard, CSaferStr : std::string):
   - zui_spec.h's CSaferStr is include/string's basic_string now (its copies and destructor implicit,
     +3); its operator=(const char *) returns nothing -- the out-of-line copy 0x22DCC0 keeps no `this`
