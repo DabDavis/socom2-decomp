@@ -964,10 +964,25 @@ const char *GetDefCharTypeName(int i)
     return g_arrDefCharTypeNames[i];
 }
 
-/* the mission's sound banks: their count, then their names, ten characters each (the names ours) */
+/* the mission's extra string tables: their count, then their names, ten characters each (the
+ * names ours) */
 struct MissionBankList {
-    /* the i'th bank's name (the index unsigned: the target recomputes the address every pass) */
+    /* the i'th table's name (the index unsigned: the target recomputes the address every pass) */
     const char *GetBank(unsigned int i) const { return m_banks[i]; }
+    char *GetBank(unsigned int i) { return m_banks[i]; }
+
+    /* the count changed: a fixed array's resize, its element loops empty for names -- the target
+     * keeps both empty arms of the test (the names ours) */
+    static void Destroy(int first, int last) {}
+    static void Construct(int first, int last) {}
+    void Resize(int n)
+    {
+        if (n < m_count)
+            Destroy(n, m_count);
+        else
+            Construct(m_count, n);
+        m_count = n;
+    }
 
     int m_count;
     char m_banks[1][10];
@@ -980,8 +995,32 @@ void func_003A3900(void *snd, const char *bank, void *arg);   /* (a bank loaded)
 void *func_003A4460();
 }
 
-/* a bank loaded, then every bank the mission lists (SOCOM II's; CLoadState::Init calls it with the
- * load screen's; OVL1 0x2AF360) */
+extern "C" char *strcpy(char *dst, const char *src);
+
+/* the extra string tables the mission's rdr lists, by name (SOCOM II's; PreOpen calls it; OVL1
+ * 0x2AF410).
+ * OPEN, 0x10C against 0x140: the target keeps two empty if/else tests on the count -- `0 < count`
+ * before it is cleared, `count + 1 < count` before each increment -- both arms empty, the else arm
+ * a jump placed after the epilogue: a fixed array's resize(n) whose element loops vanish for char
+ * names. MW folds every empty arm tried away: empty inline helpers (plain or template), empty for
+ * loops. The rest (the list's Count/Item/String, the name's address recomputed each pass) is
+ * written as the target reads */
+extern "C" void func_002AF410(const _zrdr *rdr)
+{
+    data_00440B80.Resize(0);
+    _zrdr *list = zrdr_findtag(rdr, "ExtraStringTables");
+    unsigned short n = 0;
+
+    if (list)
+        n = list->Count();
+    for (int i = 0; i < n; i++) {
+        data_00440B80.Resize(data_00440B80.m_count + 1);
+        strcpy(data_00440B80.GetBank(i), list->Item(i)->String());
+    }
+}
+
+/* a string table loaded, then every extra one the mission lists (SOCOM II's; CLoadState::Init calls
+ * it with the load screen's; OVL1 0x2AF360) */
 extern "C" void func_002AF360(const char *bank)
 {
     func_003A3900(func_00361BC0(), bank, func_003A4460());
