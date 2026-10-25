@@ -2069,21 +2069,21 @@
 0x00229A70 0x104 Init__16CZHudMissionCamsFv  # OVL1; s1:exact by hand (hud_missioncams.cpp)
 0x00229B80 0xA0 __dt__16CZHudMissionCamsFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00229C20 0x78 __ct__16CZHudMissionCamsFv  # OVL1; s1:exact by hand (hud_missioncams.cpp)
-0x00229CA0 0x60 func_00229CA0  # OVL1
+0x00229CA0 0x60 __dt__Q228@unnamed@hud_scorepopup_cpp@11CScorePopupFv  # OVL1; s1:order by hand (the HUD lane: slot 0 of the vtable 0x405990, whose RTTI names @unnamed@hud_scorepopup_cpp@::CScorePopup; first in the unit as SOCOM 1's 0x4210E0)
 0x00229D00 0x590 func_00229D00  # OVL1
 0x0022A290 0x614 func_0022A290  # OVL1
-0x0022A8B0 0x2C8 func_0022A8B0  # OVL1
-0x0022AB80 0xA4 func_0022AB80  # OVL1
+0x0022A8B0 0x2C8 Draw__Q228@unnamed@hud_scorepopup_cpp@11CScorePopupFPQ23zdb7CCamera  # OVL1; s1:vtable by hand (the HUD lane: slot 1 of CScorePopup's vtable 0x405990, its RTTI's name; SOCOM 1's 0x421760 draws the same teams' and box's objects behind g_bOn)
+0x0022AB80 0xA4 Draw__Q228@unnamed@hud_scorepopup_cpp@10CHudPopupsFPQ23zdb7CCamera  # OVL1; by hand (the HUD lane: slot 1 of the vtable 0x405A08, whose RTTI names @unnamed@hud_scorepopup_cpp@::CHudPopups)
 0x0022AC30 0x254 func_0022AC30  # OVL1
 0x0022AE90 0x4C4 func_0022AE90  # OVL1
 0x0022B360 0x140 func_0022B360  # OVL1
 0x0022B4A0 0x628 func_0022B4A0  # OVL1
 0x0022BAD0 0x60 func_0022BAD0  # OVL1
 0x0022BB30 0x10C hudTurnOffScorePopup__Fv  # OVL1; s1:calls by hand (CHUD::ReInit_Uninit's call right after CZPlayerMapItem::MissionEndCleanup, as SOCOM 1's; the same shape: a flag byte cleared, then two loops wiping string arrays, 45 entries where SOCOM 1 had 27)
-0x0022BC40 0x110 func_0022BC40  # OVL1
-0x0022BD50 0xC8 func_0022BD50  # OVL1
+0x0022BC40 0x110 hudTriggerPopup__FP14CTriggerSource  # OVL1; by hand (the HUD lane: hud_scorepopup.cpp's -- the pop-up record for this map (GetDatabase) and the object's name (+0x20) opened once through 0x22B4A0; the names ours)
+0x0022BD50 0xC8 hudTriggerPopup__FPCc  # OVL1; by hand (the HUD lane: hud_scorepopup.cpp's -- the pop-up record named so opened once through 0x22B4A0; a ZAnim command (0x2AE340) passes it an anim's name; the name ours)
 0x0022BE20 0xDC4 func_0022BE20  # OVL1
-0x0022CBF0 0x20 func_0022CBF0  # OVL1
+0x0022CBF0 0x20 hudIsScorePopupOn__Fv  # OVL1; by hand (the HUD lane: hud_scorepopup.cpp's g_bOn, 0x40F608, read only in a network game; the name ours)
 0x0022CC10 0x558 func_0022CC10  # OVL1
 0x0022D170 0x8 func_0022D170  # OVL1
 0x0022D180 0x8 func_0022D180  # OVL1
@@ -2091,7 +2091,7 @@
 0x0022D270 0x180 func_0022D270  # OVL1
 0x0022D3F0 0x198 func_0022D3F0  # OVL1
 0x0022D590 0x6C func_0022D590  # OVL1
-0x0022D600 0x60 func_0022D600  # OVL1
+0x0022D600 0x60 __dt__Q228@unnamed@hud_scorepopup_cpp@10CHudPopupsFv  # OVL1; by hand (the HUD lane: slot 0 of CHudPopups' vtable 0x405A08, its RTTI's name)
 0x0022D660 0x5E0 func_0022D660  # OVL1
 0x0022DC40 0x24 func_0022DC40  # OVL1
 0x0022DC70 0x24 func_0022DC70  # OVL1
@@ -2117,7 +2117,7 @@
 0x0022E8B0 0x70 func_0022E8B0  # OVL1
 0x0022E920 0x80 func_0022E920  # OVL1
 0x0022E9A0 0x1C func_0022E9A0  # OVL1
-0x0022E9C0 0x70 func_0022E9C0  # OVL1
+0x0022E9C0 0x70 __dt__Q228@unnamed@hud_scorepopup_cpp@9CScoreBmpFv  # OVL1; by hand (the HUD lane: slot 0 of the vtable 0x405A70, whose RTTI names @unnamed@hud_scorepopup_cpp@::CScoreBmp; the unit's initialiser registers it for each box bitmap)
 0x0022EA30 0x1C func_0022EA30  # OVL1
 0x0022EA50 0x8 func_0022EA50  # OVL1
 0x0022EA60 0x8 func_0022EA60  # OVL1
@@ -2283,7 +2283,7 @@
 0x0023B540 0x310 func_0023B540  # OVL1
 0x0023B850 0x44 func_0023B850  # OVL1
 0x0023B8A0 0xF0 func_0023B8A0  # OVL1
-0x0023B990 0x14 func_0023B990  # OVL1; size 0x14 (a tail call through t9; the seed ran on into the padding)
+0x0023B990 0x14 SetTrans__12SelectedSlotFf  # OVL1; size 0x14 (a tail call through t9; the seed ran on into the padding); by hand (the HUD lane: slot 11 of SelectedSlot's vtable 0x405D00 -- its name's SetTrans)
 0x0023B9B0 0x2A0 func_0023B9B0  # OVL1
 0x0023BC50 0x2B4 func_0023BC50  # OVL1
 0x0023BF10 0x10 func_0023BF10  # OVL1; tu: zui_2d.cpp~ (1.0 beta)
@@ -2301,7 +2301,7 @@
 0x0023C6F0 0x144 func_0023C6F0  # OVL1
 0x0023C840 0x344 func_0023C840  # OVL1
 0x0023CB90 0x118 func_0023CB90  # OVL1
-0x0023CCB0 0x70 func_0023CCB0  # OVL1
+0x0023CCB0 0x70 Draw__8SlotListFPQ23zdb7CCamera  # OVL1; by hand (the HUD lane: slot 1 of SlotList's vtable 0x405E80 -- its five slot pointers drawn while it is on)
 0x0023CD20 0x33C func_0023CD20  # OVL1
 0x0023D060 0x144 func_0023D060  # OVL1
 0x0023D1B0 0xF8 func_0023D1B0  # OVL1
@@ -2309,7 +2309,7 @@
 0x0023D460 0xD4 func_0023D460  # OVL1
 0x0023D540 0xC8 func_0023D540  # OVL1
 0x0023D610 0x1F8 func_0023D610  # OVL1
-0x0023D810 0x50 func_0023D810  # OVL1
+0x0023D810 0x50 SetTrans__12CategorySlotFf  # OVL1; by hand (the HUD lane: slot 11 of CategorySlot's vtable 0x405D80 -- its name's and bitmap's SetTrans through their tables)
 0x0023D860 0x714 func_0023D860  # OVL1
 0x0023DF80 0x50 func_0023DF80  # OVL1
 0x0023DFD0 0x60 __dt__11CWeaponSlotFv  # OVL1; by hand (slot 0 of CWeaponSlot's vtable 0x405E00: the implicit destructor)
@@ -2323,8 +2323,8 @@
 0x0023EBC0 0xD4 func_0023EBC0  # OVL1
 0x0023ECA0 0x1250 func_0023ECA0  # OVL1
 0x0023FEF0 0x690 func_0023FEF0  # OVL1
-0x00240580 0x68 func_00240580  # OVL1
-0x002405F0 0x8 func_002405F0  # OVL1
+0x00240580 0x68 SetTrans__8SlotListFf  # OVL1; by hand (the HUD lane: slot 11 of SlotList's vtable 0x405E80 -- each slot faded)
+0x002405F0 0x8 SetTrans__11CWeaponSlotFf  # OVL1; by hand (the HUD lane: slot 11 of CWeaponSlot's vtable 0x405E00 -- empty, right after SlotList::SetTrans)
 0x00240600 0x584 func_00240600  # OVL1
 0x00240B90 0x1BC func_00240B90  # OVL1
 0x00240D50 0x104 UnInit__12CMPWeaponSelFv  # OVL1; s1:calls (CHUD::ReInit_Uninit's next, as SOCOM 1's); by hand (CHUD::ReInit_Uninit calls it on CHUD+0x38E0 only in a network game, the member 0x241A90 constructs -- a SOCOM II selector honouring the server's Enable_203FRAG.. valves; the class name ours; s1:calls had shifted SOCOM 1's names one member along)
@@ -2335,7 +2335,7 @@
 0x00241CA0 0xC SetPos__10CHealthBarFff  # OVL1; by hand (the floats at CHealthBar+0x1C/0x20; CMPInfoBox's Init and re-init call it on CMPInfoBox+0x20 before SetSize; the name ours)
 0x00241CB0 0xC SetSize__10CHealthBarFff  # OVL1; by hand (the floats at CHealthBar+0x24/0x28, after SetPos; the name ours)
 0x00241CC0 0x388 Update__10CHealthBarFP10CZSealBodyb  # OVL1; by hand (the HUD lane: the health bar set from its owner's health; CMPInfoBox::Tick calls it with the HUD's owner and true; the name ours)
-0x00242050 0x2AC func_00242050  # OVL1
+0x00242050 0x2AC Tick__10CHealthBarFf  # OVL1; by hand (the HUD lane: slot 12 of CHealthBar's vtable 0x405EF0; the flash and the drain stepped)
 0x00242300 0xC8 __dt__10CHealthBarFv  # OVL1; s1:vtable by hand (the HUD lane: slot 0 of CHealthBar's vtable 0x405EF0)
 0x002423D0 0x204 __ct__10CHealthBarFv  # OVL1; s1:vtable by hand (the HUD lane: builds a C2D, then stores CHealthBar's vtable 0x405EF0, found by its RTTI's name; CHUD's constructor calls it for a member)
 0x002425E0 0x44C func_002425E0  # OVL1
@@ -8506,7 +8506,7 @@
 0x003FF680 0x124 func_003FF680  # OVL1 data area; a static initialiser
 0x003FF7B0 0x3C func_003FF7B0  # OVL1 data area; a static initialiser; s1~ si_object.cpp (shape 0.45, a hint)
 0x003FF7F0 0x1D0 func_003FF7F0  # OVL1 data area; a static initialiser
-0x003FF9C0 0x88 func_003FF9C0  # OVL1 data area; a static initialiser
+0x003FF9C0 0x88 __sinit_hud_healthbar.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane: hud_healthbar.cpp's initialiser -- it builds the bar's five colours, 0x4148B0-0x4148F0, which only CHealthBar's functions read)
 0x003FFA50 0xB0 func_003FFA50  # OVL1 data area; a static initialiser
 0x003FFB00 0x64 func_003FFB00  # OVL1 data area; a static initialiser
 0x003FFB70 0x64 func_003FFB70  # OVL1 data area; a static initialiser
