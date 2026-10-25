@@ -8510,9 +8510,9 @@
 0x003FFCA0 0x3C func_003FFCA0  # OVL1 data area; a static initialiser; s1~ si_script.cpp (shape 0.60, a hint)
 0x003FFCE0 0xE4 func_003FFCE0  # OVL1 data area; a static initialiser
 0x003FFDD0 0x190 func_003FFDD0  # OVL1 data area; a static initialiser
-0x003FFF60 0x44 func_003FFF60  # OVL1 data area; a static initialiser; s1~ body.cpp (shape 0.52, a hint)
+0x003FFF60 0x44 __sinit_con_ps2.cpp  # OVL1 data area; a static initialiser; s1~ body.cpp (shape 0.52, a hint); s1:unit by hand (the entity lane: builds CConsole::m_console with "default console" and registers ~CConsole -- con_ps2.cpp's initialiser, as s1units guessed; the s1~ body.cpp hint was wrong)
 0x003FFFB0 0x7C __sinit_ent_main.cpp  # OVL1 data area; a static initialiser; s1:unit ent_main.cpp (exact)
-0x00400030 0x8C func_00400030  # OVL1 data area; a static initialiser; s1~ ent_target.cpp (shape 0.60, a hint)
+0x00400030 0x8C __sinit_ent_target.cpp  # OVL1 data area; a static initialiser; s1~ ent_target.cpp (shape 0.60, a hint); s1:unit by hand (the entity lane: ent_target.cpp's own initialiser, emitted by the hand unit; s1units' guess)
 0x004000C0 0x34 func_004000C0  # OVL1 data area; a static initialiser
 0x00400100 0x5C func_00400100  # OVL1 data area; a static initialiser; s1~ fts_main.cpp (shape 0.47, a hint)
 0x00400160 0x1D0 func_00400160  # OVL1 data area; a static initialiser
