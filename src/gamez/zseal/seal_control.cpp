@@ -6,6 +6,8 @@
 #include "zseal.h"
 #include "../zinput/zinput.h"
 
+extern "C" int rand(void);
+
 extern "C" {
 extern bool data_00650698;   /* the rumble switch (SOCOM 1's file static) */
 extern float data_006505E8;  /* (the weapon's raise time a closed menu restarts) */
@@ -87,6 +89,57 @@ void CSealCtrl::OnMissionEnd()
     ClearGoal(GOAL_NONE);
     m_input_enabled = false;
     StopRumbler();
+}
+
+/* a random value in a range (SOCOM 1's Rfloat; seal_ai.cpp holds its operator's out-of-line copy) */
+class Rfloat {
+public:
+    Rfloat(float min, float range) : m_min(min), m_range(range) {}
+    operator float() const
+    {
+        if (m_range == 0.0f)
+            return m_min;
+        float r = 4.656613e-10f * (float)rand();
+
+        return m_min + m_range * r;
+    }
+
+    float m_min;   // 0x0
+    float m_range;   // 0x4
+};
+
+/* whether a chance comes up (an inline: seal_ai.cpp holds its out-of-line copy, 0x5608B0) */
+static inline bool Chance(float chance)
+{
+    const float &c = chance;
+
+    return Rfloat(0.0f, 1.0f) <= c;
+}
+
+extern "C" {
+/* CCharacterType::PlayAt (SOCOM 1's PlayAt__14CCharacterTypeF15CHARACTER_SOUNDUiPC6CPnt3D, which
+ * SOCOM II's returns a bool from; OVL2 0x53B710, the AI-core lane's) */
+bool func_0053B710(CCharacterType *type, CHARACTER_SOUND sound, unsigned int id, const CPnt3D *pos);
+/* the voice's AI event made where the SEAL stands (OVL2 0x55FEE0, seal_ai.cpp's) */
+void func_0055FEE0(CSealCtrl *ctrl, int event);
+}
+
+/* a sound of the SEAL's character played where it stands, if the chance comes up, and its AI
+ * event made; whether it played (OVL2 0x5978A0; SOCOM 1's played it always) */
+bool CSealCtrl::PlayAiSound(CHARACTER_SOUND sound, float chance, int event)
+{
+    bool played;
+    CZSealBody *seal = (CZSealBody *)m_entity;
+    bool go = true;
+
+    played = false;
+    if (chance < 1.0f)
+        go = Chance(chance);
+    if (go) {
+        played = func_0053B710(seal->GetCharacter(), sound, seal->m_id, &seal->m_posW);
+        func_0055FEE0(this, event);
+    }
+    return played;
 }
 
 /* hurt: the pain cry, and the pad shaken unless the SEAL is a remote one (OVL2 0x597B00) */

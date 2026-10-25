@@ -491,20 +491,18 @@ public:
     float m_range;   // 0x4
 };
 
-/* OPEN, 1 instruction (0x64 against 0x68): the target pads the join after the sum with a nop (its
- * label 8-aligned); SOCOM 1's code word for word otherwise. Tried: if/else with a return in each
- * arm, a result local, a ternary, `!=` first, the sum through a local, the operator inline in the
- * class with its copy forced out (by taking its address) -- all 0x64. */
+/* the random part through a local: written as one expression the join loses its pad and an
+ * inlined copy (0x5608B0, PlayAiSound) its registers */
 Rfloat::operator float() const
 {
     if (m_range == 0.0f)
         return m_min;
-    return m_min + m_range * (4.656613e-10f * (float)rand());
+    float r = 4.656613e-10f * (float)rand();
+
+    return m_min + m_range * r;
 }
 
-/* whether a chance comes up (OVL2 0x5608B0; 0x5605A0 calls it).
- * OPEN, 3 instructions: the span's product lands in $f1 and the zero in $f2 in the target, the
- * other way round here. Tried: a named Rfloat, the comparison reversed, the value in a local. */
+/* whether a chance comes up (OVL2 0x5608B0; 0x5605A0 calls it) */
 extern "C" bool func_005608B0(const float &chance)
 {
     return Rfloat(0.0f, 1.0f) <= chance;

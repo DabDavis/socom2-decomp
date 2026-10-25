@@ -241,8 +241,9 @@ public:
     virtual bool Tick(float dT);
     virtual bool PostMortemPreTick(float dT);
     virtual void OnDeath();                                                 /* +0x18 */
-    /* SOCOM II's takes a chance to play it and a further int */
-    virtual void PlayAiSound(CHARACTER_SOUND sound, float chance, int x);   /* +0x24 */
+    /* SOCOM II's takes a chance to play it and the AI event the voice makes, and says whether it
+     * played */
+    virtual bool PlayAiSound(CHARACTER_SOUND sound, float chance, int event);   /* +0x24 */
     virtual bool AllowCommand(CZSealBody *seal, FT_COMMAND cmd, void *data);
     virtual bool IsPlayer() const;
     virtual bool IsAi() const { return false; }
@@ -521,6 +522,8 @@ public:
     /* whether a player drives it (an inline the code shows: m_control tested, IsPlayer called) */
     bool IsPlayer() { return m_control ? ((CSealCtrl *)m_control)->IsPlayer() : false; }
     float SetHealth(float health, enum SEAL_DEATH_TYPE type);
+    /* the character the SEAL was made from (SOCOM 1's; OVL2 0x599810) */
+    CCharacterType *GetCharacter();
     void ResetAltitude(float y);
     void SetSnakePathUpdate(bool on, unsigned int length);
     void RestrainBuddy(CZSealBody *victim);
