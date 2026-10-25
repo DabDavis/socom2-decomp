@@ -4429,9 +4429,9 @@
 0x002D1350 0xB4 Delete__6CGEdgeFP6CGEdge  # OVL1; s1:order by hand (the states lane: after ~CGEdge as SOCOM 1's Delete: the edge removed from both its nodes' lists, its ends cleared, deleted through its virtual destructor, 0 returned)
 0x002D1410 0x60 func_002D1410  # OVL1
 0x002D1470 0x2C __ct__6CGEdgeFP6CGNodeP6CGNodef  # OVL1; s1:calls by hand (the states lane: CreateEdge news 32 bytes and constructs them with it -- the two nodes and 1.0f -- where SOCOM 1's calls CGEdge's constructor; it stores CGEdge's vtable 0x4065F0, which ~CGEdge stores)
-0x002D14A0 0x194 func_002D14A0  # OVL1
-0x002D1640 0x150 func_002D1640  # OVL1
-0x002D1790 0x5BC func_002D1790  # OVL1
+0x002D14A0 0x194 BuildRoute__6CGraphFP6CGNodeP6CGNodeUiP7CGRoute  # OVL1; s1:order by hand (the states lane, round 14: SOCOM 1's BuildRoute after CGEdge's constructor -- the three CGraph statics cleared in its order, the route cleared, Append when start == end, BuildTree with the end node stored first, PostProcess; SOCOM II adds the edge mask (a3) passed on to BuildTree -- its type is ours, unsigned int)
+0x002D1640 0x150 PopulateTree__6CGraphFP6CGTree  # OVL1; s1:order by hand (the states lane, round 14: SOCOM 1's PopulateTree after BuildRoute -- recursive, new CGTree (0x14) per node whose mark is the tree's node, m_leafTree set and return on m_treeNode)
+0x002D1790 0x5BC BuildTree__6CGraphFP6CGNodeUi  # OVL1; s1:order by hand (the states lane, round 14: SOCOM 1's BuildTree after PopulateTree, called by BuildRoute with the start node; SOCOM II's second argument is the edge mask (each edge's 0x18 word tested against it) where SOCOM 1's was a float; it ends calling PopulateTree on a new CGTree)
 0x002D1D50 0x24 func_002D1D50  # OVL1
 0x002D1D80 0x10 func_002D1D80  # OVL1
 0x002D1D90 0x10 func_002D1D90  # OVL1; tu: char_type.cpp~ (1.0 beta)
