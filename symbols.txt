@@ -8497,7 +8497,7 @@
 0x003FDE80 0x308 func_003FDE80  # OVL1 data area; a static initialiser
 0x003FE190 0x2B4 func_003FE190  # OVL1 data area; a static initialiser
 0x003FE450 0x34 __sinit_hud_mapcompass.cpp  # OVL1 data area; a static initialiser; hud_mapcompass.cpp by hand (it builds navpoint_vec, this unit's global, and registers its destructor)
-0x003FE490 0x64 func_003FE490  # OVL1 data area; a static initialiser
+0x003FE490 0x64 __sinit_hud_bitmapreticule.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 17): hud_bitmapreticule.cpp's initialiser (between hud_mapcompass.cpp's and hud_weaponsel.cpp's, as the code): SOCOM 1's color_base (86, 63, 27), then two CPnt3D colours of SOCOM II's that 0x215C10 reads (24, 200, 44 and 24, 24, 24)
 0x003FE500 0x48 __sinit_hud_weaponsel.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 16): hud_weaponsel.cpp's static initialiser (between hud_linemap.cpp's 0x3FE190 and hud_actionbitmap.cpp's 0x3FE550, the units' link order) -- it sets the selector's three layout floats (0x3E4A90/98/A0) from the HUD's bottom block, which CWeaponSel's Init, AfterOpenSecond, OnOpen and CheckHotSwap read
 0x003FE550 0x1B0 func_003FE550  # OVL1 data area; a static initialiser
 0x003FE700 0xEC __sinit_hud_teamnames.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 16): hud_teamnames.cpp's static initialiser -- it builds and registers the unit's two bracket strings and two dividers (0x40D7A0, 0x40D850, 0x40D900, 0x40D990) and sets the dividers' line (0x3E4F60), which the unit's Init and SetOpacity read

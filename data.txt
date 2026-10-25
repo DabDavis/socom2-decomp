@@ -277,6 +277,7 @@
 0x003E4190 0x8 __RTTI__11CZNewHudMap  # RTTI of CZNewHudMap: found by its RTTI's name
 0x003E4290 0x8 __RTTI__7C2DLine  # RTTI of C2DLine: found by its RTTI's name
 0x003E43F0 0x8 __RTTI__9CZLineMap  # RTTI of CZLineMap: found by its RTTI's name
+0x003E47D0 0xC color_base  # OVL1 data; SOCOM 1's global (its symbol table, 12 bytes: hud_bitmapreticule.cpp's CPnt3D, 86, 63, 27): the HUD lane, round 17 -- 3 references in 1 function (the unit's initialiser 0x3FE490 builds it; no code reads it in SOCOM II)
 0x003E4830 0x8 __RTTI__14BitmapReticule  # RTTI of BitmapReticule: found by its RTTI's name
 0x003E4AE0 0x8 __RTTI__10CWeaponSel  # RTTI of CWeaponSel: found by its RTTI's name
 0x003E4A90 0x4 s_fBgBottom__27@unnamed@hud_weaponsel_cpp@  # OVL1 data (zero in the image); ours (the HUD lane, round 16): the selector's backdrop bottom, the HUD's bottom block (0x3E2FF8) less 10, set by hud_weaponsel.cpp's initialiser 0x3FE500 -- 4 references in 3 functions (CWeaponSel::Init x2, AfterOpenSecond, the initialiser)
