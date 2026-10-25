@@ -234,11 +234,16 @@ int CNode::Release()
 }
 
 /* the node and its parents marked as having visuals, as far up as one already is; a model's
- * instances too, walked over a copy of the model's list (SOCOM 1's).
- * OPEN (0xF4 of 0x154): needs include/list's pointer-list copy constructor -- inline, a
- * deleter built from the allocator (0x3177A0) and the range init over const iterators
- * (0x317720), both out of line -- and list<T *>'s own iterator, which the walk keeps in memory
- * after a bitwise (lwc1/swc1) copy */
+ * instances too, walked over a copy of the model's list (SOCOM 1's). The copy is a plain list
+ * of the instances (a CRefList's copy and destructor would be a level taller: its destructor
+ * then inlines one level, where the target inlines the list's erase), made from the model's list
+ * through a reference (the target keeps its address, model + 200, in s0); include/list's copy
+ * constructor calls the deleter built from the allocator (0x3177A0, byte-exact) and the range
+ * init (0x317720); the walk assigns its iterator, kept in memory after a bitwise copy.
+ * OPEN, right size, 8 instructions: the walk's first node is read through s0 = &end_.next_,
+ * which MW shares with the destructor's erase, where the target reads it as 4(s1) off the
+ * sentinel and forms the destructor's address in the loop test's delay slot (the destructor
+ * written five ways in include/list, no better) */
 void CNode::SetParentHasVisuals()
 {
     m_hasVisuals = 1;
@@ -247,9 +252,11 @@ void CNode::SetParentHasVisuals()
     CModel *model = dynamic_cast<CModel *>(this);
 
     if (model) {
-        CRefList instances(model->m_list);
+        CRefList &list = model->m_list;
+        std::list<CNode *> instances(list);
+        std::list<CNode *>::iterator it;
 
-        for (CRefList::iterator it = instances.begin(); it != instances.end(); ++it) {
+        for (it = instances.begin(); it != instances.end(); ++it) {
             CNode *node = (CNode *)*it;
 
             if (node && !node->m_hasVisuals)
