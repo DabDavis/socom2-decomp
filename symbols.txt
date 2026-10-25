@@ -10077,7 +10077,7 @@
 0x00555390 0x8 CanPushAiState__8CAiStateF8AI_STATEP11CSealCtrlAi  # OVL2; slot 0x1C of __vt__8CAiState, SOCOM 1's slot 0x14 (aligned as GetStatus__8CAiStateCFv); returns true as SOCOM 1's
 0x005553A0 0x8 CanSwitchAiState__8CAiStateF8AI_STATEP11CSealCtrlAi  # OVL2; slot 0x20 of __vt__8CAiState, SOCOM 1's slot 0x18 (aligned as GetStatus__8CAiStateCFv); returns true as SOCOM 1's
 0x005553B0 0x8 CanPursue__8CAiStateCFP11CSealCtrlAi  # OVL2; slot 0x2C of __vt__8CAiState, SOCOM 1's slot 0x24 (aligned as GetStatus__8CAiStateCFv); returns true as SOCOM 1's
-0x005553C0 0x8 Virtual34__8CAiStateFv  # OVL2; s1:vtable by hand (slot 0x34 of __vt__8CAiState and of the states that keep it: returns true, as ai_states.h's inline; seal_ai.cpp emits the copy) (the SEAL lane, round 5)
+0x005553C0 0x8 Virtual34__8CAiStateFP11CSealCtrlAiP8CAiEventP10CZSealBodyb  # OVL2; s1:vtable by hand (slot 0x34 of __vt__8CAiState and of the states that keep it: returns true, as ai_states.h's inline; seal_ai.cpp emits the copy) (the SEAL lane, round 5); slot 0x34's parameters (the kit lane, round 5): its one call, 0x5F95D0's, passes the AI, the event, the owner when a SEAL and a bool in t0; both overrides read the event and the bool
 0x005553D0 0x8 Virtual38__8CAiStateFv  # OVL2; s1:vtable by hand (slot 0x38 of __vt__8CAiState and of the states that keep it: returns true) (the SEAL lane, round 5)
 0x005553E0 0x8 Virtual3C__8CAiStateFv  # OVL2; s1:vtable by hand (slot 0x3C of __vt__8CAiState and of the states that keep it: returns true) (the SEAL lane, round 5)
 0x005553F0 0x8 Virtual40__8CAiStateFv  # OVL2; s1:vtable by hand (slot 0x40 of __vt__8CAiState and of the states that keep it: returns false) (the SEAL lane, round 5)
@@ -10959,8 +10959,8 @@
 0x005BAE60 0x194 func_005BAE60  # OVL2
 0x005BB000 0x98C func_005BB000  # OVL2
 0x005BB990 0x578 func_005BB990  # OVL2
-0x005BBF10 0x2E4 func_005BBF10  # OVL2
-0x005BC200 0xA0 func_005BC200  # OVL2
+0x005BBF10 0x2E4 PickupMPBomb__5CZKitFv  # OVL2; s1:calls by hand (the kit lane, round 5, from another lane's lead): SOCOM 1's PickupMPBomb's callee sequence -- CPickup::GetMPBomb, CZWeaponList::GetWeapon, CZAmmoList::GetAmmo, SetItemByIndex, the add-ammo call, CPickup::Destroy, EnableMPBombGear, the compass anchors -- in the same order
+0x005BC200 0xA0 HandlePlaceMPBomb__5CZKitFPC6CPnt3D  # OVL2; s1:calls by hand (the kit lane, round 5, from another lane's lead): SOCOM 1's HandlePlaceMPBomb -- CreateMPBombPickup(pos, 1), the item 154 dropped, the controller's bit 4 at 0x170, EnableMPBombGear(false); SOCOM II adds the reticule's update
 0x005BC2A0 0x8 func_005BC2A0  # OVL2
 0x005BC2B0 0x8 func_005BC2B0  # OVL2
 0x005BC2C0 0x40 WeaponInfoChanged__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's WeaponInfoChanged: the same test-and-clear of bit 2, m_weaponinfoChanged; SOCOM 1's order puts it after HandlePlaceMPBomb)
@@ -11423,11 +11423,11 @@
 0x005EDDC0 0x10 func_005EDDC0  # OVL2
 0x005EDDD0 0x70 func_005EDDD0  # OVL2
 0x005EDE40 0x150 func_005EDE40  # OVL2
-0x005EDF90 0x1D0 func_005EDF90  # OVL2
-0x005EE160 0xE8 func_005EE160  # OVL2
-0x005EE250 0x278 func_005EE250  # OVL2
+0x005EDF90 0x1D0 SealLeaveUnit__9CSealUnitFP10CZSealBody  # OVL2; s1:calls by hand (the kit lane, round 5): EscorteeJoinUnit and SealJoinUnit (0x5EE160, 0x5EE250) call it first with the seal alone, as SOCOM 1's call SealLeaveUnit (static)
+0x005EE160 0xE8 EscorteeJoinUnit__9CSealUnitFP10CZSealBody  # OVL2; s1:calls by hand (the kit lane, round 5, from another lane's lead): UpdateRollandsUnitStuff calls it where SOCOM 1's calls EscorteeJoinUnit (twice, after ftsGetPlayer's GetUnitByTeam and after Create)
+0x005EE250 0x278 SealJoinUnit__9CSealUnitFP10CZSealBody  # OVL2; s1:calls by hand (the kit lane, round 5, from another lane's lead): UpdateRollandsUnitStuff calls it where SOCOM 1's calls SealJoinUnit (twice, after Create and after GetUnitByTeam); recursive as SOCOM 1's
 0x005EE4D0 0x220 func_005EE4D0  # OVL2
-0x005EE6F0 0xF4 func_005EE6F0  # OVL2
+0x005EE6F0 0xF4 __ct__9CSealUnitFUi  # OVL2; s1:calls by hand (the kit lane, round 5): CSealUnit::Create (0x5EF380) calls it on a new 200-byte block with the team, where SOCOM 1's Create calls __ct__9CSealUnitFUi (164 bytes there)
 0x005EE7F0 0x5BC AllowCommand__9CSealUnitFP10CZSealBody10FT_COMMANDPv  # OVL2; s1:vtable by hand (CSealUnit's vtable slot +0xC, the demo's AllowCommand in the same slot of its two-slot table; 0x5BC bytes against 0x6C8)
 0x005EEDB0 0x1C4 func_005EEDB0  # OVL2
 0x005EEF80 0x248 func_005EEF80  # OVL2
@@ -11435,7 +11435,7 @@
 0x005EF220 0xC8 func_005EF220  # OVL2
 0x005EF2F0 0x50 GetUnitByTeam__9CSealUnitFUi  # OVL2; s1:calls by hand (the seal lane's lead, verified: SOCOM 1's GetUnitByTeam walks m_list__9CSealUnit for the unit whose number (0x38 there, 0x58 here) is the argument -- the same walk over the same static, 0x44D5B0 here; CSealCtrl::OnMissionStart calls it with 24)
 0x005EF340 0x40 func_005EF340  # OVL2
-0x005EF380 0xEC func_005EF380  # OVL2
+0x005EF380 0xEC Create__9CSealUnitFUi  # OVL2; s1:calls by hand (the kit lane, round 5, from another lane's lead): CZSealState::UpdateRollandsUnitStuff calls it where SOCOM 1's calls CSealUnit::Create (after GetUnitByTeam, twice); its body is SOCOM 1's (the list searched, new CSealUnit(team) pushed, team 24's valve)
 0x005EF470 0x198 func_005EF470  # OVL2
 0x005EF610 0xBC func_005EF610  # OVL2
 0x005EF6D0 0x100 func_005EF6D0  # OVL2
@@ -11450,7 +11450,7 @@
 0x005F0390 0xD8 GetStatus__10CAiSActionCFv  # OVL2; by hand: CAiSAction's vtable slot +0x18 (GetStatus, the CAiState table read from every SOCOM 1 override)
 0x005F0470 0x240 OnSignal__10CAiSActionFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand: CAiSAction's vtable slot +0x8 (OnSignal)
 0x005F06B0 0x90 Virtual0C__10CAiSActionFiiP11CSealCtrlAi  # OVL2; by hand: CAiSAction's vtable slot +0x0C (the base's 0x5F6050 takes the same id, event byte and controller): its object's id told event 1 drops it, event 6 sets the flags' bit 2; the AI's stack bit 0 set either way (the kit lane, round 3)
-0x005F0740 0x60 func_005F0740  # OVL2
+0x005F0740 0x60 Virtual34__10CAiSActionFP11CSealCtrlAiP8CAiEventP10CZSealBodyb  # OVL2; by hand (the kit lane, round 5): CAiSAction's vtable slot +0x34 -- true while m_phase < 6, else for a friend's event of kind 3 or 6 (the name ours, by slot)
 0x005F07A0 0xC Virtual38__10CAiSActionFv  # OVL2; by hand: CAiSAction's vtable slot +0x38, one of SOCOM II's six new CAiState slots (the name ours, by its slot): the word at +0x34 below 6
 0x005F07B0 0x10 CanAttack__10CAiSActionCFv  # OVL2; by hand: CAiSAction's vtable slot +0x24 (CanAttack)
 0x005F07C0 0x8 CanPursue__10CAiSActionCFP11CSealCtrlAi  # OVL2; by hand: CAiSAction's vtable slot +0x2C (CanPursue)
@@ -11475,7 +11475,7 @@
 0x005F3100 0x170 func_005F3100  # OVL2
 0x005F3270 0x12C func_005F3270  # OVL2
 0x005F33A0 0x128 GetStatus__10CAiSBreachCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x005F34D0 0x48 func_005F34D0  # OVL2
+0x005F34D0 0x48 Virtual34__10CAiSBreachFP11CSealCtrlAiP8CAiEventP10CZSealBodyb  # OVL2; by hand (the kit lane, round 5): CAiSBreach's vtable slot +0x34 -- true for an event of kind 3 or 7 (the name ours, by slot)
 0x005F3520 0xFC CanPushAiState__10CAiSBreachF8AI_STATEP11CSealCtrlAi  # OVL2; by hand: CAiSBreach's vtable slot +0x1C (CanPushAiState)
 0x005F3620 0x1A0 OnSignal__10CAiSBreachFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F37C0 0x3D4 Tick__10CAiSScriptFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -11499,13 +11499,13 @@
 0x005F5AD0 0x34 func_005F5AD0  # OVL2
 0x005F5B10 0x8 func_005F5B10  # OVL2
 0x005F5B20 0x80 func_005F5B20  # OVL2
-0x005F5BA0 0x60 func_005F5BA0  # OVL2
-0x005F5C00 0x60 func_005F5C00  # OVL2
-0x005F5C60 0x18 func_005F5C60  # OVL2
-0x005F5C80 0x18 func_005F5C80  # OVL2
-0x005F5CA0 0xC func_005F5CA0  # OVL2
-0x005F5CB0 0x14 func_005F5CB0  # OVL2
-0x005F5CD0 0x250 func_005F5CD0  # OVL2
+0x005F5BA0 0x60 SetAiState__11CSealCtrlAiF8AI_STATEUi  # OVL2; s1:calls by hand (the kit lane, round 5): CanPushAiState (0x5F5CD0) first, then the stack's Set (0x5F7D80) on the stack at 0x41C -- SOCOM 1's SetAiState(AI_STATE), now passing the flags on (a matched draft until zseal.h declares it)
+0x005F5C00 0x60 PushAiState__11CSealCtrlAiF8AI_STATEUi  # OVL2; s1:calls by hand (the kit lane, round 5): CanPushAiState (0x5F5CD0) first, then the stack's Push (0x5F7EE0) on the stack at 0x41C -- SOCOM 1's PushAiState(AI_STATE, bool), the bool now flags (a matched draft until zseal.h declares it)
+0x005F5C60 0x18 PopToAiState__11CSealCtrlAiFP8CAiStateb  # OVL2; by hand (the kit lane, round 5): a tail call to the stack's PopTo(CAiState *, bool) (0x5F7A40) on the stack at 0x41C -- popped down to a state by pointer (the overload ours; a matched draft until zseal.h declares it)
+0x005F5C80 0x18 PopToAiState__11CSealCtrlAiF8AI_STATEb  # OVL2; by hand (the kit lane, round 5): a tail call to the stack's PopTo(AI_STATE, bool) (0x5F7B10) on the stack at 0x41C -- SOCOM 1's PopToAiState(AI_STATE), an inclusive flag added (a matched draft until zseal.h declares it)
+0x005F5CA0 0xC PopAiState__11CSealCtrlAiFv  # OVL2; by hand (the kit lane, round 5): a tail call to the stack's Pop (0x5F7C40) on the stack at 0x41C -- SOCOM 1's PopAiState(), whose body is the stack's now (a matched draft until zseal.h declares it)
+0x005F5CB0 0x14 PopAiState__11CSealCtrlAiF8AI_STATE  # OVL2; by hand (the kit lane, round 5): a tail call to the stack's Pop(AI_STATE) (0x5F7990) on the stack at 0x41C -- SOCOM 1's PopAiState(AI_STATE) (a matched draft until zseal.h declares it)
+0x005F5CD0 0x250 CanPushAiState__11CSealCtrlAiF8AI_STATEUi  # OVL2; s1:calls by hand (the kit lane, round 5): PushAiState and SetAiState (0x5F5C00, 0x5F5BA0) call it first, as SOCOM 1's call CanPushAiState(AI_STATE); SOCOM II's takes a flags word (a2, its bits 1, 2, 4, 8 tested), where SOCOM 1's PushAiState had a bool
 0x005F5F20 0x98 ClearAiState__11CSealCtrlAiFb  # OVL2; s1:calls by hand (the SEAL lane's lead, verified: SOCOM II's CSealCtrlAi::OnDeath and ResetToInitialState call it where SOCOM 1's call ClearAiState(bool), and the CSealCtrlAi OnMissionEnd at 0x555900 where SOCOM 1's calls ClearAiState(1); SOCOM II's hands the stack at +0x41C to 0x5F7920/0x5F7470 and returns whether it cleared)
 0x005F5FC0 0x8 FindAiState__11CSealCtrlAiCF8AI_STATE  # OVL2; s1:order by hand (SOCOM 1's FindAiState, between ClearAiState and GetAiState() const there and here; SOCOM II's tail-calls the stack's walk 0x5F8270 on its stack at 0x41C; the states call it with a kind -- the kit lane, round 3)
 0x005F5FD0 0x38 GetAiState__11CSealCtrlAiCFv  # OVL2; s1:order by hand (SOCOM 1's GetAiState() const, after ClearAiState as there: the state stack at 0x41C (SOCOM 1's 0x324), empty -> the static unknown state at 0x66B990 (SOCOM 1's at 0x509870), else its front)
@@ -11529,17 +11529,17 @@
 0x005F6FA0 0x478 Signal__8CAiStateFP13CAiStateStackP8CAiStateQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand: SOCOM 1's CAiState::Signal (0x2DBDC0, 0x47C against 0x478: the same switch on the signal, SIGNAL_0 inlining Reset with the state's own kind, the debug log gone) moved onto the stack -- a0 is the stack (compared with &ai->m_stateStack at 0x41C), the state its first argument; the stack's Signal(sig, ai) (0x5F7420) and five more stack functions call it (the kit lane, round 3); a static of CAiState taking the stack (a member of CAiStateStack could not name CAiState::SIGNAL: CAiState embeds the stack) -- the name and owner ours (the kit lane, round 3)
 0x005F7420 0x4C Signal__8CAiStateFP13CAiStateStackQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand: the stack's front state told (GetState inlined, nothing when empty), through 0x5F6FA0; CSealCtrlAi::OnCommand calls it (the kit lane, round 3); a static of CAiState taking the stack, as 0x5F6FA0 (the kit lane, round 3)
 0x005F7470 0x4B0 func_005F7470  # OVL2
-0x005F7920 0x64 func_005F7920  # OVL2
-0x005F7990 0xAC func_005F7990  # OVL2
-0x005F7A40 0xC4 func_005F7A40  # OVL2
-0x005F7B10 0x130 func_005F7B10  # OVL2
+0x005F7920 0x64 PopAll__13CAiStateStackFP11CSealCtrlAi  # OVL2; by hand (the kit lane, round 5): every state popped (0x5F7C40 while the size word is not 0), then 0x5F7470(stack, ai, 1) -- SOCOM 1's ClearAiState loop moved onto the stack; ClearAiState (0x5F5F20) and CAiState::Signal's leaving case call it (the name ours)
+0x005F7990 0xAC Pop__13CAiStateStackFP11CSealCtrlAi8AI_STATE  # OVL2; by hand (the kit lane, round 5): SOCOM 1's CSealCtrlAi::PopAiState(AI_STATE) moved onto the stack -- the top popped when it is of the kind, else its kind returned; the wrapper 0x5F5CB0 jumps here (the name ours)
+0x005F7A40 0xC4 PopTo__13CAiStateStackFP11CSealCtrlAiP8CAiStateb  # OVL2; by hand (the kit lane, round 5): popped down to a state (a pointer), it too when asked; whether it was found; the wrapper 0x5F5C60 jumps here (the name ours)
+0x005F7B10 0x130 PopTo__13CAiStateStackFP11CSealCtrlAi8AI_STATEb  # OVL2; by hand (the kit lane, round 5): SOCOM 1's CSealCtrlAi::PopToAiState moved onto the stack -- popped while the top is not the kind (when the kind's bit is set in the word at 0x10), then that one too when asked; the wrapper 0x5F5C80 jumps here (the name ours)
 0x005F7C40 0x138 Pop__13CAiStateStackFP11CSealCtrlAi  # OVL2; by hand (the kit lane, round 4): the stack's pop -- the front state told SIGNAL_1 (0x5F6FA0), its kind and result kept in OVL1 bss 0x44D630/0x44D628, deleted through slot 0x4C and erased (0x50FA50), the new front told SIGNAL_3, then 0x5F7470(stack, ai, 1); returns the new front's kind -- SOCOM 1's CSealCtrlAi::PopAiState(), whose wrapper (0x5F5CA0) tail-calls it on the stack at 0x41C (the name ours)
-0x005F7D80 0x15C func_005F7D80  # OVL2
-0x005F7EE0 0x144 func_005F7EE0  # OVL2
-0x005F8030 0x1A0 func_005F8030  # OVL2
+0x005F7D80 0x15C Set__13CAiStateStackFP11CSealCtrlAi8AI_STATEUi  # OVL2; by hand (the kit lane, round 5): SOCOM 1's CSealCtrlAi::SetAiState moved onto the stack -- the top told 1, deleted and erased, the new one created at the front and told 0; the wrapper 0x5F5BA0 calls it after 0x5F5CD0 (the name ours); the third parameter a flags word (the kit lane, round 5): the wrapper 0x5F5BA0 hands the same register to 0x5F5CD0, which tests its bits 1, 2, 4 and 8
+0x005F7EE0 0x144 Push__13CAiStateStackFP11CSealCtrlAi8AI_STATEUi  # OVL2; by hand (the kit lane, round 5): SOCOM 1's CSealCtrlAi::PushAiState moved onto the stack -- the top told 2, Create, insert at the front, told 0, the script response run, 0x5F7470; the wrapper 0x5F5C00 calls it after 0x5F5CD0 (the name ours); the third parameter a flags word (the kit lane, round 5): the wrapper 0x5F5C00 hands the same register to 0x5F5CD0, which tests its bits 1, 2, 4 and 8
+0x005F8030 0x1A0 Tick__13CAiStateStackFfP11CSealCtrlAi  # OVL2; by hand (the kit lane, round 5): the stack's tick -- CAiState's frame time (OVL1 bss 0x44D620) set, the front state's own stack ticked first, then its Tick (slot 0x10) or its sub-step (slot 0x14), popped when done (the result kept at 0x1C, 2 returned), else the clocks run; recursive (SOCOM 1's CSealCtrlAi::StateTick's core; the name ours)
 0x005F81D0 0x8 Tick__8CAiStateFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x005F81E0 0x8C func_005F81E0  # OVL2
-0x005F8270 0xC0 func_005F8270  # OVL2
+0x005F81E0 0x8C Remove__13CAiStateStackF8AI_STATE  # OVL2; by hand (the kit lane, round 5): every state of a kind deleted (remove_if, 0x5F8AF0, with a functor holding the kind) and erased; whether any was (the name ours)
+0x005F8270 0xC0 Find__13CAiStateStackCF8AI_STATE  # OVL2; by hand (the kit lane, round 5): the stack's state of a kind (a const walk, the iterator assigned from begin()) -- SOCOM 1's CSealCtrlAi::FindAiState, whose wrapper 0x5F5FC0 jumps here (the name ours)
 0x005F8330 0x24 GetState__13CAiStateStackCFv  # OVL2; by hand: a CAiStateStack's front state, 0 when its size (at 0) is 0 -- the SEAL units call it on a controller's stack (the SEAL lane's lead), CSealCtrlAi::GetAiState (0x5F5FD0/0x5F6010) inlines the same test; the first of two identical copies, taken as the const one by GetAiState's order (the name ours)
 0x005F8360 0x24 GetState__13CAiStateStackFv  # OVL2; by hand: 0x5F8330's code again, the non-const copy (the name ours)
 0x005F8390 0xF4 Clear__13CAiStateStackFv  # OVL2; by hand: every state in the stack deleted through its virtual destructor (slot +0x4C of CAiState's table) and the nodes erased (the OVL2 pointer list's erase 0x50F990); SOCOM 1's CAiStateStack : list (DWARF, 0xC bytes, CSealCtrlAi::m_stateStack) -- the name ours; ~CSealCtrlAi and ~CAiStateStack call it
@@ -11562,10 +11562,10 @@
 0x005F8A40 0x8 Virtual40__8CAiSGotoFv  # OVL2; by hand: CAiSGoto's vtable slot +0x40, one of SOCOM II's six new CAiState slots (the name ours, by its slot): true (the base's is false)
 0x005F8A50 0x14 Virtual3C__8CAiSGotoFv  # OVL2; by hand: CAiSGoto's vtable slot +0x3C, one of SOCOM II's six new CAiState slots (the name ours, by its slot): true while the flag word (+0x2C) lacks bit 2
 0x005F8A70 0x78 __dt__10CAiSPickupFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x005F8AF0 0x110 func_005F8AF0  # OVL2
+0x005F8AF0 0x110 remove_if<Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>,18CAiStateDeleteKind>__3stdFQ33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>18CAiStateDeleteKind_Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>  # OVL2; by hand (the kit lane, round 5): std::remove_if over the state stack with CAiStateDeleteKind (Remove's, 0x5F81E0), the template tail of seal_aistate.cpp; find_if and the functor inlined
 0x005F8C00 0x18 func_005F8C00  # OVL2
 0x005F8C20 0x18 func_005F8C20  # OVL2
-0x005F8C40 0x100 func_005F8C40  # OVL2
+0x005F8C40 0x100 remove_copy_if<Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>,Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>,18CAiStateDeleteKind>__3stdFQ33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>18CAiStateDeleteKind_Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>  # OVL2; by hand (the kit lane, round 5): std::remove_copy_if over the state stack with CAiStateDeleteKind (remove_if's, 0x5F8AF0), the functor inlined
 0x005F8D40 0x884 func_005F8D40  # OVL2
 0x005F95D0 0x1504 func_005F95D0  # OVL2
 0x005FAAE0 0x218 func_005FAAE0  # OVL2

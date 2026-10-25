@@ -36,8 +36,15 @@ enum RETICULE_TYPE { RETICULE_NONE = -1, RETICULE_LAST = 127 };
 /* the body's controller as the kit reads it (CSealCtrl; only the float the sniper's kick starts
  * from -- zseal.h does not name it) */
 struct CKitCtrl {
+    /* the bit the MP bomb's placing sets (inlined with true: `daddiu ...,0x10`; SOCOM 1's at 0x168
+     * -- the name ours) */
+    void SetBombPlaced(bool b) { m_bomb_placed = b; }
+
     unsigned char _0[0x130];
     float m_130;   // 0x130
+    unsigned char _134[0x170 - 0x134];
+    unsigned char m_170 : 4;   // 0x170
+    unsigned char m_bomb_placed : 1;   // bit 4
 };
 
 /* the body as the kit reads it (CZSealBody; only its controller, CEntity's m_control, and the byte
@@ -80,6 +87,7 @@ public:
     void IncrScreenOffsetY(float dy);
     bool IsUsingBinocs();
     void InitializeSniperKick();
+    void HandlePlaceMPBomb(const CPnt3D *pos);
     bool IsUsingScope();
     void SetWeaponInfoChanged();
     void PendingPickupHandled();

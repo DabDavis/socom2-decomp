@@ -159,6 +159,27 @@ RETICULE_TYPE CZKit::GetCurReticule()
 
 /* the current item's reticle, flagged when it changes or when forced (OVL2 0x5BE570; SOCOM 1's
  * took no flag and always flagged it) */
+extern "C" {
+/* CZSealBody's (named: the bomb pickup made where it is placed -- static, the point and a flag --
+ * and the bomb's gear shown or not; zseal.h is not included here) and the kit's call dropping an
+ * item (OVL2 0x5B9E10, unwritten: SOCOM 1's HandlePlaceMPBomb did it inline -- GetItemIndex,
+ * unwrap, the slot cleared, EmptyAmmoCountTotal, UpdateNumItems) */
+void CreateMPBombPickup__10CZSealBodyFPC6CPnt3Db(const CPnt3D *pos, bool b);
+void EnableMPBombGear__10CZSealBodyFb(CZSealBody *body, bool on);
+void func_005B9E10(CZKit *kit, int item);
+}
+
+/* the MP bomb placed: its pickup made at the point, the bomb item (154) dropped, its gear hidden,
+ * the controller's bit set and the reticule brought up to date (OVL2 0x5BC200; SOCOM 1's) */
+void CZKit::HandlePlaceMPBomb(const CPnt3D *pos)
+{
+    CreateMPBombPickup__10CZSealBodyFPC6CPnt3Db(pos, true);
+    func_005B9E10(this, 154);
+    EnableMPBombGear__10CZSealBodyFb(m_body, false);
+    ((CKitBody *)m_body)->m_control->SetBombPlaced(true);
+    SetCurReticule(false);
+}
+
 void CZKit::SetCurReticule(bool force)
 {
     RETICULE_TYPE r = GetReticuleByIndex(m_selected_item);

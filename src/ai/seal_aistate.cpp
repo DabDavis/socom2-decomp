@@ -6,12 +6,17 @@
  * helpers the response states' Ticks call, the CQB/unknown/pickup Ticks and five OnSignals
  * (round 3); CAiState::Create (0x5F6550, every state's constructor inlined one level), Reset's
  * copy (0x5F6D40), CAiState::Signal (0x5F6FA0, Reset inlined whole), the stack's constructor and
- * its Pop (round 4). The stack's other members (0x5F7470-0x5F8270: SOCOM 1's PushAiState,
- * SetAiState, PopToAiState, StateTick ... moved onto CAiStateStack, the AI passed) and the
- * controller's wrappers after StateTick (0x5F5B10-0x5F5CB0) are next. */
+ * its Pop (round 4); round 5: SOCOM 1's CSealCtrlAi stack calls moved onto CAiStateStack, the AI
+ * passed (Find, Remove, Push, Set, PopTo x2, Pop(AI_STATE), PopAll, the stack's Tick -- 0x5F7920
+ * to 0x5F8270), ClearAiState, the states' hold on the controller's settings (0x5F6350), slot
+ * 0x34's two overrides. Still open: the flags' update (0x5F7470, 0x4B0 bytes), CanPushAiState
+ * (0x5F5CD0) and StateTick (0x5F55E0); the controller's wrappers (0x5F5BA0-0x5F5CB0) are named
+ * drafts until zseal.h declares them. */
 
 #include "../gamez/zseal/zseal.h"
 #include "../gamez/zanim/zanim.h"
+
+#include <algorithm>
 
 extern "C" {
 /* a CSealCtrlAi function (OVL2 0x56D090, the SEAL lane's range), called twice on leaving the
@@ -157,6 +162,37 @@ void CAiSAction::Virtual0C(int id, int event, CSealCtrlAi *ai)
         }
         ((CAiCtrlStack *)ai)->m_stack.SetFlags(1, 0);
     }
+}
+
+/* an event's kind as the states read it (ai.h's CAiEvent::m_type, the halfword at 0x1A, bits
+ * 1-15: this unit cannot include ai.h, whose CAiMaps zseal.h's stand-in rivals) and the kinds
+ * they test, a signed byte as ai.h's EVENT is (the names ai.h's) */
+enum AI_EVENT_KIND { AIEK_NONE = -1, AIEK_ENTITY = 3, AIEK_WEPHIT = 6, AIEK_WEPFIRE = 7, AIEK_LAST = 127 };
+
+struct CAiEventKind {
+    unsigned char _0[0x18];
+    unsigned int m_id : 16;   // 0x18
+    unsigned int m_visible : 1;   // 0x1a
+    unsigned int m_type : 15;
+};
+
+/* +0x34: an event taken up while the phase is under 6, else a friend's sighting or weapon hit
+ * (OVL2 0x5F0740) */
+bool CAiSAction::Virtual34(CSealCtrlAi *ai, CAiEvent *e, CZSealBody *seal, bool enemy)
+{
+    bool r = false;
+
+    if (m_phase < 6)
+        r = true;
+    else if (!enemy) {
+        switch ((AI_EVENT_KIND)((CAiEventKind *)e)->m_type) {
+        case AIEK_WEPHIT:
+        case AIEK_ENTITY:
+            r = true;
+            break;
+        }
+    }
+    return r;
 }
 
 /* +0x38: the state's phase word below 6 (the name ours) */
@@ -429,9 +465,8 @@ extern "C" {
  * stack emptied (0x5F7920, a byte-exact draft), a squad's member (0x5EDBB0, seal_unit.cpp's,
  * unwritten), and the controller's calls (0x56D890, 0x5631B0, 0x570F90: the SEAL lane's rows) */
 void func_005F6350(CAiState *s, CSealCtrlAi *ai, CAiState::SIGNAL sig);
-void func_005F7920(CAiStateStack *stack, CSealCtrlAi *ai);
 CEntity *func_005EDBB0(void *unit, int a, int b);
-void func_0056D890(CSealCtrlAi *ai, int x);
+void func_0056D890(CSealCtrlAi *ai, bool on);
 void func_005631B0(CSealCtrlAi *ai, int a, int b, float f);
 void func_00570F90(CSealCtrlAi *ai, float t);
 /* the last state popped: its result and its kind (OVL1 bss 0x44D628, 0x44D630: the stack's pop
@@ -475,7 +510,7 @@ void CAiState::Signal(CAiStateStack *stack, CAiState *state, SIGNAL sig, CSealCt
         break;
     case SIGNAL_1:
         func_005F6350(state, ai, sig);
-        func_005F7920(&state->m_stack, ai);
+        state->m_stack.PopAll(ai);
         func_005F6190(state, ai);
         break;
     case SIGNAL_2:
@@ -529,7 +564,10 @@ void CAiState::Signal(CAiStateStack *stack, CAiState *state, SIGNAL sig, CSealCt
  * OPEN, 10 instructions, one register: before the erase the target takes &end_.next_ (this + 8)
  * into s3 and reads the new front through it after the call; here the front is reloaded from
  * 8(this) and a nop follows. Tried: the const GetState, erase(begin()) for pop_front, the deleted
- * front in a local, the ternary on front() -- all the same 10 */
+ * front in a local, the ternary on front() -- all the same 10; round 5: the erase's iterator built
+ * from a `node_base *const &` to the link (znode.h's PtrListFirst shape), GetState reading the
+ * link through a reference -- the same 10 (the reference form likely belongs in include/list's
+ * begin(), the other lane's) */
 AI_STATE CAiStateStack::Pop(CSealCtrlAi *ai)
 {
     AI_STATE kind = AI_STATE_UNKNOWN;
@@ -556,9 +594,278 @@ AI_STATE CAiStateStack::Pop(CSealCtrlAi *ai)
     return kind;
 }
 
+/* a state of a kind deleted, for remove_if (Remove's; the template tail's remove_if and
+ * remove_copy_if, 0x5F8AF0 and 0x5F8C40, inline it -- the name ours).
+ * OPEN, both instances (include/algorithm's, the other lane's this round): the target's inlined
+ * find_if reads the functor from remove_if's parameter slot at every step (`lbu a1,104(sp)`, the
+ * functor's kind first in the bne), where include/algorithm's find_if takes its copy -- a byte
+ * copied to a fresh slot and held in s0 -- so remove_if is 0x124 against 0x110; MSL's find_if
+ * passing the predicate on without a copy (or by reference) should close both */
+struct CAiStateDeleteKind {
+    CAiStateDeleteKind(AI_STATE state) : m_state(state) {}
+    bool operator()(CAiState *s) const
+    {
+        if (s->m_state == m_state) {
+            delete s;
+            return true;
+        }
+        return false;
+    }
+
+    AI_STATE m_state;
+};
+
+/* every state of a kind deleted and taken off; whether there was one (OVL2 0x5F81E0) */
+bool CAiStateStack::Remove(AI_STATE state)
+{
+    bool r = false;
+    iterator e = end();
+    iterator i = std::remove_if(begin(), e, CAiStateDeleteKind(state));
+
+    if (i != e) {
+        erase(i, e);
+        r = true;
+    }
+    return r;
+}
+
+/* the state of a kind, or 0 (OVL2 0x5F8270; SOCOM 1's CSealCtrlAi::FindAiState) */
+CAiState *CAiStateStack::Find(AI_STATE state) const
+{
+    const_iterator i;
+
+    for (i = begin(); i != end(); ++i)
+        if ((*i)->m_state == state)
+            return *i;
+    return 0;
+}
+
+/* a new state of a kind pushed: the current one told it is covered (2), the new one entered (0)
+ * and, when it has a script response and the covered state is the script, the response run on
+ * it (the new state's bit 3 then set) (OVL2 0x5F7EE0; SOCOM 1's CSealCtrlAi::PushAiState) */
+bool CAiStateStack::Push(CSealCtrlAi *ai, AI_STATE state, unsigned int flags)
+{
+    CAiState *top = GetState();
+    CAiSScript *script = 0;
+
+    if (top) {
+        CAiState::Signal(this, top, CAiState::SIGNAL_2, ai);
+        script = top && top->m_state == AI_STATE_SCRIPT ? (CAiSScript *)top : 0;
+    }
+    CAiState *s = PushNew(state);
+
+    CAiState::Signal(this, s, CAiState::SIGNAL_0, ai);
+    const char *response = s->GetScriptResponse();
+
+    if (response && script && script->ActivateSequence(response, 7))
+        s->SetBit3(true);
+    func_005F7470(this, ai, 1);
+    return true;
+}
+
+/* a new state of a kind in the current one's place: the current one told it is left (1) and
+ * deleted, the new one entered (0) (OVL2 0x5F7D80; SOCOM 1's CSealCtrlAi::SetAiState) */
+bool CAiStateStack::Set(CSealCtrlAi *ai, AI_STATE state, unsigned int flags)
+{
+    if (size() == 0) {
+        CAiState *s = CAiState::Create(state);
+
+        push_front(s);
+        CAiState::Signal(this, s, CAiState::SIGNAL_0, ai);
+    } else {
+        CAiState::Signal(this, GetState(), CAiState::SIGNAL_1, ai);
+        if (size() != 0) {
+            delete GetState();
+            pop_front();
+        }
+        CAiState *s = CAiState::Create(state);
+
+        push_front(s);
+        CAiState::Signal(this, s, CAiState::SIGNAL_0, ai);
+    }
+    func_005F7470(this, ai, 1);
+    return true;
+}
+
+/* popped down to a kind (when the kind is on the stack at all), it too when `inclusive`; whether
+ * it was found (OVL2 0x5F7B10; SOCOM 1's CSealCtrlAi::PopToAiState).
+ * OPEN, 0x124 against 0x130: Is(), as in Pop(ai, state) below -- the target materialises its
+ * whole `&&` (both operands into one register, the false arm a `move v0,zero`, then one test);
+ * here MW threads the second operand's test into the branch */
+bool CAiStateStack::PopTo(CSealCtrlAi *ai, AI_STATE state, bool inclusive)
+{
+    bool found;
+
+    if (m_10 & (1 << state))
+        while (size() != 0 && !Is(state))
+            Pop(ai);
+    found = Is(state);
+    if (found && inclusive)
+        Pop(ai);
+    return found;
+}
+
+/* popped down to a state, it too when `inclusive`; whether it was found (OVL2 0x5F7A40) */
+bool CAiStateStack::PopTo(CSealCtrlAi *ai, CAiState *state, bool inclusive)
+{
+    bool found = false;
+
+    while (!found && size() != 0) {
+        if (GetState() == state) {
+            found = true;
+            if (inclusive)
+                Pop(ai);
+        } else
+            Pop(ai);
+    }
+    return found;
+}
+
+/* the current state popped if it is of a kind; the kind on top after (OVL2 0x5F7990; SOCOM 1's
+ * CSealCtrlAi::PopAiState(AI_STATE)).
+ * OPEN, 0xA4 against 0xAC: the target materialises Is()'s `!(size() == 0) && GetState()->m_state
+ * == state` whole -- xor/sltiu/xori with no andi, the second operand's sltiu, a `b` to the join
+ * past the false arm's `move v0,zero`, then one beqz -- where MW narrows the first operand (andi)
+ * and branches on the second. Tried: Is() returning through a bool local, `size() != 0`, the
+ * ternary, an inline Empty(), Is() as a plain auto-inlined member, the caller testing `!= false`
+ * / `== true` / a bool local / a ternary / a result local (all 0xA4 or worse) */
+AI_STATE CAiStateStack::Pop(CSealCtrlAi *ai, AI_STATE state)
+{
+    if (Is(state))
+        return Pop(ai);
+    return GetStateEnum();
+}
+
+/* the current state ticked: its own stack first, then (once that is empty and done) its Tick, or
+ * else its sub-step (slot 0x14, handed the sub-stack's state -- a CAiState * the slot's declared
+ * int stands for until seal_ai.cpp's override changes with it); a state done is popped, its result
+ * kept; else the stack's clock and the state's step clock run (OVL2 0x5F8030).
+ * OPEN, 0x1AC against 0x1A0: the target takes the states' Tick and slot 0x14 results as they come
+ * (`move s1,v0`, no andi) -- slot 0x10/0x14 return int in SOCOM II (each Tick's `andi` is its
+ * `(AI_RESULT)` cast, then `sw` to the int m_done and the return), where ai_states.h's AI_RESULT
+ * return makes MW zero-extend each result (andi); the base's return type cannot change while
+ * seal_ai.cpp's overrides (the SEAL lane's) declare AI_RESULT. And the result local takes a1 here,
+ * v0 in the target. The shape (the `li v0,1` hoisted, one exit) is the result local's */
+AI_RESULT CAiStateStack::Tick(float dT, CSealCtrlAi *ai)
+{
+    int result = AI_DONE;
+
+    CAiState::m_dT = dT;
+    if (size() != 0) {
+        CAiState *s = GetState();
+        int r;
+
+        if (s->m_active) {
+            if (s->m_stack.Tick(dT, ai) && s->m_stack.size() == 0) {
+                r = s->Tick(dT, ai);
+                if (r == AI_RUNNING) {
+                    func_005F7470(this, ai, (s->m_flags & 0x80000000) != 0);
+                    s->SetFlags(0, 0x80000000);
+                }
+            } else
+                r = s->Virtual14(ai, (int)s->m_stack.GetState());
+        } else
+            r = AI_DONE;
+        if (r != AI_RUNNING) {
+            Pop(ai);
+            m_result = r;
+            result = AI_FINISHED;
+        } else {
+            m_timer += dT;
+            s->m_phaseTime += dT;
+            s->SetBit0(false);
+            result = AI_RUNNING;
+        }
+    }
+    return (AI_RESULT)result;
+}
+
+/* every state popped, then the flags brought up to date (OVL2 0x5F7920: its callers here,
+ * ClearAiState and Signal, call it out of line) */
+#pragma auto_inline off
+void CAiStateStack::PopAll(CSealCtrlAi *ai)
+{
+    if (size() != 0)
+        do
+            Pop(ai);
+        while (size() != 0);
+    func_005F7470(this, ai, 1);
+}
+#pragma auto_inline reset
+
 /* the stack's constructor (OVL2 0x5F8520): out of line, as its destructor is */
 CAiStateStack::CAiStateStack() : m_c(-1), m_10(0), m_14(0)
 {
+}
+
+/* the controller's settings a covered state keeps (CSealCtrlAi: the bits at 0x264 -- bit 0 the
+ * debug bit zseal.h names, bit 2 the one 0x56D890 takes -- the float 0x570F90 takes at 0x1C4, the
+ * stance at 0x278 and the mode at 0x3F4, a signed byte here; zseal.h names neither the bit nor the
+ * float -- the names ours) */
+struct CAiCtrlSaved {
+    void SetDebug(bool b) { m_debug = b; }
+
+    unsigned char _0[0x1c4];
+    float m_1c4;   // 0x1c4
+    unsigned char _1c8[0x264 - 0x1c8];
+    unsigned char m_debug : 1;   // 0x264 bit 0
+    unsigned char m_bit1 : 1;
+    unsigned char m_bit2 : 1;
+    unsigned char _264_3 : 5;
+    unsigned char _265[0x278 - 0x265];
+    SEAL_STANCE m_stance;   // 0x278
+    unsigned char _279[0x3f4 - 0x279];
+    signed char m_mode;   // 0x3f4
+};
+
+/* a state's hold on the controller's settings: its sub-state's entry clears bit 14, its leaving
+ * the debug bit; covered (2) it keeps the stance, the mode, bit 2, the float and the SEAL's cell,
+ * back on top (3) it gives the first four back (OVL2 0x5F6350; the name ours) */
+extern "C" void func_005F6350(CAiState *s, CSealCtrlAi *ai, CAiState::SIGNAL sig)
+{
+    switch (sig) {
+    case CAiState::SIGNAL_0:
+        s->SetBit14(false);
+        break;
+    case CAiState::SIGNAL_1:
+        ((CAiCtrlSaved *)ai)->SetDebug(false);
+        break;
+    case CAiState::SIGNAL_2:
+        s->SetBit4(((CAiCtrlSaved *)ai)->m_bit2);
+        s->SetNibble5(((CAiCtrlSaved *)ai)->m_stance);
+        s->SetNibble9(((CAiCtrlSaved *)ai)->m_mode);
+        s->m_4c = ((CAiCtrlSaved *)ai)->m_1c4;
+        s->m_loc = CAiMapLoc(ai->m_entity->m_mapLocValid);
+        break;
+    case CAiState::SIGNAL_3:
+        func_00563100(ai, (SEAL_STANCE)s->m_nibble5, -1.0f);
+        func_0056D890(ai, s->m_bit4);
+        ai->SetAiMode((AI_MODE)s->m_nibble9);
+        func_00570F90(ai, s->m_4c);
+        break;
+    }
+}
+
+extern "C" {
+/* the AI's weapon kind, and a kind asked for -- whether it took (OVL2 0x560540, 0x5604D0: the
+ * SEAL lane's seal_ai.cpp, its AI_WEAPON_KIND a byte) */
+unsigned char func_00560540(CSealCtrlAi *ai);
+bool func_005604D0(CSealCtrlAi *ai, int kind);
+}
+
+/* a weapon kind asked of the AI: whether it took; the kind it had kept in the word at 0x54 when
+ * `keep` (0x5F6190 gives it back) (OVL2 0x5F6100; a CAiState member, unnamed) */
+extern "C" bool func_005F6100(CAiState *s, CSealCtrlAi *ai, int kind, bool keep)
+{
+    bool r = false;
+    int old = func_00560540(ai);
+
+    if (func_005604D0(ai, kind)) {
+        if (keep)
+            s->m_54 = old;
+        r = true;
+    }
+    return r;
 }
 
 /* (OVL2 0x5605A0, the SEAL lane's row: the controller told a byte) */
@@ -632,6 +939,21 @@ void CAiState::Virtual0C(int id, int event, CSealCtrlAi *ai)
 
     if (script && script->m_58 == id && (unsigned char)event == 2)
         m_active = false;
+}
+
+/* the AI's states dropped: every one popped when asked, or when the SEAL is dead, a Navy SEAL or
+ * on the team bit 18 -- whether they were; the flags brought up to date either way (OVL2 0x5F5F20;
+ * SOCOM 1's ClearAiState(bool), its loop the stack's PopAll now) */
+bool CSealCtrlAi::ClearAiState(bool all)
+{
+    bool cleared = false;
+
+    if (all || !m_entity->m_isAlive || IsNavySeal() || (m_entity->m_team & 0x40000)) {
+        ((CAiCtrlStack *)this)->m_stack.PopAll(this);
+        cleared = true;
+    }
+    func_005F7470(&((CAiCtrlStack *)this)->m_stack, this, 1);
+    return cleared;
 }
 
 /* the state on top of the controller's stack, or the unknown state when it is empty (OVL2
@@ -756,6 +1078,20 @@ void CAiSBreach::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
         m_valve = 0;
         break;
     }
+}
+
+/* +0x34: a breach takes up only a sighting or a shot (OVL2 0x5F34D0) */
+bool CAiSBreach::Virtual34(CSealCtrlAi *ai, CAiEvent *e, CZSealBody *seal, bool enemy)
+{
+    bool r = false;
+
+    switch ((AI_EVENT_KIND)((CAiEventKind *)e)->m_type) {
+    case AIEK_WEPFIRE:
+    case AIEK_ENTITY:
+        r = true;
+        break;
+    }
+    return r;
 }
 
 /* a goto's events: reset (no goal, the invalid cell); on entry the stance after half a second
