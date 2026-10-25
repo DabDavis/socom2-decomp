@@ -8262,7 +8262,7 @@
 0x003CCBC0 0xCC UnInit__16CZProjectileListFv  # OVL1; s1:align
 0x003CCC90 0xF8 SetAllFlag18__16CZProjectileListFv  # OVL1; by hand (the wep lane: SOCOM II's -- flag 18 set on every charge and every projectile in use; _OnMissionComplete calls it; the name ours)
 0x003CCD90 0x118 ForgetHitNode__16CZProjectileListFPQ23zdb5CNode  # OVL1; by hand (the wep lane: SOCOM II's -- CZProjectile::ForgetHitNode on every charge and every projectile in use; ~CZSealBody calls it; the name ours)
-0x003CCEB0 0x2A0 func_003CCEB0  # OVL1
+0x003CCEB0 0x2A0 Clear__16CZProjectileListFi10EQUIP_ITEM  # OVL1; by hand (the wep lane: SOCOM 1's CZProjectileList::Clear(int) with a weapon id added -- a shooter's charges (of that weapon) and, with none given, his projectiles made to explode and taken out; CZSealBody::Destroy and _OnMissionComplete call it)
 0x003CD150 0x24C func_003CD150  # OVL1
 0x003CD3A0 0x70 func_003CD3A0  # OVL1
 0x003CD410 0x40 func_003CD410  # OVL1

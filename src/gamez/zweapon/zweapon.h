@@ -722,6 +722,9 @@ public:
     bool Init();
     /* the next free projectile, given the weapon and the ammunition (SOCOM 1's) */
     CZProjectile *AcquireProjectile(CZWeapon &weapon, CZAmmo &ammo);
+    /* a shooter's charges (of one weapon, when given one) and, unless a weapon is given, his
+     * projectiles: each set to explode, reported and taken out (SOCOM 1's took the shooter only) */
+    void Clear(int shooter, EQUIP_ITEM item);
     bool GetNextIndirectFireDI(zdb::DiIntersect **di, int *handle);
     void ReleaseIndirectFireDI(zdb::DiIntersect **di, int *handle);
     bool GetNextDirectFireDI(zdb::DiIntersect **di, int *handle);

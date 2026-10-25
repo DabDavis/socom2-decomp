@@ -91,6 +91,59 @@ CZProjectileList::CZProjectileList(int count)
     Init();
 }
 
+/* a shooter's charges, of the given weapon unless it is none, each made to explode, reported and
+ * taken out; then, with no weapon given, his projectiles up to the last slot used, each made to
+ * explode (state 7), reported and freed (SOCOM 1's took the shooter only).
+ * OPEN, 4 instructions short: the weapon test's `andi` sits in the filter branch's delay slot here
+ * where the target leaves it a nop and pads after the id compare; the id and charge registers
+ * (v1/s2/s3 in the target: a1/s3/s2 here) follow. The tests as `filter && item != id` first, `id ==
+ * item`, `filter == false` (an extra saved register) and an unsigned char id do not give it */
+void CZProjectileList::Clear(int shooter, EQUIP_ITEM item)
+{
+    bool filter = item != EQUIP_NONE;
+
+    if (m_used && m_projectiles) {
+        std::vector<PlacedExplosive *>::iterator it;
+
+        for (it = m_explosives.begin(); it != m_explosives.end();) {
+            PlacedExplosive *e = *it;
+            EQUIP_ITEM id = EQUIP_NONE;
+
+            if (e->m_weapon)
+                id = e->m_weapon->GetId();
+            if (!filter || item == id) {
+                if (shooter == e->m_shooterID) {
+                    e->m_weapon->GetName();
+                    (*it)->m_grenadestate = (GRENADE_STATE)3;
+                    (*it)->ReportGrenadeStatus();
+                    CPickup::Destroy(e->m_pickup);
+                    CZWeapon::m_placedExplosives.Remove(e);
+                    delete e;
+                    it = m_explosives.erase(it);
+                } else {
+                    ++it;
+                }
+            } else {
+                ++it;
+            }
+        }
+
+        int i;
+        int last = m_lastused;
+
+        if (last != -1 && !filter) {
+            for (i = 0; i <= last; i++) {
+                if (m_used[i] == 1 && shooter == m_projectiles[i].m_shooterID) {
+                    m_projectiles[i].m_grenadestate = (GRENADE_STATE)3;
+                    m_projectiles[i].SetProjectileState((PROJECTILE_STATE)7, false);
+                    m_projectiles[i].ReportGrenadeStatus();
+                    Free(i);
+                }
+            }
+        }
+    }
+}
+
 /* the charges ticked, each one done taken out (its weapon's name fetched, its pickup destroyed,
  * unlisted, deleted and erased); then the projectiles up to the last slot used, each one done
  * freed (SOCOM 1's) */
