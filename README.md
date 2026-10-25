@@ -1547,6 +1547,26 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     CAiState's slot 0x34 takes (CSealCtrlAi *, CAiEvent *, CZSealBody *, bool);
   - a lane's call to a base class's member that a newer header overload hides fails to build at
     merge -- name the base (`std::__list_deleter<const void *, ...>::insert(...)`).
+- **Tells from the particles and the render init, round 3** (zparticle.cpp, zparticle_buf.cpp,
+  zrndr_init.cpp):
+  - MW unrolls a constant-trip loop 8x whatever the body; a 4x-looking unroll was an inner loop of
+    four unrolled whole inside an outer loop left rolled (zRndrInit);
+  - a CPnt3D copied from a matrix row loads z, y, x and stores x, y, z only through the
+    three-float constructor (`p = CPnt3D(m[0], m[1], m[2])`); a struct or field copy interleaves;
+  - a constructor too tall to inline whole is inlined one level, calling even CPnt4D's copy out of
+    line; a member copy only declared makes the outer constructor short enough to inline whole,
+    so give it its real height (Branch);
+  - a free-list push `p->next = head ? head : 0;` gives the target's select, stored in both arms;
+    the if/else stores zero directly (Recycle);
+  - `T *p = m_head; if (!Empty()) ...; else p = 0;` reuses the head's load as the result where
+    `return !m_head;` materialises (InstancePool::Pop); `bool r = false; if (a && b) r = true;
+    return r;` puts `move v1,zero` in the first test's delay slot (List::Tick);
+  - a by-value CPnt4D parameter is read off the frame only through a local copy (`CPnt4D q(p);`);
+  - `delete p` of a class with no destructor emits no null test: a target with one was `if (p)
+    delete p;` (~Source);
+  - zparticle.cpp 0x3223D0-0x324C6F, zparticle_buf.cpp from 0x324C70, the instance unit from
+    0x326F50, zrndr_init.cpp 0x335FD0-0x33622F; 0x321E00-0x3223CF is a vis unit's CLensFlare/
+    CRipple code.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has

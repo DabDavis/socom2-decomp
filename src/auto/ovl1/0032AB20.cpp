@@ -5,6 +5,7 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
 typedef unsigned int u_long128 __attribute__((mode(TI)));
@@ -25,7 +26,7 @@ struct VC_60 {
     virtual M2C_UNK v_38(M2C_UNK);
 };
 extern "C" {
-s32 func_00328E90(M2C_UNK);                         /* extern */
+s32 Create__Q28Particle5PropsFv(char * arg0);
 extern f32 data_003DFEC8;
 extern f32 data_003DFED0;
 extern f32 data_003DFED8;
@@ -50,71 +51,71 @@ void func_0032AB20(char *arg0) {
     f32 temp_f0;
     char *temp_a0;
 
-    if (M2C_FIELD(arg0, u8 *, 0) != 0) {
-        M2C_FIELD(arg0, u8 *, 0) = 0U;
-        if (M2C_FIELD(arg0, u8 *, 0x120) != 0) {
-            temp_a0 = M2C_FIELD(arg0, char **, 0x104);
+    if (SC_MEMBER(arg0, u8 *, 0) != 0) {
+        SC_MEMBER(arg0, u8 *, 0) = 0U;
+        if (SC_MEMBER(arg0, u8 *, 0x120) != 0) {
+            temp_a0 = SC_MEMBER(arg0, char **, 0x104);
             if (temp_a0 != NULL) {
                 ((VC_60 *)(temp_a0))->v_38(0);
             }
         }
-        M2C_FIELD(arg0, s8 *, 1) = 0;
+        SC_MEMBER(arg0, s8 *, 1) = 0;
     }
-    M2C_FIELD(arg0, s8 *, 0x3C) = 0;
-    M2C_FIELD(arg0, s32 *, 0x24) = 0x3F800000;
-    M2C_FIELD(arg0, s32 *, 0x28) = 0x3E99999A;
-    M2C_FIELD(arg0, s8 *, 0x12C) = 0;
-    M2C_FIELD(arg0, s8 *, 1) = 0;
-    M2C_FIELD(arg0, s8 *, 0x1B) = 0;
-    M2C_FIELD(arg0, s32 *, 0x1C) = 0x3F800000;
-    M2C_FIELD(arg0, s32 *, 0x20) = 0x3F800000;
-    M2C_FIELD(arg0, s32 *, 0x40) = -1;
-    M2C_FIELD(arg0, s32 *, 0x44) = 0;
-    M2C_FIELD(arg0, s32 *, 0x48) = 1;
-    temp_f0 = M2C_FIELD(M2C_FIELD(m_world__Q23zdb6CWorld, char **, 0x128), f32 *, 0xF0);
-    M2C_FIELD(arg0, f32 *, 0x4C) = (f32) (temp_f0 * temp_f0);
-    M2C_FIELD(arg0, s32 *, 0x50) = 0;
-    M2C_FIELD(arg0, f32 *, 0x60) = (f32) data_003DFEC8;
-    M2C_FIELD(arg0, f32 *, 0x64) = (f32) data_003DFED0;
-    M2C_FIELD(arg0, f32 *, 0x68) = (f32) data_003DFED8;
-    M2C_FIELD(arg0, f32 *, 0x6C) = (f32) data_003DFEE0;
-    M2C_FIELD(arg0, f32 *, 0x70) = (f32) data_003DFEE8;
-    M2C_FIELD(arg0, f32 *, 0x74) = (f32) data_003DFEF0;
-    M2C_FIELD(arg0, s8 *, 0xA9) = 0;
-    M2C_FIELD(arg0, f32 *, 0xAC) = (f32) data_003DFEF8;
-    M2C_FIELD(arg0, f32 *, 0xB0) = (f32) data_003DFF00;
-    M2C_FIELD(arg0, f32 *, 0xB4) = (f32) data_003DFF08;
-    M2C_FIELD(arg0, f32 *, 0xB8) = (f32) data_003DFF10;
-    M2C_FIELD(arg0, f32 *, 0xBC) = (f32) data_003DFF18;
-    M2C_FIELD(arg0, f32 *, 0xC0) = (f32) data_003DFF20;
-    M2C_FIELD(arg0, f32 *, 0xC4) = (f32) data_003DFF28;
-    M2C_FIELD(arg0, f32 *, 0xC8) = (f32) data_003DFF30;
-    M2C_FIELD(arg0, f32 *, 0xCC) = (f32) data_003DFF38;
-    M2C_FIELD(arg0, f32 *, 0xD0) = (f32) data_003DFF40;
-    M2C_FIELD(arg0, f32 *, 0xD4) = (f32) data_003DFF48;
-    M2C_FIELD(arg0, f32 *, 0xD8) = (f32) data_003DFF50;
-    M2C_FIELD(arg0, s32 *, 0x54) = 0;
-    M2C_FIELD(arg0, s32 *, 0x58) = 0;
-    M2C_FIELD(arg0, s32 *, 0x5C) = 0;
-    M2C_FIELD(arg0, s32 *, 0x90) = 0;
-    M2C_FIELD(arg0, s32 *, 0x94) = 0;
-    M2C_FIELD(arg0, s32 *, 0x98) = 0;
-    M2C_FIELD(arg0, s32 *, 0x9C) = 0;
-    M2C_FIELD(arg0, s32 *, 0xA0) = 0;
-    M2C_FIELD(arg0, s32 *, 0xA4) = 0;
-    M2C_FIELD(arg0, s8 *, 0xA8) = 0;
-    M2C_FIELD(arg0, s32 *, 0xE8) = func_00328E90(0x3F800000);
-    M2C_FIELD(arg0, s32 *, 0x130) = 0;
-    M2C_FIELD(arg0, s32 *, 0x134) = 0;
-    M2C_FIELD(arg0, s8 *, 0x12D) = 1;
-    M2C_FIELD(arg0, s8 *, 0x18) = 0;
-    M2C_FIELD(arg0, s32 *, 0x10) = 0;
-    M2C_FIELD(arg0, s8 *, 0x14) = 1;
-    M2C_FIELD(arg0, s8 *, 0x15) = 1;
-    M2C_FIELD(arg0, s8 *, 0x16) = 1;
-    M2C_FIELD(arg0, s8 *, 0x19) = 1;
-    M2C_FIELD(arg0, s8 *, 0x1A) = 1;
-    M2C_FIELD(arg0, s8 *, 0x17) = 1;
-    M2C_FIELD(arg0, s8 *, 2) = 0;
+    SC_MEMBER(arg0, s8 *, 0x3C) = 0;
+    SC_MEMBER(arg0, s32 *, 0x24) = 0x3F800000;
+    SC_MEMBER(arg0, s32 *, 0x28) = 0x3E99999A;
+    SC_MEMBER(arg0, s8 *, 0x12C) = 0;
+    SC_MEMBER(arg0, s8 *, 1) = 0;
+    SC_MEMBER(arg0, s8 *, 0x1B) = 0;
+    SC_MEMBER(arg0, s32 *, 0x1C) = 0x3F800000;
+    SC_MEMBER(arg0, s32 *, 0x20) = 0x3F800000;
+    SC_MEMBER(arg0, s32 *, 0x40) = -1;
+    SC_MEMBER(arg0, s32 *, 0x44) = 0;
+    SC_MEMBER(arg0, s32 *, 0x48) = 1;
+    temp_f0 = SC_MEMBER(SC_MEMBER(m_world__Q23zdb6CWorld, char **, 0x128), f32 *, 0xF0);
+    SC_MEMBER(arg0, f32 *, 0x4C) = (f32) (temp_f0 * temp_f0);
+    SC_MEMBER(arg0, s32 *, 0x50) = 0;
+    SC_MEMBER(arg0, f32 *, 0x60) = (f32) data_003DFEC8;
+    SC_MEMBER(arg0, f32 *, 0x64) = (f32) data_003DFED0;
+    SC_MEMBER(arg0, f32 *, 0x68) = (f32) data_003DFED8;
+    SC_MEMBER(arg0, f32 *, 0x6C) = (f32) data_003DFEE0;
+    SC_MEMBER(arg0, f32 *, 0x70) = (f32) data_003DFEE8;
+    SC_MEMBER(arg0, f32 *, 0x74) = (f32) data_003DFEF0;
+    SC_MEMBER(arg0, s8 *, 0xA9) = 0;
+    SC_MEMBER(arg0, f32 *, 0xAC) = (f32) data_003DFEF8;
+    SC_MEMBER(arg0, f32 *, 0xB0) = (f32) data_003DFF00;
+    SC_MEMBER(arg0, f32 *, 0xB4) = (f32) data_003DFF08;
+    SC_MEMBER(arg0, f32 *, 0xB8) = (f32) data_003DFF10;
+    SC_MEMBER(arg0, f32 *, 0xBC) = (f32) data_003DFF18;
+    SC_MEMBER(arg0, f32 *, 0xC0) = (f32) data_003DFF20;
+    SC_MEMBER(arg0, f32 *, 0xC4) = (f32) data_003DFF28;
+    SC_MEMBER(arg0, f32 *, 0xC8) = (f32) data_003DFF30;
+    SC_MEMBER(arg0, f32 *, 0xCC) = (f32) data_003DFF38;
+    SC_MEMBER(arg0, f32 *, 0xD0) = (f32) data_003DFF40;
+    SC_MEMBER(arg0, f32 *, 0xD4) = (f32) data_003DFF48;
+    SC_MEMBER(arg0, f32 *, 0xD8) = (f32) data_003DFF50;
+    SC_MEMBER(arg0, s32 *, 0x54) = 0;
+    SC_MEMBER(arg0, s32 *, 0x58) = 0;
+    SC_MEMBER(arg0, s32 *, 0x5C) = 0;
+    SC_MEMBER(arg0, s32 *, 0x90) = 0;
+    SC_MEMBER(arg0, s32 *, 0x94) = 0;
+    SC_MEMBER(arg0, s32 *, 0x98) = 0;
+    SC_MEMBER(arg0, s32 *, 0x9C) = 0;
+    SC_MEMBER(arg0, s32 *, 0xA0) = 0;
+    SC_MEMBER(arg0, s32 *, 0xA4) = 0;
+    SC_MEMBER(arg0, s8 *, 0xA8) = 0;
+    SC_MEMBER(arg0, s32 *, 0xE8) = Create__Q28Particle5PropsFv((char *)0x3F800000);
+    SC_MEMBER(arg0, s32 *, 0x130) = 0;
+    SC_MEMBER(arg0, s32 *, 0x134) = 0;
+    SC_MEMBER(arg0, s8 *, 0x12D) = 1;
+    SC_MEMBER(arg0, s8 *, 0x18) = 0;
+    SC_MEMBER(arg0, s32 *, 0x10) = 0;
+    SC_MEMBER(arg0, s8 *, 0x14) = 1;
+    SC_MEMBER(arg0, s8 *, 0x15) = 1;
+    SC_MEMBER(arg0, s8 *, 0x16) = 1;
+    SC_MEMBER(arg0, s8 *, 0x19) = 1;
+    SC_MEMBER(arg0, s8 *, 0x1A) = 1;
+    SC_MEMBER(arg0, s8 *, 0x17) = 1;
+    SC_MEMBER(arg0, s8 *, 2) = 0;
 }
 }

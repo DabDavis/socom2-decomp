@@ -1879,7 +1879,7 @@
 0x00210FA0 0x90 func_00210FA0  # OVL1
 0x00211030 0x90 func_00211030  # OVL1
 0x002110C0 0x20 func_002110C0  # OVL1
-0x002110E0 0x8 func_002110E0  # OVL1
+0x002110E0 0x8 __ct__6CPnt4DFv  # OVL1; by its callers (an empty constructor, jr ra; move v0,a0: Props::Create calls it for its CPnt4D at +0x30, CPipe's 0x336230 for another) -- the rdr lane
 0x002110F0 0x68 func_002110F0  # OVL1
 0x00211160 0x22C func_00211160  # OVL1
 0x00211390 0x8 func_00211390  # OVL1
@@ -8562,14 +8562,14 @@
 0x00402990 0x64 func_00402990  # OVL1 data area; a static initialiser; s1~ node_world.cpp (shape 0.46, a hint)
 0x00402A00 0x8C __sinit_node_assetlib.cpp  # OVL1 data area; a static initialiser; s1:unit by hand (the world lane: builds the anonymous recycle bin and CAssetMgr::m_assets, both CAssetLists, and registers ~CAssetList (0x321D40) for each, as SOCOM 1's __sinit_node_assetlib.cpp does; node_assetlib.cpp emits it)
 0x00402A90 0x3C func_00402A90  # OVL1 data area; a static initialiser; s1~ node_assetlib.cpp (shape 0.25, a hint)
-0x00402AD0 0xE0 func_00402AD0  # OVL1 data area; a static initialiser
-0x00402BB0 0x84 func_00402BB0  # OVL1 data area; a static initialiser; s1~ zparticle_buf.cpp (shape 0.50, a hint)
-0x00402C40 0x94 func_00402C40  # OVL1 data area; a static initialiser; s1~ zparticle_instance.cpp (shape 0.33, a hint)
-0x00402CE0 0x8C func_00402CE0  # OVL1 data area; a static initialiser; s1~ zparticle_source.cpp (shape 0.50, a hint)
+0x00402AD0 0xE0 __sinit_zparticle.cpp  # OVL1 data area; a static initialiser; by its body (builds zparticle.cpp's statics: the node pool, the lists) -- the rdr lane
+0x00402BB0 0x84 __sinit_zparticle_buf.cpp  # OVL1 data area; a static initialiser; s1~ zparticle_buf.cpp (shape 0.50, a hint); by its body (5000 elements of 32 bytes at 0x45C4B0) -- the rdr lane
+0x00402C40 0x94 __sinit_zparticle_instance.cpp  # OVL1 data area; a static initialiser; s1~ zparticle_instance.cpp (shape 0.33, a hint); by its body (the instance pools) -- the rdr lane
+0x00402CE0 0x8C __sinit_zparticle_source.cpp  # OVL1 data area; a static initialiser; s1~ zparticle_source.cpp (shape 0.50, a hint); by its body (the source unit's statics) -- the rdr lane
 0x00402D70 0x3C __sinit_zrdr_archive.cpp  # OVL1 data area; a static initialiser; s1~ zrdr_archive.cpp (shape 0.60, a hint); s1:calls (it builds CRdrArchive::m_list and registers its destructor 0x32C5F0; 0x3C bytes in both builds) -- the rdr lane
-0x00402DB0 0x3C func_00402DB0  # OVL1 data area; a static initialiser
-0x00402DF0 0x64 func_00402DF0  # OVL1 data area; a static initialiser; s1~ zrdr_parse.cpp (shape 0.60, a hint)
-0x00402E60 0x11C func_00402E60  # OVL1 data area; a static initialiser
+0x00402DB0 0x3C __sinit_zrdr_parse.cpp  # OVL1 data area; a static initialiser; by its body (the preprocessor's define table at 0x488630, its destructor 0x333390 registered) -- the rdr lane
+0x00402DF0 0x64 __sinit_zrndr_init.cpp  # OVL1 data area; a static initialiser; s1~ zrdr_parse.cpp (shape 0.60, a hint); by its body (iostream's init objects; ZDB its bss) -- the rdr lane
+0x00402E60 0x11C __sinit_zrndr_pipe.cpp  # OVL1 data area; a static initialiser; by its body (thePipe built through CPipe's constructor 0x33C1C0, 0x33C120 registered) -- the rdr lane
 0x00402F80 0x64 func_00402F80  # OVL1 data area; a static initialiser; s1~ zrndr_init.cpp (shape 0.46, a hint)
 0x00402FF0 0x240 func_00402FF0  # OVL1 data area; a static initialiser
 0x00403230 0xA4 __sinit_zsnd_csndinstance.cpp  # OVL1 data area; a static initialiser; s1~ pickup_main.cpp (shape 0.25, a hint); registers zsnd_csndinstance.cpp's list (0x347B20), pool and vector destructors -- the sound lane
