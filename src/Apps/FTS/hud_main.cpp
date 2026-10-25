@@ -13,6 +13,7 @@
 
 #include "../../gamez/ztwod/ztwod.h"
 #include "../../gamez/znode/znode.h"
+#include "hud_ammo.h"
 #include "hud_fader.h"
 #include "hud_lensflare.h"
 #include "hud_letterbox.h"
@@ -223,14 +224,6 @@ public:
     unsigned char _0[0x13c0];
 } __attribute__((aligned(16)));
 
-/* the ammunition counts (AMMO, MAGS, "%d/%d", "%d MAG%c"; SOCOM II's, no vtable: the name is
- * ours) */
-class CAmmoDisplay {
-public:
-    CAmmoDisplay();
-    unsigned char _0[0x5d0];
-} __attribute__((aligned(16)));
-
 enum HUD_MODE {
     HUD_MODE_0 = 0
 };
@@ -341,7 +334,6 @@ extern "C" void func_00237310(CHudNetState *state);
 /* the members' clean-ups not named yet: the info box's, the spectator's, the ammo counts', the
  * lens flares' */
 extern "C" void func_00242AB0(CSpectatorInfo *info);
-extern "C" void func_00237F60(CAmmoDisplay *ammo);
 
 /* everything a mission set up taken down for the next: the map and the selectors, the cameras,
  * icons and reticle, every string wiped, the pause menu closed and cleared, the flashes, the
@@ -369,7 +361,7 @@ void CHUD::ReInit_Uninit()
         m_piggyback_text[i].ClearAndWipe();
     m_socom2_1a0e8 = -1.0f;
     m_socom2_1a0f0 = -1;
-    func_00237F60(&m_ammodisplay);
+    m_ammodisplay.Reset();
     m_zoomleveltext.ClearAndWipe();
     m_socom2_0.ClearAndWipe();
     m_message.ClearAndWipe();
@@ -549,7 +541,7 @@ void CHUD::ReInit_Init()
     }
     func_0022D190();
     func_00213610(&m_bitmapReticule);
-    func_00237F60(&m_ammodisplay);
+    m_ammodisplay.Reset();
     CameraZoom::Reset();
     func_002371A0(&data_00413120);
     func_0021A510(&m_weaponsel, 1);
