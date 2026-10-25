@@ -48,6 +48,13 @@ public:
      * them; CSealCtrlAi::GetAiState inlines one; the names ours -- 0x5F8330, 0x5F8360) */
     CAiState *GetState() const;
     CAiState *GetState();
+    /* `clear` cleared and `set` set in the word at 0xC... 0x14 (inlined with constants; the name
+     * ours) */
+    void SetFlags(unsigned int set, unsigned int clear)
+    {
+        m_14 &= ~clear;
+        m_14 |= set;
+    }
 
     int m_c;   // 0xc (-1 when new)
     unsigned int m_10;   // 0x10
@@ -68,7 +75,7 @@ public:
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai) {}               /* +0x08 */
     virtual void Virtual0C(int a, int b, int c);                          /* +0x0C (new) */
     virtual AI_RESULT Tick(float dT, CSealCtrlAi *ai) { return AI_DONE; }   /* +0x10 */
-    virtual int Virtual14() { return 0; }                                 /* +0x14 (new) */
+    virtual int Virtual14(CSealCtrlAi *ai, int x) { return 0; }           /* +0x14 (new) */
     virtual const char *GetStatus() const { return ""; }                  /* +0x18 */
     virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai) { return true; }   /* +0x1C */
     virtual bool CanSwitchAiState(AI_STATE state, CSealCtrlAi *ai) { return true; } /* +0x20 */
@@ -83,6 +90,21 @@ public:
     virtual bool Virtual44() { return false; }                            /* +0x44 (new) */
     virtual bool Virtual48() { return false; }                            /* +0x48 (new) */
     virtual ~CAiState() {}                                                /* +0x4C */
+
+    /* a Tick's steps, where its switch takes m_phase's low byte (a byte enum; the names ours) */
+    enum STEP {
+        STEP_0, STEP_1, STEP_2, STEP_3, STEP_4, STEP_5, STEP_6, STEP_7, STEP_8, STEP_9,
+        STEP_LAST = 255
+    };
+
+    /* the flags changed: the dirty bit (31) set, then `clear` cleared and `set` set (inlined
+     * with constants -- `&= ~0` stays as a zero extension; the name ours) */
+    void SetFlags(unsigned int set, unsigned int clear)
+    {
+        m_flags |= 0x80000000;
+        m_flags &= ~clear;
+        m_flags |= set;
+    }
 
     /* the step a state's Tick ends on: a new phase restarts its clock (inlined in every Tick and
      * in the stack's delay; the name ours) */
@@ -199,10 +221,11 @@ public:
 class CAiSPickup : public CAiState {
 public:
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    virtual AI_RESULT Tick(float dT, CSealCtrlAi *ai);
     virtual ~CAiSPickup();
 
-    unsigned int m_58;   // 0x58
-    unsigned int m_5c;   // 0x5c
+    class CPickup *m_pickup;   // 0x58 (SOCOM 1's at 0x28)
+    unsigned int m_pickupId;   // 0x5c: its network id when the state began
 };
 
 class CAiSPlan : public CAiState {
@@ -277,13 +300,15 @@ public:
 class CAiSFlee : public CAiState {
 public:
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    virtual AI_RESULT Tick(float dT, CSealCtrlAi *ai);
     virtual bool CanAttack() const { return true; }
     virtual bool CanScan() const { return false; }
     virtual bool CanPursue(CSealCtrlAi *ai) const { return false; }
     virtual ~CAiSFlee();
 
     bool m_58;   // 0x58 (set on a reset)
-    unsigned char _59[0x60 - 0x59];
+    unsigned char _59[0x5c - 0x59];
+    unsigned int m_cell;   // 0x5c: a CAiMapLoc, the cell fled to
     unsigned int m_60;   // 0x60
 };
 
@@ -324,16 +349,21 @@ public:
 class CAiSNoAmmo : public CAiState {
 public:
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    virtual AI_RESULT Tick(float dT, CSealCtrlAi *ai);
     virtual bool CanAttack() const { return false; }
     virtual ~CAiSNoAmmo();
 
-    unsigned int m_58;   // 0x58
+    class CPickup *m_pickup;   // 0x58: the ammunition gone for (SOCOM 1's at 0x28)
+    unsigned int m_pickupLoc;   // 0x5c: a CAiMapLoc, the SEAL's cell then (SOCOM 1's at 0x2c)
 };
 
 class CAiSReload : public CAiState {
 public:
+    virtual AI_RESULT Tick(float dT, CSealCtrlAi *ai);
     virtual bool CanAttack() const { return false; }
     virtual ~CAiSReload();
+
+    short m_stance;   // 0x58: the AI's stance when the reload began (a signed byte widened)
 };
 
 class CAiSShotAt : public CAiState {

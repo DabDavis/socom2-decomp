@@ -36,6 +36,15 @@ inline float StateTimer(CSealCtrlAi *ai)
 }
 
 extern "C" {
+/* CPickup's and the AI maps' (OVL1 0x5416C0 named; OVL2 0x52DC70, 0x529A30, the AI core's rows:
+ * a cell for a point, and SOCOM 1's free FindTraversableNeighbor) */
+unsigned int GetPickupNetEntityID__7CPickupFv(CPickup *p);
+bool func_0052DC70(CAiMaps *maps, const CPnt3D *pos, void *loc);
+bool func_00529A30(CAiMaps *maps, const CPnt3D *pos, void *loc);
+/* the goto pushed to a cell (OVL2 0x5F0830, this unit's: the AI, the cell, a mode, a kind and
+ * the step to come back to -- the reading ours) */
+void func_005F0830(CSealCtrlAi *ai, void *loc, int mode, int kind, int step);
+void PickupObject__10CZSealBodyFP7CPickup(CEntity *seal, CPickup *pickup);
 /* CSealCtrlAi::SetStance (SOCOM 1's SetStance__11CSealCtrlAiF11SEAL_STANCE, called from the same
  * Ticks; OVL2 0x5631A0, the SEAL lane's row) */
 void func_005631A0(CSealCtrlAi *ai, int stance);
@@ -156,13 +165,77 @@ void CAiStateStack::Clear()
     erase(begin(), end());
 }
 
+/* a bit of a CBits set (inlined; zmath.h's CBits has Test and Clear only -- the name ours) */
+inline void SetBit(CBits *bits, unsigned int i)
+{
+    bits->m_vec[i >> 5] |= 1 << (i & 31);
+}
+
+/* a pickup: to a cell beside it (the goto pushed, coming back to step 6), the AI's mode 4, the
+ * pickup taken (when the flag's bit 0 asks) and marked seen by this SEAL, then three seconds on
+ * (OVL2 0x5F52D0; SOCOM 1's).
+ * OPEN, 4 instructions, two registers in the bit's set: the target holds the SEAL's index in a1
+ * and its low five bits in a2, here the other way round. Tried: the inline's parameters swapped,
+ * a CBits member, a nested inline on the pickup, the mask computed first, `/ 32` and `% 32`, an
+ * int index, the step assigned before, after or around it. Everything else is the target's. */
+AI_RESULT CAiSPickup::Tick(float dT, CSealCtrlAi *ai)
+{
+    STEP step;
+    CPickup *p;
+    CEntity *seal = ai->m_entity;
+
+    if (!m_active)
+        return AI_DONE;
+    p = m_pickup;
+    step = (STEP)m_phase;
+
+    if (!p || m_pickupId != GetPickupNetEntityID__7CPickupFv(p))
+        return AI_DONE;
+    switch (step) {
+    case STEP_0: {
+        unsigned int loc;
+
+        if (!func_0052DC70(&AiMaps, p->GetPosW(), &loc) && !func_00529A30(&AiMaps, m_pickup->GetPosW(), &loc))
+            step = STEP_5;
+        else {
+            step = STEP_6;
+            func_005F0830(ai, &loc, 4, 2, 6);
+        }
+        break;
+    }
+    case STEP_2:
+        ai->SetAiMode((AI_MODE)4);
+        step = STEP_3;
+        break;
+    case STEP_3:
+        if (m_flags & 1)
+            PickupObject__10CZSealBodyFP7CPickup(seal, p);
+        step = STEP_4;
+        SetBit((CBits *)p->m_bits, seal->m_index);
+        m_time = StateTimer(ai) + 3.0f;
+        break;
+    case STEP_4:
+        if (!(StateTimer(ai) < m_time))
+            step = STEP_5;
+        break;
+    case STEP_5:
+        m_active = false;
+        break;
+    case STEP_6:
+        m_active = false;
+        break;
+    }
+    SetPhase(step);
+    return Result();
+}
+
 /* a pickup's reset (OVL2 0x5F5590; SOCOM 1's) */
 void CAiSPickup::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
 {
     switch (sig) {
     case SIGNAL_4:
-        m_58 = 0;
-        m_5c = 0;
+        m_pickup = 0;
+        m_pickupId = 0;
         break;
     case SIGNAL_0:
         break;
@@ -251,10 +324,8 @@ AI_RESULT CAiSSuspended::Tick(float dT, CSealCtrlAi *ai)
             node->m_Opacity = o;
         }
         node->SetActive(o != 0.0f);
-        if (!node->m_active) {
-            m_flags |= 0x80000000;
-            m_flags &= ~8;
-        }
+        if (!node->m_active)
+            SetFlags(0, 8);
     }
     if (m_bit0) {
         if (!fading && (m_flags & 1))
