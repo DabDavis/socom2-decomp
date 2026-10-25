@@ -19,6 +19,9 @@ class CMeshDecal;
 class CDecalPool {
 public:
     CDecal *Get(bool b);
+    /* the overflow worked off: the oldest temporary decals taken back and off their visuals
+     * (SOCOM 1's) */
+    void RecycleTick();
 
     unsigned int m_count;   // 0x0
     unsigned int m_max;   // 0x4
@@ -31,6 +34,8 @@ public:
 class CMeshDecalPool {
 public:
     CMeshDecal *Get(bool b);
+    /* the same over the mesh decals, each freed besides (SOCOM 1's) */
+    void RecycleTick();
 
     unsigned int m_count;   // 0x0
     unsigned int m_max;   // 0x4
@@ -40,10 +45,18 @@ public:
 };
 
 /* a decal on a visual (SOCOM 1's class: no DWARF; only its pools here) */
+class CVisual;
+class CMesh;
+
 class CDecal {
 public:
     static void PutPermDecal(CDecal *d);
     static void PutTempDecal(CDecal *d);
+
+    CDecal *m_next;   // 0x0
+    CVisual *m_visual;   // 0x4
+    unsigned char _8[0xc - 0x8];
+    unsigned short m_view;   // 0xc
 
     static CDecalPool m_tempPool;
     static CDecalPool m_permPool;
@@ -56,7 +69,10 @@ public:
     static void PutTempDecal(CMeshDecal *d);
     static void PutPermDecal(CMeshDecal *d);
 
-    unsigned char _0[0x10];
+    float m_life;   // 0x0
+    CMeshDecal *m_next;   // 0x4
+    CMesh *m_mesh;   // 0x8
+    unsigned char _c[0x10 - 0xc];
     void *m_verts;   // 0x10: allocated, through the uncached mirror
     unsigned char _14[0x30 - 0x14];
     unsigned int m_30;   // 0x30
@@ -86,6 +102,20 @@ void CDecal::PutPermDecal(CDecal *d)
 {
     m_permPool.m_count--;
     m_permPool.m_pool->PutBack(d);
+}
+
+/* the overflow of temporary decals worked off: each oldest one taken back and off its visual
+ * (SOCOM 1's) */
+void CDecalPool::RecycleTick()
+{
+    while (m_overflow) {
+        CDecal *d = CDecal::m_tempPool.m_pool->GetOldestUsed();
+
+        CDecal::m_tempPool.m_count--;
+        CDecal::m_tempPool.m_pool->PutBack(d);
+        d->m_visual->RemoveDecal(d);
+        m_overflow--;
+    }
 }
 
 /* a decal handed out while the pool has room, counted, the overflow counted past the most (SOCOM
@@ -126,6 +156,21 @@ void CMeshDecal::PutTempDecal(CMeshDecal *d)
         m_tempPool.m_overflow--;
     m_tempPool.m_count--;
     m_tempPool.m_pool->PutBack(d);
+}
+
+/* the overflow of temporary mesh decals worked off: each oldest one taken back, off its mesh and
+ * freed (SOCOM 1's) */
+void CMeshDecalPool::RecycleTick()
+{
+    while (m_overflow) {
+        CMeshDecal *d = CMeshDecal::m_tempPool.m_pool->GetOldestUsed();
+
+        CMeshDecal::m_tempPool.m_count--;
+        CMeshDecal::m_tempPool.m_pool->PutBack(d);
+        d->m_mesh->RemoveMeshDecal(d);
+        d->FreeMem();
+        m_overflow--;
+    }
 }
 
 /* a permanent mesh decal given back: CDecal::PutPermDecal's twin over the mesh decals' permanent

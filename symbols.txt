@@ -7853,7 +7853,7 @@
 0x003B2EA0 0x144 func_003B2EA0  # OVL1
 0x003B2FF0 0x700 func_003B2FF0  # OVL1
 0x003B36F0 0xB0 DereferenceDecals__Q23zdb7CVisualFUi  # OVL1; s1:align
-0x003B37A0 0x60 func_003B37A0  # OVL1
+0x003B37A0 0x60 RemoveDecal__Q23zdb7CVisualFPQ23zdb6CDecal  # OVL1; by hand (the wep lane: SOCOM 1's CVisual::RemoveDecal, between DereferenceDecals and AttachDecal as in SOCOM 1 -- the decal unlinked from its view's list; CDecalPool::RecycleTick calls it)
 0x003B3800 0x14C AttachDecal__Q23zdb7CVisualFUifUiPPQ23zdb10AddonPointPQ23zdb10CTexHandle  # OVL1; s1:align
 0x003B3950 0x160 ApplyDecalRender__Q23zdb7CVisualFP7CMatrixPQ23zdb5CNodefP6CPnt3DP6CPnt3DPQ23zdb10CTexHandleP7CMatrix  # OVL1; s1:calls
 0x003B3AB0 0x714 func_003B3AB0  # OVL1
@@ -8010,13 +8010,13 @@
 0x003BF1A0 0x80 Get__Q23zdb10CDecalPoolFb  # OVL1; s1:align
 0x003BF220 0x6C Init__Q23zdb10CDecalPoolFUiUi  # OVL1; s1:align
 0x003BF290 0x140 func_003BF290  # OVL1
-0x003BF3D0 0x64 func_003BF3D0  # OVL1
+0x003BF3D0 0x64 GetOldestUsed__22RTArray<Q23zdb6CDecal>Fv  # OVL1; by hand (the wep lane: SOCOM 1's RTArray<CDecal>::GetOldestUsed -- CDecalPool::RecycleTick calls it where SOCOM 1's does; the first in-use item removed and returned)
 0x003BF440 0x7C PutBack__22RTArray<Q23zdb6CDecal>FPQ23zdb6CDecal  # OVL1; s1:callee by hand (the wep lane: CDecal::PutTempDecal and PutPermDecal call it where SOCOM 1's call PutBack__22RTArray<Q23zdb6CDecal>; zbody.h's PutBack shape)
 0x003BF4C0 0x8C GetNext__22RTArray<Q23zdb6CDecal>Fb  # OVL1; s1:callee by hand (the wep lane: CDecalPool::Get calls it where SOCOM 1's calls GetNext__22RTArray<Q23zdb6CDecal>Fb; zbody.h's RTArray<T>::GetNext shape -- m_available at 0x18, m_supportRecycle at 0x1C)
 0x003BF550 0x13C func_003BF550  # OVL1
 0x003BF690 0x44 __dt__Q23zdb6CDecalFv  # OVL1; by hand (the wep lane: RTArray<CDecal>'s destructor hands it to __destroy_new_array for the items -- CDecal's empty inline destructor's out-of-line copy, vis_decal.cpp's place; zwep_weapon.cpp's copy is byte-exact)
 0x003BF6E0 0x8 func_003BF6E0  # OVL1
-0x003BF6F0 0x64 func_003BF6F0  # OVL1
+0x003BF6F0 0x64 GetOldestUsed__27RTArray<Q23zdb10CMeshDecal>Fv  # OVL1; by hand (the wep lane: SOCOM 1's RTArray<CMeshDecal>::GetOldestUsed -- CMeshDecalPool::RecycleTick calls it where SOCOM 1's does)
 0x003BF760 0x7C PutBack__27RTArray<Q23zdb10CMeshDecal>FPQ23zdb10CMeshDecal  # OVL1; s1:callee by hand (the wep lane: CMeshDecal::PutTempDecal calls it where SOCOM 1's calls PutBack__27RTArray<Q23zdb10CMeshDecal>)
 0x003BF7E0 0x8C GetNext__27RTArray<Q23zdb10CMeshDecal>Fb  # OVL1; by hand (the wep lane: CMeshDecalPool::Get calls it as CDecalPool::Get calls RTArray<CDecal>'s; the same 0x8C bytes)
 0x003BF870 0x140 __dt__27RTArray<Q23zdb10CMeshDecal>Fv  # OVL1; s1:callee

@@ -386,6 +386,8 @@ public:
     static CCamera *m_camera;
     /* the decals of one view let go of (SOCOM 1's, by name) */
     void DereferenceDecals(unsigned int vid);
+    /* a decal unlinked from its view's list (SOCOM 1's, 0x3B37A0) */
+    void RemoveDecal(class CDecal *decal);
     /* a decal projected onto the visual (SOCOM 1's, by name) */
     void ApplyDecalRender(CMatrix *mtw, CNode *node, float size, CPnt3D *pos, CPnt3D *normal,
                           CTexHandle *tex, CMatrix *uv);
