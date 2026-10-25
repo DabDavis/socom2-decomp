@@ -10564,9 +10564,9 @@
 0x0058D6F0 0x3C func_0058D6F0  # OVL2
 0x0058D730 0x8 func_0058D730  # OVL2
 0x0058D740 0x124 func_0058D740  # OVL2
-0x0058D870 0x220 func_0058D870  # OVL2
-0x0058DA90 0x90 func_0058DA90  # OVL2
-0x0058DB20 0x90 func_0058DB20  # OVL2
+0x0058D870 0x220 func_0058D870  # OVL2; OVL2's copy of the trees' static rebalancer (OVL1 0x210D80, the same 0x220 word for word bar its two rotations' addresses; OVL2's insert_node_at 0x58D2B0 calls it); ovl-copy: balance_insert__Q23std19__red_black_tree<1>FPQ33std19__red_black_tree<1>9node_basePQ33std19__red_black_tree<1>9node_base
+0x0058DA90 0x90 func_0058DA90  # OVL2; OVL2's copy of the trees' rotate_right (OVL1 0x210FA0, byte-identical); ovl-copy: rotate_right__Q23std19__red_black_tree<1>FPQ33std19__red_black_tree<1>9node_baseRPQ33std19__red_black_tree<1>9node_base
+0x0058DB20 0x90 func_0058DB20  # OVL2; OVL2's copy of the trees' rotate_left (OVL1 0x211030, byte-identical); ovl-copy: rotate_left__Q23std19__red_black_tree<1>FPQ33std19__red_black_tree<1>9node_baseRPQ33std19__red_black_tree<1>9node_base
 0x0058DBB0 0x1B8 func_0058DBB0  # OVL2
 0x0058DD70 0x140 func_0058DD70  # OVL2
 0x0058DEB0 0x70 func_0058DEB0  # OVL2

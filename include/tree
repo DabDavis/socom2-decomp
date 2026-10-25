@@ -11,7 +11,32 @@
  *     anchor (node_alloc_, the node allocator's pair) -- the comparator's byte at 8 and the
  *     leftmost node at 0xC (comp_).
  * Out of class, so never inlined into a unit's own functions: the constructor, find, find_or_insert
- * (operator[]'s half), insert_node_at, destroy and the rebalancing statics. */
+ * (operator[]'s half), insert_one (insert), insert_node_at, destroy and the rebalancing statics.
+ *
+ * Measured (2026-10-25, the MSL headers' round 3): hud_linemap.cpp's tail byte-exact from source
+ * (find_or_insert, insert_node_at, the statics, the constructor, ~map, destroy and its four
+ * accessors -- 12 rows), find<int> and the soft keyboard's nine rows (find<CSkbKey> 0x38E8F0 to
+ * insert_node_at 0x38EF50) byte-exact as probes (build/tree/p1.cpp, build/tree/zui_skb.cpp). The
+ * shapes each settled:
+ *   - balance_insert reads the grandparent into a local at the loop's top (xpp): the else arm's
+ *     uncle then reuses the left link the test loaded (0x220; recomputed, 0x228);
+ *   - find_or_insert and insert_one declare prev, p, n in that order (their registers t2/t1/t0);
+ *   - the length check is `size() > max_size() - 1` (sltiu -1): `>=`, `==` and `!(<)` against
+ *     max_size() all fold to bne -1, and a 64-bit compare grows it;
+ *   - is_red() compares the colour bit with true (`sltu; li 1; bne`), the parent's setter keeps
+ *     the bit (`(parent_ & 1) | p`);
+ *   - destroy self-inlines twice; its innermost level calls alloc(), allocator::destroy(),
+ *     node_alloc() and allocator::deallocate() out of line, the middle one only the two accessors
+ *     -- the accessors are the tree's own (this, this + 4), one level deeper than SOCOM 1's, whose
+ *     destroy calls the pairs' first() on this + 4 itself.
+ * OPEN: the map's constructor passes a bare stack slot for its allocator (0x1FB3F0, 0x38E740,
+ * 0x3A2BE0, the line map's initialiser 0x3FE190) where include/memory's out-of-line allocator()
+ * (kept for the deque's 0x2CEE30) is called; the erase (OVL1's 0x306030, in the unit of
+ * insert_node_at 0x305DE0, calls both rotations: balance_erase) is not written; the CSaferStr
+ * trees (the rdr tables 0x3A2D60-0x3A2F60, OVL2's 0x58D2B0 with memcmp) compare through the
+ * string's out-of-line compare (0x2DEE30) and inline its destructor; zrdr_file.cpp's packer uses
+ * a map keyed by a pointer (find_or_insert 0x32D780, insert_node_at 0x32DAD0) whose types SOCOM 1
+ * does not name. */
 
 #ifndef _MSL_TREE
 #define _MSL_TREE
