@@ -771,6 +771,10 @@ public:
     void AttemptBombDefuse();
     /* the MP bomb picked up (SOCOM 1's; OVL2 0x59DEF0) */
     void HandlePickupMPBomb(CPickup *pickup);
+    /* the MP bomb made a pickup at a point (SOCOM 1's; OVL2 0x59DAB0, not written yet) and every
+     * item dropped (SOCOM 1's; OVL2 0x59DDB0) */
+    static class CPickup *CreateMPBombPickup(const CPnt3D *pos, bool b);
+    void DropAllItems();
     /* the regions entered: each new one's OnEnterRegion anim run (SOCOM 1's; OVL2 0x5A2F90) */
     void CheckForRegionTrigger(unsigned int regions);
     /* the ground under a point found, the SEAL's own node off for it (SOCOM 1's; OVL2 0x5B4F30,

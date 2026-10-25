@@ -617,6 +617,54 @@ void CZSealBody::HandlePickupMPBomb(CPickup *pickup)
     CZBombState::RequestNewBombState(m_id, (CZBombState::EnumBombState)2, &pos);
 }
 
+extern "C" {
+/* the kit's item at an index let go (OVL2 0x5B9BB0, the kit lane's), the ground under a point
+ * within a depth (OVL1 0x2A2EB0), a weapon readied (OVL2 0x57D540, seal_body.cpp's) and the item it
+ * takes (OVL1 data 0x3DEB48, a short) */
+void func_005B9BB0(CZKit *kit, int index);
+zdb::IntersectStruct *func_002A2EB0(const CPnt3D *p, float depth, int chars);
+void func_0057D540(CZSealBody *seal, short item, int x);
+extern short data_003DEB48;
+}
+
+/* the controller's HUD weapon flag set (an inline: a constant true is `daddiu 16`) */
+static inline void SetHudUpdateWeapon(CSealCtrl *ctrl, bool on)
+{
+    ctrl->m_HudUpdateWeapon = on;
+}
+
+/* everything dropped: the MP bomb out of the kit and made a pickup on the ground under the SEAL, the
+ * satchel gear hidden, a local SEAL's weapon readied again, the HUD told (OVL2 0x59DDB0; SOCOM 1's).
+ * The point copied field by field, its height through a reference (the target keeps &pos.y in a
+ * saved register); a copy construction loads all three first */
+void CZSealBody::DropAllItems()
+{
+    int i = m_kit.GetItemIndex((EQUIP_ITEM)154);
+
+    if (i != -1)
+        func_005B9BB0(&m_kit, i);
+    CPnt3D pos;
+    float &y = pos.y;
+
+    pos.x = m_posW.x;
+    pos.y = m_posW.y;
+    pos.z = m_posW.z;
+
+    y += 1.0f;
+    zdb::IntersectStruct *hit = func_002A2EB0(&pos, 8.0f, 1);
+
+    if (hit)
+        y = hit->m_pos.y;
+    CreateMPBombPickup(&pos, false);
+    zdb::CNode *gear = FindAuxNode("Satchel", false);
+
+    if (gear)
+        gear->SetActive(false);
+    if (!IsRemote())
+        func_0057D540(this, data_003DEB48, 0);
+    SetHudUpdateWeapon((CSealCtrl *)m_control, true);
+}
+
 /* the bomb's defusal handled: nothing, in both builds (OVL2 0x59DA70; SOCOM 1's, 8 bytes) */
 void CZSealBody::HandleBombDefuse()
 {
