@@ -6,9 +6,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_0030D5A0(M2C_UNK *);                       /* extern */
 char *func_0030D630(M2C_UNK *);                     /* extern */
 M2C_UNK func_003CC500(s32, s32);                    /* extern */
+s32 zNetGetMyGameClientIndex__9CZNetworkFv(M2C_UNK *); /* extern */
 extern M2C_UNK data_0045A0C0;
 extern s32 m_pProjectilelist__8CZWeapon;
 
@@ -20,7 +20,7 @@ void RemoteGrenadeDeletionCallback__14CZGrenadeStateFii(s32 arg0) {
     temp_v0 = func_0030D630(&data_0045A0C0);
     if (M2C_FIELD(temp_v0, s8 *, 0xC) == 0x4B) {
         temp_s0 = M2C_FIELD(temp_v0, char **, 0x1C);
-        if ((temp_s0 != NULL) && (arg0 != func_0030D5A0(&data_0045A0C0))) {
+        if ((temp_s0 != NULL) && (arg0 != zNetGetMyGameClientIndex__9CZNetworkFv(&data_0045A0C0))) {
             temp_a1 = M2C_FIELD(temp_s0, s32 *, 0x1C);
             if ((temp_a1 != 0) && (m_pProjectilelist__8CZWeapon != 0)) {
                 func_003CC500(m_pProjectilelist__8CZWeapon, temp_a1);

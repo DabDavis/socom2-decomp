@@ -6,9 +6,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_002A73B0(void *, M2C_UNK);             /* extern */
-M2C_UNK func_002C5360();                            /* extern */
-extern void *data_00437CE8;
+M2C_UNK UpdateLocalPersona__14CZPersonaStateFv();   /* extern */
+M2C_UNK func_002A73B0(char *, M2C_UNK);             /* extern */
+extern char *data_00437CE8;
 
 void func_002C3FC0(void) {
     if (data_00437CE8 != NULL) {
@@ -17,6 +17,6 @@ void func_002C3FC0(void) {
         } else {
             func_002A73B0(data_00437CE8, 2);
         }
-        func_002C5360();
+        UpdateLocalPersona__14CZPersonaStateFv();
     }
 }

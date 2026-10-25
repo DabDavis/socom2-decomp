@@ -13,22 +13,22 @@ M2C_UNK func_002DF6A0(M2C_UNK *);                   /* extern */
 M2C_UNK func_002E3730(M2C_UNK *);                   /* extern */
 M2C_UNK func_002F80C0(M2C_UNK *);                   /* extern */
 s32 func_003045B0(M2C_UNK *);                       /* extern */
-s32 func_0030D510(u8 *);                            /* extern */
-extern M2C_UNK data_004364E0;
-extern M2C_UNK data_0044F370;
+s32 zNetGetValidGameClientCount__9CZNetworkFv(u8 *); /* extern */
 extern M2C_UNK data_0044FE10;
 extern u8 data_0045A0C0;
+extern M2C_UNK theLobby;
+extern M2C_UNK theMission;
 
 s32 func_0027E420(void) {
-    if ((func_003045B0(&data_0044FE10) == 0) && (data_0045A0C0 != 0) && (func_0030D510(&data_0045A0C0) == 1)) {
-        func_002F80C0(&data_0044F370);
+    if ((func_003045B0(&data_0044FE10) == 0) && (data_0045A0C0 != 0) && (zNetGetValidGameClientCount__9CZNetworkFv(&data_0045A0C0) == 1)) {
+        func_002F80C0(&theLobby);
     }
     ftsNetworkGameUninit__Fv();
     DMEDisconnectFromGameServer__Fv();
-    func_002E3730(&data_0044F370);
-    func_002A9EF0(&data_004364E0);
+    func_002E3730(&theLobby);
+    func_002A9EF0(&theMission);
     if (func_003045B0(&data_0044FE10) != 0) {
-        func_002DF6A0(&data_0044F370);
+        func_002DF6A0(&theLobby);
     }
     return 1;
 }
