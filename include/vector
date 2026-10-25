@@ -232,9 +232,13 @@ public:
     /* references to the fields (SOCOM 1 keeps out-of-line copies: data() is this + 8, cap() this) */
     T *&data() { return data_; }
     unsigned int &cap() { return capacity_; }
-    /* the raw iterators a vector of pointers makes its own from */
+    /* the raw iterators a vector of pointers makes its own from, both through data()'s reference:
+     * end() so keeps a local vector's &data_ in its register across a call (CGrid::Destroy,
+     * CWorld::GenerateLandmarkList and DeleteChildren, CAssetLib::AddPalette -- the zdb world's
+     * round 6 measurement), the extra level paid back by the pointer vector's end() taking it into
+     * a const local as begin() does (the MSL headers' round 4) */
     T *begin() { return data(); }
-    T *end() { return data_ + size_; }
+    T *end() { return data() + size_; }
     T &back() { return *(end() - 1); }
     unsigned int size() const { return size_; }
     static unsigned int max_size() { return (unsigned int)-1 / sizeof(T); }
@@ -372,7 +376,17 @@ class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, all
 
         return __iter(p);
     }
-    iterator end() { return __iter(__base::end()); }
+    /* the base's end held in a const local first, as begin() holds its pointer: with the base's
+     * end() reading through data(), passed straight to __iter it would sit a level too deep for
+     * CCharacterType::Create's inlined GetByNameMod, while find_node still calls the base's end()
+     * out of line as its target does (measured over every hand-written unit, the MSL headers'
+     * round 4) */
+    iterator end()
+    {
+        unsigned int *const p = __base::end();
+
+        return __iter(p);
+    }
     /* the base's, cast: through end() it would be a level taller (CZAR::GetOpenKey inlines it) */
     T *&back() { return (T *&)__base::back(); }
     iterator erase(iterator first, iterator last)
