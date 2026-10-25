@@ -178,6 +178,9 @@
 0x003DE2E0 0x4 recycler_index  # OVL1; s1:data-seq (size SOCOM 1's; via CreateEntity__7CEntityFP7CEntityb)
 0x003DE5F8 0x4 LADDER_MASK  # OVL1; s1:data-seq (size SOCOM 1's; via GetLadderByIndex__11CLadderListFi)
 0x003DF218 0x4 deadZoneScaleFactor  # OVL1; s1:data-seq (size SOCOM 1's; via SetDeadZone__4CPadFif)
+0x003DF298 0x4 PlayerClanID  # OVL1 data; s1 by hand (SOCOM 1's PlayerClanID: IsMemberOfClan 0x2E6830 tests it against -1, QuitClan and GetClanRoster send it as the clan id; initialised data in SOCOM II); size SOCOM 1's; 13 references in 10 functions
+0x003DF2A0 0x4 RemovePlayerFromClanID  # OVL1 data; s1 by hand (SOCOM 1's RemovePlayerFromClanID: RemovePlayerFromClan 0x2E7450 keeps the member it asks to remove there, as SOCOM 1's keeps its); size SOCOM 1's; 1 reference in 1 function
+0x003DF308 0x4 myConnectionIndex  # OVL1 data; s1 by hand (SOCOM 1's myConnectionIndex: MediusConnectionIndex 0x2DF640 returns it, as SOCOM 1's returns its); size SOCOM 1's; 9 references in 6 functions
 0x003DF320 0x4 data_003DF320  # OVL1 data: 1.0f, an anonymous constant (SlerpFaster passes _close_enough(len2, 1.0f, 0.004f) by reference)
 0x003DF328 0x4 data_003DF328  # OVL1 data: 0.004f, the other
 0x003DF330 0x4 m_pointer__6CStack  # OVL1; s1:data-seq (size SOCOM 1's; via Multiply__6CStackFPC7CMatrixb)
@@ -691,8 +694,11 @@
 0x0044F140 0x200 m_DmaBufArray  # OVL1 bss; SOCOM 1's (512 bytes, two pads' 256-byte DMA buffers: the demo's 0x4D74C0, which its CPad constructor hands libpad the same way): CPad's constructor passes m_DmaBufArray[port] to the socket's creation; 1 reference
 0x0044F240 0x4 pad_dt  # OVL1 bss; SOCOM 1's (the pad code's time step, gp-relative in the demo, read at the same places): CPad::Tick stores it, UpdateButton's click timer and CheckStickVelocity's dead-time steps read it; 4 references in 3 functions
 0x0044F310 0x4 m_defaultMaterial__16CMaterialExArray  # OVL1 bss; new in SOCOM II (SOCOM 1's GetMaterial returned 0 without a polygon), the name ours: int_material.cpp's SetDefaultMaterial (0x2DDC30, SOCOM 1's first function there) stores its index first, IntersectStruct::GetMaterial reports it for a polygon without a material; 2 references in 2 functions
-0x0044F370 0x98 theLobby  # OVL1 bss; s1 by hand (SOCOM 1's COurGame::StartEngine and StopEngine pass theLobby to CZOnlineLobby's Init and UnInit; SOCOM II's pass 0x44F370 at the same two places, UnInit__13CZOnlineLobbyFv named); size SOCOM 1's
-0x0044F45C 0x4 uiv_GameClock__24@unnamed@zNetMedius_cpp@  # OVL1 bss; s1:data-seq (size SOCOM 1's; via SyncGameClock__13CZOnlineLobbyFi)
+0x0044F370 0xF8 theLobby  # OVL1 bss; s1 by hand (SOCOM 1's COurGame::StartEngine and StopEngine pass theLobby to CZOnlineLobby's Init and UnInit; SOCOM II's pass 0x44F370 at the same two places, UnInit__13CZOnlineLobbyFv named); 0xF8 in SOCOM II, not SOCOM 1's 0x98: Init and 0x2DF6A0 store CUIVariable pointers at +0xB0 to +0xF4, SOCOM 1's uiv_* statics made members (0x44F45C, data-seq's uiv_GameClock, is +0xEC, which SyncGameClock reads); 400 references in 228 functions
+0x0044F580 0x170 StoredClanInfo  # OVL1 bss; s1 by hand (SOCOM 1's StoredClanInfo, the field offsets alike: DisbandClan sends +0x1c as the clan id, IsLeaderOfClan compares +0x44, Init clears the name at +0x24); size SOCOM 1's; 44 references in 19 functions
+0x0044F700 0xC InvitationVec  # OVL1 bss; s1 by hand (SOCOM 1's InvitationVec, the invitations received: HasClanInvitations tests its size, CheckClanInvitations empties it); built by the clan unit's initialiser 0x401EB0, destroyed by 0x2EA540; 15 references in 6 functions
+0x0044F720 0xC ClanInvitationVec  # OVL1 bss; s1 by hand (SOCOM 1's ClanInvitationVec, the invitations sent: ClanHasInvitations tests its size, GetInvitedPlayers empties it); initialiser 0x401EB0, destructor 0x2EA4C0; 24 references in 9 functions
+0x0044F740 0xC ClanMemberVec  # OVL1 bss; s1 by hand (SOCOM 1's ClanMemberVec: IsLeaderOfClan and RemovePlayerFromClan search it by name, GetClanRoster empties it); initialiser 0x401EB0, destructor 0x2EA440; 30 references in 16 functions
 0x00450080 0x1000 m_stack__6CStack  # OVL1 bss; s1:data-seq by hand (__sinit_zmath_matrix.cpp constructs 64 CMatrix here where SOCOM 1 constructs m_stack__6CStack)
 0x00451080 0x1 tableInit  # OVL1 bss; s1:data-seq (size SOCOM 1's; via init_trig_table__Fv +1)
 0x00451090 0x404 exptbl  # OVL1 bss; s1:data-seq (size SOCOM 1's; via exp_tl__Ff +1)
@@ -923,7 +929,11 @@
 0x0066A070 0x4 nextId__8CAiEvent  # OVL2 bss; SOCOM 1's (nextId__8CAiEvent): Acquire gives each event the next id, as the demo's (3 references in 1 function)
 0x0066A088 0xC m_callbacks__8CAiEvent  # OVL2 bss; s1:data-exact (size SOCOM 1's; via __sinit_ai_events.cpp)
 0x0066A1B0 0xE0 AiMaps  # OVL2 bss; s1:data-seq (size SOCOM 1's; via CreateCompassNavPoints__8CMissionFv +1)
-0x0066A5E8 0x1 g_bJoiningRandomGame__24@unnamed@zNetMedius_cpp@  # OVL2 bss; s1:data-seq (size SOCOM 1's; via UnInit__13CZOnlineLobbyFv)
+0x0066A4D0 0x11 SessionKey  # OVL2 bss; s1 by hand (SOCOM 1's SessionKey: every Medius request copies these 17 bytes to its +0x15, as SOCOM 1's do); size SOCOM 1's; 91 references in 78 functions
+0x0066A4F0 0x44 AccountInfo  # OVL2 bss; s1 by hand (SOCOM 1's AccountInfo: QuitClan sends its first word as the player's account, IsLeaderOfClan compares it, the account name at +4); size SOCOM 1's; 46 references in 29 functions
+0x0066A538 0x4 LobbyWorldID  # OVL2 bss; s1 by hand (SOCOM 1's LobbyWorldID: RejoinRoom 0x2E3730 goes back to the room only when it is not negative, as SOCOM 1's does; JoinRoom stores it); size SOCOM 1's; 12 references in 9 functions
+0x0066A5E8 0x1 g_bJoiningRandomGame  # OVL2 bss; s1:data-seq (SOCOM 1's g_bJoiningRandomGame, a static of its zNetMedius.cpp: UnInit, ReleaseUIResources and Init clear it as SOCOM 1's do); in OVL2's bss in SOCOM II, so another unit's global, the unnamed-namespace mangling dropped
+0x0066A5F0 0x4 MediusWorldID  # OVL2 bss; s1 by hand (SOCOM 1's MediusWorldID: BanSelfFromGame and SendEndGameReport send it as the game's world, as SOCOM 1's send theirs); size SOCOM 1's; 14 references in 12 functions
 0x0066B540 0xC projDirDown  # OVL2 bss; s1:data-seq (size SOCOM 1's; via HandleBloodDrip__10CZSealBodyFf)
 0x0066BAC8 0xC ai_line_pos__2ai  # OVL2 bss; s1:data-exact (size SOCOM 1's; via MoveTo__2aiFRC6CPnt3D)
 0x0066BCF0 0x0 NetClientPointerList  # OVL2 bss; s1:data-exact (size SOCOM 1's; via NetFreeClientPointers)
