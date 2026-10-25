@@ -29,6 +29,7 @@ public:
 
     unsigned int GetPacketID() const;
     unsigned int GetFlags() const;
+    static bool Compare(CPacket *a, CPacket *b);
     unsigned int GetPacketType() const;
     int CopyTo(void *dst, int size);
 
@@ -73,6 +74,22 @@ int CConsole::Disconnect()
         m_socket = -1;
     }
     return 0;
+}
+
+/* whether two packets are the same: id, type and size alike (SOCOM 1's, the same code). The ids'
+ * test is a bool assigned true (daddiu), each && its own materialised step; the two headers in
+ * locals, a's first, give the target's registers (read straight off the packets, b's loads first) */
+bool CPacket::Compare(CPacket *a, CPacket *b)
+{
+    _con_packet_hdr *da = a->m_data;
+    _con_packet_hdr *db = b->m_data;
+    bool same = false;
+
+    if (da->id == db->id)
+        same = true;
+    bool r = same && da->type == db->type;
+
+    return r && a->m_size == b->m_size;
 }
 
 /* the data copied out, if the room is enough: its size, or -1 */
