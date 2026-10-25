@@ -60,6 +60,9 @@ extern unsigned char gopt[0x1b];
 /* the base fog colour by value (the name ours: SeeFarther copies it out twice) */
 static inline CPnt4D BaseFogColor() { return data_004B4AB0; }
 
+/* a camera's fog colour set from a colour passed by value (the name ours) */
+static inline void SetFogColorBy(zdb::CCamera *cam, CPnt4D c) { cam->SetFogColor(c); }
+
 /* the scope's zoom (SOCOM 1's: a class of statics) */
 class CameraZoom {
 public:
@@ -161,10 +164,9 @@ void CameraZoom::HandleZoomIn(float newzoom, float current)
 }
 
 /* the world's camera made to see farther by a factor (its mid and far clips and its fog pushed
- * out, the bases kept), or put back as it was.
- * OPEN (0x190 of 0x198): the target copies the base fog colour out twice (two quadword stores, the
- * second through paddub) before the element copy -- SOCOM 1's SeeFarther too; a by-value getter
- * gives one, no local, cast or assignment gave the second */
+ * out, the bases kept), or put back as it was -- the base fog colour returned by value and passed
+ * by value again, so it is copied into two temporaries (lq/sq, then a 128-bit move -- paddub with
+ * zero -- and sq) before the element copy into the camera, as SOCOM 1's SeeFarther did */
 void SeeFarther(bool bEnable, float SeeFartherFactor)
 {
     zdb::CCamera *cam = zdb::CWorld::m_world->m_camera;
@@ -184,7 +186,7 @@ void SeeFarther(bool bEnable, float SeeFartherFactor)
         if (data_00408C80 == 0.0f)
             data_00408C80 = cam->m_fog_far;
         cam->m_fog_far = data_00408C80;
-        cam->SetFogColor(BaseFogColor());
+        SetFogColorBy(cam, BaseFogColor());
     } else {
         data_00408C80 = cam->m_fog_far;
         cam->m_fog_far = data_00408C80 + SeeFartherFactor;
