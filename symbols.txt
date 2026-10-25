@@ -8278,12 +8278,12 @@
 0x003CF1F0 0x90C func_003CF1F0  # OVL1
 0x003CFB00 0x8 func_003CFB00  # OVL1
 0x003CFB10 0x8 func_003CFB10  # OVL1
-0x003CFB20 0x118 func_003CFB20  # OVL1
-0x003CFC40 0xA8 func_003CFC40  # OVL1
-0x003CFCF0 0x78 func_003CFCF0  # OVL1
-0x003CFD70 0xC8 func_003CFD70  # OVL1
-0x003CFE40 0xA8 func_003CFE40  # OVL1
-0x003CFEF0 0x88 func_003CFEF0  # OVL1
+0x003CFB20 0x118 Compact__11CZItemStashFv  # OVL1; by hand (the wep lane: a 0x28-byte object of three parallel pod vectors at 0/0xC/0x18 and a word at 0x24; erases, through the pod vector's erase 0x28F220, every entry whose third word is zero; CPickup::CleanupAmmoPickup calls it; the class and its names ours); zwep_weapon.cpp
+0x003CFC40 0xA8 Clear__11CZItemStashFi  # OVL1; by hand (the wep lane: zeroes entry i of all three lists when the live count reaches i; OVL2's 0x59DFB0 calls it for eight slots; the name ours); zwep_weapon.cpp
+0x003CFCF0 0x78 Count__11CZItemStashFv  # OVL1; by hand (the wep lane: the third list's non-zero entries counted; the kit and the pickups call it; the name ours); zwep_weapon.cpp
+0x003CFD70 0xC8 Get__11CZItemStashFiPiPiPi  # OVL1; by hand (the wep lane: entry i's three words out, false when fewer are live; the name ours); zwep_weapon.cpp
+0x003CFE40 0xA8 Set__11CZItemStashFiiii  # OVL1; by hand (the wep lane: entry i's three words set when enough are live; the kit calls it; the name ours); zwep_weapon.cpp
+0x003CFEF0 0x88 Add__11CZItemStashFiii  # OVL1; by hand (the wep lane: the three words pushed through the pod insert 0x1FE340; the pickups call it; the name ours); zwep_weapon.cpp
 0x003CFF80 0x30 func_003CFF80  # OVL1
 0x003CFFB0 0x10 func_003CFFB0  # OVL1
 0x003CFFC0 0xC func_003CFFC0  # OVL1

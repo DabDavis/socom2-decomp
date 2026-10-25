@@ -768,3 +768,11 @@ void CZWeapon::SetSoundDistance(unsigned char i, float d)
 {
     m_sounddistance[i] = d * d;
 }
+
+/* NOT WRITTEN, CZItemStash (0x3CFB00-0x3CFFAF, its rows named): a 0x28-byte object of three
+ * parallel 4-byte vectors (0, 0xC, 0x18) and a word (0x24) -- Add pushes through the pod insert
+ * 0x1FE340, Compact erases through the pod erase(T *) 0x28F220, Count/Get/Set/Clear walk the third
+ * list with a class iterator (the `!=` materialised, the end in a preheader after the loop). Written
+ * over std::vector<int> it does not build: include/vector's scalar vectors have no iterator,
+ * begin(), end() or erase -- which the MSL lane's scalar macro would need first (or the lists are
+ * pointer vectors in the original) */
