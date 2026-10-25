@@ -2283,7 +2283,7 @@
 0x0023B540 0x310 func_0023B540  # OVL1
 0x0023B850 0x44 func_0023B850  # OVL1
 0x0023B8A0 0xF0 func_0023B8A0  # OVL1
-0x0023B990 0x14 func_0023B990  # OVL1; size 0x14 (a tail call through t9; the seed ran on into the padding)
+0x0023B990 0x14 SetTrans__12SelectedSlotFf  # OVL1; size 0x14 (a tail call through t9; the seed ran on into the padding); by hand (the HUD lane: slot 11 of SelectedSlot's vtable 0x405D00 -- its name's SetTrans)
 0x0023B9B0 0x2A0 func_0023B9B0  # OVL1
 0x0023BC50 0x2B4 func_0023BC50  # OVL1
 0x0023BF10 0x10 func_0023BF10  # OVL1; tu: zui_2d.cpp~ (1.0 beta)
@@ -2301,7 +2301,7 @@
 0x0023C6F0 0x144 func_0023C6F0  # OVL1
 0x0023C840 0x344 func_0023C840  # OVL1
 0x0023CB90 0x118 func_0023CB90  # OVL1
-0x0023CCB0 0x70 func_0023CCB0  # OVL1
+0x0023CCB0 0x70 Draw__8SlotListFPQ23zdb7CCamera  # OVL1; by hand (the HUD lane: slot 1 of SlotList's vtable 0x405E80 -- its five slot pointers drawn while it is on)
 0x0023CD20 0x33C func_0023CD20  # OVL1
 0x0023D060 0x144 func_0023D060  # OVL1
 0x0023D1B0 0xF8 func_0023D1B0  # OVL1
@@ -2309,7 +2309,7 @@
 0x0023D460 0xD4 func_0023D460  # OVL1
 0x0023D540 0xC8 func_0023D540  # OVL1
 0x0023D610 0x1F8 func_0023D610  # OVL1
-0x0023D810 0x50 func_0023D810  # OVL1
+0x0023D810 0x50 SetTrans__12CategorySlotFf  # OVL1; by hand (the HUD lane: slot 11 of CategorySlot's vtable 0x405D80 -- its name's and bitmap's SetTrans through their tables)
 0x0023D860 0x714 func_0023D860  # OVL1
 0x0023DF80 0x50 func_0023DF80  # OVL1
 0x0023DFD0 0x60 __dt__11CWeaponSlotFv  # OVL1; by hand (slot 0 of CWeaponSlot's vtable 0x405E00: the implicit destructor)
@@ -2323,7 +2323,7 @@
 0x0023EBC0 0xD4 func_0023EBC0  # OVL1
 0x0023ECA0 0x1250 func_0023ECA0  # OVL1
 0x0023FEF0 0x690 func_0023FEF0  # OVL1
-0x00240580 0x68 func_00240580  # OVL1
+0x00240580 0x68 SetTrans__8SlotListFf  # OVL1; by hand (the HUD lane: slot 11 of SlotList's vtable 0x405E80 -- each slot faded)
 0x002405F0 0x8 func_002405F0  # OVL1
 0x00240600 0x584 func_00240600  # OVL1
 0x00240B90 0x1BC func_00240B90  # OVL1

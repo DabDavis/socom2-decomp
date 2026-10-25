@@ -20,6 +20,13 @@ void CMPWeaponSel::UnInit()
     func_00240B90(this, 0);
 }
 
+void SlotList::SetTrans(float trans)
+{
+    for (unsigned int i = 0; i < 5; i++)
+        if (m_slots[i])
+            m_slots[i]->SetTrans(trans);
+}
+
 /* while up: the lists, the page, the title and the backdrops on, then updated */
 void CMPWeaponSel::On()
 {
@@ -43,4 +50,26 @@ void CMPWeaponSel::Off()
     m_bitmap1.Off();
     m_bitmap2.Off();
     m_bitmap3.Off();
+}
+
+/* the name and the bitmap faded together */
+void CategorySlot::SetTrans(float trans)
+{
+    m_name.SetTrans(trans);
+    m_bitmap.SetTrans(trans);
+}
+
+/* the slots drawn while the list is on */
+void SlotList::Draw(zdb::CCamera *cam)
+{
+    if (IsOn())
+        for (int i = 0; i < 5; i++)
+            if (m_slots[i])
+                m_slots[i]->Draw(cam);
+}
+
+/* the name faded */
+void SelectedSlot::SetTrans(float trans)
+{
+    m_name.SetTrans(trans);
 }

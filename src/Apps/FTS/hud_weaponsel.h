@@ -149,18 +149,30 @@ public:
 
 class CategorySlot : public CWeaponSlot {
 public:
+    /* slot 11: the name and the bitmap faded together (0x23D810) */
+    virtual void SetTrans(float trans);
+
     C2DBitmap m_bitmap;   // 0x20
     C2DString m_name;   // 0xa0
 } __attribute__((aligned(16)));   // 0x140 bytes
 
 class SelectedSlot : public CWeaponSlot {
 public:
+    /* slot 11: the name faded (0x23B990) */
+    virtual void SetTrans(float trans);
+
     C2DString m_name;   // 0x20
 };   // 0xb8 bytes
 
 class SlotList : public C2D {
 public:
-    unsigned char _18[0x38 - 0x18];
+    /* slots 1 and 11: the slots drawn while the list is on (0x23CCB0), all faded (0x240580) */
+    virtual void Draw(zdb::CCamera *cam);
+    virtual void SetTrans(float trans);
+
+    unsigned char _18[0x20 - 0x18];
+    CWeaponSlot *m_slots[5];   // 0x20
+    unsigned char _34[0x38 - 0x34];
 };   // 0x38 bytes
 
 class CMPWeaponCategories;
