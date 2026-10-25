@@ -47,7 +47,7 @@ inline char *RoomVarText(_zrdr *z)
 }
 
 extern "C" {
-extern unsigned char data_0044F568[];   /* the room list */
+extern BriefingRoomDB data_0044F568;   /* the room list */
 MediusErrorCode func_0064B098(MediusChannelListRequest *req,
                               void (*cb)(int, int, int, MediusChannelListResponse *));   /* MediusChannelList */
 void func_002E3B00(int, int, int, MediusChannelListResponse *);   /* a room of the list kept */
@@ -221,6 +221,56 @@ bool RoomLess(BriefingRoom *a, BriefingRoom *b)
     return c < 0;
 }
 
+/* a player of the room by name (for find_if; the name ours) */
+struct RoomPlayerNamed {
+    RoomPlayerNamed(const char *name) : m_name(name) {}
+    bool operator()(const RoomPlayer &p) const { return !strcmp(p.AccountName, m_name); }
+
+    const char *m_name;
+};
+
+/* the room's player of that name, if it holds one (OVL1 0x2E3610: the player-info callback
+ * 0x2F0020 asks it) */
+RoomPlayer *BriefingRoom::FindPlayer(const char *name)
+{
+    RoomPlayer *player = 0;
+    std::vector<RoomPlayer>::iterator i = std::find_if(m_players.begin(), m_players.end(),
+                                                       RoomPlayerNamed(name));
+
+    if (i != m_players.end())
+        player = &*i;
+    return player;
+}
+
+/* the room of that name lets us in: its game types allow our rank's (SOCOM II's; OVL1 0x2E34E0,
+ * UICanJoinRoom asks it of theLobby) */
+bool CZOnlineLobby::CanJoinRoom(const char *name)
+{
+    bool ok = false;
+    BriefingRoom *room = data_0044F568.Find(name);
+
+    if (room)
+        ok = room->AllowsType(GetRankTier(-1));
+    return ok;
+}
+
+/* the mission list (the states lane's fts_missionlist.cpp, data 0x441650) */
+class CMultiMission;
+class CMultiMissionList {
+public:
+    CMultiMission *Find(int id, bool multi);
+};
+extern "C" CMultiMissionList data_00441650;
+
+/* every mission of the game's sequence known here (OVL1 0x2E33E0: JoinGame asks it) */
+bool RoomGame::HasMissions()
+{
+    for (int i = 0; i < 32 && GetMissionSequence()[i]; i++)
+        if (!data_00441650.Find(GetMissionSequence()[i], true))
+            return false;
+    return true;
+}
+
 /* a room's game types allow this one, or the room names none (OVL1 0x2E3490) */
 bool RoomGame::AllowsType(int type)
 {
@@ -267,7 +317,7 @@ bool CZOnlineLobby::RefreshRoomList(C2D *page)
 #pragma auto_inline off
 void func_002E2920(CZOnlineLobby *lobby, C2D *page)
 {
-    BriefingRoom *room = ((BriefingRoomDB *)data_0044F568)->FindRoom(RoomVarText(theLobby.uiv_LobbyWorldNameVar));
+    BriefingRoom *room = data_0044F568.FindRoom(RoomVarText(theLobby.uiv_LobbyWorldNameVar));
 
     if (room)
         room->RemoveEmptyGames();
@@ -282,7 +332,7 @@ void func_002E2920(CZOnlineLobby *lobby, C2D *page)
     memset(&req, 0, sizeof(req));
     req.PageID = 1;
     req.PageSize = 256;
-    room = ((BriefingRoomDB *)data_0044F568)->FindRoom(RoomVarText(theLobby.uiv_LobbyWorldNameVar));
+    room = data_0044F568.FindRoom(RoomVarText(theLobby.uiv_LobbyWorldNameVar));
     if (room) {
         room->RemoveUncheckedGames();
         for (BriefingRoom::iterator i = room->begin(); i != room->end(); ++i)
@@ -299,7 +349,7 @@ void func_002E2920(CZOnlineLobby *lobby, C2D *page)
 #pragma auto_inline off
 void func_002E3AA0(CZOnlineLobby *lobby, C2D *page)
 {
-    ((BriefingRoomDB *)data_0044F568)->DeleteAll();
+    data_0044F568.DeleteAll();
     MediusChannelListRequest req;
 
     memset(&req, 0, sizeof(req));

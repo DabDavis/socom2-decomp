@@ -75,6 +75,36 @@ void ClanLadderList::Add(MediusGetClanLadderListResponse *resp)
 
 #pragma auto_inline reset
 
+extern "C" {
+extern int data_0044F7F8;   /* our position on the ladder (cbGetLadderPosition's) */
+extern int data_0044F800;   /* the ladder's positions */
+}
+
+/* a ladder position's tier, ours for -1: 4 the top 5 %, 3 to 30 %, 2 to 85 %, 1 the rest (of the
+ * positions past the first ten); on a ladder of fewer than 12, 4 for anyone (SOCOM II's; OVL1
+ * 0x2EAE20: the ladder callbacks, the game list and CanJoinRoom ask it; the name ours) */
+int CZOnlineLobby::GetRankTier(int rank)
+{
+    int tier = 0;
+
+    if (rank == -1)
+        rank = data_0044F7F8;
+    if (data_0044F800 > 11) {
+        int permille = rank * 1000 / (data_0044F800 - 10);
+
+        if (permille < 51)
+            tier = 4;
+        else if (permille < 301)
+            tier = 3;
+        else if (permille < 851)
+            tier = 2;
+        else
+            tier = 1;
+    } else if (data_0044F800 > 0)
+        tier = 4;
+    return tier;
+}
+
 /* our position on the ladder, in the active lobby (SOCOM 1's; OVL1 0x2EB2C0) */
 void CZOnlineLobby::GetLadderInfo()
 {

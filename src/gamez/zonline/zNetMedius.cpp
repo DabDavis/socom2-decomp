@@ -18,7 +18,7 @@ extern unsigned char data_0044F4D0[0x40];
 void func_00300680();   /* the Medius connection closed */
 void func_006305C8(void *a, void *b);   /* (OVL2: the DME's set up) */
 
-extern unsigned char data_0044F568[];   /* the room list (the rooms' unit's) */
+extern BriefingRoomDB data_0044F568;   /* the room list (the rooms' unit's) */
 extern BriefingRoom data_0044FAB0;   /* a room (the lobby unit's) */
 extern BriefingRoom *data_0044FE10;   /* the room we are in, if any */
 void func_002EC140(LadderList *list);   /* a player ladder deleted (LadderList::DeleteAll) */
@@ -43,7 +43,7 @@ void *CZOnlineLobby::DMEInit()
  * (0xec-0xf4) */
 void CZOnlineLobby::ReleaseUIResources()
 {
-    ((BriefingRoomDB *)data_0044F568)->Release();
+    data_0044F568.Release();
     func_002EC140(&LadderLeaders);
     ReleaseVector(LadderLeaders);
     func_002EC140(&LadderRanking);

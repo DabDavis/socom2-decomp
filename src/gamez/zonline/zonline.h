@@ -529,6 +529,7 @@ public:
 
     virtual unsigned char *GetMissionSequence();
     bool AllowsType(int type);
+    bool HasMissions();
 
     int m_194;   // 0x194
     bool m_unchecked;   // 0x198: set for every game as the game list is asked for again
@@ -595,6 +596,21 @@ public:
     void Set(MediusChannelListResponse *resp) { *(MediusChannelListResponse *)this = *resp; }
     void SetPassword(const char *password);
     RoomPlayer *FindPlayer(const char *name);
+    /* the game types the room allows include this one, or it names none (CanJoinRoom inlines it;
+     * RoomGame::AllowsType is the same test of a game's byte) */
+    bool AllowsType(int type)
+    {
+        bool r = true;
+        unsigned int types = GenericField & 0xF;
+
+        if (types) {
+            if ((1 << (type - 1)) & types)
+                r = true;
+            else
+                r = false;
+        }
+        return r;
+    }
     void DeleteGames();
     RoomGame *FindGame(int mission);
     RoomGame *FindGame(const char *name);
@@ -610,6 +626,22 @@ public:
 class BriefingRoomDB : public std::vector<BriefingRoom *> {
 public:
     BriefingRoom *FindRoom(const char *name);
+    /* FindRoom again, as an inline (CanJoinRoom expands it where the game list's request calls
+     * FindRoom out of line) */
+    BriefingRoom *Find(const char *name)
+    {
+        BriefingRoom *room = 0;
+
+        if (name) {
+            for (iterator i = begin(); i != end(); ++i) {
+                if (!strcmp((*i)->LobbyName, name)) {
+                    room = *i;
+                    break;
+                }
+            }
+        }
+        return room;
+    }
     void Add(MediusChannelListResponse *resp);
     void DeleteAll();
     void Release();
@@ -707,6 +739,8 @@ public:
     bool RefreshGameList(C2D *page);
     void GetLadderInfo();
     void GetLadderRanking();
+    int GetRankTier(int rank);
+    bool CanJoinRoom(const char *name);
     void GetClanLadderLeaders(int n);
     void GetFriendsList();
     void RemoveFriend(int id);
