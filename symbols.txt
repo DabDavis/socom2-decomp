@@ -7758,7 +7758,7 @@
 0x003AAA90 0x18 Init__7CTurretFPCcPCc  # OVL1; s1:calls by hand (the wep lane: CMission::Init calls it where SOCOM 1's calls Init__7CTurretFPCcPCc; a tail call handing its two strings to m_turret_def.Init); veh_turret.cpp
 0x003AAAB0 0x188 Init__16CTurretDefVectorFPCcPCc  # OVL1; s1:calls; by hand (the wep lane: the static CTurret::Init 0x3AAA90 tail-calls it on m_turret_def; it reads the rdr, sizes the vector to half the "TURRET" list and parses each name/value pair -- the loop SOCOM 1's CTurret::Init held inline; returns the size; the name ours, the s1:calls name moved to the wrapper); veh_turret.cpp
 0x003AAC40 0xD4 PrefixMatch__16CTurretDefVectorFPCc  # OVL1; s1:calls by hand (the wep lane: SOCOM 1's PrefixMatch, the same strlen/strncmp walk over 412-byte entries; ScanForTurretDefinitionHookups and Create call it on m_turret_def); veh_turret.cpp
-0x003AAD20 0x8D0 func_003AAD20  # OVL1
+0x003AAD20 0x8D0 Parse__10CTurretDefFPCcP5_zrdr  # OVL1; by hand (the wep lane: CTurretDefVector::Init calls it on each element with the TURRET list's name string and the next item, as SOCOM 1's CTurret::Init calls Parse__10CTurretDefFPCcP5_zrdr; veh_turret.cpp)
 0x003AB5F0 0x2C4 func_003AB5F0  # OVL1
 0x003AB8C0 0xA4 func_003AB8C0  # OVL1
 0x003AB970 0x2C func_003AB970  # OVL1
@@ -7793,13 +7793,13 @@
 0x003AE240 0x18 Init__8CVehicleFPCcPCc  # OVL1; by hand (the wep lane: a tail call handing its two strings to m_vehicle_def's Init, as CTurret::Init does; the name ours); veh_vehicle.cpp
 0x003AE260 0x198 Init__17CVehicleDefVectorFPCcPCc  # OVL1; by hand (the wep lane: CTurretDefVector::Init's twin -- reads the rdr, sizes the vector to half its "VEHICLE" list, parses each pair; the name ours)
 0x003AE400 0xD4 PrefixMatch__17CVehicleDefVectorFPCc  # OVL1; by hand (the wep lane: the turret's PrefixMatch twin over 136-byte definitions -- strlen/strncmp, the definition's name at 0; the vehicle scan calls it on m_vehicle_def; the name ours); veh_vehicle.cpp
-0x003AE4E0 0x26C func_003AE4E0  # OVL1
-0x003AE750 0xA4 func_003AE750  # OVL1
-0x003AE800 0x840 func_003AE800  # OVL1
-0x003AF040 0xA54 func_003AF040  # OVL1
+0x003AE4E0 0x26C Parse__11CVehicleDefFPCcP5_zrdr  # OVL1; by hand (the wep lane: CVehicleDefVector::Init calls it on each element with the VEHICLE list's name string and the next item -- CTurretDef::Parse's twin; veh_vehicle.cpp)
+0x003AE750 0xA4 resize__Q23std62__vector_imp<11CVehicleDef,Q23std24allocator<11CVehicleDef>,0>FUi  # OVL1; by hand (the wep lane: CVehicleDefVector::Init calls it with half the VEHICLE list; include/vector's resize(n) over CVehicleDef's inline constructor is byte-exact -- the temporary's four string bytes and word zeroed at sp+16, then insert 0x3AF040, else erase 0x3AE800); veh_vehicle.cpp
+0x003AE800 0x840 erase__Q23std62__vector_imp<11CVehicleDef,Q23std24allocator<11CVehicleDef>,0>FP11CVehicleDefP11CVehicleDef  # OVL1; by hand (the wep lane: the resize's cut; include/vector's erase over CVehicleDef's implicit assignment -- four 32-byte strings copied bytewise, a byte, a word -- unrolled 8x, byte-exact); veh_vehicle.cpp
+0x003AF040 0xA54 insert__Q23std62__vector_imp<11CVehicleDef,Q23std24allocator<11CVehicleDef>,0>FP11CVehicleDefUiRC11CVehicleDef  # OVL1; by hand (the wep lane: the resize's growth -- n default-built definitions inserted at the end; include/vector's class insert, 8 bytes short: the in-place branch's end pointer register, as the header's other open inserts, and the temporary's destructor inlined where the unit's copy calls it); veh_vehicle.cpp
 0x003AFAA0 0x68 func_003AFAA0  # OVL1
 0x003AFB10 0x8 func_003AFB10  # OVL1
-0x003AFB20 0x80 func_003AFB20  # OVL1
+0x003AFB20 0x80 __dt__17CVehicleDefVectorFv  # OVL1; by hand (the wep lane: the initialiser 0x4043A0 registers it for m_vehicle_def at 0x4A4138; the implicit destructor, its four levels inlined -- veh_vehicle.cpp's copy is byte-exact); veh_vehicle.cpp
 0x003AFBA0 0x3C func_003AFBA0  # OVL1
 0x003AFBE0 0x164 Brightness__6CVideoFf  # OVL1; s1:calls (the brightness tuner tail-calls it; SOCOM 1's head word for word: 0.5 compared with the argument, 128 stored) -- the UI-widgets lane
 0x003AFD50 0x11C Clear__6CVideoFbUcUcUcUc  # OVL1; by hand (the wep lane: SOCOM 1's Clear -- the clear packet vramcode's FRAME and far XYZ2 set, 0x1C002800 the 640x448 corner, sent -- with a flag first: set, a 1024-wide clear of all GS memory in the colour; the packet sent through zvid_KickPacket); the flag a bool or an unsigned char alike (both test it with andi 0xff when compared with false/0, neither when negated): bool, as a flag

@@ -61,13 +61,12 @@ const CTurretDef *CTurretDefVector::PrefixMatch(const char *name)
 }
 #pragma auto_inline reset
 
-/* OPEN, 12 instructions: everything but where `i = 0` lands -- the target fills the resize
- * call's delay slot with it (`move a0,this` before the jal), MW here puts the this-move there and
- * sinks the zero to the loop's first test. Tried: the zero before the call (14), in the for's
- * init through a comma (12), declared after the call (12), a member call instead of the C
- * placeholder (12, the same schedule), an int counter (97: Item(i) is then not strength-reduced,
- * so the counter is unsigned). The resize is MSL's class-vector resize (0x3AB8C0), which
- * include/vector does not declare, called through its placeholder. */
+/* the definitions read: the vector sized to the "TURRET" list's pairs, each parsed from its name
+ * and value. The count goes into a local ahead of the counter's zero, which then fills the resize
+ * call's delay slot as the target's does (computed in the call's argument, MW put the this-move
+ * there and sank the zero to the loop's first test). The resize is MSL's class-vector resize
+ * (0x3AB8C0), called through its placeholder until CTurretDef's constructor (0x3AB5F0) and the
+ * insert/erase it brings are modelled. */
 int CTurretDefVector::Init(const char *name, const char *path)
 {
     _zrdr *rdr = zrdr_read(name, path, 0);
@@ -76,8 +75,10 @@ int CTurretDefVector::Init(const char *name, const char *path)
         _zrdr *list = zrdr_findtag(rdr, "TURRET");
         unsigned int i;
 
-        func_003AB8C0(this, (list ? list->Count() : 0) / 2);
+        unsigned int n = (list ? list->Count() : 0) / 2;
+
         i = 0;
+        func_003AB8C0(this, n);
         for (iterator it = begin(); it != end(); ++it, i += 2)
             (*it).Parse(list->Item(i)->String(), list->Item(i + 1));
     }
