@@ -10746,7 +10746,7 @@
 0x005A1620 0x284 func_005A1620  # OVL2
 0x005A18B0 0x2C0 func_005A18B0  # OVL2
 0x005A1B70 0x10 RemoteWeaponDamageNonVictim__10CZSealBodyF15DAMAGE_LOCATIONP10CZSealBodyP10CZSealBodyUcb  # OVL2; s1:exact
-0x005A1B80 0x44C func_005A1B80  # OVL2
+0x005A1B80 0x44C RemoteWeaponDamageVictim__10CZSealBodyF15DAMAGE_LOCATIONffP10CZSealBodyP10CZSealBodyUcb  # OVL2; s1:callee by hand (the states lane's lead, vetted: RemoteWeaponDamageNonVictim, s1:exact at 0x5A1B70, is `mtc1 zero; j 0x5A1B80; mov.s` in both builds, SOCOM 1's j targeting RemoteWeaponDamageVictim, the next function there as here; the prologue keeps SOCOM 1's parameters -- a0 this, a1 the location, f12/f13 two floats, a2/a3 two seals, t0 a byte, t1 a bool; HitPacketHandler calls it) -- the SEAL lane, round 7
 0x005A1FD0 0x1C func_005A1FD0  # OVL2
 0x005A1FF0 0x1B4 func_005A1FF0  # OVL2
 0x005A21B0 0x1DC func_005A21B0  # OVL2
