@@ -4284,36 +4284,36 @@
 0x002CA100 0x138 func_002CA100  # OVL1
 0x002CA240 0x90 func_002CA240  # OVL1
 0x002CA2D0 0x54 func_002CA2D0  # OVL1
-0x002CA330 0x8 func_002CA330  # OVL1
-0x002CA340 0x1D8 func_002CA340  # OVL1
-0x002CA520 0x70 func_002CA520  # OVL1
-0x002CA590 0x98 func_002CA590  # OVL1
-0x002CA630 0xA0 func_002CA630  # OVL1
-0x002CA6D0 0x8 func_002CA6D0  # OVL1
-0x002CA6E0 0x1C func_002CA6E0  # OVL1
-0x002CA700 0x30 func_002CA700  # OVL1
-0x002CA730 0x8 func_002CA730  # OVL1
-0x002CA740 0x54 func_002CA740  # OVL1
-0x002CA7A0 0x14 func_002CA7A0  # OVL1
-0x002CA7C0 0x38 func_002CA7C0  # OVL1
-0x002CA800 0x34 func_002CA800  # OVL1
-0x002CA840 0x158 func_002CA840  # OVL1
-0x002CA9A0 0x714 func_002CA9A0  # OVL1
-0x002CB0C0 0x110 func_002CB0C0  # OVL1
-0x002CB1D0 0x1C8 func_002CB1D0  # OVL1
-0x002CB3A0 0xB8 func_002CB3A0  # OVL1
-0x002CB460 0x3FC func_002CB460  # OVL1
-0x002CB860 0xC8 func_002CB860  # OVL1
-0x002CB930 0xE0 func_002CB930  # OVL1
+0x002CA330 0x8 UIDeletePatch__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "DeletePatch" (id 196, the UI command table's record at 0x3DE0F0): `return true` -- fts_patch.cpp
+0x002CA340 0x1D8 UIDownloadPatch__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "DownloadPatch" (id 195, the record at 0x3DE0E0), named UI<command> as SOCOM 1 names its global handlers: makes CSMDownloadPatch from PatchServerURL and runs it -- fts_patch.cpp
+0x002CA520 0x70 __dt__16CSMDownloadPatchFv  # OVL1; ours: slot 0x10 of CSMDownloadPatch's vtable (0x406570, by its RTTI): the URL string destroyed, ~CSimpleStateMachine with 0 -- fts_patch.cpp
+0x002CA590 0x98 Start__16CSMDownloadPatchFv  # OVL1; ours: slot 8 of CSMDownloadPatch's vtable (the base's Start inlined, DownloadState "Start", the network's modules, InitializeDNAS queued) -- fts_patch.cpp
+0x002CA630 0xA0 SetState__16CSMDownloadPatchFRCM19CSimpleStateMachineFPCvPvUc_v  # OVL1; ours: slot 0xC of CSMDownloadPatch's vtable, its override of CSimpleStateMachine's: DownloadStateValve counted up, then the base's queue push (0x2852B0) -- fts_patch.cpp
+0x002CA6D0 0x8 __apl__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FPCc  # OVL1; ours: std::string's operator+=(const char *), out of line (a tail call to append, 0x1EEB70): the first copy in OVL1, called by UIDownloadPatch's inlined CSMDownloadPatch constructor -- fts_patch.cpp
+0x002CA6E0 0x1C __vc__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FUi  # OVL1; ours: std::string's operator[], out of line (the long form's text or the short form's, plus the index): called by UIDownloadPatch's inlined constructor -- fts_patch.cpp
+0x002CA700 0x30 size__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFv  # OVL1; ours: std::string's size(), out of line (the long form's word 1 or the short form's 7-bit field): called by UIDownloadPatch's inlined constructor -- fts_patch.cpp
+0x002CA730 0x8 __as__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FPCc  # OVL1; ours: std::string's operator=(const char *), out of line (a tail call to assign, 0x1EEB40): called by UIDownloadPatch's inlined constructor -- fts_patch.cpp
+0x002CA740 0x54 SetValue__16CSMDownloadPatchFP6CValvei  # OVL1; ours: a valve set, returning whether it changed (CValve::SetValue's shape, out of line; a static of the machine's here since zanim.h's CValve does not declare it): called by UIDownloadPatch's inlined constructor -- fts_patch.cpp
+0x002CA7A0 0x14 __ct__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>Fv  # OVL1; ours: std::string's default constructor, out of line (the three words zeroed): called by UIDownloadPatch's inlined constructor -- fts_patch.cpp
+0x002CA7C0 0x38 __ct__12CLobbyFileIOFv  # OVL1; ours: CLobbyFileIO's constructor, out of line (CIO's table stored, then CLobbyFileIO's 0x406760): called by UIDownloadPatch's inlined constructor -- fts_patch.cpp
+0x002CA800 0x34 __ct__10CMemCardIOFv  # OVL1; ours: CMemCardIO's constructor (zutil.h's inline), out of line (CIO's table, then CMemCardIO's): called by UIDownloadPatch's inlined constructor -- fts_patch.cpp
+0x002CA840 0x158 InitializeDNAS__16CSMDownloadPatchFUc  # OVL1; ours: CSMDownloadPatch's first state (Start queues it, 0x3DE8B0): DownloadState "Initialize DNAS", then DNAS.BIN's 0x534830 -- fts_patch.cpp
+0x002CA9A0 0x714 Open__16CSMDownloadPatchFUc  # OVL1; ours: the state ParseURI queues (0x3DE890): DownloadState "Open <file>", DNAS.BIN's HTTP client created (0x541C10), five options set (0x545800) and opened (0x5469F8) -- fts_patch.cpp
+0x002CB0C0 0x110 EndOfOpen__16CSMDownloadPatchFPviPv  # OVL1; ours: the callback Open hands option 23 ('sceHTTPO_EndOfOpenCB'): Get queued, or 'sceHTTPOpen (cb) failed' -- fts_patch.cpp
+0x002CB1D0 0x1C8 CreateArchive__16CSMDownloadPatchFUc  # OVL1; ours: the state Receive queues (0x3DE860): the old patch deleted, APACHE00.ZDB created on the card and the archive's header written -- fts_patch.cpp
+0x002CB3A0 0xB8 WriteTable__16CSMDownloadPatchFUc  # OVL1; ours: the state CreateArchive queues (0x3DE850): the entries' table written -- fts_patch.cpp
+0x002CB460 0x3FC WriteEntries__16CSMDownloadPatchFUc  # OVL1; ours: the state WriteTable queues (0x3DE840): each entry unpacked (0x539D00/0x539D50) and written, its offset noted -- fts_patch.cpp
+0x002CB860 0xC8 RewriteHeader__16CSMDownloadPatchFUc  # OVL1; ours: the state WriteEntries queues (0x3DE830): back to the file's start, the header written again -- fts_patch.cpp
+0x002CB930 0xE0 RewriteTable__16CSMDownloadPatchFUc  # OVL1; ours: the state RewriteHeader queues (0x3DE820): the table written again; left, the file closed and the reserve files made -- fts_patch.cpp
 0x002CBA10 0x94 fwrite__3CIOFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002CBAB0 0x8 freadAsync__3CIOFPvi  # OVL1; ours (CIO's table slot 0x30, the first of SOCOM II's three async slots after fwrite; the base answers 0; zutil.h's inline declaration) -- the UI-widgets lane
 0x002CBAC0 0x8 fwriteAsync__3CIOFPCvi  # OVL1; ours (CIO's slot 0x34, the base answers 0; zutil.h) -- the UI-widgets lane
 0x002CBAD0 0x8 fsyncAsync__3CIOFiPi  # OVL1; ours (CIO's slot 0x38, the base answers true; zutil.h) -- the UI-widgets lane
-0x002CBAE0 0x180 func_002CBAE0  # OVL1
-0x002CBC60 0x508 func_002CBC60  # OVL1
-0x002CC170 0x110 func_002CC170  # OVL1
-0x002CC280 0x2DC func_002CC280  # OVL1
-0x002CC560 0x108 func_002CC560  # OVL1
+0x002CBAE0 0x180 ParseURI__16CSMDownloadPatchFUc  # OVL1; ours: slot 0x14 of CSMDownloadPatch's vtable, the state InitializeDNAS queues: PatchServerURL + "APACHE00.ZDB" parsed (0x5448F8) -- fts_patch.cpp
+0x002CBC60 0x508 Get__16CSMDownloadPatchFUc  # OVL1; ours: slot 0x18, the state EndOfOpen queues: DownloadState "Get <file>", the request made (0x544550) and watched (DownloadByteCount, 'Timeout during download') -- fts_patch.cpp
+0x002CC170 0x110 EndOfTransaction__16CSMDownloadPatchFPviPv  # OVL1; ours: the callback Get hands option 10 ('sceHTTPO_EndOfTransactionCB'): Receive queued, or the error -- fts_patch.cpp
+0x002CC280 0x2DC Receive__16CSMDownloadPatchFUc  # OVL1; ours: slot 0x1C, the state EndOfTransaction queues: DownloadState "Received <file>", the response's body taken as the archive; left, the connection closed (0x546B30) -- fts_patch.cpp
+0x002CC560 0x108 Close__16CSMDownloadPatchFUc  # OVL1; ours: slot 0x20, the state RewriteTable queues (0x3DE810): the client and URI freed, the machine finished -- fts_patch.cpp
 0x002CC670 0x144 UIDNASAuthenticate__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "DNASAuthenticate" (id 199, the UI command table's record at 0x3DE120), named UI<command> as SOCOM 1 names its global handlers -- the states lane, fts_dnas.cpp
 0x002CC7C0 0x60 __dt__19CSMDNASAuthenticateFv  # OVL1; ours: slot 0x10 of CSMDNASAuthenticate's vtable (0x4065A0, by its RTTI), storing that table and calling ~CSimpleStateMachine with 0 -- fts_dnas.cpp
 0x002CC820 0x8C Start__19CSMDNASAuthenticateFv  # OVL1; ours: slot 8 of CSMDNASAuthenticate's vtable (the base's Start inlined, the reboot callback registered, LoadAuthFile queued) -- fts_dnas.cpp
