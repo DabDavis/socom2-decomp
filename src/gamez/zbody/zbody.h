@@ -831,6 +831,21 @@ public:
 
 class CRdrFile;
 
+/* a script's transition speeds from motion.rdr (transition_speed_A and _B), kept by the script's
+ * index there when either is set; 12 bytes (ReadMotionRdr news them; the names ours) */
+struct MOTION_TRANSITION {
+    MOTION_TRANSITION(int index, float a, float b)
+    {
+        m_index = index;
+        m_speedA = a;
+        m_speedB = b;
+    }
+
+    int m_index;   // 0x0
+    float m_speedA;   // 0x4
+    float m_speedB;   // 0x8
+};
+
 /* an archive of motion scripts (SOCOM 1's; 0x108 bytes in SOCOM II: bone_init.cpp's two statics at
  * 0x415D40 and 0x415E60, the second's destructor record at 0x415E48 right after the first) */
 class CScriptArchive {
@@ -858,6 +873,15 @@ public:
     /* the scripts' settings read from motion.rdr (0x287620) */
     void ReadMotionRdr();
     void SetPresent(bool b) { m_present = b; }
+    void SetIndex(int i) { m_index = i; }
+    /* the name replaced by a copy (freed first; none for 0) */
+    void SetName(const char *name)
+    {
+        if (m_name)
+            _free(m_name, 0, 0);
+        m_name = 0;
+        m_name = name ? _strdup(name, 0, 0) : 0;
+    }
 
     std::vector<CZSIScript *> m_scripts;   // 0x0: every script read (CreateAndReadIt)
     zar::CZAR m_zar;   // 0xc
@@ -869,9 +893,9 @@ public:
     unsigned char m_present : 1;   // the archive has been looked for
     CZBodyAnimCallbackList m_callbacks;   // 0xd4
     CRdrFile *m_rdr;   // 0xe0: motion.rdr, while it is read
-    std::vector<CZSIScriptCommon *> m_commons;   // 0xe4
-    std::vector<CZSIScriptCommon *> m_f0;   // 0xf0
-    std::vector<void *> m_fc;   // 0xfc
+    std::vector<CZSIScriptCommon *> m_commons;   // 0xe4: as the scripts were read
+    std::vector<CZSIScriptCommon *> m_byRdr;   // 0xf0: in motion.rdr's order (0 for a missing one)
+    std::vector<MOTION_TRANSITION *> m_transitions;   // 0xfc
 };
 
 /* the archive scripts are being read into (bone_init.cpp's, 0x415F70) */
@@ -896,9 +920,6 @@ CScriptArchive *zBoneCurArchive();
 /* both archives' callbacks to be looked up again (bone_archive.cpp's) */
 void zBoneResetCallbacks();
 
-/* the archive of an index: 1 and 2 the two statics, else none (bone_init.cpp's zBoneGetArchive;
- * body.cpp calls its placeholder) */
-extern "C" CScriptArchive *func_00289240(int which);
 
 /* the plane and quaternion helpers (bone_math.cpp, SOCOM 1's free functions) */
 float LineIntersectPlane(float d, const CPnt3D &n, const CPnt3D &a, const CPnt3D &b);

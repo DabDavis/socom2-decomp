@@ -715,7 +715,7 @@ void CZBodyAnimBlend::CallbackTick(CBody *body, float t0, float t1)
 
             if (index <= 0)
                 break;
-            CScriptArchive *archive = func_00289240(a->m_anim->m_archive);
+            CScriptArchive *archive = zBoneGetArchive(a->m_anim->m_archive);
 
             if (archive) {
                 CZBodyAnimCallback *cb = archive->m_callbacks.Get(index);

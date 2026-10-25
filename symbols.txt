@@ -3365,40 +3365,40 @@
 0x00287210 0x2D8 GetFractionalRotations__FPC6CPnt3DPfPf  # OVL1; s1:align by hand (0.78 to SOCOM 1's, the only candidate, after ClipToBox as there; three clamped acosf of the vector's components, its xz length through sqrt)
 0x002874F0 0x60 quadW__Ff  # OVL1; s1:align by hand (opcode-identical to SOCOM 1's quadW__Ff, right before QFromRot as there; the SEAL lane's lead: CLook::LookTick calls it where SOCOM 1's calls quadW)
 0x00287550 0x74 QFromRot__FP5CQuatPC6CPnt3D  # OVL1; s1:calls
-0x002875D0 0x44 func_002875D0  # OVL1
-0x00287620 0xE98 func_00287620  # OVL1
-0x002884C0 0x44 func_002884C0  # OVL1
-0x00288510 0x98 func_00288510  # OVL1
+0x002875D0 0x44 zBoneResetCallbacks__Fv  # OVL1; ours (bone_archive.cpp: both archives' callback lists (+0xD4) ResetAnims'd through zBoneArchive and zBoneMapArchive, called out of line -- another unit's; CMission::Init calls it after zBoneLoad)
+0x00287620 0xE98 ReadMotionRdr__14CScriptArchiveFv  # OVL1; ours (bone_archive.cpp: the archive's motion.rdr (+0xE0) read into its scripts' commons -- "refPt" and "skel_root" looked up, TrueLoopTime, CalcDistance, CalcRate and SetCallbackIndex called on each; zBoneLoad and zBoneLoadMap call it once motion.rdr is held)
+0x002884C0 0x44 Unregister__14CScriptArchiveFv  # OVL1; ours (bone_archive.cpp: the SEAL's 0x5E5BF0 called with the archive's 2-bit index (+0xD2), the index cleared through an inline setter; zBoneUnloadMap calls it)
+0x00288510 0x98 Register__14CScriptArchiveFv  # OVL1; ours (bone_archive.cpp: each common's 10-bit id (+0x48) filed under the archive's index through the SEAL's 0x5E5B10; zBoneLoadMap calls it, as does the SEAL's 0x5E30F0)
 0x002885B0 0xA8 FindCommon__14CScriptArchiveFPCc  # OVL1; ours (bone_archive.cpp: the archive's commons (+0xE4) searched for a name with strcmp, the common or none; CZSIScript::Read and CreateAndReadIt share a script's common through it)
-0x00288660 0x3C func_00288660  # OVL1
-0x002886A0 0x18 func_002886A0  # OVL1
-0x002886C0 0x44 func_002886C0  # OVL1
-0x00288710 0x40 func_00288710  # OVL1
+0x00288660 0x3C FreeRdr__14CScriptArchiveFP8CRdrFile  # OVL1; ours (bone_archive.cpp: motion.rdr (+0xE0) zrdr_free'd unless it is the caller's, the field cleared)
+0x002886A0 0x18 SetRdr__14CScriptArchiveFP8CRdrFile  # OVL1; ours (bone_archive.cpp: the caller's motion.rdr taken unless one is held; the held one returned)
+0x002886C0 0x44 ReadRdr__14CScriptArchiveFPCcPCc  # OVL1; ours (bone_archive.cpp: motion.rdr zrdr_read unless one is held; the held one returned)
+0x00288710 0x40 LoadAll__14CScriptArchiveFv  # OVL1; s1:align by hand (SOCOM 1's LoadAll__14CScriptArchiveFv: the ZAR walked with CZSIScript::CreateAndReadIt, here through 0x25A390 with the archive as the user data; the count kept at +0xD0, true when positive)
 0x00288750 0x178 __dt__14CScriptArchiveFv  # OVL1; s1:align by hand (0.62 to SOCOM 1's ~CScriptArchive; bone_init.cpp's initialiser 0x3FFCE0 registers it as the destructor of both 0x120-byte archives, 0x415D40 and 0x415E60; it frees their scripts and destroys the CZAR at +0xC)
-0x002888D0 0x4C func_002888D0  # OVL1
-0x00288920 0xC func_00288920  # OVL1
-0x00288930 0xC func_00288930  # OVL1
-0x00288940 0x78 func_00288940  # OVL1
-0x002889C0 0x1B8 func_002889C0  # OVL1
-0x00288B80 0x208 func_00288B80  # OVL1
-0x00288D90 0x20C func_00288D90  # OVL1
-0x00288FA0 0x70 func_00288FA0  # OVL1
-0x00289010 0x40 func_00289010  # OVL1
-0x00289050 0x8 func_00289050  # OVL1
-0x00289060 0x14 func_00289060  # OVL1
-0x00289080 0x70 func_00289080  # OVL1
-0x002890F0 0x40 func_002890F0  # OVL1
-0x00289130 0x8 func_00289130  # OVL1
-0x00289140 0x14 func_00289140  # OVL1
-0x00289160 0x70 func_00289160  # OVL1
-0x002891D0 0x40 func_002891D0  # OVL1
-0x00289210 0x8 func_00289210  # OVL1
-0x00289220 0x14 func_00289220  # OVL1
-0x00289240 0x60 func_00289240  # OVL1
-0x002892A0 0xC func_002892A0  # OVL1
-0x002892B0 0xC func_002892B0  # OVL1
-0x002892C0 0xC func_002892C0  # OVL1
-0x002892D0 0x20 func_002892D0  # OVL1
+0x002888D0 0x4C Init__14CScriptArchiveFv  # OVL1; ours (bone_archive.cpp: name, buffer, size, present bit, count, motion.rdr and index cleared; the archive's inline constructor calls it last -- the initialiser 0x3FFCE0 for both statics -- and zBoneUnloadAll calls it last)
+0x00288920 0xC zBoneMotionRdrSize__Fv  # OVL1; ours (bone_init.cpp: the common archive's +0xCC, the ZAR data's size, where SOCOM 1 kept a global Sizeof_MotionRdr; CCinematicState::Init reads it)
+0x00288930 0xC zBoneMotionRdrBuffer__Fv  # OVL1; ours (bone_init.cpp: the common archive's +0xC8, the ZAR data ReleaseDataBuffer handed over, SOCOM 1's global pBuffer_MotionRdr; CCinematicState::Init and UnInit read it)
+0x00288940 0x78 zBoneUnloadMap__Fv  # OVL1; ours (bone_init.cpp: the map archive (0x415E60) unregistered, its ZAR closed, zBoneUnloadAll'd, its callbacks cleared, the ZAR's name reset, its present bit cleared)
+0x002889C0 0x1B8 zBoneLoadMap__FPCcP8CRdrFile  # OVL1; ours (bone_init.cpp: only while is_init (0x3DE1D8); the map archive opened at dir + "motion_s.zar", its scripts read when there are two or more keys, then index 2, the caller's motion.rdr applied and kept, its anims registered; 0x1E91C0 builds the map's directory and calls it)
+0x00288B80 0x208 zBoneLoad__Fv  # OVL1; ours (bone_init.cpp: the common archive (0x415D40) opened at "run/motion_p.zar", else is_init cleared and "run/motion.zar", its scripts read, index 1, "motion.rdr" from "data/common/zrdr" read and applied, freed -- SOCOM 1's zBoneOpen, zBoneLoadAll and zBoneClose in one: CMission::Init calls it where SOCOM 1's calls the three)
+0x00288D90 0x20C zBoneUnloadAll__FP14CScriptArchive  # OVL1; by hand (bone_init.cpp: SOCOM 1's zBoneUnloadAll with the archive as a parameter -- ~CScriptArchive calls it, as SOCOM 1's calls zBoneUnloadAll__Fv; the buffer freed, the callbacks cleared, every script deleted, the commons deleted, the vectors FreeVector'd, curArchive cleared, Init)
+0x00288FA0 0x70 __dt__Q23std68vector<P17MOTION_TRANSITION,Q23std31allocator<P17MOTION_TRANSITION>>Fv  # OVL1; by hand (bone_init.cpp: zBoneUnloadAll's FreeVector of the archive's transition records (+0xFC: 12-byte {index, transition_speed_A, transition_speed_B} that ReadMotionRdr news; the type's name ours), the temporary's destructor)
+0x00289010 0x40 swap__Q23std68vector<P17MOTION_TRANSITION,Q23std31allocator<P17MOTION_TRANSITION>>FRQ23std68vector<P17MOTION_TRANSITION,Q23std31allocator<P17MOTION_TRANSITION>>  # OVL1; by hand (bone_init.cpp: zBoneUnloadAll's FreeVector of the transition records, the swap)
+0x00289050 0x8 clear__Q23std68vector<P17MOTION_TRANSITION,Q23std31allocator<P17MOTION_TRANSITION>>Fv  # OVL1; by hand (bone_init.cpp: zBoneUnloadAll's FreeVector of the transition records, the clear)
+0x00289060 0x14 __ct__Q23std68vector<P17MOTION_TRANSITION,Q23std31allocator<P17MOTION_TRANSITION>>Fv  # OVL1; by hand (bone_init.cpp: zBoneUnloadAll's FreeVector of the transition records, the temporary's constructor; the initialiser builds each archive's +0xFC with it)
+0x00289080 0x70 __dt__Q23std66vector<P16CZSIScriptCommon,Q23std30allocator<P16CZSIScriptCommon>>Fv  # OVL1; by hand (bone_init.cpp: zBoneUnloadAll's FreeVector of the commons (+0xE4) and of +0xF0, the temporary's destructor)
+0x002890F0 0x40 swap__Q23std66vector<P16CZSIScriptCommon,Q23std30allocator<P16CZSIScriptCommon>>FRQ23std66vector<P16CZSIScriptCommon,Q23std30allocator<P16CZSIScriptCommon>>  # OVL1; by hand (bone_init.cpp: zBoneUnloadAll's FreeVector of the commons, the swap)
+0x00289130 0x8 clear__Q23std66vector<P16CZSIScriptCommon,Q23std30allocator<P16CZSIScriptCommon>>Fv  # OVL1; by hand (bone_init.cpp: zBoneUnloadAll's FreeVector of the commons, the clear)
+0x00289140 0x14 __ct__Q23std66vector<P16CZSIScriptCommon,Q23std30allocator<P16CZSIScriptCommon>>Fv  # OVL1; by hand (bone_init.cpp: zBoneUnloadAll's FreeVector of the commons, the temporary's constructor; the initialiser builds +0xE4 and +0xF0 with it)
+0x00289160 0x70 __dt__Q23std54vector<P10CZSIScript,Q23std24allocator<P10CZSIScript>>Fv  # OVL1; by hand (bone_init.cpp: zBoneUnloadAll's FreeVector of the scripts (+0x0), the temporary's destructor)
+0x002891D0 0x40 swap__Q23std54vector<P10CZSIScript,Q23std24allocator<P10CZSIScript>>FRQ23std54vector<P10CZSIScript,Q23std24allocator<P10CZSIScript>>  # OVL1; by hand (bone_init.cpp: zBoneUnloadAll's FreeVector of the scripts, the swap)
+0x00289210 0x8 clear__Q23std54vector<P10CZSIScript,Q23std24allocator<P10CZSIScript>>Fv  # OVL1; by hand (bone_init.cpp: zBoneUnloadAll's FreeVector of the scripts, the clear)
+0x00289220 0x14 __ct__Q23std54vector<P10CZSIScript,Q23std24allocator<P10CZSIScript>>Fv  # OVL1; by hand (bone_init.cpp: zBoneUnloadAll's FreeVector of the scripts, the temporary's constructor; the initialiser builds each archive's +0x0 with it)
+0x00289240 0x60 zBoneGetArchive__Fi  # OVL1; ours (bone_init.cpp: 1 the common archive, 2 the map's, else none; CZBodyAnimBlend::CallbackTick finds a script's archive by its 2-bit index with it)
+0x002892A0 0xC zBoneMapArchive__Fv  # OVL1; ours (bone_init.cpp: &mapBoneArchive (0x415E60))
+0x002892B0 0xC zBoneArchive__Fv  # OVL1; ours (bone_init.cpp: &boneArchive (0x415D40))
+0x002892C0 0xC zBoneSetCurArchive__FP14CScriptArchive  # OVL1; ours (bone_init.cpp: curArchive (0x415F70) set; the SEAL's 0x58C600 calls it)
+0x002892D0 0x20 zBoneCurArchive__Fv  # OVL1; ours (bone_init.cpp: curArchive, the common archive when none)
 0x002892F0 0x14 func_002892F0  # OVL1
 0x00289310 0x70 __dt__Q23std70vector<P18CZBodyAnimCallback,Q23std32allocator<P18CZBodyAnimCallback>>Fv  # OVL1; by hand (CZBodyAnimCallbackList::Clear's FreeVector destroys its temporary with this copy, bone_init.cpp's -- the linker kept the earlier unit's instance)
 0x00289380 0xE8 Read__10CZSIObjectFPUcUiPCc  # OVL1; s1:align by hand (0.68 to SOCOM 1's Read of a buffer, the unit's first function as there: the flags word's 0x20/0x10 bits make the track constant, positions then rotations laid over the buffer -- three shorts and four shorts a frame where SOCOM 1 read floats)

@@ -90,10 +90,10 @@ void zBoneUnloadAll(CScriptArchive *archive)
     for (std::vector<CZSIScriptCommon *>::iterator i = archive->m_commons.begin(); i != archive->m_commons.end(); ++i)
         delete *i;
     FreeVector(archive->m_commons);
-    FreeVector(archive->m_f0);
-    for (std::vector<void *>::iterator j = archive->m_fc.begin(); j != archive->m_fc.end(); ++j)
-        operator delete(*j);
-    FreeVector(archive->m_fc);
+    FreeVector(archive->m_byRdr);
+    for (std::vector<MOTION_TRANSITION *>::iterator j = archive->m_transitions.begin(); j != archive->m_transitions.end(); ++j)
+        delete *j;
+    FreeVector(archive->m_transitions);
     archive->Init();
 }
 
@@ -154,13 +154,17 @@ void zBoneLoadMap(const char *dir, CRdrFile *rdr)
     OpenArchive(archive, path);
     curArchive = archive;
     int n = func_0025B300(archive->m_zar.GetOpenKey(), 1);
-    bool loaded = false;
+    bool loaded;
 
-    if (n > 1) {
+    if (n < 2) {
+        loaded = false;
+    } else {
         archive->m_commons.reserve(n);
-        loaded = archive->LoadAll();
+        bool ok = archive->LoadAll();
+
         archive->m_bufsize = *(int *)(archive->m_zar._18 + 8);
         archive->m_buffer = ReleaseDataBuffer__Q23zar4CZARFv(&archive->m_zar);
+        loaded = ok;
     }
     archive->m_zar.Close();
     if (loaded) {
