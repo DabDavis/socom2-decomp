@@ -818,6 +818,10 @@
 0x004B52C0 0x4 m_timer_pCurval__8CZWeapon  # OVL1 bss; s1:data-seq (size SOCOM 1's; via RetrieveTimerRegistration__8CZWeaponFPPfPfPb)
 0x0064F7A8 0x8C gGSAPI  # OVL2; s1:data-seq (size SOCOM 1's; via CreateWordIdList +1)
 0x0064F8A0 0x4 bit_count__8CAiEvent  # OVL2; s1:data-seq (size SOCOM 1's; via __ct__8CAiEventFv)
+0x0064F8A8 0x4 s_eventMinDuration  # OVL2 data; ours (ai_events.cpp's static, 0.1: CAiEvent::Create clamps a running event's duration to it, read from data; 1 reference in 1 function)
+0x0064F8B0 0x4 s_eventRangeDefault  # OVL2 data; ours (ai_events.cpp's static, 200.0: GetEventRange's default; 1 reference in 1 function)
+0x0064F8B8 0x4 s_eventRangeGeneric  # OVL2 data; ours (ai_events.cpp's static, 250.0: GetEventRange for AIE_GENERIC; 1 reference in 1 function)
+0x0064F8C0 0x4 s_eventRangeEntity  # OVL2 data; ours (ai_events.cpp's static, 80.0: GetEventRange for AIE_ENTITY; 1 reference in 1 function)
 0x00655600 0x4 gpKeyMaster  # OVL2; s1:data-seq (size SOCOM 1's; via GetKeyMaster)
 0x00655604 0x1 bHasInitialized.0  # OVL2; s1:data-seq (size SOCOM 1's; via InitializePRNG)
 0x00655608 0x4 gpfMallocCallback  # OVL2; s1:data-exact (size SOCOM 1's; via rt_memory_allocate +1)
@@ -941,6 +945,9 @@
 0x0066A060 0xC m_persist__8CAiEvent  # OVL2 bss; s1:data-exact (size SOCOM 1's; via __sinit_ai_events.cpp)
 0x0066A070 0x4 nextId__8CAiEvent  # OVL2 bss; SOCOM 1's (nextId__8CAiEvent): Acquire gives each event the next id, as the demo's (3 references in 1 function)
 0x0066A088 0xC m_callbacks__8CAiEvent  # OVL2 bss; s1:data-exact (size SOCOM 1's; via __sinit_ai_events.cpp)
+0x0066A098 0x4 s_eventTickTime  # OVL2 bss; ours (ai_events.cpp's static: the time CAiEvent::Tick(float, void*) gathers before it ticks the events; 3 references in 1 function)
+0x0066A0A0 0x1 s_eventFlag  # OVL2 bss; ours (ai_events.cpp's static byte: CAiEvent::Open and Close clear it, nothing in the image reads it; 2 references in 2 functions)
+0x0066A180 0x18 path_queue__2ai  # OVL2 bss; SOCOM 1's (path_queue__2ai, 24 bytes at 0x49B160: the planner queue, a list of CAiPath * and three words): __sinit_ai_astar.cpp builds it and registers ~CAiPathQueue, AbortPathPlan removes a path from it as SOCOM 1's does; 19 references in 7 functions
 0x0066A1B0 0xE0 AiMaps  # OVL2 bss; s1:data-seq (size SOCOM 1's; via CreateCompassNavPoints__8CMissionFv +1)
 0x0066A4D0 0x11 SessionKey  # OVL2 bss; s1 by hand (SOCOM 1's SessionKey: every Medius request copies these 17 bytes to its +0x15, as SOCOM 1's do); size SOCOM 1's; 91 references in 78 functions
 0x0066A4F0 0x44 AccountInfo  # OVL2 bss; s1 by hand (SOCOM 1's AccountInfo: QuitClan sends its first word as the player's account, IsLeaderOfClan compares it, the account name at +4); size SOCOM 1's; 46 references in 29 functions

@@ -13,6 +13,29 @@
 
 class CAiEvent;
 
+/* the AI's free helpers (SOCOM 1's namespace ai; ai_util.cpp) */
+namespace ai {
+int get_clock_direction(const CPnt3D *dir);
+bool quadratic(float a, float b, float c, float &r1, float &r2);
+void elevate(CPnt3D &p, float y, float scale);
+CPnt3D *AddNoiseXZ(CPnt3D *p, const PNT2D &range);
+CPnt3D *AddNoiseXZ(const CPnt3D *p, CPnt3D *out, const PNT2D &range);
+CPnt3D *AddNoise(CPnt3D *p, const PNT2D &range);
+CPnt3D *AddNoise(const CPnt3D *p, CPnt3D *out, const PNT2D &range);
+CPnt3D *MakeNoiseXZ(CPnt3D *out, const PNT2D &range);
+CPnt3D *MakeNoise(CPnt3D *out, const PNT2D &range);
+bool is_moving(const CPnt3D *v, float speedSq);
+}
+
+/* the AI's aiming helpers (SOCOM 1's CAi, only static functions; ai_util.cpp) */
+class CAi {
+public:
+    static void AlignToPoint(const CMatrix *m, const CPnt3D *p, CMatrix *out, float f);
+    static void Extrapolate(const CPnt3D *pos, const CPnt3D *vel, float t, CPnt3D *out);
+    static bool LeadTargetG(const CPnt3D *a, const CPnt3D *b, float t, const CPnt3D *c,
+                            const CPnt3D *d, CPnt3D *out);
+};
+
 /* every event of a kind, or the pool of free ones (SOCOM 1: a list of pointers and nothing more) */
 class CAiEventList : public std::list<CAiEvent *> {
 };

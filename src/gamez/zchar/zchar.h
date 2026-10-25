@@ -76,6 +76,9 @@ public:
     const char *GetRespawnPos() const;
     int GetRespawnDir() const;
     void SetCharacterName(const char *name);
+    /* one entry out of the file's item (SOCOM 1's CVehicleRdr::Load did every entry; the name is
+     * ours) */
+    void Load(_zrdr *rdr);
 
     char m_name[32];   // 0x0
     char m_character[48];   // 0x20
@@ -99,9 +102,8 @@ public:
 /* the vehicle file: every entry (SOCOM 1's DWARF: a vector and nothing more) */
 class CVehicleRdr : public std::vector<CVehicleRdrEntry> {
 public:
-    void Load(_zrdr *rdr);
     CVehicleRdrEntry *GetEntryByName(const char *name) const;
-    void Open(const char *file);
+    bool Open(const char *file);
     void Close();
 };
 

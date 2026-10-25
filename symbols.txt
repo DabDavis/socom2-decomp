@@ -9286,19 +9286,19 @@
 0x0050D9B8 0xE8 func_0050D9B8  # OVL2 unaligned
 0x0050DAA0 0xE4 func_0050DAA0  # OVL2
 0x0050DB88 0xC0 func_0050DB88  # OVL2 unaligned
-0x0050DC50 0x1C8 func_0050DC50  # OVL2
-0x0050DE20 0xF0 func_0050DE20  # OVL2
+0x0050DC50 0x1C8 get_clock_direction__2aiFPC6CPnt3D  # OVL2; s1:order by hand (the demo's 0x17DE90, the first function before quadratic: the same fabsf of x, the same three constants 0.2833, 0.708, -0.2833 and the same twelve hour returns in the same branch shape)
+0x0050DE20 0xF0 quadratic__2aiFfffRfRf  # OVL2; s1:order by hand (the SEAL lane's lead, vetted: the demo's 0x17E070 -- the same 4.0/1.0/2.0 constants, the bool through a local, and the linear case storing its root twice into r2; SOCOM II inlines sqrtf)
 0x0050DF10 0x20 elevate__2aiFR6CPnt3Dff  # OVL2; s1:exact
-0x0050DF30 0xC func_0050DF30  # OVL2
-0x0050DF40 0x4C func_0050DF40  # OVL2
-0x0050DF90 0xC func_0050DF90  # OVL2
-0x0050DFA0 0x4C func_0050DFA0  # OVL2
-0x0050DFF0 0x1A0 func_0050DFF0  # OVL2
-0x0050E190 0x240 func_0050E190  # OVL2
-0x0050E3D0 0x34 func_0050E3D0  # OVL2
+0x0050DF30 0xC AddNoiseXZ__2aiFP6CPnt3DRC5PNT2D  # OVL2; ours (new in SOCOM II: tail-calls 0x50DF40 with the point twice, as SOCOM 1's AddNoise(CPnt3D *, const PNT2D &) wraps the three-argument one)
+0x0050DF40 0x4C AddNoiseXZ__2aiFPC6CPnt3DP6CPnt3DRC5PNT2D  # OVL2; ours (new in SOCOM II: out = p + MakeNoiseXZ(range), out returned)
+0x0050DF90 0xC AddNoise__2aiFP6CPnt3DRC5PNT2D  # OVL2; s1:order by hand (SOCOM 1's two-argument AddNoise, now a tail call of the three-argument one with the point twice)
+0x0050DFA0 0x4C AddNoise__2aiFPC6CPnt3DP6CPnt3DRC5PNT2D  # OVL2; s1:order by hand (SOCOM 1's three-argument AddNoise: out = p + MakeNoise(range) through 0x50E190, out returned)
+0x0050DFF0 0x1A0 MakeNoiseXZ__2aiFP6CPnt3DRC5PNT2D  # OVL2; ours (new in SOCOM II: MakeNoise's draws for x and z, y zeroed; AddNoiseXZ calls it)
+0x0050E190 0x240 MakeNoise__2aiFP6CPnt3DRC5PNT2D  # OVL2; s1:order by hand (the demo's 0x17E8A0: three axes, each a random sign from rand <= 0.5 times a random value in the range, SOCOM 1's in doubles)
+0x0050E3D0 0x34 is_moving__2aiFPC6CPnt3Df  # OVL2; s1:order by hand (the demo's 0x17EC00: the same length squared compared with the float, 0x38 there for 0x34)
 0x0050E410 0x130 AlignToPoint__3CAiFPC7CMatrixPC6CPnt3DP7CMatrixf  # OVL2; s1:calls
 0x0050E540 0x48 Extrapolate__3CAiFPC6CPnt3DPC6CPnt3DfP6CPnt3D  # OVL2; s1:exact
-0x0050E590 0x198 func_0050E590  # OVL2
+0x0050E590 0x198 LeadTargetG__3CAiFPC6CPnt3DPC6CPnt3DfPC6CPnt3DPC6CPnt3DP6CPnt3D  # OVL2; s1:order by hand (the demo's 0x17EEB0 after Extrapolate: five pointers and a float in the same registers, the same 1/t, Sub, copy, Scale, Sub opening)
 0x0050E730 0x88 Create__9CAiEventQFUi  # OVL2; s1:order (ai_events.cpp's first function as in the demo; finds a handle by its 16-bit id in the list or pushes one, as the demo's 0x17F080)
 0x0050E7C0 0x88 MakeMaskEx__8CAiEventFQ28CAiEvent5EVENTe  # OVL2; s1:order (the demo's 0x17F180, the same variadic mask loop)
 0x0050E850 0x50 Tick__8CAiEventFf  # OVL2; s1:order (the demo's 0x17F210, the same code: NoExpire, duration counted down)
@@ -9353,9 +9353,9 @@
 0x00510530 0x3C func_00510530  # OVL2
 0x00510570 0x1C4 func_00510570  # OVL2
 0x00510740 0x70 func_00510740  # OVL2
-0x005107B0 0x194 func_005107B0  # OVL2
+0x005107B0 0x194 AbortPathPlan__2aiFP7CAiPath  # OVL2; s1:order by hand (the demo's 0x180E30: the path's state byte tested for 2, then the planner's CAiStar deleted with 1, the flag at 8 and its buffer, plan_complete(path, 0) and the path removed from ai::path_queue; state 1 gives plan_complete(path, 5); SOCOM II adds a third arm, a find in the queue before the same removal)
 0x00510950 0x14 func_00510950  # OVL2
-0x00510970 0x38 find<Q33std48list<P9CAiVisMap,Q23std22allocator<P9CAiVisMap>>19generic_iterator<0>,P9CAiVisMap>__3stdFQ33std48list<P9CAiVisMap,Q23std22allocator<P9CAiVisMap>>19generic_iterator<0>Q33std48list<P9CAiVisMap,Q23std22allocator<P9CAiVisMap>>19generic_iterator<0>RCP9CAiVisMap  # OVL2; s1:exact
+0x00510970 0x38 find<Q33std44list<P7CAiPath,Q23std20allocator<P7CAiPath>>19generic_iterator<0>,P7CAiPath>__3stdFQ33std44list<P7CAiPath,Q23std20allocator<P7CAiPath>>19generic_iterator<0>Q33std44list<P7CAiPath,Q23std20allocator<P7CAiPath>>19generic_iterator<0>RCP7CAiPath_Q33std44list<P7CAiPath,Q23std20allocator<P7CAiPath>>19generic_iterator<0>  # OVL2; s1:exact; by hand, settled: not CAiVisMap's -- the s1:exact pairing was a masked tie (every pointer list's find compiles alike). Its one caller, AbortPathPlan 0x5107B0, looks the path up in ai::path_queue (0x66A180), a list<CAiPath *>; std::find instantiated over list<CAiPath *> compiles to these 0x38 bytes exactly (build/scratch/ai/probe_find.cpp; MW 3.0 mangles the return type)
 0x005109B0 0xC func_005109B0  # OVL2
 0x005109C0 0xC func_005109C0  # OVL2
 0x005109D0 0x1AC func_005109D0  # OVL2
@@ -9385,7 +9385,7 @@
 0x00512140 0x80 func_00512140  # OVL2
 0x005121C0 0x1DC func_005121C0  # OVL2
 0x005123A0 0x1B8 func_005123A0  # OVL2
-0x00512560 0x2B4 func_00512560  # OVL2
+0x00512560 0x2B4 __dt__7CAiStarFv  # OVL2; s1:callee by hand (AbortPathPlan deletes the path's planner with it, a1 = 1, at the same instruction as SOCOM 1's calls __dt__7CAiStarFv)
 0x00512820 0x60 func_00512820  # OVL2
 0x00512880 0x40 func_00512880  # OVL2
 0x005128C0 0x8 func_005128C0  # OVL2
@@ -9403,12 +9403,12 @@
 0x00513F90 0x8F4 func_00513F90  # OVL2
 0x00514890 0x754 func_00514890  # OVL2
 0x00514FF0 0x200 func_00514FF0  # OVL2
-0x005151F0 0x8 func_005151F0  # OVL2
+0x005151F0 0x8 clear__Q23std58__vector_deleter<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>>Fv  # OVL2; s1:callee by hand (SetSnakeLength clears the path's locations with it, a0 = path + 52, where SOCOM 1's calls clear__Q23std58__vector_deleter<9CAiMapLoc,...> on path + 44; the size zeroed)
 0x00515200 0x68 func_00515200  # OVL2
 0x00515270 0xD0 func_00515270  # OVL2
 0x00515340 0x68 func_00515340  # OVL2
-0x005153B0 0x8 func_005153B0  # OVL2
-0x005153C0 0x60 func_005153C0  # OVL2
+0x005153B0 0x8 clear__Q23std70__vector_deleter<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>>Fv  # OVL2; s1:callee by hand (SetSnakeLength clears the path's points with it, a0 = path + 152, where SOCOM 1's calls clear__Q23std70__vector_deleter<Q27CAiPath5point,...> on path + 140; the deleter's clear of a trivially destructible element: the size zeroed)
+0x005153C0 0x60 __dt__Q22ai12CAiPathQueueFv  # OVL2; s1:ref by hand (the destructor __sinit_ai_astar.cpp registers for ai::path_queue, as SOCOM 1's registers __dt__Q22ai12CAiPathQueueFv for the same object)
 0x00515420 0x80 func_00515420  # OVL2
 0x005154A0 0x80 func_005154A0  # OVL2
 0x00515520 0x60 func_00515520  # OVL2
@@ -9564,7 +9564,7 @@
 0x00524D00 0x48 func_00524D00  # OVL2
 0x00524D50 0x4AC func_00524D50  # OVL2
 0x00525200 0x8 func_00525200  # OVL2
-0x00525210 0x12C func_00525210  # OVL2
+0x00525210 0x12C SetSnakeLength__7CAiPathFUi  # OVL2; s1:order by hand (the SEAL lane's lead, vetted: the demo's 0x193D40 -- a zero length with a buffer set clears flag bit 2, a path planning (state 1-3) is aborted through AbortPathPlan, then the point and location vectors are cleared and the stats reset; SOCOM II's fields 0xC further on)
 0x00525340 0x1DC func_00525340  # OVL2
 0x00525520 0x2F0 func_00525520  # OVL2
 0x00525810 0x450 func_00525810  # OVL2
@@ -9585,7 +9585,7 @@
 0x005273C0 0xAC func_005273C0  # OVL2
 0x00527470 0x3C func_00527470  # OVL2
 0x005274B0 0x408 func_005274B0  # OVL2
-0x005278C0 0x3C func_005278C0  # OVL2
+0x005278C0 0x3C plan_complete__7CAiPathFQ27CAiPath10PATH_STATE  # OVL2; s1:callee by hand (AbortPathPlan calls it with the path and 0, then 5 in its other arm, as SOCOM 1's calls plan_complete__7CAiPathFQ27CAiPath10PATH_STATE)
 0x00527900 0x64 func_00527900  # OVL2
 0x00527970 0x6C func_00527970  # OVL2
 0x005279E0 0x260 func_005279E0  # OVL2
@@ -9740,31 +9740,28 @@
 0x00533000 0x38 GetStartPos__16CVehicleRdrEntryCFv  # OVL2; s1:calls (CMission::LoadVehicle calls it before CAiMaps::GetLocation, as SOCOM 1's calls GetStartPos)
 0x00533040 0x150 Randomize__16CVehicleRdrEntryFb  # OVL2; s1:calls (CMission::LoadVehicle's first call, as SOCOM 1's calls Randomize__16CVehicleRdrEntryFb; rand)
 0x00533190 0x34 SetCharacterName__16CVehicleRdrEntryFPCc  # OVL2; s1:calls (CreateCustomCharTypes(CVehicleRdr *, _zrdr *) calls it after Create, as SOCOM 1's calls SetCharacterName; strncpy)
-0x005331D0 0x19C func_005331D0  # OVL2
-0x00533370 0x3A8 Load__11CVehicleRdrFP5_zrdr  # OVL2; s1:calls (CVehicleRdr::Open calls it between zrdr_read and zrdr_free, as SOCOM 1's Open calls Load__11CVehicleRdrFP5_zrdr; "name", "display", "team", "ai_params", "setup", "respawn_setup")
+0x005331D0 0x19C __ct__16CVehicleRdrEntryFv  # OVL2; by hand (the entry built: both start sets' counts, names and directions zeroed, the team mask zeroed, AI_PARAMS defaulted -- accuracy 0.8 -- for SOCOM II's 0x160-byte entry; the resize 0x534320 builds its fill value with it on the stack)
+0x00533370 0x3A8 Load__16CVehicleRdrEntryFP5_zrdr  # OVL2; s1:calls (CVehicleRdr::Open calls it between zrdr_read and zrdr_free, as SOCOM 1's Open calls Load__11CVehicleRdrFP5_zrdr; "name", "display", "team", "ai_params", "setup", "respawn_setup"); by hand: CVehicleRdrEntry's, not CVehicleRdr's -- CVehicleRdr::Open calls it once per entry with the entry (data_ + i*0x160) as this and the file's i-th item, reading name, display, team, ai_params, setup and respawn_setup into it; SOCOM 1's CVehicleRdr::Load (0x8A0) held the per-entry loop inline, SOCOM II moved it into Open (the name ours)
 0x00533720 0xD0 GetEntryByName__11CVehicleRdrCFPCc  # OVL2; s1:calls (CreateCustomCharTypes(CVehicleRdr *, _zrdr *) calls it where SOCOM 1's calls GetEntryByName__11CVehicleRdrCFPCc; strcasecmp over the entries)
 0x005337F0 0x12C Open__11CVehicleRdrFPCc  # OVL2; s1:calls (OpenVehicleRdr, as SOCOM 1's) -- the states lane
 0x00533920 0x4C Close__11CVehicleRdrFv  # OVL2; s1:calls (CloseVehicleRdr, as SOCOM 1's; the same 0x4C) -- the states lane
-0x00533970 0x60 func_00533970  # OVL2
-0x005339D0 0x40 func_005339D0  # OVL2
-0x00533A10 0x8 func_00533A10  # OVL2
-0x00533A20 0x14 func_00533A20  # OVL2
+0x00533970 0x60 __dt__Q23std64vector<16CVehicleRdrEntry,Q23std29allocator<16CVehicleRdrEntry>>Fv  # OVL2; by hand (CVehicleRdr::Close's FreeVector temporary destroyed with -1, as SOCOM 1's Close destroys it; vehicle_rdr.cpp's out-of-line copy, the same 0x60, calling the deleter's destructor 0x535050)
+0x005339D0 0x40 swap__Q23std74__vector_deleter<16CVehicleRdrEntry,Q23std29allocator<16CVehicleRdrEntry>>FRQ23std74__vector_deleter<16CVehicleRdrEntry,Q23std29allocator<16CVehicleRdrEntry>>  # OVL2; by hand (CVehicleRdr::Close's FreeVector swap, where SOCOM 1's Close calls swap<CVehicleRdrEntry>; vehicle_rdr.cpp's copy, the same 0x40: data, capacity and size traded)
+0x00533A10 0x8 clear__Q23std64vector<16CVehicleRdrEntry,Q23std29allocator<16CVehicleRdrEntry>>Fv  # OVL2; by hand (CVehicleRdr::Close's FreeVector clear: a tail call of the deleter's clear 0x535040; vehicle_rdr.cpp's copy)
+0x00533A20 0x14 __ct__Q23std64vector<16CVehicleRdrEntry,Q23std29allocator<16CVehicleRdrEntry>>Fv  # OVL2; by hand (CVehicleRdr::Close's FreeVector temporary built: three words zeroed, this returned; vehicle_rdr.cpp's copy)
 0x00533A40 0x14 func_00533A40  # OVL2
 0x00533A60 0x1A4 func_00533A60  # OVL2
 0x00533C10 0xE0 func_00533C10  # OVL2
 0x00533CF0 0xB8 func_00533CF0  # OVL2
 0x00533DB0 0x28C func_00533DB0  # OVL2
 0x00534040 0x2E0 Parse__9AI_PARAMSFP5_zrdr  # OVL2; s1:calls (CVehicleRdr::Load calls it after "ai_params" and CCharacterType::Parse at its end, as SOCOM 1's call Parse__9AI_PARAMSFP5_zrdr)
-0x00534320 0xD4 func_00534320  # OVL2
+0x00534320 0xD4 resize__Q23std72__vector_imp<16CVehicleRdrEntry,Q23std29allocator<16CVehicleRdrEntry>,0>FUi  # OVL2; by hand (CVehicleRdr::Open sizes the entries with it, as SOCOM 1's Load called resize__Q23std72__vector_imp<16CVehicleRdrEntry,...,0>FUi: growing, a default entry inserted n - size times at the end (0x534630); shrinking, the tail erased (0x534450))
 0x00534400 0x50 func_00534400  # OVL2
-0x00534450 0x1E0 func_00534450  # OVL2
-0x00534630 0x200 func_00534630  # OVL2
-0x00534830 0x18 func_00534830  # OVL2
-0x00534848 0x4F0 func_00534848  # OVL2 unaligned
-0x00534D40 0x2D8 func_00534D40  # OVL2
-0x00535018 0x20 func_00535018  # OVL2 unaligned
-0x00535040 0x8 func_00535040  # OVL2
-0x00535050 0x68 func_00535050  # OVL2
+0x00534450 0x1E0 erase__Q23std72__vector_imp<16CVehicleRdrEntry,Q23std29allocator<16CVehicleRdrEntry>,0>FP16CVehicleRdrEntryP16CVehicleRdrEntry  # OVL2; by hand (the resize's shrinking arm: called with data + n and data + size, as MSL's resize erases the tail; SOCOM 1's erase of the same vector)
+0x00534630 0x708 insert__Q23std72__vector_imp<16CVehicleRdrEntry,Q23std29allocator<16CVehicleRdrEntry>,0>FP16CVehicleRdrEntryUiRC16CVehicleRdrEntry  # OVL2; one function 0x534630-0x534D37 (merged: the seed cut it at 0x534830 and 0x534848, jal targets of the DNAS clients in MAIN 0x1C5AA0/0x1C5C20 and OVL1 0x2CA890, which call DNAS.BIN in the OVL2 slot; one frame of 176 with s0-s8, the code after each cut on the same saved registers, one epilogue at 0x534D08); by hand (the resize's growing arm: called with the end, the count and the default entry; new, the allocation-failure message and the entry assignment 0x534D40 inside, as SOCOM 1's insert of the same vector)
+0x00534D40 0x2F8 __as__16CVehicleRdrEntryFRC16CVehicleRdrEntry  # OVL2; one function 0x534D40-0x535037 (merged: the seed cut it at 0x535018, a jal target of MAIN's DNAS client 0x1C5E38/0x1C6120; a leaf copying an entry field by field, 0x160 bytes, straight through to its one jr ra); by hand (an entry assigned field by field, 0x160 bytes -- the names bytewise, then the words; the insert 0x534630 calls it six times, as SOCOM 1's insert calls __as__16CVehicleRdrEntryFRC16CVehicleRdrEntry)
+0x00535040 0x8 clear__Q23std74__vector_deleter<16CVehicleRdrEntry,Q23std29allocator<16CVehicleRdrEntry>>Fv  # OVL2; by hand (the entry vector's deleter clear, out of class: the entry has no destructor, so only the size is zeroed; Close calls it first, as SOCOM 1's Close calls clear__Q23std74__vector_deleter<16CVehicleRdrEntry,...>)
+0x00535050 0x68 __dt__Q23std74__vector_deleter<16CVehicleRdrEntry,Q23std29allocator<16CVehicleRdrEntry>>Fv  # OVL2; by hand (the entry vector's deleter destructor, out of class: size zeroed, data deleted, this deleted if asked; the vector destructor 0x533970 calls it)
 0x005350C0 0x210 func_005350C0  # OVL2
 0x005352D0 0x45C func_005352D0  # OVL2
 0x00535730 0x310 func_00535730  # OVL2
@@ -9795,8 +9792,7 @@
 0x00539B70 0x50 func_00539B70  # OVL2; OVL2's copy of _saturate<f> (OVL1 0x267A60, the same 0x50 bytes; CRemoteCtrl::PostMortemPreTick calls it -- the kit lane); ovl-copy: _saturate<f>__FPfRCfRCf_b
 0x00539BC0 0xBC func_00539BC0  # OVL2
 0x00539C80 0x74 func_00539C80  # OVL2
-0x00539D00 0x50 func_00539D00  # OVL2
-0x00539D50 0x120 func_00539D50  # OVL2
+0x00539D00 0x170 func_00539D00  # OVL2; one function 0x539D00-0x539E6F (merged: the seed cut it at 0x539D50, a jal target of the DNAS clients in MAIN 0x1C5E08 and OVL1 0x2CB56C; one frame of 128, the allocation-failure path after the cut on the first piece's at and saved registers, one epilogue at 0x539E54)
 0x00539E70 0x18 func_00539E70  # OVL2
 0x00539E90 0x20 func_00539E90  # OVL2
 0x00539EB0 0x2B0 func_00539EB0  # OVL2
@@ -13352,7 +13348,7 @@
 0x0064F5F8 0xC func_0064F5F8  # OVL2 unaligned
 0x0064F604 0x118 KM_GetSoftwareKeyPair  # OVL2 unaligned; s1:exact
 0x00668480 0xB4 __sinit_ai_events.cpp  # OVL2 data area; a static initialiser; s1:unit ai_events.cpp (exact)
-0x00668540 0xE4 func_00668540  # OVL2 data area; a static initialiser
+0x00668540 0xE4 __sinit_ai_astar.cpp  # OVL2 data area; a static initialiser; s1:unit by hand (SOCOM 1's __sinit_ai_astar.cpp builds ai::path_queue -- the list AbortPathPlan removes from, 0x49B160 there -- and three words after it; SOCOM II's builds the same at 0x66A180 (the list AbortPathPlan 0x5107B0 removes from) after three new statics)
 0x00668630 0x44 func_00668630  # OVL2 data area; a static initialiser
 0x00668680 0x8C func_00668680  # OVL2 data area; a static initialiser
 0x00668710 0xB4 func_00668710  # OVL2 data area; a static initialiser
