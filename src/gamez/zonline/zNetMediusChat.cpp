@@ -175,12 +175,33 @@ enum VALVE_TYPE {
     VALVE_TYPE_1
 };
 
+enum VALVE_STATE {
+    VALVE_SAME,
+    VALVE_ON,
+    VALVE_OFF
+};
+
 class CValve {
 public:
     static CValve *Create(const char *name, VALVE_TYPE type);
     static CValve *GetByName(const char *name);
     /* the value as an int (ours: read through it, the test's load serves the sum unmasked) */
     int Value() { return m_value; }
+    void MakeCallbacks(VALVE_STATE state);
+    /* the value set, the callbacks told when it turns on or off (zanim.h's) */
+    bool SetValue(int value)
+    {
+        VALVE_STATE state = VALVE_SAME;
+
+        if (m_value != value)
+            state = value == 0 ? VALVE_OFF : VALVE_ON;
+        m_value = value;
+        if (state != VALVE_SAME) {
+            MakeCallbacks(state);
+            return true;
+        }
+        return false;
+    }
 
     char *m_name;   // 0x0
     unsigned short m_value;   // 0x4 (the bit-field's halfword: added to a count with no mask)
@@ -219,6 +240,34 @@ struct MediusMachineSignaturePost {
 
 struct MediusSetLocalizationParamsResponse { MEDIUS_RESPONSE_HEAD };
 
+/* a connection to a server asked for (SOCOM II's: the server's info, then the buffer's size and the
+ * callback told the connection's index) */
+struct MediusConnectParams {
+    NetConnectionInfo ConnectInfo;   // 0x0
+    unsigned char _9c[0xf0 - 0x9c];
+    int BufferSize;   // 0xf0: 256
+    void (*Callback)(int index);   // 0xf4
+    int _f8;   // 0xf8
+    int _fc;   // 0xfc
+};   // 0x100
+
+/* our state told to the lobby server (SOCOM 1's MediusUpdateClientState: 1, joined) */
+struct MediusUpdateClientStateRequest {
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];   // 0x0
+    int UserAction;   // 0x14
+};   // 0x18
+
+/* the game list filtered (SOCOM II's request) */
+struct MediusSetGameListFilterRequest {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];   // 0x15
+    int FilterField;   // 0x28
+    int ComparisonOperator;   // 0x2c
+    int BaselineValue;   // 0x30
+};   // 0x34
+
+struct MediusSetGameListFilterResponse { MEDIUS_RESPONSE_HEAD };
+
 extern "C" {
 extern ChatAccountInfo AccountInfo;
 extern unsigned int data_0044F9E0;   /* when the active lobby next refreshes the player's info */
@@ -244,6 +293,23 @@ void func_002EF3B0(int, int, int, MediusSetLocalizationParamsResponse *);   /* i
 int func_002EF340(unsigned char language);   /* the console's language as Medius's */
 unsigned char func_003A4460();   /* the console's language */
 extern NetConnectionInfo data_0066A840;   /* the account's lobby server (OVL2 bss) */
+extern int data_0066A5E0;   /* the lobby server's connection (OVL2 bss) */
+extern float data_0044F8D0;   /* when the lobby server was asked for */
+int func_00300740(int kind, MediusConnectParams *params);   /* a connection asked for (the friends' unit's) */
+MediusErrorCode func_00647C60(MediusUpdateClientStateRequest *req);   /* MediusUpdateClientState */
+MediusErrorCode func_00649960(MediusSetGameListFilterRequest *req,
+                              void (*cb)(int, int, int, MediusSetGameListFilterResponse *));   /* MediusSetGameListFilter */
+void func_002EFE10(int, int, int, MediusSetGameListFilterResponse *);   /* its callback */
+void func_002F5020();   /* the chat shown again */
+void func_002F3FF0(struct ChatSlot *slots);   /* a free slot looked for (below) */
+void func_002F7690();   /* (the lobby unit's) */
+void func_002F4FC0(int ready);   /* our readiness told the server */
+void func_002EF7F0();   /* the game's details sent to the lobby (below) */
+int func_002EF590(CValve *locked);   /* the game's world updated, the delay to the next returned */
+void func_002DF6A0(CZOnlineLobby *lobby);   /* the lobby's UI variables made again (the lobby's unit) */
+extern CValve *data_0044F9D0;   /* the game's lock, while it is up */
+extern unsigned int data_0044F9D8;   /* when the game's details next go to the lobby */
+extern unsigned char data_0066A5F8;   /* the details to go at once */
 extern unsigned char data_0044F890[64];   /* the server's key kept */
 extern unsigned char data_0066A8E0;   /* logged in */
 
@@ -559,6 +625,130 @@ void CreateRoomStateHandler(LOBBY_STATE_FLAG flag)
 void cbAccountRegistration(int, int, int, MediusAccountRegistrationResponse *resp);
 
 unsigned char *GetDNASUniqueID(int *size);
+void CountGamePlayers();   /* the players of the game in progress counted (the lobby unit's) */
+
+/* the lobby server connected: our state told it, then to the lobby or the random game, the game
+ * list's filter set, the version asked (SOCOM 1's; OVL1 0x2EFC80) */
+void cbLobbyServerConnect(int index)
+{
+    if (index != -1) {
+        MediusUpdateClientStateRequest upd;
+        MediusSetGameListFilterRequest filt;
+        MediusSessionRequest ver;
+
+        data_0066A5E0 = index;
+        SetSessionKey(upd.SessionKey);
+        upd.UserAction = 1;
+        CheckMediusError(func_00647C60(&upd));
+        if (!g_bJoiningRandomGame) {
+            theLobby.ChangeState(LOBBY_ACTIVE);
+            LobbyEvent("MP_JOIN_ROOM", 0);
+        } else {
+            theLobby.ChangeState(JOIN_GAME);
+            g_bJoiningRandomGame = 0;
+        }
+        memset(&filt, 0, sizeof(filt));
+        SetSessionKey(filt.SessionKey);
+        filt.FilterField = 10;
+        CheckMediusError(func_00649960(&filt, func_002EFE10));
+        memset(&ver, 0, sizeof(ver));
+        SetSessionKey(ver.SessionKey);
+        CheckMediusError(func_00647548(&ver, func_002EFE00));
+        if (theLobby.uiv_MediusChatRecvVar)
+            func_002F5020();
+    } else {
+        theLobby.ChangeState(CONNECT_ERROR);
+    }
+}
+
+/* the game's rules as flags: respawns allowed 2, friendly fire 1 (SOCOM II's; OVL1 0x2EF9F0) */
+extern "C" int func_002EF9F0()
+{
+    int flags = 0;
+    CValve *respawn = CValve::GetByName("mp_allow_respawn");
+    CValve *ff = CValve::Create("mp_friendly_fire", VALVE_TYPE_1);
+
+    if (respawn->m_value)
+        flags |= 2;
+    if (ff->m_value)
+        flags |= 1;
+    return flags;
+}
+
+/* READY_TO_CONNECT: the game's lobby state -- set up on entry, its details sent to the lobby
+ * from time to time, torn down on exit (SOCOM 1's; OVL1 0x2EF3C0) */
+void LobbyReadyToConnectStateHandler(LOBBY_STATE_FLAG flag)
+{
+    switch (flag) {
+    case REGISTER:
+        break;
+    case ENTRY:
+        func_002F7690();
+        data_0044F9D0 = CValve::Create("mp_locked_game", VALVE_TYPE_1);
+        theLobby.ReleaseUIResources();
+        func_002F4FC0(0);
+        LobbyEvent("MP_MEDIUS_READY_TO_CONNECT", 0);
+        break;
+    case TICK: {
+        int delay = 25000;
+
+        if (theNetwork.zNetGetLocalTime() > data_0044F9D8 || data_0066A5F8) {
+            func_002EF7F0();
+            CountGamePlayers();
+            if (theNetwork.m_bSessionMaster)
+                delay = func_002EF590(data_0044F9D0);
+            data_0066A5F8 = 0;
+            data_0044F9D8 = theNetwork.zNetGetLocalTime() + delay;
+        }
+        break;
+    }
+    case EXIT: {
+        MediusUpdateClientStateRequest upd;
+
+        func_002DF6A0(&theLobby);
+        SetSessionKey(upd.SessionKey);
+        upd.UserAction = 2;
+        CheckMediusError(func_00647C60(&upd));
+        func_002F4FC0(1);
+        data_0044F9D0 = 0;
+        CValve::Create("mp_persistent", VALVE_TYPE_1)->SetValue(1);
+        break;
+    }
+    case UNREGISTER:
+        break;
+    }
+}
+
+/* LOBBY_SERVER_CONNECT: the room's lobby server connected to (SOCOM 1's; OVL1 0x2EFA90) */
+void LobbyServerConnectStateHandler(LOBBY_STATE_FLAG flag)
+{
+    switch (flag) {
+    case REGISTER:
+        break;
+    case ENTRY: {
+        MediusConnectParams params;
+
+        func_00300680();
+        memset(&params, 0, sizeof(params));
+        func_002F3FF0((ChatSlot *)&data_0066A540);
+        params.ConnectInfo = data_0066A540;
+        params.Callback = cbLobbyServerConnect;
+        params.BufferSize = 256;
+        params._f8 = 0;
+        params._fc = 0;
+        data_0044F8D0 = data_004A44A0;
+        if (!func_00300740(1, &params))
+            theLobby.ChangeState(CONNECT_ERROR);
+        break;
+    }
+    case TICK:
+        break;
+    case EXIT:
+        break;
+    case UNREGISTER:
+        break;
+    }
+}
 
 /* the account logged in: its lobby server kept for the room, the menus told otherwise (SOCOM
  * 1's; OVL1 0x2EEFA0) */
@@ -853,7 +1043,9 @@ extern "C" {
 void func_002F3EF0(void *part);   /* a type-129 response's tail converted */
 
 /* the first free slot of two looked for, and nothing done with it: the search survives, its
- * result does not (a void leaf: v1 is its only temporary; OVL1 0x2F3FF0) */
+ * result does not (a void leaf: v1 is its only temporary; OVL1 0x2F3FF0). LobbyServerConnect's
+ * handler calls it out of line: pinned */
+#pragma auto_inline off
 void func_002F3FF0(ChatSlot *slots)
 {
     for (int i = 0; i < 2; i++) {
@@ -861,6 +1053,7 @@ void func_002F3FF0(ChatSlot *slots)
             break;
     }
 }
+#pragma auto_inline reset
 
 /* a response put into the host's order: only the type-129 ones carry anything to convert (OVL1
  * 0x2F4030; the request side, 0x2F4080, is empty) */

@@ -4905,13 +4905,13 @@
 0x002EEFA0 0x3A0 cbAccountLogin__FiiiP26MediusAccountLoginResponse  # OVL1; s1 by hand (AccountLoginStateHandler's MediusAccountLogin callback, as SOCOM 1's cbAccountLogin: reports 'AccountLogin', keeps the account and its lobby server, goes to LOBBY_SERVER_CONNECT and calls PasswordSecurity; MP_INVALID_PASSWORD -978, MP_PLAYER_LOGGED_IN -997, LOGIN_FAILURE -998)
 0x002EF340 0x70 func_002EF340  # OVL1
 0x002EF3B0 0x10 func_002EF3B0  # OVL1
-0x002EF3C0 0x1D0 func_002EF3C0  # OVL1
+0x002EF3C0 0x1D0 LobbyReadyToConnectStateHandler__F16LOBBY_STATE_FLAG  # OVL1; s1 by hand (registered for READY_TO_CONNECT, 17, by the lobby's state table 0x2ED460, as SOCOM 1's Open registers LobbyReadyToConnectStateHandler: MP_MEDIUS_READY_TO_CONNECT on entry, the game's details to the lobby every 25 s, MediusUpdateClientState on exit)
 0x002EF590 0x25C func_002EF590  # OVL1
 0x002EF7F0 0x200 func_002EF7F0  # OVL1
 0x002EF9F0 0x70 func_002EF9F0  # OVL1
 0x002EFA60 0x30 func_002EFA60  # OVL1
-0x002EFA90 0x1E4 func_002EFA90  # OVL1
-0x002EFC80 0x17C func_002EFC80  # OVL1
+0x002EFA90 0x1E4 LobbyServerConnectStateHandler__F16LOBBY_STATE_FLAG  # OVL1; s1 by hand (registered for LOBBY_SERVER_CONNECT, 16, by the lobby's state table 0x2ED460, as SOCOM 1's Open registers LobbyServerConnectStateHandler: the room's lobby server 0x66A540 connected through 0x300740 with cbLobbyServerConnect)
+0x002EFC80 0x17C cbLobbyServerConnect__Fi  # OVL1; s1 by hand (the connection callback LobbyServerConnectStateHandler hands the lobby server's connect, as SOCOM 1's cbLobbyServerConnect: MediusUpdateClientState, LOBBY_ACTIVE and MP_JOIN_ROOM or JOIN_GAME for the random game, the game list filter, MediusVersionServer; CONNECT_ERROR for -1)
 0x002EFE00 0x8 func_002EFE00  # OVL1
 0x002EFE10 0x10 func_002EFE10  # OVL1
 0x002EFE20 0x24 ChangeState__13CZOnlineLobbyF11LOBBY_STATE  # OVL1; ours (pushes its byte onto the state queue at +0x64 through the deque's push_back 0x2E1610, where SOCOM 1 pushes inline; Logout passes END_SESSION 18, the 0x2E0440 thunk SESSION_BEGIN 12)
