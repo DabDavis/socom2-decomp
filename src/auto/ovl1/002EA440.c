@@ -4,18 +4,19 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK DeleteAll__16ClanMemberVectorFv();          /* extern */
 M2C_UNK __dl__FPv(char *);                          /* extern */
-M2C_UNK func_002E9740();                            /* extern */
 
 char *func_002EA440(char *arg0, s64 arg1) {
     char *temp_a0;
 
     if (arg0 != NULL) {
-        func_002E9740();
+        DeleteAll__16ClanMemberVectorFv();
         if ((arg0 != NULL) && (arg0 != NULL) && (arg0 != NULL)) {
-            temp_a0 = M2C_FIELD(arg0, char **, 8);
+            temp_a0 = SC_MEMBER(arg0, char **, 8);
             if (temp_a0 != NULL) {
                 __dl__FPv(temp_a0);
             }

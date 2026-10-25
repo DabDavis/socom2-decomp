@@ -8,9 +8,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 s32 CheckMediusCallbackStatus__FPCc20MediusCallbackStatus(M2C_UNK *, s32); /* extern */
+M2C_UNK DeleteAll__16ClanMemberVectorFv(M2C_UNK *); /* extern */
 M2C_UNK __as__11CUIVariableFPCc(s32, M2C_UNK *);    /* extern */
 M2C_UNK func_002E6AF0();                            /* extern */
-M2C_UNK func_002E9740(M2C_UNK *);                   /* extern */
 M2C_UNK func_002FAA80(M2C_UNK *);                   /* extern */
 M2C_UNK memset(M2C_UNK *, M2C_UNK, M2C_UNK);        /* extern */
 extern M2C_UNK ClanMemberVec;
@@ -35,7 +35,7 @@ void cbQuitClan__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP34MediusRe
         __as__11CUIVariableFPCc(data_0044F460, &data_003F3F38);
         __as__11CUIVariableFPCc(data_0044F464, &data_003F3F38);
         __as__11CUIVariableFPCc(data_0044F43C, &data_003F3F60);
-        func_002E9740(&ClanMemberVec);
+        DeleteAll__16ClanMemberVectorFv(&ClanMemberVec);
         func_002E6AF0();
         func_002FAA80(&theLobby);
     }
