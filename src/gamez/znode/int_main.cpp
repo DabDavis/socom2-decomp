@@ -2,7 +2,13 @@
  * shape: its points allocated, read and freed), DiIntersect (a ray's or a volume's hit set) and
  * the box and polygon shapes (OVL1 0x2DBFB0-0x2DDBEB). The unit name is SOCOM 1's: its asserts in
  * CDI::Allocate, Free and DiIntersect's constructor and destructor name int_main.cpp (both 2002
- * builds); int_material.cpp follows it there and here. Written so far: the small functions below.
+ * builds); int_material.cpp follows it there and here. Written so far: the small functions below,
+ * CDI's constructor (its parameters' constructor inlined) and the shapes' constructors and
+ * destructors. Unwritten, in image order: SOCOM 1's SetCDIBBox (0x2DC7A0, a static: the unit box's
+ * polygons built once behind a guard byte -- CMission::Init and CZSealBody's constructor call it),
+ * CDIBBox::GetIntersect, 0x2DD130 (the polygon's first three points loaded on VU0, vcallms 0x70:
+ * new), CDIPoly::GetIntersect, DiIntersect::LoadTipAndTail (0x2DD210), GetEdgeIntersectsY,
+ * GetEdgeIntersects, intersect2d (0x2DD690) and CDIPoly::GetAltitude -- VU0 code throughout.
  * Defined in reverse of their image order (-inline deferred). */
 
 #include "node_world.h"
@@ -23,6 +29,37 @@ public:
 static PNT4D diNorm;
 
 namespace zdb {
+
+/* a polygon: CDI's (SOCOM 1's, the unit's last function; Create calls it out of line, so pinned) */
+#pragma auto_inline off
+CDIPoly::CDIPoly()
+{
+}
+#pragma auto_inline reset
+
+/* the points freed through the table, then CDI's (SOCOM 1's) */
+CDIPoly::~CDIPoly()
+{
+    Free();
+}
+
+/* a box not yet given its bounds (SOCOM 1's) */
+CDIBBox::CDIBBox()
+{
+    m_bbox = 0;
+}
+
+/* the points freed through the table, then CDI's (SOCOM 1's) */
+CDIBBox::~CDIBBox()
+{
+    Free();
+}
+
+/* a box answers no altitude query (SOCOM 1's, the same two words) */
+int CDIBBox::GetAltitude(DiIntersect *di)
+{
+    return 0;
+}
 
 /* the polygon's normal from its first three points, normalised on VU0 (SOCOM 1's) */
 void CDI::SetEdgeVecsAndNorm()
@@ -86,11 +123,21 @@ void DiIntersect::SetMask(unsigned int mask)
         m_mask = -1;
 }
 
+/* no points and no holders, the parameters' constructor inlined first (SOCOM 1's). The shapes'
+ * constructors and destructors call CDI's out of line: both pinned */
+#pragma auto_inline off
+CDI::CDI()
+{
+    m_pnts = 0;
+    m_refcount = 0;
+}
+
 /* the points freed (SOCOM 1's, through its vtable) */
 CDI::~CDI()
 {
     Free();
 }
+#pragma auto_inline reset
 
 /* room for n points (SOCOM 1's) */
 void CDI::Allocate(int n)

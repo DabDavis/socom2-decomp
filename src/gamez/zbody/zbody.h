@@ -234,6 +234,9 @@ public:
     ~RTStack() { delete[] m_stack; }
     void Push(T *item);
     T *Pop();
+    /* the top item, none when empty (SOCOM 1's): out of class and defined in another unit, whose
+     * tail holds the one copy (OVL1 0x219390), so body.cpp calls it (func_00219390 below) */
+    T *Top();
 
     T **m_stack;   // 0x0
     int m_size;   // 0x4
@@ -496,10 +499,14 @@ public:
     bool IsDone(float dT);
     bool IsTriggerTime(float t, float t0, float t1);
     void CallbackTick(CBody *body, float t0, float t1);
-    /* the step to be held back once: flag 8 (SOCOM II's; the name ours) */
-    bool Holding() { return m_flags & 8 ? true : false; }
+    /* the step to be held back once: flag 8 (SOCOM II's; the name ours). Const: called through the
+     * non-const this, the caller's next statement loads the flags again (Propagate) */
+    bool Holding() const { return m_flags & 8 ? true : false; }
     /* the blend restarted from its first anim */
     void Reset();
+    /* the homing (the name ours): through this inline its address stays in a register of its own
+     * across the reset's calls (PushBlend), as the pool's does through CBody::ActiveAnimPool() */
+    CHoming *Homing() { return &m_homing; }
 
     CPnt3D m_dpos;   // 0x0
     float m_quitT;   // 0xc
@@ -629,6 +636,15 @@ public:
     CZBodyPart *AttachAuxNode(CNode *node, CZBodyPart *parent, const CPnt3D *pos, const CPnt3D *rot);
     /* an archive's anim readied for the body (SOCOM 1's BodyAddAnim, which took a name) */
     class CZBodyAnim *BodyAddAnim(class CScriptArchive *archive, int index);
+    /* the anim pool (SOCOM 1's was a pointer member; the name ours): reached through this inline,
+     * the pool's address is a temporary MW hoists out of a loop into a preheader of its own, after
+     * the loop's bottom test -- the walks that put anims back (ClearOverlays, PopBlend,
+     * SetBlendAnims) need it; `&body->m_active_anim_pool` is recomputed every pass */
+    CActiveAnimPool *ActiveAnimPool() { return &m_active_anim_pool; }
+    /* the blend on top of the stack (the name ours): the inline's result takes the lowest saved
+     * register (PushBlend keeps it in s0, the homing's address in s1) where a call made in the
+     * function itself gives it the next one up */
+    CZBodyAnimBlend *TopBlend() { return m_blends.Top(); }
 
     short m_state;   // 0x4: the SEAL's state (SOCOM 1's char at 0xd)
     float m_interp1;   // 0x8
@@ -697,6 +713,8 @@ public:
     /* the share of the script one loop covers: all of it when it loops, else up to its last frame
      * (SOCOM 1's CZBodyAnim::TrueLoopTime; si_script.cpp's, 0x28ADA0) */
     float TrueLoopTime();
+    /* the time one loop takes (ReadMotionRdr scales a callback's time by it; the name ours) */
+    float LoopTime() { return m_10 * TrueLoopTime(); }
     /* the archive callback each of four slots names, 0 for none (SOCOM 1's CZBodyAnim's) */
     int GetCallbackIndex(int i);
     void SetCallbackIndex(int i, unsigned int index);
@@ -714,6 +732,17 @@ public:
     void SetObjectsReady(bool b) { m_objects_ready = b; }
     void SetLooped(bool b) { m_looped = b; }
     void SetFlag7(bool b) { m_49_7 = b; }
+    /* motion.rdr's flags (ReadMotionRdr; each named after its tag, the members kept as named) */
+    void SetLateral(bool b) { m_4a_0 = b; }
+    void SetVertical(bool b) { m_vertical = b; }
+    void SetBlendOverlay(bool b) { m_4a_2 = b; }
+    void SetPitchtwist(bool b) { m_4a_3 = b; }
+    void SetUseVelY(bool b) { m_4a_4 = b; }
+    void SetHeadlooks(bool b) { m_4a_5 = b; }
+    void SetOverrideControl(bool b) { m_4a_6 = b; }
+    void SetTurn(bool b) { m_4a_7 = b; }
+    void SetRefPtValid(bool b) { m_4b_0 = b; }
+    void SetRootId(int n) { m_4_hi = n; }
 
     char *m_pName;   // 0x0
     unsigned short m_nFrames : 10;   // 0x4
@@ -883,8 +912,8 @@ public:
      * (0x288510, 0x2884C0) */
     void Register();
     void Unregister();
-    /* the scripts' settings read from motion.rdr (0x287620) */
-    void ReadMotionRdr();
+    /* the scripts' settings read from motion.rdr: false without it or its "animations" (0x287620) */
+    bool ReadMotionRdr();
     void SetPresent(bool b) { m_present = b; }
     void SetIndex(int i) { m_index = i; }
     /* the name replaced by a copy (freed first; none for 0) */

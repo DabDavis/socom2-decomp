@@ -224,6 +224,9 @@ public:
     /* an owner pushes the unit matrix and pops it again (the destructor's out-of-line copy is
      * 0x2D4FE0; the member's name is ours) */
     CStack() : m_own(true) { Push(&CMatrix::identity); }
+    /* a stack that pushes nothing (grid_di.cpp's file static: its initialiser clears the owner byte
+     * alone, as SOCOM 1's) */
+    CStack(bool own) : m_own(own) {}
     ~CStack()
     {
         if (m_own)

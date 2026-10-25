@@ -4,13 +4,14 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_00357A00(char *);                      /* extern */
+M2C_UNK Add__Q23zdb11CDynTexListFPQ23zdb11CDynTexList(char *); /* extern */
 
 void func_00357820(char *arg0) {
-    M2C_FIELD(arg0, s32 *, 0x2C) = 0;
-    M2C_FIELD(arg0, s32 *, 0x38) = 0;
-    func_00357A00(arg0 + 0x28);
-    M2C_FIELD(arg0, s32 *, 0x18) = 0;
+    SC_MEMBER(arg0, s32 *, 0x2C) = 0;
+    SC_MEMBER(arg0, s32 *, 0x38) = 0;
+    Add__Q23zdb11CDynTexListFPQ23zdb11CDynTexList(arg0 + 0x28);
+    SC_MEMBER(arg0, s32 *, 0x18) = 0;
 }
