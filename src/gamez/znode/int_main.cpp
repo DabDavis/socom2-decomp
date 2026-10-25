@@ -1,15 +1,14 @@
 /* int_main.cpp -- the collision primitives: IntersectStruct's queries, CDI (a node's collision
- * shape: its points allocated, read and freed), DiIntersect (a ray's or a volume's hit set) and
- * the box and polygon shapes (OVL1 0x2DBFB0-0x2DDBEB). The unit name is SOCOM 1's: its asserts in
- * CDI::Allocate, Free and DiIntersect's constructor and destructor name int_main.cpp (both 2002
- * builds); int_material.cpp follows it there and here. Written so far: the small functions below,
- * CDI's constructor (its parameters' constructor inlined) and the shapes' constructors and
- * destructors. Unwritten, in image order: SOCOM 1's SetCDIBBox (0x2DC7A0, a static: the unit box's
- * polygons built once behind a guard byte -- CMission::Init and CZSealBody's constructor call it),
- * CDIBBox::GetIntersect, 0x2DD130 (the polygon's first three points loaded on VU0, vcallms 0x70:
- * new), CDIPoly::GetIntersect, DiIntersect::LoadTipAndTail (0x2DD210), GetEdgeIntersectsY,
- * GetEdgeIntersects, intersect2d (0x2DD690) and CDIPoly::GetAltitude -- VU0 code throughout.
- * Defined in reverse of their image order (-inline deferred). */
+ * shape: its points allocated, read and freed) and DiIntersect (a ray's or a volume's hit set)
+ * (OVL1 0x2DBFB0-0x2DC79F). The unit name is SOCOM 1's: its asserts in CDI::Allocate, Free and
+ * DiIntersect's constructor and destructor name int_main.cpp (both 2002 builds), and the beta's
+ * last one is in DiIntersect(n), right before SetCDIBBox. The shapes after it -- SetCDIBBox, CDIBBox,
+ * CDIPoly and the edge math -- are the next unit, int_shapes.cpp (0x2DC7A0-0x2DDC2F): SetCDIBBox and
+ * the shapes' constructors and destructors call CDI() and ~CDI out of line and CDI::Create calls
+ * CDIPoly() out of line, where one unit had needed all three pinned (README "The inlining mode,
+ * measured"). Written so far: the small functions below. Unwritten: ~DiIntersect (0x2DC680),
+ * IsInside, GetRegion, Release and 0x2DC620. Defined in reverse of their image order
+ * (-inline deferred). */
 
 #include "node_world.h"
 
@@ -24,80 +23,7 @@ public:
     static int m_defaultMaterial;
 };
 
-/* the last polygon's normal, w zero (new in SOCOM II: SOCOM 1's SetEdgeVecsAndNorm stored it in
- * the DI itself; the name is ours) */
-static PNT4D diNorm;
-
 namespace zdb {
-
-/* a polygon: CDI's (SOCOM 1's, the unit's last function; Create calls it out of line, so pinned) */
-#pragma auto_inline off
-CDIPoly::CDIPoly()
-{
-}
-#pragma auto_inline reset
-
-/* the points freed through the table, then CDI's (SOCOM 1's) */
-CDIPoly::~CDIPoly()
-{
-    Free();
-}
-
-/* a box not yet given its bounds (SOCOM 1's) */
-CDIBBox::CDIBBox()
-{
-    m_bbox = 0;
-}
-
-/* the points freed through the table, then CDI's (SOCOM 1's) */
-CDIBBox::~CDIBBox()
-{
-    Free();
-}
-
-/* a box answers no altitude query (SOCOM 1's, the same two words) */
-int CDIBBox::GetAltitude(DiIntersect *di)
-{
-    return 0;
-}
-
-/* the polygon's normal from its first three points, normalised on VU0 (SOCOM 1's) */
-void CDI::SetEdgeVecsAndNorm()
-{
-    CPnt4D *p = m_pnts;
-    CPnt3D e0 = PntMinus(*(CPnt3D *)&p[1], *(CPnt3D *)&p[0]);
-    CPnt3D e1 = PntMinus(*(CPnt3D *)&p[2], *(CPnt3D *)&p[0]);
-    CPnt4D n;
-    CPnt4D a(e0.x, e0.y, e0.z, 1.0f);
-    CPnt4D b(e1.x, e1.y, e1.z, 1.0f);
-
-    sceVu0OuterProduct((float *)&n, (float *)&a, (float *)&b);
-    sceVu0Normalize((float *)&n, (float *)&n);
-    VecSet(&diNorm.x, n.x, n.y, n.z, 0.0f);
-}
-
-/* a point set from three values (the arguments evaluated right to left, so z, y and x are loaded
- * before the stores; an inline leaves no symbol: the name is ours) */
-inline void PntSet(CPnt3D &p, float x, float y, float z)
-{
-    p.x = x;
-    p.y = y;
-    p.z = z;
-}
-
-/* a box's eight corners: the bottom four, then the top four, each ring from the low x, high z
- * corner (new in SOCOM II, after SOCOM 1's SetCDIBBox; the name is ours) */
-void GetBBoxCorners(CPnt3D *out, const CBBox *b)
-{
-    PntSet(out[0], b->m_min.x, b->m_min.y, b->m_max.z);
-    out[1] = b->m_min;
-    PntSet(out[2], b->m_max.x, b->m_min.y, b->m_min.z);
-    PntSet(out[3], b->m_max.x, b->m_min.y, b->m_max.z);
-    PntSet(out[4], b->m_min.x, b->m_max.y, b->m_max.z);
-    PntSet(out[5], b->m_min.x, b->m_max.y, b->m_min.z);
-    PntSet(out[6], b->m_max.x, b->m_max.y, b->m_min.z);
-    out[7] = b->m_max;
-}
 
 /* a hit set for n hits: characters and proximity hit, no node ignored, every mask bit (SOCOM 1's;
  * the mask and the bit after the flags SOCOM II's) */
@@ -123,9 +49,8 @@ void DiIntersect::SetMask(unsigned int mask)
         m_mask = -1;
 }
 
-/* no points and no holders, the parameters' constructor inlined first (SOCOM 1's). The shapes'
- * constructors and destructors call CDI's out of line: both pinned */
-#pragma auto_inline off
+/* no points and no holders, the parameters' constructor inlined first (SOCOM 1's). int_shapes.cpp's
+ * constructors and destructors call it and ~CDI */
 CDI::CDI()
 {
     m_pnts = 0;
@@ -137,7 +62,6 @@ CDI::~CDI()
 {
     Free();
 }
-#pragma auto_inline reset
 
 /* room for n points (SOCOM 1's) */
 void CDI::Allocate(int n)
