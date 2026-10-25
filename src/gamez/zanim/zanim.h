@@ -488,6 +488,17 @@ struct _zrdr {
     unsigned int Count() { return type == 4 ? length : 0; }
     _zrdr *Item(int i) { return i < Count() ? &array[i] : 0; }
     char *String() { return type == 3 ? string : 0; }
+    /* a whole number: an integer as it is, a real truncated, anything else 0 (ours: PlayMPEG's
+     * parser) */
+    int Int()
+    {
+        if (type == 1)
+            return integer;
+        else if (type == 2)
+            return (int)real;
+        else
+            return 0;
+    }
     /* a number: a real as it is, an integer converted, anything else 0 (ours) */
     float Real()
     {

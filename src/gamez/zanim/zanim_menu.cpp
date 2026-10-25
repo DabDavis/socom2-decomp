@@ -16,6 +16,7 @@
 #include <string.h>
 
 #include "zanim_menu.h"
+#include "../zsys/zsys.h"
 
 /* the lobby objects the handlers also reach (not named yet) */
 class CZLANLobby;
@@ -38,10 +39,40 @@ void func_0030E3A0(CZNetwork *net, int arg);
 void func_002A9EF0(CMission *mission);
 bool func_002B83E0();                       /* DMEJoinGameServer (SOCOM 1's, by UIJoinGameServer) */
 extern int data_00441470;
-extern void *data_0045B718;
 extern char data_00437E30[];               /* the career stats */
-void func_0030E6E0(void *p, int arg);
-void func_0030E490(void *p);
+}
+
+/* the online armory (an object at 0x45B718; only the flag VCButton tests) */
+struct COnlineArmoryView {
+    unsigned char _0[0x4a];
+    unsigned char m_4a;   // 0x4a
+    unsigned char _4b[0x4f - 0x4b];
+    unsigned char m_4f;   // 0x4f: the scale defaulted
+    unsigned char m_50;   // 0x50: the range defaulted
+};
+
+/* a character type's figures the armory is told (six floats: the last three a range and a scale,
+ * defaulted when negative; ours) */
+struct CharTypeFigures {
+    float m_0;
+    float m_4;
+    float m_8;
+    float m_min;   // 0xc
+    float m_max;   // 0x10
+    float m_scale;   // 0x14
+};
+
+extern "C" {
+extern COnlineArmoryView *data_0045B718;
+void func_0030E6E0(COnlineArmoryView *p, int arg);
+void func_0030E490(COnlineArmoryView *p);
+void func_0030E6A0(COnlineArmoryView *p, CharTypeFigures *figures);
+float func_0053B060(void *stats);
+float func_0053B050(void *stats);
+float func_0053B040(void *stats);
+float func_0053B030(void *stats);
+float func_0053B020(void *stats);
+float func_0053B010(void *stats);
 }
 
 class CZGameState {
@@ -78,6 +109,8 @@ inline C2D *GetCommandC2D(unsigned short node_ref)
 
 char database[64];
 zdb::CNode *g_menuRootNode;
+/* the saved game's name the memory card handlers build (0x414E50) */
+static char s_savename[64];
 
 namespace {
 
@@ -101,11 +134,99 @@ bool UIUpdateMpFinalStatsUiVars(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+/* CopyUIVar's parser: the two variables' names (-1 for none). The command's type goes where the
+ * other records keep the command's name (SOCOM II's; the name ours) */
+_zanim_cmd_hdr *UICopyUIVarParse(const char *name, _zrdr *rdr)
+{
+    UICopyUIVarCmd *cmd = (UICopyUIVarCmd *)_calloc(1, sizeof(UICopyUIVarCmd), 0, 0);
+    const char *s;
+
+    cmd->header.timeless = 1;
+    cmd->header.data_size = sizeof(UICopyUIVarCmd);
+    cmd->node_ref_index = 0;
+    cmd->m_command_index = GetUICommandType(name);
+    s = zrdr_findstring(rdr, "From");
+    cmd->m_from = s ? ZAnim.m_CurAnim->AddName(s) : -1;
+    s = zrdr_findstring(rdr, "To");
+    cmd->m_to = s ? ZAnim.m_CurAnim->AddName(s) : -1;
+    return (_zanim_cmd_hdr *)cmd;
+}
+
+/* SendChatText's and SendMediusChat's parser: the argument and the UI variable holding whom the
+ * text is for (SOCOM II's; the name ours) */
+_zanim_cmd_hdr *UIChatParse(const char *name, _zrdr *rdr)
+{
+    UIChatCmd *cmd = (UIChatCmd *)_calloc(1, sizeof(UIChatCmd), 0, 0);
+    const char *s;
+
+    cmd->header.timeless = 1;
+    cmd->header.data_size = sizeof(UIChatCmd);
+    cmd->node_ref_index = 0;
+    cmd->m_command_index = GetUICommandType(name);
+    s = zrdr_findstring(rdr, "ARGUMENT");
+    if (s)
+        cmd->SetArgument(s);
+    s = zrdr_findstring(rdr, "RECIP_UIVAR");
+    if (s && strlen(s) < 32)
+        strcpy(cmd->m_recip_uivar, s);
+    else
+        cmd->m_recip_uivar[0] = 0;
+    return (_zanim_cmd_hdr *)cmd;
+}
+
 namespace {
 
 bool UISetControllerConfig(C2DAnimCmdHdr *hdr, float *dT)
 {
     func_002C5D60(ArgText(ArgName(hdr)));
+    return true;
+}
+
+/* a two-digit BCD byte of the clock as a number (ours) */
+#define FROM_BCD(x) ((((x) >> 4) & 0xf) * 10 + ((x) & 0xf))
+
+/* a saved game written to the slot the argument numbers: its title the mission, the difficulty and
+ * the local date and time; the saving valve cleared.
+ * OPEN, 47 instructions, all in the six BCD conversions feeding sprintf (the frame, the calls, the
+ * loads' order -- the arguments right to left -- and the rest match): the target's temporaries
+ * take other registers and the products are added first. The conversion as a macro either way
+ * round or as an inline taking an int or a byte measured the same */
+bool _SaveSavedGame(C2DAnimCmdHdr *hdr, float *dT)
+{
+    sceCdCLOCK clock;
+    char title[264];
+    int slot = atoi(ArgText(ArgName(hdr)));
+
+    func_003A1C60(&theMemCard);
+    sceCdReadClock(&clock);
+    sceScfGetLocalTimefromRTC(&clock);
+    int difficulty = CValve::Create("ai_difficulty", (VALVE_TYPE)1)->m_value;
+
+    if (difficulty > 9)
+        difficulty = 9;
+    sprintf(title, "%-3s%d%d/%d/20%.2d %.2d:%.2d:%.2d", database, difficulty, FROM_BCD(clock.month),
+            FROM_BCD(clock.day), FROM_BCD(clock.year), FROM_BCD(clock.hour), FROM_BCD(clock.minute),
+            FROM_BCD(clock.second));
+    sprintf(s_savename, "SaveGame%d", slot);
+    func_003A1EA0(&theMemCard, s_savename, title);
+    func_003A1880(&theMemCard);
+    CValve *valve = CValve::GetByName("SavingSavedGame");
+
+    if (valve)
+        SetValveValue(valve, 0);
+    return true;
+}
+
+/* a saved game loaded from the slot the argument numbers, the loading valve cleared */
+bool _LoadSavedGame(C2DAnimCmdHdr *hdr, float *dT)
+{
+    int slot = atoi(ArgText(ArgName(hdr)));
+    CValve *valve = CValve::GetByName("LoadingSavedGame");
+
+    sprintf(s_savename, "SaveGame%d", slot);
+    func_003A1E10(&theMemCard, s_savename);
+    if (valve)
+        SetValveValue(valve, 0);
     return true;
 }
 
@@ -144,20 +265,55 @@ CMenuStack::CMenuStack()
     m_popup = 0;
 }
 
-/* OPEN, 2 instructions (0x1C0 of 0x1C8): the target inlines FlushHistory whole (with all true:
- * the pop-up's test without the flag's, then CleanPopup's), the history's flush and the vectors'
- * pieces with it. Here the chain is one level too tall at this depth: the base's end() inside back()
- * is called out of line (FlushHistory itself matches, one level up). Written out instead (the
- * entries loop, m_history.Flush(), the pop-up's delete, CleanPopup()) everything inlines and one
- * instruction is left: the history's member destruction reads m_free's data_ through its this,
- * lw a0,8(v0), where MW folds it into lw a0,0xE3C(s2) (m_used's, destroyed after, is folded in the
- * target too) -- not the history's base class (measured: m_used as CMenuHistory's base gives the same
- * fold). include/vector's pointer back() and push_back a level lower would likely settle the first
- * form */
+/* OPEN, 1 instruction (round 2: the size now right, written as FlushHistory(true) and CleanPopup()):
+ * the history's member destruction reads m_free's data_ through the pointer its this-tests use,
+ * `addiu v0,s2,3636 ... lw a0,8(v0)`, where MW folds it into lw a0,0xE3C(s2) -- m_used's, destroyed
+ * after, is folded in the target too (lw a0,2096(s2)). Round 1: with FlushHistory written out the
+ * same instruction was left; m_used as CMenuHistory's base gives the same fold. include/vector's
+ * pointer back() and push_back a level lower would likely settle the first form */
 CMenuStack::~CMenuStack()
 {
     FlushHistory(true);
     CleanPopup();
+}
+
+/* the top entry's command done with: its argument's name reset, the entry popped as its command
+ * says (SOCOM 1's, the same ten cases in the same order; the name unused in both) */
+void CMenuStack::HandleCommand(const char *name)
+{
+    strcpy(m_entries[m_top].m_argname, DEFAULT_ARGNAME);
+    CMenuEntry &entry = m_entries[m_top];
+
+    switch (entry.m_id) {
+    case -1:
+        break;
+    case 0:
+        entry.m_id = -1;
+        break;
+    case 2:
+        entry.m_id = -1;
+        m_top--;
+        break;
+    case 1:
+        m_top--;
+        break;
+    case 3:
+    case 4:
+        entry.m_id = -1;
+        m_top--;
+        break;
+    case 5:
+        entry.m_id = -1;
+        m_top--;
+        break;
+    case 6:
+    case 7:
+    case 8:
+        entry.m_id = -1;
+        m_top--;
+        break;
+    }
+    m_count--;
 }
 
 void CMenuStack::AddToHistory(const char *name)
@@ -167,6 +323,31 @@ void CMenuStack::AddToHistory(const char *name)
     m_history.m_free.pop_back();
     m_history.m_used.PtrVec::insert(m_history.m_used.PtrVec::end(), 1, (unsigned int &)slot);
     strcpy(slot, name);
+}
+
+/* the pop-up put on the stack with its argument (the text typed when the name says INPUT_STRING),
+ * its node shown and the menu's sound played (SOCOM 1's, the sound SOCOM II's) */
+void CMenuStack::PopUpDialog(const char *name)
+{
+    m_top++;
+    std::string arg;
+
+    if (!strcmp(name, "INPUT_STRING"))
+        arg = ZAnim.m_CurAnim->m_arg_list->GetCharP(0);
+    else
+        arg = name;
+    m_entries[m_top].m_id = 3;
+    strcpy(m_entries[m_top].m_argname, arg.c_str());
+    m_count++;
+    CNode *node = GetMenuNode()->FindChild("POPUP", true);
+
+    if (!node)
+        return;
+    node->SetActive(true);
+    CSnd *sound = CSnd::GetSoundByName(".METAL");
+
+    if (sound)
+        sound->PlaySound(true, 0, 255);
 }
 
 /* the mission's reader archive let go of (SOCOM 1's builds the path and does not use it either) */
@@ -243,6 +424,23 @@ CMenuHistory::CMenuHistory()
     }
 }
 #pragma auto_inline reset
+
+/* the mission set by name (or by the UI variable of that name), the background film stopped
+ * around the change and put back */
+bool UISetMission(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *name = ArgText(ArgName(hdr));
+    bool background = func_001F3BE0(&theGame.m_menuState);
+    CUIVariable *var = func_00385900(&theUIVarManager, name);
+
+    if (var && var->type == 3)
+        name = var->String();
+    strcpy(database, name);
+    func_002ACC10(&theMission, name);
+    if (background)
+        func_001F3BD0(&theGame.m_menuState, 0);
+    return true;
+}
 
 bool UIPopUpDialog(C2DAnimCmdHdr *hdr, float *dT)
 {
@@ -366,6 +564,20 @@ bool UICheckJoinMP(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+/* the voice chat's button: 1 on (unless already), 0 off -- not for a late joiner */
+bool UIVCButton(C2DAnimCmdHdr *hdr, float *dT)
+{
+    if (theMission.m_pNetGame && !theMission.m_pNetGame->m_late_joiner) {
+        const char *text = ArgText(ArgName(hdr));
+
+        if (*text == '1' && !data_0045B718->m_4a)
+            func_0030E6E0(data_0045B718, 1);
+        else if (*text == '0')
+            func_0030E6E0(data_0045B718, 0);
+    }
+    return true;
+}
+
 bool UIIsMemCardInserted(C2DAnimCmdHdr *hdr, float *dT)
 {
     return theMemCard.IsInserted();
@@ -382,6 +594,44 @@ bool UIIsMemcardSaveOK(C2DAnimCmdHdr *hdr, float *dT)
 
     SetValveValue(CValve::Create("memcard_error_code", (VALVE_TYPE)2), error);
     return error == 0;
+}
+
+/* whether the slot the argument numbers holds a real saved game (not the dummies SaveConfig
+ * writes) */
+bool UIDoesSlotHaveGame(C2DAnimCmdHdr *hdr, float *dT)
+{
+    int slot = atoi(ArgText(ArgName(hdr)));
+    bool has = false;
+    MemCardFileInfo info;
+
+    sprintf(s_savename, "SaveGame%d", slot);
+    if (func_003A0950(&theMemCard, s_savename)) {
+        sprintf(s_savename, "SaveGame%d", slot);
+        func_0033D4A0(theMemCard.m_18, s_savename, 12, &info);
+        if (info.m_text[0] == 'm' && strcmp(info.m_text, "This game is a dummy game."))
+            has = true;
+    }
+    return has;
+}
+
+/* the real saved games counted into the valve the argument names */
+bool UIGetNumSavedGames(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CValve *valve = CValve::Create(ArgName(hdr), (VALVE_TYPE)2);
+    int count = 0;
+    MemCardFileInfo info;
+
+    for (int i = 0; i < 10; i++) {
+        sprintf(s_savename, "SaveGame%d", i);
+        if (func_003A0950(&theMemCard, s_savename)) {
+            sprintf(s_savename, "SaveGame%d", i);
+            func_0033D4A0(theMemCard.m_18, s_savename, 12, &info);
+            if (info.m_text[0] == 'm' && strcmp(info.m_text, "This game is a dummy game."))
+                count++;
+        }
+    }
+    SetValveValue(valve, count);
+    return true;
 }
 
 bool UIFormatMemCard(C2DAnimCmdHdr *hdr, float *dT)
@@ -435,6 +685,13 @@ bool UIGetAcctInfo(C2DAnimCmdHdr *hdr, float *dT)
     return false;
 }
 
+bool UIRefreshGameList(C2DAnimCmdHdr *hdr, float *dT)
+{
+    if (func_003045B0(&data_0044FE10))
+        return func_003042B0(&data_0044FE10, GetCommandC2D(hdr->node_ref_index));
+    return func_002E28D0(&theLobby, GetCommandC2D(hdr->node_ref_index));
+}
+
 bool UIRefreshRoomList(C2DAnimCmdHdr *hdr, float *dT)
 {
     return func_002E3A30(&theLobby, GetCommandC2D(hdr->node_ref_index));
@@ -447,6 +704,15 @@ bool UIInitializeOnlineArmory(C2DAnimCmdHdr *hdr, float *dT)
         func_0030E490(data_0045B718);
     }
     return true;
+}
+
+bool UIRefreshRoomPlayerList(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *text = ArgText(ArgName(hdr));
+
+    if (text && !strcasecmp(text, "CLAN_TAGS"))
+        return func_002F0EA0(&theLobby, GetCommandC2D(hdr->node_ref_index));
+    return func_002F11F0(&theLobby, GetCommandC2D(hdr->node_ref_index));
 }
 
 bool UIRefreshGamePlayerList(C2DAnimCmdHdr *hdr, float *dT)
@@ -474,6 +740,30 @@ bool UIJoinMPGame(C2DAnimCmdHdr *hdr, float *dT)
     else
         ok = func_002F83B0(&theLobby, name);
     return ok;
+}
+
+/* a clan game's sides swapped: START (when the lobby's game is in state 4) locks the game and
+ * reports the status, FINISH ends the swap */
+bool UIClanGameSwapSides(C2DAnimCmdHdr *hdr, float *dT)
+{
+    bool done = true;
+    const char *text = ArgText(ArgName(hdr));
+
+    if (text) {
+        if (!strcasecmp(text, "START")) {
+            if (func_002E99E0() == 4) {
+                SetValveValue(CValve::Create("mp_locked_game", (VALVE_TYPE)1), 1);
+                func_002F8350(&theLobby);
+                done = true;
+            } else {
+                done = false;
+            }
+        } else if (!strcasecmp(text, "FINISH")) {
+            func_002BADA0();
+            done = true;
+        }
+    }
+    return done;
 }
 
 bool UICanJoinRoom(C2DAnimCmdHdr *hdr, float *dT)
@@ -625,6 +915,40 @@ bool UIClearGameState(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+/* the game list's filter the argument names given its title (the filters' UI variables made first) */
+bool UISetFilters(C2DAnimCmdHdr *hdr, float *dT)
+{
+    /* (the out-of-line call written out: through ArgName the inline's result would take its
+     * saved register after the named locals) */
+    const char *name = ZAnim.m_CurAnim->GetName(hdr->m_argument_index);
+    CUIVariable *gametype = func_003857C0(&theUIVarManager, "FILTER_GAMETYPE", 0, UIVAR_SESSION);
+    CUIVariable *ratecategory = func_003857C0(&theUIVarManager, "FILTER_RATECATEGORY", 0, UIVAR_SESSION);
+    CUIVariable *map = func_003857C0(&theUIVarManager, "FILTER_MAP", 0, UIVAR_SESSION);
+    CUIVariable *clanaffiliation = func_003857C0(&theUIVarManager, "FILTER_CLANAFFILIATION", 0, UIVAR_SESSION);
+    CUIVariable *responsetime = func_003857C0(&theUIVarManager, "FILTER_RESPONSETIME", 0, UIVAR_SESSION);
+    CUIVariable *buddies = func_003857C0(&theUIVarManager, "FILTER_BUDDIES", 0, UIVAR_SESSION);
+    CUIVariable *clanonly = func_003857C0(&theUIVarManager, "FILTER_CLANONLY", 0, UIVAR_SESSION);
+    CUIVariable *raterequirement = func_003857C0(&theUIVarManager, "FILTER_RATEREQUIREMENT", 0, UIVAR_SESSION);
+
+    if (!strcasecmp(name, "GameType"))
+        func_003862A0(gametype, "Game Type");
+    else if (!strcasecmp(name, "RateCategory"))
+        func_003862A0(ratecategory, "Rate Category");
+    else if (!strcasecmp(name, "Map"))
+        func_003862A0(map, "Map");
+    else if (!strcasecmp(name, "ClanAffiliation"))
+        func_003862A0(clanaffiliation, "Clan Affiliation");
+    else if (!strcasecmp(name, "ResponseTime"))
+        func_003862A0(responsetime, "Response Time");
+    else if (!strcasecmp(name, "BuddiesOnly"))
+        func_003862A0(buddies, "Buddies Only");
+    else if (!strcasecmp(name, "ClanOnly"))
+        func_003862A0(clanonly, "Clan Only");
+    else if (!strcasecmp(name, "RateRequirement"))
+        func_003862A0(raterequirement, "Rate Requirement");
+    return true;
+}
+
 bool UIToggleAutoMessages(C2DAnimCmdHdr *hdr, float *dT)
 {
     CUIVariable *var = func_003857C0(&theUIVarManager, "AUTOMESSAGES", 0, UIVAR_SESSION);
@@ -701,6 +1025,29 @@ bool UISetScreenOrigin(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+/* the first pad's right stick given the preset the valve picks, its figures shown in the UI
+ * variables (the sensitivity, the inertia as 1 less it, the dead zone less 0.02) */
+bool UISetStickPreset(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CPad *pad = CInput::m_pads[0];
+
+    if (pad) {
+        unsigned int preset = CValve::Create("stick_preset", (VALVE_TYPE)2)->m_value;
+
+        if (preset < 3) {
+            pad->SetPreset(1, preset);
+            CUIVariable *sensitivity = func_003857C0(&theUIVarManager, "STICK_SENSITIVITY", 0, UIVAR_SESSION);
+            CUIVariable *inertia = func_003857C0(&theUIVarManager, "STICK_INERTIA", 0, UIVAR_SESSION);
+            CUIVariable *deadzone = func_003857C0(&theUIVarManager, "STICK_DEADZONE", 0, UIVAR_SESSION);
+
+            sensitivity->SetReal(pad->GetAcceleration(1));
+            inertia->SetReal(1.0f - pad->m_stickType[1].m_socom2_20);
+            deadzone->SetReal(pad->GetDeadZone(1) - 0.02f);
+        }
+    }
+    return true;
+}
+
 bool UIIsSpaceForSaveGameFile(C2DAnimCmdHdr *hdr, float *dT)
 {
     int space = func_003A1210(&theMemCard);
@@ -774,8 +1121,6 @@ bool UILoadConfig(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
-static char s_savename[64];
-
 bool UISaveConfig(C2DAnimCmdHdr *hdr, float *dT)
 {
     const char *name = ArgName(hdr);
@@ -796,6 +1141,63 @@ bool UISaveConfig(C2DAnimCmdHdr *hdr, float *dT)
 bool UIMediusEnabled(C2DAnimCmdHdr *hdr, float *dT)
 {
     return theNetwork.m_bMediusEnabled;
+}
+
+/* PlayMPEG's parser: the film by ARGUMENT or FILE (or its INDEX), whether it fades, plays in the
+ * game and interlaced, the audio stream (a number, a valve or a UI variable), the rectangles and
+ * the filtering (SOCOM II's; the name ours) */
+_zanim_cmd_hdr *UIPlayMPEGParse(const char *name, _zrdr *rdr)
+{
+    char *var;
+    char buf[800];
+    UIPlayMPEGCmd *cmd = (UIPlayMPEGCmd *)_calloc(1, sizeof(UIPlayMPEGCmd), 0, 0);
+    const char *s;
+    _zrdr *stream;
+
+    cmd->header.timeless = 1;
+    cmd->header.data_size = sizeof(UIPlayMPEGCmd);
+    s = zrdr_findstring(rdr, "ARGUMENT");
+    if (!s)
+        s = zrdr_findstring(rdr, "FILE");
+    cmd->m_by_index = 0;
+    if (!s) {
+        s = zrdr_findstring(rdr, "INDEX");
+        if (s)
+            cmd->m_by_index = 1;
+    }
+    if (s && *s) {
+        strcpy(buf, s);
+        cmd->SetArgument(buf);
+    }
+    cmd->m_fade = true;
+    func_0032DC00(rdr, "FADE", &cmd->m_fade);
+    cmd->m_ingame = true;
+    func_0032DC00(rdr, "INGAME", &cmd->m_ingame);
+    cmd->m_interlace = true;
+    func_0032DC00(rdr, "INTERLACE", &cmd->m_interlace);
+    cmd->m_stream_type = 0;
+    cmd->m_stream = 0;
+    stream = func_0032F0D0(rdr, "AUDIOSTREAM");
+    if (stream) {
+        if (stream->type == 1) {
+            cmd->m_stream_type = 0;
+            cmd->m_stream = stream->Int();
+        } else {
+            var = 0;
+            if (func_0032DF80(stream, "VALVE", &var)) {
+                cmd->m_stream_type = 1;
+                cmd->m_stream = ZAnim.m_CurAnim->AddName(var);
+            } else if (func_0032DF80(stream, "UIVAR", &var)) {
+                cmd->m_stream_type = 2;
+                cmd->m_stream = ZAnim.m_CurAnim->AddName(var);
+            }
+        }
+    }
+    cmd->m_has_dest = func_0032DC40(rdr, "DEST_RECT", cmd->m_dest);
+    func_0032DC40(rdr, "SOURCE_RECT", cmd->m_source);
+    cmd->m_bilinear = false;
+    func_0032DC00(rdr, "BILINEAR", &cmd->m_bilinear);
+    return (_zanim_cmd_hdr *)cmd;
 }
 
 /* PlayMPEGNoFade's toggle: a function-local static in the original (SOCOM 1's UIPlayMPEG has one,
@@ -875,6 +1277,22 @@ bool UICanInviteMorePlayersToClan(C2DAnimCmdHdr *hdr, float *dT)
     return func_002E5FE0(&theLobby);
 }
 
+bool UIInvitePlayerToClan(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CUIVariable *var = func_003857C0(&theUIVarManager, "PLAYER_INVITE_NAME", 0, UIVAR_SESSION);
+
+    if (var->type == 3) {
+        CSaferStr name;
+
+        if (var->type == 3)
+            name = var->String();
+        bool ok = func_002E7600(&theLobby, name.c_str());
+
+        return ok;
+    }
+    return true;
+}
+
 bool UIInvitePlayerToClanWithArg(C2DAnimCmdHdr *hdr, float *dT)
 {
     return func_002E7600(&theLobby, ArgText(ArgName(hdr)));
@@ -891,6 +1309,20 @@ bool UIVagStreaming(C2DAnimCmdHdr *hdr, float *dT)
         CSnd::Close();
         data_0048DDA0 = 0;
     }
+    return true;
+}
+
+/* the menu's background film: ON the default, OFF none, else the one named */
+bool UIBackgroundMPEG(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *text = ArgText(ArgName(hdr));
+
+    if (!strcmp(text, "ON"))
+        func_001F3BD0(&theGame.m_menuState, 0);
+    else if (!strcmp(text, "OFF"))
+        func_001F3BE0(&theGame.m_menuState);
+    else
+        func_001F3BD0(&theGame.m_menuState, text);
     return true;
 }
 
@@ -1030,6 +1462,33 @@ bool UIGetGameInfo(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+/* GetPlayerInfo's parser: the argument and what to ask for (SOCOM II's; the name ours) */
+_zanim_cmd_hdr *UIGetPlayerInfoParse(const char *name, _zrdr *rdr)
+{
+    char buf[128];
+    UIPlayerInfoCmd *cmd = (UIPlayerInfoCmd *)_calloc(1, sizeof(UIPlayerInfoCmd), 0, 0);
+    const char *s;
+
+    cmd->header.timeless = 1;
+    cmd->header.data_size = sizeof(UIPlayerInfoCmd);
+    s = zrdr_findstring(rdr, "ARGUMENT");
+    if (s && *s) {
+        strcpy(buf, s);
+        cmd->SetArgument(buf);
+    }
+    if (func_0032F0D0(rdr, "BRIEFING"))
+        cmd->m_what = 0;
+    else if (func_0032F0D0(rdr, "CLAN"))
+        cmd->m_what = 1;
+    else if (func_0032F0D0(rdr, "FRIEND"))
+        cmd->m_what = 2;
+    else if (func_0032F0D0(rdr, "LADDER"))
+        cmd->m_what = 3;
+    else
+        cmd->m_what = 0;
+    return (_zanim_cmd_hdr *)cmd;
+}
+
 bool UIGetPlayerInfo(C2DAnimCmdHdr *hdr, float *dT)
 {
     const char *name = ArgText(ArgName(hdr));
@@ -1075,9 +1534,60 @@ bool UIRemoveFromIgnore(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+bool UISendClanMessage(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CUIVariable *var = func_003857C0(&theUIVarManager, "SEND_CLAN_MESSAGE", 0, UIVAR_SESSION);
+
+    if (var->type == 3) {
+        CSaferStr text;
+
+        if (var->type == 3)
+            text = var->String();
+        bool ok = func_002E8310(&theLobby, text.c_str());
+
+        return ok;
+    }
+    return true;
+}
+
 bool UIGetUsagePolicy(C2DAnimCmdHdr *hdr, float *dT)
 {
     func_002F79F0(&theLobby);
+    return true;
+}
+
+/* the player's character type changed to the custom one the argument numbers (from 1), the armory
+ * told its figures */
+bool UIChangeCharacterType(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *type = GetCustomCharTypeName(atoi(ArgText(ArgName(hdr))) - 1);
+    CZNetGame *game = theMission.m_pNetGame;
+
+    strncpy(game->m_chartype, type, 31);
+    game->m_chartype[30] = 0;
+    CCharacterType *ct = func_0053E170(type);
+
+    if (ct) {
+        CharTypeFigures figures;
+        void *stats = ct->m_stats;
+
+        figures.m_0 = func_0053B060(stats);
+        figures.m_4 = func_0053B050(stats);
+        figures.m_8 = func_0053B040(stats);
+        figures.m_min = func_0053B030(stats);
+        figures.m_max = func_0053B020(stats);
+        figures.m_scale = func_0053B010(stats);
+        if (figures.m_min < 0.0f || figures.m_max < 0.0f) {
+            figures.m_min = 0.0f;
+            figures.m_max = 0.0f;
+            data_0045B718->m_50 = 1;
+        }
+        if (figures.m_scale < 0.0f) {
+            figures.m_scale = 0.5f;
+            data_0045B718->m_4f = 1;
+        }
+        func_0030E6A0(data_0045B718, &figures);
+    }
     return true;
 }
 
@@ -1090,6 +1600,38 @@ bool UIGetClanMessages(C2DAnimCmdHdr *hdr, float *dT)
 bool UIIsClanChallengeGame(C2DAnimCmdHdr *hdr, float *dT)
 {
     return false;
+}
+
+/* the next mission of the rotation: the game's launch timed, and the session master picks the
+ * mission (the lobby's choice, 254 the one after the current, 255 the first) and tells the game */
+bool UIAdvanceMPMission(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CZNetGame *game = theMission.m_pNetGame;
+
+    if (!(game && theNetwork.m_bNetwork))
+        return true;
+    int wait = game->m_10->m_value ? 45000 : 30000;
+
+    game->m_c8 = wait + theNetwork.zNetGetTime();
+    if (theNetwork.m_bSessionMaster) {
+        char name[16];
+        char current[16];
+        int index = func_002F8120(&theLobby);
+
+        if (index == 254) {
+            strncpy(current, database, 16);
+            index = func_002C8DB0(&data_00441650, atoi(current + 2), 1)->m_index;
+        }
+        if (index == 255)
+            index = func_002C8840(&data_00441650, 1)->m_index;
+        if (index > 0) {
+            sprintf(name, "mp%d", index);
+            strcpy(database, name);
+        }
+        CZGameState::UpdateLocalGame(game);
+    }
+    func_002ACC10(&theMission, database);
+    return true;
 }
 
 bool UISelectLocale(C2DAnimCmdHdr *hdr, float *dT)
@@ -1132,6 +1674,43 @@ bool UIQuitClan(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+/* GetLadderInfo's parser: which list and which move, the clan ladder's numbered after the player
+ * ladder's (SOCOM II's; the name ours) */
+_zanim_cmd_hdr *UIGetLadderInfoParse(const char *name, _zrdr *rdr)
+{
+    UILadderCmd *cmd = (UILadderCmd *)_calloc(1, sizeof(UILadderCmd), 0, 0);
+
+    cmd->header.timeless = 1;
+    cmd->header.data_size = sizeof(UILadderCmd);
+    if (func_0032F0D0(rdr, "CLAN")) {
+        if (func_0032F0D0(rdr, "Top10"))
+            cmd->m_op = 7;
+        else if (func_0032F0D0(rdr, "LadderPressUp"))
+            cmd->m_op = 8;
+        else if (func_0032F0D0(rdr, "LadderPressDown"))
+            cmd->m_op = 9;
+        else if (func_0032F0D0(rdr, "LadderUp"))
+            cmd->m_op = 10;
+        else if (func_0032F0D0(rdr, "LadderDown"))
+            cmd->m_op = 11;
+        else
+            cmd->m_op = 6;
+    } else if (func_0032F0D0(rdr, "Top10")) {
+        cmd->m_op = 1;
+    } else if (func_0032F0D0(rdr, "LadderPressUp")) {
+        cmd->m_op = 2;
+    } else if (func_0032F0D0(rdr, "LadderPressDown")) {
+        cmd->m_op = 3;
+    } else if (func_0032F0D0(rdr, "LadderUp")) {
+        cmd->m_op = 4;
+    } else if (func_0032F0D0(rdr, "LadderDown")) {
+        cmd->m_op = 5;
+    } else {
+        cmd->m_op = 0;
+    }
+    return (_zanim_cmd_hdr *)cmd;
+}
+
 /* the hard disk operation's result, told to the menu through a valve and the lobby's event handler
  * (HardDriveOperation hands it on; SOCOM II's, the name ours) */
 bool HardDriveOperationCallback(int result)
@@ -1156,6 +1735,99 @@ bool HardDriveOperationCallback(int result)
     SetValveValue(CValve::Create("hard_disk_error_code", (VALVE_TYPE)1), code);
     if (theLobby.m_event_handler)
         theLobby.m_event_handler("HDD_ERROR", 0);
+    return true;
+}
+
+/* the UI variable the argument names trimmed of its leading and trailing spaces */
+bool UIPruneUIVarSpaces(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CUIVariable *var = func_00385900(&theUIVarManager, ArgText(ArgName(hdr)));
+
+    if (!var || var->type != 3)
+        return true;
+    {
+        char text[800];
+
+        sprintf(text, "%s", var->String());
+        int len = strlen(text);
+
+        if (len > 0) {
+            char *end = &text[len - 1];
+
+            while (*end == ' ')
+                end--;
+            end[1] = 0;
+        }
+        char *start = text;
+
+        while (*start == ' ')
+            start++;
+        func_003862A0(var, start);
+    }
+    return true;
+}
+
+/* whether the UI variable the argument names holds something: a number not 0, a text not empty, an
+ * array with items */
+bool UITestUIVar(C2DAnimCmdHdr *hdr, float *dT)
+{
+    bool result = false;
+    const char *name = ArgName(hdr);
+
+    if (name) {
+        CUIVariable *var = func_00385900(&theUIVarManager, name);
+
+        if (var) {
+            int type = var->type;
+
+            if (type == 1) {
+                result = var->Int() != 0;
+            } else if (type == 2) {
+                result = var->Real() != 0.0f;
+            } else if (type == 3) {
+                const char *text = var->String();
+
+                result = text && *text;
+            } else if (type == 4) {
+                result = var->Count() != 0;
+            }
+        }
+    }
+    return result;
+}
+
+/* the UI variable the argument names emptied as its type has it: 0, 0.0, "" or an empty array.
+ * OPEN, 2 instructions short (0x154 of 0x15C): the target tests the type held in a0 (an if-chain,
+ * the tests between the bodies) and the inlined setters re-read it (lbu v0,0(s0)); here MW reuses
+ * the dispatch's load in them. A switch gives the compare chain first (0x164), the type read in
+ * each test or kept in a local both 0x154 */
+bool UIClearUIVar(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *name = ArgName(hdr);
+
+    if (name) {
+        CUIVariable *var = func_00385900(&theUIVarManager, name);
+
+        if (var) {
+            int type = var->type;
+
+            if (type == 1) {
+                var->SetInt(0);
+            } else if (type == 2) {
+                var->SetReal(0.0f);
+            } else if (type == 3) {
+                func_003862A0(var, "");
+            } else if (type == 4) {
+                NetCnfRdr rdr;
+
+                func_00333AE0(&rdr);
+                func_003339B0(&rdr, 0);
+                func_00333770(&rdr);
+                func_00386460(var, &rdr);
+                func_00333A20(&rdr, -1);
+            }
+        }
+    }
     return true;
 }
 
@@ -1190,6 +1862,85 @@ bool UINetCnfClose(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+/* the valve the argument names set to the index of the configuration in use, among the valid ones.
+ * OPEN, 22 instructions: the same code with the loop's registers permuted (as SelectCombo's) */
+bool UINetCnfCurrCombo(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CValve *valve = CValve::Create(ArgText(ArgName(hdr)), (VALVE_TYPE)2);
+    int count = data_00457C40.m_count;
+    NetCnfEntry *cur = func_001E8890(&data_00457C40);
+    int index = 0;
+
+    for (int i = 0; i < count; i++) {
+        NetCnfEntry *e = data_00457C40.Entry(i);
+
+        if (e && e->m_type >= 0) {
+            if (!strcmp(cur->m_name, e->m_name)) {
+                SetValveValue(valve, index);
+                break;
+            }
+            index++;
+        }
+    }
+    return true;
+}
+
+/* the configuration the argument's valve indexes (among the valid ones) selected, when no memory
+ * card has changed.
+ * OPEN, 16 instructions, registers only: the target keeps the count in t0, the walking pointer in
+ * t1, i in a2, the index in a3 and the entry in a1; here count a1, walk a2, i t0, index t1, entry
+ * a3. Measured without result: i or the index declared outside the loop or the function's top,
+ * the count in a local, the entry declared before the loop or assigned in the test, the accessor
+ * called three times, the compare's operands swapped */
+bool UINetCnfSelectCombo(C2DAnimCmdHdr *hdr, float *dT)
+{
+    bool ok = false;
+
+    if (!func_003A1370(&theMemCard, 0, 0)) {
+        CValve *valve = CValve::Create(ArgText(ArgName(hdr)), (VALVE_TYPE)2);
+
+        if (valve) {
+            int index = 0;
+
+            for (int i = 0; i < data_00457C40.m_count; i++) {
+                NetCnfEntry *e = data_00457C40.Entry(i);
+
+                if (e && e->m_type >= 0 && index++ == valve->m_value) {
+                    if (func_001E8910(data_003DF360, e->m_name, data_004567C0) >= 0)
+                        ok = true;
+                    break;
+                }
+            }
+        }
+    }
+    return ok;
+}
+
+/* the network interfaces listed into the UI variable the argument names, "vendor/product" each.
+ * OPEN, 10 instructions, all stack offsets: the target's frame is 48 bytes larger (0xED0), the
+ * text at 0xE00 and the reader at 0xE80 with a hole between the list's end (0xDD0) and the text --
+ * a local the original kept a slot for (an unused array is dropped here; a 176-byte text buffer
+ * fixes the frame but not the text's offset; the list's 0x240 stride is fixed by the loop) */
+bool UINetGetInterfaceList(C2DAnimCmdHdr *hdr, float *dT)
+{
+    NetCnfRdr rdr;
+    char text[128];
+    NetInterfaceInfo list[6];
+    int n = func_0030BD40(list, 6);
+    CUIVariable *var = func_003857C0(&theUIVarManager, ArgText(ArgName(hdr)), 0, UIVAR_SESSION);
+
+    func_00333AE0(&rdr);
+    func_003339B0(&rdr, 0);
+    for (int i = 0; i < n; i++) {
+        sprintf(text, "%s/%s", list[i].m_vendor, list[i].m_product);
+        func_00333610(&rdr, text);
+    }
+    func_00333770(&rdr);
+    func_00386460(var, &rdr);
+    func_00333A20(&rdr, -1);
+    return true;
+}
+
 bool UIClanHasInvitations(C2DAnimCmdHdr *hdr, float *dT)
 {
     return func_002E7290(&theLobby);
@@ -1203,6 +1954,24 @@ bool UIHasClanInvitations(C2DAnimCmdHdr *hdr, float *dT)
 bool UIStopAllSounds(C2DAnimCmdHdr *hdr, float *dT)
 {
     func_00346C00();
+    return true;
+}
+
+/* the IOP rebooted for what comes next (SOCOM 1's took the mode's name the same way) */
+bool UIRebootIOP(C2DAnimCmdHdr *hdr, float *dT)
+{
+    int mode = 2;
+    const char *text = ArgText(ArgName(hdr));
+
+    if (!strcasecmp(text, "Singleplayer"))
+        mode = 2;
+    else if (!strcasecmp(text, "Multiplayer"))
+        mode = 3;
+    else if (!strcasecmp(text, "NetConfig"))
+        mode = 4;
+    else if (!strcasecmp(text, "MainMenu"))
+        mode = 5;
+    func_0034F9B0(&theIOPManager, mode);
     return true;
 }
 
@@ -1329,6 +2098,119 @@ bool UISuspendMenuInput(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+/* waiting for the network: on failure the lobby is reset and the menu told (an error text for
+ * MP_MEDIUS_ERROR), the valve 0; once it is up, the valve 1 -- then done either way */
+void CSMInitNetwork::WaitForNetwork(unsigned char event)
+{
+    char text[256];
+
+    switch (event) {
+    case 0:
+        if (!func_0030DEE0(&theNetwork)) {
+            func_002EFE20(&theLobby, 2);
+            func_002DFE50(&theLobby);
+            sprintf(text, "Network Initialization Error: %s (%d)", "Cannot Initialize Network", 0);
+            theGame.m_menuState.RunEventAnim("MP_MEDIUS_ERROR", text);
+            SetValveValue(m_valve, 0);
+            SetState(&CSimpleStateMachine::Finish);
+        }
+        break;
+    case 1:
+        if (func_0030BF20()) {
+            SetValveValue(m_valve, 1);
+            SetState(&CSimpleStateMachine::Finish);
+        }
+        break;
+    case 2:
+        break;
+    }
+}
+
+/* the network's initialisation started, then waited for */
+void CSMInitNetwork::Initialize(unsigned char event)
+{
+    switch (event) {
+    case 0:
+        func_0030E290(&theNetwork);
+        SetState((SSMState)&CSMInitNetwork::WaitForNetwork);
+        break;
+    case 1:
+        break;
+    case 2:
+        break;
+    }
+}
+
+bool CSMInitNetwork::Start()
+{
+    CSimpleStateMachine::Start();
+    SetState((SSMState)&CSMInitNetwork::Initialize);
+    return true;
+}
+
+/* the machine InitNetwork runs (a function-local static in the original, likely: held to its
+ * address by its placeholder) */
+extern "C" CSMInitNetwork *data_00414EB8;
+
+/* the personas on the lobby server listed into PLAYERPERSONALIST: each one's index and name, then
+ * "<New Persona>" up to three (SOCOM II's; the name ours: UpdateAcctInfo, DeleteMUISPersona and
+ * LobbyConnect call it) */
+void UpdatePersonaList(const char *host, int port)
+{
+    NetCnfRdr rdr;
+
+    func_00333AE0(&rdr);
+    int n = func_002FB920(data_0044FC60, host, port);
+    int i = 0;
+
+    func_003339B0(&rdr, 0);
+    for (; i < n; i++) {
+        const char *name = func_002FD510(data_0044FC60, host, port, i);
+
+        func_003339B0(&rdr, 0);
+        func_00333700(&rdr, i);
+        func_00333610(&rdr, name);
+        func_00333770(&rdr);
+    }
+    for (; i < 3; i++) {
+        func_003339B0(&rdr, 0);
+        func_00333700(&rdr, -1);
+        func_00333610(&rdr, "<New Persona>");
+        func_00333770(&rdr);
+    }
+    func_00333770(&rdr);
+    func_00386460(func_003857C0(&theUIVarManager, "PLAYERPERSONALIST", 0, UIVAR_SESSION), &rdr);
+    func_00333A20(&rdr, -1);
+}
+
+/* the network started: the lobby's events handed to the menu, the machine made and run until it
+ * is done, the valve the argument names told how it went (SOCOM 1's built no machine).
+ * OPEN, 0 instructions: every byte is right; the two calls name CSimpleStateMachine's constructor
+ * and destructor, rows outside this lane (0x3A5DD0 __ct__19CSimpleStateMachineFv: the vtable
+ * 0x408240 stored, the queue built, the idle state 0x3E07D8 copied in; 0x3A5CC0
+ * __dt__19CSimpleStateMachineFv: the same vtable stored first, deleted when asked) -- matches once
+ * the map names them (measured with both renamed) */
+bool UIInitNetwork(C2DAnimCmdHdr *hdr, float *dT)
+{
+    bool done = false;
+
+    if (!data_00414EB8) {
+        CValve *valve = CValve::Create(ArgName(hdr), (VALVE_TYPE)2);
+
+        theLobby.m_event_handler = UILobbyEventHandler;
+        data_00414EB8 = new CSMInitNetwork(valve);
+        data_00414EB8->Start();
+    } else {
+        func_003A5C30(data_00414EB8);
+        if (func_003A5C10(data_00414EB8)) {
+            delete data_00414EB8;
+            data_00414EB8 = 0;
+            done = true;
+        }
+    }
+    return done;
+}
+
 bool UIIsControllerConnected(C2DAnimCmdHdr *hdr, float *dT)
 {
     bool connected = false;
@@ -1363,6 +2245,17 @@ bool UIMediusInit(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+/* whether the persona the argument names exists on the lobby server (its host and port the UI
+ * variables') */
+bool UIMUISPersonaExists(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *name = ArgText(ArgName(hdr));
+    const char *host = func_003857C0(&theUIVarManager, "LOBBY_HOST", 0, UIVAR_PERMANENT)->String();
+    CUIVariable *port = func_003857C0(&theUIVarManager, "LOBBY_PORT", 0, UIVAR_PERMANENT);
+
+    return func_002FBBF0(data_0044FC60, host, port->Int(), name);
+}
+
 bool UIVerifyPatchLevel(C2DAnimCmdHdr *hdr, float *dT)
 {
     const char *level = ArgName(hdr);
@@ -1378,12 +2271,187 @@ bool UIVerifyPatchLevel(C2DAnimCmdHdr *hdr, float *dT)
     return ok;
 }
 
+/* a mission's information put in the names its record carries: the mission the index valve picks
+ * among the set's (single or multiplayer), its name to a UI variable and its number to a valve */
+bool UIGetMissionInformation(C2DAnimCmdHdr *hdr, float *dT)
+{
+    UIMissionInfoCmd *cmd = (UIMissionInfoCmd *)hdr;
+    const char *name = ZAnim.m_CurAnim->GetName(cmd->m_name);
+    const char *number = ZAnim.m_CurAnim->GetName(cmd->m_number);
+    const char *index = ZAnim.m_CurAnim->GetName(cmd->m_index);
+
+    if (index && name && number) {
+        int want = CValve::Create(index, (VALVE_TYPE)1)->m_value - 1;
+        unsigned char multiplayer = cmd->m_multiplayer;
+        int n = 0;
+
+        for (std::vector<MPMissionInfo *>::iterator it = data_00441650.begin(); it != data_00441650.end(); ++it) {
+            if (multiplayer == (*it)->m_multiplayer) {
+                if (n == want) {
+                    func_003862A0(func_003857C0(&theUIVarManager, name, 0, UIVAR_SESSION), (*it)->m_name.c_str());
+                    SetValveValue(CValve::Create(number, (VALVE_TYPE)1), (*it)->m_number);
+                    break;
+                }
+                n++;
+            }
+        }
+    }
+    return true;
+}
+
+/* GetMissionInformation's parser: the mission set and the names the mission's fields go to
+ * (SOCOM II's; the name ours) */
+_zanim_cmd_hdr *UIGetMissionInformationParse(const char *name, _zrdr *rdr)
+{
+    UIMissionInfoCmd *cmd = (UIMissionInfoCmd *)_calloc(1, sizeof(UIMissionInfoCmd), 0, 0);
+
+    cmd->header.timeless = 1;
+    cmd->header.data_size = sizeof(UIMissionInfoCmd);
+    if (func_0032F0D0(rdr, "MULTIPLAYER"))
+        cmd->m_multiplayer = 1;
+    else
+        cmd->m_multiplayer = 0;
+    cmd->m_name = ZAnim.m_CurAnim->AddName(zrdr_findstring(rdr, "NAME"));
+    cmd->m_number = ZAnim.m_CurAnim->AddName(zrdr_findstring(rdr, "NUMBER"));
+    cmd->m_index = ZAnim.m_CurAnim->AddName(zrdr_findstring(rdr, "INDEX"));
+    return (_zanim_cmd_hdr *)cmd;
+}
+
+/* CharacterProfile's parser: what to do with the profile (SOCOM II's; the name ours) */
+_zanim_cmd_hdr *UICharacterProfileParse(const char *name, _zrdr *rdr)
+{
+    UIProfileCmd *cmd = (UIProfileCmd *)_calloc(1, sizeof(UIProfileCmd), 0, 0);
+
+    cmd->header.timeless = 1;
+    cmd->header.data_size = sizeof(UIProfileCmd);
+    if (func_0032F0D0(rdr, "EXISTS"))
+        cmd->m_op = UIPROFILE_EXISTS;
+    else if (func_0032F0D0(rdr, "LOAD"))
+        cmd->m_op = UIPROFILE_LOAD;
+    else if (func_0032F0D0(rdr, "SAVE"))
+        cmd->m_op = UIPROFILE_SAVE;
+    else if (func_0032F0D0(rdr, "SaveToServer"))
+        cmd->m_op = UIPROFILE_SAVE_TO_SERVER;
+    else if (func_0032F0D0(rdr, "WaitForServerSaveComplete"))
+        cmd->m_op = UIPROFILE_WAIT_FOR_SERVER_SAVE;
+    else if (func_0032F0D0(rdr, "LoadFromServer"))
+        cmd->m_op = UIPROFILE_LOAD_FROM_SERVER;
+    else if (func_0032F0D0(rdr, "WaitForLoadComplete"))
+        cmd->m_op = UIPROFILE_WAIT_FOR_LOAD;
+    else if (func_0032F0D0(rdr, "DELETE"))
+        cmd->m_op = UIPROFILE_DELETE;
+    else
+        cmd->m_op = UIPROFILE_NONE;
+    return (_zanim_cmd_hdr *)cmd;
+}
+
+/* the account's details sent to the lobby server (its host and port, the name, password, home town,
+ * gender and whether the password is kept secure), then the personas listed again */
+bool UIUpdateAcctInfo(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CUIVariable *host = func_003857C0(&theUIVarManager, "LOBBY_HOST", 0, UIVAR_PERMANENT);
+    CUIVariable *port = func_003857C0(&theUIVarManager, "LOBBY_PORT", 0, UIVAR_PERMANENT);
+    CUIVariable *name = func_003857C0(&theUIVarManager, "PLAYERNAMEVAR", 0, UIVAR_SESSION);
+    CUIVariable *password = func_003857C0(&theUIVarManager, "PLAYERPASSWORD", 0, UIVAR_SESSION);
+    CUIVariable *hometown = func_003857C0(&theUIVarManager, "PLAYERHOMETOWN", 0, UIVAR_SESSION);
+    CValve *gender = CValve::Create("PLAYERGENDER", (VALVE_TYPE)3);
+    bool secure = CValve::Create("SecurePassword", (VALVE_TYPE)1)->m_value != 0;
+
+    func_002FD0D0(data_0044FC60, host->String(), port->Int(), name->String(), password->String(),
+                  hometown->String(), gender->m_value ? ACCT_FEMALE : ACCT_MALE, secure);
+    UpdatePersonaList(host->String(), port->Int());
+    return true;
+}
+
+/* GetMUISPersonaInfo's parser: the persona by INDEX or by NAME, the argument the one given (SOCOM
+ * II's; the name ours) */
+_zanim_cmd_hdr *UIPersonaParse(const char *name, _zrdr *rdr)
+{
+    UIPersonaCmd *cmd = (UIPersonaCmd *)_calloc(1, sizeof(UIPersonaCmd), 0, 0);
+    const char *s;
+
+    cmd->header.timeless = 1;
+    cmd->header.data_size = sizeof(UIPersonaCmd);
+    s = zrdr_findstring(rdr, "INDEX");
+    if (s) {
+        cmd->m_by = 1;
+    } else {
+        s = zrdr_findstring(rdr, "NAME");
+        cmd->m_by = 2;
+    }
+    cmd->m_argument_index = ZAnim.m_CurAnim->AddName(s);
+    return (_zanim_cmd_hdr *)cmd;
+}
+
+/* CompareValues's parser: the two values, each a name or a UI variable's, and how to compare them
+ * (SOCOM II's; the name ours) */
+_zanim_cmd_hdr *UICompareValuesParse(const char *name, _zrdr *rdr)
+{
+    UICompareValuesCmd *cmd = (UICompareValuesCmd *)_calloc(1, sizeof(UICompareValuesCmd), 0, 0);
+    const char *s;
+
+    cmd->header.timeless = 1;
+    cmd->header.data_size = sizeof(UICompareValuesCmd);
+    s = zrdr_findstring(rdr, "VALUE1");
+    cmd->m_uivar1 = 0;
+    if (!s) {
+        s = zrdr_findstring(rdr, "UIVAR1");
+        cmd->m_uivar1 = 1;
+    }
+    if (s)
+        cmd->m_value1 = ZAnim.m_CurAnim->AddName(s);
+    s = zrdr_findstring(rdr, "VALUE2");
+    cmd->m_uivar2 = 0;
+    if (!s) {
+        s = zrdr_findstring(rdr, "UIVAR2");
+        cmd->m_uivar2 = 1;
+    }
+    if (s)
+        cmd->m_value2 = ZAnim.m_CurAnim->AddName(s);
+    if (func_0032F0D0(rdr, "CASE_INSENSITIVE"))
+        cmd->m_case_insensitive = 1;
+    else
+        cmd->m_case_insensitive = 0;
+    if (func_0032F0D0(rdr, "COMPARE_AFTER_FORMATTING"))
+        cmd->m_after_formatting = 1;
+    else
+        cmd->m_after_formatting = 0;
+    return (_zanim_cmd_hdr *)cmd;
+}
+
 bool UILobbyDisconnect(C2DAnimCmdHdr *hdr, float *dT)
 {
     if (func_003045B0(&data_0044FE10))
         func_003043E0(&data_0044FE10);
     else
         func_002DFDD0(&theLobby);
+    return true;
+}
+
+/* the server's news put in SERVER_NEWS (its message, then the lines) and its name in SERVER_NAME,
+ * for the server the argument's valve picks.
+ * OPEN, 10 instructions, registers only: the target keeps the valve in s0 and the counter (then the
+ * SERVER_NAME variable) in s1; here the other way round. Measured without result: the counter or
+ * the variable declared first, a while loop, the line in a local, the valve after the reader, the
+ * reader as a class with its constructor and destructor (0x333AE0/0x333A20 renamed for the test) */
+bool UIUpdateServerInfo(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CValve *valve = CValve::Create(ArgName(hdr), (VALVE_TYPE)2);
+    NetCnfRdr rdr;
+
+    func_00333AE0(&rdr);
+    func_003339B0(&rdr, 0);
+    func_00333610(&rdr, func_002FDA50(data_0044FC60, valve->m_value));
+    func_00333610(&rdr, "\n\n");
+    for (int i = 0; i < func_002FDEC0(data_0044FC60); i++)
+        func_00333610(&rdr, func_002FDEA0(data_0044FC60, i));
+    func_00333770(&rdr);
+    func_003857C0(&theUIVarManager, "SERVER_NEWS", (_zrdr *)&rdr, UIVAR_SESSION);
+    CUIVariable *name = func_003857C0(&theUIVarManager, "SERVER_NAME", 0, UIVAR_SESSION);
+
+    if (name)
+        func_003862A0(name, func_002FDAA0(data_0044FC60, valve->m_value));
+    func_00333A20(&rdr, -1);
     return true;
 }
 

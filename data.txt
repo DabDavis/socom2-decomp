@@ -644,6 +644,7 @@
 0x00414DC0 0x4 _local_wildcard_str  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Close__10CZAnimMainFv)
 0x00414E00 0x40 database  # OVL1 bss; s1:data-exact (size SOCOM 1's; via SetDatabase__FPCc)
 0x00414E40 0x4 g_menuRootNode  # OVL1 bss; s1:by hand (GetMenuNode and its register pair read and write it where SOCOM 1's use g_menuRootNode)
+0x00414E50 0x40 s_savename  # OVL1 bss; zanim_menu.cpp's static saved-game name ("SaveGame%d" sprintf'd into it, then handed to the memory card): SaveConfig, GetNumSavedGames, DoesSlotHaveGame, Save/LoadSavedGame and 0x2801C0 address it; 64 bytes up to g_can_use_switch; 20 references in 6 functions
 0x00414E90 0x4 g_can_use_switch  # OVL1 bss; s1:data-seq (size SOCOM 1's; via UISwitchSides__FP13C2DAnimCmdHdrPf)
 0x00414E98 0x4 g_can_use_ready  # OVL1 bss; SOCOM 1's (gp-29660 there, beside g_can_use_switch): UIReadyToLoad compares the network's local time with it and sets it 5000 on, as SOCOM 1's does; 2 references in 1 function
 0x00414ED0 0xE44 g_MenuStack  # OVL1 bss; SOCOM 1's (0xA34 there): GetMenuStack returns it where SOCOM 1's returns g_MenuStack, UIPopUpDialog passes it to CMenuStack::PopUpDialog as SOCOM 1's does; the pop-up at +0xE40 (SOCOM 1's +0xA30, UIKillPopUp's test) is the last member read and the next object starts at 0x415D18; 41 references in 9 functions (GetMenuStack, the three button handlers, FlushMenuHistory, KillPopUp, SwitchMenu, PopUpDialog, the unit's initialiser 0x3FFCA0)

@@ -6,9 +6,25 @@
 #ifndef ZANIM_MENU_H
 #define ZANIM_MENU_H
 
+#include <string>
+
 #include "zanim.h"
 #include "../ztwod/ztwod.h"
 #include "../zinput/zinput.h"
+
+/* a string that is never null (SOCOM 1's zutil.h: MSL's basic_string, a null pointer assigned as
+ * the empty string -- its operator=, lines 546-551, inlined in the menu's string handlers in both
+ * builds. zentity.h and fts_state.h keep stand-ins of it until <string> replaces them) */
+class CSaferStr : public std::string {
+public:
+    void operator=(const char *sz)
+    {
+        if (sz)
+            assign(sz);
+        else
+            erase();
+    }
+};
 
 /* A UI command as a menu's ZAnim sequence carries it. SOCOM 1's DWARF: 8 bytes -- the header, the
  * node reference at 4, the command's type at 6 and its argument's name index at 7. SOCOM II's
@@ -24,12 +40,119 @@ public:
     unsigned char m_command_type;     // 0xa (SOCOM 1's at 6): 0 until GetUICommandType names it
 };
 
+/* a UI command whose record a parser builds (the eleven commands with a second function in the
+ * table, called with the command's name and its rdr data): the header, then a halfword the parsers
+ * zero with the argument's name (SOCOM II's; the names ours) */
+struct UIParsedCmd : public C2DAnimCmdHdr {
+    /* the argument's name added to the anim's names, if there is one (the parsers'; ours) */
+    void SetArgument(const char *name)
+    {
+        if (name) {
+            m_argument_index = ZAnim.m_CurAnim->AddName(name);
+            m_c = 0;
+        }
+    }
+
+    unsigned short m_c;   // 0xc
+};
+
 /* GetPlayerInfo's record: the command and what to ask for, read by its parser out of the tags
  * (0..3; SOCOM II's; the names ours) */
-struct UIPlayerInfoCmd : public C2DAnimCmdHdr {
-    unsigned short m_c;   // 0xc
+struct UIPlayerInfoCmd : public UIParsedCmd {
     int m_what;   // 0x10
 };
+
+/* CompareValues's record: two values, each a name (VALUE1/2) or a UI variable's (UIVAR1/2), and
+ * how to compare them (SOCOM II's; the names ours) */
+struct UICompareValuesCmd : public UIParsedCmd {
+    unsigned char m_value1;   // 0x10
+    unsigned char m_uivar1;   // 0x11: m_value1 names a UI variable
+    unsigned char m_value2;   // 0x12
+    unsigned char m_uivar2;   // 0x13
+    unsigned char m_case_insensitive;   // 0x14
+    unsigned char m_after_formatting;   // 0x15
+};
+
+/* GetMUISPersonaInfo's record: the persona by its INDEX (1) or its NAME (2), the argument naming
+ * which (SOCOM II's; the names ours) */
+struct UIPersonaCmd : public UIParsedCmd {
+    unsigned char m_by;   // 0x10
+};
+
+/* CharacterProfile's record: what to do with the profile (SOCOM II's; the names ours) */
+enum UIPROFILE_OP {
+    UIPROFILE_LOAD = 0,
+    UIPROFILE_SAVE = 1,
+    UIPROFILE_EXISTS = 2,
+    UIPROFILE_SAVE_TO_SERVER = 3,
+    UIPROFILE_WAIT_FOR_SERVER_SAVE = 4,
+    UIPROFILE_LOAD_FROM_SERVER = 5,
+    UIPROFILE_WAIT_FOR_LOAD = 6,
+    UIPROFILE_DELETE = 7,
+    UIPROFILE_NONE = 0xFFFFFF
+};
+
+struct UIProfileCmd : public UIParsedCmd {
+    UIPROFILE_OP m_op;   // 0x10
+};
+
+/* GetMissionInformation's record: the mission set and the names its fields go to (SOCOM II's; the
+ * names ours) */
+struct UIMissionInfoCmd : public UIParsedCmd {
+    unsigned char m_multiplayer;   // 0x10
+    int m_name;   // 0x14
+    int m_number;   // 0x18
+    int m_index;   // 0x1c
+};
+
+/* GetLadderInfo's record: which list and which move (1..5, 7..11 for the clan ladder; SOCOM II's;
+ * the name ours) */
+struct UILadderCmd : public UIParsedCmd {
+    int m_op;   // 0x10
+};
+
+/* PlayMPEG's record: the film (by name or by index), how it plays, the audio stream as a number or
+ * a valve's or UI variable's name, and the rectangles (SOCOM II's; the names ours) */
+struct UIPlayMPEGCmd : public UIParsedCmd {
+    bool m_fade;   // 0x10
+    bool m_ingame;   // 0x11
+    bool m_interlace;   // 0x12
+    int m_stream_type;   // 0x14: 0 a number, 1 a valve, 2 a UI variable
+    int m_stream;   // 0x18
+    unsigned char m_has_dest;   // 0x1c
+    bool m_bilinear;   // 0x1d
+    unsigned char _1e[2];
+    int m_source[4];   // 0x20
+    int m_dest[4];   // 0x30
+    unsigned char m_by_index;   // 0x40
+};
+
+/* SendChatText's and SendMediusChat's record: the UI variable the recipient is in (SOCOM II's; the
+ * names ours) */
+struct UIChatCmd : public UIParsedCmd {
+    char m_recip_uivar[32];   // 0x10
+};
+
+/* CopyUIVar's record: the variables' names, -1 for none (SOCOM II's; the names ours) */
+struct UICopyUIVarCmd : public UIParsedCmd {
+    int m_from;   // 0x10
+    int m_to;   // 0x14
+};
+
+/* the personas listed into PLAYERPERSONALIST (zanim_menu.cpp's) */
+void UpdatePersonaList(const char *host, int port);
+
+/* a command's type by its name (zanim_menu.cpp's) */
+int GetUICommandType(const char *name);
+
+/* the reader's lookups the parsers use (SOCOM 1's zrdr_findstring; the others not named yet:
+ * a tag's bool, its rectangle, a string in an array) */
+char *zrdr_findstring(const _zrdr *rdr, const char *tag);
+extern "C" {
+bool func_0032DC00(_zrdr *rdr, const char *tag, bool *out);
+unsigned char func_0032DC40(_zrdr *rdr, const char *tag, int *out);
+bool func_0032DF80(_zrdr *rdr, const char *tag, char **out);
+}
 
 /* a UI command's handler: whether the command is done */
 typedef bool (*UICommandFunc)(C2DAnimCmdHdr *hdr, float *dT);
@@ -104,8 +227,34 @@ enum UIVAR_LONGEVITY {
     UIVAR_PERMANENT = 2
 };
 
+class CUIVariable;
+extern "C" {
+void func_0032F350(_zrdr *value);           /* (a value's storage let go of) */
+void func_003863D0(CUIVariable *var);       /* (a variable's change told to what it is attached to) */
+}
+
 class CUIVariable : public _zrdr {
 public:
+    /* a number set, unless it already holds it (ours: ClearUIVar's and the options' inline) */
+    void SetInt(int value)
+    {
+        if (type != 1 || integer != value) {
+            func_0032F350(this);
+            type = 1;
+            integer = value;
+            func_003863D0(this);
+        }
+    }
+    void SetReal(float value)
+    {
+        if (type != 2 || real != value) {
+            func_0032F350(this);
+            type = 2;
+            real = value;
+            func_003863D0(this);
+        }
+    }
+
     char *m_varname;   // 0x8
     unsigned char m_attached_items[0xc];   // 0xc: SOCOM 1's vector
     UIVAR_LONGEVITY m_longevity;   // 0x18
@@ -159,17 +308,22 @@ public:
     void MyMajorGameState(MP_MAJOR_GAME_STATE state);
     void MyMinorGameState(MP_MINOR_GAME_STATE state);
 
-    unsigned char _0[0x28];
+    unsigned char _0[0x10];
+    CValve *m_10;   // 0x10: a valve AdvanceMPMission tests (a longer wait when on)
+    unsigned char _14[0x28 - 0x14];
     CValve *m_pJoinGameValve;   // 0x28 (SOCOM 1's at 0x24)
     unsigned char _2c[0xac - 0x2c];
     int m_persona_object_index;   // 0xac (SOCOM 1's at 0x70)
-    unsigned char _b0[0xcc - 0xb0];
+    unsigned char _b0[0xc8 - 0xb0];
+    unsigned int m_c8;   // 0xc8: when the next mission launches (AdvanceMPMission)
     unsigned char m_late_joiner;   // 0xcc (SOCOM 1's at 0x94)
     unsigned char _cd[0xd8 - 0xcd];
     unsigned char m_ten_second_launch;   // 0xd8 (SOCOM 1's at 0x9F)
     unsigned char m_joined;   // 0xd9: CheckJoinMP sets it (SOCOM II's; the name ours)
     unsigned char _da[0xe4 - 0xda];
     unsigned int m_launch_time;   // 0xe4 (SOCOM 1's clock's at 0xA8)
+    unsigned char _e8[0x12c - 0xe8];
+    char m_chartype[31];   // 0x12c: the character type's name (ChangeCharacterType)
 };
 
 class CZPersonaState {
@@ -195,6 +349,27 @@ public:
 };
 extern CMission theMission;
 
+/* the clock as libcdvd reads it (BCD bytes) */
+struct sceCdCLOCK {
+    unsigned char stat;
+    unsigned char second;
+    unsigned char minute;
+    unsigned char hour;
+    unsigned char pad;
+    unsigned char day;
+    unsigned char month;
+    unsigned char year;
+};
+extern "C" int sceCdReadClock(sceCdCLOCK *clock);
+extern "C" void sceScfGetLocalTimefromRTC(sceCdCLOCK *clock);
+
+/* a memory card file's information as the saved-game handlers read it (their 272-byte local; the
+ * text from 12, "This game is a dummy game." in SaveConfig's dummies; ours) */
+struct MemCardFileInfo {
+    unsigned char _0[12];
+    char m_text[260];   // 0xc
+};
+
 /* the memory card (SOCOM 1's CMemCard, 0x28 bytes; only what the handlers use) */
 class CMemCard {
 public:
@@ -212,7 +387,9 @@ public:
     unsigned char _0[0x8];
     int m_cur_port;   // 0x8
     int m_cur_slot;   // 0xc
-    unsigned char _10[0x20 - 0x10];
+    unsigned char _10[0x18 - 0x10];
+    void *m_18;   // 0x18: what the file information is read from (0x33D4A0)
+    unsigned char _1c[0x20 - 0x1c];
     int m_port;   // 0x20
     int m_slot;   // 0x24 (SOCOM 1's MC_ChSlot sets it)
 };
@@ -316,6 +493,7 @@ public:
     void AddToHistory(const char *name);
     void PopUpDialog(const char *name);
     void FlushHistory(bool all);
+    void HandleCommand(const char *name);
     /* an entry put on top: a command for the screen and its argument (the button handlers inline it,
      * both builds; the name ours) */
     void Push(int id, const char *argname)
@@ -368,9 +546,69 @@ class CCharacterType {
 public:
     unsigned char _0[0x2e8];
     unsigned char m_weapons[0xc];   // 0x2e8 (SOCOM 1's CCharacterWeapList at 0x250)
+    unsigned char _2f4[0x388 - 0x2f4];
+    unsigned char m_stats[4];   // 0x388: what ChangeCharacterType reads its figures from
 };
 
 const char *GetCustomCharTypeName(int index);
+
+/* ---- the network's start-up: a simple state machine ---- */
+
+/* a state machine whose states are member functions, each told what happens to it: 0 entered, 1
+ * ticked, 2 left (SOCOM II's CSimpleStateMachine, by its RTTI at 0x3EF738, its unit at 0x3A5xxx; the
+ * members' names ours). It runs on a thread when it has one (at 4); a state change goes through a
+ * queue (at 0x14: a deque of the 12-byte member pointers, 42 to a block, 0x2852B0 its push) */
+class CSimpleStateMachine;
+typedef void (CSimpleStateMachine::*SSMState)(unsigned char event);
+
+extern "C" {
+void func_002852B0(void *queue, SSMState state);    /* the state queue's push */
+void func_003A5C30(CSimpleStateMachine *sm);        /* (the machine's tick) */
+bool func_003A5C10(CSimpleStateMachine *sm);        /* (whether it is done: no thread and the flag) */
+}
+
+class CSimpleStateMachine {
+public:
+    CSimpleStateMachine();    /* 0x3A5DD0 */
+    ~CSimpleStateMachine();   /* 0x3A5CC0 */
+    /* the machine put back in its idle state, not done (the base's copy, 0x3A5AE0) */
+    virtual bool Start()
+    {
+        SetState(&CSimpleStateMachine::Idle);
+        m_done = 0;
+        return false;
+    }
+    /* a state change queued: every machine's vtable holds the copy linked from this unit (0x276F40),
+     * the first in the link to emit one */
+    virtual void SetState(const SSMState &state)
+    {
+        SSMState s = state;   /* (copied first: passed straight, the reference is handed on) */
+
+        func_002852B0(m_queue, s);
+    }
+
+    void Idle(unsigned char event);     /* 0x3A5CB0: nothing */
+    void Finish(unsigned char event);   /* 0x3A5C70: done once entered or ticked */
+
+    unsigned int m_thread;   // 0x4
+    SSMState m_state;   // 0x8
+    unsigned char m_queue[0x18];   // 0x14
+    unsigned char m_done;   // 0x2c
+    int m_30;   // 0x30
+    int m_thread_id;   // 0x34
+};
+
+/* the network started as a machine: initialised, then waited for, the command's valve told how it
+ * went (SOCOM II's CSMInitNetwork, its vtable 0x4060B0; the members' names ours) */
+class CSMInitNetwork : public CSimpleStateMachine {
+public:
+    CSMInitNetwork(CValve *valve) : m_valve(valve) {}
+    virtual bool Start();
+    void Initialize(unsigned char event);
+    void WaitForNetwork(unsigned char event);
+
+    CValve *m_valve;   // 0x38
+};
 
 /* ---- placeholders: methods and functions not named yet (SOCOM 1's names, by the call SOCOM 1's
  * handler makes at the same place, in the comments) ---- */
@@ -447,6 +685,16 @@ void func_00281D40(C2DAnimCmdHdr *hdr, UITextCallback cb, int lobby);
 /* more of the lobby (SOCOM 1's names by the calls SOCOM 1's handlers make) */
 bool func_002E67D0(CZOnlineLobby *lobby, const char *name);         /* IsLeaderOfClan */
 bool func_002E7600(CZOnlineLobby *lobby, const char *name);         /* InvitePlayerToClan */
+bool func_002E8310(CZOnlineLobby *lobby, const char *text);         /* SendClanMessage */
+void func_002EFE20(CZOnlineLobby *lobby, int state);                /* (the lobby's state set) */
+void func_002DFE50(CZOnlineLobby *lobby);                           /* (the lobby reset) */
+void func_0030E290(CZNetwork *net);                                 /* (the network's initialisation started) */
+bool func_0030DEE0(CZNetwork *net);                                 /* (whether it started) */
+bool func_0030BF20();                                               /* (whether the network is up) */
+void func_0033D4A0(void *src, const char *name, int what, MemCardFileInfo *info);   /* (a file's information) */
+int func_002FBBF0(void *svc, const char *host, int port, const char *name);         /* (whether a persona exists) */
+void func_002ACC10(CMission *mission, const char *name);            /* (the mission set by name) */
+void func_0034F9B0(CIOPManager *iop, int mode);                     /* CIOPManager::RebootIOP (named: zinput.h does not declare it) */
 void func_002E81B0(CZOnlineLobby *lobby, const char *name);         /* TransferLeadership */
 bool func_002F8D50(CZOnlineLobby *lobby, const char *name);         /* (game has a spectator password) */
 bool func_002F8BC0(CZOnlineLobby *lobby, const char *name);         /* (game rejects the rank) */
@@ -476,6 +724,9 @@ void func_00300AF0(CZOnlineLobby *lobby, int index);                /* (friend r
 void func_00300A70(CZOnlineLobby *lobby, int index);                /* (friend confirmed) */
 void func_00300B70(CZOnlineLobby *lobby, int index);                /* (friend added directly) */
 void func_001F3BB0(CMenuState *state, float time);                  /* (the menu's input suspended) */
+void func_001F3BD0(CMenuState *state, const char *movie);           /* (the background film set) */
+bool func_001F3BE0(CMenuState *state);                              /* (the background film stopped: whether one was playing) */
+void func_003A1E10(CMemCard *card, const char *name);               /* (a saved game loaded) */
 double func_00191478(const char *s);                                /* atof */
 void func_0037B980(float f);                                        /* UiSetTtySpeedFactor (SOCOM 1's) */
 void func_0037B990(float f);                                        /* UiSetCounterSpeedFactor */
@@ -519,6 +770,60 @@ struct NetSessionInfo {
 };
 void func_0030CDD0(CZNetwork *net, NetSessionInfo *info);
 
+/* a network interface as the network lists it (0x240 bytes; two names at 8 and 0x108; ours) */
+struct NetInterfaceInfo {
+    unsigned char _0[8];
+    char m_vendor[256];   // 0x8
+    char m_product[256];   // 0x108
+    unsigned char _208[0x240 - 0x208];
+};
+int func_0030BD40(NetInterfaceInfo *list, int max);
+
+/* the multiplayer missions (an object at 0x441650: a mission's record, its index at 0x10) */
+struct MPMissionView {
+    unsigned char _0[0x10];
+    int m_index;   // 0x10
+};
+
+/* the missions as GetMissionInformation walks them: the same object seen as a vector of records,
+ * each a name, whether it is multiplayer and its number (ours) */
+struct MPMissionInfo {
+    std::string m_name;   // 0x0
+    unsigned char m_multiplayer;   // 0xc
+    int m_number;   // 0x10
+};
+extern std::vector<MPMissionInfo *> data_00441650;
+MPMissionView *func_002C8DB0(void *missions, int number, int arg);
+MPMissionView *func_002C8840(void *missions, int arg);
+int func_002F8120(CZOnlineLobby *lobby);
+bool func_003042B0(void *lan, C2D *list);
+bool func_002E28D0(CZOnlineLobby *lobby, C2D *list);
+bool func_002F0EA0(CZOnlineLobby *lobby, C2D *list);
+bool func_002F11F0(CZOnlineLobby *lobby, C2D *list);
+
+/* the network configurations found (an object at 0x457C40: the count, then 0x68-byte entries from
+ * 0x30, each valid when its first word is not negative, its name at 8; ours) */
+struct NetCnfEntry {
+    int m_type;   // 0x0
+    unsigned char _4[4];
+    char m_name[0x60];   // 0x8
+};
+
+struct NetCnfList {
+    /* (an accessor: the handlers test the entry's address for null) */
+    NetCnfEntry *Entry(int i) { return &m_entries[i]; }
+
+    int m_count;   // 0x0
+    unsigned char _4[0x30 - 0x4];
+    NetCnfEntry m_entries[16];   // 0x30
+};
+extern NetCnfList data_00457C40;
+extern char data_004567C0[];
+NetCnfEntry *func_001E8890(NetCnfList *list);                       /* (the configuration in use) */
+int func_001E8910(const char *device, const char *name, void *out); /* (a configuration selected) */
+unsigned char func_002E99E0();                                      /* (the lobby's game state) */
+void func_002BADA0();                                               /* (the side swap finished) */
+
 /* the network configurations as a reader value: an 80-byte object NetCnfClose builds on its stack
  * (its constructor and destructor not named yet, so called through their placeholders) */
 struct NetCnfRdr {
@@ -528,6 +833,18 @@ void func_00333AE0(NetCnfRdr *rdr);                 /* (its constructor) */
 void func_00333A20(NetCnfRdr *rdr, int flags);      /* (its destructor) */
 void func_003339B0(NetCnfRdr *rdr, int arg);
 void func_00333770(NetCnfRdr *rdr);
+void func_00333610(NetCnfRdr *rdr, const char *text);
+void func_00386460(CUIVariable *var, NetCnfRdr *rdr);
+void func_00333700(NetCnfRdr *rdr, int value);
+int func_002FB920(void *svc, const char *host, int port);                   /* (the persona count) */
+enum ACCT_GENDER { ACCT_MALE = 0, ACCT_FEMALE = 1 };
+void func_002FD0D0(void *svc, const char *host, int port, const char *name, const char *password,
+                   const char *hometown, ACCT_GENDER gender, bool secure);  /* (the account's details) */
+const char *func_002FD510(void *svc, const char *host, int port, int i);    /* (a persona's name) */
+const char *func_002FDA50(void *svc, int server);   /* (a server's message) */
+const char *func_002FDAA0(void *svc, int server);   /* (a server's name) */
+int func_002FDEC0(void *svc);                       /* (the news' line count) */
+const char *func_002FDEA0(void *svc, int line);     /* (a line of the news) */
 
 /* the network configuration's device path ("mc0:" in data) */
 extern char data_003DF360[];                                              /* (a path: the game's directory?) */
