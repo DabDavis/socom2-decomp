@@ -2069,21 +2069,21 @@
 0x00229A70 0x104 Init__16CZHudMissionCamsFv  # OVL1; s1:exact by hand (hud_missioncams.cpp)
 0x00229B80 0xA0 __dt__16CZHudMissionCamsFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00229C20 0x78 __ct__16CZHudMissionCamsFv  # OVL1; s1:exact by hand (hud_missioncams.cpp)
-0x00229CA0 0x60 func_00229CA0  # OVL1
+0x00229CA0 0x60 __dt__Q228@unnamed@hud_scorepopup_cpp@11CScorePopupFv  # OVL1; s1:order by hand (the HUD lane: slot 0 of the vtable 0x405990, whose RTTI names @unnamed@hud_scorepopup_cpp@::CScorePopup; first in the unit as SOCOM 1's 0x4210E0)
 0x00229D00 0x590 func_00229D00  # OVL1
 0x0022A290 0x614 func_0022A290  # OVL1
-0x0022A8B0 0x2C8 func_0022A8B0  # OVL1
-0x0022AB80 0xA4 func_0022AB80  # OVL1
+0x0022A8B0 0x2C8 Draw__Q228@unnamed@hud_scorepopup_cpp@11CScorePopupFPQ23zdb7CCamera  # OVL1; s1:vtable by hand (the HUD lane: slot 1 of CScorePopup's vtable 0x405990, its RTTI's name; SOCOM 1's 0x421760 draws the same teams' and box's objects behind g_bOn)
+0x0022AB80 0xA4 Draw__Q228@unnamed@hud_scorepopup_cpp@10CHudPopupsFPQ23zdb7CCamera  # OVL1; by hand (the HUD lane: slot 1 of the vtable 0x405A08, whose RTTI names @unnamed@hud_scorepopup_cpp@::CHudPopups)
 0x0022AC30 0x254 func_0022AC30  # OVL1
 0x0022AE90 0x4C4 func_0022AE90  # OVL1
 0x0022B360 0x140 func_0022B360  # OVL1
 0x0022B4A0 0x628 func_0022B4A0  # OVL1
 0x0022BAD0 0x60 func_0022BAD0  # OVL1
 0x0022BB30 0x10C hudTurnOffScorePopup__Fv  # OVL1; s1:calls by hand (CHUD::ReInit_Uninit's call right after CZPlayerMapItem::MissionEndCleanup, as SOCOM 1's; the same shape: a flag byte cleared, then two loops wiping string arrays, 45 entries where SOCOM 1 had 27)
-0x0022BC40 0x110 func_0022BC40  # OVL1
-0x0022BD50 0xC8 func_0022BD50  # OVL1
+0x0022BC40 0x110 hudTriggerPopup__FP14CTriggerSource  # OVL1; by hand (the HUD lane: hud_scorepopup.cpp's -- the pop-up record for this map (GetDatabase) and the object's name (+0x20) opened once through 0x22B4A0; the names ours)
+0x0022BD50 0xC8 hudTriggerPopup__FPCc  # OVL1; by hand (the HUD lane: hud_scorepopup.cpp's -- the pop-up record named so opened once through 0x22B4A0; a ZAnim command (0x2AE340) passes it an anim's name; the name ours)
 0x0022BE20 0xDC4 func_0022BE20  # OVL1
-0x0022CBF0 0x20 func_0022CBF0  # OVL1
+0x0022CBF0 0x20 hudIsScorePopupOn__Fv  # OVL1; by hand (the HUD lane: hud_scorepopup.cpp's g_bOn, 0x40F608, read only in a network game; the name ours)
 0x0022CC10 0x558 func_0022CC10  # OVL1
 0x0022D170 0x8 func_0022D170  # OVL1
 0x0022D180 0x8 func_0022D180  # OVL1
@@ -2091,7 +2091,7 @@
 0x0022D270 0x180 func_0022D270  # OVL1
 0x0022D3F0 0x198 func_0022D3F0  # OVL1
 0x0022D590 0x6C func_0022D590  # OVL1
-0x0022D600 0x60 func_0022D600  # OVL1
+0x0022D600 0x60 __dt__Q228@unnamed@hud_scorepopup_cpp@10CHudPopupsFv  # OVL1; by hand (the HUD lane: slot 0 of CHudPopups' vtable 0x405A08, its RTTI's name)
 0x0022D660 0x5E0 func_0022D660  # OVL1
 0x0022DC40 0x24 func_0022DC40  # OVL1
 0x0022DC70 0x24 func_0022DC70  # OVL1
@@ -2117,7 +2117,7 @@
 0x0022E8B0 0x70 func_0022E8B0  # OVL1
 0x0022E920 0x80 func_0022E920  # OVL1
 0x0022E9A0 0x1C func_0022E9A0  # OVL1
-0x0022E9C0 0x70 func_0022E9C0  # OVL1
+0x0022E9C0 0x70 __dt__Q228@unnamed@hud_scorepopup_cpp@9CScoreBmpFv  # OVL1; by hand (the HUD lane: slot 0 of the vtable 0x405A70, whose RTTI names @unnamed@hud_scorepopup_cpp@::CScoreBmp; the unit's initialiser registers it for each box bitmap)
 0x0022EA30 0x1C func_0022EA30  # OVL1
 0x0022EA50 0x8 func_0022EA50  # OVL1
 0x0022EA60 0x8 func_0022EA60  # OVL1
