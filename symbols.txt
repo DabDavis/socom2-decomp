@@ -5314,12 +5314,12 @@
 0x0030D380 0x188 func_0030D380  # OVL1
 0x0030D510 0x28 zNetGetValidGameClientCount__9CZNetworkFv  # OVL1; tu: zNetDme.cpp~ (1.0 beta); s1:calls by hand (the states lane: at SOCOM 1's call sites; tu: zNetDme.cpp~)
 0x0030D540 0x8 func_0030D540  # OVL1
-0x0030D550 0x8 func_0030D550  # OVL1
+0x0030D550 0x8 zNetGetTime__9CZNetworkFv  # OVL1; s1:calls (CZNetGame::TenSecondLaunch, as SOCOM 1's; the same 8 bytes) -- the states lane
 0x0030D560 0x40 zNetGetGameSessionMasterClientIndex__9CZNetworkFv  # OVL1; tu: zNetDme.cpp~ (1.0 beta); s1:calls by hand (the states lane: at SOCOM 1's call sites; tu: zNetDme.cpp~)
 0x0030D5A0 0x40 zNetGetMyGameClientIndex__9CZNetworkFv  # OVL1; tu: zNetDme.cpp~ (1.0 beta); s1:calls by hand (the states lane: at SOCOM 1's call sites in the senders; 0x40 bytes in both; tu: zNetDme.cpp~)
 0x0030D5E0 0x40 func_0030D5E0  # OVL1
 0x0030D620 0x8 func_0030D620  # OVL1
-0x0030D630 0x34 func_0030D630  # OVL1
+0x0030D630 0x34 zNetGetObject__9CZNetworkFi  # OVL1; s1:calls (RemoteSealDeletionCallback, as SOCOM 1's) -- the states lane
 0x0030D670 0xF8 func_0030D670  # OVL1
 0x0030D770 0x58 func_0030D770  # OVL1
 0x0030D7D0 0x98 func_0030D7D0  # OVL1
@@ -6424,7 +6424,7 @@
 0x00351EF0 0xC0 GetByName__6CValveFPCc  # OVL1; s1:align
 0x00351FB0 0x34 Destroy__6CValveFP6CValve  # OVL1; s1:exact
 0x00351FF0 0xD8 Create__6CValveFPCc10VALVE_TYPE  # OVL1; s1:callee by hand (CZAnim::GetValve creates the valve by name with type 2 where SOCOM 1's calls CValve::Create)
-0x003520D0 0x154 func_003520D0  # OVL1
+0x003520D0 0x154 Create__6CValveFPCcUi10VALVE_TYPE  # OVL1; s1:calls (CMission::InitalizeTeamValves's three-argument create, as SOCOM 1's) -- the states lane
 0x00352230 0x18C Acquire__10CValvePoolFPCc10VALVE_TYPE  # OVL1; s1:calls
 0x003523C0 0x60 func_003523C0  # OVL1
 0x00352420 0xD8 func_00352420  # OVL1
@@ -9742,8 +9742,8 @@
 0x005331D0 0x19C func_005331D0  # OVL2
 0x00533370 0x3A8 func_00533370  # OVL2
 0x00533720 0xD0 func_00533720  # OVL2
-0x005337F0 0x12C func_005337F0  # OVL2
-0x00533920 0x4C func_00533920  # OVL2
+0x005337F0 0x12C Open__11CVehicleRdrFPCc  # OVL2; s1:calls (OpenVehicleRdr, as SOCOM 1's) -- the states lane
+0x00533920 0x4C Close__11CVehicleRdrFv  # OVL2; s1:calls (CloseVehicleRdr, as SOCOM 1's; the same 0x4C) -- the states lane
 0x00533970 0x60 func_00533970  # OVL2
 0x005339D0 0x40 func_005339D0  # OVL2
 0x00533A10 0x8 func_00533A10  # OVL2
@@ -9852,7 +9852,7 @@
 0x0053D5F0 0x1C8 func_0053D5F0  # OVL2
 0x0053D7C0 0x5EC func_0053D7C0  # OVL2
 0x0053DDB0 0x198 func_0053DDB0  # OVL2
-0x0053DF50 0x80 func_0053DF50  # OVL2
+0x0053DF50 0x80 CleanupTemporary__14CCharacterTypeFv  # OVL2; s1:calls (CloseVehicleRdr calls it where SOCOM 1's does) -- the states lane
 0x0053DFD0 0x3C func_0053DFD0  # OVL2
 0x0053E010 0x158 func_0053E010  # OVL2
 0x0053E170 0xA8 func_0053E170  # OVL2
@@ -10329,7 +10329,7 @@
 0x00573F20 0x58 func_00573F20  # OVL2
 0x00573F80 0x70 func_00573F80  # OVL2
 0x00573FF0 0x88 func_00573FF0  # OVL2
-0x00574080 0x340 func_00574080  # OVL2
+0x00574080 0x340 __ct__11CSealCtrlAiFv  # OVL2; s1:calls (ftsCreateSeal's AI branch, where SOCOM 1's calls __ct__11CSealCtrlAiFv; ftsCreateSeal byte-exact with it) -- the states lane
 0x005743C0 0x364 func_005743C0  # OVL2
 0x00574730 0xC4 func_00574730  # OVL2
 0x00574800 0x30 func_00574800  # OVL2
@@ -10683,7 +10683,7 @@
 0x00597FF0 0x8 func_00597FF0  # OVL2
 0x00598000 0x218 OnWeaponEvent__9CSealCtrlFP12CZProjectileUiPv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00598220 0x60 __dt__9CSealCtrlFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00598280 0x5B8 func_00598280  # OVL2
+0x00598280 0x5B8 __ct__9CSealCtrlFv  # OVL2; s1:calls (ftsCreateSeal's new of 0x5B8... constructs it where SOCOM 1's calls __ct__9CSealCtrlFv; ftsCreateSeal byte-exact with it) -- the states lane
 0x00598840 0x20 func_00598840  # OVL2
 0x00598860 0x32C func_00598860  # OVL2
 0x00598B90 0x910 func_00598B90  # OVL2
@@ -10691,8 +10691,8 @@
 0x00599690 0x178 func_00599690  # OVL2
 0x00599810 0x8 func_00599810  # OVL2
 0x00599820 0x90 DeleteCameraEffectsNode__10CZSealBodyFv  # OVL2; s1:calls
-0x005998B0 0x124 func_005998B0  # OVL2
-0x005999E0 0x180 func_005999E0  # OVL2
+0x005998B0 0x124 Destroy__10CZSealBodyFP10CZSealBody  # OVL2; s1:calls (RemoteSealDeletionCallback, as SOCOM 1's) -- the states lane
+0x005999E0 0x180 Create__10CZSealBodyFPC14CCharacterTypePCcP9CSealCtrl  # OVL2; s1:calls (ftsCreateSeal's last call, as SOCOM 1's; byte-exact with it) -- the states lane
 0x00599B60 0x39C func_00599B60  # OVL2
 0x00599F00 0x548 func_00599F00  # OVL2
 0x0059A450 0x1DC func_0059A450  # OVL2
@@ -11627,7 +11627,7 @@
 0x005FEF50 0x8 func_005FEF50  # OVL2
 0x005FEF60 0x128 Initalize__15CSealCtrlSquirmFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005FF090 0x60 __dt__15CSealCtrlSquirmFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x005FF0F0 0x104 func_005FF0F0  # OVL2
+0x005FF0F0 0x104 __ct__15CSealCtrlSquirmFv  # OVL2; s1:calls (ftsCreateSeal's squirm branch, where SOCOM 1's calls __ct__15CSealCtrlSquirmFv; ftsCreateSeal byte-exact with it) -- the states lane
 0x005FF200 0xEC func_005FF200  # OVL2
 0x005FF2F0 0xAB8 func_005FF2F0  # OVL2
 0x005FFDB0 0xC func_005FFDB0  # OVL2
@@ -12166,7 +12166,7 @@
 0x00622620 0xA4 func_00622620  # OVL2
 0x006226C8 0xA4 func_006226C8  # OVL2 unaligned
 0x00622770 0xA4 func_00622770  # OVL2
-0x00622818 0xA4 func_00622818  # OVL2 unaligned
+0x00622818 0xA4 NetGetObject  # OVL2 unaligned; s1:calls (zNetGetObject's callee, the prebuilt DME code, as SOCOM 1's) -- the states lane
 0x006228C0 0xA4 func_006228C0  # OVL2
 0x00622968 0xB8 func_00622968  # OVL2 unaligned
 0x00622A20 0xB8 func_00622A20  # OVL2

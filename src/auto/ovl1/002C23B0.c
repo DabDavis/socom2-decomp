@@ -8,11 +8,11 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define NULL 0
 M2C_UNK ChangeBombState__11CZBombStateFv(u8);       /* extern */
 s32 func_002A72A0(char *);                          /* extern */
-char *func_0030D630(M2C_UNK *, s32);                /* extern */
+char *zNetGetObject__9CZNetworkFi(M2C_UNK *, s32);  /* extern */
 extern char *data_00437CE8;
 extern u8 data_004413B1;
-extern M2C_UNK data_0045A0C0;
 extern u8 m_BombStatus__11CZBombState;
+extern M2C_UNK theNetwork;
 
 void func_002C23B0(s32 arg0, s32 arg1) {
     u8 temp_a0;
@@ -25,7 +25,7 @@ void func_002C23B0(s32 arg0, s32 arg1) {
         return;
     }
     if (M2C_FIELD(temp_s0, u8 *, 0xD6) != 0) {
-        temp_v0 = func_0030D630(&data_0045A0C0, arg1);
+        temp_v0 = zNetGetObject__9CZNetworkFi(&theNetwork, arg1);
         if (temp_v0 != NULL) {
             temp_v1 = M2C_FIELD(temp_v0, char **, 0x1C);
             if (temp_v1 != NULL) {

@@ -7,17 +7,17 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK func_0030D010(M2C_UNK *, s32);              /* extern */
-u32 func_0030D550(M2C_UNK *);                       /* extern */
+u32 zNetGetTime__9CZNetworkFv(M2C_UNK *);           /* extern */
 extern u32 data_004415D8;
-extern M2C_UNK data_0045A0C0;
+extern M2C_UNK theNetwork;
 
-void func_002C79F0(void *arg0) {
+void func_002C79F0(char *arg0) {
     u32 temp_v0;
 
     if (arg0 != NULL) {
-        temp_v0 = func_0030D550(&data_0045A0C0);
+        temp_v0 = zNetGetTime__9CZNetworkFv(&theNetwork);
         if (temp_v0 >= (u32) data_004415D8) {
-            func_0030D010(&data_0045A0C0, M2C_FIELD(arg0, s32 *, 4));
+            func_0030D010(&theNetwork, M2C_FIELD(arg0, s32 *, 4));
             data_004415D8 = temp_v0 + 0x7D0;
         }
     }

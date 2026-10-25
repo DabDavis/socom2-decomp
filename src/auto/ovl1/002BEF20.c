@@ -6,14 +6,14 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-char *func_0030D630(M2C_UNK *, s32);                /* extern */
-extern M2C_UNK data_0045A0C0;
+char *zNetGetObject__9CZNetworkFi(M2C_UNK *, s32);  /* extern */
+extern M2C_UNK theNetwork;
 
 void SealDeleteCleanup__11CZSealStateFi(s32 arg0) {
     char *temp_v0;
     char *temp_v1;
 
-    temp_v0 = func_0030D630(&data_0045A0C0, arg0);
+    temp_v0 = zNetGetObject__9CZNetworkFi(&theNetwork, arg0);
     if (temp_v0 != NULL) {
         temp_v1 = M2C_FIELD(temp_v0, char **, 0x1C);
         if (temp_v1 != NULL) {

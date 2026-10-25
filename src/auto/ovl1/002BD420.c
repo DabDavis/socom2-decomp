@@ -6,11 +6,11 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+s32 NetGetObject(char **, s32);                     /* extern */
 s32 func_0030CD90(M2C_UNK *, s32);                  /* extern */
-s32 func_00622818(char **, s32);                    /* extern */
 s32 strcmp(char *, M2C_UNK *);                      /* extern */
 extern M2C_UNK data_003F27D0;
-extern M2C_UNK data_0045A0C0;
+extern M2C_UNK theNetwork;
 
 s32 func_002BD420(s32 arg0) {
     char *sp1C;
@@ -19,10 +19,10 @@ s32 func_002BD420(s32 arg0) {
     s32 var_v0;
     char *temp_v0_3;
 
-    temp_v0 = func_0030CD90(&data_0045A0C0, arg0);
+    temp_v0 = func_0030CD90(&theNetwork, arg0);
     if (temp_v0 >= 0) {
         sp1C = NULL;
-        temp_v0_2 = func_00622818(&sp1C, temp_v0);
+        temp_v0_2 = NetGetObject(&sp1C, temp_v0);
         if ((sp1C == NULL) || (temp_v0_2 != 0)) {
             var_v0 = 0;
         } else if (strcmp(sp1C + 0xC, &data_003F27D0) != 0) {

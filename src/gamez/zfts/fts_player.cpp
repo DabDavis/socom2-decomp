@@ -153,12 +153,10 @@ bool ftsGetSquirm()
     return doSquirm;
 }
 
-/* a SEAL made with the controller its type asks for; the player's kept (OVL1 0x2B3A00).
- * OPEN until four OVL2 rows are named: byte-exact with them (measured by renaming them in a scratch
- * map) -- 0x598280 __ct__9CSealCtrlFv, 0x574080 __ct__11CSealCtrlAiFv, 0x5FF0F0
- * __ct__15CSealCtrlSquirmFv and 0x5999E0 Create__10CZSealBodyFPC14CCharacterTypePCcP9CSealCtrl
- * (SOCOM 1's ftsCreateSeal calls those four from the same instructions). Spelled out through the
- * placeholders instead, a new-expression's null test no longer jumps to its own join block. */
+/* a SEAL made with the controller its type asks for; the player's kept (OVL1 0x2B3A00). Its four
+ * callees are named after it (SOCOM 1's ftsCreateSeal calls them from the same instructions):
+ * spelled out through placeholders, a new-expression's null test no longer jumps to its own join
+ * block. */
 CZSealBody *ftsCreateSeal(const CCharacterType *type, const char *name, SEAL_CONTROL_TYPE control)
 {
     CSealCtrl *ctrl;

@@ -6,9 +6,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_003520D0(s32, s32, M2C_UNK);           /* extern */
+M2C_UNK Create__6CValveFPCcUi10VALVE_TYPE(s32, s32, M2C_UNK); /* extern */
 extern s32 data_003FABB8;
 
 void func_0038BFE0(s32 arg0) {
-    func_003520D0(data_003FABB8, arg0 & 0xFF, 1);
+    Create__6CValveFPCcUi10VALVE_TYPE(data_003FABB8, arg0 & 0xFF, 1);
 }

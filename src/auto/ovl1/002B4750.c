@@ -6,8 +6,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_002B44E0(s32, s32, M2C_UNK);           /* extern */
+M2C_UNK ExecuteAction__11CNodeActionFP10CZSealBodyUi(s32, s32, M2C_UNK); /* extern */
 
 void OnAction__11CNodeActionFPQ23zdb5CNodePv(s32 arg0, s32 arg1, s32 arg2) {
-    func_002B44E0(arg0, arg2, 0);
+    ExecuteAction__11CNodeActionFP10CZSealBodyUi(arg0, arg2, 0);
 }

@@ -6,18 +6,18 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_002B44E0(void *, void *, M2C_UNK);     /* extern */
-s32 func_00594350(s32, void *);                     /* extern */
+M2C_UNK ExecuteAction__11CNodeActionFP10CZSealBodyUi(char *, char *, M2C_UNK); /* extern */
+s32 func_00594350(s32, char *);                     /* extern */
 M2C_UNK func_005EAD70(s32, M2C_UNK, M2C_UNK, M2C_UNK); /* extern */
 s32 func_005EF2F0(u8);                              /* extern */
-extern void *data_00412FF0;
+extern char *data_00412FF0;
 extern u8 data_00413000;
 extern u8 data_00413008;
 
-s32 func_0022F000(void *arg0) {
+s32 func_0022F000(char *arg0) {
     s32 temp_v0;
     s32 var_a0;
-    void *temp_s0;
+    char *temp_s0;
 
     if (data_00413000 != 0) {
         temp_v0 = func_005EF2F0(data_00413008);
@@ -26,14 +26,14 @@ s32 func_0022F000(void *arg0) {
         }
         return 1;
     }
-    temp_s0 = M2C_FIELD(data_00412FF0, void **, 0x744);
+    temp_s0 = M2C_FIELD(data_00412FF0, char **, 0x744);
     if (arg0 != NULL) {
         var_a0 = M2C_FIELD(arg0, s32 *, 0xC0);
     } else {
         var_a0 = 0;
     }
     if ((var_a0 != 0) && (temp_s0 != NULL) && (func_00594350(var_a0, temp_s0) != 0) && (M2C_FIELD(temp_s0, u8 *, 0x24) != 4)) {
-        func_002B44E0(temp_s0, arg0, 0);
+        ExecuteAction__11CNodeActionFP10CZSealBodyUi(temp_s0, arg0, 0);
         M2C_FIELD(arg0, s32 *, 0x538) = (s32) M2C_FIELD(temp_s0, s32 *, 0x10);
     }
     return 0;
