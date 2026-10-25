@@ -6622,8 +6622,8 @@
 0x0035F8D0 0x8 func_0035F8D0  # OVL1
 0x0035F8E0 0x8 func_0035F8E0  # OVL1
 0x0035F8F0 0xC8 GetAssetLibs__7C2DLineFRQ23C2D8CLibList  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0035F9C0 0x100 func_0035F9C0  # OVL1
-0x0035FAC0 0x21C func_0035FAC0  # OVL1
+0x0035F9C0 0x100 clip3DLine__FP6CPnt4DP6CPnt4DP6CPnt4D  # OVL1; s1:order by hand (c2dline.cpp: SOCOM 1's first clip3DLine, 0xDC there, the same five calls to the four-argument one on the planes' pairs, a null test first)
+0x0035FAC0 0x21C clip3DLine__FP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4D  # OVL1; s1:order by hand (c2dline.cpp: SOCOM 1's second clip3DLine, after the three-argument one as there (0x240 there); the three-argument one calls it five times with a plane pair; VU0 differences, inner products, the behind end moved onto the plane)
 0x0035FCE0 0x344 Draw2DLine__FP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4D  # OVL1; s1:calls
 0x00360030 0x22C func_00360030  # OVL1
 0x00360260 0x8C SetClipInfo__7C2DLineFPA4_fPA4_fPA4_f  # OVL1; s1:order by hand (c2dline.cpp: SOCOM 1's SetClipInfo before FillClipInfo, the two rows of vertex, colour and UV copied in; SOCOM II dropped its int parameter)
