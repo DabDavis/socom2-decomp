@@ -106,12 +106,13 @@ extern "C" {
 int func_001EA6E0();                             /* testUnload */
 void func_001F1840(CHUD *hud);                   /* CameraZoom::AttachHud */
 void func_001FCB70(CHUD **hud);                  /* CHUD::ReleaseHUD */
-void func_002B3590(void *seal);                  /* ftsSetPlayer */
 void func_003D3930();                            /* CZWeapon::DestroyProjectileList */
 void func_003D37E0();                            /* CZWeapon::DestroyMarkList */
 void func_0032C2B0(const char *name, const char *path);   /* CRdrArchive::RemoveArchive */
 
 }
+
+void ftsSetPlayer(CZSealBody *seal);
 
 /* zdb's task scheduler: a list of tasks (SOCOM 1's DWARF: 0x20 bytes) */
 class CSched_Manager {
@@ -665,7 +666,7 @@ void CCoreState::auxUnload()
     func_00356080(&zdb::CTexManager::m_texmanager, false);
     func_001F1840(0);
     func_001FCB70(&m_hud);
-    func_002B3590(0);
+    ftsSetPlayer(0);
     func_001F1870(0);
     func_003D3930();
     func_003D37E0();

@@ -3935,19 +3935,19 @@
 0x002B2E50 0x5D8 func_002B2E50  # OVL1
 0x002B3430 0x38 CloseVehicleRdr__8CMissionFv  # OVL1; s1:align
 0x002B3470 0x2C OpenVehicleRdr__8CMissionFv  # OVL1; s1:calls
-0x002B34A0 0xE0 func_002B34A0  # OVL1
+0x002B34A0 0xE0 ParseTeamBlock__FP5_zrdr  # OVL1; s1:order by hand (the states lane: SOCOM 1's fts_player.cpp has ParseTeamBlock between OpenVehicleRdr and the player's getters, as here; both walk a _zrdr array's numbers into a 32-team mask; byte-exact in fts_player.cpp)
 0x002B3580 0xC ftsGetPlayer__Fv  # OVL1; s1:order by hand (the HUD lane: CHUD::ReInit_Init calls it where SOCOM 1's calls ftsGetPlayer; a one-load getter in both)
-0x002B3590 0xC func_002B3590  # OVL1
+0x002B3590 0xC ftsSetPlayer__FP10CZSealBody  # OVL1; s1:order by hand (the states lane: after ftsGetPlayer as in SOCOM 1; stores its argument to ftsPlayer)
 0x002B35A0 0xA4 CmdTickIsPlayerNode__10CftsPlayerFP14_zanim_cmd_hdrPf  # OVL1; s1:align
 0x002B3650 0xF0 CmdParseIsPlayerNode__10CftsPlayerFP5_zrdr  # OVL1; s1:align
 0x002B3740 0x70 CmdTickControls__10CftsPlayerFP14_zanim_cmd_hdrPf  # OVL1; s1:align
 0x002B37B0 0xD0 CmdParseControls__10CftsPlayerFP5_zrdr  # OVL1; s1:align
-0x002B3880 0x38 func_002B3880  # OVL1
+0x002B3880 0x38 CmdTickIndoorsTest__10CftsPlayerFP14_zanim_cmd_hdrPf  # OVL1; s1:order by hand (the states lane: RegisterAnimCommands registers it as PLAYER_INDOORS's tick, as SOCOM 1's does; reads ftsPlayer's SEAL's m_inside bit)
 0x002B38C0 0x6C CmdParseIndoorsTest__10CftsPlayerFP5_zrdr  # OVL1; s1:align
 0x002B3930 0x98 RegisterAnimCommands__10CftsPlayerFv  # OVL1; s1:calls
-0x002B39D0 0x30 func_002B39D0  # OVL1
+0x002B39D0 0x30 IsInside__10CftsPlayerFv  # OVL1; s1:order by hand (the states lane: after RegisterAnimCommands as in SOCOM 1; this->m_body's m_inside bit, the same code)
 0x002B3A00 0x154 ftsCreateSeal__FPC14CCharacterTypePCc17SEAL_CONTROL_TYPE  # OVL1; s1:align
-0x002B3B60 0xC func_002B3B60  # OVL1
+0x002B3B60 0xC ftsGetSquirm__Fv  # OVL1; s1:order by hand (the states lane: after ftsCreateSeal as in SOCOM 1; returns the byte 8 before ftsPlayer, as SOCOM 1's reads the one 4 before it)
 0x002B3B70 0x60 __dt__13CSealCtrlCopyFv  # OVL1; s1:align
 0x002B3BD0 0x8 IsPlayer__13CSealCtrlCopyCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002B3BE0 0x8 func_002B3BE0  # OVL1

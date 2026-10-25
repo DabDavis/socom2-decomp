@@ -1,0 +1,338 @@
+/* fts_player.cpp -- the spawners, the mission's team valves and vehicles, and the player: its
+ * ZAnim commands, its SEAL's creation and the copy controller (SOCOM 1's order: CSpawners' code
+ * opens its fts_player.cpp, after fts_mission.cpp's template instances, and the CSpawners list's
+ * instances close it, before fts_action.cpp's CNodeAction code). OVL1 0x2B2190-0x2B418F; its
+ * static initialiser is 0x400330. Defined in reverse of their image order (-inline deferred). */
+
+#include "../zentity/zentity.h"
+#include "../zanim/zanim.h"
+#include "../zsys/zsys.h"
+
+/* a SEAL's controller (SOCOM 1's CSealCtrl, 592 bytes at SOCOM II's offsets: only what this unit
+ * touches) and the three kinds ftsCreateSeal makes besides */
+class CSealCtrl {
+public:
+    CSealCtrl();
+    virtual ~CSealCtrl();
+
+    unsigned char _4[0x171 - 0x4];
+    unsigned char _171_0 : 3;
+    unsigned char m_input_enabled : 1;   // 0x171, bit 3 (SOCOM 1's at 0x169)
+    unsigned char _172[0x250 - 0x172];
+};
+
+class CSealCtrlAi : public CSealCtrl {
+public:
+    CSealCtrlAi();
+
+    unsigned char _250[0x7c0 - 0x250];
+};
+
+class CSealCtrlSquirm : public CSealCtrl {
+public:
+    CSealCtrlSquirm();
+
+    unsigned char _250[0x280 - 0x250];
+};
+
+/* a controller copying another's (SOCOM 1's CSealCtrlCopy: the player's controller under another
+ * vtable; its constructor inline) */
+class CSealCtrlCopy : public CSealCtrl {
+public:
+    virtual ~CSealCtrlCopy();
+};
+
+/* the SEAL (only what this unit touches) */
+class CCharacterType;
+
+class CZSealBody : public CEntity {
+public:
+    static CZSealBody *Create(const CCharacterType *type, const char *name, CSealCtrl *ctrl);
+
+    unsigned char _170[0x1060 - 0x170];
+    unsigned char _1060_0 : 2;
+    unsigned char m_inside : 1;   // 0x1060, bit 2 (SOCOM 1's at 0xf5c)
+
+};
+
+enum SEAL_CONTROL_TYPE {
+    SEAL_CONTROL_PLAYER,
+    SEAL_CONTROL_AI,
+    SEAL_CONTROL_NETWORK,
+    SEAL_CONTROL_SQUIRM,
+    SEAL_CONTROL_COPY
+};
+
+/* the player (SOCOM 1's CftsPlayer: its SEAL at 0, the commands its statics) */
+class CftsPlayer {
+public:
+    bool IsInside();
+    static void RegisterAnimCommands();
+    static bool CmdTickIsPlayerNode(_zanim_cmd_hdr *hdr, float *dT);
+    static _zanim_cmd_hdr *CmdParseIsPlayerNode(_zrdr *rdr);
+    static bool CmdTickControls(_zanim_cmd_hdr *hdr, float *dT);
+    static _zanim_cmd_hdr *CmdParseControls(_zrdr *rdr);
+    static bool CmdTickIndoorsTest(_zanim_cmd_hdr *hdr, float *dT);
+    static _zanim_cmd_hdr *CmdParseIndoorsTest(_zrdr *rdr);
+
+    CZSealBody *m_body;   // 0x0
+};
+
+extern CftsPlayer ftsPlayer;
+
+/* the mission (only what this unit touches, at SOCOM II's offsets) */
+class CVehicleRdr;
+
+class CMission {
+public:
+    void InitalizeTeamValves();
+    void CloseVehicleRdr();
+    void OpenVehicleRdr();
+
+    unsigned char _0[0x1814];
+    CVehicleRdr *m_vehicle_rdr;   // 0x1814 (SOCOM 1's at 0x590)
+    unsigned char _1818[0x1868 - 0x1818];
+    CValve *m_team_valves[32];   // 0x1868 (SOCOM 1's at 0x5d4)
+    CValve *m_player_valve_alive;   // 0x18e8 (SOCOM 1's at 0x654)
+};
+
+/* unnamed yet (SOCOM 1's names in the comments) */
+extern "C" {
+extern bool data_00440C30;   /* the squirm flag (SOCOM 1's ftsGetSquirm's) */
+CValve *func_003520D0(const char *name, unsigned int value, VALVE_TYPE type);   /* CValve::Create,
+                                                                       SOCOM 1's with a value */
+void func_0053DF50();   /* CCharacterType::CleanupTemporary */
+void func_00533920(CVehicleRdr *rdr);   /* CVehicleRdr::Close */
+void func_005337F0(CVehicleRdr *rdr, const char *name);   /* CVehicleRdr::Open */
+}
+
+int sprintf(char *buf, const char *fmt, ...);
+void *operator new(unsigned int size);
+
+/* (OVL1 0x2B3B70: the copy controller's, linked after the unit's functions as SOCOM 1's is) */
+CSealCtrlCopy::~CSealCtrlCopy()
+{
+}
+
+/* the squirm flag (OVL1 0x2B3B60) */
+bool ftsGetSquirm()
+{
+    return data_00440C30;
+}
+
+/* a SEAL made with the controller its type asks for; the player's kept (OVL1 0x2B3A00).
+ * OPEN until four OVL2 rows are named: byte-exact with them (measured by renaming them in a scratch
+ * map) -- 0x598280 __ct__9CSealCtrlFv, 0x574080 __ct__11CSealCtrlAiFv, 0x5FF0F0
+ * __ct__15CSealCtrlSquirmFv and 0x5999E0 Create__10CZSealBodyFPC14CCharacterTypePCcP9CSealCtrl
+ * (SOCOM 1's ftsCreateSeal calls those four from the same instructions). Spelled out through the
+ * placeholders instead, a new-expression's null test no longer jumps to its own join block. */
+CZSealBody *ftsCreateSeal(const CCharacterType *type, const char *name, SEAL_CONTROL_TYPE control)
+{
+    CSealCtrl *ctrl;
+    CZSealBody *body;
+
+    if (!type)
+        return 0;
+    ctrl = 0;
+    switch (control) {
+    case SEAL_CONTROL_PLAYER:
+        ctrl = new CSealCtrl;
+        break;
+    case SEAL_CONTROL_AI:
+        ctrl = new CSealCtrlAi;
+        break;
+    case SEAL_CONTROL_NETWORK:
+        break;
+    case SEAL_CONTROL_SQUIRM:
+        ctrl = new CSealCtrlSquirm;
+        break;
+    case SEAL_CONTROL_COPY:
+        ctrl = new CSealCtrlCopy;
+        break;
+    }
+    body = 0;
+    if (ctrl) {
+        body = CZSealBody::Create(type, name, ctrl);
+        if (body && control == SEAL_CONTROL_PLAYER)
+            ftsPlayer.m_body = body;
+    }
+    return body;
+}
+
+/* the player's SEAL indoors (OVL1 0x2B39D0) */
+bool CftsPlayer::IsInside()
+{
+    if (m_body)
+        return m_body->m_inside ? true : false;
+    return false;
+}
+
+/* the player's ZAnim commands */
+void CftsPlayer::RegisterAnimCommands()
+{
+    ZAnim.AddCmd("PLAYER_INDOORS", CmdParseIndoorsTest, 0, CmdTickIndoorsTest, 0);
+    ZAnim.AddCmd("PLAYER_CONTROLS", CmdParseControls, 0, CmdTickControls, 0);
+    ZAnim.AddCmd("IS_PLAYER_NODE", CmdParseIsPlayerNode, 0, CmdTickIsPlayerNode, 0);
+}
+
+/* PLAYER_INDOORS: a bare timeless command */
+_zanim_cmd_hdr *CftsPlayer::CmdParseIndoorsTest(_zrdr *rdr)
+{
+    _zanim_cmd_hdr *cmd;
+
+    if (!rdr)
+        return 0;
+    cmd = (_zanim_cmd_hdr *)_calloc(1, sizeof(_zanim_cmd_hdr), 0, 0);
+    cmd->data_size = sizeof(_zanim_cmd_hdr);
+    cmd->timeless = 1;
+    return cmd;
+}
+
+/* PLAYER_INDOORS: whether the player's SEAL is indoors */
+bool CftsPlayer::CmdTickIndoorsTest(_zanim_cmd_hdr *hdr, float *dT)
+{
+    if (ftsPlayer.m_body)
+        return ftsPlayer.m_body->m_inside ? true : false;
+    return false;
+}
+
+/* PLAYER_CONTROLS: ON gives the player the controls back, anything else takes them */
+struct _player_controls_cmd {
+    _zanim_cmd_hdr hdr;
+    signed char off : 1;   // 0x4
+    signed char on : 1;
+};
+
+_zanim_cmd_hdr *CftsPlayer::CmdParseControls(_zrdr *rdr)
+{
+    _player_controls_cmd *cmd;
+
+    if (!rdr)
+        return 0;
+    cmd = (_player_controls_cmd *)_calloc(1, sizeof(_player_controls_cmd), 0, 0);
+    cmd->hdr.data_size = sizeof(_player_controls_cmd);
+    cmd->hdr.timeless = 1;
+    if (func_0032F0D0(rdr, "ON"))
+        cmd->on = 1;
+    else
+        cmd->off = 1;
+    return (_zanim_cmd_hdr *)cmd;
+}
+
+bool CftsPlayer::CmdTickControls(_zanim_cmd_hdr *hdr, float *dT)
+{
+    if (ftsPlayer.m_body && ftsPlayer.m_body->m_control) {
+        CSealCtrl *ctrl = (CSealCtrl *)ftsPlayer.m_body->m_control;
+
+        if (((_player_controls_cmd *)hdr)->off)
+            ctrl->m_input_enabled = false;
+        else
+            ctrl->m_input_enabled = true;
+    }
+    return true;
+}
+
+/* IS_PLAYER_NODE: a node of the anim's, and SEARCH_CHILDREN to take the player's node's
+ * descendants too */
+struct _is_player_node_cmd {
+    _zanim_cmd_hdr hdr;
+    unsigned char node;   // 0x4
+    unsigned char search_children : 1;   // 0x5
+};
+
+_zanim_cmd_hdr *CftsPlayer::CmdParseIsPlayerNode(_zrdr *rdr)
+{
+    _is_player_node_cmd *cmd;
+    CZAnim *anim = ZAnim.m_CurAnim;
+
+    if (!rdr)
+        return 0;
+    cmd = (_is_player_node_cmd *)_calloc(1, sizeof(_is_player_node_cmd), 0, 0);
+    cmd->hdr.data_size = sizeof(_is_player_node_cmd);
+    cmd->hdr.timeless = 1;
+    cmd->node = anim->LoadNodeNames(rdr, 0, 0, anim->node_search_scope);
+    if (func_0032F0D0(rdr, "SEARCH_CHILDREN"))
+        cmd->search_children = 1;
+    return (_zanim_cmd_hdr *)cmd;
+}
+
+/* IS_PLAYER_NODE: whether the node is the player's (or, searching children, below it) */
+bool CftsPlayer::CmdTickIsPlayerNode(_zanim_cmd_hdr *hdr, float *dT)
+{
+    _is_player_node_cmd *cmd = (_is_player_node_cmd *)hdr;
+    zdb::CNode *node = ZAnim.m_CurAnim->GetNode(cmd->node, false);
+
+    if (node) {
+        zdb::CNode *player = ftsPlayer.m_body->GetNode();
+
+        if (player == node)
+            return true;
+        if (cmd->search_children && player->FindChild(node, true))
+            return true;
+    }
+    return false;
+}
+
+/* the player's SEAL (OVL1 0x2B3590 and 0x2B3580) */
+void ftsSetPlayer(CZSealBody *body)
+{
+    ftsPlayer.m_body = body;
+}
+
+CZSealBody *ftsGetPlayer()
+{
+    return ftsPlayer.m_body;
+}
+
+/* a team block: its numbers as a mask, or the first number out of range (OVL1 0x2B34A0; `team >
+ * 31`, not `>= 32`: only the first branches on slti into $at) */
+unsigned int ParseTeamBlock(_zrdr *rdr)
+{
+    unsigned int mask = 0;
+
+    if (!rdr || rdr->type != 4)
+        return 0;
+    for (unsigned int i = 0; i < rdr->Count(); i++) {
+        _zrdr *item = rdr->Item(i);
+        int team;
+
+        if (item->type == 1)
+            team = item->integer;
+        else if (item->type == 2)
+            team = (int)item->real;
+        else
+            team = 0;
+        if (team < 0 || team > 31) {
+            mask = team;
+            break;
+        }
+        mask |= 1 << team;
+    }
+    return mask;
+}
+
+/* the vehicles' rdr (OVL1 0x2B3470 and 0x2B3430) */
+void CMission::OpenVehicleRdr()
+{
+    if (m_vehicle_rdr)
+        func_005337F0(m_vehicle_rdr, "vehicles.rdr");
+}
+
+void CMission::CloseVehicleRdr()
+{
+    func_0053DF50();
+    if (m_vehicle_rdr)
+        func_00533920(m_vehicle_rdr);
+}
+
+/* a valve per AI team and the player's alive valve (OVL1 0x2B2840) */
+void CMission::InitalizeTeamValves()
+{
+    char name[32];
+
+    for (int i = 0; i < 32; i++) {
+        sprintf(name, "aiteam_%02d", i);
+        m_team_valves[i] = func_003520D0(name, 0, (VALVE_TYPE)2);
+    }
+    m_player_valve_alive = func_003520D0("player_valve_alive", 0, (VALVE_TYPE)2);
+}
