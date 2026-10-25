@@ -9,6 +9,7 @@
 #define ZUI_H
 
 #include <string.h>
+#include <vector>
 
 /* a ZRDR value (SOCOM 1's DWARF): a typed word -- 1 an integer, 2 a real, 3 a string, 4 an array */
 struct _zrdr {
@@ -73,9 +74,7 @@ public:
 
     char *m_varname;   // 0x8
     unsigned char _c[0x18 - 0xc];
-    unsigned int m_attached_cap;   // 0x18: SOCOM 1's vector m_attached_items (the names ours)
-    unsigned int m_attached_count;   // 0x1c
-    UIVarMixin **m_attached_items;   // 0x20
+    std::vector<UIVarMixin *> m_attached_items;   // 0x18 (SOCOM 1's at 0xC)
     unsigned char m_longevity;   // 0x24: UIVAR_LONGEVITY
 };
 
