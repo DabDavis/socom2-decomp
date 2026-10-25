@@ -40,10 +40,9 @@ struct VC_C {
     virtual M2C_UNK v_70(M2C_UNK, M2C_UNK);
 };
 extern "C" {
-M2C_UNK func_00362B70(char *);                      /* extern */
-
+M2C_UNK UpdatePos__9C2DStringFv(char * arg0);
 void func_002C9CC0(char *arg0) {
     ((VC_C *)(arg0 + 0xA4))->v_70(0, 1);
-    func_00362B70(arg0 + 0xA4);
+    UpdatePos__9C2DStringFv(arg0 + 0xA4);
 }
 }

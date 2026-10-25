@@ -7027,19 +7027,19 @@
 0x0037CFF0 0x8 func_0037CFF0  # OVL1
 0x0037D000 0x8 func_0037D000  # OVL1
 0x0037D010 0x8 func_0037D010  # OVL1
-0x0037D020 0x8 func_0037D020  # OVL1
-0x0037D030 0x8 func_0037D030  # OVL1
-0x0037D040 0x8 func_0037D040  # OVL1
-0x0037D050 0x8 func_0037D050  # OVL1
+0x0037D020 0x8 @128@__dt__9CPlainBmpFv  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j __dt__9CPlainBmpFv` with `addiu a0,a0,-128`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
+0x0037D030 0x8 @152@__dt__9CTeleTypeFv  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j __dt__9CTeleTypeFv` with `addiu a0,a0,-152`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
+0x0037D040 0x8 @192@__dt__9C2DButtonFv  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j __dt__9C2DButtonFv` with `addiu a0,a0,-192`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
+0x0037D050 0x8 @192@__dt__14CHandlerButtonFv  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j __dt__14CHandlerButtonFv` with `addiu a0,a0,-192`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
 0x0037D060 0x8 func_0037D060  # OVL1
-0x0037D070 0x8 func_0037D070  # OVL1
-0x0037D080 0x8 func_0037D080  # OVL1
-0x0037D090 0x8 func_0037D090  # OVL1
-0x0037D0A0 0x8 func_0037D0A0  # OVL1
-0x0037D0B0 0x8 func_0037D0B0  # OVL1
+0x0037D070 0x8 @128@__dt__10CUIListBoxFv  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j __dt__10CUIListBoxFv` with `addiu a0,a0,-128`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
+0x0037D080 0x8 @192@UpdateUIVar__10CSliderBarFP11CUIVariable  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j UpdateUIVar__10CSliderBarFP11CUIVariable` with `addiu a0,a0,-192`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
+0x0037D090 0x8 @192@__dt__10CSliderBarFv  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j __dt__10CSliderBarFv` with `addiu a0,a0,-192`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
+0x0037D0A0 0x8 @128@UpdateUIVar__13CHProgressBarFP11CUIVariable  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j UpdateUIVar__13CHProgressBarFP11CUIVariable` with `addiu a0,a0,-128`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
+0x0037D0B0 0x8 @128@__dt__13CHProgressBarFv  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j __dt__13CHProgressBarFv` with `addiu a0,a0,-128`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
 0x0037D0C0 0x8 func_0037D0C0  # OVL1
-0x0037D0D0 0x8 func_0037D0D0  # OVL1
-0x0037D0E0 0x8 func_0037D0E0  # OVL1
+0x0037D0D0 0x8 @192@__dt__9CCheckBoxFv  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j __dt__9CCheckBoxFv` with `addiu a0,a0,-192`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
+0x0037D0E0 0x8 @192@UpdateUIVar__9C2DButtonFP11CUIVariable  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j UpdateUIVar__9C2DButtonFP11CUIVariable` with `addiu a0,a0,-192`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
 0x0037D0F0 0x8 func_0037D0F0  # OVL1
 0x0037D100 0x8 func_0037D100  # OVL1
 0x0037D110 0x8 func_0037D110  # OVL1
@@ -10987,7 +10987,7 @@
 0x005BDA70 0x90 ItemHasAmmo__5CZKitCFi8FIREMODE  # OVL2; s1:order by hand (SOCOM 1's ItemHasAmmo(int, FIREMODE), next: the index tested, through 0x5C6600 with the mode, then ItemHasAmmo(int) inlined); constness by SOCOM 1's symbol (ItemHasAmmo__5CZKitFi8FIREMODE, non-const) -- the kit lane, round 3; kept const with ItemHasAmmo(int) (the kit lane, round 3)
 0x005BDB00 0x14 CurItemHasAmmo__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's CurItemHasAmmo, next: the selected item and its fire mode (0x6FC) passed to ItemHasAmmo(int, FIREMODE))
 0x005BDB20 0x110 ItemHasAmmo__5CZKitF10EQUIP_ITEM  # OVL2; s1:calls by hand (another lane's lead, verified: SOCOM II's CSealCtrl::CanPlaceBomb and CanPerformAction call it after HasItem, where SOCOM 1's call ItemHasAmmo(EQUIP_ITEM); the same item walk on the type byte, then the ammunition)
-0x005BDC30 0x1E4 func_005BDC30  # OVL2
+0x005BDC30 0x1E4 isSelectableItem__5CZKitFi  # OVL2; s1:calls (the HUD lane's round 15, vetted by the integrator: the weapon selector's scroll loop calls it where SOCOM 1's calls isSelectableItem__5CZKitFi)
 0x005BDE20 0x94 SetItemAmmo__5CZKitFUiPv  # OVL2; s1:order by hand (SOCOM 1's SetItemAmmo(unsigned int, CZAmmo *): below 30 slots and with an item, the four-argument one with the weapon's magazine size and count (OVL1 0x3D2810, 0x3D2800))
 0x005BDEC0 0xE4 SetItemAmmo__5CZKitFUiPvii  # OVL2; s1:order by hand (SOCOM 1's SetItemAmmo(unsigned int, CZAmmo *, int, int): the weapon's default ammunition (OVL1 0x3D1F00) when none, then the first count magazines (at most 10, 0x1D4) set to rounds and m_ammo (0x15C) set; SOCOM 1's took CZAmmo *, here void *)
 0x005BDFB0 0x6C SetItem__5CZKitFUi10EQUIP_ITEM  # OVL2; s1:exact by hand (SOCOM 1's SetItem(unsigned int, EQUIP_ITEM): the same 0x64-byte shape -- CZWeapon::m_listWeapons' GetWeapon (OVL1 0x3C4B40) for the kind, then SetItemByIndex below 30 slots; before SetBody as there)
@@ -11036,10 +11036,10 @@
 0x005C3790 0x14 GetCurFireMode__5CZKitFv  # OVL2; s1:exact by hand (SOCOM 1's GetCurFireMode: the selected item's m_firemode, its low byte; 0x14 bytes in both, after GetCurItem as there)
 0x005C37B0 0xD4 SetCurFireMode__5CZKitF8FIREMODE  # OVL2; s1:calls by hand (CSealCtrlSquirm::Initalize calls it on the kit with 3 right after SetCurItemByIndex, as SOCOM 1's Initalize calls SetCurFireMode)
 0x005C3890 0x8 func_005C3890  # OVL2
-0x005C38A0 0x36C func_005C38A0  # OVL2
+0x005C38A0 0x36C GetAmmoCount__5CZKitFi  # OVL2; s1:calls (the HUD lane's round 15, vetted by the integrator: CWeaponSel::PlaceWeaponText calls it where SOCOM 1's PlaceWeaponText calls GetAmmoCount__5CZKitFi)
 0x005C3C10 0xD0 GetAmmoTotal__5CZKitFi  # OVL2; by hand: the index wrapped on m_num_items, its ten magazines (0x1D4) summed -- where SOCOM 1's EmptyAmmoCountTotal sat, which zeroed them (the name ours)
 0x005C3CE0 0x8 func_005C3CE0  # OVL2
-0x005C3CF0 0x1E4 func_005C3CF0  # OVL2
+0x005C3CF0 0x1E4 GetMaxAmmoCount__5CZKitFi  # OVL2; s1:calls (the HUD lane's round 15, vetted by the integrator: PlaceWeaponText calls it where SOCOM 1's calls GetMaxAmmoCount__5CZKitFi)
 0x005C3EE0 0x59C func_005C3EE0  # OVL2
 0x005C4480 0x134 func_005C4480  # OVL2
 0x005C45C0 0x40 func_005C45C0  # OVL2

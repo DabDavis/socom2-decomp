@@ -1642,6 +1642,27 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the HUD, round 15** (the weapon selector's states and scrolling, zui_2d.cpp complete):
+  - an inline's side-effect-free argument used once on each path is substituted into each arm, so
+    SOCOM 1's `Increment(2*(475*dT), ...)` computes the product in both arms, as the target; the
+    operand order needed `2.0f * (float)(475.0f * dT)`;
+  - a CPnt3D struct copy reloads its source; written field by field, the first field reuses the load
+    a preceding compare made;
+  - `(f(4, pad) == 1) != false` is the one form tried that materialises an `== 1` test (andi; xori;
+    sltiu) inside an `&&` chain;
+  - where the target keeps a sum's non-product operand first, that operand must be in a local;
+    `int x, y; y = ...; x = ...;` gives the target's saved registers where initialised declarations
+    in either order swap them;
+  - an inline const accessor reuses the type byte its caller tested only through a const view (`const
+    CUIVariable *v = var`); through the non-const parameter it reloads it;
+  - a secondary vtable sits at the primary table's size, so stand-in classes need the real slot
+    counts (C3StateButton 29, C2DString 34, C2DBitmap 26);
+  - THIS-ADJUSTING THUNKS have MW's names `@<offset>@<target>` (`j target; addiu a0,a0,-offset`):
+    zui_2d.cpp's classes emit `@192@__dt__9CCheckBoxFv` and its kin for their secondary bases, and
+    naming the rows 0x37D020-0x37D0E0 so made eight of them byte-exact (a thunk's row named after the
+    function it jumps to and the offset it subtracts);
+  - zui_2d.cpp's tail order: ~CCheckBox, ~CHProgressBar, ~CSliderBar, ~CHandlerButton,
+    C3StateButton::Tick, ~CTeleType, then the thunks.
 - **Tells from the online lobby, round 6** (the account save module, the universe list, the LAN lobby):
   - a temporary is laid out below the named locals: the target's struct sitting below an inner
     block's object was `push_back(T(args))`;
