@@ -81,7 +81,7 @@ void func_0030E6E0(void *net, int arg);
 void func_0030E7F0(void *net);
 int func_002C2FA0();
 void func_0030E5A0(void *net, bool arg);
-void func_002BD630();
+void ClearRemoteGuyList__11CZSealStateFv();   /* CZSealState::ClearRemoteGuyList */
 void func_002C79E0();
 void func_002BB1D0();
 
@@ -156,7 +156,7 @@ bool CLoadState::Init()
         game->m_d2 = 0;
         game->m_d1 = 0;
         game->m_dd = 0;
-        func_002BD630();
+        ClearRemoteGuyList__11CZSealStateFv();
         func_002C79E0();
         func_002BB1D0();
     }

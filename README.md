@@ -1314,6 +1314,40 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     (a float), CalcVolPan returns the new one;
   - `989snd.c`'s name starts with a digit: sccheck counts its matches but lists them only with
     `-v`.
+- **Tells from the states, round 11** (CGame::Tick, the bomb, the remote SEALs, the persona):
+  - a byte enum copied into an enum-typed field loads with `lb`, into an `unsigned char` with
+    `lbu`;
+  - an `unsigned char` bitfield compared through a byte-enum cast gets `andi 0xff`; MW extracts
+    any byte bitfield with dsll32/dsrl32, so those shifts do not mean a 64-bit field;
+  - a ternary of enum constants cast as a whole (to an enum with no enumerators) sign-extends;
+    casting each arm does not;
+  - a switch returning through a result local (`bool r = false; ... r = true; break;`) puts
+    `move v0,zero` ahead of its first test; `bool r = c ? f() : false;` gives `move` then
+    `andi`, `if (c) r = f();` gives `andi` straight from v0;
+  - in `id == f()->x` MW keeps `id` in a saved register across the call; taking `f()` into a
+    block-local first makes it re-read the field;
+  - `if (A && B) ... else if (C && D)` sends a failing B to C's test; nested ifs do not;
+  - a caller that leaves an argument register unset shows the callee's last parameter does not
+    exist (NetSendE3Index takes three in SOCOM II);
+  - CGame::Tick: testing Init's bool `!= false` gives the target's `andi`, and the nops were
+    label padding; the thread wait is `while (!flag)`.
+- **Tells from the entity and the console, round 8** (ent_main.cpp, con_ps2.cpp, zentity.h):
+  - SOCOM II stores through a pointer list's node at its offset where SOCOM 1 reused `*it`'s
+    reference temporary: write the node's `data_` directly (RecycleEntity);
+  - a ternary bool with an int `0` false arm puts the `andi` on the compare's arm only; with
+    `: false` it lands at the join; `int n = c ? m : 0` gives the target's saved registers where
+    the if-assign swaps them (CConsole::Tick);
+  - `!(bool)f()` with `continue` materialises `sltu; xori` before the branch; `!= false` and
+    `== false` do not (FindPacket);
+  - two `new`s in a ternary each branch on v0 with the copy in the delay slot;
+  - strlen in an argument walk: take the length into a local and add `(len + 1)` to recompute
+    the element address after the call;
+  - an inline setter's `this` copy avoids reloading an address-taken local between two field
+    stores (AddHandler); con_ps2.cpp is `#pragma auto_inline off` throughout (the target calls
+    every function of it out of line);
+  - zentity.h: CAiMapLoc() is empty (SOCOM II's, 0x516120) with SOCOM 1's field-by-field copy
+    constructor, CEntity initialising from `invalid`; CEntity's slot +0x0C is `const CMatrix
+    *GetPosW() const`, +0x60/+0x68 take a CPnt3D * and return bool, +0x64 returns a node.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has

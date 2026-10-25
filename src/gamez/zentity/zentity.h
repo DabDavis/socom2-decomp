@@ -21,13 +21,15 @@
 class CEntity;
 class CEntityCtrl;
 
-/* a cell of an AI map (SOCOM 1's DWARF). A new one is the invalid cell, field by field in the
- * initialiser list: the target object's word is written whole for each field (an assignment in
- * the body narrows to the field's byte), the source read narrow -- CEntity's constructor, as
- * SOCOM 1's */
+/* a cell of an AI map (SOCOM 1's DWARF). A new one is left as it is: SOCOM II's default
+ * constructor is empty (0x516120, `jr ra; move v0,a0`, which CAiState::Create calls for its
+ * cells). The copy is SOCOM 1's written one, field by field in the initialiser list (OVL2
+ * 0x5EA7E0, s1:exact): the target's word read, masked and written whole for each field, the
+ * source read narrow -- CEntity's constructor copies CAiMapLoc::invalid into both its cells so */
 class CAiMapLoc {
 public:
-    CAiMapLoc() : m_mapid(invalid.m_mapid), x(invalid.x), y(invalid.y) {}
+    CAiMapLoc() {}
+    CAiMapLoc(const CAiMapLoc &loc) : m_mapid(loc.m_mapid), x(loc.x), y(loc.y) {}
 
     unsigned int m_mapid : 6;
     unsigned int x : 13;
@@ -190,9 +192,10 @@ public:
 
     CEntity(TYPE type, zdb::CNode *node);
     virtual ~CEntity();                                         /* +0x08 */
-    /* +0x0C: inline, its out-of-line copy an earlier unit's (0x295F10, camera.cpp's); SOCOM 1's
-     * slot was GetPosW (CTurret's override keeps that name). The name is ours */
-    virtual zdb::CNode *GetPosNode() { return m_node; }
+    /* +0x0C: SOCOM 1's GetPosW, a matrix now -- the node's (`lw v0,0x28(a0)`: CNode's matrix at
+     * 0), CTurret's own at 0x2C0 (0x2C7BE0) -- where SOCOM 1's gave the node's position row
+     * (0x177290: node + 48). Inline, its out-of-line copies 0x295F10 (OVL1) and 0x542FF0 (OVL2) */
+    virtual const CMatrix *GetPosW() const { return &m_node->m_matrix; }
     /* +0x10: the position copied out of the node (the name is ours) */
     virtual void UpdatePosW();
     virtual void PreTick(float dT);
@@ -216,11 +219,12 @@ public:
     virtual void OnRecycleEntity(CEntity *e);
     virtual void OnDeath();                                     /* +0x58 */
     /* +0x5C-0x6C, new in SOCOM II: four that say no and one that moves the entity's compass anchor
-     * to it (the names are ours) */
+     * to it (the names are ours). CTurret's overrides give the signatures: +0x60 and +0x68 fill a
+     * point and answer true (0x3A71A0, 0x3A71D0), +0x64 hands back a node (0x3A71C0) */
     virtual int Virtual5C();
-    virtual int Virtual60();
-    virtual int Virtual64();
-    virtual int Virtual68();
+    virtual bool Virtual60(CPnt3D *out);
+    virtual zdb::CNode *Virtual64();
+    virtual bool Virtual68(CPnt3D *out);
     virtual void UpdateCompassAnchor();
 
     void SetDisplayName(const char *name);
