@@ -16,6 +16,10 @@ class CGEdge;
 typedef std::list<CGNode *> CGNodeList;
 typedef std::list<CGEdge *> CGEdgeList;
 
+/* the pointer lists' own base: a walk on its iterator reads each element by value, afresh after
+ * every call (DeleteNode), where the wrapper's reference keeps the element's address */
+typedef std::__list_deleter<const void *, std::allocator<const void *> > list_base;
+
 /* an edge: its two nodes and its weight (SOCOM 1's, 0x18 bytes; SOCOM II's 0x20) */
 class CGEdge {
 public:
@@ -80,6 +84,7 @@ public:
     static CGraph *Create(const char *name);
     static void Destroy(CGraph *graph);
     CGNode *CreateNode(const char *name);
+    void DeleteNode(CGNode *node);
     CGEdge *CreateEdge(CGNode *a, CGNode *b);
     CGNode *GetNodeByIndex(unsigned int index);
     CGNode *GetNodeByNodeEx(const void *ex);
@@ -110,7 +115,9 @@ CGEdge::CGEdge(CGNode *from, CGNode *to, float weight)
 
 /* an edge taken out of both its ends' lists and deleted (OVL1 0x2D1350: a copy of the edge's
  * pointer has its address taken for the lists' remove and lives on the stack, every access
- * through it re-read; the delete takes the parameter, kept in a register from the start) */
+ * through it re-read; the delete takes the parameter, kept in a register from the start. Pinned:
+ * DeleteNode calls it, as SOCOM 1's does) */
+#pragma auto_inline off
 CGEdge *CGEdge::Delete(CGEdge *edge)
 {
     CGEdge *e = edge;
@@ -124,6 +131,7 @@ CGEdge *CGEdge::Delete(CGEdge *edge)
     delete edge;
     return 0;
 }
+#pragma auto_inline reset
 
 CGRoute::CGRoute()
 {
@@ -193,6 +201,36 @@ CGraph::CGraph(const char *name)
     : m_name(0)
 {
     SetName(name);
+}
+
+/* a node deleted: each of its edges taken out of the other end's list and the graph's and
+ * deleted, then the node itself (OVL1 0x2D0780).
+ * OPEN, 0x1AC against 0x1A8: the target re-reads the iterator from its stack slot for the second
+ * element read (after the first remove) and inverts the loop (its test ahead of the body as well
+ * as after it); here MW keeps the element's address in s0 across the call and enters the loop
+ * through a branch to its test. Tried: the wrapper's `*` for either read, the base iterator's
+ * (the walker then lives in a register), the base iterator's `*` through the conversion or
+ * through i_ */
+void CGraph::DeleteNode(CGNode *node)
+{
+    if (node) {
+        CGEdgeList::iterator i;
+
+        for (i = node->m_edges.begin(); i != node->m_edges.end(); ++i) {
+            CGEdge *edge = (CGEdge *)*(list_base::iterator)i;
+
+            edge->GetOther(node)->m_edges.remove(edge);
+            edge->m_from = 0;
+            edge->m_to = 0;
+            CGEdge *e = (CGEdge *)*(list_base::iterator)i;
+
+            m_edges.remove(e);
+            CGEdge::Delete(e);
+        }
+        node->m_edges.clear();
+    }
+    m_nodes.remove(node);
+    delete node;
 }
 
 /* the edge made, both ends taking it in and so does the graph; the one there is if it exists
