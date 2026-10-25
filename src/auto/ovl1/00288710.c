@@ -9,9 +9,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define NULL 0
 #pragma mpwc_relax on
 u16 func_0025A390();          /* extern */
-extern M2C_UNK func_0028A860;
+extern M2C_UNK CreateAndReadIt__10CZSIScriptFRQ23zar4CZARPCcPviPv;
 
 s32 func_00288710(char *arg0) {
-    SC_MEMBER(arg0, u16 *, 0xD0) = (int)(func_0025A390(arg0 + 0xC, &func_0028A860, arg0));
+    SC_MEMBER(arg0, u16 *, 0xD0) = (int)(func_0025A390(arg0 + 0xC, &CreateAndReadIt__10CZSIScriptFRQ23zar4CZARPCcPviPv, arg0));
     return (s32) SC_MEMBER(arg0, u16 *, 0xD0) > 0;
 }

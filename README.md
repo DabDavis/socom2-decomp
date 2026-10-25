@@ -913,6 +913,24 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     zwep_ftsweapon.cpp, first in the image; SOCOM 1's link order here is ztex_manager, zvid_init,
     vis_main, vis_decal, vis_texfx, zwep_explosive, zwep_global, zwep_projectile, zwep_weapon,
     zwep_ammo, and SOCOM II's CTurret sits before zvid_init.
+- **Tells from the body animation** (src/gamez/zbody/: bone_math.cpp, body.cpp, si_object.cpp):
+  - an explicit `(float)` cast on a float product flips MW's multiply operand order: `a->m_wt =
+    (float)(scale * a->m_wt)` matches where no spelling without the cast does -- which is why
+    m2c's `(f32)` drafts match;
+  - a member read once into a local stays in a saved register across calls (CZBodyPart::Orient's
+    node); RTList::Add's tail local, declared first, takes the higher argument register;
+  - a single-exit if/else chain into a local gives the target's shared `jr ra` (LinearWeight);
+    early returns add nops; `if (a >= b) w = 1; else w = a / b;` branches on `a < b` to the
+    division;
+  - `new` with a constructor whose body calls a too-tall inline calls the member constructors out
+    of line in member order, then the inline (CZBodyPart: CPnt3D() is 0x1FB3C0, CQuat()
+    0x28EB60);
+  - a loop-scoped CPnt3D declared first at function scope takes the highest frame slot
+    (PartInSpace);
+  - CBody (0x90 bytes; zseal.h includes zbody.h): its table, `short m_state` at 4, the active-anim
+    and blend pools (RTArray, 0x20 bytes each) at 0x10/0x30, the blend stack at 0x50, the
+    part and anim vectors at 0x5C/0x68, the overlay at 0x74; zanim_menu.cpp runs to 0x2869C4
+    (cdeque<const void *>'s instances close it), the body code from 0x2869D0 to 0x29035C.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has

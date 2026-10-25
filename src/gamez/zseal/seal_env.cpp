@@ -13,11 +13,7 @@ public:
     static void RequestNewBombState(int id, EnumBombState state, const CPnt3D *pos);
 };
 
-/* a timed sequence (SOCOM 1's CSequence, OVL1's: 0x10 bytes) -- only its size */
-class CSequence {
-public:
-    unsigned char _0[0x10];
-};
+/* CSequence, the timed sequence a look is, is zbody.h's (through zseal.h) */
 
 /* a head's turn toward a direction, eased over a time (SOCOM 1's DWARF: CLook : CSequence, 0x80
  * bytes; SOCOM II's drops a quaternion: m_goal_dir and everything after it 0x10 earlier) */
