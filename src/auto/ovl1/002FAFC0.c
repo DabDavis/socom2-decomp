@@ -8,9 +8,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK __dl__FPv(char *);                          /* extern */
+M2C_UNK __dt__11CSaveModuleFv(char *, M2C_UNK);     /* extern */
 M2C_UNK func_001E7EF0(char *, M2C_UNK);             /* extern */
 M2C_UNK func_002FFF20(char *, M2C_UNK);             /* extern */
-M2C_UNK func_0033D290(char *, M2C_UNK);             /* extern */
 extern M2C_UNK data_004066E0;
 extern M2C_UNK data_004066E8;
 extern M2C_UNK data_00406704;
@@ -30,7 +30,7 @@ char *func_002FAFC0(char *arg0, s64 arg1) {
                 func_001E7EF0(temp_a0, 0);
             }
         }
-        func_0033D290(arg0 + 0xC, 0);
+        __dt__11CSaveModuleFv(arg0 + 0xC, 0);
         if ((arg0 != NULL) && (arg0 != NULL)) {
             func_002FFF20(arg0, 0);
         }

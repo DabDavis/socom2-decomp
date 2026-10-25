@@ -8,13 +8,13 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 #pragma mpwc_relax on
+s32 CreateString__7CSTableFPCc(char *);             /* extern */
 M2C_UNK func_00386460(char *, s32);                 /* extern */
-s32 func_0039F1C0(char *);                          /* extern */
 extern s32 data_00437EA8;
 extern M2C_UNK theUIVarManager;
 
 void func_00386B80(char *arg0, s32 arg1, s32 arg2, s8 arg3) {
-    SC_MEMBER(arg0, s32 *, 0x14) = func_0039F1C0((M2C_UNK *)((char *)&theUIVarManager + (data_00437EA8 << 5) + 0x2C));
+    SC_MEMBER(arg0, s32 *, 0x14) = CreateString__7CSTableFPCc((M2C_UNK *)((char *)&theUIVarManager + (data_00437EA8 << 5) + 0x2C));
     SC_MEMBER(arg0, s8 *, 0x24) = arg3;
     if (arg2 != 0) {
         func_00386460(arg0, arg2);

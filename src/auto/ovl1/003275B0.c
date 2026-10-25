@@ -7,8 +7,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK DecRefCount__Q28Particle5PropsFi(s32, M2C_UNK); /* extern */
 M2C_UNK ReleaseInstance__8ParticleFPQ23zdb5CNode(s32); /* extern */
-M2C_UNK func_00328B10(s32, M2C_UNK);                /* extern */
 
 void func_003275B0(char *arg0) {
     s32 temp_a0;
@@ -17,7 +17,7 @@ void func_003275B0(char *arg0) {
 
     temp_a0 = SC_MEMBER(arg0, s32 *, 0x40);
     if (temp_a0 != 0) {
-        func_00328B10(temp_a0, 1);
+        DecRefCount__Q28Particle5PropsFi(temp_a0, 1);
         SC_MEMBER(arg0, s32 *, 0x40) = 0;
     }
     temp_a0_2 = SC_MEMBER(arg0, s32 *, 0x58);

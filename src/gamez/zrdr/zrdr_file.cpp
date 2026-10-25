@@ -12,15 +12,7 @@ void *_malloc(unsigned int size, const char *file, int line);
 void *_calloc(unsigned int n, unsigned int size, const char *file, int line);
 void _free(void *p, const char *file, int line);
 
-/* the engine's file (SOCOM 1's CFileIO): the slots up to fread, the one ReadPacked calls */
-class CFileIO : public CIO {
-public:
-    virtual int GetSize() const;
-    virtual unsigned int GetMode() const;
-    virtual int ftell() const;
-    virtual int fseek(int offset, int whence);
-    virtual int fread(void *buf, int size);
-};
+/* the engine's file, CFileIO, is zutil.h's (through zar.h): ReadPacked calls its fread (slot 0x24) */
 
 /* the packed format's version (1), what a buffer's first halfword must hold */
 extern unsigned short data_003DFF58;

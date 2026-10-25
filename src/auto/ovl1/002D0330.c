@@ -8,6 +8,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK Clear__14CSched_ManagerFv(M2C_UNK *);       /* extern */
+M2C_UNK CloseAll__11CRdrArchiveFv();                /* extern */
 M2C_UNK Close__10CZAnimMainFv(M2C_UNK *);           /* extern */
 M2C_UNK DeletePad__6CInputFUi(M2C_UNK);             /* extern */
 M2C_UNK DestroyPool__19CGameStateChangeCmdFv();     /* extern */
@@ -18,7 +19,6 @@ M2C_UNK Uninit__5CPipeFv();                         /* extern */
 M2C_UNK Uninit__6CInputFv();                        /* extern */
 M2C_UNK Uninit__Q23zdb6CWorldFv();                  /* extern */
 M2C_UNK Uninit__Q23zdb7CRippleFv();                 /* extern */
-M2C_UNK func_0032C4F0();                            /* extern */
 M2C_UNK func_00351E60();                            /* extern */
 M2C_UNK func_0039C6F0();                            /* extern */
 M2C_UNK func_003B11F0();                            /* extern */
@@ -46,7 +46,7 @@ void StopEngine__5CGameFv(void) {
     Reset__7HeadsetFv();
     Clear__14CSched_ManagerFv(&zTaskScheduler);
     zUISchedulerClear__Fv();
-    func_0032C4F0();
+    CloseAll__11CRdrArchiveFv();
     Uninit__6CInputFv();
     DeletePad__6CInputFUi(0);
     DeletePad__6CInputFUi(1);

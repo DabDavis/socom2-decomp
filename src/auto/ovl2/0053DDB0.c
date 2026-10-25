@@ -8,8 +8,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 #pragma mpwc_relax on
-s32 func_0032F0D0(s32 arg0, s32 arg1);
+void Parse__13HEALTH_PARAMSFP5_zrdr(char * arg0, char * arg1);
 M2C_UNK zrdr_findreal__FPC5_zrdrPCcPfi(char * arg0, char * arg1, char * arg2, s32 arg3);
+s32 zrdr_findtag__FPC5_zrdrPCc(char * arg0, char * arg1);
 M2C_UNK memcpy(char *, char *, M2C_UNK);            /* extern */
 extern M2C_UNK data_0065BFE0;
 extern M2C_UNK data_0065BFE8;
@@ -20,11 +21,11 @@ extern M2C_UNK data_0065C008;
 extern M2C_UNK data_0065C010;
 extern M2C_UNK data_0065C018;
 
-void Parse__13HEALTH_PARAMSFP5_zrdr(char *arg0, s32 arg1) {
+void Parse__13HEALTH_PARAMSFP5_zrdr(char *arg0, char *arg1) {
     s32 temp_v0;
     s32 temp_v0_2;
 
-    temp_v0 = func_0032F0D0(arg1, (s32) &data_0065BFE0);
+    temp_v0 = zrdr_findtag__FPC5_zrdrPCc(arg1, &data_0065BFE0);
     if (temp_v0 != 0) {
         zrdr_findreal__FPC5_zrdrPCcPfi((char *) temp_v0, &data_0065BFE8, arg0, 1);
         zrdr_findreal__FPC5_zrdrPCcPfi((char *) temp_v0, &data_0065BFF0, arg0 + 0xC, 1);
@@ -34,7 +35,7 @@ void Parse__13HEALTH_PARAMSFP5_zrdr(char *arg0, s32 arg1) {
         zrdr_findreal__FPC5_zrdrPCcPfi((char *) temp_v0, &data_0065C010, arg0 + 0x14, 1);
         memcpy(arg0 + 0x30, arg0, 0x18);
     }
-    temp_v0_2 = func_0032F0D0(arg1, (s32) &data_0065C018);
+    temp_v0_2 = zrdr_findtag__FPC5_zrdrPCc(arg1, &data_0065C018);
     if (temp_v0_2 != 0) {
         zrdr_findreal__FPC5_zrdrPCcPfi((char *) temp_v0_2, &data_0065BFE8, arg0 + 0x18, 1);
         zrdr_findreal__FPC5_zrdrPCcPfi((char *) temp_v0_2, &data_0065BFF0, arg0 + 0x24, 1);

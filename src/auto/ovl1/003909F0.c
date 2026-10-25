@@ -4,12 +4,13 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_0032F200(s32, s32, M2C_UNK);               /* extern */
+s32 zrdr_flat_findtag_startidx__FPC5_zrdrPCci(s32, s32, M2C_UNK); /* extern */
 
-void *func_003909F0(void *arg0, s32 arg1, s32 arg2) {
-    M2C_FIELD(arg0, s32 *, 0) = func_0032F200(arg1, arg2, 0);
-    M2C_FIELD(arg0, s32 *, 4) = 0;
+char *func_003909F0(char *arg0, s32 arg1, s32 arg2) {
+    SC_MEMBER(arg0, s32 *, 0) = zrdr_flat_findtag_startidx__FPC5_zrdrPCci(arg1, arg2, 0);
+    SC_MEMBER(arg0, s32 *, 4) = 0;
     return arg0;
 }

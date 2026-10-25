@@ -4,11 +4,12 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK Clone__5_zrdrFP5_zrdrP7CSTable(s32, s32, s32); /* extern */
 s32 _calloc__FUiUiPCci(M2C_UNK, M2C_UNK, M2C_UNK, M2C_UNK); /* extern */
 M2C_UNK func_001FE340(char *, s32, M2C_UNK, s32 *); /* extern */
-M2C_UNK func_0032F390(s32, s32, s32);               /* extern */
 char **func_003335C0(s32);                          /* extern */
 
 s32 func_00333540(s32 arg0, s32 arg1) {
@@ -16,8 +17,8 @@ s32 func_00333540(s32 arg0, s32 arg1) {
     char *temp_a0;
 
     sp3C = _calloc__FUiUiPCci(8, 1, 0, 0);
-    func_0032F390(sp3C, arg1, arg0 + 8);
+    Clone__5_zrdrFP5_zrdrP7CSTable(sp3C, arg1, arg0 + 8);
     temp_a0 = *func_003335C0(arg0 + 0x34);
-    func_001FE340(temp_a0, M2C_FIELD(temp_a0, s32 *, 8) + (M2C_FIELD(temp_a0, s32 *, 4) * 4), 1, &sp3C);
+    func_001FE340(temp_a0, SC_MEMBER(temp_a0, s32 *, 8) + (SC_MEMBER(temp_a0, s32 *, 4) * 4), 1, &sp3C);
     return 1;
 }

@@ -4,24 +4,25 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK __destroy_arr(char *, M2C_UNK *, M2C_UNK, M2C_UNK); /* extern */
 M2C_UNK __dl__FPv(char *);                          /* extern */
+M2C_UNK __dt__11CSaveModuleFv(char *, M2C_UNK);     /* extern */
 M2C_UNK func_002B18A0(char *, M2C_UNK);             /* extern */
 M2C_UNK func_002B20E0();                            /* extern */
-M2C_UNK func_0033D290(char *, M2C_UNK);             /* extern */
 extern M2C_UNK data_00407CF0;
 extern M2C_UNK data_00407CF8;
 extern M2C_UNK func_002B1970;
 
 char *__dt__13CUIVarManagerFv(char *arg0, s64 arg1) {
     if (arg0 != NULL) {
-        M2C_FIELD(arg0, M2C_UNK **, 0x24) = &data_00407CF0;
-        M2C_FIELD(arg0, M2C_UNK **, 0xC) = &data_00407CF8;
+        SC_MEMBER(arg0, M2C_UNK **, 0x24) = &data_00407CF0;
+        SC_MEMBER(arg0, M2C_UNK **, 0xC) = &data_00407CF8;
         func_002B20E0();
         __destroy_arr(arg0 + 0x2C, &func_002B1970, 0x20, 2);
-        func_0033D290(arg0 + 0xC, 0);
+        __dt__11CSaveModuleFv(arg0 + 0xC, 0);
         if ((arg0 != NULL) && (arg0 != NULL)) {
             func_002B18A0(arg0, 0);
         }

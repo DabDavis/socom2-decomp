@@ -931,6 +931,26 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     and blend pools (RTArray, 0x20 bytes each) at 0x10/0x30, the blend stack at 0x50, the
     part and anim vectors at 0x5C/0x68, the overlay at 0x74; zanim_menu.cpp runs to 0x2869C4
     (cdeque<const void *>'s instances close it), the body code from 0x2869D0 to 0x29035C.
+- **Tells from the rdr reader** (src/gamez/zrdr/: zrdr.h, zrdr_main.cpp, zrdr_archive.cpp,
+  zrdr_file.cpp, zrdr_pack.cpp; src/gamez/zsave/):
+  - an inline const member called through a non-const pointer reloads a field the caller just
+    tested; through a const pointer, or written out, it reuses the register;
+  - MW folds a null test of a local array's address, even through an inline's parameter; written
+    as `(int)p` the test stays (both builds' FindRdr keep it);
+  - the target's bool-materialised tag test is `bool m = type == 3 ? strcmp(...) == 0 : false;`
+    written in the caller; as an inline bool member it reloads the type;
+  - `Item(unsigned)` with an int counter keeps the element address recomputed each pass, as the
+    target does; matching types strength-reduce it;
+  - a pointer-list walk whose element the target reloads after a call reads it through `*i.i_`,
+    cast out by value; `i = begin();` written before `iterator e = end();` loads the first node
+    ahead of the sentinel's address;
+  - a placeholder constructor or destructor wrapped in an inline gains MW's null test: call the
+    placeholder by hand where the member's would run;
+  - a 16-bit bitfield in `type == 4 ? length : 0` compares signed; through an unsigned-returning
+    accessor, unsigned;
+  - _zrdr is `type:8 isclone:1 packed:1 nofree:1 unused:5 length:16` and a word union; zanim.h
+    still has its own `struct _zrdr` (Item(int), non-const accessors) -- reconciling the two is
+    open, and must be measured (the accessors' constness and Item's index type change codegen).
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has

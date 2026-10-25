@@ -2738,7 +2738,7 @@
 0x00258720 0x20 CloseKey__Q23zar4CZARFPQ23zar4CKey  # OVL1; s1:callee by hand (LoadZAR closes each key with it where SOCOM 1's calls CloseKey; pops the stack)
 0x00258740 0x1DC func_00258740  # OVL1
 0x00258920 0x21C func_00258920  # OVL1; s1~ Open__Q23zar4CZARFPCciUiUi (OpenZAR calls it where SOCOM 1's calls zar::CZAR::Open, but with a fifth argument, t1 = 0: the signature changed)
-0x00258B40 0x90 func_00258B40  # OVL1; tu: zar_main.cpp~ (1.0 beta)
+0x00258B40 0x90 ReOpen__Q23zar4CZARFiUi  # OVL1; tu: zar_main.cpp~ (1.0 beta); s1:calls (CRdrArchive::OpenAll and FindRdr call it with (1, 1) where SOCOM 1's call zar::CZAR::ReOpen) -- the rdr lane
 0x00258BD0 0x70 func_00258BD0  # OVL1
 0x00258C40 0xA0 func_00258C40  # OVL1
 0x00258CE0 0x17C Close__Q23zar4CZARFv  # OVL1; s1:calls by hand (the zdb-world lane: the loaders close their archives through it where SOCOM 1's call CZAR::Close)
@@ -2757,8 +2757,8 @@
 0x00259B90 0x190 init<PCUi>__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPCUiPCUiQ23std20forward_iterator_tag_v  # OVL1 ; SOCOM 1 name with MW 3.0's return type (_v); the copy calls it as SOCOM 1's does
 0x00259D20 0x1C0 func_00259D20  # OVL1
 0x00259EE0 0x11C func_00259EE0  # OVL1
-0x0025A000 0x11C func_0025A000  # OVL1
-0x0025A120 0x1C4 func_0025A120  # OVL1
+0x0025A000 0x11C Fetch__Q23zar4CZARFPQ23zar4CKeyPviUi  # OVL1; s1:calls (CRdrFile::Load calls it with SOCOM 1's (key, buf, size, 0)) -- the rdr lane
+0x0025A120 0x1C4 Insert__Q23zar4CZARFPQ23zar4CKeyPCvi  # OVL1; s1:calls (CRdrFile::Insert calls it where SOCOM 1's calls zar::CZAR::Insert) -- the rdr lane
 0x0025A2F0 0x98 func_0025A2F0  # OVL1
 0x0025A390 0x23C func_0025A390  # OVL1
 0x0025A5D0 0x144 Fetch__Q23zar4CZARFPCcPvi  # OVL1; s1:callee
@@ -7572,7 +7572,7 @@
 0x0039F0C0 0x98 func_0039F0C0  # OVL1
 0x0039F160 0x50 func_0039F160  # OVL1
 0x0039F1B0 0x8 func_0039F1B0  # OVL1
-0x0039F1C0 0x1A0 func_0039F1C0  # OVL1
+0x0039F1C0 0x1A0 CreateString__7CSTableFPCc  # OVL1; s1:calls (_zrdr::Clone calls it where SOCOM 1's does) -- the rdr lane
 0x0039F360 0xE0 func_0039F360  # OVL1
 0x0039F440 0xFC func_0039F440  # OVL1
 0x0039F540 0x140 func_0039F540  # OVL1
@@ -7582,8 +7582,8 @@
 0x0039F6F0 0x240 Pack__7CSTableFPFP7CSTablePv_vPv  # OVL1; s1:align
 0x0039F930 0x110 func_0039F930  # OVL1
 0x0039FA40 0xF0 LoadTable__7CSTableFPvUib  # OVL1; s1:align
-0x0039FB30 0x98 func_0039FB30  # OVL1
-0x0039FBD0 0x88 func_0039FBD0  # OVL1
+0x0039FB30 0x98 __dt__7CSTableFv  # OVL1; s1:calls (~CRdrFile destroys its table member with it, as SOCOM 1's) -- the rdr lane
+0x0039FBD0 0x88 __ct__7CSTableFUiUi  # OVL1; s1:calls (CRdrFile's constructor builds its table at this+8 with (0, 1024), as SOCOM 1's) -- the rdr lane
 0x0039FC60 0x120 func_0039FC60  # OVL1
 0x0039FD80 0x128 func_0039FD80  # OVL1
 0x0039FEB0 0x8 GetMode__10CMemCardIOCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -8563,7 +8563,7 @@
 0x00402BB0 0x84 func_00402BB0  # OVL1 data area; a static initialiser; s1~ zparticle_buf.cpp (shape 0.50, a hint)
 0x00402C40 0x94 func_00402C40  # OVL1 data area; a static initialiser; s1~ zparticle_instance.cpp (shape 0.33, a hint)
 0x00402CE0 0x8C func_00402CE0  # OVL1 data area; a static initialiser; s1~ zparticle_source.cpp (shape 0.50, a hint)
-0x00402D70 0x3C func_00402D70  # OVL1 data area; a static initialiser; s1~ zrdr_archive.cpp (shape 0.60, a hint)
+0x00402D70 0x3C __sinit_zrdr_archive.cpp  # OVL1 data area; a static initialiser; s1~ zrdr_archive.cpp (shape 0.60, a hint); s1:calls (it builds CRdrArchive::m_list and registers its destructor 0x32C5F0; 0x3C bytes in both builds) -- the rdr lane
 0x00402DB0 0x3C func_00402DB0  # OVL1 data area; a static initialiser
 0x00402DF0 0x64 func_00402DF0  # OVL1 data area; a static initialiser; s1~ zrdr_parse.cpp (shape 0.60, a hint)
 0x00402E60 0x11C func_00402E60  # OVL1 data area; a static initialiser

@@ -11,10 +11,10 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 M2C_UNK DeleteChildren__5_zrdrFv(s32);              /* extern */
 M2C_UNK __dl__FPv(char *);                          /* extern */
 M2C_UNK __dt__5_zrdrFv(s32, M2C_UNK);               /* extern */
+M2C_UNK __dt__7CSTableFv(char *, M2C_UNK);          /* extern */
 M2C_UNK _free__FPvPCci(s32, M2C_UNK, M2C_UNK);      /* extern */
 M2C_UNK func_0036AC10(s32, M2C_UNK);                /* extern */
 M2C_UNK func_0036AC80(char *, M2C_UNK);             /* extern */
-M2C_UNK func_0039FB30(char *, M2C_UNK);             /* extern */
 extern M2C_UNK __vt__11CDlgObjSpec;
 extern M2C_UNK __vt__14CUIMapCtrlSpec;
 
@@ -49,7 +49,7 @@ char *func_00386E20(char *arg0, s64 arg1) {
                     DeleteChildren__5_zrdrFv(temp_a0_4);
                     __dt__5_zrdrFv(SC_MEMBER(temp_s0, s32 *, 4), 1);
                 }
-                func_0039FB30(temp_s0 + 8, -1);
+                __dt__7CSTableFv(temp_s0 + 8, -1);
                 __dl__FPv(temp_s0);
             }
         }

@@ -4,13 +4,15 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_0039FBD0(s32 arg0, s32 arg1, s32 arg2);
+char * __ct__12CUIVarSTableFv(char * arg0);
+M2C_UNK __ct__7CSTableFUiUi(char * arg0, u32 arg1, u32 arg2);
 extern M2C_UNK __vt__12CUIVarSTable;
 
-s32 __ct__12CUIVarSTableFv(s32 arg0) {
-    func_0039FBD0(arg0, 0xFFFF, 0x400);
-    M2C_FIELD(arg0, M2C_UNK **, 0xC) = &__vt__12CUIVarSTable;
+char *__ct__12CUIVarSTableFv(char *arg0) {
+    __ct__7CSTableFUiUi(arg0, 0xFFFFU, 0x400U);
+    SC_MEMBER(arg0, M2C_UNK **, 0xC) = &__vt__12CUIVarSTable;
     return arg0;
 }
