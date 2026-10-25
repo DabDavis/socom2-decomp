@@ -238,34 +238,29 @@ extern "C" bool func_00559000(CSealCtrlAi *ai)
     return false;
 }
 
-/* the state at 0x4EC: 4 with the word at 0x508 set (an inline: the test materialised) */
+/* the state at 0x4EC: 4 with the word at 0x508 set (an inline: the test materialised, the word
+ * as MW's `!(x == 0)`) */
 static inline bool IsState4Held(CSealCtrlAi *ai)
 {
-    return ai->m_508 != 0 && ai->m_4ec == 4;
+    return !(ai->m_508 == 0) && ai->m_4ec == 4;
 }
 
-/* free: in none of states 1-3 nor a held 4 (OVL2 0x5629B0).
- * OPEN, 0x68 against 0x58: the target materialises `m_508 != 0` as `xor; sltiu; xori` (MW's
- * `!(x == 0)`) and folds states 1-3 into one `sltiu at,3`; here `sltu` and only 1-2 fold, 3 tested
- * apart. Tried: `!(m_508 == 0)`, a bool local, a ternary, the whole test one `||` chain. */
+/* free: in none of states 1-3 nor a held 4 (OVL2 0x5629B0). States 1-3 are one unsigned range
+ * test written out, as the target's `(t - 1) < 3`: three `==` joined by `||` fold only two */
 extern "C" bool func_005629B0(CSealCtrlAi *ai)
 {
-    if (IsState4Held(ai))
-        return false;
-    if (ai->m_4ec == 1 || ai->m_4ec == 2 || ai->m_4ec == 3)
+    if (IsState4Held(ai) || (unsigned int)(ai->m_4ec - 1) < 3)
         return false;
     return true;
 }
 
-/* the byte at 0x4ED, or 0 in states 1-3 or a held 4 (OVL2 0x562960).
- * OPEN, 0x58 against 0x50: the target folds `t == 1 || t == 2 || t == 3` into one `(t - 1) < 3`
- * (sltiu at); MW folds 1-2 into a range and tests 3 apart. Tried the tests reversed, `t >= 1 && t
- * <= 3`, `(unsigned char)(t - 1) < 3`. */
+/* the byte at 0x4ED, or 0 in states 1-3 or a held 4 (OVL2 0x562960; the range and the inline
+ * as 0x5629B0's) */
 extern "C" signed char func_00562960(CSealCtrlAi *ai)
 {
-    if (ai->m_4ec == 1 || ai->m_4ec == 2 || ai->m_4ec == 3)
+    if ((unsigned int)(ai->m_4ec - 1) < 3)
         return 0;
-    if (ai->m_508 && ai->m_4ec == 4)
+    if (IsState4Held(ai))
         return 0;
     return ai->m_4ed;
 }
