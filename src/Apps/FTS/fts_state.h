@@ -629,6 +629,8 @@ public:
     void ReOpen_Load();
     void ReOpen_Unload1();
     void ReOpen_Unload2();
+    /* the mission ended (OVL1 0x2A9A70, fts_mission.cpp's) */
+    void EndMission();
 
     unsigned char _0[0x18];
     unsigned char m_18;   // 0x18: 4 in an online game (SOCOM 1's too); at 1 the core state's fade waits

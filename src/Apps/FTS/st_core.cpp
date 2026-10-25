@@ -216,7 +216,6 @@ extern CVoice data_00414680;                      /* the voice (0x414680) */
 extern int data_00408C08;                        /* SOCOM 1's oddeven, a static of Tick's */
 extern char data_00488F10[];
 extern char data_004B5170[];
-void func_002A9A70(CMission *mission);
 void func_0023AD90(CVoice *voice, float dT);
 bool func_001FA300(CHUD *hud);                   /* CHUD::PauseGame */
 void func_0034E070(CSched_Manager *sched, float dT);   /* CSched_Manager::Tick */
@@ -239,6 +238,73 @@ void func_003AFF30(bool wait, bool swap);        /* zVid_Swap */
 }
 
 static void LoadThreadEntry(void *arg);
+
+/* MSL 3.0's basic_string members that close the unit in its template tail (OVL1 0x1EEB40,
+ * 0x1EEB70, 0x1EF390, 0x1EF400; the template replace taking two iterators and their category,
+ * 0x1EE780, between them is still a placeholder): out-of-class template members in the original,
+ * written here as stand-ins under their placeholders over a copy of include/string's
+ * representation -- fts_state.h keeps its own std::basic_string, so <string> cannot come in.
+ * Defined first, so emitted last; pinned, or include/string's inline assign/append would take
+ * them in (the same-unit stand-in rule) */
+#include <iterator>
+
+namespace {
+/* include/string's twelve bytes: the long form's capacity | 1, size and text, the short form's
+ * size in the first byte's upper seven bits */
+struct CTailString {
+    bool is_long() const { return w_[0] & 1; }
+    unsigned int size() const { return is_long() ? w_[1] : (unsigned char)s_.size_; }
+
+    struct short_rep {
+        unsigned char is_long_ : 1;
+        unsigned char size_ : 7;
+        char data_[11];
+    };
+    union {
+        unsigned int w_[3];
+        short_rep s_;
+    };
+};
+}
+
+extern "C" {
+void *func_001EE780(void *str, unsigned int pos, unsigned int n1, const char *first, const char *last,
+                    std::forward_iterator_tag);   /* replace(pos, n1, first, last, category) */
+void *func_001EF390(CTailString *str, unsigned int pos, unsigned int n1, const char *s);
+}
+
+#pragma auto_inline off
+extern "C" {
+/* assign(first, last): the whole text replaced by the range (0x1EF400) */
+void *func_001EF400(CTailString *str, const char *first, const char *last)
+{
+    std::forward_iterator_tag category;
+
+    return func_001EE780(str, 0, str->size(), first, last, category);
+}
+
+/* replace(pos, n1, const char *): the range s..s+strlen(s) handed to the template replace
+ * (0x1EF390) */
+void *func_001EF390(CTailString *str, unsigned int pos, unsigned int n1, const char *s)
+{
+    std::forward_iterator_tag category;
+
+    return func_001EE780(str, pos, n1, s, s + strlen(s), category);
+}
+
+/* append(const char *): replace(size(), 0, s), a tail call (0x1EEB70) */
+void *func_001EEB70(CTailString *str, const char *s)
+{
+    return func_001EF390(str, str->size(), 0, s);
+}
+
+/* assign(const char *): replace(0, size(), s), a tail call (0x1EEB40) */
+void *func_001EEB40(CTailString *str, const char *s)
+{
+    return func_001EF390(str, 0, str->size(), s);
+}
+}
+#pragma auto_inline reset
 
 /* the load thread's stack (SOCOM 1's static array of it; SOCOM II's allocated once) */
 static void *load_thread_stack;
@@ -445,7 +511,7 @@ bool CCoreState::Tick(float dT)
 
         if (fade < 0.0f) {
             fade = 1.0f;
-            func_002A9A70(&theMission);
+            theMission.EndMission();
         }
         func_003B1760(0, 0, 0, fade);
         running = false;
