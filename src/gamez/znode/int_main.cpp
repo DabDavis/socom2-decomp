@@ -18,7 +18,26 @@ public:
     static int m_defaultMaterial;
 };
 
+/* the last polygon's normal, w zero (new in SOCOM II: SOCOM 1's SetEdgeVecsAndNorm stored it in
+ * the DI itself; the name is ours) */
+static PNT4D diNorm;
+
 namespace zdb {
+
+/* the polygon's normal from its first three points, normalised on VU0 (SOCOM 1's) */
+void CDI::SetEdgeVecsAndNorm()
+{
+    CPnt4D *p = m_pnts;
+    CPnt3D e0 = PntMinus(*(CPnt3D *)&p[1], *(CPnt3D *)&p[0]);
+    CPnt3D e1 = PntMinus(*(CPnt3D *)&p[2], *(CPnt3D *)&p[0]);
+    CPnt4D n;
+    CPnt4D a(e0.x, e0.y, e0.z, 1.0f);
+    CPnt4D b(e1.x, e1.y, e1.z, 1.0f);
+
+    sceVu0OuterProduct((float *)&n, (float *)&a, (float *)&b);
+    sceVu0Normalize((float *)&n, (float *)&n);
+    VecSet(&diNorm.x, n.x, n.y, n.z, 0.0f);
+}
 
 /* a point set from three values (the arguments evaluated right to left, so z, y and x are loaded
  * before the stores; an inline leaves no symbol: the name is ours) */

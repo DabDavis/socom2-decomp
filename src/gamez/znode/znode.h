@@ -145,6 +145,8 @@ public:
     static CDI *Create(CSaveLoad &io);
     /* the faces a query skips (SOCOM 1's static: CGrid::GetAltitude sets 32) */
     static int m_backface_mask;
+    /* the normal of the first three points (SOCOM 1's; SOCOM II keeps it in a static) */
+    void SetEdgeVecsAndNorm();
 
     CPnt4D *m_pnts;   // 0x10: its points, 16 bytes each (Allocate mallocs them; the name ours)
 };
@@ -1203,6 +1205,17 @@ struct CClutterEffector {
  * ClearAnimations, ~CClutterAnimManager; the same shape is open in several lanes: CValve::
  * DeleteCallbacks, ~CZAmmoList, zNetFlushMessages). include/list's begin() takes the link by value;
  * these stand in for SOCOM II's MSL until it does (the names ours) */
+/* a vector between two points, by value: Sub out of line into a temporary, copied out (ld/sd and
+ * lwc1/swc1) -- the collision code's differences (grid_di.cpp, int_main.cpp; SOCOM II's CPnt3D
+ * operator-, which zmath.h lacks; the name is ours) */
+inline CPnt3D PntMinus(const CPnt3D &a, const CPnt3D &b)
+{
+    CPnt3D r;
+
+    a.Sub(&b, &r);
+    return r;
+}
+
 typedef std::__list_deleter<const void *, std::allocator<const void *> > PtrListBase;
 struct PtrListFirst : public PtrListBase::iterator {
     PtrListFirst(PtrListBase::node_base *const &link) : PtrListBase::iterator(link) {}

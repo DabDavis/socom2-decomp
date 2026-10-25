@@ -56,16 +56,6 @@ void SetCameraCollideFlagRequired(bool on)
     cameraCollideFlagRequired = on;
 }
 
-/* a vector between two points, by value (the copy out of its temporary is the target's; the name
- * is ours) */
-inline CPnt3D PntMinus(const CPnt3D &a, const CPnt3D &b)
-{
-    CPnt3D r;
-
-    a.Sub(&b, &r);
-    return r;
-}
-
 /* the hits' indices sorted by their squared distance from the ray's tail, the distances kept
  * (SOCOM 1's).
  * OPEN, 0x148 of 0x158: the frame, the loop and the sort are the target's (the tail through a
