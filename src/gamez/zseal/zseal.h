@@ -79,6 +79,52 @@ public:
     unsigned int m_0;
 };
 
+class CSealCtrlAi;
+class CAiState;
+
+/* the AI's stack of states (SOCOM 1's DWARF: CAiStateStack : list, 0xc bytes). Both pieces are
+ * the AI-states lane's (OVL2 0x5F8390, 0x5F8490): Clear deletes every state through its virtual
+ * destructor and erases them, the destructor calls Clear and inlines ~list's three this-tested
+ * levels around the pointer list's erase (0x50F990). Only declared here. */
+class CAiStateStack : public std::list<CAiState *> {
+public:
+    ~CAiStateStack();
+    void Clear();
+};
+
+/* an AI state (SOCOM II's __vt__8CAiState at 0x669950: eighteen virtuals, SOCOM 1's ten with
+ * eight added -- one after OnSignal, one before GetStatus, six after GetScriptResponse -- and the
+ * destructor last, at +0x4C). The destructor is inline: every state's destructor inlines its
+ * base's (the table stored, the stack at 8 destroyed), and 0x5EA450 is its out-of-line copy. The
+ * slot names past SOCOM 1's are ours. */
+class CAiState {
+public:
+    enum SIGNAL { SIGNAL_NONE = 0 };
+    enum AI_STATE { AI_STATE_NONE = 0 };
+
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ctrl);                  /* +0x08 */
+    virtual int Virtual0C();
+    virtual void Tick(float dT, CSealCtrlAi *ctrl);                        /* +0x10 */
+    virtual int Virtual14() { return 0; }
+    virtual const char *GetStatus() const;                                 /* +0x18 */
+    virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ctrl) { return true; }
+    virtual bool CanSwitchAiState(AI_STATE state, CSealCtrlAi *ctrl) { return true; }
+    virtual bool CanAttack() const { return true; }                        /* +0x24 */
+    virtual bool CanScan() const { return true; }
+    virtual bool CanPursue(CSealCtrlAi *ctrl) const { return true; }
+    virtual int GetScriptResponse() const { return 0; }                    /* +0x30 */
+    virtual bool Virtual34() { return true; }
+    virtual bool Virtual38() { return true; }
+    virtual bool Virtual3C() { return true; }                              /* +0x3C */
+    virtual int Virtual40() { return 0; }
+    virtual int Virtual44() { return 0; }
+    virtual int Virtual48() { return 0; }                                  /* +0x48 */
+    virtual ~CAiState() {}
+
+    unsigned int m_4;   // 0x4
+    CAiStateStack m_stack;   // 0x8
+};
+
 /* the goals a controller pursues (SOCOM 1's DWARF, a byte) */
 enum GOAL_TYPE { GOAL_NONE = 0, GOAL_SCAN = 1, GOAL_LOOK = 2, GOAL_MOVE = 3, GOAL_SHOOT = 4, GOAL_AVOID = 5, GOAL_RECOVER = 6 };
 
