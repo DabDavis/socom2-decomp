@@ -193,11 +193,10 @@ void Headset::Tick(float dT)
 #include "../zsys/zsys.h"
 
 /* the stream stopped and the queue emptied (SOCOM II's; name ours: CCinematicState::Init calls it).
- * OPEN until the map names its four callees: every byte matches, and FreeVector's pieces are
- * vector<int>'s out-of-line copies linked from CMissionObjectiveCam's unit at 0x2C7350 (the
- * constructor), 0x2C7340 (clear), 0x2C7300 (swap) and 0x2C7290 (the destructor) -- rows outside
- * this lane, still placeholders. The queue is a vector<int>: the constructor pushes an int by
- * reference with no temporary */
+ * Byte-exact since the map named its four callees: FreeVector's pieces are vector<int>'s
+ * out-of-line copies linked from CMissionObjectiveCam's unit at 0x2C7350 (the constructor),
+ * 0x2C7340 (clear), 0x2C7300 (swap) and 0x2C7290 (the destructor). The queue is a vector<int>: the
+ * constructor pushes an int by reference with no temporary */
 void Headset::Flush()
 {
     if (theHeadsetState == 1 && m_state != 3) {

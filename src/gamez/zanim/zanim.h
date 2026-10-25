@@ -328,11 +328,28 @@ public:
 class CZAnimExVector;
 class CZAnimSetSave;
 
-/* the anims' task scheduler (SOCOM 1's names; only what is called) */
-class CSched_Manager {
+/* a scheduled task (SOCOM 1's DWARF; the system lane's) */
+class CSched_Task {
+public:
+    char *m_name;                       // 0x0
+    bool m_remove;                      // 0x4 (the DWARF's unsigned char)
+    float m_priority;                   // 0x8
+    bool (*m_task)(float, void *);      // 0xc
+    void *m_user_data;                  // 0x10
+    unsigned int m_startTime;           // 0x14
+    unsigned int m_stopTime;            // 0x18
+};   // 0x1c bytes
+
+/* the anims' task scheduler (SOCOM 1's names and DWARF: a list of tasks; zsys_sched.cpp) */
+class CSched_Manager : public std::list<CSched_Task *> {
 public:
     bool RemoveTask(void *task, bool all);
-};
+    bool RemoveTask(const char *name, bool all);    /* the system lane's */
+
+    unsigned char m_inTick;             // 0xc (the system lane's)
+    float m_priority;                   // 0x10
+    std::list<CSched_Task *> m_FreeList;    // 0x14
+};   // 0x20 bytes (zTaskScheduler's)
 
 /* a named set of anims (SOCOM 1's DWARF; SOCOM II added the gravity at 0x1C) */
 class CZAnimSet {
@@ -666,12 +683,30 @@ enum VALVE_STATE {
     VALVE_OFF
 };
 
+/* a valve's callback: called with the user's word when a change of state is in its mask (SOCOM
+ * 1's CValve::AddCallback(unsigned int, void (*)(CValve *, void *), void *); names ours) */
+struct VALVE_CB {
+    unsigned int mask;                      /* 0x0 */
+    void (*func)(CValve *valve, void *user);    /* 0x4 */
+    void *user;                             /* 0x8 */
+};
+
+/* SOCOM 1's DWARF: a list (of the callbacks) */
+class CValveCBList : public std::list<VALVE_CB *> {
+};
+
 class CValve {
 public:
     static CValve *Create(const char *name, VALVE_TYPE type);
     static CValve *Create(const char *name, unsigned int value, VALVE_TYPE type);
     static CValve *GetByName(const char *name);
     void MakeCallbacks(VALVE_STATE state);
+    /* the valve lane's (src/gamez/zvalve/) */
+    static void Destroy(CValve *valve);
+    void DeleteCallbacks();
+    void FreeName();
+    void SetName(const char *name);
+    void AssignName(char *name);
 
     char* m_name;   // 0x0
     unsigned int m_value : 16;   // 0x4
@@ -679,7 +714,10 @@ public:
     unsigned int m_name_pooled : 1;   // 0x4
     unsigned int m_pooled : 1;   // 0x4
     unsigned int m_unused : 6;   // 0x4
-};
+    CValveCBList m_callbacks;   // 0x8 (SOCOM 1's DWARF; the valve lane's)
+
+    static std::list<CValve *> m_list;   // 0x49E800: every valve (SOCOM 1's)
+};   // 0x14 bytes (SOCOM 1's)
 
 class _zanim_valve_ref {
 public:

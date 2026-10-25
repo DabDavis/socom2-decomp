@@ -6369,23 +6369,23 @@
 0x0034EBC0 0x68 _memalign__FUiUiPCci  # OVL1; s1:align
 0x0034EC30 0x60 _malloc__FUiPCci  # OVL1; s1:order (called by CBits::Resize where SOCOM 1 calls _malloc; DIntr, malloc, EIntr, assert)
 0x0034EC90 0x64 zsys_FullAllocAndFree__Fv  # OVL1; s1:calls
-0x0034ED00 0x1AC func_0034ED00  # OVL1
-0x0034EEB0 0x144 func_0034EEB0  # OVL1
-0x0034F000 0x60 func_0034F000  # OVL1
-0x0034F060 0x78 func_0034F060  # OVL1
+0x0034ED00 0x1AC Free__5CHeapFPv  # OVL1; SOCOM II's, class and name ours (a free into an address-ordered free list, merged with its neighbours; a pointer outside the block goes to _free and the fallback count drops; returns the block's size; the wrapper at 0x30E3B0 tail-calls it on the global at 0x45B328) -- the sound/system lane
+0x0034EEB0 0x144 Alloc__5CHeapFUi  # OVL1; SOCOM II's, class and name ours (first a block within 8 bytes of the rounded size, else the closest larger one split; _malloc when none, counted) -- the sound/system lane
+0x0034F000 0x60 __dt__5CHeapFv  # OVL1; SOCOM II's, class ours (the block given back with _free; 0x30E300 deletes the global with it) -- the sound/system lane
+0x0034F060 0x78 __ct__5CHeapFUi  # OVL1; SOCOM II's, class ours (the block taken with _malloc, one free block of the whole size) -- the sound/system lane
 0x0034F0E0 0x40 zSysSleep__Fi  # OVL1; s1:exact
-0x0034F120 0x8 func_0034F120  # OVL1
-0x0034F130 0xAC func_0034F130  # OVL1
-0x0034F1E0 0x48 func_0034F1E0  # OVL1
-0x0034F230 0x188 func_0034F230  # OVL1
+0x0034F120 0x8 SleepAlarmCB__FiUsPv  # OVL1; s1:order+ref (SOCOM 1's static SleepAlarmCB(int, unsigned short, void *) after zSysSleep, which passes its address to SetAlarm in both builds; it wakes the thread its argument names) -- the sound/system lane
+0x0034F130 0xAC zSysTimerInit__Fv  # OVL1; SOCOM II's, name ours (zSys.timerTicksPerSecond from zVid's H-blank rate, timerScale its reciprocal: SOCOM 1's zSysReset did this inline, SOCOM II's inlines this function) -- the sound/system lane
+0x0034F1E0 0x48 zSysHddUnmount__FPCc  # OVL1; SOCOM II's, name ours (sceUmount of the name it is passed when the disk is mounted, the mount flag and the devctl status reset; returns sceUmount's answer as a bool) -- the sound/system lane
+0x0034F230 0x188 zSysHddInit__Fv  # OVL1; SOCOM II's, name ours (the three HDD modules ATAD/HDD/PFS loaded and started once from the table at 0x3E0250, then sceDevctl("hdd0:", 0x4807); true when that answered 0) -- the sound/system lane
 0x0034F3C0 0x374 zSysReset__Fv  # OVL1; s1:align
-0x0034F740 0x84 func_0034F740  # OVL1
-0x0034F7D0 0xE0 func_0034F7D0  # OVL1
+0x0034F740 0x84 zSysUnloadMcIRX__Fv  # OVL1; SOCOM II's, name ours (MCMAN/MCSERV stopped and unloaded, last first, through SOCOM 1's zSysUnloadIRX inlined; the loaded flag cleared) -- the sound/system lane
+0x0034F7D0 0xE0 zSysLoadMcIRX__Fv  # OVL1; SOCOM II's, name ours (the memory card's two modules loaded through zSysLoadIRX inlined, the loaded flag set) -- the sound/system lane
 0x0034F8B0 0x68 zSysLoadIRX__FPciPcb  # OVL1; s1:align
-0x0034F920 0x2C func_0034F920  # OVL1
-0x0034F950 0x8 func_0034F950  # OVL1
-0x0034F960 0x48 func_0034F960  # OVL1
-0x0034F9B0 0x940 func_0034F9B0  # OVL1
+0x0034F920 0x2C zSysShutdown__Fv  # OVL1; SOCOM II's, name ours (the IOP rebooted in mode 6, then a sound flag cleared; the machine resets that zVid_Assert calls end with it) -- the sound/system lane
+0x0034F950 0x8 zSysPostInit__Fv  # OVL1; s1:order (SOCOM 1's zSysPostInit, between zSysLoadIRX and zSysInit, emptied; UISysPostInit calls it as SOCOM 1's does) -- the sound/system lane
+0x0034F960 0x48 zSysInit__Fv  # OVL1; s1:order+calls (SOCOM 1's zSysInit, after zSysPostInit: zsys_FullAllocAndFree, zSys.isCdBoot cleared, RebootIOP; main calls it) -- the sound/system lane
+0x0034F9B0 0x940 RebootIOP__11CIOPManagerFQ211CIOPManager10RebootMode  # OVL1; s1:order+calls (SOCOM 1s CIOPManager::RebootIOP(RebootMode) after zSysInit, which calls it on theIOPManager with the mode, as SOCOM 1s; SOCOM II adds modes past 3) -- the sound/system lane
 0x003502F0 0x8 func_003502F0  # OVL1
 0x00350300 0xE4 func_00350300  # OVL1
 0x003503F0 0x1F0 func_003503F0  # OVL1
@@ -6397,16 +6397,16 @@
 0x00350950 0x4C Copy__4CSPRFP8_word128P8_word128i  # OVL1; s1:align
 0x003509A0 0x110 Kick__4CSPRFP8_word128b  # OVL1; s1:align
 0x00350AB0 0x204 zSysFifoKick__FP1Ui  # OVL1; s1:callee
-0x00350CC0 0xC func_00350CC0  # OVL1
+0x00350CC0 0xC zSysFifoSetSync__Fb  # OVL1; SOCOM II's, name ours (sets the byte zSysFifoKick tests to wait for the drain to catch up instead of for room in the ring) -- the sound/system lane
 0x00350CD0 0xB8 zSysFifoEnd__Fv  # OVL1; s1:align
 0x00350D90 0xA0 zSysSprGetPacket__FPP1  # OVL1; s1:callee
-0x00350E30 0x180 func_00350E30  # OVL1
+0x00350E30 0x180 zSysFifoEnable__FUi  # OVL1; s1:order+calls (SOCOM 1's zSysFifoEnable(mode): after zSysSprGetPacket, the ring's base and size stored, mode 1 starts VIF1's channel and mode 2 GIF's from the ring with D_CTRL.MFD 2/3, else zSysFifoDisable inlined; the same constants 0x145/0x144) -- the sound/system lane
 0x00350FB0 0x48 zSysFifoDisable__Fv  # OVL1; s1:align
-0x00351000 0x2C func_00351000  # OVL1
-0x00351030 0x7C func_00351030  # OVL1
-0x003510B0 0x84 func_003510B0  # OVL1
-0x00351140 0x11C func_00351140  # OVL1
-0x00351260 0x11C func_00351260  # OVL1
+0x00351000 0x2C zSysFifoInit__Fv  # OVL1; s1:order (SOCOM 1's zSysFifoInit: after zSysFifoDisable, D_RBOR = mfifoBase, D_RBSR = 0x7FFF0, sync; zSysReset calls it) -- the sound/system lane
+0x00351030 0x7C zSysFifoResume__Fb  # OVL1; SOCOM II's, name ours (VIF1's DMA registers and D_CTRL put back from the statics zSysFifoPause saved, the channel restarted when the argument is set; called in pairs with zSysFifoPause) -- the sound/system lane
+0x003510B0 0x84 zSysFifoPause__Fv  # OVL1; SOCOM II's, name ours (VIF1's channel stopped (CHCR &= 0xfeff), its CHCR/TADR/QWC/MADR and D_CTRL kept in statics, D_CTRL = 1) -- the sound/system lane
+0x00351140 0x11C zSysVu0Restore__Fi  # OVL1; SOCOM II's, name ours (VU0's vi1-vi15 and vf1-vf31 loaded from one of two 0x230-byte contexts at 0x49E380 with the interrupts off; CLoadState::Tick calls it after zSysVu0Save) -- the sound/system lane
+0x00351260 0x11C zSysVu0Save__Fi  # OVL1; SOCOM II's, name ours (vf1-vf31 and vi1-vi15 stored to the context, the pair of zSysVu0Restore) -- the sound/system lane
 0x00351380 0x60 Code__3CVUFP1  # OVL1; s1:exact; s1:exact body but NOT SOCOM 1's signature: zMath_Init passes no size, so the unused second parameter is gone (MW mangles a 128-bit type as `1`: CVU::Code(u_long128 *))
 0x003513E0 0x98 __dt__3CVUFv  # OVL1; s1:calls
 0x00351480 0x120 __ct__3CVUFUi  # OVL1; s1:order (after Code and the destructor; registers the same VIF0 handler and fills the same 0xCDCD pattern)
