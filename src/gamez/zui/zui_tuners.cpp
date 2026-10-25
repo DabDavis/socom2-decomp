@@ -29,9 +29,9 @@ class SystemTuner : public UIVarMixin {
 public:
     SystemTuner(const char *name)
     {
-        CUIVariable *var = theUIVarManager.Add(name, 0, UIVAR_SESSION);
+        CUIVariable *var = theUIVarManager.Add(name, 0, UIVL_TEMPORARY);
 
-        var->m_longevity = UIVAR_PERMANENT;
+        var->m_longevity = UIVL_PERMANENT;
         if (var) {
             AttachUIVar(var);
             UpdateUIVar(var);

@@ -187,9 +187,6 @@ void CSealCtrl::OnMissionEnd()
 }
 
 extern "C" {
-/* CSealUnit::Notify (SOCOM 1's Notify__9CSealUnitFP10CZSealBody12UNIT_MESSAGEPv by its call here;
- * OVL2 0x5ED7B0, the kit lane's) */
-void func_005ED7B0(CSealUnit *unit, CZSealBody *seal, int message, void *data);
 /* (OVL1 0x30E6E0, unowned: told of a death online, with the global at 0x45B718) */
 void func_0030E6E0(void *obj, int a);
 extern void *data_0045B718;
@@ -202,7 +199,7 @@ void func_00552780(CZSealBody *seal, int a, float b, float c);
  * SOCOM II's network ending) */
 void CSealCtrl::OnDeath()
 {
-    func_005ED7B0(m_unit, (CZSealBody *)m_entity, 1, 0);
+    m_unit->Notify((CZSealBody *)m_entity, UNIT_MESSAGE_DEATH, 0);
     switch (((CZSealBody *)m_entity)->m_deathType) {
     case DEATH_KNIFE_KILL:
     case DEATH_CQB:

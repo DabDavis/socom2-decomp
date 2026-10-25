@@ -1839,7 +1839,7 @@
 0x0020EF50 0x1AC func_0020EF50  # OVL1
 0x0020F100 0xB4 func_0020F100  # OVL1
 0x0020F1C0 0x28 func_0020F1C0  # OVL1
-0x0020F1F0 0x20 func_0020F1F0  # OVL1
+0x0020F1F0 0x20 __as__6CPnt3DFRC6CPnt3D  # OVL1; by its body (a field-by-field copy returning this: CPnt3D's implicit assignment out of line; CHoming's reset and the widget specs go through it) -- the UI-widgets and body lanes
 0x0020F210 0x8 func_0020F210  # OVL1
 0x0020F220 0x244 func_0020F220  # OVL1
 0x0020F470 0x10 func_0020F470  # OVL1
@@ -2096,7 +2096,7 @@
 0x0022DC40 0x24 func_0022DC40  # OVL1
 0x0022DC70 0x24 func_0022DC70  # OVL1
 0x0022DCA0 0x18 func_0022DCA0  # OVL1
-0x0022DCC0 0x44 func_0022DCC0  # OVL1
+0x0022DCC0 0x44 __as__9CSaferStrFPCc  # OVL1; ours by SOCOM 1's class (CSaferStr's assignment from a C string: assign (0x1EEB40) when non-null, else an erase through 0x1EE780, nothing returned -- SOCOM 1's zutil.h treats null as empty); the widget specs' constructors call it -- the UI-widgets lane
 0x0022DD10 0xC func_0022DD10  # OVL1
 0x0022DD20 0x40 func_0022DD20  # OVL1
 0x0022DD60 0x24 func_0022DD60  # OVL1
@@ -3822,7 +3822,7 @@
 0x002A7D40 0x3F4 func_002A7D40  # OVL1
 0x002A8140 0xB48 func_002A8140  # OVL1
 0x002A8C90 0x298 func_002A8C90  # OVL1
-0x002A8F30 0x14 func_002A8F30  # OVL1
+0x002A8F30 0x14 __ct__6CPnt3DFfff  # OVL1; by its body (the three floats stored at 0, 4, 8, this returned: zmath.h's inline CPnt3D(float, float, float) out of line) -- the UI-widgets lane
 0x002A8F50 0x19C func_002A8F50  # OVL1
 0x002A90F0 0x11C func_002A90F0  # OVL1
 0x002A9210 0x50 GetLadderByIndex__11CLadderListFi  # OVL1; s1:align
@@ -4977,15 +4977,15 @@
 0x002F6A70 0x144 func_002F6A70  # OVL1
 0x002F6BC0 0x138 func_002F6BC0  # OVL1
 0x002F6D00 0x6C func_002F6D00  # OVL1
-0x002F6D70 0xBC func_002F6D70  # OVL1
-0x002F6E30 0x90 func_002F6E30  # OVL1
+0x002F6D70 0xBC CountGamePlayers__Fv  # OVL1; ours (a lobby state handler 0x2EF3C0 calls it: with 'late_joiner' on and the net game in progress, MediusGetGamePlayers asked once at a time, 0x44FA88 the flag)
+0x002F6E30 0x90 cbCountGamePlayers__FiiiP28MediusGetGamePlayersResponse  # OVL1; ours (CountGamePlayers' MediusGetGamePlayers callback: 'MediusGetGamePlayers' checked, flagged players counted into 0x66A990, the total to 0x66A9A0 at the list's end)
 0x002F6EC0 0x15C RefreshGamePlayerList__13CZOnlineLobbyFP3C2D  # OVL1; s1:ui ('RefreshGamePlayerList' 0x27D820, as SOCOM 1's UIRefreshGamePlayerList calls RefreshGamePlayerList)
 0x002F7020 0x668 func_002F7020  # OVL1
 0x002F7690 0x74 func_002F7690  # OVL1
 0x002F7710 0x8C GetAnnouncements__13CZOnlineLobbyFv  # OVL1; s1:ui ('GetMediusAnnouncements' = UIGetMediusAnnouncements, as SOCOM 1's calls GetAnnouncements)
 0x002F77A0 0x244 cbGetAnnouncements__FiiiP30MediusGetAnnouncementsResponse  # OVL1; s1 by hand (GetAnnouncements' callback, as SOCOM 1's GetAnnouncements passes cbGetAnnouncements)
-0x002F79F0 0xC4 func_002F79F0  # OVL1
-0x002F7AC0 0x180 func_002F7AC0  # OVL1
+0x002F79F0 0xC4 GetUsagePolicy__13CZOnlineLobbyFv  # OVL1; ours (the UI command table's 'GetUsagePolicy' handler UIGetUsagePolicy 0x2797CC calls it on theLobby: the policy UI variables set, MediusGetPolicy (0x6495E0) asked with 0x2F7AC0)
+0x002F7AC0 0x180 cbGetPolicy__FiiiP23MediusGetPolicyResponse  # OVL1; ours (GetUsagePolicy's MediusGetPolicy callback: 'GetPolicyRequest' checked, the policy text built into 'UsagePolicy' through a CRdrEditor)
 0x002F7C40 0x144 func_002F7C40  # OVL1
 0x002F7D90 0x210 func_002F7D90  # OVL1
 0x002F7FA0 0x114 func_002F7FA0  # OVL1
@@ -5001,8 +5001,8 @@
 0x002F8CE0 0x6C func_002F8CE0  # OVL1
 0x002F8D50 0x80 func_002F8D50  # OVL1
 0x002F8DD0 0x80 GameIsPasswordProtected__13CZOnlineLobbyFPCc  # OVL1; s1:ui ('GameHasPassword' 0x27D390, as SOCOM 1's UIGameHasPassword calls GameIsPasswordProtected)
-0x002F8E50 0x78 func_002F8E50  # OVL1
-0x002F8ED0 0xF4 func_002F8ED0  # OVL1
+0x002F8E50 0x78 cbClearGameListFilter__FiiiP33MediusClearGameListFilterResponse  # OVL1; ours (JoinGame("RANDOM") passes it to MediusClearGameListFilter: 'GetRandomGame::ClearGameListFilter' checked, then a filter set through 0x649960 with 0x2F8ED0)
+0x002F8ED0 0xF4 cbSetGameListFilter__FiiiP31MediusSetGameListFilterResponse  # OVL1; ours (cbClearGameListFilter's filter callback: the five filter valves read, then a 999-game page asked through 0x64B008 with 0x2F8FD0)
 0x002F8FD0 0x234 func_002F8FD0  # OVL1
 0x002F9210 0x8 func_002F9210  # OVL1
 0x002F9220 0x1F0 func_002F9220  # OVL1
@@ -5305,15 +5305,15 @@
 0x0030CD90 0x40 func_0030CD90  # OVL1
 0x0030CDD0 0x10 func_0030CDD0  # OVL1
 0x0030CDE0 0x8 func_0030CDE0  # OVL1
-0x0030CDF0 0x88 func_0030CDF0  # OVL1
+0x0030CDF0 0x88 zNetRemoteObjectUpdateCallback__9CZNetworkFiii  # OVL1; s1 by hand (SOCOM 1's zNetRemoteObjectUpdateCallback, the first function of zNetDme.cpp in both builds: NetGetObject, the type's update callback from the list at +0x1114, the field-update flag at +0x10B set; zNetRegisterRemoteObjectCallback registers it with the DME as SOCOM 1's does)
 0x0030CE80 0x6C zNetRegisterRemoteObjectCallback__9CZNetworkFiPFii_vPFiii_vPFiii_vPFii_v  # OVL1; s1:calls (every zNetRegister* calls it last with the index and four callbacks, as SOCOM 1's; the same 0x6C) -- the states lane
 0x0030CEF0 0x100 zNetSendApplicationMessage__9CZNetworkFciiiiPUcb  # OVL1; s1:calls by hand (the states lane: every network sender calls it at SOCOM 1's call site, 39 of them, with the same register handling and calls; zNetDme.cpp's)
 0x0030CFF0 0xC func_0030CFF0  # OVL1
 0x0030D000 0x8 func_0030D000  # OVL1
 0x0030D010 0x8 func_0030D010  # OVL1
 0x0030D020 0x40 func_0030D020  # OVL1
-0x0030D060 0xA8 func_0030D060  # OVL1
-0x0030D110 0xA0 func_0030D110  # OVL1
+0x0030D060 0xA8 zNetJoin__9CZNetworkFPFii_vPFii_v  # OVL1; s1 by hand (SOCOM 1's zNetJoin, two client callbacks: here kept at +0x110C/+0x1110 and the game connection's session joined through a parameter block -- NetSetDefaultJoinParams 0x621DB8, NetJoin 0x621E50 -- m_bJoined set on success, the answer returned)
+0x0030D110 0xA0 zNetClientCallback__FP18NetClientEventInfo  # OVL1; ours (zNetJoin's client-event callback: the lobby's own connection skipped, event 0 to the join callback at +0x110C, 1 to the leave one at +0x1110)
 0x0030D1B0 0x1C8 func_0030D1B0  # OVL1
 0x0030D380 0x188 func_0030D380  # OVL1
 0x0030D510 0x28 zNetGetValidGameClientCount__9CZNetworkFv  # OVL1; tu: zNetDme.cpp~ (1.0 beta); s1:calls by hand (the states lane: at SOCOM 1's call sites; tu: zNetDme.cpp~)
@@ -5326,14 +5326,14 @@
 0x0030D630 0x34 zNetGetObject__9CZNetworkFi  # OVL1; s1:calls (RemoteSealDeletionCallback, as SOCOM 1's) -- the states lane
 0x0030D670 0xF8 zNetCreateObject__9CZNetworkFPi18NetOwnershipStatus17NetObjectLifespanUiiUiiPvPci  # OVL1; s1:calls (CreateLocalGame/Grenade/Bomb pass SOCOM 1's ten arguments, the stack layout included) -- the states lane
 0x0030D770 0x58 func_0030D770  # OVL1
-0x0030D7D0 0x98 func_0030D7D0  # OVL1
-0x0030D870 0x90 func_0030D870  # OVL1
-0x0030D900 0xB0 func_0030D900  # OVL1
+0x0030D7D0 0x98 zNetPlayFixList__9CZNetworkFv  # OVL1; ours (zNetUpdate calls it when the fix list at +0x1254 is not empty: each entry played through zRemoteDelayedAction and freed, the list cleared -- SOCOM 1's zNetUpdate did this in place)
+0x0030D870 0x90 AddToFixList__9CZNetworkFPQ29CZNetwork18TypeRTimeFixStruct  # OVL1; s1 by hand (SOCOM 1's AddToFixList: a 28-byte copy new'd and pushed onto the fix list, the list at +0x1254)
+0x0030D900 0xB0 zNetFlushMessages__9CZNetworkFv  # OVL1; ours (zNetUpdate calls it when the message list at +0x1248 is not empty: each queued message sent through NetSendApplicationMessage 0x621458 and freed, the list cleared -- SOCOM 1's zNetUpdate did this in place)
 0x0030D9B0 0x48 func_0030D9B0  # OVL1
-0x0030DA00 0x1B0 func_0030DA00  # OVL1
+0x0030DA00 0x1B0 zNetUpdate__9CZNetworkFv  # OVL1; s1 by hand (SOCOM 1's zNetUpdate: game_main.cpp calls it at SOCOM 1's call site; the messages flushed, the Medius or DME update and the lobby's Tick, the delayed actions, the post-update callbacks over the 4096 field flags, NetGetLocalTime and NetGetTime into +0x104/+0x100)
 0x0030DBB0 0x130 func_0030DBB0  # OVL1
 0x0030DCE0 0x148 func_0030DCE0  # OVL1
-0x0030DE30 0xAC func_0030DE30  # OVL1
+0x0030DE30 0xAC zNetLookupHost__9CZNetworkFPCcPci  # OVL1; ours (the server list's connect 0x2FDF60 calls it on theNetwork: sceInetName2Address then sceInetAddress2String into the caller's buffer, 30 on failure)
 0x0030DEE0 0x37C func_0030DEE0  # OVL1
 0x0030E260 0x2C func_0030E260  # OVL1
 0x0030E290 0x64 func_0030E290  # OVL1
@@ -6748,7 +6748,7 @@
 0x00366D70 0x35C func_00366D70  # OVL1
 0x003670D0 0x35C func_003670D0  # OVL1
 0x00367430 0x238 func_00367430  # OVL1
-0x00367670 0x60 func_00367670  # OVL1
+0x00367670 0x60 __dt__Q23std52vector<10ActionItem,Q23std23allocator<10ActionItem>>Fv  # OVL1; by its body (~vector<ActionItem>: calls 0x36AC10, the deleter's destructor, with 0) -- the UI-widgets lane
 0x003676D0 0x60 func_003676D0  # OVL1
 0x00367730 0x60 func_00367730  # OVL1
 0x00367790 0x14 func_00367790  # OVL1
@@ -6788,7 +6788,7 @@
 0x0036A970 0x1A8 func_0036A970  # OVL1
 0x0036AB20 0xC0 func_0036AB20  # OVL1
 0x0036ABE0 0x30 zUISchedulerClear__Fv  # OVL1; s1:exact
-0x0036AC10 0x68 func_0036AC10  # OVL1
+0x0036AC10 0x68 __dt__Q23std62__vector_deleter<10ActionItem,Q23std23allocator<10ActionItem>>Fv  # OVL1; s1:calls (SOCOM 1's CButtonSpec destructor calls the ActionItem vector's deleter destructor for the same member) -- the UI-widgets lane
 0x0036AC80 0x68 func_0036AC80  # OVL1
 0x0036ACF0 0x68 func_0036ACF0  # OVL1
 0x0036AD60 0x6C func_0036AD60  # OVL1
@@ -6933,7 +6933,7 @@
 0x00379080 0xDC func_00379080  # OVL1
 0x00379160 0xFC Draw__9CPlainBmpFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00379260 0x90 func_00379260  # OVL1
-0x003792F0 0x1B4 func_003792F0  # OVL1
+0x003792F0 0x1B4 LoadSpec__17CRenderableStringFRC9CTextSpec  # OVL1; s1:calls (SOCOM 1's CClockSpec::CreateDisplayObj calls CRenderableString::LoadSpec at the same place) -- the UI-widgets lane
 0x003794B0 0x4C0 func_003794B0  # OVL1
 0x00379970 0x138 func_00379970  # OVL1
 0x00379AB0 0x60 func_00379AB0  # OVL1
@@ -6945,7 +6945,7 @@
 0x0037A540 0xF0 Draw__17CRenderableStringFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037A630 0x8 func_0037A630  # OVL1
 0x0037A640 0x12C __dt__17CRenderableStringFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0037A770 0x94 func_0037A770  # OVL1; tu: zui_2d.cpp~ (1.0 beta)
+0x0037A770 0x94 __ct__17CRenderableStringFv  # OVL1; tu: zui_2d.cpp~ (1.0 beta); s1:calls (SOCOM 1's CClockSpec::CreateDisplayObj calls CRenderableString's constructor at the same place) -- the UI-widgets lane
 0x0037A810 0x110 func_0037A810  # OVL1
 0x0037A920 0x264 func_0037A920  # OVL1
 0x0037AB90 0x260 func_0037AB90  # OVL1
@@ -7049,7 +7049,7 @@
 0x0037D220 0x84 CreateDisplayObj__10CClockSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037D2B0 0xB0 Copy__10CClockSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037D360 0x90 __dt__9CTextSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0037D3F0 0x190 func_0037D3F0  # OVL1
+0x0037D3F0 0x190 __ct__10CClockSpecFP5_zrdr  # OVL1; by hand (GetObjectSpec's CLOCK: new(0x34) then this; CTextSpec's constructor inlined one level, CClockSpec's vtable) -- zui_spec.cpp
 0x0037D580 0x80 CreateDisplayObj__14CUIMapCtrlSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037D600 0x310 func_0037D600  # OVL1
 0x0037D910 0x94 func_0037D910  # OVL1
@@ -7059,12 +7059,12 @@
 0x0037DE60 0x198 CreateDisplayObj__13CCheckBoxSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037E000 0x188 func_0037E000  # OVL1
 0x0037E190 0x4C func_0037E190  # OVL1
-0x0037E1E0 0x28 func_0037E1E0  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
+0x0037E1E0 0x28 __ct__9CSaferStrFRC9CSaferStr  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); by hand (the string's copy constructor 0x22E560 called on this and returned: CSaferStr's implicit copy out of line, which zui_cleanup.cpp's Copies call for their string members) -- zui_spec.cpp
 0x0037E210 0x84 func_0037E210  # OVL1
 0x0037E2A0 0x1D0 func_0037E2A0  # OVL1
 0x0037E470 0x184 CreateDisplayObj__17CHProgressBarSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0037E600 0xB0 func_0037E600  # OVL1
-0x0037E6B0 0x78 func_0037E6B0  # OVL1
+0x0037E600 0xB0 __ct__17CHProgressBarSpecFP5_zrdr  # OVL1; by hand (CImageSpec's constructor called, CHProgressBarSpec's vtable stored, FILENAME_IS_UIVAR and LEADING_EDGE_NODE parsed; GetObjectSpec's PROGRESSBAR) -- zui_spec.cpp
+0x0037E6B0 0x78 __dt__10CImageSpecFv  # OVL1; s1:vtable (slot 0x08 of CImageSpec's table 0x407F80; SOCOM 1's __dt__10CImageSpecFv; the implicit destructor zui_spec.cpp emits with CImageSpec's constructor) -- zui_spec.cpp
 0x0037E730 0x178 CreateDisplayObj__14CSliderBarSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037E8B0 0x1AC CreateDisplayObj__14CUIListBoxSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037EA60 0x14 func_0037EA60  # OVL1
@@ -7078,15 +7078,15 @@
 0x00381550 0x688 func_00381550  # OVL1
 0x00381BE0 0x144 CreateDisplayObj__12CCounterSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00381D30 0xD8 Copy__12CCounterSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00381E10 0x254 func_00381E10  # OVL1
-0x00382070 0x5F8 func_00382070  # OVL1
-0x00382670 0x21C func_00382670  # OVL1
+0x00381E10 0x254 __ct__12CCounterSpecFP5_zrdr  # OVL1; by hand (CTextSpec's constructor inlined one level, CCounterSpec's vtable, StartTime/ValVar/EndTime/Duration; GetObjectSpec's COUNTER) -- zui_spec.cpp
+0x00382070 0x5F8 GetObjectSpec__FP5_zrdrPCc  # OVL1; s1:order by hand (SOCOM 1's GetObjectSpec__FP5_zrdrPCc after Copy__12CCounterSpecFv in zui_spec.cpp: TEXT, IMAGE, TELETYPE, WRAPPEDTEXT, PROGRESSBAR, COUNTER, CLOCK and SOCOM II's SECURETEXT) -- zui_spec.cpp
+0x00382670 0x21C __ct__9CTextSpecFP5_zrdr  # OVL1; s1:order by hand (SOCOM 1's __ct__9CTextSpecFP5_zrdr between GetObjectSpec and GetControlSpec, as here: CDlgObjSpec's constructor inlined, CTextSpec's vtable, CAPTION/SCALE/FONT/HCENTERED/RIGHT_JUSTIFIED/COLOR) -- zui_spec.cpp
 0x00382890 0x304 func_00382890  # OVL1
-0x00382BA0 0xC8 func_00382BA0  # OVL1
-0x00382C70 0x374 func_00382C70  # OVL1
+0x00382BA0 0xC8 __dt__9CWrapSpecFv  # OVL1; s1:vtable (slot 0x08 of CWrapSpec's table 0x407EC0; SOCOM 1's __dt__9CWrapSpecFv; the implicit destructor emitted with CWrapSpec's constructor) -- zui_spec.cpp
+0x00382C70 0x374 __ct__9CWrapSpecFP5_zrdr  # OVL1; by hand (CTextSpec's constructor inlined one level, CWrapSpec's vtable; WIDTH/SPACING/HEIGHT, the arrows, AUTOSCROLL, DISPLAY_ONE_LINE; SOCOM 1's CWrapSpec, GetControlSpec's WRAPPEDTEXT) -- zui_spec.cpp
 0x00382FF0 0x164 CreateDisplayObj__10CImageSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:calls
-0x00383160 0x174 func_00383160  # OVL1
-0x003832E0 0x80 func_003832E0  # OVL1
+0x00383160 0x174 __ct__10CImageSpecFP5_zrdr  # OVL1; s1:order by hand (SOCOM 1's __ct__10CImageSpecFP5_zrdr after CreateDisplayObj__10CImageSpec: CImageSpec's vtable, FILENAME, SIZE/XSIZE/YSIZE, PULSE) -- zui_spec.cpp
+0x003832E0 0x80 __ct__11CDlgObjSpecFP5_zrdr  # OVL1; s1:order by hand (SOCOM 1 inlines CDlgObjSpec(_zrdr *) into each spec's constructor; SOCOM II's copy stores the vtable and makes the UIVAR tag's CUIVariableSpec through 0x386FF0, as the inlined copies in CTextSpec's and CImageSpec's constructors do) -- zui_spec.cpp
 0x00383360 0x2B8 func_00383360  # OVL1
 0x00383620 0xB0 __dt__12CCounterSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003836D0 0xC GetType__12CCounterSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -7112,13 +7112,13 @@
 0x00385370 0xA0 func_00385370  # OVL1
 0x00385410 0xA4 func_00385410  # OVL1
 0x003854C0 0x148 func_003854C0  # OVL1
-0x00385610 0x58 func_00385610  # OVL1
+0x00385610 0x58 UnSerialize__13CUIVarManagerFPCcP8CRdrFilei  # OVL1; by hand (the thunk 0x386DF0 adjusts this by -12, CSaveModule's place in CUIVarManager, and jumps here: the UnSerialize(const char *, CRdrFile *, int) slot SOCOM 1's UnSerialize__13CUIVarManagerFPCcP8CRdrFilei fills; Add(name, value, persistent)->Set(value) with the file's first item) -- zui_var.cpp
 0x00385670 0x14C Serialize__13CUIVarManagerFi  # OVL1; s1:calls
 0x003857C0 0x140 Add__13CUIVarManagerFPCcP5_zrdr15UIVAR_LONGEVITY  # OVL1; s1:calls (the UI handlers register their vars through it where SOCOM 1's do) -- the UI-commands lane
 0x00385900 0xC8 Find__13CUIVarManagerFPCc  # OVL1; s1:align by hand (SOCOM 1's Find(const char *) at the same place after Add: the 48-byte variables walked, a live one (longevity byte at 0x24) whose name at 0x14 matches strcasecmp returned)
-0x003859D0 0x88 func_003859D0  # OVL1
-0x00385A60 0x1CC func_00385A60  # OVL1
-0x00385C30 0xA4 func_00385C30  # OVL1
+0x003859D0 0x88 FindDormantVar__13CUIVarManagerFPCcP5_zrdr15UIVAR_LONGEVITY  # OVL1; s1:order by hand (SOCOM 1's FindDormantVar after Find: the first variable whose longevity is dormant made the new one; Add calls it with its own arguments) -- zui_var.cpp
+0x00385A60 0x1CC CollectGarbage__13CUIVarManagerFv  # OVL1; s1:order by hand (SOCOM 1's CollectGarbage after FindDormantVar: the current table toggled, every name made again there, the old table's Clear called, arrays packed into the 0x4000-byte buffers) -- zui_var.cpp
+0x00385C30 0xA4 Reset__13CUIVarManagerFv  # OVL1; s1:order by hand (SOCOM 1's Reset before ~CUIVarManager: the temporary variables destroyed, then CollectGarbage) -- zui_var.cpp
 0x00385CE0 0xA8 __dt__13CUIVarManagerFv  # OVL1; s1:calls
 0x00385D90 0x5C DetachUIVar__10UIVarMixinFP11CUIVariable  # OVL1; s1:calls by hand (the HUD lane: UIVarMixin's destructor makes this call where SOCOM 1's calls DetachUIVar)
 0x00385DF0 0x5C AttachUIVar__10UIVarMixinFP11CUIVariable  # OVL1; s1:calls (SystemTuner's constructor calls it with the new variable where SOCOM 1's calls AttachUIVar; detaches the old variable first, as SOCOM 1's)
@@ -7127,7 +7127,7 @@
 0x003860F0 0x1B0 func_003860F0  # OVL1
 0x003862A0 0x124 __as__11CUIVariableFPCc  # OVL1; s1:calls (the lobby callbacks' (variable, string) setter, as SOCOM 1's) -- the online lane
 0x003863D0 0x8C UpdateDependents__11CUIVariableFv  # OVL1; s1:calls (SyncGameClock calls it third, as SOCOM 1's) -- the online lane
-0x00386460 0x1F8 func_00386460  # OVL1
+0x00386460 0x1F8 Set__11CUIVariableFP5_zrdr  # OVL1; s1:order by hand (SOCOM 1's Set__11CUIVariableFP5_zrdr after UpdateDependents: the value cloned into the manager's current table, copied in, the watchers told) -- zui_var.cpp
 0x00386660 0x90 DetachAll__11CUIVariableFv  # OVL1; s1:calls by hand (detaches each watcher through UIVarMixin::DetachUIVar until none is left, as SOCOM 1's DetachAll; Destroy calls it first)
 0x003866F0 0x220 func_003866F0  # OVL1
 0x00386910 0xC func_00386910  # OVL1
@@ -7145,15 +7145,15 @@
 0x00386B00 0x80 Destroy__11CUIVariableFv  # OVL1; s1:calls by hand (DetachAll, then DeleteChildren and the fields cleared, as SOCOM 1's Destroy)
 0x00386B80 0x70 func_00386B80  # OVL1
 0x00386BF0 0x15C func_00386BF0  # OVL1
-0x00386D50 0x84 func_00386D50  # OVL1
+0x00386D50 0x84 OnTableFull__12CUIVarSTableFPCc  # OVL1; by hand (slot 0x18 of CUIVarSTable's table 0x407D20, CSTable's OnTableFull overridden: CollectGarbage, then the string made in the new current table, guarded against recursion) -- zui_var.cpp
 0x00386DE0 0x8 OnCreateString__7CSTableFPc  # OVL1; ours (slot 0x14 of CSTable's 0x4081D0 and CUIVarSTable's 0x407D20 vtables, empty; CreateString calls it with each string it adds; the inline virtual's copy emitted with zui_var.cpp's CUIVarSTable)
 0x00386DF0 0x8 func_00386DF0  # OVL1
 0x00386E00 0x8 func_00386E00  # OVL1
 0x00386E10 0x8 func_00386E10  # OVL1
 0x00386E20 0x114 func_00386E20  # OVL1
 0x00386F40 0xC GetType__14CUIMapCtrlSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00386F50 0x98 func_00386F50  # OVL1
-0x00386FF0 0x258 func_00386FF0  # OVL1
+0x00386F50 0x98 __dt__15CUIVariableSpecFv  # OVL1; s1:order by hand (SOCOM 1's __dt__15CUIVariableSpecFv after GetType__14CUIMapCtrlSpecFv: the name freed, the value's children deleted and the value, the CSTable member) -- zui_cleanup.cpp
+0x00386FF0 0x258 __ct__15CUIVariableSpecFP5_zrdr  # OVL1; s1:order by hand (SOCOM 1's __ct__15CUIVariableSpecFP5_zrdr after ~CUIVariableSpec in zui_cleanup.cpp: NAME strdup'd, VALUE cloned into its CSTable(0, 1024), LONGEVITY parsed) -- zui_cleanup.cpp
 0x00387250 0x90 func_00387250  # OVL1
 0x003872E0 0x54 func_003872E0  # OVL1
 0x00387340 0x19C __dt__15CRadioStripSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -7162,8 +7162,8 @@
 0x00387600 0x28 func_00387600  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
 0x00387630 0x3A8 func_00387630  # OVL1
 0x003879E0 0x38 Copy__13CCheckBoxSpecFv  # OVL1; tu: zui_cleanup.cpp~ (1.0 beta); s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00387A20 0x68 func_00387A20  # OVL1
-0x00387A90 0x1DC func_00387A90  # OVL1
+0x00387A20 0x68 Copy__17CHProgressBarSpecFv  # OVL1; s1:vtable (slot 0x0C of CHProgressBarSpec's table 0x407DD0; SOCOM 1's Copy__17CHProgressBarSpecFv) -- zui_cleanup.cpp
+0x00387A90 0x1DC __ct__10CImageSpecFR10CImageSpec  # OVL1; by hand (CImageSpec's implicit copy out of line: CDlgObjSpec's copy inlined, the vtable, the members; the progress bar's and the list box's Copies call it) -- zui_cleanup.cpp
 0x00387C70 0x80 Copy__14CSliderBarSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00387CF0 0x268 func_00387CF0  # OVL1
 0x00387F60 0x28 func_00387F60  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
@@ -7175,20 +7175,20 @@
 0x003881E0 0xC HasChildren__18CHandlerButtonSpecCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003881F0 0x94 CreateDisplayObj__11CScrollSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00388290 0x60 Copy__11CScrollSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x003882F0 0x110 func_003882F0  # OVL1
+0x003882F0 0x110 __ct__9CWrapSpecFR9CWrapSpec  # OVL1; by hand (CWrapSpec's implicit copy out of line, CTextSpec's copy inlined one level; CScrollSpec's Copy calls it) -- zui_cleanup.cpp
 0x00388400 0xC4 CreateDisplayObj__9CWrapSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x003884D0 0xD8 func_003884D0  # OVL1
-0x003885B0 0x200 func_003885B0  # OVL1
+0x003884D0 0xD8 Copy__9CWrapSpecFv  # OVL1; s1:vtable (slot 0x0C of CWrapSpec's table; SOCOM 1's Copy__9CWrapSpecFv) -- zui_cleanup.cpp
+0x003885B0 0x200 __ct__9CTextSpecFR9CTextSpec  # OVL1; by hand (CTextSpec's implicit copy out of line, CDlgObjSpec's copy inlined; the wrap, secure-text and teletype Copies call it; SOCOM 1's __ct__9CTextSpecFR9CTextSpec) -- zui_cleanup.cpp
 0x003887B0 0x84 func_003887B0  # OVL1
-0x00388840 0x58 func_00388840  # OVL1
+0x00388840 0x58 Copy__15CSecureTextSpecFv  # OVL1; by hand (slot 0x0C of CSecureTextSpec's table 0x407EF0: new(0x34), CTextSpec's copy, CSecureTextSpec's vtable) -- zui_cleanup.cpp
 0x003888A0 0x130 CreateDisplayObj__8CTtySpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x003889D0 0x90 func_003889D0  # OVL1
+0x003889D0 0x90 Copy__8CTtySpecFv  # OVL1; s1:vtable (slot 0x0C of CTtySpec's table 0x407F20; SOCOM 1's Copy__8CTtySpecFv) -- zui_cleanup.cpp
 0x00388A60 0x74 CreateDisplayObj__9CTextSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00388AE0 0x98 Copy__9CTextSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00388B80 0x1EC func_00388B80  # OVL1
+0x00388B80 0x1EC Copy__10CImageSpecFv  # OVL1; s1:vtable (slot 0x0C of CImageSpec's table 0x407F80; SOCOM 1's Copy__10CImageSpecFv) -- zui_cleanup.cpp
 0x00388D70 0xE0 func_00388D70  # OVL1
 0x00388E50 0xCC __dt__11CDlgObjSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00388F20 0x198 func_00388F20  # OVL1
+0x00388F20 0x198 __ct__11CDlgObjSpecFR11CDlgObjSpec  # OVL1; s1:order by hand (SOCOM 1's __ct__11CDlgObjSpecFR11CDlgObjSpec after ~CDlgObjSpec in zui_cleanup.cpp; stores CDlgObjSpec's vtable, copies the variable spec through new(0x2C) -- zui_cleanup.cpp
 0x003890C0 0x78 func_003890C0  # OVL1
 0x00389140 0xC HasChildren__15CRadioStripSpecCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389150 0x8 NumChildren__15CRadioStripSpecCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -7196,7 +7196,7 @@
 0x00389180 0xC GetType__15CRadioStripSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389190 0x18C __dt__13CCheckBoxSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389320 0xC GetType__13CCheckBoxSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00389330 0x10C func_00389330  # OVL1
+0x00389330 0x10C __dt__17CHProgressBarSpecFv  # OVL1; s1:vtable (slot 0x08 of CHProgressBarSpec's table; SOCOM 1's __dt__17CHProgressBarSpecFv) -- zui_cleanup.cpp
 0x00389440 0xC GetType__17CHProgressBarSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389450 0xD8 __dt__14CSliderBarSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389530 0xC GetType__14CSliderBarSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -7208,9 +7208,9 @@
 0x003897C0 0x90 __dt__11CScrollSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389850 0xC GetType__11CScrollSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389860 0xC GetType__9CWrapSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00389870 0x114 func_00389870  # OVL1
-0x00389990 0xC func_00389990  # OVL1
-0x003899A0 0x114 func_003899A0  # OVL1
+0x00389870 0x114 __dt__15CSecureTextSpecFv  # OVL1; by hand (slot 0x08 of CSecureTextSpec's table: its vtable, CTextSpec's destructor inlined) -- zui_cleanup.cpp
+0x00389990 0xC GetType__15CSecureTextSpecFv  # OVL1; by hand (slot 0x14 of CSecureTextSpec's table, "SECURETEXT") -- zui_cleanup.cpp
+0x003899A0 0x114 __dt__8CTtySpecFv  # OVL1; s1:vtable (slot 0x08 of CTtySpec's table; SOCOM 1's __dt__8CTtySpecFv) -- zui_cleanup.cpp
 0x00389AC0 0xC GetType__8CTtySpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389AD0 0xC GetType__9CTextSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389AE0 0xC GetType__10CImageSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -7628,8 +7628,8 @@
 0x003A2130 0x134 Init__8CMemCardFv  # OVL1; s1:order (before ~CMemCard as SOCOM 1's Init: the module loaded, sceMcInit, both ports probed)
 0x003A2270 0x68 __dt__8CMemCardFv  # OVL1; s1:align
 0x003A22E0 0x90 __ct__8CMemCardFv  # OVL1; s1:calls
-0x003A2370 0x94 func_003A2370  # OVL1
-0x003A2410 0x100 func_003A2410  # OVL1
+0x003A2370 0x94 CRC32String__FPCc  # OVL1; ours (the string's CRC-32 over a table built on first use: 0xFFFFFFFF in, (crc >> 8) ^ table[(crc & 0xFF) ^ c], complemented out; 0 for no string -- docs/audio.md's crc32_string, the r0004 0x3C2BC0; no SOCOM 1 counterpart) -- util_crc.cpp
+0x003A2410 0x100 BuildCRCTable__Fv  # OVL1; ours (the CRC-32 table built once, the classic reflecting generator, polynomial 0x04C11DB7; static, called by CRC32String) -- util_crc.cpp
 0x003A2510 0x3A8 func_003A2510  # OVL1
 0x003A28C0 0x23C func_003A28C0  # OVL1
 0x003A2B00 0x7C func_003A2B00  # OVL1
@@ -10072,17 +10072,17 @@
 0x00555340 0x8 CanAttack__11CAiSRescuedCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00555350 0x8 CanScan__11CAiSRescuedCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00555360 0xC GetScriptResponse__11CAiSRescuedCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00555370 0x8 func_00555370  # OVL2
+0x00555370 0x8 Virtual14__8CAiStateFP11CSealCtrlAii  # OVL2; s1:vtable by hand (slot 0x14 of __vt__8CAiState and of every state that keeps the base's, the slot's signature master's ai_states.h's: returns AI_RUNNING) (the SEAL lane, round 5)
 0x00555380 0xC GetStatus__8CAiStateCFv  # OVL2; slot 0x18 of __vt__8CAiState (0x669950), SOCOM 1's slot 0x10: SOCOM II inserted one virtual after OnSignal and one before this slot, aligned by the overrides both builds share (CAiSRescued's OnSignal, Tick, CanAttack, CanScan, GetScriptResponse; CAiSPursue's GetStatus here); an inline's copy returning an empty string, as SOCOM 1's (0xC bytes)
 0x00555390 0x8 CanPushAiState__8CAiStateF8AI_STATEP11CSealCtrlAi  # OVL2; slot 0x1C of __vt__8CAiState, SOCOM 1's slot 0x14 (aligned as GetStatus__8CAiStateCFv); returns true as SOCOM 1's
 0x005553A0 0x8 CanSwitchAiState__8CAiStateF8AI_STATEP11CSealCtrlAi  # OVL2; slot 0x20 of __vt__8CAiState, SOCOM 1's slot 0x18 (aligned as GetStatus__8CAiStateCFv); returns true as SOCOM 1's
 0x005553B0 0x8 CanPursue__8CAiStateCFP11CSealCtrlAi  # OVL2; slot 0x2C of __vt__8CAiState, SOCOM 1's slot 0x24 (aligned as GetStatus__8CAiStateCFv); returns true as SOCOM 1's
-0x005553C0 0x8 func_005553C0  # OVL2
-0x005553D0 0x8 func_005553D0  # OVL2
-0x005553E0 0x8 func_005553E0  # OVL2
-0x005553F0 0x8 func_005553F0  # OVL2
-0x00555400 0x8 func_00555400  # OVL2
-0x00555410 0x8 func_00555410  # OVL2
+0x005553C0 0x8 Virtual34__8CAiStateFv  # OVL2; s1:vtable by hand (slot 0x34 of __vt__8CAiState and of the states that keep it: returns true, as ai_states.h's inline; seal_ai.cpp emits the copy) (the SEAL lane, round 5)
+0x005553D0 0x8 Virtual38__8CAiStateFv  # OVL2; s1:vtable by hand (slot 0x38 of __vt__8CAiState and of the states that keep it: returns true) (the SEAL lane, round 5)
+0x005553E0 0x8 Virtual3C__8CAiStateFv  # OVL2; s1:vtable by hand (slot 0x3C of __vt__8CAiState and of the states that keep it: returns true) (the SEAL lane, round 5)
+0x005553F0 0x8 Virtual40__8CAiStateFv  # OVL2; s1:vtable by hand (slot 0x40 of __vt__8CAiState and of the states that keep it: returns false) (the SEAL lane, round 5)
+0x00555400 0x8 Virtual44__8CAiStateF8AI_STATE  # OVL2; s1:vtable by hand (slot 0x44 of __vt__8CAiState and of every state but CAiSPursue, which overrides it at 0x575950: returns false) (the SEAL lane, round 5)
+0x00555410 0x8 Virtual48__8CAiStateFiP8CAiState  # OVL2; s1:vtable by hand (slot 0x48 of __vt__8CAiState and of every state but CAiSPursue, which overrides it at 0x55A7D0: returns false) (the SEAL lane, round 5)
 0x00555420 0x274 func_00555420  # OVL2
 0x005556A0 0x108 func_005556A0  # OVL2
 0x005557B0 0x60 func_005557B0  # OVL2
@@ -10128,8 +10128,8 @@
 0x005594B0 0xCC OnSignal__11CAiSRescuedFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00559580 0x3A8 func_00559580  # OVL2
 0x00559930 0xE28 Tick__10CAiSPursueFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0055A760 0x70 func_0055A760  # OVL2
-0x0055A7D0 0x34 func_0055A7D0  # OVL2
+0x0055A760 0x70 Virtual14__10CAiSPursueFP11CSealCtrlAii  # OVL2; s1:vtable by hand (slot 0x14 of __vt__10CAiSPursue alone: the target dropped unless the AI's object at 0x67C says so, then Result()) (the SEAL lane, round 5)
+0x0055A7D0 0x34 Virtual48__10CAiSPursueFiP8CAiState  # OVL2; s1:vtable by hand (slot 0x48 of __vt__10CAiSPursue alone: the timer at 0x58 and the byte at 0x5C copied from another pursuit, true) (the SEAL lane, round 5)
 0x0055A810 0xB8 GetStatus__10CAiSPursueCFv  # OVL2; s1:calls
 0x0055A8D0 0x50 OnSignal__10CAiSPursueFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0055A920 0x298 Tick__11CAiSAnimateFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -10335,7 +10335,7 @@
 0x005756B0 0xE0 func_005756B0  # OVL2
 0x00575790 0x140 get_mode__6sealaiFPCc  # OVL2; s1:order (the last of sealai's name lookups in both builds, as SOCOM 1's get_mode__6sealaiFPCc: the modes' names through a jump-table switch, strcmp, the mode returned or 1) -- the SEAL lane, round 4
 0x005758D0 0x78 __dt__10CAiSPursueFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00575950 0x14 func_00575950  # OVL2
+0x00575950 0x14 Virtual44__10CAiSPursueF8AI_STATE  # OVL2; s1:vtable by hand (slot 0x44 of __vt__10CAiSPursue alone: m_state (0x30) == the state asked; an inline's copy in seal_ai.cpp's tail) (the SEAL lane, round 5)
 0x00575970 0x14 CanAttack__10CAiSPursueCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00575990 0x8 GetScriptResponse__8CAiStateCFv  # OVL2; slot 0x30 of __vt__8CAiState, SOCOM 1's slot 0x28 (CAiSRescued overrides it in both builds); returns 0 as SOCOM 1's
 0x005759A0 0xF8 __dt__11CAiSAnimateFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -10703,10 +10703,10 @@
 0x0059B440 0x42C func_0059B440  # OVL2
 0x0059B870 0x208 func_0059B870  # OVL2
 0x0059BA80 0x148C Load__17CharacterDynamicsFRC8CRdrFile  # OVL2; s1:callee
-0x0059CF10 0x57C func_0059CF10  # OVL2
-0x0059D490 0x1A8 func_0059D490  # OVL2
-0x0059D640 0x68 func_0059D640  # OVL2
-0x0059D6B0 0x8 func_0059D6B0  # OVL2
+0x0059CF10 0x57C insert__Q23std108__vector_imp<Q217CharacterDynamics13CCameraParams,Q23std47allocator<Q217CharacterDynamics13CCameraParams>,0>FPQ217CharacterDynamics13CCameraParamsUiRCQ217CharacterDynamics13CCameraParams  # OVL2; s1:order (seal_dyn.cpp's tail, first after Load as SOCOM 1's insert of the camera vector is; Load's five push_backs call it with (end, 1, params)) (the SEAL lane, round 5)
+0x0059D490 0x1A8 reserve__Q23std108__vector_imp<Q217CharacterDynamics13CCameraParams,Q23std47allocator<Q217CharacterDynamics13CCameraParams>,0>FUi  # OVL2; s1:order (seal_dyn.cpp's tail: Load reserves 6 cameras through it; include/vector's class reserve compiles to its 0x1A8 bytes) (the SEAL lane, round 5)
+0x0059D640 0x68 __dt__Q23std110__vector_deleter<Q217CharacterDynamics13CCameraParams,Q23std47allocator<Q217CharacterDynamics13CCameraParams>>Fv  # OVL2; s1:order (seal_dyn.cpp's tail: the camera vector's deleter destructor, SOCOM 1's after reserve; it calls the clear at 0x59D6B0 and deletes data_ at +8) (the SEAL lane, round 5)
+0x0059D6B0 0x8 clear__Q23std110__vector_deleter<Q217CharacterDynamics13CCameraParams,Q23std47allocator<Q217CharacterDynamics13CCameraParams>>Fv  # OVL2; s1:order (seal_dyn.cpp's tail: the deleter's clear for a trivially destructible element, size_ = 0; the destructor before it calls it) (the SEAL lane, round 5)
 0x0059D6C0 0x90 func_0059D6C0  # OVL2
 0x0059D750 0xD8 func_0059D750  # OVL2
 0x0059D830 0x148 func_0059D830  # OVL2

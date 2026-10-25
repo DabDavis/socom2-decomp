@@ -158,7 +158,16 @@ void CZAnimSet::Reset()
         Anim(i)->Reset();
 }
 
-/* a node reference's state kept, the set's store made the first time */
+/* a node reference's state kept, the set's store made the first time.
+ * OPEN at -inline level=5, 4 bytes (0x94 against 0x90): the target inlines CZAnimSetSave's implicit
+ * constructor one level and calls its four vectors' (byte-exact at level 4, where it is five high).
+ * At level 5 no height can do it -- CCompass::CreateAnchor inlines CCompassAnchor's constructor
+ * whole (so a class vector's constructor is at most four high) and AddAnimEx inlines `new
+ * CZAnimExVector` whole (a pointer vector's at most four) -- so the cut is MW's other limit, the
+ * expanded callee's size (#pragma inline_max_size, 256 units by default): measured,
+ * CZAnimSetSave() expands to 179 units here and CCompassAnchor() to 197, so the original's vector
+ * constructors were fatter than include/vector's (some 26 more units in each pointer vector's, or
+ * 78 more across the four, with CCompassAnchor's under 256) -- the form that adds them is not found */
 void CZAnimSet::SaveNodeStates(_zanim_node_ref *ref)
 {
     if (!m_node_states)
