@@ -226,6 +226,9 @@ public:
     /* three fields read through accessors (the names ours: the tile callbacks test a field so
      * and load it again for the setter's read-modify-write) */
     bool IsOccupied() const { return m_occupied; }
+    /* whether the cell holds an action (the name ours: GetCellCenter's test, out of line at
+     * 0x516920 where the centre is inlined one level) */
+    bool HasAction() const { return m_action; }
     unsigned char GetBoundary() const { return m_boundary; }
     unsigned int GetShadow() const { return m_shadow; }
     /* the fields' setters: their arguments masked at run time, `(0 & 1) << n` for a constant
@@ -543,6 +546,9 @@ public:
         enum TYPE { NONE = 0, DOOR = 1, TYPE_MAX = 31 };
 
         TYPE GetType() const { return m_type_invalid == 0 ? (TYPE)m_type : NONE; }
+        /* the side it opens toward, 8 for none (the name ours: GetCellCenter's, out of line at
+         * 0x516910) */
+        DIR GetDir() const { return (DIR)m_offset; }
         /* the setters (the names ours: masked at run time) */
         void SetState(unsigned int s) { m_state = s; }
         void SetTypeInvalid(unsigned int b) { m_type_invalid = b; }
@@ -670,6 +676,38 @@ public:
     bool ForEachCell(bool (*f)(const MAP_FOREACH_STRUCT &s, void *data), void *data, int layer);
     bool ResetCells();
     static CPnt3D &GetDirVec(DIR dir, CPnt3D &v);
+    /* the cell's centre: its corner plus half a cell, at its altitude (0 without one), moved
+     * s_actionOffset of a cell toward its action's side; none off the map (SOCOM 1's, out of
+     * line there -- SOCOM II inlines it one level: GetCell, HasAction, GetDir, CPnt3D(), Scale and
+     * Add called out of line, 0x5168E0-0x516920) */
+    CPnt3D *GetCellCenter(const CAiMapLoc &loc, CPnt3D *c)
+    {
+        CAiCell *cell = GetCell(loc, 0);
+        CPnt3D *r = 0;
+
+        if (cell) {
+            c->x = m_bbox.m_min.x + (loc.x * m_dx + 0.5f * m_dx);
+            c->z = m_bbox.m_min.z + (loc.y * m_dy + 0.5f * m_dy);
+            if (!GetAltitude(cell, c->y))
+                c->y = 0.0f;
+            if (cell->HasAction()) {
+                DIR dir = GetCellAction(loc)->GetDir();
+
+                if (dir != DIR_COUNT) {
+                    CPnt3D v;
+
+                    GetDirVec(dir, v);
+                    v.Scale(s_actionOffset);
+                    c->Add(&v);
+                }
+            }
+            r = c;
+        }
+        return r;
+    }
+    /* how far toward its action a cell's centre moves, in cells (0.75, OVL2 data read with lwc1:
+     * a variable; the name ours) */
+    static float s_actionOffset;
     static CQuat &GetDirQuat(DIR dir, CQuat &q, bool reverse);
     static float GetDirCos(DIR a, DIR b);
     static bool _reset_rtflag(const MAP_FOREACH_STRUCT &s, void *data);

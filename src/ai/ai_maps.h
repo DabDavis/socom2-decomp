@@ -53,7 +53,8 @@ public:
      * AI states' pickup, no-ammo and vehicle searches) */
     bool FindTraversable(const CAiMapLoc &loc, CAiMapLoc &out);
     bool GetTraversableLocation(const CPnt3D *pos, CAiMapLoc &out);
-    bool GetCellCenter(const CAiMapLoc &loc, CPnt3D *center);
+    /* the cell's centre, the point handed back, none off the maps (SOCOM 1's) */
+    CPnt3D *GetCellCenter(const CAiMapLoc &loc, CPnt3D *center);
     /* the distance between two cells' centres, squared and not (new in SOCOM II, the names ours:
      * 0 for one cell, 1e12 when a centre is missing) */
     float GetDistanceSq(const CAiMapLoc &a, const CAiMapLoc &b);

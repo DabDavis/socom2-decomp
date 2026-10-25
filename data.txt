@@ -1012,6 +1012,7 @@
 0x0065AD00 0x4 s_aimap_version  # OVL2 data; ours (23: the AI map file version CAiMap(int) starts each map at, as SOCOM 1's constructor read its own word; 1 reference in 1 function)
 0x0065AED0 0x4 invalid__9CAiMapLoc  # OVL2 data; SOCOM 1's invalid__9CAiMapLoc (0x449450, 4 bytes, zero): CAiMapLoc's constructor copies it field by field -- CEntity's constructor reads it six times for m_mapLoc and m_mapLocValid where SOCOM 1's reads 0x449450 (the entity lane); 117 references (OVL2's AI code)
 0x0065AED8 0x4 s_preemptPriority__2ai  # OVL2 data; ours (1.0f: CAiPathQueue::Insert, inlined into PathPlanExecute, compares a queued path's priority with it before a planning path gives up its search; 1 reference in 1 function)
+0x0065B030 0x4 s_actionOffset__6CAiMap  # OVL2 data; ours (0.75f: CAiMap::GetCellCenter, inlined wherever a centre is taken, scales the action side's direction by it before adding it -- read with lwc1, a variable; 18 references in 17 functions, OVL1's map code and the SEALs' among them)
 0x0065C220 0x8 data_0065C220  # OVL2's copy of zdb::CNodeEx's RTTI (its name pointer 0x65C210 -> "zdb::CNodeEx", as OVL1's 0x3E1E40 -> 0x3E1E30; the SEAL lane's dynamic_cast to CSealEx in OVL2 needs it); ovl-copy: __RTTI__Q23zdb7CNodeEx
 0x0065C238 0x8 __RTTI__7CSealEx  # RTTI of CSealEx: found by its RTTI's name
 0x0065C288 0x8 __RTTI__10CZSealBody  # RTTI of CZSealBody: found by its RTTI's name

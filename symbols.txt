@@ -9420,11 +9420,11 @@
 0x00516130 0x8 func_00516130  # OVL2
 0x00516140 0x38 func_00516140  # OVL2
 0x00516180 0x75C func_00516180  # OVL2
-0x005168E0 0x8 func_005168E0  # OVL2
-0x005168F0 0x8 func_005168F0  # OVL2
+0x005168E0 0x8 Add__6CPnt3DFPC6CPnt3D  # OVL2; ours (zmath.h's in-place Add(b, this), a tail call: GetCellCenter's offset added; OVL1's twin 0x2105E0)
+0x005168F0 0x8 Scale__6CPnt3DFf  # OVL2; ours (zmath.h's in-place Scale(s, this), a tail call: GetCellCenter's offset toward the action; OVL1's twin 0x2105F0)
 0x00516900 0x8 func_00516900  # OVL2; OVL2's copy of CPnt3D's empty constructor (jr ra; move v0,a0: OVL1's 0x1FB3C0 carries the name); CAiState::Create calls it for every state's CPnt3D members -- the kit lane; ovl-copy: __ct__6CPnt3DFv
-0x00516910 0xC func_00516910  # OVL2
-0x00516920 0x14 func_00516920  # OVL2
+0x00516910 0xC GetDir__Q26CAiMap6actionCFv  # OVL2; ours (GetCellCenter's: the action's side, m_offset's four bits, 8 for none)
+0x00516920 0x14 HasAction__7CAiCellCFv  # OVL2; ours (CAiMap::GetCellCenter's action test, inlined one level wherever the centre is: the cell's action bit as a bool -- CAiMaps::GetCellCenter, the look and cover searches, the WalkLines call this copy)
 0x00516940 0x70 GetAltitude__6CAiMapCFPC7CAiCellRf  # OVL2; ours (new in SOCOM II: the box's floor plus m_alt_quant times the cell's ten altitude bits, true; false for no cell)
 0x005169B0 0x558 func_005169B0  # OVL2
 0x00516F10 0xA4 func_00516F10  # OVL2
