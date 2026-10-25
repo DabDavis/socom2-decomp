@@ -4,10 +4,11 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_00363A70(s32, s32, M2C_UNK, s32);      /* extern */
+M2C_UNK Draw__9C2DStringFPQ23zdb16CTextureRelocMgrPQ23zdb7CCamerai(s32, s32, M2C_UNK, s32); /* extern */
 
 void func_0037C710(char *arg0, s32 arg1, f32 fparg0) {
-    func_00363A70(M2C_FIELD(arg0, s32 *, 4), arg1, 0, (s32) fparg0);
+    Draw__9C2DStringFPQ23zdb16CTextureRelocMgrPQ23zdb7CCamerai(SC_MEMBER(arg0, s32 *, 4), arg1, 0, (s32) fparg0);
 }

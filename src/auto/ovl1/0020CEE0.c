@@ -4,15 +4,16 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK SetColor__7C2DLineFfff(char * arg0, f32 arg1, f32 arg2, f32 arg3);
-M2C_UNK func_003608F0(s32 arg0);
+M2C_UNK __ct__7C2DLineFv(char * arg0);
 extern M2C_UNK data_004054B0;
 
-s32 func_0020CEE0(s32 arg0) {
-    func_003608F0(arg0);
-    M2C_FIELD(arg0, M2C_UNK **, 0xC) = &data_004054B0;
-    SetColor__7C2DLineFfff((char *) arg0, 64.0f, 192.0f, 255.0f);
+char *func_0020CEE0(char *arg0) {
+    __ct__7C2DLineFv(arg0);
+    SC_MEMBER(arg0, M2C_UNK **, 0xC) = &data_004054B0;
+    SetColor__7C2DLineFfff(arg0, 64.0f, 192.0f, 255.0f);
     return arg0;
 }
