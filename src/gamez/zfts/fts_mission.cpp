@@ -95,11 +95,15 @@ public:
     unsigned char m_d4;   // 0xd4 (SOCOM 1's at 0x9b)
     unsigned char _d5[0xd8 - 0xd5];
     bool m_ten_second_launch;   // 0xd8 (SOCOM 1's at 0x9f)
-    unsigned char _d9[0xe4 - 0xd9];
+    unsigned char _d9[0xdc - 0xd9];
+    bool m_respawn;   // 0xdc: respawning on (with the valve "Respawn")
+    unsigned char _dd[0xe4 - 0xdd];
     int m_launch_time;   // 0xe4 (SOCOM 1's at 0xa8)
     unsigned char _e8[0xf4 - 0xe8];
     unsigned char m_launch_f4;   // 0xf4 (SOCOM 1's at 0xbc)
-    unsigned char _f5[0x113 - 0xf5];
+    unsigned char _f5[0x111 - 0xf5];
+    unsigned char m_game_type;   // 0x111 (SOCOM 1's m_game_type at 0xd9)
+    unsigned char _112;
     MP_MAJOR_GAME_STATE m_mp_major_game_state;   // 0x113 (SOCOM 1's at 0xdb)
     MP_MAJOR_GAME_STATE m_my_major_game_state;   // 0x114 (SOCOM 1's at 0xdc)
     MP_MINOR_GAME_STATE m_my_minor_game_state;   // 0x115 (SOCOM 1's at 0xdd)
@@ -108,6 +112,7 @@ public:
     int m_120;   // 0x120
     int m_124;   // 0x124
     int m_128;   // 0x128
+    char m_12c[31];   // 0x12c: a character type's name, its last byte the terminator
 };
 
 /* the network (only its session-master flag and its clock; theNetwork at 0x45A0C0, fts_remote.cpp's
@@ -130,6 +135,9 @@ public:
     CZNetGame *m_pNetGame;   // 0x1808 (SOCOM 1's at 0x584)
 };
 
+extern CMission theMission;
+extern "C" char *strncpy(char *dst, const char *src, unsigned int n);
+
 /* the online game started (OVL1 0x2A9F00) */
 CZNetGame *CMission::CreateNetGame()
 {
@@ -137,11 +145,40 @@ CZNetGame *CMission::CreateNetGame()
     return m_pNetGame;
 }
 
+/* respawning on in a game of type 5 only, and its valve (SOCOM II's; OVL1 0x2A7560) */
+extern "C" bool func_002A7560(CZNetGame *game, bool on)
+{
+    CValve *valve = CValve::GetByName("Respawn");
+
+    game->m_respawn = on && game->m_game_type == 5;
+    SetValveValue(valve, game->m_respawn);
+    return game->m_respawn;
+}
+
 /* the rounds played so far, and their valve (OVL1 0x2A7510) */
 void CZNetGame::SetE3RoundCount(int count)
 {
     m_e3_round_count = count;
     SetValveValue(m_pE3RoundValve, count);
+}
+
+/* the online game's character type: the custom one for the SEALs' team, else the first (SOCOM
+ * II's; OVL1 0x2A74A0) */
+const char *GetCustomCharTypeName(int i);
+extern "C" bool func_002C3300(unsigned int team);   /* (fts_net_persona.cpp's: the SEALs' team) */
+
+extern "C" void func_002A74A0(unsigned int team)
+{
+    int type = 1;
+
+    if (func_002C3300(team))
+        type = 5;
+    int i = type - 1;   /* (an index of its own: passed as type - 1, MW folds the -1 into the table) */
+    const char *name = GetCustomCharTypeName(i);
+    CZNetGame *game = theMission.m_pNetGame;
+
+    strncpy(game->m_12c, name, 31);
+    game->m_12c[30] = 0;
 }
 
 /* the game's own state (OVL1 0x2A7490) */
