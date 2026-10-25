@@ -798,6 +798,25 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     f();` inverts it, and a bool local adds an `andi`;
   - declaration order assigns float registers too: `float t;` declared first gave the target's
     `$f20`/`$f21`.
+- **Tells from CGame and the deque** (round 9 of the states lane: include/deque, game_main.cpp):
+  - include/deque: Metrowerks::cdeque's capacity/size/start/data blocks at 0, start_ 0x10, size_
+    0x14, a constant block size of 128, the allocator an empty base after the 0x18 bytes;
+    pointer deques run on deque<const void *> through a partial specialization (which needs a
+    more specialized `X<const void *, A>`, or T = const void recurses into an incomplete base);
+    SOCOM II's state stack is still SOCOM 1's m_Stack[16] -- the deque is the command queue;
+  - MW puts an empty base that follows a non-empty base at the object's end, with zero size (the
+    next member overlaps it); an empty base alone or listed first sits at offset 0;
+  - compiling a constructor, MW emits out-of-line copies of every implicit destructor level of
+    its members and bases, even with exceptions off and an empty body;
+  - in the template tail an out-of-class member is inlined only if it was generated earlier in
+    the tail, and an out-of-class template destructor's tail copy inlines at most four nested
+    destructor levels;
+  - an uninitialised local declared ahead of an initialised one takes the higher saved
+    register (PopTo, Tick);
+  - `for (;;) { if (a == b) break; ... }` keeps its test at the top and jumps back with a `b`;
+    `while (a != b)` gets rotated;
+  - std::allocator's constructor is defined after its class (`throw()`): the deque's
+    constructors call it out of line (0x2CEE30).
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has

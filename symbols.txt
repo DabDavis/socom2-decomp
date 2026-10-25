@@ -3343,9 +3343,9 @@
 0x00285230 0x7C func_00285230  # OVL1
 0x002852B0 0x2F0 func_002852B0  # OVL1
 0x002855A0 0xB8 func_002855A0  # OVL1
-0x00285660 0x244 func_00285660  # OVL1
-0x002858B0 0x19C func_002858B0  # OVL1
-0x00285A50 0x160 func_00285A50  # OVL1
+0x00285660 0x244 resize__Q210Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>FUi  # OVL1; s1:calls (the deque's push_back's resize(1), SOCOM II's taking the size alone where SOCOM 1's took a fill value too) -- the states lane
+0x002858B0 0x19C push_back__Q210Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>FRCPCv  # OVL1; s1:calls (the deque's push_back calls it where SOCOM 1's calls cdeque<PCv>::push_back) -- the states lane
+0x00285A50 0x160 reserve__Q210Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>FUi  # OVL1; s1:calls (the deque's push_back starts it with reserve(2) where SOCOM 1's does) -- the states lane
 0x00285BB0 0x120 func_00285BB0  # OVL1
 0x00285CD0 0x8 func_00285CD0  # OVL1
 0x00285CE0 0x50 func_00285CE0  # OVL1
@@ -4380,7 +4380,7 @@
 0x002CF0F0 0x30 pop_front__Q210Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>Fv  # OVL1; by hand (the states lane: include/deque -- SOCOM 1's name: the size dropped, the start wrapped at the capacity; byte-exact)
 0x002CF120 0xA8 clear__Q23std39__deque_imp<PCv,Q23std14allocator<PCv>>Fv  # OVL1; by hand (the states lane: include/deque -- size_ cleared, all but two blocks freed, the start mid-block (64); deque::pop_front calls it)
 0x002CF1D0 0x114 PopTo__5CGameFP10CGameStateUi  # OVL1; by hand (the states lane: game_state.cpp -- SOCOM 1's CGame::PopTo, its Pop now called out of line: pops queued down to the given state, or to the bottom when none)
-0x002CF2F0 0x88 func_002CF2F0  # OVL1
+0x002CF2F0 0x88 Pop__5CGameFUi  # OVL1; s1:order by hand (SOCOM 1's CGame::Pop: the pop queued, the current state's PreUnInit; the real GameStatePopCommand handler calls it with theGame; the name freed from 0x2EAB80, the lobby's GetClanRanking) -- the states lane
 0x002CF380 0x90 Push__5CGameFP10CGameStateUi  # OVL1; by hand (the states lane: game_state.cpp -- SOCOM 1's CGame::Push: Acquire(1, state, arg) queued, the state's PreInit; the UI-commands lane's GameStatePushCommand calls it)
 0x002CF410 0xB0 Switch__5CGameFP10CGameStateUi  # OVL1; by hand (the states lane: game_state.cpp -- SOCOM 1's CGame::Switch: Acquire(2, state, arg) queued, the current state's PreUnInit, the new one's PreInit)
 0x002CF4C0 0x44 DestroyPool__19CGameStateChangeCmdFv  # OVL1; s1:align

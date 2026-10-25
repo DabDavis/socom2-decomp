@@ -87,14 +87,13 @@ CGameState *CGame::Push(CGameState *state, unsigned int arg)
 }
 
 /* the top state popped: the pop queued, the state told it is going (OVL1 0x2CF2F0, SOCOM 1's
- * CGame::Pop -- spelled as its placeholder while 0x2EAB80 carries the name, see zgame.h. Pinned:
- * PopTo calls it, where SOCOM 1's inlined it) */
+ * CGame::Pop. Pinned: PopTo calls it, where SOCOM 1's inlined it) */
 #pragma auto_inline off
-extern "C" CGameState *func_002CF2F0(CGame *game, unsigned int arg)
+CGameState *CGame::Pop(unsigned int arg)
 {
-    CGameState *cur = game->GetCurrentState();
+    CGameState *cur = GetCurrentState();
 
-    game->m_StateChangeQueue.push_back(CGameStateChangeCmd::Acquire(CGameStateChangeCmd::POP, 0, arg));
+    m_StateChangeQueue.push_back(CGameStateChangeCmd::Acquire(CGameStateChangeCmd::POP, 0, arg));
     if (cur)
         cur->PreUnInit();
     return cur;

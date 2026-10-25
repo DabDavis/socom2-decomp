@@ -69,9 +69,6 @@ class CStateCmdQueue : public std::deque<CGameStateChangeCmd *> {
 };
 
 class CGame;
-/* CGame::Pop: written as its placeholder while 0x2EAB80 (the online lane's lobby method) still
- * carries the name Pop__5CGameFUi */
-extern "C" CGameState *func_002CF2F0(CGame *game, unsigned int arg);
 
 /* the game (SOCOM 1's DWARF; SOCOM II's 0x78 bytes: the queue 0x18, m_pad and m_maxtick after it) */
 class CGame {
@@ -86,7 +83,7 @@ public:
     virtual void StopEngine();
     virtual int Tick(float dT);
 
-    CGameState *Pop(unsigned int arg) { return func_002CF2F0(this, arg); }
+    CGameState *Pop(unsigned int arg);
     CGameState *Push(CGameState *state, unsigned int arg);
     CGameState *Switch(CGameState *state, unsigned int arg);
     CGameState *PopTo(CGameState *state, unsigned int arg);
