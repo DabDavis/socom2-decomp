@@ -9,6 +9,38 @@
 
 #include "ai.h"
 
+/* ai.h's _min defined (as ai_map.cpp does: never inlined, the int instance closes this unit,
+ * 0x5311C0) */
+namespace ai {
+template <class T>
+const T &_min(const T &a, const T &b)
+{
+    return a <= b ? a : b;
+}
+}
+
+/* MSL's sort, declared only: its instance for the names closes the unit (0x5312D0) */
+namespace std {
+template <class RandomAccessIterator, class Compare>
+void sort(RandomAccessIterator first, RandomAccessIterator last, Compare comp);
+}
+
+/* two names in order: case-blind over their fifteen characters (the names' sort's comparator,
+ * 0x531190; the name ours) */
+static bool _name_less(const CAiMap::name &a, const CAiMap::name &b)
+{
+    return func_001993C0(a.m_name, b.m_name, 15) < 0;
+}
+
+/* two cells' x and y distances summed (the name ours) */
+inline int loc_dist(const CAiMapLoc &a, const CAiMapLoc &b)
+{
+    int dx = b.x > a.x ? b.x - a.x : a.x - b.x;
+    int dy = b.y > a.y ? b.y - a.y : a.y - b.y;
+
+    return dx + dy;
+}
+
 /* the extra data given up (SOCOM 1's) */
 void CAiMap::FreeEx()
 {
@@ -60,6 +92,11 @@ CAiMap::name *CAiMap::GetCellName(const CAiMapLoc &loc)
         if ((*i).m_loc == loc)
             return &*i;
     return 0;
+}
+
+void CAiMap::names::Sort()
+{
+    std::sort(begin(), end(), _name_less);
 }
 
 void CAiMap::name::SetName(const char *s)
@@ -126,6 +163,29 @@ CAiMap::action *CAiMap::GetCellAction(const CAiMapLoc &loc)
     return 0;
 }
 
+/* a cell's link set or dropped: a set link made when the cell has none, the cell made walkable
+ * when it was not and marked linked; a dropped one unmarked (new in SOCOM II). The cell read
+ * through GetCell, inlined one level, the links' inlines too */
+CAiMap::link *CAiMap::SetCellLink(const CAiMapLoc &loc, bool set)
+{
+    CAiCell *cell = GetCell(loc, 0);
+    link *l = 0;
+
+    if (!set) {
+        m_linksTable.Remove(loc);
+        cell->SetLink(0);
+    } else {
+        l = m_linksTable.Add(loc);
+        if (l) {
+            if (!cell->IsTraversable())
+                cell->m_soil = SOIL_DEFAULT;
+            cell->SetLink(1);
+        }
+    }
+    SetModified(true);
+    return l;
+}
+
 /* the link from a cell, or none (SOCOM 1's) */
 CAiMap::link *CAiMap::GetCellLink(const CAiMapLoc &loc)
 {
@@ -138,6 +198,15 @@ CAiMap::link *CAiMap::GetCellLink(const CAiMapLoc &loc)
 }
 
 /* the region whose corner is the cell (SOCOM 1's GetRegion(const CAiMapLoc &)) */
+/* the shorter leg: from the cell to the link's end on its map, or from the other end to the goal
+ * (new in SOCOM II) */
+int CAiMap::link::GetDistance(const CAiMapLoc &from, const CAiMapLoc &to) const
+{
+    if (from.m_mapid == m_loc.m_mapid)
+        return ai::_min(loc_dist(m_loc, from), loc_dist(m_link, to));
+    return ai::_min(loc_dist(m_link, from), loc_dist(m_loc, to));
+}
+
 CAiMap::region *CAiMap::GetRegion(const CAiMapLoc &loc)
 {
     regions::iterator e = m_regionTable.end();
