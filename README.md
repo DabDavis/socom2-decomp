@@ -1642,6 +1642,25 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the AI core, round 9** (the line callbacks, SetCellLink and the links, char_type.cpp):
+  - an inline is cut to one level only when its tree is 6 or more high: links::Remove inlined whole
+    until Find compared through a `link == CAiMapLoc` operator, one level more; under such a cut even
+    CAiMapLoc's implicit assignment (0x52F3C0) and a mem-initializer constructor are called out of
+    line;
+  - in `b > a ? b - a : a - b` MW loads `a` first, in `a < b ? ...` it loads `b` first: the
+    comparison's right operand is evaluated first;
+  - the soil test written out in the caller reuses its load for the next compare; through
+    CAiCell::IsTraversable it reloads (_TravelLineCallback);
+  - two inline calls compared directly are evaluated left to right; locals in the target's order fix
+    it; `float h = 0.0f; float cover = h;` gives the target's mtc1 then mov.s;
+  - a bit-test `||` materialised and then branched on comes from an inline bool helper;
+  - 0x530980 is the links' back(): its old s1:exact name (CAiPath::point's back) matched only because
+    the two compile to identical code -- another case of words not proving the instance;
+  - units: SetCellLink's out-of-line copies follow it (0x530980-0x530BCF); ai_maptable.cpp's tail runs
+    _min<int> 0x5311C0, a sort helper 0x5311E0, the sort 0x5312D0, erase(T *) 0x532000; the walker
+    unit's tail 0x539BC0-0x539E9F is the list<CAiMapLoc> pieces (FloodFill's); _find_look/_find_cover
+    (open: the target inlines the open-cell helper one level, as if a depth budget were spent from the
+    call site).
 - **Tells from the states, round 15** (fts_missionlist.cpp, CGraph::BuildTree, st_core.cpp's strings):
   - a function calling dozens of trivial pieces out of line while inlining others is inlining big
     helpers one level: BuildTree needed three (the graph's reset, the queue's pop and update);
