@@ -9684,7 +9684,7 @@
 0x0052F400 0x70 GetRouteIndex__6CAiMapFPCQ26CAiMap5route  # OVL2; ours (new in SOCOM II, among the routes' functions after CreateGraph: the 0x24-byte routes at 0x140 walked for the pointer, its index or -1)
 0x0052F470 0x2C GetRoute__6CAiMapFUi  # OVL2; ours (new in SOCOM II, next to GetRouteIndex: the route of an index below the routes' size, or 0)
 0x0052F4A0 0x438 func_0052F4A0  # OVL2
-0x0052F8E0 0x10 func_0052F8E0  # OVL2
+0x0052F8E0 0x10 _invalid_route__FRQ26CAiMap5route  # OVL2; s1:order by hand (the demo's 0x19E300 between ValidateRoutes and ReRoute, as here between 0x52F4A0 and 0x52F8F0: a route's flag bit 0 as a bool)
 0x0052F8F0 0x348 func_0052F8F0  # OVL2
 0x0052FC40 0x44 SetReader__Q26CAiMap6readerFP8CRdrFile  # OVL2; s1:exact
 0x0052FC90 0xD4 __dt__Q26CAiMap7readersFv  # OVL2; s1:calls

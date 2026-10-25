@@ -300,6 +300,12 @@ void CAiMap::reader::SetReader(CRdrFile *r)
     }
 }
 
+/* whether a route is marked invalid (SOCOM 1's remove_if predicate for ValidateRoutes) */
+bool _invalid_route(CAiMap::route &r)
+{
+    return (r.m_flags & 1) != 0;
+}
+
 /* the route of an index, or none (new in SOCOM II, the name ours) */
 CAiMap::route *CAiMap::GetRoute(unsigned int i)
 {
