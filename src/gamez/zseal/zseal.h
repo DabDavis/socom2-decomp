@@ -232,6 +232,18 @@ public:
     unsigned char _222[0x250 - 0x222];
 };
 
+/* the AI's controller (SOCOM 1's DWARF: CSealCtrlAi, 0x5d0 bytes; SOCOM II's is 0x7c0 --
+ * ftsCreateSeal news 1984) -- only what the written functions touch */
+class CSealCtrlAi : public CSealCtrl {
+public:
+    CSealCtrlAi();
+    /* (0x573E60, not written yet: declared so no unit emits an implicit one) */
+    virtual ~CSealCtrlAi();
+    virtual void OnSetHealth(float health, float old);
+
+    unsigned char _250[0x7c0 - 0x250];
+};
+
 /* the SEAL (SOCOM 1's DWARF: CZSealBody : CEntity, CBody, 0x1140 bytes) -- only what the
  * written functions touch */
 class CZSealBody : public CEntity {
