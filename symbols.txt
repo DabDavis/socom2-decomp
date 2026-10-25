@@ -10939,8 +10939,8 @@
 0x005B9180 0x34 InitializeSniperKick__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's InitializeSniperKick: the kick's distance zeroed, its baseline from the controller's +0x130 when there is one, AdrenalineIncr(0.5) tail-called -- the same code with the fields 0x14 on)
 0x005B91C0 0xB4 func_005B91C0  # OVL2
 0x005B9280 0x518 func_005B9280  # OVL2
-0x005B97A0 0x120 func_005B97A0  # OVL2
-0x005B98C0 0xC4 func_005B98C0  # OVL2
+0x005B97A0 0x120 IsUsingItem__5CZKitFi  # OVL2; s1:order by hand (SOCOM 1's IsUsingItem(int), after the sniper's kick as there: the item's GetIDType (OVL1 0x3D1E10) -- binoculars (190, SOCOM 1's 182) a binocular or scope zoom class, night vision (191, SOCOM 1's 184) zoom class 3, the weapon classes (4, 31, 51 ... 151; SOCOM 1's 0, 30, 50 ... 160) the selected index, else bit 3 of m_itemstate (0x6C, SOCOM 1's 0x58))
+0x005B98C0 0xC4 IsUsingItem__5CZKitF10EQUIP_ITEM  # OVL2; s1:order by hand (SOCOM 1's IsUsingItem(EQUIP_ITEM), next as there: the same two special kinds, then the first item of the kind through IsUsingItem(int))
 0x005B9990 0x14 IsUsingScope__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's IsUsingScope, before SetWeaponInfoChanged as there: the body's byte at least 5 where SOCOM 1's is 4)
 0x005B99B0 0x1C SetWeaponInfoChanged__5CZKitFv  # OVL2; s1:exact
 0x005B99D0 0x24 PendingPickupHandled__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's PendingPickupHandled, after SetWeaponInfoChanged as there: a flag bit cleared (bit 14, SOCOM 1's 13) and the pickup wait zeroed, 0x8B8 here, SOCOM 1's 0x878)

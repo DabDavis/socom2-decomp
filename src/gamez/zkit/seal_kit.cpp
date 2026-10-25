@@ -200,6 +200,21 @@ FIREMODE CZKit::GetCurFireMode()
     return (FIREMODE)m_firemode[m_selected_item];
 }
 
+/* the current item's fire mode set, when the item has it and the ammunition for it -- a grenade
+ * launcher's modes past 3 always (OVL2 0x5C37B0; SOCOM 1's) */
+bool CZKit::SetCurFireMode(FIREMODE mode)
+{
+    CZFTSWeapon *w = GetCurItem();
+
+    if (!w)
+        return false;
+    if ((mode > AUTOFIRE && func_003C5D80(w)) ||
+        (mode <= w->m_maxfiremode && ItemHasAmmo(m_selected_item, mode)))
+        m_firemode[m_selected_item] = mode;
+    m_weaponinfoChanged = true;
+    return true;
+}
+
 /* the current item (OVL2 0x5C3780; SOCOM II's goes through GetItemByIndex, 0x5C3740) */
 CZFTSWeapon *CZKit::GetCurItem() const
 {
@@ -295,6 +310,37 @@ void CZKit::PendingPickupHandled()
 void CZKit::SetWeaponInfoChanged()
 {
     m_weaponinfoChanged = true;
+}
+
+/* an item kind in use: the binoculars or a scope, the night vision, or an item of the kit
+ * (OVL2 0x5B98C0; SOCOM 1's) */
+bool CZKit::IsUsingItem(EQUIP_ITEM item)
+{
+    if (item == EQUIP_BINOCULARS)
+        return IsUsingBinocs() || IsUsingScope();
+    if (item == EQUIP_NVG)
+        return NVG_Enabled();
+    for (int i = 0; i < m_num_items; i++)
+        if (m_item[i] && item == m_item[i]->m_equip)
+            return IsUsingItem(i);
+    return false;
+}
+
+/* an item in use: by its class, the binoculars or a scope, the night vision, a weapon in hand,
+ * else its state's bit 3 (OVL2 0x5B97A0; SOCOM 1's) */
+bool CZKit::IsUsingItem(int index)
+{
+    EQUIP_IDTYPE type = func_003D1E10(m_item[index]);
+
+    if (type == IDTYPE_BINOCULARS)
+        return IsUsingBinocs() || IsUsingScope();
+    if (type == IDTYPE_NVG)
+        return NVG_Enabled();
+    if (type == IDTYPE_PISTOL || type == IDTYPE_SMG || type == IDTYPE_ASSAULT_RIFLE ||
+        type == IDTYPE_SHOTGUN || type == IDTYPE_MACHINEGUN || type == IDTYPE_SNIPER_RIFLE ||
+        type == IDTYPE_GRENADE || type == IDTYPE_HEAVYWEAPON || type == IDTYPE_EXPLOSIVE)
+        return m_selected_item == index;
+    return (m_itemstate[index] & 8) != 0;
 }
 
 /* a scope's zoom class (OVL2 0x5B9990; SOCOM 1's threshold 4, SOCOM II's 5) */

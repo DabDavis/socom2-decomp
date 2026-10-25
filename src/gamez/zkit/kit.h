@@ -14,11 +14,16 @@
 class CZSealBody;
 
 /* the kit's items (SOCOM 1's EQUIP_ITEM, a byte; the values are not needed yet) */
-enum EQUIP_ITEM { EQUIP_NONE = 0, EQUIP_LAST = 255 };
+enum EQUIP_ITEM { EQUIP_NONE = 0, EQUIP_BINOCULARS = 190, EQUIP_NVG = 191, EQUIP_LAST = 255 };
 
 /* an item's class as CZWeapon::GetIDType gives it (a byte; SOCOM II's sniper rifles are 101, 254
  * is no item -- the names ours) */
-enum EQUIP_IDTYPE { IDTYPE_SNIPER_RIFLE = 101, IDTYPE_NONE = 254, IDTYPE_LAST = 255 };
+enum EQUIP_IDTYPE {
+    IDTYPE_PISTOL = 4, IDTYPE_SMG = 31, IDTYPE_ASSAULT_RIFLE = 51, IDTYPE_SHOTGUN = 81,
+    IDTYPE_MACHINEGUN = 91, IDTYPE_SNIPER_RIFLE = 101, IDTYPE_GRENADE = 121, IDTYPE_HEAVYWEAPON = 141,
+    IDTYPE_EXPLOSIVE = 151, IDTYPE_BINOCULARS = 190, IDTYPE_NVG = 191, IDTYPE_NONE = 254,
+    IDTYPE_LAST = 255
+};
 
 /* a reticle (a signed byte: SetCurReticule sign-extends GetReticuleByIndex's result only to
  * compare it; the names ours) */
@@ -35,7 +40,9 @@ enum FIREMODE {
  * SOCOM 1's at 0x60) */
 class CZFTSWeapon {
 public:
-    unsigned char _0[0x7c];
+    unsigned char _0[0x24];
+    unsigned char m_maxfiremode;   // 0x24: the highest fire mode it has (the name ours)
+    unsigned char _25[0x7c - 0x25];
     EQUIP_ITEM m_equip;   // 0x7c
     unsigned char _7d[0x284 - 0x7d];
     unsigned int m_num_zoommodes;   // 0x284: the zoom-mode vector's size (SOCOM 1's m_zoommode at 0x1c0)
@@ -65,6 +72,9 @@ public:
     bool CurReticuleTypeChanged();
     float GetCurZoom();
     RETICULE_TYPE GetReticuleByIndex(int index);
+    bool IsUsingItem(int index);
+    bool IsUsingItem(EQUIP_ITEM item);
+    bool SetCurFireMode(FIREMODE mode);
     float ScreenOffsetX();
     float ScreenOffsetY();
     void IncrScreenOffsetY(float dy);
@@ -161,7 +171,8 @@ public:
     unsigned char _55[0x58 - 0x55];
     float m_screenoffset_x;   // 0x58 (SOCOM 1's 0x44)
     float m_screenoffset_y;   // 0x5c (SOCOM 1's 0x48)
-    unsigned char _60[0xe4 - 0x60];
+    unsigned char _60[0x6c - 0x60];
+    unsigned int m_itemstate[30];   // 0x6c (SOCOM 1's 0x58): bit 3, the item in use
     CZFTSWeapon *m_item[30];   // 0xe4 (SOCOM 1's 0xd0)
     void *m_ammo[30];   // 0x15c (SOCOM 1's CZAmmo *, 0x148)
     int m_reloads[30][10];   // 0x1d4 (SOCOM 1's 0x1c0): each item's magazines, the rounds in each
