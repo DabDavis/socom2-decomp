@@ -9769,7 +9769,7 @@
 0x00536B40 0x50 _tile_boundary__FRC18MAP_FOREACH_STRUCTPv  # OVL2; s1:order by hand (the demo's 0x1A6100, 0x4C bytes and the same code: the boundary byte against the cell's two bits, set and the change noted)
 0x00536B90 0x50 _tile_shadow__FRC18MAP_FOREACH_STRUCTPv  # OVL2; ours (new in SOCOM II, after _tile_boundary: the cell's two shadow bits from the tile's value)
 0x00536BE0 0x98 _tile_soil__FRC18MAP_FOREACH_STRUCTPv  # OVL2; s1:order by hand (the demo's _tile_soil 0x1A6150, after _tile_boundary as here: the soil set where the tile's flags allow, the change noted)
-0x00536C80 0x780 func_00536C80  # OVL2
+0x00536C80 0x780 FloodFill__6CAiMapFRC9CAiMapLocQ26CAiMap3DIRiPFR20MAP_FLOODFILL_STRUCTPv_bPv  # OVL2; s1:order by hand (the demo's FloodFill 0x1A61E0, right after the tile callbacks in both builds; the look and cover searches call it with the start, its direction toward the point, a radius, their callback and data)
 0x00537400 0xA48 WalkLine__6CAiMapFRC9CAiMapLocPC6CPnt3DPFRC19MAP_LINEWALK_STRUCTPv_bPvf  # OVL2; s1:order by hand (the demo's WalkLine(loc, CPnt3D *) 0x1A6B00, 0xA64 bytes, before the two-cell one as here; CanSeeLine(loc, dir) 0x539070 tail-calls it with _SeeLineCallback as SOCOM 1's does -- SOCOM II adds the step, 0.2f in $f12)
 0x00537E50 0xB28 WalkLine__6CAiMapFRC9CAiMapLocRC9CAiMapLocPFRC19MAP_LINEWALK_STRUCTPv_bPvf  # OVL2; s1:order by hand (the demo's WalkLine(loc, loc) 0x1A7570, 0xD04 bytes; CanSeeLine and CanTravelLine 0x539090/0x5390B0 tail-call it with their callbacks as SOCOM 1's do, the step 0.2f added)
 0x00538980 0xD8 CanSeePoint__7CAiMapsFPC6CPnt3DPC6CPnt3Df  # OVL2; ours (new in SOCOM II, first of the walker unit's visibility tests: the walk 0x5352D0 between two points with the callback 0x538A60, a range and visibility 1; seen when nothing is lost, not when all is, else by chance (rand) of what is left -- the AI states call it on AiMaps)
@@ -9792,7 +9792,7 @@
 0x00539D00 0x170 func_00539D00  # OVL2; one function 0x539D00-0x539E6F (merged: the seed cut it at 0x539D50, a jal target of the DNAS clients in MAIN 0x1C5E08 and OVL1 0x2CB56C; one frame of 128, the allocation-failure path after the cut on the first piece's at and saved registers, one epilogue at 0x539E54)
 0x00539E70 0x18 func_00539E70  # OVL2
 0x00539E90 0x20 func_00539E90  # OVL2
-0x00539EB0 0x2B0 func_00539EB0  # OVL2
+0x00539EB0 0x2B0 FindLookLoc__6CAiMapFRC9CAiMapLocPC6CPnt3DR9CAiMapLocRQ26CAiMap3DIRi  # OVL2; s1:order by hand (the demo's FindLookLoc 0x1A9590, first of the look and cover searches in both builds: the start's centre (GetCellCenter inlined one level), the XZ direction to the point, FloodFill with _find_look 0x53A410)
 0x0053A160 0x2B0 func_0053A160  # OVL2
 0x0053A410 0xEC func_0053A410  # OVL2
 0x0053A500 0xE0 func_0053A500  # OVL2

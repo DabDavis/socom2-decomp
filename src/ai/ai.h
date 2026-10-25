@@ -319,6 +319,8 @@ class CAiMap;
 /* a cell handed to a walk's callback (below CAiMap: it points at a CAiMap::region) */
 struct MAP_FOREACH_STRUCT;
 /* a cell handed to a line walk's callback (SOCOM 1's; not laid out yet) */
+/* a cell handed to a flood fill's callback (SOCOM 1's; not laid out yet) */
+struct MAP_FLOODFILL_STRUCT;
 struct MAP_LINEWALK_STRUCT {
     CAiMap *m_map;   // 0x0
     unsigned int m_unk4[2];   // 0x4
@@ -676,6 +678,14 @@ public:
     bool ForEachCell(bool (*f)(const MAP_FOREACH_STRUCT &s, void *data), void *data, int layer);
     bool ResetCells();
     static CPnt3D &GetDirVec(DIR dir, CPnt3D &v);
+    /* the cells around one flooded out to a radius from a direction, each handed to a callback
+     * until one returns true (SOCOM 1's FloodFill, 0x536C80) */
+    bool FloodFill(const CAiMapLoc &loc, DIR dir, int radius, bool (*f)(MAP_FLOODFILL_STRUCT &s, void *data),
+                   void *data);
+    /* a cell near one from which a point can be seen, and a cell near one that hides from it,
+     * the direction toward the point given (SOCOM 1's, the look and cover searches) */
+    bool FindLookLoc(const CAiMapLoc &loc, const CPnt3D *pos, CAiMapLoc &out, DIR &dir, int radius);
+    bool FindCoverLoc(const CAiMapLoc &loc, const CPnt3D *pos, CAiMapLoc &out, DIR &dir, int radius);
     /* the cell's centre: its corner plus half a cell, at its altitude (0 without one), moved
      * s_actionOffset of a cell toward its action's side; none off the map (SOCOM 1's, out of
      * line there -- SOCOM II inlines it one level: GetCell, HasAction, GetDir, CPnt3D(), Scale and
