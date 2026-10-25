@@ -4877,29 +4877,29 @@
 0x002ED360 0x80 func_002ED360  # OVL1
 0x002ED3E0 0x80 func_002ED3E0  # OVL1
 0x002ED460 0x2DC func_002ED460  # OVL1
-0x002ED740 0x108 func_002ED740  # OVL1
+0x002ED740 0x108 CreateRoomStateHandler__F16LOBBY_STATE_FLAG  # OVL1; s1 by hand (registered for CREATE_ROOM, 20, by the lobby's state table 0x2ED460, as SOCOM 1's Open registers CreateRoomStateHandler: the room the menu names found in the room list 0x44F568 and handed to MediusCreateChannel 0x648840 with 0x2ED850, 'CreateRoom')
 0x002ED850 0x170 func_002ED850  # OVL1
 0x002ED9C0 0xA0 func_002ED9C0  # OVL1
-0x002EDA60 0x134 func_002EDA60  # OVL1
+0x002EDA60 0x134 JoinGameStateHandler__F16LOBBY_STATE_FLAG  # OVL1; s1 by hand (registered for JOIN_GAME, 15, by 0x2ED460: MediusJoinGame 0x6488F8 with 0x2EDBA0, 'JoinGame', the password from PlayerGamePassword/SpectatorGamePassword, as SOCOM 1's)
 0x002EDBA0 0x200 func_002EDBA0  # OVL1
 0x002EDDA0 0x2E4 func_002EDDA0  # OVL1
 0x002EE090 0x178 func_002EE090  # OVL1
 0x002EE210 0x80 func_002EE210  # OVL1
-0x002EE290 0x10C func_002EE290  # OVL1
+0x002EE290 0x10C JoinRoomStateHandler__F16LOBBY_STATE_FLAG  # OVL1; s1 by hand (registered for JOIN_ROOM, 19, by 0x2ED460: the game list emptied through a CRdrEditor, then MediusJoinChannel 0x648A08 with 0x2EE3A0, 'JoinRoom', as SOCOM 1's)
 0x002EE3A0 0x1A0 func_002EE3A0  # OVL1
-0x002EE540 0xCC func_002EE540  # OVL1
-0x002EE610 0x84 func_002EE610  # OVL1
+0x002EE540 0xCC LobbyActiveStateHandler__F16LOBBY_STATE_FLAG  # OVL1; s1 by hand (registered for LOBBY_ACTIVE, 11, by 0x2ED460: the player's info asked for on entry and every five minutes)
+0x002EE610 0x84 ConnectErrorStateHandler__F16LOBBY_STATE_FLAG  # OVL1; s1 by hand (registered for CONNECT_ERROR, 2, by 0x2ED460; SOCOM 1's was an empty stub, SOCOM II's closes the connection and reports MP_MEDIUS_ERROR)
 0x002EE6A0 0x8 func_002EE6A0  # OVL1
 0x002EE6B0 0x8 func_002EE6B0  # OVL1
 0x002EE6C0 0x8 func_002EE6C0  # OVL1
 0x002EE6D0 0x8 func_002EE6D0  # OVL1
-0x002EE6E0 0xC4 func_002EE6E0  # OVL1
+0x002EE6E0 0xC4 EndSessionStateHandler__F16LOBBY_STATE_FLAG  # OVL1; s1 by hand (the lobby's state table 0x2ED460 registers it for END_SESSION, 18, where SOCOM 1's Open registers EndSessionStateHandler; MediusSessionEnd 0x647D88 with cbSessionEnd 0x2EE7B0, as SOCOM 1's)
 0x002EE7B0 0x80 func_002EE7B0  # OVL1
-0x002EE830 0xD4 func_002EE830  # OVL1
+0x002EE830 0xD4 SessionBeginStateHandler__F16LOBBY_STATE_FLAG  # OVL1; s1 by hand (registered for SESSION_BEGIN, 12, by 0x2ED460; MediusSessionBegin 0x647CE8 then MediusVersionServer 0x647548, as SOCOM 1's SessionBeginStateHandler)
 0x002EE910 0x98 func_002EE910  # OVL1
-0x002EE9B0 0xB4 func_002EE9B0  # OVL1
-0x002EEA70 0xD4 func_002EEA70  # OVL1
-0x002EEB50 0xBC func_002EEB50  # OVL1
+0x002EE9B0 0xB4 AccountRegistrationStateHandler__F16LOBBY_STATE_FLAG  # OVL1; s1 by hand (registered for ACCOUNT_REGISTRATION, 3, by 0x2ED460; the account name to MediusTextFilter with cbFilterAcctName, as SOCOM 1's)
+0x002EEA70 0xD4 cbFilterAcctName__FiiiP24MediusTextFilterResponse  # OVL1; s1 by hand (AccountRegistrationStateHandler's text-filter callback: MediusAccountRegistration 0x648140 on success, MP_FILTER_FAILURE and REGISTRATION_FAILURE otherwise, as SOCOM 1's)
+0x002EEB50 0xBC cbAccountRegistration__FiiiP33MediusAccountRegistrationResponse  # OVL1; s1 by hand (cbFilterAcctName's registration callback: reports 'AccountRegistration', then MediusAccountLogin 0x647F48 with 0x2EEC10, as SOCOM 1's)
 0x002EEC10 0x1C8 func_002EEC10  # OVL1
 0x002EEDE0 0x1B8 func_002EEDE0  # OVL1
 0x002EEFA0 0x3A0 func_002EEFA0  # OVL1
