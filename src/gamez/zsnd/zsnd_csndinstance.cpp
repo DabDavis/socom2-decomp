@@ -134,6 +134,84 @@ void CSndInstance::SetPitch(int pitch)
     snd_SetSoundPitch(m_handle, pitch);
 }
 
+/* SOCOM 1's (a fourth flag added: every mode): the voices of an entity stopped, those of mode 1
+ * when efx, of mode 2 when music */
+void CSndInstance::Remove(unsigned int entityID, bool efx, bool music, bool all)
+{
+    if (CSnd::m_isDisabled)
+        return;
+    std::list<CSndInstance *>::iterator e = m_list.end();
+
+    for (std::list<CSndInstance *>::iterator i = m_list.begin(); i != e; ++i) {
+        CSndInstance *inst = *i;
+
+        if (inst->m_entityID == entityID) {
+            if ((inst->IsMode(1) && efx) || (inst->IsMode(2) && music) || all)
+                inst->Stop();
+        }
+    }
+}
+
+extern "C" void func_0034A640(Headset *h, int entityID);    /* the headset's sounds of an entity
+                                                                stopped (SOCOM II's) */
+
+/* SOCOM 1's: an entity's effects stopped when it grows aware -- SOCOM II's calls Remove where
+ * SOCOM 1 inlined the walk, and stops the headset's too */
+void CSndInstance::AwarenessUpgrade(unsigned int entityID)
+{
+    if (CSnd::m_isDisabled)
+        return;
+    Remove(entityID, true, false, false);
+    Headset *h = Headset::ftsGetHeadset();
+
+    if (h)
+        func_0034A640(h, entityID);
+}
+
+extern "C" void snd_StartCaching(void);
+extern "C" int snd_SendCache(void);
+
+/* SOCOM 1's: every voice ticked under one batch of commands, the finished ones let go.
+ * OPEN, 3 instructions: the end iterator's address is built before snd_StartCaching here (lui
+ * ahead of the call, addiu in its delay slot), after it in the target (begin's load in the delay
+ * slot). The begin is read before the call in both builds (SOCOM 1 builds its iterator there);
+ * declared after begin, the end gets the target's schedule but begin and end trade s0/s1 (the
+ * later-defined iterator takes the lower register). Tried: end in the loop test (recomputed each
+ * pass), end assigned after the call (copied through memory), begin copied through another
+ * iterator, a const end. The arms each step on (three copies of the step, as SOCOM 1's) */
+bool CSndInstance::PostTick(float dT, void *data)
+{
+    if (CSnd::m_isDisabled)
+        return false;
+    m_vec.clear();
+    std::list<CSndInstance *>::iterator e = m_list.end();
+    std::list<CSndInstance *>::iterator i = m_list.begin();
+
+    snd_StartCaching();
+
+    /* each arm steps on by itself (SOCOM 1's too: an erasing walk's shape) */
+    while (i != e) {
+        CSndInstance *inst = *i;
+
+        if (inst) {
+            bool done = inst->Tick(dT);
+
+            if (done && inst->m_terminateOnFinish) {
+                CSndInstance *kept = inst;
+
+                m_vec.push_back(kept);
+                ++i;
+            } else
+                ++i;
+        } else
+            ++i;
+    }
+    snd_SendCache();
+    RemoveFromList();
+    snd_FlushSoundCommands();
+    return false;
+}
+
 void CSndInstance::FadeOut(float time)
 {
     m_fadeTime = time;
@@ -219,6 +297,53 @@ void CSndInstance::StopAllSounds(SOUND_MODE mode)
 
         if (inst && mode == (SOUND_MODE)inst->m_parent->m_soundmode)
             inst->Stop();
+    }
+}
+
+/* the voices of one mode paused, and the headset's stream with the dialogue (SOCOM II's; names
+ * ours: the mission cameras pause the game's sounds with it). The disabled flag is tested twice */
+void CSndInstance::PauseAllSounds(SOUND_MODE mode)
+{
+    if (CSnd::m_isDisabled)
+        return;
+    if (CSnd::m_isDisabled)
+        return;
+    std::list<CSndInstance *>::iterator e = m_list.end();
+
+    for (std::list<CSndInstance *>::iterator i = m_list.begin(); i != e; ++i) {
+        CSndInstance *inst = *i;
+
+        if (inst && mode == (SOUND_MODE)inst->m_parent->m_soundmode)
+            inst->PauseVoice();
+    }
+    if (mode == SND_MODE_DIALOG) {
+        Headset *h = Headset::ftsGetHeadset();
+
+        if (h)
+            h->Pause();
+    }
+}
+
+/* ... and continued (the cameras' cleanup) */
+void CSndInstance::ResumeAllSounds(SOUND_MODE mode)
+{
+    if (CSnd::m_isDisabled)
+        return;
+    if (CSnd::m_isDisabled)
+        return;
+    std::list<CSndInstance *>::iterator e = m_list.end();
+
+    for (std::list<CSndInstance *>::iterator i = m_list.begin(); i != e; ++i) {
+        CSndInstance *inst = *i;
+
+        if (inst && mode == (SOUND_MODE)inst->m_parent->m_soundmode)
+            inst->ContinueVoice();
+    }
+    if (mode == SND_MODE_DIALOG) {
+        Headset *h = Headset::ftsGetHeadset();
+
+        if (h)
+            h->Resume();
     }
 }
 

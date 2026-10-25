@@ -6203,8 +6203,8 @@
 0x003466C0 0x28 Init__12CSndInstanceFv  # OVL1; s1:order by hand (SOCOM 1's Init, the same body: unless CSnd::m_isDisabled, the paused flag cleared and m_mastervol set to 1)
 0x003466F0 0x4C ResumeAllSounds__12CSndInstanceFv  # OVL1; s1:order by hand (after Init as SOCOM 1's ResumeAllSounds: SOCOM II sends 989snd command 23 for every group and resumes the headset)
 0x00346740 0x54 PauseAllSounds__12CSndInstanceFv  # OVL1; s1:order by hand (after ResumeAllSounds as in SOCOM 1: command 22 for every group, the paused flag set, the headset paused)
-0x003467A0 0x144 func_003467A0  # OVL1
-0x003468F0 0x154 func_003468F0  # OVL1
+0x003467A0 0x144 ResumeAllSounds__12CSndInstanceF10SOUND_MODE  # OVL1; SOCOM II's, name ours (ResumeAllSounds() for one mode: the voices whose sound's mode matches continued -- a pending flag while the play command is queued -- and the headset resumed for the dialogue; CZHudMissionCams::CleanupCamera calls it) -- the sound lane
+0x003468F0 0x154 PauseAllSounds__12CSndInstanceF10SOUND_MODE  # OVL1; SOCOM II's, name ours (PauseAllSounds() for one mode: the voices whose sound's mode matches paused, the headset paused for the dialogue; CZHudMissionCams::PlayCamera calls it) -- the sound lane
 0x00346A50 0xE0 StopAllSounds__12CSndInstanceF10SOUND_MODE  # OVL1; s1:calls by hand (CSnd::OnListenerDeath calls it with 3 after CSndJukebox::FadeOut, as SOCOM 1's calls StopAllSounds(SOUND_MODE))
 0x00346B30 0xC4 StopAllSounds__12CSndInstanceFv  # OVL1; s1:order by hand (SOCOM 1's StopAllSounds(): right after StopAllSounds(SOUND_MODE) in both builds, the voice list walked, the voices kept in m_vec, RemoveFromList, then PostTick(0.0f, 0) as SOCOM 1's; SOCOM II stops every sound with one command first) -- the sound lane
 0x00346C00 0x2C func_00346C00  # OVL1
@@ -6214,10 +6214,10 @@
 0x00346D70 0x2C IsPlaying__12CSndInstanceFv  # OVL1; s1:order by hand (SOCOM 1's IsPlaying, m_handle != 0, with a SOCOM II flag tested first; after Set3D in both builds; CZAnim::StopSounds asks it where SOCOM 1's does)
 0x00346DA0 0x24 IsFading__12CSndInstanceFv  # OVL1; s1:callee
 0x00346DD0 0xC8 FadeOut__12CSndInstanceFf  # OVL1; s1:order by hand (SOCOM 1's FadeOut, after IsFading in both builds: the fade time stored, snd_AutoVol to zero; the SOUND tick fades with it where SOCOM 1's calls FadeOut)
-0x00346EA0 0x274 func_00346EA0  # OVL1
+0x00346EA0 0x274 Tick__12CSndInstanceFf  # OVL1; s1:order by hand (SOCOM 1's CSndInstance::Tick(float): between FadeOut and PostTick in both builds; PostTick calls it on each voice with dT and keeps its bool result, as SOCOM 1's) -- the sound lane
 0x00347120 0x114 PostTick__12CSndInstanceFfPv  # OVL1; s1:calls by hand (StopAllSounds() calls it with (0.0f, 0) where SOCOM 1's calls PostTick__12CSndInstanceFfPv; after Tick as in SOCOM 1; it calls the instances' Tick, 0x346EA0) -- the sound lane
-0x00347240 0x58 func_00347240  # OVL1
-0x003472A0 0x174 func_003472A0  # OVL1
+0x00347240 0x58 AwarenessUpgrade__12CSndInstanceFUi  # OVL1; s1:order by hand (SOCOM 1's AwarenessUpgrade(unsigned int): after PostTick in both builds, the entity's EFX voices stopped -- SOCOM 1 inlined the walk, SOCOM II calls Remove(id, true, false, false) -- the disabled flag tested first in both; it then stops the headset's sounds of the entity; CSealCtrlAi::Tick calls it) -- the sound lane
+0x003472A0 0x174 Remove__12CSndInstanceFUibbb  # OVL1; s1:order by hand (SOCOM 1's Remove(unsigned int, bool, bool): after AwarenessUpgrade in both builds, the voice list walked for the entity id at 0x24, mode 1 stopped when the first flag is set and mode 2 with the second, SOCOM 1's inverted parent test kept; SOCOM II adds a fourth flag stopping every mode) -- the sound lane
 0x00347420 0x30 SetPos__12CSndInstanceFPC6CPnt3D  # OVL1; s1:align
 0x00347450 0x6C SetPitch__12CSndInstanceFi  # OVL1; s1:align
 0x003474C0 0x74 SetPan__12CSndInstanceFi  # OVL1; s1:align

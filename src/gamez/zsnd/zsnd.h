@@ -276,6 +276,34 @@ public:
         }
         return false;
     }
+    /* SOCOM II's (names ours): a voice paused and continued -- while its play command is queued,
+     * by the pending flags. Bit 1 is the paused flag here */
+    void PauseVoice()
+    {
+        if (CSnd::m_isDisabled)
+            return;
+        m_forcedLoop = true;
+        if (m_handle == -1) {
+            if (m_continueASAP)
+                m_continueASAP = false;
+            m_pauseASAP = true;
+        } else
+            snd_PauseSound(m_handle);
+    }
+    void ContinueVoice()
+    {
+        if (CSnd::m_isDisabled)
+            return;
+        if (!m_forcedLoop)
+            return;
+        if (m_handle == -1) {
+            if (m_pauseASAP)
+                m_pauseASAP = false;
+            else
+                m_continueASAP = true;
+        } else
+            snd_ContinueSound(m_handle);
+    }
     /* the 989snd volume of a level (name ours): FadeOut's call with 0 keeps its products */
     int CalcVol(float vol) { return (int)(m_vol * (1024.0f * vol * m_mastervol)); }
     static void PlaySoundCallback(unsigned int handle, unsigned long user_data);
@@ -283,10 +311,12 @@ public:
     static void RemoveFromList();
     static void RemoveFromList(CSndInstance *instance);
     static void DebugSoundList();
+    static void ResumeAllSounds(SOUND_MODE mode);
+    static void PauseAllSounds(SOUND_MODE mode);
     static void StopAllSounds(SOUND_MODE mode);
     static void StopAllSounds();
     static void FadeOutAllSounds();
-    static void PostTick(float dT, void *data);
+    static bool PostTick(float dT, void *data);
     static void Init();
     static void Cleanup();
     void TerminateOnFinish();
@@ -295,6 +325,12 @@ public:
     bool IsFading();
     void FadeOut(float time);
     void SetPos(const CPnt3D *pos);
+    bool Tick(float dT);
+    static void AwarenessUpgrade(unsigned int entityID);
+    static void Remove(unsigned int entityID, bool efx, bool music, bool all);
+    /* the sound's mode is n (ours: Remove's test, as SOCOM 1's -- whose parent test is inverted,
+     * in both builds: a voice with a sound reads as no mode, one without reads through null) */
+    bool IsMode(int n) { return m_parent ? false : m_parent->m_mode == n; }
     void SetPitch(int pitch);
     void SetPan(int pan);
     void SetVol(float vol);
