@@ -26,6 +26,26 @@ public:
     }
 };
 
+/* the message editor (C2D's: its cursor bitmap at 0x20, its text at 0xA4; only what is written
+ * here so far). Its code follows the list's in the image, so it is defined first */
+class CMsgEditor {
+public:
+    void SetMaxLength(int n);
+
+    unsigned char _0[0x140];
+    int m_maxlen;   // 0x140: the text's limit, 5 to 100 (5 at construction)
+};
+
+/* the text's limit set, kept within 5 to 100 (OVL1 0x2C9960; the name ours) */
+void CMsgEditor::SetMaxLength(int n)
+{
+    if (n < 5)
+        n = 5;
+    m_maxlen = n;
+    if (m_maxlen > 100)
+        m_maxlen = 100;
+}
+
 /* a mission of the list (0x20 bytes, newed by the list's Add) */
 class CMultiMission {
 public:

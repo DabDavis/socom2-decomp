@@ -4276,7 +4276,7 @@
 0x002C9540 0x1D8 func_002C9540  # OVL1
 0x002C9720 0xE8 func_002C9720  # OVL1
 0x002C9810 0x150 func_002C9810  # OVL1
-0x002C9960 0x30 func_002C9960  # OVL1
+0x002C9960 0x30 SetMaxLength__10CMsgEditorFi  # OVL1; by hand (the states lane, round 15; the method name ours, the class CMsgEditor's RTTI): the word at 0x140 (5 at construction, 0x2CA2D0) set from n, kept within 5 to 100
 0x002C9990 0x1F0 func_002C9990  # OVL1
 0x002C9B80 0x140 func_002C9B80  # OVL1
 0x002C9CC0 0x40 func_002C9CC0  # OVL1
