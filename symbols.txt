@@ -7985,7 +7985,7 @@
 0x003BE800 0xBC RecycleTick__Q23zdb14CMeshDecalPoolFv  # OVL1; s1:align
 0x003BE8C0 0x24 func_003BE8C0  # OVL1
 0x003BE8F0 0x40 PutTempDecal__Q23zdb10CMeshDecalFPQ23zdb10CMeshDecal  # OVL1; s1:align
-0x003BE930 0x80 func_003BE930  # OVL1
+0x003BE930 0x80 Get__Q23zdb14CMeshDecalPoolFb  # OVL1; by hand (the wep lane: CDecalPool::Get's twin over RTArray<CMeshDecal> -- the same 0x80 bytes, GetNext of the mesh decals' array; SOCOM 1 had none out of line)
 0x003BE9B0 0x6C Init__Q23zdb14CMeshDecalPoolFUiUi  # OVL1; s1:align
 0x003BEA20 0x3C func_003BEA20  # OVL1
 0x003BEA60 0x98 func_003BEA60  # OVL1
@@ -8003,14 +8003,14 @@
 0x003BF220 0x6C Init__Q23zdb10CDecalPoolFUiUi  # OVL1; s1:align
 0x003BF290 0x140 func_003BF290  # OVL1
 0x003BF3D0 0x64 func_003BF3D0  # OVL1
-0x003BF440 0x7C func_003BF440  # OVL1
-0x003BF4C0 0x8C func_003BF4C0  # OVL1
+0x003BF440 0x7C PutBack__22RTArray<Q23zdb6CDecal>FPQ23zdb6CDecal  # OVL1; s1:callee by hand (the wep lane: CDecal::PutTempDecal and PutPermDecal call it where SOCOM 1's call PutBack__22RTArray<Q23zdb6CDecal>; zbody.h's PutBack shape)
+0x003BF4C0 0x8C GetNext__22RTArray<Q23zdb6CDecal>Fb  # OVL1; s1:callee by hand (the wep lane: CDecalPool::Get calls it where SOCOM 1's calls GetNext__22RTArray<Q23zdb6CDecal>Fb; zbody.h's RTArray<T>::GetNext shape -- m_available at 0x18, m_supportRecycle at 0x1C)
 0x003BF550 0x13C func_003BF550  # OVL1
 0x003BF690 0x44 func_003BF690  # OVL1
 0x003BF6E0 0x8 func_003BF6E0  # OVL1
 0x003BF6F0 0x64 func_003BF6F0  # OVL1
-0x003BF760 0x7C func_003BF760  # OVL1
-0x003BF7E0 0x8C func_003BF7E0  # OVL1
+0x003BF760 0x7C PutBack__27RTArray<Q23zdb10CMeshDecal>FPQ23zdb10CMeshDecal  # OVL1; s1:callee by hand (the wep lane: CMeshDecal::PutTempDecal calls it where SOCOM 1's calls PutBack__27RTArray<Q23zdb10CMeshDecal>)
+0x003BF7E0 0x8C GetNext__27RTArray<Q23zdb10CMeshDecal>Fb  # OVL1; by hand (the wep lane: CMeshDecalPool::Get calls it as CDecalPool::Get calls RTArray<CDecal>'s; the same 0x8C bytes)
 0x003BF870 0x140 __dt__27RTArray<Q23zdb10CMeshDecal>Fv  # OVL1; s1:callee
 0x003BF9B0 0x44 func_003BF9B0  # OVL1
 0x003BFA00 0x134 func_003BFA00  # OVL1
