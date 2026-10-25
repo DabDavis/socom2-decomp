@@ -1804,7 +1804,7 @@
 0x0020B0D0 0x120 UninitMap__11CZNewHudMapFv  # OVL1; s1:calls (CHUD::ReInit_Uninit's first map call, as SOCOM 1's)
 0x0020B1F0 0x2C ReInit__11CZNewHudMapFv  # OVL1; s1:exact by hand (hud_newhudmap.cpp)
 0x0020B220 0x9C func_0020B220  # OVL1
-0x0020B2C0 0x520 func_0020B2C0  # OVL1
+0x0020B2C0 0x520 InitMap__11CZNewHudMapFPQ23zdb6CWorld  # OVL1; s1:calls by hand (CHUD::ReInit_Init passes the new'ed map and zdb::CWorld::m_world, single player only, where SOCOM 1 calls InitMap(world))
 0x0020B7E0 0x18 GetZoomOut__11CZNewHudMapCFv  # OVL1; s1:exact by hand (hud_newhudmap.cpp)
 0x0020B800 0x1FC func_0020B800  # OVL1
 0x0020BA00 0x218 __dt__11CZNewHudMapFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -1973,7 +1973,7 @@
 0x00220F90 0x8 func_00220F90  # OVL1; s1~ GetSealCtrlAi__9CSealCtrlFv (one of 2 out-of-line copies of an inline, by s1:vtable)
 0x00220FA0 0x8 func_00220FA0  # OVL1; s1~ IsAi__9CSealCtrlCFv (one of 2 out-of-line copies of an inline, by s1:vtable)
 0x00220FB0 0xB4 Clear__10CTeamNamesFv  # OVL1; by hand (CHUD::ReInit_Uninit calls it on CHUD+0x165A0, the member 0x221B10 constructs with CTeamNames' vtable 0x405680, under the single-player test with UninitMap)
-0x00221070 0x658 func_00221070  # OVL1
+0x00221070 0x658 Init__10CTeamNamesFv  # OVL1; s1:calls by hand (CHUD::ReInit_Init's call on CHUD+0x165A0 after ZoomOut, single player only, where SOCOM 1 calls CTeamNames::Init; after Clear in the unit, as SOCOM 1's)
 0x002216D0 0x29C func_002216D0  # OVL1
 0x00221970 0x1A0 func_00221970  # OVL1
 0x00221B10 0xD4 __ct__10CTeamNamesFv  # OVL1; by hand (stores CTeamNames' vtable 0x405680; CHUD's constructor builds CHUD+0x165A0 with it; hud_teamnames.cpp's last function before hud_posebitmap.cpp, as SOCOM 1's)
@@ -2033,7 +2033,7 @@
 0x002269A0 0x784 func_002269A0  # OVL1
 0x00227130 0xA0 func_00227130  # OVL1
 0x002271D0 0x64 UnInit__16CMPTeammateNamesFv  # OVL1; s1:calls by hand (CHUD::ReInit_Uninit's call on CHUD+0x17580 after CFlashFXVector::Reset, where SOCOM 1 calls CTeamMateNames::UnInit; SOCOM II's class: each of its eight strings off and emptied)
-0x00227240 0xF8 func_00227240  # OVL1
+0x00227240 0xF8 Init__16CMPTeammateNamesFv  # OVL1; s1:calls by hand (CHUD::ReInit_Init's call on CHUD+0x17580 in a network game, where SOCOM 1 calls CTeamMateNames::Init; after UnInit in the unit, as SOCOM 1's; no argument set up: SOCOM 1's took the font)
 0x00227340 0x220 func_00227340  # OVL1
 0x00227560 0xE8 func_00227560  # OVL1
 0x00227650 0xE0 func_00227650  # OVL1

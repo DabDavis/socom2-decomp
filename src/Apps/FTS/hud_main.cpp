@@ -231,6 +231,7 @@ class CMPTeammateNames : public C2D {
 public:
     virtual void Draw(zdb::CCamera *cam);
     void UnInit();
+    void Init();
 
     C2DString m_names[8];   // 0x18
     C2DBitmap m_bitmap1;   // 0x4e0
@@ -278,6 +279,7 @@ class PoseBitmap {
 public:
     PoseBitmap();
     void Clear();
+    void ReInit();
     unsigned char _0[0x150];
 } __attribute__((aligned(16)));
 
@@ -288,17 +290,18 @@ public:
     unsigned char _0[0x47b0];
 } __attribute__((aligned(16)));
 
-class CTeamNames {
+class CTeamNames : public C2D {
 public:
     CTeamNames();
+    void Init();
     void Clear();
-    unsigned char _0[0xf30];
+    unsigned char _18[0xf30 - 0x18];
 } __attribute__((aligned(16)));
 
-class CSpectatorInfo {
+class CSpectatorInfo : public C2D {
 public:
     CSpectatorInfo();
-    unsigned char _0[0x680];
+    unsigned char _18[0x680 - 0x18];
 } __attribute__((aligned(16)));
 
 class CZPauseTest {
@@ -331,6 +334,7 @@ class CHUD {
 public:
     CHUD();
     ~CHUD();
+    void ReInit_Init();
     void ReInit_Uninit();
     void DrawPhase(zdb::_RenderPhase phase, zdb::CCamera *cam);
     static void HudText_to_upper(char *instr);
@@ -518,4 +522,128 @@ zdb::CTexture *GetTextureByName(zdb::CWorld *world, const char *name)
     if (h)
         return h->m_texture;
     return 0;
+}
+
+/* the app camera (the shake's stop only) and the seal the camera follows (SOCOM 1's
+ * ftsGetPlayer, 0x2B3580: no row yet) */
+extern "C" void StopShake__10CAppCameraFv(CAppCamera *camera);
+extern "C" CZSealBody *func_002B3580();
+
+/* the HUD's own, before this unit's part of the range (no rows yet): On and ZoomOut */
+extern "C" void func_001F7A90(CHUD *hud);
+extern "C" void func_001F7560(CHUD *hud);
+
+/* a server setting (SOCOM 1's CValve): its value a halfword at 4 */
+class CValve {
+public:
+    static CValve *GetByName(const char *name);
+
+    unsigned char _0[4];
+    unsigned short m_value;   // 0x4
+};
+
+/* a queue of messages on screen (SOCOM 1's C2DMessage_Q): only its font placed */
+class C2DMessage_Q {
+public:
+    unsigned char _0[0x18];
+    C2DFont *m_font;   // 0x18
+};
+
+/* the mission: its three message queues, a block the HUD re-inits and the multiplayer flag */
+class CMission {
+public:
+    unsigned char _0[0x1c0];
+    C2DMessage_Q m_messages;   // 0x1c0
+    unsigned char _1dc[0x6a0 - 0x1dc];
+    C2DMessage_Q m_messages2;   // 0x6a0
+    unsigned char _6bc[0xb80 - 0x6bc];
+    C2DMessage_Q m_messages3;   // 0xb80
+    unsigned char _b9c[0x1060 - 0xb9c];
+    unsigned char m_1060[0x1808 - 0x1060];   // 0x1060
+    void *m_1808;   // 0x1808
+};
+
+extern CMission theMission;
+
+class CameraZoom {
+public:
+    static void Reset();
+};
+
+extern "C" int sprintf(char *buf, const char *fmt, ...);
+
+/* not named yet: SOCOM II's own re-inits and resets */
+extern "C" void func_003C6980();
+extern "C" void func_0022D190();
+extern "C" void func_00202370(CZPauseTest *pause);
+extern "C" void func_00238710(CMPInfoBox *box);
+extern "C" void func_00242B20(CSpectatorInfo *info);
+extern "C" void func_002CA0B0(void *block);
+extern "C" void func_002B6530(C2DMessage_Q *q, const char *text, int a, int b, int c, float time);
+extern "C" void func_00213610(BitmapReticule *reticule);
+extern "C" void func_002371A0(CHudNetState *state);
+extern "C" void func_0021A510(CWeaponSel *sel, int flag);
+extern "C" void func_001FF370(CLensFlareManager *flares);
+
+/* the HUD made ready for the next mission: on, the letterbox and the piggyback strings put away,
+ * zoomed out, the team names (single player) or the network boxes set up, the message queues
+ * given the HUD's font, a network round announced, the map re-inited on the player */
+void CHUD::ReInit_Init()
+{
+    if (appCamera)
+        StopShake__10CAppCameraFv(appCamera);
+    func_003C6980();
+    func_001F7A90(theHUD);
+    theHUD->m_letterbox.RemoveLetterbox();
+    for (unsigned int i = 0; i < 6; i++) {
+        m_piggyback_text[i].Off();
+        m_piggyback_text[i].SetTrans(100.0f);
+    }
+    m_socom2_1a0e8 = -1.0f;
+    m_socom2_1a0f0 = -1;
+    func_001F7560(this);
+    if (!theNetwork.m_bNetwork)
+        m_teamnames.Init();
+    else
+        m_teamnames.Off();
+    func_00202370(&m_pausetest);
+    m_poseBitmap.ReInit();
+    func_00238710(&m_infobox);
+    func_00242B20(&m_spectatorinfo);
+    if (theNetwork.m_bNetwork) {
+        m_teamMateNames.Init();
+    } else {
+        m_infobox.Off();
+        m_spectatorinfo.Off();
+        m_newmap->InitMap(zdb::CWorld::m_world);
+    }
+    theMission.m_messages2.m_font = m_myfont;
+    theMission.m_messages.m_font = m_myfont;
+    theMission.m_messages3.m_font = m_myfont;
+    func_002CA0B0(theMission.m_1060);
+    if (theMission.m_1808 && theNetwork.m_bNetwork) {
+        CValve *max = CValve::GetByName("mp_max_rounds");
+        CValve *count = CValve::GetByName("mp_round_count");
+        int maxrounds = max ? max->m_value : -1;
+        int round = count ? count->m_value + 1 : -1;
+        char text[128];
+
+        if (round <= maxrounds)
+            sprintf(text, "STARTING ROUND %d OF %d", round, maxrounds);
+        else
+            sprintf(text, "PLAYING TIEBREAKER ROUND", round, maxrounds);
+        func_002B6530(&theMission.m_messages, text, 0, 1, 0, 0.9f);
+    }
+    if (!theNetwork.m_bNetwork) {
+        m_newmap->m_viewer = func_002B3580();
+        m_newmap->ReInit();
+    }
+    func_0022D190();
+    func_00213610(&m_bitmapReticule);
+    func_00237F60(&m_ammodisplay);
+    CameraZoom::Reset();
+    func_002371A0(&data_00413120);
+    func_0021A510(&m_weaponsel, 1);
+    func_001FF370(&m_lensflares);
+    m_socom2_1a0e8 = 0.0f;
 }

@@ -9,6 +9,10 @@
 
 class CZSealBody;
 
+namespace zdb {
+class CWorld;
+}
+
 class CCircleClip {
 public:
     /* the circle placed at once: its centre and radius computed before any is stored (the name
@@ -44,6 +48,7 @@ public:
     void SetMapScreenPos(float x1, float y1, float x2, float y2);
     void ReInit();
     void UninitMap();
+    void InitMap(zdb::CWorld *world);
     float GetZoomOut() const;
     void SwitchToCompassMap();
     /* the world window, its width (no narrower than the minimum) and centre at once: the width's
