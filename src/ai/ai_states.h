@@ -111,8 +111,25 @@ public:
 
 class CAiSScript : public CAiState {
 public:
+    virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual bool CanAttack() const;
+    virtual bool CanPursue(CSealCtrlAi *ai) const;
     virtual ~CAiSScript();
+    /* not held, and free to be pursued from (inlined in CanPushAiState; the names ours) */
+    bool NotHeld() const { return !m_hold; }
+    bool Pursuable(CSealCtrlAi *ai)
+    {
+        if (NotHeld() && CanPursue(ai))
+            return true;
+        return false;
+    }
+
+    unsigned int m_58;   // 0x58
+    unsigned char m_hold : 1;   // 0x5c bit 0: no pursuit (the name ours)
+    unsigned char m_5c_1 : 7;
+    unsigned char m_mode;   // 0x5d: the AI's mode the script runs in (the name ours)
+    unsigned char _5e[0x60 - 0x5e];
+    float m_60;   // 0x60
 };
 
 class CAiSGoto : public CAiState {

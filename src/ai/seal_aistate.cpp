@@ -11,6 +11,8 @@ extern "C" {
 /* a CSealCtrlAi function (OVL2 0x56D090, the SEAL lane's range), called twice on leaving the
  * unknown state */
 void func_0056D090(CSealCtrlAi *ai);
+/* the AI's mode, a byte (OVL2 0x560A60, the SEAL lane's range) */
+unsigned char func_00560A60(CSealCtrlAi *ai);
 }
 
 /* the AI controller's bit the CQB attack's delay reads (CSealCtrlAi at 0x264, bit 1; zseal.h does
@@ -57,6 +59,31 @@ bool CAiSAction::CanAttack() const
 bool CAiSAction::Virtual38()
 {
     return m_34 < 6;
+}
+
+/* a script takes kinds 12 and 26 only when it may be pursued from (OVL2 0x5F40F0).
+ * OPEN, 0x84 against 0x80: the target keeps the inlined test's result in s0, zeroed in the delay
+ * slot of the !m_hold branch (materialised, sltu/xori, as NotHeld() gives it) and set to 1 after
+ * the virtual CanPursue, then copies it with andi; here the inline's return true/false lands in
+ * v0 at its own labels -- a result local assigned false first is if-converted into an sltu on
+ * the call's result instead (0x6C), with == true or != false 0x74 */
+bool CAiSScript::CanPushAiState(AI_STATE state, CSealCtrlAi *ai)
+{
+    bool ok = true;
+
+    switch (state) {
+    case 12:
+    case 26:
+        ok = Pursuable(ai);
+        break;
+    }
+    return ok;
+}
+
+/* pursued from: in its own AI mode and half a second on (OVL2 0x5F4090; SOCOM 1's 0x6C bytes) */
+bool CAiSScript::CanPursue(CSealCtrlAi *ai) const
+{
+    return m_mode == func_00560A60(ai) && m_60 >= 0.5f;
 }
 
 /* (OVL2 0x5F4080) */
