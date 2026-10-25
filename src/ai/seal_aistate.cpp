@@ -84,7 +84,7 @@ bool func_0052DC70(CAiMaps *maps, const CPnt3D *pos, void *loc);
 bool func_00529A30(CAiMaps *maps, const CPnt3D *pos, void *loc);
 /* the goto pushed to a cell (OVL2 0x5F0830, this unit's: the AI, the cell, a mode, a kind and
  * the step to come back to -- the reading ours) */
-void func_005F0830(CSealCtrlAi *ai, void *loc, int mode, int kind, int step);
+bool func_005F0830(CSealCtrlAi *ai, void *loc, unsigned int mode, int kind, int step);
 void PickupObject__10CZSealBodyFP7CPickup(CEntity *seal, CPickup *pickup);
 /* CSealCtrlAi::SetStance (SOCOM 1's SetStance__11CSealCtrlAiF11SEAL_STANCE, called from the same
  * Ticks; OVL2 0x5631A0, the SEAL lane's row) */
@@ -201,6 +201,27 @@ bool CAiSScript::CanPushAiState(AI_STATE state, CSealCtrlAi *ai)
     return ok;
 }
 
+/* the script's own sequence told an event: 1 ends it (its id cleared), 2 holds it and 3 lets it
+ * go, the byte at 0x5F made 255 either way (OVL2 0x5F3FF0, CAiSScript's slot 0x0C) */
+void CAiSScript::Virtual0C(int id, int event, CSealCtrlAi *ai)
+{
+    if (id == m_58) {
+        switch ((unsigned char)event) {
+        case 1:
+            m_58 = 0;
+            break;
+        case 2:
+            SetHold(true);
+            m_5f = 255;
+            break;
+        case 3:
+            SetHold(false);
+            m_5f = 255;
+            break;
+        }
+    }
+}
+
 /* the script's bit 3 set, then the controller's 0x555820 told 0 (OVL2 0x5F3FC0: a CAiSScript
  * member -- `this` in a0 -- unnamed; three of the controller's script functions call it) */
 extern "C" void func_005F3FC0(CAiSScript *script, CSealCtrlAi *ai, bool on)
@@ -215,6 +236,23 @@ bool CAiSScript::CanPursue(CSealCtrlAi *ai) const
     return m_mode == func_00560A60(ai) && m_60 >= 0.5f;
 }
 
+/* a script sequence run on the AI's script state, when that is the current one: whether it began
+ * (OVL2 0x5F43B0; the event state's Tick calls it -- a controller helper, unnamed).
+ * OPEN, 39 instructions, all Is()'s: the same materialised `&&` as the stack's Pop(ai, AI_STATE)
+ * (below) -- and here the target reads the stack's size again for GetAiState after it, where MW
+ * keeps the first load; Is() const changes nothing. The rest (GetAiState and the script cast
+ * inlined, the call, the andi) is the target's shape */
+extern "C" bool func_005F43B0(CSealCtrlAi *ai, const char *name, unsigned int flags)
+{
+    if (ai->m_stateStack.Is(AI_STATE_SCRIPT)) {
+        CAiState *s = ai->GetAiState();
+        CAiSScript *script = s && s->m_state == AI_STATE_SCRIPT ? (CAiSScript *)s : 0;
+
+        return script->ActivateSequence(name, flags);
+    }
+    return false;
+}
+
 /* (OVL2 0x5F4080) */
 bool CAiSScript::CanAttack() const
 {
@@ -225,6 +263,40 @@ bool CAiSScript::CanAttack() const
  * to the AI maps (0x52C310, the AI core's) */
 extern "C" void func_00573110(CSealCtrlAi *ai, void *path);
 extern "C" void func_0052C310(CAiMaps *maps, void *path);
+
+/* the plan's goal cell set (OVL2 0x5F1760, a CAiSPlan member: the plan in a0 -- unnamed) */
+extern "C" void func_005F1760(CAiSPlan *plan, void *loc);
+
+/* the plan's path flags (its CAiPath's word at 0x1C, the plan's 0x80) changed: `clear` cleared,
+ * `set` set (inlined with constants, as the controller's own path's at 0x488; the name ours) */
+inline void SetPathFlags(CAiSPlan *plan, unsigned int set, unsigned int clear)
+{
+    *(unsigned int *)&plan->m_path[0x1c] &= ~clear;
+    *(unsigned int *)&plan->m_path[0x1c] |= set;
+}
+
+/* a plan pushed on the current state's own stack, to a cell: its path's bit 5, the cell, the
+ * flags `mode`, the state it covers and the kind and step to come back to; whether it was pushed
+ * (OVL2 0x5F0830; the readings ours) */
+extern "C" bool func_005F0830(CSealCtrlAi *ai, void *loc, unsigned int mode, int kind, int step)
+{
+    bool r = false;
+    CAiState *s = ai->GetAiState();
+
+    if (s->m_stack.Push(ai, AI_STATE_PLAN, 0)) {
+        CAiState *top = s->m_stack.GetState();
+        CAiSPlan *plan = top ? (top && top->m_state == AI_STATE_PLAN ? (CAiSPlan *)top : 0) : 0;
+
+        SetPathFlags(plan, 0x20, 0);
+        func_005F1760(plan, loc);
+        plan->SetFlags(mode, 0);
+        r = true;
+        plan->m_114 = (unsigned int)s;
+        plan->m_124 = kind;
+        plan->m_128 = step;
+    }
+    return r;
+}
 
 /* a plan's events: reset; its route handed over on entry; on leaving for a sub-state the result
  * (4 when the route failed, or did not arrive while one was wanted) and its block freed (OVL2

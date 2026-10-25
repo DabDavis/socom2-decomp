@@ -403,6 +403,7 @@ public:
 class CAiSScript : public CAiState {
 public:
     CAiSScript() : CAiState(AI_STATE_SCRIPT) {}
+    virtual void Virtual0C(int id, int event, CSealCtrlAi *ai);
     virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual bool CanAttack() const;
     virtual bool CanPursue(CSealCtrlAi *ai) const;
@@ -411,6 +412,9 @@ public:
     bool ActivateSequence(const char *name, unsigned int flags);
     /* not held, and free to be pursued from (inlined in CanPushAiState; the names ours) */
     bool NotHeld() const { return !m_hold; }
+    /* the hold bit set through a bool (the target's `daddiu 1` for true, `andi zero,1` for false;
+     * the name ours) */
+    void SetHold(bool b) { m_hold = b; }
     bool Pursuable(CSealCtrlAi *ai)
     {
         if (NotHeld() && CanPursue(ai))
@@ -424,7 +428,8 @@ public:
     unsigned char m_bit3 : 1;   // bit 3 (set through 0x5F3FC0)
     unsigned char m_5c_4 : 4;
     unsigned char m_mode;   // 0x5d: the AI's mode the script runs in (the name ours)
-    unsigned char _5e[0x60 - 0x5e];
+    unsigned char _5e;
+    unsigned char m_5f;   // 0x5f: 255 once the sequence holds or lets go (slot 0x0C)
     float m_60;   // 0x60
     unsigned char _64[0x84 - 0x64];   // 0x84 bytes, Create's new
 };

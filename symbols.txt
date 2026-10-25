@@ -11481,7 +11481,7 @@
 0x005F37C0 0x3D4 Tick__10CAiSScriptFP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x005F3BA0 0x414 OnSignal__10CAiSScriptFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F3FC0 0x28 func_005F3FC0  # OVL2
-0x005F3FF0 0x90 func_005F3FF0  # OVL2
+0x005F3FF0 0x90 Virtual0C__10CAiSScriptFiiP11CSealCtrlAi  # OVL2; by hand (the kit lane, round 6): CAiSScript's vtable slot +0x0C (0x669860+0xC) -- its own sequence id (0x58) told an event: 1 clears the id, 2 and 3 set and clear the hold bit (0x5C bit 0) through a bool, the byte at 0x5F made 255
 0x005F4080 0x8 CanAttack__10CAiSScriptCFv  # OVL2; by hand: CAiSScript's vtable slot +0x24 (CanAttack)
 0x005F4090 0x60 CanPursue__10CAiSScriptCFP11CSealCtrlAi  # OVL2; by hand: CAiSScript's vtable slot +0x2C (CanPursue; SOCOM 1's 0x6C bytes, this 0x60)
 0x005F40F0 0x80 CanPushAiState__10CAiSScriptF8AI_STATEP11CSealCtrlAi  # OVL2; by hand: CAiSScript's vtable slot +0x1C (CanPushAiState)
