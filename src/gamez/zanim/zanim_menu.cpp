@@ -1581,6 +1581,70 @@ bool HardDriveOperationCallback(int result)
     return true;
 }
 
+/* the UI variable the argument names trimmed of its leading and trailing spaces */
+bool UIPruneUIVarSpaces(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CUIVariable *var = func_00385900(&theUIVarManager, ArgText(ArgName(hdr)));
+
+    if (!var || var->type != 3)
+        return true;
+    {
+        char text[800];
+
+        sprintf(text, "%s", var->String());
+        int len = strlen(text);
+
+        if (len > 0) {
+            char *end = &text[len - 1];
+
+            while (*end == ' ')
+                end--;
+            end[1] = 0;
+        }
+        char *start = text;
+
+        while (*start == ' ')
+            start++;
+        func_003862A0(var, start);
+    }
+    return true;
+}
+
+/* the UI variable the argument names emptied as its type has it: 0, 0.0, "" or an empty array.
+ * OPEN, 2 instructions short (0x154 of 0x15C): the target tests the type held in a0 (an if-chain,
+ * the tests between the bodies) and the inlined setters re-read it (lbu v0,0(s0)); here MW reuses
+ * the dispatch's load in them. A switch gives the compare chain first (0x164), the type read in
+ * each test or kept in a local both 0x154 */
+bool UIClearUIVar(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *name = ArgName(hdr);
+
+    if (name) {
+        CUIVariable *var = func_00385900(&theUIVarManager, name);
+
+        if (var) {
+            int type = var->type;
+
+            if (type == 1) {
+                var->SetInt(0);
+            } else if (type == 2) {
+                var->SetReal(0.0f);
+            } else if (type == 3) {
+                func_003862A0(var, "");
+            } else if (type == 4) {
+                NetCnfRdr rdr;
+
+                func_00333AE0(&rdr);
+                func_003339B0(&rdr, 0);
+                func_00333770(&rdr);
+                func_00386460(var, &rdr);
+                func_00333A20(&rdr, -1);
+            }
+        }
+    }
+    return true;
+}
+
 bool UIAbortLoad(C2DAnimCmdHdr *hdr, float *dT)
 {
     theGame.m_loadState.AbortLoad(ArgName(hdr));
@@ -2098,6 +2162,33 @@ bool UILobbyDisconnect(C2DAnimCmdHdr *hdr, float *dT)
         func_003043E0(&data_0044FE10);
     else
         func_002DFDD0(&theLobby);
+    return true;
+}
+
+/* the server's news put in SERVER_NEWS (its message, then the lines) and its name in SERVER_NAME,
+ * for the server the argument's valve picks.
+ * OPEN, 10 instructions, registers only: the target keeps the valve in s0 and the counter (then the
+ * SERVER_NAME variable) in s1; here the other way round. Measured without result: the counter or
+ * the variable declared first, a while loop, the line in a local, the valve after the reader, the
+ * reader as a class with its constructor and destructor (0x333AE0/0x333A20 renamed for the test) */
+bool UIUpdateServerInfo(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CValve *valve = CValve::Create(ArgName(hdr), (VALVE_TYPE)2);
+    NetCnfRdr rdr;
+
+    func_00333AE0(&rdr);
+    func_003339B0(&rdr, 0);
+    func_00333610(&rdr, func_002FDA50(data_0044FC60, valve->m_value));
+    func_00333610(&rdr, "\n\n");
+    for (int i = 0; i < func_002FDEC0(data_0044FC60); i++)
+        func_00333610(&rdr, func_002FDEA0(data_0044FC60, i));
+    func_00333770(&rdr);
+    func_003857C0(&theUIVarManager, "SERVER_NEWS", (_zrdr *)&rdr, UIVAR_SESSION);
+    CUIVariable *name = func_003857C0(&theUIVarManager, "SERVER_NAME", 0, UIVAR_SESSION);
+
+    if (name)
+        func_003862A0(name, func_002FDAA0(data_0044FC60, valve->m_value));
+    func_00333A20(&rdr, -1);
     return true;
 }
 

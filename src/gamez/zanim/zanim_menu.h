@@ -224,8 +224,34 @@ enum UIVAR_LONGEVITY {
     UIVAR_PERMANENT = 2
 };
 
+class CUIVariable;
+extern "C" {
+void func_0032F350(_zrdr *value);           /* (a value's storage let go of) */
+void func_003863D0(CUIVariable *var);       /* (a variable's change told to what it is attached to) */
+}
+
 class CUIVariable : public _zrdr {
 public:
+    /* a number set, unless it already holds it (ours: ClearUIVar's and the options' inline) */
+    void SetInt(int value)
+    {
+        if (type != 1 || integer != value) {
+            func_0032F350(this);
+            type = 1;
+            integer = value;
+            func_003863D0(this);
+        }
+    }
+    void SetReal(float value)
+    {
+        if (type != 2 || real != value) {
+            func_0032F350(this);
+            type = 2;
+            real = value;
+            func_003863D0(this);
+        }
+    }
+
     char *m_varname;   // 0x8
     unsigned char m_attached_items[0xc];   // 0xc: SOCOM 1's vector
     UIVAR_LONGEVITY m_longevity;   // 0x18
@@ -778,6 +804,10 @@ void func_003339B0(NetCnfRdr *rdr, int arg);
 void func_00333770(NetCnfRdr *rdr);
 void func_00333610(NetCnfRdr *rdr, const char *text);
 void func_00386460(CUIVariable *var, NetCnfRdr *rdr);
+const char *func_002FDA50(void *svc, int server);   /* (a server's message) */
+const char *func_002FDAA0(void *svc, int server);   /* (a server's name) */
+int func_002FDEC0(void *svc);                       /* (the news' line count) */
+const char *func_002FDEA0(void *svc, int line);     /* (a line of the news) */
 
 /* the network configuration's device path ("mc0:" in data) */
 extern char data_003DF360[];                                              /* (a path: the game's directory?) */
