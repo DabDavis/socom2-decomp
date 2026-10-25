@@ -8,6 +8,8 @@ scd -- look at the r0001 target, one function at a time.
   ./scd.py where 0x3C4B50            # which function holds an address
   ./scd.py diff  src/x.c func_X      # = ./scdiff.py src/x.c func_X
   ./scd.py census                    # the map's shape per segment
+  ./scd.py s1    'Tick__10CHUDFf'    # a SOCOM 1 demo function (regex on its names, or an
+                                     # address), with the demo's relocations and callees
 """
 
 from __future__ import annotations
@@ -68,6 +70,42 @@ def cmd_census(a) -> int:
     return 0
 
 
+def cmd_s1(a) -> int:
+    """SOCOM 1's May 2002 demo, unstripped: its functions by name or address."""
+    import re
+    sys.path.insert(0, str(HERE / "tools"))
+    import s1names as N
+    demo = N.Demo()
+    fname = {}
+    for s in demo.elf.symbols:
+        if s.value and s.name and s.type in ("FUNC", "OBJECT"):
+            fname.setdefault(s.value, s.name)
+    try:
+        at = int(a.symbol, 16)
+        hits = [f for f in demo.funcs if f.value <= at < f.value + max(f.size, 1)]
+    except ValueError:
+        rx = re.compile(a.symbol)
+        hits = [f for f in demo.funcs if rx.search(f.name)]
+    if not hits:
+        print(f"no demo function matches {a.symbol!r}")
+        return 1
+    if len(hits) > a.max:
+        for f in hits:
+            print(f"0x{f.value:08X} 0x{f.size:05X} {f.name}")
+        print(f"{len(hits)} match: name one (or raise --max)")
+        return 0
+    for f in hits:
+        print(f"== {f.name}  0x{f.value:08X}  0x{f.size:X} B")
+        for addr, w, text in E.disasm(demo.read(f.value, f.size), f.value):
+            r = demo.relocs.get(addr, "")
+            tgt = ""
+            if w >> 26 in (2, 3):
+                t = ((addr + 4) & 0xF0000000) | ((w & 0x03FFFFFF) << 2)
+                tgt = "   -> " + fname.get(t, hex(t))
+            print(f"  {addr:08x}:  {text}" + (f"  <{r}>" if r else "") + tgt)
+    return 0
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -83,6 +121,10 @@ def main(argv=None) -> int:
     p.set_defaults(fn=cmd_where)
     p = sub.add_parser("census")
     p.set_defaults(fn=cmd_census)
+    p = sub.add_parser("s1")
+    p.add_argument("symbol")
+    p.add_argument("--max", type=int, default=3)
+    p.set_defaults(fn=cmd_s1)
     p = sub.add_parser("diff")
     p.add_argument("rest", nargs=argparse.REMAINDER)
     p.set_defaults(fn=lambda a: __import__("scdiff").main(a.rest))
