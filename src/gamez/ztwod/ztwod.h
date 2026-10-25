@@ -189,6 +189,14 @@ public:
     virtual void ClearAndWipe();
 
     void SetFont(C2DFont *font);
+    /* the colour, alpha kept (inline: the objectives list's callers load the components last to
+     * first before storing, the inline float overload's tell) */
+    void SetColor(float r, float g, float b)
+    {
+        m_color[0] = r;
+        m_color[1] = g;
+        m_color[2] = b;
+    }
     void DeleteCharacter();
     void NewLine();
     void AddCharacter(char c);

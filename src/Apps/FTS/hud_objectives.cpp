@@ -29,6 +29,10 @@ extern "C" void func_00341A60(float dT, void *data);
 
 /* how fast the selected name pulses (data 0x3DC460: a variable, read with lwc1) */
 static float s_pulserate = 1000.0f;
+/* an unselected name's alpha (data 0x3DC450) */
+static float s_unselectedtrans = 80.0f;
+/* an unselected name's colour (OVL1 bss 0x409EA0, three floats; no row yet) */
+extern PNT4D data_00409EA0;
 
 /* the mission: only its objectives (theMission, fts_state.h's CMission at 0x1854) */
 class CMissionObjectiveCam;
@@ -51,8 +55,18 @@ namespace std {
 template <>
 class vector<bool, allocator<bool> > {
 public:
+    /* an element as SOCOM 1's DWARF has it: the vector and the index, read through test_bit */
+    class reference {
+    public:
+        reference(vector &v, unsigned int n) : vec_(&v), n_(n) {}
+        operator bool() const { return vec_->test_bit(n_); }
+
+        vector *vec_;
+        unsigned int n_;
+    };
+
     ~vector() { if (data_) operator delete(data_); }
-    bool operator[](unsigned int n) { return test_bit(n); }
+    reference operator[](unsigned int n) { return reference(*this, n); }
     bool test_bit(unsigned int n);
 
     unsigned int capacity_;
@@ -120,6 +134,31 @@ public:
     }
     void SelectPreviousObjective();
     void SelectNextObjective();
+    /* whether any objective can be selected (SOCOM 1's; inline in SOCOM II) */
+    bool IsAnySelectable()
+    {
+        int size = m_objectivenames.size();
+
+        for (int i = 0; i < size; i++) {
+            if (m_vecSelectable[i])
+                return true;
+        }
+        return false;
+    }
+    /* an objective's name greyed (inline; the name ours) */
+    void GreyObjective(int index)
+    {
+        int newindex;
+
+        if (ResolveIndex(index, &newindex)) {
+            C2DString *curstring = m_objectivenames[newindex];
+
+            curstring->SetColor(data_00409EA0.x, data_00409EA0.y, data_00409EA0.z);
+            curstring->SetTrans(s_unselectedtrans);
+        }
+    }
+    void PreviousObjective();
+    void NextObjective();
 
     std::vector<C2DString *> m_objectivenames;   // 0x18
     std::vector<C2DBitmap *> m_objectivecompletedbitmap;   // 0x24
@@ -186,37 +225,9 @@ void CZObjectiveList::Tick(float dT)
     }
 }
 
-/* the next selectable objective, round to the first (SOCOM 1's) */
-void CZObjectiveList::SelectNextObjective()
-{
-    m_selected_objective++;
-    UpdateSelection();
-    if (m_selected_objective >= m_objectivenames.size()) {
-        m_selected_objective = 0;
-        UpdateSelection();
-    }
-    if (!m_vecSelectable[m_selected_objective])
-        SelectNextObjective();
-}
-
-/* the previous selectable objective, round to the last (SOCOM 1's) */
-void CZObjectiveList::SelectPreviousObjective()
-{
-    m_selected_objective--;
-    UpdateSelection();
-    if (m_selected_objective < 0) {
-        m_selected_objective = m_objectivenames.size() - 1;
-        UpdateSelection();
-    }
-    if (m_selected_objective < 0) {
-        m_selected_objective = 0;
-        UpdateSelection();
-    }
-    if (!m_vecSelectable[m_selected_objective])
-        SelectPreviousObjective();
-}
-
-/* the selected objective's name given the colour of another's (SOCOM 1's) */
+/* the selected objective's name given the colour of another's (SOCOM 1's). Never inlined in the
+ * target (NextObjective and PreviousObjective call it): pinned */
+#pragma auto_inline off
 void CZObjectiveList::SetCurColor(int index)
 {
     int newindex;
@@ -234,6 +245,63 @@ void CZObjectiveList::SetCurColor(int index)
         curstring->m_color[1] = g;
         curstring->m_color[2] = b;
     }
+}
+
+#pragma auto_inline reset
+
+/* on to the next selectable objective: its colour the old one's, the old one greyed (SOCOM 1's
+ * 80 grey; SOCOM II's colour and alpha its own) */
+void CZObjectiveList::NextObjective()
+{
+    int oldindex = m_selected_objective;
+
+    if (!IsAnySelectable())
+        return;
+    SelectNextObjective();
+    SetCurColor(oldindex);
+    GreyObjective(oldindex);
+}
+
+/* the next selectable objective, round to the first (SOCOM 1's) */
+void CZObjectiveList::SelectNextObjective()
+{
+    m_selected_objective++;
+    UpdateSelection();
+    if (m_selected_objective >= m_objectivenames.size()) {
+        m_selected_objective = 0;
+        UpdateSelection();
+    }
+    if (!m_vecSelectable[m_selected_objective])
+        SelectNextObjective();
+}
+
+/* back to the previous selectable objective, as NextObjective (SOCOM 1's) */
+void CZObjectiveList::PreviousObjective()
+{
+    int oldindex = m_selected_objective;
+
+    if (!IsAnySelectable())
+        return;
+    SelectPreviousObjective();
+    SetCurColor(oldindex);
+    GreyObjective(oldindex);
+}
+
+/* the previous selectable objective, round to the last (SOCOM 1's) */
+void CZObjectiveList::SelectPreviousObjective()
+{
+    m_selected_objective--;
+    UpdateSelection();
+    if (m_selected_objective < 0) {
+        m_selected_objective = m_objectivenames.size() - 1;
+        UpdateSelection();
+    }
+    if (m_selected_objective < 0) {
+        m_selected_objective = 0;
+        UpdateSelection();
+    }
+    if (!m_vecSelectable[m_selected_objective])
+        SelectPreviousObjective();
 }
 
 /* the children drawn while the list is on and no mission camera plays. SOCOM 1 cast each child

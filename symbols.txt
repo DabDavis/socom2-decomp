@@ -1744,9 +1744,9 @@
 0x002069B0 0xAC Draw__15CZObjectiveListFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00206A60 0x140 func_00206A60  # OVL1
 0x00206BA0 0xD0 SelectPreviousObjective__15CZObjectiveListFv  # OVL1; s1:calls by hand (SOCOM 1's SelectPreviousObjective: as SelectNextObjective, stepping back and wrapping to the last)
-0x00206C70 0x13C func_00206C70  # OVL1
+0x00206C70 0x13C PreviousObjective__15CZObjectiveListFv  # OVL1; s1:calls by hand (SOCOM 1's PreviousObjective: as NextObjective, through SelectPreviousObjective)
 0x00206DB0 0xA0 SelectNextObjective__15CZObjectiveListFv  # OVL1; s1:calls by hand (SOCOM 1's SelectNextObjective: the selection stepped on, its camera held and CMission::TickObjectives(1000) called, wrapped to 0 past the names' count, recursing while vector<bool>::test_bit says unselectable)
-0x00206E50 0x13C func_00206E50  # OVL1
+0x00206E50 0x13C NextObjective__15CZObjectiveListFv  # OVL1; s1:calls by hand (SOCOM 1's NextObjective: IsAnySelectable inlined over vector<bool>::test_bit, then SelectNextObjective, SetCurColor(old) and the old name greyed)
 0x00206F90 0x98 SetCurColor__15CZObjectiveListFi  # OVL1; s1:order by hand (SOCOM 1's SetCurColor: the same two ResolveIndex tests, the colour of one name copied to the selected one, at SOCOM II's offsets; after the next-objective pair as SOCOM 1's follows NextObjective)
 0x00207030 0x308 func_00207030  # OVL1
 0x00207340 0x60 func_00207340  # OVL1
