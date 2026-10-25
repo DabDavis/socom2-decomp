@@ -11427,7 +11427,7 @@
 0x005EE160 0xE8 EscorteeJoinUnit__9CSealUnitFP10CZSealBody  # OVL2; s1:calls by hand (the kit lane, round 5, from another lane's lead): UpdateRollandsUnitStuff calls it where SOCOM 1's calls EscorteeJoinUnit (twice, after ftsGetPlayer's GetUnitByTeam and after Create)
 0x005EE250 0x278 SealJoinUnit__9CSealUnitFP10CZSealBody  # OVL2; s1:calls by hand (the kit lane, round 5, from another lane's lead): UpdateRollandsUnitStuff calls it where SOCOM 1's calls SealJoinUnit (twice, after Create and after GetUnitByTeam); recursive as SOCOM 1's
 0x005EE4D0 0x220 func_005EE4D0  # OVL2
-0x005EE6F0 0xF4 func_005EE6F0  # OVL2
+0x005EE6F0 0xF4 __ct__9CSealUnitFUi  # OVL2; s1:calls by hand (the kit lane, round 5): CSealUnit::Create (0x5EF380) calls it on a new 200-byte block with the team, where SOCOM 1's Create calls __ct__9CSealUnitFUi (164 bytes there)
 0x005EE7F0 0x5BC AllowCommand__9CSealUnitFP10CZSealBody10FT_COMMANDPv  # OVL2; s1:vtable by hand (CSealUnit's vtable slot +0xC, the demo's AllowCommand in the same slot of its two-slot table; 0x5BC bytes against 0x6C8)
 0x005EEDB0 0x1C4 func_005EEDB0  # OVL2
 0x005EEF80 0x248 func_005EEF80  # OVL2
@@ -11499,13 +11499,13 @@
 0x005F5AD0 0x34 func_005F5AD0  # OVL2
 0x005F5B10 0x8 func_005F5B10  # OVL2
 0x005F5B20 0x80 func_005F5B20  # OVL2
-0x005F5BA0 0x60 func_005F5BA0  # OVL2
-0x005F5C00 0x60 func_005F5C00  # OVL2
-0x005F5C60 0x18 func_005F5C60  # OVL2
-0x005F5C80 0x18 func_005F5C80  # OVL2
-0x005F5CA0 0xC func_005F5CA0  # OVL2
-0x005F5CB0 0x14 func_005F5CB0  # OVL2
-0x005F5CD0 0x250 func_005F5CD0  # OVL2
+0x005F5BA0 0x60 SetAiState__11CSealCtrlAiF8AI_STATEUi  # OVL2; s1:calls by hand (the kit lane, round 5): CanPushAiState (0x5F5CD0) first, then the stack's Set (0x5F7D80) on the stack at 0x41C -- SOCOM 1's SetAiState(AI_STATE), now passing the flags on (a matched draft until zseal.h declares it)
+0x005F5C00 0x60 PushAiState__11CSealCtrlAiF8AI_STATEUi  # OVL2; s1:calls by hand (the kit lane, round 5): CanPushAiState (0x5F5CD0) first, then the stack's Push (0x5F7EE0) on the stack at 0x41C -- SOCOM 1's PushAiState(AI_STATE, bool), the bool now flags (a matched draft until zseal.h declares it)
+0x005F5C60 0x18 PopToAiState__11CSealCtrlAiFP8CAiStateb  # OVL2; by hand (the kit lane, round 5): a tail call to the stack's PopTo(CAiState *, bool) (0x5F7A40) on the stack at 0x41C -- popped down to a state by pointer (the overload ours; a matched draft until zseal.h declares it)
+0x005F5C80 0x18 PopToAiState__11CSealCtrlAiF8AI_STATEb  # OVL2; by hand (the kit lane, round 5): a tail call to the stack's PopTo(AI_STATE, bool) (0x5F7B10) on the stack at 0x41C -- SOCOM 1's PopToAiState(AI_STATE), an inclusive flag added (a matched draft until zseal.h declares it)
+0x005F5CA0 0xC PopAiState__11CSealCtrlAiFv  # OVL2; by hand (the kit lane, round 5): a tail call to the stack's Pop (0x5F7C40) on the stack at 0x41C -- SOCOM 1's PopAiState(), whose body is the stack's now (a matched draft until zseal.h declares it)
+0x005F5CB0 0x14 PopAiState__11CSealCtrlAiF8AI_STATE  # OVL2; by hand (the kit lane, round 5): a tail call to the stack's Pop(AI_STATE) (0x5F7990) on the stack at 0x41C -- SOCOM 1's PopAiState(AI_STATE) (a matched draft until zseal.h declares it)
+0x005F5CD0 0x250 CanPushAiState__11CSealCtrlAiF8AI_STATEUi  # OVL2; s1:calls by hand (the kit lane, round 5): PushAiState and SetAiState (0x5F5C00, 0x5F5BA0) call it first, as SOCOM 1's call CanPushAiState(AI_STATE); SOCOM II's takes a flags word (a2, its bits 1, 2, 4, 8 tested), where SOCOM 1's PushAiState had a bool
 0x005F5F20 0x98 ClearAiState__11CSealCtrlAiFb  # OVL2; s1:calls by hand (the SEAL lane's lead, verified: SOCOM II's CSealCtrlAi::OnDeath and ResetToInitialState call it where SOCOM 1's call ClearAiState(bool), and the CSealCtrlAi OnMissionEnd at 0x555900 where SOCOM 1's calls ClearAiState(1); SOCOM II's hands the stack at +0x41C to 0x5F7920/0x5F7470 and returns whether it cleared)
 0x005F5FC0 0x8 FindAiState__11CSealCtrlAiCF8AI_STATE  # OVL2; s1:order by hand (SOCOM 1's FindAiState, between ClearAiState and GetAiState() const there and here; SOCOM II's tail-calls the stack's walk 0x5F8270 on its stack at 0x41C; the states call it with a kind -- the kit lane, round 3)
 0x005F5FD0 0x38 GetAiState__11CSealCtrlAiCFv  # OVL2; s1:order by hand (SOCOM 1's GetAiState() const, after ClearAiState as there: the state stack at 0x41C (SOCOM 1's 0x324), empty -> the static unknown state at 0x66B990 (SOCOM 1's at 0x509870), else its front)
@@ -11534,8 +11534,8 @@
 0x005F7A40 0xC4 PopTo__13CAiStateStackFP11CSealCtrlAiP8CAiStateb  # OVL2; by hand (the kit lane, round 5): popped down to a state (a pointer), it too when asked; whether it was found; the wrapper 0x5F5C60 jumps here (the name ours)
 0x005F7B10 0x130 PopTo__13CAiStateStackFP11CSealCtrlAi8AI_STATEb  # OVL2; by hand (the kit lane, round 5): SOCOM 1's CSealCtrlAi::PopToAiState moved onto the stack -- popped while the top is not the kind (when the kind's bit is set in the word at 0x10), then that one too when asked; the wrapper 0x5F5C80 jumps here (the name ours)
 0x005F7C40 0x138 Pop__13CAiStateStackFP11CSealCtrlAi  # OVL2; by hand (the kit lane, round 4): the stack's pop -- the front state told SIGNAL_1 (0x5F6FA0), its kind and result kept in OVL1 bss 0x44D630/0x44D628, deleted through slot 0x4C and erased (0x50FA50), the new front told SIGNAL_3, then 0x5F7470(stack, ai, 1); returns the new front's kind -- SOCOM 1's CSealCtrlAi::PopAiState(), whose wrapper (0x5F5CA0) tail-calls it on the stack at 0x41C (the name ours)
-0x005F7D80 0x15C Set__13CAiStateStackFP11CSealCtrlAi8AI_STATEb  # OVL2; by hand (the kit lane, round 5): SOCOM 1's CSealCtrlAi::SetAiState moved onto the stack -- the top told 1, deleted and erased, the new one created at the front and told 0; the wrapper 0x5F5BA0 calls it after 0x5F5CD0 (the name ours)
-0x005F7EE0 0x144 Push__13CAiStateStackFP11CSealCtrlAi8AI_STATEb  # OVL2; by hand (the kit lane, round 5): SOCOM 1's CSealCtrlAi::PushAiState moved onto the stack -- the top told 2, Create, insert at the front, told 0, the script response run, 0x5F7470; the wrapper 0x5F5C00 calls it after 0x5F5CD0 (the name ours)
+0x005F7D80 0x15C Set__13CAiStateStackFP11CSealCtrlAi8AI_STATEUi  # OVL2; by hand (the kit lane, round 5): SOCOM 1's CSealCtrlAi::SetAiState moved onto the stack -- the top told 1, deleted and erased, the new one created at the front and told 0; the wrapper 0x5F5BA0 calls it after 0x5F5CD0 (the name ours); the third parameter a flags word (the kit lane, round 5): the wrapper 0x5F5BA0 hands the same register to 0x5F5CD0, which tests its bits 1, 2, 4 and 8
+0x005F7EE0 0x144 Push__13CAiStateStackFP11CSealCtrlAi8AI_STATEUi  # OVL2; by hand (the kit lane, round 5): SOCOM 1's CSealCtrlAi::PushAiState moved onto the stack -- the top told 2, Create, insert at the front, told 0, the script response run, 0x5F7470; the wrapper 0x5F5C00 calls it after 0x5F5CD0 (the name ours); the third parameter a flags word (the kit lane, round 5): the wrapper 0x5F5C00 hands the same register to 0x5F5CD0, which tests its bits 1, 2, 4 and 8
 0x005F8030 0x1A0 Tick__13CAiStateStackFfP11CSealCtrlAi  # OVL2; by hand (the kit lane, round 5): the stack's tick -- CAiState's frame time (OVL1 bss 0x44D620) set, the front state's own stack ticked first, then its Tick (slot 0x10) or its sub-step (slot 0x14), popped when done (the result kept at 0x1C, 2 returned), else the clocks run; recursive (SOCOM 1's CSealCtrlAi::StateTick's core; the name ours)
 0x005F81D0 0x8 Tick__8CAiStateFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F81E0 0x8C Remove__13CAiStateStackF8AI_STATE  # OVL2; by hand (the kit lane, round 5): every state of a kind deleted (remove_if, 0x5F8AF0, with a functor holding the kind) and erased; whether any was (the name ours)

@@ -640,7 +640,7 @@ CAiState *CAiStateStack::Find(AI_STATE state) const
 /* a new state of a kind pushed: the current one told it is covered (2), the new one entered (0)
  * and, when it has a script response and the covered state is the script, the response run on
  * it (the new state's bit 3 then set) (OVL2 0x5F7EE0; SOCOM 1's CSealCtrlAi::PushAiState) */
-bool CAiStateStack::Push(CSealCtrlAi *ai, AI_STATE state, bool b)
+bool CAiStateStack::Push(CSealCtrlAi *ai, AI_STATE state, unsigned int flags)
 {
     CAiState *top = GetState();
     CAiSScript *script = 0;
@@ -662,7 +662,7 @@ bool CAiStateStack::Push(CSealCtrlAi *ai, AI_STATE state, bool b)
 
 /* a new state of a kind in the current one's place: the current one told it is left (1) and
  * deleted, the new one entered (0) (OVL2 0x5F7D80; SOCOM 1's CSealCtrlAi::SetAiState) */
-bool CAiStateStack::Set(CSealCtrlAi *ai, AI_STATE state, bool b)
+bool CAiStateStack::Set(CSealCtrlAi *ai, AI_STATE state, unsigned int flags)
 {
     if (size() == 0) {
         CAiState *s = CAiState::Create(state);

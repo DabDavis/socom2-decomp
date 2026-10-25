@@ -112,9 +112,11 @@ public:
     bool PopTo(CSealCtrlAi *ai, CAiState *state, bool inclusive);
     bool PopTo(CSealCtrlAi *ai, AI_STATE state, bool inclusive);
     /* a new state of a kind pushed (SOCOM 1's PushAiState; 0x5F7EE0), or put in the current one's
-     * place (SOCOM 1's SetAiState; 0x5F7D80); both answer true, the flag unread */
-    bool Push(CSealCtrlAi *ai, AI_STATE state, bool b);
-    bool Set(CSealCtrlAi *ai, AI_STATE state, bool b);
+     * place (SOCOM 1's SetAiState; 0x5F7D80); both answer true, the flags unread here (the
+     * controller's wrappers hand the same word to CanPushAiState, 0x5F5CD0, which tests its bits
+     * 0-3: SOCOM 1's bool became flags) */
+    bool Push(CSealCtrlAi *ai, AI_STATE state, unsigned int flags);
+    bool Set(CSealCtrlAi *ai, AI_STATE state, unsigned int flags);
     /* every state popped (0x5F7920: SOCOM 1's ClearAiState's loop; CSealCtrlAi::ClearAiState and
      * a leaving state's Signal call it -- the name ours) */
     void PopAll(CSealCtrlAi *ai);

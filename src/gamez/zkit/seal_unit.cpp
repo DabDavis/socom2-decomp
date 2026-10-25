@@ -6,6 +6,7 @@
 #include <list>
 
 #include "../../ai/ai_states.h"
+#include "../zanim/zanim.h"
 
 extern "C" {
 /* CSealCtrlAi::GetAiState (OVL2 0x5F6010, seal_aistate.cpp's; zseal.h's CSealCtrlAi does not
@@ -26,13 +27,37 @@ CAiSBreach *GetBreachState(CSealCtrlAi *ai)
  * its own -- this unit does not include it). Only what a written function touches */
 class CSealUnit {
 public:
+    /* a squad of a number (SOCOM 1's; OVL2 0x5EE6F0, not written yet: 200 bytes) */
+    CSealUnit(unsigned int team);
     static CSealUnit *GetUnitByTeam(unsigned int team);
+    static CSealUnit *Create(unsigned int team);
 
     unsigned char _0[0x58];
     unsigned int m_unit_num;   // 0x58 (SOCOM 1's 0x38)
+    unsigned char _5c[0xc0 - 0x5c];
+    CValve *m_valve;   // 0xc0: the radio channel's valve, team 24's (SOCOM 1's 0xa0)
+    unsigned int m_c4;   // 0xc4 (zeroed with the valve; new in SOCOM II -- the name ours)
 
     static std::list<CSealUnit *> m_list;   // 0x44D5B0 (OVL1 bss): every squad (SOCOM 1's)
 };
+
+/* the squad of a number, made and listed when there is none; team 24's gets the radio channel's
+ * valve (OVL2 0x5EF380; SOCOM 1's, the word after the valve zeroed with it) */
+CSealUnit *CSealUnit::Create(unsigned int team)
+{
+    CSealUnit *unit = GetUnitByTeam(team);
+
+    if (!unit) {
+        unit = new CSealUnit(team);
+        m_list.push_back(unit);
+    }
+    if (team == 24) {
+        unit->m_valve = CValve::Create("mp_radio_channel_valve", VALVE_PERM);
+        unit->m_c4 = 0;
+    } else
+        unit->m_valve = 0;
+    return unit;
+}
 
 /* the squad of a number (OVL2 0x5EF2F0; SOCOM 1's) */
 CSealUnit *CSealUnit::GetUnitByTeam(unsigned int team)
