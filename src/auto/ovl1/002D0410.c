@@ -10,14 +10,14 @@ M2C_UNK Clear__14CSched_ManagerFv(M2C_UNK *);       /* extern */
 M2C_UNK CreatePad__6CInputFUi(M2C_UNK);             /* extern */
 M2C_UNK CreatePool__19CGameStateChangeCmdFUi(M2C_UNK); /* extern */
 M2C_UNK InitInstancePool__12CSndInstanceFi(M2C_UNK); /* extern */
+M2C_UNK Init__3C2DFv();                             /* extern */
 M2C_UNK Init__5CPipeFv();                           /* extern */
 M2C_UNK Init__6CInputFv();                          /* extern */
 M2C_UNK Init__Q23zdb6CWorldFv();                    /* extern */
 M2C_UNK Init__Q23zdb8CTextureFv();                  /* extern */
+M2C_UNK Open__3C2DFv();                             /* extern */
 M2C_UNK func_003221F0();                            /* extern */
 M2C_UNK func_00351EE0();                            /* extern */
-M2C_UNK func_00364EE0();                            /* extern */
-M2C_UNK func_00364F30();                            /* extern */
 M2C_UNK func_003C0740(M2C_UNK *, M2C_UNK);          /* extern */
 M2C_UNK func_005128F0();                            /* extern */
 M2C_UNK func_005761B0();                            /* extern */
@@ -32,9 +32,9 @@ s32 StartEngine__5CGameFv(void) {
     func_003C0740(&data_004B50D0, 0x14);
     func_00351EE0();
     Init__Q23zdb8CTextureFv();
-    func_00364F30();
+    Init__3C2DFv();
     Init__Q23zdb6CWorldFv();
-    func_00364EE0();
+    Open__3C2DFv();
     Init__6CInputFv();
     zRndrInit__Fv();
     InitInstancePool__12CSndInstanceFi(0x30);

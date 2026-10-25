@@ -541,6 +541,20 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     target's lb in the delay slot plus its re-extension;
   - a constructor whose row is still a placeholder cannot be spelled as `new T`: name the
     constructor first (ftsCreateSeal waited on four OVL2 names).
+- **Tells from the C2D family and the weapon pages** (round 6: c2dbitmap.cpp, ztwod.cpp,
+  hud_main.cpp's slots):
+  - an implicit destructor inlined only one level still gets its full out-of-line copy
+    emitted, even when nothing references it (0x1FDCE0);
+  - a by-value class argument built by an inline constructor counts as an inline level; the
+    copy constructor does not;
+  - `t = a; t += b;` loads `a` straight into the register `t` is passed in, where `t = a + b`
+    loads both operands into temporaries first (TickFade);
+  - statements after an unsigned-to-float conversion's branch stay after it, which fixes the
+    order of independent global stores (C2D::Init);
+  - `SetColor(p.x, p.y, p.z)` through an inline float overload loads the components last to
+    first, before any store;
+  - `build/scratch/hud/pvar.py` compiles a probe once per macro value, with `PINC=` putting
+    shadow headers first: a quick way to measure inline heights.
 - **Tool notes**: scdiff accepts the image's one non-zero pad word (0xFFFFFFFF at 0x1E70F4,
   after main); `automatch --stale` can drop a renamed destructor's draft when its re-draft
   misses (SlotList's and CWeaponSlot's were restored by hand, the old drafts renamed). A

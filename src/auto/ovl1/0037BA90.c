@@ -6,8 +6,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_00364850(s32);                         /* extern */
+M2C_UNK GetTrans__9C2DBitmapFv(s32);                /* extern */
 
 void func_0037BA90(s32 arg0) {
-    func_00364850(arg0 + 0x10);
+    GetTrans__9C2DBitmapFv(arg0 + 0x10);
 }
