@@ -136,6 +136,12 @@ public:
     /* (ours: the copy reads the source's variable spec through it -- written out, the copy's
      * pointer and the source's trade saved registers) */
     CUIVariableSpec *GetVarSpec() { return m_var; }
+    /* the variable the spec declares, made in the manager, or 0 (ours: the CreateDisplayObjs test
+     * m_var again inside it) */
+    CUIVariable *GetUIVar() const
+    {
+        return m_var ? theUIVarManager.Add(m_var->m_name, m_var->m_value, m_var->m_longevity) : 0;
+    }
 
     CUIVariableSpec *m_var;   // 0x4: the UIVAR block's, or 0
 };   // 0x8 bytes

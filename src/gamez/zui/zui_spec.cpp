@@ -15,7 +15,7 @@
  * (0x37D910, 0x37D9B0: emitted with the vector instances) and the template instances
  * 0x3836E0-0x3855FF (include/vector's class-vector insert, erase and resize). */
 
-#include "zui_spec.h"
+#include "zui_2d.h"
 
 /* a real the rdr may give, else the default (ours: the counter's StartTime initialises its member
  * so, the read before the string member's construction) */
@@ -27,10 +27,7 @@ static inline float FindReal(_zrdr *rdr, const char *tag, float def)
     return f;
 }
 
-/* the spec an object's TYPE names, from its rdr (SOCOM 1's; SOCOM II added the secure text) *
- * OPEN until three rows outside the lane are named: byte-exact with 0x22DCC0 as
- * __as__9CSaferStrFPCc, 0x2A8F30 as __ct__6CPnt3DFfff and 0x20F1F0 as __as__6CPnt3DFRC6CPnt3D
- * (CTextSpec's constructor inlined one level calls them; measured with the three renamed) */
+/* the spec an object's TYPE names, from its rdr (SOCOM 1's; SOCOM II added the secure text) */
 CDlgObjSpec *GetObjectSpec(_zrdr *rdr, const char *type)
 {
     if (!type)
@@ -73,12 +70,24 @@ CImageSpec::CImageSpec(_zrdr *rdr) : CDlgObjSpec(rdr), m_pulse(false)
 }
 #pragma auto_inline reset
 
+/* a plain bitmap of the spec's texture: the one its UI variable names, else FILENAME (SOCOM 1's) */
+C2D *CImageSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
+{
+    const char *name;
+
+    if (m_var)
+        name = GetUIVar()->String();
+    else
+        name = m_filename.c_str();
+    zdb::CTexHandle *tex = PrepTexture(name, mgr);
+    CPlainBmp *bmp = new CPlainBmp;
+    func_00379080(bmp, this, tex);
+    return bmp;
+}
+
 /* the wrapped text's WIDTH, line SPACING (10) and HEIGHT (-1: unbounded), its arrows' TEXTURE,
  * SIZE and OFFSET, AUTOSCROLL and DISPLAY_ONE_LINE (SOCOM 1's). Declared inline: GetObjectSpec
- * inlines it one level, and GetControlSpec's inlined CScrollSpec calls this copy *
- * OPEN until three rows outside the lane are named: byte-exact with 0x22DCC0 as
- * __as__9CSaferStrFPCc, 0x2A8F30 as __ct__6CPnt3DFfff and 0x20F1F0 as __as__6CPnt3DFRC6CPnt3D
- * (CTextSpec's constructor inlined one level calls them; measured with the three renamed) */
+ * inlines it one level, and GetControlSpec's inlined CScrollSpec calls this copy */
 inline CWrapSpec::CWrapSpec(_zrdr *rdr) : CTextSpec(rdr), m_width(0.0f), m_spacing(10), m_height(-1.0f)
 {
     zrdr_findreal(rdr, "WIDTH", &m_width, 1);
@@ -136,10 +145,7 @@ inline CTextSpec::CTextSpec(_zrdr *rdr) : CDlgObjSpec(rdr), m_scale(1.0f), m_hce
 
 /* the counter's StartTime, then an EndTime or a Duration, and the UI variable its value goes to,
  * ValVar (SOCOM 1's). The members are initialised in the mem-initializer list: the string's
- * construction follows the StartTime read and the ValVar lookup, as the target orders them *
- * OPEN until three rows outside the lane are named: byte-exact with 0x22DCC0 as
- * __as__9CSaferStrFPCc, 0x2A8F30 as __ct__6CPnt3DFfff and 0x20F1F0 as __as__6CPnt3DFRC6CPnt3D
- * (CTextSpec's constructor inlined one level calls them; measured with the three renamed) */
+ * construction follows the StartTime read and the ValVar lookup, as the target orders them */
 CCounterSpec::CCounterSpec(_zrdr *rdr)
     : CTextSpec(rdr), m_startTime(FindReal(rdr, "StartTime", 0.0f)), m_counting(false), m_endTime(0.0f),
       m_valVar(zrdr_findstring(rdr, "ValVar"))
@@ -148,9 +154,37 @@ CCounterSpec::CCounterSpec(_zrdr *rdr)
         m_counting = true;
 }
 
+/* a counter from the spec's times, starting at its ValVar variable's value (SOCOM 1's) */
+C2D *CCounterSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
+{
+    CUIVariable *var = theUIVarManager.Find(m_valVar.c_str());
+    int value = var ? var->Integer() : 0;
+    C2DCounter *counter = new C2DCounter(m_startTime, m_counting, m_endTime, value);
+
+    counter->SetFont(font);
+    counter->LoadSpec(*this);
+    return counter;
+}
+
 CDlgObjSpec *CCounterSpec::Copy()
 {
     return new CCounterSpec(*this);
+}
+
+/* a progress bar of the spec's texture, or of the one the variable FILENAME names (SOCOM 1's) */
+C2D *CHProgressBarSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
+{
+    CHProgressBar *bar = new CHProgressBar;
+    const char *name = m_filename.c_str();
+
+    if (m_filenameIsUivar) {
+        CUIVariable *var = theUIVarManager.Find(name);
+
+        if (var)
+            name = var->String();
+    }
+    bar->LoadSpec(*this, PrepTexture(name, mgr));
+    return bar;
 }
 
 /* the bar's FILENAME_IS_UIVAR flag and the node its LEADING_EDGE follows (SOCOM 1's; GetObjectSpec
@@ -176,10 +210,7 @@ CDlgObjSpec::CDlgObjSpec(_zrdr *rdr)
     }
 }
 
-/* (SOCOM II's; out of line, GetObjectSpec calls it) *
- * OPEN until three rows outside the lane are named: byte-exact with 0x22DCC0 as
- * __as__9CSaferStrFPCc, 0x2A8F30 as __ct__6CPnt3DFfff and 0x20F1F0 as __as__6CPnt3DFRC6CPnt3D
- * (CTextSpec's constructor inlined one level calls them; measured with the three renamed) */
+/* (SOCOM II's; out of line, GetObjectSpec calls it) */
 CClockSpec::CClockSpec(_zrdr *rdr) : CTextSpec(rdr)
 {
 }
@@ -188,4 +219,14 @@ CClockSpec::CClockSpec(_zrdr *rdr) : CTextSpec(rdr)
 CDlgObjSpec *CClockSpec::Copy()
 {
     return new CClockSpec(*this);
+}
+
+/* a clock of the spec's text (SOCOM 1's) */
+C2D *CClockSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
+{
+    C2DClock *clock = new C2DClock;
+
+    clock->SetFont(font);
+    clock->LoadSpec(*this);
+    return clock;
 }

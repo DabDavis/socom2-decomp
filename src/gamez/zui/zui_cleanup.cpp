@@ -14,7 +14,7 @@
  * and vector<ActionItem>'s destructors, rows outside the lane), the CreateDisplayObjs (the C2D
  * classes' constructors, as zui_spec.cpp's) and 0x389B00 (a vector<CDesignDlgObj> instance). */
 
-#include "zui_spec.h"
+#include "zui_2d.h"
 
 CDlgObjSpec *CImageSpec::Copy()
 {
@@ -41,9 +41,29 @@ CDlgObjSpec *CTextSpec::Copy()
     return new CTextSpec(*this);
 }
 
+/* a renderable string of the spec's text (SOCOM 1's) */
+C2D *CTextSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
+{
+    CRenderableString *str = new CRenderableString;
+
+    str->SetFont(font);
+    str->LoadSpec(*this);
+    return str;
+}
+
 CDlgObjSpec *CTtySpec::Copy()
 {
     return new CTtySpec(*this);
+}
+
+/* a teletype of the spec's text (SOCOM 1's) */
+C2D *CTtySpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
+{
+    CTeleType *tty = new CTeleType;
+
+    tty->SetFont(font);
+    func_00378B00(tty, this);
+    return tty;
 }
 
 CDlgObjSpec *CSecureTextSpec::Copy()
@@ -51,14 +71,47 @@ CDlgObjSpec *CSecureTextSpec::Copy()
     return new CSecureTextSpec(*this);
 }
 
+/* the spec's text drawn as stars (SOCOM II's) */
+C2D *CSecureTextSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
+{
+    CSecureText *str = new CSecureText;
+
+    str->SetFont(font);
+    str->LoadSpec(*this);
+    return str;
+}
+
 CDlgObjSpec *CWrapSpec::Copy()
 {
     return new CWrapSpec(*this);
 }
 
+/* wrapped text of the spec's (SOCOM 1's) *
+ * OPEN until a row outside the lane is named: byte-exact with 0x20CD50 (hud_newhudmap.cpp's tail)
+ * as __ct__9CPlainBmpFv -- CPlainBmp's inline constructor out of line, which CWrappedText's body
+ * calls for its two arrows (measured with the row renamed) */
+C2D *CWrapSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
+{
+    CWrappedText *text = new CWrappedText;
+
+    text->SetFont(font);
+    func_0037A430(text, this, mgr);
+    return text;
+}
+
 CDlgObjSpec *CScrollSpec::Copy()
 {
     return new CScrollSpec(*this);
+}
+
+/* scrolling text of the spec's (SOCOM 1's) */
+C2D *CScrollSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
+{
+    CScrollText *text = new CScrollText;
+
+    text->SetFont(font);
+    func_00370340(text, this);
+    return text;
 }
 
 CDlgObjSpec *CHProgressBarSpec::Copy()

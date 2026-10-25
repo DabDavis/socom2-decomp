@@ -62,6 +62,18 @@ struct _zrdr {
         else
             return 0.0f;
     }
+    /* an integer: a real truncated, anything else 0 (ours: the counter's spec reads its start so) */
+    int Integer()
+    {
+        if (type == 1)
+            return integer;
+        else if (type == 2)
+            return (int)real;
+        else
+            return 0;
+    }
+    /* a string's text, or 0 (ours: the image specs read a texture name so, a ternary) */
+    const char *String() { return type == 3 ? string : 0; }
 };   // 0x8 bytes
 
 /* how long a variable lives (SOCOM 1's DWARF, names and values; a dormant variable is a free
