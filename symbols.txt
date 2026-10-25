@@ -3135,7 +3135,7 @@
 0x002784D0 0x278 UIGetLadderInfo__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "GetLadderInfo" in both builds' UI command tables: SOCOM II's id 0x5C at 0x3DDA90, SOCOM 1's UICommandTable id 0x58 -> UIGetLadderInfo__FP13C2DAnimCmdHdrPf)
 0x00278750 0x230 func_00278750  # OVL1
 0x00278980 0x294 UIHardDriveOperation__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "HardDriveOperation" (id 0xCD, the UI command table's record at 0x3DE180), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
-0x00278C20 0xDC func_00278C20  # OVL1
+0x00278C20 0xDC HardDriveOperationCallback__Fi  # OVL1; ours: HardDriveOperation hands it to the hard disk code (0x39CE70) as the operation's callback; it keeps the result in a byte (0x414EB0), sets hard_disk_error_code to 1, 2, 3 or 5 and tells the lobby's event handler HDD_ERROR
 0x00278D00 0x24 UIQuitClan__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "QuitClan" in both builds' UI command tables: SOCOM II's id 0x5B at 0x3DDA80, SOCOM 1's UICommandTable id 0x57 -> UIQuitClan__FP13C2DAnimCmdHdrPf)
 0x00278D30 0x24 UIBanSelfFromGame__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "BanSelfFromGame" in both builds' UI command tables: SOCOM II's id 0x59 at 0x3DDA40, SOCOM 1's UICommandTable id 0x55 -> UIBanSelfFromGame__FP13C2DAnimCmdHdrPf)
 0x00278D60 0x88 UISetDefaultMenuScreen__FP13C2DAnimCmdHdrPf  # OVL1; s1:calls

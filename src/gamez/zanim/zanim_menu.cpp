@@ -196,15 +196,16 @@ void CMenuStack::CleanPopup()
     }
 }
 
-/* (the base's push_back() and back() stand in for the vector's: include/vector's pointer back() is
- * three high -- it calls the base's, which calls end() -- and its push_back two, which keeps
- * FlushHistory too tall for ~CMenuStack to inline it whole and fetches push_back's argument out of
- * line; SOCOM II's must each be a level lower) */
+/* (the base's push_back() and end() stand in for the vector's push_back() and back(): include/
+ * vector's pointer back() is three high -- it calls the base's, which calls end() -- and its
+ * push_back two. With them the name is fetched out of line (push_back's argument is checked a level
+ * deeper), and FlushHistory, ~CMenuStack and FlushMenuHistory all need these pieces inlined whole
+ * at their depths, which only the one-level forms give: SOCOM II's back() must be a level lower) */
 void CMenuHistory::Flush()
 {
     while (m_used.size()) {
-        m_free.PtrVec::push_back(m_used.PtrVec::back());
-        strcpy((char *)m_free.PtrVec::back(), MENUHISTORY_STRPOOL);
+        m_free.PtrVec::push_back(*(m_used.PtrVec::end() - 1));
+        strcpy((char *)*(m_free.PtrVec::end() - 1), MENUHISTORY_STRPOOL);
         m_used.pop_back();
     }
 }
@@ -274,7 +275,7 @@ bool UILobbyEventHandler(const char *eventname, const char *argument)
 
 bool UIUnInitNetwork(C2DAnimCmdHdr *hdr, float *dT)
 {
-    theLobby.m_58 = 0;
+    theLobby.m_event_handler = 0;
     func_002DFDD0(&theLobby);
     func_0030D770(&theNetwork);
     func_0030E3A0(&theNetwork, 0);
@@ -613,6 +614,12 @@ bool UIReadyToLoad(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+bool UIFlushMenuHistory(C2DAnimCmdHdr *hdr, float *dT)
+{
+    GetMenuStack()->FlushHistory(false);
+    return true;
+}
+
 bool UIClearGameState(C2DAnimCmdHdr *hdr, float *dT)
 {
     return true;
@@ -895,6 +902,16 @@ bool UIGetClanRanking(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+bool UIModifyClanMessage(C2DAnimCmdHdr *hdr, float *dT)
+{
+    int index = atoi(ArgText(ArgName(hdr)));
+    CUIVariable *var = func_003857C0(&theUIVarManager, "SEND_CLAN_MESSAGE", 0, UIVAR_SESSION);
+
+    if (var && var->type == 3)
+        func_002E60C0(&theLobby, index, var->String());
+    return true;
+}
+
 bool UIDeleteClanMessage(C2DAnimCmdHdr *hdr, float *dT)
 {
     func_002E6010(&theLobby, atoi(ArgText(ArgName(hdr))));
@@ -1053,6 +1070,36 @@ bool UISetDefaultMenuScreen(C2DAnimCmdHdr *hdr, float *dT)
 bool UIBanSelfFromGame(C2DAnimCmdHdr *hdr, float *dT)
 {
     func_002F95F0(&theLobby);
+    return true;
+}
+
+/* the hard disk operation's last result (a byte; the name ours) */
+extern "C" unsigned char data_00414EB0;
+
+/* the hard disk operation's result, told to the menu through a valve and the lobby's event handler
+ * (HardDriveOperation hands it on; SOCOM II's, the name ours) */
+bool HardDriveOperationCallback(int result)
+{
+    int code;
+
+    data_00414EB0 = result;
+    switch (data_00414EB0) {
+    case 1:
+        code = 1;
+        break;
+    case 2:
+        code = 2;
+        break;
+    case 3:
+        code = 3;
+        break;
+    default:
+        code = 5;
+        break;
+    }
+    SetValveValue(CValve::Create("hard_disk_error_code", (VALVE_TYPE)1), code);
+    if (theLobby.m_event_handler)
+        theLobby.m_event_handler("HDD_ERROR", 0);
     return true;
 }
 
@@ -1239,6 +1286,21 @@ bool UIVerifyPatchLevel(C2DAnimCmdHdr *hdr, float *dT)
         func_003862A0(var, func_002FD610(data_0044FC60, level));
     }
     return ok;
+}
+
+bool UIDMEInit(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CValve *valve = CValve::Create(ArgName(hdr), (VALVE_TYPE)2);
+
+    func_002E05D0(&theLobby);
+    if (!func_0030DBB0(&theNetwork)) {
+        func_0030E3A0(&theNetwork, 1);
+        func_002B8660();
+        SetValveValue(valve, 1);
+    } else {
+        SetValveValue(valve, 0);
+    }
+    return true;
 }
 
 bool UIMediusInit(C2DAnimCmdHdr *hdr, float *dT)

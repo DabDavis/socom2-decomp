@@ -128,7 +128,7 @@ public:
     static void PasswordSecurity();
 
     unsigned char _0[0x58];
-    int m_58;   // 0x58: UnInitNetwork clears it
+    bool (*m_event_handler)(const char *eventname, const char *argument);   // 0x58 (SOCOM 1's): InitNetwork sets it
     unsigned char _5c[0x60 - 0x5c];
     unsigned char m_current_state;   // 0x60: SOCOM 1's LOBBY_STATE
     unsigned char _61[0x98 - 0x61];
@@ -449,6 +449,10 @@ void func_003A44B0(void *locale);                                   /* (the loca
 void func_0034F950();                                               /* zSysPostInit (SOCOM 1's) */
 bool func_00300840();                                               /* (Medius initialised) */
 void func_002EFE50(CZOnlineLobby *lobby, const char *name, int what);   /* (a player's info) */
+void func_002E05D0(CZOnlineLobby *lobby);                           /* (the DME's start) */
+bool func_0030DBB0(CZNetwork *net);                                 /* (the DME initialised) */
+void func_002B8660();
+void func_002E60C0(CZOnlineLobby *lobby, int index, const char *text);   /* (a clan message changed) */
 void func_002E8980(CZOnlineLobby *lobby, int index);                /* DeclineClanInvitation */
 void func_002E89F0(CZOnlineLobby *lobby, int index);                /* AcceptClanInvitation */
 void func_002E6000(CZOnlineLobby *lobby, const char *name);         /* (clan member's info) */
