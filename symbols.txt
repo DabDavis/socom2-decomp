@@ -1618,7 +1618,7 @@
 0x001F9F20 0x3D8 func_001F9F20  # OVL1
 0x001FA300 0x5C PauseGame__4CHUDFv  # OVL1; s1:order by hand (hud_main.cpp: between Tick and Init as SOCOM 1's PauseGame; returns the bool CCoreState::Tick tests before ticking the world, as SOCOM 1's -- the menu state among pause/map/orders and not networked)
 0x001FA360 0xF98 Init__4CHUDFPQ23zdb6CWorld  # OVL1; s1:callee (CCoreState::Init's call after the constructor, with the world, as SOCOM 1's; 0xF98 to SOCOM 1's 0xFA0)
-0x001FB300 0x70 func_001FB300  # OVL1
+0x001FB300 0x70 __dt__Q23std62vector<PQ23zdb9CAssetLib,Q23std28allocator<PQ23zdb9CAssetLib>>Fv  # OVL1; by hand (a pointer vector's destructor, three this tests and data_ at 8 freed, as include/vector's; hud_main.cpp emits vector<CAssetLib *>'s for Add2D's C2D::CLibList, and the font code's callers (0x35A650 frees the font's list at +0x10 through a swapped temporary) link this copy)
 0x001FB370 0x44 func_001FB370  # OVL1
 0x001FB3C0 0x8 func_001FB3C0  # OVL1
 0x001FB3D0 0x14 func_001FB3D0  # OVL1

@@ -140,6 +140,67 @@ public:
     CTexPalList m_pal_list;   // 0xc
 };   // 0x18 bytes
 
+/* MSL's basic_string, only as CSaferStr's base: its destructor is never inlined (called with 0
+ * for a base, as the states' model has it) */
+namespace std {
+template <class charT> struct char_traits {};
+
+template <class charT, class traits = char_traits<charT>, class Allocator = allocator<charT> >
+class basic_string {
+public:
+    ~basic_string();
+
+    unsigned int w[3];
+};
+
+typedef basic_string<char> string;
+}
+
+/* a string that is never null (SOCOM 1's: MSL's basic_string and nothing more; its constructor
+ * out of line, 0x1E7B60) */
+class CSaferStr : public std::string {
+public:
+    CSaferStr();
+};
+
+/* the font's glyph map (SOCOM II's: a std::map, 0x10 bytes -- its tree's constructor 0x1FB3F0
+ * and recursive destroy 0x1FE760 are out of line; the destructor tests the root at 4) */
+extern "C" void func_001FE760(void *tree, void *root);
+
+class C2DFontTree {
+public:
+    ~C2DFontTree()
+    {
+        if (m_root)
+            func_001FE760(this, m_root);
+    }
+
+    unsigned int m_size;   // 0x0
+    void *m_root;   // 0x4
+    unsigned char m_comp;   // 0x8
+    void *m_header;   // 0xc
+};
+
+class C2DFontMap {
+public:
+    C2DFontTree m_tree;   // 0x0
+};
+
+/* the HUD's font as its delete sees it (SOCOM II's C2DFont: a glyph map, a pointer vector, the
+ * name). The destructor's body is one call (0x35A650, the font's unload; no row named yet), then
+ * the members in reverse; the whole of it is four high, so ReleaseHUD's delete inlines it all */
+extern "C" void func_0035A650(C2DFont *font);
+
+class C2DFont {
+public:
+    ~C2DFont() { func_0035A650(this); }
+
+    C2DFontMap m_glyphs;   // 0x0
+    std::vector<void *> m_list;   // 0x10
+    unsigned char _1c[0x58 - 0x1c];
+    CSaferStr m_name;   // 0x58
+};
+
 class UIVarMixin;
 
 /* SOCOM 1's UIVarMixin::DetachUIVar(CUIVariable *) (0x385D90; no row yet: called as the
@@ -301,6 +362,49 @@ enum HUD_MODE {
     ZOOMOUT = 1,
 };
 
+/* the app camera (the shake's stop only) and the seal the player is (SOCOM 1's ftsGetPlayer) */
+extern "C" void StopShake__10CAppCameraFv(CAppCamera *camera);
+CZSealBody *ftsGetPlayer();
+
+/* a server setting (SOCOM 1's CValve): its value a halfword at 4 */
+class CValve {
+public:
+    static CValve *GetByName(const char *name);
+
+    unsigned char _0[4];
+    unsigned short m_value;   // 0x4
+};
+
+/* a queue of messages on screen (SOCOM 1's C2DMessage_Q, a C2D: the HUD turns them off and on
+ * through C2D's slots): only its font placed */
+class C2DMessage_Q : public C2D {
+public:
+    void SetBkgColor(float r, float g, float b);
+    void Clear_Messages();
+
+    C2DFont *m_font;   // 0x18
+    unsigned char _1c[0x4e0 - 0x1c];
+};   // 0x4e0 bytes (the queues' stride)
+
+/* the mission: its four message queues (the HUD re-inits the fourth) and the online game */
+class CMission {
+public:
+    unsigned char _0[0x1c0];
+    C2DMessage_Q m_messages;   // 0x1c0
+    C2DMessage_Q m_messages2;   // 0x6a0
+    C2DMessage_Q m_messages3;   // 0xb80
+    C2DMessage_Q m_messages4;   // 0x1060
+    unsigned char _1540[0x1808 - 0x1540];
+    void *m_1808;   // 0x1808
+};
+
+extern CMission theMission;
+/* the mission's round time, if any (0x2A6AD0: positive while the network game has a timer; no
+ * row named yet) */
+extern "C" int func_002A6AD0(CMission *mission);
+/* SOCOM II's spectator test, or so (0x2C2FA0: CAmmoDisplay::On asks it too; no row yet) */
+extern "C" bool func_002C2FA0();
+
 /* the jukebox's, or so: a string table registered by name (no rows named yet) */
 class CStringTables;
 extern "C" CStringTables *func_00361BC0();
@@ -330,6 +434,7 @@ public:
     void DrawPhase(zdb::_RenderPhase phase, zdb::CCamera *cam);
     static void HudText_to_upper(char *instr);
     static CZSealBody *GetHUDOwner();
+    static bool ReleaseHUD(CHUD **ppHud);
 
     C2DString m_socom2_0;   // 0x0
     CDynTexList m_dyntexlist;   // 0x98
@@ -428,6 +533,59 @@ void CHUD::HudText_to_upper(char *instr)
         instr[kk] = func_0019AFD0(instr[kk]);
 }
 
+/* the map items' textures (SOCOM 1's statics; ReleaseHUD lets them go) */
+class CZPlayerMapItem {
+public:
+    static void MissionEndCleanup();
+
+    static zdb::CTexture *m_conetex;
+    static zdb::CTexture *m_alivebliptex;
+    static zdb::CTexture *m_deadbliptex;
+};
+
+class CZClaymoreMapItem {
+public:
+    static zdb::CTexture *m_claymoretex;
+};
+
+class CZMPBombMapItem {
+public:
+    static zdb::CTexture *m_mpbombtex;
+};
+
+/* the HUD let go of: the message queues emptied, the flares deleted, the font deleted, the map
+ * uninitialised, the map items' textures forgotten, and the HUD deleted */
+bool CHUD::ReleaseHUD(CHUD **ppHud)
+{
+    if (!ppHud)
+        return false;
+    CHUD *hud = *ppHud;
+
+    if (!hud)
+        return false;
+    theMission.m_messages.Clear_Messages();
+    theMission.m_messages3.Clear_Messages();
+    theMission.m_messages2.Clear_Messages();
+    hud->m_lensflares.Clear();
+    hud->reticuletexture = 0;
+    hud->m_curweapon = 0;
+    hud->m_curseal = 0;
+    if (hud->m_myfont) {
+        delete hud->m_myfont;
+        hud->m_myfont = 0;
+    }
+    if (hud->m_newmap)
+        hud->m_newmap->UninitMap();
+    CZPlayerMapItem::m_conetex = 0;
+    CZPlayerMapItem::m_alivebliptex = 0;
+    CZPlayerMapItem::m_deadbliptex = 0;
+    CZClaymoreMapItem::m_claymoretex = 0;
+    CZMPBombMapItem::m_mpbombtex = 0;
+    delete *ppHud;
+    *ppHud = 0;
+    return true;
+}
+
 /* while the HUD draws, one of its three phase lists drawn (the HUD's three render phases) */
 void CHUD::DrawPhase(zdb::_RenderPhase phase, zdb::CCamera *cam)
 {
@@ -443,11 +601,6 @@ zdb::CTexture *GetTextureByName(zdb::CWorld *world, const char *name)
         return h->m_texture;
     return 0;
 }
-
-class CZPlayerMapItem {
-public:
-    static void MissionEndCleanup();
-};
 
 void hudTurnOffScorePopup();
 
@@ -513,48 +666,6 @@ void CHUD::ReInit_Uninit()
     func_00237310(&data_00413120);
 }
 
-
-/* the app camera (the shake's stop only) and the seal the player is (SOCOM 1's ftsGetPlayer) */
-extern "C" void StopShake__10CAppCameraFv(CAppCamera *camera);
-CZSealBody *ftsGetPlayer();
-
-/* a server setting (SOCOM 1's CValve): its value a halfword at 4 */
-class CValve {
-public:
-    static CValve *GetByName(const char *name);
-
-    unsigned char _0[4];
-    unsigned short m_value;   // 0x4
-};
-
-/* a queue of messages on screen (SOCOM 1's C2DMessage_Q, a C2D: the HUD turns them off and on
- * through C2D's slots): only its font placed */
-class C2DMessage_Q : public C2D {
-public:
-    void SetBkgColor(float r, float g, float b);
-
-    C2DFont *m_font;   // 0x18
-    unsigned char _1c[0x4e0 - 0x1c];
-};   // 0x4e0 bytes (the queues' stride)
-
-/* the mission: its four message queues (the HUD re-inits the fourth) and the online game */
-class CMission {
-public:
-    unsigned char _0[0x1c0];
-    C2DMessage_Q m_messages;   // 0x1c0
-    C2DMessage_Q m_messages2;   // 0x6a0
-    C2DMessage_Q m_messages3;   // 0xb80
-    C2DMessage_Q m_messages4;   // 0x1060
-    unsigned char _1540[0x1808 - 0x1540];
-    void *m_1808;   // 0x1808
-};
-
-extern CMission theMission;
-/* the mission's round time, if any (0x2A6AD0: positive while the network game has a timer; no
- * row named yet) */
-extern "C" int func_002A6AD0(CMission *mission);
-/* SOCOM II's spectator test, or so (0x2C2FA0: CAmmoDisplay::On asks it too; no row yet) */
-extern "C" bool func_002C2FA0();
 
 class CameraZoom {
 public:
