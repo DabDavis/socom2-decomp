@@ -47,28 +47,28 @@ EQUIP_ITEM CZKit::GetCurItemEnum() const
 {
     CZFTSWeapon *w = m_item[unwrap(m_selected_item, FIREMODE_CURRENT)];
 
-    return w ? w->m_equip : EQUIP_LAST;
+    return w ? w->m_ID : EQUIP_NONE;
 }
 
 EQUIP_ITEM CZKit::GetPrimaryEnum() const
 {
     CZFTSWeapon *w = m_item[unwrap(0, FIREMODE_CURRENT)];
 
-    return w ? w->m_equip : EQUIP_LAST;
+    return w ? w->m_ID : EQUIP_NONE;
 }
 
 EQUIP_ITEM CZKit::GetSecondaryEnum() const
 {
     CZFTSWeapon *w = m_item[unwrap(1, FIREMODE_CURRENT)];
 
-    return w ? w->m_equip : EQUIP_LAST;
+    return w ? w->m_ID : EQUIP_NONE;
 }
 
 /* whether the kit holds an item of that kind (OVL2 0x5C86F0; SOCOM 1's) */
 bool CZKit::HasItem(EQUIP_ITEM item) const
 {
     for (int i = 0; i < m_num_items; i++)
-        if (m_item[i] && item == m_item[i]->m_equip)
+        if (m_item[i] && item == m_item[i]->m_ID)
             return true;
     return false;
 }
@@ -79,7 +79,7 @@ bool CZKit::HasItem(EQUIP_ITEM item) const
 bool CZKit::HasItemWithAmmo(EQUIP_ITEM item)
 {
     for (int i = 0; i < GetNumItems(); i++) {
-        if (m_item[i] && item == m_item[i]->m_equip) {
+        if (m_item[i] && item == m_item[i]->m_ID) {
             if (ItemHasAmmo(i))
                 return true;
             break;
@@ -128,7 +128,7 @@ float CZKit::GetCurZoom()
     if (w) {
         unsigned int mode = ((CKitBody *)m_body)->m_200 - 4;
 
-        if (mode < w->m_num_zoommodes)
+        if (mode < w->m_zoommode.size())
             zoom = func_003C5980(w, mode);
     }
     return zoom;
@@ -492,7 +492,7 @@ bool CZKit::ItemHasFiremodeGraphic(int index)
     if (!GetCurItem())
         r = false;
     else {
-        switch (func_003D1A60(GetCurItem()->m_equip)) {
+        switch (func_003D1A60(GetCurItem()->m_ID)) {
         case 201:
         case IDTYPE_BINOCULARS:
         case 230:
@@ -542,7 +542,7 @@ bool CZKit::IsUsingItem(EQUIP_ITEM item)
     if (item == EQUIP_NVG)
         return NVG_Enabled();
     for (int i = 0; i < m_num_items; i++)
-        if (m_item[i] && item == m_item[i]->m_equip)
+        if (m_item[i] && item == m_item[i]->m_ID)
             return IsUsingItem(i);
     return false;
 }
