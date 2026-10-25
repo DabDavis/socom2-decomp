@@ -623,6 +623,8 @@ public:
     int CanTraverse(CDIType type);
     bool CanClimbWall();
     void AttemptBombDefuse();
+    /* the regions entered: each new one's OnEnterRegion anim run (SOCOM 1's; OVL2 0x5A2F90) */
+    void CheckForRegionTrigger(unsigned int regions);
 
     unsigned char _200[0x2e4 - 0x200];
     float m_alt;   // 0x2e4 (SOCOM 1's 0xe98)
@@ -658,7 +660,8 @@ public:
     unsigned int m_lastkiller_id;   // 0xfbc: the killer's entity id (SOCOM 1's 0xeb4)
     unsigned char _fc0[0x1044 - 0xfc0];
     float m_health;   // 0x1044 (SOCOM 1's 0xea0)
-    unsigned char _1048[0x105c - 0x1048];
+    unsigned char _1048[0x1058 - 0x1048];
+    unsigned int m_lastregion;   // 0x1058 (SOCOM 1's 0xf54)
     unsigned int m_HudUpdateViewCone : 1;   // 0x105c (SOCOM 1's 0xf58, the same bits)
     unsigned int m_hudwashit : 1;
     unsigned int m_aim_point_valid : 1;

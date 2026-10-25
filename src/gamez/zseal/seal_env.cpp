@@ -4,6 +4,8 @@
  * Defined in reverse of their image order (-inline deferred). */
 
 #include "zseal.h"
+#include "../zanim/zanim.h"
+#include <stdio.h>
 
 /* the bomb's state machine (SOCOM 1's CZBombState, OVL1's) -- only the request */
 class CZBombState {
@@ -51,6 +53,32 @@ float func_002874F0(float t);
 /* the blink's speed and its angle down (OVL1 data; SOCOM 1's were constants, 1.5 and -0.5925) */
 extern float data_0044C2DC;
 extern float data_0044C2E0;
+}
+
+/* the regions the SEAL stands in: on a change each region's OnEnterRegion anim run, region 0's
+ * when it is in none (OVL2 0x5A2F90; SOCOM 1's word for word) */
+void CZSealBody::CheckForRegionTrigger(unsigned int regions)
+{
+    if (m_lastregion != regions) {
+        for (int i = 0; i < 31; i++) {
+            if ((1 << i) & regions) {
+                char name[48];
+
+                sprintf(name, "OnEnterRegion%d", i);
+                CZAnim *anim = ZAnim.GetAnim(name, 0);
+
+                if (anim)
+                    anim->Activate(0);
+            }
+        }
+        if (!regions) {
+            CZAnim *anim = ZAnim.GetAnim("OnEnterRegion0", 0);
+
+            if (anim)
+                anim->Activate(0);
+        }
+    }
+    m_lastregion = regions;
 }
 
 /* the HUD's flags: the hit taken once, the view cone's update taken once, the hit set (OVL2
