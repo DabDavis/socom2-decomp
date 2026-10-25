@@ -45,7 +45,7 @@ class CAiSPursue : public CAiState {
 public:
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ctrl);
     /* slots 0x14, 0x44 and 0x48 (new in SOCOM II; the signatures ai_states.h's) */
-    virtual AI_RESULT Virtual14(CSealCtrlAi *ai, int x);
+    virtual int Virtual14(CSealCtrlAi *ai, CAiState *sub);
     virtual bool Virtual44(AI_STATE state) { return state == m_state; }
     virtual bool Virtual48(int x, CAiState *other);
     virtual ~CAiSPursue();
@@ -435,9 +435,10 @@ extern "C" void *func_00558AA0(CAiRowTable *t, unsigned char i)
 extern "C" bool func_0060A850(void *p);
 
 /* CAiSPursue's slot 0x14 (new in SOCOM II): the pursuit stops unless the AI's object says so,
- * and the Tick's result (OVL2 0x55A760). ai_states.h's Result() gives the target's `movz` and the
+ * and the Tick's result (OVL2 0x55A760; an int, handed the sub-stack's state, as ai_states.h's slot
+ * 0x14 -- the kit lane, round 6). ai_states.h's Result() gives the target's `movz` and the
  * byte enum's `andi` -- the earlier spelling as a status computed here was the miss */
-AI_RESULT CAiSPursue::Virtual14(CSealCtrlAi *ai, int x)
+int CAiSPursue::Virtual14(CSealCtrlAi *ai, CAiState *sub)
 {
     if (!func_0060A850(ai->m_67c))
         m_active = false;

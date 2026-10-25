@@ -73,6 +73,10 @@ public:
 
 class CMission {
 public:
+    /* (the name ours: the creation callback's game comes through an inline -- read as the member,
+     * it takes s1 and the index s0, the target's the other way round) */
+    CZNetGame *GetNetGame() { return m_pNetGame; }
+
     unsigned char _0[0x1808];
     CZNetGame *m_pNetGame;   // 0x1808 (SOCOM 1's at 0x584)
 };
@@ -198,14 +202,12 @@ void CZGameState::RemoteGamePostUpdateCallback(int client, int index, int field)
 }
 
 /* the game's object appears: the game's state unknown, its object kept, its fields taken up, and
- * the local persona told (OVL1 0x2C06A0; the post-update callback inlined, as the target has it).
- * OPEN, 14 instructions: s0 and s1 trade places -- the target keeps the game in s0 and the index in
- * s1 (the inlined callback's game then takes s1), this the other way round. Tried: the game
- * declared in the condition or assigned in it, an early return, the object index stored before
- * the state call, the index re-read from the game, the inlined callback's tests joined. */
+ * the local persona told (OVL1 0x2C06A0; the post-update callback inlined, as the target has it;
+ * the game through the mission's inline accessor, which gives it s0 and the index s1 -- a value an
+ * inline returns takes its saved register after the named ones) */
 void CZGameState::RemoteGameCreationCallback(int client, int index)
 {
-    CZNetGame *game = theMission.m_pNetGame;
+    CZNetGame *game = theMission.GetNetGame();
 
     if (game) {
         game->MPMajorGameState(CZNetGame::MP_MAJOR_UNKNOWN);

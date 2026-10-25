@@ -21,29 +21,11 @@ inline bool Chance(float odds)
     return r <= c;
 }
 
-/* the controller's bits (CSealCtrlAi at 0x264: SOCOM 1's m_debug word at 0x280 -- bit 1 is
- * m_navyseal; zseal.h does not name them) */
-struct CAiCtrlBits {
-    unsigned char _0[0x264];
-    unsigned char m_debug : 1;
-    unsigned char m_navyseal : 1;
-};
-
-/* a SEAL of the player's side (an inline bool accessor: its callers keep the sltu) */
+/* a SEAL of the player's side (SEAL_AI_PARAMS's bit 1 at 0x264, SOCOM 1's m_navyseal; an inline
+ * bool accessor: its callers keep the sltu) */
 inline bool NavySeal(CSealCtrlAi *ai)
 {
-    return ((CAiCtrlBits *)ai)->m_navyseal;
-}
-
-/* the controller's state stack (CSealCtrlAi at 0x41C; zseal.h does not name it) */
-struct CAiCtrlStack {
-    unsigned char _0[0x41c];
-    CAiStateStack m_stack;   // 0x41c
-};
-
-inline CAiStateStack &StateStack(CSealCtrlAi *ai)
-{
-    return ((CAiCtrlStack *)ai)->m_stack;
+    return ai->m_navyseal;
 }
 
 /* a map cell copied field by field (SOCOM 1's written copy constructor, CAiMapLoc(const
@@ -183,7 +165,7 @@ void CAiSNoAmmo::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
 /* out of ammunition: crouched, weapon down, off to the nearest ammunition for the first item and
  * picking it up -- or, with none to reach, a reaction (not for the player's side) and done (OVL2
  * 0x608060; SOCOM 1's) */
-AI_RESULT CAiSNoAmmo::Tick(float dT, CSealCtrlAi *ai)
+int CAiSNoAmmo::Tick(CSealCtrlAi *ai)
 {
     unsigned int phase;
     bool routed = false;
@@ -518,7 +500,7 @@ struct CAiCtrlTarget {
 /* a reload: weapon down, the stance kept, a crouch one time in ten and a move one in four, a look
  * at the target when there is one (the flags' bits 0-2), then the sub-states' turn (OVL2
  * 0x6085C0; SOCOM 1's reloaded itself) */
-AI_RESULT CAiSReload::Tick(float dT, CSealCtrlAi *ai)
+int CAiSReload::Tick(CSealCtrlAi *ai)
 {
     CEntity *seal = ai->m_entity;
     unsigned int phase = m_phase;
@@ -557,7 +539,7 @@ AI_RESULT CAiSReload::Tick(float dT, CSealCtrlAi *ai)
 
 /* a flight: to a cell away from danger (the goto pushed, a shout, crouched), the AI's mode 1 for
  * five seconds, then done (OVL2 0x6045B0; SOCOM 1's ran its own route) */
-AI_RESULT CAiSFlee::Tick(float dT, CSealCtrlAi *ai)
+int CAiSFlee::Tick(CSealCtrlAi *ai)
 {
     STEP step = (STEP)m_phase;
     CAiCell from(ai->m_entity->m_mapLocValid);
@@ -598,7 +580,7 @@ AI_RESULT CAiSFlee::Tick(float dT, CSealCtrlAi *ai)
         break;
     }
     if (step != m_phase)
-        StateStack(ai).SetFlags(1, 0);
+        ai->m_stateStack.SetFlags(1, 0);
     UpdatePhase(step);
     return Result();
 }

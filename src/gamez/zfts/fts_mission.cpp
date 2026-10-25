@@ -5,6 +5,8 @@
  * CSpawners code. Only some of it so far. Defined in reverse of their image order
  * (-inline deferred). */
 
+#include <vector>
+
 #include "../zanim/zanim.h"
 #include "../zsys/zsys.h"
 #include "../../Apps/FTS/hud_letterbox.h"
@@ -118,9 +120,54 @@ public:
 
 extern CZNetwork theNetwork;
 
+/* a cell of an AI map (zentity.h's CAiMapLoc: only its word) */
+class CAiMapLoc {
+public:
+    unsigned int m_word;
+};
+
+/* a compass anchor (zentity.h's CCompassAnchor: only what the nav points set) */
+class CCompassAnchor {
+public:
+    unsigned int m_enabled : 1;   // 0x0
+    unsigned int m_arrow_enabled : 1;
+    unsigned int m_name_enabled : 1;
+    unsigned int m_echo : 1;
+    unsigned int m_type : 16;
+    unsigned int m_locked : 1;
+    unsigned int m_unk21 : 10;
+    unsigned int m_unused : 1;
+    CPnt3D m_posW;   // 0x4
+    char *m_name;   // 0x10
+    CAiMapLoc *m_aiMapLoc;   // 0x14
+};
+
+class CCompass {
+public:
+    static CCompassAnchor *CreateAnchor(const CPnt3D &pos, const char *name);
+};
+
+/* the AI maps' nav points: a cell and its name (SOCOM 1's, 24 bytes; the names ours) */
+struct CAiNavPoint {
+    CAiMapLoc m_loc;   // 0x0
+    char m_name[20];   // 0x4
+};
+
+/* the AI's maps (OVL2's AiMaps: only the cell's centre and the nav points) */
+class CAiMaps {
+public:
+    bool GetCellCenter(const CAiMapLoc &loc, CPnt3D *center);
+
+    unsigned char _0[0x48];
+    std::vector<CAiNavPoint> m_navpoints;   // 0x48
+};
+
+extern CAiMaps AiMaps;
+
 /* the mission (only what this unit touches, at SOCOM II's offsets) */
 class CMission {
 public:
+    void CreateCompassNavPoints();
     CZNetGame *CreateNetGame();
     bool ReOpen_Unload2();
     void FadeToEndMission(float time, int counter);
@@ -138,8 +185,12 @@ public:
     unsigned char m_FadingToEndMission : 1;
     int m_fade_counter;   // 0x100 (SOCOM 1's at 0x74)
     float m_next_fade_time;   // 0x104 (SOCOM 1's at 0x78)
-    unsigned char _108[0x1808 - 0x108];
+    unsigned char _108[0x118 - 0x108];
+    std::vector<CCompassAnchor *> m_anchors;   // 0x118: the nav points' anchors (SOCOM 1's at 0x8c)
+    unsigned char _124[0x1808 - 0x124];
     CZNetGame *m_pNetGame;   // 0x1808 (SOCOM 1's at 0x584)
+    unsigned char _180c[0x1860 - 0x180c];
+    float m_music_hold;   // 0x1860: how long the music's raised intensity holds (SOCOM II's; the name ours)
 };
 
 extern CMission theMission;
@@ -270,6 +321,78 @@ bool CMission::FadeToEndMissionTick(float dT)
     return false;
 }
 
+class CZSealBody;
+CZSealBody *ftsGetPlayer();
+
+extern "C" {
+float func_002A4A10(CZSealBody *body, int a, float range);   /* (the danger around the player) */
+extern float data_003DE618;   /* (the raised intensity's hold time) */
+}
+
+/* the music's intensity kept up with the danger around the player: above 1 it is raised and held
+ * for a while, renewed when the hold runs out; once the danger passes, the hold runs down and the
+ * intensity drops to nothing (SOCOM II's; OVL1 0x2A4920) */
+extern "C" void func_002A4920(CMission *mission, float dT)
+{
+    float intensity = 0.0f;
+    CZSealBody *player = ftsGetPlayer();
+
+    if (player)
+        intensity = func_002A4A10(player, 2, 350.0f);
+    if (intensity > 1.0f) {
+        if (mission->m_music_hold <= 0.0f) {
+            CSndJukebox::SetIntensity(intensity);
+            mission->m_music_hold = data_003DE618;
+        }
+        mission->m_music_hold -= dT;
+    } else if (mission->m_music_hold != 0.0f) {
+        mission->m_music_hold -= dT;
+        if (mission->m_music_hold <= 0.0f) {
+            mission->m_music_hold = 0.0f;
+            CSndJukebox::SetIntensity(0.0f);
+        }
+    }
+}
+
+/* a dialog shown for the online game, by its state: in play, the front end opened on it; at a
+ * round's or the game's end, the stack popped first; in the menus or loading, the load aborted to
+ * it (or the same pop) -- _RecoverFromNetError's chain without its teardown (SOCOM II's; a client
+ * leaving a game under way calls it with "dlgNetAbandoned.rdr"; OVL1 0x2A47B0) */
+extern "C" bool func_002A47B0(CMission *mission, const char *dialog)
+{
+    bool handled = false;
+
+    if (mission->m_pNetGame) {
+        switch (mission->m_pNetGame->m_my_major_game_state) {
+        case CZNetGame::MP_MAJOR_PLAY:
+        case CZNetGame::MP_MAJOR_UNKNOWN:
+            break;
+        case CZNetGame::MP_MAJOR_MENUS:
+        case CZNetGame::MP_MAJOR_LOADING:
+            if (theGame.GetCurrentState() == &theGame.m_loadState) {
+                theGame.m_loadState.AbortLoad(dialog);
+                handled = true;
+                break;
+            }
+            theGame.PopTo(0, 0);
+            theGame.m_menuState.SetDefaultMenu(dialog);
+            theGame.Switch(&theGame.m_menuState, 0);
+            handled = true;
+            break;
+        case CZNetGame::MP_MAJOR_ROUNDOVER:
+        case CZNetGame::MP_MAJOR_GAMEOVER:
+        case CZNetGame::MP_MAJOR_NEWROUND:
+            theGame.PopTo(0, 0);
+        case CZNetGame::MP_MAJOR_INPLAY:
+            theGame.m_menuState.SetDefaultMenu(dialog);
+            theGame.Switch(&theGame.m_menuState, 0);
+            handled = true;
+            break;
+        }
+    }
+    return handled;
+}
+
 /* a network error handled by the online game's state: in play, the front end's error dialog; at a
  * round's or the game's end, the network game torn down and the stack popped first; loading, the
  * load aborted to the dialog (SOCOM II's test) or the same teardown (OVL1 0x2A4600; SOCOM 1's
@@ -339,6 +462,80 @@ extern "C" void func_002A41F0(bool on)
     if (state != VALVE_SAME)
         valve->MakeCallbacks(state);
     data_003DE620 = on;
+}
+
+extern "C" int func_0019AFB0(int c);   /* (MAIN: tolower) */
+
+/* a nav point's anchor type from its name's first letter, 'c' onwards (SOCOM 1's
+ * FilterNavPointString, SOCOM II's types 14 on where SOCOM 1's started at 9; inlined). The
+ * target's layout -- the zero arm first, `slti 24` then `bnez` to the sum -- is this if/else into
+ * a result with `i > 23`: `>= 24`, the `&&` forms, returns and ternaries all lay it out otherwise */
+inline int FilterNavPointString(const char *s)
+{
+    int i = (char)func_0019AFB0(*s) - 'c';
+    int r;
+
+    if (i < 0 || i > 23)
+        r = 0;
+    else
+        r = i + 14;
+    return r;
+}
+
+/* a compass anchor for each of the AI maps' nav points whose cell has a centre, typed by its name
+ * (SOCOM 1's, the centre now tested; OVL1 0x2ACAD0) */
+void CMission::CreateCompassNavPoints()
+{
+    std::vector<CAiNavPoint> &navs = AiMaps.m_navpoints;
+    unsigned int n = navs.size();
+
+    if (n) {
+        for (unsigned int i = 0; i < n; i++) {
+            /* the element through the data pointer itself: through the inline [] the reference
+             * takes its saved register after the name's (s1 and s2 swapped) */
+            CAiNavPoint &nav = navs.data_[i];
+            const char *name = nav.m_name;
+            CPnt3D pos;
+
+            if (AiMaps.GetCellCenter(nav.m_loc, &pos)) {
+                CCompassAnchor *anchor = CCompass::CreateAnchor(pos, name);
+
+                anchor->m_type = FilterNavPointString(name);
+                anchor->m_aiMapLoc = &nav.m_loc;
+                m_anchors.push_back(anchor);
+            }
+        }
+    }
+}
+
+/* a box: its two corners (the names ours) */
+struct CornerBox {
+    float min[3];   // 0x0
+    float max[3];   // 0xc
+};
+
+/* a box's corners put in order, axis by axis (SOCOM II's; the rdr save code at 0x338B30 and
+ * 0x339058 calls it; OVL1 0x2A94E0) */
+extern "C" void func_002A94E0(CornerBox *box)
+{
+    if (box->min[0] > box->max[0]) {
+        float t = box->min[0];
+
+        box->min[0] = box->max[0];
+        box->max[0] = t;
+    }
+    if (box->min[1] > box->max[1]) {
+        float t = box->min[1];
+
+        box->min[1] = box->max[1];
+        box->max[1] = t;
+    }
+    if (box->min[2] > box->max[2]) {
+        float t = box->min[2];
+
+        box->min[2] = box->max[2];
+        box->max[2] = t;
+    }
 }
 
 /* a range kept at 0xF4 (the top) and 0xF8 (the bottom) of the object 0x341A60 asks (SOCOM II's; the
@@ -528,9 +725,115 @@ namespace {
 char g_arrDefCharTypeNames[32][64];
 unsigned char g_arrMapVis[32][31];
 int g_arrMapVisCounts[32];
+int g_iNumUiVehicles;
 }
 
 extern "C" const char *data_003F02B0[32];   /* GetCustomCharTypeName's c_arrCustomCharTypeNames */
+const char *GetCustomCharTypeName(int i);
+
+/* a character type (zchar's CCharacterType: only what the custom types touch) */
+class CCharacterType {
+public:
+    static CCharacterType *RdrFetch_CharacterType(const char *name);
+    static const CCharacterType *GetByNameMod(const char *name);
+    static CCharacterType *Create(const char *name, const CCharacterType *base, bool temporary);
+
+    char *m_name;   // 0x0
+    unsigned char _4[0x300 - 0x4];
+    unsigned char m_custom;   // 0x300: a custom type (the name ours: stored with li, so no bool)
+};
+
+const char *zrdr_findstring(const _zrdr *rdr, const char *tag);
+_zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
+/* a custom type's weapons' UI variables (SOCOM 1's; OVL1 0x2AF190, not written yet) */
+void UpdateCharWeaponUiVars(int i);
+
+/* an array's element by an unsigned index (zrdr.h's Item: zanim.h's takes an int, which lets MW
+ * walk the element address with the int counter where the target recomputes it each pass) */
+inline _zrdr *ListItem(_zrdr *rdr, unsigned int i)
+{
+    return i < rdr->Count() ? &rdr->array[i] : 0;
+}
+
+/* a vehicle definition's entry (zchar's CVehicleRdrEntry: only its character's name) and the
+ * definitions */
+class CVehicleRdrEntry {
+public:
+    void SetCharacterName(const char *name);
+
+    unsigned char _0[0x20];
+    char m_charname[1];   // 0x20: the character type its crew is
+};
+
+class CVehicleRdr {
+public:
+    CVehicleRdrEntry *GetEntryByName(const char *name) const;
+};
+
+extern "C" void func_0053B070(void *weapons);   /* (OVL2: a custom type's weapons, at 0x2E8) */
+
+namespace {
+/* the custom character types the "UiVehicles" list names, each a copy of the character type of
+ * the vehicle entry its "Name" names -- the entry then crewed by the copy (SOCOM 1's; OVL1
+ * 0x2AFA10).
+ * OPEN, 10 instructions, registers only: the name and the entry's character name trade saved
+ * registers (the target's name s3, the character name s2, which the copy then reuses; here s2 and
+ * s3). Tried: the entry and the character name declared ahead of the name in four orders, the
+ * character name at loop scope, written out twice (one register fewer, 0xC shorter), not const,
+ * and the name read from the table directly (as a ternary, as an if-assign) */
+void CreateCustomCharTypes(CVehicleRdr *vehicles, _zrdr *rdr)
+{
+    _zrdr *list = zrdr_findtag(rdr, "UiVehicles");
+
+    g_iNumUiVehicles = list ? list->Count() : 0;
+    for (int i = 0; i < g_iNumUiVehicles; i++) {
+        const char *name = GetCustomCharTypeName(i);
+
+        if (!name)
+            break;
+        CVehicleRdrEntry *entry =
+            vehicles->GetEntryByName(zrdr_findstring(ListItem(list, i), "Name"));
+
+        if (entry) {
+            const char *base = entry->m_charname;
+
+            strcpy(g_arrDefCharTypeNames[i], base);
+            CCharacterType *custom =
+                CCharacterType::Create(name, CCharacterType::GetByNameMod(base), false);
+
+            custom->m_custom = 1;
+            entry->SetCharacterName(name);
+            func_0053B070((char *)custom + 0x2e8);
+            UpdateCharWeaponUiVars(i);
+        }
+    }
+}
+
+/* the custom character types the "UiVehicles" list names, up to the 32 names there are: each a copy
+ * of the type its entry's "Name" fetches, that type's name kept as the default (SOCOM 1's, the
+ * list's count SOCOM II's length; OVL1 0x2AF8C0) */
+void CreateCustomCharTypes(_zrdr *rdr)
+{
+    _zrdr *list = zrdr_findtag(rdr, "UiVehicles");
+
+    g_iNumUiVehicles = list ? list->Count() : 0;
+    for (int i = 0; i < g_iNumUiVehicles; i++) {
+        const char *name = GetCustomCharTypeName(i);
+
+        if (!name)
+            break;
+        CCharacterType *type =
+            CCharacterType::RdrFetch_CharacterType(zrdr_findstring(ListItem(list, i), "Name"));
+        const char *base = type->m_name;
+
+        strcpy(g_arrDefCharTypeNames[i], base);
+        CCharacterType *custom = CCharacterType::Create(name, CCharacterType::GetByNameMod(base), false);
+
+        custom->m_custom = 1;
+        UpdateCharWeaponUiVars(i);
+    }
+}
+}
 
 /* the number of maps a list shows (OVL1 0x2AF890) */
 int ftsGetNumVisibleMaps(unsigned int list)
@@ -709,6 +1012,25 @@ struct _trigger_mission_cam_cmd {
     _zanim_cmd_hdr hdr;
     unsigned char name;   // 0x4
 };
+
+/* TRIGGER_MISSION_CAM: the camera's name, the command's one string, kept among the current
+ * anim's names (SOCOM 1's; OVL1 0x2AE820) */
+_zanim_cmd_hdr *HUDTriggerMissionCamParse(_zrdr *rdr)
+{
+    _trigger_mission_cam_cmd *cmd = 0;
+
+    if (!rdr)
+        return 0;
+    if (rdr->type == 4 && rdr->Count() && rdr->Item(0)->type == 3) {
+        CZAnim *anim = ZAnim.m_CurAnim;
+
+        cmd = (_trigger_mission_cam_cmd *)_calloc(1, sizeof(_trigger_mission_cam_cmd), 0, 0);
+        cmd->hdr.data_size = sizeof(_trigger_mission_cam_cmd);
+        cmd->hdr.timeless = 1;
+        cmd->name = anim->AddName(rdr->Item(0)->String());
+    }
+    return (_zanim_cmd_hdr *)cmd;
+}
 
 void HUDTriggerMissionCamBegin(_zanim_cmd_hdr *hdr)
 {
