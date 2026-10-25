@@ -19,6 +19,10 @@ EQUIP_IDTYPE func_003D1E10(CZFTSWeapon *w);
 /* CZFTSWeapon::GetZoomRange (SOCOM 1's GetZoomRange__11CZFTSWeaponFUi, called from the same
  * GetCurZoom; OVL1 0x3C5980, unclaimed) */
 float func_003C5980(CZFTSWeapon *w, unsigned int mode);
+/* CZFTSWeapon::IsGrenadeLauncherAmmo and CZWeapon::GetName (SOCOM 1's, called from the same
+ * GetFiremodeGraphic and GetItemName; OVL1 0x3C5D20, 0x3D2830, unclaimed) */
+bool func_003C5D20(CZFTSWeapon *w);
+const char *func_003D2830(CZFTSWeapon *w);
 /* a controller's word at 0x11C cleared (OVL2 0x592D40, the SEAL lane's row) */
 void func_00592D40(CKitCtrl *ctrl);
 }
@@ -95,6 +99,12 @@ void CZKit::NVG_Enabled(bool on)
         m_nvg_enabled = false;
 }
 
+/* zoomed: a scope or the binoculars (OVL2 0x5BE6C0; SOCOM 1's) */
+bool CZKit::IsZoomed()
+{
+    return IsUsingScope() || IsUsingBinocs();
+}
+
 /* the current item's zoom at the body's zoom class, 1 outside its zoom modes (OVL2 0x5BE660;
  * SOCOM 1's) */
 float CZKit::GetCurZoom()
@@ -111,6 +121,12 @@ float CZKit::GetCurZoom()
     return zoom;
 }
 
+/* (OVL2 0x5BE650, new in SOCOM II where SOCOM 1's UpdateCurItemReticule was; the name ours) */
+RETICULE_TYPE CZKit::GetCurItemReticule()
+{
+    return m_curitemreticule;
+}
+
 /* the reticle's change taken, once, with a little adrenaline (OVL2 0x5BE5F0; SOCOM 1's) */
 bool CZKit::CurReticuleTypeChanged()
 {
@@ -120,6 +136,12 @@ bool CZKit::CurReticuleTypeChanged()
         return true;
     }
     return false;
+}
+
+/* the selected item's reticle (OVL2 0x5BE560, new in SOCOM II; the name ours) */
+RETICULE_TYPE CZKit::GetCurReticule()
+{
+    return GetReticuleByIndex(m_selected_item);
 }
 
 /* the current item's reticle, flagged when it changes or when forced (OVL2 0x5BE570; SOCOM 1's
@@ -247,6 +269,56 @@ int CZKit::GetNumItems() const
 void CZKit::SetBody(CZSealBody *body)
 {
     m_body = body;
+}
+
+/* an item's name, wrapped (OVL2 0x5BE240; SOCOM 1's) */
+const char *CZKit::GetItemName(int index)
+{
+    int i = wrap(index, m_num_items);
+
+    return i != -1 ? func_003D2830(m_item[i]) : 0;
+}
+
+/* a grenade launcher's ammunition's icon (OVL2 0x5BE1D0; SOCOM 1's GetFiremodeName and
+ * GetFiremodeGraphic in one, the index no longer wrapped).
+ * OPEN, 0x70 against 0x68: the target tests the null item with the zero in the delay slot
+ * (beqz s0,end; move v0,zero) and then branches over a branch on the call's result (bnez
+ * v0,L3; nop; b L4; nop; L3: b end; lw v0,188(s0); L4: move v0,zero) -- neither an early return,
+ * nested ifs, a ternary nor a result local gives that pair (nested ifs: 8 differing, the shared
+ * return-0 block) */
+void *CZKit::GetFiremodeGraphic(int index)
+{
+    if (index == -1)
+        return 0;
+    CZFTSWeapon *w = m_item[index];
+
+    if (!w)
+        return 0;
+    if (func_003C5D20(w))
+        return w->m_icon;
+    return 0;
+}
+
+/* an item's icon, wrapped, and the selected one's (OVL2 0x5BE110, 0x5BE050; SOCOM 1's had only
+ * the first -- the second's name ours) */
+void *CZKit::GetIcon(int index)
+{
+    int i = wrap(index, m_num_items);
+
+    if (i == -1)
+        return 0;
+    CZFTSWeapon *w = m_item[i];
+
+    return w ? w->m_icon : 0;
+}
+
+/* OPEN, 0xB8 against 0xC0: GetIcon inlined is the target's code but for two pad nops -- the
+ * target aligns the inlined body's last two labels (after b end; lw v0,188(v0)) to 8 bytes,
+ * where GetIcon's own copy (byte-exact) and every written-out form tried (early returns, a
+ * ternary, a result local, GetSelectedItemNum()) leave them unaligned */
+void *CZKit::GetCurIcon()
+{
+    return GetIcon(m_selected_item);
 }
 
 /* the kit's ammunition for an item kind (OVL2 0x5BDB20; SOCOM 1's walked the items itself) */

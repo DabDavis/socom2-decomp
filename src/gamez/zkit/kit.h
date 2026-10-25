@@ -44,7 +44,9 @@ public:
     unsigned char m_maxfiremode;   // 0x24: the highest fire mode it has (the name ours)
     unsigned char _25[0x7c - 0x25];
     EQUIP_ITEM m_equip;   // 0x7c
-    unsigned char _7d[0x284 - 0x7d];
+    unsigned char _7d[0xbc - 0x7d];
+    void *m_icon;   // 0xbc (SOCOM 1's CZWeapon icon at 0x94; a CTexture *)
+    unsigned char _c0[0x284 - 0xc0];
     unsigned int m_num_zoommodes;   // 0x284: the zoom-mode vector's size (SOCOM 1's m_zoommode at 0x1c0)
 };
 
@@ -72,6 +74,13 @@ public:
     bool CurReticuleTypeChanged();
     float GetCurZoom();
     RETICULE_TYPE GetReticuleByIndex(int index);
+    void *GetCurIcon();
+    void *GetIcon(int index);
+    void *GetFiremodeGraphic(int index);
+    const char *GetItemName(int index);
+    RETICULE_TYPE GetCurReticule();
+    RETICULE_TYPE GetCurItemReticule();
+    bool IsZoomed();
     bool IsUsingItem(int index);
     bool IsUsingItem(EQUIP_ITEM item);
     bool SetCurFireMode(FIREMODE mode);
