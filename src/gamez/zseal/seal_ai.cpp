@@ -188,12 +188,215 @@ extern "C" void *func_005621C0(CSealCtrlAi *ai, unsigned char i)
     return 0;
 }
 
-/* the AI's state brought up to date, its byte at 0x5BC returned (OVL2 0x5558A0; the AI states'
+/* the AI's state brought up to date, the route's state returned (OVL2 0x5558A0; the AI states'
  * OnSignal call it) */
-extern "C" signed char func_005558A0(CSealCtrlAi *ai)
+extern "C" AI_ROUTE func_005558A0(CSealCtrlAi *ai)
 {
-    func_00555420(ai, (char *)ai + 0x46c, (char *)ai + 0x514);
-    return ai->m_5bc;
+    func_00555420(ai, (char *)ai + 0x46c, ai->m_path);
+    return ai->m_route;
+}
+
+/* (OVL2 0x527310, the AI-core lane's: a CAiPath's plan aborted and its lists cleared) */
+extern "C" bool func_00527310(void *path);
+
+/* the route reset, and its state set: a running one (1 or 2) is ended first (OVL2 0x5557B0; the
+ * path-recovery state calls it) */
+extern "C" void func_005557B0(CSealCtrlAi *ai, AI_ROUTE route)
+{
+    func_00527310(ai->m_path);
+    switch (ai->m_route) {
+    case ROUTE_1:
+    case ROUTE_2:
+        ai->m_route = ROUTE_NONE;
+        break;
+    }
+    ai->m_route = route;
+}
+
+/* the route reset; a running one ends as 2 or none (OVL2 0x555820; the script and goto states'
+ * signals call it) */
+extern "C" void func_00555820(CSealCtrlAi *ai, bool keep)
+{
+    func_00527310(ai->m_path);
+    switch (ai->m_route) {
+    case ROUTE_1:
+    case ROUTE_2:
+        ai->m_route = keep ? ROUTE_2 : ROUTE_NONE;
+        break;
+    }
+}
+
+/* a table of two rows of eighteen, the row picked by whether the word at 0xC is empty (OVL2
+ * 0x558AA0; 0x558640 reads five of them) */
+struct CAiRowTable {
+    unsigned char _0[0xc];
+    void *m_c;   // 0xc
+    unsigned char _10[0x18 - 0x10];
+    void *m_rows[2][18];   // 0x18
+
+    bool IsEmpty() { return !m_c; }
+};
+
+extern "C" void *func_00558AA0(CAiRowTable *t, unsigned char i)
+{
+    return t->m_rows[t->IsEmpty()][i];
+}
+
+/* CAiSPursue's state bits and the pursuit copied from another of its kind (the base's area; the
+ * names ours) */
+struct CAiSPursueData {
+    unsigned char _0[0x28];
+    int m_status;   // 0x28
+    unsigned char _2c[0x30 - 0x2c];
+    AI_STATE m_state;   // 0x30
+    unsigned char _31[0x4a - 0x31];
+    unsigned char m_bit0 : 1;   // 0x4a
+    unsigned char m_have_target : 1;
+    unsigned char _4b[0x58 - 0x4b];
+    float m_timer;   // 0x58
+    signed char m_5c;   // 0x5c
+
+    void SetHaveTarget(bool on) { m_have_target = on; }
+    bool HaveTarget() { return m_have_target; }
+};
+
+/* (OVL2 0x60A850, unowned: a test of the AI's object at 0x67C) */
+extern "C" bool func_0060A850(void *p);
+
+/* CAiSPursue's slot 0x14 (new in SOCOM II): the target dropped once the AI's object says so, the
+ * status whether none is held (OVL2 0x55A760).
+ * OPEN, 0x6C against 0x70: the target builds the status with `movz` (0, then 1 if the bit is
+ * clear) and its temporaries in v0/v1/a0; MW here uses sltu/xori and a1/v1/a0. Tried: a ternary,
+ * `== false`, a bool local, the bit read directly, the status returned. */
+extern "C" void func_0055A760(CAiSPursueData *s, CSealCtrlAi *ai)
+{
+    if (!func_0060A850(ai->m_67c))
+        s->SetHaveTarget(false);
+    s->m_status = !s->HaveTarget();
+}
+
+/* CAiSPursue's slot 0x48 (new in SOCOM II): the timer and the byte taken from another pursuit
+ * (OVL2 0x55A7D0) */
+static inline CAiSPursueData *AsPursue(CAiSPursueData *s)
+{
+    return s && s->m_state == (AI_STATE)12 ? s : 0;
+}
+
+extern "C" bool func_0055A7D0(CAiSPursueData *s, int a, CAiSPursueData *other)
+{
+    CAiSPursueData *o = AsPursue(other);
+
+    s->m_timer = o->m_timer;
+    s->m_5c = o->m_5c;
+    return true;
+}
+
+/* the seven weapon ids of the AI's kinds (OVL2 data 0x66AD00) */
+extern "C" int data_0066AD00[7];
+
+/* the kinds (a byte enum; the names ours: rows 2 and 3 are both kind 1) */
+enum AI_WEAPON_KIND {
+    WEAPON_KIND_0 = 0, WEAPON_KIND_1 = 1, WEAPON_KIND_2 = 2, WEAPON_KIND_3 = 3, WEAPON_KIND_4 = 4,
+    WEAPON_KIND_5 = 5, WEAPON_KIND_6 = 6
+};
+
+/* the kind of the weapon the body holds: its row in the table, 2 and 3 both kind 1, none 0 (OVL2
+ * 0x560540) */
+/* OPEN, 0x70 against 0x60: the target sets the result to 0 first, takes the row into v0 and tests
+ * it against 2 then 3 (`bne 3` straight to the exit), returning 1 for both; MW here tests 3 apart
+ * and branches over a join. Tried: the switch after the loop on a result local, returning from
+ * inside the loop, the conversion as an inline switch. */
+#pragma auto_inline off
+extern "C" AI_WEAPON_KIND func_00560540(CSealCtrlAi *ai)
+{
+    for (int i = 0; i < 7; i++) {
+        if (((CZSealBody *)ai->m_entity)->m_weapon_id == data_0066AD00[i]) {
+            AI_WEAPON_KIND kind = (AI_WEAPON_KIND)i;
+
+            switch (kind) {
+            case WEAPON_KIND_3:
+            case WEAPON_KIND_2:
+                return WEAPON_KIND_1;
+            }
+            return kind;
+        }
+    }
+    return WEAPON_KIND_0;
+}
+#pragma auto_inline reset
+
+/* (OVL2 0x5605A0, not written yet: a weapon of a kind chosen) */
+extern "C" bool func_005605A0(CSealCtrlAi *ai, int a);
+
+/* a weapon chosen; the kind held before it kept once it is (OVL2 0x5604D0) */
+extern "C" bool func_005604D0(CSealCtrlAi *ai, int a)
+{
+    bool r = false;
+    AI_WEAPON_KIND kind = func_00560540(ai);
+
+    if (func_005605A0(ai, a)) {
+        ai->m_weapon_kind = kind;
+        r = true;
+    }
+    return r;
+}
+
+extern "C" int rand(void);
+
+/* a random value in a range (SOCOM 1's Rfloat: the minimum and the span; its inline operator's
+ * out-of-line copy at OVL2 0x560960, after 0x5605A0 its first caller, as SOCOM 1's 0x25ABA0 sits
+ * after CAiSPursue::Tick) */
+class Rfloat {
+public:
+    Rfloat(float min, float range) : m_min(min), m_range(range) {}
+    operator float() const;
+
+    float m_min;   // 0x0
+    float m_range;   // 0x4
+};
+
+/* OPEN, 1 instruction (0x64 against 0x68): the target pads the join after the sum with a nop (its
+ * label 8-aligned); SOCOM 1's code word for word otherwise. Tried: if/else with a return in each
+ * arm, a result local, a ternary, `!=` first, the sum through a local, the operator inline in the
+ * class with its copy forced out (by taking its address) -- all 0x64. */
+Rfloat::operator float() const
+{
+    if (m_range == 0.0f)
+        return m_min;
+    return m_min + m_range * (4.656613e-10f * (float)rand());
+}
+
+/* whether a chance comes up (OVL2 0x5608B0; 0x5605A0 calls it).
+ * OPEN, 3 instructions: the span's product lands in $f1 and the zero in $f2 in the target, the
+ * other way round here. Tried: a named Rfloat, the comparison reversed, the value in a local. */
+extern "C" bool func_005608B0(const float &chance)
+{
+    return Rfloat(0.0f, 1.0f) <= chance;
+}
+
+/* whether the body holds a weapon of the kind: kind 1 is rows 2 and 3 (OVL2 0x5609F0).
+ * OPEN, 15 instructions: the target materialises each row's test (xor, sltiu) and branches on the
+ * first, the entity in a2; MW here compares with beq and reuses the 1 the kind test left in v0.
+ * Tried: inline bool helpers (the `||` one too), a result local, a bool local for the `||`. */
+extern "C" bool func_005609F0(CSealCtrlAi *ai, unsigned char kind)
+{
+    CZSealBody *seal = (CZSealBody *)ai->m_entity;
+
+    if (kind == 1)
+        return data_0066AD00[2] == seal->m_weapon_id || data_0066AD00[3] == seal->m_weapon_id;
+    return data_0066AD00[kind] == seal->m_weapon_id;
+}
+
+/* the three items AllowCommand asks about (OVL2 0x5664F0; the names ours) */
+extern "C" bool func_005664F0(unsigned char item)
+{
+    switch (item) {
+    case 152:
+    case 153:
+    case 151:
+        return true;
+    }
+    return false;
 }
 
 /* the slide stepped: the AI's throttles and the body's stopped first; done sliding, the AI's mode

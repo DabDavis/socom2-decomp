@@ -358,6 +358,10 @@ class CZAnim;
 /* the AI's modes (SOCOM 1's DWARF, a byte; only the size matters here) */
 enum AI_MODE { AI_MODE_0 = 0, AI_MODE_LAST = 255 };
 
+/* a route's state (a byte enum: copied with lb, compared with lbu; the names ours -- 1 and 2 are
+ * the two a reset ends) */
+enum AI_ROUTE { ROUTE_NONE = 0, ROUTE_1 = 1, ROUTE_2 = 2 };
+
 class CSealCtrlAi : public CSealCtrl {
 public:
     CSealCtrlAi();
@@ -398,11 +402,16 @@ public:
     signed char m_4ed;   // 0x4ed
     unsigned char _4ee[0x508 - 0x4ee];
     void *m_508;   // 0x508
-    unsigned char _50c[0x5bc - 0x50c];
-    signed char m_5bc;   // 0x5bc (read after the update at 0x555420; the name ours)
-    unsigned char _5bd[0x750 - 0x5bd];
+    unsigned char _50c[0x514 - 0x50c];
+    unsigned char m_path[0x5bc - 0x514];   // 0x514: a CAiPath (SOCOM 1's m_path, 0x36c), reset at 0x527310
+    AI_ROUTE m_route;   // 0x5bc: the route's state (read after the update at 0x555420)
+    unsigned char _5bd[0x67c - 0x5bd];
+    unsigned char m_67c[4];   // 0x67c: an object the state CAiSPursue tests (0x60A850)
+    unsigned char _680[0x750 - 0x680];
     void *m_750[3];   // 0x750: three slots by a byte index (the name ours)
-    unsigned char _75c[0x7c0 - 0x75c];
+    unsigned char _75c[0x76c - 0x75c];
+    unsigned char m_weapon_kind;   // 0x76c: the kind 0x560540 reads off the body's weapon (the name ours)
+    unsigned char _76d[0x7c0 - 0x76d];
 };
 
 /* the network's controller: a SEAL another console drives (SOCOM 1's CRemoteCtrl : CSealCtrl;
@@ -551,6 +560,9 @@ public:
     unsigned int m_am_stunned : 1;
     unsigned int m_iszooming : 1;   // bit 5 (camera.h's reading)
     unsigned int m_unused_bits : 26;
+    unsigned char _1064[0x1336 - 0x1064];
+    short m_weapon_id;   // 0x1336: the weapon in hand, looked up in the AI's kind table (the name ours)
+    unsigned char _1338[0x14e0 - 0x1338];   // (0x14E0 bytes: Create news 5344)
 };
 
 #endif

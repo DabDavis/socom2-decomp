@@ -10168,7 +10168,7 @@
 0x00560930 0x8 func_00560930  # OVL2
 0x00560940 0x8 func_00560940  # OVL2
 0x00560950 0x8 func_00560950  # OVL2
-0x00560960 0x68 func_00560960  # OVL2
+0x00560960 0x68 __opf__6RfloatCFv  # OVL2; s1:order (SOCOM 1's __opf__6RfloatCFv, the same 0x68 bytes word for word but rand's address: Rfloat's inline operator float, its out-of-line copy after 0x5605A0, its one caller, as SOCOM 1's follows CAiSPursue::Tick) -- the SEAL lane, round 4
 0x005609D0 0x14 func_005609D0  # OVL2
 0x005609F0 0x68 func_005609F0  # OVL2
 0x00560A60 0x58 func_00560A60  # OVL2
