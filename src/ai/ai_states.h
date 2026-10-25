@@ -79,12 +79,17 @@ public:
 /* the states whose code is this lane's (each class only what a written function needs) */
 class CAiSCQBAttack : public CAiState {
 public:
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual bool CanAttack() const { return false; }
     virtual ~CAiSCQBAttack();
+
+    unsigned int m_58;   // 0x58
+    float m_5c;   // 0x5c: a delay (0.75, or none when the AI's bit at 0x264 is set)
 };
 
 class CAiSUnknown : public CAiState {
 public:
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual ~CAiSUnknown();
 };
 
@@ -119,7 +124,11 @@ public:
 
 class CAiSPickup : public CAiState {
 public:
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual ~CAiSPickup();
+
+    unsigned int m_58;   // 0x58
+    unsigned int m_5c;   // 0x5c
 };
 
 class CAiSPlan : public CAiState {
@@ -162,9 +171,14 @@ public:
 /* seal_airesponse.cpp's states */
 class CAiSHostage : public CAiState {
 public:
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual bool CanAttack() const { return false; }
     virtual bool CanScan() const { return true; }
     virtual ~CAiSHostage();
+
+    int m_58;   // 0x58 (-1 on a reset)
+    unsigned int m_5c;   // 0x5c: an entity's id (CEntity::invalidId on a reset)
 };
 
 class CAiSAvoid : public CAiState {
@@ -179,14 +193,20 @@ public:
 
 class CAiSFlee : public CAiState {
 public:
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual bool CanAttack() const { return true; }
     virtual bool CanScan() const { return false; }
     virtual bool CanPursue(CSealCtrlAi *ai) const { return false; }
     virtual ~CAiSFlee();
+
+    bool m_58;   // 0x58 (set on a reset)
+    unsigned char _59[0x60 - 0x59];
+    unsigned int m_60;   // 0x60
 };
 
 class CAiSTarget : public CAiState {
 public:
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual ~CAiSTarget();
 };
 
@@ -212,6 +232,7 @@ public:
 
 class CAiSSurrender : public CAiState {
 public:
+    virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual bool CanAttack() const { return false; }
     virtual const char *GetScriptResponse() const { return "on_surrender"; }
     virtual ~CAiSSurrender();
@@ -219,8 +240,11 @@ public:
 
 class CAiSNoAmmo : public CAiState {
 public:
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual bool CanAttack() const { return false; }
     virtual ~CAiSNoAmmo();
+
+    unsigned int m_58;   // 0x58
 };
 
 class CAiSReload : public CAiState {
