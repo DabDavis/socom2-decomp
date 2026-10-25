@@ -3,11 +3,9 @@
  * layout for either, so every offset here is SOCOM II's own, read off its code, and only what the
  * matched functions touch is placed. The header's name is ours.
  *
- * zentity.h's CEntity declares its new virtuals +0x5C..+0x68 without parameters; CTurret's
- * overrides show +0x60 and +0x68 fill a CPnt3D and return true, +0x64 returns a pointer -- so the
- * two are declared here as CTurret's own (an override needs zentity.h's signatures corrected), the
- * third returns its node as an int. Its
- * +0x0C, SOCOM 1's GetPosW (a const CMatrix *), is zentity.h's GetPosNode. */
+ * CTurret's overrides of CEntity's new virtuals show +0x60 and +0x68 fill a CPnt3D and return
+ * true, +0x64 returns a pointer -- zentity.h declares them so. Its +0x0C is SOCOM 1's GetPosW (a
+ * const CMatrix *), as zentity.h has it. */
 #ifndef ZVEH_H
 #define ZVEH_H
 
@@ -98,7 +96,7 @@ public:
         *out = m_380;
         return true;
     }
-    virtual int Virtual64() { return (int)m_288; }
+    virtual zdb::CNode *Virtual64() { return m_288; }
     virtual bool Virtual68(CPnt3D *out)
     {
         *out = m_38c;

@@ -591,8 +591,8 @@ public:
     virtual void TeleportTo(const CMatrix *m);
     virtual void OnDeath();                                                 /* +0x58 */
     virtual int Virtual5C();
-    virtual int Virtual60();
-    virtual int Virtual68();
+    virtual bool Virtual60(CPnt3D *out);
+    virtual bool Virtual68(CPnt3D *out);
     /* the root part and the state set (CBody's virtuals, overridden), with one of the SEAL's own
      * between them: MW lists them after the CBody table, from +0x88, and calls them through the
      * primary pointer (Destroy's state set reads +0x90) */

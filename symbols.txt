@@ -3638,18 +3638,18 @@
 0x0029CF10 0x60 __dt__8CHandlerFv  # OVL1; s1:calls
 0x0029CF70 0x50 __ct__8CHandlerFPCcUiPFP7CPacketP8CConsolePv_vPv  # OVL1; s1:exact
 0x0029CFC0 0xBC func_0029CFC0  # OVL1
-0x0029D080 0xD8 func_0029D080  # OVL1
-0x0029D160 0x88 func_0029D160  # OVL1
-0x0029D1F0 0x7C func_0029D1F0  # OVL1
+0x0029D080 0xD8 FindHandler__8CConsoleFPCc  # OVL1; new in SOCOM II: RecvPacket (0x29D3C0) calls it with a message's first argument when no handler has the packet's type -- each handler's name (+0) strcmp'd; the overload ours, after SOCOM 1's FindHandler(id)
+0x0029D160 0x88 FindHandler__8CConsoleFUi  # OVL1; s1:order by hand (SOCOM 1's FindHandler__8CConsoleFUi 0x1EC7E0, its handler list at +24 there, +0x20 here, each id at +4; AddHandler 0x29CFC0 and RecvPacket call it with an id)
+0x0029D1F0 0x7C OnConnect__8CConsoleFv  # OVL1; s1:calls by hand (SOCOM 1's OnConnect 0x1EC8A0 registers ids 2, 1, 3 with _on_status, _on_ping, _on_error inline; SOCOM II's calls AddHandler 0x29CFC0 with the same ids and handlers, names "msg", "ping", "error")
 0x0029D270 0xCC Debug__8CConsoleFiP7CPacketPCc  # OVL1; s1:calls
 0x0029D340 0x7C Debug__8CConsoleFiPCce  # OVL1; s1:align
-0x0029D3C0 0x2B4 func_0029D3C0  # OVL1
+0x0029D3C0 0x2B4 RecvPacket__8CConsoleFP7CPacket  # OVL1; s1:calls by hand (Tick calls it with OnRecvPacket's packet and deletes the packet when it answers true, as SOCOM 1's Tick calls RecvPacket__8CConsoleFP7CPacket 0x1ECBA0)
 0x0029D680 0x8 GetPacketMsg__7CPacketFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0029D690 0x114 __dt__8CConsoleFv  # OVL1; s1:align
 0x0029D7B0 0xA4 func_0029D7B0  # OVL1
-0x0029D860 0x8 func_0029D860  # OVL1
-0x0029D870 0x8 func_0029D870  # OVL1
-0x0029D880 0x10 func_0029D880  # OVL1; a virtual tail call (vtable slot 0xC of a0's class: lw t9,0(a0); lw t9,12(t9); jr t9) -- split from the 0x18 row, which ran over the next function
+0x0029D860 0x8 _on_error__FP7CPacketP8CConsolePv  # OVL1; s1:order by hand (SOCOM 1's _on_error 0x1ED250, jr ra: OnConnect registers it for id 3 in both builds)
+0x0029D870 0x8 _on_ping__FP7CPacketP8CConsolePv  # OVL1; s1:order by hand (SOCOM 1's _on_ping 0x1ED260, jr ra: OnConnect registers it for id 1 in both builds)
+0x0029D880 0x10 _on_status__FP7CPacketP8CConsolePv  # OVL1; a virtual tail call (vtable slot 0xC of a0's class: lw t9,0(a0); lw t9,12(t9); jr t9) -- split from the 0x18 row, which ran over the next function; s1:order by hand (SOCOM 1's _on_status 0x1ED270, the same virtual tail call to the packet's GetPacketMsg: OnConnect registers it for id 2 in both builds)
 0x0029D890 0x8 GetPacketMsg__10CPacketMsgFv  # OVL1; split from func_0029D880's 0x18 row: `return this` (jr ra; move v0,a0), on its own 16-byte boundary; by hand (slot 0xC of __vt__10CPacketMsg, 0x4061A0, where CPacket's table has GetPacketMsg__7CPacketFv: the override returning this)
 0x0029D8A0 0x44 GetArg__10CPacketMsgCFUi  # OVL1; s1:exact
 0x0029D8F0 0x20 GetArgCount__10CPacketMsgCFv  # OVL1; s1:exact
@@ -3671,15 +3671,15 @@
 0x0029E0D0 0x90 Initalize__8CConsoleFv  # OVL1; s1:align
 0x0029E160 0x114 CheckEvent__8CConsoleFv  # OVL1; s1:align
 0x0029E280 0xA4 FindPacket__8CAckListFP7CPacket  # OVL1; s1:align
-0x0029E330 0xAC func_0029E330  # OVL1
+0x0029E330 0xAC Clear__8CAckListFv  # OVL1; ours: ~CAckList (0x29E3E0) calls it first -- every packet deleted through std::transform onto the list itself, then clear(); SOCOM 1's ~CAckList (0x1EDF80) inlined the same
 0x0029E3E0 0x90 func_0029E3E0  # OVL1
 0x0029E470 0x70 GetEntityByIndex__11CEntityListCFUi  # OVL1; s1:order (CEntityList's first, as SOCOM 1's 0x1EE0F0: past the end gives none, else the walk index steps along a const_iterator); ent_main.cpp
 0x0029E4E0 0xB0 GetEntityById__11CEntityListCFUi  # OVL1; s1:order (CEntityList's second, as SOCOM 1's 0x1EE190: none for CEntity::invalidId (0x3EFFB0, SOCOM 1's invalidId__7CEntity), else the entity whose m_id matches); ent_main.cpp
 0x0029E590 0xE0 GetEntity__11CEntityListCFPCc  # OVL1; s1:order (CEntityList's third, as SOCOM 1's 0x1EE290: strcasecmp of the name against each entity's node's name); ent_main.cpp
 0x0029E670 0x8 Virtual5C__7CEntityFv  # OVL1; slot 0x5C of __vt__7CEntity, new in SOCOM II (returns 0) -- the name is ours; ent_main.cpp
-0x0029E680 0x8 Virtual60__7CEntityFv  # OVL1; slot 0x60 of __vt__7CEntity, new in SOCOM II (returns 0) -- the name is ours; ent_main.cpp
+0x0029E680 0x8 Virtual60__7CEntityFP6CPnt3D  # OVL1; slot 0x60 of __vt__7CEntity, new in SOCOM II (returns 0) -- the name is ours; ent_main.cpp; the parameter and bool from CTurret's override 0x3A71A0 (fills a CPnt3D, returns true)
 0x0029E690 0x8 Virtual64__7CEntityFv  # OVL1; slot 0x64 of __vt__7CEntity, new in SOCOM II (returns 0) -- the name is ours; ent_main.cpp
-0x0029E6A0 0x8 Virtual68__7CEntityFv  # OVL1; slot 0x68 of __vt__7CEntity, new in SOCOM II (returns 0) -- the name is ours; ent_main.cpp
+0x0029E6A0 0x8 Virtual68__7CEntityFP6CPnt3D  # OVL1; slot 0x68 of __vt__7CEntity, new in SOCOM II (returns 0) -- the name is ours; ent_main.cpp; the parameter and bool from CTurret's override 0x3A71D0 (fills a CPnt3D, returns true)
 0x0029E6B0 0x80 UpdateCompassAnchor__7CEntityFv  # OVL1; slot 0x6C of __vt__7CEntity, new in SOCOM II: the entity's compass anchor (0xC4) moved to the entity's position and enabled while it lives, unless locked -- the name is ours; ent_main.cpp
 0x0029E730 0x174 CreateCompassAnchor__7CEntityFiPCc  # OVL1; new in SOCOM II: type 11 makes a "VEHICLE" anchor through CCompass::CreateAnchor (hidden and locked unless the name holds "Turret"), names and types it, keeps it at 0xC4 -- the name is ours; ent_main.cpp
 0x0029E8B0 0x30 OnDeath__7CEntityFv  # OVL1; s1:align; split from 0x38: the last 8 bytes are CEntityCtrl::OnDeath
@@ -9922,8 +9922,8 @@
 0x00542FE0 0x8 func_00542FE0  # OVL2
 0x00542FF0 0x8 func_00542FF0  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); s1~ not PrePostTick__10CZSealBodyFf (s1:vtable paired the wrong slot): slot 0xC of __vt__10CZSealBody is CEntity's inline GetPosNode (zentity.h), `jr ra; lw v0,0x28(a0)` -- OVL2's out-of-line copy of it, as OVL1's 0x295F10 (one of 2 copies of an inline)
 0x00543000 0x8 Virtual5C__10CZSealBodyFv  # OVL2; slot 0x5C of __vt__10CZSealBody (CEntity's Virtual5C, the name the entity lane's); returns 0
-0x00543010 0x8 Virtual60__10CZSealBodyFv  # OVL2; slot 0x60 of __vt__10CZSealBody (CEntity's Virtual60); returns 0
-0x00543020 0x8 Virtual68__10CZSealBodyFv  # OVL2; slot 0x68 of __vt__10CZSealBody (CEntity's Virtual68); returns 0
+0x00543010 0x8 Virtual60__10CZSealBodyFP6CPnt3D  # OVL2; slot 0x60 of __vt__10CZSealBody (CEntity's Virtual60); returns 0; CEntity's Virtual60(CPnt3D *) overridden (the entity lane, measured)
+0x00543020 0x8 Virtual68__10CZSealBodyFP6CPnt3D  # OVL2; slot 0x68 of __vt__10CZSealBody (CEntity's Virtual68); returns 0; CEntity's Virtual68(CPnt3D *) overridden (the entity lane, measured)
 0x00543030 0x1AC func_00543030  # OVL2
 0x005431E0 0x8 func_005431E0  # OVL2; s1~ GetSealCtrlAi__9CSealCtrlFv (one of 2 out-of-line copies of an inline, by s1:vtable)
 0x005431F0 0x8 IsPlayer__9CSealCtrlCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
