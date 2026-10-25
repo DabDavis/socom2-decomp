@@ -145,14 +145,9 @@ public:
  * CPickup, 0x1c bytes; SOCOM II's puts a float first -- its life, run down by the pickups' tick
  * -- so every member sits 4 further, and makes the type a whole byte and the owner's entity id a
  * word of its own at 0x10). pickup_main.cpp's; the list and the statics are OVL1 data. */
-/* a weapon lying in the world (a CZFTSWeapon: only the kind kit.h names at 0x7c) and the
- * ammunition (an OVL1 class: only its name) a pickup holds */
-class CPickupWeapon {
-public:
-    unsigned char _0[0x7c];
-    unsigned char m_equip;   // 0x7c: its EQUIP_ITEM
-};
-
+/* the weapon (zweapon.h's CZWeapon) and the ammunition (an OVL1 class: only its name) a pickup
+ * holds */
+class CZWeapon;
 class CPickupAmmo;
 
 class CPickup {
@@ -166,10 +161,14 @@ public:
     };
     typedef std::list<CPickup *>::iterator iterator;
 
+    static void DebugPickups();
+    static void TickTimers(const CPnt3D *pos, float dT);
     static bool IsWeaponNear(unsigned char item, const CPnt3D *pos, float range);
+    static CPickup *GetClosest(const CPnt3D *pos, float range, PU_TYPE type, CPickup **secondary,
+                               bool no_special);
     static void CleanupAmmoPickup(CPickup *pickup);
     CPickupAmmo *GetAmmo();
-    CPickupWeapon *GetWeapon();
+    CZWeapon *GetWeapon();
     void *GetData4567();
     void *GetData123();
     /* the kinds' groups (inline: the accessors materialise each `||`). `m_type == 1 || m_type ==

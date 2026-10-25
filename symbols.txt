@@ -9898,14 +9898,14 @@
 0x00541C60 0x60 GetMPBomb__7CPickupFv  # OVL2; s1:order (SOCOM 1's GetMPBomb__7CPickupFv: the list walked for the pickup of type 11; SOCOM II's tests the byte at 0xC) (the SEAL lane, round 3)
 0x00541CC0 0xC GetEntityIDFromNetID__7CPickupFUi  # OVL2; s1:order (after GetMPBomb, as SOCOM 1's GetEntityIDFromNetID__7CPickupFUs follows FindNetPickup; SOCOM II's takes the whole id and returns its upper half, GetPickupNetEntityID's owner) (the SEAL lane, round 3)
 0x00541CD0 0x70 FindPickup__7CPickupFUi  # OVL2; s1:calls (CurrentPickup and CurrentPickupSecondary call it where SOCOM 1's call FindPickup)
-0x00541D40 0x1D0 func_00541D40  # OVL2; size 0x1D0 (the seed split it at 0x541D80, in the middle of its prologue's float saves: one 192-byte frame to 0x541F0C); the seed's cut (0x541d80): jal target of OVL1's DNAS client, which calls DNAS.BIN loaded in the OVL2 slot (README)
+0x00541D40 0x1D0 GetClosest__7CPickupFPC6CPnt3DfQ27CPickup7PU_TYPEPP7CPickupb  # OVL2; size 0x1D0 (the seed split it at 0x541D80, in the middle of its prologue's float saves: one 192-byte frame to 0x541F0C); the seed's cut (0x541d80): jal target of OVL1's DNAS client, which calls DNAS.BIN loaded in the OVL2 slot (README); s1:order (after FindPickup, as SOCOM 1's GetClosest__7CPickupFPC6CPnt3DfQ27CPickup7PU_TYPEPP7CPickup follows it: the walk keeping the nearest within range squared plus one; SOCOM II's adds a flag that passes over weapons of class 145 (CZWeapon::GetIDType) and fills the pointer only with a secondary weapon) (the SEAL lane, round 3)
 0x00541F10 0x11C GetNext__7CPickupFRQ33std44list<P7CPickup,Q23std20allocator<P7CPickup>>19generic_iterator<0>PC6CPnt3DfQ27CPickup7PU_TYPE  # OVL2; s1:order (before GetNext(iterator &, PU_TYPE), as SOCOM 1's: the same walk, a pickup taken only within the range of the point -- the range squared once, the node's position less the point measured) (the SEAL lane, round 3)
 0x00542030 0x78 GetNext__7CPickupFRQ33std44list<P7CPickup,Q23std20allocator<P7CPickup>>19generic_iterator<0>Q27CPickup7PU_TYPE  # OVL2; s1:order (SOCOM 1's GetNext(iterator &, PU_TYPE): the list's size tested, the walk from the caller's iterator, a type of 0 taking any, the iterator stepped past the one returned) (the SEAL lane, round 3)
 0x005420B0 0xC0 IsWeaponNear__7CPickupFUcPC6CPnt3Df  # OVL2; ours (new in SOCOM II, after GetNext(type)): GetNext(iterator &, point, range, 8) from the list's start until a weapon pickup whose kind byte (0x7C, CZFTSWeapon::m_equip) is the argument -- true then, false at the end (the SEAL lane, round 3)
 0x00542170 0x10 GetFirst__7CPickupFv  # OVL2; s1:order (SOCOM 1's GetFirst__7CPickupFv: m_list's first node returned as an iterator, through the hidden result pointer) (the SEAL lane, round 3)
 0x00542180 0x70 func_00542180  # OVL2
 0x005421F0 0x94 DestroyNetPickups__7CPickupFUi  # OVL2; s1:calls (CZSealBody::OnMissionEnd calls it with m_id where SOCOM 1's does): CPickup's list walked, each pickup whose owner word at 0x10 matches destroyed -- SOCOM 1's compared a byte (Uc), SOCOM II's a word
-0x00542290 0x14C func_00542290  # OVL2
+0x00542290 0x14C TickTimers__7CPickupFPC6CPnt3Df  # OVL2; ours (new in SOCOM II, after DestroyNetPickups): every pickup's time (the float at 0) run down by the second argument unless it is -1 (0x3F3440); one run out is destroyed when farther than 300 from the point (90000 squared, 0x64FC50), else given 60 again (0x64FC58) (the SEAL lane, round 3)
 0x005423E0 0x88 func_005423E0  # OVL2
 0x00542470 0x36C Destroy__7CPickupFP7CPickup  # OVL2; s1:calls (DestroyNetPickups calls it where SOCOM 1's does)
 0x005427E0 0x70 func_005427E0  # OVL2
@@ -9913,7 +9913,7 @@
 0x005428C0 0x70 func_005428C0  # OVL2
 0x00542930 0x258 func_00542930  # OVL2
 0x00542B90 0x260 func_00542B90  # OVL2
-0x00542DF0 0x60 func_00542DF0  # OVL2
+0x00542DF0 0x60 DebugPickups__7CPickupFv  # OVL2; s1:order (after NetworkCreate's place, before Close, as SOCOM 1's DebugPickups__7CPickupFv: the list walked with an assigned iterator and nothing done -- its printing compiled out in both) (the SEAL lane, round 3)
 0x00542E50 0x16C func_00542E50  # OVL2
 0x00542FC0 0x18 Open__7CPickupFUi  # OVL2; s1:order (pickup_main.cpp's last, as SOCOM 1's Open__7CPickupFUi: the argument stored to bit_count, m_isOpen set -- the same two stores) (the SEAL lane, round 3)
 0x00542FE0 0x8 func_00542FE0  # OVL2

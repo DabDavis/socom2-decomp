@@ -5,18 +5,35 @@
  * defines none of them. Defined in reverse of their image order (-inline deferred). */
 
 #include "zseal.h"
+#include "../zweapon/zweapon.h"
 
 extern "C" {
 /* the ammunition's (OVL1, unowned): its rounds tidied, and how many kinds it still holds */
 void func_003CFB20(CPickupAmmo *ammo);
 int func_003CFCF0(CPickupAmmo *ammo);
+/* (OVL1 data: -1, the time that never runs; read as a variable) */
+extern float data_003F3440;
 }
+
+/* the distance (squared) past which a pickup whose time ran out goes, and the time it is given
+ * again (OVL2 data, 8 bytes apart: MW 3.0's layout of initialised statics) */
+static float s_far2 = 90000.0f;
+static float s_life = 60.0f;
 
 /* (OVL2 0x542FC0; SOCOM 1's) */
 void CPickup::Open(unsigned int bits)
 {
     bit_count = bits;
     m_isOpen = true;
+}
+
+/* the list walked, its printing gone (OVL2 0x542DF0; SOCOM 1's, as empty) */
+void CPickup::DebugPickups()
+{
+    iterator i, e = m_list.end();
+
+    for (i = m_list.begin(); i != e; ++i)
+        ;
 }
 
 /* every pickup the owner dropped destroyed (OVL2 0x5421F0; SOCOM 1's compared a byte of the id,
@@ -35,6 +52,31 @@ void CPickup::DestroyNetPickups(unsigned int owner)
     }
 }
 
+/* the pickups aged: one whose time runs out is destroyed once the point is far from it, or given
+ * its time again; a time of -1 never runs (OVL2 0x542290; new in SOCOM II, the name ours) */
+void CPickup::TickTimers(const CPnt3D *pos, float dT)
+{
+    iterator i, e = m_list.end();
+
+    for (i = m_list.begin(); i != e;) {
+        CPickup *p = *i;
+
+        ++i;
+        if (pos && p->m_timer != data_003F3440) {
+            p->m_timer -= dT;
+            if (p->m_timer <= 0.0f) {
+                CPnt3D d;
+
+                pos->Sub(p->GetPosW(), &d);
+                if (!(d.x * d.x + d.y * d.y + d.z * d.z <= s_far2))
+                    Destroy(p);
+                else
+                    p->m_timer = s_life;
+            }
+        }
+    }
+}
+
 /* whether a weapon of the kind lies within the range of a point (OVL2 0x5420B0; new in SOCOM II,
  * the name ours) */
 bool CPickup::IsWeaponNear(unsigned char item, const CPnt3D *pos, float range)
@@ -42,9 +84,9 @@ bool CPickup::IsWeaponNear(unsigned char item, const CPnt3D *pos, float range)
     iterator it = GetFirst();
 
     for (CPickup *p = GetNext(it, pos, range, PU_WEAPON); p; p = GetNext(it, pos, range, PU_WEAPON)) {
-        CPickupWeapon *w = p->GetWeapon();
+        CZWeapon *w = p->GetWeapon();
 
-        if (w && item == w->m_equip)
+        if (w && item == w->m_ID)
             return true;
     }
     return false;
@@ -54,6 +96,53 @@ bool CPickup::IsWeaponNear(unsigned char item, const CPnt3D *pos, float range)
 CPickup::iterator CPickup::GetFirst()
 {
     return m_list.begin();
+}
+
+/* the nearest pickup of a kind (any, for none) within the range of a point; a secondary weapon
+ * goes to its own slot when asked for, and the special weapons (class 145) are passed over when
+ * told to (OVL2 0x541D40; SOCOM 1's with the secondary slot and the flag new) */
+CPickup *CPickup::GetClosest(const CPnt3D *pos, float range, PU_TYPE type, CPickup **secondary,
+                             bool no_special)
+{
+    CPickup *closest = 0;
+
+    if (m_list.size()) {
+        iterator i = m_list.begin(), e = m_list.end();
+        float best = range * range + 1.0f;
+        float best2 = best;
+
+        for (; i != e; ++i) {
+            CPickup *p = *i;
+            PU_TYPE t = (PU_TYPE)p->m_type;
+
+            if (type == PU_NONE || t == type) {
+                CPnt3D d;
+                float dist;
+
+                p->GetPosW()->Sub(pos, &d);
+                dist = d.x * d.x + d.y * d.y + d.z * d.z;
+                if (secondary && t == PU_WEAPON && p->m_secondary) {
+                    if (dist < best2) {
+                        *secondary = p;
+                        best2 = dist;
+                    }
+                } else if (dist < best) {
+                    if (!no_special) {
+                        best = dist;
+                        closest = p;
+                    } else {
+                        CZWeapon *w = p->GetWeapon();
+
+                        if (!w || w->GetIDType() != 145) {
+                            closest = p;
+                            best = dist;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return closest;
 }
 
 /* the next pickup of a kind (any, for none) within the range of a point, the iterator left past
@@ -161,9 +250,9 @@ CPickupAmmo *CPickup::GetAmmo()
     return m_type == PU_AMMO ? (CPickupAmmo *)m_data : 0;
 }
 
-CPickupWeapon *CPickup::GetWeapon()
+CZWeapon *CPickup::GetWeapon()
 {
-    return m_type == PU_WEAPON ? (CPickupWeapon *)m_data : 0;
+    return m_type == PU_WEAPON ? (CZWeapon *)m_data : 0;
 }
 
 void *CPickup::GetData4567()
