@@ -3488,7 +3488,7 @@
 0x0028E370 0x68 SavePart__5CBodyFP10CZBodyPart  # OVL1; ours (SOCOM II's: one part's pose copied to its saved pose)
 0x0028E3E0 0xA0 SaveParts__5CBodyFv  # OVL1; ours (SOCOM II's: every part's pose saved; PushBlend and PopBlend call it while m_interp1 > 0, SOCOM 1's m_take_snapshot)
 0x0028E480 0xAC ReadParts__5CBodyFv  # OVL1; ours (SOCOM II's: each part's pose read back from its node's matrix and rotation)
-0x0028E530 0x24C func_0028E530  # OVL1
+0x0028E530 0x24C BodyAddAnim__5CBodyFP14CScriptArchivei  # OVL1; s1:order by hand (SOCOM 1's BodyAddAnim, between SmoothAnims' neighbours and FindPart as there, the signature changed: the archive's motion.rdr-order common of an index (+0xF0), a stack CZBodyAnim over it, each part's object found by GetObject on its node's name and filed by part id, the leftover objects past siNumBodyObjects filed from the top; the SEAL's 0x58C600 calls it for both archives)
 0x0028E780 0x30 SetBodyPart__5CBodyFiP10CZBodyPart  # OVL1; ours (SOCOM II's: a part filed at an id in range)
 0x0028E7B0 0xC8 FindPart__5CBodyFPCc  # OVL1; s1:align by hand (0.83 to SOCOM 1's FindPart: the parts' nodes' names compared with strcmp); by hand: non-const in SOCOM II (the walk keeps this in a saved register, which MW does only in a non-const member; the const name was SOCOM 1's signature by s1:align)
 0x0028E880 0xF8 FindAuxNode__5CBodyFPCcb  # OVL1; s1:align by hand (0.86 to SOCOM 1's FindAuxNode)
@@ -3512,7 +3512,7 @@
 0x0028F190 0x14 func_0028F190  # OVL1
 0x0028F1B0 0x28 func_0028F1B0  # OVL1
 0x0028F1E0 0x38 _close_enough<f>__FRCfRCfRCf_b  # OVL1; s1:callee by hand (SlerpFaster calls it where SOCOM 1 calls _close_enough<f>; the same compare, a newer compiler); MW 3.0 appends a function template's return type (_b), which SOCOM 1's compiler did not
-0x0028F220 0xFC func_0028F220  # OVL1
+0x0028F220 0xFC erase__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPUi  # OVL1; s1:align by hand (SOCOM 1's single-element erase__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPUi, 0x1DEF80: the words after the position moved down one -- the copy unrolled 8x here, as the range erase's -- the size counted down, the position returned; body.cpp's tail emits it (include/vector has no single erase); the headset, the UI list boxes and the radio strip call it)
 0x0028F320 0x48 Clear__21RTList<11ACTIVE_ANIM>Fv  # OVL1; s1:align by hand (0.81 to SOCOM 1's: head, tail and cursor cleared, every pool link zeroed)
 0x0028F370 0xC0 Remove__21RTList<11ACTIVE_ANIM>FP11ACTIVE_ANIM  # OVL1; s1:align by hand (0.94 to SOCOM 1's Remove)
 0x0028F430 0x80 Add__21RTList<11ACTIVE_ANIM>FP11ACTIVE_ANIM  # OVL1; s1:align by hand (0.95 to SOCOM 1's Add)

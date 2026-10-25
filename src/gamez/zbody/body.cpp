@@ -167,6 +167,62 @@ void CBody::SetBodyPart(int id, CZBodyPart *part)
         m_body_parts[id] = part;
 }
 
+/* an archive's anim of a motion.rdr index readied for the body, once: each part's object found by
+ * its node's name and filed by the part's id, then the other objects whose bone ids lie past the
+ * body's parts filed from the top slot down (SOCOM 1's BodyAddAnim, which took a name; SOCOM II's
+ * returns its stack anim, gone by then).
+ * OPEN, 16 instructions (right size): the first walk's registers -- the target keeps the iterator
+ * in s3, the part in s4 and the slot pointer in s2 (this's, loaded in the walk's entry delay slot),
+ * where this source gives the iterator s2, the slot s4 (loaded ahead of the test) and the part s3.
+ * Tried: the slot declared before the reference, the iterator declared before the slot, an index
+ * instead of the slot pointer (int or unsigned: 8 bytes longer). The stack anim through a pointer
+ * and the decrement as the index's pre-decrement each took off a block of differences. */
+CZBodyAnim *CBody::BodyAddAnim(CScriptArchive *archive, int index)
+{
+    if (index <= 0)
+        return 0;
+    CZSIScriptCommon *common = archive->m_byRdr[index];
+
+    if (!common)
+        return 0;
+    CZBodyAnim anim;
+    CZBodyAnim *a = &anim;
+
+    a->m_pCommon = common;
+    if (!common->m_objects_ready) {
+        std::vector<CZBodyPart *> &parts = m_body_parts;
+        CZSIObject **slot = &common->m_objects_for_body[0];
+
+        for (std::vector<CZBodyPart *>::iterator i = parts.begin(); i != parts.end(); ++i, slot++) {
+            CZBodyPart *part = *i;
+
+            if (part && !*slot) {
+                CZSIObject *o = a->GetObject(part->m_node ? part->m_node->m_name : "", true);
+
+                if (o) {
+                    o->m_body_part_id = part->m_id;
+                    a->m_pCommon->m_objects_for_body[o->m_body_part_id] = o;
+                }
+            }
+        }
+        common->m_nBodyObjects = siNumBodyObjects - 4;
+        CZSIObject *o = a->m_pCommon->m_pObjects;
+
+        for (int i = 0; i < a->m_pCommon->m_nObjects; i++, o++) {
+            if (o && !o->m_inUse && strcmp(o->m_pName, "do_not_use")) {
+                unsigned int id = func_0058CB30(o->m_pName);
+
+                if (id >= (unsigned int)siNumBodyObjects) {
+                    o->m_body_part_id = id;
+                    a->m_pCommon->m_objects_for_body[--common->m_nBodyObjects] = o;
+                }
+            }
+        }
+        common->m_objects_ready = true;
+    }
+    return a;
+}
+
 /* each part's pose read back from its node (SOCOM II's; the name ours) */
 void CBody::ReadParts()
 {

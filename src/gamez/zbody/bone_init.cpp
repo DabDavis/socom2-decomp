@@ -6,7 +6,13 @@
  * accessors; the callback list's implicit constructor and its vector's destructor close it, and
  * its initialiser (0x3FFCE0) builds both archives. SOCOM 1's zBoneOpen, zBoneLoadAll and
  * zBoneClose are one function per archive here. Defined in reverse of their image order
- * (-inline deferred). */
+ * (-inline deferred).
+ * OPEN, the initialiser (0x3FFCE0, still func_003FFCE0 -- outside the lane): the target inlines
+ * CScriptArchive's constructor one level, calling the members' constructors out of line (the
+ * scripts', 0x2892F0 -- the callback list's implicit constructor --, the commons' twice, the
+ * transitions') and then Init; this source's constructor, 231-240 units by inline_max_size probing
+ * and five high, inlines whole, so 0x2892F0 is not emitted (its draft stands). The original's
+ * expansion must exceed 256 units or be six high: not found. */
 
 #include <string.h>
 

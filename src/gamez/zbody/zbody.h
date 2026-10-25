@@ -1,9 +1,11 @@
 /* zbody.h -- the animated body: CBody (a base of CZSealBody), its parts (CZBodyPart), the motion
  * scripts it plays (CZSIScript and its objects, CZBodyAnim), the archives they load from
  * (CScriptArchive) and the small helpers between them (CSequence, the plane and quaternion
- * functions). OVL1 0x2869D0-0x290360, five units in SOCOM 1's link order: bone_math.cpp (ours: the
- * helpers), bone_archive.cpp and bone_init.cpp (the press beta's asserts name both), si_object.cpp
- * (the same), si_script.cpp and body.cpp (SOCOM 1's static initialisers name them).
+ * functions). OVL1 0x2869D0-0x290360, six units in SOCOM 1's link order: bone_math.cpp (ours: the
+ * helpers, 0x2869D0-0x2875C4), bone_archive.cpp (0x2875D0-0x28891F) and bone_init.cpp
+ * (0x288920-0x28936C; the press beta's asserts name both), si_object.cpp (0x289380-0x28A0FC, the
+ * same), si_script.cpp (0x28A100-0x28B26C) and body.cpp (0x28B270-0x29035C; SOCOM 1's static
+ * initialisers name them).
  *
  * The layouts are SOCOM 1's DWARF moved to where SOCOM II's code puts each member; only what a
  * written function touches is named. Self-contained over zmath.h, znode.h and zar.h, so zseal.h
@@ -625,6 +627,8 @@ public:
     CZBodyPart *AttachAuxPart(CZBodyPart *part, CZBodyPart *parent);
     CZBodyPart *AttachAuxNode(CNode *node, CZBodyPart *parent, const CPnt3D *pos, const CQuat *rot);
     CZBodyPart *AttachAuxNode(CNode *node, CZBodyPart *parent, const CPnt3D *pos, const CPnt3D *rot);
+    /* an archive's anim readied for the body (SOCOM 1's BodyAddAnim, which took a name) */
+    class CZBodyAnim *BodyAddAnim(class CScriptArchive *archive, int index);
 
     short m_state;   // 0x4: the SEAL's state (SOCOM 1's char at 0xd)
     float m_interp1;   // 0x8
