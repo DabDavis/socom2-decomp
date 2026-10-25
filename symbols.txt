@@ -6292,7 +6292,7 @@
 0x0034A650 0x4C Resume__7HeadsetFv  # OVL1; SOCOM II's, name ours (CSndInstance::ResumeAllSounds calls it on the headset: extern call 5 while connected)
 0x0034A6A0 0x4C Pause__7HeadsetFv  # OVL1; SOCOM II's, name ours (CSndInstance::PauseAllSounds calls it: extern call 4 while connected)
 0x0034A6F0 0xC0 Flush__7HeadsetFv  # OVL1; SOCOM II's, name ours (a Headset member: the stream module stopped (extern call 6) unless idle, every queued entry dequeued, the queue freed (FreeVector of its vector<int>, the four pieces out of line at 0x2C7290-0x2C7350), m_b set; CCinematicState::Init calls it) -- the sound lane
-0x0034A7B0 0x15C func_0034A7B0  # OVL1
+0x0034A7B0 0x15C IsQueued__7HeadsetFP4CSnd  # OVL1; SOCOM II's, name ours: whether the headset queues or streams the sound or one of its group's members (CSndQueue::Tick and PlayNext ask it)
 0x0034A910 0x158 StopSound__7HeadsetFiP4CSnd  # OVL1; s1:order by hand (SOCOM 1's StopSound(int, CSnd *), first of the unit in both builds; CZAnim::StopSounds and the SOUND tick stop a headset stream with it, (headset, channel, sound), as SOCOM 1's do)
 0x0034AA70 0x48 func_0034AA70  # OVL1
 0x0034AAC0 0x23C func_0034AAC0  # OVL1
@@ -6320,32 +6320,33 @@
 0x0034C2F0 0x1A4 func_0034C2F0  # OVL1
 0x0034C4A0 0x4C func_0034C4A0  # OVL1
 0x0034C4F0 0x70 func_0034C4F0  # OVL1
-0x0034C560 0x60 func_0034C560  # OVL1
-0x0034C5C0 0x60 func_0034C5C0  # OVL1
-0x0034C620 0x2C func_0034C620  # OVL1
-0x0034C650 0x1FC func_0034C650  # OVL1
-0x0034C850 0x40 func_0034C850  # OVL1
-0x0034C890 0x84 func_0034C890  # OVL1
-0x0034C920 0xFC func_0034C920  # OVL1
-0x0034CA20 0xF8 func_0034CA20  # OVL1
-0x0034CB20 0x70 func_0034CB20  # OVL1
-0x0034CB90 0x40 func_0034CB90  # OVL1
-0x0034CBD0 0x8 func_0034CBD0  # OVL1
-0x0034CBE0 0x14 func_0034CBE0  # OVL1
-0x0034CC00 0xA4 func_0034CC00  # OVL1
-0x0034CCB0 0x34 func_0034CCB0  # OVL1
-0x0034CCF0 0x28 func_0034CCF0  # OVL1
-0x0034CD20 0x8 func_0034CD20  # OVL1
-0x0034CD30 0x10 func_0034CD30  # OVL1
-0x0034CD40 0x28 func_0034CD40  # OVL1
-0x0034CD70 0x34 func_0034CD70  # OVL1
-0x0034CDB0 0xE4 func_0034CDB0  # OVL1
-0x0034CEA0 0x2C func_0034CEA0  # OVL1
-0x0034CED0 0xE0 func_0034CED0  # OVL1
-0x0034CFB0 0xB8 func_0034CFB0  # OVL1
-0x0034D070 0x3C func_0034D070  # OVL1
-0x0034D0B0 0x5C func_0034D0B0  # OVL1
-0x0034D110 0x6C func_0034D110  # OVL1
+0x0034C560 0x60 DumpFree__9CSndQueueFv  # OVL1; SOCOM II's, name ours: an empty walk over the free entries (a debug print compiled out) (zsnd_queue.cpp)
+0x0034C5C0 0x60 DumpQueue__9CSndQueueFv  # OVL1; SOCOM II's, name ours: an empty walk over the queued entries (a debug print compiled out) (zsnd_queue.cpp)
+0x0034C620 0x2C OnPlay__9CSndQueueFP14CSndQueueEntry  # OVL1; SOCOM II's, name ours: CSndQueue's vtable slot 0x0C -- the two empty walks (zsnd_queue.cpp)
+0x0034C650 0x1FC PlayNext__9CSndQueueFv  # OVL1; SOCOM II's, name ours: entries whose delay ran out or that cannot play dropped, then the first played (recursing while it fails) (zsnd_queue.cpp)
+0x0034C850 0x40 Stop__9CSndQueueFv  # OVL1; SOCOM II's, name ours: CSndQueue's vtable slot 0x08 -- the playing instance stopped and forgotten (zsnd_queue.cpp)
+0x0034C890 0x84 GetFreeEntry__9CSndQueueFv  # OVL1; SOCOM II's, name ours: the first free entry not taken, taken (CSndVocalQueue::Add calls it) (zsnd_queue.cpp)
+0x0034C920 0xFC Tick__9CSndQueueFf  # OVL1; SOCOM II's, name ours: CSnd::PostTick calls it on the global queue -- the playing instance released when done, else the next played, every delay counted down (zsnd_queue.cpp)
+0x0034CA20 0xF8 Close__9CSndQueueFv  # OVL1; SOCOM II's, name ours: CSndQueue's vtable slot 0x14 (CSnd::Close calls it on the global) -- the free entries deleted, both vectors freed (zsnd_queue.cpp)
+0x0034CB20 0x70 __dt__Q23std62vector<P14CSndQueueEntry,Q23std28allocator<P14CSndQueueEntry>>Fv  # OVL1; the vector of entries' out-of-line destructor, after CSndQueue::Close (its FreeVectors' last piece; zsnd_queue.cpp emits it)
+0x0034CB90 0x40 swap__Q23std62vector<P14CSndQueueEntry,Q23std28allocator<P14CSndQueueEntry>>FRQ23std62vector<P14CSndQueueEntry,Q23std28allocator<P14CSndQueueEntry>>  # OVL1; the vector of entries' swap, out of line after CSndQueue::Close (zsnd_queue.cpp emits it)
+0x0034CBD0 0x8 clear__Q23std62vector<P14CSndQueueEntry,Q23std28allocator<P14CSndQueueEntry>>Fv  # OVL1; the vector of entries' clear, out of line after CSndQueue::Close (zsnd_queue.cpp emits it)
+0x0034CBE0 0x14 __ct__Q23std62vector<P14CSndQueueEntry,Q23std28allocator<P14CSndQueueEntry>>Fv  # OVL1; the vector of entries' constructor, out of line after CSndQueue::Close (its FreeVectors' temporaries; zsnd_queue.cpp emits it)
+0x0034CC00 0xA4 Open__9CSndQueueFv  # OVL1; SOCOM II's, name ours: CSndQueue's vtable slot 0x10 -- 80 CSndQueueEntry made into the free list (zsnd_queue.cpp)
+0x0034CCB0 0x34 __ct__9CSndQueueFv  # OVL1; SOCOM II's: stores CSndQueue's vtable (0x406B90), then zeroes its two vectors and the playing pair (zsnd_queue.cpp)
+0x0034CCF0 0x20 Play__14CSndQueueEntryFv  # OVL1; split at 0x34CD10: the seed ran its `jr t9` tail call on into the next function (CSndQueueEntry's vtable slot 0x0C is 0x34CD10); SOCOM II's, name ours: CSndQueueEntry's vtable slot 0x08 -- the sound played by volume (zsnd_queue.cpp)
+0x0034CD10 0x8 CanPlay__14CSndQueueEntryFv  # OVL1; split from 0x34CCF0 (CSndQueueEntry's vtable 0x406BB0 slot 0x0C points here: `jr ra; li v0,1`); SOCOM II's, name ours: CSndQueueEntry's vtable slot 0x0C, true (zsnd_queue.cpp)
+0x0034CD20 0x8 SetUsed__14CSndQueueEntryFb  # OVL1; SOCOM II's, name ours: the entry's taken flag (CSndVocalQueue::Remove clears it) (zsnd_queue.cpp)
+0x0034CD30 0x10 Set__14CSndQueueEntryFP4CSndff  # OVL1; SOCOM II's, name ours: an entry's sound, delay and volume (CSndVocalQueue::Add calls it) (zsnd_queue.cpp)
+0x0034CD40 0x28 __ct__14CSndQueueEntryFv  # OVL1; SOCOM II's: stores CSndQueueEntry's vtable (0x406BB0), the volume 1 (zsnd_queue.cpp)
+0x0034CD70 0x34 OnPlay__14CSndVocalQueueFP14CSndQueueEntry  # OVL1; SOCOM II's, name ours: CSndVocalQueue's vtable slot 0x0C -- keeps the playing entry's id (zsnd_queue.cpp)
+0x0034CDB0 0xE4 Remove__14CSndVocalQueueFi  # OVL1; SOCOM II's, name ours: stops the queue if its entry has the id, then frees and erases every entry with it (0x3428A0 calls it) (zsnd_queue.cpp)
+0x0034CEA0 0x2C Stop__14CSndVocalQueueFv  # OVL1; SOCOM II's, name ours: CSndVocalQueue's vtable slot 0x08 -- CSndQueue's, then the id -1 (zsnd_queue.cpp)
+0x0034CED0 0xE0 Add__14CSndVocalQueueFP4CSndiPC6CPnt3Dff  # OVL1; SOCOM II's, name ours: a free entry set up and queued (0x3428F0 jumps here with the global queue) (zsnd_queue.cpp)
+0x0034CFB0 0xB8 Open__14CSndVocalQueueFv  # OVL1; SOCOM II's, name ours: CSndVocalQueue's vtable slot 0x10 (CSnd::Open calls it on the global at 0x48DEE0) -- 80 CSndVocalQueueEntry made into the free list (zsnd_queue.cpp)
+0x0034D070 0x3C __ct__14CSndVocalQueueFv  # OVL1; SOCOM II's: stores CSndVocalQueue's vtable (0x406BC0) after the CSndQueue constructor, the id -1 (zsnd_queue.cpp)
+0x0034D0B0 0x5C CanPlay__19CSndVocalQueueEntryFv  # OVL1; SOCOM II's, name ours: CSndVocalQueueEntry's vtable slot 0x0C -- a 3D entry the listener cannot hear (CalcVolPan's volume 0) cannot play (zsnd_queue.cpp)
+0x0034D110 0x6C Play__19CSndVocalQueueEntryFv  # OVL1; SOCOM II's, name ours: CSndVocalQueueEntry's vtable (0x406BE0) slot 0x08 -- plays its sound in 3D at its position or by volume, the entry's id as the entity (zsnd_queue.cpp)
 0x0034D180 0x8 func_0034D180  # OVL1
 0x0034D190 0x2CC func_0034D190  # OVL1
 0x0034D460 0x8 func_0034D460  # OVL1
@@ -6359,17 +6360,17 @@
 0x0034D940 0xB8 func_0034D940  # OVL1
 0x0034DA00 0x4CC func_0034DA00  # OVL1
 0x0034DED0 0x1A0 func_0034DED0  # OVL1
-0x0034E070 0x160 func_0034E070  # OVL1
+0x0034E070 0x160 Tick__14CSched_ManagerFf  # OVL1; SOCOM 1's CSched_Manager::Tick by its body (the same walk: T0_COUNT start/stop stamps, the callback or the remove flag, erase into the free list) and its caller (CCoreState's tick passes zTaskScheduler and dT)
 0x0034E1D0 0x240 ClearFreeList__14CSched_ManagerFb  # OVL1; s1:callee
 0x0034E410 0x68 _task_cleanup__FP11CSched_Task  # OVL1; s1:ref (taken by address where SOCOM 1 takes _task_cleanup__FP11CSched_Task's)
 0x0034E480 0xD4 Clear__14CSched_ManagerFv  # OVL1; s1:callee
 0x0034E560 0x80 RemoveTask__14CSched_ManagerFPvb  # OVL1; s1:callee by hand (CZAnim's flagged Stop removes the anim from its set's scheduler with it, false, where SOCOM 1's Stop calls RemoveTask)
 0x0034E5E0 0xC4 RemoveTask__14CSched_ManagerFPCcb  # OVL1; s1:align
 0x0034E6B0 0x1B0 AddTask__14CSched_ManagerFPCcPFfPv_bfPv  # OVL1; s1:align
-0x0034E860 0x5C func_0034E860  # OVL1
+0x0034E860 0x5C __ct__14CSched_ManagerFv  # OVL1; zsys_sched.cpp's static initialiser (0x403420) calls it on zTaskScheduler (0x49E260) before registering 0x34EA70 as its destructor; s1names' calls pass proposes the same name (SOCOM 1's __ct__14CSched_ManagerFv, 0x2F4180)
 0x0034E8C0 0xE4 remove_if<Q33std54list<P11CSched_Task,Q23std25allocator<P11CSched_Task>>19generic_iterator<0>,PFP11CSched_Task_b>__3stdFQ33std54list<P11CSched_Task,Q23std25allocator<P11CSched_Task>>19generic_iterator<0>Q33std54list<P11CSched_Task,Q23std25allocator<P11CSched_Task>>19generic_iterator<0>PFP11CSched_Task_b  # OVL1; s1:align
 0x0034E9B0 0xB8 remove_copy_if<Q33std54list<P11CSched_Task,Q23std25allocator<P11CSched_Task>>19generic_iterator<0>,Q33std54list<P11CSched_Task,Q23std25allocator<P11CSched_Task>>19generic_iterator<0>,PFP11CSched_Task_b>__3stdFQ33std54list<P11CSched_Task,Q23std25allocator<P11CSched_Task>>19generic_iterator<0>Q33std54list<P11CSched_Task,Q23std25allocator<P11CSched_Task>>19generic_iterator<0>Q33std54list<P11CSched_Task,Q23std25allocator<P11CSched_Task>>19generic_iterator<0>PFP11CSched_Task_b  # OVL1; s1:align
-0x0034EA70 0x70 func_0034EA70  # OVL1
+0x0034EA70 0x70 __dt__14CSched_ManagerFv  # OVL1; the destructor 0x403420 registers for zTaskScheduler: destroys the free list (+0x14) and the base list, then deletes -- NOT _strdup, which s1names' align pass proposes here
 0x0034EAE0 0x70 _calloc__FUiUiPCci  # OVL1; SOCOM 1 name (its code: DIntr, malloc, EIntr, the assert, memset; the allocators' order, before _realloc; called with no file or line)
 0x0034EB50 0x68 _realloc__FPvUiPCci  # OVL1; s1:order (called by CBits::Resize where SOCOM 1 calls _realloc)
 0x0034EBC0 0x68 _memalign__FUiUiPCci  # OVL1; s1:align
@@ -6435,11 +6436,11 @@
 0x003523C0 0x60 FlushNames__10CValvePoolFb  # OVL1; s1:order by hand (after Acquire as SOCOM 1's FlushNames: counts the valves holding a pooled name and resets the name buffer, by force or when none; Close/Reset/Uninit call it on the pool with false, its destructor's helper with true)
 0x00352420 0xD8 Free__10CValvePoolFv  # OVL1; SOCOM II's, name ours (the pool emptied: FlushNames(true), every pooled valve deleted, the name buffer freed -- SOCOM 1's ~CValvePool did it inline, SOCOM II's destructor 0x352870 calls this first)
 0x00352500 0xF8 remove_if<Q33std42list<P6CValve,Q23std19allocator<P6CValve>>19generic_iterator<0>,14CValveOpDelete>__3stdFQ33std42list<P6CValve,Q23std19allocator<P6CValve>>19generic_iterator<0>Q33std42list<P6CValve,Q23std19allocator<P6CValve>>19generic_iterator<0>14CValveOpDelete_Q33std42list<P6CValve,Q23std19allocator<P6CValve>>19generic_iterator<0>  # OVL1; s1:order by hand (SOCOM 1's remove_if instance over the valve list with CValveOpDelete, its template tail's first function as here; Close, Reset and Uninit call it; the name as MW 3.0 mangles it, the return type included)
-0x00352600 0x10 func_00352600  # OVL1; tu: char_type.cpp~ (1.0 beta)
-0x00352610 0xAC func_00352610  # OVL1
-0x003526C0 0xC func_003526C0  # OVL1
-0x003526D0 0x14 func_003526D0  # OVL1
-0x003526F0 0x14 func_003526F0  # OVL1
+0x00352600 0x10 __ct__Q33std42list<P6CValve,Q23std19allocator<P6CValve>>19generic_iterator<0>FRCQ33std42list<P6CValve,Q23std19allocator<P6CValve>>19generic_iterator<0>  # OVL1; tu: char_type.cpp~ (1.0 beta); valve_list.cpp's template tail: the list<CValve *> iterator's copy constructor, the first piece remove_if (0x352500) calls out of line (the tail's order, valve_list.cpp's header comment)
+0x00352610 0xAC __cl__14CValveOpDeleteFP6CValve  # OVL1; valve_list.cpp's template tail: CValveOpDelete's operator(), called out of line by remove_if (0x352500): frees the valve's name and keeps a persistent valve in the pool's free vector, or deletes it
+0x003526C0 0xC __ml__Q33std42list<P6CValve,Q23std19allocator<P6CValve>>19generic_iterator<0>CFv  # OVL1; valve_list.cpp's template tail: the list<CValve *> iterator's operator* (the node's data address), called out of line by remove_if
+0x003526D0 0x14 __ne__Q33std42list<P6CValve,Q23std19allocator<P6CValve>>19generic_iterator<0>CFRCQ33std42list<P6CValve,Q23std19allocator<P6CValve>>19generic_iterator<0>  # OVL1; valve_list.cpp's template tail: the list<CValve *> iterator's operator!=, called out of line by remove_if
+0x003526F0 0x14 __pp__Q33std42list<P6CValve,Q23std19allocator<P6CValve>>19generic_iterator<0>Fv  # OVL1; valve_list.cpp's template tail: the list<CValve *> iterator's prefix ++, called out of line by remove_if
 0x00352710 0x158 remove_copy_if<Q33std42list<P6CValve,Q23std19allocator<P6CValve>>19generic_iterator<0>,Q33std42list<P6CValve,Q23std19allocator<P6CValve>>19generic_iterator<0>,14CValveOpDelete>__3stdFQ33std42list<P6CValve,Q23std19allocator<P6CValve>>19generic_iterator<0>Q33std42list<P6CValve,Q23std19allocator<P6CValve>>19generic_iterator<0>Q33std42list<P6CValve,Q23std19allocator<P6CValve>>19generic_iterator<0>14CValveOpDelete_Q33std42list<P6CValve,Q23std19allocator<P6CValve>>19generic_iterator<0>  # OVL1; s1:align; the name as MW 3.0 mangles it (the return type appended, as valve_list.cpp's instance is named)
 0x00352870 0x88 func_00352870  # OVL1
 0x00352900 0x60 func_00352900  # OVL1

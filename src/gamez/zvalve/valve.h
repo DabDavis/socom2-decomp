@@ -32,16 +32,24 @@ extern CValvePool data_0049E820;    /* valvePool (SOCOM 1's static; valve_list.c
  * Inline: its out-of-line copy follows remove_if's instance, with the iterator's pieces */
 struct CValveOpDelete {
     CValveOpDelete(VALVE_TYPE type) : m_type(type) {}
+    /* its out-of-line copy in valve_list.cpp's tail is 0x352610: OPEN, 6 instructions, registers
+     * only -- the target loads m_type into a0 (this dying there) and builds the test's bool in v1,
+     * here the other way round. Tried: the test through an inline bool member (as the condition or
+     * into the local), m_type read into a local first, the comparison's operands swapped */
     bool operator()(CValve *valve)
     {
         bool del = valve->m_type == m_type || m_type == 0;
 
         if (del) {
+            /* the copy the push takes by reference: only it goes to memory (stored ahead of the
+             * call, reloaded after it) -- pushing the parameter homes it at entry */
+            CValve *kept = valve;
+
             valve->FreeName();
-            if (valve->m_pooled)
-                data_0049E820.m_free.push_back(valve);
+            if (kept->m_pooled)
+                data_0049E820.m_free.push_back(kept);
             else
-                delete valve;
+                delete kept;
             return true;
         }
         return false;
