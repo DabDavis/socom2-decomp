@@ -9938,7 +9938,7 @@
 0x00543200 0xF0 func_00543200  # OVL2
 0x005432F0 0xC8 func_005432F0  # OVL2
 0x005433C0 0xA4 func_005433C0  # OVL2
-0x00543470 0x8 func_00543470  # OVL2; s1~ GetRemoteControl__11CEntityCtrlFv (one of 2 out-of-line copies of an inline, by s1:vtable)
+0x00543470 0x8 func_00543470  # OVL2; s1~ GetRemoteControl__11CEntityCtrlFv (one of 2 out-of-line copies of an inline, by s1:vtable); ovl-copy: GetRemoteControl__11CEntityCtrlFv (OVL2's copy of the inline; slot 0x1C of CSealCtrl's, CSealCtrlAi's and CSealCtrlSquirm's tables)
 0x00543480 0x2C func_00543480  # OVL2
 0x005434B0 0x1D0 func_005434B0  # OVL2
 0x00543680 0x150 func_00543680  # OVL2
@@ -10073,9 +10073,9 @@
 0x005550B0 0x10 func_005550B0  # OVL2; tu: orders.cpp~ (1.0 beta)
 0x005550C0 0x8 func_005550C0  # OVL2
 0x005550D0 0x68 SealInitCharacterDynamics__Fv  # OVL2; s1:exact
-0x00555140 0x8 func_00555140  # OVL2; s1~ OnWeaponHit__Q23zdb7CNodeExFPQ23zdb5CNodePQ23zdb15IntersectStructP12CZProjectile (one of 2 out-of-line copies of an inline, by s1:vtable)
-0x00555150 0x8 func_00555150  # OVL2; s1~ OnAction__Q23zdb7CNodeExFPQ23zdb5CNodePv (one of 2 out-of-line copies of an inline, by s1:vtable)
-0x00555160 0x8 func_00555160  # OVL2
+0x00555140 0x8 func_00555140  # OVL2; s1~ OnWeaponHit__Q23zdb7CNodeExFPQ23zdb5CNodePQ23zdb15IntersectStructP12CZProjectile (one of 2 out-of-line copies of an inline, by s1:vtable); ovl-copy: OnWeaponHit__Q23zdb7CNodeExFPQ23zdb5CNodePQ23zdb15IntersectStructP12CZProjectile (OVL2's copy, li v0,-1 as OVL1's 0x2742F0)
+0x00555150 0x8 func_00555150  # OVL2; s1~ OnAction__Q23zdb7CNodeExFPQ23zdb5CNodePv (one of 2 out-of-line copies of an inline, by s1:vtable); ovl-copy: Slot0C__Q23zdb7CNodeExFv (OVL2's copy: slot 0xC of __vt__7CSealEx, returns 0 as OVL1's 0x274300)
+0x00555160 0x8 func_00555160  # OVL2; ovl-copy: Slot10__Q23zdb7CNodeExFf (OVL2's copy: slot 0x10 of __vt__7CSealEx, returns false as OVL1's 0x216760)
 0x00555170 0x28 func_00555170  # OVL2
 0x005551A0 0x14 func_005551A0  # OVL2
 0x005551C0 0x4C func_005551C0  # OVL2
@@ -10242,7 +10242,7 @@
 0x00566940 0x3B0 SlideTick__9CSealCtrlFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00566CF0 0xC4 SlideTick__11CSealCtrlAiFf  # OVL2; slot 0x8C of __vt__11CSealCtrlAi (CSealCtrl's SlideTick slot, 0x566940 in the base)
 0x00566DC0 0x57C CreepTick__9CSealCtrlFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00567340 0x10 func_00567340  # OVL2; s1~ SetThrottle__11CEntityCtrlFUif (one of 2 out-of-line copies of an inline, by s1:vtable)
+0x00567340 0x10 func_00567340  # OVL2; s1~ SetThrottle__11CEntityCtrlFUif (one of 2 out-of-line copies of an inline, by s1:vtable); ovl-copy: SetThrottle__11CEntityCtrlFUif (OVL2's copy of the inline; slot 0x20 of the OVL2 controllers' tables)
 0x00567350 0x33C CreepTick__11CSealCtrlAiFf  # OVL2; slot 0x88 of __vt__11CSealCtrlAi (CSealCtrl's CreepTick slot, 0x566DC0 in the base)
 0x00567690 0x1AC func_00567690  # OVL2
 0x00567840 0xA4 func_00567840  # OVL2
