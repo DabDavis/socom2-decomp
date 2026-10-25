@@ -48,9 +48,16 @@ extern "C" void func_00356BE0(zdb::CGSTexBuffer *buf, int flags);
 /* one texture command of the chain the FIFO handler walks (SOCOM 1's tag_TexLoadCmds; SOCOM II
  * keeps a buffer to load and one to signal apart -- the names ours) */
 struct tag_TexLoadCmds {
-    int m_cmd;   // 0x0
+    union {
+        int m_cmd;   // 0x0
+        struct {
+            unsigned char m_flush : 1;   // 0x0: SOCOM II's, set by the empty FIFO packet (ours)
+        } m_bits;
+    };
     zdb::CGSTexBuffer *m_load;   // 0x4
     zdb::CGSTexBuffer *m_signal;   // 0x8
+
+    void SetFlush(bool on) { m_bits.m_flush = on; }
 };   // 0xc bytes
 
 namespace zdb {
@@ -100,6 +107,7 @@ public:
     void PushOpacity(float opacity);
     void AddAlphaTextures(zdb::CNode *node);
     void KickOverlay();
+    void FIFO_Flush();
     void RandomizeOverlay();
     void SetOverlayTexture(zdb::CTexHandle *tex);
 
@@ -125,6 +133,44 @@ public:
  * the pipe passes one) */
 extern "C" void func_003B0D50(unsigned int v);
 extern "C" void func_003B0CC0(unsigned int v);
+
+/* SOCOM II's: a command queued with its flush bit and an empty FIFO packet kicked that interrupts
+ * when the GS reaches it (its marker word 0x66666666, fourteen zero quadwords after the tags) */
+void CPipe::FIFO_Flush()
+{
+    tag_TexLoadCmds &c = m_texLoadChain[m_texLoadIdx++];
+
+    c.SetFlush(true);
+    c.m_load = 0;
+    c.m_signal = 0;
+    unsigned int *p = (unsigned int *)zSysSprGetPacket(0);
+
+    p[0] = 0x1000000F;
+    p[1] = 0x66666666;
+    p[2] = 0x13000000;
+    p[3] = 0;
+    p[4] = 0x80000000;
+    p[5] = 0;
+    p[6] = 0;
+    p[7] = 0;
+    /* written out: a loop of fourteen is unrolled 7x, not whole */
+    u_long128 *q = (u_long128 *)p;
+    q[2] = 0;
+    q[3] = 0;
+    q[4] = 0;
+    q[5] = 0;
+    q[6] = 0;
+    q[7] = 0;
+    q[8] = 0;
+    q[9] = 0;
+    q[10] = 0;
+    q[11] = 0;
+    q[12] = 0;
+    q[13] = 0;
+    q[14] = 0;
+    q[15] = 0;
+    zSysFifoKick((u_long128 *)p, 16);
+}
 
 /* SOCOM II's: the noise texture taken, the overlay's corners set to its size, its colours set, its
  * pixels randomised (RandomizeOverlay inlined) */

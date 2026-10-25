@@ -6018,7 +6018,7 @@
 0x0033BCA0 0x2C Uninit__5CPipeFv  # OVL1; s1:calls
 0x0033BCD0 0x50 Init__5CPipeFv  # OVL1; s1:align
 0x0033BD20 0x68 func_0033BD20  # OVL1
-0x0033BD90 0xD4 func_0033BD90  # OVL1
+0x0033BD90 0xD4 FIFO_Flush__5CPipeFv  # OVL1; the rdr lane: SOCOM II's, the name ours (a texture command queued with bit 0 of its first byte set and no buffers, and a FIFO packet kicked with the marker word 0x66666666 -- FIFO_Signal's 0x44444444/0x55555555 packets' form -- and fourteen zero quadwords; 0x33CD50 calls it)
 0x0033BE70 0xB4 FIFO_Signal__5CPipeFPQ23zdb12CGSTexBuffer  # OVL1; s1:align
 0x0033BF30 0xD4 FIFO_Signal__5CPipeFPQ23zdb12CGSTexBufferPUi  # OVL1; s1:calls
 0x0033C010 0x104 func_0033C010  # OVL1
