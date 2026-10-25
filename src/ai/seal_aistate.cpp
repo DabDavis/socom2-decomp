@@ -1252,6 +1252,36 @@ void CAiSBreach::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
     }
 }
 
+/* what a breach lets be pushed: no avoiding in its steps 4-9, no grenade in steps 6 and 7 -- a
+ * grenade allowed opens its valve (3) -- and no targeting (OVL2 0x5F3520; SOCOM 1's).
+ * OPEN, 0x104 against 0xFC: the target keeps `ok`'s 1 in s0 and selects it, unfolded, as the true
+ * arm of both cases (`move a1,s0`; case 3 narrows s0 at its join, case 27 copies one result into
+ * `open` and `ok`), and tests steps 6 and 7 with two beqs; here MW folds `ok` to its constant --
+ * `!(...)` and `c ? false : ok` both materialise with sltu/xori -- and folds 6/7 into a range test
+ * (a nested switch on the step gives a compare chain, 0x10C). The valve's SetValue(3) inline and
+ * the outer switch are the target's */
+bool CAiSBreach::CanPushAiState(AI_STATE state, CSealCtrlAi *ai)
+{
+    bool open = false;
+    STEP step = (STEP)m_phase;
+    bool ok = true;
+
+    switch (state) {
+    case AI_STATE_AVOID:
+        ok = !(step >= STEP_4 && step < 10);
+        break;
+    case AI_STATE_GRENADE:
+        ok = open = !(step == STEP_6 || step == STEP_7);
+        break;
+    case AI_STATE_TARGET:
+        ok = false;
+        break;
+    }
+    if (open && m_valve)
+        m_valve->SetValue(3);
+    return ok;
+}
+
 /* +0x34: a breach takes up only a sighting or a shot (OVL2 0x5F34D0) */
 bool CAiSBreach::Virtual34(CSealCtrlAi *ai, CAiEvent *e, CZSealBody *seal, bool enemy)
 {

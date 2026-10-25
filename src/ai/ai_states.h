@@ -381,6 +381,7 @@ public:
     /* its timer, the last member, built by hand where the member's constructor would run */
     CAiSBreach() : CAiState(AI_STATE_BREACH) { func_005EA550(m_timer, 0.0f); }
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual bool CanPursue(CSealCtrlAi *ai) const { return false; }
     virtual bool Virtual34(CSealCtrlAi *ai, CAiEvent *e, CZSealBody *seal, bool enemy);
     /* +0x3C (the name ours, by slot) */
