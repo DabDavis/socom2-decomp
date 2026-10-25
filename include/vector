@@ -51,7 +51,16 @@
  * pointer vectors' clear() but calls __vector_imp<CPnt3D>::clear().
  * OPEN: CCompass::CreateAnchor inlines CCompassAnchor's constructor whole, its vector<CPnt3D>
  * three stores included -- a class-vector constructor three high -- where SaveNodeStates needs
- * four (the capacity's constructor); the constructor side has no out-of-class piece found yet. */
+ * four (the capacity's constructor); the constructor side has no out-of-class piece found yet.
+ * OPEN, the same kind on the pointer side: CCharacterType::Create inlines GetByNameMod whole with
+ * its loop's end() (data + size, every pass) inline, where this model's end() -- an argument of
+ * the inline !=, checked a level deeper -- is called out of line (0x158 against 0x168;
+ * RdrFetch_CharacterType likewise). Measured over every hand-written unit (build/scratch/vec/):
+ * end() built straight from data_ + size_ matches Create and brings RdrFetch to its size, but
+ * loses CHUD::Add2D, UIGetMissionInformation and find_node (0x319C90, one of the self-inlining
+ * walks that fixed this model); end() through iterator((elem_t *)__base::end()) overshoots
+ * (Create 0x150). The deque's teardown destructor inlines five levels where every shape stops at
+ * four: the level rule above is not the whole story. */
 
 #ifndef _MSL_VECTOR
 #define _MSL_VECTOR
