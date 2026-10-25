@@ -5,37 +5,31 @@
  * UpdateLocalGame. Only some of it so far. Defined in reverse of their image order
  * (-inline deferred). */
 
+#include "../zanim/zanim.h"
+
 /* a network object as CZNetwork's table hands it out (only its data) */
 struct NetObject {
     unsigned char _0[0x1c];
     void *m_data;   // 0x1c
 };
 
+/* the DME's ownership and lifespan of an object (their values are not in SOCOM 1's DWARF, only
+ * their names in zNetCreateObject's) */
+enum NetOwnershipStatus {};
+enum NetObjectLifespan {};
+
 class CZNetwork {
 public:
+    void zNetRegisterRemoteObjectCallback(int index, void (*creation)(int, int),
+                                          void (*update)(int, int, int),
+                                          void (*postupdate)(int, int, int),
+                                          void (*deletion)(int, int));
+    int zNetCreateObject(int *index, NetOwnershipStatus own, NetObjectLifespan life, unsigned int a,
+                         int b, unsigned int c, int d, void *e, char *name, int structure);
     NetObject *zNetGetObject(int index);
 };
 
 extern CZNetwork theNetwork;
-
-/* a valve (only its value) */
-class CValve {
-public:
-    char *m_name;   // 0x0
-    unsigned int m_value : 16;   // 0x4
-    unsigned int m_type : 8;   // 0x4
-    unsigned int m_name_pooled : 1;   // 0x4
-    unsigned int m_pooled : 1;   // 0x4
-    unsigned int m_unused : 6;   // 0x4
-};
-
-enum VALVE_STATE {
-    VALVE_SAME,
-    VALVE_ON,
-    VALVE_OFF
-};
-
-extern "C" void func_003519F0(CValve *valve, VALVE_STATE state);   /* CValve::MakeCallbacks */
 
 /* CValve::SetValue, inlined in both builds (as fts_mission.cpp spells it) */
 inline void SetValveValue(CValve *valve, int value)
@@ -46,7 +40,7 @@ inline void SetValveValue(CValve *valve, int value)
         state = value == 0 ? VALVE_OFF : VALVE_ON;
     valve->m_value = value;
     if (state != VALVE_SAME)
-        func_003519F0(valve, state);
+        valve->MakeCallbacks(state);
 }
 
 /* the online game (SOCOM 1's CZNetGame, at SOCOM II's offsets: only what this unit touches) */
@@ -146,16 +140,11 @@ extern int data_004412C8;
 extern unsigned char data_004412D8;   /* the sides swapped */
 extern unsigned int data_00441470;    /* (the local player's team) */
 
-void func_00620D28();   /* (the DME's: SOCOM 1's NetRegisterObjectStart) */
-void func_00620DB0(int *field, int offset, int a, int b, int c, void *type);   /* (NetObjectField) */
-void func_00620E98(int *index, const char *name, int size);   /* (NetRegisterStructure) */
-void func_0030CE80(CZNetwork *net, int index, void (*creation)(int, int),
-                   void (*update)(int, int, int), void (*postupdate)(int, int, int),
-                   void (*deletion)(int, int));   /* (CZNetwork::zNetRegisterRemoteObjectCallback) */
+void NetRegisterObjectStart();   /* (the DME's) */
+void NetObjectField(int *field, int offset, int a, int b, int c, void *type);
+void NetRegisterStructure(int *index, const char *name, int size);
 void *func_002BD0A0();   /* (fts_remote.cpp's broadcast schedules) */
 void *func_002BD120();
-int func_0030D670(CZNetwork *net, int *index, int own, int life, unsigned int a, int b,
-                  unsigned int c, int d, void *e, const char *name, int structure);   /* (CZNetwork::zNetCreateObject) */
 void *memset(void *dst, int c, unsigned int n);
 void func_002A7560(CZNetGame *game, bool on);
 void func_002C2D50(int value);   /* (fts_net_persona.cpp's: the local persona's byte 0x43) */
@@ -169,26 +158,28 @@ void CZGameState::zNetRegisterGame()
     TypeGameObject g;
     TypeGameObject *p = &g;
 
-    func_00620D28();
-    func_00620DB0(&data_00441258, (int)&p->m_0 - (int)p, 1, 1, 5, func_002BD120());
-    func_00620DB0(&data_00441260, (int)&p->m_8 - (int)p, 4, 5, 1, func_002BD0A0());
-    func_00620DB0(&data_00441268, (int)&p->m_c - (int)p, 4, 5, 1, func_002BD120());
-    func_00620DB0(&data_00441270, (int)&p->m_10 - (int)p, 4, 5, 1, func_002BD120());
-    func_00620DB0(&data_00441288, (int)&p->m_18_0 - (int)p, 4, 5, 1, func_002BD0A0());
-    func_00620DB0(&data_00441278, (int)&p->m_14 - (int)p, 2, 3, 1, func_002BD0A0());
-    func_00620DB0(&data_00441280, (int)&p->m_16 - (int)p, 2, 3, 1, func_002BD0A0());
-    func_00620DB0(&data_00441290, (int)&p->m_1c - (int)p, 1, 1, 1, func_002BD0A0());
-    func_00620DB0(&data_00441298, (int)&p->m_1d - (int)p, 1, 1, 1, func_002BD0A0());
-    func_00620DB0(&data_004412A0, (int)&p->m_1e - (int)p, 1, 1, 1, func_002BD0A0());
-    func_00620DB0(&data_004412A8, (int)&p->m_1f - (int)p, 1, 1, 1, func_002BD0A0());
-    func_00620DB0(&data_004412B0, (int)&p->m_20 - (int)p, 1, 1, 1, func_002BD0A0());
-    func_00620DB0(&data_004412B8, (int)&p->m_21 - (int)p, 1, 1, 1, func_002BD0A0());
-    func_00620DB0(&data_004412C0, (int)&p->m_22 - (int)p, 1, 1, 32, func_002BD0A0());
-    func_00620DB0(&data_004412C8, (int)&p->m_42 - (int)p, 1, 1, 24, func_002BD0A0());
-    func_00620E98(&m_NetStructIndexGameObject, "GameState", sizeof(TypeGameObject));
-    func_0030CE80(&theNetwork, m_NetStructIndexGameObject, RemoteGameCreationCallback,
-                  RemoteGameUpdateCallback, RemoteGamePostUpdateCallback,
-                  RemoteGameDeletionCallback);
+    NetRegisterObjectStart();
+    NetObjectField(&data_00441258, (int)&p->m_0 - (int)p, 1, 1, 5, func_002BD120());
+    NetObjectField(&data_00441260, (int)&p->m_8 - (int)p, 4, 5, 1, func_002BD0A0());
+    NetObjectField(&data_00441268, (int)&p->m_c - (int)p, 4, 5, 1, func_002BD120());
+    NetObjectField(&data_00441270, (int)&p->m_10 - (int)p, 4, 5, 1, func_002BD120());
+    NetObjectField(&data_00441288, (int)&p->m_18_0 - (int)p, 4, 5, 1, func_002BD0A0());
+    NetObjectField(&data_00441278, (int)&p->m_14 - (int)p, 2, 3, 1, func_002BD0A0());
+    NetObjectField(&data_00441280, (int)&p->m_16 - (int)p, 2, 3, 1, func_002BD0A0());
+    NetObjectField(&data_00441290, (int)&p->m_1c - (int)p, 1, 1, 1, func_002BD0A0());
+    NetObjectField(&data_00441298, (int)&p->m_1d - (int)p, 1, 1, 1, func_002BD0A0());
+    NetObjectField(&data_004412A0, (int)&p->m_1e - (int)p, 1, 1, 1, func_002BD0A0());
+    NetObjectField(&data_004412A8, (int)&p->m_1f - (int)p, 1, 1, 1, func_002BD0A0());
+    NetObjectField(&data_004412B0, (int)&p->m_20 - (int)p, 1, 1, 1, func_002BD0A0());
+    NetObjectField(&data_004412B8, (int)&p->m_21 - (int)p, 1, 1, 1, func_002BD0A0());
+    NetObjectField(&data_004412C0, (int)&p->m_22 - (int)p, 1, 1, 32, func_002BD0A0());
+    NetObjectField(&data_004412C8, (int)&p->m_42 - (int)p, 1, 1, 24, func_002BD0A0());
+    NetRegisterStructure(&m_NetStructIndexGameObject, "GameState", sizeof(TypeGameObject));
+    theNetwork.zNetRegisterRemoteObjectCallback(m_NetStructIndexGameObject,
+                                                RemoteGameCreationCallback,
+                                                RemoteGameUpdateCallback,
+                                                RemoteGamePostUpdateCallback,
+                                                RemoteGameDeletionCallback);
 }
 
 /* after an update: the valve at 0x64 set from the flag the object carries (OVL1 0x2C07B0) */
@@ -238,8 +229,8 @@ int CZGameState::CreateLocalGame(CZNetGame *game)
 {
     int index;
 
-    if (func_0030D670(&theNetwork, &index, 1, 2, 0, 0, 0, 0, 0, "GameObject",
-                      m_NetStructIndexGameObject))
+    if (theNetwork.zNetCreateObject(&index, (NetOwnershipStatus)1, (NetObjectLifespan)2, 0, 0, 0,
+                                    0, 0, "GameObject", m_NetStructIndexGameObject))
         return -1;
     NetObject *obj = theNetwork.zNetGetObject(index);
 

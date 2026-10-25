@@ -68,7 +68,9 @@ public:
  * none), and a compass one (OVL1 0x2C7370).
  * OPEN, 0xC0 against 0xA0: the target carries each step's bool in v0, re-extended (andi 0xff)
  * between the tests, as an && chain materialised into a value; here the chain branches. Tried:
- * a bool local, the tests compared == false, the bit-field compared != 0. */
+ * a bool local, the tests compared == false, the bit-field compared != 0; round 8: the chain
+ * accumulated in a bool step by step (0xB4), and nested inline bools (the first two tests, then
+ * the display valve) -- all 0xC0. SOCOM 1's (0xAC) has the same shape with one more andi */
 bool CMissionObjectiveCam::IsAvailable() const
 {
     return !IsComplete() && !IsInvalid() && IsDisplayOn() && m_isCompass;

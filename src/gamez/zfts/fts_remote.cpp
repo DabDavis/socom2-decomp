@@ -201,7 +201,7 @@ extern CZNetwork theNetwork;   /* see the head of the file */
 extern unsigned char data_004412D8;
 extern CZOnlineLobby theLobby;
 
-void func_00623470(int index);
+void NetFreeObject(int index);
 void func_005423E0(int a, float b);
 void func_002BD640(CZSealBody *body, int arg);   /* CZSealState::UpdateLocalSeal */
 int func_002C7BF0(CZVehicle *vehicle);
@@ -994,7 +994,7 @@ extern "C" void func_002B7950()
             case 'P':
                 break;
             case 'T':
-                func_00623470(i);
+                NetFreeObject(i);
                 break;
             case 'S':
                 break;

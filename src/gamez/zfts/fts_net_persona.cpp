@@ -13,6 +13,10 @@ struct NetObject {
 
 class CZNetwork {
 public:
+    void zNetRegisterRemoteObjectCallback(int index, void (*creation)(int, int),
+                                          void (*update)(int, int, int),
+                                          void (*postupdate)(int, int, int),
+                                          void (*deletion)(int, int));
     int zNetGetMyGameClientIndex();
     NetObject *zNetGetObject(int index);
 };
@@ -143,12 +147,9 @@ extern int data_00441430;
 extern int data_00441438;
 extern int data_00441440;
 
-void func_00620D28();   /* (the DME's: SOCOM 1's NetRegisterObjectStart) */
-void func_00620DB0(int *field, int offset, int a, int b, int c, void *type);   /* (NetObjectField) */
-void func_00620E98(int *index, const char *name, int size);   /* (NetRegisterStructure) */
-void func_0030CE80(CZNetwork *net, int index, void (*creation)(int, int),
-                   void (*update)(int, int, int), void (*postupdate)(int, int, int),
-                   void (*deletion)(int, int));   /* (CZNetwork::zNetRegisterRemoteObjectCallback) */
+void NetRegisterObjectStart();   /* (the DME's) */
+void NetObjectField(int *field, int offset, int a, int b, int c, void *type);
+void NetRegisterStructure(int *index, const char *name, int size);
 void *func_002BD0A0();   /* (fts_remote.cpp's broadcast schedules) */
 void *func_002BD0E0();
 void func_002C4500();                       /* (the teams counted) */
@@ -162,23 +163,25 @@ void CZPersonaState::zNetRegisterPersona()
     PersonaData d;
     PersonaData *p = &d;
 
-    func_00620D28();
-    func_00620DB0(&data_00441400, (int)&p->m_team - (int)p, 4, 5, 1, func_002BD0A0());
-    func_00620DB0(&data_00441440, (int)&p->m_4 - (int)p, 4, 4, 1, func_002BD0A0());
-    func_00620DB0(&data_00441420, (int)&p->m_8 - (int)p, 4, 4, 1, func_002BD0E0());
-    func_00620DB0(&data_00441438, (int)&p->m_c - (int)p, 2, 3, 1, func_002BD0E0());
-    func_00620DB0(&data_00441410, (int)&p->m_name - (int)p, 1, 1, 32, func_002BD0A0());
-    func_00620DB0(&data_00441418, (int)&p->m_clan - (int)p, 1, 1, 16, func_002BD0E0());
-    func_00620DB0(&data_00441408, (int)&p->m_3e - (int)p, 1, 0, 1, func_002BD0A0());
-    func_00620DB0(&data_00441428, (int)&p->m_3f - (int)p, 1, 1, 1, func_002BD0E0());
-    func_00620DB0(&data_004413E8, (int)&p->m_40 - (int)p, 1, 1, 1, func_002BD0A0());
-    func_00620DB0(&data_004413F0, (int)&p->m_41 - (int)p, 1, 1, 1, func_002BD0A0());
-    func_00620DB0(&data_004413F8, (int)&p->m_42 - (int)p, 1, 1, 1, func_002BD0E0());
-    func_00620DB0(&data_00441430, (int)&p->m_43 - (int)p, 1, 0, 1, func_002BD0E0());
-    func_00620E98(&m_NetStructIndexPersonaObject, "PersonaState", sizeof(PersonaData));
-    func_0030CE80(&theNetwork, m_NetStructIndexPersonaObject, RemotePersonaCreationCallback,
-                  RemotePersonaUpdateCallback, RemotePersonaPostUpdateCallback,
-                  RemotePersonaDeletionCallback);
+    NetRegisterObjectStart();
+    NetObjectField(&data_00441400, (int)&p->m_team - (int)p, 4, 5, 1, func_002BD0A0());
+    NetObjectField(&data_00441440, (int)&p->m_4 - (int)p, 4, 4, 1, func_002BD0A0());
+    NetObjectField(&data_00441420, (int)&p->m_8 - (int)p, 4, 4, 1, func_002BD0E0());
+    NetObjectField(&data_00441438, (int)&p->m_c - (int)p, 2, 3, 1, func_002BD0E0());
+    NetObjectField(&data_00441410, (int)&p->m_name - (int)p, 1, 1, 32, func_002BD0A0());
+    NetObjectField(&data_00441418, (int)&p->m_clan - (int)p, 1, 1, 16, func_002BD0E0());
+    NetObjectField(&data_00441408, (int)&p->m_3e - (int)p, 1, 0, 1, func_002BD0A0());
+    NetObjectField(&data_00441428, (int)&p->m_3f - (int)p, 1, 1, 1, func_002BD0E0());
+    NetObjectField(&data_004413E8, (int)&p->m_40 - (int)p, 1, 1, 1, func_002BD0A0());
+    NetObjectField(&data_004413F0, (int)&p->m_41 - (int)p, 1, 1, 1, func_002BD0A0());
+    NetObjectField(&data_004413F8, (int)&p->m_42 - (int)p, 1, 1, 1, func_002BD0E0());
+    NetObjectField(&data_00441430, (int)&p->m_43 - (int)p, 1, 0, 1, func_002BD0E0());
+    NetRegisterStructure(&m_NetStructIndexPersonaObject, "PersonaState", sizeof(PersonaData));
+    theNetwork.zNetRegisterRemoteObjectCallback(m_NetStructIndexPersonaObject,
+                                                RemotePersonaCreationCallback,
+                                                RemotePersonaUpdateCallback,
+                                                RemotePersonaPostUpdateCallback,
+                                                RemotePersonaDeletionCallback);
 }
 
 /* nothing on an update (OVL1 0x2C5800: its data's load kept, as in fts_net_blather.cpp) */
