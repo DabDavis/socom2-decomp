@@ -5,6 +5,9 @@
  * and UnInit (0x21CBA0), which inlines OnClose as SOCOM 1's called it. The layout is hud_weaponsel.h's.
  * Defined in reverse of their image order (-inline deferred). */
 
+#include <stdio.h>
+#include <string.h>
+
 #include "../../gamez/ztwod/ztwod.h"
 #include "../../gamez/zinput/zinput.h"
 #include "hud_weaponsel.h"
@@ -16,7 +19,25 @@ public:
     void SetCurReticule(bool flag);
     int GetNumItems() const;
     zdb::CTexHandle *GetIcon(int index);
+    int GetNumMags(int index);
+    const char *GetItemName(int index);
+    class CZFTSWeapon *GetItemByIndex(int index) const;
 };
+
+/* a kit item as the selector reads it: its type byte (11: no ammunition texts) */
+class CZFTSWeapon {
+public:
+    unsigned char _0[0x7c];
+    unsigned char m_type;   // 0x7c
+};
+
+/* SOCOM 1's CZKit::GetAmmoCount and GetMaxAmmoCount (OVL2 0x5C38A0, 0x5C3CF0: the rows unnamed,
+ * called as C) */
+extern "C" int func_005C38A0(CZKit *kit, int index);
+extern "C" int func_005C3CF0(CZKit *kit, int index);
+
+/* a string-table string formatted with a number (hud_main.cpp's tail, 0x1FE120; no row named) */
+extern "C" void func_001FE120(char *buf, int size, int id, int n);
 
 /* SOCOM 1's CZKit::isSelectableItem (OVL2 0x5BDC30, the row unnamed: called as C) */
 extern "C" int func_005BDC30(CZKit *kit, int index);
@@ -26,7 +47,13 @@ class CSealCtrl {
 public:
     unsigned char _0[0x114];
     unsigned int m_padindex;   // 0x114
+    unsigned char _118[0x224 - 0x118];
+    float m_hotswap1;   // 0x224: the item the first hot-swap button selects (a float, read as an int)
+    float m_hotswap2;   // 0x228: the second's
 };
+
+/* a localised string by its id (the string table's; 0x361B40, no row named yet) */
+extern "C" const char *func_00361B40(int id);
 
 /* SOCOM 1's CSealCtrl::SetMenuState with a flag added (OVL2; the row unnamed: called as C) */
 extern "C" void func_00597740(CSealCtrl *ctrl, int state, int flag);
@@ -65,6 +92,7 @@ static inline CPad *GetPad(unsigned int n)
 class CHUD {
 public:
     static CZSealBody *GetHUDOwner();
+    static void HudText_to_upper(char *text);
     static PNT4D m_hud_textcolor;
 
     unsigned char _0[0xb1];
@@ -870,5 +898,128 @@ void CWeaponSel::PlaceMiddleIcon()
 
         m_weaponicon[1].SetPos((int)(m_menuposx[1] + m_iconoffsetx), (int)(top + m_iconoffsety),
                                (int)(w + (m_menuposx[1] + m_iconoffsetx)), (int)(bottom + m_iconoffsety));
+    }
+}
+
+/* the middle row's texts: the weapon's name, upper-cased, its rounds over the magazine's size
+ * (right-aligned at 148) and its spare magazines a line lower ("1 MAGAZINE" or n of them), the
+ * last two off for an item of type 11 (SOCOM 1's, its locals' names from its DWARF; the strings
+ * SOCOM II's string table's).
+ * OPEN, 8 bytes short: the target, like SOCOM 1's, copies the seal into a saved register
+ * (`move s1,v0; beqz s1`), forms the kit's address once in s0, and gives the seal's s1 to ammomax
+ * (the seal dead after the kit). A kit local makes MW test v0 and drop the seal's copy (16 bytes
+ * short); the seal read again at the end (pItem, as here) keeps the copy but holds it in s3, the
+ * locals one register up and a load short; the calls written `seal->m_kit.X()` (SOCOM 1's DWARF
+ * has no kit local) re-form the kit for every call. Tried also: early return, the declaration in
+ * the condition, `(seal = f()) != 0`, GetKit() at each call. */
+void CWeaponSel::PlaceWeaponText()
+{
+    static char tempstr[80];
+    float topx = 4.0f + m_menuposx[1];
+    float topy = 48.0f + m_menuposy[1];
+
+    m_weaponname.On();
+    m_weapondescription.Off();
+    m_ammotype.Off();
+    m_ammocount.On();
+    m_magcount.On();
+
+    CZSealBody *seal = CHUD::GetHUDOwner();
+
+    if (seal) {
+        CZKit *kit = seal->GetKit();
+        int mags = kit->GetNumMags(m_current_item);
+        int ammo = func_005C38A0(kit, m_current_item);
+        int ammomax = func_005C3CF0(kit, m_current_item);
+        const char *itemname = kit->GetItemName(m_current_item);
+
+        strlen(itemname);
+        strncpy(tempstr, itemname, 80);
+        CHUD::HudText_to_upper(tempstr);
+        m_weaponname.Load(0.9f, tempstr, m_myfont, topx, topy, true);
+        if (ammomax) {
+            sprintf(tempstr, "%d/%d", ammo, ammomax);
+            m_ammocount.Load(0.9f, tempstr, m_myfont, 80.0f + topx, topy, true);
+            m_ammocount.UpdatePos();
+            m_ammocount.SetPos((int)(148.0f - m_ammocount.m_charheight), (int)topy);
+            m_ammocount.UpdatePos();
+        } else {
+            m_ammocount.Off();
+        }
+        topy += 14.0f;
+        if (mags)
+            mags--;
+        if (mags) {
+            const char *text;
+
+            if (mags > 1) {
+                func_001FE120(tempstr, 80, 0xEC42, mags);
+                text = tempstr;
+            } else {
+                text = func_00361B40(0xEC43);
+            }
+            m_magcount.Load(0.9f, text, m_myfont, topx, topy, true);
+        } else {
+            m_magcount.Off();
+        }
+
+        CZFTSWeapon *pItem = seal->m_kit.GetItemByIndex(m_current_item);
+
+        if (pItem->m_type == 11) {
+            m_ammotype.Off();
+            m_ammocount.Off();
+            m_magcount.Off();
+        }
+    }
+}
+
+/* the hot-swap labels, when the seal's two hot-swap slots differ: each shown beside the middle
+ * row, right-aligned at 148, while that row holds its slot's item, else off (SOCOM 1's, SOCOM
+ * II's strings from the string table and the slots its controller's floats) */
+void CWeaponSel::PlaceHotSwapLabels()
+{
+    CZSealBody *seal = CHUD::GetHUDOwner();
+
+    if (!seal)
+        return;
+
+    int slot1 = (int)seal->m_ctrl->m_hotswap1;
+    int slot2 = (int)seal->m_ctrl->m_hotswap2;
+
+    m_hotswapL1text.On();
+    m_hotswapL2text.On();
+    if (slot1 == slot2)
+        return;
+    if (m_weaponnum[1] == slot1) {
+        C2DFont *font = m_myfont;
+        int x, y;
+
+        y = (int)(62.0f + m_menuposy[1]);
+        x = (int)(80.0f + m_menuposx[1]);
+
+        const char *str = func_00361B40(0xEC6D);
+
+        m_hotswapL1text.Load(0.9f, str, font, x, y, true);
+        m_hotswapL1text.UpdatePos();
+        m_hotswapL1text.SetPos((int)(148.0f - m_hotswapL1text.m_charheight), (int)(62.0f + m_menuposy[1]));
+        m_hotswapL1text.UpdatePos();
+    } else {
+        m_hotswapL1text.Off();
+    }
+    if (m_weaponnum[1] == slot2) {
+        C2DFont *font = m_myfont;
+        int x, y;
+
+        y = (int)(62.0f + m_menuposy[1]);
+        x = (int)(80.0f + m_menuposx[1]);
+
+        const char *str = func_00361B40(0xEC6E);
+
+        m_hotswapL2text.Load(0.9f, str, font, x, y, true);
+        m_hotswapL2text.UpdatePos();
+        m_hotswapL2text.SetPos((int)(148.0f - m_hotswapL2text.m_charheight), (int)(62.0f + m_menuposy[1]));
+        m_hotswapL2text.UpdatePos();
+    } else {
+        m_hotswapL2text.Off();
     }
 }

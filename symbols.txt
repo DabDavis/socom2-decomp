@@ -6679,7 +6679,7 @@
 0x003625E0 0x320 func_003625E0  # OVL1
 0x00362900 0x220 func_00362900  # OVL1
 0x00362B20 0x4C SetFont__9C2DStringFP7C2DFont  # OVL1; s1:align
-0x00362B70 0x250 func_00362B70  # OVL1
+0x00362B70 0x250 UpdatePos__9C2DStringFv  # OVL1; s1:calls by hand (the HUD lane: SOCOM 1's C2DString::UpdatePos -- PlaceHotSwapLabels calls it after each label's Load and SetPos at the same places in both builds; CTeamNames and the info box after SetString)
 0x00362DC0 0x30 DeleteCharacter__9C2DStringFv  # OVL1; by hand (c2dstring.cpp: SOCOM II's, before NewLine: the last character dropped while more than one remains; the name ours)
 0x00362DF0 0x8 NewLine__9C2DStringFv  # OVL1; s1:order by hand (c2dstring.cpp: SOCOM 1's NewLine, before AddCharacter as there; it tail-calls AddCharacter with '\n')
 0x00362E00 0x228 AddCharacter__9C2DStringFc  # OVL1; s1:callee by hand (NewLine tail-calls it with '\n', as SOCOM 1's NewLine calls AddCharacter)

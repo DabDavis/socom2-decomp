@@ -201,6 +201,8 @@ public:
     void NewLine();
     void AddCharacter(char c);
     void SetPos(int x, int y);
+    /* the string's extent measured again after a change (SOCOM 1's UpdatePos, 0x362B70) */
+    void UpdatePos();
     void Draw(zdb::CTextureRelocMgr *mgr, zdb::CCamera *cam, int depth);
     void MakePacket(zdb::CTextureRelocMgr *mgr, int depth);
 
