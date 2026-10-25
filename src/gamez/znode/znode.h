@@ -1125,12 +1125,61 @@ public:
     unsigned int m_flags : 30;   // 0x4c (more bits the constructor clears, a count at 14)
     unsigned char _50[0x64 - 0x50];
     CNode *m_node;   // 0x64
-    unsigned char _68[0x70 - 0x68];
+    /* the animation moving the prop, cleared when it is deleted (ClearAnimations, l_Tick; the
+     * name ours) */
+    class CClutterAnim *m_anim;   // 0x68
+    unsigned char _6c[0x70 - 0x6c];
 };   // 0x70 bytes
 
-class CClutterAnim;
-/* a body pushing the clutter about (SOCOM 1's list element; the name ours) */
-struct CClutterEffector;
+/* a prop's animation (SOCOM 1's grid_clutter.cpp class): the prop it moves and a node it made.
+ * Its destructor is inline in SOCOM II (SOCOM 1's out-of-line copy, 0x218980, has no counterpart):
+ * the prop's rotation reset and the node deleted. The names past m_clutter are ours */
+class CClutterAnim {
+public:
+    ~CClutterAnim()
+    {
+        if (m_clutter)
+            ((CQuat *)m_clutter->m_matrix.m_matrix[1])->MakeYXZRot(0.0f, 0.0f, 0.0f);
+        if (m_node)
+            delete m_node;
+        m_node = 0;
+    }
+    void TickForce(CPnt3D *force, CPnt3D *pos, float a, float b);
+
+    CClutter *m_clutter;   // 0x0
+    CNode *m_node;   // 0x4
+    unsigned char _8[0x14 - 0x8];
+    float m_14;   // 0x14
+    float m_18;   // 0x18
+    float m_1c;   // 0x1c
+    float m_20;   // 0x20
+};
+
+/* a body pushing the clutter about (SOCOM 1's list element, 0x28 bytes, the size RegisterEffector
+ * news: its owner, its position and velocity borrowed, two vectors zeroed and its radius; the
+ * names ours) */
+struct CClutterEffector {
+    const void *m_owner;   // 0x0
+    const CPnt3D *m_pos;   // 0x4
+    const CPnt3D *m_vel;   // 0x8
+    CPnt3D m_c;   // 0xc
+    CPnt3D m_18;   // 0x18
+    float m_radius;   // 0x24
+};
+
+/* SOCOM II's pointer-list walks: the first node is built from a REFERENCE to the sentinel's next_
+ * link, so &end_.next_ is a compiler temporary -- computed once, CSE'd across a walk and the clear
+ * (or the list's destructor) after it, and kept in the lowest saved register (ClearEffectors,
+ * ClearAnimations, ~CClutterAnimManager; the same shape is open in several lanes: CValve::
+ * DeleteCallbacks, ~CZAmmoList, zNetFlushMessages). include/list's begin() takes the link by value;
+ * these stand in for SOCOM II's MSL until it does (the names ours) */
+typedef std::__list_deleter<const void *, std::allocator<const void *> > PtrListBase;
+struct PtrListFirst : public PtrListBase::iterator {
+    PtrListFirst(PtrListBase::node_base *const &link) : PtrListBase::iterator(link) {}
+};
+inline PtrListBase::iterator ListBegin(PtrListBase &l) { return PtrListFirst(l.end_node().next_); }
+inline PtrListBase::iterator ListEnd(PtrListBase &l) { return PtrListBase::iterator(&l.end_node()); }
+inline void ListClear(PtrListBase &l) { l.erase(ListBegin(l), ListEnd(l)); }
 
 /* the clutter's animation: the props pushed about by effectors (SOCOM 1's grid_clutter.cpp class,
  * 0x70 bytes, its DWARF) */
@@ -1140,6 +1189,10 @@ public:
     ~CClutterAnimManager();
     /* every effector deleted, the list emptied (SOCOM 1's) */
     void ClearEffectors();
+    /* every animation deleted, the list emptied (SOCOM 1's) */
+    void ClearAnimations(bool detach);
+    /* an owner's effector taken off (SOCOM 1's) */
+    void UnRegisterEffector(const void *owner);
 
     unsigned char m_CellAnimate;   // 0x0
     CMatrix m_matrix;   // 0x10

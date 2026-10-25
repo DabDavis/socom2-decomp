@@ -355,19 +355,17 @@ void CWorld::ReleaseLandmarkList()
 }
 
 /* the lights gathered afresh, each placed in the world and listed in every cell its range covers
- * in x/z, their count given back (SOCOM 1's).
- * OPEN, 2 instructions (0x1CC of 0x1D4): the target computes &m_lights.end_.next_ from the end
- * pointer into s0 before the clear (addiu s0,s3,4) and reads the loop's first node through it
- * (lw a0,0(s0)) -- here the read is 4(s3), and a nop before the loop head follows from that; the
- * base's begin(), a node read through end_node() and the end taken before the clear were tried.
- * The rest (the cell's push through the list's by-value Add) is the target's */
+ * in x/z, their count given back (SOCOM 1's). The clear and the walk's first node both bind the
+ * sentinel's link by reference (znode.h's ListClear and PtrListFirst, SOCOM II's begin()): the
+ * target computes &m_lights.end_.next_ once, before the clear, and reads the walk's first node
+ * through it after the search; the iterator is assigned (a bitwise copy, then kept in memory) */
 int CWorld::GenerateLightList()
 {
-    m_lights.clear();
+    ListClear(m_lights);
     LightList_Search(this, m_lights);
     CLightList::iterator it, e = m_lights.end();
 
-    for (it = m_lights.begin(); it != e; ++it) {
+    for (it = CLightList::iterator(PtrListFirst(m_lights.end_node().next_)); it != e; ++it) {
         CLight *light = *it;
         CPnt3D pos(0.0f, 0.0f, 0.0f);
         CPnt3D bounds[2];
