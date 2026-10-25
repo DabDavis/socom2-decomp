@@ -736,7 +736,6 @@ extern "C" void func_002B6530(C2DMessage_Q *q, const char *text, int a, int b, i
 extern "C" void func_00213610(BitmapReticule *reticule);
 extern "C" void func_002371A0(CHudNetState *state);
 extern "C" void func_0021A510(CWeaponSel *sel, int flag);
-extern "C" void func_001FF370(CLensFlareManager *flares);
 
 /* the HUD made ready for the next mission: on, the letterbox and the piggyback strings put away,
  * zoomed out, the team names (single player) or the network boxes set up, the message queues
@@ -797,7 +796,7 @@ void CHUD::ReInit_Init()
     CameraZoom::Reset();
     func_002371A0(&data_00413120);
     func_0021A510(&m_weaponsel, 1);
-    func_001FF370(&m_lensflares);
+    m_lensflares.ReInit();
     m_socom2_1a0e8 = 0.0f;
 }
 

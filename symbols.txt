@@ -1704,7 +1704,7 @@
 0x001FF100 0x154 PreDITick__17CLensFlareManagerFf  # OVL1; s1:calls by hand (CHUD::PreDITick tail-calls it on the manager at CHUD+0x1A698, where SOCOM 1's calls CLensFlareSaturate::PreDITick)
 0x001FF260 0xC4 Clear__17CLensFlareManagerFv  # OVL1; by hand (CHUD::ReleaseHUD's call on the manager: every flare deleted through its virtual destructor, the list emptied, inactive; the name ours)
 0x001FF330 0x40 Init__17CLensFlareManagerFv  # OVL1; by hand (inactive, LoadRdr of lensflare.rdr, active if that gave any flare; the name ours)
-0x001FF370 0xE4 func_001FF370  # OVL1
+0x001FF370 0xE4 ReInit__17CLensFlareManagerFv  # OVL1; by hand (hud_lensflare.cpp: CHUD::ReInit_Init's last call on the manager at CHUD+0x1A698; the flares walked as Tick's and PreDITick's, each on a node placed at CPnt3D::zero through TransformToWorld and made (0x336650) or moved (0x3365E0) in the flare system; the name ours)
 0x001FF460 0x8C Reset__17CLensFlareManagerFv  # OVL1; by hand (CHUD::ReInit_Uninit's call on the manager: each flare's handle at 0x8C given back to the system at 0x488F10 and set to -1; the name ours)
 0x001FF4F0 0x140 LoadRdr__17CLensFlareManagerFPCc  # OVL1; by hand (Init's call with lensflare.rdr's name, as SOCOM 1's CLensFlareSaturate::LoadRdr took one)
 0x001FF630 0x270 func_001FF630  # OVL1
