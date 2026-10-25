@@ -19,8 +19,8 @@ M2C_UNK __dl__FPv(char * arg0);
 M2C_UNK __dt__10CAppCameraFv(char * arg0, s16 arg1);
 M2C_UNK func_001E9120(s32 arg0);
 M2C_UNK func_00288940(void);
-M2C_UNK func_00321400(s32 arg0);
-M2C_UNK func_00321D30(void);
+extern "C" M2C_UNK Clear__Q23zdb10CAssetListFv(s32 arg0);
+extern "C" M2C_UNK EmptyAssetRecycleBin__3zdbFv(void);
 M2C_UNK func_0033B720(s32 arg0);
 extern char *NodeUniverse__3zdb;
 extern char *appCamera;
@@ -49,8 +49,8 @@ void func_001E8FE0(void) {
             ((VC_60 *)(data_00408B78))->v_8(1);
         }
         data_00408B78 = NULL;
-        func_00321D30();
-        func_00321400((s32) &m_assets__Q23zdb9CAssetMgr);
+        EmptyAssetRecycleBin__3zdbFv();
+        Clear__Q23zdb10CAssetListFv((s32) &m_assets__Q23zdb9CAssetMgr);
         m_lightMapTexture__Q23zdb7CVisual = 0;
         data_004B4D90 = 0;
         data_004B4E48 = 0;

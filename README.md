@@ -555,6 +555,24 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     first, before any store;
   - `build/scratch/hud/pvar.py` compiles a probe once per macro value, with `PINC=` putting
     shadow headers first: a quick way to measure inline heights.
+- **Tells from the asset manager and the input classes** (round 6: node_assetlib.cpp,
+  zinput/, int_main.cpp):
+  - a pointer-list walk that reads an element twice across a call needs the base deleter's
+    iterator, the element cast out by value; the wrapper's reference-returning `*` keeps the
+    element's address in a saved register;
+  - a list-derived destructor matches only when defined inline in the class
+    (`~CAssetList() { Clear(); }`): it then inlines ~list one level and calls ~__list_imp, like
+    the implicit ~CEntityList; defined out of line it inlines all three levels;
+  - removing through `__list_imp::remove`, one level shallower than the wrapper's remove,
+    stacks its temporaries in the target's order;
+  - a functor that writes out its null test (`if (!p) return 0; delete p; return 0;`) gives the
+    target's two `move v0,zero`;
+  - an inline accessor returning a byte enum makes the caller narrow its own enum argument into
+    a fresh register;
+  - members zeroed before a class's vectors belong in the mem-initializer list;
+  - a one-pass loop over a static array (`NUM_PADS = 1`) keeps the array's lui/addiu form;
+  - `x = a - b; x /= c - b;` computes the divisor first, `(a - b) / (c - b)` the dividend;
+  - an explicit `p->~T()` passes -1; 0x3C866666 is 1.05/64, not 0.0164.
 - **Tool notes**: scdiff accepts the image's one non-zero pad word (0xFFFFFFFF at 0x1E70F4,
   after main); `automatch --stale` can drop a renamed destructor's draft when its re-draft
   misses (SlotList's and CWeaponSlot's were restored by hand, the old drafts renamed). A

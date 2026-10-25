@@ -6455,9 +6455,9 @@
 0x00353D10 0x2C0 ParseOperator__6CValveFPCc  # OVL1; s1:align
 0x00353FD0 0x498 func_00353FD0  # OVL1
 0x00354470 0x98 func_00354470  # OVL1
-0x00354510 0xD4 func_00354510  # OVL1
-0x003545F0 0x80 func_003545F0  # OVL1
-0x00354670 0x118 func_00354670  # OVL1
+0x00354510 0xD4 Free__Q23zdb8CTexListFv  # OVL1; s1:order+calls (SOCOM 1's Free, Append, GetHandle(name) in the same order; ~CAssetLib calls it as SOCOM 1's does) -- the zdb-world lane
+0x003545F0 0x80 Append__Q23zdb8CTexListFPQ23zdb8CTextureb  # OVL1; s1:order+calls (after Free as SOCOM 1's; CAssetLib::AddTexture calls it with true as SOCOM 1's does) -- the zdb-world lane
+0x00354670 0x118 GetHandle__Q23zdb8CTexListFPCc  # OVL1; s1:order+calls (after Append as SOCOM 1's; CAssetList::GetTexHandle calls it at SOCOM 1's call site) -- the zdb-world lane
 0x00354790 0xC8 func_00354790  # OVL1
 0x00354860 0x148 func_00354860  # OVL1
 0x003549B0 0x44 CopyTextureSelect__Q23zdb8CTextureFP8_word128  # OVL1; s1:exact

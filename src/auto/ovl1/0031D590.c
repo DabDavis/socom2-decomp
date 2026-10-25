@@ -6,10 +6,10 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+s32 FindLib__Q23zdb10CAssetListFPCc(M2C_UNK *);     /* extern */
 M2C_UNK func_0031D260(s32, s32, s32);               /* extern */
-s32 func_00321130(M2C_UNK *);                       /* extern */
 extern M2C_UNK m_assets__Q23zdb9CAssetMgr;
 
 void func_0031D590(s32 arg0, s32 arg1, s32 arg2) {
-    func_0031D260(arg0, func_00321130(&m_assets__Q23zdb9CAssetMgr), arg2);
+    func_0031D260(arg0, FindLib__Q23zdb10CAssetListFPCc(&m_assets__Q23zdb9CAssetMgr), arg2);
 }

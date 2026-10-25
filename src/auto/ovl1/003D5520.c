@@ -7,8 +7,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 s32 GetAnim__10CZAnimMainFPCcPCc(M2C_UNK *, M2C_UNK *, M2C_UNK); /* extern */
+s32 GetAssetList__Q23zdb6CWorldFv();                /* extern */
 s32 GetModel__Q23zdb10CAssetListFPCc(s32, M2C_UNK *); /* extern */
-s32 func_00321660();                                /* extern */
 extern M2C_UNK ZAnim;
 extern u8 data_003E1568;
 extern M2C_UNK data_003FD5C0;
@@ -24,9 +24,9 @@ extern s32 data_004B5340;
 extern s32 data_004B5348;
 
 void func_003D5520(void) {
-    data_004B5328 = GetModel__Q23zdb10CAssetListFPCc(func_00321660(), &data_003FD5C0);
-    data_004B5330 = GetModel__Q23zdb10CAssetListFPCc(func_00321660(), &data_003FD5C8);
-    data_004B5338 = GetModel__Q23zdb10CAssetListFPCc(func_00321660(), &data_003FD5D8);
+    data_004B5328 = GetModel__Q23zdb10CAssetListFPCc(GetAssetList__Q23zdb6CWorldFv(), &data_003FD5C0);
+    data_004B5330 = GetModel__Q23zdb10CAssetListFPCc(GetAssetList__Q23zdb6CWorldFv(), &data_003FD5C8);
+    data_004B5338 = GetModel__Q23zdb10CAssetListFPCc(GetAssetList__Q23zdb6CWorldFv(), &data_003FD5D8);
     data_004B5320 = data_004B5328;
     if (data_003E1568 != 0) {
         data_004B5348 = GetAnim__10CZAnimMainFPCcPCc(&ZAnim, &data_003FD5F0, 0);
