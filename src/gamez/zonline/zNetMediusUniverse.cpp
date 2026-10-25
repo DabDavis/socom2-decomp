@@ -20,6 +20,7 @@
 
 #include "../zrdr/zrdr.h"
 #include "../zsav/zsave.h"
+#include "../znet/znet.h"
 
 /* ---- what the unit calls in other units ---- */
 
@@ -107,10 +108,13 @@ class CZOnlineLobby {
 public:
     unsigned char _0[0x58];
     void (*m_event_handler)(const char *event, const char *arg);   // 0x58
+    unsigned char _5c[0xa8 - 0x5c];
+    unsigned char m_a8;   // 0xa8: the DNAS key is there
 };
 extern CZOnlineLobby theLobby;
 
 extern "C" {
+char *strtok(char *s, const char *delim);   /* (MAIN's) */
 extern int myConnectionIndex;   /* the Medius connection, -1 none */
 extern unsigned int data_0049E2D4;   /* zSys's ticks per second */
 const char *func_00361B40(int id);   /* a localised text */
@@ -158,13 +162,29 @@ public:
 
 /* ---- the universes (the Medius universe information server's answers) ---- */
 
+/* an API call's result (int-sized) */
+enum MediusErrorCode {
+    MediusSuccess = 0,
+    MediusErrorCode_Extent = 0x7FFFFFFF
+};
+
+bool CheckMediusError(MediusErrorCode err);
+
+/* a response's status (int-sized) */
+enum MediusCallbackStatus {
+    MediusCallbackSuccess = 0,
+    MediusCallbackStatus_Extent = 0x7FFFFFFF
+};
+
+bool CheckMediusCallbackStatus(const char *what, MediusCallbackStatus status);
+
 /* a universe's status, the response kept whole (the Medius SDK's MediusUniverseStatusListResponse:
  * copied member by member, a class with a constructor of its own -- the constructor is ours) */
 struct MediusUniverseStatusListResponse {
     MediusUniverseStatusListResponse() {}
 
     char MessageID[21];   // 0x0
-    int StatusCode;   // 0x18
+    MediusCallbackStatus StatusCode;   // 0x18
     char UniverseName[128];   // 0x1c
     char DNS[128];   // 0x9c
     int Port;   // 0x11c
@@ -186,6 +206,25 @@ struct UniverseStatus {
         m_version[0] = 0;
         m_url[0] = 0;
     }
+    /* the response kept, its patch level and URL split off its extended information */
+    UniverseStatus(MediusUniverseStatusListResponse *resp)
+    {
+        m_version[0] = 0;
+        m_url[0] = 0;
+        if (resp) {
+            char buf[0x80];
+            char *t;
+
+            m_info = *resp;
+            strncpy(buf, m_info.ExtendedInfo, sizeof(buf));
+            t = strtok(buf, " \t");
+            if (t)
+                strncpy(m_version, t, sizeof(m_version));
+            t = strtok(0, " \t");
+            if (t)
+                strncpy(m_url, t, sizeof(m_url));
+        }
+    }
 
     MediusUniverseStatusListResponse m_info;   // 0x0
     char m_version[0x20];   // 0x338
@@ -197,7 +236,7 @@ struct MediusGetUniverseNewsResponse {
     MediusGetUniverseNewsResponse() {}
 
     char MessageID[21];   // 0x0
-    int StatusCode;   // 0x18
+    MediusCallbackStatus StatusCode;   // 0x18
     char News[256];   // 0x1c
     char EndOfList;   // 0x11c
 };   // 0x120
@@ -212,14 +251,6 @@ extern bool data_0044FD88;   /* the news' last line in */
 extern bool data_0044FD90;   /* the universe server's connection failed */
 
 /* --- the Medius SDK's universe calls (OVL2, called through their placeholders) ---------------- */
-
-/* an API call's result (int-sized) */
-enum MediusErrorCode {
-    MediusSuccess = 0,
-    MediusErrorCode_Extent = 0x7FFFFFFF
-};
-
-bool CheckMediusError(MediusErrorCode err);
 
 /* what the universe information server is asked for: no session key, the information wanted and
  * the text's encoding and language */
@@ -237,9 +268,62 @@ extern "C" {
 MediusErrorCode func_0064AD98(MediusGetUniverseInformationRequest *req,
                               MediusUniverseNewsCallback news,
                               MediusUniverseStatusListCallback status);   /* MediusGetUniverseInformation */
-void func_002FDED0(int, int, int, MediusGetUniverseNewsResponse *resp);   /* (the news' callback) */
-void func_002FDAF0(int, int, int, MediusUniverseStatusListResponse *resp);   /* (the status list's) */
 }
+
+void cbGetUniverseNews(int, int, int, MediusGetUniverseNewsResponse *resp);
+void cbGetUniverseStatusList(int, int, int, MediusUniverseStatusListResponse *resp);
+
+/* --- the connection to the universe server (the DME SDK's types, as the chat unit has them) ---- */
+
+/* a server's addresses (a plain struct, copied as words) */
+struct NetAddressList {
+    int AddressType0;   // 0x0
+    char Address0[16];   // 0x4
+    int BinaryAddress0;   // 0x14
+    int AddressType1;   // 0x18
+    char Address1[16];   // 0x1c
+    int BinaryAddress1;   // 0x2c
+};   // 0x30
+
+/* a server's key (a plain struct: assigned as eight two-word passes) */
+struct NetServerKey {
+    unsigned int m_words[16];
+};   // 0x40
+
+/* where a server is and how to talk to it (a class with a constructor of its own, so copied
+ * member by member) */
+struct NetConnectionInfo {
+    NetConnectionInfo() {}
+
+    int Type;   // 0x0
+    NetAddressList AddressList;   // 0x4
+    int WorldID;   // 0x34
+    NetServerKey ServerKey;   // 0x38
+    char SessionKey[17];   // 0x78
+    char AccessKey[17];   // 0x89
+};   // 0x9c
+
+/* a connection asked for: the server's info, then the buffer's size and the callback told the
+ * connection's index */
+struct MediusConnectParams {
+    NetConnectionInfo ConnectInfo;   // 0x0
+    unsigned char _9c[0xf0 - 0x9c];
+    int BufferSize;   // 0xf0: 256
+    void (*Callback)(int index);   // 0xf4
+    int _f8;   // 0xf8
+    int _fc;   // 0xfc
+};   // 0x100
+
+extern NetConnectionInfo data_0044FCA0;   /* the universe server */
+
+extern "C" {
+void func_0064A750(NetConnectionInfo *info, int type, const char *ip, int port, int flags);   /* (the info built for an address) */
+void func_0064F4E0(NetServerKey *key);   /* (the DNAS key) */
+int func_00300740(int kind, MediusConnectParams *params);   /* a connection asked for (the friends' unit's) */
+void func_0030E3A0(CZNetwork *net, int);   /* (CZNetwork's) */
+}
+
+void cbConnectToUniverse(int index);
 
 /* ---- the accounts ---- */
 
@@ -357,6 +441,8 @@ public:
         const char *GetUniverseDescription(unsigned int i);
         const char *GetUniverseName(unsigned int i);
         void ConnectToUniverse(const char *host, int port);
+        int GetNewsCount();
+        const char *GetNewsLine(int i);
 
         /* the account by its lobby server and name, 0 none (inlined everywhere but Find itself) */
         AcctRecord *FindAcct(const char *host, int port, const char *name)
@@ -576,6 +662,96 @@ void CAcctDB::Serialize(int flags)
 }
 
 /* --- the universes ---------------------------------------------------------------------------- */
+
+/* the universe server's connection made or refused (the index negative) */
+void cbConnectToUniverse(int index)
+{
+    if (index < 0)
+        data_0044FD90 = 1;
+}
+
+/* the universe server looked up and connected to, with the DNAS key when there is one */
+void CAcctDB::ConnectToUniverse(const char *host, int port)
+{
+    char ip[64];
+
+    if (!theNetwork.zNetLookupHost(host, ip, sizeof(ip))) {
+        MediusConnectParams params;
+        NetServerKey key;
+
+        func_0064A750(&params.ConnectInfo, 0, ip, port, 1);
+        memcpy(&data_0044FCA0, &params.ConnectInfo, sizeof(NetConnectionInfo));
+        if (theLobby.m_a8)
+            func_0064F4E0(&key);
+        else
+            memset(&key, 0, sizeof(key));
+        data_0044FCA0.ServerKey = key;
+        params.ConnectInfo = data_0044FCA0;
+        params.BufferSize = 256;
+        params.Callback = cbConnectToUniverse;
+        params._f8 = 0;
+        params._fc = 0;
+        data_0044FD90 = 0;
+        if (func_00300740(2, &params))
+            func_0030E3A0(&theNetwork, 1);
+        else
+            data_0044FD90 = 1;
+    } else {
+        data_0044FD90 = 1;
+    }
+}
+
+/* a line of the universe's news kept; the news is in at its last line */
+void cbGetUniverseNews(int, int, int, MediusGetUniverseNewsResponse *resp)
+{
+    if (CheckMediusCallbackStatus("UniverseNews", resp->StatusCode)) {
+        data_0044FD70.push_back(*resp);
+        if (resp->EndOfList)
+            data_0044FD88 = 1;
+    } else {
+        data_0044FD88 = 1;
+    }
+}
+
+/* the number of lines of news */
+int CAcctDB::GetNewsCount()
+{
+    return data_0044FD70.size();
+}
+
+/* a line of the news */
+const char *CAcctDB::GetNewsLine(int i)
+{
+    return data_0044FD70[i].News;
+}
+
+/* a universe kept (a temporary built from the response, below the editor in the frame); at the
+ * list's last entry the server menu's SERVER_LIST variable built from them (each universe's name,
+ * whether it is up, its users and its limit) */
+void cbGetUniverseStatusList(int, int, int, MediusUniverseStatusListResponse *resp)
+{
+    if (CheckMediusCallbackStatus("UniverseStatusList", resp->StatusCode)) {
+        data_0044FD50.push_back(UniverseStatus(resp));
+        if (resp->EndOfList) {
+            CRdrEditor ed;
+
+            ed.push(0);
+            for (UniverseStatusList::iterator i = data_0044FD50.begin(); i != data_0044FD50.end(); ++i) {
+                ed.push(0);
+                ed.addstringnode((*i).m_info.UniverseName);
+                ed.addintnode(!(*i).m_info.Status);
+                ed.addintnode((*i).m_info.UserCount);
+                ed.addintnode((*i).m_info.MaxUsers);
+                ed.pop();
+            }
+            ed.pop();
+            theUIVarManager.Add("SERVER_LIST", &ed, UIVL_TEMPORARY);
+            data_0044FD80 = 1;
+        }
+    } else {
+        data_0044FD80 = 1;
+    }
+}
 
 /* a universe's name by its place in the list, "" past its end */
 const char *CAcctDB::GetUniverseName(unsigned int i)
@@ -947,7 +1123,7 @@ void CSMGetServerList::GetInfo(unsigned char event)
         req.InfoType = 3;
         req.CharacterEncoding = 2;
         req.Language = 1;
-        CheckMediusError(func_0064AD98(&req, func_002FDED0, func_002FDAF0));
+        CheckMediusError(func_0064AD98(&req, cbGetUniverseNews, cbGetUniverseStatusList));
         break;
     }
     case 1: {

@@ -5059,20 +5059,20 @@
 0x002FD980 0xCC GetUniverseDNS__Q226CZUniversInformationServer7CAcctDBFPCc  # OVL1; ours (the named universe's address at 0x9C: UILobbyConnect 0x27686C) -- byte-exact, zNetMediusUniverse.cpp
 0x002FDA50 0x48 GetUniverseDescription__Q226CZUniversInformationServer7CAcctDBFUi  # OVL1; ours (the i-th universe's description at 0x120, "" past the end: UIUpdateServerInfo 0x274C4C) -- byte-exact, zNetMediusUniverse.cpp
 0x002FDAA0 0x48 GetUniverseName__Q226CZUniversInformationServer7CAcctDBFUi  # OVL1; ours (the i-th universe's name at 0x1C, "" past the end: UIUpdateServerInfo 0x274D1C) -- byte-exact, zNetMediusUniverse.cpp
-0x002FDAF0 0x3B0 func_002FDAF0  # OVL1
-0x002FDEA0 0x20 func_002FDEA0  # OVL1
-0x002FDEC0 0xC func_002FDEC0  # OVL1
-0x002FDED0 0x90 func_002FDED0  # OVL1
+0x002FDAF0 0x3B0 cbGetUniverseStatusList__FiiiP32MediusUniverseStatusListResponse  # OVL1; ours (the status-list callback GetInfo passes 0x64AD98: 'UniverseStatusList' checked, the universe kept with the patch level and URL split off its extended info by strtok, SERVER_LIST built at the last entry, the done flag 0x44FD80)
+0x002FDEA0 0x20 GetNewsLine__Q226CZUniversInformationServer7CAcctDBFi  # OVL1; ours (a line of the news, its text at 0x1C of the 0x120-byte element: UIUpdateServerInfo 0x274C98) -- byte-exact, zNetMediusUniverse.cpp
+0x002FDEC0 0xC GetNewsCount__Q226CZUniversInformationServer7CAcctDBFv  # OVL1; ours (the news list's size: UIUpdateServerInfo 0x274C78 calls it on theAcctDB) -- byte-exact, zNetMediusUniverse.cpp
+0x002FDED0 0x90 cbGetUniverseNews__FiiiP29MediusGetUniverseNewsResponse  # OVL1; ours (the news callback CSMGetServerList::GetInfo passes 0x64AD98: 'UniverseNews' checked, the line pushed, the done flag 0x44FD88 at its last line)
 0x002FDF60 0x248 ConnectToUniverse__Q226CZUniversInformationServer7CAcctDBFPCci  # OVL1; ours (CSMGetServerList's Connect state calls it on theAcctDB with theNetwork's universe server address and port: the host looked up, the connect request built from theLobby's DME state, the connection callback 0x2FE1B0)
-0x002FE1B0 0x18 func_002FE1B0  # OVL1
+0x002FE1B0 0x18 cbConnectToUniverse__Fi  # OVL1; ours (the universe server connection's callback ConnectToUniverse 0x2FDF60 hands the DME connect: a negative index sets the failed flag 0x44FD90) -- byte-exact, zNetMediusUniverse.cpp
 0x002FE1D0 0x54 Start__16CSMGetServerListFv  # OVL1; ours (CSMGetServerList's slot 0, its vtable 0x406730 by the RTTI at 0x3F5E48: the base's Start inlined, then the Connect state) -- byte-exact, zNetMediusUniverse.cpp
 0x002FE230 0x1AC erase__Q23std60__vector_imp<10AcctRecord,Q23std23allocator<10AcctRecord>,0>FP10AcctRecord  # OVL1; ours (the accounts vector's one-element erase: CAcctDB::Delete 0x2FBAE0 passes the iterator's word, the tail assigned down member by member, the count cut, the position returned in v0; include/vector's erase(T *))
-0x002FE3E0 0x6E8 func_002FE3E0  # OVL1
+0x002FE3E0 0x6E8 insert__Q23std60__vector_imp<10AcctRecord,Q23std23allocator<10AcctRecord>,0>FP10AcctRecordUiRC10AcctRecord  # OVL1; ours (the accounts' insert: CAcctDB::Add 0x2FBCE0 pushes a blank record through it; it calls the record's copy constructor 0x2FEAD0 and placement new 0x2FECA0 out of line)
 0x002FEAD0 0x1C4 func_002FEAD0  # OVL1
 0x002FECA0 0x8 func_002FECA0  # OVL1
 0x002FECB0 0x19C func_002FECB0  # OVL1
-0x002FEE50 0xB0C func_002FEE50  # OVL1
-0x002FF960 0x5BC func_002FF960  # OVL1
+0x002FEE50 0xB0C insert__Q23std68__vector_imp<14UniverseStatus,Q23std27allocator<14UniverseStatus>,0>FP14UniverseStatusUiRC14UniverseStatus  # OVL1; ours (the universe list's insert: cbGetUniverseStatusList 0x2FDAF0 pushes each 0x3D8-byte universe through it)
+0x002FF960 0x5BC insert__Q23std98__vector_imp<29MediusGetUniverseNewsResponse,Q23std42allocator<29MediusGetUniverseNewsResponse>,0>FP29MediusGetUniverseNewsResponseUiRC29MediusGetUniverseNewsResponse  # OVL1; ours (the news list's insert, include/vector's class insert: cbGetUniverseNews 0x2FDED0 pushes each 0x120-byte line through it)
 0x002FFF20 0x68 func_002FFF20  # OVL1
 0x002FFF90 0x8 clear__Q23std70__vector_deleter<14UniverseStatus,Q23std27allocator<14UniverseStatus>>Fv  # OVL1; ours (the universe list's clear, out of class in include/vector: the count zeroed, the element trivially destroyed; CSMGetServerList::GetInfo 0x2FB340 calls it on the list 0x44FD50)
 0x002FFFA0 0x8 func_002FFFA0  # OVL1
