@@ -152,6 +152,9 @@ public:
     /* the name and the description (zwep_weapon.cpp's, out of line: 0x3D2840, 0x3D2830 -- in
      * SOCOM 1's order, GetDescription before GetName) */
     char *GetName() const;
+    /* the damage the weapon adds to its ammunition's (SOCOM II's, out of line: 0x3D2050; the name
+     * ours) */
+    float GetDamageBonus();
     char *GetDescription() const;
     /* the animations let go of (SOCOM 1's ClearAnims, 0x3D21C0) */
     void ClearAnims();
@@ -236,7 +239,10 @@ public:
     unsigned char _25[0x28 - 0x25];
     int m_ammocap;   // 0x28 (SOCOM 1: 0x24)
     int m_nummags;   // 0x2c (SOCOM 1: 0x28)
-    unsigned char _30[0x70 - 0x30];
+    unsigned char _30[0x64 - 0x30];
+    /* added to the ammunition's damage by CZProjectile::GetDamage (SOCOM II's; the name ours) */
+    float m_damagebonus;   // 0x64
+    unsigned char _68[0x70 - 0x68];
     AI_PARAMS m_ai_params;   // 0x70 (SOCOM 1: 0x54)
     EQUIP_ITEM m_ID;   // 0x7c (SOCOM 1: 0x60)
     unsigned char _7d[0x80 - 0x7d];
@@ -280,6 +286,10 @@ public:
     static float *m_timer_pCurval;
     /* the tracers (SOCOM 1's static, 0x1c bytes: 0x4B5260) */
     static class CFlyoutMachine m_flyout_machine;
+    /* the charges set down (SOCOM II's static, 0xc bytes: 0x4B5238, between the projectile list
+     * and the mark list; Close clears it, the projectile list takes a charge out of it; the name
+     * ours) */
+    static class CPlacedExplosiveList m_placedExplosives;
 };   // 0xf8 bytes (CZFTSWeapon's targetmods start there)
 
 /* the materials' table (int_material.cpp's, SOCOM 1's class): only the extension list, whose size
@@ -463,6 +473,9 @@ public:
     bool IsInRange(const CPnt3D *pos, float range);
     static float ResolveDamage(float *health, float *armor, float damage, float pierce);
     float GetDamage(const CPnt3D *pos, float scale);
+    /* the damage a hit does at a point, nothing below the minimum, resolved through the health
+     * and armour given (SOCOM 1's; SOCOM II's adds the weapon's bonus) */
+    float GetDamage(const CPnt3D *pos, float *health, float *armor, float minimum);
     /* a point inside the blast's cone: from the apex along the direction for the explosion's
      * radius, widening by the angle's tangent (SOCOM II's; GetDamage asks it twice -- the name
      * and the parameters' order ours) */
@@ -714,12 +727,80 @@ public:
      * DestroyProjectileList passes 1) */
     CZProjectileList(int count);
     ~CZProjectileList();
+    /* the slots and intersection tables made (SOCOM 1's; 0x3CD480) */
+    bool Init();
+    /* the next free projectile, given the weapon and the ammunition (SOCOM 1's) */
+    CZProjectile *AcquireProjectile(CZWeapon &weapon, CZAmmo &ammo);
+    /* a shooter's charges (of one weapon, when given one) and, unless a weapon is given, his
+     * projectiles: each set to explode, reported and taken out (SOCOM 1's took the shooter only) */
+    void Clear(int shooter, EQUIP_ITEM item);
     bool GetNextIndirectFireDI(zdb::DiIntersect **di, int *handle);
     void ReleaseIndirectFireDI(zdb::DiIntersect **di, int *handle);
     bool GetNextDirectFireDI(zdb::DiIntersect **di, int *handle);
     void ReleaseDirectFireDI(zdb::DiIntersect **di, int *handle);
     void NetRemoveProjectile(CZProjectile *proj);
     int GetNumRemoteExplosives(int shooter);
+    /* a charge taken out: its pickup destroyed, unlisted from the charges set down, deleted and
+     * erased (SOCOM 1's, without the weapon's name it fetches) */
+    void RemoveExplosive(PlacedExplosive *explosive);
+    /* a projectile cleaned up and its slot freed, a charge taken out too (SOCOM 1's) */
+    void RemoveProjectile(CZProjectile *proj);
+    /* whether a projectile is one of the slots' or one of the charges (SOCOM II's; the name ours) */
+    bool IsListed(CZProjectile *proj);
+    /* the tracers ticked, then every charge's and every slot's projectile up to the last used
+     * (SOCOM 1's) */
+    void PreTick(float dT);
+    /* every charge ticked, those done taken out; every slot's projectile up to the last used
+     * ticked, those done freed (SOCOM 1's) */
+    void PostTick(float dT);
+    /* flag 18 set on every charge and every slot's projectile in use (SOCOM II's: the mission's
+     * completion calls it; the name ours) */
+    void SetAllFlag18();
+    /* a node forgotten by every charge and every slot's projectile in use (SOCOM II's: a SEAL's
+     * body going calls it; the name ours, after CZProjectile's) */
+    void ForgetHitNode(zdb::CNode *node);
+    /* the first free slot's projectile handed out: marked used, the next free found, its node
+     * activated and the projectile initialised (SOCOM 1's, without the Init) */
+    CZProjectile *GetNextFreeProjectile();
+    /* the first free slot after the first free, or -1 (inline: the name ours) */
+    int NextFree()
+    {
+        for (int i = m_firstfree + 1; i < m_size; i++) {
+            if (!m_used[i])
+                return i;
+        }
+        return -1;
+    }
+    /* the last slot in use found again (SOCOM 1's, out of line there; inline in SOCOM II, which
+     * keeps no copy) */
+    void FindLastUsed()
+    {
+        int last = -1;
+
+        for (int i = 0; i < m_size; i++) {
+            if (m_used[i] == 1)
+                last = i;
+        }
+        m_lastused = last;
+    }
+    /* a slot freed: the first free moved back to it, the last used found again when it was that
+     * (SOCOM 1's, out of line there) */
+    void FreeIdx(int i)
+    {
+        m_used[i] = 0;
+        if (i < m_firstfree)
+            m_firstfree = i;
+        if (i == m_lastused)
+            FindLastUsed();
+    }
+    /* a slot's projectile cleaned up and the slot freed, while the slots exist (the name ours) */
+    void Free(int i)
+    {
+        if (m_used) {
+            m_projectiles[i].Cleanup();
+            FreeIdx(i);
+        }
+    }
 
     CZProjectile *m_projectiles;   // 0x0
     std::vector<PlacedExplosive *> m_explosives;   // 0x4

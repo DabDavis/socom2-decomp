@@ -283,21 +283,25 @@ public:
     void remove(const T &value) { remove_if(binder2nd<equal_to<T>, T>(equal_to<T>(), value)); }
 };
 
-/* the runs that satisfy the predicate erased, one after another (SOCOM 1's shape; SOCOM II's
- * inlines the erase, not reproduced yet) */
+/* the runs that satisfy the predicate erased, one after another, the range erase inlined: SOCOM II's
+ * pointer lists' 0x20CB50 and the graph queue's 0x2D2540, byte-exact (the MSL headers round 5) with
+ * begin() taken before end() (the other order swaps the two saved registers) and the run's end found
+ * by a for loop that breaks on the first element the predicate refuses (the target's inner loop is
+ * tested at its top; `j != e && pred(*j)` as the for's test rotates it) */
 template <class T, class Allocator>
 template <class Predicate>
 void __list_imp<T, Allocator>::remove_if(Predicate pred)
 {
-    typename __list_deleter<T, Allocator>::iterator e = this->end();
     typename __list_deleter<T, Allocator>::iterator i = this->begin();
+    typename __list_deleter<T, Allocator>::iterator e = this->end();
 
     while (i != e) {
         if (pred(*i)) {
             typename __list_deleter<T, Allocator>::iterator j = i;
 
-            for (++j; j != e && pred(*j); ++j)
-                ;
+            for (++j; j != e; ++j)
+                if (!pred(*j))
+                    break;
             i = this->erase(i, j);
             if (i == e)
                 break;
@@ -439,7 +443,13 @@ public:
      * node into the register `this` leaves -- straight from end_.next_ it took another), and a walk
      * that assigns begin() to its iterator, a level deeper, still inlines all of it (through the
      * base's begin(), or with tail() as an argument, the innermost constructor is a call). Through
-     * tail() into a pointer local (the form before 2026-10-25) the walk's address was not shared */
+     * tail() into a pointer local (the form before 2026-10-25) the walk's address was not shared.
+     * Measured (the MSL headers round 5) for CGTree::FindNode 0x2D2070 and Destroy 0x2D22F0, whose
+     * self-inlined copies call the base's begin() 0x2A00B0 and the wrapper's constructor 0x2D22E0
+     * (taking the base iterator by address): `return iterator(base::begin());` costs one match over
+     * every hand-written unit -- OVL2 0x5418B0, CPickup::DebugPickups' assigned walk inlined into it,
+     * then calls the base iterator's constructor out of line (a level too tall) -- and gains none, so
+     * the form stays; FindNode and Destroy are not written to measure the other side */
     iterator begin()
     {
         typename base::node_base &t = this->end_;

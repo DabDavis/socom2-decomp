@@ -114,7 +114,6 @@ struct MediusGetGamePlayersRequest {
 struct MediusGetPolicyResponse { MEDIUS_RESPONSE_HEAD };
 struct MediusClearGameListFilterResponse { MEDIUS_RESPONSE_HEAD };
 struct MediusSetGameListFilterResponse { MEDIUS_RESPONSE_HEAD };
-struct MediusGameListResponse { MEDIUS_RESPONSE_HEAD };
 struct MediusGetGamePlayersResponse {
     MEDIUS_RESPONSE_HEAD
     int AccountID;   // 0x1c

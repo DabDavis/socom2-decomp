@@ -9,6 +9,7 @@
  * The classes' layouts are zui_2d.h's (the UI lane's), redeclared here with the virtuals these
  * functions need. Defined in reverse of their image order (-inline deferred). */
 
+#include <stdlib.h>
 #include <string.h>
 #include <string>
 
@@ -162,6 +163,8 @@ public:
 class CCheckBox : public C2DButton {
 public:
     virtual ~CCheckBox();
+    /* the check box ignores its variable (0x37C3E0, empty; reached through the thunk 0x37D0C0) */
+    virtual void UpdateUIVar(CUIVariable *var) {}
 
     bool m_checked;   // 0x440
     unsigned char _441[0x454 - 0x441];
@@ -200,6 +203,15 @@ public:
     CPlainBmp m_knob;   // 0x460
     int m_intervals;   // 0x500
 } __attribute__((aligned(16)));   // 0x510 bytes
+
+/* a button showing a spec of its own (SOCOM 1's CHandlerButton; SOCOM II's 0x440 bytes, zui_2d.h's
+ * layout). It keeps C2DButton's UpdateUIVar, so its vtable (0x407700) is one of the three that take
+ * the button's thunk 0x37D0E0 -- defining its destructor here is what emits that thunk, since
+ * C2DButton's own table belongs with ~C2DButton's unit and CCheckBox overrides the slot */
+class CHandlerButton : public C2DButton {
+public:
+    virtual ~CHandlerButton();
+} __attribute__((aligned(16)));   // 0x440 bytes
 
 /* the pop-up dialog as its command-type lookup sees it (slot 24 of its vtable, 0x36D970; the
  * renderable string's (0x36FC10) and the button's (0x3767C0) are declared with their classes
@@ -363,9 +375,21 @@ int CPopUpDialog::GetZAnimCmdType(const char *name)
     return C2D::GetZAnimCmdType(name);
 }
 
+/* an .rdr built in memory (zrdr.h's CRdrEditor: only the three node adders the list items call) */
+class CRdrEditor {
+public:
+    bool addintnode(int i);
+    bool addrealnode(float f);
+    bool addstringnode(const char *s);
+};
+
+/* strtod (MSL's; include/stdlib.h has no declaration of it) */
+extern "C" double strtod(const char *s, char **end);
+
 /* a list box's item's look (SOCOM 1's CListItemTypeImpl, zui_2d.cpp's: its own Tick, IsEnabled,
  * Finish and the like, empty virtuals there; only the slots ListItem forwards to placed, the rest
- * stand-ins) */
+ * stand-ins. SOCOM II's table has 18 slots to SOCOM 1's 13: slot 11 is the Tick, slot 14 the
+ * SOCOM II's item writer) */
 class CListItemTypeImpl {
 public:
     virtual void _v0();
@@ -382,17 +406,17 @@ public:
     virtual void _v11();
     virtual void _v12();
     virtual void _v13();
-    virtual void Tick(float dT);
+    virtual void AddToRdr(CRdrEditor *ed);
     virtual bool IsEnabled();
 };
 
 /* a list box's item (SOCOM 1's ListItem: its look at 0x28; SOCOM II's vtable 0x407240 has four
- * slots, each forwarding to the look -- slot 0, 0x36B1D0, still open: a tail call followed by a
- * dead `jr ra` that no form tried gives (a plain call, `return` of it, do/while(0), switch, an
- * always-true if); slots 2 and 3 are m2c's drafts) */
+ * slots, each forwarding to the look -- slot 0, 0x36B1D0, the item writer: the `jr ra` after it,
+ * which no form of it gave, is CListItemTypeImpl's empty writer, a function of its own at
+ * 0x36B1F0 (its vtable's slot 14), the map's row split; slots 2 and 3 are m2c's drafts) */
 class ListItem {
 public:
-    virtual void Tick(float dT);
+    virtual void AddToRdr(CRdrEditor *ed);
     virtual bool IsEnabled();
 
     unsigned char _4[0x28 - 0x4];
@@ -408,9 +432,69 @@ bool ListItem::IsEnabled()
     return true;
 }
 
+/* the item written into an .rdr: nothing, for a look without text (SOCOM II's; the name ours) */
+void CListItemTypeImpl::AddToRdr(CRdrEditor *ed)
+{
+}
+
+/* the item written into an .rdr: its look's say (tail-called; SOCOM II's, the name ours) */
+void ListItem::AddToRdr(CRdrEditor *ed)
+{
+    m_impl->AddToRdr(ed);
+}
+
+namespace {
+/* a list item's text look (SOCOM 1's CListItemStringTypeImpl, the unit's anonymous namespace; its
+ * string a pointer at 4 in SOCOM II, an embedded C2DString in SOCOM 1; the wrapped-text look
+ * inherits its Tick and writer) */
+class CListItemStringTypeImpl : public CListItemTypeImpl {
+public:
+    virtual void Tick(float dT);
+    virtual void AddToRdr(CRdrEditor *ed);
+
+    C2DString *m_str;   // 0x4
+};
+}
+
+/* the text written as a number when it is all one: an int node when strtol reads all of it, else
+ * a real node when strtod does, else a string node (SOCOM II's; the name ours) */
+void CListItemStringTypeImpl::AddToRdr(CRdrEditor *ed)
+{
+    int len;
+    const char *s = m_str->m_string + m_str->m_firstCharPos;
+
+    len = strlen(s);
+    char *end;
+    long i = strtol(s, &end, 10);
+
+    if (len == end - s) {
+        ed->addintnode(i);
+        return;
+    }
+
+    float f = strtod(s, &end);
+
+    if (len == end - s) {
+        ed->addrealnode(f);
+        return;
+    }
+    ed->addstringnode(m_str->m_string + m_str->m_firstCharPos);
+}
+
+/* the text's tick (SOCOM 1's CListItemStringTypeImpl::Tick) */
+void CListItemStringTypeImpl::Tick(float dT)
+{
+    m_str->Tick(dT);
+}
+
 /* the teletype's destructor (implicit: the cursor, the text, then the renderable string's;
  * reached only through the thunk 0x37D030) */
 CTeleType::~CTeleType()
+{
+}
+
+/* the handler button's destructor (implicit: the button's; reached through the thunk 0x37D050) */
+CHandlerButton::~CHandlerButton()
 {
 }
 

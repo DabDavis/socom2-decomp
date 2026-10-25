@@ -7,7 +7,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_003CCEB0(s32, s32, M2C_UNK);           /* extern */
+M2C_UNK Clear__16CZProjectileListFi10EQUIP_ITEM(s32, s32, M2C_UNK); /* extern */
 extern s32 m_pProjectilelist__8CZWeapon;
 
 void func_005B88C0(char *arg0) {
@@ -15,7 +15,7 @@ void func_005B88C0(char *arg0) {
 
     temp_s0 = m_pProjectilelist__8CZWeapon;
     if (temp_s0 != 0) {
-        func_003CCEB0(temp_s0, SC_MEMBER(SC_MEMBER(arg0, char **, 0x830), s32 *, 4), 0x99);
-        func_003CCEB0(temp_s0, SC_MEMBER(SC_MEMBER(arg0, char **, 0x830), s32 *, 4), 0x9E);
+        Clear__16CZProjectileListFi10EQUIP_ITEM(temp_s0, SC_MEMBER(SC_MEMBER(arg0, char **, 0x830), s32 *, 4), 0x99);
+        Clear__16CZProjectileListFi10EQUIP_ITEM(temp_s0, SC_MEMBER(SC_MEMBER(arg0, char **, 0x830), s32 *, 4), 0x9E);
     }
 }

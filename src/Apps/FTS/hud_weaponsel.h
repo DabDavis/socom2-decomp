@@ -52,6 +52,8 @@ public:
     void SetItemPos(int index);
     void PlaceMiddleIcon();
     void TickHotSwap(float dT);
+    /* a hot-swap shown (0x21A1F0, SOCOM II's: the name ours) */
+    void CheckHotSwap();
     /* the selected weapon's texts and the hot-swap labels placed (SOCOM 1's, 0x2193D0 and
      * 0x2196F0) */
     void PlaceWeaponText();

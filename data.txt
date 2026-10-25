@@ -158,6 +158,8 @@
 0x003DC468 0x4 m_U1__17CZClaymoreMapItem  # OVL1 data; SOCOM 1's static (1.0: CZClaymoreMapItem's Tick reads it where SOCOM 1's does, and a CZNewHudMap function (0x20B2C0) sets it): 2 references in 2 functions
 0x003DC470 0x4 m_V1__17CZClaymoreMapItem  # OVL1 data; SOCOM 1's static (1.0, after m_U1 as in SOCOM 1): 2 references in 2 functions
 0x003DC620 0x4 g_fFadeInTime__27@unnamed@hud_weaponsel_cpp@  # OVL1 data; SOCOM 1's (its symbol table: hud_weaponsel.cpp's anonymous namespace, gp-30408 in the demo): the selector's backdrop fade-in clock, -1.0 in data (idle) -- 5 references in 2 functions (CWeaponSel::HudTick x4, OnOpen); the HUD lane
+0x003DC868 0x4 s_bitmap1Size  # OVL1 data; ours (the HUD lane, round 16): hud_teammatenames.cpp's file static, the ok-to-talk bitmap's size, 32.0 -- 4 references in 4 functions (CMPTeammateNames::Tick, both Inits, the unit's initialiser 0x3FE940)
+0x003DC870 0x4 s_bitmap2Size  # OVL1 data; ours (the HUD lane, round 16): hud_teammatenames.cpp's file static, the off arrow's size, 32.0 -- 5 references in 4 functions (CMPTeammateNames::Tick x2, both Inits, the initialiser)
 0x003DCFB4 0x0 devRpcData  # OVL1; s1:data-seq (size SOCOM 1's; via lgAudClose +4)
 0x003DCFB8 0x4 devicechanged  # OVL1; s1:data-exact (size SOCOM 1's; via lgAudClose +3)
 0x003DCFBC 0x4 threadsafeSema  # OVL1; s1:data-exact (size SOCOM 1's; via lgAudClose +4)
@@ -277,6 +279,9 @@
 0x003E43F0 0x8 __RTTI__9CZLineMap  # RTTI of CZLineMap: found by its RTTI's name
 0x003E4830 0x8 __RTTI__14BitmapReticule  # RTTI of BitmapReticule: found by its RTTI's name
 0x003E4AE0 0x8 __RTTI__10CWeaponSel  # RTTI of CWeaponSel: found by its RTTI's name
+0x003E4A90 0x4 s_fBgBottom__27@unnamed@hud_weaponsel_cpp@  # OVL1 data (zero in the image); ours (the HUD lane, round 16): the selector's backdrop bottom, the HUD's bottom block (0x3E2FF8) less 10, set by hud_weaponsel.cpp's initialiser 0x3FE500 -- 4 references in 3 functions (CWeaponSel::Init x2, AfterOpenSecond, the initialiser)
+0x003E4A98 0x4 s_fRowY__27@unnamed@hud_weaponsel_cpp@  # OVL1 data (zero in the image); ours (the HUD lane, round 16): the selector's middle row's top, the backdrop bottom less 124, set by 0x3FE500 -- 10 references in 5 functions (CheckHotSwap x5, OnOpen x2, Init x2, the initialiser)
+0x003E4AA0 0x4 s_fBgTop__27@unnamed@hud_weaponsel_cpp@  # OVL1 data (zero in the image); ours (the HUD lane, round 16): the selector's backdrop top, the backdrop bottom less 186, set by 0x3FE500 -- 4 references in 3 functions (Init x2, AfterOpenSecond, the initialiser)
 0x003E4F60 0x4 s_fDividerY__27@unnamed@hud_teamnames_cpp@  # OVL1 data; ours (the HUD lane): the dividers' line, 3 + 15 + 17 + the HUD's bottom block (0x3E2FF8), computed by hud_teamnames.cpp's initialiser 0x3FE700 -- 5 references in 2 functions take 0x3E4F60 (CTeamNames::Init x4)
 0x003E4FA0 0x8 __RTTI__10CTeamNames  # RTTI of CTeamNames: found by its RTTI's name
 0x003E5020 0x8 __RTTI__10PoseBitmap  # RTTI of PoseBitmap: found by its RTTI's name
@@ -619,7 +624,7 @@
 0x00408070 0x10 __vt__19CStickDeadzoneTuner  # vtable of CStickDeadzoneTuner: found by its RTTI's name
 0x00408080 0x10 __vt__11SystemTuner  # vtable of SystemTuner: found by its RTTI's name
 0x00408090 0x10 __vt__12CDialogTuner  # vtable of CDialogTuner: found by its RTTI's name
-0x004080A0 0x70 __vt__12CBmpWithNode  # vtable of CBmpWithNode: found by its RTTI's name
+0x004080A0 0x70 __vt__Q221@unnamed@zui_skb_cpp@12CBmpWithNode  # vtable of CBmpWithNode: found by its RTTI's name; the unnamed namespace's name (zui_skb.cpp defines the class, SOCOM 1's __vt__Q221@unnamed@zui_skb_cpp@12CBmpWithNode); 2 references in 2 functions (its constructor 0x38E620 and destructor 0x38E490)
 0x00408130 0x40 __vt__9CBufferIO  # OVL1; s1:data-seq (size SOCOM 1's; via __ct__9CBufferIOFv)
 0x00408180 0x44 __vt__7CFileIO  # vtable of CFileIO: found by its RTTI's name
 0x004081D0 0x1C __vt__7CSTable  # vtable of CSTable: found by its RTTI's name
@@ -673,6 +678,8 @@
 0x0040BF40 0x10 g_mapLineProps__25@unnamed@hud_linemap_cpp@  # OVL1 bss; SOCOM 1's static (its symbol table: hud_linemap.cpp's unnamed namespace, a std::map<int, LINE_DATA>): the line types by id -- hudAddLineType reads it through operator[], the unit's initialiser 0x3FE190 builds it and registers ~map (0x2110F0)
 0x0040BF60 0x10 g_mapPolyProps__25@unnamed@hud_linemap_cpp@  # OVL1 bss; SOCOM 1's static (its symbol table: hud_linemap.cpp's unnamed namespace, a std::map<int, LINE_DATA>): the polygon types by id -- hudAddPolyType reads it through operator[], built and registered by 0x3FE190 after the line types
 0x0040C060 0xC navpoint_vec  # OVL1 bss; SOCOM 1's global (a vector of nav packages: hud_mapcompass.cpp's initialiser builds it, MapCompass's constructor reserves it, its destructor frees it, Tick fills it): 7 references in 4 functions take 0x40C060
+0x0040C108 0x4 g_iBgRightX__27@unnamed@hud_weaponsel_cpp@  # OVL1 bss; SOCOM 1's (its symbol table: hud_weaponsel.cpp's anonymous namespace): the selector's backdrops' right edge, 160, stored by CWeaponSel::Init -- 6 references in 2 functions take 0x40C108 (Init x5, AfterOpenSecond); the HUD lane, round 16
+0x0040C110 0x50 tempstr$890  # OVL1 bss; SOCOM 1's PlaceWeaponText's function-local tempstr (tempstr$2861 in the demo, 80 bytes there too; the number is MW's counter in our hud_weaponsel.cpp, which names the row as the object does): 7 references in 1 function (CWeaponSel::PlaceWeaponText); the HUD lane, round 16
 0x0040D7A0 0x98 g_strAlphaBracket__27@unnamed@hud_teamnames_cpp@  # OVL1 bss; SOCOM 1's (hud_teamnames.cpp's unnamed namespace): a C2DString, built and registered by 0x3FE700 -- 4 references in 3 functions take 0x40D7A0 (Clear, Init), the colour stores more; the HUD lane
 0x0040D850 0x98 g_strBravoBracket__27@unnamed@hud_teamnames_cpp@  # OVL1 bss; SOCOM 1's (hud_teamnames.cpp's unnamed namespace): a C2DString, built and registered by 0x3FE700 -- 4 references in 3 functions take 0x40D850; the HUD lane
 0x0040D900 0x80 g_lnDivider__27@unnamed@hud_teamnames_cpp@  # OVL1 bss; SOCOM 1's (its one divider; SOCOM II has two, this the upper): a C2DBitmap, built and registered by 0x3FE700 -- 6 references in 3 functions take 0x40D900 (Init x3, SetOpacity); the HUD lane
@@ -682,6 +689,8 @@
 0x0040DA28 0x4 m_deadbliptex__15CZPlayerMapItem  # OVL1 bss; SOCOM 1's static (the third of the three, which TickSealCone reads where the others are not): 3 references in 3 functions take 0x40DA28
 0x0040DA40 0x98 m_ablestring__15CZPlayerMapItem  # OVL1 bss; SOCOM 1's static (a C2DString, 0x98 in SOCOM II): 7 references in 5 functions take 0x40DA40 (CZPlayerMapItem's InitStaticItems, UnInitStaticItems, DrawAlphaBravo and MissionEndCleanup among them)
 0x0040DAF0 0x98 m_bravostring__15CZPlayerMapItem  # OVL1 bss; SOCOM 1's static (a C2DString): 7 references in 5 functions take 0x40DAF0 (the same functions, in the same pairs)
+0x0040DBD0 0x4 s_bitmap1Half  # OVL1 bss; ours (the HUD lane, round 16): hud_teammatenames.cpp's file static, half of s_bitmap1Size, set by the unit's initialiser 0x3FE940 -- 2 references in 2 functions (CMPTeammateNames::Tick, the initialiser)
+0x0040DBD8 0x4 s_bitmap2Half  # OVL1 bss; ours (the HUD lane, round 16): hud_teammatenames.cpp's file static, half of s_bitmap2Size, set by 0x3FE940 -- 2 references in 2 functions (CMPTeammateNames::Tick, the initialiser)
 0x0040F628 0x4 g_iBoxLeftX__28@unnamed@hud_scorepopup_cpp@  # OVL1 bss; SOCOM 1's (hud_scorepopup.cpp's unnamed namespace: g_iBoxLeftX, g_iBoxRightX, g_iBoxTopY 4 apart there, 8 here): the pop-up's left, (int)153 set by 0x22CC10 -- 10 references in 4 functions take 0x40F628 (SetupTeam 0x229D00, AddRow 0x22A290, SetupBackgroundBox, 0x22CC10); the HUD lane
 0x0040F630 0x4 g_iBoxRightX__28@unnamed@hud_scorepopup_cpp@  # OVL1 bss; SOCOM 1's: the pop-up's right, the left + 477 (0x22CC10) -- 12 references in 4 functions take 0x40F630; the HUD lane
 0x0040F638 0x4 g_iBoxTopY__28@unnamed@hud_scorepopup_cpp@  # OVL1 bss; SOCOM 1's: the pop-up's top, theMission's two counts + 5 (0x22CC10) -- 8 references in 2 functions take 0x40F638 (SetupBackgroundBox, 0x22CC10); the HUD lane
@@ -969,6 +978,12 @@
 0x0049EC50 0x4 s_dialogTuner  # OVL1 bss; zui_tuners.cpp's static (name ours): the CDialogTuner (DIALOG_VOLUME); 3 references in 3 functions (InitSystemTuners, UninitSystemTuners, RefreshSystemTuners)
 0x0049EC58 0x4 s_headsetTuner  # OVL1 bss; zui_tuners.cpp's static (name ours): the CHeadsetTuner (HEADSET_CONTROLLER); 1 reference in 1 function (InitSystemTuners; neither Uninit nor Refresh touches it)
 0x0049EC60 0x4 s_rebootCallbackId  # OVL1 bss; zui_tuners.cpp's static (name ours): the id RegisterRebootCallback returns; 2 references in 2 functions (InitSystemTuners stores it, UninitSystemTuners unregisters it)
+0x0049ECB0 0x1 @GUARD@GetSkbKey__Q221@unnamed@zui_skb_cpp@8CSkbGridCFii@s_nullKey  # OVL1 bss; zui_skb.cpp's: the guard of CSkbGrid::GetSkbKey's function-local null key (SOCOM 1's shares one guard between GetSkbKey and GetKeyAtGridPos); 4 references in each of GetCurKey 0x38CB90 and GetCurKeyProps 0x38B2A0
+0x0049ECB8 0x1 g_bIgnoreUnchanged__21@unnamed@zui_skb_cpp@  # OVL1 bss; zui_skb.cpp's static (name ours): the showing keyboard's IgnoreUnchangedString byte (0x175), copied by 0x38B440 when it shows; read by OnEnterKey 0x38C040
+0x0049ECC0 0x4 g_iSkbGridPosX__21@unnamed@zui_skb_cpp@  # OVL1 bss; zui_skb.cpp's static, SOCOM 1's name: the cursor's column; read by GetCurKey and GetCurKeyProps (the inner index)
+0x0049ECC8 0x4 g_iSkbGridPosY__21@unnamed@zui_skb_cpp@  # OVL1 bss; zui_skb.cpp's static, SOCOM 1's name: the cursor's row; read by GetCurKey and GetCurKeyProps (the grid's row)
+0x0049ECD0 0x4 g_pActiveSkb__21@unnamed@zui_skb_cpp@  # OVL1 bss; zui_skb.cpp's static, SOCOM 1's name: the keyboard showing; cleared by PrepSkbsForDisplay and InvalidateSkbsDisplay, set by 0x38B180 and 0x38B440
+0x0049ECE8 0xC g_arrSkbs__21@unnamed@zui_skb_cpp@  # OVL1 bss; zui_skb.cpp's static, SOCOM 1's name: the keyboards (a pointer vector; __sinit_zui_skb.cpp 0x403730 zeroes it and registers its destructor 0x38D5C0); CreateSoftKeyboard pushes, ZuiUnInit frees, PrepSkbsForDisplay and InvalidateSkbsDisplay walk it
 0x004A1630 0x14 s_file__8CPackage  # OVL1 bss; SOCOM II's, names ours (the package's one CFileIO: CPackage::Open opens and reads it, Seek and GetFile hand it on, Close and the destructor at 0x39C500 close it): 7 references in 5 functions -- the UI/file lane
 0x004A1778 0x4 m_CDmode  # OVL1 bss; SOCOM 1's file static of util_sonyio.cpp (the libcdvd read mode its reads pass): 7 references in Read, XferSectorsToCaller and BuildTOC (0x39DFD0) -- the UI/file lane
 0x004A1780 0x4 m_TOC__7CFileCD  # OVL1 bss; SOCOM 1's static (the CD's table of contents, 16-byte _FILECD entries): 10 references in Find, Open (its inlined Find), OpenSector, PS2FileName and BuildTOC -- the UI/file lane
@@ -1001,6 +1016,7 @@
 0x004B51B8 0xC m_callbacks  # OVL1 bss; s1:data-exact (size SOCOM 1's; via AddWeaponEventCallback__8CZWeaponFPFP12CZProjectileUiPv_vUiPv)
 0x004B5210 0xC m_listWeapons__8CZWeapon  # OVL1 bss; SOCOM 1's static (12 bytes, its GetWeaponId passes it to CZWeaponList::GetWeaponId as SOCOM II's does, 0x3D19E0; CZKit::SetItem passes it to the list's GetWeapon, 0x3C4B40, as SOCOM 1's -- the kit lane); 60 references in 36 functions
 0x004B5220 0x4 m_pProjectilelist__8CZWeapon  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Close__8CZWeaponFv +1)
+0x004B5238 0xC m_placedExplosives__8CZWeapon  # OVL1 bss; by hand (the wep lane: a CPlacedExplosiveList -- CZWeapon::Close clears it, CZProjectileList::RemoveExplosive removes a charge from it, between the projectile list and the mark list; the name ours): 8 references in 8 functions
 0x004B5248 0x4 m_pMarklist__8CZWeapon  # OVL1 bss; SOCOM 1's (CCoreState::auxUnload reads it beside m_pProjectilelist, as SOCOM 1's): 7 references in 6 functions take 0x4B5248
 0x004B5260 0x1C m_flyout_machine__8CZWeapon  # OVL1 bss; SOCOM 1's static (28 bytes, m_flyout_machine__8CZWeapon at 0x511DB0 in the demo): the initialiser 0x404C10 builds it with CFlyoutMachine's constructor, CZProjectile::SetModelOrientation acquires a tracer from it, CZWeapon::Open hooks it up -- the wep lane; 7 references in 6 functions
 0x004B5290 0xC m_decalsets__10CZDecalSet  # OVL1 bss; SOCOM 1's static (12 bytes, m_decalsets__10CZDecalSet at 0x511DE0 in the demo, its vector of decal sets): GetDecalSetByName walks it and DestroyDecalSet empties it as SOCOM 1's do, 0x3D0630 pushes onto it, the initialiser 0x404C10 zeroes it -- the wep lane; 19 references in 4 functions
