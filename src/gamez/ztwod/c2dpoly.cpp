@@ -290,7 +290,11 @@ C2DTriFan::C2DTriFan()
 
 /* the triangles cleared, then the vector and C2D torn down: the triangle vector's clear and its
  * deleter's destructor are calls (0x3619A0, 0x361A30) behind two this tests -- both defined after
- * their class in include/vector, as MSL has them */
+ * their class in include/vector, as MSL has them. Their copies here miss only on the elements'
+ * destruction: the target walks last to first calling the virtual destructor with -1, which
+ * include/vector's deleter does as `while (first < last) (--last)->~T();` in place of its empty
+ * __destroy_trivial (MW 3.0 drops the loop for a trivially destructible T, so CPnt3D's are
+ * unchanged): measured on every hand-written unit, both copies match and nothing else moves */
 C2DTriFan::~C2DTriFan()
 {
     m_polylist.clear();
@@ -301,7 +305,10 @@ C2DTriFan::~C2DTriFan()
  * begin + size * 0xD0, into size == 0 (begin() one level, as include/vector's class vector has
  * it); the target keeps the pointer sum and compares -- a taller begin(), as the pointer vectors'
  * (README: "A one-level begin() folded a walk's first test"). Assigned, while, postfix, !(==), a
- * reference local and raw pointers all miss */
+ * reference local and raw pointers all miss. Measured: the class vector's begin() taking data_
+ * into a const local first (`T *const p = this->data_; return iterator(p);`), or reading it through
+ * a `T *&data()` accessor, matches this and moves nothing else in any hand-written unit (the
+ * deleter's `T *const &data() const` does not) -- include/vector's, for the integrator */
 void C2DTriFan::Draw(zdb::CCamera *cam)
 {
     if (IsOn()) {
