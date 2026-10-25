@@ -15,6 +15,22 @@
 /* MAIN's debug calloc (SOCOM 1's _calloc__FUiUiPCci: a file and line, passed none) */
 void *_calloc(unsigned int n, unsigned int size, const char *file, int line);
 
+/* ai.h's two templates defined (as zseal.h defines them: never inlined, MW auto-inlines no
+ * template function -- the instances close this unit) */
+namespace ai {
+template <class T>
+const T &_max(const T &a, const T &b)
+{
+    return a >= b ? a : b;
+}
+
+template <class T>
+const T &_min(const T &a, const T &b)
+{
+    return a <= b ? a : b;
+}
+}
+
 /* the cell a walk hands out off the map (SOCOM 1's, returned by CAiMap::dummy_cell) and the
  * cosine of 45 degrees, computed at start-up (GetDirCos reads it from data) */
 static CAiCell s_dummy_cell;
@@ -285,6 +301,23 @@ bool CAiMap::_reset_cell(const MAP_FOREACH_STRUCT &s, void *)
     return true;
 }
 
+/* every cell of the first layer reset through _reset_cell (SOCOM 1's ResetCells, a loop of its own
+ * there): the walk inlined one level, its pieces called out of line in reverse of their first use
+ * after it (0x5176D0-0x51784F, all byte-exact from here); false whatever the walk did.
+ * OPEN, right size, 44 instructions: the region's reads. The target keeps &r in s5 and reads the
+ * row through it twice (`lhu v0,2(s5)` for y0, again for y1 ahead of GetDy's call, held in s0
+ * across it); here MW resolves the pointer to sp+176, shares the two loads and calls GetDy first.
+ * Tried: r read directly (the same), through the walk struct's m_region (the loads and the call's
+ * order right, the pointer reloaded from the struct after each call), the walk taking the region
+ * by reference with region() and GetMapRegion in ResetCells (resolved to sp+176 again), y1 built
+ * in a register local (the loads shared). The target's reads behave as through a pointer MW cannot
+ * resolve, kept in a register: what spelling gives that is open */
+bool CAiMap::ResetCells()
+{
+    ForEachCell(_reset_cell, 0, 0);
+    return false;
+}
+
 /* CAiMapLoc's three-value constructor (SOCOM 1's __ct__9CAiMapLocFUiUiUi, s1:exact at 0x52D200):
  * zentity.h does not declare it yet, so this stand-in of the same layout builds the same
  * temporary -- the map id, x and y each read, masked and written back as a word, the
@@ -297,12 +330,15 @@ struct CAiMapLocInit {
     unsigned int y : 13;
 };
 
-/* the whole map as a region: its first cell (map 0), the map's width and height (SOCOM 1's) */
+/* the whole map as a region: its first cell (map 0), the map's width and height (SOCOM 1's;
+ * called, not inlined, by every walk: pinned) */
+#pragma auto_inline off
 void CAiMap::GetMapRegion(region &r) const
 {
     r.m_loc = (const CAiMapLoc &)CAiMapLocInit(0, 0, 0);
     r.SetSize(m_nx, m_ny);
 }
+#pragma auto_inline reset
 
 /* n cells allocated zeroed and each reset (new in SOCOM II, the name ours: the layers' allocation
  * 0x53A8F0 calls it) */

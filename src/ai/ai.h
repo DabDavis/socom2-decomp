@@ -15,6 +15,16 @@
 
 class CAiEvent;
 
+/* the AI's small templates (SOCOM 1's namespace ai), declared only: zseal.h defines the same two,
+ * so either header can come first; ai_map.cpp, whose tail holds the unsigned short instances
+ * (0x519250, 0x519270), defines them as zseal.h does */
+namespace ai {
+template <class T>
+const T &_max(const T &a, const T &b);
+template <class T>
+const T &_min(const T &a, const T &b);
+}
+
 /* the AI's free helpers (SOCOM 1's namespace ai; ai_util.cpp) */
 namespace ai {
 int get_clock_direction(const CPnt3D *dir);
@@ -262,14 +272,8 @@ public:
 
 class CAiMap;
 
-/* a cell handed to a walk's callback (SOCOM 1's MAP_FOREACH_STRUCT, which its DWARF does not lay
- * out: the map, the cell and its location as the callbacks read them) */
-struct MAP_FOREACH_STRUCT {
-    CAiMap *m_map;   // 0x0
-    CAiCell *m_cell;   // 0x4
-    unsigned int m_unk8;   // 0x8
-    CAiMapLoc m_loc;   // 0xc
-};
+/* a cell handed to a walk's callback (below CAiMap: it points at a CAiMap::region) */
+struct MAP_FOREACH_STRUCT;
 
 /* two cells are the same cell when x and y agree, the map aside: an inline bool, which the
  * walks materialise (x's test, then y's into the same register) before they branch -- SOCOM 1's
@@ -363,6 +367,10 @@ public:
          * (the mem-initializer list's way) and the name emptied (new in SOCOM II: SOCOM 1's had no
          * constructor; out of line at 0x517790) */
         region() : m_dx(0), m_dy(0), m_type(0), m_nodisplay(0), m_flags(0), m_unused(0) { m_name[0] = 0; }
+        /* the width and height (the names ours: out of line where the walk is inlined one level,
+         * 0x5176D0 and 0x517770) */
+        unsigned int GetDx() const { return m_dx; }
+        unsigned int GetDy() const { return m_dy; }
         /* the width and height, both taken before either is stored (the name ours) */
         void SetSize(unsigned int dx, unsigned int dy)
         {
@@ -514,8 +522,24 @@ public:
     static int GetDirDelta(DIR a, DIR b);
     /* the whole map as a region: its first cell, its width and height (SOCOM 1's) */
     void GetMapRegion(region &r) const;
-    /* a layer's cells, none for a layer it has not (new in SOCOM II, the name ours) */
-    CAiCell *GetLayerCells(int layer);
+    /* the map's id (new in SOCOM II's layout, SOCOM 1's m_mapid; the name ours: ai_astar.cpp's
+     * copy 0x5120A0) */
+    int GetMapId() const { return m_mapid; }
+    /* a layer, none for an index it has not, and its cells (new in SOCOM II, the names ours:
+     * GetLayerCells' copy 0x517700) */
+    CAiMapLayer *GetLayer(int layer) { return layer >= 0 && layer < m_layers.size() ? m_layers[layer] : 0; }
+    CAiCell *GetLayerCells(int layer)
+    {
+        CAiMapLayer *l = GetLayer(layer);
+
+        return l ? l->m_cells : 0;
+    }
+    /* every cell of the map handed to a callback, row by row, until one returns false (SOCOM
+     * 1's foreach, the name ours): too big to inline whole, so a caller inlines it one level and
+     * calls its pieces out of line -- the region's constructor and size, the walk struct's
+     * constructor, the scanlines' size and [], the layer's cells, _saturate, _max, _min */
+    bool ForEachCell(bool (*f)(const MAP_FOREACH_STRUCT &s, void *data), void *data, int layer);
+    bool ResetCells();
     static CPnt3D &GetDirVec(DIR dir, CPnt3D &v);
     static CQuat &GetDirQuat(DIR dir, CQuat &q, bool reverse);
     static float GetDirCos(DIR a, DIR b);
@@ -596,6 +620,60 @@ public:
     void *m_overlay;   // 0x158
     CGraph *m_graph;   // 0x15c
 };
+
+/* a cell handed to a walk's callback (SOCOM 1's MAP_FOREACH_STRUCT, which its DWARF does not lay
+ * out: the map, the cell and its location as the callbacks read them) */
+struct MAP_FOREACH_STRUCT {
+    /* empty, and called out of line where the walk is inlined one level (0x517780) */
+    MAP_FOREACH_STRUCT() {}
+
+    CAiMap *m_map;   // 0x0
+    CAiCell *m_cell;   // 0x4
+    const CAiMap::region *m_region;   // 0x8: the region walked
+    CAiMapLoc m_loc;   // 0xc
+};
+
+/* every cell of the map handed to a callback, row by row, until one returns false (SOCOM 1's
+ * foreach, the name ours): too big to inline whole, so a caller inlines it one level and calls its
+ * pieces out of line -- the region's constructor and size, GetMapRegion, the walk struct's
+ * constructor, the scanlines' size and [], the layer's cells, _saturate, _max, _min. The region is
+ * read through the walk struct, so after each call it is read again */
+inline bool CAiMap::ForEachCell(bool (*f)(const MAP_FOREACH_STRUCT &s, void *data), void *data, int layer)
+{
+    region r;
+
+    GetMapRegion(r);
+    MAP_FOREACH_STRUCT s;
+    const region *pr = &r;
+
+    s.m_map = this;
+    s.m_region = pr;
+    s.m_loc.m_mapid = GetMapId();
+    int y0 = pr->m_loc.y;
+    int y1 = pr->m_loc.y + pr->GetDy();
+
+    _saturate(&y0, 0, (int)m_scanlines.size());
+    _saturate(&y1, 0, (int)m_scanlines.size());
+    CAiCell *cells = GetLayerCells(layer);
+
+    if (cells) {
+        for (int y = y0; y < y1; y++) {
+            scanline &sl = m_scanlines[y];
+
+            s.m_loc.y = y;
+            int x0 = ai::_max(sl.m_start, (unsigned short)pr->m_loc.x);
+            int x1 = ai::_min(sl.m_end, (unsigned short)(pr->m_loc.x + pr->GetDx()));
+
+            for (int x = x0; x < x1; x++) {
+                s.m_loc.x = x;
+                s.m_cell = &cells[sl.m_index + (x - sl.m_start)];
+                if (!f(s, data))
+                    return false;
+            }
+        }
+    }
+    return true;
+}
 
 class CAiStar;
 class CAiOverlay;
