@@ -4878,15 +4878,15 @@
 0x002ED3E0 0x80 func_002ED3E0  # OVL1
 0x002ED460 0x2DC func_002ED460  # OVL1
 0x002ED740 0x108 CreateRoomStateHandler__F16LOBBY_STATE_FLAG  # OVL1; s1 by hand (registered for CREATE_ROOM, 20, by the lobby's state table 0x2ED460, as SOCOM 1's Open registers CreateRoomStateHandler: the room the menu names found in the room list 0x44F568 and handed to MediusCreateChannel 0x648840 with 0x2ED850, 'CreateRoom')
-0x002ED850 0x170 func_002ED850  # OVL1
+0x002ED850 0x170 cbCreateRoom__FiiiP27MediusCreateChannelResponse  # OVL1; s1 by hand (CreateRoomStateHandler's MediusCreateChannel callback, as SOCOM 1's cbCreateRoom: reports 'CreateRoom', keeps LobbyWorldID and goes to JOIN_ROOM; a name taken, -974, looks the room up with MediusFindWorldByName and 0x2ED9C0)
 0x002ED9C0 0xA0 func_002ED9C0  # OVL1
 0x002EDA60 0x134 JoinGameStateHandler__F16LOBBY_STATE_FLAG  # OVL1; s1 by hand (registered for JOIN_GAME, 15, by 0x2ED460: MediusJoinGame 0x6488F8 with 0x2EDBA0, 'JoinGame', the password from PlayerGamePassword/SpectatorGamePassword, as SOCOM 1's)
-0x002EDBA0 0x200 func_002EDBA0  # OVL1
-0x002EDDA0 0x2E4 func_002EDDA0  # OVL1
-0x002EE090 0x178 func_002EE090  # OVL1
+0x002EDBA0 0x200 cbJoinGame__FiiiP22MediusJoinGameResponse  # OVL1; s1 by hand (JoinGameStateHandler's MediusJoinGame callback, as SOCOM 1's cbJoinGame: reports 'JoinGame', keeps the game's server 0x66A8F0 and goes to READY_TO_CONNECT, else MP_INVALID_PASSWORD -978, MP_BANNED_FROM_GAME -972, MP_MEDIUS_JOIN_GAME_FAILURE)
+0x002EDDA0 0x2E4 CreateNewGameStateHandler__F16LOBBY_STATE_FLAG  # OVL1; s1 by hand (registered for CREATE_NEW_GAME, 13, by the lobby's state table 0x2ED460, as SOCOM 1's Open registers CreateNewGameStateHandler: the PasswordValve/MaxSpectatorsValve/MaxPlayersValve valves and 'testgame' as SOCOM 1's, MediusCreateGame 0x6485B8 with cbCreateGame)
+0x002EE090 0x178 cbCreateGame__FiiiP24MediusCreateGameResponse  # OVL1; s1 by hand (CreateNewGameStateHandler's MediusCreateGame callback, as SOCOM 1's cbCreateGame: reports 'CreateGame', keeps MediusWorldID and goes to JOIN_GAME; a persistent game, mp_persistent, looks its name up with MediusFindWorldByName and 0x2EE210; MP_GAME_NAME_EXISTS for -975)
 0x002EE210 0x80 func_002EE210  # OVL1
 0x002EE290 0x10C JoinRoomStateHandler__F16LOBBY_STATE_FLAG  # OVL1; s1 by hand (registered for JOIN_ROOM, 19, by 0x2ED460: the game list emptied through a CRdrEditor, then MediusJoinChannel 0x648A08 with 0x2EE3A0, 'JoinRoom', as SOCOM 1's)
-0x002EE3A0 0x1A0 func_002EE3A0  # OVL1
+0x002EE3A0 0x1A0 cbJoinRoom__FiiiP25MediusJoinChannelResponse  # OVL1; s1 by hand (JoinRoomStateHandler's MediusJoinChannel callback, as SOCOM 1's cbJoinRoom: reports 'JoinRoom', keeps the room's lobby server 0x66A540 and goes to LOBBY_SERVER_CONNECT, else MP_MEDIUS_JOIN_ROOM_FAILURE)
 0x002EE540 0xCC LobbyActiveStateHandler__F16LOBBY_STATE_FLAG  # OVL1; s1 by hand (registered for LOBBY_ACTIVE, 11, by 0x2ED460: the player's info asked for on entry and every five minutes)
 0x002EE610 0x84 ConnectErrorStateHandler__F16LOBBY_STATE_FLAG  # OVL1; s1 by hand (registered for CONNECT_ERROR, 2, by 0x2ED460; SOCOM 1's was an empty stub, SOCOM II's closes the connection and reports MP_MEDIUS_ERROR)
 0x002EE6A0 0x8 func_002EE6A0  # OVL1

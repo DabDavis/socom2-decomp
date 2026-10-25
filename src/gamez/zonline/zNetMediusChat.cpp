@@ -72,13 +72,59 @@ struct MediusJoinGameRequest {
     unsigned char _54[0xc4 - 0x54];
 };   // 0xc4
 
-struct MediusCreateChannelResponse { MEDIUS_RESPONSE_HEAD };
-struct MediusJoinChannelResponse { MEDIUS_RESPONSE_HEAD };
-struct MediusJoinGameResponse { MEDIUS_RESPONSE_HEAD };
+/* a server's addresses (the DME SDK's NetAddressList: a plain struct, copied as words) */
+struct NetAddressList {
+    int AddressType0;   // 0x0
+    char Address0[16];   // 0x4
+    int BinaryAddress0;   // 0x14
+    int AddressType1;   // 0x18
+    char Address1[16];   // 0x1c
+    int BinaryAddress1;   // 0x2c
+};   // 0x30
+
+/* where a server is and how to talk to it (the DME SDK's NetConnectionInfo, 0x9C bytes: a class
+ * with a constructor of its own, so MW copies it member by member -- the addresses as words, the
+ * key's array in a loop of eight two-word passes, the two keys bytewise) */
+struct NetConnectionInfo {
+    NetConnectionInfo() {}
+
+    int Type;   // 0x0
+    NetAddressList AddressList;   // 0x4
+    int WorldID;   // 0x34
+    unsigned int ServerKey[16];   // 0x38
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];   // 0x78
+    char AccessKey[MEDIUS_SESSIONKEY_MAXLEN];   // 0x89
+};   // 0x9c
+
+/* a world looked for by its name (SOCOM 1's MediusFindWorldByName: 1, a room) */
+struct MediusFindWorldByNameRequest {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];   // 0x15
+    char Name[64];   // 0x26
+    int WorldType;   // 0x68
+};   // 0x6c
+
+struct MediusFindWorldByNameResponse { MEDIUS_RESPONSE_HEAD };
+
+struct MediusCreateChannelResponse {
+    MEDIUS_RESPONSE_HEAD
+    int MediusWorldID;   // 0x1c
+};
+struct MediusJoinChannelResponse {
+    MEDIUS_RESPONSE_HEAD
+    NetConnectionInfo ConnectInfo;   // 0x1c
+};
+struct MediusJoinGameResponse {
+    MEDIUS_RESPONSE_HEAD
+    int GameHostType;   // 0x1c
+    NetConnectionInfo ConnectInfo;   // 0x20
+};
 
 /* a room of the room list (SOCOM 1's BriefingRoom: only what is read here) */
 struct ChatRoom {
-    unsigned char _0[0x2e];
+    unsigned char _0[0x28];
+    int m_worldID;   // 0x28
+    unsigned char _2c[0x2e - 0x2c];
     unsigned short m_maxPlayers;   // 0x2e
     unsigned char _30[0x38 - 0x30];
     char m_name[64];   // 0x38
@@ -96,6 +142,49 @@ public:
     bool pop();
 
     unsigned char _8[0x4c - 0x8];
+};
+
+/* a game created (SOCOM 1's MediusCreateGame, wider: the three generic fields and the host's type
+ * SOCOM II's) */
+struct MediusCreateGameRequest {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];   // 0x15
+    int ApplicationID;   // 0x28: 10472
+    int MinPlayers;   // 0x2c: 2
+    int MaxPlayers;   // 0x30
+    int GameLevel;   // 0x34
+    char GameName[64];   // 0x38
+    char GamePassword[32];   // 0x78
+    char SpectatorPassword[32];   // 0x98
+    int PlayerSkillLevel;   // 0xb8
+    int RulesSet;   // 0xbc
+    int GenericField1;   // 0xc0: the room
+    int GenericField2;   // 0xc4: 65000
+    int GenericField3;   // 0xc8: the clan game's
+    int GameHostType;   // 0xcc
+};   // 0xd0
+
+struct MediusCreateGameResponse {
+    MEDIUS_RESPONSE_HEAD
+    int MediusWorldID;   // 0x1c
+};
+
+/* a valve: a named 16-bit value (SOCOM 1's CValve; only what is read here) */
+enum VALVE_TYPE {
+    VALVE_TYPE_0,
+    VALVE_TYPE_1
+};
+
+class CValve {
+public:
+    static CValve *Create(const char *name, VALVE_TYPE type);
+    static CValve *GetByName(const char *name);
+    /* the value as an int (ours: read through it, the test's load serves the sum unmasked) */
+    int Value() { return m_value; }
+
+    char *m_name;   // 0x0
+    unsigned short m_value;   // 0x4 (the bit-field's halfword: added to a count with no mask)
+    unsigned short m_flags;   // 0x6: the type and the pool bits
 };
 
 struct MediusSessionBeginResponse { MEDIUS_RESPONSE_HEAD };
@@ -130,10 +219,17 @@ MediusErrorCode func_00648A08(MediusJoinChannelRequest *req,
                               void (*cb)(int, int, int, MediusJoinChannelResponse *));   /* MediusJoinChannel */
 MediusErrorCode func_006488F8(MediusJoinGameRequest *req,
                               void (*cb)(int, int, int, MediusJoinGameResponse *));   /* MediusJoinGame */
-void func_002ED850(int, int, int, MediusCreateChannelResponse *);   /* cbCreateRoom */
-void func_002EE3A0(int, int, int, MediusJoinChannelResponse *);   /* cbJoinRoom */
-void func_002EDBA0(int, int, int, MediusJoinGameResponse *);   /* cbJoinGame */
+MediusErrorCode func_00648FB8(MediusFindWorldByNameRequest *req,
+                              void (*cb)(int, int, int, MediusFindWorldByNameResponse *));   /* MediusFindWorldByName */
+void func_002ED9C0(int, int, int, MediusFindWorldByNameResponse *);   /* cbFindRoomByName */
+void func_002EE210(int, int, int, MediusFindWorldByNameResponse *);   /* cbFindGameByName */
+MediusErrorCode func_006485B8(MediusCreateGameRequest *req,
+                              void (*cb)(int, int, int, MediusCreateGameResponse *));   /* MediusCreateGame */
+void func_002E9840(CValve *valve);   /* the clan game's team set from the valve (the clan unit's) */
+int func_002E99F0();   /* the clan game's field (the clan unit's) */
 
+extern NetConnectionInfo data_0066A540;   /* the room's lobby server (OVL2 bss) */
+extern NetConnectionInfo data_0066A8F0;   /* the game's server (OVL2 bss) */
 extern int LobbyWorldID;   /* the room we are in, -1 none (SOCOM 1's) */
 extern int MediusWorldID;   /* the game joined (SOCOM 1's) */
 extern unsigned char g_bJoiningRandomGame;
@@ -175,6 +271,135 @@ inline void CopyFrom(char *dst, const char *src, unsigned int n)
         memcpy(dst, src, n);
 }
 
+/* the room joined: its lobby server kept and connected to, or back to the lobby (SOCOM 1's; OVL1
+ * 0x2EE3A0) */
+void cbJoinRoom(int, int, int, MediusJoinChannelResponse *resp)
+{
+    if (CheckMediusCallbackStatus("JoinRoom", resp->StatusCode)) {
+        data_0066A540 = resp->ConnectInfo;
+        theLobby.ChangeState(LOBBY_SERVER_CONNECT);
+    } else {
+        theLobby.ChangeState(LOBBY_ACTIVE);
+        LobbyEvent("MP_MEDIUS_JOIN_ROOM_FAILURE",
+                   "Cannot join room. It may be full. Please try another.");
+    }
+}
+
+/* the game created and joined; a persistent game's name taken, the game of that name looked for
+ * (SOCOM 1's; OVL1 0x2EE090) */
+void cbCreateGame(int, int, int, MediusCreateGameResponse *resp)
+{
+    if (CheckMediusCallbackStatus("CreateGame", resp->StatusCode)) {
+        MediusWorldID = resp->MediusWorldID;
+        theLobby.ChangeState(JOIN_GAME);
+    } else if (CValve::Create("mp_persistent", VALVE_TYPE_1)->m_value) {
+        MediusFindWorldByNameRequest req;
+
+        memset(&req, 0, sizeof(req));
+        SetSessionKey(req.SessionKey);
+        CUIVariable *var = theLobby.uiv_GameNameVar;
+        if (ZString(var))
+            memcpy(req.Name, ZString(var), sizeof(req.Name));
+        req.WorldType = 0;
+        CheckMediusError(func_00648FB8(&req, func_002EE210));
+    } else {
+        if (resp->StatusCode == (MediusCallbackStatus)-975)
+            LobbyEvent("MP_GAME_NAME_EXISTS", 0);
+        else
+            LobbyEvent("MP_MEDIUS_JOIN_GAME_FAILURE", 0);
+        theLobby.ChangeState(LOBBY_ACTIVE);
+    }
+}
+
+/* CREATE_NEW_GAME: the game the menu describes created -- its name, the passwords the valves ask
+ * for, the players and spectators allowed (SOCOM 1's; OVL1 0x2EDDA0) */
+void CreateNewGameStateHandler(LOBBY_STATE_FLAG flag)
+{
+    switch (flag) {
+    case REGISTER:
+        break;
+    case ENTRY: {
+        const char *name = "testgame";
+        const char *password = "";
+        const char *specPassword = password;
+        int maxPlayers = 8;
+        CValve *pwValve = CValve::GetByName("PasswordValve");
+        CValve *specValve = CValve::GetByName("MaxSpectatorsValve");
+        CValve *maxValve = CValve::GetByName("MaxPlayersValve");
+        CValve *clanValve = CValve::GetByName("CreateClanAffiliation");
+        CUIVariable *var = theLobby.uiv_GameNameVar;
+
+        if (var && var->type == 3)
+            name = ZString(var);
+        var = theUIVarManager.Add("PlayerGamePassword", 0, UIVL_PERMANENT);
+        if (pwValve && pwValve->m_value) {
+            if (var && var->type == 3)
+                password = ZString(var);
+        } else {
+            *var = "";
+        }
+        if (maxValve)
+            maxPlayers = maxValve->m_value;
+        var = theUIVarManager.Add("SpectatorGamePassword", 0, UIVL_PERMANENT);
+        if (specValve && specValve->Value()) {
+            maxPlayers += specValve->Value();
+            if (var && var->type == 3)
+                specPassword = ZString(var);
+        } else {
+            *var = "";
+        }
+        if (clanValve)
+            func_002E9840(clanValve);
+        MediusCreateGameRequest req;
+
+        memset(&req, 0, sizeof(req));
+        SetSessionKey(req.SessionKey);
+        req.ApplicationID = 10472;
+        req.MinPlayers = 2;
+        req.MaxPlayers = maxPlayers;
+        req.GameLevel = 0;
+        if (name)
+            memcpy(req.GameName, name, sizeof(req.GameName));
+        if (password)
+            memcpy(req.GamePassword, password, sizeof(req.GamePassword));
+        if (specPassword)
+            memcpy(req.SpectatorPassword, specPassword, sizeof(req.SpectatorPassword));
+        req.PlayerSkillLevel = 0;
+        req.RulesSet = 0;
+        req.GenericField1 = LobbyWorldID;
+        req.GenericField2 = 65000;
+        req.GenericField3 = func_002E99F0();
+        req.GameHostType = 0;
+        CheckMediusError(func_006485B8(&req, cbCreateGame));
+        break;
+    }
+    case TICK:
+        break;
+    case EXIT:
+        break;
+    case UNREGISTER:
+        break;
+    }
+}
+
+/* the game joined: its server kept and connected to, or back to the lobby with the reason
+ * (SOCOM 1's; OVL1 0x2EDBA0) */
+void cbJoinGame(int, int, int, MediusJoinGameResponse *resp)
+{
+    if (CheckMediusCallbackStatus("JoinGame", resp->StatusCode)) {
+        data_0066A8F0 = resp->ConnectInfo;
+        theLobby.ChangeState(READY_TO_CONNECT);
+    } else {
+        theLobby.ChangeState(LOBBY_ACTIVE);
+        if (resp->StatusCode == (MediusCallbackStatus)-978)
+            LobbyEvent("MP_INVALID_PASSWORD", 0);
+        else if (resp->StatusCode == (MediusCallbackStatus)-972)
+            LobbyEvent("MP_BANNED_FROM_GAME", 0);
+        else
+            LobbyEvent("MP_MEDIUS_JOIN_GAME_FAILURE", 0);
+    }
+}
+
 /* JOIN_GAME: the game joined, as a spectator or a player, with the password the menu holds
  * (SOCOM 1's; OVL1 0x2EDA60) */
 void JoinGameStateHandler(LOBBY_STATE_FLAG flag)
@@ -195,7 +420,7 @@ void JoinGameStateHandler(LOBBY_STATE_FLAG flag)
                                                0, UIVL_PERMANENT);
         if (ZString(var))
             memcpy(req.GamePassword, ZString(var), sizeof(req.GamePassword));
-        CheckMediusError(func_006488F8(&req, func_002EDBA0));
+        CheckMediusError(func_006488F8(&req, cbJoinGame));
         g_bJoiningRandomGame = 0;
         break;
     }
@@ -227,7 +452,7 @@ void JoinRoomStateHandler(LOBBY_STATE_FLAG flag)
         memcpy(req.LobbyChannelPassword, "", sizeof(req.LobbyChannelPassword));
         func_002F4080(&req, 45);
         data_0044F9E8 = data_004A44A0;
-        CheckMediusError(func_00648A08(&req, func_002EE3A0));
+        CheckMediusError(func_00648A08(&req, cbJoinRoom));
         break;
     }
     case TICK:
@@ -236,6 +461,33 @@ void JoinRoomStateHandler(LOBBY_STATE_FLAG flag)
         break;
     case UNREGISTER:
         break;
+    }
+}
+
+/* the room created and joined; when its name is taken, the room of that name looked for instead
+ * (SOCOM 1's; OVL1 0x2ED850) */
+void cbCreateRoom(int, int, int, MediusCreateChannelResponse *resp)
+{
+    if (CheckMediusCallbackStatus("CreateRoom", resp->StatusCode)) {
+        LobbyWorldID = resp->MediusWorldID;
+        ChatRoom *room = func_002E4470(data_0044F568, ZString(theLobby.uiv_LobbyWorldNameVar));
+
+        if (room)
+            room->m_worldID = resp->MediusWorldID;
+        theLobby.ChangeState(JOIN_ROOM);
+    } else if (resp->StatusCode == (MediusCallbackStatus)-974) {
+        MediusFindWorldByNameRequest req;
+
+        memset(&req, 0, sizeof(req));
+        SetSessionKey(req.SessionKey);
+        CUIVariable *var = theLobby.uiv_LobbyWorldNameVar;
+        if (ZString(var))
+            memcpy(req.Name, ZString(var), sizeof(req.Name));
+        req.WorldType = 1;
+        CheckMediusError(func_00648FB8(&req, func_002ED9C0));
+    } else {
+        theLobby.ChangeState(LOBBY_ACTIVE);
+        LobbyEvent("MP_MEDIUS_JOIN_ROOM_FAILURE", "Cannot join this room. Please try another.");
     }
 }
 
@@ -257,7 +509,7 @@ void CreateRoomStateHandler(LOBBY_STATE_FLAG flag)
             req.MaxPlayers = room->m_maxPlayers;
             CopyFrom(req.LobbyName, room->m_name, sizeof(req.LobbyName));
             CopyFrom(req.LobbyPassword, room->m_password, sizeof(req.LobbyPassword));
-            CheckMediusError(func_00648840(&req, func_002ED850));
+            CheckMediusError(func_00648840(&req, cbCreateRoom));
         }
         break;
     }
