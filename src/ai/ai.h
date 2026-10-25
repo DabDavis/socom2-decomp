@@ -15,6 +15,16 @@
 
 class CAiEvent;
 
+/* the AI's small templates (SOCOM 1's namespace ai), declared only: zseal.h defines the same two,
+ * so either header can come first; ai_map.cpp, whose tail holds the unsigned short instances
+ * (0x519250, 0x519270), defines them as zseal.h does */
+namespace ai {
+template <class T>
+const T &_max(const T &a, const T &b);
+template <class T>
+const T &_min(const T &a, const T &b);
+}
+
 /* the AI's free helpers (SOCOM 1's namespace ai; ai_util.cpp) */
 namespace ai {
 int get_clock_direction(const CPnt3D *dir);
@@ -189,6 +199,28 @@ public:
         return !(soil == 0 || soil == 10 || soil == 8 || soil == 9);
     }
 
+    /* every field to its start (SOCOM 1's CAiCell() body, 0x185200; SOCOM II's constructor calls
+     * it out of line: fifteen statements and the return are past -inline auto's fifteen) */
+    CAiCell();
+    void Reset();
+    static CAiCell *Alloc(unsigned int n);
+    /* the soil (the name ours: read through it, the field is loaded again for a following
+     * store -- _reset_cell) */
+    unsigned int GetSoil() const { return m_soil; }
+    /* the fields' setters: their arguments masked at run time, `(0 & 1) << n` for a constant
+     * (the names ours) */
+    void SetOccupied(unsigned int b) { m_occupied = b; }
+    void SetName(unsigned int b) { m_name = b; }
+    void SetAction(unsigned int b) { m_action = b; }
+    void SetLink(unsigned int b) { m_link = b; }
+    void SetAltitude(unsigned int a) { m_altitude = a; }
+    void SetBoundary(unsigned int b) { m_boundary = b; }
+    void SetShadow(unsigned int s) { m_shadow = s; }
+    void SetInside(unsigned int b) { m_inside = b; }
+    void SetBadAlt(unsigned int b) { m_badalt = b; }
+    void SetRtFlag(unsigned int b) { m_rtflag = b; }
+    void SetBilinear(unsigned int b) { m_bilinear = b; }
+
     unsigned int m_soil : 5;   // 0x0
     unsigned int m_occupied : 1;
     unsigned int m_name : 1;
@@ -210,8 +242,22 @@ public:
 class CRdrFile;
 class CFileIO;
 /* one layer of an AI map's cells (new in SOCOM II, the name ours: the map keeps the first at 0xA8
- * and the rest by pointer) */
-class CAiMapLayer;
+ * and the rest by pointer; 0x2C bytes, built by 0x53A9C0). Only the cells are laid out */
+class CAiMapLayer {
+public:
+    /* named (none: an empty name), flag 1 set (0x53A9C0) */
+    CAiMapLayer(const char *name);
+    /* the cells freed (0x53A960) */
+    ~CAiMapLayer();
+    /* the cells freed, the layer kept (0x53A920; the name ours) */
+    void FreeCells();
+
+    char m_name[16];   // 0x0
+    unsigned int m_flags;   // 0x10
+    unsigned int m_unk14;   // 0x14
+    unsigned char m_unk18[16];   // 0x18
+    CAiCell *m_cells;   // 0x28: CAiCell::Alloc's
+};
 int zrdr_free(CRdrFile *file);
 /* MAIN's strncasecmp (0x1993C0, a placeholder still: SOCOM 1's CAiMap::GetLocation calls
  * strncasecmp where SOCOM II's calls it) */
@@ -234,6 +280,11 @@ public:
     static void Destroy(CGraph *graph);
 };
 
+class CAiMap;
+
+/* a cell handed to a walk's callback (below CAiMap: it points at a CAiMap::region) */
+struct MAP_FOREACH_STRUCT;
+
 /* two cells are the same cell when x and y agree, the map aside: an inline bool, which the
  * walks materialise (x's test, then y's into the same register) before they branch -- SOCOM 1's
  * code alike. A free function here, CAiMapLoc being the entity lane's (zentity.h) */
@@ -252,6 +303,24 @@ class CAiMapLocVec : public std::vector<CAiMapLoc> {
 class CAiMap {
 public:
     enum DIR { N = 0, NE = 1, E = 2, SE = 3, S = 4, SW = 5, W = 6, NW = 7, DIR_COUNT = 8 };
+    /* a cell's soil (the names ours, from GetSoilString's: SOCOM 1's DWARF has no enum for it) */
+    enum SOIL {
+        SOIL_NOGO = 0,
+        SOIL_DEFAULT = 1,
+        SOIL_WATER = 2,
+        SOIL_ROAD = 3,
+        SOIL_BRUSH = 4,
+        SOIL_FOREST = 5,
+        SOIL_CLIMB = 6,
+        SOIL_STAIRS = 7,
+        SOIL_CLUTTER = 8,
+        SOIL_TRANS = 9,
+        SOIL_NOALT = 10,
+        SOIL_STEEP = 11,
+        SOIL_GRASS = 12,
+        SOIL_COLLISION = 13,
+        SOIL_COUNT = 14
+    };
 
     /* a named cell (SOCOM 1's DWARF, 0x18 bytes; SOCOM II's name follows the cell, sixteen bytes
      * with the last kept zero, and the four after it are not read yet) */
@@ -303,6 +372,20 @@ public:
                 in = dx >= 0 && dx < (int)m_dx && dy >= 0 && dy < (int)m_dy;
             }
             return in;
+        }
+        /* every field zeroed but the cell, each bitfield read, masked and written back as a word
+         * (the mem-initializer list's way) and the name emptied (new in SOCOM II: SOCOM 1's had no
+         * constructor; out of line at 0x517790) */
+        region() : m_dx(0), m_dy(0), m_type(0), m_nodisplay(0), m_flags(0), m_unused(0) { m_name[0] = 0; }
+        /* the width and height (the names ours: out of line where the walk is inlined one level,
+         * 0x5176D0 and 0x517770) */
+        unsigned int GetDx() const { return m_dx; }
+        unsigned int GetDy() const { return m_dy; }
+        /* the width and height, both taken before either is stored (the name ours) */
+        void SetSize(unsigned int dx, unsigned int dy)
+        {
+            m_dx = dx;
+            m_dy = dy;
         }
         /* whether the line map shows it (the name ours; materialised where it is tested) */
         bool IsDisplayed() const { return !m_nodisplay; }
@@ -410,6 +493,9 @@ public:
         enum TYPE { NONE = 0, DOOR = 1, TYPE_MAX = 31 };
 
         TYPE GetType() const { return m_type_invalid == 0 ? (TYPE)m_type : NONE; }
+        /* the setters (the names ours: masked at run time) */
+        void SetState(unsigned int s) { m_state = s; }
+        void SetTypeInvalid(unsigned int b) { m_type_invalid = b; }
 
         CAiMapLoc m_loc;   // 0x0
         unsigned int m_direction : 4;   // 0x4
@@ -439,6 +525,42 @@ public:
         return 0;
     }
 
+    static const char *GetSoilString(SOIL soil);
+    static SOIL GetSoilByName(const char *name);
+    static DIR GetClosestDir(const CPnt3D *v);
+    static DIR GetClosestDir(const CAiMapLoc &from, const CAiMapLoc &to);
+    static int GetDirDelta(DIR a, DIR b);
+    /* the whole map as a region: its first cell, its width and height (SOCOM 1's) */
+    void GetMapRegion(region &r) const;
+    /* the map's id (new in SOCOM II's layout, SOCOM 1's m_mapid; the name ours: ai_astar.cpp's
+     * copy 0x5120A0) */
+    int GetMapId() const { return m_mapid; }
+    /* a layer, none for an index it has not, and its cells (new in SOCOM II, the names ours:
+     * GetLayerCells' copy 0x517700) */
+    CAiMapLayer *GetLayer(int layer) { return layer >= 0 && layer < m_layers.size() ? m_layers[layer] : 0; }
+    CAiCell *GetLayerCells(int layer)
+    {
+        CAiMapLayer *l = GetLayer(layer);
+
+        return l ? l->m_cells : 0;
+    }
+    /* every cell of the map handed to a callback, row by row, until one returns false (SOCOM
+     * 1's foreach, the name ours): too big to inline whole, so a caller inlines it one level and
+     * calls its pieces out of line -- the region's constructor and size, the walk struct's
+     * constructor, the scanlines' size and [], the layer's cells, _saturate, _max, _min */
+    bool ForEachCell(bool (*f)(const MAP_FOREACH_STRUCT &s, void *data), void *data, int layer);
+    bool ResetCells();
+    static CPnt3D &GetDirVec(DIR dir, CPnt3D &v);
+    static CQuat &GetDirQuat(DIR dir, CQuat &q, bool reverse);
+    static float GetDirCos(DIR a, DIR b);
+    static bool _reset_rtflag(const MAP_FOREACH_STRUCT &s, void *data);
+    static bool _reset_cell(const MAP_FOREACH_STRUCT &s, void *data);
+    static bool _validate_cell(const MAP_FOREACH_STRUCT &s, void *data);
+    /* bit 1 of the flags: the map changed since it was read (the names ours) */
+    bool IsModified() const { return (m_flags & 2) != 0; }
+    bool SetModified(bool modified);
+    /* the map with its first layer and nothing read (SOCOM 1's took no id) */
+    CAiMap(int mapid);
     int GetRouteIndex(const route *r);
     route *GetRoute(unsigned int i);
     link *GetCellLink(const CAiMapLoc &loc);
@@ -494,10 +616,10 @@ public:
      * the pointer vector at 0xD4, the cells in the layers; the extra data, the owner and the
      * altitude scale after it, then SOCOM 1's nine tables) */
     unsigned int m_version;   // 0xa4
-    unsigned char m_layer0[0x2c];   // 0xa8: not laid out yet (built by 0x53A9C0)
+    CAiMapLayer m_layer0;   // 0xa8
     std::vector<CAiMapLayer *> m_layers;   // 0xd4: the layers, m_layer0 first
     char *m_mapex;   // 0xe0: SOCOM 1's 0xac
-    void *m_maps;   // 0xe4: the constructor's argument
+    int m_mapid;   // 0xe4: SOCOM 1's 0xb0 (ValidateCells gives every name this map's id)
     float m_alt_quant;   // 0xe8: SOCOM 1's 0xb4
     names m_namesTable;   // 0xec
     actions m_actionTable;   // 0xf8
@@ -512,18 +634,63 @@ public:
     CGraph *m_graph;   // 0x15c
 };
 
+/* a cell handed to a walk's callback (SOCOM 1's MAP_FOREACH_STRUCT, which its DWARF does not lay
+ * out: the map, the cell and its location as the callbacks read them) */
+struct MAP_FOREACH_STRUCT {
+    /* empty, and called out of line where the walk is inlined one level (0x517780) */
+    MAP_FOREACH_STRUCT() {}
+
+    CAiMap *m_map;   // 0x0
+    CAiCell *m_cell;   // 0x4
+    const CAiMap::region *m_region;   // 0x8: the region walked
+    CAiMapLoc m_loc;   // 0xc
+};
+
+/* every cell of the map handed to a callback, row by row, until one returns false (SOCOM 1's
+ * foreach, the name ours): too big to inline whole, so a caller inlines it one level and calls its
+ * pieces out of line -- the region's constructor and size, GetMapRegion, the walk struct's
+ * constructor, the scanlines' size and [], the layer's cells, _saturate, _max, _min. The region is
+ * read through the walk struct, so after each call it is read again */
+inline bool CAiMap::ForEachCell(bool (*f)(const MAP_FOREACH_STRUCT &s, void *data), void *data, int layer)
+{
+    region r;
+
+    GetMapRegion(r);
+    MAP_FOREACH_STRUCT s;
+    const region *pr = &r;
+
+    s.m_map = this;
+    s.m_region = pr;
+    s.m_loc.m_mapid = GetMapId();
+    int y0 = pr->m_loc.y;
+    int y1 = pr->m_loc.y + pr->GetDy();
+
+    _saturate(&y0, 0, (int)m_scanlines.size());
+    _saturate(&y1, 0, (int)m_scanlines.size());
+    CAiCell *cells = GetLayerCells(layer);
+
+    if (cells) {
+        for (int y = y0; y < y1; y++) {
+            scanline &sl = m_scanlines[y];
+
+            s.m_loc.y = y;
+            int x0 = ai::_max(sl.m_start, (unsigned short)pr->m_loc.x);
+            int x1 = ai::_min(sl.m_end, (unsigned short)(pr->m_loc.x + pr->GetDx()));
+
+            for (int x = x0; x < x1; x++) {
+                s.m_loc.x = x;
+                s.m_cell = &cells[sl.m_index + (x - sl.m_start)];
+                if (!f(s, data))
+                    return false;
+            }
+        }
+    }
+    return true;
+}
+
 class CAiStar;
 class CAiOverlay;
 class CAiPlanner;
-
-/* CAiMapLoc's storage without its constructor. SOCOM II's CAiMapLoc() is empty (0x516120), where
- * zentity.h's stand-in copies `invalid`: a member the original left unbuilt holds this until the
- * entity header's constructor is SOCOM II's (then it is CAiMapLoc again) */
-struct CAiMapLocBits {
-    unsigned int m_mapid : 6;
-    unsigned int x : 13;
-    unsigned int y : 13;
-};
 
 /* the maps a path crosses (SOCOM 1's DWARF: a vector of CAiMap pointers and nothing more) */
 class CAiMapVec : public std::vector<CAiMap *> {
@@ -558,7 +725,7 @@ public:
     int path_cost;   // 0x18
     int m_ticks;   // 0x1c
     float m_time;   // 0x20
-    CAiMapLocBits m_current;   // 0x24: a CAiMapLoc, left unbuilt (CAiPath's constructor)
+    CAiMapLoc m_current;   // 0x24: left unbuilt (CAiMapLoc() is empty in SOCOM II)
     /* a plain vector (SOCOM 1's DWARF: a CAiMapLocVec): CAiPath's constructor inlines the stats'
      * whole, one level shallower than through CAiMapLocVec's implicit constructor */
     std::vector<CAiMapLoc> m_visited;   // 0x28
@@ -664,26 +831,68 @@ public:
     {
         m_map = path->GetLegMap(-1);
         m_stats = &path->m_stats;
-        path->GetLegPoints((CAiMapLoc &)m_start, (CAiMapLoc &)m_goal, -1);
+        path->GetLegPoints(m_start, m_goal, -1);
     }
     ~CAiStar();
     void find_path(CAiPath *path);
 
     CAiPlanner *m_planner;   // 0x0
     CAiMap *m_map;   // 0x4
-    CAiMapLocBits m_start;   // 0x8: a CAiMapLoc
-    CAiMapLocBits m_goal;   // 0xc: a CAiMapLoc
+    CAiMapLoc m_start;   // 0x8
+    CAiMapLoc m_goal;   // 0xc
     CAiPathStats *m_stats;   // 0x10
 };
 
 /* the planner queue (SOCOM 1's ai::path_queue, 24 bytes: a list of paths and three counters; the
  * names ours) */
 namespace ai {
+void ResetPathPlan();
+/* the priority from which a queued path stops a planning one (1.0f, OVL2 data: read with lwc1,
+ * so a variable; the name ours) */
+extern float s_preemptPriority;
+}
+/* an empty function of ai_astar.cpp's, called when a path preempted the queue (0x510D00; SOCOM 1's
+ * stretch has an MSL accessor there) */
+extern "C" void func_00510D00();
+namespace ai {
 class CAiPathQueue : public std::list<CAiPath *> {
 public:
     /* whether the path is queued (the name ours: AbortPathPlan's third arm, which calls begin(),
      * end(), std::find and != out of line -- an inline too tall to inline whole) */
     bool Contains(CAiPath *path) { return std::find(begin(), end(), path) != end(); }
+
+    /* a path put in before the first one of lower priority; a planning one of lower priority
+     * gives up its search when this one's priority is at least s_preemptPriority (1.0f), and a
+     * queued one simply yields -- either way the walk stops there (new in SOCOM II, the name ours:
+     * PathPlanExecute's insert, inlined one level, so every piece is called out of line -- the
+     * paths' GetPriority and IsPlanning, the list's begin, end, !=, *, postfix ++, the iterator's
+     * copy and insert, the deleter's size; the path by value, homed on the stack) */
+    void Insert(CAiPath *path)
+    {
+        float priority = path->GetPriority();
+        bool preempt = false;
+        iterator i = begin();
+
+        for (; !preempt && i != end(); i++) {
+            CAiPath *p = *i;
+
+            if (priority > path->GetPriority()) {
+                if (p->IsPlanning()) {
+                    if (!(priority < s_preemptPriority)) {
+                        ResetPathPlan();
+                        preempt = true;
+                    }
+                } else {
+                    preempt = true;
+                }
+            }
+        }
+        insert(i, path);
+        if (preempt)
+            func_00510D00();
+        if (m_maxSize < size())
+            m_maxSize = size();
+    }
 
     unsigned int m_maxSize;   // 0xc: the longest the queue has been
     unsigned int m_completed;   // 0x10: paths planned to their end
