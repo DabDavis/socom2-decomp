@@ -25,14 +25,14 @@
 0x00181840 0x48 func_00181840  # MAIN
 0x00181890 0xB4 func_00181890  # MAIN
 0x00181950 0x7C func_00181950  # MAIN
-0x001819D0 0x70 func_001819D0  # MAIN; MAIN's copy of _calloc__FUiUiPCci (0x34eae0, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: _calloc__FUiUiPCci
+0x001819D0 0x70 func_001819D0  # MAIN; the same words as _calloc__FUiUiPCci (0x34eae0) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x00181A40 0x60 func_00181A40  # MAIN
 0x00181AA0 0x60 func_00181AA0  # MAIN
 0x00181B00 0x40 _delete_vec__FPvPCci  # MAIN; s1:exact
 0x00181B40 0x60 func_00181B40  # MAIN
 0x00181BA0 0x34 func_00181BA0  # MAIN
 0x00181BE0 0x34 func_00181BE0  # MAIN
-0x00181C20 0x24 func_00181C20  # MAIN; MAIN's copy of zVid_Assert__FbUiPci (0x3b2c80, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: zVid_Assert__FbUiPci
+0x00181C20 0x24 func_00181C20  # MAIN; the same words as zVid_Assert__FbUiPci (0x3b2c80) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x00181C50 0x20 _dpfgt  # MAIN; s1:exact
 0x00181C70 0x20 _dpflt  # MAIN; s1:exact
 0x00181C90 0xF0 func_00181C90  # MAIN
@@ -1843,10 +1843,10 @@
 0x0020F210 0x8 func_0020F210  # OVL1
 0x0020F220 0x244 func_0020F220  # OVL1
 0x0020F470 0x10 func_0020F470  # OVL1
-0x0020F480 0x38 func_0020F480  # OVL1
-0x0020F4C0 0x18 func_0020F4C0  # OVL1; OVL1's copy of __vc__Q23std72__vector_imp<Q26CAiMap8scanline,Q23std29allocator<Q26CAiMap8scanline>,0>FUi (0x5176e0, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: __vc__Q23std72__vector_imp<Q26CAiMap8scanline,Q23std29allocator<Q26CAiMap8scanline>,0>FUi
-0x0020F4E0 0x20 func_0020F4E0  # OVL1
-0x0020F500 0x80 func_0020F500  # OVL1
+0x0020F480 0x38 func_0020F480  # OVL1; OVL1's copy of GetIndex__Q26CAiMap8scanlineCFUi (0x5120c0, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: GetIndex__Q26CAiMap8scanlineCFUi
+0x0020F4C0 0x18 func_0020F4C0  # OVL1; the same words as __vc__Q23std72__vector_imp<Q26CAiMap8scanline,Q23std29allocator<Q26CAiMap8scanline>,0>FUi (0x5176e0) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
+0x0020F4E0 0x20 func_0020F4E0  # OVL1; OVL1's copy of IsLayer__6CAiMapCFi (0x512120, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: IsLayer__6CAiMapCFi
+0x0020F500 0x80 func_0020F500  # OVL1; OVL1's copy of IsMapCell__6CAiMapCFRC9CAiMapLoc (0x512140, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: IsMapCell__6CAiMapCFRC9CAiMapLoc
 0x0020F580 0x10 func_0020F580  # OVL1; tu: char_type.cpp~ (1.0 beta)
 0x0020F590 0xC func_0020F590  # OVL1
 0x0020F5A0 0x14 func_0020F5A0  # OVL1
@@ -1865,8 +1865,8 @@
 0x002105F0 0x8 func_002105F0  # OVL1
 0x00210600 0xC func_00210600  # OVL1
 0x00210610 0x14 func_00210610  # OVL1
-0x00210630 0x70 func_00210630  # OVL1
-0x002106A0 0x120 func_002106A0  # OVL1
+0x00210630 0x70 func_00210630  # OVL1; OVL1's copy of GetAltitude__6CAiMapCFPC7CAiCellRf (0x516940, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: GetAltitude__6CAiMapCFPC7CAiCellRf
+0x002106A0 0x120 func_002106A0  # OVL1; OVL1's copy of GetCell__6CAiMapCFRC9CAiMapLoci (0x511f80, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: GetCell__6CAiMapCFRC9CAiMapLoci
 0x002107C0 0x88 func_002107C0  # OVL1
 0x00210850 0x14 func_00210850  # OVL1
 0x00210870 0x1E8 func_00210870  # OVL1
@@ -4748,13 +4748,13 @@
 0x002E47D0 0xD4 DeleteAll__14RoomGameVectorFv  # OVL1; ours (a room's games deleted and the list emptied -- std::transform with a deleter, then clear: ReleaseUIResources on the room 0x44FAB0 and on *0x44FE10, JoinGame, 0x2F9220, the room's destructor 0x2E48C0; byte-exact)
 0x002E48B0 0x8 func_002E48B0  # OVL1
 0x002E48C0 0xD8 func_002E48C0  # OVL1
-0x002E49A0 0xEC func_002E49A0  # OVL1; OVL1's copy of remove_if<Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,PFP14CCharacterType_b>__3stdFQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorPFP14CCharacterType_b_Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator (0x53f1a0, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: remove_if<Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,PFP14CCharacterType_b>__3stdFQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorPFP14CCharacterType_b_Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator
+0x002E49A0 0xEC func_002E49A0  # OVL1; the same words as remove_if<Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,PFP14CCharacterType_b>__3stdFQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorPFP14CCharacterType_b_Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator (0x53f1a0) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x002E4A90 0x6BC func_002E4A90  # OVL1
 0x002E5150 0x598 func_002E5150  # OVL1
 0x002E56F0 0x68 func_002E56F0  # OVL1
 0x002E5760 0x220 func_002E5760  # OVL1
 0x002E5980 0x1B4 func_002E5980  # OVL1
-0x002E5B40 0xAC func_002E5B40  # OVL1; OVL1's copy of remove_copy_if<Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,PFP14CCharacterType_b>__3stdFQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorPFP14CCharacterType_b_Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator (0x540bc0, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: remove_copy_if<Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,PFP14CCharacterType_b>__3stdFQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorPFP14CCharacterType_b_Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator
+0x002E5B40 0xAC func_002E5B40  # OVL1; the same words as remove_copy_if<Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,PFP14CCharacterType_b>__3stdFQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorPFP14CCharacterType_b_Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator (0x540bc0) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x002E5BF0 0x1A0 func_002E5BF0  # OVL1
 0x002E5D90 0x1BC func_002E5D90  # OVL1
 0x002E5F50 0x8 func_002E5F50  # OVL1
@@ -7761,7 +7761,7 @@
 0x003AAD20 0x8D0 Parse__10CTurretDefFPCcP5_zrdr  # OVL1; by hand (the wep lane: CTurretDefVector::Init calls it on each element with the TURRET list's name string and the next item, as SOCOM 1's CTurret::Init calls Parse__10CTurretDefFPCcP5_zrdr; veh_turret.cpp)
 0x003AB5F0 0x2C4 func_003AB5F0  # OVL1
 0x003AB8C0 0xA4 func_003AB8C0  # OVL1
-0x003AB970 0x2C func_003AB970  # OVL1; OVL1's copy of _max<f>__2aiFRCfRCf_RCf (0x575c50, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: _max<f>__2aiFRCfRCf_RCf
+0x003AB970 0x2C func_003AB970  # OVL1; the same words as _max<f>__2aiFRCfRCf_RCf (0x575c50) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x003AB9A0 0x6C func_003AB9A0  # OVL1
 0x003ABA10 0xC8 func_003ABA10  # OVL1
 0x003ABAE0 0x264 func_003ABAE0  # OVL1
@@ -9333,12 +9333,12 @@
 0x0050FEE0 0xBC erase__Q23std72__list_deleter<16CAiEventCallback,Q23std29allocator<16CAiEventCallback>>FQ33std72__list_deleter<16CAiEventCallback,Q23std29allocator<16CAiEventCallback>>19generic_iterator<0>Q33std72__list_deleter<16CAiEventCallback,Q23std29allocator<16CAiEventCallback>>19generic_iterator<0>  # OVL2; by hand (the callback list's range erase, include/list's 0xBC shape; ~__list_imp calls it)
 0x0050FFA0 0x18 func_0050FFA0  # OVL2; s1~ __ct__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>Fv (one of 2); OVL2's copy of the pointer lists' deleter constructor (OVL1 0x1EABB0; __sinit_ai_events.cpp builds the three event lists with it); ovl-copy: __ct__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>Fv
 0x0050FFC0 0x18 __ct__Q23std72__list_deleter<16CAiEventCallback,Q23std29allocator<16CAiEventCallback>>Fv  # OVL2; s1:callee
-0x0050FFE0 0x80 func_0050FFE0  # OVL2; by hand (~CAiEventCallbackList's callee, as ~CAiEventList's is the pointer lists' __list_imp destructor: two this-tests, begin()/end() out of line, the range erase, delete); back to its placeholder: it is __dt__Q23std68__list_imp<16CAiEventCallback,Q23std29allocator<16CAiEventCallback>>Fv (~CAiEventCallbackList's callee), but ai_events.cpp emits include/list's copy of that destructor (0xB8, begin()/end() inlined) where the target's calls them out of line (0x80) -- left unnamed so the generated draft keeps matching until the list remodel settles it; OVL2's copy of __dt__16CWepCallbackListFv (0x3c6880, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: __dt__16CWepCallbackListFv
+0x0050FFE0 0x80 func_0050FFE0  # OVL2; by hand (~CAiEventCallbackList's callee, as ~CAiEventList's is the pointer lists' __list_imp destructor: two this-tests, begin()/end() out of line, the range erase, delete); back to its placeholder: it is __dt__Q23std68__list_imp<16CAiEventCallback,Q23std29allocator<16CAiEventCallback>>Fv (~CAiEventCallbackList's callee), but ai_events.cpp emits include/list's copy of that destructor (0xB8, begin()/end() inlined) where the target's calls them out of line (0x80) -- left unnamed so the generated draft keeps matching until the list remodel settles it; the same words as __dt__16CWepCallbackListFv (0x3c6880) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x00510060 0xC end__Q23std72__list_deleter<16CAiEventCallback,Q23std29allocator<16CAiEventCallback>>Fv  # OVL2; by hand (the callback list's end() out of line: iterator(this + 4); ~__list_imp calls it)
 0x00510070 0xC begin__Q23std72__list_deleter<16CAiEventCallback,Q23std29allocator<16CAiEventCallback>>Fv  # OVL2; by hand (the callback list's begin() out of line: iterator(end_.next_), as OVL2's pointer-list copy 0x510100; ~__list_imp calls it)
 0x00510080 0x80 func_00510080  # OVL2; OVL2's copy of the pointer lists' __list_imp destructor (OVL1 0x1EA250; this one calls begin() and end() out of line, 8 bytes longer; ~CAiEventList calls it); ovl-copy: __dt__Q23std38__list_imp<PCv,Q23std14allocator<PCv>>Fv
 0x00510100 0xC func_00510100  # OVL2; OVL2's copy of the pointer lists' begin() out of line (OVL1 0x2A00B0, the same code); ovl-copy: begin__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>Fv
-0x00510110 0xB0 func_00510110  # OVL2; OVL2's copy of __dt__Q23std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>Fv (0x2b3f80, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: __dt__Q23std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>Fv
+0x00510110 0xB0 func_00510110  # OVL2; the same words as __dt__Q23std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>Fv (0x2b3f80) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x005101C0 0x60 __dt__20CAiEventCallbackListFv  # OVL2; s1:ref (taken by address where SOCOM 1 takes __dt__20CAiEventCallbackListFv's)
 0x00510220 0x60 __dt__12CAiEventListFv  # OVL2; s1:ref (taken by address where SOCOM 1 takes __dt__12CAiEventListFv's)
 0x00510280 0x8 reset__10CAiPlannerFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -9373,13 +9373,13 @@
 0x00510FE0 0x10 SetPlanner__7CAiPathFP10CAiPlanner  # OVL2; ours (new in SOCOM II, between CreatePlanner and find_path: m_planner = p and m_custom = 1; an AI state (0x5F15A0) hands it its planner)
 0x00510FF0 0xF48 find_path__7CAiStarFP7CAiPath  # OVL2; s1:order by hand (the demo's 0x1814C0, 0xF98 there: the A* loop over the open and closed lists -- SOCOM II's two static vectors 0x66A0E8/0x66A108 -- with the planner's virtuals; TickPathPlanner and PathPlanImmediate call it on CreatePlanner's result)
 0x00511F40 0x3C func_00511F40  # OVL2
-0x00511F80 0x120 func_00511F80  # OVL2
+0x00511F80 0x120 GetCell__6CAiMapCFRC9CAiMapLoci  # OVL2; ours (new in SOCOM II: a layer's cell, none off the map -- out of line where it is called whole: CAiMaps::GetAltitude, GetCellCenter, the look and cover searches)
 0x005120A0 0x8 GetMapId__6CAiMapCFv  # OVL2; ours (CAiMap's id at 0xE4, SOCOM 1's m_mapid: ai_astar.cpp's out-of-line copy, which the walks and ValidateCells call)
-0x005120B0 0x10 func_005120B0  # OVL2
-0x005120C0 0x38 func_005120C0  # OVL2
-0x00512100 0x18 func_00512100  # OVL2
-0x00512120 0x20 func_00512120  # OVL2
-0x00512140 0x80 func_00512140  # OVL2
+0x005120B0 0x10 __vc__Q23std64__vector_imp<P11CAiMapLayer,Q23std25allocator<P11CAiMapLayer>,1>CFUi  # OVL2; by hand (the layers' const operator[], GetCell's, out of line beside the scanlines')
+0x005120C0 0x38 GetIndex__Q26CAiMap8scanlineCFUi  # OVL2; ours (ai.h's scanline::GetIndex, out of line where GetCell is inlined one level: the run's index of a column, -1 off it)
+0x00512100 0x18 __vc__Q23std72__vector_imp<Q26CAiMap8scanline,Q23std29allocator<Q26CAiMap8scanline>,0>CFUi  # OVL2; by hand (the scanlines' CONST operator[], GetCell's, out of line where it is inlined one level; the non-const one is 0x5176E0)
+0x00512120 0x20 IsLayer__6CAiMapCFi  # OVL2; ours (GetCell's second test, out of line beside it: 0 <= layer < the layers' count)
+0x00512140 0x80 IsMapCell__6CAiMapCFRC9CAiMapLoc  # OVL2; ours (new in SOCOM II: GetCell's first test, out of line where GetCell is inlined one level -- CAiMaps::GetCell 0x52D6A0, the fcosts -- the row as IsRow takes it, then the run's test into a bool assigned true)
 0x005121C0 0x1DC func_005121C0  # OVL2
 0x005123A0 0x1B8 func_005123A0  # OVL2
 0x00512560 0x2B4 __dt__7CAiStarFv  # OVL2; s1:callee by hand (AbortPathPlan deletes the path's planner with it, a1 = 1, at the same instruction as SOCOM 1's calls __dt__7CAiStarFv)
@@ -9403,7 +9403,7 @@
 0x005151F0 0x8 clear__Q23std58__vector_deleter<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>>Fv  # OVL2; s1:callee by hand (SetSnakeLength clears the path's locations with it, a0 = path + 52, where SOCOM 1's calls clear__Q23std58__vector_deleter<9CAiMapLoc,...> on path + 44; the size zeroed)
 0x00515200 0x68 __dt__Q23std58__vector_deleter<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>>Fv  # OVL2; s1:order by hand (SOCOM 1's __dt__Q23std58__vector_deleter<9CAiMapLoc,...>Fv, the same 0x68: size zeroed, data deleted, this deleted on a positive flag; ai_astar.cpp's tail copy, which the lines' and routes' clears 0x51A310/0x51A3C0 call for each element's cell vectors)
 0x00515270 0xD0 func_00515270  # OVL2
-0x00515340 0x68 func_00515340  # OVL2
+0x00515340 0x68 __dt__Q23std70__vector_deleter<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>>Fv  # OVL2; by hand (~CAiPath destroys m_points through it, three this-tests and a call, as each class vector's deleter destructor: ai_astar.cpp's tail, after the points deleter's clear's neighbours)
 0x005153B0 0x8 clear__Q23std70__vector_deleter<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>>Fv  # OVL2; s1:callee by hand (SetSnakeLength clears the path's points with it, a0 = path + 152, where SOCOM 1's calls clear__Q23std70__vector_deleter<Q27CAiPath5point,...> on path + 140; the deleter's clear of a trivially destructible element: the size zeroed)
 0x005153C0 0x60 __dt__Q22ai12CAiPathQueueFv  # OVL2; s1:ref by hand (the destructor __sinit_ai_astar.cpp registers for ai::path_queue, as SOCOM 1's registers __dt__Q22ai12CAiPathQueueFv for the same object)
 0x00515420 0x80 func_00515420  # OVL2
@@ -9425,7 +9425,7 @@
 0x00516900 0x8 func_00516900  # OVL2; OVL2's copy of CPnt3D's empty constructor (jr ra; move v0,a0: OVL1's 0x1FB3C0 carries the name); CAiState::Create calls it for every state's CPnt3D members -- the kit lane; ovl-copy: __ct__6CPnt3DFv
 0x00516910 0xC func_00516910  # OVL2
 0x00516920 0x14 func_00516920  # OVL2
-0x00516940 0x70 func_00516940  # OVL2
+0x00516940 0x70 GetAltitude__6CAiMapCFPC7CAiCellRf  # OVL2; ours (new in SOCOM II: the box's floor plus m_alt_quant times the cell's ten altitude bits, true; false for no cell)
 0x005169B0 0x558 func_005169B0  # OVL2
 0x00516F10 0xA4 func_00516F10  # OVL2
 0x00516FC0 0x88 Alloc__7CAiCellFUi  # OVL2; ours (new in SOCOM II: n cells from _calloc, each through CAiCell::Reset; the layers' allocation 0x53A8F0 calls it)
@@ -9444,7 +9444,7 @@
 0x005180B0 0xD0 _reset_cell__6CAiMapFRC18MAP_FOREACH_STRUCTPv  # OVL2; ours (new in SOCOM II, next to _reset_rtflag and of its shape: a cell walk's callback that revalidates the cell's action, puts a collision cell back to the default soil and clears its occupied bit)
 0x00518180 0x28 _reset_rtflag__6CAiMapFRC18MAP_FOREACH_STRUCTPv  # OVL2; s1:exact
 0x005181B0 0x38 SetModified__6CAiMapFb  # OVL2; ours (new in SOCOM II: bit 1 of AIMAP_PARAMS::m_flags set or cleared, the old value returned; SetCellLink 0x5307A0 and the layers' removal 0x53A730 call it with true after a change)
-0x005181F0 0x258 func_005181F0  # OVL2
+0x005181F0 0x258 __dt__6CAiMapFv  # OVL2; s1:order by hand (the demo's ~CAiMap, between ValidateCells' callbacks and CAiMap(): the box and the size cleared, the cells, the extra data and the graph given up -- SOCOM II's first layer's FreeCells and DeleteLayers among them -- then the tables' destructors, ~readers and the layers' with -1)
 0x00518450 0x1DC __ct__6CAiMapFi  # OVL2; s1:order by hand (the demo's 0x186E40, after ~CAiMap in both builds: the nine tables built, the dummy cell's soil 10, an empty box, the sizes zeroed, floor -1, resolution 0.5, slope pi/4, version 23; SOCOM II takes the map id (0xE4) and pushes its first layer (0xA8, built by 0x53A9C0) onto m_layers; CAiMaps' 0x52B0D0 calls it)
 0x00518630 0x60 func_00518630  # OVL2
 0x00518690 0x68 func_00518690  # OVL2
@@ -9603,10 +9603,10 @@
 0x00528C80 0x160 func_00528C80  # OVL2
 0x00528DE0 0x248 func_00528DE0  # OVL2
 0x00529030 0x1C0 func_00529030  # OVL2
-0x005291F0 0xDC func_005291F0  # OVL2
-0x005292D0 0x2C func_005292D0  # OVL2
-0x00529300 0x724 func_00529300  # OVL2
-0x00529A30 0x54 func_00529A30  # OVL2
+0x005291F0 0xDC GetDistanceSq__7CAiMapsFRC9CAiMapLocRC9CAiMapLoc  # OVL2; ours (new in SOCOM II, ai_maps.cpp's first function: two cells' centres by GetCellCenter, their difference's squared length; 0 for the same cell, 1e12 without a centre)
+0x005292D0 0x2C GetDistance__7CAiMapsFRC9CAiMapLocRC9CAiMapLoc  # OVL2; ours (new in SOCOM II: sqrtf of GetDistanceSq, called by CAiSPlan::Tick)
+0x00529300 0x724 FindTraversable__7CAiMapsFRC9CAiMapLocR9CAiMapLoc  # OVL2; ours (new in SOCOM II: GetTraversableLocation's second call, (cell, out) -> bool; it reads cells through GetCell and CAiCell::IsTraversable -- the name a role, not yet read in full)
+0x00529A30 0x54 GetTraversableLocation__7CAiMapsFPC6CPnt3DR9CAiMapLoc  # OVL2; ours (new in SOCOM II, after 0x529300: GetLocation(point) into a local cell, then FindTraversable from it into the caller's -- CAiSPickup, CAiSNoAmmo and CAiSUseVehicle call it)
 0x00529A90 0x16C func_00529A90  # OVL2
 0x00529C00 0x12C func_00529C00  # OVL2
 0x00529D30 0x3C func_00529D30  # OVL2
@@ -9616,13 +9616,13 @@
 0x00529EB0 0x18 func_00529EB0  # OVL2
 0x00529ED0 0x8 func_00529ED0  # OVL2
 0x00529EE0 0x1AC func_00529EE0  # OVL2
-0x0052A090 0xF0 func_0052A090  # OVL2
-0x0052A180 0x78 func_0052A180  # OVL2
+0x0052A090 0xF0 IsTraversable__6CAiMapCFRC9CAiMapLoc  # OVL2; ours (new in SOCOM II, between GetRandomLoc and GetMap: the cell by GetCell inlined one level, then CAiCell::IsTraversable -- not soils 0, 8, 9, 10 -- false off the map)
+0x0052A180 0x78 GetMap__7CAiMapsCFRC9CAiMapLoc  # OVL2; ours (new in SOCOM II, after GetRandomLoc's helper: GetMapByIndex of the cell's map index, inlined -- called by the AI states, the SEAL body and the controller)
 0x0052A200 0x1BC func_0052A200  # OVL2
 0x0052A3C0 0x2F0 func_0052A3C0  # OVL2
 0x0052A6B0 0xB8 func_0052A6B0  # OVL2
-0x0052A770 0xAC func_0052A770  # OVL2
-0x0052A820 0x94 func_0052A820  # OVL2
+0x0052A770 0xAC GetCellNameString__7CAiMapsCFRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x198060: GetCellName inlined, the name's string or "")
+0x0052A820 0x94 GetCellName__7CAiMapsCFRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x1980C0, after GetCellNameString: the cell's map's GetCellName)
 0x0052A8C0 0x400 func_0052A8C0  # OVL2
 0x0052ACC0 0x158 func_0052ACC0  # OVL2
 0x0052AE20 0x2AC func_0052AE20  # OVL2
@@ -9630,7 +9630,7 @@
 0x0052B2E0 0x178 func_0052B2E0  # OVL2
 0x0052B460 0x158 func_0052B460  # OVL2
 0x0052B5C0 0x21C func_0052B5C0  # OVL2
-0x0052B7E0 0x34 func_0052B7E0  # OVL2
+0x0052B7E0 0x34 GetSporeCount__7CAiMapsFUi  # OVL2; ours (new in SOCOM II, after GetSporeLocation: a zeroed range filled by spores::GetRange, its count returned)
 0x0052B820 0x350 func_0052B820  # OVL2
 0x0052BB70 0x274 func_0052BB70  # OVL2
 0x0052BDF0 0x518 func_0052BDF0  # OVL2
@@ -9638,25 +9638,25 @@
 0x0052C320 0x284 func_0052C320  # OVL2
 0x0052C5B0 0xC func_0052C5B0  # OVL2
 0x0052C5C0 0x608 func_0052C5C0  # OVL2
-0x0052CBD0 0xAC func_0052CBD0  # OVL2
-0x0052CC80 0xAC func_0052CC80  # OVL2
-0x0052CD30 0xDC func_0052CD30  # OVL2
+0x0052CBD0 0xAC CanSeeLine__7CAiMapsFRC9CAiMapLocRC9CAiMapLocP9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19A480, after ComputeLineVisibility: the two cells' common map's CanSeeLine, false across maps)
+0x0052CC80 0xAC CanTravelLine__7CAiMapsFRC9CAiMapLocRC9CAiMapLocP9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19A570, after CanSeeLine: the common map's CanTravelLine)
+0x0052CD30 0xDC GetAltitude__7CAiMapsFRC9CAiMapLocRf  # OVL2; s1:order by hand (the demo's 0x19A660, after CanTravelLine in both builds: the cell's map's altitude, its lookup inlined one level -- GetCell 0x511F80 and the cell's altitude 0x516940 called)
 0x0052CE10 0x3E8 func_0052CE10  # OVL2
 0x0052D200 0x6C __ct__9CAiMapLocFUiUiUi  # OVL2; s1:exact
 0x0052D270 0x10 func_0052D270  # OVL2
 0x0052D280 0x10 func_0052D280  # OVL2
 0x0052D290 0x1F0 func_0052D290  # OVL2
 0x0052D480 0x21C GetCellCenter__7CAiMapsFRC9CAiMapLocP6CPnt3D  # OVL2; s1:calls (CMission::LoadVehicle and GetStartMatrix call it on AiMaps after GetLocation, as SOCOM 1's call GetCellCenter__7CAiMapsFRC9CAiMapLocP6CPnt3D)
-0x0052D6A0 0x12C func_0052D6A0  # OVL2
-0x0052D7D0 0x3C func_0052D7D0  # OVL2
-0x0052D810 0x94 func_0052D810  # OVL2
-0x0052D8B0 0x94 func_0052D8B0  # OVL2
-0x0052D950 0x94 func_0052D950  # OVL2
-0x0052D9F0 0xB0 func_0052D9F0  # OVL2
-0x0052DAA0 0xC4 func_0052DAA0  # OVL2
-0x0052DB70 0xF8 GetLocation__7CAiMapsFPCcR9CAiMapLoc  # OVL2; s1:calls (CMission::LoadVehicle and GetStartMatrix call it on AiMaps where SOCOM 1's call GetLocation__7CAiMapsFPCcR9CAiMapLoc)
-0x0052DC70 0xA34 func_0052DC70  # OVL2
-0x0052E6B0 0x70 func_0052E6B0  # OVL2; OVL2's copy of GetEntityByIndex__11CEntityListCFUi (0x29e470, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: GetEntityByIndex__11CEntityListCFUi
+0x0052D6A0 0x12C GetCell__7CAiMapsFRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19BFC0, after GetCellCenter in both builds: the cell's map's first-layer cell, GetCell inlined one level)
+0x0052D7D0 0x3C GetBoundary__7CAiMapsFRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's GetBoundary__7CAiMapsFRC9CAiMapLoc follows GetCell as here; SOCOM II's reads the cell's two boundary bits, 0 off the maps)
+0x0052D810 0x94 GetCellLink__7CAiMapsFRC9CAiMapLoc  # OVL2; ours (new in SOCOM II, before GetCellAction: the cell's map's GetCellLink, the family's shape)
+0x0052D8B0 0x94 GetCellAction__7CAiMapsFRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19C5A0: the cell's map's GetCellAction)
+0x0052D950 0x94 GetRegion__7CAiMapsFRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19C660: the cell's map's GetRegion(loc))
+0x0052D9F0 0xB0 GetRegion__7CAiMapsFPCcR9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19C720: every map's GetRegion(name) in turn, the cell made invalid when none has it)
+0x0052DAA0 0xC4 GetActionById__7CAiMapsFUiR9CAiMapLocPPQ26CAiMap6action  # OVL2; s1:order by hand (the demo's 0x19C800, between GetRegion(name) and GetLocation(name): every map's FindActionLocation in turn, the finder's index given to the cell)
+0x0052DB70 0xF8 GetLocation__7CAiMapsFPCcR9CAiMapLoc  # OVL2; s1:calls (CMission::LoadVehicle and GetStartMatrix call it on AiMaps where SOCOM 1's call GetLocation__7CAiMapsFPCcR9CAiMapLoc); by hand: const in SOCOM II -- only the const begin()/end() build the walk's iterators in stack slots as the target does (ai_maps.cpp); (back: the walk reads the list through a const view, InitBomb calls the non-const name)
+0x0052DC70 0xA34 GetLocation__7CAiMapsFPC6CPnt3DR9CAiMapLoc  # OVL2; s1:order by hand (the demo's GetLocation(CPnt3D *, loc) 0x19C9B0, 0xA04 bytes, right after GetLocation(name) as here: a point's cell, every map tried)
+0x0052E6B0 0x70 GetMapByIndex__7CAiMapsCFUi  # OVL2; s1:order by hand (the demo's 0x19D3C0, after the GetLocations and before Reset in both builds: the index tested against the list's size, the first node stepped i times, its map returned -- inlined into every CAiMaps lookup by cell, as here) -- not an overlay copy of GetEntityByIndex__11CEntityListCFUi (tools/ovlcopies.py: the same words): OVL1 code calls this one on AiMaps (CVehicle::Tick, CZLineMap::Tick), and ai_maps.cpp's GetMapByIndex compiles to it byte-exact
 0x0052E720 0x5C func_0052E720  # OVL2
 0x0052E780 0x40 func_0052E780  # OVL2
 0x0052E7C0 0xE4 func_0052E7C0  # OVL2
@@ -9748,7 +9748,7 @@
 0x00533A20 0x14 __ct__Q23std64vector<16CVehicleRdrEntry,Q23std29allocator<16CVehicleRdrEntry>>Fv  # OVL2; by hand (CVehicleRdr::Close's FreeVector temporary built: three words zeroed, this returned; vehicle_rdr.cpp's copy)
 0x00533A40 0x14 func_00533A40  # OVL2
 0x00533A60 0x1A4 func_00533A60  # OVL2
-0x00533C10 0xE0 func_00533C10  # OVL2; OVL2's copy of ParseTeamBlock__FP5_zrdr (0x2b34a0, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: ParseTeamBlock__FP5_zrdr
+0x00533C10 0xE0 func_00533C10  # OVL2; the same words as ParseTeamBlock__FP5_zrdr (0x2b34a0) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x00533CF0 0xB8 func_00533CF0  # OVL2
 0x00533DB0 0x28C func_00533DB0  # OVL2
 0x00534040 0x2E0 Parse__9AI_PARAMSFP5_zrdr  # OVL2; s1:calls (CVehicleRdr::Load calls it after "ai_params" and CCharacterType::Parse at its end, as SOCOM 1's call Parse__9AI_PARAMSFP5_zrdr)
@@ -9765,21 +9765,21 @@
 0x00535A40 0x3B0 func_00535A40  # OVL2
 0x00535DF0 0x438 func_00535DF0  # OVL2
 0x00536230 0x8B4 func_00536230  # OVL2
-0x00536AF0 0x50 func_00536AF0  # OVL2
-0x00536B40 0x50 func_00536B40  # OVL2
-0x00536B90 0x50 func_00536B90  # OVL2
-0x00536BE0 0x98 func_00536BE0  # OVL2
+0x00536AF0 0x50 _tile_occupied__FRC18MAP_FOREACH_STRUCTPv  # OVL2; ours (new in SOCOM II: the first of Tile 0x536230's four callbacks, before _tile_boundary as SOCOM 1's order puts its pair: the cell's occupied bit set from the tile's value, the change noted at +8)
+0x00536B40 0x50 _tile_boundary__FRC18MAP_FOREACH_STRUCTPv  # OVL2; s1:order by hand (the demo's 0x1A6100, 0x4C bytes and the same code: the boundary byte against the cell's two bits, set and the change noted)
+0x00536B90 0x50 _tile_shadow__FRC18MAP_FOREACH_STRUCTPv  # OVL2; ours (new in SOCOM II, after _tile_boundary: the cell's two shadow bits from the tile's value)
+0x00536BE0 0x98 _tile_soil__FRC18MAP_FOREACH_STRUCTPv  # OVL2; s1:order by hand (the demo's _tile_soil 0x1A6150, after _tile_boundary as here: the soil set where the tile's flags allow, the change noted)
 0x00536C80 0x780 func_00536C80  # OVL2
-0x00537400 0xA48 func_00537400  # OVL2
-0x00537E50 0xB28 func_00537E50  # OVL2
+0x00537400 0xA48 WalkLine__6CAiMapFRC9CAiMapLocPC6CPnt3DPFRC19MAP_LINEWALK_STRUCTPv_bPvf  # OVL2; s1:order by hand (the demo's WalkLine(loc, CPnt3D *) 0x1A6B00, 0xA64 bytes, before the two-cell one as here; CanSeeLine(loc, dir) 0x539070 tail-calls it with _SeeLineCallback as SOCOM 1's does -- SOCOM II adds the step, 0.2f in $f12)
+0x00537E50 0xB28 WalkLine__6CAiMapFRC9CAiMapLocRC9CAiMapLocPFRC19MAP_LINEWALK_STRUCTPv_bPvf  # OVL2; s1:order by hand (the demo's WalkLine(loc, loc) 0x1A7570, 0xD04 bytes; CanSeeLine and CanTravelLine 0x539090/0x5390B0 tail-call it with their callbacks as SOCOM 1's do, the step 0.2f added)
 0x00538980 0xD8 func_00538980  # OVL2
 0x00538A60 0x2A4 func_00538A60  # OVL2
 0x00538D10 0x120 func_00538D10  # OVL2
 0x00538E30 0xB4 func_00538E30  # OVL2
 0x00538EF0 0x17C func_00538EF0  # OVL2
-0x00539070 0x20 func_00539070  # OVL2
-0x00539090 0x20 func_00539090  # OVL2
-0x005390B0 0x20 func_005390B0  # OVL2
+0x00539070 0x20 CanSeeLine__6CAiMapFRC9CAiMapLocPC6CPnt3DP9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x1A8330, the first of the three line tests in both builds: WalkLine(from, dir, _SeeLineCallback, out, 0.2f))
+0x00539090 0x20 CanSeeLine__6CAiMapFRC9CAiMapLocRC9CAiMapLocP9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x1A8340: WalkLine(from, to, _SeeLineCallback, out, 0.2f); CAiMaps::CanSeeLine calls it)
+0x005390B0 0x20 CanTravelLine__6CAiMapFRC9CAiMapLocRC9CAiMapLocP9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x1A8350: WalkLine(from, to, _TravelLineCallback 0x539580, out, 0.2f); CAiMaps::CanTravelLine calls it)
 0x005390D0 0x168 func_005390D0  # OVL2
 0x00539240 0x1B4 func_00539240  # OVL2
 0x00539400 0x17C func_00539400  # OVL2
@@ -9797,11 +9797,11 @@
 0x0053A410 0xEC func_0053A410  # OVL2
 0x0053A500 0xE0 func_0053A500  # OVL2
 0x0053A5E0 0x150 func_0053A5E0  # OVL2
-0x0053A730 0x134 func_0053A730  # OVL2
-0x0053A870 0x78 func_0053A870  # OVL2
-0x0053A8F0 0x30 func_0053A8F0  # OVL2
-0x0053A920 0x3C func_0053A920  # OVL2
-0x0053A960 0x60 func_0053A960  # OVL2
+0x0053A730 0x134 DeleteLayers__6CAiMapFv  # OVL2; ours (new in SOCOM II: ~CAiMap's call after FreeEx -- every layer past the first deleted through ~CAiMapLayer inlined, the pod erase 0x53AAC0 over them, SetModified(true); ai_maplayer.cpp)
+0x0053A870 0x78 __dt__14CAiMapLayerVecFv  # OVL2; ours (~CAiMap destroys m_layers through it with -1, as it does readers through ~readers: four this-tests, a class over the pointer vector's three -- ai_maplayer.cpp)
+0x0053A8F0 0x30 AllocCells__11CAiMapLayerFUi  # OVL2; ours (the map readers' call: m_cells = CAiCell::Alloc(n), returned -- ai_maplayer.cpp)
+0x0053A920 0x3C FreeCells__11CAiMapLayerFv  # OVL2; ours (~CAiMap's first call, on m_layer0: the cells freed with _free, the pointer zeroed -- ai_maplayer.cpp)
+0x0053A960 0x60 __dt__11CAiMapLayerFv  # OVL2; ours (~CAiMap destroys m_layer0 through it with -1: FreeCells inlined -- ai_maplayer.cpp)
 0x0053A9C0 0x8C __ct__11CAiMapLayerFPCc  # OVL2; ours (new in SOCOM II: a map layer's constructor -- its name copied in (16 bytes, the last kept zero) or emptied, its words cleared, flag 1 set; CAiMap(int) builds its first layer with it, a name of 0)
 0x0053AA50 0x6C func_0053AA50  # OVL2
 0x0053AAC0 0x120 func_0053AAC0  # OVL2; OVL2's copy of the pod vector's erase (OVL1 0x28B150, the same 0x120 bytes; CCharacterType::CleanupTemporary's erase calls it, as SOCOM 1's calls erase__Q23std38__vector_pod<Ui,...>FPUiPUi); ovl-copy: erase__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPUiPUi
@@ -9884,7 +9884,7 @@
 0x00541240 0x4C func_00541240  # OVL2
 0x00541290 0x258 func_00541290  # OVL2; OVL2's copy of reserve__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FUi (0x1e7c90, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: reserve__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FUi
 0x005414F0 0x14 func_005414F0  # OVL2
-0x00541510 0x13C func_00541510  # OVL2; OVL2's copy of GetBBox__Q23zdb5CNodeCFv (0x262550, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: GetBBox__Q23zdb5CNodeCFv
+0x00541510 0x13C func_00541510  # OVL2; the same words as GetBBox__Q23zdb5CNodeCFv (0x262550) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x00541650 0x60 SetVisibleByUnit__7CPickupFUi  # OVL2; s1:order (SOCOM 1's SetVisibleByUnit__7CPickupFUi word for word: units 2, 4 and 8 set bits 1, 2 and 3, any other ORed in -- the word at 0x1C, SOCOM 1's 0x18) (the SEAL lane, round 3)
 0x005416B0 0x10 GetVisibleByUnit__7CPickupFUi  # OVL2; s1:order (SOCOM 1's GetVisibleByUnit__7CPickupFUi: the unit's bits against m_visible_by_units, now at 0x1C) (the SEAL lane, round 3)
 0x005416C0 0x14 GetPickupNetEntityID__7CPickupFv  # OVL2; s1:order (SOCOM 1's GetPickupNetEntityID__7CPickupFv returned m_id; SOCOM II's puts the owner word at 0x10 over it -- FindPickup compares an id with the same expression, inlined) (the SEAL lane, round 3)
@@ -10060,7 +10060,7 @@
 0x00555140 0x8 func_00555140  # OVL2; s1~ OnWeaponHit__Q23zdb7CNodeExFPQ23zdb5CNodePQ23zdb15IntersectStructP12CZProjectile (one of 2 out-of-line copies of an inline, by s1:vtable); ovl-copy: OnWeaponHit__Q23zdb7CNodeExFPQ23zdb5CNodePQ23zdb15IntersectStructP12CZProjectile (OVL2's copy, li v0,-1 as OVL1's 0x2742F0)
 0x00555150 0x8 func_00555150  # OVL2; s1~ OnAction__Q23zdb7CNodeExFPQ23zdb5CNodePv (one of 2 out-of-line copies of an inline, by s1:vtable); ovl-copy: Slot0C__Q23zdb7CNodeExFv (OVL2's copy: slot 0xC of __vt__7CSealEx, returns 0 as OVL1's 0x274300)
 0x00555160 0x8 func_00555160  # OVL2; ovl-copy: Slot10__Q23zdb7CNodeExFf (OVL2's copy: slot 0x10 of __vt__7CSealEx, returns false as OVL1's 0x216760)
-0x00555170 0x28 func_00555170  # OVL2; OVL2's copy of Top__26RTStack<15CZBodyAnimBlend>Fv (0x219390, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: Top__26RTStack<15CZBodyAnimBlend>Fv
+0x00555170 0x28 func_00555170  # OVL2; the same words as Top__26RTStack<15CZBodyAnimBlend>Fv (0x219390) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x005551A0 0x14 func_005551A0  # OVL2
 0x005551C0 0x4C func_005551C0  # OVL2
 0x00555210 0x68 func_00555210  # OVL2
@@ -10245,7 +10245,7 @@
 0x0056A8E0 0x388 func_0056A8E0  # OVL2
 0x0056AC70 0x68 func_0056AC70  # OVL2
 0x0056ACE0 0x128 func_0056ACE0  # OVL2
-0x0056AE10 0x30 func_0056AE10  # OVL2; OVL2's copy of __dt__Q23std62__vector_imp<11CLadderData,Q23std24allocator<11CLadderData>,0>Fv (0x2a9680, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: __dt__Q23std62__vector_imp<11CLadderData,Q23std24allocator<11CLadderData>,0>Fv
+0x0056AE10 0x30 func_0056AE10  # OVL2; the same words as __dt__Q23std62__vector_imp<11CLadderData,Q23std24allocator<11CLadderData>,0>Fv (0x2a9680) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x0056AE40 0x108 func_0056AE40  # OVL2
 0x0056AF50 0xDB4 func_0056AF50  # OVL2
 0x0056BD10 0x1E0 func_0056BD10  # OVL2
@@ -10376,8 +10376,8 @@
 0x00577DF0 0x4C func_00577DF0  # OVL2
 0x00577E40 0x54 IsCurrentBlend__10CZSealBodyCF8AnimType  # OVL2; s1:calls by hand (SOCOM 1's IsCurrentBlend__10CZSealBodyCF8AnimType: the short at 0x534 -- SOCOM 1's 0x464 -- against m_animset's (0x528, SOCOM 1's 0x45C) base anim of the type, through 0x5E1A90 as SOCOM 1's through BaseAnim__7AnimSetF8AnimType; SOCOM II tests the type itself first; called from the body's ticks everywhere; seal_anim.cpp)
 0x00577EA0 0x238 func_00577EA0  # OVL2
-0x005780E0 0x28 func_005780E0  # OVL2; OVL2's copy of Begin__21RTList<11ACTIVE_ANIM>Fv (0x28f120, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: Begin__21RTList<11ACTIVE_ANIM>Fv
-0x00578110 0x40 func_00578110  # OVL2; OVL2's copy of Next__21RTList<11ACTIVE_ANIM>Fv (0x28f150, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: Next__21RTList<11ACTIVE_ANIM>Fv
+0x005780E0 0x28 func_005780E0  # OVL2; the same words as Begin__21RTList<11ACTIVE_ANIM>Fv (0x28f120) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
+0x00578110 0x40 func_00578110  # OVL2; the same words as Next__21RTList<11ACTIVE_ANIM>Fv (0x28f150) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x00578150 0x58 AdrenalineIncr__10CZSealBodyFf  # OVL2; s1:calls (CZKit::InitializeSniperKick tail-calls it with a float, as SOCOM 1's; 0x58 bytes in both) -- the kit lane
 0x005781B0 0x8 Adrenaline__10CZSealBodyFv  # OVL2; s1:order by hand (SOCOM 1's Adrenaline__10CZSealBodyFv: one load and return, the member at 0xEB0 where SOCOM 1's read 0xDAC; seal_anim.cpp's last function in both builds; TickHeartbeat calls it first, as SOCOM 1's) -- the SEAL lane, round 7
 0x005781C0 0x2D4 func_005781C0  # OVL2
@@ -10514,9 +10514,9 @@
 0x0058A820 0x98 func_0058A820  # OVL2
 0x0058A8C0 0x58 func_0058A8C0  # OVL2
 0x0058A920 0x28 func_0058A920  # OVL2
-0x0058A950 0x48 func_0058A950  # OVL2; OVL2's copy of Clear__21RTList<11ACTIVE_ANIM>Fv (0x28f320, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: Clear__21RTList<11ACTIVE_ANIM>Fv
+0x0058A950 0x48 func_0058A950  # OVL2; the same words as Clear__21RTList<11ACTIVE_ANIM>Fv (0x28f320) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x0058A9A0 0x44 func_0058A9A0  # OVL2
-0x0058A9F0 0xB0 func_0058A9F0  # OVL2; OVL2's copy of __ct__21RTList<11ACTIVE_ANIM>FUi (0x290290, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: __ct__21RTList<11ACTIVE_ANIM>FUi
+0x0058A9F0 0xB0 func_0058A9F0  # OVL2; the same words as __ct__21RTList<11ACTIVE_ANIM>FUi (0x290290) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x0058AAA0 0x14 func_0058AAA0  # OVL2
 0x0058AAC0 0x68 func_0058AAC0  # OVL2
 0x0058AB30 0x114 func_0058AB30  # OVL2
@@ -10555,7 +10555,7 @@
 0x0058D020 0x70 func_0058D020  # OVL2
 0x0058D090 0xC0 func_0058D090  # OVL2
 0x0058D150 0x40 func_0058D150  # OVL2
-0x0058D190 0xC0 func_0058D190  # OVL2; OVL2's copy of Remove__21RTList<11ACTIVE_ANIM>FP11ACTIVE_ANIM (0x28f370, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: Remove__21RTList<11ACTIVE_ANIM>FP11ACTIVE_ANIM
+0x0058D190 0xC0 func_0058D190  # OVL2; the same words as Remove__21RTList<11ACTIVE_ANIM>FP11ACTIVE_ANIM (0x28f370) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x0058D250 0x60 func_0058D250  # OVL2
 0x0058D2B0 0x194 func_0058D2B0  # OVL2
 0x0058D450 0x27C func_0058D450  # OVL2
@@ -10907,7 +10907,7 @@
 0x005B6240 0x250 func_005B6240  # OVL2
 0x005B6490 0x360 func_005B6490  # OVL2
 0x005B67F0 0xA0 func_005B67F0  # OVL2
-0x005B6890 0x4C func_005B6890  # OVL2; OVL2's copy of __ct__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FRCQ23std38__vector_pod<Ui,Q23std13allocator<Ui>> (0x259b40, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: __ct__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FRCQ23std38__vector_pod<Ui,Q23std13allocator<Ui>>
+0x005B6890 0x4C func_005B6890  # OVL2; the same words as __ct__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FRCQ23std38__vector_pod<Ui,Q23std13allocator<Ui>> (0x259b40) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x005B68E0 0x2E8 insert__Q23std38__vector_pod<Us,Q23std13allocator<Us>>FPUsUiRCUs  # OVL2; s1:calls
 0x005B6BD0 0x110 func_005B6BD0  # OVL2
 0x005B6CE0 0x4C4 func_005B6CE0  # OVL2
@@ -10915,8 +10915,8 @@
 0x005B7350 0x5BC func_005B7350  # OVL2
 0x005B7910 0x8 func_005B7910  # OVL2
 0x005B7920 0x68 func_005B7920  # OVL2
-0x005B7990 0x190 func_005B7990  # OVL2; OVL2's copy of init<PCUi>__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPCUiPCUiQ23std20forward_iterator_tag_v (0x259b90, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: init<PCUi>__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPCUiPCUiQ23std20forward_iterator_tag_v
-0x005B7B20 0x74 func_005B7B20  # OVL2; OVL2's copy of __dt__6CStackFv (0x2d4fe0, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: __dt__6CStackFv
+0x005B7990 0x190 func_005B7990  # OVL2; the same words as init<PCUi>__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPCUiPCUiQ23std20forward_iterator_tag_v (0x259b90) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
+0x005B7B20 0x74 func_005B7B20  # OVL2; the same words as __dt__6CStackFv (0x2d4fe0) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x005B7BA0 0x5EC UpdateAiMapLoc__10CZSealBodyFv  # OVL2; slot 0x48 of __vt__10CZSealBody (CEntity's UpdateAiMapLoc slot; SOCOM II's takes no argument, as UpdateAiMapLoc__7CEntityFv)
 0x005B8190 0xC8 func_005B8190  # OVL2
 0x005B8260 0x10 OnWeaponHit__7CSealExFPQ23zdb5CNodePQ23zdb15IntersectStructP12CZProjectile  # OVL2; s1:exact
@@ -11118,7 +11118,7 @@
 0x005CC120 0x4D0 func_005CC120  # OVL2
 0x005CC5F0 0xC4 func_005CC5F0  # OVL2
 0x005CC6C0 0xA4 func_005CC6C0  # OVL2
-0x005CC770 0x38 func_005CC770  # OVL2; OVL2's copy of Clear__7CGRouteFv (0x2d1190, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: Clear__7CGRouteFv
+0x005CC770 0x38 func_005CC770  # OVL2; the same words as Clear__7CGRouteFv (0x2d1190) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x005CC7B0 0x14 func_005CC7B0  # OVL2
 0x005CC7D0 0xC func_005CC7D0  # OVL2
 0x005CC7E0 0x14 func_005CC7E0  # OVL2
@@ -11253,7 +11253,7 @@
 0x005DEB10 0x198 func_005DEB10  # OVL2
 0x005DECB0 0xB8 func_005DECB0  # OVL2
 0x005DED70 0x100 func_005DED70  # OVL2
-0x005DEE70 0x18 func_005DEE70  # OVL2; OVL2's copy of _max<Uc>__2aiFRCUcRCUc_RCUc (0x2afc40, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: _max<Uc>__2aiFRCUcRCUc_RCUc
+0x005DEE70 0x18 func_005DEE70  # OVL2; the same words as _max<Uc>__2aiFRCUcRCUc_RCUc (0x2afc40) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x005DEE90 0x2C func_005DEE90  # OVL2
 0x005DEEC0 0x4A8 func_005DEEC0  # OVL2
 0x005DF370 0x64 GetFP__10CZSealBodyFR6CPnt3D  # OVL2; s1:calls
@@ -13352,7 +13352,7 @@
 0x006687D0 0x8 func_006687D0  # OVL2 data area; a static initialiser
 0x006687E0 0x158 func_006687E0  # OVL2 data area; a static initialiser
 0x00668940 0x29C func_00668940  # OVL2 data area; a static initialiser
-0x00668BE0 0x30 func_00668BE0  # OVL2 data area; a static initialiser; s1~ node_util.cpp (names 0.53); OVL2's copy of __sinit_node_util.cpp (0x402960, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: __sinit_node_util.cpp
+0x00668BE0 0x30 func_00668BE0  # OVL2 data area; a static initialiser; s1~ node_util.cpp (names 0.53); the same words as __sinit_node_util.cpp (0x402960) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x00668C10 0x194 func_00668C10  # OVL2 data area; a static initialiser; s1~ seal_control.cpp (shape 0.20, a hint)
 0x00668DB0 0x94 func_00668DB0  # OVL2 data area; a static initialiser; s1~ zsnd_csndinstance.cpp (shape 0.49, a hint)
 0x00668E50 0xE0 func_00668E50  # OVL2 data area; a static initialiser
