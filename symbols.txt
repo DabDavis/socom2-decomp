@@ -5830,8 +5830,8 @@
 0x0032F350 0x3C DeleteChildren__5_zrdrFv  # OVL1; s1:calls (CZOnlineLobby::SyncGameClock calls it, between CUIVarManager::Add and UpdateDependents, where SOCOM 1's does; SOCOM II's tests the owned-array flag and calls the freeing helper 0x335AA0 that SOCOM 1's inlines) -- the online lane
 0x0032F390 0x218 Clone__5_zrdrFP5_zrdrP7CSTable  # OVL1; s1:calls by hand (SOCOM 1's Clone: the type switch, strings through the string table (0x39F1C0, SOCOM 1's CSTable::CreateString), arrays recursed with packed cleared, isclone set; the function-local warning flag 0x3DFF60 is SOCOM 1's guarded gp pair)
 0x0032F5B0 0x4C zrdr_findfile__FPCcPCc  # OVL1; s1:align
-0x0032F600 0x20 func_0032F600  # OVL1
-0x0032F620 0x8 func_0032F620  # OVL1
+0x0032F600 0x20 GetSize__9CBufferIOCFv  # OVL1; the UI-widgets/file lane's lead, checked: slot 0x14 (GetSize) of CBufferIO's vtable 0x408130 and CRdrIO's 0x406A50, where CFileIO's holds GetSize__7CFileIOCFv; the buffer's size (m_x14 ? m_x1C : m_x8); an inline virtual's copy, emitted with zrdr_parse.cpp's CRdrIO
+0x0032F620 0x8 GetMode__7CFileIOCFv  # OVL1; the UI-widgets/file lane's lead, checked: slot 0x18 (GetMode) of both CFileIO's (0x408180) and CBufferIO's tables, returning the word at 0xC; an inline virtual's copy, emitted with zrdr_parse.cpp's CRdrIO
 0x0032F630 0x4D8 zrdr_read__FPCcPCci  # OVL1; s1:callee
 0x0032FB10 0x68 func_0032FB10  # OVL1
 0x0032FB80 0x10 func_0032FB80  # OVL1; tu: char_type.cpp~ (1.0 beta)
@@ -6042,13 +6042,13 @@
 0x0033D370 0x9C func_0033D370  # OVL1
 0x0033D410 0x8C SaveRdr__12CSaveManagerFPQ23zar4CKeyPCcP8CRdrFile  # OVL1; s1:callee
 0x0033D4A0 0x224 func_0033D4A0  # OVL1
-0x0033D6D0 0x4C8 func_0033D6D0  # OVL1
+0x0033D6D0 0x4C8 Load__12CSaveManagerFPCci  # OVL1; the UI-widgets/file lane's lead, checked: its 'CSaveManager::Load' string, (this, name, flags) live as SOCOM 1's Load(const char *, int), the 'CSaveModuleList' key walked
 0x0033DBA0 0x8C func_0033DBA0  # OVL1
 0x0033DC30 0x1C8 func_0033DC30  # OVL1
 0x0033DE00 0x1F0 func_0033DE00  # OVL1
 0x0033DFF0 0x3DC func_0033DFF0  # OVL1
 0x0033E3D0 0x60 func_0033E3D0  # OVL1
-0x0033E430 0xA0 func_0033E430  # OVL1
+0x0033E430 0xA0 __dt__12CSaveManagerFv  # OVL1; the UI-widgets/file lane's lead, checked: SOCOM 1's ~CSaveManager -- m_TempBuffer (0x18) deleted and cleared, the list base's three this-tests and range erase, the deleting flag; CMemCard's destructor calls it with 1
 0x0033E4D0 0x40 __ct__12CSaveManagerFP3CIO  # OVL1; s1:exact
 0x0033E510 0x178 func_0033E510  # OVL1
 0x0033E690 0xF4 func_0033E690  # OVL1
