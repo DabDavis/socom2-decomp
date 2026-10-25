@@ -3805,7 +3805,7 @@
 0x002A6950 0xC func_002A6950  # OVL1
 0x002A6960 0x158 func_002A6960  # OVL1
 0x002A6AC0 0xC func_002A6AC0  # OVL1
-0x002A6AD0 0xC0 func_002A6AD0  # OVL1
+0x002A6AD0 0xC0 GetTimeLeft__8CMissionFv  # OVL1; by hand (the states lane, round 14; the name ours): the round's seconds left -- 0.001 times the online game's clock at 0x1808->0xEC in a network game, else the float at 0xE8 truncated; SetupTimerText, CHUD::On, CreateLocalBomb and CanPlaceBomb call it
 0x002A6B90 0xB8 TenSecondLaunch__9CZNetGameFb  # OVL1; s1:align
 0x002A6C50 0x64C func_002A6C50  # OVL1
 0x002A72A0 0x30 func_002A72A0  # OVL1
@@ -3817,7 +3817,7 @@
 0x002A74A0 0x6C func_002A74A0  # OVL1
 0x002A7510 0x4C SetE3RoundCount__9CZNetGameFi  # OVL1; s1:align
 0x002A7560 0x90 func_002A7560  # OVL1
-0x002A75F0 0xD4 func_002A75F0  # OVL1
+0x002A75F0 0xD4 UnInitialize__9CZNetGameFv  # OVL1; s1:order by hand (the states lane, round 14: SOCOM 1's UnInitialize, just ahead of Initialize as there -- the same run of cleared fields at SOCOM II's offsets, SetE3RoundCount(0) inlined; CMission::DestroyNetGame tail-calls it)
 0x002A76D0 0x664 Initialize__9CZNetGameFv  # OVL1; s1:align
 0x002A7D40 0x3F4 func_002A7D40  # OVL1
 0x002A8140 0xB48 func_002A8140  # OVL1
@@ -3834,7 +3834,7 @@
 0x002A97C0 0xD4 FadeToEndMission__8CMissionFfi  # OVL1; s1:calls
 0x002A98A0 0x8 fadeToEndMissionTick__8CMissionFfPv  # OVL1; s1:exact by hand (the states lane: SOCOM 1's fadeToEndMissionTick__8CMissionFfPv is the same 8-byte jump to FadeToEndMissionTick, and FadeToEndMission hands this to AddTask as SOCOM 1's hands that) -- fts_mission.cpp
 0x002A98B0 0x1B8 FadeToEndMissionTick__8CMissionFf  # OVL1; s1:align
-0x002A9A70 0xC0 func_002A9A70  # OVL1
+0x002A9A70 0xC0 EndMission__8CMissionFv  # OVL1; by hand (the states lane, round 14; the name ours): the mission ended unless m_DelayEndMission -- _OnMissionComplete, CVideo::Clear, the HUD's flashes reset, the delay and fading bits cleared, ResetDeathCam and the exit state pushed, the tail of SOCOM 1's FadeToEndMissionTick; CCoreState::Tick calls it
 0x002A9B30 0x3AC func_002A9B30  # OVL1
 0x002A9EE0 0x8 func_002A9EE0  # OVL1
 0x002A9EF0 0x8 DestroyNetGame__8CMissionFv  # OVL1; s1:ref by hand (the UI-commands lane's lead, vetted by the states lane: SOCOM 1's paired UI handler calls DestroyNetGame__8CMissionFv from the same place; SOCOM II's is SOCOM 1's 8 bytes, the online game at 0x1808 (fts_state.h's m_netGame) handed to 0x2A75F0 as a tail call)
