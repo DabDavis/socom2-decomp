@@ -98,6 +98,15 @@ void CAiPath::plan_complete(PATH_STATE state)
 }
 #pragma auto_inline reset
 
+/* the id moved on, the path drawn when asked (SOCOM 1's IncrementPathId; called from ai_maps.cpp
+ * and the path-recover state) */
+void CAiPath::IncrementPathId()
+{
+    m_pathId++;
+    if (m_flags & 0x40)
+        PrintPath("dbg_path");
+}
+
 /* a leg's search over: true while legs remain to plan, the next leg queued; else the plan
  * completes in the state the search left (SOCOM 1's).
  * OPEN (0x7C against 0xAC): the target keeps two compares of m_planleg against m_legcount whose
@@ -165,3 +174,37 @@ void CAiPath::PostProcess()
         PrintPath("dbg_path");
 }
 #pragma auto_inline reset
+
+/* the snake's length: none (when one was set) clears flag 2 and empties the path, Clear inlined;
+ * a new one cuts the points to it, reserves them, sets flag 2 and completes the plan (SOCOM 1's) */
+void CAiPath::SetSnakeLength(unsigned int len)
+{
+    if (len == 0 && m_snake_len != 0) {
+        m_flags &= ~4;
+        Clear();
+    } else if (len != m_snake_len) {
+        if (len < m_points.size())
+            m_points.resize(len);
+        m_points.reserve(len);
+        m_snake_len = len;
+        SetFlags(4, 0);
+        m_state = COMPLETE;
+    }
+}
+
+/* the last point taken off, its cell handed back when asked (new in SOCOM II, the name ours: the
+ * SEALs call it). Emptiness tested through the inline bool, so back() reads the size again */
+bool CAiPath::PopPoint(CAiMapLoc *loc)
+{
+    bool popped = false;
+
+    if (!m_points.empty()) {
+        point &p = m_points.back();
+
+        if (loc)
+            *loc = p.m_loc;
+        popped = true;
+        m_points.pop_back();
+    }
+    return popped;
+}

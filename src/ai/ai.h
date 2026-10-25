@@ -849,14 +849,20 @@ public:
         ASTAR_FAILURE_UNKNOWN = 6
     };
 
-    /* a cell of the smoothed path (SOCOM 1's DWARF, 0xC bytes) */
+    /* a cell of the smoothed path (SOCOM 1's DWARF, 0xC bytes; SOCOM II's is 8, the angle gone:
+     * the points' resize 0x528430 and the pop 0x524D00 step 8). The bits zeroed in a
+     * mem-initializer list (the resize's temporary: three read-mask-writes of the word); the copy
+     * written too, the cell through CAiMapLoc's, the width and flags copied, the rest zeroed (the
+     * reserve's copy loop 0x528DE0) */
     class point {
     public:
+        point() : m_width(0), m_flags(0), m_unused(0) {}
+        point(const point &p) : m_loc(p.m_loc), m_width(p.m_width), m_flags(p.m_flags), m_unused(0) {}
+
         CAiMapLoc m_loc;   // 0x0
         unsigned int m_width : 8;   // 0x4
         unsigned int m_flags : 8;
         unsigned int m_unused : 16;
-        float m_angle;   // 0x8
     };
     class points : public std::vector<point> {
     };
@@ -882,13 +888,27 @@ public:
     bool Clear();
     void SetTemplatePath(CAiPath *path);
     void PostProcess();
+    /* flags cleared, then set: one word read-modify-write each, `&= ~0` left a zero extension
+     * (SetSnakeLength's dsll32/dsrl32 pair; the name ours, after the AI states' SetFlags) */
+    void SetFlags(unsigned int set, unsigned int clear)
+    {
+        m_flags &= ~clear;
+        m_flags |= set;
+    }
+    /* the snake's length: none empties the path, a new one cuts and reserves the points (SOCOM 1's) */
+    void SetSnakeLength(unsigned int len);
     void UpdatePathWidth(unsigned int width);
     /* the path drawn for debugging, under a name (SOCOM 1's took none) */
     void PrintPath(const char *name) const;
+    /* the last point taken off, its cell handed back when asked; false when there is none (new
+     * in SOCOM II, the name ours: the SEALs' 0x524D00) */
+    bool PopPoint(CAiMapLoc *loc);
     void plan_setup();
     bool plan_addleg(CAiMap *map, const CAiMapLoc &start, const CAiMapLoc &goal);
     bool plan_legcomplete(PATH_STATE state);
     void plan_complete(PATH_STATE state);
+    /* the id moved on, the path drawn when asked (SOCOM 1's; 0x527470) */
+    void IncrementPathId();
     CAiMap *GetLegMap(int leg);
     bool GetLegPoints(CAiMapLoc &start, CAiMapLoc &goal, int leg) const;
 
