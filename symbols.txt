@@ -5253,21 +5253,21 @@
 0x00309A10 0x12C Uninit__5CMPEGFv  # OVL1; s1:order by hand (SOCOM 1's Uninit: the five owned buffers freed, uninitPssAudio; CCinematicState::UnInit calls it)
 0x00309B40 0x418 Init__5CMPEGFPvi  # OVL1; s1:order by hand (SOCOM 1's Init: the five buffers carved from the block or memalign'd, initPssAudio)
 0x00309F60 0x370 sendToIOP2area__FiiiiPUciPUci  # OVL1; s1:calls
-0x0030A2D0 0xD8 func_0030A2D0  # OVL1
-0x0030A3B0 0x1B4 func_0030A3B0  # OVL1
+0x0030A2D0 0xD8 iopGetArea__FPiPiPiPiP8AudioDeci  # OVL1; ours (Sony's ezmpeg audiodec.c iopGetArea, out of line in SOCOM II -- SOCOM 1's audioDecSendToIOP inlined it: the IOP buffer's free areas behind the play position in 1024-byte units, called once from audioDecSendToIOP's playing case with the play position)
+0x0030A3B0 0x1B4 audioDecSendToIOP__FP8AudioDec  # OVL1; s1:order by hand (SOCOM 1's audioDecSendToIOP, after sendToIOP2area as there: the state switch, sendToIOP2area when both sides hold a unit; tickPss calls it)
 0x0030A570 0x14 audioDecIsPreset__FP8AudioDec  # OVL1; s1:exact
-0x0030A590 0x8C func_0030A590  # OVL1
-0x0030A620 0xC0 func_0030A620  # OVL1
+0x0030A590 0x8C audioDecEndPut__FP8AudioDeci  # OVL1; s1:order by hand (SOCOM 1's audioDecEndPut, after IsPreset as there: the header's 0x28 bytes counted first, the ring's put/count/total; the audio callback calls it after its copies)
+0x0030A620 0xC0 audioDecBeginPut__FP8AudioDecPPUcPiPPUcPi  # OVL1; s1:order by hand (SOCOM 1's audioDecBeginPut: the header area while the state is 0, else the ring's two free areas; the audio callback calls it first)
 0x0030A6E0 0x44 audioDecReset__FP8AudioDec  # OVL1; s1:exact
-0x0030A730 0x58 func_0030A730  # OVL1
-0x0030A790 0x30 func_0030A790  # OVL1
-0x0030A7C0 0xA0 func_0030A7C0  # OVL1
+0x0030A730 0x58 audioDecStart__FP8AudioDec  # OVL1; s1:calls by hand (tickPss starts the audio through it once the IOP buffer is preset, as SOCOM 1's tickPss calls audioDecStart: snd_StartMovieSound, state 2)
+0x0030A790 0x30 audioDecDelete__FP8AudioDec  # OVL1; s1:calls by hand (uninitPssAudio's only call, as SOCOM 1's uninitPssAudio calls audioDecDelete: snd_CloseMovieSound, returns 1)
+0x0030A7C0 0xA0 audioDecCreate__FP8AudioDecPUcii  # OVL1; s1:calls by hand (initPssAudio's call with the audio buffer, its size and the IOP size, as SOCOM 1's: the fields zeroed, snd_InitMovieSound's buffer kept)
 0x0030A860 0xD4 fillBuff__FP7sceMpegi  # OVL1; s1:calls by hand (CMPEG::IdleTick feeds the film through it until the beam's line, as SOCOM 1's IdleTick calls fillBuff)
-0x0030A940 0x28 func_0030A940  # OVL1
-0x0030A970 0x128 func_0030A970  # OVL1
-0x0030AAA0 0x200 func_0030AAA0  # OVL1
-0x0030ACA0 0x124 func_0030ACA0  # OVL1
-0x0030ADD0 0x164 func_0030ADD0  # OVL1
+0x0030A940 0x28 errorCallback__FP7sceMpegP13sceMpegCbDataPv  # OVL1; s1:order by hand (SOCOM 1's errorCallback, after fillBuff as there; startPss registers it as callback type 0 (error), as Sony's playpss does; SOCOM II raises a flag tickPss tests)
+0x0030A970 0x128 backgroundCallback__FP7sceMpegP13sceMpegCbDataPv  # OVL1; s1:order by hand (SOCOM 1's backgroundCallback: BlockingPSSPlayback tested, fillBuff until the timer's mark, else OKtoFillBuff set; startPss registers it as type 4)
+0x0030AAA0 0x200 nodataCallback__FP7sceMpegP13sceMpegCbDataPv  # OVL1; s1:order by hand (SOCOM 1's nodataCallback: the demux ring refilled through fillBuff and handed to the IPU's DMA (0x1000B400); startPss registers it as type 1)
+0x0030ACA0 0x124 audioCallback__FP7sceMpegP16sceMpegCbDataStrPv  # OVL1; s1:order by hand (SOCOM 1's audioCallback: audioDecBeginPut, the packet copied in, audioDecEndPut; startPss registers it for stream type 2)
+0x0030ADD0 0x164 videoCallback__FP7sceMpegP16sceMpegCbDataStrPv  # OVL1; s1:order by hand (SOCOM 1's videoCallback: the packet copied into the demux ring, uncached; startPss registers it for stream type 0)
 0x0030AF40 0x1DC playPss__FP7sceMpegP12playPssRsrcsUi  # OVL1; s1:order by hand (between videoCallback and stopPss where SOCOM 1's playPss sits; the whole film played, CMPEG::IdleTick feeding it -- CMPEG::Tick's background path; SOCOM II's signature)
 0x0030B120 0x58 stopPss__FP7sceMpeg  # OVL1; s1:calls by hand (CMPEG::Loop and End call it on the film, as SOCOM 1's)
 0x0030B180 0x44 testdonePss__FP7sceMpeg  # OVL1; s1:calls by hand (CMPEG::Done returns it, as SOCOM 1's Done)
@@ -5276,7 +5276,7 @@
 0x0030B6F0 0xC uninitPssAudio__Fv  # OVL1; s1:calls by hand (CMPEG::Uninit's last call, as SOCOM 1's End calls uninitPssAudio)
 0x0030B700 0x38 initPssAudio__FP12playPssRsrcs  # OVL1; s1:calls by hand (CMPEG::Init's last call, on the buffers, as SOCOM 1's Init)
 0x0030B740 0x28 loadImage__FPUi  # OVL1; s1:exact
-0x0030B770 0x23C func_0030B770  # OVL1
+0x0030B770 0x23C setLoadImageTagsYX__FPUiPviiiUi  # OVL1; s1:calls by hand (setLoadImageTags' only call, as SOCOM 1's setLoadImageTags calls setLoadImageTagsYX: a GIF image transfer per macroblock, the chain ended; socom-unzipped's table agrees)
 0x0030B9B0 0x18 setLoadImageTags__FPUiPviiUi  # OVL1; s1:exact
 0x0030B9D0 0xB8 strFileRead__FPvi  # OVL1; s1:calls by hand (the reader CMPEG::Run and Loop hand startPss, as SOCOM 1's pass strFileRead)
 0x0030BA90 0x58 strFileClose__Fv  # OVL1; s1:calls by hand (CMPEG::End calls it, as SOCOM 1's End)

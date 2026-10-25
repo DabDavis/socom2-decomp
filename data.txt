@@ -193,6 +193,7 @@
 0x003DF338 0x4 m_top__6CStack  # OVL1; s1:data-seq (size SOCOM 1's; via Multiply__6CStackFPC7CMatrixb)
 0x003DF340 0x4 m_exp_scl  # OVL1; s1:data-seq (size SOCOM 1's; via exp_tl__Ff)
 0x003DF348 0x4 _Max_Height  # OVL1 data; SOCOM 1's _Max_Height (0x475468, small data: SetMaxHeight__5CMPEGFi stores it, Loop sizes the buffers by it): CMPEG::SetMaxHeight (0x309550) stores it, Run sets it to zVid's render height, Init and Loop size the buffers by it, tickPss reads it; 480 in the image; 9 references in 6 functions -- the online lane, round 4
+0x003DF350 0x4 _Display_Height  # OVL1 data; SOCOM 1's _Display_Height (0x47546C, after _Max_Height as here): 448 in the image, tickPss centres the frame in it; SOCOM II has no setter -- the online lane, round 4
 0x003DFD10 0x4 UNNAMED_NODE  # OVL1; SOCOM 1 name (node_main.cpp's file static: the name nameless nodes share; CNode::SetName reads it)
 0x003DFD18 0x4 DELETED_NODE  # OVL1; SOCOM 1 name (the name a node is left with as it is destroyed; ~CNode stores it after SetName(0), as SOCOM 1's)
 0x003DFE10 0x4 m_scale__Q23zdb6CWorld  # OVL1; s1:data-seq (size SOCOM 1's; via Load__17CharacterDynamicsFRC8CRdrFile)
@@ -775,6 +776,26 @@
 0x00451D18 0x1 path3tagAlloc__19@unnamed@zmpeg_cpp@  # OVL1 bss; SOCOM 1's path3tagAlloc (0x4767EC), as mpegBuffAlloc; 3 references in 2 functions -- the online lane, round 4
 0x00451D20 0x1 demuxBuffAlloc__19@unnamed@zmpeg_cpp@  # OVL1 bss; SOCOM 1's demuxBuffAlloc (0x4767F0), as mpegBuffAlloc; 3 references in 2 functions -- the online lane, round 4
 0x00451D28 0x1 audioBuffAlloc__19@unnamed@zmpeg_cpp@  # OVL1 bss; SOCOM 1's audioBuffAlloc (0x4767F4), as mpegBuffAlloc; 3 references in 2 functions -- the online lane, round 4
+0x00451D30 0x4 savedSndSetting  # OVL1 bss; SOCOM II's, the name ours: audioDecCreate keeps zsnd's 0x341A20 there and zeroes it, audioDecDelete puts it back; 3 references in 2 functions -- the online lane, round 4
+0x00451D38 0x4 isStarted  # OVL1 bss; SOCOM 1's isStarted (0x4767F8): the audio started -- initPssAudio and stopPss clear it, tickPss sets it after audioDecStart -- the online lane, round 4
+0x00451D40 0x5C audioDec  # OVL1 bss; SOCOM 1's audioDec (0x52CBC0, 0x5C): the player's AudioDec -- the online lane, round 4
+0x00451DA0 0x4 fileRead  # OVL1 bss; SOCOM 1's fileRead (0x4767FC): the reader startPss is given, fillBuff calls it -- the online lane, round 4
+0x00451DA8 0x4 decodeBudget  # OVL1 bss; SOCOM II's, the name ours: tickPss sets it from the frame's size, backgroundCallback demuxes for that many timer ticks -- the online lane, round 4
+0x00451DB0 0x1 OKtoFillBuff  # OVL1 bss; SOCOM 1's OKtoFillBuff (0x476800): backgroundCallback sets it, tickPss clears it -- the online lane, round 4
+0x00451DB8 0x4 gFrameCount  # OVL1 bss; SOCOM 1's gFrameCount (0x476804): tickPss keeps the decoder's frame count -- the online lane, round 4
+0x00451DC0 0x1 audioStarted  # OVL1 bss; SOCOM II's, the name ours: audioCallback sets it on the first packet whose fourth byte is set and drops the unflagged ones after; startPss and stopPss clear it -- the online lane, round 4
+0x00451E00 0x4000 muxBuff  # OVL1 bss; SOCOM 1's muxBuff (0x52CC40, 0x4000): fillBuff reads the stream into it -- the online lane, round 4
+0x00455E00 0x4 muxBuffFullness  # OVL1 bss; SOCOM 1's muxBuffFullness (0x476808) -- the online lane, round 4
+0x00455E08 0x4 path3tag  # OVL1 bss; SOCOM 1's path3tag (0x47680C): startPss keeps the buffers' tag area, tickPss builds and loads the two halves -- the online lane, round 4
+0x00455E10 0x4 demuxBuff  # OVL1 bss; SOCOM 1's demuxBuff (0x476810) -- the online lane, round 4
+0x00455E18 0x4 demuxBuffSize  # OVL1 bss; SOCOM 1's demuxBuffSize (0x476814) -- the online lane, round 4
+0x00455E20 0x4 demuxBuffPast  # OVL1 bss; SOCOM 1's demuxBuffPast (0x476818), the ring's write end -- the online lane, round 4
+0x00455E28 0x4 demuxBuffPresent  # OVL1 bss; SOCOM 1's demuxBuffPresent (0x47681C), the DMA's start -- the online lane, round 4
+0x00455E30 0x4 demuxBuffFuture  # OVL1 bss; SOCOM 1's demuxBuffFuture (0x476820), the DMA's end -- the online lane, round 4
+0x00455E38 0x1 pssDone  # OVL1 bss; SOCOM II's, the name ours: stopPss and a pad press in playPss set it, startPss clears it, testdonePss returns it -- the online lane, round 4
+0x00455E40 0x8 dbp  # OVL1 bss; SOCOM 1's dbp (0x476828, 8 bytes): the two frame buffers startPss is given, tickPss and playPss alternate -- the online lane, round 4
+0x00455F20 0x4 nonBlockReadReq  # OVL1 bss; SOCOM 1's nonBlockReadReq (0x476830): strFileRead starts a host read when it is clear and clears it when the read is done, strFileOpen clears it; 4 references in 2 functions -- the online lane, round 4
+0x00455F30 0x14 infile  # OVL1 bss; SOCOM 1's infile (0x530C70, 0x14 bytes in both): the open film -- on the disc, its size, its table entry, the IOP stream buffer, the host descriptor -- the four strFile functions' state -- the online lane, round 4
 0x0045A0C0 0x125C theNetwork  # OVL1 bss; s1:data-seq (via HandleBombStateRequest__11CZBombStateFiUcP6CPnt3D), moved by hand from 0x45A0B8: every network sender passes 0x45A0C0 as CZNetwork::zNetSendApplicationMessage's this where SOCOM 1 passes theNetwork, and the session-master and network flags SOCOM 1 keeps at 8 and 9 sit at 0x45A0C0/0x45A0C1 -- SOCOM II dropped the two team indices ahead of them (the states lane, round 5); size SOCOM 1's less those 8 bytes
 0x0045C298 0x4 NodeUniverse__3zdb  # OVL1 bss; s1:by hand (GetDatabaseNode tests and searches it where SOCOM 1's reads NodeUniverse__3zdb)
 0x0045C2A0 0x4 numNodes  # OVL1 bss; SOCOM 1 name (the node count, after NodeUniverse as in SOCOM 1; ~CNode counts it down)

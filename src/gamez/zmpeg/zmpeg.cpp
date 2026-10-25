@@ -26,6 +26,7 @@ extern unsigned char data_004A1790;   /* a film is running (another unit's flag)
 /* the buffers' height and the background flag, read by playpss.cpp too (SOCOM 1's globals, small
  * data there) */
 int _Max_Height = 480;   /* 0x3DF348 */
+int _Display_Height = 448;   /* 0x3DF350: tickPss centres the frame in it (SOCOM II drops its setter) */
 bool BlockingPSSPlayback;   /* 0x451CB8: the film plays whole, through playPss */
 
 /* the unit's own state (SOCOM 1's anonymous namespace; the Run argument SOCOM II's, the name ours) */
