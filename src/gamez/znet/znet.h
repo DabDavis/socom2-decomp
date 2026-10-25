@@ -53,6 +53,9 @@ public:
     int zNetLookupHost(const char *host, char *ip, int len);
     int zNetGetMyGameClientIndex();
     int zNetGetTime();
+    /* the local clock, in milliseconds (unsigned: the active lobby's refresh compares it with
+     * sltu, 0x2EE540) */
+    unsigned int zNetGetLocalTime();
     int zNetUpdate();
     void zNetFlushMessages();
     void AddToFixList(TypeRTimeFixStruct *fix);

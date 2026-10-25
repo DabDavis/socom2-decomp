@@ -120,8 +120,10 @@ public:
     UIVAR_LONGEVITY m_longevity;   // 0x28
 };   // 0x2C bytes
 
+class CDesignDlgObj;
+
 /* a dialog object's specification (SOCOM 1's; the vtable at 0, its three answers about children
- * inline -- their copies are an earlier unit's, 0x368540-0x368567) */
+ * inline -- their copies are an earlier unit's, 0x368540-0x368567; a child is a design object) */
 class CDlgObjSpec {
 public:
     CDlgObjSpec(_zrdr *rdr);
@@ -130,7 +132,7 @@ public:
     virtual CDlgObjSpec *Copy() = 0;                                                       // 0x0C
     virtual C2D *CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const = 0;   // 0x10
     virtual const char *GetType() = 0;                                                     // 0x14
-    virtual CDlgObjSpec *GetChild(int i) const { return 0; }                              // 0x18
+    virtual CDesignDlgObj *GetChild(int i) const { return 0; }                            // 0x18
     virtual bool HasChildren() const { return false; }                                     // 0x1C
     virtual int NumChildren() const { return 0; }                                          // 0x20
     /* (ours: the copy reads the source's variable spec through it -- written out, the copy's
@@ -295,18 +297,45 @@ public:
 class C2DButton;
 class CDesignDlgObj;
 
-/* what a button does on an event (SOCOM 1's DWARF: 0x10 bytes; its constructor is zui.cpp's,
- * 0x369F70, out of line) */
+/* a pad button (SOCOM 1's DWARF, zinput.h's) */
+enum PAD_BUTTON {
+    PAD_START, PAD_SELECT, PAD_RIGHT, PAD_LEFT, PAD_UP, PAD_DOWN, PAD_TRIANGLE, PAD_CIRCLE,
+    PAD_SQUARE, PAD_CROSS, PAD_TRIGGER_R1, PAD_TRIGGER_R2, PAD_TRIGGER_L1, PAD_TRIGGER_L2,
+    PAD_RIGHT_STICK, PAD_LEFT_STICK, PAD_MAX_BUTTONS
+};
+
+/* a button's state (SOCOM 1's DWARF, zinput.h's) */
+enum KEY_STATE { KEY_UP, KEY_FALLING, KEY_DOWN, KEY_RISING };
+
+/* what an action answers: a pad button or an event (SOCOM 1's DWARF) */
+enum ACTION_TYPE { ACTION_TYPE_BUTTON = 0, ACTION_TYPE_EVENT = 1 };
+
+/* what a button does on an event (SOCOM 1's DWARF: 0x10 bytes, the three enums a byte each).
+ * The constructor is inline: the specs' constructors inline it, and the units that hand it to
+ * __construct_array (CGameMenu's, C2DButton's, the list box's) emit its copy, zui.cpp's linked
+ * (0x369F70). The assignment is zui.cpp's (SOCOM 1's lines 404-407 there), the destructor
+ * zui_cleanup.cpp's (lines 23-24 there: its first function) */
 class ActionItem {
 public:
-    ActionItem();
+    ActionItem() : Type(ACTION_TYPE_BUTTON), Animation(0), Argument(0), State(KEY_FALLING), PadButton(PAD_MAX_BUTTONS) {}
+    /* a copy (SOCOM 1's, inline: the strings cleared and the state set, then the assignment --
+     * vector<ActionItem>'s range init 0x3836E0 builds each element so) */
+    ActionItem(const ActionItem &a) : Animation(0), Argument(0), State(KEY_FALLING) { *this = a; }
+    ~ActionItem();
+    void operator=(const ActionItem &a);
 
-    int Type;                  // 0x0: ACTION_TYPE
+    ACTION_TYPE Type;          // 0x0
     char *Animation;           // 0x4
     char *Argument;            // 0x8
-    unsigned char State;       // 0xc: KEY_STATE
-    unsigned char PadButton;   // 0xd: PAD_BUTTON, or EVENT
+    KEY_STATE State;           // 0xc
+    union {
+        PAD_BUTTON PadButton;  // 0xd
+        unsigned char Event;   // 0xd: EVENT
+    };
 };   // 0x10 bytes
+
+/* an action read from its rdr block (zui.cpp's, 0x365D50) */
+void ParseButtonAnim(_zrdr *rdr, ActionItem *item);
 
 /* one state's look, as a button spec reads it (SOCOM 1's ButtonState, 0x2C bytes there; SOCOM II's
  * 0x34 with the 12-byte string): IMAGE, the TEXT_GLOW's RANGE and TIME, PULSE, TEXT_COLOR, SCALE */
@@ -327,7 +356,11 @@ struct ButtonState {
 class CButtonSpec : public CDlgObjSpec {
 public:
     CButtonSpec(_zrdr *rdr);
-    CButtonSpec(CButtonSpec &spec);
+    /* (the copy is implicit, CButtonSpec(CButtonSpec &) as SOCOM 1's name has it -- CDlgObjSpec's
+     * takes a plain reference: inlined one level where a spec's copy needs it, its members' copies
+     * called -- CDlgObjSpec's 0x388F20, ButtonState's 0x37E210, CSaferStr's 0x37E1E0, the actions'
+     * vector's 0x37E190 -- and its own copy out of line in zui_cleanup.cpp, 0x387630, everything
+     * inlined there) */
     CDlgObjSpec *Copy();
     C2D *CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const;
     const char *GetType() { return "BUTTON"; }
@@ -344,7 +377,7 @@ public:
     CSaferStr m_caption;                 // 0xec: CAPTION
     bool m_hcentered;                    // 0xf8: HCENTERED
     std::vector<ActionItem> m_commands;  // 0xfc: ANIMATIONS
-    int m_108;                           // 0x108
+    bool m_108;                          // 0x108 (copied as a byte)
     CSaferStr m_font;                    // 0x10c: FONT
 };   // 0x118 bytes
 
@@ -356,9 +389,11 @@ public:
     CDlgObjSpec *Copy();
     C2D *CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const;
     const char *GetType() { return "HANDLERBUTTON"; }
-    CDlgObjSpec *GetChild(int i) const;
-    bool HasChildren() const;
-    int NumChildren() const;
+    /* (inline: HasChildren's copy follows the destructor, its first caller, 0x3881E0; the other two
+     * come with the table, 0x389780 and 0x3897B0) */
+    CDesignDlgObj *GetChild(int i) const { return m_child; }
+    bool HasChildren() const { return m_child != 0; }
+    int NumChildren() const { return HasChildren(); }
 
     CDesignDlgObj *m_child;              // 0x118: the SUBORDINATE block's object
 };   // 0x11c bytes
@@ -367,27 +402,42 @@ public:
 class CRadioStripSpec : public CButtonSpec {
 public:
     CRadioStripSpec(_zrdr *rdr);
+    ~CRadioStripSpec();
     CDlgObjSpec *Copy();
     C2D *CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const;
     const char *GetType() { return "RADIOSTRIP"; }
-    CDlgObjSpec *GetChild(int i) const;
-    bool HasChildren() const;
-    int NumChildren() const;
+    /* (inline: their copies come with the table, 0x389140-0x389173) */
+    CDesignDlgObj *GetChild(int i) const { return (CDesignDlgObj *)m_items.data_[i]; }
+    bool HasChildren() const { return m_items.size() != 0; }
+    int NumChildren() const { return m_items.size(); }
 
-    std::vector<CDlgObjSpec *> m_items;  // 0x118
+    std::vector<CDesignDlgObj *> m_items;  // 0x118: the strip's objects
 };   // 0x124 bytes
 
-/* a check box (SOCOM 1's CCheckBoxSpec; SOCOM II's 0x13C bytes, its check's texture at 0x130) */
+/* a check box (SOCOM 1's CCheckBoxSpec; SOCOM II's 0x13C bytes): the actions run on checking and
+ * unchecking, the check's offset, size and texture */
 class CCheckBoxSpec : public CButtonSpec {
 public:
     CCheckBoxSpec(_zrdr *rdr);
     CCheckBoxSpec(CCheckBoxSpec &spec);
+    /* the actions deleted (inline: its copy comes with the table, 0x389190, ~ActionItem inlined in
+     * zui_cleanup.cpp, which defines it) */
+    ~CCheckBoxSpec()
+    {
+        if (m_onCheck)
+            delete m_onCheck;
+        if (m_onUncheck)
+            delete m_onUncheck;
+    }
     CDlgObjSpec *Copy();
     C2D *CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const;
     const char *GetType() { return "CHECKBOX"; }
 
-    unsigned char _118[0x130 - 0x118];
-    CSaferStr m_checkTexture;            // 0x130
+    ActionItem *m_onCheck;               // 0x118: ONCHECK
+    ActionItem *m_onUncheck;             // 0x11c: ONUNCHECK
+    IPNT2D m_checkOffset;                // 0x120: CHECK_X, CHECK_Y or CHECK_OFFSET
+    IPNT2D m_checkSize;                  // 0x128: CHECKSIZE_X, CHECKSIZE_Y or CHECK_SIZE
+    CSaferStr m_checkTexture;            // 0x130: CHECK_TEXTURE
 };   // 0x13c bytes
 
 /* a slider: a button with a knob (SOCOM 1's CSliderBarSpec; its constructor inline, in
@@ -425,24 +475,19 @@ public:
     unsigned char _24[0x120 - 0x24];
 };   // 0x120 bytes
 
-/* the map control (SOCOM 1's CUIMapCtrlSpec; SOCOM II's 0x30 bytes) */
-class CUIMapCtrlSpec : public CDlgObjSpec {
-public:
-    CUIMapCtrlSpec(_zrdr *rdr);
-    CDlgObjSpec *Copy();
-    C2D *CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const;
-    const char *GetType() { return "MAPCONTROL"; }
-
-    unsigned char _8[0x30 - 0x8];
-};   // 0x30 bytes
-
 /* one object of a dialog's design: its spec, where it sits and under which parent (SOCOM 1's
  * CDesignDlgObj; the assignment copies the spec through its Copy) */
 class CDesignDlgObj {
 public:
     /* (SOCOM II's; the handler button's constructor news one so) */
     CDesignDlgObj() : m_spec(0), m_xpos(0), m_ypos(0), m_opacity(1.0f) {}
-    ~CDesignDlgObj() { delete m_spec; }
+    /* a copy: built empty, then assigned (vector<CDesignDlgObj>'s range init 0x389B00 builds each
+     * element so) */
+    CDesignDlgObj(const CDesignDlgObj &o) : m_spec(0), m_xpos(0), m_ypos(0), m_opacity(1.0f) { *this = o; }
+    /* (ordinary functions of zui_spec.cpp's, 0x37D9B0 and 0x37D910: zui.cpp's tail, the specs'
+     * destructors and the vectors' copies call them out of line) */
+    ~CDesignDlgObj();
+    void operator=(const CDesignDlgObj &o);
     /* (ours: the handler button's constructor sets its object so, each pointer loaded once) */
     void SetSpec(CDlgObjSpec *spec)
     {
@@ -460,16 +505,6 @@ public:
             name = "unnamed";
         m_name = name;
     }
-    void operator=(const CDesignDlgObj &o)
-    {
-        delete m_spec;
-        m_spec = o.m_spec ? o.m_spec->Copy() : 0;
-        m_xpos = o.m_xpos;
-        m_ypos = o.m_ypos;
-        m_opacity = o.m_opacity;
-        m_name = o.m_name;
-        m_childOf = o.m_childOf;
-    }
 
     CDlgObjSpec *m_spec;          // 0x0: SPEC
     int m_xpos;                   // 0x4: XPOS
@@ -478,5 +513,19 @@ public:
     CSaferStr m_name;             // 0x10: NAME ("unnamed")
     CSaferStr m_childOf;          // 0x1C: CHILDOF
 };   // 0x28 bytes
+
+/* the map control (SOCOM 1's CUIMapCtrlSpec; SOCOM II's 0x30 bytes) */
+class CUIMapCtrlSpec : public CDlgObjSpec {
+public:
+    CUIMapCtrlSpec(_zrdr *rdr);
+    CDlgObjSpec *Copy();
+    C2D *CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const;
+    const char *GetType() { return "MAPCONTROL"; }
+
+    IPNT2D m_upperLeft;                   // 0x8: UPPERLEFT
+    IPNT2D m_lowerRight;                  // 0x10: LOWERRIGHT
+    std::vector<CDesignDlgObj> m_elements;  // 0x18: ELEMENTS (each its XOFFSET, YOFFSET, TYPE and SPEC)
+    std::vector<ActionItem> m_animations;   // 0x24: ANIMATIONS
+};   // 0x30 bytes
 
 #endif

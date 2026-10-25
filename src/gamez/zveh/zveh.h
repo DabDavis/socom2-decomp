@@ -179,9 +179,26 @@ public:
  * turret's twin: 136 bytes, the vector steps 0x88; the names ours) */
 class CVehicleDef {
 public:
+    /* the strings emptied and the word at 0x84 cleared (inline: the resize 0x3AE750 builds its
+     * temporary in place -- four byte stores and a word) */
+    CVehicleDef()
+    {
+        m_name[0] = 0;
+        m_20[0] = 0;
+        m_40[0] = 0;
+        m_60[0] = 0;
+        m_84 = 0;
+    }
     void Parse(const char *name, _zrdr *rdr);
 
-    char m_name[0x88];   // 0x0: the node-name prefix it hooks up to
+    /* four strings, a byte and a word: the erase's inlined assignment (0x3AE800) copies the strings
+     * a byte at a time (lb), the byte with lbu and the word with lw */
+    char m_name[0x20];   // 0x0: the node-name prefix it hooks up to
+    char m_20[0x20];   // 0x20
+    char m_40[0x20];   // 0x40
+    char m_60[0x20];   // 0x60
+    unsigned char m_80;   // 0x80
+    int m_84;   // 0x84
 };   // 0x88 bytes
 
 class CVehicleDefVector : public std::vector<CVehicleDef> {

@@ -5,12 +5,13 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
 extern "C" {
+s32 GetMap__7CAiMapsCFRC9CAiMapLoc(M2C_UNK *);      /* extern */
+s32 IsTraversable__6CAiMapCFRC9CAiMapLoc(s32, s32); /* extern */
 M2C_UNK func_005136B0(char *, s32, M2C_UNK, s32);   /* extern */
-s32 func_0052A090(s32, s32);                        /* extern */
-s32 func_0052A180(M2C_UNK *);                       /* extern */
 extern M2C_UNK AiMaps;
 
 bool func_005F1760(char *arg0, s32 arg1) {
@@ -19,15 +20,15 @@ bool func_005F1760(char *arg0, s32 arg1) {
     s32 var_v0;
 
     var_s0 = false;
-    if (M2C_FIELD(arg0, u8 *, 0x34) == 0) {
-        temp_v0 = func_0052A180(&AiMaps);
+    if (SC_MEMBER(arg0, u8 *, 0x34) == 0) {
+        temp_v0 = GetMap__7CAiMapsCFRC9CAiMapLoc(&AiMaps);
         if (temp_v0 != 0) {
-            var_v0 = func_0052A090(temp_v0, arg1);
+            var_v0 = IsTraversable__6CAiMapCFRC9CAiMapLoc(temp_v0, arg1);
         } else {
             var_v0 = 0;
         }
         if (var_v0 & 0xFF) {
-            func_005136B0(arg0 + 0x58, M2C_FIELD(arg0, s32 *, 0x60) + (M2C_FIELD(arg0, s32 *, 0x5C) * 4), 1, arg1);
+            func_005136B0(arg0 + 0x58, SC_MEMBER(arg0, s32 *, 0x60) + (SC_MEMBER(arg0, s32 *, 0x5C) * 4), 1, arg1);
             var_s0 = true;
         }
     }

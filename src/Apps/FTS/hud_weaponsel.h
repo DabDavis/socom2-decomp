@@ -13,6 +13,10 @@
 class CHUD;
 class C2DFont;
 
+namespace zdb {
+class CWorld;
+}
+
 /* a HUD text at 80 alpha (SOCOM 1's; its implicit destructor's copy is hud_main.cpp's, 0x1FC990) */
 class CHudBrightText : public C2DString {
 public:
@@ -23,6 +27,7 @@ public:
 class CWeaponSel : public C2D {
 public:
     CWeaponSel();
+    void Init(zdb::CWorld *world, C2DFont *font);
     void UnInit();
     void OnClose();
     void AfterCloseFirst();
@@ -67,7 +72,11 @@ public:
     C2DString m_ammotype;   // 0xa70
     CHudBrightText m_ammocount;   // 0xb08
     CHudBrightText m_magcount;   // 0xba0
-    unsigned char _c38[0xc58 - 0xc38];   // the textures (SOCOM 1: 12 words here, SOCOM II 8)
+    zdb::CTexHandle *m_weaponselbkrndtex;   // 0xc38 (SOCOM II has no m_selectionbacktex)
+    zdb::CTexHandle *m_weapontex[4];   // 0xc3c
+    zdb::CTexture *m_arrowtex;   // 0xc4c
+    C2DFont *m_myfont;   // 0xc50
+    int m_current_item;   // 0xc54
     int m_openstate;   // 0xc58
     float m_nameoffsetx;   // 0xc5c
     float m_nameoffsety;   // 0xc60
@@ -81,7 +90,16 @@ public:
     float m_menustartx;   // 0xc98
     float m_curheight;   // 0xc9c
     float m_goalheight;   // 0xca0
-    unsigned char _ca4[0xce0 - 0xca4];
+    float m_curtrans[2];   // 0xca4
+    float m_goaltrans[2];   // 0xcac
+    float m_curcolor;   // 0xcb4
+    unsigned char m_incCurcolor;   // 0xcb8
+    float m_arrowcolor;   // 0xcbc
+    unsigned char m_arrowincrement;   // 0xcc0
+    class CSnd *m_selectsound;   // 0xcc4
+    class CSnd *m_scrollupsound;   // 0xcc8
+    class CSnd *m_scrolldownsound;   // 0xccc
+    int m_cursound;   // 0xcd0
 } __attribute__((aligned(16)));   // 0xce0 bytes
 
 /* an item (zweapon.h's EQUIP_ITEM, a byte enum: copied with lb, compared with lbu; 255 none) */
@@ -93,6 +111,7 @@ enum EQUIP_ITEM { EQUIP_NONE = 255 };
 class CInGameWeaponSel : public C2D {
 public:
     CInGameWeaponSel();
+    void Init(zdb::CWorld *world, C2DFont *font);
     void UnInit();
     void Clear();
     void UpdateCharacter();
@@ -135,7 +154,16 @@ public:
     float m_menustartx;   // 0x1168
     float m_curheight;   // 0x116c
     float m_goalheight;   // 0x1170
-    unsigned char _1174[0x11a4 - 0x1174];
+    float m_curtrans[2];   // 0x1174
+    float m_goaltrans[2];   // 0x117c
+    float m_curcolor;   // 0x1184
+    unsigned char m_incCurcolor;   // 0x1188
+    float m_arrowcolor;   // 0x118c
+    unsigned char m_arrowincrement;   // 0x1190
+    class CSnd *m_selectsound;   // 0x1194
+    class CSnd *m_scrollupsound;   // 0x1198
+    class CSnd *m_scrolldownsound;   // 0x119c
+    int m_cursound;   // 0x11a0
     EQUIP_ITEM m_selected_item_index[5];   // 0x11a4 (SOCOM 1: six)
     unsigned char _11a9[0x11b0 - 0x11a9];
 } __attribute__((aligned(16)));   // 0x11b0 bytes
@@ -173,9 +201,10 @@ public:
     virtual void Draw(zdb::CCamera *cam);
     virtual void SetTrans(float trans);
 
-    unsigned char _18[0x20 - 0x18];
+    class CMPWeaponSel *m_owner;   // 0x18: the selector (its Init sets the category page's)
+    unsigned char _1c[0x20 - 0x1c];
     CWeaponSlot *m_slots[5];   // 0x20
-    unsigned char _34[0x38 - 0x34];
+    int m_34;   // 0x34: zeroed by the selector's Init
 };   // 0x38 bytes
 
 class CMPWeaponCategories;
@@ -216,7 +245,9 @@ public:
     SlotList m_list;   // 0x960
     CategorySlot m_categories[4];   // 0x9a0
     C2DBitmap m_bitmap3;   // 0xea0
-    unsigned char _f20[0xf40 - 0xf20];
+    unsigned char _f20[0xf30 - 0xf20];
+    class CMPWeaponSel *m_owner;   // 0xf30: the selector (its Init sets it)
+    unsigned char _f34[0xf40 - 0xf34];
 } __attribute__((aligned(16)));   // 0xf40 bytes
 
 /* the network game's weapon selector: slot lists honouring the server's weapon valves
@@ -226,9 +257,13 @@ public:
 class CMPWeaponSel {
 public:
     CMPWeaponSel();
+    void Init();
     void UnInit();
     void Off();
     void On();
+    inline void Set203(bool on);
+    inline void SetGL(bool on);
+    inline void SetF2000(bool on);
 
     bool m_active;   // 0x0: set while the selector is up (On does nothing without it)
     C2DString m_title;   // 0x4
@@ -238,7 +273,12 @@ public:
     CMPWeaponCategories m_categories;   // 0x220
     SlotList m_list;   // 0x1160
     SelectedSlot m_selected[5];   // 0x1198
-    unsigned char _1530[0x1540 - 0x1530];
+    unsigned char m_1530;   // 0x1530: 255 from Init
+    unsigned char m_1531;   // 0x1531: 255 from Init
+    bool m_203;   // 0x1532: the M203's grenades enabled (Enable_203FRAG and the rest)
+    bool m_f2000;   // 0x1533: the F2000's (Enable_F2000FRAG ...)
+    bool m_gl;   // 0x1534: the grenade launcher's (Enable_GLFRAG ...)
+    unsigned char _1535[0x1540 - 0x1535];
 } __attribute__((aligned(16)));   // 0x1540 bytes
 
 #endif

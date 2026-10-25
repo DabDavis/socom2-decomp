@@ -11,6 +11,10 @@ class CCompassAnchor;
 class CHudCompassAnchor;
 class CZSealBody;
 
+namespace zdb {
+class CWorld;
+}
+
 /* a compass anchor's place in the frame's list (SOCOM 1's DWARF; 0x14 bytes). Its constructor is
  * user-declared: the vector's reserve copies it member by member (lw, sw, then the two bytes),
  * where a POD would go as five words */
@@ -57,7 +61,13 @@ public:
     void Off();
     void On();
     void SetScale(float scale);
-    void InitHUD_Compass(void *world);
+    void InitHUD_Compass(zdb::CWorld *world);
+    /* an anchor type's texture, none past the last (0x2113D0; the name ours) */
+    zdb::CTexHandle *GetAnchorImg(unsigned int type);
+    /* an anchor's colour: its own point's, else its type's (0x2113F0; the name ours) */
+    CPnt3D GetAnchorColor(CCompassAnchor *anchor);
+    /* an anchor type's colour, garbage past the last (0x2114C0; the name ours) */
+    CPnt3D GetAnchorColor(unsigned int type);
 
     float m_scale;   // 0x0
     zdb::CTexture *m_newcompasstex;   // 0x4

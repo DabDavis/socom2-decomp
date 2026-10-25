@@ -16,6 +16,12 @@
 /* a texture by name, prepared for drawing (zui.cpp's PrepTexture, 0x36A230) */
 zdb::CTexHandle *PrepTexture(const char *name, zdb::CTextureRelocMgr *mgr);
 
+class C2DButton;
+
+/* a button's four states' textures and its caption set (zui.cpp's InitButton, 0x36A3B0) */
+void InitButton(C2DButton *button, zdb::CTexHandle *normal, zdb::CTexHandle *active, zdb::CTexHandle *pressed,
+                zdb::CTexHandle *disabled, const char *caption);
+
 /* a string a spec configures (SOCOM 1's DWARF: : C2DString, UIVarMixin; SOCOM II's 0xC0 bytes, its
  * constructor 0x37A770 out of line: grey-white 255, scale 2, the offset a static's copy) */
 class CRenderableString : public C2DString, public UIVarMixin {
