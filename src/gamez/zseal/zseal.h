@@ -14,6 +14,7 @@
 #include "../znode/node_world.h"
 #include "../zcamera/zcamera.h"
 #include "../../ai/ai_states.h"
+#include "../zchar/zchar.h"
 
 class CZSealBody;
 class CZProjectile;
@@ -57,8 +58,8 @@ enum SEAL_DEATH_TYPE {
 /* the orders (SOCOM 1's DWARF, a byte: only the size matters here) */
 enum FT_COMMAND { CMD_UNKNOWN = 0, CMD_ACTION = 1, CMD_LAST = 255 };
 
-/* a character's sounds and the kinds of stun (SOCOM 1's DWARF; only the sizes matter here) */
-enum CHARACTER_SOUND { CHARACTER_SOUND_NONE = 0, CHARACTER_SOUND_LAST = 255 };
+/* a character's sounds are zchar.h's CHARACTER_SOUND (a signed byte, -1 to 84); the kinds of stun
+ * (SOCOM 1's DWARF; only the size matters here) */
 enum STUN_TYPE { STUN_NONE = 0, STUN_LAST = 6 };
 
 /* the AI's small templates (SOCOM 1's namespace ai; never inlined -- MW auto-inlines no template
@@ -139,6 +140,81 @@ class CNetGameState {
 public:
     unsigned char _0[0xd2];
     unsigned char m_ghost;   // 0xd2
+    unsigned char _d3[0x111 - 0xd3];
+    unsigned char m_mode;   // 0x111: the game's kind (the stats test 1 and 3; the name ours)
+};
+
+/* a pickup: a weapon, ammunition, a grenade or the MP bomb lying in the world (SOCOM 1's DWARF:
+ * CPickup, 0x1c bytes; SOCOM II's puts a float first -- its life, run down by the pickups' tick
+ * -- so every member sits 4 further, and makes the type a whole byte and the owner's entity id a
+ * word of its own at 0x10). pickup_main.cpp's; the list and the statics are OVL1 data. */
+/* the weapon (zweapon.h's CZWeapon) and the ammunition (an OVL1 class: only its name) a pickup
+ * holds */
+class CZWeapon;
+class CPickupAmmo;
+
+class CPickup {
+public:
+    /* the kinds (SOCOM 1's PU_TYPE, nested; the values SOCOM II's code tests -- 8 a weapon, 9
+     * ammunition (SOCOM 1's CleanupAmmoPickup tests the same two), 11 the MP bomb; the names
+     * ours) */
+    enum PU_TYPE {
+        PU_NONE = 0, PU_TYPE_1 = 1, PU_TYPE_2 = 2, PU_TYPE_3 = 3, PU_TYPE_4 = 4, PU_TYPE_5 = 5,
+        PU_TYPE_6 = 6, PU_TYPE_7 = 7, PU_WEAPON = 8, PU_AMMO = 9, PU_MPBOMB = 11, PU_LAST = 255
+    };
+    typedef std::list<CPickup *>::iterator iterator;
+
+    static void DebugPickups();
+    static void TickTimers(const CPnt3D *pos, float dT);
+    static bool IsWeaponNear(unsigned char item, const CPnt3D *pos, float range);
+    static CPickup *GetClosest(const CPnt3D *pos, float range, PU_TYPE type, CPickup **secondary,
+                               bool no_special);
+    static void CleanupAmmoPickup(CPickup *pickup);
+    CPickupAmmo *GetAmmo();
+    CZWeapon *GetWeapon();
+    void *GetData4567();
+    void *GetData123();
+    /* the kinds' groups (inline: the accessors materialise each `||`). `m_type == 1 || m_type ==
+     * 2` folds into one range test (sltiu); the ternary keeps GetData123's two compares */
+    bool IsType1() { return m_type == PU_TYPE_1; }
+    bool IsType2() { return m_type == PU_TYPE_2 ? true : false; }
+    bool IsType12() { return IsType1() || IsType2(); }
+    bool IsType123() { return IsType12() || m_type == PU_TYPE_3; }
+    bool IsType75() { return m_type == PU_TYPE_7 || m_type == PU_TYPE_5; }
+    bool IsType754() { return IsType75() || m_type == PU_TYPE_4; }
+    bool IsType4567() { return IsType754() || m_type == PU_TYPE_6; }
+
+    static CPickup *FindPickup(unsigned int id);
+    static void DestroyNetPickups(unsigned int owner);
+    static void Destroy(CPickup *pickup);
+    static CPickup *GetMPBomb();
+    /* SOCOM II's takes the whole id, the entity's in its upper half */
+    static unsigned short GetEntityIDFromNetID(unsigned int netid);
+    static iterator GetFirst();
+    static CPickup *GetNext(iterator &it, PU_TYPE type);
+    static CPickup *GetNext(iterator &it, const CPnt3D *pos, float range, PU_TYPE type);
+    static void Open(unsigned int bits);
+    unsigned int GetPickupNetEntityID();
+    const CPnt3D *GetPosW() const;
+    void SetVisibleByUnit(unsigned int unit);
+    bool GetVisibleByUnit(unsigned int unit);
+
+    static std::list<CPickup *> m_list;   // OVL1 bss 0x44D470
+    static zdb::CNode *m_mpbombnode;   // OVL1 bss 0x44D4A0
+    static unsigned int bit_count;   // OVL1 data 0x3DF178
+    static bool m_isOpen;   // OVL1 bss 0x44D4B0
+
+    float m_timer;   // 0x0 (new in SOCOM II)
+    zdb::CNode *m_node;   // 0x4
+    void *m_data;   // 0x8: a grenade's projectile, a weapon's...
+    unsigned int m_type : 8;   // 0xc (SOCOM 1's 7 bits)
+    unsigned int m_locked : 1;
+    unsigned int m_secondary : 1;
+    unsigned int m_unused : 6;
+    unsigned int m_id : 16;   // 0xe
+    unsigned int m_owner;   // 0x10: the owner's entity id (new in SOCOM II)
+    unsigned char m_bits[8];   // 0x14: a CBits (SOCOM 1's 0x10)
+    unsigned int m_visible_by_units;   // 0x1c (SOCOM 1's 0x18)
 };
 
 /* a thrown grenade's flight, solved (SOCOM 1's; only the statics) */
@@ -192,7 +268,7 @@ public:
     virtual void PerformProximityActions();
     virtual void OnCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);
     virtual void CreepTick(float dT);                                       /* +0x88 */
-    virtual void SlideTick(float dT);
+    virtual bool SlideTick(float dT);   /* SOCOM II's returns whether the SEAL slid */
     /* +0x90-0x98, new in SOCOM II: the fudge velocities set (the names ours) */
     virtual void SetFudgeVelM(const CPnt3D *v) { m_fudge_velM = *v; }
     virtual void SetFudgeVelR(const CPnt3D *v) { m_fudge_velR = *v; }
@@ -288,6 +364,9 @@ public:
     /* (0x573E60, not written yet: declared so no unit emits an implicit one) */
     virtual ~CSealCtrlAi();
     virtual void SetThrottle(unsigned int axis, float value);
+    virtual bool SlideTick(float dT);
+    /* never on in the AI mode 7 (OVL2 0x557EE0) */
+    virtual void SetDoAiMapCollide(bool on);
     virtual void OnSetHealth(float health, float old);
     virtual void OnMissionEnd();
     virtual void OnStateChange(SEAL_STATE from, SEAL_STATE to);
@@ -299,12 +378,27 @@ public:
 
     unsigned char _250[0x254 - 0x250];
     float m_throttle_goal[3];   // 0x254 (as SOCOM 1's 0x274: the throttles the AI asks for)
-    unsigned char _260[0x278 - 0x260];
+    unsigned char _260[0x26c - 0x260];
+    unsigned char m_26c;   // 0x26c: a mode byte (4: any target taken; the name ours)
+    unsigned char _26d[0x278 - 0x26d];
     SEAL_STANCE m_stance;   // 0x278 (SOCOM 1's 0x285)
     float m_stance_delay;   // 0x27c (SOCOM 1's 0x288)
-    unsigned char _280[0x468 - 0x280];
+    unsigned char _280[0x3f4 - 0x280];
+    unsigned char m_3f4;   // 0x3f4: a mode (7 keeps the AI-map collision off; the name ours)
+    unsigned char _3f5[0x41c - 0x3f5];
+    unsigned int m_41c;   // 0x41c: a state stack's size word (SOCOM 1's m_stateStack, a CAiStateStack)
+    unsigned char _420[0x468 - 0x420];
     CZAnim *m_task_anim;   // 0x468: an anim the AI plays, stopped at the mission's end
-    unsigned char _46c[0x7c0 - 0x46c];
+    unsigned char _46c[0x4ec - 0x46c];
+    unsigned char m_4ec;   // 0x4ec: a state (1-3 and, with 0x508 set, 4 hold the next byte back; the name ours)
+    signed char m_4ed;   // 0x4ed
+    unsigned char _4ee[0x508 - 0x4ee];
+    void *m_508;   // 0x508
+    unsigned char _50c[0x5bc - 0x50c];
+    signed char m_5bc;   // 0x5bc (read after the update at 0x555420; the name ours)
+    unsigned char _5bd[0x750 - 0x5bd];
+    void *m_750[3];   // 0x750: three slots by a byte index (the name ours)
+    unsigned char _75c[0x7c0 - 0x75c];
 };
 
 /* the network's controller: a SEAL another console drives (SOCOM 1's CRemoteCtrl : CSealCtrl;
@@ -381,6 +475,10 @@ public:
     void ActionAvailableMask(unsigned char id, bool on);
     /* the stance's change taken, once (seal_body.cpp) */
     bool StanceChanged();
+    /* the HUD's flags: the hit set, and each taken once (seal_env.cpp, SOCOM 1's) */
+    void SetHudHitFlag();
+    bool HudUpdateViewCone();
+    bool GetHudHitFlag();
     /* the terrain a SEAL can cross: an int, the callers make it a bool (seal_env.cpp) */
     int CanTraverse(CDIType type);
     bool CanClimbWall();

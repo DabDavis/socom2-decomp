@@ -9882,30 +9882,30 @@
 0x00541290 0x258 func_00541290  # OVL2
 0x005414F0 0x14 func_005414F0  # OVL2
 0x00541510 0x13C func_00541510  # OVL2
-0x00541650 0x60 func_00541650  # OVL2
-0x005416B0 0x10 func_005416B0  # OVL2
-0x005416C0 0x14 func_005416C0  # OVL2
-0x005416E0 0x20 func_005416E0  # OVL2
+0x00541650 0x60 SetVisibleByUnit__7CPickupFUi  # OVL2; s1:order (SOCOM 1's SetVisibleByUnit__7CPickupFUi word for word: units 2, 4 and 8 set bits 1, 2 and 3, any other ORed in -- the word at 0x1C, SOCOM 1's 0x18) (the SEAL lane, round 3)
+0x005416B0 0x10 GetVisibleByUnit__7CPickupFUi  # OVL2; s1:order (SOCOM 1's GetVisibleByUnit__7CPickupFUi: the unit's bits against m_visible_by_units, now at 0x1C) (the SEAL lane, round 3)
+0x005416C0 0x14 GetPickupNetEntityID__7CPickupFv  # OVL2; s1:order (SOCOM 1's GetPickupNetEntityID__7CPickupFv returned m_id; SOCOM II's puts the owner word at 0x10 over it -- FindPickup compares an id with the same expression, inlined) (the SEAL lane, round 3)
+0x005416E0 0x20 GetPosW__7CPickupCFv  # OVL2; s1:order (SOCOM 1's GetPosW__7CPickupCFv: the node's position row, node + 0x30, or 0 -- the node now at 4) (the SEAL lane, round 3)
 0x00541700 0x1A8 func_00541700  # OVL2
 0x005418B0 0x60 func_005418B0  # OVL2
 0x00541910 0xB0 func_00541910  # OVL2
-0x005419C0 0x54 func_005419C0  # OVL2
-0x00541A20 0x6C func_00541A20  # OVL2
-0x00541A90 0x1C func_00541A90  # OVL2
-0x00541AB0 0x1C func_00541AB0  # OVL2
+0x005419C0 0x54 GetData123__7CPickupFv  # OVL2; ours (new in SOCOM II): m_data if the type is 1, 2 or 3, else 0 (the SEAL lane, round 3)
+0x00541A20 0x6C GetData4567__7CPickupFv  # OVL2; ours (new in SOCOM II): m_data if the type is 7, 5, 4 or 6, else 0 (the SEAL lane, round 3)
+0x00541A90 0x1C GetWeapon__7CPickupFv  # OVL2; ours (new in SOCOM II): m_data if the type is 8, else 0 -- IsWeaponNear and CleanupAmmoPickup inline it and read the kind at 0x7C off it (the SEAL lane, round 3)
+0x00541AB0 0x1C GetAmmo__7CPickupFv  # OVL2; ours (new in SOCOM II): m_data if the type is 9, else 0 -- CleanupAmmoPickup inlines it for its type-9 case (the SEAL lane, round 3)
 0x00541AD0 0xD8 func_00541AD0  # OVL2
-0x00541BB0 0xAC func_00541BB0  # OVL2; size 0xAC (the seed split it at 0x541C10, the delay slot of its jal to CPickup::Destroy: the rest runs on its saved s0/s1 and pops its 48-byte frame); the seed's cut (0x541c10): jal target of OVL1's DNAS client, which calls DNAS.BIN loaded in the OVL2 slot (README)
-0x00541C60 0x60 func_00541C60  # OVL2
-0x00541CC0 0xC func_00541CC0  # OVL2
+0x00541BB0 0xAC CleanupAmmoPickup__7CPickupFP7CPickup  # OVL2; size 0xAC (the seed split it at 0x541C10, the delay slot of its jal to CPickup::Destroy: the rest runs on its saved s0/s1 and pops its 48-byte frame); the seed's cut (0x541c10): jal target of OVL1's DNAS client, which calls DNAS.BIN loaded in the OVL2 slot (README); s1:order (after the kind accessors, as SOCOM 1's CleanupAmmoPickup__7CPickupFP7CPickup sits early in the unit; the same switch: type 9 tidied and destroyed once empty, type 8 destroyed without its weapon -- SOCOM 1's ammunition was a pod vector, SOCOM II's an OVL1 class) (the SEAL lane, round 3)
+0x00541C60 0x60 GetMPBomb__7CPickupFv  # OVL2; s1:order (SOCOM 1's GetMPBomb__7CPickupFv: the list walked for the pickup of type 11; SOCOM II's tests the byte at 0xC) (the SEAL lane, round 3)
+0x00541CC0 0xC GetEntityIDFromNetID__7CPickupFUi  # OVL2; s1:order (after GetMPBomb, as SOCOM 1's GetEntityIDFromNetID__7CPickupFUs follows FindNetPickup; SOCOM II's takes the whole id and returns its upper half, GetPickupNetEntityID's owner) (the SEAL lane, round 3)
 0x00541CD0 0x70 FindPickup__7CPickupFUi  # OVL2; s1:calls (CurrentPickup and CurrentPickupSecondary call it where SOCOM 1's call FindPickup)
-0x00541D40 0x1D0 func_00541D40  # OVL2; size 0x1D0 (the seed split it at 0x541D80, in the middle of its prologue's float saves: one 192-byte frame to 0x541F0C); the seed's cut (0x541d80): jal target of OVL1's DNAS client, which calls DNAS.BIN loaded in the OVL2 slot (README)
-0x00541F10 0x11C func_00541F10  # OVL2
-0x00542030 0x78 func_00542030  # OVL2
-0x005420B0 0xC0 func_005420B0  # OVL2
-0x00542170 0x10 func_00542170  # OVL2
+0x00541D40 0x1D0 GetClosest__7CPickupFPC6CPnt3DfQ27CPickup7PU_TYPEPP7CPickupb  # OVL2; size 0x1D0 (the seed split it at 0x541D80, in the middle of its prologue's float saves: one 192-byte frame to 0x541F0C); the seed's cut (0x541d80): jal target of OVL1's DNAS client, which calls DNAS.BIN loaded in the OVL2 slot (README); s1:order (after FindPickup, as SOCOM 1's GetClosest__7CPickupFPC6CPnt3DfQ27CPickup7PU_TYPEPP7CPickup follows it: the walk keeping the nearest within range squared plus one; SOCOM II's adds a flag that passes over weapons of class 145 (CZWeapon::GetIDType) and fills the pointer only with a secondary weapon) (the SEAL lane, round 3)
+0x00541F10 0x11C GetNext__7CPickupFRQ33std44list<P7CPickup,Q23std20allocator<P7CPickup>>19generic_iterator<0>PC6CPnt3DfQ27CPickup7PU_TYPE  # OVL2; s1:order (before GetNext(iterator &, PU_TYPE), as SOCOM 1's: the same walk, a pickup taken only within the range of the point -- the range squared once, the node's position less the point measured) (the SEAL lane, round 3)
+0x00542030 0x78 GetNext__7CPickupFRQ33std44list<P7CPickup,Q23std20allocator<P7CPickup>>19generic_iterator<0>Q27CPickup7PU_TYPE  # OVL2; s1:order (SOCOM 1's GetNext(iterator &, PU_TYPE): the list's size tested, the walk from the caller's iterator, a type of 0 taking any, the iterator stepped past the one returned) (the SEAL lane, round 3)
+0x005420B0 0xC0 IsWeaponNear__7CPickupFUcPC6CPnt3Df  # OVL2; ours (new in SOCOM II, after GetNext(type)): GetNext(iterator &, point, range, 8) from the list's start until a weapon pickup whose kind byte (0x7C, CZFTSWeapon::m_equip) is the argument -- true then, false at the end (the SEAL lane, round 3)
+0x00542170 0x10 GetFirst__7CPickupFv  # OVL2; s1:order (SOCOM 1's GetFirst__7CPickupFv: m_list's first node returned as an iterator, through the hidden result pointer) (the SEAL lane, round 3)
 0x00542180 0x70 func_00542180  # OVL2
 0x005421F0 0x94 DestroyNetPickups__7CPickupFUi  # OVL2; s1:calls (CZSealBody::OnMissionEnd calls it with m_id where SOCOM 1's does): CPickup's list walked, each pickup whose owner word at 0x10 matches destroyed -- SOCOM 1's compared a byte (Uc), SOCOM II's a word
-0x00542290 0x14C func_00542290  # OVL2
+0x00542290 0x14C TickTimers__7CPickupFPC6CPnt3Df  # OVL2; ours (new in SOCOM II, after DestroyNetPickups): every pickup's time (the float at 0) run down by the second argument unless it is -1 (0x3F3440); one run out is destroyed when farther than 300 from the point (90000 squared, 0x64FC50), else given 60 again (0x64FC58) (the SEAL lane, round 3)
 0x005423E0 0x88 func_005423E0  # OVL2
 0x00542470 0x36C Destroy__7CPickupFP7CPickup  # OVL2; s1:calls (DestroyNetPickups calls it where SOCOM 1's does)
 0x005427E0 0x70 func_005427E0  # OVL2
@@ -9913,9 +9913,9 @@
 0x005428C0 0x70 func_005428C0  # OVL2
 0x00542930 0x258 func_00542930  # OVL2
 0x00542B90 0x260 func_00542B90  # OVL2
-0x00542DF0 0x60 func_00542DF0  # OVL2
+0x00542DF0 0x60 DebugPickups__7CPickupFv  # OVL2; s1:order (after NetworkCreate's place, before Close, as SOCOM 1's DebugPickups__7CPickupFv: the list walked with an assigned iterator and nothing done -- its printing compiled out in both) (the SEAL lane, round 3)
 0x00542E50 0x16C func_00542E50  # OVL2
-0x00542FC0 0x18 func_00542FC0  # OVL2
+0x00542FC0 0x18 Open__7CPickupFUi  # OVL2; s1:order (pickup_main.cpp's last, as SOCOM 1's Open__7CPickupFUi: the argument stored to bit_count, m_isOpen set -- the same two stores) (the SEAL lane, round 3)
 0x00542FE0 0x8 func_00542FE0  # OVL2
 0x00542FF0 0x8 func_00542FF0  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); s1~ not PrePostTick__10CZSealBodyFf (s1:vtable paired the wrong slot): slot 0xC of __vt__10CZSealBody is CEntity's inline GetPosNode (zentity.h), `jr ra; lw v0,0x28(a0)` -- OVL2's out-of-line copy of it, as OVL1's 0x295F10 (one of 2 copies of an inline)
 0x00543000 0x8 Virtual5C__10CZSealBodyFv  # OVL2; slot 0x5C of __vt__10CZSealBody (CEntity's Virtual5C, the name the entity lane's); returns 0
@@ -10101,7 +10101,7 @@
 0x00557E10 0x48 __ml__6CPnt3DCFf  # OVL2; s1:exact
 0x00557E60 0x2C func_00557E60  # OVL2
 0x00557E90 0x4C func_00557E90  # OVL2
-0x00557EE0 0x50 func_00557EE0  # OVL2
+0x00557EE0 0x50 SetDoAiMapCollide__11CSealCtrlAiFb  # OVL2; slot 0xB4 of __vt__11CSealCtrlAi (CSealCtrl's SetDoAiMapCollide at 0x592030 in the base): off whenever the byte at 0x3F4 is 7, the bit stored only when it changes (the SEAL lane, round 3)
 0x00557F30 0x2C func_00557F30  # OVL2
 0x00557F60 0xC8 func_00557F60  # OVL2
 0x00558030 0x274 func_00558030  # OVL2
@@ -10602,7 +10602,7 @@
 0x00591FE0 0x1C func_00591FE0  # OVL2
 0x00592000 0x1C func_00592000  # OVL2
 0x00592020 0x8 func_00592020  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); s1~ not SetTarget__9CSealCtrlFP7CTarget (s1:vtable shifted it): slot 0xA4 returns 0 where SOCOM 1's SetTarget is void (jr ra; nop) -- it is GetJumpFlag, SOCOM 1's CSealCtrlAi and CSealCtrlSquirm virtual (move v0,zero) moved into the base, inline: OVL1's copy is 0x2B3C60 (CSealCtrlCopy's slot 0xA4); one of 2 copies of an inline. SOCOM II's SetTarget is slot 0xB0, 0x5CA460 (jr ra; nop)
-0x00592030 0x20 func_00592030  # OVL2
+0x00592030 0x20 SetDoAiMapCollide__9CSealCtrlFb  # OVL2; slot 0xB4 of __vt__9CSealCtrl, CSealCtrlAi's and CRemoteCtrl's (the inline setter zseal.h declares: the bool into bit 15 of 0x170, (b & 1) << 7 in the byte at 0x171); the OVL1 copy is 0x2B3C70, slot 0xB4 of __vt__13CSealCtrlCopy (the SEAL lane, round 3)
 0x00592050 0x48 func_00592050  # OVL2
 0x005920A0 0x20 MPBomb_TimerAvailable__9CSealCtrlFb  # OVL2; s1:order; bit 12 of the flag word (m_mpbomb_bTimerAvailable) as SOCOM 1's
 0x005920C0 0x19C func_005920C0  # OVL2
@@ -10782,9 +10782,9 @@
 0x005A50A0 0x1A4 func_005A50A0  # OVL2
 0x005A5250 0x174 func_005A5250  # OVL2
 0x005A53D0 0x5C func_005A53D0  # OVL2
-0x005A5430 0x1C func_005A5430  # OVL2; tu: seal_env.cpp~ (1.0 beta)
-0x005A5450 0x38 func_005A5450  # OVL2
-0x005A5490 0x40 func_005A5490  # OVL2
+0x005A5430 0x1C SetHudHitFlag__10CZSealBodyFv  # OVL2; tu: seal_env.cpp~ (1.0 beta); s1:order (SOCOM 1's SetHudHitFlag__10CZSealBodyFv word for word, first of the three: bit 1 of the flag byte set, 0x105C here against 0xF58) (the SEAL lane, round 3)
+0x005A5450 0x38 HudUpdateViewCone__10CZSealBodyFv  # OVL2; s1:order (SOCOM 1's HudUpdateViewCone__10CZSealBodyFv, second of the three: bit 0 of 0x105C taken once) (the SEAL lane, round 3)
+0x005A5490 0x40 GetHudHitFlag__10CZSealBodyFv  # OVL2; s1:order (SOCOM 1's GetHudHitFlag__10CZSealBodyFv, third of the three: bit 1 of 0x105C taken once) (the SEAL lane, round 3)
 0x005A54D0 0x1F8 func_005A54D0  # OVL2
 0x005A56D0 0xC0 func_005A56D0  # OVL2
 0x005A5790 0x9C func_005A5790  # OVL2

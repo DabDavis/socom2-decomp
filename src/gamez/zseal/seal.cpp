@@ -1,23 +1,13 @@
 /* seal.cpp -- the SEAL's body, CZSealBody: its ticks, its states, its actions, its stats (SOCOM 1's
  * unit, __sinit_seal.cpp; the press beta's asserts file OpenHeartbeatSounds and
- * ExecuteDelayedAction_Jump under it). OVL2 0x542E50-0x5552BF in SOCOM 1's order -- the heartbeat
+ * ExecuteDelayedAction_Jump under it). OVL2 0x542FE0-0x5552BF (0x542E50 is CPickup::Close, pickup_main.cpp's) in SOCOM 1's order -- the heartbeat
  * first, the constructor and SealInitCharacterDynamics last, then the template tail. Defined in
  * reverse of their image order (-inline deferred). */
 
 #include "zseal.h"
+#include <string.h>
 
 class CValve;
-
-/* a pickup (SOCOM 1's CPickup; only what this unit touches) */
-class CPickup {
-public:
-    static CPickup *FindPickup(unsigned int id);
-    static void DestroyNetPickups(unsigned int owner);
-
-    unsigned int m_0;   // 0x0
-    zdb::CNode *m_node;   // 0x4
-    CZProjectile *m_grenade;   // 0x8: a grenade's projectile
-};
 
 extern "C" {
 void func_005C7840(CZKit *kit);   /* CZKit::PostSetupItems (SOCOM 1's OnMissionStart calls it) */
@@ -34,6 +24,215 @@ struct CWorldCamera {
     zdb::CCamera *m_camera;   // 0x128
 };
 
+/* a halfword test: any of the bits (OVL2 0x5551A0; in the unit's tail) */
+extern "C" bool func_005551A0(unsigned short flags, unsigned short bits)
+{
+    return (flags & bits) != 0;
+}
+
+/* an indexed array's current element, or none (OVL2 0x555170; in the unit's tail) */
+struct CIndexedArray {
+    void **m_data;   // 0x0
+    unsigned char _4[4];
+    int m_index;   // 0x8
+};
+
+extern "C" void *func_00555170(CIndexedArray *a)
+{
+    if (a->m_index < 0)
+        return 0;
+    return a->m_data[a->m_index];
+}
+
+/* the SEAL's stats (SOCOM 1's DWARF: CSealStats, 0x54 bytes of ints; SOCOM II's counters are
+ * unsigned shorts) -- only the counters the incrementers touch, by halfword */
+class CSealStats {
+public:
+    unsigned short m_count[0x3c / 2];   // 0x0
+    short m_score;   // 0x3c: the MVP score (SOCOM 1's m_sMvpScore, a short there too)
+    unsigned short m_count2[3];   // 0x3e
+    float m_hit_percent;   // 0x44 (SOCOM 1's 0x28)
+};
+
+CZSealBody *ftsGetPlayer();
+
+extern "C" {
+/* (OVL2 0x544D60, not written yet: the SEAL's score passed on -- the stats' events end on it) */
+void func_00544D60(const CZSealBody *seal, int a);
+}
+
+/* whether an event counts: always offline, online only for the local player (the inline both
+ * builds' stats test first) */
+static inline bool StatCounts(const CZSealBody *seal)
+{
+    return !theNetwork.m_9 || seal == ftsGetPlayer();
+}
+
+/* the stats packed for the network: ten bytes, the counters as bytes, the hit percentage made a
+ * whole number; in game type 1 only two (OVL2 0x545A30) */
+struct SEAL_STATS_PACKET {
+    unsigned char m_0, m_1, m_2, m_3, m_4, m_5, m_6;
+    unsigned char _7;
+    short m_score;   // 0x8
+};
+
+extern "C" {
+extern unsigned char data_004364F8;   /* (OVL1 bss: a game type, 1 sending only two counters) */
+extern CNetGameState *data_00437CE8;
+/* (OVL1, unowned: two tests of a SEAL against the game, both builds' net code) */
+int func_002C31D0(const CZSealBody *seal);
+int func_002C30B0(const CZSealBody *seal);
+}
+
+extern "C" void func_00545A30(CSealStats *s, SEAL_STATS_PACKET *p)
+{
+    memset(p, 0, 10);
+    p->m_0 = s->m_count[0xc / 2];
+    p->m_3 = s->m_count[0x12 / 2];
+    if (data_004364F8 != 1) {
+        p->m_1 = s->m_count[0];
+        p->m_2 = s->m_count[0x10 / 2];
+        p->m_4 = s->m_count[0x1a / 2];
+        p->m_5 = (unsigned int)(100.0f * s->m_hit_percent);
+        p->m_6 = s->m_count[0x1c / 2];
+        p->m_score = s->m_score;
+    }
+}
+
+/* a death: the score down two, or in game type 3 online moved by the two tests; the counter's new
+ * value returned (OVL2 0x545390) */
+extern "C" unsigned short func_00545390(CSealStats *s, const CZSealBody *seal)
+{
+    if (StatCounts(seal)) {
+        if (theNetwork.m_9 && data_00437CE8->m_mode == 3) {
+            if (func_002C31D0(seal))
+                s->m_score -= 2;
+            else if (func_002C30B0(seal))
+                s->m_score += 3;
+        } else
+            s->m_score -= 2;
+    }
+    func_00544D60(seal, 0);
+    s->m_count[0x18 / 2]++;
+    return s->m_count[0x18 / 2];
+}
+
+/* the stats' events: a counter stepped and the score moved when it counts, the score passed on
+ * (OVL2 0x545D10, 0x545C90, 0x545C10, 0x545B90, 0x545B10, 0x5459C0, 0x5455D0, 0x545530,
+ * 0x544CF0; SOCOM 1's Kill, Hit, Death and the rest by their shape, not yet named) */
+extern "C" void func_00545D10(CSealStats *s, const CZSealBody *seal)
+{
+    if (StatCounts(seal))
+        s->m_count[0x12 / 2]++;
+}
+
+extern "C" void func_00545C90(CSealStats *s, const CZSealBody *seal)
+{
+    if (StatCounts(seal)) {
+        s->m_count[0x14 / 2]++;
+        s->m_score -= 2;
+    }
+    func_00544D60(seal, 0);
+}
+
+extern "C" void func_00545C10(CSealStats *s, const CZSealBody *seal)
+{
+    if (StatCounts(seal)) {
+        s->m_count[0x16 / 2]++;
+        s->m_score -= 2;
+    }
+    func_00544D60(seal, 0);
+}
+
+extern "C" void func_00545B90(CSealStats *s, const CZSealBody *seal)
+{
+    if (StatCounts(seal)) {
+        s->m_count2[2]++;
+        s->m_score += 1;
+    }
+    func_00544D60(seal, 0);
+}
+
+extern "C" void func_00545B10(CSealStats *s, const CZSealBody *seal)
+{
+    s->m_count2[0]++;
+    if (StatCounts(seal))
+        s->m_score += 5;
+    func_00544D60(seal, 0);
+}
+
+extern "C" void func_005459C0(CSealStats *s, const CZSealBody *seal)
+{
+    if (StatCounts(seal))
+        s->m_count[0]++;
+}
+
+extern "C" void func_005455D0(CSealStats *s, const CZSealBody *seal)
+{
+    if (StatCounts(seal)) {
+        s->m_count[0x38 / 2]++;
+        s->m_score += 2;
+    }
+    func_00544D60(seal, 1);
+}
+
+extern "C" void func_00545530(CSealStats *s, const CZSealBody *seal, int points)
+{
+    if (StatCounts(seal) && points > 0) {
+        s->m_count[0x3a / 2]++;
+        s->m_score += points;
+    }
+    func_00544D60(seal, 1);
+}
+
+extern "C" void func_00544CF0(CSealStats *s, const CZSealBody *seal)
+{
+    if (StatCounts(seal))
+        s->m_count[0x10 / 2]++;
+}
+
+/* eight counters each added to (OVL2 0x5451E0, 0x5451C0, 0x5451A0, 0x545180, 0x545160, 0x545140,
+ * 0x545120, 0x545100; SOCOM 1's Incr* took ints) */
+extern "C" void func_005451E0(CSealStats *s, int n)
+{
+    s->m_count[0x1e / 2] += (unsigned short)n;
+}
+
+extern "C" void func_005451C0(CSealStats *s, int n)
+{
+    s->m_count[0x24 / 2] += (unsigned short)n;
+}
+
+extern "C" void func_005451A0(CSealStats *s, int n)
+{
+    s->m_count[0x22 / 2] += (unsigned short)n;
+}
+
+extern "C" void func_00545180(CSealStats *s, int n)
+{
+    s->m_count[0x26 / 2] += (unsigned short)n;
+}
+
+extern "C" void func_00545160(CSealStats *s, int n)
+{
+    s->m_count[0x28 / 2] += (unsigned short)n;
+}
+
+extern "C" void func_00545140(CSealStats *s, int n)
+{
+    s->m_count[0x2a / 2] += (unsigned short)n;
+}
+
+extern "C" void func_00545120(CSealStats *s, int n)
+{
+    s->m_count[0x2e / 2] += (unsigned short)n;
+}
+
+extern "C" void func_00545100(CSealStats *s, int n)
+{
+    s->m_count[0x30 / 2] += (unsigned short)n;
+}
+
 /* a picked-up grenade thrown back along the pickup's facing, lofted (OVL2 0x547700; SOCOM 1's
  * function-local statics, initialised statically by MW 3.0) */
 static void _rethrow_grenade(CValve *valve, void *data)
@@ -44,7 +243,7 @@ static void _rethrow_grenade(CValve *valve, void *data)
 
     if (!pickup || !pickup->m_node)
         return;
-    CZProjectile *grenade = pickup->m_grenade;
+    CZProjectile *grenade = (CZProjectile *)pickup->m_data;
     CPnt3D vel = *(CPnt3D *)pickup->m_node->m_matrix.m_matrix[2];
 
     vel.y = up;

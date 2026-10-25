@@ -64,6 +64,173 @@ CAiSRescued::~CAiSRescued()
 {
 }
 
+extern "C" {
+/* the table of a stance's figures, a row of eight per setting (OVL2 data 0x64FE60), and the row
+ * in use (OVL2 bss 0x66AFD8) */
+extern float data_0064FE60[][8];
+extern int data_0066AFD8;
+/* (OVL2 0x555420, not written yet: the AI's state brought up to date from two of its blocks) */
+void func_00555420(CSealCtrlAi *ai, void *a, void *b);
+}
+
+extern "C" {
+/* the stack's current state (OVL2 0x5F8330, the AI-states lane's: CAiStateStack's) */
+CAiState *func_005F8330(void *stack);
+}
+
+/* a state of kind 2 with flag 0x80 (the answer through a local, as the target's daddiu shows) */
+static inline bool IsKind2Flag80(CAiState *s)
+{
+    bool r = false;
+
+    if (s->m_state == (AI_STATE)2 && (s->m_flags & 0x80))
+        r = true;
+    return r;
+}
+
+/* whether the AI's current state is of kind 2 with flag 0x80 (OVL2 0x559000).
+ * OPEN, 0x64 against 0x6C: the target tests the stack's size with `bnez` to the call, the zero in
+ * the delay slot and a `b` to the join (the empty arm laid out first); the ternary either way
+ * round, an if-assign and an inline accessor (early return or a result local) all lay the call
+ * first and fall through. */
+extern "C" bool func_00559000(CSealCtrlAi *ai)
+{
+    CAiState *s = ai->m_41c ? func_005F8330(&ai->m_41c) : 0;
+
+    if (s)
+        return IsKind2Flag80(s);
+    return false;
+}
+
+/* the state at 0x4EC: 4 with the word at 0x508 set (an inline: the test materialised) */
+static inline bool IsState4Held(CSealCtrlAi *ai)
+{
+    return ai->m_508 != 0 && ai->m_4ec == 4;
+}
+
+/* free: in none of states 1-3 nor a held 4 (OVL2 0x5629B0).
+ * OPEN, 0x68 against 0x58: the target materialises `m_508 != 0` as `xor; sltiu; xori` (MW's
+ * `!(x == 0)`) and folds states 1-3 into one `sltiu at,3`; here `sltu` and only 1-2 fold, 3 tested
+ * apart. Tried: `!(m_508 == 0)`, a bool local, a ternary, the whole test one `||` chain. */
+extern "C" bool func_005629B0(CSealCtrlAi *ai)
+{
+    if (IsState4Held(ai))
+        return false;
+    if (ai->m_4ec == 1 || ai->m_4ec == 2 || ai->m_4ec == 3)
+        return false;
+    return true;
+}
+
+/* the byte at 0x4ED, or 0 in states 1-3 or a held 4 (OVL2 0x562960).
+ * OPEN, 0x58 against 0x50: the target folds `t == 1 || t == 2 || t == 3` into one `(t - 1) < 3`
+ * (sltiu at); MW folds 1-2 into a range and tests 3 apart. Tried the tests reversed, `t >= 1 && t
+ * <= 3`, `(unsigned char)(t - 1) < 3`. */
+extern "C" signed char func_00562960(CSealCtrlAi *ai)
+{
+    if (ai->m_4ec == 1 || ai->m_4ec == 2 || ai->m_4ec == 3)
+        return 0;
+    if (ai->m_508 && ai->m_4ec == 4)
+        return 0;
+    return ai->m_4ed;
+}
+
+/* the five bands of an alertness (OVL2 data 0x65C700: 0.05, 0.4, 0.6, 0.8, 1) */
+extern "C" float data_0065C700[5];
+
+/* the band a value lies in, the last for any above (OVL2 0x560AC0) */
+static inline bool InBand(float x, int band)
+{
+    return x < data_0065C700[band];
+}
+
+extern "C" unsigned char func_00560AC0(float x)
+{
+    for (int i = 0; i <= 4; i++)
+        if (InBand(x, i))
+            return i;
+    return 4;
+}
+
+/* the band of the float at 0xB4 (OVL2 0x560A60; the player map's blip and the AI states ask) */
+struct CAlertness {
+    unsigned char _0[0xb4];
+    float m_alert;   // 0xb4
+};
+
+extern "C" unsigned char func_00560A60(CAlertness *a)
+{
+    for (int i = 0; i <= 4; i++)
+        if (InBand(a->m_alert, i))
+            return i;
+    return 4;
+}
+
+/* a figure of the current row (OVL2 0x5750D0; before sealai::get_stance) */
+extern "C" float func_005750D0(unsigned char i)
+{
+    return data_0064FE60[data_0066AFD8][i];
+}
+
+/* whether an entity may be taken as a target: any in mode 4, else one of no team of ours (OVL2
+ * 0x572D30) */
+extern "C" bool func_00572D30(CSealCtrlAi *ai, CEntity *e)
+{
+    CEntity *me = ai->m_entity;
+
+    return ai->m_26c == 4 || (e && !(e->m_team & me->m_team));
+}
+
+/* (OVL2 0x5621C0) */
+extern "C" void *func_005621C0(CSealCtrlAi *ai, unsigned char i)
+{
+    if (i < 3)
+        return ai->m_750[i];
+    return 0;
+}
+
+/* the AI's state brought up to date, its byte at 0x5BC returned (OVL2 0x5558A0; the AI states'
+ * OnSignal call it) */
+extern "C" signed char func_005558A0(CSealCtrlAi *ai)
+{
+    func_00555420(ai, (char *)ai + 0x46c, (char *)ai + 0x514);
+    return ai->m_5bc;
+}
+
+/* the slide stepped: the AI's throttles and the body's stopped first; done sliding, the AI's mode
+ * goes back to 1 (OVL2 0x566CF0, slot 0x8C) */
+bool CSealCtrlAi::SlideTick(float dT)
+{
+    SetThrottle(1, 0.0f);
+    SetThrottle(2, 0.0f);
+    SetThrottle(0, 0.0f);
+    SetThrottle(3, 0.0f);
+    m_throttle[1] = 0.0f;
+    m_throttle[2] = 0.0f;
+    m_throttle[0] = 0.0f;
+    m_throttle[3] = 0.0f;
+    bool slid = CSealCtrl::SlideTick(dT);
+
+    if (!slid)
+        SetAiMode((AI_MODE)1);
+    return slid;
+}
+
+/* the AI-map collision bit, kept off in mode 7 and stored only when it changes (OVL2 0x557EE0,
+ * slot 0xB4) */
+void CSealCtrlAi::SetDoAiMapCollide(bool on)
+{
+    if (m_3f4 == 7)
+        on = false;
+    if (m_do_aimap_collide != on)
+        m_do_aimap_collide = on;
+}
+
+/* the sign of a value, as one (OVL2 0x557D90; the inline's copy after its caller, 0x557190) */
+extern "C" float func_00557D90(float x)
+{
+    return x >= 0.0f ? 1.0f : -1.0f;
+}
+
 /* CZAnim::Stop, which SOCOM II gave a flag (zanim.h's declaration) */
 extern "C" void func_002707C0(CZAnim *anim, bool now);
 
