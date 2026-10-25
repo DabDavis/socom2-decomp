@@ -5,6 +5,7 @@
  * Defined in reverse of their image order (-inline deferred). */
 
 #include "zseal.h"
+#include <stdio.h>
 
 extern "C" {
 /* CCharacterType::Acquire and CreateLODs (SOCOM 1's Acquire__14CCharacterTypeCFv and
@@ -66,9 +67,53 @@ void CZSealBody::Destroy(CZSealBody *seal)
     }
 }
 
+/* a node's tree counted (OVL2 0x59A450: a walk of the child vector; the map's FindGear was SOCOM
+ * 1's by position only) */
+extern "C" int func_0059A450(zdb::CNode *node);
+
+/* a node's two visual flags set together (an inline: one `(b & 1)` serves both stores) */
+static inline void SetHasVisuals(zdb::CNode *node, bool on)
+{
+    node->m_hasDI = on;
+    node->m_hasVisuals = on;
+}
+
+/* a SEAL made: its type taken and its model made, the body built and entered as an entity, its
+ * controller fitted; a player's gets a camera-effects node; the node count printed for the log
+ * (OVL2 0x5999E0; SOCOM 1's with the camera node) */
+CZSealBody *CZSealBody::Create(const CCharacterType *type, const char *name, CSealCtrl *ctrl)
+{
+    if (!type)
+        return 0;
+    zdb::CNode *node = 0;
+    const CCharacterType *t = PreCreateSeal(type, name, &node);
+
+    if (!t)
+        return 0;
+    CZSealBody *seal = new CZSealBody(node, (CCharacterType *)t);
+
+    CEntity::CreateEntity(seal, true);
+    PostCreateSeal(seal, ctrl);
+    if (seal->IsPlayer()) {
+        zdb::CNode *fx = new zdb::CNode;
+
+        if (fx) {
+            fx->SetName("camera_effects");
+            SetHasVisuals(fx, false);
+            if (fx)
+                seal->GetNode()->AddChild(fx);
+        }
+    }
+    char log[64];
+
+    sprintf(log, "CZSealBody::Create(%s) %d nodes END", seal->m_node->m_name, func_0059A450(seal->GetNode()));
+    return seal;
+}
+
 /* the character type taken and its model instanced: dynamic, its LODs made, added to the world,
  * flagged, its textures added; none without a type or a model (OVL2 0x59A7F0; SOCOM 1's with a
  * second flag) */
+#pragma auto_inline off
 const CCharacterType *CZSealBody::PreCreateSeal(const CCharacterType *type, const char *name, zdb::CNode **node)
 {
     const CCharacterType *t;
@@ -89,3 +134,4 @@ const CCharacterType *CZSealBody::PreCreateSeal(const CCharacterType *type, cons
     }
     return t;
 }
+#pragma auto_inline reset

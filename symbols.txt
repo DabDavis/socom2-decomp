@@ -10049,7 +10049,7 @@
 0x00553E00 0x14 OnRecycleEntity__10CZSealBodyFP7CEntity  # OVL2; slot 0x54 of __vt__10CZSealBody (SOCOM II's CEntity order: OnMissionStart 0x4C, OnMissionEnd 0x50, OnRecycleEntity 0x54): m_control's OnRecycleEntity tail-called, SOCOM 1's 0x14 bytes word for word; size 0x14 (the seed ran a j-less tail call on into 0x553E20, the next function, and the s1:vtable pass named the pair OnMissionEnd)
 0x00553E20 0x3C OnMissionEnd__10CZSealBodyFv  # OVL2; slot 0x50 of __vt__10CZSealBody: m_control's OnMissionEnd (slot 0x60) after a call with m_id, as SOCOM 1's (which called DestroyNetPickups(m_id) under a test); split off the 0x553E00 row
 0x00553E60 0x3C OnMissionStart__10CZSealBodyFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00553EA0 0x119C func_00553EA0  # OVL2
+0x00553EA0 0x119C __ct__10CZSealBodyFPQ23zdb5CNodeP14CCharacterType  # OVL2; s1:calls (Create and ReCreate call it after new(5344) where SOCOM 1's call __ct__10CZSealBodyFPQ23zdb5CNodeP14CCharacterType, with the node and the type; it builds the CBody at 0x170) -- the SEAL lane, round 4
 0x00555040 0x70 func_00555040  # OVL2
 0x005550B0 0x10 func_005550B0  # OVL2; tu: orders.cpp~ (1.0 beta)
 0x005550C0 0x8 func_005550C0  # OVL2
@@ -10675,7 +10675,7 @@
 0x005999E0 0x180 Create__10CZSealBodyFPC14CCharacterTypePCcP9CSealCtrl  # OVL2; s1:calls (ftsCreateSeal's last call, as SOCOM 1's; byte-exact with it) -- the states lane
 0x00599B60 0x39C ReCreate__10CZSealBodyFP10CZSealBodyPC14CCharacterType  # OVL2; s1:order (after Create, before PostCreateSeal); SetWeaponInfoChanged, the matrix copy and _strdup as SOCOM 1's; SOCOM 1's signature, unproven
 0x00599F00 0x548 PostCreateSeal__10CZSealBodyFP10CZSealBodyP9CSealCtrl  # OVL2; s1:order (after ReCreate); SetNodeEx and SetController as SOCOM 1's; Create calls it second, as SOCOM 1's; SOCOM 1's signature, unproven
-0x0059A450 0x1DC FindGear__10CZSealBodyFPCc  # OVL2; s1:order (after PostCreateSeal; a list walk over the small iterator copies after it); SOCOM 1's signature, unproven
+0x0059A450 0x1DC func_0059A450  # OVL2; s1:order (after PostCreateSeal; a list walk over the small iterator copies after it); SOCOM 1's signature, unproven; s1~ FindGear__10CZSealBodyFPCc (s1:order, wrong: SOCOM 1's FindGear searched a list by name with a this; SOCOM II's walks a node's child vector recursively and returns the count, which Create prints as '%d nodes' -- the SEAL lane, round 4)
 0x0059A630 0x14 func_0059A630  # OVL2
 0x0059A650 0x14 func_0059A650  # OVL2
 0x0059A670 0x10 func_0059A670  # OVL2; tu: char_type.cpp~ (1.0 beta)

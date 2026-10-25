@@ -535,6 +535,9 @@ public:
     /* a SEAL made from a character type with a controller (SOCOM 1's; OVL2 0x5999E0), and the local
      * player's made for a network game (SOCOM 1's; OVL2 0x5442C0) */
     static CZSealBody *Create(const CCharacterType *type, const char *name, CSealCtrl *ctrl);
+    /* (OVL2 0x553EA0, not written yet) and the controller fitted after (OVL2 0x599F00) */
+    CZSealBody(zdb::CNode *node, CCharacterType *type);
+    static void PostCreateSeal(CZSealBody *seal, CSealCtrl *ctrl);
     static void NetworkPlayerCreate();
     /* a remote SEAL unmade: its id cleared everywhere, dead, no team, the squad told (SOCOM 1's; OVL2
      * 0x5998B0) */
