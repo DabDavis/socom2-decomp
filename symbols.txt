@@ -5962,7 +5962,7 @@
 0x003365E0 0x6C func_003365E0  # OVL1
 0x00336650 0x1B4 func_00336650  # OVL1
 0x00336810 0x16C func_00336810  # OVL1
-0x00336980 0x88 func_00336980  # OVL1
+0x00336980 0x88 PushOpacity__5CPipeFf  # OVL1; the rdr lane: SOCOM II's, the name ours (the opacity stack at 0x668 -- SOCOM 1's m_opacity_stack at 0x648, its size and index after it -- grown by _realloc a slot at a time, the new top the product with the one under it; 0x336A10 pushes a node's 0x9C opacity through it when under 0.992)
 0x00336A10 0x44 func_00336A10  # OVL1
 0x00336A60 0x1A8 func_00336A60  # OVL1
 0x00336C10 0x9C RenderUiNode__5CPipeFPQ23zdb5CNode  # OVL1; s1:callee
@@ -5977,7 +5977,7 @@
 0x00337CD0 0x264 func_00337CD0  # OVL1
 0x00337F40 0x2AC func_00337F40  # OVL1
 0x003381F0 0x1FC SaveDelayedNode__5CPipeFP7CMatrixPQ23zdb5CNodeQ23zdb12tag_ZVIS_FOV  # OVL1; s1:align
-0x003383F0 0x88 func_003383F0  # OVL1
+0x003383F0 0x88 AddAlphaTextures__5CPipeFPQ23zdb5CNode  # OVL1; the rdr lane: SOCOM II's, the name ours (CDynTexList::Add(CDynTexList *) of each of the node's visuals' lists (CNode 0x84, CVisual 0x48) into the alpha pass's at 0x650 = CAlpha (0x638) + 0x18, SOCOM 1's CAlpha::m_dyntexlist; SaveDelayedNode calls it)
 0x00338480 0x538 func_00338480  # OVL1
 0x003389C0 0x5E0 func_003389C0  # OVL1
 0x00338FA0 0x4D0 func_00338FA0  # OVL1
@@ -5990,7 +5990,7 @@
 0x0033B230 0x134 func_0033B230  # OVL1
 0x0033B370 0xB0 func_0033B370  # OVL1
 0x0033B420 0xE0 func_0033B420  # OVL1
-0x0033B500 0x68 func_0033B500  # OVL1
+0x0033B500 0x68 KickOverlay__5CPipeFv  # OVL1; the rdr lane: SOCOM II's, the name ours (when the words at 0x700 and 0x708 are set: the quadword 0x30 into the packet at 0x708's +0xC kicked through the FIFO, then zvid_init.cpp's 0x3B0D50 with the word at 0x704 -- 0x40808080 from the constructor, a colour -- and the 21-quadword packet sent; CCoreState::Tick calls it)
 0x0033B570 0x40 func_0033B570  # OVL1
 0x0033B5B0 0x40 func_0033B5B0  # OVL1
 0x0033B5F0 0x12C RenderLineWorld__F6CPnt4D6CPnt4D6CPnt4D6CPnt4D  # OVL1; s1:align
