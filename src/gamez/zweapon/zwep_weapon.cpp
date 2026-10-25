@@ -402,8 +402,9 @@ bool CZWeapon::IsPrimary(EQUIP_ITEM id)
 }
 
 /* OPEN, 2 instructions short (SOCOM 1's is byte-identical): the target zero-extends the halfword's
- * 32 bits to 64 (dsll32, dsrl32) before storing the ammo byte; masks, a modulo and casts through
- * unsigned long all fold it away */
+ * 32 bits to 64 (dsll32, dsrl32) before storing the ammo byte, and shifts the item out with srl;
+ * masks, a modulo and casts through unsigned long all fold it away, an unsigned int copy gives the
+ * srl alone, and a union of two 8-bit bitfields (unsigned int or unsigned short) is 4 bytes long */
 void CZWeapon::UnpackItemAndAmmoEnums(unsigned short packed, EQUIP_ITEM *item, EQUIP_AMMO *ammo)
 {
     *item = (EQUIP_ITEM)(packed >> 8);
