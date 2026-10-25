@@ -6780,7 +6780,7 @@
 0x0036A2C0 0x3C func_0036A2C0  # OVL1
 0x0036A300 0x3C func_0036A300  # OVL1
 0x0036A340 0x70 IsStickNearCenter__Ff  # OVL1; s1:order by hand (between PlayCountSound and InitButton as SOCOM 1's; both axes against a float, as SOCOM 1's) -- the UI-widgets lane
-0x0036A3B0 0x78 func_0036A3B0  # OVL1
+0x0036A3B0 0x78 InitButton__FP9C2DButtonPQ23zdb10CTexHandlePQ23zdb10CTexHandlePQ23zdb10CTexHandlePQ23zdb10CTexHandlePCc  # OVL1; s1:calls by hand (CButtonSpec::InitializeButton calls it with the button, the normal, active, pressed and disabled textures and the caption where SOCOM 1's calls InitButton__FP9C2DButtonPQ23zdb10CTexHandle...PCc; it stores the four handles and the caption, setting the caption string when there is one) -- zui.cpp
 0x0036A430 0x140 HookupLib__FPQ23zdb9CAssetLib  # OVL1; s1:calls
 0x0036A570 0x58 GetStickDir__Fv  # OVL1; s1:order by hand (between HookupLib and GetButton as SOCOM 1's; the four directions from the axes, as SOCOM 1's) -- the UI-widgets lane
 0x0036A5D0 0x1F0 GetButton__FPCc  # OVL1; s1:calls
@@ -7092,16 +7092,16 @@
 0x003836D0 0xC GetType__12CCounterSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003836E0 0x11C init<PC10ActionItem>__Q23std60__vector_imp<10ActionItem,Q23std23allocator<10ActionItem>,0>FPC10ActionItemPC10ActionItemQ23std20forward_iterator_tag_v  # OVL1; s1:exact-shape (SOCOM 1's init<PC10ActionItem> at 0x39AE40, two saved registers swapped: each element built by ActionItem's inline copy, then its assignment 0x369FA0) -- zui_spec.cpp's template tail
 0x00383800 0xAC func_00383800  # OVL1
-0x003838B0 0xA4 func_003838B0  # OVL1
-0x00383960 0x138 func_00383960  # OVL1
+0x003838B0 0xA4 resize__Q23std60__vector_imp<10ActionItem,Q23std23allocator<10ActionItem>,0>FUi  # OVL1; s1:order (SOCOM 1's resize__...<10ActionItem>FUi in zui_spec.cpp's tail: insert 0x383F20 with a default ActionItem destroyed after, else the erase 0x383E00; the map control's and the button's ANIMATIONS grow through it) -- zui_spec.cpp's template tail
+0x00383960 0x138 resize__Q23std66__vector_imp<13CDesignDlgObj,Q23std26allocator<13CDesignDlgObj>,0>FUi  # OVL1; s1:order (SOCOM 1's resize__...<13CDesignDlgObj>FUi: insert 0x384620 with a default design object destroyed after, else the erase 0x384410; the map control's ELEMENTS and the dialogs' objects grow through it) -- zui_spec.cpp's template tail
 0x00383AA0 0x11C func_00383AA0  # OVL1
 0x00383BC0 0x138 func_00383BC0  # OVL1
 0x00383D00 0xFC func_00383D00  # OVL1
-0x00383E00 0x120 func_00383E00  # OVL1
-0x00383F20 0x4F0 func_00383F20  # OVL1
-0x00384410 0x198 func_00384410  # OVL1
+0x00383E00 0x120 erase__Q23std60__vector_imp<10ActionItem,Q23std23allocator<10ActionItem>,0>FP10ActionItemP10ActionItem  # OVL1; s1:order (SOCOM 1's erase__...<10ActionItem>: the tail assigned down through 0x369FA0, the rest destroyed through ~ActionItem; resize 0x3838B0 calls it) -- zui_spec.cpp's template tail
+0x00383F20 0x4F0 insert__Q23std60__vector_imp<10ActionItem,Q23std23allocator<10ActionItem>,0>FP10ActionItemUiRC10ActionItem  # OVL1; s1:order (SOCOM 1's insert__...<10ActionItem>FP10ActionItemUiRC10ActionItem: the copies built by the inline copy and assigned through 0x369FA0; resize 0x3838B0 calls it) -- zui_spec.cpp's template tail
+0x00384410 0x198 erase__Q23std66__vector_imp<13CDesignDlgObj,Q23std26allocator<13CDesignDlgObj>,0>FP13CDesignDlgObjP13CDesignDlgObj  # OVL1; s1:order (SOCOM 1's erase__...<13CDesignDlgObj>: the tail assigned down through 0x37D910, the rest destroyed; resize 0x383960 calls it) -- zui_spec.cpp's template tail
 0x003845B0 0x64 func_003845B0  # OVL1
-0x00384620 0x478 func_00384620  # OVL1
+0x00384620 0x478 insert__Q23std66__vector_imp<13CDesignDlgObj,Q23std26allocator<13CDesignDlgObj>,0>FP13CDesignDlgObjUiRC13CDesignDlgObj  # OVL1; s1:order (SOCOM 1's insert__...<13CDesignDlgObj>: resize 0x383960 calls it) -- zui_spec.cpp's template tail
 0x00384AA0 0x60 func_00384AA0  # OVL1
 0x00384B00 0x64 func_00384B00  # OVL1
 0x00384B70 0x54 func_00384B70  # OVL1

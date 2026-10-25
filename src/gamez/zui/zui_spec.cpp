@@ -145,6 +145,27 @@ CHandlerButtonSpec::CHandlerButtonSpec(_zrdr *rdr) : CButtonSpec(rdr), m_child(0
     }
 }
 
+/* the states' textures prepared, the button set up from them and its caption, and shown in its
+ * normal state (SOCOM 1's). The four names are read first, both builds keeping them in saved
+ * registers across the lookups: written into the calls, MW reads each after the call before it.
+ * The CreateDisplayObjs call it out of line: pinned */
+#pragma auto_inline off
+void CButtonSpec::InitializeButton(C2DButton *button, zdb::CTextureRelocMgr *mgr) const
+{
+    const char *n = m_normal._TexName.c_str();
+    const char *a = m_active._TexName.c_str();
+    const char *p = m_pressed._TexName.c_str();
+    const char *d = m_disabled._TexName.c_str();
+    zdb::CTexHandle *normal = PrepTexture(n, mgr);
+    zdb::CTexHandle *active = PrepTexture(a, mgr);
+    zdb::CTexHandle *pressed = PrepTexture(p, mgr);
+    zdb::CTexHandle *disabled = PrepTexture(d, mgr);
+
+    InitButton(button, normal, active, pressed, disabled, m_caption.c_str());
+    button->SetNormal();
+}
+#pragma auto_inline reset
+
 /* a button (SOCOM 1's; 0x377800 is C2DButton's constructor) */
 C2D *CButtonSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
 {
@@ -371,6 +392,7 @@ CDesignDlgObj::~CDesignDlgObj()
 
 /* a copy of another's: the old spec deleted and the other's copied through its Copy slot, the
  * position, opacity, name and parent assigned (SOCOM 1's CDesignDlgObj assignment; out of line) */
+#pragma auto_inline off
 void CDesignDlgObj::operator=(const CDesignDlgObj &o)
 {
     delete m_spec;
@@ -380,4 +402,41 @@ void CDesignDlgObj::operator=(const CDesignDlgObj &o)
     m_opacity = o.m_opacity;
     m_name = o.m_name;
     m_childOf = o.m_childOf;
+}
+#pragma auto_inline reset
+
+/* the map's corners, its ELEMENTS (each an object spec at an offset, added to the design objects)
+ * and its ANIMATIONS (SOCOM 1's; CDlgObjSpec's constructor inlined) *
+ * OPEN, 14 instructions, one register pair: in the ELEMENTS loop the target gives the hoisted
+ * `elements == 0` bool s0 and the element pointer s1, here the other way round (the ANIMATIONS
+ * loop matches). No change from the element declared ahead of the loop, after the offsets, the
+ * spec declared ahead of its test, or an inline count helper (12 bytes longer) */
+CUIMapCtrlSpec::CUIMapCtrlSpec(_zrdr *rdr) : CDlgObjSpec(rdr)
+{
+    zrdr_findIPNT2D(rdr, "UPPERLEFT", &m_upperLeft);
+    zrdr_findIPNT2D(rdr, "LOWERRIGHT", &m_lowerRight);
+    _zrdr *elements = zrdr_findtag(rdr, "ELEMENTS");
+    for (int i = 0; i < (elements ? (int)elements->Count() : 0); i++) {
+        _zrdr *e = elements->Item(i);
+        int x, y;
+
+        zrdr_findint(e, "XOFFSET", &x, 1);
+        zrdr_findint(e, "YOFFSET", &y, 1);
+        const char *type = zrdr_findstring(e, "TYPE");
+        _zrdr *specRdr = zrdr_findtag(e, "SPEC");
+        if (specRdr) {
+            CDlgObjSpec *spec = GetObjectSpec(specRdr, type);
+            if (spec) {
+                m_elements.resize(m_elements.size() + 1);
+                CDesignDlgObj &o = m_elements.back();
+                o.SetSpec(spec);
+                o.SetPos(x, y);
+            }
+        }
+    }
+    _zrdr *anims = zrdr_findtag(rdr, "ANIMATIONS");
+    for (int j = 0; j < (anims ? (int)anims->Count() : 0); j++) {
+        m_animations.resize(m_animations.size() + 1);
+        ParseButtonAnim(anims->Item(j), &m_animations.back());
+    }
 }

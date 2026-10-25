@@ -170,9 +170,29 @@ CUIVariableSpec::~CUIVariableSpec()
     }
 }
 
-/* a radio strip (SOCOM 1's) *
- * OPEN until a row outside the lane is named: byte-exact with 0x377800 (zui_2d.cpp's) as
- * __ct__9C2DButtonFv -- C2DButton's constructor, out of line (measured with the row renamed) */
+/* the strip's objects erased and deleted one by one (SOCOM 1's; the iterator assigned, so kept in
+ * the frame, and assigned after the delete: the target holds erase's result in a saved register
+ * across it) *
+ * OPEN, 4 bytes short (0x198 of 0x19C), all in the vector's reads: the target computes &data_
+ * (this + 0x120) into s0 in the delay slot of the first test and reads the destructor's `if
+ * (data_)` through it, shares begin()'s data_ load with the first test's end(), and loads the
+ * bottom test's size into a0 and data into v1 (here v1 and a0, and data_ reloaded each time). The
+ * pod's end() through data() (probed) changes nothing: the shape is the pointer vector's
+ * begin()/end() and its destructor's, include/vector's to settle (the AddPalette family) */
+CRadioStripSpec::~CRadioStripSpec()
+{
+    std::vector<CDesignDlgObj *>::iterator i = m_items.begin();
+
+    while (i != m_items.end()) {
+        CDesignDlgObj *obj = *i;
+        std::vector<CDesignDlgObj *>::iterator next = m_items.erase(i);
+
+        delete obj;
+        i = next;
+    }
+}
+
+/* a radio strip (SOCOM 1's; C2DButton's constructor 0x377800 out of line) */
 C2D *CRadioStripSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
 {
     CRadioStrip *strip = new CRadioStrip;

@@ -239,6 +239,8 @@ public:
     void reserve(unsigned int n);
     void insert(T *position, unsigned int n, const T &x);
     T *erase(T *first, T *last);
+    /* one element erased (out of class: SOCOM 1's erase__...FPUi, SOCOM II's OVL1 0x28F220) */
+    T *erase(T *position);
     T &at(unsigned int n);
     template <class InputIterator>
     void init(InputIterator first, InputIterator last, forward_iterator_tag);
@@ -365,6 +367,9 @@ class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, all
     {
         return __iter(__base::erase((unsigned int *)first.m_p, (unsigned int *)last.m_p));
     }
+    /* one element erased: the iterator taken by value, the pod's single erase called (the UI lane:
+     * ~CRadioStripSpec's walk) */
+    iterator erase(iterator position) { return __iter(__base::erase((unsigned int *)position.m_p)); }
     void clear() { __vector_pod<unsigned int, allocator<unsigned int> >::clear(); }
     void swap(__vector_imp &x) { __base::swap(x); }
     T *&at(unsigned int n)
@@ -436,6 +441,24 @@ T *__vector_pod<T, Allocator>::erase(T *first, T *last)
     }
     size_ -= last - first;
     return first;
+}
+
+/* one element erased: the words after it moved down one, the size counted down (SOCOM 1's
+ * erase__ of __vector_pod<Ui> taking one position, 0x1DEF80; SOCOM II's 0x28F220, the copy unrolled
+ * 8x as the range erase's) */
+template <class T, class Allocator>
+T *__vector_pod<T, Allocator>::erase(T *position)
+{
+    T *e = data_ + size_;
+
+    if (e - position - 1) {
+        T *s, *d = position;
+
+        for (s = position + 1; s < e; ++s, ++d)
+            *d = *s;
+    }
+    --size_;
+    return position;
 }
 
 template <class T, class Allocator>
