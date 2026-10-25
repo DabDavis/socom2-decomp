@@ -19,7 +19,8 @@ public:
 
     unsigned char _0[0x1a100];
     CLetterBox m_letterbox;   // 0x1a100 (SOCOM 1's at 0x14280)
-    unsigned char _1a230[0x1a2dc - 0x1a230];
+    unsigned char _1a230[0x1a2d0 - 0x1a230];
+    unsigned char m_flashes[0xc];   // 0x1a2d0: a CFlashFXVector
     CZHudMissionCams m_missioncams;   // 0x1a2dc (SOCOM 1's at 0x14590)
     unsigned char _1a698[0x1a6f5 - 0x1a698];
     unsigned char m_ison : 1;   // 0x1a6f5 (SOCOM 1's at 0x14955)
@@ -112,6 +113,7 @@ public:
     int zNetGetTime();
 
     unsigned char m_bSessionMaster;   // 0x0
+    unsigned char m_1;   // 0x1: no fade to the mission's end while set (the name ours)
 };
 
 extern CZNetwork theNetwork;
@@ -120,13 +122,187 @@ extern CZNetwork theNetwork;
 class CMission {
 public:
     CZNetGame *CreateNetGame();
+    bool ReOpen_Unload2();
+    void FadeToEndMission(float time, int counter);
+    bool FadeToEndMissionTick(float dT);
+    static bool fadeToEndMissionTick(float dT, void *data);
+    void SetDelayEndMission(bool b) { m_DelayEndMission = b; }
+    void SetFadingToEndMission(bool b) { m_FadingToEndMission = b; }
 
-    unsigned char _0[0x1808];
+    unsigned char _0[0xe0];
+    int m_e0;   // 0xe0: cleared before the second unload (SOCOM II's; the name ours)
+    unsigned char _e4[0xfc - 0xe4];
+    unsigned char m_DelayEndMission : 1;   // 0xfc (SOCOM 1's bytes at 0x70, 0x71)
+    unsigned char m_FadingToEndMission : 1;
+    int m_fade_counter;   // 0x100 (SOCOM 1's at 0x74)
+    float m_next_fade_time;   // 0x104 (SOCOM 1's at 0x78)
+    unsigned char _108[0x1808 - 0x108];
     CZNetGame *m_pNetGame;   // 0x1808 (SOCOM 1's at 0x584)
 };
 
 extern CMission theMission;
 extern "C" char *strncpy(char *dst, const char *src, unsigned int n);
+
+/* the world, the entities, the AI events, the scheduler and the sound (their units'; called by their
+ * map names) */
+class CEntity {
+public:
+    static void RemoveAll();
+};
+class CAiEvent {
+public:
+    static void Close();
+};
+extern CSched_Manager zTaskScheduler;
+extern "C" void ClearFreeList__14CSched_ManagerFb(CSched_Manager *sched, bool all);
+extern "C" bool AddTask__14CSched_ManagerFPCcPFfPv_bfPv(CSched_Manager *sched, const char *name,
+                                                         bool (*func)(float dT, void *data), float priority, void *data);
+
+/* the mission completed (SOCOM 1's name, at its call; OVL1 0x2AA910, not written yet) */
+void _OnMissionComplete();
+
+extern "C" {
+void Flash__4CHUDFfRC6CPnt3Dfff(CHUD *hud, float time, const CPnt3D *colour, float in, float hold, float out);
+void Reset__14CFlashFXVectorFv(void *flashes);
+void ResetDeathCam__10CAppCameraFv(void *camera);
+void Push__5CGameFP10CGameStateUi(void *game, void *state, unsigned int arg);
+void func_003AFD50(int a0, int a1, int a2, int a3, int a4);   /* (the screen cleared: SOCOM 1's CVideo::Clear) */
+extern void *appCamera;
+extern unsigned char theGame[];
+extern unsigned char data_004086A0[];                    /* (a state in theGame, at 0x1E0) */
+}
+
+/* the fade's steps: two flashes, then the mission completed and the exit state pushed (SOCOM 1's,
+ * the same steps; OVL1 0x2A98B0) */
+bool CMission::FadeToEndMissionTick(float dT)
+{
+    if (!(m_next_fade_time <= 0.0f)) {
+        m_next_fade_time -= dT;
+        if (m_next_fade_time <= 0.0f) {
+            if (m_fade_counter > 0) {
+                CPnt3D black(0.0f, 0.0f, 0.0f);
+
+                Flash__4CHUDFfRC6CPnt3Dfff(theHUD, 0.0f, &black, 0.5f, 0.5f, 0.5f);
+                m_next_fade_time = 5.0f;
+            } else if (m_fade_counter == 0) {
+                CPnt3D black(0.0f, 0.0f, 0.0f);
+
+                Flash__4CHUDFfRC6CPnt3Dfff(theHUD, 0.0f, &black, 0.8f, 5.0f, 0.8f);
+                m_next_fade_time = 1.1f;
+            } else {
+                SetDelayEndMission(false);
+                if (!m_DelayEndMission) {
+                    _OnMissionComplete();
+                    func_003AFD50(1, 0, 0, 0, 0);
+                    Reset__14CFlashFXVectorFv(theHUD->m_flashes);
+                    theMission.SetDelayEndMission(false);
+                    SetFadingToEndMission(false);
+                    ResetDeathCam__10CAppCameraFv(appCamera);
+                    Push__5CGameFP10CGameStateUi(theGame, data_004086A0, 0);
+                }
+                return true;
+            }
+            m_fade_counter--;
+        }
+    }
+    return false;
+}
+
+/* the external whispers' option: its global (0x3DE620, the HUD reads it) and EnableExternalWhispers
+ * (SOCOM II's; the options' store and the HUD call it; OVL1 0x2A41F0) */
+extern "C" bool data_003DE620;
+
+extern "C" void func_002A41F0(bool on)
+{
+    /* the valve set written out: `on` converted for the comparison and again for the store */
+    CValve *valve = CValve::Create("EnableExternalWhispers", (VALVE_TYPE)1);
+    VALVE_STATE state = VALVE_SAME;
+
+    if (valve->m_value != on)
+        state = on == 0 ? VALVE_OFF : VALVE_ON;
+    valve->m_value = on;
+    if (state != VALVE_SAME)
+        valve->MakeCallbacks(state);
+    data_003DE620 = on;
+}
+
+/* a range kept at 0xF4 (the top) and 0xF8 (the bottom) of the object 0x341A60 asks (SOCOM II's; the
+ * names ours) */
+struct FadeRange {
+    unsigned char _0[0xf4];
+    float top;   // 0xf4
+    float bottom;   // 0xf8
+};
+
+/* where a value lies in the range, 0 to 1 (a half when the range is empty), the ends put in order
+ * first (OVL1 0x2ACA30) */
+extern "C" float func_002ACA30(FadeRange *r, float x)
+{
+    float f = 0.5f;
+
+    if (r->top < r->bottom) {
+        float t = r->top;
+
+        r->top = r->bottom;
+        r->bottom = t;
+    }
+    if (!(x <= r->top))
+        f = 1.0f;
+    else if (x < r->bottom)
+        f = 0.0f;
+    else {
+        float d = r->top - r->bottom;
+
+        if (d != 0.0f)
+            f = (x - r->bottom) / d;
+    }
+    return f;
+}
+
+/* the task's callback (SOCOM 1's fadeToEndMissionTick, the same jump; OVL1 0x2A98A0) */
+bool CMission::fadeToEndMissionTick(float dT, void *data)
+{
+    return ((CMission *)data)->FadeToEndMissionTick(dT);
+}
+
+/* the fade to the mission's end begun, or brought nearer (SOCOM 1's, its two flags bits now;
+ * OVL1 0x2A97C0) */
+void CMission::FadeToEndMission(float time, int counter)
+{
+    if (theNetwork.m_1)
+        return;
+    if (!m_FadingToEndMission) {
+        m_FadingToEndMission = 1;
+        theMission.m_DelayEndMission = 1;
+        m_fade_counter = counter;
+        m_next_fade_time = time;
+        AddTask__14CSched_ManagerFPCcPFfPv_bfPv(&zTaskScheduler, "MissionFadeToEnd", fadeToEndMissionTick, 0.98f, this);
+    } else {
+        if (time < m_next_fade_time)
+            m_next_fade_time = time;
+        if (counter < m_fade_counter)
+            m_fade_counter = counter;
+    }
+}
+
+/* the second half of a reload's unload: the entities and AI events gone, the world's lists and
+ * garbage cleared (SOCOM 1's), then -- SOCOM II's -- the scheduler's free list, the headset and
+ * the sounds (OVL1 0x2AC060) */
+bool CMission::ReOpen_Unload2()
+{
+    zdb::CWorld *world = zdb::CWorld::m_world;
+
+    m_e0 = 0;
+    CEntity::RemoveAll();
+    CAiEvent::Close();
+    world->ClearLightMapList();
+    world->ClearShadowList();
+    world->GarbageCollect();
+    ClearFreeList__14CSched_ManagerFb(&zTaskScheduler, true);
+    Headset::Reset();
+    CSndInstance::PostTick(0.0f, 0);
+    return true;
+}
 
 /* the online game started (OVL1 0x2A9F00) */
 CZNetGame *CMission::CreateNetGame()
