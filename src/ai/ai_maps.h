@@ -36,6 +36,10 @@ public:
     bool GetActionById(unsigned int id, CAiMapLoc &loc, CAiMap::action **pa);
     bool GetLocation(const char *name, CAiMapLoc &loc);
     bool GetLocation(const CPnt3D *pos, CAiMapLoc &loc);
+    /* a cell a step may end on near a cell, near a point (new in SOCOM II, the names ours: the
+     * AI states' pickup, no-ammo and vehicle searches) */
+    bool FindTraversable(const CAiMapLoc &loc, CAiMapLoc &out);
+    bool GetTraversableLocation(const CPnt3D *pos, CAiMapLoc &out);
     bool GetCellCenter(const CAiMapLoc &loc, CPnt3D *center);
     /* the distance between two cells' centres, squared and not (new in SOCOM II, the names ours:
      * 0 for one cell, 1e12 when a centre is missing) */

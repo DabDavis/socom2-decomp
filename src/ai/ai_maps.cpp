@@ -192,6 +192,17 @@ const char *CAiMaps::GetCellNameString(const CAiMapLoc &loc) const
     return n ? n->m_name : "";
 }
 
+/* the point's cell, then a traversable one near it */
+bool CAiMaps::GetTraversableLocation(const CPnt3D *pos, CAiMapLoc &out)
+{
+    CAiMapLoc loc;
+    bool found = GetLocation(pos, loc);
+
+    if (found)
+        found = FindTraversable(loc, out);
+    return found;
+}
+
 float CAiMaps::GetDistance(const CAiMapLoc &a, const CAiMapLoc &b)
 {
     return sqrtf(GetDistanceSq(a, b));

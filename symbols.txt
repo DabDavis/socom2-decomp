@@ -9605,8 +9605,8 @@
 0x00529030 0x1C0 func_00529030  # OVL2
 0x005291F0 0xDC GetDistanceSq__7CAiMapsFRC9CAiMapLocRC9CAiMapLoc  # OVL2; ours (new in SOCOM II, ai_maps.cpp's first function: two cells' centres by GetCellCenter, their difference's squared length; 0 for the same cell, 1e12 without a centre)
 0x005292D0 0x2C GetDistance__7CAiMapsFRC9CAiMapLocRC9CAiMapLoc  # OVL2; ours (new in SOCOM II: sqrtf of GetDistanceSq, called by CAiSPlan::Tick)
-0x00529300 0x724 func_00529300  # OVL2
-0x00529A30 0x54 func_00529A30  # OVL2
+0x00529300 0x724 FindTraversable__7CAiMapsFRC9CAiMapLocR9CAiMapLoc  # OVL2; ours (new in SOCOM II: GetTraversableLocation's second call, (cell, out) -> bool; it reads cells through GetCell and CAiCell::IsTraversable -- the name a role, not yet read in full)
+0x00529A30 0x54 GetTraversableLocation__7CAiMapsFPC6CPnt3DR9CAiMapLoc  # OVL2; ours (new in SOCOM II, after 0x529300: GetLocation(point) into a local cell, then FindTraversable from it into the caller's -- CAiSPickup, CAiSNoAmmo and CAiSUseVehicle call it)
 0x00529A90 0x16C func_00529A90  # OVL2
 0x00529C00 0x12C func_00529C00  # OVL2
 0x00529D30 0x3C func_00529D30  # OVL2
