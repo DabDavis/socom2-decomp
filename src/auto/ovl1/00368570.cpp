@@ -22,8 +22,8 @@ struct VC_910 {
     virtual s32 v_10(void);
 };
 extern "C" {
+M2C_UNK Clear__9CGameMenuFv();                      /* extern */
 M2C_UNK func_00367430(char *, s32, s32);            /* extern */
-M2C_UNK func_00369210();                            /* extern */
 extern char *data_0049EAA8;
 extern s8 data_004A44FD;
 
@@ -31,7 +31,7 @@ s32 func_00368570(char *arg0, char **arg1, s32 arg2) {
     char **temp_a0;
     char **temp_a0_2;
 
-    func_00369210();
+    Clear__9CGameMenuFv();
     SC_MEMBER(arg0, s32 *, 0xC0) = arg2;
     data_004A44FD = 0;
     if (arg1 == NULL) {

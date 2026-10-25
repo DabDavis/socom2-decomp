@@ -97,7 +97,11 @@ public:
      * high and the deleter's four */
     static void destroy(T *first, T *last) { __destroy(first, last); }
     static void __destroy(T *first, T *last) { __destroy_trivial(first, last); }
-    static void __destroy_trivial(T *, T *) {}
+    static void __destroy_trivial(T *first, T *last)
+    {
+        while (first < last)
+            (--last)->~T();
+    }
     static T *allocate(unsigned int n)
     {
         T *p = (T *)operator new(n * sizeof(T));
@@ -245,7 +249,7 @@ public:                                                                         
 template <class T, class Allocator, bool IsPOD>
 class __vector_imp : public __vector_deleter<T, Allocator> {
     __MSL_VECTOR_ACCESS(T)
-    iterator begin() { return iterator(this->data_); }
+    iterator begin() { T *const p = this->data_; return iterator(p); }
     iterator end() { return iterator(this->data_ + this->size_); }
     T &back() { return *(end() - 1); }
     void clear() { __vector_deleter<T, Allocator>::clear(); }

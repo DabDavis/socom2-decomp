@@ -782,6 +782,22 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - `x = MAX(0, x); x = MIN(n - 1, x);` gives gridGetAtomBasePtr's clamp; written as ifs it
     becomes bgez;
   - reusing `len = 1.0f / len` instead of a new `inv` local swaps the FPRs to the target's order.
+- **Tells from the HUD, round 9** (hud_weaponsel.h, the pause test, the clip helpers):
+  - MW 3.0 deletes an empty element-destroy loop, so include/vector's one reverse loop
+    (`while (first < last) (--last)->~T();`) serves trivially destructible and
+    virtual-destructor elements alike (C2DPoly's deleter: clear and destructor);
+  - a class vector's begin() through a `T *const` local keeps a walk's first test a compare
+    (C2DTriFan::Draw), as the pointer vectors' does;
+  - an implicit destructor tells an array (one `__destroy_arr` call) from a run of members
+    (destroyed one by one): CWeaponSel's three selection backings are members;
+  - a class member at offset 0 is destroyed with -1, a base class with 0;
+  - `x = (signed char)(x + 1)` re-extends before adding; `x++` does not;
+  - as the last test of a negated `&&`, `!(b <= a)` branches on `at` where `a < b` materialises
+    into v0;
+  - `ok = f(); return ok;` with int types keeps the target's layout of the last test; `return
+    f();` inverts it, and a bool local adds an `andi`;
+  - declaration order assigns float registers too: `float t;` declared first gave the target's
+    `$f20`/`$f21`.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
