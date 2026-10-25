@@ -6,7 +6,7 @@
  * zui_var.cpp is ours (the press beta's zui.cpp may be it).
  *
  * OPEN, not written yet: the manager's Serialize, Add, Find, CollectGarbage, Reset and the other
- * variable methods; DetachUIVar, AttachUIVar and ~CUIVarManager stand as generated drafts. */
+ * variable methods; DetachUIVar and ~CUIVarManager stand as generated drafts. */
 
 #include "zui.h"
 
@@ -47,4 +47,17 @@ void CUIVariable::UpdateDependents()
 
     for (i = m_attached_items.begin(); i != m_attached_items.end(); ++i)
         (*i)->UpdateUIVar(this);
+}
+
+/* the mixin made a watcher of the variable, its old one detached first (SOCOM 1's AttachUIVar
+ * pushed itself; SOCOM II's leaves that to CUIVariable::Attach) */
+void UIVarMixin::AttachUIVar(CUIVariable *var)
+{
+    if (m_uivar != var) {
+        if (m_uivar)
+            DetachUIVar(m_uivar);
+        m_uivar = var;
+        if (m_uivar)
+            m_uivar->Attach(this);
+    }
 }

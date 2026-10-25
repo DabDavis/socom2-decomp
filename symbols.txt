@@ -7137,7 +7137,7 @@
 0x003869A0 0x14 func_003869A0  # OVL1
 0x003869C0 0xC func_003869C0  # OVL1
 0x003869D0 0x18 func_003869D0  # OVL1
-0x003869F0 0xC0 func_003869F0  # OVL1
+0x003869F0 0xC0 Attach__11CUIVariableFP10UIVarMixin  # OVL1; ours (AttachUIVar calls it with the mixin once m_uivar is set; it adds the mixin to the variable's watchers unless already there, through the pod vector's insert)
 0x00386AB0 0x44 func_00386AB0  # OVL1
 0x00386B00 0x80 Destroy__11CUIVariableFv  # OVL1; s1:calls by hand (DetachAll, then DeleteChildren and the fields cleared, as SOCOM 1's Destroy)
 0x00386B80 0x70 func_00386B80  # OVL1
