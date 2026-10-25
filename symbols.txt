@@ -4113,11 +4113,11 @@
 0x002C0090 0x5C func_002C0090  # OVL1
 0x002C00F0 0x4EC UpdateLocalGame__11CZGameStateFP9CZNetGame  # OVL1; s1:calls by hand (the states lane: at SOCOM 1's call site)
 0x002C05E0 0xA4 CreateLocalGame__11CZGameStateFP9CZNetGame  # OVL1; s1:calls
-0x002C0690 0x8 func_002C0690  # OVL1
-0x002C06A0 0x108 func_002C06A0  # OVL1
-0x002C07B0 0x98 func_002C07B0  # OVL1
-0x002C0850 0x8CC func_002C0850  # OVL1
-0x002C1120 0x2FC func_002C1120  # OVL1
+0x002C0690 0x8 RemoteGameDeletionCallback__11CZGameStateFii  # OVL1; s1:order by hand (the states lane: zNetRegisterGame (0x2C1120) hands it to 0x30CE80 in the deletion slot, where SOCOM 1's hands RemoteGameDeletionCallback to zNetRegisterRemoteObjectCallback; 8 bytes both, an empty function)
+0x002C06A0 0x108 RemoteGameCreationCallback__11CZGameStateFii  # OVL1; s1:order by hand (the states lane: the creation slot of zNetRegisterGame's registration; after the deletion callback as in SOCOM 1)
+0x002C07B0 0x98 RemoteGamePostUpdateCallback__11CZGameStateFiii  # OVL1; s1:order by hand (the states lane: the post-update slot of zNetRegisterGame's registration; between the creation and update callbacks as in SOCOM 1)
+0x002C0850 0x8CC RemoteGameUpdateCallback__11CZGameStateFiii  # OVL1; s1:order by hand (the states lane: the update slot of zNetRegisterGame's registration; the creation callback calls it with field -1, as SOCOM 1's)
+0x002C1120 0x2FC zNetRegisterGame__11CZGameStateFv  # OVL1; s1:order by hand (the states lane: after RemoteGameUpdateCallback as in SOCOM 1; registers the game object's structure under m_NetStructIndexGameObject with the four game callbacks)
 0x002C1420 0xE4 UpdateLocalGrenade__14CZGrenadeStateFP12CZProjectile  # OVL1; s1:align
 0x002C1510 0xC4 CreateLocalGrenade__14CZGrenadeStateFP12CZProjectile  # OVL1; s1:align
 0x002C15E0 0x84 RemoteGrenadeDeletionCallback__14CZGrenadeStateFii  # OVL1; s1:align
