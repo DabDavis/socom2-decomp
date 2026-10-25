@@ -63,6 +63,12 @@ class CZWeapon {
 public:
     CZWeapon();
     virtual ~CZWeapon();
+    /* +0x0C, new in SOCOM II (0x3D2D70; not named) */
+    virtual int Slot0C();
+    /* the item's class (SOCOM 1's two: the static one from the id's range, 0x3D1A60, and the
+     * member one handing it the id, 0x3D1E10) */
+    static EQUIP_ITEM GetIDType(EQUIP_ITEM id);
+    EQUIP_ITEM GetIDType();
     /* the name and the description (zwep_weapon.cpp's, out of line: 0x3D2840, 0x3D2830 -- in
      * SOCOM 1's order, GetDescription before GetName) */
     char *GetName() const;
@@ -79,7 +85,94 @@ public:
     EQUIP_ITEM m_ID;   // 0x7c (SOCOM 1: 0x60)
     unsigned char _7d[0xc4 - 0x7d];
     CZAmmoList m_LegalAmmoList;   // 0xc4 (SOCOM 1: 0x9c)
+    unsigned char _d0[0xf8 - 0xd0];
+};   // 0xf8 bytes (CZFTSWeapon's targetmods start there)
+
+/* a weapon's per-stance reticle and recoil tuning (SOCOM 1's DWARF: 0x4c bytes; SOCOM II's is 0x74,
+ * a float inserted at 0x28 and more members after SOCOM 1's -- only what the matched code reads is
+ * named, SOCOM 1's names where the order agrees) */
+class CTargetMods {
+public:
+    CTargetMods();
+    void SetWiggleReport(float r);
+    float GetWiggleReport();
+    void SetTarget_DilateUponMovement(float d);
+
+    float m_reticuleknock;   // 0x0
+    float m_reticuleknock_return;   // 0x4
+    float m_reticuleknock_max;   // 0x8
+    float m_distppframe_posx;   // 0xc
+    float m_distppframe_posy;   // 0x10
+    float m_distlimit_posx;   // 0x14
+    float m_distlimit_posy;   // 0x18
+    float m_sniper_decayrate;   // 0x1c
+    float m_target_dilateuponfire;   // 0x20
+    float m_target_dilateuponmovement;   // 0x24
+    float m_socom2_28;   // 0x28 (SOCOM II's: the constructor sets 1)
+    float m_target_dilateuponmovementSqrt;   // 0x2c (SOCOM 1: 0x28)
+    float m_target_constrict;   // 0x30 (SOCOM 1's from here, 4 bytes later)
+    float m_target_min;   // 0x34
+    float m_target_max;   // 0x38
+    float m_firerifle_kickrate;   // 0x3c
+    float m_firerifle_kickreturnrate;   // 0x40 (the constructor leaves it)
+    float m_firerifle_kickbasedist;   // 0x44
+    float m_firerifle_kickrandomdist;   // 0x48
+    /* SOCOM II's eight (the constructor's 2, 1, 2, 2000, 1, 1, 2, 250; not named) */
+    float m_socom2_4c;   // 0x4c
+    float m_socom2_50;   // 0x50
+    float m_socom2_54;   // 0x54
+    float m_socom2_58;   // 0x58
+    float m_socom2_5c;   // 0x5c
+    float m_socom2_60;   // 0x60
+    float m_socom2_64;   // 0x64
+    float m_socom2_68;   // 0x68
+    int m_socom2_6c;   // 0x6c (SOCOM II's: the constructor sets 3)
+    float m_wiggle_report;   // 0x70 (SOCOM 1: 0x48, its last member as here)
+};   // 0x74 bytes
+
+/* what a SEAL's kit holds (SOCOM 1's enum; only its size matters here: CZFTSWeapon stores it as a
+ * word) */
+enum SEAL_ITEM {
+    SEAL_ITEM_FORCE_WORD = 0x10000
 };
+
+/* a weapon as the game uses it (SOCOM 1's DWARF: 0x1cc bytes, everything after CZWeapon 0x48 bytes
+ * later here, then 0xc0 later from the rumble on; 0x28c bytes) */
+class CZFTSWeapon : public CZWeapon {
+public:
+    CZFTSWeapon();
+    /* +0x10, its own (8 bytes, SOCOM 1's) */
+    virtual void Recoil();
+    float GetZoomRange(unsigned int i);
+    CTargetMods *TargetMods(int i);
+    float ResolveFTSDamage(float damage);
+    bool IsGrenadeLauncherWeapon();
+    bool IsM203Weapon();
+    /* the same test of an id (new in SOCOM II, 0x3C5E10; the member one inlines it, its true an
+     * assignment there -- daddiu; the name is ours) */
+    static bool IsM203Weapon(EQUIP_ITEM id);
+    void AddZoommode(float zoom);
+    void AccuracyScalar_Max(float s);
+    void AccuracyScalar_Min(float s);
+    void AccuracyBurstCnt_Max(int n);
+    void AccuracyBurstCnt_Min(int n);
+    int AccuracyBurstCnt_Max() const;
+    int AccuracyBurstCnt_Min() const;
+
+    CTargetMods targetmods[3];   // 0xf8 (SOCOM 1: 0xb0)
+    unsigned char m_rumblehigh_enable;   // 0x254
+    float m_rumblehigh_time;   // 0x258
+    unsigned char m_rumblelow_enable;   // 0x25c
+    float m_rumblelow_time;   // 0x260
+    float m_rumblelow_power;   // 0x264
+    int m_accuracy_burstcnt_min;   // 0x268
+    int m_accuracy_burstcnt_max;   // 0x26c
+    float m_accuracy_scalar_min;   // 0x270
+    float m_accuracy_scalar_max;   // 0x274
+    float m_accuracy_slope;   // 0x278
+    SEAL_ITEM m_type;   // 0x27c
+    std::vector<float> m_zoommode;   // 0x280
+};   // 0x28c bytes
 
 /* the weapons, a pointer list (SOCOM 1's, out of line in a unit of its own); its elements are its
  * own */

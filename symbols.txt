@@ -8108,24 +8108,24 @@
 0x003C5950 0x10 ResolveFTSDamage__11CZFTSWeaponFf  # OVL1; s1:exact
 0x003C5960 0x8 func_003C5960  # OVL1
 0x003C5970 0x8 func_003C5970  # OVL1
-0x003C5980 0x38 func_003C5980  # OVL1
-0x003C59C0 0x8C func_003C59C0  # OVL1
-0x003C5A50 0x30 func_003C5A50  # OVL1
-0x003C5A80 0x8 func_003C5A80  # OVL1
+0x003C5980 0x38 GetZoomRange__11CZFTSWeaponFUi  # OVL1; s1:order by hand (SOCOM 1's size, 0x38: the zoom vector's i'th range, 500 past its end)
+0x003C59C0 0x8C __ct__11CTargetModsFv  # OVL1; by hand (CZFTSWeapon's constructor runs it over targetmods[3], 0x74 apart from 0xF8: SOCOM 1's CTargetMods constructor, the class grown to 0x74)
+0x003C5A50 0x30 TargetMods__11CZFTSWeaponFi  # OVL1; s1:order by hand (SOCOM 1's: &targetmods[i < 3 ? i : 0], elements of 0x74 at 0xF8)
+0x003C5A80 0x8 SetWiggleReport__11CTargetModsFf  # OVL1; s1:order by hand (stores the float at 0x70, the last member, as SOCOM 1's at its last, 0x48; right after TargetMods as in SOCOM 1)
 0x003C5A90 0x8 func_003C5A90  # OVL1
-0x003C5AA0 0x8 func_003C5AA0  # OVL1
+0x003C5AA0 0x8 GetWiggleReport__11CTargetModsFv  # OVL1; s1:order by hand (loads the float at 0x70)
 0x003C5AB0 0x8 func_003C5AB0  # OVL1
 0x003C5AC0 0x58 func_003C5AC0  # OVL1
 0x003C5B20 0x100 func_003C5B20  # OVL1
 0x003C5C20 0x50 func_003C5C20  # OVL1
 0x003C5C70 0x28 func_003C5C70  # OVL1
 0x003C5CA0 0x28 func_003C5CA0  # OVL1
-0x003C5CD0 0x48 func_003C5CD0  # OVL1
+0x003C5CD0 0x48 IsGrenadeLauncherWeapon__11CZFTSWeaponFv  # OVL1; s1:order by hand (SOCOM 1's test of the id byte against 52, 61, 142 and 143; SOCOM II adds 63)
 0x003C5D20 0x60 func_003C5D20  # OVL1
 0x003C5D80 0x84 func_003C5D80  # OVL1
-0x003C5E10 0x30 func_003C5E10  # OVL1
-0x003C5E40 0x30 func_003C5E40  # OVL1
-0x003C5E70 0x38 func_003C5E70  # OVL1
+0x003C5E10 0x30 IsM203Weapon__11CZFTSWeaponF10EQUIP_ITEM  # OVL1; by hand (the same test as IsM203Weapon of an id byte, 52 or 61; the member one, next to it, inlines it -- its true a daddiu; the name is ours)
+0x003C5E40 0x30 IsM203Weapon__11CZFTSWeaponFv  # OVL1; s1:order by hand (SOCOM 1's test of the id byte against 52 and 61)
+0x003C5E70 0x38 AddZoommode__11CZFTSWeaponFf  # OVL1; s1:order by hand (a float pushed on the zoom vector at 0x280 through the pod insert)
 0x003C5EB0 0x8 func_003C5EB0  # OVL1
 0x003C5EC0 0x8 func_003C5EC0  # OVL1
 0x003C5ED0 0x8 func_003C5ED0  # OVL1
@@ -8162,7 +8162,7 @@
 0x003C60F0 0x8 func_003C60F0  # OVL1
 0x003C6100 0x8 func_003C6100  # OVL1
 0x003C6110 0x8 func_003C6110  # OVL1
-0x003C6120 0x1C func_003C6120  # OVL1
+0x003C6120 0x1C SetTarget_DilateUponMovement__11CTargetModsFf  # OVL1; s1:order by hand (SOCOM 1's: the value and its square root, at 0x24 and 0x2C)
 0x003C6140 0x8 func_003C6140  # OVL1
 0x003C6150 0x8 func_003C6150  # OVL1
 0x003C6160 0x8 func_003C6160  # OVL1
@@ -8171,12 +8171,12 @@
 0x003C6190 0x8 func_003C6190  # OVL1
 0x003C61A0 0x8 func_003C61A0  # OVL1
 0x003C61B0 0x8 Recoil__11CZFTSWeaponFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x003C61C0 0x50 func_003C61C0  # OVL1
-0x003C6210 0x50 func_003C6210  # OVL1
-0x003C6260 0x50 func_003C6260  # OVL1
-0x003C62B0 0x50 func_003C62B0  # OVL1
-0x003C6300 0x8 func_003C6300  # OVL1
-0x003C6310 0x8 func_003C6310  # OVL1
+0x003C61C0 0x50 AccuracyScalar_Max__11CZFTSWeaponFf  # OVL1; s1:order by hand (SOCOM 1's shape: the maximum stored, the slope over the burst counts recomputed; 0xC0 later)
+0x003C6210 0x50 AccuracyScalar_Min__11CZFTSWeaponFf  # OVL1; s1:order by hand (the same for the minimum)
+0x003C6260 0x50 AccuracyBurstCnt_Max__11CZFTSWeaponFi  # OVL1; s1:order by hand (the same for the maximum burst count)
+0x003C62B0 0x50 AccuracyBurstCnt_Min__11CZFTSWeaponFi  # OVL1; s1:order by hand (the same for the minimum burst count)
+0x003C6300 0x8 AccuracyBurstCnt_Max__11CZFTSWeaponCFv  # OVL1; s1:order by hand (loads the word at 0x26C, SOCOM 1's at 0x1AC)
+0x003C6310 0x8 AccuracyBurstCnt_Min__11CZFTSWeaponCFv  # OVL1; s1:order by hand (loads the word at 0x268)
 0x003C6320 0xA4 __ct__11CZFTSWeaponFv  # OVL1; s1:align
 0x003C63D0 0x8C func_003C63D0  # OVL1
 0x003C6460 0xB0 RemoveWeaponEventCallback__8CZWeaponFPFP12CZProjectileUiPv_v  # OVL1; s1:align
@@ -8317,7 +8317,7 @@
 0x003D17D0 0x1D0 func_003D17D0  # OVL1
 0x003D19A0 0x3C func_003D19A0  # OVL1; tu: zwep_weapon.cpp~ (1.0 beta)
 0x003D19E0 0x78 GetWeaponId__8CZWeaponFPCc  # OVL1; s1:calls
-0x003D1A60 0x210 func_003D1A60  # OVL1
+0x003D1A60 0x210 GetIDType__8CZWeaponF10EQUIP_ITEM  # OVL1; s1:order by hand (SOCOM 1's: the item's class from its range of ids)
 0x003D1C70 0x1C func_003D1C70  # OVL1
 0x003D1C90 0x1C UnpackItemAndAmmoEnums__8CZWeaponFUsP10EQUIP_ITEMP10EQUIP_AMMO  # OVL1; tu: zwep_weapon.cpp~ (1.0 beta); s1:exact
 0x003D1CB0 0x28 func_003D1CB0  # OVL1
@@ -8326,7 +8326,7 @@
 0x003D1D90 0x10 func_003D1D90  # OVL1
 0x003D1DA0 0x10 func_003D1DA0  # OVL1
 0x003D1DB0 0x58 func_003D1DB0  # OVL1
-0x003D1E10 0x8 func_003D1E10  # OVL1
+0x003D1E10 0x8 GetIDType__8CZWeaponFv  # OVL1; s1:order by hand (SOCOM 1's 8 bytes: the static GetIDType of the id byte, tail-called; IsGrenadeLauncherAmmo's callee in both builds)
 0x003D1E20 0x74 func_003D1E20  # OVL1
 0x003D1EA0 0x5C func_003D1EA0  # OVL1
 0x003D1F00 0x44 func_003D1F00  # OVL1
