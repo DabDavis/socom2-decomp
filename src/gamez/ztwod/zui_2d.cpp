@@ -2,9 +2,15 @@
  * kept it beside zui.h, in gamez/zui -- here with the 2D family until the UI has a directory of its
  * own). Written so far: CHProgressBar::Tick (0x3719E0), CPlainBmp's Tick, Draw and
  * SetMapOffset (OVL1 0x378FC0-0x37925B, 0x37C180) and the two speed setters (0x37B980, 0x37B990),
- * in SOCOM 1's order. Defined in reverse of their image order (-inline deferred). */
+ * in SOCOM 1's order; in the unit's tail, C2DButton::SetBackgroundAlpha (0x37C2C0) and
+ * C3StateButton::Tick (0x37C600), inline virtuals' copies, and the check box's and the teletype's
+ * implicit destructors (0x37C2F0, 0x37C620), each reached only through this unit's this-adjusting
+ * thunks (0x37D0D0, 0x37D030: MW names them @192@__dt__9CCheckBoxFv and @152@__dt__9CTeleTypeFv).
+ * The classes' layouts are zui_2d.h's (the UI lane's), redeclared here with the virtuals these
+ * functions need. Defined in reverse of their image order (-inline deferred). */
 
 #include <string.h>
+#include <string>
 
 #include "ztwod.h"
 
@@ -49,7 +55,90 @@ public:
     bool m_pulsing;   // 0x88
     float m_period;   // 0x8c
     float m_curtrans;   // 0x90
-};   // 0xa0 bytes
+} __attribute__((aligned(16)));   // 0xa0 bytes
+
+/* a string a spec configures (SOCOM 1's DWARF: : C2DString, UIVarMixin; 0xC0 bytes, zui_2d.h's
+ * layout; its destructor 0x37A640 out of line) */
+class CRenderableString : public C2DString, public UIVarMixin {
+public:
+    virtual ~CRenderableString();
+    virtual int GetZAnimCmdType(const char *name);
+
+    unsigned char _a0[0xc0 - 0xa0];
+};   // 0xc0 bytes
+
+/* a string whose destructor runs MSL's as a base's (passing 0: SOCOM 1's CSaferStr) */
+class CSaferStr : public std::string {
+public:
+    CSaferStr();
+};
+
+/* a teletype: text typed out, its cursor a plain bitmap (SOCOM 1's CTeleType; SOCOM II's 0x1B0
+ * bytes: the text a string at 0xC0, the cursor at 0x100 -- zui_2d.h's layout) */
+class CTeleType : public CRenderableString {
+public:
+    virtual ~CTeleType();
+
+    CSaferStr m_text;   // 0xc0
+    unsigned char _cc[0x100 - 0xcc];
+    CPlainBmp m_cursor;   // 0x100
+    int m_1a0;   // 0x1a0
+} __attribute__((aligned(16)));   // 0x1b0 bytes
+
+/* a button's caption and states (SOCOM 1's DWARF: : C2D; SOCOM II's 0xC0 bytes, its vtable 29
+ * slots: C2D's 26 and three new, DrawBackground the last) */
+class C3StateButton : public C2D {
+public:
+    virtual ~C3StateButton();
+    /* slot 12: the caption ticks with the button (0x37C600) */
+    virtual void Tick(float dT) { _strCaption.Tick(dT); }
+    virtual void SetBackgroundAlpha(float a);
+    virtual void Slot27();
+    virtual void DrawBackground(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
+
+    char *_szCaption;   // 0x18
+    C2DString _strCaption;   // 0x1c
+    int _iTextX;   // 0xb4
+    int _iTextY;   // 0xb8
+    bool _bCaptionCentered;   // 0xbc
+};   // 0xc0 bytes
+
+/* a button (SOCOM 1's DWARF: : C3StateButton; SOCOM II's 0x440 bytes with a UIVarMixin at 0xC0,
+ * its background a plain bitmap at 0x1A0) */
+class C2DButton : public C3StateButton, public UIVarMixin {
+public:
+    virtual ~C2DButton();
+    /* slot 26: the background's alpha, a fraction of 128 (0x37C2C0) */
+    virtual void SetBackgroundAlpha(float a) { m_background.SetTrans(128.0f * a); }
+    virtual int GetZAnimCmdType(const char *name);
+
+    unsigned char _c8[0x1a0 - 0xc8];
+    CPlainBmp m_background;   // 0x1a0
+    unsigned char _240[0x440 - 0x240];
+} __attribute__((aligned(16)));   // 0x440 bytes
+
+/* a button's action (zui_spec.h's ActionItem, 0x10 bytes: its destructor zui_cleanup.cpp's,
+ * 0x3890C0) */
+class ActionItem {
+public:
+    ~ActionItem();
+
+    unsigned char _0[0x10];
+};
+
+/* a check box: a button with a check mark (SOCOM 1's CCheckBox; SOCOM II's 0x520 bytes: two
+ * actions at 0x454 and 0x464, the check a plain bitmap at 0x480) */
+class CCheckBox : public C2DButton {
+public:
+    virtual ~CCheckBox();
+
+    bool m_checked;   // 0x440
+    unsigned char _441[0x454 - 0x441];
+    ActionItem m_action0;   // 0x454
+    ActionItem m_action1;   // 0x464
+    unsigned char _474[0x480 - 0x474];
+    CPlainBmp m_check;   // 0x480
+} __attribute__((aligned(16)));   // 0x520 bytes
 
 /* a horizontal progress bar (SOCOM 1's CHProgressBar, a C2D: its layout not in SOCOM 1's DWARF;
  * only what Tick reads placed, the names ours) */
@@ -63,10 +152,10 @@ public:
     float m_time;   // 0xa8: the seconds a full bar takes
 };
 
-/* three controls as their command-type lookups see them (slot 24 of each vtable; only that slot
- * declared): the pop-up dialog (0x36D970), the renderable string (0x36FC10, CSecureText's and
- * C2DClock's too) and the button (0x3767C0, its subclasses' too). Each answers its own commands
- * as the UI's count plus an index, and an empty name with 0 */
+/* the pop-up dialog as its command-type lookup sees it (slot 24 of its vtable, 0x36D970; the
+ * renderable string's (0x36FC10) and the button's (0x3767C0) are declared with their classes
+ * above). Each answers its own commands as the UI's count plus an index, and an empty name
+ * with 0 */
 class CPopUpDialog : public C2D {
 public:
     /* declared, not defined: stand-ins whose implicit destructors would supersede the drafts */
@@ -74,17 +163,6 @@ public:
     virtual int GetZAnimCmdType(const char *name);
 };
 
-class CRenderableString : public C2D {
-public:
-    virtual ~CRenderableString();
-    virtual int GetZAnimCmdType(const char *name);
-};
-
-class C2DButton : public C2D {
-public:
-    virtual ~C2DButton();
-    virtual int GetZAnimCmdType(const char *name);
-};
 
 /* slot 12: filled at its rate, to full */
 void CHProgressBar::Tick(float dT)
@@ -232,4 +310,16 @@ bool ListItem::IsEnabled()
     if (m_impl)
         return m_impl->IsEnabled();
     return true;
+}
+
+/* the check box's destructor (its implicit one: the check, the two actions, then the button's;
+ * reached only through the thunk 0x37D0D0, the UIVarMixin's table's) */
+CCheckBox::~CCheckBox()
+{
+}
+
+/* the teletype's destructor (implicit: the cursor, the text, then the renderable string's;
+ * reached only through the thunk 0x37D030) */
+CTeleType::~CTeleType()
+{
 }

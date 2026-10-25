@@ -6999,14 +6999,14 @@
 0x0037C1A0 0x8 func_0037C1A0  # OVL1
 0x0037C1B0 0x70 __dt__11CRadioStripFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037C220 0xA0 DrawBackground__9C2DButtonFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0037C2C0 0x24 func_0037C2C0  # OVL1; split by the integrator: a 0x24-byte virtual call (slot 0x34 through the object at +0x1A0, the float scaled by 128), padded to 0x37C2F0
-0x0037C2F0 0xE8 func_0037C2F0  # OVL1; split from 0x37C2C0 by the integrator: a destructor (two vtable stores, the members' tests) reached only by the this-adjusting thunk 0x37D0D0's `j`, so the seed never cut it (the UI lane's find)
+0x0037C2C0 0x24 SetBackgroundAlpha__9C2DButtonFf  # OVL1; split by the integrator: a 0x24-byte virtual call (slot 0x34 through the object at +0x1A0, the float scaled by 128), padded to 0x37C2F0; s1:vtable (the HUD lane: s1vtables' pairing; the background at 0x1A0 given 128 times the alpha)
+0x0037C2F0 0xE8 __dt__9CCheckBoxFv  # OVL1; split from 0x37C2C0 by the integrator: a destructor (two vtable stores, the members' tests) reached only by the this-adjusting thunk 0x37D0D0's `j`, so the seed never cut it (the UI lane's find); s1:vtable (the HUD lane: slot 0 of CCheckBox's table 0x4074C0 -- s1vtables' pairing -- and the thunk 0x37D0D0's target: the check's CPlainBmp, two ActionItems, then ~C2DButton)
 0x0037C3E0 0x8 func_0037C3E0  # OVL1
 0x0037C3F0 0xD0 __dt__13CHProgressBarFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037C4C0 0xD0 __dt__10CSliderBarFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037C590 0x70 __dt__14CHandlerButtonFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0037C600 0x14 func_0037C600  # OVL1; split by the integrator: a 0x14-byte virtual call (slot 0x38 through the object at +0x1C), padded to 0x37C620
-0x0037C620 0xE8 func_0037C620  # OVL1; split from 0x37C600 by the integrator: a destructor (vtable stores at +0xC and +0x98, DetachUIVar) reached only by the this-adjusting thunk 0x37D030's `j` (addiu a0,a0,-152), so the seed never cut it (the UI lane's find)
+0x0037C600 0x14 Tick__13C3StateButtonFf  # OVL1; split by the integrator: a 0x14-byte virtual call (slot 0x38 through the object at +0x1C), padded to 0x37C620; s1:vtable (the HUD lane: s1vtables' pairing; the caption's Tick through its vtable, the caption a C2DString at 0x1C as SOCOM 1's _strCaption)
+0x0037C620 0xE8 __dt__9CTeleTypeFv  # OVL1; split from 0x37C600 by the integrator: a destructor (vtable stores at +0xC and +0x98, DetachUIVar) reached only by the this-adjusting thunk 0x37D030's `j` (addiu a0,a0,-152), so the seed never cut it (the UI lane's find); s1:vtable (the HUD lane: slot 0 of CTeleType's table 0x4078A0 -- s1vtables' pairing -- and the thunk 0x37D030's target; its stores CTeleType's two tables, the cursor's CPlainBmp, the text's string at 0xC0, then ~CRenderableString)
 0x0037C710 0x18 func_0037C710  # OVL1
 0x0037C730 0x148 func_0037C730  # OVL1
 0x0037C880 0x84 func_0037C880  # OVL1
