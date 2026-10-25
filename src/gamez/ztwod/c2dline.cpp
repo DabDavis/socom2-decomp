@@ -4,8 +4,8 @@
  * flag setters (vtable slots 6-9, keeping the GS PRIM bits) before the constructor. SOCOM 1's
  * symbol table gives the class its own unit; the name is ours. Written, all byte-exact: the
  * constructor (the UVs memcpy'd from a local's initialiser), the setters, Load, SetPos, SetUV, Draw
- * and the clip copies; MakePacket OPEN. Not yet: the clippers and line drawers (0x35F9C0-0x36025F)
- * and GetAssetLibs (m2c's draft matches). Defined in reverse of their image order
+ * and the clip copies, the three-plane-pair clip3DLine; MakePacket and the one-plane clip3DLine
+ * OPEN. Not yet: the line drawers (0x35FCE0-0x36025F) and GetAssetLibs (m2c's draft matches). Defined in reverse of their image order
  * (-inline deferred). */
 
 #include <string.h>
@@ -248,4 +248,78 @@ void C2DLine::SetClipInfo(float (*vertex)[4], float (*rgb)[4], float (*uv)[4])
         m_NewUV[i][2] = uv[i][2];
         m_NewUV[i][3] = uv[i][3];
     }
+}
+
+/* libvu0's subtraction (MAIN, prebuilt) and a point's difference through it, by value as zmath's
+ * CPnt4D operators are (the result copied out of its temporary) */
+extern "C" void sceVu0SubVector(sceVu0FVECTOR v0, sceVu0FVECTOR v1, sceVu0FVECTOR v2);
+
+static inline CPnt4D operator-(const CPnt4D &a, const CPnt4D &b)
+{
+    CPnt4D r;
+
+    sceVu0SubVector((float *)&r, (float *)&a, (float *)&b);
+    return r;
+}
+
+/* a segment clipped against one plane (a point on it and its normal): both ends in front, kept;
+ * both behind, rejected; else the end behind is moved onto the plane.
+ * OPEN, 24 instructions, all stack slots: the target's six CPnt4D temporaries of the two moves are
+ * grouped by operator (both differences' at 96 and 112, both products' at 128 and 144, both sums'
+ * at 160 and 176; the copies above them in evaluation order), where named locals take them in
+ * reverse of declaration. The one-expression move, `*p1 = *p0 + (*p1 - *p0) * t`, gives the
+ * temporaries' order but nests the three by-value operators past the inline depth (CPnt4D's
+ * constructors called out of line, a free or a member operator- alike): SOCOM II's operators
+ * must be a level shallower than zmath.h's. `t` declared first gives the target's $f20/$f21 */
+#pragma auto_inline off
+int clip3DLine(CPnt4D *point, CPnt4D *normal, CPnt4D *p0, CPnt4D *p1)
+{
+    float t;
+    CPnt4D v0 = *p0 - *point;
+    CPnt4D v1 = *p1 - *point;
+    float d0 = sceVu0InnerProduct((float *)&v0, (float *)normal);
+    float d1 = sceVu0InnerProduct((float *)&v1, (float *)normal);
+
+    if (d0 > 0.0f && d1 > 0.0f)
+        return true;
+    if (d0 <= 0.0f && d1 <= 0.0f)
+        return false;
+    t = d0 / (d0 - d1);
+    if (d0 > 0.0f) {
+        CPnt4D d = *p1 - *p0;
+        CPnt4D s = d * t;
+        CPnt4D r = *p0 + s;
+
+        *p1 = r;
+    } else {
+        CPnt4D d = *p1 - *p0;
+        CPnt4D s = d * t;
+        CPnt4D r = *p0 + s;
+
+        *p0 = r;
+    }
+    return true;
+}
+#pragma auto_inline reset
+
+/* a segment clipped against the view's planes: the second against the first's point, then the
+ * other five against the first's (SOCOM 1's, the planes a CPnt4D array). Both clippers return int
+ * and the last answer is kept in a local: returned straight, MW lays the last test out the other
+ * way round; a bool local adds an andi */
+int clip3DLine(CPnt4D *planes, CPnt4D *p0, CPnt4D *p1)
+{
+    int ok = 0;
+
+    if (!planes)
+        return false;
+    if (!clip3DLine(&planes[1], &planes[2], p0, p1))
+        return false;
+    if (!clip3DLine(&planes[0], &planes[3], p0, p1))
+        return false;
+    if (!clip3DLine(&planes[0], &planes[4], p0, p1))
+        return false;
+    if (!clip3DLine(&planes[0], &planes[5], p0, p1))
+        return false;
+    ok = clip3DLine(&planes[0], &planes[6], p0, p1);
+    return ok;
 }

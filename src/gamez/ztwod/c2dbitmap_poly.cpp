@@ -193,8 +193,15 @@ void C2DBitmapPoly::FlipImage_XYaxis()
 /* the texture's library, once, then the children's.
  * OPEN, 0x108 against 0xC8 (m2c's draft matches, so this stays out of the build): the target calls
  * the library vector's begin, end, find, == and push_back out of line (their copies follow it,
- * 0x358670-0x358728, in reverse of first use), where include/vector's pointer vector inlines all
- * five here -- the shared header's inline heights, the integrator's to settle */
+ * 0x358670-0x358728, in reverse of first use; all five C2D GetAssetLibs call these same copies,
+ * c2dbitmap_poly.cpp's being linked first), where include/vector's pointer vector inlines all five
+ * here. Five calls out of line is the shape of an inline helper inlined one level, which needs it
+ * five high. Measured with wrapper ladders (build/scratch/hud/p_vh.cpp): begin and end are 3 high,
+ * find 2, push_back 2, == 1, and a call in argument position of an inline call counts a level
+ * deeper -- so a helper holding this test is 4 high and inlines whole (begin and end one level
+ * inside it, 0x160), one wrapper more and the wrapper is called (0x80); a non-inline template is
+ * called, an inline one inlines whole, `inline` on this definition changes nothing (0x104). The
+ * helper's fifth level is not found yet */
 #if 0
 void C2DBitmapPoly::GetAssetLibs(CLibList &liblist)
 {

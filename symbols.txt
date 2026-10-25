@@ -1704,7 +1704,7 @@
 0x001FF100 0x154 PreDITick__17CLensFlareManagerFf  # OVL1; s1:calls by hand (CHUD::PreDITick tail-calls it on the manager at CHUD+0x1A698, where SOCOM 1's calls CLensFlareSaturate::PreDITick)
 0x001FF260 0xC4 Clear__17CLensFlareManagerFv  # OVL1; by hand (CHUD::ReleaseHUD's call on the manager: every flare deleted through its virtual destructor, the list emptied, inactive; the name ours)
 0x001FF330 0x40 Init__17CLensFlareManagerFv  # OVL1; by hand (inactive, LoadRdr of lensflare.rdr, active if that gave any flare; the name ours)
-0x001FF370 0xE4 func_001FF370  # OVL1
+0x001FF370 0xE4 ReInit__17CLensFlareManagerFv  # OVL1; by hand (hud_lensflare.cpp: CHUD::ReInit_Init's last call on the manager at CHUD+0x1A698; the flares walked as Tick's and PreDITick's, each on a node placed at CPnt3D::zero through TransformToWorld and made (0x336650) or moved (0x3365E0) in the flare system; the name ours)
 0x001FF460 0x8C Reset__17CLensFlareManagerFv  # OVL1; by hand (CHUD::ReInit_Uninit's call on the manager: each flare's handle at 0x8C given back to the system at 0x488F10 and set to -1; the name ours)
 0x001FF4F0 0x140 LoadRdr__17CLensFlareManagerFPCc  # OVL1; by hand (Init's call with lensflare.rdr's name, as SOCOM 1's CLensFlareSaturate::LoadRdr took one)
 0x001FF630 0x270 func_001FF630  # OVL1
@@ -1723,7 +1723,7 @@
 0x002015A0 0xF0 Draw__11CZPauseTestFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00201690 0xB78 func_00201690  # OVL1
 0x00202210 0x154 Clear__11CZPauseTestFv  # OVL1; s1:calls by hand (CHUD::ReInit_Uninit's second call on CHUD+0x18900, after ClosePauseMenu, as SOCOM 1's; right after HudTick in hud_pausemenu.cpp, as SOCOM 1's)
-0x00202370 0x1B0 func_00202370  # OVL1
+0x00202370 0x1B0 ReInit__11CZPauseTestFv  # OVL1; by hand (hud_pausemenu.cpp: CHUD::ReInit_Init's call on CHUD+0x18900; the first selectable line through 0x205A70 into the signed char at 0x1C, the ACCEPT/BACK prompts, the abort and replay questions and YES/NO set through C2DString's slot 26; the name ours)
 0x00202520 0x1C20 func_00202520  # OVL1
 0x00204140 0x50 SetIsTrans__13C2DBitmapPolyFb  # OVL1; by hand (slot 8 of C2DBitmapPoly's vtable 0x406C30: both triangles' slot 8; an inline's out-of-line copy, the CZPauseTest unit's, linked first; the name ours, as C2DBitmap's)
 0x00204190 0x50 SetHasTexture__13C2DBitmapPolyFb  # OVL1; by hand (slot 6 of C2DBitmapPoly's vtable 0x406C30: both triangles' slot 6; an inline's out-of-line copy, this one the CZPauseTest unit's, linked first; the name ours, as C2DBitmap's)
@@ -6622,8 +6622,8 @@
 0x0035F8D0 0x8 func_0035F8D0  # OVL1
 0x0035F8E0 0x8 func_0035F8E0  # OVL1
 0x0035F8F0 0xC8 GetAssetLibs__7C2DLineFRQ23C2D8CLibList  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0035F9C0 0x100 func_0035F9C0  # OVL1
-0x0035FAC0 0x21C func_0035FAC0  # OVL1
+0x0035F9C0 0x100 clip3DLine__FP6CPnt4DP6CPnt4DP6CPnt4D  # OVL1; s1:order by hand (c2dline.cpp: SOCOM 1's first clip3DLine, 0xDC there, the same five calls to the four-argument one on the planes' pairs, a null test first)
+0x0035FAC0 0x21C clip3DLine__FP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4D  # OVL1; s1:order by hand (c2dline.cpp: SOCOM 1's second clip3DLine, after the three-argument one as there (0x240 there); the three-argument one calls it five times with a plane pair; VU0 differences, inner products, the behind end moved onto the plane)
 0x0035FCE0 0x344 Draw2DLine__FP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4D  # OVL1; s1:calls
 0x00360030 0x22C func_00360030  # OVL1
 0x00360260 0x8C SetClipInfo__7C2DLineFPA4_fPA4_fPA4_f  # OVL1; s1:order by hand (c2dline.cpp: SOCOM 1's SetClipInfo before FillClipInfo, the two rows of vertex, colour and UV copied in; SOCOM II dropped its int parameter)
@@ -6753,7 +6753,7 @@
 0x003677D0 0x14 func_003677D0  # OVL1
 0x003677F0 0x14 func_003677F0  # OVL1
 0x00367810 0x138 func_00367810  # OVL1
-0x00367950 0xBE8 func_00367950  # OVL1
+0x00367950 0xBE8 LoadFromDesign__9CGameMenuFRC14CGameDlgDesignP9CZAnimZAR  # OVL1; s1:calls by hand (the menu's design loader: this, the design and the ZAR in a0-a2 as SOCOM 1's; its first call 0x369210 at +0x34 as SOCOM 1's Clear, then UiSetCounterSpeedFactor and UiSetTtySpeedFactor with 1.0 in that order, as SOCOM 1's at +0x44/+0x54; SOCOM II adds a flag block between; 0xBE8 against 0xBA4)
 0x00368540 0x8 NumChildren__11CDlgObjSpecCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00368550 0x8 GetChild__11CDlgObjSpecCFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00368560 0x8 HasChildren__11CDlgObjSpecCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -6762,7 +6762,7 @@
 0x00368650 0xB20 func_00368650  # OVL1
 0x00369170 0x48 DrawForeplane__9CGameMenuFv  # OVL1; s1:exact
 0x003691C0 0x44 Draw2dOnly__9CGameMenuFv  # OVL1; s1:exact
-0x00369210 0x4BC func_00369210  # OVL1
+0x00369210 0x4BC Clear__9CGameMenuFv  # OVL1; s1:calls by hand (called at LoadFromDesign+0x34 and ~CGameMenu+0x24, the offsets of SOCOM 1's calls to CGameMenu::Clear in both; 0x4BC against 0x51C)
 0x003696D0 0x1A4 func_003696D0  # OVL1
 0x00369880 0x40 func_00369880  # OVL1
 0x003698C0 0x2A0 __dt__9CGameMenuFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -6954,8 +6954,8 @@
 0x0037B5C0 0x130 Tick__10C2DCounterFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037B6F0 0x150 ParseZAnimCmd__10C2DCounterFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037B840 0x138 GetZAnimCmdType__10C2DCounterFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0037B980 0xC func_0037B980  # OVL1
-0x0037B990 0xC func_0037B990  # OVL1
+0x0037B980 0xC UiSetTtySpeedFactor__Ff  # OVL1; s1:calls by hand (the UI-commands lane's lead, vetted: SOCOM 1's OnSetTtySpeedFactor, zanim_menu.cpp's handler, is SOCOM II's 0x27FF20 -- GetName, strcmp, GetCharP, atof, dptofp alike -- and calls this at the same instruction where SOCOM 1 calls UiSetTtySpeedFactor__Ff; the other callers pair too, 0x367950+0xA8 and SOCOM 1's CGameMenu::LoadFromDesign+0x54; both bodies store the float to one global and return)
+0x0037B990 0xC UiSetCounterSpeedFactor__Ff  # OVL1; s1:calls by hand (SOCOM 1's OnSetCounterSpeedFactor, zanim_menu.cpp's handler, is SOCOM II's 0x27FFB0 and calls this at the same instruction, +0x74, where SOCOM 1 calls UiSetCounterSpeedFactor__Ff; 0x367950+0x98 pairs with SOCOM 1's CGameMenu::LoadFromDesign+0x44; right after UiSetTtySpeedFactor as in SOCOM 1's zui_2d.cpp; the float stored to the global C2DCounter::Tick reads)
 0x0037B9A0 0xC8 func_0037B9A0  # OVL1
 0x0037BA70 0x8 func_0037BA70  # OVL1
 0x0037BA80 0xC func_0037BA80  # OVL1

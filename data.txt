@@ -197,6 +197,8 @@
 0x003E0230 0x10 s_pfsArgs  # OVL1 data; SOCOM II's, name ours (PFS.IRX's arguments "-m 1 -o 1 -n 10"); 0 code references -- the sound/system lane
 0x003E0250 0x48 s_hddModules  # OVL1 data; SOCOM II's, name ours (three 0x18-byte module rows: ATAD, HDD, PFS, each loaded and started); 1 reference (zSysHddInit) -- the sound/system lane
 0x003E02A0 0x30 s_mcModules  # OVL1 data; SOCOM II's, name ours (MCMAN and MCSERV, loaded only); 3 references in 3 functions -- the sound/system lane
+0x003E0380 0x4 g_fCounterSpeedFactor__20@unnamed@zui_2d_cpp@  # OVL1 data; SOCOM 1's static (its symbol table: zui_2d.cpp's unnamed namespace, 1.0); 2 references in 2 functions: UiSetCounterSpeedFactor sets it, C2DCounter::Tick reads it
+0x003E0388 0x4 g_fTtySpeedFactor__20@unnamed@zui_2d_cpp@  # OVL1 data; SOCOM 1's static (its symbol table: zui_2d.cpp's unnamed namespace, 1.0); 2 references in 2 functions: UiSetTtySpeedFactor sets it, CTeleType::Tick reads it
 0x003E0980 0xC0 framecode  # OVL1; s1:data-seq (size SOCOM 1's; via zVid_FrameRestore__Fv)
 0x003E1200 0x10 zon_writeon_dmaref  # OVL1; s1:data-exact (size SOCOM 1's; via zVid_ZTestOnWriteSet__Fb)
 0x003E13F8 0x4 m_defaultFrameRate__6CVideo  # OVL1; SOCOM 1's (CCoreState::Init gives it back to MaxFrameRate, as SOCOM 1's): 2 references in 2 functions take 0x3E13F8
