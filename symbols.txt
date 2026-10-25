@@ -5742,9 +5742,9 @@
 0x00329330 0x68 func_00329330  # OVL1
 0x003293A0 0x68 func_003293A0  # OVL1
 0x00329410 0x68 func_00329410  # OVL1
-0x00329480 0x8 func_00329480  # OVL1
-0x00329490 0x8 func_00329490  # OVL1
-0x003294A0 0x8 func_003294A0  # OVL1
+0x00329480 0x8 clear__Q23std132__vector_deleter<Q28Particle34SequenceEntry<PQ23zdb10CTexHandle>,Q23std58allocator<Q28Particle34SequenceEntry<PQ23zdb10CTexHandle>>>Fv  # OVL1; the rdr lane: TextureSequenceClear's vector clear() calls it on the props' texture sequence (+4): include/vector's out-of-class deleter clear, the trivial destroy gone, `size_ = 0` (SOCOM 1's clear__Q23std132__vector_deleter<...CTexHandle...>Fv, 0x48 there); the three copies close zparticle_instance.cpp
+0x00329490 0x8 clear__Q23std108__vector_deleter<Q28Particle22SequenceEntry<6CPnt4D>,Q23std46allocator<Q28Particle22SequenceEntry<6CPnt4D>>>Fv  # OVL1; the rdr lane: ColorSequenceClear's vector clear() calls it on the props' colour sequence (+0x10) (SOCOM 1's clear__Q23std108__vector_deleter<...CPnt4D...>Fv)
+0x003294A0 0x8 clear__Q23std96__vector_deleter<Q28Particle16SequenceEntry<f>,Q23std40allocator<Q28Particle16SequenceEntry<f>>>Fv  # OVL1; the rdr lane: ScaleSequenceClear's vector clear() calls it on the props' scale sequence (+0x1C) (SOCOM 1's clear__Q23std96__vector_deleter<...f...>Fv)
 0x003294B0 0x5C func_003294B0  # OVL1
 0x00329510 0x404 func_00329510  # OVL1
 0x00329920 0x118 CheckExtents__Q28Particle6SourceF6CPnt4Df  # OVL1; s1:align (0.81 on instruction skeleton, 0x118 against SOCOM 1's 0x12C; Instance::Render calls it, as SOCOM 1's does)
@@ -5767,9 +5767,9 @@
 0x0032B110 0x8 func_0032B110  # OVL1
 0x0032B120 0x58 Create__Q28Particle6SourceFv  # OVL1; s1:align, checked (SOCOM 1's Create: a new source built (0x32A800) and pushed on the source list at 0x4884F0; CZAnim::GetParticleSource calls it)
 0x0032B180 0x90 func_0032B180  # OVL1
-0x0032B210 0x43C func_0032B210  # OVL1
-0x0032B650 0x53C func_0032B650  # OVL1
-0x0032BB90 0x43C func_0032BB90  # OVL1
+0x0032B210 0x43C insert__Q23std130__vector_imp<Q28Particle34SequenceEntry<PQ23zdb10CTexHandle>,Q23std58allocator<Q28Particle34SequenceEntry<PQ23zdb10CTexHandle>>,0>FPQ28Particle34SequenceEntry<PQ23zdb10CTexHandle>UiRCQ28Particle34SequenceEntry<PQ23zdb10CTexHandle>  # OVL1; s1:callee by hand (TextureSequenceAdd's push_back calls it where SOCOM 1's calls this name: the texture sequence's insert, 0x43C against 0x41C) -- the rdr lane
+0x0032B650 0x53C insert__Q23std106__vector_imp<Q28Particle22SequenceEntry<6CPnt4D>,Q23std46allocator<Q28Particle22SequenceEntry<6CPnt4D>>,0>FPQ28Particle22SequenceEntry<6CPnt4D>UiRCQ28Particle22SequenceEntry<6CPnt4D>  # OVL1; s1:callee by hand (ColorSequenceAdd's push_back calls it where SOCOM 1's calls this name: the CPnt4D sequence's insert, 0x53C against 0x4EC) -- the rdr lane
+0x0032BB90 0x43C insert__Q23std94__vector_imp<Q28Particle16SequenceEntry<f>,Q23std40allocator<Q28Particle16SequenceEntry<f>>,0>FPQ28Particle16SequenceEntry<f>UiRCQ28Particle16SequenceEntry<f>  # OVL1; s1:callee by hand (ScaleSequenceAdd's push_back calls it where SOCOM 1's calls this name: the float sequence's insert, 0x43C against SOCOM 1's 0x41C) -- the rdr lane
 0x0032BFD0 0x68 func_0032BFD0  # OVL1
 0x0032C040 0x194 FindRdr__11CRdrArchiveFPCci  # OVL1; s1:align (SOCOM 1's FindRdr: the base name copied, each archive ReOpened, OpenKey, the file loaded, CloseKey, Close; SOCOM II passes a flags argument on to the loader, 0x32C980)
 0x0032C1E0 0xCC AddArchive__11CRdrArchiveFPCcPCc  # OVL1; s1:align (SOCOM 1's AddArchive: "%s/%s" or the name, a new archive pushed on the list; the states call it with (name, path))
