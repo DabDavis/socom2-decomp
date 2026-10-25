@@ -3,7 +3,8 @@
  * of handled events. SOCOM 1's unit (__sinit_ai_events.cpp, exact at 0x668480; its directory is
  * not known), its functions in the demo's order (0x17F070-0x180AE0); defined here in reverse of
  * the image's order (-inline deferred). The template instances that close it (0x50F670 on) are
- * still the generated drafts', but for the callback list's deleter constructor. */
+ * still the generated drafts', but for the callback list's deleter constructor; the initialiser
+ * matches, calling that constructor. */
 
 #include <algorithm>
 #include <list>
@@ -15,7 +16,9 @@
 
 extern "C" int strcasecmp(const char *, const char *);
 
-template class std::__list_deleter<CAiEventCallback, std::allocator<CAiEventCallback> >;
+/* no explicit instantiation of the callback list's deleter: it would make the constructor an
+ * ordinary auto-inline function, which the initialiser then inlines; uninstantiated by the unit's
+ * own functions, it is called there (0x50FFC0) and emitted in the tail, as the target has it */
 
 unsigned int CAiEvent::bit_count = 32;
 unsigned int CAiEvent::nextId;
@@ -26,14 +29,14 @@ CAiEventCallbackList CAiEvent::m_callbacks;
 
 /* new in SOCOM II, read from data (variables, so not folded; the names are ours): the shortest
  * duration a running event gets, and what the three kinds of event are heard across */
-static float s_minDuration = 0.1f;
-static float s_rangeDefault = 200.0f;
-static float s_rangeGeneric = 250.0f;
-static float s_rangeEntity = 80.0f;
+static float s_eventMinDuration = 0.1f;
+static float s_eventRangeDefault = 200.0f;
+static float s_eventRangeGeneric = 250.0f;
+static float s_eventRangeEntity = 80.0f;
 /* the time the event tick has gathered (bss; the name is ours) */
-static float s_tickTime;
-/* cleared by Open and Close, read elsewhere (bss; the name is ours) */
-static bool s_flag;
+static float s_eventTickTime;
+/* a byte Open and Close clear, which nothing in the image reads (bss; the name is ours) */
+static bool s_eventFlag;
 
 /* a kind's name (SOCOM 1's; the cases in this order, the enumerators in another) */
 const char *CAiEvent::GetEventString(EVENT e)
@@ -97,14 +100,14 @@ float CAiEvent::GetEventRate(EVENT e)
 /* how far a kind is heard (new in SOCOM II; the name is ours) */
 float CAiEvent::GetEventRange(EVENT e)
 {
-    float range = s_rangeDefault;
+    float range = s_eventRangeDefault;
 
     switch (e) {
     case AIE_GENERIC:
-        range = s_rangeGeneric;
+        range = s_eventRangeGeneric;
         break;
     case AIE_ENTITY:
-        range = s_rangeEntity;
+        range = s_eventRangeEntity;
         break;
     }
     return range;
@@ -145,7 +148,7 @@ void CAiEvent::FreeEvents()
 void CAiEvent::Open(unsigned int bits)
 {
     bit_count = bits;
-    s_flag = false;
+    s_eventFlag = false;
     if (m_inuse.size())
         m_inuse.clear();
 }
@@ -154,7 +157,7 @@ void CAiEvent::Close()
 {
     bit_count = 32;
     FreeEvents();
-    s_flag = false;
+    s_eventFlag = false;
 }
 
 /* a fresh event: from the pool if it has one, the next id given (SOCOM 1's) */
@@ -181,8 +184,8 @@ void CAiEvent::Create(CAiEvent *e)
     if (e->IsPersistent()) {
         m_persist.push_back(e);
     } else {
-        if (e->m_duration < s_minDuration)
-            e->m_duration = s_minDuration;
+        if (e->m_duration < s_eventMinDuration)
+            e->m_duration = s_eventMinDuration;
         m_inuse.push_back(e);
     }
     for (CAiEventCallbackList::iterator i = m_callbacks.begin(), end = m_callbacks.end(); i != end; ++i)
@@ -205,7 +208,15 @@ void CAiEvent::Release(CAiEvent *e)
 const float CAiEvent::NoExpire = -99.0f;
 
 /* the running events counted down, the expired ones back to the pool (SOCOM 1's function
- * object) */
+ * object).
+ * OPEN, operator()'s out-of-line copy (0x9C against 0x8C) and remove_copy_if (0x144 against 0xEC):
+ * list heights. The target's operator() inlines Tick(float), keeps its bool in s0 and CALLS the
+ * event list's push_back (0x50F810, which inlines end() around insert); remove_copy_if inlines the
+ * predicate one level -- Tick(float) called -- and calls the pointer lists' BASE push_back
+ * (0x50FE80: end() and insert called). include/list's list<T *>::push_back goes straight to the
+ * base's insert, two high, so both inline it whole here: SOCOM II's must be taller (through the
+ * base's push_back?), the entity lane's header to settle -- written as a bool local it is the
+ * same 0x9C */
 struct _tick {
     _tick(CAiEventList &pool, float dT) : m_pool(&pool), m_dT(dT) {}
     bool operator()(CAiEvent *e)
@@ -221,21 +232,23 @@ struct _tick {
     float m_dT;
 };
 
-/* the scheduler's task, "CAiEventTick" (SOCOM 1's, the time gathered new).
- * OPEN (0xAC against 0xA4): the target compares the gathered time with itself (c.lt.s $f0,$f0,
- * an uninitialised bound sharing its register?) and returns through one `move v0,zero`; it also
- * keeps m_inuse's sentinel in s0 for both end()s, where this build rematerialises it */
+/* the scheduler's task, "CAiEventTick" (SOCOM 1's, the time gathered new). The target compares
+ * the gathered time with itself (c.lt.s $f0,$f0: MW reuses the value just stored to the global
+ * for both operands -- whatever bound the original named, MW saw this variable) and branches
+ * over the body to the one `return false`; the end iterator is a local taken before remove_if,
+ * kept in s0 for the erase, and the erase a statement of its own (its end() after the call) */
 bool CAiEvent::Tick(float dT, void *)
 {
-    float min;
+    s_eventTickTime += dT;
+    if (s_eventTickTime >= s_eventTickTime) {
+        float t = s_eventTickTime;
 
-    s_tickTime += dT;
-    if (s_tickTime < min)
-        return false;
-    float t = s_tickTime;
+        s_eventTickTime = 0.0f;
+        CAiEventList::iterator e = m_inuse.end();
+        CAiEventList::iterator i = std::remove_if(m_inuse.begin(), e, _tick(m_pool, t));
 
-    s_tickTime = 0.0f;
-    m_inuse.erase(std::remove_if(m_inuse.begin(), m_inuse.end(), _tick(m_pool, t)), m_inuse.end());
+        m_inuse.erase(i, e);
+    }
     return false;
 }
 
@@ -252,9 +265,17 @@ CAiEvent::iterator CAiEvent::GetFirstEvent(EVENT_CLASS c)
 }
 
 /* the walk's next event heard at a point: of a wanted kind, not the walk's owner's, not seen,
- * and within its range scaled (SOCOM 1's; SOCOM II measures the distance first).
- * OPEN (right size, 39 instructions): the loop's shape -- the target tests `!found` and the end
- * at the bottom and keeps the walk's fields in other registers; not yet worked */
+ * and within its range scaled (SOCOM 1's; SOCOM II measures the distance first). The kind is read
+ * once into an unsigned short (andi 0xffff, then narrowed to the byte enum for the shift and the
+ * kind test, and re-extended for the entity test -- SOCOM 1's code has the same three uses); the
+ * kind test is `!(any || same)`: its fall-through gets the target's padding nop.
+ * OPEN, 2 instructions (0x19C against 0x1A4): the seen test's two arms. The target fills the
+ * kind compare's delay slot with the false arm's `move v0,zero`, leaves the `b` over the bit test
+ * unfilled and pads the bit test's label to 8 (b; nop; nop), and schedules the mask before the
+ * word (andi, srl, li, sllv, sll, lw: SOCOM 1's order too); this build steals the bit test's srl
+ * into the delay slot instead. Every spelling of the test compiles to the same block here --
+ * operand orders, the mask or the word in locals first, if/else on a bool, an early-return
+ * inline taking the kind (build/scratch/ai/spec_gne.py) -- so it is structural, not the test */
 CAiEvent *CAiEvent::GetNextEvent(const CPnt3D *pos, iterator &it, float scale)
 {
     CAiEvent *found = 0;
@@ -263,15 +284,15 @@ CAiEvent *CAiEvent::GetNextEvent(const CPnt3D *pos, iterator &it, float scale)
         CAiEvent *e = *it.m_it;
 
         ++it.m_it;
-        EVENT type = (EVENT)e->m_type;
+        unsigned short type = e->m_type;
 
-        if (!(it.m_mask & (1 << type)))
+        if (!(it.m_mask & (1 << (EVENT)type)))
             continue;
-        if (it.m_type != AIE_MAX && it.m_type != type)
+        if (!(it.m_type == AIE_MAX || it.m_type == (EVENT)type))
             continue;
         if (it.m_owner == e->m_owner)
             continue;
-        if (it.m_bit != ~0 && e->Seen(it.m_bit))
+        if (it.m_bit != ~0 && (type == AIE_ENTITY ? false : e->m_bits.Test(it.m_bit)))
             continue;
         CPnt3D d;
 
