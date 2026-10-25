@@ -4,10 +4,11 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+char *Add__13CUIVarManagerFPCcP5_zrdr15UIVAR_LONGEVITY(M2C_UNK *, M2C_UNK *, M2C_UNK, M2C_UNK); /* extern */
 M2C_UNK func_0032F350(char *);                      /* extern */
-char *func_003857C0(M2C_UNK *, M2C_UNK *, M2C_UNK, M2C_UNK); /* extern */
 M2C_UNK func_003863D0(char *);                      /* extern */
 extern M2C_UNK data_003F3880;
 extern char *data_0044F45C;
@@ -17,13 +18,13 @@ void SyncGameClock__13CZOnlineLobbyFi(s32 arg0, s32 arg1) {
     char *temp_s0;
 
     if (data_0044F45C == NULL) {
-        data_0044F45C = func_003857C0(&theUIVarManager, &data_003F3880, 0, 2);
+        data_0044F45C = Add__13CUIVarManagerFPCcP5_zrdr15UIVAR_LONGEVITY(&theUIVarManager, &data_003F3880, 0, 2);
     }
     temp_s0 = data_0044F45C;
-    if ((M2C_FIELD(temp_s0, u8 *, 0) != 2) || (M2C_FIELD(temp_s0, f32 *, 4) != (10.0f + (f32) arg1))) {
+    if ((SC_MEMBER(temp_s0, u8 *, 0) != 2) || (SC_MEMBER(temp_s0, f32 *, 4) != (10.0f + (f32) arg1))) {
         func_0032F350(temp_s0);
-        M2C_FIELD(temp_s0, s8 *, 0) = 2;
-        M2C_FIELD(temp_s0, f32 *, 4) = (f32) (10.0f + (f32) arg1);
+        SC_MEMBER(temp_s0, s8 *, 0) = 2;
+        SC_MEMBER(temp_s0, f32 *, 4) = (f32) (10.0f + (f32) arg1);
         func_003863D0(temp_s0);
     }
 }

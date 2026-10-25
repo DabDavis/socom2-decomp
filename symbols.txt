@@ -322,7 +322,7 @@
 0x00191410 0x18 abort  # MAIN; by body (newlib: raise(SIGABRT = 6), then _exit(1); MSL's vector errors end in it)
 0x00191428 0x14 abs  # MAIN unaligned; s1:exact
 0x00191440 0x34 __assert  # MAIN; s1:exact
-0x00191478 0x18 func_00191478  # MAIN unaligned
+0x00191478 0x18 atof  # MAIN unaligned; s1:calls (newlib's; called where SOCOM 1's calls atof) -- the UI-commands lane
 0x00191490 0x28 atoi  # MAIN; s1:exact
 0x001914B8 0x1C atol  # MAIN unaligned; s1:calls (VALVE_CMD_DATA::ParseValveName calls it where SOCOM 1's calls atol) -- the sound lane
 0x001914D8 0x20 func_001914D8  # MAIN unaligned
@@ -5314,7 +5314,7 @@
 0x0030D1B0 0x1C8 func_0030D1B0  # OVL1
 0x0030D380 0x188 func_0030D380  # OVL1
 0x0030D510 0x28 zNetGetValidGameClientCount__9CZNetworkFv  # OVL1; tu: zNetDme.cpp~ (1.0 beta); s1:calls by hand (the states lane: at SOCOM 1's call sites; tu: zNetDme.cpp~)
-0x0030D540 0x8 func_0030D540  # OVL1
+0x0030D540 0x8 zNetGetLocalTime__9CZNetworkFv  # OVL1; s1:calls+order (right before zNetGetTime as SOCOM 1's; the same 8 bytes) -- the UI-commands lane
 0x0030D550 0x8 zNetGetTime__9CZNetworkFv  # OVL1; s1:calls (CZNetGame::TenSecondLaunch, as SOCOM 1's; the same 8 bytes) -- the states lane
 0x0030D560 0x40 zNetGetGameSessionMasterClientIndex__9CZNetworkFv  # OVL1; tu: zNetDme.cpp~ (1.0 beta); s1:calls by hand (the states lane: at SOCOM 1's call sites; tu: zNetDme.cpp~)
 0x0030D5A0 0x40 zNetGetMyGameClientIndex__9CZNetworkFv  # OVL1; tu: zNetDme.cpp~ (1.0 beta); s1:calls by hand (the states lane: at SOCOM 1's call sites in the senders; 0x40 bytes in both; tu: zNetDme.cpp~)
@@ -5773,7 +5773,7 @@
 0x0032BFD0 0x68 func_0032BFD0  # OVL1
 0x0032C040 0x194 func_0032C040  # OVL1
 0x0032C1E0 0xCC func_0032C1E0  # OVL1
-0x0032C2B0 0x11C func_0032C2B0  # OVL1
+0x0032C2B0 0x11C RemoveArchive__11CRdrArchiveFPCcPCc  # OVL1; s1:calls (called where SOCOM 1's UI handler calls it) -- the UI-commands lane
 0x0032C3D0 0x60 __dt__11CRdrArchiveFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0032C430 0xB8 func_0032C430  # OVL1
 0x0032C4F0 0x78 func_0032C4F0  # OVL1
@@ -7111,7 +7111,7 @@
 0x003854C0 0x148 func_003854C0  # OVL1
 0x00385610 0x58 func_00385610  # OVL1
 0x00385670 0x14C Serialize__13CUIVarManagerFi  # OVL1; s1:calls
-0x003857C0 0x140 func_003857C0  # OVL1
+0x003857C0 0x140 Add__13CUIVarManagerFPCcP5_zrdr15UIVAR_LONGEVITY  # OVL1; s1:calls (the UI handlers register their vars through it where SOCOM 1's do) -- the UI-commands lane
 0x00385900 0xC8 func_00385900  # OVL1
 0x003859D0 0x88 func_003859D0  # OVL1
 0x00385A60 0x1CC func_00385A60  # OVL1
@@ -7600,13 +7600,13 @@
 0x003A04C0 0x10 IsOpen__10CMemCardIOCFv  # OVL1; s1:exact
 0x003A04D0 0xD0 func_003A04D0  # OVL1
 0x003A05A0 0x224 Open__10CMemCardIOFPCcUi  # OVL1; s1:align
-0x003A07D0 0xB4 func_003A07D0  # OVL1
-0x003A0890 0xBC func_003A0890  # OVL1
-0x003A0950 0xB8 func_003A0950  # OVL1
+0x003A07D0 0xB4 chdir__8CMemCardFPCc  # OVL1; s1:calls+order (UI handlers call it where SOCOM 1's do; chdir, mkdir, Exists in SOCOM 1's order) -- the UI-commands lane
+0x003A0890 0xBC mkdir__8CMemCardFPCc  # OVL1; s1:calls+order (after chdir as SOCOM 1's; called where SOCOM 1's UI handlers call it) -- the UI-commands lane
+0x003A0950 0xB8 Exists__8CMemCardFPCc  # OVL1; s1:calls+order (after mkdir as SOCOM 1's; called where SOCOM 1's UI handlers call it) -- the UI-commands lane
 0x003A0A10 0x4C4 CreateIconFiles__8CMemCardFv  # OVL1; s1:align
 0x003A0EE0 0x17C Ascii2Sjis__FUc  # OVL1; s1:align
 0x003A1060 0x1A8 func_003A1060  # OVL1
-0x003A1210 0xC4 func_003A1210  # OVL1
+0x003A1210 0xC4 GetFreeSpace__8CMemCardFv  # OVL1; s1:calls (the save handlers call it where SOCOM 1's do) -- the UI-commands lane
 0x003A12E0 0x88 Format__8CMemCardFv  # OVL1; s1:align
 0x003A1370 0x208 func_003A1370  # OVL1
 0x003A1580 0xC8 IsFormatted__8CMemCardFv  # OVL1; s1:align

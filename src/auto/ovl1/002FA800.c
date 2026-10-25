@@ -4,20 +4,21 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+s32 Add__13CUIVarManagerFPCcP5_zrdr15UIVAR_LONGEVITY(M2C_UNK *, M2C_UNK *, M2C_UNK, M2C_UNK); /* extern */
 M2C_UNK func_002FAA80(M2C_UNK *);                   /* extern */
-s32 func_003857C0(M2C_UNK *, M2C_UNK *, M2C_UNK, M2C_UNK); /* extern */
 M2C_UNK func_003862A0(s32, M2C_UNK *);              /* extern */
 M2C_UNK sprintf(M2C_UNK *, M2C_UNK *, s32);         /* extern */
 extern M2C_UNK data_003F5B50;
 extern M2C_UNK data_003F5B60;
-extern M2C_UNK data_00437E80;
-extern M2C_UNK data_0044F370;
 extern M2C_UNK data_0066A7EF;
+extern M2C_UNK theLobby;
+extern M2C_UNK theUIVarManager;
 
 void func_002FA800(s32 arg0) {
     sprintf(&data_0066A7EF, &data_003F5B50, arg0);
-    func_003862A0(func_003857C0(&data_00437E80, &data_003F5B60, 0, 1), &data_0066A7EF);
-    func_002FAA80(&data_0044F370);
+    func_003862A0(Add__13CUIVarManagerFPCcP5_zrdr15UIVAR_LONGEVITY(&theUIVarManager, &data_003F5B60, 0, 1), &data_0066A7EF);
+    func_002FAA80(&theLobby);
 }

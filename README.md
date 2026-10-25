@@ -704,6 +704,27 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - an inline accessor on a product's last factor makes it the right operand of the final
     multiply; `n > 1` branches on `sltiu at` with the delay slot filled where `n >= 2`
     materialises the test; `delete p` under its own `if (p)` keeps two null tests.
+- **Tells from the menu's UI commands** (zanim_menu.cpp):
+  - **name rows by a registration table when both builds have one**: SOCOM II's UICommandTable
+    (0x3DD4D0, 208 records of 16 bytes {id, name, handler, parser}) and SOCOM 1's (149 of 12)
+    pair the handlers by command name -- and caught an `s1:exact` mispairing (masked relocations
+    let tiny "load a global, call with 0, return 1" wrappers pair wrongly: 0x27A250 is
+    UIGetClanRanking, not GameStatePopCommand);
+  - include/vector's pointer back() is a level too tall for FlushHistory/~CMenuStack/
+    FlushMenuHistory: `push_back(v.back())` in an inline that is itself inlined fetches the
+    element out of line; only `*(base end() - 1)` gives the target's inlining;
+  - an inline method's `this` temporary keeps a member's address hoisted in a saved register
+    across a loop (`m_history.Flush()`); the same loop written out recomputes it;
+  - a loop test written as an inline accessor re-reads the member in the body; written out, the
+    test's load is reused;
+  - a table scan whose first record is never tested is `do { } while (table[++i].id)`;
+  - `if (i >= 16) return 0; return a[i];` gives `sltiu v0`/`bnez`, the ternary `sltiu at`/`beqz`;
+  - `name = !strcmp(name, X) ? f() : name;` puts the call's block after a branch where the `if`
+    form falls through;
+  - a load and a call read into two locals in that order keeps the load before the call, in a
+    saved register (ForceMPLaunch);
+  - a callback that returns true (`li v0,1`) frees v0 for a function-pointer call inside it;
+  - scdiff leaves a function-local static's object unchecked: hold it by its placeholder.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has

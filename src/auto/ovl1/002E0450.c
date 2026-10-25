@@ -7,11 +7,11 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+s32 Add__13CUIVarManagerFPCcP5_zrdr15UIVAR_LONGEVITY(M2C_UNK *, M2C_UNK *, M2C_UNK, M2C_UNK); /* extern */
 s32 Create__6CValveFPCc10VALVE_TYPE(M2C_UNK *, M2C_UNK); /* extern */
 M2C_UNK func_002E1560(char *);                      /* extern */
 M2C_UNK func_002E1610(char *, M2C_UNK *);           /* extern */
 M2C_UNK func_002E9920();                            /* extern */
-s32 func_003857C0(M2C_UNK *, M2C_UNK *, M2C_UNK, M2C_UNK); /* extern */
 M2C_UNK func_006305C8(M2C_UNK *, M2C_UNK *);        /* extern */
 M2C_UNK memset(M2C_UNK *, M2C_UNK, M2C_UNK);        /* extern */
 extern M2C_UNK data_003DF280;
@@ -44,10 +44,10 @@ u8 func_002E0450(char *arg0) {
     if (SC_MEMBER(arg0, u8 *, 0x7C) == 0) {
         SC_MEMBER(arg0, u8 *, 0x7C) = 1U;
         data_0066A5E8 = 0;
-        SC_MEMBER(arg0, s32 *, 0xC0) = func_003857C0(&theUIVarManager, &data_003F39E0, 0, 2);
-        SC_MEMBER(arg0, s32 *, 0xC4) = func_003857C0(&theUIVarManager, &data_003F39F8, 0, 2);
-        SC_MEMBER(arg0, s32 *, 0xF0) = func_003857C0(&theUIVarManager, &data_003F3A08, 0, 2);
-        SC_MEMBER(arg0, s32 *, 0xF4) = func_003857C0(&theUIVarManager, &data_003F3A20, 0, 2);
+        SC_MEMBER(arg0, s32 *, 0xC0) = Add__13CUIVarManagerFPCcP5_zrdr15UIVAR_LONGEVITY(&theUIVarManager, &data_003F39E0, 0, 2);
+        SC_MEMBER(arg0, s32 *, 0xC4) = Add__13CUIVarManagerFPCcP5_zrdr15UIVAR_LONGEVITY(&theUIVarManager, &data_003F39F8, 0, 2);
+        SC_MEMBER(arg0, s32 *, 0xF0) = Add__13CUIVarManagerFPCcP5_zrdr15UIVAR_LONGEVITY(&theUIVarManager, &data_003F3A08, 0, 2);
+        SC_MEMBER(arg0, s32 *, 0xF4) = Add__13CUIVarManagerFPCcP5_zrdr15UIVAR_LONGEVITY(&theUIVarManager, &data_003F3A20, 0, 2);
         data_0066A9A0 = 0;
         data_0066A990 = 0;
         data_0066A998 = 0;

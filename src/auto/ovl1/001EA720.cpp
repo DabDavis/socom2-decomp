@@ -5,6 +5,7 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
 typedef unsigned int u_long128 __attribute__((mode(TI)));
@@ -15,9 +16,9 @@ struct VC_0 {
 extern "C" {
 s32 GetDatabase__Fv();                              /* extern */
 M2C_UNK Open__8CMissionFPCci(M2C_UNK *, s32);       /* extern */
+M2C_UNK RemoveArchive__11CRdrArchiveFPCcPCc(M2C_UNK *, M2C_UNK *); /* extern */
 s32 ftsGetPlayer__Fv();                             /* extern */
 s32 func_001E91C0(s32);                             /* extern */
-M2C_UNK func_0032C2B0(M2C_UNK *, M2C_UNK *);        /* extern */
 M2C_UNK func_003D37D0();                            /* extern */
 M2C_UNK func_003D38B0();                            /* extern */
 M2C_UNK func_003D3980(M2C_UNK);                     /* extern */
@@ -31,7 +32,7 @@ s32 func_001EA720(void) {
     s32 temp_s0;
 
     temp_s0 = GetDatabase__Fv();
-    func_0032C2B0(&data_003E1DA8, &data_003E1DB8);
+    RemoveArchive__11CRdrArchiveFPCcPCc(&data_003E1DA8, &data_003E1DB8);
     if (func_001E91C0(temp_s0) == 0) {
         return 0;
     }
@@ -40,7 +41,7 @@ s32 func_001EA720(void) {
     func_003D37D0();
     Open__8CMissionFPCci(&theMission, temp_s0);
     ((VC_0 *)(appCamera))->v_C(ftsGetPlayer__Fv());
-    data_0048DB48 = M2C_FIELD(appCamera, s32 *, 0xB4);
+    data_0048DB48 = SC_MEMBER(appCamera, s32 *, 0xB4);
     return ftsGetPlayer__Fv() != 0;
 }
 }
