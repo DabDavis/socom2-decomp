@@ -224,6 +224,14 @@ int func_002C3920();
 void func_002C3A20(int who, bool vote);
 void func_002C3550();
 int sprintf(char *buf, const char *fmt, ...);
+bool func_002C31A0();
+bool func_002C3080();
+void func_005E7F20(CZSealBody *body, short msg, int arg);
+int func_0030D380(CZNetwork *net, void (*connects)(int, int, const char *),
+                  void (*disconnects)(int, int, const char *));
+void func_002C3330(int arg);
+void func_002BC620(int index, int client, const char *name);   /* zRemoteClientConnectsCallback */
+void func_002BC530(int index, int client, const char *name);   /* zRemoteClientDisconnectsCallback */
    /* (SOCOM II's: a word per client, cleared when one joins) */
 
 /* the application packets' type ids (SOCOM 1's PacketType<name>) */
@@ -492,12 +500,14 @@ extern "C" void func_002BADA0()
 
 /* a message from the menu's list to a team or everyone (OVL1 0x2BAD40) */
 enum R_SEND_TO {
+    R_SEND_TO_3 = -3,
+    R_SEND_TO_2,
     R_SEND_TO_ALL
 };
 
 struct MessagePacket {
     short who;   // 0x0 (SOCOM 1's a char)
-    short to;   // 0x2
+    unsigned short to;   // 0x2: a R_SEND_TO, or the one SEAL's network object
     short msg;   // 0x4
 };
 
@@ -510,6 +520,41 @@ void SendMessageMessage(int who, R_SEND_TO to, int msg)
     p.msg = msg;
     func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), -1, data_00440E38, 6, &p,
                   false);
+}
+
+/* a menu message from another client, shown when it is for everyone, our team, or us
+ * (SOCOM 1's MessagePacketHandler; OVL1 0x2BAC40).
+ * OPEN, 64 instructions: 0x10C against 0x100. The target switches on the halfword's low byte
+ * loaded with lb and re-extended (dsll32/dsra32 24), and reloads the halfword with lhu for the
+ * default case; this form loads the halfword once and keeps it in s2 across the calls (an extra
+ * saved register). Tried: (char), (signed char) and pointer-cast views of the field -- a pointer
+ * cast gets the lb but not the re-extension, and still saves s2. Next: a union of the halfword and
+ * a char, or the default's compare through an inline. */
+extern "C" int func_002BAC40(int, int, int, void *data)
+{
+    MessagePacket *p = (MessagePacket *)data;
+    CZSealBody *body = CZSealState::GetBodyFromObjectIndex((unsigned short)p->who);
+
+    if (body) {
+        switch ((R_SEND_TO)p->to) {
+        case R_SEND_TO_3:
+            if (func_002C31A0())
+                func_005E7F20(body, p->msg, 1);
+            break;
+        case R_SEND_TO_2:
+            if (func_002C3080())
+                func_005E7F20(body, p->msg, 1);
+            break;
+        case R_SEND_TO_ALL:
+            func_005E7F20(body, p->msg, 1);
+            break;
+        default:
+            if (p->to == ftsGetPlayer()->m_4)
+                func_005E7F20(body, p->msg, 1);
+            break;
+        }
+    }
+    return 6;
 }
 
 /* an ammo pickup told to everyone (SOCOM 1's SendAmmoPUMessage; OVL1 0x2BA3F0) */
@@ -863,6 +908,19 @@ void SendGameSignalMessage(int to, unsigned char a, unsigned char b, unsigned ch
         func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), to, data_00440EB0, 20, &p,
                       false);
     }
+}
+
+/* the DME's set up: no session master yet, every client's word cleared, the connect and
+ * disconnect callbacks registered (SOCOM 1's DMEinit, much grown; OVL1 0x2B85C0) */
+extern "C" bool func_002B85C0()
+{
+    theNetwork.m_bSessionMaster = false;
+    for (int i = 0; i < 24; i++)
+        data_00440EC0[i] = 0;
+    if (func_0030D380(&theNetwork, func_002BC620, func_002BC530))
+        return false;
+    func_002C3330(0);
+    return true;
 }
 
 /* the local SEAL's network object (SOCOM II's piece of SOCOM 1's ftsNetworkSealInit; also called
