@@ -280,6 +280,10 @@ public:
     static float *m_timer_pCurval;
     /* the tracers (SOCOM 1's static, 0x1c bytes: 0x4B5260) */
     static class CFlyoutMachine m_flyout_machine;
+    /* the charges set down (SOCOM II's static, 0xc bytes: 0x4B5238, between the projectile list
+     * and the mark list; Close clears it, the projectile list takes a charge out of it; the name
+     * ours) */
+    static class CPlacedExplosiveList m_placedExplosives;
 };   // 0xf8 bytes (CZFTSWeapon's targetmods start there)
 
 /* the materials' table (int_material.cpp's, SOCOM 1's class): only the extension list, whose size
@@ -720,6 +724,58 @@ public:
     void ReleaseDirectFireDI(zdb::DiIntersect **di, int *handle);
     void NetRemoveProjectile(CZProjectile *proj);
     int GetNumRemoteExplosives(int shooter);
+    /* a charge taken out: its pickup destroyed, unlisted from the charges set down, deleted and
+     * erased (SOCOM 1's, without the weapon's name it fetches) */
+    void RemoveExplosive(PlacedExplosive *explosive);
+    /* a projectile cleaned up and its slot freed, a charge taken out too (SOCOM 1's) */
+    void RemoveProjectile(CZProjectile *proj);
+    /* whether a projectile is one of the slots' or one of the charges (SOCOM II's; the name ours) */
+    bool IsListed(CZProjectile *proj);
+    /* the tracers ticked, then every charge's and every slot's projectile up to the last used
+     * (SOCOM 1's) */
+    void PreTick(float dT);
+    /* the first free slot's projectile handed out: marked used, the next free found, its node
+     * activated and the projectile initialised (SOCOM 1's, without the Init) */
+    CZProjectile *GetNextFreeProjectile();
+    /* the first free slot after the first free, or -1 (inline: the name ours) */
+    int NextFree()
+    {
+        for (int i = m_firstfree + 1; i < m_size; i++) {
+            if (!m_used[i])
+                return i;
+        }
+        return -1;
+    }
+    /* the last slot in use found again (SOCOM 1's, out of line there; inline in SOCOM II, which
+     * keeps no copy) */
+    void FindLastUsed()
+    {
+        int last = -1;
+
+        for (int i = 0; i < m_size; i++) {
+            if (m_used[i] == 1)
+                last = i;
+        }
+        m_lastused = last;
+    }
+    /* a slot freed: the first free moved back to it, the last used found again when it was that
+     * (SOCOM 1's, out of line there) */
+    void FreeIdx(int i)
+    {
+        m_used[i] = 0;
+        if (i < m_firstfree)
+            m_firstfree = i;
+        if (i == m_lastused)
+            FindLastUsed();
+    }
+    /* a slot's projectile cleaned up and the slot freed, while the slots exist (the name ours) */
+    void Free(int i)
+    {
+        if (m_used) {
+            m_projectiles[i].Cleanup();
+            FreeIdx(i);
+        }
+    }
 
     CZProjectile *m_projectiles;   // 0x0
     std::vector<PlacedExplosive *> m_explosives;   // 0x4

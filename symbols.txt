@@ -8252,10 +8252,10 @@
 0x003CC0B0 0x38 ReleaseDirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi  # OVL1; s1:exact
 0x003CC0F0 0xF8 GetNextDirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi  # OVL1; s1:order by hand (the same over the 60 direct-fire intersections, before ReleaseDirectFireDI)
 0x003CC1F0 0xD4 GetNumRemoteExplosives__16CZProjectileListFi  # OVL1; s1:align
-0x003CC2D0 0xE4 func_003CC2D0  # OVL1
-0x003CC3C0 0x134 func_003CC3C0  # OVL1
+0x003CC2D0 0xE4 RemoveExplosive__16CZProjectileListFP15PlacedExplosive  # OVL1; by hand (the wep lane: SOCOM 1's CZProjectileList::RemoveExplosive, right after GetNumRemoteExplosives as in SOCOM 1 -- the pickup destroyed, the charge deleted and erased; SOCOM II's also unlists it from CZWeapon's placed charges)
+0x003CC3C0 0x134 RemoveProjectile__16CZProjectileListFP12CZProjectile  # OVL1; by hand (the wep lane: SOCOM 1's CZProjectileList::RemoveProjectile, between RemoveExplosive and NetRemoveProjectile as in SOCOM 1 -- the slot cleaned up and freed with FreeIdx and FindLastUsed inlined, then RemoveExplosive)
 0x003CC500 0x17C NetRemoveProjectile__16CZProjectileListFP12CZProjectile  # OVL1; s1:calls (called on CZWeapon::m_pProjectilelist where SOCOM 1's calls it) -- the states lane
-0x003CC680 0xF0 func_003CC680  # OVL1
+0x003CC680 0xF0 IsListed__16CZProjectileListFP12CZProjectile  # OVL1; by hand (the wep lane: SOCOM II's -- whether a projectile is a slot in use or one of the charges; NetRemoveProjectile asks it first; the name ours)
 0x003CC770 0x218 func_003CC770  # OVL1
 0x003CC990 0x100 PreTick__16CZProjectileListFf  # OVL1; s1:align
 0x003CCA90 0x124 GetNextFreeProjectile__16CZProjectileListFv  # OVL1; s1:align
