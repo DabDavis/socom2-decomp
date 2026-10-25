@@ -239,20 +239,21 @@ class CSndInstanceVec : public std::vector<CSndInstance *> {
 /* One playing voice: SOCOM 1's 0x28 bytes, a word added at 0xC and the flag bytes packed. */
 class CSndInstance {
 public:
+    /* the early return: InitInstancePool's inlined copy branches over the stores so */
     CSndInstance()
     {
-        if (!CSnd::m_isDisabled) {
-            m_handle = 0;
-            m_parent = 0;
-            m_is3D = false;
-            m_forcedLoop = false;
-            m_terminateOnFinish = false;
-            m_terminateASAP = false;
-            m_pauseASAP = false;
-            m_continueASAP = false;
-            m_socom2_bit6 = false;
-            m_c = 0;
-        }
+        if (CSnd::m_isDisabled)
+            return;
+        m_handle = 0;
+        m_parent = 0;
+        m_is3D = false;
+        m_forcedLoop = false;
+        m_terminateOnFinish = false;
+        m_terminateASAP = false;
+        m_pauseASAP = false;
+        m_continueASAP = false;
+        m_socom2_bit6 = false;
+        m_c = 0;
     }
     CSndInstance(unsigned int handle, CSnd *parent)
     {

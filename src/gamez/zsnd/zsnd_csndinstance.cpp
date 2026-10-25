@@ -363,6 +363,48 @@ void CSndInstance::RemoveFromList(CSndInstance *instance)
 }
 #pragma auto_inline reset
 
+/* SOCOM 1's: the voices kept in m_vec released and taken off the list of those playing */
+void CSndInstance::RemoveFromList()
+{
+    for (std::vector<CSndInstance *>::iterator v = m_vec.begin(); v != m_vec.end(); ++v) {
+        CSndInstance *inst = *v;
+
+        if (inst) {
+            ReleaseSoundInstance(inst);
+            /* found by hand: std::find compares the other way round (`*first == value`) */
+            std::list<CSndInstance *>::iterator i = m_list.begin();
+            std::list<CSndInstance *>::iterator e = m_list.end();
+
+            while (i != e && inst != *i)
+                ++i;
+
+            if (*i == inst)
+                m_list.erase(i);
+        }
+    }
+}
+
+/* SOCOM 1's: the pool and the kept list made room for n voices, the shortfall built */
+void CSndInstance::InitInstancePool(int n)
+{
+    int count = n;
+
+    if (m_pool.capacity() < n) {
+        count = n - m_pool.capacity();
+        m_pool.reserve(n);
+    }
+    if (m_vec.capacity() < n) {
+        count = n - m_vec.capacity();
+        m_vec.reserve(n);
+    }
+    for (int i = 0; i < count; i++) {
+        CSndInstance *inst = new CSndInstance;
+
+        m_numAllocated++;
+        m_pool.push_back(inst);
+    }
+}
+
 void CSndInstance::PlaySoundCallback(unsigned int handle, unsigned long user_data)
 {
     *(unsigned int *)user_data = handle;
