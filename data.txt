@@ -183,6 +183,7 @@
 0x003DE2D0 0x4 m_debug__8CConsole  # OVL1; s1:data-seq (size SOCOM 1's; via Debug__8CConsoleFiP7CPacketPCc)
 0x003DE2E0 0x4 recycler_index  # OVL1; s1:data-seq (size SOCOM 1's; via CreateEntity__7CEntityFP7CEntityb)
 0x003DE5F8 0x4 LADDER_MASK  # OVL1; s1:data-seq (size SOCOM 1's; via GetLadderByIndex__11CLadderListFi)
+0x003DF170 0x2 nextPickupId__7CPickup  # OVL1 data; SOCOM 1's nextPickupId__7CPickup (0x474EF8, a halfword 4 bytes before bit_count; here 8 before, MW 3.0's layout): Create (0x542B90) takes it and adds one (lhu/sh), 1 at the start -- 2 references in 1 function (the SEAL lane, round 8)
 0x003DF178 0x4 bit_count__7CPickup  # OVL1 data; SOCOM 1's bit_count__7CPickup (0x474EFC, the word Open__7CPickupFUi stores its argument to, gp-relative there): Open (0x542FC0) stores its argument here, 0x542930 and 0x542B90 (Create, NetworkCreate by SOCOM 1's order) read it -- 3 references in 3 functions (the SEAL lane, round 3)
 0x003DF218 0x4 deadZoneScaleFactor  # OVL1; s1:data-seq (size SOCOM 1's; via SetDeadZone__4CPadFif)
 0x003DF298 0x4 PlayerClanID  # OVL1 data; s1 by hand (SOCOM 1's PlayerClanID: IsMemberOfClan 0x2E6830 tests it against -1, QuitClan and GetClanRoster send it as the clan id; initialised data in SOCOM II); size SOCOM 1's; 13 references in 10 functions

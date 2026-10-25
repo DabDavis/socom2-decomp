@@ -238,6 +238,27 @@ public:
     static CPickup *GetNext(iterator &it, PU_TYPE type);
     static CPickup *GetNext(iterator &it, const CPnt3D *pos, float range, PU_TYPE type);
     static void Open(unsigned int bits);
+    /* a pickup made (from the pool when it holds one) and listed: an owner's (its id the next
+     * pickup id) or one the network names (the owner in the id's upper half) -- SOCOM 1's, the
+     * owner new; OVL2 0x542B90, 0x542930 */
+    static CPickup *Create(unsigned int owner, PU_TYPE type, zdb::CNode *node, void *data);
+    static CPickup *NetworkCreate(unsigned int netid, PU_TYPE type, zdb::CNode *node, void *data);
+    /* (SOCOM 1's new CPickup: the secondary flag cleared through its bool, the bits sized) */
+    CPickup(bool secondary = false) : m_secondary(secondary), m_bits(bit_count) {}
+    /* a made pickup given its kind, node, contents, owner and id, its bits cleared (an inline:
+     * Create and NetworkCreate store all five through one load of the pickup) */
+    void Set(PU_TYPE type, zdb::CNode *node, void *data, unsigned int owner, unsigned short id)
+    {
+        m_type = type;
+        m_node = node;
+        m_data = data;
+        m_owner = owner;
+        m_id = id;
+        m_bits.ClearAll();
+    }
+    /* the flags set (inlines: a constant false is `(b & 1) << n`) */
+    void SetLocked(bool on) { m_locked = on; }
+    void SetSecondary(bool on) { m_secondary = on; }
     /* every pickup destroyed, the MP bomb's node deleted and, when told to, the pool's pickups
      * deleted (SOCOM 1's; OVL2 0x542E50) */
     static void Close(bool all);
@@ -252,19 +273,38 @@ public:
     static std::list<CPickup *> m_list;   // OVL1 bss 0x44D470
     static std::list<CPickup *> m_pool;   // OVL1 bss 0x44D490 (SOCOM 1's m_pool__7CPickup, after m_list)
     static zdb::CNode *m_mpbombnode;   // OVL1 bss 0x44D4A0
+    static unsigned short nextPickupId;   // OVL1 data 0x3DF170 (SOCOM 1's, 1 at the start)
     static unsigned int bit_count;   // OVL1 data 0x3DF178
     static bool m_isOpen;   // OVL1 bss 0x44D4B0
 
     float m_timer;   // 0x0 (new in SOCOM II)
     zdb::CNode *m_node;   // 0x4
     void *m_data;   // 0x8: a grenade's projectile, a weapon's...
-    unsigned int m_type : 8;   // 0xc (SOCOM 1's 7 bits)
-    unsigned int m_locked : 1;
-    unsigned int m_secondary : 1;
-    unsigned int m_unused : 6;
-    unsigned int m_id : 16;   // 0xe
+    /* (SOCOM 1's bit-fields of one word, 7 bits of type first: SOCOM II's code reads and writes
+     * the flags a byte at a time -- Create's lbu/sb on 0xd) */
+    unsigned char m_type;   // 0xc
+    unsigned char m_locked : 1;   // 0xd
+    unsigned char m_secondary : 1;
+    unsigned char m_unused : 6;
+    unsigned short m_id;   // 0xe
     unsigned int m_owner;   // 0x10: the owner's entity id (new in SOCOM II)
-    CBits m_bits;   // 0x14 (SOCOM 1's 0x10: Close's delete inlines its destructor)
+    /* SOCOM 1's CBits (at 0x10 there): Close's delete inlines its destructor, the constructors size
+     * it, Create clears it. Spelled as CBits's layout with the same inlines and a conversion to a
+     * CBits pointer, as the kit lane's seal_aistate.cpp reads it (`(CBits *)p->m_bits`); a class
+     * derived from CBits would add its own destructor's this-test to Close's delete */
+    struct Bits {
+        Bits(unsigned int bits) : m_bits(0), m_vec(0) { ((CBits *)this)->Resize(bits); }
+        ~Bits()
+        {
+            _free(m_vec, 0, 0);
+            m_vec = 0;
+        }
+        operator CBits *() { return (CBits *)this; }
+        void ClearAll() { ((CBits *)this)->ClearAll(); }
+
+        unsigned int m_bits;
+        unsigned int *m_vec;
+    } m_bits;   // 0x14
     unsigned int m_visible_by_units;   // 0x1c (SOCOM 1's 0x18)
 };
 

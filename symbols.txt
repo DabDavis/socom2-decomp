@@ -9914,8 +9914,8 @@
 0x005427E0 0x70 func_005427E0  # OVL2
 0x00542850 0x70 func_00542850  # OVL2
 0x005428C0 0x70 func_005428C0  # OVL2
-0x00542930 0x258 func_00542930  # OVL2
-0x00542B90 0x260 func_00542B90  # OVL2
+0x00542930 0x258 NetworkCreate__7CPickupFUiQ27CPickup7PU_TYPEPQ23zdb5CNodePv  # OVL2; s1:order by hand (SOCOM 1's NetworkCreate__7CPickupFUcQ27CPickup7PU_TYPEPQ23zdb5CNodePv, before DebugPickups as here: the same making, the id the network's -- SOCOM II's a word, the owner its upper half; the SEAL lane, round 8)
+0x00542B90 0x260 Create__7CPickupFUiQ27CPickup7PU_TYPEPQ23zdb5CNodePv  # OVL2; s1:order by hand (SOCOM 1's Create__7CPickupFQ27CPickup7PU_TYPEPQ23zdb5CNodePv: the pool's front or a new CPickup, nextPickupId taken, the list's push_back -- SOCOM II adds the owner's entity id first: CreateMPBombPickup passes the player's; the SEAL lane, round 8)
 0x00542DF0 0x60 DebugPickups__7CPickupFv  # OVL2; s1:order (after NetworkCreate's place, before Close, as SOCOM 1's DebugPickups__7CPickupFv: the list walked with an assigned iterator and nothing done -- its printing compiled out in both) (the SEAL lane, round 3)
 0x00542E50 0x16C Close__7CPickupFb  # OVL2; s1:order by hand (SOCOM 1's Close__7CPickupFb, between DebugPickups and Open as here: the list's pickups destroyed while it has any, the bomb's node deleted, then with the flag the pool's pickups deleted through std::transform and the pool erased, m_isOpen cleared -- the SEAL lane, round 8)
 0x00542FC0 0x18 Open__7CPickupFUi  # OVL2; s1:order (pickup_main.cpp's last, as SOCOM 1's Open__7CPickupFUi: the argument stored to bit_count, m_isOpen set -- the same two stores) (the SEAL lane, round 3)
