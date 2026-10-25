@@ -13,35 +13,81 @@ namespace zdb {
 
 class CTexPalette;
 
-/* the libraries loaded, a list of them (SOCOM 1's DWARF: CAssetList : list, a cached model at
- * 0xc; only the lookups the world code calls are declared) */
-class CAssetList {
-public:
-    CTexHandle *GetTexHandle(const char *name);
-    CModel *GetModel(const char *name);
-};
+class CDynTexList;
 
-/* the asset manager: its list of libraries (SOCOM 1's static, 0x45C3C0 here) */
+/* the libraries loaded, a list of them (SOCOM 1's DWARF: CAssetList : list, the model last found
+ * cached at 0xc). node_assetlib.cpp's */
+class CAssetList : public std::list<CAssetLib *> {
+public:
+    /* the walks run on the pointer list's own base iterator, its element cast out by value (SOCOM
+     * 1's code calls the base's generic_iterator constructors): a fresh load after each call, where
+     * the wrapper's reference keeps the element's address in a saved register; the end taken
+     * first, the walker after it (FindTextureLib) */
+    typedef std::__list_deleter<const void *, std::allocator<const void *> > list_base;
+    typedef list_base::iterator lib_iterator;
+    /* a library taken off through the base's remove, a level shorter than the wrapper's (the
+     * temporaries of ReleaseLibRef's remove and push_back are stacked in the target's order only
+     * so) */
+    typedef std::__list_imp<const void *, std::allocator<const void *> > list_imp;
+
+    CAssetList();
+    ~CAssetList() { Clear(); }
+    /* every library deleted, the list emptied (SOCOM 1's) */
+    void Clear();
+    CModel *GetModel(const char *name);
+    CTexHandle *GetTexHandle(const char *name);
+    CAssetLib *FindLib(_RenderPhase phase);
+    CAssetLib *FindLib(const char *name);
+    /* new in SOCOM II, the names ours: the library holding a texture, or a model, of that name
+     * (SOCOM 1's AddTexture and AddModel walked the list themselves), and a texture of a phase
+     * that the given texture's mip level is */
+    CAssetLib *FindTextureLib(const char *name);
+    CAssetLib *FindModelLib(const char *name);
+    CTexHandle *FindMipLevel(_RenderPhase phase, CTexHandle *tex);
+
+    CModel *m_cache_model;   // 0xc
+};   // 0x10 bytes
+
+/* the asset manager: its list of libraries (SOCOM 1's static, 0x45C3C0 here) and its libraries'
+ * reference counting */
 class CAssetMgr {
 public:
     static CAssetList m_assets;
+
+    /* a library let go of: at no holders left it moves to the recycle bin (SOCOM 1's) */
+    static void ReleaseLibRef(CAssetLib *lib);
+    /* a library by name, held once more: the loaded one, the recycled one brought back, or one
+     * loaded fresh (SOCOM 1's) */
+    static CAssetLib *GetLoadedLibRef(const char *name);
+    /* new in SOCOM II, the names ours: the libraries of a name list each held and listed, those
+     * missing loaded; a library made and listed; a texture list's mip levels added to it */
+    static void GetLoadedLibRefs(const char **names, int n, CAssetList *list);
+    static CAssetLib *NewLib(const char *name, int unused);
+    static void AddMipLevels(CDynTexList *list, _RenderPhase phase);
 };
+
+/* the recycle bin emptied (SOCOM 1's) */
+void EmptyAssetRecycleBin();
 
 /* a palette (SOCOM 1's DWARF: CTexPalette : PALETTE_PARAMS, 0x20 bytes) */
 class CTexPalette {
 public:
     CTexPalette(const char *name);
+    ~CTexPalette();
     bool Read(CSaveLoad &io);
 
-    unsigned char _0[0x20];
+    unsigned int m_gsaddr;   // 0x0 (PALETTE_PARAMS)
+    unsigned int m_params;   // 0x4 (PALETTE_PARAMS' bitfields)
+    CAssetLib *m_AssetLib;   // 0x8 (AddPalette sets it)
+    char *m_name;   // 0xc
+    unsigned char _10[0x20 - 0x10];
 };   // 0x20 bytes
 
 /* a box-shaped DI: the box it stands for, borrowed (SOCOM 1's CDIBBox; 0x18 bytes, the size
  * SetDIBBox news) */
 class CDIBBox : public CDI {
 public:
-    unsigned char _10[4];   // 0x10
-    const CBBox *m_bbox;   // 0x14
+    const CBBox *m_bbox;   // 0x14 (after CDI's points pointer at 0x10)
 };   // 0x18 bytes
 
 /* what a render map projects (SOCOM 1's enum, by its mangled name; a byte under -enum min): a
@@ -73,6 +119,9 @@ struct IntersectStruct {
     CDI *m_poly;   // 0xc
     CPnt3D m_norm;   // 0x10
     CNode *m_node;   // 0x1c
+
+    /* the hit polygon's material, or the default one (SOCOM 1's) */
+    int GetMaterial();
 };
 
 /* a ray's intersection set (SOCOM 1's DWARF; SOCOM II adds the mask at 0x44, so its hits are 4
@@ -81,6 +130,8 @@ class DiIntersect {
 public:
     DiIntersect(int n);
     ~DiIntersect();
+    /* the hit mask, its low bit forced on, or every bit for none (new in SOCOM II; the name ours) */
+    void SetMask(unsigned int mask);
     IntersectStruct *GetHighestAltitude(const CPnt3D *p, float alt);
     IntersectStruct *GetNearestIntersect();
     /* whether characters are hit, the old setting given back (inline: the queries save and
@@ -97,7 +148,8 @@ public:
     unsigned int m_IntersectCharacters : 1;
     unsigned int m_AltitudeCharacters : 1;
     unsigned int m_ProximityCharacters : 1;
-    unsigned int m_Unused : 13;
+    unsigned int m_socom2_bit19 : 1;   // SOCOM II's: the constructor clears it (the name ours)
+    unsigned int m_Unused : 12;
     CPnt3D m_Tail;   // 0x4
     CPnt3D m_Tip;   // 0x10
     CPnt3D m_MTail;   // 0x1c

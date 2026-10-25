@@ -117,11 +117,23 @@ struct tag_DI_HEAD {
     };
 };
 
+class DiIntersect;
+class CSaveLoad;
+
 class CDI : public tag_DI_HEAD {
 public:
     virtual ~CDI();
+    /* SOCOM II's table (__vt__Q23zdb3CDI, 0x406650): the destructor, Allocate, Free, two pure
+     * slots (SOCOM 1's GetIntersect and GetAltitude, each shape's own) and Read */
+    virtual void Allocate(int n);
+    virtual void Free();
+    virtual int GetIntersect(DiIntersect *di) = 0;
+    virtual int GetAltitude(DiIntersect *di) = 0;
+    virtual bool Read(CSaveLoad &io);
     /* one holder fewer, the count left given back (SOCOM 1's, 0x14 bytes in both) */
     int Release();
+
+    CPnt4D *m_pnts;   // 0x10: its points, 16 bytes each (Allocate mallocs them; the name ours)
 };
 
 class CDIVector : public std::vector<CDI *> {
@@ -467,6 +479,8 @@ public:
 
 /* a texture: only its size placed (SOCOM 1's DWARF: CTexture : TEXTURE_PARAMS, the width first;
  * 0x70 bytes, the size CSaveLoad::LoadTextures_PS2 news) */
+class CAssetLib;
+
 class CTexture {
 public:
     ~CTexture();
@@ -474,6 +488,13 @@ public:
 
     unsigned short m_width;   // 0x0
     unsigned short m_height;   // 0x2
+    unsigned char _4[0x10 - 4];   // the rest of TEXTURE_PARAMS
+    CAssetLib *m_AssetLib;   // 0x10 (AddTexture sets it)
+    char *m_name;   // 0x14
+    unsigned char _18[0x54 - 0x18];
+    /* the first mip level's register (SOCOM 1's sceGsMiptbp1 *): a texture with mip levels has one
+     * (the asset manager's mip walk tests it) */
+    void *m_MIP1;   // 0x54
 };
 
 /* a texture's handle (SOCOM 1's DWARF) */
@@ -566,7 +587,10 @@ class CTexPalList : public std::vector<CTexPalette *> {
 class CAssetLib {
 public:
     char *m_name;   // 0x0
-    unsigned char _4[4];   // 0x4: SOCOM II's
+    union {
+        unsigned char _4[4];   // 0x4: SOCOM II's
+        char *m_socom2_4;   // a second string: the destructor frees it after the name (the name ours)
+    };
     CModelVector m_models;   // 0x8 (SOCOM 1: 0x4)
     CTexList m_textures;   // 0x14
     CTexPalList m_palettes;   // 0x20
@@ -576,10 +600,24 @@ public:
     _RenderPhase m_renderphase;   // 0x2f (SOCOM 1: 0x2b)
     void *m_texture_buffer;   // 0x30
     void *m_model_buffer;   // 0x34
-    int m_iRefCount;   // 0x38
+    /* SOCOM II's third buffer, freed with the other two (the name ours); the count follows it --
+     * the constructor sets the word at 0x3c to 1 and ReleaseLibRef counts it down, and SOCOM II
+     * news 0x40 bytes for a library */
+    void *m_socom2_38;   // 0x38
+    int m_iRefCount;   // 0x3c (SOCOM 1: 0x34)
 
+    CAssetLib(const char *name);
+    ~CAssetLib();
     CTexHandle *AddTexture(const char *name);
-};   // 0x3c bytes
+    CTexHandle *AddTexture(CTexture *tex);
+    CModel *AddModel(CModel *model);
+    CTexPalette *AddPalette(CTexPalette *pal, bool check);
+    bool IsNamed(const char *name);
+    char *RootName();
+    /* the render phase by value (inline: CAssetList::FindLib(_RenderPhase) narrows its argument
+     * into a register of its own only so; the name is ours) */
+    _RenderPhase GetRenderPhase() const { return m_renderphase; }
+};   // 0x40 bytes
 
 /* a model's instances (SOCOM 1's DWARF: CRefList : list) */
 class CRefList : public std::list<CNode *> {
@@ -753,10 +791,15 @@ public:
  * CProjectedMap_Object dropped, a vector added at 0x580, the lens effects four floats each, a
  * shadow weight, a foliage sound and the world text's specs added. CCamera::GetLandmarkFarPlane
  * reads the grid's extents at 0x698, GetDatabaseNode the landmark list at 0x6B98. */
+class CAssetList;
+
 class CWorld : public CNode {
 public:
     static CWorld *m_world;
     static CNode *GetModel(const char *name);
+    /* the asset manager's library list (SOCOM 1's, 0xC bytes in both; out of line in SOCOM II's
+     * node_assetlib.cpp, which AddModel and other units call) */
+    static CAssetList *GetAssetList();
     /* the archive version the world's files carry (SOCOM 1's, the same 0x10001) */
     static int GetVersion();
     virtual ~CWorld();

@@ -1,0 +1,76 @@
+/* int_main.cpp -- the collision primitives: IntersectStruct's queries, CDI (a node's collision
+ * shape: its points allocated, read and freed), DiIntersect (a ray's or a volume's hit set) and
+ * the box and polygon shapes (OVL1 0x2DBFB0-0x2DDBEB). The unit name is SOCOM 1's: its asserts in
+ * CDI::Allocate, Free and DiIntersect's constructor and destructor name int_main.cpp (both 2002
+ * builds); int_material.cpp follows it there and here. Written so far: the small functions below.
+ * Defined in reverse of their image order (-inline deferred). */
+
+#include "node_world.h"
+
+/* the system allocator (SOCOM 1's _malloc__FUiPCci, 0x34EC30) */
+void *_malloc(unsigned int size, const char *file, int line);
+
+/* the default material a hit polygon without one reports (not named yet) */
+extern int data_0044F310;
+
+namespace zdb {
+
+/* a hit set for n hits: characters and proximity hit, no node ignored, every mask bit (SOCOM 1's;
+ * the mask and the bit after the flags SOCOM II's) */
+DiIntersect::DiIntersect(int n)
+{
+    m_BufCnt = n;
+    m_Intersects = (IntersectStruct *)_malloc(n * sizeof(IntersectStruct), 0, 0);
+    m_Node = 0;
+    m_Cnt = 0;
+    m_Type = 0;
+    m_IntersectCharacters = true;
+    m_AltitudeCharacters = false;
+    m_ProximityCharacters = true;
+    m_mask = -1;
+    m_socom2_bit19 = false;
+}
+
+void DiIntersect::SetMask(unsigned int mask)
+{
+    if (mask)
+        m_mask = mask | 1;
+    else
+        m_mask = -1;
+}
+
+/* the points freed (SOCOM 1's, through its vtable) */
+CDI::~CDI()
+{
+    Free();
+}
+
+/* room for n points (SOCOM 1's) */
+void CDI::Allocate(int n)
+{
+    m_flags.m_ptcount = n;
+    m_pnts = (CPnt4D *)_malloc(n * sizeof(CPnt4D), 0, 0);
+}
+
+/* the points freed and counted out (SOCOM 1's) */
+void CDI::Free()
+{
+    if (m_pnts)
+        _free(m_pnts, 0, 0);
+    m_pnts = 0;
+    m_pnts = 0;
+    m_flags.m_ptcount = 0;
+}
+
+int IntersectStruct::GetMaterial()
+{
+    if (!m_poly)
+        return 0;
+    int material = m_poly->m_flags.m_material;
+
+    if (!material)
+        material = data_0044F310;
+    return material;
+}
+
+}
