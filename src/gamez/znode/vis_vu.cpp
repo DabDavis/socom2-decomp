@@ -23,10 +23,48 @@ public:
     unsigned short m_temp;   // 0xe: 1 for a temporary decal
 };
 
+/* a level of detail's band of squared distances: drawn between the near minimum and the far
+ * maximum, faded in up to the far minimum and out past the near maximum (SOCOM 1's DWARF, 0x20
+ * bytes) */
+class CLOD_band {
+public:
+    float m_minRangeNearSq;   // 0x0
+    float m_minRangeFarSq;   // 0x4
+    float m_minInvDeltaRangeSq;   // 0x8
+    float m_maxRangeNearSq;   // 0xc
+    float m_maxRangeFarSq;   // 0x10
+    float m_maxInvDeltaRangeSq;   // 0x14
+    unsigned int m_minFade : 1;   // 0x18
+    unsigned int m_maxFade : 1;
+    unsigned int m_unused : 30;
+    unsigned int m_padding;   // 0x1c
+};
+
 /* the local lights (SOCOM 1's statics) */
 CVisual::LOCAL_LIGHT CVisual::localLightBuf[10];
 CLight *CVisual::localLightPtr[10];
 int CVisual::m_local_light_cnt;
+
+/* whether the band draws at the squared distance: not outside it, fully between its fades, and
+ * faded by the opacity within one (SOCOM 1's) */
+bool CVisual::DrawLOD(CLOD_band *band, float d, float *opacity)
+{
+    if (d <= band->m_minRangeNearSq || !(d < band->m_maxRangeFarSq))
+        return false;
+    if (!band->m_minFade && !band->m_maxFade)
+        return true;
+    if (!(d < band->m_minRangeFarSq) && d <= band->m_maxRangeNearSq)
+        return true;
+    if (band->m_minFade && d <= band->m_minRangeFarSq) {
+        *opacity *= band->m_minInvDeltaRangeSq * (d - band->m_minRangeNearSq);
+        return true;
+    }
+    if (band->m_maxFade && !(d < band->m_maxRangeNearSq)) {
+        *opacity *= band->m_maxInvDeltaRangeSq * (band->m_maxRangeFarSq - d);
+        return true;
+    }
+    return true;
+}
 
 /* a light added to the local lights: its position, its squared range, its colour and the inverse
  * of its falloff, the light listed and counted (SOCOM 1's, the same code: the minimum range's square

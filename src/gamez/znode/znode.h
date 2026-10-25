@@ -353,6 +353,7 @@ public:
 namespace zdb {
 
 class CLight;
+class CLOD_band;
 
 class CVisual : public tag_VISUAL_HEAD {
 public:
@@ -391,6 +392,9 @@ public:
     /* a light added to the local lights the VU code reads: its position and range, its colour and
      * the inverse of its falloff, the light itself listed (SOCOM 1's static) */
     static void AddLocalLight(CLight *light, CPnt3D *pos);
+    /* whether a level-of-detail band draws at a squared distance, its fade into the opacity
+     * (SOCOM 1's; `this` unread) */
+    bool DrawLOD(CLOD_band *band, float d, float *opacity);
     /* the local lights: two quadwords each -- position and squared range, colour and falloff --
      * the lights and their count (SOCOM 1's statics, 320 and 40 bytes) */
     struct LOCAL_LIGHT {
