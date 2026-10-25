@@ -1,7 +1,11 @@
 /* valve_list.cpp -- the valves: every one on CValve::m_list, made and found by name, their
  * callbacks, and the pool they come from (OVL1 0x3518C0-0x35295F). The file name is SOCOM 1's (its
- * static initialiser, which builds the list, pairs with __sinit_valve_list.cpp). Defined in reverse
- * of their image order (-inline deferred). */
+ * static initialiser, which builds the list and the pool, pairs with __sinit_valve_list.cpp; SOCOM
+ * II's is 0x4034F0). The unit's own functions end with CValvePool::Free (0x3524F7); the template
+ * tail follows: remove_if (0x352500), the pieces it calls out of line in reverse of first use (the
+ * iterator's copy, CValveOpDelete's operator(), *, !=, ++), remove_copy_if (0x352710), then the
+ * statics' destructors (~CValvePool 0x352870, ~CValveList 0x352900). Defined in reverse of their
+ * image order (-inline deferred). */
 
 #include <algorithm>
 #include <string.h>
