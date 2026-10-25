@@ -1493,7 +1493,7 @@
 0x001ECA50 0xB8 __ct__10CCoreStateFv  # OVL1; s1:calls (stores CGameState's then CCoreState's vtable; the two unit matrices)
 0x001ECB10 0xE4 OnPop__10CCoreStateFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001ECC00 0x38 OnPush__10CCoreStateFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x001ECC40 0xA8 func_001ECC40  # OVL1
+0x001ECC40 0xA8 DisplayMessage__10CCoreStateFPCcPCciiiUcUcc  # OVL1; by hand (the states lane, round 15): slot 0x2C of CCoreState's vtable (0x404F60), CGameState::DisplayMessage's override; byte-exact from st_core.cpp
 0x001ECCF0 0x264 UnInit__15CCinematicStateFv  # OVL1; s1:vtable (CCinematicState's UnInit slot)
 0x001ECF60 0x94 func_001ECF60  # OVL1
 0x001ED000 0x8 func_001ED000  # OVL1

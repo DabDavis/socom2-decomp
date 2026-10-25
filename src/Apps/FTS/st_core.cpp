@@ -19,6 +19,7 @@ void func_002A6950(void *mission);
 void func_003B17D0(int rate);                    /* CVideo::MaxFrameRate */
 void func_003B1760(int a, int b, int c, float d);
 void func_00351CB0();                            /* CValve::Reset */
+void func_002B6530(void *queue, const char *text, int a, int b, int c, float time);   /* C2DMessage_Q::Add_Message */
 void func_005B61A0();
 
 }
@@ -246,8 +247,6 @@ static void LoadThreadEntry(void *arg);
  * representation -- fts_state.h keeps its own std::basic_string, so <string> cannot come in.
  * Defined first, so emitted last; pinned, or include/string's inline assign/append would take
  * them in (the same-unit stand-in rule) */
-#include <iterator>
-
 namespace {
 /* include/string's twelve bytes: the long form's capacity | 1, size and text, the short form's
  * size in the first byte's upper seven bits */
@@ -267,41 +266,37 @@ struct CTailString {
 };
 }
 
-extern "C" {
-void *func_001EE780(void *str, unsigned int pos, unsigned int n1, const char *first, const char *last,
-                    std::forward_iterator_tag);   /* replace(pos, n1, first, last, category) */
-void *func_001EF390(CTailString *str, unsigned int pos, unsigned int n1, const char *s);
-}
+extern "C" void *func_001EF390(void *str, unsigned int pos, unsigned int n1, const char *s);
 
 #pragma auto_inline off
 extern "C" {
 /* assign(first, last): the whole text replaced by the range (0x1EF400) */
-void *func_001EF400(CTailString *str, const char *first, const char *last)
+void *func_001EF400(void *str, const char *first, const char *last)
 {
     std::forward_iterator_tag category;
 
-    return func_001EE780(str, 0, str->size(), first, last, category);
+    return std::func_001EE780(str, 0, ((CTailString *)str)->size(), first, last, category);
 }
 
 /* replace(pos, n1, const char *): the range s..s+strlen(s) handed to the template replace
  * (0x1EF390) */
-void *func_001EF390(CTailString *str, unsigned int pos, unsigned int n1, const char *s)
+void *func_001EF390(void *str, unsigned int pos, unsigned int n1, const char *s)
 {
     std::forward_iterator_tag category;
 
-    return func_001EE780(str, pos, n1, s, s + strlen(s), category);
+    return std::func_001EE780(str, pos, n1, s, s + strlen(s), category);
 }
 
 /* append(const char *): replace(size(), 0, s), a tail call (0x1EEB70) */
-void *func_001EEB70(CTailString *str, const char *s)
+void *func_001EEB70(void *str, const char *s)
 {
-    return func_001EF390(str, str->size(), 0, s);
+    return func_001EF390(str, ((CTailString *)str)->size(), 0, s);
 }
 
 /* assign(const char *): replace(0, size(), s), a tail call (0x1EEB40) */
-void *func_001EEB40(CTailString *str, const char *s)
+void *func_001EEB40(void *str, const char *s)
 {
-    return func_001EF390(str, 0, str->size(), s);
+    return func_001EF390(str, 0, ((CTailString *)str)->size(), s);
 }
 }
 #pragma auto_inline reset
@@ -369,6 +364,20 @@ void CCinematicState::UnInit()
     if (control)
         func_00592CA0(control);
     func_003466F0();
+}
+
+/* a message for the player: the sender's name and the text built into a string (and not used),
+ * the text queued on the mission's first message queue with the message's type (OVL1 0x1ECC40,
+ * slot 0x2C) */
+void CCoreState::DisplayMessage(const char *text, const char *who, int a, int b, int c, unsigned char d,
+                                unsigned char e, char type)
+{
+    CSaferStr s;
+
+    s = who;
+    s += ": ";
+    s += text;
+    func_002B6530(&theMission.m_messages, text, type, 0, 0, 0.0f);
 }
 
 /* a pad's actuators stopped (the first pad's) */

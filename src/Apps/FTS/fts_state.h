@@ -256,6 +256,8 @@ public:
     virtual void OnPush(int userdata);
     virtual void OnPop(int userdata);
     virtual void SetSkipSwap(int swap) { m_skip_swap = swap; }
+    virtual void DisplayMessage(const char *text, const char *who, int a, int b, int c,
+                                unsigned char d, unsigned char e, char type);
 
     /* whether the mission is done loading (the load state's tests materialise the bool: the
      * name ours) */
@@ -326,10 +328,20 @@ public:
  * MW's inline_max_size of 256, the other way a callee is cut to one level), and the
  * destructor is never inlined (main.cpp's destructors call 0x1E7EF0, the instance closing the
  * unit, with -1 for a member and 0 for CSaferStr's base) */
+#include <iterator>
 #include <memory>
 
 namespace std {
 template <class charT> struct char_traits {};
+
+/* include/string's out-of-line members, under their placeholders (st_core.cpp's template tail
+ * holds them) */
+extern "C" {
+void *func_001EEB40(void *str, const char *s);   /* assign(const char *) */
+void *func_001EEB70(void *str, const char *s);   /* append(const char *) */
+void *func_001EE780(void *str, unsigned int pos, unsigned int n1, const char *first, const char *last,
+                    forward_iterator_tag);   /* replace(pos, n1, first, last, category) */
+}
 
 template <class charT, class traits = char_traits<charT>, class Allocator = allocator<charT> >
 class basic_string {
@@ -338,6 +350,18 @@ public:
     ~basic_string();
 
     void reserve(unsigned int n);
+
+    /* include/string's: assign and append out of line, erase() the template replace over (0, npos)
+     * with an empty range */
+    basic_string &assign(const charT *s) { return *(basic_string *)func_001EEB40(this, s); }
+    basic_string &append(const charT *s) { return *(basic_string *)func_001EEB70(this, s); }
+    basic_string &operator+=(const charT *s) { return append(s); }
+    basic_string &erase()
+    {
+        forward_iterator_tag category;
+
+        return *(basic_string *)func_001EE780(this, 0, (unsigned int)-1, 0, 0, category);
+    }
 
     /* the short form: its text in place after the first byte (bit 0 of the first word clear) */
     bool IsShort() const { return !(w[0] & 1); }
@@ -374,6 +398,15 @@ typedef std::string CStateString;
 class CSaferStr : public std::string {
 public:
     CSaferStr() {}
+    /* never null: no text empties it (SOCOM 1's zutil.h inline) */
+    CSaferStr &operator=(const char *sz)
+    {
+        if (sz)
+            assign(sz);
+        else
+            erase();
+        return *this;
+    }
 };
 
 /* the end of a mission: its stats shown on the splash screen's menu. SOCOM II's strings are
@@ -644,7 +677,9 @@ public:
     float m_108;   // 0x108
     unsigned char _10c[0x1ac - 0x10c];
     CMissionInfo *m_1ac;   // 0x1ac
-    unsigned char _1b0[0x11b0 - 0x1b0];
+    unsigned char _1b0[0x1c0 - 0x1b0];
+    unsigned char m_messages[0x6a0 - 0x1c0];   // 0x1c0: the first message queue (a C2DMessage_Q)
+    unsigned char _6a0[0x11b0 - 0x6a0];
     unsigned char m_netQueue[0x10];   // 0x11b0: the network's messages for the player
     unsigned char _11c0[0x1808 - 0x11c0];
     CZNetGame *m_netGame;   // 0x1808: the online game (SOCOM 1's at 0x584)
