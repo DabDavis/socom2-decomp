@@ -46,12 +46,69 @@ struct MediusBuddyResponse;
 
 typedef void (*MediusBuddyCallback)(int, int, int, MediusBuddyResponse *);
 
+/* an account's number asked for by name */
+struct MediusAccountGetIDRequest {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];   // 0x15
+    char AccountName[32];   // 0x26
+};   // 0x46
+
+/* the number: the status after it */
+struct MediusAccountGetIDResponse {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    int AccountID;   // 0x18
+    MediusCallbackStatus StatusCode;   // 0x1c
+};
+
+/* a request's bare answer */
+struct MediusStatusResponse { MEDIUS_RESPONSE_HEAD };
+
+/* someone ignored (0x48 bytes, a vector of them: the class vector's clear out of line, 0x302FC0) */
+struct IgnoreItem {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    MediusCallbackStatus StatusCode;   // 0x18
+    int AccountID;   // 0x1c
+    char AccountName[32];   // 0x20
+    int _40;
+    char EndOfList;   // 0x44
+};   // 0x48
+
+class IgnoreVector : public std::vector<IgnoreItem> {
+public:
+    /* the ignored by name (the null test inside, though the caller made it) */
+    IgnoreItem *Find(const char *name)
+    {
+        if (name)
+            for (iterator i = begin(); i != end(); ++i)
+                if (!strcasecmp((*i).AccountName, name))
+                    return &*i;
+        return 0;
+    }
+    IgnoreItem *Find(int id)
+    {
+        for (iterator i = begin(), e = end(); i != e; ++i)
+            if (id == (*i).AccountID)
+                return &*i;
+        return 0;
+    }
+};
+
+void cbRemoveFromIgnoreList(int, int, int, MediusStatusResponse *resp);
+void cbAddToIgnoreList(int, int, int, MediusStatusResponse *resp);
+void cbFindIgnoreListPlayerID(int, int, int, MediusAccountGetIDResponse *resp);
+
 extern "C" {
-extern LobbyList data_0044FDE0;   /* the ignored */
+extern IgnoreVector data_0044FDE0;   /* the ignored */
 extern LobbyList data_0044FE00;   /* the friend invitations */
 
-void func_00302FC0(LobbyList *list);   /* the ignored deleted */
+void func_00302FC0(IgnoreVector *list);   /* the ignored cleared (the class vector's clear) */
 void func_00301CF0(LobbyList *list, int id);   /* an invitation dropped */
+MediusErrorCode MediusAccountGetID(MediusAccountGetIDRequest *req,
+                                   void (*cb)(int, int, int, MediusAccountGetIDResponse *));
+MediusErrorCode func_006494A0(MediusAccountRequest *req,
+                              void (*cb)(int, int, int, MediusStatusResponse *));   /* add to the ignored */
+MediusErrorCode func_00649540(MediusAccountRequest *req,
+                              void (*cb)(int, int, int, MediusStatusResponse *));   /* remove from them */
 
 void func_003017A0(int, int, int, MediusBuddyResponse *);   /* the callbacks */
 void func_00301710(int, int, int, MediusBuddyResponse *);
@@ -158,6 +215,28 @@ void CZOnlineLobby::GetFriendInvitations()
     }
 }
 
+/* the ignored account let go of: the list asked for again (OVL1 0x3010C0; the name ours, after
+ * the status it reports) */
+void cbRemoveFromIgnoreList(int, int, int, MediusStatusResponse *resp)
+{
+    if (CheckMediusCallbackStatus("RemoveFromIgnoreList", resp->StatusCode))
+        theLobby.GetIgnoreList();
+}
+
+/* an ignored account let go of, if it is one ('RemoveFromIgnore' 0x2798E0 calls it on theLobby
+ * with atoi of the argument; OVL1 0x300FE0) */
+void CZOnlineLobby::RemoveFromIgnore(int id)
+{
+    if (data_0044FDE0.Find(id)) {
+        MediusAccountRequest req;
+
+        memset(&req, 0, sizeof(req));
+        SetSessionKey(req.SessionKey);
+        req.AccountID = id;
+        CheckMediusError(func_00649540(&req, cbRemoveFromIgnoreList));
+    }
+}
+
 /* the ignore list emptied and asked for (OVL1 0x300F00) */
 void CZOnlineLobby::GetIgnoreList()
 {
@@ -167,6 +246,48 @@ void CZOnlineLobby::GetIgnoreList()
     memset(&req, 0, sizeof(req));
     SetSessionKey(req.SessionKey);
     CheckMediusError(func_00649400(&req, func_00300F70));
+}
+
+/* the account ignored: the list asked for again, or the menu told it is full (OVL1 0x300E60) */
+void cbAddToIgnoreList(int, int, int, MediusStatusResponse *resp)
+{
+    if (CheckMediusCallbackStatus("AddToIgnoreList", resp->StatusCode))
+        theLobby.GetIgnoreList();
+    else
+        LobbyEvent("MP_IGNORE_LIST_FULL", 0);
+}
+
+/* the account to ignore found: ignored (OVL1 0x300DB0) */
+void cbFindIgnoreListPlayerID(int, int, int, MediusAccountGetIDResponse *resp)
+{
+    if (CheckMediusCallbackStatus("FindIgnoreListPlayerID", resp->StatusCode)) {
+        MediusAccountRequest req;
+
+        memset(&req, 0, sizeof(req));
+        SetSessionKey(req.SessionKey);
+        req.AccountID = resp->AccountID;
+        CheckMediusError(func_006494A0(&req, cbAddToIgnoreList));
+    } else {
+        LobbyEvent("MP_PLAYER_NOT_FOUND", 0);
+    }
+}
+
+/* the named player ignored, unless already ('AddToIgnore' 0x279F50 calls it on theLobby; OVL1
+ * 0x300C50): the account's number asked for first */
+void CZOnlineLobby::AddToIgnore(const char *name)
+{
+    if (name && name[0]) {
+        if (!data_0044FDE0.Find(name)) {
+            MediusAccountGetIDRequest req;
+
+            memset(&req, 0, sizeof(req));
+            SetSessionKey(req.SessionKey);
+            strncpy(req.AccountName, name, sizeof(req.AccountName));
+            CheckMediusError(MediusAccountGetID(&req, cbFindIgnoreListPlayerID));
+            return;
+        }
+        LobbyEvent("PLAYER_IS_IGNORED", 0);
+    }
 }
 
 /* an account made a friend at once (OVL1 0x300B70) */

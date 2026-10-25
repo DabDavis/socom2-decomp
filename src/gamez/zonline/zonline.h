@@ -613,6 +613,9 @@ public:
     void AddFriendDirectly(int id);
     void RejectFriend(int id);
     void ConfirmFriend(int id);
+    void AddToIgnore(const char *name);
+    void RemoveFromIgnore(int id);
+    void AddFriend(const char *name);
 
     /* open and in the lobby proper (the name ours: GetFriendInvitations materialises the && before
      * it branches, an inline bool's shape) */
