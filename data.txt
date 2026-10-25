@@ -511,6 +511,7 @@
 0x00406A00 0x18 __vt__Q28Particle8Instance  # vtable of Particle::Instance: found by its RTTI's name
 0x00406A20 0x14 __vt__11CParticleEx  # vtable of CParticleEx: found by its RTTI's name
 0x00406A38 0xC __vt__11CRdrArchive  # vtable of CRdrArchive: found by its RTTI's name
+0x00406AA0 0x1C __vt__11CSaveModule  # vtable of CSaveModule (no RTTI word: 0): its constructor and destructor store it (0x33D300, 0x33D290); slots the destructor, Serialize (pure, 0), UnSerialize(CRdrFile *), UnSerialize(CZAR *), TestFlags -- SOCOM 1's order
 0x00406A50 0x50 __vt__6CRdrIO  # vtable of CRdrIO: found by its RTTI's name
 0x00406AC0 0x38 __vt__4CSnd  # vtable of CSnd: found by its RTTI's name
 0x00406B00 0x4C __vt__14CSoundBufferIO  # vtable of CSoundBufferIO: found by its RTTI's name
@@ -731,6 +732,7 @@
 0x0045C3F0 0x4 m_ripplefreepool__Q23zdb7CRipple  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Uninit__Q23zdb7CRippleFv)
 0x0045C460 0x18 m_dyntexlist__8Particle  # OVL1 bss; s1:data-seq (size SOCOM 1's; via DestructionManager__8ParticleFPQ23zdb5CNodePcP6CPnt4DfP6CPnt3DP6CPnt3DP6CPnt3DP6CPnt3Dif)
 0x00488448 0x4 ageFactor__Q28Particle8Instance  # OVL1 bss; s1:data-seq (size SOCOM 1's; via SetDynamicLOD__Fi)
+0x00488510 0xC m_list__11CRdrArchive  # OVL1 bss; SOCOM 1's static (its symbol, 12 bytes: CRdrArchiveList): __sinit_zrdr_archive.cpp (0x402D70) builds it and registers its destructor 0x32C5F0; the archive walks read its sentinel 0x488514 and first node 0x488518 -- 7 functions (the six CRdrArchive statics and the initialiser)
 0x00488520 0x100 _buffer$711  # OVL1 bss; s1:data-seq (size SOCOM 1's; via zrdr_findfile__FPCcPCc)
 0x004887C0 0x720 thePipe  # OVL1 bss; SOCOM 1's (0x694 bytes; SOCOM II's runs to VifHandlerID at 0x720: the camera at 0x628, the UI node at 0x630, its flags at 0x711 and 0x714 as the states use them): 115 references in 32 functions take 0x4887C0-0x488ED8
 0x00488EE0 0x4 VifHandlerID  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Uninit__5CPipeFv)
