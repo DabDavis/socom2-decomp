@@ -1,7 +1,8 @@
 /* ai_path.cpp (OVL2, around 0x524000-0x52852F; SOCOM 1's unit, 0x193540-0x196E60 in the demo): the
  * planned path, CAiPath -- its points, legs and plan states. SOCOM 1's functions in the demo's
  * order (PointInPath ... reset__12CAiPathStats, then the template tail with _min<Ui>); SOCOM II's
- * fields sit where ai.h says. The plan's states and legs so far (0x5267A0, 0x527300-0x527CD7);
+ * fields sit where ai.h says. The plan's states and legs so far (0x5267A0, 0x527300-0x527CD7)
+ * and the constructor (0x528340);
  * defined here in reverse of the image's order (-inline deferred). */
 
 #include "ai.h"
@@ -9,6 +10,33 @@
 /* what the path's functions call that is not written yet (this unit's) */
 extern "C" void func_00526380(CAiPath *path, int leg);   /* the points made from the legs */
 extern "C" void func_00525520(CAiPath *path);   /* SOCOM 1's UpdateTurnAngles, by position */
+
+/* a path with no plan: the vectors empty, the tallies reset, flags 3 and the type's bias 1
+ * (SOCOM 1's, the new fields zeroed in among the old) */
+CAiPath::CAiPath()
+{
+    m_state = UNKNOWN;
+    m_type = PATH_DEFAULT;
+    m_type_bias = 1.0f;
+    m_astar = 0;
+    m_planner = 0;
+    m_pathId = 0;
+    m_legcount = 0;
+    m_planleg = 0;
+    m_curleg = 0;
+    m_app_flags = 0;
+    m_unk24 = 0;
+    m_flags = 3;
+    m_length = 0.0f;
+    m_template = 0;
+    m_overlay = 0;
+    m_snake_len = 0;
+    m_priority = 0.0f;
+    m_custom = 0;
+    m_tolerance = 0;
+    m_search_limit = 0;
+    m_unk90 = 0;
+}
 
 /* the legs' two ends, for one leg or the one being planned (SOCOM 1's; true either way) */
 bool CAiPath::GetLegPoints(CAiMapLoc &start, CAiMapLoc &goal, int leg) const

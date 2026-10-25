@@ -516,6 +516,15 @@ class CAiStar;
 class CAiOverlay;
 class CAiPlanner;
 
+/* CAiMapLoc's storage without its constructor. SOCOM II's CAiMapLoc() is empty (0x516120), where
+ * zentity.h's stand-in copies `invalid`: a member the original left unbuilt holds this until the
+ * entity header's constructor is SOCOM II's (then it is CAiMapLoc again) */
+struct CAiMapLocBits {
+    unsigned int m_mapid : 6;
+    unsigned int x : 13;
+    unsigned int y : 13;
+};
+
 /* the maps a path crosses (SOCOM 1's DWARF: a vector of CAiMap pointers and nothing more) */
 class CAiMapVec : public std::vector<CAiMap *> {
 };
@@ -523,6 +532,7 @@ class CAiMapVec : public std::vector<CAiMap *> {
 /* a search's tallies (SOCOM 1's DWARF, 0x34 bytes; the same in SOCOM II) */
 class CAiPathStats {
 public:
+    CAiPathStats() { reset(); }
     /* every count zeroed and the visited cells dropped (SOCOM 1's reset, out of line there
      * (0x1968E0); SOCOM II's plan_setup and Clear zero the nine words in place) */
     void reset()
@@ -548,8 +558,10 @@ public:
     int path_cost;   // 0x18
     int m_ticks;   // 0x1c
     float m_time;   // 0x20
-    CAiMapLoc m_current;   // 0x24
-    CAiMapLocVec m_visited;   // 0x28
+    CAiMapLocBits m_current;   // 0x24: a CAiMapLoc, left unbuilt (CAiPath's constructor)
+    /* a plain vector (SOCOM 1's DWARF: a CAiMapLocVec): CAiPath's constructor inlines the stats'
+     * whole, one level shallower than through CAiMapLocVec's implicit constructor */
+    std::vector<CAiMapLoc> m_visited;   // 0x28
 };
 
 /* a planned path (SOCOM 1's DWARF, 0x9C bytes; SOCOM II's is 0xA8: a float at 0x18 -- the
@@ -585,6 +597,8 @@ public:
     };
     class points : public std::vector<point> {
     };
+
+    CAiPath();
 
     /* queued, planning or aborting (SOCOM 1 tested the three states one by one; SOCOM II's code,
      * inlined everywhere, is one unsigned range test -- the name ours) */
@@ -638,15 +652,6 @@ public:
     unsigned int m_snake_len;   // 0x94: SOCOM 1's 0x88
     points m_points;   // 0x98: SOCOM 1's 0x8c
     unsigned int m_pathId;   // 0xa4
-};
-
-/* CAiMapLoc's storage without its constructor. SOCOM II's CAiMapLoc() is empty (0x516120), where
- * zentity.h's stand-in copies `invalid`: a member the original left unbuilt holds this until the
- * entity header's constructor is SOCOM II's (then it is CAiMapLoc again) */
-struct CAiMapLocBits {
-    unsigned int m_mapid : 6;
-    unsigned int x : 13;
-    unsigned int y : 13;
 };
 
 /* the A* search of one leg (SOCOM 1's was 0x2C bytes, its open and closed lists two vectors of
