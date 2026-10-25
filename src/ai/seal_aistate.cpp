@@ -737,16 +737,9 @@ AI_STATE CAiStateStack::Pop(CSealCtrlAi *ai, AI_STATE state)
 }
 
 /* the current state ticked: its own stack first, then (once that is empty and done) its Tick, or
- * else its sub-step (slot 0x14, handed the sub-stack's state -- a CAiState * the slot's declared
- * int stands for until seal_ai.cpp's override changes with it); a state done is popped, its result
- * kept; else the stack's clock and the state's step clock run (OVL2 0x5F8030).
- * OPEN, 0x1AC against 0x1A0: the target takes the states' Tick and slot 0x14 results as they come
- * (`move s1,v0`, no andi) -- slot 0x10/0x14 return int in SOCOM II (each Tick's `andi` is its
- * `(AI_RESULT)` cast, then `sw` to the int m_done and the return), where ai_states.h's AI_RESULT
- * return makes MW zero-extend each result (andi); the base's return type cannot change while
- * seal_ai.cpp's overrides (the SEAL lane's) declare AI_RESULT. And the result local takes a1 here,
- * v0 in the target. The shape (the `li v0,1` hoisted, one exit) is the result local's */
-AI_RESULT CAiStateStack::Tick(float dT, CSealCtrlAi *ai)
+ * else its sub-step (slot 0x14, handed the sub-stack's state); a state done is popped, its result
+ * kept; else the stack's clock and the state's step clock run (OVL2 0x5F8030) */
+int CAiStateStack::Tick(float dT, CSealCtrlAi *ai)
 {
     int result = AI_DONE;
 
@@ -757,13 +750,13 @@ AI_RESULT CAiStateStack::Tick(float dT, CSealCtrlAi *ai)
 
         if (s->m_active) {
             if (s->m_stack.Tick(dT, ai) && s->m_stack.size() == 0) {
-                r = s->Tick(dT, ai);
+                r = s->Tick(ai);
                 if (r == AI_RUNNING) {
                     func_005F7470(this, ai, (s->m_flags & 0x80000000) != 0);
                     s->SetFlags(0, 0x80000000);
                 }
             } else
-                r = s->Virtual14(ai, (int)s->m_stack.GetState());
+                r = s->Virtual14(ai, s->m_stack.GetState());
         } else
             r = AI_DONE;
         if (r != AI_RUNNING) {
@@ -777,7 +770,7 @@ AI_RESULT CAiStateStack::Tick(float dT, CSealCtrlAi *ai)
             result = AI_RUNNING;
         }
     }
-    return (AI_RESULT)result;
+    return result;
 }
 
 /* every state popped, then the flags brought up to date (OVL2 0x5F7920: its callers here,
@@ -1151,7 +1144,7 @@ void CAiSPickup::SetPickup(CPickup *p, unsigned int flags)
  * and its low five bits in a2, here the other way round. Tried: the inline's parameters swapped,
  * a CBits member, a nested inline on the pickup, the mask computed first, `/ 32` and `% 32`, an
  * int index, the step assigned before, after or around it. Everything else is the target's. */
-AI_RESULT CAiSPickup::Tick(float dT, CSealCtrlAi *ai)
+int CAiSPickup::Tick(CSealCtrlAi *ai)
 {
     STEP step;
     CPickup *p;
@@ -1270,7 +1263,7 @@ void CAiSCQBAttack::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
  * step inline in each arm or as a local (before, inside, uninitialised ahead), the arms through
  * a reference or `*&o`, the compare on node->m_Opacity (reloads it). The registers, the
  * declaration order (node, seal, fading) and the early m_dT load are the target's. */
-AI_RESULT CAiSSuspended::Tick(float dT, CSealCtrlAi *ai)
+int CAiSSuspended::Tick(CSealCtrlAi *ai)
 {
     zdb::CNode *node;
     CEntity *seal = ai->m_entity;
@@ -1313,7 +1306,7 @@ AI_RESULT CAiSSuspended::Tick(float dT, CSealCtrlAi *ai)
 
 /* the unknown state holds the AI still: its throttles set each frame (OVL2 0x5F1B50; SOCOM 1's was
  * empty) */
-AI_RESULT CAiSUnknown::Tick(float dT, CSealCtrlAi *ai)
+int CAiSUnknown::Tick(CSealCtrlAi *ai)
 {
     static float x = 1.0f;
     static float z = 1.0f;
@@ -1327,7 +1320,7 @@ AI_RESULT CAiSUnknown::Tick(float dT, CSealCtrlAi *ai)
 /* a CQB attack: the delay run down, the attack (or a second's pause when the target is out of
  * reach), then done once the state clock passes the deadline (OVL2 0x5F1960; SOCOM 1's, the
  * frame's time now the states' static and the result inverted -- true when done) */
-AI_RESULT CAiSCQBAttack::Tick(float dT, CSealCtrlAi *ai)
+int CAiSCQBAttack::Tick(CSealCtrlAi *ai)
 {
     CEntity *seal = ai->m_entity;
 

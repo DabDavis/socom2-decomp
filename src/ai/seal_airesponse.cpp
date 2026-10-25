@@ -183,7 +183,7 @@ void CAiSNoAmmo::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
 /* out of ammunition: crouched, weapon down, off to the nearest ammunition for the first item and
  * picking it up -- or, with none to reach, a reaction (not for the player's side) and done (OVL2
  * 0x608060; SOCOM 1's) */
-AI_RESULT CAiSNoAmmo::Tick(float dT, CSealCtrlAi *ai)
+int CAiSNoAmmo::Tick(CSealCtrlAi *ai)
 {
     unsigned int phase;
     bool routed = false;
@@ -518,7 +518,7 @@ struct CAiCtrlTarget {
 /* a reload: weapon down, the stance kept, a crouch one time in ten and a move one in four, a look
  * at the target when there is one (the flags' bits 0-2), then the sub-states' turn (OVL2
  * 0x6085C0; SOCOM 1's reloaded itself) */
-AI_RESULT CAiSReload::Tick(float dT, CSealCtrlAi *ai)
+int CAiSReload::Tick(CSealCtrlAi *ai)
 {
     CEntity *seal = ai->m_entity;
     unsigned int phase = m_phase;
@@ -557,7 +557,7 @@ AI_RESULT CAiSReload::Tick(float dT, CSealCtrlAi *ai)
 
 /* a flight: to a cell away from danger (the goto pushed, a shout, crouched), the AI's mode 1 for
  * five seconds, then done (OVL2 0x6045B0; SOCOM 1's ran its own route) */
-AI_RESULT CAiSFlee::Tick(float dT, CSealCtrlAi *ai)
+int CAiSFlee::Tick(CSealCtrlAi *ai)
 {
     STEP step = (STEP)m_phase;
     CAiCell from(ai->m_entity->m_mapLocValid);

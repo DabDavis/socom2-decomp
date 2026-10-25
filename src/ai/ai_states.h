@@ -122,8 +122,8 @@ public:
     void PopAll(CSealCtrlAi *ai);
     /* the current state ticked, its own stack first: done once it answers so (it is then popped,
      * its result kept, and AI_FINISHED returned), else the clocks run (SOCOM 1's
-     * CSealCtrlAi::StateTick's core; 0x5F8030) */
-    AI_RESULT Tick(float dT, CSealCtrlAi *ai);
+     * CSealCtrlAi::StateTick's core; 0x5F8030: an int -- its own recursion tests v0 unextended) */
+    int Tick(float dT, CSealCtrlAi *ai);
     /* the list's own insert at the front (MSL's push_front: insert(begin(), x), the base's
      * iterator and the pointer passed by address -- 0x50FAD0), two inline levels deep: a frame's
      * temporaries are laid out by inline depth first, then in order of appearance, and Set's
@@ -170,10 +170,15 @@ public:
     /* +0x0C (new; the base's own, seal_aistate.cpp's): the script state's sequence `id` told
      * `event` -- event 2 ends this state (the name ours) */
     virtual void Virtual0C(int id, int event, CSealCtrlAi *ai);
-    virtual AI_RESULT Tick(float dT, CSealCtrlAi *ai) { return AI_DONE; }   /* +0x10 */
-    /* +0x14 (new): a sub-step a Tick hands over to, its result the Tick's (CAiSPursue's, 0x55A760,
-     * ends on Result(); CAiSReload's Tick calls it with 0) */
-    virtual AI_RESULT Virtual14(CSealCtrlAi *ai, int x) { return AI_RUNNING; }
+    /* +0x10: an AI_RESULT as an int (the stack's tick keeps it unextended, `move s1,v0`), and no
+     * frame time -- the stack's tick sets $f12 for its own recursion but never for this call, and
+     * no state's Tick reads $f12 before writing it: they read m_dT, which the stack's tick stores
+     * (SOCOM 1's Tick took a float: SOCOM II dropped it) */
+    virtual int Tick(CSealCtrlAi *ai) { return AI_DONE; }
+    /* +0x14 (new): a sub-step a Tick hands over to, its result the Tick's -- an int as slot 0x10's,
+     * handed the sub-stack's current state (the stack's tick passes its front, or 0, in a2;
+     * CAiSPursue's, 0x55A760, ends on Result(); CAiSReload's Tick calls it with 0) */
+    virtual int Virtual14(CSealCtrlAi *ai, CAiState *sub) { return AI_RUNNING; }
     virtual const char *GetStatus() const { return ""; }                  /* +0x18 */
     virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai) { return true; }   /* +0x1C */
     virtual bool CanSwitchAiState(AI_STATE state, CSealCtrlAi *ai) { return true; } /* +0x20 */
@@ -277,7 +282,7 @@ public:
 
     /* what every Tick ends on: running while m_active holds, else done -- kept in m_done too (the
      * name ours) */
-    AI_RESULT Result() { return (AI_RESULT)(m_done = m_active ? AI_RUNNING : AI_DONE); }
+    int Result() { return m_done = m_active ? AI_RUNNING : AI_DONE; }
 
     /* the frame's time, as the stack's tick sets it for the states (OVL1 bss 0x44D620, read by
      * every Tick in place of its dT; the name ours) */
@@ -343,7 +348,7 @@ class CAiSCQBAttack : public CAiState {
 public:
     CAiSCQBAttack() : CAiState(AI_STATE_CQBATTACK) {}
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
-    virtual AI_RESULT Tick(float dT, CSealCtrlAi *ai);
+    virtual int Tick(CSealCtrlAi *ai);
     virtual bool CanAttack() const { return false; }
     virtual ~CAiSCQBAttack();
 
@@ -354,14 +359,14 @@ public:
 class CAiSUnknown : public CAiState {
 public:
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
-    virtual AI_RESULT Tick(float dT, CSealCtrlAi *ai);
+    virtual int Tick(CSealCtrlAi *ai);
     virtual ~CAiSUnknown();
 };
 
 class CAiSSuspended : public CAiState {
 public:
     CAiSSuspended() : CAiState(AI_STATE_SUSPENDED) {}
-    virtual AI_RESULT Tick(float dT, CSealCtrlAi *ai);
+    virtual int Tick(CSealCtrlAi *ai);
     virtual bool CanAttack() const { return false; }
     virtual bool CanPursue(CSealCtrlAi *ai) const { return false; }
     virtual ~CAiSSuspended();
@@ -446,7 +451,7 @@ public:
     CAiSPickup() : CAiState(AI_STATE_PICKUP) {}
     void SetPickup(class CPickup *p, unsigned int flags);
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
-    virtual AI_RESULT Tick(float dT, CSealCtrlAi *ai);
+    virtual int Tick(CSealCtrlAi *ai);
     virtual ~CAiSPickup();
 
     class CPickup *m_pickup;   // 0x58 (SOCOM 1's at 0x28)
@@ -650,7 +655,7 @@ class CAiSFlee : public CAiState {
 public:
     CAiSFlee() : CAiState(AI_STATE_FLEE) {}
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
-    virtual AI_RESULT Tick(float dT, CSealCtrlAi *ai);
+    virtual int Tick(CSealCtrlAi *ai);
     virtual bool CanAttack() const { return true; }
     virtual bool CanScan() const { return false; }
     virtual bool CanPursue(CSealCtrlAi *ai) const { return false; }
@@ -750,7 +755,7 @@ class CAiSNoAmmo : public CAiState {
 public:
     CAiSNoAmmo() : CAiState(AI_STATE_NOAMMO) {}
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
-    virtual AI_RESULT Tick(float dT, CSealCtrlAi *ai);
+    virtual int Tick(CSealCtrlAi *ai);
     virtual bool CanAttack() const { return false; }
     virtual ~CAiSNoAmmo();
 
@@ -761,7 +766,7 @@ public:
 class CAiSReload : public CAiState {
 public:
     CAiSReload() : CAiState(AI_STATE_RELOAD) {}
-    virtual AI_RESULT Tick(float dT, CSealCtrlAi *ai);
+    virtual int Tick(CSealCtrlAi *ai);
     virtual bool CanAttack() const { return false; }
     virtual ~CAiSReload();
 
