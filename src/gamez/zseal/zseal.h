@@ -596,6 +596,7 @@ public:
     void RestrainBuddy(CZSealBody *victim);
     void StabBuddy(CZSealBody *victim);
     bool ExecuteAction_ApplyRestraint(CZSealBody *victim);
+    bool ExecuteAction_CQBAttack(CZSealBody *victim);
     class CPickup *CurrentPickupSecondary();
     class CPickup *CurrentPickup();
     bool CompassAnchor_MPBase(CCompassAnchor *anchor);
@@ -633,7 +634,11 @@ public:
     unsigned char m_snakePath[4];   // 0x434: a CAiPath (SOCOM 1's 0x384)
     unsigned char _438[0x528 - 0x438];
     class AnimSet *m_animset;   // 0x528 (SOCOM 1's 0x45c)
-    unsigned char _52c[0x5e0 - 0x52c];
+    unsigned char _52c[0x5b0 - 0x52c];
+    unsigned short m_5b0;   // 0x5b0: two of the stats' counters (the CQB attack adds 2 and 1; the
+    unsigned char _5b2[0x5b8 - 0x5b2];   //  names ours)
+    unsigned short m_5b8;   // 0x5b8
+    unsigned char _5ba[0x5e0 - 0x5ba];
     CZKit m_kit;   // 0x5e0 (SOCOM 1's 0x520)
     unsigned char _5e4[0xec0 - 0x5e4];
     CCompassAnchor *m_mpbomb_anchor;   // 0xec0 (SOCOM 1's 0xdb4)
@@ -646,7 +651,9 @@ public:
     SEAL_DEATH_TYPE m_deathType;   // 0xfb0 (SOCOM 1's 0xea4)
     unsigned char _fb1[0xfb4 - 0xfb1];
     float m_time_of_death;   // 0xfb4 (SOCOM 1's 0xea8)
-    unsigned char _fb8[0x1044 - 0xfb8];
+    unsigned char _fb8[0xfbc - 0xfb8];
+    unsigned int m_lastkiller_id;   // 0xfbc: the killer's entity id (SOCOM 1's 0xeb4)
+    unsigned char _fc0[0x1044 - 0xfc0];
     float m_health;   // 0x1044 (SOCOM 1's 0xea0)
     unsigned char _1048[0x105c - 0x1048];
     unsigned int m_HudUpdateViewCone : 1;   // 0x105c (SOCOM 1's 0xf58, the same bits)

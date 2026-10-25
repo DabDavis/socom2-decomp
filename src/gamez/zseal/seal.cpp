@@ -6,6 +6,7 @@
 
 #include "zseal.h"
 #include "../zkit/zkit.h"
+#include "../zanim/zanim.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -370,6 +371,47 @@ CZBodyPart *CZSealBody::GetRootPart() const
 void CZSealBody::OnRecycleEntity(CEntity *e)
 {
     ((CSealCtrl *)m_control)->OnRecycleEntity(e);
+}
+
+extern "C" {
+/* the victim struck down (OVL2 0x547860, seal.cpp's) and the killer's credit (OVL2 0x59EE20,
+ * seal_env.cpp's) -- not written yet */
+void func_00547860(CZSealBody *victim);
+void func_0059EE20(CZSealBody *victim, unsigned int killer, int a);
+/* (OVL1 bss 0x44D400: an animation set the stats skip) */
+extern AnimSet *data_0044D400;
+}
+
+/* a close-quarters attack on a victim: its hit flag set, a living one killed and the kill
+ * credited; the attack's anim run between the two, and counted unless the attacker has the skipped
+ * set (OVL2 0x546A40; SOCOM 1's made an AI event instead of the stats) */
+bool CZSealBody::ExecuteAction_CQBAttack(CZSealBody *victim)
+{
+    bool done = false;
+
+    if (victim) {
+        bool alive = victim->m_isAlive;
+
+        victim->SetHudHitFlag();
+        if (alive) {
+            unsigned int id = m_id;
+
+            victim->m_lastkiller_id = id;
+            func_00547860(victim);
+            func_0059EE20(victim, id, 0);
+        }
+        CZAnim *anim = ZAnim.GetAnim("ai_cqb_attack", 0);
+        CZAnim *act = anim ? anim->ActivateEx(2, m_select, victim->m_select, 0) : 0;
+
+        if (act) {
+            if (m_animset != data_0044D400) {
+                m_5b8++;
+                m_5b0 += 2;
+            }
+            done = true;
+        }
+    }
+    return done;
 }
 
 /* a victim restrained (OVL2 0x546A00) */
