@@ -102,6 +102,8 @@ public:
             return p;
         }
         void deallocate(node_base *p) { operator delete(p); }
+        /* the value built in place (MSL's allocator construct: placement new, so a null test) */
+        void construct(T *p, const T &x) { new (p) T(x); }
     };
     node_allocator &node_alloc() { return end_first(); }
     node_allocator &end_first() { return *(node_allocator *)&end_; }
@@ -192,7 +194,7 @@ __list_deleter<T, Allocator>::insert(iterator position, const T &x)
     node_allocator &a = node_alloc();
     Metrowerks::alloc_ptr<node, node_allocator &> ap(a.allocate(), a);
 
-    new (&ap.get()->data_) T(x);
+    a.construct(&ap.get()->data_, x);
     node *n = ap.release();
     node_base *p = position.node_;
 
