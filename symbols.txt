@@ -1532,7 +1532,7 @@
 0x001F0610 0x134 OnGoal__10CameraZoomFv  # OVL1; s1:calls (Tick's call at the goal, as SOCOM 1's)
 0x001F0750 0xD1C HandleNewZoom__10CameraZoomFv  # OVL1; s1:calls (Tick's first call, as SOCOM 1's; much grown)
 0x001F1470 0x198 SeeFarther__Fbf  # OVL1; s1:calls (SOCOM 1's SeeFarther: the world camera's mid and far clips and fog far pushed out by a factor, or the bases put back with the base fog colour; SOCOM II notes the call unless suppressed)
-0x001F1610 0x204 func_001F1610  # OVL1
+0x001F1610 0x204 HandleZoomIn__10CameraZoomFff  # OVL1; s1:calls (SOCOM 1's HandleZoomIn: the goal set and stepped three times as fast, the HUD zoomed in, the view kept and made first person; SOCOM II adds 1 to 1 and trades 1.5 for 1.01; HandleNewZoom calls it with the new and current zoom)
 0x001F1820 0x18 SetGoal__10CameraZoomFf  # OVL1; s1:exact shape (SOCOM 1's SetGoal: the goal and the goal flag; CCoreState::OnPop calls it with 1.0)
 0x001F1840 0x24 AttachHud__10CameraZoomFP4CHUD  # OVL1; s1:calls (SOCOM 1's AttachHud; SOCOM II also clears SeeFarther's three bases; CCoreState's Init and auxUnload call it)
 0x001F1870 0xC AttachSeal__10CameraZoomFP10CZSealBody  # OVL1; s1:exact shape (SOCOM 1's AttachSeal; CCoreState's Init, OnPop and auxUnload call it)

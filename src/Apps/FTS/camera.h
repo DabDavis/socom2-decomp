@@ -72,7 +72,8 @@ public:
 
     unsigned char _4[0xc0 - 4];
     CEntityCtrl *m_control;   // 0xc0
-    unsigned char _c4[0x1060 - 0xc4];
+    unsigned char _c4[0x5e0 - 0xc4];
+    unsigned char m_kit[0x1060 - 0x5e0];   // 0x5e0: its CZKit (SOCOM 1: 0x520)
     unsigned char _b0 : 5;   // 0x1060
     unsigned char m_zooming : 1;
     unsigned char _b6 : 2;
@@ -99,6 +100,16 @@ struct CShakeParams {
     float m_yRate;   // 0x1c
 };
 
+/* the app camera's views (SOCOM 1's DWARF; a byte under -enum min) */
+enum CAMVIEW {
+    cam_view_third = 0,
+    cam_view_side = 1,
+    cam_view_first = 2,
+    cam_view_peek_left = 3,
+    cam_view_peek_right = 4,
+    cam_view_last = 5
+};
+
 class CAppCamera {
 public:
     ~CAppCamera();
@@ -123,6 +134,15 @@ public:
     static void CmdBeginShake(_zanim_cmd_hdr *hdr);
     static void RegisterAnimCommands();
 
+    /* the view set, the old one returned (the zoom keeps it; the name ours) */
+    CAMVIEW SetCtrlView(CAMVIEW view)
+    {
+        CAMVIEW old = m_ctrl_view;
+
+        m_ctrl_view = view;
+        return old;
+    }
+
     CPnt3D m_cameraAim;   // 0x4 (SOCOM 1's)
     CPnt3D m_cameraTie;   // 0x10
     CPnt3D m_camGoalPos;   // 0x1c
@@ -138,7 +158,7 @@ public:
     CZBodyPart *m_skel_root;   // 0xc8 (SOCOM 1: 0x40)
     CPnt3D m_rPos;   // 0xcc (SOCOM 1: 0x44)
     CPnt3D m_wPos;   // 0xd8 (SOCOM 1: 0x50)
-    unsigned char m_ctrl_view;   // 0xe4 (SOCOM 1: 0x5c, a CAMVIEW)
+    CAMVIEW m_ctrl_view;   // 0xe4 (SOCOM 1: 0x5c)
     unsigned char _e5[0xec - 0xe5];
     float m_z_nominal;   // 0xec (SOCOM 1: 0x64)
     unsigned char _f0[0xf4 - 0xf0];
@@ -161,7 +181,7 @@ public:
     unsigned char _13b;
     CEntity *m_track;   // 0x13c (SOCOM 1: 0x8c)
     unsigned char m_save_peek;   // 0x140 (SOCOM 1: 0x90)
-    unsigned char m_save_view;   // 0x141 (SOCOM 1: 0x91)
+    CAMVIEW m_save_view;   // 0x141 (SOCOM 1: 0x91)
     unsigned char m_auto_death_cam;   // 0x142 (SOCOM 1: 0x92)
     unsigned char m_allow_player_death_cam_control;   // 0x143 (SOCOM 1: 0x93)
     unsigned char m_cam_death_state;   // 0x144 (SOCOM 1: 0x94, a CAM_DEATH_STATE)

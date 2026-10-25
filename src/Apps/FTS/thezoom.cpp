@@ -19,7 +19,17 @@ extern unsigned char data_00408CD8;              /* SeeFarther's last switch */
 extern float data_00408CE0;                      /* and its factor */
 extern int data_00408CF0;                        /* (set: SeeFarther does not note them) */
 extern CPnt4D data_004B4AB0;                     /* zdb::CVisual::m_basefog_color */
+extern unsigned char data_00408C50;              /* CameraZoom::m_iszoom */
+extern CAMVIEW data_003DC348;                    /* CameraZoom::m_oldview */
 }
+
+/* the kit and the HUD, unnamed yet (SOCOM 1's names) */
+extern "C" void func_005BE570(void *kit, int reticule);   /* CZKit::SetCurReticule */
+extern "C" bool func_005C80F0(void *kit);                 /* CZKit::NVG_Enabled */
+extern "C" void func_001F7560(CHUD *hud);                 /* CHUD::ZoomOut */
+extern "C" void func_001F7360(CHUD *hud);                 /* CHUD::ZoomIn */
+
+extern unsigned char gopt[0x1b];
 
 /* the base fog colour by value (the name ours: SeeFarther copies it out twice) */
 static inline CPnt4D BaseFogColor() { return data_004B4AB0; }
@@ -30,6 +40,7 @@ public:
     static bool Tick(float dT);
     static void OnGoal();
     static void HandleNewZoom();
+    static void HandleZoomIn(float newzoom, float current);
     static void SetGoal(float goal);
     static void AttachHud(CHUD *hud);
     static void AttachSeal(CZSealBody *seal);
@@ -54,6 +65,37 @@ void CameraZoom::SetGoal(float goal)
 {
     data_003DC340 = goal;
     data_00408C68 = 1;
+}
+
+/* a zoom in asked for: back at 1 from 1 (SOCOM II's), only the view put back to the third person
+ * when not zooming yet; else a new goal (but 0, and 1.01 apart) stepped toward three times as fast,
+ * the HUD zoomed in (with the option), and on the first zoom from 1 the view kept and made first
+ * person; 1.01 the same, the HUD zoomed in only with night vision on (SOCOM 1's HandleZoomIn) */
+void CameraZoom::HandleZoomIn(float newzoom, float current)
+{
+    if (data_003DC340 == 1.0f && newzoom == 1.0f) {
+        if (!data_00408C50 && data_003DC338 == 1.0f) {
+            data_003DC348 = appCamera->SetCtrlView(cam_view_third);
+        }
+    } else if (newzoom && newzoom != 1.01f) {
+        SetGoal(newzoom);
+        data_00408C48 = 3.0f * newzoom;
+        if (gopt[0])
+            func_001F7360(data_00408C60);
+        if (!data_00408C50 && data_003DC338 == 1.0f) {
+            data_00408C50 = 1;
+            data_003DC348 = appCamera->SetCtrlView(cam_view_first);
+        }
+    } else if (newzoom == 1.01f) {
+        SetGoal(newzoom);
+        data_00408C48 = 3.0f * newzoom;
+        if (gopt[0] && func_005C80F0(data_00408C58->m_kit))
+            func_001F7360(data_00408C60);
+        if (!data_00408C50 && data_003DC338 == 1.0f) {
+            data_00408C50 = 1;
+            data_003DC348 = appCamera->SetCtrlView(cam_view_first);
+        }
+    }
 }
 
 /* the world's camera made to see farther by a factor (its mid and far clips and its fog pushed
@@ -89,6 +131,32 @@ void SeeFarther(bool bEnable, float SeeFartherFactor)
         data_00408C78 = cam->m_mid_plane;
         cam->SetMidClip(data_00408C78 + SeeFartherFactor);
         cam->Update(zdb::ZCAM_NORMAL);
+    }
+}
+
+/* the goal reached (while zooming): the kit's reticule put back; at 1 the HUD zoomed out (with the
+ * option) and the view and the zooming flag cleared; at SOCOM II's 1.01 the HUD zoomed out, and back
+ * in with night vision on; anywhere else zoomed in unless night vision is on (SOCOM 1's OnGoal) */
+void CameraZoom::OnGoal()
+{
+    if (data_00408C50) {
+        func_005BE570(data_00408C58->m_kit, 0);
+        if (data_003DC340 == 1.0f) {
+            if (gopt[0])
+                func_001F7560(data_00408C60);
+            appCamera->m_ctrl_view = cam_view_third;
+            data_00408C50 = 0;
+        } else if (data_003DC340 == 1.01f || data_003DC340 == 1.01f) {
+            if (gopt[0] && func_005C80F0(data_00408C58->m_kit)) {
+                func_001F7560(data_00408C60);
+                func_001F7360(data_00408C60);
+                return;
+            }
+            func_001F7560(data_00408C60);
+        } else {
+            if (gopt[0] && !func_005C80F0(data_00408C58->m_kit))
+                func_001F7360(data_00408C60);
+        }
     }
 }
 

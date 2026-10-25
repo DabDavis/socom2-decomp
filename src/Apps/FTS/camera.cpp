@@ -199,8 +199,8 @@ bool CAppCamera::AttachTo(CZSealBody *prey)
 {
     if (!prey)
         return false;
-    m_save_view = 0;
-    m_ctrl_view = 0;
+    m_save_view = cam_view_third;
+    m_ctrl_view = cam_view_third;
     m_save_peek = 2;
     m_camGoalPos = data_0044C408[m_ctrl_view].m_tie;
     m_cameraAim = data_0044C408[m_ctrl_view].m_aim;
