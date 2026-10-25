@@ -559,15 +559,17 @@ public:
 };   // 0x180 bytes
 
 /* a model node: what CZAnim::CreateInstanceNode instances (dynamic_cast from CNode) */
-/* a cell of the world's grid (SOCOM 1's names; its own members not read yet) */
-class CCell : public CNode {
-};
+/* a cell of the world's grid (defined after the light list it holds) */
+class CCell;
 
-/* the render phase an asset library belongs to (SOCOM 1's DWARF; a byte under -enum min) */
+/* the render phase an asset library belongs to (SOCOM 1's DWARF; a byte under -enum min). SOCOM II
+ * has a phase after the custom set: the custom characters' (AddCustomCharacters finds their
+ * library by it, AddTextureAssetCharacter gives its sets the decal textures as well); the name is
+ * ours */
 enum _RenderPhase {
     WORLD, HUD_OBSOLETE, CHARSETCOMMON, CHARSET1, CHARSET2, CHARSET3, CHARSET4, CHARSET5,
     CHARSET6, CHARSET7, CHARSET8, ALPHA, HUDSET1, HUDSET2, HUDSETSMALL, SHADOW, CHARSETCUSTOM,
-    NUM_RENDER_PHASES
+    CHARSETCUSTOMCHARS, NUM_RENDER_PHASES
 };
 
 class CTexPalette;
@@ -670,6 +672,11 @@ public:
     CGrid();
     /* a node's place in the grid brought up to date (SOCOM 1's) */
     void Update(CNode *node);
+    /* a walk over the cells a polygon in x/z covers: the boundary set, the first atom and the
+     * next (SOCOM 1's) */
+    void SetTraversalBoundary(const CPnt3D *pnts, int n, bool b);
+    CGridAtom *StartTraversal();
+    CGridAtom *GetNextAtom();
 
     unsigned char _0[0x14];   // tag_GRID_PARAMS
     CFRect m_extents;   // 0x14
@@ -742,7 +749,32 @@ class CShadowCaster;
 
 /* the lights the world ticks (SOCOM 1's DWARF: CLightList : list) */
 class CLightList : public std::list<CLight *> {
+public:
+    /* a light pushed, taken by value: GenerateLightList keeps the light in a register and pushes
+     * this copy, a temporary below the frame's others (the name is ours) */
+    void Add(CLight *light) { push_back(light); }
 };   // 0xc bytes
+
+/* a cell of the world's grid: SOCOM 1's DWARF has its lights, its clutter list (0xcc) and its
+ * dynamic textures (0xe0) after the node; only the lights placed yet */
+class CCell : public CNode {
+public:
+    CLightList m_lightList;   // 0xc0 (GenerateLightList lists each light in the cells it reaches)
+};
+
+/* a node's link into the grid's cells (SOCOM 1's DWARF) */
+class CGridAtom {
+public:
+    /* the atom's node as a cell, or none (SOCOM 1's) */
+    CCell *GetCell();
+
+    CNode *Ent;   // 0x0
+    CGridAtom *Next;   // 0x4
+    CGridAtom *Prev;   // 0x8
+};   // 0xc bytes
+
+/* a tree's lights listed (SOCOM 1's free function) */
+void LightList_Search(CNode *node, CLightList &lights);
 
 /* the world's shadows (SOCOM 1's DWARF: CRenderMapVector : vector) */
 class CRenderMapVector : public std::vector<CRenderMap *> {
@@ -817,9 +849,21 @@ public:
     void Update();
     void ReleaseLandmarkList();
     void ReleaseLightList();
-    void AddLandmark(CNode *node);
-    void DeleteLandmark(CNode *node);
-    CNode *FindLandmark(const char *name);
+    /* CWorld's own virtual functions, after CNode's (SOCOM II's table 0x406940, slots 0x44-0x4C,
+     * as SOCOM 1's 0x40-0x48: GenerateLandmarkList calls the first through it) */
+    virtual void AddLandmark(CNode *node);
+    virtual void DeleteLandmark(CNode *node);
+    virtual CNode *FindLandmark(const char *name);
+    int GenerateLandmarkList();
+    /* the lights gathered and put in the grid's cells (SOCOM 1's) */
+    int GenerateLightList();
+    /* the custom characters given their textures (new in SOCOM II; the name ours) */
+    void AddCustomCharacters();
+    /* a node drawn with a character set's textures (SOCOM 1's three) */
+    void AddTextureAssetCharacter(CAssetLib *lib, CNode *node);
+    void AddTextureAssetCharacter(char *name, CNode *node);
+    void AddTextureAssetCharacter(_RenderPhase phase, CNode *node);
+    void LandmarkList_Search(CNode *node, CStack &stack, CNodeVector &list);
     IntersectStruct *GetIntersect(const CPnt3D *p0, const CPnt3D *p1);
     /* SOCOM II's overloads take whether characters are hit (the names SOCOM 1's) */
     IntersectStruct *GetIntersect(const CPnt3D *p0, const CPnt3D *p1, bool characters);

@@ -4511,7 +4511,7 @@
 0x002D6610 0x30 StartTraversalOrdered__Q23zdb5CGridFv  # OVL1; s1:align
 0x002D6640 0x6C StartTraversal__Q23zdb5CGridFv  # OVL1; s1:align
 0x002D66B0 0x148 func_002D66B0  # OVL1
-0x002D6800 0x11C func_002D6800  # OVL1
+0x002D6800 0x11C SetTraversalBoundary__Q23zdb5CGridFPC6CPnt3Dib  # OVL1; s1:callee by hand (GenerateLightList calls it with (&m_grid, the two corners, 2, false) where SOCOM 1's calls SetTraversalBoundary; after StartTraversal and 0x2D66B0 as SOCOM 1's after gridCellOut)
 0x002D6920 0x18C func_002D6920  # OVL1
 0x002D6AB0 0x184 func_002D6AB0  # OVL1
 0x002D6C40 0x1FC func_002D6C40  # OVL1
@@ -5573,9 +5573,9 @@
 0x0031D130 0x88 DeleteTextureAssetCharacter__Q23zdb6CWorldFPcPQ23zdb5CNode  # OVL1; s1:order by hand (SOCOM 1's overload by name at the same place: FindLib(name), the library overload inlined; ~CZSealBody calls it)
 0x0031D1C0 0x60 AddTextureAssetDecals__Q23zdb6CWorldFPQ23zdb10CTexHandle  # OVL1; s1:align
 0x0031D220 0x38 AddTextureAssetCharacterAll__Q23zdb6CWorldFPQ23zdb10CTexHandle  # OVL1; s1:order by hand (SOCOM 1's: a push onto m_TextureCharacterCommon, 0x6BB4 here, after AddTextureAssetDecals as there)
-0x0031D260 0x330 func_0031D260  # OVL1
-0x0031D590 0x48 func_0031D590  # OVL1; tu: node_world.cpp~ (1.0 beta)
-0x0031D5E0 0x48 func_0031D5E0  # OVL1; tu: node_world.cpp~ (1.0 beta)
+0x0031D260 0x330 AddTextureAssetCharacter__Q23zdb6CWorldFPQ23zdb9CAssetLibPQ23zdb5CNode  # OVL1; s1:order by hand (SOCOM 1's library overload after AddTextureAssetCharacterAll: news a 0x18-byte CTextureAssetCharacters, pushes the node onto a matching set or a new one; both wrappers after it call it with FindLib's result)
+0x0031D590 0x48 AddTextureAssetCharacter__Q23zdb6CWorldFPcPQ23zdb5CNode  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:order by hand (SOCOM 1's name overload at the same place, the same 0x48: FindLib(name) then the library overload)
+0x0031D5E0 0x48 AddTextureAssetCharacter__Q23zdb6CWorldFQ23zdb12_RenderPhasePQ23zdb5CNode  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:order by hand (SOCOM 1's phase overload at the same place, the same 0x48: FindLib(phase) then the library overload)
 0x0031D630 0xB8 func_0031D630  # OVL1
 0x0031D6F0 0x12C DismemberWorldModel__Q23zdb6CWorldFv  # OVL1; s1:align
 0x0031D820 0x114 Segregate_CCells__Q23zdb6CWorldFPQ23zdb5CNodeRQ23zdb11CNodeVectorRQ23zdb11CNodeVector  # OVL1; s1:align
@@ -5598,11 +5598,11 @@
 0x0031E320 0xAC FindLandmark__Q23zdb6CWorldFPCc  # OVL1; s1:align
 0x0031E3D0 0x4C DeleteLandmark__Q23zdb6CWorldFPQ23zdb5CNode  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:align
 0x0031E420 0x78 AddLandmark__Q23zdb6CWorldFPQ23zdb5CNode  # OVL1; s1:align
-0x0031E4A0 0xA4 func_0031E4A0  # OVL1
-0x0031E550 0x128 func_0031E550  # OVL1
+0x0031E4A0 0xA4 AddCustomCharacters__Q23zdb6CWorldFv  # OVL1; new in SOCOM II, the name ours: a static count (0x45C388) cleared, 0x31E550 fills a 32-node stack array, each node then given FindLib(CHARSETCUSTOM)'s character set through AddTextureAssetCharacter; CMission::Open and ReOpen_Load call it
+0x0031E550 0x128 FindCustomCharacters__3zdbFPQ23zdb5CNodePPQ23zdb5CNode  # OVL1; new in SOCOM II, the name ours: recursive, a node of type 10 skipped, a bit-11 node without 0xA1's bit 4 either stacked (a landmark) or given CHARSETCUSTOM's textures on m_world
 0x0031E680 0x38 ReleaseLightList__Q23zdb6CWorldFv  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:align
-0x0031E6C0 0x1D4 func_0031E6C0  # OVL1
-0x0031E8A0 0x1F4 func_0031E8A0  # OVL1
+0x0031E6C0 0x1D4 GenerateLightList__Q23zdb6CWorldFv  # OVL1; s1:order by hand (SOCOM 1's GenerateLightList after ReleaseLightList as there: the lights' list cleared, LightList_Search(this, m_lights), each light's world position and an x/z box of its range to the grid's traversal, the light pushed onto each cell's list, the count returned)
+0x0031E8A0 0x1F4 LightList_Search__3zdbFPQ23zdb5CNodeRQ23zdb10CLightList  # OVL1; s1:callee by hand (GenerateLightList calls it with (this, &m_lights) where SOCOM 1's calls LightList_Search__FPQ23zdb5CNodeRQ23zdb10CLightList; recursive over the children; SOCOM II adds the visuals' mip levels and a material bit; zdb's here)
 0x0031EAA0 0x80 ReleaseLandmarkList__Q23zdb6CWorldFv  # OVL1; s1:align
 0x0031EB20 0x174 GenerateLandmarkList__Q23zdb6CWorldFv  # OVL1; s1:align
 0x0031ECA0 0x160 LandmarkList_Search__Q23zdb6CWorldFPQ23zdb5CNodeR6CStackRQ23zdb11CNodeVector  # OVL1; s1:align

@@ -684,6 +684,7 @@
 0x0045C2B8 0xC m_tick_list__Q23zdb6CLight  # OVL1 bss; s1:unit (node_main.cpp's first static, as SOCOM 1's CLight::m_tick_list: __sinit_node_main.cpp zeroes it and registers its destructor; its record at 0x45C2A8)
 0x0045C2D8 0xC m_deferred_visuals__Q23zdb5CNode  # OVL1 bss; node_main.cpp's second static, new in SOCOM II: a pointer list (the deleter's constructor builds it) of visuals let go of while drawn, which DeleteVisuals fills and 0x314E60 empties; the name ours
 0x0045C380 0x4 m_world__Q23zdb6CWorld  # OVL1 bss; s1:data-seq (size SOCOM 1's; via AddNewMark__10CZMarkListFPQ23zdb15IntersectStructP12CZProjectilef +4)
+0x0045C388 0x4 s_customCharacterCnt__3zdb  # OVL1 bss; node_world.cpp's static, new in SOCOM II (the name ours): AddCustomCharacters clears it and walks that many stacked nodes, FindCustomCharacters stores at the index and counts it up; 6 references in those 2 functions
 0x0045C3A0 0x10 g_assetsRecycle__Q23zdb27@unnamed@node_assetlib_cpp@  # OVL1 bss; s1:name by hand (SOCOM 1's anonymous-namespace CAssetList in node_assetlib.cpp, 0x20 before m_assets as there: the unit's static initialiser builds it first and registers ~CAssetList for it; ReleaseLibRef moves a released library into it, GetLoadedLibRef(s) take one back, EmptyAssetRecycleBin clears it -- 5 functions take 0x45C3A0)
 0x0045C3C0 0x10 m_assets__Q23zdb9CAssetMgr  # OVL1 bss; s1:data-exact (size SOCOM 1's; via DismemberWorldModel__Q23zdb6CWorldFv +1)
 0x0045C3F0 0x4 m_ripplefreepool__Q23zdb7CRipple  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Uninit__Q23zdb7CRippleFv)

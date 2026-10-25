@@ -162,12 +162,134 @@ void CWorld::Update()
     }
 }
 
+/* a tree's landmarks gathered, each given its world matrix, the drawn nodes without far clipping
+ * counted, the matrix stack pushed and popped around each node (SOCOM 1's) */
+void CWorld::LandmarkList_Search(CNode *node, CStack &stack, CNodeVector &list)
+{
+    if (node) {
+        stack.Multiply(&node->m_matrix, true);
+        if (node->m_hasVisuals) {
+            if (node->m_landmark) {
+                node->SetMatrix(CStack::m_top);
+                list.push_back(node);
+            } else if (!node->m_apply_clip)
+                m_numNoFarClipNodes++;
+        }
+        for (CNodeVector::iterator it = node->m_child.begin(), e = node->m_child.end(); it != e;
+             ++it)
+            LandmarkList_Search(*it, stack, list);
+        stack.Pop();
+    }
+}
+
+/* the landmarks gathered from the whole tree and listed afresh, their count given back (SOCOM 1's).
+ * OPEN, 10 instructions (the right size): the local vector's field addresses trade saved
+ * registers -- the target holds &size_ in s0 and &data_ in s1 (SOCOM 1's the other way round, as
+ * here); not the declaration order of the vector, the stack or the count, a plain std::vector, the
+ * clear's place, a postfix step or a pointer walk */
+int CWorld::GenerateLandmarkList()
+{
+    CNodeVector landmarks;
+    CStack stack;
+
+    m_numNoFarClipNodes = 0;
+    LandmarkList_Search(this, stack, landmarks);
+    int n = landmarks.size();
+
+    m_landmarks.clear();
+    for (CNodeVector::iterator it = landmarks.begin(); it != landmarks.end(); ++it)
+        AddLandmark(*it);
+    landmarks.clear();
+    return n;
+}
+
 /* every landmark deleted, the list emptied (SOCOM 1's) */
 void CWorld::ReleaseLandmarkList()
 {
     for (CNodeVector::iterator it = m_landmarks.begin(); it != m_landmarks.end(); ++it)
         CNode::Delete(*it);
     m_landmarks.clear();
+}
+
+/* the lights gathered afresh, each placed in the world and listed in every cell its range covers
+ * in x/z, their count given back (SOCOM 1's).
+ * OPEN, 2 instructions (0x1CC of 0x1D4): the target computes &m_lights.end_.next_ from the end
+ * pointer into s0 before the clear (addiu s0,s3,4) and reads the loop's first node through it
+ * (lw a0,0(s0)) -- here the read is 4(s3), and a nop before the loop head follows from that; the
+ * base's begin(), a node read through end_node() and the end taken before the clear were tried.
+ * The rest (the cell's push through the list's by-value Add) is the target's */
+int CWorld::GenerateLightList()
+{
+    m_lights.clear();
+    LightList_Search(this, m_lights);
+    CLightList::iterator it, e = m_lights.end();
+
+    for (it = m_lights.begin(); it != e; ++it) {
+        CLight *light = *it;
+        CPnt3D pos(0.0f, 0.0f, 0.0f);
+        CPnt3D bounds[2];
+
+        light->TransformToWorld(pos);
+        light->m_WorldPosition = pos;
+        bounds[0].x = pos.x - light->GetMaxRange();
+        bounds[0].y = 0.0f;
+        bounds[0].z = pos.z - light->GetMaxRange();
+        bounds[1].x = pos.x + light->GetMaxRange();
+        bounds[1].y = 0.0f;
+        bounds[1].z = pos.z + light->GetMaxRange();
+        m_grid.SetTraversalBoundary(bounds, 2, false);
+        for (CGridAtom *atom = m_grid.StartTraversal(); atom; atom = m_grid.GetNextAtom()) {
+            CCell *cell = atom->GetCell();
+
+            if (cell)
+                cell->m_lightList.Add(light);
+        }
+    }
+    return m_lights.size();
+}
+
+/* the custom character nodes found so far (new in SOCOM II, node_world.cpp's static; the name is
+ * ours) */
+static unsigned int s_customCharacterCnt;
+
+/* a tree's custom characters: the flagged (bit 11), non-instanced nodes outside the cells -- a
+ * landmark one stacked, any other given the custom characters' textures at once (new in SOCOM II;
+ * the name ours) */
+void FindCustomCharacters(CNode *node, CNode **list)
+{
+    if (node && node->GetType() != 10) {
+        if (node->m_bumpmap && !(node->m_socom2_a1 & 4)) {
+            if (node->m_landmark) {
+                list[s_customCharacterCnt] = node;
+                s_customCharacterCnt++;
+            } else {
+                CWorld *world = CWorld::m_world;
+
+                world->AddTextureAssetCharacter(CAssetMgr::m_assets.FindLib(CHARSETCUSTOMCHARS),
+                                                node);
+            }
+            return;
+        }
+        for (CNodeVector::iterator it = node->m_child.begin(), e = node->m_child.end(); it != e;
+             ++it)
+            FindCustomCharacters(*it, list);
+    }
+}
+
+/* the world's custom characters given the custom characters' textures (new in SOCOM II: CMission's
+ * Open and ReOpen_Load; the name ours) */
+void CWorld::AddCustomCharacters()
+{
+    CNode *list[32];
+
+    s_customCharacterCnt = 0;
+    FindCustomCharacters(this, list);
+    for (unsigned int i = 0; i < s_customCharacterCnt; i++) {
+        CNode *node = list[i];
+        CAssetLib *lib = CAssetMgr::m_assets.FindLib(CHARSETCUSTOMCHARS);
+
+        AddTextureAssetCharacter(lib, node);
+    }
 }
 
 /* the lights' list emptied (SOCOM 1's) */
