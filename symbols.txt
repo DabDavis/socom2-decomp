@@ -1743,9 +1743,9 @@
 0x002068E0 0xC8 GetCurrentObjective__15CZObjectiveListCFv  # OVL1; s1:order by hand (SOCOM 1's GetCurrentObjective, GetObjective inlined: the selected index tested against the names' count, the mission's objective list (theMission+0x1854) walked to it, the camera returned; after GetCurrentObjectiveRetainer as in SOCOM 1)
 0x002069B0 0xAC Draw__15CZObjectiveListFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00206A60 0x140 func_00206A60  # OVL1
-0x00206BA0 0xD0 func_00206BA0  # OVL1
+0x00206BA0 0xD0 SelectPreviousObjective__15CZObjectiveListFv  # OVL1; s1:calls by hand (SOCOM 1's SelectPreviousObjective: as SelectNextObjective, stepping back and wrapping to the last)
 0x00206C70 0x13C func_00206C70  # OVL1
-0x00206DB0 0xA0 func_00206DB0  # OVL1
+0x00206DB0 0xA0 SelectNextObjective__15CZObjectiveListFv  # OVL1; s1:calls by hand (SOCOM 1's SelectNextObjective: the selection stepped on, its camera held and CMission::TickObjectives(1000) called, wrapped to 0 past the names' count, recursing while vector<bool>::test_bit says unselectable)
 0x00206E50 0x13C func_00206E50  # OVL1
 0x00206F90 0x98 SetCurColor__15CZObjectiveListFi  # OVL1; s1:order by hand (SOCOM 1's SetCurColor: the same two ResolveIndex tests, the colour of one name copied to the selected one, at SOCOM II's offsets; after the next-objective pair as SOCOM 1's follows NextObjective)
 0x00207030 0x308 func_00207030  # OVL1
@@ -1764,7 +1764,7 @@
 0x002079B0 0x50 Init__15CZObjectiveListFv  # OVL1; s1:calls
 0x00207A00 0x460 func_00207A00  # OVL1
 0x00207E60 0xF8 func_00207E60  # OVL1
-0x00207F60 0x2C func_00207F60  # OVL1
+0x00207F60 0x2C test_bit__Q23std30vector<b,Q23std12allocator<b>>FUi  # OVL1; s1:calls by hand (SOCOM 1's Select*Objective call vector<bool>::test_bit at the same place; a bit test on the data word at +8, out of line in hud_objectives.cpp's template tail)
 0x00207F90 0x40 swap__Q23std30vector<b,Q23std12allocator<b>>FRQ23std30vector<b,Q23std12allocator<b>>  # OVL1; s1:exact
 0x00207FD0 0x6C func_00207FD0  # OVL1
 0x00208040 0x214 insert__Q23std30vector<b,Q23std12allocator<b>>FQ33std30vector<b,Q23std12allocator<b>>8iteratorUiRCb  # OVL1; s1:calls

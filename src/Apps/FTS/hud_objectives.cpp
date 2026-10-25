@@ -41,18 +41,31 @@ public:
 
 extern CMission theMission;
 
-/* MSL's vector<bool> as the list's implicit destructor shows it (one level: its words deleted);
- * its swap and insert in the unit's tail are not modelled here */
+/* the mission's objectives ticked (SOCOM 1's CMission::TickObjectives(float); no row named yet) */
+extern "C" void func_002A9F30(CMission *mission, float dT);
+
+/* MSL's vector<bool> as the list's code shows it: the implicit destructor deletes its words (one
+ * level), and an element read calls test_bit, out of line in the unit's tail (0x207F60, as SOCOM
+ * 1's reference does); its swap and insert there are not modelled here */
 namespace std {
 template <>
 class vector<bool, allocator<bool> > {
 public:
     ~vector() { if (data_) operator delete(data_); }
+    bool operator[](unsigned int n) { return test_bit(n); }
+    bool test_bit(unsigned int n);
 
     unsigned int capacity_;
     unsigned int size_;
     unsigned int *data_;
 };
+
+#pragma auto_inline off
+bool vector<bool, allocator<bool> >::test_bit(unsigned int n)
+{
+    return (data_[n >> 5] & (1 << (n & 31))) != 0;
+}
+#pragma auto_inline reset
 }
 
 /* the list: SOCOM 1's members (SOCOM 1's DWARF names them) at SOCOM II's offsets, C2D 4 bytes
@@ -99,6 +112,14 @@ public:
     }
     CMissionObjectiveCam *GetCurrentObjective() const;
     CMissionObjectiveCam *GetCurrentObjectiveRetainer() const;
+    /* the selection's camera held and the objectives ticked (inline; the name ours) */
+    void UpdateSelection()
+    {
+        m_cur_selected_objective = GetCurrentObjective();
+        func_002A9F30(&theMission, 1000.0f);
+    }
+    void SelectPreviousObjective();
+    void SelectNextObjective();
 
     std::vector<C2DString *> m_objectivenames;   // 0x18
     std::vector<C2DBitmap *> m_objectivecompletedbitmap;   // 0x24
@@ -163,6 +184,36 @@ void CZObjectiveList::Tick(float dT)
         curstring->m_color[2] = 0.0f;
         m_strXLabel.SetTrans(0.5f * fCurLevel);
     }
+}
+
+/* the next selectable objective, round to the first (SOCOM 1's) */
+void CZObjectiveList::SelectNextObjective()
+{
+    m_selected_objective++;
+    UpdateSelection();
+    if (m_selected_objective >= m_objectivenames.size()) {
+        m_selected_objective = 0;
+        UpdateSelection();
+    }
+    if (!m_vecSelectable[m_selected_objective])
+        SelectNextObjective();
+}
+
+/* the previous selectable objective, round to the last (SOCOM 1's) */
+void CZObjectiveList::SelectPreviousObjective()
+{
+    m_selected_objective--;
+    UpdateSelection();
+    if (m_selected_objective < 0) {
+        m_selected_objective = m_objectivenames.size() - 1;
+        UpdateSelection();
+    }
+    if (m_selected_objective < 0) {
+        m_selected_objective = 0;
+        UpdateSelection();
+    }
+    if (!m_vecSelectable[m_selected_objective])
+        SelectPreviousObjective();
 }
 
 /* the selected objective's name given the colour of another's (SOCOM 1's) */
