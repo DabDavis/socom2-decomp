@@ -1658,22 +1658,22 @@
 0x001FDC80 0x60 __dt__10UIVarMixinFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FDCE0 0xC0 func_001FDCE0  # OVL1
 0x001FDDA0 0x70 func_001FDDA0  # OVL1
-0x001FDE10 0x20 func_001FDE10  # OVL1
+0x001FDE10 0x20 SetCanHandleInput__3C2DFb  # OVL1; s1:vtable by hand (C2D's slot 17, inline: the flag's top bit set)
 0x001FDE30 0x74 func_001FDE30  # OVL1
 0x001FDEB0 0x28 func_001FDEB0  # OVL1
 0x001FDEE0 0x240 func_001FDEE0  # OVL1
 0x001FE120 0x6C func_001FE120  # OVL1
 0x001FE190 0x8 Draw__9C2DStringFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FE1A0 0xC GetSpacing__9C2DStringFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x001FE1B0 0x20 func_001FE1B0  # OVL1
-0x001FE1D0 0x20 func_001FE1D0  # OVL1
-0x001FE1F0 0x20 func_001FE1F0  # OVL1
-0x001FE210 0x20 func_001FE210  # OVL1; s1~ Enable__3C2DFb (one of 2 out-of-line copies of an inline, by s1:vtable)
-0x001FE230 0x8 func_001FE230  # OVL1
-0x001FE240 0x8 func_001FE240  # OVL1
-0x001FE250 0x8 func_001FE250  # OVL1
-0x001FE260 0x8 func_001FE260  # OVL1
-0x001FE270 0x14 func_001FE270  # OVL1
+0x001FE1B0 0x20 SetHasTexture__3C2DFb  # OVL1; by hand (C2D's slot 6, inline: the flag's bit 3; the name ours)
+0x001FE1D0 0x20 SetAA__3C2DFb  # OVL1; by hand (C2D's slot 7, inline: bit 1, SOCOM 1's m_isAA; the name ours)
+0x001FE1F0 0x20 SetIsTrans__3C2DFb  # OVL1; by hand (C2D's slot 8, inline: bit 2, SOCOM 1's m_isTrans; the name ours)
+0x001FE210 0x20 SetGouraud__3C2DFb  # OVL1; s1~ Enable__3C2DFb (one of 2 out-of-line copies of an inline, by s1:vtable); by hand (C2D's slot 9, inline: bit 5, SOCOM II's; the name ours)
+0x001FE230 0x8 Slot10__3C2DFv  # OVL1; by hand (C2D's slot 10, inline and empty; the name ours)
+0x001FE240 0x8 Parse__3C2DFP5_zrdrPQ23zdb9CAssetLibPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable by hand (C2D's slot 13, inline and empty)
+0x001FE250 0x8 Reset__3C2DFv  # OVL1; s1:vtable by hand (C2D's slot 14, inline and empty)
+0x001FE260 0x8 HandlePad__3C2DFPC4CPadi  # OVL1; s1:vtable by hand (C2D's slot 15, inline: false)
+0x001FE270 0x14 CanHandleInput__3C2DFv  # OVL1; s1:vtable by hand (C2D's slot 16, inline: the flag's top bit)
 0x001FE290 0x8 SetActive__3C2DFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FE2A0 0x8 SetNormal__3C2DFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FE2B0 0x20 SetUseFrameBufferAlpha__3C2DFb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -1682,8 +1682,8 @@
 0x001FE2F0 0x8 GetZAnimCmdType__3C2DFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FE300 0x8 SetMapOffset__3C2DFii  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FE310 0x8 Draw__3C2DFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x001FE320 0x8 func_001FE320  # OVL1
-0x001FE330 0x8 func_001FE330  # OVL1
+0x001FE320 0x8 SetTrans__3C2DFf  # OVL1; s1:vtable by hand (C2D's slot 11, inline and empty)
+0x001FE330 0x8 Tick__3C2DFf  # OVL1; s1:vtable by hand (C2D's slot 12, inline and empty)
 0x001FE340 0x420 insert__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPUiUiRCUi  # OVL1; s1:calls (SOCOM 1's push_back of it is insert(data_ + size_, 1, x); CZAnimExVector::Add and zar::CKeyRing::push inline that push_back)
 0x001FE760 0x27C func_001FE760  # OVL1
 0x001FE9E0 0x70 func_001FE9E0  # OVL1
