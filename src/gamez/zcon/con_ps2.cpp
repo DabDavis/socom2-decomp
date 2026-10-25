@@ -51,8 +51,20 @@ public:
         memcpy(m_data, data, m_size);
         _counter = ((const _con_packet_hdr *)data)->id;
     }
+    /* (0x29DB50, 0x29DC30: drafts) a packet of a type over data, and an answer to a packet */
+    CPacket(unsigned int type, const void *data, unsigned int size, unsigned int flags);
+    CPacket(CPacket *packet, unsigned int type, unsigned int flags);
     virtual ~CPacket();
     virtual CPacketMsg *GetPacketMsg();
+
+    /* the sender wants an acknowledgement, and this is not one (RecvPacket's; the names ours) */
+    bool WantsAck() const
+    {
+        unsigned int flags = GetFlags();
+
+        return (flags & 1) && !(flags & 2);
+    }
+    bool IsAck() const { return GetFlags() & 2; }
 
     unsigned int GetPacketID() const;
     unsigned int GetFlags() const;
@@ -87,12 +99,8 @@ public:
             }
         }
     }
-    unsigned int GetArgCount() const
-    {
-        if (m_data)
-            return m_data->argc;
-        return 0;
-    }
+    /* (out of line: RecvPacket calls it, 0x29D8F0) */
+    unsigned int GetArgCount() const;
     void *GetArg(unsigned int index) const;
     /* the message itself (CPacket's answers 0: slot 0xC of both tables) */
     virtual CPacketMsg *GetPacketMsg();
@@ -320,6 +328,66 @@ int CConsole::Send(CPacket *packet)
     return r;
 }
 
+/* a packet received: acknowledged if it asks to be, or taken as the acknowledgement of one sent;
+ * handed to the handler of its type -- or of its first argument's name -- and to the handler of
+ * every packet (type 4); answered with an error packet (type 3) when nothing handled it. Whether
+ * the packet may be deleted (SOCOM 1's).
+ * OPEN, 6 instructions short (0x29C of 0x2B4): every block and call is the target's -- the two
+ * inline flag tests materialise their && (WantsAck) and their bit (IsAck compared `!= false`),
+ * the ack built on the stack, the ack list's remove through the binder, GetArgCount called out of
+ * line -- but the target leaves the delay slot of each test's branch empty and fills the
+ * following call's instead (`beqz s3; nop; jal GetArgCount; move a0,s3`, likewise after
+ * WantsAck, !handler, both handler tests and the type-3 test), pads the joins after the two
+ * Dispatches, and its remove binder's functor sits at sp+132 above the push_back temporaries (ours
+ * at sp+124, below them). Not tried yet: the lookups as an inline helper of their own, the reply
+ * through a named iterator */
+bool CConsole::RecvPacket(CPacket *packet)
+{
+    bool handled = true;
+
+    if (packet->WantsAck()) {
+        CPacket ack(packet, 2, 1);
+
+        Send(&ack);
+    } else if (packet->IsAck() != false) {
+        CPacket *sent = m_acks.FindPacket(packet);
+
+        if (sent) {
+            m_acks.remove(sent);
+            delete sent;
+        }
+    }
+
+    CHandler *handler = FindHandler(packet->GetPacketType());
+
+    if (!handler) {
+        CPacketMsg *msg = packet->GetPacketMsg();
+
+        if (msg && msg->GetArgCount())
+            handler = FindHandler((const char *)msg->GetArg(0));
+    }
+    if (handler)
+        handled = handler->Dispatch(packet, this);
+
+    CHandler *all = FindHandler(4);
+
+    if (all)
+        handled = all->Dispatch(packet, this);
+    if (!handled && packet->GetPacketType() != 3) {
+        CPacket *reply = new CPacket(3, packet->m_data, 24, 0);
+
+        if (Send(reply) > 0) {
+            if (reply->WantsAck())
+                m_acks.push_back(reply);
+            else {
+                delete reply;
+                reply = 0;
+            }
+        }
+    }
+    return handled;
+}
+
 /* formatted debug output, when the level allows it (SOCOM 1's, the same code). `m_debug >= level`
  * materialises the test in v1 as the target does; `level <= m_debug` branches on `slt at` */
 void CConsole::Debug(int level, const char *fmt, ...)
@@ -394,6 +462,14 @@ unsigned int CPacket::GetPacketID() const
 {
     if (m_data)
         return m_data->id;
+    return 0;
+}
+
+/* the argument count, 0 without data (SOCOM 1's) */
+unsigned int CPacketMsg::GetArgCount() const
+{
+    if (m_data)
+        return m_data->argc;
     return 0;
 }
 
