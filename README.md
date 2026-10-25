@@ -1487,6 +1487,22 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     zanim.h's declarations; ai::PathPlanExecute is byte-exact as a probe over the new list members
     (build/msl2/probe/ppe2.cpp), waiting on CAiPathQueue's insert inline and the GetPriority/
     IsPlanning rows (0x510C20, 0x510C00).
+- **Tells from the states, round 12** (fts_remote.cpp's messages, fts_net_blather.cpp):
+  - when a strength-reduced loop's base is dead afterwards MW walks the base itself; the target's
+    separate induction register needs an explicit `char *dst` cursor;
+  - a value the target keeps in a saved register and stores only just before the call is a
+    second local (`count = votes; f(&count)`); taking the computed value's address forces it into
+    memory;
+  - `a<<20 | b<<10 | c` evaluates c first; left-to-right conversions need locals (`int ax =
+    f(x)<<20; int ay = f(y)<<10; int az = f(z); p = ax | ay | az;`); float arguments computed in
+    source order need locals too (MW evaluates call arguments right to left);
+  - `bool b = true; if (x != 1 && x != 2) b = false;` in an inline gives the target's `daddiu` in
+    the first beq's delay slot; the `||` forms fold into a range test;
+  - a same-unit stand-in for a template function (`_saturate<int>` as a plain function) must be
+    pinned with `#pragma auto_inline off`: MW auto-inlines the plain function, never the template;
+  - left for the next states round (the definitions switch with them): 0x2BAF30 ->
+    E3IndexPacketHandler__FiiiPv, 0x2BA9D0 -> ChatPacketHandler__FiiiPv, 0x2BD220 ->
+    `_saturate<i>__FPiRCiRCi_b` (SOCOM 1's call sites).
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
