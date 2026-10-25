@@ -3,6 +3,7 @@
 # the rows are kept apart so every tool that walks the function map stays a function walk.
 # A placeholder `data_<VA>` needs no row -- the differ reads its address out of the name --
 # but a row may carry what is known about it.
+0x00100000 0x0 mfifoBase  # MAIN; SOCOM 1's local symbol at 0x100000 (the MFIFO ring's base: zSysFifoInit and zSysFifoEnable store it in D_RBOR, D8_MADR and the drain's TADR, as SOCOM 1's relocations name mfifoBase); 4 references in 2 functions -- the sound/system lane
 0x001B6E90 0x0 _maxval  # MAIN; s1:data-exact (size SOCOM 1's; via _copyAddRefImage +1)
 0x001CA850 0x4 SCE_CD_debug  # MAIN; s1:data-exact (size SOCOM 1's; via _Cdvd_cbLoop +9)
 0x001CA858 0x4 scmd_sema_keep_cmd  # MAIN; s1:data-exact (size SOCOM 1's; via _sceCd_scmd_prechk)
@@ -735,8 +736,18 @@
 0x0049E2A0 0xC theIOPManager  # OVL1 bss; SOCOM 1's (CMenuState registers its reboot callback on it in Init and removes it in UnInit, as SOCOM 1's): 28 references in 21 functions take 0x49E2A0-0x49E2A8
 0x0049E2B0 0x2C zSys  # OVL1 bss; s1:data-exact (via WriteGsMemory__6CVideoFUiP1Ui); SOCOM 1's _zsys_public is 0x28 with timerScale at 0x24, SOCOM II's has it at 0x28 (CAppCamera::Tick's peek easing reads it where SOCOM 1's read 0x24), so 0x2C
 0x0049E2F0 0x4 m_last_id__Q211CIOPManager11CRegistrant  # OVL1 bss; s1:data-seq (size SOCOM 1's; via RegisterRebootCallback__11CIOPManagerFPFQ211CIOPManager11RebootPhaseQ211CIOPManager10RebootModePv_bPv)
+0x0049E2F8 0x4 mfifoDrainTADR  # OVL1 bss; SOCOM 1's (zSysFifoEnable stores the draining channel's TADR address, zSysFifoKick polls it, as SOCOM 1's gp-26308); 4 references in 2 functions -- the sound/system lane
+0x0049E300 0x1 s_fifoSync  # OVL1 bss; SOCOM II's, name ours (zSysFifoSetSync stores it, zSysFifoKick tests it); 2 references -- the sound/system lane
 0x0049E308 0x4 sprBeingKicked  # OVL1 bss; s1:data-seq (size SOCOM 1's; via zSysFifoEnd__Fv)
 0x0049E310 0x4 sprBeingWritten  # OVL1 bss; s1:data-seq (size SOCOM 1's; via zSysFifoEnd__Fv)
+0x0049E330 0x4 m_sprPacket__4CSPR  # OVL1 bss; SOCOM 1's (CSPR::Kick kicks from it and refills it, as SOCOM 1's gp-26284); 18 references in 10 functions -- the sound/system lane
+0x0049E338 0x4 m_sprPacketEnd__4CSPR  # OVL1 bss; SOCOM 1's (CSPR::Kick passes its address to the inlined zSysSprGetPacket, as SOCOM 1's gp-26280); 27 references in 9 functions -- the sound/system lane
+0x0049E340 0x4 s_d1Chcr  # OVL1 bss; SOCOM II's, name ours (zSysFifoPause keeps D1_CHCR, zSysFifoResume restores it); 2 references -- the sound/system lane
+0x0049E348 0x4 s_d1Tadr  # OVL1 bss; SOCOM II's, name ours (D1_TADR, the same pair); 2 references -- the sound/system lane
+0x0049E350 0x4 s_d1Qwc  # OVL1 bss; SOCOM II's, name ours (D1_QWC, the same pair); 2 references -- the sound/system lane
+0x0049E358 0x4 s_d1Madr  # OVL1 bss; SOCOM II's, name ours (D1_MADR, the same pair); 2 references -- the sound/system lane
+0x0049E360 0x4 s_dCtrl  # OVL1 bss; SOCOM II's, name ours (D_CTRL, the same pair); 2 references -- the sound/system lane
+0x0049E368 0x1 s_fifoPaused  # OVL1 bss; SOCOM II's, name ours (set by zSysFifoPause, cleared by zSysFifoResume); 2 references -- the sound/system lane
 0x0049E370 0x4 m_refCount__3CVU  # OVL1 bss; s1:data-seq (size SOCOM 1's; via __dt__3CVUFv)
 0x0049E378 0x4 m_VifHandlerID__3CVU  # OVL1 bss; s1:data-seq (size SOCOM 1's; via __dt__3CVUFv)
 0x0049E7E0 0x4 m_running  # OVL1 bss; SOCOM 1's file static of the VU unit (InterruptFromVIF0 clears it, as SOCOM 1's clears m_running at gp-26268, after m_VifHandlerID there); 1 reference (InterruptFromVIF0) -- the sound/system lane

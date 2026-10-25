@@ -40,4 +40,35 @@ struct _zsys_public {
 
 extern _zsys_public zSys;   /* 0x49E2B0 */
 
+/* a quadword seen every way (SOCOM 1's DWARF) */
+union _word128 {
+    u_long128 u128;
+    float f32[4];
+    unsigned long u64[2];
+    unsigned int u32[4];
+    unsigned short u16[8];
+    unsigned char u8[16];
+};
+
+/* the scratchpad's packet (SOCOM 1's class: statics only) */
+class CSPR {
+public:
+    static _word128 *Copy(_word128 *to, _word128 *from, int qwc);
+    static _word128 *Kick(_word128 *end, bool getNew);
+
+    static _word128 *m_sprPacket;       /* 0x49E330 */
+    static _word128 *m_sprPacketEnd;    /* 0x49E338 */
+};
+
+/* the DMA FIFO (zsys_fifo.cpp) */
+void zSysFifoKick(u_long128 *packet, unsigned int qwc);
+u_long128 *zSysSprGetPacket(u_long128 **end);
+void zSysFifoEnd();
+void zSysFifoEnable(unsigned int mode);
+void zSysFifoDisable();
+void zSysFifoInit();
+void zSysFifoSetSync(bool sync);
+void zSysFifoPause();
+void zSysFifoResume(bool restart);
+
 #endif

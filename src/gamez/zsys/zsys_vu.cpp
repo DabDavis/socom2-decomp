@@ -19,10 +19,10 @@ int InterruptFromVIF0(int cause)
     if (cause == 4) {
         m_running = 0;
         *VIF0_FBRST = 8;
-        asm("sync");
+        asm volatile { sync }
     }
-    asm("sync");
-    asm("ei");
+    asm volatile { sync }
+    asm volatile { ei }
     return 0;
 }
 

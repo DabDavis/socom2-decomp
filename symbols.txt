@@ -6397,14 +6397,14 @@
 0x00350950 0x4C Copy__4CSPRFP8_word128P8_word128i  # OVL1; s1:align
 0x003509A0 0x110 Kick__4CSPRFP8_word128b  # OVL1; s1:align
 0x00350AB0 0x204 zSysFifoKick__FP1Ui  # OVL1; s1:callee
-0x00350CC0 0xC func_00350CC0  # OVL1
+0x00350CC0 0xC zSysFifoSetSync__Fb  # OVL1; SOCOM II's, name ours (sets the byte zSysFifoKick tests to wait for the drain to catch up instead of for room in the ring) -- the sound/system lane
 0x00350CD0 0xB8 zSysFifoEnd__Fv  # OVL1; s1:align
 0x00350D90 0xA0 zSysSprGetPacket__FPP1  # OVL1; s1:callee
-0x00350E30 0x180 func_00350E30  # OVL1
+0x00350E30 0x180 zSysFifoEnable__FUi  # OVL1; s1:order+calls (SOCOM 1's zSysFifoEnable(mode): after zSysSprGetPacket, the ring's base and size stored, mode 1 starts VIF1's channel and mode 2 GIF's from the ring with D_CTRL.MFD 2/3, else zSysFifoDisable inlined; the same constants 0x145/0x144) -- the sound/system lane
 0x00350FB0 0x48 zSysFifoDisable__Fv  # OVL1; s1:align
-0x00351000 0x2C func_00351000  # OVL1
-0x00351030 0x7C func_00351030  # OVL1
-0x003510B0 0x84 func_003510B0  # OVL1
+0x00351000 0x2C zSysFifoInit__Fv  # OVL1; s1:order (SOCOM 1's zSysFifoInit: after zSysFifoDisable, D_RBOR = mfifoBase, D_RBSR = 0x7FFF0, sync; zSysReset calls it) -- the sound/system lane
+0x00351030 0x7C zSysFifoResume__Fb  # OVL1; SOCOM II's, name ours (VIF1's DMA registers and D_CTRL put back from the statics zSysFifoPause saved, the channel restarted when the argument is set; called in pairs with zSysFifoPause) -- the sound/system lane
+0x003510B0 0x84 zSysFifoPause__Fv  # OVL1; SOCOM II's, name ours (VIF1's channel stopped (CHCR &= 0xfeff), its CHCR/TADR/QWC/MADR and D_CTRL kept in statics, D_CTRL = 1) -- the sound/system lane
 0x00351140 0x11C func_00351140  # OVL1
 0x00351260 0x11C func_00351260  # OVL1
 0x00351380 0x60 Code__3CVUFP1  # OVL1; s1:exact; s1:exact body but NOT SOCOM 1's signature: zMath_Init passes no size, so the unused second parameter is gone (MW mangles a 128-bit type as `1`: CVU::Code(u_long128 *))
