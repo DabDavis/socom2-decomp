@@ -1856,8 +1856,8 @@
 0x00210030 0xE8 func_00210030  # OVL1
 0x00210120 0x8 func_00210120  # OVL1
 0x00210130 0xC func_00210130  # OVL1
-0x00210140 0xC4 func_00210140  # OVL1
-0x00210210 0xC4 func_00210210  # OVL1
+0x00210140 0xC4 hudAddPolyType__FP5_zrdr  # OVL1; s1:order by hand (hud_linemap.cpp: SOCOM 1's hudAddPolyType, 0xC4 in both: Type through zrdr_findint, the map's find_or_insert at 0x40BF60, Color, Opacity times 127 (SOCOM 1: 128) and Width; the first of the pair as SOCOM 1's, its map the later one)
+0x00210210 0xC4 hudAddLineType__FP5_zrdr  # OVL1; s1:order by hand (hud_linemap.cpp: SOCOM 1's hudAddLineType, 0xC4 in both, after hudAddPolyType as there; the same reader on the map at 0x40BF40)
 0x002102E0 0x2FC func_002102E0  # OVL1
 0x002105E0 0x8 func_002105E0  # OVL1
 0x002105F0 0x8 func_002105F0  # OVL1
