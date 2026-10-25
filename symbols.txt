@@ -4645,7 +4645,7 @@
 0x002DF640 0xC MediusConnectionIndex__13CZOnlineLobbyFv  # OVL1; s1:calls by hand (the states lane: the network senders take the connection index through it where SOCOM 1's do)
 0x002DF650 0x4C UnInit__13CZOnlineLobbyFv  # OVL1; s1:callee
 0x002DF6A0 0x23C func_002DF6A0  # OVL1
-0x002DF8E0 0x170 func_002DF8E0  # OVL1
+0x002DF8E0 0x170 ReleaseUIResources__13CZOnlineLobbyFv  # OVL1; s1 by hand (called by UnInit, Close and the destructor, as SOCOM 1's UnInit, Close and destructor call ReleaseUIResources; frees the lobby's lists)
 0x002DFA50 0x7C func_002DFA50  # OVL1
 0x002DFAD0 0x7C func_002DFAD0  # OVL1
 0x002DFB50 0x7C func_002DFB50  # OVL1
@@ -4653,15 +4653,15 @@
 0x002DFC50 0x7C func_002DFC50  # OVL1
 0x002DFCD0 0x7C func_002DFCD0  # OVL1
 0x002DFD50 0x7C func_002DFD50  # OVL1
-0x002DFDD0 0x38 func_002DFDD0  # OVL1
+0x002DFDD0 0x38 Close__13CZOnlineLobbyFv  # OVL1; s1:ui (the UI command table's 'UnInitNetwork' handler 0x27E5C0 calls it on theLobby where SOCOM 1's UIUnInitNetwork calls Close)
 0x002DFE10 0x34 func_002DFE10  # OVL1
 0x002DFE50 0x1D4 func_002DFE50  # OVL1
 0x002E0030 0x410 func_002E0030  # OVL1
 0x002E0440 0x10 func_002E0440  # OVL1
-0x002E0450 0x17C func_002E0450  # OVL1
+0x002E0450 0x17C Init__13CZOnlineLobbyFv  # OVL1; s1 by hand (COurGame::StartEngine calls it on theLobby where SOCOM 1's StartEngine calls CZOnlineLobby::Init)
 0x002E05D0 0x54 func_002E05D0  # OVL1
-0x002E0630 0xE0 func_002E0630  # OVL1
-0x002E0710 0x9C func_002E0710  # OVL1
+0x002E0630 0xE0 __dt__13CZOnlineLobbyFv  # OVL1; ours by hand (registered by theLobby's static initialiser 0x401E30 with __register_global_object; tears down as UnInit does, then the queue)
+0x002E0710 0x9C __ct__13CZOnlineLobbyFv  # OVL1; ours by hand (theLobby's static initialiser 0x401E30 calls it on 0x44F370 and registers 0x2E0630 as the destructor)
 0x002E07B0 0x78 func_002E07B0  # OVL1
 0x002E0830 0xB0 func_002E0830  # OVL1
 0x002E08E0 0x5C func_002E08E0  # OVL1
@@ -4702,7 +4702,7 @@
 0x002E1F20 0x5A0 func_002E1F20  # OVL1
 0x002E24C0 0x8 IsPersistent__8RoomGameFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002E24D0 0x400 func_002E24D0  # OVL1
-0x002E28D0 0x4C func_002E28D0  # OVL1
+0x002E28D0 0x4C RefreshGameList__13CZOnlineLobbyFP3C2D  # OVL1; s1:ui ('RefreshGameList' 0x27DB40, as SOCOM 1's UIRefreshGameList calls RefreshGameList; a1 live)
 0x002E2920 0x1D4 func_002E2920  # OVL1
 0x002E2B00 0x1E0 func_002E2B00  # OVL1
 0x002E2CE0 0x394 func_002E2CE0  # OVL1
@@ -4714,9 +4714,9 @@
 0x002E34D0 0x10 func_002E34D0  # OVL1
 0x002E34E0 0x124 func_002E34E0  # OVL1
 0x002E3610 0x11C func_002E3610  # OVL1
-0x002E3730 0x54 func_002E3730  # OVL1
-0x002E3790 0x29C func_002E3790  # OVL1
-0x002E3A30 0x64 func_002E3A30  # OVL1
+0x002E3730 0x54 RejoinRoom__13CZOnlineLobbyFv  # OVL1; s1:ui ('ConnectToGameServer' 0x27E4C0 and 'DisconnectFromGameServer' 0x27E420 call it on theLobby, as SOCOM 1's UIConnectToGameServer and UIDisconnectFromGameServer call RejoinRoom)
+0x002E3790 0x29C JoinRoom__13CZOnlineLobbyFPCc  # OVL1; s1:ui ('JoinMPRoom' = UIJoinMPRoom calls it on theLobby where SOCOM 1's calls JoinRoom)
+0x002E3A30 0x64 RefreshRoomList__13CZOnlineLobbyFP3C2D  # OVL1; s1:ui ('RefreshRoomList' 0x27DAA0, as SOCOM 1's UIRefreshRoomList calls RefreshRoomList; a1 live)
 0x002E3AA0 0x58 func_002E3AA0  # OVL1
 0x002E3B00 0x1C0 func_002E3B00  # OVL1
 0x002E3CC0 0x2B8 func_002E3CC0  # OVL1
@@ -4766,52 +4766,52 @@
 0x002E6400 0x1AC func_002E6400  # OVL1
 0x002E65B0 0x13C func_002E65B0  # OVL1
 0x002E66F0 0xD4 func_002E66F0  # OVL1
-0x002E67D0 0x54 func_002E67D0  # OVL1
-0x002E6830 0x14 func_002E6830  # OVL1
-0x002E6850 0x84 func_002E6850  # OVL1
-0x002E68E0 0x110 func_002E68E0  # OVL1
-0x002E69F0 0x9C func_002E69F0  # OVL1
-0x002E6A90 0x58 func_002E6A90  # OVL1
+0x002E67D0 0x54 IsLeaderOfClan__13CZOnlineLobbyFPCc  # OVL1; s1:ui ('IsLeaderOfClan' = UIIsLeaderOfClan, as SOCOM 1's calls IsLeaderOfClan; the name passed on to the member search)
+0x002E6830 0x14 IsMemberOfClan__13CZOnlineLobbyFv  # OVL1; s1:ui ('IsMemberOfClan' 0x27A910, as SOCOM 1's UIIsMemberOfClan; the clan id against -1)
+0x002E6850 0x84 DisbandClan__13CZOnlineLobbyFv  # OVL1; s1:ui ('DisbandClan' = UIDisbandClan; the code SOCOM 1's DisbandClan's but for MediusCreateMessageID and the status test)
+0x002E68E0 0x110 cbDisbandClan__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP25MediusDisbandClanResponse  # OVL1; s1 by hand (DisbandClan's callback; reports 'MediusDisbandClan')
+0x002E69F0 0x9C GetClanRoster__13CZOnlineLobbyFv  # OVL1; s1:ui ('GetClanRoster' 0x27A390, as SOCOM 1's UIGetClanRoster)
+0x002E6A90 0x58 cbGetClanMemberList__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP31MediusGetClanMemberListResponse  # OVL1; s1 by hand (GetClanRoster's callback, as SOCOM 1's; reports 'MemberListRequest')
 0x002E6AF0 0x3B0 func_002E6AF0  # OVL1
-0x002E6EA0 0xA4 func_002E6EA0  # OVL1
-0x002E6F50 0x15C func_002E6F50  # OVL1
+0x002E6EA0 0xA4 GetInvitedPlayers__13CZOnlineLobbyFv  # OVL1; s1:ui ('GetInvitedPlayers' 0x27A3F0, as SOCOM 1's UIGetInvitedPlayers)
+0x002E6F50 0x15C cbGetClanInvitationsSent__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP36MediusGetClanInvitationsSentResponse  # OVL1; s1 by hand (GetInvitedPlayers' callback, as SOCOM 1's; reports 'MediusGetClanInvitationsSent'; welcomes an accepted one, revokes through the next two)
 0x002E70B0 0x1B4 ClanUpdateInvitations__Fv  # OVL1; s1:calls
-0x002E7270 0x10 func_002E7270  # OVL1
-0x002E7280 0x10 func_002E7280  # OVL1
-0x002E7290 0x10 func_002E7290  # OVL1
-0x002E72A0 0x174 func_002E72A0  # OVL1
-0x002E7420 0x30 func_002E7420  # OVL1
+0x002E7270 0x10 cbClanInviteRevokeHack__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP34MediusRevokeClanInvitationResponse  # OVL1; s1 by hand (reports 'ClanInviteRevokeHack', SOCOM 1's name; passed by cbGetClanInvitationsSent)
+0x002E7280 0x10 cbAddPlayerToClan__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP29MediusAddPlayerToClanResponse  # OVL1; s1 by hand (reports 'MediusAddPlayerToClan'; passed by cbGetClanInvitationsSent, as SOCOM 1's)
+0x002E7290 0x10 ClanHasInvitations__13CZOnlineLobbyFv  # OVL1; s1:ui ('ClanHasInvitations' 0x277960, as SOCOM 1's: the sent invitations' size, 0x44F724)
+0x002E72A0 0x174 RevokeInvite__13CZOnlineLobbyFPCc  # OVL1; s1:ui ('RevokeInvite' 0x27A310, as SOCOM 1's UIRevokeInvite)
+0x002E7420 0x30 cbRevokePlayerInvitation__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP34MediusRevokeClanInvitationResponse  # OVL1; s1 by hand (RevokeInvite's callback; reports 'MediusRevokePlayerInvitation')
 0x002E7450 0x128 RemovePlayerFromClan__13CZOnlineLobbyFPCc  # OVL1; s1:callee
-0x002E7580 0x7C func_002E7580  # OVL1
-0x002E7600 0x244 func_002E7600  # OVL1
-0x002E7850 0x108 func_002E7850  # OVL1
-0x002E7960 0xAC func_002E7960  # OVL1
-0x002E7A10 0x90 func_002E7A10  # OVL1
-0x002E7AA0 0xD8 func_002E7AA0  # OVL1
-0x002E7B80 0x1E8 func_002E7B80  # OVL1
-0x002E7D70 0xF8 func_002E7D70  # OVL1
-0x002E7E70 0xD4 func_002E7E70  # OVL1
+0x002E7580 0x7C cbRemovePlayerFromClan__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP34MediusRemovePlayerFromClanResponse  # OVL1; s1 by hand (RemovePlayerFromClan's callback; reports 'MediusRemovePlayerFromClan')
+0x002E7600 0x244 InvitePlayerToClan__13CZOnlineLobbyFPCc  # OVL1; s1:ui ('InvitePlayerToClan' 0x27A740 and 'InvitePlayerToClanWithArg' 0x27A6C0, as both SOCOM 1 handlers call InvitePlayerToClan)
+0x002E7850 0x108 cbInvitePlayerToClanGetID__FiiiP26MediusAccountGetIDResponse  # OVL1; s1 by hand (InvitePlayerToClan's callback, as SOCOM 1's; reports 'MediusGetPlayerForInvitation', then invites)
+0x002E7960 0xAC cbInvitePlayerToClanInvitation__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP32MediusInvitePlayerToClanResponse  # OVL1; s1 by hand (reports 'MediusInvitePlayerToClanInvitation'; passed by cbInvitePlayerToClanGetID, as SOCOM 1's)
+0x002E7A10 0x90 CreateClan__13CZOnlineLobbyFPCc  # OVL1; s1:ui ('CreateClan' = UICreateClan, twice, as SOCOM 1's calls CreateClan twice)
+0x002E7AA0 0xD8 cbFilterClanName__FiiiP24MediusTextFilterResponse  # OVL1; s1 by hand (CreateClan's text-filter callback, as SOCOM 1's; 'MP_FILTER_FAILURE')
+0x002E7B80 0x1E8 cbCreateClan__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP24MediusCreateClanResponse  # OVL1; s1 by hand (passed by cbFilterClanName, as SOCOM 1's; reports 'MediusCreateClan')
+0x002E7D70 0xF8 UpdateClanStats__13CZOnlineLobbyFv  # OVL1; s1:ui (UIUpdateClanStats, as SOCOM 1's calls UpdateClanStats)
+0x002E7E70 0xD4 cbUpdateClanStats__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP29MediusUpdateClanStatsResponse  # OVL1; s1 by hand (UpdateClanStats' callback; reports 'MediusUpdateClanStats')
 0x002E7F50 0x158 func_002E7F50  # OVL1
 0x002E80B0 0x10 func_002E80B0  # OVL1
 0x002E80C0 0xDC OnCorrectClanTeam__13CZOnlineLobbyFv  # OVL1; s1:callee
 0x002E81A0 0xC func_002E81A0  # OVL1
-0x002E81B0 0xF0 func_002E81B0  # OVL1
-0x002E82A0 0x6C func_002E82A0  # OVL1
-0x002E8310 0xE0 func_002E8310  # OVL1
-0x002E83F0 0x68 func_002E83F0  # OVL1
+0x002E81B0 0xF0 TransferLeadership__13CZOnlineLobbyFPCc  # OVL1; s1:ui (UITransferLeadership, as SOCOM 1's calls TransferLeadership)
+0x002E82A0 0x6C cbTransferClanLeadership__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP36MediusTransferClanLeadershipResponse  # OVL1; s1 by hand (TransferLeadership's callback; reports 'TransferClanLeadership')
+0x002E8310 0xE0 SendClanMessage__13CZOnlineLobbyFPCc  # OVL1; s1:ui ('SendClanMessage' 0x2797F0, as SOCOM 1's UISendClanMessage)
+0x002E83F0 0x68 cbSendClanMessage__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP29MediusSendClanMessageResponse  # OVL1; s1 by hand (SendClanMessage's callback; reports 'SendClanMessage')
 0x002E8460 0x80 func_002E8460  # OVL1
-0x002E84E0 0x164 func_002E84E0  # OVL1
-0x002E8650 0x6C func_002E8650  # OVL1
-0x002E86C0 0xB0 func_002E86C0  # OVL1
-0x002E8770 0x10 func_002E8770  # OVL1
+0x002E84E0 0x164 cbGetMyClanMessages__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP31MediusGetMyClanMessagesResponse  # OVL1; s1 by hand (reports 'GetMyClanMessages'; 'No clan messages.')
+0x002E8650 0x6C CheckClanInvitations__13CZOnlineLobbyFv  # OVL1; s1:ui ('CheckMyInvites' 0x27A3C0; SOCOM 1's UICheckClanInvites calls CheckClanInvitations, and this one's callback reports 'CheckMyClanInvitations', SOCOM 1's cbCheckMyClanInvitations)
+0x002E86C0 0xB0 cbCheckMyClanInvitations__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP36MediusCheckMyClanInvitationsResponse  # OVL1; s1 by hand (CheckClanInvitations' callback; reports 'CheckMyClanInvitations')
+0x002E8770 0x10 HasClanInvitations__13CZOnlineLobbyFv  # OVL1; s1:ui ('HasClanInvitations' 0x277950, as SOCOM 1's: the received invitations' size, 0x44F704)
 0x002E8780 0x1FC func_002E8780  # OVL1
-0x002E8980 0x6C func_002E8980  # OVL1
-0x002E89F0 0x6C func_002E89F0  # OVL1
-0x002E8A60 0x30 func_002E8A60  # OVL1
+0x002E8980 0x6C DeclineClanInvitation__13CZOnlineLobbyFi  # OVL1; s1:ui (UIDeclineInvitation, as SOCOM 1's calls DeclineClanInvitation)
+0x002E89F0 0x6C AcceptClanInvitation__13CZOnlineLobbyFi  # OVL1; s1:ui (UIAcceptInvitation passes atoi(arg), as SOCOM 1's calls AcceptClanInvitation)
+0x002E8A60 0x30 cbRespondToClanInvitation__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP37MediusRespondToClanInvitationResponse  # OVL1; s1 by hand (Accept/DeclineClanInvitation's callback; reports 'RespondToClanInvitation')
 0x002E8A90 0x138 GetClan__13CZOnlineLobbyFv  # OVL1; s1:calls
-0x002E8BD0 0x314 func_002E8BD0  # OVL1
-0x002E8EF0 0x7C func_002E8EF0  # OVL1
-0x002E8F70 0xBC func_002E8F70  # OVL1
+0x002E8BD0 0x314 cbGetMyClans__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP24MediusGetMyClansResponse  # OVL1; s1 by hand (GetClan's callback; reports 'GetMyClans')
+0x002E8EF0 0x7C QuitClan__13CZOnlineLobbyFv  # OVL1; s1:ui ('QuitClan' 0x278D00, as SOCOM 1's UIQuitClan)
+0x002E8F70 0xBC cbQuitClan__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP34MediusRemovePlayerFromClanResponse  # OVL1; s1 by hand (QuitClan's callback; reports 'QuitClan')
 0x002E9030 0x128 func_002E9030  # OVL1
 0x002E9160 0xD4 func_002E9160  # OVL1
 0x002E9240 0x138 func_002E9240  # OVL1
@@ -4839,7 +4839,7 @@
 0x002EA730 0xC8 func_002EA730  # OVL1
 0x002EA800 0x12C func_002EA800  # OVL1
 0x002EA930 0x248 func_002EA930  # OVL1
-0x002EAB80 0xEC Pop__5CGameFUi  # OVL1; s1:callee
+0x002EAB80 0xEC GetClanRanking__13CZOnlineLobbyFi  # OVL1; s1:callee; ours (was Pop__5CGameFUi by s1:callee, a false pair: UIGameStatePopCommand's a0 is theLobby 0x44F370, not theGame, and the UI command table files that handler under 'GetClanRanking'; CGame::Pop is 0x2CF2F0, fts_state.h. Two Medius requests, 'GetSurrounding' and 'ClanTotal'; the argument a flag, tested as an int)
 0x002EAC70 0x108 func_002EAC70  # OVL1
 0x002EAD80 0xA0 func_002EAD80  # OVL1
 0x002EAE20 0xB8 func_002EAE20  # OVL1
@@ -4930,8 +4930,8 @@
 0x002F3FF0 0x38 func_002F3FF0  # OVL1
 0x002F4030 0x44 func_002F4030  # OVL1
 0x002F4080 0x8 func_002F4080  # OVL1
-0x002F4090 0x1A8 func_002F4090  # OVL1
-0x002F4240 0x88 func_002F4240  # OVL1
+0x002F4090 0x1A8 RecoverFromNetError__13CZOnlineLobbyFi  # OVL1; s1 by hand (CZNetwork::zNetCreateObject calls it on theLobby, as SOCOM 1's calls RecoverFromNetError)
+0x002F4240 0x88 Bailout__13CZOnlineLobbyFv  # OVL1; s1:ui ('LobbyBailout' 0x27DC90, as SOCOM 1's UILobbyBailout calls Bailout)
 0x002F42D0 0xC func_002F42D0  # OVL1
 0x002F42E0 0x18 func_002F42E0  # OVL1
 0x002F4300 0x560 func_002F4300  # OVL1
@@ -4939,7 +4939,7 @@
 0x002F4A20 0x180 func_002F4A20  # OVL1
 0x002F4BA0 0x1B8 func_002F4BA0  # OVL1
 0x002F4D60 0x90 func_002F4D60  # OVL1
-0x002F4DF0 0xA8 func_002F4DF0  # OVL1
+0x002F4DF0 0xA8 Censor__13CZOnlineLobbyFPCcPFPCcPv_vPv  # OVL1; s1:ui (UINetCensorText and SendChatMsg call it, as SOCOM 1's call Censor)
 0x002F4EA0 0x44 func_002F4EA0  # OVL1
 0x002F4EF0 0xCC func_002F4EF0  # OVL1
 0x002F4FC0 0x60 func_002F4FC0  # OVL1
@@ -4975,47 +4975,47 @@
 0x002F6D00 0x6C func_002F6D00  # OVL1
 0x002F6D70 0xBC func_002F6D70  # OVL1
 0x002F6E30 0x90 func_002F6E30  # OVL1
-0x002F6EC0 0x15C func_002F6EC0  # OVL1
+0x002F6EC0 0x15C RefreshGamePlayerList__13CZOnlineLobbyFP3C2D  # OVL1; s1:ui ('RefreshGamePlayerList' 0x27D820, as SOCOM 1's UIRefreshGamePlayerList calls RefreshGamePlayerList)
 0x002F7020 0x668 func_002F7020  # OVL1
 0x002F7690 0x74 func_002F7690  # OVL1
-0x002F7710 0x8C func_002F7710  # OVL1
+0x002F7710 0x8C GetAnnouncements__13CZOnlineLobbyFv  # OVL1; s1:ui ('GetMediusAnnouncements' = UIGetMediusAnnouncements, as SOCOM 1's calls GetAnnouncements)
 0x002F77A0 0x244 func_002F77A0  # OVL1
 0x002F79F0 0xC4 func_002F79F0  # OVL1
 0x002F7AC0 0x180 func_002F7AC0  # OVL1
 0x002F7C40 0x144 func_002F7C40  # OVL1
 0x002F7D90 0x210 func_002F7D90  # OVL1
 0x002F7FA0 0x114 func_002F7FA0  # OVL1
-0x002F80C0 0x54 func_002F80C0  # OVL1
-0x002F8120 0x108 func_002F8120  # OVL1
-0x002F8230 0x40 func_002F8230  # OVL1
-0x002F8270 0x68 func_002F8270  # OVL1
-0x002F82E0 0x6C func_002F82E0  # OVL1
-0x002F8350 0x54 func_002F8350  # OVL1
-0x002F83B0 0x80C func_002F83B0  # OVL1
+0x002F80C0 0x54 SendEndGameReport__13CZOnlineLobbyFv  # OVL1; s1:ui ('DisconnectFromGameServer' 0x27E420 calls it before RejoinRoom, as SOCOM 1's UIDisconnectFromGameServer does; the session key copied and one Medius call)
+0x002F8120 0x108 AdvanceMissionSequence__13CZOnlineLobbyFv  # OVL1; s1:ui ('AdvanceMPMission' 0x279490, as SOCOM 1's UIAdvanceMPMission)
+0x002F8230 0x40 ResetMissionSequence__13CZOnlineLobbyFv  # OVL1; s1:ui ('SetMPMissionSeq' 0x278EB0, as SOCOM 1's UISetMPMissionSeq calls ResetMissionSequence)
+0x002F8270 0x68 SetMissionSequence__13CZOnlineLobbyFUcPUc  # OVL1; s1:ui ('SetMPMissionSeq' 0x278EB0 and CZGameState::RemoteGameUpdateCallback call it, as SOCOM 1's UISetMPMissionSeq and RemoteGameUpdateCallback call SetMissionSequence)
+0x002F82E0 0x6C GetMissionSequence__13CZOnlineLobbyFPUcPUc  # OVL1; s1 by hand (CZGameState::UpdateLocalGame calls it on theLobby, as SOCOM 1's calls GetMissionSequence)
+0x002F8350 0x54 ForceStatusReport__13CZOnlineLobbyFv  # OVL1; s1:ui (UIForceMediusStatusReport, as SOCOM 1's calls ForceStatusReport)
+0x002F83B0 0x80C JoinGame__13CZOnlineLobbyFPCc  # OVL1; s1:ui ('JoinMPGame' 0x27D730 calls it on theLobby where SOCOM 1's UIJoinMPGame calls JoinGame; a1 live)
 0x002F8BC0 0x9C func_002F8BC0  # OVL1
 0x002F8C60 0x80 func_002F8C60  # OVL1
 0x002F8CE0 0x6C func_002F8CE0  # OVL1
 0x002F8D50 0x80 func_002F8D50  # OVL1
-0x002F8DD0 0x80 func_002F8DD0  # OVL1
+0x002F8DD0 0x80 GameIsPasswordProtected__13CZOnlineLobbyFPCc  # OVL1; s1:ui ('GameHasPassword' 0x27D390, as SOCOM 1's UIGameHasPassword calls GameIsPasswordProtected)
 0x002F8E50 0x78 func_002F8E50  # OVL1
 0x002F8ED0 0xF4 func_002F8ED0  # OVL1
 0x002F8FD0 0x234 func_002F8FD0  # OVL1
 0x002F9210 0x8 func_002F9210  # OVL1
 0x002F9220 0x1F0 func_002F9220  # OVL1
-0x002F9410 0x1DC func_002F9410  # OVL1
-0x002F95F0 0x8C func_002F95F0  # OVL1
+0x002F9410 0x1DC CreateGame__13CZOnlineLobbyFv  # OVL1; s1:ui ('CreateMPGame' 0x27D7D0 calls it on theLobby where SOCOM 1's UICreateMPGame calls CreateGame)
+0x002F95F0 0x8C BanSelfFromGame__13CZOnlineLobbyFv  # OVL1; s1:ui ('BanSelfFromGame' 0x278D30, as SOCOM 1's UIBanSelfFromGame)
 0x002F9680 0x10 func_002F9680  # OVL1
 0x002F9690 0x4C func_002F9690  # OVL1
 0x002F96E0 0xC func_002F96E0  # OVL1
 0x002F96F0 0x1FC func_002F96F0  # OVL1
 0x002F98F0 0x1C8 func_002F98F0  # OVL1
 0x002F9AC0 0x854 func_002F9AC0  # OVL1
-0x002FA320 0x234 func_002FA320  # OVL1
-0x002FA560 0x3C func_002FA560  # OVL1
-0x002FA5A0 0x234 func_002FA5A0  # OVL1
+0x002FA320 0x234 Register__13CZOnlineLobbyFPCcPCc  # OVL1; s1:ui ('LobbyRegister' 0x27DDE0 calls it on theLobby where SOCOM 1's UILobbyRegister calls Register)
+0x002FA560 0x3C Logout__13CZOnlineLobbyFv  # OVL1; s1:ui ('LobbyLogout' 0x27DCC0, as SOCOM 1's UILobbyLogout calls Logout)
+0x002FA5A0 0x234 Login__13CZOnlineLobbyFPCcPCc  # OVL1; s1:ui ('LobbyLogin' 0x27DD20, as SOCOM 1's UILobbyLogin calls Login)
 0x002FA7E0 0xC func_002FA7E0  # OVL1
-0x002FA7F0 0x10 func_002FA7F0  # OVL1
-0x002FA800 0x64 func_002FA800  # OVL1
+0x002FA7F0 0x10 SetPlayerDescription__13CZOnlineLobbyFPCc  # OVL1; s1:ui (UISetPlayerDescription calls it; Censor(desc, 0x2FA800, 0) as SOCOM 1's SetPlayerDescription censors through cbFilterPlayerDescription)
+0x002FA800 0x64 cbFilterPlayerDescription__FPCcPv  # OVL1; s1 by hand (the censor callback SetPlayerDescription hands to Censor, as SOCOM 1's)
 0x002FA870 0x74 func_002FA870  # OVL1
 0x002FA8F0 0x190 func_002FA8F0  # OVL1
 0x002FAA80 0xDC func_002FAA80  # OVL1
@@ -12907,35 +12907,35 @@
 0x006456F8 0x8 func_006456F8  # OVL2 unaligned
 0x00645700 0x8 func_00645700  # OVL2
 0x00645708 0x8 func_00645708  # OVL2 unaligned
-0x00645710 0xA8 func_00645710  # OVL2
-0x006457B8 0x9C func_006457B8  # OVL2 unaligned
+0x00645710 0xA8 MediusCreateClan  # OVL2; s1 by call site (cbFilterClanName 0x2E7AA0 calls it with cbCreateClan, as SOCOM 1's cbFilterClanName calls MediusCreateClan; the online lane)
+0x006457B8 0x9C MediusDisbandClan  # OVL2 unaligned; s1 by call site (DisbandClan 0x2E6850, as SOCOM 1's DisbandClan; the online lane)
 0x00645858 0xA8 func_00645858  # OVL2 unaligned
 0x00645900 0x9C func_00645900  # OVL2
-0x006459A0 0xA8 func_006459A0  # OVL2
-0x00645A48 0xA8 func_00645A48  # OVL2 unaligned
-0x00645AF0 0x9C func_00645AF0  # OVL2
-0x00645B90 0xA8 func_00645B90  # OVL2
-0x00645C38 0x9C func_00645C38  # OVL2 unaligned
-0x00645CD8 0x9C func_00645CD8  # OVL2 unaligned
-0x00645D78 0xA8 func_00645D78  # OVL2 unaligned
-0x00645E20 0x9C func_00645E20  # OVL2
-0x00645EC0 0x9C func_00645EC0  # OVL2
-0x00645F60 0xA8 func_00645F60  # OVL2
+0x006459A0 0xA8 MediusTransferClanLeadership  # OVL2; s1 by call site (TransferLeadership 0x2E81B0, as SOCOM 1's; the online lane)
+0x00645A48 0xA8 MediusAddPlayerToClan  # OVL2 unaligned; s1 by call site (cbGetClanInvitationsSent 0x2E6F50 with cbAddPlayerToClan, as SOCOM 1's; the online lane)
+0x00645AF0 0x9C MediusRemovePlayerFromClan  # OVL2; s1 by call site (RemovePlayerFromClan 0x2E7450 and QuitClan 0x2E8EF0, as SOCOM 1's both; the online lane)
+0x00645B90 0xA8 MediusInvitePlayerToClan  # OVL2; s1 by call site (cbInvitePlayerToClanGetID 0x2E7850 with cbInvitePlayerToClanInvitation, as SOCOM 1's; the online lane)
+0x00645C38 0x9C MediusCheckMyClanInvitations  # OVL2 unaligned; s1 by call site (CheckClanInvitations 0x2E8650 with cbCheckMyClanInvitations, as SOCOM 1's; the online lane)
+0x00645CD8 0x9C MediusGetClanInvitationsSent  # OVL2 unaligned; s1 by call site (GetInvitedPlayers 0x2E6EA0 with cbGetClanInvitationsSent, as SOCOM 1's; the online lane)
+0x00645D78 0xA8 MediusRespondToClanInvitation  # OVL2 unaligned; s1 by call site (Accept/DeclineClanInvitation with cbRespondToClanInvitation, as SOCOM 1's; the online lane)
+0x00645E20 0x9C MediusRevokeClanInvitation  # OVL2; s1 by call site (RevokeInvite 0x2E72A0 and cbGetClanInvitationsSent, as SOCOM 1's; the online lane)
+0x00645EC0 0x9C MediusGetMyClanMessages  # OVL2; s1 by call site (called with cbGetMyClanMessages 0x2E84E0 by 0x2E8460 and cbGetMyClans, as SOCOM 1's cbGetMyClans calls MediusGetMyClanMessages with it; the online lane)
+0x00645F60 0xA8 MediusSendClanMessage  # OVL2; s1 by call site (SendClanMessage 0x2E8310 passes cbSendClanMessage 0x2E83F0, the callback SOCOM 1 hands MediusSendClanMessage; the online lane)
 0x00646008 0xA8 func_00646008  # OVL2 unaligned
 0x006460B0 0x9C func_006460B0  # OVL2
 0x00646150 0xA8 func_00646150  # OVL2
 0x006461F8 0xA8 func_006461F8  # OVL2 unaligned
 0x006462A0 0x9C func_006462A0  # OVL2
 0x00646340 0x9C func_00646340  # OVL2
-0x006463E0 0x9C func_006463E0  # OVL2
+0x006463E0 0x9C MediusGetMyClans  # OVL2; s1 by call site (GetClan 0x2E8A90 with cbGetMyClans, as SOCOM 1's; the online lane)
 0x00646480 0x9C func_00646480  # OVL2
 0x00646520 0x9C func_00646520  # OVL2
 0x006465C0 0x9C func_006465C0  # OVL2
-0x00646660 0xA8 func_00646660  # OVL2
+0x00646660 0xA8 MediusUpdateClanStats  # OVL2; s1 by call site (UpdateClanStats 0x2E7D70 with cbUpdateClanStats, as SOCOM 1's; the online lane)
 0x00646708 0x9C func_00646708  # OVL2 unaligned
 0x006467A8 0x90 func_006467A8  # OVL2 unaligned
 0x00646838 0x90 func_00646838  # OVL2 unaligned
-0x006468C8 0x90 func_006468C8  # OVL2 unaligned
+0x006468C8 0x90 MediusGetClanMemberList  # OVL2 unaligned; s1 by call site (GetClanRoster 0x2E69F0 with cbGetClanMemberList, as SOCOM 1's; the online lane)
 0x00646958 0xA8 func_00646958  # OVL2 unaligned
 0x00646A00 0x74 MediusSetNatServiceAddress  # OVL2; s1:exact
 0x00646A78 0x3C MediusGetNatServiceAddress  # OVL2 unaligned; s1:exact
@@ -12983,7 +12983,7 @@
 0x00648488 0x74 func_00648488  # OVL2 unaligned
 0x00648500 0xB4 func_00648500  # OVL2
 0x006485B8 0xC0 func_006485B8  # OVL2 unaligned
-0x00648678 0xA8 func_00648678  # OVL2 unaligned
+0x00648678 0xA8 MediusTextFilter  # OVL2 unaligned; s1 by call site (Censor 0x2F4DF0 and CreateClan 0x2E7A10, as SOCOM 1's both; the online lane)
 0x00648720 0x11C func_00648720  # OVL2
 0x00648840 0xB4 func_00648840  # OVL2
 0x006488F8 0x10C func_006488F8  # OVL2 unaligned
@@ -12991,7 +12991,7 @@
 0x00648AB0 0x9C func_00648AB0  # OVL2
 0x00648B50 0x9C func_00648B50  # OVL2
 0x00648BF0 0x9C func_00648BF0  # OVL2
-0x00648C90 0x9C func_00648C90  # OVL2
+0x00648C90 0x9C MediusGetGamePlayers  # OVL2; s1 by call site (RefreshGamePlayerList 0x2F6EC0, as SOCOM 1's; the online lane)
 0x00648D30 0x9C func_00648D30  # OVL2
 0x00648DD0 0x9C func_00648DD0  # OVL2
 0x00648E70 0x9C func_00648E70  # OVL2
@@ -13009,11 +13009,11 @@
 0x006495E0 0x9C func_006495E0  # OVL2
 0x00649680 0x7C func_00649680  # OVL2
 0x00649700 0x88 func_00649700  # OVL2
-0x00649788 0x94 func_00649788  # OVL2 unaligned
-0x00649820 0x9C func_00649820  # OVL2
+0x00649788 0x94 MediusSendEndGameReport  # OVL2 unaligned; s1 by call site (SendEndGameReport 0x2F80C0, as SOCOM 1's; the online lane)
+0x00649820 0x9C MediusGetAnnouncements  # OVL2; s1 by call site (GetAnnouncements 0x2F7710, as SOCOM 1's; the online lane)
 0x006498C0 0x9C func_006498C0  # OVL2
 0x00649960 0x9C func_00649960  # OVL2
-0x00649A00 0x9C func_00649A00  # OVL2
+0x00649A00 0x9C MediusClearGameListFilter  # OVL2; s1 by call site (JoinGame 0x2F83B0, as SOCOM 1's; the online lane)
 0x00649AA0 0x9C func_00649AA0  # OVL2
 0x00649B40 0x90 func_00649B40  # OVL2
 0x00649BD0 0x28 func_00649BD0  # OVL2
@@ -13021,8 +13021,8 @@
 0x00649C20 0x28 func_00649C20  # OVL2
 0x00649C48 0x9C func_00649C48  # OVL2 unaligned
 0x00649CE8 0x9C func_00649CE8  # OVL2 unaligned
-0x00649D88 0x9C func_00649D88  # OVL2 unaligned
-0x00649E28 0x9C func_00649E28  # OVL2 unaligned
+0x00649D88 0x9C MediusBanPlayer  # OVL2 unaligned; s1 by call site (BanSelfFromGame 0x2F95F0, as SOCOM 1's; the online lane)
+0x00649E28 0x9C MediusAccountGetID  # OVL2 unaligned; s1 by call site (InvitePlayerToClan 0x2E7600 with cbInvitePlayerToClanGetID, as SOCOM 1's; the online lane)
 0x00649EC8 0x9C func_00649EC8  # OVL2 unaligned
 0x00649F68 0x9C func_00649F68  # OVL2 unaligned
 0x0064A008 0xC func_0064A008  # OVL2 unaligned
