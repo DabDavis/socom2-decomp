@@ -1956,11 +1956,11 @@
 0x0021C4E0 0x210 func_0021C4E0  # OVL1
 0x0021C6F0 0x4A4 func_0021C6F0  # OVL1
 0x0021CBA0 0x194 UnInit__10CWeaponSelFv  # OVL1; s1:calls (CHUD::ReInit_Uninit's next, as SOCOM 1's); by hand (CHUD::ReInit_Uninit calls it on CHUD+0x1A50, the member 0x21D760 constructs with CWeaponSel's vtable 0x405610; hud_weaponsel.cpp's UnInit, Init, ctor at its end as SOCOM 1's)
-0x0021CD40 0xA1C func_0021CD40  # OVL1
+0x0021CD40 0xA1C Init__10CWeaponSelFPQ23zdb6CWorldP7C2DFont  # OVL1; s1:calls by hand (the HUD lane: CHUD::Init calls it on CHUD+0x1A50, the single-player selector, with the world and the HUD's font, where SOCOM 1's calls CWeaponSel::Init(CWorld *, C2DFont *); "reticuletex.tif" and ".TCM_SELECT" as SOCOM 1's)
 0x0021D760 0x270 __ct__10CWeaponSelFv  # OVL1; by hand (stores CWeaponSel's vtable 0x405610; CHUD's constructor builds CHUD+0x1A50 with it; hud_weaponsel.cpp's last function, as SOCOM 1's)
 0x0021D9D0 0x478 func_0021D9D0  # OVL1
 0x0021DE50 0x80 UnInit__14CZActionBitmapFv  # OVL1; s1:calls (CHUD::ReInit_Uninit's call between the mission cameras' and the reticle's, as SOCOM 1's)
-0x0021DED0 0x1248 func_0021DED0  # OVL1
+0x0021DED0 0x1248 Init__14CZActionBitmapFP4CHUDP7C2DFont  # OVL1; s1:calls by hand (the HUD lane: CHUD::Init calls it on CHUD+0x174D0, the action icon, with the HUD and its font, as SOCOM 1's Init(CHUD *, C2DFont *); the action_*.tif textures)
 0x0021F120 0xE8 func_0021F120  # OVL1
 0x0021F210 0x638 func_0021F210  # OVL1
 0x0021F850 0x870 func_0021F850  # OVL1
@@ -2043,7 +2043,7 @@
 0x00227730 0x150 AfterClose__16CInGameWeaponSelFv  # OVL1; s1:calls by hand (UnInit 0x227960 calls it after the inlined AfterCloseFirst, as SOCOM 1's UnInit calls AfterClose; 0x150 against 0x14C)
 0x00227880 0xE0 Clear__16CInGameWeaponSelFv  # OVL1; s1:calls by hand (hud_ingame_weaponsel.cpp: UnInit 0x227960 calls it last, as SOCOM 1's UnInit calls Clear; the five texts, the three selected texts and the five selected names and the title ClearAndWipe'd, SOCOM 1's 0xE8 with six names)
 0x00227960 0x170 UnInit__16CInGameWeaponSelFv  # OVL1; s1:calls (CHUD::ReInit_Uninit's next, as SOCOM 1's); by hand (CHUD::ReInit_Uninit calls it on CHUD+0x2730, the member 0x2284C0 constructs with CInGameWeaponSel's vtable 0x405150; hud_ingame_weaponsel.cpp's Clear, UnInit, Init, ctor sizes 0xE0/0x170/0x9E4/0x194 against SOCOM 1's 0xE8/0x170/0xA64/0x2F8)
-0x00227AD0 0x9E4 func_00227AD0  # OVL1
+0x00227AD0 0x9E4 Init__16CInGameWeaponSelFPQ23zdb6CWorldP7C2DFont  # OVL1; s1:calls by hand (the HUD lane: CHUD::Init calls it on CHUD+0x2730, the in-game selector, with the world and the HUD's font, right after CWeaponSel's, as SOCOM 1's; "weapon_selection.tif" as SOCOM 1's)
 0x002284C0 0x194 __ct__16CInGameWeaponSelFv  # OVL1; by hand (stores CInGameWeaponSel's vtable 0x405150; CHUD's constructor builds CHUD+0x2730 with it; hud_ingame_weaponsel.cpp's last function before hud_fader.cpp, as SOCOM 1's)
 0x00228660 0x80 __dt__8CFlashFXFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002286E0 0xA0 Reset__14CFlashFXVectorFv  # OVL1; s1:order (hud_fader.cpp's order, SOCOM 1's code: the elements deleted through slot 0, then a temporary vector, clear, swap)
@@ -2328,7 +2328,7 @@
 0x00240600 0x584 func_00240600  # OVL1
 0x00240B90 0x1BC func_00240B90  # OVL1
 0x00240D50 0x104 UnInit__12CMPWeaponSelFv  # OVL1; s1:calls (CHUD::ReInit_Uninit's next, as SOCOM 1's); by hand (CHUD::ReInit_Uninit calls it on CHUD+0x38E0 only in a network game, the member 0x241A90 constructs -- a SOCOM II selector honouring the server's Enable_203FRAG.. valves; the class name ours; s1:calls had shifted SOCOM 1's names one member along)
-0x00240E60 0xC2C func_00240E60  # OVL1
+0x00240E60 0xC2C Init__12CMPWeaponSelFv  # OVL1; s1:calls by hand (the HUD lane: CHUD::Init calls it on CHUD+0x38E0, the network selector, only in a network game -- UnInit's test too; it lists the selected slots, loads the three backdrops and sets the Enable_203/GL/F2000 valves; after UnInit, before the constructor, as SOCOM 1's selector units end)
 0x00241A90 0x150 __ct__12CMPWeaponSelFv  # OVL1; by hand (CHUD's constructor builds CHUD+0x38E0 with it, after UnInit and Init at 0x240D50/0x240E60; no vtable, so no RTTI name: the class name ours)
 0x00241BE0 0x48 func_00241BE0  # OVL1
 0x00241C30 0x64 SetTrans__10CHealthBarFf  # OVL1; by hand (slot 11 of CHealthBar's vtable 0x405EF0, C2D's SetTrans: SetTrans on the bitmaps at +0x30, +0xB0, +0x130)

@@ -173,9 +173,10 @@ public:
     virtual void Draw(zdb::CCamera *cam);
     virtual void SetTrans(float trans);
 
-    unsigned char _18[0x20 - 0x18];
+    class CMPWeaponSel *m_owner;   // 0x18: the selector (its Init sets the category page's)
+    unsigned char _1c[0x20 - 0x1c];
     CWeaponSlot *m_slots[5];   // 0x20
-    unsigned char _34[0x38 - 0x34];
+    int m_34;   // 0x34: zeroed by the selector's Init
 };   // 0x38 bytes
 
 class CMPWeaponCategories;
@@ -216,7 +217,9 @@ public:
     SlotList m_list;   // 0x960
     CategorySlot m_categories[4];   // 0x9a0
     C2DBitmap m_bitmap3;   // 0xea0
-    unsigned char _f20[0xf40 - 0xf20];
+    unsigned char _f20[0xf30 - 0xf20];
+    class CMPWeaponSel *m_owner;   // 0xf30: the selector (its Init sets it)
+    unsigned char _f34[0xf40 - 0xf34];
 } __attribute__((aligned(16)));   // 0xf40 bytes
 
 /* the network game's weapon selector: slot lists honouring the server's weapon valves
@@ -226,9 +229,13 @@ public:
 class CMPWeaponSel {
 public:
     CMPWeaponSel();
+    void Init();
     void UnInit();
     void Off();
     void On();
+    inline void Set203(bool on);
+    inline void SetGL(bool on);
+    inline void SetF2000(bool on);
 
     bool m_active;   // 0x0: set while the selector is up (On does nothing without it)
     C2DString m_title;   // 0x4
@@ -238,7 +245,12 @@ public:
     CMPWeaponCategories m_categories;   // 0x220
     SlotList m_list;   // 0x1160
     SelectedSlot m_selected[5];   // 0x1198
-    unsigned char _1530[0x1540 - 0x1530];
+    unsigned char m_1530;   // 0x1530: 255 from Init
+    unsigned char m_1531;   // 0x1531: 255 from Init
+    bool m_203;   // 0x1532: the M203's grenades enabled (Enable_203FRAG and the rest)
+    bool m_f2000;   // 0x1533: the F2000's (Enable_F2000FRAG ...)
+    bool m_gl;   // 0x1534: the grenade launcher's (Enable_GLFRAG ...)
+    unsigned char _1535[0x1540 - 0x1535];
 } __attribute__((aligned(16)));   // 0x1540 bytes
 
 #endif
