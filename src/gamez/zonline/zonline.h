@@ -273,6 +273,12 @@ public:
     bool HasClanInvitations();
     void CreateClan(const char *name);
     void TransferLeadership(const char *name);
+    void ChangeState(LOBBY_STATE state);
+    bool Logout();
+    void BanSelfFromGame();
+    void GetMissionSequence(unsigned char *idx, unsigned char *seq);
+    void SendEndGameReport();
+    void GetAnnouncements();
     bool RemovePlayerFromClan(const char *name);
     bool SendClanMessage(const char *text);
     void GetClanMessages();

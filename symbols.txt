@@ -4910,7 +4910,7 @@
 0x002EFC80 0x17C func_002EFC80  # OVL1
 0x002EFE00 0x8 func_002EFE00  # OVL1
 0x002EFE10 0x10 func_002EFE10  # OVL1
-0x002EFE20 0x24 func_002EFE20  # OVL1
+0x002EFE20 0x24 ChangeState__13CZOnlineLobbyF11LOBBY_STATE  # OVL1; ours (pushes its byte onto the state queue at +0x64 through the deque's push_back 0x2E1610, where SOCOM 1 pushes inline; Logout passes END_SESSION 18, the 0x2E0440 thunk SESSION_BEGIN 12)
 0x002EFE50 0x1C4 func_002EFE50  # OVL1
 0x002F0020 0xE7C func_002F0020  # OVL1
 0x002F0EA0 0x204 func_002F0EA0  # OVL1
@@ -4979,7 +4979,7 @@
 0x002F7020 0x668 func_002F7020  # OVL1
 0x002F7690 0x74 func_002F7690  # OVL1
 0x002F7710 0x8C GetAnnouncements__13CZOnlineLobbyFv  # OVL1; s1:ui ('GetMediusAnnouncements' = UIGetMediusAnnouncements, as SOCOM 1's calls GetAnnouncements)
-0x002F77A0 0x244 func_002F77A0  # OVL1
+0x002F77A0 0x244 cbGetAnnouncements__FiiiP30MediusGetAnnouncementsResponse  # OVL1; s1 by hand (GetAnnouncements' callback, as SOCOM 1's GetAnnouncements passes cbGetAnnouncements)
 0x002F79F0 0xC4 func_002F79F0  # OVL1
 0x002F7AC0 0x180 func_002F7AC0  # OVL1
 0x002F7C40 0x144 func_002F7C40  # OVL1
@@ -5004,7 +5004,7 @@
 0x002F9220 0x1F0 func_002F9220  # OVL1
 0x002F9410 0x1DC CreateGame__13CZOnlineLobbyFv  # OVL1; s1:ui ('CreateMPGame' 0x27D7D0 calls it on theLobby where SOCOM 1's UICreateMPGame calls CreateGame)
 0x002F95F0 0x8C BanSelfFromGame__13CZOnlineLobbyFv  # OVL1; s1:ui ('BanSelfFromGame' 0x278D30, as SOCOM 1's UIBanSelfFromGame)
-0x002F9680 0x10 func_002F9680  # OVL1
+0x002F9680 0x10 cbBanSelfFromGame__FiiiP23MediusBanPlayerResponse  # OVL1; s1 by hand (BanSelfFromGame's callback, as SOCOM 1's: only the status checked, SOCOM 1's an empty body)
 0x002F9690 0x4C func_002F9690  # OVL1
 0x002F96E0 0xC func_002F96E0  # OVL1
 0x002F96F0 0x1FC func_002F96F0  # OVL1
