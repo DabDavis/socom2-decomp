@@ -5144,7 +5144,7 @@
 0x00303730 0x44 GameHasPassword__10CZLANLobbyFPCc  # OVL1; ours (UIGameHasPassword 0x27D410 on the LAN lobby: the room's game by name, its flags' player-password bit) -- byte-exact, zNetLANLobby.cpp
 0x00303780 0x224 GetGameInfo__10CZLANLobbyFP11LANGameInfo  # OVL1; ours (the hosted game's 0x190-byte info brought up to date -- players, mission, lock -- and copied out member by member: zNetDme's LAN info exchange 0x30CACC/0x30D200 calls it)
 0x003039B0 0x588 func_003039B0  # OVL1
-0x00303F40 0x364 func_00303F40  # OVL1
+0x00303F40 0x364 CreateGame__10CZLANLobbyFv  # OVL1; ours (UICreateMPGame 0x27D7EC on the LAN lobby: the game server's connection info ours (our address, port 10075), the hosted game's info built from the menus' valves and variables)
 0x003042B0 0xE0 RefreshGameList__10CZLANLobbyFP3C2D  # OVL1; ours (UIRefreshGameList 0x27DBD8 on the LAN lobby: the room's games marked unchecked, the filters cleared, the LAN asked through 0x621EF8)
 0x00304390 0x48 cbLANInfoRequest__Fii  # OVL1; ours (the callback CZLANLobby::RefreshGameList 0x3042B0 hands the DME 0x621EF8: a console's address looked up and our game's info sent it through 0x30CB20)
 0x003043E0 0x34 Disconnect__10CZLANLobbyFv  # OVL1; ours (UILobbyDisconnect 0x274D7C on the LAN lobby: theLobby's UI resources released, the room let go) -- byte-exact, zNetLANLobby.cpp
