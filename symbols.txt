@@ -3726,7 +3726,7 @@
 0x002A0200 0x108 AddTarget__11CTargetListFP7CEntityP7CEntity  # OVL1; new in SOCOM II (UpdateTargetList calls it): a default CTarget pushed (vector<CTarget>::insert out of line), then SOCOM 1's CTarget::Update inlined on the back -- the vector to the target off the positions at 0x1C, its square, the range stale, a new target's state cleared; the name is ours; ent_target.cpp
 0x002A0310 0x140 RemoveTarget__11CTargetListFP7CEntity  # OVL1; new in SOCOM II (UpdateTargetList calls it): std::remove over the targets on an entity (find inlined, remove_copy 0x2A1210 called), then erase 0x2A19C0; the name is ours; ent_target.cpp
 0x002A0450 0x468 UpdateTargetList__7CEntityFb  # OVL1; s1:callee (CEntity::PreTickAll calls it with false and func_0029FB10, SOCOM 1's RecycleEntity(Ui,CEntity*,b), with true, at the places SOCOM 1's call UpdateTargetList__7CEntityFb, 0x1EFBF0); ent_target.cpp
-0x002A08C0 0x148 func_002A08C0  # OVL1
+0x002A08C0 0x148 CountAwareness__7CEntityFv  # OVL1; new in SOCOM II (called from OVL2, 0x5CCCD0): every entity's aware counter (0xDC) cleared, then each live entity that keeps a target list counts itself on every aware (flag 0x200) target sharing none of its teams -- the name is ours; ent_target.cpp
 0x002A0A10 0x3C8 func_002A0A10  # OVL1
 0x002A0DE0 0x18C ReplaceTargetList__7CEntityFP7CEntityP7CEntity  # OVL1; s1:callee (DoRecycleEntity calls it with the recycled entity and the stand-in, where SOCOM 1's calls ReplaceTargetList__7CEntityFP7CEntityP7CEntity, 0x1F0930); ent_target.cpp
 0x002A0F70 0x150 SetIncludeInTargetList__7CEntityFb  # OVL1; s1:align

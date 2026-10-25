@@ -54,6 +54,33 @@ void CEntity::SetIncludeInTargetList(bool on)
     m_include_in_targetlist = on;
 }
 
+/* how many enemies are aware of each entity: every live entity that keeps a target list counts
+ * itself against each target it is aware of (flag 0x200) that shares none of its teams (new in
+ * SOCOM II, called from OVL2; the names are ours). The const walk initialises its iterator from
+ * begin() (two copies, then a register; the ticks assign theirs); the target list's end is
+ * re-read every pass.
+ * OPEN, 8 bytes long: the outer walk's copies are right, but MW folds the target walk's first
+ * test (begin against begin + size) into a test of the size -- the README's one-level begin()
+ * tell, on the class vector this time (include/vector gives the pointer vector's begin() three
+ * levels, the class vector's one) -- and hoists &e->m_team; `!(t == end())`, a raw team test
+ * and a const entity pointer are no better */
+void CEntity::CountAwareness()
+{
+    for (CEntityList::const_iterator it = GetEntityList().begin(); it != GetEntityList().end(); ++it) {
+        CEntity *e = *it;
+
+        e->m_aware_counter = 0;
+        if (e->m_type != ENT_TYPE_RECYCLE && e->m_isAlive && e->m_update_targetlist)
+            for (CTargetList::iterator t = e->m_targets.begin(); t != e->m_targets.end(); ++t)
+                if ((*t).m_flags & 0x200) {
+                    CEntity *te = (*t).m_ent;
+
+                    if (te->IsEnemy(e))
+                        te->m_aware_counter++;
+                }
+    }
+}
+
 /* the targets on an entity dropped (new in SOCOM II, UpdateTargetList's: std::remove inlined,
  * its remove_copy and the erase called; the name is ours). The erase (0x2A19C0) matches.
  * OPEN, 4 bytes short: MW inlines std::remove one level here -- find's iterator ==, * and the

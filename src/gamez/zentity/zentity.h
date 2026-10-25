@@ -259,6 +259,9 @@ public:
     static void UpdateTargetList(bool b);
     static void ReplaceTargetList(CEntity *from, CEntity *to);
     static bool EntityIsValid(CEntity *e);
+    static void CountAwareness();
+    /* whether two entities share no team (the name is ours) */
+    bool IsEnemy(const CEntity *e) const { return !(m_team & e->m_team); }
     static void CloseRecycler();
     static void OpenRecycler(unsigned int index);
 
