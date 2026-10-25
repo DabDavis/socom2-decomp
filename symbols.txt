@@ -2016,8 +2016,8 @@
 0x00224D10 0x358 func_00224D10  # OVL1
 0x00225070 0x34C func_00225070  # OVL1
 0x002253C0 0x330 func_002253C0  # OVL1
-0x002256F0 0x304 func_002256F0  # OVL1
-0x00225A00 0x1C0 func_00225A00  # OVL1
+0x002256F0 0x304 SetMvpUiVars__23@unnamed@st_mpexit_cpp@FPCcPCc  # OVL1; by hand (the HUD lane, round 17): the name ours -- the MVP (the living, counted SEAL first by CompareSeals over the game stats, SOCOM 1's TickMpStats' search) named with its clan tag ('[%s] %s') into one UI variable and its three c_arrStatFuncs totals into another; SetFinalStatsUiVars and Tick call it
+0x00225A00 0x1C0 SetPlayerStatsUiVar__23@unnamed@st_mpexit_cpp@FPCc  # OVL1; by hand (the HUD lane, round 17): the name ours -- the player's game stats (ftsGetPlayer's GetGameStats: the three totals, the hit percentage, five more counters) as a list of decimal strings in a temporary UI variable; Init calls it (SOCOM 1's SetMpStatUiVars built it with the rest)
 0x00225BC0 0x280 SetFinalTeamTotalsUiVar__23@unnamed@st_mpexit_cpp@FbPCc  # OVL1; by hand (the HUD lane, round 17): SOCOM 1's SetFinalTeamTotalsUiVar(bool, const char *) -- a CRdrEditor list of each c_arrStatFuncs total summed over a side's SEALs' game stats, added as a temporary UI variable; SOCOM II's three totals and the hit-percentage average
 0x00225E40 0x30 GetHitPct__10CSealStatsCFv  # OVL1; by hand (the HUD lane, round 17): SOCOM 1's GetHitPct (0.5 + 100 * the hit percentage, made an int); its copy follows SetFinalTeamTotalsUiVar, whose function-local static PTMF takes its address (0x3DC7A0)
 0x00225E70 0xA8 CompareGameSeals__23@unnamed@st_mpexit_cpp@FP10CZSealBodyP10CZSealBody  # OVL1; by hand (the HUD lane, round 17): SOCOM 1's CompareSeals (MVP score, then the name) over the game stats (PTMF 0x3DC790 = GetGameStats); the name ours; std::sort's comparator (0x224210)

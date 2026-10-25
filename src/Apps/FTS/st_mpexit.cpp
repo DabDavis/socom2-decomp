@@ -50,11 +50,18 @@ public:
     /* the hit percentage made a whole number, rounded (SOCOM 1's GetHitPct) */
     int GetHitPct() const { return (int)(0.5f + 100.0f * m_hit_percent); }
 
-    unsigned char _0[0xc];
+    /* the other counters the player's list shows (the names ours, their meaning unproven) */
+    unsigned short m_0;   // 0x0
+    unsigned char _2[0xc - 0x2];
     unsigned short m_kills;   // 0xc
     unsigned char _e[0x12 - 0xe];
     unsigned short m_deaths;   // 0x12
-    unsigned char _14[0x3c - 0x14];
+    unsigned short m_14;   // 0x14
+    unsigned short m_16;   // 0x16
+    unsigned char _18[0x32 - 0x18];
+    unsigned short m_32;   // 0x32
+    unsigned short m_34;   // 0x34
+    unsigned char _36[0x3c - 0x36];
     short m_score;   // 0x3c: the MVP score (SOCOM 1's m_sMvpScore)
     unsigned char _3e[0x44 - 0x3e];
     float m_hit_percent;   // 0x44
@@ -73,9 +80,14 @@ public:
     unsigned char _18[0x544 - 0x18];
     CSealStats m_game_stats;   // 0x544
     CSealStats m_round_stats;   // 0x58c
-    unsigned char _5d4[0xfd2 - 0x5d4];
+    unsigned char _5d4[0xfc8 - 0x5d4];
+    int m_fc8;   // 0xfc8: what its clan's tag is looked up by
+    unsigned char _fcc[0xfd2 - 0xfcc];
     unsigned char m_fd2;   // 0xfd2
 };
+
+/* a SEAL's clan tag, or none (unnamed yet) */
+extern "C" const char *func_002C3AC0(int id);
 
 /* a thing in the world (st_exit.cpp's stub: only the list here) */
 class CEntity {
@@ -116,6 +128,7 @@ enum UIVAR_LONGEVITY {
 
 class CUIVariable : public _zrdr {
 public:
+    CUIVariable &operator=(const char *str);
     void Set(_zrdr *value);
 };
 
@@ -124,6 +137,8 @@ public:
     CUIVariable *Add(const char *name, _zrdr *value, UIVAR_LONGEVITY longevity);
 };
 extern CUIVarManager theUIVarManager;
+
+CZSealBody *ftsGetPlayer();
 
 namespace std {
 template <class RandomAccessIterator, class Compare>
@@ -221,16 +236,87 @@ void SetFinalTeamTotalsUiVar(bool bSeals, const char *szUiVar)
     theUIVarManager.Add(szUiVar, 0, UIVL_TEMPORARY)->Set(&edFinalStats);
 }
 
+/* a number added to a list as its decimal string (ours: the stat writers' common step, each with
+ * its own buffer) */
+inline void AddIntNode(CRdrEditor &ed, int n)
+{
+    char buf[16];
+
+    sprintf(buf, "%d", n);
+    ed.addstringnode(buf);
 }
 
-/* (OVL1 0x2256F0, not written yet: the MVP's name and the stats list) */
-extern "C" void func_002256F0(const char *szName, const char *szUiVar);
+/* the player's own game stats as a list of strings in a UI variable: the three totals, the hit
+ * percentage and five more counters (the name ours; SOCOM 1's SetMpStatUiVars built it with the
+ * rest) */
+void SetPlayerStatsUiVar(const char *szUiVar)
+{
+    CSealStats &stats = ftsGetPlayer()->GetGameStats();
+    CRdrEditor edStats;
+
+    edStats.push(0);
+    AddIntNode(edStats, stats.GetMvpScore());
+    AddIntNode(edStats, stats.GetKills());
+    AddIntNode(edStats, stats.GetDeaths());
+    AddIntNode(edStats, stats.GetHitPct());
+    AddIntNode(edStats, stats.m_0);
+    AddIntNode(edStats, stats.m_32);
+    AddIntNode(edStats, stats.m_34);
+    AddIntNode(edStats, stats.m_16);
+    AddIntNode(edStats, stats.m_14);
+    edStats.pop();
+    theUIVarManager.Add(szUiVar, 0, UIVL_TEMPORARY)->Set(&edStats);
+}
+
+/* the game's MVP -- the living, counted SEAL first in CompareSeals' order of the game stats --
+ * its name (with its clan's tag) and its three totals into two UI variables (the name ours;
+ * SOCOM 1's TickMpStats found its MVP the same way) */
+void SetMvpUiVars(const char *szNameVar, const char *szUiVar)
+{
+    CEntityItr it;
+    CZSealBody *pMvp = it.IsLiveSeal() ? &it.GetSeal() : 0;
+
+    for (;;) {
+        it.Advance();
+        if (!it.More())
+            break;
+        if (it.IsLiveSeal() && !it.GetSeal().m_fd2
+            && (func_002C31D0(&it.GetSeal()) || func_002C30B0(&it.GetSeal()))) {
+            if (!pMvp)
+                pMvp = &it.GetSeal();
+            else if (CompareSeals(pMvp, &it.GetSeal(), &CZSealBody::GetGameStats))
+                pMvp = &it.GetSeal();
+        }
+    }
+    if (pMvp) {
+        char szName[128];
+        const char *szClan = func_002C3AC0(pMvp->m_fc8);
+
+        if (szClan && *szClan)
+            sprintf(szName, "[%s] %s", szClan, pMvp->m_name);
+        else
+            sprintf(szName, "%s", pMvp->m_name);
+        *theUIVarManager.Add(szNameVar, 0, UIVL_TEMPORARY) = szName;
+
+        CRdrEditor edStats;
+
+        edStats.push(0);
+        edStats.push(0);
+        for (unsigned int i = 0; i < 3; i++)
+            AddIntNode(edStats, (pMvp->GetGameStats().*c_arrStatFuncs[i])());
+        edStats.pop();
+        edStats.pop();
+        theUIVarManager.Add(szUiVar, 0, UIVL_TEMPORARY)->Set(&edStats);
+    }
+}
+
+}
 
 /* the game's final stats into the UI's variables: the MVP and each side's totals (the name ours;
  * the network game calls it, 0x27FF08) */
 void SetFinalStatsUiVars()
 {
-    func_002256F0("MvpName", "MvpLbContents");
+    SetMvpUiVars("MvpName", "MvpLbContents");
     SetFinalTeamTotalsUiVar(true, "GameSealsTotLbContents");
     SetFinalTeamTotalsUiVar(false, "GameTerrsTotLbContents");
 }
