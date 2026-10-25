@@ -1946,7 +1946,7 @@
 0x0021AE50 0x250 func_0021AE50  # OVL1
 0x0021B0A0 0xA0 func_0021B0A0  # OVL1
 0x0021B140 0x298 func_0021B140  # OVL1
-0x0021B3E0 0x114 func_0021B3E0  # OVL1
+0x0021B3E0 0x114 OnClose__10CWeaponSelFv  # OVL1; s1:order by hand (hud_weaponsel.cpp: SOCOM 1's OnClose, 0x130 there -- GetHUDOwner, the arrows and backdrop off, m_openstate = 6 at 0xC58, the HUD's m_usehudret cleared, the kit's SetCurReticule(false), the seven texts off; UnInit 0x21CBA0 inlines the same body behind its open test as SOCOM 1's UnInit calls OnClose)
 0x0021B500 0x314 func_0021B500  # OVL1
 0x0021B820 0x324 func_0021B820  # OVL1
 0x0021BB50 0x244 func_0021BB50  # OVL1
@@ -2036,10 +2036,10 @@
 0x002271D0 0x64 UnInit__16CMPTeammateNamesFv  # OVL1; s1:calls by hand (CHUD::ReInit_Uninit's call on CHUD+0x17580 after CFlashFXVector::Reset, where SOCOM 1 calls CTeamMateNames::UnInit; SOCOM II's class: each of its eight strings off and emptied)
 0x00227240 0xF8 Init__16CMPTeammateNamesFv  # OVL1; s1:calls by hand (CHUD::ReInit_Init's call on CHUD+0x17580 in a network game, where SOCOM 1 calls CTeamMateNames::Init; after UnInit in the unit, as SOCOM 1's; no argument set up: SOCOM 1's took the font)
 0x00227340 0x220 func_00227340  # OVL1
-0x00227560 0xE8 func_00227560  # OVL1
-0x00227650 0xE0 func_00227650  # OVL1
-0x00227730 0x150 func_00227730  # OVL1
-0x00227880 0xE0 func_00227880  # OVL1
+0x00227560 0xE8 UpdateCharacter__16CInGameWeaponSelFv  # OVL1; s1:calls by hand (UnInit 0x227960 calls it right after SwitchOffText, as SOCOM 1's UnInit calls UpdateCharacter; 0xE8 against SOCOM 1's 0xB8)
+0x00227650 0xE0 SwitchOffText__16CInGameWeaponSelFv  # OVL1; s1:calls by hand (UnInit 0x227960 calls it after m_openstate = 6 inside the inlined close, as SOCOM 1's UnInit calls SwitchOffText; Clear's texts turned Off, slot 4)
+0x00227730 0x150 AfterClose__16CInGameWeaponSelFv  # OVL1; s1:calls by hand (UnInit 0x227960 calls it after the inlined AfterCloseFirst, as SOCOM 1's UnInit calls AfterClose; 0x150 against 0x14C)
+0x00227880 0xE0 Clear__16CInGameWeaponSelFv  # OVL1; s1:calls by hand (hud_ingame_weaponsel.cpp: UnInit 0x227960 calls it last, as SOCOM 1's UnInit calls Clear; the five texts, the three selected texts and the five selected names and the title ClearAndWipe'd, SOCOM 1's 0xE8 with six names)
 0x00227960 0x170 UnInit__16CInGameWeaponSelFv  # OVL1; s1:calls (CHUD::ReInit_Uninit's next, as SOCOM 1's); by hand (CHUD::ReInit_Uninit calls it on CHUD+0x2730, the member 0x2284C0 constructs with CInGameWeaponSel's vtable 0x405150; hud_ingame_weaponsel.cpp's Clear, UnInit, Init, ctor sizes 0xE0/0x170/0x9E4/0x194 against SOCOM 1's 0xE8/0x170/0xA64/0x2F8)
 0x00227AD0 0x9E4 func_00227AD0  # OVL1
 0x002284C0 0x194 __ct__16CInGameWeaponSelFv  # OVL1; by hand (stores CInGameWeaponSel's vtable 0x405150; CHUD's constructor builds CHUD+0x2730 with it; hud_ingame_weaponsel.cpp's last function before hud_fader.cpp, as SOCOM 1's)

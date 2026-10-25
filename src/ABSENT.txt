@@ -10,3 +10,4 @@ inflate_set_dictionary        # zlib infblock.c: only inflateSetDictionary calls
 inflate_blocks_sync_point     # zlib infblock.c: only inflateSyncPoint calls it
 zlibVersion                   # zlib zutil.c: never referenced
 zError                        # zlib zutil.c: never referenced
+AfterCloseFirst__16CInGameWeaponSelFv # hud_ingame_weaponsel.cpp: only UnInit calls it in SOCOM II, which inlines it (SOCOM 1 linked a copy, 0x3FB040); then stripped

@@ -14,6 +14,8 @@
 /* the font as the string reads it (SOCOM II's C2DFont: SOCOM 1's widths and opacity moved on) */
 class C2DFont {
 public:
+    float GetScaleFactor() { return m_scale_factor; }
+
     unsigned char _0[0x2c];
     float m_avgWidth;   // 0x2c
     float m_opacity;   // 0x30
@@ -147,15 +149,18 @@ void C2DString::SetPos(int x, int y)
 }
 
 /* placed, set, in the font; the characters as wide as the font's average at both scales.
- * OPEN, 4 instructions: the product's registers -- the target loads the font's average width
- * first (f3) and multiplies m_scale (f2) by it, then the second scale, then the font's factor
- * last as the right operand; every grouping, local or accessor tried swaps one pair or the other */
+ * OPEN, 1 instruction: the first product's operand order. The target loads the font's average
+ * width first (f3), then m_scale (f2), and multiplies m_scale by it (mul f2,f2,f3); MW keeps loads
+ * and operands in one order (avg * scale here: mul f2,f3,f2). Measured (build/scratch/hud/v_ld*.py,
+ * all 120 groupings x an inline accessor on each operand, helper functions, locals): the font's
+ * factor through an inline accessor puts it last as the right operand, as the target has it (4
+ * instructions to 1); nothing yet loads the width first and multiplies it second */
 void C2DString::Load(const char *s, C2DFont *font, int x, int y, bool translate)
 {
     SetPos(x, y);
     SetString(s, translate);
     SetFont(font);
-    m_charwidth = m_scale * font->m_avgWidth * m_socom2_78 * font->m_scale_factor;
+    m_charwidth = font->m_avgWidth * m_scale * m_socom2_78 * font->GetScaleFactor();
 }
 
 /* placed, set, in the font, the characters w wide (h unused in SOCOM II) */
