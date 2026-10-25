@@ -7920,7 +7920,7 @@
 0x003B94F0 0xA0 func_003B94F0  # OVL1
 0x003B9590 0x130 AddLOD__Q23zdb5CMeshFPQ23zdb5CMeshf  # OVL1; s1:align
 0x003B96C0 0x98 InitMatrices__Q23zdb5CMeshFv  # OVL1; s1:align
-0x003B9760 0xB4 func_003B9760  # OVL1
+0x003B9760 0xB4 __ct__Q23zdb5CMeshFv  # OVL1; s1:calls by hand (the wep lane: CVisual::Create news 0x94 bytes and calls it for type 1, as SOCOM 1's Create calls CMesh's constructor; it runs CVisual's constructor first and stores __vt__Q23zdb5CMesh)
 0x003B9820 0x2C Init__Q23zdb5CMeshFv  # OVL1; s1:align
 0x003B9850 0x378 func_003B9850  # OVL1
 0x003B9BD0 0x4FC func_003B9BD0  # OVL1
@@ -8070,7 +8070,7 @@
 0x003C3D90 0xFC func_003C3D90  # OVL1
 0x003C3E90 0x290 __dt__Q23zdb7CVisualFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003C4120 0x14 Release__Q23zdb7CVisualFv  # OVL1; s1:exact
-0x003C4140 0x44 func_003C4140  # OVL1
+0x003C4140 0x44 Flush__Q23zdb7CVisualFv  # OVL1; s1:order by hand (the wep lane: SOCOM 1's Flush -- a temporary vector constructed, the static list cleared and swapped with it, the temporary destroyed -- on a vector<CLightMap *> here; between Release and Create as SOCOM 1's sits between GetTextureSelectBlock and the destructor)
 0x003C4190 0x140 Create__Q23zdb7CVisualFRQ23zar4CZAR  # OVL1; s1:calls
 0x003C42D0 0xB4 func_003C42D0  # OVL1
 0x003C4390 0x218 __ct__Q23zdb7CVisualFv  # OVL1; s1:callee

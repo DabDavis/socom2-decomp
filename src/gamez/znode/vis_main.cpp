@@ -7,9 +7,78 @@
  * placeholders. Defined in reverse of their image order (-inline deferred). */
 
 #include "znode.h"
+#include "../zar/zar.h"
 #include "../zsys/zsys_public.h"
 
 using namespace zdb;
+
+/* zar::CZAR::Fetch(const char *, int *), which zar.h does not declare yet (0x25AB70) */
+extern "C" bool func_0025AB70(zar::CZAR &zar, const char *name, int *value);
+
+/* a visual of the archive's type, read; none if the read fails (SOCOM 1's) */
+CVisual *CVisual::Create(zar::CZAR &zar)
+{
+    int type = -1;
+
+    func_0025AB70(zar, "vtype", &type);
+    CVisual *v = 0;
+    switch (type) {
+    case -1:
+        v = new CVisual;
+        break;
+    case 0:
+        v = new CVisual;
+        break;
+    case 1:
+        v = new CMesh;
+        break;
+    case 2:
+        v = new CSubMesh(0);
+        break;
+    }
+    if (v && !v->Read(zar)) {
+        delete v;
+        v = 0;
+    }
+    return v;
+}
+
+/* the specular maps' storage given back (SOCOM 1's) */
+void CVisual::Flush()
+{
+    FreeVector(m_specMapList);
+}
+
+/* the head's parameters, then the detail layers: their count, the block's size and the block,
+ * each layer's data pointer set into the block after the layers (SOCOM 1's) */
+bool CVisual::Read(zar::CZAR &zar)
+{
+    zar.Fetch("vparams", this, 0x18);
+    if (m_bits.m_b10)
+        m_1c = -2;
+    else
+        m_1c = 3;
+    if (m_details)
+        _free(m_details, 0, 0);
+    m_details = 0;
+    m_numDetails = 0;
+    zar.Fetch("detail_cnt", &m_numDetails, 4);
+    if (m_numDetails) {
+        unsigned int size;
+
+        zar.Fetch("detail_size", &size, 4);
+        m_details = (DETAIL *)_malloc(size, 0, 0);
+        zar.Fetch("detail_buff", m_details, size);
+        DETAIL *d = m_details;
+        char *data = (char *)(d + m_numDetails);
+
+        for (unsigned int i = 0; i < m_numDetails; i++, d++) {
+            d->m_data = data;
+            data += d->m_count * 12;
+        }
+    }
+    return true;
+}
 
 /* a texture-select block's head: zeroed, then one flag set (the names ours) */
 struct TEXSELECT_HEAD {

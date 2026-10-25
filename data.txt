@@ -840,6 +840,7 @@
 0x004B4810 0x4 m_camera__Q23zdb7CVisual  # OVL1 bss; SOCOM 1's (CCoreState::Init sets it with the world's camera beside the pipe's, as SOCOM 1's): 10 references in 6 functions take 0x4B4810
 0x004B4C68 0x4 m_local_light_cnt__Q23zdb7CVisual  # OVL1 bss; s1:data-seq (size SOCOM 1's; via AddLocalLight__Q23zdb7CVisualFPQ23zdb6CLightP6CPnt3D)
 0x004B4D80 0xC m_addColor__Q23zdb7CVisual  # OVL1 bss; s1:data-seq (size SOCOM 1's; via SaveDelayedNode__5CPipeFP7CMatrixPQ23zdb5CNodeQ23zdb12tag_ZVIS_FOV)
+0x004B4DA8 0xC m_specMapList__Q23zdb7CVisual  # OVL1 bss; s1:data by hand (the wep lane: CVisual::Flush frees this vector<CLightMap *> through a temporary's swap, as SOCOM 1's Flush frees m_specMapList; vis's static initialiser 0x404570 registers its destructor with the record at 0x4B4D98, as SOCOM 1's @1160 precedes m_specMapList; 2 references in Flush)
 0x004B4DC8 0x4 m_lightMapTexture__Q23zdb7CVisual  # OVL1 bss; s1:data-seq (size SOCOM 1's; via AddLightMap__Q23zdb6CWorldFPQ23zdb9CLightMap)
 0x004B5030 0x14 m_tempPool__Q23zdb6CDecal  # OVL1 bss; s1:data-seq (size SOCOM 1's; via PutTempDecal__Q23zdb6CDecalFPQ23zdb6CDecal +2)
 0x004B5050 0x14 m_permPool__Q23zdb6CDecal  # OVL1 bss; s1:data-seq (size SOCOM 1's; via PutPermDecal__Q23zdb6CDecalFPQ23zdb6CDecal +1)

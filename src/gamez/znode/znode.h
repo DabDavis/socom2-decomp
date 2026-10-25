@@ -19,6 +19,8 @@ union _word128;
 namespace zar {
 class CZAR;
 }
+class C2DVisual;
+class CBBox;
 
 /* the node count (SOCOM 1's numNodes, a global outside zdb, after NodeUniverse) */
 extern int numNodes;
@@ -170,7 +172,9 @@ struct tag_VISUAL_HEAD {
     union {
         unsigned int m_flags;   // 0x0: tested by mask, the whole word loaded (AddVisual)
         struct {
-            unsigned int _b0 : 14;
+            unsigned int _b0 : 10;
+            unsigned int m_b10 : 1;   /* bit 10: CVisual::Read gives the word at 0x1c -2 for it, 3 without */
+            unsigned int _b11 : 3;
             unsigned int m_multipass : 1;   /* bit 14: SetApplyMultipassEffects sets it by byte */
             unsigned int _b15 : 1;
             unsigned int m_decals : 1;   /* bit 16: SetApplyDecals' */
@@ -180,7 +184,7 @@ struct tag_VISUAL_HEAD {
     signed char m_type;   // 0x4
     unsigned char _5[0x18 - 5];
     int m_refs;   // 0x18
-    unsigned char _1c[0x20 - 0x1c];
+    int m_1c;   // 0x1c: -2 or 3 by bit 10 (CVisual::Read; the name ours)
 };
 
 class CTexHandle;
@@ -222,7 +226,21 @@ class CMesh;
 
 class CVisual : public tag_VISUAL_HEAD {
 public:
-    virtual ~CVisual();
+    /* SOCOM II's table (__vt__Q23zdb7CVisual, 0x408380; the wep lane's): CMesh overrides the
+     * bounding box, the centroid and Read, and adds InitMatrices after Get2DVisual */
+    virtual ~CVisual();                                 /* +0x08 */
+    virtual void Render(CMatrix *mtw);                  /* +0x0C */
+    virtual void ComputeBBox(CBBox *box);               /* +0x10 */
+    virtual void UpdateCentroid();                      /* +0x14 */
+    /* the head's parameters and the detail layers read from the archive (SOCOM 1's) */
+    virtual bool Read(zar::CZAR &zar);                  /* +0x18 */
+    /* none: a visual that draws in 2D overrides it (inline; zanim_menu.cpp's copy, 0x274860, is
+     * the linked one) */
+    virtual C2DVisual *Get2DVisual() { return 0; }      /* +0x1C */
+    /* constructed empty, its type -1 (0x3C4390); one made and read by the type the archive gives
+     * (SOCOM 1's static) */
+    CVisual();
+    static CVisual *Create(zar::CZAR &zar);
     /* the type as a byte: ScrollTexture and the decal walk test it with lbu where GetMesh and
      * AddVisual's test of the member loads it signed (SOCOM 1's split the same way; the name is
      * ours) */
@@ -243,6 +261,9 @@ public:
     CTexture *ResolveTextureName(_word128 *names, _word128 *select);
     /* a block of n texture selects opened at the cursor: its zeroed head, the end tag, and the
      * DMA reference and tag that send it (SOCOM 1's static, byte for byte) */
+    /* the specular maps let go of (SOCOM 1's static; the wep lane's) */
+    static void Flush();
+    static std::vector<CLightMap *> m_specMapList;
     static _word128 *GetTextureSelectBlock_ver2(unsigned int n, _word128 **cursor, _word128 *ref,
                                            _word128 *tag);
 
@@ -255,8 +276,17 @@ public:
     std::vector<BLENDMODE *> m_blendmodes;   // 0x3c
     /* its textures and palettes (ResolveTextureName adds to it) */
     CDynTexList m_dynTexList;   // 0x48
-    unsigned int m_60;   // 0x60
-    unsigned int m_64;   // 0x64
+    /* its detail layers: a count and one allocated block, each layer 0x10 bytes with its
+     * vertices after them (CVisual::Read; the names ours) */
+    struct DETAIL {
+        unsigned int m_0;   // 0x0
+        unsigned short m_count;   // 0x4: its entries, 0xc bytes each
+        unsigned short m_6;   // 0x6
+        unsigned int m_8;   // 0x8
+        void *m_data;   // 0xc: set at load, into the block
+    };
+    DETAIL *m_details;   // 0x60
+    unsigned int m_numDetails;   // 0x64
 };   // 0x68 bytes
 
 class CSubMesh : public CVisual {
@@ -270,10 +300,16 @@ class CMesh : public CVisual {
 public:
     /* a copy of the mesh, its own data, for a node (SOCOM 1's took no node) */
     CMesh *Clone(CNode *owner);
-    /* the wep lane's (vis_mesh.cpp, SOCOM 1's names) */
+    /* the wep lane's (vis_mesh.cpp, SOCOM 1's names): its table (__vt__Q23zdb5CMesh, 0x408350)
+     * overrides these and adds InitMatrices (+0x20) */
+    CMesh();   // 0x3B9760
+    virtual ~CMesh();
+    virtual void ComputeBBox(CBBox *box);
+    virtual void UpdateCentroid();
+    virtual bool Read(zar::CZAR &zar);
+    virtual void InitMatrices();
     void SetMeshTextureSelects(_word128 *head, _word128 *names);
     void SetLOD(unsigned int view, unsigned int lod);
-    void InitMatrices();
 
     /* a level of detail (SOCOM 1's CMesh::CMeshLOD, 0xc bytes: the mesh last) */
     class CMeshLOD {
