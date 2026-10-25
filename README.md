@@ -431,6 +431,27 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     declare stub destructors non-inline so the unit emits nothing;
   - s1:calls names can slide one member where SOCOM II inserts a call: check each call's
     receiver offset against the member its constructor builds (three were shifted back).
+- **Tells from the entity lane** (round 4; include/list now has the pointer list's const
+  iterator, built from the base's by value -- a bitwise copy, the base having no copy
+  constructor of its own):
+  - a const pointer-list walk that ASSIGNS begin() makes four copies (store, bitwise, word,
+    bitwise); one initialised from it makes two and then lives in a register;
+  - SOCOM II's non-const walks over CEntity::m_list keep end() in a local; with end() in the
+    loop test the sentinel and the first node trade registers;
+  - walked through a reference local (`const CEntityList &list = GetEntityList()`) the list's
+    address sits in a register and the first node is read off it; through the member itself it
+    is addressed absolutely;
+  - a reference-returning `*` keeps the element's address in a saved register across a call,
+    a by-value one reloads it;
+  - a static const member defined with its initialiser before a reader is folded into it;
+    defined after, the reader loads the word;
+  - `this` passed to a `const T &` parameter is homed on the stack at entry and every member
+    access reads it back;
+  - locals get stack slots in declaration order, the first declared at the highest address;
+  - a bool returned through a local (`r = false; ... r = true;`) puts `move v0,zero` in the
+    test's delay slot;
+  - an inline virtual's out-of-line copy is linked once per overlay (CEntityCtrl::SetThrottle
+    at 0x2A26E0 and 0x567340).
 - **Tool notes**: scdiff accepts the image's one non-zero pad word (0xFFFFFFFF at 0x1E70F4,
   after main); `automatch --stale` can drop a renamed destructor's draft when its re-draft
   misses (SlotList's and CWeaponSlot's were restored by hand, the old drafts renamed).
