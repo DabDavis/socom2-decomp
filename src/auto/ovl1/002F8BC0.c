@@ -4,27 +4,28 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+s32 FindRoom__14BriefingRoomDBFPCc(M2C_UNK *, s32); /* extern */
 s32 func_002E3490(s32, s32);                        /* extern */
-s32 func_002E4470(M2C_UNK *, s32);                  /* extern */
 s32 func_002E4570(s32, s32);                        /* extern */
-s32 func_002EAE20(void *, M2C_UNK);                 /* extern */
+s32 func_002EAE20(char *, M2C_UNK);                 /* extern */
 extern M2C_UNK data_0044F568;
 
-s32 func_002F8BC0(void *arg0, s32 arg1) {
+s32 func_002F8BC0(char *arg0, s32 arg1) {
     s32 temp_v0;
     s32 temp_v0_2;
     s32 var_a1;
-    void *temp_a0;
+    char *temp_a0;
 
-    temp_a0 = M2C_FIELD(arg0, void **, 0xC0);
-    if (M2C_FIELD(temp_a0, u8 *, 0) == 3) {
-        var_a1 = M2C_FIELD(temp_a0, s32 *, 4);
+    temp_a0 = SC_MEMBER(arg0, char **, 0xC0);
+    if (SC_MEMBER(temp_a0, u8 *, 0) == 3) {
+        var_a1 = SC_MEMBER(temp_a0, s32 *, 4);
     } else {
         var_a1 = 0;
     }
-    temp_v0 = func_002E4470(&data_0044F568, var_a1);
+    temp_v0 = FindRoom__14BriefingRoomDBFPCc(&data_0044F568, var_a1);
     if (temp_v0 != 0) {
         temp_v0_2 = func_002E4570(temp_v0, arg1);
         if ((temp_v0_2 != 0) && (func_002E3490(temp_v0_2, func_002EAE20(arg0, -1)) == 0)) {

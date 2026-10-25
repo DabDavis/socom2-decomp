@@ -4,19 +4,19 @@
  * @unnamed@zui_spec_cpp@) and holds the same run in the same order, from CClockSpec's destructor
  * to its vector instances. Defined in reverse of their image order (-inline deferred).
  *
- * The CreateDisplayObjs inline the display objects' constructors (zui_2d.h): the clock's,
- * counter's, image's and progress bar's match; the check box's and slider's (and CButtonSpec's,
- * held in #if 0 while its draft matches) are byte-exact once 0x377800 is named __ct__9C2DButtonFv,
- * and ~CSliderBarSpec (emitted here as an inline copy) once 0x36E650 is __dt__11ButtonStateFv.
+ * The CreateDisplayObjs inline the display objects' constructors (zui_2d.h); InitializeButton is
+ * pinned (they call it). CDesignDlgObj's destructor and assignment are ordinary functions here
+ * (0x37D9B0, 0x37D910: zui.cpp's tail and the tail copies call them), the assignment pinned.
  *
  * OPEN, not written yet: the button family's constructors (CButtonSpec's 0x380620, 0xC8C bytes,
- * CRadioStripSpec's 0x37DA50, CCheckBoxSpec's 0x37E2A0 and its copy 0x37E000, CUIListBoxSpec's
- * 0x37EAB0, CUIMapCtrlSpec's 0x37D600), CButtonSpec::InitializeButton 0x380500, the list box's
- * CreateDisplayObj 0x37E8B0 (CUIListBox's constructor, a CPlainBmp with columns), LoadDlgObjects
- * 0x383360, the dialog design's loaders 0x3812B0/0x381550, and the template instances
- * 0x3836E0-0x3855FF and the copies they need (vector<ActionItem>'s copy constructor 0x37E190 and
- * ButtonState's 0x37E210): include/vector has neither the class vector's copy constructor nor its
- * range init, insert and resize, which the other lane owns this round. */
+ * CRadioStripSpec's 0x37DA50, CUIListBoxSpec's 0x37EAB0), the list box's CreateDisplayObj 0x37E8B0
+ * (CUIListBox's constructor, zui_2d.cpp's class), LoadDlgObjects 0x383360 and the dialog design's
+ * loaders 0x3812B0/0x381550 (SOCOM 1's CGameDlgDesign::LoadModels and LoadFromRdr), and the rest
+ * of the template tail 0x3836E0-0x3855FF: the CSaferStr and CDlgDesignModel instances come with the
+ * loaders; the ActionItem and CDesignDlgObj erases (0x383E00 and 0x384410) need MSL's destroy loop
+ * in the class vector's erase (probed: erase<ActionItem> byte-exact with `for (p = first + n; p < e;
+ * ++p) p->~T();` after the copy -- a request), the CDesignDlgObj ones also MSL's out-of-line
+ * std::copy (0x3845B0) and its kin (0x384AA0, 0x384B00, 0x384B70). */
 
 #include "zui_2d.h"
 
@@ -144,6 +144,27 @@ CHandlerButtonSpec::CHandlerButtonSpec(_zrdr *rdr) : CButtonSpec(rdr), m_child(0
         m_child->SetName(name);
     }
 }
+
+/* the states' textures prepared, the button set up from them and its caption, and shown in its
+ * normal state (SOCOM 1's). The four names are read first, both builds keeping them in saved
+ * registers across the lookups: written into the calls, MW reads each after the call before it.
+ * The CreateDisplayObjs call it out of line: pinned */
+#pragma auto_inline off
+void CButtonSpec::InitializeButton(C2DButton *button, zdb::CTextureRelocMgr *mgr) const
+{
+    const char *n = m_normal._TexName.c_str();
+    const char *a = m_active._TexName.c_str();
+    const char *p = m_pressed._TexName.c_str();
+    const char *d = m_disabled._TexName.c_str();
+    zdb::CTexHandle *normal = PrepTexture(n, mgr);
+    zdb::CTexHandle *active = PrepTexture(a, mgr);
+    zdb::CTexHandle *pressed = PrepTexture(p, mgr);
+    zdb::CTexHandle *disabled = PrepTexture(d, mgr);
+
+    InitButton(button, normal, active, pressed, disabled, m_caption.c_str());
+    button->SetNormal();
+}
+#pragma auto_inline reset
 
 /* a button (SOCOM 1's; 0x377800 is C2DButton's constructor) */
 C2D *CButtonSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
@@ -316,6 +337,38 @@ C2D *CClockSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) con
     return clock;
 }
 
+/* the check's offset, size and texture and the actions run on checking and unchecking (SOCOM 1's;
+ * CButtonSpec's constructor out of line, ActionItem's inlined) */
+CCheckBoxSpec::CCheckBoxSpec(_zrdr *rdr) : CButtonSpec(rdr)
+{
+    zrdr_findint(rdr, "CHECK_X", &m_checkOffset.x, 1);
+    zrdr_findint(rdr, "CHECK_Y", &m_checkOffset.y, 1);
+    zrdr_findIPNT2D(rdr, "CHECK_OFFSET", &m_checkOffset);
+    zrdr_findint(rdr, "CHECKSIZE_X", &m_checkSize.x, 1);
+    zrdr_findint(rdr, "CHECKSIZE_Y", &m_checkSize.y, 1);
+    zrdr_findIPNT2D(rdr, "CHECK_SIZE", &m_checkSize);
+    m_checkTexture = zrdr_findstring(rdr, "CHECK_TEXTURE");
+    m_onCheck = new ActionItem;
+    m_onUncheck = new ActionItem;
+    _zrdr *anim = zrdr_findtag(rdr, "ONCHECK");
+    if (anim)
+        ParseButtonAnim(anim, m_onCheck);
+    anim = zrdr_findtag(rdr, "ONUNCHECK");
+    if (anim)
+        ParseButtonAnim(anim, m_onUncheck);
+}
+
+/* a copy (SOCOM 1's, out of line: Copy calls it): the button's implicit copy inlined one level,
+ * the check's fields assigned, its actions copied */
+CCheckBoxSpec::CCheckBoxSpec(CCheckBoxSpec &spec) : CButtonSpec(spec)
+{
+    m_checkOffset = spec.m_checkOffset;
+    m_checkSize = spec.m_checkSize;
+    m_checkTexture = spec.m_checkTexture;
+    m_onCheck = new ActionItem(*spec.m_onCheck);
+    m_onUncheck = new ActionItem(*spec.m_onUncheck);
+}
+
 /* a check box of the spec's check (SOCOM 1's) *
  * OPEN until a row outside the lane is named: byte-exact with 0x377800 (zui_2d.cpp's) as
  * __ct__9C2DButtonFv -- C2DButton's constructor, out of line (measured with the row renamed) */
@@ -328,4 +381,62 @@ C2D *CCheckBoxSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) 
     func_00371550(box, this, check);
     InitializeButton(box, mgr);
     return box;
+}
+
+/* the design object's spec deleted, its strings destroyed (SOCOM II's, an ordinary function: zui.cpp's
+ * tail and the radio strip's and handler button's destructors call it) */
+CDesignDlgObj::~CDesignDlgObj()
+{
+    delete m_spec;
+}
+
+/* a copy of another's: the old spec deleted and the other's copied through its Copy slot, the
+ * position, opacity, name and parent assigned (SOCOM 1's CDesignDlgObj assignment; out of line) */
+#pragma auto_inline off
+void CDesignDlgObj::operator=(const CDesignDlgObj &o)
+{
+    delete m_spec;
+    m_spec = o.m_spec ? o.m_spec->Copy() : 0;
+    m_xpos = o.m_xpos;
+    m_ypos = o.m_ypos;
+    m_opacity = o.m_opacity;
+    m_name = o.m_name;
+    m_childOf = o.m_childOf;
+}
+#pragma auto_inline reset
+
+/* the map's corners, its ELEMENTS (each an object spec at an offset, added to the design objects)
+ * and its ANIMATIONS (SOCOM 1's; CDlgObjSpec's constructor inlined) *
+ * OPEN, 14 instructions, one register pair: in the ELEMENTS loop the target gives the hoisted
+ * `elements == 0` bool s0 and the element pointer s1, here the other way round (the ANIMATIONS
+ * loop matches). No change from the element declared ahead of the loop, after the offsets, the
+ * spec declared ahead of its test, or an inline count helper (12 bytes longer) */
+CUIMapCtrlSpec::CUIMapCtrlSpec(_zrdr *rdr) : CDlgObjSpec(rdr)
+{
+    zrdr_findIPNT2D(rdr, "UPPERLEFT", &m_upperLeft);
+    zrdr_findIPNT2D(rdr, "LOWERRIGHT", &m_lowerRight);
+    _zrdr *elements = zrdr_findtag(rdr, "ELEMENTS");
+    for (int i = 0; i < (elements ? (int)elements->Count() : 0); i++) {
+        _zrdr *e = elements->Item(i);
+        int x, y;
+
+        zrdr_findint(e, "XOFFSET", &x, 1);
+        zrdr_findint(e, "YOFFSET", &y, 1);
+        const char *type = zrdr_findstring(e, "TYPE");
+        _zrdr *specRdr = zrdr_findtag(e, "SPEC");
+        if (specRdr) {
+            CDlgObjSpec *spec = GetObjectSpec(specRdr, type);
+            if (spec) {
+                m_elements.resize(m_elements.size() + 1);
+                CDesignDlgObj &o = m_elements.back();
+                o.SetSpec(spec);
+                o.SetPos(x, y);
+            }
+        }
+    }
+    _zrdr *anims = zrdr_findtag(rdr, "ANIMATIONS");
+    for (int j = 0; j < (anims ? (int)anims->Count() : 0); j++) {
+        m_animations.resize(m_animations.size() + 1);
+        ParseButtonAnim(anims->Item(j), &m_animations.back());
+    }
 }

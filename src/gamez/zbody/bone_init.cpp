@@ -7,17 +7,12 @@
  * its initialiser (0x3FFCE0) builds both archives. SOCOM 1's zBoneOpen, zBoneLoadAll and
  * zBoneClose are one function per archive here. Defined in reverse of their image order
  * (-inline deferred).
- * OPEN, the initialiser (0x3FFCE0, still func_003FFCE0 -- outside the lane): the target inlines
- * CScriptArchive's constructor one level, calling the members' constructors out of line (the
- * scripts', 0x2892F0 -- the callback list's implicit constructor --, the commons' twice, the
- * transitions') and then Init; this source's constructor, 231-240 units by inline_max_size probing
- * and five high, inlines whole, so 0x2892F0 is not emitted (its draft stands). The original's
- * expansion must exceed 256 units or be six high: not found. Round 4: nothing in zbody.h can add
- * the level honestly -- the body calls only Init (out of line, bone_archive.cpp's), the members
- * are the five vectors and the ZAR, and the callback list's implicit constructor (0x2892F0) is
- * the vector's three stores; the extra level is the pointer vector's constructor chain, one level
- * shallower in include/vector than the original's (the README's "Level 6?" and SaveNodeStates'
- * note: the same MSL depth). Waits on include/vector. */
+ * The initialiser (0x3FFCE0) inlines CScriptArchive's constructor one level, calling the members'
+ * constructors out of line (the scripts', 0x2892F0 -- the callback list's implicit constructor --,
+ * the commons' twice, the transitions') and then Init: byte-exact since include/vector's pointer
+ * vector constructor costs what the original's did (the MSL headers' round 4: past
+ * inline_max_size, where it was 231-240 units here; a level more instead loses CHUD's, CCell's
+ * and CVisual's constructors and __sinit_compass.cpp). */
 
 #include <string.h>
 

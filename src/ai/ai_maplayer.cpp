@@ -75,3 +75,54 @@ void CAiMap::DeleteLayers()
         SetModified(true);
     }
 }
+
+/* what the look and cover searches' callbacks read and set: the cell found, the point looked at
+ * and its distance from the start (SOCOM 1's; the names ours) */
+struct LOOK_DATA {
+    CAiMapLoc m_loc;   // 0x0
+    CPnt3D m_pos;   // 0x4
+    float m_dist;   // 0x10
+};
+
+/* the searches' callbacks (SOCOM 1's _find_look and _find_cover: placeholders until written) */
+extern "C" bool func_0053A410(MAP_FLOODFILL_STRUCT &s, void *data);
+
+/* the cell from which the point is seen, flooded out from the start toward it (SOCOM 1's; the
+ * direction handed back is the start's toward the point). The direction declared ahead of the
+ * centre: only so do their slots fall as the target's (sp+224, sp+208).
+ * OPEN, right size, 17 instructions: the normalisation -- the target reads d.z again inside the
+ * test (an inline length, not shared with the sum's load?) and computes both products before
+ * either store, keeping d.x from the sum; this build keeps &d.z in v1 from the sum on. Compound
+ * assignments, products into locals, z first and an inline normalize_xz(CPnt3D &) were tried */
+bool CAiMap::FindLookLoc(const CAiMapLoc &loc, const CPnt3D *pos, CAiMapLoc &out, DIR &dir, int radius)
+{
+    CPnt3D d;
+    CPnt3D center;
+
+    if (!GetCellCenter(loc, &center))
+        return false;
+
+    pos->SubXZ(&center, &d);
+    d.y = 0.0f;
+    float len = sqrtf(d.x * d.x + d.z * d.z);
+
+    if (len != 0.0f) {
+        float inv = 1.0f / len;
+        float x = d.x * inv;
+        float z = d.z * inv;
+
+        d.x = x;
+        d.z = z;
+    }
+    dir = GetClosestDir(&d);
+    LOOK_DATA data;
+
+    data.m_loc = loc;
+    data.m_pos = *pos;
+    data.m_dist = len;
+    if (FloodFill(loc, dir, radius, func_0053A410, &data)) {
+        out = data.m_loc;
+        return true;
+    }
+    return false;
+}

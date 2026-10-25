@@ -6,11 +6,23 @@
 
 #include "zseal.h"
 #include "../zweapon/zweapon.h"
+#include <algorithm>
 
 extern "C" {
 /* the ammunition's (OVL1, unowned): its rounds tidied, and how many kinds it still holds */
 void func_003CFB20(CPickupAmmo *ammo);
 int func_003CFCF0(CPickupAmmo *ammo);
+/* an ammunition pickup's contents, one kind at a time: its weapon, its ammunition and its rounds
+ * (OVL1, unowned) */
+void func_003CFD70(CPickupAmmo *ammo, int index, CZWeapon **weapon, CZAmmo **cartridge, int *rounds);
+/* a made pickup told to the other consoles: a weapon by its item, its id, place and turn;
+ * ammunition by its kinds' packed ids and rounds (OVL1, unowned) */
+void func_002BA660(int item, unsigned int netid, const CPnt3D *pos, CQuat *quat);
+void func_002BA3F0(int count, unsigned short *packed, unsigned short *rounds, unsigned int netid,
+                   const CPnt3D *pos);
+/* (this unit's, below) */
+void func_00541700(CPickup *p);
+void func_005418B0(CPickup *p);
 /* (OVL1 data: -1, the time that never runs; read as a variable) */
 extern float data_003F3440;
 }
@@ -25,6 +37,95 @@ void CPickup::Open(unsigned int bits)
 {
     bit_count = bits;
     m_isOpen = true;
+}
+
+/* a pool pickup deleted, its slot left null (std::transform's operation) */
+struct DeletePickup {
+    DeletePickup() {}
+    CPickup *operator()(CPickup *p) const
+    {
+        delete p;
+        return 0;
+    }
+};
+
+/* every pickup destroyed, the MP bomb's node deleted (SOCOM 1's destroyed the bomb's pickup first)
+ * and, when told to, the pool's pickups deleted and the pool emptied (OVL2 0x542E50; SOCOM 1's) */
+void CPickup::Close(bool all)
+{
+    while (m_list.size())
+        Destroy(m_list.front());
+    DeleteMPBombNode();
+    if (all) {
+        std::transform(m_pool.begin(), m_pool.end(), m_pool.begin(), DeletePickup());
+        m_pool.clear();
+    }
+    m_isOpen = false;
+}
+
+/* a pickup made and listed: from the pool when it holds one, cleared, given its kind, node,
+ * contents, owner and id, no unit seeing it, unlocked and not secondary, its time never running;
+ * a weapon's model shows its scope and hides its thermal one */
+CPickup *CPickup::Create(unsigned int owner, PU_TYPE type, zdb::CNode *node, void *data)
+{
+    if (!m_isOpen)
+        return 0;
+    CPickup *p = 0;
+
+    if (m_pool.size() == 0)
+        p = new CPickup;
+    else {
+        p = m_pool.front();
+        m_pool.pop_front();
+    }
+    p->m_visible_by_units = 0;
+    p->Set(type, node, data, owner, nextPickupId++);
+    p->SetLocked(false);
+    p->SetSecondary(false);
+    p->m_timer = data_003F3440;
+    m_list.push_back(p);
+    if (type == PU_WEAPON && node) {
+        zdb::CNode *scope = node->FindChild("scope", true);
+        zdb::CNode *thermal = node->FindChild("thermal_scope", true);
+
+        if (scope)
+            scope->SetActive(true);
+        if (thermal)
+            thermal->SetActive(false);
+    }
+    func_00541700(p);
+    return p;
+}
+
+CPickup *CPickup::NetworkCreate(unsigned int netid, PU_TYPE type, zdb::CNode *node, void *data)
+{
+    if (!m_isOpen)
+        return 0;
+    CPickup *p = 0;
+
+    if (m_pool.size() == 0)
+        p = new CPickup;
+    else {
+        p = m_pool.front();
+        m_pool.pop_front();
+    }
+    p->m_visible_by_units = 0;
+    p->Set(type, node, data, GetEntityIDFromNetID(netid), netid);
+    p->SetLocked(false);
+    p->SetSecondary(false);
+    p->m_timer = data_003F3440;
+    m_list.push_back(p);
+    if (type == PU_WEAPON && node) {
+        zdb::CNode *scope = node->FindChild("scope", true);
+        zdb::CNode *thermal = node->FindChild("thermal_scope", true);
+
+        if (scope)
+            scope->SetActive(true);
+        if (thermal)
+            thermal->SetActive(false);
+    }
+    func_005418B0(p);
+    return p;
 }
 
 /* the list walked, its printing gone (OVL2 0x542DF0; SOCOM 1's, as empty) */
@@ -49,6 +150,20 @@ void CPickup::DestroyNetPickups(unsigned int owner)
         ++i;
         if (owner == p->m_owner)
             Destroy(p);
+    }
+}
+
+/* (OVL2 0x542180) */
+void CPickup::DeleteMPBombNode()
+{
+    zdb::CNode *node = m_mpbombnode;
+
+    if (node) {
+        if (node->m_parent)
+            node->m_parent->DeleteChild(node);
+        zdb::CWorld::m_world->DeleteTextureAssetCharacter(zdb::CHARSETCOMMON, node);
+        zdb::CNode::Delete(node);
+        m_mpbombnode = 0;
     }
 }
 
@@ -228,7 +343,7 @@ CPickup *CPickup::GetMPBomb()
 void CPickup::CleanupAmmoPickup(CPickup *pickup)
 {
     switch (pickup->m_type) {
-    case PU_AMMO: {
+    case CPickup::PU_AMMO: {
         CPickupAmmo *ammo = pickup->GetAmmo();
 
         func_003CFB20(ammo);
@@ -236,12 +351,36 @@ void CPickup::CleanupAmmoPickup(CPickup *pickup)
             Destroy(pickup);
         break;
     }
-    case PU_WEAPON:
+    case CPickup::PU_WEAPON:
         if (!pickup->GetWeapon())
             Destroy(pickup);
         break;
     }
 }
+
+/* an ammunition pickup's kinds counted and packed: each one's weapon item and ammunition id, and
+ * its rounds (OVL2 0x541AD0; new in SOCOM II, its name unknown) */
+#pragma auto_inline off
+extern "C" void func_00541AD0(CPickupAmmo *ammo, int *count, unsigned short *packed,
+                              unsigned short *rounds)
+{
+    *count = func_003CFCF0(ammo);
+    for (int i = 0; i < *count; i++) {
+        CZWeapon *weapon = 0;
+        CZAmmo *cartridge = 0;
+        int n = 0;
+
+        func_003CFD70(ammo, i, &weapon, &cartridge, &n);
+        *rounds = n;
+        EQUIP_ITEM item = weapon ? weapon->m_ID : EQUIP_NONE;
+        EQUIP_AMMO id = cartridge ? cartridge->m_ID : AMMO_NONE;
+
+        *packed = CZWeapon::PackItemAndAmmoEnums(item, id);
+        rounds++;
+        packed++;
+    }
+}
+#pragma auto_inline reset
 
 /* the contents by kind, or 0 (OVL2 0x541AB0, 0x541A90, 0x541A20, 0x5419C0; new in SOCOM II, the
  * names ours) */
@@ -264,6 +403,89 @@ void *CPickup::GetData123()
 {
     return IsType123() ? m_data : 0;
 }
+
+/* an ammunition pickup's kinds walked, their printing gone (OVL2 0x541910; new in SOCOM II, its
+ * name unknown: seal_env.cpp calls it eight times) */
+#pragma auto_inline off
+extern "C" void func_00541910(CPickup *p)
+{
+    switch (p->m_type) {
+    case CPickup::PU_AMMO: {
+        CPickupAmmo *ammo = p->GetAmmo();
+
+        if (ammo) {
+            int n = func_003CFCF0(ammo);
+            CZWeapon *weapon = 0;
+            CZAmmo *cartridge = 0;
+            int rounds;
+
+            for (int i = 0; i < n; i++)
+                func_003CFD70(ammo, i, &weapon, &cartridge, &rounds);
+        }
+        break;
+    }
+    case CPickup::PU_WEAPON:
+        break;
+    }
+}
+
+/* the list walked once a pickup is made from the network, its checks gone (OVL2 0x5418B0; new in
+ * SOCOM II, its name unknown: DebugPickups' walk, inlined) */
+extern "C" void func_005418B0(CPickup *p)
+{
+    CPickup::DebugPickups();
+}
+
+/* a made pickup told to the other consoles in an online game, or given its time (OVL2 0x541700;
+ * new in SOCOM II, its name unknown: Create calls it last), then the list walked.
+ * OPEN, 10 instructions: only the first block's registers -- the target loads the kind into a3,
+ * the online byte into a2 and the id's halves into a1/a0 (the kind's load second); MW here gives
+ * the online byte a3, the halves a2/a1 and the kind a0 (loaded last). Tried: the two locals in
+ * either order, a bool online, assigned after bare declarations, the kind in a local declared
+ * first, the switch on a PU_TYPE cast, and the whole switch in an inline taking (p, netid, online,
+ * kind) -- the same registers every time. */
+extern "C" void func_00541700(CPickup *p)
+{
+    unsigned char online = theNetwork.m_9;
+    unsigned int netid = p->GetPickupNetEntityID();
+
+    switch (p->m_type) {
+    case CPickup::PU_AMMO: {
+        CPickupAmmo *ammo = (CPickupAmmo *)p->m_data;
+
+        if (ammo) {
+            if (online) {
+                int count = 0;
+                unsigned short packed[8];
+                unsigned short rounds[8];
+
+                func_00541AD0(ammo, &count, packed, rounds);
+                func_002BA3F0(count, packed, rounds, netid, p->GetPosW());
+            } else
+                p->m_timer = s_life;
+        }
+        break;
+    }
+    case CPickup::PU_WEAPON: {
+        CZWeapon *weapon = (CZWeapon *)p->m_data;
+
+        if (weapon) {
+            if (online) {
+                CQuat q = CQuat::identity;
+                EQUIP_ITEM item = weapon->m_ID;
+
+                if (p->m_node)
+                    p->m_node->m_matrix.ToQuat(&q);
+                func_002BA660(item, netid, p->GetPosW(), &q);
+            } else
+                p->m_timer = s_life;
+        }
+        break;
+    }
+    }
+    CPickup::DebugPickups();
+}
+#pragma auto_inline reset
 
 /* (OVL2 0x5416E0; SOCOM 1's) */
 const CPnt3D *CPickup::GetPosW() const

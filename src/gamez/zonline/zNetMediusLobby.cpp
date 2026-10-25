@@ -165,6 +165,48 @@ extern int data_0066A990;   /* the players counted so far */
 extern int data_0066A9A0;   /* and when the list ended */
 }
 
+/* our stats sent (a text of 256) */
+struct MediusUpdateAccountStatsRequest {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];   // 0x15
+    char Stats[256];   // 0x26
+};   // 0x126
+
+/* our ladder figure sent (no session key) */
+struct MediusUpdateLadderStatsRequest {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    int LadderType;   // 0x18
+    int Stat;   // 0x1c
+    unsigned char _20[0x58 - 0x20];
+};   // 0x58
+
+/* a player's info asked for (SOCOM 1's MediusGetPlayerInfo) */
+struct MediusPlayerInfoRequest {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];   // 0x15
+    int AccountID;   // 0x28
+};   // 0x2c
+
+struct MediusPlayerInfoResponse { MEDIUS_RESPONSE_HEAD };
+struct MediusUpdateAccountStatsResponse { MEDIUS_RESPONSE_HEAD };
+struct MediusUpdateLadderStatsResponse { MEDIUS_RESPONSE_HEAD };
+
+extern "C" {
+void func_002FAB80(char *stats);   /* our stats as a text */
+extern char data_0066A648[256];   /* our stats' text kept */
+extern GamePlayerStats data_0066A750;   /* and unpacked */
+extern int data_0066A754;   /* the ladder figure in it */
+MediusErrorCode func_006482B0(MediusUpdateAccountStatsRequest *req,
+                              void (*cb)(int, int, int, MediusUpdateAccountStatsResponse *));
+MediusErrorCode func_0064B248(MediusUpdateLadderStatsRequest *req,
+                              void (*cb)(int, int, int, MediusUpdateLadderStatsResponse *));
+void func_002FAB70(int, int, int, MediusUpdateAccountStatsResponse *);
+void func_002FAB60(int, int, int, MediusUpdateLadderStatsResponse *);
+MediusErrorCode func_00648D30(MediusPlayerInfoRequest *req,
+                              void (*cb)(int, int, int, MediusPlayerInfoResponse *));   /* MediusGetPlayerInfo */
+void func_002FA8F0(int, int, int, MediusPlayerInfoResponse *);   /* our info shown */
+}
+
 /* the mission and its net game (only what is read here) */
 struct CNetGameLobby {
     unsigned char _0[0x114];
@@ -183,6 +225,43 @@ void CZOnlineLobby::PasswordSecurity()
 
     if (valve->IsOff())
         func_003862A0(func_003857C0(&theUIVarManager, "PLAYERPASSWORD", 0, 1), "");
+}
+
+/* our stats sent to the server: built into a text, kept, unpacked, and our ladder figure sent too
+ * (SOCOM II's; OVL1 0x2FAA80: the active lobby's handler sends them every five minutes) */
+extern "C" void func_002FAA80(CZOnlineLobby *lobby)
+{
+    if (lobby->m_isopen) {
+        char stats[256];
+        MediusUpdateAccountStatsRequest req;
+        MediusUpdateLadderStatsRequest ladder;
+
+        memset(&req, 0, sizeof(req));
+        SetSessionKey(req.SessionKey);
+        func_002FAB80(stats);
+        memcpy(req.Stats, stats, sizeof(req.Stats));
+        if (data_0066A648)
+            memcpy(data_0066A648, stats, sizeof(data_0066A648));
+        func_002F9AC0(&data_0066A750, stats);
+        CheckMediusError(func_006482B0(&req, func_002FAB70));
+        memset(&ladder, 0, sizeof(ladder));
+        ladder.LadderType = 0;
+        ladder.Stat = data_0066A754;
+        CheckMediusError(func_0064B248(&ladder, func_002FAB60));
+    }
+}
+
+/* our own info asked for (SOCOM 1's active lobby asked for the stats so; OVL1 0x2FA870) */
+extern "C" void func_002FA870(CZOnlineLobby *lobby)
+{
+    if (lobby->m_isopen) {
+        MediusPlayerInfoRequest req;
+
+        memset(&req, 0, sizeof(req));
+        SetSessionKey(req.SessionKey);
+        req.AccountID = AccountInfo.AccountID;
+        CheckMediusError(func_00648D30(&req, func_002FA8F0));
+    }
 }
 
 /* the session ended: the lobby's queue told to end it (SOCOM 1's, which ran the Medius calls
