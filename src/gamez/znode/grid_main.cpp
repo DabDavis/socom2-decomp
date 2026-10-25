@@ -6,7 +6,7 @@
  * grid_di.cpp's queries come before it (its static initialiser registers CStack's destructor, whose
  * linked copy, 0x2D4FE0, closes that unit), grid_clutter.cpp's clutter animation after it. Defined
  * in reverse of their image order (-inline deferred).
- * Unwritten: ReadClutter (0x2D5060), AddClutter (0x2D55C0), Destroy (0x2D58B0), 0x2D5B50 (new),
+ * Unwritten: ReadClutter (0x2D5060), AddClutter (0x2D55C0), 0x2D5B50 (new),
  * Create (0x2D5C80), SetTraversalBoundaryOrdered (0x2D6920), 0x2D6AB0 (new), SetTraversalExtents
  * (0x2D6C40), gridAddNodeToGrids (0x2D7580). CGrid() is written and byte-exact once its CFRect
  * constructor's row is named (below). */
@@ -536,6 +536,44 @@ void CGrid::Update(CNode *node)
         gridRemoveNodeFromGrids(node);
         gridAddNodeToGrids(node);
     }
+}
+
+/* the world's nodes sorted: every other node unlinked from the cells and its atoms freed, each
+ * cell taken off the world and deleted, then the atoms' tables freed (SOCOM 1's; SOCOM II inlines
+ * gridRemoveNodeFromGrids and frees no third table; the cells' erase written out, as SOCOM 1's).
+ * OPEN, 11 instructions (the right size), registers only: the target holds the cells vector's
+ * &size_ in s0 and &data_ in s1, here the other way round -- byte-exact with include/vector's __vector_pod::end() as `return data() + size_;` (the end
+ * read through data()'s reference) -- measured over every hand-written unit (2026-10-25, the world
+ * lane): CGrid::Destroy, CWorld::GenerateLandmarkList, CWorld::DeleteChildren and
+ * CAssetLib::AddPalette match, CCharacterType::Create (one level taller) is lost; waits on include/ */
+void CGrid::Destroy()
+{
+    if (m_world) {
+        CNodeVector cells;
+        CNodeVector others;
+
+        m_world->Segregate_CCells(m_world, cells, others);
+        for (CNodeVector::iterator it = others.begin(), e = others.end(); it != e; ++it) {
+            CNode *node = *it;
+
+            gridRemoveNodeFromGrids(node);
+            node->FreeAtom();
+        }
+        for (CNodeVector::iterator it = cells.begin(); it != cells.end(); ++it) {
+            CNode *cell = *it;
+
+            m_world->DeleteChild(cell);
+            delete cell;
+        }
+        cells.erase(cells.begin(), cells.end());
+        m_world = 0;
+    }
+    if (m_Atoms)
+        _free(m_Atoms, 0, 0);
+    m_Atoms = 0;
+    if (m_AtomBuf)
+        _free(m_AtomBuf, 0, 0);
+    m_AtomBuf = 0;
 }
 
 /* every cell's clutter let go of (SOCOM 1's) */

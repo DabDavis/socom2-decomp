@@ -4602,7 +4602,7 @@
 0x002DC3E0 0x14 Release__Q23zdb3CDIFv  # OVL1; s1:calls (SOCOM 1's, 0x14 bytes in both: the count dropped and given back; DeleteDI tests it)
 0x002DC400 0x50 Allocate__Q23zdb3CDIFi  # OVL1; s1:align
 0x002DC450 0x68 __dt__Q23zdb3CDIFv  # OVL1; s1:align
-0x002DC4C0 0x158 func_002DC4C0  # OVL1
+0x002DC4C0 0x158 __ct__Q23zdb3CDIFv  # OVL1; s1:order by hand (the world lane: SOCOM 1's CDI() after ~CDI as there, 0xD4 there: DI_PARAMS's constructor inlined -- region and count zeroed, every flag through its setter, masked at run time -- then the vtable, the points and the count; SOCOM II's sits 0x10 lower (no normal) and sets four new flag fields; CDIPoly() and CDIBBox() call it)
 0x002DC620 0x38 func_002DC620  # OVL1
 0x002DC660 0x20 SetMask__Q23zdb11DiIntersectFUi  # OVL1; new in SOCOM II, the name ours (the world lane): the mask at 0x44 set to the argument with its low bit forced on, or to -1 for none; RegIntersectDelayed and RegProximityDelayed call it after setting the type
 0x002DC680 0x60 __dt__Q23zdb11DiIntersectFv  # OVL1; s1:align

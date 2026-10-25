@@ -24,6 +24,37 @@ static PNT4D diNorm;
 
 namespace zdb {
 
+/* a polygon: CDI's (SOCOM 1's, the unit's last function; Create calls it out of line, so pinned) */
+#pragma auto_inline off
+CDIPoly::CDIPoly()
+{
+}
+#pragma auto_inline reset
+
+/* the points freed through the table, then CDI's (SOCOM 1's) */
+CDIPoly::~CDIPoly()
+{
+    Free();
+}
+
+/* a box not yet given its bounds (SOCOM 1's) */
+CDIBBox::CDIBBox()
+{
+    m_bbox = 0;
+}
+
+/* the points freed through the table, then CDI's (SOCOM 1's) */
+CDIBBox::~CDIBBox()
+{
+    Free();
+}
+
+/* a box answers no altitude query (SOCOM 1's, the same two words) */
+int CDIBBox::GetAltitude(DiIntersect *di)
+{
+    return 0;
+}
+
 /* the polygon's normal from its first three points, normalised on VU0 (SOCOM 1's) */
 void CDI::SetEdgeVecsAndNorm()
 {
@@ -86,11 +117,21 @@ void DiIntersect::SetMask(unsigned int mask)
         m_mask = -1;
 }
 
+/* no points and no holders, the parameters' constructor inlined first (SOCOM 1's). The shapes'
+ * constructors and destructors call CDI's out of line: both pinned */
+#pragma auto_inline off
+CDI::CDI()
+{
+    m_pnts = 0;
+    m_refcount = 0;
+}
+
 /* the points freed (SOCOM 1's, through its vtable) */
 CDI::~CDI()
 {
     Free();
 }
+#pragma auto_inline reset
 
 /* room for n points (SOCOM 1's) */
 void CDI::Allocate(int n)

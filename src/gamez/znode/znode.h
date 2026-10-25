@@ -107,7 +107,39 @@ public:
  * DI_PARAMS; SOCOM II's AddDI counts at 4) and its vtable pointer -- at 0xc, where SOCOM 1's
  * sat at 0x1c, after its parameters (DeleteDI deletes through the first slot) */
 struct tag_DI_HEAD {
-    unsigned int _0;
+    /* SOCOM 1's DI_PARAMS constructor: the region and the count zeroed, then every flag field
+     * through its setter -- a constant passed to an inline setter is masked at run time, `(0 & 3)`
+     * -- SOCOM II's four new fields among them (bit 26 set, the three bits at 28 set to 4; CDI's
+     * constructor inlines it, 0x2DC4C0; the setters' names are ours) */
+    tag_DI_HEAD()
+    {
+        _0 = 0;
+        m_refcount = 0;
+        SetDiType(0);
+        SetPtCount(0);
+        SetMaterial(0);
+        SetCameraType(0);
+        SetAppFlags(0);
+        SetInside(0);
+        SetFlag27(false);
+        SetBit26(true);
+        SetBit31(false);
+        SetShadow(0);
+        SetBits28(4);
+    }
+    void SetDiType(int n) { m_flags.m_ditype = n; }
+    void SetPtCount(int n) { m_flags.m_ptcount = n; }
+    void SetMaterial(int n) { m_flags.m_material = n; }
+    void SetCameraType(int n) { m_flags.m_cameratype = n; }
+    void SetAppFlags(int n) { m_flags.m_appflags = n; }
+    void SetInside(int n) { m_flags.m_inside = n; }
+    void SetShadow(int n) { m_flags.m_shadow = n; }
+    void SetBit26(bool b) { m_flags.m_reserved26 = b; }
+    void SetFlag27(bool b) { m_flags.m_flag27 = b; }
+    void SetBits28(int n) { m_flags.m_bits28 = n; }
+    void SetBit31(bool b) { m_flags.m_bit31 = b; }
+
+    unsigned int _0;   // 0x0 (SOCOM 1's m_region, after its normal)
     unsigned int m_refcount;   // 0x4
     /* SOCOM 1's DI_PARAMS flags, at 8 here (SetMaterial writes the material's eight bits at bit
      * 10, SetDIBBox the type's two at bit 0) */
@@ -124,7 +156,9 @@ struct tag_DI_HEAD {
             unsigned int m_reserved26 : 1;
             /* SOCOM II's: IntersectStruct::GetPolyFlag27 reads it (the name ours) */
             unsigned int m_flag27 : 1;
-            unsigned int m_reserved : 4;
+            /* SOCOM II's: the constructor sets 4 and clears bit 31 (the names ours) */
+            unsigned int m_bits28 : 3;
+            unsigned int m_bit31 : 1;
         } m_flags;
     };
 };
@@ -134,6 +168,7 @@ class CSaveLoad;
 
 class CDI : public tag_DI_HEAD {
 public:
+    CDI();
     virtual ~CDI();
     /* SOCOM II's table (__vt__Q23zdb3CDI, 0x406650): the destructor, Allocate, Free, two pure
      * slots (SOCOM 1's GetIntersect and GetAltitude, each shape's own) and Read */

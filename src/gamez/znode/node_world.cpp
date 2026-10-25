@@ -290,8 +290,10 @@ struct DeleteCell {
 
 /* every child taken off: the others first, then the cells, the list emptied (SOCOM 1's).
  * OPEN, 2 instructions (0x27C of 0x274): each end() reloads data_ where the target computes it from
- * the load begin() made (the pod vector's end() lever, as ~CAssetLib's); the functors and the
- * transforms' copies are the target's */
+ * the load begin() made; the functors and the transforms' copies are the target's. byte-exact with include/vector's __vector_pod::end() as `return data() + size_;` (the end
+ * read through data()'s reference) -- measured over every hand-written unit (2026-10-25, the world
+ * lane): CGrid::Destroy, CWorld::GenerateLandmarkList, CWorld::DeleteChildren and
+ * CAssetLib::AddPalette match, CCharacterType::Create (one level taller) is lost; waits on include/ */
 void CWorld::DeleteChildren()
 {
     std::transform(m_child.begin(), m_child.end(), m_child.begin(), ReleaseNonCell(this));
@@ -344,7 +346,10 @@ void CWorld::LandmarkList_Search(CNode *node, CStack &stack, CNodeVector &list)
  * OPEN, 10 instructions (the right size): the local vector's field addresses trade saved
  * registers -- the target holds &size_ in s0 and &data_ in s1 (SOCOM 1's the other way round, as
  * here); not the declaration order of the vector, the stack or the count, a plain std::vector, the
- * clear's place, a postfix step or a pointer walk */
+ * clear's place, a postfix step or a pointer walk. byte-exact with include/vector's __vector_pod::end() as `return data() + size_;` (the end
+ * read through data()'s reference) -- measured over every hand-written unit (2026-10-25, the world
+ * lane): CGrid::Destroy, CWorld::GenerateLandmarkList, CWorld::DeleteChildren and
+ * CAssetLib::AddPalette match, CCharacterType::Create (one level taller) is lost; waits on include/ */
 int CWorld::GenerateLandmarkList()
 {
     CNodeVector landmarks;
