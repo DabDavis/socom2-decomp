@@ -139,8 +139,9 @@ class RelocFinding:
         return f"+0x{self.offset:03X} {self.type:<14} {self.symbol:<40} target {w}  cand {g}  {self.status}"
 
 
-def _sym_address(st: E.SymbolTable, name: str) -> int | None:
-    a = st.address_of(name)                 # a function, or a global data.txt names
+def _sym_address(st: E.SymbolTable, name: str, near: int | None = None) -> int | None:
+    # a function, or a global data.txt names; from code at `near`, its own overlay's copy
+    a = st.address_of(name) if near is None else st.address_in(name, near)
     if a is not None:
         return a
     if E.is_placeholder(name):
@@ -185,8 +186,8 @@ def local_object_ok(elf: E.Elf, sec_index: int, start: int, want: int, fsym: E.E
                 base = 0 if s.type == "SECTION" else s.value
                 if tw != (func_sec_base + base + field) & 0xFFFFFFFF:
                     return False
-            elif s.name and _sym_address(st, s.name) is not None:
-                if tw != (_sym_address(st, s.name) + field) & 0xFFFFFFFF:
+            elif s.name and _sym_address(st, s.name, taddr) is not None:
+                if tw != (_sym_address(st, s.name, taddr) + field) & 0xFFFFFFFF:
                     return False
             i += 4                              # an unresolvable pointer is not compared
             continue
@@ -212,7 +213,7 @@ def reloc_check(elf: E.Elf, fsym: E.ElfSymbol, relocs: list[E.Reloc], target: by
         # units that emit the function can share it)
         if (s.name and not s.name.startswith("@STRING@")
                 and (s.bind != 0 or s.type == "FUNC" or s.name in st.data_by_name)):
-            a = _sym_address(st, s.name)
+            a = _sym_address(st, s.name, taddr)
             if a is not None or s.bind != 0:
                 return s.name, a, None, 0
         ok = 0 < s.shndx < len(elf.sections)

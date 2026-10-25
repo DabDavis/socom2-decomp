@@ -12,6 +12,7 @@
 #define ZMATH_H
 
 #include <libvu0.h>
+#include <string.h>
 
 extern "C" float sinf(float);
 extern "C" float cosf(float);
@@ -345,6 +346,28 @@ char *_strdup(const char *s, const char *file, int line);
 /* A variable-length bit set (zmath_bits.h in SOCOM 1's asserts). */
 class CBits {
 public:
+    /* empty, then sized (CAiEvent's constructor inlines it: both words zeroed, Resize called) */
+    CBits(unsigned int bits) : m_bits(0), m_vec(0) { Resize(bits); }
+    /* the words freed with no file or line (SOCOM 1's out of line, 0x17F440 in the demo; SOCOM
+     * II's inlines, its this-test kept: CAiEvent's deletes) */
+    ~CBits()
+    {
+        _free(m_vec, 0, 0);
+        m_vec = 0;
+    }
+    /* the words that hold so many bits, the count signed (SOCOM 1's GetWordCount__5CBitsCFi:
+     * sra) */
+    int GetWordCount(int bits) const { return (bits >> 5) + 1; }
+    /* every bit cleared (CAiEvent::Initalize; the name is ours) */
+    void ClearAll()
+    {
+        if (m_vec)
+            memset(m_vec, 0, GetWordCount(m_bits) * 4);
+        else
+            m_bits = 0;
+    }
+    bool Test(unsigned int i) const { return (m_vec[i >> 5] & (1 << (i & 31))) != 0; }
+
     unsigned int m_bits;
     unsigned int *m_vec;
 

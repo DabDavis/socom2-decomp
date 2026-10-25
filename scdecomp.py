@@ -388,6 +388,30 @@ class SymbolTable:
         s = self._by_name.get(name) or self.data_by_name.get(name)
         return s.addr if s is not None else None
 
+    # Each overlay is linked on its own, so a template instance or an inline's out-of-line copy
+    # exists once per overlay (pointer-list erase: OVL1 0x1EAAF0, OVL2 0x50F990). The map keeps
+    # one name per function; the other overlay's copy stays a placeholder whose note says
+    # `ovl-copy: <name>`, and a call from that overlay resolves to it.
+    _OVL_COPY = re.compile(r"ovl-copy: (\S+)")
+
+    @staticmethod
+    def overlay_of(addr: int) -> str:
+        return "MAIN" if addr < 0x1E7000 else "OVL1" if addr < 0x4C5380 else "OVL2"
+
+    def address_in(self, name: str, near: int) -> int | None:
+        """`name`'s address as code at `near` sees it: its own overlay's copy when the named
+        row lies in another overlay and the map lists a copy (`ovl-copy:`) in `near`'s."""
+        a = self.address_of(name)
+        if a is None or self.overlay_of(a) == self.overlay_of(near):
+            return a
+        if not hasattr(self, "_copies"):
+            self._copies = {}
+            for s in self.symbols:
+                m = self._OVL_COPY.search(s.note or "")
+                if m:
+                    self._copies[(self.overlay_of(s.addr), m.group(1))] = s.addr
+        return self._copies.get((self.overlay_of(near), name), a)
+
     def data_containing(self, addr: int) -> Symbol | None:
         import bisect
         keys = [s.addr for s in self.data]

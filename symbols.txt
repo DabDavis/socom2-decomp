@@ -9298,48 +9298,48 @@
 0x0050E410 0x130 AlignToPoint__3CAiFPC7CMatrixPC6CPnt3DP7CMatrixf  # OVL2; s1:calls
 0x0050E540 0x48 Extrapolate__3CAiFPC6CPnt3DPC6CPnt3DfP6CPnt3D  # OVL2; s1:exact
 0x0050E590 0x198 func_0050E590  # OVL2
-0x0050E730 0x88 func_0050E730  # OVL2
-0x0050E7C0 0x88 func_0050E7C0  # OVL2
-0x0050E850 0x50 func_0050E850  # OVL2
-0x0050E8A0 0xBC func_0050E8A0  # OVL2
+0x0050E730 0x88 Create__9CAiEventQFUi  # OVL2; s1:order (ai_events.cpp's first function as in the demo; finds a handle by its 16-bit id in the list or pushes one, as the demo's 0x17F080)
+0x0050E7C0 0x88 MakeMaskEx__8CAiEventFQ28CAiEvent5EVENTe  # OVL2; s1:order (the demo's 0x17F180, the same variadic mask loop)
+0x0050E850 0x50 Tick__8CAiEventFf  # OVL2; s1:order (the demo's 0x17F210, the same code: NoExpire, duration counted down)
+0x0050E8A0 0xBC Initalize__8CAiEventFv  # OVL2; s1:order (the demo's 0x17F270: the constructor's body after Resize, field for field)
 0x0050E960 0xE4 __ct__8CAiEventFv  # OVL2; s1:calls
-0x0050EA50 0x1A4 func_0050EA50  # OVL2
-0x0050EC00 0xC8 func_0050EC00  # OVL2
-0x0050ECD0 0xA4 func_0050ECD0  # OVL2
-0x0050ED80 0xB0 func_0050ED80  # OVL2
-0x0050EE30 0xF4 func_0050EE30  # OVL2
-0x0050EF30 0x1EC func_0050EF30  # OVL2
-0x0050F120 0x2C func_0050F120  # OVL2
-0x0050F150 0x64 func_0050F150  # OVL2
-0x0050F1C0 0x180 func_0050F1C0  # OVL2
-0x0050F340 0x180 func_0050F340  # OVL2
-0x0050F4C0 0x50 func_0050F4C0  # OVL2
-0x0050F510 0x48 func_0050F510  # OVL2
-0x0050F560 0x110 func_0050F560  # OVL2
-0x0050F670 0xF8 func_0050F670  # OVL2
-0x0050F770 0x10 func_0050F770  # OVL2; tu: char_type.cpp~ (1.0 beta)
-0x0050F780 0x8C func_0050F780  # OVL2
-0x0050F810 0x30 func_0050F810  # OVL2
-0x0050F840 0xC func_0050F840  # OVL2
-0x0050F850 0x14 func_0050F850  # OVL2
-0x0050F870 0x14 func_0050F870  # OVL2
-0x0050F890 0xF8 func_0050F890  # OVL2
-0x0050F990 0xBC func_0050F990  # OVL2
-0x0050FA50 0x74 func_0050FA50  # OVL2
-0x0050FAD0 0x100 func_0050FAD0  # OVL2
-0x0050FBD0 0xBC func_0050FBD0  # OVL2
-0x0050FC90 0x100 func_0050FC90  # OVL2
-0x0050FD90 0xEC func_0050FD90  # OVL2
-0x0050FE80 0x4C func_0050FE80  # OVL2
-0x0050FED0 0xC func_0050FED0  # OVL2
-0x0050FEE0 0xBC func_0050FEE0  # OVL2
-0x0050FFA0 0x18 func_0050FFA0  # OVL2; s1~ __ct__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>Fv (one of 2)
+0x0050EA50 0x1A4 GetNextEvent__8CAiEventFPC6CPnt3DRQ28CAiEvent8iteratorf  # OVL2; s1:order (the demo's 0x17F4A0: the iterator walk, mask/type/owner/bit tests, CPnt3D::Sub and the range; 0x5FAAE0 calls it after GetFirstEvent)
+0x0050EC00 0xC8 GetFirstEvent__8CAiEventFQ28CAiEvent11EVENT_CLASS  # OVL2; s1:order (the demo's 0x17F660: m_inuse/m_persist by class, the iterator filled with -1s and AIE_MAX)
+0x0050ECD0 0xA4 Tick__8CAiEventFfPv  # OVL2; s1:ref (CCoreState::Init adds it to the scheduler as "CAiEventTick", as SOCOM 1's adds Tick__8CAiEventFfPv; remove_if over m_inuse with the _tick functor)
+0x0050ED80 0xB0 Release__8CAiEventFP8CAiEvent  # OVL2; s1:calls (CZSealBody's destructor calls it where SOCOM 1's calls Release__8CAiEventFP8CAiEvent)
+0x0050EE30 0xF4 Create__8CAiEventFP8CAiEvent  # OVL2; s1:order (the demo's 0x17F8F0: NoExpire to m_persist, else m_inuse, then every callback; every caller calls Acquire first)
+0x0050EF30 0x1EC Acquire__8CAiEventFv  # OVL2; s1:order (the demo's 0x17F9F0: new CAiEvent or the pool's first, nextId++)
+0x0050F120 0x2C Close__8CAiEventFv  # OVL2; s1:calls (CMission::ReOpen_Unload2 calls it where SOCOM 1's calls Close__8CAiEventFv; bit_count = 32)
+0x0050F150 0x64 Open__8CAiEventFUi  # OVL2; s1:calls (CMission::Open calls it where SOCOM 1's calls Open__8CAiEventFUi; bit_count = its argument, m_inuse cleared)
+0x0050F1C0 0x180 FreeEvents__8CAiEventFv  # OVL2; ours (Close's only callee: SOCOM 1's Close body -- m_inuse onto m_pool, the pool's events deleted, the pool cleared)
+0x0050F340 0x180 GetEventFromString__8CAiEventFPCcQ28CAiEvent5EVENT  # OVL2; s1:order (the demo's 0x17FF30: strcasecmp against each kind's name, GetEventString inlined)
+0x0050F4C0 0x50 GetEventRange__8CAiEventFQ28CAiEvent5EVENT  # OVL2; ours (new in SOCOM II, between GetEventFromString and GetEventRate: 200, 250 for GENERIC, 80 for ENTITY, read from data)
+0x0050F510 0x48 GetEventRate__8CAiEventFQ28CAiEvent5EVENT  # OVL2; s1:order (the demo's 0x17FFB0, the same switch: 5.0 for one kind, 0 else; 13 kinds where SOCOM 1 had 15)
+0x0050F560 0x110 GetEventString__8CAiEventFQ28CAiEvent5EVENT  # OVL2; s1:order (the demo's 0x180000: the kinds' names, "UNKNOWN" ... "LIGHTS"; CAiSEvent::GetStatus tail-calls it)
+0x0050F670 0xF8 remove_if<Q33std46list<P8CAiEvent,Q23std21allocator<P8CAiEvent>>19generic_iterator<0>,5_tick>__3stdFQ33std46list<P8CAiEvent,Q23std21allocator<P8CAiEvent>>19generic_iterator<0>Q33std46list<P8CAiEvent,Q23std21allocator<P8CAiEvent>>19generic_iterator<0>5_tick_Q33std46list<P8CAiEvent,Q23std21allocator<P8CAiEvent>>19generic_iterator<0>  # OVL2; s1:calls (CAiEvent::Tick(float, void*) calls it where the demo calls remove_if<...,_tick>; the find_if loop calls ++, !=, * and _tick::operator() out of line, then remove_copy_if; MW 3.0 mangles the return type)
+0x0050F770 0x10 __ct__Q33std46list<P8CAiEvent,Q23std21allocator<P8CAiEvent>>19generic_iterator<0>FRCQ33std46list<P8CAiEvent,Q23std21allocator<P8CAiEvent>>19generic_iterator<0>  # OVL2; tu: char_type.cpp~ (1.0 beta); by hand (the event list's wrapper iterator copied, out of line: lw/sw, this returned; remove_if calls it)
+0x0050F780 0x8C __cl__5_tickFP8CAiEvent  # OVL2; s1:order (SOCOM 1's _tick function object: Tick(dT) and back to the pool; remove_if's predicate call, out of line)
+0x0050F810 0x30 push_back__Q23std46list<P8CAiEvent,Q23std21allocator<P8CAiEvent>>FRCP8CAiEvent  # OVL2; by hand (the event list's push_back, out of line: insert at this + 4; _tick::operator() calls it)
+0x0050F840 0xC __ml__Q33std46list<P8CAiEvent,Q23std21allocator<P8CAiEvent>>19generic_iterator<0>CFv  # OVL2; by hand (the wrapper iterator's operator*, out of line: the node's value address; remove_if calls it)
+0x0050F850 0x14 __ne__Q33std46list<P8CAiEvent,Q23std21allocator<P8CAiEvent>>19generic_iterator<0>CFRCQ33std46list<P8CAiEvent,Q23std21allocator<P8CAiEvent>>19generic_iterator<0>  # OVL2; by hand (the wrapper iterator's !=, out of line: xor, sltu; remove_if calls it)
+0x0050F870 0x14 __pp__Q33std46list<P8CAiEvent,Q23std21allocator<P8CAiEvent>>19generic_iterator<0>Fv  # OVL2; by hand (the wrapper iterator's prefix ++, out of line: node = node->next_, this returned; remove_if calls it)
+0x0050F890 0xF8 func_0050F890  # OVL2; OVL2's copy of the pointer lists' remove_if (OVL1 0x20CB50; Release's remove calls it); ovl-copy: remove_if<Q23std36binder2nd<Q23std13equal_to<PCv>,PCv>>__Q23std38__list_imp<PCv,Q23std14allocator<PCv>>FQ23std36binder2nd<Q23std13equal_to<PCv>,PCv>_v
+0x0050F990 0xBC func_0050F990  # OVL2; OVL2's copy of the pointer lists' range erase (OVL1 0x1EAAF0, the same 0xBC; clear() calls it); ovl-copy: erase__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>FQ33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<0>Q33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<0>
+0x0050FA50 0x74 func_0050FA50  # OVL2; OVL2's copy of the pointer lists' single erase (OVL1 0x20CC50, the same 0x74; Acquire's pop_front calls it); ovl-copy: erase__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>FQ33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<0>
+0x0050FAD0 0x100 func_0050FAD0  # OVL2; OVL2's copy of the pointer lists' insert (OVL1 0x1FEAE0, the same 0x100; push_back calls it); ovl-copy: insert__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>FQ33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<0>RCPCv
+0x0050FBD0 0xBC erase__Q23std68__list_deleter<14CAiEventHandle,Q23std27allocator<14CAiEventHandle>>FQ33std68__list_deleter<14CAiEventHandle,Q23std27allocator<14CAiEventHandle>>19generic_iterator<0>Q33std68__list_deleter<14CAiEventHandle,Q23std27allocator<14CAiEventHandle>>19generic_iterator<0>  # OVL2; by hand (the handle list's range erase, include/list's 0xBC shape, next to its insert; two SEAL AI functions clear their queues with it)
+0x0050FC90 0x100 insert__Q23std68__list_deleter<14CAiEventHandle,Q23std27allocator<14CAiEventHandle>>FQ33std68__list_deleter<14CAiEventHandle,Q23std27allocator<14CAiEventHandle>>19generic_iterator<0>RC14CAiEventHandle  # OVL2; s1:calls (CAiEventQ::Create's push_back calls it, as the demo's calls this insert; a 12-byte node, the handle copied lhu/sh)
+0x0050FD90 0xEC remove_copy_if<Q33std46list<P8CAiEvent,Q23std21allocator<P8CAiEvent>>19generic_iterator<0>,Q33std46list<P8CAiEvent,Q23std21allocator<P8CAiEvent>>19generic_iterator<0>,5_tick>__3stdFQ33std46list<P8CAiEvent,Q23std21allocator<P8CAiEvent>>19generic_iterator<0>Q33std46list<P8CAiEvent,Q23std21allocator<P8CAiEvent>>19generic_iterator<0>Q33std46list<P8CAiEvent,Q23std21allocator<P8CAiEvent>>19generic_iterator<0>5_tick_Q33std46list<P8CAiEvent,Q23std21allocator<P8CAiEvent>>19generic_iterator<0>  # OVL2; s1:calls (remove_if's tail call, as the demo's remove_copy_if<...,_tick>; it calls Tick(float) through the inlined _tick)
+0x0050FE80 0x4C push_back__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>FRCPCv  # OVL2; by hand (the pointer lists' base push_back, out of line: end() and insert called; remove_copy_if calls it)
+0x0050FED0 0xC func_0050FED0  # OVL2; OVL2's copy of the pointer lists' end() out of line (OVL1 0x2A00A0, the same code); ovl-copy: end__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>Fv
+0x0050FEE0 0xBC erase__Q23std72__list_deleter<16CAiEventCallback,Q23std29allocator<16CAiEventCallback>>FQ33std72__list_deleter<16CAiEventCallback,Q23std29allocator<16CAiEventCallback>>19generic_iterator<0>Q33std72__list_deleter<16CAiEventCallback,Q23std29allocator<16CAiEventCallback>>19generic_iterator<0>  # OVL2; by hand (the callback list's range erase, include/list's 0xBC shape; ~__list_imp calls it)
+0x0050FFA0 0x18 func_0050FFA0  # OVL2; s1~ __ct__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>Fv (one of 2); OVL2's copy of the pointer lists' deleter constructor (OVL1 0x1EABB0; __sinit_ai_events.cpp builds the three event lists with it); ovl-copy: __ct__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>Fv
 0x0050FFC0 0x18 __ct__Q23std72__list_deleter<16CAiEventCallback,Q23std29allocator<16CAiEventCallback>>Fv  # OVL2; s1:callee
-0x0050FFE0 0x80 func_0050FFE0  # OVL2
-0x00510060 0xC func_00510060  # OVL2
-0x00510070 0xC func_00510070  # OVL2
-0x00510080 0x80 func_00510080  # OVL2
-0x00510100 0xC func_00510100  # OVL2
+0x0050FFE0 0x80 func_0050FFE0  # OVL2; by hand (~CAiEventCallbackList's callee, as ~CAiEventList's is the pointer lists' __list_imp destructor: two this-tests, begin()/end() out of line, the range erase, delete); back to its placeholder: it is __dt__Q23std68__list_imp<16CAiEventCallback,Q23std29allocator<16CAiEventCallback>>Fv (~CAiEventCallbackList's callee), but ai_events.cpp emits include/list's copy of that destructor (0xB8, begin()/end() inlined) where the target's calls them out of line (0x80) -- left unnamed so the generated draft keeps matching until the list remodel settles it
+0x00510060 0xC end__Q23std72__list_deleter<16CAiEventCallback,Q23std29allocator<16CAiEventCallback>>Fv  # OVL2; by hand (the callback list's end() out of line: iterator(this + 4); ~__list_imp calls it)
+0x00510070 0xC begin__Q23std72__list_deleter<16CAiEventCallback,Q23std29allocator<16CAiEventCallback>>Fv  # OVL2; by hand (the callback list's begin() out of line: iterator(end_.next_), as OVL2's pointer-list copy 0x510100; ~__list_imp calls it)
+0x00510080 0x80 func_00510080  # OVL2; OVL2's copy of the pointer lists' __list_imp destructor (OVL1 0x1EA250; this one calls begin() and end() out of line, 8 bytes longer; ~CAiEventList calls it); ovl-copy: __dt__Q23std38__list_imp<PCv,Q23std14allocator<PCv>>Fv
+0x00510100 0xC func_00510100  # OVL2; OVL2's copy of the pointer lists' begin() out of line (OVL1 0x2A00B0, the same code); ovl-copy: begin__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>Fv
 0x00510110 0xB0 func_00510110  # OVL2
 0x005101C0 0x60 __dt__20CAiEventCallbackListFv  # OVL2; s1:ref (taken by address where SOCOM 1 takes __dt__20CAiEventCallbackListFv's)
 0x00510220 0x60 __dt__12CAiEventListFv  # OVL2; s1:ref (taken by address where SOCOM 1 takes __dt__12CAiEventListFv's)
