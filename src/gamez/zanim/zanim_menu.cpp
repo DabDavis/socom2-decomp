@@ -342,6 +342,29 @@ bool UIJoinGameServer(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+/* CheckJoinMP's last counts: function-local statics in the original (SOCOM 1's had one, its guard
+ * beside it), held to their addresses by their placeholders; -1 in data */
+extern "C" int data_003DD490;
+extern "C" int data_003DD498;
+
+bool UICheckJoinMP(C2DAnimCmdHdr *hdr, float *dT)
+{
+    int clients = theNetwork.zNetGetValidGameClientCount();
+
+    if (clients != data_003DD490)
+        data_003DD490 = clients;
+    NetSessionInfo info;
+
+    func_0030CDD0(&theNetwork, &info);
+    if (info.m_count != data_003DD498)
+        data_003DD498 = info.m_count;
+    if (data_003DD490 == data_003DD498 && data_003DD490 == 1) {
+        SetValveValue(theMission.m_pNetGame->m_pJoinGameValve, 10);
+        theMission.m_pNetGame->m_joined = 1;
+    }
+    return true;
+}
+
 bool UIIsMemCardInserted(C2DAnimCmdHdr *hdr, float *dT)
 {
     return theMemCard.IsInserted();
@@ -800,6 +823,31 @@ bool UIInvitePlayerToClanWithArg(C2DAnimCmdHdr *hdr, float *dT)
     return func_002E7600(&theLobby, ArgText(ArgName(hdr)));
 }
 
+bool UIVagStreaming(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *text = ArgText(ArgName(hdr));
+
+    if (!strcmp(text, "ON")) {
+        data_0048DDA0 = 1;
+        CSnd::UIOpen();
+    } else if (!strcmp(text, "OFF")) {
+        CSnd::Close();
+        data_0048DDA0 = 0;
+    }
+    return true;
+}
+
+bool UIAutoAim(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *text = ArgText(ArgName(hdr));
+
+    if (!strcmp(text, "ON"))
+        data_003DF1A0 = 1;
+    else if (!strcmp(text, "OFF"))
+        data_003DF1A0 = 0;
+    return true;
+}
+
 bool UIGetInvitedPlayers(C2DAnimCmdHdr *hdr, float *dT)
 {
     func_002E6EA0(&theLobby);
@@ -915,6 +963,15 @@ bool UIGetGameInfo(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+bool UIGetPlayerInfo(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *name = ArgText(ArgName(hdr));
+
+    if (name)
+        func_002EFE50(&theLobby, name, ((UIPlayerInfoCmd *)hdr)->m_what);
+    return true;
+}
+
 bool UIGetFriendInfo(C2DAnimCmdHdr *hdr, float *dT)
 {
     const char *text = ArgText(ArgName(hdr));
@@ -1020,6 +1077,19 @@ bool UINetCnfInit(C2DAnimCmdHdr *hdr, float *dT)
 bool UINetCnfUninit(C2DAnimCmdHdr *hdr, float *dT)
 {
     func_0030C6A0();
+    return true;
+}
+
+bool UINetCnfClose(C2DAnimCmdHdr *hdr, float *dT)
+{
+    NetCnfRdr rdr;
+
+    func_00333AE0(&rdr);
+    func_003339B0(&rdr, 0);
+    func_00333770(&rdr);
+    func_003857C0(&theUIVarManager, "NETCNF_DB", (_zrdr *)&rdr, UIVAR_SESSION);
+    strncpy(data_003DF360, "", 256);
+    func_00333A20(&rdr, -1);
     return true;
 }
 
@@ -1142,6 +1212,40 @@ bool UICheckTeamStatus(C2DAnimCmdHdr *hdr, float *dT)
 bool UISuspendMenuInput(C2DAnimCmdHdr *hdr, float *dT)
 {
     func_001F3BB0(&theGame.m_menuState, func_00191478(ArgText(ArgName(hdr))));
+    return true;
+}
+
+bool UIIsControllerConnected(C2DAnimCmdHdr *hdr, float *dT)
+{
+    bool connected = false;
+    int port = atoi(ArgText(ArgName(hdr)));
+    CPad *pad = (unsigned int)port < CInput::NUM_PADS ? CInput::m_pads[port] : 0;
+
+    if (pad)
+        connected = pad->m_dc == 1;
+    return connected;
+}
+
+bool UIVerifyPatchLevel(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *level = ArgName(hdr);
+
+    level = !strcmp(level, "INPUT_STRING") ? ZAnim.m_CurAnim->m_arg_list->GetCharP(0) : level;
+    bool ok = func_002FD6E0(data_0044FC60, level);
+
+    if (!ok) {
+        CUIVariable *var = func_003857C0(&theUIVarManager, "PatchServerURL", 0, UIVAR_SESSION);
+
+        func_003862A0(var, func_002FD610(data_0044FC60, level));
+    }
+    return ok;
+}
+
+bool UIMediusInit(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CValve *valve = CValve::Create(ArgName(hdr), (VALVE_TYPE)2);
+
+    SetValveValue(valve, func_00300840());
     return true;
 }
 

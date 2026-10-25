@@ -715,6 +715,7 @@
 0x0048DD88 0x4 m_numActive__4CSnd  # OVL1 bss; SOCOM II's CSnd static (name ours): the voices acquired, AcquireSoundInstance counts up and ReleaseSoundInstance down; 4 references in 2 functions
 0x0048DD90 0x4 m_errorsound__4CSnd  # OVL1 bss; s1:data-seq (size SOCOM 1's; via PlayErrorSound__4CSndFv)
 0x0048DD98 0x4 m_max_num_vags__4CSnd  # OVL1 bss; s1:data-seq (size SOCOM 1's; via WaitForCDRead__4CSndFv)
+0x0048DDA0 0x1 m_vagEnabled__4CSnd  # OVL1 bss; SOCOM 1's CSnd static (gp-26504 there): UIVagStreaming sets it on before CSnd::UIOpen and clears it after CSnd::Close, as SOCOM 1's does, and CSnd::UIOpen reads it; 3 references in 2 functions (zsnd.h's CSnd does not declare it yet: zanim_menu.cpp reaches it through data_0048DDA0)
 0x0048DF10 0x1 bnkArchiveIsOpen  # OVL1 bss; SOCOM 1's static of zsnd_csnd.cpp (LOCAL in its symbols): CSnd::Init sets it before opening the bank archive, once, as SOCOM 1's; 2 references in 1 function
 0x0048DF30 0x1 snd_system_initialized  # OVL1 bss; s1:data-seq (size SOCOM 1's; via WaitForCDRead__4CSndFv)
 0x0048DF80 0x1 m_paused__12CSndInstance  # OVL1 bss; CSndInstance static (name ours): Init clears it, PauseAllSounds sets it; 2 references in 2 functions

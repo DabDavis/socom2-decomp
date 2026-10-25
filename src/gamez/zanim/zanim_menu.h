@@ -8,6 +8,7 @@
 
 #include "zanim.h"
 #include "../ztwod/ztwod.h"
+#include "../zinput/zinput.h"
 
 /* A UI command as a menu's ZAnim sequence carries it. SOCOM 1's DWARF: 8 bytes -- the header, the
  * node reference at 4, the command's type at 6 and its argument's name index at 7. SOCOM II's
@@ -21,6 +22,13 @@ public:
     unsigned char m_command_index;    // 0x6: the command's name, an index into the anim's names (ours)
     unsigned short m_argument_index;  // 0x8 (SOCOM 1's a byte at 7)
     unsigned char m_command_type;     // 0xa (SOCOM 1's at 6): 0 until GetUICommandType names it
+};
+
+/* GetPlayerInfo's record: the command and what to ask for, read by its parser out of the tags
+ * (0..3; SOCOM II's; the names ours) */
+struct UIPlayerInfoCmd : public C2DAnimCmdHdr {
+    unsigned short m_c;   // 0xc
+    int m_what;   // 0x10
 };
 
 /* a UI command's handler: whether the command is done */
@@ -151,13 +159,16 @@ public:
     void MyMajorGameState(MP_MAJOR_GAME_STATE state);
     void MyMinorGameState(MP_MINOR_GAME_STATE state);
 
-    unsigned char _0[0xac];
+    unsigned char _0[0x28];
+    CValve *m_pJoinGameValve;   // 0x28 (SOCOM 1's at 0x24)
+    unsigned char _2c[0xac - 0x2c];
     int m_persona_object_index;   // 0xac (SOCOM 1's at 0x70)
     unsigned char _b0[0xcc - 0xb0];
     unsigned char m_late_joiner;   // 0xcc (SOCOM 1's at 0x94)
     unsigned char _cd[0xd8 - 0xcd];
     unsigned char m_ten_second_launch;   // 0xd8 (SOCOM 1's at 0x9F)
-    unsigned char _d9[0xe4 - 0xd9];
+    unsigned char m_joined;   // 0xd9: CheckJoinMP sets it (SOCOM II's; the name ours)
+    unsigned char _da[0xe4 - 0xda];
     unsigned int m_launch_time;   // 0xe4 (SOCOM 1's clock's at 0xA8)
 };
 
@@ -437,6 +448,7 @@ void *func_003A40E0(const char *name);                              /* (a locale
 void func_003A44B0(void *locale);                                   /* (the locale selected) */
 void func_0034F950();                                               /* zSysPostInit (SOCOM 1's) */
 bool func_00300840();                                               /* (Medius initialised) */
+void func_002EFE50(CZOnlineLobby *lobby, const char *name, int what);   /* (a player's info) */
 void func_002E8980(CZOnlineLobby *lobby, int index);                /* DeclineClanInvitation */
 void func_002E89F0(CZOnlineLobby *lobby, int index);                /* AcceptClanInvitation */
 void func_002E6000(CZOnlineLobby *lobby, const char *name);         /* (clan member's info) */
@@ -468,7 +480,41 @@ void func_002E24D0(CZOnlineLobby *lobby);                           /* (the curr
 void func_002E1F20(CZOnlineLobby *lobby, const char *game);         /* (a game's info) */
 bool func_002FA5A0(CZOnlineLobby *lobby, const char *name, const char *password);   /* Login */
 bool func_002FA320(CZOnlineLobby *lobby, const char *name, const char *password);   /* Register */
-bool func_001EB070(void *core, const char *eventname, const char *argument);       /* (CCoreState's RunEventAnim) */                                              /* (a path: the game's directory?) */
+bool func_001EB070(void *core, const char *eventname, const char *argument);       /* (CCoreState's RunEventAnim) */
+
+/* the online services' object at 0x44FC60 (patches, persona, account: not named yet) */
+extern char data_0044FC60[];
+bool func_002FD6E0(void *svc, const char *level);                   /* (the patch level verified) */
+const char *func_002FD610(void *svc, const char *level);            /* (the patch server's URL) */
+
+/* the auto-aim option (a byte, on in data) */
+extern unsigned char data_003DF1A0;
+
+/* CSnd::m_vagEnabled (SOCOM 1's static; zsnd.h's CSnd does not declare it yet) */
+extern unsigned char data_0048DDA0;
+
+/* the game's session as the network reports it (func_0030CDD0 fills it; its third word the
+ * players joined) */
+struct NetSessionInfo {
+    int m_0;
+    int m_4;
+    int m_count;   // 0x8
+    int m_c;
+};
+void func_0030CDD0(CZNetwork *net, NetSessionInfo *info);
+
+/* the network configurations as a reader value: an 80-byte object NetCnfClose builds on its stack
+ * (its constructor and destructor not named yet, so called through their placeholders) */
+struct NetCnfRdr {
+    unsigned char _0[80];
+};
+void func_00333AE0(NetCnfRdr *rdr);                 /* (its constructor) */
+void func_00333A20(NetCnfRdr *rdr, int flags);      /* (its destructor) */
+void func_003339B0(NetCnfRdr *rdr, int arg);
+void func_00333770(NetCnfRdr *rdr);
+
+/* the network configuration's device path ("mc0:" in data) */
+extern char data_003DF360[];                                              /* (a path: the game's directory?) */
 void func_0032C2B0(const char *archive, const char *name);          /* CRdrArchive::RemoveArchive (SOCOM 1's) */
 
 /* SOCOM II's: whether the player is a terrorist, whether the player was banned */
