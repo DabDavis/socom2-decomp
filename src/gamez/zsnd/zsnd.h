@@ -421,6 +421,7 @@ public:
     static void Stop();
     static void Start();
     static void SetIntensity(float level);
+    static void NormalizeWeights(MUSIC_MODE mode);
     static void Play(MUSIC_MODE mode, CSnd *sound);
     static void ClearQueue();
     static void FadeOut();
