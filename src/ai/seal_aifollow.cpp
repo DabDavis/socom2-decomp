@@ -12,6 +12,25 @@ bool CAiSFollow::Virtual3C()
     return m_f4 < data_00650C38 && (m_6c & 8) != 0;
 }
 
+/* a record whose first byte's low five bits are a kind (the follow's Tick and 0x5FD790 test it;
+ * the names ours) */
+struct CAiFollowKind {
+    unsigned char m_kind : 5;
+};
+
+/* whether the kind is 2, 4, 5 or 12 (OVL2 0x5FC550; the name ours): a bit test written out -- MW
+ * lowers a switch over those cases to a compare chain -- true through a bool local (`andi v0,a0,
+ * 0xff` from the shift's 1) */
+extern "C" bool func_005FC550(const CAiFollowKind *k)
+{
+    bool r = false;
+    unsigned int t = k->m_kind - 2;
+
+    if (t < 11 && ((1 << t) & 0x40d))
+        r = true;
+    return r;
+}
+
 /* (OVL2 0x5FADF0) */
 CAiSFollow::~CAiSFollow()
 {

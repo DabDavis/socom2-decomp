@@ -16,11 +16,23 @@ class CSaveModule;
 
 class CSaveManager : public std::list<CSaveModule *> {
 public:
+    /* a save's header, its own key (SOCOM 1's nested class; no DWARF -- the layout SOCOM II's Save
+     * writes: its size, the flags it was saved with, the version its modules read, a description) */
+    class CSaveHeader {
+    public:
+        int m_size;   // 0x0: 268
+        int m_flags;   // 0x4
+        int m_version;   // 0x8
+        char m_desc[256];   // 0xc
+    };   // 0x10c bytes
+
     CSaveManager(CIO *file);
     ~CSaveManager();
 
     bool SaveRdr(zar::CKey *key, const char *name, CRdrFile *file);
+    bool GetHeader(const char *name, int flags, CSaveHeader *header);
     bool Load(const char *name, int flags);
+    bool Save(const char *name, int flags, int version, char *desc, char *tag);
     void RegisterModule(CSaveModule *module);
     CSaveModule *FindModule(const char *name);
 

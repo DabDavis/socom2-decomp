@@ -198,6 +198,22 @@ public:
 
         return !(soil == 0 || soil == 10 || soil == 8 || soil == 9);
     }
+    /* whether the eye stops at it: soils 0, 8 and 10 (SOCOM 1's _SeeLineCallback tested them
+     * itself; the name ours). Two materialised ors, the outer bool declared first and the soil
+     * last -- only so do _SeeLineCallback's registers fall as the target's (a plain `||` chain
+     * becomes a bit test) */
+    bool IsOpaque() const
+    {
+        bool q = true;
+        bool r = true;
+        unsigned int soil = m_soil;
+
+        if (soil != 0 && soil != 8)
+            r = false;
+        if (!r && soil != 10)
+            q = false;
+        return q;
+    }
 
     /* every field to its start (SOCOM 1's CAiCell() body, 0x185200; SOCOM II's constructor calls
      * it out of line: fifteen statements and the return are past -inline auto's fifteen) */
@@ -210,6 +226,9 @@ public:
     /* three fields read through accessors (the names ours: the tile callbacks test a field so
      * and load it again for the setter's read-modify-write) */
     bool IsOccupied() const { return m_occupied; }
+    /* whether the cell holds an action (the name ours: GetCellCenter's test, out of line at
+     * 0x516920 where the centre is inlined one level) */
+    bool HasAction() const { return m_action; }
     unsigned char GetBoundary() const { return m_boundary; }
     unsigned int GetShadow() const { return m_shadow; }
     /* the fields' setters: their arguments masked at run time, `(0 & 1) << n` for a constant
@@ -300,7 +319,16 @@ class CAiMap;
 /* a cell handed to a walk's callback (below CAiMap: it points at a CAiMap::region) */
 struct MAP_FOREACH_STRUCT;
 /* a cell handed to a line walk's callback (SOCOM 1's; not laid out yet) */
-struct MAP_LINEWALK_STRUCT;
+/* a cell handed to a flood fill's callback (SOCOM 1's; not laid out yet) */
+struct MAP_FLOODFILL_STRUCT;
+struct MAP_LINEWALK_STRUCT {
+    CAiMap *m_map;   // 0x0
+    unsigned int m_unk4[2];   // 0x4
+    CAiMapLoc m_loc;   // 0xc: the cell reached
+    CAiCell *m_cell;   // 0x10
+    float m_dist;   // 0x14: how far along (the sighting callback squares it against its range)
+    CAiCell *m_prev;   // 0x18: the cell before (the travel callback's)
+};
 
 /* two cells are the same cell when x and y agree, the map aside: an inline bool, which the
  * walks materialise (x's test, then y's into the same register) before they branch -- SOCOM 1's
@@ -520,6 +548,9 @@ public:
         enum TYPE { NONE = 0, DOOR = 1, TYPE_MAX = 31 };
 
         TYPE GetType() const { return m_type_invalid == 0 ? (TYPE)m_type : NONE; }
+        /* the side it opens toward, 8 for none (the name ours: GetCellCenter's, out of line at
+         * 0x516910) */
+        DIR GetDir() const { return (DIR)m_offset; }
         /* the setters (the names ours: masked at run time) */
         void SetState(unsigned int s) { m_state = s; }
         void SetTypeInvalid(unsigned int b) { m_type_invalid = b; }
@@ -580,6 +611,10 @@ public:
     bool CanSeeLine(const CAiMapLoc &from, const CPnt3D *dir, CAiMapLoc *out);
     bool CanSeeLine(const CAiMapLoc &from, const CAiMapLoc &to, CAiMapLoc *out);
     bool CanTravelLine(const CAiMapLoc &from, const CAiMapLoc &to, CAiMapLoc *out);
+    /* how much of the line between two cells can be seen through, 0 to 1, each end at its altitude
+     * raised by a height (SOCOM 1's ComputeLineVisibility, the heights and flags new: 0x538EF0) */
+    float ComputeLineVisibility(const CAiMapLoc &from, const CAiMapLoc &to, unsigned int flags, float hfrom,
+                                float hto);
     /* whether a step may end on the cell (new in SOCOM II, the name ours: ai_maps.cpp's 0x52A090,
      * GetCell inlined one level) */
     bool IsTraversable(const CAiMapLoc &loc) const;
@@ -643,6 +678,46 @@ public:
     bool ForEachCell(bool (*f)(const MAP_FOREACH_STRUCT &s, void *data), void *data, int layer);
     bool ResetCells();
     static CPnt3D &GetDirVec(DIR dir, CPnt3D &v);
+    /* the cells around one flooded out to a radius from a direction, each handed to a callback
+     * until one returns true (SOCOM 1's FloodFill, 0x536C80) */
+    bool FloodFill(const CAiMapLoc &loc, DIR dir, int radius, bool (*f)(MAP_FLOODFILL_STRUCT &s, void *data),
+                   void *data);
+    /* a cell near one from which a point can be seen, and a cell near one that hides from it,
+     * the direction toward the point given (SOCOM 1's, the look and cover searches) */
+    bool FindLookLoc(const CAiMapLoc &loc, const CPnt3D *pos, CAiMapLoc &out, DIR &dir, int radius);
+    bool FindCoverLoc(const CAiMapLoc &loc, const CPnt3D *pos, CAiMapLoc &out, DIR &dir, int radius);
+    /* the cell's centre: its corner plus half a cell, at its altitude (0 without one), moved
+     * s_actionOffset of a cell toward its action's side; none off the map (SOCOM 1's, out of
+     * line there -- SOCOM II inlines it one level: GetCell, HasAction, GetDir, CPnt3D(), Scale and
+     * Add called out of line, 0x5168E0-0x516920) */
+    CPnt3D *GetCellCenter(const CAiMapLoc &loc, CPnt3D *c)
+    {
+        CAiCell *cell = GetCell(loc, 0);
+        CPnt3D *r = 0;
+
+        if (cell) {
+            c->x = m_bbox.m_min.x + (loc.x * m_dx + 0.5f * m_dx);
+            c->z = m_bbox.m_min.z + (loc.y * m_dy + 0.5f * m_dy);
+            if (!GetAltitude(cell, c->y))
+                c->y = 0.0f;
+            if (cell->HasAction()) {
+                DIR dir = GetCellAction(loc)->GetDir();
+
+                if (dir != DIR_COUNT) {
+                    CPnt3D v;
+
+                    GetDirVec(dir, v);
+                    v.Scale(s_actionOffset);
+                    c->Add(&v);
+                }
+            }
+            r = c;
+        }
+        return r;
+    }
+    /* how far toward its action a cell's centre moves, in cells (0.75, OVL2 data read with lwc1:
+     * a variable; the name ours) */
+    static float s_actionOffset;
     static CQuat &GetDirQuat(DIR dir, CQuat &q, bool reverse);
     static float GetDirCos(DIR a, DIR b);
     static bool _reset_rtflag(const MAP_FOREACH_STRUCT &s, void *data);
@@ -849,17 +924,27 @@ public:
         ASTAR_FAILURE_UNKNOWN = 6
     };
 
-    /* a cell of the smoothed path (SOCOM 1's DWARF, 0xC bytes) */
+    /* a cell of the smoothed path (SOCOM 1's DWARF, 0xC bytes; SOCOM II's is 8, the angle gone:
+     * the points' resize 0x528430 and the pop 0x524D00 step 8). The bits zeroed in a
+     * mem-initializer list (the resize's temporary: three read-mask-writes of the word); the copy
+     * written too, the cell through CAiMapLoc's, the width and flags copied, the rest zeroed (the
+     * reserve's copy loop 0x528DE0) */
     class point {
     public:
+        point() : m_width(0), m_flags(0), m_unused(0) {}
+        point(const point &p) : m_loc(p.m_loc), m_width(p.m_width), m_flags(p.m_flags), m_unused(0) {}
+
         CAiMapLoc m_loc;   // 0x0
         unsigned int m_width : 8;   // 0x4
         unsigned int m_flags : 8;
         unsigned int m_unused : 16;
-        float m_angle;   // 0x8
     };
+    /* (SOCOM 1's DWARF; ~CAiPath's three this-tests on it say SOCOM II's is the same subclass) */
     class points : public std::vector<point> {
     };
+    /* a point on a cell: x and y agree, the map aside (SOCOM 1's std::find<point *, CAiMapLoc>
+     * compares them; materialised as CAiMapLoc's ==) */
+    friend bool operator==(const point &p, const CAiMapLoc &loc) { return loc.x == p.m_loc.x && loc.y == p.m_loc.y; }
 
     CAiPath();
     /* the planner let go and the path emptied, its plan aborted first (SOCOM 1's; out of line at
@@ -882,13 +967,39 @@ public:
     bool Clear();
     void SetTemplatePath(CAiPath *path);
     void PostProcess();
+    /* flags cleared, then set: one word read-modify-write each, `&= ~0` left a zero extension
+     * (SetSnakeLength's dsll32/dsrl32 pair; the name ours, after the AI states' SetFlags) */
+    void SetFlags(unsigned int set, unsigned int clear)
+    {
+        m_flags &= ~clear;
+        m_flags |= set;
+    }
+    /* the snake's length: none empties the path, a new one cuts and reserves the points (SOCOM 1's) */
+    void SetSnakeLength(unsigned int len);
+    /* each leg smoothed, the invalid points dropped and the points' storage trimmed to them, when
+     * the plan is complete and smoothing is on or forced (SOCOM 1's took no flag) */
+    bool SmoothPath(bool force);
+    /* points made and the plan complete (the name ours: SmoothPath materialises both tests, as a
+     * call of an inline bool does -- SOCOM 1's SmoothPath alike) */
+    bool HasPoints() const { return !m_points.empty() && m_state == COMPLETE; }
+    /* the points on CAiMapLoc::invalid dropped, how many handed back (new in SOCOM II, the name
+     * ours: SOCOM 1's SmoothPath removed them itself) */
+    int RemoveInvalidPoints();
     void UpdatePathWidth(unsigned int width);
     /* the path drawn for debugging, under a name (SOCOM 1's took none) */
     void PrintPath(const char *name) const;
+    /* the last point taken off, its cell handed back when asked; false when there is none (new
+     * in SOCOM II, the name ours: the SEALs' 0x524D00) */
+    bool PopPoint(CAiMapLoc *loc);
+    /* whether a point lies on the cell, its index handed back when asked (SOCOM 1's tested the
+     * points' widths around the cell) */
+    bool PointInPath(const CAiMapLoc &loc, unsigned int *index) const;
     void plan_setup();
     bool plan_addleg(CAiMap *map, const CAiMapLoc &start, const CAiMapLoc &goal);
     bool plan_legcomplete(PATH_STATE state);
     void plan_complete(PATH_STATE state);
+    /* the id moved on, the path drawn when asked (SOCOM 1's; 0x527470) */
+    void IncrementPathId();
     CAiMap *GetLegMap(int leg);
     bool GetLegPoints(CAiMapLoc &start, CAiMapLoc &goal, int leg) const;
 

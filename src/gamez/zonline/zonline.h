@@ -520,14 +520,21 @@ extern LadderList LadderLeaders;   /* 0x44F7B0 */
 extern LadderList LadderRanking;   /* 0x44F7E0 */
 
 /* a game in a room (SOCOM 1's RoomGame: a table, but not a virtual destructor -- its delete calls
- * operator delete straight) */
+ * operator delete straight). SOCOM II's keeps the game's 0x190-byte info first and its table after
+ * it (the constructor 0x2E1D50 stores the vtable at 0x190 and clears the 400 bytes before it); its
+ * one virtual, SOCOM 1's IsPersistent slot, hands back the mission sequence at 0x1A2 (0x2E24C0) */
 class RoomGame {
 public:
-    virtual bool IsPersistent();
+    unsigned char m_info[0x190];   // 0x0: the game's info (the LAN unit's LANGameInfo)
 
-    unsigned char _4[0x198 - 0x4];
+    virtual unsigned char *GetMissionSequence();
+
+    int m_194;   // 0x194
     unsigned char m_unchecked;   // 0x198: set for every game as the game list is asked for again
-};
+    unsigned char m_199;   // 0x199
+    unsigned char m_19a[8];   // 0x19a
+    unsigned char m_missionSeq[0x22];   // 0x1a2
+};   // 0x1c4
 
 class RoomGameVector : public std::vector<RoomGame *> {
 public:

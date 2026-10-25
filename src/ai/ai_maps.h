@@ -27,6 +27,19 @@ public:
     bool GetAltitude(const CAiMapLoc &loc, float &alt);
     bool CanSeeLine(const CAiMapLoc &from, const CAiMapLoc &to, CAiMapLoc *out);
     bool CanTravelLine(const CAiMapLoc &from, const CAiMapLoc &to, CAiMapLoc *out);
+    /* a line between two points walked over the maps, each cell handed to a callback (new in
+     * SOCOM II, the name ours: the visibility tests' walk, 0x5352D0, the step 0.2 as the maps'
+     * own WalkLines take it) */
+    bool WalkLine(const CPnt3D *from, const CPnt3D *to, bool (*f)(const MAP_LINEWALK_STRUCT &s, void *data),
+                  void *data, float step);
+    /* how much of a line can be seen through, 0 to 1, between two points or from a cell's centre
+     * raised by a height (new in SOCOM II, the names after SOCOM 1's ComputeLineVisibility: the
+     * walker unit's 0x538E30 and 0x538D10, the AI states' line-of-sight tests) */
+    float ComputeLineVisibility(const CPnt3D *from, const CPnt3D *to, unsigned int flags);
+    float ComputeLineVisibility(const CAiMapLoc &from, const CPnt3D *to, unsigned int flags, float height);
+    /* whether a point is seen from another, by chance of the visibility the walk leaves (new in
+     * SOCOM II, the name ours: 0x538980) */
+    bool CanSeePoint(const CPnt3D *from, const CPnt3D *to, float rangeSq);
     CAiMap::name *GetCellName(const CAiMapLoc &loc) const;
     const char *GetCellNameString(const CAiMapLoc &loc) const;
     CAiMap::link *GetCellLink(const CAiMapLoc &loc);
@@ -40,7 +53,8 @@ public:
      * AI states' pickup, no-ammo and vehicle searches) */
     bool FindTraversable(const CAiMapLoc &loc, CAiMapLoc &out);
     bool GetTraversableLocation(const CPnt3D *pos, CAiMapLoc &out);
-    bool GetCellCenter(const CAiMapLoc &loc, CPnt3D *center);
+    /* the cell's centre, the point handed back, none off the maps (SOCOM 1's) */
+    CPnt3D *GetCellCenter(const CAiMapLoc &loc, CPnt3D *center);
     /* the distance between two cells' centres, squared and not (new in SOCOM II, the names ours:
      * 0 for one cell, 1e12 when a centre is missing) */
     float GetDistanceSq(const CAiMapLoc &a, const CAiMapLoc &b);

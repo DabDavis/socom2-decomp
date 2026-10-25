@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include "../gamez/zkit/zkit.h"
+#include "../gamez/zsnd/zsnd.h"
 
 /* a chance taken: a random float in [0, 1) against the odds (an inline, seal_control.cpp's shape:
  * the odds by value, read through a reference -- the target stores them and reads them back) */
@@ -81,13 +82,19 @@ extern unsigned char data_0066AFE0;
  * picks (0x609530); the stance set after a delay (0x563100); a CSealCtrl call taking a signed
  * byte (0x600D40, this lane's range, unwritten) -- the SEAL lane's rows but 0x609530/0x600D40 */
 unsigned char func_00560A60(CSealCtrlAi *ai);
-void func_00571010(CSealCtrlAi *ai, void *target, int a, int kind);
+enum ORDER_KIND { ORDER_KIND_0 = 0, ORDER_KIND_LAST = 255 };
+void func_00571010(CSealCtrlAi *ai, void *target, int a, ORDER_KIND kind);
 void *func_00609530(int x);
 void func_00563100(CSealCtrlAi *ai, signed char stance, float delay);
 void func_00600D40(CSealCtrlAi *ai, int x);
 /* (OVL2 0x567840, 0x570D60: the SEAL lane's rows -- a stun's controller calls, the second
  * taking a float) */
 void func_00567840(CSealCtrlAi *ai, int x);
+/* the kit's reload (OVL2 0x5C2A90, seal_kit.cpp's range, unwritten: called on the SEAL's kit at
+ * 0x5E0 by the reload state's sub-step) */
+void func_005C2A90(void *kit);
+/* a SEAL's check of a kind, a byte (OVL2 0x58A720, the SEAL lane's row) */
+ORDER_KIND func_0058A720(CEntity *seal, int x);
 void func_00570D60(CSealCtrlAi *ai, int x, float f);
 /* the AI's target held (OVL2 0x60A850, after the response states: CAiTarget's, the target at
  * CSealCtrlAi 0x67C) and a look pushed at a point (OVL2 0x5F0B30, seal_aistate.cpp's) */
@@ -134,6 +141,20 @@ CAiSTarget::~CAiSTarget()
 
 CAiSFlee::~CAiSFlee()
 {
+}
+
+/* (OVL2 0x609810) its members destroyed by hand, as ai_states.h keeps them as bytes: the vector
+ * first (std::vector<CAiMapLoc>'s deleter destructor, 0x515200, behind ~vector's and
+ * ~__vector_imp's this-tests), then the route (~CAiPath, 0x5281B0) */
+CAiSPathRecover::~CAiSPathRecover()
+{
+    unsigned char *v = m_vec;
+
+    if (v)
+        if (v)
+            if (v)
+                func_00515200(v, 0);
+    func_005281B0(m_path, -1);
 }
 
 CAiSRush::~CAiSRush()
@@ -250,6 +271,15 @@ void CAiSTarget::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
     }
 }
 
+/* a target's sub-step: over once the AI's target (CAiTarget at the controller's 0x67C) no longer
+ * holds (OVL2 0x604BF0) */
+int CAiSTarget::Virtual14(CSealCtrlAi *ai, CAiState *sub)
+{
+    if (!func_0060A850((char *)ai + 0x67c))
+        SetActive(false);
+    return Result();
+}
+
 /* the controller's word at 0x718 (zseal.h does not name it -- the name ours) */
 struct CAiCtrl718 {
     unsigned char _0[0x718];
@@ -278,7 +308,7 @@ void CAiSShotAt::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
         m_stance = ai->m_stance;
         m_time = Random(0.05f, 0.2f);
         if (func_00560A60(ai) < 2)
-            func_00571010(ai, func_00609530(0), 2, 11);
+            func_00571010(ai, func_00609530(0), 2, (ORDER_KIND)11);
         break;
     case SIGNAL_1:
         func_00563100(ai, m_stance, Random(0.25f, 0.25f));
@@ -290,6 +320,32 @@ void CAiSShotAt::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
     case SIGNAL_3:
         break;
     }
+}
+
+/* the controller's byte at 0x32C (zseal.h does not name it -- the name ours) */
+struct CAiCtrl32C {
+    unsigned char _0[0x32c];
+    unsigned char m_32c;   // 0x32c
+};
+
+/* the shot-at state's limit (a function-local static in the original: 8-byte-spaced data) */
+static float s_shotAtTime = 15.0f;
+
+/* shot at, the sub-step: over after its time; before, once the AI's byte at 0x32C is set, the
+ * sub-state ended and step 3 taken (OVL2 0x609340).
+ * OPEN, 0x9C against 0xA4: the target zero-extends the byte it tests (`lbu; dsll32 v0,v0,0;
+ * dsrl32 v0,v0,0; beqz`) -- an unsigned int widened to 64 bits; an unsigned char, an 8-bit
+ * bitfield in a char, int or long container, `(unsigned long)` and `& ~0u` all branch on the lbu
+ * result directly */
+int CAiSShotAt::Virtual14(CSealCtrlAi *ai, CAiState *sub)
+{
+    if (!(m_phaseTime < s_shotAtTime))
+        SetActive(false);
+    else if (((CAiCtrl32C *)ai)->m_32c) {
+        sub->SetActive(false);
+        UpdatePhase(3);
+    }
+    return Result();
 }
 
 /* the controller's bit 17 at 0x170 (zseal.h's m_bit17), set through a bool: an inline setter */
@@ -347,6 +403,102 @@ void CAiSEvent::SetName(const char *name)
         m_name[0] = 0;
 }
 
+/* the controller's word at 0x6A8 and float at 0x718 as the event state reads them (zseal.h does
+ * not name them -- the names ours) */
+struct CAiCtrlEvent {
+    unsigned char _0[0x6a8];
+    unsigned int m_6a8;   // 0x6a8: bit 9 lets a held target interrupt an event
+    unsigned char _6ac[0x718 - 0x6ac];
+    float m_718;   // 0x718
+};
+
+/* the AI's target held, and the AI's bit 9 at 0x6A8 set (an inline bool: the target materialises
+ * the `&&`) */
+inline bool TargetHeld(CSealCtrlAi *ai)
+{
+    return func_0060A850((char *)ai + 0x67c) && (((CAiCtrlEvent *)ai)->m_6a8 & 0x200);
+}
+
+/* a state's flags tested through an inline (the target loads the word again for it) */
+inline bool HasFlags(const CAiState *s, unsigned int bits)
+{
+    return s->m_flags & bits;
+}
+
+/* the event's sub-states dropped and step 8 taken, the step it left kept in m_8d (inlined twice
+ * in its sub-step; the name ours) */
+inline void CAiSEventInterrupt(CAiSEvent *s, CSealCtrlAi *ai)
+{
+    s->m_stack.PopAll(ai);
+    if (s->m_phase != 8) {
+        s->m_8d = s->m_phase;
+        s->UpdatePhase(8);
+    }
+}
+
+/* the next step: 1 after 0; after 1, 2 with the flags' bit 0 or 3 with bit 1; after 2, 3 with bit
+ * 1; else 8 -- kept, with the delay, and taken at once or after the wait (7) (OVL2 0x605950) */
+void CAiSEvent::NextStep(STEP *step, float delay)
+{
+    STEP next = STEP_8;
+
+    switch (*step) {
+    case 0:
+        next = STEP_1;
+        break;
+    case 1:
+        if (m_flags & 1)
+            next = STEP_2;
+        else if (m_flags & 2)
+            next = STEP_3;
+        break;
+    case 2:
+        if (m_flags & 2)
+            next = STEP_3;
+        break;
+    }
+    m_84 = delay;
+    m_8c = next;
+    *step = delay == 0.0f ? next : STEP_7;
+}
+
+/* an event, the sub-step: nothing while a step-0 or unrecorded event waits (the flags' bit 2);
+ * interrupted by a held target (bit 4, with the AI's bit 9 at 0x6A8) or by the AI's value at
+ * 0x718 passing 1 (bit 5) (OVL2 0x605800) */
+int CAiSEvent::Virtual14(CSealCtrlAi *ai, CAiState *sub)
+{
+    unsigned int flags = m_flags;
+
+    if (flags & 4) {
+        bool waiting = m_phase == 0 || m_8d == 0;
+
+        if (waiting)
+            goto done;
+    }
+    if ((flags & 0x10) && TargetHeld(ai))
+        CAiSEventInterrupt(this, ai);
+    else if (HasFlags(this, 0x20) && ((CAiCtrlEvent *)ai)->m_718 > 1.0f)
+        CAiSEventInterrupt(this, ai);
+done:
+    return Result();
+}
+
+/* a callout: the sound played at a volume, and with `order` the order of kind 0 given when the
+ * SEAL's 0x58A720 check (with 1) fails (OVL2 0x605770: the AI's 0x5CA470 and the stack's
+ * 0x5F8D40 call it; the name unknown) */
+extern "C" void func_00605770(CSealCtrlAi *ai, bool order, CHARACTER_SOUND sound, float vol)
+{
+    CEntity *seal = ai->m_entity;
+
+    ai->PlayAiSound(sound, vol, -1);
+    if (order) {
+        ORDER_KIND r = func_0058A720(seal, 1);
+
+        if (r == ORDER_KIND_0)
+            func_00571010(ai, func_00609530(0), 2, r);
+    }
+}
+
 /* the hold's signed-byte count (a file static: its Tick reads it too; OVL2 data 0x650E10) */
 static signed char s_holdCount = 3;
 
@@ -389,6 +541,73 @@ void CAiSHold::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
         if (m_flags & 0x20)
             UpdatePhase(0);
         break;
+    }
+}
+
+/* a hold with its flags' bit 5 or 7 set (an inline bool: its true is daddiu, the result narrowed) */
+inline bool HoldBroken(const CAiState *s)
+{
+    if (s->m_state == AI_STATE_HOLD && (s->m_flags & 0xa0))
+        return true;
+    return false;
+}
+
+/* whether the AI's current state is a hold with its flags' bit 5 or 7 set (OVL2 0x607830: the SEAL
+ * lane's 0x558AE0 and 0x563E10 call it; the name ours).
+ * OPEN, 0x7C against 0x6C: the target keeps the hold test in a1 -- zero in the state compare's
+ * delay slot, `daddiu a1,zero,1` for true, `b; andi v0,a1,0xff` at the join, and a separate
+ * `move v0,zero` for no state. The ternary over the inline (here) puts the andi on a block of its
+ * own; `if (s) return HoldBroken(s); return false;` is 0x68, the true in v0 and no andi; a bool
+ * local `r = false; if (a && b) r = true;` (inline or not, nested ifs too) is if-converted into
+ * sltu; `? true : false` and `HoldBroken(s) != false` miss further. */
+extern "C" bool func_00607830(CSealCtrlAi *ai)
+{
+    const CAiState *s = ai->m_stateStack.size() == 0 ? 0 : ai->m_stateStack.GetState();
+
+    return s ? HoldBroken(s) : false;
+}
+
+/* the response states' callouts, looked up by name once the sounds are open: forty-three cue
+ * names and their sounds (OVL2 data 0x650E20; the table's and the functions' names ours) */
+struct CAiCallout {
+    const char *m_name;
+    CSnd *m_snd;
+};
+
+static CAiCallout s_callouts[43] = {
+    { "^CS_0222", 0 }, { "^CS_0226", 0 }, { "^CS_0292", 0 }, { "^*CS_0275", 0 },
+    { "^*CS_0276", 0 }, { "^*CS_0278", 0 }, { "^CS_0270", 0 }, { "^CS_0283", 0 },
+    { "^*CS_0285", 0 }, { "^CS_0286", 0 }, { "^CS_0266", 0 }, { "^CS_0265", 0 },
+    { "^CS_0264", 0 }, { "^CS_0263", 0 }, { "^CS_0262", 0 }, { "^CS_0261", 0 },
+    { "^CS_0260", 0 }, { "^CS_1291", 0 }, { "^CS_1292", 0 }, { "^CS_1293", 0 },
+    { "^CS_1294", 0 }, { "^CS_1295", 0 }, { "^CS_1296", 0 }, { "^CS_1297", 0 },
+    { "^CS_1298", 0 }, { "^CS_1299", 0 }, { "^CS_1300", 0 }, { "^CS_1301", 0 },
+    { "^CS_1302", 0 }, { "^CS_1303", 0 }, { "^CS_1304", 0 }, { "^CS_1305", 0 },
+    { "^CS_0268", 0 }, { "^CS_0269", 0 }, { "^CS_0282", 0 }, { "^CS_0281", 0 },
+    { "^CS_1309", 0 }, { "^CS_1307", 0 }, { "^CS_1310", 0 }, { "^CS_1308", 0 },
+    { "^CS_0288", 0 }, { "^CS_0295", 0 }, { "^CS_0308", 0 },
+};
+
+/* each callout's sound looked up and put in mode 2 (OVL2 0x6075C0: the SEAL lane's 0x574C30
+ * calls it) */
+extern "C" void func_006075C0()
+{
+    for (int i = 0; i < 43; i++) {
+        s_callouts[i].m_snd = s_callouts[i].m_name ? CSnd::GetSoundByName(s_callouts[i].m_name) : 0;
+        if (s_callouts[i].m_snd)
+            s_callouts[i].m_snd->m_mode = 2;
+    }
+}
+
+/* the sounds forgotten (OVL2 0x607560: the SEAL lane's 0x574BD0 calls it; each entry through a
+ * pointer local -- `s_callouts[i].m_snd = 0` folds the field's offset into the remainder pass's
+ * address) */
+extern "C" void func_00607560()
+{
+    for (int i = 0; i < 43; i++) {
+        CAiCallout *c = &s_callouts[i];
+
+        c->m_snd = 0;
     }
 }
 
@@ -496,6 +715,41 @@ struct CAiCtrlTarget {
     unsigned char _0[0x67c];
     CEntity *m_target;   // 0x67c
 };
+
+/* the reload's wait (a function-local static in the original: 8-byte-spaced data) */
+static float s_reloadWait = 0.5f;
+
+/* the reload, the sub-step: a shout first when the flags' bit 0 asks (then cleared), the kit
+ * reloaded, a stance -- crouched with bit 2, else kept or (bit 1) changed -- then a short wait
+ * (OVL2 0x608840) */
+int CAiSReload::Virtual14(CSealCtrlAi *ai, CAiState *sub)
+{
+    unsigned int phase = m_phase;
+    CEntity *seal = ai->m_entity;
+
+    switch (phase) {
+    case 1:
+        if (m_flags & 1) {
+            ai->PlayAiSound((CHARACTER_SOUND)68, 1.0f, -1);
+            SetFlags(0, 1);
+        }
+        func_005C2A90((char *)seal + 0x5e0);
+        if (m_flags & 4)
+            func_00563050(ai, 2, 1, -1.0f);
+        else
+            func_00563050(ai, 0, (m_flags & 2) ? 2 : 1, -1.0f);
+        m_time = s_reloadWait;
+        phase = 2;
+        break;
+    case 2:
+        m_time -= m_dT;
+        if (m_time <= 0.0f)
+            SetActive(false);
+        break;
+    }
+    UpdatePhase(phase);
+    return Result();
+}
 
 /* a reload: weapon down, the stance kept, a crouch one time in ten and a move one in four, a look
  * at the target when there is one (the flags' bits 0-2), then the sub-states' turn (OVL2
