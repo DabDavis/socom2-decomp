@@ -1642,6 +1642,102 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the kit and AI states, round 7** (the kit's item vector, the event state, the callouts):
+  - a state destructor with byte-array members matches with the member destructors called by hand in
+    reverse order; a vector's goes behind three nested `if (v)`, and MW keeps all three tests;
+  - in `if (A && B) ... else if (C && D)` where B is a materialised `&&`, write B as an inline bool:
+    the `&&` stays materialised and a failing B still falls through to C;
+  - a field the target loads again for a third test, after one shared load for the first two, is
+    tested through an inline accessor;
+  - the remainder pass of an unrolled loop over a struct array folds the field offset into the
+    relocation unless each element goes through a pointer local (`T *c = &a[i]; c->f = 0;`);
+  - `*p = c ? enumLocal : K` reuses the enum local's register for K; an if/else does not;
+  - a byte-enum call result passed on unmasked and tested with andi: the callee's return and the
+    receiving parameter the same unsigned byte enum, compared `== ENUM_0`;
+  - SOCOM 1's CAiTrigger() inlines one level, as the target needs, only when Rfloat's range
+    constructor is inline (out of line, the default limit inlines it whole);
+  - MW lowers a switch over {2, 4, 5, 12} to a compare chain; the target's bit test (`(unsigned)(k-2)
+    < 11 && (1 << (k-2)) & 0x40D`) has to be written out;
+  - reading Rfloat-shaped members through a cast keeps their address in a saved register; declare them
+    with the right type;
+  - units: ai_target.cpp (0x609DF0-0x60BF3F: CheckLineOfFire and CAiTarget, where SOCOM 1 has them),
+    seal_weapon.cpp (~0x5DF370-0x5E0023, CZSealBody's weapon functions before AnimSet's), the
+    callout table's functions in seal_airesponse.cpp; 0x5EA550 (CAiTimer(float)) and 0x5EA5D0 are
+    copies CSealUnit::IssueCommand emits.
+- **Tells from the rdr lane, round 4** (the save manager, CPipe's overlay and FIFO, the flare system):
+  - `buf[i] ^= key` on an unsigned char key sign-extends it, `c ^ key` zero-extends it; `key ^= key +
+    c` masks the sum before the xor, `key = key ^ (key + c)` does not (SaveDecrypt; SaveEncrypt is
+    open on the key's copy masked first and the raw key sign-extended);
+  - a member's address kept in a saved register across a loop needs a local pointer taken inside the
+    size guard; through the member, an inline's pointer parameter or an inline member's `this`, MW
+    adds the offset at every call;
+  - frame slots follow declaration order (Load and Save declare the header first, above the buffer
+    and the archive); a comparator that is an inline's local sits below begin()'s temporary, the
+    caller's own local above it;
+  - `ok = true;` written before a call lands in that call's delay slot;
+  - a constant loop of 14 is unrolled 7x, not whole: write the stores out when the target has all
+    fourteen;
+  - converting a float to an unsigned char inlines MW's float-to-unsigned check; through `(int)` it
+    is the plain `cvt.w.s`;
+  - reading an interrupt's command through a volatile pointer reloads a field after its test;
+  - a local cannot be named `list` inside a member of a class derived from std::list, nor `zar` where
+    namespace zar is in use: MW fails to parse;
+  - include/string's c_str() written short form first (`!is_long() ? s_.data_ : (const charT *)w_[2]`)
+    makes CSaveManager::Load (0x33D6D0) byte-exact (measured on a shadow include/ only);
+  - zrndr_pipe.cpp opens with the flare system (0x336230, the object at 0x488F10); 0x33C2A0-0x33CD4F
+    looks like its template tail (a vector of 112-byte elements); zsav_manager.cpp ends with SOCOM 1's
+    list sort<less<const void *> > and merge (0x33E510-0x33E7EF); a further unit runs
+    0x33E7F0-0x33F04F (helpers UICharacterProfile calls).
+- **Tells from the AI core, round 8** (the path's point vector, SmoothPath, the visibility tests):
+  - a chain of `==` tests joined by `||` becomes a bit test; the target's two materialised ors come
+    from explicit bools, the outer bool declared first and the value last;
+  - literals passed to a `const float &` (`_saturate(&v, 0.0f, 1.0f)`) get a per-function constant
+    pool in data, 8 bytes apart; a function inlined into another shares that pool, so a shared pool
+    reveals the inlining (0x538D10 uses 0x538E30's);
+  - a trim temporary's copies show its type by this-test count: `std::vector<T>` has two, the
+    `points` subclass three;
+  - chance odds stay in the frame across rand() only with the Rfloat-shaped random; the plain
+    `lo + span * (k * rand())` keeps them in a saved float register;
+  - if a unit's own code instantiates a class vector's erase, the tail's resize inlines it; the
+    target's resize still calls erase, so the original MSL probably declares resize ahead of erase
+    (RemoveInvalidPoints kept out of the build under `#if 0` for it);
+  - SOCOM II's CAiPath::point is 8 bytes with a written copy constructor (cell, width, flags copied,
+    the rest zeroed); CAiMaps::GetCellCenter returns the point; the walker unit holds CAiMaps
+    functions too (0x5352D0, 0x538980-0x538EF0).
+- **Tells from the states, round 14** (the graph's BuildRoute/PopulateTree, the objective cams):
+  - an rvalue (an accessor's result) passed to a list insert binds a temporary whose stack slot comes
+    after the call's outer temporaries (BuildRoute's `insert(it, leaf->GetNode())`); a named local
+    or the member itself gets the wrong slot;
+  - an element address the target recomputes every pass needs an unsigned index; an int index is
+    strength-reduced into a saved register (0x2AF360);
+  - `CMissionCam();` written inside a constructor's body builds and destroys a temporary (both builds
+    do it in CMissionObjectiveCam());
+  - an end iterator declared before the `for` takes the higher saved register (PopulateTree);
+  - zNetRegisterSeal (0x6C0 bytes) matched on the first try once TypeSealState's fields were laid out
+    from its 38 registrations (0x90 bytes);
+  - graph_tree.cpp continues past BuildTree (CGQueue's push 0x2D1DA0 and find 0x2D1DE0, the
+    CGQueueAtom list's remove 0x2D1E30); BuildTree and SetMovie (0x1EDA60) call ~30 trivial MSL
+    pieces out of line, as if compiled with inlining off (untested); 0x2C8760-0x2CA32F is a SOCOM
+    II-only multiplayer mission list unit; st_core.cpp's tail 0x1EE000-0x1EF8C0 holds std::sort and
+    MSL string members (0x1EEB40 assign(const char *), 0x1EEB70 an append through replace,
+    0x1EF390 replace(pos, n, s)); 0x440B80 is "ExtraStringTables", so 0x361BC0, 0x3A3900 and
+    0x3A4460 are the string-table manager's.
+- **Tells from the SEALs, round 8** (CPickup's Close/Create/NetworkCreate, the AI sound statics):
+  - an empty functor passed by value needs a user-declared empty constructor; without one MW
+    zero-stores its byte on the stack (CPickup::Close's std::transform);
+  - fields stored through a single load of a pointer that lives in memory (its address taken for an
+    insert) come from an inline member; written as `p->` statements, MW reloads `p` after each store;
+  - MW uses byte access for a bitfield only when its container is `unsigned char`: `unsigned int`
+    bitfields use lw/sw even inside one byte (CPickup's flags);
+  - a bool read from a bitfield and tested later (`sltu` kept) needs an inline accessor written
+    `? true : false`; `return bit;` folds the test away;
+  - in a swap, `t = a; a = b; b = t;` against the reverse decides both the float registers and the
+    store order;
+  - deriving a member class from CBits adds a second this-test to an inlined `delete`; a stand-alone
+    class of the same layout does not;
+  - 0x540270-0x541640 is char_type.cpp's tail (SOCOM 1's order puts it right before
+    pickup_main.cpp); 0x5B8F20, 0x5B8FC0, 0x5B8FF0 are CZKit methods on the vector at kit+0x254, before
+    seal_kit.cpp (from 0x5B9020).
 - **Tells from the UI, round 5** (the button specs' copies, the ActionItem and CDesignDlgObj vectors):
   - the UI classes copy as `T(const T &o) : a(0), b(0) { *this = o; }` (ActionItem, CDesignDlgObj);
     a vector's range init builds each element that way and calls the assignment out of line;
@@ -1840,6 +1936,34 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     from 0x539B70); the look and cover searches 0x539EB0-0x53A72F; the layer code (ai_maplayer.cpp)
     0x53A730-0x53AA4F; initialisers 0x668680 (ai_path.cpp), 0x668710 (ai_maps.cpp, AiMaps at
     0x66A1B0), 0x6687D0 (empty, probably ai_vismap.cpp's).
+- **Tells from completing the MSL headers, round 4** (include/vector, include/algorithm):
+  - SOCOM II's MSL builds every class-vector element through an inline construct() and moves them
+    through std::copy, copy_backward and fill_n, each an inline wrapper over an inline helper: an
+    element whose copy or assignment expands past inline_max_size cuts them to calls (placement new
+    0x2FECA0 and the copy constructor before it, the helpers' copies in the unit's tail), a small one
+    inlines all of it -- a stand-in turret definition with scalar members reproduces 0x3AB5F0-0x3AC6DF's
+    whole call structure and order (build/m4/p/turret2.cpp, in the MSL lane's worktree); SOCOM 1's
+    insert of the same vector calls the copy constructor and assignment directly;
+  - the class erase destroys the elements left past its new end, n (the count after the range) a
+    signed int (the UI lane's measurement); MW 3.0 deletes the loop for trivial elements;
+  - whether an insert calls its temporary's destructor, inlines it, or inlines it with clear is the
+    unit's tail generation rounds (probes build/m4/p/g1.cpp, g3.cpp): a template member is inlined only
+    if generated before, requests are generated in rounds (own code's first), and within a round the
+    deleter's members come before __vector_imp's. The image's tail order does not show the rounds:
+    vehicle_rdr.cpp's clear and destructor follow its insert though generated first (the linker lays
+    a tail out depth first). veh_vehicle.cpp, veh_turret.cpp and zwep_weapon.cpp inline both with no
+    caller of either left: a dead-stripped own function that clears and destroys the vector does it
+    (appended to veh_vehicle.cpp, 0x3AF040 gets the target's size and tail);
+  - the in-place branch's end pointer register is still open (CVehicleDef, CRegistrant against the
+    float sequence entries and CAiMapLoc, opposite ways; include/vector lists what was tried);
+    CRegistrant wants a user-declared constructor first (99 -> 38 lines off);
+  - an inline accessor level can be paid back elsewhere: the pod's end() through data() (+4) made the
+    pointer vector's end() a level too tall for CCharacterType::Create until it took the base's end
+    into a const local, as begin() does;
+  - a constructor's inline cost can grow without a level: the pod constructor's zero held in a local
+    (the same three stores) pushes CScriptArchive's constructor past inline_max_size
+    (__sinit_bone_init.cpp byte-exact), where the stores in a helper cut CHUD(), CCell(), CVisual()
+    and __sinit_compass.cpp too.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has

@@ -61,9 +61,42 @@ public:
     int m_4;   // 0x4
     const void *m_nodeEx;   // 0x8
     CGEdgeList m_edges;   // 0xc
-    int m_18;   // 0x18
+    CGNode *m_18;   // 0x18: the node a tree search reached it from
     int m_1c;   // 0x1c
 };
+
+/* a tree over the graph: a node, its parent and its children (SOCOM 1's CGTree, 0x14 bytes) */
+class CGTree : public std::list<CGTree *> {
+public:
+    CGTree() : m_parent(0), m_node(0) {}
+    CGNode *GetNode() const { return m_node; }
+
+    /* a child let go of (SOCOM 1's RemoveChild, out of line there) */
+    void RemoveChild(CGTree *child)
+    {
+        if (child->m_parent == this) {
+            remove(child);
+            child->m_parent = 0;
+        }
+    }
+    /* a child taken in, from its old parent first -- the parent asked is the tree's own (sic: both
+     * builds load this->m_parent where child->m_parent was meant; a new child has none anyway) */
+    void AddChild(CGTree *child)
+    {
+        if (child->m_parent)
+            m_parent->RemoveChild(child);
+        push_back(child);
+        child->m_parent = this;
+    }
+
+    CGTree *m_parent;   // 0xc
+    CGNode *m_node;   // 0x10
+};
+
+extern "C" {
+CGTree *func_002D2070(CGTree *tree, CGNode *node);   /* CGTree::FindNode */
+void func_002D22F0(CGTree *tree);                     /* CGTree::Destroy */
+}
 
 /* a route: the nodes in order */
 class CGRoute {
@@ -89,6 +122,14 @@ public:
     CGNode *GetNodeByIndex(unsigned int index);
     CGNode *GetNodeByNodeEx(const void *ex);
     CGEdge *FindEdge(CGNode *a, CGNode *b);
+    bool BuildRoute(CGNode *start, CGNode *end, unsigned int mask, CGRoute *route);
+    void PopulateTree(CGTree *tree);
+    CGTree *BuildTree(CGNode *start, unsigned int mask);
+
+    /* the search's state (SOCOM 1's three statics, in its order) */
+    static CGEdge *m_treeEdge;
+    static CGNode *m_treeNode;   // the node searched for
+    static CGTree *m_leafTree;   // and its tree node, once PopulateTree reaches it
 
     void SetName(const char *name)
     {
@@ -102,6 +143,78 @@ public:
     CGNodeList m_nodes;   // 0x4
     CGEdgeList m_edges;   // 0x10
 };   // 0x1c bytes
+
+/* whether a list is empty (MSL's empty(), which include/list lacks: the test materialised) */
+inline bool IsEmpty(const CGNodeList &l)
+{
+    return l.size() == 0;
+}
+
+CGEdge *CGraph::m_treeEdge;
+CGNode *CGraph::m_treeNode;
+CGTree *CGraph::m_leafTree;
+
+/* the tree under a node grown from the marks BuildTree left: every node whose mark is the tree's
+ * node becomes a child and is grown in turn, until the node searched for is reached (OVL1
+ * 0x2D1640, SOCOM 1's with its second walk gone) */
+void CGraph::PopulateTree(CGTree *tree)
+{
+    CGNodeList::iterator e = m_nodes.end();
+
+    for (CGNodeList::iterator i = m_nodes.begin(); i != e; ++i) {
+        CGNode *node = *i;
+
+        if (node->m_18 == tree->m_node) {
+            node->m_18 = 0;
+            CGTree *child = new CGTree;
+
+            child->m_node = node;
+            tree->AddChild(child);
+            if (node == m_treeNode) {
+                m_leafTree = child;
+                return;
+            }
+            PopulateTree(child);
+        }
+    }
+}
+
+/* the route from one node to another over the edges a mask lets through (none: all), true when
+ * it holds a node (OVL1 0x2D14A0: SOCOM 1's BuildRoute, the mask SOCOM II's -- passed on to
+ * BuildTree, which tests each edge's word at 0x18 with it; the AI's plan_addleg passes 0, then its
+ * own) */
+bool CGraph::BuildRoute(CGNode *start, CGNode *end, unsigned int mask, CGRoute *route)
+{
+    m_treeNode = 0;
+    m_treeEdge = 0;
+    m_leafTree = 0;
+    if (!start || !end || !route)
+        return false;
+    bool ok = true;
+
+    route->Clear();
+    if (start == end)
+        route->Append(end);
+    else {
+        m_treeNode = end;
+        CGTree *tree = BuildTree(start, mask);
+
+        if (tree) {
+            CGTree *leaf = m_leafTree ? m_leafTree : func_002D2070(tree, end);
+            CGNodeList::iterator it = route->m_nodes.end();
+
+            for (; leaf; leaf = leaf->m_parent)
+                it = route->m_nodes.insert(it, leaf->GetNode());
+            func_002D22F0(tree);
+        } else
+            ok = false;
+    }
+    if (ok) {
+        route->PostProcess();
+        ok = !IsEmpty(route->m_nodes);
+    }
+    return ok;
+}
 
 /* (OVL1 0x2D1470: called, never inlined -- CreateEdge calls it, as SOCOM 1's does) */
 #pragma auto_inline off
@@ -154,6 +267,8 @@ CGRoute::CGRoute()
 /* ~CGRoute (OVL1 0x2D1210) is Clear() and the list's implicit destructor -- left to its draft
  * (src/auto, byte-exact): written here it comes out 0x14 short for the reason ~CGNode does */
 
+/* CGRoute's three are pinned: BuildRoute calls each of them, as SOCOM 1's does */
+#pragma auto_inline off
 /* a node added at the end (OVL1 0x2D11D0) */
 void CGRoute::Append(CGNode *node)
 {
@@ -170,6 +285,7 @@ void CGRoute::Clear()
 void CGRoute::PostProcess()
 {
 }
+#pragma auto_inline reset
 
 CGNode::CGNode()
     : m_4(0), m_nodeEx(0), m_18(0), m_1c(0)

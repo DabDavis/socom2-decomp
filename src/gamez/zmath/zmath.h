@@ -69,6 +69,10 @@ public:
     void Add(const CPnt3D *b, CPnt3D *out) const;
     /* inline (GetFogVisibility's distance arrives in a register of its own; the name is ours) */
     float Length() const { return sqrtf(x * x + y * y + z * z); }
+    /* scaled, a point added, in place (the AI lane: CAiMap::GetCellCenter's out-of-line copies,
+     * a tail call each -- OVL1 0x2105F0/0x2105E0, OVL2 0x5168F0/0x5168E0) */
+    void Scale(float s) { Scale(s, this); }
+    void Add(const CPnt3D *b) { Add(b, this); }
     /* into itself (CZAnimFromToAcc::Tick adds a product's temporary straight onto the point) */
     CPnt3D &operator+=(const CPnt3D &b)
     {
@@ -156,6 +160,9 @@ public:
      * node's box once per line; the names are ours) */
     void GetCenter(CPnt3D *out) const { m_min.Interp(&m_max, 0.5f, out); }
     void GetSize(CPnt3D *out) const { m_max.Sub(&m_min, out); }
+    /* each axis's corners swapped where the minimum exceeds the maximum (SOCOM 1's; SOCOM II's
+     * is OVL2 0x56AC70, defined in seal_ai.cpp) */
+    void Normalize();
 };
 
 class CQuat;
