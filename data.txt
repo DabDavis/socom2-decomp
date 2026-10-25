@@ -142,6 +142,8 @@
 0x001E0440 0x200 _sprtagdata.24  # MAIN bss; s1:data-exact (size SOCOM 1's; via dmaRefImage)
 0x001E0640 0x0 _packet_buffer  # MAIN bss; s1:data-exact (size SOCOM 1's; via sceSifMInitRpc)
 0x003D7540 0x0 vu0_CodeSegment  # OVL1; s1:data-seq (size SOCOM 1's; via zMath_Init__Fv)
+0x003DC468 0x4 m_U1__17CZClaymoreMapItem  # OVL1 data; SOCOM 1's static (1.0: CZClaymoreMapItem's Tick reads it where SOCOM 1's does, and a CZNewHudMap function (0x20B2C0) sets it): 2 references in 2 functions
+0x003DC470 0x4 m_V1__17CZClaymoreMapItem  # OVL1 data; SOCOM 1's static (1.0, after m_U1 as in SOCOM 1): 2 references in 2 functions
 0x003DCFB4 0x0 devRpcData  # OVL1; s1:data-seq (size SOCOM 1's; via lgAudClose +4)
 0x003DCFB8 0x4 devicechanged  # OVL1; s1:data-exact (size SOCOM 1's; via lgAudClose +3)
 0x003DCFBC 0x4 threadsafeSema  # OVL1; s1:data-exact (size SOCOM 1's; via lgAudClose +4)
@@ -556,6 +558,14 @@
 0x004084C0 0x210 theGame  # OVL1 bss; size SOCOM 1's; at 0x4084C0, not the data-seq pass's 0x4084CC (a field): 43 references take 0x4084C0 as the object
 0x00408E40 0x10 m_hud_textcolor__4CHUD  # OVL1 bss; SOCOM 1's static (16 bytes; PoseBitmap's Init and ReInit copy it into the stance text's colour, as SOCOM 1's Init did): 32 references in 18 functions take 0x408E40, about as many again each of its other three floats
 0x00408E58 0x4 theHUD  # OVL1 bss; s1:data-seq (size SOCOM 1's; via HUDLetterBoxCmdTick__FP14_zanim_cmd_hdrPf +2)
+0x00409ED0 0x4 m_claymoretex__17CZClaymoreMapItem  # OVL1 bss; SOCOM 1's static (CZClaymoreMapItem's Tick reads it where SOCOM 1's does, and a CZNewHudMap function (0x20B2C0) sets it; CHUD::ReleaseHUD clears it): 3 references in 3 functions
+0x00409ED8 0x4 m_U0__17CZClaymoreMapItem  # OVL1 bss; SOCOM 1's static (the claymore's first UV, after its texture as in SOCOM 1; the statics 8 apart): 2 references in 2 functions
+0x00409EE0 0x4 m_V0__17CZClaymoreMapItem  # OVL1 bss; SOCOM 1's static: 2 references in 2 functions
+0x00409EE8 0x4 m_explosiontex__17CZClaymoreMapItem  # OVL1 bss; SOCOM 1's static (the detonated claymore's texture, CZClaymoreMapItem's Tick reads it where SOCOM 1's does, and a CZNewHudMap function (0x20B2C0) sets it): 2 references in 2 functions
+0x00409EF0 0x4 m_explosionU0__17CZClaymoreMapItem  # OVL1 bss; SOCOM 1's static: 2 references in 2 functions
+0x00409EF8 0x4 m_explosionV0__17CZClaymoreMapItem  # OVL1 bss; SOCOM 1's static: 2 references in 2 functions
+0x00409F00 0x4 m_explosionU1__17CZClaymoreMapItem  # OVL1 bss; SOCOM 1's static: 2 references in 2 functions
+0x00409F08 0x4 m_explosionV1__17CZClaymoreMapItem  # OVL1 bss; SOCOM 1's static: 2 references in 2 functions
 0x00409F20 0x460 g_arrHorGridLines__27@unnamed@hud_newhudmap_cpp@  # OVL1 bss; s1:data-exact (size SOCOM 1's; via __arraydtor$2546)
 0x0040C060 0xC navpoint_vec  # OVL1 bss; SOCOM 1's global (a vector of nav packages: hud_mapcompass.cpp's initialiser builds it, MapCompass's constructor reserves it, its destructor frees it, Tick fills it): 7 references in 4 functions take 0x40C060
 0x0040DA18 0x4 m_conetex__15CZPlayerMapItem  # OVL1 bss; SOCOM 1's static (CZPlayerMapItem's constructor copies it into its own cone texture, as SOCOM 1's did): 3 references in 3 functions take 0x40DA18

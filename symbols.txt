@@ -8195,7 +8195,7 @@
 0x003C6BD0 0x5C func_003C6BD0  # OVL1
 0x003C6C30 0x8C func_003C6C30  # OVL1
 0x003C6CC0 0x208 func_003C6CC0  # OVL1
-0x003C6ED0 0x30 func_003C6ED0  # OVL1
+0x003C6ED0 0x30 WasDetonated__12CZProjectileFv  # OVL1; s1:callee (CZClaymoreMapItem::Tick asks it, as SOCOM 1's; it tests the state byte for 5 or 6)
 0x003C6F00 0x58 func_003C6F00  # OVL1
 0x003C6F60 0xF4 func_003C6F60  # OVL1
 0x003C7060 0x78 func_003C7060  # OVL1
