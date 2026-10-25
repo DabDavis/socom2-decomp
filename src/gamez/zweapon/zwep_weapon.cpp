@@ -6,8 +6,46 @@
 #include <string.h>
 
 #include "zweapon.h"
+#include "../zsys/zsys.h"
 
 extern "C" int strcasecmp(const char *a, const char *b);
+void _free(void *p, const char *file, int line);
+
+/* every set freed, its definitions and name first, then the vector's storage given up through
+ * FreeVector, whose four pieces the target calls (SOCOM 1's, the file and line dropped) */
+bool CZDecalSet::DestroyDecalSet()
+{
+    if (m_decalsets.size() == 0)
+        return false;
+    if (m_decalsets.size()) {
+        do {
+            CZDecalSet *set = m_decalsets.back();
+
+            m_decalsets.pop_back();
+            if (set) {
+                if (set->m_decals)
+                    _free(set->m_decals, 0, 0);
+                set->m_decals = 0;
+                if (set->m_name)
+                    _free(set->m_name, 0, 0);
+                set->m_name = 0;
+                delete set;
+            }
+        } while (m_decalsets.size());
+    }
+    FreeVector<std::vector<CZDecalSet *> >(m_decalsets);
+    return true;
+}
+
+/* the set of that name, or 0 (SOCOM 1's; an int counter keeps the element address recomputed) */
+CZDecalSet *CZDecalSet::GetDecalSetByName(const char *name)
+{
+    for (int i = 0; i < m_decalsets.size(); i++) {
+        if (!strcmp(m_decalsets[i]->m_name, name))
+            return m_decalsets[i];
+    }
+    return 0;
+}
 
 /* every mode up to the maximum flagged (new in SOCOM II; the name is ours) */
 void CZWeapon::SetMaxFireMode(FIREMODE mode)

@@ -8305,10 +8305,10 @@
 0x003D0870 0xB8 OpenDecals__8CZWeaponFv  # OVL1; s1:calls
 0x003D0930 0xA0 GetDecalSetByName__10CZDecalSetFPCc  # OVL1; s1:align
 0x003D09D0 0xF0 DestroyDecalSet__10CZDecalSetFv  # OVL1; s1:align
-0x003D0AC0 0x70 func_003D0AC0  # OVL1
-0x003D0B30 0x40 func_003D0B30  # OVL1
-0x003D0B70 0x8 func_003D0B70  # OVL1
-0x003D0B80 0x14 func_003D0B80  # OVL1
+0x003D0AC0 0x70 __dt__Q23std54vector<P10CZDecalSet,Q23std24allocator<P10CZDecalSet>>Fv  # OVL1; by hand (the wep lane: FreeVector's temporary destroyed with -1 in DestroyDecalSet, out of line); zwep_weapon.cpp
+0x003D0B30 0x40 swap__Q23std54vector<P10CZDecalSet,Q23std24allocator<P10CZDecalSet>>FRQ23std54vector<P10CZDecalSet,Q23std24allocator<P10CZDecalSet>>  # OVL1; by hand (the wep lane: FreeVector's swap of m_decalsets with the temporary in DestroyDecalSet, out of line); zwep_weapon.cpp
+0x003D0B70 0x8 clear__Q23std54vector<P10CZDecalSet,Q23std24allocator<P10CZDecalSet>>Fv  # OVL1; by hand (the wep lane: FreeVector's clear of m_decalsets in DestroyDecalSet, out of line); zwep_weapon.cpp
+0x003D0B80 0x14 __ct__Q23std54vector<P10CZDecalSet,Q23std24allocator<P10CZDecalSet>>Fv  # OVL1; by hand (the wep lane: FreeVector's temporary built out of line in DestroyDecalSet -- the pointer vector's constructor, its inline copy after its first caller); zwep_weapon.cpp
 0x003D0BA0 0x424 AddNewMark__10CZMarkListFPQ23zdb15IntersectStructP12CZProjectilef  # OVL1; s1:calls
 0x003D0FD0 0x40 GetVisualNode__FPQ23zdb5CNode  # OVL1; s1:order by hand (the SEAL lane's lead, vetted by the wep lane: SOCOM 1's GetVisualNode 0x31D770 is the same 0x40 body -- the parent walk stopping at the world or at a node whose byte 0x5E has its top bit, CWorld::m_world loaded first -- and sits right before GetDecalNode 0x31D7B0, as 0x3D0FD0 precedes 0x3D1010; HandleBloodDrip calls the two in that order)
 0x003D1010 0x48 GetDecalNode__FPQ23zdb5CNode  # OVL1; s1:align

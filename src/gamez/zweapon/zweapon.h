@@ -217,6 +217,23 @@ public:
     static CZProjectileList *m_pProjectilelist;
 };   // 0xf8 bytes (CZFTSWeapon's targetmods start there)
 
+class CZDecalDef;
+
+/* a named set of decals (SOCOM 1's DWARF: 0xc bytes -- the decal definitions, the name, a byte;
+ * zwep_weapon.cpp's). The sets are SOCOM 1's static vector m_decalsets (0x4B5290 here) */
+class CZDecalSet {
+public:
+    static CZDecalSet *GetDecalSetByName(const char *name);
+    /* every set freed and the vector's storage given up; false when there were none */
+    static bool DestroyDecalSet();
+
+    CZDecalDef *m_decals;   // 0x0
+    char *m_name;   // 0x4
+    unsigned char m_permenant;   // 0x8
+
+    static std::vector<CZDecalSet *> m_decalsets;
+};   // 0xc bytes
+
 /* the materials' table (int_material.cpp's, SOCOM 1's class): only the extension list, whose size
  * the weapons' per-material animations are bounded by (SOCOM 1's static; 0x44F350 here) */
 class CMaterialExArray {

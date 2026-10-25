@@ -954,6 +954,7 @@
 0x004B5210 0xC m_listWeapons__8CZWeapon  # OVL1 bss; SOCOM 1's static (12 bytes, its GetWeaponId passes it to CZWeaponList::GetWeaponId as SOCOM II's does, 0x3D19E0; CZKit::SetItem passes it to the list's GetWeapon, 0x3C4B40, as SOCOM 1's -- the kit lane); 60 references in 36 functions
 0x004B5220 0x4 m_pProjectilelist__8CZWeapon  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Close__8CZWeaponFv +1)
 0x004B5248 0x4 m_pMarklist__8CZWeapon  # OVL1 bss; SOCOM 1's (CCoreState::auxUnload reads it beside m_pProjectilelist, as SOCOM 1's): 7 references in 6 functions take 0x4B5248
+0x004B5290 0xC m_decalsets__10CZDecalSet  # OVL1 bss; SOCOM 1's static (12 bytes, m_decalsets__10CZDecalSet at 0x511DE0 in the demo, its vector of decal sets): GetDecalSetByName walks it and DestroyDecalSet empties it as SOCOM 1's do, 0x3D0630 pushes onto it, the initialiser 0x404C10 zeroes it -- the wep lane; 19 references in 4 functions
 0x004B52B8 0x4 m_timer_maxval__8CZWeapon  # OVL1 bss; s1:data-seq (size SOCOM 1's; via RetrieveTimerRegistration__8CZWeaponFPPfPfPb)
 0x004B52C0 0x4 m_timer_pCurval__8CZWeapon  # OVL1 bss; s1:data-seq (size SOCOM 1's; via RetrieveTimerRegistration__8CZWeaponFPPfPfPb)
 0x004B5310 0xC m_ammolist__6CZAmmo  # OVL1 bss; SOCOM 1's static (12 bytes, m_ammolist__6CZAmmo at 0x511E00 in the demo): __sinit_zwep_ammo.cpp (0x404CD0) builds it with CZAmmoList's constructor, CZAmmo::GetAmmoId/GetAmmo hand it to the list's, as SOCOM 1's -- the wep lane; 13 references in 10 functions
