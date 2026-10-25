@@ -10,8 +10,13 @@
 /* the system allocator (SOCOM 1's _malloc__FUiPCci, 0x34EC30) */
 void *_malloc(unsigned int size, const char *file, int line);
 
-/* the default material a hit polygon without one reports (not named yet) */
-extern int data_0044F310;
+/* the materials' table (int_material.cpp's, SOCOM 1's class): the default material a hit polygon
+ * without one reports, SetDefaultMaterial's (0x2DDC30) first store (new in SOCOM II; the name is
+ * ours) */
+class CMaterialExArray {
+public:
+    static int m_defaultMaterial;
+};
 
 namespace zdb {
 
@@ -129,7 +134,7 @@ int IntersectStruct::GetMaterial()
     int material = m_poly->m_flags.m_material;
 
     if (!material)
-        material = data_0044F310;
+        material = CMaterialExArray::m_defaultMaterial;
     return material;
 }
 

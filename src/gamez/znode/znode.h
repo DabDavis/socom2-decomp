@@ -576,8 +576,16 @@ enum _RenderPhase {
 
 class CTexPalette;
 
-/* a library's textures (SOCOM 1's DWARF: CTexList : vector) */
+/* a library's textures (SOCOM 1's DWARF: CTexList : vector). Its code is vis code, out of line
+ * (SOCOM 1's names, in SOCOM 1's order at 0x354510-0x354790) */
 class CTexList : public std::vector<CTexHandle *> {
+public:
+    /* every handle let go of, the list emptied */
+    void Free();
+    /* a texture's handle made and listed */
+    CTexHandle *Append(CTexture *tex, bool b);
+    /* the handle of a texture of that name, or none */
+    CTexHandle *GetHandle(const char *name);
 };   // 0xc bytes
 
 /* a library's palettes (SOCOM 1's DWARF: CTexPalList : vector) */
