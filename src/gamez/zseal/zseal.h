@@ -616,6 +616,15 @@ public:
  * lane's) */
 #include "../zbody/zbody.h"
 
+/* how far a SEAL's aim strays, sideways and up, and the random part's scale (SOCOM 1's DWARF,
+ * 0xc bytes) */
+class CAccuracy {
+public:
+    float m_factorX;   // 0x0 (SOCOM 1's FactorX)
+    float m_factorY;   // 0x4 (FactorY)
+    float m_factor;   // 0x8 (Factor)
+};
+
 /* the SEAL (SOCOM 1's DWARF: CZSealBody : CEntity, CBody, 0x1140 bytes; SOCOM II's CBody base at
  * 0x170, after its 0x170-byte CEntity, the SEAL's own members from 0x200 -- the constructor at
  * 0x553EA0 builds the CBody at 0x170 and stores the second table there) -- only what the written
@@ -759,7 +768,8 @@ public:
     unsigned short m_5b0;   // 0x5b0: two of the stats' counters (the CQB attack adds 2 and 1; the
     unsigned char _5b2[0x5b8 - 0x5b2];   //  names ours)
     unsigned short m_5b8;   // 0x5b8
-    unsigned char _5ba[0x5e0 - 0x5ba];
+    unsigned char _5ba[0x5d4 - 0x5ba];
+    CAccuracy m_accuracy;   // 0x5d4 (SOCOM 1's 0x514: PerturbAimVector reads it)
     CZKit m_kit;   // 0x5e0 (SOCOM 1's 0x520)
     unsigned char _5e4[0xeb8 - 0x5e4];
     int m_eb8;   // 0xeb8: 0x5A8850 tests it first (the name ours)
