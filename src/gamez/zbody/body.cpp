@@ -639,21 +639,34 @@ bool CBlendOverlay::Tick(CBody *body, float dT)
 }
 
 /* within dT of its anim's fraction, ahead or behind as it runs (SOCOM 1's; pinned: CallbackTick
- * calls it). OPEN, 2 instructions short: the target's two float registers trade places (the
- * length and the step in $f1, the fraction in $f0) and it pads its first arm's `b` with a nop
- * more; tried the step through one reused local and the fraction declared first */
+ * calls it): the step through ScaleTime (its registers), each arm's test written as `if (c)
+ * return true; return false;` (the label pads the target has after the first arm) */
+/* a time scaled, in place (ours: the overlay's trigger window is the only caller that multiplies
+ * the script's time into its own register -- `mul.s $f1,$f1,$f0`, the time loaded after the loop
+ * share's call, as a by-value parameter of an inline is; written out, the product lands in $f0) */
+static inline float ScaleTime(float time, float scale)
+{
+    time *= scale;
+    return time;
+}
+
 #pragma auto_inline off
 bool CBlendOverlay::IsTriggerTime(float t, float dT)
 {
     if (!m_anim)
         return false;
     CZSIScriptCommon *anim = m_anim->m_anim;
-    float d = dT / (anim->m_10 * anim->TrueLoopTime());
+    float d = dT / ScaleTime(anim->m_10, anim->TrueLoopTime());
     float tf = m_anim->m_tfrac;
 
-    if (m_state == -1)
-        return tf - d <= t;
-    return tf + d >= t;
+    if (m_state == -1) {
+        if (tf - d <= t)
+            return true;
+        return false;
+    }
+    if (tf + d >= t)
+        return true;
+    return false;
 }
 #pragma auto_inline reset
 
