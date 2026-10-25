@@ -713,8 +713,20 @@ struct VALVE_CB {
 class CValveCBList : public std::list<VALVE_CB *> {
 };
 
+class CRdrFile;
+
 class CValve {
 public:
+    /* the valve lane's: SOCOM 1's constructor and destructor, and the valve file read, the list
+     * emptied and the pool made (valve_list.cpp) */
+    CValve(const char *name, unsigned int value, VALVE_TYPE type);
+    ~CValve();
+    static void Parse(CRdrFile *rdr, VALVE_TYPE type);
+    static void Close();
+    static void Reset();
+    static bool Open(const char *name, VALVE_TYPE type);
+    static void Uninit();
+    static bool Init();
     static CValve *Create(const char *name, VALVE_TYPE type);
     static CValve *Create(const char *name, unsigned int value, VALVE_TYPE type);
     static CValve *GetByName(const char *name);
