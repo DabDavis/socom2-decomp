@@ -2037,7 +2037,7 @@
 0x00227130 0xA0 WordIntersectionTest__FiiiiP9C2DString  # OVL1; s1:order by hand (hud_teammatenames.cpp: between Tick and UnInit, as SOCOM 1's; four ints and a C2DString in t0, the same signature, true when the rectangles overlap)
 0x002271D0 0x64 UnInit__16CMPTeammateNamesFv  # OVL1; s1:calls by hand (CHUD::ReInit_Uninit's call on CHUD+0x17580 after CFlashFXVector::Reset, where SOCOM 1 calls CTeamMateNames::UnInit; SOCOM II's class: each of its eight strings off and emptied)
 0x00227240 0xF8 Init__16CMPTeammateNamesFv  # OVL1; s1:calls by hand (CHUD::ReInit_Init's call on CHUD+0x17580 in a network game, where SOCOM 1 calls CTeamMateNames::Init; after UnInit in the unit, as SOCOM 1's; no argument set up: SOCOM 1's took the font)
-0x00227340 0x220 func_00227340  # OVL1
+0x00227340 0x220 Init__16CMPTeammateNamesFP7C2DFont  # OVL1; by hand (the HUD lane: CHUD::Init's call on the teammate names with the font, as SOCOM 1's CTeamMateNames::Init took it; eight strings listed, two bitmaps added, the DISPLAY_MP_TEAM_NAMES valve's value kept; the unit's last function)
 0x00227560 0xE8 UpdateCharacter__16CInGameWeaponSelFv  # OVL1; s1:calls by hand (UnInit 0x227960 calls it right after SwitchOffText, as SOCOM 1's UnInit calls UpdateCharacter; 0xE8 against SOCOM 1's 0xB8)
 0x00227650 0xE0 SwitchOffText__16CInGameWeaponSelFv  # OVL1; s1:calls by hand (UnInit 0x227960 calls it after m_openstate = 6 inside the inlined close, as SOCOM 1's UnInit calls SwitchOffText; Clear's texts turned Off, slot 4)
 0x00227730 0x150 AfterClose__16CInGameWeaponSelFv  # OVL1; s1:calls by hand (UnInit 0x227960 calls it after the inlined AfterCloseFirst, as SOCOM 1's UnInit calls AfterClose; 0x150 against 0x14C)

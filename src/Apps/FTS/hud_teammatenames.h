@@ -12,6 +12,8 @@ public:
     virtual void Tick(float dT);
     void UnInit();
     void Init();
+    /* the strings and bitmaps made and added (0x227340, CHUD::Init's) */
+    void Init(C2DFont *font);
 
     C2DString m_names[8];   // 0x18
     C2DBitmap m_bitmap1;   // 0x4e0
