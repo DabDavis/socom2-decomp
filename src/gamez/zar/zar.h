@@ -7,14 +7,9 @@
 
 #include <vector>
 
-/* the engine's file interface, abstract: its slots SOCOM 1's (CFileIO's and CMemCardIO's
- * vtables name them), those read so far */
-class CIO {
-public:
-    virtual bool Open(const char *name, unsigned int mode);
-    virtual void Close();
-    virtual bool IsOpen() const;
-};
+/* the engine's file interface, CIO, is zutil.h's (the full class: SOCOM 1's slots and SOCOM II's
+ * three async ones) */
+#include "../zutil/zutil.h"
 
 namespace zar {
 

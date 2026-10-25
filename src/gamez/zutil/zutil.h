@@ -174,6 +174,7 @@ public:
     int GetUsedSpace();
     bool CreateReserveFile(const char *name, int kb);
     bool CreateReserveFiles();
+    void CreateIconFiles();
     void Uninit();
     void Reset();
     void Init();

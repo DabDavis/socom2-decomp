@@ -607,7 +607,7 @@ bool UIDoesSlotHaveGame(C2DAnimCmdHdr *hdr, float *dT)
     sprintf(s_savename, "SaveGame%d", slot);
     if (func_003A0950(&theMemCard, s_savename)) {
         sprintf(s_savename, "SaveGame%d", slot);
-        func_0033D4A0(theMemCard.m_18, s_savename, 12, &info);
+        func_0033D4A0(theMemCard.m_configSave, s_savename, 12, &info);
         if (info.m_text[0] == 'm' && strcmp(info.m_text, "This game is a dummy game."))
             has = true;
     }
@@ -625,7 +625,7 @@ bool UIGetNumSavedGames(C2DAnimCmdHdr *hdr, float *dT)
         sprintf(s_savename, "SaveGame%d", i);
         if (func_003A0950(&theMemCard, s_savename)) {
             sprintf(s_savename, "SaveGame%d", i);
-            func_0033D4A0(theMemCard.m_18, s_savename, 12, &info);
+            func_0033D4A0(theMemCard.m_configSave, s_savename, 12, &info);
             if (info.m_text[0] == 'm' && strcmp(info.m_text, "This game is a dummy game."))
                 count++;
         }
@@ -1081,7 +1081,7 @@ bool UIMC_ChPort(C2DAnimCmdHdr *hdr, float *dT)
     int port = atoi(ArgName(hdr));
 
     if (port >= 0)
-        theMemCard.m_port = port;
+        theMemCard.m_selPort = port;
     theMemCard.SelectPortSlot();
     return true;
 }
@@ -1091,7 +1091,7 @@ bool UIMC_ChSlot(C2DAnimCmdHdr *hdr, float *dT)
     int slot = atoi(ArgName(hdr));
 
     if (slot >= 0)
-        theMemCard.m_slot = slot;
+        theMemCard.m_selSlot = slot;
     theMemCard.SelectPortSlot();
     return true;
 }
