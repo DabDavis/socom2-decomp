@@ -7,15 +7,15 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+s32 IsCurrentBlend__10CZSealBodyCF8AnimType(char *, s32); /* extern */
 char *func_00555170(char *);                        /* extern */
-s32 func_00577E40(char *, s32);                     /* extern */
 char *func_00588BC0(char *, s32, s32, M2C_UNK, M2C_UNK); /* extern */
 
 char *func_0057D540(char *arg0, s32 arg1, s32 arg2) {
     if ((((u64) ((s64) SC_MEMBER(arg0, u8 *, 0xE1) << 0x3B) >> 0x3F) == 0) || (M2C_FIELD(func_00555170(arg0 + 0x1C0), s8 *, 0x2B) == 8)) {
         return NULL;
     }
-    if (func_00577E40(arg0, arg1) != 0) {
+    if (IsCurrentBlend__10CZSealBodyCF8AnimType(arg0, arg1) != 0) {
         return func_00555170(arg0 + 0x1C0);
     }
     return func_00588BC0(arg0, arg1, arg2 & 0xFF, 0, 0);

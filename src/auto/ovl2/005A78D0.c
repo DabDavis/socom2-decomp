@@ -4,17 +4,18 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+s32 IsCurrentBlend__10CZSealBodyCF8AnimType(s32, s16); /* extern */
 M2C_UNK func_00555170(s32);                         /* extern */
-s32 func_00577E40(s32, s16);                        /* extern */
 extern s16 data_003DEC80;
 extern s16 data_003DEC90;
 extern s16 data_003DECA0;
 
 s32 func_005A78D0(s32 arg0) {
     func_00555170(arg0 + 0x1C0);
-    if ((func_00577E40(arg0, 0x2A) != 0) || (func_00577E40(arg0, data_003DEC90) != 0) || (func_00577E40(arg0, 0x21) != 0) || (func_00577E40(arg0, data_003DECA0) != 0) || (func_00577E40(arg0, data_003DEC80) != 0) || (func_00577E40(arg0, 0x2C) != 0)) {
+    if ((IsCurrentBlend__10CZSealBodyCF8AnimType(arg0, 0x2A) != 0) || (IsCurrentBlend__10CZSealBodyCF8AnimType(arg0, data_003DEC90) != 0) || (IsCurrentBlend__10CZSealBodyCF8AnimType(arg0, 0x21) != 0) || (IsCurrentBlend__10CZSealBodyCF8AnimType(arg0, data_003DECA0) != 0) || (IsCurrentBlend__10CZSealBodyCF8AnimType(arg0, data_003DEC80) != 0) || (IsCurrentBlend__10CZSealBodyCF8AnimType(arg0, 0x2C) != 0)) {
         return 1;
     }
     return 0;

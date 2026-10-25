@@ -51,27 +51,77 @@ enum EQUIP_AMMO {
     AMMO_NONE = 255
 };
 
-/* a cartridge type's stats (SOCOM 1's DWARF: 0x24 bytes, m_ID at 0x20; SOCOM II's id is at 0x30,
- * the size its reader news 0x34) */
+class CZAmmoList;
+class CZAnim;
+
+/* a cartridge type's stats (SOCOM 1's DWARF: 0x24 bytes, m_ID at 0x20; SOCOM II's is 0x40, its
+ * reader news 0x40). SOCOM II's members past SOCOM 1's take the names of the rdr fields its ammo
+ * reader (0x3CEDB0) hands them: "DisplayName" goes to 0x4, where SOCOM 1's description was,
+ * "Description" to a third string at 0x8, then NumProjectilesFired, AccelerationFactor, the
+ * Volitile and IgnoreExplosionDI tags, Blowback_Falloff and Blowback_End (squared, by index) and
+ * ProximityDistance (squared). The functions are zwep_ammo.cpp's, out of line */
 class CZAmmo {
 public:
+    CZAmmo();
     ~CZAmmo();
-    /* the name (zwep_ammo.cpp's, out of line: 0x3D4540) */
+    /* the ammunition by name and by id (SOCOM 1's statics, through m_ammolist) */
+    static EQUIP_AMMO GetAmmoId(const char *name);
+    static CZAmmo *GetAmmo(EQUIP_AMMO id);
+    /* SOCOM II's (the names ours, after the rdr fields) */
+    void SetIgnoreExplosionDI(bool on);
+    bool GetIgnoreExplosionDI();
+    void SetVolatile(bool on);
+    bool IsVolatile();
+    void SetAccelerationFactor(float f);
+    float GetAccelerationFactor();
+    float GetProximityDistance();
+    void SetProximityDistance(float d);
+    /* the blowback's scale at a squared distance: 1 inside the falloff, down to 0 at the end */
+    float GetBlowbackScale(float d2);
+    void SetBlowback(unsigned char which, float d);
+    int GetNumProjectilesFired();
+    void SetNumProjectilesFired(int n);
+    /* SOCOM 1's */
+    float GetExplosionRadius();
+    float GetExplosionDamage();
+    float GetArmorPierce();
+    float GetImpactDamage();
     char *GetName();
+    char *GetDescription();
+    void SetExplosionRadius(float r);
+    void SetExplosionDamage(float d);
+    void SetArmorPierce(float p);
+    void SetStun(float s);
+    void SetImpactDamage(float d);
+    void SetHitAnim(const char *name);
+    /* the third string (SOCOM II's: "Description"; the name ours) */
+    void SetLongDescription(char *s);
+    void SetDescription(char *s);
+    void SetName(char *s);
     /* the id by value (inline: GetAmmo(EQUIP_AMMO) narrows its argument into a register of its
      * own only so; the name is ours) */
     EQUIP_AMMO GetId() const { return m_ID; }
 
-    /* the blast's radius (SOCOM 1's, out of line in zwep_ammo.cpp: 0x3D4500) */
-    float GetExplosionRadius();
-
     char *m_name;   // 0x0
     char *m_description;   // 0x4
-    unsigned char _8[0x1c - 0x8];
-    float m_explosionRadius;   // 0x1c (the name ours)
-    unsigned char _20[0x30 - 0x20];
-    EQUIP_AMMO m_ID;   // 0x30
-};
+    char *m_longdescription;   // 0x8 (SOCOM II's)
+    float m_impactDamage;   // 0xc (SOCOM 1: 0x8)
+    float m_stun;   // 0x10
+    float m_pierce;   // 0x14
+    float m_explosionDamage;   // 0x18
+    float m_explosionRadius;   // 0x1c
+    int m_numProjectilesFired;   // 0x20 (SOCOM II's, as the rest up to m_hitanim)
+    float m_accelerationFactor;   // 0x24
+    unsigned char m_volatile : 1;   // 0x28
+    unsigned char m_ignoreExplosionDI : 1;   // 0x28
+    CZAnim *m_hitanim;   // 0x2c (SOCOM 1: 0x1c)
+    EQUIP_AMMO m_ID;   // 0x30 (SOCOM 1: 0x20)
+    float m_blowback[2];   // 0x34 (SOCOM II's, squared)
+    float m_proximityDistance;   // 0x3c (squared)
+
+    /* the ammunition (SOCOM 1's static, 12 bytes: 0x4B5310) */
+    static CZAmmoList m_ammolist;
+};   // 0x40 bytes
 
 /* the ammunition, a pointer list (SOCOM 1's DWARF: CZAmmoList : list); its elements are its own */
 class CZAmmoList : public std::list<CZAmmo *> {
@@ -124,6 +174,8 @@ public:
     EQUIP_AMMO GetDefaultAmmoId();
     CZAmmo *GetDefaultAmmo();
 
+    /* the range (SOCOM 1's, the float at 0x3C: 0x3D27F0) */
+    float GetMaxRange();
     /* the magazine's size and the magazines carried (SOCOM 1's GetAmmoCapacity and GetNumMags,
      * in its order: 0x3D2810 and 0x3D2800; CZKit's magazine code calls them) */
     int GetNumMags();
@@ -264,10 +316,14 @@ public:
 
 namespace zdb {
 class CNode;
+class CModel;
 class DiIntersect;
+struct IntersectStruct;
 }
+class CPickup;
 
-/* a projectile's state (SOCOM 1's DWARF: a byte enum) */
+/* a projectile's state (SOCOM 1's DWARF: a byte enum; SOCOM II tests a seventh, 7, beside them --
+ * not named) */
 enum PROJECTILE_STATE {
     PROJECTILE_EXPIRED = 0,
     PROJECTILE_FLYOUT = 1,
@@ -278,25 +334,129 @@ enum PROJECTILE_STATE {
     PROJECTILE_TO_BE_REMOVED = 6
 };
 
-/* a projectile (SOCOM 1's DWARF: 0xa8 bytes, the vtable pointer at 0; SOCOM II's is 0xc4 -- only
- * what the matched code reads is placed: the instance 8 bytes on, the shooter's id 0x1c on). Its
+/* a grenade's state on the network (SOCOM 1's DWARF: a byte enum) */
+enum GRENADE_STATE {
+    CREATE = 0,
+    NEWPOS = 1,
+    DETONATE = 2,
+    REMOVE = 3
+};
+
+/* how a shot flies (SOCOM 1's DWARF: a byte enum; ONE_FRAME is direct fire) */
+enum PROJECTILE_TYPE {
+    NORMAL = 0,
+    ONE_FRAME = 1,
+    ONE_FRAME_SHOTGUN = 2
+};
+
+/* the projectile's extension of its node: a weapon's hit on the node handed to the projectile
+ * (new in SOCOM II: __vt__17CProjectileNodeEx, 0x4083F0, overriding CNodeEx's first slot; its
+ * functions out of line at 0x3D4B80-0x3D4BDF, in a unit after zwep_ammo.cpp). The class needs
+ * znode.h's CNodeEx: a unit without it sees a stand-in of its size */
+#ifdef ZNODE_H
+class CProjectileNodeEx : public zdb::CNodeEx {
+public:
+    CProjectileNodeEx();
+    void SetProjectile(CZProjectile *projectile);
+    virtual int OnWeaponHit(zdb::CNode *node, zdb::IntersectStruct *hit, CZProjectile *projectile);
+
+    CZProjectile *m_projectile;   // 0x4
+};   // 8 bytes
+#else
+class CProjectileNodeEx {
+public:
+    void *m_vtable;   // 0x0
+    CZProjectile *m_projectile;   // 0x4
+};
+#endif
+
+/* a projectile (SOCOM 1's DWARF: 0xa8 bytes, the vtable pointer at 0; SOCOM II's is 0xc4: the node
+ * extension inserted at 0x18, a second intersection at 0x30, two words after m_lastVolumetricHit
+ * and one after m_currange, the volumetric material moved to 0xc0 -- read off Init and Reset). Its
  * table is SOCOM 1's two slots, PreTick and PostTick (__vt__12CZProjectile, 0x4083D0): no virtual
- * destructor, as in SOCOM 1 */
+ * destructor, as in SOCOM 1. zwep_projectile.cpp's */
 class CZProjectile {
 public:
-    /* (0x3CB8A0: the table stored first, its node extension built at 0x18) */
+    /* (0x3CB8A0: the table stored first, the extension built, Init run) */
     CZProjectile();
     ~CZProjectile();
     virtual bool PreTick(float dT);    /* +0x08 */
     virtual bool PostTick(float dT);   /* +0x0C */
-    /* the node it flies (SOCOM 1's, out of line in zwep_projectile.cpp: 0x3C7AE0) */
-    zdb::CNode *GetInstance();
+    /* the members' first values (new in SOCOM II: SOCOM 1's constructor did it inline; the name
+     * ours) */
+    void Init();
+    void Reset();
+    bool WasDetonated();
     /* the state set, unless the game holds it (forced, or a player's or a person-hit projectile
      * passes; SOCOM 1's, 0x3C6F00) */
     void SetProjectileState(PROJECTILE_STATE state, bool force);
+    /* SOCOM 1's UpdateGrenade(pos, vel, state) in three (the network grenade's: the names ours) */
+    bool UpdateGrenadeState(GRENADE_STATE state);
+    bool UpdateGrenadeVelocity(const CPnt3D *vel);
+    bool UpdateGrenadePosition(const CPnt3D *pos);
+    void ReportGrenadeStatus();
+    bool IsInRange(const CPnt3D *pos, float range);
+    static float ResolveDamage(float *health, float *armor, float damage, float pierce);
+    float GetDamage(const CPnt3D *pos, float scale);
+    /* a point inside the blast's cone: from the apex along the direction for the explosion's
+     * radius, widening by the angle's tangent (SOCOM II's; GetDamage asks it twice -- the name
+     * and the parameters' order ours) */
+    bool IsInCone(const CPnt3D *pos, const CPnt3D *apex, const CPnt3D *dir, float angle);
+    void SetInstance(zdb::CNode *node);
+    /* the node it flies (SOCOM 1's, out of line in zwep_projectile.cpp: 0x3C7AE0) */
+    zdb::CNode *GetInstance();
+    /* a detonated projectile's hits on a node forgotten (SOCOM II's: the projectile list calls it
+     * when a node goes; the name ours) */
+    void ForgetHitNode(zdb::CNode *node);
+    /* whether a hit counts against the second intersection (0x3C80E0, SOCOM II's; not written,
+     * the name ours) */
+    bool CheckHit(zdb::DiIntersect *di, zdb::IntersectStruct *hit);
+    /* the next hit handed to its node's extension, unless there is no second intersection
+     * (SOCOM II's; the name ours) */
+    bool HandleNextHit();
+    void Detonate();
+    void Cleanup();
+    bool SetModelOrientation(bool b, const CPnt3D *dir);
+    void SetVelW(const CPnt3D *vel);
+    /* SOCOM II's: a hit on the projectile itself from another (CProjectileNodeEx hands it on; the
+     * name ours) */
+    void OnWeaponHit(zdb::IntersectStruct *hit, CZProjectile *projectile);
+    /* SOCOM II's position setters (the names ours): both frame ends and the node, then the
+     * velocity -- none, or set and flying */
+    void SetPosition(const CPnt3D *pos);
+    void SetPositionAtRest(const CPnt3D *pos);
+    void SetPositionVel(const CPnt3D *pos, const CPnt3D *vel);
+    /* SOCOM II's flag accessors (bits 4 and 9 of the word at 4; the names ours) */
+    void SetLastHitWasPerson(bool on);
+    void SetFlag9(bool on);
+    bool GetFlag9();
+    /* inline: the bool's `& 1` survives a constant argument, as SetVelW's and Init's stores show
+     * (the names ours) */
+    void SetDone(bool on) { m_done = on; }
+    void SetIsFirstHit(bool on) { m_isfirsthit = on; }
+    void SetIsPlayer(bool on) { m_isplayer = on; }
+    void SetUseFlyout(bool on) { m_useflyout = on; }
+    void SetLastHitWasVolumetric(bool on) { m_lastHitWasVolumetric = on; }
+    void SetEcho(bool on) { m_echo = on; }
+    void SetFlag7(bool on) { m_b7 = on; }
+    void SetFlag8(bool on) { m_b8 = on; }
+    void SetFlag17(bool on) { m_b17 = on; }
+    void SetFlag18(bool on) { m_b18 = on; }
+    void SetFlag19(bool on) { m_b19 = on; }
+    void SetFlag20(bool on) { m_b20 = on; }
+    /* inline (SOCOM 1's Reset inlines both the same way): the weapon's range and direct fire */
+    void SetWeapon(CZWeapon *weapon)
+    {
+        m_weapon = weapon;
+        if (m_weapon) {
+            m_currange = m_weapon->GetMaxRange();
+            m_shottype = m_weapon->IsDirectFire() ? ONE_FRAME : m_shottype;
+        }
+    }
+    void SetAmmo(CZAmmo *ammo) { m_ammo = ammo; }
 
-    /* SOCOM 1's flags at 0x4 (m_done .. m_echo, bits 0-6); SOCOM II's two at bits 17 and 18 (the
-     * explosive's PreTick tests them; the names ours) */
+    /* SOCOM 1's flags at 0x4 (m_done .. m_echo, bits 0-6); SOCOM II's at bits 7-9 and 17-20 (the
+     * explosive's PreTick tests 17 and 18; the names ours) */
     unsigned int m_done : 1;   // 0x4
     unsigned int m_isfirsthit : 1;
     unsigned int m_isplayer : 1;
@@ -304,38 +464,58 @@ public:
     unsigned int m_lastHitWasPerson : 1;
     unsigned int m_lastHitWasVolumetric : 1;
     unsigned int m_echo : 1;
-    unsigned int _b7 : 10;
+    unsigned int m_b7 : 1;
+    unsigned int m_b8 : 1;
+    unsigned int m_b9 : 1;
+    /* the next of m_di's hits to hand on (SOCOM II's; the name ours) */
+    unsigned int m_hitindex : 7;
     unsigned int m_b17 : 1;
     unsigned int m_b18 : 1;
-    unsigned int _b19 : 13;
-    unsigned char m_grenadestate;   // 0x8
-    /* 1: direct fire (its intersection released to the direct-fire table: SOCOM 1's
-     * PROJECTILE_TYPE, a byte) */
-    unsigned char m_shottype;   // 0x9
+    unsigned int m_b19 : 1;
+    unsigned int m_b20 : 1;
+    unsigned int _b21 : 11;
+    GRENADE_STATE m_grenadestate;   // 0x8
+    /* 1: direct fire (its intersection released to the direct-fire table) */
+    PROJECTILE_TYPE m_shottype;   // 0x9
     PROJECTILE_STATE m_state;   // 0xa
-    unsigned char _b[0x10 - 0xb];
+    /* SOCOM II's: set when the state becomes PROJECTILE_AT_REST (the name ours) */
+    unsigned char m_hasrested;   // 0xb
+    CZWeapon *m_weapon;   // 0xc
     CZAmmo *m_ammo;   // 0x10
-    unsigned char _14[0x20 - 0x14];
+    CPickup *m_pickup;   // 0x14
+    CProjectileNodeEx m_nodeex;   // 0x18 (SOCOM II's)
     zdb::CNode *m_instance;   // 0x20 (SOCOM 1: 0x18)
-    unsigned char _24[0x28 - 0x24];
+    zdb::CNode *m_owner;   // 0x24
     /* its intersection and the table's handle (SOCOM 1: 0x20, 0x24), and a second, always
      * direct-fire (SOCOM II's; the names ours) */
     zdb::DiIntersect *m_di;   // 0x28
     int m_di_handle;   // 0x2c
     zdb::DiIntersect *m_di2;   // 0x30
     int m_di2_handle;   // 0x34
-    unsigned char _38[0x48 - 0x38];
-    /* where it is (SOCOM 1's m_framestartpos, 0x38: the explosive's proximity is registered
-     * there) */
-    CPnt3D m_framestartpos;   // 0x48
-    unsigned char _54[0x8c - 0x54];
-    /* a time, "never" at first (PlacedExplosive's constructor sets 9999999; the name ours) */
-    float m_8c;   // 0x8c
-    unsigned char _90[0xa8 - 0x90];
-    /* the world's handle of its proximity registration (SOCOM 1's m_intersecthandle, 0x8c) */
+    CZAnim *m_animinstance;   // 0x38 (SOCOM 1: 0x28)
+    CPnt3D m_startpos;   // 0x3c
+    CPnt3D m_framestartpos;   // 0x48 (the explosive's proximity is registered there)
+    CPnt3D m_frameendpos;   // 0x54
+    CPnt3D m_vel;   // 0x60
+    CPnt3D m_lastPlayerHitPos;   // 0x6c
+    CPnt3D m_lastVolumetricHit;   // 0x78
+    float m_84;   // 0x84 (SOCOM II's, as 0x88)
+    float m_88;   // 0x88
+    float m_time;   // 0x8c ("never" at first: 9999999; SOCOM 1: 0x74)
+    float m_removaltime;   // 0x90
+    float m_currange;   // 0x94
+    int m_98;   // 0x98 (SOCOM II's)
+    float m_heading;   // 0x9c (SOCOM 1: 0x80)
+    float m_pitch;   // 0xa0
+    float m_roll;   // 0xa4
+    /* the world's handle of its proximity registration (SOCOM 1: 0x8c) */
     int m_intersecthandle;   // 0xa8
     int m_shooterID;   // 0xac (SOCOM 1: 0x90)
-    unsigned char _b0[0xc4 - 0xb0];
+    int m_object_index;   // 0xb0
+    int m_flyout_idx;   // 0xb4
+    int m_tracer_count;   // 0xb8
+    unsigned char m_remove_ASAP;   // 0xbc
+    int m_c0;   // 0xc0 (SOCOM II's: -1 at first)
 };   // 0xc4 bytes
 
 /* a charge set down (SOCOM 1's DWARF: CZProjectile and two flags, m_detonate and m_remote; SOCOM

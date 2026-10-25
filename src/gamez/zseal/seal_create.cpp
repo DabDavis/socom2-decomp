@@ -66,6 +66,49 @@ void CZSealBody::Destroy(CZSealBody *seal)
     }
 }
 
+extern "C" {
+/* CCharacterType::UnPack: the packed weapons read into a type (SOCOM 1's UnPack__14CCharacterType
+ * FPC20CCharacterWeapPackedP14CCharacterType, called here where SOCOM 1's CreateRemoteSeal calls it;
+ * OVL2 0x53EC60, the AI-core lane's range) */
+void func_0053EC60(const unsigned char *packed, CCharacterType *type);
+}
+
+/* another console's SEAL made: a network controller newed, the character type taken -- for the two
+ * kinds the flags name the type itself, else a temporary copy named for the client with the packed
+ * weapons read into it -- the SEAL created, then its client index, id, vehicle and name set
+ * (OVL2 0x599690; SOCOM 1's with Create no longer expanded in it, and a bit test where SOCOM 1's
+ * compared the type's number with 17 and 28) */
+CZSealBody *CZSealBody::CreateRemoteSeal(int index, int id, const char *name, int vehicle, char *charname,
+                                         unsigned int flags, unsigned char *packed)
+{
+    CSealCtrl *ctrl = new CRemoteCtrl;
+    CCharacterType *type = CCharacterType::GetByNameMod(charname);
+    CZSealBody *seal;
+
+    if (flags & ((1 << 17) | (1 << 28)))
+        seal = Create(type, name, ctrl);
+    else {
+        char buf[32];
+
+        sprintf(buf, "netchar%d", index);
+        CCharacterType *t = CCharacterType::Create(buf, type, true);
+
+        t->m_istemporary = 1;
+        func_0053EC60(packed, t);
+        seal = Create(t, name, ctrl);
+    }
+    if (seal) {
+        seal->m_id = id;
+        seal->m_ClientIndex = index;
+        seal->SetJoinedUnit(false);
+        seal->m_vehicle_index = vehicle;
+        seal->SetDisplayName(name);
+        seal->m_movespeedmod = 1.0f;
+        seal->m_full_update_time = 0;
+    }
+    return seal;
+}
+
 /* a node's tree counted (OVL2 0x59A450: a walk of the child vector; the map's FindGear was SOCOM
  * 1's by position only) */
 extern "C" int func_0059A450(zdb::CNode *node);

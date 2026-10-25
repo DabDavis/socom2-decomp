@@ -4,19 +4,20 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK Init__14CFlyoutMachineFUi(M2C_UNK *, M2C_UNK); /* extern */
 M2C_UNK __dt__10ZWepReaderFv(M2C_UNK *, M2C_UNK);   /* extern */
 M2C_UNK func_003CD810(M2C_UNK *, M2C_UNK *);        /* extern */
 M2C_UNK func_003CF1E0(M2C_UNK *);                   /* extern */
-M2C_UNK func_003D5600(M2C_UNK *, M2C_UNK);          /* extern */
 extern M2C_UNK data_003FD330;
 extern M2C_UNK data_004B5260;
 
 s32 func_003D0420(void) {
     M2C_UNK sp1C;
 
-    func_003D5600(&data_004B5260, 0x64);
+    Init__14CFlyoutMachineFUi(&data_004B5260, 0x64);
     func_003CF1E0(&sp1C);
     func_003CD810(&sp1C, &data_003FD330);
     __dt__10ZWepReaderFv(&sp1C, -1);

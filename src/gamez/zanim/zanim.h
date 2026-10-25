@@ -338,6 +338,14 @@ class CZAnimSetSave;
 /* a scheduled task (SOCOM 1's DWARF; the system lane's) */
 class CSched_Task {
 public:
+    /* the name freed (SOCOM II's inline: CSched_Manager::Clear deletes its tasks through it) */
+    ~CSched_Task()
+    {
+        if (m_name)
+            _free(m_name, 0, 0);
+        m_name = 0;
+    }
+
     char *m_name;                       // 0x0
     bool m_remove;                      // 0x4 (the DWARF's unsigned char)
     float m_priority;                   // 0x8
@@ -352,6 +360,8 @@ class CSched_Manager : public std::list<CSched_Task *> {
 public:
     bool RemoveTask(void *task, bool all);
     bool RemoveTask(const char *name, bool all);    /* the system lane's */
+    void Clear();
+    void ClearFreeList(bool all);
 
     unsigned char m_inTick;             // 0xc (the system lane's)
     float m_priority;                   // 0x10

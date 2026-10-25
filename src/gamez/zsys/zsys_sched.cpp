@@ -4,6 +4,7 @@
  * (-inline deferred). */
 
 #include <string.h>
+#include <algorithm>
 
 #include "../zanim/zanim.h"
 
@@ -44,4 +45,20 @@ bool CSched_Manager::RemoveTask(void *task, bool all)
         }
     }
     return found;
+}
+
+/* a task deleted (Clear's functor; the name ours) */
+struct DeleteTask {
+    void operator()(CSched_Task *t) { delete t; }
+};
+
+/* every task deleted and the list emptied, then the free list (SOCOM 1's; OVL1 0x34E480 --
+ * the MSL lane's probe, byte-exact) */
+void CSched_Manager::Clear()
+{
+    if (size()) {
+        std::for_each(begin(), end(), DeleteTask());
+        clear();
+    }
+    ClearFreeList(false);
 }

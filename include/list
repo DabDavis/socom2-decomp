@@ -77,19 +77,37 @@ public:
     /* built from an allocator, out of line as the default one (the copy constructor's first
      * step: CNode::SetParentHasVisuals calls it, 0x3177A0) */
     __list_deleter(const Allocator &a);
-    /* the sentinel's address into a local first, as the constructor takes it (the rdr lane's
-     * measurement: CRdrArchive's ReadArray 23 -> 17 instructions off, nothing else moves) */
+    /* the first node read through a reference to the sentinel, as begin() reads it, the end built
+     * from the member (one level of inlines below it, so the four this-tested levels of a member
+     * list's implicit destructor still inline it whole: CValve's). See begin() */
     ~__list_deleter()
     {
-        node_base *t = &end_;
+        node_base &t = end_;
 
-        erase(iterator(t->next_), iterator(t));
+        erase(iterator(t.next_), iterator(&end_));
     }
     /* the elements of a range appended one by one, out of line (0x317720 for the pointer lists'
      * const iterators: the iterators by value, homed, end() and insert called) */
     template <class InputIterator>
     void init(InputIterator first, InputIterator last);
-    iterator begin() { return iterator(end_.next_); }
+    /* the first node read through a reference to the sentinel (the list<T *> wrapper's begin() and
+     * the destructor read it so too): MW then computes &end_.next_ once, as a compiler temporary,
+     * and keeps it in a saved register for every later begin() of the function -- a walk's, a
+     * clear()'s, the implicit destructor's (`lw v0,0(s0)`). Read straight off `this`, each begin()
+     * after a call reloads 16(this) or 4(&end_) instead. Measured over every hand-written unit
+     * (2026-10-25): with the destructor and the wrapper's begin() alike, CValve's destructor,
+     * CValve::DeleteCallbacks, CNode::SetParentHasVisuals, CWorld::GenerateLightList,
+     * CClutterAnimManager::ClearEffectors, CLensFlareManager::Clear and CCell's constructor and
+     * destructor byte-exact, and ~CZAmmoList/~CZWeaponList (their drafts' matches) from hand
+     * source, nothing lost. A reference to the next_ link itself (`node_base *const &n =
+     * end_.next_`) does it only in part: CValve's destructor stays two instructions off and
+     * CAckList::Clear is lost */
+    iterator begin()
+    {
+        node_base &t = end_;
+
+        return iterator(t.next_);
+    }
     iterator end() { return iterator(&end_); }
     const_iterator begin() const { return const_iterator(end_.next_); }
     const_iterator end() const { return const_iterator(&end_); }
@@ -358,19 +376,44 @@ public:
     public:
         generic_iterator() {}
         generic_iterator(base_iterator i) : i_(i) {}
+        /* user-declared (SOCOM II's 0x510BD0: `lw v1,0(a1); move v0,a0; sw v1,0(a0)`, the copy
+         * ai::PathPlanExecute hands the list's insert) */
+        generic_iterator(const generic_iterator &x) : i_(x.i_) {}
         operator base_iterator() const { return i_; }
         /* the element by reference, but a const_iterator's by value: GetEntity reloads it after
          * strcasecmp, where a reference kept the element's address in a saved register.
          * Measured (round 7): by value for the plain iterator too, CZWeaponList::GetWeapon and
          * CZAmmoList::GetAmmo match (the element re-read after strcmp), but CGNode::FindEdge and
          * CGraph::FindEdge are lost and four units stop building (they assign through it:
-         * ai_events.cpp, ent_main.cpp, node_assetlib.cpp, valve_list.cpp) */
+         * ai_events.cpp, ent_main.cpp, node_assetlib.cpp, valve_list.cpp).
+         * Measured again (2026-10-25, the MSL lane, round 2): no one form serves both families.
+         * FindEdge needs the reference -- its second `*i` (the return) reuses the value the first
+         * loaded, which a by-value read never does, not even with no call between -- while GetWeapon
+         * wants the element re-read off the iterator after its calls; the two read their elements
+         * through the same iterator, so one family's source differs from the other's in the
+         * original. The reference stays, and a walk that re-reads after a call casts the element
+         * out by value through the base iterator, `(T *)*it.i_` (GetWeapon, GetAmmo, CAckList::
+         * FindPacket). Tried and dropped: a functional cast, a cast of the address, the node read
+         * directly, a copy of the base iterator (by a local or a temporary: SerializeValves 39 ->
+         * 26 lines off, still an address kept for its third read), a user-declared copy constructor
+         * (no change) or copy assignment (the iterator leaves memory: every walk shrinks).
+         * SerializeValves and CSched_Manager::RemoveTask(name) stay open: the target re-reads the
+         * iterator itself after each call, as if it were visible to the callee (an escape probe --
+         * the iterator's address passed out -- does give that), and no form tried makes MW think so */
         typedef typename select<IsConst, T *, T *&>::type reference;
         reference operator*() const { return (reference)*i_; }
         generic_iterator &operator++()
         {
             ++i_;
             return *this;
+        }
+        /* the copy, the step, the copy given back (SOCOM II's 0x510BE0 for list<CAiPath *>) */
+        generic_iterator operator++(int)
+        {
+            generic_iterator tmp(*this);
+
+            ++*this;
+            return tmp;
         }
         bool operator==(const generic_iterator &x) const { return i_ == x.i_; }
         bool operator!=(const generic_iterator &x) const { return i_ != x.i_; }
@@ -380,16 +423,19 @@ public:
     typedef generic_iterator<false> iterator;
     typedef generic_iterator<true> const_iterator;
 
-    /* the first node read through tail() held in a local: the sentinel's address is then
-     * computed first and shared with end()'s (CZNewHudMap::FindMPBombItem loads the first node
-     * into the register `this` leaves -- straight from end_.next_ it took another), and a walk
+    /* the first node read through a reference to the sentinel, as the base's begin() reads it:
+     * &end_.next_ is computed once and shared with the clear()s and the destructor after a walk
+     * (CValve's destructor keeps it in s0 from its walk on). The sentinel held in a local keeps its
+     * address computed first and shared with end()'s (CZNewHudMap::FindMPBombItem loads the first
+     * node into the register `this` leaves -- straight from end_.next_ it took another), and a walk
      * that assigns begin() to its iterator, a level deeper, still inlines all of it (through the
-     * base's begin(), or with tail() as an argument, the innermost constructor is a call) */
+     * base's begin(), or with tail() as an argument, the innermost constructor is a call). Through
+     * tail() into a pointer local (the form before 2026-10-25) the walk's address was not shared */
     iterator begin()
     {
-        typename base::node_base *t = this->tail();
+        typename base::node_base &t = this->end_;
 
-        return iterator(typename base::iterator(t->next_));
+        return iterator(typename base::iterator(t.next_));
     }
     iterator end() { return iterator(typename base::iterator(&this->end_)); }
     /* the const walks' begin(), written as begin(): the sentinel through tail() in a local, the
@@ -402,6 +448,14 @@ public:
         return const_iterator(typename base::const_iterator(t->next_));
     }
     const_iterator end() const { return const_iterator(typename base::const_iterator(this->tail())); }
+    /* the value linked in before position through the base's insert, the base's iterator it gives
+     * back wrapped (SOCOM II's 0x510B90 for list<CAiPath *>: position converted to a base iterator
+     * on the stack, the reference passed on as it is). After the wrapper's iterator: declared
+     * before it, `iterator` would still name the base's */
+    iterator insert(iterator position, T *const &x)
+    {
+        return iterator(base::insert(position, (const void *const &)x));
+    }
 };
 
 }

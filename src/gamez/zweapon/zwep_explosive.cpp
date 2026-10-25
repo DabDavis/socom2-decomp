@@ -15,7 +15,7 @@ using namespace zdb;
 PlacedExplosive::PlacedExplosive()
 {
     m_detonate = false;
-    m_8c = 9999999.0f;
+    m_time = 9999999.0f;
     m_c8 = 0;
     m_cc = 0;
     m_matrix.SetIdentity();

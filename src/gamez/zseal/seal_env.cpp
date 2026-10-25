@@ -21,6 +21,7 @@ public:
  * bytes; SOCOM II's drops a quaternion: m_goal_dir and everything after it 0x10 earlier) */
 class CLook : public CSequence {
 public:
+    CLook();
     void SetDir(const CPnt3D *dir, float rate);
     void LookTick(float dT);
 
@@ -40,6 +41,7 @@ public:
 /* the eyelids: a look down and back up (SOCOM 1's DWARF: CBlink : CLook) */
 class CBlink : public CLook {
 public:
+    CBlink();
     void Blink(int org);
     void BlinkTick(float dT);
 
@@ -154,6 +156,23 @@ void CZSealBody::Slide(zdb::IntersectStruct *hit)
     n.Scale(-1.0f, &n);
     n.Scale(Dot(n, m_velM), &n);
     m_velM.Sub(&n, &m_velM);
+}
+
+extern "C" {
+/* the least value at 0x240 the ladder check waits for (OVL1 data, 0.03: a variable, as SOCOM 1's) */
+extern float data_003F3428;
+}
+
+/* the ladder check taken only for a SEAL this console drives and past the threshold; otherwise
+ * passed (OVL2 0x5B10B0; SOCOM 1's took three float references and tested the first, SOCOM II's
+ * reads its own member and passes a remote SEAL) */
+bool CZSealBody::PostCheckDILadder()
+{
+    if (IsRemote())
+        return true;
+    if (m_240 < data_003F3428)
+        return true;
+    return CheckDILadder();
 }
 
 /* where a hit lands (SOCOM 1's DAMAGE_LOCATION, a byte: only the name matters here) */
@@ -296,6 +315,150 @@ void CZSealBody::CheckForRegionTrigger(unsigned int regions)
     m_lastregion = regions;
 }
 
+extern "C" {
+/* the SEALs' pool of ray intersections, its count and a third word (OVL1 bss; new in SOCOM II) */
+extern zdb::DiIntersect **data_0044D588;
+extern int data_0044D590;
+extern int data_0044D598;
+}
+
+/* the intersection pool let go: each deleted, the array freed, the words cleared (OVL2 0x5B61A0, new
+ * in SOCOM II; CCoreState::UnInit, CMPExitState::Init and CMission::ReOpen_Unload1 call it) */
+extern "C" void func_005B61A0()
+{
+    for (int i = 0; i < data_0044D590; i++)
+        delete data_0044D588[i];
+    if (data_0044D588)
+        _free(data_0044D588, 0, 0);
+    data_0044D588 = 0;
+    data_0044D590 = 0;
+    data_0044D598 = 0;
+}
+
+extern "C" {
+/* a pickup taken offline (OVL2 0x59F0C0), told to the network as this console's own or another's
+ * (OVL2 0x59E830; OVL1 0x2BA2C0, the net code's) */
+void func_0059F0C0(CZSealBody *seal, CPickup *pickup);
+void func_0059E830(CZSealBody *seal, int a, unsigned int netid, short *ids, unsigned int id);
+void func_002BA2C0(int a, unsigned int netid, short *ids, unsigned int id, unsigned int owner);
+}
+
+/* a weapon pickup taken: offline at once; online the weapon's id sent, as this SEAL's own pickup when
+ * it owns it, else for its owner (OVL2 0x59F610, new in SOCOM II; PickupObject calls it) */
+extern "C" void func_0059F610(CZSealBody *seal, CPickup *pickup)
+{
+    if (!seal->m_isAlive)
+        return;
+    if (theNetwork.m_9) {
+        unsigned int owner = pickup->m_owner;
+        CZWeapon *w = pickup->GetWeapon();
+
+        if (!w)
+            return;
+        short ids[8];
+
+        ids[0] = ((unsigned char *)w)[0x7c];
+        unsigned int id = seal->m_id;
+
+        if (owner == id)
+            func_0059E830(seal, 1, pickup->GetPickupNetEntityID(), ids, id);
+        else
+            func_002BA2C0(1, pickup->GetPickupNetEntityID(), ids, id, owner);
+    } else
+        func_0059F0C0(seal, pickup);
+}
+
+/* whether the SEAL's timed action is due: set at all, and offline at once, online once the network's
+ * clock reaches its time (OVL2 0x5A8850, new in SOCOM II; CSealCtrl::PerformProximityActions asks it) */
+extern "C" bool func_005A8850(CZSealBody *seal)
+{
+    bool due = false;
+
+    if (seal->m_eb8) {
+        if (theNetwork.m_9) {
+            int t = seal->m_22c;
+
+            if (theNetwork.zNetGetTime() >= t)
+                due = true;
+        } else
+            due = true;
+    }
+    return due;
+}
+
+/* (CZWeapon::RemoveWeaponEventCallback is zweapon.h's, through zchar.h) */
+extern "C" {
+/* the blood decals' vector emptied the FreeVector way, through the unit's out-of-line copies of the
+ * class vector's pieces, which follow this function in reverse of their first use (OVL2 0x5A3D10 the
+ * temporary's constructor, 0x5A3D00 clear, 0x5A3CC0 swap, 0x5A3C60 the temporary's destructor) */
+void *func_005A3D10(void *v);
+void func_005A3D00(void *v);
+void func_005A3CC0(void *a, void *b);
+void func_005A3C60(void *v, int flags);
+/* the decal handles' buffers and counts (OVL1 bss; SOCOM 1's freed one buffer and zeroed one count) */
+extern void *data_0044D550;
+extern void *data_0044D548;
+extern int data_0044D508;
+extern int data_0044D510;
+extern int data_0044D518;
+/* CZSealBody::HandleWeaponEvent, the callback InitDatabaseHandles registers (SOCOM 1's
+ * HandleWeaponEvent__10CZSealBodyFP12CZProjectileUiPv, the one UninitDatabaseHandles removes; OVL2
+ * 0x5A4F80) */
+void func_005A4F80(CZProjectile *proj, unsigned int event, void *data);
+}
+
+/* a 12-byte vector temporary (the class vector's three words) */
+struct CZDecalDefVec {
+    unsigned int m_0;
+    unsigned int m_4;
+    unsigned int m_8;
+};
+
+/* the database's handles let go: the buffers freed, the blood decals' vector emptied, the counts
+ * cleared, the weapon-event callback removed (OVL2 0x5A3BB0; SOCOM 1's with two more counts) */
+void CZSealBody::UninitDatabaseHandles()
+{
+    if (data_0044D550)
+        _free(data_0044D550, 0, 0);
+    data_0044D550 = 0;
+    CZDecalDefVec tmp;
+
+    func_005A3D10(&tmp);
+    func_005A3D00(&m_blooddriptexhandles);
+    func_005A3CC0(&m_blooddriptexhandles, &tmp);
+    func_005A3C60(&tmp, -1);
+    data_0044D508 = 0;
+    data_0044D510 = 0;
+    data_0044D518 = 0;
+    if (data_0044D548)
+        _free(data_0044D548, 0, 0);
+    data_0044D548 = 0;
+    CZWeapon::RemoveWeaponEventCallback(func_005A4F80);
+}
+
+/* six values run down at their rates, none below zero (OVL2 0x5AC620, new in SOCOM II: the arrays at
+ * 0xFFC and 0x1014; OVL1's vehicle code, 0x3ACC10, calls it) */
+extern "C" void func_005AC620(CZSealBody *seal, float dT)
+{
+    for (int i = 0; i < 6; i++) {
+        seal->m_ffc[i] -= seal->m_1014[i] * dT;
+        if (seal->m_ffc[i] < 0.0f)
+            seal->m_ffc[i] = 0.0f;
+    }
+}
+
+/* a stun taken: stunned, the kind's highest amount kept, and the controller told with it (OVL2
+ * 0x5A53D0; SOCOM 1's without the recovery's switch -- the kind passed on as it came) */
+void CZSealBody::HandleStunDamage(STUN_TYPE type, float amount, const CPnt3D *from)
+{
+    if (type < 8) {
+        m_stunned = 1;
+        if (m_stunval[type] < amount)
+            m_stunval[type] = amount;
+        ((CSealCtrl *)m_control)->OnStunDamage(type, m_stunval[type], from);
+    }
+}
+
 /* the HUD's flags: the hit taken once, the view cone's update taken once, the hit set (OVL2
  * 0x5A5490, 0x5A5450, 0x5A5430; SOCOM 1's word for word, the flags at 0x105C) */
 bool CZSealBody::GetHudHitFlag()
@@ -319,6 +482,28 @@ bool CZSealBody::HudUpdateViewCone()
 void CZSealBody::SetHudHitFlag()
 {
     m_hudwashit = true;
+}
+
+/* the look made: the sequence cleared, looking straight ahead (down -z), done (OVL2 0x5AE450; SOCOM
+ * 1's, CZSealBody's constructor calls it for its two looks) */
+CLook::CLook()
+{
+    Clear();
+    m_curr_dir.x = 0.0f;
+    m_curr_dir.y = 0.0f;
+    m_curr_dir.z = -1.0f;
+    m_rate = 0.0f;
+    m_done = 1;
+    m_goal_dir = m_curr_dir;
+}
+
+/* the eyelids made: open, the first blink two to eight seconds off (OVL2 0x5AE3B0; SOCOM 1's, the
+ * look's constructor inlined). The random fraction written out (a macro's expansion?): through the
+ * Rand01 inline the two constants trade registers */
+CBlink::CBlink()
+{
+    m_org = 0;
+    m_nextT = 2.0f + 6.0f * (4.656612873e-10f * (float)rand());
 }
 
 /* the blink stepped: while a look runs it is stepped, and a finished look down turns into the look
@@ -395,9 +580,157 @@ void CZSealBody::AttemptBombDefuse()
     CZBombState::RequestNewBombState(m_id, CZBombState::BOMB_STATE_DEFUSING, &pos);
 }
 
+/* the bomb's defusal handled: nothing, in both builds (OVL2 0x59DA70; SOCOM 1's, 8 bytes) */
+void CZSealBody::HandleBombDefuse()
+{
+}
+
+/* a ladder's polygons crossed (OVL2 0x59DA60; SOCOM 1's tail call with type 2) */
+int CZSealBody::CanClimbLadder()
+{
+    return CanTraverse((CDIType)2);
+}
+
+/* whether a hit polygon is one a wall climb takes: the four kinds CanClimbWall asks after, read off
+ * its application flags (OVL2 0x59D9F0, new in SOCOM II; seal.cpp's 0x5483D0 calls it thrice) */
+extern "C" bool func_0059D9F0(zdb::IntersectStruct *hit)
+{
+    if (!hit || !hit->m_poly)
+        return false;
+    /* the flags taken as the kind first (narrowed, andi 0xff), then masked: an unsigned char local
+     * lets MW drop the narrowing */
+    CDIType type = (CDIType)hit->m_poly->m_flags.m_appflags;
+    CDIType t = (CDIType)(type & 7);
+
+    if (t == 3 || t == 4 || t == 1 || t == 5)
+        return true;
+    return false;
+}
+
 /* a wall climbs if any of four polygon kinds can be crossed (OVL2 0x59D980; SOCOM 1's) */
 bool CZSealBody::CanClimbWall()
 {
     return CanTraverse((CDIType)3) || CanTraverse((CDIType)4) || CanTraverse((CDIType)1) ||
            CanTraverse((CDIType)5);
+}
+
+/* the anims a jump cannot start from (OVL1 data: an anim type each, its id the first short,
+ * filled when the anims load; SOCOM 1's AnimType was an enum) */
+extern "C" {
+extern short data_003DEB20;
+extern short data_003DEB30;
+extern short data_003DEBA8;
+extern short data_003DEBB8;
+extern short data_003DEBC8;
+extern short data_003DEBD8;
+extern short data_003DEBE0;
+extern short data_003DEBE8;
+extern short data_003DEBF0;
+/* (OVL2 0x5A7DE0: whether the stance leaves room to jump, two flags; the name ours) */
+bool func_005A7DE0(CZSealBody *seal, bool a, bool b);
+/* the body's current blend (seal.cpp's tail, OVL2 0x555170) */
+void *func_00555170(void *stack);
+}
+
+/* whether an anim is one a jump cannot start from (an inline bool: the target materialises the
+ * test with daddiu/move and branches on it; the second test of 0x3DEBB8 is the source's) */
+static inline bool IsNoJumpAnim(short id)
+{
+    if (id == data_003DEBC8 || id == data_003DEBB8 || id == data_003DEBA8 || id == data_003DEBE8 ||
+        id == data_003DEBF0 || id == data_003DEBD8 || id == data_003DEBE0 || id == data_003DEBB8 ||
+        id == data_003DEB20 || id == data_003DEB30)
+        return true;
+    return false;
+}
+
+/* whether the SEAL can jump now: alive, not in one of the anims above, room to jump, on the ground
+ * (OVL2 0x59D830, new in SOCOM II; CSealCtrl::PreTick and the kit's 0x5BE9A0 ask it) */
+extern "C" bool func_0059D830(CZSealBody *seal)
+{
+    if (!seal->m_isAlive)
+        return false;
+    if (IsNoJumpAnim(((CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0))->m_animType))
+        return false;
+    if (!func_005A7DE0(seal, true, true))
+        return false;
+    if (seal->m_airborne || seal->m_state == stateInAir)
+        return false;
+    return true;
+}
+
+/* a ladder: its users counted at 0x1c (SOCOM 1's DWARF: CLadderData, 0x28 bytes -- its normal,
+ * box and node; SOCOM II counts the SEALs on it) and the mission's list of them (SOCOM 1's
+ * CLadderList : vector<CLadderData>) */
+class CLadderData {
+public:
+    unsigned char _0[0x1c];
+    int m_users;   // 0x1c (the names ours)
+    unsigned int m_owner;   // 0x20: the entity id of the SEAL holding it
+    unsigned char _24[0x28 - 0x24];
+};
+
+class CLadderList {
+public:
+    /* the ladder at an index, or none (SOCOM 1's; OVL1 0x2A9210) */
+    CLadderData *GetLadderByIndex(int index);
+};
+
+/* the mission (theMission, OVL1 bss 0x4364E0) -- only its ladders (SOCOM 1's at 0x580, beside the
+ * net game, which SOCOM II's has at 0x1808) */
+class CMission {
+public:
+    unsigned char _0[0x1804];
+    CLadderList *m_ladders;   // 0x1804
+};
+
+extern CMission theMission;
+
+extern "C" {
+/* no ladder: the index a SEAL off every ladder holds (OVL1 data, 65535.0 -- a float variable, read
+ * with lwc1 and converted at run time for both the test and the store) */
+extern float data_003F3438;
+}
+
+/* the SEAL off its ladder: the ladder's count of users dropped and the index cleared (OVL2
+ * 0x59D750, new in SOCOM II; OnDeath, PreTick and the destructor call it) */
+extern "C" void func_0059D750(CZSealBody *seal)
+{
+    if (seal->m_ladder != data_003F3438) {
+        CLadderData *ladder = theMission.m_ladders->GetLadderByIndex(seal->m_ladder);
+
+        if (ladder)
+            ladder->m_users--;
+        seal->m_ladder = data_003F3438;
+    }
+}
+
+/* the SEAL's hold on its ladder let go: the ladder's owner cleared if it is this SEAL, the hold
+ * reset (OVL2 0x5B14E0, new in SOCOM II; OnDeath, the destructor and two more call it after 0x59D750
+ * with the SEAL's m_climb). The states a switch: its chain tests 3, then 1, then branches past.
+ * OPEN, 2 instructions: the target loads the ladder list (a0) right after its lui and the index (a1)
+ * in the call's delay slot; MW here loads the index first and the list in the slot. Tried: the list
+ * in a pointer local, a reference local, through an inline accessor, the index in a local, the hold
+ * through a reference. */
+extern "C" void func_005B14E0(CZSealBody::CSealClimb *climb, CZSealBody *seal)
+{
+    switch (seal->m_climb.m_state) {
+    case 1:
+    case 3: {
+        CLadderData *ladder = theMission.m_ladders->GetLadderByIndex(seal->m_climb.m_ladder);
+
+        if (ladder && ladder->m_owner == seal->m_id)
+            ladder->m_owner = CEntity::invalidId;
+        break;
+    }
+    }
+    climb->m_state = 0;
+    climb->m_active = 0;
+}
+
+/* whether the SEAL is on a given ladder (OVL2 0x59D6C0, new in SOCOM II; 0x56BD10 asks it) */
+extern "C" bool func_0059D6C0(CZSealBody *seal, CLadderData *ladder)
+{
+    if (!ladder || seal->m_ladder == data_003F3438)
+        return false;
+    return theMission.m_ladders->GetLadderByIndex(seal->m_ladder) == ladder;
 }

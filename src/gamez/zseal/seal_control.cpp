@@ -49,6 +49,50 @@ public:
     static STATUS m_BombStatus;   // OVL1 bss 0x4413B0
 };
 
+extern "C" {
+/* (OVL1, unowned: a SEAL's side in the game, both builds' net code; seal.cpp's too) */
+bool func_002C30B0(const CZSealBody *seal);
+/* the two teams' bomb sites (OVL1 bss, past theMission's mapped size; the names ours) */
+extern unsigned int data_00437DCC;
+extern unsigned int data_00437DD0;
+/* the time the mission has left (OVL1 0x2A6AD0, on theMission) */
+int func_002A6AD0(void *mission);
+extern unsigned char data_004364E0[];
+/* (OVL2 0x5A7DE0: whether the stance leaves room, two flags) and the kit's wait before the next
+ * use (OVL2 0x5C0AD0, the kit lane's) */
+bool func_005A7DE0(CZSealBody *seal, bool a, bool b);
+float func_005C0AD0(CZKit *kit);
+}
+
+/* whether the bomb can be planted at an action: the site the SEAL's side may use, time left online,
+ * the controller's wait run out, the charge held with ammunition, room to kneel, the kit ready --
+ * else the wait restarted (OVL2 0x594480; SOCOM 1's by order, CanPerformAction calls it). The flag
+ * declared ahead of the SEAL (the SEAL takes s0, the flag s1) and cleared after the side's call */
+bool CSealCtrl::CanPlaceBomb(CNodeAction *action)
+{
+    bool site;
+    CZSealBody *seal = (CZSealBody *)m_entity;
+    bool side = func_002C30B0(seal);
+
+    site = false;
+
+    if (side && action->m_team == data_00437DCC)
+        site = true;
+    if (!side && action->m_team == data_00437DD0)
+        site = true;
+    bool time = true;
+
+    if (theNetwork.m_9 && (float)func_002A6AD0(data_004364E0) <= 0.0f)
+        time = false;
+    if (m_244 <= 0.0f && seal && time && seal->m_kit.HasItem((EQUIP_ITEM)154) &&
+        seal->m_kit.ItemHasAmmo((EQUIP_ITEM)154) && func_005A7DE0(seal, true, false) &&
+        func_005C0AD0(&seal->m_kit) <= 0.0f && site)
+        return true;
+    if (m_244 <= 0.0f)
+        m_244 = 1.5f;
+    return false;
+}
+
 /* whether an action can be taken: none by the dead; the bomb's by its state (planting asks
  * CanPlaceBomb), a breach with a charge and a closed valve, a kind 5 never, any other always
  * (OVL2 0x594350; SOCOM 1's, the life test and kind 5 new).

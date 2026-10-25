@@ -14,11 +14,9 @@ CZAmmoList::CZAmmoList()
 {
 }
 
-/* the ammunition deleted with the list.
- * OPEN, 4 bytes short (its draft matches, so it is compiled out): the target keeps &end_.next_ in
- * a saved register for clear()'s and the deleter's begin() (lw v0,0(s2)); every walk tried --
- * the wrapper's, the base deleter's, the end node through a reference -- reads it as 8(this) */
-#if 0
+/* the ammunition deleted with the list: &end_.next_ kept in a saved register for clear()'s and the
+ * deleter's begin() (lw v0,0(s2)), as include/list's begin() reads the first node through a
+ * reference to the sentinel */
 CZAmmoList::~CZAmmoList()
 {
     iterator e = end();
@@ -29,7 +27,6 @@ CZAmmoList::~CZAmmoList()
     }
     clear();
 }
-#endif
 
 void CZAmmoList::AddAmmo(CZAmmo *ammo)
 {
@@ -37,11 +34,11 @@ void CZAmmoList::AddAmmo(CZAmmo *ammo)
         push_back(ammo);
 }
 
-/* a name's ammo; none for no name.
- * OPEN, 3 instructions: the target re-reads the element off the iterator after strcmp; here the
- * reference operator* keeps its address in a saved register (s2) across the calls -- the base
- * deleter's iterator, a const walk (four iterator copies, the target has two) and a local copy
- * of the element all miss. Pinned: GetAmmoId calls it */
+/* a name's ammo; none for no name. The element read through the base iterator and cast out by
+ * value (`*it.i_`), so the target's re-read of it off the iterator after strcmp: the wrapper's
+ * reference operator* keeps its address in a saved register across the calls (and no one form of
+ * that operator serves both this and CGNode::FindEdge's reuse -- include/list). Pinned: GetAmmoId
+ * calls it */
 #pragma auto_inline off
 CZAmmo *CZAmmoList::GetAmmo(const char *name)
 {
@@ -51,8 +48,8 @@ CZAmmo *CZAmmoList::GetAmmo(const char *name)
         return 0;
     it = begin();
     for (iterator e = end(); it != e; ++it) {
-        if (!strcmp(name, (*it)->GetName()))
-            return *it;
+        if (!strcmp(name, ((CZAmmo *)*it.i_)->GetName()))
+            return (CZAmmo *)*it.i_;
     }
     return 0;
 }
@@ -98,10 +95,7 @@ CZWeaponList::CZWeaponList()
 {
 }
 
-/* the weapons deleted with the list.
- * OPEN, 4 bytes short (its draft matches, so it is compiled out): as ~CZAmmoList, the target
- * keeps &end_.next_ in a saved register (s2) for the two erases' begin() */
-#if 0
+/* the weapons deleted with the list, as ~CZAmmoList */
 CZWeaponList::~CZWeaponList()
 {
     iterator e = end();
@@ -112,7 +106,6 @@ CZWeaponList::~CZWeaponList()
     }
     clear();
 }
-#endif
 
 void CZWeaponList::AddWeapon(CZWeapon *weapon)
 {
@@ -120,8 +113,7 @@ void CZWeaponList::AddWeapon(CZWeapon *weapon)
         push_back(weapon);
 }
 
-/* OPEN, 4 bytes long, as GetAmmo(const char *): the element's address kept across the calls.
- * Pinned: GetWeaponId calls it */
+/* the element cast out by value, as GetAmmo(const char *). Pinned: GetWeaponId calls it */
 #pragma auto_inline off
 CZWeapon *CZWeaponList::GetWeapon(const char *name)
 {
@@ -129,8 +121,8 @@ CZWeapon *CZWeaponList::GetWeapon(const char *name)
 
     it = begin();
     for (iterator e = end(); it != e; ++it) {
-        if (!strcmp(name, (*it)->GetName()))
-            return *it;
+        if (!strcmp(name, ((CZWeapon *)*it.i_)->GetName()))
+            return (CZWeapon *)*it.i_;
     }
     return 0;
 }

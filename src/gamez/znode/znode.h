@@ -533,6 +533,8 @@ public:
     float GetRadius();
     float GetRadiusSq();
     static CNode *CreateXRef(CModel *model, const CPnt3D *pos, const CQuat *rot);
+    /* an empty one (SOCOM 1's, 0x317A90: CFlyout's constructor calls it) */
+    static CNode *CreateXRef();
     static CNode *CreateInstance(CModel *model, const CPnt3D *pos, const CQuat *rot);
     static CNode *CreateInstance(const char *name, const CPnt3D *pos, const CQuat *rot);
     static CNode *Delete(CNode *node);

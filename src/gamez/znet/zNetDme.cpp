@@ -151,28 +151,21 @@ int CZNetwork::zNetUpdate()
 }
 
 /* the queued application messages sent and freed, the queue emptied (SOCOM 1's zNetUpdate did it
- * in place; OVL1 0x30D900, the name ours).
- * OPEN, 16 instructions, registers only: the target computes the first node's address
- * (&end_.next_, s0) before the loop and loads the clear's begin() through it after -- only a
- * reference to end_.next_ taken first gives that (with clear() as include/list has it, MW reloads
- * the first node from `this` and the function is an instruction short); with the reference the
- * size is right but the sentinel, the reference and the message take s0, s3 and s2 where the
- * target has s2, s0 and s3 (declaration orders tried: the end iterator or the walk's iterator
- * ahead of the reference, the sentinel as a reference local). zNetPlayFixList is the same */
+ * in place; OVL1 0x30D900, the name ours). The end into a local, then clear(): include/list's
+ * begin() reads the first node through a reference to the sentinel, so &end_.next_ is computed
+ * once at the walk and the clear's begin() loads through it (s0), as the target does */
 #pragma auto_inline off
 void CZNetwork::zNetFlushMessages()
 {
-    typedef std::__list_deleter<const void *, std::allocator<const void *> > L;
-    L::node_base *&first = m_message_list.end_node().next_;
+    std::list<TypeAppMessage *>::iterator e = m_message_list.end();
 
-    for (std::list<TypeAppMessage *>::iterator i = m_message_list.begin(); i != m_message_list.end();
-         ++i) {
+    for (std::list<TypeAppMessage *>::iterator i = m_message_list.begin(); i != e; ++i) {
         TypeAppMessage *m = *i;
 
         func_00621458(m->m_type, m->m_conn, m->m_to, m->m_msg, m->m_size, m->m_data);
         _free(m, 0, 0);
     }
-    m_message_list.L::erase(L::iterator(first), L::iterator(&m_message_list.end_node()));
+    m_message_list.clear();
 }
 #pragma auto_inline reset
 
@@ -187,21 +180,19 @@ void CZNetwork::AddToFixList(TypeRTimeFixStruct *fix)
 }
 
 /* the delayed actions played and freed, the list emptied (SOCOM 1's zNetUpdate did it in place;
- * OVL1 0x30D7D0, the name ours). OPEN, registers only, as zNetFlushMessages */
+ * OVL1 0x30D7D0, the name ours), as zNetFlushMessages */
 #pragma auto_inline off
 void CZNetwork::zNetPlayFixList()
 {
-    typedef std::__list_deleter<const void *, std::allocator<const void *> > L;
-    L::node_base *&first = m_fix_list.end_node().next_;
+    std::list<TypeRTimeFixStruct *>::iterator e = m_fix_list.end();
 
-    for (std::list<TypeRTimeFixStruct *>::iterator i = m_fix_list.begin(); i != m_fix_list.end();
-         ++i) {
+    for (std::list<TypeRTimeFixStruct *>::iterator i = m_fix_list.begin(); i != e; ++i) {
         TypeRTimeFixStruct *f = *i;
 
         zRemoteDelayedAction(f);
         _free(f, 0, 0);
     }
-    m_fix_list.L::erase(L::iterator(first), L::iterator(&m_fix_list.end_node()));
+    m_fix_list.clear();
 }
 #pragma auto_inline reset
 

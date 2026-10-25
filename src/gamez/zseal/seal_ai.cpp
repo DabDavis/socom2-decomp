@@ -982,3 +982,159 @@ AI_MODE sealai::get_mode(const char *name)
             return (AI_MODE)i;
     return (AI_MODE)1;
 }
+
+/* a walk over map cells: its map, the cell it starts from, the cell at hand and its centre (0x28),
+ * and what the walk gathers -- the kind it looks for, a point, a found flag and cell, a count (the
+ * names ours) */
+struct CCellWalk {
+    void *m_map;   // 0x0
+    CAiMapLoc m_start;   // 0x4
+    unsigned char _8[0xc - 0x8];
+    CAiMapLoc m_loc;   // 0xc
+    unsigned char _10[0x28 - 0x10];
+    CPnt3D m_center;   // 0x28
+};
+
+struct CCellGather {
+    unsigned char m_kind;   // 0x0
+    CPnt3D m_pos;   // 0x4
+    unsigned char m_found;   // 0x10
+    CAiMapLoc m_loc;   // 0x14
+    int m_count;   // 0x18
+};
+
+extern "C" {
+/* (OVL2 0x511F80 and 0x52D280, the AI core's: a map's cell at a location, and a cell's kind) */
+void *func_00511F80(void *map, CAiMapLoc *loc, int a);
+int func_0052D280(void *cell);
+}
+
+/* a cell's kind, none off the map (an inline returning a byte: each return narrows on its own) */
+static inline unsigned char CellKind(void *map, CAiMapLoc *loc)
+{
+    void *cell = func_00511F80(map, loc, 0);
+
+    if (cell)
+        return func_0052D280(cell);
+    return 0;
+}
+
+/* a cell walk's step: a cell not of the kind sought takes the point and counts (its cell kept at the
+ * fourth); one of the kind marks the start found once; the walk goes on while the kinds differ (OVL2
+ * 0x556280, new in SOCOM II; a callback).
+ * OPEN, 2 instructions: the target narrows the kind into v1 in each arm (`andi v1,v0,0xff` before the
+ * then-arm's branch, past the else's own); MW here narrows the call's result into v0 and branches to
+ * the else's narrowing. Tried: the kind as an if/else, a ternary (with and without a cast), zero
+ * first then the call, the inline returning a byte or an int, the cast inside the compare. */
+extern "C" bool func_00556280(CCellWalk *w, CCellGather *g)
+{
+    bool same = false;
+    unsigned char kind = CellKind(w->m_map, &w->m_loc);
+
+    if (g->m_kind == kind)
+        same = true;
+    if (!same) {
+        g->m_pos = w->m_center;
+        if (g->m_count == 3) {
+            g->m_found = 1;
+            g->m_loc = w->m_loc;
+        }
+        g->m_count++;
+    } else if (!g->m_found) {
+        g->m_loc = w->m_start;
+        g->m_found = 1;
+    }
+    return !same;
+}
+
+extern "C" {
+/* (OVL2 0x52D950, the AI core's: the AI maps' cell at a location) */
+void *func_0052D950(CAiMaps *maps, const CAiMapLoc *loc);
+}
+
+/* whether a location is the invalid cell (an inline bool: the target materialises the `&&`) */
+static inline bool IsInvalidLoc(const CAiMapLoc *loc)
+{
+    return loc->x == CAiMapLoc::invalid.x && loc->y == CAiMapLoc::invalid.y;
+}
+
+/* the cell the AI heads for, with a count (14 for none): the invalid cell clears both and succeeds,
+ * any other must be on the maps (OVL2 0x56D450, new in SOCOM II; the AI states' 0x5D4770 calls it) */
+extern "C" bool func_0056D450(CSealCtrlAi *ctrl, const CAiMapLoc *loc, int n)
+{
+    if (!n)
+        n = 14;
+    bool ok = false;
+
+    if (IsInvalidLoc(loc)) {
+        ctrl->m_274 = 0;
+        ok = true;
+        ctrl->m_270 = 0;
+    } else {
+        ctrl->m_270 = 0;
+        ctrl->m_274 = func_0052D950(&AiMaps, loc);
+        if (ctrl->m_274) {
+            ctrl->m_270 = n;
+            ok = true;
+        }
+    }
+    return ok;
+}
+
+/* a box's eight corners (the name ours) */
+struct CBoxCorners {
+    CPnt3D m_c[8];
+};
+
+extern "C" {
+/* OVL2's out-of-line copies of CPnt3D's three-float constructor and its implicit copy constructor
+ * (0x5414F0, 0x539E90) */
+CPnt3D *func_005414F0(CPnt3D *p, float x, float y, float z);
+CPnt3D *func_00539E90(CPnt3D *p, const CPnt3D *src);
+}
+
+/* a box's eight corners, each a temporary point copied in -- the lows and highs mixed, the two
+ * plain corners copied straight from the box (OVL2 0x56AE40, new in SOCOM II; 0x56A8E0 calls it) */
+extern "C" CBoxCorners *func_0056AE40(CBoxCorners *c, const CBBox *b)
+{
+    CPnt3D t0, t1, t2, t3, t4, t5;
+
+    func_00539E90(&c->m_c[0], func_005414F0(&t0, b->m_min.x, b->m_min.y, b->m_max.z));
+    func_00539E90(&c->m_c[1], &b->m_min);
+    func_00539E90(&c->m_c[2], func_005414F0(&t1, b->m_max.x, b->m_min.y, b->m_min.z));
+    func_00539E90(&c->m_c[3], func_005414F0(&t2, b->m_max.x, b->m_min.y, b->m_max.z));
+    func_00539E90(&c->m_c[4], func_005414F0(&t3, b->m_min.x, b->m_max.y, b->m_max.z));
+    func_00539E90(&c->m_c[5], func_005414F0(&t4, b->m_min.x, b->m_max.y, b->m_min.z));
+    func_00539E90(&c->m_c[6], func_005414F0(&t5, b->m_max.x, b->m_max.y, b->m_min.z));
+    func_00539E90(&c->m_c[7], &b->m_max);
+    return c;
+}
+
+extern "C" {
+/* (OVL2 0x5712F0, seal_ai.cpp's: whether the controller's SEAL should act now; and 0x589AA0, the
+ * body's: the act) */
+int func_005712F0(CSealCtrlAi *ctrl);
+void func_00589AA0(CZSealBody *seal);
+}
+
+/* the controller's SEAL made to act when it should, saying whether it did (OVL2 0x571100, new in
+ * SOCOM II; the AI states' 0x60DFC0 asks it) */
+extern "C" bool func_00571100(CSealCtrlAi *ctrl)
+{
+    bool acted = false;   /* declared first: the SEAL takes s0, the flag s1 */
+    CZSealBody *seal = (CZSealBody *)ctrl->m_entity;
+
+    if (func_005712F0(ctrl)) {
+        func_00589AA0(seal);
+        acted = true;
+    }
+    return acted;
+}
+
+/* CEntityCtrl::SetThrottle's out-of-line copy in OVL2 (OVL1's is 0x2A26E0, ent_ctrl.cpp's, byte for
+ * byte the same: m_throttle[axis] = value): each overlay links its own copy of an inline virtual, and
+ * this one sits after CSealCtrl::CreepTick in seal_ai.cpp's span (OVL2 0x567340) */
+extern "C" void func_00567340(CEntityCtrl *ctrl, unsigned int axis, float value)
+{
+    ctrl->m_throttle[axis] = value;
+}

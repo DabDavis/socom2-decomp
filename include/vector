@@ -556,7 +556,13 @@ T *__vector_imp<T, Allocator, IsPOD>::erase(T *first, T *last)
  * is entered at its bottom test), and `newsize > newcap` branches on the compare as the target's
  * loop does (`newcap < newsize` materialises it). Byte-exact as the copies of vector<CPnt3D>
  * (0x26CC80, zanim_set.cpp), vector<CTarget> (0x2A1AD0), CharacterDynamics' cameras (0x59CF10),
- * Particle::SequenceEntry<CPnt4D> (0x32B650) and CSndSequenceEntry (0x34A0D0). */
+ * Particle::SequenceEntry<CPnt4D> (0x32B650) and CSndSequenceEntry (0x34A0D0). Still open (the MSL
+ * lane, round 2): the 8-byte elements' (CZSealState::TypeRemoteGuy 0x2BF980, SequenceEntry<float>
+ * 0x32BB90, SequenceEntry<CTexHandle *> 0x32B210 -- each the right size, ~50 lines off), CAiMapLoc's
+ * (0x5136B0, 8 bytes short) and CIOPManager::CRegistrant's (0x39C7F0): the target computes the
+ * in-place branch's end pointer into a fresh register (a2) where MW here reuses data_'s (v1), and
+ * every register after follows. No change from: i, m or e declared first, `T *i, *e`, the end
+ * through end(), data() or &data_[size_], m cast */
 template <class T, class Allocator, bool IsPOD>
 void __vector_imp<T, Allocator, IsPOD>::insert(T *position, unsigned int n, const T &x)
 {
@@ -644,10 +650,13 @@ T &__vector_imp<T, Allocator, IsPOD>::at(unsigned int n)
  * constructor runs after them (CVehicleRdrEntry's 0x5331D0 in 0x534320: the end kept in s3, the
  * test's size reused for the count) and an inline one too tall to inline before them (CTurretDef's
  * 0x3AB5F0 in 0x3AB8C0: size and data read after it). The shape is the targets' (0x534320 to its
- * last eight bytes), but no instance matches yet: each waits on its element's constructor in
- * another lane's header -- CTurretDef's out-of-line one (zveh.h; CVehicleDef's alike), CVehicleRdrEntry's
- * (zchar), CAiMapLoc's empty one (0x516120, zentity.h), CGameStateChangeCmd's pool (CreatePool
- * unwritten); their call sites keep their placeholders until then */
+ * last eight bytes). Byte-exact as vector<CAiMapLoc>'s (0x51C4A0, ai_mapio.cpp's template tail,
+ * with its erase 0x51C510: the element's empty constructor builds nothing, the MSL lane's round 2).
+ * The others wait on their element's constructor in another lane's header -- CTurretDef's
+ * out-of-line one (zveh.h; CVehicleDef's alike), CVehicleRdrEntry's (zchar), the AI map tables'
+ * (ai.h: with ai_mapio.cpp's resizes all switched to the member, readers, actions, regions,
+ * spores, names, links, routes, lines and scanlines all miss on the element's construction),
+ * CGameStateChangeCmd's pool (CreatePool unwritten); their call sites keep their placeholders */
 template <class T, class Allocator, bool IsPOD>
 void __vector_imp<T, Allocator, IsPOD>::resize(unsigned int n)
 {
