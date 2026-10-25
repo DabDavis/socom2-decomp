@@ -6508,15 +6508,15 @@
 0x00356E90 0x228 MakeChain__Q23zdb12CGSTexBufferFP1i  # OVL1; s1:align
 0x003570C0 0x108 func_003570C0  # OVL1
 0x003571D0 0x29C func_003571D0  # OVL1
-0x00357470 0x50 func_00357470  # OVL1
-0x003574C0 0xD4 func_003574C0  # OVL1
+0x00357470 0x50 HasMipLevel__Q23zdb8CTextureFPQ23zdb8CTexture  # OVL1; ours by hand (the HUD lane: ztex_manager.cpp -- whether a texture is in this texture's vector of mip levels at 0x5C; zdb::CAssetList::FindMipLevel's test (0x321300); byte-exact)
+0x003574C0 0xD4 FindPalette__Q23zdb8CTextureFPQ23zdb11CTexPalList  # OVL1; ours by hand (the HUD lane: ztex_manager.cpp -- the texture's palette looked for in a palette list by id (0x2a against the palette's 0x10) and name, stored at 0x1c when found; called three times by 0x3571D0; byte-exact)
 0x003575A0 0x18 func_003575A0  # OVL1
 0x003575C0 0x190 func_003575C0  # OVL1
-0x00357750 0xC8 func_00357750  # OVL1
+0x00357750 0xC8 Add__Q23zdb12CGSTexBufferFPQ23zdb8CTexListb  # OVL1; s1:order by hand (the HUD lane: ztex_manager.cpp -- SOCOM 1's CGSTexBuffer::Add(CTexList *, bool) at its place before SetDynTexList and CDynTexList's Adds: each handle and then its palette put on the dynamic list at 0x28, the chain dropped after each, SOCOM 1's inline store now the call 0x355A20)
 0x00357820 0x34 func_00357820  # OVL1
 0x00357860 0xF0 Add__Q23zdb11CDynTexListFPQ23zdb11CTexPaletteb  # OVL1; s1:callee
 0x00357950 0xA4 Add__Q23zdb11CDynTexListFPQ23zdb10CTexHandleb  # OVL1; s1:callee
-0x00357A00 0xF8 func_00357A00  # OVL1
+0x00357A00 0xF8 Add__Q23zdb11CDynTexListFPQ23zdb11CDynTexList  # OVL1; s1:order by hand (the HUD lane: ztex_manager.cpp -- SOCOM 1's third CDynTexList::Add, right after the other two as there: every handle and palette of another list added with b true)
 0x00357B00 0xB8 __dt__Q23zdb12CGSTexBufferFv  # OVL1; s1:align
 0x00357BC0 0x4C func_00357BC0  # OVL1
 0x00357C10 0xC TakeDrawPacket__Q23zdb15CBatchRelocatorFP1Ui  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
