@@ -10525,7 +10525,7 @@
 0x0058A4D0 0x10C func_0058A4D0  # OVL2
 0x0058A5E0 0xC8 func_0058A5E0  # OVL2
 0x0058A6B0 0x60 func_0058A6B0  # OVL2
-0x0058A710 0x8 OnStateChange__9CSealCtrlF10SEAL_STATE10SEAL_STATE  # OVL2; slot 0x64 of __vt__9CSealCtrl, which CSealCtrlSquirm and CRemoteCtrl inherit (the vtables pass withheld it: CRemoteCtrl's misnamed OnMissionStart override at 0x5E6270 pulled the alignment)
+0x0058A710 0x8 func_0058A710  # OVL2; slot 0x64 of __vt__9CSealCtrl, which CSealCtrlSquirm and CRemoteCtrl inherit (the vtables pass withheld it: CRemoteCtrl's misnamed OnMissionStart override at 0x5E6270 pulled the alignment); s1~ OnStateChange__9CSealCtrlF10SEAL_STATE10SEAL_STATE after all: CSealCtrlCopy's OVL1 table holds an OVL1 copy at slot 0x64 (0x2B3BE0), so the base's OnStateChange is inline and this is OVL2's copy (one of 2 copies of an inline)
 0x0058A720 0x100 func_0058A720  # OVL2
 0x0058A820 0x98 func_0058A820  # OVL2
 0x0058A8C0 0x58 func_0058A8C0  # OVL2
@@ -10667,7 +10667,7 @@
 0x00597650 0x4C func_00597650  # OVL2
 0x005976A0 0x40 func_005976A0  # OVL2
 0x005976E0 0x60 func_005976E0  # OVL2
-0x00597740 0x48 func_00597740  # OVL2
+0x00597740 0x48 SetMenuState__9CSealCtrlF10MENU_STATEb  # OVL2; the HUD lane's lead: CWeaponSel::AfterClose (0x21AAA0) and CInGameWeaponSel::AfterClose (0x227730) call it where SOCOM 1's call SetMenuState__9CSealCtrlF10MENU_STATE, passing 0 in a second argument; s1:order (seal_control.cpp: before SetTrigger, as SOCOM 1's); m_menustate (0x221) stored under SOCOM 1's stateLast test; the second parameter is bool by its use (a flag tested once, the callers passing 0 or `x == 5`), not pinned: int compiles the same in it and at all 17 call sites (probe: build/scratch/seal/p)
 0x00597790 0x78 SetTrigger__9CSealCtrlFb  # OVL2; s1:order; m_trigger (a byte enum, now 0x118) stepped by a switch as SOCOM 1's
 0x00597810 0x78 SetTrigger__9CSealCtrlFbf  # OVL2; s1:order; m_trigger_power (0x11C) stored, then the same switch
 0x00597890 0x8 ResetToInitialState__9CSealCtrlFv  # OVL2; slot 0x58 of __vt__9CSealCtrl, and SOCOM 1's order (after SetTrigger(b, f))
