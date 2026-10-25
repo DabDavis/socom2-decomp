@@ -558,6 +558,151 @@ bool zAnimCameraTick(_zanim_cmd_hdr *hdr, float *dT)
     return done;
 }
 
+/* SOCOM II's: a sound played through a streamer of its own, a global's (not named yet) */
+extern "C" void func_003428F0(CSnd *sound, int vol, int a, float b, float c);
+
+/* SOUND: start one of the anim's sounds (flag 0x80) -- at a volume (0x10), pan (0x20) and pitch
+ * (0x40), placed (4 an offset, 8 the anim's argument point, 2 a node's origin) or not, or as
+ * music (0x400, 0x800) -- or change the one playing; stop it (0x100: faded out when the sound
+ * has a fade time); 0x200 stops it when the anim exits. Flag 1 looks up a node and drops it,
+ * as the code does. */
+struct zanim_cmd_sound {
+    _zanim_cmd_hdr hdr;
+    unsigned short flags;           /* 0x4 */
+    unsigned char sound;            /* 0x6 */
+    unsigned char node;             /* 0x7 */
+    float vol;                      /* 0x8 */
+    unsigned short pan;             /* 0xC */
+    unsigned short pitch;           /* 0xE */
+    unsigned char pos_node;         /* 0x10 */
+    unsigned char _11;
+    short fade_off;                 /* 0x12: the fade time's, from the record */
+    CPnt3D offset;                  /* 0x14 */
+};
+
+bool zAnimSoundTick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    zanim_cmd_sound *cmd = (zanim_cmd_sound *)hdr;
+    bool placed = false;
+    _zanim_sound *snd = 0;
+    int pan;
+    int pitch;
+    CZAnim *anim = ZAnim.m_CurAnim;
+    CPnt3D pos(0.0f, 0.0f, 0.0f);
+
+    if (cmd->flags & 1)
+        anim->GetNode(cmd->node, false);
+    else
+        snd = anim->GetSoundRef(cmd->sound);
+    if (snd && cmd->fade_off > 0)
+        snd->fade = *(float *)((char *)cmd + cmd->fade_off);
+    if ((cmd->flags & 0x200) && snd)
+        snd->stop_on_exit = 1;
+    if (cmd->flags & 0x80) {
+        float vol = 1.0f;
+
+        pan = -1;
+        pitch = 0;
+        if (cmd->flags & 0x10)
+            vol = cmd->vol;
+        if (cmd->flags & 0x20)
+            pan = cmd->pan;
+        if (cmd->flags & 0x40)
+            pitch = cmd->pitch;
+        if (cmd->flags & 4) {
+            placed = true;
+            pos.Add(&cmd->offset, &pos);
+        }
+        if (cmd->flags & 8) {
+            CPnt3D *arg = anim->GetArgPnt3D();
+
+            if (arg) {
+                placed = true;
+                pos = pos + *arg;
+            }
+        }
+        if (cmd->flags & 2) {
+            CNode *node = anim->GetNode(cmd->pos_node, false);
+
+            if (node) {
+                placed = true;
+                node->TransformToWorld(pos);
+            }
+        }
+        if (snd && snd->sound_instance) {
+            snd->sound_instance->Stop();
+            CSndInstance::ReleaseSoundInstance(snd->sound_instance);
+            snd->sound_instance = 0;
+        }
+        if ((cmd->flags & 0x400) || (cmd->flags & 0x800)) {
+            if (snd) {
+                if (cmd->flags & 0x400)
+                    CSndJukebox::Play((MUSIC_MODE)1, snd->sound_handle);
+                else if (cmd->flags & 0x800)
+                    CSndJukebox::Play((MUSIC_MODE)3, snd->sound_handle);
+            }
+        } else if (placed) {
+            if (snd)
+                snd->sound_instance = snd->sound_handle->PlaySound3D(&pos, vol, pitch, 0, 255);
+        } else if (snd) {
+            CSnd *sound = snd->sound_handle;
+
+            if (sound->m_socom2_bit4 || sound->m_socom2_bit5) {
+                func_003428F0(sound, 255, 0, 30.0f, 1.0f);
+                snd->sound_instance = 0;
+            } else
+                snd->sound_instance = sound->PlaySoundVolPanPitch(vol, pan, pitch, 0, 255);
+        }
+    } else if (snd && snd->sound_instance) {
+        if (cmd->flags & 0x10)
+            snd->sound_instance->SetVol(cmd->vol);
+        if (cmd->flags & 0x20)
+            snd->sound_instance->SetPan(cmd->pan);
+        if (cmd->flags & 0x40)
+            snd->sound_instance->SetPitch(cmd->pitch);
+        if (cmd->flags & 4) {
+            placed = true;
+            pos.Add(&cmd->offset, &pos);
+        }
+        if (cmd->flags & 8) {
+            CPnt3D *arg = anim->GetArgPnt3D();
+
+            if (arg) {
+                placed = true;
+                pos = pos + *arg;
+            }
+        }
+        if (cmd->flags & 2) {
+            CNode *node = anim->GetNode(cmd->pos_node, false);
+
+            if (node) {
+                placed = true;
+                node->TransformToWorld(pos);
+            }
+        }
+        if (placed)
+            snd->sound_instance->SetPos(&pos);
+    }
+    if (cmd->flags & 0x100) {
+        if (snd && snd->sound_instance) {
+            if (snd->fade > 0.0f) {
+                func_00346DD0(snd->sound_instance, snd->fade);
+                snd->sound_instance->TerminateOnFinish();
+            } else {
+                snd->sound_instance->Stop();
+                CSndInstance::ReleaseSoundInstance(snd->sound_instance);
+            }
+            snd->sound_instance = 0;
+        } else if (snd && snd->sound_handle && snd->sound_handle->m_socom2_bit3) {
+            void *manager = func_0034BB80();
+
+            if (manager)
+                func_0034A910(manager, 0, snd->sound_handle);
+        }
+    }
+    return true;
+}
+
 extern "C" void func_00314540(zdb::CNode *node, int on, int a);
 extern "C" void func_00314320(zdb::CNode *node, int on, int a);
 extern "C" int func_0052DC70(char *maps, CPnt3D *p, int *cell);

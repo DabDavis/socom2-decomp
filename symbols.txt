@@ -6245,7 +6245,7 @@
 0x00348900 0x218 func_00348900  # OVL1
 0x00348B20 0x1C0 func_00348B20  # OVL1
 0x00348CE0 0xE0 func_00348CE0  # OVL1
-0x00348DC0 0x2A0 func_00348DC0  # OVL1
+0x00348DC0 0x2A0 Play__11CSndJukeboxF10MUSIC_MODEP4CSnd  # OVL1; s1:calls by hand (SOCOM 1's CSndJukebox::Play: the SOUND tick calls it with mode 1 or 3 and the sound where SOCOM 1's does; the mode a signed byte compared with the jukebox's own)
 0x00349060 0x18 func_00349060  # OVL1
 0x00349080 0x7C FadeOut__11CSndJukeboxFv  # OVL1; s1:calls
 0x00349100 0x1A4 func_00349100  # OVL1
