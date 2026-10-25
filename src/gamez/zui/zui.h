@@ -75,7 +75,7 @@ public:
         return *this;
     }
 
-    char *m_varname;   // 0x8
+    void *m_8;   // 0x8: SOCOM II's (a table pointer the copy constructor stores; SOCOM 1's m_varname sat here)
     unsigned char _c[0x14 - 0xc];
     char *m_name;   // 0x14: SOCOM II's name, the string table's copy (Destroy clears it; the manager's Find compares it)
     std::vector<UIVarMixin *> m_attached_items;   // 0x18 (SOCOM 1's at 0xC)

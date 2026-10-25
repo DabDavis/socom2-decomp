@@ -3,12 +3,11 @@
  * name is SOCOM 1's: the press beta's asserts name util_sonyio.cpp, and SOCOM 1's demo holds
  * CFileIO's and CFileCD's methods in this order between COutput's unit and CSTable's (CBufferIO's
  * IsOpen among them in both builds). SOCOM II added the hard disk, the error handler, the flags
- * word at 0x10, reads through an open package (0x4A15F8/FC: the package unit's, 0x39C330-0x39C4FB)
- * and a CD file opened by its sector (the DNAS client's).
+ * word at 0x10, reads through an open package (0x4A15F8/FC: util_main.cpp's CPackage, called here
+ * through its placeholders) and a CD file opened by its sector (the DNAS client's).
  *
- * OPEN, not written yet: BuildTOC (0x39DFD0: the ISO 9660 walk, 0x520 -- m2c's draft is a start), the
- * hard disk's mount and
- * reboot handlers (0x39CE80-0x39D910), 0x39DDB0 and 0x39DFC0. */
+ * OPEN, not written yet: BuildTOC (0x39DFD0: the ISO 9660 walk, 0x520 -- m2c's draft is a start),
+ * the hard disk's mount and reboot handlers (0x39CE80-0x39D910), 0x39DDB0 and 0x39DFC0. */
 
 #include "zutil.h"
 
