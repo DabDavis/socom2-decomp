@@ -384,7 +384,9 @@ public:
     float m_stance_delay;   // 0x27c (SOCOM 1's 0x288)
     unsigned char _280[0x3f4 - 0x280];
     unsigned char m_3f4;   // 0x3f4: a mode (7 keeps the AI-map collision off; the name ours)
-    unsigned char _3f5[0x468 - 0x3f5];
+    unsigned char _3f5[0x41c - 0x3f5];
+    unsigned int m_41c;   // 0x41c: a state stack's size word (SOCOM 1's m_stateStack, a CAiStateStack)
+    unsigned char _420[0x468 - 0x420];
     CZAnim *m_task_anim;   // 0x468: an anim the AI plays, stopped at the mission's end
     unsigned char _46c[0x4ec - 0x46c];
     unsigned char m_4ec;   // 0x4ec: a state (1-3 and, with 0x508 set, 4 hold the next byte back; the name ours)

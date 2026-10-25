@@ -73,6 +73,35 @@ extern int data_0066AFD8;
 void func_00555420(CSealCtrlAi *ai, void *a, void *b);
 }
 
+extern "C" {
+/* the stack's current state (OVL2 0x5F8330, the AI-states lane's: CAiStateStack's) */
+CAiState *func_005F8330(void *stack);
+}
+
+/* a state of kind 2 with flag 0x80 (the answer through a local, as the target's daddiu shows) */
+static inline bool IsKind2Flag80(CAiState *s)
+{
+    bool r = false;
+
+    if (s->m_state == (AI_STATE)2 && (s->m_flags & 0x80))
+        r = true;
+    return r;
+}
+
+/* whether the AI's current state is of kind 2 with flag 0x80 (OVL2 0x559000).
+ * OPEN, 0x64 against 0x6C: the target tests the stack's size with `bnez` to the call, the zero in
+ * the delay slot and a `b` to the join (the empty arm laid out first); the ternary either way
+ * round, an if-assign and an inline accessor (early return or a result local) all lay the call
+ * first and fall through. */
+extern "C" bool func_00559000(CSealCtrlAi *ai)
+{
+    CAiState *s = ai->m_41c ? func_005F8330(&ai->m_41c) : 0;
+
+    if (s)
+        return IsKind2Flag80(s);
+    return false;
+}
+
 /* the state at 0x4EC: 4 with the word at 0x508 set (an inline: the test materialised) */
 static inline bool IsState4Held(CSealCtrlAi *ai)
 {
