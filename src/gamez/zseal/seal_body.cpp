@@ -28,6 +28,18 @@ extern "C" void *func_0057DC80(CZSealBody *seal)
     return func_00555170((char *)seal + 0x1c0);
 }
 
+/* CBody::BodySetState (OVL1 0x28DFB0, the body lane's: the state stored) */
+extern "C" void func_0028DFB0(CBody &body, int state);
+
+/* the state set: the controller told of a change first (OVL2 0x58A6B0; SOCOM 1's, virtual in SOCOM
+ * II -- CBody's slot 0x14, CZSealBody's 0x90) */
+void CZSealBody::BodySetState(int state)
+{
+    if (m_control && state != m_state)
+        ((CSealCtrl *)m_control)->OnStateChange((SEAL_STATE)m_state, (SEAL_STATE)state);
+    func_0028DFB0(*this, state);
+}
+
 /* the stance's change taken, once (OVL2 0x582500; SOCOM 1's, the false return its own block) */
 bool CZSealBody::StanceChanged()
 {

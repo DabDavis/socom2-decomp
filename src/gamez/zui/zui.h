@@ -54,7 +54,8 @@ class UIVarMixin;
 
 /* a UI variable: a ZRDR value with a name and the mixins watching it (SOCOM 1's DWARF: 0x1C
  * bytes, the watchers a vector at 0xC; SOCOM II's watchers are at 0x18 and its longevity a byte
- * at 0x24 -- what it added at 0xC is not read here) */
+ * at 0x24, its name at 0x14 and its size 0x30 -- the manager's Find walks 48-byte elements; what
+ * it added at 0x8-0x13 (two table pointers its copy constructor stores) is not read here) */
 class CUIVariable : public _zrdr {
 public:
     void UpdateDependents();
@@ -74,11 +75,12 @@ public:
         return *this;
     }
 
-    char *m_varname;   // 0x8
+    void *m_8;   // 0x8: SOCOM II's (a table pointer the copy constructor stores; SOCOM 1's m_varname sat here)
     unsigned char _c[0x14 - 0xc];
-    int m_14;   // 0x14: SOCOM II's (Destroy clears it)
+    char *m_name;   // 0x14: SOCOM II's name, the string table's copy (Destroy clears it; the manager's Find compares it)
     std::vector<UIVarMixin *> m_attached_items;   // 0x18 (SOCOM 1's at 0xC)
     unsigned char m_longevity;   // 0x24: UIVAR_LONGEVITY
+    unsigned char _25[0x30 - 0x25];
 };
 
 /* what watches a variable: told by UpdateUIVar when it changes (SOCOM 1's DWARF: the vtable
@@ -95,11 +97,12 @@ public:
 };   // 0x8 bytes
 
 /* the variables (SOCOM 1's DWARF: CUIVarManager : vector, CSaveModule, 0x8064 bytes) */
-class CUIVarManager {
+class CUIVarManager : public std::vector<CUIVariable> {
 public:
     CUIVariable *Add(const char *name, _zrdr *value, UIVAR_LONGEVITY longevity);
+    CUIVariable *Find(const char *name);
 
-    unsigned char _0[0x8064];
+    unsigned char _c[0x8064 - 0xc];
 };
 extern CUIVarManager theUIVarManager;
 

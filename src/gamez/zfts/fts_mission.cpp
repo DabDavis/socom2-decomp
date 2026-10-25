@@ -126,6 +126,8 @@ public:
     void FadeToEndMission(float time, int counter);
     bool FadeToEndMissionTick(float dT);
     static bool fadeToEndMissionTick(float dT, void *data);
+    static void RecoverFromNetError(int error);
+    bool _RecoverFromNetError(int error);
     void SetDelayEndMission(bool b) { m_DelayEndMission = b; }
     void SetFadingToEndMission(bool b) { m_FadingToEndMission = b; }
 
@@ -206,6 +208,13 @@ bool CMission::FadeToEndMissionTick(float dT)
         }
     }
     return false;
+}
+
+/* the net-error callback: theMission's own handler, a tail call (SOCOM 1's static
+ * RecoverFromNetError; OVL1 0x2A45F0 -- the member, 0x2A4600, is not written) */
+void CMission::RecoverFromNetError(int error)
+{
+    theMission._RecoverFromNetError(error);
 }
 
 /* the external whispers' option: its global (0x3DE620, the HUD reads it) and EnableExternalWhispers

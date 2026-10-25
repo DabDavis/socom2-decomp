@@ -4,10 +4,11 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_00553DB0(s32);                         /* extern */
+M2C_UNK GetRootPart__10CZSealBodyCFv(s32);          /* extern */
 
 void func_005552A0(s32 arg0) {
-    func_00553DB0(arg0 - 0x170);
+    GetRootPart__10CZSealBodyCFv(arg0 - 0x170);
 }

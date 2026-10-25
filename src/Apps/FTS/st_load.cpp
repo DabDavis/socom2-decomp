@@ -138,7 +138,7 @@ bool CLoadState::Init()
     if (theNetwork.m_9) {
         CZNetGame *game = theMission.m_netGame;
 
-        data_0044F3CC = CMission::_RecoverFromNetError;
+        data_0044F3CC = CMission::RecoverFromNetError;
         CZBombState::UninitBomb();
         game->m_d0 = 0;
         game->m_cd = 0;

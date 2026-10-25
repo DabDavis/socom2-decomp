@@ -4,9 +4,10 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_00575410();                                /* extern */
+s32 get_state__6sealaiFPCc();                       /* extern */
 s32 strcasecmp(s32, M2C_UNK *);                     /* extern */
 extern M2C_UNK data_0065FE38;
 extern M2C_UNK data_0065FE48;
@@ -21,7 +22,7 @@ extern M2C_UNK data_0065FEA8;
 s32 func_005D8CC0(s32 arg0) {
     s32 var_s0;
 
-    var_s0 = func_00575410();
+    var_s0 = get_state__6sealaiFPCc();
     if ((arg0 != 0) && !(var_s0 & 0xFF)) {
         if (strcasecmp(arg0, &data_0065FE38) == 0) {
             var_s0 = 9;

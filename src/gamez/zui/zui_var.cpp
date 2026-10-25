@@ -5,7 +5,7 @@
  * then the thunks) between zui_spec.cpp's tail and zui_cleanup.cpp; no assert names the file, so
  * zui_var.cpp is ours (the press beta's zui.cpp may be it).
  *
- * OPEN, not written yet: the manager's Serialize, Add, Find, CollectGarbage, Reset and the other
+ * OPEN, not written yet: the manager's Serialize, Add, CollectGarbage, Reset and the other
  * variable methods; DetachUIVar and ~CUIVarManager stand as generated drafts. */
 
 #include "zui.h"
@@ -17,7 +17,7 @@ void CUIVariable::Destroy()
     DetachAll();
     if (!packed)
         DeleteChildren();
-    m_14 = 0;
+    m_name = 0;
     type = 1;
     isclone = 0;
     packed = 0;
@@ -60,4 +60,19 @@ void UIVarMixin::AttachUIVar(CUIVariable *var)
         if (m_uivar)
             m_uivar->Attach(this);
     }
+}
+
+/* the live variable of that name, or 0 (SOCOM 1's; SOCOM II compares without case) */
+CUIVariable *CUIVarManager::Find(const char *name)
+{
+    CUIVariable *found = 0;
+    iterator i;
+
+    for (i = begin(); i != end(); ++i) {
+        if ((*i).m_longevity && !strcasecmp(name, (*i).m_name)) {
+            found = &*i;
+            break;
+        }
+    }
+    return found;
 }
