@@ -1348,6 +1348,32 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - zentity.h: CAiMapLoc() is empty (SOCOM II's, 0x516120) with SOCOM 1's field-by-field copy
     constructor, CEntity initialising from `invalid`; CEntity's slot +0x0C is `const CMatrix
     *GetPosW() const`, +0x60/+0x68 take a CPnt3D * and return bool, +0x64 returns a node.
+- **Tells from completing the MSL headers** (include/vector, include/string, zmath.h):
+  - the class `__vector_imp::insert` is defined after SOCOM 1's lines 1428-1485 and returns
+    void (five of the thirteen class inserts byte-exact; the two 8-byte-element ones one
+    register off); the deleter has `T *&data()`, the class push_back/begin/end read through it,
+    and its destructor is `clear(); if (data_) delete` with clear's loop in clear's own body
+    (inlined into tail code clear came in one level only, its static helper called);
+  - `resize(n)` is written (`insert(end(), n - size(), T())`, else an erase) but no instance
+    matches yet: each waits on its element's constructor, and the 412-byte turret element's
+    insert/erase call copy, copy_backward, fill_n and the copy constructor out of line
+    (0x3ABAE0, 0x3AC460, 0x3AC200, 0x3AC6D0) where the header writes those loops inline; the
+    CAiMapLoc instance (0x51C4A0) misses with the empty constructor too;
+  - in a unit's template tail, out-of-class members are generated in rounds -- first those the
+    unit's own code uses, then those those use -- and within a round in declaration order,
+    later-declared class templates first; a tail function inlines another only if that one was
+    generated before it;
+  - inline calls in an argument list (`end()`, `size()`) are expanded ahead of an out-of-line
+    constructor call in the same list;
+  - at a join, `if (n) do ... while (--n)` gives the target's top-tested loop; `for`/`while` are
+    entered at their bottom test;
+  - `newsize > newcap` and `X <= xp` branch on the compare directly; the reversed forms put the
+    result in a register first;
+  - CPnt3D's `+ - *` are const members (SOCOM II's 0x557DC0, 0x557E10, 0x557E90), Cross
+    declared; CPnt4D's written copy constructor still loses SeeFarther and stays out;
+  - still open: include/deque's copy constructor (CRdrEditor() waits), list<T *>'s
+    insert(iterator, T *const &)/postfix ++/iterator copy constructor (PathPlanExecute), the
+    list clear keeping `&end_.next_` in a register (five functions), the iterator's `*` by value.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has

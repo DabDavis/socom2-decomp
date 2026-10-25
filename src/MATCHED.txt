@@ -501,7 +501,9 @@
 0x0022DDC0 func_0022DDC0
 0x0022DDF0 func_0022DDF0
 0x0022E460 func_0022E460
+0x0022E4D0 __as__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>
 0x0022E5F0 func_0022E5F0
+0x0022E690 replace__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FUiUiRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>
 0x0022E6F0 func_0022E6F0
 0x0022E760 func_0022E760
 0x0022E7D0 func_0022E7D0
@@ -812,6 +814,7 @@
 0x0026CAA0 func_0026CAA0
 0x0026CBE0 TaskScheduler__9CZAnimSetFv
 0x0026CC10 at__Q23std50__vector_imp<6CPnt3D,Q23std18allocator<6CPnt3D>,0>FUi
+0x0026CC80 insert__Q23std50__vector_imp<6CPnt3D,Q23std18allocator<6CPnt3D>,0>FP6CPnt3DUiRC6CPnt3D
 0x0026D150 reserve__Q23std50__vector_imp<6CPnt3D,Q23std18allocator<6CPnt3D>,0>FUi
 0x0026D2F0 clear__Q23std52__vector_deleter<6CPnt3D,Q23std18allocator<6CPnt3D>>Fv
 0x0026D300 __dt__Q23std52__vector_deleter<6CPnt3D,Q23std18allocator<6CPnt3D>>Fv
@@ -1436,6 +1439,7 @@
 0x002A1140 _sort_target__FRC7CTargetRC7CTarget
 0x002A19B0 func_002A19B0
 0x002A19C0 erase__Q23std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>FP7CTargetP7CTarget
+0x002A1AD0 insert__Q23std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>FP7CTargetUiRC7CTarget
 0x002A2510 UpdateNextPosition__7CEntityFv
 0x002A2560 ComputeNextPosition__7CEntityFf
 0x002A2670 PostTick__7CEntityFf
@@ -2738,6 +2742,7 @@
 0x0032AB20 func_0032AB20
 0x0032B110 func_0032B110
 0x0032B120 Create__Q28Particle6SourceFv
+0x0032B650 insert__Q23std106__vector_imp<Q28Particle22SequenceEntry<6CPnt4D>,Q23std46allocator<Q28Particle22SequenceEntry<6CPnt4D>>,0>FPQ28Particle22SequenceEntry<6CPnt4D>UiRCQ28Particle22SequenceEntry<6CPnt4D>
 0x0032BFD0 func_0032BFD0
 0x0032C040 FindRdr__11CRdrArchiveFPCci
 0x0032C1E0 AddArchive__11CRdrArchiveFPCcPCc
@@ -3059,6 +3064,7 @@
 0x00348CE0 SetIntensity__11CSndJukeboxFf
 0x00349060 ClearQueue__11CSndJukeboxFv
 0x00349080 FadeOut__11CSndJukeboxFv
+0x00349490 LoadMusicLists__11CSndJukeboxFP5_zrdri
 0x00349670 LoadPlaylists__11CSndJukeboxFPCc
 0x00349790 Cleanup__11CSndJukeboxFv
 0x003498E0 swap__Q23std30vector<f,Q23std12allocator<f>>FRQ23std30vector<f,Q23std12allocator<f>>
@@ -3084,6 +3090,7 @@
 0x00349E90 CreateSequence__12CSndSequenceFP5_zrdr
 0x0034A020 __dt__12CSndSequenceFv
 0x0034A0A0 __ct__12CSndSequenceFv
+0x0034A0D0 insert__Q23std74__vector_imp<17CSndSequenceEntry,Q23std30allocator<17CSndSequenceEntry>,0>FP17CSndSequenceEntryUiRC17CSndSequenceEntry
 0x0034A5A0 __dt__Q23std76__vector_deleter<17CSndSequenceEntry,Q23std30allocator<17CSndSequenceEntry>>Fv
 0x0034A610 clear__Q23std76__vector_deleter<17CSndSequenceEntry,Q23std30allocator<17CSndSequenceEntry>>Fv
 0x0034A620 func_0034A620
@@ -4499,6 +4506,7 @@
 0x0051A910 read_v21__6CAiMapFR7CFileIO
 0x0051AB50 read_v20__6CAiMapFR7CFileIO
 0x0051AD90 read_v19__6CAiMapFR7CFileIO
+0x0051AEF0 read_scanlines__6CAiMapFR7CFileIO
 0x0051AFE0 Read__6CAiMapFR7CFileIO
 0x0051B250 _fixupEdge__FP6CGraphP6CGEdgebRUiPv
 0x0051B2B0 _fixupNode__FP6CGraphP6CGNodebRUiPv
@@ -5031,6 +5039,7 @@
 0x0059AC60 func_0059AC60
 0x0059ACD0 GetSeal__10CZSealBodyFPQ23zdb5CNode
 0x0059BA80 Load__17CharacterDynamicsFRC8CRdrFile
+0x0059CF10 insert__Q23std108__vector_imp<Q217CharacterDynamics13CCameraParams,Q23std47allocator<Q217CharacterDynamics13CCameraParams>,0>FPQ217CharacterDynamics13CCameraParamsUiRCQ217CharacterDynamics13CCameraParams
 0x0059D490 reserve__Q23std108__vector_imp<Q217CharacterDynamics13CCameraParams,Q23std47allocator<Q217CharacterDynamics13CCameraParams>,0>FUi
 0x0059D640 __dt__Q23std110__vector_deleter<Q217CharacterDynamics13CCameraParams,Q23std47allocator<Q217CharacterDynamics13CCameraParams>>Fv
 0x0059D6B0 clear__Q23std110__vector_deleter<Q217CharacterDynamics13CCameraParams,Q23std47allocator<Q217CharacterDynamics13CCameraParams>>Fv
