@@ -61,6 +61,10 @@ public:
     void SetButtonState(PAD_BUTTON button, KEY_STATE state);
     bool GetTwoButtons(PAD_BUTTON held, PAD_BUTTON pressed);
     bool GetDoubleClick(PAD_BUTTON button);
+    /* a stick's travel stretched from square to circle (SOCOM 1's) */
+    void Dilate(float &x, float &y, int stick);
+    /* a resting stick's axes zeroed (SOCOM 1's) */
+    void CheckStickVelocity(float &x, float &y, int stick);
     void SetPreset(int stick, int preset);
     float GetDeadZone(int stick);
     void SetDeadZone(int stick, float zone);
