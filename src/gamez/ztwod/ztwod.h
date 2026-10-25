@@ -220,8 +220,8 @@ public:
     int m_shortLength;   // 0x70
     float m_elapsedTime;   // 0x74
     float m_socom2_78;   // 0x78: a second scale (1; slot 27 takes it from the string table)
-    int m_socom2_7c;   // 0x7c
-    int m_socom2_80;   // 0x80
+    float m_socom2_7c;   // 0x7c: added to the position (WordIntersectionTest reads both as floats)
+    float m_socom2_80;   // 0x80
     int m_stringid;   // 0x84: the id slot 27 looked up
     int m_stringrev;   // 0x88: the string table's revision then (the draws look it up again on a change)
     unsigned char m_socom2_8c;   // 0x8c

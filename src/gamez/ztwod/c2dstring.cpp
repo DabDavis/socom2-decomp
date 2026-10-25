@@ -48,8 +48,8 @@ C2DString::C2DString()
     m_font = 0;
     m_scale = 1.0f;
     m_socom2_78 = 1.0f;
-    m_socom2_7c = 0;
-    m_socom2_80 = 0;
+    m_socom2_7c = 0.0f;
+    m_socom2_80 = 0.0f;
     m_Type = STRING_NORMAL;
     m_revnum = 0;
     m_color[0] = m_color[1] = m_color[2] = 255.0f;
