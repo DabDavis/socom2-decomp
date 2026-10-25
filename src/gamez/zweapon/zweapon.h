@@ -219,30 +219,6 @@ public:
     static CZProjectileList *m_pProjectilelist;
 };   // 0xf8 bytes (CZFTSWeapon's targetmods start there)
 
-namespace zdb {
-class CNode;
-class CTexHandle;
-}
-
-/* the bullet marks and the decals they are drawn from (SOCOM 1's DWARF: 0x34 bytes, as SOCOM II's:
- * the free marks' nodes, the decal textures and their size ranges by index, the blood decals near and
- * far; CZWeapon's static m_pMarklist points at one; zwep_weapon.cpp's) */
-class CZMarkList {
-public:
-    /* forty "bullet_mark" instances made and added to the world, then the decal names read */
-    void Init();
-    void UnInit();
-    void ReadDecalNames(char *file);
-
-    std::list<zdb::CNode *> m_marklist;   // 0x0
-    zdb::CTexHandle **m_decalTexture;   // 0xc
-    std::vector<void *> m_bloodDecals;   // 0x10
-    std::vector<void *> m_farBloodDecals;   // 0x1c
-    float *m_decalminsize;   // 0x28
-    float *m_decalmaxsize;   // 0x2c
-    int m_decal_list_size;   // 0x30
-};   // 0x34 bytes
-
 /* the materials' table (int_material.cpp's, SOCOM 1's class): only the extension list, whose size
  * the weapons' per-material animations are bounded by (SOCOM 1's static; 0x44F350 here) */
 class CMaterialExArray {
@@ -312,6 +288,36 @@ public:
 
     static std::vector<CZDecalSet *> m_decalsets;
 };   // 0xc bytes
+
+namespace zdb {
+class CNode;
+class CTexHandle;
+}
+struct _zrdr;
+
+/* the bullet marks and the decals they are drawn from (SOCOM 1's DWARF: 0x34 bytes, as SOCOM II's:
+ * the free marks' nodes, the decal textures and their size ranges by index, the blood decals near and
+ * far; CZWeapon's static m_pMarklist points at one; zwep_weapon.cpp's) */
+class CZMarkList {
+public:
+    /* forty "bullet_mark" instances made and added to the world, then the decal names read */
+    void Init();
+    void UnInit();
+    /* the decal tables sized to the materials and defaulted, the decal pools sized from the decals
+     * rdr (the global one: the file named is not read), then the weapon and blood decals read; false
+     * without the rdr */
+    bool ReadDecalNames(char *file);
+    void ReadWeaponDecals(_zrdr *rdr);
+    void ReadBloodDecals(_zrdr *rdr);
+
+    std::list<zdb::CNode *> m_marklist;   // 0x0
+    zdb::CTexHandle **m_decalTexture;   // 0xc
+    std::vector<CZDecalDef> m_bloodDecals;   // 0x10
+    std::vector<CZDecalDef> m_farBloodDecals;   // 0x1c
+    float *m_decalminsize;   // 0x28
+    float *m_decalmaxsize;   // 0x2c
+    int m_decal_list_size;   // 0x30
+};   // 0x34 bytes
 
 /* a weapon's per-stance reticle and recoil tuning (SOCOM 1's DWARF: 0x4c bytes; SOCOM II's is 0x74,
  * a float inserted at 0x28 and more members after SOCOM 1's -- only what the matched code reads is

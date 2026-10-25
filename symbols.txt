@@ -8422,7 +8422,7 @@
 0x003D3980 0x58 func_003D3980  # OVL1
 0x003D39E0 0x240 __dt__8CZWeaponFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003D3C20 0x170 __ct__8CZWeaponFv  # OVL1; by hand (stores __vt__8CZWeapon, builds m_LegalAmmoList at 0xC4; CZFTSWeapon's constructor calls it first)
-0x003D3D90 0x4CC func_003D3D90  # OVL1
+0x003D3D90 0x4CC insert__Q23std60__vector_imp<10CZDecalDef,Q23std23allocator<10CZDecalDef>,0>FP10CZDecalDefUiRC10CZDecalDef  # OVL1; by hand (the wep lane: CZMarkList::ReadBloodDecals pushes each blood decal (a CZDecalDef, 12 bytes) onto m_bloodDecals through it; include/vector's class insert, 16 bytes short -- the header's open in-place registers and the temporary's destructor); zwep_weapon.cpp
 0x003D4260 0x120 __dt__22RTArray<Q23zdb6CDecal>Fv  # OVL1; by hand (the wep lane: CZMarkList::UnInit deletes both CDecal pools' arrays through it (flag 1), as SOCOM 1's UnInit calls __dt__22RTArray<Q23zdb6CDecal>Fv; zbody.h's RTArray destructor, the items destroyed through ~CDecal 0x3BF690 -- this unit's template tail); zwep_weapon.cpp
 0x003D4380 0x10 GetAmmoId__6CZAmmoFPCc  # OVL1; s1:order by hand (the wep lane: zwep_ammo.cpp's first, SOCOM 1's 0x10-byte static -- m_ammolist (0x4B5310) handed to CZAmmoList::GetAmmoId, tail-called)
 0x003D4390 0x10 GetAmmo__6CZAmmoF10EQUIP_AMMO  # OVL1; s1:order by hand (the wep lane: SOCOM 1's second static -- m_ammolist handed to CZAmmoList::GetAmmo(EQUIP_AMMO), tail-called)

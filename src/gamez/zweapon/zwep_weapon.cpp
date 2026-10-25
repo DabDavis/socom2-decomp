@@ -20,6 +20,8 @@ class CMeshDecal;
 /* vis_decal.cpp's decal pools, as that unit lays them out (stand-ins: only what UnInit touches) */
 class CDecalPool {
 public:
+    void Init(unsigned int count, unsigned int extra);
+
     unsigned int m_count;   // 0x0
     unsigned int m_max;   // 0x4
     unsigned int m_extra;   // 0x8
@@ -29,6 +31,7 @@ public:
 
 class CMeshDecalPool {
 public:
+    void Init(unsigned int count, unsigned int extra);
     void Uninit();
 
     unsigned int m_count;   // 0x0
@@ -61,6 +64,8 @@ char *_strdup(const char *s, const char *file, int line);
 /* the decals rdr (0x437D00) and a material's index by name (0x2DE9E0) -- not named */
 extern "C" _zrdr *data_00437D00;
 extern "C" int func_002DE9E0(const char *name);
+/* the next material of a name after an index, 0 past the last (0x2DE970) -- not named */
+extern "C" int func_002DE970(const char *name, int index);
 
 /* every mode up to the maximum flagged (new in SOCOM II; the name is ours) */
 void CZWeapon::SetMaxFireMode(FIREMODE mode)
@@ -354,4 +359,115 @@ void CZMarkList::Init()
         }
     }
     ReadDecalNames("decals.rdr");
+}
+
+bool CZMarkList::ReadDecalNames(char *file)
+{
+    m_decal_list_size = CMaterialExArray::m_materialex_list.size();
+    if (m_decal_list_size > 0) {
+        m_decalTexture = (CTexHandle **)_malloc(m_decal_list_size * sizeof(CTexHandle *), 0, 0);
+        m_decalminsize = (float *)_malloc(m_decal_list_size * sizeof(float), 0, 0);
+        m_decalmaxsize = (float *)_malloc(m_decal_list_size * sizeof(float), 0, 0);
+        for (int i = 0; i < m_decal_list_size; i++) {
+            m_decalTexture[i] = 0;
+            m_decalminsize[i] = 0.3f;
+            m_decalmaxsize[i] = 1.8f;
+        }
+    }
+    _zrdr *rdr = data_00437D00;
+
+    if (!rdr)
+        return false;
+    int base = 300;
+    int overflow = 50;
+    _zrdr *pool;
+
+    if ((pool = zrdr_findtag(rdr, "TEMP_DECAL_POOL")) != 0) {
+        zrdr_findint(pool, "BASE", &base, 1);
+        zrdr_findint(pool, "OVERFLOW", &overflow, 1);
+    }
+    CDecal::m_tempPool.Init(base, overflow);
+    CMeshDecal::m_tempPool.Init(base + 50, overflow);
+    base = 1;
+    overflow = 1;
+    if ((pool = zrdr_findtag(rdr, "PERM_DECAL_POOL")) != 0) {
+        zrdr_findint(pool, "BASE", &base, 1);
+        zrdr_findint(pool, "OVERFLOW", &overflow, 1);
+    }
+    CDecal::m_permPool.Init(base, overflow);
+    CMeshDecal::m_permPool.Init(base, overflow);
+    ReadWeaponDecals(rdr);
+    ReadBloodDecals(rdr);
+    return true;
+}
+
+/* each entry's material's (every material of the name) decal texture and size range (the names
+ * cleared before the materials are walked -- the walk starts from no name, as the target's) */
+void CZMarkList::ReadWeaponDecals(_zrdr *rdr)
+{
+    _zrdr *list = zrdr_findtag(rdr, "WEAPON_DECALS");
+
+    if (!list)
+        return;
+    const char *texture = 0;
+    const char *material = 0;
+    int n = list->Count();
+
+    for (int i = 0; i < n; i++) {
+        _zrdr *entry = list->Item(i);
+
+        if (!zrdr_findSTRING(entry, "MATERIALNAME", &material))
+            continue;
+        float minsize = 0.3f;
+        float maxsize = 1.8f;
+
+        if (!zrdr_findSTRING(entry, "TEXTURENAME", &texture))
+            continue;
+        zrdr_findreal(entry, "MIN_SIZE", &minsize, 1);
+        zrdr_findreal(entry, "MAX_SIZE", &maxsize, 1);
+        CTexHandle *tex = CWorld::GetTexHandle(texture);
+
+        texture = 0;
+        material = 0;
+        for (int index = func_002DE970(material, 0); index; index = func_002DE970(material, index)) {
+            m_decalminsize[index] = minsize;
+            m_decalmaxsize[index] = maxsize;
+            m_decalTexture[index] = tex;
+        }
+    }
+}
+
+/* each entry a blood decal: its texture and size range pushed, the texture kept with the decals' */
+void CZMarkList::ReadBloodDecals(_zrdr *rdr)
+{
+    _zrdr *list = zrdr_findtag(rdr, "BLOOD_DECALS");
+
+    if (!list)
+        return;
+    const char *texture = 0;
+    CZDecalDef def;
+
+    def.m_decalminsize = 0.0f;
+    def.m_decalmaxsize = 0.0f;
+    def.m_texture = 0;
+    int n = list->Count();
+
+    for (int i = 0; i < n; i++) {
+        _zrdr *entry = list->Item(i);
+
+        if (!zrdr_findSTRING(entry, "TEXTURENAME", &texture))
+            continue;
+        float minsize = 0.0f;
+        float maxsize = 0.0f;
+
+        zrdr_findreal(entry, "MIN_SIZE", &minsize, 1);
+        zrdr_findreal(entry, "MAX_SIZE", &maxsize, 1);
+        CTexHandle *tex = CWorld::GetTexHandle(texture);
+
+        def.m_decalminsize = minsize;
+        def.m_decalmaxsize = maxsize;
+        def.m_texture = tex;
+        m_bloodDecals.push_back(def);
+        CWorld::m_world->AddTextureAssetDecals(tex);
+    }
 }
