@@ -19,6 +19,10 @@ public:
     unsigned char m_bNetwork;   // 0x1 (SOCOM 1's at 0x9)
     unsigned char _2[0xf4 - 0x2];
     int m_GameConnectionIndex;   // 0xf4 (SOCOM 1's at 0xd0)
+
+    /* the game connection (an accessor: a sender loads it ahead of an out-of-line call among its
+     * arguments, NetSendRequestTeamSwitch's master index, which only an inline explains) */
+    int GetGameConnectionIndex() { return m_GameConnectionIndex; }
 };
 
 
@@ -44,6 +48,10 @@ public:
     int m_game_object_index;   // 0xb0 (SOCOM 1's at 0x74)
     unsigned char _b4[0xcf - 0xb4];
     unsigned char m_persona_created;   // 0xcf (SOCOM 1's at 0x97)
+    unsigned char _d0[0x111 - 0xd0];
+    char m_111;   // 0x111 (SOCOM 1's at 0xd9: m_game_type)
+    unsigned char _112;
+    unsigned char m_mp_major_game_state;   // 0x113 (SOCOM 1's at 0xdb)
 };
 
 class CMission {
@@ -64,6 +72,24 @@ class CZGameState {
 public:
     static int CreateLocalGame(CZNetGame *game);
 };
+
+/* a map's action (only the bits the action packet sets; SOCOM 1's at 0x2C) */
+class CNodeAction {
+public:
+    static CNodeAction *GetActionById(unsigned int id);
+
+    unsigned char _0[0x38];
+    int m_38;   // 0x38
+    unsigned char _3c[3];
+    unsigned char m_3f_0 : 1;
+    unsigned char m_network_log : 1;   // 0x3f, bit 1 (SOCOM 1's m_network_log)
+};
+
+class CZAnimMain;
+extern CZAnimMain ZAnim;
+
+const char *GetDatabase();
+extern "C" char *strcpy(char *dst, const char *src);
 
 class CZBombState {
 public:
@@ -98,22 +124,133 @@ void func_002F9690(void *lobby, int arg, int mode);
 int func_00541CC0(int id);
 void func_0059E830(CZSealBody *body, unsigned short who, int id, void *c, int obj);
 void func_002C0040(bool on);
+int func_0030D5A0(CZNetwork *net);   /* CZNetwork::zNetGetMyGameClientIndex */
+int func_0030D560(CZNetwork *net);   /* CZNetwork::zNetGetGameSessionMasterClientIndex */
+void func_002C4290(int me);   /* CZPersonaState::RequestTeamSwitch (SOCOM II's one argument) */
+int func_002BAF30(int a, int b, int who, void *data);   /* E3IndexPacketHandler */
+int func_002B9BD0(int a, int b, int who, void *data);
+int func_002BD420(int who);
+int func_00273950(CZAnimMain *zanim, void *data);
+void func_00273780(CZAnimMain *zanim, void *data, int who);
+void func_00545530(void *list, CZSealBody *body, int arg);
+void func_005880E0(CZSealBody *body, short a, unsigned char b, bool c, unsigned short d);
+void func_0059E9E0(CZSealBody *body, unsigned char a, void *b, void *c, int d, CPnt3D *pos);
 
 /* the application packets' type ids (SOCOM 1's PacketType<name>) */
 extern unsigned int data_00440E20;   /* PacketTypeZAnim */
 extern unsigned int data_00440E38;   /* PacketTypeMessage */
 extern unsigned int data_00440E60;   /* PacketTypePUAck */
 extern unsigned int data_00440E80;   /* PacketTypeVoter */
+extern unsigned int data_00440E30;   /* PacketTypeE3Index */
+extern unsigned int data_00440E88;   /* (SOCOM II's) */
+extern unsigned int data_00440E98;   /* PacketTypeTeamSwitch */
+extern unsigned int data_00440EB0;   /* PacketTypeGameSignal */
 }
 
 #define theNetwork data_0045A0C0
+
+/* a blended anim pushed on a remote SEAL, in a running game (OVL1 0x2BBA80) */
+struct PushBlendPacket {
+    unsigned short obj;   // 0x0
+    short anim;   // 0x2
+    unsigned short time;   // 0x4
+    unsigned char slot;   // 0x6
+    unsigned char on;   // 0x7
+};
+
+int PushBlendAnimPacketHandler(int, int, int, void *data)
+{
+    CZNetGame *game = theMission.m_pNetGame;
+
+    if (game && game->m_mp_major_game_state == 3) {
+        PushBlendPacket *p = (PushBlendPacket *)data;
+        CZSealBody *body = CZSealState::GetBodyFromObjectIndex(p->obj);
+        bool on = p->on > 0;
+
+        if (body)
+            func_005880E0(body, p->anim, p->slot, on, p->time);
+    }
+    return 8;
+}
 
 /* the ZAnim packet: its body as the caller built it (OVL1 0x2BB880) */
 void SendZAnimNetworkPacket(void *data, int size)
 {
     if (theNetwork.m_bNetwork)
-        func_0030CEF0(&theNetwork, 64, theNetwork.m_GameConnectionIndex, -1, data_00440E20, size,
+        func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), -1, data_00440E20, size,
                       data, false);
+}
+
+/* a ZAnim packet from another client: its size handed back, and played when the game is running
+ * (OVL1 0x2BB7F0) */
+int ZAnimNetworkPacketHandler(int, int, int who, void *data)
+{
+    int body = func_002BD420(who);
+    int size = func_00273950(&ZAnim, data);
+    CZNetGame *game = theMission.m_pNetGame;
+
+    if (game && game->m_mp_major_game_state == 3)
+        func_00273780(&ZAnim, data, body);
+    return size;
+}
+
+/* an action run by a remote SEAL (OVL1 0x2BB770) */
+struct ActionAnimPacket {
+    unsigned short obj;   // 0x0
+    unsigned short action;   // 0x2
+};
+
+int ActionAnimPacketHandler(int, int, int, void *data)
+{
+    ActionAnimPacket *p = (ActionAnimPacket *)data;
+    CZSealBody *body = CZSealState::GetBodyFromObjectIndex(p->obj);
+    CNodeAction *action = CNodeAction::GetActionById(p->action);
+
+    if (action && body) {
+        func_00545530((char *)body + 0x58c, body, action->m_38);
+        action->m_network_log = 1;
+    }
+    return 4;
+}
+
+/* the E3 index sent: handled here when it is our own (OVL1 0x2BAEA0) */
+struct E3IndexPacket {
+    unsigned int index;   // 0x0
+    unsigned char flag;   // 0x4
+};
+
+void NetSendE3Index(int who, unsigned int index, int flag, bool)
+{
+    E3IndexPacket p;
+
+    p.index = index;
+    p.flag = flag;
+    if (who == func_0030D5A0(&theNetwork))
+        func_002BAF30(0, 0, func_0030D5A0(&theNetwork), &p);
+    else
+        func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), who, data_00440E30, 8, &p,
+                      false);
+}
+
+/* a team switch asked for: the session master grants its own, a client asks the master
+ * (OVL1 0x2BADD0) */
+void NetSendRequestTeamSwitch(int team)
+{
+    if (theNetwork.m_bSessionMaster) {
+        int me = func_0030D5A0(&theNetwork);
+
+        if (theNetwork.m_bSessionMaster)
+            func_002C4290(me);
+    } else {
+        func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), func_0030D560(&theNetwork),
+                      data_00440E98, 4, &team, false);
+    }
+}
+
+/* (SOCOM II's: a flag handed on inverted; OVL1 0x2BADA0) */
+extern "C" void func_002BADA0()
+{
+    func_002C0040(!data_004412D8);
 }
 
 /* a message from the menu's list to a team or everyone (OVL1 0x2BAD40) */
@@ -134,14 +271,28 @@ void SendMessageMessage(int who, R_SEND_TO to, int msg)
     p.who = who;
     p.to = to;
     p.msg = msg;
-    func_0030CEF0(&theNetwork, 64, theNetwork.m_GameConnectionIndex, -1, data_00440E38, 6, &p,
+    func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), -1, data_00440E38, 6, &p,
                   false);
 }
 
-/* (SOCOM II's: a flag handed on inverted; OVL1 0x2BADA0) */
-extern "C" void func_002BADA0()
+/* an ammo pickup from another client (OVL1 0x2BA370) */
+struct AmmoPUPacket {
+    int id;   // 0x0
+    unsigned char m_4[0x10];   // 0x4
+    unsigned char m_14[0x10];   // 0x14
+    float x, y, z;   // 0x24
+    unsigned char who;   // 0x30
+};
+
+int AmmoPUPacketHandler(int, int, int, void *data)
 {
-    func_002C0040(!data_004412D8);
+    AmmoPUPacket *p = (AmmoPUPacket *)data;
+    CPnt3D pos(p->x, p->y, p->z);
+    CZSealBody *body = CZSealState::GetBodyFromObjectIndex(func_00541CC0(p->id));
+
+    if (body)
+        func_0059E9E0(body, p->who, p->m_4, p->m_14, p->id, &pos);
+    return 52;
 }
 
 /* the answer to a pickup request (OVL1 0x2BA260) */
@@ -182,7 +333,7 @@ void SendPickupAckMessage(unsigned short who, int id, int obj, AckUnion ack)
     p.id = id;
     p.obj = obj;
     p.ack = ack;
-    func_0030CEF0(&theNetwork, 64, theNetwork.m_GameConnectionIndex, -1, data_00440E60, 8, &p,
+    func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), -1, data_00440E60, 8, &p,
                   false);
 }
 
@@ -201,8 +352,19 @@ void SendVoteMessage(int who, int voter, bool vote)
     CZSealBody *body = CZSealState::GetBodyFromObjectIndex(voter);
 
     if (body)
-        func_0030CEF0(&theNetwork, 64, theNetwork.m_GameConnectionIndex, body->m_fc8,
+        func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), body->m_fc8,
                       data_00440E80, 4, &p, true);
+}
+
+/* (SOCOM II's: a vote-like packet to everyone, and handled here too; OVL1 0x2B9B60) */
+extern "C" void func_002B9B60(int who, int vote)
+{
+    VotePacket p;
+
+    p.who = who;
+    p.vote = vote;
+    func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), -1, data_00440E88, 4, &p, true);
+    func_002B9BD0(0, 0, func_0030D5A0(&theNetwork), &p);
 }
 
 /* the bomb's new state asked for (OVL1 0x2B9A00) */
@@ -239,6 +401,36 @@ extern "C" int func_002B98B0(int, int, int who, void *data)
         break;
     }
     return 12;
+}
+
+/* a game signal to one client: the mission's database and the game's type with it
+ * (OVL1 0x2B97F0) */
+struct GameSignalPacket {
+    char database[8];   // 0x0
+    int arg;   // 0x8
+    unsigned char a;   // 0xc
+    unsigned char b;   // 0xd
+    unsigned char c;   // 0xe
+    char game_type;   // 0xf
+    unsigned char flag;   // 0x10
+};
+
+void SendGameSignalMessage(int to, unsigned char a, unsigned char b, unsigned char c, int arg, bool)
+{
+    if (theNetwork.m_bSessionMaster) {
+        /* MW zeroes an aggregate initialiser byte by byte, testing the address first */
+        GameSignalPacket p = {0};
+
+        p.a = a;
+        p.b = b;
+        p.c = c;
+        p.arg = arg;
+        p.flag = data_004412D8;
+        p.game_type = theMission.m_pNetGame->m_111;
+        strcpy(p.database, GetDatabase());
+        func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), to, data_00440EB0, 20, &p,
+                      false);
+    }
 }
 
 /* the local SEAL's network object (SOCOM II's piece of SOCOM 1's ftsNetworkSealInit; also called

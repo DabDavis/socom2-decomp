@@ -3982,7 +3982,7 @@
 0x002B49F0 0x148 func_002B49F0  # OVL1
 0x002B4B40 0x184 func_002B4B40  # OVL1
 0x002B4CD0 0xB0 func_002B4CD0  # OVL1
-0x002B4D80 0x80 func_002B4D80  # OVL1
+0x002B4D80 0x80 GetActionById__11CNodeActionFUi  # OVL1; s1:calls by hand: SOCOM 1's ActionAnimPacketHandler calls GetActionById(the packet's action id, lhu) where SOCOM II's (0x2BB770) calls 0x2B4D80, on the action's own halfword; 0x2B4D80 walks the list at 0x440C5C that fts_action.cpp's static initialiser builds (CNodeAction's container)
 0x002B4E00 0x80 func_002B4E00  # OVL1
 0x002B4E80 0xC0 func_002B4E80  # OVL1
 0x002B4F40 0x5CC func_002B4F40  # OVL1
