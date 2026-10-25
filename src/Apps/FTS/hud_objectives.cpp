@@ -7,10 +7,12 @@
 #include "../../gamez/ztwod/ztwod.h"
 #include "hud_missioncams.h"
 
-/* the HUD: only its mission cameras placed (SOCOM II's offset) */
+/* the HUD: its menu state and mission cameras placed (SOCOM II's offsets) */
 class CHUD {
 public:
-    unsigned char _0[0x1a2dc];
+    unsigned char _0[0x1a220];
+    MENU_STATE m_menustate;   // 0x1a220
+    unsigned char _1a221[0x1a2dc - 0x1a221];
     CZHudMissionCams m_missioncams;   // 0x1a2dc
 };
 
@@ -33,9 +35,19 @@ static float s_pulserate = 1000.0f;
 static float s_unselectedtrans = 80.0f;
 /* an unselected name's colour (OVL1 bss 0x409EA0, three floats; no row yet) */
 extern PNT4D data_00409EA0;
+/* the strings RefreshStatics sets up (OVL1 bss 0x4096B0-0x409E8F, statics of this unit's, no rows
+ * yet: called directly, as globals are) */
+extern C2DString data_004096B0;
+extern C2DString data_00409880;
+extern C2DString data_004099C0;
+extern C2DString data_00409B00[6];
 
 /* the mission: only its objectives (theMission, fts_state.h's CMission at 0x1854) */
-class CMissionObjectiveCam;
+class CMissionCam {
+};
+
+class CMissionObjectiveCam : public CMissionCam {
+};
 
 class CMission {
 public:
@@ -157,6 +169,9 @@ public:
             curstring->SetTrans(s_unselectedtrans);
         }
     }
+    void SelectObjective();
+    void FreeList(bool wipe_vector);
+    void MissionEndCleanup();
     void PreviousObjective();
     void NextObjective();
 
@@ -304,6 +319,18 @@ void CZObjectiveList::SelectPreviousObjective()
         SelectPreviousObjective();
 }
 
+/* the selected objective's camera played, unless one plays or the orders menu is up (SOCOM 1's) */
+void CZObjectiveList::SelectObjective()
+{
+    CMissionObjectiveCam *objective = GetObjective(m_selected_objective);
+
+    if (!objective)
+        return;
+    if (theHUD->m_missioncams.IsPlaying() || theHUD->m_menustate == stateOrders)
+        return;
+    theHUD->m_missioncams.PlayCamera(objective, false);
+}
+
 /* the children drawn while the list is on and no mission camera plays. SOCOM 1 cast each child
  * to C2D first and dropped the result; SOCOM II has no cast. The iterator is assigned from
  * begin() (it lives in memory), and the end taken after it into a local: begun first, `this`
@@ -331,6 +358,28 @@ CMissionObjectiveCam *CZObjectiveList::GetCurrentObjective() const
 CMissionObjectiveCam *CZObjectiveList::GetCurrentObjectiveRetainer() const
 {
     return m_cur_selected_objective;
+}
+
+/* at the mission's end: every string wiped (the list's own through their tables, the unit's
+ * static ones directly), then the list freed with its vectors (SOCOM II's; SOCOM 1's freed the
+ * vectors here itself) */
+void CZObjectiveList::MissionEndCleanup()
+{
+    m_heading.ClearAndWipe();
+    m_strMapHeading.ClearAndWipe();
+    m_strAnalogL.ClearAndWipe();
+    m_strAnalogR.ClearAndWipe();
+    m_strCircleLabel.ClearAndWipe();
+    m_strSquareLabel.ClearAndWipe();
+    m_strTriLabel.ClearAndWipe();
+    m_strXLabel.ClearAndWipe();
+    data_004096B0.ClearAndWipe();
+    data_00409880.ClearAndWipe();
+    data_004099C0.ClearAndWipe();
+    for (unsigned int i = 0; i < 6; i++)
+        data_00409B00[i].ClearAndWipe();
+    m_arrAnchorStrings[0].ClearAndWipe();
+    FreeList(true);
 }
 
 bool CZObjectiveList::IsPlayingAnimation()
