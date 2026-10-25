@@ -629,6 +629,13 @@ bool UIGetAcctInfo(C2DAnimCmdHdr *hdr, float *dT)
     return false;
 }
 
+bool UIRefreshGameList(C2DAnimCmdHdr *hdr, float *dT)
+{
+    if (func_003045B0(&data_0044FE10))
+        return func_003042B0(&data_0044FE10, GetCommandC2D(hdr->node_ref_index));
+    return func_002E28D0(&theLobby, GetCommandC2D(hdr->node_ref_index));
+}
+
 bool UIRefreshRoomList(C2DAnimCmdHdr *hdr, float *dT)
 {
     return func_002E3A30(&theLobby, GetCommandC2D(hdr->node_ref_index));
@@ -668,6 +675,30 @@ bool UIJoinMPGame(C2DAnimCmdHdr *hdr, float *dT)
     else
         ok = func_002F83B0(&theLobby, name);
     return ok;
+}
+
+/* a clan game's sides swapped: START (when the lobby's game is in state 4) locks the game and
+ * reports the status, FINISH ends the swap */
+bool UIClanGameSwapSides(C2DAnimCmdHdr *hdr, float *dT)
+{
+    bool done = true;
+    const char *text = ArgText(ArgName(hdr));
+
+    if (text) {
+        if (!strcasecmp(text, "START")) {
+            if (func_002E99E0() == 4) {
+                SetValveValue(CValve::Create("mp_locked_game", (VALVE_TYPE)1), 1);
+                func_002F8350(&theLobby);
+                done = true;
+            } else {
+                done = false;
+            }
+        } else if (!strcasecmp(text, "FINISH")) {
+            func_002BADA0();
+            done = true;
+        }
+    }
+    return done;
 }
 
 bool UICanJoinRoom(C2DAnimCmdHdr *hdr, float *dT)
@@ -1414,6 +1445,38 @@ bool UIIsClanChallengeGame(C2DAnimCmdHdr *hdr, float *dT)
     return false;
 }
 
+/* the next mission of the rotation: the game's launch timed, and the session master picks the
+ * mission (the lobby's choice, 254 the one after the current, 255 the first) and tells the game */
+bool UIAdvanceMPMission(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CZNetGame *game = theMission.m_pNetGame;
+
+    if (!(game && theNetwork.m_bNetwork))
+        return true;
+    int wait = game->m_10->m_value ? 45000 : 30000;
+
+    game->m_c8 = wait + theNetwork.zNetGetTime();
+    if (theNetwork.m_bSessionMaster) {
+        char name[16];
+        char current[16];
+        int index = func_002F8120(&theLobby);
+
+        if (index == 254) {
+            strncpy(current, database, 16);
+            index = func_002C8DB0(data_00441650, atoi(current + 2), 1)->m_index;
+        }
+        if (index == 255)
+            index = func_002C8840(data_00441650, 1)->m_index;
+        if (index > 0) {
+            sprintf(name, "mp%d", index);
+            strcpy(database, name);
+        }
+        CZGameState::UpdateLocalGame(game);
+    }
+    func_002ACC10(&theMission, database);
+    return true;
+}
+
 bool UISelectLocale(C2DAnimCmdHdr *hdr, float *dT)
 {
     func_003A44B0(func_003A40E0(ArgText(ArgName(hdr))));
@@ -1545,6 +1608,85 @@ bool UINetCnfClose(C2DAnimCmdHdr *hdr, float *dT)
     func_00333770(&rdr);
     func_003857C0(&theUIVarManager, "NETCNF_DB", (_zrdr *)&rdr, UIVAR_SESSION);
     strncpy(data_003DF360, "", 256);
+    func_00333A20(&rdr, -1);
+    return true;
+}
+
+/* the valve the argument names set to the index of the configuration in use, among the valid ones.
+ * OPEN, 22 instructions: the same code with the loop's registers permuted (as SelectCombo's) */
+bool UINetCnfCurrCombo(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CValve *valve = CValve::Create(ArgText(ArgName(hdr)), (VALVE_TYPE)2);
+    int count = data_00457C40.m_count;
+    NetCnfEntry *cur = func_001E8890(&data_00457C40);
+    int index = 0;
+
+    for (int i = 0; i < count; i++) {
+        NetCnfEntry *e = data_00457C40.Entry(i);
+
+        if (e && e->m_type >= 0) {
+            if (!strcmp(cur->m_name, e->m_name)) {
+                SetValveValue(valve, index);
+                break;
+            }
+            index++;
+        }
+    }
+    return true;
+}
+
+/* the configuration the argument's valve indexes (among the valid ones) selected, when no memory
+ * card has changed.
+ * OPEN, 16 instructions, registers only: the target keeps the count in t0, the walking pointer in
+ * t1, i in a2, the index in a3 and the entry in a1; here count a1, walk a2, i t0, index t1, entry
+ * a3. Measured without result: i or the index declared outside the loop or the function's top,
+ * the count in a local, the entry declared before the loop or assigned in the test, the accessor
+ * called three times, the compare's operands swapped */
+bool UINetCnfSelectCombo(C2DAnimCmdHdr *hdr, float *dT)
+{
+    bool ok = false;
+
+    if (!func_003A1370(&theMemCard, 0, 0)) {
+        CValve *valve = CValve::Create(ArgText(ArgName(hdr)), (VALVE_TYPE)2);
+
+        if (valve) {
+            int index = 0;
+
+            for (int i = 0; i < data_00457C40.m_count; i++) {
+                NetCnfEntry *e = data_00457C40.Entry(i);
+
+                if (e && e->m_type >= 0 && index++ == valve->m_value) {
+                    if (func_001E8910(data_003DF360, e->m_name, data_004567C0) >= 0)
+                        ok = true;
+                    break;
+                }
+            }
+        }
+    }
+    return ok;
+}
+
+/* the network interfaces listed into the UI variable the argument names, "vendor/product" each.
+ * OPEN, 10 instructions, all stack offsets: the target's frame is 48 bytes larger (0xED0), the
+ * text at 0xE00 and the reader at 0xE80 with a hole between the list's end (0xDD0) and the text --
+ * a local the original kept a slot for (an unused array is dropped here; a 176-byte text buffer
+ * fixes the frame but not the text's offset; the list's 0x240 stride is fixed by the loop) */
+bool UINetGetInterfaceList(C2DAnimCmdHdr *hdr, float *dT)
+{
+    NetCnfRdr rdr;
+    char text[128];
+    NetInterfaceInfo list[6];
+    int n = func_0030BD40(list, 6);
+    CUIVariable *var = func_003857C0(&theUIVarManager, ArgText(ArgName(hdr)), 0, UIVAR_SESSION);
+
+    func_00333AE0(&rdr);
+    func_003339B0(&rdr, 0);
+    for (int i = 0; i < n; i++) {
+        sprintf(text, "%s/%s", list[i].m_vendor, list[i].m_product);
+        func_00333610(&rdr, text);
+    }
+    func_00333770(&rdr);
+    func_00386460(var, &rdr);
     func_00333A20(&rdr, -1);
     return true;
 }

@@ -279,11 +279,14 @@ public:
     void MyMajorGameState(MP_MAJOR_GAME_STATE state);
     void MyMinorGameState(MP_MINOR_GAME_STATE state);
 
-    unsigned char _0[0x28];
+    unsigned char _0[0x10];
+    CValve *m_10;   // 0x10: a valve AdvanceMPMission tests (a longer wait when on)
+    unsigned char _14[0x28 - 0x14];
     CValve *m_pJoinGameValve;   // 0x28 (SOCOM 1's at 0x24)
     unsigned char _2c[0xac - 0x2c];
     int m_persona_object_index;   // 0xac (SOCOM 1's at 0x70)
-    unsigned char _b0[0xcc - 0xb0];
+    unsigned char _b0[0xc8 - 0xb0];
+    unsigned int m_c8;   // 0xc8: when the next mission launches (AdvanceMPMission)
     unsigned char m_late_joiner;   // 0xcc (SOCOM 1's at 0x94)
     unsigned char _cd[0xd8 - 0xcd];
     unsigned char m_ten_second_launch;   // 0xd8 (SOCOM 1's at 0x9F)
@@ -720,6 +723,50 @@ struct NetSessionInfo {
 };
 void func_0030CDD0(CZNetwork *net, NetSessionInfo *info);
 
+/* a network interface as the network lists it (0x240 bytes; two names at 8 and 0x108; ours) */
+struct NetInterfaceInfo {
+    unsigned char _0[8];
+    char m_vendor[256];   // 0x8
+    char m_product[256];   // 0x108
+    unsigned char _208[0x240 - 0x208];
+};
+int func_0030BD40(NetInterfaceInfo *list, int max);
+
+/* the multiplayer missions (an object at 0x441650: a mission's record, its index at 0x10) */
+struct MPMissionView {
+    unsigned char _0[0x10];
+    int m_index;   // 0x10
+};
+extern char data_00441650[];
+MPMissionView *func_002C8DB0(void *missions, int number, int arg);
+MPMissionView *func_002C8840(void *missions, int arg);
+int func_002F8120(CZOnlineLobby *lobby);
+bool func_003042B0(void *lan, C2D *list);
+bool func_002E28D0(CZOnlineLobby *lobby, C2D *list);
+
+/* the network configurations found (an object at 0x457C40: the count, then 0x68-byte entries from
+ * 0x30, each valid when its first word is not negative, its name at 8; ours) */
+struct NetCnfEntry {
+    int m_type;   // 0x0
+    unsigned char _4[4];
+    char m_name[0x60];   // 0x8
+};
+
+struct NetCnfList {
+    /* (an accessor: the handlers test the entry's address for null) */
+    NetCnfEntry *Entry(int i) { return &m_entries[i]; }
+
+    int m_count;   // 0x0
+    unsigned char _4[0x30 - 0x4];
+    NetCnfEntry m_entries[16];   // 0x30
+};
+extern NetCnfList data_00457C40;
+extern char data_004567C0[];
+NetCnfEntry *func_001E8890(NetCnfList *list);                       /* (the configuration in use) */
+int func_001E8910(const char *device, const char *name, void *out); /* (a configuration selected) */
+unsigned char func_002E99E0();                                      /* (the lobby's game state) */
+void func_002BADA0();                                               /* (the side swap finished) */
+
 /* the network configurations as a reader value: an 80-byte object NetCnfClose builds on its stack
  * (its constructor and destructor not named yet, so called through their placeholders) */
 struct NetCnfRdr {
@@ -729,6 +776,8 @@ void func_00333AE0(NetCnfRdr *rdr);                 /* (its constructor) */
 void func_00333A20(NetCnfRdr *rdr, int flags);      /* (its destructor) */
 void func_003339B0(NetCnfRdr *rdr, int arg);
 void func_00333770(NetCnfRdr *rdr);
+void func_00333610(NetCnfRdr *rdr, const char *text);
+void func_00386460(CUIVariable *var, NetCnfRdr *rdr);
 
 /* the network configuration's device path ("mc0:" in data) */
 extern char data_003DF360[];                                              /* (a path: the game's directory?) */
