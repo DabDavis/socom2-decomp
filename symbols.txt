@@ -3032,7 +3032,7 @@
 0x00271AE0 0x4C __dt__9CZAnimArgFv  # OVL1; s1:align
 0x00271B30 0x3B0 ParseNetworkPacketArgs__13CZAnimArgListFP6CZAnimP18ZAnimNetworkPacket  # OVL1; s1:calls (SOCOM 1's NetworkReceive calls it on the copy's list, as SOCOM II's func_00273780 does)
 0x00271EE0 0x1FC AddNetworkPacketArgs__13CZAnimArgListFP6CZAnimP18ZAnimNetworkPacket  # OVL1; s1:align
-0x002720E0 0xD8 func_002720E0  # OVL1
+0x002720E0 0xD8 GetCmd__13CZAnimArgListFi  # OVL1; s1:calls (the kit lane's round 8, vetted by the integrator: the find inlined into every task handler calls it with (list, i) exactly as SOCOM 1's taskFindParam calls GetCmd__13CZAnimArgListFi)
 0x002721C0 0xD8 func_002721C0  # OVL1
 0x002722A0 0xF0 func_002722A0  # OVL1
 0x00272390 0xE8 func_00272390  # OVL1
@@ -9377,7 +9377,7 @@
 0x00510E40 0x19C CreatePlanner__7CAiPathFv  # OVL2; s1:order by hand (the demo's 0x1812D0: four function-local planners guarded (CAiPlanner, CBasicPlanner, CStealthPlanner, CRestrainedPlanner vtables), chosen by m_type unless the path owns one, then new CAiStar (0x14 bytes in SOCOM II) with the planner, GetLegMap(-1), &m_stats and GetLegPoints(-1))
 0x00510FE0 0x10 SetPlanner__7CAiPathFP10CAiPlanner  # OVL2; ours (new in SOCOM II, between CreatePlanner and find_path: m_planner = p and m_custom = 1; an AI state (0x5F15A0) hands it its planner)
 0x00510FF0 0xF48 find_path__7CAiStarFP7CAiPath  # OVL2; s1:order by hand (the demo's 0x1814C0, 0xF98 there: the A* loop over the open and closed lists -- SOCOM II's two static vectors 0x66A0E8/0x66A108 -- with the planner's virtuals; TickPathPlanner and PathPlanImmediate call it on CreatePlanner's result)
-0x00511F40 0x3C func_00511F40  # OVL2
+0x00511F40 0x3C IsTraversable__7CAiCellCFv  # OVL2; by hand (CAiCell::IsTraversable's out-of-line copy: the soil's bit test against 0, 8, 9, 10, materialised and negated; the walker unit's GetLocationWidth calls it where its inline is inlined one level, ai_astar.cpp's copy linked first)
 0x00511F80 0x120 GetCell__6CAiMapCFRC9CAiMapLoci  # OVL2; ours (new in SOCOM II: a layer's cell, none off the map -- out of line where it is called whole: CAiMaps::GetAltitude, GetCellCenter, the look and cover searches)
 0x005120A0 0x8 GetMapId__6CAiMapCFv  # OVL2; ours (CAiMap's id at 0xE4, SOCOM 1's m_mapid: ai_astar.cpp's out-of-line copy, which the walks and ValidateCells call)
 0x005120B0 0x10 __vc__Q23std64__vector_imp<P11CAiMapLayer,Q23std25allocator<P11CAiMapLayer>,1>CFUi  # OVL2; by hand (the layers' const operator[], GetCell's, out of line beside the scanlines')
@@ -9416,7 +9416,7 @@
 0x00515520 0x60 func_00515520  # OVL2
 0x00515580 0x194 Reset__7CAiCellFv  # OVL2; ours (SOCOM 1's CAiCell() body, 0x185200, as a function of its own: the constructor 0x515720 and the layers' allocation 0x516FC0 call it; the name ours)
 0x00515720 0x28 __ct__7CAiCellFv  # OVL2; tu: vis_mesh.cpp~ (1.0 beta); s1:order by hand (the demo's 0x185200, ai_map.cpp's first function: __sinit_ai_map.cpp (0x668630) builds the dummy cell with it as SOCOM 1's does; SOCOM II's body calls Reset, 0x515580)
-0x00515750 0x128 func_00515750  # OVL2
+0x00515750 0x128 Contains__10CAiOverlayCFRC9CAiMapLoc  # OVL2; ours (an overlay's cell test: the region's Contains materialised, then the row's run in the scanlines vector at +0x1C; the overlay list's walks call it -- 0x53A500, fcost 0x512930)
 0x00515880 0x78 func_00515880  # OVL2
 0x00515900 0x4D4 func_00515900  # OVL2
 0x00515DE0 0x198 func_00515DE0  # OVL2
@@ -9456,7 +9456,7 @@
 0x00518700 0x60 func_00518700  # OVL2
 0x00518760 0x78 GetSoilByName__6CAiMapFPCc  # OVL2; s1:order by hand (the demo's 0x1871D0: strcasecmp against each soil's name, 1 when none or no name; after CAiMap's construction in both builds)
 0x005187E0 0x118 GetSoilString__6CAiMapFQ26CAiMap4SOIL  # OVL2; ours (new in SOCOM II: the 14-case switch of soil names "nogo" .. "collision", default "default", that SOCOM 1's GetSoilByName had inline; GetSoilByName 0x518760 calls it)
-0x00518900 0x1E0 func_00518900  # OVL2
+0x00518900 0x1E0 GetClosestDir__6CAiMapFRC9CAiMapLocPC6CPnt3D  # OVL2; s1:order by hand (the demo's GetClosestDir(loc, CPnt3D *) 0x187330, before GetClosestDir(loc, loc) and GetClosestDir(CPnt3D *) in both builds; a member: _find_cover calls it on the map with the fill's start and the point)
 0x00518AE0 0x7C GetClosestDir__6CAiMapFRC9CAiMapLocRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x187790: the step from one cell to the other as a vector, normalized, handed to GetClosestDir(const CPnt3D *))
 0x00518B60 0x1D8 GetClosestDir__6CAiMapFPC6CPnt3D  # OVL2; s1:order by hand (the demo's 0x187890, the same 0x1D8 bytes: north's vector dotted with the argument, then W..E or E..W tried through GetDirVec, the least 1 - dot kept)
 0x00518D40 0x38 GetDirDelta__6CAiMapFQ26CAiMap3DIRQ26CAiMap3DIR  # OVL2; s1:order by hand (the demo's 0x187A70, the same subtraction of two byte enums folded into -4..4; between the GetClosestDirs and GetDirByName in both builds)
@@ -9546,7 +9546,7 @@
 0x0051F7A0 0x3D0 func_0051F7A0  # OVL2
 0x0051FB70 0xD3C func_0051FB70  # OVL2
 0x005208B0 0x1D8 func_005208B0  # OVL2
-0x00520A90 0x99C func_00520A90  # OVL2
+0x00520A90 0x99C insert__Q23std64__vector_imp<Q26CAiMap4link,Q23std25allocator<Q26CAiMap4link>,0>FPQ26CAiMap4linkUiRCQ26CAiMap4link  # OVL2; by hand (the links' class insert: max_size 0xFFFFFFFF/12 = 0x15555555, the links' resize 0x51C840 and push_back 0x5309A0 call it with (end, n, x))
 0x00521430 0x388 func_00521430  # OVL2
 0x005217C0 0x914 func_005217C0  # OVL2
 0x005220E0 0x1D8 func_005220E0  # OVL2
@@ -9685,7 +9685,7 @@
 0x0052F310 0x18 func_0052F310  # OVL2
 0x0052F330 0x64 func_0052F330  # OVL2
 0x0052F3A0 0x14 func_0052F3A0  # OVL2
-0x0052F3C0 0x10 func_0052F3C0  # OVL2; tu: char_type.cpp~ (1.0 beta)
+0x0052F3C0 0x10 __as__9CAiMapLocFRC9CAiMapLoc  # OVL2; tu: char_type.cpp~ (1.0 beta); by hand (CAiMapLoc's implicit assignment, a word copy: out of line where SetCellLink's Add is inlined one level)
 0x0052F3D0 0x8 func_0052F3D0  # OVL2
 0x0052F3E0 0xC func_0052F3E0  # OVL2
 0x0052F3F0 0x10 func_0052F3F0  # OVL2
@@ -9705,33 +9705,33 @@
 0x00530230 0x140 GetRegionContaining__6CAiMapFRC9CAiMapLocQ36CAiMap6region4TYPEb  # OVL2; s1:order by hand (the demo's 0x19E970 after InflateRegion: the regions walked, hidden ones skipped on the bool, type 7 or the region's own, the cell inside)
 0x00530370 0xD4 GetRegion__6CAiMapFPCcR9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19EA90: strcasecmp against each region's name at +0xC, the corner copied out)
 0x00530450 0xB0 GetRegion__6CAiMapFRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19EB30: the region whose corner is the cell)
-0x00530500 0x1E4 func_00530500  # OVL2
+0x00530500 0x1E4 GetDistance__Q26CAiMap4linkCFRC9CAiMapLocRC9CAiMapLoc  # OVL2; ours (new in SOCOM II, in the map tables between GetRegion(loc) and GetCellLink: a link's Manhattan legs -- from the cell to the link's end on its map, or from the other end to the goal -- the shorter through _min<int>; ai_maps.cpp's 0x52ACC0 calls it; byte-exact in ai_maptable.cpp)
 0x005306F0 0xB0 GetCellLink__6CAiMapFRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19EBD0, after the two GetRegions in both builds: the links at 0x104 walked for the cell -- 12-byte links in SOCOM II)
-0x005307A0 0x1E0 func_005307A0  # OVL2
-0x00530980 0x20 back__Q23std68__vector_imp<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>,0>Fv  # OVL2; s1:exact
-0x005309A0 0x24 func_005309A0  # OVL2
-0x005309D0 0x20 func_005309D0  # OVL2
-0x005309F0 0xB0 func_005309F0  # OVL2
-0x00530AA0 0x34 func_00530AA0  # OVL2
-0x00530AE0 0x18 func_00530AE0  # OVL2
-0x00530B00 0x20 func_00530B00  # OVL2
-0x00530B20 0xB0 func_00530B20  # OVL2
+0x005307A0 0x1E0 SetCellLink__6CAiMapFRC9CAiMapLocb  # OVL2; ours (new in SOCOM II, between GetRegion's helpers and the links' pieces: the cell's link dropped (links' Remove inlined one level: Find, end, !=, erase out of line) or made (Add inlined one level: FindLink, link(), CAiMapLoc's =, push_back, back), the cell made walkable and marked, the map marked changed; byte-exact in ai_maptable.cpp)
+0x00530980 0x20 back__Q23std64__vector_imp<Q26CAiMap4link,Q23std25allocator<Q26CAiMap4link>,0>Fv  # OVL2; s1:exact; by hand (the links' back(): 12-byte elements, so not SOCOM 1's CAiPath::point back the s1:exact pairing gave (identical words, SOCOM 1's point was 12 bytes); SetCellLink's Add takes the new link through it)
+0x005309A0 0x24 push_back__Q23std64__vector_imp<Q26CAiMap4link,Q23std25allocator<Q26CAiMap4link>,0>FRCQ26CAiMap4link  # OVL2; by hand (the links' push_back: insert(end, 1, x) through 0x520A90; SetCellLink's Add)
+0x005309D0 0x20 __ct__Q26CAiMap4linkFv  # OVL2; ours (a new link's kind 8 set in the mem-initializer list, word read-mask-write; SetCellLink's Add builds its temporary with it)
+0x005309F0 0xB0 FindLink__Q26CAiMap5linksFRC9CAiMapLoc  # OVL2; ours (the link on a cell or none: SetCellLink's Add calls it out of line; byte-exact from ai.h)
+0x00530AA0 0x34 erase__Q23std64__vector_imp<Q26CAiMap4link,Q23std25allocator<Q26CAiMap4link>,0>FQ33std64__vector_imp<Q26CAiMap4link,Q23std25allocator<Q26CAiMap4link>,0>8iterator  # OVL2; by hand (the class vector's single-element erase's iterator wrapper, new in include/vector: the iterator homed, erase(T *) 0x532000 called; SetCellLink's Remove)
+0x00530AE0 0x18 __ne__Q33std64__vector_imp<Q26CAiMap4link,Q23std25allocator<Q26CAiMap4link>,0>8iteratorCFRCQ33std64__vector_imp<Q26CAiMap4link,Q23std25allocator<Q26CAiMap4link>,0>8iterator  # OVL2; by hand (the links' iterator !=, out of line in SetCellLink's Remove; byte-exact from include/vector)
+0x00530B00 0x20 end__Q23std64__vector_imp<Q26CAiMap4link,Q23std25allocator<Q26CAiMap4link>,0>Fv  # OVL2; by hand (the links' end() by value, out of line where SetCellLink's Remove is inlined one level; byte-exact from include/vector)
+0x00530B20 0xB0 Find__Q26CAiMap5linksFRC9CAiMapLoc  # OVL2; ours (the link on a cell as an iterator, end() for none: SetCellLink's Remove calls it out of line, first of the links' pieces after it; byte-exact from ai.h)
 0x00530BD0 0x88 FindActionLocation__6CAiMapFUiR9CAiMapLocPPQ26CAiMap6action  # OVL2; s1:order by hand (the demo's 0x19EFC0, before GetCellAction in both builds: the actions walked for an id (bits 4-19 of the second word), the action handed back when asked, the cell copied out, true)
 0x00530C60 0xB0 GetCellAction__6CAiMapCFRC9CAiMapLoc  # OVL2; ours (byte for byte GetCellAction's code, between FindActionLocation and GetCellAction where SOCOM 1 has nothing: a second overload -- const is our guess)
 0x00530D10 0xB0 GetCellAction__6CAiMapFRC9CAiMapLoc  # OVL2; s1:callee by hand (CRestrainedPlanner::is_traversable calls it with the map and the destination cell where SOCOM 1's CRestrainedTravel calls GetCellAction__6CAiMapFRC9CAiMapLoc, and reads the result as an action: m_type_invalid, m_type, m_state)
 0x00530DC0 0xFC GetLocation__6CAiMapFPCcR9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19F0D0 after GetCellAction: the names walked with strncasecmp behind a second null test, the cell copied out, true; 15 characters where SOCOM 1 compared 14); non-const in SOCOM II: only a walk straight over this->m_namesTable keeps this in s4 as the target does (through a cast this, MW hoists the table's address)
-0x00530EC0 0x48 func_00530EC0  # OVL2
+0x00530EC0 0x48 Sort__Q26CAiMap5namesFv  # OVL2; ours (SOCOM 1's SortByNames by the SetName row's note: std::sort over the names' begin and end, by value, with _name_less; CAiMaps sorts its six name tables (this + 0x3C, 12 apart) through it from 0x52B820; byte-exact in ai_maptable.cpp)
 0x00530F10 0x30 SetName__Q26CAiMap4nameFPCc  # OVL2; ours (new in SOCOM II, between SortByNames and GetCellName: strncpy of 15 characters into the name at +4, the sixteenth byte zeroed)
 0x00530F40 0xB0 GetCellName__6CAiMapFRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19F1C0 before ValidateName and GetMapEx: the 0x18-byte names walked for the cell)
 0x00530FF0 0x8 ValidateName__Q26CAiMap4nameFv  # OVL2; s1:order by hand (the demo's 0x19F260, 8 bytes in both builds, between GetCellName and GetMapEx: the name's last byte zeroed, at 0x13 here)
 0x00531000 0xF0 GetMapEx__6CAiMapFRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19F270 before FreeEx and AllocEx: no extra data, or a cell outside the map, gives none; else m_mapex + the cell's index times m_mapex_bytes -- SOCOM II finds the index through the cell's scanline)
 0x005310F0 0x30 FreeEx__6CAiMapFv  # OVL2; s1:order by hand (the demo's 0x19F330, between GetMapEx and AllocEx: m_mapex (0xE0, SOCOM 1's 0xAC) deleted[] and zeroed, m_mapex_bytes (0x60) zeroed)
 0x00531120 0x70 AllocEx__6CAiMapFUi  # OVL2; s1:order by hand (the demo's 0x19F390, after FreeEx: the old block deleted[], m_mapex_bytes set and bytes * m_cellcount (0x70) allocated and zeroed; SOCOM II no longer points each scanline into it)
-0x00531190 0x28 func_00531190  # OVL2
+0x00531190 0x28 _name_less__FRCQ26CAiMap4nameRCQ26CAiMap4name  # OVL2; ours (the names' sort comparator: strncasecmp over 15 characters < 0; names::Sort takes its address; byte-exact in ai_maptable.cpp, superseding its draft)
 0x005311C0 0x18 _min<i>__2aiFRCiRCi_RCi  # OVL2; ours, by its body (the smaller of two ints by reference: slt, movn -- _min<Us>'s and _min<Ui>'s shape signed; the CAiMap table unit's template tail, after the names' sort comparator)
 0x005311E0 0xE4 func_005311E0  # OVL2
-0x005312D0 0xD30 func_005312D0  # OVL2
-0x00532000 0x1AC func_00532000  # OVL2
+0x005312D0 0xD30 sort<Q33std64__vector_imp<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>,0>8iterator,PFRCQ26CAiMap4nameRCQ26CAiMap4name_b>__3stdFQ33std64__vector_imp<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>,0>8iteratorQ33std64__vector_imp<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>,0>8iteratorPFRCQ26CAiMap4nameRCQ26CAiMap4name_b_v  # OVL2; by hand (MSL's sort instance for the names: names::Sort 0x530EC0 calls it with the two iterators and the comparator 0x531190; 0xD30 bytes in ai_maptable.cpp's template tail -- include/algorithm has no sort yet, the unit declares it)
+0x00532000 0x1AC erase__Q23std64__vector_imp<Q26CAiMap4link,Q23std25allocator<Q26CAiMap4link>,0>FPQ26CAiMap4link  # OVL2; by hand (the class vector's single-element erase for the links: the elements after copied down 8x unrolled, the size counted down; the iterator wrapper 0x530AA0 calls it)
 0x005321B0 0x72C func_005321B0  # OVL2
 0x005328E0 0x10C func_005328E0  # OVL2
 0x005329F0 0x31C func_005329F0  # OVL2
@@ -9778,19 +9778,19 @@
 0x00537400 0xA48 WalkLine__6CAiMapFRC9CAiMapLocPC6CPnt3DPFRC19MAP_LINEWALK_STRUCTPv_bPvf  # OVL2; s1:order by hand (the demo's WalkLine(loc, CPnt3D *) 0x1A6B00, 0xA64 bytes, before the two-cell one as here; CanSeeLine(loc, dir) 0x539070 tail-calls it with _SeeLineCallback as SOCOM 1's does -- SOCOM II adds the step, 0.2f in $f12)
 0x00537E50 0xB28 WalkLine__6CAiMapFRC9CAiMapLocRC9CAiMapLocPFRC19MAP_LINEWALK_STRUCTPv_bPvf  # OVL2; s1:order by hand (the demo's WalkLine(loc, loc) 0x1A7570, 0xD04 bytes; CanSeeLine and CanTravelLine 0x539090/0x5390B0 tail-call it with their callbacks as SOCOM 1's do, the step 0.2f added)
 0x00538980 0xD8 CanSeePoint__7CAiMapsFPC6CPnt3DPC6CPnt3Df  # OVL2; ours (new in SOCOM II, first of the walker unit's visibility tests: the walk 0x5352D0 between two points with the callback 0x538A60, a range and visibility 1; seen when nothing is lost, not when all is, else by chance (rand) of what is left -- the AI states call it on AiMaps)
-0x00538A60 0x2A4 func_00538A60  # OVL2
+0x00538A60 0x2A4 _SightLineCallback__FRC19MAP_LINEWALK_STRUCTPv  # OVL2; ours (CAiMaps::CanSeePoint's walk callback: the first cell kept, the range squared tested, each cell's share of the visibility taken -- other map off its link 0.2, cover 0.9, in/out of doors 0.75, through a shut door 0.25; byte-exact in ai_mapwalk.cpp)
 0x00538D10 0x120 ComputeLineVisibility__7CAiMapsFRC9CAiMapLocPC6CPnt3DUif  # OVL2; ours (new in SOCOM II: from a cell's centre (GetCellCenter) raised by a height, the point test 0x538E30 inlined -- its literal pool shared, 0x64FA28/0x64FA30)
 0x00538E30 0xB4 ComputeLineVisibility__7CAiMapsFPC6CPnt3DPC6CPnt3DUi  # OVL2; ours (new in SOCOM II, after SOCOM 1's ComputeLineVisibility: the AI states call it on AiMaps (0x66A1B0) with two points and flags; the walk 0x5352D0 with the visibility callback flag 1 picks, its loss held in [0, 1] and taken from 1)
 0x00538EF0 0x17C ComputeLineVisibility__6CAiMapFRC9CAiMapLocRC9CAiMapLocUiff  # OVL2; s1:order by hand (the demo's CAiMap::ComputeLineVisibility 0x1A8280, right before the three line tests in both builds: the cells' altitudes raised by two heights, WalkLine(loc, loc) with the visibility callback, the loss saturated and taken from 1)
 0x00539070 0x20 CanSeeLine__6CAiMapFRC9CAiMapLocPC6CPnt3DP9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x1A8330, the first of the three line tests in both builds: WalkLine(from, dir, _SeeLineCallback, out, 0.2f))
 0x00539090 0x20 CanSeeLine__6CAiMapFRC9CAiMapLocRC9CAiMapLocP9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x1A8340: WalkLine(from, to, _SeeLineCallback, out, 0.2f); CAiMaps::CanSeeLine calls it)
 0x005390B0 0x20 CanTravelLine__6CAiMapFRC9CAiMapLocRC9CAiMapLocP9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x1A8350: WalkLine(from, to, _TravelLineCallback 0x539580, out, 0.2f); CAiMaps::CanTravelLine calls it)
-0x005390D0 0x168 func_005390D0  # OVL2
-0x00539240 0x1B4 func_00539240  # OVL2
+0x005390D0 0x168 _VisSeeLineCallback__FRC19MAP_LINEWALK_STRUCTPv  # OVL2; ours (ComputeLineVisibility's callback without flag 1: _SeeLineCallback's opaque and shut-door tests set the visibility to 1, then it returns 0x539240's result; byte-exact in ai_mapwalk.cpp)
+0x00539240 0x1B4 _VisLineCallback__FRC19MAP_LINEWALK_STRUCTPv  # OVL2; s1:order by hand (SOCOM 1's _VisLineCallback, the soils' visibility adds 12/4/5 as the demo's 0x1A8360, here 0.35/0.5/0.85 with heights 15/18/20 past a range of 30 and the line's blended height against the cell's altitude; ComputeLineVisibility's callback with flag 1; byte-exact in ai_mapwalk.cpp)
 0x00539400 0x17C _SeeLineCallback__FRC19MAP_LINEWALK_STRUCTPv  # OVL2; s1:order by hand (the demo's _SeeLineCallback 0x1A8460, the eye's line callback CanSeeLine x2 hand WalkLine in both builds: opaque soils 0/8/10 stop it, and SOCOM II's shut doors (actions of kind 1 or 7 in state 0); the blocking cell handed back)
-0x00539580 0x138 func_00539580  # OVL2
-0x005396C0 0x3E0 func_005396C0  # OVL2
-0x00539AA0 0xD0 func_00539AA0  # OVL2
+0x00539580 0x138 _TravelLineCallback__FRC19MAP_LINEWALK_STRUCTPv  # OVL2; s1:order by hand (the demo's _TravelLineCallback 0x1A84C0 after _SeeLineCallback in both builds: the four no-go soils, then steep ground that climbs from the previous cell; CanTravelLine's callback; byte-exact in ai_mapwalk.cpp)
+0x005396C0 0x3E0 GetLocationWidth__6CAiMapFRC9CAiMapLoci  # OVL2; s1:order by hand (the demo's GetLocationWidth 0x1A8630 after _TravelLineCallback in both builds: rings of cells around one tested out to a limit, the map's bounds and each ring's rows and sides through a CAiMap::IsTraversable-shaped inline inlined one level -- GetCell and 0x511F40 out of line; returns the width)
+0x00539AA0 0xD0 _lerp__FPC6CPnt3DPC6CPnt3DP6CPnt3Df  # OVL2; ours (CAiMaps::WalkLine's step: a*(1-t) + b*t through CPnt3D's const * and +, Scale and Add out of line; byte-exact in ai_mapwalk.cpp)
 0x00539B70 0x50 func_00539B70  # OVL2; OVL2's copy of _saturate<f> (OVL1 0x267A60, the same 0x50 bytes; CRemoteCtrl::PostMortemPreTick calls it -- the kit lane); ovl-copy: _saturate<f>__FPfRCfRCf_b
 0x00539BC0 0xBC func_00539BC0  # OVL2
 0x00539C80 0x74 func_00539C80  # OVL2
@@ -9799,9 +9799,9 @@
 0x00539E90 0x20 func_00539E90  # OVL2
 0x00539EB0 0x2B0 FindLookLoc__6CAiMapFRC9CAiMapLocPC6CPnt3DR9CAiMapLocRQ26CAiMap3DIRi  # OVL2; s1:order by hand (the demo's FindLookLoc 0x1A9590, first of the look and cover searches in both builds: the start's centre (GetCellCenter inlined one level), the XZ direction to the point, FloodFill with _find_look 0x53A410)
 0x0053A160 0x2B0 func_0053A160  # OVL2
-0x0053A410 0xEC func_0053A410  # OVL2
-0x0053A500 0xE0 func_0053A500  # OVL2
-0x0053A5E0 0x150 func_0053A5E0  # OVL2
+0x0053A410 0xEC _find_look__FR20MAP_FLOODFILL_STRUCTPv  # OVL2; s1:order by hand (the demo's _find_look 0x1A9D50, the same switch on the floodfill byte at +0x19 and CanSeeLine(loc, &data->pos) in its testing case; SOCOM II's open-cell test calls IsTraversable, HasAction and the overlay walk 0x53A500 out of line; FindLookLoc hands it to FloodFill) -- written in ai_maplayer.cpp, OPEN
+0x0053A500 0xE0 Contains__14CAiOverlayListCFPC7CAiCellRC9CAiMapLoc  # OVL2; ours (the overlays' const walk, an inline's out-of-line copy right after its first caller _find_look: an occupied cell tested against each CAiOverlay::Contains (0x515750), the iterators in stack slots; called on the list at 0x66A0B8 by both search callbacks, inlined by the base planner's fcost)
+0x0053A5E0 0x150 _find_cover__FR20MAP_FLOODFILL_STRUCTPv  # OVL2; s1:order by hand (the demo's _find_cover 0x1A9E40 after _find_look: the open-cell test, then an opaque cell whose direction from the start toward the point is the fill's own (GetClosestDir(loc, point), GetDirDelta == 0) ends the search) -- written in ai_maplayer.cpp, OPEN
 0x0053A730 0x134 DeleteLayers__6CAiMapFv  # OVL2; ours (new in SOCOM II: ~CAiMap's call after FreeEx -- every layer past the first deleted through ~CAiMapLayer inlined, the pod erase 0x53AAC0 over them, SetModified(true); ai_maplayer.cpp)
 0x0053A870 0x78 __dt__14CAiMapLayerVecFv  # OVL2; ours (~CAiMap destroys m_layers through it with -1, as it does readers through ~readers: four this-tests, a class over the pointer vector's three -- ai_maplayer.cpp)
 0x0053A8F0 0x30 AllocCells__11CAiMapLayerFUi  # OVL2; ours (the map readers' call: m_cells = CAiCell::Alloc(n), returned -- ai_maplayer.cpp)
@@ -9831,12 +9831,12 @@
 0x0053B5F0 0x11C match_name_to_chartype__14CCharacterTypeFP8CRdrFilePCcPCc  # OVL2; s1:calls
 0x0053B710 0x1D8 func_0053B710  # OVL2
 0x0053B8F0 0x40 GetSound__14CCharacterTypeCF15CHARACTER_SOUND  # OVL2; ours (new in SOCOM II: m_sounds[s] at 0x168 for 0 <= s < 85, none otherwise; CSealCtrlAi::OnStunDamage calls it twice)
-0x0053B930 0xE8 func_0053B930  # OVL2
-0x0053BA20 0x70 func_0053BA20  # OVL2
-0x0053BA90 0x40 func_0053BA90  # OVL2
-0x0053BAD0 0x8 func_0053BAD0  # OVL2
-0x0053BAE0 0x14 func_0053BAE0  # OVL2
-0x0053BB00 0xC8 func_0053BB00  # OVL2
+0x0053B930 0xE8 DeleteMultiplayerMessages__14CCharacterTypeFv  # OVL2; ours (new in SOCOM II, after GetSound: the messages at 0x3A0 deleted through std::for_each (stack-slot iterators), cleared, then FreeVector on the base vector -- its four pieces out of line after it; byte-exact in char_type.cpp)
+0x0053BA20 0x70 __dt__Q23std62vector<P14MultiplayerMsg,Q23std28allocator<P14MultiplayerMsg>>Fv  # OVL2; by hand (FreeVector's temporary destroyed in DeleteMultiplayerMessages with -1: three this-tests, the base vector's)
+0x0053BA90 0x40 swap__Q23std62vector<P14MultiplayerMsg,Q23std28allocator<P14MultiplayerMsg>>FRQ23std62vector<P14MultiplayerMsg,Q23std28allocator<P14MultiplayerMsg>>  # OVL2; by hand (FreeVector's swap in DeleteMultiplayerMessages)
+0x0053BAD0 0x8 clear__Q23std62vector<P14MultiplayerMsg,Q23std28allocator<P14MultiplayerMsg>>Fv  # OVL2; by hand (FreeVector's clear in DeleteMultiplayerMessages: size zeroed)
+0x0053BAE0 0x14 __ct__Q23std62vector<P14MultiplayerMsg,Q23std28allocator<P14MultiplayerMsg>>Fv  # OVL2; by hand (FreeVector's temporary in DeleteMultiplayerMessages: the three words zeroed)
+0x0053BB00 0xC8 ClearMultiplayerMessageSounds__14CCharacterTypeFv  # OVL2; s1:order by hand (the demo's ClearMultiplayerMessageSounds 0x247BB0, before InitMultiplayerMessages in both builds: every type's messages' sounds zeroed -- SOCOM II's messages are the pointer vector at 0x3A0, the sound at +0x10; byte-exact in char_type.cpp)
 0x0053BBD0 0x320 InitMultiplayerMessages__14CCharacterTypeFP5_zrdr  # OVL2; s1:calls
 0x0053BEF0 0x214 func_0053BEF0  # OVL2
 0x0053C110 0xF0 func_0053C110  # OVL2
@@ -10321,7 +10321,7 @@
 0x005743C0 0x364 func_005743C0  # OVL2
 0x00574730 0xC4 get_valve__11CSealCtrlAiFPCc  # OVL2; s1:order (after the constructor, as SOCOM 1's get_valve__11CSealCtrlAiFPCc: each valve's name, the inlined get_valve(SEAL_VALVE), compared with strcmp, its index returned; 4 for none) -- the SEAL lane, round 4
 0x00574800 0x30 GetJumpFlag__11CSealCtrlAiCFv  # OVL2; slot 0xA4 of __vt__11CSealCtrlAi, the base's inline GetJumpFlag (0x592020, returns 0) overridden, as SOCOM 1's CSealCtrlAi had its own
-0x00574830 0x2A4 func_00574830  # OVL2
+0x00574830 0x2A4 SetAiEnabled__11CSealCtrlAiFbb  # OVL2; s1:calls (the kit lane's round 8, vetted by the integrator: CTStopAll::Tick passes it (!bit0, !bit1) as SOCOM 1's CTStopAll::Tick passes SetAiEnabled__11CSealCtrlAiFbb)
 0x00574AE0 0x50 StopAiSound__11CSealCtrlAiF8AI_SOUND  # OVL2; s1:order by hand (SOCOM 1's StopAiSound__11CSealCtrlAiF8AI_SOUND word for word bar the statics' gp addressing: the indexed instance stopped and cleared; UpdateAiMapLoc calls it -- the SEAL lane, round 8)
 0x00574B30 0x70 PlayAiSound__11CSealCtrlAiF8AI_SOUND  # OVL2; s1:order by hand (SOCOM 1's PlayAiSound__11CSealCtrlAiF8AI_SOUND, after StopAiSound as here, word for word bar the gp addressing: the indexed sound played (PlaySound, slot 0xC, with 0 and 255) unless its instance plays -- the SEAL lane, round 8)
 0x00574BA0 0x24 func_00574BA0  # OVL2
@@ -11149,112 +11149,112 @@
 0x005CDA20 0x74 func_005CDA20  # OVL2
 0x005CDAA0 0x108 func_005CDAA0  # OVL2
 0x005CDBB0 0x18 func_005CDBB0  # OVL2
-0x005CDBD0 0x1CC func_005CDBD0  # OVL2
-0x005CDDA0 0x154 func_005CDDA0  # OVL2
-0x005CDF00 0x140 func_005CDF00  # OVL2
-0x005CE040 0x154 func_005CE040  # OVL2
-0x005CE1A0 0x4B4 func_005CE1A0  # OVL2
-0x005CE660 0x27C func_005CE660  # OVL2
-0x005CE8E0 0x160 func_005CE8E0  # OVL2
-0x005CEA40 0x1F4 func_005CEA40  # OVL2
-0x005CEC40 0x118 func_005CEC40  # OVL2
-0x005CED60 0x524 func_005CED60  # OVL2
-0x005CF290 0x1EC func_005CF290  # OVL2
-0x005CF480 0x264 func_005CF480  # OVL2
-0x005CF6F0 0x108 func_005CF6F0  # OVL2
-0x005CF800 0x54 func_005CF800  # OVL2
-0x005CF860 0xD0 func_005CF860  # OVL2
-0x005CF930 0x8BC func_005CF930  # OVL2
-0x005D01F0 0x538 func_005D01F0  # OVL2
-0x005D0730 0x164 func_005D0730  # OVL2
-0x005D08A0 0x148 func_005D08A0  # OVL2
-0x005D09F0 0x148 func_005D09F0  # OVL2
-0x005D0B40 0x148 func_005D0B40  # OVL2
-0x005D0C90 0x580 func_005D0C90  # OVL2
-0x005D1210 0x3C func_005D1210  # OVL2
-0x005D1250 0x3C func_005D1250  # OVL2
-0x005D1290 0x44C func_005D1290  # OVL2
-0x005D16E0 0x48C func_005D16E0  # OVL2
-0x005D1B70 0x288 func_005D1B70  # OVL2
-0x005D1E00 0x504 func_005D1E00  # OVL2
-0x005D2310 0x164 func_005D2310  # OVL2
-0x005D2480 0x1AC func_005D2480  # OVL2
-0x005D2630 0x25C func_005D2630  # OVL2
-0x005D2890 0x8 func_005D2890  # OVL2
-0x005D28A0 0x150 func_005D28A0  # OVL2
+0x005CDBD0 0x1CC Tick__6CTWaitFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::WAIT's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTWait's tick for ai::WAIT
+0x005CDDA0 0x154 Begin__6CTWaitFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::WAIT's begin (the first command so registered); SOCOM 1's RegisterCommands passes CTWait's begin for ai::WAIT
+0x005CDF00 0x140 Parse__6CTWaitFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::WAIT's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTWait's parse for ai::WAIT
+0x005CE040 0x154 Tick__7CTValveFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::VALVE's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTValve's tick for ai::VALVE
+0x005CE1A0 0x4B4 Parse__7CTValveFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::VALVE's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTValve's parse for ai::VALVE
+0x005CE660 0x27C Tick__8CTTurretFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::TURRET's tick (the first command so registered); the class name ours, after the command (SOCOM II's, absent from SOCOM 1)
+0x005CE8E0 0x160 Parse__8CTTurretFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::TURRET's parse (the first command so registered); the class name ours, after the command (SOCOM II's, absent from SOCOM 1)
+0x005CEA40 0x1F4 Tick__6CTTeamFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::TEAM's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTTeam's tick for ai::TEAM
+0x005CEC40 0x118 Parse__6CTTeamFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::TEAM's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTTeam's parse for ai::TEAM
+0x005CED60 0x524 Tick__8CTRegionFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::INREGION's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTRegion's tick for ai::INREGION
+0x005CF290 0x1EC Parse__8CTRegionFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::INREGION's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTRegion's parse for ai::INREGION
+0x005CF480 0x264 Tick__7CTRangeFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::INRANGE's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTRange's tick for ai::INRANGE
+0x005CF6F0 0x108 Parse__7CTRangeFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::INRANGE's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTRange's parse for ai::INRANGE
+0x005CF800 0x54 Tick__9CTStopAllFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::STOPALL's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTStopAll's tick for ai::STOPALL
+0x005CF860 0xD0 Parse__9CTStopAllFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::STOPALL's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTStopAll's parse for ai::STOPALL
+0x005CF930 0x8BC Tick__7CTStateFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::STATE's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTState's tick for ai::STATE
+0x005D01F0 0x538 Parse__7CTStateFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::STATE's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTState's parse for ai::STATE
+0x005D0730 0x164 Tick__8CTStanceFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::STANCE's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTStance's tick for ai::STANCE
+0x005D08A0 0x148 End__8CTStanceFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::STANCE's end (the first command so registered); SOCOM 1's RegisterCommands passes CTStance's end for ai::STANCE
+0x005D09F0 0x148 Begin__8CTStanceFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::STANCE's begin (the first command so registered); SOCOM 1's RegisterCommands passes CTStance's begin for ai::STANCE
+0x005D0B40 0x148 Parse__8CTStanceFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::STANCE's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTStance's parse for ai::STANCE
+0x005D0C90 0x580 Tick__7CTSoundFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::SOUND's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTSound's tick for ai::SOUND
+0x005D1210 0x3C End__7CTSoundFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::SOUND's end (the first command so registered); SOCOM 1's RegisterCommands passes CTSound's end for ai::SOUND
+0x005D1250 0x3C Begin__7CTSoundFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::SOUND's begin (the first command so registered); SOCOM 1's RegisterCommands passes CTSound's begin for ai::SOUND
+0x005D1290 0x44C Parse__7CTSoundFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::SOUND's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTSound's parse for ai::SOUND
+0x005D16E0 0x48C Tick__8CTSignalFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::SIGNAL's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTSignal's tick for ai::SIGNAL
+0x005D1B70 0x288 Parse__8CTSignalFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::SIGNAL's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTSignal's parse for ai::SIGNAL
+0x005D1E00 0x504 Tick__12CTSetAnimSetFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::SETANIMSET's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTSetAnimSet's tick for ai::SETANIMSET
+0x005D2310 0x164 Parse__12CTSetAnimSetFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::SETANIMSET's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTSetAnimSet's parse for ai::SETANIMSET
+0x005D2480 0x1AC Tick__9CTSetModeFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::SETMODE's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTSetMode's tick for ai::SETMODE
+0x005D2630 0x25C Parse__9CTSetModeFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::SETMODE's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTSetMode's parse for ai::SETMODE
+0x005D2890 0x8 Tick__8CTSelectFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::SELECT's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTSelect's tick for ai::SELECT
+0x005D28A0 0x150 Parse__8CTSelectFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::SELECT's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTSelect's parse for ai::SELECT
 0x005D29F0 0xB0 func_005D29F0  # OVL2
-0x005D2AA0 0x488 func_005D2AA0  # OVL2
-0x005D2F30 0x808 func_005D2F30  # OVL2
-0x005D3740 0x540 func_005D3740  # OVL2
-0x005D3C80 0x27C func_005D3C80  # OVL2
+0x005D2AA0 0x488 End__6CTPlayFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::ANIMATE's end (the first command so registered); SOCOM 1's RegisterCommands passes CTPlay's end for ai::ANIMATE
+0x005D2F30 0x808 Tick__6CTPlayFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::ANIMATE's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTPlay's tick for ai::ANIMATE
+0x005D3740 0x540 Begin__6CTPlayFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::ANIMATE's begin (the first command so registered); SOCOM 1's RegisterCommands passes CTPlay's begin for ai::ANIMATE
+0x005D3C80 0x27C Parse__6CTPlayFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::ANIMATE's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTPlay's parse for ai::ANIMATE
 0x005D3F00 0x180 func_005D3F00  # OVL2
-0x005D4080 0x104 func_005D4080  # OVL2
-0x005D4190 0x168 func_005D4190  # OVL2
-0x005D4300 0x180 func_005D4300  # OVL2
-0x005D4480 0x84 func_005D4480  # OVL2
-0x005D4510 0x254 func_005D4510  # OVL2
+0x005D4080 0x104 End__8CTPursueFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::PURSUE's end (the first command so registered); SOCOM 1's RegisterCommands passes CTPursue's end for ai::PURSUE
+0x005D4190 0x168 Tick__8CTPursueFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::PURSUE's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTPursue's tick for ai::PURSUE
+0x005D4300 0x180 Begin__8CTPursueFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::PURSUE's begin (the first command so registered); SOCOM 1's RegisterCommands passes CTPursue's begin for ai::PURSUE
+0x005D4480 0x84 Parse__8CTPursueFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::PURSUE's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTPursue's parse for ai::PURSUE
+0x005D4510 0x254 Tick__7CTParamFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::PARAM's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTParam's tick for ai::PARAM
 0x005D4770 0x9D0 func_005D4770  # OVL2
-0x005D5140 0x5B4 func_005D5140  # OVL2
-0x005D5700 0xB4 func_005D5700  # OVL2
-0x005D57C0 0x260 func_005D57C0  # OVL2
-0x005D5A20 0x114 func_005D5A20  # OVL2
-0x005D5B40 0x1B4 func_005D5B40  # OVL2
-0x005D5D00 0x7B0 func_005D5D00  # OVL2
-0x005D64B0 0x2B4 func_005D64B0  # OVL2
-0x005D6770 0x278 func_005D6770  # OVL2
-0x005D69F0 0x3CC func_005D69F0  # OVL2
-0x005D6DC0 0x274 func_005D6DC0  # OVL2
-0x005D7040 0x130 func_005D7040  # OVL2
-0x005D7170 0x114 func_005D7170  # OVL2
-0x005D7290 0x140 func_005D7290  # OVL2
-0x005D73D0 0x47C func_005D73D0  # OVL2
-0x005D7850 0x1A0 func_005D7850  # OVL2
-0x005D79F0 0x47C func_005D79F0  # OVL2
+0x005D5140 0x5B4 Parse__7CTParamFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::PARAM's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTParam's parse for ai::PARAM
+0x005D5700 0xB4 Tick__7CTPaintFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::PAINT's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTPaint's tick for ai::PAINT
+0x005D57C0 0x260 Parse__7CTPaintFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::PAINT's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTPaint's parse for ai::PAINT
+0x005D5A20 0x114 End__6CTMoveFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::MOVE's end (the first command so registered); SOCOM 1's RegisterCommands passes CTMove's end for ai::MOVE
+0x005D5B40 0x1B4 Tick__6CTMoveFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::MOVE's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTMove's tick for ai::MOVE
+0x005D5D00 0x7B0 Begin__6CTMoveFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::MOVE's begin (the first command so registered); SOCOM 1's RegisterCommands passes CTMove's begin for ai::MOVE
+0x005D64B0 0x2B4 Parse__6CTMoveFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::MOVE's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTMove's parse for ai::MOVE
+0x005D6770 0x278 Tick__5CTMapFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::MAP's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTMap's tick for ai::MAP
+0x005D69F0 0x3CC Parse__5CTMapFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::MAP's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTMap's parse for ai::MAP
+0x005D6DC0 0x274 Tick__7CTMacroFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::MACRO's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTMacro's tick for ai::MACRO
+0x005D7040 0x130 Begin__7CTMacroFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::MACRO's begin (the first command so registered); SOCOM 1's RegisterCommands passes CTMacro's begin for ai::MACRO
+0x005D7170 0x114 Parse__7CTMacroFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::MACRO's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTMacro's parse for ai::MACRO
+0x005D7290 0x140 End__8CTLookAtFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::LOOKAT's end (the first command so registered); SOCOM 1's RegisterCommands passes CTLookAt's end for ai::LOOKAT
+0x005D73D0 0x47C Tick__8CTLookAtFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::LOOKAT's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTLookAt's tick for ai::LOOKAT
+0x005D7850 0x1A0 Begin__8CTLookAtFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::LOOKAT's begin (the first command so registered); SOCOM 1's RegisterCommands passes CTLookAt's begin for ai::LOOKAT
+0x005D79F0 0x47C Parse__8CTLookAtFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::LOOKAT's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTLookAt's parse for ai::LOOKAT
 0x005D7E70 0x160 func_005D7E70  # OVL2
-0x005D7FD0 0x6BC func_005D7FD0  # OVL2
-0x005D8690 0x1A4 func_005D8690  # OVL2
-0x005D8840 0x33C func_005D8840  # OVL2
-0x005D8B80 0x140 func_005D8B80  # OVL2
+0x005D7FD0 0x6BC Tick__8CTInViewFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::INVIEW's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTInView's tick for ai::INVIEW
+0x005D8690 0x1A4 Parse__8CTInViewFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::INVIEW's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTInView's parse for ai::INVIEW
+0x005D8840 0x33C Tick__9CTInStateFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::INSTATE's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTInState's tick for ai::INSTATE
+0x005D8B80 0x140 Parse__9CTInStateFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::INSTATE's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTInState's parse for ai::INSTATE
 0x005D8CC0 0x160 func_005D8CC0  # OVL2
-0x005D8E20 0x140 func_005D8E20  # OVL2
-0x005D8F60 0x174 func_005D8F60  # OVL2
-0x005D90E0 0x188 func_005D90E0  # OVL2
-0x005D9270 0x1B8 func_005D9270  # OVL2
-0x005D9430 0x104 func_005D9430  # OVL2
+0x005D8E20 0x140 End__6CTHoldFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::HOLD's end (the first command so registered); SOCOM 1's RegisterCommands passes CTHold's end for ai::HOLD
+0x005D8F60 0x174 Tick__6CTHoldFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::HOLD's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTHold's tick for ai::HOLD
+0x005D90E0 0x188 Begin__6CTHoldFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::HOLD's begin (the first command so registered); SOCOM 1's RegisterCommands passes CTHold's begin for ai::HOLD
+0x005D9270 0x1B8 Parse__6CTHoldFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::HOLD's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTHold's parse for ai::HOLD
+0x005D9430 0x104 End__7CTGroupFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::GROUP's end (the first command so registered); the class name ours, after the command (SOCOM II's, absent from SOCOM 1)
 0x005D9540 0xE8 func_005D9540  # OVL2
 0x005D9630 0x70 func_005D9630  # OVL2
 0x005D96A0 0x40 func_005D96A0  # OVL2
 0x005D96E0 0x8 func_005D96E0  # OVL2
 0x005D96F0 0x14 func_005D96F0  # OVL2
-0x005D9710 0x12C func_005D9710  # OVL2
-0x005D9840 0x624 func_005D9840  # OVL2
-0x005D9E70 0x10D4 func_005D9E70  # OVL2
+0x005D9710 0x12C Tick__7CTGroupFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::GROUP's tick (the first command so registered); the class name ours, after the command (SOCOM II's, absent from SOCOM 1)
+0x005D9840 0x624 Begin__7CTGroupFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::GROUP's begin (the first command so registered); the class name ours, after the command (SOCOM II's, absent from SOCOM 1)
+0x005D9E70 0x10D4 Parse__7CTGroupFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::GROUP's parse (the first command so registered); the class name ours, after the command (SOCOM II's, absent from SOCOM 1)
 0x005DAF50 0x400 func_005DAF50  # OVL2
-0x005DB350 0x1B8 func_005DB350  # OVL2
-0x005DB510 0x21C func_005DB510  # OVL2
-0x005DB730 0x1B8 func_005DB730  # OVL2
+0x005DB350 0x1B8 End__6CTGotoFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::GOTO's end (the first command so registered); SOCOM 1's RegisterCommands passes CTGoto's end for ai::GOTO
+0x005DB510 0x21C Tick__6CTGotoFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::GOTO's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTGoto's tick for ai::GOTO
+0x005DB730 0x1B8 Begin__6CTGotoFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::GOTO's begin (the first command so registered); SOCOM 1's RegisterCommands passes CTGoto's begin for ai::GOTO
 0x005DB8F0 0x674 func_005DB8F0  # OVL2
-0x005DBF70 0x450 func_005DBF70  # OVL2
-0x005DC3C0 0x2EC func_005DC3C0  # OVL2
-0x005DC6B0 0x148 func_005DC6B0  # OVL2
-0x005DC800 0x9C func_005DC800  # OVL2
-0x005DC8A0 0x130 func_005DC8A0  # OVL2
-0x005DC9D0 0x230 func_005DC9D0  # OVL2
-0x005DCC00 0x270 func_005DCC00  # OVL2
-0x005DCE70 0x260 func_005DCE70  # OVL2
-0x005DD0D0 0x8 func_005DD0D0  # OVL2
-0x005DD0E0 0x1C0 func_005DD0E0  # OVL2
-0x005DD2A0 0x114 func_005DD2A0  # OVL2
-0x005DD3C0 0x128 func_005DD3C0  # OVL2
-0x005DD4F0 0x114 func_005DD4F0  # OVL2
-0x005DD610 0x8 func_005DD610  # OVL2
-0x005DD620 0x19C func_005DD620  # OVL2
-0x005DD7C0 0x1C8 func_005DD7C0  # OVL2
-0x005DD990 0x3CC func_005DD990  # OVL2
-0x005DDD60 0x240 func_005DDD60  # OVL2
-0x005DDFA0 0x2AC func_005DDFA0  # OVL2
-0x005DE250 0xCC func_005DE250  # OVL2
-0x005DE320 0x7EC func_005DE320  # OVL2
+0x005DBF70 0x450 Parse__6CTGotoFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::GOTO's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTGoto's parse for ai::GOTO
+0x005DC3C0 0x2EC Tick__12CTFireWeaponFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::FIREWEAPON's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTFireWeapon's tick for ai::FIREWEAPON
+0x005DC6B0 0x148 Begin__12CTFireWeaponFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::FIREWEAPON's begin (the first command so registered); SOCOM 1's RegisterCommands passes CTFireWeapon's begin for ai::FIREWEAPON
+0x005DC800 0x9C Parse__12CTFireWeaponFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::FIREWEAPON's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTFireWeapon's parse for ai::FIREWEAPON
+0x005DC8A0 0x130 Tick__10CTFireModeFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::FIREMODE's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTFireMode's tick for ai::FIREMODE
+0x005DC9D0 0x230 Begin__10CTFireModeFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::FIREMODE's begin (the first command so registered); SOCOM 1's RegisterCommands passes CTFireMode's begin for ai::FIREMODE
+0x005DCC00 0x270 Parse__10CTFireModeFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::FIREMODE's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTFireMode's parse for ai::FIREMODE
+0x005DCE70 0x260 Tick__7CTEventFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::EVENT's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTEvent's tick for ai::EVENT
+0x005DD0D0 0x8 Begin__7CTEventFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::EVENT's begin (the first command so registered); SOCOM 1's RegisterCommands passes CTEvent's begin for ai::EVENT
+0x005DD0E0 0x1C0 Parse__7CTEventFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::EVENT's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTEvent's parse for ai::EVENT
+0x005DD2A0 0x114 End__7CTDrainFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::DRAIN's end (the first command so registered); the class name ours, after the command (SOCOM II's, absent from SOCOM 1)
+0x005DD3C0 0x128 Tick__7CTDrainFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::DRAIN's tick (the first command so registered); the class name ours, after the command (SOCOM II's, absent from SOCOM 1)
+0x005DD4F0 0x114 Begin__7CTDrainFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::DRAIN's begin (the first command so registered); the class name ours, after the command (SOCOM II's, absent from SOCOM 1)
+0x005DD610 0x8 Parse__7CTDrainFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::DRAIN's parse (the first command so registered); the class name ours, after the command (SOCOM II's, absent from SOCOM 1)
+0x005DD620 0x19C Tick__7CTDebugFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::DEBUG's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTDebug's tick for ai::DEBUG
+0x005DD7C0 0x1C8 Parse__7CTDebugFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::DEBUG's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTDebug's parse for ai::DEBUG
+0x005DD990 0x3CC Tick__8CTCreateFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::CREATE's tick (the first command so registered); the class name ours, after the command (SOCOM II's, absent from SOCOM 1)
+0x005DDD60 0x240 Parse__8CTCreateFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::CREATE's parse (the first command so registered); the class name ours, after the command (SOCOM II's, absent from SOCOM 1)
+0x005DDFA0 0x2AC Tick__6CTCommFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::COMM's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTComm's tick for ai::COMM
+0x005DE250 0xCC Parse__6CTCommFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::COMM's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTComm's parse for ai::COMM
+0x005DE320 0x7EC RegisterCommands__11CSealCtrlAiFv  # OVL2; by hand (the kit lane, round 8): 34 CZAnimMain::AddCmd calls registering the ai:: task commands (ai::COMM .. ai::WAIT), each id stored to one static (0x66B7E0) -- SOCOM 1's RegisterCommands, the same calls and the same store pattern
 0x005DEB10 0x198 func_005DEB10  # OVL2
 0x005DECB0 0xB8 func_005DECB0  # OVL2
 0x005DED70 0x100 func_005DED70  # OVL2

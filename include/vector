@@ -369,7 +369,8 @@ class __vector_imp : public __vector_deleter<T, Allocator> {
     /* one element erased, the tail moved down by assignment: out of line over a raw pointer, the
      * iterator's copy handed to it by an inline wrapper, as the range's (the online lane's
      * CAcctDB::Delete: the iterator copied bitwise into the wrapper's parameter, its word passed
-     * to the instance 0x2FE230, which hands the position back in v0) */
+     * to the instance 0x2FE230, which hands the position back in v0; the AI lane's map links:
+     * 0x532000 and its wrapper 0x530AA0, CAiMap::SetCellLink's) */
     T *erase(T *position);
     iterator erase(iterator position) { return iterator(erase(position.m_p)); }
     /* grown by default-built elements or cut (out of class; declared after insert and erase) */

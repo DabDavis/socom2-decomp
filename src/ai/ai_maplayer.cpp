@@ -84,8 +84,75 @@ struct LOOK_DATA {
     float m_dist;   // 0x10
 };
 
-/* the searches' callbacks (SOCOM 1's _find_look and _find_cover: placeholders until written) */
-extern "C" bool func_0053A410(MAP_FLOODFILL_STRUCT &s, void *data);
+/* a cell a search may settle on: walkable, no action on it, no overlay over it (the name ours:
+ * inlined one level into both callbacks in the target, so the cell's two tests and the overlays'
+ * walk are called out of line -- 0x511F40, 0x516920, 0x53A500).
+ * OPEN with both callbacks (0x204 against 0xEC, _find_cover likewise): MW here inlines it, the
+ * cell's tests and the overlays' walk, cutting only the walk's deepest list pieces (tail() and
+ * the generic_iterator constructors, `warn_notinlined`) -- a depth budget spent from the call
+ * site down, where the target stops at the helper's own body. The target's 0x53A500 inlines the
+ * whole const walk with its iterators in stack slots, as ai_astar.cpp's fcost does. Not tried:
+ * the helper as a member of the floodfill struct or the cell, the test spelled with `== false` */
+inline bool _open_cell(const MAP_FLOODFILL_STRUCT &s)
+{
+    return s.m_cell->IsTraversable() && !s.m_cell->HasAction() && !ai::overlays.Contains(s.m_cell, s.m_start);
+}
+
+/* the cover search's callback: an open cell is taken for testing; else an opaque cell squarely
+ * between the start and the point ends the search, the cell found the one being tested (SOCOM 1's
+ * _find_cover, the overlays new) */
+static bool _find_cover(MAP_FLOODFILL_STRUCT &s, void *data)
+{
+    LOOK_DATA *d = (LOOK_DATA *)data;
+    bool r = false;
+
+    switch (s.m_mode) {
+    case 0:
+        if (_open_cell(s)) {
+            r = true;
+        } else if (s.m_cell->IsOpaque()) {
+            if (CAiMap::GetDirDelta(s.m_map->GetClosestDir(s.m_start, &d->m_pos), (CAiMap::DIR)s.m_dir) == 0) {
+                s.m_mode = 2;
+                r = true;
+                d->m_loc = s.m_loc;
+            }
+        } else {
+            r = false;
+        }
+        break;
+    case 1:
+        r = true;
+        break;
+    }
+    return r;
+}
+
+/* the look search's callback: an open cell is taken for testing, and a tested one from which the
+ * point is seen ends the search (SOCOM 1's _find_look, the overlays new) */
+static bool _find_look(MAP_FLOODFILL_STRUCT &s, void *data)
+{
+    LOOK_DATA *d = (LOOK_DATA *)data;
+    bool r = false;
+
+    switch (s.m_mode) {
+    case 0:
+        if (_open_cell(s))
+            r = true;
+        break;
+    case 1: {
+        r = true;
+        CAiMapLoc block;
+
+        if (s.m_map->CanSeeLine(s.m_loc, &d->m_pos, &block)) {
+            s.m_mode = 2;
+            r = false;
+            d->m_loc = s.m_loc;
+        }
+        break;
+    }
+    }
+    return r;
+}
 
 /* the cell from which the point is seen, flooded out from the start toward it (SOCOM 1's; the
  * direction handed back is the start's toward the point). The direction declared ahead of the
@@ -120,7 +187,7 @@ bool CAiMap::FindLookLoc(const CAiMapLoc &loc, const CPnt3D *pos, CAiMapLoc &out
     data.m_loc = loc;
     data.m_pos = *pos;
     data.m_dist = len;
-    if (FloodFill(loc, dir, radius, func_0053A410, &data)) {
+    if (FloodFill(loc, dir, radius, _find_look, &data)) {
         out = data.m_loc;
         return true;
     }

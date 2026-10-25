@@ -320,7 +320,16 @@ class CAiMap;
 struct MAP_FOREACH_STRUCT;
 /* a cell handed to a line walk's callback (SOCOM 1's; not laid out yet) */
 /* a cell handed to a flood fill's callback (SOCOM 1's; not laid out yet) */
-struct MAP_FLOODFILL_STRUCT;
+struct MAP_FLOODFILL_STRUCT {
+    CAiMap *m_map;   // 0x0
+    unsigned int m_unk4[2];   // 0x4
+    CAiMapLoc m_loc;   // 0xc: the cell reached
+    CAiMapLoc m_start;   // 0x10: the cell the fill started from
+    CAiCell *m_cell;   // 0x14
+    signed char m_dir;   // 0x18: the direction the fill was sent (a CAiMap::DIR, read with lb)
+    unsigned char m_mode;   // 0x19: what a search's callback is doing -- 0 looking for a cell, 1 testing
+                            // it, 2 done (the look and cover searches'; the names ours)
+};
 struct MAP_LINEWALK_STRUCT {
     CAiMap *m_map;   // 0x0
     unsigned int m_unk4[2];   // 0x4
@@ -328,6 +337,12 @@ struct MAP_LINEWALK_STRUCT {
     CAiCell *m_cell;   // 0x10
     float m_dist;   // 0x14: how far along (the sighting callback squares it against its range)
     CAiCell *m_prev;   // 0x18: the cell before (the travel callback's)
+    /* the points' walk (CAiMaps::WalkLine, 0x5352D0, builds them: the step's direction, the point
+     * reached -- the interpolation 0x539AA0 writes it -- and the fraction of the line walked, which
+     * the visibility callbacks blend the two heights by; the names ours) */
+    PNT3D m_dir;   // 0x1c
+    PNT3D m_pos;   // 0x28
+    float m_t;   // 0x34
 };
 
 /* two cells are the same cell when x and y agree, the map aside: an inline bool, which the
@@ -387,18 +402,73 @@ public:
         unsigned int m_unk14;   // 0x14
     };
     class names : public std::vector<name> {
+    public:
+        /* the names put in order, case-blind (SOCOM 1's SortByNames, the name the SetName row's
+         * note gives; 0x530EC0 -- CAiMaps sorts its six name tables with it) */
+        void Sort();
     };
 
     /* a cell linked to another (SOCOM 1's DWARF, 8 bytes; SOCOM II's is 0xC, a word of bits after
      * the two cells whose low four a new link sets to 8 -- 0x5309D0) */
     class link {
     public:
+        /* how far a walk from one cell to another goes through the link: from the near end, the
+         * cells' x and y distances summed, the shorter of the two legs (new in SOCOM II, the name
+         * ours: 0x530500, ai_maps.cpp's 0x52ACC0 calls it) */
+        int GetDistance(const CAiMapLoc &from, const CAiMapLoc &to) const;
+        /* a new link is of kind 8 (0x5309D0, out of line where it is built) */
+        link() : m_kind(8) {}
+        /* the link on a cell: its first cell's x and y (the name ours; a level of its own under
+         * links::Find, which makes Remove too tall to inline whole) */
+        bool operator==(const CAiMapLoc &loc) const { return m_loc == loc; }
+
         CAiMapLoc m_loc;   // 0x0
         CAiMapLoc m_link;   // 0x4
         unsigned int m_kind : 4;   // 0x8: the name ours
         unsigned int m_unk8 : 28;
     };
     class links : public std::vector<link> {
+    public:
+        /* the link on a cell, end() for none (the names ours: SetCellLink's pieces, out of line
+         * after it where the two inlines below are inlined one level -- 0x530B20, 0x5309F0) */
+        iterator Find(const CAiMapLoc &loc)
+        {
+            iterator e = end();
+
+            for (iterator i = begin(); i != e; ++i)
+                if (*i == loc)
+                    return i;
+            return e;
+        }
+        link *FindLink(const CAiMapLoc &loc)
+        {
+            for (iterator i = begin(); i != end(); ++i)
+                if ((*i).m_loc == loc)
+                    return &*i;
+            return 0;
+        }
+        /* the cell's link dropped (the name ours) */
+        void Remove(const CAiMapLoc &loc)
+        {
+            iterator i = Find(loc);
+
+            if (i != end())
+                erase(i);
+        }
+        /* the cell's link, made when it has none (the name ours) */
+        link *Add(const CAiMapLoc &loc)
+        {
+            link *l = FindLink(loc);
+
+            if (!l) {
+                link n;
+
+                n.m_loc = loc;
+                push_back(n);
+                l = &back();
+            }
+            return l;
+        }
     };
 
     /* a rectangle of cells, named and typed (SOCOM 1's DWARF, 0x1C bytes) */
@@ -618,6 +688,9 @@ public:
     /* whether a step may end on the cell (new in SOCOM II, the name ours: ai_maps.cpp's 0x52A090,
      * GetCell inlined one level) */
     bool IsTraversable(const CAiMapLoc &loc) const;
+    /* how many rings of open cells surround one, up to a limit (SOCOM 1's; the walker unit's
+     * 0x5396C0) */
+    int GetLocationWidth(const CAiMapLoc &loc, int max);
     /* a layer index the map has (the name ours; 0x512120) */
     bool IsLayer(int layer) const { return layer >= 0 && layer < GetLayerCount(); }
     /* the layers' count (the name ours) */
@@ -656,6 +729,9 @@ public:
     static SOIL GetSoilByName(const char *name);
     static DIR GetClosestDir(const CPnt3D *v);
     static DIR GetClosestDir(const CAiMapLoc &from, const CAiMapLoc &to);
+    /* the direction from a cell toward a point (SOCOM 1's, before the two static ones in both
+     * builds: 0x518900) */
+    DIR GetClosestDir(const CAiMapLoc &from, const CPnt3D *to);
     static int GetDirDelta(DIR a, DIR b);
     /* the whole map as a region: its first cell, its width and height (SOCOM 1's) */
     void GetMapRegion(region &r) const;
@@ -726,6 +802,9 @@ public:
     /* bit 1 of the flags: the map changed since it was read (the names ours) */
     bool IsModified() const { return (m_flags & 2) != 0; }
     bool SetModified(bool modified);
+    /* a link set on a cell or taken off it, the cell marked and the map changed (new in SOCOM II,
+     * the name ours: 0x5307A0) */
+    link *SetCellLink(const CAiMapLoc &loc, bool set);
     /* the map with its first layer and nothing read (SOCOM 1's took no id) */
     CAiMap(int mapid);
     ~CAiMap();
@@ -862,6 +941,40 @@ inline bool CAiMap::ForEachCell(bool (*f)(const MAP_FOREACH_STRUCT &s, void *dat
 class CAiStar;
 class CAiOverlay;
 class CAiPlanner;
+
+/* cells laid over a map that the planners and the searches keep off -- the vehicles' (the name
+ * ours, after SOCOM 1's CAiPath::m_overlay's class): a region and each row's run of cells */
+class CAiOverlay {
+public:
+    /* whether the cell is under it: inside the region, then on its row's run (ai_map.cpp's
+     * 0x515750) */
+    bool Contains(const CAiMapLoc &loc) const;
+
+    CAiMap::region m_region;   // 0x0
+    CAiMap::scanlines m_scanlines;   // 0x1c
+};
+
+/* the overlays (ai_astar.cpp's list, OVL2 0x66A0B8: the vehicles' unit adds to it through
+ * 0x510530 and 0x5104E0 clears it; the names ours) */
+class CAiOverlayList : public std::list<CAiOverlay *> {
+public:
+    /* whether an occupied cell lies under any of them (the name ours: the base planner's cost
+     * inlines it, the searches' callbacks call its out-of-line copy 0x53A500) -- a const walk, its
+     * iterators in stack slots */
+    bool Contains(const CAiCell *cell, const CAiMapLoc &loc) const
+    {
+        if (cell->IsOccupied()) {
+            for (const_iterator i = begin(); i != end(); ++i)
+                if ((*i)->Contains(loc))
+                    return true;
+        }
+        return false;
+    }
+};
+
+namespace ai {
+extern CAiOverlayList overlays;
+}
 
 /* the maps a path crosses (SOCOM 1's DWARF: a vector of CAiMap pointers and nothing more) */
 class CAiMapVec : public std::vector<CAiMap *> {
