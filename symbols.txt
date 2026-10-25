@@ -3836,7 +3836,7 @@
 0x002A9EE0 0x8 func_002A9EE0  # OVL1
 0x002A9EF0 0x8 DestroyNetGame__8CMissionFv  # OVL1; s1:ref by hand (the UI-commands lane's lead, vetted by the states lane: SOCOM 1's paired UI handler calls DestroyNetGame__8CMissionFv from the same place; SOCOM II's is SOCOM 1's 8 bytes, the online game at 0x1808 (fts_state.h's m_netGame) handed to 0x2A75F0 as a tail call)
 0x002A9F00 0x2C CreateNetGame__8CMissionFv  # OVL1; s1:align
-0x002A9F30 0x558 func_002A9F30  # OVL1
+0x002A9F30 0x558 TickObjectives__8CMissionFf  # OVL1; s1:calls by hand (the HUD lane's lead, vetted by the states lane: SOCOM 1's CZObjectiveList::SelectPreviousObjective calls TickObjectives(theMission, 1000.0f) at each step as SOCOM II's 0x206BA0/0x206DB0/0x207570 call this with (0x4364E0, 1000.0f); SOCOM 1's CMission::Tick calls it as Tick__8CMissionFf (0x2AA490) calls this; the same head: the timer at +0x138 summed with dT, nothing below 1.0, then the current objective and IsAvailable)
 0x002AA490 0x3F8 Tick__8CMissionFf  # OVL1; s1:align
 0x002AA890 0x7C func_002AA890  # OVL1
 0x002AA910 0x1F0 func_002AA910  # OVL1
@@ -4314,15 +4314,15 @@
 0x002CC170 0x110 func_002CC170  # OVL1
 0x002CC280 0x2DC func_002CC280  # OVL1
 0x002CC560 0x108 func_002CC560  # OVL1
-0x002CC670 0x144 func_002CC670  # OVL1
-0x002CC7C0 0x60 func_002CC7C0  # OVL1
-0x002CC820 0x8C func_002CC820  # OVL1
-0x002CC8B0 0xF8 func_002CC8B0  # OVL1
-0x002CC9B0 0x1C func_002CC9B0  # OVL1
-0x002CC9D0 0x308 func_002CC9D0  # OVL1
-0x002CCCE0 0x308 func_002CCCE0  # OVL1
-0x002CCFF0 0x370 func_002CCFF0  # OVL1
-0x002CD360 0x310 func_002CD360  # OVL1
+0x002CC670 0x144 UIDNASAuthenticate__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "DNASAuthenticate" (id 199, the UI command table's record at 0x3DE120), named UI<command> as SOCOM 1 names its global handlers -- the states lane, fts_dnas.cpp
+0x002CC7C0 0x60 __dt__19CSMDNASAuthenticateFv  # OVL1; ours: slot 0x10 of CSMDNASAuthenticate's vtable (0x4065A0, by its RTTI), storing that table and calling ~CSimpleStateMachine with 0 -- fts_dnas.cpp
+0x002CC820 0x8C Start__19CSMDNASAuthenticateFv  # OVL1; ours: slot 8 of CSMDNASAuthenticate's vtable (the base's Start inlined, the reboot callback registered, LoadAuthFile queued) -- fts_dnas.cpp
+0x002CC8B0 0xF8 RebootCallback__19CSMDNASAuthenticateFQ211CIOPManager11RebootPhaseQ211CIOPManager10RebootModePv  # OVL1; ours: the callback Start registers with theIOPManager (DNAS.BIN's abort and shutdown waited for, then the machine finished) -- fts_dnas.cpp
+0x002CC9B0 0x1C GetDNASUniqueID__FPi  # OVL1; ours: the 0x80-byte buffer GetUniqueID hands DNAS.BIN (0x441840) and its size (0x3DE918); the lobby (0x2EEDE0) calls it -- fts_dnas.cpp
+0x002CC9D0 0x308 LoadAuthFile__19CSMDNASAuthenticateFUc  # OVL1; ours: CSMDNASAuthenticate's first state (Start queues its member pointer, 0x3DE908): the authentication file read by CD sector 10110 and handed to DNAS.BIN's initialisation (0x4C6C28) with the pass phrase -- fts_dnas.cpp
+0x002CCCE0 0x308 GetUniqueID__19CSMDNASAuthenticateFUc  # OVL1; ours: the second state (LoadAuthFile queues it, 0x3DE8F8): DNAS.BIN's 0x4C7238 asked for the unique ID into GetDNASUniqueID's buffer, then the status polled -- fts_dnas.cpp
+0x002CCFF0 0x370 Authenticate__19CSMDNASAuthenticateFUc  # OVL1; ours: the third state (GetUniqueID queues it, 0x3DE8E8): DNAS.BIN's 0x4C6DF0 started, the status polled until done (the valve on) or failed -- fts_dnas.cpp
+0x002CD360 0x310 DNASErrorString__Fi  # OVL1; ours: a DNAS error number to its localised text (ids 0x451-0x478 through 0x363F60, the number substituted with "%d"); every failure in fts_dnas.cpp passes it to the menu's MP_DNAS_ERROR -- fts_dnas.cpp
 0x002CD670 0x20 func_002CD670  # OVL1
 0x002CD690 0x80 func_002CD690  # OVL1
 0x002CD710 0x70 func_002CD710  # OVL1
