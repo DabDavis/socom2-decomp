@@ -38,14 +38,14 @@ extern "C" {
 M2C_UNK AddVisual__Q23zdb5CNodeFPQ23zdb7CVisual(char * arg0, char * arg1);
 s32 __ct__9C2DVisualFP3C2DPQ23zdb16CTextureRelocMgr(char * arg0, char * arg1, char * arg2);
 s32 __nw__FUi(u32 arg0);
-s32 func_00312C20(s32 arg0);
+extern "C" s32 Create__Q23zdb5CNodeFPCc(s32 arg0);
 extern M2C_UNK data_003F8D00;
 
 s32 func_0036AB20(char *arg0, char *arg1, char *arg2) {
     s32 temp_v0;
     s32 var_v0;
 
-    temp_v0 = func_00312C20((s32) &data_003F8D00);
+    temp_v0 = Create__Q23zdb5CNodeFPCc((s32) &data_003F8D00);
     ((VC_C *)(arg0))->v_30(temp_v0);
     var_v0 = __nw__FUi(0x70U);
     if (var_v0 != 0) {

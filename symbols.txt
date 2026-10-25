@@ -5816,10 +5816,10 @@
 0x0032E820 0x108 func_0032E820  # OVL1
 0x0032E930 0x34 zrdr_finduint__FPC5_zrdrPCcPUii  # OVL1; s1:align
 0x0032E970 0x108 func_0032E970  # OVL1
-0x0032EA80 0x100 func_0032EA80  # OVL1
+0x0032EA80 0x100 zrdr_findreal__FPC5_zrdrPCcPfi  # OVL1; s1:calls by hand (an array of n reals into a float*, as SOCOM 1's 0x23D9D0; CreateSequence calls it where SOCOM 1's does) -- the sound lane
 0x0032EB80 0xA0 func_0032EB80  # OVL1
 0x0032EC20 0x1E8 func_0032EC20  # OVL1
-0x0032EE10 0x10C func_0032EE10  # OVL1
+0x0032EE10 0x10C zrdr_findstring__FPC5_zrdrPCc  # OVL1; s1:calls by hand (the tag's string, or an array's first string; CSndSequence::CreateSequence calls it where SOCOM 1's does) -- the sound lane
 0x0032EF20 0x70 zrdr_nexttag__FPC5_zrdrPCcP5_zrdr  # OVL1; s1:align
 0x0032EF90 0x13C _zrdr_nexttag__FPC5_zrdrPCciP5_zrdr  # OVL1; s1:align
 0x0032F0D0 0x8 func_0032F0D0  # OVL1
@@ -6080,7 +6080,7 @@
 0x0033F580 0x6C snd_PlayVAGStreamByLoc_CB  # OVL1; s1:gap
 0x0033F5F0 0x110 snd_CloseVAGStreaming  # OVL1; s1:gap
 0x0033F700 0x18 snd_StopAllStreams  # OVL1; s1:exact
-0x0033F720 0x168 func_0033F720  # OVL1
+0x0033F720 0x168 snd_InitVAGStreamingEx  # OVL1; s1:order by hand (right after snd_StopAllStreams as SOCOM 1's 0x2EA950; CSnd::Open passes it SOCOM 1's arguments) -- the sound lane
 0x0033F890 0xC snd_SendCache  # OVL1; s1:order by hand (SOCOM 1's snd_SendCache, the same two instructions: the caching flag cleared in the delay slot of a tail call to snd_FlushSoundCommands; just ahead of snd_StartCaching in both builds)
 0x0033F8A0 0x10 snd_StartCaching  # OVL1; s1:order by hand (SOCOM 1's snd_StartCaching, the same three instructions: 1 stored to the flag snd_SendCache clears)
 0x0033F8B0 0x3E4 snd_SendIOPCommandNoWait__FiiPcPFUiUl_vUl  # OVL1; s1:callee
@@ -8568,8 +8568,8 @@
 0x00402E60 0x11C func_00402E60  # OVL1 data area; a static initialiser
 0x00402F80 0x64 func_00402F80  # OVL1 data area; a static initialiser; s1~ zrndr_init.cpp (shape 0.46, a hint)
 0x00402FF0 0x240 func_00402FF0  # OVL1 data area; a static initialiser
-0x00403230 0xA4 func_00403230  # OVL1 data area; a static initialiser; s1~ pickup_main.cpp (shape 0.25, a hint)
-0x004032E0 0x8C func_004032E0  # OVL1 data area; a static initialiser
+0x00403230 0xA4 __sinit_zsnd_csndinstance.cpp  # OVL1 data area; a static initialiser; s1~ pickup_main.cpp (shape 0.25, a hint); registers zsnd_csndinstance.cpp's list (0x347B20), pool and vector destructors -- the sound lane
+0x004032E0 0x8C __sinit_zsnd_jukebox.cpp  # OVL1 data area; a static initialiser; constructs and registers the jukebox's two arrays (destructors 0x349A50, 0x349A30) -- the sound lane
 0x00403370 0xB0 func_00403370  # OVL1 data area; a static initialiser
 0x00403420 0x3C func_00403420  # OVL1 data area; a static initialiser; s1~ remote_control.cpp (shape 0.45, a hint)
 0x00403460 0x64 func_00403460  # OVL1 data area; a static initialiser

@@ -495,17 +495,42 @@ def stale(st: E.SymbolTable) -> set[int]:
     return out
 
 
+MULTIDEF = 13   # MW's binding for an inline function's (or a template's) out-of-line copy
+
+
 def hand_defined() -> set[str]:
-    """Function names hand-written source defines (anything under src/ but src/auto)."""
-    names = set()
+    """Function names hand-written source defines (anything under src/ but src/auto): its own
+    definitions, and the inline copies it emits byte-exact. A copy that misses supersedes no
+    draft -- the linker keeps a strong definition over every unit's copy, as sccheck scores it
+    (zsnd_csndsequence.cpp's ~__vector_deleter against the draft of 0x34A5A0)."""
+    names, copies = set(), {}
     obj_root = HERE / "build" / "obj"
     for o in obj_root.rglob("*.o"):
         if "auto" in o.relative_to(obj_root).parts:
             continue
         try:
-            names |= {f.name for f in E.Elf.read(o).functions()}
+            for f in E.Elf.read(o).functions():
+                if f.bind == MULTIDEF:
+                    copies.setdefault(f.name, []).append(o)
+                else:
+                    names.add(f.name)
         except Exception:
             pass
+    img, st = E.image(), E.symbols()
+    for name, objs in copies.items():
+        if name in names:
+            continue
+        try:
+            sym = st.get(name)
+        except KeyError:
+            continue
+        for o in objs:
+            try:
+                if D.compare(o, name, sym, img, st).match:
+                    names.add(name)
+                    break
+            except Exception:
+                pass
     return names
 
 

@@ -6,15 +6,15 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+s32 ftsGetHeadset__7HeadsetFv();                    /* extern */
 M2C_UNK func_0034AAC0(s32, s32, M2C_UNK, M2C_UNK);  /* extern */
-s32 func_0034BB80();                                /* extern */
 M2C_UNK func_0034CDB0(M2C_UNK *, s32);              /* extern */
 extern M2C_UNK data_0048DEE0;
 
 void func_003428A0(s32 arg0) {
     s32 temp_v0;
 
-    temp_v0 = func_0034BB80();
+    temp_v0 = ftsGetHeadset__7HeadsetFv();
     if (temp_v0 != 0) {
         func_0034AAC0(temp_v0, arg0, 1, 1);
     }

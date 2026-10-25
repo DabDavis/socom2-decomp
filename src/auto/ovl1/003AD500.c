@@ -6,8 +6,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_0029E6B0();                            /* extern */
+M2C_UNK UpdateCompassAnchor__7CEntityFv();          /* extern */
 
 void func_003AD500(void) {
-    func_0029E6B0();
+    UpdateCompassAnchor__7CEntityFv();
 }

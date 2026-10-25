@@ -48,8 +48,7 @@ void snd_StartCaching(void);
 int snd_SendCache(void);
 int snd_FlushSoundCommands(void);
 void snd_AutoReverb(int core, int depth, int delta, int channel);
-/* SOCOM 1's snd_InitVAGStreamingEx (Open passes it SOCOM 1's arguments), outside this lane's rows */
-int func_0033F720(int num_channels, int buffer_size, int a, int b);
+int snd_InitVAGStreamingEx(int num_channels, int buffer_size, int a, int b);
 void snd_StopAllStreams(void);
 int snd_StreamSafeCheckCDIdle(int block);
 void snd_DoExternCall(unsigned int id, int func, int a, int b, int c, int d, int e);

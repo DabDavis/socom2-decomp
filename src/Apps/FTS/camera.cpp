@@ -5,8 +5,8 @@
 #include "camera.h"
 #include "../../gamez/zsys/zsys.h"
 
-/* unnamed yet */
-extern "C" void *func_0032EE10(_zrdr *rdr, const char *tag);
+/* SOCOM 1's, not written yet */
+char *zrdr_findstring(const _zrdr *rdr, const char *tag);
 
 extern bool camera_tether_intersects_something;
 extern "C" bool func_002C2FD0(CZSealBody *seal);
@@ -204,11 +204,11 @@ _zanim_cmd_hdr *CAppCamera::CmdParseShake(_zrdr *rdr)
     cmd->hdr.data_size = sizeof(_camera_shake_cmd);
     cmd->hdr.timeless = 1;
     if (rdr && rdr->type == 4) {
-        if (func_0032EE10(rdr, "SMALL"))
+        if (zrdr_findstring(rdr, "SMALL"))
             cmd->level = 0;
-        else if (func_0032EE10(rdr, "MEDIUM"))
+        else if (zrdr_findstring(rdr, "MEDIUM"))
             cmd->level = 1;
-        else if (func_0032EE10(rdr, "LARGE"))
+        else if (zrdr_findstring(rdr, "LARGE"))
             cmd->level = 2;
     }
     return (_zanim_cmd_hdr *)cmd;

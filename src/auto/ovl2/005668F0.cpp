@@ -54,12 +54,12 @@ struct VC_0 {
     virtual M2C_UNK v_B0(s32);
 };
 extern "C" {
-s32 func_002A0190(s32);                             /* extern */
+s32 FindTarget__11CTargetListFP7CEntity(s32);       /* extern */
 
 void func_005668F0(char *arg0) {
     s32 temp_v0;
 
-    temp_v0 = func_002A0190(M2C_FIELD(arg0, s32 *, 4) + 0xD0);
+    temp_v0 = FindTarget__11CTargetListFP7CEntity(M2C_FIELD(arg0, s32 *, 4) + 0xD0);
     if (temp_v0 != 0) {
         ((VC_0 *)(arg0))->v_B0(temp_v0);
     }

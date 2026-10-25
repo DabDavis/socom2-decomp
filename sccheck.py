@@ -138,24 +138,32 @@ def main(argv=None) -> int:
 
     rows, matched, failed_builds = [], [], 0
     auto_names: set[str] = set()
-    hand_names: set[str] = set()
+    hand_names: set[str] = set()     # what hand-written source defines as its own (not inline copies)
     for src, obj, err in built:
         if obj is not None:
-            names = {f.name for f in E.Elf.read(obj).functions()}
-            (auto_names if "auto" in src.relative_to(SRC).parts else hand_names).update(names)
-    superseded = sorted(auto_names & hand_names)
-    for src, obj, err in built:
+            fns = E.Elf.read(obj).functions()
+            if "auto" in src.relative_to(SRC).parts:
+                auto_names.update(f.name for f in fns)
+            else:
+                hand_names.update(f.name for f in fns if f.bind != MULTIDEF)
+    # hand-written source supersedes the generated tier where it defines a function, or emits a
+    # byte-exact inline copy of it -- a copy that misses does not: the linker keeps a strong
+    # definition over every unit's copy, so the draft's match stands (zsnd_csndsequence.cpp's
+    # ~__vector_deleter, 0x34A5A0). Hand-written units are scored first to know which copies match.
+    is_auto_src = lambda src: "auto" in src.relative_to(SRC).parts
+    hand_copies: set[str] = set()
+    for src, obj, err in sorted(built, key=lambda b: is_auto_src(b[0])):
         if obj is None:
             failed_builds += 1
             rows.append(("BUILD-FAIL", src.name, "", err.strip().splitlines()[-1] if err.strip() else ""))
             continue
-        is_auto = "auto" in src.relative_to(SRC).parts
+        is_auto = is_auto_src(src)
         span = unit_span(obj, st)
         for fs in E.Elf.read(obj).functions():
             if rx and not rx.search(fs.name):
                 continue
-            if is_auto and fs.name in hand_names:
-                continue                     # hand-written source supersedes the generated tier
+            if is_auto and (fs.name in hand_names or fs.name in hand_copies):
+                continue                     # superseded by hand-written source
             if fs.name in absent:
                 rows.append(("absent", src.name, fs.name, ""))
                 continue
@@ -170,6 +178,8 @@ def main(argv=None) -> int:
                 continue
             if res.match:
                 matched.append(fs.name)
+                if not is_auto and fs.bind == MULTIDEF:
+                    hand_copies.add(fs.name)
                 note = f"{len(res.relocs)} relocs" + (f", {len(res.reloc_unchecked)} unchecked"
                                                        if res.reloc_unchecked else "")
                 rows.append(("match", src.name, fs.name, note))
@@ -213,7 +223,8 @@ def main(argv=None) -> int:
     matched = sorted(set(matched))
     scored = {r[2] for r in rows if r[0] in ('match', 'WRONG')}
     matched_bytes = sum(st.get(n).size for n in matched)
-    n_auto = sum(1 for n in matched if n in auto_names and n not in hand_names)
+    superseded = sorted(auto_names & (hand_names | hand_copies))
+    n_auto = sum(1 for n in matched if n in auto_names and n not in hand_names | hand_copies)
     print(f"\n{len(matched)} byte-exact of {len(scored)} scored"
           f" ({matched_bytes:,} of {total_code:,} bytes in the map, {100 * matched_bytes / max(total_code, 1):.2f} %)")
     print(f"  {len(matched) - n_auto} hand-written, {n_auto} generated (src/auto, m2c drafts byte-exact as they stand)")

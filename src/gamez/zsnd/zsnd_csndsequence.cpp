@@ -7,8 +7,8 @@
 #include "../zanim/zanim.h"
 
 /* SOCOM 1's zrdr_findstring and zrdr_findreal, not written yet */
-extern "C" char *func_0032EE10(_zrdr *rdr, const char *tag);
-extern "C" int func_0032EA80(_zrdr *rdr, const char *tag, float *out, int n);
+char *zrdr_findstring(const _zrdr *rdr, const char *tag);
+int zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
 
 CSndSequence::CSndSequence()
     : m_current(-1), m_name(0), m_fading(false)
@@ -34,7 +34,7 @@ void CSndSequence::CreateSequence(_zrdr *rdr)
 {
     if (!rdr)
         return;
-    char *name = func_0032EE10(rdr, "SEQ_NAME");
+    char *name = zrdr_findstring(rdr, "SEQ_NAME");
 
     if (name) {
         if (m_name)
@@ -44,15 +44,15 @@ void CSndSequence::CreateSequence(_zrdr *rdr)
     }
     float pause = 0.0f;
 
-    func_0032EA80(rdr, "PAUSETIME", &pause, 1);
+    zrdr_findreal(rdr, "PAUSETIME", &pause, 1);
     /* the counter unsigned: as an int, MW strength-reduces the item's address (a register more) */
     for (unsigned int i = 2; (int)i < (int)rdr->Count(); i++) {
         _zrdr *item = rdr->Item(i);
         float delay = 0.0f;
         CSnd *sound = 0;
 
-        func_0032EA80(item, "PAUSETIME", &delay, 1);
-        char *sname = func_0032EE10(item, "SNDNAME");
+        zrdr_findreal(item, "PAUSETIME", &delay, 1);
+        char *sname = zrdr_findstring(item, "SNDNAME");
 
         if (sname)
             sound = CSnd::GetSoundByName(sname);

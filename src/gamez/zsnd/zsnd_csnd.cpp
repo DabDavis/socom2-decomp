@@ -23,7 +23,7 @@ extern CSndVocalQueue data_0048DEE0;
 
 extern _zrdr *data_0048DF18;            /* the sounds file (GetSoundRdrFile's) */
 extern bool snd_system_initialized;
-extern "C" int func_0032EA80(_zrdr *rdr, const char *tag, float *out, int n);   /* zrdr_findreal */
+int zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
 extern "C" int toupper(int c);
 
 _zrdr *zrdr_read(const char *name, const char *file, int line);
@@ -81,7 +81,7 @@ void CSnd::NetOpen()
     snd_SetMasterVolume(16, 1024);
     CFileCD::m_streamingSndActive = true;
     m_max_num_vags = 4;
-    func_0033F720(m_max_num_vags, 0xB000, 0, 1);
+    snd_InitVAGStreamingEx(m_max_num_vags, 0xB000, 0, 1);
 }
 
 void CSnd::Open()
@@ -93,7 +93,7 @@ void CSnd::Open()
     if (!data_0048DF18)
         data_0048DF18 = zrdr_read("sounds.rdr", 0, 0);
     m_max_num_vags = 6;
-    func_0033F720(m_max_num_vags, 0xB000, 0, 1);
+    snd_InitVAGStreamingEx(m_max_num_vags, 0xB000, 0, 1);
     if (func_0034BB80())
         func_0034B9E0(func_0034BB80());
 }
@@ -213,10 +213,10 @@ void CSnd::LoadIndoorReverbs(_zrdr *rdr)
         _zrdr *item = list->Item(i);
         float depth = 0.0f;
 
-        func_0032EA80(item, "Depth", &depth, 1);
+        zrdr_findreal(item, "Depth", &depth, 1);
         float seconds = 0.0f;
 
-        func_0032EA80(item, "Seconds", &seconds, 1);
+        zrdr_findreal(item, "Seconds", &seconds, 1);
         AddReverb(data_0048DB88, data_0048DB68, data_003DFFB8, depth, seconds);
     }
 }
@@ -233,10 +233,10 @@ void CSnd::LoadOutdoorReverbs(_zrdr *rdr)
         _zrdr *item = list->Item(i);
         float depth = 0.0f;
 
-        func_0032EA80(item, "Depth", &depth, 1);
+        zrdr_findreal(item, "Depth", &depth, 1);
         float seconds = 0.0f;
 
-        func_0032EA80(item, "Seconds", &seconds, 1);
+        zrdr_findreal(item, "Seconds", &seconds, 1);
         AddReverb(data_0048DBC8, data_0048DBA8, data_003DFFC8, depth, seconds);
     }
 }

@@ -6,7 +6,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_0032EE10(s32 arg0, s32 arg1);
+s32 zrdr_findstring__FPC5_zrdrPCc(s32 arg0, s32 arg1);
 M2C_UNK strcpy(M2C_UNK *, s32);                     /* extern */
 extern M2C_UNK data_003F7660;
 extern M2C_UNK data_0048DEB8;
@@ -15,7 +15,7 @@ extern s8 data_0048DEC8;
 void func_003418D0(s32 arg0) {
     s32 temp_v0;
 
-    temp_v0 = func_0032EE10(arg0, (s32) &data_003F7660);
+    temp_v0 = zrdr_findstring__FPC5_zrdrPCc(arg0, (s32) &data_003F7660);
     if (temp_v0 != 0) {
         strcpy(&data_0048DEB8, temp_v0);
         data_0048DEC8 = 1;
