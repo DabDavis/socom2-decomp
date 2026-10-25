@@ -9456,8 +9456,8 @@
 0x00518EA0 0x1D8 GetDirQuat__6CAiMapFQ26CAiMap3DIRR5CQuatb  # OVL2; s1:calls
 0x00519080 0xA8 func_00519080  # OVL2
 0x00519130 0x118 func_00519130  # OVL2
-0x00519250 0x18 _max<Us>__2aiFRCUsRCUs  # OVL2; s1:exact
-0x00519270 0x18 _min<Us>__2aiFRCUsRCUs  # OVL2; s1:exact
+0x00519250 0x18 _max<Us>__2aiFRCUsRCUs_RCUs  # OVL2; s1:exact; by hand: MW 3.0 mangles a function template's return type (README), so SOCOM 1's _max<Us>__2aiFRCUsRCUs is this name in SOCOM II; the body is SOCOM 1's (the larger by reference, lhu, signed after promotion)
+0x00519270 0x18 _min<Us>__2aiFRCUsRCUs_RCUs  # OVL2; s1:exact; by hand: MW 3.0 mangles the return type (SOCOM 1's _min<Us>__2aiFRCUsRCUs)
 0x00519290 0x50 func_00519290  # OVL2
 0x005192E0 0x420 func_005192E0  # OVL2; OVL2's copy of the pod vector's insert (OVL1 0x1FE340, the same 0x420 bytes but its two error strings' addresses; the pointer vectors' push_back calls it -- CAiMap's constructor, CCharacterType::Create); ovl-copy: insert__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPUiUiRCUi
 0x00519700 0x9C func_00519700  # OVL2
@@ -9592,7 +9592,7 @@
 0x005281B0 0x188 func_005281B0  # OVL2
 0x00528340 0xE4 func_00528340  # OVL2
 0x00528430 0xDC func_00528430  # OVL2
-0x00528510 0x18 _min<Ui>__2aiFRCUiRCUi  # OVL2; s1:exact
+0x00528510 0x18 _min<Ui>__2aiFRCUiRCUi_RCUi  # OVL2; s1:exact; by hand: MW 3.0 mangles the return type (SOCOM 1's _min<Ui>__2aiFRCUiRCUi)
 0x00528530 0xBC func_00528530  # OVL2
 0x005285F0 0x1DC func_005285F0  # OVL2
 0x005287D0 0x460 func_005287D0  # OVL2
@@ -9667,8 +9667,8 @@
 0x0052EA10 0xE8 func_0052EA10  # OVL2
 0x0052EB00 0x14 func_0052EB00  # OVL2
 0x0052EB20 0x14 func_0052EB20  # OVL2
-0x0052EB40 0x18 _max<Ui>__2aiFRCUiRCUi  # OVL2; s1:exact
-0x0052EB60 0x38 func_0052EB60  # OVL2
+0x0052EB40 0x18 _max<Ui>__2aiFRCUiRCUi_RCUi  # OVL2; s1:exact; by hand: MW 3.0 mangles the return type (SOCOM 1's _max<Ui>__2aiFRCUiRCUi)
+0x0052EB60 0x38 func_0052EB60  # OVL2; OVL2's copy of _close_enough<f> (OVL1 0x28F1E0, the same 0x38 bytes word for word; ai_maps.cpp's template tail after _max<Ui>, as SOCOM 1's 0x19D950 follows _max<Ui> at 0x19D930; CSealCtrlAi::Tick and 57 other OVL2 call sites call it); ovl-copy: _close_enough<f>__FRCfRCfRCf_b
 0x0052EBA0 0xB4 func_0052EBA0  # OVL2
 0x0052EC60 0x240 func_0052EC60  # OVL2
 0x0052EEA0 0x3C func_0052EEA0  # OVL2
@@ -9716,11 +9716,11 @@
 0x00530F10 0x30 func_00530F10  # OVL2
 0x00530F40 0xB0 func_00530F40  # OVL2
 0x00530FF0 0x8 func_00530FF0  # OVL2
-0x00531000 0xF0 func_00531000  # OVL2
-0x005310F0 0x30 func_005310F0  # OVL2
-0x00531120 0x70 func_00531120  # OVL2
+0x00531000 0xF0 GetMapEx__6CAiMapFRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19F270 before FreeEx and AllocEx: no extra data, or a cell outside the map, gives none; else m_mapex + the cell's index times m_mapex_bytes -- SOCOM II finds the index through the cell's scanline)
+0x005310F0 0x30 FreeEx__6CAiMapFv  # OVL2; s1:order by hand (the demo's 0x19F330, between GetMapEx and AllocEx: m_mapex (0xE0, SOCOM 1's 0xAC) deleted[] and zeroed, m_mapex_bytes (0x60) zeroed)
+0x00531120 0x70 AllocEx__6CAiMapFUi  # OVL2; s1:order by hand (the demo's 0x19F390, after FreeEx: the old block deleted[], m_mapex_bytes set and bytes * m_cellcount (0x70) allocated and zeroed; SOCOM II no longer points each scanline into it)
 0x00531190 0x28 func_00531190  # OVL2
-0x005311C0 0x18 func_005311C0  # OVL2
+0x005311C0 0x18 _min<i>__2aiFRCiRCi_RCi  # OVL2; ours, by its body (the smaller of two ints by reference: slt, movn -- _min<Us>'s and _min<Ui>'s shape signed; the CAiMap table unit's template tail, after the names' sort comparator)
 0x005311E0 0xE4 func_005311E0  # OVL2
 0x005312D0 0xD30 func_005312D0  # OVL2
 0x00532000 0x1AC func_00532000  # OVL2

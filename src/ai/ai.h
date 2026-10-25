@@ -234,6 +234,43 @@ public:
     };
 
     action *GetCellAction(const CAiMapLoc &loc);
+    char *GetMapEx(const CAiMapLoc &loc);
+    void FreeEx();
+    char *AllocEx(unsigned int bytes);
+
+    /* AIMAP_PARAMS, the file's header (SOCOM 1's DWARF; the same in SOCOM II as far as read) */
+    CBBox m_bbox;   // 0x0
+    unsigned int m_nx;   // 0x18
+    unsigned int m_ny;   // 0x1c
+    float m_dx;   // 0x20
+    float m_dy;   // 0x24
+    float m_idx;   // 0x28
+    float m_idy;   // 0x2c
+    int m_floor;   // 0x30
+    char m_name[32];   // 0x34
+    float m_resolution;   // 0x54
+    unsigned int m_flags;   // 0x58
+    float m_slope_threshold;   // 0x5c
+    unsigned int m_mapex_bytes;   // 0x60
+    float m_light[2];   // 0x64
+    unsigned int m_compressed;   // 0x6c
+    unsigned int m_cellcount;   // 0x70
+    unsigned int m_revision;   // 0x74
+    unsigned int m_date[1];   // 0x78
+    unsigned int m_reserved[10];   // 0x7c
+    /* CAiMap's own (SOCOM II's: a layer object at 0xA8 that the constructor builds and pushes onto
+     * the pointer vector at 0xD4, the cells in the layers; the extra data, the owner and the
+     * altitude scale after it, then SOCOM 1's nine tables) */
+    unsigned int m_version;   // 0xa4
+    unsigned char m_layer0[0x2c];   // 0xa8: not laid out yet (built by 0x53A9C0)
+    unsigned char m_layers[0xc];   // 0xd4: a vector of layer pointers
+    char *m_mapex;   // 0xe0: SOCOM 1's 0xac
+    void *m_maps;   // 0xe4: the constructor's argument
+    float m_alt_quant;   // 0xe8: SOCOM 1's 0xb4
+    unsigned char m_tables[0x6c];   // 0xec: names, actions, links, regions, spores, lines, readers,
+                                    //       routes (0x140), scanlines (0x14c)
+    void *m_overlay;   // 0x158
+    void *m_graph;   // 0x15c
 };
 
 /* a planned path (SOCOM 1's DWARF, 0x9C bytes; SOCOM II's members from the search limit on sit
