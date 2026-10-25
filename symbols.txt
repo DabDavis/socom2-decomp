@@ -7112,7 +7112,7 @@
 0x00385610 0x58 func_00385610  # OVL1
 0x00385670 0x14C Serialize__13CUIVarManagerFi  # OVL1; s1:calls
 0x003857C0 0x140 Add__13CUIVarManagerFPCcP5_zrdr15UIVAR_LONGEVITY  # OVL1; s1:calls (the UI handlers register their vars through it where SOCOM 1's do) -- the UI-commands lane
-0x00385900 0xC8 func_00385900  # OVL1
+0x00385900 0xC8 Find__13CUIVarManagerFPCc  # OVL1; s1:align by hand (SOCOM 1's Find(const char *) at the same place after Add: the 48-byte variables walked, a live one (longevity byte at 0x24) whose name at 0x14 matches strcasecmp returned)
 0x003859D0 0x88 func_003859D0  # OVL1
 0x00385A60 0x1CC func_00385A60  # OVL1
 0x00385C30 0xA4 func_00385C30  # OVL1
