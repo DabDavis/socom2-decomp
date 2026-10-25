@@ -67,6 +67,77 @@ CAiSRescued::~CAiSRescued()
 /* CZAnim::Stop, which SOCOM II gave a flag (zanim.h's declaration) */
 extern "C" void func_002707C0(CZAnim *anim, bool now);
 
+extern "C" {
+extern float data_004365C0;   /* (OVL1 data: the delay a new stance waits, read as a variable) */
+}
+
+/* a stance changed with the state: taken as the goal after the delay, unless either end has none
+ * (OVL2 0x571420; SOCOM 1's picked the delay per stance). Both stances come from the AI-states
+ * lane's 0x5FC910, SOCOM 1's GetStanceFromState by its two calls here. */
+void CSealCtrlAi::OnStateChange(SEAL_STATE from, SEAL_STATE to)
+{
+    SEAL_STANCE was = CZSealBody::GetStanceFromState(from, STANCE_NONE);
+    SEAL_STANCE now = CZSealBody::GetStanceFromState(to, STANCE_NONE);
+
+    if (was != STANCE_NONE && now != STANCE_NONE && now != m_stance) {
+        m_stance = now;
+        m_stance_delay = data_004365C0;
+    }
+}
+
+/* the goal cleared: of the given kind, or whatever is set; the position and direction dropped and
+ * the goal's timer stopped (OVL2 0x56DCA0; SOCOM 1's, SetGoalPos inlined).
+ * OPEN, 2 instructions (0xB0 against 0xA8): the target puts the inlined `type < m_goal_type` test
+ * in the `m_goal_type == type` branch's delay slot as `slt at` and branches on it; here MW
+ * computes it into v0 after a nop and leaves a nop before the call's join. The same with the
+ * position's clearing written out (`if (type >= m_goal_type) {...}`), `(void)`, or an early
+ * return for the outer test -- the out-of-line SetGoalPos, the same test, matches. */
+void CSealCtrl::ClearGoal(GOAL_TYPE type)
+{
+    if (type == GOAL_NONE)
+        type = m_goal_type;
+    if (m_goal_type == type) {
+        SetGoalPos(type, 0, 0.0f);
+        SetGoalDir(type, 0, false);
+        m_goal_timer.m_timer = CAiTimer::infinite;
+        m_goal_timer.m_min = CAiTimer::infinite;
+        m_goal_timer.m_range = 0.0f;
+    }
+}
+
+/* a map cell's centre as the goal (OVL2 0x56DBA0, new in SOCOM II: the point's SetGoalPos
+ * inlined) */
+bool CSealCtrl::SetGoalPos(GOAL_TYPE type, const CAiMapLoc &loc, float tolerance)
+{
+    bool set = false;
+    CPnt3D center;
+
+    if (AiMaps.GetCellCenter(loc, &center))
+        set = SetGoalPos(type, &center, tolerance);
+    return set;
+}
+
+/* a point as the goal, unless a goal of a higher kind is set; none clears the position, and the
+ * kind with it once no direction is left (OVL2 0x56DAA0; SOCOM 1's) */
+bool CSealCtrl::SetGoalPos(GOAL_TYPE type, const CPnt3D *pos, float tolerance)
+{
+    if (type < m_goal_type)
+        return false;
+    if (pos) {
+        m_goal_pos = *pos;
+        m_goal_tolerance = tolerance;
+        m_goal_pos_valid = true;
+        if (m_goal_dir_valid && m_goal_type != type)
+            SetGoalDir(m_goal_type, 0, false);
+        m_goal_type = type;
+    } else {
+        m_goal_pos_valid = false;
+        if (!m_goal_dir_valid)
+            m_goal_type = GOAL_NONE;
+    }
+    return true;
+}
+
 /* the destructor of the network's controller (OVL2 0x56F460: CSealCtrl's called as a base) */
 CRemoteCtrl::~CRemoteCtrl()
 {

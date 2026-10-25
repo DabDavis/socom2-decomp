@@ -10270,9 +10270,9 @@
 0x0056D530 0x170 func_0056D530  # OVL2
 0x0056D6A0 0x1EC func_0056D6A0  # OVL2
 0x0056D890 0x88 func_0056D890  # OVL2
-0x0056D920 0x178 func_0056D920  # OVL2
-0x0056DAA0 0xF4 func_0056DAA0  # OVL2
-0x0056DBA0 0xF8 func_0056DBA0  # OVL2
+0x0056D920 0x178 SetGoalDir__9CSealCtrlF9GOAL_TYPEPC6CPnt3Db  # OVL2; s1:calls by hand (SetGoalPos and ClearGoal call it with (type, 0, false) where SOCOM 1's call SetGoalDir__9CSealCtrlF9GOAL_TYPEPC6CPnt3Db; the row before SetGoalPos as SOCOM 1's)
+0x0056DAA0 0xF4 SetGoalPos__9CSealCtrlF9GOAL_TYPEPC6CPnt3Df  # OVL2; s1:order by hand (between SetGoalDir and ClearGoal as SOCOM 1's SetGoalPos at 0x267380; its code SOCOM 1's word for word with the goal fields 8 bytes on)
+0x0056DBA0 0xF8 SetGoalPos__9CSealCtrlF9GOAL_TYPERC9CAiMapLocf  # OVL2; new in SOCOM II: a map cell's centre (AiMaps.GetCellCenter) handed to the point's SetGoalPos, which it inlines -- the overload's name ours
 0x0056DCA0 0xA8 ClearGoal__9CSealCtrlF9GOAL_TYPE  # OVL2; s1:callee
 0x0056DD50 0x68 ResetToInitialState__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0056DDC0 0x50 OnRecycleEntity__11CSealCtrlAiFP7CEntity  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)

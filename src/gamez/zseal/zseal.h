@@ -135,6 +135,32 @@ public:
 /* the goals a controller pursues (SOCOM 1's DWARF, a byte) */
 enum GOAL_TYPE { GOAL_NONE = 0, GOAL_SCAN = 1, GOAL_LOOK = 2, GOAL_MOVE = 3, GOAL_SHOOT = 4, GOAL_AVOID = 5, GOAL_RECOVER = 6 };
 
+/* a SEAL's stance (SOCOM 1's DWARF, a signed byte) */
+enum SEAL_STANCE {
+    STANCE_NONE = -1, STANCE_STAND = 0, STANCE_CROUCH = 1, STANCE_PRONE = 2, STANCE_IDLE = 3,
+    STANCE_MAX = 4
+};
+
+/* a random period and its countdown (SOCOM 1's DWARF: CAiTimer, an Rfloat {m_min, m_range} and
+ * the timer; 0xc bytes) */
+class CAiTimer {
+public:
+    float m_min;   // 0x0
+    float m_range;   // 0x4
+    float m_timer;   // 0x8
+
+    /* the never-expiring period (SOCOM 1's infinite__8CAiTimer; OVL2 data, read as a variable) */
+    static float infinite;
+};
+
+/* the AI's maps (SOCOM 1's CAiMaps; the global AiMaps, OVL2 bss) -- only the cell's centre */
+class CAiMaps {
+public:
+    bool GetCellCenter(const CAiMapLoc &loc, CPnt3D *center);
+};
+
+extern CAiMaps AiMaps;
+
 /* a squad (SOCOM 1's CSealUnit; SOCOM II's vtable at 0x669650 has IssueCommand first, its
  * pointer at 4) -- only what the controller calls */
 class CSealUnit {
@@ -224,6 +250,11 @@ public:
     /* +0xB4, new in SOCOM II: the AI-map collision bit (the name ours) */
     virtual void SetDoAiMapCollide(bool on) { m_do_aimap_collide = on; }
 
+    /* the goals: a direction, a position (a point or a map cell's centre), cleared (seal_ai.cpp,
+     * SOCOM 1's; OVL2 0x56D920, 0x56DAA0, 0x56DBA0, 0x56DCA0) */
+    bool SetGoalDir(GOAL_TYPE type, const CPnt3D *dir, bool b);
+    bool SetGoalPos(GOAL_TYPE type, const CPnt3D *pos, float tolerance);
+    bool SetGoalPos(GOAL_TYPE type, const CAiMapLoc &loc, float tolerance);
     void ClearGoal(GOAL_TYPE type);
     /* the pad's rumble motors (SOCOM 1's) */
     void TickRumbler(float dT);
@@ -280,7 +311,10 @@ public:
     CPnt3D m_fudge_velR;   // 0x18c
     CPnt3D m_fudge_velM;   // 0x198
     CPnt3D m_fudge_velW;   // 0x1a4
-    unsigned char _1b0[0x221 - 0x1b0];
+    GOAL_TYPE m_goal_type;   // 0x1b0 (SOCOM 1's 0x1a8)
+    float m_goal_tolerance;   // 0x1b4
+    CAiTimer m_goal_timer;   // 0x1b8
+    unsigned char _1c4[0x221 - 0x1c4];
     MENU_STATE m_menustate;   // 0x221 (as SOCOM 1's)
     unsigned char _222[0x250 - 0x222];
 };
@@ -300,6 +334,7 @@ public:
     virtual void SetThrottle(unsigned int axis, float value);
     virtual void OnSetHealth(float health, float old);
     virtual void OnMissionEnd();
+    virtual void OnStateChange(SEAL_STATE from, SEAL_STATE to);
 
     /* the AI's mode set (SOCOM 1's; OVL2 0x56CBF0) and its states dropped (SOCOM 1's
      * ClearAiState, the AI-states lane's 0x5F5F20) */
@@ -308,7 +343,10 @@ public:
 
     unsigned char _250[0x254 - 0x250];
     float m_throttle_goal[3];   // 0x254 (as SOCOM 1's 0x274: the throttles the AI asks for)
-    unsigned char _260[0x468 - 0x260];
+    unsigned char _260[0x278 - 0x260];
+    SEAL_STANCE m_stance;   // 0x278 (SOCOM 1's 0x285)
+    float m_stance_delay;   // 0x27c (SOCOM 1's 0x288)
+    unsigned char _280[0x468 - 0x280];
     CZAnim *m_task_anim;   // 0x468: an anim the AI plays, stopped at the mission's end
     unsigned char _46c[0x7c0 - 0x46c];
 };
@@ -331,7 +369,8 @@ public:
     virtual ~CBody();
     virtual int NullNode() const { return -1; }
 
-    unsigned char _4[0x90 - 0x4];
+    short m_state;   // 0x4: the SEAL's state (SOCOM 1's char at 0xd; its constructor leaves it)
+    unsigned char _6[0x90 - 0x6];
 };
 
 /* the SEAL (SOCOM 1's DWARF: CZSealBody : CEntity, CBody, 0x1140 bytes; SOCOM II's CBody base at
@@ -342,6 +381,11 @@ class CZSealBody : public CEntity, public CBody {
 public:
     /* every heartbeat loop stopped (SOCOM 1's; StopRumbler calls it with no body) */
     static void StopAllHeartbeatSounds();
+    /* the stance a state stands for, or the fallback (SOCOM 1's; the AI-states lane's 0x5FC910) */
+    static SEAL_STANCE GetStanceFromState(SEAL_STATE state, SEAL_STANCE fallback);
+    /* the animation set's limits on the sideways and forward motion (seal_cfg.cpp) */
+    void GetMaxXMotion(float &a, float &b);
+    void GetMaxZMotion(float &a, float &b);
 
     /* (0x5533E0, not written yet: declared so no unit emits an implicit one) */
     virtual ~CZSealBody();
@@ -384,7 +428,9 @@ public:
     zdb::IntersectStruct m_last_altitude;   // 0x400 (SOCOM 1's 0x320)
     unsigned char _420[0x434 - 0x420];
     unsigned char m_snakePath[4];   // 0x434: a CAiPath (SOCOM 1's 0x384)
-    unsigned char _438[0x5e0 - 0x438];
+    unsigned char _438[0x528 - 0x438];
+    class AnimSet *m_animset;   // 0x528 (SOCOM 1's 0x45c)
+    unsigned char _52c[0x5e0 - 0x52c];
     CZKit m_kit;   // 0x5e0 (SOCOM 1's 0x520)
     unsigned char _5e4[0xec0 - 0x5e4];
     CCompassAnchor *m_mpbomb_anchor;   // 0xec0 (SOCOM 1's 0xdb4)
