@@ -3927,10 +3927,10 @@
 0x002B2180 0x8 func_002B2180  # OVL1
 0x002B2190 0x38 Clear__9CSpawnersFv  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:exact
 0x002B21D0 0x13C Tick__9CSpawnersFf  # OVL1; s1:align
-0x002B2310 0x90 func_002B2310  # OVL1
+0x002B2310 0x90 RecycleEntity__8CMissionFP7CEntity  # OVL1; s1:order by hand (the states lane: after CSpawners::Tick as in SOCOM 1; both restart the spawners' timer at 2.0, count one more spawn and call CEntity::RecycleEntity(e); SOCOM II's first stops a flagged entity's anims)
 0x002B23A0 0x4A0 func_002B23A0  # OVL1
 0x002B2840 0x88 InitalizeTeamValves__8CMissionFv  # OVL1; s1:calls
-0x002B28D0 0x450 func_002B28D0  # OVL1
+0x002B28D0 0x450 LoadVehicle__8CMissionFP16CVehicleRdrEntryb  # OVL1; s1:calls by hand (the states lane: CSpawners::Tick calls it on &theMission with the spawn's entry and false from the same instruction as SOCOM 1's calls LoadVehicle)
 0x002B2D20 0x124 func_002B2D20  # OVL1
 0x002B2E50 0x5D8 func_002B2E50  # OVL1
 0x002B3430 0x38 CloseVehicleRdr__8CMissionFv  # OVL1; s1:align

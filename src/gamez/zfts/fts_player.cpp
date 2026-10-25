@@ -80,11 +80,35 @@ public:
 
 extern CftsPlayer ftsPlayer;
 
+/* the spawners: the vehicles waiting to come back, one every two seconds (SOCOM 1's CSpawners and
+ * its global, 32 bytes at 0x440C10) */
+class CVehicleRdrEntry;
+
+class CSpawners {
+public:
+    struct spawn_map {
+        unsigned int index;   // 0x0: the recycler's
+        CVehicleRdrEntry *entry;   // 0x4
+    };
+
+    void Clear();
+    void Tick(float dT);
+
+    std::list<unsigned int> m_ids;   // 0x0
+    std::list<spawn_map> m_spawns;   // 0xc
+    int m_count;   // 0x18
+    float m_timer;   // 0x1c
+};
+
+extern CSpawners spawners;
+
 /* the mission (only what this unit touches, at SOCOM II's offsets) */
 class CVehicleRdr;
 
 class CMission {
 public:
+    void RecycleEntity(CEntity *e);
+    CEntity *LoadVehicle(CVehicleRdrEntry *entry, bool b);
     void InitalizeTeamValves();
     void CloseVehicleRdr();
     void OpenVehicleRdr();
@@ -97,14 +121,23 @@ public:
 };
 
 /* unnamed yet (SOCOM 1's names in the comments) */
+extern CMission theMission;
+
 extern "C" {
-extern bool data_00440C30;   /* the squirm flag (SOCOM 1's ftsGetSquirm's) */
+extern bool data_003DF188;   /* (SOCOM II's: the spawners wait while it is clear) */
+void func_005EC9F0(CZSealBody *seal, int arg);   /* CSealUnit::InitalizeSealUnit (SOCOM II's second
+                                                    argument) */
+void func_0026ADA0(CZAnimMain *zanim, zdb::CNode *node);
+
 CValve *func_003520D0(const char *name, unsigned int value, VALVE_TYPE type);   /* CValve::Create,
                                                                        SOCOM 1's with a value */
 void func_0053DF50();   /* CCharacterType::CleanupTemporary */
 void func_00533920(CVehicleRdr *rdr);   /* CVehicleRdr::Close */
 void func_005337F0(CVehicleRdr *rdr, const char *name);   /* CVehicleRdr::Open */
 }
+
+/* the squirm switch (SOCOM 1's file static) */
+static bool doSquirm;
 
 int sprintf(char *buf, const char *fmt, ...);
 void *operator new(unsigned int size);
@@ -117,7 +150,7 @@ CSealCtrlCopy::~CSealCtrlCopy()
 /* the squirm flag (OVL1 0x2B3B60) */
 bool ftsGetSquirm()
 {
-    return data_00440C30;
+    return doSquirm;
 }
 
 /* a SEAL made with the controller its type asks for; the player's kept (OVL1 0x2B3A00).
@@ -325,6 +358,27 @@ void CMission::CloseVehicleRdr()
         func_00533920(m_vehicle_rdr);
 }
 
+/* an entity given back: a SEAL's anims stopped, or, with vehicles waiting, the spawners' timer
+ * restarted and one more owed (OVL1 0x2B2310; SOCOM 1's had only the second).
+ * OPEN, 4 instructions: the timer's and the count's stores. The target takes the constant 2.0 into
+ * v0 and stores it before the increment (lui v0; lw v1; sw v0; addiu v0,v1,1 -- SOCOM 1's
+ * RecycleEntity has the same four); this keeps the count in v0 and stores both after the add.
+ * Tried: the two statements swapped, `+= 1`, `= n + 1` through a local, the object through a
+ * reference or pointer local, an inline member, the two arms of the if swapped. */
+void CMission::RecycleEntity(CEntity *e)
+{
+    bool b = e->m_bit13;
+
+    if (b || spawners.m_spawns.size()) {
+        if (!b) {
+            spawners.m_timer = 2.0f;
+            spawners.m_count++;
+        } else
+            func_0026ADA0(&ZAnim, e->GetNode());
+        CEntity::RecycleEntity(e);
+    }
+}
+
 /* a valve per AI team and the player's alive valve (OVL1 0x2B2840) */
 void CMission::InitalizeTeamValves()
 {
@@ -335,4 +389,41 @@ void CMission::InitalizeTeamValves()
         m_team_valves[i] = func_003520D0(name, 0, (VALVE_TYPE)2);
     }
     m_player_valve_alive = func_003520D0("player_valve_alive", 0, (VALVE_TYPE)2);
+}
+
+/* the next vehicle waiting brought back when the timer runs out, its SEAL given a unit
+ * (OVL1 0x2B21D0) */
+void CSpawners::Tick(float dT)
+{
+    CEntity *e;
+    spawn_map *spawn;
+
+    if (m_count > 0 && data_003DF188) {
+        m_timer -= dT;
+        if (m_timer <= 0.0f) {
+            if (m_spawns.size()) {
+                std::list<spawn_map>::node_base *const &first = m_spawns.end_node().next_;
+                spawn = &((std::list<spawn_map>::node *)first)->data_;
+
+                CEntity::OpenRecycler(spawn->index);
+                e = theMission.LoadVehicle(spawn->entry, false);
+
+                if (e) {
+                    CEntity::RecycleEntity(spawn->index, e, true);
+                    func_005EC9F0(e && e->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)e : 0, 0);
+                    e->OnMissionStart();
+                }
+                m_spawns.erase(std::list<spawn_map>::iterator(first));
+                m_timer = 2.0f;
+                CEntity::CloseRecycler();
+            }
+            m_count--;
+        }
+    }
+}
+
+/* every spawn forgotten (OVL1 0x2B2190) */
+void CSpawners::Clear()
+{
+    m_spawns.clear();
 }
