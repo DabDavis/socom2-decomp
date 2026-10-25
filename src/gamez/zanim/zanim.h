@@ -659,6 +659,14 @@ enum VALVE_TYPE {};   // its values are not in SOCOM 1's DWARF, only its name in
 class CValve {
 public:
     static CValve *Create(const char *name, VALVE_TYPE type);
+    static CValve *GetByName(const char *name);
+
+    char* m_name;   // 0x0
+    unsigned int m_value : 16;   // 0x4
+    unsigned int m_type : 8;   // 0x4
+    unsigned int m_name_pooled : 1;   // 0x4
+    unsigned int m_pooled : 1;   // 0x4
+    unsigned int m_unused : 6;   // 0x4
 };
 
 class _zanim_valve_ref {

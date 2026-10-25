@@ -2840,8 +2840,8 @@
 0x0025F960 0x48 zAnimObjectOpacityFromToBegin__FP14_zanim_cmd_hdr  # OVL1; s1:align
 0x0025F9B0 0x4BC zAnimObjectMotionFromToTick__FP14_zanim_cmd_hdrPf  # OVL1; ZAnim OBJECT_MOTION_FROM_TO tick (InitCommands' #21, file id 0x16); s1:cmd (registered under "OBJECT_MOTION_FROM_TO" tick in both builds' InitCommands)
 0x0025FE70 0x880 zAnimObjectMotionFromToBegin__FP14_zanim_cmd_hdr  # OVL1; ZAnim OBJECT_MOTION_FROM_TO begin (InitCommands' #21, file id 0x16); s1:cmd (registered under "OBJECT_MOTION_FROM_TO" begin in both builds' InitCommands)
-0x002606F0 0x214 func_002606F0  # OVL1
-0x00260910 0x230 func_00260910  # OVL1
+0x002606F0 0x214 Tick__15CZAnimFromToAccFfP6CPnt3D  # OVL1; s1:calls by hand (SOCOM 1's CZAnimFromToAcc::Tick: the from-to tick calls it with the path record, the position and the step where SOCOM 1's does; the same three-phase switch on the byte at 0x34)
+0x00260910 0x230 ComputeRunTime__15CZAnimFromToAccFP6CPnt3DP6CPnt3D  # OVL1; s1:calls by hand (SOCOM 1's CZAnimFromToAcc::ComputeRunTime: the from-to begin calls it with the path record and the two points and stores the result as the run time, as SOCOM 1's does; the same bisection to 0.0001)
 0x00260B40 0x468 func_00260B40  # OVL1; ZAnim SCROLL_MOTION tick (InitCommands' #23, file id 0x18)
 0x00260FB0 0xD0 func_00260FB0  # OVL1; ZAnim SCROLL_MOTION begin (InitCommands' #23, file id 0x18)
 0x00261080 0x274 func_00261080  # OVL1; ZAnim WHEEL_MOTION tick (InitCommands' #22, file id 0x17)
@@ -5469,11 +5469,11 @@
 0x003155D0 0x6C GetRadius__Q23zdb5CNodeFv  # OVL1; s1:calls (SOCOM 1's InsideMidPlane(CCell *) calls GetRadius on the cell where SOCOM II's calls this; the larger of its bounds' corners' lengths)
 0x00315640 0x58 GetRadiusSq__Q23zdb5CNodeFv  # OVL1; s1:align
 0x003156A0 0x28 GetRotation__Q23zdb5CNodeCFP6CPnt3D  # OVL1; tu: node_main.cpp~ (1.0 beta); s1:exact
-0x003156D0 0x8 func_003156D0  # OVL1
+0x003156D0 0x8 GetRotation__Q23zdb5CNodeCFP5CQuat  # OVL1; s1:order by hand (SOCOM II's quaternion overload, between SOCOM 1's GetRotation(CPnt3D*) and GetScale(CPnt3D*): a tail call to CMatrix::ToQuat on the node's own matrix; the from-to begin fills its from-rotation through it)
 0x003156E0 0x20 GetScale__Q23zdb5CNodeFP6CPnt3D  # OVL1; tu: node_main.cpp~ (1.0 beta); s1:exact
-0x00315700 0x8 func_00315700  # OVL1
-0x00315710 0x28 func_00315710  # OVL1
-0x00315740 0x1C func_00315740  # OVL1
+0x00315700 0x8 GetScale__Q23zdb5CNodeFv  # OVL1; s1:order by hand (SOCOM 1's GetScale(), 8 bytes, after GetScale(CPnt3D*) in both: returns the matrix's [0][0])
+0x00315710 0x28 SetScale__Q23zdb5CNodeFP6CPnt3D  # OVL1; s1:order by hand (SOCOM 1's SetScale(CPnt3D*) writes the diagonal from the vector and sets the changed bit, as this does -- SOCOM II drops the facade callback; the from-to tick calls it where SOCOM 1's calls SetScale)
+0x00315740 0x1C SetScale__Q23zdb5CNodeFf  # OVL1; s1:order by hand (SOCOM 1's SetScale(float), next in both: the diagonal from one float, the changed bit)
 0x00315760 0x30 SetRotation__Q23zdb5CNodeFPC6CPnt3D  # OVL1; s1:align
 0x00315790 0x38 SetRotation__Q23zdb5CNodeFRC5CQuat  # OVL1; s1:align
 0x003157D0 0x44 SetPosition__Q23zdb5CNodeFfff  # OVL1; s1:align

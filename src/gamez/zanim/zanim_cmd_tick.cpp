@@ -38,8 +38,6 @@ struct zanim_cmd_aim {
     float time;                     /* 0x40 */
 };
 
-extern "C" void func_003156D0(zdb::CNode *node, CQuat *q);    /* the rotation as a quaternion */
-
 /* OBJECT_AIM's begin: the turn that takes the node's forward onto the line to a point in the
  * target node's frame, as the tick's from and to orientations */
 extern "C" void func_002634A0(_zanim_cmd_hdr *hdr)
@@ -87,7 +85,7 @@ extern "C" void func_002634A0(_zanim_cmd_hdr *hdr)
         turn.Normalize();
         CQuat cur;
 
-        func_003156D0(node, &cur);
+        node->GetRotation(&cur);
         CQuat to;
 
         to = turn * cur;                    /* (assigned: the temporary's copy is kept) */
@@ -691,6 +689,109 @@ bool zAnimMessageTick(_zanim_cmd_hdr *hdr, float *dT)
     return true;
 }
 
+/* the screen's 3D blur, in the pipe after the iris effect: a level, an amount (a float kept as
+ * its bits) and its blend */
+struct BlurEffect {
+    int level;                      /* 0x0 */
+    int amount;                     /* 0x4 */
+    unsigned long alpha;            /* 0x8: a GS ALPHA register */
+};
+
+extern BlurEffect data_00488EA0;
+/* a float driven by an expression (not named yet) */
+extern "C" void func_0025C880(float *out, char *expr, int len, float t);
+
+/* BLUR3D: set the blur's level (flag 1) and amount (2), or drive the amount by an expression;
+ * its blend from the record's selectors and alpha (4) or an expression (8); over a time */
+struct zanim_cmd_blur {
+    _zanim_cmd_hdr hdr;
+    unsigned char flags;
+    unsigned char level;
+    unsigned char A : 2;
+    unsigned char B : 2;
+    unsigned char C : 2;
+    unsigned char D : 2;
+    unsigned char pad;
+    float alpha;                    /* 0x8 */
+    float amount;                   /* 0xC */
+    unsigned short expr_len;        /* 0x10: the amount's */
+    unsigned short expr_off;
+    unsigned short alpha_expr_len;  /* 0x14 */
+    unsigned short alpha_expr_off;
+    float time;                     /* 0x18 */
+};
+
+extern "C" bool func_00264A40(_zanim_cmd_hdr *hdr, float *dT)
+{
+    GsAlpha alpha;
+    bool done = true;
+    zanim_cmd_blur *cmd = (zanim_cmd_blur *)hdr;
+
+    *(unsigned long *)&alpha = 0x44;
+
+    if (cmd->flags & 1)
+        data_00488EA0.level = cmd->level;
+    if (cmd->flags & 2) {
+        int v;
+
+        memcpy(&v, &cmd->amount, sizeof v);
+        data_00488EA0.amount = v;
+    }
+    if (cmd->expr_len > 0) {
+        float f;
+
+        func_0025C880(&f, (char *)cmd + cmd->expr_off, cmd->expr_len, *dT + ZAnim.m_CurSeq->cmd_timer);
+        int v;
+
+        memcpy(&v, &f, sizeof v);
+        data_00488EA0.amount = v;
+    }
+    if (cmd->flags & 4) {
+        int fix = (int)(128.0f * cmd->alpha);
+
+        if (fix < 0)
+            fix = 0;
+        if (fix > 255)
+            fix = 255;
+        unsigned char d = cmd->D;
+        unsigned char c = cmd->C;
+        unsigned char b = cmd->B;
+        unsigned char a = cmd->A;
+
+        alpha.FIX = fix;
+        alpha.A = a;
+        alpha.B = b;
+        alpha.C = c;
+        alpha.D = d;
+        unsigned long v;
+
+        memcpy(&v, &alpha, sizeof v);
+        data_00488EA0.alpha = v;
+    }
+    if (cmd->flags & 8) {
+        func_0025C5F0(&alpha, (char *)cmd + cmd->alpha_expr_off, cmd->alpha_expr_len, *dT + ZAnim.m_CurSeq->cmd_timer);
+        unsigned long v;
+
+        memcpy(&v, &alpha, sizeof v);
+        data_00488EA0.alpha = v;
+    }
+    float time = cmd->time;
+
+    if (!(time <= 0.0f)) {
+        float t = ZAnim.m_CurSeq->cmd_timer;
+        float step = *dT;
+
+        if (!(step + t <= time)) {
+            done = true;
+            *dT -= time - t;
+        } else {
+            done = false;
+            *dT = 0.0f;
+        }
+    }
+    return done;
+}
+
 /* the screen's iris effect (one global; its two functions not named yet) */
 struct IrisEffect {
     int mode;                       /* 0x0 */
@@ -1285,7 +1386,6 @@ struct zanim_cmd_wheel {
     float time;                     /* 0x30 */
 };
 
-extern "C" void func_003156D0(zdb::CNode *node, CQuat *q);    /* the rotation as a quaternion */
 
 extern "C" bool func_00261080(_zanim_cmd_hdr *hdr, float *dT)
 {
@@ -1319,7 +1419,7 @@ extern "C" bool func_00261080(_zanim_cmd_hdr *hdr, float *dT)
     CPnt3D rot = cmd->axis * angle;
     CQuat cur;
 
-    func_003156D0(wheel, &cur);
+    wheel->GetRotation(&cur);
     CQuat spin;
 
     spin.MakeYXZRot(rot.y, rot.x, rot.z);
@@ -1354,6 +1454,415 @@ extern "C" void func_00261300(_zanim_cmd_hdr *hdr)
         cmd->pos = CPnt3D::zero;
         node->TransformToWorld(cmd->pos);
     }
+}
+
+/* OBJECT_MOTION_FROM_TO's speed profile (SOCOM 1's CZAnimFromToAcc): speed up from v0 to v1 at a1,
+ * hold v1, slow to v2 at a2, along a direction -- phase 1, 2, 3 for t1, t2, t3 seconds */
+class CZAnimFromToAcc {
+public:
+    float v0;                       /* 0x0 */
+    float v1;                       /* 0x4 */
+    float v2;                       /* 0x8 */
+    float a1;                       /* 0xC */
+    float a2;                       /* 0x10 */
+    float t1;                       /* 0x14 */
+    float t2;                       /* 0x18 */
+    float t3;                       /* 0x1C */
+    float t;                        /* 0x20: into the phase */
+    float v;                        /* 0x24 */
+    CPnt3D dir;                     /* 0x28 */
+    unsigned char phase;            /* 0x34 */
+
+    void Tick(float dT, CPnt3D *pos);
+    float ComputeRunTime(CPnt3D *from, CPnt3D *to);
+};
+
+/* the distance covered from speed v at acceleration a in time t */
+static inline float AccDist(float v, float a, float t)
+{
+    return v * t + 0.5f * a * t * t;
+}
+
+/* the profile's times for the distance between the points, and the whole run's: where the
+ * distance is too short to reach v1, the top speed is bisected down to fit.
+ * OPEN, 5 instructions: the target materialises the 0.5f right after the call, before the
+ * distance's copy (whose source pointer then takes a1); MW puts it with its first use. The
+ * first pass's v1 in a local, hi declared before lo and a block-local midpoint are each
+ * load-bearing (each was a register or a reload off). */
+float CZAnimFromToAcc::ComputeRunTime(CPnt3D *from, CPnt3D *to)
+{
+    float dist = (*from - *to).Length();
+    float hi;
+    float lo = 0.0f;
+    float top = v1;
+
+    t1 = (top - v0) / a1;
+    t3 = (v2 - top) / a2;
+    float acc = AccDist(v0, a1, t1) + AccDist(top, a2, t3);
+    float diff = dist - acc;
+    if (diff < 0.0f) {
+        hi = v1;
+        while (fabsf(diff) > 0.0001f) {
+            float mid = 0.5f * (hi + lo);
+
+            t1 = (mid - v0) / a1;
+            t3 = (v2 - mid) / a2;
+            acc = AccDist(v0, a1, t1) + AccDist(mid, a2, t3);
+            diff = dist - acc;
+            if (diff < 0.0f)
+                hi = mid;
+            else if (diff > 0.0f)
+                lo = mid;
+        }
+    }
+    dist -= acc;
+    float run = t1 + t3;
+    if (dist > 0.0f) {
+        t2 = dist / v1;
+        run += t2;
+    } else
+        t2 = 0.0f;
+    return run;
+}
+
+/* move a point along the profile for a time, phase after phase */
+void CZAnimFromToAcc::Tick(float dT, CPnt3D *pos)
+{
+    CPnt3D d;
+
+    while (dT > 0.0f) {
+        float step = dT;
+
+        switch (phase) {
+        case 1:
+            if (t + dT > t1) {
+                step = t1 - t;
+                t = 0.0f;
+                dT -= step;
+                if (t2 > 0.0f)
+                    phase = 2;
+                else
+                    phase = 3;
+            } else {
+                t += dT;
+                dT = 0.0f;
+            }
+            v += a1 * step;
+            break;
+        case 2:
+            v = v1;
+            if (t + dT > t2) {
+                step = t2 - t;
+                t = 0.0f;
+                phase = 3;
+                dT -= step;
+            } else {
+                t += dT;
+                dT = 0.0f;
+            }
+            break;
+        case 3:
+            v += a2 * dT;
+            t += dT;
+            dT = 0.0f;
+            break;
+        default:
+            dT = 0.0f;
+            break;
+        }
+        d = dir * v;
+        *pos += d * step;
+    }
+}
+
+/* OBJECT_MOTION_FROM_TO: a node moved, turned and scaled from one state to another over a time.
+ * Flags: 1 the goals relative to the start, 2 keep the node's place, 4 and 0x10 the start and the
+ * goal from the anim's argument, 0x20 the start rotation set rather than read, 0x40 turn, 0x80 the
+ * goal rotation a node's, 0x100 the start scale set, 0x200 scale, 0x400 the goal from valves,
+ * 0x800/0x1000 move on the speed profile, 0x2000 leave the node where the motion ends */
+struct zanim_cmd_from_to {
+    _zanim_cmd_hdr hdr;
+    unsigned short flags;           /* 0x4 */
+    unsigned char node;             /* 0x6 */
+    unsigned char _7;
+    unsigned char rot_node;         /* 0x8 */
+    unsigned char valve[3];         /* 0x9: the goal's x, y, z, as valve name indices */
+    unsigned short pos;             /* 0xC: the position record's offset, 0 none */
+    unsigned short path;            /* 0xE: the speed profile's */
+    CQuat from;                     /* 0x10 */
+    CQuat to;                       /* 0x20 */
+    unsigned short scale;           /* 0x30: the scale record's */
+    unsigned short _32;
+    float time;                     /* 0x34 */
+};
+
+struct zanim_from_to_pos {
+    unsigned char from_node : 1;    /* the start a node's origin */
+    unsigned char to_node : 1;      /* the goal a node's origin */
+    unsigned char by_speed : 1;     /* the time from the distance at `speed` */
+    unsigned char _bits : 5;
+    unsigned char _1;
+    unsigned char from_index;       /* 0x2 */
+    unsigned char to_index;         /* 0x3 */
+    CPnt3D from;                    /* 0x4 */
+    CPnt3D to;                      /* 0x10 */
+    CPnt3D vel;                     /* 0x1C */
+    float speed;                    /* 0x28 */
+};
+
+struct zanim_from_to_scale {
+    CPnt3D from;                    /* 0x0 */
+    CPnt3D to;                      /* 0xC */
+    CPnt3D rate;                    /* 0x18 */
+};
+
+/* the goal, relative to the start or not: by value, each return built in the caller's local (the
+ * begin keeps exactly that -- an inline ternary selects a pointer and copies after; the name is
+ * ours) */
+static inline CPnt3D FromToGoal(zanim_cmd_from_to *cmd, zanim_from_to_pos *pos)
+{
+    if (cmd->flags & 1)
+        return pos->from + pos->to;
+    return pos->to;
+}
+
+/* OPEN, 34 instructions, all registers: the anim pointer and the node trade s2 and s0. Wherever
+ * it is declared (first, last, uninitialised, assigned apart) the anim takes the lowest saved
+ * register; the declarations here give the other four theirs. A 12-minute permuter run (8,880
+ * candidates) found nothing better. */
+void zAnimObjectMotionFromToBegin(_zanim_cmd_hdr *hdr)
+{
+    CZAnimFromToAcc *path;
+    zanim_from_to_pos *pos;
+    bool set;
+    CNode *node;
+    CZAnim *anim = ZAnim.m_CurAnim;
+    zanim_cmd_from_to *cmd = (zanim_cmd_from_to *)hdr;
+
+    node = anim->GetNode(cmd->node, false);
+
+    if (!node)
+        return;
+    path = 0;
+    if ((cmd->flags & 0x800) || (cmd->flags & 0x1000))
+        path = (CZAnimFromToAcc *)((char *)cmd + cmd->path);
+    pos = 0;
+    if (cmd->pos != 0)
+        pos = (zanim_from_to_pos *)((char *)cmd + cmd->pos);
+    if ((cmd->flags & 0x418) || (pos && pos->to_node)) {
+        set = false;
+
+        if (pos && pos->from_node) {
+            CNode *from = ZAnim.m_CurAnim->GetNode(pos->from_index, false);
+
+            if (from) {
+                pos->from = CPnt3D::zero;
+                from->TransformToWorld(pos->from);
+                set = true;
+            }
+        } else if (cmd->flags & 4) {
+            CPnt3D *arg = anim->GetArgPnt3D();
+
+            if (arg && pos) {
+                set = true;
+                pos->from = *arg;
+            }
+        } else if (!(cmd->flags & 2) && pos) {
+            set = true;
+            /* the translation row read in place: GetPosition's by-value copy is not here */
+            pos->from = *(const CPnt3D *)node->m_matrix.m_matrix[3];
+        }
+        if (pos)
+            node->SetPosition(pos->from.x, pos->from.y, pos->from.z);
+        if (pos && pos->to_node) {
+            CNode *to = ZAnim.m_CurAnim->GetNode(pos->to_index, false);
+
+            if (to) {
+                pos->to = CPnt3D::zero;
+                to->TransformToWorld(pos->to);
+                set = true;
+            }
+        } else if (cmd->flags & 0x10) {
+            CPnt3D *arg = anim->GetArgPnt3D();
+
+            if (pos && arg)
+                pos->to = *arg;
+            set = true;
+        } else if (cmd->flags & 0x400) {
+            if (pos) {
+                CValve *v = CValve::GetByName(anim->GetName(cmd->valve[0]));
+
+                pos->to.x = v ? (float)v->m_value : 0.0f;
+                v = CValve::GetByName(anim->GetName(cmd->valve[1]));
+                pos->to.y = v ? (float)v->m_value : 0.0f;
+                v = CValve::GetByName(anim->GetName(cmd->valve[2]));
+                pos->to.z = v ? (float)v->m_value : 0.0f;
+            }
+            set = true;
+        }
+        if (pos && pos->by_speed) {
+            CPnt3D to = FromToGoal(cmd, pos);
+            CPnt3D d = to - pos->from;
+
+            cmd->time = d.Length() / pos->speed;
+        }
+        if (!(cmd->flags & 2) || (pos && pos->by_speed) || set) {
+            if (pos) {
+                CPnt3D to = FromToGoal(cmd, pos);
+                float rate = 1.0f / cmd->time;
+                pos->vel = (to - pos->from) * rate;
+            }
+        }
+        if (path && set && pos)
+            cmd->time = path->ComputeRunTime(&pos->from, &pos->to);
+    }
+    if (((cmd->flags & 0x800) || (cmd->flags & 0x1000)) && pos) {
+        CPnt3D d = pos->to - pos->from;
+
+        path->t = 0.0f;
+        if (path->t1 > 0.0f) {
+            path->phase = 1;
+            path->v = path->v0;
+        } else if (path->t2 > 0.0f) {
+            path->phase = 2;
+            path->v = path->v1;
+        } else if (path->t3 > 0.0f) {
+            path->phase = 3;
+            path->v = path->v1;
+        }
+        path->dir = d;
+        path->dir.Normalize();
+    }
+    if (cmd->flags & 0x40) {
+        if (cmd->flags & 1)
+            node->GetRotation(&cmd->from);
+        else if (cmd->flags & 0x20)
+            node->SetRotation(cmd->from);
+        else
+            node->GetRotation(&cmd->from);
+        if (cmd->flags & 0x80) {
+            CNode *goal = ZAnim.m_CurAnim->GetNode(cmd->rot_node, false);
+
+            if (goal)
+                goal->GetRotation(&cmd->to);
+        }
+    }
+    if ((cmd->flags & 0x200) && cmd->scale != 0) {
+        zanim_from_to_scale *s = (zanim_from_to_scale *)((char *)cmd + cmd->scale);
+
+        if (cmd->flags & 0x100)
+            node->SetScale(&s->from);
+        else
+            node->GetScale(&s->from);
+        if (!(cmd->flags & 0x100)) {
+            float rate = 1.0f / cmd->time;
+            CPnt3D to;
+
+            if (cmd->flags & 1) {
+                to.x = s->from.x * s->to.x;
+                to.y = s->from.y * s->to.y;
+                to.z = s->from.z * s->to.z;
+            } else {
+                to.x = s->to.x;
+                to.y = s->to.y;
+                to.z = s->to.z;
+            }
+            s->rate = (to - s->from) * rate;
+        }
+    }
+}
+
+/* the motion's step: on the last, every track set to its goal */
+bool zAnimObjectMotionFromToTick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    zanim_cmd_from_to *cmd = (zanim_cmd_from_to *)hdr;
+    CNode *node = ZAnim.m_CurAnim->GetNode(cmd->node, false);
+    bool done;
+
+    if (!node)
+        return true;
+    float step = *dT;
+    float t = ZAnim.m_CurSeq->cmd_timer;
+    if (!(step + t <= cmd->time)) {
+        done = true;
+        step = cmd->time - t;
+        *dT -= step;
+    } else {
+        *dT = 0.0f;
+        done = false;
+    }
+    float at = step + ZAnim.m_CurSeq->cmd_timer;
+    zanim_from_to_pos *pos = 0;
+    if (cmd->pos != 0)
+        pos = (zanim_from_to_pos *)((char *)cmd + cmd->pos);
+    if (done) {
+        if ((cmd->flags & 0x200) && cmd->scale != 0) {
+            zanim_from_to_scale *s = (zanim_from_to_scale *)((char *)cmd + cmd->scale);
+            CPnt3D scale;
+
+            if (cmd->flags & 1) {
+                scale.x = s->from.x * s->to.x;
+                scale.y = s->from.y * s->to.y;
+                scale.z = s->from.z * s->to.z;
+            } else {
+                scale.x = s->to.x;
+                scale.y = s->to.y;
+                scale.z = s->to.z;
+            }
+            node->SetScale(&scale);
+        }
+        if (cmd->flags & 0x40) {
+            CQuat q;
+
+            if (cmd->flags & 1)
+                q = cmd->to * cmd->from;
+            else
+                q = cmd->to;
+            node->SetRotation(q);
+        }
+        if (((cmd->flags & 0x418) || (pos && pos->to_node)) && !(cmd->flags & 0x2000) && pos) {
+            CPnt3D p;
+
+            if (cmd->flags & 1)
+                p = pos->from + pos->to;
+            else
+                p = pos->to;
+            node->SetPosition(p.x, p.y, p.z);
+        }
+    } else {
+        if ((cmd->flags & 0x18) || (pos && pos->to_node)) {
+            CPnt3D p = node->GetPosition();
+
+            if ((cmd->flags & 0x800) || (cmd->flags & 0x1000))
+                ((CZAnimFromToAcc *)((char *)cmd + cmd->path))->Tick(step, &p);
+            else if (pos)
+                p += pos->vel * step;
+            node->SetPosition(p.x, p.y, p.z);
+        }
+        if (cmd->flags & 0x40) {
+            CQuat q;
+            CQuat to;
+
+            if (cmd->flags & 1)
+                to = cmd->to * cmd->from;
+            else
+                to = cmd->to;
+            cmd->from.Slerp(&to, at / cmd->time, &q);
+            node->SetRotation(q);
+        }
+        if (cmd->flags & 0x200) {
+            unsigned short off = cmd->scale;
+
+            if (off) {
+                CPnt3D scale;
+
+                node->GetScale(&scale);
+                scale += ((zanim_from_to_scale *)((char *)cmd + off))->rate * step;
+                node->SetScale(&scale);
+            }
+        }
+    }
+    return done;
 }
 
 /* fade a node's opacity from one value to another over a time on the command's clock */
@@ -2107,6 +2616,108 @@ bool zAnimStopAnimTick(_zanim_cmd_hdr *hdr, float *dT)
         }
     }
     return true;
+}
+
+/* an expression's operator token (a byte enum: copied with lb, compared zero-extended; the
+ * names are ours) */
+enum ZANIM_EXPR_OP {
+    EXPR_NONE,
+    EXPR_NOT,
+    EXPR_AND,
+    EXPR_OR,
+    EXPR_OPEN,
+    EXPR_CLOSE
+};
+
+struct zanim_cmd_expr_op {
+    _zanim_cmd_hdr hdr;
+    ZANIM_EXPR_OP op;
+};
+
+/* a binary operator applied (1, not, takes the right side alone) */
+static inline bool ExprApply(ZANIM_EXPR_OP op, bool a, bool b)
+{
+    if (op) {
+        switch (op) {
+        case EXPR_NOT:
+            return !b;
+        case EXPR_AND:
+            return a && b;
+        case EXPR_OR:
+            return a || b;
+        }
+    }
+    return false;
+}
+
+/* An expression after a command: its tests are commands run as they come, joined by operator
+ * tokens and brackets (a nested call each). It ends at the first test with nothing to join it,
+ * which is left as the next command, or at a closing bracket. CmdHdr's ternary assigned to a
+ * local declared before compiles the if-assign way (zero in the delay slot, then the load);
+ * used straight in an expression, or initialising, it branches over the zero. */
+bool CZAnimExpression::ProcExpr(float *dT)
+{
+    _zanim_cmd_hdr *start = ZAnim.CmdHdr();
+    ZANIM_EXPR_OP op = EXPR_NONE;
+    bool negate = false;
+    bool have = false;
+    bool result;
+
+    for (;;) {
+        _zanim_cmd_hdr *h;
+
+        h = ZAnim.CmdHdr();
+        if (h->data_type != ZAnim.m_cmd_ExprOperator.data_type) {
+            if (op != EXPR_NONE) {
+                bool r = ZAnim.CmdTick(dT);
+
+                if (negate) {
+                    negate = false;
+                    r = !r;
+                }
+                result = ExprApply(op, result, r);
+                have = true;
+                op = EXPR_NONE;
+            } else if (!have) {
+                result = ZAnim.CmdTick(dT);
+                have = true;
+                if (negate) {
+                    negate = false;
+                    result = !result;
+                }
+            } else {
+                ZAnim.m_CurSeq->cmd_pc = (char *)start;
+                return result;
+            }
+        } else {
+            ZANIM_EXPR_OP token = ((zanim_cmd_expr_op *)ZAnim.CmdHdr())->op;
+
+            if (token == EXPR_OPEN) {
+                ZAnim.CmdNext();
+                bool r = ProcExpr(dT);
+
+                if (negate) {
+                    negate = false;
+                    r = !r;
+                }
+                if (!have) {
+                    result = r;
+                    have = true;
+                } else {
+                    result = ExprApply(op, result, r);
+                    have = true;
+                    op = EXPR_NONE;
+                }
+            } else if (token == EXPR_CLOSE)
+                return result;
+            else if (token == EXPR_NOT)
+                negate = true;
+            else
+                op = token;
+        }
+        start = ZAnim.CmdHdr();
+        ZAnim.CmdNext();
+    }
 }
 
 /* if, elseif, else and endif carry their nesting level */

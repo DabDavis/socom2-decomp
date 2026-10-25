@@ -428,6 +428,60 @@ void CNode::SetPosition(float x, float y, float z)
     m_socom2_a1 |= 2;
 }
 
+/* the rotation from a quaternion or Euler angles, the matrix marked changed */
+void CNode::SetRotation(const CQuat &q)
+{
+    q.ToMatrix(&m_matrix);
+    m_socom2_a1 |= 2;
+}
+
+void CNode::SetRotation(const CPnt3D *euler)
+{
+    m_matrix.SetRotate(euler);
+    m_socom2_a1 |= 2;
+}
+
+/* the scale, on the matrix's diagonal */
+void CNode::SetScale(float s)
+{
+    m_matrix.m_matrix[0][0] = s;
+    m_matrix.m_matrix[1][1] = s;
+    m_matrix.m_matrix[2][2] = s;
+    m_socom2_a1 |= 2;
+}
+
+void CNode::SetScale(CPnt3D *s)
+{
+    m_matrix.m_matrix[0][0] = s->x;
+    m_matrix.m_matrix[1][1] = s->y;
+    m_matrix.m_matrix[2][2] = s->z;
+    m_socom2_a1 |= 2;
+}
+
+float CNode::GetScale()
+{
+    return m_matrix.m_matrix[0][0];
+}
+
+CPnt3D *CNode::GetScale(CPnt3D *out)
+{
+    out->x = m_matrix.m_matrix[0][0];
+    out->y = m_matrix.m_matrix[1][1];
+    out->z = m_matrix.m_matrix[2][2];
+    return out;
+}
+
+void CNode::GetRotation(CQuat *q) const
+{
+    m_matrix.ToQuat(q);
+}
+
+CPnt3D *CNode::GetRotation(CPnt3D *out) const
+{
+    m_matrix.ToEuler(out);
+    return out;
+}
+
 /* the squared radius of the bounds about the node's origin: the further corner's */
 float CNode::GetRadiusSq()
 {

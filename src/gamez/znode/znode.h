@@ -301,7 +301,12 @@ public:
     /* the node's own matrix (BuildMTW's inner copies call it out of line; the name is ours) */
     CMatrix *GetMatrix() { return &m_matrix; }
     void SetMatrix(const CMatrix *m);
-    void GetRotation(CPnt3D *out) const;
+    CPnt3D *GetRotation(CPnt3D *out) const;
+    void GetRotation(CQuat *q) const;       /* SOCOM II's */
+    CPnt3D *GetScale(CPnt3D *out);
+    float GetScale();
+    void SetScale(CPnt3D *s);
+    void SetScale(float s);
     void SetRotation(const CPnt3D *euler);
     void SetRotation(const CQuat &q);
     /* the pointer form, null tested (CreateXRef tests twice, as for SetPosition's) */

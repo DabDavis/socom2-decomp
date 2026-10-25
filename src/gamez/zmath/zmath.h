@@ -64,6 +64,12 @@ public:
     void Add(const CPnt3D *b, CPnt3D *out) const;
     /* inline (GetFogVisibility's distance arrives in a register of its own; the name is ours) */
     float Length() const { return sqrtf(x * x + y * y + z * z); }
+    /* into itself (CZAnimFromToAcc::Tick adds a product's temporary straight onto the point) */
+    CPnt3D &operator+=(const CPnt3D &b)
+    {
+        Add(&b, this);
+        return *this;
+    }
 
     static const CPnt3D zero;
     static const CPnt3D unit_x;
