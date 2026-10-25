@@ -495,6 +495,8 @@
 0x00229CA0 __dt__Q228@unnamed@hud_scorepopup_cpp@11CScorePopupFv
 0x0022A8B0 Draw__Q228@unnamed@hud_scorepopup_cpp@11CScorePopupFPQ23zdb7CCamera
 0x0022AB80 Draw__Q228@unnamed@hud_scorepopup_cpp@10CHudPopupsFPQ23zdb7CCamera
+0x0022AC30 SetupSpectatorBox__28@unnamed@hud_scorepopup_cpp@Fv
+0x0022B360 GetTagIPNT2D__FPC5_zrdrPCc
 0x0022BAD0 func_0022BAD0
 0x0022BB30 hudTurnOffScorePopup__Fv
 0x0022BC40 hudTriggerPopup__FP14CTriggerSource
@@ -513,6 +515,7 @@
 0x0022DD90 func_0022DD90
 0x0022DDC0 func_0022DDC0
 0x0022DDF0 func_0022DDF0
+0x0022DE60 GetTeamMembers__28@unnamed@hud_scorepopup_cpp@FPP10CZSealBodyPib
 0x0022E460 func_0022E460
 0x0022E4D0 __as__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>
 0x0022E5F0 func_0022E5F0
@@ -3350,8 +3353,15 @@
 0x00355A50 StartBatchReloc__Q23zdb15CBatchRelocatorCFv
 0x00356B90 swap__Q23std40__vector_deleter<1,Q23std12allocator<1>>FRQ23std40__vector_deleter<1,Q23std12allocator<1>>
 0x00356BE0 func_00356BE0
+0x003570C0 RelocateAll__Q23zdb12CGSTexBufferFv
+0x00357470 HasMipLevel__Q23zdb8CTextureFPQ23zdb8CTexture
+0x003574C0 FindPalette__Q23zdb8CTextureFPQ23zdb11CTexPalList
 0x003575A0 func_003575A0
+0x003575C0 Setup__Q23zdb12CGSTexBufferFff
+0x00357750 Add__Q23zdb12CGSTexBufferFPQ23zdb8CTexListb
 0x00357820 func_00357820
+0x00357950 Add__Q23zdb11CDynTexListFPQ23zdb10CTexHandleb
+0x00357A00 Add__Q23zdb11CDynTexListFPQ23zdb11CDynTexList
 0x00357B00 __dt__Q23zdb12CGSTexBufferFv
 0x00357BC0 func_00357BC0
 0x00357C10 TakeDrawPacket__Q23zdb15CBatchRelocatorFP1Ui
@@ -3554,6 +3564,7 @@
 0x0036B9D0 func_0036B9D0
 0x0036B9E0 func_0036B9E0
 0x0036BA20 func_0036BA20
+0x0036BA30 IsEnabled__8ListItemFv
 0x0036BA60 func_0036BA60
 0x0036BA70 func_0036BA70
 0x0036BDC0 func_0036BDC0

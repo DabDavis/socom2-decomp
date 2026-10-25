@@ -1610,6 +1610,24 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     allocator() is out of line for the deque), the tree's erase (0x306030), the CSaferStr trees
     (the string's out-of-line compare 0x2DEE30), the deque's copy constructor chain (mapped in
     include/deque), pop_back's 8 bytes, remove_if's swapped registers.
+- **Tells from the HUD, round 13** (hud_scorepopup.cpp's spectators, ztex_manager.cpp's tail):
+  - a walk's end test through an inline member (`CEntityItr::More`) gives the constructor's
+    `begin()` temporaries the higher stack slots; written straight into the loop test, `end()`'s
+    get them (GetTeamMembers);
+  - a struct returned by value goes straight into the return slot only through a constructor
+    (`return IPNT2D(x, y)`); a named local is built on the stack and copied (GetTagIPNT2D);
+  - a member updated across a store through another field of the same type is reloaded; the
+    target's single load is a local, and its declaration order against the element pointer picks
+    their registers;
+  - `int i` indexing a pointer vector's `operator[](unsigned)` keeps the `sll` on every pass;
+    `unsigned i` strength-reduces it;
+  - MW 3.0 gives the first-declared float local the highest saved register (SOCOM 1's compiler
+    gave it the lowest), and reusing one set of locals across blocks re-colours the later blocks;
+  - 8-byte-spaced statics that read zero in the image (0x3E5718, 0x3E5720) are set by the unit's
+    initialiser;
+  - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
+    Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
+    file once the rest is written.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
