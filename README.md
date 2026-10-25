@@ -1542,8 +1542,9 @@ every hand-written unit (`--files '^(?!auto/)'`) before it is committed. A workt
 `extracted/` and `decomp/toolchains/` linked in from the main tree.
 
 `--files '^(?!auto/)'` leaves out the drafts, so a hand-written inline copy that only its draft
-matches reports as a regression there (0x29FF60, 0x2D02B0): rerun with those drafts' files
-included before believing one.
+matches reports as a regression there (0x32C5F0, ~CRdrArchiveList's copy, is the one left --
+0x29FF60 and 0x2D02B0 match from hand source since the MSL headers' completion): rerun with
+that draft's file included before believing one.
 
 ## The generated tier: `src/auto/`
 
