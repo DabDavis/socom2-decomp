@@ -78,13 +78,6 @@ public:
     virtual void PrepControls(zdb::CTextureRelocMgr *mgr);
 };
 
-/* a pad button (SOCOM 1's DWARF, zinput.h's) */
-enum PAD_BUTTON {
-    PAD_START, PAD_SELECT, PAD_RIGHT, PAD_LEFT, PAD_UP, PAD_DOWN, PAD_TRIANGLE, PAD_CIRCLE,
-    PAD_SQUARE, PAD_CROSS, PAD_TRIGGER_R1, PAD_TRIGGER_R2, PAD_TRIGGER_L1, PAD_TRIGGER_L2,
-    PAD_RIGHT_STICK, PAD_LEFT_STICK, PAD_MAX_BUTTONS
-};
-
 /* which way the stick was pushed (ours; the menus' Prev and Next are up and down) */
 enum STICK_DIR {
     STICK_NONE = 0,
@@ -94,6 +87,24 @@ enum STICK_DIR {
     STICK_DOWN = 4,
     STICK_CENTERED = 5
 };
+
+/* a sound (zsnd.h's CSnd: only its lookup by name) */
+class CSnd {
+public:
+    static CSnd *GetSoundByName(const char *name);
+};
+
+/* the game, as far as the menus' sounds read it (fts_state.h's COurGame: the menu state at 0x78,
+ * its teletype sound's name at 0x14 there) */
+class COurGame {
+public:
+    unsigned char _0[0x8c];
+    CSaferStr m_ttySoundString;   // 0x8c: m_menuState.TtySoundString
+};
+extern COurGame theGame;
+
+/* the sound PlayCountSound plays (SOCOM 1's gp static; the name ours) */
+static CSnd *s_countSound;
 
 /* the left stick as the menu last read it, -1 to 1 (SOCOM 1's gp statics; the names ours), and
  * whether it has come back to the centre since it last moved */
@@ -196,6 +207,33 @@ STICK_DIR UiGetDirStickMoved()
     if (s_bStickCentered && !IsStickNearCenter(0.6f))
         return GetStickDir();
     return STICK_NONE;
+}
+
+/* a copy of another's: its strings duplicated, the button (or event) before the state (SOCOM 1's
+ * lines 404-407: each string freed and cleared, then duplicated) */
+void ActionItem::operator=(const ActionItem &a)
+{
+    Type = a.Type;
+    if (Animation)
+        _free(Animation, 0, 0);
+    Animation = 0;
+    Animation = a.Animation ? _strdup(a.Animation, 0, 0) : 0;
+    if (Argument)
+        _free(Argument, 0, 0);
+    Argument = 0;
+    Argument = a.Argument ? _strdup(a.Argument, 0, 0) : 0;
+    PadButton = a.PadButton;
+    State = a.State;
+}
+
+/* the count sound looked up again by the menu state's teletype sound name (SOCOM II's: CMenuState::
+ * Init calls it; the name ours). Through a reference: the string's address built once, its words
+ * read off it (written out, MW addresses each absolutely) */
+void UiLoadCountSound()
+{
+    CSaferStr &name = theGame.m_ttySoundString;
+
+    s_countSound = CSnd::GetSoundByName(name.c_str());
 }
 
 /* slot 0x10: the menu's rdr (SOCOM 1's) */

@@ -524,6 +524,9 @@ extern LadderList LadderRanking;   /* 0x44F7E0 */
 class RoomGame {
 public:
     virtual bool IsPersistent();
+
+    unsigned char _4[0x198 - 0x4];
+    unsigned char m_unchecked;   // 0x198: set for every game as the game list is asked for again
 };
 
 class RoomGameVector : public std::vector<RoomGame *> {
@@ -535,8 +538,16 @@ public:
 class BriefingRoom {
 public:
     RoomGameVector m_games;   // 0x0
-    unsigned char _c[0x98 - 0xc];
+    unsigned char _c[0x38 - 0xc];
+    char m_name[64];   // 0x38 (SOCOM 1's at 0x48)
+    unsigned char _78[0x98 - 0x78];
 };   // 0x98
+
+/* the room list (SOCOM 1's BriefingRoomDB: 0x44F568, the rooms' unit's) */
+class BriefingRoomDB : public std::vector<BriefingRoom *> {
+public:
+    BriefingRoom *FindRoom(const char *name);
+};
 
 /* --- the lobby --------------------------------------------------------------------------- */
 
@@ -614,7 +625,7 @@ public:
     void SendEndGameReport();
     void GetAnnouncements();
     void GetUsagePolicy();
-    void PasswordSecurity();
+    static void PasswordSecurity();
     bool RemovePlayerFromClan(const char *name);
     bool SendClanMessage(const char *text);
     void GetClanMessages();
@@ -623,6 +634,7 @@ public:
 
     void *DMEInit();
     void RecoverFromNetError(int err);
+    bool Bailout();
     void RunStateHandler(LOBBY_STATE state, LOBBY_STATE_FLAG flag);
     bool RefreshRoomList(C2D *page);
     bool RejoinRoom();
@@ -645,6 +657,7 @@ public:
     bool GetClan();
     bool IsIgnored(const char *name);
     void Censor(const char *text, void (*cb)(const char *text, void *data), void *data);
+    bool SendChat(const char *text, const char *to);
 
     /* open and in the lobby proper (the name ours: GetFriendInvitations materialises the && before
      * it branches, an inline bool's shape) */
@@ -652,7 +665,7 @@ public:
 
     LobbyStateHandler m_state_handler[MAX_LOBBY_STATES];   // 0x0
     LobbyEventHandler m_event_handler;   // 0x58
-    void *m_net_error_handler;   // 0x5c
+    bool (*m_net_error_handler)(int err);   // 0x5c: offered a network error first
     LOBBY_STATE m_current_state;   // 0x60
     unsigned int m_state_change_fifo[6];   // 0x64: a queue<LOBBY_STATE> (SOCOM 1's 0x1c)
     unsigned char m_isinit;   // 0x7c
@@ -662,7 +675,7 @@ public:
     int m_curr_seq_idx;   // 0xa4
     unsigned char m_a8;   // 0xa8: set by the constructor (SOCOM II's)
     unsigned char _a9[3];
-    int m_ac;   // 0xac
+    float m_loginTime;   // 0xac: when the account logged in (the clock 0x4A44A0; SOCOM II's)
     /* SOCOM 1's uiv_* statics, members now */
     CUIVariable *uiv_GameList;   // 0xb0
     CUIVariable *uiv_RoomList;   // 0xb4
