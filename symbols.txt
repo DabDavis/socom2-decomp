@@ -8215,10 +8215,10 @@
 0x003C7AD0 0x8 SetInstance__12CZProjectileFPQ23zdb5CNode  # OVL1; s1:order by hand (the wep lane: SOCOM 1's SetInstance right before GetInstance -- the node at 0x20)
 0x003C7AE0 0x8 GetInstance__12CZProjectileFv  # OVL1; s1:calls by hand (SOCOM 1's GetNumRemoteExplosives calls GetInstance at the same place SOCOM II's calls this; it returns the word at 0x20, SOCOM 1's m_instance 0x18 moved 8 on)
 0x003C7AF0 0x258 func_003C7AF0  # OVL1
-0x003C7D50 0x78 func_003C7D50  # OVL1
-0x003C7DD0 0x110 func_003C7DD0  # OVL1
+0x003C7D50 0x78 ForgetHitNode__12CZProjectileFPQ23zdb5CNode  # OVL1; by hand (the wep lane: a detonated projectile's (state 5) intersection walked, every hit whose node (0x1C) is the argument cleared; CZProjectileList's 0x3CCD90 calls it twice -- new in SOCOM II, the name ours)
+0x003C7DD0 0x110 HandleNextHit__12CZProjectileFv  # OVL1; by hand (the wep lane: with both intersections, m_di's hit at the 7-bit index (bits 10-16 of the word at 4) checked through 0x3C80E0 against m_di2, handed to its node's extension's OnWeaponHit (an instance's to its first child), the index moved on; CZProjectile::PostTick and PlacedExplosive::PostTick call it -- new in SOCOM II, the name ours)
 0x003C7EE0 0x1FC func_003C7EE0  # OVL1
-0x003C80E0 0x204 func_003C80E0  # OVL1
+0x003C80E0 0x204 CheckHit__12CZProjectileFPQ23zdb11DiIntersectPQ23zdb15IntersectStruct  # OVL1; by hand (the wep lane: HandleNextHit calls it with m_di2 and m_di's next hit and tests the bool -- new in SOCOM II, the name ours)
 0x003C82F0 0x20 SetFlag9__12CZProjectileFb  # OVL1; by hand (the wep lane: bit 9 of the word at 4 from a bool -- new in SOCOM II, the name ours)
 0x003C8310 0x14 GetFlag9__12CZProjectileFv  # OVL1; by hand (the wep lane: bit 9 of the word at 4 as a bool -- new in SOCOM II, the name ours)
 0x003C8330 0x408 func_003C8330  # OVL1

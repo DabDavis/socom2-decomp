@@ -8,6 +8,7 @@
  * rest stay placeholders. Defined in reverse of their image order (-inline deferred). */
 
 #include "../znode/znode.h"
+#include "../znode/node_world.h"
 #include "zweapon.h"
 
 using namespace zdb;
@@ -125,6 +126,39 @@ void CZProjectile::SetVelW(const CPnt3D *vel)
     m_vel = *vel;
     SetDone(false);
     m_intersecthandle = -1;
+}
+
+/* the next hit, if it counts, handed to its node's extension -- an instance's to the node it
+ * instances -- and the index moved on; none without both intersections */
+bool CZProjectile::HandleNextHit()
+{
+    if (m_di && m_di2) {
+        if (CheckHit(m_di2, &m_di->m_Intersects[m_hitindex])) {
+            IntersectStruct *hit = &m_di->m_Intersects[m_hitindex];
+            CNode *node = hit->m_node;
+
+            if (node && (node->m_socom2_a1 & 4) && !node->m_socom2_a1_bits.bit3)
+                hit->m_node = node->GetChildren()[0];
+            if (hit->m_node && hit->m_node->m_nodeEx)
+                hit->m_node->m_nodeEx->OnWeaponHit(hit->m_node, hit, this);
+        }
+        m_hitindex++;
+        return false;
+    }
+    return true;
+}
+
+/* the node cleared from every hit of a detonated projectile's intersection */
+void CZProjectile::ForgetHitNode(zdb::CNode *node)
+{
+    if (!(m_state == PROJECTILE_WAS_DETONATED && m_di->m_Cnt > 0))
+        return;
+    for (int i = 0; i < m_di->m_Cnt; i++) {
+        IntersectStruct *hit = &m_di->m_Intersects[i];
+
+        if (hit && hit->m_node == node)
+            hit->m_node = 0;
+    }
 }
 
 void CZProjectile::Detonate()

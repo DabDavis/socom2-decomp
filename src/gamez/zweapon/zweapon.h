@@ -401,6 +401,15 @@ public:
     void SetInstance(zdb::CNode *node);
     /* the node it flies (SOCOM 1's, out of line in zwep_projectile.cpp: 0x3C7AE0) */
     zdb::CNode *GetInstance();
+    /* a detonated projectile's hits on a node forgotten (SOCOM II's: the projectile list calls it
+     * when a node goes; the name ours) */
+    void ForgetHitNode(zdb::CNode *node);
+    /* whether a hit counts against the second intersection (0x3C80E0, SOCOM II's; not written,
+     * the name ours) */
+    bool CheckHit(zdb::DiIntersect *di, zdb::IntersectStruct *hit);
+    /* the next hit handed to its node's extension, unless there is no second intersection
+     * (SOCOM II's; the name ours) */
+    bool HandleNextHit();
     void Detonate();
     void Cleanup();
     bool SetModelOrientation(bool b, const CPnt3D *dir);
@@ -454,7 +463,8 @@ public:
     unsigned int m_b7 : 1;
     unsigned int m_b8 : 1;
     unsigned int m_b9 : 1;
-    unsigned int _b10 : 7;
+    /* the next of m_di's hits to hand on (SOCOM II's; the name ours) */
+    unsigned int m_hitindex : 7;
     unsigned int m_b17 : 1;
     unsigned int m_b18 : 1;
     unsigned int m_b19 : 1;
