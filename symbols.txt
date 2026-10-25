@@ -7829,8 +7829,8 @@
 0x003B1200 0x1A4 zVid_Init__F10_zvid_mode  # OVL1; s1:align
 0x003B13B0 0xE4 func_003B13B0  # OVL1
 0x003B14A0 0x2B4 func_003B14A0  # OVL1
-0x003B1760 0x6C func_003B1760  # OVL1
-0x003B17D0 0x24 func_003B17D0  # OVL1
+0x003B1760 0x6C Fade__6CVideoFfUcUcUc  # OVL1; s1:order by hand (the wep lane: SOCOM 1's Fade -- r, g, b stored and 255*t converted to the fourth byte -- with the float-to-unsigned conversion inline where SOCOM 1's called fptoui; right before MaxFrameRate as in SOCOM 1)
+0x003B17D0 0x24 MaxFrameRate__6CVideoFi  # OVL1; s1:order by hand (the wep lane: SOCOM 1's MaxFrameRate word for word -- 60 means -1, the old m_maxFrameRate returned; CCoreState's frame-rate calls, already noted so in st_core.cpp)
 0x003B1800 0xC8 func_003B1800  # OVL1
 0x003B18D0 0xC0 WriteGsMemory__6CVideoFUiP1Ui  # OVL1; s1:exact
 0x003B1990 0xD8 func_003B1990  # OVL1
