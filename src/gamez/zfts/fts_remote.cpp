@@ -523,19 +523,22 @@ void SendMessageMessage(int who, R_SEND_TO to, int msg)
 
 /* a menu message from another client, shown when it is for everyone, our team, or us
  * (SOCOM 1's MessagePacketHandler; OVL1 0x2BAC40).
- * OPEN, 64 instructions: 0x10C against 0x100. The target switches on the halfword's low byte
- * loaded with lb and re-extended (dsll32/dsra32 24), and reloads the halfword with lhu for the
- * default case; this form loads the halfword once and keeps it in s2 across the calls (an extra
- * saved register). Tried: (char), (signed char) and pointer-cast views of the field -- a pointer
- * cast gets the lb but not the re-extension, and still saves s2. Next: a union of the halfword and
- * a char, or the default's compare through an inline. */
+ * OPEN, 2 instructions: the default case's two loads trade v0 and v1 (the target's `lw v0,4(v0);
+ * lhu v1,2(s1); bne v1,v0`). The group taken into a local before the body test reproduces the
+ * target's lb in the delay slot and its re-extension (dsll32/dsra32 24, the conversion to the
+ * signed byte enum); the player's index taken into a local first keeps the halfword's reload
+ * after the call (in the comparison itself MW loads the halfword ahead of the call and keeps it in
+ * s2). Tried for the last two: either operand order, `!=` with a break, both through locals, the
+ * index int, unsigned, short; a union of the halfword and a char (or the enum, or an 8-bit field)
+ * for the group, which loses the re-extension. */
 extern "C" int func_002BAC40(int, int, int, void *data)
 {
     MessagePacket *p = (MessagePacket *)data;
     CZSealBody *body = CZSealState::GetBodyFromObjectIndex((unsigned short)p->who);
+    R_SEND_TO to = (R_SEND_TO)p->to;
 
     if (body) {
-        switch ((R_SEND_TO)p->to) {
+        switch (to) {
         case R_SEND_TO_3:
             if (func_002C31A0())
                 func_005E7F20(body, p->msg, 1);
@@ -547,10 +550,13 @@ extern "C" int func_002BAC40(int, int, int, void *data)
         case R_SEND_TO_ALL:
             func_005E7F20(body, p->msg, 1);
             break;
-        default:
-            if (p->to == ftsGetPlayer()->m_4)
+        default: {
+            int me = ftsGetPlayer()->m_4;
+
+            if (me == p->to)
                 func_005E7F20(body, p->msg, 1);
             break;
+        }
         }
     }
     return 6;
