@@ -4,6 +4,7 @@
  * OVL2 0x5552C0-0x575CE7. Defined in reverse of their image order (-inline deferred). */
 
 #include "zseal.h"
+#include "../../ai/ai.h"
 #include "../zsnd/zsnd.h"
 #include "../zanim/zanim.h"
 #include <stdio.h>
@@ -180,6 +181,30 @@ void CSealCtrlAi::Initalize()
     m_3f4 = 1;
 }
 
+/* how far an event's kind carries (SOCOM 1's static CAiEvent::GetEventRange, ai.h's class lacks it:
+ * OVL2 0x50F4C0 by its address) */
+extern "C" float func_0050F4C0(CAiEvent::EVENT event);
+/* CSealCtrl::CreateAiEvent (SOCOM 1's CreateAiEvent__9CSealCtrlFQ28CAiEvent5EVENTffbPC6CPnt3DUi by
+ * its order and its call here; OVL2 0x572FA0, called by its address) */
+extern "C" int func_00572FA0(CSealCtrl *ctrl, CAiEvent::EVENT event, float a, float b, bool c,
+                             const CPnt3D *pos, unsigned int d);
+/* the voice's reach scale (OVL2 data 0x650380, read as a variable) */
+extern "C" float data_00650380;
+
+/* the voice's AI event made where the SEAL stands, unless it has none; the event returned (OVL2
+ * 0x55FEE0; PlayAiSound calls it) */
+extern "C" int func_0055FEE0(CSealCtrl *ctrl, CAiEvent::EVENT event)
+{
+    int r = 0;
+
+    if (event != CAiEvent::AIE_NONE) {
+        float range = func_0050F4C0(event);
+
+        r = func_00572FA0(ctrl, CAiEvent::AIE_VOICE, data_00650380, range, false, &ctrl->m_entity->m_posW, event);
+    }
+    return r;
+}
+
 /* the states' destructors: their own table stored, then CAiState's inlined -- its table, and the
  * stack at 8 destroyed out of line (OVL2 0x575B50, 0x575AB0, 0x5758D0, 0x5552C0). Every byte
  * matches; the one call resolves once the AI-states lane's 0x5F8490 is named
@@ -225,13 +250,18 @@ static inline bool IsKind2Flag80(CAiState *s)
 }
 
 /* whether the AI's current state is of kind 2 with flag 0x80 (OVL2 0x559000).
- * OPEN, 0x64 against 0x6C: the target tests the stack's size with `bnez` to the call, the zero in
- * the delay slot and a `b` to the join (the empty arm laid out first); the ternary either way
- * round, an if-assign and an inline accessor (early return or a result local) all lay the call
- * first and fall through. */
+ * OPEN, 11 instructions: the stack's test is the target's as an if/else (the zero arm first: a
+ * ternary or an if-assign lays the call first), but MW if-converts the inlined flag test (xori,
+ * sltiu, sltu) where the target branches and assigns the true with daddiu. Tried: the test written
+ * out in the function, a single `&&` chain with a result local. */
 extern "C" bool func_00559000(CSealCtrlAi *ai)
 {
-    CAiState *s = ai->m_41c ? func_005F8330(&ai->m_41c) : 0;
+    CAiState *s;
+
+    if (ai->m_41c == 0)
+        s = 0;
+    else
+        s = func_005F8330(&ai->m_41c);
 
     if (s)
         return IsKind2Flag80(s);

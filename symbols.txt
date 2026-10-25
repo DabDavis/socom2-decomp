@@ -10299,7 +10299,7 @@
 0x005729F0 0x340 OnWeaponEvent__11CSealCtrlAiFP12CZProjectileUiPv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00572D30 0x3C func_00572D30  # OVL2
 0x00572D70 0x228 func_00572D70  # OVL2
-0x00572FA0 0x164 func_00572FA0  # OVL2
+0x00572FA0 0x164 CreateAiEvent__9CSealCtrlFQ28CAiEvent5EVENTffbPC6CPnt3DUi  # OVL2; s1:order (seal_ai.cpp: after OnWeaponEvent and the event-mask update, before the AI brain's set-up, as SOCOM 1's CreateAiEvent__9CSealCtrlFQ28CAiEvent5EVENTffbPC6CPnt3DUi; the voice's caller 0x55FEE0 passes its arguments in that order: the kind in a1, two floats, false in a2, the position in a3, an id in t0) -- the SEAL lane, round 4
 0x00573110 0x20 func_00573110  # OVL2
 0x00573130 0xA4C func_00573130  # OVL2
 0x00573B80 0x4C OnMissionEnd__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
