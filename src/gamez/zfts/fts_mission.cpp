@@ -27,6 +27,55 @@ public:
 
 extern CHUD *theHUD;
 
+/* the file's tables (SOCOM 1's names; SOCOM II has 32 visibility lists of 31 maps where SOCOM 1
+ * had 10 of 9) */
+namespace {
+char g_arrDefCharTypeNames[32][64];
+unsigned char g_arrMapVis[32][31];
+int g_arrMapVisCounts[32];
+}
+
+extern "C" const char *data_003F02B0[32];   /* GetCustomCharTypeName's c_arrCustomCharTypeNames */
+
+/* the number of maps a list shows (OVL1 0x2AF890) */
+int ftsGetNumVisibleMaps(unsigned int list)
+{
+    if (list < 32)
+        return g_arrMapVisCounts[list];
+    return 0;
+}
+
+/* a list's map (OVL1 0x2AF840) */
+unsigned char ftsGetVisibleMap(unsigned int list, int i)
+{
+    return g_arrMapVis[list][i];
+}
+
+/* whether a list shows a map (OVL1 0x2AF7B0) */
+bool ftsIsMapInVisibleList(unsigned int map, unsigned int list)
+{
+    if (list >= 32)
+        return false;
+    for (int i = 0; i < g_arrMapVisCounts[list]; i++)
+        if (map == g_arrMapVis[list][i])
+            return true;
+    return false;
+}
+
+/* a custom character type's name (OVL1 0x2AF780) */
+const char *GetCustomCharTypeName(int i)
+{
+    if (i < 32)
+        return data_003F02B0[i];
+    return 0;
+}
+
+/* a default character type's name (OVL1 0x2AF760) */
+const char *GetDefCharTypeName(int i)
+{
+    return g_arrDefCharTypeNames[i];
+}
+
 /* a switch command: ON or OFF (the letterbox's, the HUD's) */
 struct _hud_switch_cmd {
     _zanim_cmd_hdr hdr;

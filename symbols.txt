@@ -3886,7 +3886,7 @@
 0x002AF550 0x204 func_002AF550  # OVL1
 0x002AF760 0x14 GetDefCharTypeName__Fi  # OVL1; s1:exact
 0x002AF780 0x28 GetCustomCharTypeName__Fi  # OVL1; s1:align
-0x002AF7B0 0x90 func_002AF7B0  # OVL1
+0x002AF7B0 0x90 ftsIsMapInVisibleList__FUiUi  # OVL1; s1:order by hand (the states lane: between GetCustomCharTypeName and ftsGetVisibleMap as in SOCOM 1; the same walk of a list's maps, over SOCOM II's 32 lists of 31)
 0x002AF840 0x20 ftsGetVisibleMap__FUii  # OVL1; s1:align
 0x002AF860 0xC func_002AF860  # OVL1
 0x002AF870 0xC func_002AF870  # OVL1
