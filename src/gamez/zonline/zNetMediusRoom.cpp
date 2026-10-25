@@ -6,7 +6,21 @@
 
 #include "zonline.h"
 
+/* a page of the room list (no session key; the page and its size as halfwords) */
+struct MediusChannelListRequest {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    short PageID;   // 0x16
+    short PageSize;   // 0x18
+};   // 0x1a
+
+struct MediusChannelListResponse { MEDIUS_RESPONSE_HEAD };
+
 extern "C" {
+extern unsigned char data_0044F568[];   /* the room list */
+void func_002E4140(void *rooms);   /* the room list emptied */
+MediusErrorCode func_0064B098(MediusChannelListRequest *req,
+                              void (*cb)(int, int, int, MediusChannelListResponse *));   /* MediusChannelList */
+void func_002E3B00(int, int, int, MediusChannelListResponse *);   /* a room of the list kept */
 extern int LobbyWorldID;   /* the room we are in, -1 none (SOCOM 1's) */
 
 void func_002E2920(CZOnlineLobby *lobby, C2D *page);   /* the game list asked for */
@@ -38,6 +52,22 @@ bool CZOnlineLobby::RefreshRoomList(C2D *page)
     func_002E3AA0(this, p);
     return true;
 }
+
+/* the room list asked for again: the list emptied, then a first page of 999 (SOCOM 1's GetRoomList;
+ * OVL1 0x2E3AA0 -- the page it is shown on is not used). RefreshRoomList calls it out of line:
+ * pinned */
+#pragma auto_inline off
+void func_002E3AA0(CZOnlineLobby *lobby, C2D *page)
+{
+    func_002E4140(data_0044F568);
+    MediusChannelListRequest req;
+
+    memset(&req, 0, sizeof(req));
+    req.PageID = 1;
+    req.PageSize = 999;
+    CheckMediusError(func_0064B098(&req, func_002E3B00));
+}
+#pragma auto_inline reset
 
 /* the room of that name, if the list has one (SOCOM 1's; OVL1 0x2E4470: the chat unit's
  * CreateRoom handler and callback call it) */
