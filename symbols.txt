@@ -9760,7 +9760,7 @@
 0x00535040 0x8 clear__Q23std74__vector_deleter<16CVehicleRdrEntry,Q23std29allocator<16CVehicleRdrEntry>>Fv  # OVL2; by hand (the entry vector's deleter clear, out of class: the entry has no destructor, so only the size is zeroed; Close calls it first, as SOCOM 1's Close calls clear__Q23std74__vector_deleter<16CVehicleRdrEntry,...>)
 0x00535050 0x68 __dt__Q23std74__vector_deleter<16CVehicleRdrEntry,Q23std29allocator<16CVehicleRdrEntry>>Fv  # OVL2; by hand (the entry vector's deleter destructor, out of class: size zeroed, data deleted, this deleted if asked; the vector destructor 0x533970 calls it)
 0x005350C0 0x210 func_005350C0  # OVL2
-0x005352D0 0x45C func_005352D0  # OVL2
+0x005352D0 0x45C WalkLine__7CAiMapsFPC6CPnt3DPC6CPnt3DPFRC19MAP_LINEWALK_STRUCTPv_bPvf  # OVL2; ours (new in SOCOM II: a walk between two points over the maps -- the visibility tests 0x538980/0x538D10/0x538E30 call it on AiMaps with a callback, its data and the step 0.2f in f12, as CAiMap's WalkLines take them)
 0x00535730 0x310 func_00535730  # OVL2
 0x00535A40 0x3B0 func_00535A40  # OVL2
 0x00535DF0 0x438 func_00535DF0  # OVL2
@@ -9772,11 +9772,11 @@
 0x00536C80 0x780 func_00536C80  # OVL2
 0x00537400 0xA48 WalkLine__6CAiMapFRC9CAiMapLocPC6CPnt3DPFRC19MAP_LINEWALK_STRUCTPv_bPvf  # OVL2; s1:order by hand (the demo's WalkLine(loc, CPnt3D *) 0x1A6B00, 0xA64 bytes, before the two-cell one as here; CanSeeLine(loc, dir) 0x539070 tail-calls it with _SeeLineCallback as SOCOM 1's does -- SOCOM II adds the step, 0.2f in $f12)
 0x00537E50 0xB28 WalkLine__6CAiMapFRC9CAiMapLocRC9CAiMapLocPFRC19MAP_LINEWALK_STRUCTPv_bPvf  # OVL2; s1:order by hand (the demo's WalkLine(loc, loc) 0x1A7570, 0xD04 bytes; CanSeeLine and CanTravelLine 0x539090/0x5390B0 tail-call it with their callbacks as SOCOM 1's do, the step 0.2f added)
-0x00538980 0xD8 func_00538980  # OVL2
+0x00538980 0xD8 CanSeePoint__7CAiMapsFPC6CPnt3DPC6CPnt3Df  # OVL2; ours (new in SOCOM II, first of the walker unit's visibility tests: the walk 0x5352D0 between two points with the callback 0x538A60, a range and visibility 1; seen when nothing is lost, not when all is, else by chance (rand) of what is left -- the AI states call it on AiMaps)
 0x00538A60 0x2A4 func_00538A60  # OVL2
-0x00538D10 0x120 func_00538D10  # OVL2
-0x00538E30 0xB4 func_00538E30  # OVL2
-0x00538EF0 0x17C func_00538EF0  # OVL2
+0x00538D10 0x120 ComputeLineVisibility__7CAiMapsFRC9CAiMapLocPC6CPnt3DUif  # OVL2; ours (new in SOCOM II: from a cell's centre (GetCellCenter) raised by a height, the point test 0x538E30 inlined -- its literal pool shared, 0x64FA28/0x64FA30)
+0x00538E30 0xB4 ComputeLineVisibility__7CAiMapsFPC6CPnt3DPC6CPnt3DUi  # OVL2; ours (new in SOCOM II, after SOCOM 1's ComputeLineVisibility: the AI states call it on AiMaps (0x66A1B0) with two points and flags; the walk 0x5352D0 with the visibility callback flag 1 picks, its loss held in [0, 1] and taken from 1)
+0x00538EF0 0x17C ComputeLineVisibility__6CAiMapFRC9CAiMapLocRC9CAiMapLocUiff  # OVL2; s1:order by hand (the demo's CAiMap::ComputeLineVisibility 0x1A8280, right before the three line tests in both builds: the cells' altitudes raised by two heights, WalkLine(loc, loc) with the visibility callback, the loss saturated and taken from 1)
 0x00539070 0x20 CanSeeLine__6CAiMapFRC9CAiMapLocPC6CPnt3DP9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x1A8330, the first of the three line tests in both builds: WalkLine(from, dir, _SeeLineCallback, out, 0.2f))
 0x00539090 0x20 CanSeeLine__6CAiMapFRC9CAiMapLocRC9CAiMapLocP9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x1A8340: WalkLine(from, to, _SeeLineCallback, out, 0.2f); CAiMaps::CanSeeLine calls it)
 0x005390B0 0x20 CanTravelLine__6CAiMapFRC9CAiMapLocRC9CAiMapLocP9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x1A8350: WalkLine(from, to, _TravelLineCallback 0x539580, out, 0.2f); CAiMaps::CanTravelLine calls it)

@@ -580,6 +580,10 @@ public:
     bool CanSeeLine(const CAiMapLoc &from, const CPnt3D *dir, CAiMapLoc *out);
     bool CanSeeLine(const CAiMapLoc &from, const CAiMapLoc &to, CAiMapLoc *out);
     bool CanTravelLine(const CAiMapLoc &from, const CAiMapLoc &to, CAiMapLoc *out);
+    /* how much of the line between two cells can be seen through, 0 to 1, each end at its altitude
+     * raised by a height (SOCOM 1's ComputeLineVisibility, the heights and flags new: 0x538EF0) */
+    float ComputeLineVisibility(const CAiMapLoc &from, const CAiMapLoc &to, unsigned int flags, float hfrom,
+                                float hto);
     /* whether a step may end on the cell (new in SOCOM II, the name ours: ai_maps.cpp's 0x52A090,
      * GetCell inlined one level) */
     bool IsTraversable(const CAiMapLoc &loc) const;
