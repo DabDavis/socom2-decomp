@@ -60,6 +60,8 @@ class CHealthBar : public C2D {
 public:
     CHealthBar();
     virtual ~CHealthBar();
+    /* the bar set from its owner's health (0x241CC0; the name ours) */
+    void Update(class CZSealBody *owner, bool force);
 
     unsigned char _18[0x1d0 - 0x18];
 };   // 0x1d0 bytes

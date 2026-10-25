@@ -7,6 +7,9 @@
 
 #include "hud_mpinfobox.h"
 
+#include <stdio.h>
+#include <string.h>
+
 class CZNetwork {
 public:
     unsigned char m_bSessionMaster;   // 0x0 (SOCOM 1's at 0x8: SOCOM II dropped the two team indices)
@@ -28,6 +31,36 @@ extern CRadioState *data_0045B718;
 extern "C" bool func_0030E540(CRadioState *radio);
 /* the local seal, or so (no data row yet): the icons show only while it is set */
 extern void *data_00437CE8;
+
+/* the HUD's owner, as the box reads it: its name and its player's index */
+class CZSealBody {
+public:
+    unsigned char _0[0x14];
+    const char *m_name;   // 0x14
+    unsigned char _18[0xfc8 - 0x18];
+    int m_player;   // 0xfc8
+};
+
+class CHUD {
+public:
+    static CZSealBody *GetHUDOwner();
+};
+
+/* the health bar's update from its owner (its own unit's; no name yet) */
+extern "C" void func_00241CC0(CHealthBar *bar, CZSealBody *owner, bool b);
+/* a player's clan tag, or "" (the player list's; no name yet) */
+extern "C" const char *func_002C3AC0(int player);
+/* a string's width measured into m_charheight (its slot 0x3C; ztwod's, no name yet) */
+extern "C" void func_00362B70(C2DString *s);
+
+/* the name's room in the box (a variable: read with lwc1) */
+static float s_namewidth = 134.0f;
+
+/* a seal's clan tag, if it has a seal */
+static inline const char *ClanTag(CZSealBody *owner)
+{
+    return owner ? func_002C3AC0(owner->m_player) : 0;
+}
 
 /* where the static icon sits and how big the icons are (variables: read with lwc1) */
 static float s_staticx = 590.0f;
@@ -83,6 +116,40 @@ void CMPInfoBox::UnInit()
     m_whostalking.m_bitmap2.Off();
     m_whostalking.m_text2.Off();
     m_whostalking.m_text2.SetString(0, true);
+}
+
+/* the owner's health, then its name (the clan's tag ahead of it, cut short with a dash when it
+ * runs past the box) and who is talking.
+ * OPEN, 11 instructions, all one swap of s1 and s2: the target keeps the owner in s1 and the clan
+ * tag in s2 (the name then reusing s1), this the other way round. Tried: the tag uninitialised
+ * ahead of the owner or after it, zero-initialised and set in an if (8 bytes longer), the name
+ * declared first or not a local, the health bar's update as a member call -- the same swap. */
+void CMPInfoBox::Tick(float dT)
+{
+    CZSealBody *owner = CHUD::GetHUDOwner();
+
+    func_00241CC0(&m_healthbar, owner, true);
+    m_healthbar.Tick(dT);
+    const char *clan = ClanTag(owner);
+    const char *name = owner->m_name;
+    char text[64];
+
+    if (clan && strlen(clan))
+        sprintf(text, "[%s] %s", clan, name);
+    else
+        strcpy(text, name);
+    m_text.SetString(text, true);
+    func_00362B70(&m_text);
+    if (m_text.m_charheight > s_namewidth - 4.0f) {
+        char cut[64];
+
+        strcpy(cut, m_text.m_string + m_text.m_firstCharPos);
+        cut[9] = '-';
+        cut[10] = 0;
+        m_text.SetString(cut, true);
+        func_00362B70(&m_text);
+    }
+    m_whostalking.Tick(dT);
 }
 
 void CMPInfoBox::On()
