@@ -1,11 +1,18 @@
 /* hud_main.cpp -- the HUD (CHUD): SOCOM 1's unit (its DWARF names it, Z:\dev\Apps\FTS\hud_main.cpp),
- * its functions in SOCOM 1's order -- the ones in OVL1 0x1F9000-0x1FE33F so far: Init to the
- * constructor, and the inline functions' out-of-line copies that follow it. SOCOM II's CHUD is
- * 0x1ACD0 bytes (SOCOM 1's 0x14960): a string in front of the texture lists, the map new'ed
- * (single player only), a grenade-launcher selector, the multiplayer boxes (teammate names, the
- * info box with the health bar and who is talking, the spectator's), six strings where SOCOM 1
- * had three piggyback texts, a lens flare manager for the saturate effect, and a last block of
- * 2D objects after the phases. Defined in reverse of their image order (-inline deferred). */
+ * its functions in SOCOM 1's order. The part in OVL1 0x1F9000-0x1FE33F (Init to the constructor,
+ * then the inline functions' out-of-line copies) is this lane's; the functions before it
+ * (DoRangeText .. PauseGame, 0x1F6xxx-0x1F8xxx) are not written. SOCOM II's CHUD is 0x1ACD0 bytes
+ * (SOCOM 1's 0x14960), laid out from its constructor, destructor and ReInit_Uninit: a string in
+ * front of the texture lists, the map new'ed (single player only), a network weapon selector,
+ * the multiplayer boxes (teammate names, the info box with the health bar and who is talking,
+ * the spectator's), six strings where SOCOM 1 had three piggyback texts, a lens flare manager
+ * where it had CLensFlareSaturate, and the ammo counts after the phases.
+ * Written: the constructor (byte-exact but for two calls to rows outside the range, CHealthBar's
+ * and CSpectatorInfo's constructors), GetHUDOwner, HudText_to_upper, DrawPhase, GetTextureByName,
+ * ReInit_Uninit and ReInit_Init. Not yet: Init (0xF98), the destructor (0xA40: it inlines every
+ * member's destructor, and needs the texture lists as classes -- see CTexList) and ReleaseHUD
+ * (it inlines C2DFont's destructor, which holds a std::map and a std::string in SOCOM II).
+ * Defined in reverse of their image order (-inline deferred). */
 
 #include <string.h>
 #include <list>
@@ -314,6 +321,48 @@ public:
 
 extern CHUD *theHUD;
 
+/* the HUD's members built in order; then it is the HUD, the map is new'ed for a single-player
+ * game (none in a network game), and the HUD's string table registered */
+CHUD::CHUD()
+    : m_hudrettype(-1), m_usehudret(false), m_hudretchanged(false), m_firemodetex(0),
+      m_messageTime(0.0f)
+{
+    theHUD = this;
+    m_newmap = !theNetwork.m_bNetwork ? new CZNewHudMap : 0;
+    CStringTables *tables = func_00361BC0();
+
+    func_003A3900(tables, "HudC", func_003A4460());
+}
+
+CZSealBody *CHUD::GetHUDOwner()
+{
+    return appCamera->m_bc;
+}
+
+void CHUD::HudText_to_upper(char *instr)
+{
+    int len = strlen(instr);
+
+    for (int kk = 0; kk < len; kk++)
+        instr[kk] = func_0019AFD0(instr[kk]);
+}
+
+/* while the HUD is on, one of its three phase lists drawn (the HUD's three render phases) */
+void CHUD::DrawPhase(zdb::_RenderPhase phase, zdb::CCamera *cam)
+{
+    if (IsOn())
+        m_phase[phase - zdb::HUDSET1].Draw(cam);
+}
+
+zdb::CTexture *GetTextureByName(zdb::CWorld *world, const char *name)
+{
+    zdb::CTexHandle *h = zdb::CAssetMgr::m_assets.GetTexHandle(name);
+
+    if (h)
+        return h->m_texture;
+    return 0;
+}
+
 class CZPlayerMapItem {
 public:
     static void MissionEndCleanup();
@@ -383,47 +432,6 @@ void CHUD::ReInit_Uninit()
     func_00237310(&data_00413120);
 }
 
-/* the HUD's members built in order; then it is the HUD, the map is new'ed for a single-player
- * game (none in a network game), and the HUD's string table registered */
-CHUD::CHUD()
-    : m_hudrettype(-1), m_usehudret(false), m_hudretchanged(false), m_firemodetex(0),
-      m_messageTime(0.0f)
-{
-    theHUD = this;
-    m_newmap = !theNetwork.m_bNetwork ? new CZNewHudMap : 0;
-    CStringTables *tables = func_00361BC0();
-
-    func_003A3900(tables, "HudC", func_003A4460());
-}
-
-CZSealBody *CHUD::GetHUDOwner()
-{
-    return appCamera->m_bc;
-}
-
-void CHUD::HudText_to_upper(char *instr)
-{
-    int len = strlen(instr);
-
-    for (int kk = 0; kk < len; kk++)
-        instr[kk] = func_0019AFD0(instr[kk]);
-}
-
-/* while the HUD is on, one of its three phase lists drawn (the HUD's three render phases) */
-void CHUD::DrawPhase(zdb::_RenderPhase phase, zdb::CCamera *cam)
-{
-    if (IsOn())
-        m_phase[phase - zdb::HUDSET1].Draw(cam);
-}
-
-zdb::CTexture *GetTextureByName(zdb::CWorld *world, const char *name)
-{
-    zdb::CTexHandle *h = zdb::CAssetMgr::m_assets.GetTexHandle(name);
-
-    if (h)
-        return h->m_texture;
-    return 0;
-}
 
 /* the app camera (the shake's stop only) and the seal the camera follows (SOCOM 1's
  * ftsGetPlayer, 0x2B3580: no row yet) */
