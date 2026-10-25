@@ -51,27 +51,77 @@ enum EQUIP_AMMO {
     AMMO_NONE = 255
 };
 
-/* a cartridge type's stats (SOCOM 1's DWARF: 0x24 bytes, m_ID at 0x20; SOCOM II's id is at 0x30,
- * the size its reader news 0x34) */
+class CZAmmoList;
+class CZAnim;
+
+/* a cartridge type's stats (SOCOM 1's DWARF: 0x24 bytes, m_ID at 0x20; SOCOM II's is 0x40, its
+ * reader news 0x40). SOCOM II's members past SOCOM 1's take the names of the rdr fields its ammo
+ * reader (0x3CEDB0) hands them: "DisplayName" goes to 0x4, where SOCOM 1's description was,
+ * "Description" to a third string at 0x8, then NumProjectilesFired, AccelerationFactor, the
+ * Volitile and IgnoreExplosionDI tags, Blowback_Falloff and Blowback_End (squared, by index) and
+ * ProximityDistance (squared). The functions are zwep_ammo.cpp's, out of line */
 class CZAmmo {
 public:
+    CZAmmo();
     ~CZAmmo();
-    /* the name (zwep_ammo.cpp's, out of line: 0x3D4540) */
+    /* the ammunition by name and by id (SOCOM 1's statics, through m_ammolist) */
+    static EQUIP_AMMO GetAmmoId(const char *name);
+    static CZAmmo *GetAmmo(EQUIP_AMMO id);
+    /* SOCOM II's (the names ours, after the rdr fields) */
+    void SetIgnoreExplosionDI(bool on);
+    bool GetIgnoreExplosionDI();
+    void SetVolatile(bool on);
+    bool IsVolatile();
+    void SetAccelerationFactor(float f);
+    float GetAccelerationFactor();
+    float GetProximityDistance();
+    void SetProximityDistance(float d);
+    /* the blowback's scale at a squared distance: 1 inside the falloff, down to 0 at the end */
+    float GetBlowbackScale(float d2);
+    void SetBlowback(unsigned char which, float d);
+    int GetNumProjectilesFired();
+    void SetNumProjectilesFired(int n);
+    /* SOCOM 1's */
+    float GetExplosionRadius();
+    float GetExplosionDamage();
+    float GetArmorPierce();
+    float GetImpactDamage();
     char *GetName();
+    char *GetDescription();
+    void SetExplosionRadius(float r);
+    void SetExplosionDamage(float d);
+    void SetArmorPierce(float p);
+    void SetStun(float s);
+    void SetImpactDamage(float d);
+    void SetHitAnim(const char *name);
+    /* the third string (SOCOM II's: "Description"; the name ours) */
+    void SetLongDescription(char *s);
+    void SetDescription(char *s);
+    void SetName(char *s);
     /* the id by value (inline: GetAmmo(EQUIP_AMMO) narrows its argument into a register of its
      * own only so; the name is ours) */
     EQUIP_AMMO GetId() const { return m_ID; }
 
-    /* the blast's radius (SOCOM 1's, out of line in zwep_ammo.cpp: 0x3D4500) */
-    float GetExplosionRadius();
-
     char *m_name;   // 0x0
     char *m_description;   // 0x4
-    unsigned char _8[0x1c - 0x8];
-    float m_explosionRadius;   // 0x1c (the name ours)
-    unsigned char _20[0x30 - 0x20];
-    EQUIP_AMMO m_ID;   // 0x30
-};
+    char *m_longdescription;   // 0x8 (SOCOM II's)
+    float m_impactDamage;   // 0xc (SOCOM 1: 0x8)
+    float m_stun;   // 0x10
+    float m_pierce;   // 0x14
+    float m_explosionDamage;   // 0x18
+    float m_explosionRadius;   // 0x1c
+    int m_numProjectilesFired;   // 0x20 (SOCOM II's, as the rest up to m_hitanim)
+    float m_accelerationFactor;   // 0x24
+    unsigned char m_volatile : 1;   // 0x28
+    unsigned char m_ignoreExplosionDI : 1;   // 0x28
+    CZAnim *m_hitanim;   // 0x2c (SOCOM 1: 0x1c)
+    EQUIP_AMMO m_ID;   // 0x30 (SOCOM 1: 0x20)
+    float m_blowback[2];   // 0x34 (SOCOM II's, squared)
+    float m_proximityDistance;   // 0x3c (squared)
+
+    /* the ammunition (SOCOM 1's static, 12 bytes: 0x4B5310) */
+    static CZAmmoList m_ammolist;
+};   // 0x40 bytes
 
 /* the ammunition, a pointer list (SOCOM 1's DWARF: CZAmmoList : list); its elements are its own */
 class CZAmmoList : public std::list<CZAmmo *> {

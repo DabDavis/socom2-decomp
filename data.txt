@@ -891,6 +891,7 @@
 0x004B5248 0x4 m_pMarklist__8CZWeapon  # OVL1 bss; SOCOM 1's (CCoreState::auxUnload reads it beside m_pProjectilelist, as SOCOM 1's): 7 references in 6 functions take 0x4B5248
 0x004B52B8 0x4 m_timer_maxval__8CZWeapon  # OVL1 bss; s1:data-seq (size SOCOM 1's; via RetrieveTimerRegistration__8CZWeaponFPPfPfPb)
 0x004B52C0 0x4 m_timer_pCurval__8CZWeapon  # OVL1 bss; s1:data-seq (size SOCOM 1's; via RetrieveTimerRegistration__8CZWeaponFPPfPfPb)
+0x004B5310 0xC m_ammolist__6CZAmmo  # OVL1 bss; SOCOM 1's static (12 bytes, m_ammolist__6CZAmmo at 0x511E00 in the demo): __sinit_zwep_ammo.cpp (0x404CD0) builds it with CZAmmoList's constructor, CZAmmo::GetAmmoId/GetAmmo hand it to the list's, as SOCOM 1's -- the wep lane; 13 references in 10 functions
 0x0064F7A8 0x8C gGSAPI  # OVL2; s1:data-seq (size SOCOM 1's; via CreateWordIdList +1)
 0x0064F8A0 0x4 bit_count__8CAiEvent  # OVL2; s1:data-seq (size SOCOM 1's; via __ct__8CAiEventFv)
 0x0064F8A8 0x4 s_eventMinDuration  # OVL2 data; ours (ai_events.cpp's static, 0.1: CAiEvent::Create clamps a running event's duration to it, read from data; 1 reference in 1 function)

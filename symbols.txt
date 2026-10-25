@@ -8424,37 +8424,37 @@
 0x003D3C20 0x170 __ct__8CZWeaponFv  # OVL1; by hand (stores __vt__8CZWeapon, builds m_LegalAmmoList at 0xC4; CZFTSWeapon's constructor calls it first)
 0x003D3D90 0x4CC func_003D3D90  # OVL1
 0x003D4260 0x120 func_003D4260  # OVL1
-0x003D4380 0x10 func_003D4380  # OVL1
-0x003D4390 0x10 func_003D4390  # OVL1
-0x003D43A0 0x20 func_003D43A0  # OVL1
-0x003D43C0 0x14 func_003D43C0  # OVL1
-0x003D43E0 0x1C func_003D43E0  # OVL1
-0x003D4400 0x10 func_003D4400  # OVL1
-0x003D4410 0x8 func_003D4410  # OVL1
-0x003D4420 0x8 func_003D4420  # OVL1
-0x003D4430 0x8 func_003D4430  # OVL1
-0x003D4440 0xC func_003D4440  # OVL1
-0x003D4450 0x70 func_003D4450  # OVL1
-0x003D44C0 0x18 func_003D44C0  # OVL1
-0x003D44E0 0x8 func_003D44E0  # OVL1
-0x003D44F0 0x8 func_003D44F0  # OVL1
+0x003D4380 0x10 GetAmmoId__6CZAmmoFPCc  # OVL1; s1:order by hand (the wep lane: zwep_ammo.cpp's first, SOCOM 1's 0x10-byte static -- m_ammolist (0x4B5310) handed to CZAmmoList::GetAmmoId, tail-called)
+0x003D4390 0x10 GetAmmo__6CZAmmoF10EQUIP_AMMO  # OVL1; s1:order by hand (the wep lane: SOCOM 1's second static -- m_ammolist handed to CZAmmoList::GetAmmo(EQUIP_AMMO), tail-called)
+0x003D43A0 0x20 SetIgnoreExplosionDI__6CZAmmoFb  # OVL1; by hand (the wep lane: bit 1 of the byte at 0x28 from a bool; the ammo reader 0x3CEDB0 calls it (with 1) when the rdr has the tag "IgnoreExplosionDI" -- the name ours)
+0x003D43C0 0x14 GetIgnoreExplosionDI__6CZAmmoFv  # OVL1; by hand (the wep lane: bit 1 of the byte at 0x28 as a bool; CZProjectile code 0x3CB1A0 asks it -- the name ours)
+0x003D43E0 0x1C SetVolatile__6CZAmmoFb  # OVL1; by hand (the wep lane: bit 0 of the byte at 0x28 from a bool; the ammo reader calls it for the tag "Volitile" -- the name ours)
+0x003D4400 0x10 IsVolatile__6CZAmmoFv  # OVL1; by hand (the wep lane: bit 0 of the byte at 0x28 as a bool -- the name ours)
+0x003D4410 0x8 SetAccelerationFactor__6CZAmmoFf  # OVL1; by hand (the wep lane: the float at 0x24; the ammo reader passes "AccelerationFactor" (default 1) scaled by CWorld::m_scale -- the name ours)
+0x003D4420 0x8 GetAccelerationFactor__6CZAmmoFv  # OVL1; by hand (the wep lane: the float at 0x24; CZProjectile::PreTick reads it -- the name ours)
+0x003D4430 0x8 GetProximityDistance__6CZAmmoFv  # OVL1; by hand (the wep lane: the float at 0x3C, squared by its setter -- the name ours)
+0x003D4440 0xC SetProximityDistance__6CZAmmoFf  # OVL1; by hand (the wep lane: the float at 0x3C set to the argument squared; the ammo reader passes "ProximityDistance" scaled -- the name ours)
+0x003D4450 0x70 GetBlowbackScale__6CZAmmoFf  # OVL1; by hand (the wep lane: 1 below the falloff at 0x34, 1 - (d - falloff)/(end - falloff) below the end at 0x38, 0 past it or with no end; OVL2's 0x5A1B80 and 0x5ABBC0 call it -- the name ours)
+0x003D44C0 0x18 SetBlowback__6CZAmmoFUcf  # OVL1; by hand (the wep lane: the float at 0x34 + 4*i set to the argument squared, a byte index; the ammo reader passes "Blowback_Falloff" with 0 and "Blowback_End" with 1 -- the name ours)
+0x003D44E0 0x8 GetNumProjectilesFired__6CZAmmoFv  # OVL1; by hand (the wep lane: the word at 0x20 -- the name ours)
+0x003D44F0 0x8 SetNumProjectilesFired__6CZAmmoFi  # OVL1; by hand (the wep lane: the word at 0x20; the ammo reader passes "NumProjectilesFired", default 1 -- the name ours)
 0x003D4500 0x8 GetExplosionRadius__6CZAmmoFv  # OVL1; s1:calls by hand (the wep lane: PlacedExplosive::PreTick passes its result to RegProximityDelayed where SOCOM 1's passes GetExplosionRadius's; the float at 0x1C)
-0x003D4510 0x8 func_003D4510  # OVL1
-0x003D4520 0x8 func_003D4520  # OVL1
-0x003D4530 0x8 func_003D4530  # OVL1
+0x003D4510 0x8 GetExplosionDamage__6CZAmmoFv  # OVL1; s1:order by hand (the wep lane: SOCOM 1's order after GetExplosionRadius; the float at 0x18, which the reader's "Explosion_Damage" sets through 0x3D4570)
+0x003D4520 0x8 GetArmorPierce__6CZAmmoFv  # OVL1; s1:order by hand (the wep lane: the float at 0x14, the reader's "Piercing")
+0x003D4530 0x8 GetImpactDamage__6CZAmmoFv  # OVL1; s1:order by hand (the wep lane: the float at 0xC, the reader's "ImpactDamage")
 0x003D4540 0x8 GetName__6CZAmmoFv  # OVL1; s1:order by hand (returns the word at 0, m_name; CZAmmoList::GetAmmo(name) compares it)
-0x003D4550 0x8 func_003D4550  # OVL1
-0x003D4560 0x8 func_003D4560  # OVL1
-0x003D4570 0x8 func_003D4570  # OVL1
-0x003D4580 0x8 func_003D4580  # OVL1
-0x003D4590 0x8 func_003D4590  # OVL1
-0x003D45A0 0x8 func_003D45A0  # OVL1
-0x003D45B0 0x34 func_003D45B0  # OVL1
-0x003D45F0 0x58 func_003D45F0  # OVL1
-0x003D4650 0x5C func_003D4650  # OVL1
-0x003D46B0 0x5C func_003D46B0  # OVL1
+0x003D4550 0x8 GetDescription__6CZAmmoFv  # OVL1; by hand (the wep lane: the word at 4, SOCOM 1's m_description, right after GetName; new in SOCOM II)
+0x003D4560 0x8 SetExplosionRadius__6CZAmmoFf  # OVL1; s1:order by hand (the wep lane: the float at 0x1C; the reader passes "Explosion_Radius" scaled)
+0x003D4570 0x8 SetExplosionDamage__6CZAmmoFf  # OVL1; s1:order by hand (the wep lane: the float at 0x18; the reader's "Explosion_Damage")
+0x003D4580 0x8 SetArmorPierce__6CZAmmoFf  # OVL1; s1:order by hand (the wep lane: the float at 0x14; the reader's "Piercing")
+0x003D4590 0x8 SetStun__6CZAmmoFf  # OVL1; s1:order by hand (the wep lane: the float at 0x10; the reader's "Stun")
+0x003D45A0 0x8 SetImpactDamage__6CZAmmoFf  # OVL1; s1:order by hand (the wep lane: the float at 0xC; the reader's "ImpactDamage")
+0x003D45B0 0x34 SetHitAnim__6CZAmmoFPCc  # OVL1; s1:order by hand (the wep lane: ZAnim.GetAnim(name, 0) stored at 0x2C, as SOCOM 1's at 0x1C; the reader's "HitAnimName")
+0x003D45F0 0x58 SetLongDescription__6CZAmmoFPc  # OVL1; by hand (the wep lane: the string at 8 freed and strdup'd, new in SOCOM II; the reader passes "Description" -- the name ours)
+0x003D4650 0x5C SetDescription__6CZAmmoFPc  # OVL1; s1:order by hand (the wep lane: the string at 4, SOCOM 1's shape -- freed, zeroed, strdup'd; the reader passes "DisplayName")
+0x003D46B0 0x5C SetName__6CZAmmoFPc  # OVL1; s1:order by hand (the wep lane: the string at 0, SOCOM 1's shape; the reader passes "InternalName")
 0x003D4710 0x90 __dt__6CZAmmoFv  # OVL1; s1:order by hand (SOCOM 1's: the name, the description and a third string freed, deleted when asked; CZAmmoList's destructor calls it)
-0x003D47A0 0x6C func_003D47A0  # OVL1
+0x003D47A0 0x6C __ct__6CZAmmoFv  # OVL1; s1:order by hand (the wep lane: SOCOM 1's last in zwep_ammo.cpp -- the strings and the anim cleared, the id 255; the reader news 0x40 bytes and calls it)
 0x003D4810 0x14 func_003D4810  # OVL1; tu: zui_cleanup.cpp~ (1.0 beta)
 0x003D4830 0x8 func_003D4830  # OVL1
 0x003D4840 0xBC func_003D4840  # OVL1
@@ -8600,7 +8600,7 @@
 0x00404B70 0x3C func_00404B70  # OVL1 data area; a static initialiser; s1~ zwep_global.cpp (shape 0.60, a hint)
 0x00404BB0 0x54 func_00404BB0  # OVL1 data area; a static initialiser
 0x00404C10 0xC0 func_00404C10  # OVL1 data area; a static initialiser; s1~ zwep_weapon.cpp (shape 0.47, a hint)
-0x00404CD0 0x3C func_00404CD0  # OVL1 data area; a static initialiser; s1~ zwep_ammo.cpp (shape 0.55, a hint)
+0x00404CD0 0x3C __sinit_zwep_ammo.cpp  # OVL1 data area; a static initialiser; s1~ zwep_ammo.cpp (shape 0.55, a hint); s1:unit by hand (the wep lane: builds CZAmmo::m_ammolist at 0x4B5310 with CZAmmoList's constructor and registers its destructor 0x3C5070, as SOCOM 1's __sinit_zwep_ammo.cpp builds m_ammolist__6CZAmmo)
 0x004C53C0 0x8 func_004C53C0  # OVL2
 0x004C5400 0x210 asrspi_cbResult  # OVL2; s1:calls
 0x004C5610 0x60 asrspi_cbAbnorm  # OVL2; s1:align
