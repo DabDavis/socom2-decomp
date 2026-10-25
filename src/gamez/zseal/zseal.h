@@ -489,8 +489,17 @@ public:
     float m_throttle_goal[3];   // 0x254 (as SOCOM 1's 0x274: the throttles the AI asks for)
     unsigned int m_260;   // 0x260
     unsigned int m_debug : 1;   // 0x264 (SOCOM 1's 0x280, the same bits as far as they are read)
-    unsigned int m_navyseal : 1;
-    unsigned int m_bits264 : 30;
+    unsigned int m_navyseal : 1;   // bit 1 (also no CQB delay: CAiSCQBAttack's entry reads it)
+    /* bits 2, 13, 16 and 17 as the AI states read them (the kit lane, round 6; the names ours):
+     * bit 2 the one 0x56D890 sets, which a covered state keeps (0x5F6350); a breach clears 13 on
+     * entry, then sets 16 from its own bit 13, clears 17 and sets 13 as it ends (0x5F3620) */
+    unsigned int m_aibit2 : 1;
+    unsigned int m_bits3 : 10;
+    unsigned int m_aibit13 : 1;
+    unsigned int m_bits14 : 2;
+    unsigned int m_aibit16 : 1;
+    unsigned int m_aibit17 : 1;
+    unsigned int m_bits18 : 14;
     unsigned char _268[0x26c - 0x268];
     unsigned char m_26c;   // 0x26c: a mode byte (4: any target taken; the name ours)
     unsigned char _26d[0x270 - 0x26d];

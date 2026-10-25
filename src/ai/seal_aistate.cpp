@@ -26,31 +26,12 @@ void func_0056D090(CSealCtrlAi *ai);
 unsigned char func_00560A60(CSealCtrlAi *ai);
 }
 
-/* the AI controller's bit the CQB attack's delay reads (CSealCtrlAi at 0x264, bit 1; zseal.h does
- * not name it -- the names ours) */
-struct CAiCtrlBits {
-    unsigned char _0[0x264];
-    unsigned char m_bit0 : 1;
-    unsigned char m_nodelay : 1;
-};
-
-/* the controller's state clock: its stack's (CSealCtrlAi's stack at 0x41C, the clock 0x18 into
- * it -- SOCOM 1's m_stateTimer at 0x330; zseal.h does not name it) */
-struct CAiCtrlClock {
-    unsigned char _0[0x434];
-    float m_stateTimer;   // 0x434
-};
-
+/* the controller's state clock: its stack's (SEAL_AI_PARAMS's stack at 0x41C, the clock 0x18 into
+ * it, 0x434 -- SOCOM 1's m_stateTimer at 0x330), read through an inline */
 inline float StateTimer(CSealCtrlAi *ai)
 {
-    return ((CAiCtrlClock *)ai)->m_stateTimer;
+    return ai->m_stateStack.m_timer;
 }
-
-/* the controller's state stack (CSealCtrlAi at 0x41C; zseal.h keeps a word there) */
-struct CAiCtrlStack {
-    unsigned char _0[0x41c];
-    CAiStateStack m_stack;   // 0x41c
-};
 
 /* the controller's word at 0x10C (CSealCtrl's: its squad; zseal.h does not name it) */
 struct CAiCtrl10C {
@@ -160,7 +141,7 @@ void CAiSAction::Virtual0C(int id, int event, CSealCtrlAi *ai)
             SetFlags(4, 0);
             break;
         }
-        ((CAiCtrlStack *)ai)->m_stack.SetFlags(1, 0);
+        ai->m_stateStack.SetFlags(1, 0);
     }
 }
 
@@ -495,7 +476,7 @@ struct CSealSignalBits {
 void CAiState::Signal(CAiStateStack *stack, CAiState *state, SIGNAL sig, CSealCtrlAi *ai)
 {
     CEntity *seal = ai ? ai->m_entity : 0;
-    bool own = &((CAiCtrlStack *)ai)->m_stack == stack;
+    bool own = &ai->m_stateStack == stack;
 
     switch (sig) {
     case SIGNAL_4:
@@ -791,25 +772,22 @@ CAiStateStack::CAiStateStack() : m_c(-1), m_10(0), m_14(0)
 {
 }
 
-/* the controller's settings a covered state keeps (CSealCtrlAi: the bits at 0x264 -- bit 0 the
- * debug bit zseal.h names, bit 2 the one 0x56D890 takes -- the float 0x570F90 takes at 0x1C4, the
- * stance at 0x278 and the mode at 0x3F4, a signed byte here; zseal.h names neither the bit nor the
- * float -- the names ours) */
+/* the controller's settings a covered state keeps: SEAL_AI_PARAMS's debug bit and bit 2 (0x264),
+ * its stance (0x278), CSealCtrl's float at 0x1C4 (the one 0x570F90 takes) and the mode at 0x3F4,
+ * read as a signed byte here -- zseal.h names neither the float nor a signed mode (the names
+ * ours) */
 struct CAiCtrlSaved {
-    void SetDebug(bool b) { m_debug = b; }
-
     unsigned char _0[0x1c4];
     float m_1c4;   // 0x1c4
-    unsigned char _1c8[0x264 - 0x1c8];
-    unsigned char m_debug : 1;   // 0x264 bit 0
-    unsigned char m_bit1 : 1;
-    unsigned char m_bit2 : 1;
-    unsigned char _264_3 : 5;
-    unsigned char _265[0x278 - 0x265];
-    SEAL_STANCE m_stance;   // 0x278
-    unsigned char _279[0x3f4 - 0x279];
+    unsigned char _1c8[0x3f4 - 0x1c8];
     signed char m_mode;   // 0x3f4
 };
+
+/* the debug bit cleared through a setter taking a bool (the name ours) */
+inline void SetDebug(CSealCtrlAi *ai, bool b)
+{
+    ai->m_debug = b;
+}
 
 /* a state's hold on the controller's settings: its sub-state's entry clears bit 14, its leaving
  * the debug bit; covered (2) it keeps the stance, the mode, bit 2, the float and the SEAL's cell,
@@ -821,11 +799,11 @@ extern "C" void func_005F6350(CAiState *s, CSealCtrlAi *ai, CAiState::SIGNAL sig
         s->SetBit14(false);
         break;
     case CAiState::SIGNAL_1:
-        ((CAiCtrlSaved *)ai)->SetDebug(false);
+        SetDebug(ai, false);
         break;
     case CAiState::SIGNAL_2:
-        s->SetBit4(((CAiCtrlSaved *)ai)->m_bit2);
-        s->SetNibble5(((CAiCtrlSaved *)ai)->m_stance);
+        s->SetBit4(ai->m_aibit2);
+        s->SetNibble5(ai->m_stance);
         s->SetNibble9(((CAiCtrlSaved *)ai)->m_mode);
         s->m_4c = ((CAiCtrlSaved *)ai)->m_1c4;
         s->m_loc = CAiMapLoc(ai->m_entity->m_mapLocValid);
@@ -901,7 +879,7 @@ extern "C" bool func_005F61E0(CAiState *s)
  * StateTimer, the products in either order, a shared constant local, the divisor in a local. */
 extern "C" bool func_005F6270(CAiState *s, float period, CSealCtrlAi *ai)
 {
-    return (int)(10.0f * ((CAiCtrlClock *)ai)->m_stateTimer) % (int)(10.0f * period) == 0;
+    return (int)(10.0f * ai->m_stateStack.m_timer) % (int)(10.0f * period) == 0;
 }
 
 /* a step taken now, or after a delay (the flags' bit 30 then set); the step the state is on
@@ -942,10 +920,10 @@ bool CSealCtrlAi::ClearAiState(bool all)
     bool cleared = false;
 
     if (all || !m_entity->m_isAlive || IsNavySeal() || (m_entity->m_team & 0x40000)) {
-        ((CAiCtrlStack *)this)->m_stack.PopAll(this);
+        m_stateStack.PopAll(this);
         cleared = true;
     }
-    func_005F7470(&((CAiCtrlStack *)this)->m_stack, this, 1);
+    func_005F7470(&m_stateStack, this, 1);
     return cleared;
 }
 
@@ -953,16 +931,16 @@ bool CSealCtrlAi::ClearAiState(bool all)
  * 0x5F6010, 0x5F5FD0 -- the same code twice; SOCOM 1's tested the top for 0 instead) */
 CAiState *CSealCtrlAi::GetAiState()
 {
-    if (((CAiCtrlStack *)this)->m_stack.size() == 0)
+    if (m_stateStack.size() == 0)
         return &_unknown;
-    return ((CAiCtrlStack *)this)->m_stack.GetState();
+    return m_stateStack.GetState();
 }
 
 const CAiState *CSealCtrlAi::GetAiState() const
 {
-    if (((const CAiCtrlStack *)this)->m_stack.size() == 0)
+    if (m_stateStack.size() == 0)
         return &_unknown;
-    return ((CAiCtrlStack *)this)->m_stack.GetState();
+    return m_stateStack.GetState();
 }
 
 /* a stack's front state told a signal, when there is one (OVL2 0x5F7420) */
@@ -1013,26 +991,16 @@ void CAiStateStack::Clear()
     erase(begin(), end());
 }
 
-/* the controller's bit word at 0x264 (SOCOM 1's 0x280: zseal.h names bits 0 and 1 only; the
- * names ours) and the setters the target passes a bool through */
-struct CAiCtrl264 {
-    unsigned char _0[0x264];
-    unsigned int m_b0 : 13;
-    unsigned int m_bit13 : 1;   // 0x265 bit 5
-    unsigned int m_b14 : 2;
-    unsigned int m_bit16 : 1;   // 0x266 bit 0
-    unsigned int m_bit17 : 1;   // 0x266 bit 1
-    unsigned int m_b18 : 14;
-};
-
+/* the setters the target passes a bool through to SEAL_AI_PARAMS's flag word (0x264, bits 13 and
+ * 17; the names ours) */
 inline void SetBit264_13(CSealCtrlAi *ai, bool on)
 {
-    ((CAiCtrl264 *)ai)->m_bit13 = on;
+    ai->m_aibit13 = on;
 }
 
 inline void SetBit264_17(CSealCtrlAi *ai, bool on)
 {
-    ((CAiCtrl264 *)ai)->m_bit17 = on;
+    ai->m_aibit17 = on;
 }
 
 /* a breach's events: on entry no goal, the order byte cleared, crouched, the bit off; on leaving
@@ -1053,9 +1021,9 @@ void CAiSBreach::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
         if (!seal->m_isAlive && m_valve)
             m_valve->SetValue(3);
         SetWeaponState__10CZSealBodyF12WEAPON_STATE(seal, 2);
-        ((CAiCtrl264 *)ai)->m_bit16 = m_bit13 != 0;
+        ai->m_aibit16 = m_bit13 != 0;
         SetBit264_17(ai, false);
-        ((CAiCtrl264 *)ai)->m_bit13 = true;
+        ai->m_aibit13 = true;
         break;
     case SIGNAL_2:
         break;
@@ -1242,7 +1210,7 @@ void CAiSCQBAttack::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
         m_5c = 0.0f;
         break;
     case SIGNAL_0:
-        m_5c = ((CAiCtrlBits *)ai)->m_nodelay ? 0.0f : 0.75f;
+        m_5c = ai->m_navyseal ? 0.0f : 0.75f;
         break;
     case SIGNAL_1:
         break;

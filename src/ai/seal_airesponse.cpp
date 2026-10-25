@@ -21,29 +21,11 @@ inline bool Chance(float odds)
     return r <= c;
 }
 
-/* the controller's bits (CSealCtrlAi at 0x264: SOCOM 1's m_debug word at 0x280 -- bit 1 is
- * m_navyseal; zseal.h does not name them) */
-struct CAiCtrlBits {
-    unsigned char _0[0x264];
-    unsigned char m_debug : 1;
-    unsigned char m_navyseal : 1;
-};
-
-/* a SEAL of the player's side (an inline bool accessor: its callers keep the sltu) */
+/* a SEAL of the player's side (SEAL_AI_PARAMS's bit 1 at 0x264, SOCOM 1's m_navyseal; an inline
+ * bool accessor: its callers keep the sltu) */
 inline bool NavySeal(CSealCtrlAi *ai)
 {
-    return ((CAiCtrlBits *)ai)->m_navyseal;
-}
-
-/* the controller's state stack (CSealCtrlAi at 0x41C; zseal.h does not name it) */
-struct CAiCtrlStack {
-    unsigned char _0[0x41c];
-    CAiStateStack m_stack;   // 0x41c
-};
-
-inline CAiStateStack &StateStack(CSealCtrlAi *ai)
-{
-    return ((CAiCtrlStack *)ai)->m_stack;
+    return ai->m_navyseal;
 }
 
 /* a map cell copied field by field (SOCOM 1's written copy constructor, CAiMapLoc(const
@@ -598,7 +580,7 @@ int CAiSFlee::Tick(CSealCtrlAi *ai)
         break;
     }
     if (step != m_phase)
-        StateStack(ai).SetFlags(1, 0);
+        ai->m_stateStack.SetFlags(1, 0);
     UpdatePhase(step);
     return Result();
 }
