@@ -347,6 +347,38 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
 - **The same inline written two ways serves different callers**: `CZAnim::GetArgPnt3D` must be
   a ternary (TranslateState, RangeTest), `CZAnimMain::CmdHdr` a ternary for BreakTick,
   GoToEndIf and FOR_CHILDREN -- while IfTick reads the current command the if-assign way.
+- **Tells from round 3** (the camera, zoom and HUD lanes, and the motion script):
+  - a byte enum (`-enum min`) is copied with `lb` but compared or indexed with `lbu`, so the
+    load's sign tells an enum from an unsigned char (CAMVIEW, LENS_FX);
+  - a byte field that is tested and then passed on wants `x == 0`: `!x` re-extends it with an
+    `andi 0xff` for the call (zAnimObjectMotionScriptTick);
+  - `if (x)` on a float emits `c.eq.s x,0`, x first; `x != 0.0f` puts the zero first;
+  - a `b` to the very next instruction is an if/else whose trivial arm vanished -- `else step =
+    *dT;` once the load is hoisted above the test (apply_script_frame);
+  - `t = c; if (b) t = b;` puts the load in the branch's delay slot; `b ? b : c` is branchier;
+  - `float s = a * b; f(s + c)` keeps `s + c`; as one expression MW emits `c + a*b` whichever
+    order the source has. `amp = base; amp += k * r();` reads `base` before the call, a single
+    expression after it;
+  - MW drops an inlined callee's stores to a global that a later statement overwrites before
+    any call (Reset's inlined SetLensFx), and reuses a value just stored to a global instead of
+    reloading it, until a call (BeginShake);
+  - an inline setter that returns the old value gives "read old, store new, store old"
+    (`CAppCamera::SetCtrlView`);
+  - at exactly the 15-statement limit the callee's shape counts: `if (!held) {...}` is one less
+    than an early return, a ternary is one, and statements can move into a nested inline;
+  - pin with `#pragma auto_inline off` every function the target calls that MW would inline,
+    and the functions calling them too -- a pin does not carry over to the caller;
+  - under `-inline deferred` definition order does not change what inlines (probes in
+    build/scratch/hud/inl/);
+  - an iterator ASSIGNED from a pointer list's begin() is copied bitwise (lwc1/swc1) and then
+    lives in memory, re-read and re-stored at every step; one INITIALISED from begin() lives in
+    a register. SOCOM 1's list: `begin()` is `iterator(tail()->next_)` through a node*
+    constructor, `end()` is `iterator(tail())` through a node_base* one, and the base
+    iterator's `==` is a free function in std (include/list now has the wrapper iterator, its
+    one member `i_` at 0 as SOCOM 1's DWARF has it);
+  - an inline accessor held in a local (`t = tail(); t->next_`) is computed first and shared
+    with a later identical expression, which moves registers;
+  - scdiff's "N differing" count inflates after a one-instruction shift: read the diff.
 
 ## The map: `symbols.txt`
 
@@ -544,11 +576,13 @@ follows without MW's 16-byte padding (131 drafts had every byte right).
   target does). The pins: `theta_x_z`, `SetHorizontalFOV`, `SetVerticalFOV` (each a few
   statements, each called in the target). CAppCamera (`camera.cpp`) is next door, much changed
   since SOCOM 1 (its camera pointer 0x80 further on).
-- **ZAnim's command handlers (`zanim_cmd_tick.cpp`): 51 of 56 written are byte-exact.** Open:
-  `zAnimIfTick`, `zAnimLODTestTick`, `zAnimObjectOpacityFromToTick`, TRUE_COLOR_SCALE and
-  UPDATE_SHADOW_MAP_LIGHTING, each diagnosed in its source. Unwritten: SCROLL_MOTION's tick (an
-  inlined VU0 transform), the motion handlers (OBJECT_MOTION's tick also links CNode::GetBBox's
-  copy, 0x262550) and the big ones (Light, ParticleSource, Sound, CallAnimBegin).
+- **ZAnim's command handlers (`zanim_cmd_tick.cpp`): 52 of 58 written are byte-exact.** Open:
+  `zAnimIfTick`, `zAnimLODTestTick`, `zAnimObjectOpacityFromToTick`, TRUE_COLOR_SCALE,
+  UPDATE_SHADOW_MAP_LIGHTING and `apply_script_frame` (its two accumulators trade `$f20` and
+  `$f21`; not the declaration order, not which is defined first), each diagnosed in its source.
+  Unwritten: SCROLL_MOTION's tick (an inlined VU0 transform), OBJECT_MOTION_FROM_TO (0x25F9B0,
+  which also links CNode::GetBBox's copy, 0x262550) and the big ones (Light, ParticleSource,
+  Sound, CallAnimBegin).
 - **CZAnimMain (`anim_main.cpp`, `zanim_zar.cpp`), the name tables (`zanim_names.cpp`), CZAnimSet
   (`zanim_set.cpp`) and CZAnim (`zanim_anim.cpp`): all written byte-exact but five.**
   Open: SequenceRunning, GetCmd, GetAnimSetIndex, Open (registers in the inlined NewAnimSet --
@@ -568,16 +602,23 @@ follows without MW's 16-byte padding (131 drafts had every byte right).
   SetUseParentBBoxTree, SetModeTree, SetDescendantVisuals/DI), ScrollTexture, RemoveDecals,
   DeleteDI, BuildMatrixPalette, VisualEffectsTick, the CLight and CLightMap code, and
   node_model.cpp's GetMesh/GetSubMesh/GetFirstVisual, CreateXRef, CreateInstance and Delete.
-  Open: ApplyDecal (two instructions), InheritRegionMasks (four), BuildMTW,
-  ComputeFacadeMatrix, CNodeVector::Remove -- each diagnosed in its source. Unwritten: the
-  destructor and constructor, _Copy, InitNodeParams, SetParentHasVisuals and DeleteVisual(s)
-  (std::list walks), Read, SetBlendMode, FindMeshTextures and the functions between them.
-- **The game states and the HUD (`src/Apps/FTS/`, the DWARF's directory), written in parallel
-  in worktrees**: st_core, st_exit, st_load and st_mpexit (CCoreState, CExitState, CLoadState,
-  CMPExitState, the cinematic state; fts_state.h), and hud_fader, hud_missioncams,
-  hud_letterbox and hud_posebitmap (hud_2d.h holds SOCOM II's C2D layouts) -- 43 functions
-  newly byte-exact in the first round. Open: CEntityItr::Advance (a list const_iterator
-  include/list lacks), CFlashFXVector::Reset (a pointer vector's swap).
+  The destructor, _Copy, InitNodeParams, CopyParams, Create, SetBlendMode, DeleteDI and the
+  deferred-visual teardown match too. Open: ApplyDecal (two instructions), DeleteVisuals (four
+  bytes), InheritRegionMasks (four), the constructor (a word store where MW narrows to a byte),
+  BuildMTW, ComputeFacadeMatrix, CNodeVector::Remove -- each diagnosed in its source.
+  Unwritten: SetParentHasVisuals and DeleteVisual (std::list walks the new wrapper iterator may
+  now reach), Read, FindMeshTextures and the functions between them.
+- **The game states, the app camera and the HUD (`src/Apps/FTS/`, the DWARF's directory),
+  written in parallel in worktrees** over three rounds: st_core, st_exit, st_load, st_mpexit
+  and st_menu (fts_state.h); camera.cpp (CAppCamera's commands, mode, AttachTo, ResetView and
+  SOCOM II's shake) and thezoom.cpp (CameraZoom's Tick, goals, lens effects); hud_fader,
+  hud_missioncams, hud_letterbox, hud_posebitmap, hud_playermapitem, hud_mapcompass,
+  hud_bitmapreticule, hud_actionbitmap (C2D's small virtuals, defined in ztwod.h as SOCOM 1's
+  DWARF files them), hud_newhudmap and the claymore and bomb map items. Open:
+  CAppCamera::CmdBeginShake (registers), LookAt (vector addresses kept in saved registers),
+  CameraZoom::SeeFarther (one fog colour copy short), CEntityItr::Advance (needs the const
+  wrapper iterator), CMenuState::Tick (saved-register numbering), CZClaymoreMapItem::Tick (two
+  instructions: a sum staged through `$f0`), CFlashFXVector::Reset.
 - **`CZWeaponList::GetWeapon` (`0x3C4B40`)** -- 2 instructions from exact with an `int`
   parameter, but SOCOM 1's mangled name says `EQUIP_ITEM`, and every enum-typed variant sinks
   the zero-extension into the loop preheader.
