@@ -8503,7 +8503,7 @@
 0x003FE700 0xEC __sinit_hud_teamnames.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 16): hud_teamnames.cpp's static initialiser -- it builds and registers the unit's two bracket strings and two dividers (0x40D7A0, 0x40D850, 0x40D900, 0x40D990) and sets the dividers' line (0x3E4F60), which the unit's Init and SetOpacity read
 0x003FE7F0 0x64 __sinit_hud_playermapitem.cpp  # OVL1 data area; a static initialiser; s1~ zanim_anim.cpp (shape 0.46, a hint); hud_playermapitem.cpp by hand (it constructs CZPlayerMapItem::m_ablestring and m_bravostring, this unit's statics, and registers their destructors)
 0x003FE860 0xD4 func_003FE860  # OVL1 data area; a static initialiser
-0x003FE940 0x34 func_003FE940  # OVL1 data area; a static initialiser
+0x003FE940 0x34 __sinit_hud_teammatenames.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 16): hud_teammatenames.cpp's static initialiser (between hud_playermapitem.cpp's 0x3FE7F0 and hud_scorepopup.cpp's 0x3FE980) -- it halves the unit's two bitmap sizes (0x3DC868, 0x3DC870, 32 each) into 0x40DBD0 and 0x40DBD8, which CMPTeammateNames::Tick reads
 0x003FE980 0x9D0 func_003FE980  # OVL1 data area; a static initialiser
 0x003FF350 0x64 func_003FF350  # OVL1 data area; a static initialiser
 0x003FF3C0 0x64 func_003FF3C0  # OVL1 data area; a static initialiser

@@ -7,9 +7,10 @@
  * (ours), ResetHotSwap (ours), AfterOpenSecond, AfterScrollUp, AfterScrollDown, AfterClose,
  * OnScrollUp, OnScrollDown, AfterCloseFirst, OnClose, HandleScrollDownState, HandleScrollUpState,
  * PulseSelectionArrows, UnInit (which inlines OnClose as SOCOM 1's called it), Init and
- * PlaceWeaponText (round 16). Not yet: the hot-swap check (0x21A1F0), HandleOpenState, OnOpen
- * and the constructor. SOCOM 1's static Increment is an inline here (no copy linked). The layout is
- * hud_weaponsel.h's. Defined in reverse of their image order (-inline deferred). */
+ * PlaceWeaponText, the hot-swap check (CheckHotSwap, 0x21A1F0: ours), OnOpen, the constructor and
+ * the unit's initialiser (0x3FE500; round 16); written and OPEN: HandleOpenState. SOCOM 1's static
+ * Increment is an inline here (no copy linked). The layout is hud_weaponsel.h's. Defined in reverse
+ * of their image order (-inline deferred). */
 
 #include <stdio.h>
 #include <string.h>

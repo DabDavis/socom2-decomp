@@ -158,6 +158,8 @@
 0x003DC468 0x4 m_U1__17CZClaymoreMapItem  # OVL1 data; SOCOM 1's static (1.0: CZClaymoreMapItem's Tick reads it where SOCOM 1's does, and a CZNewHudMap function (0x20B2C0) sets it): 2 references in 2 functions
 0x003DC470 0x4 m_V1__17CZClaymoreMapItem  # OVL1 data; SOCOM 1's static (1.0, after m_U1 as in SOCOM 1): 2 references in 2 functions
 0x003DC620 0x4 g_fFadeInTime__27@unnamed@hud_weaponsel_cpp@  # OVL1 data; SOCOM 1's (its symbol table: hud_weaponsel.cpp's anonymous namespace, gp-30408 in the demo): the selector's backdrop fade-in clock, -1.0 in data (idle) -- 5 references in 2 functions (CWeaponSel::HudTick x4, OnOpen); the HUD lane
+0x003DC868 0x4 s_bitmap1Size  # OVL1 data; ours (the HUD lane, round 16): hud_teammatenames.cpp's file static, the ok-to-talk bitmap's size, 32.0 -- 4 references in 4 functions (CMPTeammateNames::Tick, both Inits, the unit's initialiser 0x3FE940)
+0x003DC870 0x4 s_bitmap2Size  # OVL1 data; ours (the HUD lane, round 16): hud_teammatenames.cpp's file static, the off arrow's size, 32.0 -- 5 references in 4 functions (CMPTeammateNames::Tick x2, both Inits, the initialiser)
 0x003DCFB4 0x0 devRpcData  # OVL1; s1:data-seq (size SOCOM 1's; via lgAudClose +4)
 0x003DCFB8 0x4 devicechanged  # OVL1; s1:data-exact (size SOCOM 1's; via lgAudClose +3)
 0x003DCFBC 0x4 threadsafeSema  # OVL1; s1:data-exact (size SOCOM 1's; via lgAudClose +4)
@@ -687,6 +689,8 @@
 0x0040DA28 0x4 m_deadbliptex__15CZPlayerMapItem  # OVL1 bss; SOCOM 1's static (the third of the three, which TickSealCone reads where the others are not): 3 references in 3 functions take 0x40DA28
 0x0040DA40 0x98 m_ablestring__15CZPlayerMapItem  # OVL1 bss; SOCOM 1's static (a C2DString, 0x98 in SOCOM II): 7 references in 5 functions take 0x40DA40 (CZPlayerMapItem's InitStaticItems, UnInitStaticItems, DrawAlphaBravo and MissionEndCleanup among them)
 0x0040DAF0 0x98 m_bravostring__15CZPlayerMapItem  # OVL1 bss; SOCOM 1's static (a C2DString): 7 references in 5 functions take 0x40DAF0 (the same functions, in the same pairs)
+0x0040DBD0 0x4 s_bitmap1Half  # OVL1 bss; ours (the HUD lane, round 16): hud_teammatenames.cpp's file static, half of s_bitmap1Size, set by the unit's initialiser 0x3FE940 -- 2 references in 2 functions (CMPTeammateNames::Tick, the initialiser)
+0x0040DBD8 0x4 s_bitmap2Half  # OVL1 bss; ours (the HUD lane, round 16): hud_teammatenames.cpp's file static, half of s_bitmap2Size, set by 0x3FE940 -- 2 references in 2 functions (CMPTeammateNames::Tick, the initialiser)
 0x0040F628 0x4 g_iBoxLeftX__28@unnamed@hud_scorepopup_cpp@  # OVL1 bss; SOCOM 1's (hud_scorepopup.cpp's unnamed namespace: g_iBoxLeftX, g_iBoxRightX, g_iBoxTopY 4 apart there, 8 here): the pop-up's left, (int)153 set by 0x22CC10 -- 10 references in 4 functions take 0x40F628 (SetupTeam 0x229D00, AddRow 0x22A290, SetupBackgroundBox, 0x22CC10); the HUD lane
 0x0040F630 0x4 g_iBoxRightX__28@unnamed@hud_scorepopup_cpp@  # OVL1 bss; SOCOM 1's: the pop-up's right, the left + 477 (0x22CC10) -- 12 references in 4 functions take 0x40F630; the HUD lane
 0x0040F638 0x4 g_iBoxTopY__28@unnamed@hud_scorepopup_cpp@  # OVL1 bss; SOCOM 1's: the pop-up's top, theMission's two counts + 5 (0x22CC10) -- 8 references in 2 functions take 0x40F638 (SetupBackgroundBox, 0x22CC10); the HUD lane
