@@ -1,14 +1,19 @@
-/* hud_scorepopup.cpp -- the network game's score pop-up (OVL1 0x229CA0-~0x22D16F): SOCOM 1's unit (its
+/* hud_scorepopup.cpp -- the network game's score pop-up (OVL1 0x229CA0-~0x22EA2F: CHudPopups'
+ * destructor is 0x22D600 and CScoreBmp's, the unit's tail, 0x22E9C0 -- their RTTI names say so;
+ * between 0x22D170 and 0x22E9C0 sit string, vector and pop-up helpers not yet sorted): SOCOM 1's unit (its
  * DWARF names it, Z:\dev\Apps\FTS\hud_scorepopup.cpp), grown in SOCOM II. SOCOM 1's order holds at
  * both ends: CScorePopup's destructor (0x229CA0) and Draw (slot 1 of its vtable 0x405990, 0x22A8B0)
  * open it as there, after CTeamDisplay::SetupTeam (0x229D00) and AddRow (0x22A290); then come
- * SOCOM II's pieces -- a second pop-up's Draw (0x22AB80), 0x22AC30, SetupBackgroundBox (0x22AE90:
- * ten bitmaps loaded and UV'd, as SOCOM 1's), 0x22B360, a message pop-up's opener (0x22B4A0) and its
- * record's destructor (0x22BAD0) -- then hudTurnOffScorePopup (0x22BB30), the two message triggers
- * (0x22BC40, 0x22BD50), the tick (0x22BE20, SOCOM 1's hudTickScorePopup by its place), whether the
- * pop-up is up (0x22CBF0) and 0x22CC10. The unit's statics are anonymous-namespace globals in SOCOM
- * 1 (g_bOn, g_oSeals2Ds, g_oTerrs2Ds, the box's ten CScoreBmps); its initialiser (0x3FE980, 0x9D0
- * bytes) builds every one, so they are declared by address here until it is written. Defined in
+ * SOCOM II's pieces -- CHudPopups::Draw (0x22AB80), 0x22AC30, SetupBackgroundBox (0x22AE90: ten
+ * bitmaps loaded and UV'd, as SOCOM 1's), 0x22B360, the pop-up opener (0x22B4A0) and right after
+ * it, as its first user, a class vector's destructor copy (0x22BAD0: two this tests, then the
+ * deleter's destructor 0x22E460 with 0) -- then hudTurnOffScorePopup (0x22BB30), the two pop-up
+ * triggers (0x22BC40, 0x22BD50), the tick (0x22BE20, SOCOM 1's hudTickScorePopup by its place),
+ * hudIsScorePopupOn (0x22CBF0) and 0x22CC10. Written, all byte-exact: CScorePopup's destructor
+ * and Draw, CHudPopups' Draw and destructor, hudTurnOffScorePopup, the triggers and
+ * hudIsScorePopupOn. The unit's statics are anonymous-namespace globals in SOCOM 1 (g_bOn,
+ * g_oSeals2Ds, g_oTerrs2Ds, the box's ten CScoreBmps); its initialiser (0x3FE980, 0x9D0 bytes)
+ * builds every one, so they are declared by address here until it is written. Defined in
  * reverse of their image order (-inline deferred). */
 
 #include "hud_weaponsel.h"
