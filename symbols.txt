@@ -11740,7 +11740,7 @@
 0x0060A5F0 0xAC func_0060A5F0  # OVL2
 0x0060A6A0 0x1A8 func_0060A6A0  # OVL2
 0x0060A850 0xE8 func_0060A850  # OVL2
-0x0060A940 0xDC func_0060A940  # OVL2
+0x0060A940 0xDC __ct__9CAiTargetFv  # OVL2; by hand (the kit lane, round 6): CAiTarget's constructor -- SEAL_AI_PARAMS's constructor (0x60BF40) calls it on +0x42C (the controller's 0x67C, after the event queue, as SOCOM 1's CSealCtrlAi constructor calls __ct__9CAiTargetFv on m_target after m_eventQueue), CTurret's constructor (0x3AA478) too; SOCOM 1's CheckLineOfFire/CAiTarget unit closes with it, and SOCOM II's sits after CheckLineOfFire (0x609DF0)
 0x0060AA20 0x57C func_0060AA20  # OVL2
 0x0060AFA0 0x174 func_0060AFA0  # OVL2
 0x0060B120 0x344 func_0060B120  # OVL2
@@ -11756,7 +11756,7 @@
 0x0060BC40 0x2CC func_0060BC40  # OVL2
 0x0060BF10 0x1C func_0060BF10  # OVL2
 0x0060BF30 0xC func_0060BF30  # OVL2
-0x0060BF40 0x224 func_0060BF40  # OVL2
+0x0060BF40 0x224 __ct__14SEAL_AI_PARAMSFv  # OVL2; by hand (the kit lane, round 6): SEAL_AI_PARAMS's constructor -- CSealCtrlAi's constructor (0x5740A4) calls it on this + 0x250, the second base CSealCtrlAi's RTTI lists there, before its table store; it builds the state stack at +0x1CC (0x5F8520), two CAiPaths, the CAiEvent, the event queue, the CAiTarget (0x60A940) and the trigger
 0x0060C170 0x18 func_0060C170  # OVL2
 0x0060C190 0x78 func_0060C190  # OVL2
 0x0060C210 0xC func_0060C210  # OVL2
