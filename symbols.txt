@@ -5536,7 +5536,7 @@
 0x0031A180 0x78C func_0031A180  # OVL1
 0x0031A910 0x90 __dt__Q23zdb10CRenderMapFv  # OVL1; s1:align
 0x0031A9A0 0x488 func_0031A9A0  # OVL1
-0x0031AE30 0x90 func_0031AE30  # OVL1
+0x0031AE30 0x90 SetMaterial__FPQ23zdb5CNodei  # OVL1; s1:order by hand (SOCOM 1's SetMaterial(CNode *, int): each of the node's DIs given the material, eight bits at bit 10 of its flag word (at 8 here, 0x18 in SOCOM 1); before SetDIBBox as there)
 0x0031AEC0 0xA4 SetDIBBox__FPQ23zdb5CNodePC5CBBoxb  # OVL1; s1:align
 0x0031AF70 0xB0 func_0031AF70  # OVL1
 0x0031B020 0x6C func_0031B020  # OVL1

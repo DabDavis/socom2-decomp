@@ -36,6 +36,37 @@ public:
     unsigned char _0[0x20];
 };   // 0x20 bytes
 
+/* a box-shaped DI: the box it stands for, borrowed (SOCOM 1's CDIBBox; 0x18 bytes, the size
+ * SetDIBBox news) */
+class CDIBBox : public CDI {
+public:
+    unsigned char _10[4];   // 0x10
+    const CBBox *m_bbox;   // 0x14
+};   // 0x18 bytes
+
+/* what a render map projects (SOCOM 1's enum, by its mangled name; a byte under -enum min): a
+ * shadow (0) makes its light a shadow */
+enum _tag_render_map_type {
+    RENDER_MAP_SHADOW = 0
+};
+
+/* a texture rendered from a node and projected back as a light map: a shadow (SOCOM 1's
+ * CRenderMap : CLightMap, 0x2E0 bytes in both builds, the size AddShadow news). Its light is
+ * itself (m_lightmap, set in the constructor and used for every light call after) */
+class CRenderMap : public CLightMap {
+public:
+    CRenderMap(CNode *node, _tag_render_map_type type, const CTexture *tex);
+    virtual ~CRenderMap();
+    void Update();
+
+    CNode *m_node;   // 0x180: the node casting it, when an instance (type 2)
+    const CTexture *m_texture;   // 0x184
+    CLightMap *m_lightmap;   // 0x188
+    unsigned char _18c[0x2d0 - 0x18c];
+    void *m_packet;   // 0x2d0: 208 bytes, the GS packet it renders with (the names ours)
+    unsigned char _2d4[0x2e0 - 0x2d4];
+};   // 0x2e0 bytes
+
 /* the save/load driver: the world it builds, the archive it reads and the file's name (SOCOM 1's
  * DWARF; SOCOM II's archive is 0x14 bytes longer, so the name sits at 0xbc) */
 class CSaveLoad {
