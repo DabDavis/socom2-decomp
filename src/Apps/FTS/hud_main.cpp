@@ -1,17 +1,20 @@
 /* hud_main.cpp -- the HUD (CHUD): SOCOM 1's unit (its DWARF names it, Z:\dev\Apps\FTS\hud_main.cpp),
- * its functions in SOCOM 1's order. The part in OVL1 0x1F9000-0x1FE33F (Init to the constructor,
- * then the inline functions' out-of-line copies) is this lane's; the functions before it
- * (DoRangeText .. PauseGame, 0x1F6xxx-0x1F8xxx) are not written. SOCOM II's CHUD is 0x1ACD0 bytes
- * (SOCOM 1's 0x14960), laid out from its constructor, destructor and ReInit_Uninit: a string in
- * front of the texture lists, the map new'ed (single player only), a network weapon selector,
- * the multiplayer boxes (teammate names, the info box with the health bar and who is talking,
- * the spectator's), six strings where SOCOM 1 had three piggyback texts, a lens flare manager
- * where it had CLensFlareSaturate, and the ammo counts after the phases.
- * Written: the constructor (byte-exact but for two calls to rows outside the range, CHealthBar's
- * and CSpectatorInfo's constructors), GetHUDOwner, HudText_to_upper, DrawPhase, GetTextureByName,
- * ReInit_Uninit and ReInit_Init. Not yet: Init (0xF98), the destructor (0xA40: it inlines every
- * member's destructor, and needs the texture lists as classes -- see CTexList) and ReleaseHUD
- * (it inlines C2DFont's destructor, which holds a std::map and a std::string in SOCOM II).
+ * its functions in SOCOM 1's order (OVL1 0x1F6A90-0x1FE33F, then the inline functions'
+ * out-of-line copies). SOCOM II's CHUD is 0x1ACD0 bytes (SOCOM 1's 0x14960), laid out from its
+ * constructor, destructor and ReInit_Uninit: a string in front of the texture lists, the map
+ * new'ed (single player only), a network weapon selector, the multiplayer boxes (teammate names,
+ * the info box with the health bar and who is talking, the spectator's), six strings where SOCOM 1
+ * had three piggyback texts, a lens flare manager where it had CLensFlareSaturate, and the ammo
+ * counts after the phases.
+ * Written, all byte-exact: the timer and zoom texts, Add2D, the two map switches, ZoomIn, ZoomOut,
+ * IsOn, Off, On, PostDITick, PreDITick, Flash, the four network texts Tick calls (spectator,
+ * spectating, respawn, ghost), PauseGame, ReInit_Init, ReInit_Uninit, GetTextureByName,
+ * DrawPhase, ReleaseHUD, HudText_to_upper, GetHUDOwner and the constructor. Not yet: Tick
+ * (0x1158), Init (0xF98; the font's constructor inlines one level, its pieces 0x1FB370-0x1FB3F0
+ * out of line), the destructor (0xA40: it inlines every member's destructor, and needs the
+ * texture lists as classes -- see CTexList), and the four inline copies at the unit's head
+ * (0x1F6A90-0x1F6B00: C2DString helpers the reticle's unit calls; their caller here must be
+ * dead-stripped). 0x1F6A80 is CLoadMenu's (st_load.cpp's vtable slot).
  * Defined in reverse of their image order (-inline deferred). */
 
 #include <string.h>
