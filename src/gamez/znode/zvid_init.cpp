@@ -29,6 +29,7 @@ int sceGsSetDefStoreImage(sceGsStoreImage *sp, short sbp, short sbw, short spsm,
                           short w, short h);
 int sceGsExecStoreImage(sceGsStoreImage *sp, u_long128 *dstaddr);
 int sceGsSyncPath(int mode, unsigned short timeout);
+void sceDmaSendN(sceDmaChan *d, void *addr, int size);
 }
 
 /* the FIFO held while the GS is read (zsys_fifo.cpp's) */
@@ -47,6 +48,7 @@ public:
     static void WriteGsMemory(unsigned int addr, u_long128 *data, unsigned int size);
     static void ReadGsMemory(unsigned int addr, u_long128 *data, unsigned int size);
     static void Fade(float t, unsigned char r, unsigned char g, unsigned char b);
+    static void Clear(bool all, unsigned char r, unsigned char g, unsigned char b, unsigned char a);
     static int MaxFrameRate(int rate);
 
     static int m_defaultFrameRate;
@@ -63,6 +65,10 @@ extern u_long128 zon_writeoff_dmaref;
 extern u_long128 brightnesscode[];
 /* the fade colour (SOCOM 1's zvid + 0x260, the private state's; its start is not placed here) */
 extern unsigned char zvid_fade[4];
+
+/* the clear's GIF packet, ten quadwords: FRAME the third, RGBAQ the eighth, the sprite's far XYZ2 the
+ * tenth (SOCOM 1's vramcode) */
+extern u_long128 vramcode[10];
 
 /* the final copy to the display, a GIF packet: its sprite's two XYZ2 words are the fifteenth and
  * seventeenth quadwords (SOCOM 1's finalcode, 0x40 bytes shorter) */
@@ -139,6 +145,30 @@ void CVideo::ReadGsMemory(unsigned int addr, u_long128 *data, unsigned int size)
     } while (size);
     zSysFifoResume(true);
     EIntr();
+}
+
+/* a GS packet sent: through the FIFO, by reference or copied into the scratchpad packet behind its
+ * DMA tag; or straight down the GIF channel, waited on (SOCOM 1's took no copy flag) */
+void zvid_KickPacket(unsigned long *packet, int qwc, bool fifo, bool copy)
+{
+    if (fifo) {
+        _word128 *p = (_word128 *)zSysSprGetPacket(0);
+
+        p->u32[2] = 0x13000000;
+        p->u32[3] = qwc | 0x50000000;
+        if (copy) {
+            CSPR::Copy(p + 1, (_word128 *)packet, qwc);
+            p->u32[0] = qwc | 0x10000000;
+            zSysFifoKick((u_long128 *)p, qwc + 1);
+        } else {
+            p->u32[0] = qwc | 0x30000000;
+            p->u32[1] = (unsigned int)packet;
+            zSysFifoKick((u_long128 *)p, 1);
+        }
+    } else {
+        sceDmaSendN(zSys.DmaToGif, packet, qwc);
+        sceGsSyncPath(0, 0);
+    }
 }
 
 /* the image written to GS memory in 256x256 blocks of 32 bits (SOCOM 1's, byte for byte) */
@@ -266,6 +296,26 @@ void zVid_ZTestOnWriteSet(bool on)
 
     *p = *(on ? &zon_writeon_dmaref : &zon_writeoff_dmaref);
     zSysFifoKick(p, 1);
+}
+
+/* the screen cleared by the clear packet: the frame buffer drawn to, 640x448 in its pixel format, or
+ * the whole of GS memory (1024 wide from page 0) in the colour given (SOCOM 1's cleared the frame
+ * buffer in the colour, sending the packet itself) */
+void CVideo::Clear(bool all, unsigned char r, unsigned char g, unsigned char b, unsigned char a)
+{
+    if (all == false) {
+        *(unsigned long *)UNCACHED(&vramcode[2]) =
+            (unsigned long)zVid.frameBuf | 0xA0000 | ((unsigned long)zVid.framePsm << 24);
+        *(unsigned long *)UNCACHED(&vramcode[9]) = 0x1C002800;
+        zvid_KickPacket((unsigned long *)vramcode, 10, true, false);
+    } else {
+        *(unsigned long *)UNCACHED(&vramcode[2]) = 0x100000;
+        *(unsigned long *)UNCACHED(&vramcode[9]) = 0x40004000;
+        *(unsigned long *)UNCACHED(&vramcode[7]) =
+            (unsigned long)r | ((unsigned long)g << 8) | ((unsigned long)b << 16) |
+            ((unsigned long)a << 24) | ((unsigned long)0x3F800000 << 32);
+        zvid_KickPacket((unsigned long *)vramcode, 10, true, false);
+    }
 }
 
 /* 0.5 is neutral; below it the screen is darkened, above it brightened, by a full-screen quad of

@@ -16,7 +16,13 @@ struct _zvid_public {
     float runTime;   // 0x20
     float procTime;   // 0x24
     float aspect[2];   // 0x28
-    unsigned char _30[0x44 - 0x30];   // SOCOM 1's displayBuf, renderBuf, with 0xC more
+    /* SOCOM 1's displayBuf, renderBuf, with 0xC more: only what CVideo::Clear reads is placed,
+     * the frame buffer and its pixel format the FRAME register takes (SOCOM 1's Clear read
+     * renderBuf; the names ours) */
+    unsigned int frameBuf;   // 0x30
+    unsigned char _34[0x3c - 0x34];
+    unsigned int framePsm;   // 0x3c
+    unsigned char _40[0x44 - 0x40];
     unsigned int renderWidth;   // 0x44 (SOCOM 1: 0x38)
     unsigned int renderHeight;   // 0x48 (SOCOM 1: 0x3c)
     int screenLeft;   // 0x4c: SOCOM II's
