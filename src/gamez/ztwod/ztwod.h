@@ -311,6 +311,37 @@ public:
     zdb::CTexture *m_texture;   // 0x1e0
 } __attribute__((aligned(16)));   // 0x1f0 bytes
 
+/* a textured line (SOCOM 1's DWARF; m_x and m_y moved up with C2D, SOCOM II's PRIM word at 0x20) */
+class C2DLine : public C2D {
+public:
+    C2DLine();
+    virtual void Draw(zdb::CCamera *cam);
+    virtual void SetHasTexture(bool on);
+    virtual void SetAA(bool on);
+    virtual void SetIsTrans(bool on);
+    virtual void SetGouraud(bool on);
+    virtual void SetTrans(float trans);
+    virtual void GetAssetLibs(CLibList &liblist);
+    void Load(float x1, float y1, float x2, float y2, zdb::CTexture *tex);
+    void SetPos(int x1, int y1, int x2, int y2);
+    void SetUV(float u1, float v1, float u2, float v2);
+    void SetColor(float r, float g, float b);
+    void MakePacket(zdb::CCamera *cam);
+    /* the vertices, colours and UVs set from or filled into the clipper's rows (SOCOM 1's
+     * SetClipInfo took a count as well) */
+    void SetClipInfo(float (*vertex)[4], float (*rgb)[4], float (*uv)[4]);
+    void FillClipInfo(float (*vertex)[4], float (*rgb)[4], float (*uv)[4]);
+
+    int m_x;   // 0x18
+    int m_y;   // 0x1c
+    unsigned int m_prim;   // 0x20
+    sceVu0FVECTOR m_vertex[2];   // 0x30
+    sceVu0FVECTOR m_RGB[2];   // 0x50
+    sceVu0FVECTOR m_NewUV[2];   // 0x70
+    zdb::CTexture *m_texture;   // 0x90
+    bool do3D;   // 0x94
+} __attribute__((aligned(16)));   // 0xa0 bytes
+
 /* a fan of triangles clipped out of a bitmap: 0x28 bytes in SOCOM II (SOCOM 1's 0x2C less C2D's
  * 4); its constructor and destructor are ztwod's own */
 class C2DTriFan : public C2D {

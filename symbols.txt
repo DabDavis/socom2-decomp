@@ -6625,20 +6625,20 @@
 0x0035FAC0 0x21C func_0035FAC0  # OVL1
 0x0035FCE0 0x344 Draw2DLine__FP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4D  # OVL1; s1:calls
 0x00360030 0x22C func_00360030  # OVL1
-0x00360260 0x8C func_00360260  # OVL1
-0x003602F0 0x8C func_003602F0  # OVL1
+0x00360260 0x8C SetClipInfo__7C2DLineFPA4_fPA4_fPA4_f  # OVL1; s1:order by hand (c2dline.cpp: SOCOM 1's SetClipInfo before FillClipInfo, the two rows of vertex, colour and UV copied in; SOCOM II dropped its int parameter)
+0x003602F0 0x8C FillClipInfo__7C2DLineFPA4_fPA4_fPA4_f  # OVL1; s1:order by hand (c2dline.cpp: SOCOM 1's FillClipInfo, 0x9C there: the rows copied out)
 0x00360380 0x118 MakePacket__7C2DLineFPQ23zdb7CCamera  # OVL1; s1:callee
 0x003604A0 0x5C Draw__7C2DLineFPQ23zdb7CCamera  # OVL1; s1:exact
 0x00360500 0x1C SetUV__7C2DLineFffff  # OVL1; s1:exact
 0x00360520 0xBC SetPos__7C2DLineFiiii  # OVL1; s1:align
-0x003605E0 0xF8 func_003605E0  # OVL1
-0x003606E0 0xA0 func_003606E0  # OVL1
+0x003605E0 0xF8 Load__7C2DLineFffffPQ23zdb8CTexture  # OVL1; s1:order by hand (c2dline.cpp: SOCOM 1's Load between SetPos and SetTrans; the texture stored, then SetPos(int x4) inlined)
+0x003606E0 0xA0 SetTrans__7C2DLineFf  # OVL1; s1:vtable by hand (slot 11 of C2DLine's vtable 0x406CA0, SOCOM 1's SetTrans: both ends' alpha, the blend flag re-derived)
 0x00360780 0x1C SetColor__7C2DLineFfff  # OVL1; s1:exact
-0x003607A0 0x50 func_003607A0  # OVL1
-0x003607F0 0x50 func_003607F0  # OVL1
-0x00360840 0x50 func_00360840  # OVL1
-0x00360890 0x60 func_00360890  # OVL1
-0x003608F0 0x128 func_003608F0  # OVL1
+0x003607A0 0x50 SetGouraud__7C2DLineFb  # OVL1; by hand (slot 9 of C2DLine's vtable 0x406CA0: bit 5 and IIP in the PRIM word at 0x20; the name ours, as C2DBitmap's)
+0x003607F0 0x50 SetIsTrans__7C2DLineFb  # OVL1; by hand (slot 8 of C2DLine's vtable 0x406CA0: bit 2 and ABE)
+0x00360840 0x50 SetAA__7C2DLineFb  # OVL1; by hand (slot 7 of C2DLine's vtable 0x406CA0: bit 1 and AA1)
+0x00360890 0x60 SetHasTexture__7C2DLineFb  # OVL1; by hand (slot 6 of C2DLine's vtable 0x406CA0: bit 3, and TME while it has a texture)
+0x003608F0 0x128 __ct__7C2DLineFv  # OVL1; s1:order by hand (c2dline.cpp: the unit's last, as SOCOM 1's C2DLine constructor; stores C2DLine's vtable 0x406CA0, the UVs memcpy'd from a local's initialiser as SOCOM 1's)
 0x00360A20 0xC8 GetAssetLibs__9C2DTriFanFRQ23C2D8CLibList  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00360AF0 0xC8 Draw__9C2DTriFanFPQ23zdb7CCamera  # OVL1; s1:align
 0x00360BC0 0x90 __dt__9C2DTriFanFv  # OVL1; s1:align
