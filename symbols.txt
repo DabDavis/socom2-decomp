@@ -8465,17 +8465,17 @@
 0x003D4B80 0x28 OnWeaponHit__17CProjectileNodeExFPQ23zdb5CNodePQ23zdb15IntersectStructP12CZProjectile  # OVL1; by hand (the wep lane: slot +0x08 of __vt__17CProjectileNodeEx, overriding CNodeEx::OnWeaponHit -- the hit and the projectile handed to the projectile at 4's OnWeaponHit (0x3C69C0), 0 returned)
 0x003D4BB0 0x8 SetProjectile__17CProjectileNodeExFP12CZProjectile  # OVL1; by hand (the wep lane: the projectile stored at 4; CZProjectile's constructor calls it on this + 0x18 with this -- the name ours)
 0x003D4BC0 0x20 __ct__17CProjectileNodeExFv  # OVL1; by hand (the wep lane: stores __vt__Q23zdb7CNodeEx then __vt__17CProjectileNodeEx (0x4083F0); CZProjectile's constructor calls it on this + 0x18)
-0x003D4BE0 0xC func_003D4BE0  # OVL1
+0x003D4BE0 0xC SetTracerModel__14CFlyoutMachineFPQ23zdb6CModel  # OVL1; by hand (the wep lane: the word at 0x4B5320 set -- SOCOM 1's pFlyout_Model_Registered, which HookupReset sets to the standard model; SetModelOrientation calls it three times, new in SOCOM II -- the name ours)
 0x003D4BF0 0x2D4 Tick__14CFlyoutMachineFf  # OVL1; s1:calls
-0x003D4ED0 0x15C func_003D4ED0  # OVL1
+0x003D4ED0 0x15C ReleaseFlyout__14CFlyoutMachineFP7CFlyouti  # OVL1; s1:order by hand (the wep lane: SOCOM 1's ReleaseFlyout(CFlyout *, int) after Tick -- the flyout found when the index is -1, its anim stopped, swapped to the end, popped and freed)
 0x003D5030 0x394 func_003D5030  # OVL1
-0x003D53D0 0x150 func_003D53D0  # OVL1
-0x003D5520 0xDC func_003D5520  # OVL1
-0x003D5600 0xE4 func_003D5600  # OVL1
-0x003D56F0 0xE0 func_003D56F0  # OVL1
-0x003D57D0 0x24 func_003D57D0  # OVL1
-0x003D5800 0x60 func_003D5800  # OVL1
-0x003D5860 0xE8 func_003D5860  # OVL1
+0x003D53D0 0x150 ReleaseAllActive__14CFlyoutMachineFv  # OVL1; s1:order by hand (the wep lane: SOCOM 1's ReleaseAllActive -- each active flyout popped, freed and taken out of the world; SOCOM II then frees each free flyout's node's children)
+0x003D5520 0xDC HookupReset__14CFlyoutMachineFv  # OVL1; s1:order by hand (the wep lane: SOCOM 1's static HookupReset -- "tracer", "tracer_enemy", "tracer_ally" looked up in CWorld's asset list, the registered model set to the standard; SOCOM II adds the two "tracer_*_anim" lookups)
+0x003D5600 0xE4 Init__14CFlyoutMachineFUi  # OVL1; s1:order by hand (the wep lane: SOCOM 1's Init, the same 0xE4 bytes -- new CFlyout[n] (0x3C each), both vectors reserved, every flyout pushed on the free one)
+0x003D56F0 0xE0 __dt__14CFlyoutMachineFv  # OVL1; s1:order by hand (the wep lane: SOCOM 1's CFlyoutMachine destructor -- the pool destroyed through ~CFlyout, the vectors freed; zwep_weapon.cpp's initialiser registers it)
+0x003D57D0 0x24 __ct__14CFlyoutMachineFv  # OVL1; s1:order by hand (the wep lane: SOCOM 1's CFlyoutMachine constructor -- the two vectors and the pool cleared; zwep_weapon.cpp's initialiser builds m_flyout_machine (0x4B5260) with it)
+0x003D5800 0x60 __dt__7CFlyoutFv  # OVL1; s1:order by hand (the wep lane: SOCOM 1's CFlyout destructor -- the node deleted; Init's __construct_new_array passes it)
+0x003D5860 0xE8 __ct__7CFlyoutFv  # OVL1; s1:order by hand (the wep lane: SOCOM 1's CFlyout constructor, the image's last function -- CreateXRef, SetName "FlyoutXRef", the box's corners (1,1,1), the two points zeroed)
 0x003FD680 0x8C __sinit_main.cpp  # OVL1 data area; a static initialiser; s1~ ai_events.cpp (shape 0.53, a hint); s1:unit by hand (the states lane: builds theGame with COurGame's constructor and registers 0x1E7100, ~COurGame, as its destructor -- main.cpp's initialiser, not ai_events.cpp's)
 0x003FD710 0x94 func_003FD710  # OVL1 data area; a static initialiser
 0x003FD7B0 0x98 func_003FD7B0  # OVL1 data area; a static initialiser

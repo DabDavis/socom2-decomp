@@ -219,6 +219,7 @@
 0x003E1408 0x4 m_brightness__6CVideo  # OVL1; s1:data by hand (the wep lane: CVideo::Brightness stores 128 there for 0.5, as SOCOM 1's m_brightness; 7 references in 1 function)
 0x003E1478 0x4 m_GlobalLightScale__Q23zdb7CVisual  # OVL1; s1:data-seq (size SOCOM 1's; via SaveDelayedNode__5CPipeFP7CMatrixPQ23zdb5CNodeQ23zdb12tag_ZVIS_FOV)
 0x003E14F8 0x4 personMaterialId__4zwep  # OVL1; s1:data-seq (size SOCOM 1's; via Close__8CZWeaponFv +1)
+0x003E1568 0x1 m_tracer_anims__14CFlyoutMachine  # OVL1 data (initialised 1); by hand (the wep lane: HookupReset looks the two tracer animations up only while it is set, AcquireFlyout tests it too -- new in SOCOM II, the name ours); 2 references in 2 functions
 0x003E16A0 0x8 __RTTI__8CZWeapon  # RTTI of CZWeapon: found by its RTTI's name
 0x003E16B8 0x8 __RTTI__11CZFTSWeapon  # RTTI of CZFTSWeapon: found by its RTTI's name
 0x003E1710 0x8 __RTTI__Q23zdb5CNode  # OVL1; s1:data-seq (size SOCOM 1's; via GarbageCollect__Q23zdb6CWorldFv +3)
@@ -892,6 +893,12 @@
 0x004B52B8 0x4 m_timer_maxval__8CZWeapon  # OVL1 bss; s1:data-seq (size SOCOM 1's; via RetrieveTimerRegistration__8CZWeaponFPPfPfPb)
 0x004B52C0 0x4 m_timer_pCurval__8CZWeapon  # OVL1 bss; s1:data-seq (size SOCOM 1's; via RetrieveTimerRegistration__8CZWeaponFPPfPfPb)
 0x004B5310 0xC m_ammolist__6CZAmmo  # OVL1 bss; SOCOM 1's static (12 bytes, m_ammolist__6CZAmmo at 0x511E00 in the demo): __sinit_zwep_ammo.cpp (0x404CD0) builds it with CZAmmoList's constructor, CZAmmo::GetAmmoId/GetAmmo hand it to the list's, as SOCOM 1's -- the wep lane; 13 references in 10 functions
+0x004B5320 0x4 pFlyout_Model_Registered__14CFlyoutMachine  # OVL1 bss; SOCOM 1's static (its HookupReset sets it to the standard model as SOCOM II's does; SetTracerModel sets it) -- the wep lane; 6 references in 3 functions
+0x004B5328 0x4 pFlyout_Model_Standard__14CFlyoutMachine  # OVL1 bss; SOCOM 1's static (HookupReset's "tracer") -- the wep lane; 5 references in 2 functions
+0x004B5330 0x4 pFlyout_Model_Enemy__14CFlyoutMachine  # OVL1 bss; SOCOM 1's static (HookupReset's "tracer_enemy") -- the wep lane; 6 references in 3 functions
+0x004B5338 0x4 pFlyout_Model_Ally__14CFlyoutMachine  # OVL1 bss; SOCOM 1's static (HookupReset's "tracer_ally") -- the wep lane; 3 references in 2 functions
+0x004B5340 0x4 pFlyout_Anim_Ally__14CFlyoutMachine  # OVL1 bss; by hand (the wep lane: HookupReset's "tracer_ally_anim", new in SOCOM II -- the name ours); 4 references in 2 functions
+0x004B5348 0x4 pFlyout_Anim_Enemy__14CFlyoutMachine  # OVL1 bss; by hand (the wep lane: HookupReset's "tracer_enemy_anim", new in SOCOM II -- the name ours); 4 references in 2 functions
 0x0064F7A8 0x8C gGSAPI  # OVL2; s1:data-seq (size SOCOM 1's; via CreateWordIdList +1)
 0x0064F8A0 0x4 bit_count__8CAiEvent  # OVL2; s1:data-seq (size SOCOM 1's; via __ct__8CAiEventFv)
 0x0064F8A8 0x4 s_eventMinDuration  # OVL2 data; ours (ai_events.cpp's static, 0.1: CAiEvent::Create clamps a running event's duration to it, read from data; 1 reference in 1 function)
