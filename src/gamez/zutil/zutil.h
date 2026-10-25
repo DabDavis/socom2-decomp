@@ -57,6 +57,9 @@ class CFileCD;
 class CFileIO : public CIO {
 public:
     CFileIO();
+    /* inline in both builds (no out-of-line copy in either): zrdr_read's stack CBufferIO stores
+     * each table and calls Close through it */
+    ~CFileIO() { Close(); }
     bool Open(const char *name, unsigned int mode);
     void Close();
     bool IsOpen() const;
@@ -89,6 +92,7 @@ public:
 class CBufferIO : public CFileIO {
 public:
     CBufferIO();
+    ~CBufferIO() { Close(); }
     bool Open(const char *name, unsigned int mode);
     void Close();
     bool IsOpen() const;
