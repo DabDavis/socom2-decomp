@@ -41,7 +41,7 @@
 0x00181E30 0x9C __destroy_new_array  # MAIN; s1:align
 0x00181ED0 0x6C __destroy_arr  # MAIN; s1:align
 0x00181F40 0x12C __construct_array  # MAIN; s1:callee by hand (called where SOCOM 1's __sinit_zmath_matrix.cpp calls __construct_array; MW's runtime)
-0x00182070 0x154 func_00182070  # MAIN
+0x00182070 0x154 __construct_new_array  # MAIN; s1:prologue (SOCOM 1's MSL runtime __construct_new_array, 0x1423F0: the same 192-byte frame and save order; every new T[n] calls it with (block, constructor, destructor, size, count); beside __destroy_new_array 0x181E30) -- the body lane
 0x001821D0 0x23C __dynamic_cast  # MAIN; s1:calls
 0x00182410 0x4C func_00182410  # MAIN
 0x00182460 0x5C func_00182460  # MAIN
@@ -8513,7 +8513,7 @@
 0x003FFBE0 0x50 func_003FFBE0  # OVL1 data area; a static initialiser
 0x003FFC30 0x64 func_003FFC30  # OVL1 data area; a static initialiser
 0x003FFCA0 0x3C func_003FFCA0  # OVL1 data area; a static initialiser; s1~ si_script.cpp (shape 0.60, a hint)
-0x003FFCE0 0xE4 func_003FFCE0  # OVL1 data area; a static initialiser
+0x003FFCE0 0xE4 __sinit_bone_init.cpp  # OVL1 data area; a static initialiser; s1:calls (it builds boneArchive and mapBoneArchive and registers ~CScriptArchive, 0x288750, for both -- bone_init.cpp's static initialiser) -- the body lane
 0x003FFDD0 0x190 func_003FFDD0  # OVL1 data area; a static initialiser
 0x003FFF60 0x44 __sinit_con_ps2.cpp  # OVL1 data area; a static initialiser; s1~ body.cpp (shape 0.52, a hint); s1:unit by hand (the entity lane: builds CConsole::m_console with "default console" and registers ~CConsole -- con_ps2.cpp's initialiser, as s1units guessed; the s1~ body.cpp hint was wrong)
 0x003FFFB0 0x7C __sinit_ent_main.cpp  # OVL1 data area; a static initialiser; s1:unit ent_main.cpp (exact)

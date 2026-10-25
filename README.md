@@ -1282,6 +1282,22 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     for CAiPath's constructor at level 5, a plain `std::vector<CAiMapLoc>` member inlines whole;
   - CAiPath is 0xA8 bytes in SOCOM II, CAiStar 0x14 (its open and closed lists became the unit's
     statics: ai_astar.cpp's initialiser 0x668540 builds them and path_queue).
+- **Tells from the body animation, round 3** (bone_archive.cpp, bone_init.cpp, si_script.cpp):
+  - `bool ok = f(); ...; loaded = ok;` gives the target's second `andi 0xff` at the end of the
+    arm (zBoneLoadMap);
+  - an inline taking a coordinate by const reference loads it where it is used; taken by value,
+    before the body runs (ClipToBox);
+  - a quotient taken into a local flips the next multiply's operand order; a `(float)` cast does
+    not;
+  - narrowing to an `unsigned char` local before a switch gives the one hoisted `andi 0xff` ahead
+    of the byte stores (SetCallbackIndex);
+  - a `const char *const &` inline parameter bound to a global re-reads the global at each use;
+    a local passed to `new T(args)` and declared before the `new` is loaded before the allocation;
+  - `unsigned short a : 10` followed by `unsigned char b : 2` puts b at byte+1, bits 2-3 (lhu for
+    a, lbu for b, as the target reads them);
+  - libvu0-style GCC asm (`mfc1 $8, %n` with an "f" operand and a $8 clobber) reproduces
+    mfc1/nop/qmtc2; the buffers held in pointer locals give register-based stores;
+  - `new T[n]` calls MSL's __construct_new_array (MAIN 0x182070); CScriptArchive is 0x108 bytes.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
