@@ -319,6 +319,45 @@ bool CMission::FadeToEndMissionTick(float dT)
     return false;
 }
 
+/* a dialog shown for the online game, by its state: in play, the front end opened on it; at a
+ * round's or the game's end, the stack popped first; in the menus or loading, the load aborted to
+ * it (or the same pop) -- _RecoverFromNetError's chain without its teardown (SOCOM II's; a client
+ * leaving a game under way calls it with "dlgNetAbandoned.rdr"; OVL1 0x2A47B0) */
+extern "C" bool func_002A47B0(CMission *mission, const char *dialog)
+{
+    bool handled = false;
+
+    if (mission->m_pNetGame) {
+        switch (mission->m_pNetGame->m_my_major_game_state) {
+        case CZNetGame::MP_MAJOR_PLAY:
+        case CZNetGame::MP_MAJOR_UNKNOWN:
+            break;
+        case CZNetGame::MP_MAJOR_MENUS:
+        case CZNetGame::MP_MAJOR_LOADING:
+            if (theGame.GetCurrentState() == &theGame.m_loadState) {
+                theGame.m_loadState.AbortLoad(dialog);
+                handled = true;
+                break;
+            }
+            theGame.PopTo(0, 0);
+            theGame.m_menuState.SetDefaultMenu(dialog);
+            theGame.Switch(&theGame.m_menuState, 0);
+            handled = true;
+            break;
+        case CZNetGame::MP_MAJOR_ROUNDOVER:
+        case CZNetGame::MP_MAJOR_GAMEOVER:
+        case CZNetGame::MP_MAJOR_NEWROUND:
+            theGame.PopTo(0, 0);
+        case CZNetGame::MP_MAJOR_INPLAY:
+            theGame.m_menuState.SetDefaultMenu(dialog);
+            theGame.Switch(&theGame.m_menuState, 0);
+            handled = true;
+            break;
+        }
+    }
+    return handled;
+}
+
 /* a network error handled by the online game's state: in play, the front end's error dialog; at a
  * round's or the game's end, the network game torn down and the stack popped first; loading, the
  * load aborted to the dialog (SOCOM II's test) or the same teardown (OVL1 0x2A4600; SOCOM 1's
