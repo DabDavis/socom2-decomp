@@ -1839,7 +1839,7 @@
 0x0020EF50 0x1AC func_0020EF50  # OVL1
 0x0020F100 0xB4 func_0020F100  # OVL1
 0x0020F1C0 0x28 func_0020F1C0  # OVL1
-0x0020F1F0 0x20 func_0020F1F0  # OVL1
+0x0020F1F0 0x20 __as__6CPnt3DFRC6CPnt3D  # OVL1; by its body (a field-by-field copy returning this: CPnt3D's implicit assignment out of line; CHoming's reset and the widget specs go through it) -- the UI-widgets and body lanes
 0x0020F210 0x8 func_0020F210  # OVL1
 0x0020F220 0x244 func_0020F220  # OVL1
 0x0020F470 0x10 func_0020F470  # OVL1
@@ -2096,7 +2096,7 @@
 0x0022DC40 0x24 func_0022DC40  # OVL1
 0x0022DC70 0x24 func_0022DC70  # OVL1
 0x0022DCA0 0x18 func_0022DCA0  # OVL1
-0x0022DCC0 0x44 func_0022DCC0  # OVL1
+0x0022DCC0 0x44 __as__9CSaferStrFPCc  # OVL1; ours by SOCOM 1's class (CSaferStr's assignment from a C string: assign (0x1EEB40) when non-null, else an erase through 0x1EE780, nothing returned -- SOCOM 1's zutil.h treats null as empty); the widget specs' constructors call it -- the UI-widgets lane
 0x0022DD10 0xC func_0022DD10  # OVL1
 0x0022DD20 0x40 func_0022DD20  # OVL1
 0x0022DD60 0x24 func_0022DD60  # OVL1
@@ -3822,7 +3822,7 @@
 0x002A7D40 0x3F4 func_002A7D40  # OVL1
 0x002A8140 0xB48 func_002A8140  # OVL1
 0x002A8C90 0x298 func_002A8C90  # OVL1
-0x002A8F30 0x14 func_002A8F30  # OVL1
+0x002A8F30 0x14 __ct__6CPnt3DFfff  # OVL1; by its body (the three floats stored at 0, 4, 8, this returned: zmath.h's inline CPnt3D(float, float, float) out of line) -- the UI-widgets lane
 0x002A8F50 0x19C func_002A8F50  # OVL1
 0x002A90F0 0x11C func_002A90F0  # OVL1
 0x002A9210 0x50 GetLadderByIndex__11CLadderListFi  # OVL1; s1:align
@@ -6748,7 +6748,7 @@
 0x00366D70 0x35C func_00366D70  # OVL1
 0x003670D0 0x35C func_003670D0  # OVL1
 0x00367430 0x238 func_00367430  # OVL1
-0x00367670 0x60 func_00367670  # OVL1
+0x00367670 0x60 __dt__Q23std52vector<10ActionItem,Q23std23allocator<10ActionItem>>Fv  # OVL1; by its body (~vector<ActionItem>: calls 0x36AC10, the deleter's destructor, with 0) -- the UI-widgets lane
 0x003676D0 0x60 func_003676D0  # OVL1
 0x00367730 0x60 func_00367730  # OVL1
 0x00367790 0x14 func_00367790  # OVL1
@@ -6788,7 +6788,7 @@
 0x0036A970 0x1A8 func_0036A970  # OVL1
 0x0036AB20 0xC0 func_0036AB20  # OVL1
 0x0036ABE0 0x30 zUISchedulerClear__Fv  # OVL1; s1:exact
-0x0036AC10 0x68 func_0036AC10  # OVL1
+0x0036AC10 0x68 __dt__Q23std62__vector_deleter<10ActionItem,Q23std23allocator<10ActionItem>>Fv  # OVL1; s1:calls (SOCOM 1's CButtonSpec destructor calls the ActionItem vector's deleter destructor for the same member) -- the UI-widgets lane
 0x0036AC80 0x68 func_0036AC80  # OVL1
 0x0036ACF0 0x68 func_0036ACF0  # OVL1
 0x0036AD60 0x6C func_0036AD60  # OVL1
@@ -6933,7 +6933,7 @@
 0x00379080 0xDC func_00379080  # OVL1
 0x00379160 0xFC Draw__9CPlainBmpFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00379260 0x90 func_00379260  # OVL1
-0x003792F0 0x1B4 func_003792F0  # OVL1
+0x003792F0 0x1B4 LoadSpec__17CRenderableStringFRC9CTextSpec  # OVL1; s1:calls (SOCOM 1's CClockSpec::CreateDisplayObj calls CRenderableString::LoadSpec at the same place) -- the UI-widgets lane
 0x003794B0 0x4C0 func_003794B0  # OVL1
 0x00379970 0x138 func_00379970  # OVL1
 0x00379AB0 0x60 func_00379AB0  # OVL1
@@ -6945,7 +6945,7 @@
 0x0037A540 0xF0 Draw__17CRenderableStringFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037A630 0x8 func_0037A630  # OVL1
 0x0037A640 0x12C __dt__17CRenderableStringFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0037A770 0x94 func_0037A770  # OVL1; tu: zui_2d.cpp~ (1.0 beta)
+0x0037A770 0x94 __ct__17CRenderableStringFv  # OVL1; tu: zui_2d.cpp~ (1.0 beta); s1:calls (SOCOM 1's CClockSpec::CreateDisplayObj calls CRenderableString's constructor at the same place) -- the UI-widgets lane
 0x0037A810 0x110 func_0037A810  # OVL1
 0x0037A920 0x264 func_0037A920  # OVL1
 0x0037AB90 0x260 func_0037AB90  # OVL1

@@ -4,21 +4,22 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK LoadSpec__17CRenderableStringFRC9CTextSpec(s32, s32); /* extern */
 M2C_UNK SetFont__9C2DStringFP7C2DFont(s32, s32);    /* extern */
+s32 __ct__17CRenderableStringFv(s32);               /* extern */
 s32 __nw__FUi(M2C_UNK);                             /* extern */
-M2C_UNK func_003792F0(s32, s32);                    /* extern */
-s32 func_0037A770(s32);                             /* extern */
 
 s32 CreateDisplayObj__9CTextSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr(s32 arg0, s32 arg1) {
     s32 var_s0;
 
     var_s0 = __nw__FUi(0xC0);
     if (var_s0 != 0) {
-        var_s0 = func_0037A770(var_s0);
+        var_s0 = __ct__17CRenderableStringFv(var_s0);
     }
     SetFont__9C2DStringFP7C2DFont(var_s0, arg1);
-    func_003792F0(var_s0, arg0);
+    LoadSpec__17CRenderableStringFRC9CTextSpec(var_s0, arg0);
     return var_s0;
 }
