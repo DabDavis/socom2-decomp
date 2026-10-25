@@ -11679,7 +11679,7 @@
 0x006055B0 0x1C0 func_006055B0  # OVL2
 0x00605770 0x88 func_00605770  # OVL2
 0x00605800 0x14C Virtual14__9CAiSEventFP11CSealCtrlAiP8CAiState  # OVL2; by hand (the kit lane, round 7): CAiSEvent's vtable (0x669C90) slot +0x14
-0x00605950 0xAC func_00605950  # OVL2
+0x00605950 0xAC NextStep__9CAiSEventFPQ28CAiState4STEPf  # OVL2; by hand (the kit lane, round 7): CAiSEvent::Tick (0x604CE0) calls it three times with this, a pointer to its step byte and a delay; picks the next step from the flags, keeps it at +0x8C and the delay at +0x84 -- the name ours
 0x00605A00 0x8 GetStatus__9CAiSEventCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00605A10 0x34 SetName__9CAiSEventFPCc  # OVL2; by hand (the kit lane, round 4): strncpy of up to 16 characters into the event state's 0x8E, or its first byte cleared for none -- the byte CAiSEvent::OnSignal's reset clears; 0x558AE0 calls it on a state after setting its flags' bit 0 (the name ours)
 0x00605A50 0x8 CanPursue__9CAiSEventCFP11CSealCtrlAi  # OVL2; by hand: CAiSEvent's vtable slot +0x2C (CanPursue, as SOCOM 1's)

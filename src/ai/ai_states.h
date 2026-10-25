@@ -697,6 +697,10 @@ public:
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     /* +0x14 (0x605800): an event interrupted by a held target or the AI's alarm */
     virtual int Virtual14(CSealCtrlAi *ai, CAiState *sub);
+    /* the step after `*step` picked by the flags and kept in m_8c, the delay in m_84, and
+     * `*step` made it -- or 7, a wait, when there is a delay (OVL2 0x605950; its Tick calls it
+     * three times; the name ours) */
+    void NextStep(STEP *step, float delay);
     virtual bool CanAttack() const { return !(m_flags & 0xc); }
     virtual bool CanPursue(CSealCtrlAi *ai) const { return false; }
     virtual ~CAiSEvent();
@@ -711,7 +715,7 @@ public:
     float m_rnd_range;   // 0x78
     unsigned int m_cell;   // 0x7c: a CAiMapLoc
     float m_80;   // 0x80 (0.5 on a reset)
-    unsigned char _84[0x88 - 0x84];
+    float m_84;   // 0x84: the delay NextStep was given (the name ours)
     unsigned int m_88;   // 0x88
     unsigned char m_8c;   // 0x8c
     unsigned char m_8d;   // 0x8d
