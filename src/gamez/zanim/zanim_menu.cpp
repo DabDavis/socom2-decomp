@@ -210,6 +210,31 @@ void CMenuStack::AddToHistory(const char *name)
     strcpy(slot, name);
 }
 
+/* the pop-up put on the stack with its argument (the text typed when the name says INPUT_STRING),
+ * its node shown and the menu's sound played (SOCOM 1's, the sound SOCOM II's) */
+void CMenuStack::PopUpDialog(const char *name)
+{
+    m_top++;
+    std::string arg;
+
+    if (!strcmp(name, "INPUT_STRING"))
+        arg = ZAnim.m_CurAnim->m_arg_list->GetCharP(0);
+    else
+        arg = name;
+    m_entries[m_top].m_id = 3;
+    strcpy(m_entries[m_top].m_argname, arg.c_str());
+    m_count++;
+    CNode *node = GetMenuNode()->FindChild("POPUP", true);
+
+    if (!node)
+        return;
+    node->SetActive(true);
+    CSnd *sound = CSnd::GetSoundByName(".METAL");
+
+    if (sound)
+        sound->PlaySound(true, 0, 255);
+}
+
 /* the mission's reader archive let go of (SOCOM 1's builds the path and does not use it either) */
 void Unload_MissionReader()
 {
@@ -973,6 +998,22 @@ bool UICanInviteMorePlayersToClan(C2DAnimCmdHdr *hdr, float *dT)
     return func_002E5FE0(&theLobby);
 }
 
+bool UIInvitePlayerToClan(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CUIVariable *var = func_003857C0(&theUIVarManager, "PLAYER_INVITE_NAME", 0, UIVAR_SESSION);
+
+    if (var->type == 3) {
+        CSaferStr name;
+
+        if (var->type == 3)
+            name = var->String();
+        bool ok = func_002E7600(&theLobby, name.c_str());
+
+        return ok;
+    }
+    return true;
+}
+
 bool UIInvitePlayerToClanWithArg(C2DAnimCmdHdr *hdr, float *dT)
 {
     return func_002E7600(&theLobby, ArgText(ArgName(hdr)));
@@ -1197,6 +1238,22 @@ bool UIRemoveFromIgnore(C2DAnimCmdHdr *hdr, float *dT)
 
     if (text)
         func_00300FE0(&theLobby, atoi(text));
+    return true;
+}
+
+bool UISendClanMessage(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CUIVariable *var = func_003857C0(&theUIVarManager, "SEND_CLAN_MESSAGE", 0, UIVAR_SESSION);
+
+    if (var->type == 3) {
+        CSaferStr text;
+
+        if (var->type == 3)
+            text = var->String();
+        bool ok = func_002E8310(&theLobby, text.c_str());
+
+        return ok;
+    }
     return true;
 }
 

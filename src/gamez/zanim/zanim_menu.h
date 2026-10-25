@@ -6,9 +6,25 @@
 #ifndef ZANIM_MENU_H
 #define ZANIM_MENU_H
 
+#include <string>
+
 #include "zanim.h"
 #include "../ztwod/ztwod.h"
 #include "../zinput/zinput.h"
+
+/* a string that is never null (SOCOM 1's zutil.h: MSL's basic_string, a null pointer assigned as
+ * the empty string -- its operator=, lines 546-551, inlined in the menu's string handlers in both
+ * builds. zentity.h and fts_state.h keep stand-ins of it until <string> replaces them) */
+class CSaferStr : public std::string {
+public:
+    void operator=(const char *sz)
+    {
+        if (sz)
+            assign(sz);
+        else
+            erase();
+    }
+};
 
 /* A UI command as a menu's ZAnim sequence carries it. SOCOM 1's DWARF: 8 bytes -- the header, the
  * node reference at 4, the command's type at 6 and its argument's name index at 7. SOCOM II's
@@ -551,6 +567,7 @@ void func_00281D40(C2DAnimCmdHdr *hdr, UITextCallback cb, int lobby);
 /* more of the lobby (SOCOM 1's names by the calls SOCOM 1's handlers make) */
 bool func_002E67D0(CZOnlineLobby *lobby, const char *name);         /* IsLeaderOfClan */
 bool func_002E7600(CZOnlineLobby *lobby, const char *name);         /* InvitePlayerToClan */
+bool func_002E8310(CZOnlineLobby *lobby, const char *text);         /* SendClanMessage */
 void func_002E81B0(CZOnlineLobby *lobby, const char *name);         /* TransferLeadership */
 bool func_002F8D50(CZOnlineLobby *lobby, const char *name);         /* (game has a spectator password) */
 bool func_002F8BC0(CZOnlineLobby *lobby, const char *name);         /* (game rejects the rank) */
