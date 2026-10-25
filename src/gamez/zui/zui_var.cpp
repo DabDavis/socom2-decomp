@@ -21,6 +21,26 @@ extern "C" int func_00335E20(_zrdr *a, _zrdr *b);
 extern "C" void func_00385E50(CUIVariable *var, CSTable *table);
 extern "C" void func_00386B80(CUIVariable *var, const char *name, _zrdr *value, UIVAR_LONGEVITY longevity);
 
+/* (zanim.h has CValve whole, zrdr.h CRdrEditor: : CRdrFile, 0x4C bytes) */
+enum VALVE_TYPE {};
+class CValve {
+public:
+    static CValve *Create(const char *name, VALVE_TYPE type);
+
+    char *m_name;                 // 0x0
+    unsigned int m_value : 16;    // 0x4
+};
+class CRdrEditor {
+public:
+    CRdrEditor();
+    ~CRdrEditor();
+    bool push(const char *tag);
+    bool pop();
+    bool addrdrnode(_zrdr *rdr);
+
+    unsigned char _0[0x4C];
+};
+
 /* the collection in progress: a full table met while collecting gives up (ours) */
 static int s_collecting;
 
@@ -89,6 +109,25 @@ void CUIVariable::Set(_zrdr *value)
 
     for (i = m_attached_items.begin(); i != m_attached_items.end(); ++i)
         (*i)->UpdateUIVar(this);
+}
+
+/* a string value, made in the manager's current table; the same string again changes nothing
+ * (SOCOM 1's; its watcher loop written out, as Set's) */
+CUIVariable &CUIVariable::operator=(const char *str)
+{
+    if (!str)
+        return *this;
+    if (type == 3 && !strcmp(string, str))
+        return *this;
+    if (!packed)
+        DeleteChildren();
+    type = 3;
+    string = theUIVarManager.m_stab[theUIVarManager.m_currtab].CreateString(str);
+    std::vector<UIVarMixin *>::iterator i;
+
+    for (i = m_attached_items.begin(); i != m_attached_items.end(); ++i)
+        (*i)->UpdateUIVar(this);
+    return *this;
 }
 
 void CUIVariable::UpdateDependents()
@@ -209,6 +248,35 @@ CUIVariable *CUIVarManager::Add(const char *name, _zrdr *value, UIVAR_LONGEVITY 
     return var;
 }
 #pragma auto_inline reset
+
+/* each persistent variable saved, as an rdr of its own value -- the player's password and the
+ * flag to store it only when the SecurePassword valve is on (SOCOM 1's, the password SOCOM II's).
+ *
+ * OPEN, 2 instructions (one swapped pair): the target computes the name's address (s3) in the
+ * delay slot of the name's null test and loads the first string after it; here the two trade
+ * places. The flag as `!(bool)value` gives the target's sltu/xori/andi, and the name reached
+ * through a reference after the null test its reload for the second compare; the reference
+ * declared ahead of the test is 2 instructions longer */
+void CUIVarManager::Serialize(int flags)
+{
+    bool nopassword = !(bool)CValve::Create("SecurePassword", (VALVE_TYPE)1)->m_value;
+    iterator i;
+
+    for (i = begin(); i != end(); ++i) {
+        if ((*i).m_longevity == UIVL_PERSISTENT && (*i).m_name) {
+            char *&name = (*i).m_name;
+
+            if ((strcasecmp("PLAYERPASSWORD", name) && strcasecmp("STORE_PASSWORD", name)) || !nopassword) {
+                CRdrEditor rdr;
+
+                rdr.push(0);
+                rdr.addrdrnode(&*i);
+                rdr.pop();
+                SaveRdr(name, (CRdrFile *)&rdr);
+            }
+        }
+    }
+}
 
 /* a saved variable read back: persistent, its value the file's first item (SOCOM II's) */
 void CUIVarManager::UnSerialize(const char *name, CRdrFile *file, int flags)
