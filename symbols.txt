@@ -9792,7 +9792,7 @@
 0x00539580 0x138 func_00539580  # OVL2
 0x005396C0 0x3E0 func_005396C0  # OVL2
 0x00539AA0 0xD0 func_00539AA0  # OVL2
-0x00539B70 0x50 func_00539B70  # OVL2
+0x00539B70 0x50 func_00539B70  # OVL2; OVL2's copy of _saturate<f> (OVL1 0x267A60, the same 0x50 bytes; CRemoteCtrl::PostMortemPreTick calls it -- the kit lane); ovl-copy: _saturate<f>__FPfRCfRCf_b
 0x00539BC0 0xBC func_00539BC0  # OVL2
 0x00539C80 0x74 func_00539C80  # OVL2
 0x00539D00 0x50 func_00539D00  # OVL2
