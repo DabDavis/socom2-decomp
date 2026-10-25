@@ -253,6 +253,40 @@ const char *GetDefCharTypeName(int i)
     return g_arrDefCharTypeNames[i];
 }
 
+/* the player's SEAL and its controller (only the controller's state byte) */
+class CSealCtrl {
+public:
+    unsigned char _0[0x221];
+    unsigned char m_221;   // 0x221
+};
+
+class CZSealBody {
+public:
+    unsigned char _0[0xc0];
+    CSealCtrl *m_control;   // 0xc0
+};
+
+CZSealBody *ftsGetPlayer();
+
+/* whether the player's controller is in none of states 2 to 5 (SOCOM II's; OVL1 0x2AA890).
+ * OPEN, 0x74 against 0x7C: the target has two more nops around the returns (after the last
+ * compare's branch, and after `li v0,1`), the vanished blocks of an inline's returns or a
+ * ternary's. Tried: the test as a ternary (shorter), an else, the test inverted inside `if (ctrl)`,
+ * one || chain with the null test. */
+extern "C" bool func_002AA890()
+{
+    CZSealBody *player = ftsGetPlayer();
+    CSealCtrl *ctrl = player ? player->m_control : 0;
+
+    if (!ctrl)
+        return false;
+    unsigned char state = ctrl->m_221;
+
+    if (state == 2 || state == 3 || state == 4 || state == 5)
+        return false;
+    return true;
+}
+
 /* a switch command: ON or OFF (the letterbox's, the HUD's) */
 struct _hud_switch_cmd {
     _zanim_cmd_hdr hdr;
@@ -381,4 +415,18 @@ bool HUDTriggerMissionCamTick(_zanim_cmd_hdr *hdr, float *dT)
     if (cams && cams->IsPlaying())
         return false;
     return true;
+}
+
+/* a bare timeless command (SOCOM II's, between the defuse timer's tick and parser; OVL1
+ * 0x2AE510) */
+extern "C" _zanim_cmd_hdr *func_002AE510(_zrdr *rdr)
+{
+    _zanim_cmd_hdr *cmd;
+
+    if (!rdr)
+        return 0;
+    cmd = (_zanim_cmd_hdr *)_calloc(1, sizeof(_zanim_cmd_hdr), 0, 0);
+    cmd->data_size = sizeof(_zanim_cmd_hdr);
+    cmd->timeless = 1;
+    return cmd;
 }
