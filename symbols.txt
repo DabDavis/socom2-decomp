@@ -8094,8 +8094,8 @@
 0x003C5070 0xFC __dt__10CZAmmoListFv  # OVL1; s1:order by hand (each ammo deleted through CZAmmo's destructor, 0x3D4710, then the list cleared)
 0x003C5170 0x28 __ct__10CZAmmoListFv  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); s1:order by hand (the list deleter's constructor only; CZWeapon's constructor builds m_LegalAmmoList at 0xC4 through it)
 0x003C51A0 0x8 func_003C51A0  # OVL1
-0x003C51B0 0x8 func_003C51B0  # OVL1
-0x003C51C0 0x8 func_003C51C0  # OVL1
+0x003C51B0 0x8 IsRemote__15PlacedExplosiveFv  # OVL1; by hand (returns the byte at 0xC5, SOCOM 1's m_remote -- GetNumRemoteExplosives tests it where SOCOM 1's read m_remote directly; the name is ours)
+0x003C51C0 0x8 SetRemote__15PlacedExplosiveFb  # OVL1; by hand (stores the byte at 0xC5, m_remote; the name is ours)
 0x003C51D0 0x24 func_003C51D0  # OVL1
 0x003C5200 0x8 func_003C5200  # OVL1
 0x003C5210 0xFC func_003C5210  # OVL1
@@ -8210,7 +8210,7 @@
 0x003C7490 0x170 func_003C7490  # OVL1
 0x003C7600 0x4D0 func_003C7600  # OVL1
 0x003C7AD0 0x8 func_003C7AD0  # OVL1
-0x003C7AE0 0x8 func_003C7AE0  # OVL1
+0x003C7AE0 0x8 GetInstance__12CZProjectileFv  # OVL1; s1:calls by hand (SOCOM 1's GetNumRemoteExplosives calls GetInstance at the same place SOCOM II's calls this; it returns the word at 0x20, SOCOM 1's m_instance 0x18 moved 8 on)
 0x003C7AF0 0x258 func_003C7AF0  # OVL1
 0x003C7D50 0x78 func_003C7D50  # OVL1
 0x003C7DD0 0x110 func_003C7DD0  # OVL1

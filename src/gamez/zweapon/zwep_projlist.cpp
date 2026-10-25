@@ -8,6 +8,20 @@
 
 using zdb::DiIntersect;
 
+/* the shooter's remote charges still in the world (SOCOM 1's: remote, his, its node active) */
+int CZProjectileList::GetNumRemoteExplosives(int shooter)
+{
+    int count = 0;
+
+    for (std::vector<PlacedExplosive *>::iterator it = m_explosives.begin(); it != m_explosives.end(); ++it) {
+        PlacedExplosive *e = *it;
+
+        if (e->IsRemote() && shooter == e->m_shooterID && e->GetInstance()->m_active)
+            count++;
+    }
+    return count;
+}
+
 /* a direct-fire intersection let go of: free again, the first free moved back to it */
 void CZProjectileList::ReleaseDirectFireDI(DiIntersect **di, int *handle)
 {

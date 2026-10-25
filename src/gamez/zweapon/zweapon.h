@@ -224,10 +224,36 @@ public:
     std::vector<float> m_zoommode;   // 0x280
 };   // 0x28c bytes
 
-class CZProjectile;
 namespace zdb {
+class CNode;
 class DiIntersect;
 }
+
+/* a projectile (SOCOM 1's DWARF: 0xa8 bytes, the vtable pointer at 0; SOCOM II's is 0xc4 -- only
+ * what the matched code reads is placed: the instance 8 bytes on, the shooter's id 0x1c on) */
+class CZProjectile {
+public:
+    virtual ~CZProjectile();
+    /* the node it flies (SOCOM 1's, out of line in zwep_projectile.cpp: 0x3C7AE0) */
+    zdb::CNode *GetInstance();
+
+    unsigned char _4[0x20 - 0x4];
+    zdb::CNode *m_instance;   // 0x20 (SOCOM 1: 0x18)
+    unsigned char _24[0xac - 0x24];
+    int m_shooterID;   // 0xac (SOCOM 1: 0x90)
+    unsigned char _b0[0xc4 - 0xb0];
+};   // 0xc4 bytes
+
+/* a charge set down (SOCOM 1's DWARF: CZProjectile and two flags, m_detonate and m_remote; SOCOM
+ * II's flags at 0xc4 and 0xc5, its accessors out of line in zwep_explosive.cpp) */
+class PlacedExplosive : public CZProjectile {
+public:
+    bool IsRemote();
+    void SetRemote(bool remote);
+
+    unsigned char m_detonate;   // 0xc4
+    unsigned char m_remote;   // 0xc5
+};
 
 /* the projectiles in flight and the intersections they test with (SOCOM 1's DWARF: 0x208 bytes;
  * the direct- and indirect-fire tables sit where SOCOM 1's do -- its Release*FireDI are
@@ -239,9 +265,10 @@ public:
     bool GetNextDirectFireDI(zdb::DiIntersect **di, int *handle);
     void ReleaseDirectFireDI(zdb::DiIntersect **di, int *handle);
     void NetRemoveProjectile(CZProjectile *proj);
+    int GetNumRemoteExplosives(int shooter);
 
     CZProjectile *m_projectiles;   // 0x0
-    unsigned char _4[0xc];   // 0x4: m_explosives, a vector
+    std::vector<PlacedExplosive *> m_explosives;   // 0x4
     unsigned char *m_used;   // 0x10
     int m_firstfree;   // 0x14
     int m_lastused;   // 0x18
