@@ -1,7 +1,8 @@
 /* hud_ammo.cpp -- the HUD's ammunition counts (OVL1 ...-0x23841B): SOCOM II's unit (no SOCOM 1
- * counterpart; the file name is ours), before the info box's: only the constructor (the unit's
- * last function in the image), the destructor and Reset so far. Defined in reverse of their image order
- * (-inline deferred). */
+ * counterpart; the file name is ours), before the info box's: the counts' update from the kit
+ * (0x237760), SetMags, SetTrans, Off, On, Reset, Init (0x237FC0), the destructor and the
+ * constructor (the unit's last function in the image). Written: all but the update and Init,
+ * byte-exact but SetMags (OPEN). Defined in reverse of their image order (-inline deferred). */
 
 #include "hud_ammo.h"
 

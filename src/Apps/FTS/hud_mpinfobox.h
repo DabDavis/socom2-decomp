@@ -45,6 +45,8 @@ public:
 class CWhosTalking : public C2D {
 public:
     virtual void Tick(float dT);
+    /* the parts placed again (CMPInfoBox::ReInit's last call; 0x238D00, the name ours) */
+    void ReInit();
 
     unsigned char _18[0x20 - 0x18];
     CRadioIcon_Static m_static;   // 0x20

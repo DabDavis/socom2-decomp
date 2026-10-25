@@ -1,9 +1,12 @@
 /* hud_mpinfobox.cpp -- the network game's info box (OVL1 0x238420-...): SOCOM II's unit (no SOCOM 1
  * counterpart; the file name is ours), after the ammo counts' and before the radio icons' Ticks:
- * CMPInfoBox's Off, On, Tick, the clean-up CHUD::ReInit_Uninit calls and the re-init
- * ReInit_Init calls, then CWhosTalking's Tick and the radio icons' (0x239250, 0x2393F0). Only Off,
- * On, the clean-up and the static radio icon's Tick so far. Defined in reverse of their image
- * order (-inline deferred). */
+ * CMPInfoBox's Off, On, Tick, the clean-up CHUD::ReInit_Uninit calls (UnInit), the re-init
+ * ReInit_Init calls (ReInit) and Init (0x2388A0), then CWhosTalking's Tick (0x238AC0), ReInit and
+ * Init (0x238F50), the radio icons' Ticks (0x239250, 0x2393F0) and the static icon's Init
+ * (0x239570; the dynamic one's is inlined into CWhosTalking's), and the tail's basic_string(const
+ * char *) (0x2396F0: out of class in MSL, so a call -- include/string has no such constructor
+ * yet, which holds the dynamic icon's Tick). Written: Off, On, UnInit, both ReInits, the static
+ * icon's Tick, byte-exact; Tick OPEN. Defined in reverse of their image order (-inline deferred). */
 
 #include "hud_mpinfobox.h"
 
@@ -108,6 +111,53 @@ void CRadioIcon_Static::Tick(float dT)
     }
 }
 
+/* the radio part's places (the bss ones set by its Init; no rows yet) */
+extern float data_004145F8;
+extern float data_00414600;
+extern float data_00414608;
+extern float data_00414610;
+extern float data_00414618;
+static float s_backing_y1 = 359.0f;
+static float s_text2_y = 371.0f;
+static float s_text1_y = 352.0f;
+
+/* the radio part placed again: the speaker's name and the channel's in the HUD's text colour, both
+ * icons off and fading in, a dark backing */
+void CWhosTalking::ReInit()
+{
+    m_text1.m_scale = 0.9f;
+    m_text1.m_socom2_6a = 1;
+    m_text1.m_color[0] = CHUD::m_hud_textcolor.x;
+    m_text1.m_color[1] = CHUD::m_hud_textcolor.y;
+    m_text1.m_color[2] = CHUD::m_hud_textcolor.z;
+    m_text1.m_color[3] = CHUD::m_hud_textcolor.w;
+    m_text1.SetPos((int)data_00414618, (int)s_text1_y);
+    m_static.Off();
+    m_static.SetColor(128.0f, 128.0f, 128.0f);
+    m_static.SetTrans(0.0f);
+    m_static.m_fade_limit = 64.0f;
+    m_static.m_fade_dx = 2.0f;
+    m_static.m_fade_enable = 1;
+    m_dynamic.Off();
+    m_dynamic.SetColor(128.0f, 128.0f, 128.0f);
+    m_dynamic.SetTrans(0.0f);
+    m_dynamic.m_fade_limit = 64.0f;
+    m_dynamic.m_fade_dx = 2.0f;
+    m_dynamic.m_fade_enable = 1;
+    m_bitmap2.SetHasTexture(false);
+    m_bitmap2.SetColor(0.0f, 0.0f, 0.0f);
+    m_bitmap2.SetTrans(50.0f);
+    m_bitmap2.SetPos((int)data_004145F8, (int)s_backing_y1, (int)data_00414600, (int)data_00414608);
+    m_text2.m_scale = 0.8f;
+    m_text2.m_color[0] = CHUD::m_hud_textcolor.x;
+    m_text2.m_color[1] = CHUD::m_hud_textcolor.y;
+    m_text2.m_color[2] = CHUD::m_hud_textcolor.z;
+    m_text2.m_color[3] = CHUD::m_hud_textcolor.w;
+    m_text2.SetTrans(128.0f);
+    m_text2.SetPos((int)data_00414610, (int)s_text2_y);
+    m_text2.m_isCentered = 1;
+}
+
 /* the box's corners and the health bar's place (the bss ones set by Init; no rows yet) */
 extern float data_00414640;
 extern float data_00414650;
@@ -120,8 +170,6 @@ static float s_name_scale = 0.8f;
 static float s_name_x = 555.0f;
 static float s_name_y = 409.0f;
 
-/* the radio's parts placed again (0x238D00; no name yet) */
-extern "C" void func_00238D00(CWhosTalking *talking);
 
 /* the parts placed again for a new game: the first bitmap off, the second a faded backing, the
  * health bar, the name in the HUD's text colour, who is talking */
@@ -143,7 +191,7 @@ void CMPInfoBox::ReInit()
     m_text.SetString("  ", true);
     m_text.SetPos((int)s_name_x, (int)s_name_y);
     func_00362B70(&m_text);
-    func_00238D00(&m_whostalking);
+    m_whostalking.ReInit();
 }
 
 /* the strings emptied and the radio's parts hidden */
