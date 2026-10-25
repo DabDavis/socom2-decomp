@@ -799,18 +799,23 @@ void CZBodyAnimBlend::CallbackTick(CBody *body, float t0, float t1)
     }
 }
 
-/* a time inside the step from t0 to t1, around the wrap when the blend loops (SOCOM 1's).
- * OPEN, 80 instructions: the window tests' block layout and returns -- first draft, not worked */
+/* a time inside the step from t0 to t1, around the wrap when the blend loops (SOCOM 1's): the
+ * direction assigned `true`/`false` in an if/else (daddiu in the branch's delay slot), and the
+ * unlooped window's misses falling to the one closing `return false` */
 bool CZBodyAnimBlend::IsTriggerTime(float t, float t0, float t1)
 {
     bool reverse;
 
     if (t0 == t1)
         return false;
-    if (func_0028F190(m_flags, 0x40))
-        reverse = Representative()->m_playback < 0.0f;
-    else
+    if (func_0028F190(m_flags, 0x40)) {
+        if (Representative()->m_playback < 0.0f)
+            reverse = true;
+        else
+            reverse = false;
+    } else {
         reverse = func_0028F190(m_flags, 0x20);
+    }
     if (func_0028F190(m_flags, 0x40)) {
         if (reverse) {
             if (t1 <= t0) {
@@ -837,9 +842,7 @@ bool CZBodyAnimBlend::IsTriggerTime(float t, float t0, float t1)
                 return true;
             return false;
         }
-        return false;
-    }
-    if (!(t1 < t0)) {
+    } else if (!(t1 < t0)) {
         if (t0 <= t && t <= t1)
             return true;
         return false;
@@ -865,10 +868,8 @@ bool CZBodyAnimBlend::IsDone(float dT)
 }
 
 /* the fraction run on by dT through every anim's weighted rate, wrapped when looping, else held
- * between zero and the end; stored when asked (SOCOM 1's).
- * OPEN, 2 instructions short: the target materialises flag 8's test (andi, sltu, beqz) and reloads
- * the flags for the clear; an inline bool accessor folds (as written, `!= false`, a bool local, a
- * ternary), `== true` materialises but compares with 1 and keeps the load */
+ * between zero and the end; stored when asked (SOCOM 1's). Flag 8's test through the const
+ * Holding(): materialised (andi, sltu, beqz), the flags loaded again for the clear */
 float CZBodyAnimBlend::Propagate(float dT, bool set)
 {
     if (!m_anims.m_size)

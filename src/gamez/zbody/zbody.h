@@ -499,8 +499,9 @@ public:
     bool IsDone(float dT);
     bool IsTriggerTime(float t, float t0, float t1);
     void CallbackTick(CBody *body, float t0, float t1);
-    /* the step to be held back once: flag 8 (SOCOM II's; the name ours) */
-    bool Holding() { return m_flags & 8 ? true : false; }
+    /* the step to be held back once: flag 8 (SOCOM II's; the name ours). Const: called through the
+     * non-const this, the caller's next statement loads the flags again (Propagate) */
+    bool Holding() const { return m_flags & 8 ? true : false; }
     /* the blend restarted from its first anim */
     void Reset();
     /* the homing (the name ours): through this inline its address stays in a register of its own
