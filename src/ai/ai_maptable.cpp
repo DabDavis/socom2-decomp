@@ -35,6 +35,86 @@ char *CAiMap::AllocEx(unsigned int bytes)
     return m_mapex;
 }
 
+/* the cell's extra data, or none: no data, a cell off the map or off its row's run (SOCOM 1's;
+ * SOCOM II's rows keep an index into the data where SOCOM 1's kept a pointer) */
+char *CAiMap::GetMapEx(const CAiMapLoc &loc)
+{
+    if (m_mapex) {
+        if (IsCell(loc)) {
+            const scanline &s = m_scanlines[(unsigned short)loc.y];
+            int i = s.GetIndex(loc.x);
+
+            if (i > -1)
+                return m_mapex + i * m_mapex_bytes;
+        }
+    }
+    return 0;
+}
+
+/* the name of a cell, or none (SOCOM 1's) */
+CAiMap::name *CAiMap::GetCellName(const CAiMapLoc &loc)
+{
+    names::iterator e = m_namesTable.end();
+
+    for (names::iterator i = m_namesTable.begin(); i != e; ++i)
+        if ((*i).m_loc == loc)
+            return &*i;
+    return 0;
+}
+
+void CAiMap::name::SetName(const char *s)
+{
+    strncpy(m_name, s, 15);
+    ValidateName();
+}
+
+/* the cell of a name, when the map has it (SOCOM 1's) */
+bool CAiMap::GetLocation(const char *s, CAiMapLoc &loc)
+{
+    bool found = false;
+
+    if (s) {
+        name *n = FindName(s);
+
+        if (n) {
+            found = true;
+            loc = n->m_loc;
+        }
+    }
+    return found;
+}
+
+/* GetCellAction's twin (new in SOCOM II, the same code; the const overload is our guess) */
+CAiMap::action *CAiMap::GetCellAction(const CAiMapLoc &loc) const
+{
+    actions &t = const_cast<actions &>(m_actionTable);
+    actions::iterator e = t.end();
+
+    for (actions::iterator i = t.begin(); i != e; ++i)
+        if ((*i).m_loc == loc)
+            return &*i;
+    return 0;
+}
+
+/* the cell of an action, by its id, and the action when asked (SOCOM 1's; the id read into a
+ * local, the only spelling of the compare that puts the field first in its bne) */
+bool CAiMap::FindActionLocation(unsigned int id, CAiMapLoc &loc, action **pa)
+{
+    actions::iterator e = m_actionTable.end();
+
+    for (actions::iterator i = m_actionTable.begin(); i != e; ++i) {
+        unsigned int aid = (*i).m_actionId;
+
+        if (aid == id) {
+            if (pa)
+                *pa = &*i;
+            loc = (*i).m_loc;
+            return true;
+        }
+    }
+    return false;
+}
+
 /* the action on a cell, or none (SOCOM 1's: the table walked for the cell) */
 CAiMap::action *CAiMap::GetCellAction(const CAiMapLoc &loc)
 {

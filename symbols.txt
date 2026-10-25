@@ -9708,14 +9708,14 @@
 0x00530AE0 0x18 func_00530AE0  # OVL2
 0x00530B00 0x20 func_00530B00  # OVL2
 0x00530B20 0xB0 func_00530B20  # OVL2
-0x00530BD0 0x88 func_00530BD0  # OVL2
-0x00530C60 0xB0 func_00530C60  # OVL2
+0x00530BD0 0x88 FindActionLocation__6CAiMapFUiR9CAiMapLocPPQ26CAiMap6action  # OVL2; s1:order by hand (the demo's 0x19EFC0, before GetCellAction in both builds: the actions walked for an id (bits 4-19 of the second word), the action handed back when asked, the cell copied out, true)
+0x00530C60 0xB0 GetCellAction__6CAiMapCFRC9CAiMapLoc  # OVL2; ours (byte for byte GetCellAction's code, between FindActionLocation and GetCellAction where SOCOM 1 has nothing: a second overload -- const is our guess)
 0x00530D10 0xB0 GetCellAction__6CAiMapFRC9CAiMapLoc  # OVL2; s1:callee by hand (CRestrainedPlanner::is_traversable calls it with the map and the destination cell where SOCOM 1's CRestrainedTravel calls GetCellAction__6CAiMapFRC9CAiMapLoc, and reads the result as an action: m_type_invalid, m_type, m_state)
-0x00530DC0 0xFC func_00530DC0  # OVL2
+0x00530DC0 0xFC GetLocation__6CAiMapFPCcR9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19F0D0 after GetCellAction: the names walked with strncasecmp behind a second null test, the cell copied out, true; 15 characters where SOCOM 1 compared 14); non-const in SOCOM II: only a walk straight over this->m_namesTable keeps this in s4 as the target does (through a cast this, MW hoists the table's address)
 0x00530EC0 0x48 func_00530EC0  # OVL2
-0x00530F10 0x30 func_00530F10  # OVL2
-0x00530F40 0xB0 func_00530F40  # OVL2
-0x00530FF0 0x8 func_00530FF0  # OVL2
+0x00530F10 0x30 SetName__Q26CAiMap4nameFPCc  # OVL2; ours (new in SOCOM II, between SortByNames and GetCellName: strncpy of 15 characters into the name at +4, the sixteenth byte zeroed)
+0x00530F40 0xB0 GetCellName__6CAiMapFRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19F1C0 before ValidateName and GetMapEx: the 0x18-byte names walked for the cell)
+0x00530FF0 0x8 ValidateName__Q26CAiMap4nameFv  # OVL2; s1:order by hand (the demo's 0x19F260, 8 bytes in both builds, between GetCellName and GetMapEx: the name's last byte zeroed, at 0x13 here)
 0x00531000 0xF0 GetMapEx__6CAiMapFRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19F270 before FreeEx and AllocEx: no extra data, or a cell outside the map, gives none; else m_mapex + the cell's index times m_mapex_bytes -- SOCOM II finds the index through the cell's scanline)
 0x005310F0 0x30 FreeEx__6CAiMapFv  # OVL2; s1:order by hand (the demo's 0x19F330, between GetMapEx and AllocEx: m_mapex (0xE0, SOCOM 1's 0xAC) deleted[] and zeroed, m_mapex_bytes (0x60) zeroed)
 0x00531120 0x70 AllocEx__6CAiMapFUi  # OVL2; s1:order by hand (the demo's 0x19F390, after FreeEx: the old block deleted[], m_mapex_bytes set and bytes * m_cellcount (0x70) allocated and zeroed; SOCOM II no longer points each scanline into it)
