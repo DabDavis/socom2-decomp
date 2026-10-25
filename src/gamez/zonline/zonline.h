@@ -822,6 +822,7 @@ public:
     int GetRankTier(int rank);
     int GetClanRankTier(int rank);
     void GetClanLadderList(int start, int n);
+    void GetClanRanking(int n);
     bool CanJoinRoom(const char *name);
     void GetClanLadderLeaders(int n);
     void GetFriendsList();

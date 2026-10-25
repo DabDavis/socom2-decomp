@@ -65,6 +65,112 @@ struct LadderClanInfo {
 };
 extern "C" LadderClanInfo StoredClanInfo;
 
+/* a UI variable set to an integer, its watchers told when it changes (as zui.h's float
+ * assignment; the name ours) */
+inline void SetVarInt(CUIVariable *var, int i)
+{
+    if (var->type != 1 || var->integer != i) {
+        var->DeleteChildren();
+        var->type = 1;
+        var->integer = i;
+        var->UpdateDependents();
+    }
+}
+
+/* our clan's position on the clan ladder asked for (SOCOM II's request: no session key) */
+struct MediusClanLadderPositionRequest {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    int ClanID;   // 0x18
+    int ClanLadderStatIndex;   // 0x1c
+    int SortOrder;   // 0x20
+};   // 0x24
+
+struct MediusClanLadderPositionResponse {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    int LadderPosition;   // 0x18
+    int _1c;   // 0x1c
+    MediusCallbackStatus StatusCode;   // 0x20
+};
+
+/* a ladder's size asked for (SOCOM II's request, the message id naming it) */
+struct MediusGetTotalRankingsRequest {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    int LadderType;   // 0x18: 1, the clans
+};   // 0x1c
+
+struct MediusGetTotalRankingsResponse {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    MediusCallbackStatus StatusCode;   // 0x18
+    int Total;   // 0x1c
+};
+
+extern "C" {
+extern int data_0044F800;   /* the player ladder's positions (GetRankTier's) */
+MediusErrorCode func_00646838(MediusClanLadderPositionRequest *req,
+                              void (*cb)(int, int, int, MediusClanLadderPositionResponse *));   /* the clan's ladder position */
+MediusErrorCode func_0064AEE8(MediusGetTotalRankingsRequest *req,
+                              void (*cb)(int, int, int, MediusGetTotalRankingsResponse *));   /* a ladder's size */
+}
+
+/* our clan's position come: kept, shown, made the list's lowest, and the list around it asked for
+ * when the request was GetSurrounding's (SOCOM II's; OVL1 0x2EAC70; the name ours) */
+void cbGetClanLadderPosition(int, int, int, MediusClanLadderPositionResponse *resp)
+{
+    if (CheckMediusCallbackStatus("GetClanLadderRanking", resp->StatusCode)) {
+        CUIVariable *var = theUIVarManager.Add("ClanLadderRanking", 0, UIVL_TEMPORARY);
+
+        data_0044F868 = resp->LadderPosition;
+        SetVarInt(var, data_0044F868);
+        ClanLadderRanking.m_lowest = data_0044F868;
+        if (!strcasecmp(resp->MessageID, "GetSurrounding")) {
+            data_0044F880 = 0;
+            theLobby.GetClanLadderList(data_0044F868 - 2 <= 0 ? 1 : data_0044F868, 7);
+        }
+    }
+}
+
+/* a ladder's size come: the players' kept, or the clans' kept and shown (SOCOM II's; OVL1
+ * 0x2EB1B0; the name ours) */
+void cbGetTotalRankings(int, int, int, MediusGetTotalRankingsResponse *resp)
+{
+    if (CheckMediusCallbackStatus("GetTotalRankings", resp->StatusCode)) {
+        if (!strcmp(resp->MessageID, "PlayerTotal")) {
+            data_0044F800 = resp->Total;
+            LadderLeaders.m_10 = data_0044F800;
+        } else if (!strcmp(resp->MessageID, "ClanTotal")) {
+            data_0044F870 = resp->Total;
+            SetVarInt(theUIVarManager.Add("TotalClans", 0, UIVL_TEMPORARY), data_0044F870);
+            ClanLadderRanking.m_lowest = data_0044F870;
+        }
+    }
+}
+
+/* our clan's ranking asked for -- its position (n: and the clans around it), or, outside a clan,
+ * the ladder's top -- and the clans' count (SOCOM II's; OVL1 0x2EAB80) */
+void CZOnlineLobby::GetClanRanking(int n)
+{
+    if (IsMemberOfClan()) {
+        MediusClanLadderPositionRequest req;
+
+        memset(&req, 0, sizeof(req));
+        if (n)
+            strncpy(req.MessageID, "GetSurrounding", MEDIUS_MESSAGEID_MAXLEN);
+        req.ClanID = StoredClanInfo.ClanID;
+        req.ClanLadderStatIndex = 0;
+        req.SortOrder = 1;
+        CheckMediusError(func_00646838(&req, cbGetClanLadderPosition));
+    } else {
+        data_0044F868 = 0;
+        theLobby.GetClanLadderList(1, 7);
+    }
+    MediusGetTotalRankingsRequest total;
+
+    memset(&total, 0, sizeof(total));
+    memcpy(total.MessageID, "ClanTotal", MEDIUS_MESSAGEID_MAXLEN);
+    total.LadderType = 1;
+    CheckMediusError(func_0064AEE8(&total, cbGetTotalRankings));
+}
+
 /* the clan ladder's order (std::sort's comparator, empty, by value) */
 struct ClanLadderLess {
     ClanLadderLess() {}

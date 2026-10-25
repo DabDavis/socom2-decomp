@@ -4846,13 +4846,13 @@
 0x002EA800 0x12C UpdateClanLadderLeaders__Fv  # OVL1; ours (the clan ladder's leaders sorted -- std::sort's instance 0x2EC7E0 -- and built into uiv_ClanLadderLeaders: '%d' and the clan's name; cbGetClanLadderList calls it on the last 'ClanLadderLeaders' answer)
 0x002EA930 0x248 UpdateClanLadderList__Fv  # OVL1; ours (the clan ladder around us sorted and built into uiv_ClanLadderRanking with each tier, our clan's VALUE/COLOR in colour; 'ON_LADDER_REFRESH' told; cbGetClanLadderList calls it on the last 'ClanLadderList' answer)
 0x002EAB80 0xEC GetClanRanking__13CZOnlineLobbyFi  # OVL1; s1:callee; ours (was Pop__5CGameFUi by s1:callee, a false pair: UIGameStatePopCommand's a0 is theLobby 0x44F370, not theGame, and the UI command table files that handler under 'GetClanRanking'; CGame::Pop is 0x2CF2F0, fts_state.h. Two Medius requests, 'GetSurrounding' and 'ClanTotal'; the argument a flag, tested as an int)
-0x002EAC70 0x108 func_002EAC70  # OVL1
+0x002EAC70 0x108 cbGetClanLadderPosition__FiiiP32MediusClanLadderPositionResponse  # OVL1; ours (GetClanRanking's position request callback: 'GetClanLadderRanking' checked, our clan's position kept (0x44F868) and shown, GetSurrounding asking the list around it)
 0x002EAD80 0xA0 GetClanRankTier__13CZOnlineLobbyFi  # OVL1; ours (a clan ladder position's tier, ours (0x44F868) for -1: per mille of 0x44F870's positions, 4/3/2/1 at 50/300/850)
 0x002EAE20 0xB8 GetRankTier__13CZOnlineLobbyFi  # OVL1; ours (a ladder position's tier, our position 0x44F7F8 for -1: per mille of the positions past ten, 4/3/2/1 at 50/300/850; 4 under twelve positions; CanJoinRoom and the ladder callbacks ask it)
 0x002EAEE0 0xD0 func_002EAEE0  # OVL1
 0x002EAFB0 0x54 GetLadderRanking__13CZOnlineLobbyFv  # OVL1; s1 by hand (its callback 0x2EB010 reports 'GetLadderRanking' and is SOCOM 1's cbGetLadderRanking, which SOCOM 1's GetLadderRanking passes to MediusLadderPosition; called by the 'GetLadderInfo' handler 0x2784D0 on theLobby)
 0x002EB010 0x19C cbGetLadderRanking__FiiiP28MediusLadderPositionResponse  # OVL1; s1 by hand (GetLadderRanking's callback; reports 'GetLadderRanking', the LadderRanking variables)
-0x002EB1B0 0x10C func_002EB1B0  # OVL1
+0x002EB1B0 0x10C cbGetTotalRankings__FiiiP30MediusGetTotalRankingsResponse  # OVL1; ours (the ladder size request's callback: 'GetTotalRankings' checked, 'PlayerTotal' kept at 0x44F800, 'ClanTotal' at 0x44F870 and shown in TotalClans; GetClanRanking asks it)
 0x002EB2C0 0x74 GetLadderInfo__13CZOnlineLobbyFv  # OVL1; s1 by hand (the same request in the active lobby only, with 0x2EB340, which reports 'GetLadderPosition': SOCOM 1's GetLadderInfo passes cbGetLadderPosition to MediusLadderPosition; called by the 'GetLadderInfo' handler)
 0x002EB340 0x1CC cbGetLadderPosition__FiiiP28MediusLadderPositionResponse  # OVL1; s1 by hand (GetLadderInfo's callback; reports 'GetLadderPosition')
 0x002EB510 0xF4 func_002EB510  # OVL1
