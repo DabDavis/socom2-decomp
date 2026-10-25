@@ -122,6 +122,9 @@ public:
     virtual unsigned int GetNumSounds() { return 0; }
     virtual void SetDialogMode() { m_mode = 3; }
 
+    /* SOCOM 1's: a 3D sound's volume and pan at a position; SOCOM II's returns the distance */
+    float CalcVolPan(const CPnt3D *pos, float vol, int *outVol, int *outPan);
+
     static CSnd *GetSoundByName(const char *name);
     static void AddNewCSnd(CSnd *sound);
     static void SetGroupVol(int group, float vol);
@@ -257,7 +260,7 @@ public:
         m_pauseASAP = false;
         m_continueASAP = false;
         m_socom2_bit6 = false;
-        m_c = 0;
+        m_dist = 0;
     }
     CSndInstance(unsigned int handle, CSnd *parent)
     {
@@ -355,7 +358,8 @@ public:
     unsigned int m_handle;                  /* 0x00: -1 while the play command is pending */
     CSnd *m_parent;                         /* 0x04 */
     float m_vol;                            /* 0x08 */
-    int m_c;                                /* 0x0C: SOCOM II's */
+    float m_dist;                           /* 0x0C: SOCOM II's: the listener distance at the last
+                                               tick (Tick's Doppler shift; name ours) */
     CPnt3D m_pos;                           /* 0x10 */
     unsigned int m_is3D : 1;                /* 0x1C bit 0 */
     unsigned int m_forcedLoop : 1;          /* bit 1 */

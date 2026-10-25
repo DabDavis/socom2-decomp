@@ -87,7 +87,7 @@ void CSndInstance::InitInstance(unsigned int handle, CSnd *parent)
     m_pauseASAP = false;
     m_continueASAP = false;
     m_socom2_bit6 = false;
-    m_c = 0;
+    m_dist = 0;
 }
 
 void CSndInstance::Stop()
@@ -209,6 +209,66 @@ bool CSndInstance::PostTick(float dT, void *data)
     snd_SendCache();
     RemoveFromList();
     snd_FlushSoundCommands();
+    return false;
+}
+
+extern float data_004A449C;             /* the frame's time (fts_patch.cpp's) */
+extern "C" int func_00340FA0(float a, float b, float mph);     /* zsnd_csnd.cpp */
+extern "C" double floor(double x);
+extern float data_003E0078;             /* the Doppler shift's scale (name not known) */
+
+/* SOCOM 1's: a voice's pending commands carried out, its fade run down, then its status asked
+ * for -- a 3D voice's with its volume and pan recomputed. SOCOM II adds a Doppler shift: m_dist
+ * is the listener distance of the last tick, the shift the parent's flag asks for */
+bool CSndInstance::Tick(float dT)
+{
+    if (CSnd::m_isDisabled)
+        return false;
+    if (m_handle == -1)
+        return false;
+    if (m_handle == 0)
+        return true;
+    if (m_terminateASAP) {
+        snd_StopSound(m_handle);
+        m_handle = 0;
+        return true;
+    }
+    if (m_pauseASAP) {
+        snd_PauseSound(m_handle);
+        m_pauseASAP = false;
+        return false;
+    }
+    if (m_continueASAP) {
+        snd_ContinueSound(m_handle);
+        m_continueASAP = false;
+    }
+    if (IsFading()) {
+        m_fadeTime -= dT;
+        if (m_fadeTime <= 0.0f) {
+            snd_StopSound(m_handle);
+            m_handle = 0;
+            return true;
+        }
+    }
+    unsigned int handle = m_handle;
+
+    m_handle = -1;
+    if (m_is3D) {
+        int vol = 1;
+        int pan = -1;
+        bool doppler = false;
+
+        if (m_parent->m_socom2_bit8 && m_dist != 0.0f)
+            doppler = true;
+        float dist = m_parent->CalcVolPan(&m_pos, m_vol, &vol, &pan);
+        int pitch = 0;
+
+        if (doppler)
+            pitch = func_0033F050((int)floor(data_003E0078 * func_00340FA0(m_dist, dist, data_004A449C)));
+        m_dist = dist;
+        snd_SetSoundParams_CB(handle, 5, vol, pan, pitch, 0, PlaySoundCallback, (unsigned long)this);
+    } else
+        snd_SoundIsStillPlaying_CB(handle, PlaySoundCallback, (unsigned long)this);
     return false;
 }
 

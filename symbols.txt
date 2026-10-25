@@ -6149,7 +6149,7 @@
 0x00342210 0x8 func_00342210  # OVL1
 0x00342220 0x14 func_00342220  # OVL1
 0x00342240 0x428 func_00342240  # OVL1
-0x00342670 0x230 func_00342670  # OVL1
+0x00342670 0x230 CalcVolPan__4CSndFPC6CPnt3DfPiPi  # OVL1; s1:calls by hand (SOCOM 1's CalcVolPan: CSndInstance::Tick calls it at the same place with the same arguments -- the parent, &m_pos, m_vol, &vol, &pan; SOCOM II's returns the distance in $f0, which Tick keeps for its Doppler shift)
 0x003428A0 0x50 func_003428A0  # OVL1
 0x003428F0 0x1C func_003428F0  # OVL1
 0x00342910 0x80 PlaySoundVolPanPitch__4CSndFfiibP12CSndInstanceUi  # OVL1; s1:vtable by hand (slot 0x28: the one-shot flag set around slot 0x18)
