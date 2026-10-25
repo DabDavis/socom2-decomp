@@ -76,7 +76,10 @@ extern CZOnlineLobby theLobby;
 /* the SEAL's body (only the client it belongs to) */
 class CZSealBody {
 public:
-    unsigned char _0[0xfc8];
+    unsigned char _0[0xe1];
+    unsigned char _e1_0 : 4;
+    unsigned char m_e1_4 : 1;   // 0xe1, bit 4: clear on a player who has not spawned (the name ours)
+    unsigned char _e2[0xfc8 - 0xe2];
     int m_fc8;   // 0xfc8 (SOCOM 1's at 0xeb8)
 };
 
@@ -704,6 +707,38 @@ extern "C" void func_002C2D50(signed char value)
 
     if (p)
         p->m_43 = value;
+}
+
+/* the voice chat's object (0x45B718: its mode set, its word at 0x2C read back; the names ours) */
+struct VoiceChat {
+    unsigned char _0[0x2c];
+    int m_2c;   // 0x2c
+    unsigned char _30[0x4d - 0x30];
+    unsigned char m_4d;   // 0x4d
+};
+
+extern "C" VoiceChat *data_0045B718;
+extern "C" void func_0030FCD0(VoiceChat *chat, int mode, int extra);
+
+/* the voice chat put in a mode: 3 for a player not yet in, 10 for the lobby's flag, with 4 added
+ * for a SEAL on the SEALs' side when the chat's byte 0x4D is clear (OVL1 0x2C2C20; the load state
+ * calls it with 0 and 3) */
+extern "C" int func_002C2C20(int mode)
+{
+    int extra = 0;
+
+    if (ftsGetPlayer() && !ftsGetPlayer()->m_e1_4)
+        mode = 3;
+    if (func_002F6D00(&theLobby) != false)
+        mode = 10;
+    PersonaData *p = CZPersonaState::GetPersona(theNetwork.zNetGetMyGameClientIndex());
+
+    if (p) {
+        if (mode != 9 && func_002C3300(p->m_team) && !data_0045B718->m_4d)
+            extra = 4;
+        func_0030FCD0(data_0045B718, mode, extra);
+    }
+    return data_0045B718->m_2c;
 }
 
 /* every client's persona forgotten (OVL1 0x2C2BB0) */
