@@ -4,7 +4,11 @@
  * namespace's stat writers, the accessors whose addresses they take (SOCOM 1's
  * GetTimeInGameSec/GetTimeInRoundSec, GetGameStats/GetRoundStats, GetHitPct and the team totals'
  * three), the seal comparators, GetReaderFileName and std::sort's instance, which closes the unit.
- * Defined in reverse of their image order (-inline deferred). */
+ * Written: the initialiser, the comparators, the player's and the MVP's stat writers, the team
+ * totals (open), SetFinalStatsUiVars, the accessors, LoadLibs and the constructor; still to write:
+ * UnInit, Tick, Init, the stat lists 0x224210/0x224670 (std::sort's callers) and 0x224D10,
+ * 0x225070, 0x2253C0, and std::sort<CZSealBody **, bool (*)(CZSealBody *, CZSealBody *)>
+ * (0x226060). Defined in reverse of their image order (-inline deferred). */
 
 #include "fts_state.h"
 #include "../../gamez/zrdr/zrdr.h"
@@ -93,11 +97,11 @@ public:
     int _iIdx;   // 0x4
 };
 
-/* whether a SEAL is on each side (the SEAL lane's, no names yet; int here: the totals test the
- * results unnormalised, where a bool adds an `andi 0xff` in the ternary) */
+/* whether a SEAL is on each side (the SEAL lane's, no names yet; bool, as 0x224D10's `andi 0xff`
+ * on their results says) */
 extern "C" {
-int func_002C31D0(const CZSealBody *seal);
-int func_002C30B0(const CZSealBody *seal);
+bool func_002C31D0(const CZSealBody *seal);
+bool func_002C30B0(const CZSealBody *seal);
 }
 
 /* the UI's variables (zui.h's, which zrdr.h's _zrdr cannot meet: only what is called) */
@@ -174,14 +178,17 @@ bool CompareGameSeals(CZSealBody *p1, CZSealBody *p2)
 /* a side's totals of the three stats, as a list of strings in a UI variable: only the living
  * SEALs the stats count, the hit percentage averaged (SOCOM 1's SetFinalTeamTotalsUiVar, six
  * totals of every SEAL's game stats there).
- * OPEN, 3 instructions (the size is right; scdiff counts 27 with the branch offsets): (1) the
- * walk's begin() is `lw a2,4(s6)` off the hoisted &CEntity::m_list where the target reloads it
- * absolutely (`lui at,0x43; lw a2,0x62E8(at)`) and keeps &m_list in s7 for end() only, the UI
- * variable's name in s6 (here swapped); (2) the round-side test branches `bnez v0,count; b skip`
- * in the target, `beqz v0,skip; b count` here (tried: the ternary -- a join and one test, `andi`
- * with bool callees; `&&`/`||` -- bSeals re-tested; `continue` and empty-then forms; begin/end
- * through CEntity::m_list or an end local). __ptmf_cmpr (0x1828E0, func_001828E0 in the map) is
- * the PTMF comparison MW calls by name: the row needs that name for the call to resolve */
+ * OPEN, 2 instructions and a register swap (the size is right; scdiff's count, 27, is the branch
+ * offsets): (1) the walk's begin() is `lw a2,4(s6)` off the &CEntity::m_list hoisted out of the
+ * outer loop, where the target reloads it absolutely (`lui at,0x43; lw a2,0x62E8(at)`) and keeps
+ * &m_list in s7 for end() only, the UI variable's name in s6 (here swapped) -- include/list's
+ * const begin() reads the sentinel through tail() into a pointer local, which shares the address
+ * with end()'s; SetMvpUiVars' walk, outside any loop, cannot tell; (2) the round side's test is
+ * `bnez v0,count; b skip` in the target, `beqz v0,skip; b count` here. Tried: the ternary (a join
+ * and one test; `andi` with bool callees), `&&`/`||` (bSeals re-tested), `continue` and empty-then
+ * forms, begin/end through CEntity::m_list (no conversion to const_iterator) or an end local.
+ * __ptmf_cmpr (0x1828E0, func_001828E0 in the map) is the PTMF comparison MW calls by name: the
+ * row needs that name for the call to resolve */
 void SetFinalTeamTotalsUiVar(bool bSeals, const char *szUiVar)
 {
     static int (CSealStats::*pfnHitPct)() const = &CSealStats::GetHitPct;
