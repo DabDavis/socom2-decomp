@@ -50,6 +50,8 @@ public:
     void HandleScrollUpState(float dT);
     /* the rows' icons placed for a state (SOCOM 1's, 0x219A80) */
     void SetItemPos(int index);
+    void PlaceMiddleIcon();
+    void TickHotSwap(float dT);
     /* the selected weapon's texts and the hot-swap labels placed (SOCOM 1's, 0x2193D0 and
      * 0x2196F0) */
     void PlaceWeaponText();

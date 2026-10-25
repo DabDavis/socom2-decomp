@@ -84,6 +84,14 @@ public:
     unsigned short m_height;   // 0x2
 };
 
+/* a texture's handle: its name, and the texture at 0xC */
+class CTexHandle {
+public:
+    const char *m_name;   // 0x0
+    unsigned char _4[0xc - 0x4];
+    CTexture *m_texture;   // 0xc
+};
+
 class CAssetMgr {
 public:
     static CAssetList m_assets;
@@ -122,7 +130,6 @@ extern "C" bool func_005A7980(CZSealBody *seal, int flag);
 
 /* SOCOM II's two per-tick updates after the state's (no rows named yet) */
 extern "C" void func_0021A1F0(CWeaponSel *sel);
-extern "C" void func_00219FB0(CWeaponSel *sel, float dT);
 
 /* the textures fetched, the backdrops and backings loaded, the texts coloured and loaded off, the
  * pieces listed (SOCOM 1's, the backings three members now) */
@@ -691,6 +698,58 @@ void CWeaponSel::ResetHotSwap(bool force)
     m_hotswapL2text.SetTrans(80.0f);
 }
 
+/* the hot-swap highlight's pulse while the menu is shut: it fades in to 64 and out again,
+ * the lit hot-swap label following it, and when gone the middle icon goes too; with the menu
+ * open the highlight is put away (SOCOM II's: HudTick's last call, the name ours) */
+void CWeaponSel::TickHotSwap(float dT)
+{
+    if (!m_selectionback2.IsOn())
+        return;
+    if (m_openstate == 0) {
+        C2DString *label = 0;
+        float speed;
+
+        if (m_selectionback2.m_fade_dx > 0.0f)
+            speed = 320.0f;
+        else
+            speed = -160.0f;
+        if (m_hotswapL1text.IsOn())
+            label = &m_hotswapL1text;
+        else if (m_hotswapL2text.IsOn())
+            label = &m_hotswapL2text;
+
+        float dx = m_selectionback2.m_fade_dx;
+
+        float trans = m_selectionback2.GetTrans();
+
+        m_selectionback2.SetTrans(trans + 256.0f * dT * dx);
+        if (label) {
+            float step = dT * speed;
+
+            label->SetTrans(step + label->m_color[3]);
+        }
+        if (!(m_selectionback2.GetTrans() < 64.0f)) {
+            m_selectionback2.SetTrans(64.0f);
+            m_selectionback2.m_fade_dx = -1.0f;
+            if (label)
+                label->SetTrans(80.0f);
+        } else if (m_selectionback2.GetTrans() <= 0.0f) {
+            m_weaponicon[1].Off();
+            m_selectionback2.Off();
+            m_selectionback2.m_fade_dx = 2.0f;
+            if (label) {
+                label->Off();
+                label->SetTrans(80.0f);
+            }
+        }
+    } else {
+        m_selectionback2.Off();
+        m_selectionback2.m_fade_dx = 2.0f;
+        m_hotswapL1text.SetTrans(80.0f);
+        m_hotswapL2text.SetTrans(80.0f);
+    }
+}
+
 /* the menu's tick: closed, the weapon-select button opens it (with a seal not changing weapons);
  * opening, scrolling and closing run their states (SOCOM 1's, the opening and the first closing
  * states functions of their own); then the backdrops fade in over half a second */
@@ -751,5 +810,65 @@ void CWeaponSel::HudTick(CPad *pad, float dT)
         if (!(g_fFadeInTime < 0.5f))
             g_fFadeInTime = -1.0f;
     }
-    func_00219FB0(this, dT);
+    TickHotSwap(dT);
+}
+
+/* the items placed for a state: opening and folding the middle icon sized to the menu's height,
+ * the outer rows' icons where they slide (SOCOM 1's; its states 1 and 7 the middle icon's inline,
+ * out of line in SOCOM II) */
+void CWeaponSel::SetItemPos(int index)
+{
+    switch (index) {
+    case 1:
+        PlaceMiddleIcon();
+        break;
+    case 2:
+        m_weaponicon[0].SetPos((int)(m_menuposx[0] + m_iconoffsetx), (int)(m_menuposy[0] + m_iconoffsety));
+        m_weaponicon[2].SetPos((int)(m_menuposx[2] + m_iconoffsetx), (int)(m_menuposy[2] + m_iconoffsety));
+        break;
+    case 4:
+        m_weaponicon[1].SetPos((int)(m_menuposx[1] + m_iconoffsetx), (int)(m_menuposy[1] + m_iconoffsety));
+        m_weaponicon[2].SetPos((int)(m_menuposx[2] + m_iconoffsetx), (int)(m_menuposy[2] + m_iconoffsety));
+        break;
+    case 5:
+        m_weaponicon[0].SetPos((int)(m_menuposx[0] + m_iconoffsetx), (int)(m_menuposy[0] + m_iconoffsety));
+        m_weaponicon[1].SetPos((int)(m_menuposx[1] + m_iconoffsetx), (int)(m_menuposy[1] + m_iconoffsety));
+        break;
+    case 6:
+        m_weaponicon[0].SetPos((int)(m_menuposx[0] + m_iconoffsetx), (int)(m_menuposy[0] + m_iconoffsety));
+        m_weaponicon[2].SetPos((int)(m_menuposx[2] + m_iconoffsetx), (int)(m_menuposy[2] + m_iconoffsety));
+        break;
+    case 7:
+        PlaceMiddleIcon();
+        break;
+    }
+}
+
+/* the middle icon sized to the menu's height as it opens and folds: its top no lower than the
+ * row's centre, its bottom no higher, no taller than its texture (SOCOM 1's SetItemPos states 1
+ * and 7, a function of its own in SOCOM II: the name ours) */
+void CWeaponSel::PlaceMiddleIcon()
+{
+    m_curheight = m_goalheight * ((m_menuposx[1] - m_menustartx) / m_menugoalx - m_menustartx);
+
+    float top = m_menuposy[1] + m_menucentery - m_curheight / 2.0f;
+
+    if (top > m_menuposy[1] + m_menucentery - 1.0f)
+        top = m_menuposy[1] - 1.0f + m_menucentery;
+
+    float bottom = 0.5f * m_curheight + (m_menuposy[1] - 1.0f + m_menucentery) - 1.0f;
+
+    if (bottom < m_menuposy[1] - 1.0f + m_menucentery)
+        bottom = m_menuposy[1] - 1.0f + m_menucentery;
+    if (m_weapontex[1]) {
+        zdb::CTexture *tex = m_weapontex[1]->m_texture;
+        float w = (int)tex->m_width;
+        float h = (int)tex->m_height;
+
+        if (bottom - top > h)
+            bottom = top + h;
+
+        m_weaponicon[1].SetPos((int)(m_menuposx[1] + m_iconoffsetx), (int)(top + m_iconoffsety),
+                               (int)(w + (m_menuposx[1] + m_iconoffsetx)), (int)(bottom + m_iconoffsety));
+    }
 }
