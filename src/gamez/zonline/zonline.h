@@ -289,6 +289,8 @@ MediusErrorCode MediusGetClanMemberList(MediusGetClanMemberListRequest *req,
 
 /* the rdr editor the menus' lists are built in (zrdr.h's CRdrEditor, 0x4C bytes, a value at its
  * start; zui.h's _zrdr and zrdr.h's cannot meet in one unit, so the lobby declares it again) */
+struct PNT3D;
+
 class CRdrEditor : public _zrdr {
 public:
     CRdrEditor();
@@ -297,6 +299,8 @@ public:
     bool pop();
     bool addintnode(int i);
     bool addstringnode(const char *s);
+    bool addPNT3D(const char *tag, const PNT3D &p);
+    bool addSTRING(const char *tag, const char *s);
 
     unsigned char _8[0x4c - 0x8];
 };
@@ -490,10 +494,10 @@ struct MediusGetClanLadderListResponse {
     MediusGetClanLadderListResponse() {}
 
     char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
-    MediusCallbackStatus StatusCode;   // 0x18
+    int ClanID;   // 0x18: our clan's shown in colour
     char ClanName[32];   // 0x1c
     int LadderPosition;   // 0x3c: the list's key, the highest kept
-    int LadderStat;   // 0x40
+    MediusCallbackStatus StatusCode;   // 0x40 (the callback checks it)
     char EndOfList;   // 0x44
 };   // 0x48
 typedef MediusGetClanLadderListResponse ClanLadderItem;
@@ -816,6 +820,8 @@ public:
     void GetLadderInfo();
     void GetLadderRanking();
     int GetRankTier(int rank);
+    int GetClanRankTier(int rank);
+    void GetClanLadderList(int start, int n);
     bool CanJoinRoom(const char *name);
     void GetClanLadderLeaders(int n);
     void GetFriendsList();
