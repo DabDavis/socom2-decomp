@@ -469,6 +469,24 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - CValve's inline setter, as both builds inline it: `state = VALVE_SAME; if (m_value != value)
     state = value == 0 ? VALVE_OFF : VALVE_ON;`, an int parameter, the enum compared against an
     enumerator.
+- **Tells from CHUD** (round 5, hud_main.cpp):
+  - three `==` tests on one variable joined by `||` fold into a single range test; the target's
+    chain needs each test in its own bool local (PauseGame);
+  - `bool b = p ? p->f == 0.0f : false;` materialises with `andi 0xff`; written with `&&` it is
+    if-converted (SetupRespawnText);
+  - a pointer handed through an inline that takes it by value stays in a saved register; only
+    the copy goes to memory for push_back's reference (Flash, via CFlashFXVector::Add);
+  - an owner read straight (`appCamera->m_bc`) takes its saved register after a local derived
+    from it; read through the inlined accessor, the two swap (ZoomOut);
+  - an int counter with the index narrowed to signed char is never strength-reduced; a signed
+    char counter becomes a walking pointer (CZPauseTest::Draw);
+  - a call made as an argument lets constant offsets be scheduled ahead of it; fetched into a
+    local first, the call goes first (SetupSpectatingText);
+  - a size-guarded `while` over class iterators gives the size test then the compare twice;
+    `if (x) { ...; return; }` branches straight to the epilogue where an if/else as the last
+    statement leaves a join block (Add2D);
+  - a true function-local static matches, but scdiff leaves its BSS guard and object
+    unchecked: placeholders hold them to their addresses (SetupGhostText).
 - **Tool notes**: scdiff accepts the image's one non-zero pad word (0xFFFFFFFF at 0x1E70F4,
   after main); `automatch --stale` can drop a renamed destructor's draft when its re-draft
   misses (SlotList's and CWeaponSlot's were restored by hand, the old drafts renamed).
