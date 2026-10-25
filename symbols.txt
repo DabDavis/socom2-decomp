@@ -4110,7 +4110,7 @@
 0x002BFFC0 0x80 func_002BFFC0  # OVL1
 0x002C0040 0x4C func_002C0040  # OVL1
 0x002C0090 0x5C func_002C0090  # OVL1
-0x002C00F0 0x4EC func_002C00F0  # OVL1
+0x002C00F0 0x4EC UpdateLocalGame__11CZGameStateFP9CZNetGame  # OVL1; s1:calls by hand (the states lane: at SOCOM 1's call site)
 0x002C05E0 0xA4 CreateLocalGame__11CZGameStateFP9CZNetGame  # OVL1; s1:calls
 0x002C0690 0x8 func_002C0690  # OVL1
 0x002C06A0 0x108 func_002C06A0  # OVL1
@@ -4143,7 +4143,7 @@
 0x002C2AC0 0x2C func_002C2AC0  # OVL1
 0x002C2AF0 0x2C func_002C2AF0  # OVL1
 0x002C2B20 0x90 func_002C2B20  # OVL1
-0x002C2BB0 0x68 func_002C2BB0  # OVL1
+0x002C2BB0 0x68 ClearPersonaList__14CZPersonaStateFv  # OVL1; s1:calls by hand (the states lane: at SOCOM 1's call site)
 0x002C2C20 0x128 func_002C2C20  # OVL1
 0x002C2D50 0x68 func_002C2D50  # OVL1
 0x002C2DC0 0x68 func_002C2DC0  # OVL1
@@ -4186,8 +4186,8 @@
 0x002C4B50 0x294 func_002C4B50  # OVL1
 0x002C4DF0 0x21C func_002C4DF0  # OVL1
 0x002C5010 0x350 func_002C5010  # OVL1
-0x002C5360 0xE4 func_002C5360  # OVL1
-0x002C5450 0x2F8 func_002C5450  # OVL1
+0x002C5360 0xE4 UpdateLocalPersona__14CZPersonaStateFv  # OVL1; s1:calls by hand (the states lane: at SOCOM 1's call site)
+0x002C5450 0x2F8 CreateLocalPersona__14CZPersonaStateFv  # OVL1; s1:calls by hand (the states lane: at SOCOM 1's call site in the network setup)
 0x002C5750 0x80 func_002C5750  # OVL1
 0x002C57D0 0x24 func_002C57D0  # OVL1
 0x002C5800 0x2C func_002C5800  # OVL1
@@ -4641,7 +4641,7 @@
 0x002DEE90 0x2C4 func_002DEE90  # OVL1
 0x002DF160 0x3F4 func_002DF160  # OVL1
 0x002DF560 0xD4 SyncGameClock__13CZOnlineLobbyFi  # OVL1; s1:calls
-0x002DF640 0xC func_002DF640  # OVL1
+0x002DF640 0xC MediusConnectionIndex__13CZOnlineLobbyFv  # OVL1; s1:calls by hand (the states lane: the network senders take the connection index through it where SOCOM 1's do)
 0x002DF650 0x4C UnInit__13CZOnlineLobbyFv  # OVL1; s1:callee
 0x002DF6A0 0x23C func_002DF6A0  # OVL1
 0x002DF8E0 0x170 func_002DF8E0  # OVL1
@@ -5302,7 +5302,7 @@
 0x0030CDE0 0x8 func_0030CDE0  # OVL1
 0x0030CDF0 0x88 func_0030CDF0  # OVL1
 0x0030CE80 0x6C func_0030CE80  # OVL1
-0x0030CEF0 0x100 func_0030CEF0  # OVL1
+0x0030CEF0 0x100 zNetSendApplicationMessage__9CZNetworkFciiiiPUcb  # OVL1; s1:calls by hand (the states lane: every network sender calls it at SOCOM 1's call site, 39 of them, with the same register handling and calls; zNetDme.cpp's)
 0x0030CFF0 0xC func_0030CFF0  # OVL1
 0x0030D000 0x8 func_0030D000  # OVL1
 0x0030D010 0x8 func_0030D010  # OVL1
@@ -5311,11 +5311,11 @@
 0x0030D110 0xA0 func_0030D110  # OVL1
 0x0030D1B0 0x1C8 func_0030D1B0  # OVL1
 0x0030D380 0x188 func_0030D380  # OVL1
-0x0030D510 0x28 func_0030D510  # OVL1; tu: zNetDme.cpp~ (1.0 beta)
+0x0030D510 0x28 zNetGetValidGameClientCount__9CZNetworkFv  # OVL1; tu: zNetDme.cpp~ (1.0 beta); s1:calls by hand (the states lane: at SOCOM 1's call sites; tu: zNetDme.cpp~)
 0x0030D540 0x8 func_0030D540  # OVL1
 0x0030D550 0x8 func_0030D550  # OVL1
-0x0030D560 0x40 func_0030D560  # OVL1; tu: zNetDme.cpp~ (1.0 beta)
-0x0030D5A0 0x40 func_0030D5A0  # OVL1; tu: zNetDme.cpp~ (1.0 beta)
+0x0030D560 0x40 zNetGetGameSessionMasterClientIndex__9CZNetworkFv  # OVL1; tu: zNetDme.cpp~ (1.0 beta); s1:calls by hand (the states lane: at SOCOM 1's call sites; tu: zNetDme.cpp~)
+0x0030D5A0 0x40 zNetGetMyGameClientIndex__9CZNetworkFv  # OVL1; tu: zNetDme.cpp~ (1.0 beta); s1:calls by hand (the states lane: at SOCOM 1's call sites in the senders; 0x40 bytes in both; tu: zNetDme.cpp~)
 0x0030D5E0 0x40 func_0030D5E0  # OVL1
 0x0030D620 0x8 func_0030D620  # OVL1
 0x0030D630 0x34 func_0030D630  # OVL1
@@ -6413,7 +6413,7 @@
 0x003515D0 0x2EC func_003515D0  # OVL1
 0x003518C0 0x98 DeleteCallbacks__6CValveFv  # OVL1; s1:callee
 0x00351960 0x88 AddCallback__6CValveFUiPFP6CValvePv_vPv  # OVL1; s1:align
-0x003519F0 0xA0 func_003519F0  # OVL1
+0x003519F0 0xA0 MakeCallbacks__6CValveF11VALVE_STATE  # OVL1; s1:calls by hand (the states lane: zRemoteClientJoinsCallback's inlined valve setter calls it where SOCOM 1's does)
 0x00351A90 0x190 func_00351A90  # OVL1
 0x00351C20 0x84 func_00351C20  # OVL1
 0x00351CB0 0x84 func_00351CB0  # OVL1
