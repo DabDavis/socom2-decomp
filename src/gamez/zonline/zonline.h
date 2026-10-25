@@ -623,6 +623,7 @@ public:
 
     void *DMEInit();
     void RecoverFromNetError(int err);
+    bool Bailout();
     void RunStateHandler(LOBBY_STATE state, LOBBY_STATE_FLAG flag);
     bool RefreshRoomList(C2D *page);
     bool RejoinRoom();
@@ -652,7 +653,7 @@ public:
 
     LobbyStateHandler m_state_handler[MAX_LOBBY_STATES];   // 0x0
     LobbyEventHandler m_event_handler;   // 0x58
-    void *m_net_error_handler;   // 0x5c
+    bool (*m_net_error_handler)(int err);   // 0x5c: offered a network error first
     LOBBY_STATE m_current_state;   // 0x60
     unsigned int m_state_change_fifo[6];   // 0x64: a queue<LOBBY_STATE> (SOCOM 1's 0x1c)
     unsigned char m_isinit;   // 0x7c

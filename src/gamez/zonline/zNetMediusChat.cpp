@@ -5,6 +5,7 @@
  * and deque instances close it). Only some of it so far. Defined in reverse of their image order
  * (-inline deferred). */
 
+#include <stdio.h>
 #include "zonline.h"
 #include "../znet/znet.h"
 
@@ -1009,9 +1010,153 @@ struct ChatSlot {
 /* the text filter's answer awaited: the caller's callback and its data (SOCOM 1's Censor kept
  * them likewise) */
 typedef void (*CensorCallback)(const char *text, void *data);
+/* a chat message forwarded (SOCOM 1's MediusChatFwdMessage) */
+struct MediusChatFwdMessage {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    int OriginatorAccountID;   // 0x18
+    char OriginatorAccountName[32];   // 0x1c
+    int MessageType;   // 0x3c: 1 private, 2 clan
+    char Message[64];   // 0x40
+};
+
+/* a chat line's colour (a byte enum: assigned with li, compared through andi; the names ours) */
+enum CHAT_COLOR {
+    CHAT_WHITE = 0,
+    CHAT_CLAN = 1,
+    CHAT_PRIVATE = 5
+};
+
+/* the chat turned on or off (SOCOM 1's MediusChatToggle; int-sized) */
+enum MediusChatToggle {
+    MediusChatOn = 0,
+    MediusChatOff = 1,
+    MediusChatToggle_Extent = 0x7FFFFFFF
+};
+
+struct MediusChatToggleRequest {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];   // 0x15
+    MediusChatToggle ChatToggle;   // 0x28
+};   // 0x2c
+
+/* a text to one account */
+struct MediusSendDirectMessageRequest {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];   // 0x15
+    int MessageType;   // 0x28
+    int TargetAccountID;   // 0x2c
+    char Message[64];   // 0x30
+};   // 0x70
+
+extern "C" {
+void func_00300670();   /* the Medius library closed */
+void func_0030D770(CZNetwork *net);   /* the DME left (CZNetwork's) */
+void func_0030E3A0(CZNetwork *net, int);   /* and closed (CZNetwork's) */
+MediusErrorCode func_00649060(MediusSendDirectMessageRequest *req);   /* the direct message sent */
+void func_002A4050(void *chat, const char *text, CHAT_COLOR color, const char *name);   /* a line added to the chat */
+extern char data_00437690[];   /* the chat's window */
+}
+
 extern "C" {
 extern CensorCallback data_0044FA00;
 extern void *data_0044FA08;
+}
+
+/* the online session left: the Medius and DME connections closed, the lobby with them (SOCOM 1's;
+ * OVL1 0x2F4240: 'LobbyBailout') */
+bool CZOnlineLobby::Bailout()
+{
+    if (!m_isopen)
+        return false;
+    if (theNetwork.m_bNetwork) {
+        func_00300680();
+        func_00300670();
+    }
+    if (theNetwork.m_network_init) {
+        func_0030D770(&theNetwork);
+        func_0030E3A0(&theNetwork, 0);
+    }
+    Close();
+    return true;
+}
+
+/* a network error: kept in mp_net_errno, offered to the handler, else told the menus -- and, out
+ * of a game and the lobby, the session left (SOCOM 1's; OVL1 0x2F4090) */
+void CZOnlineLobby::RecoverFromNetError(int err)
+{
+    if (!err)
+        return;
+    bool handled = false;
+    CValve::Create("mp_net_errno", VALVE_TYPE_1)->SetValue(err);
+    if (m_net_error_handler)
+        handled = m_net_error_handler(err);
+    if (!handled) {
+        if (m_current_state == READY_TO_CONNECT) {
+            LobbyEvent("MP_MEDIUS_ERROR", func_00361B40(1067));
+        } else if (m_current_state == LOBBY_ACTIVE) {
+            LobbyEvent("MP_MEDIUS_ERROR", func_00361B40(1068));
+        } else {
+            LobbyEvent("MP_MEDIUS_ERROR", func_00361B40(1068));
+            theLobby.Bailout();
+        }
+    }
+}
+
+/* a chat message forwarded to us: shown in the active lobby, and anywhere when it is a private or
+ * a clan one (SOCOM 1's cbChatMessage, MediusInit's first callback; OVL1 0x2F4EF0) */
+void cbChatMessage(int, int, int, MediusChatFwdMessage *msg)
+{
+    CHAT_COLOR color = CHAT_WHITE;
+
+    switch (msg->MessageType) {
+    case 0:
+        color = CHAT_WHITE;
+        break;
+    case 1:
+        color = CHAT_PRIVATE;
+        break;
+    case 2:
+        color = CHAT_CLAN;
+        break;
+    }
+    if (theLobby.m_current_state == LOBBY_ACTIVE || color == CHAT_PRIVATE || color == CHAT_CLAN) {
+        char text[1024];
+        char *name = msg->OriginatorAccountName;
+
+        sprintf(text, "%s: %s", name, msg->Message);
+        func_002A4050(data_00437690, text, color, name);
+    }
+}
+
+/* the chat turned on or off as we enter or leave a game: the request is built, but nothing sends
+ * it -- the result handed on is a constant success (SOCOM II's; OVL1 0x2F4FC0). The
+ * ready-to-connect handler calls it out of line: pinned */
+#pragma auto_inline off
+void func_002F4FC0(int ready)
+{
+    MediusChatToggleRequest req;
+
+    memset(&req, 0, sizeof(req));
+    SetSessionKey(req.SessionKey);
+    req.ChatToggle = ready ? MediusChatOn : MediusChatOff;
+    CheckMediusError(MediusSuccess);
+}
+#pragma auto_inline reset
+
+/* a text sent straight to an account (SOCOM II's; OVL1 0x2F4D60: the clan unit sends the
+ * invitations' texts through it on theLobby) */
+extern "C" void func_002F4D60(CZOnlineLobby *lobby, int account, int type, const char *text)
+{
+    MediusSendDirectMessageRequest req;
+
+    memset(&req, 0, sizeof(req));
+    SetSessionKey(req.SessionKey);
+    req.TargetAccountID = account;
+    if (text)
+        memcpy(req.Message, text, sizeof(req.Message));
+    req.MessageType = type;
+    req.Message[sizeof(req.Message) - 1] = 0;
+    CheckMediusError(func_00649060(&req));
 }
 
 /* the filtered text handed to the waiting callback, which is then forgotten (SOCOM 1's; OVL1

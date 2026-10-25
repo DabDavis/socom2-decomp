@@ -4945,7 +4945,7 @@
 0x002F4D60 0x90 func_002F4D60  # OVL1
 0x002F4DF0 0xA8 Censor__13CZOnlineLobbyFPCcPFPCcPv_vPv  # OVL1; s1:ui (UINetCensorText and SendChatMsg call it, as SOCOM 1's call Censor)
 0x002F4EA0 0x44 cbCensor__FiiiP24MediusTextFilterResponse  # OVL1; s1:calls by hand (CZOnlineLobby::Censor hands it to MediusTextFilter as SOCOM 1's Censor hands cbCensor: the filtered text at +0x15 to the waiting callback, then the callback and its data cleared)
-0x002F4EF0 0xCC func_002F4EF0  # OVL1
+0x002F4EF0 0xCC cbChatMessage__FiiiP20MediusChatFwdMessage  # OVL1; s1 by hand (MediusInit 0x300840 hands it as the library's first callback, where SOCOM 1's AuxInitNetwork hands cbChatMessage: a MediusChatFwdMessage shown with sprintf '%s: %s' through 0x2A4050, private and clan ones anywhere)
 0x002F4FC0 0x60 func_002F4FC0  # OVL1
 0x002F5020 0x1B8 func_002F5020  # OVL1
 0x002F51E0 0xA8 func_002F51E0  # OVL1
