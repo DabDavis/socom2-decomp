@@ -139,8 +139,8 @@ zdb::CNode *GetMenuNode()
 
 CMenuStack::CMenuStack()
 {
-    m_824 = 0;
-    m_820 = 0;
+    m_top = 0;
+    m_count = 0;
     m_popup = 0;
 }
 
@@ -636,6 +636,30 @@ bool UIToggleAutoMessages(C2DAnimCmdHdr *hdr, float *dT)
         func_003862A0(var, "ON");
         func_005E7FB0(1);
     }
+    return true;
+}
+
+bool UIActivateButton(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *button = ArgText(ArgName(hdr));
+
+    GetMenuStack()->Push(6, button);
+    return true;
+}
+
+bool UIEnableButton(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *button = ArgText(ArgName(hdr));
+
+    GetMenuStack()->Push(7, button);
+    return true;
+}
+
+bool UIDisableButton(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *button = ArgText(ArgName(hdr));
+
+    GetMenuStack()->Push(8, button);
     return true;
 }
 
@@ -1369,7 +1393,17 @@ inline bool RunUICommand(C2DAnimCmdHdr *hdr, float *dT)
 
 /* UI_COMMAND's tick: the command goes to its node's 2D object when the node has one, else to the
  * handler its name registers (the names looked up and left unused are SOCOM 1's too: debug output
- * compiled away) */
+ * compiled away).
+ * OPEN, size 0x2AC of 0x2B4: every instruction is right but the saved registers. The target has
+ * handled s2, node_ref s3, anim s4, the C2D s5 -- and the scan's index in s5 too, set to 0 before
+ * the type's lookup (in the delay slot of `if (!type)`), so it lives across the lookup's strcasecmp
+ * calls. With the lookup in the caller and the index local to RunUICommand's scan, the first half
+ * matches exactly and the index is a2 (its loop placed inline, not after the epilogue with a
+ * trampoline as the target's); with the lookup moved into the inline and the index declared first
+ * (as here) the tail matches and the first half takes anim s2, handled s3, the C2D s4, node_ref s5.
+ * Measured without result: the six declarations permuted (tools/perm.py, best 149 from 156), the
+ * dispatch written out in the tick with i and type among them (best 188 from 195). Next: the index
+ * as a parameter or member the inline's caller owns, or the type's lookup as its own inline */
 bool zAnimUIMenuTick(_zanim_cmd_hdr *cmd, float *dT)
 {
     C2DAnimCmdHdr *hdr = (C2DAnimCmdHdr *)cmd;

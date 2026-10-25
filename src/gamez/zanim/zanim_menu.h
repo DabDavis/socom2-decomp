@@ -316,10 +316,19 @@ public:
     void AddToHistory(const char *name);
     void PopUpDialog(const char *name);
     void FlushHistory(bool all);
+    /* an entry put on top: a command for the screen and its argument (the button handlers inline it,
+     * both builds; the name ours) */
+    void Push(int id, const char *argname)
+    {
+        m_top++;
+        m_entries[m_top].m_id = id;
+        strcpy(m_entries[m_top].m_argname, argname);
+        m_count++;
+    }
 
     CMenuEntry m_entries[40];   // 0x0 (SOCOM 1's 20)
-    int m_820;   // 0x820
-    int m_824;   // 0x824
+    int m_count;   // 0x820: entries pushed (the names ours)
+    int m_top;   // 0x824: the top entry's index
     CMenuHistory m_history;   // 0x828 (SOCOM 1's at 0x418)
     CPopUpDialog *m_popup;   // 0xe40 (SOCOM 1's at 0xA30)
 };
