@@ -189,6 +189,8 @@ public:
     std::vector<CCompassAnchor *> m_anchors;   // 0x118: the nav points' anchors (SOCOM 1's at 0x8c)
     unsigned char _124[0x1808 - 0x124];
     CZNetGame *m_pNetGame;   // 0x1808 (SOCOM 1's at 0x584)
+    unsigned char _180c[0x1860 - 0x180c];
+    float m_music_hold;   // 0x1860: how long the music's raised intensity holds (SOCOM II's; the name ours)
 };
 
 extern CMission theMission;
@@ -317,6 +319,39 @@ bool CMission::FadeToEndMissionTick(float dT)
         }
     }
     return false;
+}
+
+class CZSealBody;
+CZSealBody *ftsGetPlayer();
+
+extern "C" {
+float func_002A4A10(CZSealBody *body, int a, float range);   /* (the danger around the player) */
+extern float data_003DE618;   /* (the raised intensity's hold time) */
+}
+
+/* the music's intensity kept up with the danger around the player: above 1 it is raised and held
+ * for a while, renewed when the hold runs out; once the danger passes, the hold runs down and the
+ * intensity drops to nothing (SOCOM II's; OVL1 0x2A4920) */
+extern "C" void func_002A4920(CMission *mission, float dT)
+{
+    float intensity = 0.0f;
+    CZSealBody *player = ftsGetPlayer();
+
+    if (player)
+        intensity = func_002A4A10(player, 2, 350.0f);
+    if (intensity > 1.0f) {
+        if (mission->m_music_hold <= 0.0f) {
+            CSndJukebox::SetIntensity(intensity);
+            mission->m_music_hold = data_003DE618;
+        }
+        mission->m_music_hold -= dT;
+    } else if (mission->m_music_hold != 0.0f) {
+        mission->m_music_hold -= dT;
+        if (mission->m_music_hold <= 0.0f) {
+            mission->m_music_hold = 0.0f;
+            CSndJukebox::SetIntensity(0.0f);
+        }
+    }
 }
 
 /* a dialog shown for the online game, by its state: in play, the front end opened on it; at a
