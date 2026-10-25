@@ -18,6 +18,8 @@ public:
         m_pRadioChannelDeadTexture = 0;
     }
     virtual void Tick(float dT);
+    /* its textures loaded, listed under its parent (0x239570; the name ours) */
+    void Init(C2D *parent);
 
     zdb::CTexHandle *m_pRadioOffTexture;   // 0x80
     zdb::CTexHandle *m_pRadioChannelTeamTexture;   // 0x84
@@ -35,6 +37,9 @@ public:
         m_pRadioChannelCanTalkTexture = 0;
     }
     virtual void Tick(float dT);
+    /* its textures loaded, listed under its parent (inline: CWhosTalking::Init holds its only
+     * copy; the name ours) */
+    void Init(C2D *parent);
 
     zdb::CTexHandle *m_pRadioChannelInUseTexture;   // 0x80
     zdb::CTexHandle *m_pRadioChannelCanTalkTexture;   // 0x84
@@ -47,6 +52,8 @@ public:
     virtual void Tick(float dT);
     /* the parts placed again (CMPInfoBox::ReInit's last call; 0x238D00, the name ours) */
     void ReInit();
+    /* the parts made and listed (0x238F50; the name ours) */
+    void Init(C2DFont *font);
 
     unsigned char _18[0x20 - 0x18];
     CRadioIcon_Static m_static;   // 0x20
@@ -77,10 +84,18 @@ public:
     float m_y;   // 0x20
     float m_w;   // 0x24
     float m_h;   // 0x28
-    C2DBitmap m_bitmap1;   // 0x30
-    C2DBitmap m_bitmap2;   // 0xb0
-    C2DBitmap m_bitmap3;   // 0x130
-    unsigned char _1b0[0x1d0 - 0x1b0];
+    C2DBitmap m_bitmap1;   // 0x30: the health left
+    C2DBitmap m_bitmap2;   // 0xb0: the rest of the bar (its colour says whether the owner is dead)
+    C2DBitmap m_bitmap3;   // 0x130: the health just lost, draining
+    unsigned char _1b0[0x1b2 - 0x1b0];
+    unsigned char m_draining;   // 0x1b2: the lost part shown
+    unsigned char m_centered : 1;   // 0x1b3: the bar centred on its x
+    unsigned char _1b4[0x1bc - 0x1b4];
+    float m_drainend;   // 0x1bc
+    float m_drainx;   // 0x1c0: where the lost part starts
+    float m_drainw;   // 0x1c4: and how wide it is
+    class CZSealBody *m_owner;   // 0x1c8: the owner last shown
+    unsigned char _1cc[0x1d0 - 0x1cc];
 };   // 0x1d0 bytes
 
 /* the box (its vtable 0x405B40 overrides Off, On and Tick) */
@@ -92,6 +107,8 @@ public:
     void UnInit();
     /* the parts placed again (CHUD::ReInit_Init's; 0x238710, the name ours) */
     void ReInit();
+    /* the parts made and added to the HUD (0x2388A0; the name ours) */
+    void Init(C2DFont *font);
 
     unsigned char _18[0x20 - 0x18];
     CHealthBar m_healthbar;   // 0x20
