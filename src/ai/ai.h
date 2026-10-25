@@ -700,7 +700,13 @@ void FlushPlannerQueue();
 
 /* how the A* search weighs a step (SOCOM 1's; SOCOM II's vtable has a slot more after reset, and
  * its subclasses are CBasicPlanner, CStealthPlanner and CRestrainedPlanner where SOCOM 1's were
- * the *Travel classes). No data: CreatePlanner's statics are built by their vtable store alone */
+ * the *Travel classes). No data: CreatePlanner's statics are built by their vtable store alone.
+ * fcost returns a float ($f0: CBasicPlanner's adds to the base's result). The three fcosts, the
+ * A* loop and ~CAiStar read cells through an inline (a CAiMap::GetCell) that the target inlines
+ * ONE level: its callees are called out of line -- 0x512140 (the cell on the map: its row, then
+ * the row's run), 0x512120 (a layer index below m_layers' size), 0x512100 (the scanlines' [],
+ * 12-byte elements), 0x5120C0 (scanline::GetIndex), 0x5120B0 (m_layers' [], the layer's cells at
+ * +0x28, 8 bytes each) -- the cell left 0 when either test fails */
 class CAiPlanner {
 public:
     virtual void reset();
@@ -709,7 +715,7 @@ public:
     virtual int dist(CAiMap &map, const CAiMapLoc &a, const CAiMapLoc &b);
     virtual bool is_traversable(CAiMap *map, CAiPath *path, const CAiMapLoc &from, CAiMap::DIR dir,
                                 CAiMapLoc &to, CAiCell *&cell);
-    virtual int fcost(CAiMap &map, const CAiMapLoc &from, CAiMap::DIR dir, const CAiMapLoc &to);
+    virtual float fcost(CAiMap &map, const CAiMapLoc &from, CAiMap::DIR dir, const CAiMapLoc &to);
 };
 
 /* a planner that keeps off doors (SOCOM 1's CRestrainedTravel) */
@@ -722,13 +728,13 @@ public:
 /* a planner that keeps to the shadows (SOCOM 1's CStealthTravel) */
 class CStealthPlanner : public CAiPlanner {
 public:
-    virtual int fcost(CAiMap &map, const CAiMapLoc &from, CAiMap::DIR dir, const CAiMapLoc &to);
+    virtual float fcost(CAiMap &map, const CAiMapLoc &from, CAiMap::DIR dir, const CAiMapLoc &to);
 };
 
 /* a planner that keeps to paths (SOCOM 1's CBasicTravel) */
 class CBasicPlanner : public CAiPlanner {
 public:
-    virtual int fcost(CAiMap &map, const CAiMapLoc &from, CAiMap::DIR dir, const CAiMapLoc &to);
+    virtual float fcost(CAiMap &map, const CAiMapLoc &from, CAiMap::DIR dir, const CAiMapLoc &to);
 };
 
 #endif
