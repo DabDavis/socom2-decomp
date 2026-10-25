@@ -1932,29 +1932,29 @@
 0x00219330 0x54 func_00219330  # OVL1
 0x00219390 0x28 Top__26RTStack<15CZBodyAnimBlend>Fv  # OVL1; s1:calls (CBody's Destroy, PopBlend, PushBlend and Tick call it on CBody+0x50, the blend stack, where SOCOM 1's call RTStack<CZBodyAnimBlend>::Top; its body: the index at 8, none when negative; the only copy, in an earlier unit's tail) -- the body lane
 0x002193C0 0x8 func_002193C0  # OVL1
-0x002193D0 0x31C func_002193D0  # OVL1
-0x002196F0 0x250 func_002196F0  # OVL1
-0x00219940 0x134 func_00219940  # OVL1
-0x00219A80 0x200 func_00219A80  # OVL1
-0x00219C80 0x324 func_00219C80  # OVL1
-0x00219FB0 0x240 func_00219FB0  # OVL1
+0x002193D0 0x31C PlaceWeaponText__10CWeaponSelFv  # OVL1; s1:order by hand (the HUD lane: the unit's first function as SOCOM 1's; AfterScrollUp/Down call it, then PlaceHotSwapLabels, as SOCOM 1's do)
+0x002196F0 0x250 PlaceHotSwapLabels__10CWeaponSelFv  # OVL1; s1:order by hand (the HUD lane: second in the unit as SOCOM 1's; called right after PlaceWeaponText by AfterScrollUp/Down as there)
+0x00219940 0x134 PlaceMiddleIcon__10CWeaponSelFv  # OVL1; ours (the HUD lane: SOCOM 1's SetItemPos states 1 and 7 -- one inline line there (1239) -- out of line in SOCOM II: SetItemPos(1/7) and OnOpen call it; the middle icon sized to the menu's height and its texture)
+0x00219A80 0x200 SetItemPos__10CWeaponSelFi  # OVL1; s1:order by hand (the HUD lane: SOCOM 1's SetItemPos(int), which HandleScrollDownState/UpState end on with 5 as there; SOCOM II's is shorter, its pieces in neighbouring functions)
+0x00219C80 0x324 HudTick__10CWeaponSelFP4CPadf  # OVL1; s1:order by hand (the HUD lane: SOCOM 1's HudTick -- CHUD::Tick calls it; the switch on m_openstate through the table 0x3E4B10, OnOpen on the weapon-select button (GetButtonState(4)), the backdrops' half-second fade after)
+0x00219FB0 0x240 TickHotSwap__10CWeaponSelFf  # OVL1; ours (the HUD lane: SOCOM II's, HudTick's last call: the hot-swap highlight (the third backing) pulsed in to 64 and out while the menu is shut, the lit hot-swap label following)
 0x0021A1F0 0x314 func_0021A1F0  # OVL1
-0x0021A510 0xAC func_0021A510  # OVL1
-0x0021A5C0 0x134 func_0021A5C0  # OVL1
-0x0021A700 0x1C8 func_0021A700  # OVL1
-0x0021A8D0 0x1C8 func_0021A8D0  # OVL1
+0x0021A510 0xAC ResetHotSwap__10CWeaponSelFb  # OVL1; ours (the HUD lane: SOCOM II's, no SOCOM 1 counterpart; CHUD::Tick calls it with true right after OnClose/AfterCloseFirst/AfterClose: the hot-swap highlight (the third backing) faded and off, the middle icon off when forced or closed, the hot-swap labels to 80)
+0x0021A5C0 0x134 AfterOpenSecond__10CWeaponSelFv  # OVL1; s1:order by hand (the HUD lane: SOCOM 1's AfterOpenSecond, before AfterScrollUp as there: the arrows loaded from the arrow texture's size, PlaceHotSwapLabels then PlaceWeaponText, state 3; SOCOM II adds the select sound)
+0x0021A700 0x1C8 AfterScrollUp__10CWeaponSelFv  # OVL1; s1:order by hand (the HUD lane: SOCOM 1's AfterScrollUp, the same shape -- the rows shifted up a slot from the fourth, the icons reloaded, PlaceWeaponText and PlaceHotSwapLabels called last; SOCOM II dropped the selection backings' loads)
+0x0021A8D0 0x1C8 AfterScrollDown__10CWeaponSelFv  # OVL1; s1:order by hand (the HUD lane: SOCOM 1's AfterScrollDown, after AfterScrollUp as there, the rows shifted down a slot)
 0x0021AAA0 0x150 AfterClose__10CWeaponSelFv  # OVL1; s1:order by hand (hud_weaponsel.cpp: SOCOM 1's AfterClose, 0x170 there -- GetHUDOwner, the controller's SetMenuState(0) (a flag added), the pad's cross, circle and triangle set up (now behind a null test), the icons, arrows and weapon texts off, m_openstate = 0; three functions before AfterCloseFirst as SOCOM 1's)
-0x0021ABF0 0x258 func_0021ABF0  # OVL1
-0x0021AE50 0x250 func_0021AE50  # OVL1
+0x0021ABF0 0x258 OnScrollUp__10CWeaponSelFv  # OVL1; s1:order by hand (the HUD lane: SOCOM 1's OnScrollUp, after AfterClose as there: state 4, the fourth row brought in with the next selectable item (isSelectableItem's loop), the scroll-up sound)
+0x0021AE50 0x250 OnScrollDown__10CWeaponSelFv  # OVL1; s1:order by hand (the HUD lane: SOCOM 1's OnScrollDown, after OnScrollUp as there: state 5, the fourth row brought in at the top with the previous selectable item, the scroll-down sound)
 0x0021B0A0 0xA0 AfterCloseFirst__10CWeaponSelFv  # OVL1; s1:order by hand (hud_weaponsel.cpp: right before OnClose as SOCOM 1's AfterCloseFirst, 0xA0 against 0xC0: the folded menu's height 2 + (32 + y1) - (y1 - 1), half of it the centre, the goal at the second row, m_openstate 7, two icons off -- the in-game selector's inlined AfterCloseFirst at its own offsets)
-0x0021B140 0x298 func_0021B140  # OVL1
+0x0021B140 0x298 HandleCloseFirstState__10CWeaponSelFf  # OVL1; ours (the HUD lane: HudTick's state 6 (its jump table 0x3E4B10), SOCOM 1's inline state-6 code -- four Increments by 475*dT, SetItemPos(6), AfterCloseFirst at the goal (inlined here) -- made a function of its own)
 0x0021B3E0 0x114 OnClose__10CWeaponSelFv  # OVL1; s1:order by hand (hud_weaponsel.cpp: SOCOM 1's OnClose, 0x130 there -- GetHUDOwner, the arrows and backdrop off, m_openstate = 6 at 0xC58, the HUD's m_usehudret cleared, the kit's SetCurReticule(false), the seven texts off; UnInit 0x21CBA0 inlines the same body behind its open test as SOCOM 1's UnInit calls OnClose)
-0x0021B500 0x314 func_0021B500  # OVL1
-0x0021B820 0x324 func_0021B820  # OVL1
-0x0021BB50 0x244 func_0021BB50  # OVL1
-0x0021BDA0 0x734 func_0021BDA0  # OVL1
-0x0021C4E0 0x210 func_0021C4E0  # OVL1
-0x0021C6F0 0x4A4 func_0021C6F0  # OVL1
+0x0021B500 0x314 HandleScrollDownState__10CWeaponSelFf  # OVL1; s1:order by hand (the HUD lane: SOCOM 1's HandleScrollDownState, after OnClose as there: four inlined Increments by 2*475*dT, the fades from the first row's progress, AfterScrollDown at the goal, SetItemPos(5))
+0x0021B820 0x324 HandleScrollUpState__10CWeaponSelFf  # OVL1; s1:order by hand (the HUD lane: SOCOM 1's HandleScrollUpState, after HandleScrollDownState as there: four inlined Increments, AfterScrollUp at the goal, SetItemPos(4))
+0x0021BB50 0x244 PulseSelectionArrows__10CWeaponSelFf  # OVL1; s1:order by hand (the HUD lane: SOCOM 1's PulseSelectionArrows, after the two scroll-state handlers as there: the arrows' C2DPoly colours compared, the brighter faded by 500*dT through CPnt3D::Sub, else both pulsed 60-120 by 250*dT)
+0x0021BDA0 0x734 HandleOpenState__10CWeaponSelFP4CPadf  # OVL1; s1:order by hand (the HUD lane: HudTick's state-3 call with the pad and dT, as SOCOM 1's HandleOpenState; after PulseSelectionArrows as there)
+0x0021C4E0 0x210 HandleOpenFirstState__10CWeaponSelFf  # OVL1; ours (the HUD lane: HudTick's state 1 (its jump table 0x3E4B10), SOCOM 1's inline state-1 code -- two Increments by 475*dT, SetItemPos(1), AfterOpenFirst at the goal -- made a function of its own, AfterOpenFirst inlined)
+0x0021C6F0 0x4A4 OnOpen__10CWeaponSelFv  # OVL1; s1:order by hand (the HUD lane: HudTick's state-0 call, as SOCOM 1's OnOpen; after the opening state's function, before UnInit, as there)
 0x0021CBA0 0x194 UnInit__10CWeaponSelFv  # OVL1; s1:calls (CHUD::ReInit_Uninit's next, as SOCOM 1's); by hand (CHUD::ReInit_Uninit calls it on CHUD+0x1A50, the member 0x21D760 constructs with CWeaponSel's vtable 0x405610; hud_weaponsel.cpp's UnInit, Init, ctor at its end as SOCOM 1's)
 0x0021CD40 0xA1C Init__10CWeaponSelFPQ23zdb6CWorldP7C2DFont  # OVL1; s1:calls by hand (the HUD lane: CHUD::Init calls it on CHUD+0x1A50, the single-player selector, with the world and the HUD's font, where SOCOM 1's calls CWeaponSel::Init(CWorld *, C2DFont *); "reticuletex.tif" and ".TCM_SELECT" as SOCOM 1's)
 0x0021D760 0x270 __ct__10CWeaponSelFv  # OVL1; by hand (stores CWeaponSel's vtable 0x405610; CHUD's constructor builds CHUD+0x1A50 with it; hud_weaponsel.cpp's last function, as SOCOM 1's)
@@ -6679,7 +6679,7 @@
 0x003625E0 0x320 func_003625E0  # OVL1
 0x00362900 0x220 func_00362900  # OVL1
 0x00362B20 0x4C SetFont__9C2DStringFP7C2DFont  # OVL1; s1:align
-0x00362B70 0x250 func_00362B70  # OVL1
+0x00362B70 0x250 UpdatePos__9C2DStringFv  # OVL1; s1:calls by hand (the HUD lane: SOCOM 1's C2DString::UpdatePos -- PlaceHotSwapLabels calls it after each label's Load and SetPos at the same places in both builds; CTeamNames and the info box after SetString)
 0x00362DC0 0x30 DeleteCharacter__9C2DStringFv  # OVL1; by hand (c2dstring.cpp: SOCOM II's, before NewLine: the last character dropped while more than one remains; the name ours)
 0x00362DF0 0x8 NewLine__9C2DStringFv  # OVL1; s1:order by hand (c2dstring.cpp: SOCOM 1's NewLine, before AddCharacter as there; it tail-calls AddCharacter with '\n')
 0x00362E00 0x228 AddCharacter__9C2DStringFc  # OVL1; s1:callee by hand (NewLine tail-calls it with '\n', as SOCOM 1's NewLine calls AddCharacter)
@@ -6881,8 +6881,8 @@
 0x003717C0 0x21C Draw__13CHProgressBarFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003719E0 0x30 Tick__13CHProgressBarFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00371A10 0x18C func_00371A10  # OVL1
-0x00371BA0 0xA8 func_00371BA0  # OVL1
-0x00371C50 0xB0 func_00371C50  # OVL1
+0x00371BA0 0xA8 UpdateUIVar__13CHProgressBarFP11CUIVariable  # OVL1; by hand (the HUD lane: the thunk 0x37D0A0 (-128, CHProgressBar's UIVarMixin table) jumps to it; the variable's number into the bar's time at 0xA8, the fill zeroed, as SOCOM 1's CHProgressBar::UpdateUIVar)
+0x00371C50 0xB0 UpdateUIVar__10CSliderBarFP11CUIVariable  # OVL1; by hand (the HUD lane: the thunk 0x37D080 (-192, CSliderBar's UIVarMixin table) jumps to it; a real mapped about the centre at 0x450 into the value at 0x440, as SOCOM 1's CSliderBar::UpdateUIVar)
 0x00371D00 0x4D8 func_00371D00  # OVL1
 0x003721E0 0x3C func_003721E0  # OVL1
 0x00372220 0x18C Draw__10CSliderBarFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -6915,7 +6915,7 @@
 0x003767C0 0xA8 GetZAnimCmdType__9C2DButtonFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00376870 0x150 func_00376870  # OVL1
 0x003769C0 0x180 ParseZAnimCmd__9C2DButtonFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00376B40 0x90 func_00376B40  # OVL1
+0x00376B40 0x90 UpdateUIVar__9C2DButtonFP11CUIVariable  # OVL1; by hand (the HUD lane: the thunk 0x37D0E0 (-192, C2DButton's UIVarMixin table) jumps to it; its own variable's text (0x3860F0 into a 10500-byte buffer) made the caption, as SOCOM 1's C2DButton::UpdateUIVar)
 0x00376BD0 0x464 func_00376BD0  # OVL1
 0x00377040 0x338 HandlePad__9C2DButtonFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00377380 0x6C func_00377380  # OVL1
@@ -6999,14 +6999,14 @@
 0x0037C1A0 0x8 func_0037C1A0  # OVL1
 0x0037C1B0 0x70 __dt__11CRadioStripFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037C220 0xA0 DrawBackground__9C2DButtonFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0037C2C0 0x24 func_0037C2C0  # OVL1; split by the integrator: a 0x24-byte virtual call (slot 0x34 through the object at +0x1A0, the float scaled by 128), padded to 0x37C2F0
-0x0037C2F0 0xE8 func_0037C2F0  # OVL1; split from 0x37C2C0 by the integrator: a destructor (two vtable stores, the members' tests) reached only by the this-adjusting thunk 0x37D0D0's `j`, so the seed never cut it (the UI lane's find)
+0x0037C2C0 0x24 SetBackgroundAlpha__9C2DButtonFf  # OVL1; split by the integrator: a 0x24-byte virtual call (slot 0x34 through the object at +0x1A0, the float scaled by 128), padded to 0x37C2F0; s1:vtable (the HUD lane: s1vtables' pairing; the background at 0x1A0 given 128 times the alpha)
+0x0037C2F0 0xE8 __dt__9CCheckBoxFv  # OVL1; split from 0x37C2C0 by the integrator: a destructor (two vtable stores, the members' tests) reached only by the this-adjusting thunk 0x37D0D0's `j`, so the seed never cut it (the UI lane's find); s1:vtable (the HUD lane: slot 0 of CCheckBox's table 0x4074C0 -- s1vtables' pairing -- and the thunk 0x37D0D0's target: the check's CPlainBmp, two ActionItems, then ~C2DButton)
 0x0037C3E0 0x8 func_0037C3E0  # OVL1
 0x0037C3F0 0xD0 __dt__13CHProgressBarFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037C4C0 0xD0 __dt__10CSliderBarFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037C590 0x70 __dt__14CHandlerButtonFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0037C600 0x14 func_0037C600  # OVL1; split by the integrator: a 0x14-byte virtual call (slot 0x38 through the object at +0x1C), padded to 0x37C620
-0x0037C620 0xE8 func_0037C620  # OVL1; split from 0x37C600 by the integrator: a destructor (vtable stores at +0xC and +0x98, DetachUIVar) reached only by the this-adjusting thunk 0x37D030's `j` (addiu a0,a0,-152), so the seed never cut it (the UI lane's find)
+0x0037C600 0x14 Tick__13C3StateButtonFf  # OVL1; split by the integrator: a 0x14-byte virtual call (slot 0x38 through the object at +0x1C), padded to 0x37C620; s1:vtable (the HUD lane: s1vtables' pairing; the caption's Tick through its vtable, the caption a C2DString at 0x1C as SOCOM 1's _strCaption)
+0x0037C620 0xE8 __dt__9CTeleTypeFv  # OVL1; split from 0x37C600 by the integrator: a destructor (vtable stores at +0xC and +0x98, DetachUIVar) reached only by the this-adjusting thunk 0x37D030's `j` (addiu a0,a0,-152), so the seed never cut it (the UI lane's find); s1:vtable (the HUD lane: slot 0 of CTeleType's table 0x4078A0 -- s1vtables' pairing -- and the thunk 0x37D030's target; its stores CTeleType's two tables, the cursor's CPlainBmp, the text's string at 0xC0, then ~CRenderableString)
 0x0037C710 0x18 func_0037C710  # OVL1
 0x0037C730 0x148 func_0037C730  # OVL1
 0x0037C880 0x84 func_0037C880  # OVL1
