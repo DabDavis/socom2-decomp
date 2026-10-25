@@ -62,7 +62,6 @@ void func_00309A10();
 void func_003B7150(int arg);
 void func_00356B30(void *texbuffer);
 void func_001ED000(void *v);
-void func_001ECF60(void *v);
 int func_00288930();
 void func_003B1990(int addr, int buffer, int size);   /* CVideo::ReadGsMemory */
 void func_003B0B90(int a, int b, int w, int h);
@@ -301,6 +300,31 @@ void *func_001EEB40(void *str, const char *s)
 }
 #pragma auto_inline reset
 
+/* zsys.h's FreeVector, but a plain function template here (not inline: MW auto-inlines no
+ * template, so UnInit calls the instance, which follows it -- OVL1 0x1ECF60 -- with the vector's
+ * constructor and swap inlined whole, its clear (0x1EF310) and its temporary's deleter destructor
+ * (0x1EF320, with 0) called, as a class vector's out-of-class members are) */
+template <class V>
+void FreeVector(V &v)
+{
+    V tmp;
+
+    v.clear();
+    v.swap(tmp);
+}
+
+/* a film's cue (8 bytes: the vector's reserve copies a float and a word; built by 0x1EDEC0, the
+ * float first -- the names ours) */
+struct CMovieCue {
+    CMovieCue(float time, int item) : m_time(time), m_item(item) {}
+
+    float m_time;
+    int m_item;
+};
+
+/* the film's cues (a class vector of them) */
+typedef std::vector<CMovieCue> CMovieCueVector;
+
 /* the load thread's stack (SOCOM 1's static array of it; SOCOM II's allocated once) */
 static void *load_thread_stack;
 
@@ -327,7 +351,7 @@ void CCinematicState::UnInit()
     }
     func_00356B30(zdb::CTexManager::m_texmanager.data_[zdb::CTexManager::TexPhase[54]]);
     func_001ED000(data_00408BD0);
-    func_001ECF60(data_00408BD0);
+    FreeVector(*(CMovieCueVector *)data_00408BD0);
     if (m_2a) {
         zSysFifoEnd();
         zSysFifoDisable();
