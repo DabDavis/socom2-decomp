@@ -904,7 +904,11 @@ def stale(st: E.SymbolTable) -> set[int]:
         own = f"func_{a:08X}"
         gone = any(r not in names and r != own and renamed(r)
                    for r in re.findall(r"\b(func_[0-9A-F]{8})\b", txt))
-        if s is None or not (f"{s.name}(" in txt or f" {s.name} */" in txt) or gone:
+        # a template-named row's draft defines its placeholder and renames it in the object
+        # (`/* sc: as=OLD NEW */`): stale when NEW is no longer the map's name
+        m = re.search(r"/\* sc: as=(\S+) (\S+) \*/", txt)
+        renamed_away = m is not None and s is not None and m.group(2) != s.name
+        if s is None or not (f"{s.name}(" in txt or f" {s.name} */" in txt) or gone or renamed_away:
             out.add(a)
     return out
 

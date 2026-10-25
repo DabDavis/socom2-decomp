@@ -676,6 +676,34 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     leaves;
   - SOCOM 1 calls CGEdge's constructor and CGEdge::Delete out of line, as SOCOM II does: both
     need `#pragma auto_inline off`.
+- **Out-of-class template members: never into a unit's own functions** (the entity lane's
+  measurement, round 6): an MSL template member defined after its class and not declared
+  `inline` is never inlined into the unit's own functions; it is inlined into tail code --
+  implicit destructors, out-of-line template copies, static initialisers -- once one of the
+  unit's own functions has instantiated it. Declared `inline` it behaves as an in-class member.
+  So `__sinit_node_assetlib.cpp` inlines the list deleter's constructor (CAssetList's constructor
+  instantiated it) where `__sinit_ent_main.cpp` calls it; and a range erase instantiated by the
+  unit's own code (a clear, an erase, remove/remove_if) makes the tail's implicit list
+  destructors inline ~list one level and call ~__list_imp (~CEntityList, ~CAssetList: proven by
+  removing RemoveAll/PurgeEntities/DoRecycleEntity, after which ~CEntityList inlines the whole
+  chain). `#pragma inline_depth`/`always_inline` act only through their state at the unit's end.
+  Still unexplained: ~C2D and ~CHUD's flare list inline four destructor levels plus the deleter's
+  iterator temporaries, which every probe says costs a fifth.
+- **Tells from the HUD, round 8** (the MakePackets, the weapon selectors, the line map):
+  - a cursor of a different pointer type than the packet (`sceVu0FVECTOR *` from the
+    `u_long128 *`) keeps MW from substituting `p = packet` into later uses;
+  - one `p++` per quadword: MW folds one step into the next access and materialises every
+    second (steps of 32); a `p += 2` block folds whole into constant offsets;
+  - `SCE_GIF_SET_TAG` with a variable EOP ORs `(eop<<15 | nloop | pre<<46)`, then `prim<<47`,
+    then `nreg<<60`; with only the PRIM variable the constants fold into one word;
+  - a brace-initialised PNT2D local is zeroed bytewise first: assign the fields instead;
+  - MW devirtualises calls on a global object, but calls on a member of a global array element
+    go through the vtable as written;
+  - `if (!(a && b && c && d)) return false; return true;` lays the false block before the true
+    one; `if (a && ...) return true; return false;` puts true first;
+  - an inline accessor on a product's last factor makes it the right operand of the final
+    multiply; `n > 1` branches on `sltiu at` with the delay slot filled where `n >= 2`
+    materialises the test; `delete p` under its own `if (p)` keeps two null tests.
 - **The class vector's deleter destructor is out of class** (include/vector): MSL 3.0.1 defines
   it after the class body, not inline, so MW emits it in each unit's template tail and inlines it
   only where the unit has already instantiated it -- an implicit destructor chain over a class

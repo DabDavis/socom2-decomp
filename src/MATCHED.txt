@@ -345,6 +345,8 @@
 0x0020F5A0 func_0020F5A0
 0x00210120 func_00210120
 0x00210130 func_00210130
+0x00210140 hudAddPolyType__FP5_zrdr
+0x00210210 hudAddLineType__FP5_zrdr
 0x002105E0 func_002105E0
 0x002105F0 func_002105F0
 0x00210600 func_00210600
@@ -352,6 +354,7 @@
 0x002107C0 func_002107C0
 0x00210850 func_00210850
 0x00210A60 func_00210A60
+0x00210A70 GetPt__Q225@unnamed@hud_linemap_cpp@12CAiLinePtItrCFv
 0x00210FA0 func_00210FA0
 0x00211030 func_00211030
 0x002110C0 func_002110C0
@@ -387,7 +390,11 @@
 0x00219090 __dt__14BitmapReticuleFv
 0x00219330 func_00219330
 0x002193C0 func_002193C0
-0x0021B0A0 func_0021B0A0
+0x0021AAA0 AfterClose__10CWeaponSelFv
+0x0021B0A0 AfterCloseFirst__10CWeaponSelFv
+0x0021B3E0 OnClose__10CWeaponSelFv
+0x0021CBA0 UnInit__10CWeaponSelFv
+0x0021DE50 UnInit__14CZActionBitmapFv
 0x0021F120 func_0021F120
 0x00220870 func_00220870
 0x00220B50 func_00220B50
@@ -430,6 +437,9 @@
 0x00226960 On__16CMPTeammateNamesFv
 0x002271D0 UnInit__16CMPTeammateNamesFv
 0x00227240 Init__16CMPTeammateNamesFv
+0x00227650 SwitchOffText__16CInGameWeaponSelFv
+0x00227730 AfterClose__16CInGameWeaponSelFv
+0x00227880 Clear__16CInGameWeaponSelFv
 0x00227960 UnInit__16CInGameWeaponSelFv
 0x002284C0 __ct__16CInGameWeaponSelFv
 0x00228660 __dt__8CFlashFXFv
@@ -552,6 +562,7 @@
 0x0023DF80 func_0023DF80
 0x0023DFD0 __dt__11CWeaponSlotFv
 0x0023E700 Off__12CMPWeaponSelFv
+0x0023E800 On__12CMPWeaponSelFv
 0x0023EBC0 func_0023EBC0
 0x00240580 func_00240580
 0x002405F0 func_002405F0
@@ -1125,6 +1136,7 @@
 0x0029DC30 __ct__7CPacketFP7CPacketUiUi
 0x0029E060 OnDestroy__8CConsoleFv
 0x0029E070 OnDisconnect__8CConsoleFv
+0x0029E080 Disconnect__8CConsoleFv
 0x0029E0D0 Initalize__8CConsoleFv
 0x0029E3E0 func_0029E3E0
 0x0029E470 GetEntityByIndex__11CEntityListCFUi
@@ -2774,6 +2786,7 @@
 0x0035F8F0 GetAssetLibs__7C2DLineFRQ23C2D8CLibList
 0x00360260 SetClipInfo__7C2DLineFPA4_fPA4_fPA4_f
 0x003602F0 FillClipInfo__7C2DLineFPA4_fPA4_fPA4_f
+0x00360380 MakePacket__7C2DLineFPQ23zdb7CCamera
 0x003604A0 Draw__7C2DLineFPQ23zdb7CCamera
 0x00360500 SetUV__7C2DLineFffff
 0x00360520 SetPos__7C2DLineFiiii
@@ -2787,6 +2800,7 @@
 0x003608F0 __ct__7C2DLineFv
 0x00360A20 GetAssetLibs__9C2DTriFanFRQ23C2D8CLibList
 0x00360C50 __ct__9C2DTriFanFv
+0x00360CA0 MakePacket__7C2DPolyFPQ23zdb7CCamera
 0x00360F60 Draw__7C2DPolyFPQ23zdb7CCamera
 0x00360FC0 SetPos__7C2DPolyFffffff
 0x00361000 SetUV__7C2DPolyFffffff
@@ -2829,6 +2843,7 @@
 0x003641F0 GetAssetLibs__9C2DBitmapFRQ23C2D8CLibList
 0x003642D0 TickFade__9C2DBitmapFv
 0x00364390 Reset__9C2DBitmapFv
+0x003643B0 MakePacket__9C2DBitmapFPQ23zdb7CCameraPQ23zdb16CTextureRelocMgrPC7CMatrix
 0x00364660 SetPos__9C2DBitmapFiiii
 0x00364680 SetPos__9C2DBitmapFii
 0x003646D0 Load__9C2DBitmapFffffPQ23zdb10CTexHandle
@@ -3323,7 +3338,7 @@
 0x003BB000 Clear__Q23zdb8CVisDataFv
 0x003BB110 __dt__Q23zdb24CScrollingTexture_ObjectFv
 0x003BB180 __ct__Q23zdb24CScrollingTexture_ObjectFv
-0x003BB1A0 __dt__Q23std68list<PQ23zdb12FILTER_PLANE,Q23std32allocator<PQ23zdb12FILTER_PLANE>>Fv
+0x003BB1A0 func_003BB1A0
 0x003BB2A0 __ct__Q23zdb16CPreLight_ObjectFv
 0x003BB470 func_003BB470
 0x003BB4E0 __ct__Q23zdb16CMaterial_ObjectFv
@@ -3623,6 +3638,7 @@
 0x004026C0 __sinit_zmath_pnt3d.cpp
 0x00402750 __sinit_zmath_pnt4d.cpp
 0x00402960 __sinit_node_util.cpp
+0x00402A00 __sinit_node_assetlib.cpp
 0x00403230 __sinit_zsnd_csndinstance.cpp
 0x004C53C0 func_004C53C0
 0x004C5670 func_004C5670

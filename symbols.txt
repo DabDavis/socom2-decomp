@@ -7947,7 +7947,7 @@
 0x003BB050 0xC0 Read__Q23zdb24CScrollingTexture_ObjectFPQ23zdb9CSaveLoad  # OVL1; s1:calls
 0x003BB110 0x68 __dt__Q23zdb24CScrollingTexture_ObjectFv  # OVL1; s1:align
 0x003BB180 0x1C __ct__Q23zdb24CScrollingTexture_ObjectFv  # OVL1; s1:calls by hand (CWorld's constructor builds m_ScrollingTexture_Object at 0x5cc through it)
-0x003BB1A0 0x90 __dt__Q23std68list<PQ23zdb12FILTER_PLANE,Q23std32allocator<PQ23zdb12FILTER_PLANE>>Fv  # OVL1; s1:align
+0x003BB1A0 0x90 func_003BB1A0  # OVL1; s1:align; by hand (the entity lane: not list<FILTER_PLANE*>'s destructor -- it tests this on s1 once, then four times on s1+36 before the erase: the implicit destructor of a class holding a list-derived member at +36)
 0x003BB230 0x68 __dt__Q23zdb16CPreLight_ObjectFv  # OVL1; s1:calls
 0x003BB2A0 0x1C __ct__Q23zdb16CPreLight_ObjectFv  # OVL1; s1:calls by hand (CWorld's constructor builds m_PreLight_Object at 0x5bc through it)
 0x003BB2C0 0x1B0 func_003BB2C0  # OVL1
