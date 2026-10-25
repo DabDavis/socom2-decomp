@@ -1174,6 +1174,22 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     constructor five inline levels deep) -- one more for the corrected level;
   - CTurret's unit (veh_turret.cpp) runs 0x3A71A0-~0x3ACA5F, opening with its inline virtual
     overrides' copies; CVehicle's 0x3ACA60-~0x3AFB2F; zvid_init.cpp from 0x3AFBA0.
+- **Tells from the AI states, round 3** (the states' Ticks and signals):
+  - every state's Tick returns a byte enum, ending `return (AI_RESULT)(m_done = m_active ?
+    AI_RUNNING : AI_DONE);` (`li 1; movz; andi; sw`);
+  - one inline does all the `dsll32`/`dsrl32` pairs on m_flags (`|= 0x80000000; &= ~clear; |=
+    set`, called with constants); `&= ~0` stays as a bare zero extension;
+  - Rfloat's random factor taken into its own local gives the target's float-register order
+    (CSealCtrlSquirm::Initalize); odds passed by value and read through a `const float &` local
+    stay in the frame across rand();
+  - spelling an argument `(char *)ai + K` stops MW sharing that address with a later field load;
+  - a member added to a header class hides a free function of the same name in another unit;
+  - `bool b = !(x == 0) && y == 4;` gives the target's `xor/sltiu/xori`;
+  - CAiState::Create (0x5F6550) inlines all 30 state constructors, their out-of-line copies after
+    it in reverse first-use order; CAiStateStack is 0x20 bytes in SOCOM II (SOCOM 1's
+    controller state timer folded in at +0x18); CAiMapLoc's default constructor is empty in
+    SOCOM II (0x516120) -- zentity.h's stand-in, which reads `invalid`, is not it (open, with
+    the entity header).
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
