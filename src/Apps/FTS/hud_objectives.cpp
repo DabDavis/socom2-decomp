@@ -5,12 +5,15 @@
 #include <list>
 
 #include "../../gamez/ztwod/ztwod.h"
+#include "../../gamez/zvid/zvid.h"
 #include "hud_missioncams.h"
 
 /* the HUD: its menu state and mission cameras placed (SOCOM II's offsets) */
 class CHUD {
 public:
-    unsigned char _0[0x1a220];
+    unsigned char _0[0x498];
+    C2DFont *m_myfont;   // 0x498
+    unsigned char _49c[0x1a220 - 0x49c];
     MENU_STATE m_menustate;   // 0x1a220
     unsigned char _1a221[0x1a2dc - 0x1a221];
     CZHudMissionCams m_missioncams;   // 0x1a2dc
@@ -35,6 +38,21 @@ static float s_pulserate = 1000.0f;
 static float s_unselectedtrans = 80.0f;
 /* an unselected name's colour (OVL1 bss 0x409EA0, three floats; no row yet) */
 extern PNT4D data_00409EA0;
+/* the backdrop over the whole screen, the map's frame, its box and four edges, the title bars and
+ * the boxes RefreshStatics lays out (OVL1 bss from 0x4090F0, statics of this unit's, no rows yet) */
+extern C2DBitmapPoly data_004090F0;
+extern C2DBitmap data_004092F0;
+extern C2DBitmap data_00409380;
+extern C2DBitmap data_00409410[4];
+extern C2DBitmap data_00409620;
+extern C2DBitmap data_00409760;
+extern C2DBitmap data_004097F0;
+extern C2DBitmap data_00409930;
+extern C2DBitmap data_00409A70;
+/* the map frame's alpha (data 0x3DC440: a variable, read with lwc1) */
+static float s_frametrans = 128.0f;
+/* a string placed by its position and centring (no row named yet) */
+extern "C" void func_00362B70(C2DString *s);
 /* the strings RefreshStatics sets up (OVL1 bss 0x4096B0-0x409E8F, statics of this unit's, no rows
  * yet: called directly, as globals are) */
 extern C2DString data_004096B0;
@@ -103,6 +121,7 @@ public:
     virtual void Draw(zdb::CCamera *cam);
     virtual void Tick(float dT);
     void Init();
+    void RefreshStatics();
     void SetCurColor(int index);
     static bool IsPlayingAnimation();
     /* an objective's index, if it is one (inline in SOCOM II: no copy of its own). SOCOM 1's
@@ -385,4 +404,99 @@ void CZObjectiveList::MissionEndCleanup()
 bool CZObjectiveList::IsPlayingAnimation()
 {
     return theHUD->m_missioncams.IsPlaying();
+}
+
+namespace zdb {
+class CAssetList {
+public:
+    CTexHandle *GetTexHandle(const char *name);
+};
+
+class CAssetMgr {
+public:
+    static CAssetList m_assets;
+};
+}
+
+/* the tactical map's statics laid out and listed: the darkened screen, the map's frame and edges,
+ * the title bars and their titles, the legend's box and its six lines (SOCOM 1's; moved to the
+ * unit's end in SOCOM II, so first in the image after the implicit destructor) */
+void CZObjectiveList::RefreshStatics()
+{
+    unsigned int i;
+    zdb::CTexHandle *tex = zdb::CAssetMgr::m_assets.GetTexHandle("newweapnbkrnd.tif");
+
+    push_back(&data_004090F0);
+    data_004090F0.SetPos(0.0f, 0.0f, zVid.renderWidth, zVid.renderHeight);
+    data_004090F0.SetHasTexture(false);
+    data_004090F0.SetColor(0.0f, 0.0f, 0.0f);
+    data_004090F0.SetTrans(100.0f);
+    data_004090F0.SetTrans(1, 0.0f);
+    data_004090F0.SetTrans(2, 0.0f);
+    data_004092F0.SetHasTexture(false);
+    data_004092F0.SetPos(230, 60, 630, 365);
+    data_004092F0.SetIsTrans(true);
+    data_004092F0.SetColor(0.0f, 0.0f, 0.0f);
+    data_004092F0.SetTrans(s_frametrans);
+    push_back(&data_004092F0);
+    data_00409380.Load(230.0f, 60.0f, 630.0f, 365.0f, tex);
+    push_back(&data_00409380);
+    data_00409380.SetUV(0.3f, 0.3f, 0.4f, 0.4f);
+    data_00409380.SetTrans(72.0f);
+    for (i = 0; i < 4; i++) {
+        data_00409410[i].SetHasTexture(false);
+        data_00409410[i].SetColor(64.0f, 128.0f, 128.0f);
+        data_00409410[i].SetTrans(128.0f);
+        push_back(&data_00409410[i]);
+    }
+    data_00409410[0].SetPos(230, 60, 232, 365);
+    data_00409410[1].SetPos(230, 60, 630, 62);
+    data_00409410[2].SetPos(630, 60, 628, 365);
+    data_00409410[3].SetPos(230, 363, 630, 365);
+    data_00409620.Load(230.0f, 15.0f, 630.0f, 55.0f, tex);
+    push_back(&data_00409620);
+    data_00409620.SetUV(0.3f, 0.3f, 0.4f, 0.4f);
+    data_00409620.SetTrans(128.0f);
+    data_004096B0.Load(1.5f, "TACTICAL MAP", theHUD->m_myfont, 430.0f, 48.0f, true);
+    push_back(&data_004096B0);
+    data_004096B0.m_isCentered = 1;
+    func_00362B70(&data_004096B0);
+    data_00409760.Load(10.0f, 84.0f, 224.0f, 365.0f, tex);
+    data_00409760.SetUV(0.3f, 0.3f, 0.4f, 0.4f);
+    data_00409760.SetTrans(72.0f);
+    push_back(&data_00409760);
+    data_004097F0.Load(10.0f, 60.0f, 224.0f, 84.0f, tex);
+    data_004097F0.SetUV(0.3f, 0.3f, 0.4f, 0.4f);
+    data_004097F0.SetTrans(128.0f);
+    push_back(&data_004097F0);
+    data_00409880.Load(0.8f, "\xa6  PLAY MOVIE", theHUD->m_myfont, 20.0f, 77.0f, true);
+    push_back(&data_00409880);
+    data_00409930.Load(10.0f, 15.0f, 224.0f, 55.0f, tex);
+    push_back(&data_00409930);
+    data_00409930.SetUV(0.3f, 0.3f, 0.4f, 0.4f);
+    data_00409930.SetTrans(128.0f);
+    data_004099C0.Load(1.5f, "OBJECTIVES", theHUD->m_myfont, 117.0f, 48.0f, true);
+    push_back(&data_004099C0);
+    data_004099C0.m_isCentered = 1;
+    func_00362B70(&data_004099C0);
+    data_00409A70.Load(10.0f, 370.0f, 630.0f, 434.0f, tex);
+    push_back(&data_00409A70);
+    data_00409A70.SetUV(0.3f, 0.3f, 0.4f, 0.4f);
+    data_00409A70.SetTrans(128.0f);
+    for (unsigned int j = 0; j < 6; j++) {
+        data_00409B00[j].Load(0.8f, " ", theHUD->m_myfont, 0.0f, 0.0f, true);
+        push_back(&data_00409B00[j]);
+    }
+    data_00409B00[0].SetString("\xb4  SNAP TO PLAYER", true);
+    data_00409B00[0].SetPos(20, 395);
+    data_00409B00[1].SetString("\xb7  SNAP TO OBJECTIVE", true);
+    data_00409B00[1].SetPos(20, 419);
+    data_00409B00[2].SetString("LEFT ANALOG STICK = MOVE MAP", true);
+    data_00409B00[2].SetPos(230, 395);
+    data_00409B00[3].SetString("RIGHT ANALOG STICK = ZOOM MAP", true);
+    data_00409B00[3].SetPos(230, 419);
+    data_00409B00[4].SetString("\xac  RESUME GAME", true);
+    data_00409B00[4].SetPos(500, 395);
+    data_00409B00[5].SetString("\xbe  LEGEND", true);
+    data_00409B00[5].SetPos(500, 419);
 }

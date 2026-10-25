@@ -7,8 +7,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+s32 FindRoom__14BriefingRoomDBFPCc(M2C_UNK *, s32); /* extern */
 s32 IsClanTeamAllowed__FUi(s32);                    /* extern */
-s32 func_002E4470(M2C_UNK *, s32);                  /* extern */
 char *func_002E4570(s32, s32);                      /* extern */
 extern M2C_UNK data_0044F568;
 
@@ -24,7 +24,7 @@ s32 func_002F8C60(char *arg0, s32 arg1) {
     } else {
         var_a1 = 0;
     }
-    temp_v0 = func_002E4470(&data_0044F568, var_a1);
+    temp_v0 = FindRoom__14BriefingRoomDBFPCc(&data_0044F568, var_a1);
     if (temp_v0 != 0) {
         temp_v0_2 = func_002E4570(temp_v0, arg1);
         if ((temp_v0_2 != NULL) && (IsClanTeamAllowed__FUi(SC_MEMBER(temp_v0_2, s32 *, 0x3C)) == 0)) {

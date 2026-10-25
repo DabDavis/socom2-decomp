@@ -44,10 +44,160 @@ static inline CPad *GetPad(unsigned int n)
 class CHUD {
 public:
     static CZSealBody *GetHUDOwner();
+    static PNT4D m_hud_textcolor;
 
     unsigned char _0[0xb1];
     bool m_usehudret;   // 0xb1
 };
+
+namespace zdb {
+class CAssetList {
+public:
+    CTexHandle *GetTexHandle(const char *name);
+};
+
+class CAssetMgr {
+public:
+    static CAssetList m_assets;
+};
+}
+
+/* a texture of the world's by name (hud_main.cpp's) */
+zdb::CTexture *GetTextureByName(zdb::CWorld *world, const char *name);
+
+class CSnd {
+public:
+    static CSnd *GetSoundByName(const char *name);
+};
+
+/* the corner boxes' and the off arrow's textures (hud_main.cpp's data; SOCOM 1's
+ * c_szCornerBoxesTx) */
+extern const char *data_003E3048;
+extern const char *data_003E3068;
+
+/* the selector's width, and its rows' tops (the unit's statics: its initialiser sets them from
+ * the HUD's layout) */
+extern int data_0040C108;
+extern float data_003E4A90;
+extern float data_003E4A98;
+extern float data_003E4AA0;
+
+/* the textures fetched, the backdrops and backings loaded, the texts coloured and loaded off, the
+ * pieces listed (SOCOM 1's, the backings three members now) */
+void CWeaponSel::Init(zdb::CWorld *world, C2DFont *font)
+{
+    data_0040C108 = 160;
+    m_openstate = 0;
+    m_weapontex[0] = zdb::CAssetMgr::m_assets.GetTexHandle("reticuletex.tif");
+    m_weapontex[1] = zdb::CAssetMgr::m_assets.GetTexHandle("reticuletex.tif");
+    m_weapontex[2] = zdb::CAssetMgr::m_assets.GetTexHandle("reticuletex.tif");
+    m_weapontex[3] = zdb::CAssetMgr::m_assets.GetTexHandle("reticuletex.tif");
+    m_weaponselbkrndtex = zdb::CAssetMgr::m_assets.GetTexHandle(data_003E3048);
+    m_arrowtex = GetTextureByName(0, data_003E3068);
+    m_myfont = font;
+    m_selectionback2.SetHasTexture(false);
+    m_selectionback2.Load(0.0f, data_003E4A98, data_0040C108, 2.0f + (64.0f + data_003E4A98), 0);
+    m_selectionback2.SetColor(80.0f, 80.0f, 80.0f);
+    m_selectionback2.SetIsTrans(true);
+    m_selectionback2.SetTrans(0.0f);
+    m_selectionback2.m_fade_dx = 2.0f;
+    m_selectionback2.Off();
+    push_back(&m_weaponselbkrnd);
+    push_back(&m_selectionback2);
+    push_back(&m_weaponicon[0]);
+    push_back(&m_weaponicon[3]);
+    push_back(&m_weaponicon[2]);
+    push_back(&m_weaponicon[1]);
+    m_arrow[0].Off();
+    m_arrow[1].Off();
+    m_arrow[0].SetUV(0.0f, 0.05f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.05f);
+    m_arrow[0].SetTrans(70.0f);
+    m_arrow[1].SetTrans(70.0f);
+    m_arrow[0].SetColor(50.0f, 50.0f, 50.0f);
+    m_arrow[1].SetColor(50.0f, 50.0f, 50.0f);
+    m_arrowcolor = 50.0f;
+    m_arrowincrement = 1;
+    push_back(&m_arrow[0]);
+    push_back(&m_arrow[1]);
+    m_hotswapL1text.m_color[0] = 55.0f;
+    m_hotswapL1text.m_color[1] = 140.0f;
+    m_hotswapL1text.m_color[2] = 130.0f;
+    m_hotswapL1text.m_color[3] = 80.0f;
+    push_back(&m_hotswapL1text);
+    m_hotswapL2text.m_color[0] = 55.0f;
+    m_hotswapL2text.m_color[1] = 140.0f;
+    m_hotswapL2text.m_color[2] = 130.0f;
+    m_hotswapL2text.m_color[3] = 80.0f;
+    push_back(&m_hotswapL2text);
+    m_weaponname.m_color[0] = CHUD::m_hud_textcolor.x;
+    m_weaponname.m_color[1] = CHUD::m_hud_textcolor.y;
+    m_weaponname.m_color[2] = CHUD::m_hud_textcolor.z;
+    m_weaponname.m_color[3] = CHUD::m_hud_textcolor.w;
+    push_back(&m_weaponname);
+    m_weapondescription.m_color[0] = CHUD::m_hud_textcolor.x;
+    m_weapondescription.m_color[1] = CHUD::m_hud_textcolor.y;
+    m_weapondescription.m_color[2] = CHUD::m_hud_textcolor.z;
+    m_weapondescription.m_color[3] = CHUD::m_hud_textcolor.w;
+    push_back(&m_weapondescription);
+    m_ammotype.m_color[0] = CHUD::m_hud_textcolor.x;
+    m_ammotype.m_color[1] = CHUD::m_hud_textcolor.y;
+    m_ammotype.m_color[2] = CHUD::m_hud_textcolor.z;
+    m_ammotype.m_color[3] = CHUD::m_hud_textcolor.w;
+    push_back(&m_ammotype);
+    m_ammocount.m_color[0] = CHUD::m_hud_textcolor.x;
+    m_ammocount.m_color[1] = CHUD::m_hud_textcolor.y;
+    m_ammocount.m_color[2] = CHUD::m_hud_textcolor.z;
+    m_ammocount.m_color[3] = CHUD::m_hud_textcolor.w;
+    push_back(&m_ammocount);
+    m_magcount.m_color[0] = CHUD::m_hud_textcolor.x;
+    m_magcount.m_color[1] = CHUD::m_hud_textcolor.y;
+    m_magcount.m_color[2] = CHUD::m_hud_textcolor.z;
+    m_magcount.m_color[3] = CHUD::m_hud_textcolor.w;
+    push_back(&m_magcount);
+    push_back(&m_selectionback0);
+    push_back(&m_selectionback1);
+    m_weaponselbkrnd.Off();
+    m_selectionback0.Off();
+    m_selectionback1.Off();
+    for (int i = 0; i < 4; i++)
+        m_weaponicon[i].Off();
+    m_weaponname.Off();
+    m_weapondescription.Off();
+    m_magcount.Off();
+    m_ammocount.Off();
+    m_ammotype.Off();
+    m_hotswapL1text.Off();
+    m_hotswapL2text.Off();
+    m_menuposx[1] = 30.0f;
+    m_menuposy[1] = data_003E4A98;
+    m_weaponselbkrnd.Load(0.0f, 5.0f + data_003E4AA0, data_0040C108, data_003E4A90 - 5.0f,
+                          m_weaponselbkrndtex);
+    m_selectionback0.Load(0.0f, data_003E4AA0, data_0040C108, 5.0f + data_003E4AA0, m_weaponselbkrndtex);
+    m_selectionback1.Load(0.0f, data_003E4A90 - 5.0f, data_0040C108, data_003E4A90, m_weaponselbkrndtex);
+    m_weaponicon[1].Load(m_menuposx[1] + m_iconoffsetx, m_menuposy[1] + m_iconoffsety, m_weapontex[1]);
+    m_weaponname.Load(0.9f, "3", m_myfont, m_menuposx[1] + m_nameoffsetx, m_menuposy[1] + m_nameoffsety,
+                      true);
+    m_weapondescription.Load(0.9f, "3", m_myfont, m_menuposx[1] + m_nameoffsetx,
+                             m_menuposy[1] + m_nameoffsety, true);
+    m_ammotype.Load(0.9f, "2", m_myfont, m_menuposx[1] + m_nameoffsetx,
+                    12.0f + (m_menuposy[1] + m_nameoffsety), true);
+    m_ammocount.Load(0.9f, "1", m_myfont, m_menuposx[1] + m_nameoffsetx,
+                     24.0f + (m_menuposy[1] + m_nameoffsety), true);
+    m_magcount.Load(0.9f, "4testing", m_myfont, m_menuposx[1] + m_nameoffsetx,
+                    36.0f + (m_menuposy[1] + m_nameoffsety), true);
+    m_weaponname.Off();
+    m_weapondescription.Off();
+    m_ammotype.Off();
+    m_ammocount.Off();
+    m_magcount.Off();
+    m_hotswapL1text.Load(0.9f, "l1", m_myfont, m_menuposx[1] + m_nameoffsetx,
+                         42.0f + (m_menuposy[1] + m_nameoffsety), true);
+    m_hotswapL2text.Load(0.9f, "l2", m_myfont, m_menuposx[1] + m_nameoffsetx,
+                         50.0f + (m_menuposy[1] + m_nameoffsety), true);
+    m_selectsound = CSnd::GetSoundByName(".TCM_SELECT");
+    m_scrollupsound = CSnd::GetSoundByName(".TCM_SLIDE");
+    m_scrolldownsound = CSnd::GetSoundByName(".TCM_SLIDE");
+}
 
 /* open, it closes first; the texts let go of */
 void CWeaponSel::UnInit()

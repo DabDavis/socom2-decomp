@@ -7,8 +7,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_002A75F0(s32);                         /* extern */
+M2C_UNK UnInitialize__9CZNetGameFv(s32);            /* extern */
 
 void DestroyNetGame__8CMissionFv(char *arg0) {
-    func_002A75F0(SC_MEMBER(arg0, s32 *, 0x1808));
+    UnInitialize__9CZNetGameFv(SC_MEMBER(arg0, s32 *, 0x1808));
 }

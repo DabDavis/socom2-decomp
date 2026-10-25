@@ -9,13 +9,13 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define NULL 0
 M2C_UNK CompassAnchor_MPBomb__10CZSealBodyFP14CCompassAnchor(char *, M2C_UNK); /* extern */
 M2C_UNK DeleteAnchor__8CCompassFP14CCompassAnchor(s32); /* extern */
+M2C_UNK DeleteMPBombNode__7CPickupFv();             /* extern */
 char *ftsGetPlayer__Fv();                           /* extern */
-M2C_UNK func_00542180();                            /* extern */
 
 void func_0059DCE0(void) {
     char *temp_v0;
 
-    func_00542180();
+    DeleteMPBombNode__7CPickupFv();
     temp_v0 = ftsGetPlayer__Fv();
     if (temp_v0 != NULL) {
         DeleteAnchor__8CCompassFP14CCompassAnchor(SC_MEMBER(temp_v0, s32 *, 0xEC0));

@@ -90,6 +90,144 @@ inline void CInGameWeaponSel::OnClose()
     }
 }
 
+namespace zdb {
+class CAssetList {
+public:
+    CTexHandle *GetTexHandle(const char *name);
+};
+
+class CAssetMgr {
+public:
+    static CAssetList m_assets;
+};
+}
+
+/* a texture of the world's by name (hud_main.cpp's) */
+zdb::CTexture *GetTextureByName(zdb::CWorld *world, const char *name);
+
+class CSnd {
+public:
+    static CSnd *GetSoundByName(const char *name);
+};
+
+/* the textures fetched, the pieces listed, the texts coloured, everything off, then the backdrop,
+ * the second backing, the icon and the texts loaded at the second slot */
+void CInGameWeaponSel::Init(zdb::CWorld *world, C2DFont *font)
+{
+    int i;
+
+    m_openstate = 0;
+    m_weapontex[0] = zdb::CAssetMgr::m_assets.GetTexHandle("reticuletex.tif");
+    m_weapontex[1] = zdb::CAssetMgr::m_assets.GetTexHandle("reticuletex.tif");
+    m_weapontex[2] = zdb::CAssetMgr::m_assets.GetTexHandle("reticuletex.tif");
+    m_weapontex[3] = zdb::CAssetMgr::m_assets.GetTexHandle("reticuletex.tif");
+    m_weaponselbkrndtex = zdb::CAssetMgr::m_assets.GetTexHandle("weapon_selection.tif");
+    m_selectionbacktex[0] = zdb::CAssetMgr::m_assets.GetTexHandle("hud_weapon_selected_on.tif");
+    m_selectionbacktex[1] = zdb::CAssetMgr::m_assets.GetTexHandle("hud_weapon_selected_on.tif");
+    m_selectionbacktex[2] = zdb::CAssetMgr::m_assets.GetTexHandle("hud_weapon_selected_on.tif");
+    m_selectionbacktex[3] = zdb::CAssetMgr::m_assets.GetTexHandle("hud_weapon_selected_on.tif");
+    m_arrowtex = GetTextureByName(world, "hud_arrow_off.tif");
+    m_myfont = font;
+    push_back(&m_weaponselbkrnd);
+    push_back(&m_selectionback[0]);
+    push_back(&m_weaponicon[0]);
+    push_back(&m_selectedtext[0]);
+    push_back(&m_selectionback[3]);
+    push_back(&m_weaponicon[3]);
+    push_back(&m_selectionback[2]);
+    push_back(&m_weaponicon[2]);
+    push_back(&m_selectedtext[2]);
+    m_selectionback[2].SetUV(0.01f, 0.99f, 0.99f, 0.01f);
+    m_selectionback[0].SetUV(0.1f, 0.01f, 0.99f, 0.99f);
+    push_back(&m_selectionback[1]);
+    push_back(&m_weaponicon[1]);
+    push_back(&m_selectedtext[1]);
+    for (i = 0; i < 5; i++)
+        push_back(&m_weaponselectedname[i]);
+    push_back(&m_weaponselectedtitle);
+    m_arrow[0].Off();
+    m_arrow[1].Off();
+    m_arrow[0].SetUV(0.0f, 0.05f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.05f);
+    m_arrow[0].SetTrans(70.0f);
+    m_arrow[1].SetTrans(70.0f);
+    m_arrow[0].SetColor(50.0f, 50.0f, 50.0f);
+    m_arrow[1].SetColor(50.0f, 50.0f, 50.0f);
+    m_arrowcolor = 50.0f;
+    m_arrowincrement = 1;
+    push_back(&m_arrow[0]);
+    push_back(&m_arrow[1]);
+    m_weaponname.m_color[0] = 128.0f;
+    m_weaponname.m_color[1] = 128.0f;
+    m_weaponname.m_color[2] = 128.0f;
+    m_weaponname.m_color[3] = 80.0f;
+    push_back(&m_weaponname);
+    m_weapondescription.m_color[0] = 128.0f;
+    m_weapondescription.m_color[1] = 128.0f;
+    m_weapondescription.m_color[2] = 128.0f;
+    m_weapondescription.m_color[3] = 80.0f;
+    push_back(&m_weapondescription);
+    m_ammotype.m_color[0] = 128.0f;
+    m_ammotype.m_color[1] = 128.0f;
+    m_ammotype.m_color[2] = 128.0f;
+    m_ammotype.m_color[3] = 80.0f;
+    push_back(&m_ammotype);
+    m_ammocount.m_color[0] = 128.0f;
+    m_ammocount.m_color[1] = 128.0f;
+    m_ammocount.m_color[2] = 128.0f;
+    m_ammocount.m_color[3] = 80.0f;
+    push_back(&m_ammocount);
+    m_magcount.m_color[0] = 128.0f;
+    m_magcount.m_color[1] = 128.0f;
+    m_magcount.m_color[2] = 128.0f;
+    m_magcount.m_color[3] = 80.0f;
+    push_back(&m_magcount);
+    m_weaponselbkrnd.Off();
+    m_weaponselbkrnd.SetTrans(100.0f);
+    for (i = 0; i < 4; i++) {
+        m_selectionback[i].Off();
+        m_weaponicon[i].Off();
+    }
+    for (i = 0; i < 3; i++)
+        m_selectedtext[i].Off();
+    for (i = 0; i < 5; i++)
+        m_weaponselectedname[i].Off();
+    m_weaponselectedtitle.Off();
+    m_weaponname.Off();
+    m_weapondescription.Off();
+    m_magcount.Off();
+    m_ammocount.Off();
+    m_ammotype.Off();
+    m_menuposx[1] = 30.0f;
+    m_menuposy[1] = 200.0f;
+
+    float y = m_menuposy[1] - 1.0f - 100.0f;
+    float x = m_menuposx[1] - 1.0f;
+
+    m_weaponselbkrnd.Load(x, y, 171.0f + x, 256.0f + y, m_weaponselbkrndtex);
+    m_selectionback[1].Load(m_menuposx[1] - 1.0f, m_menuposy[1] - 1.0f, 2.0f + (128.0f + m_menuposx[1]),
+                            2.0f + (32.0f + m_menuposy[1]), m_selectionbacktex[1]);
+    m_selectionback[1].SetUV(0.01f, 0.01f, 0.99f, 0.99f);
+    m_weaponicon[1].Load(m_menuposx[1] + m_iconoffsetx, m_menuposy[1] + m_iconoffsety, m_weapontex[1]);
+    m_weaponname.Load(1.0f, "3", m_myfont, m_menuposx[1] + m_nameoffsetx, m_menuposy[1] + m_nameoffsety,
+                      true);
+    m_weapondescription.Load(1.0f, "3", m_myfont, m_menuposx[1] + m_nameoffsetx,
+                             m_menuposy[1] + m_nameoffsety, true);
+    m_ammotype.Load(1.0f, "2", m_myfont, m_menuposx[1] + m_nameoffsetx,
+                    12.0f + (m_menuposy[1] + m_nameoffsety), true);
+    m_ammocount.Load(1.0f, "1", m_myfont, m_menuposx[1] + m_nameoffsetx,
+                     24.0f + (m_menuposy[1] + m_nameoffsety), true);
+    m_magcount.Load(1.0f, "4testing", m_myfont, m_menuposx[1] + m_nameoffsetx,
+                    36.0f + (m_menuposy[1] + m_nameoffsety), true);
+    m_weaponname.Off();
+    m_weapondescription.Off();
+    m_ammotype.Off();
+    m_ammocount.Off();
+    m_magcount.Off();
+    m_selectsound = CSnd::GetSoundByName(".TCM_SELECT");
+    m_scrollupsound = CSnd::GetSoundByName(".TCM_SLIDE");
+    m_scrolldownsound = CSnd::GetSoundByName(".TCM_SLIDE");
+}
+
 /* open, it is closed and shut at once; the texts let go of */
 void CInGameWeaponSel::UnInit()
 {

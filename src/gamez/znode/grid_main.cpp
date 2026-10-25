@@ -755,11 +755,8 @@ CCell *CGrid::GetCell(float x, float z)
 /* the world's nodes sorted: every other node unlinked from the cells and its atoms freed, each
  * cell taken off the world and deleted, then the atoms' tables freed (SOCOM 1's; SOCOM II inlines
  * gridRemoveNodeFromGrids and frees no third table; the cells' erase written out, as SOCOM 1's).
- * OPEN, 11 instructions (the right size), registers only: the target holds the cells vector's
- * &size_ in s0 and &data_ in s1, here the other way round -- byte-exact with include/vector's __vector_pod::end() as `return data() + size_;` (the end
- * read through data()'s reference) -- measured over every hand-written unit (2026-10-25, the world
- * lane): CGrid::Destroy, CWorld::GenerateLandmarkList, CWorld::DeleteChildren and
- * CAssetLib::AddPalette match, CCharacterType::Create (one level taller) is lost; waits on include/ */
+ * The cells vector's &size_ in s0 and &data_ in s1 come from the pod vector's end() through data()
+ * (include/vector since the MSL headers' round 4) */
 void CGrid::Destroy()
 {
     if (m_world) {

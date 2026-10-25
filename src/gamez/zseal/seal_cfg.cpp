@@ -175,6 +175,21 @@ extern "C" bool func_0058DFA0(unsigned char item)
     return slot != ITEM_SLOT_NONE;
 }
 
+/* an order's name for the HUD (OVL2 0x58E950, a switch over 24 orders; its draft matches) */
+extern "C" const char *func_0058E950(unsigned char cmd);
+
+/* an order's name, regroup's spelled apart (OVL2 0x58E900; new in SOCOM II, its name unknown --
+ * OVL1's HUD calls it) */
+extern "C" const char *func_0058E900(unsigned char cmd)
+{
+    switch (cmd) {
+    case 7:
+        return "RE GROUP";
+    default:
+        return func_0058E950(cmd);
+    }
+}
+
 /* an anim type for the item in hand: item 1's and item 2's variants, any other the type itself (OVL2
  * 0x58C970, new in SOCOM II; 0x57A330 asks it).
  * OPEN, 2 instructions: the target's default arm is `b epilogue; move v0,a1` -- a branch to the very

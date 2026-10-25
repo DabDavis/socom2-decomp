@@ -1642,6 +1642,105 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the states, round 14** (the graph's BuildRoute/PopulateTree, the objective cams):
+  - an rvalue (an accessor's result) passed to a list insert binds a temporary whose stack slot comes
+    after the call's outer temporaries (BuildRoute's `insert(it, leaf->GetNode())`); a named local
+    or the member itself gets the wrong slot;
+  - an element address the target recomputes every pass needs an unsigned index; an int index is
+    strength-reduced into a saved register (0x2AF360);
+  - `CMissionCam();` written inside a constructor's body builds and destroys a temporary (both builds
+    do it in CMissionObjectiveCam());
+  - an end iterator declared before the `for` takes the higher saved register (PopulateTree);
+  - zNetRegisterSeal (0x6C0 bytes) matched on the first try once TypeSealState's fields were laid out
+    from its 38 registrations (0x90 bytes);
+  - graph_tree.cpp continues past BuildTree (CGQueue's push 0x2D1DA0 and find 0x2D1DE0, the
+    CGQueueAtom list's remove 0x2D1E30); BuildTree and SetMovie (0x1EDA60) call ~30 trivial MSL
+    pieces out of line, as if compiled with inlining off (untested); 0x2C8760-0x2CA32F is a SOCOM
+    II-only multiplayer mission list unit; st_core.cpp's tail 0x1EE000-0x1EF8C0 holds std::sort and
+    MSL string members (0x1EEB40 assign(const char *), 0x1EEB70 an append through replace,
+    0x1EF390 replace(pos, n, s)); 0x440B80 is "ExtraStringTables", so 0x361BC0, 0x3A3900 and
+    0x3A4460 are the string-table manager's.
+- **Tells from the SEALs, round 8** (CPickup's Close/Create/NetworkCreate, the AI sound statics):
+  - an empty functor passed by value needs a user-declared empty constructor; without one MW
+    zero-stores its byte on the stack (CPickup::Close's std::transform);
+  - fields stored through a single load of a pointer that lives in memory (its address taken for an
+    insert) come from an inline member; written as `p->` statements, MW reloads `p` after each store;
+  - MW uses byte access for a bitfield only when its container is `unsigned char`: `unsigned int`
+    bitfields use lw/sw even inside one byte (CPickup's flags);
+  - a bool read from a bitfield and tested later (`sltu` kept) needs an inline accessor written
+    `? true : false`; `return bit;` folds the test away;
+  - in a swap, `t = a; a = b; b = t;` against the reverse decides both the float registers and the
+    store order;
+  - deriving a member class from CBits adds a second this-test to an inlined `delete`; a stand-alone
+    class of the same layout does not;
+  - 0x540270-0x541640 is char_type.cpp's tail (SOCOM 1's order puts it right before
+    pickup_main.cpp); 0x5B8F20, 0x5B8FC0, 0x5B8FF0 are CZKit methods on the vector at kit+0x254, before
+    seal_kit.cpp (from 0x5B9020).
+- **Tells from the UI, round 5** (the button specs' copies, the ActionItem and CDesignDlgObj vectors):
+  - the UI classes copy as `T(const T &o) : a(0), b(0) { *this = o; }` (ActionItem, CDesignDlgObj);
+    a vector's range init builds each element that way and calls the assignment out of line;
+  - an implicit copy constructor too big to inline whole is inlined one level in each Copy, its
+    members' copies called; its own out-of-line copy, emitted where a derived class needs it,
+    inlines everything;
+  - loads written into separate call statements are not hoisted above the earlier calls: the four
+    state names read into locals first match InitializeButton (both builds keep them in saved
+    registers);
+  - `next = erase(i); delete obj; i = next;` keeps erase's result in a saved register, as the target;
+  - a string member of a global read through a reference local builds its address once; written
+    straight, MW addresses each word absolutely;
+  - a same-unit function the target always calls out of line needs `#pragma auto_inline off`
+    (InitializeButton, or the CreateDisplayObjs regress; the template tail's CDesignDlgObj
+    assignment);
+  - include/vector gained the pod vector's single erase(T *) (SOCOM 1's 0x1DEF80, SOCOM II's
+    0x28F220) and the pointer vector's erase(iterator); the class erase(first, last) wants MSL's
+    destroy loop after the copy (`for (T *p = first + n; p < e; ++p) p->~T();`) -- erase<ActionItem>
+    (0x383E00) byte-exact in a probe, left to the MSL round;
+  - ~ActionItem (0x3890C0) is zui_cleanup.cpp's first-defined function, the last of its own code in
+    the image; after it the unit holds only the inline-virtual copies and implicit destructors, in
+    vtable order.
+- **Tells from the online lobby, round 5** (the lobby's state handlers, the chat, the room requests):
+  - all 16 state handlers share one switch on the byte flag, every case empty but ENTRY: it compiles
+    to the compare chain 4, 3, 2, 1, 0 plus a `b`; the handlers are named by the slot the table at
+    0x2ED460 registers them in, against SOCOM 1's Open;
+  - an int-sized enum (a 0x7FFFFFFF extent) assigned a ternary of two enumerators gives `li 1;
+    movz`; an int gives `sltu` (JoinType, ChatToggle);
+  - a byte-enum local is assigned with `li` and compared through `andi 0xff`; passed to a parameter
+    of the same enum it is not re-extended, an int parameter adds the andi (cbChatMessage's colour);
+  - `case 0:` re-assigning the initial value keeps its own `b` block; a bare `break` is threaded
+    straight to the join;
+  - a valve's 16-bit value read through an int-returning accessor serves the test and a following
+    sum with no mask; read as the bitfield or an unsigned short member, the sum adds `andi 0xffff`;
+  - a struct of plain members with a user constructor (NetConnectionInfo) copies member by member:
+    a nested plain struct as FPR words, an int array in an eight-pass two-word loop, char arrays
+    bytewise;
+  - CopyField's null test of the destination is not folded for a member array of a local struct
+    (four functions); a source-only test or a plain memcpy fits (zonline.h's older note said the
+    local array's test folds away);
+  - a member function called with a0 unset is static (PasswordSecurity); a request declared inside an
+    `if` block takes a lower stack slot than case-scope locals declared before it (declared at case
+    scope in the target's order: AccountLoginStateHandler);
+  - the chat unit opens with the state machine (the table 0x2ED460, handlers through 0x2EFE50), then
+    the player-info pages, then the chat; functions its own callers call out of line are pinned with
+    `#pragma auto_inline off` (0x2F3FF0, 0x2F4FC0, 0x2E3AA0, 0x2E2920, FindRoom); the Medius client
+    calls (OVL2 0x647548-0x649960, GCC-built) are named from SOCOM 1's call sites.
+- **Tells from the HUD, round 14** (the weapon selectors' Inits, the team names, InitHUD_Compass):
+  - a guarded function-local static that stores a constant had a non-constant initialiser: MW 3.0
+    initialises `= 48.0f` or a `const float` statically, with no guard; an inline call returning 48
+    reproduces the guard;
+  - a float immediate that is not the nearest float to its decimal is a folded product: 0x3F5AE147
+    is `0.9f * 0.95f`, where `0.855f` gives ...148;
+  - several loops in one function: a shared function-scope counter against separate `for` counters
+    re-colours the later loops; a counter declared ahead of an initialised local takes the higher
+    saved register;
+  - a reference local whose address is pushed lives in a stack slot and is reloaded before every
+    store through it; storing through an inline that takes the pointer keeps it in a register;
+  - MW forwards a constant just stored to a member into a later expression only if that expression
+    comes before the register is reused (CInGameWeaponSel's backdrop: its top computed before its
+    left);
+  - hud_mapcompass.cpp starts at 0x2113D0 (the three anchor accessors before Tick in the image, so
+    defined last); hud_teamnames.cpp runs 0x220D00-0x221BF0; RefreshStatics follows
+    ~CZObjectiveList (defined last in hud_objectives.cpp); st_mpexit.cpp (CMPExitState,
+    0x223290-0x2265F7) sits inside the HUD's range.
 - **Tells from the zdb world, round 6** (CDI(), the grid's traversal boundary, znode.h's stand-ins):
   - znode.h's list stand-ins (PtrListFirst, ListBegin, ListEnd, ListClear) are gone: include/list's
     begin()/clear()/insert() give the same code in all six of their users;
@@ -1775,6 +1874,34 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     from 0x539B70); the look and cover searches 0x539EB0-0x53A72F; the layer code (ai_maplayer.cpp)
     0x53A730-0x53AA4F; initialisers 0x668680 (ai_path.cpp), 0x668710 (ai_maps.cpp, AiMaps at
     0x66A1B0), 0x6687D0 (empty, probably ai_vismap.cpp's).
+- **Tells from completing the MSL headers, round 4** (include/vector, include/algorithm):
+  - SOCOM II's MSL builds every class-vector element through an inline construct() and moves them
+    through std::copy, copy_backward and fill_n, each an inline wrapper over an inline helper: an
+    element whose copy or assignment expands past inline_max_size cuts them to calls (placement new
+    0x2FECA0 and the copy constructor before it, the helpers' copies in the unit's tail), a small one
+    inlines all of it -- a stand-in turret definition with scalar members reproduces 0x3AB5F0-0x3AC6DF's
+    whole call structure and order (build/m4/p/turret2.cpp, in the MSL lane's worktree); SOCOM 1's
+    insert of the same vector calls the copy constructor and assignment directly;
+  - the class erase destroys the elements left past its new end, n (the count after the range) a
+    signed int (the UI lane's measurement); MW 3.0 deletes the loop for trivial elements;
+  - whether an insert calls its temporary's destructor, inlines it, or inlines it with clear is the
+    unit's tail generation rounds (probes build/m4/p/g1.cpp, g3.cpp): a template member is inlined only
+    if generated before, requests are generated in rounds (own code's first), and within a round the
+    deleter's members come before __vector_imp's. The image's tail order does not show the rounds:
+    vehicle_rdr.cpp's clear and destructor follow its insert though generated first (the linker lays
+    a tail out depth first). veh_vehicle.cpp, veh_turret.cpp and zwep_weapon.cpp inline both with no
+    caller of either left: a dead-stripped own function that clears and destroys the vector does it
+    (appended to veh_vehicle.cpp, 0x3AF040 gets the target's size and tail);
+  - the in-place branch's end pointer register is still open (CVehicleDef, CRegistrant against the
+    float sequence entries and CAiMapLoc, opposite ways; include/vector lists what was tried);
+    CRegistrant wants a user-declared constructor first (99 -> 38 lines off);
+  - an inline accessor level can be paid back elsewhere: the pod's end() through data() (+4) made the
+    pointer vector's end() a level too tall for CCharacterType::Create until it took the base's end
+    into a const local, as begin() does;
+  - a constructor's inline cost can grow without a level: the pod constructor's zero held in a local
+    (the same three stores) pushes CScriptArchive's constructor past inline_max_size
+    (__sinit_bone_init.cpp byte-exact), where the stores in a helper cut CHUD(), CCell(), CVisual()
+    and __sinit_compass.cpp too.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
@@ -1943,9 +2070,10 @@ every hand-written unit (`--files '^(?!auto/)'`) before it is committed. A workt
 `extracted/` and `decomp/toolchains/` linked in from the main tree.
 
 `--files '^(?!auto/)'` leaves out the drafts, so a hand-written inline copy that only its draft
-matches reports as a regression there (0x32C5F0, ~CRdrArchiveList's copy, is the one left --
-0x29FF60 and 0x2D02B0 match from hand source since the MSL headers' completion): rerun with
-that draft's file included before believing one.
+matches reports as a regression there (0x32C5F0, ~CRdrArchiveList's copy, and 0x510080, OVL2's
+__list_imp destructor that seal_aistate.cpp's missing copy now reports "elsewhere" -- 0x29FF60 and
+0x2D02B0 match from hand source since the MSL headers' completion): rerun with that draft's file
+included before believing one.
 
 ## The generated tier: `src/auto/`
 
