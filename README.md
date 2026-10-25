@@ -1642,6 +1642,28 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the UI, round 5** (the button specs' copies, the ActionItem and CDesignDlgObj vectors):
+  - the UI classes copy as `T(const T &o) : a(0), b(0) { *this = o; }` (ActionItem, CDesignDlgObj);
+    a vector's range init builds each element that way and calls the assignment out of line;
+  - an implicit copy constructor too big to inline whole is inlined one level in each Copy, its
+    members' copies called; its own out-of-line copy, emitted where a derived class needs it,
+    inlines everything;
+  - loads written into separate call statements are not hoisted above the earlier calls: the four
+    state names read into locals first match InitializeButton (both builds keep them in saved
+    registers);
+  - `next = erase(i); delete obj; i = next;` keeps erase's result in a saved register, as the target;
+  - a string member of a global read through a reference local builds its address once; written
+    straight, MW addresses each word absolutely;
+  - a same-unit function the target always calls out of line needs `#pragma auto_inline off`
+    (InitializeButton, or the CreateDisplayObjs regress; the template tail's CDesignDlgObj
+    assignment);
+  - include/vector gained the pod vector's single erase(T *) (SOCOM 1's 0x1DEF80, SOCOM II's
+    0x28F220) and the pointer vector's erase(iterator); the class erase(first, last) wants MSL's
+    destroy loop after the copy (`for (T *p = first + n; p < e; ++p) p->~T();`) -- erase<ActionItem>
+    (0x383E00) byte-exact in a probe, left to the MSL round;
+  - ~ActionItem (0x3890C0) is zui_cleanup.cpp's first-defined function, the last of its own code in
+    the image; after it the unit holds only the inline-virtual copies and implicit destructors, in
+    vtable order.
 - **Tells from the online lobby, round 5** (the lobby's state handlers, the chat, the room requests):
   - all 16 state handlers share one switch on the byte flag, every case empty but ENTRY: it compiles
     to the compare chain 4, 3, 2, 1, 0 plus a `b`; the handlers are named by the slot the table at
