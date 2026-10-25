@@ -4173,7 +4173,7 @@
 0x002C3B10 0x50 func_002C3B10  # OVL1
 0x002C3B60 0xC8 func_002C3B60  # OVL1
 0x002C3C30 0xC0 func_002C3C30  # OVL1
-0x002C3CF0 0x2CC func_002C3CF0  # OVL1
+0x002C3CF0 0x2CC CheckStateSwitch__14CZPersonaStateFv  # OVL1; s1:calls by hand (the states lane: the deletion callback's second call, after UpdatePersonaLists, as SOCOM 1's calls CheckStateSwitch; just before ToggleReady, as in SOCOM 1's order)
 0x002C3FC0 0x54 ToggleReady__14CZPersonaStateFv  # OVL1; s1:exact shape by hand (the states lane: SOCOM 1's ToggleReady, 0x54 both, instruction for instruction: theMission's net game, its minor state 2 -> 1 else 2, then UpdateLocalPersona)
 0x002C4020 0x98 func_002C4020  # OVL1
 0x002C40C0 0x1D0 func_002C40C0  # OVL1
@@ -4186,14 +4186,14 @@
 0x002C4A20 0x128 func_002C4A20  # OVL1
 0x002C4B50 0x294 func_002C4B50  # OVL1
 0x002C4DF0 0x21C func_002C4DF0  # OVL1
-0x002C5010 0x350 func_002C5010  # OVL1
+0x002C5010 0x350 UpdatePersonaLists__14CZPersonaStateFv  # OVL1; s1:calls by hand (the states lane: the deletion and post-update callbacks call it where SOCOM 1's call UpdatePersonaLists; just before UpdateLocalPersona, as in SOCOM 1's order)
 0x002C5360 0xE4 UpdateLocalPersona__14CZPersonaStateFv  # OVL1; s1:calls by hand (the states lane: at SOCOM 1's call site)
 0x002C5450 0x2F8 CreateLocalPersona__14CZPersonaStateFv  # OVL1; s1:calls by hand (the states lane: at SOCOM 1's call site in the network setup)
-0x002C5750 0x80 func_002C5750  # OVL1
-0x002C57D0 0x24 func_002C57D0  # OVL1
-0x002C5800 0x2C func_002C5800  # OVL1
-0x002C5830 0x1DC func_002C5830  # OVL1
-0x002C5A10 0x278 func_002C5A10  # OVL1
+0x002C5750 0x80 RemotePersonaDeletionCallback__14CZPersonaStateFii  # OVL1; s1:order by hand (the states lane: zNetRegisterPersona (0x2C5A10) hands it to 0x30CE80 in the deletion slot; like SOCOM 1's it looks the object up, forgets the client's persona and calls UpdatePersonaLists and CheckStateSwitch)
+0x002C57D0 0x24 RemotePersonaPostUpdateCallback__14CZPersonaStateFiii  # OVL1; s1:order by hand (the states lane: the post-update slot of zNetRegisterPersona's registration; UpdatePersonaLists then UpdateLocalPersona, SOCOM 1's two calls, 0x24 both)
+0x002C5800 0x2C RemotePersonaUpdateCallback__14CZPersonaStateFiii  # OVL1; s1:order by hand (the states lane: the update slot of zNetRegisterPersona's registration, between the post-update and creation callbacks as in SOCOM 1)
+0x002C5830 0x1DC RemotePersonaCreationCallback__14CZPersonaStateFii  # OVL1; s1:order by hand (the states lane: the creation slot of zNetRegisterPersona's registration, before it as in SOCOM 1)
+0x002C5A10 0x278 zNetRegisterPersona__14CZPersonaStateFv  # OVL1; s1:order by hand (the states lane: the persona unit's last function as in SOCOM 1; registers the four persona callbacks under 0x4413E0, SOCOM 1's m_NetStructIndexPersonaObject)
 0x002C5C90 0x80 func_002C5C90  # OVL1
 0x002C5D10 0x44 func_002C5D10  # OVL1
 0x002C5D60 0x110 func_002C5D60  # OVL1

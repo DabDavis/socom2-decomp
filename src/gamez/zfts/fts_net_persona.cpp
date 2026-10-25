@@ -5,9 +5,16 @@
  * swap sides (the two team masks trade places when the swap flag is set). Only some of it so far.
  * Defined in reverse of their image order (-inline deferred). */
 
+/* a network object as CZNetwork's table hands it out (only its data) */
+struct NetObject {
+    unsigned char _0[0x1c];
+    void *m_data;   // 0x1c
+};
+
 class CZNetwork {
 public:
     int zNetGetMyGameClientIndex();
+    NetObject *zNetGetObject(int index);
 };
 
 extern CZNetwork theNetwork;
@@ -71,8 +78,13 @@ struct PersonaEntry {
 class CZPersonaState {
 public:
     static void ClearPersonaList();
+    static void CheckStateSwitch();
     static void ToggleReady();
+    static void UpdatePersonaLists();
     static void UpdateLocalPersona();
+    static void RemotePersonaDeletionCallback(int client, int index);
+    static void RemotePersonaPostUpdateCallback(int client, int index, int field);
+    static void RemotePersonaUpdateCallback(int client, int index, int field);
 
     /* a client's persona data (the name ours; inlined everywhere) */
     static PersonaData *GetPersona(int client)
@@ -105,6 +117,36 @@ extern unsigned int data_00441470;    /* (the local player's team) */
 bool func_002F6D00(CZOnlineLobby *lobby);   /* (a CZOnlineLobby flag: a valve's, or a byte) */
 void func_002C4500();                       /* (the teams counted) */
 bool func_002C2FA0();
+}
+
+/* nothing on an update (OVL1 0x2C5800: its data's load kept, as in fts_net_blather.cpp) */
+void CZPersonaState::RemotePersonaUpdateCallback(int client, int index, int field)
+{
+    NetObject *obj = theNetwork.zNetGetObject(index);
+
+    if (obj)
+        void *data = *(void *volatile *)&obj->m_data;
+}
+
+/* after an update: the lists rebuilt and our persona sent (OVL1 0x2C57D0, as SOCOM 1's) */
+void CZPersonaState::RemotePersonaPostUpdateCallback(int client, int index, int field)
+{
+    UpdatePersonaLists();
+    UpdateLocalPersona();
+}
+
+/* a client's persona gone: its entry cleared, and for another client's the lists rebuilt and the
+ * state switch checked (OVL1 0x2C5750) */
+void CZPersonaState::RemotePersonaDeletionCallback(int client, int index)
+{
+    if (theNetwork.zNetGetObject(index)) {
+        m_PersonaList[client].m_index = -1;
+        m_PersonaList[client].m_data = 0;
+        if (client != theNetwork.zNetGetMyGameClientIndex()) {
+            UpdatePersonaLists();
+            CheckStateSwitch();
+        }
+    }
 }
 
 /* this client ready, or not (OVL1 0x2C3FC0; SOCOM 1's ToggleReady, the same code) */
