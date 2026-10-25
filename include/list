@@ -443,7 +443,13 @@ public:
      * node into the register `this` leaves -- straight from end_.next_ it took another), and a walk
      * that assigns begin() to its iterator, a level deeper, still inlines all of it (through the
      * base's begin(), or with tail() as an argument, the innermost constructor is a call). Through
-     * tail() into a pointer local (the form before 2026-10-25) the walk's address was not shared */
+     * tail() into a pointer local (the form before 2026-10-25) the walk's address was not shared.
+     * Measured (the MSL headers round 5) for CGTree::FindNode 0x2D2070 and Destroy 0x2D22F0, whose
+     * self-inlined copies call the base's begin() 0x2A00B0 and the wrapper's constructor 0x2D22E0
+     * (taking the base iterator by address): `return iterator(base::begin());` costs one match over
+     * every hand-written unit -- OVL2 0x5418B0, CPickup::DebugPickups' assigned walk inlined into it,
+     * then calls the base iterator's constructor out of line (a level too tall) -- and gains none, so
+     * the form stays; FindNode and Destroy are not written to measure the other side */
     iterator begin()
     {
         typename base::node_base &t = this->end_;
