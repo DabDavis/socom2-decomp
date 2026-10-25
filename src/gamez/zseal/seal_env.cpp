@@ -31,6 +31,7 @@ public:
     CPnt3D m_cross;   // 0x50
     float m_fracT;   // 0x5c
     unsigned char m_done;   // 0x60
+    bool IsDone() const { return m_done; }
     unsigned char _61[0x70 - 0x61];   // (SOCOM II's CLook is 0x70: CBlink's m_org at 0x70)
 };
 
@@ -79,14 +80,12 @@ void CZSealBody::SetHudHitFlag()
 
 /* the blink stepped: while a look runs it is stepped, and a finished look down turns into the look
  * back up; between blinks the wait runs down to nothing (OVL2 0x5AD730; SOCOM 1's, LookTick and
- * Blink inlined -- Blink's angle is dead on the way back up and MW drops its load).
- * OPEN, 2 instructions (0x138 against 0x140): the target loads m_done again for the inlined
- * LookTick's test (`lbu v1,96(s0)`) and keeps a nop before its join; here MW reuses the first
- * test's load. The same with LookTick's test as an early return (LookTick itself matches either
- * way) or the outer test written `m_done == false`. */
+ * Blink inlined -- Blink's angle is dead on the way back up and MW drops its load). The outer test
+ * through an inline accessor makes MW load m_done again for the inlined LookTick's, as the target
+ * does; written out, the first load is reused. */
 void CBlink::BlinkTick(float dT)
 {
-    if (!m_done) {
+    if (!IsDone()) {
         LookTick(dT);
         if (m_done) {
             if (m_org == 1) {
