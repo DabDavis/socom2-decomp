@@ -4932,8 +4932,8 @@
 0x002F4080 0x8 func_002F4080  # OVL1
 0x002F4090 0x1A8 RecoverFromNetError__13CZOnlineLobbyFi  # OVL1; s1 by hand (CZNetwork::zNetCreateObject calls it on theLobby, as SOCOM 1's calls RecoverFromNetError)
 0x002F4240 0x88 Bailout__13CZOnlineLobbyFv  # OVL1; s1:ui ('LobbyBailout' 0x27DC90, as SOCOM 1's UILobbyBailout calls Bailout)
-0x002F42D0 0xC func_002F42D0  # OVL1
-0x002F42E0 0x18 func_002F42E0  # OVL1
+0x002F42D0 0xC CheckMediusCallbackStatus__FPCc20MediusCallbackStatus  # OVL1; ours (every lobby callback opens with it: the request's name as a string and the response's status, true for 0)
+0x002F42E0 0x18 CheckMediusError__F15MediusErrorCode  # OVL1; ours (every Medius request in OVL1 0x2DF560-0x306670 hands the API call's result to it and drops the answer: true for 0, MediusSuccess)
 0x002F4300 0x560 func_002F4300  # OVL1
 0x002F4860 0x1B4 func_002F4860  # OVL1
 0x002F4A20 0x180 func_002F4A20  # OVL1
