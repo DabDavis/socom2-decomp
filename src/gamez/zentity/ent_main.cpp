@@ -286,17 +286,13 @@ int CEntity::GetEntityIndex(const CEntity *e)
 /* an entity of a type on a node: the next id, at rest, unit orientation, in the target lists'
  * reach, alive (SOCOM 1's, with SOCOM II's position, anchor and three more flags set). The new
  * bit 13 is cleared in the initialiser list -- a word written whole, where the body's flags are
- * written a byte at a time (probe: build/scratch/ent/bf.cpp).
- * OPEN, 4 bytes short: the target inlines m_targets' constructor whole (CTargetList, then the
- * vector's three stores); include/vector's class vector is four constructor levels, so
- * CTargetList's is five and MW calls vector<CTarget>'s. With a three-high class vector this
- * matches byte for byte (all relocations but CAiMapLoc::invalid's, now in data.txt) -- see
- * CCompass::CreateAnchor for why include/vector cannot simply change. Compiled out for the same
- * reason as the destructor: a constructor emits its members' destructors, and this one's
- * ~__vector_deleter<CTarget> would supersede 0x29FF60's draft and miss */
-#if 0
+ * written a byte at a time (probe: build/scratch/ent/bf.cpp). Both map cells are copies of the
+ * invalid cell through CAiMapLoc's written copy constructor (SOCOM 1's: each field read narrow and
+ * its word masked whole); m_targets' constructor inlines whole at -inline level=5 (CTargetList,
+ * then the vector's three stores) */
 CEntity::CEntity(TYPE type, zdb::CNode *node)
-    : m_type(type), m_node(node), m_control(0), m_team(0), m_bit13(0)
+    : m_type(type), m_node(node), m_control(0), m_team(0), m_bit13(0), m_mapLoc(CAiMapLoc::invalid),
+      m_mapLocValid(CAiMapLoc::invalid)
 {
     m_quat = CQuat::identity;
     m_next_quat = CQuat::identity;
@@ -320,7 +316,6 @@ CEntity::CEntity(TYPE type, zdb::CNode *node)
     m_get_new_altitude = 1;
     m_anchor = 0;
 }
-#endif
 
 /* the name freed, out of the target lists, the compass anchor deleted (SOCOM 1's, the anchor
  * new). The target list's destructor inlines ~CTargetList, ~vector and ~__vector_imp (three

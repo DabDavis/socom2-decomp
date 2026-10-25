@@ -21,13 +21,15 @@
 class CEntity;
 class CEntityCtrl;
 
-/* a cell of an AI map (SOCOM 1's DWARF). A new one is the invalid cell, field by field in the
- * initialiser list: the target object's word is written whole for each field (an assignment in
- * the body narrows to the field's byte), the source read narrow -- CEntity's constructor, as
- * SOCOM 1's */
+/* a cell of an AI map (SOCOM 1's DWARF). A new one is left as it is: SOCOM II's default
+ * constructor is empty (0x516120, `jr ra; move v0,a0`, which CAiState::Create calls for its
+ * cells). The copy is SOCOM 1's written one, field by field in the initialiser list (OVL2
+ * 0x5EA7E0, s1:exact): the target's word read, masked and written whole for each field, the
+ * source read narrow -- CEntity's constructor copies CAiMapLoc::invalid into both its cells so */
 class CAiMapLoc {
 public:
-    CAiMapLoc() : m_mapid(invalid.m_mapid), x(invalid.x), y(invalid.y) {}
+    CAiMapLoc() {}
+    CAiMapLoc(const CAiMapLoc &loc) : m_mapid(loc.m_mapid), x(loc.x), y(loc.y) {}
 
     unsigned int m_mapid : 6;
     unsigned int x : 13;
