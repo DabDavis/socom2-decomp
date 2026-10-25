@@ -11365,7 +11365,7 @@
 0x005EA4D0 0x78 __dt__10CAiSBreachFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005EA550 0x80 func_005EA550  # OVL2
 0x005EA5D0 0x1AC func_005EA5D0  # OVL2
-0x005EA780 0x38 func_005EA780  # OVL2
+0x005EA780 0x38 GetBreachState__FP11CSealCtrlAi  # OVL2; by hand: CSealCtrlAi::GetAiState (0x5F6010), returned when its kind (the byte at 0x30) is 17, the breach, else 0 -- after CAiState's constructor in seal_unit.cpp, whose breach code (SOCOM 1's AddBreachMember) works on CAiSBreach (the name ours)
 0x005EA7C0 0x14 func_005EA7C0  # OVL2; size 0x14 (a tail call through t9; the seed ran on into the padding)
 0x005EA7E0 0x88 __ct__9CAiMapLocFRC9CAiMapLoc  # OVL2; s1:exact
 0x005EA870 0x8 func_005EA870  # OVL2
