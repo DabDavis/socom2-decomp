@@ -3369,7 +3369,7 @@
 0x00287620 0xE98 func_00287620  # OVL1
 0x002884C0 0x44 func_002884C0  # OVL1
 0x00288510 0x98 func_00288510  # OVL1
-0x002885B0 0xA8 func_002885B0  # OVL1
+0x002885B0 0xA8 FindCommon__14CScriptArchiveFPCc  # OVL1; ours (bone_archive.cpp: the archive's commons (+0xE4) searched for a name with strcmp, the common or none; CZSIScript::Read and CreateAndReadIt share a script's common through it)
 0x00288660 0x3C func_00288660  # OVL1
 0x002886A0 0x18 func_002886A0  # OVL1
 0x002886C0 0x44 func_002886C0  # OVL1
@@ -3415,23 +3415,23 @@
 0x0028A060 0x9C __ct__10CZSIObjectFv  # OVL1; s1:align by hand (0.67 to SOCOM 1's constructor, the unit's last function as there; the two pointers and the name cleared, the bits and part id zeroed, numSiObject counted up)
 0x0028A100 0x158 ReadLIP__10CZSIScriptFRQ23zar4CZARPCcPviPv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0028A260 0x108 GetObject__10CZSIScriptFPCcb  # OVL1; s1:align by hand (0.98 opcode skeleton to SOCOM 1's GetObject, right after ReadLIP as there: the objects searched by name with strcasecmp)
-0x0028A370 0xF8 func_0028A370  # OVL1
-0x0028A470 0x70 func_0028A470  # OVL1
-0x0028A4E0 0x40 func_0028A4E0  # OVL1
-0x0028A520 0x8 func_0028A520  # OVL1
-0x0028A530 0x14 func_0028A530  # OVL1
+0x0028A370 0xF8 __dt__16CZSIScriptCommonFv  # OVL1; by hand (si_script.cpp: CZSIScriptCommon's destructor -- its name _free'd, its object slots FreeVector'd, its defaults set again, numSiScriptCommon (0x415FB8) counted down, the deleting flag; zBoneUnloadAll deletes each archive common with it)
+0x0028A470 0x70 __dt__Q23std54vector<P10CZSIObject,Q23std24allocator<P10CZSIObject>>Fv  # OVL1; by hand (si_script.cpp: FreeVector's temporary destroyed in ~CZSIScriptCommon, three this-tested levels; the slots vector at +0x38)
+0x0028A4E0 0x40 swap__Q23std54vector<P10CZSIObject,Q23std24allocator<P10CZSIObject>>FRQ23std54vector<P10CZSIObject,Q23std24allocator<P10CZSIObject>>  # OVL1; by hand (si_script.cpp: ~CZSIScriptCommon's FreeVector, the swap out of line after it)
+0x0028A520 0x8 clear__Q23std54vector<P10CZSIObject,Q23std24allocator<P10CZSIObject>>Fv  # OVL1; by hand (si_script.cpp: ~CZSIScriptCommon's FreeVector, the clear out of line)
+0x0028A530 0x14 __ct__Q23std54vector<P10CZSIObject,Q23std24allocator<P10CZSIObject>>Fv  # OVL1; by hand (si_script.cpp: ~CZSIScriptCommon's FreeVector, the temporary's constructor out of line)
 0x0028A550 0x6C __dt__10CZSIScriptFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0028A5C0 0x29C Read__10CZSIScriptFRQ23zar4CZARi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0028A860 0x18C CreateAndReadIt__10CZSIScriptFRQ23zar4CZARPCcPviPv  # OVL1; s1:align by hand (0.70 to SOCOM 1's CreateAndReadIt, after Read as there; its address is the callback 0x288710 hands the archive's walk 0x25A390, as SOCOM 1's loader hands CreateAndReadIt to CZAR::FetchAll; it news a CZSIScript, its table stored, and reads it)
-0x0028A9F0 0x2C func_0028A9F0  # OVL1
-0x0028AA20 0x98 func_0028AA20  # OVL1
-0x0028AAC0 0x50 func_0028AAC0  # OVL1
-0x0028AB10 0x1C4 func_0028AB10  # OVL1
+0x0028A9F0 0x2C __ct__10CZSIScriptFv  # OVL1; by hand (si_script.cpp: CZSIScript's table stored (0x4060C0), no common, numSiScript (0x415FB0) counted up -- ~CZSIScript counts it down; the body's 0x28E530 news one with it)
+0x0028AA20 0x98 CalcRate__16CZSIScriptCommonFv  # OVL1; ours (si_script.cpp: a looped script's rate at +0x14, its time (+0x10) over its distance (+0x18), x100 unless flag 0x49.7; 1 when not looped or the distance is at most 0.2; motion.rdr's reader 0x287620 calls it after CalcDistance)
+0x0028AAC0 0x50 DistanceScale__16CZSIScriptCommonFv  # OVL1; ours (si_script.cpp: 1 or 100 by the same flag as CalcRate when looped, else 1; the SEAL's 0x58BCB0 calls it five times)
+0x0028AB10 0x1C4 CalcDistance__16CZSIScriptCommonFv  # OVL1; ours (si_script.cpp: the root object's (+0x44) position at the first and last frame, their difference scaled by n/(n-1) when looped, its xz length -- or its rise when flag 0x4A.1 -- stored at +0x18)
 0x0028ACE0 0x60 GetCallbackIndex__16CZSIScriptCommonFi  # OVL1; s1:order by hand (SOCOM 1's CZBodyAnim::GetCallbackIndex: the byte of slot i at +0x58, 0 out of range)
 0x0028AD40 0x60 SetCallbackIndex__16CZSIScriptCommonFiUi  # OVL1; s1:order by hand (SOCOM 1's CZBodyAnim::SetCallbackIndex: an index under 256 stored in slot i)
 0x0028ADA0 0x98 TrueLoopTime__16CZSIScriptCommonFv  # OVL1; s1:order by hand (SOCOM 1's CZBodyAnim::TrueLoopTime moved onto the common: 1 when it loops, else (n - 1) / n of its frames)
-0x0028AE40 0x1A0 func_0028AE40  # OVL1
-0x0028AFE0 0x100 func_0028AFE0  # OVL1
+0x0028AE40 0x1A0 SetDefaults__16CZSIScriptCommonFv  # OVL1; ours (si_script.cpp: the common's tuning floats 1/-1, every flag at 0x49-0x4B cleared through inline setters, +0x4C = CPnt3D::zero, the callback indices zeroed; its constructor and destructor call it)
+0x0028AFE0 0x100 __ct__16CZSIScriptCommonFv  # OVL1; by hand (si_script.cpp: CZSIScriptCommon's constructor -- SOCOM 1's __ct__16CZSIScriptCommonFv, a 92-byte object here as Read's and CreateAndReadIt's new say; its slots resized to the 32 body parts, numSiScriptCommon counted up)
 0x0028B0E0 0x6C func_0028B0E0  # OVL1; OVL1's copy of the pod vector's resize (MAIN's 0x18B050 carries the name, the same 0x6C bytes: OVL1 links apart from MAIN); CVisual::Init calls it three times where SOCOM 1's calls resize -- the weapons lane; ovl-copy: resize__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FUiRCUi
 0x0028B150 0x120 erase__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPUiPUi  # OVL1; s1:exact by hand (SOCOM 1's erase__ of __vector_pod<Ui> line for line, the copy unrolled 8x); CNodeVector::Remove's erase calls it
 0x0028B270 0x1D8 AddCallback__22CZBodyAnimCallbackListFPCcf  # OVL1; s1:align by hand (0.70 to SOCOM 1's AddCallback, the first function of body.cpp as there: a "null" callback first when empty, the index of an equal (time, name) one, else a new 24-byte callback pushed)
