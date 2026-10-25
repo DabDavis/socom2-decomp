@@ -79,6 +79,7 @@ public:
     const char *GetRespawnPos() const;
     int GetRespawnDir() const;
     void SetCharacterName(const char *name);
+    void Randomize(bool reset);
     /* one entry out of the file's item (SOCOM 1's CVehicleRdr::Load did every entry; the name is
      * ours) */
     void Load(_zrdr *rdr);

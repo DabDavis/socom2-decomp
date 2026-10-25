@@ -164,7 +164,7 @@ CAiMap::region *CAiMap::GetRegion(const char *name, CAiMapLoc &loc)
 
 /* the first region of a kind (ANY: every kind) that holds the cell, the hidden ones skipped when
  * asked (SOCOM 1's; SOCOM II's Contains tests the map too, and the hidden bit is materialised).
- * OPEN, 2 instructions short (0x138 against 0x140): the target keeps `this` and the size times
+ * OPEN, 2 instructions short (0x138 against 0x140; unchanged at -inline level=5): the target keeps `this` and the size times
  * 28 across the loop and reloads data_ for each pass's end test; this build computes the end
  * once. A const_iterator, the iterator declared outside the for, the end spelled through begin()
  * + size() or &table[0] + size(), and the body as an if-block were tried */
@@ -313,7 +313,7 @@ CAiMap::route *CAiMap::GetRoute(unsigned int i)
 }
 
 /* a route's index in the table, or -1 (new in SOCOM II, the name ours).
- * OPEN, 2 instructions short (0x68 against 0x70): GetRegionContaining's difference -- the target
+ * OPEN, 2 instructions short (0x68 against 0x70; unchanged at -inline level=5): GetRegionContaining's difference -- the target
  * reloads data_ for each pass's end test (the size times 0x24 hoisted) though the loop holds no
  * call and no store; this build computes the end once. Postfix steps, a while, the count stepped
  * in the body, a const_iterator, a raw pointer walk, !(i == end()) and the end built from a

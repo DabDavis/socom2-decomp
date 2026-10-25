@@ -1251,6 +1251,69 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     one definition would serve 13 class-vector inserts, ~18 KB), the class push_back through a
     deleter data() reference (SOCOM 1's line 923), and the deleter's destructor in a unit's tail
     calling clear out of line (seal_dyn.cpp, ai_map.cpp).
+- **Tells from the turret and the vehicle** (veh_turret.cpp, veh_vehicle.cpp):
+  - an address taken from a parameter (an entry + 0x20) and passed to an inline that loops over
+    it is recomputed every pass; held in a local in the caller first, it stays in a saved
+    register (CVehicle::Spawn);
+  - `if (max > -1 && count >= max) return 0;` inside an inline gives the target's "branch to
+    body, branch to body, jump to end"; `if (max < 0 || count < max) {...}` does not
+    (CTurret::Create);
+  - `x = c && m ? m : x;` on a bool parameter narrows at the join (`andi` in the delay slot);
+    `if (c && m) x = m;` narrows inside the arm (SetThermal);
+  - the flag setter `f &= ~(on ? 0 : mask); f |= on ? mask : 0;` reproduces the `movz`/`nor`
+    pattern; with a constant `true` its first half becomes a `dsll32`/`dsrl32` zero-extension;
+  - a network test with the player in a local loads this entity's controller first; written
+    inline, that load is hoisted above the call (PrePostTick against Tick);
+  - veh_turret.cpp is 0x3A71A0-0x3ACA5F (initialiser 0x404240; its template tail from 0x3AB5F0:
+    CTurretDef's constructor, resize, erase, insert), veh_vehicle.cpp 0x3ACA60-0x3AFB2F
+    (initialiser 0x4043A0), a near-copy with 136-byte definitions and 688-byte vehicles;
+  - open on include/vector: a class-vector resize would unblock both definition-vector Inits,
+    the two template tails and ~CTurretDefVector (0x3AC9E0).
+- **Tells from the AI core, round 5** (ai_astar.cpp, ai_mapio.cpp, ai_path.cpp):
+  - to keep a second load of a member MW would share, read it through a const view of `this`
+    (plain, int-cast and volatile reads all share it: read_v19's m_cellcount);
+  - `(unsigned)(s - 1) > 2` branches on `sltiu at`; the negated `< 3` inline or `>= 3`
+    materialises the test (CAiPath::Clear);
+  - `size() != 0 &&` as a while test branches on the size directly; a bare `size() &&`
+    materialises a bool (TickPathPlanner);
+  - a packed value read through a reference parameter is reloaded after every store to an
+    address-taken local: copy it into a local first (_fixupNode);
+  - CAiMapLocVec's implicit constructor adds an inline level: CAiPathStats with one is too tall
+    for CAiPath's constructor at level 5, a plain `std::vector<CAiMapLoc>` member inlines whole;
+  - CAiPath is 0xA8 bytes in SOCOM II, CAiStar 0x14 (its open and closed lists became the unit's
+    statics: ai_astar.cpp's initialiser 0x668540 builds them and path_queue).
+- **Tells from the body animation, round 3** (bone_archive.cpp, bone_init.cpp, si_script.cpp):
+  - `bool ok = f(); ...; loaded = ok;` gives the target's second `andi 0xff` at the end of the
+    arm (zBoneLoadMap);
+  - an inline taking a coordinate by const reference loads it where it is used; taken by value,
+    before the body runs (ClipToBox);
+  - a quotient taken into a local flips the next multiply's operand order; a `(float)` cast does
+    not;
+  - narrowing to an `unsigned char` local before a switch gives the one hoisted `andi 0xff` ahead
+    of the byte stores (SetCallbackIndex);
+  - a `const char *const &` inline parameter bound to a global re-reads the global at each use;
+    a local passed to `new T(args)` and declared before the `new` is loaded before the allocation;
+  - `unsigned short a : 10` followed by `unsigned char b : 2` puts b at byte+1, bits 2-3 (lhu for
+    a, lbu for b, as the target reads them);
+  - libvu0-style GCC asm (`mfc1 $8, %n` with an "f" operand and a $8 clobber) reproduces
+    mfc1/nop/qmtc2; the buffers held in pointer locals give register-based stores;
+  - `new T[n]` calls MSL's __construct_new_array (MAIN 0x182070); CScriptArchive is 0x108 bytes.
+- **Tells from the sound and the valves, round 4** (zsnd_csndinstance, zsnd_csndgroup, valve_list.cpp ...):
+  - `iterator e = end(); i = remove_if(begin(), e, p); erase(i, e);` gives the target's single
+    end in s0; written as one expression, MW builds end() twice;
+  - a vector walk whose iterators live in stack slots (copied with lwc1/swc1) is `std::for_each`
+    with a functor (CValvePool::Free);
+  - an unsigned counter compared `(int)i < n` stops MW strength-reducing `_zrdr::Item()`'s address
+    (Parse, LoadCSndGroup); `len <= size - (int)(next - names)` branches on `slt at` with the
+    target's registers;
+  - a byte enum given real non-negative enumerators becomes unsigned and compares with `andi
+    0xff` (VALVE_TYPE: ANY 0, PERM 1, TEMP 2, PERSIST 3);
+  - bit-fields set in a constructor's initialiser list compile to one word read-mask-write each
+    (CValve's constructor);
+  - SOCOM II's CSndInstance::Tick adds a Doppler shift: the word at 0xC is the listener distance
+    (a float), CalcVolPan returns the new one;
+  - `989snd.c`'s name starts with a digit: sccheck counts its matches but lists them only with
+    `-v`.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has

@@ -6,7 +6,7 @@
  * the constructor. SOCOM 1's symbol table groups the two classes' RTTI in one unit; its name is
  * ours. Written, all byte-exact: C2DPoly's but MakePacket and GetAssetLibs (m2c's draft matches; it
  * calls the library vector's pieces out of line, as C2DBitmapPoly's), and the tri-fan's
- * constructor; the tri-fan's Draw and destructor OPEN on include/vector. Defined in reverse of
+ * constructor, Draw and destructor. Defined in reverse of
  * their image order (-inline deferred). */
 
 #include <eetypes.h>
@@ -300,15 +300,8 @@ C2DTriFan::~C2DTriFan()
     m_polylist.clear();
 }
 
-/* while on, every triangle.
- * OPEN, 2 instructions short (0xC0 against 0xC8): MW folds the walk's first test, begin against
- * begin + size * 0xD0, into size == 0 (begin() one level, as include/vector's class vector has
- * it); the target keeps the pointer sum and compares -- a taller begin(), as the pointer vectors'
- * (README: "A one-level begin() folded a walk's first test"). Assigned, while, postfix, !(==), a
- * reference local and raw pointers all miss. Measured: the class vector's begin() taking data_
- * into a const local first (`T *const p = this->data_; return iterator(p);`), or reading it through
- * a `T *&data()` accessor, matches this and moves nothing else in any hand-written unit (the
- * deleter's `T *const &data() const` does not) -- include/vector's, for the integrator */
+/* while on, every triangle (the walk's first test a compare of begin against begin + size * 0xD0:
+ * include/vector's class begin() takes data_ through a const local, as the pointer vectors') */
 void C2DTriFan::Draw(zdb::CCamera *cam)
 {
     if (IsOn()) {

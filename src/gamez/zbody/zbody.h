@@ -1,9 +1,11 @@
 /* zbody.h -- the animated body: CBody (a base of CZSealBody), its parts (CZBodyPart), the motion
  * scripts it plays (CZSIScript and its objects, CZBodyAnim), the archives they load from
  * (CScriptArchive) and the small helpers between them (CSequence, the plane and quaternion
- * functions). OVL1 0x2869D0-0x290360, five units in SOCOM 1's link order: bone_math.cpp (ours: the
- * helpers), bone_archive.cpp and bone_init.cpp (the press beta's asserts name both), si_object.cpp
- * (the same), si_script.cpp and body.cpp (SOCOM 1's static initialisers name them).
+ * functions). OVL1 0x2869D0-0x290360, six units in SOCOM 1's link order: bone_math.cpp (ours: the
+ * helpers, 0x2869D0-0x2875C4), bone_archive.cpp (0x2875D0-0x28891F) and bone_init.cpp
+ * (0x288920-0x28936C; the press beta's asserts name both), si_object.cpp (0x289380-0x28A0FC, the
+ * same), si_script.cpp (0x28A100-0x28B26C) and body.cpp (0x28B270-0x29035C; SOCOM 1's static
+ * initialisers name them).
  *
  * The layouts are SOCOM 1's DWARF moved to where SOCOM II's code puts each member; only what a
  * written function touches is named. Self-contained over zmath.h, znode.h and zar.h, so zseal.h
@@ -625,6 +627,8 @@ public:
     CZBodyPart *AttachAuxPart(CZBodyPart *part, CZBodyPart *parent);
     CZBodyPart *AttachAuxNode(CNode *node, CZBodyPart *parent, const CPnt3D *pos, const CQuat *rot);
     CZBodyPart *AttachAuxNode(CNode *node, CZBodyPart *parent, const CPnt3D *pos, const CPnt3D *rot);
+    /* an archive's anim readied for the body (SOCOM 1's BodyAddAnim, which took a name) */
+    class CZBodyAnim *BodyAddAnim(class CScriptArchive *archive, int index);
 
     short m_state;   // 0x4: the SEAL's state (SOCOM 1's char at 0xd)
     float m_interp1;   // 0x8
@@ -638,6 +642,7 @@ public:
 };
 
 class CZSIScriptCommon;
+class CZSIScript;
 
 /* one object's track in a motion script: its positions and rotations, a frame each or one when
  * constant (SOCOM 1's DWARF, 0x10 bytes; SOCOM II packs a position into three shorts and a
@@ -649,9 +654,20 @@ public:
     /* the track laid over a script's buffer: its flags word, the positions, the rotations from the
      * next word boundary; returns the bytes used (SOCOM 1's, which copied the name to a table) */
     int Read(unsigned char *data, unsigned int nFrames, const char *name);
+    /* the track read from an archive's key (SOCOM 1's) */
+    bool Read(CZSIScript *script, zar::CZAR &zar);
     bool Initalize(CZSIScriptCommon *common);
     /* the track's velocity between two frames (SOCOM 1's took the CZSIScript) */
-    void GetVelRaw(CZSIScriptCommon *script, int f0, int f1, CPnt3D *vel);
+    CPnt3D *GetVelRaw(CZSIScriptCommon *script, int f0, int f1, CPnt3D *vel);
+    /* the track at a frame: the rotation as four 1.15 shorts, the position as three 8.8 shorts,
+     * converted through VU0 (SOCOM II's; SOCOM 1 kept floats) -- one frame, the nearer of two, or
+     * between two (SOCOM 1's Fast and Raw readers) */
+    void GetRot(int frame, CQuat *rot);
+    void GetPos(int frame, CPnt3D *pos);
+    CQuat *GetRotFast(int f0, int f1, float t, CQuat *rot);
+    CQuat *GetRotRaw(int f0, int f1, float t, CQuat *rot);
+    CPnt3D *GetPosFast(int f0, int f1, float t, CPnt3D *pos);
+    CPnt3D *GetPosRaw(int f0, int f1, float t, CPnt3D *pos);
 
     short *m_positionData;   // 0x0
     short *m_rotations;   // 0x4
@@ -666,17 +682,38 @@ public:
 /* the objects alive (SOCOM 1's numSiObject, si_object.cpp's) */
 extern int numSiObject;
 
-/* a motion script's shared data (SOCOM 1's DWARF: CZSIScriptCommon, 0x38 bytes; SOCOM II's carries
- * what SOCOM 1's CZBodyAnim held too -- the loop flag, the archive, the callback indices -- and is
- * what an ACTIVE_ANIM plays). Only what the written functions touch is named. */
+/* a motion script's shared data (SOCOM 1's DWARF: CZSIScriptCommon, 0x38 bytes; SOCOM II's is 0x5c --
+ * Read and CreateAndReadIt new 92 bytes -- and carries what SOCOM 1's CZBodyAnim held too: the loop
+ * flag, the archive, the callback indices; it is what an ACTIVE_ANIM plays). si_script.cpp's; the
+ * names past SOCOM 1's are ours. */
 class CZSIScriptCommon {
 public:
+    /* built empty, its defaults set and one empty object slot per body part (0x28AFE0) */
+    CZSIScriptCommon();
+    /* its name freed, its slots given up, its defaults set again (0x28A370) */
+    ~CZSIScriptCommon();
+    /* every tuning value to its default: rates 1, times unset (-1), every flag clear (0x28AE40) */
+    void SetDefaults();
     /* the share of the script one loop covers: all of it when it loops, else up to its last frame
      * (SOCOM 1's CZBodyAnim::TrueLoopTime; si_script.cpp's, 0x28ADA0) */
     float TrueLoopTime();
     /* the archive callback each of four slots names, 0 for none (SOCOM 1's CZBodyAnim's) */
     int GetCallbackIndex(int i);
     void SetCallbackIndex(int i, unsigned int index);
+    /* the distance the root object covers over the script, flat or (flag) vertical (0x28AB10) */
+    void CalcDistance();
+    /* a looped script's distance unit: 1, or 100 unless flag 7 (0x28AAC0) */
+    float DistanceScale();
+    /* the rate a looped script plays at: its time over its distance, 1 for a short one (0x28AA20) */
+    void CalcRate();
+    /* the bit-field setters, inline (their stores take `(x & mask) << n` even for constants) */
+    void SetNumFrames(int n) { m_nFrames = n; }
+    void SetId(int n) { m_id = n; }
+    void SetArchive(int n) { m_archive = n; }
+    void SetRead(bool b) { m_49_4 = b; }
+    void SetObjectsReady(bool b) { m_objects_ready = b; }
+    void SetLooped(bool b) { m_looped = b; }
+    void SetFlag7(bool b) { m_49_7 = b; }
 
     char *m_pName;   // 0x0
     unsigned short m_nFrames : 10;   // 0x4
@@ -684,33 +721,79 @@ public:
     unsigned char m_nObjects;   // 0x6
     unsigned char m_nBodyObjects;   // 0x7
     CZSIObject *m_pObjects;   // 0x8
-    unsigned char _c[0x10 - 0xc];
+    short m_refCount;   // 0xc: the scripts sharing it
+    short m_e;   // 0xe: -1 when built
     float m_10;   // 0x10: the script's time, scaled by TrueLoopTime
     float m_14;   // 0x14: the rate a looped script plays at (SetPlayback)
-    float m_18;   // 0x18
-    unsigned char _1c[0x20 - 0x1c];
-    float m_20;   // 0x20: the blend-in time (PushBlend, PopBlend)
-    unsigned char _24[0x40 - 0x24];
-    CZSIObject **m_objects_for_body;   // 0x40: by bone id
+    float m_18;   // 0x18: the distance covered (CalcDistance)
+    float m_1c;   // 0x1c: 1 by default
+    float m_20;   // 0x20: the blend-in time (PushBlend, PopBlend); -1 by default
+    float m_24;   // 0x24 .. 0x34: -1 by default
+    float m_28;
+    float m_2c;
+    float m_30;
+    float m_34;
+    std::vector<CZSIObject *> m_objects_for_body;   // 0x38: by bone id
     CZSIObject *m_root;   // 0x44: the root object (GetVelocity)
-    unsigned char m_48;   // 0x48
-    unsigned char m_49_0 : 2;   // 0x49
-    unsigned char m_archive : 2;   // the archive it came from, 1 or 2 (0 none)
-    unsigned char m_49_4 : 1;
+    unsigned short m_id : 10;   // 0x48
+    unsigned char m_archive : 2;   // 0x49: the archive it came from, 1 or 2 (0 none)
+    unsigned char m_49_4 : 1;   // set once Read has filled it
     unsigned char m_objects_ready : 1;
     unsigned char m_looped : 1;
-    unsigned char m_49_7 : 1;
-    unsigned char _4a[0x58 - 0x4a];
-    unsigned char m_callback_index[4];   // 0x58
+    unsigned char m_49_7 : 1;   // the distance unit 1, not 100
+    unsigned char m_4a_0 : 1;   // 0x4a
+    unsigned char m_vertical : 1;   // the distance is the rise, not the flat run
+    unsigned char m_4a_2 : 1;
+    unsigned char m_4a_3 : 1;
+    unsigned char m_4a_4 : 1;
+    unsigned char m_4a_5 : 1;
+    unsigned char m_4a_6 : 1;
+    unsigned char m_4a_7 : 1;
+    unsigned char m_4b_0 : 1;   // 0x4b
+    CPnt3D m_4c;   // 0x4c: zero by default
+    unsigned int m_callback0_index : 8;   // 0x58: SOCOM 1's CZBodyAnim's four
+    unsigned int m_callback1_index : 8;
+    unsigned int m_callback2_index : 8;
+    unsigned int m_callback3_index : 8;
 };
+
+/* the body parts a script has object slots for (32; si_script.cpp's, the SEAL's code reads it too) */
+extern int siNumBodyObjects;
+/* the scripts and their common data alive (SOCOM 1's, si_script.cpp's) */
+extern int numSiScript;
+extern int numSiCommon;
 
 /* a script: a table and its common data (SOCOM 1's DWARF: 0x18 bytes; SOCOM II's keeps only the
  * common, 8 bytes) and CZBodyAnim, a script a body plays (SOCOM 1's added the id, type and
  * callback indices, which SOCOM II's common holds) */
+class CScriptArchive;
+
 class CZSIScript {
 public:
     CZSIScript();
+    /* made for a name: its common shared from the archive (CreateAndReadIt's, inline) */
+    CZSIScript(const char *name, CScriptArchive *archive)
+    {
+        m_pCommon = 0;
+        Share(name, archive);
+        numSiScript++;
+    }
     virtual ~CZSIScript();
+    /* the script read from an archive's key: its common's header, then each object (SOCOM 1's) */
+    virtual bool Read(zar::CZAR &zar, int size);
+    /* the script laid over a loaded LIP block: the header, the objects' tracks, their names
+     * (SOCOM 1's; returns the objects) */
+    virtual int ReadLIP(zar::CZAR &zar, const char *name, void *data, int size, void *user);
+    /* the object of a name, whole or as a prefix, marked in use (SOCOM 1's) */
+    CZSIObject *GetObject(const char *name, bool exact);
+    /* the archive walk's callback: a script made for a key, read, kept by the current archive
+     * (SOCOM 1's) */
+    static int CreateAndReadIt(zar::CZAR &zar, const char *name, void *data, int size, void *user);
+    /* the common data of a name, the archive's or made and filed there; counted */
+    void Share(const char *const &name, CScriptArchive *archive);
+
+    /* the version an archive's scripts carry, set by each LIP header (SOCOM 1's) */
+    static int m_version;
 
     CZSIScriptCommon *m_pCommon;   // 0x4
 };
@@ -759,21 +842,102 @@ public:
     std::vector<CZBodyAnimCallback *> m_callbacks;   // 0x0
 };
 
-/* an archive of motion scripts (SOCOM 1's, 0x120 bytes in SOCOM II: bone_init.cpp's two statics at
- * 0x415D40 and 0x415E60) -- only the callbacks placed */
-class CScriptArchive {
-public:
-    unsigned char _0[0xd4];
-    CZBodyAnimCallbackList m_callbacks;   // 0xd4
+class CRdrFile;
+
+/* a script's transition speeds from motion.rdr (transition_speed_A and _B), kept by the script's
+ * index there when either is set; 12 bytes (ReadMotionRdr news them; the names ours) */
+struct MOTION_TRANSITION {
+    MOTION_TRANSITION(int index, float a, float b)
+    {
+        m_index = index;
+        m_speedA = a;
+        m_speedB = b;
+    }
+
+    int m_index;   // 0x0
+    float m_speedA;   // 0x4
+    float m_speedB;   // 0x8
 };
 
-/* the archive of an index: 1 and 2 the two statics, else none (bone_init.cpp's, not named yet) */
-extern "C" CScriptArchive *func_00289240(int which);
+/* an archive of motion scripts (SOCOM 1's; 0x108 bytes in SOCOM II: bone_init.cpp's two statics at
+ * 0x415D40 and 0x415E60, the second's destructor record at 0x415E48 right after the first) */
+class CScriptArchive {
+public:
+    /* built closed and empty: the members' constructors out of line (it is five high), then Init,
+     * another unit's (bone_init.cpp's initialiser inlines it for both statics) */
+    CScriptArchive() : m_zar(0, 0) { Init(); }
+    ~CScriptArchive();
+    /* every field to rest: no name, no buffer, no scripts, no motion.rdr (0x2888D0) */
+    void Init();
+    /* every script of the ZAR read through CreateAndReadIt; true when there were some (SOCOM 1's,
+     * 0x288710) */
+    bool LoadAll();
+    /* motion.rdr: read unless held, taken from a caller unless held, given up unless the caller's
+     * (0x2886C0, 0x2886A0, 0x288660) */
+    CRdrFile *ReadRdr(const char *name, const char *path);
+    CRdrFile *SetRdr(CRdrFile *rdr);
+    void FreeRdr(CRdrFile *keep);
+    /* the common data of a name, or none (0x2885B0) */
+    CZSIScriptCommon *FindCommon(const char *name);
+    /* each common's id filed under the archive's index in the SEAL's tables, and taken out
+     * (0x288510, 0x2884C0) */
+    void Register();
+    void Unregister();
+    /* the scripts' settings read from motion.rdr (0x287620) */
+    void ReadMotionRdr();
+    void SetPresent(bool b) { m_present = b; }
+    void SetIndex(int i) { m_index = i; }
+    /* the name replaced by a copy (freed first; none for 0) */
+    void SetName(const char *name)
+    {
+        if (m_name)
+            _free(m_name, 0, 0);
+        m_name = 0;
+        m_name = name ? _strdup(name, 0, 0) : 0;
+    }
+
+    std::vector<CZSIScript *> m_scripts;   // 0x0: every script read (CreateAndReadIt)
+    zar::CZAR m_zar;   // 0xc
+    char *m_name;   // 0xc4
+    void *m_buffer;   // 0xc8: the ZAR's data, kept once loaded
+    int m_bufsize;   // 0xcc
+    unsigned short m_nScripts;   // 0xd0
+    unsigned char m_index : 2;   // 0xd2: 1 or 2, set while loaded
+    unsigned char m_present : 1;   // the archive has been looked for
+    CZBodyAnimCallbackList m_callbacks;   // 0xd4
+    CRdrFile *m_rdr;   // 0xe0: motion.rdr, while it is read
+    std::vector<CZSIScriptCommon *> m_commons;   // 0xe4: as the scripts were read
+    std::vector<CZSIScriptCommon *> m_byRdr;   // 0xf0: in motion.rdr's order (0 for a missing one)
+    std::vector<MOTION_TRANSITION *> m_transitions;   // 0xfc
+};
+
+/* the archive scripts are being read into (bone_init.cpp's, 0x415F70) */
+extern CScriptArchive *curArchive;
+
+/* bone_init.cpp's: the common archive (SOCOM 1's boneArchive) and the map's, the version their ZARs
+ * open with, and the loaders (SOCOM 1's zBoneOpen, zBoneLoadAll and zBoneClose became one each) */
+extern CScriptArchive boneArchive;
+extern CScriptArchive mapBoneArchive;
+extern int bone_archive_version;
+void zBoneUnloadAll(CScriptArchive *archive);
+void zBoneLoad();
+void zBoneLoadMap(const char *dir, CRdrFile *rdr);
+void zBoneUnloadMap();
+int zBoneMotionRdrSize();
+void *zBoneMotionRdrBuffer();
+CScriptArchive *zBoneGetArchive(int which);
+CScriptArchive *zBoneArchive();
+CScriptArchive *zBoneMapArchive();
+void zBoneSetCurArchive(CScriptArchive *archive);
+CScriptArchive *zBoneCurArchive();
+/* both archives' callbacks to be looked up again (bone_archive.cpp's) */
+void zBoneResetCallbacks();
+
 
 /* the plane and quaternion helpers (bone_math.cpp, SOCOM 1's free functions) */
 float LineIntersectPlane(float d, const CPnt3D &n, const CPnt3D &a, const CPnt3D &b);
 float PlaneConstant(const CPnt3D &n, const CPnt3D &p);
-void ClipToBox(const CPnt3D &a, const CPnt3D &b, CPnt3D &out, float x0, float x1, float z0, float z1);
+bool ClipToBox(const CPnt3D &a, const CPnt3D &b, CPnt3D &out, float y0, float y1, float x0, float x1);
 void GetFractionalRotations(const CPnt3D *v, float *a, float *b);
 float quadW(float t);
 CQuat *QFromRot(CQuat *q, const CPnt3D *rot);

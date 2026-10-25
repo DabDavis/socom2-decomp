@@ -161,6 +161,9 @@
 0x003DD048 0x4 DEFAULT_ARGNAME  # OVL1 data; SOCOM 1's (gp-32368 there; "NO_ARG"): a stack entry's default argument name -- the stack's constructor, FlushHistory and ~CMenuStack copy it into each entry where SOCOM 1's do; 5 references in 5 functions
 0x003DD050 0x4 MENUHISTORY_STRPOOL  # OVL1 data; SOCOM 1's (gp-32364 there, next after DEFAULT_ARGNAME as here; "POOL"): a history slot's default name -- CMenuHistory's constructor, FlushHistory and ~CMenuStack copy it into each slot given back where SOCOM 1's do; 6 references in 5 functions
 0x003DD4D0 0xD00 UICommandTable  # OVL1; s1:data-seq (via GetUICommandType__FPCc); size SOCOM II's: 208 records of 16 bytes {id, name, handler, second function} and a zero record at 0x3DE1C0 that ends GetUICommandType's walk (SOCOM 1's 149 records of 12 bytes, 0x6F0); 3 references in 2 functions (GetUICommandType, zAnimUIMenuTick)
+0x003DE1D8 0x1 is_init__23@unnamed@bone_init_cpp@  # OVL1; SOCOM 1's (gp-29448 there, bone_init.cpp's anonymous-namespace flag; 1 in data here): zBoneLoad clears it when the patch ZAR run/motion_p.zar will not open, zBoneLoadMap does nothing without it -- 2 references in 2 functions
+0x003DE1E0 0x4 m_version__10CZSIScript  # OVL1; SOCOM 1's CZSIScript::m_version (gp-32344 there, si_script.cpp's; 5 in data): ReadLIP stores each LIP header's version, Read compares a key's with it -- 2 references in 2 functions
+0x003DE1E8 0x4 siNumBodyObjects  # OVL1; ours (si_script.cpp's, right after m_version, before body.cpp's constants at 0x3DE1F0; 32 in data): the body parts a script common has object slots for -- its constructor's resize and the byte at +7; 34 references in 21 functions, OVL2's CZSealBody among them (SOCOM 1 used the constant 32)
 0x003DE200 0x1 m_dynamics_controlled__Q23zdb7CCamera  # OVL1; s1:data-seq (size SOCOM 1's; via CmdTickControlSwitch__Q23zdb7CCameraFP14_zanim_cmd_hdrPf)
 0x003DE208 0x1 m_do_region_test__Q23zdb7CCamera  # OVL1; s1:data-seq (size SOCOM 1's; via CmdTickGetRegions__Q23zdb7CCameraFP14_zanim_cmd_hdrPf +1)
 0x003DE210 0x1 fogCheck  # OVL1; SOCOM 1 name (zcam_main.cpp's file static, 1; TestFOG and TestLandmarkFOG read it)
@@ -661,7 +664,16 @@
 0x00414E90 0x4 g_can_use_switch  # OVL1 bss; s1:data-seq (size SOCOM 1's; via UISwitchSides__FP13C2DAnimCmdHdrPf)
 0x00414E98 0x4 g_can_use_ready  # OVL1 bss; SOCOM 1's (gp-29660 there, beside g_can_use_switch): UIReadyToLoad compares the network's local time with it and sets it 5000 on, as SOCOM 1's does; 2 references in 1 function
 0x00414ED0 0xE44 g_MenuStack  # OVL1 bss; SOCOM 1's (0xA34 there): GetMenuStack returns it where SOCOM 1's returns g_MenuStack, UIPopUpDialog passes it to CMenuStack::PopUpDialog as SOCOM 1's does; the pop-up at +0xE40 (SOCOM 1's +0xA30, UIKillPopUp's test) is the last member read and the next object starts at 0x415D18; 41 references in 9 functions (GetMenuStack, the three button handlers, FlushMenuHistory, KillPopUp, SwitchMenu, PopUpDialog, the unit's initialiser 0x3FFCA0)
+0x00415D40 0x108 boneArchive  # OVL1 bss; SOCOM 1's (0x49C080 there, bone_init.cpp's): the common motion archive, a 0x108-byte CScriptArchive (its destructor record 0x415D28 before it, the map archive's 0x415E48 right after it); the initialiser 0x3FFCE0 builds it, zBoneLoad fills it
+0x00415E60 0x108 mapBoneArchive  # OVL1 bss; ours (bone_init.cpp's): the map's motion archive, <dir>motion_s.zar -- zBoneLoadMap fills it, zBoneUnloadMap empties it
+0x00415F68 0x4 bone_archive_version  # OVL1 bss; SOCOM 1's (gp-29452 there, bone_init.cpp's): the version both archives' ZARs open with (zBoneLoad's and zBoneLoadMap's Open calls pass it) -- 3 references in 2 functions
+0x00415F70 0x4 curArchive  # OVL1 bss; ours (bone_init.cpp's): the CScriptArchive scripts are read into -- set to an archive by the loaders, cleared by zBoneUnloadAll, read by CZSIScript::Read and CreateAndReadIt; 11 references in 7 functions
 0x00415F78 0x4 numSiObject  # OVL1 bss; SOCOM 1's (gp-29444 there, si_object.cpp's): the objects alive -- CZSIObject's constructor counts it up and its destructor down, 2 references each
+0x00415F80 0x10 siFloatBuf  # OVL1 bss; ours (si_object.cpp's file static, 16-aligned): the VU0 conversions' float result, copied out to the position -- the track readers' sqc2 target
+0x00415F90 0x10 siIntBuf  # OVL1 bss; ours (si_object.cpp's file static, 16-aligned): a frame's shorts widened to ints for lqc2/vitof
+0x00415FA0 0x10 siIntBuf2  # OVL1 bss; ours (si_object.cpp's file static, 16-aligned): the second frame's ints for GetPosRaw's interpolation
+0x00415FB0 0x4 numSiScript  # OVL1 bss; SOCOM 1's (gp-29440 there, si_script.cpp's): the scripts alive -- CZSIScript's constructor and CreateAndReadIt count it up, its destructor down; 6 references in 3 functions
+0x00415FB8 0x4 numSiCommon  # OVL1 bss; SOCOM 1's (gp-29436 there, si_script.cpp's): the script commons alive -- CZSIScriptCommon's constructor counts it up, its destructor down; 4 references in 2 functions
 0x00415FF0 0x4 appCamera  # OVL1 bss; SOCOM 1's (CHUD::GetHUDOwner reads its owner, as SOCOM 1's read gp-29416): 87 references in 61 functions take 0x415FF0
 0x00416018 0x4 data_00416018  # OVL1 bss; SOCOM II's shake: the y ripple's angle in degrees: 9 references in 5 functions
 0x00416020 0x4 data_00416020  # OVL1 bss; SOCOM II's shake: the x amplitude running: 13 references in 6 functions
@@ -853,6 +865,9 @@
 0x004A17B0 0x2000 alignedBuffer  # OVL1 bss; SOCOM 1's file static of util_sonyio.cpp, the same 8 KB (XferSectorsToCaller's bounce for a destination not 16-byte aligned; the next static is 0x4A37B8): 2 references -- the UI/file lane
 0x004A3BF0 0x400 s_crcTable  # OVL1 bss; util_crc.cpp's static (name ours): the CRC-32 table, 256 words built on first use; 2 references in 2 functions (0x3A2410 builds it, 0x3A2370 reads it)
 0x004A3FF0 0x1 s_crcTableBuilt  # OVL1 bss; util_crc.cpp's static (name ours): the table is built (a byte: lbu); 2 references in 1 function (0x3A2410 tests and sets it)
+0x004A4038 0xC m_turret_def__7CTurret  # OVL1 bss; SOCOM 1's static (the wep lane: CTurret's CTurretDefVector, 12 bytes, as SOCOM 1's m_turret_def__7CTurret at 0x53B1E8 -- veh_turret.cpp's initialiser 0x404240 builds it and registers its destructor 0x3AC9E0, as SOCOM 1's __sinit_veh_turret.cpp does; CTurret::Init hands it the file, ScanForTurretDefinitionHookups and Create match node names through it; 9 references in 5 functions)
+0x004A4058 0xC m_turrets__7CTurret  # OVL1 bss; by hand (the wep lane: new in SOCOM II, a vector of CTurret * -- the constructor pushes this, the destructor removes it and frees the vector once empty, ResetAmmo walks it; 0x404240 registers its destructor 0x3AC960; the name ours; 8 references in 4 functions)
+0x004A4138 0xC m_vehicle_def__8CVehicle  # OVL1 bss; by hand (the wep lane: CVehicle's CVehicleDefVector, 12 bytes -- veh_vehicle.cpp's initialiser 0x4043A0 builds it and registers its destructor 0x3AFB20; CVehicle::Init hands it the file, the vehicle scan prefix-matches node names through it; the name ours, after the turret's m_turret_def; 5 references in 4 functions)
 0x004A43C4 0x4 zvid_clearColor  # OVL1 bss; by hand (the wep lane: zVid_ClearColor stores the packed RGBAQ word through this pointer, uncached, where SOCOM 1's stored through zvid + 0x244 -- the private video state, whose start is not placed; the name ours; 1 reference in 1 function)
 0x004A43D8 0x4 zvid_fade  # OVL1 bss; by hand (the wep lane: CVideo::Fade stores r, g, b and the alpha in these four bytes, where SOCOM 1's stored zvid + 0x260 -- the private video state, whose start is not placed; the name ours; 4 references in 1 function)
 0x004A4480 0x94 zVid  # OVL1 bss; s1:data-seq (via Update__Q23zdb6CWorldFv); SOCOM 1's _zvid_public is 0x80, SOCOM II's runs to at least 0x92 (the game states set the byte at 0x91), so 0x94 to the word
@@ -882,6 +897,7 @@
 0x0064F8B0 0x4 s_eventRangeDefault  # OVL2 data; ours (ai_events.cpp's static, 200.0: GetEventRange's default; 1 reference in 1 function)
 0x0064F8B8 0x4 s_eventRangeGeneric  # OVL2 data; ours (ai_events.cpp's static, 250.0: GetEventRange for AIE_GENERIC; 1 reference in 1 function)
 0x0064F8C0 0x4 s_eventRangeEntity  # OVL2 data; ours (ai_events.cpp's static, 80.0: GetEventRange for AIE_ENTITY; 1 reference in 1 function)
+0x0064F8D8 0x4 timerlimit  # OVL2 data; SOCOM 1's (timerlimit, gp-relative there): ai_astar.cpp's T0 budget for one planner tick, 33; PathPlanImmediate saves it, sets -1 and restores it, TickPathPlanner compares the elapsed count with it; 4 references in 2 functions
 0x00655600 0x4 gpKeyMaster  # OVL2; s1:data-seq (size SOCOM 1's; via GetKeyMaster)
 0x00655604 0x1 bHasInitialized.0  # OVL2; s1:data-seq (size SOCOM 1's; via InitializePRNG)
 0x00655608 0x4 gpfMallocCallback  # OVL2; s1:data-exact (size SOCOM 1's; via rt_memory_allocate +1)
@@ -1007,6 +1023,8 @@
 0x0066A088 0xC m_callbacks__8CAiEvent  # OVL2 bss; s1:data-exact (size SOCOM 1's; via __sinit_ai_events.cpp)
 0x0066A098 0x4 s_eventTickTime  # OVL2 bss; ours (ai_events.cpp's static: the time CAiEvent::Tick(float, void*) gathers before it ticks the events; 3 references in 1 function)
 0x0066A0A0 0x1 s_eventFlag  # OVL2 bss; ours (ai_events.cpp's static byte: CAiEvent::Open and Close clear it, nothing in the image reads it; 2 references in 2 functions)
+0x0066A0C8 0x4 s_plannerStart  # OVL2 bss; ours (ai_astar.cpp's static, SOCOM 1's unnamed gp word at -29944: the T0 count TickPathPlanner starts from; 2 references in 1 function)
+0x0066A168 0x4 _plan_path__2ai  # OVL2 bss; SOCOM 1's (_plan_path__2ai): the path PathPlanBegin starts, PathPlanAddLeg extends, PathPlanExecute queues and PathPlanAbort clears; 7 references in 4 functions
 0x0066A180 0x18 path_queue__2ai  # OVL2 bss; SOCOM 1's (path_queue__2ai, 24 bytes at 0x49B160: the planner queue, a list of CAiPath * and three words): __sinit_ai_astar.cpp builds it and registers ~CAiPathQueue, AbortPathPlan removes a path from it as SOCOM 1's does; 19 references in 7 functions
 0x0066A1B0 0xE0 AiMaps  # OVL2 bss; s1:data-seq (size SOCOM 1's; via CreateCompassNavPoints__8CMissionFv +1)
 0x0066B990 0x58 _unknown  # OVL2 bss; SOCOM 1's _unknown (0x509870, 40 bytes there: a static CAiSUnknown seal_aistate.cpp's initialiser builds); CSealCtrlAi::GetAiState returns it when the stack is empty (0x5F5FD0, 0x5F6010) -- 2 references in 2 functions (the kit lane, round 3)

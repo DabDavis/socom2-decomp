@@ -22,9 +22,40 @@ public:
 /* SOCOM 1's CSealCtrl::SetMenuState with a flag added (OVL2; the row unnamed: called as C) */
 extern "C" void func_00597740(CSealCtrl *ctrl, int state, int flag);
 
+/* a character's weapon and its list (SOCOM 1's CCharacterWeap, 12 bytes, and CCharacterWeapList, a
+ * vector of them: its size at 4, its elements at 8) */
+class CCharacterWeap {
+public:
+    unsigned char _0[0xc];
+};
+
+class CCharacterWeapList {
+public:
+    unsigned int size() const { return m_size; }
+    CCharacterWeap &operator[](unsigned int n) { return m_data[n]; }
+
+    unsigned int _0;
+    unsigned int m_size;   // 0x4
+    CCharacterWeap *m_data;   // 0x8
+};
+
+/* SOCOM 1's CCharacterWeap::SetupCharacterWeapon and CCharacterWeapList::AddWeapon (OVL2; the rows
+ * unnamed: called as C) */
+extern "C" void func_0053EEE0(CCharacterWeap *weap, EQUIP_ITEM item);
+extern "C" void func_0053B3A0(CCharacterWeapList *list, EQUIP_ITEM item);
+
+/* a character's type as the selector reads it: its weapons (SOCOM 1's at 0x250) */
+class CCharacterType {
+public:
+    unsigned char _0[0x2e8];
+    CCharacterWeapList m_weapons;   // 0x2e8
+};
+
 /* the seal as the selector reads it: its controller */
 class CZSealBody {
 public:
+    CCharacterType *GetCharacter();
+
     unsigned char _0[0xc0];
     CSealCtrl *m_ctrl;   // 0xc0
 };
@@ -147,4 +178,24 @@ void CInGameWeaponSel::AfterCloseFirst()
     m_selectionback[0].Off();
     m_weaponicon[2].Off();
     m_selectionback[2].Off();
+}
+
+/* the HUD owner's character given the selected items: its weapons set up as far as it has them,
+ * then the rest added (and set up, if any) -- SOCOM 1's, five items in SOCOM II */
+void CInGameWeaponSel::UpdateCharacter()
+{
+    CZSealBody *seal = CHUD::GetHUDOwner();
+    CCharacterWeapList &weaps = seal->GetCharacter()->m_weapons;
+    int ii;
+
+    for (ii = 0; ii < 5; ii++) {
+        if (ii >= weaps.size())
+            break;
+        func_0053EEE0(&weaps[ii], m_selected_item_index[ii]);
+    }
+    for (; ii < 5; ii++) {
+        func_0053B3A0(&weaps, m_selected_item_index[ii]);
+        if (m_selected_item_index[ii] != EQUIP_NONE)
+            func_0053EEE0(&weaps[ii], m_selected_item_index[ii]);
+    }
 }

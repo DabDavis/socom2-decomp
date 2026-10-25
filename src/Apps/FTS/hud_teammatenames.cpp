@@ -1,6 +1,6 @@
-/* hud_teammatenames.cpp -- the teammates' names (OVL1 0x226960-0x227337): SOCOM 1's unit (its DWARF
+/* hud_teammatenames.cpp -- the teammates' names (OVL1 0x226960-0x22755F): SOCOM 1's unit (its DWARF
  * names it, Z:\dev\Apps\FTS\hud_teammatenames.cpp), SOCOM II's CMPTeammateNames: On, Tick,
- * WordIntersectionTest, UnInit and Init in the image. Not written yet: Tick. Defined in reverse of their image order (-inline deferred). */
+ * WordIntersectionTest, UnInit, Init and the font Init (CHUD::Init's) in the image. Not written yet: Tick. Defined in reverse of their image order (-inline deferred). */
 
 #include "hud_teammatenames.h"
 
@@ -10,6 +10,64 @@ extern "C" void func_00364660(C2DBitmap *bitmap, int x, int y, int w, int h);
 /* the two bitmaps' sizes (variables: read with lwc1) */
 static float s_bitmap1Size = 32.0f;
 static float s_bitmap2Size = 32.0f;
+
+namespace zdb {
+class CAssetList {
+public:
+    CTexHandle *GetTexHandle(const char *name);
+};
+
+class CAssetMgr {
+public:
+    static CAssetList m_assets;
+};
+}
+
+/* the HUD's phases (CHUD::Add2D) */
+class CHUD {
+public:
+    void Add2D(C2D *p2d, int phase, bool add_to_back);
+};
+
+extern CHUD *theHUD;
+
+/* a valve as the names read it: its value (zanim.h's CValve) */
+enum VALVE_TYPE {};
+
+class CValve {
+public:
+    static CValve *Create(const char *name, VALVE_TYPE type);
+
+    char *m_name;   // 0x0
+    unsigned int m_value : 16;   // 0x4
+};
+
+/* the names made: eight strings in the font, listed, and the two bitmaps (the ok-to-talk and the
+ * off arrow textures) added to the HUD's phases off, grey and teal, half transparent; shown while
+ * the DISPLAY_MP_TEAM_NAMES valve is on (CHUD::Init's; SOCOM 1's Init took the font too) */
+void CMPTeammateNames::Init(C2DFont *font)
+{
+    m_socom2_5e0 = 0;
+    for (unsigned int i = 0; i < 8; i++) {
+        m_names[i].SetFont(font);
+        m_names[i].m_scale = 0.9f;
+        push_back(&m_names[i]);
+    }
+    m_bitmap1.Off();
+    m_bitmap1.SetColor(128.0f, 128.0f, 128.0f);
+    m_bitmap1.SetTrans(64.0f);
+    m_bitmap1.m_pTexHandle = zdb::CAssetMgr::m_assets.GetTexHandle("action_ok_talk2.tif");
+    func_00364660(&m_bitmap1, 0, 0, (int)s_bitmap1Size, (int)s_bitmap1Size);
+    theHUD->Add2D(&m_bitmap1, -1, true);
+    m_bitmap2.Off();
+    m_bitmap2.SetColor(40.0f, 96.0f, 110.0f);
+    m_bitmap2.SetTrans(64.0f);
+    m_bitmap2.m_pTexHandle = zdb::CAssetMgr::m_assets.GetTexHandle("hud_arrow_off2.tif");
+    func_00364660(&m_bitmap2, 0, 0, (int)s_bitmap2Size, (int)s_bitmap2Size);
+    theHUD->Add2D(&m_bitmap2, -1, true);
+    m_socom2_5e4 = CValve::Create("DISPLAY_MP_TEAM_NAMES", (VALVE_TYPE)1)->m_value != 0;
+    theHUD->Add2D(this, 1, true);
+}
 
 /* both bitmaps off, grey and teal, half transparent, placed at the origin */
 void CMPTeammateNames::Init()
