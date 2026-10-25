@@ -192,9 +192,10 @@ public:
 
     CEntity(TYPE type, zdb::CNode *node);
     virtual ~CEntity();                                         /* +0x08 */
-    /* +0x0C: inline, its out-of-line copy an earlier unit's (0x295F10, camera.cpp's); SOCOM 1's
-     * slot was GetPosW (CTurret's override keeps that name). The name is ours */
-    virtual zdb::CNode *GetPosNode() { return m_node; }
+    /* +0x0C: SOCOM 1's GetPosW, a matrix now -- the node's (`lw v0,0x28(a0)`: CNode's matrix at
+     * 0), CTurret's own at 0x2C0 (0x2C7BE0) -- where SOCOM 1's gave the node's position row
+     * (0x177290: node + 48). Inline, its out-of-line copies 0x295F10 (OVL1) and 0x542FF0 (OVL2) */
+    virtual const CMatrix *GetPosW() const { return &m_node->m_matrix; }
     /* +0x10: the position copied out of the node (the name is ours) */
     virtual void UpdatePosW();
     virtual void PreTick(float dT);
