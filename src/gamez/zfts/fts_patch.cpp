@@ -146,7 +146,13 @@ public:
     }
     virtual ~CSMDownloadPatch() {}
     virtual bool Start();
-    /* every change of state counted on DownloadStateValve */
+    /* every change of state counted on DownloadStateValve, then the base's push (inlined: its
+     * copy of the member pointer is the second one, made with ld/sd).
+     * OPEN, 8 instructions: the target loads the valve's value twice -- once for the increment,
+     * once for the setter's comparison (lhu v1; lhu v0; addiu v1,v1,1) -- where every form tried
+     * shares one load: the setter as a static or as a member of a CValve subclass, the value
+     * through an accessor, a local or another pointer, `1 +` first, an Increment() member, the
+     * comparison either way round */
     virtual void SetState(const SSMState &state)
     {
         SSMState s = state;
