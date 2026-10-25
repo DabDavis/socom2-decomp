@@ -21,7 +21,7 @@ extern "C" void func_0051C6D0(CAiMap::actions *v, unsigned int n);
 extern "C" void func_0051C8F0(CAiMap::regions *v, unsigned int n);
 extern "C" void func_0051CA40(CAiMap::spores *v, unsigned int n);
 
-inline void table_resize(CAiMapLocVec &t, unsigned int n) { func_0051C4A0(&t, n); }
+inline void table_resize(CAiMapLocVec &t, unsigned int n) { t.resize(n); }
 inline void table_resize(CAiMap::readers &t, unsigned int n) { func_0051C3F0(&t, n); }
 inline void table_resize(CAiMap::actions &t, unsigned int n) { func_0051C6D0(&t, n); }
 inline void table_resize(CAiMap::regions &t, unsigned int n) { func_0051C8F0(&t, n); }

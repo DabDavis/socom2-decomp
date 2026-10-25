@@ -9351,17 +9351,17 @@
 0x00510570 0x1C4 TickPathPlanner__2aiFfPv  # OVL2; s1:order by hand (the demo's 0x180C00, the same loop: T0_COUNT against timerlimit, the queue's head switched on its state 5/4/0/2/1, CreatePlanner, find_path, plan_legcomplete, pop_front and the queue's two counters; SOCOM II draws the finished path through 0x524950 with "dbg_path")
 0x00510740 0x70 ResetPathPlan__2aiFv  # OVL2; s1:order by hand (the demo's 0x180DA0: the queue's head, if planning, has its search deleted -- DeletePlanner(false) inlined -- and goes back to waiting through 0x527900, SOCOM 1's inline tail)
 0x005107B0 0x194 AbortPathPlan__2aiFP7CAiPath  # OVL2; s1:order by hand (the demo's 0x180E30: the path's state byte tested for 2, then the planner's CAiStar deleted with 1, the flag at 8 and its buffer, plan_complete(path, 0) and the path removed from ai::path_queue; state 1 gives plan_complete(path, 5); SOCOM II adds a third arm, a find in the queue before the same removal)
-0x00510950 0x14 func_00510950  # OVL2
+0x00510950 0x14 __ne__Q33std44list<P7CAiPath,Q23std20allocator<P7CAiPath>>19generic_iterator<0>CFRCQ33std44list<P7CAiPath,Q23std20allocator<P7CAiPath>>19generic_iterator<0>  # OVL2; by hand, the MSL lane (include/list's wrapper iterator's != out of line, byte-exact from PathPlanExecute's probe)
 0x00510970 0x38 find<Q33std44list<P7CAiPath,Q23std20allocator<P7CAiPath>>19generic_iterator<0>,P7CAiPath>__3stdFQ33std44list<P7CAiPath,Q23std20allocator<P7CAiPath>>19generic_iterator<0>Q33std44list<P7CAiPath,Q23std20allocator<P7CAiPath>>19generic_iterator<0>RCP7CAiPath_Q33std44list<P7CAiPath,Q23std20allocator<P7CAiPath>>19generic_iterator<0>  # OVL2; s1:exact; by hand, settled: not CAiVisMap's -- the s1:exact pairing was a masked tie (every pointer list's find compiles alike). Its one caller, AbortPathPlan 0x5107B0, looks the path up in ai::path_queue (0x66A180), a list<CAiPath *>; std::find instantiated over list<CAiPath *> compiles to these 0x38 bytes exactly (build/scratch/ai/probe_find.cpp; MW 3.0 mangles the return type)
-0x005109B0 0xC func_005109B0  # OVL2
-0x005109C0 0xC func_005109C0  # OVL2
+0x005109B0 0xC end__Q23std44list<P7CAiPath,Q23std20allocator<P7CAiPath>>Fv  # OVL2; by hand, the MSL lane (include/list's list<T *>::end() out of line, byte-exact from PathPlanExecute's probe, which calls it in its loop test)
+0x005109C0 0xC begin__Q23std44list<P7CAiPath,Q23std20allocator<P7CAiPath>>Fv  # OVL2; by hand, the MSL lane (include/list's list<T *>::begin() out of line, byte-exact from build/msl2/probe/ppe2.cpp: ai::PathPlanExecute's queue insert, inlined one level, calls it)
 0x005109D0 0x1AC PathPlanExecute__2aiFv  # OVL2; s1:order by hand (the demo's 0x180F00 after AbortPathPlan: _plan_path with no legs is aborted, else queued (state 1) -- SOCOM II inserts it by GetPriority, preempting a planning head through ResetPathPlan -- the queue's longest size kept, m_curleg = m_legcount - 1, _plan_path cleared)
-0x00510B80 0x8 func_00510B80  # OVL2
-0x00510B90 0x3C func_00510B90  # OVL2
-0x00510BD0 0x10 func_00510BD0  # OVL2; tu: char_type.cpp~ (1.0 beta)
-0x00510BE0 0x14 func_00510BE0  # OVL2
+0x00510B80 0x8 size__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>CFv  # OVL2; by hand, the MSL lane (the pointer lists' size() out of line, byte-exact from PathPlanExecute's probe, which calls it twice for the queue's longest size)
+0x00510B90 0x3C insert__Q23std44list<P7CAiPath,Q23std20allocator<P7CAiPath>>FQ33std44list<P7CAiPath,Q23std20allocator<P7CAiPath>>19generic_iterator<0>RCP7CAiPath  # OVL2; by hand, the MSL lane (include/list's list<T *>::insert(iterator, T *const &), byte-exact from PathPlanExecute's probe: position to a base iterator, the deleter's insert 0x50FAD0)
+0x00510BD0 0x10 __ct__Q33std44list<P7CAiPath,Q23std20allocator<P7CAiPath>>19generic_iterator<0>FRCQ33std44list<P7CAiPath,Q23std20allocator<P7CAiPath>>19generic_iterator<0>  # OVL2; tu: char_type.cpp~ (1.0 beta); by hand, the MSL lane (include/list's wrapper iterator's user-declared copy constructor, byte-exact from PathPlanExecute's probe: the copy it hands insert)
+0x00510BE0 0x14 __pp__Q33std44list<P7CAiPath,Q23std20allocator<P7CAiPath>>19generic_iterator<0>Fi  # OVL2; by hand, the MSL lane (include/list's wrapper iterator's postfix ++, byte-exact from PathPlanExecute's probe: the copy, the step, the copy given back)
 0x00510C00 0x10 func_00510C00  # OVL2
-0x00510C10 0xC func_00510C10  # OVL2
+0x00510C10 0xC __ml__Q33std44list<P7CAiPath,Q23std20allocator<P7CAiPath>>19generic_iterator<0>CFv  # OVL2; by hand, the MSL lane (include/list's wrapper iterator's * out of line, the element's address, byte-exact from PathPlanExecute's probe)
 0x00510C20 0x8 func_00510C20  # OVL2
 0x00510C30 0x44 PathPlanAbort__2aiFv  # OVL2; s1:order by hand (the demo's 0x181070: _plan_path cleared through CAiPath::Clear and its state zeroed, _plan_path = 0)
 0x00510C80 0x34 PathPlanAddLeg__2aiFP6CAiMapRC9CAiMapLocRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x1810A0: _plan_path->plan_addleg(map, start, goal) returned)
@@ -9395,7 +9395,7 @@
 0x005132A0 0x8 func_005132A0  # OVL2
 0x005132B0 0x1A8 func_005132B0  # OVL2
 0x00513460 0x24C func_00513460  # OVL2
-0x005136B0 0x6E4 func_005136B0  # OVL2
+0x005136B0 0x6E4 insert__Q23std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>FP9CAiMapLocUiRC9CAiMapLoc  # OVL2; by hand, the MSL lane (vector<CAiMapLoc>'s class insert: the byte-exact resize 0x51C4A0 calls it with (end, n - size, T()); include/vector's copy is 8 bytes short -- the in-place branch's end pointer in other registers, as the 8-byte-element inserts')
 0x00513DA0 0x1F0 func_00513DA0  # OVL2
 0x00513F90 0x8F4 func_00513F90  # OVL2
 0x00514890 0x754 func_00514890  # OVL2
@@ -9513,7 +9513,7 @@
 0x0051C350 0x98 func_0051C350  # OVL2
 0x0051C3F0 0xA4 resize__Q23std68__vector_imp<Q26CAiMap6reader,Q23std27allocator<Q26CAiMap6reader>,0>FUi  # OVL2; s1:callee by hand (ReadCellTable<readers, reader> calls it with the count where the demo's calls this resize)
 0x0051C4A0 0x6C resize__Q23std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>FUi  # OVL2; s1:callee by hand (ReadCellTable<CAiMapLocVec, CAiMapLoc> calls it with the count where the demo's calls this resize)
-0x0051C510 0x120 func_0051C510  # OVL2
+0x0051C510 0x120 erase__Q23std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>FP9CAiMapLocP9CAiMapLoc  # OVL2; by hand, the MSL lane (include/vector's class erase over CAiMapLoc, byte-exact from ai_mapio.cpp's template tail: vector<CAiMapLoc>::resize, 0x51C4A0, calls it for a cut)
 0x0051C630 0x9C resize__Q23std64__vector_imp<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>,0>FUi  # OVL2; by hand (ReadCellTable<names, name> 0x51BA60 calls it with the count)
 0x0051C6D0 0x170 resize__Q23std68__vector_imp<Q26CAiMap6action,Q23std27allocator<Q26CAiMap6action>,0>FUi  # OVL2; by hand (ReadCellTable<actions, action> 0x51B820 calls it with the count)
 0x0051C840 0xA4 resize__Q23std64__vector_imp<Q26CAiMap4link,Q23std25allocator<Q26CAiMap4link>,0>FUi  # OVL2; by hand (ReadCellTable<links, link> 0x51BB20 calls it with the count; it builds the new elements with the link's constructor and inserts through the links' insert 0x520A90, push_back's callee)
