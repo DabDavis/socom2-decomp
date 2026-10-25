@@ -123,7 +123,10 @@ CAiEvent::EVENT CAiEvent::GetEventFromString(const char *s, EVENT def)
 }
 
 /* every event back in the pool and the pool freed (SOCOM 1's Close did this itself; SOCOM II's
- * calls it. The name is ours) */
+ * calls it. The name is ours).
+ * OPEN (0x16C against 0x180): the target's first walk keeps its iterator in memory, assigned
+ * (sp+152/156, bitwise copies) and re-read each pass, and its delete loop walks two cursors;
+ * a list-iterator shape for the list remodel */
 void CAiEvent::FreeEvents()
 {
     CAiEventList::iterator i;
@@ -218,7 +221,10 @@ struct _tick {
     float m_dT;
 };
 
-/* the scheduler's task, "CAiEventTick" (SOCOM 1's, the time gathered new) */
+/* the scheduler's task, "CAiEventTick" (SOCOM 1's, the time gathered new).
+ * OPEN (0xAC against 0xA4): the target compares the gathered time with itself (c.lt.s $f0,$f0,
+ * an uninitialised bound sharing its register?) and returns through one `move v0,zero`; it also
+ * keeps m_inuse's sentinel in s0 for both end()s, where this build rematerialises it */
 bool CAiEvent::Tick(float dT, void *)
 {
     float min;
@@ -246,7 +252,9 @@ CAiEvent::iterator CAiEvent::GetFirstEvent(EVENT_CLASS c)
 }
 
 /* the walk's next event heard at a point: of a wanted kind, not the walk's owner's, not seen,
- * and within its range scaled (SOCOM 1's; SOCOM II measures the distance first) */
+ * and within its range scaled (SOCOM 1's; SOCOM II measures the distance first).
+ * OPEN (right size, 39 instructions): the loop's shape -- the target tests `!found` and the end
+ * at the bottom and keeps the walk's fields in other registers; not yet worked */
 CAiEvent *CAiEvent::GetNextEvent(const CPnt3D *pos, iterator &it, float scale)
 {
     CAiEvent *found = 0;
@@ -321,7 +329,9 @@ unsigned int CAiEvent::MakeMaskEx(EVENT e, ...)
     return mask;
 }
 
-/* the handle of an event, added if the queue has none (SOCOM 1's) */
+/* the handle of an event, added if the queue has none (SOCOM 1's).
+ * OPEN (right size, 9 instructions): the walk's registers and the push_back's temporaries (the
+ * handle at sp+44, the end iterator at sp+36) -- list shapes, left for the list remodel */
 CAiEventHandle *CAiEventQ::Create(unsigned int id)
 {
     CAiEventHandle *h = 0;

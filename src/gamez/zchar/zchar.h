@@ -105,4 +105,17 @@ public:
     void Close();
 };
 
+/* a kind of character: model, sounds, gear, weapons, AI and health (SOCOM 1's DWARF, 0x2FC bytes;
+ * SOCOM II's is larger -- the temporary flag SOCOM 1 kept at 0x268 is at 0x300). Only what the
+ * code written so far reads; the rest is a hole */
+class CCharacterType {
+public:
+    ~CCharacterType();
+
+    unsigned char m_unk0[0x300];   // 0x0: not laid out yet
+    unsigned char m_istemporary;   // 0x300
+};
+
+bool DeleteTemporaryCharType(CCharacterType *t);
+
 #endif
