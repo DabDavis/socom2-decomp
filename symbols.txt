@@ -1838,7 +1838,7 @@
 0x0020EBD0 0x374 Tick__9CZLineMapFP11CZNewHudMapf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0020EF50 0x1AC func_0020EF50  # OVL1
 0x0020F100 0xB4 func_0020F100  # OVL1
-0x0020F1C0 0x28 func_0020F1C0  # OVL1
+0x0020F1C0 0x28 IsValid__Q225@unnamed@hud_linemap_cpp@12CAiLinePtItrCFv  # OVL1; s1:name by hand (the HUD lane: slot 2 of CAiLinePtItr's vtable 0x405580, after GetPt; SOCOM 1's IsValid, the same loads, its != now !(==))
 0x0020F1F0 0x20 __as__6CPnt3DFRC6CPnt3D  # OVL1; by its body (a field-by-field copy returning this: CPnt3D's implicit assignment out of line; CHoming's reset and the widget specs go through it) -- the UI-widgets and body lanes
 0x0020F210 0x8 func_0020F210  # OVL1
 0x0020F220 0x244 func_0020F220  # OVL1
