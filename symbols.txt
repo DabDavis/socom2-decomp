@@ -1915,9 +1915,9 @@
 0x00213840 0x220 func_00213840  # OVL1
 0x00213A60 0x3C0 func_00213A60  # OVL1
 0x00213E20 0x1354 func_00213E20  # OVL1
-0x00215180 0x14 func_00215180  # OVL1; split by hand (the HUD lane: a tail call through a member's vtable, padded to 0x2151A0)
-0x002151A0 0x50 func_002151A0  # OVL1; split from 0x215180 (three virtual calls on members at 0x1c, 0x34 and 0x4c)
-0x002151F0 0x54 func_002151F0  # OVL1
+0x00215180 0x14 OnPauseTest__14BitmapReticuleFv  # OVL1; split by hand (the HUD lane: a tail call through a member's vtable, padded to 0x2151A0); by hand (the HUD lane, round 16): BitmapReticule's (this+0x34, the second of the three plain C2D groups its constructor builds at 0x1C/0x34/0x4C, turned on through its vtable); CHUD::Off calls it on its reticle (+0x...) only in the pause test menu state -- SOCOM II's, the name ours
+0x002151A0 0x50 Off__14BitmapReticuleFv  # OVL1; split from 0x215180 (three virtual calls on members at 0x1c, 0x34 and 0x4c); s1:vtable by hand (the HUD lane, round 16): slot 4 of BitmapReticule's vtable (0x4055B8), C2D's Off slot, as SOCOM 1's BitmapReticule::Off; SOCOM II's turns off the three groups
+0x002151F0 0x54 On__14BitmapReticuleFv  # OVL1; s1:vtable by hand (the HUD lane, round 16): slot 5 of BitmapReticule's vtable (0x4055BC), C2D's On slot, as SOCOM 1's BitmapReticule::On; SOCOM II's calls C2D::On, then the three groups' On
 0x00215250 0x9B8 func_00215250  # OVL1
 0x00215C10 0xB50 func_00215C10  # OVL1
 0x00216760 0x8 Slot10__Q23zdb7CNodeExFf  # OVL1; by vtable (CNodeEx's third slot, inline, returns false; CZAnimEx overrides it with 0x2739B0 -- the name ours, the float CZAnimEx's)
