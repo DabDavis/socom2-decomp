@@ -28,9 +28,11 @@ extern "C" void func_00527FC0(CAiPath *path, CAiPath::PATH_STATE state, int leg)
 static unsigned int timerlimit = 33;
 static unsigned int s_plannerStart;
 
-/* the path a caller is building leg by leg (SOCOM 1's ai::_plan_path) */
+/* the path a caller is building leg by leg (SOCOM 1's ai::_plan_path), and the priority from which
+ * a queued path stops the one planning (ai.h) */
 namespace ai {
 CAiPath *_plan_path;
+float s_preemptPriority = 1.0f;
 }
 
 /* the restrained planner's step: the search limited to 5000 cells, the base's test, no soil 6,
@@ -145,25 +147,26 @@ void ai::PathPlanAbort()
     _plan_path = 0;
 }
 
-/* NOT WRITTEN: ai::PathPlanExecute (0x5109D0, SOCOM 1's 0x180F00) -- _plan_path with no legs is
- * aborted; else, unless already queued, its state set to INQUEUE and the path inserted through an
- * inline of the queue that the target inlines ONE level, so every callee is out of line:
- *     float priority = path->GetPriority();               // 0x510C20
- *     iterator i = begin();                               // 0x5109C0
- *     bool preempt = false;                               // s2
- *     for (; !preempt && i != end(); i++) {               // 0x5109B0, 0x510950, postfix 0x510BE0
- *         CAiPath *p = *i;                                // 0x510C10
- *         if (priority > path->GetPriority()) {           // sic: path's own priority again
- *             if (!p->IsPlanning()) preempt = true;       // 0x510C00
- *             else if (!(priority < K)) { ResetPathPlan(); preempt = true; }   // K at 0x65AED8
- *         }
- *     }
- *     insert(i, path);                                    // copy 0x510BD0, insert 0x510B90
- *     if (preempt) func_00510D00();                       // an empty function of the unit's
- *     if (m_maxSize < size()) m_maxSize = size();         // size() 0x510B80, twice
- * then m_planleg = m_legcount - 1 and _plan_path = 0. It waits on include/list: list<T *> has no
- * insert(iterator, T *const &), no postfix ++ and no user-declared iterator copy constructor (the
- * target passes a copy made out of line), whose out-of-line copies these placeholders are */
+/* the path being built queued for planning: none of its legs, it is given up; queued already, it
+ * stays where it is; else it goes into the queue by priority (CAiPathQueue::Insert, inlined one
+ * level: every piece out of line). Its last leg is the one planned first (SOCOM 1's, with SOCOM II's
+ * ordered insert where SOCOM 1 pushed onto the back) */
+void ai::PathPlanExecute()
+{
+    CAiPath *path = _plan_path;
+
+    if (path->m_legcount == 0) {
+        AbortPathPlan(path);
+        _plan_path = 0;
+        return;
+    }
+    if (path->m_state != CAiPath::INQUEUE) {
+        path->m_state = CAiPath::INQUEUE;
+        path_queue.Insert(path);
+    }
+    path->m_planleg = path->m_legcount - 1;
+    _plan_path = 0;
+}
 
 /* a path taken off the planner: a search under way is dropped and the path told it is unplanned,
  * a queued one told it failed (SOCOM 1's two arms); SOCOM II also looks for it in the queue when

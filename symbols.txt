@@ -9360,9 +9360,9 @@
 0x00510B90 0x3C insert__Q23std44list<P7CAiPath,Q23std20allocator<P7CAiPath>>FQ33std44list<P7CAiPath,Q23std20allocator<P7CAiPath>>19generic_iterator<0>RCP7CAiPath  # OVL2; by hand, the MSL lane (include/list's list<T *>::insert(iterator, T *const &), byte-exact from PathPlanExecute's probe: position to a base iterator, the deleter's insert 0x50FAD0)
 0x00510BD0 0x10 __ct__Q33std44list<P7CAiPath,Q23std20allocator<P7CAiPath>>19generic_iterator<0>FRCQ33std44list<P7CAiPath,Q23std20allocator<P7CAiPath>>19generic_iterator<0>  # OVL2; tu: char_type.cpp~ (1.0 beta); by hand, the MSL lane (include/list's wrapper iterator's user-declared copy constructor, byte-exact from PathPlanExecute's probe: the copy it hands insert)
 0x00510BE0 0x14 __pp__Q33std44list<P7CAiPath,Q23std20allocator<P7CAiPath>>19generic_iterator<0>Fi  # OVL2; by hand, the MSL lane (include/list's wrapper iterator's postfix ++, byte-exact from PathPlanExecute's probe: the copy, the step, the copy given back)
-0x00510C00 0x10 func_00510C00  # OVL2
+0x00510C00 0x10 IsPlanning__7CAiPathCFv  # OVL2; by hand, the MSL lane's probe (the path's state byte minus 1 below 3, out of line: PathPlanExecute's inlined queue insert calls it)
 0x00510C10 0xC __ml__Q33std44list<P7CAiPath,Q23std20allocator<P7CAiPath>>19generic_iterator<0>CFv  # OVL2; by hand, the MSL lane (include/list's wrapper iterator's * out of line, the element's address, byte-exact from PathPlanExecute's probe)
-0x00510C20 0x8 func_00510C20  # OVL2
+0x00510C20 0x8 GetPriority__7CAiPathCFv  # OVL2; by hand, the MSL lane's probe (CAiPath's priority at 0x18 out of line: PathPlanExecute's inlined queue insert calls it twice)
 0x00510C30 0x44 PathPlanAbort__2aiFv  # OVL2; s1:order by hand (the demo's 0x181070: _plan_path cleared through CAiPath::Clear and its state zeroed, _plan_path = 0)
 0x00510C80 0x34 PathPlanAddLeg__2aiFP6CAiMapRC9CAiMapLocRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x1810A0: _plan_path->plan_addleg(map, start, goal) returned)
 0x00510CC0 0x38 PathPlanBegin__2aiFP7CAiPath  # OVL2; s1:order by hand (the demo's 0x1810D0: SOCOM 1's inlined AbortPathPlan called, plan_setup, _plan_path = path, true)

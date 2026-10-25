@@ -947,6 +947,7 @@
 0x0065AA88 0x8 __RTTI__13CBasicPlanner  # RTTI of CBasicPlanner: found by its RTTI's name
 0x0065AB38 0x4 s_cos45  # OVL2 data; ours (ai_map.cpp's static, zero in the image: __sinit_ai_map.cpp stores 0.5f * sqrtf(2.0f) into it, GetDirCos returns it and its negation; 3 references in 2 functions)
 0x0065AED0 0x4 invalid__9CAiMapLoc  # OVL2 data; SOCOM 1's invalid__9CAiMapLoc (0x449450, 4 bytes, zero): CAiMapLoc's constructor copies it field by field -- CEntity's constructor reads it six times for m_mapLoc and m_mapLocValid where SOCOM 1's reads 0x449450 (the entity lane); 117 references (OVL2's AI code)
+0x0065AED8 0x4 s_preemptPriority__2ai  # OVL2 data; ours (1.0f: CAiPathQueue::Insert, inlined into PathPlanExecute, compares a queued path's priority with it before a planning path gives up its search; 1 reference in 1 function)
 0x0065C238 0x8 __RTTI__7CSealEx  # RTTI of CSealEx: found by its RTTI's name
 0x0065C288 0x8 __RTTI__10CZSealBody  # RTTI of CZSealBody: found by its RTTI's name
 0x0065C6A0 0x8 __RTTI__9CSealCtrl  # RTTI of CSealCtrl: found by its RTTI's name

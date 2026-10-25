@@ -833,11 +833,53 @@ public:
 /* the planner queue (SOCOM 1's ai::path_queue, 24 bytes: a list of paths and three counters; the
  * names ours) */
 namespace ai {
+void ResetPathPlan();
+/* the priority from which a queued path stops a planning one (1.0f, OVL2 data: read with lwc1,
+ * so a variable; the name ours) */
+extern float s_preemptPriority;
+}
+/* an empty function of ai_astar.cpp's, called when a path preempted the queue (0x510D00; SOCOM 1's
+ * stretch has an MSL accessor there) */
+extern "C" void func_00510D00();
+namespace ai {
 class CAiPathQueue : public std::list<CAiPath *> {
 public:
     /* whether the path is queued (the name ours: AbortPathPlan's third arm, which calls begin(),
      * end(), std::find and != out of line -- an inline too tall to inline whole) */
     bool Contains(CAiPath *path) { return std::find(begin(), end(), path) != end(); }
+
+    /* a path put in before the first one of lower priority; a planning one of lower priority
+     * gives up its search when this one's priority is at least s_preemptPriority (1.0f), and a
+     * queued one simply yields -- either way the walk stops there (new in SOCOM II, the name ours:
+     * PathPlanExecute's insert, inlined one level, so every piece is called out of line -- the
+     * paths' GetPriority and IsPlanning, the list's begin, end, !=, *, postfix ++, the iterator's
+     * copy and insert, the deleter's size; the path by value, homed on the stack) */
+    void Insert(CAiPath *path)
+    {
+        float priority = path->GetPriority();
+        bool preempt = false;
+        iterator i = begin();
+
+        for (; !preempt && i != end(); i++) {
+            CAiPath *p = *i;
+
+            if (priority > path->GetPriority()) {
+                if (p->IsPlanning()) {
+                    if (!(priority < s_preemptPriority)) {
+                        ResetPathPlan();
+                        preempt = true;
+                    }
+                } else {
+                    preempt = true;
+                }
+            }
+        }
+        insert(i, path);
+        if (preempt)
+            func_00510D00();
+        if (m_maxSize < size())
+            m_maxSize = size();
+    }
 
     unsigned int m_maxSize;   // 0xc: the longest the queue has been
     unsigned int m_completed;   // 0x10: paths planned to their end
