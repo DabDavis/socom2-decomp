@@ -924,7 +924,7 @@ void zBoneResetCallbacks();
 /* the plane and quaternion helpers (bone_math.cpp, SOCOM 1's free functions) */
 float LineIntersectPlane(float d, const CPnt3D &n, const CPnt3D &a, const CPnt3D &b);
 float PlaneConstant(const CPnt3D &n, const CPnt3D &p);
-void ClipToBox(const CPnt3D &a, const CPnt3D &b, CPnt3D &out, float x0, float x1, float z0, float z1);
+bool ClipToBox(const CPnt3D &a, const CPnt3D &b, CPnt3D &out, float y0, float y1, float x0, float x1);
 void GetFractionalRotations(const CPnt3D *v, float *a, float *b);
 float quadW(float t);
 CQuat *QFromRot(CQuat *q, const CPnt3D *rot);
