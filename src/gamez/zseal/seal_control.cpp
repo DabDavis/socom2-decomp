@@ -31,6 +31,9 @@ extern "C" float func_005975B0(const CPnt3D *v)
 struct CViewCamera {
     unsigned char _0[0xec];
     float m_far;   // 0xec
+
+    /* the far plane (an inline accessor: SetViewRange's product loads it first, into $f1) */
+    float GetFar() const { return m_far; }
 };
 
 struct CViewWorld {
@@ -147,22 +150,100 @@ extern "C" float data_006506A0;
 
 /* the view range: a given one held between the floor and the camera's reach (95 % of its far
  * plane, or 1000), none taking that reach (OVL2 0x5924B0; SOCOM 1's took any positive range).
- * OPEN, 3 instructions: the target loads the far plane into $f1 and 0.95 into $f0, the product
- * over the constant; here the other way round (SOCOM 1's code is the target's). Tried: the
- * factor on either side, (float) casts, the plane in a local, `*=`, a ternary. */
+ * The far plane through an inline accessor: read as a member, MW loads the constant first and
+ * the registers swap (the factor on either side, casts, a local, `*=` all missed by 3) */
 void CSealCtrl::SetViewRange(float range)
 {
     float far = 1000.0f;
     CViewCamera *cam = ((CViewWorld *)zdb::CWorld::m_world)->m_camera;
 
     if (cam)
-        far = 0.95f * cam->m_far;
+        far = 0.95f * cam->GetFar();
     if (range <= 0.0f)
         range = far;
     else
         _saturate(&range, data_006506A0, far);
     m_visrange.m_goal = m_visrange.m_value = range;
     m_ec = range;
+}
+
+/* the cross product through VU0, normalised when asked (OVL2 0x592400, SOCOM 1's: after its
+ * first caller, PerturbAimVector, which calls it out of line -- pinned; zmath.h declares it) */
+#pragma auto_inline off
+void CPnt3D::Cross(const CPnt3D *b, CPnt3D *out, bool normalize) const
+{
+    sceVu0FVECTOR r;
+    sceVu0FVECTOR va;
+    sceVu0FVECTOR vb;
+
+    va[0] = x;
+    va[1] = y;
+    va[2] = z;
+    va[3] = 1.0f;
+    vb[0] = b->x;
+    vb[1] = b->y;
+    vb[2] = b->z;
+    vb[3] = 1.0f;
+    sceVu0OuterProduct(r, va, vb);
+    if (normalize)
+        sceVu0Normalize(r, r);
+    out->x = r[0];
+    out->y = r[1];
+    out->z = r[2];
+}
+#pragma auto_inline reset
+
+extern "C" {
+/* OVL2's out-of-line copies of CPnt3D's constructors, its assignment and its operators (0x5414F0,
+ * 0x516900, 0x539E90; seal_ai.cpp's 0x557E10 and 0x557DC0): the target calls each of them here,
+ * the products and sums through their return slots */
+CPnt3D *func_005414F0(CPnt3D *p, float x, float y, float z);
+CPnt3D *func_00539E90(CPnt3D *p, const CPnt3D *src);
+void __ml__6CPnt3DCFf(CPnt3D *ret, const CPnt3D *p, float s);
+void __pl__6CPnt3DCFRC6CPnt3D(CPnt3D *ret, const CPnt3D *p, const CPnt3D *b);
+}
+
+/* a random value in [-1, 1], its square keeping the sign (an inline: the two draws expand alike;
+ * the square assigned back in each arm -- a ternary or a result local of its own if-converts) */
+static inline float SignedSquareRand()
+{
+    float r = 9.313226e-10f * (float)(rand() - 0x3fffffff);
+
+    if (r < 0.0f)
+        r = -(r * r);
+    else
+        r = r * r;
+    return r;
+}
+
+/* the aim thrown off by the SEAL's accuracy: moved sideways and up by its factors, each scaled by a
+ * random amount (OVL2 0x592260, slot 0x74; SOCOM 1's, the same arithmetic) */
+void CSealCtrl::PerturbAimVector(CPnt3D *v)
+{
+    CAccuracy *acc = &((CZSealBody *)m_entity)->m_accuracy;
+    CPnt3D up;
+    CPnt3D side;
+    CPnt3D vert;
+    CPnt3D t1;
+    CPnt3D t2;
+    CPnt3D t4;
+    CPnt3D t3;
+
+    func_005414F0(&up, 0.0f, 1.0f, 0.0f);
+    func_00516900(&side);
+    func_00516900(&vert);
+    v->Cross(&up, &side, false);
+    side.Cross(v, &vert, false);
+    float r = SignedSquareRand();
+
+    __ml__6CPnt3DCFf(&t1, &side, acc->m_factorX + acc->m_factor * r);
+    func_00539E90(&side, &t1);
+    r = SignedSquareRand();
+    __ml__6CPnt3DCFf(&t2, &vert, acc->m_factorY + acc->m_factor * r);
+    func_00539E90(&vert, &t2);
+    __pl__6CPnt3DCFRC6CPnt3D(&t3, v, &side);
+    __pl__6CPnt3DCFRC6CPnt3D(&t4, &t3, &vert);
+    func_00539E90(v, &t4);
 }
 
 /* a grenade's flight time and launch speed; SOCOM 1's function-local statics, which MW 3.0 lays

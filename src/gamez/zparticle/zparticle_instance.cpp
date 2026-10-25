@@ -2,7 +2,9 @@
  * share (OVL1 0x3271D0?-0x3294AF): a particle's tick and render, its list, the properties'
  * lookups by distance and by age, their reference count and copy on write. The unit name is
  * SOCOM 1's (its __sinit_zparticle_instance.cpp; SOCOM II's 0x402C40). Defined in reverse of
- * their image order (-inline deferred). Written so far: some of the properties' members. */
+ * their image order (-inline deferred). Written so far: the properties' members, the pools'
+ * recycling and purge, Instance::List's walks, Destruction_Instance's destructor and Render.
+ * Its range starts at 0x326F50 at the latest (Destruction_Instance::Recycle). */
 
 #include "zparticle.h"
 
@@ -11,6 +13,134 @@ extern "C" void sceVu0InterVector(float *v0, float *v1, float *v2, float t);
 
 namespace Particle {
 
+/* SOCOM II's: a dying source's instances unlinked and recycled, the head's run first */
+void Instance::List::RemoveSource(Source *source)
+{
+    while (!Empty() && m_head->m_source == source) {
+        Instance *p = m_head;
+
+        m_head = p->m_listNext;
+        p->Recycle();
+    }
+    for (Instance *prev = m_head; prev; ) {
+        Instance *p = prev->m_listNext;
+
+        while (!End(p) && p->m_source == source) {
+            Instance *d = p;
+
+            p = p->m_listNext;
+            prev->m_listNext = p;
+            d->Recycle();
+        }
+        prev = p;
+    }
+}
+
+/* SOCOM 1's: every live instance ticked -- at the LOD's age rate when its source asks -- and the
+ * dead ones recycled (SOCOM II's list: linked through the instances, not a std::list) */
+void Instance::List::Tick(float dT)
+{
+    m_dT = dT;
+    while (!Empty() && !m_head->Alive()) {
+        Instance *p = m_head;
+
+        m_head = p->m_listNext;
+        p->Recycle();
+    }
+    for (Instance *prev = m_head; prev; ) {
+        if (prev->AgeLOD())
+            prev->Tick(dT * ageFactor);
+        else
+            prev->Tick(dT);
+        Instance *p = prev->m_listNext;
+
+        while (!End(p) && !p->Alive()) {
+            Instance *d = p;
+
+            p = p->m_listNext;
+            prev->m_listNext = p;
+            d->Recycle();
+        }
+        prev = p;
+    }
+}
+
+/* SOCOM II's: the instances whose age has reached their life unlinked and recycled, the head's
+ * run first */
+void Instance::List::RemoveDead()
+{
+    while (!Empty() && !m_head->Alive()) {
+        Instance *p = m_head;
+
+        m_head = p->m_listNext;
+        p->Recycle();
+    }
+    for (Instance *prev = m_head; prev; ) {
+        Instance *p = prev->m_listNext;
+
+        while (!End(p) && !p->Alive()) {
+            Instance *d = p;
+
+            p = p->m_listNext;
+            prev->m_listNext = p;
+            d->Recycle();
+        }
+        prev = p;
+    }
+}
+
+/* SOCOM 1's: every live instance deleted, then the list's own nodes (none) */
+Instance::List::~List()
+{
+    Uninit();
+}
+
+/* SOCOM 1's: every live instance deleted */
+void Instance::List::Uninit()
+{
+    Instance *p;
+
+    while ((p = m_head) != 0) {
+        m_head = p->m_listNext;
+        delete p;
+    }
+}
+
+/* SOCOM II's: the dead instances recycled, then every pooled instance and piece deleted */
+void FreeInstances()
+{
+    Instance *p;
+    Destruction_Instance *d;
+
+    Instance::list.RemoveDead();
+    while ((p = Instance::m_instance_pool.Pop()) != 0)
+        delete p;
+    while ((d = Destruction_Instance::m_instance_pool.Pop()) != 0)
+        delete d;
+}
+
+/* SOCOM II's: the piece expired and given back to its pool */
+void Destruction_Instance::Recycle()
+{
+    Expire();
+    m_listNext = 0;
+    m_instance_pool.Push(this);
+}
+
+/* SOCOM II's: the particle expired and given back to its pool */
+void Instance::Recycle()
+{
+    Expire();
+    m_listNext = 0;
+    m_instance_pool.Push(this);
+}
+
+/* the piece's node taken out of the world (SOCOM II's) */
+Destruction_Instance::~Destruction_Instance()
+{
+    zdb::CWorld::m_world->DeleteChild(m_node);
+}
+
 /* the piece's node moved to it while it lives */
 void Destruction_Instance::Render(const CMatrix &m)
 {
@@ -18,6 +148,26 @@ void Destruction_Instance::Render(const CMatrix &m)
         m_node->SetPosition(m_pos[0], m_pos[1], m_pos[2]);
         return;
     }
+}
+
+/* SOCOM 1's: a fresh set of properties, with the defaults.
+ * OPEN, 0 instructions: every byte agrees; the call for m_accelW goes to CPnt4D's empty constructor
+ * (`jr ra; move v0,a0`), whose linked copy is another unit's, 0x2110E0, still a placeholder outside
+ * this lane's range -- named __ct__6CPnt4DFv, it matches (CPipe's 0x336230 calls it too) */
+Props *Props::Create()
+{
+    return new Props;
+}
+
+/* SOCOM 1's: the properties made this source's own before it changes them -- a copy when others
+ * share them, this reference given up */
+Props *Props::Branch()
+{
+    if (m_refCount > 1) {
+        DecRefCount(1);
+        return new Props(*this);
+    }
+    return this;
 }
 
 /* SOCOM 1's: one reference fewer; the last deletes the properties, their sequences with them */

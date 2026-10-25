@@ -17,6 +17,7 @@
  * reverse of their image order (-inline deferred). */
 
 #include "hud_weaponsel.h"
+#include "../../gamez/zrdr/zrdr.h"
 
 #include <string.h>
 #include <string>
@@ -58,6 +59,9 @@ public:
 class CHUD {
 public:
     void On();
+
+    unsigned char _0[0x498];
+    C2DFont *m_myfont;   // 0x498
 };
 
 extern CHUD *theHUD;
@@ -70,6 +74,25 @@ public:
 extern CZNetwork theNetwork;
 
 const char *GetDatabase();
+
+namespace zdb {
+class CAssetList {
+public:
+    CTexHandle *GetTexHandle(const char *name);
+};
+
+class CAssetMgr {
+public:
+    static CAssetList m_assets;
+};
+}
+
+struct IPNT2D {
+    IPNT2D() {}
+    IPNT2D(int ax, int ay) { x = ax; y = ay; }
+
+    int x, y;
+};
 
 /* the unit's globals (the initialiser 0x3FE980 builds them; by address until it is written): */
 extern bool data_0040F608;   // SOCOM 1's g_bOn: the pop-up is up
@@ -134,6 +157,79 @@ struct CTriggerSource {
     const char *GetName() { return m_name; }
 };
 
+/* a SEAL as the pop-up reads it: alive in the world (0x14), the two kill counts summed for its row,
+ * and a flag that keeps it off the pop-up (the names ours) */
+class CZSealBody {
+public:
+    unsigned char _0[0x14];
+    int m_14;   // 0x14
+    unsigned char _18[0x580 - 0x18];
+    short m_kills;   // 0x580
+    unsigned char _582[0x5c8 - 0x582];
+    short m_kills2;   // 0x5c8
+    unsigned char _5ca[0xfd1 - 0x5ca];
+    unsigned char m_hidden;   // 0xfd1
+};
+
+/* a thing in the world (st_exit.cpp's stub: only the list here) */
+class CEntity {
+public:
+    static std::list<CEntity *> m_list;
+};
+
+/* a walk over the world's entities, counting (SOCOM 1's DWARF; st_exit.cpp writes its members) */
+class CEntityItr {
+public:
+    CEntityItr() : _it(GetEntityList().begin()), _iIdx(0) {}
+    /* whether the walk has entities left (ours: the end test through an inline, which alone gives
+     * the begin() temporaries the higher stack slots, as the target has them) */
+    bool More() const { return _it != GetEntityList().end(); }
+
+    CZSealBody &GetSeal() const;
+    bool IsSeal() const;
+    void Advance();
+
+    static const std::list<CEntity *> &GetEntityList() { return CEntity::m_list; }
+
+    std::list<CEntity *>::const_iterator _it;   // 0x0
+    int _iIdx;   // 0x4
+};
+
+/* whether a SEAL is dead, and on each side (the SEAL lane's, no names yet) */
+extern "C" {
+bool func_002C2FD0(CZSealBody *seal);
+bool func_002C31D0(const CZSealBody *seal);
+bool func_002C30B0(const CZSealBody *seal);
+}
+
+namespace {
+/* a side's SEALs, at most eight, with their kills: in a network game only the living, and none the
+ * world has let go of or that is kept off the pop-up (SOCOM 1's) */
+int GetTeamMembers(CZSealBody **arrSeals, int *arrKills, bool bTeam0)
+{
+    int iNumSeals = 0;
+
+    for (CEntityItr it; it.More(); it.Advance()) {
+        if (!it.IsSeal())
+            continue;
+        CZSealBody &seal = it.GetSeal();
+        if (theNetwork.m_bNetwork && func_002C2FD0(&seal))
+            continue;
+        if (bTeam0 && !func_002C31D0(&seal))
+            continue;
+        if (!bTeam0 && !func_002C30B0(&seal))
+            continue;
+        if (!seal.m_14 || seal.m_hidden)
+            continue;
+        arrSeals[iNumSeals] = &seal;
+        arrKills[iNumSeals] = seal.m_kills + seal.m_kills2;
+        if (++iNumSeals >= 8)
+            return iNumSeals;
+    }
+    return iNumSeals;
+}
+}
+
 /* whether the pop-up is up (only in a network game; the name ours) */
 bool hudIsScorePopupOn()
 {
@@ -187,6 +283,153 @@ void hudTurnOffScorePopup()
         data_0040ED50[i].ClearAndWipe();
     if (theHUD)
         theHUD->On();
+}
+
+/* the spectators' box (SOCOM II's; the names ours): its tuning, plain initialised data 8 bytes
+ * apart (MW 3.0's function-local statics, written as file statics: scdiff compares them by
+ * content) -- the box's offset below the pop-up's top, the title's alpha, the box's bottom, the
+ * names' scale and load scale, their spacing and alpha -- and the box's texture */
+static float s_specboxy = 100.0f;
+static float s_spectitletrans = 90.0f;
+static float s_specboxbottom = 430.0f;
+static float s_specnamescale = 0.7f;
+static float s_specnameload = 0.8f;
+static float s_specnamespacing = 16.8f;
+static float s_specnametrans = 110.0f;
+static const char *s_specboxtex = "newweapnbkrnd.tif";
+
+/* the pop-up's frame as SetupBackgroundBox leaves it (by address until the initialiser is written):
+ * its left, its right and its top */
+extern int data_0040F640;
+extern int data_0040F648;
+extern int data_0040F650;
+/* the box's colour (a CPnt3D the initialiser builds) */
+extern CPnt3D data_00412E68;
+
+/* the spectators' box laid out under the pop-up: its title bar, the title, the box and eight name
+ * lines (called once by 0x22CC10, after SetupBackgroundBox; the name ours) */
+namespace {
+void SetupSpectatorBox()
+{
+    C2DFont *font;   // declared first: it takes s1, the texture s0
+    zdb::CTexHandle *tex = zdb::CAssetMgr::m_assets.GetTexHandle(s_specboxtex);
+
+    font = theHUD->m_myfont;
+    float top = 25.0f + (float)data_0040F650 + s_specboxy;
+    float bottom = 25.0f + top;
+
+    data_0040EB80.Load((float)data_0040F640, top, (float)data_0040F648, bottom, tex);
+    data_0040EB80.SetColor(data_00412E68);
+    data_0040EB80.SetTrans(80.0f);
+    data_0040EC10.Load(1.0f, "SPECTATORS", font, 0.0f, 0.0f, false);
+    data_0040EC10.SetPos((int)(10.0f + (float)data_0040F640), (int)(20.0f + top));
+    data_0040EC10.SetTrans(s_spectitletrans);
+    data_0040ECC0.Load((float)data_0040F640, bottom, (float)data_0040F648, s_specboxbottom, tex);
+    for (unsigned int i = 0; i < 8; i++) {
+        data_0040ED50[i].m_scale = s_specnamescale;
+        data_0040ED50[i].Load(s_specnameload, 0, font, 0.0f, 0.0f, false);
+        data_0040ED50[i].SetPos(24, (int)(16.0f + bottom + s_specnamespacing * (float)i));
+        data_0040ED50[i].SetTrans(s_specnametrans);
+    }
+}
+}
+
+/* the pop-up's frame (by address until the initialiser is written): its left, right and top, and
+ * the corners' texture coordinates (zero in the image: the initialiser sets them) */
+extern int data_0040F628;
+extern int data_0040F630;
+extern int data_0040F638;
+extern float data_003E5718;
+extern float data_003E5720;
+/* the box's inner bottom, SetupBackgroundBox's local static, and its guard */
+extern signed char data_00412E80;
+extern float data_003E5728;
+
+namespace {
+/* the pop-up's frame: its nine pieces loaded and UV'd from one texture (SOCOM 1's, the bottom now
+ * the spectators' box's), and the sixteen bitmaps the tick places later.
+ * OPEN, 2 instructions: the bottom-right corner's SetUV loads the corner u before v, where MW
+ * schedules v's load first (it feeds the `1 - v`), as the target itself does for the bottom-left
+ * corner; a local u or v, `-v + 1`, a local 1.0f all keep MW's order. Each corner is a block of four
+ * locals (x0, y0, x1, y1 declared in that order give f23-f20; one set of locals reused across the
+ * corners re-colours the second corner) */
+void SetupBackgroundBox()
+{
+    if (!data_00412E80) {
+        data_003E5728 = s_specboxbottom - 20.0f;
+        data_00412E80 = 1;
+    }
+
+    {
+        float x0 = (float)data_0040F628;
+        float y0 = (float)data_0040F638;
+        float x1 = 20.0f + (float)data_0040F628;
+        float y1 = 20.0f + (float)data_0040F638;
+
+        data_0040E4A0.Load(x0, y0, x1, y1, zdb::CAssetMgr::m_assets.GetTexHandle(s_specboxtex));
+        data_0040E4A0.SetUV(1.0f, 0.0f, data_003E5718, data_003E5720);
+    }
+    {
+        float x0 = (float)data_0040F630 - 20.0f;
+        float y0 = (float)data_0040F638;
+        float x1 = (float)data_0040F630;
+        float y1 = 20.0f + (float)data_0040F638;
+
+        data_0040E530.Load(x0, y0, x1, y1, zdb::CAssetMgr::m_assets.GetTexHandle(s_specboxtex));
+        data_0040E530.SetUV(data_003E5718, 0.0f, 1.0f, data_003E5720);
+    }
+    {
+        float x0 = (float)data_0040F628;
+        float y0 = s_specboxbottom - 20.0f;
+        float x1 = 20.0f + (float)data_0040F628;
+        float y1 = s_specboxbottom;
+
+        data_0040E5C0.Load(x0, y0, x1, y1, zdb::CAssetMgr::m_assets.GetTexHandle(s_specboxtex));
+        data_0040E5C0.SetUV(1.0f, 1.0f - data_003E5720, data_003E5718, 1.0f);
+    }
+    {
+        float x0 = (float)data_0040F630 - 20.0f;
+        float y0 = s_specboxbottom - 20.0f;
+        float x1 = (float)data_0040F630;
+        float y1 = s_specboxbottom;
+
+        data_0040E650.Load(x0, y0, x1, y1, zdb::CAssetMgr::m_assets.GetTexHandle(s_specboxtex));
+        data_0040E650.SetUV(data_003E5718, 1.0f - data_003E5720, 1.0f, 1.0f);
+    }
+
+    float left = 20.0f + (float)data_0040F628;
+    float right = (float)data_0040F630 - 20.0f;
+    float top = 20.0f + (float)data_0040F638;
+    zdb::CTexHandle *tex = zdb::CAssetMgr::m_assets.GetTexHandle(s_specboxtex);
+
+    data_0040E6E0.Load(left, (float)data_0040F638, right, top, tex);
+    data_0040E6E0.SetUV(0.5f, 0.0f, 0.5f, data_003E5720);
+    data_0040E770.Load((float)data_0040F628, top, left, data_003E5728, tex);
+    data_0040E770.SetUV(1.0f, 0.5f, data_003E5718, 0.5f);
+    data_0040E800.Load(right, top, (float)data_0040F630, data_003E5728, tex);
+    data_0040E800.SetUV(data_003E5718, 0.5f, 1.0f, 0.5f);
+    data_0040E890.Load(left, data_003E5728, right, s_specboxbottom, tex);
+    data_0040E890.SetUV(0.5f, 1.0f - data_003E5720, 0.5f, 1.0f);
+    data_0040E920.Load(left, top, right, data_003E5728, tex);
+    data_0040E920.SetUV(0.5f, 0.5f, 0.5f, 0.5f);
+    for (unsigned int i = 0; i < 16; i++) {
+        data_0040DC80[i].Load(0.0f, 0.0f, 0.0f, 0.0f, tex);
+        data_0040DC80[i].SetUV(0.5f, 0.5f, 0.5f, 0.5f);
+    }
+}
+}
+
+/* a tag's first two numbers as integers, 0 for what is missing (the message loader's reader, called
+ * twice by 0x22D660; the name ours) */
+IPNT2D GetTagIPNT2D(const _zrdr *rdr, const char *tag)
+{
+    _zrdr *t = zrdr_findtag(rdr, tag);
+    _zrdr *a = t ? t->Item(0) : 0;
+    int x = a ? a->Int() : 0;
+    _zrdr *b = t ? t->Item(1) : 0;
+    int y = b ? b->Int() : 0;
+
+    return IPNT2D(x, y);
 }
 
 /* the message pop-up: its two bitmaps and its items (the object itself holds nothing) */

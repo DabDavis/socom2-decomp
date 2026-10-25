@@ -5,9 +5,10 @@
  * CClutterAnimManager::UnRegisterEffector to CClutterList::Add, CInput's unit after it. Defined in
  * reverse of their image order (-inline deferred).
  * Written so far: GetTranslate, the manager's list walks and its destructor. The pointer-list
- * walks run on znode.h's ListBegin/ListEnd/ListClear: SOCOM II's begin() builds the first node from
- * a reference to the sentinel's link, so &end_.next_ is computed once and shared by the walk and
- * the clear after it (the target keeps it in the lowest saved register). */
+ * walks run on include/list's begin() and clear(): SOCOM II's begin() reads the first node through
+ * a reference to the sentinel, so &end_.next_ is computed once and shared by the walk and the clear
+ * after it (the target keeps it in the lowest saved register) -- znode.h's stand-ins for it
+ * (ListBegin, ListEnd, ListClear) retired, every walk alike through the header. */
 
 #include <algorithm>
 
@@ -17,6 +18,67 @@
 extern CSched_Manager zTaskScheduler;
 
 namespace zdb {
+
+/* two props traded (MSL's swap through references, written here: MW inlines no template
+ * function; the name is ours) */
+inline void ClutterSwap(CClutter *&a, CClutter *&b)
+{
+    CClutter *t = a;
+
+    a = b;
+    b = t;
+}
+
+/* one prop inserted before position, through the pointer vector's pod insert (MSL's
+ * insert(iterator, const T &), which include/vector lacks: the position a class iterator passed by
+ * value, so copied, then its pointer handed on; the name is ours) */
+inline void ClutterInsert(CClutterList *list, CClutterList::iterator pos, CClutter *const &x)
+{
+    list->std::__vector_pod<unsigned int, std::allocator<unsigned int> >::insert(
+        (unsigned int *)pos.m_p, 1, (const unsigned int &)x);
+}
+
+/* a prop listed: the list's repel flag and farthest fade kept up, room made ten at a time, the prop
+ * held once more (refused at fifteen holders), put at the end when its node has the flag, else
+ * after the props put in front so far; then moved down past every fading prop that fades nearer
+ * (SOCOM 1's; the holders and the front insertion SOCOM II's).
+ * OPEN, 13 instructions (the right size), registers only: in the front insertion the target
+ * loads the index into a1 and its increment into t0, and in the sort keeps &data[i] in a1 and the
+ * prop in a2 -- here each pair the other way round (both the first-made temporary in the lower
+ * register there). The swap traded as words (a typed view, or a volatile read) is what makes MW
+ * reload the element as the target does; a swap of the CClutter pointers reuses the tested one.
+ * Tried: the insert as a member, through begin(), the index taken first; the counter's types and
+ * declaration places; a local or a reference for the tested prop */
+bool CClutterList::Add(CClutter *clutter)
+{
+    if (size_ == 0) {
+        m_ContainsRepelClutter = 0;
+        m_max_farFadeSq = 0.0f;
+    }
+    if (clutter->m_quat)
+        m_ContainsRepelClutter = 1;
+    if (clutter->m_bit0 && clutter->m_farFadeSq > m_max_farFadeSq)
+        m_max_farFadeSq = clutter->m_farFadeSq;
+    if (size_ == capacity_)
+        reserve(size_ + 10);
+    if (!clutter->AddHolder())
+        return false;
+    if (clutter->m_node->m_reflective)
+        push_back(clutter);
+    else
+        ClutterInsert(this, iterator(&(*this)[m_socom2_14++]), clutter);
+    if (size() > 1) {
+        for (int i = size() - 2; i >= 0; i--) {
+            if ((*this)[i]->m_bit0) {
+                if (!clutter->m_bit0 || clutter->m_farFadeSq > (*this)[i]->m_farFadeSq)
+                    std::swap((unsigned int &)(*this)[i], (unsigned int &)(*this)[i + 1]);
+                else
+                    return true;
+            }
+        }
+    }
+    return true;
+}
 
 /* a point set from three values (the arguments evaluated right to left: z, y and x loaded before
  * the stores; the name is ours) */
@@ -126,19 +188,17 @@ CMatrix *CClutter::GetMatrix()
 /* the effectors let go of (SOCOM 1's) */
 void CClutterAnimManager::ClearEffectors()
 {
-    PtrListBase::iterator it = ListBegin(m_ClutterEffectors), e = ListEnd(m_ClutterEffectors);
+    std::list<CClutterEffector *>::iterator it = m_ClutterEffectors.begin(), e = m_ClutterEffectors.end();
 
     for (; it != e; ++it)
-        delete (CClutterEffector *)*it;
-    ListClear(m_ClutterEffectors);
+        delete *it;
+    m_ClutterEffectors.clear();
 }
 
 /* the clutter task taken off the scheduler, the animations and the effectors let go of (SOCOM
- * 1's).
- * OPEN, 1 instruction (right size): the effector list's implicit destructor reads its first node
- * through the inlined ClearEffectors' &end_.next_ (lw v0,0(s2)), where include/list's
- * ~__list_deleter builds it by value from &end_ (lw v0,4(s3)) -- SOCOM II's deleter destructor
- * binds the link by reference as ListBegin does (waits on include/list) */
+ * 1's). The effector list's implicit destructor reads its first node through the inlined
+ * ClearEffectors' &end_.next_ (lw v0,0(s2)): byte-exact since include/list's ~__list_deleter binds
+ * the sentinel by reference, as SOCOM II's begin() does */
 CClutterAnimManager::~CClutterAnimManager()
 {
     zTaskScheduler.RemoveTask("CClutterAnimManager", false);
@@ -150,24 +210,24 @@ CClutterAnimManager::~CClutterAnimManager()
  * emptied; with detach, each prop forgets its animation first (SOCOM 1's) */
 void CClutterAnimManager::ClearAnimations(bool detach)
 {
-    PtrListBase::iterator it = ListBegin(m_ClutterAnims), e = ListEnd(m_ClutterAnims);
+    std::list<CClutterAnim *>::iterator it = m_ClutterAnims.begin(), e = m_ClutterAnims.end();
 
     for (; it != e; ++it) {
-        if (detach && ((CClutterAnim *)*it)->m_clutter)
-            ((CClutterAnim *)*it)->m_clutter->m_anim = 0;
-        delete (CClutterAnim *)*it;
+        if (detach && (*it)->m_clutter)
+            (*it)->m_clutter->m_anim = 0;
+        delete *it;
     }
-    ListClear(m_ClutterAnims);
+    m_ClutterAnims.clear();
 }
 
 /* an owner's effector deleted and taken off the list (SOCOM 1's) */
 void CClutterAnimManager::UnRegisterEffector(const void *owner)
 {
-    PtrListBase::iterator it = ListBegin(m_ClutterEffectors), e = ListEnd(m_ClutterEffectors);
+    std::list<CClutterEffector *>::iterator it = m_ClutterEffectors.begin(), e = m_ClutterEffectors.end();
 
     for (; it != e; ++it) {
-        if (((CClutterEffector *)*it)->m_owner == owner) {
-            delete (CClutterEffector *)*it;
+        if ((*it)->m_owner == owner) {
+            delete *it;
             m_ClutterEffectors.erase(it);
             return;
         }
