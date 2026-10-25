@@ -2,12 +2,12 @@
  * projectiles (0x3D4810-0x3D4B7F, the CZWeapon static at 0x4B5238 that zwep_weapon.cpp's
  * initialiser builds), CProjectileNodeEx, and the flyout machine -- SOCOM 1's CFlyoutMachine and
  * CFlyout, which sat between zwep_global.cpp and zwep_projectile.cpp in the demo (0x316550-
- * 0x31718F) and moved here. SOCOM 1 gives the flyouts no unit name; the file name is ours. Only
- * some of its functions so far: the vector's, Tick, AcquireFlyout and the two classes' destructors
- * and the machine's constructor stay placeholders or drafts. Defined in reverse of their image
- * order (-inline deferred). */
+ * 0x31718F) and moved here. SOCOM 1 gives the flyouts no unit name; the file name is ours. Tick and
+ * the two classes' destructors and the machine's constructor stay placeholders or drafts. Defined
+ * in reverse of their image order (-inline deferred). */
 
 #include <msl_utility>
+#include <stdlib.h>
 #include <vector>
 
 #include "../znode/znode.h"
@@ -27,6 +27,12 @@ extern CZAnimMain ZAnim;
 /* an animation stopped (0x2707C0, not named) */
 extern "C" void func_002707C0(CZAnim *anim, int b);
 
+/* an animation (zanim.h's CZAnim: only its activation with arguments) */
+class CZAnim {
+public:
+    CZAnim *ActivateArg(int type, ...);
+};
+
 /* a tracer in flight: its node (an empty xref the tracer model is set on), its anim, where and how
  * fast (SOCOM 1's class, 0x3c bytes in both; only what the code here touches is named) */
 class CFlyout {
@@ -37,12 +43,13 @@ public:
     CNode *m_instance;   // 0x0
     CZAnim *m_anim;   // 0x4
     CPnt3D m_pos;   // 0x8
-    CPnt3D m_vel;   // 0x14
-    int m_20;   // 0x20
-    int m_24;   // 0x24
-    unsigned char _28[0x2c - 0x28];
+    CPnt3D m_vel;   // 0x14: the end it flies to (the name SOCOM 1's slot, the use the target's)
+    int m_20;   // 0x20: the speed (a float: AcquireFlyout stores it, Tick reads it)
+    int m_24;   // 0x24: the distance flown (a float)
+    float m_maxdist;   // 0x28: the weapon's range, or 300 (the name ours)
     unsigned char m_done;   // 0x2c (SOCOM 1's Tick releases a flyout whose byte is set)
-    unsigned char _2d[0x3c - 0x2d];
+    unsigned char _2d[0x30 - 0x2d];
+    CPnt3D m_30;   // 0x30: zeroed when it is acquired (not named)
 };   // 0x3c bytes
 
 /* the tracers: a pool of flyouts, the free ones and the active ones by pointer (SOCOM 1's
@@ -55,6 +62,9 @@ public:
     static void HookupReset();
     void ReleaseAllActive();
     bool ReleaseFlyout(CFlyout *flyout, int index);
+    /* a free flyout sent from start to end at a speed, unless the two are within 70 (SOCOM 1's) */
+    bool AcquireFlyout(CPnt3D &start, CPnt3D &end, CZAnim *anim, CZWeapon *weapon, float speed,
+                       CMatrix *m, CBBox *box);
     /* an active flyout's index, or -1 (inline: ReleaseFlyout's search; the name ours) */
     int FindActive(CFlyout *flyout)
     {
@@ -139,6 +149,58 @@ void CFlyoutMachine::HookupReset()
         return;
     }
     pFlyout_Anim_Enemy = pFlyout_Anim_Ally = 0;
+}
+
+/* SOCOM 1's, with SOCOM II's tracer animations: the free flyout on top taken, its node given the
+ * registered model (or none, the enemy's or the ally's tracer animation run on it instead), placed
+ * a random tenth of 1..990 along the line, its end, speed and range set (the animation's handle then
+ * cleared with the rest, as SOCOM 1's statement order has it), the box and matrix given, made
+ * active and added to the world */
+bool CFlyoutMachine::AcquireFlyout(CPnt3D &start, CPnt3D &end, CZAnim *anim, CZWeapon *weapon,
+                                   float speed, CMatrix *m, CBBox *box)
+{
+    if (m_free.size() == 0)
+        return false;
+    CPnt3D d = end - start;
+
+    if (d.Length() < 70.0f)
+        return false;
+    CFlyout *flyout = m_free.back();
+
+    if (m_tracer_anims) {
+        flyout->m_instance->SetModel(0);
+        CZAnim *a = pFlyout_Model_Registered == pFlyout_Model_Enemy ? pFlyout_Anim_Enemy : pFlyout_Anim_Ally;
+
+        if (a)
+            flyout->m_anim = a->ActivateArg(1, 3, flyout->m_instance, 0);
+    } else
+        flyout->m_instance->SetModel(pFlyout_Model_Registered);
+    float r = 1.0f + rand() % 990;
+
+    r /= 10.0f;
+    CPnt3D dir = end - start;
+
+    dir.Normalize();
+    dir.Scale(r, &dir);
+    dir.Add(&start, &dir);
+    flyout->m_pos = dir;
+    flyout->m_anim = 0;
+    flyout->m_vel = end;
+    *(float *)&flyout->m_20 = speed;
+    flyout->m_done = 0;
+    flyout->m_24 = 0;
+    flyout->m_maxdist = weapon ? weapon->GetMaxRange() : 300.0f;
+    flyout->m_30 = CPnt3D::zero;
+    if (box)
+        flyout->m_instance->m_bbox = *box;
+    if (m)
+        flyout->m_instance->SetMatrix(m);
+    flyout->m_instance->SetPosition(flyout->m_pos.x, flyout->m_pos.y, flyout->m_pos.z);
+    m_free.pop_back();
+    m_active.push_back(flyout);
+    CWorld::m_world->AddChild(flyout->m_instance);
+    flyout->m_instance->SetActive(true);
+    return true;
 }
 
 /* every active flyout freed, then every free one's node's children let go of (SOCOM 1's, the
