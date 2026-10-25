@@ -3096,10 +3096,10 @@
 0x00276C60 0x7C UIMediusInit__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "MediusInit" (id 0x96, the UI command table's record at 0x3DDE20), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
 0x00276CE0 0xDC UIDMEInit__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "DMEInit" (id 0x95, the UI command table's record at 0x3DDE10), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
 0x00276DC0 0x114 UIInitNetwork__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "InitNetwork" in both builds' UI command tables: SOCOM II's id 0x21 at 0x3DD6D0, SOCOM 1's UICommandTable id 0x1D -> UIInitNetwork__FP13C2DAnimCmdHdrPf)
-0x00276EE0 0x54 func_00276EE0  # OVL1
-0x00276F40 0x3C func_00276F40  # OVL1
-0x00276F80 0x70 func_00276F80  # OVL1
-0x00276FF0 0x158 func_00276FF0  # OVL1
+0x00276EE0 0x54 Start__14CSMInitNetworkFv  # OVL1; ours: CSMInitNetwork's slot 8 (its vtable 0x4060B0, found by RTTI; UIInitNetwork calls it on the machine it makes): the base's Start inlined (the idle state, the done flag cleared -- 0x3A5AE0 out of line), then its first state queued; returns true
+0x00276F40 0x3C SetState__19CSimpleStateMachineFRCM19CSimpleStateMachineFPCvPvUc_v  # OVL1; ours: CSimpleStateMachine's inline state change (the class by its RTTI at 0x3EF738): slot 0xC of its vtable 0x408240 and of CSMInitNetwork's, CSMDNASAuthenticate's and CSMGetServerList's -- the one out-of-line copy linked, this unit's (the first in the link to emit it); the member pointer copied and pushed onto the state queue at 0x14 (0x2852B0)
+0x00276F80 0x70 Initialize__14CSMInitNetworkFUc  # OVL1; ours: CSMInitNetwork's first state (Start queues its member pointer, 0x3DD4B8): entered, the network's initialisation started (0x30E290 on theNetwork) and the wait queued
+0x00276FF0 0x158 WaitForNetwork__14CSMInitNetworkFUc  # OVL1; ours: CSMInitNetwork's second state (Initialize queues its member pointer, 0x3DD4A8): entered, a failure resets the lobby and runs MP_MEDIUS_ERROR with 'Network Initialization Error: %s (%d)', the valve 0; ticked, once up the valve 1; then the base's finishing state (0x3A5C70)
 0x00277150 0xC8 UIIsControllerConnected__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "IsControllerConnected" (id 0xC1, the UI command table's record at 0x3DE0D0), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
 0x00277220 0x98 UISuspendMenuInput__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "SuspendMenuInput" (id 0xBB, the UI command table's record at 0x3DE060), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
 0x002772C0 0x40 UICheckTeamStatus__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "CheckTeamStatus" (id 0x93, the UI command table's record at 0x3DDDF0), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers

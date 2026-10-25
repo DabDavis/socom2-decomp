@@ -1548,6 +1548,88 @@ bool UISuspendMenuInput(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+/* waiting for the network: on failure the lobby is reset and the menu told (an error text for
+ * MP_MEDIUS_ERROR), the valve 0; once it is up, the valve 1 -- then done either way */
+void CSMInitNetwork::WaitForNetwork(unsigned char event)
+{
+    char text[256];
+
+    switch (event) {
+    case 0:
+        if (!func_0030DEE0(&theNetwork)) {
+            func_002EFE20(&theLobby, 2);
+            func_002DFE50(&theLobby);
+            sprintf(text, "Network Initialization Error: %s (%d)", "Cannot Initialize Network", 0);
+            theGame.m_menuState.RunEventAnim("MP_MEDIUS_ERROR", text);
+            SetValveValue(m_valve, 0);
+            SetState(&CSimpleStateMachine::Finish);
+        }
+        break;
+    case 1:
+        if (func_0030BF20()) {
+            SetValveValue(m_valve, 1);
+            SetState(&CSimpleStateMachine::Finish);
+        }
+        break;
+    case 2:
+        break;
+    }
+}
+
+/* the network's initialisation started, then waited for */
+void CSMInitNetwork::Initialize(unsigned char event)
+{
+    switch (event) {
+    case 0:
+        func_0030E290(&theNetwork);
+        SetState((SSMState)&CSMInitNetwork::WaitForNetwork);
+        break;
+    case 1:
+        break;
+    case 2:
+        break;
+    }
+}
+
+bool CSMInitNetwork::Start()
+{
+    CSimpleStateMachine::Start();
+    SetState((SSMState)&CSMInitNetwork::Initialize);
+    return true;
+}
+
+/* the machine InitNetwork runs (a function-local static in the original, likely: held to its
+ * address by its placeholder) */
+extern "C" CSMInitNetwork *data_00414EB8;
+
+/* the network started: the lobby's events handed to the menu, the machine made and run until it
+ * is done, the valve the argument names told how it went (SOCOM 1's built no machine).
+ * OPEN, 0 instructions: every byte is right; the two calls name CSimpleStateMachine's constructor
+ * and destructor, rows outside this lane (0x3A5DD0 __ct__19CSimpleStateMachineFv: the vtable
+ * 0x408240 stored, the queue built, the idle state 0x3E07D8 copied in; 0x3A5CC0
+ * __dt__19CSimpleStateMachineFv: the same vtable stored first, deleted when asked) -- matches once
+ * the map names them (measured with both renamed) */
+bool UIInitNetwork(C2DAnimCmdHdr *hdr, float *dT)
+{
+    bool done = false;
+
+    if (!data_00414EB8) {
+        CValve *valve = CValve::Create(ArgName(hdr), (VALVE_TYPE)2);
+
+        theLobby.m_event_handler = UILobbyEventHandler;
+        data_00414EB8 = new CSMInitNetwork(valve);
+        data_00414EB8->Start();
+    } else {
+        func_003A5C30(data_00414EB8);
+        if (func_003A5C10(data_00414EB8)) {
+            delete data_00414EB8;
+            data_00414EB8 = 0;
+            done = true;
+        }
+    }
+    return done;
+}
+
 bool UIIsControllerConnected(C2DAnimCmdHdr *hdr, float *dT)
 {
     bool connected = false;

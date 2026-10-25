@@ -492,6 +492,64 @@ public:
 
 const char *GetCustomCharTypeName(int index);
 
+/* ---- the network's start-up: a simple state machine ---- */
+
+/* a state machine whose states are member functions, each told what happens to it: 0 entered, 1
+ * ticked, 2 left (SOCOM II's CSimpleStateMachine, by its RTTI at 0x3EF738, its unit at 0x3A5xxx; the
+ * members' names ours). It runs on a thread when it has one (at 4); a state change goes through a
+ * queue (at 0x14: a deque of the 12-byte member pointers, 42 to a block, 0x2852B0 its push) */
+class CSimpleStateMachine;
+typedef void (CSimpleStateMachine::*SSMState)(unsigned char event);
+
+extern "C" {
+void func_002852B0(void *queue, SSMState state);    /* the state queue's push */
+void func_003A5C30(CSimpleStateMachine *sm);        /* (the machine's tick) */
+bool func_003A5C10(CSimpleStateMachine *sm);        /* (whether it is done: no thread and the flag) */
+}
+
+class CSimpleStateMachine {
+public:
+    CSimpleStateMachine();    /* 0x3A5DD0 */
+    ~CSimpleStateMachine();   /* 0x3A5CC0 */
+    /* the machine put back in its idle state, not done (the base's copy, 0x3A5AE0) */
+    virtual bool Start()
+    {
+        SetState(&CSimpleStateMachine::Idle);
+        m_done = 0;
+        return false;
+    }
+    /* a state change queued: every machine's vtable holds the copy linked from this unit (0x276F40),
+     * the first in the link to emit one */
+    virtual void SetState(const SSMState &state)
+    {
+        SSMState s = state;   /* (copied first: passed straight, the reference is handed on) */
+
+        func_002852B0(m_queue, s);
+    }
+
+    void Idle(unsigned char event);     /* 0x3A5CB0: nothing */
+    void Finish(unsigned char event);   /* 0x3A5C70: done once entered or ticked */
+
+    unsigned int m_thread;   // 0x4
+    SSMState m_state;   // 0x8
+    unsigned char m_queue[0x18];   // 0x14
+    unsigned char m_done;   // 0x2c
+    int m_30;   // 0x30
+    int m_thread_id;   // 0x34
+};
+
+/* the network started as a machine: initialised, then waited for, the command's valve told how it
+ * went (SOCOM II's CSMInitNetwork, its vtable 0x4060B0; the members' names ours) */
+class CSMInitNetwork : public CSimpleStateMachine {
+public:
+    CSMInitNetwork(CValve *valve) : m_valve(valve) {}
+    virtual bool Start();
+    void Initialize(unsigned char event);
+    void WaitForNetwork(unsigned char event);
+
+    CValve *m_valve;   // 0x38
+};
+
 /* ---- placeholders: methods and functions not named yet (SOCOM 1's names, by the call SOCOM 1's
  * handler makes at the same place, in the comments) ---- */
 extern "C" {
@@ -568,6 +626,11 @@ void func_00281D40(C2DAnimCmdHdr *hdr, UITextCallback cb, int lobby);
 bool func_002E67D0(CZOnlineLobby *lobby, const char *name);         /* IsLeaderOfClan */
 bool func_002E7600(CZOnlineLobby *lobby, const char *name);         /* InvitePlayerToClan */
 bool func_002E8310(CZOnlineLobby *lobby, const char *text);         /* SendClanMessage */
+void func_002EFE20(CZOnlineLobby *lobby, int state);                /* (the lobby's state set) */
+void func_002DFE50(CZOnlineLobby *lobby);                           /* (the lobby reset) */
+void func_0030E290(CZNetwork *net);                                 /* (the network's initialisation started) */
+bool func_0030DEE0(CZNetwork *net);                                 /* (whether it started) */
+bool func_0030BF20();                                               /* (whether the network is up) */
 void func_002E81B0(CZOnlineLobby *lobby, const char *name);         /* TransferLeadership */
 bool func_002F8D50(CZOnlineLobby *lobby, const char *name);         /* (game has a spectator password) */
 bool func_002F8BC0(CZOnlineLobby *lobby, const char *name);         /* (game rejects the rank) */
