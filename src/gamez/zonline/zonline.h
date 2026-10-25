@@ -608,8 +608,12 @@ public:
     bool Logout();
     void BanSelfFromGame();
     void GetMissionSequence(unsigned char *idx, unsigned char *seq);
+    void SetMissionSequence(unsigned char idx, unsigned char *seq);
+    void ResetMissionSequence();
+    int AdvanceMissionSequence();
     void SendEndGameReport();
     void GetAnnouncements();
+    void GetUsagePolicy();
     void PasswordSecurity();
     bool RemovePlayerFromClan(const char *name);
     bool SendClanMessage(const char *text);
@@ -618,6 +622,7 @@ public:
     void DeleteClanMessage(int id);
 
     void *DMEInit();
+    void RecoverFromNetError(int err);
     void RunStateHandler(LOBBY_STATE state, LOBBY_STATE_FLAG flag);
     bool RefreshRoomList(C2D *page);
     bool RejoinRoom();

@@ -17,4 +17,47 @@ inline void swap(T &a, T &b)
 
 }
 
+namespace Metrowerks {
+
+/* a pointer an allocator made, given back to it unless released: MSL's guard for a node while its
+ * value is built (SOCOM 1's DWARF: alloc_ptr<node, allocator<node> &>, 8 bytes, a compressed pair
+ * of the allocator reference and the pointer; its destructor at msl_utility line 1092). The list's
+ * insert holds its new node in one (SOCOM II's 0x1FEAE0: {&end_, node} on the stack, released
+ * before the links are made, the destructor's `if (p) deallocate` after) */
+/* a constant as a type (SOCOM 1's number<Ui,1>, one byte: the count an alloc_ptr gives back) */
+template <class T, T N>
+struct number {
+    operator T() const { return N; }
+};
+
+template <class T, class Allocator, class Size = number<unsigned int, 1> >
+class alloc_ptr {
+public:
+    /* the count passed by value, an empty class: value-initialised, a zero byte on the stack
+     * that nothing reads (SOCOM II's sb zero,124(sp) in the list's insert) */
+    alloc_ptr(T *p, Allocator a, Size = Size()) : a_(a), p_(p) {}
+    ~alloc_ptr()
+    {
+        if (ptr())
+            a_.deallocate(ptr());
+    }
+    /* the pointer through a reference, as the compressed pair's second() gives it: every access
+     * then goes through its address in one register (the target's v1) */
+    T *&ptr() { return p_; }
+    T *get() { return ptr(); }
+    T *release()
+    {
+        T *p = ptr();
+
+        ptr() = 0;
+        return p;
+    }
+
+private:
+    Allocator a_;
+    T *p_;
+};
+
+}
+
 #endif

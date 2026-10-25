@@ -34,33 +34,35 @@
  *   - back() is the base's, cast (through end() it would be a level taller than
  *     CZAR::GetOpenKey's inlining allows).
  *
- * The inline LEVELS are load-bearing (-inline level=4: a call whose callee's inline tree is at
- * most four high inlines all of it, a taller one only the callee's own body). Counted from the
- * vector down:
+ * The inline LEVELS are load-bearing (-inline level=5: a call whose callee's inline tree is at
+ * most five high inlines all of it, a taller one only the callee's own body -- and so does a
+ * callee whose expanded body passes MW's inline_max_size, 256 units). Counted from the vector
+ * down, as refitted at level 5 (the inline-level lane, 2026-10-25; level 4 had them one shallower
+ * in the swaps and the pod's destructor):
  *   vector of pointers  constructor 3 (vector, __vector_imp, __vector_pod)
- *                       destructor  3 (each with its this test), clear() 3
+ *                       destructor  4 (three this tests, then the pod's deallocate)
+ *                       clear()     3
+ *                       swap()      5 (vector, __vector_imp, the pod's member swap, the free swap,
+ *                                   std::swap): FreeVector and TrimVector are six
  *   vector of a class   constructor 4 (the capacity member's own constructor)
  *                       destructor  2 inline (~vector, ~__vector_imp), then __vector_deleter's
  *                                   destructor -- out of class, see there: a call where the unit
  *                                   had not instantiated it yet, four levels where it had
- *                       clear()     5
- * So `new CZAnimExVector` and its delete inline whole (CZAnimSet::AddAnimEx and Unload), while
- * CZAnimSetSave's implicit constructor and destructor, four high or more under its vector of
- * CPnt3D, inline only themselves and call all four vectors' (SaveNodeStates, Unload); the
- * out-of-line ~vector<CPnt3D> calls the deleter's destructor, and CZAnimSetSave::Free inlines the
- * pointer vectors' clear() but calls __vector_imp<CPnt3D>::clear().
- * OPEN: CCompass::CreateAnchor inlines CCompassAnchor's constructor whole, its vector<CPnt3D>
- * three stores included -- a class-vector constructor three high -- where SaveNodeStates needs
- * four (the capacity's constructor); the constructor side has no out-of-class piece found yet.
- * OPEN, the same kind on the pointer side: CCharacterType::Create inlines GetByNameMod whole with
- * its loop's end() (data + size, every pass) inline, where this model's end() -- an argument of
- * the inline !=, checked a level deeper -- is called out of line (0x158 against 0x168;
- * RdrFetch_CharacterType likewise). Measured over every hand-written unit (build/scratch/vec/):
- * end() built straight from data_ + size_ matches Create and brings RdrFetch to its size, but
- * loses CHUD::Add2D, UIGetMissionInformation and find_node (0x319C90, one of the self-inlining
- * walks that fixed this model); end() through iterator((elem_t *)__base::end()) overshoots
- * (Create 0x150). The deque's teardown destructor inlines five levels where every shape stops at
- * four: the level rule above is not the whole story. */
+ *                       clear()     5 (2 in a unit's own code: the deleter's is out of class)
+ *                       swap()      5 (the deleter's member swap, the free swap, the capacity
+ *                                   pair's free swap and member swap, std::swap)
+ * So `new CZAnimExVector` and its delete inline whole (CZAnimSet::AddAnimEx and Unload), and so
+ * does CCompassAnchor's constructor in CCompass::CreateAnchor (five high with its vector<CPnt3D>),
+ * and CCharacterType::Create's GetByNameMod with its loop's end(); the out-of-line ~vector<CPnt3D>
+ * calls the deleter's destructor, and CZAnimSetSave::Free inlines the pointer vectors' clear() but
+ * calls __vector_imp<CPnt3D>::clear().
+ * Measured at level 5 over every unit, drafts included, master merged (build/scratch/lvl/): the
+ * level-4 fit's matches all hold but SaveNodeStates -- `new CZAnimSetSave`, five high, must be
+ * inlined only one level, which no height can do while CreateAnchor and AddAnimEx inline theirs
+ * whole: it is the size limit, CZAnimSetSave() expanding to 179 units here against 256 needed
+ * (zanim_set.cpp's OPEN) -- and CPnt3D's copy (0x387F90, a level-4 artefact of grid_main.cpp);
+ * gained CreateAnchor, CCharacterType::Create, __sinit_compass.cpp, __sinit_game_state.cpp,
+ * CCell::GetMidPoint, ~C2D and CVisual's constructor. */
 
 #ifndef _MSL_VECTOR
 #define _MSL_VECTOR
@@ -88,9 +90,18 @@ class __vector_capacity {
 public:
     __vector_capacity() { n_ = 0; }
     operator unsigned int() const { return n_; }
+    /* the pair's swap (SOCOM 1's compressed_pair_imp::swap, msl_utility lines 859-860) */
+    void swap(__vector_capacity &x) { std::swap(n_, x.n_); }
 
     unsigned int n_;
 };
+
+/* the pair swapped through its member (MSL's free swap of a compressed_pair) */
+template <class Allocator>
+inline void swap(__vector_capacity<Allocator> &x, __vector_capacity<Allocator> &y)
+{
+    x.swap(y);
+}
 
 template <class T, class Allocator>
 class __vector_deleter {
@@ -118,25 +129,28 @@ public:
             __msl_error("Memory allocation failure");
         return p;
     }
-    void swap(__vector_deleter &x)
-    {
-        if (this != &x) {
-            unsigned int c = capacity_.n_;
-            capacity_.n_ = x.capacity_.n_;
-            x.capacity_.n_ = c;
-            T *d = data_;
-            data_ = x.data_;
-            x.data_ = d;
-            unsigned int z = size_;
-            size_ = x.size_;
-            x.size_ = z;
-        }
-    }
+    /* through the free swap below (SOCOM 1's member swap, line 973, calls the free one at 960) */
+    void swap(__vector_deleter &x) { std::swap(*this, x); }
 
     __vector_capacity<Allocator> capacity_;
     unsigned int size_;
     T *data_;
 };
+
+/* the storage traded (SOCOM 1's free swap, lines 960-967: the this test, the capacity pair through
+ * its own swap -- SOCOM 1's copy calls swap<Ui> there out of line -- then data and size): the
+ * deleter's swap is five high (member, this, the pair's free swap, its member, std::swap), so a
+ * class vector's FreeVector, six, is inlined one level at -inline level=5 and calls its pieces
+ * (CGameStateChangeCmd::DestroyPool, ~MapCompass, CVehicleRdr::Close) */
+template <class T, class Allocator>
+inline void swap(__vector_deleter<T, Allocator> &x, __vector_deleter<T, Allocator> &y)
+{
+    if (&x != &y) {
+        swap(x.capacity_, y.capacity_);
+        std::swap(x.data_, y.data_);
+        std::swap(x.size_, y.size_);
+    }
+}
 
 /* the deleter's destructor, out of class and not inline, as MSL 3.0.1 has it after the class body
  * (SOCOM 1's DWARF: the constructor at <vector> line 916 and data() at 923 inside the class, the
@@ -172,24 +186,28 @@ template <class T, class Allocator>
 class __vector_pod {
 public:
     __vector_pod() { capacity_ = 0; size_ = 0; data_ = 0; }
+    /* n copies of value: the words zeroed, then init (CVisual's m_lodMesh(0): init called out of line) */
+    __vector_pod(unsigned int n, const T &value) { capacity_ = 0; size_ = 0; data_ = 0; init(n, value); }
     __vector_pod(const __vector_pod &x);
+    /* the storage given back through the allocator (CW 2.5's MSL: the pod's destructor calls
+     * alloc() and deallocate): a pointer vector's destructor is four high, one more than its
+     * constructor, so CVisual's destructor (vis_main.cpp) inlines CDynTexList's implicit one only
+     * one level and calls ~CTexList and ~CTexPalList, where its constructor builds them whole */
     ~__vector_pod()
     {
         if (data_)
-            operator delete(data_);
+            deallocate(data_);
     }
+    static void deallocate(T *p) { operator delete(p); }
     void clear() { size_ = 0; }
-    /* the storage traded with another's: capacity, data, size, each through std::swap -- the
-     * fourth level of a pointer vector's swap, which CFlashFXVector::Reset's free idiom needs
-     * (its four pieces all called out of line, SOCOM II's 0x228780 among them) */
-    void swap(__vector_pod &x)
-    {
-        if (this != &x) {
-            std::swap(capacity_, x.capacity_);
-            std::swap(data_, x.data_);
-            std::swap(size_, x.size_);
-        }
-    }
+    /* the storage traded with another's through the free swap below, as SOCOM 1's deleter swaps
+     * (its member swap at <vector> line 973 calls the free one at 960): a pointer vector's swap is
+     * five high, so FreeVector (zsys.h) and TrimVector (node_world.cpp), six, are inlined one level
+     * at -inline level=5 and call their pieces, as the target does. Measured at level 5 over every
+     * hand-written unit: the 32 FreeVector/TrimVector functions level 5 lost come back (CFlashFXVector::
+     * Reset, CCompass::Close, CWorld's three, CSndJukebox::Cleanup, Headset::Flush and their copies),
+     * nothing else moves */
+    void swap(__vector_pod &x) { std::swap(*this, x); }
     /* references to the fields (SOCOM 1 keeps out-of-line copies: data() is this + 8, cap() this) */
     T *&data() { return data_; }
     unsigned int &cap() { return capacity_; }
@@ -197,6 +215,7 @@ public:
     T *begin() { return data(); }
     T *end() { return data_ + size_; }
     T &back() { return *(end() - 1); }
+    unsigned int size() const { return size_; }
     static unsigned int max_size() { return (unsigned int)-1 / sizeof(T); }
     static T *allocate(unsigned int n)
     {
@@ -211,12 +230,29 @@ public:
     T &at(unsigned int n);
     template <class InputIterator>
     void init(InputIterator first, InputIterator last, forward_iterator_tag);
+    /* n copies of value (SOCOM 1's init__...FUiRCUi, the same 0xE8 bytes as SOCOM II's 0x3C45B0) */
+    void init(unsigned int n, const T &value);
+    /* grown by copies of c through insert, or cut through erase (out of class: CVisual::Init calls
+     * OVL1's copy, 0x28B0E0; MAIN's is 0x18B050) */
+    void resize(unsigned int sz, const T &c);
     void push_back(const T &x) { insert(data_ + size_, 1, x); }
-protected:
+public:
     unsigned int capacity_;
     unsigned int size_;
     T *data_;
 };
+
+/* the storage traded: capacity, data, size, each through std::swap (SOCOM 1's free swap of the
+ * deleter, lines 960-967: the this test, then the three fields in that order) */
+template <class T, class Allocator>
+inline void swap(__vector_pod<T, Allocator> &x, __vector_pod<T, Allocator> &y)
+{
+    if (&x != &y) {
+        std::swap(x.capacity_, y.capacity_);
+        std::swap(x.data_, y.data_);
+        std::swap(x.size_, y.size_);
+    }
+}
 
 /* what every vector shows its users: the iterators and accessors over its storage (a macro, so
  * that neither kind of vector carries a class of its own for them) */
@@ -278,6 +314,8 @@ template <class T, class Allocator>
 class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, allocator<unsigned int> > {
     typedef __vector_pod<unsigned int, allocator<unsigned int> > __base;
     __MSL_VECTOR_ACCESS(T *)
+    __vector_imp() {}
+    __vector_imp(unsigned int n, T *const &value) : __base(n, (const unsigned int &)value) {}
     iterator __iter(unsigned int *const &p) { return iterator((elem_t *)p); }
     /* the base's pointer held in a const local first: begin() is three high so (SetDynamic and
      * SetUseParentBBoxTree assign it to a declared iterator and inline it whole in their outer
@@ -326,6 +364,7 @@ class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, all
         unsigned int size() const { return this->size_; }                                       \
         unsigned int capacity() const { return this->capacity_; }                               \
         T &operator[](unsigned int n) { return ((T *)__base::data())[n]; }                      \
+        T &at(unsigned int n) { return (T &)__base::at(n); }                                    \
         void push_back(const T &x) { __base::push_back((const unsigned int &)x); }              \
         void clear() { __base::clear(); }                                                       \
         void swap(__vector_imp &x) { __base::swap(x); }                                         \
@@ -393,6 +432,33 @@ void __vector_pod<T, Allocator>::init(InputIterator first, InputIterator last, f
         for (InputIterator p = first; p < last; ++p, ++d)
             *d = *p;
     }
+}
+
+/* n copies of value: the length checked, the block allocated and stored through data()'s
+ * reference, size and capacity set, value re-read for every element (0x3C45B0; written under
+ * that placeholder in vis_main.cpp until now) */
+template <class T, class Allocator>
+void __vector_pod<T, Allocator>::init(unsigned int n, const T &value)
+{
+    if (n) {
+        if (n > max_size())
+            __msl_error("vector length error\n");
+        data() = allocate(n);
+        size_ = n;
+        cap() = n;
+        for (T *first = data_; n > 0; --n, ++first)
+            *first = value;
+    }
+}
+
+/* SOCOM 1's lines 337-342: copies of c inserted at the end, or the tail erased */
+template <class T, class Allocator>
+void __vector_pod<T, Allocator>::resize(unsigned int sz, const T &c)
+{
+    if (sz > size())
+        insert(end(), sz - size(), c);
+    else if (sz < size())
+        erase(begin() + sz, end());
 }
 
 /* reserve: the old elements copied into a fresh block -- word by word for the POD storage, by
@@ -479,6 +545,9 @@ __MSL_VECTOR_SCALAR(unsigned int)
 template <class T, class Allocator>
 class vector<T *, Allocator> : public __vector_imp<T *, Allocator, true> {
 public:
+    vector() {}
+    /* n copies of value (CVisual's m_lodMesh(0) calls the pod's init(0, a zero) out of line) */
+    explicit vector(unsigned int n, T *const &value = 0) : __vector_imp<T *, Allocator, true>(n, value) {}
     void clear() { __vector_imp<T *, Allocator, true>::clear(); }
     void swap(vector &x) { __vector_imp<T *, Allocator, true>::swap(x); }
 };
