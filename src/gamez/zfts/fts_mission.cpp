@@ -268,21 +268,16 @@ public:
 
 CZSealBody *ftsGetPlayer();
 
-/* whether the player's controller is in none of states 2 to 5 (SOCOM II's; OVL1 0x2AA890).
- * OPEN, 0x74 against 0x7C: the target has two more nops around the returns (after the last
- * compare's branch, and after `li v0,1`), the vanished blocks of an inline's returns or a
- * ternary's. Tried: the test as a ternary (shorter), an else, the test inverted inside `if (ctrl)`,
- * one || chain with the null test. */
+/* whether the player's controller is in none of states 2 to 5 (SOCOM II's; OVL1 0x2AA890). One
+ * negated && chain of `!=` tests: the null test branches to the shared return-0 block, the four
+ * compares stay a chain (`==` joined by || folds three of them into a range test) and the two nops
+ * of the vanished blocks come back; an early `if (!ctrl) return false;` has a block of its own. */
 extern "C" bool func_002AA890()
 {
     CZSealBody *player = ftsGetPlayer();
     CSealCtrl *ctrl = player ? player->m_control : 0;
 
-    if (!ctrl)
-        return false;
-    unsigned char state = ctrl->m_221;
-
-    if (state == 2 || state == 3 || state == 4 || state == 5)
+    if (!(ctrl && ctrl->m_221 != 2 && ctrl->m_221 != 3 && ctrl->m_221 != 4 && ctrl->m_221 != 5))
         return false;
     return true;
 }

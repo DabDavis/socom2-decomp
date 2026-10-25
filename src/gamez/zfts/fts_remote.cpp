@@ -522,15 +522,12 @@ void SendMessageMessage(int who, R_SEND_TO to, int msg)
 }
 
 /* a menu message from another client, shown when it is for everyone, our team, or us
- * (SOCOM 1's MessagePacketHandler; OVL1 0x2BAC40).
- * OPEN, 2 instructions: the default case's two loads trade v0 and v1 (the target's `lw v0,4(v0);
- * lhu v1,2(s1); bne v1,v0`). The group taken into a local before the body test reproduces the
- * target's lb in the delay slot and its re-extension (dsll32/dsra32 24, the conversion to the
- * signed byte enum); the player's index taken into a local first keeps the halfword's reload
+ * (SOCOM 1's MessagePacketHandler; OVL1 0x2BAC40). The group taken into a local before the body
+ * test reproduces the target's lb in the delay slot and its re-extension (dsll32/dsra32 24, the
+ * conversion to the signed byte enum); the player taken into a local keeps the halfword's reload
  * after the call (in the comparison itself MW loads the halfword ahead of the call and keeps it in
- * s2). Tried for the last two: either operand order, `!=` with a break, both through locals, the
- * index int, unsigned, short; a union of the halfword and a char (or the enum, or an 8-bit field)
- * for the group, which loses the re-extension. */
+ * s2), and `p->to == player->m_4` puts the index in v0, the halfword in v1 (the player's index in
+ * an int local first swaps them). */
 extern "C" int func_002BAC40(int, int, int, void *data)
 {
     MessagePacket *p = (MessagePacket *)data;
@@ -551,9 +548,9 @@ extern "C" int func_002BAC40(int, int, int, void *data)
             func_005E7F20(body, p->msg, 1);
             break;
         default: {
-            int me = ftsGetPlayer()->m_4;
+            CZSealBody *player = ftsGetPlayer();
 
-            if (me == p->to)
+            if (p->to == player->m_4)
                 func_005E7F20(body, p->msg, 1);
             break;
         }

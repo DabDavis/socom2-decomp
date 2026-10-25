@@ -84,12 +84,11 @@ void func_005998B0(CZSealBody *body);   /* CZSealBody::Destroy */
 }
 
 /* a remote SEAL's object deleted: the bomb's place kept if it carried it, and its body destroyed
- * unless we deleted it ourselves (OVL1 0x2BEF60).
- * OPEN, 5 instructions: the bomb status's carrier. The target reads the state absolutely and the
- * carrier through the struct's address, made in a1 during the state test (lui a1; addiu a1 in the
- * branch's delay slot; lw v1,20(a1)); this reads both absolutely. Tried: the status through a
- * pointer or a reference local (both reads go through it), the carrier test as a static inline of
- * CZBombState or a free inline taking the status by reference. */
+ * unless we deleted it ourselves (OVL1 0x2BEF60; SOCOM 1's has the same shape). The bomb's status
+ * is taken into a reference local after the game-type test: the target reads the state absolutely
+ * and the carrier through the struct's address, made in a1 during the state test (lui a1; addiu a1
+ * in the branch's delay slot; lw v1,20(a1)) -- read through the global both are absolute, through
+ * a reference declared before the call the address lives in a saved register. */
 void CZSealState::RemoteSealDeletionCallback(int client, int index)
 {
     if (client == func_0030D5A0(&data_0045A0C0))
@@ -110,12 +109,15 @@ void CZSealState::RemoteSealDeletionCallback(int client, int index)
         return;
     CZNetGame *game = theMission.m_pNetGame;
 
-    if (func_002A72A0(game) && CZBombState::m_BombStatus.m_state == 2 &&
-        CZBombState::m_BombStatus.m_carrier == index) {
-        game->m_bomb_pos[0] = body->m_posW[0];
-        game->m_bomb_pos[1] = body->m_posW[1];
-        game->m_bomb_pos[2] = body->m_posW[2];
-        game->m_bomb_pos_valid = 1;
+    if (func_002A72A0(game)) {
+        BombStatus &status = CZBombState::m_BombStatus;
+
+        if (status.m_state == 2 && status.m_carrier == index) {
+            game->m_bomb_pos[0] = body->m_posW[0];
+            game->m_bomb_pos[1] = body->m_posW[1];
+            game->m_bomb_pos[2] = body->m_posW[2];
+            game->m_bomb_pos_valid = 1;
+        }
     }
     body->m_fcf = 0;
     body->m_fd1 = 1;

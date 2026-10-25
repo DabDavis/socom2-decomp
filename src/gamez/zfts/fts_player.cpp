@@ -357,20 +357,20 @@ void CMission::CloseVehicleRdr()
 }
 
 /* an entity given back: a SEAL's anims stopped, or, with vehicles waiting, the spawners' timer
- * restarted and one more owed (OVL1 0x2B2310; SOCOM 1's had only the second).
- * OPEN, 4 instructions: the timer's and the count's stores. The target takes the constant 2.0 into
- * v0 and stores it before the increment (lui v0; lw v1; sw v0; addiu v0,v1,1 -- SOCOM 1's
- * RecycleEntity has the same four); this keeps the count in v0 and stores both after the add.
- * Tried: the two statements swapped, `+= 1`, `= n + 1` through a local, the object through a
- * reference or pointer local, an inline member, the two arms of the if swapped. */
+ * restarted and one more owed (OVL1 0x2B2310; SOCOM 1's had only the second). The count is read
+ * into a local before the timer's store: only so does the constant take v0 and the store go ahead
+ * of the add (lui v0; lw v1; sw v0; addiu v0,v1,1), as in both builds; `m_count++` after the
+ * store coalesces the sum with the load and stores both after the add. */
 void CMission::RecycleEntity(CEntity *e)
 {
     bool b = e->m_bit13;
 
     if (b || spawners.m_spawns.size()) {
         if (!b) {
+            int n = spawners.m_count;
+
             spawners.m_timer = 2.0f;
-            spawners.m_count++;
+            spawners.m_count = n + 1;
         } else
             func_0026ADA0(&ZAnim, e->GetNode());
         CEntity::RecycleEntity(e);
