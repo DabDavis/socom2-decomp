@@ -171,6 +171,7 @@ public:
     void DeletePatchFile();
     void DeleteScratchpad();
     int GetCardStatus();
+    int GetUsedSpace();
     void Uninit();
     void Reset();
     void Init();

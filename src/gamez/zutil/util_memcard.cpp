@@ -351,6 +351,40 @@ int CMemCard::GetFreeSpace()
     return free;
 }
 
+/* the kilobytes the save directory's files take, with libmc's directory overhead (ours).
+ * OPEN, 4 instructions: only the frame differs -- the target puts the twenty-entry table at
+ * sp+0x40 and the inlined Exists' one-entry table above it at sp+0x570; MW here puts Exists'
+ * table at the bottom and the array above it. Tried: the array declared first, after the
+ * Exists test, in a nested block, inside a struct, 16-aligned. */
+int CMemCard::GetUsedSpace()
+{
+    int n = -1;
+    int cmd;
+    int kb = 0;
+    sceMcTblGetDir tables[20];
+
+    if (!Exists(".."))
+        return 0;
+    sceMcSync(0, &data_004A37C0, &data_004A37C8);
+    memset(tables, 0, sizeof(tables));
+    sceMcGetDir(m_selPort, m_selSlot, "./*", 0, 20, tables);
+    sceMcSync(0, &cmd, &n);
+    if (n > 0) {
+        bool any = false;
+        int i;
+
+        for (i = 0; i < n; i++) {
+            if (tables[i].FileSizeByte) {
+                any = true;
+                kb += (tables[i].FileSizeByte + 1023) >> 10;
+            }
+        }
+        if (any)
+            kb += n / 2 + 1;
+    }
+    return kb;
+}
+
 /* Sony's ASCII-to-Shift-JIS sample, for the icon's title (its tables at 0x3E0660 and 0x3E06E8) */
 extern unsigned short data_003E0660[33][2];
 extern unsigned short data_003E06E8[3][2];

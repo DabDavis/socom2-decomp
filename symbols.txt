@@ -7605,7 +7605,7 @@
 0x003A0950 0xB8 Exists__8CMemCardFPCc  # OVL1; s1:calls+order (after mkdir as SOCOM 1's; called where SOCOM 1's UI handlers call it) -- the UI-commands lane
 0x003A0A10 0x4C4 CreateIconFiles__8CMemCardFv  # OVL1; s1:align
 0x003A0EE0 0x17C Ascii2Sjis__FUc  # OVL1; s1:align
-0x003A1060 0x1A8 func_003A1060  # OVL1
+0x003A1060 0x1A8 GetUsedSpace__8CMemCardFv  # OVL1; ours (when the save directory exists: the files of ./* summed in kilobytes, plus half the entry count and one when any file has bytes)
 0x003A1210 0xC4 GetFreeSpace__8CMemCardFv  # OVL1; s1:calls (the save handlers call it where SOCOM 1's do) -- the UI-commands lane
 0x003A12E0 0x88 Format__8CMemCardFv  # OVL1; s1:align
 0x003A1370 0x208 func_003A1370  # OVL1
