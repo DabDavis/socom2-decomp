@@ -336,6 +336,7 @@ class CZPauseTest {
 public:
     CZPauseTest();
     ~CZPauseTest();
+    void ReInit();
     void Clear();
     void ClosePauseMenu();
     unsigned char _0[0x13c0];
@@ -728,7 +729,6 @@ extern "C" int sprintf(char *buf, const char *fmt, ...);
 /* not named yet: SOCOM II's own re-inits and resets */
 extern "C" void func_003C6980();
 extern "C" void func_0022D190();
-extern "C" void func_00202370(CZPauseTest *pause);
 extern "C" void func_00238710(CMPInfoBox *box);
 extern "C" void func_00242B20(CSpectatorInfo *info);
 extern "C" void func_002CA0B0(C2DMessage_Q *q);
@@ -758,7 +758,7 @@ void CHUD::ReInit_Init()
         m_teamnames.Init();
     else
         m_teamnames.Off();
-    func_00202370(&m_pausetest);
+    m_pausetest.ReInit();
     m_poseBitmap.ReInit();
     func_00238710(&m_infobox);
     func_00242B20(&m_spectatorinfo);

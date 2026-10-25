@@ -1723,7 +1723,7 @@
 0x002015A0 0xF0 Draw__11CZPauseTestFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00201690 0xB78 func_00201690  # OVL1
 0x00202210 0x154 Clear__11CZPauseTestFv  # OVL1; s1:calls by hand (CHUD::ReInit_Uninit's second call on CHUD+0x18900, after ClosePauseMenu, as SOCOM 1's; right after HudTick in hud_pausemenu.cpp, as SOCOM 1's)
-0x00202370 0x1B0 func_00202370  # OVL1
+0x00202370 0x1B0 ReInit__11CZPauseTestFv  # OVL1; by hand (hud_pausemenu.cpp: CHUD::ReInit_Init's call on CHUD+0x18900; the first selectable line through 0x205A70 into the signed char at 0x1C, the ACCEPT/BACK prompts, the abort and replay questions and YES/NO set through C2DString's slot 26; the name ours)
 0x00202520 0x1C20 func_00202520  # OVL1
 0x00204140 0x50 SetIsTrans__13C2DBitmapPolyFb  # OVL1; by hand (slot 8 of C2DBitmapPoly's vtable 0x406C30: both triangles' slot 8; an inline's out-of-line copy, the CZPauseTest unit's, linked first; the name ours, as C2DBitmap's)
 0x00204190 0x50 SetHasTexture__13C2DBitmapPolyFb  # OVL1; by hand (slot 6 of C2DBitmapPoly's vtable 0x406C30: both triangles' slot 6; an inline's out-of-line copy, this one the CZPauseTest unit's, linked first; the name ours, as C2DBitmap's)
