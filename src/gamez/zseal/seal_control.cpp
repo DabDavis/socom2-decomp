@@ -31,6 +31,9 @@ extern "C" float func_005975B0(const CPnt3D *v)
 struct CViewCamera {
     unsigned char _0[0xec];
     float m_far;   // 0xec
+
+    /* the far plane (an inline accessor: SetViewRange's product loads it first, into $f1) */
+    float GetFar() const { return m_far; }
 };
 
 struct CViewWorld {
@@ -147,16 +150,15 @@ extern "C" float data_006506A0;
 
 /* the view range: a given one held between the floor and the camera's reach (95 % of its far
  * plane, or 1000), none taking that reach (OVL2 0x5924B0; SOCOM 1's took any positive range).
- * OPEN, 3 instructions: the target loads the far plane into $f1 and 0.95 into $f0, the product
- * over the constant; here the other way round (SOCOM 1's code is the target's). Tried: the
- * factor on either side, (float) casts, the plane in a local, `*=`, a ternary. */
+ * The far plane through an inline accessor: read as a member, MW loads the constant first and
+ * the registers swap (the factor on either side, casts, a local, `*=` all missed by 3) */
 void CSealCtrl::SetViewRange(float range)
 {
     float far = 1000.0f;
     CViewCamera *cam = ((CViewWorld *)zdb::CWorld::m_world)->m_camera;
 
     if (cam)
-        far = 0.95f * cam->m_far;
+        far = 0.95f * cam->GetFar();
     if (range <= 0.0f)
         range = far;
     else
