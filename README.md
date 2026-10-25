@@ -1647,6 +1647,27 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     CFRect(const CPnt3D *, const CPnt3D *), top and bottom from the corners' z;
   - try.py substitutes files under src/ only: to probe a header under include/, compile against a
     shadow copy of include/ placed first (build/scratch/world/incprobe.py).
+- **Tells from the body animation, round 4** (ReadMotionRdr, the blend stack, BodyAddAnim):
+  - an inline accessor returning a member's address makes MW hoist that address out of a loop,
+    into a preheader placed after the loop's bottom test, the loop entered with a `b`; written as
+    `p->member`, the address is recomputed every pass;
+  - an inline wrapping an out-of-line call gives its result the lowest saved register, below
+    another inline's `this` temporary (PushBlend); ReadMotionRdr (0xE98 bytes) closed on one such
+    inline, `CZSIScriptCommon::LoopTime()`, whose `this` copy takes s0;
+  - `mul.s $f1,$f1,$f0` with the first operand loaded after a call is a by-value inline parameter
+    multiplied in place (`t *= s; return t;`, called as `f(member, call())`);
+  - two vectors walked in step: both cursors class iterators, the walked vector's initialised
+    first (BodyAddAnim);
+  - a bool set true/false in an if/else puts `daddiu` in the branch's delay slot; a float
+    comparison returned as `if (c) return true; return false;` gives the target's label pads where
+    `return c;` does not;
+  - MW puts a division's dividend in $f1 and its divisor in $f0 whatever the spelling (ThisFoot and
+    CBlendOverlay::Tick want them the other way round: open);
+  - inline costs measured by `#pragma inline_max_size` bisection: CPnt3D's implicit assignment ~49
+    units, CQuat's ~30, a user destructor 17, an empty transform over a pointer vector 80 --
+    CBody::Destroy fits only at 299 units, so the original's copies or MSL pieces were leaner;
+  - OVL1's copy of the pod vector's resize (0x28B0E0) cannot be scored from source: a template
+    instance is credited by name, and the name resolves to MAIN's copy (0x18B050).
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
