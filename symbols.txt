@@ -1886,9 +1886,9 @@
 0x002113A0 0x8 node_alloc__Q23std185__tree<Q23std19pair<Ci,9LINE_DATA>,Q33std79map<i,9LINE_DATA,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>Fv  # OVL1; include/tree (the node allocator's accessor, this + 4; the name ours; byte-exact from hud_linemap.cpp)
 0x002113B0 0x8 destroy__Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>FPQ23std19pair<Ci,9LINE_DATA>  # OVL1; include/memory (the value destroyed in place, empty for this pair; destroy's innermost level calls it; byte-exact from hud_linemap.cpp)
 0x002113C0 0x8 alloc__Q23std185__tree<Q23std19pair<Ci,9LINE_DATA>,Q33std79map<i,9LINE_DATA,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>Fv  # OVL1; include/tree (the value allocator's accessor, this: destroy's inner levels call it; the name ours; byte-exact from hud_linemap.cpp)
-0x002113D0 0x20 func_002113D0  # OVL1
-0x002113F0 0xCC func_002113F0  # OVL1
-0x002114C0 0x48 func_002114C0  # OVL1
+0x002113D0 0x20 GetAnchorImg__10MapCompassFUi  # OVL1; ours by hand (the HUD lane: a MapCompass member over its anchor tables -- m_anchor_img at 8, m_anchor_clr at 0xA0, 38 each -- that the map's legend (0x20C080), items and line map call; the compass unit's first functions in the image, defined last)
+0x002113F0 0xCC GetAnchorColor__10MapCompassFP14CCompassAnchor  # OVL1; ours by hand (the HUD lane: a MapCompass member over its anchor tables -- m_anchor_img at 8, m_anchor_clr at 0xA0, 38 each -- that the map's legend (0x20C080), items and line map call; the compass unit's first functions in the image, defined last)
+0x002114C0 0x48 GetAnchorColor__10MapCompassFUi  # OVL1; ours by hand (the HUD lane: a MapCompass member over its anchor tables -- m_anchor_img at 8, m_anchor_clr at 0xA0, 38 each -- that the map's legend (0x20C080), items and line map call; the compass unit's first functions in the image, defined last)
 0x00211510 0xC18 Tick__10MapCompassFP10CZSealBody  # OVL1; s1:order (hud_mapcompass.cpp's first, as SOCOM 1's; grown from 0xA28 to 0xC18)
 0x00212130 0x8 Draw__10MapCompassFPQ23zdb7CCamera  # OVL1; s1:order by hand (hud_mapcompass.cpp, after Tick; empty in SOCOM II)
 0x00212140 0x14 SetTrans__10MapCompassFf  # OVL1; size 0x14 (a tail call through t9; the seed ran on into the padding); s1:exact by hand (hud_mapcompass.cpp)

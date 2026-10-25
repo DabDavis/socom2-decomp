@@ -62,6 +62,12 @@ public:
     void On();
     void SetScale(float scale);
     void InitHUD_Compass(zdb::CWorld *world);
+    /* an anchor type's texture, none past the last (0x2113D0; the name ours) */
+    zdb::CTexHandle *GetAnchorImg(unsigned int type);
+    /* an anchor's colour: its own point's, else its type's (0x2113F0; the name ours) */
+    CPnt3D GetAnchorColor(CCompassAnchor *anchor);
+    /* an anchor type's colour, garbage past the last (0x2114C0; the name ours) */
+    CPnt3D GetAnchorColor(unsigned int type);
 
     float m_scale;   // 0x0
     zdb::CTexture *m_newcompasstex;   // 0x4

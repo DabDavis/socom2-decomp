@@ -43,6 +43,21 @@ public:
     bool IsDead() { return m_socom2_200 >= 2; }
 };
 
+/* a compass anchor as the colour reads it (zentity.h's CCompassAnchor: its type bits, and its
+ * point's colour if it has one) */
+class CCompassAnchor {
+public:
+    bool GetPoint(CPnt3D *p);
+
+    unsigned int m_enabled : 1;   // 0x0
+    unsigned int m_arrow_enabled : 1;
+    unsigned int m_name_enabled : 1;
+    unsigned int m_echo : 1;
+    unsigned int m_type : 16;
+    unsigned int m_locked : 1;
+    unsigned int m_unk21 : 10;
+};
+
 /* ztwod's screen scale, x then y (no name yet) */
 extern float data_0049E9F0[2];
 
@@ -230,4 +245,31 @@ void MapCompass::SetTrans(float trans)
 
 void MapCompass::Draw(zdb::CCamera *camera)
 {
+}
+
+/* an anchor type's colour (a ternary of lvalues: the pointer is selected, the copy made after the
+ * join; past the last, an unset temporary's) */
+CPnt3D MapCompass::GetAnchorColor(unsigned int type)
+{
+    return type < 38 ? m_anchor_clr[type] : CPnt3D();
+}
+
+/* an anchor's colour: what its point gives, else its type's, else black */
+CPnt3D MapCompass::GetAnchorColor(CCompassAnchor *anchor)
+{
+    CPnt3D color(0.0f, 0.0f, 0.0f);
+
+    if (!anchor->GetPoint(&color)) {
+        unsigned int type = anchor->m_type;
+
+        if (type < 38)
+            color = m_anchor_clr[type];
+    }
+    return color;
+}
+
+/* an anchor type's texture (SOCOM II's: the map's legend and items read it) */
+zdb::CTexHandle *MapCompass::GetAnchorImg(unsigned int type)
+{
+    return type < 38 ? m_anchor_img[type] : 0;
 }
