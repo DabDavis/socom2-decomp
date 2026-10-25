@@ -42,8 +42,13 @@ public:
     virtual ~CSealCtrlCopy();
 };
 
+/* a character type (only its temporary types' cleanup) */
+class CCharacterType {
+public:
+    static void CleanupTemporary();
+};
+
 /* the SEAL (only what this unit touches) */
-class CCharacterType;
 
 class CZSealBody : public CEntity {
 public:
@@ -102,8 +107,14 @@ public:
 
 extern CSpawners spawners;
 
+/* the vehicles' rdr (only its opening and closing) */
+class CVehicleRdr {
+public:
+    void Open(const char *name);
+    void Close();
+};
+
 /* the mission (only what this unit touches, at SOCOM II's offsets) */
-class CVehicleRdr;
 
 class CMission {
 public:
@@ -130,10 +141,7 @@ void func_005EC9F0(CZSealBody *seal, int arg);   /* CSealUnit::InitalizeSealUnit
 void func_0026ADA0(CZAnimMain *zanim, zdb::CNode *node);
 
 CValve *func_003520D0(const char *name, unsigned int value, VALVE_TYPE type);   /* CValve::Create,
-                                                                       SOCOM 1's with a value */
-void func_0053DF50();   /* CCharacterType::CleanupTemporary */
-void func_00533920(CVehicleRdr *rdr);   /* CVehicleRdr::Close */
-void func_005337F0(CVehicleRdr *rdr, const char *name);   /* CVehicleRdr::Open */
+                                     SOCOM 1's with a value: zanim.h's CValve lacks the overload */
 }
 
 /* the squirm switch (SOCOM 1's file static) */
@@ -346,14 +354,14 @@ unsigned int ParseTeamBlock(_zrdr *rdr)
 void CMission::OpenVehicleRdr()
 {
     if (m_vehicle_rdr)
-        func_005337F0(m_vehicle_rdr, "vehicles.rdr");
+        m_vehicle_rdr->Open("vehicles.rdr");
 }
 
 void CMission::CloseVehicleRdr()
 {
-    func_0053DF50();
+    CCharacterType::CleanupTemporary();
     if (m_vehicle_rdr)
-        func_00533920(m_vehicle_rdr);
+        m_vehicle_rdr->Close();
 }
 
 /* an entity given back: a SEAL's anims stopped, or, with vehicles waiting, the spawners' timer

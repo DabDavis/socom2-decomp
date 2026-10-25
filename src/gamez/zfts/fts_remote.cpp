@@ -23,6 +23,13 @@ public:
     /* the game connection (an accessor: a sender loads it ahead of an out-of-line call among its
      * arguments, NetSendRequestTeamSwitch's master index, which only an inline explains) */
     int GetGameConnectionIndex() { return m_GameConnectionIndex; }
+
+    void zNetSendApplicationMessage(char a, int conn, int to, int type, int size,
+                                    unsigned char *data, bool reliable);
+    int zNetGetValidGameClientCount();
+    int zNetGetGameSessionMasterClientIndex();
+    int zNetGetMyGameClientIndex();
+    struct NetObject *zNetGetObject(int index);
 };
 
 
@@ -33,12 +40,10 @@ enum VALVE_STATE {
     VALVE_OFF
 };
 
-class CValve;
-extern "C" void func_003519F0(CValve *valve, VALVE_STATE state);   /* CValve::MakeCallbacks */
-
 class CValve {
 public:
     static CValve *GetByName(const char *name);
+    void MakeCallbacks(VALVE_STATE state);
 
     /* the value set, its callbacks told whether it went on or off (inlined everywhere: SOCOM 1's
      * zRemoteClientJoinsCallback has the same code; the name ours) */
@@ -50,7 +55,7 @@ public:
             state = value == 0 ? VALVE_OFF : VALVE_ON;
         m_value = value;
         if (state != VALVE_SAME)
-            func_003519F0(this, state);
+            MakeCallbacks(state);
     }
 
     char *m_name;   // 0x0
@@ -130,7 +135,21 @@ public:
 
 class CZGameState {
 public:
+    static void UpdateLocalGame(CZNetGame *game);
     static int CreateLocalGame(CZNetGame *game);
+};
+
+class CZPersonaState {
+public:
+    static void ClearPersonaList();
+    static void UpdateLocalPersona();
+    static int CreateLocalPersona();
+};
+
+/* the online lobby (only its Medius connection) */
+class CZOnlineLobby {
+public:
+    int MediusConnectionIndex();
 };
 
 /* a map's action (only the bits the action packet sets; SOCOM 1's at 0x2C) */
@@ -180,17 +199,10 @@ struct NetObject {
 extern "C" {
 extern CZNetwork theNetwork;   /* see the head of the file */
 extern unsigned char data_004412D8;
-extern char theLobby[];
+extern CZOnlineLobby theLobby;
 
-void func_0030CEF0(CZNetwork *net, char a, int conn, int to, int type, int size, void *data,
-                   bool reliable);   /* CZNetwork::zNetSendApplicationMessage */
-NetObject *func_0030D630(CZNetwork *net, int index);
 void func_00623470(int index);
-void func_002C2BB0();   /* CZPersonaState::ClearPersonaList */
 void func_005423E0(int a, float b);
-void func_002C00F0(CZNetGame *game);   /* CZGameState::UpdateLocalGame */
-int func_002C5450();   /* CZPersonaState::CreateLocalPersona */
-void func_002C5360();   /* CZPersonaState::UpdateLocalPersona */
 void func_002BD640(CZSealBody *body, int arg);   /* CZSealState::UpdateLocalSeal */
 int func_002C7BF0(CZVehicle *vehicle);
 int func_002C3B10(int arg);
@@ -198,8 +210,6 @@ void func_002F9690(void *lobby, int arg, int mode);
 int func_00541CC0(int id);
 void func_0059E830(CZSealBody *body, unsigned short who, int id, void *c, int obj);
 void func_002C0040(bool on);
-int func_0030D5A0(CZNetwork *net);   /* CZNetwork::zNetGetMyGameClientIndex */
-int func_0030D560(CZNetwork *net);   /* CZNetwork::zNetGetGameSessionMasterClientIndex */
 void func_002C4290(int me);   /* CZPersonaState::RequestTeamSwitch (SOCOM II's one argument) */
 int func_002BAF30(int a, int b, int who, void *data);   /* E3IndexPacketHandler */
 int func_002B9BD0(int a, int b, int who, void *data);
@@ -209,9 +219,7 @@ void func_00273780(CZAnimMain *zanim, void *data, int who);
 void func_00545530(void *list, CZSealBody *body, int arg);
 void func_005880E0(CZSealBody *body, short a, unsigned char b, bool c, unsigned short d);
 void func_0059E9E0(CZSealBody *body, unsigned char a, void *b, void *c, int d, CPnt3D *pos);
-int func_002DF640(void *lobby);   /* CZOnlineLobby::MediusConnectionIndex */
 void func_0030D870(CZNetwork *net, void *msg);
-int func_0030D510(CZNetwork *net);   /* CZNetwork::zNetGetValidGameClientCount */
 void func_00590AC0(CZSealBody *a, CZSealBody *b, unsigned char c, int d, int e);
 void func_002B6530(void *queue, const char *text, int a, int b, int c, float d);   /* C2DMessage_Q::Add_Message */
 bool func_002C2FA0();
@@ -273,9 +281,10 @@ extern "C" bool func_002BD220(int &v, const int &lo, const int &hi)
 /* a client joined: its word cleared and the join count's valve set (OVL1 0x2BC490) */
 void zRemoteClientJoinsCallback(int index, int client)
 {
-    if (index != func_002DF640(theLobby)) {
+    if (index != theLobby.MediusConnectionIndex()) {
         data_00440EC0[client] = 0;
-        theMission.m_pNetGame->m_pPlayerJoinCountValve->SetValue(func_0030D510(&theNetwork));
+        theMission.m_pNetGame->m_pPlayerJoinCountValve->SetValue(
+            theNetwork.zNetGetValidGameClientCount());
     }
 }
 
@@ -288,7 +297,7 @@ struct NetMessage {
 
 void zRemoteClientLeavesCallback(int index, int client)
 {
-    if (index != func_002DF640(theLobby)) {
+    if (index != theLobby.MediusConnectionIndex()) {
         NetMessage m = {0};
 
         m.kind = 2;
@@ -332,8 +341,8 @@ extern "C" void func_002BBAF0(unsigned int obj, unsigned int anim, int slot, boo
         p.time = time;
         p.slot = slot;
         p.on = on;
-        func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), -1, data_00440E18, 8, &p,
-                      false);
+        theNetwork.zNetSendApplicationMessage(64, theNetwork.GetGameConnectionIndex(), -1,
+            data_00440E18, 8, (unsigned char *)&p, false);
     }
 }
 
@@ -391,8 +400,9 @@ extern "C" void func_002BB970(unsigned int obj, unsigned int target, unsigned in
         }
         break;
     }
-    func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), func_0030D560(&theNetwork),
-                  data_00440E28, 8, &p, false);
+    theNetwork.zNetSendApplicationMessage(64, theNetwork.GetGameConnectionIndex(),
+        theNetwork.zNetGetGameSessionMasterClientIndex(), data_00440E28, 8, (unsigned char *)&p,
+        false);
 }
 
 /* (SOCOM II's: one SEAL acting on another, in a running game; OVL1 0x2BB8E0) */
@@ -421,8 +431,8 @@ extern "C" int func_002BB8E0(int, int, int, void *data)
 void SendZAnimNetworkPacket(void *data, int size)
 {
     if (theNetwork.m_bNetwork)
-        func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), -1, data_00440E20, size,
-                      data, false);
+        theNetwork.zNetSendApplicationMessage(64, theNetwork.GetGameConnectionIndex(), -1,
+            data_00440E20, size, (unsigned char *)data, false);
 }
 
 /* a ZAnim packet from another client: its size handed back, and played when the game is running
@@ -469,11 +479,11 @@ void NetSendE3Index(int who, unsigned int index, int flag, bool)
 
     p.index = index;
     p.flag = flag;
-    if (who == func_0030D5A0(&theNetwork))
-        func_002BAF30(0, 0, func_0030D5A0(&theNetwork), &p);
+    if (who == theNetwork.zNetGetMyGameClientIndex())
+        func_002BAF30(0, 0, theNetwork.zNetGetMyGameClientIndex(), &p);
     else
-        func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), who, data_00440E30, 8, &p,
-                      false);
+        theNetwork.zNetSendApplicationMessage(64, theNetwork.GetGameConnectionIndex(), who,
+            data_00440E30, 8, (unsigned char *)&p, false);
 }
 
 /* a team switch asked for: the session master grants its own, a client asks the master
@@ -481,13 +491,14 @@ void NetSendE3Index(int who, unsigned int index, int flag, bool)
 void NetSendRequestTeamSwitch(int team)
 {
     if (theNetwork.m_bSessionMaster) {
-        int me = func_0030D5A0(&theNetwork);
+        int me = theNetwork.zNetGetMyGameClientIndex();
 
         if (theNetwork.m_bSessionMaster)
             func_002C4290(me);
     } else {
-        func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), func_0030D560(&theNetwork),
-                      data_00440E98, 4, &team, false);
+        theNetwork.zNetSendApplicationMessage(64, theNetwork.GetGameConnectionIndex(),
+            theNetwork.zNetGetGameSessionMasterClientIndex(), data_00440E98, 4,
+            (unsigned char *)&team, false);
     }
 }
 
@@ -517,8 +528,8 @@ void SendMessageMessage(int who, R_SEND_TO to, int msg)
     p.who = who;
     p.to = to;
     p.msg = msg;
-    func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), -1, data_00440E38, 6, &p,
-                  false);
+    theNetwork.zNetSendApplicationMessage(64, theNetwork.GetGameConnectionIndex(), -1,
+        data_00440E38, 6, (unsigned char *)&p, false);
 }
 
 /* a menu message from another client, shown when it is for everyone, our team, or us
@@ -580,8 +591,8 @@ extern "C" void func_002BA3F0(int who, const unsigned short *a, const unsigned s
     }
     p.id = id;
     p.pos = *pos;
-    func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), -1, data_00440E50, 52, &p,
-                  false);
+    theNetwork.zNetSendApplicationMessage(64, theNetwork.GetGameConnectionIndex(), -1,
+        data_00440E50, 52, (unsigned char *)&p, false);
 }
 
 /* an ammo pickup from another client (OVL1 0x2BA370) */
@@ -625,8 +636,8 @@ extern "C" void func_002BA2C0(int who, int id, const unsigned short *ids, int ob
     CZSealBody *body = CZSealState::GetBodyFromObjectIndex(owner);
 
     if (body)
-        func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), body->m_fc8, data_00440E58,
-                      24, &p, false);
+        theNetwork.zNetSendApplicationMessage(64, theNetwork.GetGameConnectionIndex(), body->m_fc8,
+            data_00440E58, 24, (unsigned char *)&p, false);
 }
 
 /* the answer to a pickup request (OVL1 0x2BA260) */
@@ -667,8 +678,8 @@ void SendPickupAckMessage(unsigned short who, int id, int obj, AckUnion ack)
     p.id = id;
     p.obj = obj;
     p.ack = ack;
-    func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), -1, data_00440E60, 8, &p,
-                  false);
+    theNetwork.zNetSendApplicationMessage(64, theNetwork.GetGameConnectionIndex(), -1,
+        data_00440E60, 8, (unsigned char *)&p, false);
 }
 
 /* a vote, sent to the voter's own client (OVL1 0x2BA140) */
@@ -686,8 +697,8 @@ void SendVoteMessage(int who, int voter, bool vote)
     CZSealBody *body = CZSealState::GetBodyFromObjectIndex(voter);
 
     if (body)
-        func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), body->m_fc8,
-                      data_00440E80, 4, &p, true);
+        theNetwork.zNetSendApplicationMessage(64, theNetwork.GetGameConnectionIndex(), body->m_fc8,
+            data_00440E80, 4, (unsigned char *)&p, true);
 }
 
 /* (SOCOM II's: a vote counted -- the tally told to the player and everyone; OVL1 0x2BA040) */
@@ -714,8 +725,8 @@ extern "C" int func_002BA040(int, int, int who, void *data)
     m.kind = 1;
     m.before = before;
     m.after = after;
-    func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), -1, data_00440EB8, 12, &m,
-                  false);
+    theNetwork.zNetSendApplicationMessage(64, theNetwork.GetGameConnectionIndex(), -1,
+        data_00440EB8, 12, (unsigned char *)&m, false);
     return 4;
 }
 
@@ -737,10 +748,11 @@ extern "C" void func_002B9F60(int obj, int a, int b)
     p.a = a;
     p.b = b;
     if (theNetwork.m_bSessionMaster)
-        func_002B9F10(0, 0, func_0030D5A0(&theNetwork), &p);
+        func_002B9F10(0, 0, theNetwork.zNetGetMyGameClientIndex(), &p);
     else
-        func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), func_0030D560(&theNetwork),
-                      data_00440E68, 6, &p, false);
+        theNetwork.zNetSendApplicationMessage(64, theNetwork.GetGameConnectionIndex(),
+            theNetwork.zNetGetGameSessionMasterClientIndex(), data_00440E68, 6, (unsigned char *)&p,
+            false);
 }
 
 /* (its handler; OVL1 0x2B9F10) */
@@ -772,10 +784,10 @@ extern "C" void func_002B9E50(CZSealBody *body, int a, int b)
     p.a = a;
     p.b = b;
     if (theNetwork.m_bSessionMaster && body == ftsGetPlayer())
-        func_002B9E20(0, 0, func_0030D5A0(&theNetwork), &p);
+        func_002B9E20(0, 0, theNetwork.zNetGetMyGameClientIndex(), &p);
     else
-        func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), body->m_fc8, data_00440E70,
-                      4, &p, false);
+        theNetwork.zNetSendApplicationMessage(64, theNetwork.GetGameConnectionIndex(), body->m_fc8,
+            data_00440E70, 4, (unsigned char *)&p, false);
 }
 
 /* (its handler; OVL1 0x2B9E20) */
@@ -808,8 +820,9 @@ extern "C" void func_002B9B60(int who, int vote)
 
     p.who = who;
     p.vote = vote;
-    func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), -1, data_00440E88, 4, &p, true);
-    func_002B9BD0(0, 0, func_0030D5A0(&theNetwork), &p);
+    theNetwork.zNetSendApplicationMessage(64, theNetwork.GetGameConnectionIndex(), -1,
+        data_00440E88, 4, (unsigned char *)&p, true);
+    func_002B9BD0(0, 0, theNetwork.zNetGetMyGameClientIndex(), &p);
 }
 
 /* (SOCOM II's: a variable-length packet -- its length, three bytes, then the caller's data --
@@ -825,8 +838,8 @@ extern "C" void func_002B9A40(int to, unsigned char a, unsigned char b, unsigned
     buf[3] = b;
     buf[4] = c;
     memcpy(buf + 5, data, size);
-    func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), to, data_00440E78, total, buf,
-                  true);
+    theNetwork.zNetSendApplicationMessage(64, theNetwork.GetGameConnectionIndex(), to,
+        data_00440E78, total, (unsigned char *)buf, true);
     _free(buf, 0, 0);
 }
 
@@ -856,10 +869,11 @@ void SendBombStateRequest(int who, unsigned char state, const CPnt3D *pos)
     p.who = who;
     p.state = state;
     if (theNetwork.m_bSessionMaster)
-        BombStatePacketHandler(0, 0, func_0030D5A0(&theNetwork), &p);
+        BombStatePacketHandler(0, 0, theNetwork.zNetGetMyGameClientIndex(), &p);
     else
-        func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), func_0030D560(&theNetwork),
-                      data_00440EA8, 16, &p, false);
+        theNetwork.zNetSendApplicationMessage(64, theNetwork.GetGameConnectionIndex(),
+            theNetwork.zNetGetGameSessionMasterClientIndex(), data_00440EA8, 16,
+            (unsigned char *)&p, false);
 }
 
 /* (SOCOM II's: a lobby notice when both halves of a packet agree; OVL1 0x2B98B0) */
@@ -876,7 +890,7 @@ extern "C" int func_002B98B0(int, int, int who, void *data)
     switch (p->kind) {
     case 1:
         if (p->a == p->b)
-            func_002F9690(theLobby, func_002C3B10(who), 2);
+            func_002F9690(&theLobby, func_002C3B10(who), 2);
         break;
     }
     return 12;
@@ -907,8 +921,8 @@ void SendGameSignalMessage(int to, unsigned char a, unsigned char b, unsigned ch
         p.flag = data_004412D8;
         p.game_type = theMission.m_pNetGame->m_111;
         strcpy(p.database, GetDatabase());
-        func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), to, data_00440EB0, 20, &p,
-                      false);
+        theNetwork.zNetSendApplicationMessage(64, theNetwork.GetGameConnectionIndex(), to,
+            data_00440EB0, 20, (unsigned char *)&p, false);
     }
 }
 
@@ -950,19 +964,19 @@ void ftsNetworkGameInit()
 
     if (theNetwork.m_bSessionMaster) {
         game->m_game_object_index = CZGameState::CreateLocalGame(game);
-        func_002C00F0(game);
+        CZGameState::UpdateLocalGame(game);
     }
     if (!game->m_persona_created) {
-        game->m_persona_object_index = func_002C5450();
+        game->m_persona_object_index = CZPersonaState::CreateLocalPersona();
         game->m_persona_created = true;
-        func_002C5360();
+        CZPersonaState::UpdateLocalPersona();
     }
 }
 
 /* (OVL1 0x2B79F0) */
 void ftsNetworkGameUninit()
 {
-    func_002C2BB0();
+    CZPersonaState::ClearPersonaList();
     func_005423E0(0, 0.0f);
 }
 
@@ -970,7 +984,7 @@ void ftsNetworkGameUninit()
 extern "C" void func_002B7950()
 {
     for (int i = 0; i < 4096; i++) {
-        NetObject *o = func_0030D630(&theNetwork, i);
+        NetObject *o = theNetwork.zNetGetObject(i);
 
         if (o) {
             switch (o->m_type) {

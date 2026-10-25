@@ -110,16 +110,16 @@ public:
     int m_128;   // 0x128
 };
 
-/* the network (only its session-master flag; theNetwork, reached by address as fts_remote.cpp does) */
+/* the network (only its session-master flag and its clock; theNetwork at 0x45A0C0, fts_remote.cpp's
+ * head says why) */
 class CZNetwork {
 public:
+    int zNetGetTime();
+
     unsigned char m_bSessionMaster;   // 0x0
 };
 
-extern "C" {
-extern CZNetwork data_0045A0C0;
-int func_0030D550(CZNetwork *net);   /* CZNetwork::zNetGetTime */
-}
+extern CZNetwork theNetwork;
 
 /* the mission (only what this unit touches, at SOCOM II's offsets) */
 class CMission {
@@ -189,14 +189,14 @@ void CZNetGame::ResetScores()
  * expression MW adds the product first) */
 bool CZNetGame::TenSecondLaunch(bool launch)
 {
-    if (launch && !m_ten_second_launch && data_0045A0C0.m_bSessionMaster) {
+    if (launch && !m_ten_second_launch && theNetwork.m_bSessionMaster) {
         int seconds = m_pLaunchSecondsValve->m_value;
-        int now = func_0030D550(&data_0045A0C0);
+        int now = theNetwork.zNetGetTime();
 
         m_launch_time = now + seconds * 1000;
         m_launch_f4 = 0;
     }
-    if (!launch && m_ten_second_launch && data_0045A0C0.m_bSessionMaster) {
+    if (!launch && m_ten_second_launch && theNetwork.m_bSessionMaster) {
         m_launch_time = 0;
         m_launch_f4 = 0;
     }

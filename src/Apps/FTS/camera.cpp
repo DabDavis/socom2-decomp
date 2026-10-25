@@ -77,13 +77,13 @@ void FirstToThirdPersonTransition(CAppCamera *cam);
 void ThirdToFirstPersonTransition(CAppCamera *cam);
 
 /* the network (only its online flag) */
-class CNetwork {
+class CZNetwork {
 public:
     unsigned char _0[1];
     unsigned char m_9;   // 0x1: an online game (SOCOM 1's at 0x9)
 };
 
-extern CNetwork theNetwork;
+extern CZNetwork theNetwork;
 
 /* the hit nearest the ray's tail, skipping hits on pieces of kind 1 too close to p0 (their
  * direction from p0 measured first); the camera's tether marked as hitting something */

@@ -32,6 +32,8 @@ public:
 /* the SEAL's body (only what this unit touches) */
 class CZSealBody {
 public:
+    static void Destroy(CZSealBody *body);
+
     unsigned char _0[4];
     int m_4;   // 0x4: its network object (SOCOM 1's m_NetObjectIndex)
     unsigned char _8[0x1c - 0x8];
@@ -71,16 +73,19 @@ public:
     static BombStatus m_BombStatus;
 };
 
-class CZNetwork;
+/* the network (only its calls here; theNetwork at 0x45A0C0, fts_remote.cpp's head says why) */
+class CZNetwork {
+public:
+    int zNetGetMyGameClientIndex();
+    NetObject *zNetGetObject(int index);
+};
+
+extern CZNetwork theNetwork;
 
 extern "C" {
-extern CZNetwork data_0045A0C0;   /* theNetwork (fts_remote.cpp's head says why by address) */
-int func_00622818(NetObject **obj, int index);   /* NetGetObject (the DME's) */
+int NetGetObject(NetObject **obj, int index);   /* the DME's (prebuilt C) */
 int strcmp(const char *a, const char *b);
-int func_0030D5A0(CZNetwork *net);   /* CZNetwork::zNetGetMyGameClientIndex */
-NetObject *func_0030D630(CZNetwork *net, int index);   /* CZNetwork::zNetGetObject */
 bool func_002A72A0(CZNetGame *game);   /* (SOCOM II's: a game type 1 or 2) */
-void func_005998B0(CZSealBody *body);   /* CZSealBody::Destroy */
 }
 
 /* a remote SEAL's object deleted: the bomb's place kept if it carried it, and its body destroyed
@@ -91,9 +96,9 @@ void func_005998B0(CZSealBody *body);   /* CZSealBody::Destroy */
  * a reference declared before the call the address lives in a saved register. */
 void CZSealState::RemoteSealDeletionCallback(int client, int index)
 {
-    if (client == func_0030D5A0(&data_0045A0C0))
+    if (client == theNetwork.zNetGetMyGameClientIndex())
         return;
-    NetObject *obj = func_0030D630(&data_0045A0C0, index);
+    NetObject *obj = theNetwork.zNetGetObject(index);
 
     if (!obj)
         return;
@@ -122,7 +127,7 @@ void CZSealState::RemoteSealDeletionCallback(int client, int index)
     body->m_fcf = 0;
     body->m_fd1 = 1;
     if (client >= 0)
-        func_005998B0(body);
+        CZSealBody::Destroy(body);
     data->m_body = 0;
 }
 
@@ -130,7 +135,7 @@ void CZSealState::RemoteSealDeletionCallback(int client, int index)
 CZSealBody *CZSealState::GetBodyFromObjectIndex(int index)
 {
     NetObject *obj = 0;
-    int error = func_00622818(&obj, index);
+    int error = NetGetObject(&obj, index);
 
     if (!obj || error)
         return 0;
@@ -145,7 +150,7 @@ void *CZSealState::GetPackedWeaponData(CZSealBody *body)
 {
     int index = body->m_4;
     NetObject *obj = 0;
-    int error = func_00622818(&obj, index);
+    int error = NetGetObject(&obj, index);
 
     if (!obj || error)
         return 0;
