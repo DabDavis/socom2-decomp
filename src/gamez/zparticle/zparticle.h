@@ -30,10 +30,16 @@ public:
     CPnt4D(const CPnt4D &p) : PNT4D(p) {}
 };   // 0x10 bytes
 
+class CMatrix;
+
 namespace zdb {
 class CTexHandle;
 class CModel;
-class CNode;
+/* zdb::CNode, as much as the particles call (znode.h would bring zmath.h's CPnt4D with it) */
+class CNode {
+public:
+    void SetPosition(float x, float y, float z);
+};
 }
 
 namespace Particle {
@@ -86,6 +92,30 @@ public:
     float m_visualDensity;   // 0x60
     unsigned char m_checkFade;   // 0x64
 };   // 0x68 bytes
+
+/* a live particle (SOCOM 1's Instance; no DWARF): its age at 0xC, its position from 0x20 (the
+ * members' names ours, the rest opaque) */
+class Instance {
+public:
+    virtual void Render(const CMatrix &m);
+
+    unsigned char _4[0x8];   // 0x4
+    float m_age;   // 0xc
+    unsigned char _10[0x10];   // 0x10
+    float m_pos[3];   // 0x20
+};
+
+/* a piece of a destroyed object flying off (SOCOM 1's Destruction_Instance): its life at 0x48, the
+ * node it moves at 0x58 */
+class Destruction_Instance : public Instance {
+public:
+    void Render(const CMatrix &m);
+
+    unsigned char _2c[0x1c];   // 0x2c
+    float m_lifespan;   // 0x48
+    unsigned char _4c[0xc];   // 0x4c
+    zdb::CNode *m_node;   // 0x58
+};
 
 /* the textures a particle draws with, registered with the draw buffer (0x324A10) */
 void AddDynTexture(zdb::CTexHandle *tex);

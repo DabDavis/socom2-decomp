@@ -11,6 +11,15 @@ extern "C" void sceVu0InterVector(float *v0, float *v1, float *v2, float t);
 
 namespace Particle {
 
+/* the piece's node moved to it while it lives */
+void Destruction_Instance::Render(const CMatrix &m)
+{
+    if (m_age < m_lifespan && m_node) {
+        m_node->SetPosition(m_pos[0], m_pos[1], m_pos[2]);
+        return;
+    }
+}
+
 /* SOCOM 1's: one reference fewer; the last deletes the properties, their sequences with them */
 void Props::DecRefCount(int n)
 {
