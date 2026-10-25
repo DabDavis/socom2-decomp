@@ -422,6 +422,103 @@ extern ClanInvitationVector ClanInvitationVec;   /* the invitations sent */
 extern ClanMemberVector ClanMemberVec;
 extern ClanMessageVector ClanMessageVec;   /* the leader's messages (SOCOM II's; the name ours) */
 
+/* a friend, the buddy list's response kept whole (0xD0 bytes; SOCOM II's) */
+struct MediusGetBuddyList_ExtraInfoResponse {
+    MediusGetBuddyList_ExtraInfoResponse() {}
+
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    MediusCallbackStatus StatusCode;   // 0x18
+    int AccountID;   // 0x1c
+    char AccountName[32];   // 0x20
+    MediusPlayerOnlineState OnlineState;   // 0x40
+    char EndOfList;   // 0xcc
+};   // 0xd0
+typedef MediusGetBuddyList_ExtraInfoResponse FriendItem;
+
+/* the friends unit's friends (0x44FDC0, its initialiser 0x402420) */
+class FriendVector : public std::vector<FriendItem *> {
+public:
+    ~FriendVector() { DeleteAll(); }
+    FriendItem *Find(int id)
+    {
+        for (iterator i = begin(), e = end(); i != e; ++i)
+            if (id == (*i)->AccountID)
+                return *i;
+        return 0;
+    }
+    void Add(MediusGetBuddyList_ExtraInfoResponse *resp);
+    void DeleteAll();
+};
+
+extern FriendVector FriendVec;
+
+/* a clan on the clan ladder, the response kept whole (0x48 bytes; SOCOM II's) */
+struct MediusGetClanLadderListResponse {
+    MediusGetClanLadderListResponse() {}
+
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    MediusCallbackStatus StatusCode;   // 0x18
+    char ClanName[32];   // 0x1c
+    int LadderPosition;   // 0x3c: the list's key, the highest kept
+    int LadderStat;   // 0x40
+    char EndOfList;   // 0x44
+};   // 0x48
+typedef MediusGetClanLadderListResponse ClanLadderItem;
+
+/* the ladder unit's clan ladders (0x44F820 the leaders, 0x44F850 the list around us; its
+ * initialiser 0x401FA0 zeroes them and sets +0x10 to 2): the clans and the lowest position seen */
+class ClanLadderList : public std::vector<ClanLadderItem *> {
+public:
+    ~ClanLadderList() { DeleteAll(); }
+    ClanLadderItem *Find(int pos)
+    {
+        for (iterator i = begin(), e = end(); i != e; ++i)
+            if (pos == (*i)->LadderPosition)
+                return *i;
+        return 0;
+    }
+    void Add(MediusGetClanLadderListResponse *resp);
+    void DeleteAll();
+
+    int m_lowest;   // 0xc
+    int m_10;   // 0x10: 2
+};   // 0x14
+
+extern ClanLadderList ClanLadderLeaders;   /* 0x44F820 */
+extern ClanLadderList ClanLadderRanking;   /* 0x44F850 */
+
+/* a player on the ladder (SOCOM 1's LadderItem; its two strings make its delete inline their
+ * destructors, 0x2EC140) and the player ladders (0x44F7B0, 0x44F7E0) */
+struct LadderItem;
+
+class LadderList : public std::vector<LadderItem *> {
+public:
+    int m_c;   // 0xc: 2
+    int m_10;   // 0x10
+};   // 0x14
+
+extern LadderList LadderLeaders;   /* 0x44F7B0 */
+extern LadderList LadderRanking;   /* 0x44F7E0 */
+
+/* a game in a room (SOCOM 1's RoomGame: a table, but not a virtual destructor -- its delete calls
+ * operator delete straight) */
+class RoomGame {
+public:
+    virtual bool IsPersistent();
+};
+
+class RoomGameVector : public std::vector<RoomGame *> {
+public:
+    void DeleteAll();
+};
+
+/* a room (SOCOM 1's BriefingRoom, 0x98 bytes in SOCOM II): its games first */
+class BriefingRoom {
+public:
+    RoomGameVector m_games;   // 0x0
+    unsigned char _c[0x98 - 0xc];
+};   // 0x98
+
 /* --- the lobby --------------------------------------------------------------------------- */
 
 /* the lobby's states (SOCOM 1's DWARF; a byte) */

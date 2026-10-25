@@ -47,11 +47,9 @@ struct MediusBuddyResponse;
 typedef void (*MediusBuddyCallback)(int, int, int, MediusBuddyResponse *);
 
 extern "C" {
-extern LobbyList data_0044FDC0;   /* the friends */
 extern LobbyList data_0044FDE0;   /* the ignored */
 extern LobbyList data_0044FE00;   /* the friend invitations */
 
-void func_00302210(LobbyList *list);   /* the friends deleted */
 void func_00302FC0(LobbyList *list);   /* the ignored deleted */
 void func_00301CF0(LobbyList *list, int id);   /* an invitation dropped */
 
@@ -69,6 +67,26 @@ MediusErrorCode func_00649400(MediusGetIgnoreListRequest *req, MediusBuddyCallba
 MediusErrorCode func_00649198(MediusAccountRequest *req, MediusBuddyCallback cb);
 MediusErrorCode func_00649378(MediusBuddyConfirmationResponse *req);
 }
+
+/* The friends' list members, defined first: in the image they follow the buddy code (0x3020A0,
+ * 0x302210), ahead of the other two lists' template instances. Pinned: never inlined. */
+#pragma auto_inline off
+
+/* the friends deleted and the list emptied (OVL1 0x302210) */
+void FriendVector::DeleteAll()
+{
+    std::transform(begin(), end(), begin(), DeleteItem<FriendItem>());
+    clear();
+}
+
+/* a friend kept, unless already there: the response copied whole (OVL1 0x3020A0) */
+void FriendVector::Add(MediusGetBuddyList_ExtraInfoResponse *resp)
+{
+    if (!Find(resp->AccountID))
+        push_back(new FriendItem(*resp));
+}
+
+#pragma auto_inline reset
 
 /* the Medius library's set up: three callbacks and a timeout (SOCOM II's; OVL1 0x300840; in this
  * unit, ahead of the buddy code, by its place) */
@@ -109,7 +127,7 @@ bool MediusInit()
 /* the friends emptied and asked for (OVL1 0x301750): the call's result not looked at */
 void CZOnlineLobby::GetFriendsList()
 {
-    func_00302210(&data_0044FDC0);
+    FriendVec.DeleteAll();
     MediusIDRequest req;
 
     memset(&req, 0, sizeof(req));

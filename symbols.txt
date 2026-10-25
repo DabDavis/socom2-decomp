@@ -4647,13 +4647,13 @@
 0x002DF650 0x4C UnInit__13CZOnlineLobbyFv  # OVL1; s1:callee
 0x002DF6A0 0x23C func_002DF6A0  # OVL1
 0x002DF8E0 0x170 ReleaseUIResources__13CZOnlineLobbyFv  # OVL1; s1 by hand (called by UnInit, Close and the destructor, as SOCOM 1's UnInit, Close and destructor call ReleaseUIResources; frees the lobby's lists)
-0x002DFA50 0x7C func_002DFA50  # OVL1
-0x002DFAD0 0x7C func_002DFAD0  # OVL1
-0x002DFB50 0x7C func_002DFB50  # OVL1
-0x002DFBD0 0x7C func_002DFBD0  # OVL1
-0x002DFC50 0x7C func_002DFC50  # OVL1
-0x002DFCD0 0x7C func_002DFCD0  # OVL1
-0x002DFD50 0x7C func_002DFD50  # OVL1
+0x002DFA50 0x7C ReleaseVector<36MediusGetBuddyList_ExtraInfoResponse>__FRQ23std106vector<P36MediusGetBuddyList_ExtraInfoResponse,Q23std50allocator<P36MediusGetBuddyList_ExtraInfoResponse>>_v  # OVL1; ours (ReleaseVector on the friends 0x44FDC0, from ReleaseUIResources; byte-exact)
+0x002DFAD0 0x7C ReleaseVector<8RoomGame>__FRQ23std48vector<P8RoomGame,Q23std21allocator<P8RoomGame>>_v  # OVL1; ours (ReleaseVector on a room's games, 0x44FAB0's and *0x44FE10's, from ReleaseUIResources; byte-exact)
+0x002DFB50 0x7C ReleaseVector<31MediusGetClanMemberListResponse>__FRQ23std96vector<P31MediusGetClanMemberListResponse,Q23std45allocator<P31MediusGetClanMemberListResponse>>_v  # OVL1; ours (ReleaseVector on ClanMemberVec, from ReleaseUIResources; byte-exact)
+0x002DFBD0 0x7C ReleaseVector<18ClanInvitationItem>__FRQ23std70vector<P18ClanInvitationItem,Q23std32allocator<P18ClanInvitationItem>>_v  # OVL1; ours (ReleaseVector on ClanInvitationVec, from ReleaseUIResources; byte-exact)
+0x002DFC50 0x7C ReleaseVector<14InvitationItem>__FRQ23std62vector<P14InvitationItem,Q23std28allocator<P14InvitationItem>>_v  # OVL1; ours (ReleaseVector on InvitationVec, from ReleaseUIResources; byte-exact)
+0x002DFCD0 0x7C ReleaseVector<31MediusGetClanLadderListResponse>__FRQ23std96vector<P31MediusGetClanLadderListResponse,Q23std45allocator<P31MediusGetClanLadderListResponse>>_v  # OVL1; ours (ReleaseVector on the two clan ladders, from ReleaseUIResources; byte-exact)
+0x002DFD50 0x7C ReleaseVector<10LadderItem>__FRQ23std54vector<P10LadderItem,Q23std24allocator<P10LadderItem>>_v  # OVL1; ours (a vector cleared and swapped with an empty one, the temporary's storage freed -- a non-inline template's instance: ReleaseUIResources on the two player ladders; byte-exact)
 0x002DFDD0 0x38 Close__13CZOnlineLobbyFv  # OVL1; s1:ui (the UI command table's 'UnInitNetwork' handler 0x27E5C0 calls it on theLobby where SOCOM 1's UIUnInitNetwork calls Close)
 0x002DFE10 0x34 RunStateHandler__13CZOnlineLobbyF11LOBBY_STATE16LOBBY_STATE_FLAG  # OVL1; ours (the state's handler, m_state_handler[state] at +0, called with the flag when there is one; the state an int narrowed inside, andi 0xff; the state machine 0x2ED460 calls it on theLobby)
 0x002DFE50 0x1D4 func_002DFE50  # OVL1
@@ -4742,7 +4742,7 @@
 0x002E46C0 0x34 func_002E46C0  # OVL1
 0x002E4700 0x84 func_002E4700  # OVL1
 0x002E4790 0x3C func_002E4790  # OVL1
-0x002E47D0 0xD4 func_002E47D0  # OVL1
+0x002E47D0 0xD4 DeleteAll__14RoomGameVectorFv  # OVL1; ours (a room's games deleted and the list emptied -- std::transform with a deleter, then clear: ReleaseUIResources on the room 0x44FAB0 and on *0x44FE10, JoinGame, 0x2F9220, the room's destructor 0x2E48C0; byte-exact)
 0x002E48B0 0x8 func_002E48B0  # OVL1
 0x002E48C0 0xD8 func_002E48C0  # OVL1
 0x002E49A0 0xEC func_002E49A0  # OVL1
@@ -4860,10 +4860,10 @@
 0x002EB7A0 0x15C func_002EB7A0  # OVL1
 0x002EB900 0x318 func_002EB900  # OVL1
 0x002EBC20 0xC8 func_002EBC20  # OVL1
-0x002EBCF0 0x154 func_002EBCF0  # OVL1
+0x002EBCF0 0x154 Add__14ClanLadderListFP31MediusGetClanLadderListResponse  # OVL1; ours (cbGetClanLadderList keeps a clan through it: the 0x48-byte response copied whole unless its position (+0x3c) is there, the highest position kept at +0xc; byte-exact)
 0x002EBE50 0x188 func_002EBE50  # OVL1
 0x002EBFE0 0x80 func_002EBFE0  # OVL1
-0x002EC060 0xD4 func_002EC060  # OVL1
+0x002EC060 0xD4 DeleteAll__14ClanLadderListFv  # OVL1; ours (a clan ladder list, 0x44F820 or 0x44F850, deleted and emptied: GetClanLadderLeaders, 0x2EA5C0, ReleaseUIResources, the lists' destructor 0x2ED360; byte-exact)
 0x002EC140 0x118 func_002EC140  # OVL1
 0x002EC260 0x574 func_002EC260  # OVL1
 0x002EC7E0 0x574 func_002EC7E0  # OVL1
@@ -5124,8 +5124,8 @@
 0x00301CF0 0xBC func_00301CF0  # OVL1
 0x00301DB0 0x120 func_00301DB0  # OVL1
 0x00301ED0 0x1D0 func_00301ED0  # OVL1
-0x003020A0 0x164 func_003020A0  # OVL1
-0x00302210 0xD4 func_00302210  # OVL1
+0x003020A0 0x164 Add__12FriendVectorFP36MediusGetBuddyList_ExtraInfoResponse  # OVL1; ours (GetFriendsList's callback 0x3017A0 keeps a friend through it: the 0xD0-byte buddy response copied whole unless its account is there; byte-exact)
+0x00302210 0xD4 DeleteAll__12FriendVectorFv  # OVL1; ours (the friends 0x44FDC0 deleted and the list emptied -- std::transform with a deleter, then clear, as the clan lists' DeleteAll: GetFriendsList, ReleaseUIResources and the list's destructor 0x303410; byte-exact)
 0x003022F0 0x554 func_003022F0  # OVL1
 0x00302850 0x24C func_00302850  # OVL1
 0x00302AA0 0x514 func_00302AA0  # OVL1
