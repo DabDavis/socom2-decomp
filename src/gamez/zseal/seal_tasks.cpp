@@ -16,6 +16,8 @@
 _zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
 bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
 bool zrdr_tobool(const _zrdr *rdr, bool *out);
+char *zrdr_findstring(const _zrdr *rdr, const char *tag);
+bool zrdr_finduint(const _zrdr *rdr, const char *tag, unsigned int *out, int n);
 
 extern "C" {
 /* the anim's index'th command argument (SOCOM 1's CZAnimArgList::GetCmd(int); OVL1 0x2720E0) */
@@ -42,6 +44,8 @@ void func_005628F0(CSealCtrlAi *ai);
 /* the goto's move set up (OVL2 0x5DB8F0, this unit's: the AI, the command, a flag; whether it
  * began -- not written yet) */
 bool func_005DB8F0(CSealCtrlAi *ai, void *cmd, int x);
+/* a squad command by name, 0 for none (OVL2 0x58E0A0, the SEAL lane's row; a byte) */
+FT_COMMAND func_0058E0A0(const char *name);
 }
 
 /* the commands' ids (SOCOM 1's ai_cmdid, 0x18 bytes: RegisterCommands stores every command's id
@@ -274,11 +278,29 @@ struct CTGoto : TASK_HDR {
 struct CTFireWeapon : TASK_HDR {
     void SetFiring(bool b) { m_firing = b; }
 
-    EQUIP_ITEM m_item;   // 0x8 (a word: the kit's test takes its byte)
-    unsigned char _9[0xc - 0x9];
+    int m_item;   // 0x8: an EQUIP_ITEM (a word: the kit's test takes its byte)
     unsigned char m_firing : 1;   // 0xc bit 0 (the name ours)
+    unsigned char _d[0x2c - 0xd];   // 0x2c bytes
 
+    static _zanim_cmd_hdr *Parse(_zrdr *rdr);
     static void Begin(_zanim_cmd_hdr *hdr);
+};
+
+/* ai::COMM (SOCOM 1's CTComm): a squad command to a team */
+struct CTComm : TASK_HDR {
+    unsigned int m_team;   // 0x8
+    unsigned short m_cmd;   // 0xc
+
+    static _zanim_cmd_hdr *Parse(_zrdr *rdr);
+    /* a block made (inline: its arguments read before the allocation) */
+    static CTComm *Create(unsigned int team, FT_COMMAND cmd)
+    {
+        CTComm *c = NewTask<CTComm>();
+
+        c->m_team = team;
+        c->m_cmd = cmd;
+        return c;
+    }
 };
 
 /* the pursuit state as the task sets it (CAiSPursue, seal_ai.cpp's: its duration at 0x58) */
@@ -286,6 +308,21 @@ class CAiSPursueTask : public CAiState {
 public:
     float m_duration;   // 0x58
 };
+
+/* a squad command to a team, when the command is known (OVL2 0x5DE250) */
+_zanim_cmd_hdr *CTComm::Parse(_zrdr *rdr)
+{
+    CTComm *cmd = 0;
+    unsigned int team = 0;
+
+    if (zrdr_finduint(rdr, "team", &team, 1)) {
+        FT_COMMAND c = func_0058E0A0(zrdr_findstring(rdr, "cmd"));
+
+        if (c != CMD_UNKNOWN)
+            cmd = Create(team, c);
+    }
+    return &cmd->hdr;
+}
 
 /* (OVL2 0x5DD4F0) */
 void CTDrain::Begin(_zanim_cmd_hdr *hdr)
@@ -322,6 +359,16 @@ void CTEvent::Begin(_zanim_cmd_hdr *hdr)
 {
 }
 
+/* (OVL2 0x5DC800) */
+_zanim_cmd_hdr *CTFireWeapon::Parse(_zrdr *rdr)
+{
+    CTFireWeapon *cmd = NewTask<CTFireWeapon>();
+
+    cmd->m_item = CZWeapon::GetWeaponId(zrdr_findstring(rdr, "weapon"));
+    cmd->SetFiring(false);
+    return &cmd->hdr;
+}
+
 /* firing marked when the kit holds the weapon (OVL2 0x5DC6B0)
  * OPEN, 4 instructions: the AI's ternary: the target's call arm keeps the result in both arms (as SealAi gives GetAi); with the seal kept for the kit it takes the zero-first form here */
 void CTFireWeapon::Begin(_zanim_cmd_hdr *hdr)
@@ -330,7 +377,7 @@ void CTFireWeapon::Begin(_zanim_cmd_hdr *hdr)
     CZSealBody *seal = cmd->GetSeal();
     CSealCtrlAi *ai = seal ? ((CSealCtrl *)seal->m_control)->GetSealCtrlAi() : 0;
 
-    if (ai && seal->m_kit.HasItem(cmd->m_item))
+    if (ai && seal->m_kit.HasItem((EQUIP_ITEM)cmd->m_item))
         cmd->SetFiring(true);
 }
 
