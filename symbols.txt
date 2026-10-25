@@ -5988,8 +5988,8 @@
 0x00339DE0 0x1328 func_00339DE0  # OVL1
 0x0033B110 0x114 RenderAtom__5CPipeFPQ23zdb5CNode  # OVL1; s1:align
 0x0033B230 0x134 func_0033B230  # OVL1
-0x0033B370 0xB0 func_0033B370  # OVL1
-0x0033B420 0xE0 func_0033B420  # OVL1
+0x0033B370 0xB0 RandomizeOverlay__5CPipeFv  # OVL1; the rdr lane: SOCOM II's, the name ours (when the texture handle at 0x708 is set: every pixel of its texture -- width times height bytes at 0x18 -- set to 255 * rand()/2^31, then FlushCache(0); CCoreState::Tick calls it, SetOverlayTexture inlines it)
+0x0033B420 0xE0 SetOverlayTexture__5CPipeFPQ23zdb10CTexHandle  # OVL1; the rdr lane: SOCOM II's, the name ours (CCoreState::Init passes CWorld::GetTexHandle("noise50.tif"): stored at 0x708, zvid_init.cpp's 0x3B0CE0 with the texture's width and height, 0x354A90 with (66, 73, 127), the pixels randomised)
 0x0033B500 0x68 KickOverlay__5CPipeFv  # OVL1; the rdr lane: SOCOM II's, the name ours (when the words at 0x700 and 0x708 are set: the quadword 0x30 into the packet at 0x708's +0xC kicked through the FIFO, then zvid_init.cpp's 0x3B0D50 with the word at 0x704 -- 0x40808080 from the constructor, a colour -- and the 21-quadword packet sent; CCoreState::Tick calls it)
 0x0033B570 0x40 func_0033B570  # OVL1
 0x0033B5B0 0x40 func_0033B5B0  # OVL1
