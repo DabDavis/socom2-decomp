@@ -138,6 +138,7 @@ extern "C" {
 extern unsigned char data_004412D8;   /* the sides swapped */
 extern int data_00441448;             /* (the two teams' counts, func_002C4500's) */
 extern int data_00441450;
+extern int data_00441458;
 extern int data_00441468;
 extern unsigned int data_00441470;    /* (the local player's team) */
 
@@ -164,7 +165,18 @@ void *func_002BD0A0();   /* (fts_remote.cpp's broadcast schedules) */
 void *func_002BD0E0();
 void func_002C4500();                       /* (the teams counted) */
 bool func_002C2FA0();
+bool func_002C3300(unsigned int team);      /* (whether a team is the SEALs') */
 }
+
+/* whether a team is the terrorists' (the name ours: inlined only, its value read ahead of the swap
+ * flag as func_002C31A0 reads it) */
+inline bool IsTerroristTeam(unsigned int team)
+{
+    unsigned int t = team;
+
+    return t == (data_004412D8 ? TEAM_SEALS : TEAM_TERRORISTS);
+}
+
 
 /* the kind registered: its twelve fields, their offsets taken off a pointer to a local, as
  * fts_net_grenade.cpp's (OVL1 0x2C5A10) */
@@ -222,6 +234,123 @@ void CZPersonaState::RemotePersonaDeletionCallback(int client, int index)
             CheckStateSwitch();
         }
     }
+}
+
+extern "C" int data_00441480[8];
+extern "C" int data_004414A0[8];
+
+/* a client's slot taken ahead of its persona (24 of them at 0x441580: the slot, the side -- 1 the
+ * terrorists, 2 the SEALs -- and whether it is held; the names ours) */
+enum PendingSide {
+    SIDE_NONE,
+    SIDE_TERRORISTS,
+    SIDE_SEALS,
+    SIDE_3
+};
+
+struct PendingSlot {
+    unsigned char slot : 3;
+    unsigned char side : 3;   // a PendingSide: compared as the byte enum (the target's andi 0xff)
+    unsigned char held : 2;
+};
+
+extern "C" PendingSlot data_00441580[24];
+
+extern "C" int func_002C4810();
+extern "C" int func_002C4A20();
+
+/* the sides counted, the slots held ahead of their personas added (OVL1 0x2C4440) */
+extern "C" void func_002C4440()
+{
+    func_002C4500();
+    for (int i = 0; i < 24; i++) {
+        PendingSlot &s = data_00441580[i];
+        PendingSide side = (PendingSide)s.side;
+
+        if (s.held) {
+            if (side == SIDE_TERRORISTS)
+                data_00441448++;
+            else if (side == SIDE_SEALS)
+                data_00441450++;
+            else if (side == SIDE_3)
+                data_00441458++;
+        }
+    }
+}
+
+/* each side's first empty slot, the slots held ahead of their personas counted too -- the
+ * terrorists' and the SEALs' (OVL1 0x2C4940 and 0x2C4730) */
+extern "C" int func_002C4940()
+{
+    int i;
+
+    func_002C4A20();
+    for (i = 0; i < 24; i++) {
+        PendingSlot &s = data_00441580[i];
+
+        if (s.held && (PendingSide)s.side == SIDE_TERRORISTS && s.slot > -1 && s.slot < 8)
+            data_00441480[s.slot]++;
+    }
+    for (i = 0; i < 8; i++)
+        if (!data_00441480[i])
+            return i;
+    return -1;
+}
+
+extern "C" int func_002C4730()
+{
+    int i;
+
+    func_002C4810();
+    for (i = 0; i < 24; i++) {
+        PendingSlot &s = data_00441580[i];
+
+        if (s.held && (PendingSide)s.side == SIDE_SEALS && s.slot > -1 && s.slot < 8)
+            data_004414A0[s.slot]++;
+    }
+    for (i = 0; i < 8; i++)
+        if (!data_004414A0[i])
+            return i;
+    return -1;
+}
+
+/* each side's eight slots: the personas in each counted, the first empty one returned, -1 when all
+ * are taken -- the terrorists' and the SEALs' (OVL1 0x2C4A20 and 0x2C4810; the counts at 0x441480 and
+ * 0x4414A0) */
+extern "C" int func_002C4A20()
+{
+    int i;
+
+    for (i = 0; i < 8; i++)
+        data_00441480[i] = 0;
+    for (i = 0; i < 24; i++) {
+        PersonaData *p = CZPersonaState::GetPersona(i);
+
+        if (p && IsTerroristTeam(p->m_team) && p->m_3e > -1 && p->m_3e < 8)
+            data_00441480[p->m_3e]++;
+    }
+    for (i = 0; i < 8; i++)
+        if (!data_00441480[i])
+            return i;
+    return -1;
+}
+
+extern "C" int func_002C4810()
+{
+    int i;
+
+    for (i = 0; i < 8; i++)
+        data_004414A0[i] = 0;
+    for (i = 0; i < 24; i++) {
+        PersonaData *p = CZPersonaState::GetPersona(i);
+
+        if (p && func_002C3300(p->m_team) && p->m_3e > -1 && p->m_3e < 8)
+            data_004414A0[p->m_3e]++;
+    }
+    for (i = 0; i < 8; i++)
+        if (!data_004414A0[i])
+            return i;
+    return -1;
 }
 
 /* whether no persona without the flag 0x10000 waits in state 2 at 0x40 with 0x41 not yet 2
@@ -386,15 +515,6 @@ extern "C" unsigned int func_002C32E0()
 extern "C" unsigned int func_002C32C0()
 {
     return data_004412D8 ? TEAM_TERRORISTS : TEAM_SEALS;
-}
-
-/* whether a team is the terrorists' (the name ours: inlined only, its value read ahead of the swap
- * flag as func_002C31A0 reads it) */
-inline bool IsTerroristTeam(unsigned int team)
-{
-    unsigned int t = team;
-
-    return t == (data_004412D8 ? TEAM_SEALS : TEAM_TERRORISTS);
 }
 
 /* whether a SEAL is on the terrorists' side: the player's own team, another's persona's (OVL1
