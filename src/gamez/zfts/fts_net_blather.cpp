@@ -1,7 +1,9 @@
 /* fts_net_blather.cpp -- the network objects of kind "BlatherState" (the file and class names ours,
  * after the structure's name: SOCOM 1's CZBombState registers "BombState"). SOCOM II's, between
- * fts_net_bomb.cpp and fts_net_persona.cpp: OVL1 0x2C2A60-0x2C2BAF, the four remote callbacks and
- * their registration. Defined in reverse of their image order (-inline deferred). */
+ * fts_net_bomb.cpp and fts_net_persona.cpp: OVL1 0x2C2800-0x2C2BAF -- the local object's creation
+ * (0x2C2800, "BlatherObject": the player's SOP messages and taunts), the four remote callbacks and
+ * their registration. Complete: 6 functions, all byte-exact. Defined in reverse of their image
+ * order (-inline deferred). */
 
 extern "C" {
 void *memset(void *p, int c, unsigned int n);

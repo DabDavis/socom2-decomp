@@ -17,8 +17,12 @@ class CZNetwork {
 public:
     unsigned char m_bSessionMaster;   // 0x0 (SOCOM 1's at 0x8)
     unsigned char m_bNetwork;   // 0x1 (SOCOM 1's at 0x9)
-    unsigned char _2[0xf4 - 0x2];
+    unsigned char _2;
+    unsigned char m_bJoined;   // 0x3: the game server joined (SOCOM II's)
+    unsigned char _4[0xf4 - 0x4];
     int m_GameConnectionIndex;   // 0xf4 (SOCOM 1's at 0xd0)
+    int _f8;
+    int m_master_index;   // 0xfc: the session master's client
 
     /* the game connection (an accessor: a sender loads it ahead of an out-of-line call among its
      * arguments, NetSendRequestTeamSwitch's master index, which only an inline explains) */
@@ -30,6 +34,7 @@ public:
     int zNetGetGameSessionMasterClientIndex();
     int zNetGetMyGameClientIndex();
     int zNetGetTime();
+    int zNetJoin(void (*joins)(int, int), void (*leaves)(int, int));
     struct NetObject *zNetGetObject(int index);
 
     /* an action the network put off to its next update (only what zRemoteDelayedAction reads:
@@ -300,6 +305,8 @@ void func_005E7F20(CZSealBody *body, short msg, int arg);
 struct ClientConnectArgs {
     int m_index;   // 0x0: the connection
     int m_client;   // 0x4
+    int _8[2];
+    int m_10;   // 0x10: the client's word (DMEJoinGameServer hands each waiting one on)
 };
 
 int func_0030D380(CZNetwork *net, void (*connects)(ClientConnectArgs *),
@@ -443,7 +450,7 @@ void zRemoteClientLeavesCallback(int index, int client)
 }
 
 void zDoClientLeavesCallback(int client);
-void DMEJoinGameServer();
+bool DMEJoinGameServer();
 void ftsNetworkGameInit();
 
 /* what the network put off, done (SOCOM 1's; OVL1 0x2BBFA0): a client gone; the game server
@@ -1597,6 +1604,46 @@ extern "C" bool func_002B85C0()
     if (func_0030D380(&theNetwork, func_002BC620, func_002BC530))
         return false;
     func_002C3330(0);
+    return true;
+}
+
+extern "C" {
+extern ClientConnectArgs data_00440F20;   /* (the arguments handed to the connect callback) */
+extern void *data_0045B718;   /* (zNetVoice.cpp's object) */
+void func_00310080(void *voice, int ms);
+void func_0030FD90(void *voice, int arg);
+}
+
+/* the game server joined, once: the game's and the persona's objects forgotten, every client's
+ * word cleared, the DME joined; the session master hands each client already waiting to the
+ * connect callback; the master's index kept and the voice set up (SOCOM 1's DMEJoinGameServer,
+ * with the join SOCOM 1's zRemoteDelayedAction made; OVL1 0x2B83E0) */
+bool DMEJoinGameServer()
+{
+    if (theNetwork.m_bJoined)
+        return true;
+    theMission.m_pNetGame->m_game_object_index = -1;
+    theMission.m_pNetGame->m_persona_object_index = -1;
+    theMission.m_pNetGame->m_persona_created = 0;
+    for (int i = 0; i < 24; i++)
+        data_00440EC0[i] = 0;
+    if (theNetwork.zNetJoin(zRemoteClientJoinsCallback, zRemoteClientLeavesCallback))
+        return false;
+    if (theNetwork.zNetGetGameSessionMasterClientIndex() == theNetwork.zNetGetMyGameClientIndex()) {
+        theNetwork.m_bSessionMaster = 1;
+        for (int i = 0; i < 24; i++) {
+            if (data_00440EC0[i]) {
+                data_00440F20.m_client = i;
+                data_00440F20.m_10 = data_00440EC0[i];
+                func_002BC620(&data_00440F20);
+                data_00440EC0[i] = 0;
+            }
+        }
+    } else
+        theNetwork.m_bSessionMaster = 0;
+    theNetwork.m_master_index = theNetwork.zNetGetGameSessionMasterClientIndex();
+    func_00310080(data_0045B718, 10000);
+    func_0030FD90(data_0045B718, 11);
     return true;
 }
 

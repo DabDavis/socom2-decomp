@@ -1,6 +1,6 @@
 /* fts_net_bomb.cpp -- the bomb's network object: CZBombState (SOCOM 1's fts_net_bomb.cpp: the
  * demolition game's one bomb, its state machine and its object, which the session master
- * owns). OVL1 0x2C1970-0x2C2A5F, after fts_net_grenade.cpp and before the blather state's unit.
+ * owns). OVL1 0x2C1970-0x2C27FF, after fts_net_grenade.cpp and before the blather state's unit.
  * Complete: 13 functions, all byte-exact but HandleBombStateRequest. Defined in reverse of their
  * image order (-inline deferred). */
 
