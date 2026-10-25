@@ -1916,8 +1916,11 @@ What is open across lanes, and what comes next:
   pairs in the pod, the list's size and end node, alloc() accessors), so a level of 6 or more with
   the real depths is likely; 5 is what these headers fit.
 - **MSL pieces not modelled yet**: the deque's copy constructor (the rdr lane's 0x333B30 and its
-  pieces, mapped in include/deque; back() and pop_back() are in), the tree's erase and the CSaferStr
-  trees (include/tree), the class vector's destroy for elements with a virtual
+  pieces, mapped in include/deque; back() is in, pop_back() 8 bytes short), the tree's erase
+  (0x306030), the CSaferStr trees (0x3A2D60-0x3A2F60 and OVL2's string-keyed map, through the
+  string's out-of-line compare 0x2DEE30), zrdr_file.cpp's pointer-keyed map (0x32D780) and the map
+  constructor's allocator temporary (the image passes an unconstructed stack slot: `__sinit` and
+  the out-of-line map() copies) (include/tree), the class vector's destroy for elements with a virtual
   destructor (C2DPoly's deleter), __vector_imp::resize out of line (CPool), and the pod vector's
   end() reusing begin()'s load (AddPalette, ~CAssetLib, DeleteChildren).
 - **zMath** (0x306670-0x30954C, 47 of 54): CMatrix::SetRotate, CQuat::Align, CBits::Resize,
