@@ -5,6 +5,8 @@
  * CSpawners code. Only some of it so far. Defined in reverse of their image order
  * (-inline deferred). */
 
+#include <vector>
+
 #include "../zanim/zanim.h"
 #include "../zsys/zsys.h"
 #include "../../Apps/FTS/hud_letterbox.h"
@@ -118,9 +120,54 @@ public:
 
 extern CZNetwork theNetwork;
 
+/* a cell of an AI map (zentity.h's CAiMapLoc: only its word) */
+class CAiMapLoc {
+public:
+    unsigned int m_word;
+};
+
+/* a compass anchor (zentity.h's CCompassAnchor: only what the nav points set) */
+class CCompassAnchor {
+public:
+    unsigned int m_enabled : 1;   // 0x0
+    unsigned int m_arrow_enabled : 1;
+    unsigned int m_name_enabled : 1;
+    unsigned int m_echo : 1;
+    unsigned int m_type : 16;
+    unsigned int m_locked : 1;
+    unsigned int m_unk21 : 10;
+    unsigned int m_unused : 1;
+    CPnt3D m_posW;   // 0x4
+    char *m_name;   // 0x10
+    CAiMapLoc *m_aiMapLoc;   // 0x14
+};
+
+class CCompass {
+public:
+    static CCompassAnchor *CreateAnchor(const CPnt3D &pos, const char *name);
+};
+
+/* the AI maps' nav points: a cell and its name (SOCOM 1's, 24 bytes; the names ours) */
+struct CAiNavPoint {
+    CAiMapLoc m_loc;   // 0x0
+    char m_name[20];   // 0x4
+};
+
+/* the AI's maps (OVL2's AiMaps: only the cell's centre and the nav points) */
+class CAiMaps {
+public:
+    bool GetCellCenter(const CAiMapLoc &loc, CPnt3D *center);
+
+    unsigned char _0[0x48];
+    std::vector<CAiNavPoint> m_navpoints;   // 0x48
+};
+
+extern CAiMaps AiMaps;
+
 /* the mission (only what this unit touches, at SOCOM II's offsets) */
 class CMission {
 public:
+    void CreateCompassNavPoints();
     CZNetGame *CreateNetGame();
     bool ReOpen_Unload2();
     void FadeToEndMission(float time, int counter);
@@ -138,7 +185,9 @@ public:
     unsigned char m_FadingToEndMission : 1;
     int m_fade_counter;   // 0x100 (SOCOM 1's at 0x74)
     float m_next_fade_time;   // 0x104 (SOCOM 1's at 0x78)
-    unsigned char _108[0x1808 - 0x108];
+    unsigned char _108[0x118 - 0x108];
+    std::vector<CCompassAnchor *> m_anchors;   // 0x118: the nav points' anchors (SOCOM 1's at 0x8c)
+    unsigned char _124[0x1808 - 0x124];
     CZNetGame *m_pNetGame;   // 0x1808 (SOCOM 1's at 0x584)
 };
 
@@ -339,6 +388,50 @@ extern "C" void func_002A41F0(bool on)
     if (state != VALVE_SAME)
         valve->MakeCallbacks(state);
     data_003DE620 = on;
+}
+
+extern "C" int func_0019AFB0(int c);   /* (MAIN: tolower) */
+
+/* a nav point's anchor type from its name's first letter, 'c' onwards (SOCOM 1's
+ * FilterNavPointString, SOCOM II's types 14 on where SOCOM 1's started at 9; inlined). The
+ * target's layout -- the zero arm first, `slti 24` then `bnez` to the sum -- is this if/else into
+ * a result with `i > 23`: `>= 24`, the `&&` forms, returns and ternaries all lay it out otherwise */
+inline int FilterNavPointString(const char *s)
+{
+    int i = (char)func_0019AFB0(*s) - 'c';
+    int r;
+
+    if (i < 0 || i > 23)
+        r = 0;
+    else
+        r = i + 14;
+    return r;
+}
+
+/* a compass anchor for each of the AI maps' nav points whose cell has a centre, typed by its name
+ * (SOCOM 1's, the centre now tested; OVL1 0x2ACAD0) */
+void CMission::CreateCompassNavPoints()
+{
+    std::vector<CAiNavPoint> &navs = AiMaps.m_navpoints;
+    unsigned int n = navs.size();
+
+    if (n) {
+        for (unsigned int i = 0; i < n; i++) {
+            /* the element through the data pointer itself: through the inline [] the reference
+             * takes its saved register after the name's (s1 and s2 swapped) */
+            CAiNavPoint &nav = navs.data_[i];
+            const char *name = nav.m_name;
+            CPnt3D pos;
+
+            if (AiMaps.GetCellCenter(nav.m_loc, &pos)) {
+                CCompassAnchor *anchor = CCompass::CreateAnchor(pos, name);
+
+                anchor->m_type = FilterNavPointString(name);
+                anchor->m_aiMapLoc = &nav.m_loc;
+                m_anchors.push_back(anchor);
+            }
+        }
+    }
 }
 
 /* a range kept at 0xF4 (the top) and 0xF8 (the bottom) of the object 0x341A60 asks (SOCOM II's; the
@@ -709,6 +802,25 @@ struct _trigger_mission_cam_cmd {
     _zanim_cmd_hdr hdr;
     unsigned char name;   // 0x4
 };
+
+/* TRIGGER_MISSION_CAM: the camera's name, the command's one string, kept among the current
+ * anim's names (SOCOM 1's; OVL1 0x2AE820) */
+_zanim_cmd_hdr *HUDTriggerMissionCamParse(_zrdr *rdr)
+{
+    _trigger_mission_cam_cmd *cmd = 0;
+
+    if (!rdr)
+        return 0;
+    if (rdr->type == 4 && rdr->Count() && rdr->Item(0)->type == 3) {
+        CZAnim *anim = ZAnim.m_CurAnim;
+
+        cmd = (_trigger_mission_cam_cmd *)_calloc(1, sizeof(_trigger_mission_cam_cmd), 0, 0);
+        cmd->hdr.data_size = sizeof(_trigger_mission_cam_cmd);
+        cmd->hdr.timeless = 1;
+        cmd->name = anim->AddName(rdr->Item(0)->String());
+    }
+    return (_zanim_cmd_hdr *)cmd;
+}
 
 void HUDTriggerMissionCamBegin(_zanim_cmd_hdr *hdr)
 {
