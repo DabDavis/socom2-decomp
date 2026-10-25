@@ -364,8 +364,10 @@ def demangle(name: str) -> tuple[bool, list[str]] | None:
     return member, params
 
 
-def prototype(addr: int, name: str, live: Live) -> list[str] | None:
-    """The C parameter types to declare for the function at addr, or None for unknown."""
+def prototype(addr: int, name: str, live: Live, c_names: bool = False) -> list[str] | None:
+    """The C parameter types to declare for the function at addr, or None for unknown. A plain
+    C name (no mangling, not a placeholder) is unknown unless `c_names` -- the GCC libraries'
+    names are all C, and their parameters are read off the code like a placeholder's."""
     g, f = live.args(addr)
     d = demangle(name)
     if d is not None:
@@ -379,7 +381,7 @@ def prototype(addr: int, name: str, live: Live) -> list[str] | None:
             if not static:
                 params = ["void *"] + params
         return params
-    if not E.is_placeholder(name):
+    if not E.is_placeholder(name) and not c_names:
         return None
     ni = max((ARG_GPRS.index(r) + 1 for r in g), default=0)
     nf = max((ARG_FPRS.index(r) + 1 for r in f), default=0)

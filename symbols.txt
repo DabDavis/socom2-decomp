@@ -11850,7 +11850,8 @@
 0x0060FFC8 0x18 func_0060FFC8  # OVL2 unaligned
 0x0060FFE0 0x18 func_0060FFE0  # OVL2
 0x0060FFF8 0x18 func_0060FFF8  # OVL2 unaligned
-0x00610010 0x478 func_00610010  # OVL2
+0x00610010 0x304 func_00610010  # OVL2; split at 0x610318 (the gcc lane)
+0x00610318 0x170 func_00610318  # OVL2; split from func_00610010: entered only by a tail call (j from 0x60FFA8, GCC 2.96's sibcall), so the seed merged it; a prologue after its predecessor's jr ra and pad
 0x00610488 0x110 func_00610488  # OVL2 unaligned
 0x00610598 0x58 func_00610598  # OVL2 unaligned
 0x006105F0 0x78 func_006105F0  # OVL2
@@ -12839,7 +12840,8 @@
 0x00642C48 0x15C func_00642C48  # OVL2 unaligned
 0x00642DA8 0xC8 func_00642DA8  # OVL2 unaligned
 0x00642E70 0x1A8 func_00642E70  # OVL2
-0x00643018 0x150 func_00643018  # OVL2 unaligned
+0x00643018 0x128 func_00643018  # OVL2 unaligned; split at 0x643140 (the gcc lane)
+0x00643140 0x28 func_00643140  # OVL2; split from func_00643018: entered only by a tail call (j from 0x642E68, GCC 2.96's sibcall), unreached by its predecessor's branches
 0x00643168 0xB8 func_00643168  # OVL2 unaligned
 0x00643220 0xA4 func_00643220  # OVL2
 0x006432C8 0x10C func_006432C8  # OVL2 unaligned
