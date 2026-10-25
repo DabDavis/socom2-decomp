@@ -1,0 +1,332 @@
+/* <tree>: Metrowerks' red-black tree under std::map and std::set (MSL C++, CodeWarrior PS2 3.0), a
+ * reconstruction. The shapes are SOCOM 1's (CW 3.0.1's MSL: its DWARF and symbol table), and
+ * SOCOM II's instances are the same code (OVL1 0x210AA0-0x2113C0, the line map's map<int, LINE_DATA>):
+ *   - __red_black_tree<bool> (SOCOM 1: __red_black_tree<1>) holds the node links and the static
+ *     rebalancing members, so one copy serves every tree of an overlay (OVL1's rotate_right
+ *     0x210FA0, rotate_left 0x211030, balance_insert 0x210D80; OVL2's 0x58DA90, 0x58DB20, 0x58D870);
+ *   - a node: left_ at 0 (the anchor), right_ at 4, parent_ at 8 -- a pointer whose low bit is the
+ *     colour, set = red (SOCOM 1's __pointer_plus_bit) -- and the value at 0xC;
+ *   - __tree<T, Compare, Allocator>, 0x10 bytes: the size at 0 (MSL's alloc_, a compressed pair
+ *     of the allocator and the size), the anchor at 4 -- its left_ the root, the root's parent the
+ *     anchor (node_alloc_, the node allocator's pair) -- the comparator's byte at 8 and the
+ *     leftmost node at 0xC (comp_).
+ * Out of class, so never inlined into a unit's own functions: the constructor, find, find_or_insert
+ * (operator[]'s half), insert_node_at, destroy and the rebalancing statics. */
+
+#ifndef _MSL_TREE
+#define _MSL_TREE
+
+#include <functional>
+#include <memory>
+#include <new>
+#include <stdio.h>
+#include <stdlib.h>
+#include <utility>
+
+#ifndef __msl_error
+#define __msl_error(str) \
+    {                    \
+        fprintf(stderr, str); \
+        abort();         \
+    }
+#endif
+
+namespace std {
+
+template <bool b>
+class __red_black_tree {
+public:
+    class node_base;
+
+    class anchor {
+    public:
+        anchor() : left_(0) {}
+
+        node_base *left_;
+    };
+
+    /* a node's parent with its colour in the low bit (SOCOM 1's __pointer_plus_bit, its ptr_) */
+    class __pointer_plus_bit {
+    public:
+        operator node_base *() const { return (node_base *)((unsigned int)ptr_ & ~1u); }
+        __pointer_plus_bit &operator=(node_base *p)
+        {
+            ptr_ = (node_base *)((unsigned int)p | ((unsigned int)ptr_ & 1u));
+            return *this;
+        }
+        bool get_bit() const { return (unsigned int)ptr_ & 1u; }
+        void set_bit() { ptr_ = (node_base *)((unsigned int)ptr_ | 1u); }
+        void clear_bit() { ptr_ = (node_base *)((unsigned int)ptr_ & ~1u); }
+
+        node_base *ptr_;
+    };
+
+    class node_base : public anchor {
+    public:
+        node_base *parent() const { return parent_; }
+        void set_parent(node_base *p) { parent_ = p; }
+        bool is_red() const { return parent_.get_bit() == true; }
+        void set_red() { parent_.set_bit(); }
+        void set_black() { parent_.clear_bit(); }
+
+        node_base *right_;
+        __pointer_plus_bit parent_;
+    };
+
+    static void rotate_left(node_base *x, node_base *&root);
+    static void rotate_right(node_base *x, node_base *&root);
+    static void balance_insert(node_base *x, node_base *root);
+};
+
+template <bool b>
+void __red_black_tree<b>::rotate_left(node_base *x, node_base *&root)
+{
+    node_base *y = x->right_;
+
+    if (root == x)
+        root = y;
+    x->right_ = y->left_;
+    if (y->left_ != 0)
+        y->left_->set_parent(x);
+    y->set_parent(x->parent());
+    if (x == x->parent()->left_)
+        x->parent()->left_ = y;
+    else
+        x->parent()->right_ = y;
+    y->left_ = x;
+    x->set_parent(y);
+}
+
+template <bool b>
+void __red_black_tree<b>::rotate_right(node_base *x, node_base *&root)
+{
+    node_base *y = x->left_;
+
+    if (root == x)
+        root = y;
+    x->left_ = y->right_;
+    if (y->right_ != 0)
+        y->right_->set_parent(x);
+    y->set_parent(x->parent());
+    if (x == x->parent()->left_)
+        x->parent()->left_ = y;
+    else
+        x->parent()->right_ = y;
+    y->right_ = x;
+    x->set_parent(y);
+}
+
+template <bool b>
+void __red_black_tree<b>::balance_insert(node_base *x, node_base *root)
+{
+    x->set_red();
+    while (x != root && x->parent()->is_red()) {
+        node_base *xpp = x->parent()->parent();
+
+        if (x->parent() == xpp->left_) {
+            node_base *y = xpp->right_;
+
+            if (y != 0 && y->is_red()) {
+                x->parent()->set_black();
+                y->set_black();
+                x = x->parent()->parent();
+                x->set_red();
+            } else {
+                if (x == x->parent()->right_) {
+                    x = x->parent();
+                    rotate_left(x, root);
+                }
+                x->parent()->set_black();
+                x->parent()->parent()->set_red();
+                rotate_right(x->parent()->parent(), root);
+            }
+        } else {
+            node_base *y = xpp->left_;
+
+            if (y != 0 && y->is_red()) {
+                x->parent()->set_black();
+                y->set_black();
+                x = x->parent()->parent();
+                x->set_red();
+            } else {
+                if (x == x->parent()->left_) {
+                    x = x->parent();
+                    rotate_right(x, root);
+                }
+                x->parent()->set_black();
+                x->parent()->parent()->set_red();
+                rotate_left(x->parent()->parent(), root);
+            }
+        }
+    }
+    root->set_black();
+}
+
+template <class T, class Compare, class Allocator>
+class __tree : public __red_black_tree<true> {
+    typedef __red_black_tree<true> base;
+
+public:
+    typedef T value_type;
+    typedef Compare value_compare;
+    typedef Allocator allocator_type;
+    typedef unsigned int size_type;
+    typedef typename base::anchor anchor;
+    typedef typename base::node_base node_base;
+
+    class node : public node_base {
+    public:
+        value_type data_;
+    };
+
+    /* the node allocator, Allocator rebound (the empty base of MSL's node_alloc_ pair) */
+    typedef typename Allocator::template rebind<node>::other node_allocator_type;
+
+    class iterator {
+    public:
+        iterator() {}
+        iterator(node *p) : ptr_(p) {}
+        value_type &operator*() const { return ptr_->data_; }
+        value_type *operator->() const { return &ptr_->data_; }
+        bool operator==(const iterator &x) const { return ptr_ == x.ptr_; }
+        bool operator!=(const iterator &x) const { return ptr_ != x.ptr_; }
+
+        node *ptr_;
+    };
+
+    __tree(const value_compare &comp, const allocator_type &a);
+    ~__tree()
+    {
+        if (root() != 0)
+            destroy((node *)root());
+    }
+
+    size_type size() const { return size_; }
+    bool empty() const { return size_ == 0; }
+    static size_type max_size() { return (size_type)-1; }
+    iterator begin() { return iterator((node *)leftmost_); }
+    iterator end() { return iterator((node *)&tail()); }
+
+    template <class Key>
+    iterator find(const Key &x);
+    template <class Key, class V>
+    value_type &find_or_insert(const Key &key);
+    void clear()
+    {
+        if (root() != 0) {
+            destroy((node *)root());
+            size_ = 0;
+            root() = 0;
+            leftmost_ = (node_base *)&tail();
+        }
+    }
+
+    node_base *&root() { return tail_.left_; }
+    anchor &tail() { return tail_; }
+    /* the allocators, as the empty bases of the size's and the anchor's pairs: accessors of the
+     * tree's own (SOCOM II's 0x2113C0 returns this, 0x2113A0 this + 4 -- not the pairs' first(),
+     * which SOCOM 1's destroy calls on this + 4 itself) */
+    allocator_type &alloc() { return *(allocator_type *)&size_; }
+    node_allocator_type &node_alloc() { return *(node_allocator_type *)&tail_; }
+    value_compare &comp() { return comp_; }
+
+    node *insert_node_at(node_base *p, bool leftchild, bool is_leftmost, const value_type &x);
+    void destroy(node *p);
+
+    size_type size_;   // 0x0
+    anchor tail_;   // 0x4
+    value_compare comp_;   // 0x8
+    node_base *leftmost_;   // 0xc
+};
+
+template <class T, class Compare, class Allocator>
+__tree<T, Compare, Allocator>::__tree(const value_compare &comp, const allocator_type &)
+    : size_(0), comp_(comp)
+{
+    leftmost_ = (node_base *)&tail_;
+}
+
+template <class T, class Compare, class Allocator>
+template <class Key>
+typename __tree<T, Compare, Allocator>::iterator
+__tree<T, Compare, Allocator>::find(const Key &x)
+{
+    node *i = (node *)root();
+    node *j = (node *)&tail();
+
+    while (i != 0) {
+        if (!comp()(i->data_, x)) {
+            j = i;
+            i = (node *)i->left_;
+        } else
+            i = (node *)i->right_;
+    }
+    if (j == (node *)&tail() || comp()(x, j->data_))
+        return end();
+    return iterator(j);
+}
+
+template <class T, class Compare, class Allocator>
+template <class Key, class V>
+typename __tree<T, Compare, Allocator>::value_type &
+__tree<T, Compare, Allocator>::find_or_insert(const Key &key)
+{
+    node *prev = 0;
+    node *p = (node *)&tail();
+    node *n = (node *)root();
+    bool leftchild = true;
+    bool is_leftmost = true;
+
+    while (n != 0) {
+        p = n;
+        if (comp()(key, n->data_)) {
+            n = (node *)n->left_;
+            leftchild = true;
+        } else {
+            prev = n;
+            n = (node *)n->right_;
+            leftchild = false;
+            is_leftmost = false;
+        }
+    }
+    if (prev == 0 || comp()(prev->data_, key))
+        return insert_node_at(p, leftchild, is_leftmost, value_type(key, V()))->data_;
+    return prev->data_;
+}
+
+template <class T, class Compare, class Allocator>
+typename __tree<T, Compare, Allocator>::node *
+__tree<T, Compare, Allocator>::insert_node_at(node_base *p, bool leftchild, bool is_leftmost, const value_type &x)
+{
+    if (size() > max_size() - 1)
+        __msl_error("tree::insert length error\n");
+    node *n = node_alloc().allocate(1);
+
+    alloc().construct(&n->data_, x);
+    n->left_ = n->right_ = 0;
+    n->set_parent(p);
+    if (leftchild)
+        p->left_ = n;
+    else
+        p->right_ = n;
+    ++size_;
+    balance_insert(n, root());
+    if (is_leftmost)
+        leftmost_ = n;
+    return n;
+}
+
+template <class T, class Compare, class Allocator>
+void __tree<T, Compare, Allocator>::destroy(node *p)
+{
+    if (p->left_ != 0)
+        destroy((node *)p->left_);
+    if (p->right_ != 0)
+        destroy((node *)p->right_);
+    alloc().destroy(&p->data_);
+    node_alloc().deallocate(p, 1);
+}
+
+}
+
+#endif

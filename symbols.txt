@@ -1872,20 +1872,20 @@
 0x00210870 0x1E8 func_00210870  # OVL1
 0x00210A60 0x8 func_00210A60  # OVL1
 0x00210A70 0x30 GetPt__Q225@unnamed@hud_linemap_cpp@12CAiLinePtItrCFv  # OVL1; s1:exact
-0x00210AA0 0x104 func_00210AA0  # OVL1
-0x00210BB0 0x80 func_00210BB0  # OVL1
-0x00210C30 0x150 func_00210C30  # OVL1
-0x00210D80 0x220 func_00210D80  # OVL1
-0x00210FA0 0x90 func_00210FA0  # OVL1
-0x00211030 0x90 func_00211030  # OVL1
-0x002110C0 0x20 func_002110C0  # OVL1
+0x00210AA0 0x104 find_or_insert<i,9LINE_DATA>__Q23std185__tree<Q23std19pair<Ci,9LINE_DATA>,Q33std79map<i,9LINE_DATA,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>FRCi_RQ23std19pair<Ci,9LINE_DATA>  # OVL1; include/tree (map<int, LINE_DATA>::operator[]'s out-of-line half, SOCOM 1's find_or_insert<i,9LINE_DATA> 0x3CAC10 the same code; hud_linemap.cpp's tail; byte-exact)
+0x00210BB0 0x80 find<i>__Q23std185__tree<Q23std19pair<Ci,9LINE_DATA>,Q33std79map<i,9LINE_DATA,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>FRCi_Q33std185__tree<Q23std19pair<Ci,9LINE_DATA>,Q33std79map<i,9LINE_DATA,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>8iterator  # OVL1; include/tree (map<int, LINE_DATA>::find: the lower bound, then end() unless the key is not less -- SOCOM 1's find<i> 0x3CAD10 the same code; the line map's 0x20E470 and 0x20F5C0 call it; byte-exact as a probe, build/tree/p1.cpp)
+0x00210C30 0x150 insert_node_at__Q23std185__tree<Q23std19pair<Ci,9LINE_DATA>,Q33std79map<i,9LINE_DATA,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>FPQ33std19__red_black_tree<1>9node_basebbRCQ23std19pair<Ci,9LINE_DATA>  # OVL1; include/tree (SOCOM 1's insert_node_at 0x3CAD90, the same code: new(36), the pair copied in, the links, balance_insert, the leftmost; hud_linemap.cpp's tail; byte-exact)
+0x00210D80 0x220 balance_insert__Q23std19__red_black_tree<1>FPQ33std19__red_black_tree<1>9node_basePQ33std19__red_black_tree<1>9node_base  # OVL1; include/tree (OVL1's one copy of the static rebalancer, SOCOM 1's balance_insert__Q23std19__red_black_tree<1> 0x21FD30; every OVL1 insert_node_at calls it; byte-exact from hud_linemap.cpp)
+0x00210FA0 0x90 rotate_right__Q23std19__red_black_tree<1>FPQ33std19__red_black_tree<1>9node_baseRPQ33std19__red_black_tree<1>9node_base  # OVL1; include/tree (OVL1's copy, SOCOM 1's rotate_right 0x21FF50; byte-exact from hud_linemap.cpp)
+0x00211030 0x90 rotate_left__Q23std19__red_black_tree<1>FPQ33std19__red_black_tree<1>9node_baseRPQ33std19__red_black_tree<1>9node_base  # OVL1; include/tree (OVL1's copy, SOCOM 1's rotate_left 0x21FFE0; balance_insert and the erase's 0x306030 call it; byte-exact from hud_linemap.cpp)
+0x002110C0 0x20 __ct__Q23std185__tree<Q23std19pair<Ci,9LINE_DATA>,Q33std79map<i,9LINE_DATA,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>FRCQ33std79map<i,9LINE_DATA,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>13value_compareRCQ23std38allocator<Q23std19pair<Ci,9LINE_DATA>>  # OVL1; include/tree (the tree built: size 0, root 0, the comparator byte, leftmost the anchor -- SOCOM 1's 0x3CAEF0 word for word; the line map's initialiser 0x3FE190 calls it; byte-exact from hud_linemap.cpp)
 0x002110E0 0x8 func_002110E0  # OVL1
-0x002110F0 0x68 func_002110F0  # OVL1
-0x00211160 0x22C func_00211160  # OVL1
-0x00211390 0x8 func_00211390  # OVL1
-0x002113A0 0x8 func_002113A0  # OVL1
-0x002113B0 0x8 func_002113B0  # OVL1
-0x002113C0 0x8 func_002113C0  # OVL1
+0x002110F0 0x68 __dt__Q23std79map<i,9LINE_DATA,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>Fv  # OVL1; include/map (the map's implicit destructor, ~__tree inline: the root destroyed; registered by 0x3FE190; byte-exact from hud_linemap.cpp)
+0x00211160 0x22C destroy__Q23std185__tree<Q23std19pair<Ci,9LINE_DATA>,Q33std79map<i,9LINE_DATA,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>FPQ33std185__tree<Q23std19pair<Ci,9LINE_DATA>,Q33std79map<i,9LINE_DATA,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>4node  # OVL1; include/tree (the nodes freed bottom up, self-inlined twice: SOCOM 1's destroy 0x3CAF80 one accessor level shallower; byte-exact from hud_linemap.cpp)
+0x00211390 0x8 deallocate__Q23std210allocator<Q33std185__tree<Q23std19pair<Ci,9LINE_DATA>,Q33std79map<i,9LINE_DATA,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>4node>FPQ33std185__tree<Q23std19pair<Ci,9LINE_DATA>,Q33std79map<i,9LINE_DATA,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>4nodeUi  # OVL1; include/memory (the node freed: operator delete; destroy's innermost level calls it; byte-exact from hud_linemap.cpp)
+0x002113A0 0x8 node_alloc__Q23std185__tree<Q23std19pair<Ci,9LINE_DATA>,Q33std79map<i,9LINE_DATA,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>Fv  # OVL1; include/tree (the node allocator's accessor, this + 4; the name ours; byte-exact from hud_linemap.cpp)
+0x002113B0 0x8 destroy__Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>FPQ23std19pair<Ci,9LINE_DATA>  # OVL1; include/memory (the value destroyed in place, empty for this pair; destroy's innermost level calls it; byte-exact from hud_linemap.cpp)
+0x002113C0 0x8 alloc__Q23std185__tree<Q23std19pair<Ci,9LINE_DATA>,Q33std79map<i,9LINE_DATA,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>Fv  # OVL1; include/tree (the value allocator's accessor, this: destroy's inner levels call it; the name ours; byte-exact from hud_linemap.cpp)
 0x002113D0 0x20 func_002113D0  # OVL1
 0x002113F0 0xCC func_002113F0  # OVL1
 0x002114C0 0x48 func_002114C0  # OVL1

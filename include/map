@@ -1,0 +1,64 @@
+/* <map>: std::map over MSL's red-black tree (<tree>), a reconstruction: SOCOM 1's map is its tree
+ * and nothing else (map: tree_ at 0, 0x10 bytes), value_compare a one-byte class holding the key
+ * order (less<Key>), and operator[] the tree's find_or_insert<Key, T> (SOCOM 1's names). */
+
+#ifndef _MSL_MAP
+#define _MSL_MAP
+
+#include <tree>
+
+namespace std {
+
+template <class Key, class T, class Compare = less<Key>, class Allocator = allocator<pair<const Key, T> > >
+class map {
+public:
+    typedef Key key_type;
+    typedef T mapped_type;
+    typedef pair<const Key, T> value_type;
+    typedef Compare key_compare;
+    typedef Allocator allocator_type;
+    typedef unsigned int size_type;
+
+    class value_compare : public binary_function<value_type, value_type, bool> {
+        friend class map;
+
+    public:
+        bool operator()(const value_type &x, const value_type &y) const { return comp(x.first, y.first); }
+        bool operator()(const key_type &x, const value_type &y) const { return comp(x, y.first); }
+        bool operator()(const value_type &x, const key_type &y) const { return comp(x.first, y); }
+
+    protected:
+        /* the order not copied in: the constructors build the comparator from an empty Compare
+         * with no code (SOCOM II's map() copies 0x1FB3F0, 0x38E740, 0x3A2BE0 and the line map's
+         * initialiser pass a bare stack slot; `: comp(c)` copies its byte) */
+        value_compare(Compare) {}
+
+        Compare comp;
+    };
+
+private:
+    typedef __tree<value_type, value_compare, Allocator> tree_type;
+
+public:
+    typedef typename tree_type::iterator iterator;
+
+    explicit map(const Compare &comp = Compare(), const Allocator &a = Allocator())
+        : tree_(value_compare(comp), a)
+    {
+    }
+
+    iterator begin() { return tree_.begin(); }
+    iterator end() { return tree_.end(); }
+    size_type size() const { return tree_.size(); }
+    bool empty() const { return tree_.empty(); }
+    void clear() { tree_.clear(); }
+    iterator find(const key_type &x) { return tree_.find(x); }
+    mapped_type &operator[](const key_type &x) { return tree_.template find_or_insert<key_type, mapped_type>(x).second; }
+
+private:
+    tree_type tree_;
+};
+
+}
+
+#endif
