@@ -17,6 +17,9 @@
  * GetWeaponId hands back `li v0,255`, as SOCOM 1's did). Only the bounds are named here */
 enum EQUIP_ITEM {
     EQUIP_PISTOL = 0,
+    /* the two goggles' ids of their own (GetWeaponId; SOCOM 1's 182 and 184; the names ours) */
+    EQUIP_BINOCULARS = 190,
+    EQUIP_NVG = 191,
     EQUIP_END = 254,
     EQUIP_NONE = 255
 };
@@ -28,10 +31,15 @@ enum FIREMODE {
     BURST = 2,
     AUTOFIRE = 3,
     SPECIAL_MODE = 4,
-    NUM_FIREMODES = 5
+    NUM_FIREMODES = 5,
+    /* the mode in use, as an argument (the kit's code passes 255; the name ours) */
+    FIREMODE_CURRENT = 255
 };
 
 class CZAnim;
+namespace zdb {
+class CTexture;
+}
 class CZWeaponList;
 class CZProjectile;
 
@@ -110,11 +118,19 @@ public:
     EQUIP_AMMO GetDefaultAmmoId();
     CZAmmo *GetDefaultAmmo();
 
+    /* the magazine's size and the magazines carried (SOCOM 1's GetAmmoCapacity and GetNumMags,
+     * in its order: 0x3D2810 and 0x3D2800; CZKit's magazine code calls them) */
+    int GetNumMags();
+    int GetAmmoCapacity();
+
     char *m_name;   // 0x4
     char *m_description;   // 0x8
     unsigned char _c[0x24 - 0xc];
     FIREMODE m_maxfiremode;   // 0x24 (SOCOM 1: 0x20)
-    unsigned char _25[0x7c - 0x25];
+    unsigned char _25[0x28 - 0x25];
+    int m_ammocap;   // 0x28 (SOCOM 1: 0x24)
+    int m_nummags;   // 0x2c (SOCOM 1: 0x28)
+    unsigned char _30[0x7c - 0x30];
     EQUIP_ITEM m_ID;   // 0x7c (SOCOM 1: 0x60)
     unsigned char _7d[0x80 - 0x7d];
     CZAnim **m_hitanim;   // 0x80 (SOCOM 1: 0x64; ClearAnims frees it)
@@ -123,7 +139,10 @@ public:
     CZAnim *m_defaultspecialanim;   // 0x8c
     CZAnim *m_socom2_90;   // 0x90 (SOCOM II's: ClearAnims clears it with the others)
     CZAnim **m_specialmaterialanim;   // 0x94 (SOCOM 1: 0x74)
-    unsigned char _98[0xc4 - 0x98];
+    unsigned char _98[0xbc - 0x98];
+    /* the weapon's icon (the kit lane's: kit.h reads a texture there; the name ours) */
+    zdb::CTexture *m_icon;   // 0xbc
+    unsigned char _c0[0xc4 - 0xc0];
     CZAmmoList m_LegalAmmoList;   // 0xc4 (SOCOM 1: 0x9c)
     unsigned char m_hasFireModes[5];   // 0xd0 (SOCOM 1: 0xa8)
     unsigned char m_socom2_d5;   // 0xd5
@@ -204,6 +223,10 @@ public:
     CTargetMods *TargetMods(int i);
     float ResolveFTSDamage(float damage);
     bool IsGrenadeLauncherWeapon();
+    /* SOCOM 1's (0x3C5D20: CZKit calls it where SOCOM 1's calls IsGrenadeLauncherAmmo) */
+    bool IsGrenadeLauncherAmmo();
+    /* the grenade launchers or the class 145 (0x3C5D80, new in SOCOM II; the name is ours) */
+    bool IsLauncherWeapon();
     bool IsM203Weapon();
     /* the same test of an id (new in SOCOM II, 0x3C5E10; the member one inlines it, its true an
      * assignment there -- daddiu; the name is ours) */

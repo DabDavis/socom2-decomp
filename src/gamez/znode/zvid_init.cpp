@@ -119,6 +119,64 @@ extern CValve *lodLevel;
 /* an address through the EE's uncached mirror */
 #define UNCACHED(p) ((unsigned int)(p) | 0x20000000)
 
+/* GS memory read back in 256x256 blocks, the FIFO paused (SOCOM 1's took the blocks' size and
+ * format from its arguments) */
+void CVideo::ReadGsMemory(unsigned int addr, u_long128 *data, unsigned int size)
+{
+    sceGsStoreImage si;
+
+    DIntr();
+    zSysFifoPause();
+    sceGsSyncPath(0, 0);
+    do {
+        sceGsSetDefStoreImage(&si, addr, data_003E1410 >> 6, data_004A4540, 0, 0, 256, 256);
+        FlushCache(0);
+        sceGsExecStoreImage(&si, data);
+        size -= 0x40000;
+        data += 0x4000;
+        addr += 1024;
+        sceGsSyncPath(0, 0);
+    } while (size);
+    zSysFifoResume(true);
+    EIntr();
+}
+
+/* the image written to GS memory in 256x256 blocks of 32 bits (SOCOM 1's, byte for byte) */
+void CVideo::WriteGsMemory(unsigned int addr, u_long128 *data, unsigned int size)
+{
+    sceGsLoadImage li;
+
+    DIntr();
+    sceDmaSync(zSys.DmaToGif, 0, 0);
+    do {
+        sceGsSetDefLoadImage(&li, addr, 4, 0, 0, 0, 256, 256);
+        FlushCache(0);
+        sceGsExecLoadImage(&li, data);
+        sceDmaSync(zSys.DmaToGif, 0, 0);
+        size -= 0x40000;
+        data += 0x4000;
+        addr += 1024;
+    } while (size);
+    EIntr();
+}
+
+int CVideo::MaxFrameRate(int rate)
+{
+    if (rate == 60)
+        rate = -1;
+    int old = m_maxFrameRate;
+    m_maxFrameRate = rate;
+    return old;
+}
+
+void CVideo::Fade(float t, unsigned char r, unsigned char g, unsigned char b)
+{
+    zvid_fade[0] = r;
+    zvid_fade[1] = g;
+    zvid_fade[2] = b;
+    zvid_fade[3] = (unsigned int)(255.0f * t);
+}
+
 /* one GS register set through the GIF's A+D path: a DMA tag and two VIF codes, the GIF tag, the
  * pair -- one cursor step per quadword (SOCOM 1's wrote them all off the packet's start) */
 void SetGSReg(short reg, unsigned long data)
@@ -180,64 +238,6 @@ void zVid_ClearColor(unsigned int *rgb)
     *(unsigned long *)UNCACHED(zvid_clearColor) =
         (unsigned long)rgb[0] | ((unsigned long)rgb[1] << 8) | ((unsigned long)rgb[2] << 16) |
         ((unsigned long)0x80 << 24) | ((unsigned long)0x3F800000 << 32);
-}
-
-int CVideo::MaxFrameRate(int rate)
-{
-    if (rate == 60)
-        rate = -1;
-    int old = m_maxFrameRate;
-    m_maxFrameRate = rate;
-    return old;
-}
-
-void CVideo::Fade(float t, unsigned char r, unsigned char g, unsigned char b)
-{
-    zvid_fade[0] = r;
-    zvid_fade[1] = g;
-    zvid_fade[2] = b;
-    zvid_fade[3] = (unsigned int)(255.0f * t);
-}
-
-/* GS memory read back in 256x256 blocks, the FIFO paused (SOCOM 1's took the blocks' size and
- * format from its arguments) */
-void CVideo::ReadGsMemory(unsigned int addr, u_long128 *data, unsigned int size)
-{
-    sceGsStoreImage si;
-
-    DIntr();
-    zSysFifoPause();
-    sceGsSyncPath(0, 0);
-    do {
-        sceGsSetDefStoreImage(&si, addr, data_003E1410 >> 6, data_004A4540, 0, 0, 256, 256);
-        FlushCache(0);
-        sceGsExecStoreImage(&si, data);
-        size -= 0x40000;
-        data += 0x4000;
-        addr += 1024;
-        sceGsSyncPath(0, 0);
-    } while (size);
-    zSysFifoResume(true);
-    EIntr();
-}
-
-/* the image written to GS memory in 256x256 blocks of 32 bits (SOCOM 1's, byte for byte) */
-void CVideo::WriteGsMemory(unsigned int addr, u_long128 *data, unsigned int size)
-{
-    sceGsLoadImage li;
-
-    DIntr();
-    sceDmaSync(zSys.DmaToGif, 0, 0);
-    do {
-        sceGsSetDefLoadImage(&li, addr, 4, 0, 0, 0, 256, 256);
-        FlushCache(0);
-        sceGsExecLoadImage(&li, data);
-        sceDmaSync(zSys.DmaToGif, 0, 0);
-        size -= 0x40000;
-        data += 0x4000;
-        addr += 1024;
-    } while (size);
-    EIntr();
 }
 
 /* the frame rate's level of detail (SOCOM 1's) */

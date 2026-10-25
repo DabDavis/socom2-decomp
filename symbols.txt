@@ -8121,8 +8121,8 @@
 0x003C5C70 0x28 func_003C5C70  # OVL1
 0x003C5CA0 0x28 func_003C5CA0  # OVL1
 0x003C5CD0 0x48 IsGrenadeLauncherWeapon__11CZFTSWeaponFv  # OVL1; s1:order by hand (SOCOM 1's test of the id byte against 52, 61, 142 and 143; SOCOM II adds 63)
-0x003C5D20 0x60 func_003C5D20  # OVL1
-0x003C5D80 0x84 func_003C5D80  # OVL1
+0x003C5D20 0x60 IsGrenadeLauncherAmmo__11CZFTSWeaponFv  # OVL1; s1:calls by hand (the wep lane, on the kit lane's lead: CZKit calls it where SOCOM 1's calls IsGrenadeLauncherAmmo; SOCOM 1's test of GetIDType() against 170 with SOCOM II's ids one on, 171, and 185 added)
+0x003C5D80 0x84 IsLauncherWeapon__11CZFTSWeaponFv  # OVL1; by hand (the wep lane, on the kit lane's lead: IsGrenadeLauncherWeapon inlined -- 52, 61, 142-143, 63, its true daddiu -- or GetIDType() 145; new in SOCOM II, the name ours)
 0x003C5E10 0x30 IsM203Weapon__11CZFTSWeaponF10EQUIP_ITEM  # OVL1; by hand (the same test as IsM203Weapon of an id byte, 52 or 61; the member one, next to it, inlines it -- its true a daddiu; the name is ours)
 0x003C5E40 0x30 IsM203Weapon__11CZFTSWeaponFv  # OVL1; s1:order by hand (SOCOM 1's test of the id byte against 52 and 61)
 0x003C5E70 0x38 AddZoommode__11CZFTSWeaponFf  # OVL1; s1:order by hand (a float pushed on the zoom vector at 0x280 through the pod insert)
@@ -8377,8 +8377,8 @@
 0x003D27D0 0x8 func_003D27D0  # OVL1
 0x003D27E0 0x8 func_003D27E0  # OVL1
 0x003D27F0 0x8 func_003D27F0  # OVL1
-0x003D2800 0x8 func_003D2800  # OVL1
-0x003D2810 0x8 func_003D2810  # OVL1
+0x003D2800 0x8 GetNumMags__8CZWeaponFv  # OVL1; s1:order by hand (the wep lane, on the kit lane's lead: returns the word at 0x2C, SOCOM 1's m_nummags at 0x28 four bytes on as m_maxfiremode is; in SOCOM 1's order, GetNumMags then GetAmmoCapacity before GetDescription)
+0x003D2810 0x8 GetAmmoCapacity__8CZWeaponFv  # OVL1; s1:order by hand (the wep lane, on the kit lane's lead: returns the word at 0x28, SOCOM 1's m_ammocap at 0x24)
 0x003D2820 0x8 func_003D2820  # OVL1
 0x003D2830 0x8 GetDescription__8CZWeaponCFv  # OVL1; s1:order by hand (returns the word at 8, SOCOM 1's m_description; next to GetName as in SOCOM 1's zwep_weapon.cpp)
 0x003D2840 0x8 GetName__8CZWeaponCFv  # OVL1; s1:order by hand (returns the word at 4, m_name; CZWeaponList::GetWeapon(name) compares it)
