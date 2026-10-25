@@ -251,12 +251,22 @@ public:
     ~CAiMapLayer();
     /* the cells freed, the layer kept (0x53A920; the name ours) */
     void FreeCells();
+    /* n cells allocated, zeroed (the map readers' 0x53A8F0; the name ours) */
+    CAiCell *AllocCells(unsigned int n);
 
     char m_name[16];   // 0x0
     unsigned int m_flags;   // 0x10
     unsigned int m_unk14;   // 0x14
     unsigned char m_unk18[16];   // 0x18
     CAiCell *m_cells;   // 0x28: CAiCell::Alloc's
+};
+
+/* the map's layers (new in SOCOM II, the name ours, after SOCOM 1's CAiMapVec): its destructor
+ * is declared and defined out of line in ai_maplayer.cpp (0x53A870: four this-tests, the derived
+ * level over the pointer vector's three), so ~CAiMap calls it with -1 as it calls ~readers */
+class CAiMapLayerVec : public std::vector<CAiMapLayer *> {
+public:
+    ~CAiMapLayerVec();
 };
 int zrdr_free(CRdrFile *file);
 /* MAIN's strncasecmp (0x1993C0, a placeholder still: SOCOM 1's CAiMap::GetLocation calls
@@ -561,6 +571,10 @@ public:
     bool SetModified(bool modified);
     /* the map with its first layer and nothing read (SOCOM 1's took no id) */
     CAiMap(int mapid);
+    ~CAiMap();
+    /* every layer but the first deleted and dropped, the map marked changed (new in SOCOM II, the
+     * name ours: ai_maplayer.cpp's 0x53A730, ~CAiMap's) */
+    void DeleteLayers();
     int GetRouteIndex(const route *r);
     route *GetRoute(unsigned int i);
     link *GetCellLink(const CAiMapLoc &loc);
@@ -617,7 +631,7 @@ public:
      * altitude scale after it, then SOCOM 1's nine tables) */
     unsigned int m_version;   // 0xa4
     CAiMapLayer m_layer0;   // 0xa8
-    std::vector<CAiMapLayer *> m_layers;   // 0xd4: the layers, m_layer0 first
+    CAiMapLayerVec m_layers;   // 0xd4: the layers, m_layer0 first
     char *m_mapex;   // 0xe0: SOCOM 1's 0xac
     int m_mapid;   // 0xe4: SOCOM 1's 0xb0 (ValidateCells gives every name this map's id)
     float m_alt_quant;   // 0xe8: SOCOM 1's 0xb4
@@ -766,6 +780,9 @@ public:
     };
 
     CAiPath();
+    /* the planner let go and the path emptied, its plan aborted first (SOCOM 1's; out of line at
+     * 0x5281B0, the members' destructors after the body) */
+    ~CAiPath();
 
     /* queued, planning or aborting (SOCOM 1 tested the three states one by one; SOCOM II's code,
      * inlined everywhere, is one unsigned range test -- the name ours) */

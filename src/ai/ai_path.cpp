@@ -38,6 +38,19 @@ CAiPath::CAiPath()
     m_unk90 = 0;
 }
 
+/* the planner let go, the plan aborted and the path emptied (SOCOM 1's: Clear inlined).
+ * OPEN (0x180 against 0x188): only the stats' visited cells' destruction -- the target tests
+ * their address three times before ~__vector_deleter (a CAiMapLocVec, as SOCOM 1's DWARF has
+ * it), the plain std::vector here twice. Declared CAiMapLocVec the destructor is byte-exact but
+ * for 0x515340's name (the points' deleter destructor), and CAiPath() loses: CAiPathStats() is
+ * then six high (CAiMapLocVec() five) and inlined one level -- with the body written out instead
+ * of through reset() as well. A level-6 question (README "Open, and next") */
+CAiPath::~CAiPath()
+{
+    DeletePlanner(true);
+    Clear();
+}
+
 /* the legs' two ends, for one leg or the one being planned (SOCOM 1's; true either way) */
 bool CAiPath::GetLegPoints(CAiMapLoc &start, CAiMapLoc &goal, int leg) const
 {

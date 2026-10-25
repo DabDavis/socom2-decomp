@@ -9403,7 +9403,7 @@
 0x005151F0 0x8 clear__Q23std58__vector_deleter<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>>Fv  # OVL2; s1:callee by hand (SetSnakeLength clears the path's locations with it, a0 = path + 52, where SOCOM 1's calls clear__Q23std58__vector_deleter<9CAiMapLoc,...> on path + 44; the size zeroed)
 0x00515200 0x68 __dt__Q23std58__vector_deleter<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>>Fv  # OVL2; s1:order by hand (SOCOM 1's __dt__Q23std58__vector_deleter<9CAiMapLoc,...>Fv, the same 0x68: size zeroed, data deleted, this deleted on a positive flag; ai_astar.cpp's tail copy, which the lines' and routes' clears 0x51A310/0x51A3C0 call for each element's cell vectors)
 0x00515270 0xD0 func_00515270  # OVL2
-0x00515340 0x68 func_00515340  # OVL2
+0x00515340 0x68 __dt__Q23std70__vector_deleter<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>>Fv  # OVL2; by hand (~CAiPath destroys m_points through it, three this-tests and a call, as each class vector's deleter destructor: ai_astar.cpp's tail, after the points deleter's clear's neighbours)
 0x005153B0 0x8 clear__Q23std70__vector_deleter<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>>Fv  # OVL2; s1:callee by hand (SetSnakeLength clears the path's points with it, a0 = path + 152, where SOCOM 1's calls clear__Q23std70__vector_deleter<Q27CAiPath5point,...> on path + 140; the deleter's clear of a trivially destructible element: the size zeroed)
 0x005153C0 0x60 __dt__Q22ai12CAiPathQueueFv  # OVL2; s1:ref by hand (the destructor __sinit_ai_astar.cpp registers for ai::path_queue, as SOCOM 1's registers __dt__Q22ai12CAiPathQueueFv for the same object)
 0x00515420 0x80 func_00515420  # OVL2
@@ -9797,11 +9797,11 @@
 0x0053A410 0xEC func_0053A410  # OVL2
 0x0053A500 0xE0 func_0053A500  # OVL2
 0x0053A5E0 0x150 func_0053A5E0  # OVL2
-0x0053A730 0x134 func_0053A730  # OVL2
-0x0053A870 0x78 func_0053A870  # OVL2
-0x0053A8F0 0x30 func_0053A8F0  # OVL2
-0x0053A920 0x3C func_0053A920  # OVL2
-0x0053A960 0x60 func_0053A960  # OVL2
+0x0053A730 0x134 DeleteLayers__6CAiMapFv  # OVL2; ours (new in SOCOM II: ~CAiMap's call after FreeEx -- every layer past the first deleted through ~CAiMapLayer inlined, the pod erase 0x53AAC0 over them, SetModified(true); ai_maplayer.cpp)
+0x0053A870 0x78 __dt__14CAiMapLayerVecFv  # OVL2; ours (~CAiMap destroys m_layers through it with -1, as it does readers through ~readers: four this-tests, a class over the pointer vector's three -- ai_maplayer.cpp)
+0x0053A8F0 0x30 AllocCells__11CAiMapLayerFUi  # OVL2; ours (the map readers' call: m_cells = CAiCell::Alloc(n), returned -- ai_maplayer.cpp)
+0x0053A920 0x3C FreeCells__11CAiMapLayerFv  # OVL2; ours (~CAiMap's first call, on m_layer0: the cells freed with _free, the pointer zeroed -- ai_maplayer.cpp)
+0x0053A960 0x60 __dt__11CAiMapLayerFv  # OVL2; ours (~CAiMap destroys m_layer0 through it with -1: FreeCells inlined -- ai_maplayer.cpp)
 0x0053A9C0 0x8C __ct__11CAiMapLayerFPCc  # OVL2; ours (new in SOCOM II: a map layer's constructor -- its name copied in (16 bytes, the last kept zero) or emptied, its words cleared, flag 1 set; CAiMap(int) builds its first layer with it, a name of 0)
 0x0053AA50 0x6C func_0053AA50  # OVL2
 0x0053AAC0 0x120 func_0053AAC0  # OVL2; OVL2's copy of the pod vector's erase (OVL1 0x28B150, the same 0x120 bytes; CCharacterType::CleanupTemporary's erase calls it, as SOCOM 1's calls erase__Q23std38__vector_pod<Ui,...>FPUiPUi); ovl-copy: erase__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPUiPUi
