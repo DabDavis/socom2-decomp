@@ -1251,6 +1251,24 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     one definition would serve 13 class-vector inserts, ~18 KB), the class push_back through a
     deleter data() reference (SOCOM 1's line 923), and the deleter's destructor in a unit's tail
     calling clear out of line (seal_dyn.cpp, ai_map.cpp).
+- **Tells from the turret and the vehicle** (veh_turret.cpp, veh_vehicle.cpp):
+  - an address taken from a parameter (an entry + 0x20) and passed to an inline that loops over
+    it is recomputed every pass; held in a local in the caller first, it stays in a saved
+    register (CVehicle::Spawn);
+  - `if (max > -1 && count >= max) return 0;` inside an inline gives the target's "branch to
+    body, branch to body, jump to end"; `if (max < 0 || count < max) {...}` does not
+    (CTurret::Create);
+  - `x = c && m ? m : x;` on a bool parameter narrows at the join (`andi` in the delay slot);
+    `if (c && m) x = m;` narrows inside the arm (SetThermal);
+  - the flag setter `f &= ~(on ? 0 : mask); f |= on ? mask : 0;` reproduces the `movz`/`nor`
+    pattern; with a constant `true` its first half becomes a `dsll32`/`dsrl32` zero-extension;
+  - a network test with the player in a local loads this entity's controller first; written
+    inline, that load is hoisted above the call (PrePostTick against Tick);
+  - veh_turret.cpp is 0x3A71A0-0x3ACA5F (initialiser 0x404240; its template tail from 0x3AB5F0:
+    CTurretDef's constructor, resize, erase, insert), veh_vehicle.cpp 0x3ACA60-0x3AFB2F
+    (initialiser 0x4043A0), a near-copy with 136-byte definitions and 688-byte vehicles;
+  - open on include/vector: a class-vector resize would unblock both definition-vector Inits,
+    the two template tails and ~CTurretDefVector (0x3AC9E0).
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
