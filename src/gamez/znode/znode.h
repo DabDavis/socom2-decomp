@@ -7,6 +7,7 @@
 #ifndef ZNODE_H
 #define ZNODE_H
 
+#include <eetypes.h>
 #include <list>
 #include <vector>
 
@@ -240,6 +241,10 @@ public:
     /* a texture select's name resolved against the world's textures, the default one failing it:
      * the handle and its palette listed, the select copied in (SOCOM 1's; the wep lane's) */
     CTexture *ResolveTextureName(_word128 *names, _word128 *select);
+    /* a block of n texture selects opened at the cursor: its zeroed head, the end tag, and the
+     * DMA reference and tag that send it (SOCOM 1's static, byte for byte) */
+    static _word128 *GetTextureSelectBlock_ver2(unsigned int n, _word128 **cursor, _word128 *ref,
+                                           _word128 *tag);
 
     /* the wep lane's, from the constructor (0x3C4390): two vectors before the blend words, and the
      * dynamic textures and two words after them -- CSubMesh's own members start at 0x68 */
@@ -557,7 +562,12 @@ public:
     unsigned char _4[0x10 - 4];   // the rest of TEXTURE_PARAMS
     CAssetLib *m_AssetLib;   // 0x10 (AddTexture sets it)
     char *m_name;   // 0x14
-    unsigned char _18[0x54 - 0x18];
+    void *m_buffer;   // 0x18 (SOCOM 1's DWARF, from here; the wep lane's)
+    CTexPalette *m_palette;   // 0x1c
+    unsigned char _20[0x40 - 0x20];
+    /* the VU's DMA reference to its select (SOCOM 1's _word128; ResolveTextureName copies it) */
+    u_long128 m_dmaRefVu;   // 0x40
+    unsigned char _50[0x54 - 0x50];
     /* the first mip level's register (SOCOM 1's sceGsMiptbp1 *): a texture with mip levels has one
      * (the asset manager's mip walk tests it) */
     void *m_MIP1;   // 0x54
@@ -1122,6 +1132,9 @@ class CAssetList;
 class CWorld : public CNode {
 public:
     static CWorld *m_world;
+    /* a texture's handle by name, from the asset manager's list (SOCOM 1's four words, out of
+     * line at 0x1EC940; the wep lane's) */
+    static CTexHandle *GetTexHandle(const char *name);
     static CNode *GetModel(const char *name);
     /* the asset manager's library list (SOCOM 1's, 0xC bytes in both; out of line in SOCOM II's
      * node_assetlib.cpp, which AddModel and other units call) */
