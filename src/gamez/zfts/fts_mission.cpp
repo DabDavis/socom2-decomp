@@ -27,6 +27,143 @@ public:
 
 extern CHUD *theHUD;
 
+/* a valve's change of state, its callbacks told (SOCOM 1's CValve::MakeCallbacks; zanim.h's CValve
+ * has neither the enum nor the setter, so they are spelled here as fts_remote.cpp spells them) */
+enum VALVE_STATE {
+    VALVE_SAME,
+    VALVE_ON,
+    VALVE_OFF
+};
+
+extern "C" void func_003519F0(CValve *valve, VALVE_STATE state);   /* CValve::MakeCallbacks */
+
+/* CValve::SetValue, inlined in both builds */
+inline void SetValveValue(CValve *valve, int value)
+{
+    VALVE_STATE state = VALVE_SAME;
+
+    if (valve->m_value != value)
+        state = value == 0 ? VALVE_OFF : VALVE_ON;
+    valve->m_value = value;
+    if (state != VALVE_SAME)
+        func_003519F0(valve, state);
+}
+
+/* the online game (SOCOM 1's CZNetGame, at SOCOM II's offsets: only what this unit touches) */
+class CZNetGame {
+public:
+    /* the states (SOCOM 1's DWARF) */
+    enum MP_MINOR_GAME_STATE {
+        MP_MINOR_UNKNOWN = 0,
+        MP_MINOR_NOTREADY = 1,
+        MP_MINOR_READY = 2
+    };
+    enum MP_MAJOR_GAME_STATE {
+        MP_MAJOR_UNKNOWN = 0,
+        MP_MAJOR_MENUS = 1,
+        MP_MAJOR_LOADING = 2,
+        MP_MAJOR_INPLAY = 3,
+        MP_MAJOR_ROUNDOVER = 4,
+        MP_MAJOR_NEWROUND = 5,
+        MP_MAJOR_GAMEOVER = 6,
+        MP_MAJOR_PLAY = 12,
+        MP_MAJOR_GAMELOBBY = 13,
+        MP_MAJOR_GHOST = 14
+    };
+
+    void Initialize();
+    void SetE3RoundCount(int count);
+    MP_MAJOR_GAME_STATE MPMajorGameState(MP_MAJOR_GAME_STATE state);
+    MP_MAJOR_GAME_STATE MyMajorGameState(MP_MAJOR_GAME_STATE state);
+    MP_MINOR_GAME_STATE MyMinorGameState(MP_MINOR_GAME_STATE state);
+    bool LateJoiner(bool late);
+    void ResetScores();
+
+    unsigned char _0[0xc];
+    CValve *m_pE3RoundValve;   // 0xc
+    unsigned char _10[0x20 - 0x10];
+    CValve *m_pMyMajorGameStateValve;   // 0x20 (SOCOM 1's at 0x1c)
+    CValve *m_pMyMinorGameStateValve;   // 0x24 (SOCOM 1's at 0x20)
+    unsigned char _28[0x2c - 0x28];
+    CValve *m_pLateJoinerValve;   // 0x2c (SOCOM 1's at 0x28)
+    unsigned char _30[0xcc - 0x30];
+    bool m_late_joiner;   // 0xcc (SOCOM 1's at 0x94)
+    unsigned char _cd[0xd4 - 0xcd];
+    unsigned char m_d4;   // 0xd4 (SOCOM 1's at 0x9b)
+    unsigned char _d5[0x113 - 0xd5];
+    MP_MAJOR_GAME_STATE m_mp_major_game_state;   // 0x113 (SOCOM 1's at 0xdb)
+    MP_MAJOR_GAME_STATE m_my_major_game_state;   // 0x114 (SOCOM 1's at 0xdc)
+    MP_MINOR_GAME_STATE m_my_minor_game_state;   // 0x115 (SOCOM 1's at 0xdd)
+    unsigned char _116[0x11c - 0x116];
+    int m_e3_round_count;   // 0x11c
+    int m_120;   // 0x120
+    int m_124;   // 0x124
+    int m_128;   // 0x128
+};
+
+/* the mission (only what this unit touches, at SOCOM II's offsets) */
+class CMission {
+public:
+    CZNetGame *CreateNetGame();
+
+    unsigned char _0[0x1808];
+    CZNetGame *m_pNetGame;   // 0x1808 (SOCOM 1's at 0x584)
+};
+
+/* the online game started (OVL1 0x2A9F00) */
+CZNetGame *CMission::CreateNetGame()
+{
+    m_pNetGame->Initialize();
+    return m_pNetGame;
+}
+
+/* the rounds played so far, and their valve (OVL1 0x2A7510) */
+void CZNetGame::SetE3RoundCount(int count)
+{
+    m_e3_round_count = count;
+    SetValveValue(m_pE3RoundValve, count);
+}
+
+/* the game's own state (OVL1 0x2A7490) */
+CZNetGame::MP_MAJOR_GAME_STATE CZNetGame::MPMajorGameState(MP_MAJOR_GAME_STATE state)
+{
+    m_mp_major_game_state = state;
+    return state;
+}
+
+/* this client's state, and its valve (OVL1 0x2A7420 and 0x2A73B0) */
+CZNetGame::MP_MAJOR_GAME_STATE CZNetGame::MyMajorGameState(MP_MAJOR_GAME_STATE state)
+{
+    m_my_major_game_state = state;
+    SetValveValue(m_pMyMajorGameStateValve, state);
+    return state;
+}
+
+CZNetGame::MP_MINOR_GAME_STATE CZNetGame::MyMinorGameState(MP_MINOR_GAME_STATE state)
+{
+    m_my_minor_game_state = state;
+    SetValveValue(m_pMyMinorGameStateValve, state);
+    return state;
+}
+
+/* whether this client joined late, and its valve (OVL1 0x2A7340) */
+bool CZNetGame::LateJoiner(bool late)
+{
+    m_late_joiner = late;
+    SetValveValue(m_pLateJoinerValve, late ? 1 : 0);
+    return late;
+}
+
+/* the scores back to the start (OVL1 0x2A72D0) */
+void CZNetGame::ResetScores()
+{
+    SetE3RoundCount(0);
+    m_120 = 0;
+    m_124 = 0;
+    m_128 = 64;
+    m_d4 = 0;
+}
+
 /* the file's tables (SOCOM 1's names; SOCOM II has 32 visibility lists of 31 maps where SOCOM 1
  * had 10 of 9) */
 namespace {

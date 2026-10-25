@@ -3804,11 +3804,11 @@
 0x002A6B90 0xB8 TenSecondLaunch__9CZNetGameFb  # OVL1; s1:align
 0x002A6C50 0x64C func_002A6C50  # OVL1
 0x002A72A0 0x30 func_002A72A0  # OVL1
-0x002A72D0 0x64 func_002A72D0  # OVL1
-0x002A7340 0x6C func_002A7340  # OVL1
-0x002A73B0 0x64 func_002A73B0  # OVL1
-0x002A7420 0x64 func_002A7420  # OVL1
-0x002A7490 0xC func_002A7490  # OVL1
+0x002A72D0 0x64 ResetScores__9CZNetGameFv  # OVL1; s1:order by hand (the states lane: after TenSecondLaunch and the master's start as in SOCOM 1; zeroes the scores and puts 64 in one, SOCOM II's clearing the round count through SetE3RoundCount, inlined)
+0x002A7340 0x6C LateJoiner__9CZNetGameFb  # OVL1; s1:order by hand (the states lane: after ResetScores as in SOCOM 1; stores its byte and sets the valve beside it, returning the argument, as SOCOM 1's does)
+0x002A73B0 0x64 MyMinorGameState__9CZNetGameFQ29CZNetGame19MP_MINOR_GAME_STATE  # OVL1; s1:order by hand (the states lane: after LateJoiner as in SOCOM 1; its byte and valve are SOCOM 1's MyMinorGameState's moved 0x38 and 4 on, as MyMajorGameState's are)
+0x002A7420 0x64 MyMajorGameState__9CZNetGameFQ29CZNetGame19MP_MAJOR_GAME_STATE  # OVL1; s1:order by hand (the states lane: after MyMinorGameState as in SOCOM 1; byte 0x114 and the valve at 0x20 where SOCOM 1's are 0xDC and 0x1C)
+0x002A7490 0xC MPMajorGameState__9CZNetGameFQ29CZNetGame19MP_MAJOR_GAME_STATE  # OVL1; s1:order by hand (the states lane: SOCOM 1's 12-byte store-and-return after MyMajorGameState; byte 0x113, which the network glue reads as the major state)
 0x002A74A0 0x6C func_002A74A0  # OVL1
 0x002A7510 0x4C SetE3RoundCount__9CZNetGameFi  # OVL1; s1:align
 0x002A7560 0x90 func_002A7560  # OVL1
