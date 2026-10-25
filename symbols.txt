@@ -8245,9 +8245,9 @@
 0x003CB600 0x1E0 Init__12CZProjectileFv  # OVL1; by hand (the wep lane: CZProjectile's constructor calls it between the owner's store and the extension's SetProjectile -- SOCOM 1's constructor's inline stores (rotation 0, time 9999999, the flags, handles -1, flyout index 1), with SOCOM II's members; the name ours)
 0x003CB7E0 0xC0 __dt__12CZProjectileFv  # OVL1; s1:align, checked by hand (stores __vt__12CZProjectile, cleans up; PlacedExplosive's destructor calls it as its base's)
 0x003CB8A0 0x50 __ct__12CZProjectileFv  # OVL1; s1:calls by hand (the wep lane: stores __vt__12CZProjectile first; PlacedExplosive's constructor calls it before storing its own table, as SOCOM 1's calls CZProjectile's constructor)
-0x003CB8F0 0x240 func_003CB8F0  # OVL1
-0x003CBB30 0x12C func_003CBB30  # OVL1
-0x003CBC60 0x188 func_003CBC60  # OVL1
+0x003CB8F0 0x240 GetNumExplosives__16CZProjectileListFi  # OVL1; by hand (the wep lane: CZProjectileList's -- counts a shooter's charges and used slots whose weapon's GetIDType is 121, 151, 171 or 185, -1 without slots or with none used; OVL2's kit 0x5C0AE0 calls it; the name ours)
+0x003CBB30 0x12C Dump__16CZProjectileListFv  # OVL1; by hand (the wep lane: CZProjectileList's -- every charge's and every used slot's weapon GetName called and dropped, a debug dump with its output compiled out; 0x2AB3F0 calls it; the name ours)
+0x003CBC60 0x188 RemoveExplosivesInRange__16CZProjectileListFPC6CPnt3Df  # OVL1; by hand (the wep lane: CZProjectileList's -- walks m_explosives at +4 with an iterator in memory, erases through the pod erase 0x28F220 every charge of item 152 within the range, squared, of the point, after setting grenade state 3, reporting it, destroying its pickup and unlisting it from CZWeapon::m_placedExplosives, as Clear does; CZWeapon's wrapper 0x3CFFB0 tail-calls it; the name ours)
 0x003CBDF0 0x188 AcquireProjectile__16CZProjectileListFR8CZWeaponR6CZAmmo  # OVL1; s1:align, checked by hand (directly before ReleaseIndirectFireDI, CZProjectileList's first function as in SOCOM 1)
 0x003CBF80 0x38 ReleaseIndirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi  # OVL1; s1:exact
 0x003CBFC0 0xE8 GetNextIndirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi  # OVL1; s1:order by hand (SOCOM 1's, before ReleaseIndirectFireDI: the first free indirect-fire intersection handed out and marked used, the next free found; SOCOM II also clears its bit 19 and its mask)
