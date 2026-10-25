@@ -338,7 +338,8 @@ CMenuStack *GetMenuStack();
 struct ZVidMenuView {
     unsigned char _0[0x74];
     unsigned char videoMode;   // 0x74 (SOCOM 1's at 0x50): 2 is PAL
-    unsigned char _75[0x88 - 0x75];
+    unsigned char vidMode;   // 0x75 (SOCOM 1's at 0x51): 0 NTSC, 2 DTV
+    unsigned char _76[0x88 - 0x76];
     int pcrtcOffsetX;   // 0x88: the screen's origin (SOCOM 1's pcrtcOffset at 0x5C)
     int pcrtcOffsetY;   // 0x8c
 };
@@ -462,6 +463,8 @@ void func_002E05D0(CZOnlineLobby *lobby);                           /* (the DME'
 bool func_0030DBB0(CZNetwork *net);                                 /* (the DME initialised) */
 void func_002B8660();
 void func_002E60C0(CZOnlineLobby *lobby, int index, const char *text);   /* (a clan message changed) */
+CUIVariable *func_00385900(CUIVarManager *vars, const char *name);  /* CUIVarManager::Find (SOCOM 1's) */
+void func_002F4DF0(CZOnlineLobby *lobby, const char *text, void (*done)(const char *, void *), void *data);   /* Censor */
 void func_002E8980(CZOnlineLobby *lobby, int index);                /* DeclineClanInvitation */
 void func_002E89F0(CZOnlineLobby *lobby, int index);                /* AcceptClanInvitation */
 void func_002E6000(CZOnlineLobby *lobby, const char *name);         /* (clan member's info) */

@@ -663,6 +663,32 @@ bool UIDisableButton(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+bool UICheckVideoMode(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *mode = ArgText(ArgName(hdr));
+
+    if (mode && *mode) {
+        if (!strcasecmp(mode, "NTSC"))
+            return zVid.vidMode == 0;
+        if (!strcasecmp(mode, "DTV"))
+            return zVid.vidMode == 2;
+    }
+    return true;
+}
+
+bool UISwitchProgressiveVideo(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *mode = ArgText(ArgName(hdr));
+
+    if (mode && *mode) {
+        if (!strcasecmp(mode, "NTSC"))
+            zVid.videoMode = 0;
+        else if (!strcasecmp(mode, "DTV"))
+            zVid.videoMode = 2;
+    }
+    return true;
+}
+
 bool UISetScreenOrigin(C2DAnimCmdHdr *hdr, float *dT)
 {
     int y = CValve::Create("ScreenOriginY", (VALVE_TYPE)1)->m_value;
@@ -926,6 +952,12 @@ bool UIGetClanRanking(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+bool UIDeleteClanMessage(C2DAnimCmdHdr *hdr, float *dT)
+{
+    func_002E6010(&theLobby, atoi(ArgText(ArgName(hdr))));
+    return true;
+}
+
 bool UIModifyClanMessage(C2DAnimCmdHdr *hdr, float *dT)
 {
     int index = atoi(ArgText(ArgName(hdr)));
@@ -933,12 +965,6 @@ bool UIModifyClanMessage(C2DAnimCmdHdr *hdr, float *dT)
 
     if (var && var->type == 3)
         func_002E60C0(&theLobby, index, var->String());
-    return true;
-}
-
-bool UIDeleteClanMessage(C2DAnimCmdHdr *hdr, float *dT)
-{
-    func_002E6010(&theLobby, atoi(ArgText(ArgName(hdr))));
     return true;
 }
 
@@ -1100,6 +1126,12 @@ bool UIBanSelfFromGame(C2DAnimCmdHdr *hdr, float *dT)
 /* the hard disk operation's last result (a byte; the name ours) */
 extern "C" unsigned char data_00414EB0;
 
+bool UIQuitClan(C2DAnimCmdHdr *hdr, float *dT)
+{
+    func_002E8EF0(&theLobby);
+    return true;
+}
+
 /* the hard disk operation's result, told to the menu through a valve and the lobby's event handler
  * (HardDriveOperation hands it on; SOCOM II's, the name ours) */
 bool HardDriveOperationCallback(int result)
@@ -1124,12 +1156,6 @@ bool HardDriveOperationCallback(int result)
     SetValveValue(CValve::Create("hard_disk_error_code", (VALVE_TYPE)1), code);
     if (theLobby.m_event_handler)
         theLobby.m_event_handler("HDD_ERROR", 0);
-    return true;
-}
-
-bool UIQuitClan(C2DAnimCmdHdr *hdr, float *dT)
-{
-    func_002E8EF0(&theLobby);
     return true;
 }
 
@@ -1190,6 +1216,23 @@ void AuxNetCensorText(const char *text, void *var)
 {
     if (var)
         func_003862A0((CUIVariable *)var, text);
+}
+
+bool UINetCensorText(C2DAnimCmdHdr *hdr, float *dT)
+{
+    if (theNetwork.m_bNetwork && !func_003045B0(&data_0044FE10)) {
+        const char *name;
+        CZAnim *anim = ZAnim.m_CurAnim;
+
+        name = anim->GetName(hdr->m_argument_index);
+        if (name && !strcasecmp("$1", name))
+            name = anim->m_arg_list->GetCharP(0);
+        CUIVariable *var = func_00385900(&theUIVarManager, name);
+
+        if (var && var->type == 3)
+            func_002F4DF0(&theLobby, var->String(), AuxNetCensorText, var);
+    }
+    return true;
 }
 
 bool UIForceMediusStatusReport(C2DAnimCmdHdr *hdr, float *dT)
@@ -1297,21 +1340,6 @@ bool UIIsControllerConnected(C2DAnimCmdHdr *hdr, float *dT)
     return connected;
 }
 
-bool UIVerifyPatchLevel(C2DAnimCmdHdr *hdr, float *dT)
-{
-    const char *level = ArgName(hdr);
-
-    level = !strcmp(level, "INPUT_STRING") ? ZAnim.m_CurAnim->m_arg_list->GetCharP(0) : level;
-    bool ok = func_002FD6E0(data_0044FC60, level);
-
-    if (!ok) {
-        CUIVariable *var = func_003857C0(&theUIVarManager, "PatchServerURL", 0, UIVAR_SESSION);
-
-        func_003862A0(var, func_002FD610(data_0044FC60, level));
-    }
-    return ok;
-}
-
 bool UIDMEInit(C2DAnimCmdHdr *hdr, float *dT)
 {
     CValve *valve = CValve::Create(ArgName(hdr), (VALVE_TYPE)2);
@@ -1333,6 +1361,21 @@ bool UIMediusInit(C2DAnimCmdHdr *hdr, float *dT)
 
     SetValveValue(valve, func_00300840());
     return true;
+}
+
+bool UIVerifyPatchLevel(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *level = ArgName(hdr);
+
+    level = !strcmp(level, "INPUT_STRING") ? ZAnim.m_CurAnim->m_arg_list->GetCharP(0) : level;
+    bool ok = func_002FD6E0(data_0044FC60, level);
+
+    if (!ok) {
+        CUIVariable *var = func_003857C0(&theUIVarManager, "PatchServerURL", 0, UIVAR_SESSION);
+
+        func_003862A0(var, func_002FD610(data_0044FC60, level));
+    }
+    return ok;
 }
 
 bool UILobbyDisconnect(C2DAnimCmdHdr *hdr, float *dT)
