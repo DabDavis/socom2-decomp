@@ -232,6 +232,41 @@ public:
     unsigned int m_entityID;                /* 0x24 */
 };   /* 0x28 bytes */
 
+/* one step of a sequence: a sound played to its end, or a pause (SOCOM 1's class) */
+class CSndSequenceEntry {
+public:
+    CSndSequenceEntry(CSnd *sound, float pause);
+    bool IsFading();
+    void FadeOut();
+    void Stop();
+    void Play();
+    bool Tick(float dT);
+
+    CSnd *m_sound;              /* 0x0: none for a pause */
+    CSndInstance *m_instance;   /* 0x4 */
+    float m_pause;              /* 0x8 */
+    float m_timer;              /* 0xC */
+};   /* 0x10 bytes */
+
+/* sounds played one after another (sndjukeboxm.rdr's SEQ_NAME records; SOCOM 1's class) */
+class CSndSequence {
+public:
+    CSndSequence();
+    ~CSndSequence();
+    void FadeOut();
+    bool IsFading();
+    void Stop();
+    void Play();
+    bool Tick(float dT);
+    void CreateSequence(_zrdr *rdr);
+
+    std::vector<CSndSequenceEntry> m_entries;   /* 0x00 */
+    int m_current;                              /* 0x0C: -1 before the first */
+    char *m_name;                               /* 0x10 */
+    bool m_done;                                /* 0x14 */
+    bool m_fading;                              /* 0x15 */
+};   /* 0x18 bytes */
+
 enum MUSIC_MODE {};   // its values are not in SOCOM 1's DWARF; the SOUND tick passes 1 and 3
 
 class CSndJukebox {

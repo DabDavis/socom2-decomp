@@ -6276,10 +6276,10 @@
 0x00349DB0 0xDC Tick__12CSndSequenceFf  # OVL1; s1:calls
 0x00349E90 0x188 CreateSequence__12CSndSequenceFP5_zrdr  # OVL1; s1:align
 0x0034A020 0x80 __dt__12CSndSequenceFv  # OVL1; s1:align
-0x0034A0A0 0x24 func_0034A0A0  # OVL1
+0x0034A0A0 0x24 __ct__12CSndSequenceFv  # OVL1; s1:order by hand (SOCOM 1's CSndSequence constructor, right after the destructor in both builds: the entries' vector zeroed, the current entry -1, the name 0)
 0x0034A0D0 0x4CC insert__Q23std74__vector_imp<17CSndSequenceEntry,Q23std30allocator<17CSndSequenceEntry>,0>FP17CSndSequenceEntryUiRC17CSndSequenceEntry  # OVL1; s1:align
 0x0034A5A0 0x68 __dt__Q23std76__vector_deleter<17CSndSequenceEntry,Q23std30allocator<17CSndSequenceEntry>>Fv  # OVL1; s1:align
-0x0034A610 0x8 func_0034A610  # OVL1
+0x0034A610 0x8 clear__Q23std76__vector_deleter<17CSndSequenceEntry,Q23std30allocator<17CSndSequenceEntry>>Fv  # OVL1; s1:order by hand (SOCOM 1's clear of the entries' deleter, after its destructor in both builds, which calls it; SOCOM II's element loop is gone)
 0x0034A620 0x20 func_0034A620  # OVL1
 0x0034A640 0xC func_0034A640  # OVL1
 0x0034A650 0x4C func_0034A650  # OVL1
