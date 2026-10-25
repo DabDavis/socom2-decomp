@@ -176,6 +176,64 @@ bool CAiSScript::CanAttack() const
     return true;
 }
 
+/* (OVL2 0x5605A0, the SEAL lane's row: the controller told a byte) */
+extern "C" void func_005605A0(CSealCtrlAi *ai, unsigned char x);
+
+/* CAiState's helpers the response states' Ticks call out of line (each a member -- the state in
+ * a0 -- unnamed, so spelled with the placeholder and the state first) */
+
+/* the word at 0x54, when set, handed to the controller and cleared (OVL2 0x5F6190) */
+extern "C" void func_005F6190(CAiState *s, CSealCtrlAi *ai)
+{
+    if (s->m_54 != -1) {
+        func_005605A0(ai, s->m_54);
+        s->m_54 = -1;
+    }
+}
+
+/* a delayed step running: true while the delay (the flags' bit 30) lasts, then the step taken
+ * (OVL2 0x5F61E0) */
+extern "C" bool func_005F61E0(CAiState *s)
+{
+    bool r = false;
+
+    if (s->m_flags & 0x40000000) {
+        r = true;
+        s->m_delay -= CAiState::m_dT;
+        if (s->m_delay <= 0.0f) {
+            s->m_delay = 0.0f;
+            s->UpdatePhase(s->m_nextPhase);
+            s->SetFlags(0, 0x40000000);
+            r = false;
+        }
+    }
+    return r;
+}
+
+/* every `period` seconds of the controller's state clock, to a tenth (OVL2 0x5F6270).
+ * OPEN, 0x48 against 0x44: the target builds 10.0 before it loads the clock and multiplies the
+ * period first, with no load-delay nop; here the clock's load comes first. Tried: the inline
+ * StateTimer, the products in either order, a shared constant local, the divisor in a local. */
+extern "C" bool func_005F6270(CAiState *s, float period, CSealCtrlAi *ai)
+{
+    return (int)(10.0f * ((CAiCtrlClock *)ai)->m_stateTimer) % (int)(10.0f * period) == 0;
+}
+
+/* a step taken now, or after a delay (the flags' bit 30 then set); the step the state is on
+ * (OVL2 0x5F62C0) */
+extern "C" unsigned int func_005F62C0(CAiState *s, unsigned int phase, float delay)
+{
+    if (delay == 0.0f) {
+        s->UpdatePhase(phase);
+        s->SetFlags(0, 0x40000000);
+    } else {
+        s->SetFlags(0x40000000, 0);
+        s->m_delay = delay;
+        s->m_nextPhase = phase;
+    }
+    return s->m_phase;
+}
+
 /* the controller's state of a kind (SOCOM 1's FindAiState; OVL2 0x5F5FC0, a byte-exact draft:
  * zseal.h's CSealCtrlAi does not declare it) */
 extern "C" CAiState *FindAiState__11CSealCtrlAiCF8AI_STATE(const CSealCtrlAi *ai, AI_STATE state);
