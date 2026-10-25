@@ -6135,7 +6135,7 @@
 0x00341A00 0x14 func_00341A00  # OVL1
 0x00341A20 0xC func_00341A20  # OVL1
 0x00341A30 0x2C OnListenerDeath__4CSndFv  # OVL1; s1:align
-0x00341A60 0x4AC func_00341A60  # OVL1
+0x00341A60 0x4AC PostTick__4CSndFfPv  # OVL1; s1:calls (CZObjectiveList::Tick calls it at SOCOM 1's instruction with (0.0f, 0); five direct callers in OVL1 and its address taken once, at 0x1EC7AC -- a (float, void *) tick callback's shape; 0x4AC bytes against SOCOM 1's 0x150, SOCOM II's sound reworked) -- the HUD lane
 0x00341F10 0x180 UnloadAllSounds__4CSndFv  # OVL1; s1:align
 0x00342090 0x70 func_00342090  # OVL1
 0x00342100 0x40 func_00342100  # OVL1

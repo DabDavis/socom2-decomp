@@ -956,6 +956,25 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     accessors (const or not, the index unsigned or int) and zrdr.h's constructor. Overloads cannot
     serve both (each side calls with int counters through non-const pointers); a unit that needs
     both headers waits on renamed accessor families.
+- **Tells from the HUD, round 10** (hud_objectives.cpp complete, hud_ammo.cpp, hud_mpinfobox.cpp,
+  hud_healthbar.cpp):
+  - an inline bool written `if (i < 0 || i >= n) return false; ...; return true;` puts the false
+    block first, as the target does (ResolveIndex, after SOCOM 1's line table); the `&&` form
+    puts it after;
+  - scdiff leaves a function-local static float unchecked but compares a file-scope static by
+    content: prefer file statics;
+  - a local that comes from an inline helper takes a lower saved register than the caller's
+    named locals and earlier inlined loop temporaries (NextObjective's greying moved into an
+    inline for `newindex` to land in s1);
+  - MSL's `vector<bool>`: its destructor one null-tested level (`if (data_) operator
+    delete(data_)`); an element read goes through SOCOM 1's `reference {vec, n}` to the
+    out-of-line `test_bit`, the reference kept on the stack inside a loop, folded outside one;
+  - a same-unit function the target calls out of line is pinned with `#pragma auto_inline off`
+    (SetCurColor);
+  - `if (own) tex = x;` before a call pads the join with a nop; a ternary in the call's argument
+    does not;
+  - include/string lacks `basic_string(const char *)` (its out-of-line copy is 0x2396F0):
+    CRadioIcon_Dynamic::Tick waits on it.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
