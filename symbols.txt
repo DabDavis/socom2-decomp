@@ -9792,7 +9792,7 @@
 0x00539580 0x138 func_00539580  # OVL2
 0x005396C0 0x3E0 func_005396C0  # OVL2
 0x00539AA0 0xD0 func_00539AA0  # OVL2
-0x00539B70 0x50 func_00539B70  # OVL2
+0x00539B70 0x50 func_00539B70  # OVL2; OVL2's copy of _saturate<f> (OVL1 0x267A60, the same 0x50 bytes; CRemoteCtrl::PostMortemPreTick calls it -- the kit lane); ovl-copy: _saturate<f>__FPfRCfRCf_b
 0x00539BC0 0xBC func_00539BC0  # OVL2
 0x00539C80 0x74 func_00539C80  # OVL2
 0x00539D00 0x50 func_00539D00  # OVL2
@@ -10941,19 +10941,19 @@
 0x005B8FF0 0x2C func_005B8FF0  # OVL2
 0x005B9020 0xC func_005B9020  # OVL2
 0x005B9030 0x8C func_005B9030  # OVL2
-0x005B90C0 0x10 func_005B90C0  # OVL2
-0x005B90D0 0x8 func_005B90D0  # OVL2
-0x005B90E0 0x8 func_005B90E0  # OVL2
-0x005B90F0 0x14 func_005B90F0  # OVL2
+0x005B90C0 0x10 IncrScreenOffsetY__5CZKitFf  # OVL2; s1:order by hand (SOCOM 1's IncrScreenOffsetY: the same add to the screen offset's y, at 0x5C here where SOCOM 1's is 0x48 -- the reticle block 0x14 on; the kit's first accessors in SOCOM 1's order)
+0x005B90D0 0x8 ScreenOffsetY__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's ScreenOffsetY, after IncrScreenOffsetY: the float at 0x5C, SOCOM 1's 0x48)
+0x005B90E0 0x8 ScreenOffsetX__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's ScreenOffsetX, next: the float at 0x58, SOCOM 1's 0x44)
+0x005B90F0 0x14 IsUsingBinocs__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's IsUsingBinocs, next: the body's byte (0x200, SOCOM 1's 0x160) compared with 4 where SOCOM 1's compares 3)
 0x005B9110 0x70 func_005B9110  # OVL2
-0x005B9180 0x34 func_005B9180  # OVL2
+0x005B9180 0x34 InitializeSniperKick__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's InitializeSniperKick: the kick's distance zeroed, its baseline from the controller's +0x130 when there is one, AdrenalineIncr(0.5) tail-called -- the same code with the fields 0x14 on)
 0x005B91C0 0xB4 func_005B91C0  # OVL2
 0x005B9280 0x518 func_005B9280  # OVL2
 0x005B97A0 0x120 func_005B97A0  # OVL2
 0x005B98C0 0xC4 func_005B98C0  # OVL2
-0x005B9990 0x14 func_005B9990  # OVL2
+0x005B9990 0x14 IsUsingScope__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's IsUsingScope, before SetWeaponInfoChanged as there: the body's byte at least 5 where SOCOM 1's is 4)
 0x005B99B0 0x1C SetWeaponInfoChanged__5CZKitFv  # OVL2; s1:exact
-0x005B99D0 0x24 func_005B99D0  # OVL2
+0x005B99D0 0x24 PendingPickupHandled__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's PendingPickupHandled, after SetWeaponInfoChanged as there: a flag bit cleared (bit 14, SOCOM 1's 13) and the pickup wait zeroed, 0x8B8 here, SOCOM 1's 0x878)
 0x005B9A00 0x1A8 func_005B9A00  # OVL2
 0x005B9BB0 0x258 func_005B9BB0  # OVL2
 0x005B9E10 0xEC func_005B9E10  # OVL2
@@ -10989,14 +10989,14 @@
 0x005BDA10 0x58 func_005BDA10  # OVL2
 0x005BDA70 0x90 func_005BDA70  # OVL2
 0x005BDB00 0x14 func_005BDB00  # OVL2
-0x005BDB20 0x110 func_005BDB20  # OVL2
+0x005BDB20 0x110 ItemHasAmmo__5CZKitF10EQUIP_ITEM  # OVL2; s1:calls by hand (another lane's lead, verified: SOCOM II's CSealCtrl::CanPlaceBomb and CanPerformAction call it after HasItem, where SOCOM 1's call ItemHasAmmo(EQUIP_ITEM); the same item walk on the type byte, then the ammunition)
 0x005BDC30 0x1E4 func_005BDC30  # OVL2
 0x005BDE20 0x94 func_005BDE20  # OVL2
 0x005BDEC0 0xE4 func_005BDEC0  # OVL2
 0x005BDFB0 0x6C func_005BDFB0  # OVL2
-0x005BE020 0x8 func_005BE020  # OVL2
-0x005BE030 0x8 func_005BE030  # OVL2
-0x005BE040 0x8 func_005BE040  # OVL2
+0x005BE020 0x8 SetBody__5CZKitFP10CZSealBody  # OVL2; s1:order by hand (SOCOM 1's SetBody, before GetNumItems and GetSelectedItemNum as there: the body at 0x830, SOCOM 1's 0x814)
+0x005BE030 0x8 GetNumItems__5CZKitCFv  # OVL2; s1:order by hand (SOCOM 1's GetNumItems: the word at 0x82C, SOCOM 1's 0x810)
+0x005BE040 0x8 GetSelectedItemNum__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's GetSelectedItemNum: the word at 0x824, SOCOM 1's 0x808)
 0x005BE050 0xC0 func_005BE050  # OVL2
 0x005BE110 0xB8 func_005BE110  # OVL2
 0x005BE1D0 0x68 func_005BE1D0  # OVL2
@@ -11034,10 +11034,10 @@
 0x005C3000 0x2B0 func_005C3000  # OVL2
 0x005C32B0 0xB0 func_005C32B0  # OVL2
 0x005C3360 0x3E0 func_005C3360  # OVL2
-0x005C3740 0x34 func_005C3740  # OVL2
+0x005C3740 0x34 GetItemByIndex__5CZKitCFi  # OVL2; by hand: an item by index -- the index through 0x5C6600 (with 255), then the item array at 0xE4 (SOCOM 1's m_item at 0xD0, 0x14 on); GetCurItem (const) tail-calls it with the selected item, so it is const here
 0x005C3780 0x8 GetCurItem__5CZKitCFv  # OVL2; s1:calls by hand (the HUD lane: at SOCOM 1's call site in ZoomIn/ZoomOut; its result's type byte is compared with 11)
 0x005C3790 0x14 func_005C3790  # OVL2
-0x005C37B0 0xD4 func_005C37B0  # OVL2
+0x005C37B0 0xD4 SetCurFireMode__5CZKitF8FIREMODE  # OVL2; s1:calls by hand (CSealCtrlSquirm::Initalize calls it on the kit with 3 right after SetCurItemByIndex, as SOCOM 1's Initalize calls SetCurFireMode)
 0x005C3890 0x8 func_005C3890  # OVL2
 0x005C38A0 0x36C func_005C38A0  # OVL2
 0x005C3C10 0xD0 func_005C3C10  # OVL2
@@ -11053,7 +11053,7 @@
 0x005C4960 0x8 func_005C4960  # OVL2
 0x005C4970 0x40 func_005C4970  # OVL2
 0x005C49B0 0x154 func_005C49B0  # OVL2
-0x005C4B10 0x4B8 func_005C4B10  # OVL2
+0x005C4B10 0x4B8 SetCurItemByIndex__5CZKitFi  # OVL2; s1:calls by hand (CSealCtrlSquirm::Initalize calls it on the SEAL's kit (+0x5E0) with 0, where SOCOM 1's Initalize calls SetCurItemByIndex(0), right before SetCurFireMode)
 0x005C4FD0 0x60 func_005C4FD0  # OVL2
 0x005C5030 0x80 func_005C5030  # OVL2
 0x005C50B0 0x290 func_005C50B0  # OVL2
@@ -11086,7 +11086,7 @@
 0x005C8190 0x438 func_005C8190  # OVL2
 0x005C85D0 0x70 func_005C85D0  # OVL2
 0x005C8640 0xB0 func_005C8640  # OVL2
-0x005C86F0 0x60 func_005C86F0  # OVL2
+0x005C86F0 0x60 HasItem__5CZKitCF10EQUIP_ITEM  # OVL2; s1:calls by hand (another lane's lead, verified: SOCOM 1's HasItem -- each of m_num_items (0x82C here) items non-null with its type byte (0x7C here, 0x60 there) the argument; SOCOM II's CanPerformAction/CanPlaceBomb callers call it where SOCOM 1's call HasItem)
 0x005C8750 0x120 func_005C8750  # OVL2
 0x005C8870 0xB8 func_005C8870  # OVL2
 0x005C8930 0x4C func_005C8930  # OVL2
@@ -11327,14 +11327,14 @@
 0x005E6260 0x8 IsRemote__11CRemoteCtrlCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005E6270 0x8 OnMissionStart__11CRemoteCtrlFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); by hand (the SEAL lane: CRemoteCtrl's own override, in its vtable's slot 0x5C -- empty as SOCOM 1's CSealCtrl one was; SOCOM II's CSealCtrl table points at 0x597F50 instead)
 0x005E6280 0x8 OnMissionEnd__11CRemoteCtrlFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); by hand (the SEAL lane: CRemoteCtrl's override, its vtable's slot 0x60; CSealCtrl's table points at 0x597EB0)
-0x005E6290 0x6C func_005E6290  # OVL2
+0x005E6290 0x6C OnDeath__11CRemoteCtrlFv  # OVL2; by hand: CRemoteCtrl's vtable slot +0x18 (OnDeath, the demo's slot too; SOCOM 1's was an 8-byte stub, SOCOM II's 0x6C)
 0x005E6300 0x8 PostTick__11CRemoteCtrlFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005E6310 0xE4 PostMortemPreTick__11CRemoteCtrlFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005E6400 0x578 PreTick__11CRemoteCtrlFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005E6980 0x20 Tick__11CRemoteCtrlFf  # OVL2; s1:exact
 0x005E69A0 0x5C AllowCommand__11CRemoteCtrlFP10CZSealBody10FT_COMMANDPv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005E6A00 0x4C OnCommand__11CRemoteCtrlFP10CZSealBody10FT_COMMANDPvb  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x005E6A50 0x4C func_005E6A50  # OVL2
+0x005E6A50 0x4C GetJumpFlag__11CRemoteCtrlCFv  # OVL2; by hand: CRemoteCtrl's vtable slot +0xA4 (zseal.h's GetJumpFlag, moved into CSealCtrl in SOCOM II): the network state's first byte, through GetAiNetState (slot +0x6C) and a memcpy, when the entity has its +0xC
 0x005E6AA0 0x10 func_005E6AA0  # OVL2
 0x005E6AB0 0x1D4 func_005E6AB0  # OVL2
 0x005E6C90 0xD0 func_005E6C90  # OVL2
@@ -11435,12 +11435,12 @@
 0x005EE250 0x278 func_005EE250  # OVL2
 0x005EE4D0 0x220 func_005EE4D0  # OVL2
 0x005EE6F0 0xF4 func_005EE6F0  # OVL2
-0x005EE7F0 0x5BC func_005EE7F0  # OVL2
+0x005EE7F0 0x5BC AllowCommand__9CSealUnitFP10CZSealBody10FT_COMMANDPv  # OVL2; s1:vtable by hand (CSealUnit's vtable slot +0xC, the demo's AllowCommand in the same slot of its two-slot table; 0x5BC bytes against 0x6C8)
 0x005EEDB0 0x1C4 func_005EEDB0  # OVL2
 0x005EEF80 0x248 func_005EEF80  # OVL2
 0x005EF1D0 0x44 func_005EF1D0  # OVL2
 0x005EF220 0xC8 func_005EF220  # OVL2
-0x005EF2F0 0x50 func_005EF2F0  # OVL2
+0x005EF2F0 0x50 GetUnitByTeam__9CSealUnitFUi  # OVL2; s1:calls by hand (the seal lane's lead, verified: SOCOM 1's GetUnitByTeam walks m_list__9CSealUnit for the unit whose number (0x38 there, 0x58 here) is the argument -- the same walk over the same static, 0x44D5B0 here; CSealCtrl::OnMissionStart calls it with 24)
 0x005EF340 0x40 func_005EF340  # OVL2
 0x005EF380 0xEC func_005EF380  # OVL2
 0x005EF470 0x198 func_005EF470  # OVL2
@@ -11452,30 +11452,30 @@
 0x005EF950 0x58 func_005EF950  # OVL2
 0x005EF9B0 0x18 func_005EF9B0  # OVL2
 0x005EF9D0 0x78 __dt__10CAiSActionFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x005EFA50 0x730 func_005EFA50  # OVL2
+0x005EFA50 0x730 Tick__10CAiSActionFfP11CSealCtrlAi  # OVL2; by hand: CAiSAction's vtable slot +0x10 (SOCOM II's CAiState table: OnSignal +8, new +0xC, Tick +0x10, new +0x14, GetStatus +0x18, CanPushAiState +0x1C, CanSwitchAiState +0x20, CanAttack +0x24, CanScan +0x28, CanPursue +0x2C, GetScriptResponse +0x30, six new, the destructor last at +0x4C -- every SOCOM 1 override of the 15 classes the demo names lands on its slot)
 0x005F0180 0x204 func_005F0180  # OVL2
-0x005F0390 0xD8 func_005F0390  # OVL2
-0x005F0470 0x240 func_005F0470  # OVL2
+0x005F0390 0xD8 GetStatus__10CAiSActionCFv  # OVL2; by hand: CAiSAction's vtable slot +0x18 (GetStatus, the CAiState table read from every SOCOM 1 override)
+0x005F0470 0x240 OnSignal__10CAiSActionFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand: CAiSAction's vtable slot +0x8 (OnSignal)
 0x005F06B0 0x90 func_005F06B0  # OVL2
 0x005F0740 0x60 func_005F0740  # OVL2
-0x005F07A0 0xC func_005F07A0  # OVL2
-0x005F07B0 0x10 func_005F07B0  # OVL2
-0x005F07C0 0x8 func_005F07C0  # OVL2
-0x005F07D0 0x10 func_005F07D0  # OVL2
-0x005F07E0 0x48 func_005F07E0  # OVL2
+0x005F07A0 0xC Virtual38__10CAiSActionFv  # OVL2; by hand: CAiSAction's vtable slot +0x38, one of SOCOM II's six new CAiState slots (the name ours, by its slot): the word at +0x34 below 6
+0x005F07B0 0x10 CanAttack__10CAiSActionCFv  # OVL2; by hand: CAiSAction's vtable slot +0x24 (CanAttack)
+0x005F07C0 0x8 CanPursue__10CAiSActionCFP11CSealCtrlAi  # OVL2; by hand: CAiSAction's vtable slot +0x2C (CanPursue)
+0x005F07D0 0x10 CanScan__10CAiSActionCFv  # OVL2; by hand: CAiSAction's vtable slot +0x28 (CanScan)
+0x005F07E0 0x48 CanPushAiState__10CAiSActionF8AI_STATEP11CSealCtrlAi  # OVL2; by hand: CAiSAction's vtable slot +0x1C (CanPushAiState)
 0x005F0830 0x15C func_005F0830  # OVL2
 0x005F0990 0x198 func_005F0990  # OVL2
 0x005F0B30 0x198 func_005F0B30  # OVL2
 0x005F0CD0 0x48C func_005F0CD0  # OVL2
-0x005F1160 0x440 func_005F1160  # OVL2
+0x005F1160 0x440 Tick__8CAiSPlanFfP11CSealCtrlAi  # OVL2; by hand: CAiSPlan's vtable slot +0x10 (Tick; CAiSPlan is new in SOCOM II)
 0x005F15A0 0x1B4 func_005F15A0  # OVL2
 0x005F1760 0x9C func_005F1760  # OVL2
-0x005F1800 0x14C func_005F1800  # OVL2
-0x005F1950 0xC func_005F1950  # OVL2
+0x005F1800 0x14C OnSignal__8CAiSPlanFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand: CAiSPlan's vtable slot +0x8 (OnSignal)
+0x005F1950 0xC GetStatus__8CAiSPlanCFv  # OVL2; by hand: CAiSPlan's vtable slot +0x18 (GetStatus: returns a string)
 0x005F1960 0x170 Tick__13CAiSCQBAttackFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F1AD0 0x80 OnSignal__13CAiSCQBAttackFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x005F1B50 0x9C func_005F1B50  # OVL2
-0x005F1BF0 0x80 func_005F1BF0  # OVL2
+0x005F1B50 0x9C Tick__11CAiSUnknownFfP11CSealCtrlAi  # OVL2; by hand: CAiSUnknown's vtable slot +0x10 (Tick; SOCOM 1's was an 8-byte stub)
+0x005F1BF0 0x80 OnSignal__11CAiSUnknownFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand: CAiSUnknown's vtable slot +0x8 (OnSignal; SOCOM 1's was an 8-byte stub)
 0x005F1C70 0x1CC Tick__13CAiSSuspendedFfP11CSealCtrlAi  # OVL2; s1:calls
 0x005F1E40 0x2E0 OnSignal__13CAiSSuspendedFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F2120 0xFE0 Tick__10CAiSBreachFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -11483,15 +11483,15 @@
 0x005F3270 0x12C func_005F3270  # OVL2
 0x005F33A0 0x128 GetStatus__10CAiSBreachCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F34D0 0x48 func_005F34D0  # OVL2
-0x005F3520 0xFC func_005F3520  # OVL2
+0x005F3520 0xFC CanPushAiState__10CAiSBreachF8AI_STATEP11CSealCtrlAi  # OVL2; by hand: CAiSBreach's vtable slot +0x1C (CanPushAiState)
 0x005F3620 0x1A0 OnSignal__10CAiSBreachFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F37C0 0x3D4 Tick__10CAiSScriptFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F3BA0 0x414 OnSignal__10CAiSScriptFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F3FC0 0x28 func_005F3FC0  # OVL2
 0x005F3FF0 0x90 func_005F3FF0  # OVL2
-0x005F4080 0x8 func_005F4080  # OVL2
-0x005F4090 0x60 func_005F4090  # OVL2
-0x005F40F0 0x80 func_005F40F0  # OVL2
+0x005F4080 0x8 CanAttack__10CAiSScriptCFv  # OVL2; by hand: CAiSScript's vtable slot +0x24 (CanAttack)
+0x005F4090 0x60 CanPursue__10CAiSScriptCFP11CSealCtrlAi  # OVL2; by hand: CAiSScript's vtable slot +0x2C (CanPursue; SOCOM 1's 0x6C bytes, this 0x60)
+0x005F40F0 0x80 CanPushAiState__10CAiSScriptF8AI_STATEP11CSealCtrlAi  # OVL2; by hand: CAiSScript's vtable slot +0x1C (CanPushAiState)
 0x005F4170 0x80 GetStatus__10CAiSScriptCFv  # OVL2; s1:calls
 0x005F41F0 0x16C ActivateSequence__10CAiSScriptFPCcUi  # OVL2; s1:calls
 0x005F4360 0x44 func_005F4360  # OVL2
@@ -11513,7 +11513,7 @@
 0x005F5CA0 0xC func_005F5CA0  # OVL2
 0x005F5CB0 0x14 func_005F5CB0  # OVL2
 0x005F5CD0 0x250 func_005F5CD0  # OVL2
-0x005F5F20 0x98 func_005F5F20  # OVL2
+0x005F5F20 0x98 ClearAiState__11CSealCtrlAiFb  # OVL2; s1:calls by hand (the SEAL lane's lead, verified: SOCOM II's CSealCtrlAi::OnDeath and ResetToInitialState call it where SOCOM 1's call ClearAiState(bool), and the CSealCtrlAi OnMissionEnd at 0x555900 where SOCOM 1's calls ClearAiState(1); SOCOM II's hands the stack at +0x41C to 0x5F7920/0x5F7470 and returns whether it cleared)
 0x005F5FC0 0x8 func_005F5FC0  # OVL2
 0x005F5FD0 0x38 func_005F5FD0  # OVL2
 0x005F6010 0x38 func_005F6010  # OVL2
@@ -11549,25 +11549,25 @@
 0x005F8270 0xC0 func_005F8270  # OVL2
 0x005F8330 0x24 func_005F8330  # OVL2
 0x005F8360 0x24 func_005F8360  # OVL2
-0x005F8390 0xF4 func_005F8390  # OVL2
-0x005F8490 0x90 func_005F8490  # OVL2
+0x005F8390 0xF4 Clear__13CAiStateStackFv  # OVL2; by hand: every state in the stack deleted through its virtual destructor (slot +0x4C of CAiState's table) and the nodes erased (the OVL2 pointer list's erase 0x50F990); SOCOM 1's CAiStateStack : list (DWARF, 0xC bytes, CSealCtrlAi::m_stateStack) -- the name ours; ~CSealCtrlAi and ~CAiStateStack call it
+0x005F8490 0x90 __dt__13CAiStateStackFv  # OVL2; by hand: CAiStateStack's destructor (Clear, then the pointer list's three this-tested levels and erase); the member at +8 of every CAiState (new in SOCOM II: sub-states) and CSealCtrlAi's m_stateStack -- every CAiS* destructor calls it with -1
 0x005F8520 0x38 func_005F8520  # OVL2
 0x005F8560 0xC func_005F8560  # OVL2
 0x005F8570 0x138 func_005F8570  # OVL2
 0x005F86B0 0x8 func_005F86B0  # OVL2
-0x005F86C0 0xA8 func_005F86C0  # OVL2
+0x005F86C0 0xA8 __dt__8CAiSPlanFv  # OVL2; by hand: CAiSPlan's vtable slot +0x4C (the destructor: stores CAiSPlan's table, then CAiState's, ~CAiStateStack(this + 8, -1))
 0x005F8770 0x78 __dt__13CAiSCQBAttackFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x005F87F0 0x8 func_005F87F0  # OVL2
+0x005F87F0 0x8 CanAttack__13CAiSCQBAttackCFv  # OVL2; by hand: CAiSCQBAttack's vtable slot +0x24 (CanAttack, as SOCOM 1's)
 0x005F8800 0x78 __dt__11CAiSUnknownFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F8880 0x78 __dt__13CAiSSuspendedFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x005F8900 0x8 func_005F8900  # OVL2
-0x005F8910 0x8 func_005F8910  # OVL2
-0x005F8920 0x8 func_005F8920  # OVL2
-0x005F8930 0x8 func_005F8930  # OVL2
+0x005F8900 0x8 CanAttack__13CAiSSuspendedCFv  # OVL2; by hand: CAiSSuspended's vtable slot +0x24 (CanAttack; SOCOM 1's in the same tail position)
+0x005F8910 0x8 CanPursue__13CAiSSuspendedCFP11CSealCtrlAi  # OVL2; by hand: CAiSSuspended's vtable slot +0x2C (CanPursue; SOCOM 1's in the same tail position)
+0x005F8920 0x8 CanPursue__10CAiSBreachCFP11CSealCtrlAi  # OVL2; by hand: CAiSBreach's vtable slot +0x2C (CanPursue, jr ra; move v0,zero as SOCOM 1's)
+0x005F8930 0x8 Virtual3C__10CAiSBreachFv  # OVL2; by hand: CAiSBreach's vtable slot +0x3C, one of SOCOM II's six new CAiState slots (the name ours, by its slot): false (the base's is true)
 0x005F8940 0x78 __dt__10CAiSScriptFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F89C0 0x78 __dt__8CAiSGotoFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x005F8A40 0x8 func_005F8A40  # OVL2
-0x005F8A50 0x14 func_005F8A50  # OVL2
+0x005F8A40 0x8 Virtual40__8CAiSGotoFv  # OVL2; by hand: CAiSGoto's vtable slot +0x40, one of SOCOM II's six new CAiState slots (the name ours, by its slot): true (the base's is false)
+0x005F8A50 0x14 Virtual3C__8CAiSGotoFv  # OVL2; by hand: CAiSGoto's vtable slot +0x3C, one of SOCOM II's six new CAiState slots (the name ours, by its slot): true while the flag word (+0x2C) lacks bit 2
 0x005F8A70 0x78 __dt__10CAiSPickupFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F8AF0 0x110 func_005F8AF0  # OVL2
 0x005F8C00 0x18 func_005F8C00  # OVL2
@@ -11580,11 +11580,11 @@
 0x005FAD50 0x98 func_005FAD50  # OVL2
 0x005FADF0 0x78 __dt__10CAiSFollowFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005FAE70 0x348 func_005FAE70  # OVL2
-0x005FB1C0 0x138C func_005FB1C0  # OVL2
+0x005FB1C0 0x138C Tick__10CAiSFollowFfP11CSealCtrlAi  # OVL2; by hand: CAiSFollow's vtable slot +0x10 (Tick)
 0x005FC550 0x38 func_005FC550  # OVL2
 0x005FC590 0x238 func_005FC590  # OVL2
 0x005FC7D0 0x140 func_005FC7D0  # OVL2
-0x005FC910 0x58 func_005FC910  # OVL2
+0x005FC910 0x58 GetStanceFromState__10CZSealBodyF10SEAL_STATE11SEAL_STANCE  # OVL2; s1:calls by hand (the SEAL lane's lead, verified: SOCOM II's CSealCtrlAi::OnStateChange calls it twice where SOCOM 1's calls GetStanceFromState twice; a switch on the state byte (0, 1, 2), the given stance otherwise)
 0x005FC970 0x2C8 func_005FC970  # OVL2
 0x005FCC40 0xE8 func_005FCC40  # OVL2
 0x005FCD30 0x1CC func_005FCD30  # OVL2
@@ -11600,21 +11600,21 @@
 0x005FD6F0 0x94 func_005FD6F0  # OVL2
 0x005FD790 0x33C func_005FD790  # OVL2
 0x005FDAD0 0x224 func_005FDAD0  # OVL2
-0x005FDD00 0x38 func_005FDD00  # OVL2
+0x005FDD00 0x38 Virtual3C__10CAiSFollowFv  # OVL2; by hand: CAiSFollow's vtable slot +0x3C, one of SOCOM II's six new CAiState slots (the name ours, by its slot): a float at +0xF4 under the variable at 0x650C38 and flag bit 3 of +0x6C
 0x005FDD40 0x180 func_005FDD40  # OVL2
 0x005FDEC0 0xB8 GetStatus__10CAiSFollowCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x005FDF80 0x270 func_005FDF80  # OVL2
+0x005FDF80 0x270 OnSignal__10CAiSFollowFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand: CAiSFollow's vtable slot +0x8 (OnSignal)
 0x005FE1F0 0x2C8 func_005FE1F0  # OVL2
 0x005FE4C0 0x364 func_005FE4C0  # OVL2
 0x005FE830 0x8 OnActionButton__15CSealCtrlSquirmFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005FE840 0x8 PostMortemPreTick__15CSealCtrlSquirmFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005FE850 0x24 Tick__15CSealCtrlSquirmFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005FE880 0x690 PreTick__15CSealCtrlSquirmFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x005FEF10 0x8 func_005FEF10  # OVL2
+0x005FEF10 0x8 ResetToInitialState__15CSealCtrlSquirmFv  # OVL2; s1:vtable (s1vtables proposes it; CSealCtrl's slot +0x58 in SOCOM II's table, zseal.h)
 0x005FEF20 0x8 OnDeath__15CSealCtrlSquirmFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x005FEF30 0x8 func_005FEF30  # OVL2
-0x005FEF40 0x8 func_005FEF40  # OVL2
-0x005FEF50 0x8 func_005FEF50  # OVL2
+0x005FEF30 0x8 OnSetHealth__15CSealCtrlSquirmFff  # OVL2; s1:vtable (s1vtables proposes it; CSealCtrl's slot +0x54)
+0x005FEF40 0x8 OnStunDamage__15CSealCtrlSquirmF9STUN_TYPEfPC6CPnt3D  # OVL2; s1:vtable (s1vtables proposes it; CSealCtrl's slot +0x50)
+0x005FEF50 0x8 OnWeaponHit__15CSealCtrlSquirmFPQ23zdb15IntersectStructP12CZProjectile  # OVL2; s1:vtable (s1vtables proposes it; CSealCtrl's slot +0x4C)
 0x005FEF60 0x128 Initalize__15CSealCtrlSquirmFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005FF090 0x60 __dt__15CSealCtrlSquirmFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005FF0F0 0x104 __ct__15CSealCtrlSquirmFv  # OVL2; s1:calls (ftsCreateSeal's squirm branch, where SOCOM 1's calls __ct__15CSealCtrlSquirmFv; ftsCreateSeal byte-exact with it) -- the states lane
@@ -11654,59 +11654,59 @@
 0x00601860 0x8 func_00601860  # OVL2
 0x00601870 0xC func_00601870  # OVL2
 0x00601880 0x78 __dt__11CAiSHostageFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00601900 0x8 func_00601900  # OVL2
-0x00601910 0x538 func_00601910  # OVL2
+0x00601900 0x8 CanAttack__11CAiSHostageCFv  # OVL2; by hand: CAiSHostage's vtable slot +0x24 (CanAttack)
+0x00601910 0x538 Tick__11CAiSHostageFfP11CSealCtrlAi  # OVL2; by hand: CAiSHostage's vtable slot +0x10 (Tick)
 0x00601E50 0x58 func_00601E50  # OVL2
-0x00601EB0 0x8 func_00601EB0  # OVL2
-0x00601EC0 0x58 func_00601EC0  # OVL2
+0x00601EB0 0x8 CanScan__11CAiSHostageCFv  # OVL2; by hand: CAiSHostage's vtable slot +0x28 (CanScan)
+0x00601EC0 0x58 CanPushAiState__11CAiSHostageF8AI_STATEP11CSealCtrlAi  # OVL2; by hand: CAiSHostage's vtable slot +0x1C (CanPushAiState)
 0x00601F20 0x60 OnSignal__11CAiSHostageFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00601F80 0x2EC func_00601F80  # OVL2
+0x00601F80 0x2EC Tick__9CAiSAvoidFfP11CSealCtrlAi  # OVL2; by hand: CAiSAvoid's vtable slot +0x10 (Tick)
 0x00602270 0x8A4 func_00602270  # OVL2
 0x00602B20 0x1F0 func_00602B20  # OVL2
 0x00602D10 0x114 OnSignal__9CAiSAvoidFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00602E30 0x860 func_00602E30  # OVL2
+0x00602E30 0x860 Tick__8CAiSRushFfP11CSealCtrlAi  # OVL2; by hand: CAiSRush's vtable slot +0x10 (Tick)
 0x00603690 0x1C func_00603690  # OVL2
-0x006036B0 0x29C func_006036B0  # OVL2
-0x00603950 0x9E8 func_00603950  # OVL2
+0x006036B0 0x29C OnSignal__8CAiSRushFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand: CAiSRush's vtable slot +0x8 (OnSignal)
+0x00603950 0x9E8 Tick__15CAiSPathRecoverFfP11CSealCtrlAi  # OVL2; by hand: CAiSPathRecover's vtable slot +0x10 (Tick)
 0x00604340 0x44 func_00604340  # OVL2
 0x00604390 0x5C func_00604390  # OVL2
 0x006043F0 0x98 GetStatus__15CAiSPathRecoverCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00604490 0x11C func_00604490  # OVL2
-0x006045B0 0x270 func_006045B0  # OVL2
-0x00604820 0x8 func_00604820  # OVL2
+0x00604490 0x11C OnSignal__15CAiSPathRecoverFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand: CAiSPathRecover's vtable slot +0x8 (OnSignal)
+0x006045B0 0x270 Tick__8CAiSFleeFfP11CSealCtrlAi  # OVL2; by hand: CAiSFlee's vtable slot +0x10 (Tick)
+0x00604820 0x8 CanAttack__8CAiSFleeCFv  # OVL2; by hand: CAiSFlee's vtable slot +0x24 (CanAttack; SOCOM 1's 0x10 bytes, this 8)
 0x00604830 0x48 OnSignal__8CAiSFleeFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00604880 0x364 func_00604880  # OVL2
+0x00604880 0x364 Tick__10CAiSTargetFfP11CSealCtrlAi  # OVL2; by hand: CAiSTarget's vtable slot +0x10 (Tick)
 0x00604BF0 0x70 func_00604BF0  # OVL2
 0x00604C60 0x74 OnSignal__10CAiSTargetFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00604CE0 0x8C8 func_00604CE0  # OVL2
+0x00604CE0 0x8C8 Tick__9CAiSEventFfP11CSealCtrlAi  # OVL2; by hand: CAiSEvent's vtable slot +0x10 (Tick)
 0x006055B0 0x1C0 func_006055B0  # OVL2
 0x00605770 0x88 func_00605770  # OVL2
 0x00605800 0x14C func_00605800  # OVL2
 0x00605950 0xAC func_00605950  # OVL2
 0x00605A00 0x8 GetStatus__9CAiSEventCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00605A10 0x34 func_00605A10  # OVL2
-0x00605A50 0x8 func_00605A50  # OVL2
-0x00605A60 0x14 func_00605A60  # OVL2
-0x00605A80 0x1DC func_00605A80  # OVL2
+0x00605A50 0x8 CanPursue__9CAiSEventCFP11CSealCtrlAi  # OVL2; by hand: CAiSEvent's vtable slot +0x2C (CanPursue, as SOCOM 1's)
+0x00605A60 0x14 CanAttack__9CAiSEventCFv  # OVL2; by hand: CAiSEvent's vtable slot +0x24 (CanAttack; SOCOM 1's 0x2C bytes, this 0x14)
+0x00605A80 0x1DC OnSignal__9CAiSEventFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand: CAiSEvent's vtable slot +0x8 (OnSignal)
 0x00605C60 0x324 Tick__16CAiSStunResponseFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00605F90 0x124 OnSignal__16CAiSStunResponseFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x006060C0 0x6D8 func_006060C0  # OVL2
+0x006060C0 0x6D8 Tick__8CAiSHoldFfP11CSealCtrlAi  # OVL2; by hand: CAiSHold's vtable slot +0x10 (Tick)
 0x006067A0 0x604 func_006067A0  # OVL2
 0x00606DB0 0x10C func_00606DB0  # OVL2
 0x00606EC0 0x6A0 func_00606EC0  # OVL2
 0x00607560 0x54 func_00607560  # OVL2
 0x006075C0 0x84 func_006075C0  # OVL2
-0x00607650 0x1D8 func_00607650  # OVL2
+0x00607650 0x1D8 OnSignal__8CAiSHoldFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand: CAiSHold's vtable slot +0x8 (OnSignal)
 0x00607830 0x6C func_00607830  # OVL2
 0x006078A0 0x464 Tick__13CAiSSurrenderFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00607D10 0x60 func_00607D10  # OVL2
+0x00607D10 0x60 CanPushAiState__13CAiSSurrenderF8AI_STATEP11CSealCtrlAi  # OVL2; by hand: CAiSSurrender's vtable slot +0x1C (CanPushAiState)
 0x00607D70 0x2E0 OnSignal__13CAiSSurrenderFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00608050 0x8 func_00608050  # OVL2
 0x00608060 0x230 Tick__10CAiSNoAmmoFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00608290 0x50 OnSignal__10CAiSNoAmmoFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x006082E0 0x1CC func_006082E0  # OVL2
 0x006084B0 0x10C func_006084B0  # OVL2
-0x006085C0 0x27C func_006085C0  # OVL2
+0x006085C0 0x27C Tick__10CAiSReloadFfP11CSealCtrlAi  # OVL2; by hand: CAiSReload's vtable slot +0x10 (Tick)
 0x00608840 0x198 func_00608840  # OVL2
 0x006089E0 0x8 OnSignal__10CAiSReloadFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x006089F0 0x798 Tick__10CAiSShotAtFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -11717,26 +11717,26 @@
 0x00609710 0x78 __dt__9CAiSAvoidFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00609790 0x78 __dt__8CAiSRushFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00609810 0xA0 __dt__15CAiSPathRecoverFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x006098B0 0x8 func_006098B0  # OVL2
-0x006098C0 0x8 func_006098C0  # OVL2
+0x006098B0 0x8 CanAttack__15CAiSPathRecoverCFv  # OVL2; by hand: CAiSPathRecover's vtable slot +0x24 (CanAttack, as SOCOM 1's)
+0x006098C0 0x8 CanPursue__15CAiSPathRecoverCFP11CSealCtrlAi  # OVL2; by hand: CAiSPathRecover's vtable slot +0x2C (CanPursue, as SOCOM 1's)
 0x006098D0 0x78 __dt__8CAiSFleeFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00609950 0x8 func_00609950  # OVL2
-0x00609960 0x8 func_00609960  # OVL2
+0x00609950 0x8 CanScan__8CAiSFleeCFv  # OVL2; by hand: CAiSFlee's vtable slot +0x28 (CanScan, as SOCOM 1's)
+0x00609960 0x8 CanPursue__8CAiSFleeCFP11CSealCtrlAi  # OVL2; by hand: CAiSFlee's vtable slot +0x2C (CanPursue, as SOCOM 1's)
 0x00609970 0x78 __dt__10CAiSTargetFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x006099F0 0x78 __dt__9CAiSEventFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00609A70 0x78 __dt__16CAiSStunResponseFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00609AF0 0x8 func_00609AF0  # OVL2
+0x00609AF0 0x8 CanAttack__16CAiSStunResponseCFv  # OVL2; by hand: CAiSStunResponse's vtable slot +0x24 (CanAttack, as SOCOM 1's)
 0x00609B00 0x78 __dt__8CAiSHoldFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00609B80 0x14 func_00609B80  # OVL2
+0x00609B80 0x14 Virtual40__8CAiSHoldFv  # OVL2; by hand: CAiSHold's vtable slot +0x40, one of SOCOM II's six new CAiState slots (the name ours, by its slot): true while the state's flag word (+0x2C) lacks bit 8
 0x00609BA0 0x78 __dt__13CAiSSurrenderFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00609C20 0x8 func_00609C20  # OVL2
-0x00609C30 0xC func_00609C30  # OVL2
+0x00609C20 0x8 CanAttack__13CAiSSurrenderCFv  # OVL2; by hand: CAiSSurrender's vtable slot +0x24 (CanAttack, as SOCOM 1's)
+0x00609C30 0xC GetScriptResponse__13CAiSSurrenderCFv  # OVL2; by hand: CAiSSurrender's vtable slot +0x30 (GetScriptResponse, 0xC bytes as SOCOM 1's)
 0x00609C40 0x78 __dt__10CAiSNoAmmoFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00609CC0 0x8 func_00609CC0  # OVL2
+0x00609CC0 0x8 CanAttack__10CAiSNoAmmoCFv  # OVL2; by hand: CAiSNoAmmo's vtable slot +0x24 (CanAttack, as SOCOM 1's)
 0x00609CD0 0x78 __dt__10CAiSReloadFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00609D50 0x8 func_00609D50  # OVL2
+0x00609D50 0x8 CanAttack__10CAiSReloadCFv  # OVL2; by hand: CAiSReload's vtable slot +0x24 (CanAttack, as SOCOM 1's)
 0x00609D60 0x78 __dt__10CAiSShotAtFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00609DE0 0x8 func_00609DE0  # OVL2
+0x00609DE0 0x8 CanPursue__10CAiSShotAtCFP11CSealCtrlAi  # OVL2; by hand: CAiSShotAt's vtable slot +0x2C (CanPursue, as SOCOM 1's)
 0x00609DF0 0x20C CheckLineOfFire__2aiFPC7CEntityPC7CTargetf  # OVL2; s1:calls
 0x0060A000 0x2C8 func_0060A000  # OVL2
 0x0060A2D0 0x18 func_0060A2D0  # OVL2
@@ -11823,12 +11823,12 @@
 0x0060EBF0 0x128 func_0060EBF0  # OVL2
 0x0060ED20 0x18 func_0060ED20  # OVL2
 0x0060ED40 0xB8 func_0060ED40  # OVL2
-0x0060EE00 0x78 func_0060EE00  # OVL2
-0x0060EE80 0x5EC func_0060EE80  # OVL2
+0x0060EE00 0x78 __dt__14CAiSUseVehicleFv  # OVL2; by hand: CAiSUseVehicle's vtable slot +0x4C (the destructor's shape: its table, CAiState's, ~CAiStateStack(this + 8, -1); CAiSUseVehicle is new in SOCOM II)
+0x0060EE80 0x5EC Tick__14CAiSUseVehicleFfP11CSealCtrlAi  # OVL2; by hand: CAiSUseVehicle's vtable slot +0x10 (Tick)
 0x0060F470 0x14C func_0060F470  # OVL2
 0x0060F5C0 0xC func_0060F5C0  # OVL2
-0x0060F5D0 0x8 func_0060F5D0  # OVL2
-0x0060F5E0 0xD8 func_0060F5E0  # OVL2
+0x0060F5D0 0x8 CanPushAiState__14CAiSUseVehicleF8AI_STATEP11CSealCtrlAi  # OVL2; by hand: CAiSUseVehicle's vtable slot +0x1C (CanPushAiState)
+0x0060F5E0 0xD8 OnSignal__14CAiSUseVehicleFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand: CAiSUseVehicle's vtable slot +0x8 (OnSignal)
 0x0060F6C0 0x94 func_0060F6C0  # OVL2
 0x0060F760 0x240 func_0060F760  # OVL2
 0x0060F9A0 0x10 func_0060F9A0  # OVL2
