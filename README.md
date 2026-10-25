@@ -1643,6 +1643,24 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the UI, round 7** (util_options.cpp, util_ssm.cpp, the HDD icon writers):
+  - a local bitfield struct cleared in the mem-initializer list gives the word-wide read-mask-write;
+    clearing it in the body narrows the stores to sb/sh;
+  - std::map's no-argument constructor passes a bare stack slot for the allocator: the allocator's
+    constructor has to be inline (0x3A2BE0 through an explicit inline specialisation for now);
+  - the reverse switch-test order holds for grouped cases: tests 4, 2, 3, 1 come from `case 1: case 3:
+    case 2: ... case 4:`;
+  - a type byte read again after a whole-word mask test reloads only through a byte member in a union;
+    `(unsigned char)word` reuses the word load with andi;
+  - `T *p; bool ok = false; p = argv[++i];` gives the target's scheduling where an initialised
+    declaration does not; `while ((bool)f() && ...)` gives the sltu/xori pair before the branch;
+  - a stack header can be larger than what is written (the PS2ICON3D header: 0x220 bytes, 0x200 written);
+  - a class's vtable is emitted where its only non-inline virtual is (CSimpleStateMachine::Start);
+    ~CSimpleStateMachine needed its queue in a class of its own for the fourth this-tested level;
+  - include/queue (std::queue: its default constructor copies a default container) and a general
+    deque<T> (buf_size 512 / sizeof(T)) are in; units: util_options.cpp 0x3A2510-0x3A30FF (the
+    start-up options, a map<string, OPTION_INFO>), util_ssm.cpp from 0x3A59D0, util_loc.cpp
+    (CLocTable).
 - **MW's saved-register order is a NUMBERING** (the task-handler lane's round 9, seal_tasks.cpp): not
   interference degree or use counts -- adding 20 temporaries or 16 uses of a variable never moves
   it. Variables are numbered parameters first, then the function's named locals in declaration
