@@ -33,6 +33,7 @@ enum FIREMODE {
 
 class CZAnim;
 class CZWeaponList;
+class CZProjectile;
 
 /* a cartridge type (SOCOM 1's DWARF: a byte enum, AMMO_NONE 255 and AMMO_END 254) */
 enum EQUIP_AMMO {
@@ -127,6 +128,12 @@ public:
     unsigned char m_hasFireModes[5];   // 0xd0 (SOCOM 1: 0xa8)
     unsigned char m_socom2_d5;   // 0xd5
     unsigned char _d6[0xf8 - 0xd6];
+    /* the weapon events' callbacks, called and listed (zwep_global.cpp's, SOCOM 1's statics) */
+    static void MakeWeaponEventCallbacks(unsigned int event, CZProjectile *proj);
+    static void AddWeaponEventCallback(void (*callback)(CZProjectile *, unsigned int, void *),
+                                       unsigned int events, void *data);
+    static void RemoveWeaponEventCallback(void (*callback)(CZProjectile *, unsigned int, void *));
+
     /* the weapons (SOCOM 1's static, 12 bytes: 0x4B5210) */
     static CZWeaponList m_listWeapons;
 };   // 0xf8 bytes (CZFTSWeapon's targetmods start there)

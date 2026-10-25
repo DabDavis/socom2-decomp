@@ -8178,7 +8178,7 @@
 0x003C6300 0x8 AccuracyBurstCnt_Max__11CZFTSWeaponCFv  # OVL1; s1:order by hand (loads the word at 0x26C, SOCOM 1's at 0x1AC)
 0x003C6310 0x8 AccuracyBurstCnt_Min__11CZFTSWeaponCFv  # OVL1; s1:order by hand (loads the word at 0x268)
 0x003C6320 0xA4 __ct__11CZFTSWeaponFv  # OVL1; s1:align
-0x003C63D0 0x8C func_003C63D0  # OVL1
+0x003C63D0 0x8C MakeWeaponEventCallbacks__8CZWeaponFUiP12CZProjectile  # OVL1; s1:order by hand (SOCOM 1's first zwep_global.cpp function: each callback in m_callbacks whose event mask has the event called with the projectile, the event and its data)
 0x003C6460 0xB0 RemoveWeaponEventCallback__8CZWeaponFPFP12CZProjectileUiPv_v  # OVL1; s1:align
 0x003C6510 0x44 AddWeaponEventCallback__8CZWeaponFPFP12CZProjectileUiPv_vUiPv  # OVL1; s1:exact
 0x003C6560 0xB0 remove_if<Q33std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>19generic_iterator<0>,17_compare_callback>__3stdFQ33std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>19generic_iterator<0>Q33std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>19generic_iterator<0>17_compare_callback  # OVL1; s1:align
