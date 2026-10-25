@@ -651,6 +651,11 @@
 0x0040DA28 0x4 m_deadbliptex__15CZPlayerMapItem  # OVL1 bss; SOCOM 1's static (the third of the three, which TickSealCone reads where the others are not): 3 references in 3 functions take 0x40DA28
 0x0040DA40 0x98 m_ablestring__15CZPlayerMapItem  # OVL1 bss; SOCOM 1's static (a C2DString, 0x98 in SOCOM II): 7 references in 5 functions take 0x40DA40 (CZPlayerMapItem's InitStaticItems, UnInitStaticItems, DrawAlphaBravo and MissionEndCleanup among them)
 0x0040DAF0 0x98 m_bravostring__15CZPlayerMapItem  # OVL1 bss; SOCOM 1's static (a C2DString): 7 references in 5 functions take 0x40DAF0 (the same functions, in the same pairs)
+0x004148B0 0xC s_hbHealthColor  # OVL1 bss; hud_healthbar.cpp's static (0, 128, 64), name ours: the health left -- the initialiser 0x3FF9C0 builds it, CHealthBar's constructor sets its first bitmap to it, the Tick fades the flash back to it; 9 references in 3 functions -- the HUD lane
+0x004148C0 0xC s_hbFlashColor  # OVL1 bss; hud_healthbar.cpp's static (128, 128, 128), name ours: the flash a rise starts from (CHealthBar::Tick); 5 references in 2 functions (the Tick, the initialiser) -- the HUD lane
+0x004148D0 0xC s_hbRestColor  # OVL1 bss; hud_healthbar.cpp's static (128, 64, 64), name ours: the rest of the bar while its owner lives (the constructor, Update); 5 references in 3 functions -- the HUD lane
+0x004148E0 0xC s_hbLostColor  # OVL1 bss; hud_healthbar.cpp's static (128, 128, 64), name ours: the part just lost (the constructor); 4 references in 2 functions -- the HUD lane
+0x004148F0 0xC s_hbDeadColor  # OVL1 bss; hud_healthbar.cpp's static (100, 100, 100), name ours: the rest of the bar once its owner is dead (Update); 4 references in 2 functions -- the HUD lane
 0x00414980 0x0 cdUA  # OVL1 bss; s1:data-exact (size SOCOM 1's; via lgAudASync +5)
 0x00414BB0 0x1C8 ZAnim  # OVL1 bss; SOCOM II's CZAnimMain is 0x1C8 (Open clears m_CurrentFrame at 0x1C4); s1:data-exact (SOCOM 1's 0x1C4; via CheckForRegionTrigger__10CZSealBodyFUi +8)
 0x00414D78 0x4 _input_str_ptr  # OVL1 bss; SOCOM 1 name (the wildcard search's pattern; ZAnimWildcardInit sets it)

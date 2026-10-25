@@ -2335,7 +2335,7 @@
 0x00241CA0 0xC SetPos__10CHealthBarFff  # OVL1; by hand (the floats at CHealthBar+0x1C/0x20; CMPInfoBox's Init and re-init call it on CMPInfoBox+0x20 before SetSize; the name ours)
 0x00241CB0 0xC SetSize__10CHealthBarFff  # OVL1; by hand (the floats at CHealthBar+0x24/0x28, after SetPos; the name ours)
 0x00241CC0 0x388 Update__10CHealthBarFP10CZSealBodyb  # OVL1; by hand (the HUD lane: the health bar set from its owner's health; CMPInfoBox::Tick calls it with the HUD's owner and true; the name ours)
-0x00242050 0x2AC func_00242050  # OVL1
+0x00242050 0x2AC Tick__10CHealthBarFf  # OVL1; by hand (the HUD lane: slot 12 of CHealthBar's vtable 0x405EF0; the flash and the drain stepped)
 0x00242300 0xC8 __dt__10CHealthBarFv  # OVL1; s1:vtable by hand (the HUD lane: slot 0 of CHealthBar's vtable 0x405EF0)
 0x002423D0 0x204 __ct__10CHealthBarFv  # OVL1; s1:vtable by hand (the HUD lane: builds a C2D, then stores CHealthBar's vtable 0x405EF0, found by its RTTI's name; CHUD's constructor calls it for a member)
 0x002425E0 0x44C func_002425E0  # OVL1
@@ -8506,7 +8506,7 @@
 0x003FF680 0x124 func_003FF680  # OVL1 data area; a static initialiser
 0x003FF7B0 0x3C func_003FF7B0  # OVL1 data area; a static initialiser; s1~ si_object.cpp (shape 0.45, a hint)
 0x003FF7F0 0x1D0 func_003FF7F0  # OVL1 data area; a static initialiser
-0x003FF9C0 0x88 func_003FF9C0  # OVL1 data area; a static initialiser
+0x003FF9C0 0x88 __sinit_hud_healthbar.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane: hud_healthbar.cpp's initialiser -- it builds the bar's five colours, 0x4148B0-0x4148F0, which only CHealthBar's functions read)
 0x003FFA50 0xB0 func_003FFA50  # OVL1 data area; a static initialiser
 0x003FFB00 0x64 func_003FFB00  # OVL1 data area; a static initialiser
 0x003FFB70 0x64 func_003FFB70  # OVL1 data area; a static initialiser
