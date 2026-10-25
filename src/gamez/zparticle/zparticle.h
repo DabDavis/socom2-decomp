@@ -12,6 +12,7 @@
 #define ZPARTICLE_H
 
 #include <vector>
+#include <list>
 
 struct PNT4D {
     float x, y, z, w;
@@ -32,13 +33,47 @@ public:
 
 class CMatrix;
 
+/* a point (zmath.h's CPnt3D has no written copy either: a copy is the compiler's) */
+class CPnt3D {
+public:
+    CPnt3D() {}
+    CPnt3D(float ax, float ay, float az)
+    {
+        x = ax;
+        y = ay;
+        z = az;
+    }
+
+    float x, y, z;
+};   // 0xc bytes
+
 namespace zdb {
 class CTexHandle;
 class CModel;
 /* zdb::CNode, as much as the particles call (znode.h would bring zmath.h's CPnt4D with it) */
 class CNode {
 public:
+    unsigned char _0[0x60];   // 0x0: tag_NODE_PARAMS
+
+    /* SOCOM II's vtable order (znode.h's), the pointer at 0x60; declared only */
+    virtual ~CNode();
+    virtual CNode *_Copy(CNode *to) const;
+    virtual void UpdateGrid();
+    virtual void ReserveChildren(int n);
+    virtual void AddChild(CNode *child);   // +0x18
+    virtual int DeleteChild(CNode *child);   // +0x1c
+    virtual void DeleteChildren();
+    virtual CNode *FindChild(const char *name, bool deep);
+    virtual CNode *FindChild(CNode *node, bool deep);
+    virtual CNode *FindChild(const char *name, int start, int *index, bool deep);
+    virtual bool IsCell();
+    virtual bool Read(class CSaveLoad &io);
+    virtual bool SetActive(bool on);   // +0x38
+
+    static CNode *Create(const char *name);
+    static void Delete(CNode *node);
     void SetPosition(float x, float y, float z);
+    void DeleteVisuals();
 };
 }
 
@@ -183,7 +218,20 @@ public:
  * members' names ours, the rest opaque) */
 class Instance {
 public:
+    /* the live instances (SOCOM 1's Instance::List; its members out of line) */
+    class List {
+    public:
+        void Tick(float dT);
+
+        unsigned char _0[0xc];
+    };   // 0xc bytes
+
     virtual void Render(const CMatrix &m);
+
+    static float fadeFactor;   // 0x488440
+    static float ageFactor;   // 0x488448
+    static int spawnFactor;   // 0x488450
+    static List list;   // 0x488480
 
     unsigned char _4[0x8];   // 0x4
     float m_age;   // 0xc
@@ -211,6 +259,11 @@ void AddDynTexture(zdb::CTexHandle *tex);
  * so the members ahead of the list are opaque here */
 class Source {
 public:
+    /* the live sources (SOCOM 1's Source::List, a list of them) */
+    class List : public std::list<Source *> {
+    };
+
+    void Tick(float dT);
     void ScaleSequenceAdd(float fraction, float scale);
     void ScaleSequenceClear();
     void ColorSequenceAdd(float fraction, float r, float g, float b, float a);
@@ -221,6 +274,11 @@ public:
     unsigned char _0[0xdc];   // 0x0: SOCOM 1's m_active .. m_initialAgeRange, and SOCOM II's word
     std::vector<zdb::CTexHandle *> m_textures;   // 0xdc
     Props *m_props;   // 0xe8
+
+    static float distanceFactor;   // 0x4884C0
+    static float frequencyFactor;   // 0x4884C8
+    static CPnt3D referencePositionW;   // 0x4884D0: the camera's position, each tick
+    static List list;   // 0x4884F0
 };
 
 }

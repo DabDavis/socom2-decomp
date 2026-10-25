@@ -5683,7 +5683,7 @@
 0x00324720 0x7C func_00324720  # OVL1
 0x003247A0 0x7C func_003247A0  # OVL1
 0x00324820 0xBC func_00324820  # OVL1
-0x003248E0 0xE4 func_003248E0  # OVL1
+0x003248E0 0xE4 FreeNodePool__8ParticleFv  # OVL1; s1:order by hand (SOCOM 1's FreeNodePool, after Close in its unit: every pooled node through CNode::Delete, the count zeroed, the vector swapped empty; SOCOM II's Close calls it last) -- the rdr lane
 0x003249D0 0x34 func_003249D0  # OVL1
 0x00324A10 0x50 AddDynTexture__8ParticleFPQ23zdb10CTexHandle  # OVL1; s1:exact
 0x00324A60 0xC func_00324A60  # OVL1
@@ -5720,7 +5720,7 @@
 0x00327F70 0xC8 func_00327F70  # OVL1
 0x00328040 0x58 func_00328040  # OVL1
 0x003280A0 0xCC func_003280A0  # OVL1
-0x00328170 0x140 func_00328170  # OVL1
+0x00328170 0x140 Tick__Q38Particle8Instance4ListFf  # OVL1; s1:calls by hand (Particle::Tick calls it on Instance::list (0x488480) with dT, right after copying the camera's position, as SOCOM 1's Tick calls Instance::List::Tick) -- the rdr lane
 0x003282B0 0x2C0 Tick__Q28Particle8InstanceFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00328570 0x74 func_00328570  # OVL1
 0x003285F0 0xDC func_003285F0  # OVL1
@@ -5755,7 +5755,7 @@
 0x00329AA0 0x10 func_00329AA0  # OVL1
 0x00329AB0 0xC func_00329AB0  # OVL1
 0x00329AC0 0x7C func_00329AC0  # OVL1
-0x00329B40 0xB68 func_00329B40  # OVL1
+0x00329B40 0xB68 Tick__Q28Particle6SourceFf  # OVL1; s1:calls by hand (Particle::Tick calls it on every source of Source::list with dT, as SOCOM 1's Tick calls Source::Tick; 0xB68 bytes against SOCOM 1's 0xA2C) -- the rdr lane
 0x0032A6B0 0x150 __dt__Q28Particle6SourceFv  # OVL1; s1:callee by hand (CZAnim::DeleteParticleSources calls it with the delete flag on each source where SOCOM 1's calls Particle::Source's destructor)
 0x0032A800 0x58 func_0032A800  # OVL1
 0x0032A860 0x70 ScaleSequenceAdd__Q28Particle6SourceFff  # OVL1; s1:align, checked (SOCOM 1's ScaleSequenceAdd, the same 0x70: the props branched (0x328BD0) and the float sequence's insert (0x32BB90); zAnimParticleSourceTick calls it)
