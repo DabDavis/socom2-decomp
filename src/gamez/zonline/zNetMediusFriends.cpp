@@ -70,6 +70,42 @@ MediusErrorCode func_00649198(MediusAccountRequest *req, MediusBuddyCallback cb)
 MediusErrorCode func_00649378(MediusBuddyConfirmationResponse *req);
 }
 
+/* the Medius library's set up: three callbacks and a timeout (SOCOM II's; OVL1 0x300840; in this
+ * unit, ahead of the buddy code, by its place) */
+struct MediusErrorMessage;
+
+struct MediusInitializeParams {
+    void (*cb0)(int, int, int, void *);   // 0x0
+    void (*cb1)(int, int, int, void *);   // 0x4
+    void (*ErrorCallback)(int, int, int, MediusErrorMessage *);   // 0x8
+    int _c;   // 0xc
+    int Timeout;   // 0x10
+    int _14;
+    int _18;
+};
+
+void cbErrorMessage(int, int, int, MediusErrorMessage *);
+
+extern "C" {
+void func_002F4EF0(int, int, int, void *);
+void func_003009C0(int, int, int, void *);
+MediusErrorCode func_00647318(MediusInitializeParams *p, int *handle);   /* MediusInitialize? */
+}
+
+bool MediusInit()
+{
+    int handle;
+    MediusInitializeParams p;
+
+    p.cb0 = func_002F4EF0;
+    p.cb1 = func_003009C0;
+    p.ErrorCallback = cbErrorMessage;
+    p.Timeout = 30000;
+    bool ok = CheckMediusError(func_00647318(&p, &handle));
+
+    return ok;
+}
+
 /* the friends emptied and asked for (OVL1 0x301750): the call's result not looked at */
 void CZOnlineLobby::GetFriendsList()
 {

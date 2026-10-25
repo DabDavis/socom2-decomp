@@ -5091,7 +5091,7 @@
 0x003006D0 0x64 func_003006D0  # OVL1
 0x00300740 0xBC func_00300740  # OVL1
 0x00300800 0x3C func_00300800  # OVL1
-0x00300840 0x58 func_00300840  # OVL1
+0x00300840 0x58 MediusInit__Fv  # OVL1; ours (the UI command table's 'MediusInit' handler 0x276C60 calls it with no arguments: the Medius library set up with three callbacks -- cbErrorMessage the third -- and a 30000 timeout through OVL2 0x647318; true on success)
 0x003008A0 0x34 cbErrorMessage__FiiiP18MediusErrorMessage  # OVL1; s1:calls
 0x003008E0 0xDC func_003008E0  # OVL1
 0x003009C0 0xA4 func_003009C0  # OVL1
