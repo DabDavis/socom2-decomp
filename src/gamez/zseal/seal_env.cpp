@@ -52,6 +52,31 @@ extern float data_0044C2DC;
 extern float data_0044C2E0;
 }
 
+/* the HUD's flags: the hit taken once, the view cone's update taken once, the hit set (OVL2
+ * 0x5A5490, 0x5A5450, 0x5A5430; SOCOM 1's word for word, the flags at 0x105C) */
+bool CZSealBody::GetHudHitFlag()
+{
+    if (m_hudwashit) {
+        m_hudwashit = false;
+        return true;
+    }
+    return false;
+}
+
+bool CZSealBody::HudUpdateViewCone()
+{
+    if (m_HudUpdateViewCone) {
+        m_HudUpdateViewCone = false;
+        return true;
+    }
+    return false;
+}
+
+void CZSealBody::SetHudHitFlag()
+{
+    m_hudwashit = true;
+}
+
 /* the blink stepped: while a look runs it is stepped, and a finished look down turns into the look
  * back up; between blinks the wait runs down to nothing (OVL2 0x5AD730; SOCOM 1's, LookTick and
  * Blink inlined -- Blink's angle is dead on the way back up and MW drops its load).

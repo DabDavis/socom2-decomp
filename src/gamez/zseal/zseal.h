@@ -372,12 +372,18 @@ public:
 
     unsigned char _250[0x254 - 0x250];
     float m_throttle_goal[3];   // 0x254 (as SOCOM 1's 0x274: the throttles the AI asks for)
-    unsigned char _260[0x278 - 0x260];
+    unsigned char _260[0x26c - 0x260];
+    unsigned char m_26c;   // 0x26c: a mode byte (4: any target taken; the name ours)
+    unsigned char _26d[0x278 - 0x26d];
     SEAL_STANCE m_stance;   // 0x278 (SOCOM 1's 0x285)
     float m_stance_delay;   // 0x27c (SOCOM 1's 0x288)
     unsigned char _280[0x468 - 0x280];
     CZAnim *m_task_anim;   // 0x468: an anim the AI plays, stopped at the mission's end
-    unsigned char _46c[0x7c0 - 0x46c];
+    unsigned char _46c[0x5bc - 0x46c];
+    signed char m_5bc;   // 0x5bc (read after the update at 0x555420; the name ours)
+    unsigned char _5bd[0x750 - 0x5bd];
+    void *m_750[3];   // 0x750: three slots by a byte index (the name ours)
+    unsigned char _75c[0x7c0 - 0x75c];
 };
 
 /* the network's controller: a SEAL another console drives (SOCOM 1's CRemoteCtrl : CSealCtrl;
@@ -454,6 +460,10 @@ public:
     void ActionAvailableMask(unsigned char id, bool on);
     /* the stance's change taken, once (seal_body.cpp) */
     bool StanceChanged();
+    /* the HUD's flags: the hit set, and each taken once (seal_env.cpp, SOCOM 1's) */
+    void SetHudHitFlag();
+    bool HudUpdateViewCone();
+    bool GetHudHitFlag();
     /* the terrain a SEAL can cross: an int, the callers make it a bool (seal_env.cpp) */
     int CanTraverse(CDIType type);
     bool CanClimbWall();

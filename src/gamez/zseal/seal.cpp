@@ -23,6 +23,75 @@ struct CWorldCamera {
     zdb::CCamera *m_camera;   // 0x128
 };
 
+/* a halfword test: any of the bits (OVL2 0x5551A0; in the unit's tail) */
+extern "C" bool func_005551A0(unsigned short flags, unsigned short bits)
+{
+    return (flags & bits) != 0;
+}
+
+/* an indexed array's current element, or none (OVL2 0x555170; in the unit's tail) */
+struct CIndexedArray {
+    void **m_data;   // 0x0
+    unsigned char _4[4];
+    int m_index;   // 0x8
+};
+
+extern "C" void *func_00555170(CIndexedArray *a)
+{
+    if (a->m_index < 0)
+        return 0;
+    return a->m_data[a->m_index];
+}
+
+/* the SEAL's stats (SOCOM 1's DWARF: CSealStats, 0x54 bytes of ints; SOCOM II's counters are
+ * unsigned shorts) -- only the counters the incrementers touch, by halfword */
+class CSealStats {
+public:
+    unsigned short m_count[0x34 / 2];
+};
+
+/* eight counters each added to (OVL2 0x5451E0, 0x5451C0, 0x5451A0, 0x545180, 0x545160, 0x545140,
+ * 0x545120, 0x545100; SOCOM 1's Incr* took ints) */
+extern "C" void func_005451E0(CSealStats *s, int n)
+{
+    s->m_count[0x1e / 2] += (unsigned short)n;
+}
+
+extern "C" void func_005451C0(CSealStats *s, int n)
+{
+    s->m_count[0x24 / 2] += (unsigned short)n;
+}
+
+extern "C" void func_005451A0(CSealStats *s, int n)
+{
+    s->m_count[0x22 / 2] += (unsigned short)n;
+}
+
+extern "C" void func_00545180(CSealStats *s, int n)
+{
+    s->m_count[0x26 / 2] += (unsigned short)n;
+}
+
+extern "C" void func_00545160(CSealStats *s, int n)
+{
+    s->m_count[0x28 / 2] += (unsigned short)n;
+}
+
+extern "C" void func_00545140(CSealStats *s, int n)
+{
+    s->m_count[0x2a / 2] += (unsigned short)n;
+}
+
+extern "C" void func_00545120(CSealStats *s, int n)
+{
+    s->m_count[0x2e / 2] += (unsigned short)n;
+}
+
+extern "C" void func_00545100(CSealStats *s, int n)
+{
+    s->m_count[0x30 / 2] += (unsigned short)n;
+}
+
 /* a picked-up grenade thrown back along the pickup's facing, lofted (OVL2 0x547700; SOCOM 1's
  * function-local statics, initialised statically by MW 3.0) */
 static void _rethrow_grenade(CValve *valve, void *data)

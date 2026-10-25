@@ -64,6 +64,52 @@ CAiSRescued::~CAiSRescued()
 {
 }
 
+extern "C" {
+/* the table of a stance's figures, a row of eight per setting (OVL2 data 0x64FE60), and the row
+ * in use (OVL2 bss 0x66AFD8) */
+extern float data_0064FE60[][8];
+extern int data_0066AFD8;
+/* (OVL2 0x555420, not written yet: the AI's state brought up to date from two of its blocks) */
+void func_00555420(CSealCtrlAi *ai, void *a, void *b);
+}
+
+/* a figure of the current row (OVL2 0x5750D0; before sealai::get_stance) */
+extern "C" float func_005750D0(unsigned char i)
+{
+    return data_0064FE60[data_0066AFD8][i];
+}
+
+/* whether an entity may be taken as a target: any in mode 4, else one of no team of ours (OVL2
+ * 0x572D30) */
+extern "C" bool func_00572D30(CSealCtrlAi *ai, CEntity *e)
+{
+    CEntity *me = ai->m_entity;
+
+    return ai->m_26c == 4 || (e && !(e->m_team & me->m_team));
+}
+
+/* (OVL2 0x5621C0) */
+extern "C" void *func_005621C0(CSealCtrlAi *ai, unsigned char i)
+{
+    if (i < 3)
+        return ai->m_750[i];
+    return 0;
+}
+
+/* the AI's state brought up to date, its byte at 0x5BC returned (OVL2 0x5558A0; the AI states'
+ * OnSignal call it) */
+extern "C" signed char func_005558A0(CSealCtrlAi *ai)
+{
+    func_00555420(ai, (char *)ai + 0x46c, (char *)ai + 0x514);
+    return ai->m_5bc;
+}
+
+/* the sign of a value, as one (OVL2 0x557D90; the inline's copy after its caller, 0x557190) */
+extern "C" float func_00557D90(float x)
+{
+    return x >= 0.0f ? 1.0f : -1.0f;
+}
+
 /* CZAnim::Stop, which SOCOM II gave a flag (zanim.h's declaration) */
 extern "C" void func_002707C0(CZAnim *anim, bool now);
 

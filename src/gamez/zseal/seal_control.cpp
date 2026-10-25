@@ -17,6 +17,13 @@ CSealUnit *func_005EF2F0(unsigned int team);
 extern CNetGameState *data_00437CE8;
 }
 
+/* a vector's length squared on the ground plane (OVL2 0x5975B0: an inline's copy, before the
+ * grenade's statics; PostTick and the kit call it) */
+extern "C" float func_005975B0(const CPnt3D *v)
+{
+    return v->x * v->x + v->z * v->z;
+}
+
 /* a grenade's flight time and launch speed; SOCOM 1's function-local statics, which MW 3.0 lays
  * out initialised, with no guard (OVL2 0x5976E0, 0x5976A0, 0x5975D0) */
 float CDynGrenade::ComputeMaxVel(float dist, float height, float *vel)
