@@ -335,6 +335,39 @@ extern "C" void func_005B61A0()
     data_0044D598 = 0;
 }
 
+extern "C" {
+/* a pickup taken offline (OVL2 0x59F0C0), told to the network as this console's own or another's
+ * (OVL2 0x59E830; OVL1 0x2BA2C0, the net code's) */
+void func_0059F0C0(CZSealBody *seal, CPickup *pickup);
+void func_0059E830(CZSealBody *seal, int a, unsigned int netid, short *ids, unsigned int id);
+void func_002BA2C0(int a, unsigned int netid, short *ids, unsigned int id, unsigned int owner);
+}
+
+/* a weapon pickup taken: offline at once; online the weapon's id sent, as this SEAL's own pickup when
+ * it owns it, else for its owner (OVL2 0x59F610, new in SOCOM II; PickupObject calls it) */
+extern "C" void func_0059F610(CZSealBody *seal, CPickup *pickup)
+{
+    if (!seal->m_isAlive)
+        return;
+    if (theNetwork.m_9) {
+        unsigned int owner = pickup->m_owner;
+        CZWeapon *w = pickup->GetWeapon();
+
+        if (!w)
+            return;
+        short ids[8];
+
+        ids[0] = ((unsigned char *)w)[0x7c];
+        unsigned int id = seal->m_id;
+
+        if (owner == id)
+            func_0059E830(seal, 1, pickup->GetPickupNetEntityID(), ids, id);
+        else
+            func_002BA2C0(1, pickup->GetPickupNetEntityID(), ids, id, owner);
+    } else
+        func_0059F0C0(seal, pickup);
+}
+
 /* whether the SEAL's timed action is due: set at all, and offline at once, online once the network's
  * clock reaches its time (OVL2 0x5A8850, new in SOCOM II; CSealCtrl::PerformProximityActions asks it) */
 extern "C" bool func_005A8850(CZSealBody *seal)

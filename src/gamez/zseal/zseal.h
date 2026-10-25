@@ -491,7 +491,9 @@ public:
     unsigned int m_bits264 : 30;
     unsigned char _268[0x26c - 0x268];
     unsigned char m_26c;   // 0x26c: a mode byte (4: any target taken; the name ours)
-    unsigned char _26d[0x278 - 0x26d];
+    unsigned char _26d[0x270 - 0x26d];
+    int m_270;   // 0x270: a count 0x56D450 sets with the cell it finds (the names ours)
+    void *m_274;   // 0x274: that cell
     SEAL_STANCE m_stance;   // 0x278 (SOCOM 1's 0x285)
     float m_stance_delay;   // 0x27c (SOCOM 1's 0x288)
     unsigned char _280[0x3f4 - 0x280];

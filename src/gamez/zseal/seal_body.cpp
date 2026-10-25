@@ -20,6 +20,33 @@ extern "C" unsigned short func_0058A920(unsigned short flags, unsigned short bit
     return flags;
 }
 
+/* a table of three-word entries with three words of state (the names ours) */
+struct CTripleTable {
+    unsigned int m_count;   // 0x0
+    int m_4;   // 0x4
+    int m_8;   // 0x8
+    int m_c;   // 0xc
+    struct Entry {
+        int m_0, m_4, m_8;
+    } *m_items;   // 0x10
+};
+
+/* the table cleared: its state zeroed, every entry zeroed (OVL2 0x58A950, new in SOCOM II; three of
+ * the body's functions call it) */
+extern "C" void func_0058A950(CTripleTable *t)
+{
+    t->m_4 = 0;
+    t->m_8 = 0;
+    t->m_c = 0;
+    CTripleTable::Entry *e = t->m_items;
+
+    for (unsigned int i = 0; i < t->m_count; i++, e++) {
+        e->m_0 = 0;
+        e->m_4 = 0;
+        e->m_8 = 0;
+    }
+}
+
 /* (OVL2 0x57DC80; CSealCtrl::PreTick calls it twice) */
 extern "C" void *func_0057DC80(CZSealBody *seal)
 {

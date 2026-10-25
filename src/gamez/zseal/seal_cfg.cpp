@@ -107,6 +107,19 @@ extern "C" unsigned char func_0058E0A0(const char *name)
     return 0;
 }
 
+/* an anim's reference point when it has one, else the origin (OVL2 0x58C2F0, SOCOM 1's RefPoint by
+ * role -- SOCOM 1's searched a list of points; SOCOM II reads the script's own -- so the name stays
+ * a placeholder; CheckDILadder and three more call it) */
+extern "C" bool func_0058C2F0(CZSealBody *seal, CZSIScriptCommon *anim, CPnt3D *out)
+{
+    if (anim->m_4b_0) {
+        *out = anim->m_4c;
+        return true;
+    }
+    *out = CPnt3D::zero;
+    return false;
+}
+
 /* a cell search's query and its answer (0x58F230 passes this callback; the names ours) */
 struct CCellQuery {
     unsigned char _0[0xc];

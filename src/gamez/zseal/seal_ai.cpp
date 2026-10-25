@@ -1048,6 +1048,69 @@ extern "C" bool func_00556280(CCellWalk *w, CCellGather *g)
 }
 
 extern "C" {
+/* (OVL2 0x52D950, the AI core's: the AI maps' cell at a location) */
+void *func_0052D950(CAiMaps *maps, const CAiMapLoc *loc);
+}
+
+/* whether a location is the invalid cell (an inline bool: the target materialises the `&&`) */
+static inline bool IsInvalidLoc(const CAiMapLoc *loc)
+{
+    return loc->x == CAiMapLoc::invalid.x && loc->y == CAiMapLoc::invalid.y;
+}
+
+/* the cell the AI heads for, with a count (14 for none): the invalid cell clears both and succeeds,
+ * any other must be on the maps (OVL2 0x56D450, new in SOCOM II; the AI states' 0x5D4770 calls it) */
+extern "C" bool func_0056D450(CSealCtrlAi *ctrl, const CAiMapLoc *loc, int n)
+{
+    if (!n)
+        n = 14;
+    bool ok = false;
+
+    if (IsInvalidLoc(loc)) {
+        ctrl->m_274 = 0;
+        ok = true;
+        ctrl->m_270 = 0;
+    } else {
+        ctrl->m_270 = 0;
+        ctrl->m_274 = func_0052D950(&AiMaps, loc);
+        if (ctrl->m_274) {
+            ctrl->m_270 = n;
+            ok = true;
+        }
+    }
+    return ok;
+}
+
+/* a box's eight corners (the name ours) */
+struct CBoxCorners {
+    CPnt3D m_c[8];
+};
+
+extern "C" {
+/* OVL2's out-of-line copies of CPnt3D's three-float constructor and its implicit copy constructor
+ * (0x5414F0, 0x539E90) */
+CPnt3D *func_005414F0(CPnt3D *p, float x, float y, float z);
+CPnt3D *func_00539E90(CPnt3D *p, const CPnt3D *src);
+}
+
+/* a box's eight corners, each a temporary point copied in -- the lows and highs mixed, the two
+ * plain corners copied straight from the box (OVL2 0x56AE40, new in SOCOM II; 0x56A8E0 calls it) */
+extern "C" CBoxCorners *func_0056AE40(CBoxCorners *c, const CBBox *b)
+{
+    CPnt3D t0, t1, t2, t3, t4, t5;
+
+    func_00539E90(&c->m_c[0], func_005414F0(&t0, b->m_min.x, b->m_min.y, b->m_max.z));
+    func_00539E90(&c->m_c[1], &b->m_min);
+    func_00539E90(&c->m_c[2], func_005414F0(&t1, b->m_max.x, b->m_min.y, b->m_min.z));
+    func_00539E90(&c->m_c[3], func_005414F0(&t2, b->m_max.x, b->m_min.y, b->m_max.z));
+    func_00539E90(&c->m_c[4], func_005414F0(&t3, b->m_min.x, b->m_max.y, b->m_max.z));
+    func_00539E90(&c->m_c[5], func_005414F0(&t4, b->m_min.x, b->m_max.y, b->m_min.z));
+    func_00539E90(&c->m_c[6], func_005414F0(&t5, b->m_max.x, b->m_max.y, b->m_min.z));
+    func_00539E90(&c->m_c[7], &b->m_max);
+    return c;
+}
+
+extern "C" {
 /* (OVL2 0x5712F0, seal_ai.cpp's: whether the controller's SEAL should act now; and 0x589AA0, the
  * body's: the act) */
 int func_005712F0(CSealCtrlAi *ctrl);
