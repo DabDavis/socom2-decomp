@@ -691,7 +691,12 @@ public:
     CNode* node_ptr;   // 0x4
 };   // 0x8 bytes
 
-enum VALVE_TYPE {};   // its values are not in SOCOM 1's DWARF, only its name in CValve::Create's
+/* its values are not in SOCOM 1's DWARF, only its name in CValve::Create's; the valve lane's
+ * enumerators make it unsigned, as the code compares it (andi 0xff in CValve::Create and
+ * CValvePool::Acquire). Their names are the valve file's type strings, which CValve::Parse maps
+ * to 1-3 ("PERM", "TEMP", "PERSIST"); 0 is the delete predicate's any. A temporary valve is the
+ * default (the pool's, Destroy's, ParseValveName's; only its names go to the pool's buffer) */
+enum VALVE_TYPE { VALVE_ANY = 0, VALVE_PERM = 1, VALVE_TEMP = 2, VALVE_PERSIST = 3 };
 
 /* a valve's change of state, its callbacks told with it (SOCOM 1's MakeCallbacks takes one; the
  * names are the states lane's) */
@@ -713,8 +718,20 @@ struct VALVE_CB {
 class CValveCBList : public std::list<VALVE_CB *> {
 };
 
+class CRdrFile;
+
 class CValve {
 public:
+    /* the valve lane's: SOCOM 1's constructor and destructor, and the valve file read, the list
+     * emptied and the pool made (valve_list.cpp) */
+    CValve(const char *name, unsigned int value, VALVE_TYPE type);
+    ~CValve();
+    static bool Parse(CRdrFile *rdr, VALVE_TYPE type);
+    static void Close();
+    static void Reset();
+    static bool Open(const char *name, VALVE_TYPE type);
+    static void Uninit();
+    static bool Init();
     static CValve *Create(const char *name, VALVE_TYPE type);
     static CValve *Create(const char *name, unsigned int value, VALVE_TYPE type);
     static CValve *GetByName(const char *name);
@@ -747,7 +764,8 @@ public:
     unsigned int m_type : 8;   // 0x4
     unsigned int m_name_pooled : 1;   // 0x4
     unsigned int m_pooled : 1;   // 0x4
-    unsigned int m_unused : 6;   // 0x4
+    unsigned int m_socom2_bit26 : 1;    // 0x4: SOCOM II's (the constructor clears it; the valve lane's)
+    unsigned int m_unused : 5;   // 0x4
     CValveCBList m_callbacks;   // 0x8 (SOCOM 1's DWARF; the valve lane's)
 
     static std::list<CValve *> m_list;   // 0x49E800: every valve (SOCOM 1's)
