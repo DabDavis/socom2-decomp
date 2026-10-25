@@ -5,7 +5,12 @@
  * initialiser, __sinit_grid_di.cpp, registers CStack's destructor for its matrix stack, whose
  * linked copy (0x2D4FE0) closes the unit; grid_main.cpp follows. Defined in reverse of their
  * image order (-inline deferred).
- * Written so far: the hit set's answers. */
+ * Written so far: the hit set's answers. Before the unit, 0x2D2070-0x2D2830 are not grid_di.cpp's
+ * (checked, round 6): a recursive search over the graph's edge lists through the pointer list's
+ * out-of-line begin() (0x2A00B0) and tiny iterator helpers -- graph_tree.cpp's neighbourhood.
+ * Unwritten: the node walk 0x2D2890 (SOCOM 1's NodeGetIntersect and NodeGetAltitude in one, it
+ * calls the polygon VU0 loaders 0x2DD130/0x2DD210), the batch walk 0x2D3030 (SOCOM 1's
+ * NodeGetIntersectBatch) and CGrid::GetIntersectBatch. */
 
 #include "node_world.h"
 
@@ -20,7 +25,10 @@ extern "C" bool func_003084F0(const CMatrix *m);
 
 /* the node the walk is in (SOCOM 1's file static m_node) and the matrix stack the props' matrices
  * are pushed on (SOCOM 1's file static stack; SOCOM II's initialiser, 0x401CC0, clears its owner
- * byte where include's CStack() pushes the unit matrix -- not that constructor) */
+ * byte where zmath.h's CStack() pushes the unit matrix -- not that constructor). Measured
+ * (2026-10-25, the world lane): with zmath.h's CStack given `CStack(bool own) : m_own(own) {}` and
+ * this static written `stack(false)`, __sinit_grid_di.cpp is byte-exact (SOCOM 1's initialiser has
+ * the same `sb zero` and registration) -- waits on zmath.h */
 static zdb::CNode *m_node;
 static CStack stack;
 

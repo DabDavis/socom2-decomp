@@ -107,7 +107,39 @@ public:
  * DI_PARAMS; SOCOM II's AddDI counts at 4) and its vtable pointer -- at 0xc, where SOCOM 1's
  * sat at 0x1c, after its parameters (DeleteDI deletes through the first slot) */
 struct tag_DI_HEAD {
-    unsigned int _0;
+    /* SOCOM 1's DI_PARAMS constructor: the region and the count zeroed, then every flag field
+     * through its setter -- a constant passed to an inline setter is masked at run time, `(0 & 3)`
+     * -- SOCOM II's four new fields among them (bit 26 set, the three bits at 28 set to 4; CDI's
+     * constructor inlines it, 0x2DC4C0; the setters' names are ours) */
+    tag_DI_HEAD()
+    {
+        _0 = 0;
+        m_refcount = 0;
+        SetDiType(0);
+        SetPtCount(0);
+        SetMaterial(0);
+        SetCameraType(0);
+        SetAppFlags(0);
+        SetInside(0);
+        SetFlag27(false);
+        SetBit26(true);
+        SetBit31(false);
+        SetShadow(0);
+        SetBits28(4);
+    }
+    void SetDiType(int n) { m_flags.m_ditype = n; }
+    void SetPtCount(int n) { m_flags.m_ptcount = n; }
+    void SetMaterial(int n) { m_flags.m_material = n; }
+    void SetCameraType(int n) { m_flags.m_cameratype = n; }
+    void SetAppFlags(int n) { m_flags.m_appflags = n; }
+    void SetInside(int n) { m_flags.m_inside = n; }
+    void SetShadow(int n) { m_flags.m_shadow = n; }
+    void SetBit26(bool b) { m_flags.m_reserved26 = b; }
+    void SetFlag27(bool b) { m_flags.m_flag27 = b; }
+    void SetBits28(int n) { m_flags.m_bits28 = n; }
+    void SetBit31(bool b) { m_flags.m_bit31 = b; }
+
+    unsigned int _0;   // 0x0 (SOCOM 1's m_region, after its normal)
     unsigned int m_refcount;   // 0x4
     /* SOCOM 1's DI_PARAMS flags, at 8 here (SetMaterial writes the material's eight bits at bit
      * 10, SetDIBBox the type's two at bit 0) */
@@ -124,7 +156,9 @@ struct tag_DI_HEAD {
             unsigned int m_reserved26 : 1;
             /* SOCOM II's: IntersectStruct::GetPolyFlag27 reads it (the name ours) */
             unsigned int m_flag27 : 1;
-            unsigned int m_reserved : 4;
+            /* SOCOM II's: the constructor sets 4 and clears bit 31 (the names ours) */
+            unsigned int m_bits28 : 3;
+            unsigned int m_bit31 : 1;
         } m_flags;
     };
 };
@@ -134,6 +168,7 @@ class CSaveLoad;
 
 class CDI : public tag_DI_HEAD {
 public:
+    CDI();
     virtual ~CDI();
     /* SOCOM II's table (__vt__Q23zdb3CDI, 0x406650): the destructor, Allocate, Free, two pure
      * slots (SOCOM 1's GetIntersect and GetAltitude, each shape's own) and Read */
@@ -963,11 +998,17 @@ public:
     bool Create(CWorld *world, const tag_GRID_PARAMS *params);
     /* a node's place in the grid brought up to date (SOCOM 1's) */
     void Update(CNode *node);
+    /* the cell under a point in x/z (new in SOCOM II; the name is ours) */
+    CCell *GetCell(float x, float z);
     /* a walk over the cells a polygon in x/z covers: the boundary set, the first atom and the
      * next (SOCOM 1's) */
     /* the new walk's tick given back: both paths end on ++m_TickNum, its value left in v0 (a void
      * function allocates the loop's temporaries from v1) */
     int SetTraversalBoundary(const CPnt3D *pnts, int n, bool b);
+    /* the same over a rectangle's two corners (new in SOCOM II; the overload is ours) */
+    int SetTraversalBoundary(const CFRect *r);
+    /* the ordered walk's boundary, the list built from the view point (SOCOM 1's) */
+    int SetTraversalBoundaryOrdered(const CPnt3D *view, const CPnt3D *pnts, int n, bool b);
     CGridAtom *StartTraversal();
     CGridAtom *GetNextAtom();
     /* the same walk in ring order from a view point (SOCOM 1's) */
@@ -1153,8 +1194,23 @@ public:
     void SetCount(int n) { m_count = n; }
     void SetBits18(int n) { m_bits18 = n; }
 
+    /* a prop held once more, refused at fifteen holders (new in SOCOM II: CClutterList::Add asks
+     * it; the name ours) */
+    bool AddHolder()
+    {
+        if (m_count < 15) {
+            m_count++;
+            return true;
+        }
+        return false;
+    }
+
     CMatrix m_matrix;   // 0x0
-    unsigned char _40[0x4c - 0x40];
+    unsigned char _40[0x44 - 0x40];
+    /* the squared distance it fades out at (CClutterList::Add keeps the list's farthest, SOCOM 1's
+     * m_max_farFadeSq, and orders the fading props by it; the name ours) */
+    float m_farFadeSq;   // 0x44
+    unsigned char _48[0x4c - 0x48];
     unsigned int m_bit0 : 1;   // 0x4c
     unsigned int m_quat : 1;   // 0x4c
     unsigned int m_bit2 : 1;   // 0x4c
@@ -1211,12 +1267,6 @@ struct CClutterEffector {
     float m_radius;   // 0x24
 };
 
-/* SOCOM II's pointer-list walks: the first node is built from a REFERENCE to the sentinel's next_
- * link, so &end_.next_ is a compiler temporary -- computed once, CSE'd across a walk and the clear
- * (or the list's destructor) after it, and kept in the lowest saved register (ClearEffectors,
- * ClearAnimations, ~CClutterAnimManager; the same shape is open in several lanes: CValve::
- * DeleteCallbacks, ~CZAmmoList, zNetFlushMessages). include/list's begin() takes the link by value;
- * these stand in for SOCOM II's MSL until it does (the names ours) */
 /* a vector between two points, by value: Sub out of line into a temporary, copied out (ld/sd and
  * lwc1/swc1) -- the collision code's differences (grid_di.cpp, int_main.cpp; SOCOM II's CPnt3D
  * operator-, which zmath.h lacks; the name is ours) */
@@ -1227,14 +1277,6 @@ inline CPnt3D PntMinus(const CPnt3D &a, const CPnt3D &b)
     a.Sub(&b, &r);
     return r;
 }
-
-typedef std::__list_deleter<const void *, std::allocator<const void *> > PtrListBase;
-struct PtrListFirst : public PtrListBase::iterator {
-    PtrListFirst(PtrListBase::node_base *const &link) : PtrListBase::iterator(link) {}
-};
-inline PtrListBase::iterator ListBegin(PtrListBase &l) { return PtrListFirst(l.end_node().next_); }
-inline PtrListBase::iterator ListEnd(PtrListBase &l) { return PtrListBase::iterator(&l.end_node()); }
-inline void ListClear(PtrListBase &l) { l.erase(ListBegin(l), ListEnd(l)); }
 
 /* the clutter's animation: the props pushed about by effectors (SOCOM 1's grid_clutter.cpp class,
  * 0x70 bytes, its DWARF) */
@@ -1442,7 +1484,7 @@ public:
     DiIntersect *GetIntersects(const CPnt3D *p0, const CPnt3D *p1, bool characters);
     IntersectStruct *GetAltitude(const CPnt3D *p, float alt);
     IntersectStruct *GetAltitude(const CPnt3D *p, float alt, bool characters);
-    DiIntersect *GetAltitudes(const CPnt3D *p, float alt);
+    DiIntersect *GetAltitudes(const CPnt3D *p);
     /* the world's grid's, whichever world it is called on (SOCOM 1's: its this is not read) */
     int GetIntersectBatch(DiIntersect **di, int n);
     void InitDescendantsDI();

@@ -6,15 +6,19 @@
  * grid_di.cpp's queries come before it (its static initialiser registers CStack's destructor, whose
  * linked copy, 0x2D4FE0, closes that unit), grid_clutter.cpp's clutter animation after it. Defined
  * in reverse of their image order (-inline deferred).
- * Unwritten: ReadClutter (0x2D5060), AddClutter (0x2D55C0), Destroy (0x2D58B0), 0x2D5B50 (new),
- * Create (0x2D5C80), SetTraversalBoundaryOrdered (0x2D6920), 0x2D6AB0 (new), SetTraversalExtents
- * (0x2D6C40), gridAddNodeToGrids (0x2D7580). CGrid() is written and byte-exact once its CFRect
+ * Unwritten: ReadClutter (0x2D5060), gridAddNodeToGrids (0x2D7580). CGrid() is written and byte-exact once its CFRect
  * constructor's row is named (below). */
 
+#include <stdio.h>
+
 #include "node_world.h"
+#include "../zsys/zsys.h"
 
 /* the node's atom count set (node_main.cpp's SOCOM 1 CNode::SetAtomCnt(int), not named yet) */
 extern "C" void func_003149D0(zdb::CNode *node, int n);
+/* a CFRect from two corners: top and bottom their z, left and right their x (zmath's, out of
+ * line before CMatrix's unit; not named yet -- SOCOM 1's CFRect(const CPnt3D *, const CPnt3D *)) */
+extern "C" void func_00306620(void *rect, const CPnt3D *a, const CPnt3D *b);
 /* MSL's abs (MAIN, 0x191428, named): called by its address, since MW expands a call spelled abs
  * through <stdlib.h> inline (its builtin) where addOrderedCellAtom's target calls it twice */
 extern "C" int func_00191428(int x);
@@ -81,7 +85,8 @@ void CCell::DeleteClutter()
 #pragma auto_inline reset
 
 /* a clutter put in the list its node's collision says: its DI set up first when it has none
- * (SOCOM 1's an empty stub) */
+ * (SOCOM 1's an empty stub). Pinned: CGrid::AddClutter calls it out of line */
+#pragma auto_inline off
 bool CCell::AddClutter(CClutter *clutter)
 {
     bool ok;
@@ -94,6 +99,7 @@ bool CCell::AddClutter(CClutter *clutter)
         ok = m_clutterList.Add(clutter);
     return ok;
 }
+#pragma auto_inline reset
 
 void CCell::SetClutterFlag(bool on)
 {
@@ -297,6 +303,117 @@ void CGrid::gridRemoveNodeFromGrids(CNode *node)
         m_FreeAtoms = atom;
     }
     func_003149D0(node, 0);
+}
+
+/* a coordinate's cell index: its offset from the origin, a ten-thousandth in, in cells, held
+ * inside the grid (SOCOM 1's form; SOCOM II converts inline where SOCOM 1 called fptosi; the
+ * name is ours) */
+inline int GridCellIndex(float v, float o, float inv, const int &n)
+{
+    int i = (int)(inv * (0.0001f + (v - o)));
+
+    i = MAX(0, i);
+    i = MIN(n - 1, i);
+    return i;
+}
+
+/* the walk's points (at most five) kept, and the box of cells they cover: the first point's cell,
+ * widened by each point's, its far edges one past (SOCOM 1's).
+ * OPEN, 4 instructions (the right size), scheduling only: the target materialises the first
+ * point's 0.0001f (lui) before it loads the point's x and the origin's (SOCOM 1's too, a
+ * store-to-load wait after m_PntCnt's store); here the loads go first. Tried: the index written
+ * out, the constant in a local (declared first or at the use), the operands reordered, reference
+ * parameters, the store moved; the clamp's MAX/MIN forms, the const reference count and the
+ * indexed loop fixed everything else */
+void CGrid::SetTraversalExtents(const CPnt3D *pnts, int n, bool b)
+{
+    m_LineWalk = b;
+    n = MAX(0, n);
+    if (n > 5)
+        n = 5;
+    m_PntCnt = n;
+    m_ix = m_ixb = GridCellIndex(pnts->x, m_origin.x, m_InvCellDim, m_CellCount.cx);
+    m_iz = m_izb = GridCellIndex(pnts->z, m_origin.z, m_InvCellDim, m_CellCount.cy);
+    for (int i = 0; i < n; i++) {
+        m_Pnts[i] = pnts[i];
+        int ix = GridCellIndex(pnts[i].x, m_origin.x, m_InvCellDim, m_CellCount.cx);
+        int iz = GridCellIndex(pnts[i].z, m_origin.z, m_InvCellDim, m_CellCount.cy);
+
+        m_ix = MIN(m_ix, ix);
+        m_iz = MIN(m_iz, iz);
+        m_ixb = MAX(m_ixb, ix);
+        m_izb = MAX(m_izb, iz);
+    }
+    m_ixb++;
+    m_izb++;
+}
+
+/* the ordered walk's boundary: the points and extents set; a single point's cell made the whole
+ * ordered list, else each edge's inward normal made unit length and the list built ring by ring
+ * from the view point; a new walk's tick (SOCOM 1's; SOCOM II ticks once more before the build) */
+int CGrid::SetTraversalBoundaryOrdered(const CPnt3D *view, const CPnt3D *pnts, int n, bool b)
+{
+    SetTraversalExtents(pnts, n, b);
+    if (n == 1) {
+        int ix;
+        int iz;
+
+        m_orderedCells.m_gridCellAtomCnt = 0;
+        m_orderedCells.m_rt_gridCellAtomCnt = 0;
+        gridGetGridXandZIndex(&ix, &iz, pnts->x, pnts->z);
+        addOrderedCellAtom(ix, iz, true);
+        return ++m_TickNum;
+    }
+    for (int i = 0; i < m_PntCnt; i++) {
+        int j = (i + 1) % m_PntCnt;
+
+        m_Edge[i].z = m_Pnts[i].x - m_Pnts[j].x;
+        m_Edge[i].x = m_Pnts[j].z - m_Pnts[i].z;
+        float len = sqrtf(m_Edge[i].x * m_Edge[i].x + m_Edge[i].z * m_Edge[i].z);
+
+        if (len != 0.0f) {
+            len = 1.0f / len;
+            m_Edge[i].z *= len;
+            m_Edge[i].x *= len;
+        }
+    }
+    ++m_TickNum;
+    buildOrderedCellAtomList(view);
+    return ++m_TickNum;
+}
+
+/* a point in the ground plane, by value (a named point copied out; the name is ours) */
+inline CPnt3D GroundPnt(const float &x, const float &z)
+{
+    CPnt3D p(x, 0.0f, z);
+
+    return p;
+}
+
+/* the walk's boundary a rectangle in x/z: its two corners set as the boundary's points, each
+ * edge's inward normal made unit length, and a new walk's tick (new in SOCOM II, SetTraversal-
+ * Boundary's loop over a CFRect's corners; the overload is ours) */
+int CGrid::SetTraversalBoundary(const CFRect *r)
+{
+    CPnt3D pnts[2];
+
+    pnts[0] = GroundPnt(r->left, r->top);
+    pnts[1] = GroundPnt(r->right, r->bottom);
+    SetTraversalExtents(pnts, 2, false);
+    for (int i = 0; i < m_PntCnt; i++) {
+        int j = (i + 1) % m_PntCnt;
+
+        m_Edge[i].z = m_Pnts[i].x - m_Pnts[j].x;
+        m_Edge[i].x = m_Pnts[j].z - m_Pnts[i].z;
+        float len = sqrtf(m_Edge[i].x * m_Edge[i].x + m_Edge[i].z * m_Edge[i].z);
+
+        if (len != 0.0f) {
+            len = 1.0f / len;
+            m_Edge[i].z *= len;
+            m_Edge[i].x *= len;
+        }
+    }
+    return ++m_TickNum;
 }
 
 /* the walk's boundary: its points and extents set, each edge's inward normal in x/z made unit
@@ -536,6 +653,199 @@ void CGrid::Update(CNode *node)
         gridRemoveNodeFromGrids(node);
         gridAddNodeToGrids(node);
     }
+}
+
+/* a cell's index, the cell held inside the grid (gridGetAtomBasePtr's clamp, the index given
+ * back; the name is ours) */
+inline int GridAtomIndex(const tag_SIZE &n, int x, int z)
+{
+    x = MAX(0, x);
+    x = MIN(n.cx - 1, x);
+    z = MAX(0, z);
+    z = MIN(n.cy - 1, z);
+    return x + z * n.cx;
+}
+
+/* the grid built over the world's box: the parameters and the origin kept, the extents and the
+ * tolerances derived, the atoms allocated and threaded on the free list, then one cell per square
+ * -- named for its index, made the world's child, given an atom of its own (SOCOM 1's; SOCOM II
+ * fixes the atom count and threads its spare atoms).
+ * OPEN (0x36C of 0x380): everything to the cell loop is the target's, and the index's clamp (as
+ * gridGetAtomBasePtr's); the target enters the inner loop through a preheader laid out after the
+ * function's last block -- `b` to it, its `0 < cx` test, then `b` back to the loop's own bottom
+ * test -- where MW rotates the loop here (the test inline before the body): SortNearToFar's
+ * open shape. Not a while loop, the counter declared outside, the test reversed; the order of the
+ * atom's three stores (Prev, the table, Next in the target) waits on it */
+bool CGrid::Create(CWorld *world, const tag_GRID_PARAMS *params)
+{
+    m_world = world;
+    m_posts = params->m_posts;
+    m_origin = m_world->GetBBox()->m_min;
+    m_CellCount = params->m_CellCount;
+    m_CellDim = params->m_CellDim;
+    m_extents.top = 0.0f;
+    m_extents.left = 0.0f;
+    m_extents.right = m_CellDim * (float)m_CellCount.cx;
+    m_extents.bottom = m_CellDim * (float)m_CellCount.cy;
+    m_GridCellTol = 0.5f * sqrtf(2.0f * (m_CellDim * m_CellDim));
+    m_ClutterTol = 0.0f;
+    m_InvCellDim = 1.0f / m_CellDim;
+    m_TickNum = -1;
+    m_AtomCnt = 8192;
+    m_AtomBuf = (CGridAtom *)_calloc(sizeof(CGridAtom), m_AtomCnt, 0, 0);
+    m_FreeAtoms = m_AtomBuf;
+    for (int i = 1; i < m_AtomCnt; i++)
+        m_AtomBuf[i - 1].Next = &m_AtomBuf[i];
+    m_Atoms = (CGridAtom **)_calloc(sizeof(CGridAtom *), m_CellCount.cx * m_CellCount.cy, 0, 0);
+    world->ReserveChildren(m_CellCount.cy * m_CellCount.cx);
+    for (int z = 0; z < m_CellCount.cy; z++) {
+        for (int x = 0; x < m_CellCount.cx; x++) {
+            CPnt3D pos;
+            char name[64];
+
+            pos.x = (float)x * m_CellDim;
+            pos.y = 0.0f;
+            pos.z = (float)z * m_CellDim;
+            int idx = GridAtomIndex(m_CellCount, x, z);
+            CCell *cell = new CCell(&pos, m_CellDim);
+
+            sprintf(name, "cell%06d", idx);
+            cell->SetName(name);
+            world->AddChild(cell);
+            cell->AllocateAtomBasePtrs(1, 1);
+            CGridAtom *atom = m_FreeAtoms;
+
+            m_FreeAtoms = atom->Next;
+            if (!m_FreeAtoms)
+                atom = 0;
+            atom->Ent = cell;
+            atom->Ent->InsertAtom(atom);
+            m_Atoms[idx] = atom;
+            atom->Prev = 0;
+            atom->Next = 0;
+        }
+    }
+    return true;
+}
+
+/* the cell under a point in x/z, or none: its indices from the origin, a ten-thousandth in, held
+ * inside the grid (new in SOCOM II: AddClutter and the world's 0x31D940 ask it; the name is
+ * ours).
+ * OPEN, the right size, one scheduling swap and the label pads it moves (34 lines): the target
+ * loads m_origin.z ahead of the second 0.0001f's lui, here the lui goes first -- the opposite of
+ * SetTraversalExtents' first point; 3.0b50 and 3.0b38 compile it the same. Tried: the difference
+ * in a local, the scale in a local, the indices declared together, the if-return tail */
+CCell *CGrid::GetCell(float x, float z)
+{
+    CCell *cell = 0;
+    int ix = (int)(m_InvCellDim * (0.0001f + (x - m_origin.x)));
+
+    ix = MAX(0, ix);
+    if (ix > m_CellCount.cx - 1)
+        ix = m_CellCount.cx - 1;
+    int iz = (int)(m_InvCellDim * (0.0001f + (z - m_origin.z)));
+
+    iz = MAX(0, iz);
+    if (iz > m_CellCount.cy - 1)
+        iz = m_CellCount.cy - 1;
+    CGridAtom **p = gridGetAtomBasePtr(ix, iz);
+
+    if (p && *p)
+        cell = (*p)->GetCell();
+    return cell;
+}
+
+/* the world's nodes sorted: every other node unlinked from the cells and its atoms freed, each
+ * cell taken off the world and deleted, then the atoms' tables freed (SOCOM 1's; SOCOM II inlines
+ * gridRemoveNodeFromGrids and frees no third table; the cells' erase written out, as SOCOM 1's).
+ * OPEN, 11 instructions (the right size), registers only: the target holds the cells vector's
+ * &size_ in s0 and &data_ in s1, here the other way round -- byte-exact with include/vector's __vector_pod::end() as `return data() + size_;` (the end
+ * read through data()'s reference) -- measured over every hand-written unit (2026-10-25, the world
+ * lane): CGrid::Destroy, CWorld::GenerateLandmarkList, CWorld::DeleteChildren and
+ * CAssetLib::AddPalette match, CCharacterType::Create (one level taller) is lost; waits on include/ */
+void CGrid::Destroy()
+{
+    if (m_world) {
+        CNodeVector cells;
+        CNodeVector others;
+
+        m_world->Segregate_CCells(m_world, cells, others);
+        for (CNodeVector::iterator it = others.begin(), e = others.end(); it != e; ++it) {
+            CNode *node = *it;
+
+            gridRemoveNodeFromGrids(node);
+            node->FreeAtom();
+        }
+        for (CNodeVector::iterator it = cells.begin(); it != cells.end(); ++it) {
+            CNode *cell = *it;
+
+            m_world->DeleteChild(cell);
+            delete cell;
+        }
+        cells.erase(cells.begin(), cells.end());
+        m_world = 0;
+    }
+    if (m_Atoms)
+        _free(m_Atoms, 0, 0);
+    m_Atoms = 0;
+    if (m_AtomBuf)
+        _free(m_AtomBuf, 0, 0);
+    m_AtomBuf = 0;
+}
+
+/* a point scaled, and two points' sum, by value: the operation out of line into a temporary,
+ * copied out (ld/sd and lwc1/swc1) -- as znode.h's PntMinus (the names are ours) */
+inline CPnt3D PntScale(const CPnt3D &a, float k)
+{
+    CPnt3D r;
+
+    a.Scale(k, &r);
+    return r;
+}
+
+inline CPnt3D PntPlus(const CPnt3D &a, const CPnt3D &b)
+{
+    CPnt3D r;
+
+    a.Add(&b, &r);
+    return r;
+}
+
+/* a prop handed to every cell its box covers in x/z: refused off the grid or without a node; its
+ * node's box unscaled by the prop's inverse scale and moved by its matrix's translation, the
+ * rectangle walked (SOCOM 1's; SOCOM II tests the prop's cell first and walks a CFRect through
+ * the new boundary overload) */
+bool CGrid::AddClutter(CClutter *clutter)
+{
+    bool ok = true;
+    CPnt3D *t = clutter->GetTranslate();
+
+    if (!GetCell(t->x, t->z))
+        return false;
+    if (!clutter->m_node)
+        return false;
+    const CBBox *bb = clutter->m_node->GetBBox();
+    CPnt3D box[2];
+    float rect[4];
+
+    box[0] = PntScale(bb->m_min, 1.0f / clutter->m_scale_inverse);
+    box[1] = PntScale(bb->m_max, 1.0f / clutter->m_scale_inverse);
+    CMatrix *m = clutter->GetMatrix();
+
+    box[0] = PntPlus(box[0], *(CPnt3D *)m->m_matrix[3]);
+    box[1] = PntPlus(box[1], *(CPnt3D *)m->m_matrix[3]);
+    func_00306620(rect, &box[0], &box[1]);
+    SetTraversalBoundary((CFRect *)rect);
+    for (CGridAtom *atom = StartTraversal(); atom; atom = GetNextAtom()) {
+        CCell *cell = atom->GetCell();
+
+        if (cell) {
+            ok = cell->AddClutter(clutter);
+            if (!ok)
+                break;
+        }
+    }
+    return ok;
 }
 
 /* every cell's clutter let go of (SOCOM 1's) */
