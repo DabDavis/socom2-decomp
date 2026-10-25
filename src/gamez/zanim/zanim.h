@@ -328,11 +328,28 @@ public:
 class CZAnimExVector;
 class CZAnimSetSave;
 
-/* the anims' task scheduler (SOCOM 1's names; only what is called) */
-class CSched_Manager {
+/* a scheduled task (SOCOM 1's DWARF; the system lane's) */
+class CSched_Task {
+public:
+    char *m_name;                       // 0x0
+    bool m_remove;                      // 0x4 (the DWARF's unsigned char)
+    float m_priority;                   // 0x8
+    bool (*m_task)(float, void *);      // 0xc
+    void *m_user_data;                  // 0x10
+    unsigned int m_startTime;           // 0x14
+    unsigned int m_stopTime;            // 0x18
+};   // 0x1c bytes
+
+/* the anims' task scheduler (SOCOM 1's names and DWARF: a list of tasks; zsys_sched.cpp) */
+class CSched_Manager : public std::list<CSched_Task *> {
 public:
     bool RemoveTask(void *task, bool all);
-};
+    bool RemoveTask(const char *name, bool all);    /* the system lane's */
+
+    unsigned char m_inTick;             // 0xc (the system lane's)
+    float m_priority;                   // 0x10
+    std::list<CSched_Task *> m_FreeList;    // 0x14
+};   // 0x20 bytes (zTaskScheduler's)
 
 /* a named set of anims (SOCOM 1's DWARF; SOCOM II added the gravity at 0x1C) */
 class CZAnimSet {
