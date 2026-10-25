@@ -6904,7 +6904,7 @@
 0x00374B50 0x15C func_00374B50  # OVL1
 0x00374CB0 0x388 func_00374CB0  # OVL1
 0x00375040 0x488 Tick__10CUIListBoxFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x003754D0 0x238 func_003754D0  # OVL1
+0x003754D0 0x238 UpdateUIVar__10CUIListBoxFP11CUIVariable  # OVL1; by hand (the HUD lane, round 16): CUIListBox's secondary table (0x4076E0: RTTI, -128, @128@__dt__10CUIListBoxFv, the thunk 0x37D060, then this) holds it where CSliderBar's holds UpdateUIVar__10CSliderBarFP11CUIVariable; it reads the variable's type byte (4, a list) as the other UpdateUIVars do
 0x00375710 0x554 __dt__10CUIListBoxFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00375C70 0x1A8 func_00375C70  # OVL1
 0x00375E20 0x5F8 func_00375E20  # OVL1
@@ -7002,7 +7002,7 @@
 0x0037C220 0xA0 DrawBackground__9C2DButtonFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037C2C0 0x24 SetBackgroundAlpha__9C2DButtonFf  # OVL1; split by the integrator: a 0x24-byte virtual call (slot 0x34 through the object at +0x1A0, the float scaled by 128), padded to 0x37C2F0; s1:vtable (the HUD lane: s1vtables' pairing; the background at 0x1A0 given 128 times the alpha)
 0x0037C2F0 0xE8 __dt__9CCheckBoxFv  # OVL1; split from 0x37C2C0 by the integrator: a destructor (two vtable stores, the members' tests) reached only by the this-adjusting thunk 0x37D0D0's `j`, so the seed never cut it (the UI lane's find); s1:vtable (the HUD lane: slot 0 of CCheckBox's table 0x4074C0 -- s1vtables' pairing -- and the thunk 0x37D0D0's target: the check's CPlainBmp, two ActionItems, then ~C2DButton)
-0x0037C3E0 0x8 func_0037C3E0  # OVL1
+0x0037C3E0 0x8 UpdateUIVar__9CCheckBoxFP11CUIVariable  # OVL1; by hand (the HUD lane, round 16): CCheckBox's vtable slot for UIVarMixin::UpdateUIVar -- its secondary table (0x40753C: RTTI, -192, @192@__dt__9CCheckBoxFv, the thunk 0x37D0C0, then this) as CSliderBar's and C2DButton's hold their UpdateUIVar; an empty body (jr ra): CCheckBox ignores its variable
 0x0037C3F0 0xD0 __dt__13CHProgressBarFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037C4C0 0xD0 __dt__10CSliderBarFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037C590 0x70 __dt__14CHandlerButtonFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -7032,13 +7032,13 @@
 0x0037D030 0x8 @152@__dt__9CTeleTypeFv  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j __dt__9CTeleTypeFv` with `addiu a0,a0,-152`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
 0x0037D040 0x8 @192@__dt__9C2DButtonFv  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j __dt__9C2DButtonFv` with `addiu a0,a0,-192`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
 0x0037D050 0x8 @192@__dt__14CHandlerButtonFv  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j __dt__14CHandlerButtonFv` with `addiu a0,a0,-192`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
-0x0037D060 0x8 func_0037D060  # OVL1
+0x0037D060 0x8 @128@UpdateUIVar__10CUIListBoxFP11CUIVariable  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j UpdateUIVar__10CUIListBoxFP11CUIVariable` with `addiu a0,a0,-128`, CUIListBox's UIVarMixin table's second slot; the HUD lane, round 16)
 0x0037D070 0x8 @128@__dt__10CUIListBoxFv  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j __dt__10CUIListBoxFv` with `addiu a0,a0,-128`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
 0x0037D080 0x8 @192@UpdateUIVar__10CSliderBarFP11CUIVariable  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j UpdateUIVar__10CSliderBarFP11CUIVariable` with `addiu a0,a0,-192`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
 0x0037D090 0x8 @192@__dt__10CSliderBarFv  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j __dt__10CSliderBarFv` with `addiu a0,a0,-192`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
 0x0037D0A0 0x8 @128@UpdateUIVar__13CHProgressBarFP11CUIVariable  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j UpdateUIVar__13CHProgressBarFP11CUIVariable` with `addiu a0,a0,-128`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
 0x0037D0B0 0x8 @128@__dt__13CHProgressBarFv  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j __dt__13CHProgressBarFv` with `addiu a0,a0,-128`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
-0x0037D0C0 0x8 func_0037D0C0  # OVL1
+0x0037D0C0 0x8 @192@UpdateUIVar__9CCheckBoxFP11CUIVariable  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j UpdateUIVar__9CCheckBoxFP11CUIVariable` with `addiu a0,a0,-192`, CCheckBox's UIVarMixin table's second slot; the HUD lane, round 16)
 0x0037D0D0 0x8 @192@__dt__9CCheckBoxFv  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j __dt__9CCheckBoxFv` with `addiu a0,a0,-192`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
 0x0037D0E0 0x8 @192@UpdateUIVar__9C2DButtonFP11CUIVariable  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j UpdateUIVar__9C2DButtonFP11CUIVariable` with `addiu a0,a0,-192`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
 0x0037D0F0 0x8 func_0037D0F0  # OVL1

@@ -162,6 +162,8 @@ public:
 class CCheckBox : public C2DButton {
 public:
     virtual ~CCheckBox();
+    /* the check box ignores its variable (0x37C3E0, empty; reached through the thunk 0x37D0C0) */
+    virtual void UpdateUIVar(CUIVariable *var) {}
 
     bool m_checked;   // 0x440
     unsigned char _441[0x454 - 0x441];
