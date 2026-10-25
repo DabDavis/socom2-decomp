@@ -949,8 +949,13 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - a 16-bit bitfield in `type == 4 ? length : 0` compares signed; through an unsigned-returning
     accessor, unsigned;
   - _zrdr is `type:8 isclone:1 packed:1 nofree:1 unused:5 length:16` and a word union; zanim.h
-    still has its own `struct _zrdr` (Item(int), non-const accessors) -- reconciling the two is
-    open, and must be measured (the accessors' constness and Item's index type change codegen).
+    (and zui.h) still have their own `struct _zrdr` (Item(int), non-const accessors, no
+    constructor). Measured: swapping zanim.h's for zrdr.h's breaks 4 units' builds and 14
+    matched functions (ten menu handlers, CCamera::CmdParseParams, ParseTeamBlock,
+    LoadSoundGroups, ~CRdrArchiveList's copy) -- the two families of code want different
+    accessors (const or not, the index unsigned or int) and zrdr.h's constructor. Overloads cannot
+    serve both (each side calls with int counters through non-const pointers); a unit that needs
+    both headers waits on renamed accessor families.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
