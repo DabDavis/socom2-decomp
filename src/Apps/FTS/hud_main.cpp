@@ -1220,9 +1220,6 @@ bool CHUD::IsOn()
     return m_ison;
 }
 
-/* the ammo counts' piece the zoom puts back (0x237760; no row named yet) */
-extern "C" void func_00237760(CAmmoDisplay *ammo);
-
 /* zoomed out (the full view): unless the map is in full screen, the compass and the weapon back,
  * the kit's reticle reset, the counts on unless the night vision or 0x5C80F0 holds, the message
  * queues' backgrounds grey again, the team names and map (single player), the zoom text */
@@ -1244,7 +1241,7 @@ void CHUD::ZoomOut()
     func_005BE570(kit, false);
     if (!func_005B9990(kit) && !func_005C80F0(kit))
         m_ammodisplay.On();
-    func_00237760(&m_ammodisplay);
+    m_ammodisplay.Update();
     theMission.m_messages.SetBkgColor(128.0f, 128.0f, 128.0f);
     theMission.m_messages3.SetBkgColor(128.0f, 128.0f, 128.0f);
     if (!theNetwork.m_bNetwork) {

@@ -2232,13 +2232,13 @@
 0x00237350 0x3C func_00237350  # OVL1
 0x00237390 0x1E8 func_00237390  # OVL1
 0x00237580 0x1E0 func_00237580  # OVL1
-0x00237760 0x3D8 func_00237760  # OVL1
+0x00237760 0x3D8 Update__12CAmmoDisplayFv  # OVL1; by hand (the HUD lane: the ammo counts from the HUD owner's kit, the unit's first function in the image; the name ours)
 0x00237B40 0x1C0 SetMags__12CAmmoDisplayFiPQ23zdb10CTexHandle  # OVL1; by hand (the ammo unit's: a switch on a byte, 1-3 lighting the four magazine bitmaps at CAmmoDisplay+0x3C0, past that a texture argument in the first; On passes the cached count 0x3DCBD8 and texture 0x4145E0; the name ours); an int count, narrowed to a byte inside (andi 0xff) where On passes the cached word whole
 0x00237D00 0xD8 SetTrans__12CAmmoDisplayFf  # OVL1; by hand (the ammo unit's, between Off and the unit's 0x237B40: SetTrans on the poly (76.8 x), the bitmap and the four bitmaps (128 x), the two count strings by CHUD::m_hud_textcolor's alpha; the name ours)
 0x00237DE0 0x6C Off__12CAmmoDisplayFv  # OVL1; by hand (CHUD::Off calls it on the ammo counts at CHUD+0x1A700; slot 4, Off, of its poly, bitmaps and strings)
 0x00237E50 0x10C On__12CAmmoDisplayFv  # OVL1; by hand (CHUD::On calls it on CHUD+0x1A700, as Off its pair; slot 5, On, unless spectating)
 0x00237F60 0x54 Reset__12CAmmoDisplayFv  # OVL1; by hand (CHUD's ReInit_Init and ReInit_Uninit call it on CHUD+0x1A700: both count strings wiped, the cached counts reset; the name ours)
-0x00237FC0 0x2FC func_00237FC0  # OVL1
+0x00237FC0 0x2FC Init__12CAmmoDisplayFP7C2DFont  # OVL1; by hand (the HUD lane: the ammo counts' backing, captions and magazine bitmaps placed and listed; between Reset and the destructor in hud_ammo.cpp; the name ours)
 0x002382C0 0xF0 __dt__12CAmmoDisplayFv  # OVL1; by hand (CHUD's destructor calls it on CHUD+0x1A700, the member CAmmoDisplay's constructor builds: its arrays, strings, plain C2D, bitmap and poly destroyed in reverse; the implicit destructor)
 0x002383B0 0x6C __ct__12CAmmoDisplayFv  # OVL1; by hand (CHUD's constructor builds CHUD+0x1A700 with it; no vtable: the class name ours, from its functions' AMMO, MAGS, %d/%d and %d MAG%c)
 0x00238420 0x64 Off__10CMPInfoBoxFv  # OVL1; by hand (slot 4 of CMPInfoBox's vtable 0x405B40: C2D's Off, then its parts')
