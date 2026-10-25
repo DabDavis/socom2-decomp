@@ -702,6 +702,23 @@ public:
     static bool CmdTickWind(_zanim_cmd_hdr *cmd, float *dt);
     static _zanim_cmd_hdr *CmdParseWind(_zrdr *rdr);
     static void RegisterAnimCommands();
+    /* a gust's range, both bounds taken before either is stored (inline: CmdTickWind loads the
+     * command's two values, then the world; the names are ours) */
+    void SetAzimuthOffsetRange(float min, float max)
+    {
+        m_MinAzimuthOffset = min;
+        m_MaxAzimuthOffset = max;
+    }
+    void SetZenithOffsetRange(float min, float max)
+    {
+        m_MinZenithOffset = min;
+        m_MaxZenithOffset = max;
+    }
+    void SetSpeedOffsetRange(float min, float max)
+    {
+        m_MinSpeedOffset = min;
+        m_MaxSpeedOffset = max;
+    }
 
     PNT4D m_Wind;   // 0x0 (SOCOM 1: 0x1c; 4-aligned -- CWind is 0x68 bytes, and Tick copies into it
                     // element by element)

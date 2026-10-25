@@ -844,6 +844,153 @@ void CWind::RegisterAnimCommands()
     ZAnim.AddCmd("WIND", CmdParseWind, 0, CmdTickWind, 0);
 }
 
+/* the WIND command: which settings it carries, then each -- a goal and the time to reach it for the
+ * azimuth, zenith and speed, the gusts' ranges and rates (SOCOM 1's command, by CmdTickWind's
+ * reads; the names ours) */
+struct _zanim_cmd_wind : public _zanim_cmd_hdr {
+    unsigned short flags;   // 0x4
+    float azimuth;   // 0x8
+    float azimuth_time;   // 0xc
+    float zenith;   // 0x10
+    float zenith_time;   // 0x14
+    float speed;   // 0x18
+    float speed_time;   // 0x1c
+    float min_azimuth_offset;   // 0x20
+    float max_azimuth_offset;   // 0x24
+    float azimuth_offset_velocity;   // 0x28
+    float min_zenith_offset;   // 0x2c
+    float max_zenith_offset;   // 0x30
+    float zenith_offset_velocity;   // 0x34
+    float min_speed_offset;   // 0x38
+    float max_speed_offset;   // 0x3c
+    float speed_offset_velocity;   // 0x40
+};   // 0x44 bytes
+
+/* the world's wind given the command's settings: each goal reached at once or over its time, the
+ * gusts' ranges and rates set (SOCOM 1's) */
+bool CWind::CmdTickWind(_zanim_cmd_hdr *hdr, float *dt)
+{
+    _zanim_cmd_wind *cmd = (_zanim_cmd_wind *)hdr;
+
+    if (cmd->flags & 1) {
+        float t = cmd->azimuth_time;
+        CWind &wind = zdb::CWorld::m_world->m_Wind;
+
+        wind.m_AzimuthGoal = cmd->azimuth;
+        if (t > 0.01f) {
+            wind.m_AzimuthGoalDelta = (wind.m_AzimuthGoal - wind.m_Azimuth) / t;
+            wind.m_TickGoal = true;
+            wind.m_TickAzimuth = true;
+        } else
+            wind.m_Azimuth = wind.m_AzimuthGoal;
+    }
+    if (cmd->flags & 2) {
+        float t = cmd->zenith_time;
+        CWind &wind = zdb::CWorld::m_world->m_Wind;
+
+        wind.m_ZenithGoal = cmd->zenith;
+        if (t > 0.01f) {
+            wind.m_ZenithGoalDelta = (wind.m_ZenithGoal - wind.m_Zenith) / t;
+            wind.m_TickGoal = true;
+            wind.m_TickZenith = true;
+        } else
+            wind.m_Zenith = wind.m_ZenithGoal;
+    }
+    if (cmd->flags & 4) {
+        float t = cmd->speed_time;
+        CWind &wind = zdb::CWorld::m_world->m_Wind;
+
+        wind.m_SpeedGoal = cmd->speed;
+        if (t > 0.01f) {
+            wind.m_SpeedGoalDelta = (wind.m_SpeedGoal - wind.m_Speed) / t;
+            wind.m_TickGoal = true;
+            wind.m_TickSpeed = true;
+        } else
+            wind.m_Speed = wind.m_SpeedGoal;
+    }
+    if (cmd->flags & 8)
+        zdb::CWorld::m_world->m_Wind.SetAzimuthOffsetRange(cmd->min_azimuth_offset,
+                                                           cmd->max_azimuth_offset);
+    if (cmd->flags & 0x10)
+        zdb::CWorld::m_world->m_Wind.m_AzimuthOffsetVelocity = cmd->azimuth_offset_velocity;
+    if (cmd->flags & 0x20)
+        zdb::CWorld::m_world->m_Wind.SetZenithOffsetRange(cmd->min_zenith_offset,
+                                                           cmd->max_zenith_offset);
+    if (cmd->flags & 0x40)
+        zdb::CWorld::m_world->m_Wind.m_ZenithOffsetVelocity = cmd->zenith_offset_velocity;
+    if (cmd->flags & 0x80)
+        zdb::CWorld::m_world->m_Wind.SetSpeedOffsetRange(cmd->min_speed_offset,
+                                                           cmd->max_speed_offset);
+    if (cmd->flags & 0x100)
+        zdb::CWorld::m_world->m_Wind.m_SpeedOffsetVelocity = cmd->speed_offset_velocity;
+    return true;
+}
+
+/* a value kept below a bound, and above one: the selects the target makes (by value; the names
+ * ours -- MSL's min and max return references, which select addresses) */
+template <class T>
+inline T WindMin(const T &a, const T &b)
+{
+    return b < a ? b : a;
+}
+
+template <class T>
+inline T WindMax(const T &a, const T &b)
+{
+    return a < b ? b : a;
+}
+
+/* the gusts: each offset wandered at random by its rate and kept in its range; the wind vector from
+ * the azimuth, the zenith (a speed below zero turning it about) and the speed (SOCOM 1's).
+ * OPEN, 0x404 of 0x418: the target reads each offset afresh after every store to it (the +=, the
+ * upper bound, the lower) where MW forwards the stored value here, and tests the lower bound as
+ * `c.le.s off,min; bc1t` (this: c.lt.s min,off; bc1f); the frame has a saved s1 more (the wind's z
+ * address, s0 + 8, held from the cosf on). Tried: the selects returning references (address
+ * selects), `<=`/`>=`/negated forms of the lower bound */
+void CWind::Tick(float dt)
+{
+    if (m_TickGoal)
+        TickGoal(dt);
+    m_AzimuthOffset += dt * (m_AzimuthOffsetVelocity * (2.0f * (4.656613e-10f * rand()) - 1.0f));
+    m_AzimuthOffset = WindMin(m_MaxAzimuthOffset, m_AzimuthOffset);
+    m_AzimuthOffset = WindMax(m_MinAzimuthOffset, m_AzimuthOffset);
+    m_ZenithOffset += dt * (m_ZenithOffsetVelocity * (2.0f * (4.656613e-10f * rand()) - 1.0f));
+    m_ZenithOffset = WindMin(m_MaxZenithOffset, m_ZenithOffset);
+    m_ZenithOffset = WindMax(m_MinZenithOffset, m_ZenithOffset);
+    m_SpeedOffset += dt * (m_SpeedOffsetVelocity * (2.0f * (4.656613e-10f * rand()) - 1.0f));
+    m_SpeedOffset = WindMin(m_MaxSpeedOffset, m_SpeedOffset);
+    m_SpeedOffset = WindMax(m_MinSpeedOffset, m_SpeedOffset);
+    float speed = m_Speed + m_SpeedOffset;
+    float azimuth = m_Azimuth + m_AzimuthOffset;
+    float zenith = m_Zenith + m_ZenithOffset;
+
+    if (speed < 0.0f) {
+        speed = -speed;
+        azimuth += 3.1415927f;
+    }
+    zenith = WindMin(90.0f, zenith);
+    zenith = WindMax(-90.0f, zenith);
+    if (azimuth < 0.0f) {
+        while (azimuth < 0.0f)
+            azimuth += 6.2831855f;
+    } else if (azimuth >= 6.2831855f)
+        while (azimuth >= 6.2831855f)
+            azimuth -= 6.2831855f;
+    m_Wind.x = sinf(azimuth);
+    m_Wind.z = cosf(azimuth);
+    float y = 0.011111111f * zenith;
+
+    m_Wind.x = -m_Wind.x;
+    m_Wind.y = 0.0f;
+    m_Wind.z = -m_Wind.z;
+    m_Wind.y = y;
+    float scale = y < 0.0f ? 1.0f + y : 1.0f - y;
+
+    m_Wind.x *= scale;
+    m_Wind.z *= scale;
+    m_Wind = (CPnt4D &)m_Wind * speed;
+}
+
 /* the azimuth, zenith and speed each moved toward its goal at its rate, stopping there; the goal
  * ticks while any of them moves (SOCOM 1's) */
 void CWind::TickGoal(float dt)
