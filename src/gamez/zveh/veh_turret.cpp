@@ -31,6 +31,11 @@ extern int data_003E0800;
 
 CZSealBody *ftsGetPlayer();
 
+/* OPEN, the initialiser (__sinit_veh_turret.cpp, 0x404240: 0x7C against 0x160): the target
+ * zeroes both vectors' three words in place (their constructors inlined whole -- the class
+ * vector's constructor height, open in include/vector) and then sets turret_debug_mask's seven
+ * bits (0x4A4068: 1, 0, 1, 1, 0, 0, 0, the false ones as `(0 & 1) << n`, a constructor's bool
+ * stores), which is not defined here yet */
 CTurretDefVector CTurret::m_turret_def;
 CTurretList CTurret::m_turrets;
 

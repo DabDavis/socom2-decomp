@@ -190,6 +190,16 @@ class CVehicleDefVector : public std::vector<CVehicleDef> {
 public:
     int Init(const char *name, const char *path);
     const CVehicleDef *PrefixMatch(const char *name);
+    /* the definition of that name, case-blind (inline: the spawn's; the name ours) */
+    const CVehicleDef *Find(const char *name)
+    {
+        if (name) {
+            for (iterator it = begin(); it != end(); ++it)
+                if (!strcasecmp(name, (*it).m_name))
+                    return &*it;
+        }
+        return 0;
+    }
 };
 
 /* a vehicle (new in SOCOM II, CEntity's type 4; CTurret's unit's twin -- the names ours). Its
@@ -211,6 +221,12 @@ public:
     static int Init(const char *name, const char *path);
     static void LoadVehicles();
     static int ScanForVehicleDefinitionHookups(zdb::CNode *node, bool recurse);
+    /* a mission entry's vehicles: its character names the definition, its name the nodes
+     * (CMission's spawner calls it; nothing is returned -- the name ours) */
+    static CEntity *Spawn(CVehicleRdrEntry *entry);
+    /* the same scan for one definition, by the node's whole name (the name ours) */
+    static int ScanForVehicleByName(const char *name, const CVehicleDef *def, zdb::CNode *node,
+                                    bool recurse);
     bool GetFlag(unsigned int mask) const { return (m_flags & mask) != 0; }
     void SetFlag(unsigned int mask, bool on)
     {

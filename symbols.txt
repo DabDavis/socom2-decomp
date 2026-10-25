@@ -7784,11 +7784,11 @@
 0x003AD500 0x8 PrePostTick__8CVehicleFf  # OVL1; by hand (the wep lane: CVehicle's vtable slot +0x20, a tail call of CEntity::UpdateCompassAnchor); veh_vehicle.cpp
 0x003AD510 0x170 Tick__8CVehicleFf  # OVL1; by hand (the wep lane: CVehicle's vtable slot +0x18 -- the four corners grown by 5 handed to the AI map's region fill); veh_vehicle.cpp
 0x003AD680 0xDC PreTick__8CVehicleFf  # OVL1; by hand (the wep lane: CVehicle's vtable slot +0x14); veh_vehicle.cpp
-0x003AD760 0x1A8 func_003AD760  # OVL1
+0x003AD760 0x1A8 ScanForVehicleByName__8CVehicleFPCcPC11CVehicleDefPQ23zdb5CNodeb  # OVL1; by hand (the wep lane: the vehicle scan's twin for one definition -- the node's whole name strcmp'd against the first argument, a vehicle made with the given definition under the unit's limit, else the children recursively; 0x3AE030 calls it twice; the name ours); veh_vehicle.cpp
 0x003AD910 0x198 ScanForVehicleDefinitionHookups__8CVehicleFPQ23zdb5CNodeb  # OVL1; by hand (the wep lane: the turret scan's twin -- PrefixMatch, new CVehicle (688 bytes) under the unit's limit, CreateEntity, else the children recursively; the name ours); veh_vehicle.cpp
 0x003ADAB0 0x3E0 func_003ADAB0  # OVL1
 0x003ADE90 0x19C __ct__8CVehicleFPQ23zdb5CNodeRC11CVehicleDef  # OVL1; by hand (the wep lane: stores __vt__8CVehicle after CEntity's constructor with type 4; the vehicle scan news 688 bytes and calls it with the node and the definition; the name ours)
-0x003AE030 0x16C func_003AE030  # OVL1
+0x003AE030 0x16C Spawn__8CVehicleFP16CVehicleRdrEntry  # OVL1; by hand (the wep lane: CMission's spawner 0x2B2E50 calls it where it calls CMission::LoadVehicle for the other entry kind; the entry's character (0x20) finds the definition case-blind, its name (0) drives the by-name vehicle scan over every landmark and the world; returns 0; the name ours); veh_vehicle.cpp
 0x003AE1A0 0x9C LoadVehicles__8CVehicleFv  # OVL1; by hand (the wep lane: LoadTurrets' twin -- every landmark of CWorld::m_world, then the world, through the vehicle scan with true; the name ours); veh_vehicle.cpp
 0x003AE240 0x18 Init__8CVehicleFPCcPCc  # OVL1; by hand (the wep lane: a tail call handing its two strings to m_vehicle_def's Init, as CTurret::Init does; the name ours); veh_vehicle.cpp
 0x003AE260 0x198 Init__17CVehicleDefVectorFPCcPCc  # OVL1; by hand (the wep lane: CTurretDefVector::Init's twin -- reads the rdr, sizes the vector to half its "VEHICLE" list, parses each pair; the name ours)

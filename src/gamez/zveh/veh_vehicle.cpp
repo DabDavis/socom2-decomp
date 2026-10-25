@@ -24,6 +24,8 @@ extern int data_004A4120;
 extern int data_003E0860;
 }
 
+/* OPEN, the initialiser (__sinit_veh_vehicle.cpp, 0x4043A0: 0x34 against 0xEC): as the turret
+ * unit's -- the vector's words zeroed in place, then five bits at 0x4A4148 (1, 1, 1, 0, 0) */
 CVehicleDefVector CVehicle::m_vehicle_def;
 
 /* the definition whose name starts the node's (called, never inlined) */
@@ -51,6 +53,22 @@ const CVehicleDef *CVehicleDefVector::PrefixMatch(const char *name)
 int CVehicle::Init(const char *name, const char *path)
 {
     return m_vehicle_def.Init(name, path);
+}
+
+CEntity *CVehicle::Spawn(CVehicleRdrEntry *entry)
+{
+    const char *type = entry->m_character;
+    const CVehicleDef *def = m_vehicle_def.Find(type);
+
+    if (def) {
+        CWorld *world = CWorld::m_world;
+        CNodeVector &landmarks = world->m_landmarks;
+
+        for (CNodeVector::iterator it = landmarks.begin(); it != landmarks.end(); ++it)
+            ScanForVehicleByName(entry->m_name, def, *it, true);
+        ScanForVehicleByName(entry->m_name, def, world, true);
+    }
+    return 0;
 }
 
 void CVehicle::LoadVehicles()
@@ -88,6 +106,34 @@ int CVehicle::ScanForVehicleDefinitionHookups(CNode *node, bool recurse)
 
         for (CNodeVector::iterator it = children.begin(); it != children.end(); ++it)
             n += ScanForVehicleDefinitionHookups(*it, recurse);
+    }
+    return n;
+}
+
+int CVehicle::ScanForVehicleByName(const char *name, const CVehicleDef *def, CNode *node,
+                                   bool recurse)
+{
+    int n = 0;
+
+    if (!def || !node)
+        return 0;
+    if (node->GetType() == 10)
+        return 0;
+    if (!node->m_name)
+        return 0;
+    if (!strcmp(node->m_name, name)) {
+        if (node) {
+            if (!(data_003E0860 > -1 && data_004A4120 >= data_003E0860)) {
+                data_004A4120++;
+                CEntity::CreateEntity(new CVehicle(node, *def), true);
+            }
+        }
+        n++;
+    } else if (recurse) {
+        CNodeVector &children = node->GetChildren();
+
+        for (CNodeVector::iterator it = children.begin(); it != children.end(); ++it)
+            n += ScanForVehicleByName(name, def, *it, recurse);
     }
     return n;
 }

@@ -56,12 +56,11 @@ extern "C" void func_003C45B0(void *v, unsigned int n, const unsigned int &value
 #pragma auto_inline reset
 
 /* constructed empty: the flags' defaults, no type, its parameters zeroed and the centroid at the
- * origin (SOCOM 1's, store for store). OPEN, 0x20C against 0x218 at -inline level=4: an inline
- * height -- the target builds the dynamic-texture lists in place, CDynTexList's implicit
+ * origin (SOCOM 1's, store for store). Byte-exact at -inline level=5 and not at 4 (0x20C against
+ * 0x218 there): the target builds the dynamic-texture lists in place, CDynTexList's implicit
  * constructor over CTexList's (CTexList, vector, __vector_imp, __vector_pod: five high), which
- * level 4 inlines one level, calling CTexList's and CTexPalList's constructors; byte-exact at
- * level 5 (measured with SC_FLAGS), so it should resolve there. The byte at 4 is stored through
- * an unsigned view (`li 255`, as SOCOM 1's), where the destructor reads it signed */
+ * level 4 inlines one level only. The byte at 4 is stored through an unsigned view (`li 255`, as
+ * SOCOM 1's), where the destructor reads it signed */
 CVisual::CVisual() : m_refs(0), m_lodMesh(0)
 {
     m_flags = 0;
