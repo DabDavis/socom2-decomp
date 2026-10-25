@@ -24,6 +24,8 @@ extern CZLANLobby data_0044FE10;           /* a second lobby: the LAN game's */
 bool func_003045B0(CZLANLobby *lan);        /* whether the LAN lobby is the one in use */
 void func_003043E0(CZLANLobby *lan);
 void func_00303F40(CZLANLobby *lan);
+bool func_003039B0(CZLANLobby *lan, const char *game);
+bool func_00303730(CZLANLobby *lan, const char *game);
 void func_002DFDD0(CZOnlineLobby *lobby);
 void func_002DF6A0(CZOnlineLobby *lobby);
 void func_002DF8E0(CZOnlineLobby *lobby);
@@ -50,6 +52,29 @@ void ftsNetworkGameInit();
 void ftsNetworkGameUninit();
 bool DMEConnectToGameServer();
 void DMEDisconnectFromGameServer();
+
+/* the 2D object a command's node draws, if it has one (ours) */
+inline C2D *GetCommandC2D(unsigned short node_ref)
+{
+    C2D *c2d = 0;
+
+    if (node_ref) {
+        ZAnim.m_CurAnim->Refresh(false);
+        CNode *node = ZAnim.m_CurAnim->GetNode(node_ref, false);
+
+        if (node) {
+            CVisualView *visual = (CVisualView *)node->GetFirstVisual();
+
+            if (visual) {
+                C2DVisual *v2d = visual->Get2DVisual();
+
+                if (v2d)
+                    c2d = v2d->m_c2d;
+            }
+        }
+    }
+    return c2d;
+}
 
 char database[64];
 zdb::CNode *g_menuRootNode;
@@ -236,6 +261,17 @@ bool UIIsNetwork(C2DAnimCmdHdr *hdr, float *dT)
     return theNetwork.m_bNetwork;
 }
 
+/* the lobby's events, run as event anims by whichever of the two states with them is on top
+ * (SOCOM 1's: then only the menu state's; InitNetwork hands it to the lobby) */
+bool UILobbyEventHandler(const char *eventname, const char *argument)
+{
+    if (theGame.CurrentState() == (CGameState *)&theGame.m_menuState)
+        return theGame.m_menuState.RunEventAnim(eventname, argument);
+    if (theGame.CurrentState() == (CGameState *)theGame.m_coreState)
+        return func_001EB070(theGame.m_coreState, eventname, argument);
+    return false;
+}
+
 bool UIUnInitNetwork(C2DAnimCmdHdr *hdr, float *dT)
 {
     theLobby.m_58 = 0;
@@ -329,6 +365,30 @@ bool UIFormatMemCard(C2DAnimCmdHdr *hdr, float *dT)
     return theMemCard.Format();
 }
 
+bool UILobbyRegister(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CUIVariable *name = func_003857C0(&theUIVarManager, "PLAYERNAMEVAR", 0, UIVAR_SESSION);
+    CUIVariable *password = func_003857C0(&theUIVarManager, "PLAYERPASSWORD", 0, UIVAR_SESSION);
+    const char *n = name->String();
+    const char *p = password->String();
+
+    if (n && *n && p && *p)
+        return func_002FA320(&theLobby, n, p);
+    return false;
+}
+
+bool UILobbyLogin(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CUIVariable *name = func_003857C0(&theUIVarManager, "PLAYERNAMEVAR", 0, UIVAR_SESSION);
+    CUIVariable *password = func_003857C0(&theUIVarManager, "PLAYERPASSWORD", 0, UIVAR_SESSION);
+    const char *n = name->String();
+    const char *p = password->String();
+
+    if (n && *n && p && *p)
+        return func_002FA5A0(&theLobby, n, p);
+    return false;
+}
+
 bool UILobbyLogout(C2DAnimCmdHdr *hdr, float *dT)
 {
     bool done = false;
@@ -351,6 +411,11 @@ bool UIGetAcctInfo(C2DAnimCmdHdr *hdr, float *dT)
     return false;
 }
 
+bool UIRefreshRoomList(C2DAnimCmdHdr *hdr, float *dT)
+{
+    return func_002E3A30(&theLobby, GetCommandC2D(hdr->node_ref_index));
+}
+
 bool UIInitializeOnlineArmory(C2DAnimCmdHdr *hdr, float *dT)
 {
     if (data_0045B718) {
@@ -358,6 +423,11 @@ bool UIInitializeOnlineArmory(C2DAnimCmdHdr *hdr, float *dT)
         func_0030E490(data_0045B718);
     }
     return true;
+}
+
+bool UIRefreshGamePlayerList(C2DAnimCmdHdr *hdr, float *dT)
+{
+    return func_002F6EC0(&theLobby, GetCommandC2D(hdr->node_ref_index));
 }
 
 bool UICreateMPGame(C2DAnimCmdHdr *hdr, float *dT)
@@ -369,6 +439,29 @@ bool UICreateMPGame(C2DAnimCmdHdr *hdr, float *dT)
     return func_002F9410(&theLobby);
 }
 
+bool UIJoinMPGame(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *name = ArgName(hdr);
+    bool ok;
+
+    name = !strcmp(name, "INPUT_STRING") ? ZAnim.m_CurAnim->m_arg_list->GetCharP(0) : name;
+    if (func_003045B0(&data_0044FE10))
+        ok = func_003039B0(&data_0044FE10, name);
+    else
+        ok = func_002F83B0(&theLobby, name);
+    return ok;
+}
+
+bool UICanJoinRoom(C2DAnimCmdHdr *hdr, float *dT)
+{
+    bool ok = false;
+    const char *text = ArgText(ArgName(hdr));
+
+    if (text)
+        ok = func_002E34E0(&theLobby, text);
+    return ok;
+}
+
 bool UIClanGameClosed(C2DAnimCmdHdr *hdr, float *dT)
 {
     return func_002F8C60(&theLobby, ArgText(ArgName(hdr)));
@@ -377,6 +470,15 @@ bool UIClanGameClosed(C2DAnimCmdHdr *hdr, float *dT)
 bool UIGameRejectsRank(C2DAnimCmdHdr *hdr, float *dT)
 {
     return func_002F8BC0(&theLobby, ArgText(ArgName(hdr)));
+}
+
+bool UIGameHasPassword(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *game = ArgText(ArgName(hdr));
+
+    if (func_003045B0(&data_0044FE10))
+        return func_00303730(&data_0044FE10, game);
+    return func_002F8DD0(&theLobby, game);
 }
 
 bool UIGameHasSpectatorPassword(C2DAnimCmdHdr *hdr, float *dT)
@@ -616,6 +718,26 @@ bool UIMediusEnabled(C2DAnimCmdHdr *hdr, float *dT)
     return theNetwork.m_bMediusEnabled;
 }
 
+/* PlayMPEGNoFade's toggle: a function-local static in the original (SOCOM 1's UIPlayMPEG has one,
+ * alt), held to its address by its placeholder -- scdiff leaves a local static's object unchecked */
+extern "C" bool data_00414EA8;
+
+bool UIPlayMPEGNoFade(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CZSealBody *player = ftsGetPlayer();
+
+    if (player && !player->m_e1_4)
+        return true;
+    bool was = data_00414EA8;
+
+    data_00414EA8 = !was;
+    if (!was) {
+        func_001EDA60(theGame.m_cinematicSubState, ArgName(hdr), 0, 0);
+        func_002CF380(&theGame, theGame.m_cinematicSubState, 0);
+    }
+    return was;
+}
+
 bool UIGetClan(C2DAnimCmdHdr *hdr, float *dT)
 {
     return theLobby.GetClan();
@@ -630,6 +752,19 @@ bool UIClearCareerStats(C2DAnimCmdHdr *hdr, float *dT)
 bool UISetCareerStatsUIVars(C2DAnimCmdHdr *hdr, float *dT)
 {
     func_002A3BC0(data_00437E30);
+    return true;
+}
+
+bool UICreateClan(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CZAnim *anim = ZAnim.m_CurAnim;
+    CUIVariable *var = func_003857C0(&theUIVarManager, "CLANNAMEVAR", 0, UIVAR_SESSION);
+
+    if (var && var->type == 3) {
+        func_002E7A10(&theLobby, var->String());
+        return true;
+    }
+    func_002E7A10(&theLobby, anim->GetName(hdr->m_argument_index));
     return true;
 }
 
@@ -767,6 +902,19 @@ bool UIRejectFriend(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+bool UIGetGameInfo(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *game = ArgText(ArgName(hdr));
+
+    if (game) {
+        if (!strcasecmp(game, "CurrentGame"))
+            func_002E24D0(&theLobby);
+        else
+            func_002E1F20(&theLobby, game);
+    }
+    return true;
+}
+
 bool UIGetFriendInfo(C2DAnimCmdHdr *hdr, float *dT)
 {
     const char *text = ArgText(ArgName(hdr));
@@ -829,6 +977,14 @@ bool UISelectLocale(C2DAnimCmdHdr *hdr, float *dT)
 bool UIHaveBeenBannedFromGame(C2DAnimCmdHdr *hdr, float *dT)
 {
     return func_002C3550();
+}
+
+bool UIGameStatePopCommand(C2DAnimCmdHdr *hdr, float *dT)
+{
+    theGame.m_menuState.SetDefaultMenu(ArgText(ArgName(hdr)));
+    func_002CF2F0(&theGame, 0);
+    func_002CF410(&theGame, &theGame.m_menuState, 0);
+    return true;
 }
 
 bool UISetDefaultMenuScreen(C2DAnimCmdHdr *hdr, float *dT)
@@ -1020,29 +1176,6 @@ int GetUICommandType(const char *name)
             return UICommandTable[i].id;
     } while (UICommandTable[++i].id);
     return 0;
-}
-
-/* the 2D object a command's node draws, if it has one (ours) */
-inline C2D *GetCommandC2D(unsigned short node_ref)
-{
-    C2D *c2d = 0;
-
-    if (node_ref) {
-        ZAnim.m_CurAnim->Refresh(false);
-        CNode *node = ZAnim.m_CurAnim->GetNode(node_ref, false);
-
-        if (node) {
-            CVisualView *visual = (CVisualView *)node->GetFirstVisual();
-
-            if (visual) {
-                C2DVisual *v2d = visual->Get2DVisual();
-
-                if (v2d)
-                    c2d = v2d->m_c2d;
-            }
-        }
-    }
-    return c2d;
 }
 
 /* a UI command's handler run: the table's own record when the type indexes it, else the record

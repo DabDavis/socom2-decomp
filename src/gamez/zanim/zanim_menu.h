@@ -211,11 +211,14 @@ extern CMemCard theMemCard;
 class CLoadState {
 public:
     void AbortLoad(const char *name);
+
+    unsigned char _0[0x24];
 };
 
 /* the front end's state (fts_state.h has the whole of it): its menu and the menu it opens on */
 class CMenuState {
 public:
+    bool RunEventAnim(const char *eventname, const char *argument);
     /* (SOCOM II's out-of-line copy at 0x1E7B50; the name ours, as fts_state.h spells it) */
     void SetDefaultMenu(const char *name) { strncpy(m_DefaultMenu, name, 64); }
 
@@ -224,11 +227,28 @@ public:
     unsigned char _70[0x74 - 0x70];
 };
 
+class CGameState;
+
 class COurGame {
 public:
-    unsigned char _0[0x78];
+    /* the state on top of the stack (SOCOM 1's CGame; the name ours) */
+    CGameState *CurrentState()
+    {
+        if (m_CurrentState >= 16)
+            return 0;
+        return m_Stack[m_CurrentState];
+    }
+
+    unsigned char _0[0xc];
+    unsigned int m_CurrentState;   // 0xc
+    CGameState *m_TestVariable;   // 0x10
+    CGameState *m_Stack[16];   // 0x14
+    unsigned char _54[0x78 - 0x54];
     CMenuState m_menuState;   // 0x78 (SOCOM 1's at 0x7C)
     CLoadState m_loadState;   // 0xec (SOCOM 1's at 0xE0)
+    unsigned char m_coreState[0xd0];   // 0x110: a CCoreState (fts_state.h)
+    unsigned char _1e0[0x234 - 0x1e0];
+    unsigned char m_cinematicSubState[0x64];   // 0x234: a CCinematicState (fts_state.h)
 };
 extern COurGame theGame;
 
@@ -303,6 +323,15 @@ struct ZVidMenuView {
     int pcrtcOffsetY;   // 0x8c
 };
 extern ZVidMenuView zVid;
+
+/* the player (only the flag PlayMPEGNoFade tests: bit 4 of the byte at 0xE1) */
+class CZSealBody {
+public:
+    unsigned char _0[0xe1];
+    unsigned char _e1_0 : 4;
+    unsigned char m_e1_4 : 1;   // 0xe1 bit 4
+};
+CZSealBody *ftsGetPlayer();
 
 /* the network calls the handlers make */
 void NetSendRequestTeamSwitch(int persona);
@@ -424,7 +453,22 @@ void func_0037B980(float f);                                        /* UiSetTtyS
 void func_0037B990(float f);                                        /* UiSetCounterSpeedFactor */
 void func_002C5D60(const char *name);                               /* CCtrlrConfigs::SelectConfig (SOCOM 1's) */
 CCharacterType *func_0053E170(const char *name);                    /* CCharacterType::GetByNameMod (SOCOM 1's) */
-char *func_0039C580();                                              /* (a path: the game's directory?) */
+char *func_0039C580();
+bool func_002F6EC0(CZOnlineLobby *lobby, C2D *list);                /* RefreshGamePlayerList */
+bool func_002E3A30(CZOnlineLobby *lobby, C2D *list);                /* RefreshRoomList */
+bool func_002E34E0(CZOnlineLobby *lobby, const char *room);         /* (can join the room) */
+bool func_002F83B0(CZOnlineLobby *lobby, const char *game);         /* JoinGame */
+void func_002E7A10(CZOnlineLobby *lobby, const char *name);         /* CreateClan */
+bool func_002F8DD0(CZOnlineLobby *lobby, const char *game);         /* GameIsPasswordProtected */
+void func_002CF2F0(COurGame *game, unsigned int arg);               /* CGame::Pop (the states lane's note) */
+void func_002CF410(COurGame *game, void *state, unsigned int arg);  /* CGame::Switch */
+void func_002CF380(COurGame *game, void *state, unsigned int arg);  /* CGame::Push (SOCOM 1's, by UIPlayMPEG) */
+void func_001EDA60(void *cine, const char *movie, int a, int b);    /* CCinematicState::SetMovie (SOCOM 1's took the name only) */
+void func_002E24D0(CZOnlineLobby *lobby);                           /* (the current game's info) */
+void func_002E1F20(CZOnlineLobby *lobby, const char *game);         /* (a game's info) */
+bool func_002FA5A0(CZOnlineLobby *lobby, const char *name, const char *password);   /* Login */
+bool func_002FA320(CZOnlineLobby *lobby, const char *name, const char *password);   /* Register */
+bool func_001EB070(void *core, const char *eventname, const char *argument);       /* (CCoreState's RunEventAnim) */                                              /* (a path: the game's directory?) */
 void func_0032C2B0(const char *archive, const char *name);          /* CRdrArchive::RemoveArchive (SOCOM 1's) */
 
 /* SOCOM II's: whether the player is a terrorist, whether the player was banned */
