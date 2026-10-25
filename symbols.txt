@@ -1510,14 +1510,14 @@
 0x001EDF40 0xC0 __dt__15CCinematicStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001EE000 0x77C func_001EE000  # OVL1
 0x001EE780 0x3BC func_001EE780  # OVL1
-0x001EEB40 0x30 func_001EEB40  # OVL1
-0x001EEB70 0x30 func_001EEB70  # OVL1
+0x001EEB40 0x30 assign__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FPCc  # OVL1; ours (the MSL headers round 5: include/string's assign(const char *), out of class, replace(0, size(), s) as a tail call; st_core.cpp's tail emits it, byte-exact -- the states lane's stand-in under the placeholder retired)
+0x001EEB70 0x30 append__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FPCc  # OVL1; ours (the MSL headers round 5: include/string's append(const char *), out of class, replace(size(), 0, s) as a tail call; st_core.cpp's tail emits it, byte-exact)
 0x001EEBA0 0x198 reserve__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FUi  # OVL1; s1:calls (fprintf/abort twice, new, delete -- SOCOM 1's reserve of it; CZAnimExVector::Add grows by it before its inlined push_back)
 0x001EED40 0x444 func_001EED40  # OVL1
 0x001EF190 0x180 func_001EF190  # OVL1
 0x001EF310 0x8 clear__Q23std58__vector_deleter<9CMovieCue,Q23std21allocator<9CMovieCue>>Fv  # OVL1; by hand (the states lane, round 15): the cue vector's deleter clear (out of class, size zeroed), called by FreeVector<cues> (0x1ECF60) and the vector's clear() copy 0x1ED000; st_core.cpp's tail emits it byte-exact
 0x001EF320 0x68 __dt__Q23std58__vector_deleter<9CMovieCue,Q23std21allocator<9CMovieCue>>Fv  # OVL1; by hand (the states lane, round 15): the cue vector's deleter destructor (clear, the storage freed), FreeVector<cues>'s temporary's, called with 0; st_core.cpp's tail emits it byte-exact
-0x001EF390 0x68 func_001EF390  # OVL1
+0x001EF390 0x68 replace__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FUiUiPCc  # OVL1; ours (the MSL headers round 5: include/string's replace(pos, n1, const char *), out of class: s..s+strlen(s) and the iterator category handed to the template replace 0x1EE780; st_core.cpp's tail emits it, byte-exact)
 0x001EF400 0x4C func_001EF400  # OVL1
 0x001EF450 0x2A8 func_001EF450  # OVL1
 0x001EF700 0x1C0 func_001EF700  # OVL1
@@ -1577,8 +1577,8 @@
 0x001F5620 0xC GetReaderFileName__14CMenuStateMenuFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F5630 0x8 func_001F5630  # OVL1
 0x001F5640 0x5E4 func_001F5640  # OVL1
-0x001F5C30 0x68 func_001F5C30  # OVL1
-0x001F5CA0 0x8 func_001F5CA0  # OVL1
+0x001F5C30 0x68 __dt__Q23std82__vector_deleter<20MediusChatFwdMessage,Q23std33allocator<20MediusChatFwdMessage>>Fv  # OVL1; by hand (the online lane's round 7, vetted by the integrator: ~BriefingRoom calls it for the room's chat vector at +0x88; 0x1F5020 builds a 0x80-byte MediusChatFwdMessage and inserts it through 0x1F5640, whose deleter destructor this is; clear 0x1F5CA0 then the data deleted)
+0x001F5CA0 0x8 clear__Q23std82__vector_deleter<20MediusChatFwdMessage,Q23std33allocator<20MediusChatFwdMessage>>Fv  # OVL1; by hand (the online lane's round 7, vetted by the integrator: the chat vector's deleter destructor 0x1F5C30 calls it first)
 0x001F5CB0 0x8 AddToBatch__Q23zdb16CTextureRelocMgrCFPQ23zdb10CTexHandle  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F5CC0 0x8 EndBatchReloc__Q23zdb16CTextureRelocMgrCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F5CD0 0x8 PreGetSprPacket__Q23zdb16CTextureRelocMgrFPQ23zdb10CTexHandle  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -4358,12 +4358,12 @@
 0x002CE1A0 0x3C func_002CE1A0  # OVL1
 0x002CE1E0 0x28 func_002CE1E0  # OVL1
 0x002CE210 0x68 func_002CE210  # OVL1
-0x002CE280 0x264 func_002CE280  # OVL1
-0x002CE4F0 0x58 func_002CE4F0  # OVL1
-0x002CE550 0x8 func_002CE550  # OVL1
-0x002CE560 0x8 func_002CE560  # OVL1
-0x002CE570 0x24 func_002CE570  # OVL1
-0x002CE5A0 0x8 func_002CE5A0  # OVL1
+0x002CE280 0x264 destroy__Q23std481__tree<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>,Q33std260map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>13value_compare,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>FPQ33std481__tree<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>,Q33std260map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>13value_compare,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>4node  # OVL1; ours (the MSL headers round 5: include/tree's instance for std::map<std::string, int>, byte-exact or alike but for its callees' names as a probe, build/p/mat0.cpp in the MSL lane's worktree; the key a plain std::string -- ~pair<const string, int> passes -1 to ~basic_string -- and the int SOCOM 1's int_material.cpp map<string, int>; the material unit's clear 0x2DEDF0 calls this destroy, an earlier unit's copy)
+0x002CE4F0 0x58 __dt__Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>Fv  # OVL1; ours (the MSL headers round 5: include/tree's instance for std::map<std::string, int>, byte-exact or alike but for its callees' names as a probe, build/p/mat0.cpp in the MSL lane's worktree; the key a plain std::string -- ~pair<const string, int> passes -1 to ~basic_string -- and the int SOCOM 1's int_material.cpp map<string, int>; the material unit's clear 0x2DEDF0 calls this destroy, an earlier unit's copy)
+0x002CE550 0x8 deallocate__Q23std506allocator<Q33std481__tree<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>,Q33std260map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>13value_compare,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>4node>FPQ33std481__tree<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>,Q33std260map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>13value_compare,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>4nodeUi  # OVL1; ours (the MSL headers round 5: include/tree's instance for std::map<std::string, int>, byte-exact or alike but for its callees' names as a probe, build/p/mat0.cpp in the MSL lane's worktree; the key a plain std::string -- ~pair<const string, int> passes -1 to ~basic_string -- and the int SOCOM 1's int_material.cpp map<string, int>; the material unit's clear 0x2DEDF0 calls this destroy, an earlier unit's copy)
+0x002CE560 0x8 node_alloc__Q23std481__tree<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>,Q33std260map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>13value_compare,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>Fv  # OVL1; ours (the MSL headers round 5: include/tree's instance for std::map<std::string, int>, byte-exact or alike but for its callees' names as a probe, build/p/mat0.cpp in the MSL lane's worktree; the key a plain std::string -- ~pair<const string, int> passes -1 to ~basic_string -- and the int SOCOM 1's int_material.cpp map<string, int>; the material unit's clear 0x2DEDF0 calls this destroy, an earlier unit's copy)
+0x002CE570 0x24 destroy__Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>FPQ23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>  # OVL1; ours (the MSL headers round 5: include/tree's instance for std::map<std::string, int>, byte-exact or alike but for its callees' names as a probe, build/p/mat0.cpp in the MSL lane's worktree; the key a plain std::string -- ~pair<const string, int> passes -1 to ~basic_string -- and the int SOCOM 1's int_material.cpp map<string, int>; the material unit's clear 0x2DEDF0 calls this destroy, an earlier unit's copy)
+0x002CE5A0 0x8 alloc__Q23std481__tree<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>,Q33std260map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>13value_compare,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>Fv  # OVL1; ours (the MSL headers round 5: include/tree's instance for std::map<std::string, int>, byte-exact or alike but for its callees' names as a probe, build/p/mat0.cpp in the MSL lane's worktree; the key a plain std::string -- ~pair<const string, int> passes -1 to ~basic_string -- and the int SOCOM 1's int_material.cpp map<string, int>; the material unit's clear 0x2DEDF0 calls this destroy, an earlier unit's copy)
 0x002CE5B0 0x1B8 func_002CE5B0  # OVL1
 0x002CE770 0x8 clear__Q23std62__vector_deleter<10CZDecalDef,Q23std23allocator<10CZDecalDef>>Fv  # OVL1; by hand (the weapons lane's round 7, vetted by the integrator: 0x2CDB30 and the insert<CZDecalDef> 0x3D3D90 both call it)
 0x002CE780 0x68 func_002CE780  # OVL1
@@ -4640,12 +4640,12 @@
 0x002DEA50 0x6C func_002DEA50  # OVL1
 0x002DEAC0 0x6C func_002DEAC0  # OVL1
 0x002DEB30 0xC4 func_002DEB30  # OVL1
-0x002DEC00 0x128 func_002DEC00  # OVL1
-0x002DED30 0xC0 func_002DED30  # OVL1
-0x002DEDF0 0x40 func_002DEDF0  # OVL1
-0x002DEE30 0x60 func_002DEE30  # OVL1
-0x002DEE90 0x194 func_002DEE90  # OVL1; split by the integrator: ends at its jr ra (0x2DF01C, the frame popped in the delay slot), padded to 0x2DF030
-0x002DF030 0x124 func_002DF030  # OVL1; split from 0x2DEE90 by the integrator: a function reached only by the string compare 0x2DEE30's tail `j` (at 0x2DEE88), so the seed never cut it
+0x002DEC00 0x128 find_or_insert<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>__Q23std481__tree<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>,Q33std260map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>13value_compare,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>_RQ23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>  # OVL1; ours (the MSL headers round 5: include/tree's instance for std::map<std::string, int>, byte-exact or alike but for its callees' names as a probe, build/p/mat0.cpp in the MSL lane's worktree; the key a plain std::string -- ~pair<const string, int> passes -1 to ~basic_string -- and the int SOCOM 1's int_material.cpp map<string, int>; the material unit's clear 0x2DEDF0 calls this destroy, an earlier unit's copy)
+0x002DED30 0xC0 find<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>__Q23std481__tree<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>,Q33std260map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>13value_compare,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>_Q33std481__tree<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>,Q33std260map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>13value_compare,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>8iterator  # OVL1; ours (the MSL headers round 5: include/tree's instance for std::map<std::string, int>, byte-exact or alike but for its callees' names as a probe, build/p/mat0.cpp in the MSL lane's worktree; the key a plain std::string -- ~pair<const string, int> passes -1 to ~basic_string -- and the int SOCOM 1's int_material.cpp map<string, int>; the material unit's clear 0x2DEDF0 calls this destroy, an earlier unit's copy)
+0x002DEDF0 0x40 clear__Q23std481__tree<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>,Q33std260map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>13value_compare,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>Fv  # OVL1; ours (the MSL headers round 5: include/tree's clear, out of class as SOCOM 1's clear__ of its map<string, int> -- the material unit's own code calls it; byte-exact as a probe, build/p/mat0.cpp in the MSL lane's worktree)
+0x002DEE30 0x60 compare__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>  # OVL1; ours (the MSL headers round 5: include/string's compare(const basic_string &), byte-exact as a probe -- the other's text and size in one short-first test, size() after, tail-jumping to compare(pos1, n1, s, n2); every string-keyed tree's comparator calls it and tests the sign, as SOCOM 1's map<CSaferStr,...> inlines it)
+0x002DEE90 0x194 insert_node_at__Q23std481__tree<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>,Q33std260map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>13value_compare,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>FPQ33std19__red_black_tree<1>9node_basebbRCQ23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>  # OVL1; split by the integrator: ends at its jr ra (0x2DF01C, the frame popped in the delay slot), padded to 0x2DF030; ours (the MSL headers round 5: include/tree's instance for std::map<std::string, int>, byte-exact or alike but for its callees' names as a probe, build/p/mat0.cpp in the MSL lane's worktree; the key a plain std::string -- ~pair<const string, int> passes -1 to ~basic_string -- and the int SOCOM 1's int_material.cpp map<string, int>; the material unit's clear 0x2DEDF0 calls this destroy, an earlier unit's copy)
+0x002DF030 0x124 compare__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFUiUiPCcUi  # OVL1; split from 0x2DEE90 by the integrator: a function reached only by the string compare 0x2DEE30's tail `j` (at 0x2DEE88), so the seed never cut it; ours (the MSL headers round 5: include/string's compare(pos1, n1, s, n2), byte-exact as a probe; SOCOM 1's compare__...CFUiUiPCcUi 0x14CF30 is the same code over the old string: "string compare: pos > len", min(size - pos1, n1), memcmp, -1/1/0)
 0x002DF160 0x3F4 func_002DF160  # OVL1
 0x002DF560 0xD4 SyncGameClock__13CZOnlineLobbyFi  # OVL1; s1:calls
 0x002DF640 0xC MediusConnectionIndex__13CZOnlineLobbyFv  # OVL1; s1:calls by hand (the states lane: the network senders take the connection index through it where SOCOM 1's do)
@@ -4702,64 +4702,64 @@
 0x002E1B20 0x88 func_002E1B20  # OVL1
 0x002E1BB0 0x130 func_002E1BB0  # OVL1
 0x002E1CE0 0x70 __ct__7LANGameFP10LANAddressi  # OVL1; ours (LANGame's constructor, the RTTI's class at 0x4066C0: RoomGame's 0x2E1D50 with no info, TransientGame's table then LANGame's stored at 0x190, the 16-byte address at 0x1C4 and the port at 0x1D4; cbLANGameInfo 0x304470 news 0x1D8 bytes and calls it)
-0x002E1D50 0xAC func_002E1D50  # OVL1
-0x002E1E00 0x8 func_002E1E00  # OVL1
-0x002E1E10 0x108 func_002E1E10  # OVL1
+0x002E1D50 0xAC __ct__8RoomGameFP22MediusGameListResponse  # OVL1; ours (SOCOM 1's RoomGame constructor: the table at 0x190, the info cleared, its world -1, UpdateInfo inlined one level; LANGame's constructor passes 0, the game list's callback a response); (the info's struct is SOCOM 1's MediusGameListResponse)
+0x002E1E00 0x8 SetMission__8RoomGameFi  # OVL1; ours (the game's mission, the word at +0x28, set: UpdateInfo, inlined one level, calls it out of line with the sequence's first byte)
+0x002E1E10 0x108 __as__22MediusGameListResponseFRC22MediusGameListResponse  # OVL1; ours (the game info's implicit assignment, member by member -- 21 bytes, the words and halfwords, the name and rules two bytes a pass: too big to inline, its copy follows the game's constructor; UpdateInfo calls it); (the struct's name SOCOM 1's)
 0x002E1F20 0x5A0 func_002E1F20  # OVL1
 0x002E24C0 0x8 GetMissionSequence__8RoomGameFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike); ours (RoomGame's one virtual, slot 0 of the three game tables 0x4066B0/C0/D0: it returns this + 0x1A2, the mission sequence JoinLANGame hands SetMissionSequence -- SOCOM 1's slot held IsPersistent, the s1:vtable name this row had)
 0x002E24D0 0x400 func_002E24D0  # OVL1
 0x002E28D0 0x4C RefreshGameList__13CZOnlineLobbyFP3C2D  # OVL1; s1:ui ('RefreshGameList' 0x27DB40, as SOCOM 1's UIRefreshGameList calls RefreshGameList; a1 live)
 0x002E2920 0x1D4 func_002E2920  # OVL1
-0x002E2B00 0x1E0 func_002E2B00  # OVL1
-0x002E2CE0 0x394 func_002E2CE0  # OVL1
-0x002E3080 0x160 func_002E3080  # OVL1
-0x002E31E0 0x1EC func_002E31E0  # OVL1
+0x002E2B00 0x1E0 cbGameList__FiiiP22MediusGameListResponse  # OVL1; s1:name (SOCOM 1's cbGameList, the game list request's callback: the same request/update/new-game shape)
+0x002E2CE0 0x394 UpdateGameListDisplay__FP12BriefingRoom  # OVL1; s1:name (SOCOM 1's UpdateGameListDisplay, the room passed in SOCOM II: the games sorted, filtered by GamePassesFilters and built into uiv_GameList)
+0x002E3080 0x160 GamePassesFilters__FP8RoomGame  # OVL1; s1:name (SOCOM 1's GamePassesFilters: the same tests in the same order, SOCOM II's password filter first)
+0x002E31E0 0x1EC GamePassesTypeFilter__FP8RoomGame  # OVL1; s1:name (SOCOM 1's GamePassesTypeFilter, which took the type: here the game, its mission sequence through the vtable, tested against the type filter 0x44F528)
 0x002E33D0 0x10 func_002E33D0  # OVL1
-0x002E33E0 0xAC func_002E33E0  # OVL1
-0x002E3490 0x40 func_002E3490  # OVL1
+0x002E33E0 0xAC HasMissions__8RoomGameFv  # OVL1; ours (each byte of the game's mission sequence -- the vtable's GetMissionSequence -- found in the mission list 0x441650 by Find(id, true); JoinGame, 0x2F8FD0 and the LAN JoinGame ask it)
+0x002E3490 0x40 AllowsType__8RoomGameFi  # OVL1; ours (a game's type mask at +0x1A1 tested for bit type-1, none set allowing any; the bit test 0x2E34E0 makes inline on a room)
 0x002E34D0 0x10 func_002E34D0  # OVL1
-0x002E34E0 0x124 func_002E34E0  # OVL1
-0x002E3610 0x11C func_002E3610  # OVL1
+0x002E34E0 0x124 CanJoinRoom__13CZOnlineLobbyFPCc  # OVL1; ours (UICanJoinRoom 0x27D690 calls it on theLobby: the room found by name, FindRoom's loop inlined, its types at +0x34 tested for GetRankTier(-1)'s bit)
+0x002E3610 0x11C FindPlayer__12BriefingRoomFPCc  # OVL1; ours (find_if over the room's players at +0x7C, 208-byte elements, by the name at +0x20; the player-info callback 0x2F0020 calls it)
 0x002E3730 0x54 RejoinRoom__13CZOnlineLobbyFv  # OVL1; s1:ui ('ConnectToGameServer' 0x27E4C0 and 'DisconnectFromGameServer' 0x27E420 call it on theLobby, as SOCOM 1's UIConnectToGameServer and UIDisconnectFromGameServer call RejoinRoom)
 0x002E3790 0x29C JoinRoom__13CZOnlineLobbyFPCc  # OVL1; s1:ui ('JoinMPRoom' = UIJoinMPRoom calls it on theLobby where SOCOM 1's calls JoinRoom)
 0x002E3A30 0x64 RefreshRoomList__13CZOnlineLobbyFP3C2D  # OVL1; s1:ui ('RefreshRoomList' 0x27DAA0, as SOCOM 1's UIRefreshRoomList calls RefreshRoomList; a1 live)
 0x002E3AA0 0x58 func_002E3AA0  # OVL1
-0x002E3B00 0x1C0 func_002E3B00  # OVL1
-0x002E3CC0 0x2B8 func_002E3CC0  # OVL1
-0x002E3F80 0x88 func_002E3F80  # OVL1
-0x002E4010 0x4C func_002E4010  # OVL1
-0x002E4060 0x70 func_002E4060  # OVL1
-0x002E40D0 0x40 func_002E40D0  # OVL1
-0x002E4110 0x8 func_002E4110  # OVL1
-0x002E4120 0x14 func_002E4120  # OVL1
-0x002E4140 0xD4 func_002E4140  # OVL1
-0x002E4220 0x20 func_002E4220  # OVL1
-0x002E4240 0xB4 func_002E4240  # OVL1
-0x002E4300 0xA4 func_002E4300  # OVL1
-0x002E43B0 0x14 func_002E43B0  # OVL1
-0x002E43D0 0x14 func_002E43D0  # OVL1
-0x002E43F0 0x14 func_002E43F0  # OVL1
-0x002E4410 0x60 func_002E4410  # OVL1
+0x002E3B00 0x1C0 cbRoomList__FiiiP25MediusChannelListResponse  # OVL1; s1:name (SOCOM 1's cbRoomList, the room list request's callback: 'RoomList' checked, the room updated or added)
+0x002E3CC0 0x2B8 UpdateRoomListDisplay__Fv  # OVL1; s1:name (SOCOM 1's UpdateRoomListDisplay: the rooms sorted -- std::sort's instance 0x2E5150 with RoomLess -- and built into uiv_RoomList through a CRdrEditor)
+0x002E3F80 0x88 RoomLess__FP12BriefingRoomP12BriefingRoom  # OVL1; ours (the room list's sort comparator: the key in the top halfword of +0x34, the names' lengths, then strcasecmp of the names at +0x38)
+0x002E4010 0x4C Release__14BriefingRoomDBFv  # OVL1; ours (the room list's rooms deleted, then cleared and swapped with an empty vector: the vector's pieces after it, 0x2E4060-0x2E4120)
+0x002E4060 0x70 __dt__Q23std58vector<P12BriefingRoom,Q23std26allocator<P12BriefingRoom>>Fv  # OVL1; ours (Release's FreeVector temporary destroyed with -1: three this-tests, the base std::vector's)
+0x002E40D0 0x40 swap__Q23std58vector<P12BriefingRoom,Q23std26allocator<P12BriefingRoom>>FRQ23std58vector<P12BriefingRoom,Q23std26allocator<P12BriefingRoom>>  # OVL1; ours (Release's FreeVector: the room list swapped with the temporary, out of line)
+0x002E4110 0x8 clear__Q23std58vector<P12BriefingRoom,Q23std26allocator<P12BriefingRoom>>Fv  # OVL1; ours (Release's FreeVector: the room list cleared, out of line)
+0x002E4120 0x14 __ct__Q23std58vector<P12BriefingRoom,Q23std26allocator<P12BriefingRoom>>Fv  # OVL1; ours (Release's FreeVector temporary constructed: zsys.h's FreeVector inlined one level calls it)
+0x002E4140 0xD4 DeleteAll__14BriefingRoomDBFv  # OVL1; ours (std::transform of the room list through DeleteItem<BriefingRoom> -- its call 0x2E4220 out of line -- then the size zeroed; the room list's request 0x2E3AA0 calls it)
+0x002E4220 0x20 DeleteRoom__FP12BriefingRoom  # OVL1; ours (the room list's deleter: ~BriefingRoom with 1, then 0 returned; DeleteAll's transform calls it out of line); ours (by its own code: the room in a0, ~BriefingRoom with 1, 0 returned -- a function handed to std::transform by address, so DeleteAll calls it directly)
+0x002E4240 0xB4 Add__14BriefingRoomDBFP25MediusChannelListResponse  # OVL1; ours (a room new'd from a channel list response -- BriefingRoom's inline constructor, its members' constructors called -- and pushed through the pod insert)
+0x002E4300 0xA4 Set__12BriefingRoomFP25MediusChannelListResponse  # OVL1; ours (the channel list's record copied member by member into the room's base at +0xC, the conversion null-tested; BriefingRoom(resp) calls it out of line)
+0x002E43B0 0x14 __ct__Q23std72vector<20MediusChatFwdMessage,Q23std33allocator<20MediusChatFwdMessage>>Fv  # OVL1; ours (the room's second list constructed, at +0x88: BriefingRoom's constructor calls it out of line); the room's chat (SOCOM 1's BriefingRoom kept a vector<MediusChatFwdMessage>; the menu state's 0x1F5020 builds a 0x80-byte message and inserts it); (the mangled length corrected)
+0x002E43D0 0x14 __ct__Q23std52vector<10RoomPlayer,Q23std23allocator<10RoomPlayer>>Fv  # OVL1; ours (the room's players constructed, at +0x7C: BriefingRoom's constructor calls it out of line)
+0x002E43F0 0x14 __ct__Q23std48vector<P8RoomGame,Q23std21allocator<P8RoomGame>>Fv  # OVL1; ours (the room's games constructed: BriefingRoom's constructor calls it out of line, at +0); the room's games constructed (BriefingRoom's base vector at +0: its inline constructor calls it out of line)
+0x002E4410 0x60 FindGame__12BriefingRoomFi  # OVL1; ours (a room's game whose word at +0x28, the mission, equals the argument); a member of the room (the games are its base: ~BriefingRoom's three this-tests)
 0x002E4470 0xB8 FindRoom__14BriefingRoomDBFPCc  # OVL1; s1 by hand (SOCOM 1's FindRoom: the room list 0x44F568 searched with strcmp on the room's name, +0x38 in SOCOM II, 0 for a null name; the chat unit's CreateRoom handler, cbCreateRoom and 0x2F0EA0 call it)
-0x002E4530 0x3C func_002E4530  # OVL1
-0x002E4570 0xB8 func_002E4570  # OVL1
-0x002E4630 0x84 func_002E4630  # OVL1
-0x002E46C0 0x34 func_002E46C0  # OVL1
-0x002E4700 0x84 func_002E4700  # OVL1
-0x002E4790 0x3C func_002E4790  # OVL1
-0x002E47D0 0xD4 DeleteAll__14RoomGameVectorFv  # OVL1; ours (a room's games deleted and the list emptied -- std::transform with a deleter, then clear: ReleaseUIResources on the room 0x44FAB0 and on *0x44FE10, JoinGame, 0x2F9220, the room's destructor 0x2E48C0; byte-exact)
-0x002E48B0 0x8 func_002E48B0  # OVL1
-0x002E48C0 0xD8 func_002E48C0  # OVL1
-0x002E49A0 0xEC func_002E49A0  # OVL1; the same words as remove_if<Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,PFP14CCharacterType_b>__3stdFQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorPFP14CCharacterType_b_Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator (0x53f1a0) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
+0x002E4530 0x3C SortGames__12BriefingRoomFv  # OVL1; ours (the room's games sorted: std::sort's instance 0x2E4A90 with an empty comparator by value)
+0x002E4570 0xB8 FindGame__12BriefingRoomFPCc  # OVL1; ours (SOCOM 1's BriefingRoom::FindGame: strcmp of the game names at +0x4C; the LAN unit calls it); SOCOM 1's BriefingRoom::FindGame (its name in the demo's symbols)
+0x002E4630 0x84 RemoveUncheckedGames__12BriefingRoomFv  # OVL1; ours (erase(remove_if(begin, end, RemoveUncheckedGame), end): the game list's request 0x2E2920 and the LAN unit); a member of the room, as FindGame
+0x002E46C0 0x34 RemoveUncheckedGame__FP8RoomGame  # OVL1; ours (RemoveUnchecked's remove_if predicate, its address taken at 0x2E4634: a game the new list did not report, the bool at +0x198, deleted)
+0x002E4700 0x84 RemoveEmptyGames__12BriefingRoomFv  # OVL1; ours (erase(remove_if(begin, end, RemoveEmptyGame), end): the game list's request 0x2E2920 and the LAN unit); a member of the room, as FindGame
+0x002E4790 0x3C RemoveEmptyGame__FP8RoomGame  # OVL1; ours (RemoveEmpty's remove_if predicate, its address taken at 0x2E4704: a game with no players, the halfword at +0x20, deleted and true returned)
+0x002E47D0 0xD4 DeleteGames__12BriefingRoomFv  # OVL1; ours (a room's games deleted and the list emptied -- std::transform with a deleter, then clear: ReleaseUIResources on the room 0x44FAB0 and on *0x44FE10, JoinGame, 0x2F9220, the room's destructor 0x2E48C0; byte-exact); a member of the room, as FindGame (~BriefingRoom calls it on itself)
+0x002E48B0 0x8 SetPassword__12BriefingRoomFPCc  # OVL1; ours (empty: BriefingRoom's constructor calls it with "" -- the LAN room's initialiser 0x4024F0 and Add)
+0x002E48C0 0xD8 __dt__12BriefingRoomFv  # OVL1; by hand (the online lane's round 7: BriefingRoom derives from vector<RoomGame *> -- three this-tests -- with the channel-list record at 0xC; its games deleted, the chat vector's deleter destroyed; byte-exact from zNetMediusRoom.cpp once 0x1F5C30 is named)
+0x002E49A0 0xEC remove_if<Q33std56__vector_imp<P8RoomGame,Q23std21allocator<P8RoomGame>,1>8iterator,PFP8RoomGame_b>__3stdFQ33std56__vector_imp<P8RoomGame,Q23std21allocator<P8RoomGame>,1>8iteratorQ33std56__vector_imp<P8RoomGame,Q23std21allocator<P8RoomGame>,1>8iteratorPFP8RoomGame_b_Q33std56__vector_imp<P8RoomGame,Q23std21allocator<P8RoomGame>,1>8iterator  # OVL1; the same words as remove_if<Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,PFP14CCharacterType_b>__3stdFQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorPFP14CCharacterType_b_Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator (0x53f1a0) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies); ours (RemoveUnchecked's and RemoveEmpty's remove_if over the games, the room unit's template tail)
 0x002E4A90 0x6BC func_002E4A90  # OVL1
 0x002E5150 0x598 func_002E5150  # OVL1
-0x002E56F0 0x68 func_002E56F0  # OVL1
+0x002E56F0 0x68 __dt__Q23std62__vector_deleter<10RoomPlayer,Q23std23allocator<10RoomPlayer>>Fv  # OVL1; ours (the room players' deleter destroyed: its clear 0x2E5F50 called, the storage freed; ~BriefingRoom calls it with 0)
 0x002E5760 0x220 func_002E5760  # OVL1
 0x002E5980 0x1B4 func_002E5980  # OVL1
-0x002E5B40 0xAC func_002E5B40  # OVL1; the same words as remove_copy_if<Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,PFP14CCharacterType_b>__3stdFQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorPFP14CCharacterType_b_Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator (0x540bc0) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
+0x002E5B40 0xAC remove_copy_if<Q33std56__vector_imp<P8RoomGame,Q23std21allocator<P8RoomGame>,1>8iterator,Q33std56__vector_imp<P8RoomGame,Q23std21allocator<P8RoomGame>,1>8iterator,PFP8RoomGame_b>__3stdFQ33std56__vector_imp<P8RoomGame,Q23std21allocator<P8RoomGame>,1>8iteratorQ33std56__vector_imp<P8RoomGame,Q23std21allocator<P8RoomGame>,1>8iteratorQ33std56__vector_imp<P8RoomGame,Q23std21allocator<P8RoomGame>,1>8iteratorPFP8RoomGame_b_Q33std56__vector_imp<P8RoomGame,Q23std21allocator<P8RoomGame>,1>8iterator  # OVL1; the same words as remove_copy_if<Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,PFP14CCharacterType_b>__3stdFQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorPFP14CCharacterType_b_Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator (0x540bc0) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies); ours (remove_if's remove_copy_if over the games, the room unit's template tail)
 0x002E5BF0 0x1A0 func_002E5BF0  # OVL1
 0x002E5D90 0x1BC func_002E5D90  # OVL1
-0x002E5F50 0x8 func_002E5F50  # OVL1
+0x002E5F50 0x8 clear__Q23std62__vector_deleter<10RoomPlayer,Q23std23allocator<10RoomPlayer>>Fv  # OVL1; ours (the room players' deleter's clear: the size zeroed; the deleter's destructor 0x2E56F0 calls it)
 0x002E5F60 0x80 func_002E5F60  # OVL1
 0x002E5FE0 0x1C func_002E5FE0  # OVL1
 0x002E6000 0xC func_002E6000  # OVL1
@@ -4840,29 +4840,29 @@
 0x002EA440 0x80 func_002EA440  # OVL1
 0x002EA4C0 0x80 func_002EA4C0  # OVL1
 0x002EA540 0x80 func_002EA540  # OVL1
-0x002EA5C0 0xEC func_002EA5C0  # OVL1
+0x002EA5C0 0xEC GetClanLadderList__13CZOnlineLobbyFii  # OVL1; ours (the 'ClanLadderList' request from a position, 2n clans, unless one is pending (0x44F880) or the list reaches it; UIGetLadderInfo and GetClanRanking call it)
 0x002EA6B0 0x7C GetClanLadderLeaders__13CZOnlineLobbyFi  # OVL1; ours (the clan ladder's leaders, 0x44F820, emptied and asked for with the message id 'ClanLadderLeaders'; its callback 0x2EA730 reports 'GetClanLadderList'; the 'GetLadderInfo' handler calls it on theLobby)
 0x002EA730 0xC8 cbGetClanLadderList__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP31MediusGetClanLadderListResponse  # OVL1; ours (the clan ladder requests' callback: reports 'GetClanLadderList', sorts the reply by its message id, 'ClanLadderLeaders' or 'ClanLadderList'); the mangled length corrected (31)
-0x002EA800 0x12C func_002EA800  # OVL1
-0x002EA930 0x248 func_002EA930  # OVL1
+0x002EA800 0x12C UpdateClanLadderLeaders__Fv  # OVL1; ours (the clan ladder's leaders sorted -- std::sort's instance 0x2EC7E0 -- and built into uiv_ClanLadderLeaders: '%d' and the clan's name; cbGetClanLadderList calls it on the last 'ClanLadderLeaders' answer)
+0x002EA930 0x248 UpdateClanLadderList__Fv  # OVL1; ours (the clan ladder around us sorted and built into uiv_ClanLadderRanking with each tier, our clan's VALUE/COLOR in colour; 'ON_LADDER_REFRESH' told; cbGetClanLadderList calls it on the last 'ClanLadderList' answer)
 0x002EAB80 0xEC GetClanRanking__13CZOnlineLobbyFi  # OVL1; s1:callee; ours (was Pop__5CGameFUi by s1:callee, a false pair: UIGameStatePopCommand's a0 is theLobby 0x44F370, not theGame, and the UI command table files that handler under 'GetClanRanking'; CGame::Pop is 0x2CF2F0, fts_state.h. Two Medius requests, 'GetSurrounding' and 'ClanTotal'; the argument a flag, tested as an int)
-0x002EAC70 0x108 func_002EAC70  # OVL1
-0x002EAD80 0xA0 func_002EAD80  # OVL1
-0x002EAE20 0xB8 func_002EAE20  # OVL1
-0x002EAEE0 0xD0 func_002EAEE0  # OVL1
+0x002EAC70 0x108 cbGetClanLadderPosition__FiiiP32MediusClanLadderPositionResponse  # OVL1; ours (GetClanRanking's position request callback: 'GetClanLadderRanking' checked, our clan's position kept (0x44F868) and shown, GetSurrounding asking the list around it)
+0x002EAD80 0xA0 GetClanRankTier__13CZOnlineLobbyFi  # OVL1; ours (a clan ladder position's tier, ours (0x44F868) for -1: per mille of 0x44F870's positions, 4/3/2/1 at 50/300/850)
+0x002EAE20 0xB8 GetRankTier__13CZOnlineLobbyFi  # OVL1; ours (a ladder position's tier, our position 0x44F7F8 for -1: per mille of the positions past ten, 4/3/2/1 at 50/300/850; 4 under twelve positions; CanJoinRoom and the ladder callbacks ask it)
+0x002EAEE0 0xD0 GetRankLevel__13CZOnlineLobbyFi  # OVL1; ours (a ladder position's rank, ours (0x44F7F8) for -1: 5 the first ten, then per mille of the positions past ten, 4/3/2/1; LadderMedalOfMerit's value, the persona's)
 0x002EAFB0 0x54 GetLadderRanking__13CZOnlineLobbyFv  # OVL1; s1 by hand (its callback 0x2EB010 reports 'GetLadderRanking' and is SOCOM 1's cbGetLadderRanking, which SOCOM 1's GetLadderRanking passes to MediusLadderPosition; called by the 'GetLadderInfo' handler 0x2784D0 on theLobby)
 0x002EB010 0x19C cbGetLadderRanking__FiiiP28MediusLadderPositionResponse  # OVL1; s1 by hand (GetLadderRanking's callback; reports 'GetLadderRanking', the LadderRanking variables)
-0x002EB1B0 0x10C func_002EB1B0  # OVL1
+0x002EB1B0 0x10C cbGetTotalRankings__FiiiP30MediusGetTotalRankingsResponse  # OVL1; ours (the ladder size request's callback: 'GetTotalRankings' checked, 'PlayerTotal' kept at 0x44F800, 'ClanTotal' at 0x44F870 and shown in TotalClans; GetClanRanking asks it)
 0x002EB2C0 0x74 GetLadderInfo__13CZOnlineLobbyFv  # OVL1; s1 by hand (the same request in the active lobby only, with 0x2EB340, which reports 'GetLadderPosition': SOCOM 1's GetLadderInfo passes cbGetLadderPosition to MediusLadderPosition; called by the 'GetLadderInfo' handler)
 0x002EB340 0x1CC cbGetLadderPosition__FiiiP28MediusLadderPositionResponse  # OVL1; s1 by hand (GetLadderInfo's callback; reports 'GetLadderPosition')
-0x002EB510 0xF4 func_002EB510  # OVL1
-0x002EB610 0x88 func_002EB610  # OVL1
+0x002EB510 0xF4 GetLadderList__13CZOnlineLobbyFii  # OVL1; ours (the player ladder's 'TheRest' page from a position, 2n players, unless one is pending (0x44F878) or LadderLeaders 0x44F7B0 reaches it; cbGetLadderPosition asks it around our position)
+0x002EB610 0x88 GetLadderBest__13CZOnlineLobbyFi  # OVL1; ours (the player ladder's 'TheBest' page: LadderRanking 0x44F7E0 emptied through 0x2EC140, positions 1..n asked for)
 0x002EB6A0 0xC0 func_002EB6A0  # OVL1
 0x002EB760 0xC func_002EB760  # OVL1
 0x002EB770 0xC func_002EB770  # OVL1
 0x002EB780 0xC func_002EB780  # OVL1
 0x002EB790 0xC func_002EB790  # OVL1
-0x002EB7A0 0x15C func_002EB7A0  # OVL1
+0x002EB7A0 0x15C UpdateLadderBestDisplay__Fv  # OVL1; ours (the player ladder's best, LadderRanking 0x44F7E0, sorted -- std::sort's instance 0x2EC260 -- and built into uiv_MediusLadderTop10: '%d', the name and clan strings at +0x8C/+0x98)
 0x002EB900 0x318 func_002EB900  # OVL1
 0x002EBC20 0xC8 func_002EBC20  # OVL1
 0x002EBCF0 0x154 Add__14ClanLadderListFP31MediusGetClanLadderListResponse  # OVL1; ours (cbGetClanLadderList keeps a clan through it: the 0x48-byte response copied whole unless its position (+0x3c) is there, the highest position kept at +0xc; byte-exact)
@@ -5144,40 +5144,40 @@
 0x00303410 0x80 func_00303410  # OVL1
 0x00303490 0x2A0 func_00303490  # OVL1
 0x00303730 0x44 GameHasPassword__10CZLANLobbyFPCc  # OVL1; ours (UIGameHasPassword 0x27D410 on the LAN lobby: the room's game by name, its flags' player-password bit) -- byte-exact, zNetLANLobby.cpp
-0x00303780 0x224 GetGameInfo__10CZLANLobbyFP11LANGameInfo  # OVL1; ours (the hosted game's 0x190-byte info brought up to date -- players, mission, lock -- and copied out member by member: zNetDme's LAN info exchange 0x30CACC/0x30D200 calls it)
+0x00303780 0x224 GetGameInfo__10CZLANLobbyFP22MediusGameListResponse  # OVL1; ours (the hosted game's 0x190-byte info brought up to date -- players, mission, lock -- and copied out member by member: zNetDme's LAN info exchange 0x30CACC/0x30D200 calls it); (the info's struct is SOCOM 1's MediusGameListResponse)
 0x003039B0 0x588 func_003039B0  # OVL1
 0x00303F40 0x364 CreateGame__10CZLANLobbyFv  # OVL1; ours (UICreateMPGame 0x27D7EC on the LAN lobby: the game server's connection info ours (our address, port 10075), the hosted game's info built from the menus' valves and variables)
 0x003042B0 0xE0 RefreshGameList__10CZLANLobbyFP3C2D  # OVL1; ours (UIRefreshGameList 0x27DBD8 on the LAN lobby: the room's games marked unchecked, the filters cleared, the LAN asked through 0x621EF8)
 0x00304390 0x48 cbLANInfoRequest__Fii  # OVL1; ours (the callback CZLANLobby::RefreshGameList 0x3042B0 hands the DME 0x621EF8: a console's address looked up and our game's info sent it through 0x30CB20)
 0x003043E0 0x34 Disconnect__10CZLANLobbyFv  # OVL1; ours (UILobbyDisconnect 0x274D7C on the LAN lobby: theLobby's UI resources released, the room let go) -- byte-exact, zNetLANLobby.cpp
 0x00304420 0x50 Connect__10CZLANLobbyFv  # OVL1; ours (UILobbyConnect 0x2767F4 on the LAN lobby: 0x2DF6A0 on theLobby, the announced games' callback set, the LAN room 0x44FFC0 in use)
-0x00304470 0x140 cbLANGameInfo__FP11LANGameInfo  # OVL1; ours (the announced LAN game's callback CZLANLobby::Connect 0x304420 hands the network (0x30CB90): the game found in the LAN room by name or a new LANGame pushed, its address and port, the byte order converted, the info set as RoomGame's constructor sets it)
+0x00304470 0x140 cbLANGameInfo__FP22MediusGameListResponse  # OVL1; ours (the announced LAN game's callback CZLANLobby::Connect 0x304420 hands the network (0x30CB90): the game found in the LAN room by name or a new LANGame pushed, its address and port, the byte order converted, the info set as RoomGame's constructor sets it); (the info's struct is SOCOM 1's MediusGameListResponse)
 0x003045B0 0x5C IsActive__10CZLANLobbyFv  # OVL1; ours (whether the menus came from the LAN menu: the ComeFromLan valve looked up once into 0x450058; the UI commands call it on the LAN lobby 0x44FE10 before every lobby command) -- byte-exact, zNetLANLobby.cpp
-0x00304610 0x8 func_00304610  # OVL1
-0x00304620 0x28 func_00304620  # OVL1
-0x00304650 0x10 func_00304650  # OVL1
-0x00304660 0x114 func_00304660  # OVL1
+0x00304610 0x8 GetMode__12CLobbyFileIOCFv  # OVL1; ours (vtable slot 0x18: the mode at +8)
+0x00304620 0x28 fsyncAsync__12CLobbyFileIOFiPi  # OVL1; ours (vtable slot 0x38: the result at +0x90 handed back, true once the transfers' map is empty)
+0x00304650 0x10 fwriteAsync__12CLobbyFileIOFPCvi  # OVL1; ours (vtable slot 0x34: the buffer and size kept at +0x94/+0x98, -1)
+0x00304660 0x114 freadAsync__12CLobbyFileIOFPvi  # OVL1; ours (vtable slot 0x30: the buffer kept, a read's transfer registered under Medius's key -- the map's insert_one with this as the value)
 0x00304780 0x58 func_00304780  # OVL1
-0x003047E0 0x8 func_003047E0  # OVL1
-0x003047F0 0x8 func_003047F0  # OVL1
-0x00304800 0x8 func_00304800  # OVL1
-0x00304810 0x8 func_00304810  # OVL1
+0x003047E0 0x8 fflush__12CLobbyFileIOFv  # OVL1; ours (vtable slot 0x40: empty)
+0x003047F0 0x8 fwrite__12CLobbyFileIOFPCvi  # OVL1; ours (vtable slot 0x2C: -1)
+0x00304800 0x8 fread__12CLobbyFileIOFiPPv  # OVL1; ours (vtable slot 0x28: -1)
+0x00304810 0x8 fread__12CLobbyFileIOFPvi  # OVL1; ours (vtable slot 0x24: -1)
 0x00304820 0x1E4 func_00304820  # OVL1
-0x00304A10 0x8 func_00304A10  # OVL1
-0x00304A20 0x8 func_00304A20  # OVL1
-0x00304A30 0x18 func_00304A30  # OVL1
-0x00304A50 0xC func_00304A50  # OVL1
-0x00304A60 0x128 func_00304A60  # OVL1
+0x00304A10 0x8 fseek__12CLobbyFileIOFii  # OVL1; ours (vtable slot 0x20: -1)
+0x00304A20 0x8 ftell__12CLobbyFileIOCFv  # OVL1; ours (vtable slot 0x1C: -1)
+0x00304A30 0x18 GetSize__12CLobbyFileIOCFv  # OVL1; ours (vtable slot 0x14: the descriptor's size at its +0x94, -1 without one)
+0x00304A50 0xC IsOpen__12CLobbyFileIOCFv  # OVL1; ours (vtable slot 0x10: the descriptor at +4 present)
+0x00304A60 0x128 Close__12CLobbyFileIOFv  # OVL1; ours (vtable slot 0x0C, CIO's Close: a write's transfer registered and finished, the descriptor freed)
 0x00304B90 0xB4 func_00304B90  # OVL1
-0x00304C50 0x18C func_00304C50  # OVL1
+0x00304C50 0x18C Open__12CLobbyFileIOFPCcUi  # OVL1; ours (CLobbyFileIO's vtable 0x406760 slot 0x08, CIO's Open (zutil.h); inserts the file into the transfers' map 0x450070)
 0x00304DE0 0x15C func_00304DE0  # OVL1
 0x00304F40 0x298 func_00304F40  # OVL1
 0x003051E0 0x50 func_003051E0  # OVL1
 0x00305230 0x408 func_00305230  # OVL1
 0x00305640 0x54 func_00305640  # OVL1
 0x003056A0 0x68 func_003056A0  # OVL1
-0x00305710 0xD4 func_00305710  # OVL1
-0x003057F0 0xC0 func_003057F0  # OVL1
+0x00305710 0xD4 erase_one<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>__Q23std539__tree<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>,Q33std289map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>13value_compare,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>_Ui  # OVL1; ours (the MSL headers round 5: include/tree's instance for the Medius file API's std::map<std::string, CLobbyFileIO *> at 0x450070, byte-exact as a probe, build/p/fio1.cpp in the MSL lane's worktree -- the key a plain std::string (a CSaferStr key's extra inline level cuts insert_node_at's construct), the value the CLobbyFileIO the member 0x304660 inserts as this: the mapped type is that inference, rename the six together if the unit needs another)
+0x003057F0 0xC0 find<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>__Q23std539__tree<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>,Q33std289map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>13value_compare,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>_Q33std539__tree<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>,Q33std289map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>13value_compare,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>8iterator  # OVL1; ours (the MSL headers round 5: include/tree's instance for the Medius file API's std::map<std::string, CLobbyFileIO *> at 0x450070, byte-exact as a probe, build/p/fio1.cpp in the MSL lane's worktree -- the key a plain std::string (a CSaferStr key's extra inline level cuts insert_node_at's construct), the value the CLobbyFileIO the member 0x304660 inserts as this: the mapped type is that inference, rename the six together if the unit needs another)
 0x003058B0 0x27C func_003058B0  # OVL1
 0x00305B30 0x8 func_00305B30  # OVL1
 0x00305B40 0x8 func_00305B40  # OVL1
@@ -5185,12 +5185,12 @@
 0x00305B90 0x8 func_00305B90  # OVL1
 0x00305BA0 0x40 func_00305BA0  # OVL1
 0x00305BE0 0xB8 func_00305BE0  # OVL1
-0x00305CA0 0x114 func_00305CA0  # OVL1
-0x00305DC0 0x20 func_00305DC0  # OVL1
-0x00305DE0 0x194 func_00305DE0  # OVL1
-0x00305F80 0xA8 func_00305F80  # OVL1
-0x00306030 0x56C func_00306030  # OVL1
-0x003065A0 0x78 func_003065A0  # OVL1
+0x00305CA0 0x114 insert_one__Q23std539__tree<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>,Q33std289map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>13value_compare,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>FRCQ23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>  # OVL1; ours (the MSL headers round 5: include/tree's instance for the Medius file API's std::map<std::string, CLobbyFileIO *> at 0x450070, byte-exact as a probe, build/p/fio1.cpp in the MSL lane's worktree -- the key a plain std::string (a CSaferStr key's extra inline level cuts insert_node_at's construct), the value the CLobbyFileIO the member 0x304660 inserts as this: the mapped type is that inference, rename the six together if the unit needs another)
+0x00305DC0 0x20 __ct__Q23std539__tree<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>,Q33std289map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>13value_compare,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>FRCQ33std289map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>13value_compareRCQ23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>  # OVL1; ours (the MSL headers round 5: include/tree's instance for the Medius file API's std::map<std::string, CLobbyFileIO *> at 0x450070, byte-exact as a probe, build/p/fio1.cpp in the MSL lane's worktree -- the key a plain std::string (a CSaferStr key's extra inline level cuts insert_node_at's construct), the value the CLobbyFileIO the member 0x304660 inserts as this: the mapped type is that inference, rename the six together if the unit needs another)
+0x00305DE0 0x194 insert_node_at__Q23std539__tree<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>,Q33std289map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>13value_compare,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>FPQ33std19__red_black_tree<1>9node_basebbRCQ23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>  # OVL1; ours (the MSL headers round 5: include/tree's instance for the Medius file API's std::map<std::string, CLobbyFileIO *> at 0x450070, byte-exact as a probe, build/p/fio1.cpp in the MSL lane's worktree -- the key a plain std::string (a CSaferStr key's extra inline level cuts insert_node_at's construct), the value the CLobbyFileIO the member 0x304660 inserts as this: the mapped type is that inference, rename the six together if the unit needs another)
+0x00305F80 0xA8 erase__Q23std539__tree<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>,Q33std289map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>13value_compare,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>FQ33std539__tree<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>,Q33std289map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>13value_compare,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>8iterator  # OVL1; ours (the MSL headers round 5: include/tree's instance for the Medius file API's std::map<std::string, CLobbyFileIO *> at 0x450070, byte-exact as a probe, build/p/fio1.cpp in the MSL lane's worktree -- the key a plain std::string (a CSaferStr key's extra inline level cuts insert_node_at's construct), the value the CLobbyFileIO the member 0x304660 inserts as this: the mapped type is that inference, rename the six together if the unit needs another)
+0x00306030 0x56C balance_erase__Q23std19__red_black_tree<1>FPQ33std19__red_black_tree<1>9node_basePQ33std19__red_black_tree<1>9node_base  # OVL1; ours (the MSL headers round 5: include/tree's red-black statics, byte-exact as a probe, build/p/fio1.cpp in the MSL lane's worktree; one copy per overlay; SOCOM 1 names increment)
+0x003065A0 0x78 increment__Q23std19__red_black_tree<1>FRPCQ33std19__red_black_tree<1>9node_base  # OVL1; ours (the MSL headers round 5: include/tree's red-black statics, byte-exact as a probe, build/p/fio1.cpp in the MSL lane's worktree; one copy per overlay; SOCOM 1 names increment)
 0x00306620 0x28 __ct__6CFRectFPC6CPnt3DPC6CPnt3D  # OVL1; ours (the zdb world lane, vetted by the integrator: a CFRect from two corners -- top and bottom their z, left and right their x, this returned in v0 as MW's constructors do; CGrid::AddClutter calls it with two CPnt3D pointers; out of line next to CFRect() 0x306650)
 0x00306650 0x18 __ct__6CFRectFv  # OVL1; s1:calls (CGrid's constructor calls it on m_extents at +0x14 as SOCOM 1's does; the same 0x18 bytes; CFRect is global, not zdb's) -- the zdb-world lane
 0x00306670 0x54 zMath_Init__Fv  # OVL1; s1:calls
@@ -7548,11 +7548,11 @@
 0x0039CDC0 0x8 GetSize__7CFileIOCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0039CDD0 0x94 fwrite__7CFileIOFPCc  # OVL1; s1:align
 0x0039CE70 0xC SetErrorHandler__7CFileIOFPFi_v  # OVL1; ours (stores its argument to the handler fread, fwrite and fseek call with 2 on a failure when the file's flags have 2)
-0x0039CE80 0x194 func_0039CE80  # OVL1
+0x0039CE80 0x194 HddFindFiles__FPCcPviUi  # OVL1; ours (util_sonyio.cpp: the installed game's pfs0:RUN entries whose names hold the pattern, counted; the index-th one's header bytes from offset 20 copied out -- UIHardDriveOperation calls it twice)
 0x0039D020 0x24 func_0039D020  # OVL1
 0x0039D050 0x430 func_0039D050  # OVL1
-0x0039D480 0x1D0 func_0039D480  # OVL1
-0x0039D650 0x268 func_0039D650  # OVL1
+0x0039D480 0x1D0 WriteHddIcon__FPCc  # OVL1; ours (util_sonyio.cpp: the installed game's icon file -- a PS2ICON3D header of four offsets and sizes, then system.cnf and RUN/ICONS/HDD/'s icon.sys, list.ico and deleting.ico, each read by 0x39D650; the HDD install 0x39D050 calls it)
+0x0039D650 0x268 LoadHddIconFile__FPCcPCcP11HDDICONFILE  # OVL1; ours (util_sonyio.cpp: a file read whole through a local CFileIO into a 64-aligned buffer rounded up to 512 bytes, the buffer and size handed back, the size returned; WriteHddIcon reads its four files so)
 0x0039D8C0 0x44 func_0039D8C0  # OVL1
 0x0039D910 0x48 func_0039D910  # OVL1
 0x0039D960 0x334 Read__7CFileCDFPci  # OVL1; s1:calls
@@ -7637,17 +7637,17 @@
 0x003A22E0 0x90 __ct__8CMemCardFv  # OVL1; s1:calls
 0x003A2370 0x94 CRC32String__FPCc  # OVL1; ours (the string's CRC-32 over a table built on first use: 0xFFFFFFFF in, (crc >> 8) ^ table[(crc & 0xFF) ^ c], complemented out; 0 for no string -- docs/audio.md's crc32_string, the r0004 0x3C2BC0; no SOCOM 1 counterpart) -- util_crc.cpp
 0x003A2410 0x100 BuildCRCTable__Fv  # OVL1; ours (the CRC-32 table built once, the classic reflecting generator, polynomial 0x04C11DB7; static, called by CRC32String) -- util_crc.cpp
-0x003A2510 0x3A8 func_003A2510  # OVL1
-0x003A28C0 0x23C func_003A28C0  # OVL1
-0x003A2B00 0x7C func_003A2B00  # OVL1
-0x003A2B80 0x58 func_003A2B80  # OVL1
-0x003A2BE0 0x30 func_003A2BE0  # OVL1
-0x003A2C10 0x114 func_003A2C10  # OVL1
-0x003A2D30 0x24 func_003A2D30  # OVL1
-0x003A2D60 0x120 func_003A2D60  # OVL1
-0x003A2E80 0xC0 func_003A2E80  # OVL1
-0x003A2F40 0x20 func_003A2F40  # OVL1
-0x003A2F60 0x19C func_003A2F60  # OVL1
+0x003A2510 0x3A8 ParseCommandLine__FP10COptionMapiPPcUi  # OVL1; ours (util_options.cpp: the command line's words, dashes dropped, looked up in the option map -- an option's value the next word read by its type into a local _zrdr, "help" walks the map, else an rdr file of options; RebootIOP's ParseOptions calls it)
+0x003A28C0 0x23C ParseOptionList__FP10COptionMapP5_zrdr  # OVL1; ours (util_options.cpp: an rdr list of option names, each typed option's value the next item -- zrdr_isitemtype on its first element, or the whole list for type 4)
+0x003A2B00 0x7C AddOption__FP10COptionMapPCcPFRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>P5_zrdr_vUi  # OVL1; ours (util_options.cpp: main registers "menu_state" with its handler 0x1EACE0 and type 3; the flags get 0x200 unless 0x100 is set; the map's operator[] through a temporary name)
+0x003A2B80 0x58 ListOptions__FP10COptionMap  # OVL1; ours (util_options.cpp: the "help" word: an empty walk over the option map, its printing compiled out)
+0x003A2BE0 0x30 __ct__10COptionMapFv  # OVL1; ours (util_options.cpp: main news 16 bytes and calls it; std::map's no-argument constructor inlined, the tree built from two bare stack slots)
+0x003A2C10 0x114 ParseOptions__FUi  # OVL1; ours (util_options.cpp: CIOPManager::RebootIOP calls it twice; with 0x100 the command line alone, else it or the rdr file named by main, the source then cleared)
+0x003A2D30 0x24 SetOptionSource__FP10COptionMapiPPcPCc  # OVL1; ours (util_options.cpp: main hands over the map, argc, argv and "ftsxp.rdr")
+0x003A2D60 0x120 find_or_insert<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>__Q23std531__tree<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>,Q33std285map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>13value_compare,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>_RQ23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>  # OVL1; the IOP module table's map's find_or_insert (the MSL headers round 5: include/tree's, byte-exact as a probe over std::map<std::string, T> with T an 8-byte struct whose constructor zeroes both words, build/p/iop2.cpp in the MSL lane's worktree; T's name unknown, so the row waits for the unit); (include/tree: util_options.cpp's map<std::string, OPTION_INFO>, the MSL headers round 5's probe iop2.cpp; the value type named by the unit)
+0x003A2E80 0xC0 find<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>__Q23std531__tree<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>,Q33std285map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>13value_compare,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>_Q33std531__tree<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>,Q33std285map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>13value_compare,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>8iterator  # OVL1; the IOP module table's map's find<string> (the MSL headers round 5: byte-exact as a probe, build/p/iop2.cpp; std::string-keyed, the value type unnamed); (include/tree: util_options.cpp's map<std::string, OPTION_INFO>)
+0x003A2F40 0x20 __ct__Q23std531__tree<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>,Q33std285map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>13value_compare,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>FRCQ33std285map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>13value_compareRCQ23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>  # OVL1; the IOP module table's map's tree constructor (the MSL headers round 5: byte-exact as a probe, build/p/iop2.cpp); (include/tree: util_options.cpp's map<std::string, OPTION_INFO>, the tree built)
+0x003A2F60 0x19C insert_node_at__Q23std531__tree<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>,Q33std285map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>13value_compare,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>FPQ33std19__red_black_tree<1>9node_basebbRCQ23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>  # OVL1; the IOP module table's map's insert_node_at (the MSL headers round 5: byte-exact as a probe, build/p/iop2.cpp -- the key std::string: a CSaferStr key cuts its construct to calls); (include/tree: util_options.cpp's map<std::string, OPTION_INFO>)
 0x003A3100 0x1E4 func_003A3100  # OVL1
 0x003A32F0 0x194 func_003A32F0  # OVL1
 0x003A3490 0x230 func_003A3490  # OVL1
@@ -7660,7 +7660,7 @@
 0x003A3BE0 0x4F8 func_003A3BE0  # OVL1
 0x003A40E0 0x108 func_003A40E0  # OVL1
 0x003A41F0 0x1A4 func_003A41F0  # OVL1
-0x003A43A0 0xB8 func_003A43A0  # OVL1
+0x003A43A0 0xB8 Find__9CLocTableFi  # OVL1; ours (util_loc.cpp: a localised table's entry by id -- 0 out of 1..max (0x0), the last found (0x70), the first when the id is not past it, else the 12-byte entries walked; the manager's lookup 0x3A32F0 calls it)
 0x003A4460 0x44 func_003A4460  # OVL1
 0x003A44B0 0xA8 func_003A44B0  # OVL1
 0x003A4560 0x7B0 func_003A4560  # OVL1
@@ -7671,17 +7671,17 @@
 0x003A5500 0x2D8 func_003A5500  # OVL1
 0x003A57E0 0x1D8 func_003A57E0  # OVL1
 0x003A59C0 0x8 func_003A59C0  # OVL1
-0x003A59D0 0xA0 func_003A59D0  # OVL1
-0x003A5A70 0x70 func_003A5A70  # OVL1
-0x003A5AE0 0x3C func_003A5AE0  # OVL1
-0x003A5B20 0xF0 func_003A5B20  # OVL1
-0x003A5C10 0x20 func_003A5C10  # OVL1
-0x003A5C30 0x3C func_003A5C30  # OVL1
-0x003A5C70 0x40 func_003A5C70  # OVL1
-0x003A5CB0 0x8 func_003A5CB0  # OVL1
+0x003A59D0 0xA0 StartThread__19CSimpleStateMachineFii  # OVL1; ours (util_ssm.cpp: the machine run on a thread of its own -- the priority kept, the stack allocated once, the entry 0x3A5A70 and $gp handed to CreateThread, StartThread with the machine; returns true. The Medius server list and the DNAS machines call it)
+0x003A5A70 0x70 ThreadEntry__19CSimpleStateMachineFPv  # OVL1; ours (util_ssm.cpp: the thread's body -- Start through the vtable, then Step and RotateThreadReadyQueue until the done flag, the thread id cleared, ExitDeleteThread)
+0x003A5AE0 0x3C Start__19CSimpleStateMachineFv  # OVL1; ours (util_ssm.cpp: slot 0x8 of __vt__19CSimpleStateMachine 0x408240, the class's one non-inline virtual -- the idle state queued through SetState, the done flag cleared, false)
+0x003A5B20 0xF0 Step__19CSimpleStateMachineFv  # OVL1; ours (util_ssm.cpp: a queued state changed to -- the old one called with 2, the queue's front taken and popped, the new one called with 0 -- else the state called with 1; Tick and ThreadEntry call it)
+0x003A5C10 0x20 IsDone__19CSimpleStateMachineFv  # OVL1; ours (util_ssm.cpp: no thread and the done flag; the destructor inlines it)
+0x003A5C30 0x3C Tick__19CSimpleStateMachineFv  # OVL1; ours (util_ssm.cpp: a threaded machine's thread given the processor, else a Step)
+0x003A5C70 0x40 Finish__19CSimpleStateMachineFUc  # OVL1; ours (util_ssm.cpp: the finishing state, done once entered or ticked; its member pointer pooled at 0x3E07B8 for the destructor)
+0x003A5CB0 0x8 Idle__19CSimpleStateMachineFUc  # OVL1; ours (util_ssm.cpp: the idle state, empty; its member pointer pooled at 0x3E07C8 and 0x3E07D8)
 0x003A5CC0 0x108 __dt__19CSimpleStateMachineFv  # OVL1; by hand, the UI-commands lane's lead vetted (stores the same vtable first, drains the queue, frees 0x30, destroys the queue at 0x14 and deletes itself when its flag is positive: MW's destructor shape; the inlined ~CSMInitNetwork calls it with 0)
 0x003A5DD0 0x78 __ct__19CSimpleStateMachineFv  # OVL1; by hand, the UI-commands lane's lead vetted (stores __vt__19CSimpleStateMachine, 0x408240, before anything else and copy-builds the state queue at 0x14 from a temporary; UIInitNetwork calls it right after operator new(60))
-0x003A5E50 0x78 func_003A5E50  # OVL1
+0x003A5E50 0x78 __ct__Q23std91deque<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>FRCQ23std91deque<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>  # OVL1; (include/deque, util_ssm.cpp's queue: the deque<SSMState> copy constructor std::queue's default constructor runs on a default temporary; its chain mirrors the rdr lane's 0x333B30, open)
 0x003A5ED0 0xB0 func_003A5ED0  # OVL1
 0x003A5F80 0x5C func_003A5F80  # OVL1
 0x003A5FE0 0x5C func_003A5FE0  # OVL1
@@ -7696,7 +7696,7 @@
 0x003A63D0 0x18 func_003A63D0  # OVL1
 0x003A63F0 0x8 func_003A63F0  # OVL1
 0x003A6400 0x8 func_003A6400  # OVL1
-0x003A6410 0x28 func_003A6410  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
+0x003A6410 0x28 __ct__Q23std91deque<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>Fv  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); (include/deque, util_ssm.cpp's queue: deque<SSMState>'s default constructor, the temporary CSimpleStateMachine() builds)
 0x003A6440 0x30 func_003A6440  # OVL1
 0x003A6470 0x18 func_003A6470  # OVL1
 0x003A6490 0x27C func_003A6490  # OVL1
@@ -7707,10 +7707,10 @@
 0x003A6BC0 0x58 func_003A6BC0  # OVL1
 0x003A6C20 0x8 func_003A6C20  # OVL1
 0x003A6C30 0x8 func_003A6C30  # OVL1
-0x003A6C40 0xA8 func_003A6C40  # OVL1
+0x003A6C40 0xA8 pop_front__Q23std97__deque_imp<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>Fv  # OVL1; (include/deque, util_ssm.cpp's queue: __deque_imp::pop_front over 42-element blocks of member pointers -- 84 and 42 its constants; Step calls it)
 0x003A6CF0 0x16C func_003A6CF0  # OVL1
-0x003A6E60 0x138 func_003A6E60  # OVL1
-0x003A6FA0 0x88 func_003A6FA0  # OVL1
+0x003A6E60 0x138 __dt__Q23std97__deque_buf<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>Fv  # OVL1; (include/deque, util_ssm.cpp's queue: the block buffer's out-of-class destructor, called with 0 by ~CSimpleStateMachine and for CSimpleStateMachine()'s temporary)
+0x003A6FA0 0x88 clear__Q23std97__deque_imp<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>Fv  # OVL1; (include/deque, util_ssm.cpp's queue: __deque_imp::clear, two blocks kept and the start at 21)
 0x003A7030 0x164 func_003A7030  # OVL1
 0x003A71A0 0x20 Virtual60__7CTurretFP6CPnt3D  # OVL1; by hand (the wep lane: CTurret's vtable slot +0x60, an inline override's copy opening the unit -- the point at 0x380 copied out, true; CEntity's slot takes no parameter in zentity.h, the name follows its Virtual60); veh_turret.cpp; (zentity.h's slot +0x60 takes a CPnt3D * and returns bool since the entity lane's round 8)
 0x003A71C0 0x8 Virtual64__7CTurretFv  # OVL1; by hand (the wep lane: CTurret's vtable slot +0x64, an inline override's copy -- the node at 0x288); veh_turret.cpp
@@ -8546,7 +8546,7 @@
 0x00401C80 0x34 func_00401C80  # OVL1 data area; a static initialiser
 0x00401CC0 0x24 __sinit_grid_di.cpp  # OVL1 data area; a static initialiser; s1:calls (it clears stack's owner byte and registers ~CStack -- grid_di.cpp's static initialiser; scores WRONG until zmath.h's CStack has a constructor that does not push) -- the zdb-world lane
 0x00401CF0 0x88 func_00401CF0  # OVL1 data area; a static initialiser
-0x00401D80 0x28 func_00401D80  # OVL1 data area; a static initialiser
+0x00401D80 0x28 __sinit_int_shapes.cpp  # OVL1 data area; a static initialiser; by hand (the split lane): int_shapes.cpp's initialiser -- builds diNorm (0x44F2E0) as (0, 1, 0, 0), the static only SetEdgeVecsAndNorm and CDIPoly::GetAltitude use; byte-exact in int_shapes.cpp
 0x00401DB0 0x78 func_00401DB0  # OVL1 data area; a static initialiser; s1~ int_material.cpp (shape 0.54, a hint)
 0x00401E30 0x3C func_00401E30  # OVL1 data area; a static initialiser
 0x00401E70 0x34 func_00401E70  # OVL1 data area; a static initialiser
@@ -9871,7 +9871,7 @@
 0x0053F290 0xE0 func_0053F290  # OVL2
 0x0053F370 0x3C0 func_0053F370  # OVL2
 0x0053F730 0x368 func_0053F730  # OVL2
-0x0053FAA0 0x30 func_0053FAA0  # OVL2
+0x0053FAA0 0x30 func_0053FAA0  # OVL2; OVL2's copy of assign__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FPCc (0x1eeb40, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: assign__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FPCc
 0x0053FAD0 0x68 func_0053FAD0  # OVL2; OVL2's copy of __dt__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>Fv (0x1e7ef0, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: __dt__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>Fv
 0x0053FB40 0x220 func_0053FB40  # OVL2
 0x0053FD60 0x504 func_0053FD60  # OVL2
@@ -9881,7 +9881,7 @@
 0x00540920 0x68 func_00540920  # OVL2
 0x00540990 0xBC func_00540990  # OVL2
 0x00540A50 0xF8 func_00540A50  # OVL2
-0x00540B50 0x68 func_00540B50  # OVL2
+0x00540B50 0x68 func_00540B50  # OVL2; OVL2's copy of replace__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FUiUiPCc (0x1ef390, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: replace__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FUiUiPCc
 0x00540BC0 0xAC remove_copy_if<Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,PFP14CCharacterType_b>__3stdFQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorPFP14CCharacterType_b_Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator  # OVL2; s1:calls (char_type.cpp's remove_if, byte-exact but this call, calls it where SOCOM 1's remove_if calls remove_copy_if at 0x24C190; the name as char_type.cpp emits it) -- the AI-core lane
 0x00540C70 0x8C func_00540C70  # OVL2
 0x00540D00 0x3BC func_00540D00  # OVL2
@@ -10563,14 +10563,14 @@
 0x0058D090 0xC0 func_0058D090  # OVL2
 0x0058D150 0x40 func_0058D150  # OVL2
 0x0058D190 0xC0 func_0058D190  # OVL2; the same words as Remove__21RTList<11ACTIVE_ANIM>FP11ACTIVE_ANIM (0x28f370) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
-0x0058D250 0x60 func_0058D250  # OVL2
+0x0058D250 0x60 func_0058D250  # OVL2; OVL2's copy of compare__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>> (0x2dee30, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: compare__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>
 0x0058D2B0 0x194 func_0058D2B0  # OVL2
 0x0058D450 0x27C func_0058D450  # OVL2
 0x0058D6D0 0x8 func_0058D6D0  # OVL2
 0x0058D6E0 0x8 func_0058D6E0  # OVL2
 0x0058D6F0 0x3C func_0058D6F0  # OVL2
 0x0058D730 0x8 func_0058D730  # OVL2
-0x0058D740 0x124 func_0058D740  # OVL2
+0x0058D740 0x124 func_0058D740  # OVL2; OVL2's copy of compare__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFUiUiPCcUi (0x2df030, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: compare__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFUiUiPCcUi
 0x0058D870 0x220 func_0058D870  # OVL2; OVL2's copy of the trees' static rebalancer (OVL1 0x210D80, the same 0x220 word for word bar its two rotations' addresses; OVL2's insert_node_at 0x58D2B0 calls it); ovl-copy: balance_insert__Q23std19__red_black_tree<1>FPQ33std19__red_black_tree<1>9node_basePQ33std19__red_black_tree<1>9node_base
 0x0058DA90 0x90 func_0058DA90  # OVL2; OVL2's copy of the trees' rotate_right (OVL1 0x210FA0, byte-identical); ovl-copy: rotate_right__Q23std19__red_black_tree<1>FPQ33std19__red_black_tree<1>9node_baseRPQ33std19__red_black_tree<1>9node_base
 0x0058DB20 0x90 func_0058DB20  # OVL2; OVL2's copy of the trees' rotate_left (OVL1 0x211030, byte-identical); ovl-copy: rotate_left__Q23std19__red_black_tree<1>FPQ33std19__red_black_tree<1>9node_baseRPQ33std19__red_black_tree<1>9node_base

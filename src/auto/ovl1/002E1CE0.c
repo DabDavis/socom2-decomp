@@ -8,13 +8,13 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 char * __ct__7LANGameFP10LANAddressi(char * arg0, char * arg1, s32 arg2);
-M2C_UNK func_002E1D50(s32 arg0, s32 arg1);
+M2C_UNK __ct__8RoomGameFP22MediusGameListResponse(char * arg0, char * arg1);
 M2C_UNK memcpy(char *, char *, M2C_UNK);            /* extern */
 extern M2C_UNK __vt__13TransientGame;
 extern M2C_UNK __vt__7LANGame;
 
 char *__ct__7LANGameFP10LANAddressi(char *arg0, char *arg1, s32 arg2) {
-    func_002E1D50((s32) arg0, 0);
+    __ct__8RoomGameFP22MediusGameListResponse(arg0, NULL);
     SC_MEMBER(arg0, M2C_UNK **, 0x190) = &__vt__13TransientGame;
     SC_MEMBER(arg0, M2C_UNK **, 0x190) = &__vt__7LANGame;
     memcpy(arg0 + 0x1C4, arg1, 0x10);
