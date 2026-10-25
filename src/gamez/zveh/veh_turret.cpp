@@ -58,7 +58,7 @@ CTurretDef::CTurretDef() : m_weapon(EQUIP_NONE), m_ammo(AMMO_NONE), m_flags(0)
     m_health = 0.0f;
     m_effectValue = 0.0f;
     m_team = 0;
-    m_trigger.Set(Rfloat(2.0f, 4.0f), Rfloat(1.0f, 2.0f));
+    m_trigger.SetTimes(Rfloat(2.0f, 4.0f), Rfloat(1.0f, 2.0f));
     m_lookDir = CPnt3D::unit_nz;
     m_yaw.m_min = 0.017453292f * -data_003E0808;
     m_yaw.m_max = 0.017453292f * data_003E0808;

@@ -73,12 +73,13 @@ public:
 class CAiTrigger {
 public:
     /* (inline: too big to inline whole into CTurret's and CTurretDef's constructors, which call the
-     * Rfloats' constructors and Set out of line -- 0x3AA920, 0x3AA810: down 0.5-1.2, up 0.1-0.5) */
-    CAiTrigger() { Set(Rfloat(0.5f, 1.2f), Rfloat(0.1f, 0.5f)); }
-    /* the two times set and a cycle drawn: the up time, then the cycle up plus down (the name and
-     * the parameters' order ours -- the down time is the first stored; CTurretDef's constructor and
-     * Parse inline it) */
-    void Set(const Rfloat &dn, const Rfloat &up)
+     * Rfloats' constructors and SetTimes out of line -- 0x3AA920, 0x3AA810: down 0.5-1.2, up
+     * 0.1-0.5) */
+    CAiTrigger() { SetTimes(Rfloat(0.5f, 1.2f), Rfloat(0.1f, 0.5f)); }
+    /* the two times set and a cycle drawn: the up time, then the cycle up plus down (the name the
+     * kit lane's, OVL2's copy 0x5FF200; the down time is the first stored; CTurretDef's constructor
+     * and Parse inline it) */
+    void SetTimes(const Rfloat &dn, const Rfloat &up)
     {
         m_dn_time = dn;
         m_up_time = up;
