@@ -5153,23 +5153,23 @@
 0x00304420 0x50 Connect__10CZLANLobbyFv  # OVL1; ours (UILobbyConnect 0x2767F4 on the LAN lobby: 0x2DF6A0 on theLobby, the announced games' callback set, the LAN room 0x44FFC0 in use)
 0x00304470 0x140 cbLANGameInfo__FP22MediusGameListResponse  # OVL1; ours (the announced LAN game's callback CZLANLobby::Connect 0x304420 hands the network (0x30CB90): the game found in the LAN room by name or a new LANGame pushed, its address and port, the byte order converted, the info set as RoomGame's constructor sets it); (the info's struct is SOCOM 1's MediusGameListResponse)
 0x003045B0 0x5C IsActive__10CZLANLobbyFv  # OVL1; ours (whether the menus came from the LAN menu: the ComeFromLan valve looked up once into 0x450058; the UI commands call it on the LAN lobby 0x44FE10 before every lobby command) -- byte-exact, zNetLANLobby.cpp
-0x00304610 0x8 func_00304610  # OVL1
-0x00304620 0x28 func_00304620  # OVL1
-0x00304650 0x10 func_00304650  # OVL1
-0x00304660 0x114 func_00304660  # OVL1
+0x00304610 0x8 GetMode__12CLobbyFileIOCFv  # OVL1; ours (vtable slot 0x18: the mode at +8)
+0x00304620 0x28 fsyncAsync__12CLobbyFileIOFiPi  # OVL1; ours (vtable slot 0x38: the result at +0x90 handed back, true once the transfers' map is empty)
+0x00304650 0x10 fwriteAsync__12CLobbyFileIOFPCvi  # OVL1; ours (vtable slot 0x34: the buffer and size kept at +0x94/+0x98, -1)
+0x00304660 0x114 freadAsync__12CLobbyFileIOFPvi  # OVL1; ours (vtable slot 0x30: the buffer kept, a read's transfer registered under Medius's key -- the map's insert_one with this as the value)
 0x00304780 0x58 func_00304780  # OVL1
-0x003047E0 0x8 func_003047E0  # OVL1
-0x003047F0 0x8 func_003047F0  # OVL1
-0x00304800 0x8 func_00304800  # OVL1
-0x00304810 0x8 func_00304810  # OVL1
+0x003047E0 0x8 fflush__12CLobbyFileIOFv  # OVL1; ours (vtable slot 0x40: empty)
+0x003047F0 0x8 fwrite__12CLobbyFileIOFPCvi  # OVL1; ours (vtable slot 0x2C: -1)
+0x00304800 0x8 fread__12CLobbyFileIOFiPPv  # OVL1; ours (vtable slot 0x28: -1)
+0x00304810 0x8 fread__12CLobbyFileIOFPvi  # OVL1; ours (vtable slot 0x24: -1)
 0x00304820 0x1E4 func_00304820  # OVL1
-0x00304A10 0x8 func_00304A10  # OVL1
-0x00304A20 0x8 func_00304A20  # OVL1
-0x00304A30 0x18 func_00304A30  # OVL1
-0x00304A50 0xC func_00304A50  # OVL1
-0x00304A60 0x128 func_00304A60  # OVL1
+0x00304A10 0x8 fseek__12CLobbyFileIOFii  # OVL1; ours (vtable slot 0x20: -1)
+0x00304A20 0x8 ftell__12CLobbyFileIOCFv  # OVL1; ours (vtable slot 0x1C: -1)
+0x00304A30 0x18 GetSize__12CLobbyFileIOCFv  # OVL1; ours (vtable slot 0x14: the descriptor's size at its +0x94, -1 without one)
+0x00304A50 0xC IsOpen__12CLobbyFileIOCFv  # OVL1; ours (vtable slot 0x10: the descriptor at +4 present)
+0x00304A60 0x128 Close__12CLobbyFileIOFv  # OVL1; ours (vtable slot 0x0C, CIO's Close: a write's transfer registered and finished, the descriptor freed)
 0x00304B90 0xB4 func_00304B90  # OVL1
-0x00304C50 0x18C func_00304C50  # OVL1
+0x00304C50 0x18C Open__12CLobbyFileIOFPCcUi  # OVL1; ours (CLobbyFileIO's vtable 0x406760 slot 0x08, CIO's Open (zutil.h); inserts the file into the transfers' map 0x450070)
 0x00304DE0 0x15C func_00304DE0  # OVL1
 0x00304F40 0x298 func_00304F40  # OVL1
 0x003051E0 0x50 func_003051E0  # OVL1
