@@ -4,18 +4,21 @@
  * @unnamed@zui_spec_cpp@) and holds the same run in the same order, from CClockSpec's destructor
  * to its vector instances. Defined in reverse of their image order (-inline deferred).
  *
- * OPEN, not written yet: every CreateDisplayObj but the map control's and the text's drafts (they
- * inline the C2D classes' constructors, zui_2d.cpp's -- CRenderableString's 0x37A770 and its
- * LoadSpec 0x3792F0, CPlainBmp's, CHProgressBar's -- whose rows the C2D lane has to name first),
- * the button family's constructors (CButtonSpec's 0x380620, CRadioStripSpec's 0x37DA50,
- * CCheckBoxSpec's two, CHandlerButtonSpec's, CUIListBoxSpec's 0x37EAB0, CUIMapCtrlSpec's 0x37D600;
- * ~CButtonSpec 0x37DD30 needs 0x36AC10 named, the ActionItem vector deleter's destructor),
- * CButtonSpec::InitializeButton 0x380500, GetControlSpec 0x382890, LoadDlgObjects 0x383360, the
- * dialog design's loaders 0x3812B0/0x381550, CDesignDlgObj's assignment and destructor copies
- * (0x37D910, 0x37D9B0: emitted with the vector instances) and the template instances
- * 0x3836E0-0x3855FF (include/vector's class-vector insert, erase and resize). */
+ * The CreateDisplayObjs inline the display objects' constructors (zui_2d.h): the clock's,
+ * counter's, image's and progress bar's match; the check box's and slider's (and CButtonSpec's,
+ * held in #if 0 while its draft matches) are byte-exact once 0x377800 is named __ct__9C2DButtonFv,
+ * and ~CSliderBarSpec (emitted here as an inline copy) once 0x36E650 is __dt__11ButtonStateFv.
+ *
+ * OPEN, not written yet: the button family's constructors (CButtonSpec's 0x380620, 0xC8C bytes,
+ * CRadioStripSpec's 0x37DA50, CCheckBoxSpec's 0x37E2A0 and its copy 0x37E000, CUIListBoxSpec's
+ * 0x37EAB0, CUIMapCtrlSpec's 0x37D600), CButtonSpec::InitializeButton 0x380500, the list box's
+ * CreateDisplayObj 0x37E8B0 (CUIListBox's constructor, a CPlainBmp with columns), LoadDlgObjects
+ * 0x383360, the dialog design's loaders 0x3812B0/0x381550, and the template instances
+ * 0x3836E0-0x3855FF and the copies they need (vector<ActionItem>'s copy constructor 0x37E190 and
+ * ButtonState's 0x37E210): include/vector has neither the class vector's copy constructor nor its
+ * range init, insert and resize, which the other lane owns this round. */
 
-#include "zui_spec.h"
+#include "zui_2d.h"
 
 /* a real the rdr may give, else the default (ours: the counter's StartTime initialises its member
  * so, the read before the string member's construction) */
@@ -27,10 +30,7 @@ static inline float FindReal(_zrdr *rdr, const char *tag, float def)
     return f;
 }
 
-/* the spec an object's TYPE names, from its rdr (SOCOM 1's; SOCOM II added the secure text) *
- * OPEN until three rows outside the lane are named: byte-exact with 0x22DCC0 as
- * __as__9CSaferStrFPCc, 0x2A8F30 as __ct__6CPnt3DFfff and 0x20F1F0 as __as__6CPnt3DFRC6CPnt3D
- * (CTextSpec's constructor inlined one level calls them; measured with the three renamed) */
+/* the spec an object's TYPE names, from its rdr (SOCOM 1's; SOCOM II added the secure text) */
 CDlgObjSpec *GetObjectSpec(_zrdr *rdr, const char *type)
 {
     if (!type)
@@ -73,12 +73,97 @@ CImageSpec::CImageSpec(_zrdr *rdr) : CDlgObjSpec(rdr), m_pulse(false)
 }
 #pragma auto_inline reset
 
+/* a plain bitmap of the spec's texture: the one its UI variable names, else FILENAME (SOCOM 1's) */
+C2D *CImageSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
+{
+    const char *name;
+
+    if (m_var)
+        name = GetUIVar()->String();
+    else
+        name = m_filename.c_str();
+    zdb::CTexHandle *tex = PrepTexture(name, mgr);
+    CPlainBmp *bmp = new CPlainBmp;
+    func_00379080(bmp, this, tex);
+    return bmp;
+}
+
+/* the control spec an object's TYPE names, from its rdr, else the plain object's (SOCOM 1's; SOCOM II
+ * dropped the cycle button) */
+CDlgObjSpec *GetControlSpec(_zrdr *rdr, const char *type)
+{
+    if (!type)
+        return 0;
+    if (!strcmp("BUTTON", type))
+        return new CButtonSpec(rdr);
+    if (!strcmp("SCROLLINGTEXT", type))
+        return new CScrollSpec(rdr);
+    if (!strcmp("HANDLERBUTTON", type))
+        return new CHandlerButtonSpec(rdr);
+    if (!strcmp("LISTBOX", type))
+        return new CUIListBoxSpec(rdr);
+    if (!strcmp("SLIDERBAR", type))
+        return new CSliderBarSpec(rdr);
+    if (!strcmp("CHECKBOX", type))
+        return new CCheckBoxSpec(rdr);
+    if (!strcmp("RADIOSTRIP", type))
+        return new CRadioStripSpec(rdr);
+    if (!strcmp("MAPCONTROL", type))
+        return new CUIMapCtrlSpec(rdr);
+    return GetObjectSpec(rdr, type);
+}
+
+/* the button and the object its SUBORDINATE block describes: its NAME ("unnamed" if none), TYPE,
+ * XPOS, YPOS and SPEC (SOCOM 1's) *
+ * OPEN, 8 instructions (two delay slots): the target leaves the spec test's slot empty and puts
+ * `li a0,40` in new's, and repeats the name string's address in both arms of the inlined
+ * CSaferStr assignment; here MW fills the test's slot with the li, hoists the address into the
+ * name test's slot and pads before "unnamed". The design object's three inline setters are what
+ * give the target's loads of m_child (written out, 34 instructions differ); an early return for
+ * the spec test is 8 bytes longer */
+CHandlerButtonSpec::CHandlerButtonSpec(_zrdr *rdr) : CButtonSpec(rdr), m_child(0)
+{
+    _zrdr *sub = zrdr_findtag(rdr, "SUBORDINATE");
+
+    if (!sub)
+        return;
+    const char *name = zrdr_findstring(sub, "NAME");
+    const char *type = zrdr_findstring(sub, "TYPE");
+    int x, y;
+
+    zrdr_findint(sub, "XPOS", &x, 1);
+    zrdr_findint(sub, "YPOS", &y, 1);
+    _zrdr *specRdr = zrdr_findtag(sub, "SPEC");
+    if (!specRdr)
+        return;
+    CDlgObjSpec *spec = GetControlSpec(specRdr, type);
+    if (spec) {
+        m_child = new CDesignDlgObj;
+        m_child->SetSpec(spec);
+        m_child->SetPos(x, y);
+        m_child->SetName(name);
+    }
+}
+
+/* a button (SOCOM 1's) -- held out of the build until 0x377800 is named: the generated draft
+ * (src/auto/ovl1/00380470.c) matches through the placeholder, and this one, measured byte-exact
+ * with the row renamed, would supersede it with a wrong reference until then */
+#if 0
+/* a button (SOCOM 1's) */
+C2D *CButtonSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
+{
+    C2DButton *button = new C2DButton;
+
+    button->_strCaption.SetFont(font);
+    func_00376BD0(button, this);
+    InitializeButton(button, mgr);
+    return button;
+}
+#endif
+
 /* the wrapped text's WIDTH, line SPACING (10) and HEIGHT (-1: unbounded), its arrows' TEXTURE,
  * SIZE and OFFSET, AUTOSCROLL and DISPLAY_ONE_LINE (SOCOM 1's). Declared inline: GetObjectSpec
- * inlines it one level, and GetControlSpec's inlined CScrollSpec calls this copy *
- * OPEN until three rows outside the lane are named: byte-exact with 0x22DCC0 as
- * __as__9CSaferStrFPCc, 0x2A8F30 as __ct__6CPnt3DFfff and 0x20F1F0 as __as__6CPnt3DFRC6CPnt3D
- * (CTextSpec's constructor inlined one level calls them; measured with the three renamed) */
+ * inlines it one level, and GetControlSpec's inlined CScrollSpec calls this copy */
 inline CWrapSpec::CWrapSpec(_zrdr *rdr) : CTextSpec(rdr), m_width(0.0f), m_spacing(10), m_height(-1.0f)
 {
     zrdr_findreal(rdr, "WIDTH", &m_width, 1);
@@ -136,10 +221,7 @@ inline CTextSpec::CTextSpec(_zrdr *rdr) : CDlgObjSpec(rdr), m_scale(1.0f), m_hce
 
 /* the counter's StartTime, then an EndTime or a Duration, and the UI variable its value goes to,
  * ValVar (SOCOM 1's). The members are initialised in the mem-initializer list: the string's
- * construction follows the StartTime read and the ValVar lookup, as the target orders them *
- * OPEN until three rows outside the lane are named: byte-exact with 0x22DCC0 as
- * __as__9CSaferStrFPCc, 0x2A8F30 as __ct__6CPnt3DFfff and 0x20F1F0 as __as__6CPnt3DFRC6CPnt3D
- * (CTextSpec's constructor inlined one level calls them; measured with the three renamed) */
+ * construction follows the StartTime read and the ValVar lookup, as the target orders them */
 CCounterSpec::CCounterSpec(_zrdr *rdr)
     : CTextSpec(rdr), m_startTime(FindReal(rdr, "StartTime", 0.0f)), m_counting(false), m_endTime(0.0f),
       m_valVar(zrdr_findstring(rdr, "ValVar"))
@@ -148,9 +230,51 @@ CCounterSpec::CCounterSpec(_zrdr *rdr)
         m_counting = true;
 }
 
+/* a counter from the spec's times, starting at its ValVar variable's value (SOCOM 1's) */
+C2D *CCounterSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
+{
+    CUIVariable *var = theUIVarManager.Find(m_valVar.c_str());
+    int value = var ? var->Integer() : 0;
+    C2DCounter *counter = new C2DCounter(m_startTime, m_counting, m_endTime, value);
+
+    counter->SetFont(font);
+    counter->LoadSpec(*this);
+    return counter;
+}
+
 CDlgObjSpec *CCounterSpec::Copy()
 {
     return new CCounterSpec(*this);
+}
+
+/* a progress bar of the spec's texture, or of the one the variable FILENAME names (SOCOM 1's) */
+C2D *CHProgressBarSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
+{
+    CHProgressBar *bar = new CHProgressBar;
+    const char *name = m_filename.c_str();
+
+    if (m_filenameIsUivar) {
+        CUIVariable *var = theUIVarManager.Find(name);
+
+        if (var)
+            name = var->String();
+    }
+    bar->LoadSpec(*this, PrepTexture(name, mgr));
+    return bar;
+}
+
+/* a slider of the spec's knob (SOCOM 1's) *
+ * OPEN until a row outside the lane is named: byte-exact with 0x377800 (zui_2d.cpp's) as
+ * __ct__9C2DButtonFv -- C2DButton's constructor, out of line (measured with the row renamed) */
+C2D *CSliderBarSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
+{
+    CSliderBar *slider = new CSliderBar;
+    zdb::CTexHandle *knob = PrepTexture(m_knobTexture.c_str(), mgr);
+
+    slider->_strCaption.SetFont(font);
+    func_003724F0(slider, this, knob);
+    InitializeButton(slider, mgr);
+    return slider;
 }
 
 /* the bar's FILENAME_IS_UIVAR flag and the node its LEADING_EDGE follows (SOCOM 1's; GetObjectSpec
@@ -176,10 +300,7 @@ CDlgObjSpec::CDlgObjSpec(_zrdr *rdr)
     }
 }
 
-/* (SOCOM II's; out of line, GetObjectSpec calls it) *
- * OPEN until three rows outside the lane are named: byte-exact with 0x22DCC0 as
- * __as__9CSaferStrFPCc, 0x2A8F30 as __ct__6CPnt3DFfff and 0x20F1F0 as __as__6CPnt3DFRC6CPnt3D
- * (CTextSpec's constructor inlined one level calls them; measured with the three renamed) */
+/* (SOCOM II's; out of line, GetObjectSpec calls it) */
 CClockSpec::CClockSpec(_zrdr *rdr) : CTextSpec(rdr)
 {
 }
@@ -188,4 +309,28 @@ CClockSpec::CClockSpec(_zrdr *rdr) : CTextSpec(rdr)
 CDlgObjSpec *CClockSpec::Copy()
 {
     return new CClockSpec(*this);
+}
+
+/* a clock of the spec's text (SOCOM 1's) */
+C2D *CClockSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
+{
+    C2DClock *clock = new C2DClock;
+
+    clock->SetFont(font);
+    clock->LoadSpec(*this);
+    return clock;
+}
+
+/* a check box of the spec's check (SOCOM 1's) *
+ * OPEN until a row outside the lane is named: byte-exact with 0x377800 (zui_2d.cpp's) as
+ * __ct__9C2DButtonFv -- C2DButton's constructor, out of line (measured with the row renamed) */
+C2D *CCheckBoxSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
+{
+    CCheckBox *box = new CCheckBox;
+    zdb::CTexHandle *check = PrepTexture(m_checkTexture.c_str(), mgr);
+
+    box->_strCaption.SetFont(font);
+    func_00371550(box, this, check);
+    InitializeButton(box, mgr);
+    return box;
 }
