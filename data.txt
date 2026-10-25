@@ -673,6 +673,7 @@
 0x0044D450 0xC list__12CAnimAuxData  # OVL1 bss; s1:data-exact (size SOCOM 1's; via Get__12CAnimAuxDataFUi)
 0x0044D4A0 0x4 m_mpbombnode__7CPickup  # OVL1 bss; s1:data-seq (size SOCOM 1's; via CreateMPBombPickup__10CZSealBodyFPC6CPnt3Db)
 0x0044D688 0x1 OurGameName  # OVL1 bss; s1 by hand (SOCOM 1's CCoreState::Tick ticks CameraZoom only while OurGameName, gp-28920, a byte, is 1; SOCOM II's tests 0x44D688 == 1 at the same place)
+0x0044D6B8 0xC m_pool  # OVL1 bss; SOCOM 1's (m_pool, a global CPool -- a vector of CGameStateChangeCmd: capacity, size, data -- that game_state.cpp's initialiser 0x401BD0 builds, as SOCOM 1's does); 4 references in 3 functions (CreatePool, Acquire, DestroyPool)
 0x0044F108 0x8 m_pads__6CInput  # OVL1 bss; s1:data-seq (size SOCOM 1's; via DeletePad__6CInputFUi +1)
 0x0044F110 0x1 m_init__6CInput  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Init__6CInputFv)
 0x0044F118 0x4 m_keyboard__6CInput  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Init__6CInputFv)
