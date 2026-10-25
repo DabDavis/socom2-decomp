@@ -27,7 +27,7 @@ extern "C" int func_0032EA80(_zrdr *rdr, const char *tag, float *out, int n);   
 extern "C" int toupper(int c);
 
 _zrdr *zrdr_read(const char *name, const char *file, int line);
-extern "C" void *func_0034BB80();       /* Headset::ftsGetHeadset (not named yet) */
+extern "C" void *func_0034BB80();       /* Headset::ftsGetHeadset, by its placeholder (as ZAnim calls it) */
 extern "C" void func_0034B9E0(void *headset);
 
 _zrdr *GetSoundRdrFile()
@@ -259,4 +259,25 @@ void CSnd::LoadReverbs(_zrdr *rdr)
 void CSnd::SetGroupVol(int group, float vol)
 {
     snd_SetMasterVolume(group, (int)(1024.0f * vol));
+}
+
+/* SOCOM II's group-volume fade (0x3410D0, not written) restarted when idle (names not known) */
+extern float data_0048DE10;     /* the fade's time (1e9: held) */
+extern float data_003DFFE0;     /* the fade's position, 0-1 */
+extern "C" void func_003410D0(float step);
+
+extern "C" void func_00341060()
+{
+    if (data_0048DE10 != 0.0f || data_0048DE10 == 1.0e9f) {
+        data_003DFFE0 = 1.0f;
+        func_003410D0(0.01f);
+    }
+}
+
+extern "C" double floor(double x);
+
+/* a distance over a speed in miles per hour, in whole minutes (SOCOM II's; name not known) */
+extern "C" int func_00340FA0(float a, float b, float mph)
+{
+    return (int)floor((a - b) / 1609.344f / (mph / 60.0f));
 }
