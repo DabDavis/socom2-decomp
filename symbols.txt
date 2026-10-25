@@ -1595,7 +1595,7 @@
 0x001F6AD0 0x10 func_001F6AD0  # OVL1
 0x001F6AE0 0x1C func_001F6AE0  # OVL1
 0x001F6B00 0x60 func_001F6B00  # OVL1
-0x001F6B60 0x17C func_001F6B60  # OVL1
+0x001F6B60 0x17C SetupTimerText__4CHUDFv  # OVL1; by hand (hud_main.cpp: CHUD::Tick's call on the HUD; prints the mission clock '%02d:%02d' from 0x2A6AD0's seconds into m_timertext (CHUD+0x4E20) when the seconds change, as SOCOM II's own; the name ours)
 0x001F6CE0 0x128 SetupZoomText__4CHUDFv  # OVL1; by hand (hud_main.cpp: SOCOM 1's ZoomIn printed the zoom into its static zoomtext; SOCOM II's ZoomIn and ZoomOut both call this, which sprintf's 'ZOOM: %2.1fx' into the static at 0x3DC3F0 and loads m_zoomleveltext with it; the name ours, after SOCOM 1's Setup* pair)
 0x001F6E10 0x1B8 Add2D__4CHUDFP3C2Dib  # OVL1; s1:calls (SOCOM 1's Add2D(C2D *, int phase, bool add_to_back): the phase tested against -1, two list inserts; before the map switches)
 0x001F6FD0 0x60 GetAssetLibs__3C2DFRQ23C2D8CLibList  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -1612,10 +1612,10 @@
 0x001F7F80 0x70 __dt__6CFaderFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F7FF0 0x1158 Tick__4CHUDFf  # OVL1; s1:calls (CCoreState::Tick calls it on m_hud with dT under gopt's first byte, before the HUD's three DrawPhases, where SOCOM 1's calls CHUD::Tick; much grown)
 0x001F9150 0x8 SetTrans__9C2DStringFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x001F9160 0x260 func_001F9160  # OVL1
+0x001F9160 0x260 SetupSpectatorText__4CHUDF10MENU_STATE  # OVL1; by hand (hud_main.cpp: CHUD::Tick's call with the menu state; puts 'You are a spectator.  Use the directional' and three more lines on the piggyback strings (CHUD+0x19D58), turns theHUD off and places the six lines, SOCOM II's own; the name ours)
 0x001F93C0 0x3E4 func_001F93C0  # OVL1
 0x001F97B0 0x764 func_001F97B0  # OVL1
-0x001F9F20 0x3D8 func_001F9F20  # OVL1
+0x001F9F20 0x3D8 SetupGhostText__4CHUDF10MENU_STATE  # OVL1; by hand (hud_main.cpp: CHUD::Tick's two calls with the menu state; puts 'You are a ghost.  You will play the next' (a ghost) or 'You have died.  Use the ...' on the piggyback strings, turns theHUD off and places the six lines, SOCOM II's own; the name ours)
 0x001FA300 0x5C PauseGame__4CHUDFv  # OVL1; s1:order by hand (hud_main.cpp: between Tick and Init as SOCOM 1's PauseGame; returns the bool CCoreState::Tick tests before ticking the world, as SOCOM 1's -- the menu state among pause/map/orders and not networked)
 0x001FA360 0xF98 Init__4CHUDFPQ23zdb6CWorld  # OVL1; s1:callee (CCoreState::Init's call after the constructor, with the world, as SOCOM 1's; 0xF98 to SOCOM 1's 0xFA0)
 0x001FB300 0x70 __dt__Q23std62vector<PQ23zdb9CAssetLib,Q23std28allocator<PQ23zdb9CAssetLib>>Fv  # OVL1; by hand (a pointer vector's destructor, three this tests and data_ at 8 freed, as include/vector's; hud_main.cpp emits vector<CAssetLib *>'s for Add2D's C2D::CLibList, and the font code's callers (0x35A650 frees the font's list at +0x10 through a swapped temporary) link this copy)

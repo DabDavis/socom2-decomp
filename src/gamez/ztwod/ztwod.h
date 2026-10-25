@@ -139,7 +139,8 @@ public:
 
     unsigned char _18[0x48 - 0x18];
     float m_color[4];   // 0x48 (SOCOM 1's CPnt4D at 0x50; the HUD writes it a float at a time)
-    unsigned char _58[0x6a - 0x58];
+    unsigned char _58[0x69 - 0x58];
+    unsigned char m_socom2_69;   // 0x69: the HUD's spectator lines set it to 1
     unsigned char m_socom2_6a;   // 0x6a: PoseBitmap sets it for the network game's position
     unsigned char _6b[0x98 - 0x6b];
 };   // 0x98 bytes

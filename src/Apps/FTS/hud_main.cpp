@@ -415,6 +415,9 @@ class CHUD {
 public:
     CHUD();
     ~CHUD();
+    void SetupTimerText();
+    void SetupSpectatorText(MENU_STATE menustate);
+    void SetupGhostText(MENU_STATE menustate);
     void SetupZoomText();
     void Add2D(C2D *p2d, int phase, bool add_to_back);
     void SwitchToCompassMap();
@@ -764,6 +767,110 @@ bool CHUD::PauseGame()
     return (pausemenu || mapmenu || orders) && !theNetwork.m_bNetwork;
 }
 
+/* where the piggyback lines stand (variables: read with lwc1) */
+static float s_piggyback_x = 324.0f;
+static float s_piggyback_y = 380.0f;
+static float s_piggyback_spacing = 18.0f;
+
+/* a C2DString's own (0x362B70, ztwod's; no row named yet) */
+extern "C" void func_00362B70(C2DString *s);
+
+/* the network game's state as the ghost's text reads it (OVL1 bss 0x437CE8, the pointer the radio
+ * icons test too: a byte at 0xD2 set for a ghost; no row named yet) */
+class CNetGameState {
+public:
+    unsigned char _0[0xd2];
+    unsigned char m_ghost;   // 0xd2
+};
+
+extern CNetGameState *data_00437CE8;
+
+/* the ghost text's local static point and its guard (OVL1 bss; no rows named yet) */
+extern signed char data_00408EF0;
+extern CPnt3D data_00408EF8;
+
+/* the dead player's lines: a ghost's four (it plays the next round) or the dead's three, the rest
+ * blank, the HUD off, the boxes, queues and counts on (the spectator box only while spectating),
+ * and the six lines placed and shown (SOCOM II's: CHUD::Tick calls it; the name ours) */
+void CHUD::SetupGhostText(MENU_STATE menustate)
+{
+    CZSealBody *player = ftsGetPlayer();
+
+    if (data_00437CE8->m_ghost) {
+        m_piggyback_text[0].SetString("You are a ghost.  You will play the next", true);
+        m_piggyback_text[1].SetString("round as a real player.  Use the \xa3 and", true);
+        m_piggyback_text[2].SetString("\xaf directional buttons to cycle through", true);
+        m_piggyback_text[3].SetString("living teammates.", true);
+        for (unsigned int i = 4; i < 6; i++)
+            m_piggyback_text[i].SetString(" ", true);
+    } else {
+        m_piggyback_text[0].SetString("You have died.  Use the \xa3 and \xaf", true);
+        m_piggyback_text[1].SetString("directional buttons to cycle through", true);
+        m_piggyback_text[2].SetString("living teammates.", true);
+        for (unsigned int i = 3; i < 6; i++)
+            m_piggyback_text[i].SetString(" ", true);
+    }
+    theHUD->Off();
+    if (menustate != statePauseTestMenu) {
+        m_teamMateNames.On();
+        m_infobox.On();
+        theMission.m_messages.On();
+        theMission.m_messages4.On();
+        m_ammodisplay.On();
+        if (theNetwork.m_bNetwork && func_002C2FA0())
+            m_spectatorinfo.On();
+    }
+    /* a function-local `static CPnt3D color(100.0f, 100.0f, 20.0f);`, unused but constructed under
+     * its guard (that form matches too, but its two BSS objects go unchecked: the placeholders
+     * hold them to their addresses) */
+    if (!data_00408EF0) {
+        data_00408EF8 = CPnt3D(100.0f, 100.0f, 20.0f);
+        data_00408EF0 = 1;
+    }
+
+    for (unsigned int i = 0; i < 6; i++) {
+        m_piggyback_text[i].m_socom2_69 = 1;
+        m_piggyback_text[i].SetPos((int)s_piggyback_x,
+                                   (int)(s_piggyback_y + i * s_piggyback_spacing));
+        func_00362B70(&m_piggyback_text[i]);
+        if (menustate != statePauseTestMenu)
+            m_piggyback_text[i].On();
+        else
+            m_piggyback_text[i].Off();
+    }
+}
+
+/* the spectator's four lines on the piggyback strings, the HUD off, the network boxes and message
+ * queues on (unless under the pause menu), and the six lines placed and shown (SOCOM II's: CHUD::
+ * Tick calls it; the name ours) */
+void CHUD::SetupSpectatorText(MENU_STATE menustate)
+{
+    CZSealBody *player = ftsGetPlayer();
+
+    m_piggyback_text[0].SetString("You are a spectator.  Use the directional", true);
+    m_piggyback_text[1].SetString("buttons to cycle through active players", true);
+    m_piggyback_text[2].SetString("and fixed views.  \xa6 Use the Free-Motion", true);
+    m_piggyback_text[3].SetString("Camera.  \xac Jump to visible players.", true);
+    theHUD->Off();
+    if (menustate != statePauseTestMenu) {
+        m_teamMateNames.On();
+        m_infobox.On();
+        m_spectatorinfo.On();
+        theMission.m_messages.On();
+        theMission.m_messages4.On();
+    }
+    for (unsigned int i = 0; i < 6; i++) {
+        m_piggyback_text[i].m_socom2_69 = 1;
+        m_piggyback_text[i].SetPos((int)s_piggyback_x,
+                                   (int)(s_piggyback_y + i * s_piggyback_spacing));
+        func_00362B70(&m_piggyback_text[i]);
+        if (menustate != statePauseTestMenu)
+            m_piggyback_text[i].On();
+        else
+            m_piggyback_text[i].Off();
+    }
+}
+
 /* a flash: a fader made, darkened no further than the brightness, coloured, flashed and kept */
 void CHUD::Flash(float brightness, const CPnt3D &color, float fadeout_time, float fade_time,
                  float fadein_time)
@@ -1106,6 +1213,39 @@ void CHUD::SetupZoomText()
     sprintf(zoomtext, "ZOOM: %2.1fx", zoom);
     m_zoomleveltext.On();
     m_zoomleveltext.Load(0.9f, zoomtext, m_myfont, 20.0f, 420.0f, 1);
+}
+
+/* the timer text's buffer and the seconds it last showed (OVL1 bss; no rows named yet) */
+extern char data_00408F10[];
+extern int data_00408F88;
+
+/* the mission's clock ("%02d:%02d"), reprinted when its seconds change: shown with its
+ * background unless the seal is out of play in single player; blanked once the time runs out
+ * (SOCOM II's: CHUD::Tick calls it; the name ours) */
+void CHUD::SetupTimerText()
+{
+    int time = func_002A6AD0(&theMission);
+    int secs = time % 60;
+
+    if (secs != data_00408F88) {
+        data_00408F88 = secs;
+        sprintf(data_00408F10, "%02d:%02d", time / 60, secs);
+        m_timertext.SetString(data_00408F10, false);
+        CZSealBody *owner = GetHUDOwner();
+
+        if (owner && !owner->m_socom2_e1_4 && !theNetwork.m_bNetwork) {
+            m_timertext.Off();
+            m_socom2_4ec0.Off();
+        } else {
+            m_timertext.On();
+            if (!theNetwork.m_bNetwork)
+                m_socom2_4ec0.On();
+        }
+    }
+    if (time < 0 && !theNetwork.m_bNetwork) {
+        m_timertext.SetString("", false);
+        m_socom2_4ec0.Off();
+    }
 }
 
 float g_fElemsFadeInTime = -1.0f;
