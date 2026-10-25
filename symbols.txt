@@ -10671,7 +10671,7 @@
 0x00598860 0x32C func_00598860  # OVL2
 0x00598B90 0x910 RemoteRespawn__10CZSealBodyFb  # OVL2; s1:order (seal_create.cpp's first function after the controller's unit, as SOCOM 1's); calls CZSealState::GetPackedWeaponData first, as SOCOM 1's; SOCOM 1's signature, unproven
 0x005994A0 0x1EC DoRespawn__10CZSealBodyFv  # OVL2; s1:order (after RemoteRespawn, before CreateRemoteSeal); SOCOM 1's signature, unproven
-0x00599690 0x178 CreateRemoteSeal__10CZSealBodyFiiPCciPcUcPUc  # OVL2; s1:order (before GetCharacter); news a CSealCtrl and calls CZSealBody::Create, as SOCOM 1's; SOCOM 1's signature, unproven
+0x00599690 0x178 CreateRemoteSeal__10CZSealBodyFiiPCciPcUiPUc  # OVL2; s1:order (before GetCharacter); news a CSealCtrl and calls CZSealBody::Create, as SOCOM 1's; SOCOM 1's signature, unproven; the states lane's lead, vetted: its sixth parameter is a word of flags (ANDed with 0x10020000 -- bits 17 and 28, the two type numbers SOCOM 1's compared its byte with -- and loaded with lw by fts_net_seal.cpp's caller), so SOCOM 1's PcUc becomes PcUi; seal_create.cpp
 0x00599810 0x8 GetCharacter__10CZSealBodyFv  # OVL2; s1:order (before DeleteCameraEffectsNode); SOCOM 1's one-word getter, its member now at 0x540 (SOCOM 1's m_charType at 0x468)
 0x00599820 0x90 DeleteCameraEffectsNode__10CZSealBodyFv  # OVL2; s1:calls
 0x005998B0 0x124 Destroy__10CZSealBodyFP10CZSealBody  # OVL2; s1:calls (RemoteSealDeletionCallback, as SOCOM 1's) -- the states lane
@@ -10712,8 +10712,8 @@
 0x0059D830 0x148 func_0059D830  # OVL2
 0x0059D980 0x68 CanClimbWall__10CZSealBodyFv  # OVL2; s1:exact
 0x0059D9F0 0x70 func_0059D9F0  # OVL2
-0x0059DA60 0x8 func_0059DA60  # OVL2
-0x0059DA70 0x8 func_0059DA70  # OVL2
+0x0059DA60 0x8 CanClimbLadder__10CZSealBodyFv  # OVL2; s1:order by hand (SOCOM 1's CanClimbLadder__10CZSealBodyFv word for word, j CanTraverse with type 2, right after CanClimbWall in both builds; seal_env.cpp)
+0x0059DA70 0x8 HandleBombDefuse__10CZSealBodyFv  # OVL2; s1:order by hand (SOCOM 1's HandleBombDefuse__10CZSealBodyFv, empty in both builds, before AttemptBombDefuse in both; the states lane: the bomb unit calls it where SOCOM 1's does; seal_env.cpp)
 0x0059DA80 0x30 AttemptBombDefuse__10CZSealBodyFv  # OVL2; s1:exact
 0x0059DAB0 0x22C CreateMPBombPickup__10CZSealBodyFPC6CPnt3Db  # OVL2; s1:calls
 0x0059DCE0 0x48 func_0059DCE0  # OVL2

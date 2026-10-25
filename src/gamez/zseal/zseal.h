@@ -547,8 +547,12 @@ public:
     virtual void OnCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);
     virtual bool GetJumpFlag() const;
 
+    /* (inline: CreateRemoteSeal's new expands it after CSealCtrl's, the table then the fades) */
+    CRemoteCtrl() : m_fade_min(0.001f), m_fade_time(2.0f) {}
+
     float m_fade_min;   // 0x250: the corpse's fade floor (0.001; the names ours)
     float m_fade_time;   // 0x254: the corpse's fade time (2.0)
+    unsigned char _258[0x260 - 0x258];   // (0x260 bytes: CreateRemoteSeal news 608)
 };
 
 /* the animated body, CBody (0x90 bytes; its constructor OVL1 0x28EDD0), is zbody.h's (the body
@@ -568,6 +572,11 @@ public:
     CZSealBody(zdb::CNode *node, CCharacterType *type);
     static void PostCreateSeal(CZSealBody *seal, CSealCtrl *ctrl);
     static void NetworkPlayerCreate();
+    /* another console's SEAL made: its client index, entity id, name, vehicle, character type, a
+     * word of flags (SOCOM 1's took a byte, the type's number: SOCOM II tests the bits 17 and 28) and
+     * its packed weapons (SOCOM 1's; OVL2 0x599690) */
+    static CZSealBody *CreateRemoteSeal(int index, int id, const char *name, int vehicle, char *charname,
+                                        unsigned int flags, unsigned char *packed);
     /* a remote SEAL unmade: its id cleared everywhere, dead, no team, the squad told (SOCOM 1's; OVL2
      * 0x5998B0) */
     static void Destroy(CZSealBody *seal);
@@ -634,6 +643,8 @@ public:
     void ActionAvailableMask(unsigned char id, bool on);
     /* the restraint flag set (an inline: its bool is stored as `(b & 1)`) */
     void SetRestrained(bool on) { m_restrained = on; }
+    /* the squad-joined flag set (an inline: `(b & 1) << 6` even for a constant) */
+    void SetJoinedUnit(bool on) { m_joined_unit = on; }
     /* the stance's change taken, once (seal_body.cpp) */
     bool StanceChanged();
     /* the HUD's flags: the hit set, and each taken once (seal_env.cpp, SOCOM 1's) */
@@ -643,6 +654,10 @@ public:
     /* the terrain a SEAL can cross: an int, the callers make it a bool (seal_env.cpp) */
     int CanTraverse(CDIType type);
     bool CanClimbWall();
+    /* a ladder's polygons crossed (SOCOM 1's, a tail call: OVL2 0x59DA60) and the bomb's defusal
+     * handled (SOCOM 1's, empty in both builds: OVL2 0x59DA70) */
+    int CanClimbLadder();
+    void HandleBombDefuse();
     void AttemptBombDefuse();
     /* the regions entered: each new one's OnEnterRegion anim run (SOCOM 1's; OVL2 0x5A2F90) */
     void CheckForRegionTrigger(unsigned int regions);
@@ -681,7 +696,12 @@ public:
     float m_time_of_death;   // 0xfb4 (SOCOM 1's 0xea8)
     unsigned char _fb8[0xfbc - 0xfb8];
     unsigned int m_lastkiller_id;   // 0xfbc: the killer's entity id (SOCOM 1's 0xeb4)
-    unsigned char _fc0[0x1044 - 0xfc0];
+    unsigned char _fc0[0xfc8 - 0xfc0];
+    int m_ClientIndex;   // 0xfc8 (SOCOM 1's 0xeb8: CreateRemoteSeal stores its first argument in both)
+    unsigned char _fcc[0xfd4 - 0xfcc];
+    unsigned int m_fd4;   // 0xfd4: zeroed by CreateRemoteSeal (new in SOCOM II; the names ours)
+    float m_fd8;   // 0xfd8: 1.0 there
+    unsigned char _fdc[0x1044 - 0xfdc];
     float m_health;   // 0x1044 (SOCOM 1's 0xea0)
     unsigned char _1048[0x1058 - 0x1048];
     unsigned int m_lastregion;   // 0x1058 (SOCOM 1's 0xf54)
@@ -723,7 +743,10 @@ public:
     unsigned int m_prev_have_aim_norm : 1;
     unsigned int m_am_stunned : 1;
     unsigned int m_iszooming : 1;   // bit 5 (camera.h's reading)
-    unsigned int m_unused_bits : 26;
+    unsigned int m_unused_bits : 10;
+    /* the ladder the SEAL is on, an index into the mission's list (new in SOCOM II: read with lhu
+     * and re-masked for an int argument, as a 16-bit field is; the name ours) */
+    unsigned int m_ladder : 16;   // 0x1062
     unsigned char _1064[0x1336 - 0x1064];
     short m_weapon_id;   // 0x1336: the weapon in hand, looked up in the AI's kind table (the name ours)
     unsigned char _1338[0x14e0 - 0x1338];   // (0x14E0 bytes: Create news 5344)

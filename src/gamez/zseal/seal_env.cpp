@@ -395,9 +395,133 @@ void CZSealBody::AttemptBombDefuse()
     CZBombState::RequestNewBombState(m_id, CZBombState::BOMB_STATE_DEFUSING, &pos);
 }
 
+/* the bomb's defusal handled: nothing, in both builds (OVL2 0x59DA70; SOCOM 1's, 8 bytes) */
+void CZSealBody::HandleBombDefuse()
+{
+}
+
+/* a ladder's polygons crossed (OVL2 0x59DA60; SOCOM 1's tail call with type 2) */
+int CZSealBody::CanClimbLadder()
+{
+    return CanTraverse((CDIType)2);
+}
+
+/* whether a hit polygon is one a wall climb takes: the four kinds CanClimbWall asks after, read off
+ * its application flags (OVL2 0x59D9F0, new in SOCOM II; seal.cpp's 0x5483D0 calls it thrice) */
+extern "C" bool func_0059D9F0(zdb::IntersectStruct *hit)
+{
+    if (!hit || !hit->m_poly)
+        return false;
+    /* the flags taken as the kind first (narrowed, andi 0xff), then masked: an unsigned char local
+     * lets MW drop the narrowing */
+    CDIType type = (CDIType)hit->m_poly->m_flags.m_appflags;
+    CDIType t = (CDIType)(type & 7);
+
+    if (t == 3 || t == 4 || t == 1 || t == 5)
+        return true;
+    return false;
+}
+
 /* a wall climbs if any of four polygon kinds can be crossed (OVL2 0x59D980; SOCOM 1's) */
 bool CZSealBody::CanClimbWall()
 {
     return CanTraverse((CDIType)3) || CanTraverse((CDIType)4) || CanTraverse((CDIType)1) ||
            CanTraverse((CDIType)5);
+}
+
+/* the anims a jump cannot start from (OVL1 data: an anim type each, its id the first short,
+ * filled when the anims load; SOCOM 1's AnimType was an enum) */
+extern "C" {
+extern short data_003DEB20;
+extern short data_003DEB30;
+extern short data_003DEBA8;
+extern short data_003DEBB8;
+extern short data_003DEBC8;
+extern short data_003DEBD8;
+extern short data_003DEBE0;
+extern short data_003DEBE8;
+extern short data_003DEBF0;
+/* (OVL2 0x5A7DE0: whether the stance leaves room to jump, two flags; the name ours) */
+bool func_005A7DE0(CZSealBody *seal, bool a, bool b);
+/* the body's current blend (seal.cpp's tail, OVL2 0x555170) */
+void *func_00555170(void *stack);
+}
+
+/* whether an anim is one a jump cannot start from (an inline bool: the target materialises the
+ * test with daddiu/move and branches on it; the second test of 0x3DEBB8 is the source's) */
+static inline bool IsNoJumpAnim(short id)
+{
+    if (id == data_003DEBC8 || id == data_003DEBB8 || id == data_003DEBA8 || id == data_003DEBE8 ||
+        id == data_003DEBF0 || id == data_003DEBD8 || id == data_003DEBE0 || id == data_003DEBB8 ||
+        id == data_003DEB20 || id == data_003DEB30)
+        return true;
+    return false;
+}
+
+/* whether the SEAL can jump now: alive, not in one of the anims above, room to jump, on the ground
+ * (OVL2 0x59D830, new in SOCOM II; CSealCtrl::PreTick and the kit's 0x5BE9A0 ask it) */
+extern "C" bool func_0059D830(CZSealBody *seal)
+{
+    if (!seal->m_isAlive)
+        return false;
+    if (IsNoJumpAnim(((CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0))->m_animType))
+        return false;
+    if (!func_005A7DE0(seal, true, true))
+        return false;
+    if (seal->m_airborne || seal->m_state == stateInAir)
+        return false;
+    return true;
+}
+
+/* a ladder: its users counted at 0x1c (SOCOM 1's DWARF: CLadderData, 0x28 bytes -- its normal,
+ * box and node; SOCOM II counts the SEALs on it) and the mission's list of them (SOCOM 1's
+ * CLadderList : vector<CLadderData>) */
+class CLadderData {
+public:
+    unsigned char _0[0x1c];
+    int m_users;   // 0x1c (the name ours)
+    unsigned char _20[0x28 - 0x20];
+};
+
+class CLadderList {
+public:
+    /* the ladder at an index, or none (SOCOM 1's; OVL1 0x2A9210) */
+    CLadderData *GetLadderByIndex(int index);
+};
+
+/* the mission (theMission, OVL1 bss 0x4364E0) -- only its ladders (SOCOM 1's at 0x580, beside the
+ * net game, which SOCOM II's has at 0x1808) */
+class CMission {
+public:
+    unsigned char _0[0x1804];
+    CLadderList *m_ladders;   // 0x1804
+};
+
+extern CMission theMission;
+
+extern "C" {
+/* no ladder: the index a SEAL off every ladder holds (OVL1 data, 65535.0 -- a float variable, read
+ * with lwc1 and converted at run time for both the test and the store) */
+extern float data_003F3438;
+}
+
+/* the SEAL off its ladder: the ladder's count of users dropped and the index cleared (OVL2
+ * 0x59D750, new in SOCOM II; OnDeath, PreTick and the destructor call it) */
+extern "C" void func_0059D750(CZSealBody *seal)
+{
+    if (seal->m_ladder != data_003F3438) {
+        CLadderData *ladder = theMission.m_ladders->GetLadderByIndex(seal->m_ladder);
+
+        if (ladder)
+            ladder->m_users--;
+        seal->m_ladder = data_003F3438;
+    }
+}
+
+/* whether the SEAL is on a given ladder (OVL2 0x59D6C0, new in SOCOM II; 0x56BD10 asks it) */
+extern "C" bool func_0059D6C0(CZSealBody *seal, CLadderData *ladder)
+{
+    if (!ladder || seal->m_ladder == data_003F3438)
+        return false;
+    return theMission.m_ladders->GetLadderByIndex(seal->m_ladder) == ladder;
 }
