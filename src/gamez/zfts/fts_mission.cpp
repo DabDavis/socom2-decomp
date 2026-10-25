@@ -19,7 +19,8 @@ public:
 
     unsigned char _0[0x1a100];
     CLetterBox m_letterbox;   // 0x1a100 (SOCOM 1's at 0x14280)
-    unsigned char _1a230[0x1a2dc - 0x1a230];
+    unsigned char _1a230[0x1a2d0 - 0x1a230];
+    unsigned char m_flashes[0xc];   // 0x1a2d0: a CFlashFXVector
     CZHudMissionCams m_missioncams;   // 0x1a2dc (SOCOM 1's at 0x14590)
     unsigned char _1a698[0x1a6f5 - 0x1a698];
     unsigned char m_ison : 1;   // 0x1a6f5 (SOCOM 1's at 0x14955)
@@ -125,6 +126,8 @@ public:
     void FadeToEndMission(float time, int counter);
     bool FadeToEndMissionTick(float dT);
     static bool fadeToEndMissionTick(float dT, void *data);
+    void SetDelayEndMission(bool b) { m_DelayEndMission = b; }
+    void SetFadingToEndMission(bool b) { m_FadingToEndMission = b; }
 
     unsigned char _0[0xe0];
     int m_e0;   // 0xe0: cleared before the second unload (SOCOM II's; the name ours)
@@ -154,6 +157,54 @@ extern CSched_Manager zTaskScheduler;
 extern "C" void ClearFreeList__14CSched_ManagerFb(CSched_Manager *sched, bool all);
 extern "C" bool AddTask__14CSched_ManagerFPCcPFfPv_bfPv(CSched_Manager *sched, const char *name,
                                                          bool (*func)(float dT, void *data), float priority, void *data);
+
+extern "C" {
+void Flash__4CHUDFfRC6CPnt3Dfff(CHUD *hud, float time, const CPnt3D *colour, float in, float hold, float out);
+void Reset__14CFlashFXVectorFv(void *flashes);
+void ResetDeathCam__10CAppCameraFv(void *camera);
+void Push__5CGameFP10CGameStateUi(void *game, void *state, unsigned int arg);
+void func_002AA910();                                   /* _OnMissionComplete (SOCOM 1's name, at its call) */
+void func_003AFD50(int a0, int a1, int a2, int a3, int a4);   /* (the screen cleared: SOCOM 1's CVideo::Clear) */
+extern void *appCamera;
+extern unsigned char theGame[];
+extern unsigned char data_004086A0[];                    /* (a state in theGame, at 0x1E0) */
+}
+
+/* the fade's steps: two flashes, then the mission completed and the exit state pushed (SOCOM 1's,
+ * the same steps; OVL1 0x2A98B0) */
+bool CMission::FadeToEndMissionTick(float dT)
+{
+    if (!(m_next_fade_time <= 0.0f)) {
+        m_next_fade_time -= dT;
+        if (m_next_fade_time <= 0.0f) {
+            if (m_fade_counter > 0) {
+                CPnt3D black(0.0f, 0.0f, 0.0f);
+
+                Flash__4CHUDFfRC6CPnt3Dfff(theHUD, 0.0f, &black, 0.5f, 0.5f, 0.5f);
+                m_next_fade_time = 5.0f;
+            } else if (m_fade_counter == 0) {
+                CPnt3D black(0.0f, 0.0f, 0.0f);
+
+                Flash__4CHUDFfRC6CPnt3Dfff(theHUD, 0.0f, &black, 0.8f, 5.0f, 0.8f);
+                m_next_fade_time = 1.1f;
+            } else {
+                SetDelayEndMission(false);
+                if (!m_DelayEndMission) {
+                    func_002AA910();
+                    func_003AFD50(1, 0, 0, 0, 0);
+                    Reset__14CFlashFXVectorFv(theHUD->m_flashes);
+                    theMission.SetDelayEndMission(false);
+                    SetFadingToEndMission(false);
+                    ResetDeathCam__10CAppCameraFv(appCamera);
+                    Push__5CGameFP10CGameStateUi(theGame, data_004086A0, 0);
+                }
+                return true;
+            }
+            m_fade_counter--;
+        }
+    }
+    return false;
+}
 
 /* the task's callback (SOCOM 1's fadeToEndMissionTick, the same jump; OVL1 0x2A98A0) */
 bool CMission::fadeToEndMissionTick(float dT, void *data)
