@@ -379,6 +379,27 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - an inline accessor held in a local (`t = tail(); t->next_`) is computed first and shared
     with a later identical expression, which moves registers;
   - scdiff's "N differing" count inflates after a one-instruction shift: read the diff.
+- **Tells from the ZAnim motion handlers** (round 4, the integrator's lane):
+  - a frame's named objects are laid out in reverse declaration order, grouped by type (CQuat
+    temporaries, return slots and locals below the CPnt3D ones); the from-to tick needed its
+    `CQuat q` declared before `to`;
+  - `p = a + b` gives operator+'s result a return slot of its own only when `p` is scalarised
+    (only its fields read); an address-taken `p` is built in place;
+  - a ternary initialising an object selects a pointer and copies after the join; the target's
+    construction in each arm is an inline function returning by value (`FromToGoal`);
+  - a byte enum compared with an enumerator zero-extends (`andi 0xff`), its truth test does not
+    (ProcExpr's operator) -- with the round-3 `lb` copy, the enum's whole signature;
+  - a switch's compare chain runs in REVERSE case order (cases 3, 2, 1 test 1, 2, 3);
+  - `x = 0; if (p) x = q;` is if-converted, the test materialised (sltu, xori); CmdHdr's
+    ternary ASSIGNED to a local declared before compiles to the target's if-assign shape (zero
+    in the delay slot, then the load), while used straight in an expression or initialising it
+    branches over the zero (ProcExpr). zAnimIfTick still resists: MW hoists each
+    constant-address `m_cmd_*` load ahead of the CmdHdr diamond, whichever operand it is;
+  - an `unsigned short` offset tested and then added wants `!= 0`: a truth test re-extends it
+    (`andi 0xffff`) for the add; likewise a byte tested and then passed wants `== 0`;
+  - MW's saved registers follow declaration order for most locals, but an anim pointer read
+    from `ZAnim.m_CurAnim` takes the lowest wherever it is declared (the motion-script tick and
+    the from-to begin, where the target gives it s2: still open).
 
 ## The map: `symbols.txt`
 
