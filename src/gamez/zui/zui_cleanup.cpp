@@ -6,7 +6,13 @@
  *
  * CDlgObjSpec's destructor and copy are defined here, so this unit inlines them (and the
  * variable spec's) where zui_spec.cpp calls them; that makes every spec's implicit copy and
- * destructor taller here: CTextSpec's copy is inlined one level (its members' copies are calls). */
+ * destructor taller here: CTextSpec's copy is inlined one level (its members' copies are calls).
+ *
+ * OPEN, not written yet: the button family's Copies and destructors (CButtonSpec's copy out of
+ * line 0x387630, the radio strip's, check box's, slider's, handler button's, list box's and map
+ * control's; their destructors call 0x36E650 and 0x367670 -- the 0x34-byte button-state string's
+ * and vector<ActionItem>'s destructors, rows outside the lane), the CreateDisplayObjs (the C2D
+ * classes' constructors, as zui_spec.cpp's) and 0x389B00 (a vector<CDesignDlgObj> instance). */
 
 #include "zui_spec.h"
 

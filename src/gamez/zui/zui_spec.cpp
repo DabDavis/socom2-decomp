@@ -2,7 +2,18 @@
  * _zrdr constructor, CreateDisplayObj and some Copies, the dialog design's loaders and the
  * template instances closing the unit. SOCOM 1's demo names the unit (its unnamed namespace,
  * @unnamed@zui_spec_cpp@) and holds the same run in the same order, from CClockSpec's destructor
- * to its vector instances. Defined in reverse of their image order (-inline deferred). */
+ * to its vector instances. Defined in reverse of their image order (-inline deferred).
+ *
+ * OPEN, not written yet: every CreateDisplayObj but the map control's and the text's drafts (they
+ * inline the C2D classes' constructors, zui_2d.cpp's -- CRenderableString's 0x37A770 and its
+ * LoadSpec 0x3792F0, CPlainBmp's, CHProgressBar's -- whose rows the C2D lane has to name first),
+ * the button family's constructors (CButtonSpec's 0x380620, CRadioStripSpec's 0x37DA50,
+ * CCheckBoxSpec's two, CHandlerButtonSpec's, CUIListBoxSpec's 0x37EAB0, CUIMapCtrlSpec's 0x37D600;
+ * ~CButtonSpec 0x37DD30 needs 0x36AC10 named, the ActionItem vector deleter's destructor),
+ * CButtonSpec::InitializeButton 0x380500, GetControlSpec 0x382890, LoadDlgObjects 0x383360, the
+ * dialog design's loaders 0x3812B0/0x381550, CDesignDlgObj's assignment and destructor copies
+ * (0x37D910, 0x37D9B0: emitted with the vector instances) and the template instances
+ * 0x3836E0-0x3855FF (include/vector's class-vector insert, erase and resize). */
 
 #include "zui_spec.h"
 
