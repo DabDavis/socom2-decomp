@@ -21,6 +21,7 @@ public:
  * bytes; SOCOM II's drops a quaternion: m_goal_dir and everything after it 0x10 earlier) */
 class CLook : public CSequence {
 public:
+    CLook();
     void SetDir(const CPnt3D *dir, float rate);
     void LookTick(float dT);
 
@@ -40,6 +41,7 @@ public:
 /* the eyelids: a look down and back up (SOCOM 1's DWARF: CBlink : CLook) */
 class CBlink : public CLook {
 public:
+    CBlink();
     void Blink(int org);
     void BlinkTick(float dT);
 
@@ -296,6 +298,24 @@ void CZSealBody::CheckForRegionTrigger(unsigned int regions)
     m_lastregion = regions;
 }
 
+/* whether the SEAL's timed action is due: set at all, and offline at once, online once the network's
+ * clock reaches its time (OVL2 0x5A8850, new in SOCOM II; CSealCtrl::PerformProximityActions asks it) */
+extern "C" bool func_005A8850(CZSealBody *seal)
+{
+    bool due = false;
+
+    if (seal->m_eb8) {
+        if (theNetwork.m_9) {
+            int t = seal->m_22c;
+
+            if (theNetwork.zNetGetTime() >= t)
+                due = true;
+        } else
+            due = true;
+    }
+    return due;
+}
+
 /* (CZWeapon::RemoveWeaponEventCallback is zweapon.h's, through zchar.h) */
 extern "C" {
 /* the blood decals' vector emptied the FreeVector way, through the unit's out-of-line copies of the
@@ -392,6 +412,28 @@ bool CZSealBody::HudUpdateViewCone()
 void CZSealBody::SetHudHitFlag()
 {
     m_hudwashit = true;
+}
+
+/* the look made: the sequence cleared, looking straight ahead (down -z), done (OVL2 0x5AE450; SOCOM
+ * 1's, CZSealBody's constructor calls it for its two looks) */
+CLook::CLook()
+{
+    Clear();
+    m_curr_dir.x = 0.0f;
+    m_curr_dir.y = 0.0f;
+    m_curr_dir.z = -1.0f;
+    m_rate = 0.0f;
+    m_done = 1;
+    m_goal_dir = m_curr_dir;
+}
+
+/* the eyelids made: open, the first blink two to eight seconds off (OVL2 0x5AE3B0; SOCOM 1's, the
+ * look's constructor inlined). The random fraction written out (a macro's expansion?): through the
+ * Rand01 inline the two constants trade registers */
+CBlink::CBlink()
+{
+    m_org = 0;
+    m_nextT = 2.0f + 6.0f * (4.656612873e-10f * (float)rand());
 }
 
 /* the blink stepped: while a look runs it is stepped, and a finished look down turns into the look

@@ -22,6 +22,39 @@ struct ANIMSET_PARAMS {
     float m_ladder_updn;   // 0x30
 };
 
+/* a piece of gear a character wears (SOCOM 1's DWARF: CCharacterGear, 0x34 bytes) -- only where it
+ * sits on its part */
+class CCharacterGear {
+public:
+    int m_ref_count;   // 0x0
+    int m_partid;   // 0x4
+    unsigned int m_gearid;   // 0x8
+    char *m_name;   // 0xc
+    char *m_model_file;   // 0x10
+    char *m_model_name;   // 0x14
+    void *m_model;   // 0x18
+    CPnt3D m_offset;   // 0x1c
+    CPnt3D m_rotation;   // 0x28
+};
+
+/* a body part made a gear's: placed and turned as the gear says, oriented on its node, and taken
+ * off the body's table of parts (OVL2 0x58B040; SOCOM 1's with the null tests, and CBody::SetBodyPart
+ * where SOCOM 1's cleared the table's entry by hand) */
+void CZSealBody::SetPartAsGear(CZBodyPart *part, CCharacterGear *gear)
+{
+    if (!part)
+        return;
+    if (gear) {
+        CQuat q;
+
+        part->m_pos = gear->m_offset;
+        part->m_rot = *QFromRot(&q, &gear->m_rotation);
+    }
+    if (part->m_node)
+        part->Orient();
+    SetBodyPart(part->m_id, 0);
+}
+
 /* an animation set's anims by the item in hand (SOCOM 1's CAnimsByFP: an anim type's pistol and
  * rifle variants) -- only its two lookups (OVL2 0x5E1A10 and 0x5E19D0, the kit lane's range: the
  * shorts at 4 and 6 of an anim type's 8-byte record, -1 past the 312 types) */
@@ -39,6 +72,40 @@ public:
     unsigned char _34[0x5c - 0x34];
     CAnimsByFP *m_animsbyfp;   // 0x5c (SOCOM 1's at 0x60)
 };
+
+extern "C" {
+int strcasecmp(const char *a, const char *b);
+/* two tables of 72 names each, a byte value's name (OVL2 0x58ED60 and 0x58EF80, string switches) */
+const char *func_0058ED60(unsigned char v);
+const char *func_0058EF80(unsigned char v);
+}
+
+/* a name's value in the first and the second table, 0 for none (OVL2 0x58E020, 0x58E0A0, new in
+ * SOCOM II; CCharacterType::InitMultiplayerMessages reads the multiplayer messages through them). The
+ * byte value a local declared after the counter: it takes s0, the counter s1 */
+extern "C" unsigned char func_0058E020(const char *name)
+{
+    if (name)
+        for (int i = 0; i < 72; i++) {
+            unsigned char v = i;
+
+            if (!strcasecmp(func_0058ED60(v), name))
+                return v;
+        }
+    return 0;
+}
+
+extern "C" unsigned char func_0058E0A0(const char *name)
+{
+    if (name)
+        for (int i = 0; i < 72; i++) {
+            unsigned char v = i;
+
+            if (!strcasecmp(func_0058EF80(v), name))
+                return v;
+        }
+    return 0;
+}
 
 /* a cell search's query and its answer (0x58F230 passes this callback; the names ours) */
 struct CCellQuery {

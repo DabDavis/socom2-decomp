@@ -175,6 +175,8 @@ class CZNetwork {
 public:
     /* this console's client index in the game (SOCOM 1's) */
     int zNetGetMyGameClientIndex();
+    /* the network's clock (SOCOM 1's; OVL1 0x30D550) */
+    int zNetGetTime();
 
     unsigned char m_8;   // 0x0: the session master
     unsigned char m_9;   // 0x1: an online game
@@ -591,6 +593,8 @@ public:
     static void StopAllHeartbeatSounds();
     /* the stance a state stands for, or the fallback (SOCOM 1's; the AI-states lane's 0x5FC910) */
     static SEAL_STANCE GetStanceFromState(SEAL_STATE state, SEAL_STANCE fallback);
+    /* a body part made a gear's (SOCOM 1's; OVL2 0x58B040, seal_cfg.cpp) */
+    void SetPartAsGear(CZBodyPart *part, class CCharacterGear *gear);
     /* the animation set's limits on the sideways and forward motion (seal_cfg.cpp) */
     void GetMaxXMotion(float &a, float &b);
     void GetMaxZMotion(float &a, float &b);
@@ -674,7 +678,9 @@ public:
 
     unsigned char _200[0x214 - 0x200];
     float m_blooddriptimer;   // 0x214 (SOCOM 1's 0x170)
-    unsigned char _218[0x2e4 - 0x218];
+    unsigned char _218[0x22c - 0x218];
+    int m_22c;   // 0x22c: a time on the network's clock 0x5A8850 waits for (the names ours)
+    unsigned char _230[0x2e4 - 0x230];
     float m_alt;   // 0x2e4 (SOCOM 1's 0xe98)
     CZBodyPart *m_root;   // 0x2e8 (SOCOM 1's 0x26c)
     unsigned char _2ec[0x374 - 0x2ec];
@@ -695,7 +701,9 @@ public:
     unsigned short m_5b8;   // 0x5b8
     unsigned char _5ba[0x5e0 - 0x5ba];
     CZKit m_kit;   // 0x5e0 (SOCOM 1's 0x520)
-    unsigned char _5e4[0xec0 - 0x5e4];
+    unsigned char _5e4[0xeb8 - 0x5e4];
+    int m_eb8;   // 0xeb8: 0x5A8850 tests it first (the name ours)
+    unsigned char _ebc[0xec0 - 0xebc];
     CCompassAnchor *m_mpbomb_anchor;   // 0xec0 (SOCOM 1's 0xdb4)
     CCompassAnchor *m_mpbase_anchor;   // 0xec4 (SOCOM 1's 0xdb8)
     unsigned char _ec8[0xed0 - 0xec8];
