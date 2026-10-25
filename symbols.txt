@@ -6753,7 +6753,7 @@
 0x003677D0 0x14 func_003677D0  # OVL1
 0x003677F0 0x14 func_003677F0  # OVL1
 0x00367810 0x138 func_00367810  # OVL1
-0x00367950 0xBE8 func_00367950  # OVL1
+0x00367950 0xBE8 LoadFromDesign__9CGameMenuFRC14CGameDlgDesignP9CZAnimZAR  # OVL1; s1:calls by hand (the menu's design loader: this, the design and the ZAR in a0-a2 as SOCOM 1's; its first call 0x369210 at +0x34 as SOCOM 1's Clear, then UiSetCounterSpeedFactor and UiSetTtySpeedFactor with 1.0 in that order, as SOCOM 1's at +0x44/+0x54; SOCOM II adds a flag block between; 0xBE8 against 0xBA4)
 0x00368540 0x8 NumChildren__11CDlgObjSpecCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00368550 0x8 GetChild__11CDlgObjSpecCFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00368560 0x8 HasChildren__11CDlgObjSpecCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -6762,7 +6762,7 @@
 0x00368650 0xB20 func_00368650  # OVL1
 0x00369170 0x48 DrawForeplane__9CGameMenuFv  # OVL1; s1:exact
 0x003691C0 0x44 Draw2dOnly__9CGameMenuFv  # OVL1; s1:exact
-0x00369210 0x4BC func_00369210  # OVL1
+0x00369210 0x4BC Clear__9CGameMenuFv  # OVL1; s1:calls by hand (called at LoadFromDesign+0x34 and ~CGameMenu+0x24, the offsets of SOCOM 1's calls to CGameMenu::Clear in both; 0x4BC against 0x51C)
 0x003696D0 0x1A4 func_003696D0  # OVL1
 0x00369880 0x40 func_00369880  # OVL1
 0x003698C0 0x2A0 __dt__9CGameMenuFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
