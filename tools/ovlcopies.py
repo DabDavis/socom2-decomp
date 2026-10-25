@@ -10,12 +10,19 @@ named row's in another overlay, once the address fields a link fills in are mask
 targets, lui immediates, the %lo offsets of loads, stores and addius off a lui'd register, and
 gp-relative offsets). Branch offsets are relative, so they must agree.
 
-    ./tools/ovlcopies.py                  # list the candidates
-    ./tools/ovlcopies.py --min-size 0x20  # (default 0x18: shorter bodies coincide too often)
-    ./tools/ovlcopies.py --apply          # append the notes to symbols.txt
+    ./tools/ovlcopies.py                          # list the candidates
+    ./tools/ovlcopies.py --min-size 0x20          # (default 0x18: shorter bodies coincide too often)
+    ./tools/ovlcopies.py --apply 0x53FAD0,0x5410C0  # note the rows you have vetted
 
-A note is only a claim about where to score; a wrong one cannot make a false match (the
-instance must still be byte-exact against the copy), but run the full sccheck after --apply.
+THE WORDS DO NOT PROVE THE INSTANCE. Template instances for different types compile to one body
+(a pointer vector's end() for every T, a pod vector<unsigned int> and vector<int>, every
+__vector_imp destructor of a trivially destructible T), and look-alike accessors coincide too
+(CAiMaps::GetMapByIndex has CEntityList::GetEntityByIndex's 0x70 bytes; 0x50FFE0, the
+CAiEventCallback list's destructor, has ~CWepCallbackList's). The first --apply-everything run
+marked 32 rows and 24 of them had to be taken back. So --apply takes the addresses you vetted: an
+instance that exists once in the program (basic_string<char>'s members, the pointer lists' shared
+list_deleter<const void *> base), or a copy whose callers in its overlay call it as the named
+function.
 """
 from __future__ import annotations
 
@@ -56,10 +63,12 @@ def masked(words: list[int]) -> tuple[int, ...]:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--min-size", type=lambda s: int(s, 0), default=0x18)
-    ap.add_argument("--apply", action="store_true", help="append the ovl-copy notes to symbols.txt")
+    ap.add_argument("--apply", metavar="ADDRS",
+                    help="comma-separated vetted copy addresses whose ovl-copy notes to append")
     a = ap.parse_args(argv)
     img, st = E.image(), E.symbols()
     has_note = re.compile(r"ovl-copy: ")
+    reviewed = re.compile(r"ovl-copy: |tools/ovlcopies\.py|not an overlay copy")   # noted or looked at
     groups: dict[tuple, list] = defaultdict(list)
     for s in st.symbols:
         if s.size < a.min_size:
@@ -77,7 +86,7 @@ def main(argv=None) -> int:
         n = named[0]
         per_ovl = defaultdict(list)
         for s in members:
-            if s is n or not E.is_placeholder(s.name) or has_note.search(s.note or ""):
+            if s is n or not E.is_placeholder(s.name) or reviewed.search(s.note or ""):
                 continue
             if st.overlay_of(s.addr) == st.overlay_of(n.addr):
                 continue                       # two copies in one overlay: not a link's doing
@@ -123,7 +132,12 @@ def main(argv=None) -> int:
               f"{st.overlay_of(n.addr)} {n.name}")
     print(f"{len(found)} unmarked copies", file=sys.stderr)
     if a.apply and found:
-        want = {s.addr: n for s, n in found}
+        vetted = {int(x, 16) for x in a.apply.split(",") if x.strip()}
+        want = {s.addr: n for s, n in found if s.addr in vetted}
+        missing = vetted - set(want)
+        if missing:
+            print("not candidates (or already noted): " + ", ".join(f"{x:#x}" for x in sorted(missing)),
+                  file=sys.stderr)
         path = st.path
         out = []
         for line in path.read_text().splitlines(keepends=True):

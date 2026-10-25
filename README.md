@@ -749,7 +749,13 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   automatch's superseded test follows the same rule. To diff one copy by hand: `./scdiff.py SRC
   NAME --target 0xADDR`. `tools/ovlcopies.py` finds unmarked copies (a placeholder's words equal to
   a named row's in another overlay, the link's address fields masked, every call to the same callee
-  or its overlay's copy, one twin per overlay) and `--apply` notes them.
+  or its overlay's copy, one twin per overlay) and `--apply ADDRS` notes the ones vetted. THE WORDS
+  DO NOT PROVE THE INSTANCE: template instances for different types share one body, and look-alike
+  accessors coincide (CAiMaps::GetMapByIndex has CEntityList::GetEntityByIndex's 0x70 bytes; the
+  CAiEventCallback list's destructor has ~CWepCallbackList's) -- of a first 32 marks, 24 were taken
+  back to plain "the same words as" hints. Mark an instance that exists once in the program
+  (basic_string<char>'s members, the pointer lists' list_deleter<const void *> base) or a class's
+  own inline members found together (CAiMap's GetCell family in OVL1's map code, 0x20F480-0x2106A0).
 - **Tells from the AI core** (ai_events.cpp, ai_astar.cpp, zchar/):
   - testing a field through an inline bool accessor makes MW load it again for the next
     statement; written out, the first load is reused;
@@ -1746,6 +1752,29 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     PopTo, 0x5F43B0) -- when the second operand is an out-of-line call MW drops the first operand's
     andi; 0x5B818C-0x5B901F is SOCOM 1's seal_ex.cpp and seal_ik.cpp (CSealEx::OnWeaponHit at
     0x5B8260).
+- **Tells from the AI core, round 7** (ai_maps.cpp, the map walkers, CAiMapLayer, CAiMap::GetCell):
+  - one-level inlining can be a size cut, not a height: CAiMaps::GetCell inlines CAiMap::GetCell one
+    level only once GetCell's expanded body passes inline_max_size -- measured by prepending
+    `#pragma inline_max_size(N)`: 244-248 units with the index in an expression, past 256 with the
+    scanline and column in locals;
+  - `if (r != 0)` on a pointer local branches; a bare `if (r)` was materialised (sltu, xori) inside a
+    list walk;
+  - walking a list through a const view of `this` builds the const begin()/end() iterators in stack
+    slots, as the target does; the non-const walk folds them away; taking end() into a local before
+    the walk keeps the sentinel in a saved register;
+  - a separate inline `operator!=` for CAiMapLoc gives the target's sltu; `!(a == b)` gives sltiu
+    with the branches inverted;
+  - reading a zeroed struct field after the call through a const accessor stops MW holding that
+    field's address in a saved register;
+  - a vector subclass with an out-of-line destructor adds one this-test, and the owner's destructor
+    calls it with -1 (~CAiMap for the layers);
+  - ~CAiPath (0x5281B0) matches only with the stats' visited cells as CAiMapLocVec, which makes
+    CAiPath() one inline level too tall at 5: one more level-6 candidate;
+  - units: ai_path.cpp's tail runs to 0x5291EF; ai_maps.cpp 0x5291F0-0x52EE9F (template tail from
+    0x52EB40), ai_maptable.cpp follows; the walker unit ai_mapwalk.cpp ~0x5350C0-0x539BBF (tail
+    from 0x539B70); the look and cover searches 0x539EB0-0x53A72F; the layer code (ai_maplayer.cpp)
+    0x53A730-0x53AA4F; initialisers 0x668680 (ai_path.cpp), 0x668710 (ai_maps.cpp, AiMaps at
+    0x66A1B0), 0x6687D0 (empty, probably ai_vismap.cpp's).
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
