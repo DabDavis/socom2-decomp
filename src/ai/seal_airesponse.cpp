@@ -332,7 +332,11 @@ struct CAiCtrl32C {
 static float s_shotAtTime = 15.0f;
 
 /* shot at, the sub-step: over after its time; before, once the AI's byte at 0x32C is set, the
- * sub-state ended and step 3 taken (OVL2 0x609340) */
+ * sub-state ended and step 3 taken (OVL2 0x609340).
+ * OPEN, 0x9C against 0xA4: the target zero-extends the byte it tests (`lbu; dsll32 v0,v0,0;
+ * dsrl32 v0,v0,0; beqz`) -- an unsigned int widened to 64 bits; an unsigned char, an 8-bit
+ * bitfield in a char, int or long container, `(unsigned long)` and `& ~0u` all branch on the lbu
+ * result directly */
 int CAiSShotAt::Virtual14(CSealCtrlAi *ai, CAiState *sub)
 {
     if (!(m_phaseTime < s_shotAtTime))
@@ -550,12 +554,12 @@ inline bool HoldBroken(const CAiState *s)
 
 /* whether the AI's current state is a hold with its flags' bit 5 or 7 set (OVL2 0x607830: the SEAL
  * lane's 0x558AE0 and 0x563E10 call it; the name ours).
- * OPEN, 0x68 against 0x6C: the target keeps the hold test in a1 -- zero in the state compare's
+ * OPEN, 0x7C against 0x6C: the target keeps the hold test in a1 -- zero in the state compare's
  * delay slot, `daddiu a1,zero,1` for true, `b; andi v0,a1,0xff` at the join, and a separate
- * `move v0,zero` for no state. An inline bool returning true/false (here) puts the true in v0 and
- * the andi on a block of its own; a bool local `r = false; if (a && b) r = true;` (inline or not,
- * nested ifs too) is if-converted into sltu; `? true : false` and `HoldBroken(s) != false` miss
- * further. */
+ * `move v0,zero` for no state. The ternary over the inline (here) puts the andi on a block of its
+ * own; `if (s) return HoldBroken(s); return false;` is 0x68, the true in v0 and no andi; a bool
+ * local `r = false; if (a && b) r = true;` (inline or not, nested ifs too) is if-converted into
+ * sltu; `? true : false` and `HoldBroken(s) != false` miss further. */
 extern "C" bool func_00607830(CSealCtrlAi *ai)
 {
     const CAiState *s = ai->m_stateStack.size() == 0 ? 0 : ai->m_stateStack.GetState();

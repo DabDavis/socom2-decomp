@@ -11739,7 +11739,7 @@
 0x0060A2D0 0x18 func_0060A2D0  # OVL2
 0x0060A2F0 0x16C func_0060A2F0  # OVL2
 0x0060A460 0x12C func_0060A460  # OVL2
-0x0060A590 0x14 func_0060A590  # OVL2
+0x0060A590 0x14 GetTimeSinceLastSighting__9CAiTargetCFv  # OVL2; s1:order by hand (the kit lane, round 7): SOCOM 1's GetTimeSinceLastSighting__9CAiTargetCFv, the same 0x14 bytes (the clock less a field: SOCOM 1's m_time_lost_sight at 0x40, here 0x54 -- CAiTarget grew 0x14 before it), in the CAiTarget stretch after the response states as in SOCOM 1; 0x60A5F0 sets 0x54 to the clock when the target is seen
 0x0060A5B0 0x40 func_0060A5B0  # OVL2
 0x0060A5F0 0xAC func_0060A5F0  # OVL2
 0x0060A6A0 0x1A8 func_0060A6A0  # OVL2
