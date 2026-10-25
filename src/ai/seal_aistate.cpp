@@ -693,7 +693,10 @@ CAiState *CAiStateStack::Find(AI_STATE state) const
 
 /* a new state of a kind pushed: the current one told it is covered (2), the new one entered (0)
  * and, when it has a script response and the covered state is the script, the response run on
- * it (the new state's bit 3 then set) (OVL2 0x5F7EE0; SOCOM 1's CSealCtrlAi::PushAiState) */
+ * it (the new state's bit 3 then set) (OVL2 0x5F7EE0; SOCOM 1's CSealCtrlAi::PushAiState). Pinned:
+ * fourteen statements make it an auto-inline candidate too big to inline whole, and a function
+ * calling such a one is never auto-inlined -- the controller's PushAiState is, into 0x5F51A0 */
+#pragma auto_inline off
 bool CAiStateStack::Push(CSealCtrlAi *ai, AI_STATE state, unsigned int flags)
 {
     CAiState *top = GetState();
@@ -713,6 +716,7 @@ bool CAiStateStack::Push(CSealCtrlAi *ai, AI_STATE state, unsigned int flags)
     func_005F7470(this, ai, 1);
     return true;
 }
+#pragma auto_inline reset
 
 /* a new state of a kind in the current one's place: the current one told it is left (1) and
  * deleted, the new one entered (0) (OVL2 0x5F7D80; SOCOM 1's CSealCtrlAi::SetAiState) */
@@ -1013,6 +1017,18 @@ bool CSealCtrlAi::ClearAiState(bool all)
     return cleared;
 }
 
+/* the squared distance between two points across the ground, x and z (OVL2 0x5F5AD0: an inline's
+ * out-of-line copy after StateTick, 0x5F55E0, its one caller -- unnamed). The height's zero kept
+ * as a local (its square folded, the `+ 0` not), the differences declared z first */
+extern "C" float func_005F5AD0(const CPnt3D *a, const CPnt3D *b)
+{
+    float dz = a->z - b->z;
+    float dy = 0.0f;
+    float dx = a->x - b->x;
+
+    return dx * dx + dy * dy + dz * dz;
+}
+
 /* the stack's operations as the controller offers them (SOCOM 1's CSealCtrlAi members, their
  * bodies the stack's now; OVL2 0x5F5CB0 back to 0x5F5BA0) */
 AI_STATE CSealCtrlAi::PopAiState(AI_STATE state)
@@ -1232,6 +1248,31 @@ void CAiSPickup::SetPickup(CPickup *p, unsigned int flags)
     m_pickup = p;
     m_pickupId = GetPickupNetEntityID__7CPickupFv(p);
     SetFlags(flags, 0);
+}
+
+extern "C" {
+/* the nearest pickup to a point (OVL2 0x6084B0, unwritten: the point, a kind mask, a range) and
+ * the range the AI looks within (OVL2 data 0x650B30, read as a variable) */
+CPickup *func_006084B0(const CPnt3D *pos, int mask, float range);
+extern float data_00650B30;
+}
+
+/* the nearest pickup gone for: the pickup state pushed when allowed and handed the pickup with its
+ * flag bit 0; whether it was (OVL2 0x5F51A0; the surrender's Tick calls it -- a controller helper,
+ * unnamed: its second argument unread) */
+extern "C" bool func_005F51A0(CSealCtrlAi *ai, int x, unsigned int flags)
+{
+    CPickup *p = func_006084B0(&ai->m_entity->m_posW, 255, data_00650B30);
+    bool r = false;
+
+    if (p && ai->PushAiState(AI_STATE_PICKUP, flags)) {
+        CAiState *s = ai->GetAiState();
+        CAiSPickup *pick = s && s->m_state == AI_STATE_PICKUP ? (CAiSPickup *)s : 0;
+
+        pick->SetPickup(p, 1);
+        r = true;
+    }
+    return r;
 }
 
 /* a pickup: to a cell beside it (the goto pushed, coming back to step 6), the AI's mode 4, the
