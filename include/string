@@ -35,6 +35,7 @@
 
 #include <iterator>
 #include <memory>
+#include <string.h>
 
 namespace std {
 
@@ -55,6 +56,7 @@ public:
     enum { npos = -1 };
 
     basic_string() { init(); }
+    basic_string(const charT *s);
     ~basic_string();
 
     basic_string &operator=(const charT *s) { return assign(s); }
@@ -96,6 +98,20 @@ private:
         short_rep s_;
     };
 };
+
+/* from a C string (0x2396F0, the copy closing the HUD's info box unit): the words zeroed, the
+ * length taken, the room reserved, the text replaced in through the template replace with its
+ * category byte (out of class: called out of line, emitted in each user's template tail) */
+template <class charT, class traits, class Allocator>
+basic_string<charT, traits, Allocator>::basic_string(const charT *s)
+{
+    init();
+    size_type n = strlen(s);
+    forward_iterator_tag category;
+
+    reserve(n);
+    func_001EE780(this, 0, 0, s, s + n, category);
+}
 
 #pragma auto_inline off
 template <class charT, class traits, class Allocator>

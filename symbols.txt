@@ -2251,7 +2251,7 @@
 0x00239250 0x19C Tick__18CRadioIcon_DynamicFf  # OVL1; s1:vtable (CRadioIcon_Dynamic's slot 12: SOCOM 1's CZDynamicRadioBitmap::HudTick)
 0x002393F0 0x17C Tick__17CRadioIcon_StaticFf  # OVL1; s1:calls; by hand (CRadioIcon_Static's vtable slot 12, C2D's Tick: SOCOM 1's CZStaticRadioBitmap::HudTick, renamed in SOCOM II's RTTI)
 0x00239570 0x178 func_00239570  # OVL1
-0x002396F0 0x78 func_002396F0  # OVL1
+0x002396F0 0x78 __ct__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FPCc  # OVL1; include/string's basic_string(const char *), byte-exact (build/scratch/str/ctor_probe.cpp): the words zeroed, strlen, reserve, the template replace with its category byte; the copy closing the HUD's info box unit -- the integrator
 0x00239770 0x80 func_00239770  # OVL1
 0x002397F0 0x188 func_002397F0  # OVL1
 0x00239980 0xF0 func_00239980  # OVL1
