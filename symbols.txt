@@ -6035,11 +6035,11 @@
 0x0033D160 0x80 func_0033D160  # OVL1
 0x0033D1E0 0x4C func_0033D1E0  # OVL1
 0x0033D230 0x8 UnSerialize__11CSaveModuleFPCcPQ23zar4CZARi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0033D240 0x8 func_0033D240  # OVL1
+0x0033D240 0x8 UnSerialize__11CSaveModuleFPCcP8CRdrFilei  # OVL1; s1:vtable by hand (slot 0x10 of CSaveModule's table 0x406AA0, before the CZAR UnSerialize at 0x14 that s1vtables named; SOCOM 1's UnSerialize(const char *, CRdrFile *, int), the same empty 8 bytes, next in SOCOM 1's order)
 0x0033D250 0x3C SaveRdr__11CSaveModuleFPCcP8CRdrFile  # OVL1; s1:exact
-0x0033D290 0x70 func_0033D290  # OVL1
-0x0033D300 0x70 func_0033D300  # OVL1
-0x0033D370 0x9C func_0033D370  # OVL1
+0x0033D290 0x70 __dt__11CSaveModuleFv  # OVL1; s1:order (SOCOM 1's destructor: its vtable stored, the name _free'd, the deleting flag; slot 0x08 of the table)
+0x0033D300 0x70 __ct__11CSaveModuleFPCcP12CSaveManager  # OVL1; s1:order (SOCOM 1's constructor: the vtable, _strdup of the name, priority and flags zeroed, RegisterModule on the manager)
+0x0033D370 0x9C FindModule__12CSaveManagerFPCc  # OVL1; the name ours (SOCOM II's: the registered module of that name, strcmp over the list; RegisterModule and Load call it)
 0x0033D410 0x8C SaveRdr__12CSaveManagerFPQ23zar4CKeyPCcP8CRdrFile  # OVL1; s1:callee
 0x0033D4A0 0x224 func_0033D4A0  # OVL1
 0x0033D6D0 0x4C8 Load__12CSaveManagerFPCci  # OVL1; the UI-widgets/file lane's lead, checked: its 'CSaveManager::Load' string, (this, name, flags) live as SOCOM 1's Load(const char *, int), the 'CSaveModuleList' key walked
@@ -6047,7 +6047,7 @@
 0x0033DC30 0x1C8 func_0033DC30  # OVL1
 0x0033DE00 0x1F0 func_0033DE00  # OVL1
 0x0033DFF0 0x3DC func_0033DFF0  # OVL1
-0x0033E3D0 0x60 func_0033E3D0  # OVL1
+0x0033E3D0 0x60 RegisterModule__12CSaveManagerFP11CSaveModule  # OVL1; s1:callee (CSaveModule's constructor calls it where SOCOM 1's calls RegisterModule; pushes the module unless one of its name is there, and sets its manager)
 0x0033E430 0xA0 __dt__12CSaveManagerFv  # OVL1; the UI-widgets/file lane's lead, checked: SOCOM 1's ~CSaveManager -- m_TempBuffer (0x18) deleted and cleared, the list base's three this-tests and range erase, the deleting flag; CMemCard's destructor calls it with 1
 0x0033E4D0 0x40 __ct__12CSaveManagerFP3CIO  # OVL1; s1:exact
 0x0033E510 0x178 func_0033E510  # OVL1

@@ -511,6 +511,7 @@
 0x00406A00 0x18 __vt__Q28Particle8Instance  # vtable of Particle::Instance: found by its RTTI's name
 0x00406A20 0x14 __vt__11CParticleEx  # vtable of CParticleEx: found by its RTTI's name
 0x00406A38 0xC __vt__11CRdrArchive  # vtable of CRdrArchive: found by its RTTI's name
+0x00406AA0 0x1C __vt__11CSaveModule  # vtable of CSaveModule (no RTTI word: 0): its constructor and destructor store it (0x33D300, 0x33D290); slots the destructor, Serialize (pure, 0), UnSerialize(CRdrFile *), UnSerialize(CZAR *), TestFlags -- SOCOM 1's order
 0x00406A50 0x50 __vt__6CRdrIO  # vtable of CRdrIO: found by its RTTI's name
 0x00406AC0 0x38 __vt__4CSnd  # vtable of CSnd: found by its RTTI's name
 0x00406B00 0x4C __vt__14CSoundBufferIO  # vtable of CSoundBufferIO: found by its RTTI's name
