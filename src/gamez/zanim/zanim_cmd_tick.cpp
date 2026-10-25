@@ -834,6 +834,216 @@ bool zAnimMessageTick(_zanim_cmd_hdr *hdr, float *dT)
     return true;
 }
 
+/* LIGHT: drive one of the anim's lights -- a local light (a CLight node) or a light map put on
+ * the world's list (one made here when the node has none): on (0x400), its texture (1), placed
+ * (8 the anim's argument point, 4 an offset, 2 a node's origin), its range (0x10, or keyed over
+ * time 0x20), colour (0x40), opacity (0x80) and blend (0x100 selectors, 0x200 an expression);
+ * over a time, then off (0x800, or when the node stops on exit) */
+struct zanim_light_range_key {
+    float time;
+    float min;
+    float max;
+};
+
+struct zanim_cmd_light {
+    _zanim_cmd_hdr hdr;
+    unsigned short flags;           /* 0x4 */
+    unsigned char node;             /* 0x6: the node reference's index */
+    unsigned char texture;          /* 0x7 */
+    unsigned char pos_node;         /* 0x8 */
+    unsigned char A : 2;            /* 0x9 */
+    unsigned char B : 2;
+    unsigned char C : 2;
+    unsigned char D : 2;
+    unsigned char _a[2];
+    float min;                      /* 0xC */
+    float max;                      /* 0x10 */
+    CPnt3D offset;                  /* 0x14 */
+    CPnt3D diffuse;                 /* 0x20 */
+    float opacity;                  /* 0x2C */
+    float alpha;                    /* 0x30 */
+    short key_count;                /* 0x34 */
+    short key_off;                  /* 0x36: from the record */
+    short expr_len;                 /* 0x38 */
+    short expr_off;                 /* 0x3A */
+    float time;                     /* 0x3C */
+};
+
+bool zAnimLightTick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    bool placed;
+    bool done = true;
+    zanim_cmd_light *cmd = (zanim_cmd_light *)hdr;
+    _zanim_node_ref *ref;
+    zdb::CLight *light = 0;
+    zdb::CLightMap *map = 0;
+    zdb::BLENDMODE blend;
+    CZAnim *anim = ZAnim.m_CurAnim;
+
+    blend.m_alphaWORD = 0x44;
+
+    ref = anim->GetNodeRef(cmd->node);
+    if (ref && ref->is_light) {
+        if (ref->is_local_light)
+            light = (zdb::CLight *)anim->GetNode(cmd->node, false);
+        else
+            map = (zdb::CLightMap *)anim->GetNode(cmd->node, false);
+    }
+    if (!ref && !light && !map)
+        return true;
+    if ((cmd->flags & 0x400) && ref) {
+        if (ref->is_local_light && light) {
+            light->SetActive(true);
+        } else if (!ref->on_world_lightlist) {
+            if (!map) {
+                map = new zdb::CLightMap;
+                if (map) {
+                    map->SetName(anim->GetName(ref->name_index));
+                    ref->node_ptr = map;
+                    ref->created_here = 1;
+                }
+            }
+            if (map) {
+                ref->on_world_lightlist = 1;
+                zdb::CWorld::m_world->AddLightMap(map);
+            }
+        }
+    }
+    if (!light && !map)
+        return true;
+    if ((cmd->flags & 1) && map) {
+        CTexHandle *tex = anim->GetTexture(cmd->texture);
+
+        if (tex)
+            map->SetTexture(tex->m_texture);
+    }
+    CPnt3D pos(0.0f, 0.0f, 0.0f);
+
+    placed = false;
+    if (cmd->flags & 8) {
+        CPnt3D *arg = anim->GetArgPnt3D();
+
+        if (arg) {
+            placed = true;
+            pos = pos + *arg;
+        }
+    }
+    if (cmd->flags & 4) {
+        placed = true;
+        pos = pos + cmd->offset;
+    }
+    if (cmd->flags & 2) {
+        CNode *node = anim->GetNode(cmd->pos_node, false);
+
+        if (node) {
+            node->TransformToWorld(pos);
+            placed = true;
+        }
+    }
+    if (placed) {
+        if (light) {
+            light->SetPosition(pos);
+            CPnt3D world(0.0f, 0.0f, 0.0f);
+
+            light->TransformToWorld(world);
+            light->m_WorldPosition = world;
+        } else if (map) {
+            map->SetPos(pos);
+        }
+    }
+    if (cmd->flags & 0x10) {
+        if (light)
+            light->SetRange(cmd->min, cmd->max);
+        else if (map)
+            map->SetRange(cmd->min, cmd->max);
+    }
+    if (cmd->flags & 0x40) {
+        if (light)
+            light->m_diffuse = cmd->diffuse;
+        else if (map)
+            map->m_diffuse = cmd->diffuse;
+    }
+    if ((cmd->flags & 0x80) && map)
+        map->m_opacity = cmd->opacity;
+    if ((cmd->flags & 0x100) && map) {
+        int fix = (int)(128.0f * cmd->alpha);
+
+        if (fix < 0)
+            fix = 0;
+        if (fix > 255)
+            fix = 255;
+        unsigned char d = cmd->D;
+        unsigned char c = cmd->C;
+        unsigned char b = cmd->B;
+        unsigned char a = cmd->A;
+
+        blend.m_alpha.FIX = fix;
+        blend.m_alpha.A = a;
+        blend.m_alpha.B = b;
+        blend.m_alpha.C = c;
+        blend.m_alpha.D = d;
+        map->m_blendmode = blend;
+    }
+    if (cmd->flags & 0x20) {
+        zanim_light_range_key *keys = (zanim_light_range_key *)((char *)cmd + cmd->key_off);
+        float t = *dT + ZAnim.m_CurSeq->cmd_timer;
+
+        if (!(t <= keys[0].time)) {
+            bool found = false;
+            float min, max;
+            int i;
+
+            for (i = 0; i < cmd->key_count - 1; i++) {
+                if (t <= keys[i + 1].time) {
+                    float f = (t - keys[i].time) / (keys[i + 1].time - keys[i].time);
+
+                    min = keys[i].min + f * (keys[i + 1].min - keys[i].min);
+                    max = keys[i].max + f * (keys[i + 1].max - keys[i].max);
+                    found = true;
+                    break;
+                }
+            }
+            if (found) {
+                if (light)
+                    light->SetRange(min, max);
+                else if (map)
+                    map->SetRange(min, max);
+            } else if (light) {
+                light->SetRange(keys[cmd->key_count - 1].min, keys[cmd->key_count - 1].max);
+            } else if (map) {
+                map->SetRange(keys[cmd->key_count - 1].min, keys[cmd->key_count - 1].max);
+            }
+        }
+    }
+    if ((cmd->flags & 0x200) && map) {
+        func_0025C5F0((GsAlpha *)&blend, (char *)cmd + cmd->expr_off, cmd->expr_len, *dT + ZAnim.m_CurSeq->cmd_timer);
+        map->m_blendmode = blend;
+    }
+    float time = cmd->time;
+
+    if (!(time <= 0.0f)) {
+        float t = ZAnim.m_CurSeq->cmd_timer;
+        float step = *dT;
+
+        if (!(step + t <= time)) {
+            done = true;
+            *dT -= time - t;
+        } else {
+            done = false;
+            *dT = 0.0f;
+        }
+    }
+    if (done && ((cmd->flags & 0x800) || (ref && ref->stop_on_exit)) && ref) {
+        if (ref->is_local_light && light) {
+            light->SetActive(false);
+        } else if (map && ref->on_world_lightlist) {
+            ref->on_world_lightlist = 0;
+            zdb::CWorld::m_world->DeleteLightMap(map);
+        }
+    }
+    return done;
+}
+
 /* the screen's 3D blur, in the pipe after the iris effect: a level, an amount (a float kept as
  * its bits) and its blend */
 struct BlurEffect {

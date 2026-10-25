@@ -1143,7 +1143,7 @@ void CNode::SetBlendMode(const BLENDMODE &mode, bool b, bool visuals, bool recur
             unsigned int m = modes.size();
 
             for (unsigned int j = 0; j < m; j++)
-                *modes[j] = mode;
+                modes[j]->m_alphaWORD = mode.m_alphaWORD;   /* the word (the union's copy orders its loads the other way) */
         }
     }
     if (recurse) {

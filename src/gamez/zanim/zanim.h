@@ -12,9 +12,10 @@
 #include "../zar/zar.h"
 
 using zdb::CNode;
+/* the anim's textures are zdb's handles (every mangled name in the map says Q23zdb10CTexHandle) */
+using zdb::CTexHandle;
 
 class CZAnim;
-class CTexHandle;
 class CValve;
 struct _zrdr;
 class CZAnimEx;

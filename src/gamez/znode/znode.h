@@ -316,6 +316,9 @@ public:
             SetRotation(*q);
     }
     void SetPosition(float x, float y, float z);
+    /* by reference: the ZAnim light tick's point is read off the frame (sp offsets) through it,
+     * where reading its fields directly reuses an address MW hoisted for the point's copies */
+    void SetPosition(const CPnt3D &p) { SetPosition(p.x, p.y, p.z); }
     void SetPosition(const PNT3D *p)      /* the base pointer keeps MW from folding the null test */
     {
         if (p)
@@ -417,6 +420,17 @@ public:
     virtual CBBox *UpdateBBox(bool up);
     /* inline (CLightMap::SetTexture's range is loaded ahead of its constant: the name ours) */
     float GetMaxRange() const { return m_maxRange; }
+    /* the ranges and their derived terms, the bounds updated: inline, five copies in the ZAnim
+     * light tick (the name is ours) */
+    void SetRange(float min, float max)
+    {
+        m_minRange = min;
+        m_maxRange = max;
+        m_maxRangeSq = max * max;
+        m_invMaxRange = 1.0f / m_maxRange;
+        m_invDeltaRange = 1.0f / (m_maxRange - m_minRange);
+        UpdateBBox(false);
+    }
 
     float m_maxRangeSq;   // 0xc0
     float m_maxRange;   // 0xc4
@@ -446,10 +460,24 @@ public:
     unsigned char m_libref;   // 0x10
 };   // 0x14 bytes
 
+/* the GS ALPHA register's fields (the SDK's sceGsAlpha): (A - B) * C + D, C or D the FIX alpha */
+struct sceGsAlpha {
+    unsigned long A : 2;
+    unsigned long B : 2;
+    unsigned long C : 2;
+    unsigned long D : 2;
+    unsigned long pad8 : 24;
+    unsigned long FIX : 8;
+    unsigned long pad40 : 24;
+};
+
 /* a GS alpha blend, its register word (SOCOM 1's DWARF: sceGsAlpha and the word, one union) */
 class BLENDMODE {
 public:
-    unsigned long m_alphaWORD;   // 0x0
+    union {
+        sceGsAlpha m_alpha;   // 0x0
+        unsigned long m_alphaWORD;   // 0x0
+    };
 };   // 8 bytes
 
 /* a light that projects a texture (SOCOM 1's DWARF) */
@@ -459,6 +487,17 @@ public:
     virtual ~CLightMap();
     virtual CNode *_Copy(CNode *to) const;
     void SetTexture(CTexture *tex);
+    /* placed: the projection's translation the negated point, then the node's (inline; the
+     * ZAnim light tick loads the three values once for both, through the reference form, as
+     * SetPosition's; the names are ours) */
+    void SetPos(float x, float y, float z)
+    {
+        m_worldToUV.m_matrix[3][0] = -x;
+        m_worldToUV.m_matrix[3][1] = -y;
+        m_worldToUV.m_matrix[3][2] = -z;
+        SetPosition(x, y, z);
+    }
+    void SetPos(const CPnt3D &p) { SetPos(p.x, p.y, p.z); }
 
     CTexture *m_pTex;   // 0x100
     CMatrix m_worldToUV;   // 0x110
@@ -551,6 +590,7 @@ public:
     static CWorld *m_world;
     static CNode *GetModel(const char *name);
     void DeleteLightMap(CLightMap *light);
+    void AddLightMap(CLightMap *light);
 
     unsigned char _c0[0x128 - 0xC0];   // 0xc0: SOCOM II's, not yet read
     CCamera *m_camera;   // 0x128 (CCamera::CmdBeginParams; SOCOM 1: 0xc0)
