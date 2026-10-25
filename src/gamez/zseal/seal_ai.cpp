@@ -719,3 +719,244 @@ void CSealCtrlAi::OnSetHealth(float health, float old)
         PlayAiSound((CHARACTER_SOUND)59, 2.0f, -1);
     }
 }
+
+/* the AI's names (SOCOM 1's namespace sealai) */
+namespace sealai {
+/* a stance's name (inline everywhere in SOCOM II: no out-of-line copy follows get_stance(name),
+ * where SOCOM 1's sat) */
+inline const char *get_stance(SEAL_STANCE stance)
+{
+    switch (stance) {
+    case STANCE_STAND:
+        return "stand";
+    case STANCE_CROUCH:
+        return "crouch";
+    case STANCE_PRONE:
+        return "prone";
+    case STANCE_IDLE:
+        return "idle";
+    }
+    return "none";
+}
+
+SEAL_STANCE get_stance(const char *name);
+const char *get_aiseq(unsigned int i);
+}
+
+/* the sequence an alertness band starts (OVL2 0x575210; SOCOM 1's) */
+const char *sealai::get_aiseq(unsigned int i)
+{
+    switch (i) {
+    case 0:
+        return "on_aware0";
+    case 1:
+        return "on_aware1";
+    case 2:
+        return "on_aware2";
+    case 3:
+        return "on_aware3";
+    case 4:
+        return "on_aware4";
+    }
+    return "on_awareX";
+}
+
+/* the stance of a name, or none (OVL2 0x575100; SOCOM 1's) */
+SEAL_STANCE sealai::get_stance(const char *name)
+{
+    for (int i = 0; name && i < 4; i++)
+        if (!strcasecmp(name, get_stance((SEAL_STANCE)i)))
+            return (SEAL_STANCE)i;
+    return STANCE_NONE;
+}
+
+namespace sealai {
+const char *get_state(AI_STATE state);
+AI_STATE get_state(const char *name);
+}
+
+/* the state of a name, or 0 (OVL2 0x575410; SOCOM 1's: the thirty names through get_state(AI_STATE),
+ * OVL2 0x575490) */
+AI_STATE sealai::get_state(const char *name)
+{
+    if (name)
+        for (int i = 0; i < 30; i++) {
+            AI_STATE state = (AI_STATE)i;
+
+            if (!strcasecmp(get_state(state), name))
+                return state;
+        }
+    return AI_STATE_UNKNOWN;
+}
+
+/* a flag's name (inline: no out-of-line copy; the names the strings', the function ours) */
+static inline const char *get_flag(unsigned char flag)
+{
+    switch (flag) {
+    case 1:
+        return "alignbody";
+    case 2:
+        return "nobodyrot";
+    case 4:
+        return "scan";
+    case 8:
+        return "randomscan";
+    case 16:
+        return "weaponup";
+    case 32:
+        return "weaponready";
+    case 64:
+        return "headbob";
+    case 128:
+        return "modified";
+    }
+    return "unknown";
+}
+
+/* the flag of a name, or none (OVL2 0x5752B0, new in SOCOM II: between get_aiseq and
+ * get_state(name); 0x5D79F0 asks it twice) */
+extern "C" unsigned char func_005752B0(const char *name)
+{
+    if (name)
+        for (int i = 0; i < 8; i++) {
+            unsigned char flag = 1 << i;
+
+            if (!strcasecmp(name, get_flag(flag)))
+                return flag;
+        }
+    return 0;
+}
+
+/* a state's name (OVL2 0x575490; SOCOM 1's, SOCOM II's thirty states in its case order) */
+const char *sealai::get_state(AI_STATE state)
+{
+    switch (state) {
+    case 0:
+        return "unknown";
+    case 11:
+        return "action";
+    case 13:
+        return "animate";
+    case 3:
+        return "avoid";
+    case 10:
+        return "breach";
+    case 14:
+        return "cqb";
+    case 4:
+        return "deploy";
+    case 25:
+        return "event";
+    case 15:
+        return "flee";
+    case 9:
+        return "follow";
+    case 8:
+        return "goto";
+    case 27:
+        return "grenade";
+    case 23:
+        return "hostage";
+    case 2:
+        return "hold";
+    case 5:
+        return "lasing";
+    case 21:
+        return "noammo";
+    case 24:
+        return "plan";
+    case 16:
+        return "pathreco";
+    case 22:
+        return "pickup";
+    case 12:
+        return "pursue";
+    case 20:
+        return "reload";
+    case 17:
+        return "rescued";
+    case 19:
+        return "shotat";
+    case 1:
+        return "script";
+    case 28:
+        return "stunned";
+    case 6:
+        return "surrender";
+    case 18:
+        return "suspended";
+    case 26:
+        return "targeting";
+    case 7:
+        return "vehicle";
+    case 29:
+        return "rush";
+    default:
+        return "undef";
+
+    }
+}
+
+/* a role's name (inline: no out-of-line copy; the strings' names, the function ours) */
+static inline const char *get_role(unsigned char role)
+{
+    switch (role) {
+    case 0:
+        return "unknown";
+    case 1:
+        return "sniper";
+    case 2:
+        return "gunner";
+    }
+    return "error";
+}
+
+/* the role of a name, or none (OVL2 0x5756B0, new in SOCOM II: after get_state(AI_STATE)) */
+extern "C" unsigned char func_005756B0(const char *name)
+{
+    for (int i = 0; name && i < 3; i++)
+        if (!strcmp(name, get_role(i)))
+            return i;
+    return 0;
+}
+
+namespace sealai {
+/* a mode's name (inline everywhere in SOCOM II; the cases in the order its table's blocks lie) */
+inline const char *get_mode(AI_MODE mode)
+{
+    switch (mode) {
+    case 1:
+        return "idle";
+    case 2:
+        return "hold";
+    case 4:
+        return "creep";
+    case 5:
+        return "slide";
+    case 6:
+        return "follow";
+    case 3:
+        return "path";
+    case 0:
+        return "sleep";
+    case 7:
+        return "climb";
+    case 8:
+        return "test";
+    case 9:
+        break;
+    }
+    return "error";
+}
+
+AI_MODE get_mode(const char *name);
+}
+
+/* the mode of a name, or idle (OVL2 0x575790; SOCOM 1's, with nine modes) */
+AI_MODE sealai::get_mode(const char *name)
+{
+    for (int i = 0; name && i < 9; i++)
+        if (!strcmp(name, get_mode((AI_MODE)i)))
+            return (AI_MODE)i;
+    return (AI_MODE)1;
+}

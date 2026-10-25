@@ -10327,10 +10327,10 @@
 0x00575100 0x108 get_stance__6sealaiFPCc  # OVL2; s1:calls
 0x00575210 0x98 get_aiseq__6sealaiFUi  # OVL2; s1:calls
 0x005752B0 0x158 func_005752B0  # OVL2
-0x00575410 0x78 func_00575410  # OVL2
-0x00575490 0x218 func_00575490  # OVL2
+0x00575410 0x78 get_state__6sealaiFPCc  # OVL2; s1:order (after get_aiseq, as SOCOM 1's get_state__6sealaiFPCc: thirty names through get_state(AI_STATE), strcasecmp, the state returned or 0; the same 0x74 shape) -- the SEAL lane, round 4
+0x00575490 0x218 get_state__6sealaiF8AI_STATE  # OVL2; s1:calls (get_state(const char *) calls it at the same instruction where SOCOM 1's calls get_state__6sealaiF8AI_STATE: the state's name) -- the SEAL lane, round 4
 0x005756B0 0xE0 func_005756B0  # OVL2
-0x00575790 0x140 func_00575790  # OVL2
+0x00575790 0x140 get_mode__6sealaiFPCc  # OVL2; s1:order (the last of sealai's name lookups in both builds, as SOCOM 1's get_mode__6sealaiFPCc: the modes' names through a jump-table switch, strcmp, the mode returned or 1) -- the SEAL lane, round 4
 0x005758D0 0x78 __dt__10CAiSPursueFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00575950 0x14 func_00575950  # OVL2
 0x00575970 0x14 CanAttack__10CAiSPursueCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
