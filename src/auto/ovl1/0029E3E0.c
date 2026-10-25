@@ -8,9 +8,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 #pragma mpwc_relax on
+M2C_UNK Clear__8CAckListFv();                       /* extern */
 M2C_UNK __dl__FPv(char *);                          /* extern */
 M2C_UNK func_001EAAF0(M2C_UNK *, char *, s32 *, s32 *); /* extern */
-M2C_UNK func_0029E330();                            /* extern */
 
 char *func_0029E3E0(char *arg0, s64 arg1) {
     M2C_UNK sp3C;
@@ -18,7 +18,7 @@ char *func_0029E3E0(char *arg0, s64 arg1) {
     s32 sp34;
 
     if (arg0 != NULL) {
-        func_0029E330();
+        Clear__8CAckListFv();
         if ((arg0 != NULL) && (arg0 != NULL) && (arg0 != NULL)) {
             sp34 = (int)(arg0 + 4);
             sp38 = SC_MEMBER(arg0, s32 *, 8);

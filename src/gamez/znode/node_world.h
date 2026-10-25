@@ -133,6 +133,11 @@ struct IntersectStruct {
 
     /* the hit polygon's material, or the default one (SOCOM 1's) */
     int GetMaterial();
+    /* the hit polygon's edges through the hit, in the world's frame (SOCOM 1's) */
+    bool GetIntersectedEdgePoints(CPnt3D *a, CPnt3D *b);
+    bool GetIntersectedEdgePointsY(CPnt3D *out);
+    /* the hit polygon's flag at bit 27 (new in SOCOM II; the name ours) */
+    bool GetPolyFlag27();
 };
 
 /* a ray's intersection set (SOCOM 1's DWARF; SOCOM II adds the mask at 0x44, so its hits are 4
@@ -145,6 +150,8 @@ public:
     void SetMask(unsigned int mask);
     IntersectStruct *GetHighestAltitude(const CPnt3D *p, float alt);
     IntersectStruct *GetNearestIntersect();
+    /* the hits' indices sorted by their squared distance from the tail (SOCOM 1's) */
+    void SortNearToFar(int *idx, float *dist);
     /* whether characters are hit, the old setting given back (inline: the queries save and
      * restore it -- read old, store new, store old; the name is ours) */
     bool SetIntersectCharacters(bool on)
@@ -251,8 +258,18 @@ class CShadowCaster {
 public:
     CShadowCaster(CNode *node);
 
-    unsigned char _0[0x70];
+    unsigned char _0[0x4c];   // 0x0: a matrix (the constructor makes it the unit one), a size
+    CNode *m_node;   // 0x4c: the node casting the shadow (the constructor's argument)
+    CTexture *m_texture;   // 0x50: its first visual's first dynamic texture (UpdateShadowCasters)
+    unsigned char _54[0x70 - 0x54];
 };   // 0x70 bytes
+
+}
+
+/* each shadow caster brought up to date (0x31F570, new in SOCOM II -- not named yet) */
+extern "C" void func_0031F570(zdb::CShadowCaster *caster);
+
+namespace zdb {
 
 /* the save/load driver: the world it builds, the archive it reads and the file's name (SOCOM 1's
  * DWARF; SOCOM II's archive is 0x14 bytes longer, so the name sits at 0xbc) */

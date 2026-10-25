@@ -405,7 +405,7 @@
 0x00196C20 0x70 printf  # MAIN; s1:callee
 0x00196C90 0x84 func_00196C90  # MAIN
 0x00196D18 0x20 puts  # MAIN unaligned; by hand (newlib's: _puts_r on _impure_ptr; the FIFO kick passes it "D9 Busy"/"D8 Busy") -- the sound lane
-0x00196D38 0x9EC func_00196D38  # MAIN unaligned
+0x00196D38 0x9EC qsort  # MAIN unaligned; s1:calls (DiIntersect::SortNearToFar calls it with (idx, n, 4, _cmpdi) where SOCOM 1's calls qsort; newlib's, 0x9EC bytes against SOCOM 1's 0xA24) -- the zdb-world lane
 0x00197728 0x18 func_00197728  # MAIN unaligned
 0x00197740 0x64 rand  # MAIN; s1:callee by hand (zAnimRandomWeightTick calls it where SOCOM 1 calls rand; newlib's 64-bit LCG)
 0x001977A8 0x60 func_001977A8  # MAIN unaligned
@@ -2106,10 +2106,10 @@
 0x0022DE60 0x194 func_0022DE60  # OVL1
 0x0022E000 0x460 func_0022E000  # OVL1
 0x0022E460 0x68 func_0022E460  # OVL1
-0x0022E4D0 0x84 func_0022E4D0  # OVL1
-0x0022E560 0x90 func_0022E560  # OVL1
+0x0022E4D0 0x84 __as__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>  # OVL1; by hand (the MSL lane: include/string's copy assignment compiles to its 0x84 bytes -- two short forms copied whole, else replace(0, size(), str))
+0x0022E560 0x90 __ct__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>  # OVL1; by hand (the MSL lane: include/string's copy constructor compiles to its 0x90 bytes -- the short form's words copied whole, the long form reserved and replaced in)
 0x0022E5F0 0x9C func_0022E5F0  # OVL1
-0x0022E690 0x54 func_0022E690  # OVL1
+0x0022E690 0x54 replace__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FUiUiRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>  # OVL1; by hand (the MSL lane: replace(pos, n1, const basic_string &), the template replace over the other's text; the copy assignment 0x22E4D0 calls it)
 0x0022E6F0 0x70 func_0022E6F0  # OVL1
 0x0022E760 0x70 func_0022E760  # OVL1
 0x0022E7D0 0x70 func_0022E7D0  # OVL1
@@ -3594,7 +3594,7 @@
 0x002956E0 0x408 func_002956E0  # OVL1
 0x00295AF0 0x8 func_00295AF0  # OVL1
 0x00295B00 0x410 func_00295B00  # OVL1
-0x00295F10 0x8 func_00295F10  # OVL1
+0x00295F10 0x8 GetPosW__7CEntityCFv  # OVL1; s1:vtable (CEntity's slot +0x0C, SOCOM 1's GetPosW() const returning the matrix: CTurret's override returns this+0x2C0) -- the entity lane
 0x00295F20 0x5CC func_00295F20  # OVL1
 0x002964F0 0xA14 func_002964F0  # OVL1
 0x00296F10 0x4FC func_00296F10  # OVL1
@@ -3637,19 +3637,19 @@
 0x0029CEC0 0x44 Dispatch__8CHandlerFP7CPacketP8CConsole  # OVL1; s1:align
 0x0029CF10 0x60 __dt__8CHandlerFv  # OVL1; s1:calls
 0x0029CF70 0x50 __ct__8CHandlerFPCcUiPFP7CPacketP8CConsolePv_vPv  # OVL1; s1:exact
-0x0029CFC0 0xBC func_0029CFC0  # OVL1
-0x0029D080 0xD8 func_0029D080  # OVL1
-0x0029D160 0x88 func_0029D160  # OVL1
-0x0029D1F0 0x7C func_0029D1F0  # OVL1
+0x0029CFC0 0xBC AddHandler__8CConsoleFUiPCcPFP7CPacketP8CConsolePv_vPv  # OVL1; ours (SOCOM 1's OnConnect inlined it; SOCOM II calls it out of line: with this name OnConnect and the hand-written AddHandler are both byte-exact, measured) -- the entity lane
+0x0029D080 0xD8 FindHandler__8CConsoleFPCc  # OVL1; new in SOCOM II: RecvPacket (0x29D3C0) calls it with a message's first argument when no handler has the packet's type -- each handler's name (+0) strcmp'd; the overload ours, after SOCOM 1's FindHandler(id)
+0x0029D160 0x88 FindHandler__8CConsoleFUi  # OVL1; s1:order by hand (SOCOM 1's FindHandler__8CConsoleFUi 0x1EC7E0, its handler list at +24 there, +0x20 here, each id at +4; AddHandler 0x29CFC0 and RecvPacket call it with an id)
+0x0029D1F0 0x7C OnConnect__8CConsoleFv  # OVL1; s1:calls by hand (SOCOM 1's OnConnect 0x1EC8A0 registers ids 2, 1, 3 with _on_status, _on_ping, _on_error inline; SOCOM II's calls AddHandler 0x29CFC0 with the same ids and handlers, names "msg", "ping", "error")
 0x0029D270 0xCC Debug__8CConsoleFiP7CPacketPCc  # OVL1; s1:calls
 0x0029D340 0x7C Debug__8CConsoleFiPCce  # OVL1; s1:align
-0x0029D3C0 0x2B4 func_0029D3C0  # OVL1
+0x0029D3C0 0x2B4 RecvPacket__8CConsoleFP7CPacket  # OVL1; s1:calls by hand (Tick calls it with OnRecvPacket's packet and deletes the packet when it answers true, as SOCOM 1's Tick calls RecvPacket__8CConsoleFP7CPacket 0x1ECBA0)
 0x0029D680 0x8 GetPacketMsg__7CPacketFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0029D690 0x114 __dt__8CConsoleFv  # OVL1; s1:align
 0x0029D7B0 0xA4 func_0029D7B0  # OVL1
-0x0029D860 0x8 func_0029D860  # OVL1
-0x0029D870 0x8 func_0029D870  # OVL1
-0x0029D880 0x10 func_0029D880  # OVL1; a virtual tail call (vtable slot 0xC of a0's class: lw t9,0(a0); lw t9,12(t9); jr t9) -- split from the 0x18 row, which ran over the next function
+0x0029D860 0x8 _on_error__FP7CPacketP8CConsolePv  # OVL1; s1:order by hand (SOCOM 1's _on_error 0x1ED250, jr ra: OnConnect registers it for id 3 in both builds)
+0x0029D870 0x8 _on_ping__FP7CPacketP8CConsolePv  # OVL1; s1:order by hand (SOCOM 1's _on_ping 0x1ED260, jr ra: OnConnect registers it for id 1 in both builds)
+0x0029D880 0x10 _on_status__FP7CPacketP8CConsolePv  # OVL1; a virtual tail call (vtable slot 0xC of a0's class: lw t9,0(a0); lw t9,12(t9); jr t9) -- split from the 0x18 row, which ran over the next function; s1:order by hand (SOCOM 1's _on_status 0x1ED270, the same virtual tail call to the packet's GetPacketMsg: OnConnect registers it for id 2 in both builds)
 0x0029D890 0x8 GetPacketMsg__10CPacketMsgFv  # OVL1; split from func_0029D880's 0x18 row: `return this` (jr ra; move v0,a0), on its own 16-byte boundary; by hand (slot 0xC of __vt__10CPacketMsg, 0x4061A0, where CPacket's table has GetPacketMsg__7CPacketFv: the override returning this)
 0x0029D8A0 0x44 GetArg__10CPacketMsgCFUi  # OVL1; s1:exact
 0x0029D8F0 0x20 GetArgCount__10CPacketMsgCFv  # OVL1; s1:exact
@@ -3671,15 +3671,15 @@
 0x0029E0D0 0x90 Initalize__8CConsoleFv  # OVL1; s1:align
 0x0029E160 0x114 CheckEvent__8CConsoleFv  # OVL1; s1:align
 0x0029E280 0xA4 FindPacket__8CAckListFP7CPacket  # OVL1; s1:align
-0x0029E330 0xAC func_0029E330  # OVL1
+0x0029E330 0xAC Clear__8CAckListFv  # OVL1; ours: ~CAckList (0x29E3E0) calls it first -- every packet deleted through std::transform onto the list itself, then clear(); SOCOM 1's ~CAckList (0x1EDF80) inlined the same
 0x0029E3E0 0x90 func_0029E3E0  # OVL1
 0x0029E470 0x70 GetEntityByIndex__11CEntityListCFUi  # OVL1; s1:order (CEntityList's first, as SOCOM 1's 0x1EE0F0: past the end gives none, else the walk index steps along a const_iterator); ent_main.cpp
 0x0029E4E0 0xB0 GetEntityById__11CEntityListCFUi  # OVL1; s1:order (CEntityList's second, as SOCOM 1's 0x1EE190: none for CEntity::invalidId (0x3EFFB0, SOCOM 1's invalidId__7CEntity), else the entity whose m_id matches); ent_main.cpp
 0x0029E590 0xE0 GetEntity__11CEntityListCFPCc  # OVL1; s1:order (CEntityList's third, as SOCOM 1's 0x1EE290: strcasecmp of the name against each entity's node's name); ent_main.cpp
 0x0029E670 0x8 Virtual5C__7CEntityFv  # OVL1; slot 0x5C of __vt__7CEntity, new in SOCOM II (returns 0) -- the name is ours; ent_main.cpp
-0x0029E680 0x8 Virtual60__7CEntityFv  # OVL1; slot 0x60 of __vt__7CEntity, new in SOCOM II (returns 0) -- the name is ours; ent_main.cpp
+0x0029E680 0x8 Virtual60__7CEntityFP6CPnt3D  # OVL1; slot 0x60 of __vt__7CEntity, new in SOCOM II (returns 0) -- the name is ours; ent_main.cpp; the parameter and bool from CTurret's override 0x3A71A0 (fills a CPnt3D, returns true)
 0x0029E690 0x8 Virtual64__7CEntityFv  # OVL1; slot 0x64 of __vt__7CEntity, new in SOCOM II (returns 0) -- the name is ours; ent_main.cpp
-0x0029E6A0 0x8 Virtual68__7CEntityFv  # OVL1; slot 0x68 of __vt__7CEntity, new in SOCOM II (returns 0) -- the name is ours; ent_main.cpp
+0x0029E6A0 0x8 Virtual68__7CEntityFP6CPnt3D  # OVL1; slot 0x68 of __vt__7CEntity, new in SOCOM II (returns 0) -- the name is ours; ent_main.cpp; the parameter and bool from CTurret's override 0x3A71D0 (fills a CPnt3D, returns true)
 0x0029E6B0 0x80 UpdateCompassAnchor__7CEntityFv  # OVL1; slot 0x6C of __vt__7CEntity, new in SOCOM II: the entity's compass anchor (0xC4) moved to the entity's position and enabled while it lives, unless locked -- the name is ours; ent_main.cpp
 0x0029E730 0x174 CreateCompassAnchor__7CEntityFiPCc  # OVL1; new in SOCOM II: type 11 makes a "VEHICLE" anchor through CCompass::CreateAnchor (hidden and locked unless the name holds "Turret"), names and types it, keeps it at 0xC4 -- the name is ours; ent_main.cpp
 0x0029E8B0 0x30 OnDeath__7CEntityFv  # OVL1; s1:align; split from 0x38: the last 8 bytes are CEntityCtrl::OnDeath
@@ -4060,7 +4060,7 @@
 0x002BADC0 0x8 func_002BADC0  # OVL1
 0x002BADD0 0x98 NetSendRequestTeamSwitch__Fi  # OVL1; s1:align
 0x002BAE70 0x30 TeamSwitchPacketHandler__FiiiPv  # OVL1; s1:align
-0x002BAEA0 0x90 NetSendE3Index__FiUiib  # OVL1; s1:align
+0x002BAEA0 0x90 NetSendE3Index__FiUii  # OVL1; s1:align; s1:align, signature by its callers (SOCOM 1's NetSendE3Index took a fourth, bool, argument; SOCOM II's never reads one and the team switch leaves a3 unset -- three arguments) -- the states lane
 0x002BAF30 0x184 func_002BAF30  # OVL1
 0x002BB0C0 0x104 func_002BB0C0  # OVL1
 0x002BB1D0 0x140 func_002BB1D0  # OVL1
@@ -4493,9 +4493,9 @@
 0x002D49C0 0x254 GetAltitude__Q23zdb5CGridFPQ23zdb11DiIntersect  # OVL1; s1:calls by hand (the zdb-world lane: CWorld::GetAltitude calls it where SOCOM 1's does)
 0x002D4C20 0xA0 GetHighestAltitude__Q23zdb11DiIntersectFPC6CPnt3Df  # OVL1; s1:calls by hand (the zdb-world lane: at SOCOM 1's call site in GetAltitude)
 0x002D4CC0 0x150 GetNearestIntersect__Q23zdb11DiIntersectFv  # OVL1; s1:calls by hand (the zdb-world lane: at SOCOM 1's call site in GetIntersect)
-0x002D4E10 0x158 func_002D4E10  # OVL1
-0x002D4F70 0x60 func_002D4F70  # OVL1
-0x002D4FD0 0xC func_002D4FD0  # OVL1
+0x002D4E10 0x158 SortNearToFar__Q23zdb11DiIntersectFPiPf  # OVL1; s1:order by hand (the zdb-world lane: SOCOM 1's SortNearToFar after GetNearestIntersect as there -- each hit's index and squared distance from the tail, then qsort with _cmpdi when two or more, the comparator's statics _cmpdi_rs/_cmpdi_di set around it)
+0x002D4F70 0x60 _cmpdi__FPCvPCv  # OVL1; s1:order by hand (the zdb-world lane: SOCOM 1's grid_di.cpp static comparator after SortNearToFar, which passes its address to qsort; compares _cmpdi_rs[*a] with _cmpdi_rs[*b])
+0x002D4FD0 0xC SetCameraCollideFlagRequired__3zdbFb  # OVL1; s1:order by hand (the zdb-world lane: SOCOM 1's, 8 bytes there, after _cmpdi as there: the byte cameraCollideFlagRequired, 0x44D758, stored)
 0x002D4FE0 0x74 __dt__6CStackFv  # OVL1; CStack's destructor, out of line (BuildMatrixPalette's static registers it): pops what an owner pushed
 0x002D5060 0x3BC ReadClutter__Q23zdb5CGridFPCcPCc  # OVL1; s1:order by hand (the world lane: grid_main.cpp's first function, as SOCOM 1's ReadClutter is: DeleteClutter, a new CClutterAnimManager, the clutter ZAR's path built with strcat, each CClutter newed, read and handed to AddClutter; Read follows it as there)
 0x002D5420 0xC4 Read__Q23zdb5CGridFRQ23zdb9CSaveLoad  # OVL1; s1:calls
@@ -4590,9 +4590,9 @@
 0x002DBF40 0x8 Tick__9CKeyboardFf  # OVL1; s1:order by hand (SOCOM 1's CKeyboard::Tick, empty in both, before ~CKeyboard; CInput::Tick calls it)
 0x002DBF50 0x44 __dt__9CKeyboardFv  # OVL1; s1:align
 0x002DBFA0 0xC __ct__9CKeyboardFv  # OVL1; s1:order by hand (SOCOM 1's CKeyboard(), three words in both, after ~CKeyboard; CInput::Init news one byte and calls it)
-0x002DBFB0 0xD8 func_002DBFB0  # OVL1
-0x002DC090 0xBC func_002DC090  # OVL1
-0x002DC150 0x30 func_002DC150  # OVL1
+0x002DBFB0 0xD8 GetIntersectedEdgePoints__Q23zdb15IntersectStructFP6CPnt3DP6CPnt3D  # OVL1; s1:order by hand (the zdb-world lane: SOCOM 1's int_main.cpp's first function, as here: the node's MTW built, the hit taken into the polygon's frame, CDI::GetEdgeIntersects (0x2DD4D0) called where SOCOM 1's calls it, both points transformed back)
+0x002DC090 0xBC GetIntersectedEdgePointsY__Q23zdb15IntersectStructFP6CPnt3D  # OVL1; s1:order by hand (the zdb-world lane: SOCOM 1's second, the same frame dance around CDI::GetEdgeIntersectsY (0x2DD2B0), the count tested > 1 as there)
+0x002DC150 0x30 GetPolyFlag27__Q23zdb15IntersectStructFv  # OVL1; new in SOCOM II, the name ours (the zdb-world lane): between SOCOM 1's edge-point queries and IsInside -- the hit polygon's parameter bit 27 as a bool, false without a polygon
 0x002DC180 0x2C IsInside__Q23zdb15IntersectStructFv  # OVL1; s1:align
 0x002DC1B0 0x20 GetRegion__Q23zdb15IntersectStructFv  # OVL1; s1:align
 0x002DC1D0 0x38 GetMaterial__Q23zdb15IntersectStructFv  # OVL1; s1:align
@@ -4615,8 +4615,8 @@
 0x002DD130 0x1C func_002DD130  # OVL1
 0x002DD150 0xC0 GetIntersect__Q23zdb7CDIPolyFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002DD210 0x9C func_002DD210  # OVL1
-0x002DD2B0 0x21C func_002DD2B0  # OVL1
-0x002DD4D0 0x1BC func_002DD4D0  # OVL1
+0x002DD2B0 0x21C GetEdgeIntersectsY__Q23zdb3CDIFP6CPnt3DP6CPnt3D  # OVL1; s1:callee by hand (the zdb-world lane: GetIntersectedEdgePointsY calls it where SOCOM 1's calls GetEdgeIntersectsY, after LoadTipAndTail as there)
+0x002DD4D0 0x1BC GetEdgeIntersects__Q23zdb3CDIFP6CPnt3DP6CPnt3DP6CPnt3D  # OVL1; s1:callee by hand (the zdb-world lane: GetIntersectedEdgePoints calls it where SOCOM 1's calls GetEdgeIntersects, after GetEdgeIntersectsY as there)
 0x002DD690 0x244 func_002DD690  # OVL1
 0x002DD8E0 0x1D0 GetAltitude__Q23zdb7CDIPolyFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002DDAB0 0x78 __dt__Q23zdb7CDIBBoxFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -5321,7 +5321,7 @@
 0x0030D550 0x8 zNetGetTime__9CZNetworkFv  # OVL1; s1:calls (CZNetGame::TenSecondLaunch, as SOCOM 1's; the same 8 bytes) -- the states lane
 0x0030D560 0x40 zNetGetGameSessionMasterClientIndex__9CZNetworkFv  # OVL1; tu: zNetDme.cpp~ (1.0 beta); s1:calls by hand (the states lane: at SOCOM 1's call sites; tu: zNetDme.cpp~)
 0x0030D5A0 0x40 zNetGetMyGameClientIndex__9CZNetworkFv  # OVL1; tu: zNetDme.cpp~ (1.0 beta); s1:calls by hand (the states lane: at SOCOM 1's call sites in the senders; 0x40 bytes in both; tu: zNetDme.cpp~)
-0x0030D5E0 0x40 func_0030D5E0  # OVL1
+0x0030D5E0 0x40 zNetGetGameClient__9CZNetworkFi  # OVL1; s1:calls (the remote-SEAL creation callback calls it where SOCOM 1's calls CZNetwork::zNetGetGameClient) -- the states lane
 0x0030D620 0x8 func_0030D620  # OVL1
 0x0030D630 0x34 zNetGetObject__9CZNetworkFi  # OVL1; s1:calls (RemoteSealDeletionCallback, as SOCOM 1's) -- the states lane
 0x0030D670 0xF8 zNetCreateObject__9CZNetworkFPi18NetOwnershipStatus17NetObjectLifespanUiiUiiPvPci  # OVL1; s1:calls (CreateLocalGame/Grenade/Bomb pass SOCOM 1's ten arguments, the stack layout included) -- the states lane
@@ -5615,7 +5615,7 @@
 0x0031F120 0x114 DeleteChild__Q23zdb6CWorldFPQ23zdb5CNode  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0031F240 0x1E8 AddChild__Q23zdb6CWorldFPQ23zdb5CNode  # OVL1; s1:align
 0x0031F430 0x10 ReserveChildren__Q23zdb6CWorldFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0031F440 0xB8 func_0031F440  # OVL1
+0x0031F440 0xB8 UpdateShadowCasters__Q23zdb6CWorldFv  # OVL1; new in SOCOM II, the name ours (the zdb-world lane): between ReserveChildren and AddShadowCaster, it walks m_shadow_casters (0x580): each caster's node (0x4C) SetActive(false) through the table, the node's first visual's first dynamic texture's CTexture stored at 0x50, then 0x31F570 on the caster
 0x0031F500 0x68 AddShadowCaster__Q23zdb6CWorldFPQ23zdb5CNode  # OVL1; new in SOCOM II, the name ours: a 0x70-byte object made from the node (0x31F780) pushed onto the vector at 0x580; AddChild and node_main.cpp call it
 0x0031F570 0x204 func_0031F570  # OVL1
 0x0031F780 0x228 __ct__Q23zdb13CShadowCasterFPQ23zdb5CNode  # OVL1; new in SOCOM II, the names ours: AddShadowCaster news 0x70 bytes and calls it with the node
@@ -7705,7 +7705,7 @@
 0x003A6E60 0x138 func_003A6E60  # OVL1
 0x003A6FA0 0x88 func_003A6FA0  # OVL1
 0x003A7030 0x164 func_003A7030  # OVL1
-0x003A71A0 0x20 Virtual60__7CTurretFP6CPnt3D  # OVL1; by hand (the wep lane: CTurret's vtable slot +0x60, an inline override's copy opening the unit -- the point at 0x380 copied out, true; CEntity's slot takes no parameter in zentity.h, the name follows its Virtual60); veh_turret.cpp
+0x003A71A0 0x20 Virtual60__7CTurretFP6CPnt3D  # OVL1; by hand (the wep lane: CTurret's vtable slot +0x60, an inline override's copy opening the unit -- the point at 0x380 copied out, true; CEntity's slot takes no parameter in zentity.h, the name follows its Virtual60); veh_turret.cpp; (zentity.h's slot +0x60 takes a CPnt3D * and returns bool since the entity lane's round 8)
 0x003A71C0 0x8 Virtual64__7CTurretFv  # OVL1; by hand (the wep lane: CTurret's vtable slot +0x64, an inline override's copy -- the node at 0x288); veh_turret.cpp
 0x003A71D0 0x20 Virtual68__7CTurretFP6CPnt3D  # OVL1; by hand (the wep lane: CTurret's vtable slot +0x68, an inline override's copy -- the point at 0x38C copied out, true); veh_turret.cpp
 0x003A71F0 0x138 func_003A71F0  # OVL1
@@ -8537,7 +8537,7 @@
 0x00401BD0 0x34 __sinit_game_state.cpp  # OVL1 data area; a static initialiser; s1:order (zeroes m_pool and registers ~CPool, as SOCOM 1's) -- the states lane
 0x00401C10 0x64 func_00401C10  # OVL1 data area; a static initialiser; s1~ zin_cheats.cpp (shape 0.52, a hint)
 0x00401C80 0x34 func_00401C80  # OVL1 data area; a static initialiser
-0x00401CC0 0x24 func_00401CC0  # OVL1 data area; a static initialiser
+0x00401CC0 0x24 __sinit_grid_di.cpp  # OVL1 data area; a static initialiser; s1:calls (it clears stack's owner byte and registers ~CStack -- grid_di.cpp's static initialiser; scores WRONG until zmath.h's CStack has a constructor that does not push) -- the zdb-world lane
 0x00401CF0 0x88 func_00401CF0  # OVL1 data area; a static initialiser
 0x00401D80 0x28 func_00401D80  # OVL1 data area; a static initialiser
 0x00401DB0 0x78 func_00401DB0  # OVL1 data area; a static initialiser; s1~ int_material.cpp (shape 0.54, a hint)
@@ -9416,7 +9416,7 @@
 0x00515900 0x4D4 func_00515900  # OVL2
 0x00515DE0 0x198 func_00515DE0  # OVL2
 0x00515F80 0x198 func_00515F80  # OVL2
-0x00516120 0x8 __ct__9CAiMapLocFv  # OVL2; CAiMapLoc's empty default constructor (jr ra; move v0,a0): CAiState::Create calls it for CAiState's member at +0x50 and every state's map cell -- SOCOM II's CAiMapLoc() reads nothing (zentity.h's stand-in, which reads invalid, is not it) -- the kit lane
+0x00516120 0x8 __ct__9CAiMapLocFv  # OVL2; CAiMapLoc's empty default constructor (jr ra; move v0,a0): CAiState::Create calls it for CAiState's member at +0x50 and every state's map cell -- SOCOM II's CAiMapLoc() reads nothing (zentity.h's stand-in, which reads invalid, is not it) -- the kit lane; (zentity.h's CAiMapLoc() is empty since the entity lane's round 8)
 0x00516130 0x8 func_00516130  # OVL2
 0x00516140 0x38 func_00516140  # OVL2
 0x00516180 0x75C func_00516180  # OVL2
@@ -9920,10 +9920,10 @@
 0x00542E50 0x16C func_00542E50  # OVL2
 0x00542FC0 0x18 Open__7CPickupFUi  # OVL2; s1:order (pickup_main.cpp's last, as SOCOM 1's Open__7CPickupFUi: the argument stored to bit_count, m_isOpen set -- the same two stores) (the SEAL lane, round 3)
 0x00542FE0 0x8 func_00542FE0  # OVL2
-0x00542FF0 0x8 func_00542FF0  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); s1~ not PrePostTick__10CZSealBodyFf (s1:vtable paired the wrong slot): slot 0xC of __vt__10CZSealBody is CEntity's inline GetPosNode (zentity.h), `jr ra; lw v0,0x28(a0)` -- OVL2's out-of-line copy of it, as OVL1's 0x295F10 (one of 2 copies of an inline)
+0x00542FF0 0x8 func_00542FF0  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); s1~ not PrePostTick__10CZSealBodyFf (s1:vtable paired the wrong slot): slot 0xC of __vt__10CZSealBody is CEntity's inline GetPosNode (zentity.h), `jr ra; lw v0,0x28(a0)` -- OVL2's out-of-line copy of it, as OVL1's 0x295F10 (one of 2 copies of an inline); OVL2's copy of CEntity::GetPosW() const (OVL1's 0x295F10 carries the name, the same 8 bytes) -- the entity lane; ovl-copy: GetPosW__7CEntityCFv
 0x00543000 0x8 Virtual5C__10CZSealBodyFv  # OVL2; slot 0x5C of __vt__10CZSealBody (CEntity's Virtual5C, the name the entity lane's); returns 0
-0x00543010 0x8 Virtual60__10CZSealBodyFv  # OVL2; slot 0x60 of __vt__10CZSealBody (CEntity's Virtual60); returns 0
-0x00543020 0x8 Virtual68__10CZSealBodyFv  # OVL2; slot 0x68 of __vt__10CZSealBody (CEntity's Virtual68); returns 0
+0x00543010 0x8 Virtual60__10CZSealBodyFP6CPnt3D  # OVL2; slot 0x60 of __vt__10CZSealBody (CEntity's Virtual60); returns 0; CEntity's Virtual60(CPnt3D *) overridden (the entity lane, measured)
+0x00543020 0x8 Virtual68__10CZSealBodyFP6CPnt3D  # OVL2; slot 0x68 of __vt__10CZSealBody (CEntity's Virtual68); returns 0; CEntity's Virtual68(CPnt3D *) overridden (the entity lane, measured)
 0x00543030 0x1AC func_00543030  # OVL2
 0x005431E0 0x8 func_005431E0  # OVL2; s1~ GetSealCtrlAi__9CSealCtrlFv (one of 2 out-of-line copies of an inline, by s1:vtable)
 0x005431F0 0x8 IsPlayer__9CSealCtrlCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
