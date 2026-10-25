@@ -7118,14 +7118,14 @@
 0x00385C30 0xA4 func_00385C30  # OVL1
 0x00385CE0 0xA8 __dt__13CUIVarManagerFv  # OVL1; s1:calls
 0x00385D90 0x5C DetachUIVar__10UIVarMixinFP11CUIVariable  # OVL1; s1:calls by hand (the HUD lane: UIVarMixin's destructor makes this call where SOCOM 1's calls DetachUIVar)
-0x00385DF0 0x5C func_00385DF0  # OVL1
+0x00385DF0 0x5C AttachUIVar__10UIVarMixinFP11CUIVariable  # OVL1; s1:calls (SystemTuner's constructor calls it with the new variable where SOCOM 1's calls AttachUIVar; detaches the old variable first, as SOCOM 1's)
 0x00385E50 0x48 func_00385E50  # OVL1
 0x00385EA0 0x248 func_00385EA0  # OVL1
 0x003860F0 0x1B0 func_003860F0  # OVL1
 0x003862A0 0x124 __as__11CUIVariableFPCc  # OVL1; s1:calls (the lobby callbacks' (variable, string) setter, as SOCOM 1's) -- the online lane
 0x003863D0 0x8C UpdateDependents__11CUIVariableFv  # OVL1; s1:calls (SyncGameClock calls it third, as SOCOM 1's) -- the online lane
 0x00386460 0x1F8 func_00386460  # OVL1
-0x00386660 0x90 func_00386660  # OVL1
+0x00386660 0x90 DetachAll__11CUIVariableFv  # OVL1; s1:calls by hand (detaches each watcher through UIVarMixin::DetachUIVar until none is left, as SOCOM 1's DetachAll; Destroy calls it first)
 0x003866F0 0x220 func_003866F0  # OVL1
 0x00386910 0xC func_00386910  # OVL1
 0x00386920 0x8 func_00386920  # OVL1
@@ -7137,9 +7137,9 @@
 0x003869A0 0x14 func_003869A0  # OVL1
 0x003869C0 0xC func_003869C0  # OVL1
 0x003869D0 0x18 func_003869D0  # OVL1
-0x003869F0 0xC0 func_003869F0  # OVL1
+0x003869F0 0xC0 Attach__11CUIVariableFP10UIVarMixin  # OVL1; ours (AttachUIVar calls it with the mixin once m_uivar is set; it adds the mixin to the variable's watchers unless already there, through the pod vector's insert)
 0x00386AB0 0x44 func_00386AB0  # OVL1
-0x00386B00 0x80 func_00386B00  # OVL1
+0x00386B00 0x80 Destroy__11CUIVariableFv  # OVL1; s1:calls by hand (DetachAll, then DeleteChildren and the fields cleared, as SOCOM 1's Destroy)
 0x00386B80 0x70 func_00386B80  # OVL1
 0x00386BF0 0x15C func_00386BF0  # OVL1
 0x00386D50 0x84 func_00386D50  # OVL1
@@ -7213,27 +7213,27 @@
 0x00389AE0 0xC GetType__10CImageSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389AF0 0xC GetType__11CButtonSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389B00 0x15C func_00389B00  # OVL1
-0x00389C60 0x154 func_00389C60  # OVL1
+0x00389C60 0x154 RefreshSystemTuners__Fv  # OVL1; ours (calls UpdateUIVar, slot 0xC, of each of the ten tuners InitSystemTuners makes, with its variable, skipping a null one)
 0x00389DC0 0xA8 UpdateUIVar__12CDialogTunerFP11CUIVariable  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389E70 0x9C UpdateUIVar__19CStickDeadzoneTunerFP11CUIVariable  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00389F10 0x78 func_00389F10  # OVL1
+0x00389F10 0x78 UpdateUIVar__18CStickInertiaTunerFP11CUIVariable  # OVL1; s1:vtable by hand (CStickInertiaTuner's slot 0xC; SOCOM 1's CStickAccelerationTuner's renamed; writes the pad's stick type at 0x2A4)
 0x00389F90 0x6C UpdateUIVar__22CStickSensitivityTunerFP11CUIVariable  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0038A000 0x40 UpdateUIVar__16CBrightnessTunerFP11CUIVariable  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0038A040 0x5C UpdateUIVar__11CMusicTunerFP11CUIVariable  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0038A0A0 0x168 func_0038A0A0  # OVL1
-0x0038A210 0x208 func_0038A210  # OVL1
+0x0038A0A0 0x168 UpdateUIVar__11CSoundTunerFP11CUIVariable  # OVL1; s1:vtable by hand (CSoundTuner's slot 0xC, as SOCOM 1's; sets sound groups 0, 3, 4, 5 and 14)
+0x0038A210 0x208 UninitSystemTuners__Fv  # OVL1; s1:order (deletes the tuners InitSystemTuners made and zeroes each, as SOCOM 1's; first of the unit's destructors as SOCOM 1's)
 0x0038A420 0x80 __dt__12CDialogTunerFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0038A4A0 0x80 __dt__19CStickDeadzoneTunerFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0038A520 0x80 func_0038A520  # OVL1
+0x0038A520 0x80 __dt__18CStickInertiaTunerFv  # OVL1; s1:vtable by hand (CStickInertiaTuner's slot 0x8; SOCOM 1's CStickAccelerationTuner renamed by its RTTI)
 0x0038A5A0 0x80 __dt__22CStickSensitivityTunerFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0038A620 0x80 __dt__16CBrightnessTunerFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0038A6A0 0x80 __dt__11CMusicTunerFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0038A720 0x80 __dt__11CSoundTunerFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0038A7A0 0x84C func_0038A7A0  # OVL1
+0x0038A7A0 0x84C InitSystemTuners__Fv  # OVL1; s1:order (news each tuner on SOUND_VOLUME ... HEADSET_CONTROLLER as SOCOM 1's does, between the destructors and ~SystemTuner as SOCOM 1's)
 0x0038AFF0 0x70 __dt__11SystemTunerFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0038B060 0x24 func_0038B060  # OVL1
-0x0038B090 0x80 func_0038B090  # OVL1
-0x0038B110 0x5C func_0038B110  # OVL1
+0x0038B060 0x24 TunersRebootHandler__FQ211CIOPManager11RebootPhaseQ211CIOPManager10RebootModePv  # OVL1; ours (the callback InitSystemTuners registers with theIOPManager: UIStoreOptions(0, 0), true)
+0x0038B090 0x80 __dt__13CHeadsetTunerFv  # OVL1; s1:vtable by hand (CHeadsetTuner's slot 0x8, SOCOM II's class)
+0x0038B110 0x5C UpdateUIVar__13CHeadsetTunerFP11CUIVariable  # OVL1; s1:vtable by hand (CHeadsetTuner's slot 0xC, SOCOM II's class: sound group 7)
 0x0038B170 0x8 UpdateUIVar__11SystemTunerFP11CUIVariable  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0038B180 0xCC func_0038B180  # OVL1
 0x0038B250 0x44 SetButtonState__Q221@unnamed@zui_skb_cpp@12CSkbKeyPropsFM9C2DButtonFPCvPv_v  # OVL1; s1:exact
@@ -7505,7 +7505,7 @@
 0x0039B670 0x4CC func_0039B670  # OVL1
 0x0039BB40 0x68 func_0039BB40  # OVL1
 0x0039BBB0 0x8 func_0039BBB0  # OVL1
-0x0039BBC0 0xD0 func_0039BBC0  # OVL1
+0x0039BBC0 0xD0 fwrite__9CBufferIOFPCvi  # OVL1; s1:vtable by hand (CBufferIO's slot 0x2C, the slot CIO::fwrite(const char *) calls with (&len, 4); falls back on CFileIO's slot 0x2C; SOCOM 1's slot 0x2C is fwrite__9CBufferIOFPCvi)
 0x0039BC90 0xA0 fwrite__9CBufferIOFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0039BD30 0x2C fflush__9CBufferIOFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0039BD60 0x7C freadchar__9CBufferIOFPc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -7516,8 +7516,8 @@
 0x0039C040 0x50 Close__9CBufferIOFv  # OVL1; s1:align
 0x0039C090 0xF4 LoadBuffer__9CBufferIOFv  # OVL1; s1:align
 0x0039C190 0xC0 Open__9CBufferIOFPCcUi  # OVL1; s1:align
-0x0039C250 0x14 func_0039C250  # OVL1
-0x0039C270 0x70 func_0039C270  # OVL1
+0x0039C250 0x14 Release__9CBufferIOFv  # OVL1; s1:order (after Open(const char *, unsigned) as SOCOM 1's Release; zeroes the four buffer members and calls CFileIO's Release as SOCOM 1's does)
+0x0039C270 0x70 Open__9CBufferIOFPvUi  # OVL1; s1:vtable by hand (CBufferIO's slot 0x44, SOCOM 1's Open__9CBufferIOFPvUi at 0x38 before SOCOM II's three new CIO slots; takes the buffer and size as SOCOM 1's)
 0x0039C2E0 0x44 __ct__9CBufferIOFv  # OVL1; s1:align
 0x0039C330 0x94 func_0039C330  # OVL1
 0x0039C3D0 0xC func_0039C3D0  # OVL1
@@ -7526,9 +7526,9 @@
 0x0039C440 0xBC func_0039C440  # OVL1
 0x0039C500 0x78 __dt__7COutputFv  # OVL1; s1:align
 0x0039C580 0xC func_0039C580  # OVL1
-0x0039C590 0x80 func_0039C590  # OVL1
+0x0039C590 0x80 UnRegisterRebootCallback__11CIOPManagerFi  # OVL1; s1:calls (UninitSystemTuners passes it theIOPManager and the id InitSystemTuners' RegisterRebootCallback returned)
 0x0039C610 0x6C RegisterRebootCallback__11CIOPManagerFPFQ211CIOPManager11RebootPhaseQ211CIOPManager10RebootModePv_bPv  # OVL1; s1:align
-0x0039C680 0x6C func_0039C680  # OVL1
+0x0039C680 0x6C zUtilStrUpr__FPc  # OVL1; ours (strlen, then toupper over each character in place; between the reboot registration and zUtilInit's empty stubs)
 0x0039C6F0 0x8 func_0039C6F0  # OVL1
 0x0039C700 0x8 func_0039C700  # OVL1
 0x0039C710 0xE0 func_0039C710  # OVL1
@@ -7537,7 +7537,7 @@
 0x0039CD40 0x78 func_0039CD40  # OVL1
 0x0039CDC0 0x8 GetSize__7CFileIOCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0039CDD0 0x94 fwrite__7CFileIOFPCc  # OVL1; s1:align
-0x0039CE70 0xC func_0039CE70  # OVL1
+0x0039CE70 0xC SetErrorHandler__7CFileIOFPFi_v  # OVL1; ours (stores its argument to the handler fread, fwrite and fseek call with 2 on a failure when the file's flags have 2)
 0x0039CE80 0x194 func_0039CE80  # OVL1
 0x0039D020 0x24 func_0039D020  # OVL1
 0x0039D050 0x430 func_0039D050  # OVL1
@@ -7557,13 +7557,13 @@
 0x0039E4F0 0x110 CreatePath__7CFileCDFPcPc  # OVL1; s1:calls
 0x0039E600 0x8 fflush__7CFileIOFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0039E610 0x8 ftell__7CFileIOCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0039E620 0x70 func_0039E620  # OVL1
+0x0039E620 0x70 fwrite__7CFileIOFPCvi  # OVL1; s1:vtable by hand (CFileIO's slot 0x2C, the slot CIO::fwrite(const char *) calls with (&len, 4), as SOCOM 1's slot 0x2C)
 0x0039E690 0x8C fread__7CFileIOFPvi  # OVL1; s1:calls
 0x0039E720 0x178 fseek__7CFileIOFii  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0039E8A0 0x104 Close__7CFileIOFv  # OVL1; s1:align
-0x0039E9B0 0x4A0 func_0039E9B0  # OVL1
+0x0039E9B0 0x4A0 Open__7CFileIOFPCcUi  # OVL1; s1:vtable by hand (CFileIO's slot 0x08, as SOCOM 1's; CBufferIO::Open(const char *, unsigned) calls it with its own arguments)
 0x0039EE50 0x104 PS2FileName__7CFileIOFPCcPcb  # OVL1; s1:calls (zSysLoadIRX calls it where SOCOM 1's does) -- the sound lane
-0x0039EF60 0xC func_0039EF60  # OVL1
+0x0039EF60 0xC Release__7CFileIOFv  # OVL1; s1:calls (CBufferIO::Release calls it last, as SOCOM 1's calls Release__7CFileIOFv; stores -1 to m_file, 0xC bytes as SOCOM 1's)
 0x0039EF70 0xC IsOpen__9CBufferIOCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0039EF80 0x50 IsOpen__7CFileIOCFv  # OVL1; s1:align
 0x0039EFD0 0x34 __ct__7CFileIOFv  # OVL1; s1:align
@@ -7587,42 +7587,42 @@
 0x0039FC60 0x120 func_0039FC60  # OVL1
 0x0039FD80 0x128 func_0039FD80  # OVL1
 0x0039FEB0 0x8 GetMode__10CMemCardIOCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0039FEC0 0x80 fwrite__10CMemCardIOFPCvi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0039FF40 0xE0 func_0039FF40  # OVL1
-0x003A0020 0xE0 func_003A0020  # OVL1
+0x0039FEC0 0x80 fsyncAsync__10CMemCardIOFiPi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike); corrected (the s1:vtable name was slot 0x38's by position, but SOCOM II's CIO grew three slots before fwrite(const char *): this is sceMcSync(1, ...) -- whether the asynchronous command finished, its result stored; the name ours)
+0x0039FF40 0xE0 fwriteAsync__10CMemCardIOFPCvi  # OVL1; ours (CMemCardIO's slot 0x34, SOCOM II's: MEMCARD_STATUS 3, then sceMcWrite without waiting, 6 on success)
+0x003A0020 0xE0 freadAsync__10CMemCardIOFPvi  # OVL1; ours (CMemCardIO's slot 0x30, SOCOM II's: MEMCARD_STATUS 2, then sceMcRead without waiting)
 0x003A0100 0x54 fflush__10CMemCardIOFv  # OVL1; s1:align
-0x003A0160 0x10C func_003A0160  # OVL1
-0x003A0270 0x10C func_003A0270  # OVL1
+0x003A0160 0x10C fwrite__10CMemCardIOFPCvi  # OVL1; s1:vtable by hand (CMemCardIO's slot 0x2C, the slot CIO::fwrite(const char *) calls with (&len, 4); sceMcWrite then sceMcSync, as SOCOM 1's)
+0x003A0270 0x10C fread__10CMemCardIOFPvi  # OVL1; s1:vtable by hand (CMemCardIO's slot 0x24, as SOCOM 1's; sceMcRead then sceMcSync)
 0x003A0380 0xC fread__10CMemCardIOFiPPv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003A0390 0xA0 fseek__10CMemCardIOFii  # OVL1; s1:align
 0x003A0430 0x80 ftell__10CMemCardIOCFv  # OVL1; s1:align
 0x003A04B0 0x8 GetSize__10CMemCardIOCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003A04C0 0x10 IsOpen__10CMemCardIOCFv  # OVL1; s1:exact
-0x003A04D0 0xD0 func_003A04D0  # OVL1
+0x003A04D0 0xD0 Close__10CMemCardIOFv  # OVL1; s1:vtable by hand (CMemCardIO's slot 0x0C, as SOCOM 1's: sceMcClose, then the descriptor -1)
 0x003A05A0 0x224 Open__10CMemCardIOFPCcUi  # OVL1; s1:align
 0x003A07D0 0xB4 chdir__8CMemCardFPCc  # OVL1; s1:calls+order (UI handlers call it where SOCOM 1's do; chdir, mkdir, Exists in SOCOM 1's order) -- the UI-commands lane
 0x003A0890 0xBC mkdir__8CMemCardFPCc  # OVL1; s1:calls+order (after chdir as SOCOM 1's; called where SOCOM 1's UI handlers call it) -- the UI-commands lane
 0x003A0950 0xB8 Exists__8CMemCardFPCc  # OVL1; s1:calls+order (after mkdir as SOCOM 1's; called where SOCOM 1's UI handlers call it) -- the UI-commands lane
 0x003A0A10 0x4C4 CreateIconFiles__8CMemCardFv  # OVL1; s1:align
 0x003A0EE0 0x17C Ascii2Sjis__FUc  # OVL1; s1:align
-0x003A1060 0x1A8 func_003A1060  # OVL1
+0x003A1060 0x1A8 GetUsedSpace__8CMemCardFv  # OVL1; ours (when the save directory exists: the files of ./* summed in kilobytes, plus half the entry count and one when any file has bytes)
 0x003A1210 0xC4 GetFreeSpace__8CMemCardFv  # OVL1; s1:calls (the save handlers call it where SOCOM 1's do) -- the UI-commands lane
 0x003A12E0 0x88 Format__8CMemCardFv  # OVL1; s1:align
 0x003A1370 0x208 func_003A1370  # OVL1
 0x003A1580 0xC8 IsFormatted__8CMemCardFv  # OVL1; s1:align
 0x003A1650 0xE0 IsInserted__8CMemCardFv  # OVL1; s1:align
-0x003A1730 0xA4 func_003A1730  # OVL1
-0x003A17E0 0xA0 func_003A17E0  # OVL1
-0x003A1880 0xF8 func_003A1880  # OVL1
-0x003A1980 0x244 func_003A1980  # OVL1
-0x003A1BD0 0x90 func_003A1BD0  # OVL1
-0x003A1C60 0x90 func_003A1C60  # OVL1
-0x003A1CF0 0x118 func_003A1CF0  # OVL1
-0x003A1E10 0x84 func_003A1E10  # OVL1
-0x003A1EA0 0x98 func_003A1EA0  # OVL1
-0x003A1F40 0xA4 func_003A1F40  # OVL1
-0x003A1FF0 0x13C func_003A1FF0  # OVL1
-0x003A2130 0x134 func_003A2130  # OVL1
+0x003A1730 0xA4 LoadGame__8CMemCardFPCc  # OVL1; s1:order (after the reserve-file deletes as SOCOM 1's saves follow IsInserted; the game save manager at 0x1C loads with flags 0xE, then LOADED_FROM_MEMCARD)
+0x003A17E0 0xA0 SaveGame__8CMemCardFPCcPc  # OVL1; s1:order (the game save manager at 0x1C saves with flags 0xE; SOCOM II passes a second string)
+0x003A1880 0xF8 CreateReserveFiles__8CMemCardFv  # OVL1; ours (PATCHFILE.DAT of 2000 KB unless a *.zdb exists, then SCRATCHPAD.DAT of 2999 KB less the save directory's use)
+0x003A1980 0x244 CreateReserveFile__8CMemCardFPCci  # OVL1; ours (unless the named file exists: opened with create, seeked to the last kilobyte of the size given and 1 KB of 0xEE written)
+0x003A1BD0 0x90 DeletePatchFile__8CMemCardFv  # OVL1; ours (sceMcDelete of PATCHFILE.DAT on the chosen port and slot unless a file is open)
+0x003A1C60 0x90 DeleteScratchpad__8CMemCardFv  # OVL1; ours (sceMcDelete of SCRATCHPAD.DAT on the chosen port and slot unless a file is open)
+0x003A1CF0 0x118 GetCardStatus__8CMemCardFv  # OVL1; ours (polls sceMcGetInfo twice at most: 0 ready, 2 no card, 1 unformatted, 6 when the result is -5)
+0x003A1E10 0x84 LoadConfig__8CMemCardFPCc  # OVL1; s1:order (the config save manager at 0x18 loads with flags 0xC, after SaveConfig in memory as SOCOM 1's LoadConfig before SaveConfig in source)
+0x003A1EA0 0x98 SaveConfig__8CMemCardFPCcPCc  # OVL1; s1:order (the config save manager at 0x18 saves with flags 0xC; SOCOM II passes a description)
+0x003A1F40 0xA4 Uninit__8CMemCardFv  # OVL1; s1:order (before Init as SOCOM 1's Uninit: sceMcEnd and the module unloaded when libmc is up, then MEMCARD_STATUS 0)
+0x003A1FF0 0x13C Reset__8CMemCardFv  # OVL1; ours (when libmc is up: sceMcInit again, both ports probed, MEMCARD_STATUS 0; between Uninit and Init)
+0x003A2130 0x134 Init__8CMemCardFv  # OVL1; s1:order (before ~CMemCard as SOCOM 1's Init: the module loaded, sceMcInit, both ports probed)
 0x003A2270 0x68 __dt__8CMemCardFv  # OVL1; s1:align
 0x003A22E0 0x90 __ct__8CMemCardFv  # OVL1; s1:calls
 0x003A2370 0x94 func_003A2370  # OVL1
@@ -7669,8 +7669,8 @@
 0x003A5C30 0x3C func_003A5C30  # OVL1
 0x003A5C70 0x40 func_003A5C70  # OVL1
 0x003A5CB0 0x8 func_003A5CB0  # OVL1
-0x003A5CC0 0x108 func_003A5CC0  # OVL1
-0x003A5DD0 0x78 func_003A5DD0  # OVL1
+0x003A5CC0 0x108 __dt__19CSimpleStateMachineFv  # OVL1; by hand, the UI-commands lane's lead vetted (stores the same vtable first, drains the queue, frees 0x30, destroys the queue at 0x14 and deletes itself when its flag is positive: MW's destructor shape; the inlined ~CSMInitNetwork calls it with 0)
+0x003A5DD0 0x78 __ct__19CSimpleStateMachineFv  # OVL1; by hand, the UI-commands lane's lead vetted (stores __vt__19CSimpleStateMachine, 0x408240, before anything else and copy-builds the state queue at 0x14 from a temporary; UIInitNetwork calls it right after operator new(60))
 0x003A5E50 0x78 func_003A5E50  # OVL1
 0x003A5ED0 0xB0 func_003A5ED0  # OVL1
 0x003A5F80 0x5C func_003A5F80  # OVL1

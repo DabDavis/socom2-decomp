@@ -802,6 +802,18 @@
 0x0049EA04 0x4 m_topy__3C2D  # OVL1 bss; SOCOM 1's static (the circle's y; 8 after m_topx in SOCOM 1, 4 now): 12 references in 8 functions take 0x49EA04
 0x0049EA08 0x4 m_botx__3C2D  # OVL1 bss; SOCOM 1's static (gp-26212): C2D::Init stores 2048 plus half the screen's width, as SOCOM 1's Init stored 2048 + 320: 1 reference (Init)
 0x0049EA0C 0x4 m_boty__3C2D  # OVL1 bss; SOCOM 1's static (gp-26204): C2D::Init stores 2048 plus half the screen's height, as SOCOM 1's Init stored 2048 + 224: 1 reference (Init)
+0x0049EC08 0x4 s_soundTuner  # OVL1 bss; zui_tuners.cpp's static (name ours): the CSoundTuner (SOUND_VOLUME) InitSystemTuners news; 3 references in 3 functions (InitSystemTuners stores it, UninitSystemTuners deletes and zeroes it, RefreshSystemTuners reads it)
+0x0049EC10 0x4 s_musicTuner  # OVL1 bss; zui_tuners.cpp's static (name ours): the CMusicTuner (MUSIC_VOLUME); 3 references in 3 functions (InitSystemTuners, UninitSystemTuners, RefreshSystemTuners)
+0x0049EC18 0x4 s_brightnessTuner  # OVL1 bss; zui_tuners.cpp's static (name ours): the CBrightnessTuner (BRIGHTNESS); 3 references in 3 functions (InitSystemTuners, UninitSystemTuners, RefreshSystemTuners)
+0x0049EC20 0x4 s_stickSensitivityTuner0  # OVL1 bss; zui_tuners.cpp's static (name ours): the CStickSensitivityTuner of stick 0; 3 references in 3 functions (InitSystemTuners, UninitSystemTuners, RefreshSystemTuners)
+0x0049EC28 0x4 s_stickInertiaTuner0  # OVL1 bss; zui_tuners.cpp's static (name ours): the CStickInertiaTuner of stick 0; 3 references in 3 functions (InitSystemTuners, UninitSystemTuners, RefreshSystemTuners)
+0x0049EC30 0x4 s_stickDeadzoneTuner0  # OVL1 bss; zui_tuners.cpp's static (name ours): the CStickDeadzoneTuner of stick 0; 3 references in 3 functions (InitSystemTuners, UninitSystemTuners, RefreshSystemTuners)
+0x0049EC38 0x4 s_stickSensitivityTuner1  # OVL1 bss; zui_tuners.cpp's static (name ours): the CStickSensitivityTuner of stick 1; 3 references in 3 functions (InitSystemTuners, UninitSystemTuners, RefreshSystemTuners)
+0x0049EC40 0x4 s_stickInertiaTuner1  # OVL1 bss; zui_tuners.cpp's static (name ours): the CStickInertiaTuner of stick 1; 3 references in 3 functions (InitSystemTuners, UninitSystemTuners, RefreshSystemTuners)
+0x0049EC48 0x4 s_stickDeadzoneTuner1  # OVL1 bss; zui_tuners.cpp's static (name ours): the CStickDeadzoneTuner of stick 1; 3 references in 3 functions (InitSystemTuners, UninitSystemTuners, RefreshSystemTuners)
+0x0049EC50 0x4 s_dialogTuner  # OVL1 bss; zui_tuners.cpp's static (name ours): the CDialogTuner (DIALOG_VOLUME); 3 references in 3 functions (InitSystemTuners, UninitSystemTuners, RefreshSystemTuners)
+0x0049EC58 0x4 s_headsetTuner  # OVL1 bss; zui_tuners.cpp's static (name ours): the CHeadsetTuner (HEADSET_CONTROLLER); 1 reference in 1 function (InitSystemTuners; neither Uninit nor Refresh touches it)
+0x0049EC60 0x4 s_rebootCallbackId  # OVL1 bss; zui_tuners.cpp's static (name ours): the id RegisterRebootCallback returns; 2 references in 2 functions (InitSystemTuners stores it, UninitSystemTuners unregisters it)
 0x004A1798 0x1 m_streamingSndActive__7CFileCD  # OVL1 bss; s1:data-seq (size SOCOM 1's; via UISysPostInit__FP13C2DAnimCmdHdrPf)
 0x004A4480 0x94 zVid  # OVL1 bss; s1:data-seq (via Update__Q23zdb6CWorldFv); SOCOM 1's _zvid_public is 0x80, SOCOM II's runs to at least 0x92 (the game states set the byte at 0x91), so 0x94 to the word
 0x004B4810 0x4 m_camera__Q23zdb7CVisual  # OVL1 bss; SOCOM 1's (CCoreState::Init sets it with the world's camera beside the pipe's, as SOCOM 1's): 10 references in 6 functions take 0x4B4810
