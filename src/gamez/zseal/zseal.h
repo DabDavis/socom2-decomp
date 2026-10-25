@@ -11,6 +11,8 @@
 #define ZSEAL_H
 
 #include "../zentity/zentity.h"
+#include "../znode/node_world.h"
+#include "../zcamera/zcamera.h"
 
 class CZSealBody;
 class CZProjectile;
@@ -235,10 +237,15 @@ public:
     virtual void OnMissionStart();                                          /* +0x4C */
     virtual void OnMissionEnd();
     virtual void OnRecycleEntity(CEntity *e);                               /* +0x54 */
+    virtual void TeleportTo(const CPnt3D *pos, const CQuat *quat);          /* +0x3C */
+    virtual void TeleportTo(const CMatrix *m);
     virtual int Virtual5C();
     virtual int Virtual60();
     virtual int Virtual68();
 
+    /* whether a player drives it (an inline the code shows: m_control tested, IsPlayer called) */
+    bool IsPlayer() { return m_control ? ((CSealCtrl *)m_control)->IsPlayer() : false; }
+    void ResetAltitude(float y);
     class CPickup *CurrentPickupSecondary();
     class CPickup *CurrentPickup();
     bool CompassAnchor_MPBase(CCompassAnchor *anchor);
@@ -246,9 +253,15 @@ public:
     bool ExecuteDelayedAction_Jump();
     bool ExecuteDelayedAction_Climb();
 
-    unsigned char _170[0x374 - 0x170];
+    unsigned char _170[0x2e4 - 0x170];
+    float m_alt;   // 0x2e4 (SOCOM 1's 0xe98)
+    unsigned char _2e8[0x374 - 0x2e8];
     SEAL_STATE m_desiredState;   // 0x374 (SOCOM 1's 0x304; the HUD's pose bitmap reads it)
-    unsigned char _375[0x5e0 - 0x375];
+    unsigned char _375[0x400 - 0x375];
+    zdb::IntersectStruct m_last_altitude;   // 0x400 (SOCOM 1's 0x320)
+    unsigned char _420[0x434 - 0x420];
+    unsigned char m_snakePath[4];   // 0x434: a CAiPath (SOCOM 1's 0x384)
+    unsigned char _438[0x5e0 - 0x438];
     CZKit m_kit;   // 0x5e0 (SOCOM 1's 0x520)
     unsigned char _5e4[0xec0 - 0x5e4];
     CCompassAnchor *m_mpbomb_anchor;   // 0xec0 (SOCOM 1's 0xdb4)

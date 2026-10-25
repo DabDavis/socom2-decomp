@@ -14,6 +14,67 @@ public:
 
 extern "C" {
 void func_005C7840(CZKit *kit);   /* CZKit::PostSetupItems (SOCOM 1's OnMissionStart calls it) */
+void func_00525200(void *path);   /* (a CAiPath reset: its member at 0x98's, tail-called) */
+}
+
+/* the world's camera (zdb::CWorld at 0x128; only that) */
+struct CWorldCamera {
+    unsigned char _0[0x128];
+    zdb::CCamera *m_camera;   // 0x128
+};
+
+/* teleported: the altitude and the last ground hit reset to the new place, the snake path
+ * cleared; a player's camera sees every region again (OVL2 0x546E40, 0x546CF0; SOCOM II's) */
+void CZSealBody::TeleportTo(const CPnt3D *pos, const CQuat *quat)
+{
+    if (pos) {
+        ResetAltitude(pos->y);
+        m_last_altitude.m_pos = CPnt3D::zero;
+        m_last_altitude.m_norm = CPnt3D::zero;
+        m_last_altitude.m_poly = 0;
+        m_last_altitude.m_node = 0;
+        m_last_altitude.m_pos = *pos;
+        m_last_altitude.m_norm = CPnt3D::unit_y;
+    }
+    func_00525200(m_snakePath);
+    CEntity::TeleportTo(pos, quat);
+    if (IsPlayer() && zdb::CWorld::m_world) {
+        zdb::CCamera *cam = ((CWorldCamera *)zdb::CWorld::m_world)->m_camera;
+
+        if (cam) {
+            cam->SetPlayerCanSeeRegions(-1);
+            cam->SetCameraCanSeeRegions(-1);
+        }
+    }
+}
+
+void CZSealBody::TeleportTo(const CMatrix *m)
+{
+    ResetAltitude(m->m_matrix[3][1]);
+    m_last_altitude.m_pos = CPnt3D::zero;
+    m_last_altitude.m_norm = CPnt3D::zero;
+    m_last_altitude.m_poly = 0;
+    m_last_altitude.m_node = 0;
+    m_last_altitude.m_pos = *(const CPnt3D *)m->m_matrix[3];
+    m_last_altitude.m_norm = CPnt3D::unit_y;
+    func_00525200(m_snakePath);
+    CEntity::TeleportTo(m);
+    if (IsPlayer() && zdb::CWorld::m_world) {
+        zdb::CCamera *cam = ((CWorldCamera *)zdb::CWorld::m_world)->m_camera;
+
+        if (cam) {
+            cam->SetPlayerCanSeeRegions(-1);
+            cam->SetCameraCanSeeRegions(-1);
+        }
+    }
+}
+
+/* the altitude taken from here and a new one asked for (OVL2 0x546CD0: SOCOM 1's
+ * m_get_new_altitude is the entity's bit 8 now, zentity.h's m_bit8) */
+void CZSealBody::ResetAltitude(float y)
+{
+    m_alt = y;
+    m_bit8 = true;
 }
 
 /* the mission's start: the kit's items set up, then the controller's (OVL2 0x553E60) */

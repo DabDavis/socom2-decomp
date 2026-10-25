@@ -10011,7 +10011,7 @@
 0x00546B50 0xA8 func_00546B50  # OVL2
 0x00546C00 0x34 func_00546C00  # OVL2
 0x00546C40 0x8C func_00546C40  # OVL2
-0x00546CD0 0x20 func_00546CD0  # OVL2
+0x00546CD0 0x20 ResetAltitude__10CZSealBodyFf  # OVL2; s1:order (seal.cpp: right before TeleportTo(matrix), as SOCOM 1's); SOCOM 1's two statements: m_alt (now 0x2E4) stored, the entity's new-altitude bit set (bit 8 of 0xE0 in SOCOM II, SOCOM 1's bit 7)
 0x00546CF0 0x144 TeleportTo__10CZSealBodyFPC7CMatrix  # OVL2; slot 0x40 of __vt__10CZSealBody; calls CEntity's TeleportTo(matrix), as SOCOM 1's
 0x00546E40 0x158 TeleportTo__10CZSealBodyFPC6CPnt3DPC5CQuat  # OVL2; slot 0x3C of __vt__10CZSealBody; calls CEntity's TeleportTo(pos, quat), as SOCOM 1's
 0x00546FA0 0x1D0 func_00546FA0  # OVL2
