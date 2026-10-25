@@ -11,10 +11,10 @@ u8 func_00309560();                                 /* extern */
 s32 func_003096C0();                                /* extern */
 M2C_UNK func_003096F0();                            /* extern */
 M2C_UNK func_00309850(s32);                         /* extern */
-M2C_UNK func_00350E30(M2C_UNK);                     /* extern */
 M2C_UNK func_00367810(char *, M2C_UNK, M2C_UNK);    /* extern */
 M2C_UNK sceGsSyncPath(M2C_UNK, M2C_UNK);            /* extern */
 M2C_UNK zSysFifoDisable__Fv();                      /* extern */
+M2C_UNK zSysFifoEnable__FUi(M2C_UNK);               /* extern */
 M2C_UNK zSysFifoEnd__Fv();                          /* extern */
 extern s32 data_004A44B4;
 
@@ -28,7 +28,7 @@ u8 func_00366940(char *arg0) {
             zSysFifoDisable__Fv();
             func_00309850(temp_s0);
             sceGsSyncPath(0, 0);
-            func_00350E30(1);
+            zSysFifoEnable__FUi(1);
         } else {
             func_00367810(arg0, 3, 0);
             if (SC_MEMBER(arg0, u8 *, 0x27A) != 0) {

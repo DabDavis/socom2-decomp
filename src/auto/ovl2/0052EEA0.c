@@ -7,10 +7,10 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_002D0BF0(s32);                         /* extern */
+M2C_UNK Destroy__6CGraphFP6CGraph(s32);             /* extern */
 
 void func_0052EEA0(char *arg0) {
-    func_002D0BF0(SC_MEMBER(arg0, s32 *, 0x15C));
+    Destroy__6CGraphFP6CGraph(SC_MEMBER(arg0, s32 *, 0x15C));
     SC_MEMBER(arg0, s32 *, 0x15C) = 0;
     SC_MEMBER(arg0, s32 *, 0x58) = (s32) (SC_MEMBER(arg0, s32 *, 0x58) & ~1);
 }

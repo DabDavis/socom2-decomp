@@ -8,19 +8,19 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 s32 Read__6CGraphFR7CFileIOPFP6CGraphP6CGNodebRUiPv_vPFP6CGraphP6CGEdgebRUiPv_vPv(s32, s32, s32, s32, s32); /* extern */
+s32 __ct__6CGraphFPCc(s32, M2C_UNK);                /* extern */
+M2C_UNK __dt__6CGraphFv(s32, M2C_UNK);              /* extern */
 s32 __nw__FUi(M2C_UNK);                             /* extern */
-M2C_UNK func_002D0990(s32, M2C_UNK);                /* extern */
-s32 func_002D0B70(s32, M2C_UNK);                    /* extern */
 
 s32 Create__6CGraphFR7CFileIOPFP6CGraphP6CGNodebRUiPv_vPFP6CGraphP6CGEdgebRUiPv_vPv(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
     s32 var_s0;
 
     var_s0 = __nw__FUi(0x1C);
     if (var_s0 != 0) {
-        var_s0 = func_002D0B70(var_s0, 0);
+        var_s0 = __ct__6CGraphFPCc(var_s0, 0);
     }
     if (Read__6CGraphFR7CFileIOPFP6CGraphP6CGNodebRUiPv_vPFP6CGraphP6CGEdgebRUiPv_vPv(var_s0, arg0, arg1, arg2, arg3) == 0) {
-        func_002D0990(var_s0, 1);
+        __dt__6CGraphFv(var_s0, 1);
         var_s0 = 0;
     }
     return var_s0;

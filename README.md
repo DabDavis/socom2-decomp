@@ -649,6 +649,33 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     guard (SOCOM 1's build had one);
   - inside an inlined bool function, `if (c) return true; return false;` materialises with
     daddiu/move.
+- **Tells from zsys and the valves** (round 3 of the sound lane):
+  - MW accepts a 128-bit literal (32 hex digits); a 64-bit constant fills only the low half
+    (`pcpyld v1,zero,v0`);
+  - an `asm volatile { sync }` block is a barrier (a constant loaded before it is loaded again
+    after it); GCC-style `asm("sync")` lets MW keep it in a register;
+  - MW moves an asm block's last instruction into a following call's delay slot; a trailing
+    `nop` in the block keeps the slot empty;
+  - `(T *)0x70000000 + i*n` adds the base through `$at` each time; as integer arithmetic MW
+    keeps the base in a register;
+  - `bool b = true;` when 1 is already in a register comes out as `andi rX,rY,0xff`;
+  - an assert that becomes `beqz; li 1` in the delay slot was a ternary, `x ? p != 0 : true`;
+  - SOCOM 1's two-begin()s-and-one-end() loop is `std::transform` of a container onto itself;
+  - a function calling a small same-region function out of line, which -inline auto would
+    inline within one unit, is in another unit (CHeap).
+- **Tells from the game-state pool and the graph** (round 8: game_state.cpp, graph_tree.cpp):
+  - a user-declared empty destructor keeps `delete p`'s null test under an enclosing `if (p)`;
+    a trivial one lets MW fold it away;
+  - a bool parameter stored into a 1-bit field compiles to `(b & 1) << n`, even for a constant
+    argument;
+  - `T *e = p;` with `&e` taken reloads every access through `e` from the stack, while `p`
+    stays in a saved register;
+  - an `&&` of two inline bool calls is materialised only when the `&&` is itself an inline
+    bool function;
+  - `return i == end ? 0 : *i;` drops the trailing nop `if (i == end) return 0; return *i;`
+    leaves;
+  - SOCOM 1 calls CGEdge's constructor and CGEdge::Delete out of line, as SOCOM II does: both
+    need `#pragma auto_inline off`.
 - **The class vector's deleter destructor is out of class** (include/vector): MSL 3.0.1 defines
   it after the class body, not inline, so MW emits it in each unit's template tail and inlines it
   only where the unit has already instantiated it -- an implicit destructor chain over a class

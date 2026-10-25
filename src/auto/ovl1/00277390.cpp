@@ -11,7 +11,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 extern "C" {
 M2C_UNK Close__4CSndFv();                           /* extern */
 M2C_UNK UIOpen__4CSndFv();                          /* extern */
-M2C_UNK func_0034F950();                            /* extern */
+M2C_UNK zSysPostInit__Fv();                         /* extern */
 extern u8 m_streamingSndActive__7CFileCD;
 
 bool UISysPostInit__FP13C2DAnimCmdHdrPf(void) {
@@ -23,7 +23,7 @@ bool UISysPostInit__FP13C2DAnimCmdHdrPf(void) {
     } else {
         var_s0 = false;
     }
-    func_0034F950();
+    zSysPostInit__Fv();
     if (var_s0) {
         UIOpen__4CSndFv();
     }

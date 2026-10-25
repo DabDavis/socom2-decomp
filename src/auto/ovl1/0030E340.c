@@ -4,10 +4,11 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+s32 __ct__5CHeapFUi(s32, M2C_UNK);                  /* extern */
 s32 __nw__FUi(M2C_UNK);                             /* extern */
-s32 func_0034F060(s32, M2C_UNK);                    /* extern */
 extern s32 data_0045B328;
 
 void func_0030E340(void) {
@@ -16,7 +17,7 @@ void func_0030E340(void) {
     if (data_0045B328 == 0) {
         var_a0 = __nw__FUi(0x18);
         if (var_a0 != 0) {
-            var_a0 = func_0034F060(var_a0, 0x86470);
+            var_a0 = __ct__5CHeapFUi(var_a0, 0x86470);
         }
         data_0045B328 = var_a0;
     }

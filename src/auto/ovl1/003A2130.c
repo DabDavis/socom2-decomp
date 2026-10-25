@@ -11,9 +11,9 @@ char *Create__6CValveFPCc10VALVE_TYPE(M2C_UNK *, M2C_UNK); /* extern */
 M2C_UNK MakeCallbacks__6CValveF11VALVE_STATE(char *, s32); /* extern */
 M2C_UNK RunEventAnim__10CMenuStateFPCcPCc(M2C_UNK *, M2C_UNK *, M2C_UNK); /* extern */
 s32 func_001B3970();                                /* extern */
-M2C_UNK func_0034F7D0();                            /* extern */
 M2C_UNK sceMcGetInfo(M2C_UNK, M2C_UNK, M2C_UNK *, M2C_UNK, M2C_UNK); /* extern */
 M2C_UNK sceMcSync(M2C_UNK, M2C_UNK *, M2C_UNK *);   /* extern */
+M2C_UNK zSysLoadMcIRX__Fv();                        /* extern */
 extern M2C_UNK data_003FBC50;
 extern M2C_UNK data_003FBC68;
 extern M2C_UNK data_003FBC78;
@@ -35,7 +35,7 @@ void func_003A2130(void) {
 
     if (data_004A37B8 == 0) {
         if (data_0049E2D0 == 0) {
-            func_0034F7D0();
+            zSysLoadMcIRX__Fv();
         }
         if (func_001B3970() != 0) {
             RunEventAnim__10CMenuStateFPCcPCc(&data_00408538, &data_003FBC78, 0);
