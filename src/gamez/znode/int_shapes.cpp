@@ -47,12 +47,6 @@ CDIBBox::~CDIBBox()
     Free();
 }
 
-/* a box answers no altitude query (SOCOM 1's, the same two words) */
-int CDIBBox::GetAltitude(DiIntersect *di)
-{
-    return 0;
-}
-
 /* the polygon's normal from its first three points, normalised on VU0 (SOCOM 1's) */
 void CDI::SetEdgeVecsAndNorm()
 {
@@ -66,6 +60,12 @@ void CDI::SetEdgeVecsAndNorm()
     sceVu0OuterProduct((float *)&n, (float *)&a, (float *)&b);
     sceVu0Normalize((float *)&n, (float *)&n);
     VecSet(&diNorm.x, n.x, n.y, n.z, 0.0f);
+}
+
+/* a box answers no altitude query (SOCOM 1's, the same two words) */
+int CDIBBox::GetAltitude(DiIntersect *di)
+{
+    return 0;
 }
 
 /* a point set from three values (the arguments evaluated right to left, so z, y and x are loaded
