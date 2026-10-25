@@ -10,6 +10,7 @@
 #include <string.h>
 #include <vector>
 #include <algorithm>
+#include "../zui/zui.h"
 
 /* a field copied when both ends are there (the items' constructors test both addresses, as SOCOM
  * 1's do; a local array's test folds away -- TransferLeadership, CreateClan. The name ours) */
@@ -317,6 +318,13 @@ void ReleaseVector(std::vector<T *> &v)
     v.swap(tmp);
 }
 
+/* a pointer list's end built straight from its storage: a walk that re-reads the end after a call
+ * inlines whole one level down only so -- through include/vector's end() (three high) an inlined
+ * find calls end() and __iter out of line inside its caller (RevokeInvite, AddFriend), where the
+ * target inlines everything (ours) */
+#define LOBBY_LIST_LAST() \
+    iterator Last() { return iterator((elem_t *)this->data_ + this->size_); }
+
 /* the invitations received (SOCOM 1's InvitationItem, its constructor from the response) */
 struct InvitationItem {
     InvitationItem(MediusCheckMyClanInvitationsResponse *r)
@@ -375,6 +383,7 @@ public:
 
 class ClanInvitationVector : public std::vector<ClanInvitationItem *> {
 public:
+    LOBBY_LIST_LAST()
     ~ClanInvitationVector() { DeleteAll(); }
     ClanInvitationItem *Find(int id)
     {
@@ -382,6 +391,14 @@ public:
             if (id == (*i)->AccountID)
                 return *i;
         return 0;
+    }
+    /* the invited account's number by name, -1 none (the end through Last: see there) */
+    int FindAccount(const char *name)
+    {
+        for (iterator i = begin(); i != Last(); ++i)
+            if (!strcasecmp((*i)->AccountName, name))
+                return (*i)->AccountID;
+        return -1;
     }
     void Add(MediusGetClanInvitationsSentResponse *resp);
     void DeleteAll();
@@ -438,6 +455,7 @@ typedef MediusGetBuddyList_ExtraInfoResponse FriendItem;
 /* the friends unit's friends (0x44FDC0, its initialiser 0x402420) */
 class FriendVector : public std::vector<FriendItem *> {
 public:
+    LOBBY_LIST_LAST()
     ~FriendVector() { DeleteAll(); }
     FriendItem *Find(int id)
     {
@@ -617,6 +635,9 @@ public:
     void AddToIgnore(const char *name);
     void RemoveFromIgnore(int id);
     void AddFriend(const char *name);
+    bool RevokeInvite(const char *name);
+    void UpdateClanStats();
+    bool GetClan();
     bool IsIgnored(const char *name);
 
     /* open and in the lobby proper (the name ours: GetFriendInvitations materialises the && before

@@ -222,7 +222,7 @@ void FriendVector::Add(MediusGetBuddyList_ExtraInfoResponse *resp)
 FriendItem *FriendVector::Find(const char *name)
 {
     if (name)
-        for (iterator i = begin(); i != end(); ++i)
+        for (iterator i = begin(); i != Last(); ++i)
             if (!strcasecmp((*i)->AccountName, name))
                 return *i;
     return 0;
@@ -305,10 +305,10 @@ void cbFindBuddyListPlayerID(int, int, int, MediusFindPlayerResponse *resp)
 
 /* the named player asked to be a friend -- not one already, not invited, not ourselves ('AddFriend'
  * 0x27A050 calls it on theLobby; OVL1 0x3013C0): looked for by name first.
- * OPEN, 107 instructions (0x204 both): the target inlines both finds whole, the friends' end()
- * recomputed from data and size each pass; FriendVector::Find (out of line at 0x301C40, matched)
- * inlined here calls end() and __iter out of line -- a level too tall inside AddFriend. Tried: the
- * && chain, nested ifs with locals. The original's friend find must be a level shallower. */
+ * OPEN, 3 instructions (0x204 both): the finds match through FriendVector::Last (see zonline.h)
+ * and the event is written twice, as the target has it; the first copy's null test branches past
+ * a jump block to the epilogue where the target's goes straight there, its call followed by the
+ * jump. Tried: the event expanded with the return inside its test, if/else arms throughout. */
 void CZOnlineLobby::AddFriend(const char *name)
 {
     if (name) {
@@ -328,6 +328,8 @@ void CZOnlineLobby::AddFriend(const char *name)
                     CheckMediusError(func_00648F10(&req, cbFindBuddyListPlayerID));
                     return;
                 }
+                LobbyEvent("MP_PLAYER_IS_FRIEND", 0);
+                return;
             }
         }
     }
