@@ -796,6 +796,9 @@
 0x00455E40 0x8 dbp  # OVL1 bss; SOCOM 1's dbp (0x476828, 8 bytes): the two frame buffers startPss is given, tickPss and playPss alternate -- the online lane, round 4
 0x00455F20 0x4 nonBlockReadReq  # OVL1 bss; SOCOM 1's nonBlockReadReq (0x476830): strFileRead starts a host read when it is clear and clears it when the read is done, strFileOpen clears it; 4 references in 2 functions -- the online lane, round 4
 0x00455F30 0x14 infile  # OVL1 bss; SOCOM 1's infile (0x530C70, 0x14 bytes in both): the open film -- on the disc, its size, its table entry, the IOP stream buffer, the host descriptor -- the four strFile functions' state -- the online lane, round 4
+0x004580A0 0x1 m_hddStatus  # OVL1 bss; SOCOM 1's m_hddStatus (0x476D0C, small data): TRC_PreparePowerOff stores its argument there, as SOCOM 1's; 1 reference -- the online lane, round 4
+0x004580A8 0x4 tid  # OVL1 bss; SOCOM 1's tid (0x476D10): the power-off thread TRC_PreparePowerOff creates and tests, _UnPreparePowerOff removes; 7 references in 2 functions -- the online lane, round 4
+0x004580B0 0x2000 g_stack  # OVL1 bss; SOCOM 1's g_stack (0x583FC0, 0x2000): the power-off thread's stack -- the online lane, round 4
 0x0045A0C0 0x125C theNetwork  # OVL1 bss; s1:data-seq (via HandleBombStateRequest__11CZBombStateFiUcP6CPnt3D), moved by hand from 0x45A0B8: every network sender passes 0x45A0C0 as CZNetwork::zNetSendApplicationMessage's this where SOCOM 1 passes theNetwork, and the session-master and network flags SOCOM 1 keeps at 8 and 9 sit at 0x45A0C0/0x45A0C1 -- SOCOM II dropped the two team indices ahead of them (the states lane, round 5); size SOCOM 1's less those 8 bytes
 0x0045C298 0x4 NodeUniverse__3zdb  # OVL1 bss; s1:by hand (GetDatabaseNode tests and searches it where SOCOM 1's reads NodeUniverse__3zdb)
 0x0045C2A0 0x4 numNodes  # OVL1 bss; SOCOM 1 name (the node count, after NodeUniverse as in SOCOM 1; ~CNode counts it down)
