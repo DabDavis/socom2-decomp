@@ -523,6 +523,24 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - vectors of float, int and unsigned int run on `__vector_pod<unsigned int>` as the pointer
     vectors do (`~vector<float>` is three this-tested levels, LoadCSndGroup pushes through the
     pod insert at 0x1FE340).
+- **Tells from the mission and network game** (round 6: fts_player, fts_action, fts_mission,
+  fts_net_seal):
+  - a bit-field returned as `x ? true : false` compiles to sltu plus a nop where the ternary's
+    blocks vanished; `!= 0` gives no nop;
+  - `team > 31` branches on `slti at`; `team >= 32` puts the compare in a register;
+  - an enum stand-in with a single zero enumerator is signed under -enum min and sign-extends
+    its argument; with the real values (all non-negative) it is unsigned (andi 0xff);
+  - a bool passed to an int inline parameter as `b ? 1 : 0` is re-extended for the store
+    (LateJoiner);
+  - a load written into a call's expression can be hoisted above the call into a saved
+    register, where a load or call result written into a local first stays put; in one
+    expression `now + n*1000` is emitted product first;
+  - a list walk that keeps `&end_.next_` in a saved register reads the sentinel's next field
+    through a reference; a walk that assigns its iterator wants `iterator i, e = end();`;
+  - a switch value converted to a byte enum in a local before the guarding test gives the
+    target's lb in the delay slot plus its re-extension;
+  - a constructor whose row is still a placeholder cannot be spelled as `new T`: name the
+    constructor first (ftsCreateSeal waited on four OVL2 names).
 - **Tool notes**: scdiff accepts the image's one non-zero pad word (0xFFFFFFFF at 0x1E70F4,
   after main); `automatch --stale` can drop a renamed destructor's draft when its re-draft
   misses (SlotList's and CWeaponSlot's were restored by hand, the old drafts renamed). A
