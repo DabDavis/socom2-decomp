@@ -3594,7 +3594,7 @@
 0x002956E0 0x408 func_002956E0  # OVL1
 0x00295AF0 0x8 func_00295AF0  # OVL1
 0x00295B00 0x410 func_00295B00  # OVL1
-0x00295F10 0x8 func_00295F10  # OVL1
+0x00295F10 0x8 GetPosW__7CEntityCFv  # OVL1; s1:vtable (CEntity's slot +0x0C, SOCOM 1's GetPosW() const returning the matrix: CTurret's override returns this+0x2C0) -- the entity lane
 0x00295F20 0x5CC func_00295F20  # OVL1
 0x002964F0 0xA14 func_002964F0  # OVL1
 0x00296F10 0x4FC func_00296F10  # OVL1
@@ -3637,7 +3637,7 @@
 0x0029CEC0 0x44 Dispatch__8CHandlerFP7CPacketP8CConsole  # OVL1; s1:align
 0x0029CF10 0x60 __dt__8CHandlerFv  # OVL1; s1:calls
 0x0029CF70 0x50 __ct__8CHandlerFPCcUiPFP7CPacketP8CConsolePv_vPv  # OVL1; s1:exact
-0x0029CFC0 0xBC func_0029CFC0  # OVL1
+0x0029CFC0 0xBC AddHandler__8CConsoleFUiPCcPFP7CPacketP8CConsolePv_vPv  # OVL1; ours (SOCOM 1's OnConnect inlined it; SOCOM II calls it out of line: with this name OnConnect and the hand-written AddHandler are both byte-exact, measured) -- the entity lane
 0x0029D080 0xD8 FindHandler__8CConsoleFPCc  # OVL1; new in SOCOM II: RecvPacket (0x29D3C0) calls it with a message's first argument when no handler has the packet's type -- each handler's name (+0) strcmp'd; the overload ours, after SOCOM 1's FindHandler(id)
 0x0029D160 0x88 FindHandler__8CConsoleFUi  # OVL1; s1:order by hand (SOCOM 1's FindHandler__8CConsoleFUi 0x1EC7E0, its handler list at +24 there, +0x20 here, each id at +4; AddHandler 0x29CFC0 and RecvPacket call it with an id)
 0x0029D1F0 0x7C OnConnect__8CConsoleFv  # OVL1; s1:calls by hand (SOCOM 1's OnConnect 0x1EC8A0 registers ids 2, 1, 3 with _on_status, _on_ping, _on_error inline; SOCOM II's calls AddHandler 0x29CFC0 with the same ids and handlers, names "msg", "ping", "error")
@@ -7705,7 +7705,7 @@
 0x003A6E60 0x138 func_003A6E60  # OVL1
 0x003A6FA0 0x88 func_003A6FA0  # OVL1
 0x003A7030 0x164 func_003A7030  # OVL1
-0x003A71A0 0x20 Virtual60__7CTurretFP6CPnt3D  # OVL1; by hand (the wep lane: CTurret's vtable slot +0x60, an inline override's copy opening the unit -- the point at 0x380 copied out, true; CEntity's slot takes no parameter in zentity.h, the name follows its Virtual60); veh_turret.cpp
+0x003A71A0 0x20 Virtual60__7CTurretFP6CPnt3D  # OVL1; by hand (the wep lane: CTurret's vtable slot +0x60, an inline override's copy opening the unit -- the point at 0x380 copied out, true; CEntity's slot takes no parameter in zentity.h, the name follows its Virtual60); veh_turret.cpp; (zentity.h's slot +0x60 takes a CPnt3D * and returns bool since the entity lane's round 8)
 0x003A71C0 0x8 Virtual64__7CTurretFv  # OVL1; by hand (the wep lane: CTurret's vtable slot +0x64, an inline override's copy -- the node at 0x288); veh_turret.cpp
 0x003A71D0 0x20 Virtual68__7CTurretFP6CPnt3D  # OVL1; by hand (the wep lane: CTurret's vtable slot +0x68, an inline override's copy -- the point at 0x38C copied out, true); veh_turret.cpp
 0x003A71F0 0x138 func_003A71F0  # OVL1
@@ -9416,7 +9416,7 @@
 0x00515900 0x4D4 func_00515900  # OVL2
 0x00515DE0 0x198 func_00515DE0  # OVL2
 0x00515F80 0x198 func_00515F80  # OVL2
-0x00516120 0x8 __ct__9CAiMapLocFv  # OVL2; CAiMapLoc's empty default constructor (jr ra; move v0,a0): CAiState::Create calls it for CAiState's member at +0x50 and every state's map cell -- SOCOM II's CAiMapLoc() reads nothing (zentity.h's stand-in, which reads invalid, is not it) -- the kit lane
+0x00516120 0x8 __ct__9CAiMapLocFv  # OVL2; CAiMapLoc's empty default constructor (jr ra; move v0,a0): CAiState::Create calls it for CAiState's member at +0x50 and every state's map cell -- SOCOM II's CAiMapLoc() reads nothing (zentity.h's stand-in, which reads invalid, is not it) -- the kit lane; (zentity.h's CAiMapLoc() is empty since the entity lane's round 8)
 0x00516130 0x8 func_00516130  # OVL2
 0x00516140 0x38 func_00516140  # OVL2
 0x00516180 0x75C func_00516180  # OVL2
@@ -9920,7 +9920,7 @@
 0x00542E50 0x16C func_00542E50  # OVL2
 0x00542FC0 0x18 Open__7CPickupFUi  # OVL2; s1:order (pickup_main.cpp's last, as SOCOM 1's Open__7CPickupFUi: the argument stored to bit_count, m_isOpen set -- the same two stores) (the SEAL lane, round 3)
 0x00542FE0 0x8 func_00542FE0  # OVL2
-0x00542FF0 0x8 func_00542FF0  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); s1~ not PrePostTick__10CZSealBodyFf (s1:vtable paired the wrong slot): slot 0xC of __vt__10CZSealBody is CEntity's inline GetPosNode (zentity.h), `jr ra; lw v0,0x28(a0)` -- OVL2's out-of-line copy of it, as OVL1's 0x295F10 (one of 2 copies of an inline)
+0x00542FF0 0x8 func_00542FF0  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); s1~ not PrePostTick__10CZSealBodyFf (s1:vtable paired the wrong slot): slot 0xC of __vt__10CZSealBody is CEntity's inline GetPosNode (zentity.h), `jr ra; lw v0,0x28(a0)` -- OVL2's out-of-line copy of it, as OVL1's 0x295F10 (one of 2 copies of an inline); OVL2's copy of CEntity::GetPosW() const (OVL1's 0x295F10 carries the name, the same 8 bytes) -- the entity lane; ovl-copy: GetPosW__7CEntityCFv
 0x00543000 0x8 Virtual5C__10CZSealBodyFv  # OVL2; slot 0x5C of __vt__10CZSealBody (CEntity's Virtual5C, the name the entity lane's); returns 0
 0x00543010 0x8 Virtual60__10CZSealBodyFP6CPnt3D  # OVL2; slot 0x60 of __vt__10CZSealBody (CEntity's Virtual60); returns 0; CEntity's Virtual60(CPnt3D *) overridden (the entity lane, measured)
 0x00543020 0x8 Virtual68__10CZSealBodyFP6CPnt3D  # OVL2; slot 0x68 of __vt__10CZSealBody (CEntity's Virtual68); returns 0; CEntity's Virtual68(CPnt3D *) overridden (the entity lane, measured)
