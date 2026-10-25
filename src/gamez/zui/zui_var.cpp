@@ -10,6 +10,37 @@
 
 #include "zui.h"
 
+/* the variable emptied: its watchers detached, its value freed unless packed, made an integer
+ * (SOCOM 1's Destroy; SOCOM II calls DetachAll for its first loop) */
+void CUIVariable::Destroy()
+{
+    DetachAll();
+    if (!packed)
+        DeleteChildren();
+    m_14 = 0;
+    type = 1;
+    isclone = 0;
+    packed = 0;
+    m_longevity = 0;
+}
+
+/* every watcher detached: a successful detach changes the vector, so the walk restarts (called
+ * out of line by Destroy: pinned) */
+#pragma auto_inline off
+void CUIVariable::DetachAll()
+{
+    std::vector<UIVarMixin *>::iterator i = m_attached_items.begin();
+
+    while (!m_attached_items.empty() && i != m_attached_items.end()) {
+        if ((*i)->DetachUIVar(this))
+            i = m_attached_items.begin();
+        else
+            ++i;
+    }
+    m_attached_items.clear();
+}
+#pragma auto_inline reset
+
 void CUIVariable::UpdateDependents()
 {
     std::vector<UIVarMixin *>::iterator i;

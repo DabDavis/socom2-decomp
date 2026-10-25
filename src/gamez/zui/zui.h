@@ -58,6 +58,8 @@ class UIVarMixin;
 class CUIVariable : public _zrdr {
 public:
     void UpdateDependents();
+    void DetachAll();
+    void Destroy();
     CUIVariable &operator=(const char *str);
     void Attach(UIVarMixin *mixin);
     /* (ours: the tuners set their defaults so, inlined) */
@@ -73,7 +75,8 @@ public:
     }
 
     char *m_varname;   // 0x8
-    unsigned char _c[0x18 - 0xc];
+    unsigned char _c[0x14 - 0xc];
+    int m_14;   // 0x14: SOCOM II's (Destroy clears it)
     std::vector<UIVarMixin *> m_attached_items;   // 0x18 (SOCOM 1's at 0xC)
     unsigned char m_longevity;   // 0x24: UIVAR_LONGEVITY
 };
@@ -85,7 +88,7 @@ public:
     UIVarMixin() { m_uivar = 0; }
     virtual ~UIVarMixin() { DetachUIVar(0); }
     virtual void UpdateUIVar(CUIVariable *var) = 0;
-    void DetachUIVar(CUIVariable *var);
+    bool DetachUIVar(CUIVariable *var);
     void AttachUIVar(CUIVariable *var);
 
     CUIVariable *m_uivar;   // 0x4

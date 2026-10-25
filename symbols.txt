@@ -7125,7 +7125,7 @@
 0x003862A0 0x124 __as__11CUIVariableFPCc  # OVL1; s1:calls (the lobby callbacks' (variable, string) setter, as SOCOM 1's) -- the online lane
 0x003863D0 0x8C UpdateDependents__11CUIVariableFv  # OVL1; s1:calls (SyncGameClock calls it third, as SOCOM 1's) -- the online lane
 0x00386460 0x1F8 func_00386460  # OVL1
-0x00386660 0x90 func_00386660  # OVL1
+0x00386660 0x90 DetachAll__11CUIVariableFv  # OVL1; s1:calls by hand (detaches each watcher through UIVarMixin::DetachUIVar until none is left, as SOCOM 1's DetachAll; Destroy calls it first)
 0x003866F0 0x220 func_003866F0  # OVL1
 0x00386910 0xC func_00386910  # OVL1
 0x00386920 0x8 func_00386920  # OVL1
@@ -7139,7 +7139,7 @@
 0x003869D0 0x18 func_003869D0  # OVL1
 0x003869F0 0xC0 func_003869F0  # OVL1
 0x00386AB0 0x44 func_00386AB0  # OVL1
-0x00386B00 0x80 func_00386B00  # OVL1
+0x00386B00 0x80 Destroy__11CUIVariableFv  # OVL1; s1:calls by hand (DetachAll, then DeleteChildren and the fields cleared, as SOCOM 1's Destroy)
 0x00386B80 0x70 func_00386B80  # OVL1
 0x00386BF0 0x15C func_00386BF0  # OVL1
 0x00386D50 0x84 func_00386D50  # OVL1
