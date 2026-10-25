@@ -65,6 +65,15 @@ public:
             node_ = node_->next_;
             return *this;
         }
+        /* the copy, the step, the copy given back (graph_tree.cpp's queue walks: OVL1 0x2D1EB0 out
+         * of line, `lw a2,0(a1); lw v1,4(a2); sw v1,0(a1); sw a2,0(a0)`) */
+        generic_iterator operator++(int)
+        {
+            generic_iterator tmp(*this);
+
+            node_ = node_->next_;
+            return tmp;
+        }
         bool operator==(const generic_iterator &x) const { return node_ == x.node_; }
         bool operator!=(const generic_iterator &x) const { return node_ != x.node_; }
 

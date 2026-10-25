@@ -1493,9 +1493,9 @@
 0x001ECA50 0xB8 __ct__10CCoreStateFv  # OVL1; s1:calls (stores CGameState's then CCoreState's vtable; the two unit matrices)
 0x001ECB10 0xE4 OnPop__10CCoreStateFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001ECC00 0x38 OnPush__10CCoreStateFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x001ECC40 0xA8 func_001ECC40  # OVL1
+0x001ECC40 0xA8 DisplayMessage__10CCoreStateFPCcPCciiiUcUcc  # OVL1; by hand (the states lane, round 15): slot 0x2C of CCoreState's vtable (0x404F60), CGameState::DisplayMessage's override; byte-exact from st_core.cpp
 0x001ECCF0 0x264 UnInit__15CCinematicStateFv  # OVL1; s1:vtable (CCinematicState's UnInit slot)
-0x001ECF60 0x94 func_001ECF60  # OVL1
+0x001ECF60 0x94 FreeVector<Q23std48vector<9CMovieCue,Q23std21allocator<9CMovieCue>>>__FRQ23std48vector<9CMovieCue,Q23std21allocator<9CMovieCue>>_v  # OVL1; by hand (the states lane, round 15): zsys.h's FreeVector as a plain function template over the film's cue vector (8-byte elements, a float and a word: 0x1EF190's copy loop), its instance following its one caller CCinematicState::UnInit; CMovieCue is our name
 0x001ED000 0x8 func_001ED000  # OVL1
 0x001ED010 0x54C Tick__15CCinematicStateFf  # OVL1; s1:vtable (CCinematicState's Tick slot)
 0x001ED560 0x4F4 Init__15CCinematicStateFv  # OVL1; s1:vtable (CCinematicState's Init slot)
@@ -1515,8 +1515,8 @@
 0x001EEBA0 0x198 reserve__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FUi  # OVL1; s1:calls (fprintf/abort twice, new, delete -- SOCOM 1's reserve of it; CZAnimExVector::Add grows by it before its inlined push_back)
 0x001EED40 0x444 func_001EED40  # OVL1
 0x001EF190 0x180 func_001EF190  # OVL1
-0x001EF310 0x8 func_001EF310  # OVL1
-0x001EF320 0x68 func_001EF320  # OVL1
+0x001EF310 0x8 clear__Q23std58__vector_deleter<9CMovieCue,Q23std21allocator<9CMovieCue>>Fv  # OVL1; by hand (the states lane, round 15): the cue vector's deleter clear (out of class, size zeroed), called by FreeVector<cues> (0x1ECF60) and the vector's clear() copy 0x1ED000; st_core.cpp's tail emits it byte-exact
+0x001EF320 0x68 __dt__Q23std58__vector_deleter<9CMovieCue,Q23std21allocator<9CMovieCue>>Fv  # OVL1; by hand (the states lane, round 15): the cue vector's deleter destructor (clear, the storage freed), FreeVector<cues>'s temporary's, called with 0; st_core.cpp's tail emits it byte-exact
 0x001EF390 0x68 func_001EF390  # OVL1
 0x001EF400 0x4C func_001EF400  # OVL1
 0x001EF450 0x2A8 func_001EF450  # OVL1
@@ -4261,22 +4261,22 @@
 0x002C84F0 0x68 __dt__Q23std118__vector_deleter<Q215CZPlatformState19TypePendingPlatform,Q23std51allocator<Q215CZPlatformState19TypePendingPlatform>>Fv  # OVL1; by hand (the states lane, round 13: fts_net_platform.cpp's template tail -- the reserve's temporary's deleter destructor)
 0x002C8560 0x180 reserve__Q23std116__vector_imp<Q215CZPlatformState19TypePendingPlatform,Q23std51allocator<Q215CZPlatformState19TypePendingPlatform>,0>FUi  # OVL1; by hand (the states lane, round 13: fts_net_platform.cpp's template tail -- the static initialiser's reserve(20))
 0x002C86E0 0x80 __dt__Q215CZPlatformState12CPendingListFv  # OVL1; by hand (the states lane, round 13: fts_net_platform.cpp's template tail -- the waiting list's implicit destructor, four this-tests, registered by 0x400770)
-0x002C8760 0xE0 func_002C8760  # OVL1
+0x002C8760 0xE0 Find__17CMultiMissionListFPCc  # OVL1; by hand (the states lane, round 15; the names ours): the newest version (the word at 0x18) of the list's missions named so -- a walk over the pointer vector at 0x441650 comparing each mission's string at 0 with strcmp; 0x2C94F0 compares its result with a mission
 0x002C8840 0x1B4 func_002C8840  # OVL1
-0x002C8A00 0xD4 func_002C8A00  # OVL1
-0x002C8AE0 0x98 func_002C8AE0  # OVL1
-0x002C8B80 0x88 func_002C8B80  # OVL1
+0x002C8A00 0xD4 GetMultiValue__17CMultiMissionListFPCc  # OVL1; by hand (the states lane, round 15; the names ours): the multiplayer mission's byte at 0x14 for a code whose third character on is its id (atoi), 0 for a shorter code -- Find(id, true) inlined
+0x002C8AE0 0x98 GetName__17CMultiMissionListFib  # OVL1; by hand (the states lane, round 15; the names ours): the name of the mission of an id (0x10) and kind (the byte at 0xC), "unknown" without one -- 0x2C9040 inlined
+0x002C8B80 0x88 GetMultiValue__17CMultiMissionListFi  # OVL1; by hand (the states lane, round 15; the names ours): the signed byte at 0x14 of the multiplayer mission of an id, 0 without one -- 0x2C9040 inlined with the kind 1
 0x002C8C10 0x198 func_002C8C10  # OVL1
 0x002C8DB0 0x284 func_002C8DB0  # OVL1
-0x002C9040 0x70 func_002C9040  # OVL1
-0x002C90B0 0xE8 func_002C90B0  # OVL1
+0x002C9040 0x70 Find__17CMultiMissionListFib  # OVL1; by hand (the states lane, round 15; the names ours): the mission of an id (0x10) and kind (the bool at 0xC), returned through a result local
+0x002C90B0 0xE8 Purge__17CMultiMissionListFv  # OVL1; by hand (the states lane, round 15; the names ours): the missions whose byte at 0x1C is set erased (the pod's single erase, 0x28F220) and deleted
 0x002C91A0 0x238 func_002C91A0  # OVL1
-0x002C93E0 0x108 func_002C93E0  # OVL1
+0x002C93E0 0x108 Clear__17CMultiMissionListFv  # OVL1; by hand (the states lane, round 15; the names ours): every mission deleted through std::transform onto itself, then the three vectors (0, 0xC, 0x18) cleared; the list's destructor (0x2C9720) calls it first
 0x002C94F0 0x4C func_002C94F0  # OVL1
 0x002C9540 0x1D8 func_002C9540  # OVL1
 0x002C9720 0xE8 func_002C9720  # OVL1
 0x002C9810 0x150 func_002C9810  # OVL1
-0x002C9960 0x30 func_002C9960  # OVL1
+0x002C9960 0x30 SetMaxLength__10CMsgEditorFi  # OVL1; by hand (the states lane, round 15; the method name ours, the class CMsgEditor's RTTI): the word at 0x140 (5 at construction, 0x2CA2D0) set from n, kept within 5 to 100
 0x002C9990 0x1F0 func_002C9990  # OVL1
 0x002C9B80 0x140 func_002C9B80  # OVL1
 0x002C9CC0 0x40 func_002C9CC0  # OVL1
@@ -4433,37 +4433,37 @@
 0x002D14A0 0x194 BuildRoute__6CGraphFP6CGNodeP6CGNodeUiP7CGRoute  # OVL1; s1:order by hand (the states lane, round 14: SOCOM 1's BuildRoute after CGEdge's constructor -- the three CGraph statics cleared in its order, the route cleared, Append when start == end, BuildTree with the end node stored first, PostProcess; SOCOM II adds the edge mask (a3) passed on to BuildTree -- its type is ours, unsigned int)
 0x002D1640 0x150 PopulateTree__6CGraphFP6CGTree  # OVL1; s1:order by hand (the states lane, round 14: SOCOM 1's PopulateTree after BuildRoute -- recursive, new CGTree (0x14) per node whose mark is the tree's node, m_leafTree set and return on m_treeNode)
 0x002D1790 0x5BC BuildTree__6CGraphFP6CGNodeUi  # OVL1; s1:order by hand (the states lane, round 14: SOCOM 1's BuildTree after PopulateTree, called by BuildRoute with the start node; SOCOM II's second argument is the edge mask (each edge's 0x18 word tested against it) where SOCOM 1's was a float; it ends calling PopulateTree on a new CGTree)
-0x002D1D50 0x24 func_002D1D50  # OVL1
-0x002D1D80 0x10 func_002D1D80  # OVL1
-0x002D1D90 0x10 func_002D1D90  # OVL1; tu: char_type.cpp~ (1.0 beta)
-0x002D1DA0 0x38 func_002D1DA0  # OVL1
-0x002D1DE0 0x48 func_002D1DE0  # OVL1
-0x002D1E30 0x30 func_002D1E30  # OVL1
-0x002D1E60 0x8 func_002D1E60  # OVL1
-0x002D1E70 0x14 func_002D1E70  # OVL1
-0x002D1E90 0xC func_002D1E90  # OVL1
-0x002D1EA0 0xC func_002D1EA0  # OVL1
-0x002D1EB0 0x14 func_002D1EB0  # OVL1
-0x002D1ED0 0x10 func_002D1ED0  # OVL1; tu: char_type.cpp~ (1.0 beta)
-0x002D1EE0 0xC func_002D1EE0  # OVL1
-0x002D1EF0 0x8 func_002D1EF0  # OVL1
-0x002D1F00 0x10 func_002D1F00  # OVL1
-0x002D1F10 0x14 func_002D1F10  # OVL1
-0x002D1F30 0xC func_002D1F30  # OVL1
-0x002D1F40 0x14 func_002D1F40  # OVL1
-0x002D1F60 0x20 func_002D1F60  # OVL1
-0x002D1F80 0xC func_002D1F80  # OVL1
-0x002D1F90 0x10 func_002D1F90  # OVL1
-0x002D1FA0 0xC func_002D1FA0  # OVL1
-0x002D1FB0 0x8 func_002D1FB0  # OVL1
-0x002D1FC0 0x14 func_002D1FC0  # OVL1
-0x002D1FE0 0xC func_002D1FE0  # OVL1
-0x002D1FF0 0x14 func_002D1FF0  # OVL1
-0x002D2010 0x14 func_002D2010  # OVL1
-0x002D2030 0xC func_002D2030  # OVL1
-0x002D2040 0x10 func_002D2040  # OVL1
-0x002D2050 0xC func_002D2050  # OVL1
-0x002D2060 0x8 func_002D2060  # OVL1
+0x002D1D50 0x24 insert__7CGQueueFQ33std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>19generic_iterator<0>RC11CGQueueAtom  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
+0x002D1D80 0x10 __ct__11CGQueueAtomFP6CGNodef  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
+0x002D1D90 0x10 __ct__Q33std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>19generic_iterator<0>FRCQ33std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>19generic_iterator<0>  # OVL1; tu: char_type.cpp~ (1.0 beta); by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
+0x002D1DA0 0x38 push__7CGQueueFP6CGNodef  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
+0x002D1DE0 0x48 find__7CGQueueFP6CGNodeRQ33std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>19generic_iterator<0>  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
+0x002D1E30 0x30 remove__Q23std58__list_imp<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>FRC11CGQueueAtom  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
+0x002D1E60 0x8 GetNode__11CGQueueAtomCFv  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
+0x002D1E70 0x14 __ne__Q33std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>19generic_iterator<0>CFRCQ33std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>19generic_iterator<0>  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
+0x002D1E90 0xC end__Q23std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>Fv  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
+0x002D1EA0 0xC __ml__Q33std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>19generic_iterator<0>CFv  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
+0x002D1EB0 0x14 __pp__Q33std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>19generic_iterator<0>Fi  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
+0x002D1ED0 0x10 __as__Q33std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>19generic_iterator<0>FRCQ33std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>19generic_iterator<0>  # OVL1; tu: char_type.cpp~ (1.0 beta); by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
+0x002D1EE0 0xC begin__Q23std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>Fv  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
+0x002D1EF0 0x8 __ct__Q33std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>19generic_iterator<0>Fv  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
+0x002D1F00 0x10 empty__7CGQueueFv  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
+0x002D1F10 0x14 __ne__Q33std42list<P6CGEdge,Q23std19allocator<P6CGEdge>>19generic_iterator<0>CFRCQ33std42list<P6CGEdge,Q23std19allocator<P6CGEdge>>19generic_iterator<0>  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
+0x002D1F30 0xC end__Q23std42list<P6CGEdge,Q23std19allocator<P6CGEdge>>Fv  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
+0x002D1F40 0x14 __pp__Q33std42list<P6CGEdge,Q23std19allocator<P6CGEdge>>19generic_iterator<0>Fi  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
+0x002D1F60 0x20 SetFlags__6CGEdgeFUiUi  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
+0x002D1F80 0xC __ml__Q33std42list<P6CGEdge,Q23std19allocator<P6CGEdge>>19generic_iterator<0>CFv  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
+0x002D1F90 0x10 __as__Q33std42list<P6CGEdge,Q23std19allocator<P6CGEdge>>19generic_iterator<0>FRCQ33std42list<P6CGEdge,Q23std19allocator<P6CGEdge>>19generic_iterator<0>  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
+0x002D1FA0 0xC begin__Q23std42list<P6CGEdge,Q23std19allocator<P6CGEdge>>Fv  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
+0x002D1FB0 0x8 __ct__Q33std42list<P6CGEdge,Q23std19allocator<P6CGEdge>>19generic_iterator<0>Fv  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
+0x002D1FC0 0x14 __ne__Q33std42list<P6CGNode,Q23std19allocator<P6CGNode>>19generic_iterator<0>CFRCQ33std42list<P6CGNode,Q23std19allocator<P6CGNode>>19generic_iterator<0>  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
+0x002D1FE0 0xC end__Q23std42list<P6CGNode,Q23std19allocator<P6CGNode>>Fv  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
+0x002D1FF0 0x14 __pp__Q33std42list<P6CGNode,Q23std19allocator<P6CGNode>>19generic_iterator<0>Fi  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
+0x002D2010 0x14 Reset__6CGNodeFi  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
+0x002D2030 0xC __ml__Q33std42list<P6CGNode,Q23std19allocator<P6CGNode>>19generic_iterator<0>CFv  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
+0x002D2040 0x10 __as__Q33std42list<P6CGNode,Q23std19allocator<P6CGNode>>19generic_iterator<0>FRCQ33std42list<P6CGNode,Q23std19allocator<P6CGNode>>19generic_iterator<0>  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
+0x002D2050 0xC begin__Q23std42list<P6CGNode,Q23std19allocator<P6CGNode>>Fv  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
+0x002D2060 0x8 __ct__Q33std42list<P6CGNode,Q23std19allocator<P6CGNode>>19generic_iterator<0>Fv  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
 0x002D2070 0x1AC FindNode__6CGTreeFP6CGNode  # OVL1; s1:calls (the states lane's lead, vetted by the integrator: CGraph::BuildRoute calls it where SOCOM 1's BuildRoute calls FindNode__6CGTreeFP6CGNode, after BuildTree and the leaf list's begin())
 0x002D2220 0x14 func_002D2220  # OVL1
 0x002D2240 0x14 func_002D2240  # OVL1
@@ -4480,10 +4480,10 @@
 0x002D2510 0xC func_002D2510  # OVL1
 0x002D2520 0xC func_002D2520  # OVL1
 0x002D2530 0x8 func_002D2530  # OVL1
-0x002D2540 0xF8 func_002D2540  # OVL1
-0x002D2640 0xBC func_002D2640  # OVL1
-0x002D2700 0x108 func_002D2700  # OVL1
-0x002D2810 0x18 func_002D2810  # OVL1
+0x002D2540 0xF8 remove_if<Q23std56binder2nd<Q23std23equal_to<11CGQueueAtom>,11CGQueueAtom>>__Q23std58__list_imp<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>FQ23std56binder2nd<Q23std23equal_to<11CGQueueAtom>,11CGQueueAtom>_v  # OVL1; by hand (the states lane, round 15): the queue list's remove_if over an equal_to binder, called by its remove (0x2D1E30, BuildTree's pop): the same 0xF8 shape as the pointer lists' 0x20CB50 (the erase inlined), the value's node compared first
+0x002D2640 0xBC erase__Q23std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>FQ33std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>19generic_iterator<0>Q33std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>19generic_iterator<0>  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
+0x002D2700 0x108 insert__Q23std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>FQ33std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>19generic_iterator<0>RC11CGQueueAtom  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
+0x002D2810 0x18 __ct__Q23std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>Fv  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
 0x002D2830 0x60 func_002D2830  # OVL1
 0x002D2890 0x560 func_002D2890  # OVL1
 0x002D2DF0 0x114 InitDescendantsVisuals__Q23zdb5CGridFv  # OVL1; s1:calls by hand (the zdb-world lane: CWorld's InitDescendantsVisuals calls it where SOCOM 1's does)
