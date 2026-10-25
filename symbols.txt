@@ -2103,7 +2103,7 @@
 0x0022DD90 0x28 func_0022DD90  # OVL1
 0x0022DDC0 0x24 func_0022DDC0  # OVL1
 0x0022DDF0 0x6C func_0022DDF0  # OVL1
-0x0022DE60 0x194 func_0022DE60  # OVL1
+0x0022DE60 0x194 GetTeamMembers__28@unnamed@hud_scorepopup_cpp@FPP10CZSealBodyPib  # OVL1; s1:calls by hand (the HUD lane: hud_scorepopup.cpp -- SOCOM 1's GetTeamMembers: the entity walk (CEntityItr's IsSeal/GetSeal/Advance), a side's SEALs, at most eight, and two kill counts summed; SetupTeam (0x229D00) calls it as SOCOM 1's does; SOCOM II adds the network game's dead test and the side tests 0x2C31D0/0x2C30B0)
 0x0022E000 0x460 func_0022E000  # OVL1
 0x0022E460 0x68 func_0022E460  # OVL1
 0x0022E4D0 0x84 __as__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>  # OVL1; by hand (the MSL lane: include/string's copy assignment compiles to its 0x84 bytes -- two short forms copied whole, else replace(0, size(), str))

@@ -157,6 +157,79 @@ struct CTriggerSource {
     const char *GetName() { return m_name; }
 };
 
+/* a SEAL as the pop-up reads it: alive in the world (0x14), the two kill counts summed for its row,
+ * and a flag that keeps it off the pop-up (the names ours) */
+class CZSealBody {
+public:
+    unsigned char _0[0x14];
+    int m_14;   // 0x14
+    unsigned char _18[0x580 - 0x18];
+    short m_kills;   // 0x580
+    unsigned char _582[0x5c8 - 0x582];
+    short m_kills2;   // 0x5c8
+    unsigned char _5ca[0xfd1 - 0x5ca];
+    unsigned char m_hidden;   // 0xfd1
+};
+
+/* a thing in the world (st_exit.cpp's stub: only the list here) */
+class CEntity {
+public:
+    static std::list<CEntity *> m_list;
+};
+
+/* a walk over the world's entities, counting (SOCOM 1's DWARF; st_exit.cpp writes its members) */
+class CEntityItr {
+public:
+    CEntityItr() : _it(GetEntityList().begin()), _iIdx(0) {}
+    /* whether the walk has entities left (ours: the end test through an inline, which alone gives
+     * the begin() temporaries the higher stack slots, as the target has them) */
+    bool More() const { return _it != GetEntityList().end(); }
+
+    CZSealBody &GetSeal() const;
+    bool IsSeal() const;
+    void Advance();
+
+    static const std::list<CEntity *> &GetEntityList() { return CEntity::m_list; }
+
+    std::list<CEntity *>::const_iterator _it;   // 0x0
+    int _iIdx;   // 0x4
+};
+
+/* whether a SEAL is dead, and on each side (the SEAL lane's, no names yet) */
+extern "C" {
+bool func_002C2FD0(CZSealBody *seal);
+bool func_002C31D0(const CZSealBody *seal);
+bool func_002C30B0(const CZSealBody *seal);
+}
+
+namespace {
+/* a side's SEALs, at most eight, with their kills: in a network game only the living, and none the
+ * world has let go of or that is kept off the pop-up (SOCOM 1's) */
+int GetTeamMembers(CZSealBody **arrSeals, int *arrKills, bool bTeam0)
+{
+    int iNumSeals = 0;
+
+    for (CEntityItr it; it.More(); it.Advance()) {
+        if (!it.IsSeal())
+            continue;
+        CZSealBody &seal = it.GetSeal();
+        if (theNetwork.m_bNetwork && func_002C2FD0(&seal))
+            continue;
+        if (bTeam0 && !func_002C31D0(&seal))
+            continue;
+        if (!bTeam0 && !func_002C30B0(&seal))
+            continue;
+        if (!seal.m_14 || seal.m_hidden)
+            continue;
+        arrSeals[iNumSeals] = &seal;
+        arrKills[iNumSeals] = seal.m_kills + seal.m_kills2;
+        if (++iNumSeals >= 8)
+            return iNumSeals;
+    }
+    return iNumSeals;
+}
+}
+
 /* whether the pop-up is up (only in a network game; the name ours) */
 bool hudIsScorePopupOn()
 {
