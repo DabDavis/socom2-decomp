@@ -447,7 +447,8 @@
 0x00198F18 0x144 strcmp  # MAIN unaligned; s1:exact
 0x00199060 0x114 strcpy  # MAIN; s1:callee
 0x00199178 0x7C func_00199178  # MAIN unaligned
-0x001991F8 0x8C strdup  # MAIN unaligned; s1:callee
+0x001991F8 0x20 strdup  # MAIN; s1:exact by hand (newlib's: the reentrancy block handed to _strdup_r, tail-jumped -- SOCOM 1's jal); the seed's 0x8C row split
+0x00199218 0x6C _strdup_r  # MAIN; s1:order (SOCOM 1's _strdup_r follows strdup, 0x68 there); split off strdup's row, which tail-jumps into it -- the integrator
 0x00199288 0x138 strlen  # MAIN unaligned; s1:exact
 0x001993C0 0xD8 strncasecmp  # MAIN; s1:calls (CAiMap::GetLocation calls it with (name, s, 15) where SOCOM 1's calls strncasecmp(name, s, 14); its first instruction keeps the third argument, the count; 0xD8 bytes beside strcasecmp's 0xD8) -- the AI-core lane
 0x00199498 0x1AC strncat  # MAIN unaligned; s1:exact
@@ -3791,7 +3792,8 @@
 0x002A4290 0xC func_002A4290  # OVL1
 0x002A42A0 0x8 func_002A42A0  # OVL1
 0x002A42B0 0x338 func_002A42B0  # OVL1
-0x002A45F0 0x1BC _RecoverFromNetError__8CMissionFi  # OVL1; s1:align
+0x002A45F0 0x10 RecoverFromNetError__8CMissionFi  # OVL1; s1:calls by hand (SOCOM 1's 0x10-byte static RecoverFromNetError: theMission's address loaded, a tail jump into the member _RecoverFromNetError right after it; st_load.cpp stores it as the net-error callback) -- the seed's 0x1BC row split: its j lands on the next instruction
+0x002A4600 0x1AC _RecoverFromNetError__8CMissionFi  # OVL1; s1:align (SOCOM 1's member _RecoverFromNetError, 0x108 there: the net game's minor state tested, this in a0); split off the static stub above -- the integrator
 0x002A47B0 0x168 func_002A47B0  # OVL1
 0x002A4920 0xE8 func_002A4920  # OVL1
 0x002A4A10 0x288 func_002A4A10  # OVL1
