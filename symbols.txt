@@ -8208,7 +8208,7 @@
 0x003C70E0 0x90 UpdateGrenadePosition__12CZProjectileFPC6CPnt3D  # OVL1; by hand (the wep lane: SOCOM 1's UpdateGrenade's position part -- both frame ends, then SetModelOrientation by shot type as SOCOM 1's -- the name ours)
 0x003C7170 0x5C ReportGrenadeStatus__12CZProjectileFv  # OVL1; s1:order by hand (the wep lane: SOCOM 1's ReportGrenadeStatus, the player's grenade to UpdateLocalGrenade unless a one-frame shot; SOCOM II adds the bit-4 test)
 0x003C71D0 0xB0 IsInRange__12CZProjectileFPC6CPnt3Df  # OVL1; s1:order by hand (the wep lane: SOCOM 1's IsInRange -- the point less m_framestartpos (0x48) through Sub, its squared length against the range's)
-0x003C7280 0x17C func_003C7280  # OVL1
+0x003C7280 0x17C IsInCone__12CZProjectileFPC6CPnt3DPC6CPnt3DPC6CPnt3Df  # OVL1; by hand (the wep lane: the point less the apex, its projection on the direction between 0 and the ammo's explosion radius, its distance off the axis within the radius tan(angle) widens to; GetDamage(const CPnt3D *, float) calls it twice -- new in SOCOM II, the name and the float's place ours)
 0x003C7400 0x90 ResolveDamage__12CZProjectileFPfPfff  # OVL1; s1:order by hand (the wep lane: SOCOM 1's static ResolveDamage, the piercing's factor (10 - p)/10 where SOCOM 1's had p/10)
 0x003C7490 0x170 func_003C7490  # OVL1
 0x003C7600 0x4D0 GetDamage__12CZProjectileFPC6CPnt3Df  # OVL1; s1:order by hand (the wep lane: SOCOM 1's GetDamage(const CPnt3D *, float), 0x498 there, after ResolveDamage and the four-argument GetDamage; OnWeaponHit calls it on the other projectile with (&m_frameendpos, 1.0f))

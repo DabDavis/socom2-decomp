@@ -398,6 +398,10 @@ public:
     bool IsInRange(const CPnt3D *pos, float range);
     static float ResolveDamage(float *health, float *armor, float damage, float pierce);
     float GetDamage(const CPnt3D *pos, float scale);
+    /* a point inside the blast's cone: from the apex along the direction for the explosion's
+     * radius, widening by the angle's tangent (SOCOM II's; GetDamage asks it twice -- the name
+     * and the parameters' order ours) */
+    bool IsInCone(const CPnt3D *pos, const CPnt3D *apex, const CPnt3D *dir, float angle);
     void SetInstance(zdb::CNode *node);
     /* the node it flies (SOCOM 1's, out of line in zwep_projectile.cpp: 0x3C7AE0) */
     zdb::CNode *GetInstance();

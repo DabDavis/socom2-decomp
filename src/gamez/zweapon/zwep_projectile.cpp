@@ -33,6 +33,9 @@ public:
     static void Destroy(CPickup *pickup);
 };
 
+/* MSL's, in double (MAIN's copy) */
+extern "C" double tan(double x);
+
 /* an animation stopped (0x2707C0, not named) */
 extern "C" void func_002707C0(CZAnim *anim, int b);
 
@@ -184,6 +187,50 @@ zdb::CNode *CZProjectile::GetInstance()
 void CZProjectile::SetInstance(zdb::CNode *node)
 {
     m_instance = node;
+}
+
+/* a cone by its length and its radius there, a start radius and the length's inverse (the name
+ * ours) */
+struct CONE {
+    float m_length;   // 0x0
+    float m_radius;   // 0x4
+    float m_start;   // 0x8
+    float m_invlength;   // 0xc
+
+    bool Contains(const CPnt3D &d, float along)
+    {
+        if (along <= 0.0f)
+            return false;
+        if (!(along <= m_length))
+            return false;
+        float w = m_start + along * m_invlength * m_radius;
+
+        if (Dot(d, d) - along * along <= w * w)
+            return true;
+        return false;
+    }
+};
+
+/* OPEN, 0x168 against 0x17C: the target keeps the cone in its frame (sp+112..124, each field
+ * stored where it is computed and reloaded by the test) and the projection at sp+96, with &d and
+ * its y and z addresses in registers; MW scalarises this CONE whole. Tried: the projection by
+ * const reference (0x168), Contains through a CONE pointer (0x174), the cone as a volatile
+ * object read through a reference (0x180), the test written out (0x164), r * tan(angle) */
+bool CZProjectile::IsInCone(const CPnt3D *pos, const CPnt3D *apex, const CPnt3D *dir, float angle)
+{
+    float r = m_ammo->GetExplosionRadius();
+    CONE cone;
+
+    cone.m_radius = tan(angle) * r;
+    cone.m_start = 0.0f;
+    cone.m_length = r;
+    cone.m_invlength = 1.0f / r;
+    CPnt3D d;
+
+    pos->Sub(apex, &d);
+    float along = Dot(*dir, d);
+
+    return cone.Contains(d, along);
 }
 
 /* the damage done to a health through its armour: the armour takes the piercing's share and a
