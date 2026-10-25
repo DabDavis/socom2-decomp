@@ -5,6 +5,97 @@
 
 #include "zbody.h"
 
+/* a node's tree of parts, each filed by its id (SOCOM 1's; returns the top part) */
+CZBodyPart *CBody::BodySetup(CNode *node, CZBodyPart *parent)
+{
+    CZBodyPart *part = NewBodyPart(node, parent);
+
+    if (!part)
+        return 0;
+    m_body_parts[part->m_id] = part;
+    zdb::CNodeVector &kids = node->GetChildren();
+
+    for (zdb::CNodeVector::iterator i = kids.begin(); i != kids.end(); ++i)
+        BodySetup(*i, part);
+    return part;
+}
+
+/* a part for a node: the null node's id for none, else the bone of the node's name (SOCOM 1's).
+ * OPEN, 0 instructions: every byte right, but `new CZBodyPart(node)` calls CPnt3D's empty
+ * constructor out of line for m_pos and m_saved_pos, and that copy's row, OVL1 0x1FB3C0, is still
+ * func_001FB3C0 (outside this lane's range): renamed __ct__6CPnt3DFv, the two calls resolve. */
+CZBodyPart *CBody::NewBodyPart(CNode *node, CZBodyPart *parent)
+{
+    int id = NullNode();
+
+    if (node) {
+        id = func_0058CB30(node->m_name);
+        if (id < 0)
+            return 0;
+    }
+    CZBodyPart *part = new CZBodyPart(node);
+
+    part->m_parent = parent;
+    part->m_id = id;
+    return part;
+}
+
+/* a part made and filed by its id (SOCOM 1's) */
+void CBody::AddBodyPart(CNode *node, CZBodyPart *parent)
+{
+    CZBodyPart *part = NewBodyPart(node, parent);
+
+    if (part)
+        m_body_parts[part->m_id] = part;
+}
+
+/* a blend taken from the pool, cleared (SOCOM II's) */
+CZBodyAnimBlend *CBlendPool::GetNext()
+{
+    CZBodyAnimBlend *blend = RTArray<CZBodyAnimBlend>::GetNext(true);
+
+    if (blend) {
+        blend->Clear();
+        return blend;
+    }
+    return 0;
+}
+
+/* a blend cleared and put back (SOCOM II's) */
+void CBlendPool::PutBack(CZBodyAnimBlend *blend)
+{
+    blend->Clear();
+    RTArray<CZBodyAnimBlend>::PutBack(blend);
+}
+
+/* the node placed where the part is, both through CNode's null-testing pointer forms (SOCOM 1's;
+ * the position's test is of `this`, m_pos being at 0) */
+void CZBodyPart::Orient()
+{
+    CNode *node = m_node;
+
+    node->SetPosition(&m_pos);
+    node->SetRotation(&m_rot);
+}
+
+/* every weight on the list scaled (SOCOM 1's) */
+void RenormAnims(CActiveAnimList *list, float scale)
+{
+    ACTIVE_ANIM *a = list->Begin();
+
+    while (a) {
+        a->m_wt = (float)(scale * a->m_wt);
+        a = list->Next();
+    }
+}
+
+/* the anim weighted and added (SOCOM 1's) */
+void PushAnim(CActiveAnimList *list, ACTIVE_ANIM *anim, float wt)
+{
+    anim->m_wt = wt;
+    list->Add(anim);
+}
+
 /* the frame of the step: the blend's time fraction in sixtieths (SOCOM 1's called fptosi).
  * OPEN, 3 instructions (right size): the target loads m_tfrac into $f1 and 60 into $f0 and
  * multiplies $f0 * $f1 -- SOCOM 1's registers too; every spelling tried (either operand order, a

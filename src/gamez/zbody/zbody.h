@@ -40,6 +40,26 @@ public:
  * there; SOCOM II's is 0x44 -- the parent moved ahead of the rotation, the id and two bits last) */
 class CZBodyPart {
 public:
+    /* built empty: the constructor's body is Clear, which new inlines one level (NewBodyPart and
+     * AttachAuxNode call the four members' constructors and Clear out of line) */
+    CZBodyPart(CNode *node)
+    {
+        Clear();
+        m_node = node;
+    }
+    /* every field to its rest value (SOCOM II's; the name ours) */
+    void Clear()
+    {
+        m_node = 0;
+        m_parent = 0;
+        m_pos = CPnt3D::zero;
+        m_rot = CQuat::identity;
+        m_saved_pos = CPnt3D::zero;
+        m_saved_rot = CQuat::identity;
+        m_bit0 = true;
+        m_bit1 = true;
+        m_id = -1;
+    }
     /* the node placed where the part is (SOCOM 1's) */
     void Orient();
 
@@ -52,6 +72,7 @@ public:
     short m_id;   // 0x40
     unsigned char m_bit0 : 1;   // 0x42
     unsigned char m_bit1 : 1;
+    unsigned char _44[0x50 - 0x44];   // (NewBodyPart news 0x50 bytes, as SOCOM 1's)
 };
 
 /* SOCOM 1's real-time containers: a fixed pool of items handed out and put back (RTArray), a
@@ -238,6 +259,48 @@ T *RTStack<T>::Pop()
     return item;
 }
 
+/* a fixed pool: the free items stacked in m_pool, those handed out listed when recycling (SOCOM 1's
+ * DWARF: 0x1c bytes; SOCOM II's keeps the items' own array at 0x10, 0x20 bytes) */
+template <class T>
+class RTArray {
+public:
+    void PutBack(T *item);
+    T *GetNext(bool b);
+
+    T **m_pool;   // 0x0
+    std::list<T *> m_inuse;   // 0x4
+    T *m_items;   // 0x10
+    unsigned int m_size;   // 0x14
+    unsigned int m_available;   // 0x18
+    bool m_supportRecycle;   // 0x1c
+};
+
+template <class T>
+void RTArray<T>::PutBack(T *item)
+{
+    if (m_available < m_size) {
+        m_pool[m_available] = item;
+        m_available++;
+        if (m_supportRecycle)
+            m_inuse.remove(item);
+    }
+}
+
+template <class T>
+T *RTArray<T>::GetNext(bool b)
+{
+    if (m_available) {
+        m_available--;
+        T *item = m_pool[m_available];
+
+        m_pool[m_available] = 0;
+        if (m_supportRecycle)
+            m_inuse.push_back(item);
+        return item;
+    }
+    return 0;
+}
+
 class CZBodyAnim;
 
 /* an animation playing in a blend (SOCOM 1's DWARF: 0x20 bytes; SOCOM II's is 0x2c) */
@@ -262,6 +325,10 @@ class CActiveAnimList : public RTList<ACTIVE_ANIM> {
 public:
 };
 
+/* an anim pushed on a list at a weight; every weight on a list scaled (SOCOM 1's free functions) */
+void PushAnim(CActiveAnimList *list, ACTIVE_ANIM *anim, float wt);
+void RenormAnims(CActiveAnimList *list, float scale);
+
 /* the flag words' helpers: function templates, so never inlined (SOCOM II's, no SOCOM 1 copy;
  * called by their placeholders until named) */
 extern "C" {
@@ -273,6 +340,8 @@ unsigned short func_0028F1B0(unsigned short flags, unsigned short mask, bool on)
  * only what the written functions touch */
 class CZBodyAnimBlend {
 public:
+    /* every field to rest, its anims' list cleared (0x28CEA0, not written yet) */
+    void Clear();
     int CountAnims();
     ACTIVE_ANIM *FindAnim(int id);
     void AddOverlay(ACTIVE_ANIM *anim, ACTIVE_ANIM *overlay, float wt);
@@ -291,6 +360,26 @@ public:
     CActiveAnimList m_anims;   // 0x30
 };
 
+/* the body's pools (SOCOM 1's DWARF: CActiveAnimPool and CBlendPool, each an RTArray) and its stack
+ * of blends (CBodyAnimBlendStack : RTStack) */
+class CActiveAnimPool : public RTArray<ACTIVE_ANIM> {
+public:
+};
+
+class CBlendPool : public RTArray<CZBodyAnimBlend> {
+public:
+    /* a blend cleared as it goes back, or as it comes out (SOCOM II's; the names ours) */
+    void PutBack(CZBodyAnimBlend *blend);
+    CZBodyAnimBlend *GetNext();
+};
+
+class CBodyAnimBlendStack : public RTStack<CZBodyAnimBlend> {
+public:
+};
+
+/* the bone id of a node's name (OVL2 0x58CB30, the SEAL lane's range; not named yet) */
+extern "C" int func_0058CB30(const char *name);
+
 /* the animated body (SOCOM 1's DWARF: 0x48 bytes, its table first; SOCOM II's is 0x90 -- its
  * constructor, 0x28EDD0, zeroes through 0x8C). SOCOM II's table (0x406100) has two slots, the
  * destructor and NullNode, an inline returning -1. */
@@ -301,9 +390,20 @@ public:
 
     /* a part's position and rotation in the body's space: up its chain of parents (SOCOM 1's) */
     void PartInSpace(CZBodyPart *part, const CPnt3D *offset, CPnt3D *pos, CQuat *rot) const;
+    /* the parts: one made for a node (its bone id from the node's name), filed by id, and a
+     * node's whole tree of them (SOCOM 1's) */
+    CZBodyPart *NewBodyPart(CNode *node, CZBodyPart *parent);
+    void AddBodyPart(CNode *node, CZBodyPart *parent);
+    CZBodyPart *BodySetup(CNode *node, CZBodyPart *parent);
 
     short m_state;   // 0x4: the SEAL's state (SOCOM 1's char at 0xd)
-    unsigned char _6[0x90 - 0x6];
+    unsigned char _6[0x10 - 0x6];   // 0x8, 0xc: zeroed by the constructor
+    CActiveAnimPool m_active_anim_pool;   // 0x10 (SOCOM 1's a pointer)
+    CBlendPool m_blend_pool;   // 0x30
+    CBodyAnimBlendStack m_blends;   // 0x50
+    std::vector<CZBodyPart *> m_body_parts;   // 0x5c: by bone id
+    std::vector<CZBodyAnim *> m_body_anims;   // 0x68
+    unsigned char m_overlay[0x1c];   // 0x74: a CBlendOverlay (SOCOM 1's a pointer at 0x8)
 };
 
 /* the plane and quaternion helpers (bone_math.cpp, SOCOM 1's free functions) */
