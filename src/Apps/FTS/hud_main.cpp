@@ -18,6 +18,7 @@
 #include "hud_letterbox.h"
 #include "hud_mapcompass.h"
 #include "hud_missioncams.h"
+#include "hud_mpinfobox.h"
 #include "hud_newhudmap.h"
 #include "hud_teammatenames.h"
 
@@ -154,79 +155,6 @@ public:
     CHUD *m_parent;   // 0xa4
 };   // 0xb0 bytes
 
-/* the radio icons (SOCOM 1's CZStaticRadioBitmap and CZDynamicRadioBitmap, renamed) */
-class CRadioIcon_Static : public C2DBitmap {
-public:
-    CRadioIcon_Static()
-    {
-        m_pRadioOffTexture = 0;
-        m_pRadioChannelTeamTexture = 0;
-        m_pRadioChannelOffenseTexture = 0;
-        m_pRadioChannelDefenseTexture = 0;
-        m_pRadioChannelDeadTexture = 0;
-    }
-    virtual void Tick(float dT);
-
-    zdb::CTexHandle *m_pRadioOffTexture;   // 0x80
-    zdb::CTexHandle *m_pRadioChannelTeamTexture;   // 0x84
-    zdb::CTexHandle *m_pRadioChannelOffenseTexture;   // 0x88
-    zdb::CTexHandle *m_pRadioChannelDefenseTexture;   // 0x8c
-    zdb::CTexHandle *m_pRadioChannelDeadTexture;   // 0x90
-    zdb::CTexHandle *m_pRadioChannel10Texture;   // 0x94
-};   // 0xa0 bytes
-
-class CRadioIcon_Dynamic : public C2DBitmap {
-public:
-    CRadioIcon_Dynamic()
-    {
-        m_pRadioChannelInUseTexture = 0;
-        m_pRadioChannelCanTalkTexture = 0;
-    }
-    virtual void Tick(float dT);
-
-    zdb::CTexHandle *m_pRadioChannelInUseTexture;   // 0x80
-    zdb::CTexHandle *m_pRadioChannelCanTalkTexture;   // 0x84
-    unsigned char _88[0x90 - 0x88];
-};   // 0x90 bytes
-
-/* who is talking on the radio: the two icons, a bitmap, two strings and another bitmap (SOCOM
- * II's; its members' names are ours) */
-class CWhosTalking : public C2D {
-public:
-    virtual void Draw(zdb::CCamera *cam);
-
-    unsigned char _18[0x20 - 0x18];
-    CRadioIcon_Static m_static;   // 0x20
-    CRadioIcon_Dynamic m_dynamic;   // 0xc0
-    C2DBitmap m_bitmap;   // 0x150
-    C2DString m_text1;   // 0x1d0
-    C2DString m_text2;   // 0x268
-    C2DBitmap m_bitmap2;   // 0x300
-};   // 0x380 bytes
-
-/* the health bar (SOCOM II's) */
-class CHealthBar : public C2D {
-public:
-    CHealthBar();
-    virtual ~CHealthBar();
-    virtual void Draw(zdb::CCamera *cam);
-
-    unsigned char _18[0x1d0 - 0x18];
-};   // 0x1d0 bytes
-
-/* the multiplayer info box: the health bar, two bitmaps, a string and who is talking (SOCOM II's;
- * its members' names are ours) */
-class CMPInfoBox : public C2D {
-public:
-    virtual void Draw(zdb::CCamera *cam);
-
-    unsigned char _18[0x20 - 0x18];
-    CHealthBar m_healthbar;   // 0x20
-    C2DBitmap m_bitmap1;   // 0x1f0
-    C2DBitmap m_bitmap2;   // 0x270
-    C2DString m_text;   // 0x2f0
-    CWhosTalking m_whostalking;   // 0x390
-};   // 0x710 bytes
 
 
 /* the classes with constructors of their own */
@@ -412,7 +340,6 @@ extern "C" void func_00235300(CHudNetState *state, int flag);
 extern "C" void func_00237310(CHudNetState *state);
 /* the members' clean-ups not named yet: the info box's, the spectator's, the ammo counts', the
  * lens flares' */
-extern "C" void func_00238660(CMPInfoBox *box);
 extern "C" void func_00242AB0(CSpectatorInfo *info);
 extern "C" void func_00237F60(CAmmoDisplay *ammo);
 
@@ -454,7 +381,7 @@ void CHUD::ReInit_Uninit()
     m_poseBitmap.Clear();
     m_FlashFXVector.Reset();
     m_teamMateNames.UnInit();
-    func_00238660(&m_infobox);
+    m_infobox.UnInit();
     func_00242AB0(&m_spectatorinfo);
     CZPlayerMapItem::MissionEndCleanup();
     hudTurnOffScorePopup();

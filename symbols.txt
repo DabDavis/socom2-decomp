@@ -2238,13 +2238,13 @@
 0x00237FC0 0x2FC func_00237FC0  # OVL1
 0x002382C0 0xF0 func_002382C0  # OVL1
 0x002383B0 0x6C __ct__12CAmmoDisplayFv  # OVL1; by hand (CHUD's constructor builds CHUD+0x1A700 with it; no vtable: the class name ours, from its functions' AMMO, MAGS, %d/%d and %d MAG%c)
-0x00238420 0x64 func_00238420  # OVL1
-0x00238490 0x64 func_00238490  # OVL1
-0x00238500 0x160 func_00238500  # OVL1
-0x00238660 0xA4 func_00238660  # OVL1
+0x00238420 0x64 Off__10CMPInfoBoxFv  # OVL1; by hand (slot 4 of CMPInfoBox's vtable 0x405B40: C2D's Off, then its parts')
+0x00238490 0x64 On__10CMPInfoBoxFv  # OVL1; by hand (slot 5 of CMPInfoBox's vtable 0x405B40: C2D's On, then its parts')
+0x00238500 0x160 Tick__10CMPInfoBoxFf  # OVL1; by hand (slot 12 of CMPInfoBox's vtable 0x405B40)
+0x00238660 0xA4 UnInit__10CMPInfoBoxFv  # OVL1; by hand (CHUD::ReInit_Uninit's call on CHUD+0x17B70, beside CMPTeammateNames::UnInit: off, the strings emptied; the name ours)
 0x00238710 0x18C func_00238710  # OVL1
 0x002388A0 0x220 func_002388A0  # OVL1
-0x00238AC0 0x234 func_00238AC0  # OVL1
+0x00238AC0 0x234 Tick__12CWhosTalkingFf  # OVL1; by hand (slot 12 of CWhosTalking's vtable 0x405BB0)
 0x00238D00 0x248 func_00238D00  # OVL1
 0x00238F50 0x2FC func_00238F50  # OVL1
 0x00239250 0x19C Tick__18CRadioIcon_DynamicFf  # OVL1; s1:vtable (CRadioIcon_Dynamic's slot 12: SOCOM 1's CZDynamicRadioBitmap::HudTick)
