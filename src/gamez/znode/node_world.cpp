@@ -354,6 +354,40 @@ void CWorld::ReleaseLandmarkList()
     m_landmarks.clear();
 }
 
+/* a tree's lights listed, each at the front, the cells left out; SOCOM II also gives each
+ * transparent visual the mip levels of phase 19, and marks a node whose first visual's material is
+ * of type 2 (SOCOM 1's) */
+void LightList_Search(CNode *node, CLightList &lights)
+{
+    if (node && node->GetType() != 10) {
+        CLight *light = 0;
+
+        if (node->GetType() == 8) {
+            if ((light = dynamic_cast<CLight *>(node)) != 0)
+                ((PtrListBase &)lights).insert(ListBegin(lights), (const void *const &)light);
+        }
+        if (node->m_visual.size()) {
+            for (CVisualVector::iterator it = node->m_visual.begin(), e = node->m_visual.end(); it != e;
+                 ++it) {
+                CVisual *v = *it;
+
+                if ((v->m_flags & 1) & ((v->m_flags & 0x100) == 0))
+                    CAssetMgr::AddMipLevels(&v->m_dynTexList, (_RenderPhase)19);
+            }
+            unsigned int m = node->GetFirstVisual()->m_7;
+
+            if (m) {
+                MATERIAL_ENTRY *mat = CWorld::m_world->m_Material_Object.GetMaterial(m);
+
+                if (mat && mat->m_type == 2)
+                    node->m_socom2_a1_bits.bit7 = true;
+            }
+        }
+        for (CNodeVector::iterator it = node->m_child.begin(), e = node->m_child.end(); it != e; ++it)
+            LightList_Search(*it, lights);
+    }
+}
+
 /* the lights gathered afresh, each placed in the world and listed in every cell its range covers
  * in x/z, their count given back (SOCOM 1's). The clear and the walk's first node both bind the
  * sentinel's link by reference (znode.h's ListClear and PtrListFirst, SOCOM II's begin()): the

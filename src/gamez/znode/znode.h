@@ -613,7 +613,10 @@ public:
             unsigned char bit3 : 1;
             unsigned char bit4 : 1;
             unsigned char bit5 : 1;
-            unsigned char hi : 2;
+            unsigned char bit6 : 1;
+            /* LightList_Search sets it on a node whose first visual's material is of type 2 (the
+             * name ours) */
+            unsigned char bit7 : 1;
         } m_socom2_a1_bits;
     };
     unsigned char _socom2_a2[2];   // 0xa2
@@ -1325,12 +1328,31 @@ public:
     bool Read(CSaveLoad *io);
     unsigned char _0[0x10];
 };
+/* a material of the world's table: 0x3C bytes, its type at 0x14 (LightList_Search tests 2; the
+ * names ours) */
+struct MATERIAL_ENTRY {
+    unsigned char _0[0x14];
+    int m_type;   // 0x14
+    unsigned char _18[0x3c - 0x18];
+};
 class CMaterial_Object {
 public:
     CMaterial_Object();
     ~CMaterial_Object();
     bool Read(CSaveLoad *io);
-    unsigned char _0[0x10];
+    /* a material by its 1-based index, none for 0 or past the end (inline: LightList_Search's
+     * copy tests the index twice; the name ours) */
+    MATERIAL_ENTRY *GetMaterial(unsigned int i)
+    {
+        if (i == 0)
+            return 0;
+        return i <= m_size ? &m_data[i - 1] : 0;
+    }
+
+    unsigned int m_capacity;   // 0x0 (the table's vector)
+    unsigned int m_size;   // 0x4
+    MATERIAL_ENTRY *m_data;   // 0x8
+    unsigned char _c[4];   // 0xc
 };
 class CSubSurf_Object {
 public:
