@@ -234,6 +234,9 @@ public:
     ~RTStack() { delete[] m_stack; }
     void Push(T *item);
     T *Pop();
+    /* the top item, none when empty (SOCOM 1's): out of class and defined in another unit, whose
+     * tail holds the one copy (OVL1 0x219390), so body.cpp calls it (func_00219390 below) */
+    T *Top();
 
     T **m_stack;   // 0x0
     int m_size;   // 0x4
@@ -500,6 +503,9 @@ public:
     bool Holding() { return m_flags & 8 ? true : false; }
     /* the blend restarted from its first anim */
     void Reset();
+    /* the homing (the name ours): through this inline its address stays in a register of its own
+     * across the reset's calls (PushBlend), as the pool's does through CBody::ActiveAnimPool() */
+    CHoming *Homing() { return &m_homing; }
 
     CPnt3D m_dpos;   // 0x0
     float m_quitT;   // 0xc
@@ -634,6 +640,10 @@ public:
      * the loop's bottom test -- the walks that put anims back (ClearOverlays, PopBlend,
      * SetBlendAnims) need it; `&body->m_active_anim_pool` is recomputed every pass */
     CActiveAnimPool *ActiveAnimPool() { return &m_active_anim_pool; }
+    /* the blend on top of the stack (the name ours): the inline's result takes the lowest saved
+     * register (PushBlend keeps it in s0, the homing's address in s1) where a call made in the
+     * function itself gives it the next one up */
+    CZBodyAnimBlend *TopBlend() { return m_blends.Top(); }
 
     short m_state;   // 0x4: the SEAL's state (SOCOM 1's char at 0xd)
     float m_interp1;   // 0x8

@@ -360,26 +360,28 @@ void CBody::BodySetState(int state)
 }
 
 /* a blend started on a script: the top blend's homing reset, a blend and an anim taken from the
- * pools, the blend reset on the anim and pushed (SOCOM 1's took the anim by id).
- * OPEN, 69 instructions (right size, every call in place): registers and scheduling -- the
- * target keeps the top blend's fraction in $f20 and its homing's address in s1 from the start,
- * the looped bool in s3; not yet permuted */
+ * pools, the blend reset on the anim and pushed (SOCOM 1's took the anim by id). The registers
+ * follow the source: the top through TopBlend() (s0) and the homing through Homing() (s1), the
+ * loop flag and the two pointers declared first, uninitialised (s3, s2, s1), the fraction read
+ * after the flag */
 CZBodyAnimBlend *CBody::PushBlend(CZSIScriptCommon *anim, short id, char state)
 {
+    bool looped;
+    CZBodyAnimBlend *blend;
+    ACTIVE_ANIM *a;
     float tfrac = 0.0f;
-    CZBodyAnimBlend *top = func_00219390(&m_blends);
-    bool looped = false;
+    CZBodyAnimBlend *top = TopBlend();
 
+    looped = false;
     if (top) {
-        tfrac = top->m_tfrac;
         looped = func_0028F190(top->m_flags, 0x40);
-        top->m_homing.Reset();
+        tfrac = top->m_tfrac;
+        top->Homing()->Reset();
     }
-    CZBodyAnimBlend *blend = m_blend_pool.GetNext();
-
+    blend = m_blend_pool.GetNext();
     if (!blend)
         return top;
-    ACTIVE_ANIM *a = m_active_anim_pool.GetActiveAnim(anim, id);
+    a = m_active_anim_pool.GetActiveAnim(anim, id);
 
     if (!a) {
         m_blend_pool.PutBack(blend);
@@ -1095,9 +1097,17 @@ CBody::~CBody()
 }
 
 /* the overlay cleared, every blend popped, the parts deleted (SOCOM 1's).
- * OPEN, 0x1A8 bytes short: the target inlines each part's destructor whole (Clear's stores, then
- * operator delete) inside the transform; here the delete calls CZBodyPart::Clear out of line, as
- * NewBodyPart's constructor does in both builds -- an inline height: may resolve at level 5 */
+ * OPEN, 0x1A8 bytes short: the target inlines each transform whole -- the iterators, the functor,
+ * the part's destructor and Clear's stores, then operator delete -- where MW inlines it one level
+ * and calls the iterator operators and the functor out of line. Measured (probes p_tf2.cpp,
+ * ims.py): with `~CZBodyPart() { Clear(); }` the transform's tree is SIX high (transform, the
+ * functor, the destructor, Clear, CQuat's implicit assignment, CPnt3D's), cut at level 5 at any
+ * inline_max_size; with Clear's stores written into the destructor it is five high but 299 units
+ * (a CPnt3D copy costs ~49, a CQuat copy ~30, the empty transform 80, a user destructor 17), and
+ * `#pragma inline_max_size(300)` then inlines it: 0x434 against 0x42C, only end() reloading data_
+ * where the target reuses begin()'s load. Clear inside the functor (`if (p) { p->Clear(); delete
+ * p; }`, no destructor) is five high and still over 256. The original fits both limits: its copies
+ * (zmath.h) or the MSL pieces were a level shorter and ~45 units leaner -- not in this lane's files */
 
 void CBody::Destroy()
 {
