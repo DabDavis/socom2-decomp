@@ -6,9 +6,12 @@
  * helpers the response states' Ticks call, the CQB/unknown/pickup Ticks and five OnSignals
  * (round 3); CAiState::Create (0x5F6550, every state's constructor inlined one level), Reset's
  * copy (0x5F6D40), CAiState::Signal (0x5F6FA0, Reset inlined whole), the stack's constructor and
- * its Pop (round 4). The stack's other members (0x5F7470-0x5F8270: SOCOM 1's PushAiState,
- * SetAiState, PopToAiState, StateTick ... moved onto CAiStateStack, the AI passed) and the
- * controller's wrappers after StateTick (0x5F5B10-0x5F5CB0) are next. */
+ * its Pop (round 4); round 5: SOCOM 1's CSealCtrlAi stack calls moved onto CAiStateStack, the AI
+ * passed (Find, Remove, Push, Set, PopTo x2, Pop(AI_STATE), PopAll, the stack's Tick -- 0x5F7920
+ * to 0x5F8270), ClearAiState, the states' hold on the controller's settings (0x5F6350), slot
+ * 0x34's two overrides. Still open: the flags' update (0x5F7470, 0x4B0 bytes), CanPushAiState
+ * (0x5F5CD0) and StateTick (0x5F55E0); the controller's wrappers (0x5F5BA0-0x5F5CB0) are named
+ * drafts until zseal.h declares them. */
 
 #include "../gamez/zseal/zseal.h"
 #include "../gamez/zanim/zanim.h"
@@ -737,7 +740,7 @@ AI_STATE CAiStateStack::Pop(CSealCtrlAi *ai, AI_STATE state)
  * else its sub-step (slot 0x14, handed the sub-stack's state -- a CAiState * the slot's declared
  * int stands for until seal_ai.cpp's override changes with it); a state done is popped, its result
  * kept; else the stack's clock and the state's step clock run (OVL2 0x5F8030).
- * OPEN, 0x1A8 against 0x1A0: the target takes the states' Tick and slot 0x14 results as they come
+ * OPEN, 0x1AC against 0x1A0: the target takes the states' Tick and slot 0x14 results as they come
  * (`move s1,v0`, no andi) -- slot 0x10/0x14 return int in SOCOM II (each Tick's `andi` is its
  * `(AI_RESULT)` cast, then `sw` to the int m_done and the return), where ai_states.h's AI_RESULT
  * return makes MW zero-extend each result (andi); the base's return type cannot change while
