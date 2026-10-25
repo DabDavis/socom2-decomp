@@ -9704,7 +9704,7 @@
 0x00530230 0x140 GetRegionContaining__6CAiMapFRC9CAiMapLocQ36CAiMap6region4TYPEb  # OVL2; s1:order by hand (the demo's 0x19E970 after InflateRegion: the regions walked, hidden ones skipped on the bool, type 7 or the region's own, the cell inside)
 0x00530370 0xD4 GetRegion__6CAiMapFPCcR9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19EA90: strcasecmp against each region's name at +0xC, the corner copied out)
 0x00530450 0xB0 GetRegion__6CAiMapFRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19EB30: the region whose corner is the cell)
-0x00530500 0x1E4 func_00530500  # OVL2
+0x00530500 0x1E4 GetDistance__Q26CAiMap4linkCFRC9CAiMapLocRC9CAiMapLoc  # OVL2; ours (new in SOCOM II, in the map tables between GetRegion(loc) and GetCellLink: a link's Manhattan legs -- from the cell to the link's end on its map, or from the other end to the goal -- the shorter through _min<int>; ai_maps.cpp's 0x52ACC0 calls it; byte-exact in ai_maptable.cpp)
 0x005306F0 0xB0 GetCellLink__6CAiMapFRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19EBD0, after the two GetRegions in both builds: the links at 0x104 walked for the cell -- 12-byte links in SOCOM II)
 0x005307A0 0x1E0 func_005307A0  # OVL2
 0x00530980 0x20 back__Q23std68__vector_imp<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>,0>Fv  # OVL2; s1:exact

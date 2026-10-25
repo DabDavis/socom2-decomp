@@ -399,6 +399,11 @@ public:
      * the two cells whose low four a new link sets to 8 -- 0x5309D0) */
     class link {
     public:
+        /* how far a walk from one cell to another goes through the link: from the near end, the
+         * cells' x and y distances summed, the shorter of the two legs (new in SOCOM II, the name
+         * ours: 0x530500, ai_maps.cpp's 0x52ACC0 calls it) */
+        int GetDistance(const CAiMapLoc &from, const CAiMapLoc &to) const;
+
         CAiMapLoc m_loc;   // 0x0
         CAiMapLoc m_link;   // 0x4
         unsigned int m_kind : 4;   // 0x8: the name ours

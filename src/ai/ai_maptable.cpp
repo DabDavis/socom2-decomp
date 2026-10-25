@@ -9,6 +9,25 @@
 
 #include "ai.h"
 
+/* ai.h's _min defined (as ai_map.cpp does: never inlined, the int instance closes this unit,
+ * 0x5311C0) */
+namespace ai {
+template <class T>
+const T &_min(const T &a, const T &b)
+{
+    return a <= b ? a : b;
+}
+}
+
+/* two cells' x and y distances summed (the name ours) */
+inline int loc_dist(const CAiMapLoc &a, const CAiMapLoc &b)
+{
+    int dx = b.x > a.x ? b.x - a.x : a.x - b.x;
+    int dy = b.y > a.y ? b.y - a.y : a.y - b.y;
+
+    return dx + dy;
+}
+
 /* the extra data given up (SOCOM 1's) */
 void CAiMap::FreeEx()
 {
@@ -138,6 +157,15 @@ CAiMap::link *CAiMap::GetCellLink(const CAiMapLoc &loc)
 }
 
 /* the region whose corner is the cell (SOCOM 1's GetRegion(const CAiMapLoc &)) */
+/* the shorter leg: from the cell to the link's end on its map, or from the other end to the goal
+ * (new in SOCOM II) */
+int CAiMap::link::GetDistance(const CAiMapLoc &from, const CAiMapLoc &to) const
+{
+    if (from.m_mapid == m_loc.m_mapid)
+        return ai::_min(loc_dist(m_loc, from), loc_dist(m_link, to));
+    return ai::_min(loc_dist(m_link, from), loc_dist(m_loc, to));
+}
+
 CAiMap::region *CAiMap::GetRegion(const CAiMapLoc &loc)
 {
     regions::iterator e = m_regionTable.end();
