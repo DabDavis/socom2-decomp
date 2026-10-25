@@ -1045,3 +1045,6 @@
 0x00676490 0x0 gstNatServiceAddress  # OVL2 bss; s1:data-exact (size SOCOM 1's; via MediusGetNatServiceAddress +1)
 0x006764A8 0x0 gstClientAddressList  # OVL2 bss; s1:data-exact (size SOCOM 1's; via MediusGetClientAddrList +1)
 0x0067A7A8 0x1000 NetObjectStatus  # OVL2 bss; s1:data-exact (size SOCOM 1's; via NetFreeAllObjects)
+0x003E0368 0x1 s_bStickCentered  # OVL1 data (initialised 1); zui.cpp's static, ours: whether the menu's stick came back to the centre -- UiGetDirStickMoved and its inlined copies in DidStickMovePrev/Next read it (3 references in 3 functions) -- the UI-widgets lane
+0x0049EA78 0x4 s_fStickX  # OVL1 bss; zui.cpp's static, ours (SOCOM 1's gp-25364): the menu's stick x, read by IsStickNearCenter, GetStickDir, UiGetDirStickMoved and DidStickMovePrev/Next -- the UI-widgets lane
+0x0049EA80 0x4 s_fStickY  # OVL1 bss; zui.cpp's static, ours (SOCOM 1's gp-25360): the menu's stick y, read by the same five -- the UI-widgets lane

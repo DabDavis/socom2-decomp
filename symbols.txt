@@ -6761,7 +6761,7 @@
 0x00368550 0x8 GetChild__11CDlgObjSpecCFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00368560 0x8 HasChildren__11CDlgObjSpecCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00368570 0xB4 func_00368570  # OVL1
-0x00368630 0x1C func_00368630  # OVL1
+0x00368630 0x1C GetReaderFileName__9CGameMenuFv  # OVL1; s1:vtable by hand (slot 0x10 of __vt__9CGameMenu 0x406F80, SOCOM 1's GetReaderFileName's slot: the reader's name string returned)
 0x00368650 0xB20 func_00368650  # OVL1
 0x00369170 0x48 DrawForeplane__9CGameMenuFv  # OVL1; s1:exact
 0x003691C0 0x44 Draw2dOnly__9CGameMenuFv  # OVL1; s1:exact
@@ -6773,19 +6773,19 @@
 0x00369EB0 0xC0 func_00369EB0  # OVL1
 0x00369F70 0x24 __ct__10ActionItemFv  # OVL1; tu: zui.cpp~ (1.0 beta); s1:exact
 0x00369FA0 0xB8 func_00369FA0  # OVL1
-0x0036A060 0x1A0 func_0036A060  # OVL1
+0x0036A060 0x1A0 UiGetDirStickMoved__Fv  # OVL1; s1:order by hand (zui.cpp's free helpers in reverse alphabetical order as SOCOM 1's, UiGetDirStickMoved first; its body is the one DidStickMovePrev/Next inline) -- the UI-widgets lane
 0x0036A200 0xC func_0036A200  # OVL1
 0x0036A210 0x20 func_0036A210  # OVL1
 0x0036A230 0x84 PrepTexture__FPCcPQ23zdb16CTextureRelocMgr  # OVL1; s1:exact
 0x0036A2C0 0x3C func_0036A2C0  # OVL1
 0x0036A300 0x3C func_0036A300  # OVL1
-0x0036A340 0x70 func_0036A340  # OVL1
+0x0036A340 0x70 IsStickNearCenter__Ff  # OVL1; s1:order by hand (between PlayCountSound and InitButton as SOCOM 1's; both axes against a float, as SOCOM 1's) -- the UI-widgets lane
 0x0036A3B0 0x78 func_0036A3B0  # OVL1
 0x0036A430 0x140 HookupLib__FPQ23zdb9CAssetLib  # OVL1; s1:calls
-0x0036A570 0x58 func_0036A570  # OVL1
+0x0036A570 0x58 GetStickDir__Fv  # OVL1; s1:order by hand (between HookupLib and GetButton as SOCOM 1's; the four directions from the axes, as SOCOM 1's) -- the UI-widgets lane
 0x0036A5D0 0x1F0 GetButton__FPCc  # OVL1; s1:calls
-0x0036A7C0 0x1A8 func_0036A7C0  # OVL1
-0x0036A970 0x1A8 func_0036A970  # OVL1
+0x0036A7C0 0x1A8 DidStickMovePrev__Fv  # OVL1; s1:order by hand (after GetButton as SOCOM 1's; UiGetDirStickMoved inlined, compared with 3) -- the UI-widgets lane
+0x0036A970 0x1A8 DidStickMoveNext__Fv  # OVL1; s1:order by hand (after DidStickMovePrev as SOCOM 1's; compared with 4) -- the UI-widgets lane
 0x0036AB20 0xC0 func_0036AB20  # OVL1
 0x0036ABE0 0x30 zUISchedulerClear__Fv  # OVL1; s1:exact
 0x0036AC10 0x68 __dt__Q23std62__vector_deleter<10ActionItem,Q23std23allocator<10ActionItem>>Fv  # OVL1; s1:calls (SOCOM 1's CButtonSpec destructor calls the ActionItem vector's deleter destructor for the same member) -- the UI-widgets lane
