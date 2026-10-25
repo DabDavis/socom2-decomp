@@ -2,8 +2,10 @@
  * and in which order, the texture loads queued in the GS FIFO between its packets. SOCOM 1's
  * class (its DWARF: 0x694 bytes; SOCOM II's thePipe runs to 0x720); the unit's name is ours (no
  * initialiser or assert names it). Defined in reverse of their image order (-inline deferred).
- * Written so far: the two FIFO signals, the opacity stack's push, the alpha pass's textures and
- * the overlay's kick. */
+ * Written so far: the lens flares' system's Clear and Release (0x336340, 0x3364D0: the unit opens
+ * with that system's code, SOCOM II's), the opacity stack's push, the alpha pass's textures, the
+ * noise overlay (its kick, its texture, its pixels), the flush FIFO packet, VIF1's interrupt and
+ * the two FIFO signals. */
 
 #include <eetypes.h>
 #include <vector>
