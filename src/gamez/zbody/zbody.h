@@ -406,6 +406,33 @@ public:
     unsigned char m_overlay[0x1c];   // 0x74: a CBlendOverlay (SOCOM 1's a pointer at 0x8)
 };
 
+class CZSIScriptCommon;
+
+/* one object's track in a motion script: its positions and rotations, a frame each or one when
+ * constant (SOCOM 1's DWARF, 0x10 bytes; SOCOM II packs a position into three shorts and a
+ * rotation into four 1.15 fixed-point shorts, where SOCOM 1 kept floats and a CQuat) */
+class CZSIObject {
+public:
+    CZSIObject();
+    ~CZSIObject();
+    /* the track laid over a script's buffer: its flags word, the positions, the rotations from the
+     * next word boundary; returns the bytes used (SOCOM 1's, which copied the name to a table) */
+    int Read(unsigned char *data, unsigned int nFrames, const char *name);
+    bool Initalize(CZSIScriptCommon *common);
+
+    short *m_positionData;   // 0x0
+    short *m_rotations;   // 0x4
+    unsigned int m_inUse : 1;   // 0x8
+    unsigned int m_constPos : 1;
+    unsigned int m_constRot : 1;
+    unsigned int m_padding : 21;
+    unsigned int m_body_part_id : 8;
+    char *m_pName;   // 0xc
+};
+
+/* the objects alive (SOCOM 1's numSiObject, si_object.cpp's) */
+extern int numSiObject;
+
 /* the plane and quaternion helpers (bone_math.cpp, SOCOM 1's free functions) */
 float LineIntersectPlane(float d, const CPnt3D &n, const CPnt3D &a, const CPnt3D &b);
 float PlaneConstant(const CPnt3D &n, const CPnt3D &p);
