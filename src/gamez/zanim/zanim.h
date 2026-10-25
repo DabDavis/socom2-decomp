@@ -10,6 +10,7 @@
 #include "../zmath/zmath.h"
 #include "../znode/znode.h"
 #include "../zar/zar.h"
+#include "../zsnd/zsnd.h"
 
 using zdb::CNode;
 /* the anim's textures are zdb's handles (every mangled name in the map says Q23zdb10CTexHandle) */
@@ -676,42 +677,7 @@ public:
     CValve* valve;   // 0x4
 };   // 0x8 bytes
 
-class CSndInstance;
-
-class CSnd {
-public:
-    /* the first five slots of SOCOM II's table (0x406AC0), SOCOM 1's names */
-    virtual ~CSnd();
-    virtual CSndInstance *PlaySound(CSndInstance *inst, unsigned int flags);
-    virtual CSndInstance *PlaySoundVol(float vol, CSndInstance *inst, unsigned int flags);
-    virtual CSndInstance *PlaySound3D(const CPnt3D *pos, float vol, int pitch, CSndInstance *inst, unsigned int flags);
-    virtual CSndInstance *PlaySoundVolPanPitch(float vol, int pan, int pitch, CSndInstance *inst, unsigned int flags);
-    static CSnd *GetSoundByName(const char *name);
-
-    unsigned char _4[0x1c - 0x4];   // 0x4: SOCOM 1's m_vol .. m_ID
-    unsigned int m_socom2_bits0 : 3;   // 0x1c: SOCOM II packs SOCOM 1's flag bytes here
-    unsigned int m_socom2_bit3 : 1;   // 0x1c: CZAnim::StopSounds stops such a sound's stream by hand (name unknown)
-    unsigned int m_socom2_bit4 : 1;   // the SOUND tick plays a sound with either of these two
-    unsigned int m_socom2_bit5 : 1;   // through a streamer of its own (names unknown)
-};
-
-enum MUSIC_MODE {};   // its values are not in SOCOM 1's DWARF; the SOUND tick passes 1 and 3
-
-class CSndJukebox {
-public:
-    static void Play(MUSIC_MODE mode, CSnd *sound);
-};
-
-class CSndInstance {
-public:
-    void SetPos(const CPnt3D *pos);
-    void SetPitch(int pitch);
-    void SetPan(int pan);
-    void SetVol(float vol);
-    void Stop();
-    void TerminateOnFinish();
-    static void ReleaseSoundInstance(CSndInstance *instance);
-};
+/* the sound classes (CSnd, CSndInstance, CSndJukebox, MUSIC_MODE) are zsnd.h's */
 
 /* SOCOM II's sound calls: SOCOM 1's CSndInstance::IsPlaying (matched in its unit under its
  * address's name), a fade out, and a sound manager and its stop -- not named */
