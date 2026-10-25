@@ -277,8 +277,9 @@ public:
 class Instance {
 public:
     /* the live instances (SOCOM 1's Instance::List; its members out of line) */
-    class List {
+    class List : public std::list<Instance *> {
     public:
+        ~List();
         void Tick(float dT);
         void Uninit();
         /* SOCOM II's: the instances past their life recycled (the name ours) */
@@ -286,13 +287,14 @@ public:
 
         bool Empty() const { return !m_head; }
 
-        unsigned char _0[0xc];
-        Instance *m_head;   // 0xc: linked through m_listNext
+        Instance *m_head;   // 0xc: linked through m_listNext (SOCOM II's; the list itself unused)
     };
 
     /* whether a link is the list's end (ours: the target materialises each null test) */
     static bool End(const Instance *p) { return !p; }
     bool Alive() const { return m_age < m_lifespan; }
+    /* whether its source ages it at the LOD's rate (SOCOM 1's test of m_doAgeLOD; the name ours) */
+    bool AgeLOD() const;
 
     /* inline: its table stored and the virtual Expire, in every destructor that inlines it (no
      * out-of-line copy in the image) */
@@ -307,6 +309,7 @@ public:
     static float fadeFactor;   // 0x488440
     static float ageFactor;   // 0x488448
     static int spawnFactor;   // 0x488450
+    static float m_dT;   // 0x488458: the tick's step
     static List list;   // 0x488480
     static InstancePool<Instance> m_instance_pool;   // 0x488460
 
@@ -346,6 +349,7 @@ public:
  * name ours) */
 void FreeInstances();
 
+
 /* the textures a particle draws with, registered with the draw buffer (0x324A10) */
 void AddDynTexture(zdb::CTexHandle *tex);
 
@@ -368,7 +372,9 @@ public:
     void TextureSequenceAdd(float fraction, zdb::CTexHandle *tex);
     void TextureSequenceClear();
 
-    unsigned char _0[0xdc];   // 0x0: SOCOM 1's m_active .. m_initialAgeRange, and SOCOM II's word
+    unsigned char _0[0x19];   // 0x0: SOCOM 1's m_active .. m_landmark, and SOCOM II's word
+    unsigned char m_doAgeLOD;   // 0x19 (SOCOM 1: 0x15)
+    unsigned char _1a[0xdc - 0x1a];   // 0x1a: SOCOM 1's m_doSpawnLOD .. m_initialAgeRange
     std::vector<zdb::CTexHandle *> m_textures;   // 0xdc
     Props *m_props;   // 0xe8
 
@@ -377,6 +383,15 @@ public:
     static CPnt3D referencePositionW;   // 0x4884D0: the camera's position, each tick
     static List list;   // 0x4884F0
 };
+
+inline bool Instance::AgeLOD() const
+{
+    bool r = false;
+
+    if (m_source && m_source->m_doAgeLOD)
+        r = true;
+    return r;
+}
 
 }
 

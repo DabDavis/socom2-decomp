@@ -11,6 +11,35 @@ extern "C" void sceVu0InterVector(float *v0, float *v1, float *v2, float t);
 
 namespace Particle {
 
+/* SOCOM 1's: every live instance ticked -- at the LOD's age rate when its source asks -- and the
+ * dead ones recycled (SOCOM II's list: linked through the instances, not a std::list) */
+void Instance::List::Tick(float dT)
+{
+    m_dT = dT;
+    while (!Empty() && !m_head->Alive()) {
+        Instance *p = m_head;
+
+        m_head = p->m_listNext;
+        p->Recycle();
+    }
+    for (Instance *prev = m_head; prev; ) {
+        if (prev->AgeLOD())
+            prev->Tick(dT * ageFactor);
+        else
+            prev->Tick(dT);
+        Instance *p = prev->m_listNext;
+
+        while (!End(p) && !p->Alive()) {
+            Instance *d = p;
+
+            p = p->m_listNext;
+            prev->m_listNext = p;
+            d->Recycle();
+        }
+        prev = p;
+    }
+}
+
 /* SOCOM II's: the instances whose age has reached their life unlinked and recycled, the head's
  * run first */
 void Instance::List::RemoveDead()
@@ -33,6 +62,12 @@ void Instance::List::RemoveDead()
         }
         prev = p;
     }
+}
+
+/* SOCOM 1's: every live instance deleted, then the list's own nodes (none) */
+Instance::List::~List()
+{
+    Uninit();
 }
 
 /* SOCOM 1's: every live instance deleted */
