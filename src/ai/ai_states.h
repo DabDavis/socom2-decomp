@@ -581,13 +581,16 @@ public:
     virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual ~CAiSUseVehicle();
     void SetTimeout(float t);
+    /* the vehicle boarded (OVL2 0x60F470; the name ours) and the timer's period drawn (inline) */
+    bool Board(CSealCtrlAi *ai);
+    inline float Draw() const;
 
     CAiMapLoc m_58;   // 0x58
     unsigned int m_5c;   // 0x5c: an entity's id (CEntity::invalidId on a reset)
     /* 0x60: a CAiTimer (Create builds it with 0.0): its period, an Rfloat -- the timeout and a
      * range SetTimeout zeroes, as Rfloat's assignment does -- and its countdown */
     float m_60;   // 0x60: the timeout
-    unsigned int m_64;   // 0x64
+    float m_64;   // 0x64: its range (zeroed by SetTimeout)
     float m_68;   // 0x68 (0x6c bytes, Create's new)
 };
 

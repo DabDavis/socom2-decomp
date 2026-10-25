@@ -11822,7 +11822,7 @@
 0x0060ED40 0xB8 func_0060ED40  # OVL2
 0x0060EE00 0x78 __dt__14CAiSUseVehicleFv  # OVL2; by hand: CAiSUseVehicle's vtable slot +0x4C (the destructor's shape: its table, CAiState's, ~CAiStateStack(this + 8, -1); CAiSUseVehicle is new in SOCOM II)
 0x0060EE80 0x5EC Tick__14CAiSUseVehicleFP11CSealCtrlAi  # OVL2; by hand: CAiSUseVehicle's vtable slot +0x10 (Tick); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
-0x0060F470 0x14C func_0060F470  # OVL2
+0x0060F470 0x14C Board__14CAiSUseVehicleFP11CSealCtrlAi  # OVL2; by hand (the kit lane, round 7): CAiSUseVehicle's (this at a0: m_5c the vehicle's id, the timer at 0x60-0x68), called from its Tick; the SEAL put into the entity (0x546210), the look at the turret's position, mode 2, the period drawn -- the name ours
 0x0060F5C0 0xC SetTimeout__14CAiSUseVehicleFf  # OVL2; by hand: stores the float at 0x60 and zeroes 0x64 -- CAiSUseVehicle::OnSignal inlines it with CAiTimer::infinite on a reset; just before CanPushAiState and OnSignal (the name ours)
 0x0060F5D0 0x8 CanPushAiState__14CAiSUseVehicleF8AI_STATEP11CSealCtrlAi  # OVL2; by hand: CAiSUseVehicle's vtable slot +0x1C (CanPushAiState)
 0x0060F5E0 0xD8 OnSignal__14CAiSUseVehicleFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand: CAiSUseVehicle's vtable slot +0x8 (OnSignal)
