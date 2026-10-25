@@ -23,7 +23,13 @@ namespace zdb {
 class CTextureRelocMgr;
 }
 
+/* SOCOM 1's DWARF */
+struct IPNT2D {
+    int x, y;
+};
+
 _zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
+bool zrdr_findIPNT2D(const _zrdr *rdr, const char *tag, IPNT2D *out);
 char *zrdr_findstring(const _zrdr *rdr, const char *tag);
 bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
 bool zrdr_findint(const _zrdr *rdr, const char *tag, int *out, int n);
@@ -50,6 +56,12 @@ void *func_001EE780(void *str, unsigned int pos, unsigned int n1, const char *fi
 class CSaferStr {
 public:
     CSaferStr() { init(); }
+    /* the string made empty, then assigned (SOCOM 1's, as its operator=) */
+    CSaferStr(const char *sz)
+    {
+        init();
+        *this = sz;
+    }
     CSaferStr(const CSaferStr &s) { func_0022E560(this, &s); }
     ~CSaferStr() { func_001E7EF0(this, 0); }
     CSaferStr &operator=(const CSaferStr &s)
@@ -134,7 +146,7 @@ public:
     CTextSpec(_zrdr *rdr);
     CDlgObjSpec *Copy();
     C2D *CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const;
-    const char *GetType();
+    const char *GetType() { return "TEXT"; }
 
     CSaferStr m_caption;           // 0x8: CAPTION
     float m_scale;                 // 0x14: SCALE (1)
@@ -152,5 +164,127 @@ public:
     C2D *CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const;
     const char *GetType() { return "CLOCK"; }
 };   // 0x34 bytes
+
+/* a counter: a text spec counting from StartTime to EndTime or for a Duration, its value in the
+ * UI variable ValVar names (SOCOM 1's) */
+class CCounterSpec : public CTextSpec {
+public:
+    CCounterSpec(_zrdr *rdr);
+    CDlgObjSpec *Copy();
+    C2D *CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const;
+    const char *GetType() { return "COUNTER"; }
+
+    float m_startTime;       // 0x34: StartTime
+    bool m_counting;         // 0x38: an EndTime or a Duration given
+    float m_endTime;         // 0x3C: EndTime, or Duration
+    CSaferStr m_valVar;      // 0x40: ValVar
+};   // 0x4C bytes
+
+/* a text spec wrapped to a width, scrolled by arrows (SOCOM 1's CWrapSpec) */
+class CWrapSpec : public CTextSpec {
+public:
+    CWrapSpec(_zrdr *rdr);
+    CDlgObjSpec *Copy();
+    C2D *CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const;
+    const char *GetType() { return "WRAPPEDTEXT"; }
+
+    float m_width;                // 0x34: WIDTH
+    int m_spacing;                // 0x38: SPACING (10)
+    float m_height;               // 0x3C: HEIGHT (-1)
+    bool m_displayOneLine;        // 0x40: DISPLAY_ONE_LINE
+    CSaferStr m_upTexture;        // 0x44: UP_ARROW's TEXTURE
+    CSaferStr m_downTexture;      // 0x50: DOWN_ARROW's TEXTURE
+    IPNT2D m_upOffset;            // 0x5C: UP_ARROW's OFFSET
+    IPNT2D m_upSize;              // 0x64: UP_ARROW's SIZE
+    IPNT2D m_downOffset;          // 0x6C: DOWN_ARROW's OFFSET
+    IPNT2D m_downSize;            // 0x74: DOWN_ARROW's SIZE
+    bool m_autoScroll;            // 0x7C: AUTOSCROLL
+};   // 0x80 bytes
+
+/* wrapped text that scrolls by itself (SOCOM 1's CScrollSpec) */
+class CScrollSpec : public CWrapSpec {
+public:
+    CScrollSpec(_zrdr *rdr);
+    CDlgObjSpec *Copy();
+    C2D *CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const;
+    const char *GetType() { return "SCROLLINGTEXT"; }
+
+    int m_80;                     // 0x80
+};   // 0x84 bytes
+
+/* a password: a text spec drawn as stars (SOCOM II's) */
+class CSecureTextSpec : public CTextSpec {
+public:
+    CDlgObjSpec *Copy();
+    C2D *CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const;
+    const char *GetType() { return "SECURETEXT"; }
+};   // 0x34 bytes
+
+/* a teletype: text typed out a character at a time (SOCOM 1's CTtySpec) */
+class CTtySpec : public CTextSpec {
+public:
+    CDlgObjSpec *Copy();
+    C2D *CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const;
+    const char *GetType() { return "TELETYPE"; }
+
+    float m_34;                   // 0x34
+    float m_38;                   // 0x38
+    float m_3C;                   // 0x3C
+    float m_40;                   // 0x40
+    int m_44;                     // 0x44
+    bool m_48;                    // 0x48
+    bool m_49;                    // 0x49
+};   // 0x4C bytes
+
+/* a bitmap (SOCOM 1's CImageSpec) */
+class CImageSpec : public CDlgObjSpec {
+public:
+    CImageSpec(_zrdr *rdr);
+    CDlgObjSpec *Copy();
+    C2D *CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const;
+    const char *GetType() { return "IMAGE"; }
+
+    CSaferStr m_filename;         // 0x8: FILENAME
+    IPNT2D m_size;                // 0x14: SIZE, or XSIZE and YSIZE
+    bool m_pulse;                 // 0x1C: PULSE
+    float m_pulseRate;            // 0x20: PULSE's value
+};   // 0x24 bytes
+
+/* a horizontal progress bar: a bitmap whose FILENAME may name a UI variable holding the
+ * texture's name, and the node its leading edge follows (SOCOM 1's) */
+class CHProgressBarSpec : public CImageSpec {
+public:
+    CHProgressBarSpec(_zrdr *rdr);
+    CDlgObjSpec *Copy();
+    C2D *CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const;
+    const char *GetType() { return "PROGRESSBAR"; }
+
+    bool m_filenameIsUivar;       // 0x24: FILENAME_IS_UIVAR
+    CSaferStr m_leadingEdgeNode;  // 0x28: LEADING_EDGE_NODE
+};   // 0x34 bytes
+
+/* one object of a dialog's design: its spec, where it sits and under which parent (SOCOM 1's
+ * CDesignDlgObj; the assignment copies the spec through its Copy) */
+class CDesignDlgObj {
+public:
+    ~CDesignDlgObj() { delete m_spec; }
+    void operator=(const CDesignDlgObj &o)
+    {
+        delete m_spec;
+        m_spec = o.m_spec ? o.m_spec->Copy() : 0;
+        m_xpos = o.m_xpos;
+        m_ypos = o.m_ypos;
+        m_opacity = o.m_opacity;
+        m_name = o.m_name;
+        m_childOf = o.m_childOf;
+    }
+
+    CDlgObjSpec *m_spec;          // 0x0: SPEC
+    int m_xpos;                   // 0x4: XPOS
+    int m_ypos;                   // 0x8: YPOS
+    float m_opacity;              // 0xC: OPACITY (1)
+    CSaferStr m_name;             // 0x10: NAME ("unnamed")
+    CSaferStr m_childOf;          // 0x1C: CHILDOF
+};   // 0x28 bytes
 
 #endif

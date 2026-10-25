@@ -10,10 +10,9 @@
 
 #include "zui_spec.h"
 
-/* the type's name (SOCOM 1's) */
-const char *CTextSpec::GetType()
+CDlgObjSpec *CImageSpec::Copy()
 {
-    return "TEXT";
+    return new CImageSpec(*this);
 }
 
 /* a copy of the spec, its variable spec copied too (SOCOM 1's; the variable spec's copy inlined
@@ -34,6 +33,31 @@ CDlgObjSpec::~CDlgObjSpec()
 CDlgObjSpec *CTextSpec::Copy()
 {
     return new CTextSpec(*this);
+}
+
+CDlgObjSpec *CTtySpec::Copy()
+{
+    return new CTtySpec(*this);
+}
+
+CDlgObjSpec *CSecureTextSpec::Copy()
+{
+    return new CSecureTextSpec(*this);
+}
+
+CDlgObjSpec *CWrapSpec::Copy()
+{
+    return new CWrapSpec(*this);
+}
+
+CDlgObjSpec *CScrollSpec::Copy()
+{
+    return new CScrollSpec(*this);
+}
+
+CDlgObjSpec *CHProgressBarSpec::Copy()
+{
+    return new CHProgressBarSpec(*this);
 }
 
 /* the rdr's UIVAR block: the NAME, the VALUE (a one-item array is its item) cloned into the

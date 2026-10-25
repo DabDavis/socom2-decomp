@@ -7063,8 +7063,8 @@
 0x0037E210 0x84 func_0037E210  # OVL1
 0x0037E2A0 0x1D0 func_0037E2A0  # OVL1
 0x0037E470 0x184 CreateDisplayObj__17CHProgressBarSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0037E600 0xB0 func_0037E600  # OVL1
-0x0037E6B0 0x78 func_0037E6B0  # OVL1
+0x0037E600 0xB0 __ct__17CHProgressBarSpecFP5_zrdr  # OVL1; by hand (CImageSpec's constructor called, CHProgressBarSpec's vtable stored, FILENAME_IS_UIVAR and LEADING_EDGE_NODE parsed; GetObjectSpec's PROGRESSBAR) -- zui_spec.cpp
+0x0037E6B0 0x78 __dt__10CImageSpecFv  # OVL1; s1:vtable (slot 0x08 of CImageSpec's table 0x407F80; SOCOM 1's __dt__10CImageSpecFv; the implicit destructor zui_spec.cpp emits with CImageSpec's constructor) -- zui_spec.cpp
 0x0037E730 0x178 CreateDisplayObj__14CSliderBarSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037E8B0 0x1AC CreateDisplayObj__14CUIListBoxSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037EA60 0x14 func_0037EA60  # OVL1
@@ -7078,14 +7078,14 @@
 0x00381550 0x688 func_00381550  # OVL1
 0x00381BE0 0x144 CreateDisplayObj__12CCounterSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00381D30 0xD8 Copy__12CCounterSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00381E10 0x254 func_00381E10  # OVL1
+0x00381E10 0x254 __ct__12CCounterSpecFP5_zrdr  # OVL1; by hand (CTextSpec's constructor inlined one level, CCounterSpec's vtable, StartTime/ValVar/EndTime/Duration; GetObjectSpec's COUNTER) -- zui_spec.cpp
 0x00382070 0x5F8 func_00382070  # OVL1
-0x00382670 0x21C func_00382670  # OVL1
+0x00382670 0x21C __ct__9CTextSpecFP5_zrdr  # OVL1; s1:order by hand (SOCOM 1's __ct__9CTextSpecFP5_zrdr between GetObjectSpec and GetControlSpec, as here: CDlgObjSpec's constructor inlined, CTextSpec's vtable, CAPTION/SCALE/FONT/HCENTERED/RIGHT_JUSTIFIED/COLOR) -- zui_spec.cpp
 0x00382890 0x304 func_00382890  # OVL1
-0x00382BA0 0xC8 func_00382BA0  # OVL1
-0x00382C70 0x374 func_00382C70  # OVL1
+0x00382BA0 0xC8 __dt__9CWrapSpecFv  # OVL1; s1:vtable (slot 0x08 of CWrapSpec's table 0x407EC0; SOCOM 1's __dt__9CWrapSpecFv; the implicit destructor emitted with CWrapSpec's constructor) -- zui_spec.cpp
+0x00382C70 0x374 __ct__9CWrapSpecFP5_zrdr  # OVL1; by hand (CTextSpec's constructor inlined one level, CWrapSpec's vtable; WIDTH/SPACING/HEIGHT, the arrows, AUTOSCROLL, DISPLAY_ONE_LINE; SOCOM 1's CWrapSpec, GetControlSpec's WRAPPEDTEXT) -- zui_spec.cpp
 0x00382FF0 0x164 CreateDisplayObj__10CImageSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:calls
-0x00383160 0x174 func_00383160  # OVL1
+0x00383160 0x174 __ct__10CImageSpecFP5_zrdr  # OVL1; s1:order by hand (SOCOM 1's __ct__10CImageSpecFP5_zrdr after CreateDisplayObj__10CImageSpec: CImageSpec's vtable, FILENAME, SIZE/XSIZE/YSIZE, PULSE) -- zui_spec.cpp
 0x003832E0 0x80 __ct__11CDlgObjSpecFP5_zrdr  # OVL1; s1:order by hand (SOCOM 1 inlines CDlgObjSpec(_zrdr *) into each spec's constructor; SOCOM II's copy stores the vtable and makes the UIVAR tag's CUIVariableSpec through 0x386FF0, as the inlined copies in CTextSpec's and CImageSpec's constructors do) -- zui_spec.cpp
 0x00383360 0x2B8 func_00383360  # OVL1
 0x00383620 0xB0 __dt__12CCounterSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -7162,8 +7162,8 @@
 0x00387600 0x28 func_00387600  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
 0x00387630 0x3A8 func_00387630  # OVL1
 0x003879E0 0x38 Copy__13CCheckBoxSpecFv  # OVL1; tu: zui_cleanup.cpp~ (1.0 beta); s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00387A20 0x68 func_00387A20  # OVL1
-0x00387A90 0x1DC func_00387A90  # OVL1
+0x00387A20 0x68 Copy__17CHProgressBarSpecFv  # OVL1; s1:vtable (slot 0x0C of CHProgressBarSpec's table 0x407DD0; SOCOM 1's Copy__17CHProgressBarSpecFv) -- zui_cleanup.cpp
+0x00387A90 0x1DC __ct__10CImageSpecFR10CImageSpec  # OVL1; by hand (CImageSpec's implicit copy out of line: CDlgObjSpec's copy inlined, the vtable, the members; the progress bar's and the list box's Copies call it) -- zui_cleanup.cpp
 0x00387C70 0x80 Copy__14CSliderBarSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00387CF0 0x268 func_00387CF0  # OVL1
 0x00387F60 0x28 func_00387F60  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
@@ -7175,17 +7175,17 @@
 0x003881E0 0xC HasChildren__18CHandlerButtonSpecCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003881F0 0x94 CreateDisplayObj__11CScrollSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00388290 0x60 Copy__11CScrollSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x003882F0 0x110 func_003882F0  # OVL1
+0x003882F0 0x110 __ct__9CWrapSpecFR9CWrapSpec  # OVL1; by hand (CWrapSpec's implicit copy out of line, CTextSpec's copy inlined one level; CScrollSpec's Copy calls it) -- zui_cleanup.cpp
 0x00388400 0xC4 CreateDisplayObj__9CWrapSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x003884D0 0xD8 func_003884D0  # OVL1
-0x003885B0 0x200 func_003885B0  # OVL1
+0x003884D0 0xD8 Copy__9CWrapSpecFv  # OVL1; s1:vtable (slot 0x0C of CWrapSpec's table; SOCOM 1's Copy__9CWrapSpecFv) -- zui_cleanup.cpp
+0x003885B0 0x200 __ct__9CTextSpecFR9CTextSpec  # OVL1; by hand (CTextSpec's implicit copy out of line, CDlgObjSpec's copy inlined; the wrap, secure-text and teletype Copies call it; SOCOM 1's __ct__9CTextSpecFR9CTextSpec) -- zui_cleanup.cpp
 0x003887B0 0x84 func_003887B0  # OVL1
-0x00388840 0x58 func_00388840  # OVL1
+0x00388840 0x58 Copy__15CSecureTextSpecFv  # OVL1; by hand (slot 0x0C of CSecureTextSpec's table 0x407EF0: new(0x34), CTextSpec's copy, CSecureTextSpec's vtable) -- zui_cleanup.cpp
 0x003888A0 0x130 CreateDisplayObj__8CTtySpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x003889D0 0x90 func_003889D0  # OVL1
+0x003889D0 0x90 Copy__8CTtySpecFv  # OVL1; s1:vtable (slot 0x0C of CTtySpec's table 0x407F20; SOCOM 1's Copy__8CTtySpecFv) -- zui_cleanup.cpp
 0x00388A60 0x74 CreateDisplayObj__9CTextSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00388AE0 0x98 Copy__9CTextSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00388B80 0x1EC func_00388B80  # OVL1
+0x00388B80 0x1EC Copy__10CImageSpecFv  # OVL1; s1:vtable (slot 0x0C of CImageSpec's table 0x407F80; SOCOM 1's Copy__10CImageSpecFv) -- zui_cleanup.cpp
 0x00388D70 0xE0 func_00388D70  # OVL1
 0x00388E50 0xCC __dt__11CDlgObjSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00388F20 0x198 __ct__11CDlgObjSpecFR11CDlgObjSpec  # OVL1; s1:order by hand (SOCOM 1's __ct__11CDlgObjSpecFR11CDlgObjSpec after ~CDlgObjSpec in zui_cleanup.cpp; stores CDlgObjSpec's vtable, copies the variable spec through new(0x2C) -- zui_cleanup.cpp
@@ -7196,7 +7196,7 @@
 0x00389180 0xC GetType__15CRadioStripSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389190 0x18C __dt__13CCheckBoxSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389320 0xC GetType__13CCheckBoxSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00389330 0x10C func_00389330  # OVL1
+0x00389330 0x10C __dt__17CHProgressBarSpecFv  # OVL1; s1:vtable (slot 0x08 of CHProgressBarSpec's table; SOCOM 1's __dt__17CHProgressBarSpecFv) -- zui_cleanup.cpp
 0x00389440 0xC GetType__17CHProgressBarSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389450 0xD8 __dt__14CSliderBarSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389530 0xC GetType__14CSliderBarSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -7208,9 +7208,9 @@
 0x003897C0 0x90 __dt__11CScrollSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389850 0xC GetType__11CScrollSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389860 0xC GetType__9CWrapSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00389870 0x114 func_00389870  # OVL1
-0x00389990 0xC func_00389990  # OVL1
-0x003899A0 0x114 func_003899A0  # OVL1
+0x00389870 0x114 __dt__15CSecureTextSpecFv  # OVL1; by hand (slot 0x08 of CSecureTextSpec's table: its vtable, CTextSpec's destructor inlined) -- zui_cleanup.cpp
+0x00389990 0xC GetType__15CSecureTextSpecFv  # OVL1; by hand (slot 0x14 of CSecureTextSpec's table, "SECURETEXT") -- zui_cleanup.cpp
+0x003899A0 0x114 __dt__8CTtySpecFv  # OVL1; s1:vtable (slot 0x08 of CTtySpec's table; SOCOM 1's __dt__8CTtySpecFv) -- zui_cleanup.cpp
 0x00389AC0 0xC GetType__8CTtySpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389AD0 0xC GetType__9CTextSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389AE0 0xC GetType__10CImageSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
