@@ -86,6 +86,11 @@ public:
     virtual void SetMapOffset(int x, int y) {}
 
     bool IsOn() const;
+    /* the GS PRIM word for a primitive type with the flags' bits (ztwod.cpp; the name ours) */
+    void MakePrim(unsigned int &prim, unsigned int type);
+    /* CGame::StartEngine's: the screen's window, then the 2D camera (SOCOM 1's) */
+    static void Init();
+    static void Open();
 
     /* the screen's offset every 2D position is moved by (SOCOM 1's statics) */
     static float m_topx;

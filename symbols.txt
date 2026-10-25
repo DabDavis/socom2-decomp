@@ -6719,14 +6719,14 @@
 0x00364BA0 0x50 func_00364BA0  # OVL1
 0x00364BF0 0x60 func_00364BF0  # OVL1
 0x00364C50 0x110 __ct__9C2DBitmapFv  # OVL1; s1:callee (CFader's constructor calls it first, as SOCOM 1's; it stores __vt__9C2DBitmap)
-0x00364D60 0x90 func_00364D60  # OVL1
-0x00364DF0 0x20 func_00364DF0  # OVL1; s1~ Enable__3C2DFb (one of 2 out-of-line copies of an inline, by s1:vtable)
+0x00364D60 0x90 MakePrim__3C2DFRUiUi  # OVL1; by hand (ztwod.cpp: the GS PRIM word stored, then TME, ABE, AA1 and IIP or'ed in by the flag bits 3, 2, 1 and 5; C2DBitmap's constructor and two other 2D draws call it; SOCOM II's, the name ours)
+0x00364DF0 0x20 Enable__3C2DFb  # OVL1; s1~ Enable__3C2DFb (one of 2 out-of-line copies of an inline, by s1:vtable); by hand (ztwod.cpp: slot 3 of C2D's vtable 0x406EF0, the flag's bit 6 set from the bool -- m_on, as On and Off store it; the out-of-line copy at 0x1FE210 is slot 9, SetGouraud)
 0x00364E10 0x14 IsOn__3C2DCFv  # OVL1; s1:callee
 0x00364E30 0x1C On__3C2DFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00364E50 0x20 Off__3C2DFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00364E70 0x70 Draw__3C2DFPQ23zdb7CCamera  # OVL1; s1:callee
-0x00364EE0 0x4C func_00364EE0  # OVL1
-0x00364F30 0x124 func_00364F30  # OVL1
+0x00364EE0 0x4C Open__3C2DFv  # OVL1; by hand (ztwod.cpp: SOCOM 1's C2D::Open, StartEngine's call after the world's init as SOCOM 1's; the 2D camera new'ed once into the static at 0x49E9E0)
+0x00364F30 0x124 Init__3C2DFv  # OVL1; by hand (ztwod.cpp: SOCOM 1's C2D::Init, called from CGame::StartEngine after CTexture::Init as SOCOM 1's is; the screen window round 2048 into m_topx/m_topy and the far corner, and the scales)
 0x00365060 0x98 __dt__3C2DFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00365100 0xFC __ct__3C2DFv  # OVL1; s1:callee (every C2D constructor's first call; it constructs the list and stores __vt__3C2D)
 0x00365200 0xC TakeDrawPacket__23CDblBufTextureRelocatorFP1Ui  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
