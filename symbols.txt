@@ -11148,112 +11148,112 @@
 0x005CDA20 0x74 func_005CDA20  # OVL2
 0x005CDAA0 0x108 func_005CDAA0  # OVL2
 0x005CDBB0 0x18 func_005CDBB0  # OVL2
-0x005CDBD0 0x1CC func_005CDBD0  # OVL2
-0x005CDDA0 0x154 func_005CDDA0  # OVL2
-0x005CDF00 0x140 func_005CDF00  # OVL2
-0x005CE040 0x154 func_005CE040  # OVL2
-0x005CE1A0 0x4B4 func_005CE1A0  # OVL2
-0x005CE660 0x27C func_005CE660  # OVL2
-0x005CE8E0 0x160 func_005CE8E0  # OVL2
-0x005CEA40 0x1F4 func_005CEA40  # OVL2
-0x005CEC40 0x118 func_005CEC40  # OVL2
-0x005CED60 0x524 func_005CED60  # OVL2
-0x005CF290 0x1EC func_005CF290  # OVL2
-0x005CF480 0x264 func_005CF480  # OVL2
-0x005CF6F0 0x108 func_005CF6F0  # OVL2
-0x005CF800 0x54 func_005CF800  # OVL2
-0x005CF860 0xD0 func_005CF860  # OVL2
-0x005CF930 0x8BC func_005CF930  # OVL2
-0x005D01F0 0x538 func_005D01F0  # OVL2
-0x005D0730 0x164 func_005D0730  # OVL2
-0x005D08A0 0x148 func_005D08A0  # OVL2
-0x005D09F0 0x148 func_005D09F0  # OVL2
-0x005D0B40 0x148 func_005D0B40  # OVL2
-0x005D0C90 0x580 func_005D0C90  # OVL2
-0x005D1210 0x3C func_005D1210  # OVL2
-0x005D1250 0x3C func_005D1250  # OVL2
-0x005D1290 0x44C func_005D1290  # OVL2
-0x005D16E0 0x48C func_005D16E0  # OVL2
-0x005D1B70 0x288 func_005D1B70  # OVL2
-0x005D1E00 0x504 func_005D1E00  # OVL2
-0x005D2310 0x164 func_005D2310  # OVL2
-0x005D2480 0x1AC func_005D2480  # OVL2
-0x005D2630 0x25C func_005D2630  # OVL2
-0x005D2890 0x8 func_005D2890  # OVL2
-0x005D28A0 0x150 func_005D28A0  # OVL2
+0x005CDBD0 0x1CC Tick__6CTWaitFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::WAIT's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTWait's tick for ai::WAIT
+0x005CDDA0 0x154 Begin__6CTWaitFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::WAIT's begin (the first command so registered); SOCOM 1's RegisterCommands passes CTWait's begin for ai::WAIT
+0x005CDF00 0x140 Parse__6CTWaitFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::WAIT's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTWait's parse for ai::WAIT
+0x005CE040 0x154 Tick__7CTValveFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::VALVE's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTValve's tick for ai::VALVE
+0x005CE1A0 0x4B4 Parse__7CTValveFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::VALVE's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTValve's parse for ai::VALVE
+0x005CE660 0x27C Tick__8CTTurretFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::TURRET's tick (the first command so registered); the class name ours, after the command (SOCOM II's, absent from SOCOM 1)
+0x005CE8E0 0x160 Parse__8CTTurretFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::TURRET's parse (the first command so registered); the class name ours, after the command (SOCOM II's, absent from SOCOM 1)
+0x005CEA40 0x1F4 Tick__6CTTeamFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::TEAM's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTTeam's tick for ai::TEAM
+0x005CEC40 0x118 Parse__6CTTeamFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::TEAM's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTTeam's parse for ai::TEAM
+0x005CED60 0x524 Tick__8CTRegionFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::INREGION's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTRegion's tick for ai::INREGION
+0x005CF290 0x1EC Parse__8CTRegionFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::INREGION's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTRegion's parse for ai::INREGION
+0x005CF480 0x264 Tick__7CTRangeFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::INRANGE's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTRange's tick for ai::INRANGE
+0x005CF6F0 0x108 Parse__7CTRangeFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::INRANGE's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTRange's parse for ai::INRANGE
+0x005CF800 0x54 Tick__9CTStopAllFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::STOPALL's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTStopAll's tick for ai::STOPALL
+0x005CF860 0xD0 Parse__9CTStopAllFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::STOPALL's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTStopAll's parse for ai::STOPALL
+0x005CF930 0x8BC Tick__7CTStateFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::STATE's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTState's tick for ai::STATE
+0x005D01F0 0x538 Parse__7CTStateFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::STATE's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTState's parse for ai::STATE
+0x005D0730 0x164 Tick__8CTStanceFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::STANCE's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTStance's tick for ai::STANCE
+0x005D08A0 0x148 End__8CTStanceFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::STANCE's end (the first command so registered); SOCOM 1's RegisterCommands passes CTStance's end for ai::STANCE
+0x005D09F0 0x148 Begin__8CTStanceFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::STANCE's begin (the first command so registered); SOCOM 1's RegisterCommands passes CTStance's begin for ai::STANCE
+0x005D0B40 0x148 Parse__8CTStanceFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::STANCE's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTStance's parse for ai::STANCE
+0x005D0C90 0x580 Tick__7CTSoundFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::SOUND's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTSound's tick for ai::SOUND
+0x005D1210 0x3C End__7CTSoundFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::SOUND's end (the first command so registered); SOCOM 1's RegisterCommands passes CTSound's end for ai::SOUND
+0x005D1250 0x3C Begin__7CTSoundFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::SOUND's begin (the first command so registered); SOCOM 1's RegisterCommands passes CTSound's begin for ai::SOUND
+0x005D1290 0x44C Parse__7CTSoundFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::SOUND's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTSound's parse for ai::SOUND
+0x005D16E0 0x48C Tick__8CTSignalFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::SIGNAL's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTSignal's tick for ai::SIGNAL
+0x005D1B70 0x288 Parse__8CTSignalFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::SIGNAL's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTSignal's parse for ai::SIGNAL
+0x005D1E00 0x504 Tick__12CTSetAnimSetFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::SETANIMSET's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTSetAnimSet's tick for ai::SETANIMSET
+0x005D2310 0x164 Parse__12CTSetAnimSetFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::SETANIMSET's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTSetAnimSet's parse for ai::SETANIMSET
+0x005D2480 0x1AC Tick__9CTSetModeFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::SETMODE's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTSetMode's tick for ai::SETMODE
+0x005D2630 0x25C Parse__9CTSetModeFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::SETMODE's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTSetMode's parse for ai::SETMODE
+0x005D2890 0x8 Tick__8CTSelectFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::SELECT's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTSelect's tick for ai::SELECT
+0x005D28A0 0x150 Parse__8CTSelectFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::SELECT's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTSelect's parse for ai::SELECT
 0x005D29F0 0xB0 func_005D29F0  # OVL2
-0x005D2AA0 0x488 func_005D2AA0  # OVL2
-0x005D2F30 0x808 func_005D2F30  # OVL2
-0x005D3740 0x540 func_005D3740  # OVL2
-0x005D3C80 0x27C func_005D3C80  # OVL2
+0x005D2AA0 0x488 End__6CTPlayFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::ANIMATE's end (the first command so registered); SOCOM 1's RegisterCommands passes CTPlay's end for ai::ANIMATE
+0x005D2F30 0x808 Tick__6CTPlayFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::ANIMATE's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTPlay's tick for ai::ANIMATE
+0x005D3740 0x540 Begin__6CTPlayFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::ANIMATE's begin (the first command so registered); SOCOM 1's RegisterCommands passes CTPlay's begin for ai::ANIMATE
+0x005D3C80 0x27C Parse__6CTPlayFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::ANIMATE's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTPlay's parse for ai::ANIMATE
 0x005D3F00 0x180 func_005D3F00  # OVL2
-0x005D4080 0x104 func_005D4080  # OVL2
-0x005D4190 0x168 func_005D4190  # OVL2
-0x005D4300 0x180 func_005D4300  # OVL2
-0x005D4480 0x84 func_005D4480  # OVL2
-0x005D4510 0x254 func_005D4510  # OVL2
+0x005D4080 0x104 End__8CTPursueFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::PURSUE's end (the first command so registered); SOCOM 1's RegisterCommands passes CTPursue's end for ai::PURSUE
+0x005D4190 0x168 Tick__8CTPursueFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::PURSUE's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTPursue's tick for ai::PURSUE
+0x005D4300 0x180 Begin__8CTPursueFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::PURSUE's begin (the first command so registered); SOCOM 1's RegisterCommands passes CTPursue's begin for ai::PURSUE
+0x005D4480 0x84 Parse__8CTPursueFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::PURSUE's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTPursue's parse for ai::PURSUE
+0x005D4510 0x254 Tick__7CTParamFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::PARAM's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTParam's tick for ai::PARAM
 0x005D4770 0x9D0 func_005D4770  # OVL2
-0x005D5140 0x5B4 func_005D5140  # OVL2
-0x005D5700 0xB4 func_005D5700  # OVL2
-0x005D57C0 0x260 func_005D57C0  # OVL2
-0x005D5A20 0x114 func_005D5A20  # OVL2
-0x005D5B40 0x1B4 func_005D5B40  # OVL2
-0x005D5D00 0x7B0 func_005D5D00  # OVL2
-0x005D64B0 0x2B4 func_005D64B0  # OVL2
-0x005D6770 0x278 func_005D6770  # OVL2
-0x005D69F0 0x3CC func_005D69F0  # OVL2
-0x005D6DC0 0x274 func_005D6DC0  # OVL2
-0x005D7040 0x130 func_005D7040  # OVL2
-0x005D7170 0x114 func_005D7170  # OVL2
-0x005D7290 0x140 func_005D7290  # OVL2
-0x005D73D0 0x47C func_005D73D0  # OVL2
-0x005D7850 0x1A0 func_005D7850  # OVL2
-0x005D79F0 0x47C func_005D79F0  # OVL2
+0x005D5140 0x5B4 Parse__7CTParamFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::PARAM's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTParam's parse for ai::PARAM
+0x005D5700 0xB4 Tick__7CTPaintFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::PAINT's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTPaint's tick for ai::PAINT
+0x005D57C0 0x260 Parse__7CTPaintFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::PAINT's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTPaint's parse for ai::PAINT
+0x005D5A20 0x114 End__6CTMoveFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::MOVE's end (the first command so registered); SOCOM 1's RegisterCommands passes CTMove's end for ai::MOVE
+0x005D5B40 0x1B4 Tick__6CTMoveFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::MOVE's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTMove's tick for ai::MOVE
+0x005D5D00 0x7B0 Begin__6CTMoveFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::MOVE's begin (the first command so registered); SOCOM 1's RegisterCommands passes CTMove's begin for ai::MOVE
+0x005D64B0 0x2B4 Parse__6CTMoveFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::MOVE's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTMove's parse for ai::MOVE
+0x005D6770 0x278 Tick__5CTMapFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::MAP's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTMap's tick for ai::MAP
+0x005D69F0 0x3CC Parse__5CTMapFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::MAP's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTMap's parse for ai::MAP
+0x005D6DC0 0x274 Tick__7CTMacroFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::MACRO's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTMacro's tick for ai::MACRO
+0x005D7040 0x130 Begin__7CTMacroFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::MACRO's begin (the first command so registered); SOCOM 1's RegisterCommands passes CTMacro's begin for ai::MACRO
+0x005D7170 0x114 Parse__7CTMacroFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::MACRO's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTMacro's parse for ai::MACRO
+0x005D7290 0x140 End__8CTLookAtFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::LOOKAT's end (the first command so registered); SOCOM 1's RegisterCommands passes CTLookAt's end for ai::LOOKAT
+0x005D73D0 0x47C Tick__8CTLookAtFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::LOOKAT's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTLookAt's tick for ai::LOOKAT
+0x005D7850 0x1A0 Begin__8CTLookAtFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::LOOKAT's begin (the first command so registered); SOCOM 1's RegisterCommands passes CTLookAt's begin for ai::LOOKAT
+0x005D79F0 0x47C Parse__8CTLookAtFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::LOOKAT's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTLookAt's parse for ai::LOOKAT
 0x005D7E70 0x160 func_005D7E70  # OVL2
-0x005D7FD0 0x6BC func_005D7FD0  # OVL2
-0x005D8690 0x1A4 func_005D8690  # OVL2
-0x005D8840 0x33C func_005D8840  # OVL2
-0x005D8B80 0x140 func_005D8B80  # OVL2
+0x005D7FD0 0x6BC Tick__8CTInViewFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::INVIEW's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTInView's tick for ai::INVIEW
+0x005D8690 0x1A4 Parse__8CTInViewFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::INVIEW's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTInView's parse for ai::INVIEW
+0x005D8840 0x33C Tick__9CTInStateFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::INSTATE's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTInState's tick for ai::INSTATE
+0x005D8B80 0x140 Parse__9CTInStateFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::INSTATE's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTInState's parse for ai::INSTATE
 0x005D8CC0 0x160 func_005D8CC0  # OVL2
-0x005D8E20 0x140 func_005D8E20  # OVL2
-0x005D8F60 0x174 func_005D8F60  # OVL2
-0x005D90E0 0x188 func_005D90E0  # OVL2
-0x005D9270 0x1B8 func_005D9270  # OVL2
-0x005D9430 0x104 func_005D9430  # OVL2
+0x005D8E20 0x140 End__6CTHoldFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::HOLD's end (the first command so registered); SOCOM 1's RegisterCommands passes CTHold's end for ai::HOLD
+0x005D8F60 0x174 Tick__6CTHoldFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::HOLD's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTHold's tick for ai::HOLD
+0x005D90E0 0x188 Begin__6CTHoldFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::HOLD's begin (the first command so registered); SOCOM 1's RegisterCommands passes CTHold's begin for ai::HOLD
+0x005D9270 0x1B8 Parse__6CTHoldFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::HOLD's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTHold's parse for ai::HOLD
+0x005D9430 0x104 End__7CTGroupFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::GROUP's end (the first command so registered); the class name ours, after the command (SOCOM II's, absent from SOCOM 1)
 0x005D9540 0xE8 func_005D9540  # OVL2
 0x005D9630 0x70 func_005D9630  # OVL2
 0x005D96A0 0x40 func_005D96A0  # OVL2
 0x005D96E0 0x8 func_005D96E0  # OVL2
 0x005D96F0 0x14 func_005D96F0  # OVL2
-0x005D9710 0x12C func_005D9710  # OVL2
-0x005D9840 0x624 func_005D9840  # OVL2
-0x005D9E70 0x10D4 func_005D9E70  # OVL2
+0x005D9710 0x12C Tick__7CTGroupFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::GROUP's tick (the first command so registered); the class name ours, after the command (SOCOM II's, absent from SOCOM 1)
+0x005D9840 0x624 Begin__7CTGroupFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::GROUP's begin (the first command so registered); the class name ours, after the command (SOCOM II's, absent from SOCOM 1)
+0x005D9E70 0x10D4 Parse__7CTGroupFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::GROUP's parse (the first command so registered); the class name ours, after the command (SOCOM II's, absent from SOCOM 1)
 0x005DAF50 0x400 func_005DAF50  # OVL2
-0x005DB350 0x1B8 func_005DB350  # OVL2
-0x005DB510 0x21C func_005DB510  # OVL2
-0x005DB730 0x1B8 func_005DB730  # OVL2
+0x005DB350 0x1B8 End__6CTGotoFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::GOTO's end (the first command so registered); SOCOM 1's RegisterCommands passes CTGoto's end for ai::GOTO
+0x005DB510 0x21C Tick__6CTGotoFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::GOTO's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTGoto's tick for ai::GOTO
+0x005DB730 0x1B8 Begin__6CTGotoFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::GOTO's begin (the first command so registered); SOCOM 1's RegisterCommands passes CTGoto's begin for ai::GOTO
 0x005DB8F0 0x674 func_005DB8F0  # OVL2
-0x005DBF70 0x450 func_005DBF70  # OVL2
-0x005DC3C0 0x2EC func_005DC3C0  # OVL2
-0x005DC6B0 0x148 func_005DC6B0  # OVL2
-0x005DC800 0x9C func_005DC800  # OVL2
-0x005DC8A0 0x130 func_005DC8A0  # OVL2
-0x005DC9D0 0x230 func_005DC9D0  # OVL2
-0x005DCC00 0x270 func_005DCC00  # OVL2
-0x005DCE70 0x260 func_005DCE70  # OVL2
-0x005DD0D0 0x8 func_005DD0D0  # OVL2
-0x005DD0E0 0x1C0 func_005DD0E0  # OVL2
-0x005DD2A0 0x114 func_005DD2A0  # OVL2
-0x005DD3C0 0x128 func_005DD3C0  # OVL2
-0x005DD4F0 0x114 func_005DD4F0  # OVL2
-0x005DD610 0x8 func_005DD610  # OVL2
-0x005DD620 0x19C func_005DD620  # OVL2
-0x005DD7C0 0x1C8 func_005DD7C0  # OVL2
-0x005DD990 0x3CC func_005DD990  # OVL2
-0x005DDD60 0x240 func_005DDD60  # OVL2
-0x005DDFA0 0x2AC func_005DDFA0  # OVL2
-0x005DE250 0xCC func_005DE250  # OVL2
-0x005DE320 0x7EC func_005DE320  # OVL2
+0x005DBF70 0x450 Parse__6CTGotoFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::GOTO's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTGoto's parse for ai::GOTO
+0x005DC3C0 0x2EC Tick__12CTFireWeaponFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::FIREWEAPON's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTFireWeapon's tick for ai::FIREWEAPON
+0x005DC6B0 0x148 Begin__12CTFireWeaponFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::FIREWEAPON's begin (the first command so registered); SOCOM 1's RegisterCommands passes CTFireWeapon's begin for ai::FIREWEAPON
+0x005DC800 0x9C Parse__12CTFireWeaponFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::FIREWEAPON's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTFireWeapon's parse for ai::FIREWEAPON
+0x005DC8A0 0x130 Tick__10CTFireModeFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::FIREMODE's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTFireMode's tick for ai::FIREMODE
+0x005DC9D0 0x230 Begin__10CTFireModeFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::FIREMODE's begin (the first command so registered); SOCOM 1's RegisterCommands passes CTFireMode's begin for ai::FIREMODE
+0x005DCC00 0x270 Parse__10CTFireModeFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::FIREMODE's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTFireMode's parse for ai::FIREMODE
+0x005DCE70 0x260 Tick__7CTEventFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::EVENT's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTEvent's tick for ai::EVENT
+0x005DD0D0 0x8 Begin__7CTEventFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::EVENT's begin (the first command so registered); SOCOM 1's RegisterCommands passes CTEvent's begin for ai::EVENT
+0x005DD0E0 0x1C0 Parse__7CTEventFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::EVENT's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTEvent's parse for ai::EVENT
+0x005DD2A0 0x114 End__7CTDrainFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::DRAIN's end (the first command so registered); the class name ours, after the command (SOCOM II's, absent from SOCOM 1)
+0x005DD3C0 0x128 Tick__7CTDrainFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::DRAIN's tick (the first command so registered); the class name ours, after the command (SOCOM II's, absent from SOCOM 1)
+0x005DD4F0 0x114 Begin__7CTDrainFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::DRAIN's begin (the first command so registered); the class name ours, after the command (SOCOM II's, absent from SOCOM 1)
+0x005DD610 0x8 Parse__7CTDrainFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::DRAIN's parse (the first command so registered); the class name ours, after the command (SOCOM II's, absent from SOCOM 1)
+0x005DD620 0x19C Tick__7CTDebugFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::DEBUG's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTDebug's tick for ai::DEBUG
+0x005DD7C0 0x1C8 Parse__7CTDebugFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::DEBUG's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTDebug's parse for ai::DEBUG
+0x005DD990 0x3CC Tick__8CTCreateFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::CREATE's tick (the first command so registered); the class name ours, after the command (SOCOM II's, absent from SOCOM 1)
+0x005DDD60 0x240 Parse__8CTCreateFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::CREATE's parse (the first command so registered); the class name ours, after the command (SOCOM II's, absent from SOCOM 1)
+0x005DDFA0 0x2AC Tick__6CTCommFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::COMM's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTComm's tick for ai::COMM
+0x005DE250 0xCC Parse__6CTCommFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::COMM's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTComm's parse for ai::COMM
+0x005DE320 0x7EC RegisterCommands__11CSealCtrlAiFv  # OVL2; by hand (the kit lane, round 8): 34 CZAnimMain::AddCmd calls registering the ai:: task commands (ai::COMM .. ai::WAIT), each id stored to one static (0x66B7E0) -- SOCOM 1's RegisterCommands, the same calls and the same store pattern
 0x005DEB10 0x198 func_005DEB10  # OVL2
 0x005DECB0 0xB8 func_005DECB0  # OVL2
 0x005DED70 0x100 func_005DED70  # OVL2
