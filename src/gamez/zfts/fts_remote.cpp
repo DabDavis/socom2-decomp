@@ -117,6 +117,8 @@ public:
     int m_4;   // 0x4: its network object
 };
 
+class CUIVariable;
+
 /* the online game (SOCOM 1's CZNetGame: only what this unit touches, at SOCOM II's offsets) */
 class CZNetGame {
 public:
@@ -124,7 +126,9 @@ public:
     CValve *m_pPlayerJoinCountValve;   // 0x44 (SOCOM 1's at 0x40)
     unsigned char _48[0x6c - 0x48];
     CValve *m_6c;   // 0x6c: set from each action packet (SOCOM II's)
-    unsigned char _70[0xac - 0x70];
+    unsigned char _70[0x94 - 0x70];
+    CUIVariable *m_chat;   // 0x94: the chat's history (SOCOM II's)
+    unsigned char _98[0xac - 0x98];
     int m_persona_object_index;   // 0xac (SOCOM 1's at 0x70)
     int m_game_object_index;   // 0xb0 (SOCOM 1's at 0x74)
     unsigned char _b4[0xcc - 0xb4];
@@ -173,6 +177,8 @@ public:
 class CZOnlineLobby {
 public:
     int MediusConnectionIndex();
+    void Censor(const char *text, void (*send)(const char *, void *), void *arg);
+    bool IsIgnored(const char *name);
 };
 
 /* a map's action (only the bits the action packet sets; SOCOM 1's at 0x2C) */
@@ -210,6 +216,7 @@ void *_malloc(unsigned int size, const char *file, int line);
 void _free(void *p, const char *file, int line);
 extern "C" void *memcpy(void *dst, const void *src, unsigned int n);
 extern "C" char *strcpy(char *dst, const char *src);
+extern "C" unsigned int strlen(const char *s);
 
 class CZBombState {
 public:
@@ -862,6 +869,207 @@ extern "C" int func_002BAC40(int, int, int, void *data)
         }
     }
     return 6;
+}
+
+/* a chat line as it is sent (SOCOM II's: its size, the channel -- 0 everyone, 1 and 2 the two
+ * teams' tests, 3 the lobby's flag -- and the text) */
+struct ChatPacket {
+    unsigned short size;   // 0x0
+    unsigned short channel;   // 0x2
+    char text[4];   // 0x4
+};
+
+extern "C" {
+extern unsigned int data_00440E40;   /* PacketTypeChat */
+int func_002BA9D0(int a, int b, int who, void *data);   /* ChatPacketHandler */
+const char *func_002C3A70(int client);   /* (a client's name, fts_net_persona.cpp's) */
+}
+
+/* a ZRDR value as the chat's history reads it (zrdr.h's _zrdr: the type, an array's count, the
+ * value; the accessors as zrdr.h's) */
+struct ChatRdr {
+    unsigned int type : 8;   // 0x0
+    unsigned int flags : 8;   // 0x0
+    unsigned int length : 16;   // 0x0
+    union {
+        char *string;
+        ChatRdr *array;
+    };   // 0x4
+
+    bool IsArray() const { return type == 4; }
+    bool IsString() const { return type == 3; }
+    unsigned int Count() const { return type == 4 ? length : 0; }
+    ChatRdr *Item(unsigned int i) const { return i < Count() ? &array[i] : 0; }
+    const char *String() const { return type == 3 ? string : 0; }
+};
+
+/* the chat's history: a UI variable holding an array of strings */
+class CUIVariable : public ChatRdr {
+public:
+    void Set(struct _zrdr *value);
+};
+
+/* zrdr.h's editor: only what the chat builds its history with (0x4C bytes) */
+class CRdrEditor {
+public:
+    CRdrEditor();
+    ~CRdrEditor();
+    bool push(const char *tag);
+    bool pop();
+    bool addstringnode(const char *s);
+
+    unsigned char _0[0x4c];
+};
+
+/* a chat line received: dropped when it is for a team we are not on, for the lobby's flag we do
+ * not hold, empty, or from an ignored player; else the history's last 20 lines and the new one
+ * (its sender's name, Team or All) made the chat variable's new value (SOCOM 1's
+ * ChatPacketHandler, its history in a UI variable; OVL1 0x2BA9D0) */
+extern "C" int func_002BA9D0(int, int, int who, void *data)
+{
+    ChatPacket *p = (ChatPacket *)data;
+    CZNetGame *game = theMission.m_pNetGame;
+
+    if (game) {
+        bool show = true;
+
+        if (p->channel == 1 && !func_002C31A0())
+            show = false;
+        else if (p->channel == 2 && !func_002C3080())
+            show = false;
+        else if (p->channel == 3 && !func_002C2FA0())
+            show = false;
+        else if (p->text[0] == 0)
+            show = false;
+        const char *name = func_002C3A70(who);
+
+        if (name && theLobby.IsIgnored(name))
+            show = false;
+        if (show) {
+            CRdrEditor ed;
+            char text[144];
+
+            ed.push(0);
+            if (game->m_chat->IsArray()) {
+                int n = game->m_chat->Count();
+
+                for (int i = game->m_chat->Count() - 20; i < n; i++) {
+                    ChatRdr *line = game->m_chat->Item(i);
+
+                    if (line && line->IsString())
+                        ed.addstringnode(line->String());
+                }
+            }
+            if (!name)
+                name = "Unknown";
+            if (p->channel)
+                sprintf(text, "#C@\x80@%s (Team): %s\n", name, p->text);
+            else
+                sprintf(text, "#C\x80\x80\x80%s (All): %s\n", name, p->text);
+            ed.addstringnode(text);
+            ed.pop();
+            game->m_chat->Set((struct _zrdr *)&ed);
+        }
+    }
+    return p->size;
+}
+
+/* a chat line sent, to one client when arg names one, else to all, on the channel the
+ * ChatRecipient valve picks, and shown here (SOCOM 1's, the packet SOCOM II's; OVL1 0x2BA870) */
+void AuxSendChatMsg(const char *text, void *arg)
+{
+    CValve *valve = CValve::GetByName("ChatRecipient");
+    int size = strlen(text) + 6;
+    ChatPacket *p = (ChatPacket *)_malloc(size, 0, 0);
+
+    p->size = size;
+    p->channel = 0;
+    if (valve && valve->m_value) {
+        if (func_002C31A0())
+            p->channel = 1;
+        else if (func_002C3080())
+            p->channel = 2;
+        else if (func_002C2FA0())
+            p->channel = 3;
+    }
+    strcpy(p->text, text);
+    theNetwork.zNetSendApplicationMessage(64, theNetwork.GetGameConnectionIndex(),
+        arg ? *(int *)arg : -1, data_00440E40, size, (unsigned char *)p, false);
+    func_002BA9D0(0, 0, theNetwork.zNetGetMyGameClientIndex(), p);
+    _free(p, 0, 0);
+}
+
+/* a chat line, censored first (SOCOM 1's; OVL1 0x2BA850) */
+void SendChatMsg(const char *text)
+{
+    theLobby.Censor(text, AuxSendChatMsg, 0);
+}
+
+/* a weapon pickup told to everyone: its id, its orientation as three 10-bit angles (the Euler
+ * angles' y, x and z at bits 10, 20 and 0), its position and the client (SOCOM 1's
+ * SendWeaponPUMessage and WeaponPUPacketHandler, the orientation packed into a word where SOCOM 1
+ * sent the quaternion) */
+struct WeaponPUPacket {
+    int id;   // 0x0
+    unsigned int angles;   // 0x4
+    PNT3D pos;   // 0x8
+    unsigned short who;   // 0x14
+};
+
+extern "C" {
+extern unsigned int data_00440E48;   /* PacketTypeWeaponPU */
+void func_0059EC60(CZSealBody *body, unsigned short who, int id, CPnt3D *pos, CQuat *q);
+}
+
+/* an angle in [-pi, pi] as 10 bits (the name ours) */
+inline int PackAngle(float a)
+{
+    float t = 0.15915494f * (3.1415927f + a);
+
+    if (!(t <= 1.0f))
+        t = 1.0f;
+    else if (t < 0.0f)
+        t = 0.0f;
+    return (int)(1023.0f * t);
+}
+
+/* (OVL1 0x2BA660) */
+extern "C" void func_002BA660(unsigned short who, int id, const CPnt3D *pos, const CQuat *q)
+{
+    CPnt3D euler;
+    WeaponPUPacket p;
+
+    p.who = who;
+    p.id = id;
+    p.pos.x = pos->x;
+    p.pos.y = pos->y;
+    p.pos.z = pos->z;
+    q->ToEuler(&euler);
+    int ax = PackAngle(euler.x) << 20;
+    int ay = PackAngle(euler.y) << 10;
+    int az = PackAngle(euler.z);
+
+    p.angles = ax | ay | az;
+    theNetwork.zNetSendApplicationMessage(64, theNetwork.GetGameConnectionIndex(), -1,
+        data_00440E48, 24, (unsigned char *)&p, false);
+}
+
+/* (OVL1 0x2BA4E0) */
+int WeaponPUPacketHandler(int, int, int, void *data)
+{
+    WeaponPUPacket *p = (WeaponPUPacket *)data;
+    CPnt3D pos(p->pos.x, p->pos.y, p->pos.z);
+    CQuat q;
+    float ry = 0.0061419215f * (float)((p->angles >> 10) & 0x3ff) - 3.1415927f;
+    float rx = 0.0061419215f * (float)((p->angles >> 20) & 0x3ff) - 3.1415927f;
+    float rz = 0.0061419215f * (float)(p->angles & 0x3ff) - 3.1415927f;
+
+    q.MakeYXZRot(ry, rx, rz);
+    CZSealBody *body = CZSealState::GetBodyFromObjectIndex(func_00541CC0(p->id));
+
+    if (body)
+        func_0059EC60(body, p->who, p->id, &pos, &q);
+    return 24;
 }
 
 /* an ammo pickup told to everyone (SOCOM 1's SendAmmoPUMessage; OVL1 0x2BA3F0) */
