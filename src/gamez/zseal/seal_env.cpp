@@ -42,6 +42,7 @@ public:
 class CBlink : public CLook {
 public:
     void Blink(int org);
+    void BlinkTick(float dT);
 
     int m_org;   // 0x70 (SOCOM 1's 0x80)
     float m_nextT;   // 0x74
@@ -53,6 +54,32 @@ float func_002874F0(float t);
 /* the blink's speed and its angle down (OVL1 data; SOCOM 1's were constants, 1.5 and -0.5925) */
 extern float data_0044C2DC;
 extern float data_0044C2E0;
+}
+
+/* the blink stepped: while a look runs it is stepped, and a finished look down turns into the look
+ * back up; between blinks the wait runs down to nothing (OVL2 0x5AD730; SOCOM 1's, LookTick and
+ * Blink inlined -- Blink's angle is dead on the way back up and MW drops its load).
+ * OPEN, 2 instructions (0x138 against 0x140): the target loads m_done again for the inlined
+ * LookTick's test (`lbu v1,96(s0)`) and keeps a nop before its join; here MW reuses the first
+ * test's load. The same with LookTick's test as an early return (LookTick itself matches either
+ * way) or the outer test written `m_done == false`. */
+void CBlink::BlinkTick(float dT)
+{
+    if (!m_done) {
+        LookTick(dT);
+        if (m_done) {
+            if (m_org == 1) {
+                m_org = 0;
+                Blink(0);
+                m_done = false;
+            } else
+                m_org = 0;
+        }
+    } else {
+        m_nextT -= dT;
+        if (m_nextT < 0.0f)
+            m_nextT = 0.0f;
+    }
 }
 
 /* the look stepped: the fraction run up to its end, the direction the start's quaternion turned
