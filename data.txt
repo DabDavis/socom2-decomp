@@ -294,6 +294,7 @@
 0x003F33D8 0x8 __RTTI__19CSMDNASAuthenticate  # RTTI of CSMDNASAuthenticate: found by its RTTI's name
 0x003F3510 0x8 __RTTI__6CGNode  # RTTI of CGNode: found by its RTTI's name
 0x003F3520 0x8 __RTTI__6CGEdge  # RTTI of CGEdge: found by its RTTI's name
+0x003F35C8 0x4 N_ATOMS__Q23zdb5CGrid  # OVL1 data; SOCOM 1's CGrid static (its symbol, 0x44F098 there, right after the "grid_params" string as here): 8192, the atom count CGrid::Read gives the parameters before fetching them; 1 reference in 1 function (Read)
 0x003F3608 0x8 __RTTI__Q23zdb5CCell  # OVL1; s1:data-seq (size SOCOM 1's; via GarbageCollect__Q23zdb6CWorldFv +1)
 0x003F3678 0x8 __RTTI__Q23zdb7CDIBBox  # RTTI of zdb::CDIBBox: found by its RTTI's name
 0x003F36A8 0x8 __RTTI__Q23zdb7CDIPoly  # RTTI of zdb::CDIPoly: found by its RTTI's name
