@@ -3676,8 +3676,8 @@
 0x0029E680 0x8 Virtual60__7CEntityFv  # OVL1; slot 0x60 of __vt__7CEntity, new in SOCOM II (returns 0) -- the name is ours; ent_main.cpp
 0x0029E690 0x8 Virtual64__7CEntityFv  # OVL1; slot 0x64 of __vt__7CEntity, new in SOCOM II (returns 0) -- the name is ours; ent_main.cpp
 0x0029E6A0 0x8 Virtual68__7CEntityFv  # OVL1; slot 0x68 of __vt__7CEntity, new in SOCOM II (returns 0) -- the name is ours; ent_main.cpp
-0x0029E6B0 0x80 func_0029E6B0  # OVL1
-0x0029E730 0x174 func_0029E730  # OVL1
+0x0029E6B0 0x80 UpdateCompassAnchor__7CEntityFv  # OVL1; slot 0x6C of __vt__7CEntity, new in SOCOM II: the entity's compass anchor (0xC4) moved to the entity's position and enabled while it lives, unless locked -- the name is ours; ent_main.cpp
+0x0029E730 0x174 CreateCompassAnchor__7CEntityFiPCc  # OVL1; new in SOCOM II: type 11 makes a "VEHICLE" anchor through CCompass::CreateAnchor (hidden and locked unless the name holds "Turret"), names and types it, keeps it at 0xC4 -- the name is ours; ent_main.cpp
 0x0029E8B0 0x30 OnDeath__7CEntityFv  # OVL1; s1:align; split from 0x38: the last 8 bytes are CEntityCtrl::OnDeath
 0x0029E8E0 0x8 OnDeath__11CEntityCtrlFv  # OVL1; slot 0x18 of __vt__11CEntityCtrl (0x406248) points here, inside the old OnDeath row; SOCOM 1 links the same pair in the same order (0x1EE390, 0x1EE3C0)
 0x0029E8F0 0x8 OnRecycleEntity__7CEntityFP7CEntity  # OVL1; s1:vtable by hand (slot 0x54 of __vt__7CEntity, SOCOM 1's slot 0x48 with SOCOM II's three new slots before it; empty as SOCOM 1's; ent_main.cpp)
@@ -3756,19 +3756,19 @@
 0x002A2730 0x8 PreTick__11CEntityCtrlFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002A2740 0x4C __dt__11CEntityCtrlFv  # OVL1; s1:align
 0x002A2790 0x44 __ct__11CEntityCtrlFi  # OVL1; s1:align
-0x002A27E0 0x110 func_002A27E0  # OVL1
-0x002A28F0 0x1C4 func_002A28F0  # OVL1
-0x002A2AC0 0x4C func_002A2AC0  # OVL1
-0x002A2B10 0x70 func_002A2B10  # OVL1
-0x002A2B80 0x40 func_002A2B80  # OVL1
-0x002A2BC0 0x8 func_002A2BC0  # OVL1
-0x002A2BD0 0x14 func_002A2BD0  # OVL1
-0x002A2BF0 0x8 func_002A2BF0  # OVL1
-0x002A2C00 0x64 func_002A2C00  # OVL1
-0x002A2C70 0xA0 func_002A2C70  # OVL1
-0x002A2D10 0x30 func_002A2D10  # OVL1
-0x002A2D40 0xE8 func_002A2D40  # OVL1
-0x002A2E30 0x80 func_002A2E30  # OVL1
+0x002A27E0 0x110 DeleteAnchor__8CCompassFP14CCompassAnchor  # OVL1; s1:calls by hand (SOCOM 1's CCompass::DeleteAnchor, 0x24E1A0: the anchor swapped to the end of the compass vector and popped, then deleted -- SOCOM II's frees the name and the point list; ~CEntity calls it on the entity's anchor); compass.cpp
+0x002A28F0 0x1C4 CreateAnchor__8CCompassFRC6CPnt3DPCc  # OVL1; s1:calls by hand (SOCOM 1's CCompass::CreateAnchor, 0x24E290: new, the anchor's inline constructor's bits, the position copied in, the name freed and strdup'd, push_back on the one compass vector -- 0x2C bytes now with SOCOM II's point list; CMission::CreateCompassNavPoints calls it where SOCOM 1's calls CreateAnchor); compass.cpp
+0x002A2AC0 0x4C Close__8CCompassFv  # OVL1; s1:order by hand (after CreateAnchor as SOCOM 1's Close, 0x24E440: the inline clear, then the free idiom's four pieces out of line -- the temporary a vector of anchors); compass.cpp
+0x002A2B10 0x70 __dt__Q23std62vector<P14CCompassAnchor,Q23std28allocator<P14CCompassAnchor>>Fv  # OVL1; by hand (Close's free idiom: the temporary's destructor, -1, three this-tests and the array freed; follows Close in reverse of first use); compass.cpp
+0x002A2B80 0x40 swap__Q23std62vector<P14CCompassAnchor,Q23std28allocator<P14CCompassAnchor>>FRQ23std62vector<P14CCompassAnchor,Q23std28allocator<P14CCompassAnchor>>  # OVL1; by hand (Close's free idiom: the swap, capacity, data, size); compass.cpp
+0x002A2BC0 0x8 clear__Q23std62vector<P14CCompassAnchor,Q23std28allocator<P14CCompassAnchor>>Fv  # OVL1; by hand (Close's free idiom: the clear, the size zeroed); compass.cpp
+0x002A2BD0 0x14 __ct__Q23std62vector<P14CCompassAnchor,Q23std28allocator<P14CCompassAnchor>>Fv  # OVL1; by hand (Close's free idiom: the temporary's constructor, three words zeroed); compass.cpp
+0x002A2BF0 0x8 Open__8CCompassFv  # OVL1; s1:exact by hand (SOCOM 1's Open, 0x24E490: reserve(48) as a tail call); compass.cpp
+0x002A2C00 0x64 SetName__14CCompassAnchorFPCc  # OVL1; new in SOCOM II out of line (SOCOM 1's CreateAnchor inlines the same free/strdup of m_name at 0x10) -- the name is ours; compass.cpp
+0x002A2C70 0xA0 GetPoint__14CCompassAnchorFP6CPnt3D  # OVL1; new in SOCOM II: the current point copied out (and noted as the last given), false for none; MapCompass::Tick calls it -- the name is ours; compass.cpp
+0x002A2D10 0x30 SetPoint__14CCompassAnchorFi  # OVL1; new in SOCOM II: the anchor's current point (0x18), -1 when the index is negative or past the point list's size -- the name is ours; compass.cpp
+0x002A2D40 0xE8 AddPoint__14CCompassAnchorFPC6CPnt3D  # OVL1; new in SOCOM II: a point found in the anchor's list or pushed on it, its index returned -- the name is ours; compass.cpp
+0x002A2E30 0x80 __dt__8CCompassFv  # OVL1; s1:align by hand (SOCOM 1's __dt__8CCompassFv, 0x259040: the implicit destructor; five this-tests here -- CCompass, CCompassAnchorVec, the pointer vector's three); __sinit_compass.cpp registers it; compass.cpp
 0x002A2EB0 0x2C0 func_002A2EB0  # OVL1
 0x002A3170 0x7B4 func_002A3170  # OVL1
 0x002A3930 0x14 func_002A3930  # OVL1
@@ -8513,7 +8513,7 @@
 0x003FFF60 0x44 __sinit_con_ps2.cpp  # OVL1 data area; a static initialiser; s1~ body.cpp (shape 0.52, a hint); s1:unit by hand (the entity lane: builds CConsole::m_console with "default console" and registers ~CConsole -- con_ps2.cpp's initialiser, as s1units guessed; the s1~ body.cpp hint was wrong)
 0x003FFFB0 0x7C __sinit_ent_main.cpp  # OVL1 data area; a static initialiser; s1:unit ent_main.cpp (exact)
 0x00400030 0x8C __sinit_ent_target.cpp  # OVL1 data area; a static initialiser; s1~ ent_target.cpp (shape 0.60, a hint); s1:unit by hand (the entity lane: ent_target.cpp's own initialiser, emitted by the hand unit; s1units' guess)
-0x004000C0 0x34 func_004000C0  # OVL1 data area; a static initialiser
+0x004000C0 0x34 __sinit_compass.cpp  # OVL1 data area; a static initialiser; the compass unit's initialiser (the entity lane): theCompass's three words zeroed, ~CCompass registered with __register_global_object; the file name is ours
 0x00400100 0x5C func_00400100  # OVL1 data area; a static initialiser; s1~ fts_main.cpp (shape 0.47, a hint)
 0x00400160 0x1D0 func_00400160  # OVL1 data area; a static initialiser
 0x00400330 0x68 func_00400330  # OVL1 data area; a static initialiser

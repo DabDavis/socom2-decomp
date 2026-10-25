@@ -20,15 +20,98 @@
 
 class CEntity;
 class CEntityCtrl;
-class CEntityPath;
 
-/* a cell of an AI map (SOCOM 1's DWARF) */
+/* a cell of an AI map (SOCOM 1's DWARF). A new one is the invalid cell, field by field in the
+ * initialiser list: the target object's word is written whole for each field (an assignment in
+ * the body narrows to the field's byte), the source read narrow -- CEntity's constructor, as
+ * SOCOM 1's */
 class CAiMapLoc {
 public:
+    CAiMapLoc() : m_mapid(invalid.m_mapid), x(invalid.x), y(invalid.y) {}
+
     unsigned int m_mapid : 6;
     unsigned int x : 13;
     unsigned int y : 13;
+
+    /* the cell no map has (SOCOM 1's invalid__9CAiMapLoc; OVL2 data in SOCOM II) */
+    static const CAiMapLoc invalid;
 };
+
+/* a point the compass shows: an objective, a vehicle, a base (SOCOM 1's DWARF, 0x18 bytes; SOCOM
+ * II's is 0x2C -- a lock bit, ten bits more and a list of points with a current one). Made and
+ * freed only by CCompass, which lists them all */
+class CCompassAnchor {
+public:
+    /* SOCOM 1's inline constructor, the new lock bit cleared first and the points' cursor
+     * reset after (CCompass::CreateAnchor inlines it) */
+    CCompassAnchor()
+    {
+        m_locked = 0;
+        m_enabled = 1;
+        m_arrow_enabled = 0;
+        m_name_enabled = 0;
+        m_echo = 0;
+        m_type = 0;
+        m_unk21 = 0;
+        m_posW = CPnt3D::zero;
+        m_name = 0;
+        m_aiMapLoc = 0;
+        m_point = -1;
+        m_lastPoint = -1;
+    }
+    /* the name freed (CCompass::DeleteAnchor inlines it; SOCOM II's frees the point list too) */
+    ~CCompassAnchor() { SetName(0); }
+    /* the setters a lock holds off (the names are ours) */
+    void SetPosW(const CPnt3D &pos)
+    {
+        if (!m_locked)
+            m_posW = pos;
+    }
+    void SetEnabled(bool on)
+    {
+        if (!m_locked)
+            m_enabled = on;
+    }
+    void SetArrowEnabled(bool on)
+    {
+        if (!m_locked)
+            m_arrow_enabled = on;
+    }
+    void SetName(const char *name);
+    int AddPoint(const CPnt3D *p);
+    void SetPoint(int index);
+    bool GetPoint(CPnt3D *out);
+
+    unsigned int m_enabled : 1;   // 0x0
+    unsigned int m_arrow_enabled : 1;
+    unsigned int m_name_enabled : 1;
+    unsigned int m_echo : 1;
+    unsigned int m_type : 16;
+    unsigned int m_locked : 1;   // new in SOCOM II: the setters leave the anchor alone (ours)
+    unsigned int m_unk21 : 10;   // new in SOCOM II
+    unsigned int m_unused : 1;
+    CPnt3D m_posW;   // 0x4
+    char *m_name;   // 0x10
+    CAiMapLoc *m_aiMapLoc;   // 0x14
+    int m_point;   // 0x18: the current point, or -1 (new; the names are ours)
+    int m_lastPoint;   // 0x1c
+    std::vector<CPnt3D> m_points;   // 0x20
+};
+
+/* every compass anchor (SOCOM 1's DWARF: CCompass : CCompassAnchorVec, a vector of pointers) */
+class CCompassAnchorVec : public std::vector<CCompassAnchor *> {
+};
+
+class CCompass : public CCompassAnchorVec {
+public:
+    static CCompassAnchor *CreateAnchor(const CPnt3D &pos, const char *name);
+    static bool DeleteAnchor(CCompassAnchor *anchor);
+    void Open();
+    void Close();
+};
+
+/* the one compass (SOCOM II's, OVL1 bss 0x436390; the name is ours) */
+extern CCompass theCompass;
 
 /* a string, 12 bytes in SOCOM II (MSL 3.0's basic_string; SOCOM 1's was a pointer) */
 class CSaferStr {
@@ -117,13 +200,13 @@ public:
     virtual void OnMissionEnd();
     virtual void OnRecycleEntity(CEntity *e);
     virtual void OnDeath();                                     /* +0x58 */
-    /* +0x5C-0x6C, new in SOCOM II: four that say no and one that updates the path's position (the
-     * names are ours) */
+    /* +0x5C-0x6C, new in SOCOM II: four that say no and one that moves the entity's compass anchor
+     * to it (the names are ours) */
     virtual int Virtual5C();
     virtual int Virtual60();
     virtual int Virtual64();
     virtual int Virtual68();
-    virtual void UpdatePath();
+    virtual void UpdateCompassAnchor();
 
     void SetDisplayName(const char *name);
     void JoinTeam(unsigned int team);
@@ -132,7 +215,15 @@ public:
     void SetController(CEntityCtrl *ctrl);
     void SetIncludeInTargetList(bool on);
     void SetUpdateTargetList(bool on);
-    CEntityPath *CreatePath(int type, const char *name);
+    CCompassAnchor *CreateCompassAnchor(int type, const char *name);
+    /* the anchor taken only if there is none (CreateCompassAnchor's last test; the destructor
+     * hands it 0 after deleting the anchor, which leaves the pointer as it was -- both builds'
+     * code; the name is ours) */
+    void SetCompassAnchor(CCompassAnchor *anchor)
+    {
+        if (!m_anchor)
+            m_anchor = anchor;
+    }
 
     /* the entities, const: their walks use the const list's begin() and end() (CEntityItr::
      * Advance, the ticks). Inline, its out-of-line copy camera.cpp's (0x299140; SOCOM 1's
@@ -173,7 +264,7 @@ public:
     CQuat m_next_quat;   // 0x70
     CMatrix m_next_matrix;   // 0x80
     CEntityCtrl *m_control;   // 0xc0
-    CEntityPath *m_path;   // 0xc4 (the name is ours)
+    CCompassAnchor *m_anchor;   // 0xc4: new in SOCOM II (the name is ours)
     unsigned int m_team;   // 0xc8
     float m_max_target_range_sq;   // 0xcc
     CTargetList m_targets;   // 0xd0
@@ -191,7 +282,7 @@ public:
     unsigned int m_update_targetlist : 1;
     unsigned int m_include_in_targetlist : 1;
     unsigned int m_isAlive : 1;
-    unsigned int m_bit13 : 1;
+    unsigned int m_bit13 : 1;   // new in SOCOM II: cleared in the constructor's initialiser list
     CAiMapLoc m_mapLoc;   // 0xe4
     CAiMapLoc m_mapLocValid;   // 0xe8
     CSaferStr m_SOPList[10];   // 0xec
