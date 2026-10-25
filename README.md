@@ -1040,6 +1040,25 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - include/string: `operator[]` (0x2CA6E0) and size() casting the short form back to its byte
     (0x2CA700 masks it), measured over every hand-written unit; zanim.h's CValve has
     SetValue(int) (0x2CA740), which several units still spell as helpers of their own.
+- **Tells from the rdr parser and editor, the particles, the pipe** (zrdr_parse.cpp,
+  zrdr_edit.cpp, src/gamez/zparticle/, src/gamez/zrender/):
+  - keep `strtol`'s result `long` until the store: the conversion (`dsll32`/`dsra32`) lands in the
+    store's arm (MakeUnion);
+  - early returns from a float function hoist a constant into the last test's delay slot; one
+    result variable assigned in every arm keeps the target's layout (GetOpacity);
+  - a CPnt4D temporary bound to a const-reference parameter is optimised away unless the copy
+    constructor copies through the base; a named local placed after the call then gives the
+    target's stack slots (ColorSequenceAdd) -- SOCOM II's CPnt4D has a written copy constructor
+    through PNT4D's (0x328D60), which zmath.h lacks (zparticle.h carries its own CPnt4D);
+  - a string index written through an inline taking the text pointer into a local gives the
+    target's `ptr + i` order; `c_str()[i]` gives `i + ptr`;
+  - an inline's own local (erase()'s category byte) takes its stack slot in order of appearance,
+    so a hand-written `erase(pos, n)` must be an inline too;
+  - a function a unit defines first can sit after the out-of-line copies that follow its
+    last-emitted function (zrdr_newarray);
+  - a 64-bit GIF-tag constant written as one literal matches li/dsll32/li/or (FIFO_Signal);
+  - `new T` as an inline call's argument is checked a level deeper, as its own statement it
+    inlines whole (CRdrEditor::push) -- an inline height, to recheck at the corrected level.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has

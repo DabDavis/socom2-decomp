@@ -455,8 +455,8 @@
 0x00199800 0x1BC strncpy  # MAIN; s1:callee
 0x001999C0 0x50 strrchr  # MAIN; s1:exact
 0x00199A10 0x84 strstr  # MAIN; s1:callee
-0x00199A98 0xF14 func_00199A98  # MAIN unaligned
-0x0019A9B0 0x24 func_0019A9B0  # MAIN
+0x00199A98 0xF14 _strtod_r  # MAIN unaligned; s1:calls (strtod, 0x19A9B0, tail-calls it with the reentrancy pointer first, as SOCOM 1's strtod calls _strtod_r) -- the integrator
+0x0019A9B0 0x24 strtod  # MAIN; s1:calls (CRdrFile::MakeUnion calls it where SOCOM 1's calls strtod; the same body -- _strtod_r(_impure_ptr, s, end) -- tail-jumped where SOCOM 1's newlib used jal) -- the rdr lane
 0x0019A9D8 0x28 func_0019A9D8  # MAIN unaligned
 0x0019AA00 0xE8 func_0019AA00  # MAIN
 0x0019AAE8 0x238 _strtol_r  # MAIN unaligned; s1:calls
