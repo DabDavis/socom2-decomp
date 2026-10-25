@@ -147,8 +147,11 @@ public:
     static void DoRecycleEntity(CEntity *e);
     static CEntity *CreateRecycler();
     static bool RecycleEntity(CEntity *e);
+    static bool RecycleEntity(unsigned int index, CEntity *e, bool include);
     static void CreateEntity(CEntity *e, bool include);
+    static void PurgeEntities();
     static void UpdateTargetList(bool b);
+    static void ReplaceTargetList(CEntity *from, CEntity *to);
     static bool EntityIsValid(CEntity *e);
     static void CloseRecycler();
     static void OpenRecycler(unsigned int index);
@@ -197,6 +200,7 @@ public:
     static const unsigned int invalidId;
     static const unsigned int deletedId;
 
+    static unsigned int nextEntityId;
     static CEntityList m_list;
     static CEntityList m_recycle;
     static CEntityList m_target_inc;

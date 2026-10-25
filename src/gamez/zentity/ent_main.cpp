@@ -3,12 +3,61 @@
  * building the recycler and the two lists, 0x3FFFB0). Defined in reverse of their image order
  * (-inline deferred). */
 
+#include <algorithm>
 #include <string.h>
 
 #include "zentity.h"
 
+/* the one entity standing in for every recycled one: made on first use, counted, freed when the
+ * count runs out (SOCOM 1's `recycler`, 12 bytes, cleared by __sinit_ent_main.cpp; the type and
+ * its members' names are ours) */
+struct CRecycler {
+    CRecycler() : m_count(0), m_entity(0), m_node(0) {}
+
+    /* the stand-in, made if there is none, counted once more */
+    CEntity *Get()
+    {
+        if (!m_count) {
+            m_node = zdb::CNode::Create("recycler");
+            m_entity = new CEntity(CEntity::ENT_TYPE_RECYCLE, m_node);
+            m_entity->SetUpdateTargetList(false);
+            m_entity->SetIncludeInTargetList(false);
+        }
+        m_count++;
+        return m_entity;
+    }
+    void Free()
+    {
+        delete m_entity;
+        delete m_node;
+        m_entity = 0;
+        m_node = 0;
+        m_count = 0;
+    }
+    /* whether an entity is the stand-in: its count taken down, freed at none */
+    bool Release(CEntity *e)
+    {
+        bool was = false;
+
+        if (e == m_entity) {
+            m_count--;
+            if (!m_count)
+                Free();
+            was = true;
+        }
+        return was;
+    }
+
+    int m_count;
+    CEntity *m_entity;
+    zdb::CNode *m_node;
+};
+
+static CRecycler recycler;
+CEntityList CEntity::m_list;
+CEntityList CEntity::m_recycle;
 /* an entity's id is the count of those made before it (SOCOM 1's, in $gp small data there) */
-static unsigned int s_next_id;
+unsigned int CEntity::nextEntityId;
 
 /* the place the next entity takes in the list, or -1 for the end (SOCOM 1's recycler_index) */
 static int recycler_index = -1;
@@ -38,6 +87,42 @@ bool CEntity::EntityIsValid(CEntity *e)
     return false;
 }
 
+/* an entity whose id was taken away is deleted (the purge's predicate, new in SOCOM II; the name
+ * is ours) */
+static bool DeleteIfIdless(CEntity *e)
+{
+    bool gone = false;
+
+    if (e->m_id == 0xFFFFFFFF) {
+        delete e;
+        gone = true;
+    }
+    return gone;
+}
+
+/* the list rid of the entities without an id, the rest renumbered (new in SOCOM II, called from
+ * CMPExitState::Tick; the name is ours).
+ * OPEN, 24 instructions: the target keeps the end in s1 and the address of the first node's link
+ * (m_list + 8) in s0 -- both begin() calls read through it -- builds the erase's last argument
+ * after remove_if returns, and walks to a copy of the end (`move a2,s1`); this form (a list
+ * reference, the end in a local, remove_if a statement of its own) has the shape with s0/s1 the
+ * other way round and the last walk's temporaries one slot off. The end through end() each
+ * time, the list itself, one statement, the walk to end(): all further off */
+void CEntity::PurgeEntities()
+{
+    CEntityList &list = m_list;
+    CEntityList::iterator end = list.end();
+    CEntityList::iterator first = std::remove_if(list.begin(), end, DeleteIfIdless);
+
+    list.erase(first, end);
+
+    CEntityList::iterator it;
+    unsigned int index = 0;
+
+    for (it = list.begin(); it != end; ++it)
+        (*it)->m_index = index++;
+}
+
 /* an entity into the world: at the end of the list, or into the place the recycler holds open
  * (SOCOM 1's, which returned nothing either) */
 void CEntity::CreateEntity(CEntity *e, bool include)
@@ -57,6 +142,79 @@ bool CEntity::RecycleEntity(CEntity *e)
     m_recycle.push_back(e);
     e->SetIncludeInTargetList(false);
     return true;
+}
+
+/* an entity into a recycled place: the stand-in at that place traded for it (SOCOM 1's) */
+bool CEntity::RecycleEntity(unsigned int index, CEntity *e, bool include)
+{
+    bool done = false;
+
+    if (index >= m_list.size())
+        return false;
+
+    CEntityList::iterator it = m_list.begin();
+
+    while (index--)
+        ++it;
+    if (*it && (*it)->m_type == ENT_TYPE_RECYCLE) {
+        *it = e;
+        e->SetIncludeInTargetList(include);
+        UpdateTargetList(true);
+        done = true;
+    }
+    return done;
+}
+
+/* the stand-in entered into the world, as an entity is (SOCOM 1's) */
+CEntity *CEntity::CreateRecycler()
+{
+    CEntity *e = recycler.Get();
+
+    CreateEntity(e, false);
+    return e;
+}
+
+/* a queued entity out of the world: every entity told, its targets handed to the stand-in, its
+ * place in the list given to the stand-in, and deleted (SOCOM 1's) */
+void CEntity::DoRecycleEntity(CEntity *e)
+{
+    m_recycle.remove(e);
+
+    CEntity *r = recycler.Get();
+    CEntityList::iterator it;
+    CEntityList::iterator end = m_list.end();
+    CEntityList::iterator found = m_list.end();
+
+    for (it = m_list.begin(); it != end; ++it) {
+        CEntity *x = *it;
+
+        x->OnRecycleEntity(e);
+        if (x == e)
+            found = it;
+    }
+    ReplaceTargetList(e, r);
+    if (found != m_list.end()) {
+        *found = r;
+        delete e;
+    }
+}
+
+/* every entity deleted, the stand-in too, and every list emptied (SOCOM 1's) */
+void CEntity::RemoveAll()
+{
+    m_recycle.clear();
+    while (m_list.size()) {
+        CEntity *e = m_list.front();
+
+        m_list.pop_front();
+        if (!recycler.Release(e))
+            delete e;
+    }
+    recycler.Free();
+    nextEntityId = 0;
+    m_target_inc.clear();
+    m_target_rem.clear();
+    m_target_add.clear();
 }
 
 /* every entity told of the tick (SOCOM 1's PreTickAll, TickAll, PostTickAll, and SOCOM II's
@@ -306,3 +464,8 @@ CEntity *CEntityList::GetEntityByIndex(unsigned int index) const
         ++it;
     return *it;
 }
+
+/* the ids no entity has, defined after their readers: an earlier definition lets MW fold -1 into
+ * GetEntityById's test, where the target reads the word (SOCOM 1's likewise) */
+const unsigned int CEntity::invalidId = 0xFFFFFFFF;
+const unsigned int CEntity::deletedId = 0xFFFFFFFE;

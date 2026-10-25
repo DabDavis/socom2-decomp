@@ -602,6 +602,10 @@
 0x004362C0 0xC recycler  # OVL1 bss; s1:data-exact (size SOCOM 1's; via __sinit_ent_main.cpp)
 0x004362E0 0xC m_list__7CEntity  # OVL1 bss; s1:data-exact (size SOCOM 1's; via __sinit_ent_main.cpp)
 0x00436300 0xC m_recycle__7CEntity  # OVL1 bss; s1:data-exact (size SOCOM 1's; via __sinit_ent_main.cpp)
+0x00436310 0x4 nextEntityId__7CEntity  # OVL1 bss; SOCOM 1's nextEntityId__7CEntity ($gp small data there, gp-29376): the constructor takes an entity's id from it and counts it up, RemoveAll clears it; 2 references
+0x00436330 0xC m_target_inc__7CEntity  # OVL1 bss; SOCOM 1's (0x4BC460, the first list __sinit_ent_target.cpp builds, 0x400030); RemoveAll clears it; ent_target.cpp's
+0x00436350 0xC m_target_add__7CEntity  # OVL1 bss; SOCOM 1's (0x4BC480, the second list ent_target.cpp's initialiser builds); RemoveAll clears it
+0x00436370 0xC m_target_rem__7CEntity  # OVL1 bss; SOCOM 1's (0x4BC4A0, the third list ent_target.cpp's initialiser builds); RemoveAll clears it
 0x004364E0 0x1860 theMission  # OVL1 bss; SOCOM 1's is 0x670, SOCOM II's runs to at least 0x1860 (CMission's own methods reach this+0x1808, the online game, this+0x183C, a string ~CMission destroys, and this+0x1854, the objectives; the menu state's network queue at 0x11B0 lies inside); moved from 0x437764, which nothing references: 70 references take 0x4364E0 as the object (COurGame::StartEngine, CCoreState::OnPop, CExitState::Init among them)
 0x00437E80 0x8064 theUIVarManager  # OVL1 bss; s1:data-seq (size SOCOM 1's; via PasswordSecurity__13CZOnlineLobbyFv +4)
 0x0043FF20 0x800 g_arrDefCharTypeNames__25@unnamed@fts_mission_cpp@  # OVL1 bss; s1:data-exact (size SOCOM 1's; via GetDefCharTypeName__Fi)

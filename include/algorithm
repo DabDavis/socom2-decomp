@@ -54,6 +54,31 @@ inline InputIterator find_if(InputIterator first, InputIterator last, Predicate 
     return first;
 }
 
+/* out of line, as remove_copy (CEntity::PurgeEntities calls 0x29FE70, which calls 0x29FFD0) */
+template <class InputIterator, class OutputIterator, class Predicate>
+OutputIterator remove_copy_if(InputIterator first, InputIterator last, OutputIterator result, Predicate pred)
+{
+    for (; first != last; ++first)
+        if (!pred(*first)) {
+            *result = *first;
+            ++result;
+        }
+    return result;
+}
+
+/* the two returns through one copy into the result, as a ternary does it (with an early return
+ * MW builds remove_copy_if's straight into it).
+ * OPEN (0x29FE70, 6 instructions): the inlined find_if's two iterators take s5/s4 the other way
+ * round -- `!(last == first)` in find_if gets five, a for/break ten; find_if is node_vector.cpp's
+ * and zanim_anim.cpp's too, so it stays */
+template <class ForwardIterator, class Predicate>
+ForwardIterator remove_if(ForwardIterator first, ForwardIterator last, Predicate pred)
+{
+    first = find_if(first, last, pred);
+    ForwardIterator i = first;
+    return first == last ? first : remove_copy_if(++i, last, first, pred);
+}
+
 }
 
 #endif

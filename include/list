@@ -185,6 +185,7 @@ public:
     /* the first (CEntity::PreTickAll hands the recycler the first entity queued) */
     T *&front() { return (T *&)((typename base::node *)this->end_.next_)->data_; }
     void pop_back() { this->erase(typename base::iterator(this->end_.prev_)); }
+    void pop_front() { this->erase(typename base::iterator(this->end_.next_)); }
 
     /* the pointer list's own iterator: SOCOM 1's DWARF gives list<T *>::generic_iterator the
      * base's as its one member (i_), built from it by value (0x210C90 in the demo) and turned
