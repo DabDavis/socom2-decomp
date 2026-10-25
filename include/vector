@@ -302,8 +302,9 @@ inline void swap(__vector_pod<T, Allocator> &x, __vector_pod<T, Allocator> &y)
 
 /* what every vector shows its users: the iterators and accessors over its storage (a macro, so
  * that neither kind of vector carries a class of its own for them) */
-#define __MSL_VECTOR_ACCESS(ELEMENT)                                                              \
-public:                                                                                         \
+/* the iterator class alone (the scalar vectors take it without the rest of the access, whose
+ * element reads go through data_ where theirs go through data()'s reference) */
+#define __MSL_VECTOR_ITERATOR(ELEMENT)                                                            \
     typedef ELEMENT elem_t;                                                                     \
     class iterator {                                                                            \
     public:                                                                                     \
@@ -317,7 +318,11 @@ public:                                                                         
         elem_t &operator*() const { return *m_p; }                                              \
                                                                                                 \
         elem_t *m_p;                                                                            \
-    };                                                                                          \
+    };
+
+#define __MSL_VECTOR_ACCESS(ELEMENT)                                                              \
+public:                                                                                         \
+    __MSL_VECTOR_ITERATOR(ELEMENT)                                                              \
                                                                                                 \
     class const_iterator {                                                                      \
     public:                                                                                     \
@@ -443,6 +448,28 @@ class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, all
         typedef __vector_pod<unsigned int, allocator<unsigned int> > __base;                    \
                                                                                                 \
     public:                                                                                     \
+        __MSL_VECTOR_ITERATOR(T)                                                                \
+        /* the pointer vectors' begin(), end() and one-element erase (the MSL headers round 5: \
+         * the weapons lane's CZItemStash over three vector<int>s -- Compact 0x3CFB20 byte-exact \
+         * as a probe, its iterators assigned from erase so in memory, build/p/stash2.cpp in the \
+         * MSL lane's worktree. OPEN: Count 0x3CFCF0 and Clear 0x3CFC40 compute the end once, \
+         * in a preheader after the loop, sharing begin's load of the data; written `i !=       \
+         * m_c.end()` here the data is re-read every pass (0x18 short) -- end() through the     \
+         * pod's end(), a const local, data_ straight or data() all alike) */                   \
+        iterator __iter(unsigned int *const &p) { return iterator((elem_t *)p); }               \
+        iterator begin()                                                                        \
+        {                                                                                       \
+            unsigned int *const p = __base::begin();                                            \
+                                                                                                \
+            return __iter(p);                                                                   \
+        }                                                                                       \
+        iterator end()                                                                          \
+        {                                                                                       \
+            unsigned int *const p = __base::end();                                              \
+                                                                                                \
+            return __iter(p);                                                                   \
+        }                                                                                       \
+        iterator erase(iterator position) { return __iter(__base::erase((unsigned int *)position.m_p)); } \
         unsigned int size() const { return this->size_; }                                       \
         unsigned int capacity() const { return this->capacity_; }                               \
         T &operator[](unsigned int n) { return ((T *)__base::data())[n]; }                      \
