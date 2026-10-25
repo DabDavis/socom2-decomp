@@ -48,6 +48,8 @@ void snd_StartCaching(void);
 int snd_SendCache(void);
 int snd_FlushSoundCommands(void);
 void snd_AutoReverb(int core, int depth, int delta, int channel);
+/* SOCOM 1's snd_InitVAGStreamingEx (Open passes it SOCOM 1's arguments), outside this lane's rows */
+int func_0033F720(int num_channels, int buffer_size, int a, int b);
 void snd_StopAllStreams(void);
 int snd_StreamSafeCheckCDIdle(int block);
 }
@@ -99,6 +101,11 @@ public:
 
     static CSnd *GetSoundByName(const char *name);
     static void SetGroupVol(int group, float vol);
+    static void LoadReverbs(_zrdr *rdr);
+    static void Close();
+    static void Open();
+    static void UIOpen();
+    static void NetOpen();
     static void WaitForCDRead();
     static void PlayErrorSound();
     static void OnListenerDeath();
@@ -186,6 +193,15 @@ public:
     std::vector<float> m_weights;       /* 0x48 */
     float m_decay;                      /* 0x54 */
 };   /* 0x58 bytes */
+
+/* the CD file system's flag that a sound stream owns the drive (SOCOM 1's static) */
+class CFileCD {
+public:
+    static bool m_streamingSndActive;
+};
+
+/* the sounds file, read once (SOCOM 1's GetSoundRdrFile) */
+_zrdr *GetSoundRdrFile();
 
 /* the instances' pool (SOCOM 1's class, a vector of pointers) */
 class CSndInstanceVec : public std::vector<CSndInstance *> {

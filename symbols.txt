@@ -6121,10 +6121,10 @@
 0x003412F0 0x1B4 func_003412F0  # OVL1
 0x003414B0 0x8 func_003414B0  # OVL1
 0x003414C0 0x8 func_003414C0  # OVL1
-0x003414D0 0x24 func_003414D0  # OVL1
+0x003414D0 0x24 SetGroupVol__4CSndFif  # OVL1; s1:order by hand (SOCOM 1's SetGroupVol, the same body: 1024 times the level to snd_SetMasterVolume for the group passed through)
 0x00341500 0x1B0 func_00341500  # OVL1
 0x003416B0 0x1B0 func_003416B0  # OVL1
-0x00341860 0x70 SetGroupVol__4CSndFif  # OVL1; s1:align
+0x00341860 0x70 LoadReverbs__4CSndFP5_zrdr  # OVL1; s1:align; SOCOM II's, name ours (was SetGroupVol__4CSndFif by s1:align, wrong: it takes no float -- it clears four vectors and four levels and hands its argument, the reverb record, to the indoor and outdoor loaders; SOCOM 1's SetGroupVol body is 0x3414D0's)
 0x003418D0 0x4C func_003418D0  # OVL1
 0x00341920 0x8 GetNumSounds__4CSndFv  # OVL1; SOCOM II's, name ours (CSnd's vtable slot 0x30, returning 0; CSndGroup's override, 0x347C70, returns its member count)
 0x00341930 0x8 GetSound__4CSndFUi  # OVL1; SOCOM II's, name ours (CSnd's vtable slot 0x2C, returning 0; CSndGroup's override, 0x347C80, returns its i-th member)
@@ -6147,21 +6147,21 @@
 0x00342670 0x230 func_00342670  # OVL1
 0x003428A0 0x50 func_003428A0  # OVL1
 0x003428F0 0x1C func_003428F0  # OVL1
-0x00342910 0x80 func_00342910  # OVL1
-0x00342990 0x84 func_00342990  # OVL1
-0x00342A20 0x80 func_00342A20  # OVL1
-0x00342AA0 0x80 func_00342AA0  # OVL1
+0x00342910 0x80 PlaySoundVolPanPitch__4CSndFfiibP12CSndInstanceUi  # OVL1; s1:vtable by hand (slot 0x28: the one-shot flag set around slot 0x18)
+0x00342990 0x84 PlaySound3D__4CSndFPC6CPnt3DbfiP12CSndInstanceUi  # OVL1; s1:vtable by hand (slot 0x24: the one-shot flag set around slot 0x14)
+0x00342A20 0x80 PlaySoundVol__4CSndFfbP12CSndInstanceUi  # OVL1; s1:vtable by hand (slot 0x20: the one-shot flag set around slot 0x10)
+0x00342AA0 0x80 PlaySound__4CSndFbP12CSndInstanceUi  # OVL1; s1:vtable by hand (slot 0x1C of CSnd's and CSndGroup's tables, SOCOM 1's PlaySound(bool, ...) slot: the one-shot flag set around a call of slot 0x0C)
 0x00342B20 0x620 PlaySound3D__4CSndFPC6CPnt3DfiP12CSndInstanceUi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00343140 0x3B4 PlaySoundVolPanPitch__4CSndFfiiP12CSndInstanceUi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00343500 0x44 PlaySoundVol__4CSndFfP12CSndInstanceUi  # OVL1; s1:align
 0x00343550 0x4C PlaySound__4CSndFP12CSndInstanceUi  # OVL1; s1:align
-0x003435A0 0xC func_003435A0  # OVL1
-0x003435B0 0xC func_003435B0  # OVL1
+0x003435A0 0xC GetSubtitles__4CSndFv  # OVL1; s1:order by hand (SOCOM 1's GetSubtitles, a byte read, right after PlaySound in both builds)
+0x003435B0 0xC SetSubtitles__4CSndFb  # OVL1; s1:order by hand (SOCOM 1's SetSubtitles, the same byte stored)
 0x003435C0 0x810 func_003435C0  # OVL1
 0x00343DD0 0x1BC func_00343DD0  # OVL1
 0x00343F90 0xFC func_00343F90  # OVL1
 0x00344090 0x32C func_00344090  # OVL1
-0x003443C0 0x90 func_003443C0  # OVL1
+0x003443C0 0x90 CopyUpper__FPCcPci  # OVL1; SOCOM II's, name ours (a string copied upper-cased into a buffer of n characters, strlen and toupper)
 0x00344450 0x478 func_00344450  # OVL1
 0x003448D0 0x8 func_003448D0  # OVL1
 0x003448E0 0x2C func_003448E0  # OVL1
@@ -6174,16 +6174,16 @@
 0x00344EE0 0x3C func_00344EE0  # OVL1
 0x00344F20 0x8 func_00344F20  # OVL1
 0x00344F30 0x44 GetSoundByName__4CSndFPCc  # OVL1; s1:callee
-0x00344F80 0xB8 func_00344F80  # OVL1
-0x00345040 0xA4 func_00345040  # OVL1
-0x003450F0 0x7C func_003450F0  # OVL1
+0x00344F80 0xB8 Close__4CSndFv  # OVL1; s1:order by hand (SOCOM 1's Close, after GetSoundByName: m_max_num_vags zeroed, the headset shut, snd_CloseVAGStreaming, CFileCD's streaming flag cleared -- SOCOM II adds the voice queue and the reverb reset)
+0x00345040 0xA4 Open__4CSndFv  # OVL1; s1:order by hand (SOCOM 1's Open, next: CFileCD's flag set, sounds.rdr read once, m_max_num_vags 6 and snd_InitVAGStreamingEx(6, ..., 1) as SOCOM 1's)
+0x003450F0 0x7C UIOpen__4CSndFv  # OVL1; s1:order by hand (SOCOM 1's UIOpen, between Open and NetOpen in both builds)
 0x00345170 0x84 NetOpen__4CSndFv  # OVL1; s1:calls
 0x00345200 0x28 Uninit__4CSndFv  # OVL1; s1:align
 0x00345230 0x294 func_00345230  # OVL1
 0x003454D0 0xF8 func_003454D0  # OVL1
 0x003455D0 0x4C __dt__4CSndFv  # OVL1; s1:align; s1:vtable (the same slot of the same class's vtable in both builds, code alike); was clear__Q23std503__tree<Q23std81pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P4CSnd>,Q33std271map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P4CSnd,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std100allocator<Q23std81pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P4CSnd>>>13value_compare,Q23std100allocator<Q23std81pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P4CSnd>>>Fv
-0x00345620 0x1D8 func_00345620  # OVL1
-0x00345800 0xC func_00345800  # OVL1
+0x00345620 0x1D8 __ct__4CSndFv  # OVL1; s1:order by hand (SOCOM 1's CSnd constructor, after the destructor in both builds: CSnd's vtable stored, nothing more when CSnd::m_isDisabled, the instance pool reserved to 48 as SOCOM 1's reserves its vector)
+0x00345800 0xC GetSoundRdrFile__Fv  # OVL1; s1:order by hand (SOCOM 1's GetSoundRdrFile, after the constructor in both builds: the sounds file Open reads)
 0x00345810 0x5A4 func_00345810  # OVL1
 0x00345DC0 0x1B0 func_00345DC0  # OVL1
 0x00345F70 0x8 func_00345F70  # OVL1
