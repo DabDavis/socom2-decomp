@@ -11632,14 +11632,14 @@
 0x00600530 0x18 func_00600530  # OVL2
 0x00600550 0x79C func_00600550  # OVL2
 0x00600CF0 0x50 func_00600CF0  # OVL2
-0x00600D40 0x8C func_00600D40  # OVL2
+0x00600D40 0x8C func_00600D40  # OVL2; s1:order by hand (the kit lane, round 4): CSealCtrl::ClearLook(AI_LOOK) -- SOCOM 1's ClearLook__9CSealCtrlF7AI_LOOK (0x2E4310), the same stores 4 bytes on (the look's point to CPnt3D::unit_nz, type 3, mode 0, timer CAiTimer::infinite, flags 0) and the same tail call to SetDefaultLookParams (0x601400), SOCOM II's passing whether the type was not 3; a placeholder because zseal.h's CSealCtrl does not declare it (seal_look.cpp)
 0x00600DD0 0x100 func_00600DD0  # OVL2
 0x00600ED0 0x9C func_00600ED0  # OVL2
 0x00600F70 0x100 func_00600F70  # OVL2
 0x00601070 0x188 func_00601070  # OVL2
 0x00601200 0x128 func_00601200  # OVL2
 0x00601330 0xD0 func_00601330  # OVL2
-0x00601400 0x404 func_00601400  # OVL2
+0x00601400 0x404 func_00601400  # OVL2; s1:order by hand (the kit lane, round 4): CSealCtrl::SetDefaultLookParams(AI_LOOK, bool) -- SOCOM 1's SetDefaultLookParams__9CSealCtrlF7AI_LOOK (0x2E4660: the look rate's Rfloat, a switch on the kind), called from ClearLook (0x600D40) as SOCOM 1's is
 0x00601810 0x10 SetScanRate__9CSealCtrlFf  # OVL2; s1:exact
 0x00601820 0x8 func_00601820  # OVL2
 0x00601830 0x20 func_00601830  # OVL2
