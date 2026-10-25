@@ -17,13 +17,49 @@
 #include <list>
 
 #include "../gamez/zmath/zmath.h"
+#include "../gamez/zentity/zentity.h"
 
 class CSealCtrlAi;
 class CAiEvent;
 
-/* the state kinds (SOCOM 1's AI_STATE, a byte: CAiState's constructor stores it with sb; the
- * values are not needed yet) */
-enum AI_STATE { AI_STATE_UNKNOWN = 0, AI_STATE_LAST = 255 };
+/* the state kinds (SOCOM 1's AI_STATE, a byte: CAiState's constructor stores it with sb). The
+ * values are the ones CAiState::Create (0x5F6550) builds each state for; the names ours, after
+ * the classes (0 and 5 build a plain CAiState) */
+enum AI_STATE {
+    AI_STATE_UNKNOWN = 0, AI_STATE_SCRIPT = 1, AI_STATE_HOLD = 2, AI_STATE_AVOID = 3,
+    AI_STATE_DEPLOY = 4, AI_STATE_5 = 5, AI_STATE_SURRENDER = 6, AI_STATE_USEVEHICLE = 7,
+    AI_STATE_GOTO = 8, AI_STATE_FOLLOW = 9, AI_STATE_BREACH = 10, AI_STATE_ACTION = 11,
+    AI_STATE_PURSUE = 12, AI_STATE_ANIMATE = 13, AI_STATE_CQBATTACK = 14, AI_STATE_FLEE = 15,
+    AI_STATE_PATHRECOVER = 16, AI_STATE_RESCUED = 17, AI_STATE_SUSPENDED = 18,
+    AI_STATE_SHOTAT = 19, AI_STATE_RELOAD = 20, AI_STATE_NOAMMO = 21, AI_STATE_PICKUP = 22,
+    AI_STATE_HOSTAGE = 23, AI_STATE_PLAN = 24, AI_STATE_EVENT = 25, AI_STATE_TARGET = 26,
+    AI_STATE_GRENADE = 27, AI_STATE_STUNRESPONSE = 28, AI_STATE_RUSH = 29, AI_STATE_COUNT = 30,
+    AI_STATE_LAST = 255
+};
+
+/* the members' constructors the states' constructors run that this header cannot spell as members
+ * (each called by hand where the member's would run -- inlined one level into Create, a state's
+ * constructor calls its members' constructors out of line): CAiTimer(float) (0x5EA550:
+ * zseal.h's CAiTimer, defined after this header, has no constructor yet), CPnt3D() and
+ * CAiMapLoc() (OVL2's 0x516900, 0x516120) where a member built by hand precedes them, CAiPath()
+ * (0x528340: ai.h's CAiPath, which this header does not include), a three-word zeroing
+ * constructor (0x52EB00: a vector's, ai_maps.cpp's copy), Rfloat(float) (0x5F6F30: other units
+ * define Rfloat classes of their own), and the follow's, the path recovery's and the animation's
+ * unnamed members (0x5F6F20, 0x5F6F10, 0x5F6F00, 0x5F6F70, 0x5F6F40 -- Create's out-of-line
+ * copies) */
+extern "C" {
+void *func_005EA550(void *timer, float period);
+void *func_00516900(void *pnt);
+void *func_00516120(void *loc);
+void *func_00528340(void *path);
+void *func_0052EB00(void *vec);
+void *func_005F6F30(void *rfloat, float f);
+void *func_005F6F20(void *p);
+void *func_005F6F10(void *p, int x);
+void *func_005F6F00(void *p, int a, int b);
+void *func_005F6F70(void *list);
+void *func_005F6F40(void *list);
+}
 
 class CAiState;
 
@@ -39,7 +75,9 @@ enum AI_RESULT { AI_RUNNING = 0, AI_DONE = 1, AI_FINISHED = 2, AI_RESULT_LAST = 
  * The stack owns its states. */
 class CAiStateStack : public std::list<CAiState *> {
 public:
-    CAiStateStack() : m_c(-1), m_10(0), m_14(0) {}
+    /* out of line, seal_aistate.cpp's (0x5F8520): CAiState's constructor (0x5EA5D0) and Create's
+     * plain state call it, as every unit calls the destructor */
+    CAiStateStack();
     /* both out of line, seal_aistate.cpp's: every other unit calls the destructor (~CAiState's
      * copy in seal_unit.cpp's tail, 0x5EA450, calls it where an inline one would be inlined a
      * level) */
@@ -99,6 +137,54 @@ public:
      * two members and answers true) */
     virtual bool Virtual48(int x, CAiState *other) { return false; }
     virtual ~CAiState() {}                                                /* +0x4C */
+
+    /* a state of a kind (inline: its table stored, the stack built out of line, then Reset --
+     * seal_unit.cpp's copy 0x5EA5D0 inlines it whole; its expansion is past inline_max_size, so
+     * Create's plain state inlines it one level and calls Reset, 0x5F6D40) */
+    CAiState(AI_STATE state) { Reset(state); }
+    /* a new state of a kind, by kind (SOCOM 1's; seal_aistate.cpp's, 0x5F6550) */
+    static CAiState *Create(AI_STATE state);
+
+    /* the bits Reset sets, each through a setter taking a bool (a bool stored into a bit-field is
+     * `(b & 1) << n` even for a constant -- the target's `andi zero,1` and its shifts; the names
+     * ours) */
+    void SetBit0(bool b) { m_bit0 = b; }
+    void SetActive(bool b) { m_active = b; }
+    void SetBit2(bool b) { m_bit2 = b; }
+    void SetBit3(bool b) { m_bit3 = b; }
+    void SetBit4(bool b) { m_bit4 = b; }
+    void SetBit13(bool b) { m_bit13 = b; }
+    void SetBit15(bool b) { m_bit15 = b; }
+    void SetNibble5(unsigned int n) { m_nibble5 = n; }
+    void SetNibble9(unsigned int n) { m_nibble9 = n; }
+
+    /* the state made new again: its kind, its steps and clocks zeroed, its bits as a fresh state
+     * has them (SOCOM 1's Reset__8CAiStateF8AI_STATE; inline -- CAiState's constructor inlines
+     * it, Create's plain state calls its copy) */
+    void Reset(AI_STATE state)
+    {
+        SetBit2(false);
+        m_state = state;
+        m_nextPhase = 0;
+        m_phase = 0;
+        m_phaseTime = 0.0f;
+        m_delay = 0.0f;
+        m_time = 0.0f;
+        m_flags = 0;
+        SetBit3(false);
+        SetBit15(false);
+        SetBit0(true);
+        SetActive(false);
+        SetBit2(true);
+        SetBit3(false);
+        SetBit4(false);
+        SetNibble5(0xffff);
+        SetNibble9(1);
+        SetBit13(false);
+        m_4c = 1.0f;
+        m_loc = CAiMapLoc::invalid;
+        m_54 = -1;
+    }
 
     /* a state of a stack told a signal (SOCOM 1's member CAiState::Signal, the stack and the state
      * now passed: 0x5F6FA0), and a stack's front state told it (0x5F7420) -- statics, the names
@@ -163,14 +249,15 @@ public:
     unsigned int m_bit14 : 1;
     unsigned int m_bit15 : 1;
     float m_4c;   // 0x4c (Reset: 1.0)
-    unsigned int m_loc;   // 0x50: a CAiMapLoc (Reset: the invalid cell; its constructor here is an
-                          // empty one, 0x516120, where zentity.h's copies the invalid cell in)
+    CAiMapLoc m_loc;   // 0x50 (Reset: the invalid cell; its constructor is an empty one, 0x516120,
+                       // where zentity.h's copies the invalid cell in -- open with the entity lane)
     int m_54;   // 0x54 (Reset: -1)
 };
 
 /* the states whose code is this lane's (each class only what a written function needs) */
 class CAiSCQBAttack : public CAiState {
 public:
+    CAiSCQBAttack() : CAiState(AI_STATE_CQBATTACK) {}
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual AI_RESULT Tick(float dT, CSealCtrlAi *ai);
     virtual bool CanAttack() const { return false; }
@@ -189,21 +276,28 @@ public:
 
 class CAiSSuspended : public CAiState {
 public:
+    CAiSSuspended() : CAiState(AI_STATE_SUSPENDED) {}
     virtual AI_RESULT Tick(float dT, CSealCtrlAi *ai);
     virtual bool CanAttack() const { return false; }
     virtual bool CanPursue(CSealCtrlAi *ai) const { return false; }
     virtual ~CAiSSuspended();
+
+    unsigned char _58[0x60 - 0x58];
+    CMatrix m_matrix;   // 0x60 (built by OVL2's CMatrix() copy, 0x5F6ED0; never read so far)
+    unsigned char _a0[0xb0 - 0xa0];   // 0xb0 bytes, Create's new
 };
 
 class CAiSBreach : public CAiState {
 public:
+    /* its timer, the last member, built by hand where the member's constructor would run */
+    CAiSBreach() : CAiState(AI_STATE_BREACH) { func_005EA550(m_timer, 0.0f); }
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual bool CanPursue(CSealCtrlAi *ai) const { return false; }
     /* +0x3C (the name ours, by slot) */
     virtual bool Virtual3C() { return false; }
     virtual ~CAiSBreach();
 
-    unsigned char _58[0x64 - 0x58];
+    CPnt3D m_58;   // 0x58
     unsigned int m_64;   // 0x64
     unsigned char _68[0x6c - 0x68];
     unsigned int m_6c;   // 0x6c
@@ -211,12 +305,14 @@ public:
     unsigned int m_74;   // 0x74
     unsigned int m_78;   // 0x78
     class CValve *m_valve;   // 0x7c: set to 3 when the breach begins (unless the SEAL is dead)
-    unsigned char _80[0x90 - 0x80];
-    unsigned int m_90;   // 0x90
+    CAiMapLoc m_80;   // 0x80
+    unsigned char m_timer[0xc];   // 0x84: a CAiTimer (Create builds it with 0.0)
+    unsigned int m_90;   // 0x90 (0x94 bytes, Create's new)
 };
 
 class CAiSScript : public CAiState {
 public:
+    CAiSScript() : CAiState(AI_STATE_SCRIPT) {}
     virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual bool CanAttack() const;
     virtual bool CanPursue(CSealCtrlAi *ai) const;
@@ -238,10 +334,12 @@ public:
     unsigned char m_mode;   // 0x5d: the AI's mode the script runs in (the name ours)
     unsigned char _5e[0x60 - 0x5e];
     float m_60;   // 0x60
+    unsigned char _64[0x84 - 0x64];   // 0x84 bytes, Create's new
 };
 
 class CAiSGoto : public CAiState {
 public:
+    CAiSGoto() : CAiState(AI_STATE_GOTO) {}
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     /* +0x3C and +0x40 (the names ours, by slot) */
     virtual bool Virtual3C() { return !(m_flags & 4); }
@@ -250,14 +348,15 @@ public:
 
     unsigned int m_58;   // 0x58
     CPnt3D m_pos;   // 0x5c: the goal (zero on a reset)
-    unsigned int m_cell;   // 0x68: a CAiMapLoc (the invalid cell on a reset)
+    CAiMapLoc m_cell;   // 0x68 (the invalid cell on a reset)
     float m_6c;   // 0x6c (1.0 on a reset)
     unsigned char _70[0x74 - 0x70];
-    float m_74;   // 0x74 (400.0 on a reset)
+    float m_74;   // 0x74 (400.0 on a reset; 0x78 bytes, Create's new)
 };
 
 class CAiSPickup : public CAiState {
 public:
+    CAiSPickup() : CAiState(AI_STATE_PICKUP) {}
     void SetPickup(class CPickup *p, unsigned int flags);
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual AI_RESULT Tick(float dT, CSealCtrlAi *ai);
@@ -269,11 +368,18 @@ public:
 
 class CAiSPlan : public CAiState {
 public:
+    /* its members built by hand, the first a vector's (0x52EB00) that this header cannot spell */
+    CAiSPlan() : CAiState(AI_STATE_PLAN)
+    {
+        func_0052EB00(_58);
+        func_00528340(m_path);
+        func_00516120(&m_cell);
+    }
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual ~CAiSPlan();
 
-    unsigned char _58[0x64 - 0x58];   // 0x58: a three-word triple (Create zeroes it)
-    unsigned char m_path[0x80];   // 0x64: a route (Create's 0x528340, 0xA8 bytes)
+    unsigned char _58[0x64 - 0x58];   // 0x58: a vector (Create zeroes its three words, 0x52EB00)
+    unsigned char m_path[0x80];   // 0x64: a CAiPath (built by 0x528340; 0xA8 bytes, to 0x10C)
     unsigned char m_pathState;   // 0xe4: its state (1-3 failed, 4 arrived)
     unsigned char _e5[0x100 - 0xe5];
     unsigned int m_100;   // 0x100
@@ -294,6 +400,7 @@ public:
 /* the "action" state (new in SOCOM II, the name its RTTI's): an object at +0x84 it waits on */
 class CAiSAction : public CAiState {
 public:
+    CAiSAction() : CAiState(AI_STATE_ACTION) {}
     virtual void Virtual0C(int id, int event, CSealCtrlAi *ai);
     virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual bool CanAttack() const;
@@ -302,40 +409,89 @@ public:
     virtual bool Virtual38();
     virtual ~CAiSAction();
 
-    unsigned char _58[0x84 - 0x58];
-    int m_84;   // 0x84: the object waited on (an id: slot 0x0C's event 1 drops it)
+    unsigned char _58[0x60 - 0x58];
+    CPnt3D m_60;   // 0x60
+    unsigned char _6c[0x70 - 0x6c];
+    CAiMapLoc m_70;   // 0x70
+    CAiMapLoc m_74;   // 0x74
+    unsigned char _78[0x84 - 0x78];
+    int m_84;   // 0x84: the object waited on (an id: slot 0x0C's event 1 drops it; 0x88 bytes)
 };
 
 class CAiSFollow : public CAiState {
 public:
+    /* its members built by hand in order, the first two of types not known yet (Create's copies
+     * 0x5F6F20 and 0x5F6F10) */
+    CAiSFollow() : CAiState(AI_STATE_FOLLOW)
+    {
+        func_005F6F20(m_5c);
+        func_005F6F10(&m_6c, 0);
+        func_00516900(m_88);
+        func_00516900(m_98);
+        func_00516900(m_a4);
+        func_00516900(m_b0);
+        func_00516120(&m_c0);
+        func_00516120(&m_c8);
+        func_00516900(m_cc);
+        func_00516900(m_d8);
+        func_00516900(m_e8);
+        func_00516900(m_f8);
+        func_00516120(&m_104);
+        func_00516900(m_108);
+    }
     /* +0x3C (the name ours, by slot): close behind -- its distance under the follow range, and
      * its flag bit 3 set */
     virtual bool Virtual3C();
     virtual ~CAiSFollow();
 
-    unsigned char _58[0x6c - 0x58];
-    unsigned int m_6c;   // 0x6c: flags
-    unsigned char _70[0xf4 - 0x70];
+    unsigned char _58[0x5c - 0x58];
+    unsigned int m_5c[2];   // 0x5c: two words (0x5F6F20 zeroes them)
+    unsigned char _64[0x6c - 0x64];
+    unsigned int m_6c;   // 0x6c: flags (0x5F6F10 builds them with 0)
+    unsigned char _70[0x88 - 0x70];
+    float m_88[3];   // 0x88: CPnt3Ds from here to 0x114, CAiMapLocs at 0xc0, 0xc8 and 0x104
+    unsigned char _94[0x98 - 0x94];
+    float m_98[3];   // 0x98
+    float m_a4[3];   // 0xa4
+    float m_b0[3];   // 0xb0
+    unsigned char _bc[0xc0 - 0xbc];
+    unsigned int m_c0;   // 0xc0
+    unsigned char _c4[0xc8 - 0xc4];
+    unsigned int m_c8;   // 0xc8
+    float m_cc[3];   // 0xcc
+    float m_d8[3];   // 0xd8
+    unsigned char _e4[0xe8 - 0xe4];
+    float m_e8[3];   // 0xe8
     float m_f4;   // 0xf4
+    float m_f8[3];   // 0xf8
+    unsigned int m_104;   // 0x104
+    float m_108[3];   // 0x108
+    unsigned char _114[0x118 - 0x114];   // 0x118 bytes, Create's new
 };
 
 /* the vehicle state (new in SOCOM II; seal_aivehicle.cpp) */
 class CAiSUseVehicle : public CAiState {
 public:
+    /* its timer, the last member, built by hand where the member's constructor would run */
+    CAiSUseVehicle() : CAiState(AI_STATE_USEVEHICLE) { func_005EA550(&m_60, 0.0f); }
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual ~CAiSUseVehicle();
     void SetTimeout(float t);
 
-    unsigned int m_58;   // 0x58
+    CAiMapLoc m_58;   // 0x58
     unsigned int m_5c;   // 0x5c: an entity's id (CEntity::invalidId on a reset)
+    /* 0x60: a CAiTimer (Create builds it with 0.0): its period, an Rfloat -- the timeout and a
+     * range SetTimeout zeroes, as Rfloat's assignment does -- and its countdown */
     float m_60;   // 0x60: the timeout
-    unsigned int m_64;   // 0x64: its clock
+    unsigned int m_64;   // 0x64
+    float m_68;   // 0x68 (0x6c bytes, Create's new)
 };
 
 /* seal_airesponse.cpp's states */
 class CAiSHostage : public CAiState {
 public:
+    CAiSHostage() : CAiState(AI_STATE_HOSTAGE) {}
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual bool CanAttack() const { return false; }
@@ -348,16 +504,30 @@ public:
 
 class CAiSAvoid : public CAiState {
 public:
+    CAiSAvoid() : CAiState(AI_STATE_AVOID) {}
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual ~CAiSAvoid();
 
     unsigned int m_58;   // 0x58 (cleared on a reset)
+    CPnt3D m_5c;   // 0x5c
+    unsigned char _68[0x6c - 0x68];
+    CPnt3D m_6c;   // 0x6c
+    CPnt3D m_78;   // 0x78
+    CPnt3D m_84;   // 0x84
+    unsigned char _90[0x94 - 0x90];   // 0x94 bytes, Create's new
 };
 
 /* the path recovery (SOCOM 1's; 0x15C bytes, Create's: a route at 0x5C, a word triple at 0x104,
  * a pair at 0x110 built (15, 0)) */
 class CAiSPathRecover : public CAiState {
 public:
+    /* its members built by hand in order: a route, a vector, a pair built (15, 0) */
+    CAiSPathRecover() : CAiState(AI_STATE_PATHRECOVER)
+    {
+        func_00528340(m_path);
+        func_0052EB00(m_vec);
+        func_005F6F00(&m_110, 15, 0);
+    }
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual const char *GetStatus() const;
     virtual bool CanAttack() const { return false; }
@@ -366,18 +536,28 @@ public:
     virtual ~CAiSPathRecover();
 
     unsigned int m_58;   // 0x58
-    unsigned char _5c[0x114 - 0x5c];
+    unsigned char m_path[0xa8];   // 0x5c: a CAiPath (built by 0x528340)
+    unsigned char m_vec[0xc];   // 0x104: a vector (0x52EB00 zeroes its three words)
+    /* 0x110: a pair built (15, 0) -- 0 here, 15 in the tries (0x5F6F00) */
+    int m_110;   // 0x110
     int m_tries;   // 0x114: reset to the unit's static count (10)
     unsigned char _118[0x15c - 0x118];
 };
 
 class CAiSRush : public CAiState {
 public:
+    /* its timer, the last member, built by hand where the member's constructor would run */
+    CAiSRush() : CAiState(AI_STATE_RUSH) { func_005EA550(m_timer, 0.0f); }
     virtual ~CAiSRush();
+
+    unsigned char _58[0x60 - 0x58];
+    CAiMapLoc m_60;   // 0x60
+    unsigned char m_timer[0xc];   // 0x64: a CAiTimer (Create builds it with 0.0; 0x70 bytes)
 };
 
 class CAiSFlee : public CAiState {
 public:
+    CAiSFlee() : CAiState(AI_STATE_FLEE) {}
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual AI_RESULT Tick(float dT, CSealCtrlAi *ai);
     virtual bool CanAttack() const { return true; }
@@ -387,18 +567,25 @@ public:
 
     bool m_58;   // 0x58 (set on a reset)
     unsigned char _59[0x5c - 0x59];
-    unsigned int m_cell;   // 0x5c: a CAiMapLoc, the cell fled to
-    unsigned int m_60;   // 0x60
+    CAiMapLoc m_cell;   // 0x5c: the cell fled to
+    unsigned int m_60;   // 0x60 (0x64 bytes, Create's new)
 };
 
 class CAiSTarget : public CAiState {
 public:
+    CAiSTarget() : CAiState(AI_STATE_TARGET) {}
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual ~CAiSTarget();
 };
 
 class CAiSEvent : public CAiState {
 public:
+    /* its Rfloat built by hand (Rfloat(float), 0x5F6F30), then the cell after it */
+    CAiSEvent() : CAiState(AI_STATE_EVENT)
+    {
+        func_005F6F30(&m_rnd_min, 0.0f);
+        func_00516120(&m_cell);
+    }
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual bool CanAttack() const { return !(m_flags & 0xc); }
     virtual bool CanPursue(CSealCtrlAi *ai) const { return false; }
@@ -422,6 +609,8 @@ public:
 
 class CAiSStunResponse : public CAiState {
 public:
+    /* its timer, the last member, built by hand where the member's constructor would run */
+    CAiSStunResponse() : CAiState(AI_STATE_STUNRESPONSE) { func_005EA550(m_timer, 0.0f); }
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual bool CanAttack() const { return false; }
     virtual ~CAiSStunResponse();
@@ -435,6 +624,7 @@ public:
 
 class CAiSHold : public CAiState {
 public:
+    CAiSHold() : CAiState(AI_STATE_HOLD) {}
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     /* +0x40: a hold the flag's bit 8 has not ended (the name ours) */
     virtual bool Virtual40() { return !(m_flags & 0x100); }
@@ -442,8 +632,8 @@ public:
 
     short m_58;   // 0x58 (-1 on a reset)
     unsigned char _5a[0x5c - 0x5a];
-    float m_pos[3];   // 0x5c: a CPnt3D (Create builds it)
-    unsigned int m_cell;   // 0x68: a CAiMapLoc (the invalid cell on a reset)
+    CPnt3D m_pos;   // 0x5c
+    CAiMapLoc m_cell;   // 0x68 (the invalid cell on a reset)
     unsigned char m_6c;   // 0x6c
     unsigned char _6d[0x70 - 0x6d];
     unsigned int m_70;   // 0x70
@@ -454,41 +644,51 @@ public:
 
 class CAiSSurrender : public CAiState {
 public:
+    CAiSSurrender() : CAiState(AI_STATE_SURRENDER) {}
     virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual bool CanAttack() const { return false; }
     virtual const char *GetScriptResponse() const { return "on_surrender"; }
     virtual ~CAiSSurrender();
+
+    unsigned char _58[0x6c - 0x58];   // 0x6c bytes, Create's new
 };
 
 class CAiSNoAmmo : public CAiState {
 public:
+    CAiSNoAmmo() : CAiState(AI_STATE_NOAMMO) {}
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual AI_RESULT Tick(float dT, CSealCtrlAi *ai);
     virtual bool CanAttack() const { return false; }
     virtual ~CAiSNoAmmo();
 
     class CPickup *m_pickup;   // 0x58: the ammunition gone for (SOCOM 1's at 0x28)
-    unsigned int m_pickupLoc;   // 0x5c: a CAiMapLoc, the SEAL's cell then (SOCOM 1's at 0x2c)
+    CAiMapLoc m_pickupLoc;   // 0x5c: the SEAL's cell then (SOCOM 1's at 0x2c)
 };
 
 class CAiSReload : public CAiState {
 public:
+    CAiSReload() : CAiState(AI_STATE_RELOAD) {}
     virtual AI_RESULT Tick(float dT, CSealCtrlAi *ai);
     virtual bool CanAttack() const { return false; }
     virtual ~CAiSReload();
 
     short m_stance;   // 0x58: the AI's stance when the reload began (a signed byte widened)
+    unsigned char _5a[0x5c - 0x5a];
+    CAiMapLoc m_5c;   // 0x5c (0x60 bytes, Create's new)
 };
 
 class CAiSShotAt : public CAiState {
 public:
+    CAiSShotAt() : CAiState(AI_STATE_SHOTAT) {}
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual bool CanPursue(CSealCtrlAi *ai) const { return false; }
     virtual ~CAiSShotAt();
 
     unsigned char _58[0x5a - 0x58];
     signed char m_stance;   // 0x5a: the AI's stance when shot at (a SEAL_STANCE)
-    unsigned char _5b[0x6c - 0x5b];
+    unsigned char _5b[0x5c - 0x5b];
+    CPnt3D m_5c;   // 0x5c
+    unsigned char _68[0x6c - 0x68];   // 0x6c bytes, Create's new
 };
 
 #endif

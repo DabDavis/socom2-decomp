@@ -253,6 +253,173 @@ void CAiSPlan::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
     }
 }
 
+/* the states seal_ai.cpp defines (the SEAL lane's unit declares them for itself): here only what
+ * Create builds -- each one's size, its members' constructors and its table (stored, not emitted:
+ * the destructors are seal_ai.cpp's) */
+class CAiSRescued : public CAiState {
+public:
+    CAiSRescued() : CAiState(AI_STATE_RESCUED) {}
+    virtual ~CAiSRescued();
+
+    unsigned char _58[0x64 - 0x58];
+};
+
+class CAiSPursue : public CAiState {
+public:
+    CAiSPursue() : CAiState(AI_STATE_PURSUE) {}
+    virtual ~CAiSPursue();
+
+    unsigned char _58[0x60 - 0x58];
+};
+
+class CAiSAnimate : public CAiState {
+public:
+    /* two lists of types not known yet, built by hand (Create's copies 0x5F6F70, 0x5F6F40) */
+    CAiSAnimate() : CAiState(AI_STATE_ANIMATE)
+    {
+        func_005F6F70(m_64);
+        func_005F6F40(m_70);
+    }
+    virtual ~CAiSAnimate();
+
+    unsigned char _58[0x64 - 0x58];
+    unsigned char m_64[0xc];   // 0x64: a list (~CAiSAnimate erases it, 0x575CF0)
+    unsigned char m_70[0xc];   // 0x70: a list (0x575F40)
+};
+
+class CAiSGrenade : public CAiState {
+public:
+    CAiSGrenade() : CAiState(AI_STATE_GRENADE) {}
+    virtual ~CAiSGrenade();
+
+    unsigned char _58[0x70 - 0x58];
+    CPnt3D m_70;   // 0x70
+    CAiMapLoc m_7c;   // 0x7c
+    CAiMapLoc m_80;   // 0x80
+    unsigned char _84[0x88 - 0x84];
+    CPnt3D m_88;   // 0x88
+    CPnt3D m_94;   // 0x94
+    CPnt3D m_a0;   // 0xa0 (0xac bytes)
+};
+
+class CAiSDeploy : public CAiState {
+public:
+    CAiSDeploy() : CAiState(AI_STATE_DEPLOY) {}
+    virtual ~CAiSDeploy();
+
+    CPnt3D m_58;   // 0x58
+    CPnt3D m_64;   // 0x64
+    unsigned char _70[0x74 - 0x70];
+    CAiMapLoc m_74;   // 0x74
+    CAiMapLoc m_78;   // 0x78
+    unsigned char _7c[0x9c - 0x7c];   // 0x9c bytes
+};
+
+/* a new state of a kind (OVL2 0x5F6550; SOCOM 1's, the cases in the same order -- alphabetical
+ * by the state's name -- and a plain CAiState for the kinds it does not know). Every state's
+ * constructor is inlined one level (CAiState's expansion is past inline_max_size): CAiState's
+ * constructor and the members' are called, the table stored between them */
+CAiState *CAiState::Create(AI_STATE state)
+{
+    CAiState *s;
+
+    switch (state) {
+    case AI_STATE_ACTION:
+        s = new CAiSAction;
+        break;
+    case AI_STATE_ANIMATE:
+        s = new CAiSAnimate;
+        break;
+    case AI_STATE_AVOID:
+        s = new CAiSAvoid;
+        break;
+    case AI_STATE_BREACH:
+        s = new CAiSBreach;
+        break;
+    case AI_STATE_CQBATTACK:
+        s = new CAiSCQBAttack;
+        break;
+    case AI_STATE_DEPLOY:
+        s = new CAiSDeploy;
+        break;
+    case AI_STATE_EVENT:
+        s = new CAiSEvent;
+        break;
+    case AI_STATE_FLEE:
+        s = new CAiSFlee;
+        break;
+    case AI_STATE_FOLLOW:
+        s = new CAiSFollow;
+        break;
+    case AI_STATE_GOTO:
+        s = new CAiSGoto;
+        break;
+    case AI_STATE_GRENADE:
+        s = new CAiSGrenade;
+        break;
+    case AI_STATE_HOLD:
+        s = new CAiSHold;
+        break;
+    case AI_STATE_HOSTAGE:
+        s = new CAiSHostage;
+        break;
+    case AI_STATE_NOAMMO:
+        s = new CAiSNoAmmo;
+        break;
+    case AI_STATE_PLAN:
+        s = new CAiSPlan;
+        break;
+    case AI_STATE_PATHRECOVER:
+        s = new CAiSPathRecover;
+        break;
+    case AI_STATE_PICKUP:
+        s = new CAiSPickup;
+        break;
+    case AI_STATE_PURSUE:
+        s = new CAiSPursue;
+        break;
+    case AI_STATE_RELOAD:
+        s = new CAiSReload;
+        break;
+    case AI_STATE_RESCUED:
+        s = new CAiSRescued;
+        break;
+    case AI_STATE_RUSH:
+        s = new CAiSRush;
+        break;
+    case AI_STATE_SCRIPT:
+        s = new CAiSScript;
+        break;
+    case AI_STATE_SHOTAT:
+        s = new CAiSShotAt;
+        break;
+    case AI_STATE_STUNRESPONSE:
+        s = new CAiSStunResponse;
+        break;
+    case AI_STATE_SURRENDER:
+        s = new CAiSSurrender;
+        break;
+    case AI_STATE_SUSPENDED:
+        s = new CAiSSuspended;
+        break;
+    case AI_STATE_TARGET:
+        s = new CAiSTarget;
+        break;
+    case AI_STATE_USEVEHICLE:
+        s = new CAiSUseVehicle;
+        break;
+    default:
+        s = new CAiState(state);
+        break;
+    }
+    return s;
+}
+
+/* the stack's constructor (OVL2 0x5F8520): out of line, as its destructor is */
+CAiStateStack::CAiStateStack() : m_c(-1), m_10(0), m_14(0)
+{
+}
+
 /* (OVL2 0x5605A0, the SEAL lane's row: the controller told a byte) */
 extern "C" void func_005605A0(CSealCtrlAi *ai, unsigned char x);
 
@@ -463,7 +630,7 @@ void CAiSGoto::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
 {
     switch (sig) {
     case SIGNAL_4:
-        m_cell = *(unsigned int *)&CAiMapLoc::invalid;
+        *(unsigned int *)&m_cell = *(unsigned int *)&CAiMapLoc::invalid;
         m_pos = CPnt3D::zero;
         m_6c = 1.0f;
         m_58 = 0;

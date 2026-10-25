@@ -11367,7 +11367,7 @@
 0x005EA4C0 0x8 OnSignal__8CAiStateFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005EA4D0 0x78 __dt__10CAiSBreachFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005EA550 0x80 func_005EA550  # OVL2
-0x005EA5D0 0x1AC func_005EA5D0  # OVL2
+0x005EA5D0 0x1AC __ct__8CAiStateF8AI_STATE  # OVL2; by hand (the kit lane, round 4): CAiState's constructor -- its table (0x669950) stored, the stack built (0x5F8520), Reset inlined with the kind in a1; Create calls it for the base of every state but the plain one (seal_unit.cpp's copy, after the CAiTimer constructor it also uses)
 0x005EA780 0x38 GetBreachState__FP11CSealCtrlAi  # OVL2; by hand: CSealCtrlAi::GetAiState (0x5F6010), returned when its kind (the byte at 0x30) is 17, the breach, else 0 -- after CAiState's constructor in seal_unit.cpp, whose breach code (SOCOM 1's AddBreachMember) works on CAiSBreach (the name ours)
 0x005EA7C0 0x14 func_005EA7C0  # OVL2; size 0x14 (a tail call through t9; the seed ran on into the padding)
 0x005EA7E0 0x88 __ct__9CAiMapLocFRC9CAiMapLoc  # OVL2; s1:exact
@@ -11517,9 +11517,9 @@
 0x005F6270 0x44 func_005F6270  # OVL2
 0x005F62C0 0x90 func_005F62C0  # OVL2
 0x005F6350 0x1FC func_005F6350  # OVL2
-0x005F6550 0x7E8 func_005F6550  # OVL2
-0x005F6D40 0x184 func_005F6D40  # OVL2
-0x005F6ED0 0x28 func_005F6ED0  # OVL2; tu: vis_mesh.cpp~ (1.0 beta)
+0x005F6550 0x7E8 Create__8CAiStateF8AI_STATE  # OVL2; by hand (the kit lane, round 4): SOCOM 1's CAiState::Create (0x2DC240) -- a switch on the kind (jump table 0x662B10, kinds 0-29; 0 and 5 take the default) building each state with new: CAiState's constructor (0x5EA5D0) called with the kind, the state's table stored, its members built; the default a plain CAiState with Reset called on it
+0x005F6D40 0x184 Reset__8CAiStateF8AI_STATE  # OVL2; by hand (the kit lane, round 4): SOCOM 1's CAiState::Reset (0x2D1E60: the kind stored at 0x30, the phase words zeroed, the bit-fields set one by one) -- Create's default case calls it on a plain CAiState after building its members, and CAiState's constructor (0x5EA5D0) inlines the same stores
+0x005F6ED0 0x28 func_005F6ED0  # OVL2; tu: vis_mesh.cpp~ (1.0 beta); OVL2's copy of CMatrix's constructor (sceVu0UnitMatrix on itself, the same 0x28 bytes as OVL1's 0x3087D0, which carries the name): CAiState::Create's first use, for CAiSSuspended's matrix at 0x60 -- the kit lane; ovl-copy: __ct__7CMatrixFv
 0x005F6F00 0x10 func_005F6F00  # OVL2
 0x005F6F10 0xC func_005F6F10  # OVL2
 0x005F6F20 0x10 func_005F6F20  # OVL2; tu: orders.cpp~ (1.0 beta)
@@ -11544,7 +11544,7 @@
 0x005F8360 0x24 GetState__13CAiStateStackFv  # OVL2; by hand: 0x5F8330's code again, the non-const copy (the name ours)
 0x005F8390 0xF4 Clear__13CAiStateStackFv  # OVL2; by hand: every state in the stack deleted through its virtual destructor (slot +0x4C of CAiState's table) and the nodes erased (the OVL2 pointer list's erase 0x50F990); SOCOM 1's CAiStateStack : list (DWARF, 0xC bytes, CSealCtrlAi::m_stateStack) -- the name ours; ~CSealCtrlAi and ~CAiStateStack call it
 0x005F8490 0x90 __dt__13CAiStateStackFv  # OVL2; by hand: CAiStateStack's destructor (Clear, then the pointer list's three this-tested levels and erase); the member at +8 of every CAiState (new in SOCOM II: sub-states) and CSealCtrlAi's m_stateStack -- every CAiS* destructor calls it with -1
-0x005F8520 0x38 func_005F8520  # OVL2
+0x005F8520 0x38 __ct__13CAiStateStackFv  # OVL2; by hand (the kit lane, round 4): CAiStateStack's constructor -- the pointer list's deleter constructor (0x50FFA0) and the three words after it (-1, 0, 0); CAiState's constructor and Create's plain state call it out of line, as every unit calls the destructor (0x5F8490)
 0x005F8560 0xC func_005F8560  # OVL2
 0x005F8570 0x138 func_005F8570  # OVL2
 0x005F86B0 0x8 func_005F86B0  # OVL2

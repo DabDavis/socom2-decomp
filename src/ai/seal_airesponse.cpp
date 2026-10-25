@@ -200,7 +200,7 @@ AI_RESULT CAiSNoAmmo::Tick(float dT, CSealCtrlAi *ai)
         if ((m_pickup = func_006082E0(&seal->m_posW, 5000.0f, kit, w)) != 0) {
             unsigned int loc;
 
-            m_pickupLoc = *(unsigned int *)&seal->m_mapLocValid;
+            *(unsigned int *)&m_pickupLoc = *(unsigned int *)&seal->m_mapLocValid;
             if (func_00529A30(&AiMaps, m_pickup->GetPosW(), &loc) && func_005623B0(ai, &loc)) {
                 phase = 1;
                 func_005631A0(ai, 0);
@@ -366,7 +366,7 @@ void CAiSHold::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
     switch (sig) {
     case SIGNAL_4:
         m_58 = -1;
-        m_cell = *(unsigned int *)&CAiMapLoc::invalid;
+        *(unsigned int *)&m_cell = *(unsigned int *)&CAiMapLoc::invalid;
         m_78 = 0;
         m_70 = 0;
         m_6c = 0;
@@ -557,9 +557,9 @@ AI_RESULT CAiSFlee::Tick(float dT, CSealCtrlAi *ai)
 
         if (!cell)
             step = STEP_2;
-        else if (func_00529EE0(&AiMaps, cell, &m_cell)) {
+        else if (func_00529EE0(&AiMaps, cell, (unsigned int *)&m_cell)) {
             step = STEP_2;
-            func_005F0830(ai, &m_cell, 4, 1, 2);
+            func_005F0830(ai, (unsigned int *)&m_cell, 4, 1, 2);
             ai->PlayAiSound((CHARACTER_SOUND)72, 0.75f, -1);
             func_005631A0(ai, 0);
             func_00570F90(ai, 1.0f);
