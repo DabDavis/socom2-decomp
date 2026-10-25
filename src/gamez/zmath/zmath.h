@@ -352,6 +352,23 @@ public:
     int Resize(unsigned int bits);
 };
 
+/* a value held within [lo, hi], and whether it had to be: out of line wherever it is
+ * instantiated (SOCOM 1's _saturate<f>, void there; SOCOM II's returns the bool -- its float
+ * instance 0x267A60, which zanim_cmd_tick.cpp links; the light's tick and CPad::Dilate call it) */
+template <class T>
+bool _saturate(T *v, const T &lo, const T &hi)
+{
+    if (*v > hi) {
+        *v = hi;
+        return true;
+    }
+    if (*v < lo) {
+        *v = lo;
+        return true;
+    }
+    return false;
+}
+
 /* |a - b| <= eps, out of line wherever it is instantiated (SOCOM 1: _close_enough<f>) */
 template <class T>
 bool _close_enough(const T &a, const T &b, const T &eps)

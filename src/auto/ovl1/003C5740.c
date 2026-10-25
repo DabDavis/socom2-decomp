@@ -4,30 +4,31 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK DeleteTextureAssetCharacter__Q23zdb6CWorldFQ23zdb12_RenderPhasePQ23zdb5CNode(s32, M2C_UNK, s32); /* extern */
 M2C_UNK ReleaseDirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi(s32, char *, char *); /* extern */
 M2C_UNK ReleaseIndirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi(s32, char *, char *); /* extern */
 M2C_UNK __dl__FPv(char *);                          /* extern */
-M2C_UNK func_0031D0A0(s32, M2C_UNK, s32);           /* extern */
 M2C_UNK func_003CB7E0(char *, M2C_UNK);             /* extern */
-extern M2C_UNK data_004083A0;
-extern s32 data_0045C380;
-extern s32 data_004B5220;
+extern M2C_UNK __vt__15PlacedExplosive;
+extern s32 m_pProjectilelist__8CZWeapon;
+extern s32 m_world__Q23zdb6CWorld;
 
 char *func_003C5740(char *arg0, s64 arg1) {
     if (arg0 != NULL) {
-        M2C_FIELD(arg0, M2C_UNK **, 0) = &data_004083A0;
-        func_0031D0A0(data_0045C380, 2, M2C_FIELD(arg0, s32 *, 0x20));
-        if (M2C_FIELD(arg0, u8 *, 9) == 1) {
-            if (M2C_FIELD(arg0, s32 *, 0x28) != 0) {
-                ReleaseDirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi(data_004B5220, arg0 + 0x28, arg0 + 0x2C);
+        SC_MEMBER(arg0, M2C_UNK **, 0) = &__vt__15PlacedExplosive;
+        DeleteTextureAssetCharacter__Q23zdb6CWorldFQ23zdb12_RenderPhasePQ23zdb5CNode(m_world__Q23zdb6CWorld, 2, SC_MEMBER(arg0, s32 *, 0x20));
+        if (SC_MEMBER(arg0, u8 *, 9) == 1) {
+            if (SC_MEMBER(arg0, s32 *, 0x28) != 0) {
+                ReleaseDirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi(m_pProjectilelist__8CZWeapon, arg0 + 0x28, arg0 + 0x2C);
             }
-        } else if (M2C_FIELD(arg0, s32 *, 0x28) != 0) {
-            ReleaseIndirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi(data_004B5220, arg0 + 0x28, arg0 + 0x2C);
+        } else if (SC_MEMBER(arg0, s32 *, 0x28) != 0) {
+            ReleaseIndirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi(m_pProjectilelist__8CZWeapon, arg0 + 0x28, arg0 + 0x2C);
         }
-        if (M2C_FIELD(arg0, s32 *, 0x30) != 0) {
-            ReleaseDirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi(data_004B5220, arg0 + 0x30, arg0 + 0x34);
+        if (SC_MEMBER(arg0, s32 *, 0x30) != 0) {
+            ReleaseDirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi(m_pProjectilelist__8CZWeapon, arg0 + 0x30, arg0 + 0x34);
         }
         func_003CB7E0(arg0, 0);
         if (((s64) (arg1 << 0x30) >> 0x30) > 0) {

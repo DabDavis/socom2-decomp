@@ -2874,7 +2874,7 @@
 0x002678F0 0xF0 zAnimDestructorTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:align
 0x002679E0 0x8 zAnimQuadAlignTick__FP14_zanim_cmd_hdrPf  # OVL1; ZAnim QUAD_ALIGN tick (InitCommands' #0, file id 0x1); s1:cmd (registered under "QUAD_ALIGN" tick in both builds' InitCommands)
 0x002679F0 0x68 at__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FUi  # OVL1; s1:name (SOCOM 1's at of the pointer vectors' implementation; CZAnimSetSave::Reset reads its parents and rotations through it; "vector::at index out of range")
-0x00267A60 0x50 func_00267A60  # OVL1
+0x00267A60 0x50 _saturate<f>__FPfRCfRCf_b  # OVL1; s1:calls (CPad::Dilate calls it with (&x, -1, 1) where SOCOM 1 calls _saturate<f>; SOCOM II's returns a bool, so its instance's name carries _b) -- the zdb-world lane
 0x00267AB0 0x30C LoadZAR__10CZAnimMainFPCcPCc  # OVL1; s1:order (SOCOM 1's LoadZAR(const char *, const char *) stands first before ~CZAnimZAR, CloseZAR, OpenZAR, LoadZAR(CZAnimZAR *, const char *); it opens, loads and closes)
 0x00267DC0 0x60 __dt__9CZAnimZARFv  # OVL1; s1:align
 0x00267E20 0x4C CloseZAR__10CZAnimMainFP9CZAnimZAR  # OVL1; s1:align
@@ -4619,7 +4619,7 @@
 0x002DDB30 0x38 __ct__Q23zdb7CDIBBoxFv  # OVL1; s1:calls by hand (the zdb-world lane: at SOCOM 1's call site; 0x38 in both)
 0x002DDB70 0x78 __dt__Q23zdb7CDIPolyFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002DDBF0 0x34 __ct__Q23zdb7CDIPolyFv  # OVL1; s1:order by hand (SOCOM 1's CDIPoly constructor, last in int_main.cpp as there, the same 0x34: CDI's constructor 0x2DC4C0 then the vtable; CDI::Create news 0x14 bytes and calls it)
-0x002DDC30 0x1E4 func_002DDC30  # OVL1
+0x002DDC30 0x1E4 SetDefaultMaterial__16CMaterialExArrayFi  # OVL1; s1:order (int_material.cpp's first function, as SOCOM 1's; it stores the default material's index) -- the zdb-world lane
 0x002DDE20 0x8 func_002DDE20  # OVL1
 0x002DDE30 0x8 func_002DDE30  # OVL1
 0x002DDE40 0x5F4 func_002DDE40  # OVL1
@@ -6458,7 +6458,7 @@
 0x00354510 0xD4 Free__Q23zdb8CTexListFv  # OVL1; s1:order+calls (SOCOM 1's Free, Append, GetHandle(name) in the same order; ~CAssetLib calls it as SOCOM 1's does) -- the zdb-world lane
 0x003545F0 0x80 Append__Q23zdb8CTexListFPQ23zdb8CTextureb  # OVL1; s1:order+calls (after Free as SOCOM 1's; CAssetLib::AddTexture calls it with true as SOCOM 1's does) -- the zdb-world lane
 0x00354670 0x118 GetHandle__Q23zdb8CTexListFPCc  # OVL1; s1:order+calls (after Append as SOCOM 1's; CAssetList::GetTexHandle calls it at SOCOM 1's call site) -- the zdb-world lane
-0x00354790 0xC8 func_00354790  # OVL1
+0x00354790 0xC8 GetHandle__Q23zdb8CTexListFPQ23zdb8CTexture  # OVL1; s1:order+calls (right after GetHandle(const char *) as SOCOM 1's; AddTextureAssetDecals calls it where SOCOM 1's does) -- the zdb-world lane
 0x00354860 0x148 func_00354860  # OVL1
 0x003549B0 0x44 CopyTextureSelect__Q23zdb8CTextureFP8_word128  # OVL1; s1:exact
 0x00354A00 0x88 func_00354A00  # OVL1
@@ -6493,10 +6493,10 @@
 0x00356080 0xAC func_00356080  # OVL1
 0x00356130 0x3B8 func_00356130  # OVL1
 0x003564F0 0x78 func_003564F0  # OVL1
-0x00356570 0x144 func_00356570  # OVL1
-0x003566C0 0x280 func_003566C0  # OVL1
+0x00356570 0x144 doDelBuffer__Q23zdb11CTexManagerFPQ23zdb12CGSTexBuffer  # OVL1; s1:calls (the texture characters' release calls it where SOCOM 1's does) -- the zdb-world lane
+0x003566C0 0x280 doAddBuffer__Q23zdb11CTexManagerFPCcff  # OVL1; s1:calls (the CTextureAssetCharacters constructor calls it where SOCOM 1's does) -- the zdb-world lane
 0x00356940 0xA8 func_00356940  # OVL1
-0x003569F0 0x140 func_003569F0  # OVL1
+0x003569F0 0x140 Add__Q23zdb12CGSTexBufferFPQ23zdb9CAssetLibb  # OVL1; s1:calls (the CTextureAssetCharacters constructor calls it where SOCOM 1's does) -- the zdb-world lane
 0x00356B30 0x54 func_00356B30  # OVL1
 0x00356B90 0x4C swap__Q23std40__vector_deleter<1,Q23std12allocator<1>>FRQ23std40__vector_deleter<1,Q23std12allocator<1>>  # OVL1; tu: ztex_manager.cpp~ (1.0 beta); s1:align
 0x00356BE0 0x140 func_00356BE0  # OVL1

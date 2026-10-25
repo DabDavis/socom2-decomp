@@ -5,6 +5,7 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
 typedef unsigned int u_long128 __attribute__((mode(TI)));
@@ -18,10 +19,10 @@ struct VC_60 {
     virtual M2C_UNK v_1C(char *);
 };
 extern "C" {
-M2C_UNK Delete__Q23zdb5CNodeFPQ23zdb5CNode(char *); /* extern */
-M2C_UNK func_0031D0A0(s32, M2C_UNK, char *);        /* extern */
+M2C_UNK DeleteTextureAssetCharacter__Q23zdb6CWorldFQ23zdb12_RenderPhasePQ23zdb5CNode(char * arg0, s32 arg1, char * arg2);
+M2C_UNK Delete__Q23zdb5CNodeFPQ23zdb5CNode(char * arg0);
 extern char *m_mpbombnode__7CPickup;
-extern s32 m_world__Q23zdb6CWorld;
+extern char *m_world__Q23zdb6CWorld;
 
 void func_00542180(void) {
     char *temp_a0;
@@ -29,11 +30,11 @@ void func_00542180(void) {
 
     temp_s0 = m_mpbombnode__7CPickup;
     if (temp_s0 != NULL) {
-        temp_a0 = M2C_FIELD(temp_s0, char **, 0x64);
+        temp_a0 = SC_MEMBER(temp_s0, char **, 0x64);
         if (temp_a0 != NULL) {
             ((VC_60 *)(temp_a0))->v_1C(temp_s0);
         }
-        func_0031D0A0(m_world__Q23zdb6CWorld, 2, temp_s0);
+        DeleteTextureAssetCharacter__Q23zdb6CWorldFQ23zdb12_RenderPhasePQ23zdb5CNode(m_world__Q23zdb6CWorld, 2, temp_s0);
         Delete__Q23zdb5CNodeFPQ23zdb5CNode(temp_s0);
         m_mpbombnode__7CPickup = NULL;
     }

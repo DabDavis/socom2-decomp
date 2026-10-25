@@ -708,24 +708,7 @@ extern "C" void func_00314320(zdb::CNode *node, int on, int a);
 extern "C" int func_0052DC70(char *maps, CPnt3D *p, int *cell);
 extern "C" float func_0052CE10(char *maps, int *cell, CPnt3D *p, int a);
 
-/* a value held within [*lo, *hi], and whether it had to be: an inline's out-of-line copy, which
- * this unit links beside MSL's vector::at (0x267A60; not named yet). Pinned: the light's tick
- * calls it */
-#pragma auto_inline off
-extern "C" bool func_00267A60(float *v, const float *lo, const float *hi)
-{
-    if (*v > *hi) {
-        *v = *hi;
-        return true;
-    }
-    if (*v < *lo) {
-        *v = *lo;
-        return true;
-    }
-    return false;
-}
-
-#pragma auto_inline reset
+/* the light's clamp is zmath.h's _saturate<float>, whose instance (0x267A60) this unit links */
 
 extern "C" bool func_002656F0(_zanim_cmd_hdr *hdr, float *dT)
 {
@@ -756,7 +739,7 @@ extern "C" bool func_002656F0(_zanim_cmd_hdr *hdr, float *dT)
             if (func_0052DC70(AiMaps, &p, &cell)) {
                 float light = func_0052CE10(AiMaps, &cell, &p, 0);
 
-                func_00267A60(&light, &data_003DD018, &data_003DD020);
+                _saturate(&light, data_003DD018, data_003DD020);
                 NodeLight(node) = (int)(127.0f * (1.0f - light));
             }
         }

@@ -628,6 +628,27 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - a bitfield read into a bool local adds an `sltu`, into an unsigned char local `andi 0xff`;
   - when a byte is tested twice, MW reuses the load only if the first test is also an inline
     accessor (CPlainBmp::Draw's `IsString()`).
+- **Tells from the zdb world, round 3** (texture characters, GarbageCollect, AddChild, the DI
+  reads):
+  - a local initialised before a call and returned on the path that skips the rest takes a
+    saved register; declared after that call it stays in v1 (CDI::Read);
+  - a reference returned by an inline accessor (GetChildren()) stays in a saved register;
+    writing the member directly rematerialises its address from `this`;
+  - `V tmp(v); v.swap(tmp);` inside an inline template is inlined one level only, like
+    FreeVector: the copy constructor, swap and destructor become calls (GarbageCollect);
+  - to keep a load ahead of a call both arguments must be locals (`n = a[i]; lib = Find();
+    f(lib, n);`); with only `n` a local MW sinks the load past the call;
+  - pushing onto a pointer list through an inline that takes the pointer by value puts the
+    target's temporary at the bottom of the frame; a named local copy lands among the named
+    slots;
+  - `if (A) { if (L) ... else ...; return; } loop` keeps the inner join block; nesting the loop
+    as the else lets MW thread the jump;
+  - float min/max helpers returning references select addresses; returning by value they select
+    values with mov.s, as the target does;
+  - MW 3.0 initialises a function-local static with a constant initialiser statically, with no
+    guard (SOCOM 1's build had one);
+  - inside an inlined bool function, `if (c) return true; return false;` materialises with
+    daddiu/move.
 - **The class vector's deleter destructor is out of class** (include/vector): MSL 3.0.1 defines
   it after the class body, not inline, so MW emits it in each unit's template tail and inlines it
   only where the unit has already instantiated it -- an implicit destructor chain over a class
