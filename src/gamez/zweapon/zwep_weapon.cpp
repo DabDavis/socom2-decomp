@@ -532,7 +532,11 @@ void CZMarkList::ReadWeaponDecals(_zrdr *rdr)
     }
 }
 
-/* each entry a blood decal: its texture and size range pushed, the texture kept with the decals' */
+/* each entry a blood decal: its texture and size range pushed, the texture kept with the decals'.
+ * The push's vector<CZDecalDef> insert (0x3D3D90, this unit's template tail) is OPEN, 16 bytes
+ * short: include/vector's class insert (the in-place branch's end pointer register, open for the
+ * other class inserts too) and the temporary's destructor, which the target inlines and this tail
+ * calls -- the tail's generation order */
 void CZMarkList::ReadBloodDecals(_zrdr *rdr)
 {
     _zrdr *list = zrdr_findtag(rdr, "BLOOD_DECALS");

@@ -292,7 +292,9 @@ static inline void ResetTimer(CAiTimer &t)
  * registers the other way (the call's side first: `ftsGetPlayer()->m_control != m_control`,
  * `!(... == ...)`) or this one's hoisted above the call into a saved register (`m_control !=
  * ftsGetPlayer()->m_control`, through an inline accessor too, or a cast). PrePostTick's test
- * matched only with the player in a local, which loads this one's first: the opposite. */
+ * matched only with the player in a local, which loads this one's first: the opposite. Round 6:
+ * an inline taking the turret and the player (the compare in its body, the player's controller in
+ * a local or not) leaves it the same. */
 void CTurret::Tick(float dT)
 {
     if (!GetFlag(1))
