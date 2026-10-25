@@ -82,6 +82,9 @@ public:
 class CSealCtrlAi;
 class CAiState;
 
+/* the AI's states (SOCOM 1's, a global enum: CanPushAiState__8CAiStateF8AI_STATEP11CSealCtrlAi) */
+enum AI_STATE { AI_STATE_NONE = 0 };
+
 /* the AI's stack of states (SOCOM 1's DWARF: CAiStateStack : list, 0xc bytes). Both pieces are
  * the AI-states lane's (OVL2 0x5F8390, 0x5F8490): Clear deletes every state through its virtual
  * destructor and erases them, the destructor calls Clear and inlines ~list's three this-tested
@@ -100,13 +103,12 @@ public:
 class CAiState {
 public:
     enum SIGNAL { SIGNAL_NONE = 0 };
-    enum AI_STATE { AI_STATE_NONE = 0 };
 
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ctrl);                  /* +0x08 */
     virtual int Virtual0C();
     virtual void Tick(float dT, CSealCtrlAi *ctrl);                        /* +0x10 */
     virtual int Virtual14() { return 0; }
-    virtual const char *GetStatus() const;                                 /* +0x18 */
+    virtual const char *GetStatus() const { return ""; }                   /* +0x18 */
     virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ctrl) { return true; }
     virtual bool CanSwitchAiState(AI_STATE state, CSealCtrlAi *ctrl) { return true; }
     virtual bool CanAttack() const { return true; }                        /* +0x24 */
@@ -290,9 +292,25 @@ public:
     unsigned char _250[0x7c0 - 0x250];
 };
 
-/* the SEAL (SOCOM 1's DWARF: CZSealBody : CEntity, CBody, 0x1140 bytes) -- only what the
- * written functions touch */
-class CZSealBody : public CEntity {
+/* the animated body: its blends, pools and parts (SOCOM 1's DWARF: CBody, 0x48 bytes, its table
+ * first; SOCOM II's is 0x90 -- its constructor, OVL1 0x28EDD0, zeroes through 0x8C). OVL1's code
+ * (0x2869D0-0x28BB00) is unowned: only declared. SOCOM II's table (0x406100) has two slots, the
+ * destructor and NullNode, an inline returning -1 (OVL2's copy 0x542FE0, in CZSealBody's CBody
+ * table at 0x669210 after the destructor's this-adjusting thunk 0x5552B0). */
+class CBody {
+public:
+    CBody();
+    virtual ~CBody();
+    virtual int NullNode() const { return -1; }
+
+    unsigned char _4[0x90 - 0x4];
+};
+
+/* the SEAL (SOCOM 1's DWARF: CZSealBody : CEntity, CBody, 0x1140 bytes; SOCOM II's CBody base at
+ * 0x170, after its 0x170-byte CEntity, the SEAL's own members from 0x200 -- the constructor at
+ * 0x553EA0 builds the CBody at 0x170 and stores the second table there) -- only what the written
+ * functions touch */
+class CZSealBody : public CEntity, public CBody {
 public:
     /* every heartbeat loop stopped (SOCOM 1's; StopRumbler calls it with no body) */
     static void StopAllHeartbeatSounds();
@@ -324,7 +342,7 @@ public:
     bool ExecuteDelayedAction_Jump();
     bool ExecuteDelayedAction_Climb();
 
-    unsigned char _170[0x2e4 - 0x170];
+    unsigned char _200[0x2e4 - 0x200];
     float m_alt;   // 0x2e4 (SOCOM 1's 0xe98)
     unsigned char _2e8[0x374 - 0x2e8];
     SEAL_STATE m_desiredState;   // 0x374 (SOCOM 1's 0x304; the HUD's pose bitmap reads it)

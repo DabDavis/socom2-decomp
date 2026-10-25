@@ -10089,10 +10089,10 @@
 0x00555350 0x8 CanScan__11CAiSRescuedCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00555360 0xC GetScriptResponse__11CAiSRescuedCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00555370 0x8 func_00555370  # OVL2
-0x00555380 0xC func_00555380  # OVL2
-0x00555390 0x8 func_00555390  # OVL2
-0x005553A0 0x8 func_005553A0  # OVL2
-0x005553B0 0x8 func_005553B0  # OVL2
+0x00555380 0xC GetStatus__8CAiStateCFv  # OVL2; slot 0x18 of __vt__8CAiState (0x669950), SOCOM 1's slot 0x10: SOCOM II inserted one virtual after OnSignal and one before this slot, aligned by the overrides both builds share (CAiSRescued's OnSignal, Tick, CanAttack, CanScan, GetScriptResponse; CAiSPursue's GetStatus here); an inline's copy returning an empty string, as SOCOM 1's (0xC bytes)
+0x00555390 0x8 CanPushAiState__8CAiStateF8AI_STATEP11CSealCtrlAi  # OVL2; slot 0x1C of __vt__8CAiState, SOCOM 1's slot 0x14 (aligned as GetStatus__8CAiStateCFv); returns true as SOCOM 1's
+0x005553A0 0x8 CanSwitchAiState__8CAiStateF8AI_STATEP11CSealCtrlAi  # OVL2; slot 0x20 of __vt__8CAiState, SOCOM 1's slot 0x18 (aligned as GetStatus__8CAiStateCFv); returns true as SOCOM 1's
+0x005553B0 0x8 CanPursue__8CAiStateCFP11CSealCtrlAi  # OVL2; slot 0x2C of __vt__8CAiState, SOCOM 1's slot 0x24 (aligned as GetStatus__8CAiStateCFv); returns true as SOCOM 1's
 0x005553C0 0x8 func_005553C0  # OVL2
 0x005553D0 0x8 func_005553D0  # OVL2
 0x005553E0 0x8 func_005553E0  # OVL2
@@ -10294,7 +10294,7 @@
 0x0056F960 0x8 GetAiNetState__9CSealCtrlCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0056F970 0x390 PostTick__11CSealCtrlAiFf  # OVL2; slot 0x3C of __vt__11CSealCtrlAi (CSealCtrl's PostTick slot)
 0x0056FD00 0x1010 Tick__11CSealCtrlAiFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00570D10 0x8 func_00570D10  # OVL2
+0x00570D10 0x8 CanScan__8CAiStateCFv  # OVL2; slot 0x28 of __vt__8CAiState, SOCOM 1's slot 0x20 (CAiSRescued overrides it in both builds); returns true as SOCOM 1's
 0x00570D20 0x28 func_00570D20  # OVL2
 0x00570D50 0xC func_00570D50  # OVL2
 0x00570D60 0x30 func_00570D60  # OVL2
@@ -10353,9 +10353,9 @@
 0x005758D0 0x78 __dt__10CAiSPursueFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00575950 0x14 func_00575950  # OVL2
 0x00575970 0x14 CanAttack__10CAiSPursueCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00575990 0x8 func_00575990  # OVL2
+0x00575990 0x8 GetScriptResponse__8CAiStateCFv  # OVL2; slot 0x30 of __vt__8CAiState, SOCOM 1's slot 0x28 (CAiSRescued overrides it in both builds); returns 0 as SOCOM 1's
 0x005759A0 0xF8 __dt__11CAiSAnimateFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00575AA0 0x8 func_00575AA0  # OVL2
+0x00575AA0 0x8 CanAttack__8CAiStateCFv  # OVL2; slot 0x24 of __vt__8CAiState, SOCOM 1's slot 0x1C (CAiSRescued and CAiSPursue override it in both builds: CanAttack__11CAiSRescuedCFv, CanAttack__10CAiSPursueCFv); returns true as SOCOM 1's
 0x00575AB0 0x78 __dt__11CAiSGrenadeFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00575B30 0x8 func_00575B30  # OVL2
 0x00575B40 0x8 func_00575B40  # OVL2
