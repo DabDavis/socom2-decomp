@@ -149,6 +149,16 @@ class CZAnimMain;
 extern CZAnimMain ZAnim;
 
 const char *GetDatabase();
+
+/* an anim's extra data (only its flags: bit 0 an anim the network plays) */
+class CAnimAuxData {
+public:
+    static CAnimAuxData *Get(unsigned int anim);
+
+    bool IsNetworked() const { return m_flags & 1; }   /* (the name ours) */
+
+    unsigned char m_flags;   // 0x0
+};
 CZSealBody *ftsGetPlayer();
 void *_malloc(unsigned int size, const char *file, int line);
 void _free(void *p, const char *file, int line);
@@ -208,6 +218,8 @@ bool func_002C2FA0();
 void func_002A47B0(CMission *mission, const char *dialog);
 extern int data_00440EC0[];
 void func_005B1130(unsigned char a, unsigned short b);
+void func_005B1350(CZSealBody *body, unsigned char a, unsigned short b);
+bool func_002C2FD0(CZSealBody *body);
    /* (SOCOM II's: a word per client, cleared when one joins) */
 
 /* the application packets' type ids (SOCOM 1's PacketType<name>) */
@@ -223,6 +235,9 @@ extern unsigned int data_00440E78;   /* (SOCOM II's: a variable-length packet) *
 extern unsigned int data_00440EA8;   /* PacketTypeNewBombState */
 extern unsigned int data_00440E70;   /* (SOCOM II's) */
 extern unsigned int data_00440E58;   /* PacketTypePUMayI */
+extern unsigned int data_00440E68;   /* (SOCOM II's) */
+extern unsigned int data_00440E50;   /* PacketTypeAmmoPU */
+extern unsigned int data_00440E18;   /* PacketTypePushBlendAnim */
 }
 
 #define theNetwork data_0045A0C0
@@ -277,6 +292,35 @@ void SaveFireMessage(CZSealBody *body, const CPnt3D *pos)
         if (body->m_fire_count > 200)
             body->m_fire_count = 0;
         body->m_fire_y = pos->y;
+    }
+}
+
+/* a blended anim pushed to everyone, for a SEAL the network plays (SOCOM 1's NetSendPushBlend,
+ * SOCOM II's with a time; OVL1 0x2BBAF0) */
+struct PushBlendRequest {
+    short obj;   // 0x0
+    short anim;   // 0x2
+    short time;   // 0x4
+    unsigned char slot;   // 0x6
+    unsigned char on;   // 0x7
+};
+
+extern "C" void func_002BBAF0(unsigned int obj, unsigned int anim, int slot, bool on, int time)
+{
+    CZSealBody *body = CZSealState::GetBodyFromObjectIndex(obj);
+
+    if (!(theNetwork.m_bNetwork && !func_002C2FD0(body)))
+        return;
+    if (CAnimAuxData::Get(anim)->IsNetworked() != false) {
+        PushBlendRequest p;
+
+        p.obj = obj;
+        p.anim = anim;
+        p.time = time;
+        p.slot = slot;
+        p.on = on;
+        func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), -1, data_00440E18, 8, &p,
+                      false);
     }
 }
 
@@ -428,6 +472,31 @@ void SendMessageMessage(int who, R_SEND_TO to, int msg)
                   false);
 }
 
+/* an ammo pickup told to everyone (SOCOM 1's SendAmmoPUMessage; OVL1 0x2BA3F0) */
+struct AmmoPURequest {
+    int id;   // 0x0
+    unsigned short a[8];   // 0x4
+    unsigned short b[8];   // 0x14
+    PNT3D pos;   // 0x24
+    unsigned char who;   // 0x30
+};
+
+extern "C" void func_002BA3F0(int who, const unsigned short *a, const unsigned short *b, int id,
+                              const CPnt3D *pos)
+{
+    AmmoPURequest p;
+
+    p.who = who & 0xf;
+    for (int i = 0; i < 8; i++) {
+        p.a[i] = a[i];
+        p.b[i] = b[i];
+    }
+    p.id = id;
+    p.pos = *pos;
+    func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), -1, data_00440E50, 52, &p,
+                  false);
+}
+
 /* an ammo pickup from another client (OVL1 0x2BA370) */
 struct AmmoPUPacket {
     int id;   // 0x0
@@ -532,6 +601,41 @@ void SendVoteMessage(int who, int voter, bool vote)
     if (body)
         func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), body->m_fc8,
                       data_00440E80, 4, &p, true);
+}
+
+/* (SOCOM II's: a SEAL's byte and short sent to the session master -- handled here when we are it;
+ * OVL1 0x2B9F60) */
+struct SealBytePacket {
+    unsigned short obj;   // 0x0
+    short a;   // 0x2
+    unsigned short b;   // 0x4
+};
+
+extern "C" int func_002B9F10(int, int, int, void *data);
+
+extern "C" void func_002B9F60(int obj, int a, int b)
+{
+    SealBytePacket p = {0};
+
+    p.obj = obj;
+    p.a = a;
+    p.b = b;
+    if (theNetwork.m_bSessionMaster)
+        func_002B9F10(0, 0, func_0030D5A0(&theNetwork), &p);
+    else
+        func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), func_0030D560(&theNetwork),
+                      data_00440E68, 6, &p, false);
+}
+
+/* (its handler; OVL1 0x2B9F10) */
+extern "C" int func_002B9F10(int, int, int, void *data)
+{
+    SealBytePacket *p = (SealBytePacket *)data;
+    CZSealBody *body = CZSealState::GetBodyFromObjectIndex(p->obj);
+
+    if (body)
+        func_005B1350(body, p->a, p->b);
+    return 6;
 }
 
 /* (SOCOM II's: a SEAL's two shorts sent to its own client -- the player's handled here when we
