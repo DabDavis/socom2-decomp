@@ -964,6 +964,33 @@ const char *GetDefCharTypeName(int i)
     return g_arrDefCharTypeNames[i];
 }
 
+/* the mission's sound banks: their count, then their names, ten characters each (the names ours) */
+struct MissionBankList {
+    /* the i'th bank's name (the index unsigned: the target recomputes the address every pass) */
+    const char *GetBank(unsigned int i) const { return m_banks[i]; }
+
+    int m_count;
+    char m_banks[1][10];
+};
+
+extern "C" {
+extern MissionBankList data_00440B80;
+void *func_00361BC0();                                  /* (the sound system) */
+void func_003A3900(void *snd, const char *bank, void *arg);   /* (a bank loaded) */
+void *func_003A4460();
+}
+
+/* a bank loaded, then every bank the mission lists (SOCOM II's; CLoadState::Init calls it with the
+ * load screen's; OVL1 0x2AF360) */
+extern "C" void func_002AF360(const char *bank)
+{
+    func_003A3900(func_00361BC0(), bank, func_003A4460());
+    int n = data_00440B80.m_count;
+
+    for (int i = 0; i < n; i++)
+        func_003A3900(func_00361BC0(), data_00440B80.GetBank(i), func_003A4460());
+}
+
 /* the player's SEAL and its controller (only the controller's state byte) */
 class CSealCtrl {
 public:
