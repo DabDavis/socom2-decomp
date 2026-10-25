@@ -5,10 +5,20 @@
  * swap sides (the two team masks trade places when the swap flag is set). Only some of it so far.
  * Defined in reverse of their image order (-inline deferred). */
 
-/* a network object as CZNetwork's table hands it out (only its data) */
+/* a network object as CZNetwork's table hands it out (only its kind's first letter and its
+ * data) */
 struct NetObject {
-    unsigned char _0[0x1c];
+    unsigned char _0[0xc];
+    char m_type;   // 0xc: its kind's name's first letter ('B' a blather object)
+    unsigned char _d[0x1c - 0xd];
     void *m_data;   // 0x1c
+};
+
+/* a blather object's data: a player's five standard-operations messages and five taunts, 46
+ * characters each (the MPLOCALSOP and MPTAUNTMSG UI variables'; the names ours) */
+struct BlatherData {
+    char m_sop[5][46];   // 0x0
+    char m_taunt[5][46];   // 0xe6
 };
 
 class CZNetwork {
@@ -66,7 +76,7 @@ struct PersonaData {
     unsigned int m_team;   // 0x0: its team's mask
     int m_4;   // 0x4
     int m_8;   // 0x8
-    short m_c;   // 0xc
+    unsigned short m_c;   // 0xc: its blather object
     char m_name[32];   // 0xe
     char m_clan[16];   // 0x2e
     signed char m_3e;   // 0x3e
@@ -241,6 +251,45 @@ void CZPersonaState::ToggleReady()
     }
 }
 
+/* one of a blather object's messages, if the object is one (the name ours: inlined in both
+ * readers below, its result through a local) */
+inline char *GetBlatherMessage(int index, int i, bool taunt)
+{
+    char *msg = 0;
+    NetObject *obj = theNetwork.zNetGetObject(index);
+
+    if (obj && obj->m_type == 'B')
+        msg = taunt ? ((BlatherData *)obj->m_data)->m_taunt[i] : ((BlatherData *)obj->m_data)->m_sop[i];
+    return msg;
+}
+
+/* a SEAL's player's standard-operations message i, and its taunt i (OVL1 0x2C3C30 and 0x2C3B60) */
+extern "C" char *func_002C3C30(CZSealBody *body, int i)
+{
+    char *msg = 0;
+
+    if (body && i < 5) {
+        PersonaData *p = CZPersonaState::GetPersona(body->m_fc8);
+
+        if (p)
+            msg = GetBlatherMessage(p->m_c, i, false);
+    }
+    return msg;
+}
+
+extern "C" char *func_002C3B60(CZSealBody *body, int i)
+{
+    char *msg = 0;
+
+    if (body && i < 5) {
+        PersonaData *p = CZPersonaState::GetPersona(body->m_fc8);
+
+        if (p)
+            msg = GetBlatherMessage(p->m_c, i, true);
+    }
+    return msg;
+}
+
 /* a client's persona's name (OVL1 0x2C3B10 .. 0x2C3A70) */
 extern "C" int func_002C3B10(int client)
 {
@@ -339,6 +388,29 @@ extern "C" unsigned int func_002C32C0()
     return data_004412D8 ? TEAM_TERRORISTS : TEAM_SEALS;
 }
 
+/* whether a team is the terrorists' (the name ours: inlined only, its value read ahead of the swap
+ * flag as func_002C31A0 reads it) */
+inline bool IsTerroristTeam(unsigned int team)
+{
+    unsigned int t = team;
+
+    return t == (data_004412D8 ? TEAM_SEALS : TEAM_TERRORISTS);
+}
+
+/* whether a SEAL is on the terrorists' side: the player's own team, another's persona's (OVL1
+ * 0x2C31D0) */
+extern "C" bool func_002C31D0(CZSealBody *body)
+{
+    if (body) {
+        if (ftsGetPlayer() == body)
+            return IsTerroristTeam(data_00441470);
+        PersonaData *p = CZPersonaState::GetPersona(body->m_fc8);
+
+        return p ? IsTerroristTeam(p->m_team) : false;
+    }
+    return false;
+}
+
 /* whether the local player is a terrorist, or a SEAL (OVL1 0x2C31A0 and 0x2C3080: the team read
  * ahead of the swap flag -- a local, or the SEALs' test inlined; read in the comparison it comes
  * after the flag) */
@@ -347,6 +419,20 @@ extern "C" bool func_002C31A0()
     unsigned int team = data_00441470;
 
     return team == (data_004412D8 ? TEAM_SEALS : TEAM_TERRORISTS);
+}
+
+/* whether a SEAL is on the SEALs' side (OVL1 0x2C30B0; ChangeBombState sets the bomb owner's valve
+ * from it) */
+extern "C" bool func_002C30B0(CZSealBody *body)
+{
+    if (body) {
+        if (ftsGetPlayer() == body)
+            return func_002C3300(data_00441470);
+        PersonaData *p = CZPersonaState::GetPersona(body->m_fc8);
+
+        return p ? func_002C3300(p->m_team) : false;
+    }
+    return false;
 }
 
 extern "C" bool func_002C3080()
