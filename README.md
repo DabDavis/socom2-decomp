@@ -1642,6 +1642,31 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the online lobby, round 5** (the lobby's state handlers, the chat, the room requests):
+  - all 16 state handlers share one switch on the byte flag, every case empty but ENTRY: it compiles
+    to the compare chain 4, 3, 2, 1, 0 plus a `b`; the handlers are named by the slot the table at
+    0x2ED460 registers them in, against SOCOM 1's Open;
+  - an int-sized enum (a 0x7FFFFFFF extent) assigned a ternary of two enumerators gives `li 1;
+    movz`; an int gives `sltu` (JoinType, ChatToggle);
+  - a byte-enum local is assigned with `li` and compared through `andi 0xff`; passed to a parameter
+    of the same enum it is not re-extended, an int parameter adds the andi (cbChatMessage's colour);
+  - `case 0:` re-assigning the initial value keeps its own `b` block; a bare `break` is threaded
+    straight to the join;
+  - a valve's 16-bit value read through an int-returning accessor serves the test and a following
+    sum with no mask; read as the bitfield or an unsigned short member, the sum adds `andi 0xffff`;
+  - a struct of plain members with a user constructor (NetConnectionInfo) copies member by member:
+    a nested plain struct as FPR words, an int array in an eight-pass two-word loop, char arrays
+    bytewise;
+  - CopyField's null test of the destination is not folded for a member array of a local struct
+    (four functions); a source-only test or a plain memcpy fits (zonline.h's older note said the
+    local array's test folds away);
+  - a member function called with a0 unset is static (PasswordSecurity); a request declared inside an
+    `if` block takes a lower stack slot than case-scope locals declared before it (declared at case
+    scope in the target's order: AccountLoginStateHandler);
+  - the chat unit opens with the state machine (the table 0x2ED460, handlers through 0x2EFE50), then
+    the player-info pages, then the chat; functions its own callers call out of line are pinned with
+    `#pragma auto_inline off` (0x2F3FF0, 0x2F4FC0, 0x2E3AA0, 0x2E2920, FindRoom); the Medius client
+    calls (OVL2 0x647548-0x649960, GCC-built) are named from SOCOM 1's call sites.
 - **Tells from the HUD, round 14** (the weapon selectors' Inits, the team names, InitHUD_Compass):
   - a guarded function-local static that stores a constant had a non-constant initialiser: MW 3.0
     initialises `= 48.0f` or a `const float` statically, with no guard; an inline call returning 48
@@ -1961,9 +1986,10 @@ every hand-written unit (`--files '^(?!auto/)'`) before it is committed. A workt
 `extracted/` and `decomp/toolchains/` linked in from the main tree.
 
 `--files '^(?!auto/)'` leaves out the drafts, so a hand-written inline copy that only its draft
-matches reports as a regression there (0x32C5F0, ~CRdrArchiveList's copy, is the one left --
-0x29FF60 and 0x2D02B0 match from hand source since the MSL headers' completion): rerun with
-that draft's file included before believing one.
+matches reports as a regression there (0x32C5F0, ~CRdrArchiveList's copy, and 0x510080, OVL2's
+__list_imp destructor that seal_aistate.cpp's missing copy now reports "elsewhere" -- 0x29FF60 and
+0x2D02B0 match from hand source since the MSL headers' completion): rerun with that draft's file
+included before believing one.
 
 ## The generated tier: `src/auto/`
 

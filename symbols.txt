@@ -12942,7 +12942,7 @@
 0x00647318 0xD8 func_00647318  # OVL2 unaligned
 0x006473F0 0x124 NetGetBuildTimeStamp  # OVL2; s1:exact
 0x00647518 0x2C func_00647518  # OVL2 unaligned
-0x00647548 0x74 func_00647548  # OVL2 unaligned
+0x00647548 0x74 MediusVersionServer  # OVL2 unaligned; s1:calls (the online lane, round 5, vetted by the integrator: the lobby's connect handlers calls it where SOCOM 1's counterpart calls MediusVersionServer; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
 0x006475C0 0x5C func_006475C0  # OVL2
 0x00647620 0x74 func_00647620  # OVL2
 0x00647698 0x48 func_00647698  # OVL2 unaligned
@@ -12951,35 +12951,35 @@
 0x00647A20 0xA0 func_00647A20  # OVL2
 0x00647AC0 0x114 func_00647AC0  # OVL2
 0x00647BD8 0x88 func_00647BD8  # OVL2 unaligned
-0x00647C60 0x88 func_00647C60  # OVL2
-0x00647CE8 0x9C func_00647CE8  # OVL2 unaligned
-0x00647D88 0xAC func_00647D88  # OVL2 unaligned
+0x00647C60 0x88 MediusUpdateClientState  # OVL2; s1:calls (the online lane, round 5, vetted by the integrator: LobbyActiveStateHandler and the lobby's state changes calls it where SOCOM 1's counterpart calls MediusUpdateClientState; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
+0x00647CE8 0x9C MediusSessionBegin  # OVL2 unaligned; s1:calls (the online lane, round 5, vetted by the integrator: SessionBeginStateHandler calls it where SOCOM 1's counterpart calls MediusSessionBegin; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
+0x00647D88 0xAC MediusSessionEnd  # OVL2 unaligned; s1:calls (the online lane, round 5, vetted by the integrator: EndSessionStateHandler calls it where SOCOM 1's counterpart calls MediusSessionEnd; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
 0x00647E38 0x88 func_00647E38  # OVL2 unaligned
 0x00647EC0 0x88 func_00647EC0  # OVL2
-0x00647F48 0xB4 func_00647F48  # OVL2 unaligned
+0x00647F48 0xB4 MediusAccountLogin  # OVL2 unaligned; s1:calls (the online lane, round 5, vetted by the integrator: AccountLoginStateHandler calls it where SOCOM 1's counterpart calls MediusAccountLogin; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
 0x00648000 0x9C func_00648000  # OVL2
 0x006480A0 0x9C func_006480A0  # OVL2
-0x00648140 0xB4 func_00648140  # OVL2
+0x00648140 0xB4 MediusAccountRegistration  # OVL2; s1:calls (the online lane, round 5, vetted by the integrator: AccountRegistrationStateHandler calls it where SOCOM 1's counterpart calls MediusAccountRegistration; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
 0x006481F8 0xB4 func_006481F8  # OVL2 unaligned
 0x006482B0 0xA8 func_006482B0  # OVL2
 0x00648358 0x12C func_00648358  # OVL2 unaligned
 0x00648488 0x74 func_00648488  # OVL2 unaligned
 0x00648500 0xB4 func_00648500  # OVL2
-0x006485B8 0xC0 func_006485B8  # OVL2 unaligned
+0x006485B8 0xC0 MediusCreateGame  # OVL2 unaligned; s1:calls (the online lane, round 5, vetted by the integrator: CreateNewGameStateHandler calls it where SOCOM 1's counterpart calls MediusCreateGame; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
 0x00648678 0xA8 MediusTextFilter  # OVL2 unaligned; s1 by call site (Censor 0x2F4DF0 and CreateClan 0x2E7A10, as SOCOM 1's both; the online lane)
 0x00648720 0x11C func_00648720  # OVL2
-0x00648840 0xB4 func_00648840  # OVL2
-0x006488F8 0x10C func_006488F8  # OVL2 unaligned
-0x00648A08 0xA8 func_00648A08  # OVL2 unaligned
+0x00648840 0xB4 MediusCreateChannel  # OVL2; s1:calls (the online lane, round 5, vetted by the integrator: CreateRoomStateHandler calls it where SOCOM 1's counterpart calls MediusCreateChannel; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
+0x006488F8 0x10C MediusJoinGame  # OVL2 unaligned; s1:calls (the online lane, round 5, vetted by the integrator: JoinGameStateHandler calls it where SOCOM 1's counterpart calls MediusJoinGame; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
+0x00648A08 0xA8 MediusJoinChannel  # OVL2 unaligned; s1:calls (the online lane, round 5, vetted by the integrator: JoinRoomStateHandler calls it where SOCOM 1's counterpart calls MediusJoinChannel; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
 0x00648AB0 0x9C func_00648AB0  # OVL2
 0x00648B50 0x9C func_00648B50  # OVL2
 0x00648BF0 0x9C func_00648BF0  # OVL2
 0x00648C90 0x9C MediusGetGamePlayers  # OVL2; s1 by call site (RefreshGamePlayerList 0x2F6EC0, as SOCOM 1's; the online lane)
-0x00648D30 0x9C func_00648D30  # OVL2
+0x00648D30 0x9C MediusGetPlayerInfo  # OVL2; s1:calls (the online lane, round 5, vetted by the integrator: the player-info request 0x2EFE50 calls it where SOCOM 1's counterpart calls MediusGetPlayerInfo; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
 0x00648DD0 0x9C func_00648DD0  # OVL2
 0x00648E70 0x9C func_00648E70  # OVL2
-0x00648F10 0xA8 func_00648F10  # OVL2
-0x00648FB8 0xA8 func_00648FB8  # OVL2 unaligned
+0x00648F10 0xA8 MediusFindPlayer  # OVL2; s1:calls (the online lane, round 5, vetted by the integrator: the chat unit's direct message calls it where SOCOM 1's counterpart calls MediusFindPlayer; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
+0x00648FB8 0xA8 MediusFindWorldByName  # OVL2 unaligned; s1:calls (the online lane, round 5, vetted by the integrator: the room unit's requests calls it where SOCOM 1's counterpart calls MediusFindWorldByName; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
 0x00649060 0x94 func_00649060  # OVL2
 0x006490F8 0x9C func_006490F8  # OVL2 unaligned
 0x00649198 0x9C func_00649198  # OVL2 unaligned
@@ -12995,7 +12995,7 @@
 0x00649788 0x94 MediusSendEndGameReport  # OVL2 unaligned; s1 by call site (SendEndGameReport 0x2F80C0, as SOCOM 1's; the online lane)
 0x00649820 0x9C MediusGetAnnouncements  # OVL2; s1 by call site (GetAnnouncements 0x2F7710, as SOCOM 1's; the online lane)
 0x006498C0 0x9C func_006498C0  # OVL2
-0x00649960 0x9C func_00649960  # OVL2
+0x00649960 0x9C MediusSetGameListFilter  # OVL2; s1:calls (the online lane, round 5, vetted by the integrator: the game-rule flags helper 0x2EF9F0 calls it where SOCOM 1's counterpart calls MediusSetGameListFilter; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
 0x00649A00 0x9C MediusClearGameListFilter  # OVL2; s1 by call site (JoinGame 0x2F83B0, as SOCOM 1's; the online lane)
 0x00649AA0 0x9C func_00649AA0  # OVL2
 0x00649B40 0x90 func_00649B40  # OVL2
