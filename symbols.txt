@@ -10262,7 +10262,7 @@
 0x0056C220 0x118 func_0056C220  # OVL2
 0x0056C340 0x208 func_0056C340  # OVL2
 0x0056C550 0x698 func_0056C550  # OVL2
-0x0056CBF0 0x49C func_0056CBF0  # OVL2
+0x0056CBF0 0x49C SetAiMode__11CSealCtrlAiF7AI_MODE  # OVL2; s1:calls by hand (CSealCtrlAi::OnMissionEnd calls it with 2 at the place SOCOM 1's calls SetAiMode__11CSealCtrlAiF7AI_MODE, last, after ClearAiState and the anim's Stop; OnMissionEnd byte-exact against it)
 0x0056D090 0x30 func_0056D090  # OVL2
 0x0056D0C0 0x1E8 func_0056D0C0  # OVL2
 0x0056D2B0 0x1A0 func_0056D2B0  # OVL2

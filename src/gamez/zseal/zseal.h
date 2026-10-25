@@ -44,6 +44,9 @@ enum SEAL_STATE {
     stateCarried = 10, stateDone = 11
 };
 
+/* a kind of collision polygon (SOCOM 1's CDIType; no DWARF, only the size matters here) */
+enum CDIType { CDI_TYPE_0 = 0, CDI_TYPE_LAST = 255 };
+
 /* how a SEAL died (SOCOM 1's DWARF, a byte) */
 enum SEAL_DEATH_TYPE {
     DEATH_NONE = 0, DEATH_KNIFE_KILL = 1, DEATH_CQB = 2, DEATH_HEADSHOT = 3, DEATH_GRENADE = 4,
@@ -102,7 +105,8 @@ public:
  * slot names past SOCOM 1's are ours. */
 class CAiState {
 public:
-    enum SIGNAL { SIGNAL_NONE = 0 };
+    /* the signals a state is sent (SOCOM 1's names unknown: the states test 0-4) */
+    enum SIGNAL { SIGNAL_0 = 0, SIGNAL_1 = 1, SIGNAL_2 = 2, SIGNAL_3 = 3, SIGNAL_4 = 4 };
 
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ctrl);                  /* +0x08 */
     virtual int Virtual0C();
@@ -125,6 +129,7 @@ public:
 
     unsigned int m_4;   // 0x4
     CAiStateStack m_stack;   // 0x8
+    unsigned char _14[0x58 - 0x14];   // (the states' own members start at 0x58: CAiSPursue's)
 };
 
 /* the goals a controller pursues (SOCOM 1's DWARF, a byte) */
@@ -282,14 +287,37 @@ public:
 
 /* the AI's controller (SOCOM 1's DWARF: CSealCtrlAi, 0x5d0 bytes; SOCOM II's is 0x7c0 --
  * ftsCreateSeal news 1984) -- only what the written functions touch */
+class CZAnim;
+
+/* the AI's modes (SOCOM 1's DWARF, a byte; only the size matters here) */
+enum AI_MODE { AI_MODE_0 = 0, AI_MODE_LAST = 255 };
+
 class CSealCtrlAi : public CSealCtrl {
 public:
     CSealCtrlAi();
     /* (0x573E60, not written yet: declared so no unit emits an implicit one) */
     virtual ~CSealCtrlAi();
+    virtual void SetThrottle(unsigned int axis, float value);
     virtual void OnSetHealth(float health, float old);
+    virtual void OnMissionEnd();
 
-    unsigned char _250[0x7c0 - 0x250];
+    /* the AI's mode set (SOCOM 1's; OVL2 0x56CBF0) and its states dropped (SOCOM 1's
+     * ClearAiState, the AI-states lane's 0x5F5F20) */
+    void SetAiMode(AI_MODE mode);
+    void ClearAiState(bool all);
+
+    unsigned char _250[0x254 - 0x250];
+    float m_throttle_goal[3];   // 0x254 (as SOCOM 1's 0x274: the throttles the AI asks for)
+    unsigned char _260[0x468 - 0x260];
+    CZAnim *m_task_anim;   // 0x468: an anim the AI plays, stopped at the mission's end
+    unsigned char _46c[0x7c0 - 0x46c];
+};
+
+/* a SEAL the network drives (SOCOM 1's CRemoteCtrl : CSealCtrl; SOCOM II's table at 0x669590) --
+ * only its destructor here */
+class CRemoteCtrl : public CSealCtrl {
+public:
+    virtual ~CRemoteCtrl();
 };
 
 /* the animated body: its blends, pools and parts (SOCOM 1's DWARF: CBody, 0x48 bytes, its table
@@ -341,6 +369,12 @@ public:
     bool CompassAnchor_MPBomb(CCompassAnchor *anchor);
     bool ExecuteDelayedAction_Jump();
     bool ExecuteDelayedAction_Climb();
+    /* the stance's change taken, once (seal_body.cpp) */
+    bool StanceChanged();
+    /* the terrain a SEAL can cross: an int, the callers make it a bool (seal_env.cpp) */
+    int CanTraverse(CDIType type);
+    bool CanClimbWall();
+    void AttemptBombDefuse();
 
     unsigned char _200[0x2e4 - 0x200];
     float m_alt;   // 0x2e4 (SOCOM 1's 0xe98)
