@@ -5692,7 +5692,7 @@
 0x00324C30 0x34 Init__8ParticleFv  # OVL1; s1:align
 0x00324C70 0x13C DrawRange__8ParticleFff  # OVL1; s1:align
 0x00324DB0 0x2CC func_00324DB0  # OVL1
-0x00325080 0x28 func_00325080  # OVL1
+0x00325080 0x28 bufferPtrCompare__8ParticleFRCPQ28Particle13BufferElementRCPQ28Particle13BufferElement  # OVL1; s1:order by hand (SOCOM 1's bufferPtrCompare, 0x2C there, between Draw and DrawFlush: the two elements' depths at 0x1C subtracted, the float's bits returned) -- the rdr lane
 0x003250B0 0xFC DrawFlush__8ParticleFv  # OVL1; s1:align
 0x003251B0 0x3CC func_003251B0  # OVL1
 0x00325580 0x73C func_00325580  # OVL1
