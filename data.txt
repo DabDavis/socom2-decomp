@@ -145,6 +145,8 @@
 0x001E0440 0x200 _sprtagdata.24  # MAIN bss; s1:data-exact (size SOCOM 1's; via dmaRefImage)
 0x001E0640 0x0 _packet_buffer  # MAIN bss; s1:data-exact (size SOCOM 1's; via sceSifMInitRpc)
 0x003D7540 0x0 vu0_CodeSegment  # OVL1; s1:data-seq (size SOCOM 1's; via zMath_Init__Fv)
+0x003D8270 0x0 vu1_CodeSegment1  # OVL1; SOCOM 1's (vu1_CodeSegment1, the VU1 microcode's DMA chain, .vutext): zRndrInit sends it second, by physical address, as SOCOM 1's; 1 reference in 1 function -- the rdr lane
+0x003DBFE0 0x0 vu1_DataSegment1  # OVL1; SOCOM 1's (vu1_DataSegment1, the VU1 data's DMA chain at the microcode blob's end): zRndrInit sends it first, as SOCOM 1's; 1 reference in 1 function -- the rdr lane
 0x003DC338 0x4 m_current__10CameraZoom  # OVL1; SOCOM 1's (m_current__10CameraZoom, a CameraZoom static): the zoom's current value, 1.0 in data; 15 references in 4 functions (Tick, HandleZoomIn, HandleNewZoom, Reset)
 0x003DC340 0x4 m_goal__10CameraZoom  # OVL1; SOCOM 1's (m_goal__10CameraZoom): the zoom's goal, 1.0 in data; 11 references in 6 functions (SetGoal, Tick, OnGoal, HandleZoomIn, HandleNewZoom, Reset)
 0x003DC348 0x1 m_oldview__10CameraZoom  # OVL1; SOCOM 1's (m_oldview__10CameraZoom, a CAMVIEW): the view kept while zoomed; 4 references in 2 functions (HandleZoomIn, Reset)
@@ -784,6 +786,7 @@
 0x00488450 0x4 spawnFactor__Q28Particle8Instance  # OVL1 bss; s1:data by hand (the wep lane: SetDynamicLOD stores spawnRateLimits[level] there, as SOCOM 1's stores spawnFactor next to ageFactor; 1 reference in SetDynamicLOD)
 0x00488510 0xC m_list__11CRdrArchive  # OVL1 bss; SOCOM 1's static (its symbol, 12 bytes: CRdrArchiveList): __sinit_zrdr_archive.cpp (0x402D70) builds it and registers its destructor 0x32C5F0; the archive walks read its sentinel 0x488514 and first node 0x488518 -- 7 functions (the six CRdrArchive statics and the initialiser)
 0x00488520 0x100 _buffer$711  # OVL1 bss; s1:data-seq (size SOCOM 1's; via zrdr_findfile__FPCcPCc)
+0x00488680 0xD0 ZDB  # OVL1 bss; SOCOM 1's (ZDB, 0xD0 bytes in both: two flag bytes, then two alpha environments of 0x60 -- qwc, GIF tag, sceGsAlphaEnv -- at 0x10 and 0x70; zrndr_init.cpp's, after its <iostream> init objects): 27 references in 1 function (zRndrInit) -- the rdr lane
 0x004887C0 0x720 thePipe  # OVL1 bss; SOCOM 1's (0x694 bytes; SOCOM II's runs to VifHandlerID at 0x720: the camera at 0x628, the UI node at 0x630, its flags at 0x711 and 0x714 as the states use them): 115 references in 32 functions take 0x4887C0-0x488ED8
 0x00488EE0 0x4 VifHandlerID  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Uninit__5CPipeFv)
 0x00488FB0 0x4 gStreamingInited  # OVL1 bss; s1:data-seq (size SOCOM 1's; via snd_StopSoundSystem +1)

@@ -5731,14 +5731,14 @@
 0x00328B10 0xB8 DecRefCount__Q28Particle5PropsFi  # OVL1; s1:align, checked (SOCOM 1's DecRefCount: the props deleted with its three sequences' vectors (0x329330/0x3293A0/0x329410) when the count runs out; Instance::Expire and ~Source call it)
 0x00328BD0 0x184 Branch__Q28Particle5PropsFv  # OVL1; s1:callee (the six sequence adds and clears call it first and store its result as the source's props, where SOCOM 1's call Props::Branch: a props shared by several sources copied before it changes)
 0x00328D60 0x28 __ct__6CPnt4DFRC6CPnt4D  # OVL1; s1:exact
-0x00328D90 0x4C func_00328D90  # OVL1
-0x00328DE0 0x54 func_00328DE0  # OVL1
-0x00328E40 0x4C func_00328E40  # OVL1
-0x00328E90 0xA4 func_00328E90  # OVL1
-0x00328F40 0x14 func_00328F40  # OVL1
-0x00328F60 0x14 func_00328F60  # OVL1
-0x00328F80 0x14 func_00328F80  # OVL1
-0x00328FA0 0x14 func_00328FA0  # OVL1
+0x00328D90 0x4C __ct__Q28Particle11Sequence<f>FRCQ28Particle11Sequence<f>  # OVL1; the rdr lane: Props::Branch's inlined Props copy calls it on the scale sequence (+0x1C) third; the range init 0x329220 with the other's data and data + size*8
+0x00328DE0 0x54 __ct__Q28Particle17Sequence<6CPnt4D>FRCQ28Particle17Sequence<6CPnt4D>  # OVL1; the rdr lane: Props::Branch's inlined Props copy calls it on the colour sequence (+0x10) second; the range init 0x3290D0 with the other's data and data + size*0x14
+0x00328E40 0x4C __ct__Q28Particle29Sequence<PQ23zdb10CTexHandle>FRCQ28Particle29Sequence<PQ23zdb10CTexHandle>  # OVL1; the rdr lane: Props::Branch's inlined Props copy calls it on the texture sequence (+4) first, where SOCOM 1's Branch expands the vector copy; its body zeroes the three words and calls the range init 0x328FC0 with the other's data and data + size*8
+0x00328E90 0xA4 Create__Q28Particle5PropsFv  # OVL1; s1:order by hand (SOCOM 1's Create, after Props' destructors in its unit: new 0x68 bytes, the count 1, the three sequences built, the model and friction zeroed, wind 1.0, the far fades FLT_MAX, the colour drift zeroed; SOCOM II calls the sequences' constructors and numeric_limits<float>::max() out of line -- the rdr lane)
+0x00328F40 0x14 max__Q23std17numeric_limits<f>Fv  # OVL1; the rdr lane: <limits>' numeric_limits<float>::max() out of line (FLT_MAX in $f0): Props::Create's constructor, inlined one level, calls it for both far fades, where SOCOM 1's stores 0x7F7FFFFF; first of Create's out-of-line copies, in reverse first use
+0x00328F60 0x14 __ct__Q28Particle11Sequence<f>Fv  # OVL1; the rdr lane: the scale sequence's constructor out of line (the three words zeroed); Props::Create calls it for +0x1C, third
+0x00328F80 0x14 __ct__Q28Particle17Sequence<6CPnt4D>Fv  # OVL1; the rdr lane: the colour sequence's constructor out of line; Props::Create calls it for +0x10, second
+0x00328FA0 0x14 __ct__Q28Particle29Sequence<PQ23zdb10CTexHandle>Fv  # OVL1; the rdr lane: the texture sequence's constructor out of line; Props::Create calls it for +0x4, first
 0x00328FC0 0x10C func_00328FC0  # OVL1
 0x003290D0 0x14C func_003290D0  # OVL1
 0x00329220 0x10C func_00329220  # OVL1

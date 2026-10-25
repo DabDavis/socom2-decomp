@@ -42,6 +42,21 @@ public:
 };
 }
 
+namespace std {
+
+/* <limits>, not in include/: just numeric_limits<float>::max(), whose out-of-line copy Props'
+ * constructor calls (0x328F40) */
+template <class T>
+class numeric_limits;
+
+template <>
+class numeric_limits<float> {
+public:
+    static float max() { return 3.40282347e+38f; }
+};
+
+}
+
 namespace Particle {
 
 /* one key of a sequence: the fraction of the life it applies from, its value (SOCOM 1's DWARF) */
@@ -57,9 +72,53 @@ public:
 /* a sequence of keys (SOCOM 1's DWARF names the members' type Sequence): a vector of entries, a
  * class of its own -- Props' implicit destructor tests three levels of each before the deleter's
  * destructor, where a plain vector has two */
+/* MSL's range init of each sequence's vector (__vector_imp::init<const T *>(first, last,
+ * forward_iterator_tag), out of line in this unit's template tail: 0x328FC0 the textures', 0x3290D0
+ * the colours', 0x329220 the scales'). include/vector has neither a class vector's copy constructor
+ * nor its range init yet, so the sequences' copies call them as placeholders, picked per type */
+extern "C" void func_00328FC0(void *v, const void *first, const void *last, std::forward_iterator_tag);
+extern "C" void func_003290D0(void *v, const void *first, const void *last, std::forward_iterator_tag);
+extern "C" void func_00329220(void *v, const void *first, const void *last, std::forward_iterator_tag);
+
+template <class T>
+class SequenceEntry;
+
+template <class T>
+struct __seq_init {
+};
+template <>
+struct __seq_init<zdb::CTexHandle *> {
+    static void init(void *v, const void *first, const void *last)
+    {
+        func_00328FC0(v, first, last, std::forward_iterator_tag());
+    }
+};
+template <>
+struct __seq_init<CPnt4D> {
+    static void init(void *v, const void *first, const void *last)
+    {
+        func_003290D0(v, first, last, std::forward_iterator_tag());
+    }
+};
+template <>
+struct __seq_init<float> {
+    static void init(void *v, const void *first, const void *last)
+    {
+        func_00329220(v, first, last, std::forward_iterator_tag());
+    }
+};
+
 template <class T>
 class Sequence : public std::vector<SequenceEntry<T> > {
 public:
+    Sequence() {}
+    /* the copy (out of line: 0x328E40 the textures', 0x328DE0 the colours', 0x328D90 the scales'):
+     * the words zeroed by the base's constructors, then the range init over the other's elements
+     * -- MSL's vector copy, five high with the base chain, so Props' copy is inlined one level */
+    Sequence(const Sequence &s)
+    {
+        __seq_init<T>::init(this, s.data_, s.data_ + s.size_);
+    }
     /* MSL's const element read (include/vector has only the non-const one) */
     const SequenceEntry<T> &operator[](unsigned int n) const { return this->data_[n]; }
 };
@@ -67,12 +126,39 @@ public:
 /* the properties sources share, copied on write (Branch) and counted (SOCOM 1's DWARF, 0x68) */
 class Props {
 public:
+    /* SOCOM 1's defaults: one reference, no fade (the far fade at FLT_MAX), wind at full. Too tall
+     * to inline whole (the sequences' constructors are five high), so Create inlines it one level
+     * and calls the members' constructors and numeric_limits::max() out of line */
+    Props()
+        : m_refCount(1), m_model(0), m_friction(0.0f), m_windFactor(1.0f), m_priority(0.0f),
+          m_nearFade1(0.0f), m_nearFade2(0.0f), m_farFade1(std::numeric_limits<float>::max()),
+          m_farFade2(std::numeric_limits<float>::max()), m_invNearFade(0.0f), m_invFarFade(0.0f),
+          m_visualDensity(0.0f), m_checkFade(false)
+    {
+        m_accelW.x = 0.0f;
+        m_accelW.y = 0.0f;
+        m_accelW.z = 0.0f;
+        m_accelW.w = 0.0f;
+    }
+    /* the copy Branch makes, its own reference (SOCOM 1's: the count set first, then every member
+     * copied in order). Too tall to inline whole, so Branch inlines it one level and calls the
+     * members' copy constructors -- CPnt4D's too (0x328D60) */
+    Props(const Props &p)
+        : m_refCount(1), m_textureSeq(p.m_textureSeq), m_colorSeq(p.m_colorSeq),
+          m_scaleSeq(p.m_scaleSeq), m_model(p.m_model), m_friction(p.m_friction),
+          m_accelW(p.m_accelW), m_windFactor(p.m_windFactor), m_priority(p.m_priority),
+          m_nearFade1(p.m_nearFade1), m_nearFade2(p.m_nearFade2), m_farFade1(p.m_farFade1),
+          m_farFade2(p.m_farFade2), m_invNearFade(p.m_invNearFade), m_invFarFade(p.m_invFarFade),
+          m_visualDensity(p.m_visualDensity), m_checkFade(p.m_checkFade)
+    {
+    }
     float GetOpacity(float dist) const;
     void GetScale(float age, float &scale) const;
     void GetColor(float age, CPnt4D &color) const;
     void GetTexture(float age, zdb::CTexHandle *&tex) const;
     void DecRefCount(int n);
     Props *Branch();
+    static Props *Create();
 
     int m_refCount;   // 0x0
     Sequence<zdb::CTexHandle *> m_textureSeq;   // 0x4

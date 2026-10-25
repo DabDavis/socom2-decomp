@@ -20,6 +20,26 @@ void Destruction_Instance::Render(const CMatrix &m)
     }
 }
 
+/* SOCOM 1's: a fresh set of properties, with the defaults.
+ * OPEN, 0 instructions: every byte agrees; the call for m_accelW goes to CPnt4D's empty constructor
+ * (`jr ra; move v0,a0`), whose linked copy is another unit's, 0x2110E0, still a placeholder outside
+ * this lane's range -- named __ct__6CPnt4DFv, it matches (CPipe's 0x336230 calls it too) */
+Props *Props::Create()
+{
+    return new Props;
+}
+
+/* SOCOM 1's: the properties made this source's own before it changes them -- a copy when others
+ * share them, this reference given up */
+Props *Props::Branch()
+{
+    if (m_refCount > 1) {
+        DecRefCount(1);
+        return new Props(*this);
+    }
+    return this;
+}
+
 /* SOCOM 1's: one reference fewer; the last deletes the properties, their sequences with them */
 void Props::DecRefCount(int n)
 {
