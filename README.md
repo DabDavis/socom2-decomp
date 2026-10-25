@@ -1374,6 +1374,30 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - still open: include/deque's copy constructor (CRdrEditor() waits), list<T *>'s
     insert(iterator, T *const &)/postfix ++/iterator copy constructor (PathPlanExecute), the
     list clear keeping `&end_.next_` in a register (five functions), the iterator's `*` by value.
+- **Tells from completing the MSL headers, round 2** (include/list, include/vector):
+  - a list's begin() reads the first node through a REFERENCE to the sentinel (`node_base &t =
+    end_; iterator(t.next_)`), in the deleter, its destructor and the pointer list's wrapper alike:
+    MW then computes `&end_.next_` once as a compiler temporary and keeps it in a saved register
+    for every later begin() of the function -- a walk's, a clear()'s, the implicit destructor's
+    (CValve's destructor, DeleteCallbacks, GenerateLightList, ~CZAmmoList, zNetFlushMessages ...);
+    a reference to the link itself (`node_base *const &`) does it only in part;
+  - a walk that re-reads its element after a call casts it out by value through the base
+    iterator, `(T *)*it.i_`: the wrapper's `*` stays a reference, because CGNode::FindEdge reuses
+    the value its first `*i` loaded (a by-value read never does, even with no call between) --
+    no one form of the operator serves both; SerializeValves and RemoveTask(name) re-read the
+    iterator itself after each call, as only an escaped iterator does (open);
+  - a member declared before the class's own `typedef ... iterator` sees the base's iterator:
+    list<T *>::insert must follow the wrapper's typedef;
+  - SOCOM 1's remove_if over list<CSched_Task *> gives find_if's first/last s4/s5, SOCOM II's
+    s5/s4 (0x29FE70, open): its two parameter copies are made in parameter order there;
+  - vector<CAiMapLoc>::resize (0x51C4A0) is byte-exact through the header's resize(n) as it
+    stands (the element's empty constructor builds nothing); CSched_Manager::Clear (0x34E480) is
+    `if (size()) { std::for_each(begin(), end(), DeleteTask()); clear(); } ClearFreeList(false);`
+    with CSched_Task's destructor inline (`if (m_name) _free(m_name, 0, 0); m_name = 0;`) and a
+    value-initialised functor -- byte-exact as a probe (build/msl2/probe/sched.cpp), waiting on
+    zanim.h's declarations; ai::PathPlanExecute is byte-exact as a probe over the new list members
+    (build/msl2/probe/ppe2.cpp), waiting on CAiPathQueue's insert inline and the GetPriority/
+    IsPlanning rows (0x510C20, 0x510C00).
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
