@@ -621,9 +621,115 @@ namespace {
 char g_arrDefCharTypeNames[32][64];
 unsigned char g_arrMapVis[32][31];
 int g_arrMapVisCounts[32];
+int g_iNumUiVehicles;
 }
 
 extern "C" const char *data_003F02B0[32];   /* GetCustomCharTypeName's c_arrCustomCharTypeNames */
+const char *GetCustomCharTypeName(int i);
+
+/* a character type (zchar's CCharacterType: only what the custom types touch) */
+class CCharacterType {
+public:
+    static CCharacterType *RdrFetch_CharacterType(const char *name);
+    static const CCharacterType *GetByNameMod(const char *name);
+    static CCharacterType *Create(const char *name, const CCharacterType *base, bool temporary);
+
+    char *m_name;   // 0x0
+    unsigned char _4[0x300 - 0x4];
+    unsigned char m_custom;   // 0x300: a custom type (the name ours: stored with li, so no bool)
+};
+
+const char *zrdr_findstring(const _zrdr *rdr, const char *tag);
+_zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
+/* a custom type's weapons' UI variables (SOCOM 1's; OVL1 0x2AF190, not written yet) */
+void UpdateCharWeaponUiVars(int i);
+
+/* an array's element by an unsigned index (zrdr.h's Item: zanim.h's takes an int, which lets MW
+ * walk the element address with the int counter where the target recomputes it each pass) */
+inline _zrdr *ListItem(_zrdr *rdr, unsigned int i)
+{
+    return i < rdr->Count() ? &rdr->array[i] : 0;
+}
+
+/* a vehicle definition's entry (zchar's CVehicleRdrEntry: only its character's name) and the
+ * definitions */
+class CVehicleRdrEntry {
+public:
+    void SetCharacterName(const char *name);
+
+    unsigned char _0[0x20];
+    char m_charname[1];   // 0x20: the character type its crew is
+};
+
+class CVehicleRdr {
+public:
+    CVehicleRdrEntry *GetEntryByName(const char *name) const;
+};
+
+extern "C" void func_0053B070(void *weapons);   /* (OVL2: a custom type's weapons, at 0x2E8) */
+
+namespace {
+/* the custom character types the "UiVehicles" list names, each a copy of the character type of
+ * the vehicle entry its "Name" names -- the entry then crewed by the copy (SOCOM 1's; OVL1
+ * 0x2AFA10).
+ * OPEN, 10 instructions, registers only: the name and the entry's character name trade saved
+ * registers (the target's name s3, the character name s2, which the copy then reuses; here s2 and
+ * s3). Tried: the entry and the character name declared ahead of the name in four orders, the
+ * character name at loop scope, written out twice (one register fewer, 0xC shorter), not const,
+ * and the name read from the table directly (as a ternary, as an if-assign) */
+void CreateCustomCharTypes(CVehicleRdr *vehicles, _zrdr *rdr)
+{
+    _zrdr *list = zrdr_findtag(rdr, "UiVehicles");
+
+    g_iNumUiVehicles = list ? list->Count() : 0;
+    for (int i = 0; i < g_iNumUiVehicles; i++) {
+        const char *name = GetCustomCharTypeName(i);
+
+        if (!name)
+            break;
+        CVehicleRdrEntry *entry =
+            vehicles->GetEntryByName(zrdr_findstring(ListItem(list, i), "Name"));
+
+        if (entry) {
+            const char *base = entry->m_charname;
+
+            strcpy(g_arrDefCharTypeNames[i], base);
+            CCharacterType *custom =
+                CCharacterType::Create(name, CCharacterType::GetByNameMod(base), false);
+
+            custom->m_custom = 1;
+            entry->SetCharacterName(name);
+            func_0053B070((char *)custom + 0x2e8);
+            UpdateCharWeaponUiVars(i);
+        }
+    }
+}
+
+/* the custom character types the "UiVehicles" list names, up to the 32 names there are: each a copy
+ * of the type its entry's "Name" fetches, that type's name kept as the default (SOCOM 1's, the
+ * list's count SOCOM II's length; OVL1 0x2AF8C0) */
+void CreateCustomCharTypes(_zrdr *rdr)
+{
+    _zrdr *list = zrdr_findtag(rdr, "UiVehicles");
+
+    g_iNumUiVehicles = list ? list->Count() : 0;
+    for (int i = 0; i < g_iNumUiVehicles; i++) {
+        const char *name = GetCustomCharTypeName(i);
+
+        if (!name)
+            break;
+        CCharacterType *type =
+            CCharacterType::RdrFetch_CharacterType(zrdr_findstring(ListItem(list, i), "Name"));
+        const char *base = type->m_name;
+
+        strcpy(g_arrDefCharTypeNames[i], base);
+        CCharacterType *custom = CCharacterType::Create(name, CCharacterType::GetByNameMod(base), false);
+
+        custom->m_custom = 1;
+        UpdateCharWeaponUiVars(i);
+    }
+}
+}
 
 /* the number of maps a list shows (OVL1 0x2AF890) */
 int ftsGetNumVisibleMaps(unsigned int list)

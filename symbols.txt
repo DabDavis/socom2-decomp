@@ -3885,7 +3885,7 @@
 0x002AED30 0x8 func_002AED30  # OVL1
 0x002AED40 0x250 func_002AED40  # OVL1
 0x002AEF90 0x1FC UpdateMissionArchive__25@unnamed@fts_mission_cpp@FPCcPCc  # OVL1; s1:align
-0x002AF190 0x1C8 func_002AF190  # OVL1
+0x002AF190 0x1C8 UpdateCharWeaponUiVars__Fi  # OVL1; s1:calls by hand (the states lane, round 13: both CreateCustomCharTypes call it with the type's index after Create, as SOCOM 1's call UpdateCharWeaponUiVars__Fi; the same callees -- GetByNameMod, CZWeaponList::GetWeapon, then CUIVarManager::Add and CUIVariable's assignment per weapon)
 0x002AF360 0xA8 func_002AF360  # OVL1
 0x002AF410 0x140 func_002AF410  # OVL1
 0x002AF550 0x204 func_002AF550  # OVL1
