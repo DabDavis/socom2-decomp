@@ -27,6 +27,10 @@ char *_strdup(const char *s, const char *file, int line);
 /* one material's decal: its size range and texture (SOCOM 1's DWARF: 0xc bytes) */
 class CZDecalDef {
 public:
+    /* empty and user-declared: the vector's insert (0x3D3D90) then copies an element member by
+     * member (lwc1/swc1, lwc1/swc1, lw/sw) where an implicit one is copied as a block */
+    CZDecalDef() {}
+
     float m_decalminsize;   // 0x0
     float m_decalmaxsize;   // 0x4
     zdb::CTexHandle *m_texture;   // 0x8
@@ -90,6 +94,29 @@ struct _zrdr;
  * far; CZWeapon's static m_pMarklist points at one; zwep_weapon.cpp's) */
 class CZMarkList {
 public:
+    /* the tables cleared after the members are built (inline: CreateMarkList's new builds it in
+     * place, the list's constructor called out of line, the two vectors' words zeroed -- SOCOM 1's
+     * order) */
+    CZMarkList()
+    {
+        m_decalTexture = 0;
+        m_decalminsize = 0;
+        m_decalmaxsize = 0;
+    }
+    /* the tables freed (inline: DestroyMarkList's delete inlines it, the members' destructors
+     * called out of line -- the vectors' through an earlier unit's copy, 0x2CDB30) */
+    ~CZMarkList()
+    {
+        if (m_decalTexture)
+            _free(m_decalTexture, 0, 0);
+        m_decalTexture = 0;
+        if (m_decalminsize)
+            _free(m_decalminsize, 0, 0);
+        m_decalminsize = 0;
+        if (m_decalmaxsize)
+            _free(m_decalmaxsize, 0, 0);
+        m_decalmaxsize = 0;
+    }
     /* forty "bullet_mark" instances made and added to the world, then the decal names read */
     void Init();
     void UnInit();
@@ -162,6 +189,51 @@ extern "C" _zrdr *data_00437D00;
 extern "C" int func_002DE9E0(const char *name);
 /* the next material of a name after an index, 0 past the last (0x2DE970) -- not named */
 extern "C" int func_002DE970(const char *name, int index);
+
+/* the projectiles in flight made for a count (SOCOM 1's) */
+bool CZWeapon::CreateProjectileList(int count)
+{
+    m_pProjectilelist = new CZProjectileList(count);
+    if (!m_pProjectilelist)
+        return false;
+    return true;
+}
+
+bool CZWeapon::DestroyProjectileList()
+{
+    if (!m_pProjectilelist)
+        return false;
+    delete m_pProjectilelist;
+    m_pProjectilelist = 0;
+    return true;
+}
+
+/* the bullet marks made (SOCOM 1's) */
+bool CZWeapon::CreateMarkList()
+{
+    m_pMarklist = new CZMarkList;
+    if (!m_pMarklist)
+        return false;
+    return true;
+}
+
+/* the bullet marks deleted: its tables freed, its vectors and list destroyed (SOCOM 1's). Its
+ * delete is the unit's own use of the blood decals' vector destructor, which makes the template
+ * tail generate the deleter's destructor and clear ahead of the vector's insert (0x3D3D90), so that
+ * the insert inlines its temporary's destruction */
+bool CZWeapon::DestroyMarkList()
+{
+    if (!m_pMarklist)
+        return false;
+    delete m_pMarklist;
+    m_pMarklist = 0;
+    return true;
+}
+
+bool CZWeapon::CreateWeaponList()
+{
+    return true;
+}
 
 /* the sound listener: the app camera's camera node (0x48DB48, set where the mission opens) */
 extern "C" CNode *data_0048DB48;

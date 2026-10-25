@@ -263,8 +263,17 @@ public:
                                        unsigned int events, void *data);
     static void RemoveWeaponEventCallback(void (*callback)(CZProjectile *, unsigned int, void *));
 
+    /* the lists made and let go of (SOCOM 1's statics, in its order: 0x3D37D0-0x3D39DF) */
+    static bool CreateWeaponList();
+    static bool DestroyMarkList();
+    static bool CreateMarkList();
+    static bool DestroyProjectileList();
+    static bool CreateProjectileList(int count);
+
     /* the weapons (SOCOM 1's static, 12 bytes: 0x4B5210) */
     static CZWeaponList m_listWeapons;
+    /* the bullet marks (SOCOM 1's static: 0x4B5248; the class is zwep_weapon.cpp's) */
+    static class CZMarkList *m_pMarklist;
     /* the projectiles in flight (SOCOM 1's static: 0x4B5220) */
     static CZProjectileList *m_pProjectilelist;
     /* the timer registered for the HUD, by the value it counts (SOCOM 1's static: 0x4B52C0) */
@@ -701,6 +710,10 @@ public:
  * byte-identical) */
 class CZProjectileList {
 public:
+    /* (0x3CD740, not written; the destructor 0x3CD6B0 deletes when told: CZWeapon's
+     * DestroyProjectileList passes 1) */
+    CZProjectileList(int count);
+    ~CZProjectileList();
     bool GetNextIndirectFireDI(zdb::DiIntersect **di, int *handle);
     void ReleaseIndirectFireDI(zdb::DiIntersect **di, int *handle);
     bool GetNextDirectFireDI(zdb::DiIntersect **di, int *handle);
