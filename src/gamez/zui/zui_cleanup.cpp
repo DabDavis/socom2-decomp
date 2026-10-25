@@ -8,15 +8,12 @@
  * variable spec's) where zui_spec.cpp calls them; that makes every spec's implicit copy and
  * destructor taller here: CTextSpec's copy is inlined one level (its members' copies are calls).
  *
- * The CreateDisplayObjs of the text, teletype, secure text and scrolling text match; the wrapped
- * text's waits on 0x20CD50 named __ct__9CPlainBmpFv, the radio strip's and handler button's on
- * 0x377800 named __ct__9C2DButtonFv (each measured with the row renamed).
+ * The button family's Copies inline their spec's implicit copy one level (CButtonSpec's own copy,
+ * 0x387630, comes out of line here with everything inlined); ~ActionItem is the unit's first
+ * function (SOCOM 1's lines 23-24), inlined in ~CCheckBoxSpec's inline copy.
  *
- * OPEN, not written yet: the button family's Copies (CButtonSpec's copy constructor out of line
- * 0x387630 copies vector<ActionItem>, whose copy constructor include/vector lacks), their
- * destructors (each inlines ~CButtonSpec one level and calls ~ButtonState, 0x36E650, a row outside
- * the lane; ~CHandlerButtonSpec is held in #if 0 below) and 0x389B00 (a vector<CDesignDlgObj>
- * instance). */
+ * OPEN: ~CRadioStripSpec (4 bytes, the pointer vector's data_ reads, see there) and CUIListBoxSpec::
+ * Copy 0x387CF0 (the list box's layout). */
 
 #include "zui_2d.h"
 
