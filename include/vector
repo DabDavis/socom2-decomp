@@ -112,6 +112,8 @@ public:
      * wherever both are generated in the same round */
     void clear();
     ~__vector_deleter();
+    /* the data pointer by reference (SOCOM 1's DWARF: data() at <vector> line 923, in the class) */
+    T *&data() { return data_; }
     static T *allocate(unsigned int n)
     {
         T *p = (T *)operator new(n * sizeof(T));
@@ -304,20 +306,26 @@ public:                                                                         
 template <class T, class Allocator, bool IsPOD>
 class __vector_imp : public __vector_deleter<T, Allocator> {
     __MSL_VECTOR_ACCESS(T)
-    iterator begin() { T *const p = this->data_; return iterator(p); }
-    iterator end() { return iterator(this->data_ + this->size_); }
+    /* begin(), end() and push_back read the data pointer through the deleter's data() reference:
+     * CAiMap::read_scanlines (0x51AEF0) keeps &data_ in a saved register across its read and its
+     * first end() shares begin's load, CharacterDynamics::Load across its five push_backs; every
+     * other hand-written unit compiles the same either way (measured 2026-10-25) */
+    iterator begin() { T *const p = this->data(); return iterator(p); }
+    iterator end() { return iterator(this->data() + this->size_); }
     T &back() { return *(end() - 1); }
     void clear() { __vector_deleter<T, Allocator>::clear(); }
     static unsigned int max_size() { return (unsigned int)-1 / sizeof(T); }
     T &at(unsigned int n);
     void reserve(unsigned int n);
     void insert(T *position, unsigned int n, const T &x);
-    void push_back(const T &x) { insert(this->data_ + this->size_, 1, x); }
+    void push_back(const T &x) { insert(this->data() + this->size_, 1, x); }
     /* the range erased: out of line over raw pointers (SOCOM 1's erase__...FP7CTargetP7CTarget,
      * SOCOM II's 0x2A19C0), the iterators' copies handed to it by an inline wrapper (CTargetList::
      * RemoveTarget) */
     T *erase(T *first, T *last);
     iterator erase(iterator first, iterator last) { return iterator(erase(first.m_p, last.m_p)); }
+    /* grown by default-built elements or cut (out of class; declared after insert and erase) */
+    void resize(unsigned int n);
 };
 
 template <class T, class Allocator>
@@ -624,6 +632,25 @@ T &__vector_imp<T, Allocator, IsPOD>::at(unsigned int n)
     if (n >= this->size_)
         __msl_error("vector::at index out of range");
     return this->data_[n];
+}
+
+/* default-built elements inserted at the end, or the tail erased (SOCOM 1's resize(n) of each
+ * class vector, the pod's lines 337-342 with T() for the value), insert and erase called out of
+ * line. The inline end() and size() are expanded ahead of the call, so an out-of-line element
+ * constructor runs after them (CVehicleRdrEntry's 0x5331D0 in 0x534320: the end kept in s3, the
+ * test's size reused for the count) and an inline one too tall to inline before them (CTurretDef's
+ * 0x3AB5F0 in 0x3AB8C0: size and data read after it). The shape is the targets' (0x534320 to its
+ * last eight bytes), but no instance matches yet: each waits on its element's constructor in
+ * another lane's header -- CTurretDef's out-of-line one (zveh.h; CVehicleDef's alike), CVehicleRdrEntry's
+ * (zchar), CAiMapLoc's empty one (0x516120, zentity.h), CGameStateChangeCmd's pool (CreatePool
+ * unwritten); their call sites keep their placeholders until then */
+template <class T, class Allocator, bool IsPOD>
+void __vector_imp<T, Allocator, IsPOD>::resize(unsigned int n)
+{
+    if (n > size())
+        insert(end().m_p, n - size(), T());
+    else if (n < size())
+        erase(begin().m_p + n, end().m_p);
 }
 
 template <class T, class Allocator = allocator<T> >
