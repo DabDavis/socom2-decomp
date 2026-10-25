@@ -315,6 +315,13 @@ public:
 };
 extern CMission theMission;
 
+/* a memory card file's information as the saved-game handlers read it (their 272-byte local; the
+ * text from 12, "This game is a dummy game." in SaveConfig's dummies; ours) */
+struct MemCardFileInfo {
+    unsigned char _0[12];
+    char m_text[260];   // 0xc
+};
+
 /* the memory card (SOCOM 1's CMemCard, 0x28 bytes; only what the handlers use) */
 class CMemCard {
 public:
@@ -332,7 +339,9 @@ public:
     unsigned char _0[0x8];
     int m_cur_port;   // 0x8
     int m_cur_slot;   // 0xc
-    unsigned char _10[0x20 - 0x10];
+    unsigned char _10[0x18 - 0x10];
+    void *m_18;   // 0x18: what the file information is read from (0x33D4A0)
+    unsigned char _1c[0x20 - 0x1c];
     int m_port;   // 0x20
     int m_slot;   // 0x24 (SOCOM 1's MC_ChSlot sets it)
 };
@@ -632,6 +641,10 @@ void func_002DFE50(CZOnlineLobby *lobby);                           /* (the lobb
 void func_0030E290(CZNetwork *net);                                 /* (the network's initialisation started) */
 bool func_0030DEE0(CZNetwork *net);                                 /* (whether it started) */
 bool func_0030BF20();                                               /* (whether the network is up) */
+void func_0033D4A0(void *src, const char *name, int what, MemCardFileInfo *info);   /* (a file's information) */
+int func_002FBBF0(void *svc, const char *host, int port, const char *name);         /* (whether a persona exists) */
+void func_002ACC10(CMission *mission, const char *name);            /* (the mission set by name) */
+void func_0034F9B0(CIOPManager *iop, int mode);                     /* CIOPManager::RebootIOP (named: zinput.h does not declare it) */
 void func_002E81B0(CZOnlineLobby *lobby, const char *name);         /* TransferLeadership */
 bool func_002F8D50(CZOnlineLobby *lobby, const char *name);         /* (game has a spectator password) */
 bool func_002F8BC0(CZOnlineLobby *lobby, const char *name);         /* (game rejects the rank) */
@@ -662,7 +675,7 @@ void func_00300A70(CZOnlineLobby *lobby, int index);                /* (friend c
 void func_00300B70(CZOnlineLobby *lobby, int index);                /* (friend added directly) */
 void func_001F3BB0(CMenuState *state, float time);                  /* (the menu's input suspended) */
 void func_001F3BD0(CMenuState *state, const char *movie);           /* (the background film set) */
-void func_001F3BE0(CMenuState *state);                              /* (the background film stopped) */
+bool func_001F3BE0(CMenuState *state);                              /* (the background film stopped: whether one was playing) */
 void func_003A1E10(CMemCard *card, const char *name);               /* (a saved game loaded) */
 double func_00191478(const char *s);                                /* atof */
 void func_0037B980(float f);                                        /* UiSetTtySpeedFactor (SOCOM 1's) */

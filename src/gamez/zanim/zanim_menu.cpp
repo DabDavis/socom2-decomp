@@ -369,6 +369,23 @@ CMenuHistory::CMenuHistory()
 }
 #pragma auto_inline reset
 
+/* the mission set by name (or by the UI variable of that name), the background film stopped
+ * around the change and put back */
+bool UISetMission(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *name = ArgText(ArgName(hdr));
+    bool background = func_001F3BE0(&theGame.m_menuState);
+    CUIVariable *var = func_00385900(&theUIVarManager, name);
+
+    if (var && var->type == 3)
+        name = var->String();
+    strcpy(database, name);
+    func_002ACC10(&theMission, name);
+    if (background)
+        func_001F3BD0(&theGame.m_menuState, 0);
+    return true;
+}
+
 bool UIPopUpDialog(C2DAnimCmdHdr *hdr, float *dT)
 {
     GetMenuStack()->PopUpDialog(ArgName(hdr));
@@ -521,6 +538,44 @@ bool UIIsMemcardSaveOK(C2DAnimCmdHdr *hdr, float *dT)
 
     SetValveValue(CValve::Create("memcard_error_code", (VALVE_TYPE)2), error);
     return error == 0;
+}
+
+/* whether the slot the argument numbers holds a real saved game (not the dummies SaveConfig
+ * writes) */
+bool UIDoesSlotHaveGame(C2DAnimCmdHdr *hdr, float *dT)
+{
+    int slot = atoi(ArgText(ArgName(hdr)));
+    bool has = false;
+    MemCardFileInfo info;
+
+    sprintf(s_savename, "SaveGame%d", slot);
+    if (func_003A0950(&theMemCard, s_savename)) {
+        sprintf(s_savename, "SaveGame%d", slot);
+        func_0033D4A0(theMemCard.m_18, s_savename, 12, &info);
+        if (info.m_text[0] == 'm' && strcmp(info.m_text, "This game is a dummy game."))
+            has = true;
+    }
+    return has;
+}
+
+/* the real saved games counted into the valve the argument names */
+bool UIGetNumSavedGames(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CValve *valve = CValve::Create(ArgName(hdr), (VALVE_TYPE)2);
+    int count = 0;
+    MemCardFileInfo info;
+
+    for (int i = 0; i < 10; i++) {
+        sprintf(s_savename, "SaveGame%d", i);
+        if (func_003A0950(&theMemCard, s_savename)) {
+            sprintf(s_savename, "SaveGame%d", i);
+            func_0033D4A0(theMemCard.m_18, s_savename, 12, &info);
+            if (info.m_text[0] == 'm' && strcmp(info.m_text, "This game is a dummy game."))
+                count++;
+        }
+    }
+    SetValveValue(valve, count);
+    return true;
 }
 
 bool UIFormatMemCard(C2DAnimCmdHdr *hdr, float *dT)
@@ -1510,6 +1565,24 @@ bool UIStopAllSounds(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+/* the IOP rebooted for what comes next (SOCOM 1's took the mode's name the same way) */
+bool UIRebootIOP(C2DAnimCmdHdr *hdr, float *dT)
+{
+    int mode = 2;
+    const char *text = ArgText(ArgName(hdr));
+
+    if (!strcasecmp(text, "Singleplayer"))
+        mode = 2;
+    else if (!strcasecmp(text, "Multiplayer"))
+        mode = 3;
+    else if (!strcasecmp(text, "NetConfig"))
+        mode = 4;
+    else if (!strcasecmp(text, "MainMenu"))
+        mode = 5;
+    func_0034F9B0(&theIOPManager, mode);
+    return true;
+}
+
 bool UIFadeAllSounds(C2DAnimCmdHdr *hdr, float *dT)
 {
     CSndInstance::FadeOutAllSounds();
@@ -1747,6 +1820,17 @@ bool UIMediusInit(C2DAnimCmdHdr *hdr, float *dT)
 
     SetValveValue(valve, func_00300840());
     return true;
+}
+
+/* whether the persona the argument names exists on the lobby server (its host and port the UI
+ * variables') */
+bool UIMUISPersonaExists(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *name = ArgText(ArgName(hdr));
+    const char *host = func_003857C0(&theUIVarManager, "LOBBY_HOST", 0, UIVAR_PERMANENT)->String();
+    CUIVariable *port = func_003857C0(&theUIVarManager, "LOBBY_PORT", 0, UIVAR_PERMANENT);
+
+    return func_002FBBF0(data_0044FC60, host, port->Int(), name);
 }
 
 bool UIVerifyPatchLevel(C2DAnimCmdHdr *hdr, float *dT)
