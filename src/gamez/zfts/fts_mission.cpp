@@ -72,6 +72,7 @@ public:
     };
 
     void Initialize();
+    bool TenSecondLaunch(bool launch);
     void SetE3RoundCount(int count);
     MP_MAJOR_GAME_STATE MPMajorGameState(MP_MAJOR_GAME_STATE state);
     MP_MAJOR_GAME_STATE MyMajorGameState(MP_MAJOR_GAME_STATE state);
@@ -86,11 +87,19 @@ public:
     CValve *m_pMyMinorGameStateValve;   // 0x24 (SOCOM 1's at 0x20)
     unsigned char _28[0x2c - 0x28];
     CValve *m_pLateJoinerValve;   // 0x2c (SOCOM 1's at 0x28)
-    unsigned char _30[0xcc - 0x30];
+    unsigned char _30[0x34 - 0x30];
+    CValve *m_pLaunchSecondsValve;   // 0x34 (SOCOM 1's at 0x30)
+    unsigned char _38[0xcc - 0x38];
     bool m_late_joiner;   // 0xcc (SOCOM 1's at 0x94)
     unsigned char _cd[0xd4 - 0xcd];
     unsigned char m_d4;   // 0xd4 (SOCOM 1's at 0x9b)
-    unsigned char _d5[0x113 - 0xd5];
+    unsigned char _d5[0xd8 - 0xd5];
+    bool m_ten_second_launch;   // 0xd8 (SOCOM 1's at 0x9f)
+    unsigned char _d9[0xe4 - 0xd9];
+    int m_launch_time;   // 0xe4 (SOCOM 1's at 0xa8)
+    unsigned char _e8[0xf4 - 0xe8];
+    unsigned char m_launch_f4;   // 0xf4 (SOCOM 1's at 0xbc)
+    unsigned char _f5[0x113 - 0xf5];
     MP_MAJOR_GAME_STATE m_mp_major_game_state;   // 0x113 (SOCOM 1's at 0xdb)
     MP_MAJOR_GAME_STATE m_my_major_game_state;   // 0x114 (SOCOM 1's at 0xdc)
     MP_MINOR_GAME_STATE m_my_minor_game_state;   // 0x115 (SOCOM 1's at 0xdd)
@@ -100,6 +109,17 @@ public:
     int m_124;   // 0x124
     int m_128;   // 0x128
 };
+
+/* the network (only its session-master flag; theNetwork, reached by address as fts_remote.cpp does) */
+class CZNetwork {
+public:
+    unsigned char m_bSessionMaster;   // 0x0
+};
+
+extern "C" {
+extern CZNetwork data_0045A0C0;
+int func_0030D550(CZNetwork *net);   /* CZNetwork::zNetGetTime */
+}
 
 /* the mission (only what this unit touches, at SOCOM II's offsets) */
 class CMission {
@@ -162,6 +182,26 @@ void CZNetGame::ResetScores()
     m_124 = 0;
     m_128 = 64;
     m_d4 = 0;
+}
+
+/* the master's countdown to the launch, its seconds the valve's, started or called off
+ * (OVL1 0x2A6B90; SOCOM II reads the valve ahead of the clock, and the clock into a local: in one
+ * expression MW adds the product first) */
+bool CZNetGame::TenSecondLaunch(bool launch)
+{
+    if (launch && !m_ten_second_launch && data_0045A0C0.m_bSessionMaster) {
+        int seconds = m_pLaunchSecondsValve->m_value;
+        int now = func_0030D550(&data_0045A0C0);
+
+        m_launch_time = now + seconds * 1000;
+        m_launch_f4 = 0;
+    }
+    if (!launch && m_ten_second_launch && data_0045A0C0.m_bSessionMaster) {
+        m_launch_time = 0;
+        m_launch_f4 = 0;
+    }
+    m_ten_second_launch = launch;
+    return launch;
 }
 
 /* the file's tables (SOCOM 1's names; SOCOM II has 32 visibility lists of 31 maps where SOCOM 1
