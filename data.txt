@@ -277,6 +277,9 @@
 0x003E43F0 0x8 __RTTI__9CZLineMap  # RTTI of CZLineMap: found by its RTTI's name
 0x003E4830 0x8 __RTTI__14BitmapReticule  # RTTI of BitmapReticule: found by its RTTI's name
 0x003E4AE0 0x8 __RTTI__10CWeaponSel  # RTTI of CWeaponSel: found by its RTTI's name
+0x003E4A90 0x4 s_fBgBottom__27@unnamed@hud_weaponsel_cpp@  # OVL1 data (zero in the image); ours (the HUD lane, round 16): the selector's backdrop bottom, the HUD's bottom block (0x3E2FF8) less 10, set by hud_weaponsel.cpp's initialiser 0x3FE500 -- 4 references in 3 functions (CWeaponSel::Init x2, AfterOpenSecond, the initialiser)
+0x003E4A98 0x4 s_fRowY__27@unnamed@hud_weaponsel_cpp@  # OVL1 data (zero in the image); ours (the HUD lane, round 16): the selector's middle row's top, the backdrop bottom less 124, set by 0x3FE500 -- 10 references in 5 functions (CheckHotSwap x5, OnOpen x2, Init x2, the initialiser)
+0x003E4AA0 0x4 s_fBgTop__27@unnamed@hud_weaponsel_cpp@  # OVL1 data (zero in the image); ours (the HUD lane, round 16): the selector's backdrop top, the backdrop bottom less 186, set by 0x3FE500 -- 4 references in 3 functions (Init x2, AfterOpenSecond, the initialiser)
 0x003E4F60 0x4 s_fDividerY__27@unnamed@hud_teamnames_cpp@  # OVL1 data; ours (the HUD lane): the dividers' line, 3 + 15 + 17 + the HUD's bottom block (0x3E2FF8), computed by hud_teamnames.cpp's initialiser 0x3FE700 -- 5 references in 2 functions take 0x3E4F60 (CTeamNames::Init x4)
 0x003E4FA0 0x8 __RTTI__10CTeamNames  # RTTI of CTeamNames: found by its RTTI's name
 0x003E5020 0x8 __RTTI__10PoseBitmap  # RTTI of PoseBitmap: found by its RTTI's name

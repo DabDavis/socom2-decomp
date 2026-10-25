@@ -167,11 +167,8 @@ zdb::CTexture *GetTextureByName(zdb::CWorld *world, const char *name);
 extern const char *data_003E3048;
 extern const char *data_003E3068;
 
-/* the selector's rows' tops (the unit's statics: its initialiser sets them from the HUD's
- * layout) */
-extern float data_003E4A90;
-extern float data_003E4A98;
-extern float data_003E4AA0;
+/* the HUD's bottom block (hud_main.cpp's layout) */
+extern float data_003E2FF8;
 
 /* the HUD's backdrop alpha (hud_main.cpp's layout float, 76.8) */
 extern float data_003E3000;
@@ -183,6 +180,11 @@ float g_fFadeInTime = -1.0f;
 /* the backdrops' right edge (SOCOM 1's g_iBgRightX, the same anonymous namespace: bss, set by
  * Init) */
 int g_iBgRightX;
+/* the backdrop's bottom, the middle row's top and the backdrop's top, from the HUD's bottom block
+ * (SOCOM II's: the unit's initialiser, 0x3FE500, sets them; the names ours) */
+float s_fBgBottom = data_003E2FF8 - 10.0f;
+float s_fRowY = s_fBgBottom - 124.0f;
+float s_fBgTop = s_fBgBottom - 186.0f;
 }
 
 /* SOCOM 1's CCtrlrConfigs::GetButtonState(PadBtnFunc, const CPad &) (0x2C64E0, no row named) and
@@ -233,7 +235,7 @@ void CWeaponSel::Init(zdb::CWorld *world, C2DFont *font)
     m_arrowtex = GetTextureByName(0, data_003E3068);
     m_myfont = font;
     m_selectionback2.SetHasTexture(false);
-    m_selectionback2.Load(0.0f, data_003E4A98, g_iBgRightX, 2.0f + (64.0f + data_003E4A98), 0);
+    m_selectionback2.Load(0.0f, s_fRowY, g_iBgRightX, 2.0f + (64.0f + s_fRowY), 0);
     m_selectionback2.SetColor(80.0f, 80.0f, 80.0f);
     m_selectionback2.SetIsTrans(true);
     m_selectionback2.SetTrans(0.0f);
@@ -306,11 +308,11 @@ void CWeaponSel::Init(zdb::CWorld *world, C2DFont *font)
     m_hotswapL1text.Off();
     m_hotswapL2text.Off();
     m_menuposx[1] = 30.0f;
-    m_menuposy[1] = data_003E4A98;
-    m_weaponselbkrnd.Load(0.0f, 5.0f + data_003E4AA0, g_iBgRightX, data_003E4A90 - 5.0f,
+    m_menuposy[1] = s_fRowY;
+    m_weaponselbkrnd.Load(0.0f, 5.0f + s_fBgTop, g_iBgRightX, s_fBgBottom - 5.0f,
                           m_weaponselbkrndtex);
-    m_selectionback0.Load(0.0f, data_003E4AA0, g_iBgRightX, 5.0f + data_003E4AA0, m_weaponselbkrndtex);
-    m_selectionback1.Load(0.0f, data_003E4A90 - 5.0f, g_iBgRightX, data_003E4A90, m_weaponselbkrndtex);
+    m_selectionback0.Load(0.0f, s_fBgTop, g_iBgRightX, 5.0f + s_fBgTop, m_weaponselbkrndtex);
+    m_selectionback1.Load(0.0f, s_fBgBottom - 5.0f, g_iBgRightX, s_fBgBottom, m_weaponselbkrndtex);
     m_weaponicon[1].Load(m_menuposx[1] + m_iconoffsetx, m_menuposy[1] + m_iconoffsety, m_weapontex[1]);
     m_weaponname.Load(0.9f, "3", m_myfont, m_menuposx[1] + m_nameoffsetx, m_menuposy[1] + m_nameoffsety,
                       true);
@@ -447,7 +449,7 @@ void CWeaponSel::OnOpen()
     m_curheight = 0.0f;
     m_goalheight = 35.0f;
     m_menucentery = m_goalheight / 2.0f;
-    m_menugoaly = data_003E4A98;
+    m_menugoaly = s_fRowY;
     m_menugoalx = 10.0f;
     m_openstate = 1;
     m_current_item = selected_item_num;
@@ -462,7 +464,7 @@ void CWeaponSel::OnOpen()
     m_weaponnum[1] = m_current_item;
     m_weaponnum[2] = next;
     m_menuposx[1] = 0.0f;
-    m_menuposy[1] = data_003E4A98;
+    m_menuposy[1] = s_fRowY;
     m_menustartx = m_menuposx[1];
     m_weaponselbkrnd.On();
     m_selectionback0.On();
@@ -942,14 +944,14 @@ void CWeaponSel::AfterOpenSecond()
         m_arrow[0].On();
 
         /* the upper arrow's lower edge taken first: it is loaded ahead of the centring */
-        float y = data_003E4AA0 + h;
+        float y = s_fBgTop + h;
         float right = (w + g_iBgRightX) / 2.0f;
         float left = right - w;
 
-        m_arrow[0].Load(left, data_003E4AA0, left, y, right, y, right, data_003E4AA0, m_arrowtex);
+        m_arrow[0].Load(left, s_fBgTop, left, y, right, y, right, s_fBgTop, m_arrowtex);
         m_arrow[1].On();
-        m_arrow[1].Load(right, data_003E4A90, right, data_003E4A90 - h, left, data_003E4A90 - h, left,
-                        data_003E4A90, m_arrowtex);
+        m_arrow[1].Load(right, s_fBgBottom, right, s_fBgBottom - h, left, s_fBgBottom - h, left,
+                        s_fBgBottom, m_arrowtex);
     }
     PlaceHotSwapLabels();
     PlaceWeaponText();
@@ -978,7 +980,7 @@ void CWeaponSel::CheckHotSwap()
         m_weapontex[1] = seal->m_kit.GetIcon(item);
         m_selectionback2.On();
         if (!m_weaponicon[1].IsOn()) {
-            m_weaponicon[1].Load(10.0f + m_iconoffsetx, data_003E4A98 + m_iconoffsety, m_weapontex[1]);
+            m_weaponicon[1].Load(10.0f + m_iconoffsetx, s_fRowY + m_iconoffsety, m_weapontex[1]);
             m_weaponicon[1].On();
             CSealCtrl *ctrl = seal->m_ctrl;
 
@@ -986,9 +988,9 @@ void CWeaponSel::CheckHotSwap()
                 C2DFont *font = m_myfont;
                 const char *str = func_00361B40(0xEC6D);
 
-                m_hotswapL1text.Load(0.9f, str, font, 90, (int)(62.0f + data_003E4A98), true);
+                m_hotswapL1text.Load(0.9f, str, font, 90, (int)(62.0f + s_fRowY), true);
                 m_hotswapL1text.UpdatePos();
-                m_hotswapL1text.SetPos((int)(148.0f - m_hotswapL1text.m_charheight), (int)(62.0f + data_003E4A98));
+                m_hotswapL1text.SetPos((int)(148.0f - m_hotswapL1text.m_charheight), (int)(62.0f + s_fRowY));
                 m_hotswapL1text.UpdatePos();
                 m_hotswapL1text.On();
                 m_hotswapL1text.SetTrans(0.0f);
@@ -996,9 +998,9 @@ void CWeaponSel::CheckHotSwap()
                 C2DFont *font = m_myfont;
                 const char *str = func_00361B40(0xEC6E);
 
-                m_hotswapL2text.Load(0.9f, str, font, 90, (int)(62.0f + data_003E4A98), true);
+                m_hotswapL2text.Load(0.9f, str, font, 90, (int)(62.0f + s_fRowY), true);
                 m_hotswapL2text.UpdatePos();
-                m_hotswapL2text.SetPos((int)(148.0f - m_hotswapL2text.m_charheight), (int)(62.0f + data_003E4A98));
+                m_hotswapL2text.SetPos((int)(148.0f - m_hotswapL2text.m_charheight), (int)(62.0f + s_fRowY));
                 m_hotswapL2text.UpdatePos();
                 m_hotswapL2text.On();
                 m_hotswapL2text.SetTrans(0.0f);
