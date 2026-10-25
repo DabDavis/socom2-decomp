@@ -450,6 +450,8 @@ public:
     static Headset *Create();
     static bool FindDevice(int *device, int *format, unsigned char *channels);
     void InitStream();
+    void Flush();
+    bool DeQueue(int **data, unsigned int *id, CSnd **sound, int *vol);
     /* the device found (ours: ftsGetHeadset's arguments load before the stores, as an inline's) */
     void SetDevice(int device, int format, unsigned char channels)
     {
@@ -470,7 +472,7 @@ public:
     unsigned char m_state;      /* 0x09: the stream request's state, 0-4 */
     unsigned char m_stop;       /* 0x0A */
     unsigned char m_b;          /* 0x0B */
-    int m_c;                    /* 0x0C */
+    unsigned int m_c;           /* 0x0C: the dequeued entry's id */
     CSnd *m_sound;              /* 0x10 */
     int m_vol;                  /* 0x14 */
     std::vector<int> m_queue;   /* 0x18: the queued entries' indices (SOCOM 1's at 0x18 too) */

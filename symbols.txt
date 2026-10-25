@@ -6285,7 +6285,7 @@
 0x0034A640 0xC func_0034A640  # OVL1
 0x0034A650 0x4C Resume__7HeadsetFv  # OVL1; SOCOM II's, name ours (CSndInstance::ResumeAllSounds calls it on the headset: extern call 5 while connected)
 0x0034A6A0 0x4C Pause__7HeadsetFv  # OVL1; SOCOM II's, name ours (CSndInstance::PauseAllSounds calls it: extern call 4 while connected)
-0x0034A6F0 0xC0 func_0034A6F0  # OVL1
+0x0034A6F0 0xC0 Flush__7HeadsetFv  # OVL1; SOCOM II's, name ours (a Headset member: the stream module stopped (extern call 6) unless idle, every queued entry dequeued, the queue freed (FreeVector of its vector<int>, the four pieces out of line at 0x2C7290-0x2C7350), m_b set; CCinematicState::Init calls it) -- the sound lane
 0x0034A7B0 0x15C func_0034A7B0  # OVL1
 0x0034A910 0x158 StopSound__7HeadsetFiP4CSnd  # OVL1; s1:order by hand (SOCOM 1's StopSound(int, CSnd *), first of the unit in both builds; CZAnim::StopSounds and the SOUND tick stop a headset stream with it, (headset, channel, sound), as SOCOM 1's do)
 0x0034AA70 0x48 func_0034AA70  # OVL1
@@ -6295,7 +6295,7 @@
 0x0034B3B0 0x54 Tick__7HeadsetFf  # OVL1; s1:align
 0x0034B410 0xD0 SoundSysCallback__7HeadsetFUi  # OVL1; s1:callee
 0x0034B4E0 0x2C StaticSoundSysCallback__7HeadsetFUiUl  # OVL1; s1:exact
-0x0034B510 0x1B0 func_0034B510  # OVL1
+0x0034B510 0x1B0 DeQueue__7HeadsetFPPiPUiPP4CSndPi  # OVL1; s1:order by hand (SOCOM 1's Headset::DeQueue(int **, unsigned int *, CSnd **, int *): after StaticSoundSysCallback and before Queue in both builds; the queue flush calls it with 0 and the addresses of m_c, m_sound and m_vol until it fails, ConnectedTick and DisconnectedTick too) -- the sound lane
 0x0034B6C0 0x1CC func_0034B6C0  # OVL1
 0x0034B890 0x28 ResetStream__7HeadsetFv  # OVL1; SOCOM II's, name ours (the headset's instance cleared and its id -1)
 0x0034B8C0 0x4C Reset__7HeadsetFv  # OVL1; SOCOM II's, name ours (the stream request reset, the headset state 0; CSnd::Close calls it)
