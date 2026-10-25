@@ -9484,16 +9484,16 @@
 0x0051A3A0 0x8 clear__Q23std70__vector_deleter<Q26CAiMap6reader,Q23std27allocator<Q26CAiMap6reader>>Fv  # OVL2; s1:order by hand (the seventh deleter clear; reader's deleter destructor 0x519A40 calls it)
 0x0051A3B0 0x8 clear__Q23std74__vector_deleter<Q26CAiMap8scanline,Q23std29allocator<Q26CAiMap8scanline>>Fv  # OVL2; s1:order by hand (the eighth deleter clear; scanline's deleter destructor 0x519AB0 calls it)
 0x0051A3C0 0xC4 clear__Q23std68__vector_deleter<Q26CAiMap5route,Q23std26allocator<Q26CAiMap5route>>Fv  # OVL2; s1:order by hand (the ninth deleter clear, each 0x24-byte route's two vectors destroyed; route's deleter destructor 0x519B20 calls it)
-0x0051A490 0x238 func_0051A490  # OVL2
-0x0051A6D0 0x238 func_0051A6D0  # OVL2
-0x0051A910 0x238 func_0051A910  # OVL2
-0x0051AB50 0x238 func_0051AB50  # OVL2
+0x0051A490 0x238 read_v23__6CAiMapFR7CFileIO  # OVL2; ours (CAiMap::Read's case 23: read_v20's code word for word but for the names and the links, read as they lie)
+0x0051A6D0 0x238 read_v22__6CAiMapFR7CFileIO  # OVL2; ours (CAiMap::Read's case 22: read_v21's code word for word, the same calls)
+0x0051A910 0x238 read_v21__6CAiMapFR7CFileIO  # OVL2; ours (CAiMap::Read's case 21: read_v20's code word for word but for the names, read as they lie)
+0x0051AB50 0x238 read_v20__6CAiMapFR7CFileIO  # OVL2; ours (CAiMap::Read's case 20: read_v19's body -- the names and links through their converting readers -- then the graph (CGraph::Create with the fixups 0x51B2B0/0x51B250 when bit 0 of m_flags) and the layers (m_layercount at 0x80, 0x51B150 for each past the first, pushed onto m_layers))
 0x0051AD90 0x160 read_v19__6CAiMapFR7CFileIO  # OVL2; ours (CAiMap::Read, 0x51AFE0, calls it for version 19, the oldest it reads: SOCOM 1's Read body -- the 0xA4-byte header, the cells into the layer, the scanlines, the seven tables, the lines, readers and routes, the extra data)
 0x0051AEF0 0xE4 func_0051AEF0  # OVL2
-0x0051AFE0 0x170 func_0051AFE0  # OVL2
+0x0051AFE0 0x170 Read__6CAiMapFR7CFileIO  # OVL2; s1:order by hand (the demo's 0x189390 after read_cells: the version read, 19-23 handed to the five readers 0x51AD90, 0x51AB50, 0x51A910, 0x51A6D0, 0x51A490, then m_alt_quant = (max.y - min.y) / 1024, ValidateCells, ValidateRoutes(false), CreateGraph(false) -- SOCOM 1's Read's last three calls)
 0x0051B150 0xFC func_0051B150  # OVL2
-0x0051B250 0x54 func_0051B250  # OVL2
-0x0051B2B0 0xE0 func_0051B2B0  # OVL2
+0x0051B250 0x54 _fixupEdge__FP6CGraphP6CGEdgebRUiPv  # OVL2; s1:calls by hand (the version readers hand it to CGraph::Create as the edge fixup, where SOCOM 1's hands _fixupEdge__FP6CGraphP6CGEdgebRUiPv)
+0x0051B2B0 0xE0 _fixupNode__FP6CGraphP6CGNodebRUiPv  # OVL2; s1:calls by hand (the version readers hand it to CGraph::Create as the node fixup, where SOCOM 1's ReadMapSet hands _fixupNode__FP6CGraphP6CGNodebRUiPv; 0xE0 here against the demo's 0x188)
 0x0051B390 0x100 read_readers__6CAiMapFR7CFileIO  # OVL2; s1:calls
 0x0051B490 0x11C read_routes__6CAiMapFR7CFileIO  # OVL2; s1:calls by hand (the demo's 0x18A2D0: the count, the routes resized, each route's two regions, flags and two cell tables read; every SOCOM II version reader 0x51A490-0x51AD90 calls it after read_readers)
 0x0051B5B0 0x104 read_lines__6CAiMapFR7CFileIO  # OVL2; s1:calls by hand (the demo's 0x18A3C0: the count, the lines resized, each line's cell table and, from version 10, its four bytes of data through the line_data base at +0xC)
@@ -9506,7 +9506,7 @@
 0x0051BB20 0xB4 ReadCellTable<Q26CAiMap5links,Q26CAiMap4link>__FR7CFileIORQ26CAiMap5links_b  # OVL2; by hand (the ReadCellTable shape with 12-byte elements whose resize (0x51C840) builds each new element with the link's constructor (0x5309D0's store of 8 at +8))
 0x0051BBE0 0x160 func_0051BBE0  # OVL2
 0x0051BD40 0x188 func_0051BD40  # OVL2
-0x0051BED0 0x198 func_0051BED0  # OVL2
+0x0051BED0 0x198 func_0051BED0  # OVL2; OVL2's copy of the pod vectors' reserve (OVL1 0x1EEBA0, the same 0x198 bytes but for relocated fields; the AI map's version readers reserve the layers with it); ovl-copy: reserve__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FUi
 0x0051C070 0x144 resize__Q23std64__vector_imp<Q26CAiMap4line,Q23std25allocator<Q26CAiMap4line>,0>FUi  # OVL2; s1:callee by hand (read_lines calls it on the lines at 0x128 with the count, as the demo's calls this resize)
 0x0051C1C0 0x68 func_0051C1C0  # OVL2
 0x0051C230 0x11C resize__Q23std66__vector_imp<Q26CAiMap5route,Q23std26allocator<Q26CAiMap5route>,0>FUi  # OVL2; s1:callee by hand (read_routes calls it on the routes at 0x140 with the count, as the demo's calls this resize)
@@ -9675,7 +9675,7 @@
 0x0052EBA0 0xB4 func_0052EBA0  # OVL2
 0x0052EC60 0x240 func_0052EC60  # OVL2
 0x0052EEA0 0x3C DestroyGraph__6CAiMapFv  # OVL2; s1:order by hand (the demo's 0x19DCA0, the first of SOCOM 1's map-table stretch as this is of SOCOM II's: the same 0x3C -- CGraph::Destroy(m_graph), m_graph = 0, bit 0 of m_flags cleared)
-0x0052EEE0 0x410 func_0052EEE0  # OVL2
+0x0052EEE0 0x410 CreateGraph__6CAiMapFb  # OVL2; s1:callee by hand (CAiMap::Read's last call, with false, as SOCOM 1's Read's is CreateGraph__6CAiMapFb; right after DestroyGraph in both builds)
 0x0052F2F0 0x18 func_0052F2F0  # OVL2
 0x0052F310 0x18 func_0052F310  # OVL2
 0x0052F330 0x64 func_0052F330  # OVL2
@@ -9686,7 +9686,7 @@
 0x0052F3F0 0x10 func_0052F3F0  # OVL2
 0x0052F400 0x70 GetRouteIndex__6CAiMapFPCQ26CAiMap5route  # OVL2; ours (new in SOCOM II, among the routes' functions after CreateGraph: the 0x24-byte routes at 0x140 walked for the pointer, its index or -1)
 0x0052F470 0x2C GetRoute__6CAiMapFUi  # OVL2; ours (new in SOCOM II, next to GetRouteIndex: the route of an index below the routes' size, or 0)
-0x0052F4A0 0x438 func_0052F4A0  # OVL2
+0x0052F4A0 0x438 ValidateRoutes__6CAiMapFb  # OVL2; s1:callee by hand (CAiMap::Read calls it with false after ValidateCells, as SOCOM 1's Read calls ValidateRoutes__6CAiMapFb; the map-table stretch's order agrees -- _invalid_route follows it in both builds)
 0x0052F8E0 0x10 _invalid_route__FRQ26CAiMap5route  # OVL2; s1:order by hand (the demo's 0x19E300 between ValidateRoutes and ReRoute, as here between 0x52F4A0 and 0x52F8F0: a route's flag bit 0 as a bool)
 0x0052F8F0 0x348 func_0052F8F0  # OVL2
 0x0052FC40 0x44 SetReader__Q26CAiMap6readerFP8CRdrFile  # OVL2; s1:exact

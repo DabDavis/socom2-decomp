@@ -209,14 +209,28 @@ public:
 
 class CRdrFile;
 class CFileIO;
+/* one layer of an AI map's cells (new in SOCOM II, the name ours: the map keeps the first at 0xA8
+ * and the rest by pointer) */
+class CAiMapLayer;
 int zrdr_free(CRdrFile *file);
 /* MAIN's strncasecmp (0x1993C0, a placeholder still: SOCOM 1's CAiMap::GetLocation calls
  * strncasecmp where SOCOM II's calls it) */
 extern "C" int func_001993C0(const char *a, const char *b, unsigned int n);
 
+class CGNode;
+class CGEdge;
+class CGraph;
+
+/* the AI maps' graph fixups (ai_mapio.cpp; SOCOM 1's, ai_maps.cpp's there) */
+void _fixupEdge(CGraph *graph, CGEdge *edge, bool fix, unsigned int &n, void *data);
+void _fixupNode(CGraph *graph, CGNode *node, bool fix, unsigned int &n, void *data);
+
 /* the AI maps' graph (graph_tree.cpp's CGraph; only what the maps call) */
 class CGraph {
 public:
+    /* a graph read from a map file, each node and edge handed to a fixup with the caller's data */
+    static CGraph *Create(CFileIO &f, void (*node)(CGraph *, CGNode *, bool, unsigned int &, void *),
+                          void (*edge)(CGraph *, CGEdge *, bool, unsigned int &, void *), void *data);
     static void Destroy(CGraph *graph);
 };
 
@@ -428,11 +442,18 @@ public:
     int GetRouteIndex(const route *r);
     route *GetRoute(unsigned int i);
     link *GetCellLink(const CAiMapLoc &loc);
+    bool Read(CFileIO &f);
     bool read_v19(CFileIO &f);
+    bool read_v20(CFileIO &f);
+    bool read_v21(CFileIO &f);
+    bool read_v22(CFileIO &f);
+    bool read_v23(CFileIO &f);
     bool read_lines(CFileIO &f);
     bool read_routes(CFileIO &f);
     bool read_readers(CFileIO &f);
     void DestroyGraph();
+    void CreateGraph(bool force);
+    void ValidateRoutes(bool force);
     void ValidateCells();
     bool FindActionLocation(unsigned int id, CAiMapLoc &loc, action **pa);
     action *GetCellAction(const CAiMapLoc &loc) const;
@@ -465,13 +486,15 @@ public:
     unsigned int m_cellcount;   // 0x70
     unsigned int m_revision;   // 0x74
     unsigned int m_date[1];   // 0x78
-    unsigned int m_reserved[10];   // 0x7c
+    unsigned int m_reserved0;   // 0x7c
+    unsigned int m_layercount;   // 0x80: the map's layers (new in SOCOM II, SOCOM 1's m_reserved[1])
+    unsigned int m_reserved[8];   // 0x84
     /* CAiMap's own (SOCOM II's: a layer object at 0xA8 that the constructor builds and pushes onto
      * the pointer vector at 0xD4, the cells in the layers; the extra data, the owner and the
      * altitude scale after it, then SOCOM 1's nine tables) */
     unsigned int m_version;   // 0xa4
     unsigned char m_layer0[0x2c];   // 0xa8: not laid out yet (built by 0x53A9C0)
-    unsigned char m_layers[0xc];   // 0xd4: a vector of layer pointers
+    std::vector<CAiMapLayer *> m_layers;   // 0xd4: the layers, m_layer0 first
     char *m_mapex;   // 0xe0: SOCOM 1's 0xac
     void *m_maps;   // 0xe4: the constructor's argument
     float m_alt_quant;   // 0xe8: SOCOM 1's 0xb4
