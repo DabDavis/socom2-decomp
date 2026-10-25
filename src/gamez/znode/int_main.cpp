@@ -2,7 +2,13 @@
  * shape: its points allocated, read and freed), DiIntersect (a ray's or a volume's hit set) and
  * the box and polygon shapes (OVL1 0x2DBFB0-0x2DDBEB). The unit name is SOCOM 1's: its asserts in
  * CDI::Allocate, Free and DiIntersect's constructor and destructor name int_main.cpp (both 2002
- * builds); int_material.cpp follows it there and here. Written so far: the small functions below.
+ * builds); int_material.cpp follows it there and here. Written so far: the small functions below,
+ * CDI's constructor (its parameters' constructor inlined) and the shapes' constructors and
+ * destructors. Unwritten, in image order: SOCOM 1's SetCDIBBox (0x2DC7A0, a static: the unit box's
+ * polygons built once behind a guard byte -- CMission::Init and CZSealBody's constructor call it),
+ * CDIBBox::GetIntersect, 0x2DD130 (the polygon's first three points loaded on VU0, vcallms 0x70:
+ * new), CDIPoly::GetIntersect, DiIntersect::LoadTipAndTail (0x2DD210), GetEdgeIntersectsY,
+ * GetEdgeIntersects, intersect2d (0x2DD690) and CDIPoly::GetAltitude -- VU0 code throughout.
  * Defined in reverse of their image order (-inline deferred). */
 
 #include "node_world.h"
