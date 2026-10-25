@@ -34,11 +34,16 @@ struct StoredClanInfoType {
 
 /* a member of the clan (only its account) */
 struct ClanMemberItem {
-    int GetAccountID() { return AccountID; }
-
     unsigned char _0[0x1c];
     int AccountID;   // 0x1c
+    char AccountName[32];   // 0x20
 };
+
+void UpdateInvitations();   /* the received invitations shown (SOCOM 1's) */
+void cbTransferClanLeadership(MediusErrorCode, MediusErrorCode, MediusErrorCode,
+                              MediusTransferClanLeadershipResponse *);
+void cbRemovePlayerFromClan(MediusErrorCode, MediusErrorCode, MediusErrorCode,
+                            MediusRemovePlayerFromClanResponse *);
 
 void cbGetClanMemberList(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusGetClanMemberListResponse *);
 void cbDisbandClan(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusDisbandClanResponse *);
@@ -60,6 +65,8 @@ extern LobbyList InvitationVec;   /* the invitations received */
 extern LobbyList ClanInvitationVec;   /* the invitations sent */
 extern LobbyList ClanMemberVec;
 extern LobbyList data_0044F760;   /* the leader's messages (SOCOM II's) */
+extern int RemovePlayerFromClanID;   /* the member being put out */
+void func_002E9240(LobbyList *list, MediusCheckMyClanInvitationsResponse *resp);   /* one kept */
 void func_002E66F0(LobbyList *list);   /* the leader's messages deleted */
 
 ClanMemberItem *func_002E9460(LobbyList *list, const char *name);   /* the member by name */
@@ -114,6 +121,24 @@ void CZOnlineLobby::DeclineClanInvitation(int id)
 bool CZOnlineLobby::HasClanInvitations()
 {
     return InvitationVec.size_ != 0;
+}
+
+/* an invitation received kept; at the list's end the menu told and the list shown (SOCOM 1's;
+ * OVL1 0x2E86C0) */
+void cbCheckMyClanInvitations(MediusErrorCode, MediusErrorCode, MediusErrorCode,
+                              MediusCheckMyClanInvitationsResponse *resp)
+{
+    if (CheckMediusCallbackStatus("CheckMyClanInvitations", resp->StatusCode)) {
+        /* (MW folds the first two tests into one unsigned compare) */
+        if (resp->ResponseStatus == 0 || resp->ResponseStatus == 1 || resp->ResponseStatus == 2)
+            func_002E9240(&InvitationVec, resp);
+        if (resp->EndOfList && InvitationVec.size_) {
+            LobbyEvent("MP_MEDIUS_HAS_INVITES", 0);
+            UpdateInvitations();
+        }
+    } else {
+        UpdateInvitations();
+    }
 }
 
 /* the invitations received asked for again (SOCOM 1's; OVL1 0x2E8650) */
@@ -177,6 +202,39 @@ bool CZOnlineLobby::SendClanMessage(const char *text)
     return true;
 }
 
+/* the leadership handed over, or not (SOCOM 1's; OVL1 0x2E82A0) */
+void cbTransferClanLeadership(MediusErrorCode, MediusErrorCode, MediusErrorCode,
+                              MediusTransferClanLeadershipResponse *resp)
+{
+    if (CheckMediusCallbackStatus("TransferClanLeadership", resp->StatusCode))
+        LobbyEvent("MP_LEADERSHIP_TRANSFER_SUCCESS", 0);
+    else
+        LobbyEvent("MP_PLAYER_NOT_FOUND", 0);
+}
+
+/* the leadership handed to the named member (SOCOM 1's; OVL1 0x2E81B0) */
+void CZOnlineLobby::TransferLeadership(const char *name)
+{
+    if (!name || !name[0]) {
+        LobbyEvent("MP_PLAYER_NOT_FOUND", 0);
+        return;
+    }
+    ClanMemberItem *m = func_002E9460(&ClanMemberVec, name);
+
+    if (!m) {
+        LobbyEvent("MP_PLAYER_NOT_FOUND", 0);
+        return;
+    }
+    MediusTransferClanLeadershipRequest req;
+
+    memset(&req, 0, sizeof(req));
+    SetSessionKey(req.SessionKey);
+    req.NewLeaderAccountID = m->AccountID;
+    if (m->AccountName)
+        memcpy(req.NewLeaderAccountName, m->AccountName, 32);
+    CheckMediusError(MediusTransferClanLeadership(&req, cbTransferClanLeadership));
+}
+
 /* the clan's name filtered first; cbFilterClanName creates it (SOCOM 1's; OVL1 0x2E7A10) */
 void CZOnlineLobby::CreateClan(const char *name)
 {
@@ -190,6 +248,34 @@ void CZOnlineLobby::CreateClan(const char *name)
             memcpy(req.Text, name, 32);
         CheckMediusError(MediusTextFilter(&req, cbFilterClanName));
     }
+}
+
+/* the named member put out of the clan -- not ourselves (SOCOM 1's; OVL1 0x2E7450) */
+bool CZOnlineLobby::RemovePlayerFromClan(const char *name)
+{
+    if (!m_isopen)
+        return false;
+    if (m_current_state != LOBBY_ACTIVE)
+        return false;
+    ClanMemberItem *m = func_002E9460(&ClanMemberVec, name);
+
+    if (m) {
+        if (AccountInfo.AccountID == m->AccountID) {
+            LobbyEvent("MP_PLAYER_IS_LEADER", 0);
+        } else {
+            MediusRemovePlayerFromClanRequest req;
+
+            memset(&req, 0, sizeof(req));
+            SetSessionKey(req.SessionKey);
+            req.PlayerAccountID = m->AccountID;
+            req.ClanID = PlayerClanID;
+            RemovePlayerFromClanID = m->AccountID;
+            CheckMediusError(MediusRemovePlayerFromClan(&req, cbRemovePlayerFromClan));
+        }
+    } else {
+        LobbyEvent("MP_PLAYER_NOT_FOUND", 0);
+    }
+    return true;
 }
 
 /* any invitations sent (SOCOM 1's; OVL1 0x2E7290) */

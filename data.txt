@@ -177,6 +177,7 @@
 0x003DE5F8 0x4 LADDER_MASK  # OVL1; s1:data-seq (size SOCOM 1's; via GetLadderByIndex__11CLadderListFi)
 0x003DF218 0x4 deadZoneScaleFactor  # OVL1; s1:data-seq (size SOCOM 1's; via SetDeadZone__4CPadFif)
 0x003DF298 0x4 PlayerClanID  # OVL1 data; s1 by hand (SOCOM 1's PlayerClanID: IsMemberOfClan 0x2E6830 tests it against -1, QuitClan and GetClanRoster send it as the clan id; initialised data in SOCOM II); size SOCOM 1's; 13 references in 10 functions
+0x003DF2A0 0x4 RemovePlayerFromClanID  # OVL1 data; s1 by hand (SOCOM 1's RemovePlayerFromClanID: RemovePlayerFromClan 0x2E7450 keeps the member it asks to remove there, as SOCOM 1's keeps its); size SOCOM 1's; 1 reference in 1 function
 0x003DF320 0x4 data_003DF320  # OVL1 data: 1.0f, an anonymous constant (SlerpFaster passes _close_enough(len2, 1.0f, 0.004f) by reference)
 0x003DF328 0x4 data_003DF328  # OVL1 data: 0.004f, the other
 0x003DF330 0x4 m_pointer__6CStack  # OVL1; s1:data-seq (size SOCOM 1's; via Multiply__6CStackFPC7CMatrixb)

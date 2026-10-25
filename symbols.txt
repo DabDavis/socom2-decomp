@@ -4804,7 +4804,7 @@
 0x002E8650 0x6C CheckClanInvitations__13CZOnlineLobbyFv  # OVL1; s1:ui ('CheckMyInvites' 0x27A3C0; SOCOM 1's UICheckClanInvites calls CheckClanInvitations, and this one's callback reports 'CheckMyClanInvitations', SOCOM 1's cbCheckMyClanInvitations)
 0x002E86C0 0xB0 cbCheckMyClanInvitations__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP36MediusCheckMyClanInvitationsResponse  # OVL1; s1 by hand (CheckClanInvitations' callback; reports 'CheckMyClanInvitations')
 0x002E8770 0x10 HasClanInvitations__13CZOnlineLobbyFv  # OVL1; s1:ui ('HasClanInvitations' 0x277950, as SOCOM 1's: the received invitations' size, 0x44F704)
-0x002E8780 0x1FC func_002E8780  # OVL1
+0x002E8780 0x1FC UpdateInvitations__Fv  # OVL1; s1 by hand (SOCOM 1's UpdateInvitations: the received invitations into the MY_CLAN_INVITES variable, its strings 'Undecided', 'Accepted', 'Declined', 'Unknown', 'No Invitations' and called from cbCheckMyClanInvitations, as SOCOM 1's)
 0x002E8980 0x6C DeclineClanInvitation__13CZOnlineLobbyFi  # OVL1; s1:ui (UIDeclineInvitation, as SOCOM 1's calls DeclineClanInvitation)
 0x002E89F0 0x6C AcceptClanInvitation__13CZOnlineLobbyFi  # OVL1; s1:ui (UIAcceptInvitation passes atoi(arg), as SOCOM 1's calls AcceptClanInvitation)
 0x002E8A60 0x30 cbRespondToClanInvitation__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP37MediusRespondToClanInvitationResponse  # OVL1; s1 by hand (Accept/DeclineClanInvitation's callback; reports 'RespondToClanInvitation')
