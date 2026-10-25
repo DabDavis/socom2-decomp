@@ -1208,6 +1208,21 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     PERMANENT 2, PERSISTENT 3); zanim_menu.h still carries the old spellings (TEMPORARY 0,
     SESSION 1, PERMANENT 2) -- mapped by value where a unit moved over;
   - util_crc.cpp's CRC32String (0x3A2370) is the CRC-32 the sound system hashes cue names with.
+- **Tells from the network, round 3** (zNetMediusLobby.cpp, zNetMediusChat.cpp, src/gamez/znet/):
+  - a void leaf never takes v0 for a temporary: a leaf that uses v0 and leaves it to the end is
+    returning it (AdvanceMissionSequence returns the next mission);
+  - an int-array member copies through the FPRs (lwc1/swc1); seven named int members copy as
+    lw/sw pairs (TypeRTimeFixStruct);
+  - `if (err) return err; flag = 1; return err;` gives SOCOM 1's `beqz; b` layout (zNetJoin);
+    `if (!err) flag = 1;` inverts it;
+  - a bool argument to an inline setter is re-extended (andi) at each use: CValve wants a
+    SetValue(bool) overload for those callers;
+  - an `||` materialised before its branch is a bool local (`bool b = x || y; if (b)`); two loops
+    over one range want their own `for (int i...)` counters (a shared one swaps the second's
+    registers);
+  - zNetDme.cpp starts at 0x30CDF0 (its initialiser builds theNetwork at 0x45A0C0, registering
+    ~CZNetwork 0x30E410), zNetVoice.cpp is 0x30E490-0x31097F (the radio and USB headset);
+    znet.h can become the one CZNetwork declaration.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
