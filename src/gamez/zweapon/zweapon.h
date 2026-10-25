@@ -101,6 +101,9 @@ public:
     CZAnim *GetHitAnim(int material);
     CZAnim *GetSpecialMaterialAnim(int material);
     void SetHasFireMode(FIREMODE mode);
+    void SetMaxFireMode(FIREMODE mode);
+    bool SetHitAnim(int material, CZAnim *anim);
+    bool SetSpecialMaterialAnim(int material, CZAnim *anim);
     static bool IsPrimary(EQUIP_ITEM id);
     bool IsDirectFire();
     EQUIP_AMMO GetDefaultAmmoId();

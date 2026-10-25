@@ -8354,10 +8354,10 @@
 0x003D22E0 0x2C GetHitAnim__8CZWeaponFi  # OVL1; s1:order by hand (SOCOM 1's shape: m_hitanim[i], 0 unless i is below CMaterialExArray's list size)
 0x003D2310 0x8 func_003D2310  # OVL1
 0x003D2320 0x2C GetSpecialMaterialAnim__8CZWeaponFi  # OVL1; s1:order by hand (the same over m_specialmaterialanim, 0x94)
-0x003D2350 0x40 func_003D2350  # OVL1
+0x003D2350 0x40 SetSpecialMaterialAnim__8CZWeaponFiP6CZAnim  # OVL1; s1:order by hand (the same over m_specialmaterialanim, 0x94; before SetHitAnim as in SOCOM 1)
 0x003D2390 0x8 func_003D2390  # OVL1
 0x003D23A0 0x8 func_003D23A0  # OVL1
-0x003D23B0 0x40 func_003D23B0  # OVL1
+0x003D23B0 0x40 SetHitAnim__8CZWeaponFiP6CZAnim  # OVL1; s1:order by hand (SOCOM 1's: m_hitanim[i] set when i is below the materials' count, true; false otherwise)
 0x003D23F0 0x8 func_003D23F0  # OVL1
 0x003D2400 0x8 func_003D2400  # OVL1
 0x003D2410 0x8 func_003D2410  # OVL1
@@ -8396,7 +8396,7 @@
 0x003D2A20 0x8 func_003D2A20  # OVL1
 0x003D2A30 0x30 SetHasFireMode__8CZWeaponF8FIREMODE  # OVL1; s1:order by hand (SOCOM 1's: the mode's flag set at 0xD0, the maximum mode at 0x24 raised to it)
 0x003D2A60 0x20 func_003D2A60  # OVL1
-0x003D2A80 0x40 func_003D2A80  # OVL1
+0x003D2A80 0x40 SetMaxFireMode__8CZWeaponF8FIREMODE  # OVL1; by hand (new in SOCOM II, right after SetHasFireMode: the maximum mode stored at 0x24 and every mode up to it, at most five, flagged at 0xD0; the name is ours)
 0x003D2AC0 0x6C func_003D2AC0  # OVL1
 0x003D2B30 0x6C func_003D2B30  # OVL1
 0x003D2BA0 0x6C func_003D2BA0  # OVL1

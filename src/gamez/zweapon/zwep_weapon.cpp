@@ -9,11 +9,37 @@
 
 extern "C" int strcasecmp(const char *a, const char *b);
 
+/* every mode up to the maximum flagged (new in SOCOM II; the name is ours) */
+void CZWeapon::SetMaxFireMode(FIREMODE mode)
+{
+    m_maxfiremode = mode;
+    for (int i = 0; i <= m_maxfiremode && i < NUM_FIREMODES; i++)
+        m_hasFireModes[i] = 1;
+}
+
 void CZWeapon::SetHasFireMode(FIREMODE mode)
 {
     m_hasFireModes[mode] = 1;
     if (m_maxfiremode < mode)
         m_maxfiremode = mode;
+}
+
+bool CZWeapon::SetHitAnim(int material, CZAnim *anim)
+{
+    if (material < (int)CMaterialExArray::m_materialex_list.size()) {
+        m_hitanim[material] = anim;
+        return true;
+    }
+    return false;
+}
+
+bool CZWeapon::SetSpecialMaterialAnim(int material, CZAnim *anim)
+{
+    if (material < (int)CMaterialExArray::m_materialex_list.size()) {
+        m_specialmaterialanim[material] = anim;
+        return true;
+    }
+    return false;
 }
 
 CZAnim *CZWeapon::GetSpecialMaterialAnim(int material)
