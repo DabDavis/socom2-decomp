@@ -330,6 +330,14 @@ class __vector_imp : public __vector_deleter<T, Allocator> {
     iterator erase(iterator first, iterator last) { return iterator(erase(first.m_p, last.m_p)); }
     /* grown by default-built elements or cut (out of class; declared after insert and erase) */
     void resize(unsigned int n);
+
+    __vector_imp() {}
+    /* a copy: the deleter's words zeroed (the capacity's, the size's, the data's, in that order),
+     * then the other's elements copied in through the range init (out of class, called: the UI
+     * lane's vector<ActionItem> copy 0x37E190, the particle sequences' 0x328D90-0x328E40) */
+    __vector_imp(const __vector_imp &x) { init((const T *)x.data_, (const T *)x.data_ + x.size_, forward_iterator_tag()); }
+    template <class InputIterator>
+    void init(InputIterator first, InputIterator last, forward_iterator_tag);
 };
 
 template <class T, class Allocator>
@@ -664,6 +672,29 @@ void __vector_imp<T, Allocator, IsPOD>::resize(unsigned int n)
         insert(end().m_p, n - size(), T());
     else if (n < size())
         erase(begin().m_p + n, end().m_p);
+}
+
+/* a range copied into a new vector (MSL's init<const T *>(first, last, forward_iterator_tag), each
+ * type's copy in its user's template tail: the particle sequences' 0x328FC0, 0x3290D0, 0x329220):
+ * the distance first, then the length check -- on the size, as the image tests it -- the block
+ * allocated through data()'s reference, the capacity set, and each element built in place and
+ * counted as it is */
+template <class T, class Allocator, bool IsPOD>
+template <class InputIterator>
+void __vector_imp<T, Allocator, IsPOD>::init(InputIterator first, InputIterator last, forward_iterator_tag)
+{
+    unsigned int n = last - first;
+
+    if (this->size_ > max_size())
+        __msl_error("vector length error\n");
+    if (n) {
+        this->data() = this->allocate(n);
+        this->capacity_.n_ = n;
+        for (T *p = this->data_; first != last; ++first, ++p) {
+            new (p) T(*first);
+            ++this->size_;
+        }
+    }
 }
 
 template <class T, class Allocator = allocator<T> >

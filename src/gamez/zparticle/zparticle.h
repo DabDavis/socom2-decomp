@@ -12,6 +12,7 @@
 #define ZPARTICLE_H
 
 #include <vector>
+#include <limits>
 #include <list>
 
 struct PNT4D {
@@ -107,21 +108,6 @@ public:
 };
 }
 
-namespace std {
-
-/* <limits>, not in include/: just numeric_limits<float>::max(), whose out-of-line copy Props'
- * constructor calls (0x328F40) */
-template <class T>
-class numeric_limits;
-
-template <>
-class numeric_limits<float> {
-public:
-    static float max() { return 3.40282347e+38f; }
-};
-
-}
-
 /* a particle effect's collision node (no destructor: deleted with operator delete) */
 class CParticleEx {
 public:
@@ -176,53 +162,14 @@ public:
 /* a sequence of keys (SOCOM 1's DWARF names the members' type Sequence): a vector of entries, a
  * class of its own -- Props' implicit destructor tests three levels of each before the deleter's
  * destructor, where a plain vector has two */
-/* MSL's range init of each sequence's vector (__vector_imp::init<const T *>(first, last,
- * forward_iterator_tag), out of line in this unit's template tail: 0x328FC0 the textures', 0x3290D0
- * the colours', 0x329220 the scales'). include/vector has neither a class vector's copy constructor
- * nor its range init yet, so the sequences' copies call them as placeholders, picked per type */
-extern "C" void func_00328FC0(void *v, const void *first, const void *last, std::forward_iterator_tag);
-extern "C" void func_003290D0(void *v, const void *first, const void *last, std::forward_iterator_tag);
-extern "C" void func_00329220(void *v, const void *first, const void *last, std::forward_iterator_tag);
-
-template <class T>
-class SequenceEntry;
-
-template <class T>
-struct __seq_init {
-};
-template <>
-struct __seq_init<zdb::CTexHandle *> {
-    static void init(void *v, const void *first, const void *last)
-    {
-        func_00328FC0(v, first, last, std::forward_iterator_tag());
-    }
-};
-template <>
-struct __seq_init<CPnt4D> {
-    static void init(void *v, const void *first, const void *last)
-    {
-        func_003290D0(v, first, last, std::forward_iterator_tag());
-    }
-};
-template <>
-struct __seq_init<float> {
-    static void init(void *v, const void *first, const void *last)
-    {
-        func_00329220(v, first, last, std::forward_iterator_tag());
-    }
-};
-
 template <class T>
 class Sequence : public std::vector<SequenceEntry<T> > {
 public:
     Sequence() {}
     /* the copy (out of line: 0x328E40 the textures', 0x328DE0 the colours', 0x328D90 the scales'):
-     * the words zeroed by the base's constructors, then the range init over the other's elements
-     * -- MSL's vector copy, five high with the base chain, so Props' copy is inlined one level */
-    Sequence(const Sequence &s)
-    {
-        __seq_init<T>::init(this, s.data_, s.data_ + s.size_);
-    }
+     * MSL's vector copy -- the words zeroed by the base's constructors, then the range init over
+     * the other's elements (include/vector: 0x328FC0, 0x3290D0, 0x329220) */
+    Sequence(const Sequence &s) : std::vector<SequenceEntry<T> >(s) {}
     /* MSL's const element read (include/vector has only the non-const one) */
     const SequenceEntry<T> &operator[](unsigned int n) const { return this->data_[n]; }
 };

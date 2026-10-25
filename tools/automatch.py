@@ -921,7 +921,7 @@ def hand_defined() -> set[str]:
     definitions, and the inline copies it emits byte-exact. A copy that misses supersedes no
     draft -- the linker keeps a strong definition over every unit's copy, as sccheck scores it
     (zsnd_csndsequence.cpp's ~__vector_deleter against the draft of 0x34A5A0)."""
-    names, copies = set(), {}
+    names, copies, own = set(), {}, {}
     obj_root = HERE / "build" / "obj"
     for o in obj_root.rglob("*.o"):
         if "auto" in o.relative_to(obj_root).parts:
@@ -932,21 +932,37 @@ def hand_defined() -> set[str]:
                     copies.setdefault(f.name, []).append(o)
                 else:
                     names.add(f.name)
+                    own.setdefault(o, []).append(f.name)
         except Exception:
             pass
     img, st = E.image(), E.symbols()
+
+    def home(o):
+        # an address of the unit's own: its template copies are linked in that overlay
+        for n in own.get(o, ()):
+            a = st.address_of(n)
+            if a is not None:
+                return a
+        return None
+
     for name, objs in copies.items():
-        if name in names:
-            continue
         try:
-            sym = st.get(name)
+            named = st.get(name)
         except KeyError:
             continue
         for o in objs:
+            # sccheck scores a copy against its own overlay's row when the map lists one there
+            # (`ovl-copy:`): a match there supersedes that row's draft, under the row's name
+            sym, h = named, home(o)
+            if h is not None and st.overlay_of(named.addr) != st.overlay_of(h):
+                a = st.address_in(name, h)
+                if a is not None and a != named.addr and st.at_addr(a) is not None:
+                    sym = st.at_addr(a)
+            if sym.name in names:
+                continue
             try:
                 if D.compare(o, name, sym, img, st).match:
-                    names.add(name)
-                    break
+                    names.add(sym.name)
             except Exception:
                 pass
     return names

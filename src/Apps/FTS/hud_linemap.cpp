@@ -8,6 +8,7 @@
  * (-inline deferred). */
 
 #include "../../gamez/zmath/zmath.h"
+#include <map>
 
 /* a point iterator over a line (SOCOM 1's CPtItr: only its vtable) */
 class CPtItr {
@@ -71,25 +72,32 @@ extern "C" int func_0032E970(const _zrdr *rdr, const char *name, int *value, int
 extern "C" int func_0032DE80(const _zrdr *rdr, const char *name, PNT3D *value);        /* zrdr_findPNT3D */
 int zrdr_findreal(const _zrdr *rdr, const char *name, float *value, int n);
 
-/* a line or polygon type's look (SOCOM 1's DWARF) */
+/* a line or polygon type's look (SOCOM 1's DWARF); built white, half opaque, one wide -- the
+ * colour's three stores in reverse, as one chained assignment gives them (operator[]'s new
+ * element: the tree's find_or_insert, 0x210AA0) */
 class LINE_DATA {
 public:
+    LINE_DATA()
+    {
+        color.x = color.y = color.z = 255.0f;
+        opacity = 128.0f;
+        _fWidth = 1.0f;
+    }
+
     PNT3D color;   // 0x0
     float opacity;   // 0xc
     float _fWidth;   // 0x10
 };
 
-/* the types by id: two std::map<int, LINE_DATA> (OVL1 bss; no include/map yet, so the tree's
- * find_or_insert -- operator[]'s out-of-line half -- is called by its placeholder on the maps'
- * addresses: the pair's value 4 bytes in) */
-struct LINE_PAIR {
-    int first;
-    LINE_DATA second;
-};
+namespace {
 
-extern "C" LINE_PAIR *func_00210AA0(void *tree, const int &key);
-extern unsigned char data_0040BF40[];   /* the line types */
-extern unsigned char data_0040BF60[];   /* the polygon types */
+/* the types by id (SOCOM 1's statics; OVL1 bss 0x40BF40, 0x40BF60, built and registered for
+ * destruction by the unit's initialiser, 0x3FE190). The tree's members are this unit's tail,
+ * 0x210AA0-0x2113C0 (include/tree) */
+std::map<int, LINE_DATA> g_mapLineProps;
+std::map<int, LINE_DATA> g_mapPolyProps;
+
+}
 
 /* a type's colour, opacity (0-1, kept as 0-127) and width out of the reader (SOCOM 1's one line:
  * an inline) */
@@ -114,7 +122,7 @@ void hudAddLineType(_zrdr *pRdr)
     int type = 0;
 
     func_0032E970(pRdr, "Type", &type, 1);
-    ReadLineData(pRdr, func_00210AA0(data_0040BF40, type)->second);
+    ReadLineData(pRdr, g_mapLineProps[type]);
 }
 
 /* a polygon type, the same way */
@@ -123,5 +131,5 @@ void hudAddPolyType(_zrdr *pRdr)
     int type = 0;
 
     func_0032E970(pRdr, "Type", &type, 1);
-    ReadLineData(pRdr, func_00210AA0(data_0040BF60, type)->second);
+    ReadLineData(pRdr, g_mapPolyProps[type]);
 }

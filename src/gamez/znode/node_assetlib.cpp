@@ -203,9 +203,11 @@ CModel *CAssetLib::AddModel(CModel *model)
 
 /* a palette added, unless it is listed already when asked to check (SOCOM 1's).
  * OPEN, 2 instructions short (0xC8 of 0xD0): the target re-reads m_palettes.data_ at every test of
- * the walk while keeping size_ * 4 hoisted -- an end() through data()'s reference would do that
- * (see ~CAssetLib); every loop form tried (!(==), postfix, const_iterator, raw pointers, the end
- * built from data() by hand) hoists the whole end */
+ * the walk while keeping size_ * 4 hoisted; every loop form tried (!(==), postfix, const_iterator,
+ * raw pointers, the end built from data() by hand) hoists the whole end. byte-exact with include/vector's __vector_pod::end() as `return data() + size_;` (the end
+ * read through data()'s reference) -- measured over every hand-written unit (2026-10-25, the world
+ * lane): CGrid::Destroy, CWorld::GenerateLandmarkList, CWorld::DeleteChildren and
+ * CAssetLib::AddPalette match, CCharacterType::Create (one level taller) is lost; waits on include/ */
 CTexPalette *CAssetLib::AddPalette(CTexPalette *pal, bool check)
 {
     bool add = true;

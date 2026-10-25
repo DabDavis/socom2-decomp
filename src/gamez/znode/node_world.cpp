@@ -290,8 +290,10 @@ struct DeleteCell {
 
 /* every child taken off: the others first, then the cells, the list emptied (SOCOM 1's).
  * OPEN, 2 instructions (0x27C of 0x274): each end() reloads data_ where the target computes it from
- * the load begin() made (the pod vector's end() lever, as ~CAssetLib's); the functors and the
- * transforms' copies are the target's */
+ * the load begin() made; the functors and the transforms' copies are the target's. byte-exact with include/vector's __vector_pod::end() as `return data() + size_;` (the end
+ * read through data()'s reference) -- measured over every hand-written unit (2026-10-25, the world
+ * lane): CGrid::Destroy, CWorld::GenerateLandmarkList, CWorld::DeleteChildren and
+ * CAssetLib::AddPalette match, CCharacterType::Create (one level taller) is lost; waits on include/ */
 void CWorld::DeleteChildren()
 {
     std::transform(m_child.begin(), m_child.end(), m_child.begin(), ReleaseNonCell(this));
@@ -344,7 +346,10 @@ void CWorld::LandmarkList_Search(CNode *node, CStack &stack, CNodeVector &list)
  * OPEN, 10 instructions (the right size): the local vector's field addresses trade saved
  * registers -- the target holds &size_ in s0 and &data_ in s1 (SOCOM 1's the other way round, as
  * here); not the declaration order of the vector, the stack or the count, a plain std::vector, the
- * clear's place, a postfix step or a pointer walk */
+ * clear's place, a postfix step or a pointer walk. byte-exact with include/vector's __vector_pod::end() as `return data() + size_;` (the end
+ * read through data()'s reference) -- measured over every hand-written unit (2026-10-25, the world
+ * lane): CGrid::Destroy, CWorld::GenerateLandmarkList, CWorld::DeleteChildren and
+ * CAssetLib::AddPalette match, CCharacterType::Create (one level taller) is lost; waits on include/ */
 int CWorld::GenerateLandmarkList()
 {
     CNodeVector landmarks;
@@ -379,7 +384,7 @@ void LightList_Search(CNode *node, CLightList &lights)
 
         if (node->GetType() == 8) {
             if ((light = dynamic_cast<CLight *>(node)) != 0)
-                ((PtrListBase &)lights).insert(ListBegin(lights), (const void *const &)light);
+                lights.insert(lights.begin(), light);
         }
         if (node->m_visual.size()) {
             for (CVisualVector::iterator it = node->m_visual.begin(), e = node->m_visual.end(); it != e;
@@ -404,17 +409,17 @@ void LightList_Search(CNode *node, CLightList &lights)
 }
 
 /* the lights gathered afresh, each placed in the world and listed in every cell its range covers
- * in x/z, their count given back (SOCOM 1's). The clear and the walk's first node both bind the
- * sentinel's link by reference (znode.h's ListClear and PtrListFirst, SOCOM II's begin()): the
- * target computes &m_lights.end_.next_ once, before the clear, and reads the walk's first node
- * through it after the search; the iterator is assigned (a bitwise copy, then kept in memory) */
+ * in x/z, their count given back (SOCOM 1's). The clear and the walk's first node both read the
+ * sentinel through a reference (include/list's begin(), SOCOM II's): the target computes
+ * &m_lights.end_.next_ once, before the clear, and reads the walk's first node through it after
+ * the search; the iterator is assigned (a bitwise copy, then kept in memory) */
 int CWorld::GenerateLightList()
 {
-    ListClear(m_lights);
+    m_lights.clear();
     LightList_Search(this, m_lights);
     CLightList::iterator it, e = m_lights.end();
 
-    for (it = CLightList::iterator(PtrListFirst(m_lights.end_node().next_)); it != e; ++it) {
+    for (it = m_lights.begin(); it != e; ++it) {
         CLight *light = *it;
         CPnt3D pos(0.0f, 0.0f, 0.0f);
         CPnt3D bounds[2];
@@ -587,9 +592,9 @@ IntersectStruct *CWorld::GetAltitude(const CPnt3D *p, float alt)
     return 0;
 }
 
-/* every ground hit under a point, characters not hit, no node ignored (SOCOM 1's; the height is
- * not read) */
-DiIntersect *CWorld::GetAltitudes(const CPnt3D *p, float alt)
+/* every ground hit under a point, characters not hit, no node ignored (SOCOM 1's; SOCOM II takes
+ * no height -- none of its five callers sets $f12, the SEAL lane's reading) */
+DiIntersect *CWorld::GetAltitudes(const CPnt3D *p)
 {
     bool was = m_diInt->m_IntersectCharacters;
 

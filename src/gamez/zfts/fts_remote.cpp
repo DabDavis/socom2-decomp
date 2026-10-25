@@ -129,6 +129,8 @@ public:
 
     void RemoteWeaponDamageNonVictim(DAMAGE_LOCATION where, CZSealBody *victim, CZSealBody *shooter,
                                      unsigned char c, bool flag);
+    void RemoteWeaponDamageVictim(DAMAGE_LOCATION where, float damage, float f, CZSealBody *victim,
+                                  CZSealBody *shooter, unsigned char c, bool flag);
 };
 
 class CZVehicle {
@@ -269,7 +271,6 @@ int func_00541CC0(int id);
 void func_0059E830(CZSealBody *body, unsigned short who, int id, void *c, int obj);
 void func_002C0040(bool on);
 void func_002C4290(int me);   /* CZPersonaState::RequestTeamSwitch (SOCOM II's one argument) */
-int func_002BAF30(int a, int b, int who, void *data);   /* E3IndexPacketHandler */
 void func_002C34F0(int value);
 struct VotePacket;
 int func_002B9BD0(int a, int b, int who, VotePacket *p);
@@ -375,25 +376,6 @@ extern "C" bool func_002BD270(NetFieldCompare *cmp)
         return true;
     return false;
 }
-
-/* an int clamped into [lo, hi], saying whether it moved (a template instance closing the unit:
- * SOCOM 1's _saturate<int>, which SendHitMessage calls on each of its bytes -- out of line, so
- * pinned, MW auto-inlining no template function;
- * OVL1 0x2BD220) */
-#pragma auto_inline off
-extern "C" bool func_002BD220(int &v, const int &lo, const int &hi)
-{
-    if (hi < v) {
-        v = hi;
-        return true;
-    }
-    if (v < lo) {
-        v = lo;
-        return true;
-    }
-    return false;
-}
-#pragma auto_inline reset
 
 /* a client disconnected: its word and its pending slot cleared; in a game already under way,
  * fewer than three clients left with no word set abandons it, and otherwise the game's object
@@ -514,12 +496,12 @@ void SendHitMessage(int shooter, int victim, int part, float damage, float f, bo
     p.victim = victim;
     p.c = c;
     d = (int)damage;
-    func_002BD220(d, 0, 255);
+    _saturate(&d, 0, 255);
     p.damage = d;
     g = (int)(20.0f * f);
-    func_002BD220(g, 0, 255);
+    _saturate(&g, 0, 255);
     p.m_6 = g;
-    func_002BD220(part, 0, 15);
+    _saturate(&part, 0, 15);
     p.part = part;
     p.flag = flag;
     theNetwork.zNetSendApplicationMessage(64, theNetwork.GetGameConnectionIndex(), -1,
@@ -538,37 +520,33 @@ struct CMissionInfo {
     unsigned short m_mode;   // 0x4
 };
 
-extern "C" void func_005A1B80(CZSealBody *body, DAMAGE_LOCATION where, CZSealBody *victim,
-                              CZSealBody *shooter, float damage, float f, unsigned char c,
-                              bool flag);   /* (the victim's own damage, OVL2) */
 
 /* a hit: in a game under way, outside game modes 1 and 2, the victim takes it -- its own client's
  * damage for a local victim, the remote one's for a remote victim (SOCOM 1's; OVL1 0x2BBBD0).
- * OPEN, 18 instructions, registers only: the mode test's shape is the target's (`true` hoisted into
- * the first beq's delay slot, a `move zero` fall-through), but the target keeps the constant 1 in
- * v0 and the bool in a0 where this has a0 and a1; the bitfield byte's v0/v1 trade places; and the
- * OVL2 damage call (0x5A1B80, still a placeholder, so called as a C function) sets a0 before a3
- * and t1 where the target -- a member call, `this` loaded last -- sets it after them. Tried: the
- * test as a switch inline (cases 2, 1 and 1, 2), `if (m == 1 || m == 2) return true;`, two early
- * returns, bool locals for each compare (`one || two` folds into the range test, `sltiu`), and
- * the plain `||` (folds too). 0x5A1B80 is SOCOM 1's RemoteWeaponDamageVictim(DAMAGE_LOCATION,
- * float, float, CZSealBody *, CZSealBody *, unsigned char, bool) (right after NonVictim in both
- * builds, the same registers): measured with the row renamed and the member called, the call's
- * moves match and 13 differ (the mode test's and the bitfield's registers). The member call waits
- * on that OVL2 row's name (the SEAL lane's) */
+ * OPEN, 6 instructions, registers only. The mode test matches with the mode passed to the inline as
+ * an `int` (round 13: the parameter takes the loaded halfword, which frees v0 for the constant 1 and
+ * a0 for the bool; read inside the inline -- straight, through a mode local, as a member of the
+ * info, or as an unsigned short parameter -- they land in a0/a1, and round 12's shapes, a switch,
+ * early returns, bool locals and `||`, all miss), and the victim's damage is SOCOM 1's member
+ * RemoteWeaponDamageVictim (0x5A1B80, named by the SEAL lane: `this` loaded last, the call's moves
+ * the target's). Left: the bitfield byte's v0/v1 trade places with the 0.05 constant's (the target
+ * loads the constant ahead of the byte and extracts the flag ahead of the part; tried the four
+ * locals in six orders, the product cast, swapped, split and through a constant local, the
+ * bitfields as unsigned int, bool and signed char, the flag `!= 0` and as a ternary, the part
+ * through an int or unsigned char local -- none moves them) */
 /* whether the mission's mode takes no hits (the name ours: the handler's test materialised) */
-inline bool NoHitMode()
+inline bool NoHitMode(int mode)
 {
     bool b = true;
 
-    if (theMission.m_info->m_mode != 1 && theMission.m_info->m_mode != 2)
+    if (mode != 1 && mode != 2)
         b = false;
     return b;
 }
 
 int HitPacketHandler(int, int, int, void *data)
 {
-    if (!NoHitMode()) {
+    if (!NoHitMode(theMission.m_info->m_mode)) {
         CZNetGame *game = theMission.m_pNetGame;
 
         if (game && game->m_mp_major_game_state == 3) {
@@ -582,7 +560,7 @@ int HitPacketHandler(int, int, int, void *data)
 
             if (victim && shooter) {
                 if (!(victim->m_ctrl ? victim->m_ctrl->IsRemote() : false))
-                    func_005A1B80(victim, where, victim, shooter, damage, f, p->c, flag);
+                    victim->RemoteWeaponDamageVictim(where, damage, f, victim, shooter, p->c, flag);
                 else
                     victim->RemoteWeaponDamageNonVictim(where, victim, shooter, p->c, flag);
             }
@@ -868,7 +846,7 @@ struct E3IndexPacket {
 
 extern "C" void (*data_0044F3C8)(const char *event, const char *arg);   /* (the lobby's UI event) */
 
-extern "C" int func_002BAF30(int, int, int, void *data)
+int E3IndexPacketHandler(int, int, int, void *data)
 {
     E3IndexPacket *p = (E3IndexPacket *)data;
 
@@ -918,7 +896,7 @@ void NetSendE3Index(int who, unsigned int index, int flag)
     p.index = index;
     p.flag = flag;
     if (who == theNetwork.zNetGetMyGameClientIndex())
-        func_002BAF30(0, 0, theNetwork.zNetGetMyGameClientIndex(), &p);
+        E3IndexPacketHandler(0, 0, theNetwork.zNetGetMyGameClientIndex(), &p);
     else
         theNetwork.zNetSendApplicationMessage(64, theNetwork.GetGameConnectionIndex(), who,
             data_00440E30, 8, (unsigned char *)&p, false);
@@ -1018,7 +996,6 @@ struct ChatPacket {
 
 extern "C" {
 extern unsigned int data_00440E40;   /* PacketTypeChat */
-int func_002BA9D0(int a, int b, int who, void *data);   /* ChatPacketHandler */
 const char *func_002C3A70(int client);   /* (a client's name, fts_net_persona.cpp's) */
 }
 
@@ -1062,7 +1039,7 @@ public:
  * not hold, empty, or from an ignored player; else the history's last 20 lines and the new one
  * (its sender's name, Team or All) made the chat variable's new value (SOCOM 1's
  * ChatPacketHandler, its history in a UI variable; OVL1 0x2BA9D0) */
-extern "C" int func_002BA9D0(int, int, int who, void *data)
+int ChatPacketHandler(int, int, int who, void *data)
 {
     ChatPacket *p = (ChatPacket *)data;
     CZNetGame *game = theMission.m_pNetGame;
@@ -1132,7 +1109,7 @@ void AuxSendChatMsg(const char *text, void *arg)
     strcpy(p->text, text);
     theNetwork.zNetSendApplicationMessage(64, theNetwork.GetGameConnectionIndex(),
         arg ? *(int *)arg : -1, data_00440E40, size, (unsigned char *)p, false);
-    func_002BA9D0(0, 0, theNetwork.zNetGetMyGameClientIndex(), p);
+    ChatPacketHandler(0, 0, theNetwork.zNetGetMyGameClientIndex(), p);
     _free(p, 0, 0);
 }
 

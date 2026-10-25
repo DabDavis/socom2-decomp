@@ -85,6 +85,11 @@ public:
  * SetDIBBox news) */
 class CDIBBox : public CDI {
 public:
+    CDIBBox();
+    virtual ~CDIBBox();
+    virtual int GetIntersect(DiIntersect *di);
+    virtual int GetAltitude(DiIntersect *di);
+
     const CBBox *m_bbox;   // 0x14 (after CDI's points pointer at 0x10)
 };   // 0x18 bytes
 

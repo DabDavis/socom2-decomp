@@ -11,11 +11,10 @@
 using namespace zdb;
 
 extern "C" {
-/* not yet written here (placeholders): the vehicle's half of the tick, its definitions' parse
- * and resize, and the AI maps' cell lookup, map and region fill (OVL2) */
+/* not yet written here (placeholders): the vehicle's half of the tick and the AI maps' cell
+ * lookup, map and region fill (OVL2) */
 void func_003ACC10(CVehicle *vehicle, float dT);
 void func_003AD3B0(CVehicle *vehicle);
-void func_003AE750(CVehicleDefVector *v, unsigned int n);   /* the definitions resized (Init calls it) */
 int func_0052DC70(CAiMaps *maps, const CPnt3D *pos, unsigned int *loc);
 void *func_0052E6B0(CAiMaps *maps, unsigned int mapid);
 void func_00515880(void *map, CPnt3D *corners, void *region);
@@ -49,6 +48,32 @@ const CVehicleDef *CVehicleDefVector::PrefixMatch(const char *name)
     return 0;
 }
 #pragma auto_inline reset
+
+/* the definitions read: the vector sized to the "VEHICLE" list's pairs, each parsed from its name
+ * and value (CTurretDefVector::Init's twin). The resize is include/vector's, over CVehicleDef's
+ * inline constructor: it and its erase (0x3AE750, 0x3AE800) are byte-exact in this unit's template
+ * tail; its insert (0x3AF040) is 8 bytes short -- include/vector's open class insert (the in-place
+ * branch's end pointer in a fresh register in the target), and the target inlines the temporary's
+ * destructor where this unit's copy calls it (the tail's generation order). The tail's deleter
+ * destructor and clear at 0x3AFAA0/0x3AFB10 are NOT CVehicleDef's, though their code is the same:
+ * ~CVehicle (0x3ACA60, not written) calls 0x3AFAA0 for its region's vector at 0x18C. */
+int CVehicleDefVector::Init(const char *name, const char *path)
+{
+    _zrdr *rdr = zrdr_read(name, path, 0);
+
+    if (rdr) {
+        _zrdr *list = zrdr_findtag(rdr, "VEHICLE");
+        unsigned int i;
+        unsigned int n = (list ? list->Count() : 0) / 2;
+
+        i = 0;
+        resize(n);
+        for (iterator it = begin(); it != end(); ++it, i += 2)
+            (*it).Parse(list->Item(i)->String(), list->Item(i + 1));
+    }
+    zrdr_free((CRdrFile *)rdr);
+    return size();
+}
 
 int CVehicle::Init(const char *name, const char *path)
 {
