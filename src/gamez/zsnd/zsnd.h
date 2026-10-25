@@ -102,6 +102,8 @@ public:
     static CSnd *GetSoundByName(const char *name);
     static void SetGroupVol(int group, float vol);
     static void LoadReverbs(_zrdr *rdr);
+    static void LoadIndoorReverbs(_zrdr *rdr);
+    static void LoadOutdoorReverbs(_zrdr *rdr);
     static void Close();
     static void Open();
     static void UIOpen();

@@ -6122,8 +6122,8 @@
 0x003414B0 0x8 func_003414B0  # OVL1
 0x003414C0 0x8 func_003414C0  # OVL1
 0x003414D0 0x24 SetGroupVol__4CSndFif  # OVL1; s1:order by hand (SOCOM 1's SetGroupVol, the same body: 1024 times the level to snd_SetMasterVolume for the group passed through)
-0x00341500 0x1B0 func_00341500  # OVL1
-0x003416B0 0x1B0 func_003416B0  # OVL1
+0x00341500 0x1B0 LoadOutdoorReverbs__4CSndFP5_zrdr  # OVL1; SOCOM II's, name ours (the OutdoorReverb records likewise; LoadReverbs calls it second)
+0x003416B0 0x1B0 LoadIndoorReverbs__4CSndFP5_zrdr  # OVL1; SOCOM II's, name ours (the IndoorReverb records' Depth and Seconds pushed into two tables; LoadReverbs calls it first)
 0x00341860 0x70 LoadReverbs__4CSndFP5_zrdr  # OVL1; s1:align; SOCOM II's, name ours (was SetGroupVol__4CSndFif by s1:align, wrong: it takes no float -- it clears four vectors and four levels and hands its argument, the reverb record, to the indoor and outdoor loaders; SOCOM 1's SetGroupVol body is 0x3414D0's)
 0x003418D0 0x4C func_003418D0  # OVL1
 0x00341920 0x8 GetNumSounds__4CSndFv  # OVL1; SOCOM II's, name ours (CSnd's vtable slot 0x30, returning 0; CSndGroup's override, 0x347C70, returns its member count)

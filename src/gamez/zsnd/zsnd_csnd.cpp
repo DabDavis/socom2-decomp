@@ -23,6 +23,7 @@ extern CSndVocalQueue data_0048DEE0;
 
 extern _zrdr *data_0048DF18;            /* the sounds file (GetSoundRdrFile's) */
 extern bool snd_system_initialized;
+extern "C" int func_0032EA80(_zrdr *rdr, const char *tag, float *out, int n);   /* zrdr_findreal */
 extern "C" int toupper(int c);
 
 _zrdr *zrdr_read(const char *name, const char *file, int line);
@@ -185,8 +186,61 @@ void CSnd::WaitForCDRead()
  * (names not known) */
 extern std::vector<unsigned int> data_0048DB68, data_0048DB88, data_0048DBA8, data_0048DBC8;
 extern int data_003DFFB0, data_003DFFB8, data_003DFFC0, data_003DFFC8;
-extern "C" void func_003416B0(_zrdr *rdr);     /* the IndoorReverb records */
-extern "C" void func_00341500(_zrdr *rdr);     /* the OutdoorReverb records */
+
+/* a reverb record into its two tables: depth (to 32767) and time (to 240 ticks); the count
+ * starts at 0 from -1 (ours: the loaders read both values before it, as arguments) */
+static inline void AddReverb(std::vector<unsigned int> &depths, std::vector<unsigned int> &times,
+                             int &count, float depth, float seconds)
+{
+    if (count == -1)
+        count = 0;
+    depths.push_back((int)(32767.0f * depth));
+    times.push_back((int)(240.0f * seconds));
+    count++;
+}
+
+/* a reverb record list read into its two tables. Pinned: LoadReverbs calls both */
+#pragma auto_inline off
+void CSnd::LoadIndoorReverbs(_zrdr *rdr)
+{
+    _zrdr *list = func_0032F0D0(rdr, "IndoorReverb");
+
+    if (!list)
+        return;
+    int n = list->Count();
+
+    for (unsigned int i = 0; (int)i < n; i++) {
+        _zrdr *item = list->Item(i);
+        float depth = 0.0f;
+
+        func_0032EA80(item, "Depth", &depth, 1);
+        float seconds = 0.0f;
+
+        func_0032EA80(item, "Seconds", &seconds, 1);
+        AddReverb(data_0048DB88, data_0048DB68, data_003DFFB8, depth, seconds);
+    }
+}
+
+void CSnd::LoadOutdoorReverbs(_zrdr *rdr)
+{
+    _zrdr *list = func_0032F0D0(rdr, "OutdoorReverb");
+
+    if (!list)
+        return;
+    int n = list->Count();
+
+    for (unsigned int i = 0; (int)i < n; i++) {
+        _zrdr *item = list->Item(i);
+        float depth = 0.0f;
+
+        func_0032EA80(item, "Depth", &depth, 1);
+        float seconds = 0.0f;
+
+        func_0032EA80(item, "Seconds", &seconds, 1);
+        AddReverb(data_0048DBC8, data_0048DBA8, data_003DFFC8, depth, seconds);
+    }
+}
+#pragma auto_inline reset
 
 void CSnd::LoadReverbs(_zrdr *rdr)
 {
@@ -198,8 +252,8 @@ void CSnd::LoadReverbs(_zrdr *rdr)
     data_003DFFB0 = -1;
     data_003DFFC8 = -1;
     data_003DFFC0 = -1;
-    func_003416B0(rdr);
-    func_00341500(rdr);
+    LoadIndoorReverbs(rdr);
+    LoadOutdoorReverbs(rdr);
 }
 
 void CSnd::SetGroupVol(int group, float vol)
