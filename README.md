@@ -1697,6 +1697,31 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - fts_net_platform.cpp (0x2C7910-0x2C875F, the turrets' network objects, CZPlatformState after its
     "PlatformState" registration -- the names ours) sits between fts_missioncam.cpp and a unit from
     0x2C8760.
+- **Tells from the weapons, round 6** (the def vectors, the flyout machine, the decal sets, CZMarkList):
+  - giving an element class its real layout and an inline constructor made include/vector's resize
+    and erase byte-exact for it (CVehicleDef: 0x3AE750, 0x3AE800 at 0x840 bytes); the class
+    inserts stay open everywhere (0x3AF040 8 bytes short, 0x3D3D90 16), and they call the
+    temporary's destructor where the target inlines it -- the template tail's generation order;
+  - computing a count into a local before zeroing the counter puts the zero in the next call's
+    delay slot (both def-vector Inits);
+  - a loop with its own loop variable gets a preheader, and MW hoists a stored constant into it
+    (PlacedExplosive::PostTick);
+  - an inline bool `return !p;` used as a loop test is sltu/xori; an inline returning a bitfield
+    compared `== false` gives andi/sltu;
+  - an assignment inside the second operand of `||` delays that load until after the first test;
+  - `r = 1 + rand() % 990; r /= 10;` builds the sum in the result's register;
+  - two loops sharing one counter declared after the count reproduce the second loop's registers;
+  - clearing each array element through a pointer local reloads the array base for every element
+    (the target's unrolled shape);
+  - assigning through an inline accessor returning a reference keeps the add base-first on every
+    statement; an inline setter with a by-value argument loads it before the free;
+  - matrix diagonal stores keep source order only when written one matrix at a time; CMatrix's
+    default constructor is the target's unit-matrix call (no SetIdentity);
+  - a global's address taken between two tests lands in those tests' delay slots;
+  - seal_env.cpp defines its own CZDecalDef and sees zweapon.h through zseal.h, so CZDecalDef,
+    CZDecalSet and CZMarkList live in zwep_weapon.cpp (0x3D0470-0x3D17CF), not the header;
+    zwep_weapon.cpp's template tail runs through 0x3D4260 and zwep_ammo.cpp starts at 0x3D4380;
+    the placed-explosive pointer vector (0x3D4810-0x3D4B7F) opens the flyout unit.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
