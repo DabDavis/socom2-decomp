@@ -86,6 +86,8 @@ void func_005F0830(CSealCtrlAi *ai, unsigned int *loc, int mode, int kind, int s
  * set with a float) */
 void func_00558590(void *obj);
 void func_00563050(CSealCtrlAi *ai, int a, int b, float f);
+/* a look or a goal at a point (OVL2 0x561110, the SEAL lane's row) */
+void func_00561110(CSealCtrlAi *ai, int kind, const CPnt3D *pos, float t);
 /* (OVL2 0x5628F0, 0x5B3890: the SEAL lane's rows -- the first on the controller, the second on
  * the SEAL) and a byte of the SEAL lane's (OVL2 bss 0x66AFE0, cleared by a hold) */
 void func_005628F0(CSealCtrlAi *ai);
@@ -310,6 +312,46 @@ void CAiSShotAt::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
 inline void SetBit17(CSealCtrlAi *ai, bool on)
 {
     ai->m_bit17 = on;
+}
+
+/* an event's events: reset (its points cleared, its clock to -1); on entry the AI's mode 4 and
+ * the flags' bits 4 and 5; a sub-state hands it a look at one of its points (bit 8, bit 0 picking)
+ * or the AI's own (bit 7); done on the way out unless bit 6 asked for more (OVL2 0x605A80;
+ * SOCOM 1's) */
+void CAiSEvent::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
+{
+    switch (sig) {
+    case SIGNAL_4:
+        m_rnd_min = 1.0f;
+        m_rnd_range = 2.0f;
+        m_80 = 0.5f;
+        m_58 = 0;
+        m_pos = CPnt3D::zero;
+        m_pos2 = CPnt3D::zero;
+        m_8e = 0;
+        m_88 = 0;
+        m_8c = 0;
+        m_8d = 0;
+        m_time = -1.0f;
+        break;
+    case SIGNAL_0:
+        ai->SetAiMode((AI_MODE)4);
+        SetFlags(0x30, 0);
+        break;
+    case SIGNAL_1:
+        if (m_flags & 0x100) {
+            func_00561110(ai, 3, (m_flags & 1) ? &m_pos2 : &m_pos, -1.0f);
+        } else if (m_flags & 0x80)
+            func_00561110(ai, 2, 0, -1.0f);
+        func_00600D40(ai, 5);
+        break;
+    case SIGNAL_2:
+        break;
+    case SIGNAL_3:
+        m_active = (m_flags & 0x40) != 0;
+        SetFlags(0, 0x40);
+        break;
+    }
 }
 
 /* the hold's signed-byte count (a file static: its Tick reads it too; OVL2 data 0x650E10) */

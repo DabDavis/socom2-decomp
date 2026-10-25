@@ -6,6 +6,7 @@
  * of their image order (-inline deferred). */
 
 #include "../gamez/zseal/zseal.h"
+#include "../gamez/zanim/zanim.h"
 
 extern "C" {
 /* a CSealCtrlAi function (OVL2 0x56D090, the SEAL lane's range), called twice on leaving the
@@ -41,12 +42,44 @@ struct CAiCtrlStack {
     CAiStateStack m_stack;   // 0x41c
 };
 
+/* a SEAL of the player's side (an inline bool accessor: its callers keep the sltu) */
+inline bool NavySeal(CSealCtrlAi *ai)
+{
+    return ai->m_navyseal;
+}
+
+/* a word of masks changed: `clear` cleared, `set` set (inlined with constants; the controller's
+ * word at 0x488 -- zseal.h does not name it; the name ours) */
+struct CAiCtrl488 {
+    unsigned char _0[0x488];
+    unsigned int m_488;   // 0x488
+};
+
+inline void SetMask488(CSealCtrlAi *ai, unsigned int set, unsigned int clear)
+{
+    ((CAiCtrl488 *)ai)->m_488 &= ~clear;
+    ((CAiCtrl488 *)ai)->m_488 |= set;
+}
+
 /* the state an empty stack answers with (SOCOM 1's _unknown, 0x509870: this unit's static,
  * built by its initialiser; OVL2 bss 0x66B990 -- declared here, not defined, so this unit emits
  * no initialiser yet) */
 extern CAiSUnknown _unknown;
 
 extern "C" {
+/* the controller's helpers the goto's events call (OVL2 0x555810, 0x555820, 0x5558A0, 0x5558D0
+ * -- the SEAL lane's rows), the stance set after a delay (0x563100) and a squad's call on the
+ * controller's word at 0x10C (0x5E7660, seal_unit.cpp's, a byte-exact draft) */
+bool func_00555810(CSealCtrlAi *ai);
+void func_00555820(CSealCtrlAi *ai, int x);
+unsigned char func_005558A0(CSealCtrlAi *ai);
+void func_005558D0(CSealCtrlAi *ai);
+void func_00563100(CSealCtrlAi *ai, signed char stance, float delay);
+void func_005E7660(void *unit);
+/* a CSealCtrl call taking a signed byte (OVL2 0x600D40, unwritten) and CZSealBody's weapon state
+ * (named) */
+void func_00600D40(CSealCtrlAi *ai, int x);
+void SetWeaponState__10CZSealBodyF12WEAPON_STATE(CEntity *seal, int state);
 /* CPickup's and the AI maps' (OVL1 0x5416C0 named; OVL2 0x52DC70, 0x529A30, the AI core's rows:
  * a cell for a point, and SOCOM 1's free FindTraversableNeighbor) */
 unsigned int GetPickupNetEntityID__7CPickupFv(CPickup *p);
@@ -190,6 +223,107 @@ void CAiStateStack::Clear()
     for (i = s.begin(); i != e; ++i)
         delete *i;
     erase(begin(), end());
+}
+
+/* the controller's bit word at 0x264 (SOCOM 1's 0x280: zseal.h names bits 0 and 1 only; the
+ * names ours) and the setters the target passes a bool through */
+struct CAiCtrl264 {
+    unsigned char _0[0x264];
+    unsigned int m_b0 : 13;
+    unsigned int m_bit13 : 1;   // 0x265 bit 5
+    unsigned int m_b14 : 2;
+    unsigned int m_bit16 : 1;   // 0x266 bit 0
+    unsigned int m_bit17 : 1;   // 0x266 bit 1
+    unsigned int m_b18 : 14;
+};
+
+inline void SetBit264_13(CSealCtrlAi *ai, bool on)
+{
+    ((CAiCtrl264 *)ai)->m_bit13 = on;
+}
+
+inline void SetBit264_17(CSealCtrlAi *ai, bool on)
+{
+    ((CAiCtrl264 *)ai)->m_bit17 = on;
+}
+
+/* a breach's events: on entry no goal, the order byte cleared, crouched, the bit off; on leaving
+ * for a sub-state its valve to 3 (a live SEAL's), weapon down, the bits set; a reset clears it
+ * (OVL2 0x5F3620; SOCOM 1's) */
+void CAiSBreach::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
+{
+    CEntity *seal = ai ? ai->m_entity : 0;
+
+    switch (sig) {
+    case SIGNAL_0:
+        ai->ClearGoal(GOAL_NONE);
+        func_00600D40(ai, -1);
+        func_005631A0(ai, 1);
+        SetBit264_13(ai, false);
+        break;
+    case SIGNAL_1:
+        if (!seal->m_isAlive && m_valve)
+            m_valve->SetValue(3);
+        SetWeaponState__10CZSealBodyF12WEAPON_STATE(seal, 2);
+        ((CAiCtrl264 *)ai)->m_bit16 = m_bit13 != 0;
+        SetBit264_17(ai, false);
+        ((CAiCtrl264 *)ai)->m_bit13 = true;
+        break;
+    case SIGNAL_2:
+        break;
+    case SIGNAL_3:
+        break;
+    case SIGNAL_4:
+        m_64 = 0;
+        m_70 = 0;
+        m_74 = 0;
+        m_6c = 0;
+        m_90 = 0;
+        m_78 = 0;
+        m_valve = 0;
+        break;
+    }
+}
+
+/* the controller's word at 0x10C (CSealCtrl's; zseal.h does not name it) */
+struct CAiCtrl10C {
+    unsigned char _0[0x10c];
+    void *m_10c;   // 0x10c
+};
+
+/* a goto's events: reset (no goal, the invalid cell); on entry the stance after half a second
+ * (not for the player's side) and the controller's mask bit 5; the bit off for a sub-state; at
+ * the end the route given up unless arrived (OVL2 0x5F5010; SOCOM 1's) */
+void CAiSGoto::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
+{
+    switch (sig) {
+    case SIGNAL_4:
+        m_cell = *(unsigned int *)&CAiMapLoc::invalid;
+        m_pos = CPnt3D::zero;
+        m_6c = 1.0f;
+        m_58 = 0;
+        m_74 = 400.0f;
+        break;
+    case SIGNAL_0:
+        if (NavySeal(ai) == false)
+            func_00563100(ai, 0, 0.5f);
+        SetMask488(ai, 0x20, 0);
+        func_005E7660(((CAiCtrl10C *)ai)->m_10c);
+        break;
+    case SIGNAL_1:
+        SetMask488(ai, 0, 0x20);
+        break;
+    case SIGNAL_2:
+        func_005558D0(ai);
+        break;
+    case SIGNAL_3:
+        if (m_phase != 4 && func_00555810(ai)) {
+            if (func_005558A0(ai) == 2)
+                UpdatePhase(0);
+            func_00555820(ai, 0);
+        }
+        break;
+    }
 }
 
 /* a bit of a CBits set (inlined; zmath.h's CBits has Test and Clear only -- the name ours) */

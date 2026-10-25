@@ -16,6 +16,8 @@
 
 #include <list>
 
+#include "../gamez/zmath/zmath.h"
+
 class CSealCtrlAi;
 class CAiEvent;
 
@@ -187,10 +189,22 @@ public:
 
 class CAiSBreach : public CAiState {
 public:
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual bool CanPursue(CSealCtrlAi *ai) const { return false; }
     /* +0x3C (the name ours, by slot) */
     virtual bool Virtual3C() { return false; }
     virtual ~CAiSBreach();
+
+    unsigned char _58[0x64 - 0x58];
+    unsigned int m_64;   // 0x64
+    unsigned char _68[0x6c - 0x68];
+    unsigned int m_6c;   // 0x6c
+    unsigned int m_70;   // 0x70
+    unsigned int m_74;   // 0x74
+    unsigned int m_78;   // 0x78
+    class CValve *m_valve;   // 0x7c: set to 3 when the breach begins (unless the SEAL is dead)
+    unsigned char _80[0x90 - 0x80];
+    unsigned int m_90;   // 0x90
 };
 
 class CAiSScript : public CAiState {
@@ -218,10 +232,18 @@ public:
 
 class CAiSGoto : public CAiState {
 public:
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     /* +0x3C and +0x40 (the names ours, by slot) */
     virtual bool Virtual3C() { return !(m_flags & 4); }
     virtual bool Virtual40() { return true; }
     virtual ~CAiSGoto();
+
+    unsigned int m_58;   // 0x58
+    CPnt3D m_pos;   // 0x5c: the goal (zero on a reset)
+    unsigned int m_cell;   // 0x68: a CAiMapLoc (the invalid cell on a reset)
+    float m_6c;   // 0x6c (1.0 on a reset)
+    unsigned char _70[0x74 - 0x70];
+    float m_74;   // 0x74 (400.0 on a reset)
 };
 
 class CAiSPickup : public CAiState {
@@ -346,9 +368,25 @@ public:
 
 class CAiSEvent : public CAiState {
 public:
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual bool CanAttack() const { return !(m_flags & 0xc); }
     virtual bool CanPursue(CSealCtrlAi *ai) const { return false; }
     virtual ~CAiSEvent();
+
+    unsigned char m_58;   // 0x58
+    unsigned char _59[0x5c - 0x59];
+    CPnt3D m_pos;   // 0x5c: where it happened
+    CPnt3D m_pos2;   // 0x68: a second point (the flags' bit 0 picks it)
+    float m_rnd_min;   // 0x74: an Rfloat (1.0 and 2.0 on a reset)
+    float m_rnd_range;   // 0x78
+    unsigned int m_cell;   // 0x7c: a CAiMapLoc
+    float m_80;   // 0x80 (0.5 on a reset)
+    unsigned char _84[0x88 - 0x84];
+    unsigned int m_88;   // 0x88
+    unsigned char m_8c;   // 0x8c
+    unsigned char m_8d;   // 0x8d
+    unsigned char m_8e;   // 0x8e
+    unsigned char _8f[0xa0 - 0x8f];
 };
 
 class CAiSStunResponse : public CAiState {
