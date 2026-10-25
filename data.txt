@@ -558,7 +558,7 @@
 0x004083D0 0x10 __vt__12CZProjectile  # vtable of CZProjectile: found by its RTTI's name
 0x004083E0 0x10 __vt__8CZWeapon  # vtable of CZWeapon: found by its RTTI's name
 0x004083F0 0x14 __vt__17CProjectileNodeEx  # vtable of CProjectileNodeEx: found by its RTTI's name
-0x004084C0 0x210 theGame  # OVL1 bss; size SOCOM 1's; at 0x4084C0, not the data-seq pass's 0x4084CC (a field): 43 references take 0x4084C0 as the object
+0x004084C0 0x2B0 theGame  # OVL1 bss; size COurGame's (main.cpp: its destructor and constructor reach the reboot state at 0x2A0, 8 bytes, and CCoreState's matrices align it to 16; SOCOM 1's was 0x210); at 0x4084C0, not the data-seq pass's 0x4084CC (a field): 43 references take 0x4084C0 as the object
 0x00408C10 0x4 load_thread_stack  # OVL1 bss; SOCOM 1's name (its static array for the load thread's stack; SOCOM II's is a pointer to one allocated once): 7 references in 2 functions take 0x408C10 (CCoreState's StartLoadThread and FreeLoadThread)
 0x00408D80 0x4 animfile__21@unnamed@st_exit_cpp@  # OVL1 bss; SOCOM 1's static (CExitState::Init opens the screen's anims into it, UnInit closes them): 4 references in 2 functions take 0x408D80
 0x00408DB8 0x4 g_pSkbLib__21@unnamed@st_menu_cpp@  # OVL1 bss; SOCOM 1's static (the soft keyboard's library, released in CMenuState::UnInit as in SOCOM 1): 4 references in 2 functions take 0x408DB8 (CMenuState's Init and UnInit)
@@ -617,6 +617,7 @@
 0x0044F108 0x8 m_pads__6CInput  # OVL1 bss; s1:data-seq (size SOCOM 1's; via DeletePad__6CInputFUi +1)
 0x0044F110 0x1 m_init__6CInput  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Init__6CInputFv)
 0x0044F118 0x4 m_keyboard__6CInput  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Init__6CInputFv)
+0x0044F370 0x98 theLobby  # OVL1 bss; s1 by hand (SOCOM 1's COurGame::StartEngine and StopEngine pass theLobby to CZOnlineLobby's Init and UnInit; SOCOM II's pass 0x44F370 at the same two places, UnInit__13CZOnlineLobbyFv named); size SOCOM 1's
 0x0044F45C 0x4 uiv_GameClock__24@unnamed@zNetMedius_cpp@  # OVL1 bss; s1:data-seq (size SOCOM 1's; via SyncGameClock__13CZOnlineLobbyFi)
 0x00450080 0x1000 m_stack__6CStack  # OVL1 bss; s1:data-seq by hand (__sinit_zmath_matrix.cpp constructs 64 CMatrix here where SOCOM 1 constructs m_stack__6CStack)
 0x00451080 0x1 tableInit  # OVL1 bss; s1:data-seq (size SOCOM 1's; via init_trig_table__Fv +1)

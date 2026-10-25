@@ -9,6 +9,7 @@
 
 extern "C" {
 void *memset(void *p, int c, unsigned int n);
+char *strncpy(char *dst, const char *src, unsigned int n);
 
 /* the EE kernel's (eekernel.h) */
 struct ThreadParam {
@@ -42,7 +43,9 @@ void zVid_Sync0();
  * film's restore); SOCOM II's struct runs past SOCOM 1's 0x80 bytes to the flags at 0x90-0x92.
  * The field names are ours */
 struct CZVidState {
-    unsigned char _0[0x30];
+    unsigned char _0[0x1c];
+    float frameTime;   // 0x1c (SOCOM 1's _zvid_public::frameTime: the game's tick)
+    unsigned char _20[0x30 - 0x20];
     int m_30;   // 0x30
     int m_34;   // 0x34
     unsigned char _38[0x44 - 0x38];
@@ -304,21 +307,63 @@ public:
     int m_20;   // 0x20
 };
 
-/* MSL's basic_string as the states hold it: three words, all zero when made (SOCOM II's library
- * makes it inline). A stand-in until a string model exists: the calls on it are the map's
- * (assign is func_001EEB40) */
-struct CStateString {
-    CStateString()
+/* MSL's basic_string as the states hold it (CodeWarrior 3.0's: three words, the short form's text
+ * in place after the first byte, bit 0 of the first word set for the long form; its reserve's
+ * "basic_string::reserve length_error"). A stand-in until a string model exists: the class and
+ * its template arguments are MSL's so the names mangle as the map's, the members only what the
+ * states use (assign is func_001EEB40).
+ * The levels are fitted: the default constructor is three high (COurGame's constructor inlines
+ * CMenuState's one level -- calling CGameState's constructor, CSaferStr's and SetDefaultMenu out
+ * of line -- while CCinematicState's, as tall but for the strings, inlines whole), and the
+ * destructor is never inlined (main.cpp's destructors call 0x1E7EF0, the instance closing the
+ * unit, with -1 for a member and 0 for CSaferStr's base) */
+#include <memory>
+
+namespace std {
+template <class charT> struct char_traits {};
+
+template <class charT, class traits = char_traits<charT>, class Allocator = allocator<charT> >
+class basic_string {
+public:
+    basic_string() { init(); }
+    ~basic_string();
+
+    void reserve(unsigned int n);
+
+    /* the short form: its text in place after the first byte (bit 0 of the first word clear) */
+    bool IsShort() const { return !(w[0] & 1); }
+    const charT *c_str() const { return IsShort() ? (const charT *)this + 1 : (const charT *)w[2]; }
+
+    unsigned int w[3];
+
+private:
+    void init() { clear_words(); }
+    void clear_words()
     {
         w[0] = 0;
         w[1] = 0;
         w[2] = 0;
     }
-    /* the short form: its text in place after the first byte (bit 0 of the first word clear) */
-    bool IsShort() const { return !(w[0] & 1); }
-    const char *c_str() const { return IsShort() ? (const char *)this + 1 : (const char *)w[2]; }
+};
 
-    unsigned int w[3];
+#pragma auto_inline off
+template <class charT, class traits, class Allocator>
+basic_string<charT, traits, Allocator>::~basic_string()
+{
+    if (w[0] & 1)
+        operator delete((void *)w[2]);
+}
+#pragma auto_inline reset
+
+typedef basic_string<char> string;
+}
+
+typedef std::string CStateString;
+
+/* a string that is never null (SOCOM 1's: MSL's basic_string and nothing more) */
+class CSaferStr : public std::string {
+public:
+    CSaferStr() {}
 };
 
 /* the end of a mission: its stats shown on the splash screen's menu. SOCOM II's strings are
@@ -372,6 +417,20 @@ public:
  * selection sound is at 0x2C, the default menu at 0x30, the reboot handle at 0x70) */
 class CMenuState : public CGameState {
 public:
+    /* named, the intro screen first, room for the two sound names (SOCOM 1's, line for line; the
+     * menu and the reboot handle left alone). Only COurGame's constructor makes one, inlining
+     * this one level */
+    CMenuState() : CGameState("MenuState"), m_skip(0), m_skip_swap(0), SelectionSound(0)
+    {
+        SetDefaultMenu("dlgIntroScreen.rdr");
+        TtySoundString.reserve(64);
+        BackSoundString.reserve(64);
+    }
+
+    /* the menu the front end opens on (SOCOM II's out-of-line copy at 0x1E7B50; the name ours --
+     * CLoadState::AbortLoad's strncpy is it inlined) */
+    void SetDefaultMenu(const char *name) { strncpy(m_DefaultMenu, name, 64); }
+
     virtual bool Init();
     virtual bool Tick(float dT);
     virtual void UnInit();
@@ -383,8 +442,8 @@ public:
     CMenuStateMenu *m_menu;   // 0x8
     int m_skip;   // 0xc
     int m_skip_swap;   // 0x10
-    CStateString TtySoundString;   // 0x14
-    CStateString BackSoundString;   // 0x20
+    CSaferStr TtySoundString;   // 0x14
+    CSaferStr BackSoundString;   // 0x20
     void *SelectionSound;   // 0x2c
     char m_DefaultMenu[64];   // 0x30
     int m_iopregh;   // 0x70
@@ -400,6 +459,22 @@ public:
 
 class CCinematicState : public CGameState {
 public:
+    /* SOCOM 1's (inlined whole in COurGame's constructor): no film, the fade's time -1; SOCOM II's
+     * flags and items cleared, in the target's store order */
+    CCinematicState() : CGameState("Cinematic")
+    {
+        m_moviename = 0;
+        m_movierunning = false;
+        m_fadeTime = -1.0f;
+        m_2a = true;
+        m_29 = true;
+        m_3c = false;
+        m_3d = false;
+        m_2c = 0;
+        m_items[2] = 0;
+        m_items[1] = 0;
+        m_items[0] = 0;
+    }
     virtual ~CCinematicState();
     virtual bool Init();
     virtual bool Tick(float dT);
@@ -411,25 +486,81 @@ public:
     int m_videoSave[2];   // 0x14 (SOCOM 1's)
     int m_1c;   // 0x1c
     int m_20;   // 0x20
-    unsigned char _24[0x29 - 0x24];
+    float m_fadeTime;   // 0x24 (SOCOM 1's at 0x1c)
+    unsigned char m_28;   // 0x28
     unsigned char m_29;   // 0x29
     unsigned char m_2a;   // 0x2a: the film is up
-    unsigned char _2b[0x30 - 0x2b];
+    unsigned char _2b;
+    int m_2c;   // 0x2c
     CCinematicItem *m_items[3];   // 0x30
+    unsigned char m_3c;   // 0x3c
+    unsigned char m_3d;   // 0x3d
+    unsigned char _3e[0x64 - 0x3e];
+};
+
+/* SOCOM II's states for turning the console off and rebooting it (vtables 0x405AE0 and 0x405B10:
+ * their own Init, Tick and UnInit; their constructors, 0x22EB50 and 0x22EC90, in their own unit) */
+class CShutdownState : public CGameState {
+public:
+    CShutdownState();
+    virtual bool Init();
+    virtual bool Tick(float dT);
+    virtual void UnInit();
+};
+
+class CRebootState : public CGameState {
+public:
+    CRebootState();
+    virtual bool Init();
+    virtual bool Tick(float dT);
+    virtual void UnInit();
+};
+
+/* the game: its states, its stack of them, the tick (gamez/zgame's CGame; SOCOM 1's DWARF, SOCOM
+ * II's 0x78 bytes -- the constructor clears through m_pad at 0x74) */
+class CGameState;
+
+class CGame {
+public:
+    CGame();
+    virtual ~CGame();
+    virtual void StartPlay();
+    virtual void StopPlay();
+    virtual bool StartEngine();
+    virtual void StopEngine();
+    virtual void Tick(float dT);
+
+    unsigned char m_Active;   // 0x4
+    CGameState *m_InitialState;   // 0x8
+    unsigned int m_CurrentState;   // 0xc
+    CGameState *m_TestVariable;   // 0x10
+    CGameState *m_Stack[16];   // 0x14
+    int m_MinIdlePeriod;   // 0x54
+    unsigned char m_StateChangeQueue[0x70 - 0x58];   // 0x58
+    int m_70;   // 0x70
+    int m_pad;   // 0x74
 };
 
 /* the game: its state stack, then its states -- SOCOM 1's at 0x7C, 0xE0, 0x100, 0x1C0, 0x1D8,
  * 0x1F0; SOCOM II's menu state at 0x78 (its m_skip at 0x84), load state at 0xEC, core state at
- * 0x110, exit state at 0x1E0, multiplayer exit state at 0x208 */
-class COurGame {
+ * 0x110, exit state at 0x1E0, multiplayer exit state at 0x208, the film at 0x234, and its two new
+ * states at 0x298 and 0x2A0 (its destructor's order) */
+class COurGame : public CGame {
 public:
-    unsigned char _0[0x74];
-    int m_pad;   // 0x74 (SOCOM 1's CGame::m_pad)
+    COurGame();
+    virtual void StartPlay() { CGame::StartPlay(); }
+    virtual void StopPlay() { CGame::StopPlay(); }
+    virtual bool StartEngine();
+    virtual void StopEngine();
+
     CMenuState m_menuState;   // 0x78
     CLoadState m_loadState;   // 0xec
     CCoreState m_coreState;   // 0x110
     CExitState m_exitState;   // 0x1e0
     CMPExitState m_MPexitState;   // 0x208
+    CCinematicState m_cinematicSubState;   // 0x234
+    CShutdownState m_shutdownState;   // 0x298 (the names ours)
+    CRebootState m_rebootState;   // 0x2a0
 };
 
 /* the game's state stack (SOCOM 1's CGame; unnamed yet) */
@@ -475,6 +606,7 @@ public:
 class CMission {
 public:
     static void _RecoverFromNetError(int error);
+    void Init();
     void ReOpen_Load();
     void ReOpen_Unload1();
     void ReOpen_Unload2();
