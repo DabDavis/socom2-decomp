@@ -5679,10 +5679,10 @@
 0x00322800 0x5E4 func_00322800  # OVL1
 0x00322DF0 0x17BC func_00322DF0  # OVL1
 0x003245B0 0x13C PullVisuals__8ParticleFPQ23zdb5CNodePQ23zdb9CDIVector  # OVL1; s1:align
-0x003246F0 0x2C func_003246F0  # OVL1
-0x00324720 0x7C func_00324720  # OVL1
-0x003247A0 0x7C func_003247A0  # OVL1
-0x00324820 0xBC func_00324820  # OVL1
+0x003246F0 0x2C FlushDynTexList__8ParticleFv  # OVL1; s1:order by hand (SOCOM 1's FlushDynTexList, after PullVisuals: both of m_dyntexlist's vectors emptied and given up; SOCOM II calls a template instance for each, 0x3247A0 and 0x324720, which follow it) -- the rdr lane
+0x00324720 0x7C ReleaseVector<Q23zdb11CTexPalette>__FRQ23std68vector<PQ23zdb11CTexPalette,Q23std31allocator<PQ23zdb11CTexPalette>>_v  # OVL1; the rdr lane: zonline.h's ReleaseVector (the same 0x7C) on m_dyntexlist's palettes (0x45C46C): FlushDynTexList calls it second, Close's inlined copy too; the instances follow FlushDynTexList in reverse first use
+0x003247A0 0x7C ReleaseVector<Q23zdb10CTexHandle>__FRQ23std66vector<PQ23zdb10CTexHandle,Q23std30allocator<PQ23zdb10CTexHandle>>_v  # OVL1; the rdr lane: zonline.h's ReleaseVector on m_dyntexlist's textures (0x45C460): FlushDynTexList calls it first
+0x00324820 0xBC Close__8ParticleFv  # OVL1; s1:order by hand (SOCOM 1's Close, after FlushDynTexList: the dynamic textures freed, Source::List and Instance::List Uninit, the pool emptied through the destructor, RemoveTask("ParticleTick"), the node pool freed -- SOCOM II adds the purge 0x326FF0 and calls FreeNodePool) -- the rdr lane
 0x003248E0 0xE4 FreeNodePool__8ParticleFv  # OVL1; s1:order by hand (SOCOM 1's FreeNodePool, after Close in its unit: every pooled node through CNode::Delete, the count zeroed, the vector swapped empty; SOCOM II's Close calls it last) -- the rdr lane
 0x003249D0 0x34 func_003249D0  # OVL1
 0x00324A10 0x50 AddDynTexture__8ParticleFPQ23zdb10CTexHandle  # OVL1; s1:exact
@@ -5710,7 +5710,7 @@
 0x00327560 0x4C Render__Q28Particle20Destruction_InstanceFRC7CMatrix  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003275B0 0x70 func_003275B0  # OVL1
 0x00327620 0x14C func_00327620  # OVL1
-0x00327770 0x90 func_00327770  # OVL1
+0x00327770 0x90 __dt__Q28Particle20Destruction_InstanceFv  # OVL1; the rdr lane: Destruction_Instance's destructor (its table stored, the world's DeleteChild on the node at 0x58, then Instance's: its table and the virtual Expire, deleted when the flag is positive); Particle::Close deletes the pooled pieces through it with 1
 0x00327800 0x10C func_00327800  # OVL1
 0x00327910 0x35C Render__Q28Particle8InstanceFRC7CMatrix  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00327C70 0x58 Expire__Q28Particle8InstanceFv  # OVL1; s1:align (slot 0x08 of Particle::Instance's table 0x406A00; SOCOM 1's Expire calls DecRefCount as this does, and ReleaseInstance, which SOCOM II's leaves to the pool)
@@ -5722,7 +5722,7 @@
 0x003280A0 0xCC func_003280A0  # OVL1
 0x00328170 0x140 Tick__Q38Particle8Instance4ListFf  # OVL1; s1:calls by hand (Particle::Tick calls it on Instance::list (0x488480) with dT, right after copying the camera's position, as SOCOM 1's Tick calls Instance::List::Tick) -- the rdr lane
 0x003282B0 0x2C0 Tick__Q28Particle8InstanceFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00328570 0x74 func_00328570  # OVL1
+0x00328570 0x74 Uninit__Q38Particle8Instance4ListFv  # OVL1; s1:calls by hand (Particle::Close calls it on Instance::list (0x488480) next, as SOCOM 1's Close calls Instance::List::Uninit) -- the rdr lane
 0x003285F0 0xDC func_003285F0  # OVL1
 0x003286D0 0x80 GetOpacity__Q28Particle5PropsCFf  # OVL1; s1:order by hand (SOCOM 1's GetOpacity, 0x80 against 0x88 (no load-delay nops): zero outside nearFade1..farFade2 (0x48/0x54), the ramps through invNearFade/invFarFade (0x58/0x5C), else 1) -- the rdr lane
 0x00328750 0x108 GetScale__Q28Particle5PropsCFfRf  # OVL1; s1:order by hand (SOCOM 1's GetScale, between GetOpacity and GetColor: the scale sequence (+0x1C) searched as GetTexture's, the value interpolated between the keys around the age, held at the ends, 1 when empty) -- the rdr lane
@@ -5769,7 +5769,7 @@
 0x0032AD20 0x3F0 func_0032AD20  # OVL1
 0x0032B110 0x8 func_0032B110  # OVL1
 0x0032B120 0x58 Create__Q28Particle6SourceFv  # OVL1; s1:align, checked (SOCOM 1's Create: a new source built (0x32A800) and pushed on the source list at 0x4884F0; CZAnim::GetParticleSource calls it)
-0x0032B180 0x90 func_0032B180  # OVL1
+0x0032B180 0x90 Uninit__Q38Particle6Source4ListFv  # OVL1; s1:calls by hand (Particle::Close calls it on Source::list (0x4884F0) first after the textures, as SOCOM 1's Close calls Source::List::Uninit) -- the rdr lane
 0x0032B210 0x43C insert__Q23std130__vector_imp<Q28Particle34SequenceEntry<PQ23zdb10CTexHandle>,Q23std58allocator<Q28Particle34SequenceEntry<PQ23zdb10CTexHandle>>,0>FPQ28Particle34SequenceEntry<PQ23zdb10CTexHandle>UiRCQ28Particle34SequenceEntry<PQ23zdb10CTexHandle>  # OVL1; s1:callee by hand (TextureSequenceAdd's push_back calls it where SOCOM 1's calls this name: the texture sequence's insert, 0x43C against 0x41C) -- the rdr lane
 0x0032B650 0x53C insert__Q23std106__vector_imp<Q28Particle22SequenceEntry<6CPnt4D>,Q23std46allocator<Q28Particle22SequenceEntry<6CPnt4D>>,0>FPQ28Particle22SequenceEntry<6CPnt4D>UiRCQ28Particle22SequenceEntry<6CPnt4D>  # OVL1; s1:callee by hand (ColorSequenceAdd's push_back calls it where SOCOM 1's calls this name: the CPnt4D sequence's insert, 0x53C against 0x4EC) -- the rdr lane
 0x0032BB90 0x43C insert__Q23std94__vector_imp<Q28Particle16SequenceEntry<f>,Q23std40allocator<Q28Particle16SequenceEntry<f>>,0>FPQ28Particle16SequenceEntry<f>UiRCQ28Particle16SequenceEntry<f>  # OVL1; s1:callee by hand (ScaleSequenceAdd's push_back calls it where SOCOM 1's calls this name: the float sequence's insert, 0x43C against SOCOM 1's 0x41C) -- the rdr lane

@@ -15,7 +15,12 @@
 class CSched_Manager {
 public:
     void AddTask(const char *name, bool (*task)(float, void *), float interval, void *data);
+    void RemoveTask(const char *name, bool all);
 };
+
+/* the instances and their pools emptied (SOCOM II's, in zparticle_instance.cpp's range; not named
+ * yet) */
+extern "C" void func_00326FF0();
 extern CSched_Manager zTaskScheduler;
 
 namespace zdb {
@@ -33,13 +38,52 @@ public:
 };
 }
 
+/* a list emptied and its storage given up (zonline.h's ReleaseVector, the same template: not
+ * inline, so an instance per list follows FlushDynTexList, the textures' at 0x3247A0 and the
+ * palettes' at 0x324720, each with the whole body inlined) */
+template <class T>
+void ReleaseVector(std::vector<T *> &v)
+{
+    std::vector<T *> tmp;
+
+    v.clear();
+    v.swap(tmp);
+}
+
 namespace Particle {
 
 /* the nodes visuals borrow (SOCOM 1's pool: 160 made at the start, handed out and taken back) */
 std::vector<zdb::CNode *> particle_node_free_list;   // 0x45C440
 int particle_node_count;   // 0x45C428
+/* the textures particles draw with (SOCOM 1's) */
+zdb::CDynTexList m_dyntexlist;   // 0x45C460
+
 
 bool Tick(float dT, void *data);
+void FreeNodePool();
+
+/* SOCOM 1's: the dynamic textures let go of */
+void FlushDynTexList()
+{
+    ReleaseVector(m_dyntexlist.m_tex_list);
+    ReleaseVector(m_dyntexlist.m_pal_list);
+}
+
+/* SOCOM 1's: everything let go of -- the textures, the sources and instances, the pooled pieces
+ * (SOCOM II's purge first), the tick, the node pool */
+void Close()
+{
+    Destruction_Instance *p;
+
+    FlushDynTexList();
+    Source::list.Uninit();
+    Instance::list.Uninit();
+    func_00326FF0();
+    while ((p = Destruction_Instance::m_instance_pool.Pop()) != 0)
+        delete p;
+    zTaskScheduler.RemoveTask("ParticleTick", false);
+    FreeNodePool();
+}
 
 /* SOCOM 1's: every pooled node deleted, the pool's storage given back */
 void FreeNodePool()

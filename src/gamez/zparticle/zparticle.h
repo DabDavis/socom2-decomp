@@ -49,7 +49,18 @@ public:
 
 namespace zdb {
 class CTexHandle;
+class CTexPalette;
 class CModel;
+/* a buffer's dynamic textures (znode.h's classes: two pointer vectors) */
+class CTexList : public std::vector<CTexHandle *> {
+};
+class CTexPalList : public std::vector<CTexPalette *> {
+};
+class CDynTexList {
+public:
+    CTexList m_tex_list;   // 0x0
+    CTexPalList m_pal_list;   // 0xc
+};   // 0x18 bytes
 /* zdb::CNode, as much as the particles call (znode.h would bring zmath.h's CPnt4D with it) */
 class CNode {
 public:
@@ -93,6 +104,31 @@ public:
 }
 
 namespace Particle {
+
+class Source;
+
+/* a free list threaded through its objects' second word (SOCOM 1's instance pool, SOCOM II's two;
+ * the class is ours): Close and the purge pop it through an inline whose emptiness test is an
+ * inline bool of its own, a negation (the target materialises it, sltu/xori, before the branch)
+ * and the head read once into the result */
+template <class T>
+class InstancePool {
+public:
+    bool Empty() const { return !m_head; }
+    T *Pop()
+    {
+        T *p = m_head;
+
+        if (!Empty()) {
+            m_head = (T *)p->m_next;
+            p->m_next = 0;
+        } else
+            p = 0;
+        return p;
+    }
+
+    T *m_head;
+};
 
 /* one key of a sequence: the fraction of the life it applies from, its value (SOCOM 1's DWARF) */
 template <class T>
@@ -222,6 +258,7 @@ public:
     class List {
     public:
         void Tick(float dT);
+        void Uninit();
 
         unsigned char _0[0xc];
     };   // 0xc bytes
@@ -233,7 +270,11 @@ public:
     static int spawnFactor;   // 0x488450
     static List list;   // 0x488480
 
-    unsigned char _4[0x8];   // 0x4
+    union {
+        Source *m_source;   // 0x4: the emitter (SOCOM 1's; Expire drops its count)
+        Instance *m_next;   // 0x4: the next free instance, in a pool
+    };
+    unsigned char _8[0x4];   // 0x8
     float m_age;   // 0xc
     unsigned char _10[0x10];   // 0x10
     float m_pos[3];   // 0x20
@@ -243,7 +284,10 @@ public:
  * node it moves at 0x58 */
 class Destruction_Instance : public Instance {
 public:
+    ~Destruction_Instance();
     void Render(const CMatrix &m);
+
+    static InstancePool<Destruction_Instance> m_instance_pool;   // 0x488468
 
     unsigned char _2c[0x1c];   // 0x2c
     float m_lifespan;   // 0x48
@@ -261,6 +305,8 @@ class Source {
 public:
     /* the live sources (SOCOM 1's Source::List, a list of them) */
     class List : public std::list<Source *> {
+    public:
+        void Uninit();
     };
 
     void Tick(float dT);
