@@ -3720,11 +3720,11 @@
 0x002A00A0 0xC func_002A00A0  # OVL1
 0x002A00B0 0xC func_002A00B0  # OVL1
 0x002A00C0 0x60 __dt__11CEntityListFv  # OVL1; s1:ref (taken by address where SOCOM 1 takes __dt__11CEntityListFv's)
-0x002A0120 0x38 func_002A0120  # OVL1
-0x002A0160 0x28 func_002A0160  # OVL1
-0x002A0190 0x70 func_002A0190  # OVL1
-0x002A0200 0x108 func_002A0200  # OVL1
-0x002A0310 0x140 func_002A0310  # OVL1
+0x002A0120 0x38 GetRange__7CTargetFv  # OVL1; s1:order by hand (SOCOM 1's GetRange, 0x1EF920, first of ent_target.cpp's: the range's square root taken once, flag bit 0 -- a word masked by hand at 0x2C in SOCOM II, sqrt.s inline); ent_target.cpp
+0x002A0160 0x28 __ct__7CTargetFv  # OVL1; s1:order by hand (SOCOM 1's CTarget(), 0x1EFAD0, out of line as there: the entity, the distances, three new words and the flags word cleared); ent_target.cpp
+0x002A0190 0x70 FindTarget__11CTargetListFP7CEntity  # OVL1; s1:order by hand (SOCOM 1's FindTarget, 0x1EFBA0, after the constructor as there: the target whose entity matches, stepping 48 -- SOCOM II's CTarget is 0x30 bytes); ent_target.cpp
+0x002A0200 0x108 AddTarget__11CTargetListFP7CEntityP7CEntity  # OVL1; new in SOCOM II (UpdateTargetList calls it): a default CTarget pushed (vector<CTarget>::insert out of line), then SOCOM 1's CTarget::Update inlined on the back -- the vector to the target off the positions at 0x1C, its square, the range stale, a new target's state cleared; the name is ours; ent_target.cpp
+0x002A0310 0x140 RemoveTarget__11CTargetListFP7CEntity  # OVL1; new in SOCOM II (UpdateTargetList calls it): std::remove over the targets on an entity (find inlined, remove_copy 0x2A1210 called), then erase 0x2A19C0; the name is ours; ent_target.cpp
 0x002A0450 0x468 UpdateTargetList__7CEntityFb  # OVL1; s1:callee (CEntity::PreTickAll calls it with false and func_0029FB10, SOCOM 1's RecycleEntity(Ui,CEntity*,b), with true, at the places SOCOM 1's call UpdateTargetList__7CEntityFb, 0x1EFBF0); ent_target.cpp
 0x002A08C0 0x148 func_002A08C0  # OVL1
 0x002A0A10 0x3C8 func_002A0A10  # OVL1
@@ -3733,12 +3733,12 @@
 0x002A10C0 0x74 SetUpdateTargetList__7CEntityFb  # OVL1; s1:align
 0x002A1140 0x20 _sort_target__FRC7CTargetRC7CTarget  # OVL1; s1:align
 0x002A1160 0xAC func_002A1160  # OVL1
-0x002A1210 0xC4 func_002A1210  # OVL1
+0x002A1210 0xC4 remove_copy<Q33std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>8iterator,Q33std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>8iterator,P7CEntity>__3stdFQ33std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>8iteratorQ33std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>8iteratorQ33std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>8iteratorRCP7CEntity_Q33std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>8iterator  # OVL1; MSL's remove_copy over vector<CTarget> iterators (by value, homed) with the entity by reference, the result through the hidden return; RemoveTarget's inlined std::remove calls it (SOCOM 1's remove_copy<P7CTarget,P7CTarget,P7CEntity>, 0x1F0EF0, over raw pointers); ent_target.cpp
 0x002A12E0 0x59C func_002A12E0  # OVL1
 0x002A1880 0x128 func_002A1880  # OVL1
 0x002A19B0 0x8 func_002A19B0  # OVL1
-0x002A19C0 0x110 func_002A19C0  # OVL1
-0x002A1AD0 0x6FC func_002A1AD0  # OVL1
+0x002A19C0 0x110 erase__Q23std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>FP7CTargetP7CTarget  # OVL1; s1:name by hand (SOCOM 1's erase of vector<CTarget>, 0x1F1470, over raw pointers: the tail assigned down, the size cut; RemoveTarget calls it); ent_target.cpp
+0x002A1AD0 0x6FC insert__Q23std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>FP7CTargetUiRC7CTarget  # OVL1; s1:name by hand (SOCOM 1's insert of vector<CTarget>, 0x1F15C0: the length error, then the grow-or-shift; AddTarget's push_back calls it, and 0x2A1160); ent_target.cpp
 0x002A21D0 0x19C func_002A21D0  # OVL1
 0x002A2370 0x198 func_002A2370  # OVL1
 0x002A2510 0x44 UpdateNextPosition__7CEntityFv  # OVL1; s1:align

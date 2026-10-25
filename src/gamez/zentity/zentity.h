@@ -122,26 +122,41 @@ public:
     unsigned int m_rep[3];
 };
 
-/* what an entity knows of another (SOCOM 1's DWARF) */
+/* what an entity knows of another (SOCOM 1's DWARF, 0x28 bytes; SOCOM II's is 0x30 -- FindTarget
+ * steps 48 -- and keeps its flags in a word it masks by hand: GetRange tests and sets bit 0 with
+ * andi/ori on the word, where SOCOM 1's bitfield went through its byte) */
 class CTarget {
 public:
+    CTarget();
+    float GetRange();
+    /* the target seen again from an entity: the vector to it and its square, the range stale;
+     * a new target forgets what was known (SOCOM 1's, out of line there; SOCOM II reads the
+     * positions at 0x1C straight and has no null target. AddTarget inlines it) */
+    void Update(CEntity *self, CEntity *target);
+
     CEntity *m_ent;   // 0x0
     CPnt3D m_vec;   // 0x4
     float m_distSq;   // 0x10
-    float m_dist;   // 0x14
+    float m_dist;   // 0x14: the range, worked out on first use (flag bit 0)
     float m_visibility;   // 0x18
-    float m_aware;   // 0x1c
-    int m_diHandle;   // 0x20
-    unsigned int m_d_computed : 1;   // 0x24
-    unsigned int m_known : 1;
-    unsigned int m_visible : 1;
-    unsigned int m_hostile : 1;
-    unsigned int m_targeted : 1;
-    unsigned int m_dirty_di : 1;
-    unsigned int m_unused : 26;
+    float m_aware;   // 0x1c (left alone by the constructor)
+    float m_unk20;   // 0x20 (copied with lwc1/swc1: floats)
+    float m_unk24;   // 0x24
+    int m_unk28;   // 0x28
+    unsigned int m_flags;   // 0x2c: bit 0 the range is computed (SOCOM 1's m_d_computed)
 };
 
+/* a target is its entity, to std::find and std::remove (RemoveTarget) */
+inline bool operator==(const CTarget &t, const CEntity *e)
+{
+    return t.m_ent == e;
+}
+
 class CTargetList : public std::vector<CTarget> {
+public:
+    CTarget *FindTarget(CEntity *e);
+    void AddTarget(CEntity *self, CEntity *e);
+    void RemoveTarget(CEntity *e);
 };
 
 /* every entity, or a group of them (SOCOM 1's DWARF: a list of pointers and nothing more) */
@@ -298,5 +313,19 @@ public:
     static CEntityList m_target_add;
     static CEntityList m_target_rem;
 };
+
+inline void CTarget::Update(CEntity *self, CEntity *target)
+{
+    target->m_posW.Sub(&self->m_posW, &m_vec);
+    m_distSq = m_vec.x * m_vec.x + m_vec.y * m_vec.y + m_vec.z * m_vec.z;
+    m_flags &= ~1;
+    if (m_ent != target) {
+        m_ent = target;
+        m_unk20 = 0;
+        m_unk24 = 0;
+        m_unk28 = 0;
+        m_flags &= ~0xF00;
+    }
+}
 
 #endif

@@ -53,3 +53,51 @@ void CEntity::SetIncludeInTargetList(bool on)
     }
     m_include_in_targetlist = on;
 }
+
+/* the targets on an entity dropped (new in SOCOM II, UpdateTargetList's: std::remove inlined,
+ * its remove_copy and the erase called; the name is ours). The erase (0x2A19C0) matches.
+ * OPEN, 4 bytes short: MW inlines std::remove one level here -- find's iterator ==, * and the
+ * entity compare, and the iterator's copy constructor, called out of line -- where the target
+ * inlines find whole with its iterators in memory. remove_copy's copy (0x2A1210) is 8 bytes long:
+ * the target stores the m_ent its compare loaded, MW reloads it (the compare taking the entity by
+ * reference or by value alike) */
+void CTargetList::RemoveTarget(CEntity *e)
+{
+    erase(std::remove(begin(), end(), e), end());
+}
+
+/* a target added for an entity and seen at once (new in SOCOM II, UpdateTargetList's; the name
+ * is ours) */
+void CTargetList::AddTarget(CEntity *self, CEntity *e)
+{
+    push_back(CTarget());
+    back().Update(self, e);
+}
+
+/* the target on an entity, or none (SOCOM 1's; the end taken once, the walk's test the iterator's
+ * != materialised) */
+CTarget *CTargetList::FindTarget(CEntity *e)
+{
+    iterator last = end();
+
+    for (iterator it = begin(); it != last; ++it)
+        if ((*it).m_ent == e)
+            return &*it;
+    return 0;
+}
+
+/* nothing known yet (SOCOM 1's, out of line as there; SOCOM II's clears the flags word whole) */
+CTarget::CTarget()
+    : m_ent(0), m_distSq(0), m_dist(0), m_visibility(0), m_unk20(0), m_unk24(0), m_unk28(0), m_flags(0)
+{
+}
+
+/* the range, its square root taken once (SOCOM 1's) */
+float CTarget::GetRange()
+{
+    if (!(m_flags & 1)) {
+        m_dist = sqrtf(m_distSq);
+        m_flags |= 1;
+    }
+    return m_dist;
+}
