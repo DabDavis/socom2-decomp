@@ -44,6 +44,12 @@ enum SEAL_STATE {
     stateCarried = 10, stateDone = 11
 };
 
+/* how a SEAL died (SOCOM 1's DWARF, a byte) */
+enum SEAL_DEATH_TYPE {
+    DEATH_NONE = 0, DEATH_KNIFE_KILL = 1, DEATH_CQB = 2, DEATH_HEADSHOT = 3, DEATH_GRENADE = 4,
+    DEATH_BULLET = 5, DEATH_GHOST = 6, DEATH_FALLING = 7, DEATH_MAX = 8
+};
+
 /* the orders (SOCOM 1's DWARF, a byte: only the size matters here) */
 enum FT_COMMAND { CMD_UNKNOWN = 0, CMD_ACTION = 1, CMD_LAST = 255 };
 
@@ -239,12 +245,14 @@ public:
     virtual void OnRecycleEntity(CEntity *e);                               /* +0x54 */
     virtual void TeleportTo(const CPnt3D *pos, const CQuat *quat);          /* +0x3C */
     virtual void TeleportTo(const CMatrix *m);
+    virtual void OnDeath();                                                 /* +0x58 */
     virtual int Virtual5C();
     virtual int Virtual60();
     virtual int Virtual68();
 
     /* whether a player drives it (an inline the code shows: m_control tested, IsPlayer called) */
     bool IsPlayer() { return m_control ? ((CSealCtrl *)m_control)->IsPlayer() : false; }
+    float SetHealth(float health, enum SEAL_DEATH_TYPE type);
     void ResetAltitude(float y);
     void SetSnakePathUpdate(bool on, unsigned int length);
     void RestrainBuddy(CZSealBody *victim);
@@ -272,7 +280,11 @@ public:
     CCompassAnchor *m_mpbase_anchor;   // 0xec4 (SOCOM 1's 0xdb8)
     unsigned char _ec8[0xee0 - 0xec8];
     float m_wep_upT;   // 0xee0 (SOCOM 1's 0xdd0)
-    unsigned char _ee4[0x105c - 0xee4];
+    unsigned char _ee4[0xfb0 - 0xee4];
+    SEAL_DEATH_TYPE m_deathType;   // 0xfb0 (SOCOM 1's 0xea4)
+    unsigned char _fb1[0x1044 - 0xfb1];
+    float m_health;   // 0x1044 (SOCOM 1's 0xea0)
+    unsigned char _1048[0x105c - 0x1048];
     unsigned int m_HudUpdateViewCone : 1;   // 0x105c (SOCOM 1's 0xf58, the same bits)
     unsigned int m_hudwashit : 1;
     unsigned int m_aim_point_valid : 1;

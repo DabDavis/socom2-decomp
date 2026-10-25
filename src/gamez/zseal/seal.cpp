@@ -6,14 +6,23 @@
 
 #include "zseal.h"
 
+class CValve;
+
+/* a pickup (SOCOM 1's CPickup; only what this unit touches) */
 class CPickup {
 public:
     static CPickup *FindPickup(unsigned int id);
     static void DestroyNetPickups(unsigned int owner);
+
+    unsigned int m_0;   // 0x0
+    zdb::CNode *m_node;   // 0x4
+    CZProjectile *m_grenade;   // 0x8: a grenade's projectile
 };
 
 extern "C" {
 void func_005C7840(CZKit *kit);   /* CZKit::PostSetupItems (SOCOM 1's OnMissionStart calls it) */
+void func_003CAEE0(CZProjectile *proj, const CPnt3D *vel);   /* CZProjectile::SetVelW (SOCOM 1's
+                                                                 _rethrow_grenade calls it) */
 void func_00525200(void *path);   /* (a CAiPath reset: its member at 0x98's, tail-called) */
 void func_00525210(void *path, unsigned int length);   /* CAiPath::SetSnakeLength (SOCOM 1's
                                                           SetSnakePathUpdate calls it) */
@@ -24,6 +33,48 @@ struct CWorldCamera {
     unsigned char _0[0x128];
     zdb::CCamera *m_camera;   // 0x128
 };
+
+/* a picked-up grenade thrown back along the pickup's facing, lofted (OVL2 0x547700; SOCOM 1's
+ * function-local statics, initialised statically by MW 3.0) */
+static void _rethrow_grenade(CValve *valve, void *data)
+{
+    static float up = 80.0f;
+    static float scale = 150.0f;
+    CPickup *pickup = (CPickup *)data;
+
+    if (!pickup || !pickup->m_node)
+        return;
+    CZProjectile *grenade = pickup->m_grenade;
+    CPnt3D vel = *(CPnt3D *)pickup->m_node->m_matrix.m_matrix[2];
+
+    vel.y = up;
+    vel.x *= scale;
+    vel.z *= scale;
+    func_003CAEE0(grenade, &vel);
+}
+
+/* the health set: a living SEAL brought to nothing dies of the given cause, anything else is
+ * stored and the controller told (OVL2 0x5477A0; SOCOM 1's clamped and fiddled more) */
+float CZSealBody::SetHealth(float health, SEAL_DEATH_TYPE type)
+{
+    float old = m_health;
+
+    if (health != old) {
+        bool alive = m_isAlive;
+
+        if (alive || health <= 0.0f) {
+            if (alive && health <= 0.0f) {
+                m_health = 0.0f;
+                m_deathType = type;
+                OnDeath();
+            } else {
+                m_health = health;
+                ((CSealCtrl *)m_control)->OnSetHealth(health, old);
+            }
+        }
+    }
+    return m_health;
+}
 
 /* the snake path: on with a length, or off; already on, left alone (OVL2 0x546C40) */
 void CZSealBody::SetSnakePathUpdate(bool on, unsigned int length)

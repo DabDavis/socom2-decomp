@@ -10018,9 +10018,9 @@
 0x00547170 0x1D8 func_00547170  # OVL2
 0x00547350 0x21C func_00547350  # OVL2
 0x00547570 0x190 PickupObject__10CZSealBodyFP7CPickup  # OVL2; s1:calls
-0x00547700 0x7C func_00547700  # OVL2
+0x00547700 0x7C _rethrow_grenade__FP6CValvePv  # OVL2; s1:order (seal.cpp: after PickupObject, which registers it as a valve callback with the pickup, before ResetToInitialState, as SOCOM 1's); SOCOM 1's two statics (80, 150) and SetVelW, the pickup's fields a word on
 0x00547780 0x14 ResetToInitialState__10CZSealBodyFv  # OVL2; size 0x14 (a tail call through t9; the seed ran on into the padding); s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x005477A0 0xB4 func_005477A0  # OVL2
+0x005477A0 0xB4 SetHealth__10CZSealBodyFf15SEAL_DEATH_TYPE  # OVL2; s1:order (after ResetToInitialState, before OnDeath, as SOCOM 1's); m_health (0x1044) against the argument, OnDeath with the cause stored, or the controller's OnSetHealth(new, old)
 0x00547860 0x22C func_00547860  # OVL2
 0x00547A90 0x8 func_00547A90  # OVL2
 0x00547AA0 0x50 func_00547AA0  # OVL2
