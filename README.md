@@ -1642,6 +1642,30 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the rdr lane, round 4** (the save manager, CPipe's overlay and FIFO, the flare system):
+  - `buf[i] ^= key` on an unsigned char key sign-extends it, `c ^ key` zero-extends it; `key ^= key +
+    c` masks the sum before the xor, `key = key ^ (key + c)` does not (SaveDecrypt; SaveEncrypt is
+    open on the key's copy masked first and the raw key sign-extended);
+  - a member's address kept in a saved register across a loop needs a local pointer taken inside the
+    size guard; through the member, an inline's pointer parameter or an inline member's `this`, MW
+    adds the offset at every call;
+  - frame slots follow declaration order (Load and Save declare the header first, above the buffer
+    and the archive); a comparator that is an inline's local sits below begin()'s temporary, the
+    caller's own local above it;
+  - `ok = true;` written before a call lands in that call's delay slot;
+  - a constant loop of 14 is unrolled 7x, not whole: write the stores out when the target has all
+    fourteen;
+  - converting a float to an unsigned char inlines MW's float-to-unsigned check; through `(int)` it
+    is the plain `cvt.w.s`;
+  - reading an interrupt's command through a volatile pointer reloads a field after its test;
+  - a local cannot be named `list` inside a member of a class derived from std::list, nor `zar` where
+    namespace zar is in use: MW fails to parse;
+  - include/string's c_str() written short form first (`!is_long() ? s_.data_ : (const charT *)w_[2]`)
+    makes CSaveManager::Load (0x33D6D0) byte-exact (measured on a shadow include/ only);
+  - zrndr_pipe.cpp opens with the flare system (0x336230, the object at 0x488F10); 0x33C2A0-0x33CD4F
+    looks like its template tail (a vector of 112-byte elements); zsav_manager.cpp ends with SOCOM 1's
+    list sort<less<const void *> > and merge (0x33E510-0x33E7EF); a further unit runs
+    0x33E7F0-0x33F04F (helpers UICharacterProfile calls).
 - **Tells from the AI core, round 8** (the path's point vector, SmoothPath, the visibility tests):
   - a chain of `==` tests joined by `||` becomes a bit test; the target's two materialised ors come
     from explicit bools, the outer bool declared first and the value last;

@@ -4,18 +4,19 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
 s32 AddIntcHandler(M2C_UNK, M2C_UNK *, M2C_UNK);    /* extern */
 M2C_UNK EnableIntc(M2C_UNK);                        /* extern */
 M2C_UNK RegisterRebootCallback__11CIOPManagerFPFQ211CIOPManager11RebootPhaseQ211CIOPManager10RebootModePv_bPv(M2C_UNK *, M2C_UNK *, M2C_UNK); /* extern */
+extern M2C_UNK InterruptFromVIF1__Fi;
 extern s32 VifHandlerID;
-extern M2C_UNK data_0049E2A0;
 extern M2C_UNK func_0033BD20;
-extern M2C_UNK func_0033C010;
+extern M2C_UNK theIOPManager;
 
 void Init__5CPipeFv(void) {
-    RegisterRebootCallback__11CIOPManagerFPFQ211CIOPManager11RebootPhaseQ211CIOPManager10RebootModePv_bPv(&data_0049E2A0, &func_0033BD20, 0);
-    VifHandlerID = AddIntcHandler(5, &func_0033C010, 0);
+    RegisterRebootCallback__11CIOPManagerFPFQ211CIOPManager11RebootPhaseQ211CIOPManager10RebootModePv_bPv(&theIOPManager, &func_0033BD20, 0);
+    VifHandlerID = AddIntcHandler(5, &InterruptFromVIF1__Fi, 0);
     EnableIntc(5);
 }
