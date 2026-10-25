@@ -7772,27 +7772,27 @@
 0x003AC6D0 0x288 func_003AC6D0  # OVL1
 0x003AC960 0x78 __dt__11CTurretListFv  # OVL1; by hand (the wep lane: the turret list's destructor, registered for 0x4A4058 by the initialiser 0x404240; four this-tests); veh_turret.cpp
 0x003AC9E0 0x80 func_003AC9E0  # OVL1; s1:unit by hand (the wep lane: registered for m_turret_def by 0x404240, as SOCOM 1's __sinit_veh_turret.cpp registers __dt__16CTurretDefVectorFv; the definition is trivially destructible here, so only the size is zeroed); veh_turret.cpp; back to the placeholder (the wep lane): it is __dt__16CTurretDefVectorFv (0x404240 registers it for m_turret_def, as SOCOM 1's registers CTurretDefVector's), but its four destructor levels inline whole only once the unit's own code instantiates the deleter -- the class vector's resize/insert tail (0x3AB8C0-0x3AC6DF), which include/vector does not model; veh_turret.cpp's copy misses (one level, 0x60 B), the draft stands
-0x003ACA60 0x98 func_003ACA60  # OVL1
-0x003ACB00 0x50 func_003ACB00  # OVL1
-0x003ACB50 0xAC func_003ACB50  # OVL1
-0x003ACC00 0x10 func_003ACC00  # OVL1
+0x003ACA60 0x98 __dt__8CVehicleFv  # OVL1; by hand (the wep lane: CVehicle's vtable slot +0x08 -- its table stored, the region's vector destroyed (0x3AFAA0), ~CEntity)
+0x003ACB00 0x50 UpdateAiMapLoc__8CVehicleFv  # OVL1; by hand (the wep lane: CVehicle's vtable slot +0x48); veh_vehicle.cpp
+0x003ACB50 0xAC GetNeckPosW__8CVehicleFP6CPnt3D  # OVL1; by hand (the wep lane: CVehicle's vtable slot +0x38 -- the position raised by its node's box height); veh_vehicle.cpp
+0x003ACC00 0x10 OnMissionStart__8CVehicleFv  # OVL1; by hand (the wep lane: CVehicle's vtable slot +0x4C -- a "Vehicle" compass anchor, type 11); veh_vehicle.cpp
 0x003ACC10 0x5DC func_003ACC10  # OVL1
 0x003AD1F0 0x1C0 func_003AD1F0  # OVL1
 0x003AD3B0 0x118 func_003AD3B0  # OVL1
-0x003AD4D0 0x8 func_003AD4D0  # OVL1
-0x003AD4E0 0x1C func_003AD4E0  # OVL1
-0x003AD500 0x8 func_003AD500  # OVL1
-0x003AD510 0x170 func_003AD510  # OVL1
-0x003AD680 0xDC func_003AD680  # OVL1
+0x003AD4D0 0x8 ComputeNextPosition__8CVehicleFf  # OVL1; by hand (the wep lane: CVehicle's vtable slot +0x28, empty); veh_vehicle.cpp
+0x003AD4E0 0x1C UpdatePosW__8CVehicleFv  # OVL1; by hand (the wep lane: CVehicle's vtable slot +0x10 -- the position out of the matrix at 0x1E0's translation row); veh_vehicle.cpp
+0x003AD500 0x8 PrePostTick__8CVehicleFf  # OVL1; by hand (the wep lane: CVehicle's vtable slot +0x20, a tail call of CEntity::UpdateCompassAnchor); veh_vehicle.cpp
+0x003AD510 0x170 Tick__8CVehicleFf  # OVL1; by hand (the wep lane: CVehicle's vtable slot +0x18 -- the four corners grown by 5 handed to the AI map's region fill); veh_vehicle.cpp
+0x003AD680 0xDC PreTick__8CVehicleFf  # OVL1; by hand (the wep lane: CVehicle's vtable slot +0x14); veh_vehicle.cpp
 0x003AD760 0x1A8 func_003AD760  # OVL1
-0x003AD910 0x198 func_003AD910  # OVL1
+0x003AD910 0x198 ScanForVehicleDefinitionHookups__8CVehicleFPQ23zdb5CNodeb  # OVL1; by hand (the wep lane: the turret scan's twin -- PrefixMatch, new CVehicle (688 bytes) under the unit's limit, CreateEntity, else the children recursively; the name ours); veh_vehicle.cpp
 0x003ADAB0 0x3E0 func_003ADAB0  # OVL1
-0x003ADE90 0x19C func_003ADE90  # OVL1
+0x003ADE90 0x19C __ct__8CVehicleFPQ23zdb5CNodeRC11CVehicleDef  # OVL1; by hand (the wep lane: stores __vt__8CVehicle after CEntity's constructor with type 4; the vehicle scan news 688 bytes and calls it with the node and the definition; the name ours)
 0x003AE030 0x16C func_003AE030  # OVL1
-0x003AE1A0 0x9C func_003AE1A0  # OVL1
-0x003AE240 0x18 func_003AE240  # OVL1
-0x003AE260 0x198 func_003AE260  # OVL1
-0x003AE400 0xD4 func_003AE400  # OVL1
+0x003AE1A0 0x9C LoadVehicles__8CVehicleFv  # OVL1; by hand (the wep lane: LoadTurrets' twin -- every landmark of CWorld::m_world, then the world, through the vehicle scan with true; the name ours); veh_vehicle.cpp
+0x003AE240 0x18 Init__8CVehicleFPCcPCc  # OVL1; by hand (the wep lane: a tail call handing its two strings to m_vehicle_def's Init, as CTurret::Init does; the name ours); veh_vehicle.cpp
+0x003AE260 0x198 Init__17CVehicleDefVectorFPCcPCc  # OVL1; by hand (the wep lane: CTurretDefVector::Init's twin -- reads the rdr, sizes the vector to half its "VEHICLE" list, parses each pair; the name ours)
+0x003AE400 0xD4 PrefixMatch__17CVehicleDefVectorFPCc  # OVL1; by hand (the wep lane: the turret's PrefixMatch twin over 136-byte definitions -- strlen/strncmp, the definition's name at 0; the vehicle scan calls it on m_vehicle_def; the name ours); veh_vehicle.cpp
 0x003AE4E0 0x26C func_003AE4E0  # OVL1
 0x003AE750 0xA4 func_003AE750  # OVL1
 0x003AE800 0x840 func_003AE800  # OVL1
@@ -8589,7 +8589,7 @@
 0x00404110 0x8C func_00404110  # OVL1 data area; a static initialiser; s1~ zsnd_csndinstance.cpp (shape 0.54, a hint)
 0x004041A0 0x94 func_004041A0  # OVL1 data area; a static initialiser
 0x00404240 0x160 __sinit_veh_turret.cpp  # OVL1 data area; a static initialiser; s1:unit by hand (the wep lane: builds m_turret_def and the turret list, registers their destructors 0x3AC9E0/0x3AC960 and sets turret_debug_mask's seven bits, as SOCOM 1's __sinit_veh_turret.cpp; veh_turret.cpp's initialiser)
-0x004043A0 0xEC func_004043A0  # OVL1 data area; a static initialiser
+0x004043A0 0xEC __sinit_veh_vehicle.cpp  # OVL1 data area; a static initialiser; by hand (the wep lane: builds m_vehicle_def (0x4A4138, its destructor 0x3AFB20 registered) and sets five bits at 0x4A4148, as the turret unit's initialiser does; veh_vehicle.cpp's -- the file name ours)
 0x00404490 0x64 func_00404490  # OVL1 data area; a static initialiser; s1~ valve_list.cpp (shape 0.48, a hint)
 0x00404500 0x64 func_00404500  # OVL1 data area; a static initialiser; s1~ zvid_init.cpp (shape 0.46, a hint)
 0x00404570 0x470 func_00404570  # OVL1 data area; a static initialiser

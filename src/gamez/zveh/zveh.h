@@ -177,4 +177,65 @@ public:
     static CTurretList m_turrets;
 };   // 0x3d0 bytes (Create news 976)
 
+/* a vehicle's definition, one per "VEHICLE" entry of the vehicles' rdr (new in SOCOM II, the
+ * turret's twin: 136 bytes, the vector steps 0x88; the names ours) */
+class CVehicleDef {
+public:
+    void Parse(const char *name, _zrdr *rdr);
+
+    char m_name[0x88];   // 0x0: the node-name prefix it hooks up to
+};   // 0x88 bytes
+
+class CVehicleDefVector : public std::vector<CVehicleDef> {
+public:
+    int Init(const char *name, const char *path);
+    const CVehicleDef *PrefixMatch(const char *name);
+};
+
+/* a vehicle (new in SOCOM II, CEntity's type 4; CTurret's unit's twin -- the names ours). Its
+ * table overrides UpdatePosW, PreTick, Tick, PrePostTick, ComputeNextPosition, GetNeckPosW,
+ * UpdateAiMapLoc and OnMissionStart */
+class CVehicle : public CEntity {
+public:
+    CVehicle(zdb::CNode *node, const CVehicleDef &def);
+    virtual ~CVehicle();
+    virtual void UpdatePosW();
+    virtual void PreTick(float dT);
+    virtual void Tick(float dT);
+    virtual void PrePostTick(float dT);
+    virtual void ComputeNextPosition(float dT);
+    virtual CPnt3D *GetNeckPosW(CPnt3D *out);
+    virtual void UpdateAiMapLoc();
+    virtual void OnMissionStart();
+
+    static int Init(const char *name, const char *path);
+    static void LoadVehicles();
+    static int ScanForVehicleDefinitionHookups(zdb::CNode *node, bool recurse);
+    bool GetFlag(unsigned int mask) const { return (m_flags & mask) != 0; }
+    void SetFlag(unsigned int mask, bool on)
+    {
+        m_flags &= ~(on ? 0 : mask);
+        m_flags |= on ? mask : 0;
+    }
+
+    /* an AI-map region it marks (0x28 bytes: bitfields, a byte, a vector at 0x1C -- OVL2's
+     * 0x515880 fills it from the corners) */
+    unsigned char m_region[0x28];   // 0x170
+    CPnt3D m_corners[4];   // 0x198: m_bounds grown by 5 in x and z, in the world
+    const CVehicleDef *m_def;   // 0x1c8
+    unsigned char _1cc[0x1d4 - 0x1cc];
+    zdb::CNode *m_1d4;   // 0x1d4: deactivates the vehicle once switched off
+    zdb::CNode *m_root;   // 0x1d8: the node's ancestor under the world
+    unsigned char _1dc[0x1e0 - 0x1dc];
+    CMatrix m_1e0;   // 0x1e0
+    CMatrix m_220;   // 0x220
+    unsigned char _260[0x268 - 0x260];
+    CPnt3D m_bounds[4];   // 0x268
+    unsigned char _298[0x2ac - 0x298];
+    unsigned int m_flags;   // 0x2ac
+
+    /* the definitions (0x4A4138; the name ours, after the turret's) */
+    static CVehicleDefVector m_vehicle_def;
+};   // 0x2b0 bytes (the scan news 688)
+
 #endif
