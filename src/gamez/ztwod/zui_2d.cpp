@@ -19,9 +19,32 @@ class CUIVariable {
 public:
     bool IsString() const { return m_type == 3; }
     const char *GetString() const { return m_type == 3 ? m_str : 0; }
+    /* the value as a number (zrdr.h's _zrdr::Real and Int: 2 a real, 1 an integer) */
+    float Real() const
+    {
+        if (m_type == 2)
+            return m_real;
+        else if (m_type == 1)
+            return (float)m_int;
+        else
+            return 0.0f;
+    }
+    int Int() const
+    {
+        if (m_type == 1)
+            return m_int;
+        else if (m_type == 2)
+            return (int)m_real;
+        else
+            return 0;
+    }
 
     unsigned char m_type;   // 0x0
-    const char *m_str;   // 0x4
+    union {
+        const char *m_str;   // 0x4
+        float m_real;
+        int m_int;
+    };
 };
 
 /* the texture handle's name, first (zdb's) */
@@ -40,6 +63,9 @@ extern "C" void func_00385D90(class UIVarMixin *mixin, CUIVariable *var);
 class UIVarMixin {
 public:
     virtual ~UIVarMixin() { func_00385D90(this, 0); }
+    /* the variable changed (an override takes a new primary slot after all the tables, so the
+     * secondary tables' offsets stand) */
+    virtual void UpdateUIVar(CUIVariable *var);
 
     CUIVariable *m_uivar;   // 0x4
 };   // 8 bytes
@@ -147,6 +173,7 @@ class CHProgressBar : public CPlainBmp {
 public:
     virtual ~CHProgressBar();
     virtual void Tick(float dT);
+    virtual void UpdateUIVar(CUIVariable *var);
 
     float m_fill;   // 0xa0: 0 to 1
     float _a4;
@@ -159,9 +186,12 @@ public:
 class CSliderBar : public C2DButton {
 public:
     virtual ~CSliderBar();
+    virtual void UpdateUIVar(CUIVariable *var);
 
     float m_value;   // 0x440
-    unsigned char _444[0x460 - 0x444];
+    unsigned char _444[0x450 - 0x444];
+    float m_center;   // 0x450: the variable's value at the slider's middle
+    unsigned char _454[0x460 - 0x454];
     CPlainBmp m_knob;   // 0x460
     int m_intervals;   // 0x500
 } __attribute__((aligned(16)));   // 0x510 bytes
@@ -177,6 +207,36 @@ public:
     virtual int GetZAnimCmdType(const char *name);
 };
 
+
+/* the slider set from a real: below the centre value the left half in proportion, above it the
+ * right half (SOCOM 1's; reached through the thunk 0x37D080). Read through a const view: the
+ * inline accessor then reuses the type byte the test loaded */
+void CSliderBar::UpdateUIVar(CUIVariable *var)
+{
+    const CUIVariable *uivar = var;
+
+    if (uivar->m_type == 2) {
+        float v = uivar->Real();
+
+        if (v < m_center)
+            m_value = 0.5f * (v / m_center);
+        else
+            m_value = 0.5f + 0.5f * ((v - m_center) / (1.0f - m_center));
+    }
+}
+
+/* the bar's time from a number (a real, or an integer made whole), and the bar emptied (SOCOM
+ * 1's; reached through the thunk 0x37D0A0) */
+void CHProgressBar::UpdateUIVar(CUIVariable *var)
+{
+    const CUIVariable *uivar = var;
+
+    if (uivar->m_type == 2)
+        m_time = uivar->Real();
+    else if (uivar->m_type == 1)
+        m_time = uivar->Int();
+    m_fill = 0.0f;
+}
 
 /* slot 12: filled at its rate, to full */
 void CHProgressBar::Tick(float dT)
