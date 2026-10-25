@@ -245,7 +245,12 @@ CQuat *CZSIObject::GetRotFast(int f0, int f1, float t, CQuat *rot)
  * target's flags register is allocated later, t5 against t2); SOCOM 1's Read schedules exactly as
  * the target does. Tried: inline bool setters, the flags word read twice (reloaded after the store,
  * longer), `? true : false`, the locals' declaration order; unchanged at level 5. (Read from an
- * archive, the same two tests on a stack word, matches.) */
+ * archive, the same two tests on a stack word, matches.) Round 4: it is the flags' register alone
+ * -- the target colours the flags word last (t5, after the five masks, the old byte and the 0x20
+ * test), which then pins the schedule; read before the name's store it does take t5, but the
+ * store and both right-hand sides move ahead of the stores (25 off). Also tried: an inline taking
+ * the flags by value, a const local, bool locals for both tests, a nested block, `== bit`, `!!`,
+ * `> 0`, shifts -- all 13 */
 int CZSIObject::Read(unsigned char *data, unsigned int nFrames, const char *name)
 {
     int size = 0;

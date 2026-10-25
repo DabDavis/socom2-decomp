@@ -598,8 +598,11 @@ bool CBlendOverlay::Trigger(bool reverse)
 
 /* the overlay run on: its time moved by dT, the anim placed, put back once played out (SOCOM 1's).
  * OPEN, 3 instructions: the first division's operands trade float registers (the target loads
- * m_ovlyT into $f0, the script's time into $f1), as in IsTriggerTime(float, float); tried a
- * (float) cast, the time through a local, a compound division */
+ * m_ovlyT into $f0, the script's time into $f1; the second division, through the loop share, is
+ * the target's). Tried: a (float) cast, the time through a local, a compound division, the time
+ * or the fraction through an inline (an accessor, a divide taking either order), the overlay's
+ * time read into a local first, the done fraction declared first, m_anim->m_anim spelled out --
+ * all leave the pair as it is (ScaleTime, which fixed IsTriggerTime's pair, is a multiply) */
 bool CBlendOverlay::Tick(CBody *body, float dT)
 {
     if (m_state == 1)
@@ -978,7 +981,11 @@ void CZBodyAnimBlend::GetVelocity(CPnt3D *vel)
  * multiplies $f0 * $f1 -- SOCOM 1's registers too; every spelling tried (either operand order, a
  * float local for either, the product in a local) loads m_tfrac into $f0. The 60 through an inline
  * returning it (`(int)(FootRate() * m_tfrac)`) gives the target's operand order, 2 instructions off:
- * the two registers still trade places, with either order, a (float) cast or a local. */
+ * the two registers still trade places, with either order, a (float) cast or a local. Round 4: the
+ * fraction through an inline accessor, a conversion helper taking it by value (either operand
+ * order), and an in-place scaling inline (ScaleTime's shape: the product lands in the first
+ * parameter's register, the second gets $f0 -- the registers right only with the product in m_tfrac's)
+ * -- none gives 60 in $f0 with the product there too */
 
 int CZBodyAnimBlend::ThisFoot()
 {
