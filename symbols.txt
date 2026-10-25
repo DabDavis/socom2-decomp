@@ -6044,12 +6044,12 @@
 0x0033D300 0x70 __ct__11CSaveModuleFPCcP12CSaveManager  # OVL1; s1:order (SOCOM 1's constructor: the vtable, _strdup of the name, priority and flags zeroed, RegisterModule on the manager)
 0x0033D370 0x9C FindModule__12CSaveManagerFPCc  # OVL1; the name ours (SOCOM II's: the registered module of that name, strcmp over the list; RegisterModule and Load call it)
 0x0033D410 0x8C SaveRdr__12CSaveManagerFPQ23zar4CKeyPCcP8CRdrFile  # OVL1; s1:callee
-0x0033D4A0 0x224 func_0033D4A0  # OVL1
+0x0033D4A0 0x224 GetHeader__12CSaveManagerFPCciPQ212CSaveManager11CSaveHeader  # OVL1; the rdr lane: s1:order (SOCOM 1's GetHeader, after SaveRdr: 'root' ZAR over the file -- a CBufferIO of the unscrambled file in SOCOM II -- opened, the 'zSaveHeader' key fetched 268 bytes into the header; Load calls it with (name, flags, &header) as SOCOM 1's does)
 0x0033D6D0 0x4C8 Load__12CSaveManagerFPCci  # OVL1; the UI-widgets/file lane's lead, checked: its 'CSaveManager::Load' string, (this, name, flags) live as SOCOM 1's Load(const char *, int), the 'CSaveModuleList' key walked
-0x0033DBA0 0x8C func_0033DBA0  # OVL1
-0x0033DC30 0x1C8 func_0033DC30  # OVL1
-0x0033DE00 0x1F0 func_0033DE00  # OVL1
-0x0033DFF0 0x3DC func_0033DFF0  # OVL1
+0x0033DBA0 0x8C RemoveExtension__FPCc  # OVL1; the rdr lane: s1:order (SOCOM 1's RemoveExtension, after Load: strncpy of strlen-4 into a 512-byte buffer, assigned to a string returned by value; Load calls it for each .rdr key)
+0x0033DC30 0x1C8 SaveEncrypt__FPci  # OVL1; the rdr lane: SOCOM II's, the name ours (Save scrambles the ZAR's buffer with it before fwrite: a running xor key from 150 front to back, then from the last byte back to front)
+0x0033DE00 0x1F0 SaveDecrypt__FPci  # OVL1; the rdr lane: SOCOM II's, the name ours (GetHeader and Load unscramble the file with it: SaveEncrypt's inverse, the back-to-front pass first)
+0x0033DFF0 0x3DC Save__12CSaveManagerFPCciiPcPc  # OVL1; the rdr lane: s1:order (SOCOM 1's Save(const char *, int, int, char *), after RemoveExtension: 'CSaveManager::Save' traced, the header inserted, the modules sorted and serialised under 'CSaveModuleList'; SOCOM II adds a fifth argument, a char * stored in the ZAR at 0x2C -- CMemCard::SaveGame passes its second string)
 0x0033E3D0 0x60 RegisterModule__12CSaveManagerFP11CSaveModule  # OVL1; s1:callee (CSaveModule's constructor calls it where SOCOM 1's calls RegisterModule; pushes the module unless one of its name is there, and sets its manager)
 0x0033E430 0xA0 __dt__12CSaveManagerFv  # OVL1; the UI-widgets/file lane's lead, checked: SOCOM 1's ~CSaveManager -- m_TempBuffer (0x18) deleted and cleared, the list base's three this-tests and range erase, the deleting flag; CMemCard's destructor calls it with 1
 0x0033E4D0 0x40 __ct__12CSaveManagerFP3CIO  # OVL1; s1:exact
