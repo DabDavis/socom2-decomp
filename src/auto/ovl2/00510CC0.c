@@ -4,14 +4,15 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_005107B0();                            /* extern */
+M2C_UNK AbortPathPlan__2aiFP7CAiPath();             /* extern */
 M2C_UNK func_00527970(s32);                         /* extern */
 extern s32 data_0066A168;
 
 s32 func_00510CC0(s32 arg0) {
-    func_005107B0();
+    AbortPathPlan__2aiFP7CAiPath();
     func_00527970(arg0);
     data_0066A168 = arg0;
     return 1;

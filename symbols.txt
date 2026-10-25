@@ -8634,21 +8634,15 @@
 0x004C6838 0x108 func_004C6838  # OVL2 unaligned
 0x004C6940 0x108 func_004C6940  # OVL2
 0x004C6A48 0x108 gsapi_ContextUnLoad  # OVL2 unaligned; s1:calls
-0x004C6B50 0xD8 func_004C6B50  # OVL2
-0x004C6C28 0xAC func_004C6C28  # OVL2 unaligned
-0x004C6CD8 0x118 func_004C6CD8  # OVL2 unaligned
-0x004C6DF0 0xA8 func_004C6DF0  # OVL2
+0x004C6B50 0x184 func_004C6B50  # OVL2; size 0x184 (the seed cut it at 0x4C6C28, a DNAS.BIN call target -- MAIN's and OVL1's DNAS clients call DNAS.BIN loaded in the OVL2 slot: one prologue, the rest running on its frame to the one epilogue; README)
+0x004C6CD8 0x1C0 func_004C6CD8  # OVL2 unaligned; size 0x1C0 (the seed cut it at 0x4C6DF0, a DNAS.BIN call target -- MAIN's and OVL1's DNAS clients call DNAS.BIN loaded in the OVL2 slot: one prologue, the rest running on its frame to the one epilogue; README)
 0x004C6E98 0x158 func_004C6E98  # OVL2 unaligned
 0x004C6FF0 0x174 func_004C6FF0  # OVL2
-0x004C7168 0xD0 func_004C7168  # OVL2 unaligned
-0x004C7238 0xF0 func_004C7238  # OVL2 unaligned
-0x004C7328 0xC8 func_004C7328  # OVL2 unaligned
-0x004C73F0 0x2C func_004C73F0  # OVL2
+0x004C7168 0x1C0 func_004C7168  # OVL2 unaligned; size 0x1C0 (the seed cut it at 0x4C7238, a DNAS.BIN call target -- MAIN's and OVL1's DNAS clients call DNAS.BIN loaded in the OVL2 slot: one prologue, the rest running on its frame to the one epilogue; README)
+0x004C7328 0xF4 func_004C7328  # OVL2 unaligned; size 0xF4 (the seed cut it at 0x4C73F0, a DNAS.BIN call target -- MAIN's and OVL1's DNAS clients call DNAS.BIN loaded in the OVL2 slot: one prologue, the rest running on its frame to the one epilogue; README)
 0x004C7420 0xE4 func_004C7420  # OVL2
-0x004C7508 0x198 func_004C7508  # OVL2 unaligned
-0x004C76A0 0x74 func_004C76A0  # OVL2
-0x004C7718 0xA0 func_004C7718  # OVL2 unaligned
-0x004C77B8 0x3C func_004C77B8  # OVL2 unaligned
+0x004C7508 0x20C func_004C7508  # OVL2 unaligned; size 0x20C (the seed cut it at 0x4C76A0, a DNAS.BIN call target -- MAIN's and OVL1's DNAS clients call DNAS.BIN loaded in the OVL2 slot: one prologue, the rest running on its frame to the one epilogue; README)
+0x004C7718 0xDC func_004C7718  # OVL2 unaligned; size 0xDC (the seed cut it at 0x4C77B8, a DNAS.BIN call target -- MAIN's and OVL1's DNAS clients call DNAS.BIN loaded in the OVL2 slot: one prologue, the rest running on its frame to the one epilogue; README)
 0x004C77F8 0x14C gsapi_EngineSetImmediateContext  # OVL2 unaligned; s1:calls
 0x004C7948 0xFC gsapi_ContextLoadBuffer  # OVL2 unaligned; s1:calls
 0x004C7A48 0x8C func_004C7A48  # OVL2 unaligned

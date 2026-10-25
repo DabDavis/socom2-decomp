@@ -8,12 +8,12 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 #pragma mpwc_relax on
-M2C_UNK func_005107B0();                         /* extern */
+M2C_UNK AbortPathPlan__2aiFP7CAiPath();          /* extern */
 s32 func_00524CD0();                    /* extern */
 s32 func_00527310();                             /* extern */
 
 s32 func_005628F0(char *arg0) {
-    func_005107B0(arg0 + 0x46C);
+    AbortPathPlan__2aiFP7CAiPath(arg0 + 0x46C);
     if (func_00527310(arg0 + 0x46C) != 0) {
         if (func_00524CD0(arg0 + 0x46C, 0) != 0) {
             SC_MEMBER(arg0, s32 *, 0x478) = 0x3F800000;

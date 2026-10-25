@@ -861,6 +861,24 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     (GetJumpFlag);
   - the GCC libraries start at OVL2 0x60FB50 (an empty `jal` delay slot, GCC's prologue order,
     8-aligned with no padding); the last Metrowerks function is 0x60FB30.
+- **Tells from the AI core, round 2** (ai_util.cpp, ai_events.cpp, vehicle_rdr.cpp):
+  - a function returning a value from each arm of nested float tests is merged into one exit;
+    one result variable assigned in each arm keeps the target's separate branches
+    (get_clock_direction);
+  - `s += dT; if (s >= s)` gives the target's `c.lt.s $f0,$f0`: MW reuses the just-stored global
+    for both operands;
+  - an end iterator taken into a local before remove_if, the erase its own statement, keeps the
+    list's sentinel in s0 (CAiEvent::Tick);
+  - an explicit `template class std::__list_deleter<...>` makes its out-of-class constructor
+    auto-inlinable; without it the initialiser calls it, as the target does;
+  - an explicit instantiation of a function template (std::find) emits nothing; only a use does;
+  - `sltu at,zero,count` before a branch is an index test against 0 (an `Item(0)`); a plain
+    unsigned `count > 0` compiles to `bnez`;
+  - an accessor taking an unsigned index stops MW strength-reducing a loop with an int counter
+    (CVehicleRdr::Open);
+  - labels after a `b` in hand-matched code: 487 padded to 8 bytes, 130 not, 117 delay slots
+    filled from the target -- padding against filling depends on context, and blocks
+    GetNextEvent, MakeNoise and MakeNoiseXZ.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
@@ -896,17 +914,22 @@ the address in its name, so source can call `func_001C5EC0` before that function
 Data symbols go in the same file (`inflate_mask`). `src/ABSENT.txt` lists what the source
 defines and the image does not hold.
 
-**OVL1's DNAS client calls DNAS.BIN, not OVL2, and the seed split OVL2 at those calls.**
+**Two DNAS clients call DNAS.BIN, not OVL2, and the seed split OVL2 at those calls.**
 `OVERLAY/REL/DNAS.BIN` (plaintext, `extracted/overlays/disc/OVERLAY/REL/`, mapped 1:1 from
-0x4C5380) is loaded into the OVL2 slot for the authentication. OVL1's DNAS client
-(0x2CA340-0x2CD360, fifteen functions calling it) jals into 0x4C5380-0x568180, and those targets
-name DNAS.BIN functions: all twelve that land mid-function in r0001's OVL2 land on a DNAS.BIN
-prologue. The seed made a row at every jal target, so it cut r0001 OVL2 functions there. The
-SEAL lane merged DecrZoomState, IncrZoomState, SetCurZoomState and six more back, and its notes
-say so. `build/scratch/seal/fallthru.py` finds rows that run into the next one, and
-`build/scratch/seal/ovl2_splits.txt` lists the rest. Six of them (0x4C6C28, 0x4C6DF0, 0x4C7238,
-0x4C73F0, 0x534830, 0x539D50) are DNAS targets too. Scoring the DNAS client will need DNAS.BIN's
-functions resolved apart from OVL2's, as `ovl-copy` does for template copies.
+0x4C5380) is loaded into the OVL2 slot for the authentication. Two pieces of code call into it:
+MAIN's boot-loader client (0x1C59C0-0x1C6200, four functions) and OVL1's DNAS client
+(0x2CA340-0x2CD360, fifteen functions). Their jal targets in 0x4C5380-0x568180 name DNAS.BIN
+functions, and every one that lands mid-function in r0001's OVL2 lands on a DNAS.BIN prologue.
+The seed made a row at every jal target, so it cut r0001 OVL2 functions there. Eighteen cuts are
+merged back, each row's note saying so:
+- the SEAL lane: DecrZoomState, IncrZoomState, SetCurZoomState and six more;
+- the AI-core lane: 0x534630, 0x534D40, 0x539D00;
+- the integrator: 0x4C6B50-0x4C7718, six.
+
+`build/scratch/seal/fallthru.py` finds rows that run into the next one, and
+`build/scratch/seal/ovl2_splits.txt` lists what it found; 0x610010 and 0x643018 there are not
+DNAS targets. Scoring either client will need DNAS.BIN's functions resolved apart from OVL2's, as
+`ovl-copy` does for template copies.
 
 ### Names from SOCOM 1 (`tools/s1names.py`)
 

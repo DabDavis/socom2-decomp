@@ -8,12 +8,12 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK __dl__FPv(s32);                             /* extern */
-M2C_UNK func_00512560(s32, M2C_UNK);                /* extern */
+M2C_UNK __dt__7CAiStarFv(s32, M2C_UNK);             /* extern */
 
 void func_00510DC0(char *arg0, s32 arg1) {
     u8 temp_v1;
 
-    func_00512560(SC_MEMBER(arg0, s32 *, 0), 1);
+    __dt__7CAiStarFv(SC_MEMBER(arg0, s32 *, 0), 1);
     SC_MEMBER(arg0, s32 *, 0) = 0;
     temp_v1 = SC_MEMBER(arg0, u8 *, 8);
     if ((temp_v1 != 0) && (arg1 != 0)) {

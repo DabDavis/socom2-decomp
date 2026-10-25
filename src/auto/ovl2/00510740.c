@@ -4,23 +4,24 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_00512560(s32, M2C_UNK);                /* extern */
-M2C_UNK func_00527900(void *);                      /* extern */
-extern s32 data_0066A180;
-extern void *data_0066A188;
+M2C_UNK __dt__7CAiStarFv(s32, M2C_UNK);             /* extern */
+M2C_UNK func_00527900(char *);                      /* extern */
+extern char *data_0066A188;
+extern s32 path_queue__2ai;
 
 void func_00510740(void) {
-    void *temp_s0;
+    char *temp_s0;
 
-    if (data_0066A180 != 0) {
-        temp_s0 = M2C_FIELD(data_0066A188, void **, 8);
-        if (M2C_FIELD(temp_s0, u8 *, 0x80) == 2) {
-            func_00512560(M2C_FIELD(temp_s0, s32 *, 0), 1);
-            M2C_FIELD(temp_s0, s32 *, 0) = 0;
-            if (M2C_FIELD(temp_s0, u8 *, 8) == 0) {
-                M2C_FIELD(temp_s0, s32 *, 4) = 0;
+    if (path_queue__2ai != 0) {
+        temp_s0 = SC_MEMBER(data_0066A188, char **, 8);
+        if (SC_MEMBER(temp_s0, u8 *, 0x80) == 2) {
+            __dt__7CAiStarFv(SC_MEMBER(temp_s0, s32 *, 0), 1);
+            SC_MEMBER(temp_s0, s32 *, 0) = 0;
+            if (SC_MEMBER(temp_s0, u8 *, 8) == 0) {
+                SC_MEMBER(temp_s0, s32 *, 4) = 0;
             }
             func_00527900(temp_s0);
         }
