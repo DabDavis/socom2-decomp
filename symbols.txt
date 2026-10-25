@@ -4401,30 +4401,30 @@
 0x002D0410 0xAC StartEngine__5CGameFv  # OVL1; s1:align
 0x002D04C0 0x8 StopPlay__5CGameFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002D04D0 0x14 StartPlay__5CGameFv  # OVL1; s1:exact
-0x002D04F0 0xA8 func_002D04F0  # OVL1
+0x002D04F0 0xA8 FindEdge__6CGraphFP6CGNodeP6CGNode  # OVL1; s1:order by hand (the states lane: first of graph_tree.cpp as SOCOM 1's FindEdge; walks the graph's edge list at 0x10 for the edge whose other end from a is b; byte-exact in graph_tree.cpp)
 0x002D05A0 0x78 GetNodeByNodeEx__6CGraphFPCv  # OVL1; s1:align
-0x002D0620 0x54 func_002D0620  # OVL1
+0x002D0620 0x54 GetNodeByIndex__6CGraphFUi  # OVL1; s1:order by hand (the states lane: between GetNodeByNodeEx and CreateEdge as SOCOM 1's GetNodeByIndex; steps index nodes into the node list at 4, none past its end; Read calls it with each edge's two indices)
 0x002D0680 0xF8 CreateEdge__6CGraphFP6CGNodeP6CGNode  # OVL1; s1:align
-0x002D0780 0x1A8 func_002D0780  # OVL1
+0x002D0780 0x1A8 DeleteNode__6CGraphFP6CGNode  # OVL1; s1:order by hand (the states lane: between CreateEdge and CreateNode as SOCOM 1's DeleteNode: each of the node's edges taken out of the other end's list and the graph's and deleted through CGEdge::Delete, then the node removed and deleted)
 0x002D0930 0x5C CreateNode__6CGraphFPCc  # OVL1; s1:align
-0x002D0990 0x1E0 func_002D0990  # OVL1
-0x002D0B70 0x80 func_002D0B70  # OVL1
-0x002D0BF0 0x8 func_002D0BF0  # OVL1
-0x002D0C00 0x90 func_002D0C00  # OVL1
+0x002D0990 0x1E0 __dt__6CGraphFv  # OVL1; s1:order by hand (the states lane: after CreateNode as SOCOM 1's ~CGraph: the name freed, every node's and edge's object deleted through its virtual destructor, both lists cleared; Destroy tail-calls it with 1)
+0x002D0B70 0x80 __ct__6CGraphFPCc  # OVL1; s1:order by hand (the states lane: after ~CGraph as SOCOM 1's CGraph(const char *); the name cleared, both lists built, the name copied; inlined whole by Create(name); byte-exact in graph_tree.cpp)
+0x002D0BF0 0x8 Destroy__6CGraphFP6CGraph  # OVL1; s1:order by hand (the states lane: between the constructor and Create as SOCOM 1's Destroy; ~CGraph tail-called with 1, a delete; byte-exact in graph_tree.cpp)
+0x002D0C00 0x90 Create__6CGraphFPCc  # OVL1; s1:order by hand (the states lane: SOCOM 1's Create(const char *), before Read: news 28 bytes and inlines the constructor; byte-exact in graph_tree.cpp)
 0x002D0C90 0x250 Read__6CGraphFR7CFileIOPFP6CGraphP6CGNodebRUiPv_vPFP6CGraphP6CGEdgebRUiPv_vPv  # OVL1; s1:calls
 0x002D0EE0 0xA4 Create__6CGraphFR7CFileIOPFP6CGraphP6CGNodebRUiPv_vPFP6CGraphP6CGEdgebRUiPv_vPv  # OVL1; s1:calls
-0x002D0F90 0xC8 func_002D0F90  # OVL1
+0x002D0F90 0xC8 FindEdge__6CGNodeFP6CGNode  # OVL1; s1:calls by hand (the states lane: CreateEdge's first call, on the first node with the second, where SOCOM 1's calls CGNode::FindEdge; walks the node's edge list at 0xC)
 0x002D1060 0xD0 __dt__6CGNodeFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x002D1130 0x48 func_002D1130  # OVL1
-0x002D1180 0x8 func_002D1180  # OVL1
-0x002D1190 0x38 func_002D1190  # OVL1
-0x002D11D0 0x34 func_002D11D0  # OVL1
+0x002D1130 0x48 __ct__6CGNodeFv  # OVL1; s1:order by hand (the states lane: after ~CGNode as SOCOM 1's constructor, SOCOM II's without a name -- CreateNode news 32 bytes and calls it with no argument; stores CGNode's vtable 0x4065E0, which ~CGNode stores; byte-exact in graph_tree.cpp)
+0x002D1180 0x8 PostProcess__7CGRouteFv  # OVL1; s1:order by hand (the states lane: first of CGRoute's as SOCOM 1's PostProcess, empty in both; BuildRoute calls it; byte-exact in graph_tree.cpp)
+0x002D1190 0x38 Clear__7CGRouteFv  # OVL1; s1:exact shape by hand (the states lane: SOCOM 1's Clear instruction for instruction, the list's range erase; BuildRoute calls it first; byte-exact in graph_tree.cpp)
+0x002D11D0 0x34 Append__7CGRouteFP6CGNode  # OVL1; s1:order by hand (the states lane: after Clear as SOCOM 1's Append; the list's insert at its end; BuildRoute calls it; byte-exact in graph_tree.cpp)
 0x002D1210 0xBC func_002D1210  # OVL1
-0x002D12D0 0x28 func_002D12D0  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
+0x002D12D0 0x28 __ct__7CGRouteFv  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); s1:order by hand (the states lane: after ~CGRoute as SOCOM 1's constructor: the list's constructor; byte-exact in graph_tree.cpp)
 0x002D1300 0x4C __dt__6CGEdgeFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x002D1350 0xB4 func_002D1350  # OVL1
+0x002D1350 0xB4 Delete__6CGEdgeFP6CGEdge  # OVL1; s1:order by hand (the states lane: after ~CGEdge as SOCOM 1's Delete: the edge removed from both its nodes' lists, its ends cleared, deleted through its virtual destructor, 0 returned)
 0x002D1410 0x60 func_002D1410  # OVL1
-0x002D1470 0x2C func_002D1470  # OVL1
+0x002D1470 0x2C __ct__6CGEdgeFP6CGNodeP6CGNodef  # OVL1; s1:calls by hand (the states lane: CreateEdge news 32 bytes and constructs them with it -- the two nodes and 1.0f -- where SOCOM 1's calls CGEdge's constructor; it stores CGEdge's vtable 0x4065F0, which ~CGEdge stores)
 0x002D14A0 0x194 func_002D14A0  # OVL1
 0x002D1640 0x150 func_002D1640  # OVL1
 0x002D1790 0x5BC func_002D1790  # OVL1
