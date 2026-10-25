@@ -158,6 +158,21 @@ void CWorld::AddShadowCaster(CNode *node)
 }
 #pragma auto_inline reset
 
+/* each shadow caster's node switched off, its texture taken from the node's first visual's first
+ * dynamic texture, and the caster brought up to date (new in SOCOM II, between ReserveChildren and
+ * AddShadowCaster; the name is ours) */
+void CWorld::UpdateShadowCasters()
+{
+    for (std::vector<CShadowCaster *>::iterator it = m_shadow_casters.begin();
+         it != m_shadow_casters.end(); ++it) {
+        CShadowCaster *c = *it;
+
+        c->m_node->SetActive(false);
+        c->m_texture = c->m_node->m_visual[0]->m_dynTexList.m_tex_list[0]->m_texture;
+        func_0031F570(*it);
+    }
+}
+
 /* room for n more children (SOCOM 1's) */
 void CWorld::ReserveChildren(int n)
 {

@@ -5615,7 +5615,7 @@
 0x0031F120 0x114 DeleteChild__Q23zdb6CWorldFPQ23zdb5CNode  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0031F240 0x1E8 AddChild__Q23zdb6CWorldFPQ23zdb5CNode  # OVL1; s1:align
 0x0031F430 0x10 ReserveChildren__Q23zdb6CWorldFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0031F440 0xB8 func_0031F440  # OVL1
+0x0031F440 0xB8 UpdateShadowCasters__Q23zdb6CWorldFv  # OVL1; new in SOCOM II, the name ours (the zdb-world lane): between ReserveChildren and AddShadowCaster, it walks m_shadow_casters (0x580): each caster's node (0x4C) SetActive(false) through the table, the node's first visual's first dynamic texture's CTexture stored at 0x50, then 0x31F570 on the caster
 0x0031F500 0x68 AddShadowCaster__Q23zdb6CWorldFPQ23zdb5CNode  # OVL1; new in SOCOM II, the name ours: a 0x70-byte object made from the node (0x31F780) pushed onto the vector at 0x580; AddChild and node_main.cpp call it
 0x0031F570 0x204 func_0031F570  # OVL1
 0x0031F780 0x228 __ct__Q23zdb13CShadowCasterFPQ23zdb5CNode  # OVL1; new in SOCOM II, the names ours: AddShadowCaster news 0x70 bytes and calls it with the node

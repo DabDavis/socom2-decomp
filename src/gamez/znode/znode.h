@@ -1412,6 +1412,8 @@ public:
     /* a shadow caster made for the node and listed (new in SOCOM II: AddChild and node_main.cpp's
      * code call it; the name is ours) */
     void AddShadowCaster(CNode *node);
+    /* the shadow casters brought up to date (new in SOCOM II; the name ours) */
+    void UpdateShadowCasters();
     bool Initalize();
     void Update();
     void ReleaseLandmarkList();
