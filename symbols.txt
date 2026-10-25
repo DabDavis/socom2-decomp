@@ -7243,10 +7243,10 @@
 0x0038B090 0x80 __dt__13CHeadsetTunerFv  # OVL1; s1:vtable by hand (CHeadsetTuner's slot 0x8, SOCOM II's class)
 0x0038B110 0x5C UpdateUIVar__13CHeadsetTunerFP11CUIVariable  # OVL1; s1:vtable by hand (CHeadsetTuner's slot 0xC, SOCOM II's class: sound group 7)
 0x0038B170 0x8 UpdateUIVar__11SystemTunerFP11CUIVariable  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0038B180 0xCC func_0038B180  # OVL1
+0x0038B180 0xCC SwitchTo__Q221@unnamed@zui_skb_cpp@13CSoftKeyboardFPQ221@unnamed@zui_skb_cpp@13CSoftKeyboard  # OVL1; ours, by its body (the cursor key's button set normal, this keyboard's node hidden and the other's shown, g_pActiveSkb set to the other, 0x38B580 run on it with 0 and 1) -- zui_skb.cpp
 0x0038B250 0x44 SetButtonState__Q221@unnamed@zui_skb_cpp@12CSkbKeyPropsFM9C2DButtonFPCvPv_v  # OVL1; s1:exact
 0x0038B2A0 0xF0 GetCurKeyProps__Q221@unnamed@zui_skb_cpp@13CSoftKeyboardFv  # OVL1; ours, by its body (FindKeyProps of the cursor's key: SOCOM 1's GetCurKey's grid test and null-key static inlined, the map at 0x164 searched, the found node's second) -- zui_skb.cpp
-0x0038B390 0xA8 func_0038B390  # OVL1
+0x0038B390 0xA8 ShutdownBegin__Q221@unnamed@zui_skb_cpp@13CSoftKeyboardFP9CGameMenu  # OVL1; s1:calls by hand (SOCOM 1's CSoftKeyboard::ShutdownBegin(CGameMenu *): the cursor key's button set normal, the elements hidden, the menu's event run; SOCOM II's helpers out of line) -- zui_skb.cpp
 0x0038B440 0xF0 func_0038B440  # OVL1
 0x0038B530 0x8 func_0038B530  # OVL1
 0x0038B540 0x8 func_0038B540  # OVL1

@@ -16,10 +16,12 @@
 #include <algorithm>
 #include "zui_2d.h"
 #include "../zsys/zsys.h"
+#include "../znode/znode.h"
 
 namespace zdb {
 class CNode;
 }
+class CGameMenu;
 
 /* an rdr file (zrdr.h's: : _zrdr) and its reader */
 class CRdrFile : public _zrdr {};
@@ -92,8 +94,16 @@ public:
     unsigned short m_code;   // 0x2
 };
 
-class CSkbKeyProps;
 class CSoftKeyboard;
+
+/* a key's props: its button among them (SOCOM 1's CSkbKeyProps; only what is read here) */
+class CSkbKeyProps {
+public:
+    void SetButtonState(void (C2DButton::*state)());
+
+    unsigned char _0[0x14];
+    C2DButton *m_button;   // 0x14
+};
 
 typedef std::map<CSkbKey, CSkbKeyProps *> CSkbKeyMap;
 
@@ -123,7 +133,12 @@ public:
 };
 
 /* a bitmap with the node it draws on (SOCOM 1's CBmpWithNode: 0xB0 bytes, its vtable after
- * CPlainBmp's with the node set through C2D's slot 0x30) */
+ * CPlainBmp's with the node set through C2D's slot 0x30, 0x38BAB0, a store to 0xA0 -- zui_2d.h's C2D
+ * declares that slot with no parameter, so it is not overridden here).
+ * OPEN, the implicit destructor's copy (0x38E490), 0x50 bytes short: the target inlines CPlainBmp's
+ * destructor (its tables, ~UIVarMixin's detach, ~C2DBitmap called), as an inline or implicit
+ * ~CPlainBmp would be -- its out-of-line copy is an earlier unit's, 0x1FDBE0 -- where zui_2d.h
+ * declares it out of line, so it is called */
 class CBmpWithNode : public CPlainBmp {
 public:
     CBmpWithNode() : m_node(0) {}
@@ -199,6 +214,8 @@ public:
     CSkbKeyProps *GetCurKeyProps();
     void ParseLook(_zrdr *rdr);
     void ParseKeyProps(_zrdr *rdr);
+    void SwitchTo(CSoftKeyboard *to);
+    void ShutdownBegin(CGameMenu *menu);
 
     CSkbGrid m_grid;   // 0x158
     CSkbKeyMap m_keyProps;   // 0x164
@@ -271,7 +288,15 @@ namespace {
 
 /* a keyboard made from its rdr block and added to the keyboards: its look, its key props, its grid
  * of keys (rows of names or codes) and whether an unchanged string counts (SOCOM 1's
- * CreateSoftKeyboard, SOCOM II's split three ways) */
+ * CreateSoftKeyboard, SOCOM II's split three ways).
+ * OPEN, 0x10 bytes long: the target calls the key map's default constructor out of line with no
+ * arguments (0x38E740, which builds the tree from two unconstructed stack slots) where include/map
+ * has only map(const Compare & = Compare(), const Allocator & = Allocator()), so the call site
+ * builds the allocator (its copy called) and passes both; and it calls the fonts' constructor
+ * 0x38E550 (C2DFont's, 0x38E590: a glyph map through 0x1FEAC0, a pointer vector, a string), which
+ * the stand-in C2DFont has not got. The grid loop's registers follow once both are in (the target
+ * keeps the grid in s8). It stays for the member constructors it emits (0x38E620, 0x38E730,
+ * 0x38E770, 0x38E890, 0x38E8D0 byte-exact) and the grid's vector instances */
 void CreateSoftKeyboard(_zrdr *rdr)
 {
     CSoftKeyboard *skb = new CSoftKeyboard;
@@ -295,6 +320,61 @@ void CreateSoftKeyboard(_zrdr *rdr)
     }
     skb->m_ignoreUnchangedString = zrdr_findtag(rdr, "IgnoreUnchangedString") != 0;
 }
+
+/* (the next units' and this one's not yet written, by address: the node lists' layout from a grid
+ * size, a keyboard's elements shown or hidden) */
+extern "C" {
+void func_00395140(int w, int h, CSkbNodeLists *lists, CSoftKeyboard *skb);
+void func_0038B580(CSoftKeyboard *skb, int which);
+void func_00394420();
+void func_00398B50();
+void func_00399C10(CSoftKeyboard *skb);
+void func_00395DE0(int on);
+/* CGameMenu::RunEventAnim (zui.cpp's 0x367810: the menu, an event, a flag) */
+void func_00367810(CGameMenu *menu, int event, int flag);
+}
+
+/* the keyboard closing: the cursor's key let go, its elements hidden, the shared pieces put away,
+ * the menu's event 16 run (SOCOM 1's ShutdownBegin, SOCOM II's helpers out of line) */
+void CSoftKeyboard::ShutdownBegin(CGameMenu *menu)
+{
+    void (C2DButton::*normal)() = &C2DButton::SetNormal;
+
+    if (GetCurKeyProps())
+        GetCurKeyProps()->SetButtonState(normal);
+    func_0038B580(this, 0);
+    func_00394420();
+    func_00398B50();
+    func_00399C10(this);
+    func_00367810(menu, 16, 0);
+    func_00395DE0(1);
+}
+
+/* the cursor's key let go, this keyboard's node hidden and the other's shown, the other made the
+ * active one and its two element sets shown (SOCOM II's; the name ours) */
+void CSoftKeyboard::SwitchTo(CSoftKeyboard *to)
+{
+    func_00395140(to->m_17c, to->m_180, &to->m_nodeLists, to);
+    void (C2DButton::*normal)() = &C2DButton::SetNormal;
+
+    if (GetCurKeyProps())
+        GetCurKeyProps()->SetButtonState(normal);
+    m_node->SetActive(false);
+    to->m_node->SetActive(true);
+    g_pActiveSkb = to;
+    func_0038B580(to, 0);
+    func_0038B580(to, 1);
+}
+
+/* the key's button put into a state, if it has one (SOCOM 1's, instruction for instruction; called
+ * out of line everywhere: pinned) */
+#pragma auto_inline off
+void CSkbKeyProps::SetButtonState(void (C2DButton::*state)())
+{
+    if (m_button)
+        (m_button->*state)();
+}
+#pragma auto_inline reset
 
 /* the props of the key under the cursor, or none (SOCOM II's: FindKeyProps of GetCurKey, both
  * inlined; the name ours).
