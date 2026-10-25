@@ -23,7 +23,14 @@
  *     is append (0x1EEB70: replace(size(), 0, s)); replace(pos, n1, const char *) (0x1EF390)
  *     hands the range s..s+strlen(s) to the template replace taking two iterators and the
  *     iterator's category, an empty class passed by value -- loaded as a byte off the stack and
- *     never stored (0x1EE780; 0x1EF400 is assign(first, last) through it);
+ *     never stored (0x1EE780; 0x1EF400 is assign(first, last) through it). The three are this
+ *     header's out-of-class members since the MSL headers round 5 (st_core.cpp's tail emits them
+ *     byte-exact, OVL2's copies 0x53FAA0 and 0x540B50), the placeholders kept for the units that
+ *     still call them by address;
+ *   - the default constructor is four inline levels high (init, clear_words, zero -- the loop over
+ *     a reference local), the height the states fitted fts_state.h's copy to: fts_state.h includes
+ *     this header since round 5 (measured over every hand-written unit, nothing lost; zero() taking
+ *     the words as a reference PARAMETER stores them off sp and loses CMenuStack::PopUpDialog);
  *   - erase() is that template replace over (0, npos) with an empty range of const char *, inline
  *     (SetString__16C2DMessageStringFPCc, the menu's string handlers);
  *   - the copies, out of class (the MSL lane, 2026-10-25; each byte-exact): the copy constructor
@@ -96,8 +103,8 @@ public:
 
     basic_string &operator=(const charT *s) { return assign(s); }
     basic_string &operator=(const basic_string &str);
-    basic_string &assign(const charT *s) { return *(basic_string *)func_001EEB40(this, s); }
-    basic_string &append(const charT *s) { return *(basic_string *)func_001EEB70(this, s); }
+    basic_string &assign(const charT *s);
+    basic_string &append(const charT *s);
     basic_string &operator+=(const charT *s) { return append(s); }
     basic_string &erase()
     {
@@ -108,6 +115,7 @@ public:
 
     void reserve(size_type n);
     basic_string &replace(size_type pos, size_type n1, const basic_string &str);
+    basic_string &replace(size_type pos, size_type n1, const charT *s);
     void push_back(charT c);
     int compare(const basic_string &str) const;
     int compare(size_type pos1, size_type n1, const charT *s, size_type n2) const;
@@ -131,7 +139,9 @@ private:
     };
     void copy_rep(const basic_string &str) { *(rep_words *)w_ = *(const rep_words *)str.w_; }
 
-    void init()
+    void init() { clear_words(); }
+    void clear_words() { zero(); }
+    void zero()
     {
         unsigned int (&a)[3] = w_;
 
@@ -211,6 +221,30 @@ basic_string<charT, traits, Allocator> &basic_string<charT, traits, Allocator>::
         n = str.w_[1];
     }
     return *(basic_string *)func_001EE780(this, pos, n1, p, p + n, category);
+}
+
+/* the text replaced by a C string (0x1EEB40: replace(0, size(), s), a tail call) */
+template <class charT, class traits, class Allocator>
+basic_string<charT, traits, Allocator> &basic_string<charT, traits, Allocator>::assign(const charT *s)
+{
+    return replace(0, size(), s);
+}
+
+/* a C string appended (0x1EEB70: replace(size(), 0, s), a tail call) */
+template <class charT, class traits, class Allocator>
+basic_string<charT, traits, Allocator> &basic_string<charT, traits, Allocator>::append(const charT *s)
+{
+    return replace(size(), 0, s);
+}
+
+/* a range replaced by a C string (0x1EF390): s..s+strlen(s) handed to the template replace */
+template <class charT, class traits, class Allocator>
+basic_string<charT, traits, Allocator> &basic_string<charT, traits, Allocator>::replace(size_type pos, size_type n1,
+                                                                                        const charT *s)
+{
+    forward_iterator_tag category;
+
+    return *(basic_string *)func_001EE780(this, pos, n1, s, s + strlen(s), category);
 }
 
 /* a character appended (0x284B40): the template replace at the end, over the character itself */

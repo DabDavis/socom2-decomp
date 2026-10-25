@@ -239,13 +239,13 @@ void func_003AFF30(bool wait, bool swap);        /* zVid_Swap */
 
 static void LoadThreadEntry(void *arg);
 
-/* MSL 3.0's basic_string members that close the unit in its template tail (OVL1 0x1EEB40,
- * 0x1EEB70, 0x1EF390, 0x1EF400; the template replace taking two iterators and their category,
- * 0x1EE780, between them is still a placeholder): out-of-class template members in the original,
- * written here as stand-ins under their placeholders over a copy of include/string's
- * representation -- fts_state.h keeps its own std::basic_string, so <string> cannot come in.
- * Defined first, so emitted last; pinned, or include/string's inline assign/append would take
- * them in (the same-unit stand-in rule) */
+/* MSL 3.0's basic_string members that close the unit in its template tail: assign(const char *)
+ * 0x1EEB40, append 0x1EEB70 and replace(pos, n1, const char *) 0x1EF390 are include/string's own
+ * out-of-class members now (the MSL headers round 5: fts_state.h takes <string>), emitted here by
+ * the unit's own uses. Still a stand-in under its placeholder over a copy of include/string's
+ * representation: 0x1EF400, which only the template replace taking two iterators and their
+ * category (0x1EE780, a placeholder) calls -- assign(first, last) by its body, its MSL name not
+ * known. Defined first, so emitted last; pinned (the same-unit stand-in rule) */
 namespace {
 /* include/string's twelve bytes: the long form's capacity | 1, size and text, the short form's
  * size in the first byte's upper seven bits */
@@ -265,8 +265,6 @@ struct CTailString {
 };
 }
 
-extern "C" void *func_001EF390(void *str, unsigned int pos, unsigned int n1, const char *s);
-
 #pragma auto_inline off
 extern "C" {
 /* assign(first, last): the whole text replaced by the range (0x1EF400) */
@@ -277,26 +275,6 @@ void *func_001EF400(void *str, const char *first, const char *last)
     return std::func_001EE780(str, 0, ((CTailString *)str)->size(), first, last, category);
 }
 
-/* replace(pos, n1, const char *): the range s..s+strlen(s) handed to the template replace
- * (0x1EF390) */
-void *func_001EF390(void *str, unsigned int pos, unsigned int n1, const char *s)
-{
-    std::forward_iterator_tag category;
-
-    return std::func_001EE780(str, pos, n1, s, s + strlen(s), category);
-}
-
-/* append(const char *): replace(size(), 0, s), a tail call (0x1EEB70) */
-void *func_001EEB70(void *str, const char *s)
-{
-    return func_001EF390(str, ((CTailString *)str)->size(), 0, s);
-}
-
-/* assign(const char *): replace(0, size(), s), a tail call (0x1EEB40) */
-void *func_001EEB40(void *str, const char *s)
-{
-    return func_001EF390(str, 0, ((CTailString *)str)->size(), s);
-}
 }
 #pragma auto_inline reset
 
