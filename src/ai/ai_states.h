@@ -165,11 +165,8 @@ public:
     {
         SetBit2(false);
         m_state = state;
-        m_nextPhase = 0;
-        m_phase = 0;
-        m_phaseTime = 0.0f;
-        m_delay = 0.0f;
-        m_time = 0.0f;
+        m_phase = m_nextPhase = 0;
+        m_time = m_delay = m_phaseTime = 0.0f;
         m_flags = 0;
         SetBit3(false);
         SetBit15(false);
@@ -182,7 +179,7 @@ public:
         SetNibble9(1);
         SetBit13(false);
         m_4c = 1.0f;
-        m_loc = CAiMapLoc::invalid;
+        *(unsigned int *)&m_loc = *(unsigned int *)&CAiMapLoc::invalid;
         m_54 = -1;
     }
 

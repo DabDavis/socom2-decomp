@@ -44,6 +44,12 @@ struct CAiCtrlStack {
     CAiStateStack m_stack;   // 0x41c
 };
 
+/* the controller's word at 0x10C (CSealCtrl's: its squad; zseal.h does not name it) */
+struct CAiCtrl10C {
+    unsigned char _0[0x10c];
+    void *m_10c;   // 0x10c
+};
+
 /* a SEAL of the player's side (an inline bool accessor: its callers keep the sltu) */
 inline bool NavySeal(CSealCtrlAi *ai)
 {
@@ -415,6 +421,101 @@ CAiState *CAiState::Create(AI_STATE state)
     return s;
 }
 
+extern "C" {
+/* the state's signal handed on (OVL2 0x5F6350, unwritten: the state, the AI, the signal), the
+ * stack emptied (0x5F7920, a byte-exact draft), a squad's member (0x5EDBB0, seal_unit.cpp's,
+ * unwritten), and the controller's calls (0x56D890, 0x5631B0, 0x570F90: the SEAL lane's rows) */
+void func_005F6350(CAiState *s, CSealCtrlAi *ai, CAiState::SIGNAL sig);
+void func_005F7920(CAiStateStack *stack, CSealCtrlAi *ai);
+CEntity *func_005EDBB0(void *unit, int a, int b);
+void func_0056D890(CSealCtrlAi *ai, int x);
+void func_005631B0(CSealCtrlAi *ai, int a, int b, float f);
+void func_00570F90(CSealCtrlAi *ai, float t);
+/* two OVL1 globals the stop signal tests (bss 0x44D628, 0x44D630: unnamed) */
+extern int data_0044D628;
+extern unsigned char data_0044D630;
+void func_005F6190(CAiState *s, CSealCtrlAi *ai);
+}
+
+/* a SEAL's bit the signals set (CZSealBody at 0x105D, bit 1; zseal.h does not name it -- the
+ * name ours) */
+struct CSealSignalBits {
+    unsigned char _0[0x105d];
+    unsigned char m_bit0 : 1;
+    unsigned char m_signalled : 1;
+};
+
+/* a state of a stack told a signal (OVL2 0x5F6FA0; SOCOM 1's CAiState::Signal, moved onto the
+ * stack): entering (0) resets it to its own kind, sends it the reset (4) and starts its stack's
+ * clock; leaving (1) empties its own stack; then, for the controller's own stack, the SEAL (and,
+ * squad mode 2, the squad's leader) marked, the trigger let go and the per-signal goals dropped;
+ * the state's OnSignal last */
+void CAiState::Signal(CAiStateStack *stack, CAiState *state, SIGNAL sig, CSealCtrlAi *ai)
+{
+    CEntity *seal = ai ? ai->m_entity : 0;
+    bool own = &((CAiCtrlStack *)ai)->m_stack == stack;
+
+    switch (sig) {
+    case SIGNAL_4:
+        break;
+    case SIGNAL_0:
+        state->SetBit0(true);
+        state->Reset(state->m_state);
+        state->OnSignal(SIGNAL_4, 0);
+        state->SetActive(true);
+        func_005F6350(state, ai, sig);
+        stack->m_timer = 0.0f;
+        break;
+    case SIGNAL_1:
+        func_005F6350(state, ai, sig);
+        func_005F7920(&state->m_stack, ai);
+        func_005F6190(state, ai);
+        break;
+    case SIGNAL_2:
+        func_005F6350(state, ai, sig);
+        func_0056D890(ai, 0);
+        break;
+    case SIGNAL_3:
+        func_005F6350(state, ai, sig);
+        if (data_0044D630 == 24 && data_0044D628 == 3)
+            ai->SetAiMode((AI_MODE)3);
+        break;
+    }
+    if (own && ai) {
+        ((CSealSignalBits *)seal)->m_signalled = true;
+        if (ai->m_26c == 2 && ((CAiCtrl10C *)ai)->m_10c) {
+            CEntity *leader = func_005EDBB0(((CAiCtrl10C *)ai)->m_10c, 1, 0);
+
+            if (leader)
+                ((CSealSignalBits *)leader)->m_signalled = true;
+        }
+        ai->SetTrigger(false);
+        ai->SetTrigger(false);
+        func_005631B0(ai, 2, 1, 0.0f);
+        switch (sig) {
+        case SIGNAL_4:
+            break;
+        case SIGNAL_0:
+            ai->SetAiMode((AI_MODE)1);
+            func_00570F90(ai, 1.0f);
+            func_0056D890(ai, 0);
+            ai->ClearGoal(GOAL_NONE);
+            break;
+        case SIGNAL_1:
+            ai->ClearGoal(GOAL_NONE);
+            func_0056D890(ai, 0);
+            break;
+        case SIGNAL_2:
+            ai->ClearGoal(GOAL_NONE);
+            break;
+        case SIGNAL_3:
+            ai->ClearGoal(GOAL_NONE);
+            break;
+        }
+    }
+    state->OnSignal(sig, ai);
+}
+
 /* the stack's constructor (OVL2 0x5F8520): out of line, as its destructor is */
 CAiStateStack::CAiStateStack() : m_c(-1), m_10(0), m_14(0)
 {
@@ -616,12 +717,6 @@ void CAiSBreach::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
         break;
     }
 }
-
-/* the controller's word at 0x10C (CSealCtrl's; zseal.h does not name it) */
-struct CAiCtrl10C {
-    unsigned char _0[0x10c];
-    void *m_10c;   // 0x10c
-};
 
 /* a goto's events: reset (no goal, the invalid cell); on entry the stance after half a second
  * (not for the player's side) and the controller's mask bit 5; the bit off for a sub-state; at
