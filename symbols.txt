@@ -4211,10 +4211,10 @@
 0x002C6280 0x10 func_002C6280  # OVL1
 0x002C6290 0xC0 func_002C6290  # OVL1
 0x002C6350 0x80 func_002C6350  # OVL1
-0x002C63D0 0x20 func_002C63D0  # OVL1
+0x002C63D0 0x1C IsJumpAndActionShared__13CCtrlrConfigsFv  # OVL1; s1:exact shape by hand (the states lane: SOCOM 1's IsJumpAndActionShared instruction for instruction -- the current layout's buttons 0 and 5 compared -- at SOCOM II's offsets 18/23 for SOCOM 1's 10/15) ; size by hand (the states lane: the seed counted the trailing zero padding after jr ra's delay slot)
 0x002C63F0 0x40 func_002C63F0  # OVL1
-0x002C6430 0x30 func_002C6430  # OVL1
-0x002C6460 0x30 func_002C6460  # OVL1
+0x002C6430 0x28 func_002C6430  # OVL1 ; size by hand (the states lane: the seed counted the trailing zero padding after jr ra's delay slot)
+0x002C6460 0x28 func_002C6460  # OVL1 ; size by hand (the states lane: the seed counted the trailing zero padding after jr ra's delay slot)
 0x002C6490 0x50 func_002C6490  # OVL1
 0x002C64E0 0x40 func_002C64E0  # OVL1
 0x002C6520 0x148 func_002C6520  # OVL1
