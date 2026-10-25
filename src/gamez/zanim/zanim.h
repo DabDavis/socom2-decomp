@@ -148,6 +148,8 @@ class CZAnimArgList : public std::list<CZAnimArg *> {
 public:
     virtual ~CZAnimArgList();
     CPnt3D *GetPnt3D(CZAnimArg::TYPE type);
+    /* the index'th string argument (SOCOM 1's; the menu's handlers take their text from it) */
+    char *GetCharP(int index);
     void ParseNetworkPacketArgs(CZAnim *anim, ZAnimNetworkPacket *packet);
 };   // 0x10 bytes
 
@@ -270,6 +272,11 @@ public:
     CPnt3D *GetArgPnt3D()
     {
         return m_arg_list ? m_arg_list->GetPnt3D(CZAnimArg::TYPE_PNT3D) : 0;
+    }
+    /* the index'th string argument, if the anim was given any (the menu's handlers; the name ours) */
+    char *GetArgCharP(int index)
+    {
+        return m_arg_list ? m_arg_list->GetCharP(index) : 0;
     }
 
     CZAnimArgList* m_arg_list;   // 0x18
