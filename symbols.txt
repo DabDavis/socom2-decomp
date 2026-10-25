@@ -7118,7 +7118,7 @@
 0x00385C30 0xA4 func_00385C30  # OVL1
 0x00385CE0 0xA8 __dt__13CUIVarManagerFv  # OVL1; s1:calls
 0x00385D90 0x5C DetachUIVar__10UIVarMixinFP11CUIVariable  # OVL1; s1:calls by hand (the HUD lane: UIVarMixin's destructor makes this call where SOCOM 1's calls DetachUIVar)
-0x00385DF0 0x5C func_00385DF0  # OVL1
+0x00385DF0 0x5C AttachUIVar__10UIVarMixinFP11CUIVariable  # OVL1; s1:calls (SystemTuner's constructor calls it with the new variable where SOCOM 1's calls AttachUIVar; detaches the old variable first, as SOCOM 1's)
 0x00385E50 0x48 func_00385E50  # OVL1
 0x00385EA0 0x248 func_00385EA0  # OVL1
 0x003860F0 0x1B0 func_003860F0  # OVL1
@@ -7213,27 +7213,27 @@
 0x00389AE0 0xC GetType__10CImageSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389AF0 0xC GetType__11CButtonSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389B00 0x15C func_00389B00  # OVL1
-0x00389C60 0x154 func_00389C60  # OVL1
+0x00389C60 0x154 RefreshSystemTuners__Fv  # OVL1; ours (calls UpdateUIVar, slot 0xC, of each of the ten tuners InitSystemTuners makes, with its variable, skipping a null one)
 0x00389DC0 0xA8 UpdateUIVar__12CDialogTunerFP11CUIVariable  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389E70 0x9C UpdateUIVar__19CStickDeadzoneTunerFP11CUIVariable  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00389F10 0x78 func_00389F10  # OVL1
+0x00389F10 0x78 UpdateUIVar__18CStickInertiaTunerFP11CUIVariable  # OVL1; s1:vtable by hand (CStickInertiaTuner's slot 0xC; SOCOM 1's CStickAccelerationTuner's renamed; writes the pad's stick type at 0x2A4)
 0x00389F90 0x6C UpdateUIVar__22CStickSensitivityTunerFP11CUIVariable  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0038A000 0x40 UpdateUIVar__16CBrightnessTunerFP11CUIVariable  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0038A040 0x5C UpdateUIVar__11CMusicTunerFP11CUIVariable  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0038A0A0 0x168 func_0038A0A0  # OVL1
-0x0038A210 0x208 func_0038A210  # OVL1
+0x0038A0A0 0x168 UpdateUIVar__11CSoundTunerFP11CUIVariable  # OVL1; s1:vtable by hand (CSoundTuner's slot 0xC, as SOCOM 1's; sets sound groups 0, 3, 4, 5 and 14)
+0x0038A210 0x208 UninitSystemTuners__Fv  # OVL1; s1:order (deletes the tuners InitSystemTuners made and zeroes each, as SOCOM 1's; first of the unit's destructors as SOCOM 1's)
 0x0038A420 0x80 __dt__12CDialogTunerFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0038A4A0 0x80 __dt__19CStickDeadzoneTunerFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0038A520 0x80 func_0038A520  # OVL1
+0x0038A520 0x80 __dt__18CStickInertiaTunerFv  # OVL1; s1:vtable by hand (CStickInertiaTuner's slot 0x8; SOCOM 1's CStickAccelerationTuner renamed by its RTTI)
 0x0038A5A0 0x80 __dt__22CStickSensitivityTunerFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0038A620 0x80 __dt__16CBrightnessTunerFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0038A6A0 0x80 __dt__11CMusicTunerFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0038A720 0x80 __dt__11CSoundTunerFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0038A7A0 0x84C func_0038A7A0  # OVL1
+0x0038A7A0 0x84C InitSystemTuners__Fv  # OVL1; s1:order (news each tuner on SOUND_VOLUME ... HEADSET_CONTROLLER as SOCOM 1's does, between the destructors and ~SystemTuner as SOCOM 1's)
 0x0038AFF0 0x70 __dt__11SystemTunerFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0038B060 0x24 func_0038B060  # OVL1
-0x0038B090 0x80 func_0038B090  # OVL1
-0x0038B110 0x5C func_0038B110  # OVL1
+0x0038B060 0x24 TunersRebootHandler__FQ211CIOPManager11RebootPhaseQ211CIOPManager10RebootModePv  # OVL1; ours (the callback InitSystemTuners registers with theIOPManager: UIStoreOptions(0, 0), true)
+0x0038B090 0x80 __dt__13CHeadsetTunerFv  # OVL1; s1:vtable by hand (CHeadsetTuner's slot 0x8, SOCOM II's class)
+0x0038B110 0x5C UpdateUIVar__13CHeadsetTunerFP11CUIVariable  # OVL1; s1:vtable by hand (CHeadsetTuner's slot 0xC, SOCOM II's class: sound group 7)
 0x0038B170 0x8 UpdateUIVar__11SystemTunerFP11CUIVariable  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0038B180 0xCC func_0038B180  # OVL1
 0x0038B250 0x44 SetButtonState__Q221@unnamed@zui_skb_cpp@12CSkbKeyPropsFM9C2DButtonFPCvPv_v  # OVL1; s1:exact
@@ -7526,7 +7526,7 @@
 0x0039C440 0xBC func_0039C440  # OVL1
 0x0039C500 0x78 __dt__7COutputFv  # OVL1; s1:align
 0x0039C580 0xC func_0039C580  # OVL1
-0x0039C590 0x80 func_0039C590  # OVL1
+0x0039C590 0x80 UnRegisterRebootCallback__11CIOPManagerFi  # OVL1; s1:calls (UninitSystemTuners passes it theIOPManager and the id InitSystemTuners' RegisterRebootCallback returned)
 0x0039C610 0x6C RegisterRebootCallback__11CIOPManagerFPFQ211CIOPManager11RebootPhaseQ211CIOPManager10RebootModePv_bPv  # OVL1; s1:align
 0x0039C680 0x6C func_0039C680  # OVL1
 0x0039C6F0 0x8 func_0039C6F0  # OVL1
