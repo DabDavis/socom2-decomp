@@ -9,6 +9,7 @@
  * OPEN, not written yet: BuildTOC (0x39DFD0: the ISO 9660 walk, 0x520 -- m2c's draft is a start),
  * the hard disk's mount and reboot handlers (0x39CE80-0x39D910), 0x39DDB0 and 0x39DFC0. */
 
+#include <stdio.h>
 #include "zutil.h"
 
 extern "C" {
@@ -560,6 +561,163 @@ int CFileCD::Read(char *buf, int size)
                 m_pos += size;
             } else
                 m_buf = 0;
+        }
+    }
+    return n;
+}
+
+/* a file read whole for the hard disk's icon (ours) */
+struct HDDICONFILE {
+    void *data;
+    int size;
+};
+
+/* the hard disk icon's header (PS2ICON3D, then each file's offset and size: ours) */
+struct HDDICONHEADER {
+    char magic[9];
+    char pad[3];
+    int reserved;
+    struct {
+        int offset;
+        int size;
+    } files[4];
+    char unused[0x220 - 0x30];
+};
+
+int LoadHddIconFile(const char *dir, const char *name, HDDICONFILE *out);
+
+/* a file read whole into a 64-aligned buffer, rounded up to 512 bytes and zeroed past its end;
+ * the buffer and its rounded size handed back, the file's size returned (SOCOM II's; the name
+ * ours).
+ * OPEN, 2 instructions short (0x260 of 0x268): the inlined Close's IsOpen tests the CD reader
+ * through its address (`addiu v0,sp,372; lw v1,0(v0)`) and materialises `!= -1 && != 0` with two
+ * branches and an assigned true (daddiu); CDFileOpen by value gives nor/sltu. Taking it by `const
+ * int &` gives the target's size (8 instructions off) but costs IsOpen and Close their matches;
+ * `if (...) return true; return false;` and a bool local cost them too. The rest matches. */
+int LoadHddIconFile(const char *dir, const char *name, HDDICONFILE *out)
+{
+    CFileIO file;
+    char path[256];
+    int alloc;
+    int size = 0;
+
+    strcpy(path, dir);
+    strcat(path, name);
+    if (file.Open(path, 1) != false) {
+        size = file.GetSize();
+        alloc = (size + 511) / 512 * 512;
+        void *buf = _memalign(64, alloc, 0, 0);
+
+        memset(buf, 0, alloc);
+        file.fread(buf, size);
+        file.Close();
+        out->data = buf;
+        out->size = alloc;
+    }
+    return size;
+}
+
+/* the installed game's icon written as one file: the header, system.cnf and the three icons
+ * (SOCOM II's; the name ours) */
+bool WriteHddIcon(const char *path)
+{
+    HDDICONFILE files[4];
+    HDDICONHEADER header;
+    int r;
+    int i;
+
+    strncpy(header.magic, "PS2ICON3D", 9);
+    memset(header.pad, 0, 3);
+    header.reserved = 0;
+    header.files[0].size = LoadHddIconFile("", "system.cnf", &files[0]);
+    header.files[1].size = LoadHddIconFile("RUN/ICONS/HDD/", "icon.sys", &files[1]);
+    header.files[2].size = LoadHddIconFile("RUN/ICONS/HDD/", "list.ico", &files[2]);
+    header.files[3].size = LoadHddIconFile("RUN/ICONS/HDD/", "deleting.ico", &files[3]);
+    header.files[0].offset = 512;
+    header.files[1].offset = header.files[0].offset + files[0].size;
+    header.files[2].offset = header.files[1].offset + files[1].size;
+    header.files[3].offset = header.files[2].offset + files[2].size;
+    int fd = sceOpen(path, 3);
+
+    if (fd >= 0) {
+        r = sceWrite(fd, &header, 512);
+        for (i = 0; i < 4 && r >= 0; i++)
+            r = sceWrite(fd, files[i].data, files[i].size);
+        r = sceClose(fd);
+    }
+    for (i = 0; i < 4; i++) {
+        if (files[i].data)
+            _free(files[i].data, 0, 0);
+        files[i].data = 0;
+    }
+    return r >= 0;
+}
+
+/* the hard disk's state (zsys's: sceDevctl("hdd0:")'s answer, 0 when it is usable) */
+extern int s_hddStatus;
+
+extern "C" {
+/* the IOP's directory calls (sifdev.h) */
+struct sce_stat {
+    unsigned int st_mode;
+    unsigned int st_attr;
+    unsigned int st_size;
+    unsigned char st_ctime[8];
+    unsigned char st_atime[8];
+    unsigned char st_mtime[8];
+    unsigned int st_hisize;
+    unsigned int st_private[6];
+};
+struct sce_dirent {
+    struct sce_stat d_stat;
+    char d_name[256];
+    void *d_private;
+};
+int sceDopen(const char *dirname);
+int sceDread(int fd, struct sce_dirent *buf);
+int sceDclose(int fd);
+}
+
+/* the files of the installed game's RUN directory whose names hold the pattern, counted; the one
+ * the index names has the given bytes of its header (from offset 20) copied out (SOCOM II's, for
+ * UIHardDriveOperation; the name ours). The file is closed with sceDclose, as the target does */
+int HddFindFiles(const char *pattern, void *out, int size, unsigned int index)
+{
+    char path[512];
+    sce_dirent ent;
+    char header[252];
+    bool found = false;
+    const char *root = "pfs0:RUN";
+    unsigned int n = 0;
+
+    if (!s_hddStatus) {
+        int dir = sceDopen(root);
+
+        if (dir >= 0) {
+            while ((bool)sceDread(dir, &ent) && !(index && n > index)) {
+                if (pattern && !strstr(ent.d_name, pattern))
+                    continue;
+                if (out && n == index) {
+                    sprintf(path, "%s/%s", root, ent.d_name);
+                    found = true;
+                }
+                n++;
+            }
+            sceDclose(dir);
+        }
+        if (found) {
+            int fd;
+            int read = 0;
+
+            fd = sceOpen(path, 1);
+
+            if (fd >= 0) {
+                read = sceRead(fd, header, sizeof(header));
+                memcpy(out, header + 20, size);
+                sceDclose(fd);
+            }
+            if (fd < 0 || read < 0)
+                data_004A1770(2);
         }
     }
     return n;
