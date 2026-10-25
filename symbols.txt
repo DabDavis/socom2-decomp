@@ -3870,11 +3870,11 @@
 0x002AE7D0 0x50 HUDTriggerMissionCamBegin__FP14_zanim_cmd_hdr  # OVL1; s1:calls
 0x002AE820 0x148 HUDTriggerMissionCamParse__FP5_zrdr  # OVL1; s1:align
 0x002AE970 0x7C HUDLetterBoxCmdTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:align
-0x002AE9F0 0x7C func_002AE9F0  # OVL1
-0x002AEA70 0x84 func_002AEA70  # OVL1
-0x002AEB00 0xA0 func_002AEB00  # OVL1
-0x002AEBA0 0x7C func_002AEBA0  # OVL1
-0x002AEC20 0x84 func_002AEC20  # OVL1
+0x002AE9F0 0x7C HUDLetterBoxCmdParseOff__FP5_zrdr  # OVL1; s1:order by hand (the states lane: after HUDLetterBoxCmdTick as in SOCOM 1, the same size; sets the command's second bit, which the tick reads as OFF)
+0x002AEA70 0x84 HUDLetterBoxCmdParseOn__FP5_zrdr  # OVL1; s1:order by hand (the states lane: after the OFF parser as in SOCOM 1, the same size; sets the bit the tick reads as ON)
+0x002AEB00 0xA0 HUDCmdTickControlSwitch__FP14_zanim_cmd_hdrPf  # OVL1; s1:order by hand (the states lane: SOCOM 1's calls CHUD::On or Off by the command's two bits; SOCOM II's sets and clears the HUD's on bit, those two inlined)
+0x002AEBA0 0x7C HUDCmdParseOff__FP5_zrdr  # OVL1; s1:order by hand (the states lane: after the control switch's tick as in SOCOM 1, the same size and code)
+0x002AEC20 0x84 HUDCmdParseOn__FP5_zrdr  # OVL1; s1:order by hand (the states lane: after HUDCmdParseOff as in SOCOM 1, the same size and code)
 0x002AECB0 0x8 func_002AECB0  # OVL1
 0x002AECC0 0x6C StopImageRecorderParse__FP5_zrdr  # OVL1; s1:align
 0x002AED30 0x8 func_002AED30  # OVL1
