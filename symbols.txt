@@ -4711,9 +4711,9 @@
 0x002E28D0 0x4C RefreshGameList__13CZOnlineLobbyFP3C2D  # OVL1; s1:ui ('RefreshGameList' 0x27DB40, as SOCOM 1's UIRefreshGameList calls RefreshGameList; a1 live)
 0x002E2920 0x1D4 func_002E2920  # OVL1
 0x002E2B00 0x1E0 cbGameList__FiiiP22MediusGameListResponse  # OVL1; s1:name (SOCOM 1's cbGameList, the game list request's callback: the same request/update/new-game shape)
-0x002E2CE0 0x394 func_002E2CE0  # OVL1
-0x002E3080 0x160 func_002E3080  # OVL1
-0x002E31E0 0x1EC func_002E31E0  # OVL1
+0x002E2CE0 0x394 UpdateGameListDisplay__FP12BriefingRoom  # OVL1; s1:name (SOCOM 1's UpdateGameListDisplay, the room passed in SOCOM II: the games sorted, filtered by GamePassesFilters and built into uiv_GameList)
+0x002E3080 0x160 GamePassesFilters__FP8RoomGame  # OVL1; s1:name (SOCOM 1's GamePassesFilters: the same tests in the same order, SOCOM II's password filter first)
+0x002E31E0 0x1EC GamePassesTypeFilter__FP8RoomGame  # OVL1; s1:name (SOCOM 1's GamePassesTypeFilter, which took the type: here the game, its mission sequence through the vtable, tested against the type filter 0x44F528)
 0x002E33D0 0x10 func_002E33D0  # OVL1
 0x002E33E0 0xAC HasMissions__8RoomGameFv  # OVL1; ours (each byte of the game's mission sequence -- the vtable's GetMissionSequence -- found in the mission list 0x441650 by Find(id, true); JoinGame, 0x2F8FD0 and the LAN JoinGame ask it)
 0x002E3490 0x40 AllowsType__8RoomGameFi  # OVL1; ours (a game's type mask at +0x1A1 tested for bit type-1, none set allowing any; the bit test 0x2E34E0 makes inline on a room)
@@ -4741,7 +4741,7 @@
 0x002E43F0 0x14 __ct__Q23std48vector<P8RoomGame,Q23std21allocator<P8RoomGame>>Fv  # OVL1; ours (the room's games constructed: BriefingRoom's constructor calls it out of line, at +0); the room's games constructed (BriefingRoom's base vector at +0: its inline constructor calls it out of line)
 0x002E4410 0x60 FindGame__12BriefingRoomFi  # OVL1; ours (a room's game whose word at +0x28, the mission, equals the argument); a member of the room (the games are its base: ~BriefingRoom's three this-tests)
 0x002E4470 0xB8 FindRoom__14BriefingRoomDBFPCc  # OVL1; s1 by hand (SOCOM 1's FindRoom: the room list 0x44F568 searched with strcmp on the room's name, +0x38 in SOCOM II, 0 for a null name; the chat unit's CreateRoom handler, cbCreateRoom and 0x2F0EA0 call it)
-0x002E4530 0x3C func_002E4530  # OVL1
+0x002E4530 0x3C SortGames__12BriefingRoomFv  # OVL1; ours (the room's games sorted: std::sort's instance 0x2E4A90 with an empty comparator by value)
 0x002E4570 0xB8 FindGame__12BriefingRoomFPCc  # OVL1; ours (SOCOM 1's BriefingRoom::FindGame: strcmp of the game names at +0x4C; the LAN unit calls it); SOCOM 1's BriefingRoom::FindGame (its name in the demo's symbols)
 0x002E4630 0x84 RemoveUncheckedGames__12BriefingRoomFv  # OVL1; ours (erase(remove_if(begin, end, RemoveUncheckedGame), end): the game list's request 0x2E2920 and the LAN unit); a member of the room, as FindGame
 0x002E46C0 0x34 RemoveUncheckedGame__FP8RoomGame  # OVL1; ours (RemoveUnchecked's remove_if predicate, its address taken at 0x2E4634: a game the new list did not report, the bool at +0x198, deleted)

@@ -61,8 +61,9 @@ extern int data_0044F548;
 extern int data_0044F550;
 void func_002F4080(void *msg, int type);   /* a request put into the network's order (empty) */
 void func_002F4030(void *msg, int type);   /* a message's byte order converted (the chat unit's) */
-void func_002E2CE0(BriefingRoom *room);   /* the room's game list sorted and shown */
 }
+
+void UpdateGameListDisplay(BriefingRoom *room);
 
 void cbRoomList(int, int, int, MediusChannelListResponse *);
 void cbGameList(int, int, int, MediusGameListResponse *);
@@ -267,14 +268,184 @@ void cbGameList(int, int, int, MediusGameListResponse *resp)
             BriefingRoom *room = data_0044F568.FindRoom(RoomVarText(theLobby.uiv_LobbyWorldNameVar));
 
             if (room)
-                func_002E2CE0(room);
+                UpdateGameListDisplay(room);
         }
     } else {
         BriefingRoom *room = data_0044F568.FindRoom(RoomVarText(theLobby.uiv_LobbyWorldNameVar));
 
         if (room)
-            func_002E2CE0(room);
+            UpdateGameListDisplay(room);
     }
+}
+
+/* the game list's order (std::sort's comparator, empty, passed by value) */
+struct GameLess {
+    GameLess() {}
+};
+
+extern "C" void func_002E4A90(BriefingRoom::iterator first, BriefingRoom::iterator last,
+                              GameLess less);   /* std::sort's instance */
+
+/* the room's games sorted (OVL1 0x2E4530: the sort still called by its placeholder;
+ * UpdateGameListDisplay calls it out of line, pinned) */
+#pragma auto_inline off
+void BriefingRoom::SortGames()
+{
+    func_002E4A90(begin(), end(), GameLess());
+}
+#pragma auto_inline reset
+
+/* the mission list's game type of a mission (fts_missionlist.cpp's) */
+class CMultiMission;
+class CMultiMissionList {
+public:
+    CMultiMission *Find(int id, bool multi);
+    signed char GetMultiValue(int id);
+};
+extern "C" CMultiMissionList data_00441650;
+
+/* the game's missions pass the menu's type filter (0x44F528): all of one type, and the type the
+ * filter names -- 248-252 a game type, anything else the one mission (SOCOM 1's took the type;
+ * OVL1 0x2E31E0).
+ * OPEN, 0x204 against 0x1EC: the target keeps five saved registers (the first mission s0, mixed
+ * s1, the cursor s2, ok s3, the type s4) and calls GetMultiValue on the cursor's byte before the
+ * first's; this keeps the sequence's start apart from the cursor (s5, s6 more). The chain's calls
+ * re-extend the first mission (`andi a1,s0,0xff`) where the loop's pass it straight -- two values
+ * in the source, perhaps. Tried: do/while, `*++seq`, for over the pointer and over an index */
+bool GamePassesTypeFilter(RoomGame *game)
+{
+    bool ok = true;
+
+    if (data_0044F528) {
+        unsigned char *seq = game->GetMissionSequence();
+        unsigned char first = *seq;
+        bool mixed = false;
+
+        if (first) {
+            do {
+                unsigned char type = data_00441650.GetMultiValue(*seq);
+
+                if (type != (unsigned char)data_00441650.GetMultiValue(first))
+                    ok = false;
+                if (*seq != first)
+                    mixed = true;
+                seq++;
+            } while (*seq);
+        }
+        if (ok) {
+            if (data_0044F528 == 252) {
+                if ((unsigned char)data_00441650.GetMultiValue(first) != 5)
+                    ok = false;
+            } else if (data_0044F528 == 251) {
+                if ((unsigned char)data_00441650.GetMultiValue(first) != 2)
+                    ok = false;
+            } else if (data_0044F528 == 250) {
+                if ((unsigned char)data_00441650.GetMultiValue(first) != 4)
+                    ok = false;
+            } else if (data_0044F528 == 249) {
+                if ((unsigned char)data_00441650.GetMultiValue(first) != 3)
+                    ok = false;
+            } else if (data_0044F528 == 248) {
+                if ((unsigned char)data_00441650.GetMultiValue(first) != 1)
+                    ok = false;
+            } else if (mixed)
+                ok = false;
+            else if (first != data_0044F528)
+                ok = false;
+        }
+    }
+    return ok;
+}
+
+/* the game passes the menu's filters: password, type, players, speed, friendly fire, lock
+ * (SOCOM 1's; OVL1 0x2E3080) */
+bool GamePassesFilters(RoomGame *game)
+{
+    if (game->m_info.m_flags != -1 && data_0044F540 != 2) {
+        if ((game->m_info.m_flags & 1) && !data_0044F540)
+            return false;
+        if (!(game->m_info.m_flags & 1) && data_0044F540 == 1)
+            return false;
+    }
+    if (!GamePassesTypeFilter(game))
+        return false;
+    if (game->m_info.m_players < data_0044F530)
+        return false;
+    if (game->m_info.m_38 > data_0044F538)
+        return false;
+    if (data_0044F548 != 2 && (data_0044F548 == 1) != ((game->m_info.m_30 & 1) != 0))
+        return false;
+    if (data_0044F550 != 2) {
+        if (data_0044F550 == 0 && game->m_info.m_lock != 3)
+            return false;
+        if (game->m_info.m_lock == 3)
+            return false;
+    }
+    return true;
+}
+
+/* the room's games sorted and handed to the menus, those the filters pass: each one's name, its
+ * players and spectators, its speed, password and rules, the game types it allows (SOCOM 1's;
+ * OVL1 0x2E2CE0) */
+void UpdateGameListDisplay(BriefingRoom *room)
+{
+    if (!theLobby.uiv_GameList)
+        return;
+    CRdrEditor ed;
+
+    ed.push(0);
+    room->SortGames();
+    for (BriefingRoom::iterator i = room->begin(); i != room->end(); ++i) {
+        if ((*i)->m_info.m_flags != -1 && GamePassesFilters(*i)) {
+            ed.push(0);
+            ed.addstringnode((*i)->m_info.m_name);
+            int spectators = (*i)->m_spectators;
+
+            if ((*i)->m_info.m_players < spectators)
+                spectators = (*i)->m_info.m_players;
+            int max = (*i)->m_info.m_maxPlayers - (*i)->m_maxSpectators;
+
+            if (max > 16)
+                max = 16;
+            int players = (*i)->m_info.m_players - spectators;
+
+            if (max < players)
+                players = max;
+            ed.addintnode(players);
+            ed.addintnode(max);
+            if ((*i)->m_maxSpectators < spectators)
+                spectators = (*i)->m_maxSpectators;
+            ed.addintnode(spectators);
+            ed.addintnode((*i)->m_maxSpectators);
+            if (!(*i)->m_info.m_players)
+                ed.addintnode(0);
+            else if ((*i)->m_info.m_38 < 300)
+                ed.addintnode(1);
+            else if ((*i)->m_info.m_38 < 600)
+                ed.addintnode(2);
+            else
+                ed.addintnode(3);
+            if ((*i)->m_info.m_flags & 1)
+                ed.addintnode(0);
+            else
+                ed.addintnode(1);
+            if ((*i)->m_info.m_3c)
+                ed.addintnode(0);
+            else
+                ed.addintnode(1);
+            if ((*i)->AllowsType(1))
+                ed.addintnode(1);
+            if ((*i)->AllowsType(2))
+                ed.addintnode(2);
+            if ((*i)->AllowsType(3))
+                ed.addintnode(3);
+            if ((*i)->AllowsType(4))
+                ed.addintnode(4);
+            ed.pop();
+        }
+    }
+    ed.pop();
+    theLobby.uiv_GameList->Set(&ed);
 }
 
 /* the rooms' Medius world list, as the menus show it (StoredClanInfo, the clan unit's) */
@@ -283,20 +454,6 @@ struct RoomClanInfo {
     char ClanName[32];   // 0x24
 };
 extern "C" RoomClanInfo StoredClanInfo;
-
-/* the rdr editor a list is built in (zrdr.h's CRdrEditor, 0x4C bytes, a value at its start; zui.h's
- * _zrdr and zrdr.h's cannot meet in one unit -- the chat unit declares it so too) */
-class CRdrEditor : public _zrdr {
-public:
-    CRdrEditor();
-    ~CRdrEditor();
-    bool push(const char *tag);
-    bool pop();
-    bool addintnode(int i);
-    bool addstringnode(const char *s);
-
-    unsigned char _8[0x4c - 0x8];
-};
 
 extern "C" void func_002E5150(BriefingRoomDB::iterator first, BriefingRoomDB::iterator last,
                               bool (*less)(BriefingRoom *, BriefingRoom *));   /* std::sort's instance */
@@ -393,14 +550,6 @@ bool CZOnlineLobby::CanJoinRoom(const char *name)
         ok = room->AllowsType(GetRankTier(-1));
     return ok;
 }
-
-/* the mission list (the states lane's fts_missionlist.cpp, data 0x441650) */
-class CMultiMission;
-class CMultiMissionList {
-public:
-    CMultiMission *Find(int id, bool multi);
-};
-extern "C" CMultiMissionList data_00441650;
 
 /* every mission of the game's sequence known here (OVL1 0x2E33E0: JoinGame asks it) */
 bool RoomGame::HasMissions()

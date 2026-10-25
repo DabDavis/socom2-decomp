@@ -138,18 +138,6 @@ struct ChatRoom {
     char *m_password;   // 0x94
 };
 
-/* the rdr editor a list is built in (zrdr.h's CRdrEditor, 0x4C bytes, a value at its start; zui.h's
- * _zrdr and zrdr.h's cannot meet in one unit) */
-class CRdrEditor : public _zrdr {
-public:
-    CRdrEditor();
-    ~CRdrEditor();
-    bool push(const char *tag);
-    bool pop();
-
-    unsigned char _8[0x4c - 0x8];
-};
-
 /* a game created (SOCOM 1's MediusCreateGame, wider: the three generic fields and the host's type
  * SOCOM II's) */
 struct MediusCreateGameRequest {

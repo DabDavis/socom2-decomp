@@ -287,6 +287,20 @@ MediusErrorCode MediusGetClanMemberList(MediusGetClanMemberListRequest *req,
                                         MediusGetClanMemberListCallback cb);
 }
 
+/* the rdr editor the menus' lists are built in (zrdr.h's CRdrEditor, 0x4C bytes, a value at its
+ * start; zui.h's _zrdr and zrdr.h's cannot meet in one unit, so the lobby declares it again) */
+class CRdrEditor : public _zrdr {
+public:
+    CRdrEditor();
+    ~CRdrEditor();
+    bool push(const char *tag);
+    bool pop();
+    bool addintnode(int i);
+    bool addstringnode(const char *s);
+
+    unsigned char _8[0x4c - 0x8];
+};
+
 /* --- the lobby's lists -------------------------------------------------------------------- */
 
 /* the lobby keeps its lists in vectors of pointers that own their items (SOCOM 1's were plain
@@ -582,7 +596,10 @@ public:
     int m_194;   // 0x194
     bool m_unchecked;   // 0x198: set for every game as the game list is asked for again
     unsigned char m_199;   // 0x199
-    unsigned char m_19a[7];   // 0x19a
+    unsigned char m_19a[3];   // 0x19a: what the game's rules hand func_002F7D90
+    unsigned char m_spectators;   // 0x19d: of the players, those watching
+    unsigned char m_maxSpectators;   // 0x19e
+    unsigned char m_19f[2];   // 0x19f
     unsigned char m_types;   // 0x1a1: the game types it allows, a bit each (none: any)
     unsigned char m_missionSeq[0x22];   // 0x1a2
 };   // 0x1c4
@@ -670,6 +687,7 @@ public:
     RoomGame *FindGame(const char *name);
     void RemoveEmptyGames();
     void RemoveUncheckedGames();
+    void SortGames();
 
     std::vector<RoomPlayer> m_players;   // 0x7c
     std::vector<MediusChatFwdMessage> m_chat;   // 0x88
