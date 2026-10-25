@@ -5,6 +5,35 @@
 #include <stdlib.h>
 
 #include "zsnd.h"
+#include "../zanim/zanim.h"
+
+/* SOCOM 1's: every group of the sounds file's GROUPS record made and added -- SOCOM II names the
+ * list to read */
+void CSndGroup::LoadSoundGroups(const char *name)
+{
+    int i;      /* declared first: the list takes the lower saved register */
+
+    if (m_isDisabled)
+        return;
+    _zrdr *rdr = GetSoundRdrFile();
+
+    if (!rdr)
+        return;
+    _zrdr *groups = func_0032F0D0(rdr, "GROUPS");
+
+    if (!groups)
+        return;
+    _zrdr *list = func_0032F0D0(groups, name);
+
+    if (!list)
+        return;
+    for (i = 0; i < list->Count(); i++) {
+        CSndGroup *group = new CSndGroup;
+
+        group->LoadCSndGroup(list->Item(i));
+        AddNewCSnd(group);
+    }
+}
 
 CSndInstance *CSndGroup::PlaySound(CSndInstance *inst, unsigned int flags)
 {

@@ -6160,7 +6160,7 @@
 0x003435B0 0xC SetSubtitles__4CSndFb  # OVL1; s1:order by hand (SOCOM 1's SetSubtitles, the same byte stored)
 0x003435C0 0x810 func_003435C0  # OVL1
 0x00343DD0 0x1BC func_00343DD0  # OVL1
-0x00343F90 0xFC func_00343F90  # OVL1
+0x00343F90 0xFC AddNewCSnd__4CSndFP4CSnd  # OVL1; s1:calls by hand (LoadSoundGroups adds each group with it after LoadCSndGroup, as SOCOM 1's calls AddNewCSnd; after the bank loader as SOCOM 1's AddNewCSnd follows LoadBank) -- the sound lane
 0x00344090 0x32C func_00344090  # OVL1
 0x003443C0 0x90 CopyUpper__FPCcPci  # OVL1; SOCOM II's, name ours (a string copied upper-cased into a buffer of n characters, strlen and toupper)
 0x00344450 0x478 func_00344450  # OVL1
@@ -6236,7 +6236,7 @@
 0x00347CB0 0x8C SetDialogMode__9CSndGroupFv  # OVL1; SOCOM II's, name ours (CSndGroup's vtable slot 0x34: the slot called on each member)
 0x00347D40 0x1B8 NormalizeWeights__9CSndGroupFv  # OVL1; s1:align
 0x00347F00 0x224 LoadCSndGroup__9CSndGroupFP5_zrdr  # OVL1; s1:align
-0x00348130 0x134 func_00348130  # OVL1
+0x00348130 0x134 LoadSoundGroups__9CSndGroupFPCc  # OVL1; s1:order by hand (SOCOM 1's CSndGroup::LoadSoundGroups: after LoadCSndGroup in both builds, the sounds file's GROUPS record walked, each item a new CSndGroup loaded with LoadCSndGroup and added with AddNewCSnd; SOCOM II names the list to read, a parameter) -- the sound lane
 0x00348270 0x70 __dt__Q23std30vector<f,Q23std12allocator<f>>Fv  # OVL1; by hand (vector<float>'s destructor, three this-tests; zsnd_csndgroup.cpp's copy -- CSndGroup's weights -- linked first, Cleanup's FreeVector calls it) -- the sound lane
 0x003482E0 0x170 PlaySoundVolPanPitch__9CSndGroupFfiiP12CSndInstanceUi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00348450 0x170 PlaySound3D__9CSndGroupFPC6CPnt3DfiP12CSndInstanceUi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)

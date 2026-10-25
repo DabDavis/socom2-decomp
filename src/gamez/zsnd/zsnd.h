@@ -123,6 +123,7 @@ public:
     virtual void SetDialogMode() { m_mode = 3; }
 
     static CSnd *GetSoundByName(const char *name);
+    static void AddNewCSnd(CSnd *sound);
     static void SetGroupVol(int group, float vol);
     static void LoadReverbs(_zrdr *rdr);
     static void LoadIndoorReverbs(_zrdr *rdr);
@@ -181,6 +182,7 @@ public:
  * picks a member by weight, then lowers the winner's weight by m_decay and renormalises. */
 class CSndGroup : public CSnd {
 public:
+    CSndGroup() : m_decay(0.0f) {}
     virtual ~CSndGroup();
     virtual CSndInstance *PlaySound(CSndInstance *inst, unsigned int flags);
     virtual CSndInstance *PlaySoundVol(float vol, CSndInstance *inst, unsigned int flags);
@@ -199,6 +201,8 @@ public:
             (*i)->SetDialogMode();
     }
     void NormalizeWeights();
+    void LoadCSndGroup(_zrdr *rdr);
+    static void LoadSoundGroups(const char *name);
     /* the member to play (ours: the four plays inline it) */
     CSnd *PickSound()
     {
