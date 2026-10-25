@@ -367,6 +367,15 @@ void FreeInstances();
 /* the textures a particle draws with, registered with the draw buffer (0x324A10) */
 void AddDynTexture(zdb::CTexHandle *tex);
 
+/* how a source's particles are drawn (SOCOM 1's PARTICLE_TYPE; the enumerators' names ours, by
+ * the draw buffer's functions) */
+enum PARTICLE_TYPE {
+    PT_BILLBOARD = 0,
+    PT_ROTATED = 1,
+    PT_XZ = 2,
+    PT_STREAKED = 3
+};
+
 /* an emitter (SOCOM 1's DWARF: 0x134 bytes there). SOCOM II's members sit one word later from
  * the texture list on (0xDC; 0xD8 in SOCOM 1) -- the word inserted before it is not located yet,
  * so the members ahead of the list are opaque here */
@@ -392,7 +401,9 @@ public:
 
     unsigned char _0[0x19];   // 0x0: SOCOM 1's m_active .. m_landmark, and SOCOM II's word
     unsigned char m_doAgeLOD;   // 0x19 (SOCOM 1: 0x15)
-    unsigned char _1a[0xdc - 0x1a];   // 0x1a: SOCOM 1's m_doSpawnLOD .. m_initialAgeRange
+    unsigned char _1a[0x3c - 0x1a];   // 0x1a: SOCOM 1's m_doSpawnLOD .. m_maxRotAcc
+    PARTICLE_TYPE m_drawType;   // 0x3c (SOCOM 1: 0x38)
+    unsigned char _3d[0xdc - 0x3d];   // 0x3d: SOCOM 1's m_numPeriods .. m_initialAgeRange
     std::vector<zdb::CTexHandle *> m_textures;   // 0xdc
     Props *m_props;   // 0xe8
     CPnt3D m_bboxMin;   // 0xec: SOCOM 1's m_bbox (a CBBox of two points there)

@@ -784,6 +784,9 @@
 0x0045C428 0x4 particle_node_count__8Particle  # OVL1 bss; SOCOM 1's (particle_node_count__8Particle): Open zeroes it before filling the pool, as SOCOM 1's (gp-28668); 3 references in 2 functions (Open, GetFreeInstance) -- the rdr lane
 0x0045C440 0xC particle_node_free_list__8Particle  # OVL1 bss; SOCOM 1's (particle_node_free_list__8Particle, 0xC, a vector of nodes): __sinit_zparticle.cpp (0x402AD0) builds it and registers ~vector (0x1EA340); Open reserves 160 and pushes the PNODE%d nodes, as SOCOM 1's; 34 references in 7 functions take 0x45C440-0x45C448 -- the rdr lane
 0x0045C460 0x18 m_dyntexlist__8Particle  # OVL1 bss; s1:data-seq (size SOCOM 1's; via DestructionManager__8ParticleFPQ23zdb5CNodePcP6CPnt4DfP6CPnt3DP6CPnt3DP6CPnt3DP6CPnt3Dif)
+0x004835D0 0x4 m_lastTexture__8Particle  # OVL1 bss; SOCOM 1's (m_lastTexture__8Particle): DrawFlush zeroes it before and after drawing, as SOCOM 1's (gp-28648) -- the rdr lane
+0x004835D8 0x4 pParticleBuf__8Particle  # OVL1 bss; SOCOM 1's (pParticleBuf__8Particle, a cursor into bufferPtr): DrawFlush walks it down to bufferPtr, as SOCOM 1's (gp-28644) -- the rdr lane
+0x004835F0 0x4E20 bufferPtr__8Particle  # OVL1 bss; SOCOM 1's (bufferPtr__8Particle, 0x4E20 bytes: 5000 element pointers, after buffer's 5000 elements at 0x45C4B0): DrawFlush's lower bound, as SOCOM 1's -- the rdr lane
 0x00488440 0x4 fadeFactor__Q28Particle8Instance  # OVL1 bss; SOCOM 1's (fadeFactor__Q28Particle8Instance, ahead of ageFactor): Open sets it to 1.0 first, as SOCOM 1's; 1 reference in 1 function -- the rdr lane
 0x00488448 0x4 ageFactor__Q28Particle8Instance  # OVL1 bss; s1:data-seq (size SOCOM 1's; via SetDynamicLOD__Fi)
 0x00488450 0x4 spawnFactor__Q28Particle8Instance  # OVL1 bss; s1:data by hand (the wep lane: SetDynamicLOD stores spawnRateLimits[level] there, as SOCOM 1's stores spawnFactor next to ageFactor; 1 reference in SetDynamicLOD)
