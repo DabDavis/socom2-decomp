@@ -3075,38 +3075,38 @@
 0x002745A0 0x2B4 zAnimUIMenuTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:align
 0x00274860 0x8 Get2DVisual__Q23zdb7CVisualFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00274870 0xC0 GetUICommandType__FPCc  # OVL1; s1:align
-0x00274930 0xC func_00274930  # OVL1
-0x00274940 0x2B8 func_00274940  # OVL1
-0x00274C00 0x154 func_00274C00  # OVL1
-0x00274D60 0x50 func_00274D60  # OVL1
-0x00274DB0 0x208 func_00274DB0  # OVL1
+0x00274930 0xC GetMenuStack__Fv  # OVL1; s1:order (SOCOM 1's GetUICommandType, GetMenuStack, UISysLoadIRX run in the same order; it returns g_MenuStack, which UIPopUpDialog passes to CMenuStack::PopUpDialog as SOCOM 1's does)
+0x00274940 0x2B8 UIGetAvailableMPMissions__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "GetAvailableMPMissions" (id 0xB3, the UI command table's record at 0x3DDFE0), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x00274C00 0x154 UIUpdateServerInfo__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "UpdateServerInfo" (id 0x9B, the UI command table's record at 0x3DDE70), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x00274D60 0x50 UILobbyDisconnect__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "LobbyDisconnect" (id 0x99, the UI command table's record at 0x3DDE50), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x00274DB0 0x208 UICompareValues__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "CompareValues" (id 0xB1, the UI command table's record at 0x3DDFC0), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
 0x00274FC0 0x168 func_00274FC0  # OVL1
-0x00275130 0x218 func_00275130  # OVL1
-0x00275350 0x350 func_00275350  # OVL1
+0x00275130 0x218 UIUpdateAcctInfo__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "UpdateAcctInfo" (id 0x9A, the UI command table's record at 0x3DDE60), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x00275350 0x350 UIGetMUISPersonaInfo__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "GetMUISPersonaInfo" (id 0xAF, the UI command table's record at 0x3DDFA0), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
 0x002756A0 0xC4 func_002756A0  # OVL1
-0x00275770 0x5B4 func_00275770  # OVL1
+0x00275770 0x5B4 UICharacterProfile__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "CharacterProfile" (id 0xBA, the UI command table's record at 0x3DE050), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
 0x00275D30 0x1C0 func_00275D30  # OVL1
-0x00275EF0 0x190 func_00275EF0  # OVL1
+0x00275EF0 0x190 UIGetMissionInformation__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "GetMissionInformation" (id 0xBC, the UI command table's record at 0x3DE070), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
 0x00276080 0x114 func_00276080  # OVL1
-0x002761A0 0x3DC func_002761A0  # OVL1
-0x00276580 0x12C func_00276580  # OVL1
-0x002766B0 0xC8 func_002766B0  # OVL1
-0x00276780 0x370 func_00276780  # OVL1
+0x002761A0 0x3DC UIDeleteMUISPersona__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "DeleteMUISPersona" (id 0xB0, the UI command table's record at 0x3DDFB0), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x00276580 0x12C UIMUISPersonaExists__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "MUISPersonaExists" (id 0xB2, the UI command table's record at 0x3DDFD0), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x002766B0 0xC8 UIVerifyPatchLevel__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "VerifyPatchLevel" (id 0xC5, the UI command table's record at 0x3DE100), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x00276780 0x370 UILobbyConnect__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "LobbyConnect" (id 0x98, the UI command table's record at 0x3DDE40), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
 0x00276AF0 0x164 func_00276AF0  # OVL1
-0x00276C60 0x7C func_00276C60  # OVL1
-0x00276CE0 0xDC func_00276CE0  # OVL1
-0x00276DC0 0x114 func_00276DC0  # OVL1
+0x00276C60 0x7C UIMediusInit__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "MediusInit" (id 0x96, the UI command table's record at 0x3DDE20), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x00276CE0 0xDC UIDMEInit__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "DMEInit" (id 0x95, the UI command table's record at 0x3DDE10), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x00276DC0 0x114 UIInitNetwork__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "InitNetwork" in both builds' UI command tables: SOCOM II's id 0x21 at 0x3DD6D0, SOCOM 1's UICommandTable id 0x1D -> UIInitNetwork__FP13C2DAnimCmdHdrPf)
 0x00276EE0 0x54 func_00276EE0  # OVL1
 0x00276F40 0x3C func_00276F40  # OVL1
 0x00276F80 0x70 func_00276F80  # OVL1
 0x00276FF0 0x158 func_00276FF0  # OVL1
-0x00277150 0xC8 func_00277150  # OVL1
-0x00277220 0x98 func_00277220  # OVL1
-0x002772C0 0x40 func_002772C0  # OVL1
+0x00277150 0xC8 UIIsControllerConnected__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "IsControllerConnected" (id 0xC1, the UI command table's record at 0x3DE0D0), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x00277220 0x98 UISuspendMenuInput__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "SuspendMenuInput" (id 0xBB, the UI command table's record at 0x3DE060), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x002772C0 0x40 UICheckTeamStatus__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "CheckTeamStatus" (id 0x93, the UI command table's record at 0x3DDDF0), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
 0x00277300 0x84 UISysLoadIRX__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
 0x00277390 0x64 UISysPostInit__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
 0x00277400 0x20 UIPasswordSecurity__FP13C2DAnimCmdHdrPf  # OVL1; s1:exact
-0x00277420 0xC func_00277420  # OVL1
+0x00277420 0xC UIIsSwitchTeamsOK__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "IsSwitchTeamsOK" (id 0x68, the UI command table's record at 0x3DDB30), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
 0x00277430 0x84 UITransferLeadership__FP13C2DAnimCmdHdrPf  # OVL1; s1:gap
 0x002774C0 0x90 UIDeclineInvitation__FP13C2DAnimCmdHdrPf  # OVL1; s1:gap
 0x00277550 0x90 UIAcceptInvitation__FP13C2DAnimCmdHdrPf  # OVL1; s1:gap
@@ -3116,182 +3116,182 @@
 0x002776B0 0x24 UIForceMediusStatusReport__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
 0x002776E0 0xE0 UINetCensorText__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
 0x002777C0 0x2C AuxNetCensorText__FPCcPv  # OVL1; s1:align
-0x002777F0 0x118 func_002777F0  # OVL1
-0x00277910 0x20 func_00277910  # OVL1
-0x00277930 0x20 func_00277930  # OVL1
-0x00277950 0xC func_00277950  # OVL1
-0x00277960 0xC func_00277960  # OVL1
-0x00277970 0x138 func_00277970  # OVL1
-0x00277AB0 0x138 func_00277AB0  # OVL1
-0x00277BF0 0x160 func_00277BF0  # OVL1
-0x00277D50 0x74 func_00277D50  # OVL1
-0x00277DD0 0x250 func_00277DD0  # OVL1
-0x00278020 0x20 func_00278020  # OVL1
-0x00278040 0x20 func_00278040  # OVL1
+0x002777F0 0x118 UIRebootIOP__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "RebootIOP" in both builds' UI command tables: SOCOM II's id 0x79 at 0x3DDC40, SOCOM 1's UICommandTable id 0x87 -> UIRebootIOP__FP13C2DAnimCmdHdrPf)
+0x00277910 0x20 UIFadeAllSounds__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "FadeAllSounds" (id 0x80, the UI command table's record at 0x3DDCC0), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x00277930 0x20 UIStopAllSounds__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "StopAllSounds" in both builds' UI command tables: SOCOM II's id 0x7F at 0x3DDCB0, SOCOM 1's UICommandTable id 0x8E -> UIStopAllSounds__FP13C2DAnimCmdHdrPf)
+0x00277950 0xC UIHasClanInvitations__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "HasClanInvitations" in both builds' UI command tables: SOCOM II's id 0x82 at 0x3DDCE0, SOCOM 1's UICommandTable id 0x90 -> UIHasClanInvitations__FP13C2DAnimCmdHdrPf)
+0x00277960 0xC UIClanHasInvitations__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "ClanHasInvitations" in both builds' UI command tables: SOCOM II's id 0x7C at 0x3DDC80, SOCOM 1's UICommandTable id 0x8B -> UIClanHasInvitations__FP13C2DAnimCmdHdrPf)
+0x00277970 0x138 UINetGetInterfaceList__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "NetGetInterfaceList" in both builds' UI command tables: SOCOM II's id 0x6E at 0x3DDB90, SOCOM 1's UICommandTable id 0x72 -> UINetGetInterfaceList__FP13C2DAnimCmdHdrPf)
+0x00277AB0 0x138 UINetCnfSelectCombo__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "NetCnfSelectCombo" in both builds' UI command tables: SOCOM II's id 0x6F at 0x3DDBA0, SOCOM 1's UICommandTable id 0x7D -> UINetCnfSelectCombo__FP13C2DAnimCmdHdrPf)
+0x00277BF0 0x160 UINetCnfCurrCombo__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "NetCnfCurrCombo" in both builds' UI command tables: SOCOM II's id 0x6D at 0x3DDB80, SOCOM 1's UICommandTable id 0x70 -> UINetCnfCurrCombo__FP13C2DAnimCmdHdrPf)
+0x00277D50 0x74 UINetCnfClose__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "NetCnfClose" in both builds' UI command tables: SOCOM II's id 0x6C at 0x3DDB70, SOCOM 1's UICommandTable id 0x6E -> UINetCnfClose__FP13C2DAnimCmdHdrPf)
+0x00277DD0 0x250 UINetCnfOpen__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "NetCnfOpen" in both builds' UI command tables: SOCOM II's id 0x6B at 0x3DDB60, SOCOM 1's UICommandTable id 0x6D -> UINetCnfOpen__FP13C2DAnimCmdHdrPf)
+0x00278020 0x20 UINetCnfUninit__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "NetCnfUninit" in both builds' UI command tables: SOCOM II's id 0x6A at 0x3DDB50, SOCOM 1's UICommandTable id 0x6C -> UINetCnfUninit__FP13C2DAnimCmdHdrPf)
+0x00278040 0x20 UINetCnfInit__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "NetCnfInit" in both builds' UI command tables: SOCOM II's id 0x69 at 0x3DDB40, SOCOM 1's UICommandTable id 0x6B -> UINetCnfInit__FP13C2DAnimCmdHdrPf)
 0x00278060 0x38 UIAbortLoad__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
-0x002780A0 0x15C func_002780A0  # OVL1
+0x002780A0 0x15C UIClearUIVar__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "ClearUIVar" (id 0x90, the UI command table's record at 0x3DDDC0), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
 0x00278200 0x16C UITestUIVar__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
-0x00278370 0x160 func_00278370  # OVL1
-0x002784D0 0x278 func_002784D0  # OVL1
+0x00278370 0x160 UIPruneUIVarSpaces__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "PruneUIVarSpaces" (id 0x8B, the UI command table's record at 0x3DDD70), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x002784D0 0x278 UIGetLadderInfo__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "GetLadderInfo" in both builds' UI command tables: SOCOM II's id 0x5C at 0x3DDA90, SOCOM 1's UICommandTable id 0x58 -> UIGetLadderInfo__FP13C2DAnimCmdHdrPf)
 0x00278750 0x230 func_00278750  # OVL1
-0x00278980 0x294 func_00278980  # OVL1
-0x00278C20 0xDC func_00278C20  # OVL1
-0x00278D00 0x24 func_00278D00  # OVL1
-0x00278D30 0x24 func_00278D30  # OVL1
+0x00278980 0x294 UIHardDriveOperation__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "HardDriveOperation" (id 0xCD, the UI command table's record at 0x3DE180), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x00278C20 0xDC HardDriveOperationCallback__Fi  # OVL1; ours: HardDriveOperation hands it to the hard disk code (0x39CE70) as the operation's callback; it keeps the result in a byte (0x414EB0), sets hard_disk_error_code to 1, 2, 3 or 5 and tells the lobby's event handler HDD_ERROR
+0x00278D00 0x24 UIQuitClan__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "QuitClan" in both builds' UI command tables: SOCOM II's id 0x5B at 0x3DDA80, SOCOM 1's UICommandTable id 0x57 -> UIQuitClan__FP13C2DAnimCmdHdrPf)
+0x00278D30 0x24 UIBanSelfFromGame__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "BanSelfFromGame" in both builds' UI command tables: SOCOM II's id 0x59 at 0x3DDA40, SOCOM 1's UICommandTable id 0x55 -> UIBanSelfFromGame__FP13C2DAnimCmdHdrPf)
 0x00278D60 0x88 UISetDefaultMenuScreen__FP13C2DAnimCmdHdrPf  # OVL1; s1:calls
-0x00278DF0 0xB0 func_00278DF0  # OVL1
-0x00278EA0 0x8 func_00278EA0  # OVL1
-0x00278EB0 0x330 func_00278EB0  # OVL1
-0x002791E0 0x21C func_002791E0  # OVL1
-0x00279400 0x88 func_00279400  # OVL1
-0x00279490 0x134 func_00279490  # OVL1
-0x002795D0 0x8 func_002795D0  # OVL1
-0x002795E0 0x1A4 func_002795E0  # OVL1
-0x00279790 0x24 func_00279790  # OVL1
-0x002797C0 0x24 func_002797C0  # OVL1
-0x002797F0 0xE8 func_002797F0  # OVL1
-0x002798E0 0x94 func_002798E0  # OVL1
-0x00279980 0x94 func_00279980  # OVL1
-0x00279A20 0x8C func_00279A20  # OVL1
-0x00279AB0 0x94 func_00279AB0  # OVL1
-0x00279B50 0xA0 func_00279B50  # OVL1
+0x00278DF0 0xB0 UIGameStatePopCommand__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "GameStatePopCommand" in both builds' UI command tables: SOCOM II's id 0x57 at 0x3DDA20, SOCOM 1's UICommandTable id 0x53 -> UIGameStatePopCommand__FP13C2DAnimCmdHdrPf)
+0x00278EA0 0x8 UIHaveBeenBannedFromGame__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "HaveBeenBannedFromGame" in both builds' UI command tables: SOCOM II's id 0x56 at 0x3DDA10, SOCOM 1's UICommandTable id 0x52 -> UIHaveBeenBannedFromGame__FP13C2DAnimCmdHdrPf)
+0x00278EB0 0x330 UISetMPMissionSeq__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "SetMPMissionSeq" in both builds' UI command tables: SOCOM II's id 0x77 at 0x3DDC20, SOCOM 1's UICommandTable id 0x85 -> UISetMPMissionSeq__FP13C2DAnimCmdHdrPf)
+0x002791E0 0x21C UIRemoveNonSuppressionMaps__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "RemoveNonSuppressionMaps" (id 0xC6, the UI command table's record at 0x3DE110), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x00279400 0x88 UISelectLocale__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "SelectLocale" (id 0x94, the UI command table's record at 0x3DDE00), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x00279490 0x134 UIAdvanceMPMission__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "AdvanceMPMission" in both builds' UI command tables: SOCOM II's id 0x53 at 0x3DD9F0, SOCOM 1's UICommandTable id 0x4F -> UIAdvanceMPMission__FP13C2DAnimCmdHdrPf)
+0x002795D0 0x8 UIIsClanChallengeGame__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "IsClanChallengeGame" in both builds' UI command tables: SOCOM II's id 0x52 at 0x3DD9E0, SOCOM 1's UICommandTable id 0x4E -> UIIsClanChallengeGame__FP13C2DAnimCmdHdrPf)
+0x002795E0 0x1A4 UIChangeCharacterType__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "ChangeCharacterType" in both builds' UI command tables: SOCOM II's id 0x5A at 0x3DDA50, SOCOM 1's UICommandTable id 0x56 -> UIChangeCharacterType__FP13C2DAnimCmdHdrPf)
+0x00279790 0x24 UIGetClanMessages__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "GetClanMessages" (id 0x8A, the UI command table's record at 0x3DDD60), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x002797C0 0x24 UIGetUsagePolicy__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "GetUsagePolicy" (id 0x8C, the UI command table's record at 0x3DDD80), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x002797F0 0xE8 UISendClanMessage__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "SendClanMessage" in both builds' UI command tables: SOCOM II's id 0x51 at 0x3DD9D0, SOCOM 1's UICommandTable id 0x4D -> UISendClanMessage__FP13C2DAnimCmdHdrPf)
+0x002798E0 0x94 UIRemoveFromIgnore__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "RemoveFromIgnore" (id 0xA6, the UI command table's record at 0x3DDF20), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x00279980 0x94 UIRemoveFriend__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "RemoveFriend" (id 0x9E, the UI command table's record at 0x3DDEA0), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x00279A20 0x8C UIGetClanMemberInfo__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "GetClanMemberInfo" (id 0xAE, the UI command table's record at 0x3DDF90), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x00279AB0 0x94 UIGetFriendInfo__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "GetFriendInfo" (id 0xA4, the UI command table's record at 0x3DDF00), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x00279B50 0xA0 UIGetPlayerInfo__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "GetPlayerInfo" (id 0xAD, the UI command table's record at 0x3DDF80), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
 0x00279BF0 0x160 func_00279BF0  # OVL1
-0x00279D50 0xBC func_00279D50  # OVL1
-0x00279E10 0x94 func_00279E10  # OVL1
-0x00279EB0 0x94 func_00279EB0  # OVL1
-0x00279F50 0x54 func_00279F50  # OVL1
-0x00279FB0 0x94 func_00279FB0  # OVL1
-0x0027A050 0x54 func_0027A050  # OVL1
-0x0027A0B0 0x24 func_0027A0B0  # OVL1
-0x0027A0E0 0xDC func_0027A0E0  # OVL1
-0x0027A1C0 0x90 func_0027A1C0  # OVL1
-0x0027A250 0x28 UIGameStatePopCommand__FP13C2DAnimCmdHdrPf  # OVL1; s1:exact
-0x0027A280 0x24 func_0027A280  # OVL1
-0x0027A2B0 0x24 func_0027A2B0  # OVL1
-0x0027A2E0 0x24 func_0027A2E0  # OVL1
-0x0027A310 0x80 func_0027A310  # OVL1
-0x0027A390 0x24 func_0027A390  # OVL1
-0x0027A3C0 0x24 func_0027A3C0  # OVL1
-0x0027A3F0 0x24 func_0027A3F0  # OVL1
-0x0027A420 0xEC func_0027A420  # OVL1
-0x0027A510 0xC4 func_0027A510  # OVL1
-0x0027A5E0 0xD4 func_0027A5E0  # OVL1
-0x0027A6C0 0x80 func_0027A6C0  # OVL1
-0x0027A740 0xE8 func_0027A740  # OVL1
-0x0027A830 0xC func_0027A830  # OVL1
+0x00279D50 0xBC UIGetGameInfo__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "GetGameInfo" (id 0xAC, the UI command table's record at 0x3DDF70), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x00279E10 0x94 UIRejectFriend__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "RejectFriend" (id 0xA9, the UI command table's record at 0x3DDF50), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x00279EB0 0x94 UIConfirmFriend__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "ConfirmFriend" (id 0xA8, the UI command table's record at 0x3DDF40), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x00279F50 0x54 UIAddToIgnore__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "AddToIgnore" (id 0xA7, the UI command table's record at 0x3DDF30), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x00279FB0 0x94 UIAddFriendDirectly__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "AddFriendDirectly" (id 0xAA, the UI command table's record at 0x3DDF60), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x0027A050 0x54 UIAddFriend__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "AddFriend" (id 0xA3, the UI command table's record at 0x3DDEF0), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x0027A0B0 0x24 UIGetLeaderMessages__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "GetLeaderMessages" (id 0x9F, the UI command table's record at 0x3DDEB0), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x0027A0E0 0xDC UIModifyClanMessage__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "ModifyClanMessage" (id 0xA0, the UI command table's record at 0x3DDEC0), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x0027A1C0 0x90 UIDeleteClanMessage__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "DeleteClanMessage" (id 0xA1, the UI command table's record at 0x3DDED0), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x0027A250 0x28 UIGetClanRanking__FP13C2DAnimCmdHdrPf  # OVL1; s1~ (the s1:exact name UIGameStatePopCommand was wrong: the same ten instructions as SOCOM 1's, relocations masked, but SOCOM 1's passes theGame to CGame::Pop and this one theLobby to a lobby method, 0x2EAB80 -- GameStatePopCommand is 0x278DF0 by both command tables); ours: the handler registered as "GetClanRanking" (id 0xA2, the UI command table's record at 0x3DDEE0), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x0027A280 0x24 UIGetIgnoreList__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "GetIgnoreList" (id 0xA5, the UI command table's record at 0x3DDF10), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x0027A2B0 0x24 UIGetFriendInvitations__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "GetFriendInvitations" (id 0xCE, the UI command table's record at 0x3DE190), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x0027A2E0 0x24 UIGetFriendsList__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "GetFriendsList" (id 0x9D, the UI command table's record at 0x3DDE90), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x0027A310 0x80 UIRevokeInvite__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "RevokeInvite" in both builds' UI command tables: SOCOM II's id 0x4D at 0x3DD990, SOCOM 1's UICommandTable id 0x49 -> UIRevokeInvite__FP13C2DAnimCmdHdrPf)
+0x0027A390 0x24 UIGetClanRoster__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "GetClanRoster" in both builds' UI command tables: SOCOM II's id 0x50 at 0x3DD9C0, SOCOM 1's UICommandTable id 0x4C -> UIGetClanRoster__FP13C2DAnimCmdHdrPf)
+0x0027A3C0 0x24 UICheckClanInvites__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "CheckMyInvites" in both builds' UI command tables: SOCOM II's id 0x55 at 0x3DDA00, SOCOM 1's UICommandTable id 0x51 -> UICheckClanInvites__FP13C2DAnimCmdHdrPf)
+0x0027A3F0 0x24 UIGetInvitedPlayers__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "GetInvitedPlayers" in both builds' UI command tables: SOCOM II's id 0x4F at 0x3DD9B0, SOCOM 1's UICommandTable id 0x4B -> UIGetInvitedPlayers__FP13C2DAnimCmdHdrPf)
+0x0027A420 0xEC UIBackgroundMPEG__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "BackgroundMPEG" (id 0x88, the UI command table's record at 0x3DDD40), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x0027A510 0xC4 UIAutoAim__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "AutoAim" (id 0x89, the UI command table's record at 0x3DDD50), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x0027A5E0 0xD4 UIVagStreaming__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "VagStreaming" in both builds' UI command tables: SOCOM II's id 0x87 at 0x3DDD30, SOCOM 1's UICommandTable id 0x94 -> UIVagStreaming__FP13C2DAnimCmdHdrPf)
+0x0027A6C0 0x80 UIInvitePlayerToClanWithArg__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "InvitePlayerToClanWithArg" in both builds' UI command tables: SOCOM II's id 0x85 at 0x3DDD10, SOCOM 1's UICommandTable id 0x93 -> UIInvitePlayerToClanWithArg__FP13C2DAnimCmdHdrPf)
+0x0027A740 0xE8 UIInvitePlayerToClan__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "InvitePlayerToClan" in both builds' UI command tables: SOCOM II's id 0x4C at 0x3DD980, SOCOM 1's UICommandTable id 0x48 -> UIInvitePlayerToClan__FP13C2DAnimCmdHdrPf)
+0x0027A830 0xC UICanInviteMorePlayersToClan__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "CanInviteMorePlayersToClan" (id 0xBE, the UI command table's record at 0x3DE090), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
 0x0027A840 0x44 UIRemovePlayerFromClan__FP13C2DAnimCmdHdrPf  # OVL1; s1:exact
 0x0027A890 0x80 UIIsLeaderOfClan__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
-0x0027A910 0xC func_0027A910  # OVL1
+0x0027A910 0xC UIIsMemberOfClan__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "IsMemberOfClan" in both builds' UI command tables: SOCOM II's id 0x34 at 0x3DD830, SOCOM 1's UICommandTable id 0x30 -> UIIsMemberOfClan__FP13C2DAnimCmdHdrPf)
 0x0027A920 0x24 UIDisbandClan__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
 0x0027A950 0xA4 UICreateClan__FP13C2DAnimCmdHdrPf  # OVL1; s1:calls
-0x0027AA00 0x24 func_0027AA00  # OVL1
-0x0027AA30 0x24 func_0027AA30  # OVL1
-0x0027AA60 0xC func_0027AA60  # OVL1
-0x0027AA70 0xBC func_0027AA70  # OVL1
-0x0027AB30 0x230 func_0027AB30  # OVL1
+0x0027AA00 0x24 UISetCareerStatsUIVars__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "SetCareerStatsUIVars" (id 0xC2, the UI command table's record at 0x3DE0C0), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x0027AA30 0x24 UIClearCareerStats__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "ClearCareerStats" (id 0xBF, the UI command table's record at 0x3DE0A0), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x0027AA60 0xC UIGetClan__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "GetClan" in both builds' UI command tables: SOCOM II's id 0x36 at 0x3DD850, SOCOM 1's UICommandTable id 0x32 -> UIGetClan__FP13C2DAnimCmdHdrPf)
+0x0027AA70 0xBC UIPlayMPEGNoFade__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "PlayMPEGNoFade" (id 0x86, the UI command table's record at 0x3DDD20), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x0027AB30 0x230 UIPlayMPEG__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "PlayMPEG" in both builds' UI command tables: SOCOM II's id 0x17 at 0x3DD630, SOCOM 1's UICommandTable id 0x12 -> UIPlayMPEG__FP13C2DAnimCmdHdrPf)
 0x0027AD60 0x290 func_0027AD60  # OVL1
-0x0027AFF0 0xC func_0027AFF0  # OVL1
-0x0027B000 0xDC func_0027B000  # OVL1
+0x0027AFF0 0xC UIMediusEnabled__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "MediusEnabled" in both builds' UI command tables: SOCOM II's id 0x2E at 0x3DD7B0, SOCOM 1's UICommandTable id 0x2A -> UIMediusEnabled__FP13C2DAnimCmdHdrPf)
+0x0027B000 0xDC UISaveConfig__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "SaveConfig" in both builds' UI command tables: SOCOM II's id 0x40 at 0x3DD8F0, SOCOM 1's UICommandTable id 0x3C -> UISaveConfig__FP13C2DAnimCmdHdrPf)
 0x0027B0E0 0xA8 UILoadConfig__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
 0x0027B190 0x24 UIMC_CreateIconFiles__FP13C2DAnimCmdHdrPf  # OVL1; s1:exact
-0x0027B1C0 0x34 func_0027B1C0  # OVL1
-0x0027B200 0x60 func_0027B200  # OVL1
-0x0027B260 0x60 func_0027B260  # OVL1
-0x0027B2C0 0x34 func_0027B2C0  # OVL1
-0x0027B300 0x34 func_0027B300  # OVL1
-0x0027B340 0x88 func_0027B340  # OVL1
-0x0027B3D0 0x50 func_0027B3D0  # OVL1
-0x0027B420 0x368 func_0027B420  # OVL1
+0x0027B1C0 0x34 UIMC_Exists__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "MC_Exists" in both builds' UI command tables: SOCOM II's id 0x44 at 0x3DD930, SOCOM 1's UICommandTable id 0x40 -> UIMC_Exists__FP13C2DAnimCmdHdrPf)
+0x0027B200 0x60 UIMC_ChSlot__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "MC_ChSlot" in both builds' UI command tables: SOCOM II's id 0x43 at 0x3DD920, SOCOM 1's UICommandTable id 0x3F -> UIMC_ChSlot__FP13C2DAnimCmdHdrPf)
+0x0027B260 0x60 UIMC_ChPort__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "MC_ChPort" in both builds' UI command tables: SOCOM II's id 0x42 at 0x3DD910, SOCOM 1's UICommandTable id 0x3E -> UIMC_ChPort__FP13C2DAnimCmdHdrPf)
+0x0027B2C0 0x34 UIMC_MkDir__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "MC_MkDir" in both builds' UI command tables: SOCOM II's id 0x45 at 0x3DD940, SOCOM 1's UICommandTable id 0x41 -> UIMC_MkDir__FP13C2DAnimCmdHdrPf)
+0x0027B300 0x34 UIMC_ChDir__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "MC_ChDir" in both builds' UI command tables: SOCOM II's id 0x41 at 0x3DD900, SOCOM 1's UICommandTable id 0x3D -> UIMC_ChDir__FP13C2DAnimCmdHdrPf)
+0x0027B340 0x88 UIMC_Changed__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "MC_Changed" (id 0x8D, the UI command table's record at 0x3DDD90), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x0027B3D0 0x50 UIIsSpaceForSaveGameFile__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "IsSpaceForSaveGameFile" in both builds' UI command tables: SOCOM II's id 0x39 at 0x3DD880, SOCOM 1's UICommandTable id 0x35 -> UIIsSpaceForSaveGameFile__FP13C2DAnimCmdHdrPf)
+0x0027B420 0x368 UIInitializeOptions__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "InitOptions" in both builds' UI command tables: SOCOM II's id 0x16 at 0x3DD620, SOCOM 1's UICommandTable id 0x11 -> UIInitializeOptions__FP13C2DAnimCmdHdrPf)
 0x0027B790 0x1CC UISetStickPreset__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
-0x0027B960 0x5B0 func_0027B960  # OVL1
-0x0027BF10 0x7C func_0027BF10  # OVL1
+0x0027B960 0x5B0 UIStoreOptions__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "StoreOptions" in both builds' UI command tables: SOCOM II's id 0x15 at 0x3DD610, SOCOM 1's UICommandTable id 0x10 -> UIStoreOptions__FP13C2DAnimCmdHdrPf)
+0x0027BF10 0x7C UISetScreenOrigin__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "SetScreenOrigin" (id 0xC8, the UI command table's record at 0x3DE130), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
 0x0027BF90 0xDC UISwitchProgressiveVideo__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
 0x0027C070 0xF0 UICheckVideoMode__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
-0x0027C160 0xF8 func_0027C160  # OVL1
-0x0027C260 0xF8 func_0027C260  # OVL1
-0x0027C360 0xF8 func_0027C360  # OVL1
+0x0027C160 0xF8 UIDisableButton__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "DisableButton" in both builds' UI command tables: SOCOM II's id 0x14 at 0x3DD600, SOCOM 1's UICommandTable id 0xF -> UIDisableButton__FP13C2DAnimCmdHdrPf)
+0x0027C260 0xF8 UIEnableButton__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "EnableButton" in both builds' UI command tables: SOCOM II's id 0x13 at 0x3DD5F0, SOCOM 1's UICommandTable id 0xE -> UIEnableButton__FP13C2DAnimCmdHdrPf)
+0x0027C360 0xF8 UIActivateButton__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "ActivateButton" in both builds' UI command tables: SOCOM II's id 0x10 at 0x3DD5C0, SOCOM 1's UICommandTable id 0xA -> UIActivateButton__FP13C2DAnimCmdHdrPf)
 0x0027C460 0x2EC UISetFilters__FP13C2DAnimCmdHdrPf  # OVL1; s1:calls
 0x0027C750 0x84 UIToggleAutoMessages__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
-0x0027C7E0 0x8 func_0027C7E0  # OVL1
-0x0027C7F0 0xDC func_0027C7F0  # OVL1
+0x0027C7E0 0x8 UIClearGameState__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "ClearGameState" in both builds' UI command tables: SOCOM II's id 0x11 at 0x3DD5D0, SOCOM 1's UICommandTable id 0xB -> UIClearGameState__FP13C2DAnimCmdHdrPf)
+0x0027C7F0 0xDC UIFlushMenuHistory__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "FlushMenuHistory" in both builds' UI command tables: SOCOM II's id 0x84 at 0x3DDD00, SOCOM 1's UICommandTable id 0x92 -> UIFlushMenuHistory__FP13C2DAnimCmdHdrPf)
 0x0027C8D0 0x118 __dt__12CPopUpDialogFv  # OVL1; s1:align
 0x0027C9F0 0xF8 UISetMenuState__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
 0x0027CAF0 0x88 UIReadyToLoad__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
-0x0027CB80 0x28 func_0027CB80  # OVL1
-0x0027CBB0 0x3C func_0027CBB0  # OVL1
-0x0027CBF0 0x47C func_0027CBF0  # OVL1
+0x0027CB80 0x28 UISendChatText__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "SendChatText" in both builds' UI command tables: SOCOM II's id 0x1F at 0x3DD660, SOCOM 1's UICommandTable id 0x1A -> UISendChatText__FP13C2DAnimCmdHdrPf)
+0x0027CBB0 0x3C SendChatTextCallback__FPCcPCc  # OVL1; ours: SendChatText's text callback (UISendChatText passes it to the text entry 0x281D40): to a player through the lobby's chat when it has one, else to the game (SendChatMsg)
+0x0027CBF0 0x47C UICheckForcedLaunch__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "CheckForcedLaunch" in both builds' UI command tables: SOCOM II's id 0x63 at 0x3DDAE0, SOCOM 1's UICommandTable id 0x61 -> UICheckForcedLaunch__FP13C2DAnimCmdHdrPf)
 0x0027D070 0x90 UIForceMPLaunch__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
 0x0027D100 0x60 UISwitchSides__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
-0x0027D160 0x24 func_0027D160  # OVL1
+0x0027D160 0x24 UIIsTerrorist__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "IsTerrorist" in both builds' UI command tables: SOCOM II's id 0x18 at 0x3DD640, SOCOM 1's UICommandTable id 0x13 -> UIIsTerrorist__FP13C2DAnimCmdHdrPf)
 0x0027D190 0x60 UIKillPopUp__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
 0x0027D1F0 0x24 UIGetMediusAnnouncements__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
-0x0027D220 0x28 func_0027D220  # OVL1
-0x0027D250 0x18 func_0027D250  # OVL1
+0x0027D220 0x28 UISendMediusChat__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "SendMediusChat" in both builds' UI command tables: SOCOM II's id 0x30 at 0x3DD7F0, SOCOM 1's UICommandTable id 0x2C -> UISendMediusChat__FP13C2DAnimCmdHdrPf)
+0x0027D250 0x18 SendMediusChatCallback__FPCcPCc  # OVL1; ours: SendMediusChat's text callback (UISendMediusChat passes it to the text entry 0x281D40): the lobby's chat
 0x0027D270 0x98 UIJoinMPRoom__FP13C2DAnimCmdHdrPf  # OVL1; s1:calls
-0x0027D310 0x80 func_0027D310  # OVL1
-0x0027D390 0xB0 func_0027D390  # OVL1
-0x0027D440 0x80 func_0027D440  # OVL1
-0x0027D4C0 0x80 func_0027D4C0  # OVL1
-0x0027D540 0x148 func_0027D540  # OVL1
-0x0027D690 0xA0 func_0027D690  # OVL1
-0x0027D730 0xA0 func_0027D730  # OVL1
-0x0027D7D0 0x4C func_0027D7D0  # OVL1
-0x0027D820 0x9C func_0027D820  # OVL1
-0x0027D8C0 0x40 func_0027D8C0  # OVL1
-0x0027D900 0x194 func_0027D900  # OVL1
-0x0027DAA0 0x9C func_0027DAA0  # OVL1
-0x0027DB40 0x134 func_0027DB40  # OVL1
-0x0027DC80 0x8 func_0027DC80  # OVL1
-0x0027DC90 0x24 func_0027DC90  # OVL1
-0x0027DCC0 0x54 func_0027DCC0  # OVL1
-0x0027DD20 0xC0 func_0027DD20  # OVL1
-0x0027DDE0 0xC0 func_0027DDE0  # OVL1
-0x0027DEA0 0x138 func_0027DEA0  # OVL1
-0x0027DFE0 0x128 func_0027DFE0  # OVL1
-0x0027E110 0xC func_0027E110  # OVL1
-0x0027E120 0x78 func_0027E120  # OVL1
-0x0027E1A0 0xC func_0027E1A0  # OVL1
-0x0027E1B0 0xC func_0027E1B0  # OVL1
-0x0027E1C0 0xE4 func_0027E1C0  # OVL1
-0x0027E2B0 0xD0 func_0027E2B0  # OVL1
-0x0027E380 0x94 func_0027E380  # OVL1
-0x0027E420 0xA0 func_0027E420  # OVL1
-0x0027E4C0 0x74 func_0027E4C0  # OVL1
-0x0027E540 0x74 func_0027E540  # OVL1
-0x0027E5C0 0x48 func_0027E5C0  # OVL1
-0x0027E610 0xBC func_0027E610  # OVL1
-0x0027E6D0 0xC func_0027E6D0  # OVL1
-0x0027E6E0 0x38 func_0027E6E0  # OVL1
-0x0027E720 0x3E4 func_0027E720  # OVL1
-0x0027EB10 0x38 func_0027EB10  # OVL1
-0x0027EB50 0x108 func_0027EB50  # OVL1
-0x0027EC60 0xBC func_0027EC60  # OVL1
-0x0027ED20 0x70 func_0027ED20  # OVL1
-0x0027ED90 0x5C func_0027ED90  # OVL1
-0x0027EDF0 0x114 func_0027EDF0  # OVL1
-0x0027EF10 0x50 func_0027EF10  # OVL1
-0x0027EF60 0xC func_0027EF60  # OVL1
-0x0027EF70 0x80 func_0027EF70  # OVL1
-0x0027EFF0 0x194 func_0027EFF0  # OVL1
+0x0027D310 0x80 UIGameHasSpectatorPassword__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "GameHasSpectatorPassword" (id 0xAB, the UI command table's record at 0x3DDC60), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x0027D390 0xB0 UIGameHasPassword__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "GameHasPassword" in both builds' UI command tables: SOCOM II's id 0x7A at 0x3DDC50, SOCOM 1's UICommandTable id 0x88 -> UIGameHasPassword__FP13C2DAnimCmdHdrPf)
+0x0027D440 0x80 UIGameRejectsRank__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "GameRejectsRank" (id 0xC0, the UI command table's record at 0x3DE0B0), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x0027D4C0 0x80 UIClanGameClosed__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "ClanGameClosed" (id 0x9C, the UI command table's record at 0x3DDE80), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x0027D540 0x148 UIClanGameSwapSides__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "ClanGameSwapSides" (id 0xB8, the UI command table's record at 0x3DE030), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x0027D690 0xA0 UICanJoinRoom__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "CanJoinRoom" (id 0xB9, the UI command table's record at 0x3DE040), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x0027D730 0xA0 UIJoinMPGame__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "JoinMPGame" in both builds' UI command tables: SOCOM II's id 0x2D at 0x3DD790, SOCOM 1's UICommandTable id 0x29 -> UIJoinMPGame__FP13C2DAnimCmdHdrPf)
+0x0027D7D0 0x4C UICreateMPGame__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "CreateMPGame" in both builds' UI command tables: SOCOM II's id 0x2C at 0x3DD780, SOCOM 1's UICommandTable id 0x28 -> UICreateMPGame__FP13C2DAnimCmdHdrPf)
+0x0027D820 0x9C UIRefreshGamePlayerList__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "RefreshGamePlayerList" in both builds' UI command tables: SOCOM II's id 0x5E at 0x3DDA70, SOCOM 1's UICommandTable id 0x5A -> UIRefreshGamePlayerList__FP13C2DAnimCmdHdrPf)
+0x0027D8C0 0x40 UIInitializeOnlineArmory__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "InitializeOnlineArmory" (id 0xD0, the UI command table's record at 0x3DE1B0), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x0027D900 0x194 UIRefreshRoomPlayerList__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "RefreshRoomPlayerList" in both builds' UI command tables: SOCOM II's id 0x2B at 0x3DD770, SOCOM 1's UICommandTable id 0x27 -> UIRefreshRoomPlayerList__FP13C2DAnimCmdHdrPf)
+0x0027DAA0 0x9C UIRefreshRoomList__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "RefreshRoomList" in both builds' UI command tables: SOCOM II's id 0x2A at 0x3DD760, SOCOM 1's UICommandTable id 0x26 -> UIRefreshRoomList__FP13C2DAnimCmdHdrPf)
+0x0027DB40 0x134 UIRefreshGameList__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "RefreshGameList" in both builds' UI command tables: SOCOM II's id 0x29 at 0x3DD750, SOCOM 1's UICommandTable id 0x25 -> UIRefreshGameList__FP13C2DAnimCmdHdrPf)
+0x0027DC80 0x8 UIGetAcctInfo__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "GetAcctInfo" in both builds' UI command tables: SOCOM II's id 0x26 at 0x3DD730, SOCOM 1's UICommandTable id 0x22 -> UIGetAcctInfo__FP13C2DAnimCmdHdrPf)
+0x0027DC90 0x24 UILobbyBailout__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "LobbyBailout" in both builds' UI command tables: SOCOM II's id 0x54 at 0x3DD7D0, SOCOM 1's UICommandTable id 0x50 -> UILobbyBailout__FP13C2DAnimCmdHdrPf)
+0x0027DCC0 0x54 UILobbyLogout__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "LobbyLogout" in both builds' UI command tables: SOCOM II's id 0x28 at 0x3DD7C0, SOCOM 1's UICommandTable id 0x24 -> UILobbyLogout__FP13C2DAnimCmdHdrPf)
+0x0027DD20 0xC0 UILobbyLogin__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "LobbyLogin" in both builds' UI command tables: SOCOM II's id 0x27 at 0x3DD740, SOCOM 1's UICommandTable id 0x23 -> UILobbyLogin__FP13C2DAnimCmdHdrPf)
+0x0027DDE0 0xC0 UILobbyRegister__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "LobbyRegister" in both builds' UI command tables: SOCOM II's id 0x25 at 0x3DD720, SOCOM 1's UICommandTable id 0x21 -> UILobbyRegister__FP13C2DAnimCmdHdrPf)
+0x0027DEA0 0x138 UIGetNumSavedGames__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "GetNumSavedGames" in both builds' UI command tables: SOCOM II's id 0x5D at 0x3DDA60, SOCOM 1's UICommandTable id 0x59 -> UIGetNumSavedGames__FP13C2DAnimCmdHdrPf)
+0x0027DFE0 0x128 UIDoesSlotHaveGame__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "DoesSlotHaveGame" in both builds' UI command tables: SOCOM II's id 0x3B at 0x3DD8A0, SOCOM 1's UICommandTable id 0x37 -> UIDoesSlotHaveGame__FP13C2DAnimCmdHdrPf)
+0x0027E110 0xC UIFormatMemCard__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "FormatMemCard" in both builds' UI command tables: SOCOM II's id 0x3A at 0x3DD890, SOCOM 1's UICommandTable id 0x36 -> UIFormatMemCard__FP13C2DAnimCmdHdrPf)
+0x0027E120 0x78 UIIsMemcardSaveOK__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "IsMemcardSaveOK" (id 0xCC, the UI command table's record at 0x3DE170), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x0027E1A0 0xC UIIsMemCardFormatted__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "IsMemCardFormatted" in both builds' UI command tables: SOCOM II's id 0x38 at 0x3DD870, SOCOM 1's UICommandTable id 0x34 -> UIIsMemCardFormatted__FP13C2DAnimCmdHdrPf)
+0x0027E1B0 0xC UIIsMemCardInserted__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "IsMemCardInserted" in both builds' UI command tables: SOCOM II's id 0x37 at 0x3DD860, SOCOM 1's UICommandTable id 0x33 -> UIIsMemCardInserted__FP13C2DAnimCmdHdrPf)
+0x0027E1C0 0xE4 UIVCButton__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "VCButton" (id 0x4B, the UI command table's record at 0x3DD670), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x0027E2B0 0xD0 UICheckJoinMP__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "CheckJoinMP" in both builds' UI command tables: SOCOM II's id 0x4A at 0x3DD7A0, SOCOM 1's UICommandTable id 0x47 -> UICheckJoinMP__FP13C2DAnimCmdHdrPf)
+0x0027E380 0x94 UIJoinGameServer__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "JoinGameServer" in both builds' UI command tables: SOCOM II's id 0x49 at 0x3DD700, SOCOM 1's UICommandTable id 0x46 -> UIJoinGameServer__FP13C2DAnimCmdHdrPf)
+0x0027E420 0xA0 UIDisconnectFromGameServer__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "DisconnectFromGameServer" in both builds' UI command tables: SOCOM II's id 0x24 at 0x3DD710, SOCOM 1's UICommandTable id 0x20 -> UIDisconnectFromGameServer__FP13C2DAnimCmdHdrPf)
+0x0027E4C0 0x74 UIConnectToGameServer__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "ConnectToGameServer" in both builds' UI command tables: SOCOM II's id 0x23 at 0x3DD6F0, SOCOM 1's UICommandTable id 0x1F -> UIConnectToGameServer__FP13C2DAnimCmdHdrPf)
+0x0027E540 0x74 UIHostLANGame__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "HostLANGame" (id 0xB7, the UI command table's record at 0x3DE020), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x0027E5C0 0x48 UIUnInitNetwork__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "UnInitNetwork" in both builds' UI command tables: SOCOM II's id 0x22 at 0x3DD6E0, SOCOM 1's UICommandTable id 0x1E -> UIUnInitNetwork__FP13C2DAnimCmdHdrPf)
+0x0027E610 0xBC UILobbyEventHandler__FPCcPCc  # OVL1; s1:order and s1:ref (SOCOM 1's UILobbyEventHandler sits between UIUnInitNetwork and UIIsNetwork as this does, and UIInitNetwork takes its address in both builds; SOCOM 1's only forwards to the menu state's RunEventAnim, SOCOM II's to the core state's too)
+0x0027E6D0 0xC UIIsNetwork__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "IsNetwork" in both builds' UI command tables: SOCOM II's id 0x64 at 0x3DDAF0, SOCOM 1's UICommandTable id 0x62 -> UIIsNetwork__FP13C2DAnimCmdHdrPf)
+0x0027E6E0 0x38 UIIsSessionMaster__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "IsSessionMaster" in both builds' UI command tables: SOCOM II's id 0x20 at 0x3DD6C0, SOCOM 1's UICommandTable id 0x1C -> UIIsSessionMaster__FP13C2DAnimCmdHdrPf)
+0x0027E720 0x3E4 UISwitchMenu__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "SwitchMenu" in both builds' UI command tables: SOCOM II's id 0xD at 0x3DD590, SOCOM 1's UICommandTable id 0x7 -> UISwitchMenu__FP13C2DAnimCmdHdrPf)
+0x0027EB10 0x38 UIPopUpDialog__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "PopUpDialog" in both builds' UI command tables: SOCOM II's id 0xE at 0x3DD5A0, SOCOM 1's UICommandTable id 0x8 -> UIPopUpDialog__FP13C2DAnimCmdHdrPf)
+0x0027EB50 0x108 UISetMission__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "SetMission" in both builds' UI command tables: SOCOM II's id 0x1 at 0x3DD4D0, SOCOM 1's UICommandTable id 0x1 -> UISetMission__FP13C2DAnimCmdHdrPf)
+0x0027EC60 0xBC __ct__12CMenuHistoryFv  # OVL1; s1:align (SOCOM 1's CMenuHistory constructor, the same body: the two name vectors reserved to 32, then 32 pool slots of 48 bytes set to MENUHISTORY_STRPOOL and pushed on the free list; called from the stack's constructor on +0x828)
+0x0027ED20 0x70 __dt__Q23std32vector<Pc,Q23std13allocator<Pc>>Fv  # OVL1; by hand (vector<char *>'s destructor, three this-tests, the history's two vectors' type; SOCOM 1's __vector_imp<Pc> destructor sits at the same place, after CMenuHistory's constructor)
+0x0027ED90 0x5C KillPopUp__10CMenuStackFv  # OVL1; s1:align (SOCOM 1's KillPopUp, the same body at SOCOM II's offsets: the pop-up at +0xE40, the menu root's FindChild("POPUP", true) and SetActive(false); UIKillPopUp inlines it, as SOCOM 1's does)
+0x0027EDF0 0x114 FlushHistory__10CMenuStackFb  # OVL1; s1:align (SOCOM 1's FlushHistory: every entry's name reset to DEFAULT_ARGNAME, the history's names given back to the pool, the pop-up deleted when all; st_exit.cpp and st_menu.cpp call it with the stack)
+0x0027EF10 0x50 CleanPopup__10CMenuStackFv  # OVL1; s1:align (SOCOM 1's CleanPopup: the pop-up at +0xE40 deleted through its virtual destructor and cleared)
+0x0027EF60 0xC FetchMissionFontsRdr__Fv  # OVL1; s1:order (SOCOM 1's FetchMissionFontsRdr sits between CleanPopup and Unload_MissionReader, as this between 0x27EF10 and 0x27EF70; the same one load: theMission's fonts reader, +0x5A0 there, +0x1824 here)
+0x0027EF70 0x80 Unload_MissionReader__Fv  # OVL1; s1:order (SOCOM 1's Unload_MissionReader, between FetchMissionFontsRdr and PopUpDialog in both builds: the mission's database name, a 1024-byte "run/" path built and unused, CRdrArchive::RemoveArchive("readerm.zar", database))
+0x0027EFF0 0x194 PopUpDialog__10CMenuStackFPCc  # OVL1; s1:calls (UIPopUpDialog calls it from the same instruction as SOCOM 1's calls PopUpDialog__10CMenuStackFPCc, with g_MenuStack and the argument's name)
 0x0027F190 0xB8 func_0027F190  # OVL1
 0x0027F250 0x198 func_0027F250  # OVL1
-0x0027F3F0 0x70 func_0027F3F0  # OVL1
+0x0027F3F0 0x70 AddToHistory__10CMenuStackFPCc  # OVL1; s1:align (SOCOM 1's AddToHistory: the last free name slot popped, inserted at the history's end, the name copied in -- the vectors at +0xE34 and +0x828 here, +0xA24 and +0x418 there)
 0x0027F460 0x124 func_0027F460  # OVL1
-0x0027F590 0x1C8 func_0027F590  # OVL1
-0x0027F760 0x6C func_0027F760  # OVL1
+0x0027F590 0x1C8 __dt__10CMenuStackFv  # OVL1; s1:align (SOCOM 1's ~CMenuStack: FlushHistory(true) and CleanPopup inlined, the history's vectors destroyed, the deleting flag)
+0x0027F760 0x6C __ct__10CMenuStackFv  # OVL1; by hand (the stack's constructor, called by the unit's initialiser 0x3FFCA0 on g_MenuStack: 40 entries of 52 bytes set to -1 and DEFAULT_ARGNAME, the history constructed, the two words at +0x820 and the pop-up cleared; SOCOM 1 links no copy)
 0x0027F7D0 0xC GetMenuNode__Fv  # OVL1; s1:callee by hand (GetDatabaseNode's MENU scope calls it twice where SOCOM 1's calls GetMenuNode; both return one global)
 0x0027F7E0 0xC UnRegisterMenuNode__Fv  # OVL1; s1:order (SOCOM 1's GetMenuNode, UnRegisterMenuNode, RegisterMenuNode, GetDatabase, SetDatabase; the same bodies)
 0x0027F7F0 0xC RegisterMenuNode__FPQ23zdb5CNode  # OVL1; s1:order (as UnRegisterMenuNode)
 0x0027F800 0xC GetDatabase__Fv  # OVL1; s1:order (as UnRegisterMenuNode)
 0x0027F810 0x10 SetDatabase__FPCc  # OVL1; s1:exact
-0x0027F820 0x21C func_0027F820  # OVL1
+0x0027F820 0x21C _SaveSavedGame__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "SaveSavedGame" in both builds' UI command tables: SOCOM II's id 0x3D at 0x3DD8C0, SOCOM 1's UICommandTable id 0x39 -> _SaveSavedGame__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf)
 0x0027FA40 0xF8 _LoadSavedGame__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf  # OVL1; s1:calls
-0x0027FB40 0x80 func_0027FB40  # OVL1
+0x0027FB40 0x80 UISetControllerConfig__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "SetControllerConfig" in both builds' UI command tables: SOCOM II's id 0x60 at 0x3DDAB0, SOCOM 1's UICommandTable id 0x5C -> UISetControllerConfig__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf)
 0x0027FBC0 0x1A4 func_0027FBC0  # OVL1
 0x0027FD70 0x190 func_0027FD70  # OVL1
-0x0027FF00 0x20 func_0027FF00  # OVL1
-0x0027FF20 0x90 func_0027FF20  # OVL1
-0x0027FFB0 0x90 func_0027FFB0  # OVL1
+0x0027FF00 0x20 UIUpdateMpFinalStatsUiVars__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "UpdateMpFinalStatsUiVars" (id 0x91, the UI command table's record at 0x3DDDD0), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
+0x0027FF20 0x90 OnSetTtySpeedFactor__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "SetTtySpeedFactor" in both builds' UI command tables: SOCOM II's id 0x75 at 0x3DDC00, SOCOM 1's UICommandTable id 0x83 -> OnSetTtySpeedFactor__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf)
+0x0027FFB0 0x90 OnSetCounterSpeedFactor__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "SetCounterSpeedFactor" in both builds' UI command tables: SOCOM II's id 0x76 at 0x3DDC10, SOCOM 1's UICommandTable id 0x84 -> OnSetCounterSpeedFactor__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf)
 0x00280040 0x74 func_00280040  # OVL1
 0x002800C0 0x100 func_002800C0  # OVL1
 0x002801C0 0x394 func_002801C0  # OVL1
