@@ -7951,10 +7951,10 @@
 0x003BB230 0x68 __dt__Q23zdb16CPreLight_ObjectFv  # OVL1; s1:calls
 0x003BB2A0 0x1C __ct__Q23zdb16CPreLight_ObjectFv  # OVL1; s1:calls by hand (CWorld's constructor builds m_PreLight_Object at 0x5bc through it)
 0x003BB2C0 0x1B0 func_003BB2C0  # OVL1
-0x003BB470 0x68 func_003BB470  # OVL1
+0x003BB470 0x68 __dt__Q23zdb16CMaterial_ObjectFv  # OVL1; s1:align, checked by hand (right before CMaterial_Object's constructor, as each *_Object's destructor precedes its constructor here and in SOCOM 1; calls a band vector deleter's destructor, 0x3BCDF0)
 0x003BB4E0 0x1C __ct__Q23zdb16CMaterial_ObjectFv  # OVL1; s1:calls by hand (CWorld's constructor builds m_Material_Object at 0x59c through it)
 0x003BB500 0x114 func_003BB500  # OVL1
-0x003BB620 0x68 func_003BB620  # OVL1
+0x003BB620 0x68 __dt__Q23zdb15CSubSurf_ObjectFv  # OVL1; s1:align, checked by hand (right before CSubSurf_Object's constructor, the same pattern)
 0x003BB690 0x1C __ct__Q23zdb15CSubSurf_ObjectFv  # OVL1; s1:calls by hand (CWorld's constructor builds m_SubSurf_Object at 0x5ac through it)
 0x003BB6B0 0x98 Read__Q23zdb11CLOD_ObjectFPQ23zdb9CSaveLoad  # OVL1; s1:calls
 0x003BB750 0x68 __dt__Q23zdb11CLOD_ObjectFv  # OVL1; s1:align
@@ -8186,7 +8186,7 @@
 0x003C66D0 0x110 insert__Q23std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>FQ33std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>19generic_iterator<0>RC22WEAPON_CALLBACK_STRUCT  # OVL1; s1:callee
 0x003C67E0 0x80 func_003C67E0  # OVL1
 0x003C6860 0x18 func_003C6860  # OVL1
-0x003C6880 0x80 func_003C6880  # OVL1
+0x003C6880 0x80 __dt__16CWepCallbackListFv  # OVL1; s1:align, checked by hand (erases WEAPON_CALLBACK_STRUCT nodes through that list's erase, 0x3C6610 -- the one list of that type)
 0x003C6900 0xC func_003C6900  # OVL1
 0x003C6910 0xC func_003C6910  # OVL1
 0x003C6920 0x60 func_003C6920  # OVL1
@@ -8233,12 +8233,12 @@
 0x003CAF60 0x234 func_003CAF60  # OVL1
 0x003CB1A0 0x454 func_003CB1A0  # OVL1
 0x003CB600 0x1E0 func_003CB600  # OVL1
-0x003CB7E0 0xC0 func_003CB7E0  # OVL1
+0x003CB7E0 0xC0 __dt__12CZProjectileFv  # OVL1; s1:align, checked by hand (stores __vt__12CZProjectile, cleans up; PlacedExplosive's destructor calls it as its base's)
 0x003CB8A0 0x50 func_003CB8A0  # OVL1
 0x003CB8F0 0x240 func_003CB8F0  # OVL1
 0x003CBB30 0x12C func_003CBB30  # OVL1
 0x003CBC60 0x188 func_003CBC60  # OVL1
-0x003CBDF0 0x188 func_003CBDF0  # OVL1
+0x003CBDF0 0x188 AcquireProjectile__16CZProjectileListFR8CZWeaponR6CZAmmo  # OVL1; s1:align, checked by hand (directly before ReleaseIndirectFireDI, CZProjectileList's first function as in SOCOM 1)
 0x003CBF80 0x38 ReleaseIndirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi  # OVL1; s1:exact
 0x003CBFC0 0xE8 GetNextIndirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi  # OVL1; s1:order by hand (SOCOM 1's, before ReleaseIndirectFireDI: the first free indirect-fire intersection handed out and marked used, the next free found; SOCOM II also clears its bit 19 and its mask)
 0x003CC0B0 0x38 ReleaseDirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi  # OVL1; s1:exact
