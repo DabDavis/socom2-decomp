@@ -1005,6 +1005,10 @@ public:
     /* the new walk's tick given back: both paths end on ++m_TickNum, its value left in v0 (a void
      * function allocates the loop's temporaries from v1) */
     int SetTraversalBoundary(const CPnt3D *pnts, int n, bool b);
+    /* the same over a rectangle's two corners (new in SOCOM II; the overload is ours) */
+    int SetTraversalBoundary(const CFRect *r);
+    /* the ordered walk's boundary, the list built from the view point (SOCOM 1's) */
+    int SetTraversalBoundaryOrdered(const CPnt3D *view, const CPnt3D *pnts, int n, bool b);
     CGridAtom *StartTraversal();
     CGridAtom *GetNextAtom();
     /* the same walk in ring order from a view point (SOCOM 1's) */

@@ -6,8 +6,7 @@
  * grid_di.cpp's queries come before it (its static initialiser registers CStack's destructor, whose
  * linked copy, 0x2D4FE0, closes that unit), grid_clutter.cpp's clutter animation after it. Defined
  * in reverse of their image order (-inline deferred).
- * Unwritten: ReadClutter (0x2D5060), AddClutter (0x2D55C0), Create (0x2D5C80), SetTraversalBoundaryOrdered (0x2D6920), 0x2D6AB0 (new), gridAddNodeToGrids
- * (0x2D7580). CGrid() is written and byte-exact once its CFRect
+ * Unwritten: ReadClutter (0x2D5060), AddClutter (0x2D55C0), Create (0x2D5C80), gridAddNodeToGrids (0x2D7580). CGrid() is written and byte-exact once its CFRect
  * constructor's row is named (below). */
 
 #include "node_world.h"
@@ -339,6 +338,74 @@ void CGrid::SetTraversalExtents(const CPnt3D *pnts, int n, bool b)
     }
     m_ixb++;
     m_izb++;
+}
+
+/* the ordered walk's boundary: the points and extents set; a single point's cell made the whole
+ * ordered list, else each edge's inward normal made unit length and the list built ring by ring
+ * from the view point; a new walk's tick (SOCOM 1's; SOCOM II ticks once more before the build) */
+int CGrid::SetTraversalBoundaryOrdered(const CPnt3D *view, const CPnt3D *pnts, int n, bool b)
+{
+    SetTraversalExtents(pnts, n, b);
+    if (n == 1) {
+        int ix;
+        int iz;
+
+        m_orderedCells.m_gridCellAtomCnt = 0;
+        m_orderedCells.m_rt_gridCellAtomCnt = 0;
+        gridGetGridXandZIndex(&ix, &iz, pnts->x, pnts->z);
+        addOrderedCellAtom(ix, iz, true);
+        return ++m_TickNum;
+    }
+    for (int i = 0; i < m_PntCnt; i++) {
+        int j = (i + 1) % m_PntCnt;
+
+        m_Edge[i].z = m_Pnts[i].x - m_Pnts[j].x;
+        m_Edge[i].x = m_Pnts[j].z - m_Pnts[i].z;
+        float len = sqrtf(m_Edge[i].x * m_Edge[i].x + m_Edge[i].z * m_Edge[i].z);
+
+        if (len != 0.0f) {
+            len = 1.0f / len;
+            m_Edge[i].z *= len;
+            m_Edge[i].x *= len;
+        }
+    }
+    ++m_TickNum;
+    buildOrderedCellAtomList(view);
+    return ++m_TickNum;
+}
+
+/* a point in the ground plane, by value (a named point copied out; the name is ours) */
+inline CPnt3D GroundPnt(const float &x, const float &z)
+{
+    CPnt3D p(x, 0.0f, z);
+
+    return p;
+}
+
+/* the walk's boundary a rectangle in x/z: its two corners set as the boundary's points, each
+ * edge's inward normal made unit length, and a new walk's tick (new in SOCOM II, SetTraversal-
+ * Boundary's loop over a CFRect's corners; the overload is ours) */
+int CGrid::SetTraversalBoundary(const CFRect *r)
+{
+    CPnt3D pnts[2];
+
+    pnts[0] = GroundPnt(r->left, r->top);
+    pnts[1] = GroundPnt(r->right, r->bottom);
+    SetTraversalExtents(pnts, 2, false);
+    for (int i = 0; i < m_PntCnt; i++) {
+        int j = (i + 1) % m_PntCnt;
+
+        m_Edge[i].z = m_Pnts[i].x - m_Pnts[j].x;
+        m_Edge[i].x = m_Pnts[j].z - m_Pnts[i].z;
+        float len = sqrtf(m_Edge[i].x * m_Edge[i].x + m_Edge[i].z * m_Edge[i].z);
+
+        if (len != 0.0f) {
+            len = 1.0f / len;
+            m_Edge[i].z *= len;
+            m_Edge[i].x *= len;
+        }
+    }
+    return ++m_TickNum;
 }
 
 /* the walk's boundary: its points and extents set, each edge's inward normal in x/z made unit

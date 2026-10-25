@@ -4516,8 +4516,8 @@
 0x002D6640 0x6C StartTraversal__Q23zdb5CGridFv  # OVL1; s1:align
 0x002D66B0 0x148 gridCellOut__Q23zdb5CGridFii  # OVL1; s1:order by hand (the world lane: SOCOM 1's gridCellOut after StartTraversal, the same tests of the cell's centre against each edge; GetNextAtom calls it with (m_xx, m_zz) as SOCOM 1's does)
 0x002D6800 0x11C SetTraversalBoundary__Q23zdb5CGridFPC6CPnt3Dib  # OVL1; s1:callee by hand (GenerateLightList calls it with (&m_grid, the two corners, 2, false) where SOCOM 1's calls SetTraversalBoundary; after StartTraversal and 0x2D66B0 as SOCOM 1's after gridCellOut)
-0x002D6920 0x18C func_002D6920  # OVL1
-0x002D6AB0 0x184 func_002D6AB0  # OVL1
+0x002D6920 0x18C SetTraversalBoundaryOrdered__Q23zdb5CGridFPC6CPnt3DPC6CPnt3Dib  # OVL1; s1:order by hand (the world lane: SOCOM 1's SetTraversalBoundaryOrdered after SetTraversalBoundary, the same arguments: SetTraversalExtents, a single point's cell through gridGetGridXandZIndex and addOrderedCellAtom, else the edge loop and buildOrderedCellAtomList; SOCOM II ticks once more before the build)
+0x002D6AB0 0x184 SetTraversalBoundary__Q23zdb5CGridFPC6CFRect  # OVL1; new in SOCOM II, the overload ours (the world lane): SetTraversalBoundary over a CFRect -- the corners (left, top) and (right, bottom) as two ground points, SetTraversalExtents(pnts, 2, false), the edge-normal loop, ++m_TickNum; AddClutter calls it
 0x002D6C40 0x1FC SetTraversalExtents__Q23zdb5CGridFPC6CPnt3Dib  # OVL1; s1:order by hand (the world lane: SetTraversalBoundary calls it first with its own three arguments, as SOCOM 1's SetTraversalBoundary calls SetTraversalExtents)
 0x002D6E40 0x1E8 buildOrderedCellAtomList__Q23zdb5CGridFPC6CPnt3D  # OVL1; s1:order by hand (the world lane: SOCOM 1's buildOrderedCellAtomList before addOrderedCellAtom, the same body: the counts cleared, the view cell from the point (0.0001 bias) clamped into the grid, addOrderedCellAtom(view, true), then each ring's cells' four neighbours added until a ring adds none or 1600 are listed)
 0x002D7030 0x188 addOrderedCellAtom__Q23zdb5CGridFiib  # OVL1; s1:align
