@@ -741,7 +741,13 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   a template instance or an inline's out-of-line copy exists once per overlay (the pointer list's
   erase: OVL1 0x1EAAF0, OVL2 0x50F990). The map keeps one name per function; the other overlay's
   copy stays a placeholder whose note says `ovl-copy: <name>`, and scdiff resolves a call from
-  that overlay to it (`SymbolTable.address_in`).
+  that overlay to it (`SymbolTable.address_in`). sccheck scores an instance a unit emits against
+  the copy in the unit's own overlay (the overlay of the unit's own functions) and counts matches
+  by address, so one name can match once per overlay: fts_remote.cpp's `_saturate<int>` is OVL1's
+  0x2BD220 while the name stays on OVL2's 0x519290, and five OVL2 copies hand units already
+  emitted (0x50F990, 0x50FAD0, 0x51BED0, 0x539B70, 0x53AAC0) matched the day this went in.
+  automatch's superseded test follows the same rule. To diff one copy by hand: `./scdiff.py SRC
+  NAME --target 0xADDR`.
 - **Tells from the AI core** (ai_events.cpp, ai_astar.cpp, zchar/):
   - testing a field through an inline bool accessor makes MW load it again for the next
     statement; written out, the first load is reused;
@@ -1666,8 +1672,31 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - inline costs measured by `#pragma inline_max_size` bisection: CPnt3D's implicit assignment ~49
     units, CQuat's ~30, a user destructor 17, an empty transform over a pointer vector 80 --
     CBody::Destroy fits only at 299 units, so the original's copies or MSL pieces were leaner;
-  - OVL1's copy of the pod vector's resize (0x28B0E0) cannot be scored from source: a template
-    instance is credited by name, and the name resolves to MAIN's copy (0x18B050).
+  - OVL1's copy of the pod vector's resize (0x28B0E0) is scored from source only once its row
+    carries `ovl-copy:` naming MAIN's copy (0x18B050): an instance is credited to the copy in the
+    unit's own overlay (see "Each overlay links its own template copies").
+- **Tells from the states, round 13** (fts_net_platform.cpp, the seal unit's tail, the pool vector):
+  - an 8-byte two-int element is copied through the FPRs in a class vector's insert; any
+    user-declared constructor, even an empty one, gives the target's lw/sw (both 8-byte-element
+    inserts of the round);
+  - a vector that reserves at construction is a derived class whose inline constructor calls
+    `reserve(n)`: the initialiser inlines it, and the implicit destructor tests `this` four times
+    (CZSealState::CRemoteGuyList, CZPlatformState::CPendingList);
+  - an element copied by insert/erase moves a byte member bytewise; an 8-bit field of an int unit
+    (`unsigned int m_cmd : 8`) moves the whole word, while accesses still narrow to bytes;
+  - a value read through an inline accessor takes its saved register after the named locals
+    (RemoteGameCreationCallback's s0/s1);
+  - an element reference taken through an inline `operator[]` lands after a named local initialised
+    from it; through the raw data pointer it keeps declaration order (CreateCompassNavPoints);
+  - `f()->m = 1` loads the constant ahead of the call into a saved register; taking the result into
+    a local first keeps it after the call;
+  - `_zrdr::Item(int)` lets MW walk an int-counter loop's element address; an unsigned index gives
+    the target's per-pass recompute;
+  - SOCOM 1's FilterNavPointString layout comes only from `if (i < 0 || i > 23) r = 0; else r = i +
+    14; return r;`;
+  - fts_net_platform.cpp (0x2C7910-0x2C875F, the turrets' network objects, CZPlatformState after its
+    "PlatformState" registration -- the names ours) sits between fts_missioncam.cpp and a unit from
+    0x2C8760.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
