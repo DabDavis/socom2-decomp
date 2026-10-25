@@ -156,6 +156,14 @@ bool CAiSScript::CanPushAiState(AI_STATE state, CSealCtrlAi *ai)
     return ok;
 }
 
+/* the script's bit 3 set, then the controller's 0x555820 told 0 (OVL2 0x5F3FC0: a CAiSScript
+ * member -- `this` in a0 -- unnamed; three of the controller's script functions call it) */
+extern "C" void func_005F3FC0(CAiSScript *script, CSealCtrlAi *ai, bool on)
+{
+    script->m_bit3 = on;
+    func_00555820(ai, 0);
+}
+
 /* pursued from: in its own AI mode and half a second on (OVL2 0x5F4090; SOCOM 1's 0x6C bytes) */
 bool CAiSScript::CanPursue(CSealCtrlAi *ai) const
 {
@@ -166,6 +174,21 @@ bool CAiSScript::CanPursue(CSealCtrlAi *ai) const
 bool CAiSScript::CanAttack() const
 {
     return true;
+}
+
+/* the controller's state of a kind (SOCOM 1's FindAiState; OVL2 0x5F5FC0, a byte-exact draft:
+ * zseal.h's CSealCtrlAi does not declare it) */
+extern "C" CAiState *FindAiState__11CSealCtrlAiCF8AI_STATE(const CSealCtrlAi *ai, AI_STATE state);
+
+/* the script state (kind 1) running sequence `id` and told event 2: this state is done (OVL2
+ * 0x5F6050) */
+void CAiState::Virtual0C(int id, int event, CSealCtrlAi *ai)
+{
+    CAiState *s = FindAiState__11CSealCtrlAiCF8AI_STATE(ai, (AI_STATE)1);
+    CAiSScript *script = s && s->m_state == 1 ? (CAiSScript *)s : 0;
+
+    if (script && script->m_58 == id && (unsigned char)event == 2)
+        m_active = false;
 }
 
 /* the state on top of the controller's stack, or the unknown state when it is empty (OVL2
@@ -182,6 +205,13 @@ const CAiState *CSealCtrlAi::GetAiState() const
     if (((const CAiCtrlStack *)this)->m_stack.size() == 0)
         return &_unknown;
     return ((CAiCtrlStack *)this)->m_stack.GetState();
+}
+
+/* a stack's front state told a signal, when there is one (OVL2 0x5F7420) */
+void CAiState::Signal(CAiStateStack *stack, SIGNAL sig, CSealCtrlAi *ai)
+{
+    if (stack->size() != 0)
+        Signal(stack, stack->GetState(), sig, ai);
 }
 
 /* the stack's destructor: its states deleted, then the list's own (OVL2 0x5F8490) */
@@ -330,6 +360,15 @@ void CAiSGoto::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
 inline void SetBit(CBits *bits, unsigned int i)
 {
     bits->m_vec[i >> 5] |= 1 << (i & 31);
+}
+
+/* the pickup gone for, its network id kept to check it still stands, and the flags (OVL2
+ * 0x5F5520; the name ours) */
+void CAiSPickup::SetPickup(CPickup *p, unsigned int flags)
+{
+    m_pickup = p;
+    m_pickupId = GetPickupNetEntityID__7CPickupFv(p);
+    SetFlags(flags, 0);
 }
 
 /* a pickup: to a cell beside it (the goto pushed, coming back to step 6), the AI's mode 4, the

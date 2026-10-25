@@ -11493,7 +11493,7 @@
 0x005F5010 0x18C OnSignal__8CAiSGotoFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F51A0 0x130 func_005F51A0  # OVL2
 0x005F52D0 0x244 Tick__10CAiSPickupFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x005F5520 0x68 func_005F5520  # OVL2
+0x005F5520 0x68 SetPickup__10CAiSPickupFP7CPickupUi  # OVL2; by hand: stores the pickup and its network id (what CAiSPickup::Tick checks at 0x58/0x5C) and the flags through SetFlags (the name ours; the kit lane, round 3)
 0x005F5590 0x50 OnSignal__10CAiSPickupFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F55E0 0x4E8 func_005F55E0  # OVL2
 0x005F5AD0 0x34 func_005F5AD0  # OVL2
@@ -11507,10 +11507,10 @@
 0x005F5CB0 0x14 func_005F5CB0  # OVL2
 0x005F5CD0 0x250 func_005F5CD0  # OVL2
 0x005F5F20 0x98 ClearAiState__11CSealCtrlAiFb  # OVL2; s1:calls by hand (the SEAL lane's lead, verified: SOCOM II's CSealCtrlAi::OnDeath and ResetToInitialState call it where SOCOM 1's call ClearAiState(bool), and the CSealCtrlAi OnMissionEnd at 0x555900 where SOCOM 1's calls ClearAiState(1); SOCOM II's hands the stack at +0x41C to 0x5F7920/0x5F7470 and returns whether it cleared)
-0x005F5FC0 0x8 func_005F5FC0  # OVL2
+0x005F5FC0 0x8 FindAiState__11CSealCtrlAiCF8AI_STATE  # OVL2; s1:order by hand (SOCOM 1's FindAiState, between ClearAiState and GetAiState() const there and here; SOCOM II's tail-calls the stack's walk 0x5F8270 on its stack at 0x41C; the states call it with a kind -- the kit lane, round 3)
 0x005F5FD0 0x38 GetAiState__11CSealCtrlAiCFv  # OVL2; s1:order by hand (SOCOM 1's GetAiState() const, after ClearAiState as there: the state stack at 0x41C (SOCOM 1's 0x324), empty -> the static unknown state at 0x66B990 (SOCOM 1's at 0x509870), else its front)
 0x005F6010 0x38 GetAiState__11CSealCtrlAiFv  # OVL2; s1:order by hand (SOCOM 1's GetAiState(), next: the same code, non-const)
-0x005F6050 0xA8 func_005F6050  # OVL2
+0x005F6050 0xA8 Virtual0C__8CAiStateFiiP11CSealCtrlAi  # OVL2; by hand: CAiState's vtable slot +0x0C, the base's own (not inline): the AI's script state (kind 1, through FindAiState) running sequence `id` and told event 2 ends this state (the name ours, by slot; the kit lane, round 3)
 0x005F6100 0x8C func_005F6100  # OVL2
 0x005F6190 0x48 func_005F6190  # OVL2
 0x005F61E0 0x88 func_005F61E0  # OVL2
@@ -11526,8 +11526,8 @@
 0x005F6F30 0x10 func_005F6F30  # OVL2
 0x005F6F40 0x28 func_005F6F40  # OVL2; tu: vis_mesh.cpp~ (1.0 beta)
 0x005F6F70 0x28 func_005F6F70  # OVL2; tu: vis_mesh.cpp~ (1.0 beta)
-0x005F6FA0 0x478 func_005F6FA0  # OVL2
-0x005F7420 0x4C func_005F7420  # OVL2
+0x005F6FA0 0x478 Signal__8CAiStateFP13CAiStateStackP8CAiStateQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand: SOCOM 1's CAiState::Signal (0x2DBDC0, 0x47C against 0x478: the same switch on the signal, SIGNAL_0 inlining Reset with the state's own kind, the debug log gone) moved onto the stack -- a0 is the stack (compared with &ai->m_stateStack at 0x41C), the state its first argument; the stack's Signal(sig, ai) (0x5F7420) and five more stack functions call it (the kit lane, round 3); a static of CAiState taking the stack (a member of CAiStateStack could not name CAiState::SIGNAL: CAiState embeds the stack) -- the name and owner ours (the kit lane, round 3)
+0x005F7420 0x4C Signal__8CAiStateFP13CAiStateStackQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand: the stack's front state told (GetState inlined, nothing when empty), through 0x5F6FA0; CSealCtrlAi::OnCommand calls it (the kit lane, round 3); a static of CAiState taking the stack, as 0x5F6FA0 (the kit lane, round 3)
 0x005F7470 0x4B0 func_005F7470  # OVL2
 0x005F7920 0x64 func_005F7920  # OVL2
 0x005F7990 0xAC func_005F7990  # OVL2

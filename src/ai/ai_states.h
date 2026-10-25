@@ -75,7 +75,9 @@ public:
      * slots need (seal_ai.cpp's are the ones linked, 0x555380-0x5553B0, 0x570D10, 0x575990,
      * 0x575AA0; seal_unit.cpp's OnSignal and Tick, 0x5F81D0) */
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai) {}               /* +0x08 */
-    virtual void Virtual0C(int a, int b, int c);                          /* +0x0C (new) */
+    /* +0x0C (new; the base's own, seal_aistate.cpp's): the script state's sequence `id` told
+     * `event` -- event 2 ends this state (the name ours) */
+    virtual void Virtual0C(int id, int event, CSealCtrlAi *ai);
     virtual AI_RESULT Tick(float dT, CSealCtrlAi *ai) { return AI_DONE; }   /* +0x10 */
     /* +0x14 (new): a sub-step a Tick hands over to, its result the Tick's (CAiSPursue's, 0x55A760,
      * ends on Result(); CAiSReload's Tick calls it with 0) */
@@ -97,6 +99,12 @@ public:
      * two members and answers true) */
     virtual bool Virtual48(int x, CAiState *other) { return false; }
     virtual ~CAiState() {}                                                /* +0x4C */
+
+    /* a state of a stack told a signal (SOCOM 1's member CAiState::Signal, the stack and the state
+     * now passed: 0x5F6FA0), and a stack's front state told it (0x5F7420) -- statics, the names
+     * and owner ours */
+    static void Signal(CAiStateStack *stack, CAiState *state, SIGNAL sig, CSealCtrlAi *ai);
+    static void Signal(CAiStateStack *stack, SIGNAL sig, CSealCtrlAi *ai);
 
     /* a Tick's steps, where its switch takes m_phase's low byte (a byte enum; the names ours) */
     enum STEP {
@@ -224,7 +232,9 @@ public:
 
     unsigned int m_58;   // 0x58
     unsigned char m_hold : 1;   // 0x5c bit 0: no pursuit (the name ours)
-    unsigned char m_5c_1 : 7;
+    unsigned char m_5c_1 : 2;
+    unsigned char m_bit3 : 1;   // bit 3 (set through 0x5F3FC0)
+    unsigned char m_5c_4 : 4;
     unsigned char m_mode;   // 0x5d: the AI's mode the script runs in (the name ours)
     unsigned char _5e[0x60 - 0x5e];
     float m_60;   // 0x60
@@ -248,6 +258,7 @@ public:
 
 class CAiSPickup : public CAiState {
 public:
+    void SetPickup(class CPickup *p, unsigned int flags);
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual AI_RESULT Tick(float dT, CSealCtrlAi *ai);
     virtual ~CAiSPickup();
