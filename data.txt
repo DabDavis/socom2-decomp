@@ -928,6 +928,7 @@
 0x0066A088 0xC m_callbacks__8CAiEvent  # OVL2 bss; s1:data-exact (size SOCOM 1's; via __sinit_ai_events.cpp)
 0x0066A098 0x4 s_eventTickTime  # OVL2 bss; ours (ai_events.cpp's static: the time CAiEvent::Tick(float, void*) gathers before it ticks the events; 3 references in 1 function)
 0x0066A0A0 0x1 s_eventFlag  # OVL2 bss; ours (ai_events.cpp's static byte: CAiEvent::Open and Close clear it, nothing in the image reads it; 2 references in 2 functions)
+0x0066A180 0x18 path_queue__2ai  # OVL2 bss; SOCOM 1's (path_queue__2ai, 24 bytes at 0x49B160: the planner queue, a list of CAiPath * and three words): __sinit_ai_astar.cpp builds it and registers ~CAiPathQueue, AbortPathPlan removes a path from it as SOCOM 1's does; 19 references in 7 functions
 0x0066A1B0 0xE0 AiMaps  # OVL2 bss; s1:data-seq (size SOCOM 1's; via CreateCompassNavPoints__8CMissionFv +1)
 0x0066A5E8 0x1 g_bJoiningRandomGame__24@unnamed@zNetMedius_cpp@  # OVL2 bss; s1:data-seq (size SOCOM 1's; via UnInit__13CZOnlineLobbyFv)
 0x0066B540 0xC projDirDown  # OVL2 bss; s1:data-seq (size SOCOM 1's; via HandleBloodDrip__10CZSealBodyFf)

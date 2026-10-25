@@ -9353,9 +9353,9 @@
 0x00510530 0x3C func_00510530  # OVL2
 0x00510570 0x1C4 func_00510570  # OVL2
 0x00510740 0x70 func_00510740  # OVL2
-0x005107B0 0x194 func_005107B0  # OVL2
+0x005107B0 0x194 AbortPathPlan__2aiFP7CAiPath  # OVL2; s1:order by hand (the demo's 0x180E30: the path's state byte tested for 2, then the planner's CAiStar deleted with 1, the flag at 8 and its buffer, plan_complete(path, 0) and the path removed from ai::path_queue; state 1 gives plan_complete(path, 5); SOCOM II adds a third arm, a find in the queue before the same removal)
 0x00510950 0x14 func_00510950  # OVL2
-0x00510970 0x38 find<Q33std48list<P9CAiVisMap,Q23std22allocator<P9CAiVisMap>>19generic_iterator<0>,P9CAiVisMap>__3stdFQ33std48list<P9CAiVisMap,Q23std22allocator<P9CAiVisMap>>19generic_iterator<0>Q33std48list<P9CAiVisMap,Q23std22allocator<P9CAiVisMap>>19generic_iterator<0>RCP9CAiVisMap  # OVL2; s1:exact
+0x00510970 0x38 find<Q33std44list<P7CAiPath,Q23std20allocator<P7CAiPath>>19generic_iterator<0>,P7CAiPath>__3stdFQ33std44list<P7CAiPath,Q23std20allocator<P7CAiPath>>19generic_iterator<0>Q33std44list<P7CAiPath,Q23std20allocator<P7CAiPath>>19generic_iterator<0>RCP7CAiPath_Q33std44list<P7CAiPath,Q23std20allocator<P7CAiPath>>19generic_iterator<0>  # OVL2; s1:exact; by hand, settled: not CAiVisMap's -- the s1:exact pairing was a masked tie (every pointer list's find compiles alike). Its one caller, AbortPathPlan 0x5107B0, looks the path up in ai::path_queue (0x66A180), a list<CAiPath *>; std::find instantiated over list<CAiPath *> compiles to these 0x38 bytes exactly (build/scratch/ai/probe_find.cpp; MW 3.0 mangles the return type)
 0x005109B0 0xC func_005109B0  # OVL2
 0x005109C0 0xC func_005109C0  # OVL2
 0x005109D0 0x1AC func_005109D0  # OVL2
@@ -9385,7 +9385,7 @@
 0x00512140 0x80 func_00512140  # OVL2
 0x005121C0 0x1DC func_005121C0  # OVL2
 0x005123A0 0x1B8 func_005123A0  # OVL2
-0x00512560 0x2B4 func_00512560  # OVL2
+0x00512560 0x2B4 __dt__7CAiStarFv  # OVL2; s1:callee by hand (AbortPathPlan deletes the path's planner with it, a1 = 1, at the same instruction as SOCOM 1's calls __dt__7CAiStarFv)
 0x00512820 0x60 func_00512820  # OVL2
 0x00512880 0x40 func_00512880  # OVL2
 0x005128C0 0x8 func_005128C0  # OVL2
@@ -9403,12 +9403,12 @@
 0x00513F90 0x8F4 func_00513F90  # OVL2
 0x00514890 0x754 func_00514890  # OVL2
 0x00514FF0 0x200 func_00514FF0  # OVL2
-0x005151F0 0x8 func_005151F0  # OVL2
+0x005151F0 0x8 clear__Q23std58__vector_deleter<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>>Fv  # OVL2; s1:callee by hand (SetSnakeLength clears the path's locations with it, a0 = path + 52, where SOCOM 1's calls clear__Q23std58__vector_deleter<9CAiMapLoc,...> on path + 44; the size zeroed)
 0x00515200 0x68 func_00515200  # OVL2
 0x00515270 0xD0 func_00515270  # OVL2
 0x00515340 0x68 func_00515340  # OVL2
-0x005153B0 0x8 func_005153B0  # OVL2
-0x005153C0 0x60 func_005153C0  # OVL2
+0x005153B0 0x8 clear__Q23std70__vector_deleter<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>>Fv  # OVL2; s1:callee by hand (SetSnakeLength clears the path's points with it, a0 = path + 152, where SOCOM 1's calls clear__Q23std70__vector_deleter<Q27CAiPath5point,...> on path + 140; the deleter's clear of a trivially destructible element: the size zeroed)
+0x005153C0 0x60 __dt__Q22ai12CAiPathQueueFv  # OVL2; s1:ref by hand (the destructor __sinit_ai_astar.cpp registers for ai::path_queue, as SOCOM 1's registers __dt__Q22ai12CAiPathQueueFv for the same object)
 0x00515420 0x80 func_00515420  # OVL2
 0x005154A0 0x80 func_005154A0  # OVL2
 0x00515520 0x60 func_00515520  # OVL2
@@ -9564,7 +9564,7 @@
 0x00524D00 0x48 func_00524D00  # OVL2
 0x00524D50 0x4AC func_00524D50  # OVL2
 0x00525200 0x8 func_00525200  # OVL2
-0x00525210 0x12C func_00525210  # OVL2
+0x00525210 0x12C SetSnakeLength__7CAiPathFUi  # OVL2; s1:order by hand (the SEAL lane's lead, vetted: the demo's 0x193D40 -- a zero length with a buffer set clears flag bit 2, a path planning (state 1-3) is aborted through AbortPathPlan, then the point and location vectors are cleared and the stats reset; SOCOM II's fields 0xC further on)
 0x00525340 0x1DC func_00525340  # OVL2
 0x00525520 0x2F0 func_00525520  # OVL2
 0x00525810 0x450 func_00525810  # OVL2
@@ -9585,7 +9585,7 @@
 0x005273C0 0xAC func_005273C0  # OVL2
 0x00527470 0x3C func_00527470  # OVL2
 0x005274B0 0x408 func_005274B0  # OVL2
-0x005278C0 0x3C func_005278C0  # OVL2
+0x005278C0 0x3C plan_complete__7CAiPathFQ27CAiPath10PATH_STATE  # OVL2; s1:callee by hand (AbortPathPlan calls it with the path and 0, then 5 in its other arm, as SOCOM 1's calls plan_complete__7CAiPathFQ27CAiPath10PATH_STATE)
 0x00527900 0x64 func_00527900  # OVL2
 0x00527970 0x6C func_00527970  # OVL2
 0x005279E0 0x260 func_005279E0  # OVL2
@@ -13359,7 +13359,7 @@
 0x0064F5F8 0xC func_0064F5F8  # OVL2 unaligned
 0x0064F604 0x118 KM_GetSoftwareKeyPair  # OVL2 unaligned; s1:exact
 0x00668480 0xB4 __sinit_ai_events.cpp  # OVL2 data area; a static initialiser; s1:unit ai_events.cpp (exact)
-0x00668540 0xE4 func_00668540  # OVL2 data area; a static initialiser
+0x00668540 0xE4 __sinit_ai_astar.cpp  # OVL2 data area; a static initialiser; s1:unit by hand (SOCOM 1's __sinit_ai_astar.cpp builds ai::path_queue -- the list AbortPathPlan removes from, 0x49B160 there -- and three words after it; SOCOM II's builds the same at 0x66A180 (the list AbortPathPlan 0x5107B0 removes from) after three new statics)
 0x00668630 0x44 func_00668630  # OVL2 data area; a static initialiser
 0x00668680 0x8C func_00668680  # OVL2 data area; a static initialiser
 0x00668710 0xB4 func_00668710  # OVL2 data area; a static initialiser
