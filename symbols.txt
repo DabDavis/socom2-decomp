@@ -3627,7 +3627,7 @@
 0x0029BBB0 0x6C CmdParse3rdPersonTest__10CAppCameraFP5_zrdr  # OVL1; s1:exact shape (RegisterAnimCommands' parser for CAMERA_3RD_PERSON: a timeless four-byte command)
 0x0029BC20 0x6C RegisterAnimCommands__10CAppCameraFv  # OVL1; s1:calls (AddCmd for CAMERA_3RD_PERSON with SOCOM 1's parse and tick; SOCOM II adds CAMERA_SHAKE; CMission::Init calls it)
 0x0029BC90 0x158 LookAt__10CAppCameraFPC6CPnt3DPC6CPnt3DR7CMatrix  # OVL1; s1:calls (SOCOM 1's LookAt: Sub, Normalize twice, sceVu0OuterProduct, the matrix rows and the eye noted; AttachTo and the camera modes call it)
-0x0029BDF0 0x178 func_0029BDF0  # OVL1
+0x0029BDF0 0x178 ResetView__10CAppCameraFv  # OVL1; the name ours (the view's preset taken up: goal position, aim, tether length; with a SEAL attached the camera placed through LookAt and SetMatrix; FTSTick's view switch calls it)
 0x0029BF70 0xC38 func_0029BF70  # OVL1
 0x0029CBB0 0x164 func_0029CBB0  # OVL1
 0x0029CD20 0x198 GetNearestIntersectCamPoint__FPQ23zdb11DiIntersectP6CPnt3D  # OVL1; s1:calls

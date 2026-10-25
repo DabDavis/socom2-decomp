@@ -9,6 +9,8 @@ extern "C" void *func_0032EE10(_zrdr *rdr, const char *tag);
 
 extern bool camera_tether_intersects_something;
 extern "C" bool func_002C2FD0(CZSealBody *seal);
+extern "C" CCameraPreset *data_0044C408;          /* the views' presets */
+extern "C" void func_002956E0(CAppCamera *cam, CZSealBody *prey, int arg);
 
 /* the network (only its online flag) */
 class CNetwork {
@@ -124,6 +126,59 @@ _zanim_cmd_hdr *CAppCamera::CmdParseShake(_zrdr *rdr)
             cmd->level = 2;
     }
     return (_zanim_cmd_hdr *)cmd;
+}
+
+/* the view's preset taken up: the goal position and aim, the tether's length, and -- with a SEAL
+ * attached -- the camera put there, looking at the aim, both carried into the SEAL's space (the
+ * name ours) */
+void CAppCamera::ResetView()
+{
+    m_camGoalPos = data_0044C408[m_ctrl_view].m_tie;
+    m_cameraAim = data_0044C408[m_ctrl_view].m_aim;
+    m_goal_t_len = m_camGoalPos.Length();
+    m_cameraTie = m_cameraAim;
+    if (m_entity) {
+        CMatrix cTw;
+        CPnt3D tie = m_camGoalPos;
+
+        m_entity->GetMatrix()->Transform(&tie, 1);
+        CPnt3D aim = m_cameraAim;
+
+        m_entity->GetMatrix()->Transform(&aim, 1);
+        LookAt(&tie, &aim, cTw);
+        m_camera->SetMatrix(&cTw);
+    }
+}
+
+/* the camera put on a SEAL: the first view's preset, the SEAL taken up, the camera placed behind
+ * it looking at the aim, the nominal zoom read back (twice over, both builds) */
+bool CAppCamera::AttachTo(CZSealBody *prey)
+{
+    if (!prey)
+        return false;
+    m_save_view = 0;
+    m_ctrl_view = 0;
+    m_save_peek = 2;
+    m_camGoalPos = data_0044C408[m_ctrl_view].m_tie;
+    m_cameraAim = data_0044C408[m_ctrl_view].m_aim;
+    m_goal_t_len = m_camGoalPos.Length();
+    m_cameraTie = m_cameraAim;
+    func_002956E0(this, prey, 0);
+    CPnt3D tie = m_camGoalPos;
+
+    m_entity->GetMatrix()->Transform(&tie, 1);
+    CPnt3D aim = m_cameraAim;
+
+    m_entity->GetMatrix()->Transform(&aim, 1);
+    CMatrix cTw;
+
+    LookAt(&tie, &aim, cTw);
+    m_camera->SetMatrix(&cTw);
+    zdb::CCamera *cam = m_camera;
+
+    m_z_nominal = cam->m_screenAspect[0];
+    m_z_nominal = cam->m_screenAspect[1];
+    return true;
 }
 
 /* the camera's mode -- kept at 6 online while the SEAL it follows is down (the name ours) */

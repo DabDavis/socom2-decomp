@@ -24,24 +24,6 @@ extern CPnt4D data_004B4AB0;                     /* zdb::CVisual::m_basefog_colo
 /* the base fog colour by value (the name ours: SeeFarther copies it out twice) */
 static inline CPnt4D BaseFogColor() { return data_004B4AB0; }
 
-/* a seal's controller: its mode at 0x221 (5 hands the zoom to the camera) */
-class CEntityCtrl {
-public:
-    unsigned char _0[0x221];
-    unsigned char m_221;   // 0x221
-};
-
-/* a SEAL: its controller (CEntity's at 0xC0) and the zoomed flag (SOCOM 1's at 0xF5C) */
-class CZSealBody {
-public:
-    unsigned char _0[0xc0];
-    CEntityCtrl *m_control;   // 0xc0
-    unsigned char _c4[0x1060 - 0xc4];
-    unsigned char _b0 : 5;   // 0x1060
-    unsigned char m_zooming : 1;
-    unsigned char _b6 : 2;
-};
-
 /* the scope's zoom (SOCOM 1's: a class of statics) */
 class CameraZoom {
 public:

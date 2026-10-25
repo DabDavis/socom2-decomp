@@ -52,10 +52,38 @@ public:
 
 zdb::IntersectStruct *GetNearestIntersectCamPoint(zdb::DiIntersect *diSet, CPnt3D *p0);
 
-class CZSealBody;
 class CHUD;
 class CEntity;
 class CZBodyPart;
+
+/* a seal's controller: its mode at 0x221 (5 hands the zoom to the camera) */
+class CEntityCtrl {
+public:
+    unsigned char _0[0x221];
+    unsigned char m_221;   // 0x221
+};
+
+/* a SEAL: its matrix (the second virtual), its controller (CEntity's at 0xC0) and the zoomed flag
+ * (SOCOM 1's at 0xF5C) */
+class CZSealBody {
+public:
+    virtual ~CZSealBody();
+    virtual CMatrix *GetMatrix();
+
+    unsigned char _4[0xc0 - 4];
+    CEntityCtrl *m_control;   // 0xc0
+    unsigned char _c4[0x1060 - 0xc4];
+    unsigned char _b0 : 5;   // 0x1060
+    unsigned char m_zooming : 1;
+    unsigned char _b6 : 2;
+};
+
+/* a camera position the app camera keeps per view: where it sits and where it looks, in the
+ * SEAL's space (the name ours) */
+struct CCameraPreset {
+    CPnt3D m_tie;   // 0x0
+    CPnt3D m_aim;   // 0xc
+};
 
 class CAppCamera {
 public:
@@ -65,6 +93,7 @@ public:
 
     void SetZoom(float zoom);
     void SetCameraMode(unsigned char mode);
+    void ResetView();
     static bool TickTask(float dT, void *data);
     void LookAt(const CPnt3D *from, const CPnt3D *to, CMatrix &cTw);
     static bool CmdTick3rdPersonTest(_zanim_cmd_hdr *hdr, float *dT);
@@ -73,7 +102,11 @@ public:
     static void CmdBeginShake(_zanim_cmd_hdr *hdr);
     static void RegisterAnimCommands();
 
-    unsigned char _4[0xb4 - 4];
+    CPnt3D m_cameraAim;   // 0x4 (SOCOM 1's)
+    CPnt3D m_cameraTie;   // 0x10
+    CPnt3D m_camGoalPos;   // 0x1c
+    float m_goal_t_len;   // 0x28
+    unsigned char _2c[0xb4 - 0x2c];
     zdb::CCamera *m_camera;   // 0xb4 (SOCOM 1: 0x34)
     zdb::CNode *m_camera_effects;   // 0xb8 (SOCOM 1: 0x38)
     CZSealBody *m_bc;   // 0xbc: SOCOM II's, a SEAL the mode setter asks after (the name ours)
@@ -82,10 +115,16 @@ public:
     CZBodyPart *m_skel_root;   // 0xc8 (SOCOM 1: 0x40)
     CPnt3D m_rPos;   // 0xcc (SOCOM 1: 0x44)
     CPnt3D m_wPos;   // 0xd8 (SOCOM 1: 0x50)
-    unsigned char _e4[0x139 - 0xe4];
+    unsigned char m_ctrl_view;   // 0xe4 (SOCOM 1: 0x5c, a CAMVIEW)
+    unsigned char _e5[0xec - 0xe5];
+    float m_z_nominal;   // 0xec (SOCOM 1: 0x64)
+    unsigned char _f0[0x139 - 0xf0];
     unsigned char m_camera_mode;   // 0x139 (SOCOM 1: 0x89)
-    unsigned char _13a[2];
+    unsigned char m_camera_last_mode;   // 0x13a
+    unsigned char _13b;
     CEntity *m_track;   // 0x13c (SOCOM 1: 0x8c)
+    unsigned char m_save_peek;   // 0x140 (SOCOM 1: 0x90)
+    unsigned char m_save_view;   // 0x141 (SOCOM 1: 0x91)
 };
 
 extern CAppCamera *appCamera;
