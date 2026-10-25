@@ -462,10 +462,22 @@ struct _zrdr {
     unsigned int Count() { return type == 4 ? length : 0; }
     _zrdr *Item(int i) { return i < Count() ? &array[i] : 0; }
     char *String() { return type == 3 ? string : 0; }
+    /* a number: a real as it is, an integer converted, anything else 0 (ours) */
+    float Real()
+    {
+        if (type == 2)
+            return real;
+        else if (type == 1)
+            return (float)integer;
+        else
+            return 0.0f;
+    }
 };   // 0x8 bytes
 
 /* SOCOM 1's zrdr_findtag, matched in its own unit under its address's name */
 extern "C" _zrdr *func_0032F0D0(_zrdr *rdr, const char *tag);
+/* data appended to a command, which may move: the command given back (SOCOM 1's) */
+_zanim_cmd_hdr *zAnimCmdAddData(_zanim_cmd_hdr *hdr, void *data, int size);
 
 /* the wildcard search over node names (anim_main.cpp) */
 const char *ZAnimWildcardApply(const char *name);

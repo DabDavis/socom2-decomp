@@ -2797,7 +2797,7 @@
 0x0025C6E0 0x198 func_0025C6E0  # OVL1
 0x0025C880 0x280 func_0025C880  # OVL1
 0x0025CB00 0xD0 func_0025CB00  # OVL1
-0x0025CBD0 0x98 func_0025CBD0  # OVL1
+0x0025CBD0 0x98 zAnimCmdAddData__FP14_zanim_cmd_hdrPvi  # OVL1; s1:calls (SOCOM 1's zAnimCmdAddData: CmdParseParams appends each key through it)
 0x0025CC70 0x8 zAnimDebugTick__FP14_zanim_cmd_hdrPf  # OVL1; ZAnim DEBUG tick (InitCommands' #51, file id 0x34); s1:cmd (registered under "DEBUG" tick in both builds' InitCommands)
 0x0025CC80 0x28 func_0025CC80  # OVL1; ZAnim REMOVE_SATCHELS tick (InitCommands' #57, file id 0x3a)
 0x0025CCB0 0x57C zAnimFireWeaponTick__FP14_zanim_cmd_hdrPf  # OVL1; ZAnim FIRE_WEAPON tick (InitCommands' #56, file id 0x39); s1:cmd (registered under "FIRE_WEAPON" tick in both builds' InitCommands)

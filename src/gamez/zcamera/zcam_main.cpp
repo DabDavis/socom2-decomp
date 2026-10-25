@@ -17,8 +17,9 @@ namespace zdb {
 static bool fogCheck = true;
 
 /* the PARAMS command: what to save, restore and switch at its start, then the run time and the
- * keyed tracks of fov, clip planes, fog range and altitude and LOD scale (offsets and counts into
- * the command's data) -- SOCOM 1's DWARF */
+ * keyed tracks of fov, clip planes, fog colour, range and altitude and LOD scale (offsets and
+ * counts into the command's data) -- SOCOM 1's DWARF, with SOCOM II's fog colour track (0x18,
+ * the command 0x28 bytes, as CmdParseParams allocates it) */
 class _camera_params_cmd {
 public:
     _zanim_cmd_hdr hdr;   // 0x0
@@ -35,13 +36,37 @@ public:
     unsigned int clip_count : 16;
     unsigned int clip_all_offset : 16;   // 0x14
     unsigned int clip_all_count : 16;
-    unsigned int fog_range_offset : 16;   // 0x18
+    unsigned int fog_color_offset : 16;   // 0x18
+    unsigned int fog_color_count : 16;
+    unsigned int fog_range_offset : 16;   // 0x1c
     unsigned int fog_range_count : 16;
-    unsigned int fog_altitude_offset : 16;   // 0x1c
+    unsigned int fog_altitude_offset : 16;   // 0x20
     unsigned int fog_altitude_count : 16;
-    unsigned int lod_multiplier_offset : 16;   // 0x20
+    unsigned int lod_multiplier_offset : 16;   // 0x24
     unsigned int lod_multiplier_count : 16;
-};   // 0x24 bytes
+};   // 0x28 bytes
+
+/* a key of a track: its time and one, two or three values (SOCOM 1's DWARF) */
+class _camera_param_1d_data {
+public:
+    float time;   // 0x0
+    float a;   // 0x4
+};   // 0x8 bytes
+
+class _camera_param_2d_data {
+public:
+    float time;   // 0x0
+    float a;   // 0x4
+    float b;   // 0x8
+};   // 0xc bytes
+
+class _camera_param_3d_data {
+public:
+    float time;   // 0x0
+    float a;   // 0x4
+    float b;   // 0x8
+    float c;   // 0xc
+};   // 0x10 bytes
 
 /* SET_REGIONS: the region test on or off */
 class _camera_set_regions_cmd {
@@ -259,6 +284,164 @@ void CCamera::CmdBeginParams(_zanim_cmd_hdr *hdr)
         cam->SetFogEnabled(cmd_ptr->fog_enabled);
     if (cmd_ptr->fog_altitude_enabled_set)
         cam->SetFogAltEnabled(cmd_ptr->fog_altitude_enabled);
+}
+
+/* CAMERA_PARAMS: the flags (save, restore, fog and altitude fog on or off), then each keyed track
+ * -- its keys appended to the command's data, the track's offset taken at its first key, the run
+ * time the latest key's time (SOCOM 1's, with the fog colour track new) */
+_zanim_cmd_hdr *CCamera::CmdParseParams(_zrdr *rdr)
+{
+    _camera_params_cmd *cmd;
+    _zrdr *tag;
+
+    if (!rdr)
+        return 0;
+    cmd = (_camera_params_cmd *)_calloc(1, sizeof(_camera_params_cmd), 0, 0);
+    cmd->hdr.data_size = sizeof(_camera_params_cmd);
+    cmd->hdr.timeless = 1;
+    cmd->run_time = 0.0f;
+    if (func_0032F0D0(rdr, "SAVE_PARAMS"))
+        cmd->save_params = 1;
+    if (func_0032F0D0(rdr, "RESTORE_PARAMS"))
+        cmd->restore_params = 1;
+    if (func_0032F0D0(rdr, "FOG_ON")) {
+        cmd->fog_enabled_set = 1;
+        cmd->fog_enabled = 1;
+    } else if (func_0032F0D0(rdr, "FOG_OFF")) {
+        cmd->fog_enabled_set = 1;
+        cmd->fog_enabled = 0;
+    }
+    if (func_0032F0D0(rdr, "FOG_ALTITUDE_ON")) {
+        cmd->fog_altitude_enabled_set = 1;
+        cmd->fog_altitude_enabled = 1;
+    } else if (func_0032F0D0(rdr, "FOG_ALTITUDE_OFF")) {
+        cmd->fog_altitude_enabled_set = 1;
+        cmd->fog_altitude_enabled = 0;
+    }
+    tag = func_0032F0D0(rdr, "FOV");
+    if (tag) {
+        for (unsigned int i = 0; i < tag->Count(); i += 3) {
+            _camera_param_2d_data data;
+
+            data.time = tag->Item(i)->Real();
+            data.a = tag->Item(i + 1)->Real();
+            data.b = tag->Item(i + 2)->Real();
+            if (data.time > cmd->run_time)
+                cmd->run_time = data.time;
+            if (i == 0)
+                cmd->fov_offset = cmd->hdr.data_size;
+            cmd->fov_count++;
+            cmd = (_camera_params_cmd *)zAnimCmdAddData(&cmd->hdr, &data, sizeof(data));
+        }
+    }
+    tag = func_0032F0D0(rdr, "CLIP");
+    if (tag) {
+        for (unsigned int i = 0; i < tag->Count(); i += 3) {
+            _camera_param_2d_data data;
+
+            data.time = tag->Item(i)->Real();
+            data.a = tag->Item(i + 1)->Real();
+            data.b = tag->Item(i + 2)->Real();
+            if (data.time > cmd->run_time)
+                cmd->run_time = data.time;
+            if (i == 0)
+                cmd->clip_offset = cmd->hdr.data_size;
+            cmd->clip_count++;
+            cmd = (_camera_params_cmd *)zAnimCmdAddData(&cmd->hdr, &data, sizeof(data));
+        }
+    }
+    tag = func_0032F0D0(rdr, "CLIP_ALL");
+    if (tag) {
+        for (unsigned int i = 0; i < tag->Count(); i += 4) {
+            _camera_param_3d_data data;
+
+            data.time = tag->Item(i)->Real();
+            data.a = tag->Item(i + 1)->Real();
+            data.b = tag->Item(i + 2)->Real();
+            data.c = tag->Item(i + 3)->Real();
+            if (data.time > cmd->run_time)
+                cmd->run_time = data.time;
+            if (i == 0)
+                cmd->clip_all_offset = cmd->hdr.data_size;
+            cmd->clip_all_count++;
+            cmd = (_camera_params_cmd *)zAnimCmdAddData(&cmd->hdr, &data, sizeof(data));
+        }
+    }
+    tag = func_0032F0D0(rdr, "FOG_COLOR");
+    if (tag) {
+        for (unsigned int i = 0; i < tag->Count(); i += 4) {
+            _camera_param_3d_data data;
+
+            data.time = tag->Item(i)->Real();
+            data.a = tag->Item(i + 1)->Real();
+            data.b = tag->Item(i + 2)->Real();
+            data.c = tag->Item(i + 3)->Real();
+            if (data.time > cmd->run_time)
+                cmd->run_time = data.time;
+            /* a component past 1 is a byte value, brought to 0..1 */
+            if (data.a > 1.0f)
+                data.a *= 0.00392157f;
+            if (data.b > 1.0f)
+                data.b *= 0.00392157f;
+            if (data.c > 1.0f)
+                data.c *= 0.00392157f;
+            if (i == 0)
+                cmd->fog_color_offset = cmd->hdr.data_size;
+            cmd->fog_color_count++;
+            cmd = (_camera_params_cmd *)zAnimCmdAddData(&cmd->hdr, &data, sizeof(data));
+        }
+    }
+    tag = func_0032F0D0(rdr, "FOG_RANGE");
+    if (tag) {
+        for (unsigned int i = 0; i < tag->Count(); i += 3) {
+            _camera_param_2d_data data;
+
+            data.time = tag->Item(i)->Real();
+            data.a = tag->Item(i + 1)->Real();
+            data.b = tag->Item(i + 2)->Real();
+            if (data.time > cmd->run_time)
+                cmd->run_time = data.time;
+            if (i == 0)
+                cmd->fog_range_offset = cmd->hdr.data_size;
+            cmd->fog_range_count++;
+            cmd = (_camera_params_cmd *)zAnimCmdAddData(&cmd->hdr, &data, sizeof(data));
+        }
+    }
+    tag = func_0032F0D0(rdr, "FOG_ALTITUDE");
+    if (tag) {
+        for (unsigned int i = 0; i < tag->Count(); i += 3) {
+            _camera_param_2d_data data;
+
+            data.time = tag->Item(i)->Real();
+            data.a = tag->Item(i + 1)->Real();
+            data.b = tag->Item(i + 2)->Real();
+            if (data.time > cmd->run_time)
+                cmd->run_time = data.time;
+            if (i == 0)
+                cmd->fog_altitude_offset = cmd->hdr.data_size;
+            cmd->fog_altitude_count++;
+            cmd = (_camera_params_cmd *)zAnimCmdAddData(&cmd->hdr, &data, sizeof(data));
+        }
+    }
+    tag = func_0032F0D0(rdr, "LOD_MULTIPLIER");
+    if (tag) {
+        for (unsigned int i = 0; i < tag->Count(); i += 2) {
+            _camera_param_1d_data data;
+
+            data.time = tag->Item(i)->Real();
+            if (i + 1 < tag->Count())
+                data.a = tag->Item(i + 1)->Real();
+            else
+                data.a = 1.0f;
+            if (data.time > cmd->run_time)
+                cmd->run_time = data.time;
+            if (i == 0)
+                cmd->lod_multiplier_offset = cmd->hdr.data_size;
+            cmd->lod_multiplier_count++;
+            cmd = (_camera_params_cmd *)zAnimCmdAddData(&cmd->hdr, &data, sizeof(data));
+        }
+    }
+    return (_zanim_cmd_hdr *)cmd;
 }
 
 /* the parameters CmdBeginParams saved, put back through their setters (SOCOM II's; CmdTickParams
