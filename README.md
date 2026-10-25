@@ -1643,6 +1643,19 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **MW's saved-register order is a NUMBERING** (the task-handler lane's round 9, seal_tasks.cpp): not
+  interference degree or use counts -- adding 20 temporaries or 16 uses of a variable never moves
+  it. Variables are numbered parameters first, then the function's named locals in declaration
+  order, then inlined functions' named variables in expansion order, then temporaries; the highest
+  number gets s0; the first non-parameter variable read (a null test) moves to the end. A plain
+  pointer cast of a parameter (`T *cmd = (T *)hdr;`) makes a variable of its own, numbered just after
+  the parameters; the same cast through an inline (`template <class T> T *TaskCmd(...)`) makes it the
+  parameter's register. The 13 open task handlers want the block numbered where a variable declared
+  between the inlined find's counter and its list would be -- no C++ shape tried does that (the
+  variants are in taskFindParam's comment); tools/perm.py's best was 8 of 14. An inline Create()
+  whose member inline stores then calls keeps that member's `this` (cmd plus an offset) in a saved
+  register across the call; a byte-enum call result tested `!= 0`, declared uninitialised ahead of a
+  later flag, gives the andi before the branch (CTInState::Parse).
 - **Tells from the online lobby, round 7** (the room and ladder units, zNetMediusFile.cpp):
   - a function handed to std::transform by address becomes a direct, never-inlined `jal` with the
     element in a0 (DeleteRoom); a functor's operator() would have `this` in a0;
