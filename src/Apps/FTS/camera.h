@@ -113,16 +113,19 @@ struct CShakeParams {
     float m_yRate;   // 0x1c
 };
 
-/* the camera's modes (SOCOM 1's PLAYER_CAM_STATE, 0-4; SOCOM II's Tick switches on 1-6: 1 the
- * tether, 2 first person (and anything else), 3 SOCOM II's, 4 looking at the tracked entity, 5 the
- * network's, 6 SOCOM II's -- the new names ours) */
+/* the camera's modes (SOCOM 1's PLAYER_CAM_STATE: 1 the tether, 2 first person, 3 looking at the
+ * tracked entity, 4 the network's). SOCOM II renumbered them: its third person tether is 2 (the
+ * zoom's Reset sets it, FirstToThirdPersonTransition enters it) and first person 3
+ * (CmdTick3rdPersonTest, CCoreState::Tick hiding the camera's own entity, ThirdToFirstPerson-
+ * Transition entering it from 2); 1 is a new view entered from the tether, 4 looks at the tracked
+ * entity, 5 ticks no camera, 6 is new -- the new names ours) */
 enum PLAYER_CAM_STATE {
     cam_mode_unk = 0,
-    cam_mode_tether = 1,
-    cam_mode_FP = 2,
-    cam_mode_3 = 3,
+    cam_mode_1 = 1,
+    cam_mode_tether = 2,
+    cam_mode_FP = 3,
     cam_mode_apLook = 4,
-    cam_mode_net = 5,
+    cam_mode_5 = 5,
     cam_mode_6 = 6
 };
 
@@ -147,17 +150,17 @@ public:
 
     /* the mode changes Tick runs a transition for (inline: their bools are materialised before the
      * branch, SOCOM 1's too; the names ours) */
-    bool FromFirstToTether() const
+    bool FromTetherToMode1() const
     {
-        return m_camera_mode == cam_mode_tether && m_camera_last_mode == cam_mode_FP;
+        return m_camera_mode == cam_mode_1 && m_camera_last_mode == cam_mode_tether;
     }
-    bool IntoFirstPerson() const
+    bool IntoTether() const
     {
-        return m_camera_mode == cam_mode_FP && m_camera_last_mode != cam_mode_FP;
+        return m_camera_mode == cam_mode_tether && m_camera_last_mode != cam_mode_tether;
     }
-    bool FromFirstToMode3() const
+    bool FromTetherToFirst() const
     {
-        return m_camera_mode == cam_mode_3 && m_camera_last_mode == cam_mode_FP;
+        return m_camera_mode == cam_mode_FP && m_camera_last_mode == cam_mode_tether;
     }
     void SetZoom(float zoom);
     void SetCameraMode(unsigned char mode);
