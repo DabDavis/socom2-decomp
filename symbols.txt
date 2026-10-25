@@ -7505,7 +7505,7 @@
 0x0039B670 0x4CC func_0039B670  # OVL1
 0x0039BB40 0x68 func_0039BB40  # OVL1
 0x0039BBB0 0x8 func_0039BBB0  # OVL1
-0x0039BBC0 0xD0 func_0039BBC0  # OVL1
+0x0039BBC0 0xD0 fwrite__9CBufferIOFPCvi  # OVL1; s1:vtable by hand (CBufferIO's slot 0x2C, the slot CIO::fwrite(const char *) calls with (&len, 4); falls back on CFileIO's slot 0x2C; SOCOM 1's slot 0x2C is fwrite__9CBufferIOFPCvi)
 0x0039BC90 0xA0 fwrite__9CBufferIOFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0039BD30 0x2C fflush__9CBufferIOFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0039BD60 0x7C freadchar__9CBufferIOFPc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -7516,8 +7516,8 @@
 0x0039C040 0x50 Close__9CBufferIOFv  # OVL1; s1:align
 0x0039C090 0xF4 LoadBuffer__9CBufferIOFv  # OVL1; s1:align
 0x0039C190 0xC0 Open__9CBufferIOFPCcUi  # OVL1; s1:align
-0x0039C250 0x14 func_0039C250  # OVL1
-0x0039C270 0x70 func_0039C270  # OVL1
+0x0039C250 0x14 Release__9CBufferIOFv  # OVL1; s1:order (after Open(const char *, unsigned) as SOCOM 1's Release; zeroes the four buffer members and calls CFileIO's Release as SOCOM 1's does)
+0x0039C270 0x70 Open__9CBufferIOFPvUi  # OVL1; s1:vtable by hand (CBufferIO's slot 0x44, SOCOM 1's Open__9CBufferIOFPvUi at 0x38 before SOCOM II's three new CIO slots; takes the buffer and size as SOCOM 1's)
 0x0039C2E0 0x44 __ct__9CBufferIOFv  # OVL1; s1:align
 0x0039C330 0x94 func_0039C330  # OVL1
 0x0039C3D0 0xC func_0039C3D0  # OVL1
@@ -7557,13 +7557,13 @@
 0x0039E4F0 0x110 CreatePath__7CFileCDFPcPc  # OVL1; s1:calls
 0x0039E600 0x8 fflush__7CFileIOFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0039E610 0x8 ftell__7CFileIOCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0039E620 0x70 func_0039E620  # OVL1
+0x0039E620 0x70 fwrite__7CFileIOFPCvi  # OVL1; s1:vtable by hand (CFileIO's slot 0x2C, the slot CIO::fwrite(const char *) calls with (&len, 4), as SOCOM 1's slot 0x2C)
 0x0039E690 0x8C fread__7CFileIOFPvi  # OVL1; s1:calls
 0x0039E720 0x178 fseek__7CFileIOFii  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0039E8A0 0x104 Close__7CFileIOFv  # OVL1; s1:align
-0x0039E9B0 0x4A0 func_0039E9B0  # OVL1
+0x0039E9B0 0x4A0 Open__7CFileIOFPCcUi  # OVL1; s1:vtable by hand (CFileIO's slot 0x08, as SOCOM 1's; CBufferIO::Open(const char *, unsigned) calls it with its own arguments)
 0x0039EE50 0x104 PS2FileName__7CFileIOFPCcPcb  # OVL1; s1:calls (zSysLoadIRX calls it where SOCOM 1's does) -- the sound lane
-0x0039EF60 0xC func_0039EF60  # OVL1
+0x0039EF60 0xC Release__7CFileIOFv  # OVL1; s1:calls (CBufferIO::Release calls it last, as SOCOM 1's calls Release__7CFileIOFv; stores -1 to m_file, 0xC bytes as SOCOM 1's)
 0x0039EF70 0xC IsOpen__9CBufferIOCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0039EF80 0x50 IsOpen__7CFileIOCFv  # OVL1; s1:align
 0x0039EFD0 0x34 __ct__7CFileIOFv  # OVL1; s1:align
