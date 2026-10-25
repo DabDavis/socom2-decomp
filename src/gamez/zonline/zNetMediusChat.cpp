@@ -14,6 +14,39 @@ struct ChatSlot {
     unsigned char _8[0x18 - 0x8];
 };
 
+/* the text filter's answer awaited: the caller's callback and its data (SOCOM 1's Censor kept
+ * them likewise) */
+typedef void (*CensorCallback)(const char *text, void *data);
+extern "C" {
+extern CensorCallback data_0044FA00;
+extern void *data_0044FA08;
+}
+
+/* the filtered text handed to the waiting callback, which is then forgotten (SOCOM 1's; OVL1
+ * 0x2F4EA0) */
+void cbCensor(int a, int b, int c, MediusTextFilterResponse *resp)
+{
+    if (data_0044FA00)
+        data_0044FA00(resp->Text, data_0044FA08);
+    data_0044FA00 = 0;
+    data_0044FA08 = 0;
+}
+
+/* a text sent to Medius's filter, the callback told the result (SOCOM 1's; OVL1 0x2F4DF0) */
+void CZOnlineLobby::Censor(const char *text, CensorCallback cb, void *data)
+{
+    MediusTextFilterRequest req;
+
+    memset(&req, 0, sizeof(req));
+    SetSessionKey(req.SessionKey);
+    req.TextFilterType = 1;
+    if (text)
+        memcpy(req.Text, text, sizeof(req.Text));
+    data_0044FA00 = cb;
+    data_0044FA08 = data;
+    CheckMediusError(MediusTextFilter(&req, cbCensor));
+}
+
 extern "C" {
 void func_002F3EF0(void *part);   /* a type-129 response's tail converted */
 

@@ -1487,6 +1487,86 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     zanim.h's declarations; ai::PathPlanExecute is byte-exact as a probe over the new list members
     (build/msl2/probe/ppe2.cpp), waiting on CAiPathQueue's insert inline and the GetPriority/
     IsPlanning rows (0x510C20, 0x510C00).
+- **Tells from the states, round 12** (fts_remote.cpp's messages, fts_net_blather.cpp):
+  - when a strength-reduced loop's base is dead afterwards MW walks the base itself; the target's
+    separate induction register needs an explicit `char *dst` cursor;
+  - a value the target keeps in a saved register and stores only just before the call is a
+    second local (`count = votes; f(&count)`); taking the computed value's address forces it into
+    memory;
+  - `a<<20 | b<<10 | c` evaluates c first; left-to-right conversions need locals (`int ax =
+    f(x)<<20; int ay = f(y)<<10; int az = f(z); p = ax | ay | az;`); float arguments computed in
+    source order need locals too (MW evaluates call arguments right to left);
+  - `bool b = true; if (x != 1 && x != 2) b = false;` in an inline gives the target's `daddiu` in
+    the first beq's delay slot; the `||` forms fold into a range test;
+  - a same-unit stand-in for a template function (`_saturate<int>` as a plain function) must be
+    pinned with `#pragma auto_inline off`: MW auto-inlines the plain function, never the template;
+  - left for the next states round (the definitions switch with them): 0x2BAF30 ->
+    E3IndexPacketHandler__FiiiPv, 0x2BA9D0 -> ChatPacketHandler__FiiiPv, 0x2BD220 ->
+    `_saturate<i>__FPiRCiRCi_b` (SOCOM 1's call sites).
+- **Tells from the movie, IOP and network units, round 4** (src/gamez/zmpeg/, zNetCnf.cpp, trc.cpp):
+  - `own = p = 0;` into a bool compiles to `sltu v1,zero,zero`: the pointer-to-bool conversion is
+    not folded (CMPEG::Uninit);
+  - in a comparison MW evaluates the right operand first: `present + size > end` matched where
+    `end < present + size` did not (nodataCallback);
+  - GS display bitfields need 32-bit fields: `unsigned long` turns the DY update into
+    ld/sd/daddiu/dsll (playPss);
+  - `(unsigned char *)&s->hdr + n` gives `addu n,base` where the array decay gives `base,n`;
+  - a `= {0}` pointer array zeroes bytewise, the loop count giving the array's size;
+  - Sony's ezmpeg sample code reproduces nearly as written (three audiodec functions matched on
+    the first try); the Sony units are split where tiny functions are called out of line
+    (`-inline auto` would have inlined them within one unit);
+  - zmpeg.cpp 0x309550, audiodec.cpp 0x309F60, playpss.cpp 0x30A860, ldimage.cpp 0x30B740,
+    strfile.cpp 0x30B9D0, zNetCnf.cpp 0x30BD40, trc.cpp 0x30C760, zNetDme.cpp from 0x30CA50
+    (SOCOM II's new CZNetwork functions sit ahead of SOCOM 1's first).
+- **Tells from the AI core, round 6** (ai_map.cpp, PathPlanExecute):
+  - bitfields set in a mem-initializer list give word read-mask-writes, body assignments byte
+    stores; a layout-identical stand-in struct with such a constructor reproduces a missing
+    constructor's temporary (GetMapRegion);
+  - a static read twice across stores is reloaded after the first store; passed as arguments to
+    an inline setter it is loaded once (GetDirVec);
+  - an unsigned loop test `i <= 10` branches on `sltiu at`, `i < 11` puts the test in v0
+    (GetClosestDir);
+  - a walk inline too big to inline whole is inlined one level, its callees called out of line --
+    even an empty constructor -- and a function-pointer argument becomes a direct `jal`
+    (ResetCells);
+  - fifteen statements plus the return exceed -inline auto's limit (CAiCell() calls Reset out of
+    line); PathPlanExecute's queue insert is an inline CAiPathQueue::Insert taking the path by
+    value;
+  - ai_astar.cpp ends at 0x51557F (its tail the three statics' destructors), ai_map.cpp runs
+    0x515580-0x51A48F; the map layer's own code sits after vehicle_rdr.cpp (0x53A730-0x53A9C0).
+- **Tells from the AI states, round 5** (slot 0x34, CAiStateStack's operations):
+  - a frame's temporaries are laid out by inline depth first, then in order of appearance (Set
+    matched only once push_front sat two inline levels deep);
+  - a value passed by reference to insert and read again after should come back as an inline's
+    return value: one load after the call, kept in a register (Push);
+  - inside an inline bool, `bool r = a || b; if (r) r = c && d; return r;` gives the target's
+    layout (EscorteeJoinUnit); `return r && c && d` and the ternary do not;
+  - an `unsigned char` call result stored into an `int` field with no second zero-extension wants
+    an `int` local, which takes the one `andi` at the call;
+  - SOCOM 1's PushAiState bool is a flags word in SOCOM II, and the states' Tick returns `int`;
+    CAiState's slot 0x34 takes (CSealCtrlAi *, CAiEvent *, CZSealBody *, bool);
+  - a lane's call to a base class's member that a newer header overload hides fails to build at
+    merge -- name the base (`std::__list_deleter<const void *, ...>::insert(...)`).
+- **Tells from the particles and the render init, round 3** (zparticle.cpp, zparticle_buf.cpp,
+  zrndr_init.cpp):
+  - MW unrolls a constant-trip loop 8x whatever the body; a 4x-looking unroll was an inner loop of
+    four unrolled whole inside an outer loop left rolled (zRndrInit);
+  - a CPnt3D copied from a matrix row loads z, y, x and stores x, y, z only through the
+    three-float constructor (`p = CPnt3D(m[0], m[1], m[2])`); a struct or field copy interleaves;
+  - a constructor too tall to inline whole is inlined one level, calling even CPnt4D's copy out of
+    line; a member copy only declared makes the outer constructor short enough to inline whole,
+    so give it its real height (Branch);
+  - a free-list push `p->next = head ? head : 0;` gives the target's select, stored in both arms;
+    the if/else stores zero directly (Recycle);
+  - `T *p = m_head; if (!Empty()) ...; else p = 0;` reuses the head's load as the result where
+    `return !m_head;` materialises (InstancePool::Pop); `bool r = false; if (a && b) r = true;
+    return r;` puts `move v1,zero` in the first test's delay slot (List::Tick);
+  - a by-value CPnt4D parameter is read off the frame only through a local copy (`CPnt4D q(p);`);
+  - `delete p` of a class with no destructor emits no null test: a target with one was `if (p)
+    delete p;` (~Source);
+  - zparticle.cpp 0x3223D0-0x324C6F, zparticle_buf.cpp from 0x324C70, the instance unit from
+    0x326F50, zrndr_init.cpp 0x335FD0-0x33622F; 0x321E00-0x3223CF is a vis unit's CLensFlare/
+    CRipple code.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has

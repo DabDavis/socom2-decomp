@@ -7,10 +7,10 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-u8 func_00309560();                                 /* extern */
-s32 func_003096C0();                                /* extern */
-M2C_UNK func_003096F0();                            /* extern */
-M2C_UNK func_00309850(s32);                         /* extern */
+s32 Done__5CMPEGFv();                               /* extern */
+M2C_UNK End__5CMPEGFv();                            /* extern */
+u8 Loop__5CMPEGFv();                                /* extern */
+M2C_UNK Tick__5CMPEGFi(s32);                        /* extern */
 M2C_UNK func_00367810(char *, M2C_UNK, M2C_UNK);    /* extern */
 M2C_UNK sceGsSyncPath(M2C_UNK, M2C_UNK);            /* extern */
 M2C_UNK zSysFifoDisable__Fv();                      /* extern */
@@ -22,20 +22,20 @@ u8 func_00366940(char *arg0) {
     s32 temp_s0;
 
     if ((SC_MEMBER(arg0, u8 *, 0x279) != 0) && (SC_MEMBER(arg0, u8 *, 0x278) != 0)) {
-        if (func_003096C0() == 0) {
+        if (Done__5CMPEGFv() == 0) {
             temp_s0 = data_004A44B4;
             zSysFifoEnd__Fv();
             zSysFifoDisable__Fv();
-            func_00309850(temp_s0);
+            Tick__5CMPEGFi(temp_s0);
             sceGsSyncPath(0, 0);
             zSysFifoEnable__FUi(1);
         } else {
             func_00367810(arg0, 3, 0);
             if (SC_MEMBER(arg0, u8 *, 0x27A) != 0) {
-                SC_MEMBER(arg0, u8 *, 0x278) = func_00309560();
+                SC_MEMBER(arg0, u8 *, 0x278) = Loop__5CMPEGFv();
             } else {
                 SC_MEMBER(arg0, u8 *, 0x278) = 0U;
-                func_003096F0();
+                End__5CMPEGFv();
             }
         }
     }

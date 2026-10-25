@@ -9,14 +9,14 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 extern "C" {
-M2C_UNK func_003096F0();                            /* extern */
+M2C_UNK End__5CMPEGFv();                            /* extern */
 
 bool func_00366B10(char *arg0) {
     bool var_v0;
 
     var_v0 = false;
     if ((SC_MEMBER(arg0, u8 *, 0x279) != 0) && (SC_MEMBER(arg0, u8 *, 0x278) != 0)) {
-        func_003096F0();
+        End__5CMPEGFv();
         SC_MEMBER(arg0, u8 *, 0x278) = 0U;
         var_v0 = true;
     }

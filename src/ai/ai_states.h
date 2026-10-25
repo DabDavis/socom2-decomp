@@ -21,6 +21,7 @@
 
 class CSealCtrlAi;
 class CAiEvent;
+class CZSealBody;
 
 /* the state kinds (SOCOM 1's AI_STATE, a byte: CAiState's constructor stores it with sb). The
  * values are the ones CAiState::Create (0x5F6550) builds each state for; the names ours, after
@@ -91,6 +92,56 @@ public:
      * them; CSealCtrlAi::GetAiState inlines one; the names ours -- 0x5F8330, 0x5F8360) */
     CAiState *GetState() const;
     CAiState *GetState();
+    /* the current state's kind, or 0 (SOCOM 1's CSealCtrlAi::GetAiStateEnum; inline) and whether
+     * it is of a kind (SOCOM 1's AiStateIs: `!(size() == 0) &&`, materialised -- the
+     * xor/sltiu/xori the pops test it with); defined after CAiState */
+    inline AI_STATE GetStateEnum();
+    inline bool Is(AI_STATE state);
+    bool Empty() const { return size() == 0; }
+    /* the state of a kind, or 0 (SOCOM 1's CSealCtrlAi::FindAiState, whose wrapper 0x5F5FC0 jumps
+     * here; 0x5F8270) */
+    CAiState *Find(AI_STATE state) const;
+    /* every state of a kind deleted and taken off (0x5F81E0; the name ours) */
+    bool Remove(AI_STATE state);
+    /* the current state popped if it is of a kind; the kind on top after (SOCOM 1's
+     * PopAiState(AI_STATE); 0x5F7990) */
+    AI_STATE Pop(CSealCtrlAi *ai, AI_STATE state);
+    /* popped down to a state, it too when `inclusive`; whether it was found (0x5F7A40), and the
+     * same down to a kind, when the kind is on the stack (SOCOM 1's PopToAiState; 0x5F7B10) --
+     * the names ours */
+    bool PopTo(CSealCtrlAi *ai, CAiState *state, bool inclusive);
+    bool PopTo(CSealCtrlAi *ai, AI_STATE state, bool inclusive);
+    /* a new state of a kind pushed (SOCOM 1's PushAiState; 0x5F7EE0), or put in the current one's
+     * place (SOCOM 1's SetAiState; 0x5F7D80); both answer true, the flags unread here (the
+     * controller's wrappers hand the same word to CanPushAiState, 0x5F5CD0, which tests its bits
+     * 0-3: SOCOM 1's bool became flags) */
+    bool Push(CSealCtrlAi *ai, AI_STATE state, unsigned int flags);
+    bool Set(CSealCtrlAi *ai, AI_STATE state, unsigned int flags);
+    /* every state popped (0x5F7920: SOCOM 1's ClearAiState's loop; CSealCtrlAi::ClearAiState and
+     * a leaving state's Signal call it -- the name ours) */
+    void PopAll(CSealCtrlAi *ai);
+    /* the current state ticked, its own stack first: done once it answers so (it is then popped,
+     * its result kept, and AI_FINISHED returned), else the clocks run (SOCOM 1's
+     * CSealCtrlAi::StateTick's core; 0x5F8030) */
+    AI_RESULT Tick(float dT, CSealCtrlAi *ai);
+    /* the list's own insert at the front (MSL's push_front: insert(begin(), x), the base's
+     * iterator and the pointer passed by address -- 0x50FAD0), two inline levels deep: a frame's
+     * temporaries are laid out by inline depth first, then in order of appearance, and Set's
+     * erase (pop_front, one level) must take its slots above both inserts' */
+    void push_front(CAiState *const &s) { insert_front(s); }
+    void insert_front(CAiState *const &s)
+    {
+        /* the base's insert, named: list<T *>'s own insert(iterator, T *const &) hides it */
+        std::__list_deleter<const void *, std::allocator<const void *> >::insert(
+            std::__list_deleter<const void *, std::allocator<const void *> >::begin(),
+            (const void *const &)s);
+    }
+    /* a new state of a kind created and put at the front, and returned (inlined in Push and Set:
+     * the returned copy is what they read after the insert -- one load, kept in a register; the
+     * name ours) */
+    inline CAiState *PushNew(AI_STATE state);
+    /* the current state, if any, deleted and taken off (inlined in Set; the name ours) */
+    inline void DeleteFront();
     /* `clear` cleared and `set` set in the word at 0xC... 0x14 (inlined with constants; the name
      * ours) */
     void SetFlags(unsigned int set, unsigned int clear)
@@ -100,7 +151,7 @@ public:
     }
 
     int m_c;   // 0xc (-1 when new)
-    unsigned int m_10;   // 0x10
+    unsigned int m_10;   // 0x10: the kinds on the stack, a bit each (PopTo(AI_STATE) tests it)
     unsigned int m_14;   // 0x14
     float m_timer;   // 0x18: the time in the current state (SOCOM 1's CSealCtrlAi::m_stateTimer)
     int m_result;   // 0x1c: the last state's result (the name ours)
@@ -130,7 +181,12 @@ public:
     virtual bool CanScan() const { return true; }                         /* +0x28 */
     virtual bool CanPursue(CSealCtrlAi *ai) const { return true; }        /* +0x2C */
     virtual const char *GetScriptResponse() const { return 0; }           /* +0x30: a string, or 0 */
-    virtual bool Virtual34() { return true; }                             /* +0x34 (new) */
+    /* +0x34 (new): whether an event the AI noticed may be taken up -- the AI, the event, its
+     * owner when that is a SEAL, and whether that SEAL is no friend (the one call, 0x5F95D0's,
+     * passes them so: the owner from GetEntityById kept only for an entity of type 2, the bool
+     * `!func_00572D30(ai, owner)`; CAiSAction's 0x5F0740 and CAiSBreach's 0x5F34D0 read the event
+     * in a2 and the bool in t0; the names ours) */
+    virtual bool Virtual34(CSealCtrlAi *ai, CAiEvent *e, CZSealBody *seal, bool enemy) { return true; }
     virtual bool Virtual38() { return true; }                             /* +0x38 (new) */
     virtual bool Virtual3C() { return true; }                             /* +0x3C (new) */
     virtual bool Virtual40() { return false; }                            /* +0x40 (new) */
@@ -157,6 +213,7 @@ public:
     void SetBit3(bool b) { m_bit3 = b; }
     void SetBit4(bool b) { m_bit4 = b; }
     void SetBit13(bool b) { m_bit13 = b; }
+    void SetBit14(bool b) { m_bit14 = b; }
     void SetBit15(bool b) { m_bit15 = b; }
     void SetNibble5(unsigned int n) { m_nibble5 = n; }
     void SetNibble9(unsigned int n) { m_nibble9 = n; }
@@ -253,6 +310,34 @@ public:
     int m_54;   // 0x54 (Reset: -1)
 };
 
+inline AI_STATE CAiStateStack::GetStateEnum()
+{
+    CAiState *s = GetState();
+
+    return s ? s->m_state : AI_STATE_UNKNOWN;
+}
+
+inline CAiState *CAiStateStack::PushNew(AI_STATE state)
+{
+    CAiState *s = CAiState::Create(state);
+
+    push_front(s);
+    return s;
+}
+
+inline void CAiStateStack::DeleteFront()
+{
+    if (size() != 0) {
+        delete GetState();
+        pop_front();
+    }
+}
+
+inline bool CAiStateStack::Is(AI_STATE state)
+{
+    return !(size() == 0) && GetState()->m_state == state;
+}
+
 /* the states whose code is this lane's (each class only what a written function needs) */
 class CAiSCQBAttack : public CAiState {
 public:
@@ -292,6 +377,7 @@ public:
     CAiSBreach() : CAiState(AI_STATE_BREACH) { func_005EA550(m_timer, 0.0f); }
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual bool CanPursue(CSealCtrlAi *ai) const { return false; }
+    virtual bool Virtual34(CSealCtrlAi *ai, CAiEvent *e, CZSealBody *seal, bool enemy);
     /* +0x3C (the name ours, by slot) */
     virtual bool Virtual3C() { return false; }
     virtual ~CAiSBreach();
@@ -316,6 +402,8 @@ public:
     virtual bool CanAttack() const;
     virtual bool CanPursue(CSealCtrlAi *ai) const;
     virtual ~CAiSScript();
+    /* a response sequence run (OVL2 0x5F41F0, named: a name and flags; whether it began) */
+    bool ActivateSequence(const char *name, unsigned int flags);
     /* not held, and free to be pursued from (inlined in CanPushAiState; the names ours) */
     bool NotHeld() const { return !m_hold; }
     bool Pursuable(CSealCtrlAi *ai)
@@ -405,6 +493,7 @@ public:
     virtual bool CanAttack() const;
     virtual bool CanScan() const;
     virtual bool CanPursue(CSealCtrlAi *ai) const;
+    virtual bool Virtual34(CSealCtrlAi *ai, CAiEvent *e, CZSealBody *seal, bool enemy);
     virtual bool Virtual38();
     virtual ~CAiSAction();
 

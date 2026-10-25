@@ -145,6 +145,8 @@
 0x001E0440 0x200 _sprtagdata.24  # MAIN bss; s1:data-exact (size SOCOM 1's; via dmaRefImage)
 0x001E0640 0x0 _packet_buffer  # MAIN bss; s1:data-exact (size SOCOM 1's; via sceSifMInitRpc)
 0x003D7540 0x0 vu0_CodeSegment  # OVL1; s1:data-seq (size SOCOM 1's; via zMath_Init__Fv)
+0x003D8270 0x0 vu1_CodeSegment1  # OVL1; SOCOM 1's (vu1_CodeSegment1, the VU1 microcode's DMA chain, .vutext): zRndrInit sends it second, by physical address, as SOCOM 1's; 1 reference in 1 function -- the rdr lane
+0x003DBFE0 0x0 vu1_DataSegment1  # OVL1; SOCOM 1's (vu1_DataSegment1, the VU1 data's DMA chain at the microcode blob's end): zRndrInit sends it first, as SOCOM 1's; 1 reference in 1 function -- the rdr lane
 0x003DC338 0x4 m_current__10CameraZoom  # OVL1; SOCOM 1's (m_current__10CameraZoom, a CameraZoom static): the zoom's current value, 1.0 in data; 15 references in 4 functions (Tick, HandleZoomIn, HandleNewZoom, Reset)
 0x003DC340 0x4 m_goal__10CameraZoom  # OVL1; SOCOM 1's (m_goal__10CameraZoom): the zoom's goal, 1.0 in data; 11 references in 6 functions (SetGoal, Tick, OnGoal, HandleZoomIn, HandleNewZoom, Reset)
 0x003DC348 0x1 m_oldview__10CameraZoom  # OVL1; SOCOM 1's (m_oldview__10CameraZoom, a CAMVIEW): the view kept while zoomed; 4 references in 2 functions (HandleZoomIn, Reset)
@@ -192,6 +194,8 @@
 0x003DF330 0x4 m_pointer__6CStack  # OVL1; s1:data-seq (size SOCOM 1's; via Multiply__6CStackFPC7CMatrixb)
 0x003DF338 0x4 m_top__6CStack  # OVL1; s1:data-seq (size SOCOM 1's; via Multiply__6CStackFPC7CMatrixb)
 0x003DF340 0x4 m_exp_scl  # OVL1; s1:data-seq (size SOCOM 1's; via exp_tl__Ff)
+0x003DF348 0x4 _Max_Height  # OVL1 data; SOCOM 1's _Max_Height (0x475468, small data: SetMaxHeight__5CMPEGFi stores it, Loop sizes the buffers by it): CMPEG::SetMaxHeight (0x309550) stores it, Run sets it to zVid's render height, Init and Loop size the buffers by it, tickPss reads it; 480 in the image; 9 references in 6 functions -- the online lane, round 4
+0x003DF350 0x4 _Display_Height  # OVL1 data; SOCOM 1's _Display_Height (0x47546C, after _Max_Height as here): 448 in the image, tickPss centres the frame in it; SOCOM II has no setter -- the online lane, round 4
 0x003DFD10 0x4 UNNAMED_NODE  # OVL1; SOCOM 1 name (node_main.cpp's file static: the name nameless nodes share; CNode::SetName reads it)
 0x003DFD18 0x4 DELETED_NODE  # OVL1; SOCOM 1 name (the name a node is left with as it is destroyed; ~CNode stores it after SetName(0), as SOCOM 1's)
 0x003DFE10 0x4 m_scale__Q23zdb6CWorld  # OVL1; s1:data-seq (size SOCOM 1's; via Load__17CharacterDynamicsFRC8CRdrFile)
@@ -772,6 +776,39 @@
 0x00451090 0x404 exptbl  # OVL1 bss; s1:data-seq (size SOCOM 1's; via exp_tl__Ff +1)
 0x004514A0 0x404 sintbl  # OVL1 bss; s1:data-order by hand (init_trig_table stores sinf's results here and cosf's at 0x4518B0, as SOCOM 1's sintbl and costbl)
 0x004518B0 0x404 costbl  # OVL1 bss; s1:data-order by hand (the cosf table, after sintbl)
+0x00451CB8 0x1 BlockingPSSPlayback  # OVL1 bss; SOCOM 1's BlockingPSSPlayback (0x4767D8): CMPEG::Run stores its bool there, Loop and Tick test it, the nodata callback 0x30A970 reads it; 4 references in 4 functions -- the online lane, round 4
+0x00451CC0 0x28 rsrcs__19@unnamed@zmpeg_cpp@  # OVL1 bss; SOCOM 1's zmpeg.cpp anonymous-namespace rsrcs (0x52CB90, 0x30 there): the playPssRsrcs CMPEG::Init fills and Run, Loop, Tick hand the player; 0x28 to the next row; 31 references in 6 functions -- the online lane, round 4
+0x00451CF0 0x1 internal_init__19@unnamed@zmpeg_cpp@  # OVL1 bss; SOCOM 1's internal_init (0x4767DC): CMPEG::Run sets it when it made the buffers, End frees them then; 4 references in 2 functions -- the online lane, round 4
+0x00451CF8 0x4 p_mp__19@unnamed@zmpeg_cpp@  # OVL1 bss; SOCOM 1's p_mp (0x4767E0): the 72-byte sceMpeg CMPEG::Run allocates; 16 references in 6 functions -- the online lane, round 4
+0x00451D00 0x4 startArg__19@unnamed@zmpeg_cpp@  # OVL1 bss; SOCOM II's, the name ours: CMPEG::Run keeps its fourth argument there, Loop hands it to startPss again; 2 references in 2 functions -- the online lane, round 4
+0x00451D08 0x1 mpegBuffAlloc__19@unnamed@zmpeg_cpp@  # OVL1 bss; SOCOM 1's mpegBuffAlloc (0x4767E4): CMPEG::Init sets it when the buffer was allocated, Uninit frees it then; 3 references in 2 functions -- the online lane, round 4
+0x00451D10 0x1 rgb32Alloc__19@unnamed@zmpeg_cpp@  # OVL1 bss; SOCOM 1's rgb32Alloc (0x4767E8), as mpegBuffAlloc; 3 references in 2 functions -- the online lane, round 4
+0x00451D18 0x1 path3tagAlloc__19@unnamed@zmpeg_cpp@  # OVL1 bss; SOCOM 1's path3tagAlloc (0x4767EC), as mpegBuffAlloc; 3 references in 2 functions -- the online lane, round 4
+0x00451D20 0x1 demuxBuffAlloc__19@unnamed@zmpeg_cpp@  # OVL1 bss; SOCOM 1's demuxBuffAlloc (0x4767F0), as mpegBuffAlloc; 3 references in 2 functions -- the online lane, round 4
+0x00451D28 0x1 audioBuffAlloc__19@unnamed@zmpeg_cpp@  # OVL1 bss; SOCOM 1's audioBuffAlloc (0x4767F4), as mpegBuffAlloc; 3 references in 2 functions -- the online lane, round 4
+0x00451D30 0x4 savedSndSetting  # OVL1 bss; SOCOM II's, the name ours: audioDecCreate keeps zsnd's 0x341A20 there and zeroes it, audioDecDelete puts it back; 3 references in 2 functions -- the online lane, round 4
+0x00451D38 0x4 isStarted  # OVL1 bss; SOCOM 1's isStarted (0x4767F8): the audio started -- initPssAudio and stopPss clear it, tickPss sets it after audioDecStart -- the online lane, round 4
+0x00451D40 0x5C audioDec  # OVL1 bss; SOCOM 1's audioDec (0x52CBC0, 0x5C): the player's AudioDec -- the online lane, round 4
+0x00451DA0 0x4 fileRead  # OVL1 bss; SOCOM 1's fileRead (0x4767FC): the reader startPss is given, fillBuff calls it -- the online lane, round 4
+0x00451DA8 0x4 decodeBudget  # OVL1 bss; SOCOM II's, the name ours: tickPss sets it from the frame's size, backgroundCallback demuxes for that many timer ticks -- the online lane, round 4
+0x00451DB0 0x1 OKtoFillBuff  # OVL1 bss; SOCOM 1's OKtoFillBuff (0x476800): backgroundCallback sets it, tickPss clears it -- the online lane, round 4
+0x00451DB8 0x4 gFrameCount  # OVL1 bss; SOCOM 1's gFrameCount (0x476804): tickPss keeps the decoder's frame count -- the online lane, round 4
+0x00451DC0 0x1 audioStarted  # OVL1 bss; SOCOM II's, the name ours: audioCallback sets it on the first packet whose fourth byte is set and drops the unflagged ones after; startPss and stopPss clear it -- the online lane, round 4
+0x00451E00 0x4000 muxBuff  # OVL1 bss; SOCOM 1's muxBuff (0x52CC40, 0x4000): fillBuff reads the stream into it -- the online lane, round 4
+0x00455E00 0x4 muxBuffFullness  # OVL1 bss; SOCOM 1's muxBuffFullness (0x476808) -- the online lane, round 4
+0x00455E08 0x4 path3tag  # OVL1 bss; SOCOM 1's path3tag (0x47680C): startPss keeps the buffers' tag area, tickPss builds and loads the two halves -- the online lane, round 4
+0x00455E10 0x4 demuxBuff  # OVL1 bss; SOCOM 1's demuxBuff (0x476810) -- the online lane, round 4
+0x00455E18 0x4 demuxBuffSize  # OVL1 bss; SOCOM 1's demuxBuffSize (0x476814) -- the online lane, round 4
+0x00455E20 0x4 demuxBuffPast  # OVL1 bss; SOCOM 1's demuxBuffPast (0x476818), the ring's write end -- the online lane, round 4
+0x00455E28 0x4 demuxBuffPresent  # OVL1 bss; SOCOM 1's demuxBuffPresent (0x47681C), the DMA's start -- the online lane, round 4
+0x00455E30 0x4 demuxBuffFuture  # OVL1 bss; SOCOM 1's demuxBuffFuture (0x476820), the DMA's end -- the online lane, round 4
+0x00455E38 0x1 pssDone  # OVL1 bss; SOCOM II's, the name ours: stopPss and a pad press in playPss set it, startPss clears it, testdonePss returns it -- the online lane, round 4
+0x00455E40 0x8 dbp  # OVL1 bss; SOCOM 1's dbp (0x476828, 8 bytes): the two frame buffers startPss is given, tickPss and playPss alternate -- the online lane, round 4
+0x00455F20 0x4 nonBlockReadReq  # OVL1 bss; SOCOM 1's nonBlockReadReq (0x476830): strFileRead starts a host read when it is clear and clears it when the read is done, strFileOpen clears it; 4 references in 2 functions -- the online lane, round 4
+0x00455F30 0x14 infile  # OVL1 bss; SOCOM 1's infile (0x530C70, 0x14 bytes in both): the open film -- on the disc, its size, its table entry, the IOP stream buffer, the host descriptor -- the four strFile functions' state -- the online lane, round 4
+0x004580A0 0x1 m_hddStatus  # OVL1 bss; SOCOM 1's m_hddStatus (0x476D0C, small data): TRC_PreparePowerOff stores its argument there, as SOCOM 1's; 1 reference -- the online lane, round 4
+0x004580A8 0x4 tid  # OVL1 bss; SOCOM 1's tid (0x476D10): the power-off thread TRC_PreparePowerOff creates and tests, _UnPreparePowerOff removes; 7 references in 2 functions -- the online lane, round 4
+0x004580B0 0x2000 g_stack  # OVL1 bss; SOCOM 1's g_stack (0x583FC0, 0x2000): the power-off thread's stack -- the online lane, round 4
 0x0045A0C0 0x125C theNetwork  # OVL1 bss; s1:data-seq (via HandleBombStateRequest__11CZBombStateFiUcP6CPnt3D), moved by hand from 0x45A0B8: every network sender passes 0x45A0C0 as CZNetwork::zNetSendApplicationMessage's this where SOCOM 1 passes theNetwork, and the session-master and network flags SOCOM 1 keeps at 8 and 9 sit at 0x45A0C0/0x45A0C1 -- SOCOM II dropped the two team indices ahead of them (the states lane, round 5); size SOCOM 1's less those 8 bytes
 0x0045C298 0x4 NodeUniverse__3zdb  # OVL1 bss; s1:by hand (GetDatabaseNode tests and searches it where SOCOM 1's reads NodeUniverse__3zdb)
 0x0045C2A0 0x4 numNodes  # OVL1 bss; SOCOM 1 name (the node count, after NodeUniverse as in SOCOM 1; ~CNode counts it down)
@@ -782,11 +819,26 @@
 0x0045C3A0 0x10 g_assetsRecycle__Q23zdb27@unnamed@node_assetlib_cpp@  # OVL1 bss; s1:name by hand (SOCOM 1's anonymous-namespace CAssetList in node_assetlib.cpp, 0x20 before m_assets as there: the unit's static initialiser builds it first and registers ~CAssetList for it; ReleaseLibRef moves a released library into it, GetLoadedLibRef(s) take one back, EmptyAssetRecycleBin clears it -- 5 functions take 0x45C3A0)
 0x0045C3C0 0x10 m_assets__Q23zdb9CAssetMgr  # OVL1 bss; s1:data-exact (size SOCOM 1's; via DismemberWorldModel__Q23zdb6CWorldFv +1)
 0x0045C3F0 0x4 m_ripplefreepool__Q23zdb7CRipple  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Uninit__Q23zdb7CRippleFv)
+0x0045C428 0x4 particle_node_count__8Particle  # OVL1 bss; SOCOM 1's (particle_node_count__8Particle): Open zeroes it before filling the pool, as SOCOM 1's (gp-28668); 3 references in 2 functions (Open, GetFreeInstance) -- the rdr lane
+0x0045C440 0xC particle_node_free_list__8Particle  # OVL1 bss; SOCOM 1's (particle_node_free_list__8Particle, 0xC, a vector of nodes): __sinit_zparticle.cpp (0x402AD0) builds it and registers ~vector (0x1EA340); Open reserves 160 and pushes the PNODE%d nodes, as SOCOM 1's; 34 references in 7 functions take 0x45C440-0x45C448 -- the rdr lane
 0x0045C460 0x18 m_dyntexlist__8Particle  # OVL1 bss; s1:data-seq (size SOCOM 1's; via DestructionManager__8ParticleFPQ23zdb5CNodePcP6CPnt4DfP6CPnt3DP6CPnt3DP6CPnt3DP6CPnt3Dif)
+0x004835D0 0x4 m_lastTexture__8Particle  # OVL1 bss; SOCOM 1's (m_lastTexture__8Particle): DrawFlush zeroes it before and after drawing, as SOCOM 1's (gp-28648) -- the rdr lane
+0x004835D8 0x4 pParticleBuf__8Particle  # OVL1 bss; SOCOM 1's (pParticleBuf__8Particle, a cursor into bufferPtr): DrawFlush walks it down to bufferPtr, as SOCOM 1's (gp-28644) -- the rdr lane
+0x004835F0 0x4E20 bufferPtr__8Particle  # OVL1 bss; SOCOM 1's (bufferPtr__8Particle, 0x4E20 bytes: 5000 element pointers, after buffer's 5000 elements at 0x45C4B0): DrawFlush's lower bound, as SOCOM 1's -- the rdr lane
+0x00488440 0x4 fadeFactor__Q28Particle8Instance  # OVL1 bss; SOCOM 1's (fadeFactor__Q28Particle8Instance, ahead of ageFactor): Open sets it to 1.0 first, as SOCOM 1's; 1 reference in 1 function -- the rdr lane
 0x00488448 0x4 ageFactor__Q28Particle8Instance  # OVL1 bss; s1:data-seq (size SOCOM 1's; via SetDynamicLOD__Fi)
 0x00488450 0x4 spawnFactor__Q28Particle8Instance  # OVL1 bss; s1:data by hand (the wep lane: SetDynamicLOD stores spawnRateLimits[level] there, as SOCOM 1's stores spawnFactor next to ageFactor; 1 reference in SetDynamicLOD)
+0x00488458 0x4 m_dT__Q28Particle8Instance  # OVL1 bss; SOCOM 1's (m_dT__Q28Particle8Instance, after spawnFactor): Instance::List::Tick stores the step there first, as SOCOM 1's (gp-28604); 11 references in 3 functions (List::Tick, Instance::Tick, Destruction_Instance::Tick) -- the rdr lane
+0x00488460 0x4 m_instance_pool__Q28Particle8Instance  # OVL1 bss; SOCOM 1's (m_instance_pool__Q28Particle8Instance, the free instances threaded through their second word): Instance's slot 0x14 (0x327F10) pushes onto it, the purge (0x326FF0) pops it; 7 references in 4 functions -- the rdr lane
+0x00488468 0x4 m_instance_pool__Q28Particle20Destruction_Instance  # OVL1 bss; SOCOM II's second pool, Destruction_Instance's (the name after SOCOM 1's): its slot 0x14 (0x326F50) pushes onto it, Particle::Close and the purge pop it and delete; 8 references in 4 functions -- the rdr lane
+0x00488480 0xC list__Q28Particle8Instance  # OVL1 bss; SOCOM 1's (list__Q28Particle8Instance, 0xC): Particle::Tick ticks it through Instance::List::Tick (0x328170), as SOCOM 1's; 7 references in 6 functions -- the rdr lane
+0x004884C0 0x4 distanceFactor__Q28Particle6Source  # OVL1 bss; SOCOM 1's (distanceFactor__Q28Particle6Source): Open sets it to 1.0 after ageFactor, as SOCOM 1's (gp-28580); 2 references in 2 functions (Open, Source::Tick) -- the rdr lane
+0x004884C8 0x4 frequencyFactor__Q28Particle6Source  # OVL1 bss; SOCOM 1's (frequencyFactor__Q28Particle6Source): Open sets it to 1.0 last, as SOCOM 1's (gp-28576); 3 references in 2 functions (Open, Source::Tick) -- the rdr lane
+0x004884D0 0xC referencePositionW__Q28Particle6Source  # OVL1 bss; SOCOM 1's (referencePositionW__Q28Particle6Source, 0xC, a CPnt3D): Particle::Tick copies the world camera's position into it, as SOCOM 1's; 6 references in 2 functions (Particle::Tick, Source::Tick) -- the rdr lane
+0x004884F0 0xC list__Q28Particle6Source  # OVL1 bss; SOCOM 1's (list__Q28Particle6Source, 0xC, a list of sources): __sinit_zparticle_source.cpp (0x402CE0) builds it; Particle::Tick walks it from its sentinel 0x4884F4 calling Source::Tick, as SOCOM 1's; 12 references in 5 functions -- the rdr lane
 0x00488510 0xC m_list__11CRdrArchive  # OVL1 bss; SOCOM 1's static (its symbol, 12 bytes: CRdrArchiveList): __sinit_zrdr_archive.cpp (0x402D70) builds it and registers its destructor 0x32C5F0; the archive walks read its sentinel 0x488514 and first node 0x488518 -- 7 functions (the six CRdrArchive statics and the initialiser)
 0x00488520 0x100 _buffer$711  # OVL1 bss; s1:data-seq (size SOCOM 1's; via zrdr_findfile__FPCcPCc)
+0x00488680 0xD0 ZDB  # OVL1 bss; SOCOM 1's (ZDB, 0xD0 bytes in both: two flag bytes, then two alpha environments of 0x60 -- qwc, GIF tag, sceGsAlphaEnv -- at 0x10 and 0x70; zrndr_init.cpp's, after its <iostream> init objects): 27 references in 1 function (zRndrInit) -- the rdr lane
 0x004887C0 0x720 thePipe  # OVL1 bss; SOCOM 1's (0x694 bytes; SOCOM II's runs to VifHandlerID at 0x720: the camera at 0x628, the UI node at 0x630, its flags at 0x711 and 0x714 as the states use them): 115 references in 32 functions take 0x4887C0-0x488ED8
 0x00488EE0 0x4 VifHandlerID  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Uninit__5CPipeFv)
 0x00488FB0 0x4 gStreamingInited  # OVL1 bss; s1:data-seq (size SOCOM 1's; via snd_StopSoundSystem +1)
@@ -947,7 +999,10 @@
 0x0065AA38 0x8 __RTTI__18CRestrainedPlanner  # RTTI of CRestrainedPlanner: found by its RTTI's name
 0x0065AA60 0x8 __RTTI__15CStealthPlanner  # RTTI of CStealthPlanner: found by its RTTI's name
 0x0065AA88 0x8 __RTTI__13CBasicPlanner  # RTTI of CBasicPlanner: found by its RTTI's name
+0x0065AB38 0x4 s_cos45  # OVL2 data; ours (ai_map.cpp's static, zero in the image: __sinit_ai_map.cpp stores 0.5f * sqrtf(2.0f) into it, GetDirCos returns it and its negation; 3 references in 2 functions)
+0x0065AD00 0x4 s_aimap_version  # OVL2 data; ours (23: the AI map file version CAiMap(int) starts each map at, as SOCOM 1's constructor read its own word; 1 reference in 1 function)
 0x0065AED0 0x4 invalid__9CAiMapLoc  # OVL2 data; SOCOM 1's invalid__9CAiMapLoc (0x449450, 4 bytes, zero): CAiMapLoc's constructor copies it field by field -- CEntity's constructor reads it six times for m_mapLoc and m_mapLocValid where SOCOM 1's reads 0x449450 (the entity lane); 117 references (OVL2's AI code)
+0x0065AED8 0x4 s_preemptPriority__2ai  # OVL2 data; ours (1.0f: CAiPathQueue::Insert, inlined into PathPlanExecute, compares a queued path's priority with it before a planning path gives up its search; 1 reference in 1 function)
 0x0065C238 0x8 __RTTI__7CSealEx  # RTTI of CSealEx: found by its RTTI's name
 0x0065C288 0x8 __RTTI__10CZSealBody  # RTTI of CZSealBody: found by its RTTI's name
 0x0065C6A0 0x8 __RTTI__9CSealCtrl  # RTTI of CSealCtrl: found by its RTTI's name
@@ -1048,6 +1103,7 @@
 0x0066A0C8 0x4 s_plannerStart  # OVL2 bss; ours (ai_astar.cpp's static, SOCOM 1's unnamed gp word at -29944: the T0 count TickPathPlanner starts from; 2 references in 1 function)
 0x0066A168 0x4 _plan_path__2ai  # OVL2 bss; SOCOM 1's (_plan_path__2ai): the path PathPlanBegin starts, PathPlanAddLeg extends, PathPlanExecute queues and PathPlanAbort clears; 7 references in 4 functions
 0x0066A180 0x18 path_queue__2ai  # OVL2 bss; SOCOM 1's (path_queue__2ai, 24 bytes at 0x49B160: the planner queue, a list of CAiPath * and three words): __sinit_ai_astar.cpp builds it and registers ~CAiPathQueue, AbortPathPlan removes a path from it as SOCOM 1's does; 19 references in 7 functions
+0x0066A198 0x8 s_dummy_cell  # OVL2 bss; SOCOM 1's dummy cell (dummy_cell__6CAiMapFv returned its gp address): __sinit_ai_map.cpp builds it through CAiCell(); 1 reference in 1 function so far
 0x0066A1B0 0xE0 AiMaps  # OVL2 bss; s1:data-seq (size SOCOM 1's; via CreateCompassNavPoints__8CMissionFv +1)
 0x0066B990 0x58 _unknown  # OVL2 bss; SOCOM 1's _unknown (0x509870, 40 bytes there: a static CAiSUnknown seal_aistate.cpp's initialiser builds); CSealCtrlAi::GetAiState returns it when the stack is empty (0x5F5FD0, 0x5F6010) -- 2 references in 2 functions (the kit lane, round 3)
 0x0066A4D0 0x11 SessionKey  # OVL2 bss; s1 by hand (SOCOM 1's SessionKey: every Medius request copies these 17 bytes to its +0x15, as SOCOM 1's do); size SOCOM 1's; 91 references in 78 functions

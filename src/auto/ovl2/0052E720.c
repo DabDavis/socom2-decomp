@@ -8,8 +8,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 #pragma mpwc_relax on
+M2C_UNK ResetCells__6CAiMapFv(s32);                 /* extern */
 M2C_UNK func_005104E0();                            /* extern */
-M2C_UNK func_00517470(s32);                         /* extern */
 
 void func_0052E720(char *arg0) {
     s32 temp_s1;
@@ -19,7 +19,7 @@ void func_0052E720(char *arg0) {
     var_s0 = SC_MEMBER(arg0, char **, 8);
     if ((s32)var_s0 != temp_s1) {
         do {
-            func_00517470(SC_MEMBER(var_s0, s32 *, 8));
+            ResetCells__6CAiMapFv(SC_MEMBER(var_s0, s32 *, 8));
             var_s0 = SC_MEMBER(var_s0, char **, 4);
         } while ((s32)var_s0 != temp_s1);
     }
