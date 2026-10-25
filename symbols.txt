@@ -6735,7 +6735,7 @@
 0x00365100 0xFC __ct__3C2DFv  # OVL1; s1:callee (every C2D constructor's first call; it constructs the list and stores __vt__3C2D)
 0x00365200 0xC TakeDrawPacket__23CDblBufTextureRelocatorFP1Ui  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00365210 0x1AC PreGetSprPacket__23CDblBufTextureRelocatorFPQ23zdb10CTexHandle  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x003653C0 0xE0 func_003653C0  # OVL1
+0x003653C0 0xE0 Init__23CDblBufTextureRelocatorFv  # OVL1; ours by its body (the relocator's three GS buffers made with CTexManager::doAddBuffer, Reloc0-2 over 0-0.4, 0.4-0.8, 0.8-1, stored at 8, 0xC and 0x10; SOCOM 1's relocator had two)
 0x003654A0 0x1C func_003654A0  # OVL1
 0x003654C0 0x538 func_003654C0  # OVL1
 0x00365A00 0x34C func_00365A00  # OVL1

@@ -7,11 +7,14 @@
  * II's images hold them in reverse alphabetical order). Defined in reverse of their image order
  * (-inline deferred).
  *
- * OPEN, not written yet: CGameMenu itself (Tick, SwitchMenu, LoadFromDesign 0x367950, HandlePad
- * 0x368650, Clear 0x369210, the constructor and destructor -- SOCOM 1's DWARF has the layout,
- * SOCOM II's grew the vtable pointer at 0x910), the design's loaders, MakeButtonActive and its
- * neighbours, RunEventAnim, GetButton, HookupLib, PrepTexture and CDblBufTextureRelocator's
- * PreGetSprPacket. Generated drafts stand for the rest. */
+ * OPEN, not written yet: CGameMenu itself (Tick 0x3654C0?, SwitchMenu, LoadFromDesign 0x367950,
+ * HandlePad 0x368650, Clear 0x369210, the constructor and destructor -- SOCOM 1's DWARF has the
+ * layout, SOCOM II's grew the vtable pointer at 0x910), the design's loaders, MakeButtonActive and
+ * its neighbours (0x366B60-0x367430), RunEventAnim 0x367810, HookupLib 0x36A430 (its CGSTexBuffer
+ * local's constructor 0x357BC0 and Hookup 0x3571D0 are rows outside the lane), 0x369880 (reads a
+ * string member of theGame, +0x8C, for a sound), CDblBufTextureRelocator's PreGetSprPacket
+ * 0x365210, and the vector instances closing the unit (0x36AE50 among the clears). Generated
+ * drafts stand for the rest. */
 
 #include "zui_2d.h"
 
@@ -37,7 +40,28 @@ class CAssetMgr {
 public:
     static CAssetList m_assets;
 };
+
+/* the texture manager: its GS buffers first (SOCOM 1's; only what the relocator reads) */
+class CGSTexBuffer;
+class CTexManager {
+public:
+    int doAddBuffer(const char *name, float start, float end);
+
+    std::vector<CGSTexBuffer *> m_buffers;   // 0x0
+
+    static CTexManager m_texmanager;
+};
 }
+
+/* the menus' texture relocator (SOCOM 1's DWARF: two GS buffers, 0x1C bytes; SOCOM II's has three,
+ * from 0x8) */
+class CDblBufTextureRelocator : public zdb::CTextureRelocMgr {
+public:
+    void Init();
+
+    int _iGsBufToFill;                    // 0x4
+    zdb::CGSTexBuffer *_arrGsBufs[3];     // 0x8
+};
 
 /* the game menu (SOCOM 1's DWARF: 0x890 bytes, no vtable pointer in its members; SOCOM II's members
  * come first and its vtable pointer follows them at 0x910). Only what is written so far is placed */
@@ -178,4 +202,14 @@ STICK_DIR UiGetDirStickMoved()
 const char *CGameMenu::GetReaderFileName()
 {
     return m_ReaderName.c_str();
+}
+
+
+/* the relocator's three GS buffers, each a third of the texture memory's upper part (SOCOM II's;
+ * the name ours) */
+void CDblBufTextureRelocator::Init()
+{
+    _arrGsBufs[0] = zdb::CTexManager::m_texmanager.m_buffers[zdb::CTexManager::m_texmanager.doAddBuffer("Reloc0", 0.0f, 0.4f)];
+    _arrGsBufs[1] = zdb::CTexManager::m_texmanager.m_buffers[zdb::CTexManager::m_texmanager.doAddBuffer("Reloc1", 0.4f, 0.8f)];
+    _arrGsBufs[2] = zdb::CTexManager::m_texmanager.m_buffers[zdb::CTexManager::m_texmanager.doAddBuffer("Reloc2", 0.8f, 1.0f)];
 }

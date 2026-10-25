@@ -8,11 +8,15 @@
  * variable spec's) where zui_spec.cpp calls them; that makes every spec's implicit copy and
  * destructor taller here: CTextSpec's copy is inlined one level (its members' copies are calls).
  *
- * OPEN, not written yet: the button family's Copies and destructors (CButtonSpec's copy out of
- * line 0x387630, the radio strip's, check box's, slider's, handler button's, list box's and map
- * control's; their destructors call 0x36E650 and 0x367670 -- the 0x34-byte button-state string's
- * and vector<ActionItem>'s destructors, rows outside the lane), the CreateDisplayObjs (the C2D
- * classes' constructors, as zui_spec.cpp's) and 0x389B00 (a vector<CDesignDlgObj> instance). */
+ * The CreateDisplayObjs of the text, teletype, secure text and scrolling text match; the wrapped
+ * text's waits on 0x20CD50 named __ct__9CPlainBmpFv, the radio strip's and handler button's on
+ * 0x377800 named __ct__9C2DButtonFv (each measured with the row renamed).
+ *
+ * OPEN, not written yet: the button family's Copies (CButtonSpec's copy constructor out of line
+ * 0x387630 copies vector<ActionItem>, whose copy constructor include/vector lacks), their
+ * destructors (each inlines ~CButtonSpec one level and calls ~ButtonState, 0x36E650, a row outside
+ * the lane; ~CHandlerButtonSpec is held in #if 0 below) and 0x389B00 (a vector<CDesignDlgObj>
+ * instance). */
 
 #include "zui_2d.h"
 
