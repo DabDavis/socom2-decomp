@@ -10,6 +10,7 @@
 #include "../zrdr/zrdr.h"
 #include "../zsys/zsys.h"
 #include "../zbody/zbody.h"
+#include "../zsnd/zsnd.h"
 
 using namespace zdb;
 
@@ -26,6 +27,10 @@ char *_strdup(const char *s, const char *file, int line);
 /* one material's decal: its size range and texture (SOCOM 1's DWARF: 0xc bytes) */
 class CZDecalDef {
 public:
+    /* empty and user-declared: the vector's insert (0x3D3D90) then copies an element member by
+     * member (lwc1/swc1, lwc1/swc1, lw/sw) where an implicit one is copied as a block */
+    CZDecalDef() {}
+
     float m_decalminsize;   // 0x0
     float m_decalmaxsize;   // 0x4
     zdb::CTexHandle *m_texture;   // 0x8
@@ -89,6 +94,29 @@ struct _zrdr;
  * far; CZWeapon's static m_pMarklist points at one; zwep_weapon.cpp's) */
 class CZMarkList {
 public:
+    /* the tables cleared after the members are built (inline: CreateMarkList's new builds it in
+     * place, the list's constructor called out of line, the two vectors' words zeroed -- SOCOM 1's
+     * order) */
+    CZMarkList()
+    {
+        m_decalTexture = 0;
+        m_decalminsize = 0;
+        m_decalmaxsize = 0;
+    }
+    /* the tables freed (inline: DestroyMarkList's delete inlines it, the members' destructors
+     * called out of line -- the vectors' through an earlier unit's copy, 0x2CDB30) */
+    ~CZMarkList()
+    {
+        if (m_decalTexture)
+            _free(m_decalTexture, 0, 0);
+        m_decalTexture = 0;
+        if (m_decalminsize)
+            _free(m_decalminsize, 0, 0);
+        m_decalminsize = 0;
+        if (m_decalmaxsize)
+            _free(m_decalmaxsize, 0, 0);
+        m_decalmaxsize = 0;
+    }
     /* forty "bullet_mark" instances made and added to the world, then the decal names read */
     void Init();
     void UnInit();
@@ -162,6 +190,74 @@ extern "C" int func_002DE9E0(const char *name);
 /* the next material of a name after an index, 0 past the last (0x2DE970) -- not named */
 extern "C" int func_002DE970(const char *name, int index);
 
+/* the projectiles in flight made for a count (SOCOM 1's) */
+bool CZWeapon::CreateProjectileList(int count)
+{
+    m_pProjectilelist = new CZProjectileList(count);
+    if (!m_pProjectilelist)
+        return false;
+    return true;
+}
+
+bool CZWeapon::DestroyProjectileList()
+{
+    if (!m_pProjectilelist)
+        return false;
+    delete m_pProjectilelist;
+    m_pProjectilelist = 0;
+    return true;
+}
+
+/* the bullet marks made (SOCOM 1's) */
+bool CZWeapon::CreateMarkList()
+{
+    m_pMarklist = new CZMarkList;
+    if (!m_pMarklist)
+        return false;
+    return true;
+}
+
+/* the bullet marks deleted: its tables freed, its vectors and list destroyed (SOCOM 1's). Its
+ * delete is the unit's own use of the blood decals' vector destructor, which makes the template
+ * tail generate the deleter's destructor and clear ahead of the vector's insert (0x3D3D90), so that
+ * the insert inlines its temporary's destruction */
+bool CZWeapon::DestroyMarkList()
+{
+    if (!m_pMarklist)
+        return false;
+    delete m_pMarklist;
+    m_pMarklist = 0;
+    return true;
+}
+
+bool CZWeapon::CreateWeaponList()
+{
+    return true;
+}
+
+/* the sound listener: the app camera's camera node (0x48DB48, set where the mission opens) */
+extern "C" CNode *data_0048DB48;
+
+/* the fire sound of the listener's distance played at the point: past the medium distance the
+ * far one, past the close distance the medium one, else the close one (new in SOCOM II) */
+void CZWeapon::PlayFireSound(const CPnt3D *pos)
+{
+    CPnt3D d = data_0048DB48->GetPosition();
+
+    d = d - *pos;
+    float d2 = Dot(d, d);
+    CSnd *snd;
+
+    if (d2 > m_sounddistance[2])
+        snd = m_firesound[2];
+    else if (d2 > m_sounddistance[1])
+        snd = m_firesound[1];
+    else
+        snd = m_firesound[0];
+    if (snd)
+        snd->PlaySound3D(pos, 1.0f, 0, 0, 255);
+}
+
 /* every mode up to the maximum flagged (new in SOCOM II; the name is ours) */
 void CZWeapon::SetMaxFireMode(FIREMODE mode)
 {
@@ -185,6 +281,21 @@ int CZWeapon::GetAmmoCapacity()
 int CZWeapon::GetNumMags()
 {
     return m_nummags;
+}
+
+/* the ammo's name among the legal ammo's (SOCOM 1's) */
+bool CZWeapon::IsLegalAmmo(CZAmmo *ammo)
+{
+    CZAmmoList::iterator it;
+
+    if (!ammo)
+        return false;
+    it = m_LegalAmmoList.begin();
+    for (CZAmmoList::iterator e = m_LegalAmmoList.end(); it != e; ++it) {
+        if (!strcmp(ammo->GetName(), ((CZAmmo *)*it.i_)->GetName()))
+            return true;
+    }
+    return false;
 }
 
 bool CZWeapon::SetHitAnim(int material, CZAnim *anim)
@@ -217,6 +328,28 @@ CZAnim *CZWeapon::GetHitAnim(int material)
     if (material < (int)CMaterialExArray::m_materialex_list.size())
         return m_hitanim[material];
     return 0;
+}
+
+void CZWeapon::SetTimer(int i, float t)
+{
+    m_timer[i] = t;
+}
+
+/* the mission's timer for the item 152 ("never" when it has none), the entry's otherwise (the
+ * mission's word at 0x1864 -- not named) */
+extern "C" float data_00437D44;
+
+float CZWeapon::GetTimer(int i)
+{
+    float t;
+
+    if (m_ID == 152) {
+        t = data_00437D44;
+        if (t < 0.0f)
+            t = 9999999.0f;
+    } else
+        t = m_timer[i];
+    return t;
 }
 
 /* the legal ammo list's first (SOCOM 1's; GetDefaultAmmoId inlines it) */
@@ -570,3 +703,76 @@ void CZMarkList::ReadBloodDecals(_zrdr *rdr)
         CWorld::m_world->AddTextureAssetDecals(tex);
     }
 }
+
+/* the AI's range read from the weapon entry's "ai_params" (new in SOCOM II) */
+void CZWeapon::AI_PARAMS::Read(_zrdr *rdr)
+{
+    if (!rdr)
+        return;
+    SetCustom(true);
+    float range[2];
+
+    if (zrdr_findreal(rdr, "optimal_range", range, 2) && range[0] < range[1]) {
+        m_min_range = range[0];
+        m_max_range = range[1];
+    }
+    if (zrdr_findtag(rdr, "hard_min"))
+        SetHardMin(true);
+}
+
+float CZWeapon::AI_PARAMS::GetAccuracy(float d) const
+{
+    float r = 1.0f;
+
+    if (d <= 0.0f)
+        r = 0.0f;
+    else if (d < m_min_range) {
+        if (m_hard_min)
+            r = 0.0f;
+        else
+            r = d / m_min_range;
+    } else if (d <= m_max_range)
+        r = 1.0f;
+    else {
+        d -= m_max_range;
+        if (!(d < m_max_range))
+            r = 0.0f;
+    }
+    return r;
+}
+
+void CZWeapon::SetFireSound(unsigned char i, CSnd *snd)
+{
+    m_firesound[i] = snd;
+}
+
+void CZWeapon::SetFireSoundName(unsigned char i, const char *name)
+{
+    if (m_firesoundname[i]) {
+        if (m_firesoundname[i])
+            _free(m_firesoundname[i], 0, 0);
+        m_firesoundname[i] = 0;
+    }
+    if (name)
+        m_firesoundname[i] = _strdup(name, 0, 0);
+}
+
+char *CZWeapon::GetFireSoundName(unsigned char i)
+{
+    return m_firesoundname[i];
+}
+
+float CZWeapon::m_sounddistance[3];
+
+void CZWeapon::SetSoundDistance(unsigned char i, float d)
+{
+    m_sounddistance[i] = d * d;
+}
+
+/* NOT WRITTEN, CZItemStash (0x3CFB00-0x3CFFAF, its rows named): a 0x28-byte object of three
+ * parallel 4-byte vectors (0, 0xC, 0x18) and a word (0x24) -- Add pushes through the pod insert
+ * 0x1FE340, Compact erases through the pod erase(T *) 0x28F220, Count/Get/Set/Clear walk the third
+ * list with a class iterator (the `!=` materialised, the end in a preheader after the loop). Written
+ * over std::vector<int> it does not build: include/vector's scalar vectors have no iterator,
+ * begin(), end() or erase -- which the MSL lane's scalar macro would need first (or the lists are
+ * pointer vectors in the original) */
