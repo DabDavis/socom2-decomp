@@ -249,11 +249,10 @@ CSaferStr RemoveExtension(const char *name)
 
 /* SOCOM 1's: the file read whole and unscrambled, its header checked against the flags, every key
  * under the module list handed to its module -- an .rdr as a file, anything else as the archive.
- * OPEN, 4 instructions: registers only -- the loop hoists the key-name temporary's two text
- * addresses (the short form's sp+1465, the long form's word at sp+1472) into s7/s8, the target
- * giving the short form s7, here the long. include/string's c_str() written short form first,
- * `!is_long() ? s_.data_ : (const charT *)w_[2]`, makes it byte-exact (probed against a shadow
- * include/, build/scratch/rdr/incprobe.py): the MSL lane's header, a change for them to measure */
+ * The loop hoists the key-name temporary's two text addresses (the short form's sp+1465, the long
+ * form's word at sp+1472) into s7/s8, the short form s7: include/string's c_str() written short form
+ * first (`!is_long() ? s_.data_ : (const charT *)w_[2]`; the rdr lane's measurement, applied over
+ * every hand-written unit with nothing lost) */
 bool CSaveManager::Load(const char *name, int flags)
 {
     CScopeTrace trace("CSaveManager::Load");
