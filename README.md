@@ -1642,6 +1642,49 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **The inlining mode, measured** (a measurement lane, after the sound lane's zsnd_queue.cpp):
+  - no MW mode both emits a unit in reverse and auto-inlines only earlier definitions (17 builds,
+    3.0b22-020926 to 3.0.1b210): `-inline ...,deferred` (= `#pragma defer_codegen on`) emits in
+    reverse and inlines in both directions; non-deferred emits in source order and inlines only
+    earlier-defined callees; mwldps2 keeps object order, so the image's reverse order is the
+    compiler's; `defer_codegen` toggled mid-unit flushes the pending functions, it combines nothing;
+  - the image itself refutes "earlier only": C2DBitmap::SetColor(fff) (0x364930) is inlined both by a
+    caller below it (0x364900) and by the constructor above it (0x364C50) -- only a deferred inliner
+    does that; master's flags stay (non-deferred over the tree: 3,818 of 4,214 against 3,999);
+  - CLUSTERED PINS CAN MEAN A UNIT BOUNDARY: auto-inlining never crosses units, so a cut that every
+    pinned pair straddles and no inlined pair does is a candidate split. build/scratch/inlmode/
+    split_scan.py (and split_best.txt, its results over the 60 pinned units) found such a cut in 33;
+    strong ones: zsnd_csndsequence.cpp at 0x349C70 (7 of 7 pins; split, 6/6 + 11/11 with no pins --
+    not adopted yet: the press beta names zsnd_csndsequence.cpp in an assert), hud_objectives.cpp at
+    0x206F90 (6/6), graph_tree.cpp at 0x2D12D0 (5/5), int_main.cpp at 0x2DC660 (5/5), zrdr_edit.cpp
+    at 0x333540 (8/9), body.cpp at 0x28F190 (14/18). Each needs the template-placement check:
+    ai_mapio.cpp's 20/20 cut at 0x51AEF0 fails because read_v19-v23's ReadCellTable instances close
+    the range above it;
+  - compiled-out statements (debug prints) still count toward the inline limit: DumpQueue/DumpFree
+    keep their pins;
+  - generation order changes code as well as inlining: zlib's inflate_trees_dynamic loses 8 bytes
+    non-deferred, its static callee huft_build already generated.
+- **Tells from the kit and AI states, round 8** (seal_tasks.cpp, the task commands):
+  - SOCOM II's own command table names the task handlers: CSealCtrlAi::RegisterCommands (0x5DE320)
+    makes 34 AddCmd calls, 92 Parse/Begin/Tick/End handlers named after SOCOM 1's class for the same
+    command name (CTCreate, CTDrain, CTGroup, CTTurret ours: SOCOM 1 has no such commands);
+  - ONE REGISTER, 13 HANDLERS: every handler that uses its command block after the inlined find
+    misses on that block's register alone -- the target puts it in s1, between the find's list (s0)
+    and its counter (s2), every spelling tried here gives s4 (CTHold, CTWait, CTStance, CTPursue,
+    CTMacro, CTGroup, CTLookAt, CTGoto); cracking it should close most of ~60 handlers;
+  - an inlined find ending on `if (!(bool)p) break; ... return 0;` gives the target's materialised
+    (sltu, xori) exit after the loop; `if (!p) return 0;` branches inline; declaring the counter
+    before the list gives the list s0, the counter s1;
+  - `seal ? SealAi(seal) : 0` with the call in an inline of its own keeps the result in both arms
+    (`b; move s0,v0` / `move s0,zero`); straight in the ternary MW puts the zero in the delay slot;
+  - fields a parser reads before its allocation come from an inline Create(): its by-value arguments
+    are evaluated before its body (CTStopAll, CTComm);
+  - in scripts, test scdiff's verdict as a line starting `  MATCH`: relocation lines say MISMATCH;
+  - units by SOCOM 1's initialisers: seal_kit, seal_sensors (0x5C9400-0x5CDBCF), seal_tasks
+    (0x5CDBD0-~0x5DEEBF), seal_weapon (probably from ~0x5DEEC0), anim.cpp (0x5E0030-0x5E622F, AnimSet:
+    the demo has its DWARF), remote_control, seal_unit, seal_aistate, seal_aievent, seal_aimoves,
+    seal_aifollow, seal_squirm, seal_ailines, seal_handsig, seal_aiscan, seal_airesponse; 0x60C170-
+    ~0x60EDFF is SOCOM II's CAiGroup with act_camera/act_zanim/act_anim/act_sound.
 - **Tells from the AI core, round 9** (the line callbacks, SetCellLink and the links, char_type.cpp):
   - an inline is cut to one level only when its tree is 6 or more high: links::Remove inlined whole
     until Find compared through a `link == CAiMapLoc` operator, one level more; under such a cut even
@@ -1684,12 +1727,11 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     patch downloader at 0x2CA330); graph_tree.cpp runs to 0x2D2830 (BuildTree, its copies, FindNode,
     Destroy, then the queue list's template code).
 - **Tells from the sound, round 5** (zsnd_queue.cpp, zsnd_positions.cpp, CSched_Manager::Tick):
-  - the original auto-inlined only functions DEFINED EARLIER in the unit: every call in
-    zsnd_queue.cpp that stays a call goes to a function defined later (in our source order), every
-    inlined one to a function defined earlier; `-inline deferred` here reaches every function, so
-    `#pragma auto_inline off` pins stand in -- and a callee inlined by later callers but called by
-    earlier ones cannot be modelled that way (CSndQueue::Open). Probably behind many existing pins
-    (see "Open, and next");
+  - zsnd_queue.cpp's calls looked as if the original auto-inlined only functions defined earlier in
+    the unit; the measurement that followed (below, "The inlining mode, measured") found it was a UNIT
+    BOUNDARY: CSndQueue/CSndQueueEntry (zsnd_queue.cpp, 0x34C560-0x34CD6F) and CSndVocalQueue
+    (zsnd_vocalqueue.cpp, 0x34CD70-0x34D17F) are two units -- split, they match with 2 pins instead
+    of 8 and CSndQueue::Open (0x34CC00) is byte-exact;
   - an empty walk with a postfix step, `for (i = begin(); i != end(); i++) ;`, gives the loop with its
     entry test after the body (all four empty walks first time; the prefix form does not);
   - `(p = new T)->field = x;` stores through new's result before reloading `p` when p is later pushed
@@ -1699,7 +1741,7 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - a vtable slot pointing into the middle of a map row means the seed merged a tail call with the
     function after it (0x34CD10, CSndQueueEntry::CanPlay, split from 0x34CCF0);
   - units: zsnd_positions.cpp 0x34BD40-0x34C55F (initialiser 0x403370, tail destructor 0x34C4F0);
-    zsnd_queue.cpp 0x34C560-0x34D17F; 0x34D180-0x34E06F is a separate unit (two tables of 12-byte
+    zsnd_queue.cpp 0x34C560-0x34CD6F and zsnd_vocalqueue.cpp 0x34CD70-0x34D17F; 0x34D180-0x34E06F is a separate unit (two tables of 12-byte
     records, closed by their reserve at 0x34DED0; CSnd::Init builds its global at 0x48DC30);
     zsys_sched.cpp starts at 0x34E070; 0x34BCA0-0x34BD10 belongs to the headset unit.
 - **Tells from the weapons, round 7** (the turret's template tail, CZWeapon's sounds/timers/AI params):
@@ -2414,15 +2456,10 @@ What is open across lanes, and what comes next:
   USB-audio lgAud in OVL1 0x243000-0x258000, the speech recogniser at OVL2's start, the Medius/DME
   network libraries from 0x610000) are not MW code: EQOA's EE-GCC toolchains could match them, a
   separate effort.
-- **Does the original auto-inline only functions defined earlier?** The sound lane's round 5 found
-  every inlined call in zsnd_queue.cpp goes to a function defined earlier (our source order) and every
-  kept call to one defined later; `-inline auto,deferred` reaches every function, so lanes pin
-  callees with `#pragma auto_inline off` unit by unit (dozens of pins across the tree). If MW has a
-  mode that keeps deferred's reverse emission but auto-inlines only what it has already seen (or the
-  original's units were ordered so it holds), switching to it would retire the pins and may close
-  opens no pin can (a callee inlined by later callers and called by earlier ones: CSndQueue::Open).
-  Worth a refit-style measurement: `mwccps2.exe -help all` for the inline/defer options, then the
-  hand-written units scored with the pins removed under each candidate.
+- **Unit boundaries behind pins**: the inlining-mode question is answered (no such mode; "The
+  inlining mode, measured") -- the pinned units' candidate cuts in build/scratch/inlmode/
+  split_best.txt are each worth a split-and-score by their lane (zsnd_csndsequence.cpp,
+  hud_objectives.cpp, graph_tree.cpp, int_main.cpp, zrdr_edit.cpp, body.cpp first).
 - **`tools/scperm.py`** (EQOA's tree-sitter mutations driven by MW) has not yet closed a
   function: its finds so far trade correctness for score.
 - Tell 3.0b50 from 3.0b52; port eqrefcheck's data-reference audit to absolute addresses. The
