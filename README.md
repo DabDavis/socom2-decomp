@@ -1642,6 +1642,22 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the SEALs, round 8** (CPickup's Close/Create/NetworkCreate, the AI sound statics):
+  - an empty functor passed by value needs a user-declared empty constructor; without one MW
+    zero-stores its byte on the stack (CPickup::Close's std::transform);
+  - fields stored through a single load of a pointer that lives in memory (its address taken for an
+    insert) come from an inline member; written as `p->` statements, MW reloads `p` after each store;
+  - MW uses byte access for a bitfield only when its container is `unsigned char`: `unsigned int`
+    bitfields use lw/sw even inside one byte (CPickup's flags);
+  - a bool read from a bitfield and tested later (`sltu` kept) needs an inline accessor written
+    `? true : false`; `return bit;` folds the test away;
+  - in a swap, `t = a; a = b; b = t;` against the reverse decides both the float registers and the
+    store order;
+  - deriving a member class from CBits adds a second this-test to an inlined `delete`; a stand-alone
+    class of the same layout does not;
+  - 0x540270-0x541640 is char_type.cpp's tail (SOCOM 1's order puts it right before
+    pickup_main.cpp); 0x5B8F20, 0x5B8FC0, 0x5B8FF0 are CZKit methods on the vector at kit+0x254, before
+    seal_kit.cpp (from 0x5B9020).
 - **Tells from the UI, round 5** (the button specs' copies, the ActionItem and CDesignDlgObj vectors):
   - the UI classes copy as `T(const T &o) : a(0), b(0) { *this = o; }` (ActionItem, CDesignDlgObj);
     a vector's range init builds each element that way and calls the assignment out of line;
