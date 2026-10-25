@@ -12,25 +12,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <list>
-
-/* MSL's <iostream> static init objects: every unit that includes it builds one of each first
- * (SOCOM 1's initialisers alike; the object names ours) */
-namespace std {
-class __nInit {
-public:
-    __nInit();
-    ~__nInit();
-};
-
-class __wInit {
-public:
-    __wInit();
-    ~__wInit();
-};
-
-static __nInit __msl_nInit;
-static __wInit __msl_wInit;
-}
+#include <iostream>
 
 /* unnamed yet */
 extern "C" {

@@ -8509,7 +8509,7 @@
 0x003FF3C0 0x64 func_003FF3C0  # OVL1 data area; a static initialiser
 0x003FF430 0x70 func_003FF430  # OVL1 data area; a static initialiser
 0x003FF4A0 0x168 func_003FF4A0  # OVL1 data area; a static initialiser
-0x003FF610 0x64 func_003FF610  # OVL1 data area; a static initialiser
+0x003FF610 0x64 __sinit_hud_ammo.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 17): hud_ammo.cpp's initialiser (between the radio menu's 0x3FF4A0 and hud_mpinfobox.cpp's 0x3FF680, as the code): its four bss floats computed off s_polyy and s_ammox (s_texty, s_magx, s_magy, s_bitmapy)
 0x003FF680 0x124 func_003FF680  # OVL1 data area; a static initialiser
 0x003FF7B0 0x3C func_003FF7B0  # OVL1 data area; a static initialiser; s1~ si_object.cpp (shape 0.45, a hint)
 0x003FF7F0 0x1D0 func_003FF7F0  # OVL1 data area; a static initialiser
