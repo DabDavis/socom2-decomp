@@ -6643,24 +6643,24 @@
 0x00360AF0 0xC8 Draw__9C2DTriFanFPQ23zdb7CCamera  # OVL1; s1:align
 0x00360BC0 0x90 __dt__9C2DTriFanFv  # OVL1; s1:align
 0x00360C50 0x4C __ct__9C2DTriFanFv  # OVL1; s1:callee (CZPlayerMapItem's constructor builds its tri-fan arrays with it and __dt__9C2DTriFanFv)
-0x00360CA0 0x2B8 func_00360CA0  # OVL1
+0x00360CA0 0x2B8 MakePacket__7C2DPolyFPQ23zdb7CCamera  # OVL1; s1:calls by hand (C2DPoly::Draw calls it between IsOn and C2D::Draw, as SOCOM 1's Draw calls MakePacket(CCamera *); 0x2B8 against 0x2A8)
 0x00360F60 0x54 Draw__7C2DPolyFPQ23zdb7CCamera  # OVL1; s1:align
 0x00360FC0 0x38 SetPos__7C2DPolyFffffff  # OVL1; s1:callee
 0x00361000 0x28 SetUV__7C2DPolyFffffff  # OVL1; s1:exact
 0x00361030 0x48 Load__7C2DPolyFffffffPQ23zdb8CTexture  # OVL1; s1:callee
 0x00361080 0x8 GetTrans__7C2DPolyFv  # OVL1; s1:order by hand (between Load and SetTrans as SOCOM 1's GetTrans, 0x8 in both: the first vertex's alpha)
 0x00361090 0x90 SetTrans__7C2DPolyFUif  # OVL1; by hand (C2DBitmapPoly::SetTrans(int, float) calls it per corner; one vertex's alpha, the index clamped to 2 unsigned, then the blend and Gouraud bits with their PRIM bits; SOCOM II's, the name ours)
-0x00361120 0x98 func_00361120  # OVL1
+0x00361120 0x98 SetTrans__7C2DPolyFf  # OVL1; s1:vtable by hand (slot 11 of C2DPoly's vtable 0x406D80, SOCOM 1's SetTrans, the three rows' alpha and the blending flag re-derived as C2DBitmap's)
 0x003611C0 0x40 GetColor__7C2DPolyFv  # OVL1; s1:exact
 0x00361200 0x28 SetColor__7C2DPolyFfff  # OVL1; s1:exact
-0x00361230 0x50 func_00361230  # OVL1
-0x00361280 0x50 func_00361280  # OVL1
-0x003612D0 0x50 func_003612D0  # OVL1
-0x00361320 0x60 func_00361320  # OVL1
+0x00361230 0x50 SetGouraud__7C2DPolyFb  # OVL1; by hand (slot 9 of C2DPoly's vtable 0x406D80: bit 5 and IIP in the PRIM word at 0x20; the name ours, as C2DBitmap's)
+0x00361280 0x50 SetIsTrans__7C2DPolyFb  # OVL1; by hand (slot 8 of C2DPoly's vtable 0x406D80: bit 2 and ABE)
+0x003612D0 0x50 SetAA__7C2DPolyFb  # OVL1; by hand (slot 7 of C2DPoly's vtable 0x406D80: bit 1 and AA1)
+0x00361320 0x60 SetHasTexture__7C2DPolyFb  # OVL1; by hand (slot 6 of C2DPoly's vtable 0x406D80: bit 3, and TME while it has a texture)
 0x00361380 0x174 __ct__7C2DPolyFv  # OVL1; s1:calls by hand (C2DBitmapPoly's constructor builds its two triangles with it through __construct_array, with C2DPoly's implicit destructor, as SOCOM 1's builds them with __ct__7C2DPolyFv)
 0x00361500 0xC8 GetAssetLibs__7C2DPolyFRQ23C2D8CLibList  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x003615D0 0x1BC func_003615D0  # OVL1
-0x00361790 0x20C func_00361790  # OVL1
+0x003615D0 0x1BC __ct__7C2DPolyFRC7C2DPoly  # OVL1; by hand (C2DPoly's implicit copy constructor: the list copied, C2D's vtable, then C2DPoly's and the members; emitted for the triangle vector's reserve, which follows it)
+0x00361790 0x20C reserve__Q23std52__vector_imp<7C2DPoly,Q23std19allocator<7C2DPoly>,0>FUi  # OVL1; s1:calls by hand (C2DTriFan's constructor reserves its triangle vector with it, 5, as SOCOM 1's template instance; c2dpoly.cpp's instance, after the triangle's copy constructor it calls)
 0x003619A0 0x8C clear__Q23std54__vector_deleter<7C2DPoly,Q23std19allocator<7C2DPoly>>Fv  # OVL1; s1:align
 0x00361A30 0xC8 __dt__Q23std54__vector_deleter<7C2DPoly,Q23std19allocator<7C2DPoly>>Fv  # OVL1; s1:align
 0x00361B00 0x18 func_00361B00  # OVL1

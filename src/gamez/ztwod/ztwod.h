@@ -240,6 +240,7 @@ public:
     float GetTrans();
     CPnt3D GetColor();
     void SetColor(float r, float g, float b);
+    void MakePacket(zdb::CCamera *cam);
 
     int m_x;   // 0x18
     int m_y;   // 0x1c
@@ -319,7 +320,7 @@ public:
     virtual void Draw(zdb::CCamera *cam);
     virtual void GetAssetLibs(CLibList &liblist);
 
-    unsigned char m_polylist[0xc];   // 0x18: SOCOM 1's `vector m_polylist`
+    std::vector<C2DPoly> m_polylist;   // 0x18
     zdb::CTexture *m_texture;   // 0x24
 };   // 0x28 bytes
 
