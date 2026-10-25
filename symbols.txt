@@ -6702,22 +6702,22 @@
 0x003642D0 0xB4 TickFade__9C2DBitmapFv  # OVL1; s1:align
 0x00364390 0x18 Reset__9C2DBitmapFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003643B0 0x2AC func_003643B0  # OVL1
-0x00364660 0x1C func_00364660  # OVL1
+0x00364660 0x1C SetPos__9C2DBitmapFiiii  # OVL1; s1:order by hand (c2dbitmap.cpp: SOCOM 1's SetPos(int,int,int,int), 0x1C in both, before SetPos(int,int) as there)
 0x00364680 0x50 SetPos__9C2DBitmapFii  # OVL1; s1:align
 0x003646D0 0x98 Load__9C2DBitmapFffffPQ23zdb10CTexHandle  # OVL1; s1:callee (CFader's constructor's second call, as SOCOM 1's)
 0x00364770 0xB8 func_00364770  # OVL1
 0x00364830 0x1C SetUV__9C2DBitmapFffff  # OVL1; s1:exact
-0x00364850 0x8 func_00364850  # OVL1
-0x00364860 0x90 func_00364860  # OVL1
-0x003648F0 0x8 func_003648F0  # OVL1
-0x00364900 0x28 func_00364900  # OVL1
+0x00364850 0x8 GetTrans__9C2DBitmapFv  # OVL1; s1:order by hand (c2dbitmap.cpp: SOCOM 1's GetTrans, 0x8 in both, after SetUV as there; the first row's alpha)
+0x00364860 0x90 SetTrans__9C2DBitmapFf  # OVL1; by hand (c2dbitmap.cpp: slot 11 of C2DBitmap's vtable 0x406E80, SOCOM 1's SetTrans in SOCOM 1's order after GetTrans; both rows' alpha, the blending flag re-derived)
+0x003648F0 0x8 GetColor__9C2DBitmapFv  # OVL1; by hand (c2dbitmap.cpp: SOCOM II's, returns this+0x30, the first colour row; the name ours, as C2DPoly's GetColor)
+0x00364900 0x28 SetColor__9C2DBitmapFRC6CPnt3D  # OVL1; by hand (c2dbitmap.cpp: SOCOM II's, between SOCOM 1's GetTrans/SetTrans and SetColor; three floats copied into both colour rows -- the parameter type and the name ours)
 0x00364930 0x1C SetColor__9C2DBitmapFfff  # OVL1; s1:exact
 0x00364950 0xDC Draw__9C2DBitmapFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00364A30 0xCC Draw__9C2DBitmapFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00364B00 0x50 func_00364B00  # OVL1
-0x00364B50 0x50 func_00364B50  # OVL1
-0x00364BA0 0x50 func_00364BA0  # OVL1
-0x00364BF0 0x60 func_00364BF0  # OVL1
+0x00364B00 0x50 SetGouraud__9C2DBitmapFb  # OVL1; by hand (c2dbitmap.cpp: slot 9 of C2DBitmap's vtable 0x406E80; bit 5 and IIP; the name ours, as C2D's slot 9)
+0x00364B50 0x50 SetIsTrans__9C2DBitmapFb  # OVL1; by hand (c2dbitmap.cpp: slot 8 of C2DBitmap's vtable 0x406E80; bit 2 and ABE)
+0x00364BA0 0x50 SetAA__9C2DBitmapFb  # OVL1; by hand (c2dbitmap.cpp: slot 7 of C2DBitmap's vtable 0x406E80; bit 1 and AA1)
+0x00364BF0 0x60 SetHasTexture__9C2DBitmapFb  # OVL1; by hand (c2dbitmap.cpp: slot 6 of C2DBitmap's vtable 0x406E80; the flag's bit 3, and TME in the PRIM word at 0x2C while a texture handle is set)
 0x00364C50 0x110 __ct__9C2DBitmapFv  # OVL1; s1:callee (CFader's constructor calls it first, as SOCOM 1's; it stores __vt__9C2DBitmap)
 0x00364D60 0x90 MakePrim__3C2DFRUiUi  # OVL1; by hand (ztwod.cpp: the GS PRIM word stored, then TME, ABE, AA1 and IIP or'ed in by the flag bits 3, 2, 1 and 5; C2DBitmap's constructor and two other 2D draws call it; SOCOM II's, the name ours)
 0x00364DF0 0x20 Enable__3C2DFb  # OVL1; s1~ Enable__3C2DFb (one of 2 out-of-line copies of an inline, by s1:vtable); by hand (ztwod.cpp: slot 3 of C2D's vtable 0x406EF0, the flag's bit 6 set from the bool -- m_on, as On and Off store it; the out-of-line copy at 0x1FE210 is slot 9, SetGouraud)
