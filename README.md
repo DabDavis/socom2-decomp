@@ -991,6 +991,19 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     too tall where GetByNameMod is inlined a level deeper (CCharacterType::Create,
     RdrFetch_CharacterType), and the target builds end() once and copies it for the erase after
     remove_if (CleanupTemporary, CWorld::DeleteLightMap, DeleteChild).
+- **Tells from the SEALs, round 3** (pickup_main.cpp, seal.cpp's stats, seal_ai.cpp):
+  - `x == 1 || x == 2` on consecutive values folds into one range test; writing the second as an
+    inline returning `x == 2 ? true : false` keeps the two compares (the target folds three tests
+    on one byte where MW folds two: 0x562960, 0x5629B0 open);
+  - a loop written `i <= 4` branches on `slti at`; `i < 5` puts the test in v0;
+  - `iterator i = begin(), e = end()` gives `e` the lower saved register, but for argument
+    registers `e` must be declared first to get the lower one; declaring a walk's iterators
+    before an unrelated float initialisation puts the begin load ahead of the float literal;
+  - `s->x++; return s->x;` re-reads the counter, `return ++s->x;` does not; an int added to an
+    unsigned short field gives the target's `andi 0xffff` only when cast `(unsigned short)n`;
+  - CPickup is SOCOM 1's pickup_main.cpp (0x541650-0x542FD7: 0x542E50 is CPickup::Close), and
+    seal.cpp starts at 0x542FE0; 0x540910-0x5414EF are string and vector instances closing the
+    unit before it; zseal.h includes zchar.h for CHARACTER_SOUND.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has

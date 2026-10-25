@@ -4,11 +4,12 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_005416C0(s32);                             /* extern */
+s32 GetPickupNetEntityID__7CPickupFv(s32);          /* extern */
 
-void func_0055CCA0(void *arg0, s32 arg1) {
-    M2C_FIELD(arg0, s32 *, 0x58) = arg1;
-    M2C_FIELD(arg0, s32 *, 0x5C) = func_005416C0(arg1);
+void func_0055CCA0(char *arg0, s32 arg1) {
+    SC_MEMBER(arg0, s32 *, 0x58) = arg1;
+    SC_MEMBER(arg0, s32 *, 0x5C) = GetPickupNetEntityID__7CPickupFv(arg1);
 }
