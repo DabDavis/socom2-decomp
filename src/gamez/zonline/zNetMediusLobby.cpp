@@ -56,6 +56,41 @@ MediusErrorCode MediusBanPlayer(MediusBanPlayerRequest *req,
                                 void (*cb)(int, int, int, MediusBanPlayerResponse *));
 }
 
+/* a valve: a named 16-bit value (SOCOM 1's CValve; only what is read here) */
+enum VALVE_TYPE {
+    VALVE_TYPE_0,
+    VALVE_TYPE_1
+};
+
+class CValve {
+public:
+    static CValve *Create(const char *name, VALVE_TYPE type);
+    /* off (the name ours: the test is materialised, sltu and xori, before the branch -- an
+     * inline bool returning the negation) */
+    bool IsOff() { return !m_value; }
+
+    char *m_name;   // 0x0
+    unsigned int m_value : 16;   // 0x4
+    unsigned int m_type : 8;   // 0x4
+    unsigned int m_name_pooled : 1;   // 0x4
+    unsigned int m_pooled : 1;   // 0x4
+    unsigned int m_unused : 6;   // 0x4
+};
+
+extern "C" {
+extern unsigned char theUIVarManager[];
+CUIVariable *func_003857C0(void *mgr, const char *name, void *rdr, int longevity);   /* CUIVarManager::Add */
+}
+
+/* the password shown blank unless it is to be kept secure (SOCOM 1's; OVL1 0x2FAF50) */
+void CZOnlineLobby::PasswordSecurity()
+{
+    CValve *valve = CValve::Create("SecurePassword", VALVE_TYPE_1);
+
+    if (valve->IsOff())
+        func_003862A0(func_003857C0(theUIVarManager, "PLAYERPASSWORD", 0, 1), "");
+}
+
 /* the session ended: the lobby's queue told to end it (SOCOM 1's, which ran the Medius calls
  * itself; OVL1 0x2FA560) */
 bool CZOnlineLobby::Logout()

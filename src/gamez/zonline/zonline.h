@@ -299,6 +299,7 @@ public:
     void GetMissionSequence(unsigned char *idx, unsigned char *seq);
     void SendEndGameReport();
     void GetAnnouncements();
+    void PasswordSecurity();
     bool RemovePlayerFromClan(const char *name);
     bool SendClanMessage(const char *text);
     void GetClanMessages();
