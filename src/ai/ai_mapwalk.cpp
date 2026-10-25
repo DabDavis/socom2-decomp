@@ -92,9 +92,90 @@ static bool _tile_occupied(const MAP_FOREACH_STRUCT &s, void *data)
     return true;
 }
 
-/* the travel walk's callback (SOCOM 1's _TravelLineCallback, static here: a placeholder until
- * written) */
-extern "C" bool func_00539580(const MAP_LINEWALK_STRUCT &s, void *data);
+/* whether a step may end on the cell: CAiMap::IsTraversable's body (ai_maps.cpp, 0x52A090), as an
+ * inline of this unit's -- too big to inline whole, it is inlined one level, GetCell and the cell's
+ * own test (ai_astar.cpp's copy, 0x511F40) called out of line */
+inline bool _traversable(const CAiMap *map, const CAiMapLoc &loc)
+{
+    CAiCell *cell = map->GetCell(loc, 0);
+
+    return cell ? cell->IsTraversable() : false;
+}
+
+/* how wide the open ground around a cell is: the square rings around it grown one cell at a time,
+ * up to a limit, until one leaves the map or holds a cell no step may end on -- the ring's x runs
+ * over its top and bottom rows, then its y over the two sides between them (SOCOM 1's, 0x794 bytes
+ * there) */
+int CAiMap::GetLocationWidth(const CAiMapLoc &loc, int max)
+{
+    int w;
+
+    for (w = 1; w <= max; w++) {
+        int x;
+        int y0 = loc.y - w;
+        int x0 = loc.x - w;
+        int y1 = loc.y + w;
+        int x1 = loc.x + w;
+
+        if (x0 < 0 || y0 < 0)
+            return w;
+        if (x1 >= m_nx || y1 >= m_ny)
+            return w;
+        for (x = x0; x < x1; x++) {
+            if (!_traversable(this, CAiMapLoc(x, y0, 0)))
+                return w;
+            if (!_traversable(this, CAiMapLoc(x, y1, 0)))
+                return w;
+        }
+        for (int y = y0 + 1; y < y1 - 1; y++) {
+            if (!_traversable(this, CAiMapLoc(x0, y, 0)))
+                return w;
+            if (!_traversable(this, CAiMapLoc(x1, y, 0)))
+                return w;
+        }
+    }
+    return w;
+}
+
+/* a point between two, a fraction along: each end scaled and the two added, through CPnt3D's
+ * const operators (new in SOCOM II, the name ours: CAiMaps::WalkLine's step, 0x539AA0) */
+static CPnt3D *_lerp(const CPnt3D *a, const CPnt3D *b, CPnt3D *out, float t)
+{
+    *out = *a * (1.0f - t) + *b * t;
+    return out;
+}
+
+/* a cell's altitude: the map's floor plus its quantised height (SOCOM 1's took the box's height
+ * over 1023 steps; the name ours) -- none for no cell, the result then unset, as both builds have it */
+inline float CellAltitude(const CAiMap *map, const CAiCell *cell)
+{
+    float alt;
+
+    if (cell)
+        alt = map->m_bbox.m_min.y + map->m_alt_quant * cell->m_altitude;
+    return alt;
+}
+
+/* the feet stop where a step may not end, and on steep ground that climbs, the blocking cell
+ * handed back (SOCOM 1's) */
+static bool _TravelLineCallback(const MAP_LINEWALK_STRUCT &s, void *data)
+{
+    CAiMapLoc *out = (CAiMapLoc *)data;
+    CAiCell *cell = s.m_cell;
+    unsigned int soil = cell->m_soil;
+    bool travel = !(soil == 0 || soil == 10 || soil == 8 || soil == 9);
+
+    if (travel && (CAiMap::SOIL)soil == CAiMap::SOIL_STEEP && cell != s.m_prev && s.m_prev) {
+        float from = CellAltitude(s.m_map, s.m_prev);
+        float to = CellAltitude(s.m_map, cell);
+
+        if (to > from)
+            travel = false;
+    }
+    if (!travel && out)
+        *out = s.m_loc;
+    return travel;
+}
 
 /* the eye stops at an opaque cell and at a shut door -- an action of kind 1 or 7 in state 0 --
  * the blocking cell handed back (SOCOM 1's, the doors new) */
@@ -122,7 +203,7 @@ static bool _SeeLineCallback(const MAP_LINEWALK_STRUCT &s, void *data)
 
 bool CAiMap::CanTravelLine(const CAiMapLoc &from, const CAiMapLoc &to, CAiMapLoc *out)
 {
-    return WalkLine(from, to, func_00539580, out, 0.2f);
+    return WalkLine(from, to, _TravelLineCallback, out, 0.2f);
 }
 
 bool CAiMap::CanSeeLine(const CAiMapLoc &from, const CAiMapLoc &to, CAiMapLoc *out)
@@ -145,9 +226,73 @@ struct VIS_LINE_DATA {
     unsigned int m_flags;   // 0xc
 };
 
-/* the two visibility callbacks (SOCOM 1's _VisLineCallback; flag 1 picks the second) */
-extern "C" bool func_005390D0(const MAP_LINEWALK_STRUCT &s, void *data);
-extern "C" bool func_00539240(const MAP_LINEWALK_STRUCT &s, void *data);
+/* what the visibility walk reads, file statics (OVL2 0x64F9E0-0x64FA10, 8 bytes apart: SOCOM 1's
+ * guarded function-local statics; the names ours): the distance past which cover counts, and each
+ * cover's height and the visibility it takes */
+static float s_coverRange = 30.0f;
+static float s_grassHeight = 15.0f;
+static float s_brushHeight = 18.0f;
+static float s_forestHeight = 20.0f;
+static float s_grassCover = 0.35f;
+static float s_brushCover = 0.5f;
+static float s_forestCover = 0.85f;
+
+/* the line's height at the cell, blended between its two ends: ground above it blocks it, unless
+ * the cell's altitude is bad or it has none; past the cover range, without flag 2, grass, brush
+ * and forest each take some visibility while they stand above it (SOCOM 1's _VisLineCallback, the
+ * heights and the ground new) */
+static bool _VisLineCallback(const MAP_LINEWALK_STRUCT &s, void *data)
+{
+    VIS_LINE_DATA *d = (VIS_LINE_DATA *)data;
+    float y = d->m_y0 * (1.0f - s.m_t) + d->m_y1 * s.m_t;
+    float alt;
+
+    if (s.m_map->GetAltitude(s.m_loc, alt)) {
+        if (alt > y && !s.m_cell->m_badalt && s.m_cell->m_soil != CAiMap::SOIL_NOALT) {
+            d->m_vis = 1.0f;
+        } else if (s.m_dist > s_coverRange && !(d->m_flags & 2)) {
+            float h = 0.0f;
+            float cover = h;
+            unsigned int soil = s.m_cell->m_soil;
+
+            if (soil == CAiMap::SOIL_GRASS) {
+                cover = s_grassCover;
+                h = s_grassHeight;
+            } else if (soil == CAiMap::SOIL_BRUSH) {
+                cover = s_brushCover;
+                h = s_brushHeight;
+            } else if (soil == CAiMap::SOIL_FOREST) {
+                cover = s_forestCover;
+                h = s_forestHeight;
+            }
+            if (!(alt + h < y))
+                d->m_vis += cover;
+        }
+    }
+    return d->m_vis < 1.0f;
+}
+
+/* the eye's test first -- an opaque cell or a shut door blocks the line whole -- then the
+ * visibility walk's (new in SOCOM II, the name ours: ComputeLineVisibility's callback without
+ * flag 1) */
+static bool _VisSeeLineCallback(const MAP_LINEWALK_STRUCT &s, void *data)
+{
+    VIS_LINE_DATA *d = (VIS_LINE_DATA *)data;
+
+    if (s.m_cell->IsOpaque()) {
+        d->m_vis = 1.0f;
+    } else if (s.m_cell->m_action) {
+        CAiMap::action *a = s.m_map->GetCellAction(s.m_loc);
+
+        if (a) {
+            if (a->GetType() == CAiMap::action::DOOR && a->m_state == 0)
+                d->m_vis = 1.0f;
+            else if (a->GetType() == 7 && a->m_state == 0)
+                d->m_vis = 1.0f;
+        }
+    }
+    return _VisLineCallback(s, data);
+}
 
 /* SOCOM 1's, each end at its cell's altitude raised by a height: what the walk lost, held in
  * [0, 1], taken from 1 -- none when an end has no altitude or the walk stops */
@@ -163,7 +308,7 @@ float CAiMap::ComputeLineVisibility(const CAiMapLoc &from, const CAiMapLoc &to, 
     if (GetAltitude(from, d.m_y0) && GetAltitude(to, d.m_y1)) {
         d.m_y0 += hfrom;
         d.m_y1 += hto;
-        if (WalkLine(from, to, (flags & 1) ? func_00539240 : func_005390D0, &d, 0.2f)) {
+        if (WalkLine(from, to, (flags & 1) ? _VisLineCallback : _VisSeeLineCallback, &d, 0.2f)) {
             vis = d.m_vis;
             _saturate(&vis, 0.0f, 1.0f);
             vis = 1.0f - vis;
@@ -183,7 +328,7 @@ float CAiMaps::ComputeLineVisibility(const CPnt3D *from, const CPnt3D *to, unsig
     d.m_y1 = to->y;
     float vis = 0.0f;
 
-    if (WalkLine(from, to, (flags & 1) ? func_00539240 : func_005390D0, &d, 0.2f)) {
+    if (WalkLine(from, to, (flags & 1) ? _VisLineCallback : _VisSeeLineCallback, &d, 0.2f)) {
         vis = d.m_vis;
         _saturate(&vis, 0.0f, 1.0f);
         vis = 1.0f - vis;
@@ -215,8 +360,62 @@ struct SIGHT_LINE_DATA {
     CAiMapLoc m_loc;   // 0x10
 };
 
-/* the sighting walk's callback (0x538A60, not written yet) */
-extern "C" bool func_00538A60(const MAP_LINEWALK_STRUCT &s, void *data);
+/* what the sighting walk takes off at each cell (OVL2 0x64FA38-0x64FA50, file statics as the
+ * visibility walk's; the names ours): another map's cell off its link, water and cover, going in
+ * or out of doors, and doing so through a shut door */
+static float s_sightOtherMap = 0.2f;
+static float s_sightCover = 0.9f;
+static float s_sightInside = 0.75f;
+static float s_sightOpaque = 0.25f;
+
+/* water, brush, forest or grass (the name ours: an inline bool, materialised before the branch) */
+inline bool IsSightCover(const CAiCell *cell)
+{
+    unsigned int soil = cell->m_soil;
+
+    return soil == CAiMap::SOIL_WATER || soil == CAiMap::SOIL_BRUSH || soil == CAiMap::SOIL_FOREST ||
+           soil == CAiMap::SOIL_GRASS;
+}
+
+/* the sighting walk's callback: the first cell kept, the distance noted; past the range nothing is
+ * seen, and each cell takes its share of what is left (new in SOCOM II, the name ours) */
+static bool _SightLineCallback(const MAP_LINEWALK_STRUCT &s, void *data)
+{
+    SIGHT_LINE_DATA *d = (SIGHT_LINE_DATA *)data;
+
+    if (s.m_t == 0.0f)
+        d->m_loc = s.m_loc;
+    d->m_dist = s.m_dist;
+    if (s.m_dist * s.m_dist > d->m_rangeSq) {
+        d->m_vis = 0.0f;
+    } else if (s.m_cell) {
+        bool opaque = s.m_cell->IsOpaque();
+
+        if (s.m_loc.m_mapid != d->m_loc.m_mapid && !s.m_cell->m_link)
+            d->m_vis *= s_sightOtherMap;
+        if (s.m_cell->m_action) {
+            CAiMap::action *a = s.m_map->GetCellAction(s.m_loc);
+
+            if (a) {
+                if (a->GetType() == CAiMap::action::DOOR && a->m_state == 0)
+                    opaque = true;
+                else if (a->GetType() == 7 && a->m_state == 0)
+                    opaque = true;
+            }
+        }
+        if (IsSightCover(s.m_cell))
+            d->m_vis *= s_sightCover;
+        bool inside = s.m_cell->m_inside;
+
+        if (s.m_t > 0.0f && inside != d->m_flag) {
+            d->m_vis *= s_sightInside;
+            if (opaque)
+                d->m_vis *= s_sightOpaque;
+        }
+        d->m_flag = inside;
+    }
+    return d->m_vis > 0.0f;
+}
 
 /* a random float: a minimum and a range (zkit.h's Rfloat, SOCOM 1's -- zkit.h itself, through
  * zseal.h, declares a CAiMaps of its own, so the class is repeated here under its own name) */
@@ -260,7 +459,7 @@ bool CAiMaps::CanSeePoint(const CPnt3D *from, const CPnt3D *to, float rangeSq)
     d.m_rangeSq = rangeSq;
     d.m_vis = 1.0f;
     d.m_flag = false;
-    WalkLine(from, to, func_00538A60, &d, 0.2f);
+    WalkLine(from, to, _SightLineCallback, &d, 0.2f);
     float vis = d.m_vis;
     bool seen = false;
 
