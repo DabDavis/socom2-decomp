@@ -523,9 +523,10 @@ extern LadderList LadderRanking;   /* 0x44F7E0 */
  * MediusGameListResponse, 0x190 bytes: the head of every RoomGame; a class with a constructor of its
  * own, copied member by member -- the id bytewise, the strings two bytes a pass. Its assignment is
  * too big to inline: the copy at 0x2E1E10 follows the game's constructor, its first caller. The
- * field names are the LAN unit's) */
-struct LANGameInfo {
-    LANGameInfo() {}
+ * struct's name is SOCOM 1's -- cbGameList and RoomGame::UpdateInfo take a MediusGameListResponse *
+ * in its symbols -- the field names the LAN unit's, which calls it LANGameInfo) */
+struct MediusGameListResponse {
+    MediusGameListResponse() {}
 
     char m_id[21];   // 0x0
     int m_18;   // 0x18: the response's status
@@ -546,6 +547,7 @@ struct LANGameInfo {
     unsigned char m_rules[256];   // 0x8c
     char m_18c;   // 0x18c: the list's last
 };   // 0x190
+typedef MediusGameListResponse LANGameInfo;
 
 extern "C" void func_002F7D90(void *dst, void *rules);   /* a game's mission sequence read from its rules (the lobby unit's) */
 

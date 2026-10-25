@@ -4,8 +4,10 @@
  * 0x401E70 building the room list 0x44F568, whose destructor 0x2E5F60 closes it). Only some of it
  * so far. Defined in reverse of their image order (-inline deferred). */
 
+#include <stdio.h>
 #include "zonline.h"
 #include "../zsys/zsys.h"
+#include "../znet/znet.h"
 
 void _free(void *p, const char *file, int line);
 
@@ -23,7 +25,6 @@ struct MediusGameListRequest {
     short PageSize;   // 0x18
 };   // 0x1a
 
-typedef LANGameInfo MediusGameListResponse;   /* the game list's report: a game's info */
 
 /* a valve: a named 16-bit value (SOCOM 1's CValve; only what is read here) */
 enum VALVE_TYPE {
@@ -50,7 +51,6 @@ extern "C" {
 extern BriefingRoomDB data_0044F568;   /* the room list */
 MediusErrorCode func_0064B098(MediusChannelListRequest *req,
                               void (*cb)(int, int, int, MediusChannelListResponse *));   /* MediusChannelList */
-void func_002E3B00(int, int, int, MediusChannelListResponse *);   /* a room of the list kept */
 extern int LobbyWorldID;   /* the room we are in, -1 none (SOCOM 1's) */
 /* the game list's filters, from the menu's valves (the unit's statics) */
 extern int data_0044F528;
@@ -62,9 +62,14 @@ extern int data_0044F550;
 void func_002F4080(void *msg, int type);   /* a request put into the network's order (empty) */
 void func_002F4030(void *msg, int type);   /* a message's byte order converted (the chat unit's) */
 void func_002E2CE0(BriefingRoom *room);   /* the room's game list sorted and shown */
+}
+
+void cbRoomList(int, int, int, MediusChannelListResponse *);
+void cbGameList(int, int, int, MediusGameListResponse *);
+
+extern "C" {
 MediusErrorCode func_0064B008(MediusGameListRequest *req,
                               void (*cb)(int, int, int, MediusGameListResponse *));   /* MediusGameList */
-void func_002E2B00(int, int, int, MediusGameListResponse *);   /* a game of the list kept */
 
 void func_002E2920(CZOnlineLobby *lobby, C2D *page);   /* the game list asked for */
 void func_002E3AA0(CZOnlineLobby *lobby, C2D *page);   /* the room list asked for */
@@ -239,7 +244,7 @@ RoomGame::RoomGame(LANGameInfo *info) : m_194(0)
 
 /* a game of the room's list reported: its game updated or a new one kept, and the list shown once
  * the last has come (SOCOM 1's cbGameList; OVL1 0x2E2B00) */
-void func_002E2B00(int, int, int, MediusGameListResponse *resp)
+void cbGameList(int, int, int, MediusGameListResponse *resp)
 {
     if (CheckMediusCallbackStatus("GameList Callback", (MediusCallbackStatus)resp->m_18)) {
         func_002F4030(resp, 129);
@@ -269,6 +274,90 @@ void func_002E2B00(int, int, int, MediusGameListResponse *resp)
 
         if (room)
             func_002E2CE0(room);
+    }
+}
+
+/* the rooms' Medius world list, as the menus show it (StoredClanInfo, the clan unit's) */
+struct RoomClanInfo {
+    unsigned char _0[0x24];
+    char ClanName[32];   // 0x24
+};
+extern "C" RoomClanInfo StoredClanInfo;
+
+/* the rdr editor a list is built in (zrdr.h's CRdrEditor, 0x4C bytes, a value at its start; zui.h's
+ * _zrdr and zrdr.h's cannot meet in one unit -- the chat unit declares it so too) */
+class CRdrEditor : public _zrdr {
+public:
+    CRdrEditor();
+    ~CRdrEditor();
+    bool push(const char *tag);
+    bool pop();
+    bool addintnode(int i);
+    bool addstringnode(const char *s);
+
+    unsigned char _8[0x4c - 0x8];
+};
+
+extern "C" void func_002E5150(BriefingRoomDB::iterator first, BriefingRoomDB::iterator last,
+                              bool (*less)(BriefingRoom *, BriefingRoom *));   /* std::sort's instance */
+
+/* the room list sorted and handed to the menus: each room's name, its players and the game types it
+ * allows -- the clan rooms only our clan's, the Medius ones never (SOCOM 1's; OVL1 0x2E3CC0) */
+void UpdateRoomListDisplay()
+{
+    func_002E5150(data_0044F568.begin(), data_0044F568.end(), RoomLess);
+    CRdrEditor ed;
+
+    ed.push(0);
+    for (BriefingRoomDB::iterator i = data_0044F568.begin(); i != data_0044F568.end(); ++i) {
+        const char *name = (*i)->LobbyName;
+
+        if (!name || !*name)
+            continue;
+        if (*name == '+' && !strncmp(name, "+Clan - ", 8)) {
+            if (!theLobby.IsMemberOfClan())
+                continue;
+            char clan[1024];
+
+            sprintf(clan, "+Clan - %s", StoredClanInfo.ClanName);
+            if (strcmp(name, clan))
+                continue;
+        }
+        if (!strncmp(name, "Medius", 6))
+            continue;
+        ed.push(0);
+        ed.addstringnode(name);
+        ed.addintnode((*i)->PlayerCount);
+        if ((*i)->AllowsType(1))
+            ed.addintnode(1);
+        if ((*i)->AllowsType(2))
+            ed.addintnode(2);
+        if ((*i)->AllowsType(3))
+            ed.addintnode(3);
+        if ((*i)->AllowsType(4))
+            ed.addintnode(4);
+        ed.pop();
+    }
+    ed.pop();
+    theLobby.uiv_RoomList->Set(&ed);
+}
+
+/* a room of the room list reported: its room updated or a new one kept, and the list shown once
+ * the last has come (SOCOM 1's; OVL1 0x2E3B00) */
+void cbRoomList(int, int, int, MediusChannelListResponse *resp)
+{
+    if (CheckMediusCallbackStatus("RoomList", resp->StatusCode)) {
+        if (resp->MediusWorldID > -1) {
+            BriefingRoom *room = data_0044F568.Find(resp->LobbyName);
+
+            if (room) {
+                theNetwork.zNetGetLocalTime();
+                room->Set(resp);
+            } else
+                data_0044F568.Add(resp);
+        }
+        if (resp->EndOfList)
+            UpdateRoomListDisplay();
     }
 }
 
@@ -390,7 +479,7 @@ void func_002E2920(CZOnlineLobby *lobby, C2D *page)
             (*i)->m_unchecked = 1;
     }
     func_002F4080(&req, 129);
-    CheckMediusError(func_0064B008(&req, func_002E2B00));
+    CheckMediusError(func_0064B008(&req, cbGameList));
 }
 #pragma auto_inline reset
 
@@ -406,7 +495,7 @@ void func_002E3AA0(CZOnlineLobby *lobby, C2D *page)
     memset(&req, 0, sizeof(req));
     req.PageID = 1;
     req.PageSize = 999;
-    CheckMediusError(func_0064B098(&req, func_002E3B00));
+    CheckMediusError(func_0064B098(&req, cbRoomList));
 }
 #pragma auto_inline reset
 
