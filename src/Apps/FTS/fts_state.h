@@ -430,6 +430,8 @@ class CMPExitMenu : public CGameMenu {
 public:
     CMPExitMenu() {}
     virtual const char *GetReaderFileName();
+    /* CGameMenu's SOCOM II slot, nothing here (its copy 0x226050 follows GetReaderFileName) */
+    virtual int Slot14() { return 0; }
 
     unsigned char m_gameover;   // 0x920
 };
@@ -442,6 +444,7 @@ public:
     virtual bool Init();
     virtual bool Tick(float dT);
     virtual void UnInit();
+    void LoadLibs();
 
     CStateString m_libname;   // 0x8
     CStateString m_texname;   // 0x14

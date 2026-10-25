@@ -2002,13 +2002,13 @@
 0x002230B0 0x12C __ct__15CZPlayerMapItemFP7CEntity  # OVL1; s1:calls
 0x002231E0 0x3C UnInitStaticItems__15CZPlayerMapItemFv  # OVL1; s1:exact by hand (hud_playermapitem.cpp)
 0x00223220 0x6C InitStaticItems__15CZPlayerMapItemFv  # OVL1; s1:exact
-0x00223290 0x8 func_00223290  # OVL1
+0x00223290 0x8 LoadLibs__12CMPExitStateFv  # OVL1; by hand (the HUD lane, round 17): SOCOM 1's LoadLibs, 8 bytes and first in st_mpexit.cpp there too (0x3DCA80, before UnInit)
 0x002232A0 0x374 UnInit__12CMPExitStateFv  # OVL1; s1:vtable (CMPExitState's UnInit slot)
 0x00223620 0x60 __dt__11CMPExitMenuFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00223680 0x2EC Tick__12CMPExitStateFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00223970 0x79C Init__12CMPExitStateFv  # OVL1; s1:vtable (CMPExitState's Init slot)
 0x00224110 0xA4 __ct__12CMPExitStateFv  # OVL1; s1:calls (CGameState's then CMPExitState's vtable, "MPExitState", the splash library's name assigned; COurGame's constructor calls it)
-0x002241C0 0x48 func_002241C0  # OVL1
+0x002241C0 0x48 SetFinalStatsUiVars__Fv  # OVL1; by hand (the HUD lane, round 17): the name ours -- st_mpexit.cpp's MVP name/list and both sides' totals into UI variables ("MvpName", "GameSealsTotLbContents", "GameTerrsTotLbContents"); the network game calls it (0x27FF08)
 0x00224210 0x460 func_00224210  # OVL1
 0x00224670 0x578 func_00224670  # OVL1
 0x00224BF0 0x88 func_00224BF0  # OVL1
@@ -2018,17 +2018,17 @@
 0x002253C0 0x330 func_002253C0  # OVL1
 0x002256F0 0x304 func_002256F0  # OVL1
 0x00225A00 0x1C0 func_00225A00  # OVL1
-0x00225BC0 0x280 func_00225BC0  # OVL1
-0x00225E40 0x30 func_00225E40  # OVL1
-0x00225E70 0xA8 func_00225E70  # OVL1
-0x00225F20 0x8 func_00225F20  # OVL1
-0x00225F30 0xA8 func_00225F30  # OVL1
-0x00225FE0 0x8 func_00225FE0  # OVL1
-0x00225FF0 0x8 func_00225FF0  # OVL1
-0x00226000 0x8 func_00226000  # OVL1
-0x00226010 0x8 func_00226010  # OVL1
+0x00225BC0 0x280 SetFinalTeamTotalsUiVar__23@unnamed@st_mpexit_cpp@FbPCc  # OVL1; by hand (the HUD lane, round 17): SOCOM 1's SetFinalTeamTotalsUiVar(bool, const char *) -- a CRdrEditor list of each c_arrStatFuncs total summed over a side's SEALs' game stats, added as a temporary UI variable; SOCOM II's three totals and the hit-percentage average
+0x00225E40 0x30 GetHitPct__10CSealStatsCFv  # OVL1; by hand (the HUD lane, round 17): SOCOM 1's GetHitPct (0.5 + 100 * the hit percentage, made an int); its copy follows SetFinalTeamTotalsUiVar, whose function-local static PTMF takes its address (0x3DC7A0)
+0x00225E70 0xA8 CompareGameSeals__23@unnamed@st_mpexit_cpp@FP10CZSealBodyP10CZSealBody  # OVL1; by hand (the HUD lane, round 17): SOCOM 1's CompareSeals (MVP score, then the name) over the game stats (PTMF 0x3DC790 = GetGameStats); the name ours; std::sort's comparator (0x224210)
+0x00225F20 0x8 GetGameStats__10CZSealBodyFv  # OVL1; by hand (the HUD lane, round 17): SOCOM 1's GetGameStats (this + its first CSealStats, m_mp_stats there); emitted for the PTMF constants 0x3DC790 and four more
+0x00225F30 0xA8 CompareRoundSeals__23@unnamed@st_mpexit_cpp@FP10CZSealBodyP10CZSealBody  # OVL1; by hand (the HUD lane, round 17): CompareGameSeals over the round stats (PTMF 0x3DC780 = GetRoundStats); the name ours
+0x00225FE0 0x8 GetRoundStats__10CZSealBodyFv  # OVL1; by hand (the HUD lane, round 17): SOCOM 1's GetRoundStats (this + its second CSealStats, m_stats there); emitted for the PTMF constants 0x3DC780 and four more
+0x00225FF0 0x8 GetDeaths__10CSealStatsCFv  # OVL1; by hand (the HUD lane, round 17): c_arrStatFuncs[2] (the initialiser's PTMF 0x3DC770); the unsigned short at 0x12 -- name after SOCOM 1's accessors, the field's meaning unproven
+0x00226000 0x8 GetKills__10CSealStatsCFv  # OVL1; by hand (the HUD lane, round 17): c_arrStatFuncs[1] (PTMF 0x3DC760); the unsigned short at 0xC -- name after SOCOM 1's GetKills (c_arrStatFuncs[0] there), the field's meaning unproven
+0x00226010 0x8 GetMvpScore__10CSealStatsCFv  # OVL1; by hand (the HUD lane, round 17): c_arrStatFuncs[0] (PTMF 0x3DC750); the short at 0x3C, SOCOM 1's m_sMvpScore -- the name ours
 0x00226020 0x24 GetReaderFileName__11CMPExitMenuFv  # OVL1; s1:calls
-0x00226050 0x8 func_00226050  # OVL1
+0x00226050 0x8 Slot14__11CMPExitMenuFv  # OVL1; by hand (the HUD lane, round 17): slot 5 of CMPExitMenu's vtable 0x4057B0, CGameMenu's SOCOM II slot (fts_state.h's Slot14) returning 0
 0x00226060 0x598 func_00226060  # OVL1
 0x00226600 0x1B4 func_00226600  # OVL1
 0x002267C0 0x1A0 func_002267C0  # OVL1
@@ -8502,7 +8502,7 @@
 0x003FE550 0x1B0 func_003FE550  # OVL1 data area; a static initialiser
 0x003FE700 0xEC __sinit_hud_teamnames.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 16): hud_teamnames.cpp's static initialiser -- it builds and registers the unit's two bracket strings and two dividers (0x40D7A0, 0x40D850, 0x40D900, 0x40D990) and sets the dividers' line (0x3E4F60), which the unit's Init and SetOpacity read
 0x003FE7F0 0x64 __sinit_hud_playermapitem.cpp  # OVL1 data area; a static initialiser; s1~ zanim_anim.cpp (shape 0.46, a hint); hud_playermapitem.cpp by hand (it constructs CZPlayerMapItem::m_ablestring and m_bravostring, this unit's statics, and registers their destructors)
-0x003FE860 0xD4 func_003FE860  # OVL1 data area; a static initialiser
+0x003FE860 0xD4 __sinit_st_mpexit.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 17): st_mpexit.cpp's initialiser (between hud_playermapitem.cpp's and hud_teammatenames.cpp's, as the code): <iostream>'s two init objects, then c_arrStatFuncs' three PTMFs copied in -- SOCOM 1's __sinit_st_mpexit.cpp alike (six PTMFs and a CSTable there)
 0x003FE940 0x34 __sinit_hud_teammatenames.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 16): hud_teammatenames.cpp's static initialiser (between hud_playermapitem.cpp's 0x3FE7F0 and hud_scorepopup.cpp's 0x3FE980) -- it halves the unit's two bitmap sizes (0x3DC868, 0x3DC870, 32 each) into 0x40DBD0 and 0x40DBD8, which CMPTeammateNames::Tick reads
 0x003FE980 0x9D0 func_003FE980  # OVL1 data area; a static initialiser
 0x003FF350 0x64 func_003FF350  # OVL1 data area; a static initialiser
