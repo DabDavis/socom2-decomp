@@ -12,6 +12,7 @@
 
 class CHUD;
 class C2DFont;
+class CPad;
 
 namespace zdb {
 class CWorld;
@@ -32,6 +33,29 @@ public:
     void OnClose();
     void AfterCloseFirst();
     void AfterClose();
+    void AfterScrollUp();
+    void AfterScrollDown();
+    void OnScrollUp();
+    void OnScrollDown();
+    void AfterOpenSecond();
+    void ResetHotSwap(bool force);
+    void PulseSelectionArrows(float dT);
+    inline void AfterOpenFirst();
+    void HandleOpenFirstState(float dT);
+    void HandleCloseFirstState(float dT);
+    void HudTick(CPad *pad, float dT);
+    void OnOpen();
+    void HandleOpenState(CPad *pad, float dT);
+    void HandleScrollDownState(float dT);
+    void HandleScrollUpState(float dT);
+    /* the rows' icons placed for a state (SOCOM 1's, 0x219A80) */
+    void SetItemPos(int index);
+    void PlaceMiddleIcon();
+    void TickHotSwap(float dT);
+    /* the selected weapon's texts and the hot-swap labels placed (SOCOM 1's, 0x2193D0 and
+     * 0x2196F0) */
+    void PlaceWeaponText();
+    void PlaceHotSwapLabels();
 
     /* the texts off, and let go of (one line each in SOCOM 1's OnClose and UnInit: inline) */
     void TextOff()

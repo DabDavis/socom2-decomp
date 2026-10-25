@@ -90,7 +90,9 @@ public:
     size_type size() const { return is_long() ? w_[1] : (unsigned char)s_.size_; }
     /* a character (0x2CA6E0) */
     charT &operator[](size_type pos) { return (is_long() ? (charT *)w_[2] : s_.data_)[pos]; }
-    const charT *c_str() const { return is_long() ? (const charT *)w_[2] : s_.data_; }
+    /* short form first: the hoisted text addresses take the target's registers (CSaveManager::Load's
+     * s7/s8, the rdr lane's round 4; nothing lost over every hand-written unit) */
+    const charT *c_str() const { return !is_long() ? s_.data_ : (const charT *)w_[2]; }
     const charT *data() const { return c_str(); }
 
 private:

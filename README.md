@@ -1642,6 +1642,114 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the weapons, round 7** (the turret's template tail, CZWeapon's sounds/timers/AI params):
+  - a class temporary in an argument list whose type has a user destructor (even an empty inline
+    one) is built before the inline end()/size() are expanded; without a destructor MW expands
+    those first;
+  - a user-declared copy assignment on a member's member makes the enclosing class's implicit
+    assignment a real function, called out of line once the outer assignment passes
+    inline_max_size; left implicit it is a block copy;
+  - a class with a user-declared constructor gets a member-by-member implicit copy constructor while
+    its implicit assignment stays a block copy -- the copy constructor and the assignment can copy the
+    same member differently (CTurretAiParams); an empty user constructor on a vector element makes
+    insert copy it member by member (CZDecalDef);
+  - a tail instance an earlier unit already emitted is deduplicated by name, so a unit's own use of a
+    vector destructor can be invisible in the image (zwep_weapon.cpp's DestroyMarkList calls
+    0x2CDB30, an earlier unit's copy);
+  - DEAD-STRIPPED STAND-INS: an insert inlines the element destructor and clear only if the unit's
+    own code generated them first; where no such caller is left in the image, a minimal stand-in for
+    the dead-stripped original (no row: it scores as no-target) restores the order --
+    DeadTurretDefinitionsKill made the turret's insert byte-exact (veh_turret.cpp), and
+    DeadVehicleDefinitionsKill gives 0x3AF040 the target's size (its end-pointer register still open);
+  - veh_turret.cpp's tail starts at resize 0x3AB8C0; CTurretDef() (0x3AB5F0) is an ordinary function
+    right after Parse, as in SOCOM 1.
+- **Tells from the HUD, round 15** (the weapon selector's states and scrolling, zui_2d.cpp complete):
+  - an inline's side-effect-free argument used once on each path is substituted into each arm, so
+    SOCOM 1's `Increment(2*(475*dT), ...)` computes the product in both arms, as the target; the
+    operand order needed `2.0f * (float)(475.0f * dT)`;
+  - a CPnt3D struct copy reloads its source; written field by field, the first field reuses the load
+    a preceding compare made;
+  - `(f(4, pad) == 1) != false` is the one form tried that materialises an `== 1` test (andi; xori;
+    sltiu) inside an `&&` chain;
+  - where the target keeps a sum's non-product operand first, that operand must be in a local;
+    `int x, y; y = ...; x = ...;` gives the target's saved registers where initialised declarations
+    in either order swap them;
+  - an inline const accessor reuses the type byte its caller tested only through a const view (`const
+    CUIVariable *v = var`); through the non-const parameter it reloads it;
+  - a secondary vtable sits at the primary table's size, so stand-in classes need the real slot
+    counts (C3StateButton 29, C2DString 34, C2DBitmap 26);
+  - THIS-ADJUSTING THUNKS have MW's names `@<offset>@<target>` (`j target; addiu a0,a0,-offset`):
+    zui_2d.cpp's classes emit `@192@__dt__9CCheckBoxFv` and its kin for their secondary bases, and
+    naming the rows 0x37D020-0x37D0E0 so made eight of them byte-exact (a thunk's row named after the
+    function it jumps to and the offset it subtracts);
+  - zui_2d.cpp's tail order: ~CCheckBox, ~CHProgressBar, ~CSliderBar, ~CHandlerButton,
+    C3StateButton::Tick, ~CTeleType, then the thunks.
+- **Tells from the online lobby, round 6** (the account save module, the universe list, the LAN lobby):
+  - a temporary is laid out below the named locals: the target's struct sitting below an inner
+    block's object was `push_back(T(args))`;
+  - walking `Item(unsigned)` with an int counter recomputes each address, and dropping the
+    strength-reduction register moved Add's whole register allocation;
+  - a class vector's one-element erase is an out-of-class `T *erase(T *)` behind an inline iterator
+    wrapper (a class return would pass a hidden return slot) -- include/vector has it now, beside the
+    pod vector's;
+  - copy construction of a record whose members have constructors goes member by member while its
+    implicit assignment stays a block copy (AcctMission: no constructor of its own, its name member a
+    class with one);
+  - `&r->m_missions[i]` keeps an advancing base and adds the member offset each pass; a pointer
+    cursor advances the member's address instead;
+  - `!x` passed to an int parameter gives sltu/xori/andi, `x == 0` sltiu;
+  - units: the save module zNetMediusUniverse.cpp 0x2FAFC0-0x30066F (CZUniversInformationServer::
+    CAcctDB, a CSaveModule and a CLobbySaveModule by its RTTI; PasswordSecurity 0x2FAF50 ends the
+    lobby unit); the friends unit ends at 0x30372F (its tail: reserve 0x3030B0, resize 0x303250, the
+    72-byte erase 0x303490); zNetLANLobby.cpp 0x303730-0x30460F (initialiser 0x4024F0); the Medius
+    file API 0x304610-0x30661F (CLobbyFileIO, vtable 0x406760, initialiser 0x402570) waits on the
+    string-keyed map's compare 0x2DEE30.
+- **Tells from the kit and AI states, round 7** (the kit's item vector, the event state, the callouts):
+  - a state destructor with byte-array members matches with the member destructors called by hand in
+    reverse order; a vector's goes behind three nested `if (v)`, and MW keeps all three tests;
+  - in `if (A && B) ... else if (C && D)` where B is a materialised `&&`, write B as an inline bool:
+    the `&&` stays materialised and a failing B still falls through to C;
+  - a field the target loads again for a third test, after one shared load for the first two, is
+    tested through an inline accessor;
+  - the remainder pass of an unrolled loop over a struct array folds the field offset into the
+    relocation unless each element goes through a pointer local (`T *c = &a[i]; c->f = 0;`);
+  - `*p = c ? enumLocal : K` reuses the enum local's register for K; an if/else does not;
+  - a byte-enum call result passed on unmasked and tested with andi: the callee's return and the
+    receiving parameter the same unsigned byte enum, compared `== ENUM_0`;
+  - SOCOM 1's CAiTrigger() inlines one level, as the target needs, only when Rfloat's range
+    constructor is inline (out of line, the default limit inlines it whole);
+  - MW lowers a switch over {2, 4, 5, 12} to a compare chain; the target's bit test (`(unsigned)(k-2)
+    < 11 && (1 << (k-2)) & 0x40D`) has to be written out;
+  - reading Rfloat-shaped members through a cast keeps their address in a saved register; declare them
+    with the right type;
+  - units: ai_target.cpp (0x609DF0-0x60BF3F: CheckLineOfFire and CAiTarget, where SOCOM 1 has them),
+    seal_weapon.cpp (~0x5DF370-0x5E0023, CZSealBody's weapon functions before AnimSet's), the
+    callout table's functions in seal_airesponse.cpp; 0x5EA550 (CAiTimer(float)) and 0x5EA5D0 are
+    copies CSealUnit::IssueCommand emits.
+- **Tells from the rdr lane, round 4** (the save manager, CPipe's overlay and FIFO, the flare system):
+  - `buf[i] ^= key` on an unsigned char key sign-extends it, `c ^ key` zero-extends it; `key ^= key +
+    c` masks the sum before the xor, `key = key ^ (key + c)` does not (SaveDecrypt; SaveEncrypt is
+    open on the key's copy masked first and the raw key sign-extended);
+  - a member's address kept in a saved register across a loop needs a local pointer taken inside the
+    size guard; through the member, an inline's pointer parameter or an inline member's `this`, MW
+    adds the offset at every call;
+  - frame slots follow declaration order (Load and Save declare the header first, above the buffer
+    and the archive); a comparator that is an inline's local sits below begin()'s temporary, the
+    caller's own local above it;
+  - `ok = true;` written before a call lands in that call's delay slot;
+  - a constant loop of 14 is unrolled 7x, not whole: write the stores out when the target has all
+    fourteen;
+  - converting a float to an unsigned char inlines MW's float-to-unsigned check; through `(int)` it
+    is the plain `cvt.w.s`;
+  - reading an interrupt's command through a volatile pointer reloads a field after its test;
+  - a local cannot be named `list` inside a member of a class derived from std::list, nor `zar` where
+    namespace zar is in use: MW fails to parse;
+  - include/string's c_str() written short form first (`!is_long() ? s_.data_ : (const charT *)w_[2]`)
+    makes CSaveManager::Load (0x33D6D0) byte-exact (measured on a shadow include/ only);
+  - zrndr_pipe.cpp opens with the flare system (0x336230, the object at 0x488F10); 0x33C2A0-0x33CD4F
+    looks like its template tail (a vector of 112-byte elements); zsav_manager.cpp ends with SOCOM 1's
+    list sort<less<const void *> > and merge (0x33E510-0x33E7EF); a further unit runs
+    0x33E7F0-0x33F04F (helpers UICharacterProfile calls).
 - **Tells from the AI core, round 8** (the path's point vector, SmoothPath, the visibility tests):
   - a chain of `==` tests joined by `||` becomes a bit test; the target's two materialised ors come
     from explicit bools, the outer bool declared first and the value last;

@@ -4,16 +4,17 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_00336980(f32);                         /* extern */
+M2C_UNK PushOpacity__5CPipeFf(f32);                 /* extern */
 
 s32 func_00336A10(s32 arg0, char *arg1) {
     f32 temp_f12;
 
-    temp_f12 = M2C_FIELD(arg1, f32 *, 0x9C);
+    temp_f12 = SC_MEMBER(arg1, f32 *, 0x9C);
     if (temp_f12 < 0.9921875f) {
-        func_00336980(temp_f12);
+        PushOpacity__5CPipeFf(temp_f12);
         return 1;
     }
     return 0;

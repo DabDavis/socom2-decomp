@@ -650,3 +650,24 @@ void CZKit::ResetScreenOffsetXY()
         cam->SetScreenOffsetY(0.0f);
     }
 }
+
+/* the per-item pointers at 0x834, one place on so that item -1 has slot 0: read (or 0 past the
+ * end), cleared, and set -- the vector grown by null pushes until the slot exists (OVL2 0x5B8FF0,
+ * 0x5B8FC0, 0x5B8F20: new in SOCOM II, the names ours; the environment's pickup code calls them) */
+void *CZKit::GetItemPtr(int index)
+{
+    return index + 1 < m_itemptr.size() ? m_itemptr[index + 1] : 0;
+}
+
+void CZKit::ClearItemPtr(int index)
+{
+    if (index + 1 < m_itemptr.size())
+        m_itemptr[index + 1] = 0;
+}
+
+void CZKit::SetItemPtr(int index, void *p)
+{
+    while (index + 1 >= m_itemptr.size())
+        m_itemptr.push_back(0);
+    m_itemptr[index + 1] = p;
+}

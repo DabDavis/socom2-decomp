@@ -157,6 +157,7 @@
 0x003DC3D0 0x1B gopt  # OVL1; SOCOM 1's (27 bytes, the game options; CCoreState's Init and Tick test its first byte, as SOCOM 1's): 15 references in 10 functions take 0x3DC3D0-0x3DC3E0
 0x003DC468 0x4 m_U1__17CZClaymoreMapItem  # OVL1 data; SOCOM 1's static (1.0: CZClaymoreMapItem's Tick reads it where SOCOM 1's does, and a CZNewHudMap function (0x20B2C0) sets it): 2 references in 2 functions
 0x003DC470 0x4 m_V1__17CZClaymoreMapItem  # OVL1 data; SOCOM 1's static (1.0, after m_U1 as in SOCOM 1): 2 references in 2 functions
+0x003DC620 0x4 g_fFadeInTime__27@unnamed@hud_weaponsel_cpp@  # OVL1 data; SOCOM 1's (its symbol table: hud_weaponsel.cpp's anonymous namespace, gp-30408 in the demo): the selector's backdrop fade-in clock, -1.0 in data (idle) -- 5 references in 2 functions (CWeaponSel::HudTick x4, OnOpen); the HUD lane
 0x003DCFB4 0x0 devRpcData  # OVL1; s1:data-seq (size SOCOM 1's; via lgAudClose +4)
 0x003DCFB8 0x4 devicechanged  # OVL1; s1:data-exact (size SOCOM 1's; via lgAudClose +3)
 0x003DCFBC 0x4 threadsafeSema  # OVL1; s1:data-exact (size SOCOM 1's; via lgAudClose +4)
@@ -244,7 +245,17 @@
 0x003E2EB0 0x8 __RTTI__14CMenuStateMenu  # RTTI of CMenuStateMenu: found by its RTTI's name
 0x003E2F40 0x8 __RTTI__10CLoadState  # RTTI of CLoadState: found by its RTTI's name
 0x003E2FD0 0x8 __RTTI__9CLoadMenu  # RTTI of CLoadMenu: found by its RTTI's name
+0x003E2FE8 0x4 g_fHudTeamNamesBottom  # OVL1 data; ours (hud_main.cpp's layout floats, 8 apart): 438.0, the team names' lower backdrop's bottom -- 1 reference (CTeamNames::Init); the HUD lane
+0x003E2FF0 0x4 g_fHudLayout74  # OVL1 data; ours (hud_main.cpp's layout floats): 74.0 -- 1 reference (hud_scorepopup.cpp's initialiser 0x3FE980); the HUD lane
+0x003E2FF8 0x4 g_fHudBottomBlockY  # OVL1 data; ours (hud_main.cpp's layout floats): 364.0, the top of the HUD's bottom block (the team names' rows, the reticle's text) -- 9 references in 6 functions (BitmapReticule::Init x2, CTeamNames::Tick, Init x3, SetupTeamNameEntry, the initialisers 0x3FE500, 0x3FE700); the HUD lane
+0x003E3000 0x4 g_fHudBackdropAlpha  # OVL1 data; ours (hud_main.cpp's layout floats): 76.8, the backdrops' alpha (CTeamNames::SetOpacity and CWeaponSel::HudTick scale it) -- 21 references in 3 functions (HudTick x3, SetOpacity x5, the score pop-up's initialiser 0x3FE980 x13); the HUD lane
+0x003E3008 0x4 g_fHudLayout365  # OVL1 data; ours (hud_main.cpp's layout floats): 365.0 -- 3 references in 2 functions (CZNewHudMap::InitMap x2, the initialiser 0x3FDE80); the HUD lane
+0x003E3010 0x4 g_fHudLayout60  # OVL1 data; ours (hud_main.cpp's layout floats): 60.0 -- 8 references in 5 functions (the map's 0x209350 x2, InitMap x2, 0x20BE00, 0x20C080 x2, 0x3FDE80); the HUD lane
+0x003E3018 0x4 g_fHudLayout173  # OVL1 data; ours (hud_main.cpp's layout floats): 173.0 -- 1 reference (the initialiser 0x3FE980); the HUD lane
+0x003E3020 0x4 g_fHudLayout20  # OVL1 data; ours (hud_main.cpp's layout floats): 20.0 -- 4 references in 4 functions (0x20E750, CZPlayerMapItem::SetViewCone, 0x231150, 0x231690); the HUD lane
+0x003E3028 0x4 g_fHudLayout10  # OVL1 data; ours (hud_main.cpp's layout floats): 10.0 -- 2 references in 2 functions (0x20E750, 0x231150); the HUD lane
 0x003E3048 0x4 c_szCornerBoxesTx  # OVL1 data; SOCOM 1's name (a static of each HUD unit there; one global in SOCOM II, in hud_main.cpp's data after its layout floats): "newweapnbkrnd.tif" -- 11 references in 6 functions take 0x3E3048 (CHUD::Init, CWeaponSel::Init, CTeamNames::Init, SetupBackgroundBox x5, SetupSpectatorBox, 0x22CC10); the HUD lane
+0x003E3068 0x4 c_szArrowOffTx  # OVL1 data; ours by c_szCornerBoxesTx's pattern (hud_main.cpp's string pointers after the layout floats): "hud_arrow_off2.tif" -- 2 references in 2 functions (CWeaponSel::Init, 0x23D860); the HUD lane
 0x003E3618 0x8 __RTTI__10UIVarMixin  # RTTI of UIVarMixin: found by its RTTI's name
 0x003E36A8 0x8 __RTTI__3C2D  # RTTI of C2D: found by its RTTI's name
 0x003E36E0 0x8 __RTTI__9C2DString  # RTTI of C2DString: found by its RTTI's name
@@ -525,7 +536,9 @@
 0x004066B0 0xC __vt__8RoomGame  # vtable of RoomGame: found by its RTTI's name
 0x004066C0 0xC __vt__7LANGame  # vtable of LANGame: found by its RTTI's name
 0x004066D0 0xC __vt__13TransientGame  # vtable of TransientGame: found by its RTTI's name
+0x004066E0 0x50 __vt__Q226CZUniversInformationServer7CAcctDB  # OVL1 data; ours (CZUniversInformationServer::CAcctDB's vtable, by its RTTI at 0x3F5CA8: the empty primary table at 0x4066E0, CSaveModule's at 0x4066E8 (-0xC: the thunks 0x300630/20/10, CSaveModule's UnSerialize(CZAR *) and TestFlags), CLobbySaveModule's at 0x406704 (-0x24: the thunks 0x300660/50/40), then the primary's slots after the tables -- Serialize, UnSerialize, Save, Load, SetChecksum, the destructor); stored by the initialiser 0x4022D0 and the destructors 0x2FAFC0/0x300570; 3 references in 2 hand-written functions
 0x00406730 0x10 __vt__16CSMGetServerList  # vtable of CSMGetServerList: found by its RTTI's name
+0x00406740 0x14 __vt__16CLobbySaveModule  # OVL1 data; ours (CLobbySaveModule's vtable, by its RTTI at 0x3F5C88: three pure slots, 0; its constructor 0x33EFA0 and the destructors 0x2FAFC0/0x2FD000 store it); 1 reference in 1 hand-written function
 0x00406760 0x44 __vt__12CLobbyFileIO  # vtable of CLobbyFileIO: found by its RTTI's name
 0x004067B0 0x44 __vt__Q23zdb5CNode  # vtable of zdb::CNode: found by its RTTI's name
 0x00406800 0x44 __vt__Q23zdb9CLightMap  # vtable of zdb::CLightMap: found by its RTTI's name
@@ -993,6 +1006,7 @@
 0x004B5290 0xC m_decalsets__10CZDecalSet  # OVL1 bss; SOCOM 1's static (12 bytes, m_decalsets__10CZDecalSet at 0x511DE0 in the demo, its vector of decal sets): GetDecalSetByName walks it and DestroyDecalSet empties it as SOCOM 1's do, 0x3D0630 pushes onto it, the initialiser 0x404C10 zeroes it -- the wep lane; 19 references in 4 functions
 0x004B52B8 0x4 m_timer_maxval__8CZWeapon  # OVL1 bss; s1:data-seq (size SOCOM 1's; via RetrieveTimerRegistration__8CZWeaponFPPfPfPb)
 0x004B52C0 0x4 m_timer_pCurval__8CZWeapon  # OVL1 bss; s1:data-seq (size SOCOM 1's; via RetrieveTimerRegistration__8CZWeaponFPPfPfPb)
+0x004B52F0 0xC m_sounddistance__8CZWeapon  # OVL1 bss; SOCOM II's (the name ours): three floats, zweapon.rdr's WEAPON_GLOBAL SoundDistanceClose/Med/Far squared by the setter 0x3D0100 (indexed by its byte), the fire sound's pick 0x3D2C50 and 0x3D2D70 comparing against [1] and [2] -- the wep lane; 5 references in 3 functions
 0x004B5310 0xC m_ammolist__6CZAmmo  # OVL1 bss; SOCOM 1's static (12 bytes, m_ammolist__6CZAmmo at 0x511E00 in the demo): __sinit_zwep_ammo.cpp (0x404CD0) builds it with CZAmmoList's constructor, CZAmmo::GetAmmoId/GetAmmo hand it to the list's, as SOCOM 1's -- the wep lane; 13 references in 10 functions
 0x004B5320 0x4 pFlyout_Model_Registered__14CFlyoutMachine  # OVL1 bss; SOCOM 1's static (its HookupReset sets it to the standard model as SOCOM II's does; SetTracerModel sets it) -- the wep lane; 6 references in 3 functions
 0x004B5328 0x4 pFlyout_Model_Standard__14CFlyoutMachine  # OVL1 bss; SOCOM 1's static (HookupReset's "tracer") -- the wep lane; 5 references in 2 functions
