@@ -867,6 +867,9 @@ public:
     /* (SOCOM 1's DWARF; ~CAiPath's three this-tests on it say SOCOM II's is the same subclass) */
     class points : public std::vector<point> {
     };
+    /* a point on a cell: x and y agree, the map aside (SOCOM 1's std::find<point *, CAiMapLoc>
+     * compares them; materialised as CAiMapLoc's ==) */
+    friend bool operator==(const point &p, const CAiMapLoc &loc) { return loc.x == p.m_loc.x && loc.y == p.m_loc.y; }
 
     CAiPath();
     /* the planner let go and the path emptied, its plan aborted first (SOCOM 1's; out of line at
@@ -904,6 +907,9 @@ public:
     /* points made and the plan complete (the name ours: SmoothPath materialises both tests, as a
      * call of an inline bool does -- SOCOM 1's SmoothPath alike) */
     bool HasPoints() const { return !m_points.empty() && m_state == COMPLETE; }
+    /* the points on CAiMapLoc::invalid dropped, how many handed back (new in SOCOM II, the name
+     * ours: SOCOM 1's SmoothPath removed them itself) */
+    int RemoveInvalidPoints();
     void UpdatePathWidth(unsigned int width);
     /* the path drawn for debugging, under a name (SOCOM 1's took none) */
     void PrintPath(const char *name) const;

@@ -10,7 +10,7 @@
 /* what the path's functions call that is not written yet (this unit's) */
 extern "C" void func_00525520(CAiPath *path);   /* SOCOM 1's UpdateTurnAngles, by position */
 extern "C" void func_00525810(CAiPath *path, unsigned int leg);   /* SOCOM 1's SmoothPathLeg */
-extern "C" int func_00527CE0(CAiPath *path);   /* the invalid points removed, their count back */
+
 
 /* a vector's storage cut to its size: a copy of it swapped in (node_world.cpp's, the name ours):
  * inlined one level, its copy constructor, swap and destructor called out of line */
@@ -61,6 +61,29 @@ CAiPath::~CAiPath()
     DeletePlanner(true);
     Clear();
 }
+
+/* the points on no cell dropped through MSL's remove and the range erase, the count dropped handed
+ * back (new in SOCOM II, the name ours; SmoothPath calls it, never inlined).
+ * OPEN (0x188 against 0x18C), left out of the build: two include/vector questions. The target
+ * builds end() once (sp+92) for remove and again copies it for erase's last after the call (the
+ * CleanupTemporary/DeleteLayers shape -- an end local passed to both is 0x170, a remove result in
+ * a local 0x15C), and inlines find whole where this build calls the iterator's operator* out of
+ * line (one level too tall). Compiled, it also costs resize<point> (0x528430): its erase, now
+ * instantiated by the unit's own code and declared before resize in include/vector, is generated
+ * first and inlined into resize, where the target's resize calls it -- the original MSL declares
+ * resize ahead of erase, or this function reached erase another way. Its remove_copy (0x528530)
+ * matches once point == CAiMapLoc reads the cell first (ai.h) */
+#if 0
+#pragma auto_inline off
+int CAiPath::RemoveInvalidPoints()
+{
+    unsigned int n = m_points.size();
+
+    m_points.erase(std::remove(m_points.begin(), m_points.end(), CAiMapLoc::invalid), m_points.end());
+    return n - m_points.size();
+}
+#pragma auto_inline reset
+#endif
 
 /* the legs' two ends, for one leg or the one being planned (SOCOM 1's; true either way) */
 bool CAiPath::GetLegPoints(CAiMapLoc &start, CAiMapLoc &goal, int leg) const
@@ -196,7 +219,7 @@ bool CAiPath::SmoothPath(bool force)
     if (HasPoints() && (force || (m_flags & 1))) {
         for (unsigned int i = 0; i < m_legcount; i++)
             func_00525810(this, i);
-        func_00527CE0(this);
+        RemoveInvalidPoints();
         TrimVector<std::vector<point> >(m_points);
         done = true;
     }
