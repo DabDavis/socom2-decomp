@@ -998,6 +998,8 @@ public:
     bool Create(CWorld *world, const tag_GRID_PARAMS *params);
     /* a node's place in the grid brought up to date (SOCOM 1's) */
     void Update(CNode *node);
+    /* the cell under a point in x/z (new in SOCOM II; the name is ours) */
+    CCell *GetCell(float x, float z);
     /* a walk over the cells a polygon in x/z covers: the boundary set, the first atom and the
      * next (SOCOM 1's) */
     /* the new walk's tick given back: both paths end on ++m_TickNum, its value left in v0 (a void

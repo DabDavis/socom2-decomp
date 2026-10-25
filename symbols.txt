@@ -4503,7 +4503,7 @@
 0x002D5520 0xA0 DeleteClutter__Q23zdb5CGridFv  # OVL1; s1:align
 0x002D55C0 0x2E8 AddClutter__Q23zdb5CGridFPQ23zdb8CClutter  # OVL1; s1:order by hand (the world lane: SOCOM 1's AddClutter after DeleteClutter: ReadClutter hands it each clutter; it walks the cells the clutter's box covers and calls each cell's AddClutter, 0x2D7B00)
 0x002D58B0 0x2A0 Destroy__Q23zdb5CGridFv  # OVL1; s1:order by hand (the world lane: SOCOM 1's Destroy after AddClutter: Segregate_CCells, each cell taken out of the grid (gridRemoveNodeFromGrids inlined) and FreeAtom'd, the others deleted through the world, then m_Atoms and m_AtomBuf freed; ~CGrid calls it first as SOCOM 1's does)
-0x002D5B50 0x130 func_002D5B50  # OVL1
+0x002D5B50 0x130 GetCell__Q23zdb5CGridFff  # OVL1; new in SOCOM II, the name ours (the world lane): the cell under a point in x/z -- each index from the origin a ten-thousandth in, clamped into the grid, gridGetAtomBasePtr inlined, the atom's node if a cell; AddClutter and 0x31D940 call it
 0x002D5C80 0x380 Create__Q23zdb5CGridFPQ23zdb6CWorldPCQ23zdb15tag_GRID_PARAMS  # OVL1; s1:order by hand (the world lane: SOCOM 1's Create before Update, same stores: the world, the posts, the origin from the world's box, the extents, 1/m_CellDim, the atom buffer, a 0x120-byte CCell per square named and added to the world; Read calls it with the world and the read parameters as SOCOM 1's does)
 0x002D6000 0xD8 Update__Q23zdb5CGridFPQ23zdb5CNode  # OVL1; s1:align
 0x002D60E0 0xBC Remove__Q23zdb5CGridFPQ23zdb5CNode  # OVL1; s1:calls

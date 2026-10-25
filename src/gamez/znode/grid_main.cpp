@@ -6,8 +6,7 @@
  * grid_di.cpp's queries come before it (its static initialiser registers CStack's destructor, whose
  * linked copy, 0x2D4FE0, closes that unit), grid_clutter.cpp's clutter animation after it. Defined
  * in reverse of their image order (-inline deferred).
- * Unwritten: ReadClutter (0x2D5060), AddClutter (0x2D55C0), 0x2D5B50 (new),
- * Create (0x2D5C80), SetTraversalBoundaryOrdered (0x2D6920), 0x2D6AB0 (new), gridAddNodeToGrids
+ * Unwritten: ReadClutter (0x2D5060), AddClutter (0x2D55C0), Create (0x2D5C80), SetTraversalBoundaryOrdered (0x2D6920), 0x2D6AB0 (new), gridAddNodeToGrids
  * (0x2D7580). CGrid() is written and byte-exact once its CFRect
  * constructor's row is named (below). */
 
@@ -579,6 +578,33 @@ void CGrid::Update(CNode *node)
         gridRemoveNodeFromGrids(node);
         gridAddNodeToGrids(node);
     }
+}
+
+/* the cell under a point in x/z, or none: its indices from the origin, a ten-thousandth in, held
+ * inside the grid (new in SOCOM II: AddClutter and the world's 0x31D940 ask it; the name is
+ * ours).
+ * OPEN, the right size, one scheduling swap and the label pads it moves (34 lines): the target
+ * loads m_origin.z ahead of the second 0.0001f's lui, here the lui goes first -- the opposite of
+ * SetTraversalExtents' first point; 3.0b50 and 3.0b38 compile it the same. Tried: the difference
+ * in a local, the scale in a local, the indices declared together, the if-return tail */
+CCell *CGrid::GetCell(float x, float z)
+{
+    CCell *cell = 0;
+    int ix = (int)(m_InvCellDim * (0.0001f + (x - m_origin.x)));
+
+    ix = MAX(0, ix);
+    if (ix > m_CellCount.cx - 1)
+        ix = m_CellCount.cx - 1;
+    int iz = (int)(m_InvCellDim * (0.0001f + (z - m_origin.z)));
+
+    iz = MAX(0, iz);
+    if (iz > m_CellCount.cy - 1)
+        iz = m_CellCount.cy - 1;
+    CGridAtom **p = gridGetAtomBasePtr(ix, iz);
+
+    if (p && *p)
+        cell = (*p)->GetCell();
+    return cell;
 }
 
 /* the world's nodes sorted: every other node unlinked from the cells and its atoms freed, each
