@@ -697,6 +697,8 @@ public:
     /* the share of the script one loop covers: all of it when it loops, else up to its last frame
      * (SOCOM 1's CZBodyAnim::TrueLoopTime; si_script.cpp's, 0x28ADA0) */
     float TrueLoopTime();
+    /* the time one loop takes (ReadMotionRdr scales a callback's time by it; the name ours) */
+    float LoopTime() { return m_10 * TrueLoopTime(); }
     /* the archive callback each of four slots names, 0 for none (SOCOM 1's CZBodyAnim's) */
     int GetCallbackIndex(int i);
     void SetCallbackIndex(int i, unsigned int index);
@@ -714,6 +716,17 @@ public:
     void SetObjectsReady(bool b) { m_objects_ready = b; }
     void SetLooped(bool b) { m_looped = b; }
     void SetFlag7(bool b) { m_49_7 = b; }
+    /* motion.rdr's flags (ReadMotionRdr; each named after its tag, the members kept as named) */
+    void SetLateral(bool b) { m_4a_0 = b; }
+    void SetVertical(bool b) { m_vertical = b; }
+    void SetBlendOverlay(bool b) { m_4a_2 = b; }
+    void SetPitchtwist(bool b) { m_4a_3 = b; }
+    void SetUseVelY(bool b) { m_4a_4 = b; }
+    void SetHeadlooks(bool b) { m_4a_5 = b; }
+    void SetOverrideControl(bool b) { m_4a_6 = b; }
+    void SetTurn(bool b) { m_4a_7 = b; }
+    void SetRefPtValid(bool b) { m_4b_0 = b; }
+    void SetRootId(int n) { m_4_hi = n; }
 
     char *m_pName;   // 0x0
     unsigned short m_nFrames : 10;   // 0x4
@@ -883,8 +896,8 @@ public:
      * (0x288510, 0x2884C0) */
     void Register();
     void Unregister();
-    /* the scripts' settings read from motion.rdr (0x287620) */
-    void ReadMotionRdr();
+    /* the scripts' settings read from motion.rdr: false without it or its "animations" (0x287620) */
+    bool ReadMotionRdr();
     void SetPresent(bool b) { m_present = b; }
     void SetIndex(int i) { m_index = i; }
     /* the name replaced by a copy (freed first; none for 0) */
