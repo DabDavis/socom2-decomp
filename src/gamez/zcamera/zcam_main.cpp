@@ -444,6 +444,231 @@ _zanim_cmd_hdr *CCamera::CmdParseParams(_zrdr *rdr)
     return (_zanim_cmd_hdr *)cmd;
 }
 
+/* CAMERA_PARAMS, each frame: the command's time advanced (the step the frame has left; done once
+ * the run time is reached), then each keyed track found at that time -- between two keys,
+ * interpolated; past the last, the last -- and set on the world's camera; the saved parameters
+ * restored at the end when asked (SOCOM 1's, with SOCOM II's fog colour track and setters). The
+ * values each track takes are locals of their own (MW spills three of the fifteen), each track's
+ * keys its own pointer */
+bool CCamera::CmdTickParams(_zanim_cmd_hdr *hdr, float *dT)
+{
+    _camera_params_cmd *cmd;
+    bool done;
+    CCamera *cam = CWorld::m_world->m_camera;
+
+    if (!cam)
+        return true;
+    cmd = (_camera_params_cmd *)hdr;
+    float t = *dT;
+
+    done = true;
+
+    if (cmd->run_time > 0.0f) {
+        if (!(t + ZAnim.m_CurSeq->cmd_timer <= cmd->run_time)) {
+            t = cmd->run_time - ZAnim.m_CurSeq->cmd_timer;
+            *dT -= t;
+        } else {
+            done = false;
+            *dT = 0.0f;
+        }
+        t += ZAnim.m_CurSeq->cmd_timer;
+    }
+    float hfov, vfov, near_all, mid_all, far_all, near_plane, mid_plane, red, green, blue,
+        fog_near, fog_far, fog_bottom, fog_top, range_scale;
+
+    if (cmd->fov_offset > 0) {
+        _camera_param_2d_data *keys = (_camera_param_2d_data *)((char *)cmd + cmd->fov_offset);
+
+        if (!(t < keys[0].time)) {
+            bool found = false;
+            int i;
+
+            for (i = 0; i < cmd->fov_count - 1; i++) {
+                if (t <= keys[i + 1].time) {
+                    float f = (t - keys[i].time) / (keys[i + 1].time - keys[i].time);
+
+                    hfov = keys[i].a + f * (keys[i + 1].a - keys[i].a);
+                    vfov = keys[i].b + f * (keys[i + 1].b - keys[i].b);
+                    found = true;
+                    break;
+                }
+            }
+            if (found) {
+                cam->SetHorizontalFOV(hfov);
+                cam->SetVerticalFOV(vfov);
+            } else {
+                hfov = keys[cmd->fov_count - 1].a;
+                vfov = keys[cmd->fov_count - 1].b;
+                cam->SetHorizontalFOV(hfov);
+                cam->SetVerticalFOV(vfov);
+            }
+        }
+    }
+    if (cmd->clip_all_offset > 0) {
+        _camera_param_3d_data *keys = (_camera_param_3d_data *)((char *)cmd + cmd->clip_all_offset);
+
+        if (!(t < keys[0].time)) {
+            bool found = false;
+            int i;
+
+            for (i = 0; i < cmd->clip_all_count - 1; i++) {
+                if (t <= keys[i + 1].time) {
+                    float f = (t - keys[i].time) / (keys[i + 1].time - keys[i].time);
+
+                    near_all = keys[i].a + f * (keys[i + 1].a - keys[i].a);
+                    mid_all = keys[i].b + f * (keys[i + 1].b - keys[i].b);
+                    far_all = keys[i].c + f * (keys[i + 1].c - keys[i].c);
+                    found = true;
+                    break;
+                }
+            }
+            if (found) {
+                cam->SetNearClip(near_all);
+                cam->SetMidClip(mid_all);
+                cam->SetFarClip(far_all);
+            } else {
+                cam->SetNearClip(keys[cmd->clip_all_count - 1].a);
+                cam->SetMidClip(keys[cmd->clip_all_count - 1].b);
+                cam->SetFarClip(keys[cmd->clip_all_count - 1].c);
+            }
+        }
+    }
+    if (cmd->clip_offset > 0) {
+        _camera_param_2d_data *keys = (_camera_param_2d_data *)((char *)cmd + cmd->clip_offset);
+
+        if (!(t < keys[0].time)) {
+            bool found = false;
+            int i;
+
+            for (i = 0; i < cmd->clip_count - 1; i++) {
+                if (t <= keys[i + 1].time) {
+                    float f = (t - keys[i].time) / (keys[i + 1].time - keys[i].time);
+
+                    near_plane = keys[i].a + f * (keys[i + 1].a - keys[i].a);
+                    mid_plane = keys[i].b + f * (keys[i + 1].b - keys[i].b);
+                    found = true;
+                    break;
+                }
+            }
+            if (found) {
+                cam->SetNearClip(near_plane);
+                cam->SetMidClip(mid_plane);
+            } else {
+                cam->SetNearClip(keys[cmd->clip_count - 1].a);
+                cam->SetMidClip(keys[cmd->clip_count - 1].b);
+            }
+        }
+    }
+    if (cmd->fog_color_offset > 0) {
+        _camera_param_3d_data *keys =
+            (_camera_param_3d_data *)((char *)cmd + cmd->fog_color_offset);
+
+        if (!(t < keys[0].time)) {
+            bool found = false;
+            int i;
+
+            for (i = 0; i < cmd->fog_color_count - 1; i++) {
+                if (t <= keys[i + 1].time) {
+                    float f = (t - keys[i].time) / (keys[i + 1].time - keys[i].time);
+
+                    red = keys[i].a + f * (keys[i + 1].a - keys[i].a);
+                    green = keys[i].b + f * (keys[i + 1].b - keys[i].b);
+                    blue = keys[i].c + f * (keys[i + 1].c - keys[i].c);
+                    found = true;
+                    break;
+                }
+            }
+            if (found) {
+                cam->SetFogColor(CPnt4D(red, green, blue, 0.0f));
+            } else {
+                cam->SetFogColor(CPnt4D(keys[cmd->fog_color_count - 1].a, keys[cmd->fog_color_count - 1].b,
+                                        keys[cmd->fog_color_count - 1].c, 0.0f));
+            }
+        }
+    }
+    if (cmd->fog_range_offset > 0) {
+        _camera_param_2d_data *keys =
+            (_camera_param_2d_data *)((char *)cmd + cmd->fog_range_offset);
+
+        if (!(t < keys[0].time)) {
+            bool found = false;
+            int i;
+
+            for (i = 0; i < cmd->fog_range_count - 1; i++) {
+                if (t <= keys[i + 1].time) {
+                    float f = (t - keys[i].time) / (keys[i + 1].time - keys[i].time);
+
+                    fog_near = keys[i].a + f * (keys[i + 1].a - keys[i].a);
+                    fog_far = keys[i].b + f * (keys[i + 1].b - keys[i].b);
+                    found = true;
+                    break;
+                }
+            }
+            if (found) {
+                cam->m_fog_near = fog_near;
+                cam->m_fog_far = fog_far;
+            } else {
+                cam->m_fog_near = keys[cmd->fog_range_count - 1].a;
+                cam->m_fog_far = keys[cmd->fog_range_count - 1].b;
+            }
+        }
+    }
+    if (cmd->fog_altitude_offset > 0) {
+        _camera_param_2d_data *keys =
+            (_camera_param_2d_data *)((char *)cmd + cmd->fog_altitude_offset);
+
+        if (!(t < keys[0].time)) {
+            bool found = false;
+            int i;
+
+            for (i = 0; i < cmd->fog_altitude_count - 1; i++) {
+                if (t <= keys[i + 1].time) {
+                    float f = (t - keys[i].time) / (keys[i + 1].time - keys[i].time);
+
+                    fog_bottom = keys[i].a + f * (keys[i + 1].a - keys[i].a);
+                    fog_top = keys[i].b + f * (keys[i + 1].b - keys[i].b);
+                    found = true;
+                    break;
+                }
+            }
+            if (found) {
+                cam->SetFogBottom(fog_bottom);
+                cam->SetFogTop(fog_top);
+            } else {
+                cam->SetFogBottom(keys[cmd->fog_altitude_count - 1].a);
+                cam->SetFogTop(keys[cmd->fog_altitude_count - 1].b);
+            }
+        }
+    }
+    if (cmd->lod_multiplier_offset > 0) {
+        _camera_param_1d_data *keys =
+            (_camera_param_1d_data *)((char *)cmd + cmd->lod_multiplier_offset);
+
+        if (!(t < keys[0].time)) {
+            bool found = false;
+            int i;
+
+            for (i = 0; i < cmd->lod_multiplier_count - 1; i++) {
+                if (t <= keys[i + 1].time) {
+                    float f = (t - keys[i].time) / (keys[i + 1].time - keys[i].time);
+
+                    range_scale = keys[i].a + f * (keys[i + 1].a - keys[i].a);
+                    found = true;
+                    break;
+                }
+            }
+            if (found) {
+                cam->m_RangeScale = range_scale;
+            } else {
+                cam->m_RangeScale = keys[cmd->lod_multiplier_count - 1].a;
+            }
+        }
+    }
+    if (done && cmd->restore_params)
+        cam->RestoreParams();
+    return done;
+}
+
 /* the parameters CmdBeginParams saved, put back through their setters (SOCOM II's; CmdTickParams
  * calls it; the name is ours). SetMidClip inlines here, as the FOV setters do */
 void CCamera::RestoreParams()
