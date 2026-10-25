@@ -65,6 +65,12 @@ const T &_min(const T &a, const T &b)
 }
 }
 
+/* the SEAL's kit: its weapons and gear (SOCOM 1's CZKit, 0x87c bytes there; only its start here) */
+class CZKit {
+public:
+    unsigned int m_0;
+};
+
 /* the goals a controller pursues (SOCOM 1's DWARF, a byte) */
 enum GOAL_TYPE { GOAL_NONE = 0, GOAL_SCAN = 1, GOAL_LOOK = 2, GOAL_MOVE = 3, GOAL_SHOOT = 4, GOAL_AVOID = 5, GOAL_RECOVER = 6 };
 
@@ -184,7 +190,10 @@ public:
     float m_highrumbletime;   // 0x13c (SOCOM 1's 0x138)
     float m_rumbletime;   // 0x140
     float m_rumblestr;   // 0x144
-    unsigned char _148[0x170 - 0x148];
+    int m_HudDoPickup;   // 0x148 (SOCOM 1's 0x144)
+    int m_curpickup_ID;   // 0x14c
+    int m_curpickup_secondary_ID;   // 0x150
+    unsigned char _154[0x170 - 0x154];
     unsigned int m_goal_pos_valid : 1;   // 0x170 (SOCOM 1's 0x168, the same bits)
     unsigned int m_goal_dir_valid : 1;
     unsigned int m_action : 1;
@@ -221,10 +230,71 @@ public:
     /* every heartbeat loop stopped (SOCOM 1's; StopRumbler calls it with no body) */
     static void StopAllHeartbeatSounds();
 
+    /* (0x5533E0, not written yet: declared so no unit emits an implicit one) */
+    virtual ~CZSealBody();
+    virtual void OnMissionStart();                                          /* +0x4C */
+    virtual void OnMissionEnd();
+    virtual void OnRecycleEntity(CEntity *e);                               /* +0x54 */
+    virtual int Virtual5C();
+    virtual int Virtual60();
+    virtual int Virtual68();
+
+    class CPickup *CurrentPickupSecondary();
+    class CPickup *CurrentPickup();
+    bool CompassAnchor_MPBase(CCompassAnchor *anchor);
+    bool CompassAnchor_MPBomb(CCompassAnchor *anchor);
+    bool ExecuteDelayedAction_Jump();
+    bool ExecuteDelayedAction_Climb();
+
     unsigned char _170[0x374 - 0x170];
     SEAL_STATE m_desiredState;   // 0x374 (SOCOM 1's 0x304; the HUD's pose bitmap reads it)
-    unsigned char _375[0xee0 - 0x375];
+    unsigned char _375[0x5e0 - 0x375];
+    CZKit m_kit;   // 0x5e0 (SOCOM 1's 0x520)
+    unsigned char _5e4[0xec0 - 0x5e4];
+    CCompassAnchor *m_mpbomb_anchor;   // 0xec0 (SOCOM 1's 0xdb4)
+    CCompassAnchor *m_mpbase_anchor;   // 0xec4 (SOCOM 1's 0xdb8)
+    unsigned char _ec8[0xee0 - 0xec8];
     float m_wep_upT;   // 0xee0 (SOCOM 1's 0xdd0)
+    unsigned char _ee4[0x105c - 0xee4];
+    unsigned int m_HudUpdateViewCone : 1;   // 0x105c (SOCOM 1's 0xf58, the same bits)
+    unsigned int m_hudwashit : 1;
+    unsigned int m_aim_point_valid : 1;
+    unsigned int m_invincible : 1;
+    unsigned int m_invisible : 1;
+    unsigned int m_infiniteammo : 1;
+    unsigned int m_doPostTick : 1;
+    unsigned int m_restrainable : 1;
+    unsigned int m_restrained : 1;
+    unsigned int m_order_flag : 1;
+    unsigned int m_limp : 1;
+    unsigned int m_isinsmoke : 1;
+    unsigned int m_isingas : 1;
+    unsigned int m_respawning : 1;
+    unsigned int m_joined_unit : 1;
+    unsigned int m_send_detail : 1;
+    unsigned int m_snake_path : 1;
+    unsigned int m_action_climb : 1;
+    unsigned int m_action_jump : 1;
+    unsigned int m_is_moving : 1;
+    unsigned int m_is_turning : 1;
+    unsigned int m_airborne : 1;
+    unsigned int m_jumped : 1;
+    unsigned int m_inwater : 1;
+    unsigned int m_stancechanged : 1;
+    unsigned int m_have_aim_norm : 1;
+    unsigned int m_was_turning : 1;
+    unsigned int m_aimpt_attainable : 1;
+    unsigned int m_firept_attainable : 1;
+    unsigned int m_used_vel_y : 1;
+    unsigned int m_echo_pickup : 1;
+    unsigned int m_animate_me : 1;
+    unsigned int m_do_drop_weapons : 1;   // 0x1060
+    unsigned int m_fix_skel_y : 1;
+    unsigned int m_inside : 1;   // bit 2 (the states lane's reading)
+    unsigned int m_prev_have_aim_norm : 1;
+    unsigned int m_am_stunned : 1;
+    unsigned int m_iszooming : 1;   // bit 5 (camera.h's reading)
+    unsigned int m_unused_bits : 26;
 };
 
 #endif

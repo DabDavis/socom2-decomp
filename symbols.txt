@@ -9907,7 +9907,7 @@
 0x00541C10 0x4C func_00541C10  # OVL2
 0x00541C60 0x60 func_00541C60  # OVL2
 0x00541CC0 0xC func_00541CC0  # OVL2
-0x00541CD0 0x70 func_00541CD0  # OVL2
+0x00541CD0 0x70 FindPickup__7CPickupFUi  # OVL2; s1:calls (CurrentPickup and CurrentPickupSecondary call it where SOCOM 1's call FindPickup)
 0x00541D40 0x40 func_00541D40  # OVL2
 0x00541D80 0x190 func_00541D80  # OVL2
 0x00541F10 0x11C func_00541F10  # OVL2
@@ -9915,10 +9915,10 @@
 0x005420B0 0xC0 func_005420B0  # OVL2
 0x00542170 0x10 func_00542170  # OVL2
 0x00542180 0x70 func_00542180  # OVL2
-0x005421F0 0x94 func_005421F0  # OVL2
+0x005421F0 0x94 DestroyNetPickups__7CPickupFUi  # OVL2; s1:calls (CZSealBody::OnMissionEnd calls it with m_id where SOCOM 1's does): CPickup's list walked, each pickup whose owner word at 0x10 matches destroyed -- SOCOM 1's compared a byte (Uc), SOCOM II's a word
 0x00542290 0x14C func_00542290  # OVL2
 0x005423E0 0x88 func_005423E0  # OVL2
-0x00542470 0x36C func_00542470  # OVL2
+0x00542470 0x36C Destroy__7CPickupFP7CPickup  # OVL2; s1:calls (DestroyNetPickups calls it where SOCOM 1's does)
 0x005427E0 0x70 func_005427E0  # OVL2
 0x00542850 0x70 func_00542850  # OVL2
 0x005428C0 0x70 func_005428C0  # OVL2
@@ -9964,10 +9964,10 @@
 0x005448A0 0x58 func_005448A0  # OVL2
 0x005448F8 0x260 func_005448F8  # OVL2 unaligned
 0x00544B60 0xC0 func_00544B60  # OVL2
-0x00544C20 0xC func_00544C20  # OVL2
-0x00544C30 0xC func_00544C30  # OVL2
-0x00544C40 0x18 func_00544C40  # OVL2
-0x00544C60 0x18 func_00544C60  # OVL2
+0x00544C20 0xC CurrentPickupSecondary__10CZSealBodyFv  # OVL2; s1:order (seal.cpp: after the zoom states, before CurrentPickup, as SOCOM 1's); FindPickup of m_control's secondary pickup id (SOCOM 1's 0x14C, now 0x150), tail-called without SOCOM 1's null test
+0x00544C30 0xC CurrentPickup__10CZSealBodyFv  # OVL2; s1:order (after CurrentPickupSecondary); FindPickup of m_control's pickup id (SOCOM 1's 0x148, now 0x14C)
+0x00544C40 0x18 CompassAnchor_MPBase__10CZSealBodyFP14CCompassAnchor  # OVL2; s1:order (SOCOM 1's CompassAnchor_Hostage, the one before it, is gone); the anchor at 0xEC4 (SOCOM 1's 0xDB8) swapped in, whether there was none returned
+0x00544C60 0x18 CompassAnchor_MPBomb__10CZSealBodyFP14CCompassAnchor  # OVL2; s1:order (after CompassAnchor_MPBase); the anchor at 0xEC0 (SOCOM 1's 0xDB4)
 0x00544C80 0x14 func_00544C80  # OVL2
 0x00544CA0 0x8 func_00544CA0  # OVL2
 0x00544CA8 0x48 func_00544CA8  # OVL2 unaligned
