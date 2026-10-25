@@ -30,6 +30,13 @@ public:
     int zNetGetGameSessionMasterClientIndex();
     int zNetGetMyGameClientIndex();
     struct NetObject *zNetGetObject(int index);
+
+    /* an action the network put off to its next update (only what zRemoteDelayedAction reads:
+     * its kind, a byte, and the client) */
+    struct TypeRTimeFixStruct {
+        unsigned char m_kind;   // 0x0
+        int m_client;   // 0x4
+    };
 };
 
 
@@ -110,12 +117,16 @@ public:
     unsigned char _48[0xac - 0x48];
     int m_persona_object_index;   // 0xac (SOCOM 1's at 0x70)
     int m_game_object_index;   // 0xb0 (SOCOM 1's at 0x74)
-    unsigned char _b4[0xcf - 0xb4];
+    unsigned char _b4[0xcc - 0xb4];
+    bool m_late_joiner;   // 0xcc (SOCOM 1's at 0x94)
+    unsigned char _cd[0xcf - 0xcd];
     unsigned char m_persona_created;   // 0xcf (SOCOM 1's at 0x97)
     unsigned char _d0[0x111 - 0xd0];
     char m_111;   // 0x111 (SOCOM 1's at 0xd9: m_game_type)
     unsigned char _112;
     unsigned char m_mp_major_game_state;   // 0x113 (SOCOM 1's at 0xdb)
+
+    bool LateJoiner(bool late);
 };
 
 class CMission {
@@ -235,11 +246,20 @@ int sprintf(char *buf, const char *fmt, ...);
 bool func_002C31A0();
 bool func_002C3080();
 void func_005E7F20(CZSealBody *body, short msg, int arg);
-int func_0030D380(CZNetwork *net, void (*connects)(int, int, const char *),
-                  void (*disconnects)(int, int, const char *));
+/* what the DME's connect and disconnect callbacks are handed (SOCOM 1's callbacks took the
+ * connection, the client and its name as arguments; SOCOM II's read the first two through a
+ * pointer) */
+struct ClientConnectArgs {
+    int m_index;   // 0x0: the connection
+    int m_client;   // 0x4
+};
+
+int func_0030D380(CZNetwork *net, void (*connects)(ClientConnectArgs *),
+                  void (*disconnects)(ClientConnectArgs *));
 void func_002C3330(int arg);
-void func_002BC620(int index, int client, const char *name);   /* zRemoteClientConnectsCallback */
-void func_002BC530(int index, int client, const char *name);   /* zRemoteClientDisconnectsCallback */
+void func_002BC620(ClientConnectArgs *args);   /* zRemoteClientConnectsCallback */
+void func_002BC530(ClientConnectArgs *args);   /* zRemoteClientDisconnectsCallback */
+extern unsigned char data_00441580[24];   /* (fts_net_persona.cpp's pending slots, a byte per client) */
    /* (SOCOM II's: a word per client, cleared when one joins) */
 
 /* the application packets' type ids (SOCOM 1's PacketType<name>) */
@@ -278,6 +298,32 @@ extern "C" bool func_002BD220(int &v, const int &lo, const int &hi)
     return false;
 }
 
+/* a client disconnected: its word and its pending slot cleared; in a game already under way,
+ * fewer than three clients left with no word set abandons it, and otherwise the game's object
+ * is updated (SOCOM 1's zRemoteClientDisconnectsCallback, grown; OVL1 0x2BC530) */
+extern "C" void func_002BC530(ClientConnectArgs *args)
+{
+    if (args->m_index != theLobby.MediusConnectionIndex()) {
+        int count = 0;
+
+        data_00440EC0[args->m_client] = 0;
+        data_00441580[args->m_client] = 0;
+        CZNetGame *game = theMission.m_pNetGame;
+
+        for (int i = 0; i < 24; i++) {
+            if (data_00440EC0[i])
+                count++;
+        }
+        if (game) {
+            if (game->m_late_joiner) {
+                if (theNetwork.zNetGetValidGameClientCount() - count < 3)
+                    func_002A47B0(&theMission, "dlgNetAbandoned.rdr");
+            } else
+                CZGameState::UpdateLocalGame(game);
+        }
+    }
+}
+
 /* a client joined: its word cleared and the join count's valve set (OVL1 0x2BC490) */
 void zRemoteClientJoinsCallback(int index, int client)
 {
@@ -303,6 +349,30 @@ void zRemoteClientLeavesCallback(int index, int client)
         m.kind = 2;
         m.client = client;
         func_0030D870(&theNetwork, &m);
+    }
+}
+
+void zDoClientLeavesCallback(int client);
+void DMEJoinGameServer();
+void ftsNetworkGameInit();
+
+/* what the network put off, done (SOCOM 1's; OVL1 0x2BBFA0): a client gone; the game server
+ * joined -- SOCOM II's join is DMEJoinGameServer, where SOCOM 1 joined here -- and a late joiner's
+ * flag cleared; the game's and the persona's objects made (ftsNetworkGameInit, inlined) */
+void zRemoteDelayedAction(CZNetwork::TypeRTimeFixStruct *fix)
+{
+    switch (fix->m_kind) {
+    case 2:
+        zDoClientLeavesCallback(fix->m_client);
+        break;
+    case 4:
+        DMEJoinGameServer();
+        if (theMission.m_pNetGame->m_late_joiner)
+            theMission.m_pNetGame->LateJoiner(false);
+        break;
+    case 5:
+        ftsNetworkGameInit();
+        break;
     }
 }
 
