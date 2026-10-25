@@ -1671,7 +1671,7 @@
 0x001FE1D0 0x20 SetAA__3C2DFb  # OVL1; by hand (C2D's slot 7, inline: bit 1, SOCOM 1's m_isAA; the name ours)
 0x001FE1F0 0x20 SetIsTrans__3C2DFb  # OVL1; by hand (C2D's slot 8, inline: bit 2, SOCOM 1's m_isTrans; the name ours)
 0x001FE210 0x20 SetGouraud__3C2DFb  # OVL1; s1~ Enable__3C2DFb (one of 2 out-of-line copies of an inline, by s1:vtable); by hand (C2D's slot 9, inline: bit 5, SOCOM II's; the name ours)
-0x001FE230 0x8 Slot10__3C2DFv  # OVL1; by hand (C2D's slot 10, inline and empty; the name ours)
+0x001FE230 0x8 Slot10__3C2DFPQ23zdb5CNode  # OVL1; by hand (C2D's slot 10, inline and empty; the name ours); the HUD lane, round 16, at the integrator's request: the slot takes a pointer -- CBmpWithNode's override (0x38BAB0) stores its argument at 0xA0, the bitmap's node -- so C2D's empty copy is Slot10(zdb::CNode *)
 0x001FE240 0x8 Parse__3C2DFP5_zrdrPQ23zdb9CAssetLibPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable by hand (C2D's slot 13, inline and empty)
 0x001FE250 0x8 Reset__3C2DFv  # OVL1; s1:vtable by hand (C2D's slot 14, inline and empty)
 0x001FE260 0x8 HandlePad__3C2DFPC4CPadi  # OVL1; s1:vtable by hand (C2D's slot 15, inline: false)
