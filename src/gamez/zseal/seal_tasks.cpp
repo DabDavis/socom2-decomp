@@ -15,6 +15,7 @@
 /* the reader's queries (zrdr.h's, which declares a _zrdr of its own: zanim.h's here) */
 _zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
 bool zrdr_findRfloat(const _zrdr *rdr, const char *tag, Rfloat *out);
+bool zrdr_toRfloat(const _zrdr *rdr, Rfloat *out);
 bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
 bool zrdr_tobool(const _zrdr *rdr, bool *out);
 char *zrdr_findstring(const _zrdr *rdr, const char *tag);
@@ -32,6 +33,8 @@ void func_0056D090(CSealCtrlAi *ai);
  * SOCOM II added after it (OVL2 0x598840) */
 void func_00574830(bool enabled, bool alarm);
 void func_00598840(bool enabled);
+/* a tag's values as a team mask (OVL2 0x5B8190, before seal_kit.cpp: the kit range's helpers) */
+unsigned int func_005B8190(_zrdr *tag);
 /* the AI's stance set, and set for a time (OVL2 0x5631A0, 0x5631B0: the SEAL lane's rows, where
  * SOCOM 1's CTStance::Begin called CSealCtrlAi::SetStance) */
 void func_005631A0(CSealCtrlAi *ai, SEAL_STANCE stance);
@@ -253,6 +256,25 @@ struct CTRange : TASK_HDR {
     }
 };
 
+/* ai::TEAM (SOCOM 1's CTTeam): the SEAL joins, leaves or tests a team mask */
+struct CTTeam : TASK_HDR {
+    unsigned int m_mask;   // 0x8: the teams (the tag's values)
+    int m_op;   // 0xc: 0 join, 1 leave, 2 ismember
+
+    static _zanim_cmd_hdr *Parse(_zrdr *rdr);
+    /* a block made (inline: its arguments read before the allocation) */
+    static CTTeam *Create(signed char op, _zrdr *tag)
+    {
+        CTTeam *cmd = NewTask<CTTeam>();
+
+        cmd->m_op = -1;
+        cmd->m_mask = 0;
+        cmd->m_op = op;
+        cmd->m_mask = func_005B8190(tag);
+        return cmd;
+    }
+};
+
 /* ai::PURSUE (SOCOM 1's CTPursue): the pursuit state pushed for a while */
 struct CTPursue : TASK_HDR {
     float m_duration;   // 0x8
@@ -268,9 +290,19 @@ struct CTHold : TASK_HDR {
     Rfloat m_wait;   // 0x8
     float m_timer;   // 0x10: -1 until begun
 
+    static _zanim_cmd_hdr *Parse(_zrdr *rdr);
     static void Begin(_zanim_cmd_hdr *hdr);
     static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
     static void End(_zanim_cmd_hdr *hdr);
+    /* a block made: a wait of -1 (inline) */
+    static CTHold *Create()
+    {
+        CTHold *cmd = NewTask<CTHold>();
+
+        cmd->m_wait = -1.0f;
+        cmd->m_timer = 0.0f;
+        return cmd;
+    }
 };
 
 /* ai::EVENT (SOCOM 1's CTEvent) */
@@ -554,6 +586,27 @@ bool CTHold::Tick(_zanim_cmd_hdr *hdr, float *dT)
     return done;
 }
 
+/* the wait as a tagged range, the reader's own range, or its bool (true holds for good: -1)
+ * (OVL2 0x5D9270) */
+_zanim_cmd_hdr *CTHold::Parse(_zrdr *rdr)
+{
+    Rfloat wait(0.0f);
+    CTHold *cmd = 0;
+    bool forever = false;
+
+    if (zrdr_findRfloat(rdr, "wait", &wait)) {
+        cmd = Create();
+        cmd->m_wait = wait;
+    } else if (zrdr_toRfloat(rdr, &wait)) {
+        cmd = Create();
+        cmd->m_wait = wait;
+    } else if (zrdr_tobool(rdr, &forever)) {
+        cmd = Create();
+        cmd->m_wait = forever ? -1.0f : 1.0f;
+    }
+    return &cmd->hdr;
+}
+
 /* the wait drawn, the AI held in mode 2 for it (OVL2 0x5D90E0)
  * OPEN, 14 instructions: the command block's register: the target keeps it in s1, between the find's list (s0) and its counter (s2), the find's type and index in s4/s3; here the block takes s4 (see TASK_HDR) */
 void CTHold::Begin(_zanim_cmd_hdr *hdr)
@@ -707,6 +760,23 @@ _zanim_cmd_hdr *CTRange::Parse(_zrdr *rdr)
     if (name)
         cmd = Create(range, name);
     return &cmd->hdr;
+}
+
+/* join, leave or ismember, the tag's values the mask (OVL2 0x5CEC40) */
+_zanim_cmd_hdr *CTTeam::Parse(_zrdr *rdr)
+{
+    _zrdr *tag;
+    signed char op = -1;
+
+    if ((tag = zrdr_findtag(rdr, "join")) != 0)
+        op = 0;
+    else if ((tag = zrdr_findtag(rdr, "leave")) != 0)
+        op = 1;
+    else if ((tag = zrdr_findtag(rdr, "ismember")) != 0)
+        op = 2;
+    if (op != -1)
+        return &Create(op, tag)->hdr;
+    return 0;
 }
 
 /* the AI switched on or off (OVL2 0x5CF800) */
