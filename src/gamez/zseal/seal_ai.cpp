@@ -156,6 +156,83 @@ void CSealCtrlAi::OnMissionStart()
     }
 }
 
+/* a loop started unless it plays already (OVL2 0x574B30; SOCOM 1's) */
+void CSealCtrlAi::PlayAiSound(AI_SOUND sound)
+{
+    CSndInstance *&inst = aiSoundInstance[sound];
+
+    if (!inst) {
+        CSnd *snd = aiSoundHandle[sound];
+
+        if (snd)
+            inst = snd->PlaySound(0, 255);
+    }
+}
+
+/* a loop stopped (OVL2 0x574AE0; SOCOM 1's) */
+void CSealCtrlAi::StopAiSound(AI_SOUND sound)
+{
+    CSndInstance *&inst = aiSoundInstance[sound];
+
+    if (inst) {
+        inst->Stop();
+        inst = 0;
+    }
+}
+
+/* the box put in order, axis by axis (OVL2 0x56AC70; SOCOM 1's, the same 0x68 bytes) */
+void CBBox::Normalize()
+{
+    if (m_min.x > m_max.x) {
+        float t = m_min.x;
+
+        m_min.x = m_max.x;
+        m_max.x = t;
+    }
+    if (m_min.y > m_max.y) {
+        float t = m_min.y;
+
+        m_min.y = m_max.y;
+        m_max.y = t;
+    }
+    if (m_min.z > m_max.z) {
+        float t = m_min.z;
+
+        m_min.z = m_max.z;
+        m_max.z = t;
+    }
+}
+
+/* (OVL2 data: 42, read as a variable) */
+extern "C" float data_0064FE48;
+
+/* a range and its goal set together unless the range stands at 42 already (an inline: 0x570D90
+ * expands it twice) */
+static inline void SetRange6F4(CSealCtrlAi *ai, float v)
+{
+    if (data_0064FE48 != ai->m_6f4) {
+        ai->m_6f8 = v;
+        ai->m_6f4 = v;
+    }
+}
+
+/* the range made 42 when asked to and the SEAL may shoot, else the fallback range (OVL2 0x570D90;
+ * new in SOCOM II, its name unknown -- CAiSSurrender::Tick calls it) */
+static inline bool NoShoot(const CEntity *e)
+{
+    return e->m_noshoot ? true : false;
+}
+
+extern "C" void func_00570D90(CSealCtrlAi *ai, bool on)
+{
+    CEntity *e = ai->m_entity;
+
+    if (on && !NoShoot(e))
+        SetRange6F4(ai, data_0064FE48);
+    else
+        SetRange6F4(ai, ai->m_d8);
+}
+
 /* the valve of a name, or none (OVL2 0x574730; SOCOM 1's, without its fourth valve and the alias) */
 SEAL_VALVE CSealCtrlAi::get_valve(const char *name)
 {

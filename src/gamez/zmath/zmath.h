@@ -156,6 +156,9 @@ public:
      * node's box once per line; the names are ours) */
     void GetCenter(CPnt3D *out) const { m_min.Interp(&m_max, 0.5f, out); }
     void GetSize(CPnt3D *out) const { m_max.Sub(&m_min, out); }
+    /* each axis's corners swapped where the minimum exceeds the maximum (SOCOM 1's; SOCOM II's
+     * is OVL2 0x56AC70, defined in seal_ai.cpp) */
+    void Normalize();
 };
 
 class CQuat;

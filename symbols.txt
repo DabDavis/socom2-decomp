@@ -10243,7 +10243,7 @@
 0x0056A2E0 0x47C func_0056A2E0  # OVL2
 0x0056A760 0x174 func_0056A760  # OVL2
 0x0056A8E0 0x388 func_0056A8E0  # OVL2
-0x0056AC70 0x68 func_0056AC70  # OVL2
+0x0056AC70 0x68 Normalize__5CBBoxFv  # OVL2; s1:calls by hand (SOCOM 1's Normalize__5CBBoxFv, the same 0x68 bytes: min and max swapped per axis where min > max; seal_env's 0x5B5050 calls it after transforming a box -- defined in seal_ai.cpp's span here, zmath.h declares it; the SEAL lane, round 8)
 0x0056ACE0 0x128 func_0056ACE0  # OVL2
 0x0056AE10 0x30 func_0056AE10  # OVL2; the same words as __dt__Q23std62__vector_imp<11CLadderData,Q23std24allocator<11CLadderData>,0>Fv (0x2a9680) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x0056AE40 0x108 func_0056AE40  # OVL2
@@ -10317,8 +10317,8 @@
 0x00574730 0xC4 get_valve__11CSealCtrlAiFPCc  # OVL2; s1:order (after the constructor, as SOCOM 1's get_valve__11CSealCtrlAiFPCc: each valve's name, the inlined get_valve(SEAL_VALVE), compared with strcmp, its index returned; 4 for none) -- the SEAL lane, round 4
 0x00574800 0x30 GetJumpFlag__11CSealCtrlAiCFv  # OVL2; slot 0xA4 of __vt__11CSealCtrlAi, the base's inline GetJumpFlag (0x592020, returns 0) overridden, as SOCOM 1's CSealCtrlAi had its own
 0x00574830 0x2A4 func_00574830  # OVL2
-0x00574AE0 0x50 func_00574AE0  # OVL2
-0x00574B30 0x70 func_00574B30  # OVL2
+0x00574AE0 0x50 StopAiSound__11CSealCtrlAiF8AI_SOUND  # OVL2; s1:order by hand (SOCOM 1's StopAiSound__11CSealCtrlAiF8AI_SOUND word for word bar the statics' gp addressing: the indexed instance stopped and cleared; UpdateAiMapLoc calls it -- the SEAL lane, round 8)
+0x00574B30 0x70 PlayAiSound__11CSealCtrlAiF8AI_SOUND  # OVL2; s1:order by hand (SOCOM 1's PlayAiSound__11CSealCtrlAiF8AI_SOUND, after StopAiSound as here, word for word bar the gp addressing: the indexed sound played (PlaySound, slot 0xC, with 0 and 255) unless its instance plays -- the SEAL lane, round 8)
 0x00574BA0 0x24 func_00574BA0  # OVL2
 0x00574BD0 0x54 func_00574BD0  # OVL2
 0x00574C30 0x2C0 func_00574C30  # OVL2

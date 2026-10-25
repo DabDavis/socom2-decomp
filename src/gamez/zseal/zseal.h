@@ -404,7 +404,9 @@ public:
 
     unsigned char _18[0xa8 - 0x18];
     CAiDecay m_visrange;   // 0xa8 (as SOCOM 1's)
-    unsigned char _b4[0xec - 0xb4];
+    unsigned char _b4[0xd8 - 0xb4];
+    float m_d8;   // 0xd8: a range 0x570D90 falls back to (the name ours)
+    unsigned char _dc[0xec - 0xdc];
     float m_ec;   // 0xec: the view range again (new in SOCOM II; the name ours)
     unsigned char _f0[0x10c - 0xf0];
     CSealUnit *m_unit;   // 0x10c: the squad (SOCOM 1's 0xdc)
@@ -460,6 +462,10 @@ public:
 /* the AI's controller (SOCOM 1's DWARF: CSealCtrlAi, 0x5d0 bytes; SOCOM II's is 0x7c0 --
  * ftsCreateSeal news 1984) -- only what the written functions touch */
 class CZAnim;
+
+/* the AI's sound loops (SOCOM 1's AI_SOUND, a signed byte -- the statics' index is sign-extended;
+ * two of them, the names ours) */
+enum AI_SOUND { AI_SOUND_NONE = -1, AI_SOUND_0 = 0, AI_SOUND_1 = 1, AI_SOUND_MAX = 2 };
 
 /* the AI's modes (SOCOM 1's DWARF, a byte; only the size matters here) */
 enum AI_MODE { AI_MODE_0 = 0, AI_MODE_LAST = 255 };
@@ -582,7 +588,11 @@ public:
     float m_674;   // 0x674: a range, and its square
     float m_678;   // 0x678
     unsigned char m_67c[4];   // 0x67c: an object the state CAiSPursue tests (0x60A850)
-    unsigned char _680[0x750 - 0x680];
+    unsigned char _680[0x6f4 - 0x680];
+    /* a range and its goal, set together unless the range stands at 42 (0x570D90; the names ours) */
+    float m_6f4;   // 0x6f4
+    float m_6f8;   // 0x6f8
+    unsigned char _6fc[0x750 - 0x6fc];
     CValve *m_valve[3];   // 0x750 (SOCOM 1's 0x5bc, four there)
     unsigned char _75c[0x76c - 0x75c];
     unsigned char m_weapon_kind;   // 0x76c: the kind 0x560540 reads off the body's weapon (the name ours)
@@ -642,6 +652,15 @@ public:
     }
     static SEAL_VALVE get_valve(const char *name);
     CValve *GetValve(SEAL_VALVE v) const;
+    /* a loop stopped, and started when it is not playing (SOCOM 1's statics; OVL2 0x574AE0,
+     * 0x574B30 -- UpdateAiMapLoc calls them), its sounds and their instances (SOCOM 1's
+     * aiSoundHandle and aiSoundInstance; OVL1 bss 0x44D4D8, 0x44D4E0). The base's PlayAiSound
+     * stays visible beside the static */
+    static void StopAiSound(AI_SOUND sound);
+    static void PlayAiSound(AI_SOUND sound);
+    using CSealCtrl::PlayAiSound;
+    static class CSnd *aiSoundHandle[2];
+    static class CSndInstance *aiSoundInstance[2];
     virtual void Initalize();
     /* a Navy SEAL (SOCOM 1's bit; the accessor ours, as the code tests it materialised) */
     bool IsNavySeal() const { return m_navyseal ? true : false; }
