@@ -43,6 +43,119 @@ public:
 };
 extern CUIVarManager theUIVarManager;
 
+void *_malloc(unsigned int size, const char *file, int line);
+void _free(void *p, const char *file, int line);
+void zSysSleep(int ticks);
+
+/* a valve (zanim.h's CValve, as the chat unit declares it again: its inline setter) */
+enum VALVE_TYPE {
+    VALVE_TYPE_0,
+    VALVE_TYPE_1
+};
+
+enum VALVE_STATE {
+    VALVE_SAME,
+    VALVE_ON,
+    VALVE_OFF
+};
+
+class CValve {
+public:
+    static CValve *Create(const char *name, VALVE_TYPE type);
+    void MakeCallbacks(VALVE_STATE state);
+    bool SetValue(int value)
+    {
+        VALVE_STATE state = VALVE_SAME;
+
+        if (m_value != value)
+            state = value == 0 ? VALVE_OFF : VALVE_ON;
+        m_value = value;
+        if (state != VALVE_SAME) {
+            MakeCallbacks(state);
+            return true;
+        }
+        return false;
+    }
+
+    char *m_name;   // 0x0
+    unsigned short m_value;   // 0x4
+    unsigned short m_flags;   // 0x6
+};
+
+/* the UI command that runs the machine below, and what it reads (zanim.h's and zanim_menu.h's
+ * classes, only as far as this unit uses them: zanim.h's _zrdr cannot sit beside zrdr.h's) */
+class CZAnim {
+public:
+    const char *GetName(int i);
+};
+
+class CZAnimMain {
+public:
+    unsigned char _0[0x38];
+    CZAnim *m_CurAnim;   // 0x38
+};
+extern CZAnimMain ZAnim;
+
+class C2DAnimCmdHdr {
+public:
+    unsigned char _0[8];
+    unsigned short m_argument_index;   // 0x8
+};
+
+/* the lobby, as far as this unit reads it (zonline.h's CZOnlineLobby: the menus' event handler) */
+class CZOnlineLobby {
+public:
+    unsigned char _0[0x58];
+    void (*m_event_handler)(const char *event, const char *arg);   // 0x58
+};
+extern CZOnlineLobby theLobby;
+
+extern "C" {
+extern int myConnectionIndex;   /* the Medius connection, -1 none */
+extern unsigned int data_0049E2D4;   /* zSys's ticks per second */
+const char *func_00361B40(int id);   /* a localised text */
+void func_003A59D0(void *sm, int stack, int priority);   /* (the machine's thread started) */
+}
+
+/* a state machine whose states are member functions (zanim_menu.h's CSimpleStateMachine, declared
+ * again here for the same reason: the layout and the two inline virtuals alike) */
+class CSimpleStateMachine;
+typedef void (CSimpleStateMachine::*SSMState)(unsigned char event);
+
+extern "C" {
+void func_002852B0(void *queue, SSMState state);    /* the state queue's push */
+void func_003A5C30(CSimpleStateMachine *sm);        /* (the machine's tick) */
+bool func_003A5C10(CSimpleStateMachine *sm);        /* (whether it is done) */
+}
+
+class CSimpleStateMachine {
+public:
+    CSimpleStateMachine();
+    ~CSimpleStateMachine();
+    virtual bool Start()
+    {
+        SetState(&CSimpleStateMachine::Idle);
+        m_done = 0;
+        return false;
+    }
+    virtual void SetState(const SSMState &state)
+    {
+        SSMState s = state;
+
+        func_002852B0(m_queue, s);
+    }
+
+    void Idle(unsigned char event);
+    void Finish(unsigned char event);
+
+    unsigned int m_thread;   // 0x4
+    SSMState m_state;   // 0x8
+    unsigned char m_queue[0x18];   // 0x14
+    unsigned char m_done;   // 0x2c
+    int m_30;   // 0x30
+    int m_thread_id;   // 0x34
+};
+
 /* ---- the universes (the Medius universe information server's answers) ---- */
 
 /* a universe's status, the response kept whole (the Medius SDK's MediusUniverseStatusListResponse:
@@ -94,6 +207,39 @@ typedef std::vector<MediusGetUniverseNewsResponse> UniverseNewsList;
 
 extern UniverseStatusList data_0044FD50;   /* the universes */
 extern UniverseNewsList data_0044FD70;   /* the news */
+extern bool data_0044FD80;   /* the status list's last entry in */
+extern bool data_0044FD88;   /* the news' last line in */
+extern bool data_0044FD90;   /* the universe server's connection failed */
+
+/* --- the Medius SDK's universe calls (OVL2, called through their placeholders) ---------------- */
+
+/* an API call's result (int-sized) */
+enum MediusErrorCode {
+    MediusSuccess = 0,
+    MediusErrorCode_Extent = 0x7FFFFFFF
+};
+
+bool CheckMediusError(MediusErrorCode err);
+
+/* what the universe information server is asked for: no session key, the information wanted and
+ * the text's encoding and language */
+struct MediusGetUniverseInformationRequest {
+    char MessageID[21];   // 0x0
+    int InfoType;   // 0x18: 3, the status list and the news
+    int CharacterEncoding;   // 0x1c
+    int Language;   // 0x20
+};   // 0x24
+
+typedef void (*MediusUniverseNewsCallback)(int, int, int, MediusGetUniverseNewsResponse *);
+typedef void (*MediusUniverseStatusListCallback)(int, int, int, MediusUniverseStatusListResponse *);
+
+extern "C" {
+MediusErrorCode func_0064AD98(MediusGetUniverseInformationRequest *req,
+                              MediusUniverseNewsCallback news,
+                              MediusUniverseStatusListCallback status);   /* MediusGetUniverseInformation */
+void func_002FDED0(int, int, int, MediusGetUniverseNewsResponse *resp);   /* (the news' callback) */
+void func_002FDAF0(int, int, int, MediusUniverseStatusListResponse *resp);   /* (the status list's) */
+}
 
 /* ---- the accounts ---- */
 
@@ -131,6 +277,21 @@ struct AcctMission {
 /* an account: the lobby server it is for (HOST, PORT), the player's name, password, home town and
  * gender, the profile's checksum and the missions' equipment, and whether the password is kept */
 struct AcctRecord {
+    /* (a constructor of its own: the record is copied member by member -- the char arrays
+     * bytewise, the missions as one block) */
+    AcctRecord() {}
+
+    /* the missions with a name, the entries a blob of them holds */
+    int MissionCount()
+    {
+        int n = 0;
+
+        for (int i = 0; i < ACCT_MISSIONS; i++)
+            if (m_missions[i].m_mission.m_text[0])
+                n++;
+        return n;
+    }
+
     char m_host[0x80];   // 0x0
     int m_port;   // 0x80
     char m_name[0x20];   // 0x84
@@ -170,6 +331,11 @@ public:
         void Load(const char *blob);
         void SetChecksum(const char *sum);
 
+        void Add(const char *host, int port, const char *name, const char *password,
+                 const char *town, int gender, _zrdr *profiles, bool savepassword);
+        void SetAcctInfo(const char *host, int port, const char *name, const char *password,
+                         const char *town, int gender, bool savepassword);
+        const char *GetChecksum();
         AcctRecord *Find(const char *host, int port, const char *name);
         AcctLoadout *GetLoadout(const char *host, int port, const char *name, const char *mission,
                                 int side);
@@ -190,6 +356,7 @@ public:
         const char *GetUniverseDNS(const char *name);
         const char *GetUniverseDescription(unsigned int i);
         const char *GetUniverseName(unsigned int i);
+        void ConnectToUniverse(const char *host, int port);
 
         /* the account by its lobby server and name, 0 none (inlined everywhere but Find itself) */
         AcctRecord *FindAcct(const char *host, int port, const char *name)
@@ -225,6 +392,188 @@ public:
 };
 
 typedef CZUniversInformationServer::CAcctDB CAcctDB;
+
+/* the lobby's blob written (CLobbySaveModule's, the save manager's unit: its placeholder, called on
+ * the module by reference -- a pointer conversion would test the account database for null) */
+extern "C" void func_0033EEA0(CLobbySaveModule &module, const char *blob, int size);
+
+/* the current account's lobby server and name, as the lobby's UI variables hold them */
+#define CURRENT_ACCOUNT()                                                                          \
+    const char *host = theUIVarManager.Add("LOBBY_HOST", 0, UIVL_PERMANENT)->String();             \
+    int port = theUIVarManager.Add("LOBBY_PORT", 0, UIVL_PERMANENT)->Int();                         \
+    const char *name = theUIVarManager.Add("PLAYERNAMEVAR", 0, UIVL_TEMPORARY)->String()
+
+/* --- the lobby's blob (CLobbySaveModule) and the profile file (CSaveModule) ------------------ */
+
+/* the current account's missions' equipment written as the lobby's blob: a count byte, then the
+ * named entries as they are */
+void CAcctDB::Save()
+{
+    CURRENT_ACCOUNT();
+    AcctRecord *r = FindAcct(host, port, name);
+
+    if (r) {
+        int size = r->MissionCount() * sizeof(AcctMission);
+        int total = size + 1;
+
+        if (size) {
+            char *blob = (char *)_malloc(total, 0, 0);
+            AcctMission *out = (AcctMission *)(blob + 1);
+
+            if (blob) {
+                memset(blob, 0, total);
+                *blob = r->MissionCount();
+                for (int i = 0; i < ACCT_MISSIONS; i++) {
+                    if (r->m_missions[i].m_mission.m_text[0]) {
+                        memcpy(out, &r->m_missions[i], sizeof(AcctMission));
+                        out++;
+                    }
+                }
+                func_0033EEA0(*this, blob, size + 1);
+                if (blob)
+                    _free(blob, 0, 0);
+            }
+        }
+    }
+}
+
+/* the current account's profile checksum set */
+void CAcctDB::SetChecksum(const char *sum)
+{
+    CURRENT_ACCOUNT();
+    AcctRecord *r = FindAcct(host, port, name);
+
+    if (r && r->m_checksum && sum)
+        memcpy(r->m_checksum, sum, sizeof(r->m_checksum));
+}
+
+/* the current account's profile checksum, 0 none */
+const char *CAcctDB::GetChecksum()
+{
+    const char *sum = 0;
+    CURRENT_ACCOUNT();
+    AcctRecord *r = FindAcct(host, port, name);
+
+    if (r)
+        sum = r->m_checksum;
+    return sum;
+}
+
+/* the lobby's blob read back into the current account's missions */
+void CAcctDB::Load(const char *blob)
+{
+    CURRENT_ACCOUNT();
+
+    if (blob) {
+        char n = *blob;
+        AcctMission *m = (AcctMission *)(blob + 1);
+
+        for (int i = 0; i < n; i++, m++) {
+            if (m->m_seal.m_valid) {
+                AcctLoadout l;
+
+                memcpy(&l, &m->m_seal, sizeof(l));
+                SetLoadout(host, port, name, m->m_mission.m_text, &l, 0);
+            }
+            if (m->m_terr.m_valid) {
+                AcctLoadout l;
+
+                memcpy(&l, &m->m_terr, sizeof(l));
+                SetLoadout(host, port, name, m->m_mission.m_text, &l, 1);
+            }
+        }
+    }
+}
+
+/* the profile file's accounts read: each one's details and profiles added */
+void CAcctDB::UnSerialize(const char *name, CRdrFile *file, int flags)
+{
+    for (int i = 0; i < file->Count(); i++) {
+        _zrdr *acct = file->Item(i);
+
+        if (acct) {
+            bool savepassword = true;
+            int port = 0;
+            int gender = 0;
+            const char *host = zrdr_findstring(acct, "HOST");
+            const char *pname = zrdr_findstring(acct, "NAME");
+            const char *town = zrdr_findstring(acct, "TOWN");
+            const char *password = zrdr_findstring(acct, "PASSWORD");
+
+            zrdr_findint(acct, "PORT", &port, 1);
+            zrdr_findint(acct, "GENDER", &gender, 1);
+            _zrdr *profiles = zrdr_findtag(acct, "PROFILES");
+
+            zrdr_findbool(acct, "SAVEPASSWORD", &savepassword);
+            Add(host, port, pname, password, town, gender, profiles, savepassword);
+        }
+    }
+}
+
+/* the accounts written as the profile file (AcctInfo): each one's details, its checksum and its
+ * missions' equipment, the password only when it is kept */
+void CAcctDB::Serialize(int flags)
+{
+    CRdrEditor ed;
+
+    ed.push(0);
+    for (iterator i = begin(); i != end(); ++i) {
+        ed.push(0);
+        ed.addSTRING("HOST", (*i).m_host);
+        ed.addSTRING("NAME", (*i).m_name);
+        ed.addSTRING("TOWN", (*i).m_town);
+        ed.addint("GENDER", (*i).m_gender);
+        ed.addint("PORT", (*i).m_port);
+        if ((*i).m_password[0] && (*i).m_savepassword)
+            ed.addSTRING("PASSWORD", (*i).m_password);
+        ed.addbool("SAVEPASSWORD", (*i).m_savepassword);
+        ed.addstringnode("PROFILES");
+        ed.push(0);
+        ed.addstringnode("PROFILE_CHECKSUM");
+        ed.push(0);
+        for (int j = 0; j < 0x10; j++)
+            ed.addintnode((*i).m_checksum[j]);
+        ed.pop();
+        ed.addstringnode("PROFILE_INFO");
+        ed.push(0);
+        for (int k = 0; k < ACCT_MISSIONS; k++) {
+            AcctMission *m = &(*i).m_missions[k];
+
+            if (m->m_mission.m_text[0]) {
+                ed.push(0);
+                ed.addSTRING("MISSION", m->m_mission.m_text);
+                if (m->m_terr.m_valid) {
+                    ed.addstringnode("TERR");
+                    ed.push(0);
+                    ed.addint("SKIN", m->m_terr.m_skin);
+                    ed.addint("PRIMARY", m->m_terr.m_primary);
+                    ed.addint("SECONDARY", m->m_terr.m_secondary);
+                    ed.addint("EQUIP1", m->m_terr.m_equip1);
+                    ed.addint("EQUIP2", m->m_terr.m_equip2);
+                    ed.addint("EQUIP3", m->m_terr.m_equip3);
+                    ed.pop();
+                }
+                if (m->m_seal.m_valid) {
+                    ed.addstringnode("SEAL");
+                    ed.push(0);
+                    ed.addint("SKIN", m->m_seal.m_skin);
+                    ed.addint("PRIMARY", m->m_seal.m_primary);
+                    ed.addint("SECONDARY", m->m_seal.m_secondary);
+                    ed.addint("EQUIP1", m->m_seal.m_equip1);
+                    ed.addint("EQUIP2", m->m_seal.m_equip2);
+                    ed.addint("EQUIP3", m->m_seal.m_equip3);
+                    ed.pop();
+                }
+                ed.pop();
+            }
+        }
+        ed.pop();
+        ed.pop();
+        ed.pop();
+    }
+    ed.pop();
+    SaveRdr("AcctInfo", &ed);
+}
 
 /* --- the universes ---------------------------------------------------------------------------- */
 
@@ -335,6 +684,91 @@ int CAcctDB::GetGender(const char *host, int port, int index)
     return r ? r->m_gender : 0;
 }
 
+/* an account added or updated: its details, then the profile's checksum and each mission's
+ * equipment from the profile file's PROFILES list */
+void CAcctDB::Add(const char *host, int port, const char *name, const char *password,
+                  const char *town, int gender, _zrdr *profiles, bool savepassword)
+{
+    AcctRecord blank;
+    AcctRecord *r = FindAcct(host, port, name);
+
+    if (!r) {
+        push_back(blank);
+        r = &back();
+        memset(r, 0, sizeof(*r));
+    }
+    strncpy(r->m_host, host, sizeof(r->m_host));
+    r->m_port = port;
+    strncpy(r->m_name, name, sizeof(r->m_name));
+    if (password)
+        strncpy(r->m_password, password, sizeof(r->m_password));
+    if (town)
+        strncpy(r->m_town, town, sizeof(r->m_town));
+    r->m_gender = gender;
+    r->m_savepassword = savepassword;
+    _zrdr *info = profiles ? zrdr_findtag(profiles, "PROFILE_INFO") : 0;
+
+    if (info) {
+        _zrdr *sum = zrdr_findtag(profiles, "PROFILE_CHECKSUM");
+        int j = 0;
+
+        if (sum)
+            for (; j < 0x10 && (unsigned int)j < sum->Count(); j++)
+                r->m_checksum[j] = sum->Item(j)->Int();
+        for (unsigned int k = 0; k < info->Count(); k++) {
+            _zrdr *entry = info->Item(k);
+
+            if (entry) {
+                const char *mission = zrdr_findstring(entry, "MISSION");
+                AcctLoadout l;
+                _zrdr *side = zrdr_findtag(entry, "SEAL");
+
+                if (side) {
+                    int v;
+
+                    memset(&l, 0, sizeof(l));
+                    l.m_valid = 1;
+                    v = 0;
+                    zrdr_findint(side, "SKIN", &v, 1);
+                    l.m_skin = v;
+                    zrdr_findint(side, "PRIMARY", &v, 1);
+                    l.m_primary = v;
+                    zrdr_findint(side, "SECONDARY", &v, 1);
+                    l.m_secondary = v;
+                    zrdr_findint(side, "EQUIP1", &v, 1);
+                    l.m_equip1 = v;
+                    zrdr_findint(side, "EQUIP2", &v, 1);
+                    l.m_equip2 = v;
+                    zrdr_findint(side, "EQUIP3", &v, 1);
+                    l.m_equip3 = v;
+                    SetLoadout(host, port, name, mission, &l, 0);
+                }
+                side = zrdr_findtag(entry, "TERR");
+                if (side) {
+                    int v;
+
+                    memset(&l, 0, sizeof(l));
+                    l.m_valid = 1;
+                    v = 0;
+                    zrdr_findint(side, "SKIN", &v, 1);
+                    l.m_skin = v;
+                    zrdr_findint(side, "PRIMARY", &v, 1);
+                    l.m_primary = v;
+                    zrdr_findint(side, "SECONDARY", &v, 1);
+                    l.m_secondary = v;
+                    zrdr_findint(side, "EQUIP1", &v, 1);
+                    l.m_equip1 = v;
+                    zrdr_findint(side, "EQUIP2", &v, 1);
+                    l.m_equip2 = v;
+                    zrdr_findint(side, "EQUIP3", &v, 1);
+                    l.m_equip3 = v;
+                    SetLoadout(host, port, name, mission, &l, 1);
+                }
+            }
+        }
+    }
+}
+
 /* a side's equipment for a mission set on an account (0 the SEALs, 1 the terrorists), the mission
  * added in the first free entry when the account has none for it yet */
 void CAcctDB::SetLoadout(const char *host, int port, const char *name, const char *mission,
@@ -416,6 +850,15 @@ AcctRecord *CAcctDB::Find(const char *host, int port, const char *name)
     return FindAcct(host, port, name);
 }
 
+/* an account's details set, the account added when the lobby server has none of its name (the
+ * password kept only when it is to be saved) */
+void CAcctDB::SetAcctInfo(const char *host, int port, const char *name, const char *password,
+                          const char *town, int gender, bool savepassword)
+{
+    if (name && *name)
+        Add(host, port, name, savepassword ? password : 0, town, gender, 0, savepassword);
+}
+
 /* the index-th account on a lobby server forgotten */
 void CAcctDB::Delete(const char *host, int port, int index)
 {
@@ -456,4 +899,122 @@ int CAcctDB::Count(const char *host, int port)
         if (!strcmp((*i).m_host, host) && port == (*i).m_port)
             n++;
     return n;
+}
+
+/* --- the server list's machine -------------------------------------------------------------- */
+
+/* the universe server connected to, then asked for its status list and news: the command's valve
+ * set when both are in (SOCOM II's CSMGetServerList, its vtable 0x406730: Start and the base's
+ * SetState) */
+class CSMGetServerList : public CSimpleStateMachine {
+public:
+    CSMGetServerList(CValve *valve) : m_valve(valve) {}
+    virtual bool Start();
+    void Connect(unsigned char event);
+    void GetInfo(unsigned char event);
+
+    /* how the connection went: -1 failed, 1 connected, 0 not yet */
+    static int ConnectStatus()
+    {
+        int s = 0;
+
+        if (data_0044FD90)
+            s = -1;
+        else if (myConnectionIndex != -1)
+            s = 1;
+        return s;
+    }
+
+    CValve *m_valve;   // 0x38
+};   // 0x3c
+
+extern CAcctDB data_0044FC60;   /* theAcctDB */
+extern char data_0045A14C[];   /* theNetwork's universe server address */
+extern int data_0045A18C;   /* and port */
+extern CSMGetServerList *data_0044FD98;   /* the 'GetServerList' command's machine */
+
+/* the status list and the news asked for; done when both have come in */
+void CSMGetServerList::GetInfo(unsigned char event)
+{
+    switch (event) {
+    case 0: {
+        MediusGetUniverseInformationRequest req;
+
+        data_0044FD50.clear();
+        data_0044FD80 = 0;
+        data_0044FD88 = 0;
+        memset(req.MessageID, 0, sizeof(req.MessageID));
+        req.InfoType = 3;
+        req.CharacterEncoding = 2;
+        req.Language = 1;
+        CheckMediusError(func_0064AD98(&req, func_002FDED0, func_002FDAF0));
+        break;
+    }
+    case 1: {
+        bool done = data_0044FD80 && data_0044FD88;
+
+        if (done) {
+            m_valve->SetValue(1);
+            SetState(&CSimpleStateMachine::Finish);
+        }
+        break;
+    }
+    case 2:
+        break;
+    }
+}
+
+/* the universe server connected to; on a failure the menus told and the valve off */
+void CSMGetServerList::Connect(unsigned char event)
+{
+    switch (event) {
+    case 0:
+        data_0044FC60.ConnectToUniverse(data_0045A14C, data_0045A18C);
+        break;
+    case 1:
+        if (ConnectStatus() > 0) {
+            SetState((SSMState)&CSMGetServerList::GetInfo);
+        } else if (ConnectStatus() < 0) {
+            const char *text = func_00361B40(450);
+
+            m_valve->SetValue(0);
+            if (theLobby.m_event_handler)
+                theLobby.m_event_handler("MP_MEDIUS_ERROR", text);
+            SetState(&CSimpleStateMachine::Finish);
+        }
+        break;
+    case 2:
+        break;
+    }
+}
+
+/* the machine started at the connection */
+bool CSMGetServerList::Start()
+{
+    CSimpleStateMachine::Start();
+    SetState((SSMState)&CSMGetServerList::Connect);
+    return true;
+}
+
+/* the 'GetServerList' UI command: the machine made and run on its thread, ticked each frame until
+ * it is done (the argument names the valve it sets) */
+bool UIGetServerList(C2DAnimCmdHdr *hdr, float *dT)
+{
+    bool done = false;
+    CValve *valve = CValve::Create(ZAnim.m_CurAnim->GetName(hdr->m_argument_index), (VALVE_TYPE)2);
+
+    if (!data_0044FD98) {
+        data_0044FD98 = new CSMGetServerList(valve);
+        func_003A59D0(data_0044FD98, 0x19000, 6);
+    } else {
+        func_003A5C30(data_0044FD98);
+        if (func_003A5C10(data_0044FD98)) {
+            delete data_0044FD98;
+            data_0044FD98 = 0;
+            done = true;
+        } else {
+            zSysSleep(data_0049E2D4 / 60);
+        }
+    }
+    return done;
 }

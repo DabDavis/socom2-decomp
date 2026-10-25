@@ -5028,25 +5028,25 @@
 0x002FAB80 0x3CC func_002FAB80  # OVL1
 0x002FAF50 0x64 PasswordSecurity__13CZOnlineLobbyFv  # OVL1; s1:calls
 0x002FAFC0 0xC0 func_002FAFC0  # OVL1
-0x002FB080 0x134 func_002FB080  # OVL1
-0x002FB1C0 0x174 func_002FB1C0  # OVL1
-0x002FB340 0x130 func_002FB340  # OVL1
+0x002FB080 0x134 UIGetServerList__FP13C2DAnimCmdHdrPf  # OVL1; ours (the UI command table's 'GetServerList' handler, record 0x3DDE30: the machine 0x44FD98 newed with the argument's valve and its thread started, then ticked until done and deleted) -- byte-exact, zNetMediusUniverse.cpp
+0x002FB1C0 0x174 Connect__16CSMGetServerListFUc  # OVL1; ours (CSMGetServerList's first state, the member pointer 0x3DF2F8 Start passes: ConnectToUniverse on entry, then GetInfo once connected, or the MP_MEDIUS_ERROR event, the valve off and Finish) -- byte-exact, zNetMediusUniverse.cpp
+0x002FB340 0x130 GetInfo__16CSMGetServerListFUc  # OVL1; ours (CSMGetServerList's second state, the member pointer 0x3DF2E8 Connect passes: the universe list cleared, the universe information asked for through 0x64AD98 with the news and status-list callbacks 0x2FDED0/0x2FDAF0, the valve set once both are in) -- byte-exact, zNetMediusUniverse.cpp
 0x002FB470 0x19C GetLoadout__Q226CZUniversInformationServer7CAcctDBFPCciPCcPCci  # OVL1; ours (a side's saved equipment for a mission, 0 SEALs at +0xE / 1 terrorists at +0, the mission name at +0x1C of each 0x24-byte entry: UICharacterProfile 0x2759D4 calls it on theAcctDB) -- byte-exact, zNetMediusUniverse.cpp
 0x002FB610 0x310 SetLoadout__Q226CZUniversInformationServer7CAcctDBFPCciPCcPCcP11AcctLoadouti  # OVL1; ours (a side's equipment for a mission set, the mission added in the first free entry: UICharacterProfile 0x275BBC, CAcctDB's profile readers 0x2FBCE0/0x2FC800)
 0x002FB920 0xCC Count__Q226CZUniversInformationServer7CAcctDBFPCci  # OVL1; ours (the accounts kept for a lobby server, host and port matched: UpdatePersonaList 0x276B28 calls it on theAcctDB 0x44FC60 with LOBBY_HOST/LOBBY_PORT; the class name is the RTTI's at 0x3F5CA8) -- byte-exact, zNetMediusUniverse.cpp
 0x002FB9F0 0xE8 IndexOf__Q226CZUniversInformationServer7CAcctDBFPCciPCc  # OVL1; ours (the named account's place among the lobby server's, the walk broken on the name: UIGetMUISPersonaInfo 0x2754C0 calls it on theAcctDB) -- byte-exact, zNetMediusUniverse.cpp
 0x002FBAE0 0x110 Delete__Q226CZUniversInformationServer7CAcctDBFPCcii  # OVL1; ours (the index-th account on a lobby server erased through the one-element erase 0x2FE230: UIDeleteMUISPersona 0x276340 calls it on theAcctDB) -- byte-exact, zNetMediusUniverse.cpp
 0x002FBBF0 0xE8 Find__Q226CZUniversInformationServer7CAcctDBFPCciPCc  # OVL1; ours (the account by host, port and name, 0 none: UIMUISPersonaExists 0x27668C calls it on theAcctDB) -- byte-exact, zNetMediusUniverse.cpp
-0x002FBCE0 0x5A0 func_002FBCE0  # OVL1
-0x002FC280 0x1B8 func_002FC280  # OVL1
-0x002FC440 0x3B8 func_002FC440  # OVL1
-0x002FC800 0x1D8 func_002FC800  # OVL1
-0x002FC9E0 0x1B4 func_002FC9E0  # OVL1
-0x002FCBA0 0x1C0 func_002FCBA0  # OVL1
-0x002FCD60 0x294 func_002FCD60  # OVL1
+0x002FBCE0 0x5A0 Add__Q226CZUniversInformationServer7CAcctDBFPCciPCcPCcPCciP5_zrdrb  # OVL1; ours (an account added -- push_back of a blank record, then memset -- or updated: host, port, name, password, town, gender, the SAVEPASSWORD flag, then PROFILE_CHECKSUM and PROFILE_INFO's SEAL/TERR equipment through SetLoadout; UnSerialize 0x2FC280 and SetAcctInfo 0x2FD0D0 call it)
+0x002FC280 0x1B8 UnSerialize__Q226CZUniversInformationServer7CAcctDBFPCcP8CRdrFilei  # OVL1; ours (CSaveModule's UnSerialize(const char *, CRdrFile *, int) through the thunk 0x300610 (-0xC): each account of the profile file added -- HOST, NAME, TOWN, PASSWORD, PORT, GENDER, PROFILES, SAVEPASSWORD) -- byte-exact, zNetMediusUniverse.cpp
+0x002FC440 0x3B8 Serialize__Q226CZUniversInformationServer7CAcctDBFi  # OVL1; ours (CSaveModule's Serialize through the thunk 0x300620: the accounts written as the AcctInfo rdr through CRdrEditor and SaveRdr) -- byte-exact, zNetMediusUniverse.cpp
+0x002FC800 0x1D8 Load__Q226CZUniversInformationServer7CAcctDBFPCc  # OVL1; ours (CLobbySaveModule's slot 1 through the thunk 0x300650: the lobby's blob read back into the current account's missions through SetLoadout) -- byte-exact, zNetMediusUniverse.cpp
+0x002FC9E0 0x1B4 GetChecksum__Q226CZUniversInformationServer7CAcctDBFv  # OVL1; ours (the current account's profile checksum, 0 none: the save manager's 0x33EA94 calls it) -- byte-exact, zNetMediusUniverse.cpp
+0x002FCBA0 0x1C0 SetChecksum__Q226CZUniversInformationServer7CAcctDBFPCc  # OVL1; ours (CLobbySaveModule's slot 2 through the thunk 0x300640: the current account's 16-byte profile checksum at 0x104 set) -- byte-exact, zNetMediusUniverse.cpp
+0x002FCD60 0x294 Save__Q226CZUniversInformationServer7CAcctDBFv  # OVL1; ours (CLobbySaveModule's slot 0, CAcctDB's override through the thunk 0x300660 (-0x24): the current account's named missions written as the lobby's blob, a count byte and the 0x24-byte entries, through 0x33EEA0)
 0x002FD000 0x68 func_002FD000  # OVL1
 0x002FD070 0x60 func_002FD070  # OVL1
-0x002FD0D0 0x34 func_002FD0D0  # OVL1
+0x002FD0D0 0x34 SetAcctInfo__Q226CZUniversInformationServer7CAcctDBFPCciPCcPCcPCcib  # OVL1; ours (UIUpdateAcctInfo 0x2752BC calls it on theAcctDB: a named account's details through Add, the password only when it is to be kept, no profiles)
 0x002FD110 0xFC GetGender__Q226CZUniversInformationServer7CAcctDBFPCcii  # OVL1; ours (the index-th account's gender byte at 0x103, 0 none: the persona handlers call it on theAcctDB) -- byte-exact, zNetMediusUniverse.cpp
 0x002FD210 0xFC GetSavePassword__Q226CZUniversInformationServer7CAcctDBFPCcii  # OVL1; ours (the index-th account's SAVEPASSWORD flag at 0x1314) -- byte-exact, zNetMediusUniverse.cpp
 0x002FD310 0xFC GetTown__Q226CZUniversInformationServer7CAcctDBFPCcii  # OVL1; ours (the index-th account's TOWN at 0xC4) -- byte-exact, zNetMediusUniverse.cpp
@@ -5063,9 +5063,9 @@
 0x002FDEA0 0x20 func_002FDEA0  # OVL1
 0x002FDEC0 0xC func_002FDEC0  # OVL1
 0x002FDED0 0x90 func_002FDED0  # OVL1
-0x002FDF60 0x248 func_002FDF60  # OVL1
+0x002FDF60 0x248 ConnectToUniverse__Q226CZUniversInformationServer7CAcctDBFPCci  # OVL1; ours (CSMGetServerList's Connect state calls it on theAcctDB with theNetwork's universe server address and port: the host looked up, the connect request built from theLobby's DME state, the connection callback 0x2FE1B0)
 0x002FE1B0 0x18 func_002FE1B0  # OVL1
-0x002FE1D0 0x54 func_002FE1D0  # OVL1
+0x002FE1D0 0x54 Start__16CSMGetServerListFv  # OVL1; ours (CSMGetServerList's slot 0, its vtable 0x406730 by the RTTI at 0x3F5E48: the base's Start inlined, then the Connect state) -- byte-exact, zNetMediusUniverse.cpp
 0x002FE230 0x1AC erase__Q23std60__vector_imp<10AcctRecord,Q23std23allocator<10AcctRecord>,0>FP10AcctRecord  # OVL1; ours (the accounts vector's one-element erase: CAcctDB::Delete 0x2FBAE0 passes the iterator's word, the tail assigned down member by member, the count cut, the position returned in v0; include/vector's erase(T *))
 0x002FE3E0 0x6E8 func_002FE3E0  # OVL1
 0x002FEAD0 0x1C4 func_002FEAD0  # OVL1
@@ -5074,7 +5074,7 @@
 0x002FEE50 0xB0C func_002FEE50  # OVL1
 0x002FF960 0x5BC func_002FF960  # OVL1
 0x002FFF20 0x68 func_002FFF20  # OVL1
-0x002FFF90 0x8 func_002FFF90  # OVL1
+0x002FFF90 0x8 clear__Q23std70__vector_deleter<14UniverseStatus,Q23std27allocator<14UniverseStatus>>Fv  # OVL1; ours (the universe list's clear, out of class in include/vector: the count zeroed, the element trivially destroyed; CSMGetServerList::GetInfo 0x2FB340 calls it on the list 0x44FD50)
 0x002FFFA0 0x8 func_002FFFA0  # OVL1
 0x002FFFB0 0x68 func_002FFFB0  # OVL1
 0x00300020 0x68 func_00300020  # OVL1
