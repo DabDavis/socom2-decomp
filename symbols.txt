@@ -9555,7 +9555,7 @@
 0x00524170 0x4E8 func_00524170  # OVL2
 0x00524660 0xF4 func_00524660  # OVL2
 0x00524760 0x120 func_00524760  # OVL2
-0x00524880 0xD0 func_00524880  # OVL2
+0x00524880 0xD0 PointInPath__7CAiPathCFRC9CAiMapLocPUi  # OVL2; s1:order by hand (the demo's PointInPath 0x193540, the first of the points' functions before PrintPath in both builds: the points walked for the cell, its index handed back when asked; SOCOM II drops the width test -- ai_path.cpp)
 0x00524950 0x380 PrintPath__7CAiPathCFPCc  # OVL2; s1:callee by hand (PostProcess calls it when bit 6 of m_flags is set, where SOCOM 1's calls PrintPath__7CAiPathCFv; SOCOM II passes a name -- "dbg_path" -- and builds the text with sprintf/strcat; TickPathPlanner and the AI states call it too)
 0x00524CD0 0x2C func_00524CD0  # OVL2
 0x00524D00 0x48 PopPoint__7CAiPathFP9CAiMapLoc  # OVL2; ours (new in SOCOM II, among the points' functions after PrintPath: the last 8-byte point of m_points (0x98) taken off, its cell handed back when asked, a bool; the SEALs call it -- ai_path.cpp)

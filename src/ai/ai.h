@@ -916,6 +916,9 @@ public:
     /* the last point taken off, its cell handed back when asked; false when there is none (new
      * in SOCOM II, the name ours: the SEALs' 0x524D00) */
     bool PopPoint(CAiMapLoc *loc);
+    /* whether a point lies on the cell, its index handed back when asked (SOCOM 1's tested the
+     * points' widths around the cell) */
+    bool PointInPath(const CAiMapLoc &loc, unsigned int *index) const;
     void plan_setup();
     bool plan_addleg(CAiMap *map, const CAiMapLoc &start, const CAiMapLoc &goal);
     bool plan_legcomplete(PATH_STATE state);

@@ -259,3 +259,30 @@ bool CAiPath::PopPoint(CAiMapLoc *loc)
     }
     return popped;
 }
+
+/* whether a point lies on the cell, its index handed back when asked (SOCOM 1's; SOCOM II's
+ * wants the cell itself where SOCOM 1's took a point within its width, and no snake flag).
+ * OPEN (0xC8 against 0xD0): GetRouteIndex's and GetRegionContaining's question (ai_maptable.cpp)
+ * -- the target re-reads data_ and size_ for each pass's end test (the first test reusing the
+ * emptiness test's size and begin's data), this build hoists the end out of the loop. Postfix
+ * steps, a cast `this`, `!(it == end())` and the iterator declared outside were tried; perhaps
+ * the original iterator stays in memory (a user-declared copy constructor?) long enough that its
+ * stores block the hoist */
+bool CAiPath::PointInPath(const CAiMapLoc &loc, unsigned int *index) const
+{
+    if (m_points.size() == 0)
+        return false;
+    points &p = const_cast<points &>(m_points);
+    bool found = false;
+    unsigned int i = 0;
+
+    for (points::iterator it = p.begin(); it != p.end(); ++it, ++i) {
+        if ((*it).m_loc == loc) {
+            if (index)
+                *index = i;
+            found = true;
+            break;
+        }
+    }
+    return found;
+}
