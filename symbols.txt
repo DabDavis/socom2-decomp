@@ -1861,8 +1861,8 @@
 0x00210140 0xC4 hudAddPolyType__FP5_zrdr  # OVL1; s1:order by hand (hud_linemap.cpp: SOCOM 1's hudAddPolyType, 0xC4 in both: Type through zrdr_findint, the map's find_or_insert at 0x40BF60, Color, Opacity times 127 (SOCOM 1: 128) and Width; the first of the pair as SOCOM 1's, its map the later one)
 0x00210210 0xC4 hudAddLineType__FP5_zrdr  # OVL1; s1:order by hand (hud_linemap.cpp: SOCOM 1's hudAddLineType, 0xC4 in both, after hudAddPolyType as there; the same reader on the map at 0x40BF40)
 0x002102E0 0x2FC func_002102E0  # OVL1
-0x002105E0 0x8 func_002105E0  # OVL1
-0x002105F0 0x8 func_002105F0  # OVL1
+0x002105E0 0x8 func_002105E0  # OVL1; OVL1's copy of Add__6CPnt3DFPC6CPnt3D (0x5168e0: the same tail call into CPnt3D::Add(b, this) at 0x309240, among CAiMap's GetCellCenter copies in OVL1's map code -- the AI core lane's find, vetted by the integrator); ovl-copy: Add__6CPnt3DFPC6CPnt3D
+0x002105F0 0x8 func_002105F0  # OVL1; OVL1's copy of Scale__6CPnt3DFf (0x5168f0: the same tail call into CPnt3D::Scale(s, this) at 0x309180, among CAiMap's GetCellCenter copies in OVL1's map code -- the AI core lane's find, vetted by the integrator); ovl-copy: Scale__6CPnt3DFf
 0x00210600 0xC func_00210600  # OVL1
 0x00210610 0x14 func_00210610  # OVL1
 0x00210630 0x70 func_00210630  # OVL1; OVL1's copy of GetAltitude__6CAiMapCFPC7CAiCellRf (0x516940, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: GetAltitude__6CAiMapCFPC7CAiCellRf

@@ -1642,6 +1642,22 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the AI core, round 8** (the path's point vector, SmoothPath, the visibility tests):
+  - a chain of `==` tests joined by `||` becomes a bit test; the target's two materialised ors come
+    from explicit bools, the outer bool declared first and the value last;
+  - literals passed to a `const float &` (`_saturate(&v, 0.0f, 1.0f)`) get a per-function constant
+    pool in data, 8 bytes apart; a function inlined into another shares that pool, so a shared pool
+    reveals the inlining (0x538D10 uses 0x538E30's);
+  - a trim temporary's copies show its type by this-test count: `std::vector<T>` has two, the
+    `points` subclass three;
+  - chance odds stay in the frame across rand() only with the Rfloat-shaped random; the plain
+    `lo + span * (k * rand())` keeps them in a saved float register;
+  - if a unit's own code instantiates a class vector's erase, the tail's resize inlines it; the
+    target's resize still calls erase, so the original MSL probably declares resize ahead of erase
+    (RemoveInvalidPoints kept out of the build under `#if 0` for it);
+  - SOCOM II's CAiPath::point is 8 bytes with a written copy constructor (cell, width, flags copied,
+    the rest zeroed); CAiMaps::GetCellCenter returns the point; the walker unit holds CAiMaps
+    functions too (0x5352D0, 0x538980-0x538EF0).
 - **Tells from the states, round 14** (the graph's BuildRoute/PopulateTree, the objective cams):
   - an rvalue (an accessor's result) passed to a list insert binds a temporary whose stack slot comes
     after the call's outer temporaries (BuildRoute's `insert(it, leaf->GetNode())`); a named local

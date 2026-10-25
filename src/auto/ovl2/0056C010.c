@@ -8,7 +8,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 #pragma mpwc_relax on
-s32 func_00524D00(s32, s32 *);                      /* extern */
+s32 PopPoint__7CAiPathFP9CAiMapLoc(s32, s32 *);     /* extern */
 M2C_UNK func_0056C080(char *, s32, s32 *);          /* extern */
 
 void func_0056C010(char *arg0) {
@@ -18,7 +18,7 @@ void func_0056C010(char *arg0) {
 
     temp_s1 = (int)(arg0 + 0x46C);
     temp_s0 = SC_MEMBER(arg0, char **, 4);
-    if (func_00524D00(temp_s1, &sp4C) == 0) {
+    if (PopPoint__7CAiPathFP9CAiMapLoc(temp_s1, &sp4C) == 0) {
         sp4C = SC_MEMBER(temp_s0, s32 *, 0xE8);
     }
     func_0056C080(arg0, temp_s1, &sp4C);
