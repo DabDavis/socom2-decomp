@@ -4,15 +4,16 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK FlushPlannerQueue__2aiFv();                 /* extern */
 M2C_UNK func_005104E0();                            /* extern */
-M2C_UNK func_00510D10();                            /* extern */
-M2C_UNK func_0052E990(void *);                      /* extern */
+M2C_UNK func_0052E990(char *);                      /* extern */
 
-void func_0052E780(void *arg0) {
-    func_00510D10();
+void func_0052E780(char *arg0) {
+    FlushPlannerQueue__2aiFv();
     func_0052E990(arg0);
     func_005104E0();
-    M2C_FIELD(arg0, u8 *, 0xDC) = (u8) (M2C_FIELD(arg0, u8 *, 0xDC) + 1);
+    SC_MEMBER(arg0, u8 *, 0xDC) = (u8) (SC_MEMBER(arg0, u8 *, 0xDC) + 1);
 }

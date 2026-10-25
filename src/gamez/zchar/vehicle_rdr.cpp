@@ -4,6 +4,7 @@
  * with Close's FreeVector pieces, which close the unit's template tail (0x533970-0x533A33), and the
  * entry vector's deleter clear and destructor, emitted after AI_PARAMS (0x535040). */
 
+#include <stdlib.h>
 #include <string.h>
 
 #include "zchar.h"
@@ -78,6 +79,37 @@ void CVehicleRdrEntry::SetCharacterName(const char *name)
         strncpy(m_character, name, sizeof(m_character));
     else
         m_character[0] = 0;
+}
+
+/* a random index up to max (the name ours: SOCOM 1's Randomize had the same `n - 1` and
+ * modulo, its zero arm first) */
+static inline int RandomIndex(int max)
+{
+    int i;
+
+    if (max == 0)
+        i = 0;
+    else
+        i = rand() % (max + 1);
+    return i;
+}
+
+/* the start, and the respawn start, picked at random, or the first when asked to reset or when
+ * there are none (SOCOM 1's picked the one start).
+ * OPEN (0x140 against 0x150): label padding only -- the target pads the random pick's block and
+ * the store after its mfhi to 8 bytes (a nop each, both halves); the zero arm first, a ternary,
+ * an early return, the pick written out, a non-inline helper and the tests inverted all compile
+ * without the four nops */
+void CVehicleRdrEntry::Randomize(bool reset)
+{
+    if (reset || !m_start.m_count)
+        m_startIndex = 0;
+    else
+        m_startIndex = RandomIndex(m_start.m_count - 1);
+    if (reset || !m_respawn.m_count)
+        m_respawnIndex = 0;
+    else
+        m_respawnIndex = RandomIndex(m_respawn.m_count - 1);
 }
 
 /* the current start's location name and direction, or none (SOCOM 1's) */

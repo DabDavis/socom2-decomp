@@ -18,6 +18,10 @@ public:
     /* one to three magazines shown as bitmaps, more as a texture of their own (0x237B40; the
      * name ours) */
     void SetMags(int mags, zdb::CTexHandle *tex);
+    /* the parts placed and listed (0x237FC0; the name ours) */
+    void Init(C2DFont *font);
+    /* the counts from the owner's kit (0x237760; the name ours) */
+    void Update();
 
     C2DBitmapPoly m_poly;   // 0x0
     C2DBitmap m_bitmap;   // 0x1f0

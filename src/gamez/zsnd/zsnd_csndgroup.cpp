@@ -35,6 +35,47 @@ void CSndGroup::LoadSoundGroups(const char *name)
     }
 }
 
+int zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
+_zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
+extern "C" unsigned int func_003A59C0(const char *name);   /* a name's hash (not named yet) */
+
+/* SOCOM 1's: a group's name (its record's first value, hashed into m_18 as a sound's), its decay
+ * and its ENTRIES -- each a sound by name and its weight -- then the weights normalised */
+void CSndGroup::LoadCSndGroup(_zrdr *rdr)
+{
+    if (!(!m_isDisabled && rdr))
+        return;
+    float decay = 0.0f;
+    char *name = rdr->Item(0)->String();
+
+    if (name) {
+        m_name = name;
+        m_18 = func_003A59C0(name);
+    }
+    zrdr_findreal(rdr, "DYNAMIC_WEIGHTS", &decay, 1);
+    m_decay = decay;
+    _zrdr *list = zrdr_findtag(rdr, "ENTRIES");
+
+    for (unsigned int i = 0; (int)i < (int)list->Count(); i++) {
+        _zrdr *item = list->Item(i);
+
+        if (!m_isDisabled && item) {
+            CSnd *sound = 0;
+            float weight = 0.0f;
+            char *sname = item->Item(0)->String();
+
+            zrdr_findreal(item, "WEIGHT", &weight, 1);
+            if (sname)
+                sound = GetSoundByName(sname);
+            if (sound) {
+                m_sounds.push_back(sound);
+                m_weights.push_back(weight);
+            }
+        }
+    }
+    NormalizeWeights();
+}
+
 CSndInstance *CSndGroup::PlaySound(CSndInstance *inst, unsigned int flags)
 {
     if (m_isDisabled)

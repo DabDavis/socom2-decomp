@@ -42,15 +42,9 @@ C2D::C2D()
     m_uivar = 0;
 }
 
-/* OPEN, 12 instructions short (0x68 against 0x98): include/list's. The target inlines the list
- * base's whole destructor -- C2Dlist's, list<C2D *>'s, __list_imp's and __list_deleter's this
- * tests, then the range erase -- so a pointer list's destructor is three high in SOCOM II, and a
- * class over it four (CHUD's inline ~CLensFlareManager is the same shape). include/list's is four:
- * probes (build/scratch/hud/p/c7.cpp against inc/list's variants) put the extra level in
- * ~__list_deleter's erase(iterator(end_.next_), iterator(&end_)) -- the inline iterator
- * constructor building the by-value arguments counts, the copy constructor does not; with raw node
- * pointers, or every iterator constructor out of line, the chain inlines whole under C2D. The
- * header is the entity lane's (~CEntityList, 0x2A00C0, was matched on its present height) */
+/* the list base's whole destructor inlined -- C2Dlist's, list<C2D *>'s, __list_imp's and
+ * __list_deleter's this tests, then the range erase: five levels with the deleter's iterator
+ * temporaries, byte-exact at -inline level=5 (it was 12 instructions short at level 4) */
 C2D::~C2D()
 {
 }
