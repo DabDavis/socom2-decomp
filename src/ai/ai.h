@@ -189,6 +189,27 @@ public:
         return !(soil == 0 || soil == 10 || soil == 8 || soil == 9);
     }
 
+    /* every field to its start (SOCOM 1's CAiCell() body, 0x185200; SOCOM II's constructor calls
+     * it out of line: fifteen statements and the return are past -inline auto's fifteen) */
+    CAiCell();
+    void Reset();
+    /* the soil (the name ours: read through it, the field is loaded again for a following
+     * store -- _reset_cell) */
+    unsigned int GetSoil() const { return m_soil; }
+    /* the fields' setters: their arguments masked at run time, `(0 & 1) << n` for a constant
+     * (the names ours) */
+    void SetOccupied(unsigned int b) { m_occupied = b; }
+    void SetName(unsigned int b) { m_name = b; }
+    void SetAction(unsigned int b) { m_action = b; }
+    void SetLink(unsigned int b) { m_link = b; }
+    void SetAltitude(unsigned int a) { m_altitude = a; }
+    void SetBoundary(unsigned int b) { m_boundary = b; }
+    void SetShadow(unsigned int s) { m_shadow = s; }
+    void SetInside(unsigned int b) { m_inside = b; }
+    void SetBadAlt(unsigned int b) { m_badalt = b; }
+    void SetRtFlag(unsigned int b) { m_rtflag = b; }
+    void SetBilinear(unsigned int b) { m_bilinear = b; }
+
     unsigned int m_soil : 5;   // 0x0
     unsigned int m_occupied : 1;
     unsigned int m_name : 1;
@@ -234,6 +255,17 @@ public:
     static void Destroy(CGraph *graph);
 };
 
+class CAiMap;
+
+/* a cell handed to a walk's callback (SOCOM 1's MAP_FOREACH_STRUCT, which its DWARF does not lay
+ * out: the map, the cell and its location as the callbacks read them) */
+struct MAP_FOREACH_STRUCT {
+    CAiMap *m_map;   // 0x0
+    CAiCell *m_cell;   // 0x4
+    unsigned int m_unk8;   // 0x8
+    CAiMapLoc m_loc;   // 0xc
+};
+
 /* two cells are the same cell when x and y agree, the map aside: an inline bool, which the
  * walks materialise (x's test, then y's into the same register) before they branch -- SOCOM 1's
  * code alike. A free function here, CAiMapLoc being the entity lane's (zentity.h) */
@@ -252,6 +284,24 @@ class CAiMapLocVec : public std::vector<CAiMapLoc> {
 class CAiMap {
 public:
     enum DIR { N = 0, NE = 1, E = 2, SE = 3, S = 4, SW = 5, W = 6, NW = 7, DIR_COUNT = 8 };
+    /* a cell's soil (the names ours, from GetSoilString's: SOCOM 1's DWARF has no enum for it) */
+    enum SOIL {
+        SOIL_NOGO = 0,
+        SOIL_DEFAULT = 1,
+        SOIL_WATER = 2,
+        SOIL_ROAD = 3,
+        SOIL_BRUSH = 4,
+        SOIL_FOREST = 5,
+        SOIL_CLIMB = 6,
+        SOIL_STAIRS = 7,
+        SOIL_CLUTTER = 8,
+        SOIL_TRANS = 9,
+        SOIL_NOALT = 10,
+        SOIL_STEEP = 11,
+        SOIL_GRASS = 12,
+        SOIL_COLLISION = 13,
+        SOIL_COUNT = 14
+    };
 
     /* a named cell (SOCOM 1's DWARF, 0x18 bytes; SOCOM II's name follows the cell, sixteen bytes
      * with the last kept zero, and the four after it are not read yet) */
@@ -410,6 +460,9 @@ public:
         enum TYPE { NONE = 0, DOOR = 1, TYPE_MAX = 31 };
 
         TYPE GetType() const { return m_type_invalid == 0 ? (TYPE)m_type : NONE; }
+        /* the setters (the names ours: masked at run time) */
+        void SetState(unsigned int s) { m_state = s; }
+        void SetTypeInvalid(unsigned int b) { m_type_invalid = b; }
 
         CAiMapLoc m_loc;   // 0x0
         unsigned int m_direction : 4;   // 0x4
@@ -439,6 +492,15 @@ public:
         return 0;
     }
 
+    static const char *GetSoilString(SOIL soil);
+    static SOIL GetSoilByName(const char *name);
+    static int GetDirDelta(DIR a, DIR b);
+    static float GetDirCos(DIR a, DIR b);
+    static bool _reset_rtflag(const MAP_FOREACH_STRUCT &s, void *data);
+    static bool _reset_cell(const MAP_FOREACH_STRUCT &s, void *data);
+    /* bit 1 of the flags: the map changed since it was read (the names ours) */
+    bool IsModified() const { return (m_flags & 2) != 0; }
+    bool SetModified(bool modified);
     int GetRouteIndex(const route *r);
     route *GetRoute(unsigned int i);
     link *GetCellLink(const CAiMapLoc &loc);
@@ -497,7 +559,7 @@ public:
     unsigned char m_layer0[0x2c];   // 0xa8: not laid out yet (built by 0x53A9C0)
     std::vector<CAiMapLayer *> m_layers;   // 0xd4: the layers, m_layer0 first
     char *m_mapex;   // 0xe0: SOCOM 1's 0xac
-    void *m_maps;   // 0xe4: the constructor's argument
+    int m_mapid;   // 0xe4: SOCOM 1's 0xb0 (ValidateCells gives every name this map's id)
     float m_alt_quant;   // 0xe8: SOCOM 1's 0xb4
     names m_namesTable;   // 0xec
     actions m_actionTable;   // 0xf8

@@ -9409,8 +9409,8 @@
 0x00515420 0x80 func_00515420  # OVL2
 0x005154A0 0x80 func_005154A0  # OVL2
 0x00515520 0x60 func_00515520  # OVL2
-0x00515580 0x194 func_00515580  # OVL2
-0x00515720 0x28 func_00515720  # OVL2; tu: vis_mesh.cpp~ (1.0 beta)
+0x00515580 0x194 Reset__7CAiCellFv  # OVL2; ours (SOCOM 1's CAiCell() body, 0x185200, as a function of its own: the constructor 0x515720 and the layers' allocation 0x516FC0 call it; the name ours)
+0x00515720 0x28 __ct__7CAiCellFv  # OVL2; tu: vis_mesh.cpp~ (1.0 beta); s1:order by hand (the demo's 0x185200, ai_map.cpp's first function: __sinit_ai_map.cpp (0x668630) builds the dummy cell with it as SOCOM 1's does; SOCOM II's body calls Reset, 0x515580)
 0x00515750 0x128 func_00515750  # OVL2
 0x00515880 0x78 func_00515880  # OVL2
 0x00515900 0x4D4 func_00515900  # OVL2
@@ -9441,23 +9441,23 @@
 0x00517790 0xBC func_00517790  # OVL2
 0x00517850 0x654 ValidateCells__6CAiMapFv  # OVL2; s1:callee by hand (FlushPlannerQueue calls it on every map in AiMaps where SOCOM 1's calls ValidateCells__6CAiMapFv; 0x654 bytes against the demo's 0x600; CAiMap::Read 0x51AFE0 calls it too)
 0x00517EB0 0x1F8 func_00517EB0  # OVL2
-0x005180B0 0xD0 func_005180B0  # OVL2
+0x005180B0 0xD0 _reset_cell__6CAiMapFRC18MAP_FOREACH_STRUCTPv  # OVL2; ours (new in SOCOM II, next to _reset_rtflag and of its shape: a cell walk's callback that revalidates the cell's action, puts a collision cell back to the default soil and clears its occupied bit)
 0x00518180 0x28 _reset_rtflag__6CAiMapFRC18MAP_FOREACH_STRUCTPv  # OVL2; s1:exact
-0x005181B0 0x38 func_005181B0  # OVL2
+0x005181B0 0x38 SetModified__6CAiMapFb  # OVL2; ours (new in SOCOM II: bit 1 of AIMAP_PARAMS::m_flags set or cleared, the old value returned; SetCellLink 0x5307A0 and the layers' removal 0x53A730 call it with true after a change)
 0x005181F0 0x258 func_005181F0  # OVL2
 0x00518450 0x1DC func_00518450  # OVL2
 0x00518630 0x60 func_00518630  # OVL2
 0x00518690 0x68 func_00518690  # OVL2
 0x00518700 0x60 func_00518700  # OVL2
-0x00518760 0x78 func_00518760  # OVL2
-0x005187E0 0x118 func_005187E0  # OVL2
+0x00518760 0x78 GetSoilByName__6CAiMapFPCc  # OVL2; s1:order by hand (the demo's 0x1871D0: strcasecmp against each soil's name, 1 when none or no name; after CAiMap's construction in both builds)
+0x005187E0 0x118 GetSoilString__6CAiMapFQ26CAiMap4SOIL  # OVL2; ours (new in SOCOM II: the 14-case switch of soil names "nogo" .. "collision", default "default", that SOCOM 1's GetSoilByName had inline; GetSoilByName 0x518760 calls it)
 0x00518900 0x1E0 func_00518900  # OVL2
 0x00518AE0 0x7C func_00518AE0  # OVL2
 0x00518B60 0x1D8 func_00518B60  # OVL2
-0x00518D40 0x38 func_00518D40  # OVL2
+0x00518D40 0x38 GetDirDelta__6CAiMapFQ26CAiMap3DIRQ26CAiMap3DIR  # OVL2; s1:order by hand (the demo's 0x187A70, the same subtraction of two byte enums folded into -4..4; between the GetClosestDirs and GetDirByName in both builds)
 0x00518D80 0x118 func_00518D80  # OVL2
 0x00518EA0 0x1D8 GetDirQuat__6CAiMapFQ26CAiMap3DIRR5CQuatb  # OVL2; s1:calls
-0x00519080 0xA8 func_00519080  # OVL2
+0x00519080 0xA8 GetDirCos__6CAiMapFQ26CAiMap3DIRQ26CAiMap3DIR  # OVL2; ours (new in SOCOM II, after GetDirQuat where SOCOM 1 had GetDirVec: the cosine between two directions -- 1, the 0.7071 static at 0x65AB38, 0, its negation, -1 for a difference of 0, 1, 2, 3, 4 steps)
 0x00519130 0x118 func_00519130  # OVL2
 0x00519250 0x18 _max<Us>__2aiFRCUsRCUs_RCUs  # OVL2; s1:exact; by hand: MW 3.0 mangles a function template's return type (README), so SOCOM 1's _max<Us>__2aiFRCUsRCUs is this name in SOCOM II; the body is SOCOM 1's (the larger by reference, lhu, signed after promotion)
 0x00519270 0x18 _min<Us>__2aiFRCUsRCUs_RCUs  # OVL2; s1:exact; by hand: MW 3.0 mangles the return type (SOCOM 1's _min<Us>__2aiFRCUsRCUs)
@@ -13346,7 +13346,7 @@
 0x0064F604 0x118 KM_GetSoftwareKeyPair  # OVL2 unaligned; s1:exact
 0x00668480 0xB4 __sinit_ai_events.cpp  # OVL2 data area; a static initialiser; s1:unit ai_events.cpp (exact)
 0x00668540 0xE4 __sinit_ai_astar.cpp  # OVL2 data area; a static initialiser; s1:unit by hand (SOCOM 1's __sinit_ai_astar.cpp builds ai::path_queue -- the list AbortPathPlan removes from, 0x49B160 there -- and three words after it; SOCOM II's builds the same at 0x66A180 (the list AbortPathPlan 0x5107B0 removes from) after three new statics)
-0x00668630 0x44 func_00668630  # OVL2 data area; a static initialiser
+0x00668630 0x44 __sinit_ai_map.cpp  # OVL2 data area; a static initialiser; s1:unit by hand (SOCOM 1's __sinit_ai_map.cpp builds the dummy cell through CAiCell(); SOCOM II's builds it at 0x66A198 through 0x515720, then 0.5f * sqrtf(2.0f) into 0x65AB38, GetDirCos's static)
 0x00668680 0x8C func_00668680  # OVL2 data area; a static initialiser
 0x00668710 0xB4 func_00668710  # OVL2 data area; a static initialiser
 0x006687D0 0x8 func_006687D0  # OVL2 data area; a static initialiser

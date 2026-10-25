@@ -937,6 +937,7 @@
 0x0065AA38 0x8 __RTTI__18CRestrainedPlanner  # RTTI of CRestrainedPlanner: found by its RTTI's name
 0x0065AA60 0x8 __RTTI__15CStealthPlanner  # RTTI of CStealthPlanner: found by its RTTI's name
 0x0065AA88 0x8 __RTTI__13CBasicPlanner  # RTTI of CBasicPlanner: found by its RTTI's name
+0x0065AB38 0x4 s_cos45  # OVL2 data; ours (ai_map.cpp's static, zero in the image: __sinit_ai_map.cpp stores 0.5f * sqrtf(2.0f) into it, GetDirCos returns it and its negation; 3 references in 2 functions)
 0x0065AED0 0x4 invalid__9CAiMapLoc  # OVL2 data; SOCOM 1's invalid__9CAiMapLoc (0x449450, 4 bytes, zero): CAiMapLoc's constructor copies it field by field -- CEntity's constructor reads it six times for m_mapLoc and m_mapLocValid where SOCOM 1's reads 0x449450 (the entity lane); 117 references (OVL2's AI code)
 0x0065C238 0x8 __RTTI__7CSealEx  # RTTI of CSealEx: found by its RTTI's name
 0x0065C288 0x8 __RTTI__10CZSealBody  # RTTI of CZSealBody: found by its RTTI's name
@@ -1038,6 +1039,7 @@
 0x0066A0C8 0x4 s_plannerStart  # OVL2 bss; ours (ai_astar.cpp's static, SOCOM 1's unnamed gp word at -29944: the T0 count TickPathPlanner starts from; 2 references in 1 function)
 0x0066A168 0x4 _plan_path__2ai  # OVL2 bss; SOCOM 1's (_plan_path__2ai): the path PathPlanBegin starts, PathPlanAddLeg extends, PathPlanExecute queues and PathPlanAbort clears; 7 references in 4 functions
 0x0066A180 0x18 path_queue__2ai  # OVL2 bss; SOCOM 1's (path_queue__2ai, 24 bytes at 0x49B160: the planner queue, a list of CAiPath * and three words): __sinit_ai_astar.cpp builds it and registers ~CAiPathQueue, AbortPathPlan removes a path from it as SOCOM 1's does; 19 references in 7 functions
+0x0066A198 0x8 s_dummy_cell  # OVL2 bss; SOCOM 1's dummy cell (dummy_cell__6CAiMapFv returned its gp address): __sinit_ai_map.cpp builds it through CAiCell(); 1 reference in 1 function so far
 0x0066A1B0 0xE0 AiMaps  # OVL2 bss; s1:data-seq (size SOCOM 1's; via CreateCompassNavPoints__8CMissionFv +1)
 0x0066B990 0x58 _unknown  # OVL2 bss; SOCOM 1's _unknown (0x509870, 40 bytes there: a static CAiSUnknown seal_aistate.cpp's initialiser builds); CSealCtrlAi::GetAiState returns it when the stack is empty (0x5F5FD0, 0x5F6010) -- 2 references in 2 functions (the kit lane, round 3)
 0x0066A4D0 0x11 SessionKey  # OVL2 bss; s1 by hand (SOCOM 1's SessionKey: every Medius request copies these 17 bytes to its +0x15, as SOCOM 1's do); size SOCOM 1's; 91 references in 78 functions
