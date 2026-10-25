@@ -30,6 +30,8 @@ class CAiMapLoc {
 public:
     CAiMapLoc() {}
     CAiMapLoc(const CAiMapLoc &loc) : m_mapid(loc.m_mapid), x(loc.x), y(loc.y) {}
+    /* a cell of a map (SOCOM 1's, s1:exact at OVL2 0x52D200) */
+    CAiMapLoc(unsigned int ax, unsigned int ay, unsigned int mapid) : m_mapid(mapid), x(ax), y(ay) {}
 
     unsigned int m_mapid : 6;
     unsigned int x : 13;

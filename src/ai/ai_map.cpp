@@ -399,24 +399,12 @@ bool CAiMap::ResetCells()
     return false;
 }
 
-/* CAiMapLoc's three-value constructor (SOCOM 1's __ct__9CAiMapLocFUiUiUi, s1:exact at 0x52D200):
- * zentity.h does not declare it yet, so this stand-in of the same layout builds the same
- * temporary -- the map id, x and y each read, masked and written back as a word, the
- * mem-initializer list's way -- for a CAiMapLoc to be copied from */
-struct CAiMapLocInit {
-    CAiMapLocInit(unsigned int ax, unsigned int ay, unsigned int mapid) : m_mapid(mapid), x(ax), y(ay) {}
-
-    unsigned int m_mapid : 6;
-    unsigned int x : 13;
-    unsigned int y : 13;
-};
-
 /* the whole map as a region: its first cell (map 0), the map's width and height (SOCOM 1's;
  * called, not inlined, by every walk: pinned) */
 #pragma auto_inline off
 void CAiMap::GetMapRegion(region &r) const
 {
-    r.m_loc = (const CAiMapLoc &)CAiMapLocInit(0, 0, 0);
+    r.m_loc = CAiMapLoc(0, 0, 0);
     r.SetSize(m_nx, m_ny);
 }
 #pragma auto_inline reset
