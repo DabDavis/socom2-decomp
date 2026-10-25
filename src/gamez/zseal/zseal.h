@@ -49,6 +49,10 @@ enum SEAL_STATE {
 /* a kind of collision polygon (SOCOM 1's CDIType; no DWARF, only the size matters here) */
 enum CDIType { CDI_TYPE_0 = 0, CDI_TYPE_LAST = 255 };
 
+/* an animation's kind (SOCOM 1's DWARF: AnimType, a 2-byte enum from -1 to 142 -- SOCOM II's code
+ * narrows it as a short; only its bounds here) */
+enum AnimType { animTypeUndefined = -1, animTypeRef = 0, animTypeLast = 142 };
+
 /* how a SEAL died (SOCOM 1's DWARF, a byte) */
 enum SEAL_DEATH_TYPE {
     DEATH_NONE = 0, DEATH_KNIFE_KILL = 1, DEATH_CQB = 2, DEATH_HEADSHOT = 3, DEATH_GRENADE = 4,
@@ -622,6 +626,8 @@ public:
     /* the blood decals, one picked at random (SOCOM 1's static vector<CZDecalDef>; OVL1 bss
      * 0x44D568) */
     static std::vector<class CZDecalDef> m_blooddriptexhandles;
+    /* the database's handles let go (SOCOM 1's static; OVL2 0x5A3BB0) */
+    static void UninitDatabaseHandles();
     void SetSnakePathUpdate(bool on, unsigned int length);
     void RestrainBuddy(CZSealBody *victim);
     void StabBuddy(CZSealBody *victim);
@@ -647,6 +653,10 @@ public:
     void SetJoinedUnit(bool on) { m_joined_unit = on; }
     /* the stance's change taken, once (seal_body.cpp) */
     bool StanceChanged();
+    /* whether an anim type is the blend on top (SOCOM 1's; OVL2 0x577E40, seal_anim.cpp) */
+    bool IsCurrentBlend(AnimType type) const;
+    /* a stun taken: the kind's highest kept, the controller told (SOCOM 1's; OVL2 0x5A53D0) */
+    void HandleStunDamage(STUN_TYPE type, float amount, const CPnt3D *from);
     /* the HUD's flags: the hit set, and each taken once (seal_env.cpp, SOCOM 1's) */
     void SetHudHitFlag();
     bool HudUpdateViewCone();
@@ -677,7 +687,9 @@ public:
     unsigned char m_snakePath[4];   // 0x434: a CAiPath (SOCOM 1's 0x384)
     unsigned char _438[0x528 - 0x438];
     class AnimSet *m_animset;   // 0x528 (SOCOM 1's 0x45c)
-    unsigned char _52c[0x5b0 - 0x52c];
+    unsigned char _52c[0x534 - 0x52c];
+    AnimType m_curblend;   // 0x534: the anim type on top of the blends (SOCOM 1's short at 0x464)
+    unsigned char _536[0x5b0 - 0x536];
     unsigned short m_5b0;   // 0x5b0: two of the stats' counters (the CQB attack adds 2 and 1; the
     unsigned char _5b2[0x5b8 - 0x5b2];   //  names ours)
     unsigned short m_5b8;   // 0x5b8
@@ -698,10 +710,19 @@ public:
     unsigned int m_lastkiller_id;   // 0xfbc: the killer's entity id (SOCOM 1's 0xeb4)
     unsigned char _fc0[0xfc8 - 0xfc0];
     int m_ClientIndex;   // 0xfc8 (SOCOM 1's 0xeb8: CreateRemoteSeal stores its first argument in both)
-    unsigned char _fcc[0xfd4 - 0xfcc];
-    unsigned int m_fd4;   // 0xfd4: zeroed by CreateRemoteSeal (new in SOCOM II; the names ours)
-    float m_fd8;   // 0xfd8: 1.0 there
-    unsigned char _fdc[0x1044 - 0xfdc];
+    unsigned char _fcc[0xfd0 - 0xfcc];
+    /* SOCOM 1's m_stunned, m_full_update_time and m_movespeedmod (0xec6, 0xec8, 0xecc there) in the
+     * same order: HandleStunDamage sets the byte, CreateRemoteSeal zeroes the time and sets the
+     * modifier to 1 */
+    unsigned char m_stunned;   // 0xfd0
+    unsigned char _fd1[0xfd4 - 0xfd1];
+    unsigned int m_full_update_time;   // 0xfd4
+    float m_movespeedmod;   // 0xfd8
+    unsigned char _fdc[0xfe0 - 0xfdc];
+    float m_stunval[7];   // 0xfe0 (SOCOM 1's 0xedc: HandleStunDamage keeps each kind's highest)
+    float m_ffc[6];   // 0xffc: six values run down at the rates below by 0x5AC620 (new; the names ours)
+    float m_1014[6];   // 0x1014
+    unsigned char _102c[0x1044 - 0x102c];
     float m_health;   // 0x1044 (SOCOM 1's 0xea0)
     unsigned char _1048[0x1058 - 0x1048];
     unsigned int m_lastregion;   // 0x1058 (SOCOM 1's 0xf54)

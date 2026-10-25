@@ -22,11 +22,109 @@ struct ANIMSET_PARAMS {
     float m_ladder_updn;   // 0x30
 };
 
+/* an animation set's anims by the item in hand (SOCOM 1's CAnimsByFP: an anim type's pistol and
+ * rifle variants) -- only its two lookups (OVL2 0x5E1A10 and 0x5E19D0, the kit lane's range: the
+ * shorts at 4 and 6 of an anim type's 8-byte record, -1 past the 312 types) */
+class CAnimsByFP;
+
+extern "C" {
+AnimType func_005E1A10(CAnimsByFP *anims, AnimType type);
+AnimType func_005E19D0(CAnimsByFP *anims, AnimType type);
+}
+
 /* a SEAL's animations (SOCOM 1's DWARF: AnimSet, its speeds first) -- only those here */
 class AnimSet {
 public:
     ANIMSET_PARAMS m_aparams;   // 0x0
+    unsigned char _34[0x5c - 0x34];
+    CAnimsByFP *m_animsbyfp;   // 0x5c (SOCOM 1's at 0x60)
 };
+
+/* a cell search's query and its answer (0x58F230 passes this callback; the names ours) */
+struct CCellQuery {
+    unsigned char _0[0xc];
+    CAiMapLoc m_loc;   // 0xc
+    int m_10;   // 0x10
+};
+
+struct CCellAnswer {
+    bool m_found;   // 0x0
+    CAiMapLoc m_loc;   // 0x4
+};
+
+extern "C" {
+/* (OVL2 0x58FA70: whether the cell can be taken) */
+int func_0058FA70(CAiMapLoc *loc, int n);
+}
+
+/* whether a cell is on a map: either coordinate off the invalid cell's (an inline bool: the target
+ * materialises the `||`) */
+static inline bool IsMapped(const CAiMapLoc &loc)
+{
+    return loc.x != CAiMapLoc::invalid.x || loc.y != CAiMapLoc::invalid.y;
+}
+
+/* a cell search's step: a cell taken ends it, found; otherwise the answer is whether the cell it
+ * holds is on a map, and the search goes on (OVL2 0x58F8A0, new in SOCOM II: a callback 0x58F230
+ * passes by address) */
+extern "C" bool func_0058F8A0(CCellQuery *q, CCellAnswer *a)
+{
+    bool done = true;
+
+    if (!func_0058FA70(&q->m_loc, q->m_10)) {
+        a->m_found = IsMapped(a->m_loc);
+        done = false;
+    } else {
+        a->m_loc = q->m_loc;
+        a->m_found = true;
+    }
+    return done;
+}
+
+/* a slot for an item kind: 3 for kind 2, 17 for kind 16, 21 for kinds 9-13, none otherwise -- asked
+ * only as a bool (OVL2 0x58DFA0, new in SOCOM II; OVL1's 0x22FF30 and 0x230050 and the kit lane's
+ * 0x5EAD70 call it). The shared cases are listed in reverse of the target's test order */
+enum ITEM_SLOT { ITEM_SLOT_NONE = 0, ITEM_SLOT_3 = 3, ITEM_SLOT_17 = 17, ITEM_SLOT_21 = 21 };
+
+extern "C" bool func_0058DFA0(unsigned char item)
+{
+    ITEM_SLOT slot = ITEM_SLOT_NONE;
+
+    switch (item) {
+    case 2:
+        slot = ITEM_SLOT_3;
+        break;
+    case 16:
+        slot = ITEM_SLOT_17;
+        break;
+    case 10:
+    case 11:
+    case 9:
+    case 13:
+    case 12:
+        slot = ITEM_SLOT_21;
+        break;
+    }
+    return slot != ITEM_SLOT_NONE;
+}
+
+/* an anim type for the item in hand: item 1's and item 2's variants, any other the type itself (OVL2
+ * 0x58C970, new in SOCOM II; 0x57A330 asks it).
+ * OPEN, 2 instructions: the target's default arm is `b epilogue; move v0,a1` -- a branch to the very
+ * next instruction -- where MW here lets it fall through (`move v0,a1; nop`). Tried: the return after
+ * the switch, a dead return after it, a result local with breaks, the default first, case 2 first, an
+ * if/else-if chain (0x54 bytes), a copy of the type in a local. */
+extern "C" AnimType func_0058C970(CZSealBody *seal, AnimType type, unsigned char item)
+{
+    switch (item) {
+    case 1:
+        return func_005E1A10(seal->m_animset->m_animsbyfp, type);
+    case 2:
+        return func_005E19D0(seal->m_animset->m_animsbyfp, type);
+    default:
+        return type;
+    }
+}
 
 /* the forward and backward limits for the state: standing, crouched, prone or on a ladder (OVL2
  * 0x58BC00, 0x58BB50; SOCOM 1's, the state now CBody's halfword) */

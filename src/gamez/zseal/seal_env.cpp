@@ -296,6 +296,79 @@ void CZSealBody::CheckForRegionTrigger(unsigned int regions)
     m_lastregion = regions;
 }
 
+/* (CZWeapon::RemoveWeaponEventCallback is zweapon.h's, through zchar.h) */
+extern "C" {
+/* the blood decals' vector emptied the FreeVector way, through the unit's out-of-line copies of the
+ * class vector's pieces, which follow this function in reverse of their first use (OVL2 0x5A3D10 the
+ * temporary's constructor, 0x5A3D00 clear, 0x5A3CC0 swap, 0x5A3C60 the temporary's destructor) */
+void *func_005A3D10(void *v);
+void func_005A3D00(void *v);
+void func_005A3CC0(void *a, void *b);
+void func_005A3C60(void *v, int flags);
+/* the decal handles' buffers and counts (OVL1 bss; SOCOM 1's freed one buffer and zeroed one count) */
+extern void *data_0044D550;
+extern void *data_0044D548;
+extern int data_0044D508;
+extern int data_0044D510;
+extern int data_0044D518;
+/* CZSealBody::HandleWeaponEvent, the callback InitDatabaseHandles registers (SOCOM 1's
+ * HandleWeaponEvent__10CZSealBodyFP12CZProjectileUiPv, the one UninitDatabaseHandles removes; OVL2
+ * 0x5A4F80) */
+void func_005A4F80(CZProjectile *proj, unsigned int event, void *data);
+}
+
+/* a 12-byte vector temporary (the class vector's three words) */
+struct CZDecalDefVec {
+    unsigned int m_0;
+    unsigned int m_4;
+    unsigned int m_8;
+};
+
+/* the database's handles let go: the buffers freed, the blood decals' vector emptied, the counts
+ * cleared, the weapon-event callback removed (OVL2 0x5A3BB0; SOCOM 1's with two more counts) */
+void CZSealBody::UninitDatabaseHandles()
+{
+    if (data_0044D550)
+        _free(data_0044D550, 0, 0);
+    data_0044D550 = 0;
+    CZDecalDefVec tmp;
+
+    func_005A3D10(&tmp);
+    func_005A3D00(&m_blooddriptexhandles);
+    func_005A3CC0(&m_blooddriptexhandles, &tmp);
+    func_005A3C60(&tmp, -1);
+    data_0044D508 = 0;
+    data_0044D510 = 0;
+    data_0044D518 = 0;
+    if (data_0044D548)
+        _free(data_0044D548, 0, 0);
+    data_0044D548 = 0;
+    CZWeapon::RemoveWeaponEventCallback(func_005A4F80);
+}
+
+/* six values run down at their rates, none below zero (OVL2 0x5AC620, new in SOCOM II: the arrays at
+ * 0xFFC and 0x1014; OVL1's vehicle code, 0x3ACC10, calls it) */
+extern "C" void func_005AC620(CZSealBody *seal, float dT)
+{
+    for (int i = 0; i < 6; i++) {
+        seal->m_ffc[i] -= seal->m_1014[i] * dT;
+        if (seal->m_ffc[i] < 0.0f)
+            seal->m_ffc[i] = 0.0f;
+    }
+}
+
+/* a stun taken: stunned, the kind's highest amount kept, and the controller told with it (OVL2
+ * 0x5A53D0; SOCOM 1's without the recovery's switch -- the kind passed on as it came) */
+void CZSealBody::HandleStunDamage(STUN_TYPE type, float amount, const CPnt3D *from)
+{
+    if (type < 8) {
+        m_stunned = 1;
+        if (m_stunval[type] < amount)
+            m_stunval[type] = amount;
+        ((CSealCtrl *)m_control)->OnStunDamage(type, m_stunval[type], from);
+    }
+}
+
 /* the HUD's flags: the hit taken once, the view cone's update taken once, the hit set (OVL2
  * 0x5A5490, 0x5A5450, 0x5A5430; SOCOM 1's word for word, the flags at 0x105C) */
 bool CZSealBody::GetHudHitFlag()

@@ -10374,7 +10374,7 @@
 0x005777D0 0x3C4 func_005777D0  # OVL2
 0x00577BA0 0x24C func_00577BA0  # OVL2
 0x00577DF0 0x4C func_00577DF0  # OVL2
-0x00577E40 0x54 func_00577E40  # OVL2
+0x00577E40 0x54 IsCurrentBlend__10CZSealBodyCF8AnimType  # OVL2; s1:calls by hand (SOCOM 1's IsCurrentBlend__10CZSealBodyCF8AnimType: the short at 0x534 -- SOCOM 1's 0x464 -- against m_animset's (0x528, SOCOM 1's 0x45C) base anim of the type, through 0x5E1A90 as SOCOM 1's through BaseAnim__7AnimSetF8AnimType; SOCOM II tests the type itself first; called from the body's ticks everywhere; seal_anim.cpp)
 0x00577EA0 0x238 func_00577EA0  # OVL2
 0x005780E0 0x28 func_005780E0  # OVL2
 0x00578110 0x40 func_00578110  # OVL2
@@ -10764,7 +10764,7 @@
 0x005A3570 0x434 func_005A3570  # OVL2
 0x005A39B0 0x198 func_005A39B0  # OVL2
 0x005A3B50 0x58 func_005A3B50  # OVL2
-0x005A3BB0 0xA8 func_005A3BB0  # OVL2
+0x005A3BB0 0xA8 UninitDatabaseHandles__10CZSealBodyFv  # OVL2; s1:calls by hand (SOCOM 1's UninitDatabaseHandles__10CZSealBodyFv: _free of a buffer, the blood decals' vector emptied through the deleter's constructor, clear, swap and destructor on a stack temporary, a second buffer freed, RemoveWeaponEventCallback of the same callback, 0x5A4F80; SOCOM II zeroes three counts; seal_env.cpp)
 0x005A3C60 0x60 func_005A3C60  # OVL2
 0x005A3CC0 0x40 func_005A3CC0  # OVL2
 0x005A3D00 0x8 func_005A3D00  # OVL2
@@ -10784,7 +10784,7 @@
 0x005A4F80 0x11C func_005A4F80  # OVL2
 0x005A50A0 0x1A4 func_005A50A0  # OVL2
 0x005A5250 0x174 func_005A5250  # OVL2
-0x005A53D0 0x5C func_005A53D0  # OVL2
+0x005A53D0 0x5C HandleStunDamage__10CZSealBodyF9STUN_TYPEfPC6CPnt3D  # OVL2; s1:order by hand (SOCOM 1's HandleStunDamage__10CZSealBodyF9STUN_TYPEfPC6CPnt3D: the kind under 8, m_stunned set, the kind's m_stunval kept at its highest and passed to the controller's OnStunDamage (slot 0x50) with the kind and the source unchanged -- SOCOM II drops the recovery's switch; right before SetHudHitFlag in both builds; seal_env.cpp)
 0x005A5430 0x1C SetHudHitFlag__10CZSealBodyFv  # OVL2; tu: seal_env.cpp~ (1.0 beta); s1:order (SOCOM 1's SetHudHitFlag__10CZSealBodyFv word for word, first of the three: bit 1 of the flag byte set, 0x105C here against 0xF58) (the SEAL lane, round 3)
 0x005A5450 0x38 HudUpdateViewCone__10CZSealBodyFv  # OVL2; s1:order (SOCOM 1's HudUpdateViewCone__10CZSealBodyFv, second of the three: bit 0 of 0x105C taken once) (the SEAL lane, round 3)
 0x005A5490 0x40 GetHudHitFlag__10CZSealBodyFv  # OVL2; s1:order (SOCOM 1's GetHudHitFlag__10CZSealBodyFv, third of the three: bit 1 of 0x105C taken once) (the SEAL lane, round 3)

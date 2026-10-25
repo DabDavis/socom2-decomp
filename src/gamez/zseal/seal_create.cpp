@@ -103,8 +103,8 @@ CZSealBody *CZSealBody::CreateRemoteSeal(int index, int id, const char *name, in
         seal->SetJoinedUnit(false);
         seal->m_vehicle_index = vehicle;
         seal->SetDisplayName(name);
-        seal->m_fd8 = 1.0f;
-        seal->m_fd4 = 0;
+        seal->m_movespeedmod = 1.0f;
+        seal->m_full_update_time = 0;
     }
     return seal;
 }
