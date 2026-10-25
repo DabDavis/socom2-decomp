@@ -6,7 +6,7 @@
  * sensitivity pair, adds a pressure to UpdateButton and a settle flag to Flush, and keeps one
  * libpad2 socket per pad. The file name is ours. Defined in reverse of their image order
  * (-inline deferred).
- * Unwritten: Tick (0x2DA930, 0x10B4), CheckStickVelocity (0x2DA3A0), Dilate (0x2DA200). */
+ * Unwritten: Tick (0x2DA930, 0x10B4). */
 
 #include <string.h>
 
@@ -21,12 +21,21 @@ extern "C" int func_001BD5C8();
 extern "C" int func_0018FD10();
 extern "C" int func_0018FF50();
 extern "C" int sceGsSyncV(int mode);
+/* the math library's (MAIN) */
+extern "C" float sinf(float);
+extern "C" float atan2f(float, float);
+extern "C" float fabsf(float);
+extern "C" float sqrtf(float);
+/* a value held within two bounds, whether it moved (SOCOM 1's template _saturate<float>; the
+ * out-of-line instance an earlier unit's, not named yet) */
+extern "C" bool func_00267A60(float *v, const float &lo, const float &hi);
 
-/* the pads' DMA buffers, 256 bytes each (not named yet) */
-extern unsigned char data_0044F140[2][256];
-/* the click timer's step, the pressure's scale and the acceleration's range (globals of the pad
- * code, not named yet) */
-extern float data_0044F240;
+/* the pads' DMA buffers, 256 bytes each, and the time step the pad code runs on (SOCOM 1's
+ * globals, by name) */
+extern unsigned char m_DmaBufArray[2][256];
+extern float pad_dt;
+/* the pressure's scale and the acceleration's range (constants the code loads from data, as an
+ * inline's reference parameters bound to literals are; not named) */
 extern float data_003DF268;
 extern float data_003DF208;
 extern float data_003DF210;
@@ -67,7 +76,7 @@ CPad::CPad(int port, int slot)
     m_socketSlot = slot;
     m_socketC4 = 0;
     m_socketC8 = 0;
-    m_port = func_001BD630(&m_socketType, data_0044F140[port]);
+    m_port = func_001BD630(&m_socketType, m_DmaBufArray[port]);
     m_0 = 0;
     for (int i = 0; i < 4; i++) {
         m_lastStickVal[i] = 0.0f;
@@ -213,6 +222,95 @@ void CStickType::ReadControlFile(int stick)
     }
 }
 
+/* a value inside (-range, range) (inline: CheckStickVelocity materialises each test; the name
+ * ours) */
+inline bool InsideRange(float v, float range)
+{
+    if (v < range && -v < range)
+        return true;
+    return false;
+}
+
+/* a stick resting: an axis inside its velocity dead zone that has barely moved for long enough
+ * is zeroed -- both axes together unless they are taken separately (SOCOM 1's; its test of the
+ * pair reads the x axis twice, as SOCOM 1's does).
+ * OPEN, 2 instructions (0x238 of 0x240): the target indexes the y axis by i + 1 computed and scaled
+ * on its own (addiu, sll -- for the last value, the dead time and the final store alike), where MW
+ * folds the +1 into the offsets here; the flags take t1/t0 there. Not the flags' type or
+ * declaration order, nor an index variable of its own */
+void CPad::CheckStickVelocity(float &x, float &y, int stick)
+{
+    int i = stick * 2;
+    bool zeroX = false;
+    bool zeroY = false;
+
+    if (InsideRange(x, m_stickType[stick].m_velocityDeadZone)) {
+        bool still = false;
+
+        if (InsideRange(x - m_lastStickVal[i], m_stickType[stick].m_minStickVelocity))
+            still = true;
+        if (still) {
+            m_deadTime[i] += pad_dt;
+            if (m_deadTime[i] > m_stickType[stick].m_minZeroVelocityTime)
+                zeroX = true;
+        } else
+            m_deadTime[i] = 0.0f;
+    }
+    if (InsideRange(y, m_stickType[stick].m_velocityDeadZone)) {
+        bool still = false;
+
+        if (InsideRange(y - m_lastStickVal[i + 1], m_stickType[stick].m_minStickVelocity))
+            still = true;
+        if (still) {
+            m_deadTime[i + 1] += pad_dt;
+            if (m_deadTime[i + 1] > m_stickType[stick].m_minZeroVelocityTime)
+                zeroY = true;
+        } else
+            m_deadTime[i + 1] = 0.0f;
+    }
+    m_lastStickVal[i] = x;
+    m_lastStickVal[i + 1] = y;
+    if (!m_stickType[stick].m_velocitySeparate && !(zeroX && zeroX)) {
+        zeroX = false;
+        zeroY = false;
+    }
+    if (zeroX)
+        x = 0.0f;
+    if (zeroY)
+        y = 0.0f;
+}
+
+/* a stick's square travel stretched toward its circle, by the angle's sine (dilation 0) or the
+ * axes' ratio (1, the one used), then held to [-1, 1] (SOCOM 1's; its choice a function-local
+ * static, initialised statically here where SOCOM 1's had a guard) */
+void CPad::Dilate(float &x, float &y, int stick)
+{
+    static int which_dilation = 1;
+
+    if (m_stickType[stick].m_dilate) {
+        float k = 1.0f;
+
+        if (which_dilation == 0) {
+            float s = sinf(2.0f * atan2f(y, x));
+
+            k = 1.0f / (1.0f + 0.28f * s * s);
+        } else if (which_dilation == 1) {
+            int ax = fabsf(x);
+            int ay = fabsf(y);
+
+            if (ay < ax)
+                k = y / x;
+            else if (ax < ay)
+                k = x / y;
+            k = sqrtf(1.0f + fabsf(k));
+        }
+        x *= k;
+        y *= k;
+        func_00267A60(&x, -1.0f, 1.0f);
+        func_00267A60(&y, -1.0f, 1.0f);
+    }
+}
+
 /* a double click taken, once (SOCOM 1's) */
 bool CPad::GetDoubleClick(PAD_BUTTON button)
 {
@@ -288,7 +386,7 @@ void CPad::UpdateButton(PAD_BUTTON button, unsigned int down, float pressure)
         else
             m_click[button] = 0.25f;
     } else if (m_click[button] > 0.0f) {
-        m_click[button] = m_click[button] - data_0044F240;
+        m_click[button] = m_click[button] - pad_dt;
         if (m_click[button] < 0.0f)
             m_click[button] = -1.0f;
     }

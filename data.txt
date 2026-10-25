@@ -676,6 +676,9 @@
 0x0044F108 0x8 m_pads__6CInput  # OVL1 bss; s1:data-seq (size SOCOM 1's; via DeletePad__6CInputFUi +1)
 0x0044F110 0x1 m_init__6CInput  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Init__6CInputFv)
 0x0044F118 0x4 m_keyboard__6CInput  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Init__6CInputFv)
+0x0044F140 0x200 m_DmaBufArray  # OVL1 bss; SOCOM 1's (512 bytes, two pads' 256-byte DMA buffers: the demo's 0x4D74C0, which its CPad constructor hands libpad the same way): CPad's constructor passes m_DmaBufArray[port] to the socket's creation; 1 reference
+0x0044F240 0x4 pad_dt  # OVL1 bss; SOCOM 1's (the pad code's time step, gp-relative in the demo, read at the same places): CPad::Tick stores it, UpdateButton's click timer and CheckStickVelocity's dead-time steps read it; 4 references in 3 functions
+0x0044F310 0x4 m_defaultMaterial__16CMaterialExArray  # OVL1 bss; new in SOCOM II (SOCOM 1's GetMaterial returned 0 without a polygon), the name ours: int_material.cpp's SetDefaultMaterial (0x2DDC30, SOCOM 1's first function there) stores its index first, IntersectStruct::GetMaterial reports it for a polygon without a material; 2 references in 2 functions
 0x0044F370 0x98 theLobby  # OVL1 bss; s1 by hand (SOCOM 1's COurGame::StartEngine and StopEngine pass theLobby to CZOnlineLobby's Init and UnInit; SOCOM II's pass 0x44F370 at the same two places, UnInit__13CZOnlineLobbyFv named); size SOCOM 1's
 0x0044F45C 0x4 uiv_GameClock__24@unnamed@zNetMedius_cpp@  # OVL1 bss; s1:data-seq (size SOCOM 1's; via SyncGameClock__13CZOnlineLobbyFi)
 0x00450080 0x1000 m_stack__6CStack  # OVL1 bss; s1:data-seq by hand (__sinit_zmath_matrix.cpp constructs 64 CMatrix here where SOCOM 1 constructs m_stack__6CStack)
@@ -689,6 +692,7 @@
 0x0045C2B8 0xC m_tick_list__Q23zdb6CLight  # OVL1 bss; s1:unit (node_main.cpp's first static, as SOCOM 1's CLight::m_tick_list: __sinit_node_main.cpp zeroes it and registers its destructor; its record at 0x45C2A8)
 0x0045C2D8 0xC m_deferred_visuals__Q23zdb5CNode  # OVL1 bss; node_main.cpp's second static, new in SOCOM II: a pointer list (the deleter's constructor builds it) of visuals let go of while drawn, which DeleteVisuals fills and 0x314E60 empties; the name ours
 0x0045C380 0x4 m_world__Q23zdb6CWorld  # OVL1 bss; s1:data-seq (size SOCOM 1's; via AddNewMark__10CZMarkListFPQ23zdb15IntersectStructP12CZProjectilef +4)
+0x0045C388 0x4 s_customCharacterCnt__3zdb  # OVL1 bss; node_world.cpp's static, new in SOCOM II (the name ours): AddCustomCharacters clears it and walks that many stacked nodes, FindCustomCharacters stores at the index and counts it up; 6 references in those 2 functions
 0x0045C3A0 0x10 g_assetsRecycle__Q23zdb27@unnamed@node_assetlib_cpp@  # OVL1 bss; s1:name by hand (SOCOM 1's anonymous-namespace CAssetList in node_assetlib.cpp, 0x20 before m_assets as there: the unit's static initialiser builds it first and registers ~CAssetList for it; ReleaseLibRef moves a released library into it, GetLoadedLibRef(s) take one back, EmptyAssetRecycleBin clears it -- 5 functions take 0x45C3A0)
 0x0045C3C0 0x10 m_assets__Q23zdb9CAssetMgr  # OVL1 bss; s1:data-exact (size SOCOM 1's; via DismemberWorldModel__Q23zdb6CWorldFv +1)
 0x0045C3F0 0x4 m_ripplefreepool__Q23zdb7CRipple  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Uninit__Q23zdb7CRippleFv)
@@ -742,6 +746,7 @@
 0x0049E840 0x4 m_baseAddress__Q23zdb8CTexture  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Init__Q23zdb8CTextureFv +1)
 0x0049E860 0x4 m_palId__Q23zdb11CTexPalette  # OVL1 bss; s1:data-seq (size SOCOM 1's; via __ct__Q23zdb11CTexPaletteFPCc)
 0x0049E880 0x1C m_texmanager__Q23zdb11CTexManager  # OVL1 bss; SOCOM 1's (the texture buffers' vector first: the states index its data at 8 and pass it to DestroyBuffers): 114 references in 30 functions take 0x49E880-0x49E888
+0x0049E8A0 0x10 TexBufParams__Q23zdb11CTexManager  # OVL1 bss; SOCOM 1's (16 bytes at m_texmanager + 0x20, as the demo's 0x50EB20 after its 0x50EB00): the CTextureAssetCharacters constructor passes its first two floats to doAddBuffer as SOCOM 1's does; 27 references in 4 functions take 0x49E8A0-0x49E8AC
 0x0049E8B0 0xDC TexPhase__Q23zdb11CTexManager  # OVL1 bss; SOCOM 1's (0xCC bytes; SOCOM II's states read entries to 0xD8 as buffer indices): 82 references in 12 functions take 0x49E8B0-0x49E988
 0x0049E9E0 0x4 m_p2dcamera__3C2D  # OVL1 bss; SOCOM 1's static (gp-26200 there): C2D::Open news the camera into it when null, as SOCOM 1's Open does, and C2DBitmap::Draw(matrix) draws with it as SOCOM 1's: 3 references in 2 functions take 0x49E9E0
 0x0049E9F0 0x4 m_fXPixel__3C2D  # OVL1 bss; SOCOM 1's static (gp-26224): C2DLine::SetPos scales x by it before adding m_topx, as SOCOM 1's scales by m_fXPixel (SOCOM II's Init sets it to the screen's width over 640, SOCOM 1's to 1.0): 11 references in 7 functions take 0x49E9F0

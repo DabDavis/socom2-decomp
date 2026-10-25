@@ -12,12 +12,7 @@
 
 #include "node_world.h"
 
-/* the texture list's lookups not named yet (vis code, SOCOM 1's CTexList::GetHandle(const char *),
- * Append(CTexture *, bool) and Free, at SOCOM 1's call sites), and the texture test the mip walk
- * makes (SOCOM II's) */
-extern "C" zdb::CTexHandle *func_00354670(zdb::CTexList *list, const char *name);
-extern "C" zdb::CTexHandle *func_003545F0(zdb::CTexList *list, zdb::CTexture *tex, bool b);
-extern "C" void func_00354510(zdb::CTexList *list);
+/* the texture test the mip walk makes (SOCOM II's, vis code, not named yet) */
 extern "C" bool func_00357470(zdb::CTexture *tex, zdb::CTexture *parent);
 
 namespace zdb {
@@ -105,7 +100,7 @@ CAssetLib::~CAssetLib()
     if (m_socom2_38)
         _free(m_socom2_38, 0, 0);
     m_socom2_38 = 0;
-    func_00354510(&m_textures);
+    m_textures.Free();
     std::for_each(m_palettes.begin(), m_palettes.end(), DeletePalette());
     m_palettes.clear();
     if (m_name)
@@ -179,7 +174,7 @@ CTexHandle *CAssetLib::AddTexture(CTexture *tex)
     CTexHandle *h = 0;
 
     if (!CAssetMgr::m_assets.FindTextureLib(tex->m_name)) {
-        h = func_003545F0(&m_textures, tex, true);
+        h = m_textures.Append(tex, true);
         tex->m_AssetLib = this;
     }
     return h;
@@ -250,7 +245,7 @@ CTexHandle *CAssetList::GetTexHandle(const char *name)
     lib_iterator e = list_base::end();
 
     for (lib_iterator it = list_base::begin(); it != e; ++it)
-        if ((h = func_00354670(&((CAssetLib *)*it)->m_textures, name)) != 0)
+        if ((h = ((CAssetLib *)*it)->m_textures.GetHandle(name)) != 0)
             break;
     return h;
 }
@@ -338,7 +333,7 @@ CAssetLib *CAssetList::FindTextureLib(const char *name)
     lib_iterator e = end();
 
     for (lib_iterator it = begin(); it != e; ++it)
-        if (func_00354670(&((CAssetLib *)*it)->m_textures, name)) {
+        if (((CAssetLib *)*it)->m_textures.GetHandle(name)) {
             lib = (CAssetLib *)*it;
             break;
         }
