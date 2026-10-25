@@ -1643,6 +1643,24 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the HUD, round 17** (st_mpexit.cpp's stat machinery, four static initialisers):
+  - a pointer-to-member constant passed by value to an inline is copied into a local (ld/lwc1 then
+    sd/swc1); `(p->*pfn)()` calls __ptmf_scall with t9 = &pfn; `pfn1 == pfn2` compiles to
+    `!__ptmf_cmpr(&pfn1, &pfn2)` (MAIN 0x1828E0, named);
+  - an array of pointer-to-members, even a const one, is initialised at run time by the unit's
+    initialiser (c_arrStatFuncs); the accessors it points at are emitted where their address is first
+    taken, in reverse of the array order;
+  - two short fields compared: load them into int locals first (`int a = s1.x, b = s2.x; if (a != b)
+    return a < b;`) -- compared straight, MW loads the right operand first;
+  - computed file statics defined in address order reproduce an initialiser exactly (scdiff compares
+    .data variables by content; the bss statics' order is the computation order);
+  - a walk starting on an element already examined is `for (;;) { it.Advance(); if (!it.More()) break;
+    ... }`;
+  - include/iostream holds the `__nInit`/`__wInit` objects ~40 initialisers build first; 0x219090
+    (~BitmapReticule) is a third draft-only false regression under `--files '^(?!auto/)'` (the unit's
+    span now reaches its initialiser); initialisers found: st_mpexit 0x3FE860, hud_bitmapreticule
+    0x3FE490, hud_ammo 0x3FF610, hud_mpinfobox 0x3FF680, hud_mpweaponsel 0x3FF7F0, hud_linemap 0x3FE190,
+    hud_actionbitmap 0x3FE550; 0x22EDB0-0x237xxx is SOCOM II's radio command menu (TCM, VOTE, MUTE).
 - **Tells from the weapons, round 9** (CZItemStash, CVehicle(), the vehicle initialisers, vis_vu.cpp):
   - a class-iterator walk with a postfix `i++` gets its end hoisted into a preheader after the loop
     (entered with a `b`, the entry test repeated there); `++i` re-reads the vector's data every pass
@@ -2473,7 +2491,7 @@ every hand-written unit (`--files '^(?!auto/)'`) before it is committed. A workt
 `extracted/` and `decomp/toolchains/` linked in from the main tree.
 
 `--files '^(?!auto/)'` leaves out the drafts, so a hand-written inline copy that only its draft
-matches reports as a regression there (0x32C5F0, ~CRdrArchiveList's copy, and 0x510080, OVL2's
+matches reports as a regression there (0x32C5F0, ~CRdrArchiveList's copy, 0x219090, ~BitmapReticule's, and 0x510080, OVL2's
 __list_imp destructor that seal_aistate.cpp's missing copy now reports "elsewhere" -- 0x29FF60 and
 0x2D02B0 match from hand source since the MSL headers' completion): rerun with that draft's file
 included before believing one.
