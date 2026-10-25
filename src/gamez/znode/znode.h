@@ -100,7 +100,21 @@ public:
 struct tag_DI_HEAD {
     unsigned int _0;
     unsigned int m_refcount;   // 0x4
-    unsigned int _8;
+    /* SOCOM 1's DI_PARAMS flags, at 8 here (SetMaterial writes the material's eight bits at bit
+     * 10, SetDIBBox the type's two at bit 0) */
+    union {
+        unsigned int _8;
+        struct {
+            unsigned int m_ditype : 2;   // 0x8
+            unsigned int m_ptcount : 8;
+            unsigned int m_material : 8;
+            unsigned int m_cameratype : 2;
+            unsigned int m_appflags : 3;
+            unsigned int m_inside : 1;
+            unsigned int m_shadow : 2;
+            unsigned int m_reserved : 6;
+        } m_flags;
+    };
 };
 
 class CDI : public tag_DI_HEAD {
@@ -163,6 +177,8 @@ public:
     int Release();
     /* the texture light maps project by default (SOCOM 1's static) */
     static CTexHandle *m_lightMapTexture;
+    /* the camera the visuals are drawn from (SOCOM 1's static; CWorld::Initalize sets it) */
+    static CCamera *m_camera;
     /* the decals of one view let go of (SOCOM 1's, by name) */
     void DereferenceDecals(unsigned int vid);
     /* a decal projected onto the visual (SOCOM 1's, by name) */
@@ -228,7 +244,8 @@ public:
      * name is ours: an overload, between the two SOCOM 1 had) */
     virtual CNode *FindChild(const char *name, int start, int *index, bool deep);
     virtual bool IsCell();
-    virtual void Read(CSaveLoad &io);
+    /* every override returns true (li v0,1: CNode's, CLight's, CModel's, CWorld's) */
+    virtual bool Read(CSaveLoad &io);
     /* the old setting given back (SOCOM 1's DWARF: inline in znode.h, returning the bit) */
     virtual bool SetActive(bool on)
     {
@@ -264,7 +281,11 @@ public:
     /* inline: SetModeTree's innermost copy calls the out-of-line copies (0x3134A0, and 0x1EA880,
      * an earlier unit's) -- the names are ours */
     void SetMode(int mode) { m_socom2_mode = mode; }
+    /* inline: DeleteLandmark's test loads the byte apart from the store's (the name ours) */
+    bool IsLandmark() const { return m_landmark; }
     CNodeVector &GetChildren() { return m_child; }
+    /* inline: find_node's innermost copy calls the out-of-line copy (0x319F10; the name ours) */
+    char *GetName() { return m_name; }
     void ShrinkAtomBasePtrs();
     void AllocateAtomBasePtrs(int x, int z);
     void SetNodeEx(CNodeEx *ex, bool b);
@@ -416,6 +437,7 @@ public:
     CLight();
     virtual ~CLight();
     virtual CNode *_Copy(CNode *to) const;
+    virtual bool Read(CSaveLoad &io);
     virtual bool SetActive(bool on);
     virtual CBBox *UpdateBBox(bool up);
     /* inline (CLightMap::SetTexture's range is loaded ahead of its constant: the name ours) */
@@ -443,9 +465,13 @@ public:
     CPnt3D m_WorldPosition;   // 0xe8
 };   // 0x100 bytes (16-aligned)
 
-/* a texture: only its size placed (SOCOM 1's DWARF: CTexture : TEXTURE_PARAMS, the width first) */
+/* a texture: only its size placed (SOCOM 1's DWARF: CTexture : TEXTURE_PARAMS, the width first;
+ * 0x70 bytes, the size CSaveLoad::LoadTextures_PS2 news) */
 class CTexture {
 public:
+    ~CTexture();
+    bool Read(CSaveLoad &io);
+
     unsigned short m_width;   // 0x0
     unsigned short m_height;   // 0x2
 };
@@ -453,6 +479,8 @@ public:
 /* a texture's handle (SOCOM 1's DWARF) */
 class CTexHandle {
 public:
+    static CTexHandle *Create(CTexture *tex);
+
     char *m_name;   // 0x0
     int m_count;   // 0x4
     unsigned int m_gsAddr;   // 0x8
@@ -521,13 +549,37 @@ enum _RenderPhase {
     NUM_RENDER_PHASES
 };
 
-/* a library of models and textures: only its render phase placed (SOCOM 1's DWARF has it at
- * 0x2B, after the name and three lists; CNode::CreateXRef reads it at 0x2F here) */
+class CTexPalette;
+
+/* a library's textures (SOCOM 1's DWARF: CTexList : vector) */
+class CTexList : public std::vector<CTexHandle *> {
+};   // 0xc bytes
+
+/* a library's palettes (SOCOM 1's DWARF: CTexPalList : vector) */
+class CTexPalList : public std::vector<CTexPalette *> {
+};   // 0xc bytes
+
+/* a library of models and textures (SOCOM 1's DWARF has its render phase at 0x2B, after the name
+ * and three lists; CNode::CreateXRef reads it at 0x2F here: SOCOM II adds a word after the name --
+ * AddModel pushes onto the vector at 8, AddPalette walks the one at 0x20, LoadTextures_PS2 stores
+ * the texture buffer at 0x30) */
 class CAssetLib {
 public:
-    unsigned char _0[0x2f];
+    char *m_name;   // 0x0
+    unsigned char _4[4];   // 0x4: SOCOM II's
+    CModelVector m_models;   // 0x8 (SOCOM 1: 0x4)
+    CTexList m_textures;   // 0x14
+    CTexPalList m_palettes;   // 0x20
+    unsigned char m_autoload;   // 0x2c
+    unsigned char m_locked;   // 0x2d (AddModel refuses a locked library)
+    unsigned char m_gearlib;   // 0x2e
     _RenderPhase m_renderphase;   // 0x2f (SOCOM 1: 0x2b)
-};
+    void *m_texture_buffer;   // 0x30
+    void *m_model_buffer;   // 0x34
+    int m_iRefCount;   // 0x38
+
+    CTexHandle *AddTexture(const char *name);
+};   // 0x3c bytes
 
 /* a model's instances (SOCOM 1's DWARF: CRefList : list) */
 class CRefList : public std::list<CNode *> {
@@ -577,31 +629,227 @@ public:
  * so 8 bytes went from the grid or from what follows it; only the head is placed yet */
 class CGrid {
 public:
+    CGrid();
+
     unsigned char _0[0x14];   // tag_GRID_PARAMS
     CFRect m_extents;   // 0x14
     unsigned char _24[0x6514 - 0x24];
 };
 
-/* the scene's root; SOCOM 1's DWARF has its 0x6BE0 bytes of members. SOCOM II's grid is 0x14
- * bytes further on (CCamera::GetLandmarkFarPlane reads its extents at 0x698), its landmark list
- * 0xC (GetDatabaseNode reads it at 0x6B98). */
+}
+
+class _zanim_cmd_hdr;
+struct _zrdr;
+
+/* the world's wind (a global class, as its mangled names say): SOCOM 1's DWARF, but SOCOM II puts
+ * the wind vector first (Reset and TickGoal
+ * read the goals at 0x10 and the angles at 0x28, 0x10 later than SOCOM 1's) */
+class CWind {
+public:
+    void Reset();
+    void TickGoal(float dt);
+    void Tick(float dt);
+    static bool CmdTickWind(_zanim_cmd_hdr *cmd, float *dt);
+    static _zanim_cmd_hdr *CmdParseWind(_zrdr *rdr);
+    static void RegisterAnimCommands();
+
+    PNT4D m_Wind;   // 0x0 (SOCOM 1: 0x1c; 4-aligned -- CWind is 0x68 bytes, and Tick copies into it
+                    // element by element)
+    float m_AzimuthGoal;   // 0x10
+    float m_ZenithGoal;   // 0x14
+    float m_SpeedGoal;   // 0x18
+    float m_AzimuthGoalDelta;   // 0x1c
+    float m_ZenithGoalDelta;   // 0x20
+    float m_SpeedGoalDelta;   // 0x24
+    float m_Azimuth;   // 0x28
+    float m_Zenith;   // 0x2c
+    float m_Speed;   // 0x30
+    float m_AzimuthOffset;   // 0x34
+    float m_MinAzimuthOffset;   // 0x38
+    float m_MaxAzimuthOffset;   // 0x3c
+    float m_ZenithOffset;   // 0x40
+    float m_MinZenithOffset;   // 0x44
+    float m_MaxZenithOffset;   // 0x48
+    float m_AzimuthOffsetVelocity;   // 0x4c
+    float m_ZenithOffsetVelocity;   // 0x50
+    float m_SpeedOffset;   // 0x54
+    float m_MinSpeedOffset;   // 0x58
+    float m_MaxSpeedOffset;   // 0x5c
+    float m_SpeedOffsetVelocity;   // 0x60
+    unsigned char m_TickAzimuth;   // 0x64
+    unsigned char m_TickZenith;   // 0x65
+    unsigned char m_TickSpeed;   // 0x66
+    unsigned char m_TickGoal;   // 0x67
+};   // 0x68 bytes
+
+namespace zdb {
+
+/* the world's directional lights and ambient (SOCOM 1's DWARF) */
+class _globalLight {
+public:
+    CPnt4D dir[3];   // 0x0
+    CPnt4D col[3];   // 0x30
+    CPnt4D ambient;   // 0x60
+};   // 0x70 bytes
+
+class DiIntersect;
+class _cellData;
+class CRenderMap;
+class CTextureAssetCharacters;
+/* the 0x70-byte objects the world makes for its shadow casters (new in SOCOM II, at 0x580; the
+ * name is ours) */
+class CShadowCaster;
+
+/* the lights the world ticks (SOCOM 1's DWARF: CLightList : list) */
+class CLightList : public std::list<CLight *> {
+};   // 0xc bytes
+
+/* the world's shadows (SOCOM 1's DWARF: CRenderMapVector : vector) */
+class CRenderMapVector : public std::vector<CRenderMap *> {
+};   // 0xc bytes
+
+/* the world's characters with textures of their own (SOCOM 1's DWARF: a list) */
+class CTextureAssetCharacterList : public std::list<CTextureAssetCharacters *> {
+};   // 0xc bytes
+
+/* the per-band render tables a world reads (SOCOM 1's DWARF: each a vector and its band count,
+ * 0x10 bytes; their constructors, destructors and readers are vis code, out of line) */
+class CLOD_Object {
+public:
+    CLOD_Object();
+    ~CLOD_Object();
+    bool Read(CSaveLoad *io);
+    unsigned char _0[0x10];
+};
+class CMaterial_Object {
+public:
+    CMaterial_Object();
+    ~CMaterial_Object();
+    bool Read(CSaveLoad *io);
+    unsigned char _0[0x10];
+};
+class CSubSurf_Object {
+public:
+    CSubSurf_Object();
+    ~CSubSurf_Object();
+    unsigned char _0[0x10];
+};
+class CPreLight_Object {
+public:
+    CPreLight_Object();
+    ~CPreLight_Object();
+    unsigned char _0[0x10];
+};
+class CScrollingTexture_Object {
+public:
+    CScrollingTexture_Object();
+    ~CScrollingTexture_Object();
+    bool Read(CSaveLoad *io);
+    unsigned char _0[0x10];
+};
+
+/* the scene's root; SOCOM 1's DWARF has its 0x6BE0 bytes of members, and SOCOM II's is the same
+ * size, laid out from its constructor: the wind moved to the front (so the camera is 0x68 later),
+ * CProjectedMap_Object dropped, a vector added at 0x580, the lens effects four floats each, a
+ * shadow weight, a foliage sound and the world text's specs added. CCamera::GetLandmarkFarPlane
+ * reads the grid's extents at 0x698, GetDatabaseNode the landmark list at 0x6B98. */
 class CWorld : public CNode {
 public:
     static CWorld *m_world;
     static CNode *GetModel(const char *name);
+    /* the archive version the world's files carry (SOCOM 1's, the same 0x10001) */
+    static int GetVersion();
+    virtual ~CWorld();
+    virtual bool Read(CSaveLoad &io);
+    virtual void ReserveChildren(int n);
     void DeleteLightMap(CLightMap *light);
     void AddLightMap(CLightMap *light);
+    void AddShadow(CNode *node);
+    /* a shadow caster made for the node and listed (new in SOCOM II: AddChild and node_main.cpp's
+     * code call it; the name is ours) */
+    void AddShadowCaster(CNode *node);
+    bool Initalize();
+    void Update();
+    void ReleaseLandmarkList();
+    void ReleaseLightList();
+    void AddLandmark(CNode *node);
+    void DeleteLandmark(CNode *node);
+    CNode *FindLandmark(const char *name);
+    IntersectStruct *GetIntersect(const CPnt3D *p0, const CPnt3D *p1);
+    /* SOCOM II's overloads take whether characters are hit (the names SOCOM 1's) */
+    IntersectStruct *GetIntersect(const CPnt3D *p0, const CPnt3D *p1, bool characters);
+    DiIntersect *GetIntersects(const CPnt3D *p0, const CPnt3D *p1);
+    DiIntersect *GetIntersects(const CPnt3D *p0, const CPnt3D *p1, bool characters);
+    IntersectStruct *GetAltitude(const CPnt3D *p, float alt);
+    IntersectStruct *GetAltitude(const CPnt3D *p, float alt, bool characters);
+    DiIntersect *GetAltitudes(const CPnt3D *p, float alt);
+    /* the world's grid's, whichever world it is called on (SOCOM 1's: its this is not read) */
+    int GetIntersectBatch(DiIntersect **di, int n);
+    void InitDescendantsDI();
+    void InitDescendantsVisuals();
+    static int diTick(float dt, void *data);
+    int RegIntersectDelayed(DiIntersect *di, const CPnt3D *tail, const CPnt3D *tip, unsigned int mask);
+    int RegIgnoreNodeDelayed(DiIntersect *di, CNode *node);
+    int ClearIgnoreNodeDelayed(DiIntersect *di);
+    int RegProximityDelayed(DiIntersect *di, const CPnt3D *p, float radius, unsigned int mask);
+    void AddTextureAssetDecals(CTexHandle *tex);
+    void AddTextureAssetCharacterAll(CTexHandle *tex);
+    void RemoveDecals();
+    void ClearShadowList();
+    void ClearLightMapList();
+    /* the foliage sound's name, copied (new in SOCOM II: Load sets it; the name is ours) */
+    void SetFoliageSound(const char *name);
+    /* SOCOM II's REMOVE_DECALS command (the names ours, after CWind's) */
+    static bool CmdTickRemoveDecals(_zanim_cmd_hdr *cmd, float *dt);
+    static _zanim_cmd_hdr *CmdParseRemoveDecals(_zrdr *rdr);
+    static void RegisterAnimCommands();
+    static void Uninit();
+    static void Init();
 
-    unsigned char _c0[0x128 - 0xC0];   // 0xc0: SOCOM II's, not yet read
+    CWind m_Wind;   // 0xc0 (SOCOM 1: 0x4d4)
     CCamera *m_camera;   // 0x128 (CCamera::CmdBeginParams; SOCOM 1: 0xc0)
-    unsigned char _12c[0x684 - 0x12C];   // SOCOM 1's m_default_soiltype .. m_shadow_vector
+    unsigned int m_default_soiltype;   // 0x12c
+    char *m_default_soiltype_name;   // 0x130 (Load: "DefaultMaterial")
+    char *m_foliage_sound;   // 0x134: SOCOM II's (Load: "FoliageSound"; the name ours)
+    unsigned char _138[4];   // 0x138
+    float m_world_text_specs[4];   // 0x13c: SOCOM II's (Load: "WorldTextSpecs"; the name ours)
+    DiIntersect *m_diInt;   // 0x14c
+    DiIntersect *m_diIntDelay[256];   // 0x150
+    int m_diIntDelayCnt;   // 0x550
+    _cellData **m_cellData;   // 0x554
+    int m_maxOverlap;   // 0x558
+    CLightList m_lights;   // 0x55c
+    CRenderMapVector m_shadows;   // 0x568
+    CLightMapVector m_lightMaps;   // 0x574
+    std::vector<CShadowCaster *> m_shadow_casters;   // 0x580: SOCOM II's (the name ours)
+    CLOD_Object m_LOD_Object;   // 0x58c
+    CMaterial_Object m_Material_Object;   // 0x59c
+    CSubSurf_Object m_SubSurf_Object;   // 0x5ac
+    CPreLight_Object m_PreLight_Object;   // 0x5bc
+    CScrollingTexture_Object m_ScrollingTexture_Object;   // 0x5cc
+    unsigned char m_night_mission;   // 0x5dc
+    unsigned char _5dd[3];
+    PNT4D m_lensfx_nvg;   // 0x5e0 (SOCOM 1: a CPnt3D)
+    PNT4D m_lensfx_starlightscope;   // 0x5f0
+    _globalLight m_gLight;   // 0x600
+    unsigned char m_gLightDirUpdate;   // 0x670
+    unsigned char m_gLightColUpdate;   // 0x671
+    unsigned char _672[2];
+    CPnt3D m_shadow_vector;   // 0x674
+    float m_shadow_weight;   // 0x680: SOCOM II's (Load: "ShadowWeight"; the name ours)
     CGrid m_grid;   // 0x684 (SOCOM 1: 0x670)
     CNodeVector m_landmarks;   // 0x6b98
+    unsigned int m_numNoFarClipNodes;   // 0x6ba4
+    CTextureAssetCharacterList m_TextureAssetCharacters;   // 0x6ba8
+    CTexList m_TextureCharacterCommon;   // 0x6bb4
+    CTexList m_TextureDecals;   // 0x6bc0
+    CTexture *m_shadowTex[4];   // 0x6bcc
+    CTexHandle *m_shadowTexH;   // 0x6bdc
 
     /* the landmark list, inline (CCamera::GetLandmarkFarPlane's loop keeps its address in a
      * register; the name is ours) */
     CNodeVector *GetLandmarks() { return &m_landmarks; }
-};
+};   // 0x6be0 bytes
 
 /* every node by index (SOCOM 1's DWARF: a CNodeVector and a lock byte) */
 class CNodeUniverse : public CNodeVector {
