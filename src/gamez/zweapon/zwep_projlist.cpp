@@ -9,21 +9,61 @@
 
 using zdb::DiIntersect;
 
+/* a node forgotten by every charge there is and every projectile in a slot in use up to the last
+ * (SOCOM II's: ~CZSealBody calls it; the name ours) */
+void CZProjectileList::ForgetHitNode(zdb::CNode *node)
+{
+    if (m_used && m_projectiles) {
+        for (std::vector<PlacedExplosive *>::iterator it = m_explosives.begin(); it != m_explosives.end(); ++it) {
+            if (*it)
+                (*it)->ForgetHitNode(node);
+        }
+
+        int i;
+        int last = m_lastused;
+
+        if (last != -1) {
+            for (i = 0; i <= last; i++) {
+                if (m_used[i] == 1)
+                    m_projectiles[i].ForgetHitNode(node);
+            }
+        }
+    }
+}
+
+/* flag 18 raised on every charge, then on every projectile in a slot in use up to the last
+ * (SOCOM II's: _OnMissionComplete calls it; the name ours) */
+void CZProjectileList::SetAllFlag18()
+{
+    if (m_used && m_projectiles) {
+        for (std::vector<PlacedExplosive *>::iterator it = m_explosives.begin(); it != m_explosives.end(); ++it)
+            (*it)->SetFlag18(true);
+
+        int i;
+        int last = m_lastused;
+
+        if (last != -1) {
+            for (i = 0; i <= last; i++) {
+                if (m_used[i] == 1)
+                    m_projectiles[i].SetFlag18(true);
+            }
+        }
+    }
+}
+
 /* the first free slot's projectile: none when every slot is taken; the last used moved up to it,
  * the slot marked, the next free found, its node activated and the projectile initialised
- * (SOCOM 1's activated it only).
- * OPEN, 2 instructions short: the target holds the slot in a0, the search's counter in a2 and its
- * cursor in a1 (this: a2, a1, a0) and pads its first early return with a second nop; the search
- * as an inline returning the slot or -1 (four spellings) or written out with a goto, and the
- * counter declared ahead of the slot, do not move them */
+ * (SOCOM 1's activated it only). The slot is declared after the two tests that read it: declared
+ * ahead of them, it takes a2 where the target's has a0 (and AcquireProjectile's inlined copy too) */
 CZProjectile *CZProjectileList::GetNextFreeProjectile()
 {
+    if (m_firstfree == -1)
+        return 0;
+    if (!(m_firstfree < m_size))
+        return 0;
+
     int idx = m_firstfree;
 
-    if (idx == -1)
-        return 0;
-    if (!(idx < m_size))
-        return 0;
     if (m_lastused < idx)
         m_lastused = idx;
     m_used[idx] = 1;
@@ -31,6 +71,56 @@ CZProjectile *CZProjectileList::GetNextFreeProjectile()
     m_projectiles[idx].GetInstance()->SetActive(true);
     m_projectiles[idx].Init();
     return &m_projectiles[idx];
+}
+
+/* constructed for a count of projectiles: no slots yet, the intersection tables empty, the first
+ * free the first and none used, then made (SOCOM 1's) */
+CZProjectileList::CZProjectileList(int count)
+{
+    int i;
+
+    m_size = count;
+    m_used = 0;
+    m_projectiles = 0;
+    for (i = 0; i < 60; i++)
+        m_directFireDI[i] = 0;
+    for (i = 0; i < 30; i++)
+        m_indirectFireDI[i] = 0;
+    m_firstfree = 0;
+    m_lastused = -1;
+    Init();
+}
+
+/* the charges ticked, each one done taken out (its weapon's name fetched, its pickup destroyed,
+ * unlisted, deleted and erased); then the projectiles up to the last slot used, each one done
+ * freed (SOCOM 1's) */
+void CZProjectileList::PostTick(float dT)
+{
+    std::vector<PlacedExplosive *>::iterator it;
+
+    for (it = m_explosives.begin(); it != m_explosives.end();) {
+        if ((*it)->PostTick(dT)) {
+            PlacedExplosive *e = *it;
+
+            e->m_weapon->GetName();
+            CPickup::Destroy(e->m_pickup);
+            CZWeapon::m_placedExplosives.Remove(e);
+            delete e;
+            it = m_explosives.erase(it);
+        } else {
+            ++it;
+        }
+    }
+
+    int i;
+    int last = m_lastused;
+
+    if (last != -1) {
+        for (i = 0; i <= last; i++) {
+            if (m_used[i] == 1 && m_projectiles[i].PostTick(dT) == true)
+                Free(i);
+        }
+    }
 }
 
 /* the tracers ticked, then the charges, then the projectiles up to the last slot used, each
@@ -194,4 +284,17 @@ bool CZProjectileList::GetNextIndirectFireDI(DiIntersect **di, int *handle)
             m_indirect_firstfree++;
     }
     return true;
+}
+
+/* the next free projectile, given the weapon (its range and direct fire) and the ammunition
+ * (SOCOM 1's) */
+CZProjectile *CZProjectileList::AcquireProjectile(CZWeapon &weapon, CZAmmo &ammo)
+{
+    CZProjectile *p = GetNextFreeProjectile();
+
+    if (p) {
+        p->SetWeapon(&weapon);
+        p->SetAmmo(&ammo);
+    }
+    return p;
 }

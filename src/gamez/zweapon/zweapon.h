@@ -718,6 +718,10 @@ public:
      * DestroyProjectileList passes 1) */
     CZProjectileList(int count);
     ~CZProjectileList();
+    /* the slots and intersection tables made (SOCOM 1's; 0x3CD480) */
+    bool Init();
+    /* the next free projectile, given the weapon and the ammunition (SOCOM 1's) */
+    CZProjectile *AcquireProjectile(CZWeapon &weapon, CZAmmo &ammo);
     bool GetNextIndirectFireDI(zdb::DiIntersect **di, int *handle);
     void ReleaseIndirectFireDI(zdb::DiIntersect **di, int *handle);
     bool GetNextDirectFireDI(zdb::DiIntersect **di, int *handle);
@@ -734,6 +738,15 @@ public:
     /* the tracers ticked, then every charge's and every slot's projectile up to the last used
      * (SOCOM 1's) */
     void PreTick(float dT);
+    /* every charge ticked, those done taken out; every slot's projectile up to the last used
+     * ticked, those done freed (SOCOM 1's) */
+    void PostTick(float dT);
+    /* flag 18 set on every charge and every slot's projectile in use (SOCOM II's: the mission's
+     * completion calls it; the name ours) */
+    void SetAllFlag18();
+    /* a node forgotten by every charge and every slot's projectile in use (SOCOM II's: a SEAL's
+     * body going calls it; the name ours, after CZProjectile's) */
+    void ForgetHitNode(zdb::CNode *node);
     /* the first free slot's projectile handed out: marked used, the next free found, its node
      * activated and the projectile initialised (SOCOM 1's, without the Init) */
     CZProjectile *GetNextFreeProjectile();

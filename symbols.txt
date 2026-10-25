@@ -8256,12 +8256,12 @@
 0x003CC3C0 0x134 RemoveProjectile__16CZProjectileListFP12CZProjectile  # OVL1; by hand (the wep lane: SOCOM 1's CZProjectileList::RemoveProjectile, between RemoveExplosive and NetRemoveProjectile as in SOCOM 1 -- the slot cleaned up and freed with FreeIdx and FindLastUsed inlined, then RemoveExplosive)
 0x003CC500 0x17C NetRemoveProjectile__16CZProjectileListFP12CZProjectile  # OVL1; s1:calls (called on CZWeapon::m_pProjectilelist where SOCOM 1's calls it) -- the states lane
 0x003CC680 0xF0 IsListed__16CZProjectileListFP12CZProjectile  # OVL1; by hand (the wep lane: SOCOM II's -- whether a projectile is a slot in use or one of the charges; NetRemoveProjectile asks it first; the name ours)
-0x003CC770 0x218 func_003CC770  # OVL1
+0x003CC770 0x218 PostTick__16CZProjectileListFf  # OVL1; by hand (the wep lane: SOCOM 1's CZProjectileList::PostTick, right before PreTick as in SOCOM 1; CZWeapon's PostTick calls it)
 0x003CC990 0x100 PreTick__16CZProjectileListFf  # OVL1; s1:align
 0x003CCA90 0x124 GetNextFreeProjectile__16CZProjectileListFv  # OVL1; s1:align
 0x003CCBC0 0xCC UnInit__16CZProjectileListFv  # OVL1; s1:align
-0x003CCC90 0xF8 func_003CCC90  # OVL1
-0x003CCD90 0x118 func_003CCD90  # OVL1
+0x003CCC90 0xF8 SetAllFlag18__16CZProjectileListFv  # OVL1; by hand (the wep lane: SOCOM II's -- flag 18 set on every charge and every projectile in use; _OnMissionComplete calls it; the name ours)
+0x003CCD90 0x118 ForgetHitNode__16CZProjectileListFPQ23zdb5CNode  # OVL1; by hand (the wep lane: SOCOM II's -- CZProjectile::ForgetHitNode on every charge and every projectile in use; ~CZSealBody calls it; the name ours)
 0x003CCEB0 0x2A0 func_003CCEB0  # OVL1
 0x003CD150 0x24C func_003CD150  # OVL1
 0x003CD3A0 0x70 func_003CD3A0  # OVL1
