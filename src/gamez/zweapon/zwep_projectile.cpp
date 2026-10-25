@@ -10,6 +10,7 @@
 #include "../znode/znode.h"
 #include "../znode/node_world.h"
 #include "zweapon.h"
+#include "../zsys/zsys.h"
 
 using namespace zdb;
 
@@ -38,6 +39,10 @@ extern "C" double tan(double x);
 
 /* an animation stopped (0x2707C0, not named) */
 extern "C" void func_002707C0(CZAnim *anim, int b);
+
+/* the HUD's timer cleared when it is the one given, or when given none (0x3CFFD0, CZWeapon's; not
+ * named) */
+extern "C" void func_003CFFD0(float *timer);
 
 /* ---- the members ---- */
 
@@ -161,6 +166,48 @@ void CZProjectile::ForgetHitNode(zdb::CNode *node)
 
         if (hit && hit->m_node == node)
             hit->m_node = 0;
+    }
+}
+
+/* the timer given up if it is this one's, the intersections released, the node emptied and taken
+ * out of the world, the pickup destroyed and the anim stopped (SOCOM 1's, with the second
+ * intersection SOCOM II's) */
+void CZProjectile::Cleanup()
+{
+    if (&m_time == CZWeapon::m_timer_pCurval)
+        func_003CFFD0(0);
+    if (m_di) {
+        if (m_shottype == ONE_FRAME)
+            CZWeapon::m_pProjectilelist->ReleaseDirectFireDI(&m_di, &m_di_handle);
+        else
+            CZWeapon::m_pProjectilelist->ReleaseIndirectFireDI(&m_di, &m_di_handle);
+        m_di = 0;
+        m_di_handle = -1;
+    }
+    if (m_di2) {
+        CZWeapon::m_pProjectilelist->ReleaseDirectFireDI(&m_di2, &m_di2_handle);
+        m_di2 = 0;
+        m_di2_handle = -1;
+    }
+    if (m_instance) {
+        m_instance->SetNodeEx(0, true);
+        m_instance->DeleteChildren();
+        m_instance->SetActive(false);
+        if (m_weapon && !m_weapon->IsDirectFire())
+            CWorld::m_world->DeleteTextureAssetCharacter(CHARSETCOMMON, m_instance);
+        if (m_instance->m_parent)
+            m_instance->m_parent->DeleteChild(m_instance);
+        FreeVector<std::vector<CNode *> >(m_instance->GetChildren());
+        m_instance->SetModel(0);
+        m_instance->DeleteDI();
+    }
+    if (m_pickup) {
+        CPickup::Destroy(m_pickup);
+        m_pickup = 0;
+    }
+    if (m_animinstance) {
+        func_002707C0(m_animinstance, 0);
+        m_animinstance = 0;
     }
 }
 

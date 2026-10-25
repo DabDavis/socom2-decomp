@@ -217,6 +217,8 @@ public:
     static CZWeaponList m_listWeapons;
     /* the projectiles in flight (SOCOM 1's static: 0x4B5220) */
     static CZProjectileList *m_pProjectilelist;
+    /* the timer registered for the HUD, by the value it counts (SOCOM 1's static: 0x4B52C0) */
+    static float *m_timer_pCurval;
 };   // 0xf8 bytes (CZFTSWeapon's targetmods start there)
 
 /* the materials' table (int_material.cpp's, SOCOM 1's class): only the extension list, whose size
