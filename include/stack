@@ -1,0 +1,29 @@
+/* <stack>: MSL's std::stack, the container adapter -- just its forwarding members over a deque (the
+ * rdr lane's CRdrEditor holds one: its destructor, 0x333A20, tears the deque's blocks down as
+ * __deque_buf's out-of-class destructor called with 0). A reconstruction, not MSL. */
+
+#ifndef _MSL_STACK
+#define _MSL_STACK
+
+#include <deque>
+
+namespace std {
+
+template <class T, class Container = deque<T> >
+class stack {
+public:
+    typedef T value_type;
+
+    bool empty() const { return c.empty(); }
+    unsigned int size() const { return c.size(); }
+    value_type &top() { return c.back(); }
+    void push(const value_type &x) { c.push_back(x); }
+    void pop() { c.pop_back(); }
+
+protected:
+    Container c;
+};
+
+}
+
+#endif
