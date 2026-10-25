@@ -19,6 +19,7 @@ public:
     };
 
     static void SyncActionsMP(int who);
+    static void Reset();
     static CNodeAction *GetActionById(unsigned int id);
     static CNodeAction *FindActionByValve(const CValve *valve);
     int ExecuteAction(CZSealBody *body, unsigned int index);
@@ -41,6 +42,28 @@ public:
     static Container m_actions;
 };
 
+/* a valve's change of state, its callbacks told (SOCOM 1's CValve::MakeCallbacks; zanim.h's CValve
+ * has neither the enum nor the setter, so they are spelled here as fts_remote.cpp spells them) */
+enum VALVE_STATE {
+    VALVE_SAME,
+    VALVE_ON,
+    VALVE_OFF
+};
+
+extern "C" void func_003519F0(CValve *valve, VALVE_STATE state);   /* CValve::MakeCallbacks */
+
+/* CValve::SetValue, inlined in both builds */
+inline void SetValveValue(CValve *valve, int value)
+{
+    VALVE_STATE state = VALVE_SAME;
+
+    if (valve->m_value != value)
+        state = value == 0 ? VALVE_OFF : VALVE_ON;
+    valve->m_value = value;
+    if (state != VALVE_SAME)
+        func_003519F0(valve, state);
+}
+
 CZSealBody *ftsGetPlayer();
 extern "C" int strcmp(const char *a, const char *b);
 
@@ -49,6 +72,25 @@ extern "C" {
 void func_002BB5B0(int to, unsigned int id, unsigned char value, int arg, int who);   /* NetSendActionAnim,
                                                                          SOCOM II's with one more */
 _zanim_cmd_hdr *func_002B4230(_zrdr *rdr);
+}
+
+/* every action back to its start: its valve off, no anim, no user (OVL1 0x2B5510) */
+void CNodeAction::Reset()
+{
+    Container::iterator e = m_actions.end();
+
+    for (Container::iterator i = m_actions.begin(); i != e; ++i) {
+        CNodeAction *action = *i;
+
+        if (action) {
+            if (action->m_valve)
+                SetValveValue(action->m_valve, 0);
+            action->m_anim = 0;
+            action->m_3e = 0;
+            action->m_network_log = false;
+            action->m_owner = CEntity::invalidId;
+        }
+    }
 }
 
 /* the action whose valve has this name (SOCOM II's; OVL1 0x2B4E80). Out of line: the

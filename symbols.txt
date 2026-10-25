@@ -3987,7 +3987,7 @@
 0x002B4E00 0x80 FindActionByValve__11CNodeActionFPC6CValve  # OVL1; s1:order by hand (the states lane: after GetActionById as in SOCOM 1; walks m_actions for the action whose valve, +0x18, is its argument)
 0x002B4E80 0xC0 func_002B4E80  # OVL1
 0x002B4F40 0x5CC func_002B4F40  # OVL1
-0x002B5510 0xC8 func_002B5510  # OVL1
+0x002B5510 0xC8 Reset__11CNodeActionFv  # OVL1; s1:order by hand (the states lane: after Open as in SOCOM 1; walks m_actions turning each valve off and clearing the action's anim and state)
 0x002B55E0 0x154 func_002B55E0  # OVL1
 0x002B5740 0x8 func_002B5740  # OVL1
 0x002B5750 0x8 func_002B5750  # OVL1
