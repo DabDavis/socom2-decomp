@@ -98,6 +98,65 @@ ForwardIterator remove_if(ForwardIterator first, ForwardIterator last, Predicate
     return first == last ? first : remove_copy_if(++i, last, first, pred);
 }
 
+/* The element moves a class vector makes (include/vector: the erase's copy down, the insert's
+ * copy up and fill), MSL 3.0's as SOCOM II's instances show them: each algorithm an inline wrapper
+ * over an inline helper doing the loop. An element whose assignment expands past inline_max_size
+ * makes the helper too big to inline whole, so the wrapper is inlined one level and the helper is
+ * called out of line, its copy emitted in the unit's tail -- the turret's 412-byte definitions
+ * (copy 0x3ABAE0 from the erase, fill_n 0x3AC200 and copy_backward 0x3AC460 from the insert, each
+ * calling the definition's member assignment it cannot inline), CDesignDlgObj's (0x3845B0,
+ * 0x384AA0, 0x384B00); a smaller element inlines all of it, the loops the class inserts and
+ * erases always had (measured over every hand-written unit: no class-vector match moves). The
+ * helpers' names are ours. The loops: copy walks forward while first < last, copy_backward steps
+ * both ends down first, fill_n counts n down to zero behind a test of n (the target's top-tested
+ * loop at the insert's join; a for loop would be entered at its bottom test there) */
+template <class InputIterator, class OutputIterator>
+inline OutputIterator __copy(InputIterator first, InputIterator last, OutputIterator result)
+{
+    for (; first < last; ++first, ++result)
+        *result = *first;
+    return result;
+}
+
+template <class InputIterator, class OutputIterator>
+inline OutputIterator copy(InputIterator first, InputIterator last, OutputIterator result)
+{
+    return __copy(first, last, result);
+}
+
+template <class BidirectionalIterator1, class BidirectionalIterator2>
+inline BidirectionalIterator2 __copy_backward(BidirectionalIterator1 first, BidirectionalIterator1 last,
+                                              BidirectionalIterator2 result)
+{
+    while (first < last)
+        *--result = *--last;
+    return result;
+}
+
+template <class BidirectionalIterator1, class BidirectionalIterator2>
+inline BidirectionalIterator2 copy_backward(BidirectionalIterator1 first, BidirectionalIterator1 last,
+                                            BidirectionalIterator2 result)
+{
+    return __copy_backward(first, last, result);
+}
+
+/* (C++98's fill_n returns nothing: the turret's 0x3AC200 sets no v0) */
+template <class OutputIterator, class Size, class T>
+inline void __fill_n(OutputIterator first, Size n, const T &value)
+{
+    if (n)
+        do {
+            *first = value;
+            ++first;
+        } while (--n);
+}
+
+template <class OutputIterator, class Size, class T>
+inline void fill_n(OutputIterator first, Size n, const T &value)
+{
+    __fill_n(first, n, value);
+}
+
 }
 
 #endif
