@@ -63,8 +63,17 @@ public:
     unsigned char m_221;   // 0x221
 };
 
-/* a SEAL: its matrix (the second virtual), its controller (CEntity's at 0xC0) and the zoomed flag
- * (SOCOM 1's at 0xF5C) */
+/* which way a SEAL peeks (SOCOM 1's DWARF; a signed byte under -enum min) */
+enum SEAL_PEEK {
+    PEEK_LEFT = -1,
+    PEEK_UP = 0,
+    PEEK_RIGHT = 1,
+    PEEK_NONE = 2
+};
+
+/* a SEAL: its matrix (the second virtual), its controller (CEntity's at 0xC0), its body's state
+ * and wanted peek (SOCOM 1's CBody::m_state at 0x11D, SOCOM II's a halfword at 0x174; its
+ * m_desiredPeek at 0x305, SOCOM II's 0x375) and the zoomed flag (SOCOM 1's at 0xF5C) */
 class CZSealBody {
 public:
     virtual ~CZSealBody();
@@ -72,7 +81,11 @@ public:
 
     unsigned char _4[0xc0 - 4];
     CEntityCtrl *m_control;   // 0xc0
-    unsigned char _c4[0x5e0 - 0xc4];
+    unsigned char _c4[0x174 - 0xc4];
+    short m_state;   // 0x174: 8 dead, 2 prone (SOCOM 1's SEAL_STATE)
+    unsigned char _176[0x375 - 0x176];
+    SEAL_PEEK m_desiredPeek;   // 0x375
+    unsigned char _376[0x5e0 - 0x376];
     unsigned char m_kit[0x1060 - 0x5e0];   // 0x5e0: its CZKit (SOCOM 1: 0x520)
     unsigned char _b0 : 5;   // 0x1060
     unsigned char m_zooming : 1;
@@ -100,6 +113,22 @@ struct CShakeParams {
     float m_yRate;   // 0x1c
 };
 
+/* the camera's modes (SOCOM 1's PLAYER_CAM_STATE: 1 the tether, 2 first person, 3 looking at the
+ * tracked entity, 4 the network's). SOCOM II renumbered them: its third person tether is 2 (the
+ * zoom's Reset sets it, FirstToThirdPersonTransition enters it) and first person 3
+ * (CmdTick3rdPersonTest, CCoreState::Tick hiding the camera's own entity, ThirdToFirstPerson-
+ * Transition entering it from 2); 1 is a new view entered from the tether, 4 looks at the tracked
+ * entity, 5 ticks no camera, 6 is new -- the new names ours) */
+enum PLAYER_CAM_STATE {
+    cam_mode_unk = 0,
+    cam_mode_1 = 1,
+    cam_mode_tether = 2,
+    cam_mode_FP = 3,
+    cam_mode_apLook = 4,
+    cam_mode_5 = 5,
+    cam_mode_6 = 6
+};
+
 /* the app camera's views (SOCOM 1's DWARF; a byte under -enum min) */
 enum CAMVIEW {
     cam_view_third = 0,
@@ -116,6 +145,23 @@ public:
     virtual void Tick(float dT);
     virtual bool AttachTo(CZSealBody *prey);
 
+    void FTSTick();
+    void APLookAt(float dT, CEntity *target, CMatrix &cTw);
+
+    /* the mode changes Tick runs a transition for (inline: their bools are materialised before the
+     * branch, SOCOM 1's too; the names ours) */
+    bool FromTetherToMode1() const
+    {
+        return m_camera_mode == cam_mode_1 && m_camera_last_mode == cam_mode_tether;
+    }
+    bool IntoTether() const
+    {
+        return m_camera_mode == cam_mode_tether && m_camera_last_mode != cam_mode_tether;
+    }
+    bool FromTetherToFirst() const
+    {
+        return m_camera_mode == cam_mode_FP && m_camera_last_mode == cam_mode_tether;
+    }
     void SetZoom(float zoom);
     void SetCameraMode(unsigned char mode);
     void ResetView();
@@ -176,8 +222,8 @@ public:
     float m_wiggle_cur_time;   // 0x130 (SOCOM 1: 0x80)
     unsigned char _134[0x138 - 0x134];
     unsigned char m_wiggle_echo;   // 0x138 (SOCOM 1: 0x88; SOCOM II's shake running)
-    unsigned char m_camera_mode;   // 0x139 (SOCOM 1: 0x89)
-    unsigned char m_camera_last_mode;   // 0x13a
+    PLAYER_CAM_STATE m_camera_mode;   // 0x139 (SOCOM 1: 0x89)
+    PLAYER_CAM_STATE m_camera_last_mode;   // 0x13a
     unsigned char _13b;
     CEntity *m_track;   // 0x13c (SOCOM 1: 0x8c)
     unsigned char m_save_peek;   // 0x140 (SOCOM 1: 0x90)

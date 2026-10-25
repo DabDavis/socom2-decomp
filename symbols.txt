@@ -1367,23 +1367,23 @@
 0x001D4B80 0x64 func_001D4B80  # MAIN
 0x001D4BF0 0x28 func_001D4BF0  # MAIN
 0x001D4C20 0x370 func_001D4C20  # MAIN
-0x001E7040 0xB4 func_001E7040  # OVL1
+0x001E7040 0xB4 main  # OVL1; s1:calls by hand (FTSCore's first function, main.cpp's: SOCOM 1's main -- GetThreadId, ChangeThreadPriority(5), COurGame::StartEngine and CGame::StartPlay on theGame, then theGame's Tick on zVid.frameTime forever; SOCOM II hands argc/argv to 0x1EABD0 first and sets the UI's VERSION_STRING. The overlay is its own link, so its main does not clash with the boot's, 0x1C4CC0)
 0x001E7100 0x2D8 __dt__8COurGameFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001E73E0 0x8 StopPlay__8COurGameFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001E73F0 0x8 StartPlay__8COurGameFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001E7400 0x28 StopEngine__8COurGameFv  # OVL1; s1:exact
 0x001E7430 0xF4 StartEngine__8COurGameFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x001E7530 0x16C func_001E7530  # OVL1
-0x001E76A0 0xA8 func_001E76A0  # OVL1
-0x001E7750 0xA8 func_001E7750  # OVL1
+0x001E7530 0x16C __ct__8COurGameFv  # OVL1; by hand (main.cpp: CGame's constructor, COurGame's vtable, CMenuState's constructor inlined one level, the load, core, exit and online exit states' constructors, CCinematicState's inlined, the shutdown and reboot states', m_InitialState = &m_menuState -- SOCOM 1's __sinit_main.cpp inlined the same body; SOCOM II's __sinit at 0x3FD680 calls it on theGame and registers 0x1E7100)
+0x001E76A0 0xA8 __dt__12CRebootStateFv  # OVL1; s1:vtable by hand (slot 0 of CRebootState's vtable 0x405B10, found by its RTTI's name: CGameState's teardown inlined; an implicit destructor main.cpp generates for ~COurGame)
+0x001E7750 0xA8 __dt__14CShutdownStateFv  # OVL1; s1:vtable by hand (slot 0 of CShutdownState's vtable 0x405AE0, found by its RTTI's name: CGameState's teardown inlined; an implicit destructor main.cpp generates for ~COurGame)
 0x001E7800 0xC0 __dt__12CMPExitStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001E78C0 0xC0 __dt__10CExitStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001E7980 0xD0 __dt__10CMenuStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x001E7A50 0x58 func_001E7A50  # OVL1
+0x001E7A50 0x58 __dt__9CSaferStrFv  # OVL1; s1:order (SOCOM 1's main.cpp has __dt__9CSaferStrFv between CMenuState's and CGameState's destructors; this one destroys its basic_string base, 0x1E7EF0 with 0, then deletes)
 0x001E7AB0 0x98 __dt__10CGameStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x001E7B50 0xC func_001E7B50  # OVL1
-0x001E7B60 0x14 func_001E7B60  # OVL1
-0x001E7B80 0x80 func_001E7B80  # OVL1
+0x001E7B50 0xC SetDefaultMenu__10CMenuStateFPCc  # OVL1; the name ours (strncpy into CMenuState::m_DefaultMenu at 0x30, 64: the out-of-line copy of an inline CMenuState's constructor calls with "dlgIntroScreen.rdr" -- SOCOM 1's constructor strncpy'd it in place; CLoadState::AbortLoad inlines it)
+0x001E7B60 0x14 __ct__9CSaferStrFv  # OVL1; s1:callee by hand (CMenuState's two sound names: SOCOM 1's CSaferStr, a basic_string -- the three words cleared; called twice from the inlined CMenuState constructor at 0x14 and 0x20)
+0x001E7B80 0x80 __ct__10CGameStateFPCc  # OVL1; by hand (CGameState's inline constructor out of line: its vtable, the name cleared and SetName inlined; called from COurGame's constructor with "MenuState")
 0x001E7C00 0x8 PreInit__10CGameStateFv  # OVL1; s1:vtable by hand (CGameState's PreInit slot, 0xC: the base's empty inline, linked from this unit; the demo's PreInit__10CGameStateFv)
 0x001E7C10 0x8 Init__10CGameStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001E7C20 0x8 Tick__10CGameStateFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -1393,8 +1393,8 @@
 0x001E7C60 0x8 OnPop__10CGameStateFi  # OVL1; s1:vtable by hand (CGameState's OnPop slot, 0x24: the base's empty inline)
 0x001E7C70 0x8 SetSkipSwap__10CGameStateFi  # OVL1; the name ours (CGameState's new slot 0x28, empty; CCoreState's sets m_skip_swap)
 0x001E7C80 0x8 DisplayMessage__10CGameStateFPCcPCciiiUcUcc  # OVL1; the name ours (CGameState's new slot 0x2C, empty: a message for the player -- CMenuState::Tick passes the network's queued ones, CMenuState and CCoreState override it)
-0x001E7C90 0x258 func_001E7C90  # OVL1
-0x001E7EF0 0x68 func_001E7EF0  # OVL1
+0x001E7C90 0x258 reserve__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FUi  # OVL1; by hand (MSL's basic_string::reserve: "basic_string::reserve length_error", operator new, memcpy, the short form's 11 characters; SOCOM 1's CMenuState constructor reserves 64 in both sound names, as COurGame's constructor does here through it)
+0x001E7EF0 0x68 __dt__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>Fv  # OVL1; by hand (MSL's basic_string destructor: the long form's buffer deleted (bit 0 of the first word), then the object when asked; ~CSaferStr calls it with 0, the states' destructors with -1 for their member strings; the instance closing main.cpp)
 0x001E7F58 0x3C flushbuffer  # OVL1 unaligned; s1:exact
 0x001E7F98 0x100 openmic  # OVL1 unaligned; s1:callee
 0x001E8098 0x58 closemic  # OVL1 unaligned; s1:exact
@@ -1520,14 +1520,14 @@
 0x001EF450 0x2A8 func_001EF450  # OVL1
 0x001EF700 0x1C0 func_001EF700  # OVL1
 0x001EF8C0 0x80 func_001EF8C0  # OVL1
-0x001EF940 0x10C func_001EF940  # OVL1
-0x001EFA50 0x1E0 func_001EFA50  # OVL1
-0x001EFC30 0x250 func_001EFC30  # OVL1
+0x001EF940 0x10C ResetLensColors__10CameraZoomFv  # OVL1; the name ours (SOCOM II's: the four lens colours LoadLensFx keeps from 0x4B4D40 put back to white with alpha 0, func_003B78D0 handed white, thePipe+0x6E0 and +0x6D0 cleared, the three blindplayer anims stopped)
+0x001EFA50 0x1E0 HoldLensFx__10CameraZoomFUc  # OVL1; the name ours (SOCOM II's: the lens effects' hold, 0x408CF0, or-ed with its byte; held, the kit's lens effects off through 0x5C1800 and the playing effect stopped, the effect then 9; SeeFarther(false, 0); on 1 the first person's effect activated unless running; ResetLensColors' colours inlined and the blindplayer anims restarted)
+0x001EFC30 0x250 ReleaseLensFx__10CameraZoomFUc  # OVL1; the name ours (SOCOM II's: the lens effects' hold, 0x408CF0, xor-ed with its byte; unheld, the effect before put back through SetLensFx inlined, SeeFarther with its notes at 0x408CD8/0x408CE0, ResetLensColors' colours, the blindplayer anims restarted, the first person's effect stopped if running -- HoldLensFx's counterpart)
 0x001EFE80 0xC SetLensFxAnim__10CameraZoomFP6CZAnim  # OVL1; the name ours (SOCOM II's: the playing lens effect's activation set; CMPExitState::UnInit clears it)
 0x001EFE90 0xC LensFxOn__10CameraZoomFv  # OVL1; the name ours (SOCOM II's: the lens effects' switch at 0x3DC360, 1; the loader reads it before asking for the anims)
 0x001EFEA0 0xE8 SetLensFx__10CameraZoomFUc  # OVL1; the name ours (SOCOM II's: a lens effect put up unless held -- the one before noted, the playing anim stopped, the effect's anim or to_no_lens_fx activated; the HUD map, the mission cams and the SEAL's destructor call it)
 0x001EFF90 0x9C ClearLensFx__10CameraZoomFv  # OVL1; the name ours (SOCOM II's: the nine lens effect anims and the three blindplayer anims forgotten, the playing one stopped; the loader calls it first)
-0x001F0030 0x460 func_001F0030  # OVL1
+0x001F0030 0x460 LoadLensFx__10CameraZoomFv  # OVL1; the name ours (SOCOM II's lens effects loaded: both effects set to the third person's, ClearLensFx, GetAnim for blindplayer01-03 and -- with LensFxOn's switch -- the nine to_*_lens_fx anims, SetLensFx(8) inlined, four colours kept and one made)
 0x001F0490 0x178 Tick__10CameraZoomFf  # OVL1; s1:calls (SOCOM 1's Tick: HandleNewZoom, the goal's handler once, the current zoom stepped to the goal and given to SetZoom; CCoreState::Tick calls it)
 0x001F0610 0x134 OnGoal__10CameraZoomFv  # OVL1; s1:calls (Tick's call at the goal, as SOCOM 1's)
 0x001F0750 0xD1C HandleNewZoom__10CameraZoomFv  # OVL1; s1:calls (Tick's first call, as SOCOM 1's; much grown)
@@ -1597,20 +1597,20 @@
 0x001F6B00 0x60 func_001F6B00  # OVL1
 0x001F6B60 0x17C func_001F6B60  # OVL1
 0x001F6CE0 0x128 func_001F6CE0  # OVL1
-0x001F6E10 0x1B8 func_001F6E10  # OVL1
+0x001F6E10 0x1B8 Add2D__4CHUDFP3C2Dib  # OVL1; s1:calls (SOCOM 1's Add2D(C2D *, int phase, bool add_to_back): the phase tested against -1, two list inserts; before the map switches)
 0x001F6FD0 0x60 GetAssetLibs__3C2DFRQ23C2D8CLibList  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x001F7030 0x190 func_001F7030  # OVL1
-0x001F71C0 0x198 func_001F71C0  # OVL1
-0x001F7360 0x1FC func_001F7360  # OVL1
-0x001F7560 0x240 func_001F7560  # OVL1
-0x001F77A0 0x1C func_001F77A0  # OVL1
-0x001F77C0 0x2C4 func_001F77C0  # OVL1
-0x001F7A90 0x3C0 func_001F7A90  # OVL1
-0x001F7E50 0x1C func_001F7E50  # OVL1; size 0x1c (a tail call through t9; the seed ran on into the padding)
-0x001F7E70 0x10 func_001F7E70  # OVL1
-0x001F7E80 0xF8 func_001F7E80  # OVL1
+0x001F7030 0x190 SwitchToCompassMap__4CHUDFv  # OVL1; s1:calls (calls ZoomOut and ZoomIn as SOCOM 1's SwitchToCompassMap; before SwitchToFullScreenMap)
+0x001F71C0 0x198 SwitchToFullScreenMap__4CHUDFv  # OVL1; s1:calls (On calls it, as SOCOM 1's On calls SwitchToFullScreenMap; between SwitchToCompassMap and ZoomIn)
+0x001F7360 0x1FC ZoomIn__4CHUDFv  # OVL1; s1:order (hud_main.cpp in SOCOM 1's order -- Add2D, the two map switches, ZoomIn, ZoomOut, IsOn, Off, On, PostDITick, PreDITick, Flash, Tick; this one turns the HUD off, sets the kit's reticule, tests NVG and prints the zoom, SOCOM II's sprintf factored into 0x1F6CE0; CameraZoom's HandleZoomIn and OnGoal call it where SOCOM 1's call ZoomIn)
+0x001F7560 0x240 ZoomOut__4CHUDFv  # OVL1; s1:order (as ZoomIn: the HUD on, the kit's reticule, the background colours, the zoom text; CameraZoom::OnGoal calls it where SOCOM 1's calls ZoomOut)
+0x001F77A0 0x1C IsOn__4CHUDFv  # OVL1; s1:order (as ZoomIn: one bit of the HUD tested, no calls, SOCOM 1's IsOn after ZoomOut)
+0x001F77C0 0x2C4 Off__4CHUDFv  # OVL1; s1:order (as ZoomIn: after IsOn, before On; SOCOM 1's Off turns its items off)
+0x001F7A90 0x3C0 On__4CHUDFv  # OVL1; s1:calls (calls ZoomOut, ZoomIn and SwitchToFullScreenMap as SOCOM 1's On does; after Off)
+0x001F7E50 0x1C PostDITick__4CHUDFf  # OVL1; size 0x1c (a tail call through t9; the seed ran on into the padding); s1:exact shape (SOCOM 1's PostDITick: the lens flare member's virtual tail-called through t9 -- the member at 0x1A698 for SOCOM 1's 0x14460; CCoreState::Tick calls it on m_hud after the camera's update, as SOCOM 1's)
+0x001F7E70 0x10 PreDITick__4CHUDFf  # OVL1; s1:exact shape (SOCOM 1's PreDITick: CLensFlareSaturate::PreDITick tail-called on the member at 0x1A698 for SOCOM 1's 0x14460; CCoreState::Tick calls it on m_hud after the input's tick, as SOCOM 1's)
+0x001F7E80 0xF8 Flash__4CHUDFfRC6CPnt3Dfff  # OVL1; s1:calls (SOCOM 1's Flash: a 192-byte CFader made, SetMinBrightness, SetColor, Flash, inserted in the list; the brightness in $f12, the colour by reference, three times; after PreDITick)
 0x001F7F80 0x70 __dt__6CFaderFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x001F7FF0 0x1158 func_001F7FF0  # OVL1
+0x001F7FF0 0x1158 Tick__4CHUDFf  # OVL1; s1:calls (CCoreState::Tick calls it on m_hud with dT under gopt's first byte, before the HUD's three DrawPhases, where SOCOM 1's calls CHUD::Tick; much grown)
 0x001F9150 0x8 SetTrans__9C2DStringFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F9160 0x260 func_001F9160  # OVL1
 0x001F93C0 0x3E4 func_001F93C0  # OVL1
@@ -3600,7 +3600,7 @@
 0x002980D0 0x1068 func_002980D0  # OVL1
 0x00299140 0xC func_00299140  # OVL1
 0x00299150 0x68 ResetDeathCam__10CAppCameraFv  # OVL1; s1:calls (SOCOM 1's ResetDeathCam: no death state, the automatic death camera on, save_short_tether_length 10000, DeltaRot and DeltaAim 0; SOCOM II puts back a few more; CMPExitState::UnInit and the mission's fades call it)
-0x002991C0 0x160 func_002991C0  # OVL1
+0x002991C0 0x160 APLookAt__10CAppCameraFfP7CEntityR7CMatrix  # OVL1; s1:calls (SOCOM 1's APLookAt(dT, target, cTw): the target's and the SEAL's matrices transforming two points, the chord clipped, LookAt; Tick's mode 4 calls it with m_track as SOCOM 1's mode 3 did)
 0x00299320 0x1B4 Shake__10CAppCameraFUc  # OVL1; the name ours (one of the camera's three shake presets at 0x50 begun, else the shake stopped; CmdBeginShake inlines it, OVL2 calls it)
 0x002994E0 0x21C BeginShake__10CAppCameraFffffffff  # OVL1; the name ours (SOCOM II's shake begun: the larger rates and decays kept, the amplitudes rolled with rand()%100; Shake and an OVL2 caller pass eight floats)
 0x00299700 0xE4 StopShake__10CAppCameraFv  # OVL1; the name ours (SOCOM II's shake stopped: its eight parameters -1, the echo off, the angles to a random quarter, the amplitudes 0; inlined in Shake and TickCameraWiggle)
@@ -3609,18 +3609,18 @@
 0x00299C00 0xC func_00299C00  # OVL1
 0x00299C10 0x30 TickTask__10CAppCameraFfPv  # OVL1; the name ours (CCoreState::Init's appCamera_tick task: the app camera's virtual Tick)
 0x00299C40 0x288 TickCameraWiggle__10CAppCameraFfPQ23zdb7CCamera  # OVL1; s1:order (SOCOM 1's TickCameraWiggle's place: after Tick and GetDynamicsControl, called by Tick with the camera; SOCOM II's shake: two ripples on the screen offset, decayed, then StopShake)
-0x00299ED0 0x2B0 func_00299ED0  # OVL1
+0x00299ED0 0x2B0 FirstToThirdPersonTransition__FP10CAppCamera  # OVL1; s1:calls (SOCOM 1's: the third person position fetched with (ret, cam, &offset, &len), the look vector's z -1000, CQuat::Apply, Add, atan2f, ftsGetPlayer, the inverse matrix, atan2f, the head turned; CAppCamera::Tick runs it on entering mode 2, SOCOM II's third person -- its first person is 3, as CmdTick3rdPersonTest and CCoreState::Tick's hiding test)
 0x0029A180 0x270 func_0029A180  # OVL1
-0x0029A3F0 0x268 func_0029A3F0  # OVL1
+0x0029A3F0 0x268 ThirdToFirstPersonTransition__FP10CAppCamera  # OVL1; s1:calls (SOCOM 1's: the first person position fetched with (ret, cam), the look vector's z -1, the same calls as its pair; Tick runs it on entering mode 3, first person, from mode 2)
 0x0029A660 0x2F0 func_0029A660  # OVL1
-0x0029A950 0x4FC func_0029A950  # OVL1
-0x0029AE50 0x270 func_0029AE50  # OVL1
-0x0029B0C0 0x224 func_0029B0C0  # OVL1
+0x0029A950 0x4FC GetThirdPersonCamPos__10CAppCameraFP6CPnt3DPf  # OVL1; s1:calls (FirstToThirdPersonTransition's first call, (ret, this, CamOffset, tetherLen) as SOCOM 1's; PartInSpace, Apply, Normalize, fabsf, Scale, Add as SOCOM 1's, grown with a chord test)
+0x0029AE50 0x270 GetFirstPersonCamPos__FP10CAppCamera  # OVL1; s1:calls (ThirdToFirstPersonTransition's first call, (ret, cam) as SOCOM 1's; PartInSpace first, as SOCOM 1's)
+0x0029B0C0 0x224 FTSTick__10CAppCameraFv  # OVL1; s1:calls (SOCOM 1's FTSTick: the pad's two-button view cycle over m_ctrl_view, then the view's preset taken up -- SOCOM II's ResetView, called -- when it changed; Tick calls it second, as SOCOM 1's, without SOCOM 1's unused frame time)
 0x0029B2F0 0x40 SetZoom__10CAppCameraFf  # OVL1; s1:calls (SOCOM 1's SetZoom: the camera's aspect and range scale set from the zoom; SOCOM II scales zVid's aspect)
 0x0029B330 0x88 SetCameraMode__10CAppCameraFUc  # OVL1; the name ours (the camera's mode set, except online at mode 6 while the followed SEAL is down; the HUD's mission cams and the zoom call it)
 0x0029B3C0 0x1B0 AttachTo__10CAppCameraFP10CZSealBody  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0029B570 0x5C __dt__10CAppCameraFv  # OVL1; s1:calls (SOCOM 1's destructor: the vtable, then the camera, effects, entity, skeleton and track pointers cleared)
-0x0029B5D0 0x2F4 func_0029B5D0  # OVL1
+0x0029B5D0 0x2F4 __ct__10CAppCameraFPQ23zdb7CCamera  # OVL1; s1:order (stores CAppCamera's vtable 0x406170 first; between the destructor and the commands as SOCOM 1's constructor; SOCOM II's takes the camera alone -- a1 is stored to m_camera at 0xB4 -- where SOCOM 1's mangled name listed the world too; StopShake inlined, rand twice)
 0x0029B8D0 0x1C4 CmdBeginShake__10CAppCameraFP14_zanim_cmd_hdr  # OVL1; the name ours (RegisterAnimCommands' begin for CAMERA_SHAKE: the app camera shaken with one of its presets)
 0x0029BAA0 0xF0 CmdParseShake__10CAppCameraFP5_zrdr  # OVL1; the name ours (RegisterAnimCommands' parser for SOCOM II's CAMERA_SHAKE: SMALL, MEDIUM or LARGE)
 0x0029BB90 0x1C CmdTick3rdPersonTest__10CAppCameraFP14_zanim_cmd_hdrPf  # OVL1; s1:exact shape (RegisterAnimCommands' tick for CAMERA_3RD_PERSON: the app camera's mode tested, SOCOM II's 3 for SOCOM 1's 2)
@@ -3628,7 +3628,7 @@
 0x0029BC20 0x6C RegisterAnimCommands__10CAppCameraFv  # OVL1; s1:calls (AddCmd for CAMERA_3RD_PERSON with SOCOM 1's parse and tick; SOCOM II adds CAMERA_SHAKE; CMission::Init calls it)
 0x0029BC90 0x158 LookAt__10CAppCameraFPC6CPnt3DPC6CPnt3DR7CMatrix  # OVL1; s1:calls (SOCOM 1's LookAt: Sub, Normalize twice, sceVu0OuterProduct, the matrix rows and the eye noted; AttachTo and the camera modes call it)
 0x0029BDF0 0x178 ResetView__10CAppCameraFv  # OVL1; the name ours (the view's preset taken up: goal position, aim, tether length; with a SEAL attached the camera placed through LookAt and SetMatrix; FTSTick's view switch calls it)
-0x0029BF70 0xC38 func_0029BF70  # OVL1
+0x0029BF70 0xC38 ClipCameraChord__10CAppCameraFfP6CPnt3DP6CPnt3DP6CPnt3D  # OVL1; s1:calls (SOCOM 1's call sequence -- Sub, Normalize, Scale, Sub, GetNode, the collide flag twice, GetIntersects, GetNearestIntersectCamPoint, ToRightXZ ...; APLookAt calls it with (dT, p0, p1, p1) at the same place as SOCOM 1's)
 0x0029CBB0 0x164 func_0029CBB0  # OVL1
 0x0029CD20 0x198 GetNearestIntersectCamPoint__FPQ23zdb11DiIntersectP6CPnt3D  # OVL1; s1:calls
 0x0029CEC0 0x44 Dispatch__8CHandlerFP7CPacketP8CConsole  # OVL1; s1:align
