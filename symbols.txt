@@ -7660,7 +7660,7 @@
 0x003A3BE0 0x4F8 func_003A3BE0  # OVL1
 0x003A40E0 0x108 func_003A40E0  # OVL1
 0x003A41F0 0x1A4 func_003A41F0  # OVL1
-0x003A43A0 0xB8 func_003A43A0  # OVL1
+0x003A43A0 0xB8 Find__9CLocTableFi  # OVL1; ours (util_loc.cpp: a localised table's entry by id -- 0 out of 1..max (0x0), the last found (0x70), the first when the id is not past it, else the 12-byte entries walked; the manager's lookup 0x3A32F0 calls it)
 0x003A4460 0x44 func_003A4460  # OVL1
 0x003A44B0 0xA8 func_003A44B0  # OVL1
 0x003A4560 0x7B0 func_003A4560  # OVL1
