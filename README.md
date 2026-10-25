@@ -1643,6 +1643,24 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the weapons, round 9** (CZItemStash, CVehicle(), the vehicle initialisers, vis_vu.cpp):
+  - a class-iterator walk with a postfix `i++` gets its end hoisted into a preheader after the loop
+    (entered with a `b`, the entry test repeated there); `++i` re-reads the vector's data every pass
+    (CZItemStash::Count and Clear match with the postfix step);
+  - `if (i > Count()) return;` branches straight to the epilogue on `slt at`; `if (Count() >= i)
+    {...}` materialises the test and keeps a join;
+  - 1-bit fields set in a mem-initializer list are word read-mask-writes (`true` folded to `daddiu
+    1<<n`, `false` left as `(0 & 1) << n`); set in the body or through inline setters, MW narrows a
+    global's accesses to lbu/sb -- what fixed both vehicle initialisers (the debug masks);
+  - a pointer-vector slot read and cleared through the pod's data() reference keeps `&data_` in a
+    saved register across calls; operator[] reads data_ straight and keeps `this` (DereferenceDecals);
+  - a square taken into a local before a run of stores keeps its loads ahead of those stores;
+    `if (a == -1 || !b || !c) return;` gives the `bnez -> body; b exit` layout;
+  - ~CVehicle wants the cells as a vector subclass (a third this-test), which makes the region's
+    constructor six levels high and costs CVehicle's constructor -- the constructor kept;
+  - vis_vu.cpp (ours: 0x3B36F0?-0x3B7FDF, CVisual's decal and VU half, SOCOM 1's vis_main.cpp's first
+    half -- its stack destructor 0x3B7DB0 and initialiser 0x404570 suggest it may be the real
+    vis_main.cpp).
 - **Tells from the UI, round 7** (util_options.cpp, util_ssm.cpp, the HDD icon writers):
   - a local bitfield struct cleared in the mem-initializer list gives the word-wide read-mask-write;
     clearing it in the body narrows the stores to sb/sh;
