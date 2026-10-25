@@ -1,9 +1,11 @@
 /* seal_aistate.cpp -- the AI states' core: CQB attack, unknown, suspended, breach, script, goto,
  * pickup (SOCOM 1's unit, __sinit_seal_aistate.cpp, with its static CAiSUnknown; SOCOM 1 filed it
  * beside the other seal_*.cpp under gamez/zseal, this tree keeps the AI states under src/ai).
- * OVL2 0x5F1960-0x5F8BFF. So far only the unit's tail: the states' destructors and the inline
- * virtuals their tables pull in, and CAiStateStack's two out-of-line members. Defined in reverse
- * of their image order (-inline deferred). */
+ * OVL2 0x5EF9D0-0x5F8BFF: the states' destructors and the inline virtuals their tables pull in,
+ * CAiStateStack's out-of-line members, CSealCtrlAi::GetAiState, the base's slot 0x0C and the
+ * helpers the response states' Ticks call, the CQB/unknown/pickup Ticks and five OnSignals
+ * (round 3). CAiState::Create (0x5F6550) inlines every state's constructor and wants the member
+ * constructors' OVL2 copies named first (0x516900 CPnt3D(), 0x516120 an empty CAiMapLoc()). */
 
 #include "../gamez/zseal/zseal.h"
 #include "../gamez/zanim/zanim.h"

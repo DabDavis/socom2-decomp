@@ -1,9 +1,9 @@
 /* seal_airesponse.cpp -- the states an AI SEAL falls into in response: hostage, avoid, rush, path
  * recovery, flee, target, event, stun response, hold, surrender, no ammo, reload, shot at (SOCOM
  * 1's unit, __sinit_seal_airesponse.cpp -- its CAiSRestrained and CAiSCorpse are gone, CAiSAvoid
- * moved in from seal_aistate.cpp, CAiSHostage is here). OVL2 0x601880-0x609DEF. So far only the
- * states' destructors and the inline virtuals their tables pull in. Defined in reverse of their
- * image order (-inline deferred). */
+ * moved in from seal_aistate.cpp, CAiSHostage is here). OVL2 0x601880-0x609DEF: the states'
+ * destructors and the inline virtuals their tables pull in, the NoAmmo/Flee/Reload Ticks and seven
+ * OnSignals (round 3). Defined in reverse of their image order (-inline deferred). */
 
 #include "../gamez/zkit/zkit.h"
 
