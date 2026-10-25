@@ -107,11 +107,136 @@ public:
     void Close();
 };
 
-/* a kind of character: model, sounds, gear, weapons, AI and health (SOCOM 1's DWARF, 0x2FC bytes;
- * SOCOM II's is larger -- the temporary flag SOCOM 1 kept at 0x268 is at 0x300). Only what the
- * code written so far reads; the rest is a hole */
+/* a character's sounds (SOCOM 1's CHARACTER_SOUND, a signed byte: CHRSND_NONE -1; SOCOM II has 85
+ * where SOCOM 1 had 66). The enumerators are GetCharacterSoundTypeString's names, each at the value
+ * its jump table gives it. zseal.h's stand-in (CHARACTER_SOUND_NONE/LAST) predates this */
+enum CHARACTER_SOUND {
+    CHRSND_NONE = -1,
+    CHRSND_ABORT_PLAYER_TOO_FAR = 0,
+    CHRSND_WAITING_FOR_PLAYER = 1,
+    CHRSND_PLAYER_WARN_TOO_FAR = 2,
+    CHRSND_AREA_CLEARED = 3,
+    CHRSND_BREACH_COMPLETE = 4,
+    CHRSND_INTIMIDATE = 5,
+    CHRSND_CLEARING_BABBLE = 6,
+    CHRSND_GOTO_COMPLETE = 7,
+    CHRSND_LASE_STARTED = 8,
+    CHRSND_LASE_COMPLETE = 9,
+    CHRSND_BRAVO_IS_DISTANT = 10,
+    CHRSND_DEFUSE_BOMB_COMPLETE = 11,
+    CHRSND_MOVING_OUT = 12,
+    CHRSND_UNDER_FIRE = 13,
+    CHRSND_TANGO_DOWN = 14,
+    CHRSND_TANGO_ONE_OCLOCK = 15,
+    CHRSND_TANGO_TWO_OCLOCK = 16,
+    CHRSND_TANGO_THREE_OCLOCK = 17,
+    CHRSND_TANGO_FOUR_OCLOCK = 18,
+    CHRSND_TANGO_FIVE_OCLOCK = 19,
+    CHRSND_TANGO_SIX_OCLOCK = 20,
+    CHRSND_TANGO_SEVEN_OCLOCK = 21,
+    CHRSND_TANGO_EIGHT_OCLOCK = 22,
+    CHRSND_TANGO_NINE_OCLOCK = 23,
+    CHRSND_TANGO_TEN_OCLOCK = 24,
+    CHRSND_TANGO_ELEVEN_OCLOCK = 25,
+    CHRSND_TANGO_TWELVE_OCLOCK = 26,
+    CHRSND_TANGO_ONE_OCLOCK_HIGH = 27,
+    CHRSND_TANGO_TWO_OCLOCK_HIGH = 28,
+    CHRSND_TANGO_THREE_OCLOCK_HIGH = 29,
+    CHRSND_TANGO_FOUR_OCLOCK_HIGH = 30,
+    CHRSND_TANGO_FIVE_OCLOCK_HIGH = 31,
+    CHRSND_TANGO_SIX_OCLOCK_HIGH = 32,
+    CHRSND_TANGO_SEVEN_OCLOCK_HIGH = 33,
+    CHRSND_TANGO_EIGHT_OCLOCK_HIGH = 34,
+    CHRSND_TANGO_NINE_OCLOCK_HIGH = 35,
+    CHRSND_TANGO_TEN_OCLOCK_HIGH = 36,
+    CHRSND_TANGO_ELEVEN_OCLOCK_HIGH = 37,
+    CHRSND_TANGO_TWELVE_OCLOCK_HIGH = 38,
+    CHRSND_TANGO_MOVING = 39,
+    CHRSND_DEPLOY_GENERIC_COMPLETE = 40,
+    CHRSND_DEPLOY_BLUE_CHEM_COMPLETE = 41,
+    CHRSND_DEPLOY_RED_SMOKE_COMPLETE = 42,
+    CHRSND_DEPLOY_C4 = 43,
+    CHRSND_SATCHEL_PLACED = 44,
+    CHRSND_DEPLOY_FRAG_COMPLETE = 45,
+    CHRSND_DEPLOY_SMOKE_COMPLETE = 46,
+    CHRSND_DEPLOY_FLASHBANG = 47,
+    CHRSND_DEPLOY_TOOFAR = 48,
+    CHRSND_WAIT_UP = 49,
+    CHRSND_DEPLOY_TOO_FAR = 50,
+    CHRSND_GRENADE_ALERT = 51,
+    CHRSND_GRENADE_I_GOT_IT = 52,
+    CHRSND_GRENADE_OH_HECK = 53,
+    CHRSND_COVER_CANT_SEE = 54,
+    CHRSND_YES = 55,
+    CHRSND_NO = 56,
+    CHRSND_TEAMMATE_DOWN = 57,
+    CHRSND_PLAYER_DOWN = 58,
+    CHRSND_DAMAGE = 59,
+    CHRSND_DEATH = 60,
+    CHRSND_DEATH_QUIET = 61,
+    CHRSND_ENEMY_SIGHTED = 62,
+    CHRSND_ENEMY_AWARE = 63,
+    CHRSND_ENEMY_HOSTILE = 64,
+    CHRSND_ENEMY_CLOSE = 65,
+    CHRSND_ENGAGING = 66,
+    CHRSND_NOAMMO = 67,
+    CHRSND_RELOAD = 68,
+    CHRSND_SUSPICIOUS = 69,
+    CHRSND_SURPRISED = 70,
+    CHRSND_BATTLE_CRY = 71,
+    CHRSND_PANIC_CRY = 72,
+    CHRSND_HELPME = 73,
+    CHRSND_SURRENDER = 74,
+    CHRSND_RESTRAINED = 75,
+    CHRSND_THANKYOU = 76,
+    CHRSND_GREETING = 77,
+    CHRSND_STATUS_OK = 78,
+    CHRSND_STATUS_HOT = 79,
+    CHRSND_PLAYER_IDLE = 80,
+    CHRSND_FRIENDLYFIRE = 81,
+    CHRSND_TURNCOAT = 82,
+    CHRSND_INPOSITION = 83,
+    CHRSND_NOTSURE = 84,
+    CHRSND_MAX = 85
+};
+
+const char *GetCharacterSoundTypeString(CHARACTER_SOUND s);
+
 class CCharTypeVec;
 
+/* a part's health and armour (SOCOM 1's DWARF, 0x48 bytes) */
+class HEALTH_PARAMS {
+public:
+    void Parse(_zrdr *rdr);
+
+    float m_head_health;   // 0x0
+    float m_head_healthMax;   // 0x4
+    float m_body_health;   // 0x8
+    float m_body_healthMax;   // 0xc
+    float m_larm_health;   // 0x10
+    float m_larm_healthMax;   // 0x14
+    float m_rarm_health;   // 0x18
+    float m_rarm_healthMax;   // 0x1c
+    float m_lleg_health;   // 0x20
+    float m_lleg_healthMax;   // 0x24
+    float m_rleg_health;   // 0x28
+    float m_rleg_healthMax;   // 0x2c
+    float m_armor_head;   // 0x30
+    float m_armor_body;   // 0x34
+    float m_armor_rarm;   // 0x38
+    float m_armor_larm;   // 0x3c
+    float m_armor_rleg;   // 0x40
+    float m_armor_lleg;   // 0x44
+};
+
+class CSnd;
+class CModel;
+
+/* a kind of character: model, sounds, gear, weapons, AI and health (SOCOM 1's DWARF, 0x2FC bytes;
+ * SOCOM II's is 0x3AC -- 85 sounds where SOCOM 1 had 66, each name a plain pointer where SOCOM 1
+ * kept a 4-byte CSaferStr, so everything from the LODs on sits 0x98 further, the temporary flag at
+ * 0x300; 0x18 bytes new at the end). The vectors and the gear list are holes of their size until
+ * code reads them */
 class CCharacterType {
 public:
     CCharacterType(const char *name, const CCharacterType *base);
@@ -120,11 +245,29 @@ public:
     static CCharacterType *GetByNameMod(const char *name);
     static CCharacterType *Create(const char *name, const CCharacterType *base, bool reinit);
     static void CleanupTemporary();
+    static void AcquireSoundHandles();
 
     char *m_name;   // 0x0
-    unsigned char m_unk4[0x2fc];   // 0x4: not laid out yet
+    int m_ref_count;   // 0x4
+    char *m_model_file;   // 0x8
+    char *m_model_name;   // 0xc
+    unsigned int m_parentID;   // 0x10
+    char *m_arrSoundNames[CHRSND_MAX];   // 0x14
+    CSnd *m_sounds[CHRSND_MAX];   // 0x168
+    unsigned char m_LODs[0xc];   // 0x2bc: LODVec
+    unsigned char m_anim_sets[0xc];   // 0x2c8: a vector
+    char *m_texture_asset;   // 0x2d4
+    CModel *m_model;   // 0x2d8
+    unsigned char m_gear[0xc];   // 0x2dc: CCharacterGearList
+    unsigned char m_weapons[0xc];   // 0x2e8: CCharacterWeapList
+    int m_strength;   // 0x2f4
+    int m_recovery_factor;   // 0x2f8
+    int m_controller_id;   // 0x2fc
     unsigned char m_istemporary;   // 0x300
-    unsigned char m_unk301[0xab];   // 0x301: not laid out yet (0x3AC bytes: Create's new)
+    AI_PARAMS m_aiParams;   // 0x304
+    HEALTH_PARAMS m_healthParams;   // 0x340
+    unsigned char MultiplayerMessages[0xc];   // 0x388: CMultiplayerMsgVec
+    unsigned char m_unk394[0x18];   // 0x394: new in SOCOM II, not laid out yet
 
     /* every type made, by name (SOCOM 1's; OVL1 bss in SOCOM II, 0x44CD48) */
     static CCharTypeVec m_char_list;

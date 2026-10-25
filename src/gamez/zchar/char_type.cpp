@@ -6,6 +6,24 @@
 #include <string.h>
 
 #include "zchar.h"
+#include "../zsnd/zsnd.h"
+
+/* the type of that name, or none (SOCOM 1's; SOCOM II tests the name first and walks on until
+ * it has one) */
+CCharacterType *CCharacterType::GetByNameMod(const char *name)
+{
+    CCharacterType *found = 0;
+
+    if (name) {
+        for (CCharTypeVec::iterator i = m_char_list.begin(); !found && i != m_char_list.end(); ++i) {
+            CCharacterType *t = *i;
+
+            if (!strcmp(t->m_name, name))
+                found = t;
+        }
+    }
+    return found;
+}
 
 /* a type made, or made again in place when asked; one that exists is not handed back otherwise
  * (SOCOM 1's returned it). GetByNameMod inlines whole in the target.
@@ -27,23 +45,6 @@ CCharacterType *CCharacterType::Create(const char *name, const CCharacterType *b
         t = 0;
     }
     return t;
-}
-
-/* the type of that name, or none (SOCOM 1's; SOCOM II tests the name first and walks on until
- * it has one) */
-CCharacterType *CCharacterType::GetByNameMod(const char *name)
-{
-    CCharacterType *found = 0;
-
-    if (name) {
-        for (CCharTypeVec::iterator i = m_char_list.begin(); !found && i != m_char_list.end(); ++i) {
-            CCharacterType *t = *i;
-
-            if (!strcmp(t->m_name, name))
-                found = t;
-        }
-    }
-    return found;
 }
 
 /* a temporary type deleted, true if it was (SOCOM 1's; CleanupTemporary's remove_if predicate).
@@ -69,4 +70,217 @@ void CCharacterType::CleanupTemporary()
 {
     m_char_list.erase(std::remove_if(m_char_list.begin(), m_char_list.end(), DeleteTemporaryCharType),
                       m_char_list.end());
+}
+
+/* every used type's sounds looked up by name, the death and damage ones set to dialogue, and a
+ * male damage and death sound wherever the type names none (SOCOM 1's; SOCOM II sets the mode
+ * through the new virtual where SOCOM 1 stored it) */
+void CCharacterType::AcquireSoundHandles()
+{
+    for (CCharTypeVec::iterator it = m_char_list.begin(); it != m_char_list.end(); ++it) {
+        CCharacterType *t = *it;
+
+        if (t->m_ref_count > 0) {
+            for (int i = 0; i < CHRSND_MAX; i++) {
+                if (t->m_arrSoundNames[i])
+                    t->m_sounds[i] = CSnd::GetSoundByName(t->m_arrSoundNames[i]);
+                if (t->m_sounds[i]) {
+                    t->m_sounds[i]->m_mode = 2;
+                    if (i == CHRSND_PLAYER_DOWN || i == CHRSND_DAMAGE || i == CHRSND_DEATH ||
+                        i == CHRSND_DEATH_QUIET || i == CHRSND_TEAMMATE_DOWN)
+                        t->m_sounds[i]->SetDialogMode();
+                }
+            }
+            if (!t->m_sounds[CHRSND_DAMAGE]) {
+                t->m_sounds[CHRSND_DAMAGE] = CSnd::GetSoundByName("MALE_DAMAGE");
+                if (t->m_sounds[CHRSND_DAMAGE])
+                    t->m_sounds[CHRSND_DAMAGE]->SetDialogMode();
+            }
+            if (!t->m_sounds[CHRSND_DEATH]) {
+                t->m_sounds[CHRSND_DEATH] = CSnd::GetSoundByName("DEATH_SOUNDS");
+                if (t->m_sounds[CHRSND_DEATH])
+                    t->m_sounds[CHRSND_DEATH]->SetDialogMode();
+            }
+        }
+    }
+}
+
+/* a sound's name (SOCOM 1's; the cases in the image's order, which is not the values') */
+const char *GetCharacterSoundTypeString(CHARACTER_SOUND s)
+{
+    switch (s) {
+    case CHRSND_NONE:
+        return "CHRSND_NONE";
+    case CHRSND_YES:
+        return "CHRSND_YES";
+    case CHRSND_NO:
+        return "CHRSND_NO";
+    case CHRSND_TEAMMATE_DOWN:
+        return "CHRSND_TEAMMATE_DOWN";
+    case CHRSND_PLAYER_DOWN:
+        return "CHRSND_PLAYER_DOWN";
+    case CHRSND_UNDER_FIRE:
+        return "CHRSND_UNDER_FIRE";
+    case CHRSND_DAMAGE:
+        return "CHRSND_DAMAGE";
+    case CHRSND_DEATH_QUIET:
+        return "CHRSND_DEATH_QUIET";
+    case CHRSND_DEATH:
+        return "CHRSND_DEATH";
+    case CHRSND_WAITING_FOR_PLAYER:
+        return "CHRSND_WAITING_FOR_PLAYER";
+    case CHRSND_PLAYER_WARN_TOO_FAR:
+        return "CHRSND_PLAYER_WARN_TOO_FAR";
+    case CHRSND_ABORT_PLAYER_TOO_FAR:
+        return "CHRSND_ABORT_PLAYER_TOO_FAR";
+    case CHRSND_AREA_CLEARED:
+        return "CHRSND_AREA_CLEARED";
+    case CHRSND_BREACH_COMPLETE:
+        return "CHRSND_BREACH_COMPLETE";
+    case CHRSND_CLEARING_BABBLE:
+        return "CHRSND_CLEARING_BABBLE";
+    case CHRSND_LASE_STARTED:
+        return "CHRSND_LASE_STARTED";
+    case CHRSND_LASE_COMPLETE:
+        return "CHRSND_LASE_COMPLETE";
+    case CHRSND_DEPLOY_GENERIC_COMPLETE:
+        return "CHRSND_DEPLOY_GENERIC_COMPLETE";
+    case CHRSND_DEPLOY_BLUE_CHEM_COMPLETE:
+        return "CHRSND_DEPLOY_BLUE_CHEM_COMPLETE";
+    case CHRSND_DEPLOY_FRAG_COMPLETE:
+        return "CHRSND_DEPLOY_FRAG_COMPLETE";
+    case CHRSND_DEPLOY_RED_SMOKE_COMPLETE:
+        return "CHRSND_DEPLOY_RED_SMOKE_COMPLETE";
+    case CHRSND_DEPLOY_SMOKE_COMPLETE:
+        return "CHRSND_DEPLOY_SMOKE_COMPLETE";
+    case CHRSND_DEPLOY_C4:
+        return "CHRSND_DEPLOY_C4";
+    case CHRSND_DEPLOY_FLASHBANG:
+        return "CHRSND_DEPLOY_FLASHBANG";
+    case CHRSND_SATCHEL_PLACED:
+        return "CHRSND_SATCHEL_PLACED";
+    case CHRSND_DEPLOY_TOOFAR:
+        return "CHRSND_DEPLOY_TOOFAR";
+    case CHRSND_BRAVO_IS_DISTANT:
+        return "CHRSND_BRAVO_IS_DISTANT";
+    case CHRSND_DEFUSE_BOMB_COMPLETE:
+        return "CHRSND_DEFUSE_BOMB_COMPLETE";
+    case CHRSND_GOTO_COMPLETE:
+        return "CHRSND_GOTO_COMPLETE";
+    case CHRSND_MOVING_OUT:
+        return "CHRSND_MOVING_OUT";
+    case CHRSND_INTIMIDATE:
+        return "CHRSND_INTIMIDATE";
+    case CHRSND_TANGO_DOWN:
+        return "CHRSND_TANGO_DOWN";
+    case CHRSND_TANGO_ONE_OCLOCK:
+        return "CHRSND_TANGO_ONE_OCLOCK";
+    case CHRSND_TANGO_TWO_OCLOCK:
+        return "CHRSND_TANGO_TWO_OCLOCK";
+    case CHRSND_TANGO_THREE_OCLOCK:
+        return "CHRSND_TANGO_THREE_OCLOCK";
+    case CHRSND_TANGO_FOUR_OCLOCK:
+        return "CHRSND_TANGO_FOUR_OCLOCK";
+    case CHRSND_TANGO_FIVE_OCLOCK:
+        return "CHRSND_TANGO_FIVE_OCLOCK";
+    case CHRSND_TANGO_SIX_OCLOCK:
+        return "CHRSND_TANGO_SIX_OCLOCK";
+    case CHRSND_TANGO_SEVEN_OCLOCK:
+        return "CHRSND_TANGO_SEVEN_OCLOCK";
+    case CHRSND_TANGO_EIGHT_OCLOCK:
+        return "CHRSND_TANGO_EIGHT_OCLOCK";
+    case CHRSND_TANGO_NINE_OCLOCK:
+        return "CHRSND_TANGO_NINE_OCLOCK";
+    case CHRSND_TANGO_TEN_OCLOCK:
+        return "CHRSND_TANGO_TEN_OCLOCK";
+    case CHRSND_TANGO_ELEVEN_OCLOCK:
+        return "CHRSND_TANGO_ELEVEN_OCLOCK";
+    case CHRSND_TANGO_TWELVE_OCLOCK:
+        return "CHRSND_TANGO_TWELVE_OCLOCK";
+    case CHRSND_TANGO_ONE_OCLOCK_HIGH:
+        return "CHRSND_TANGO_ONE_OCLOCK_HIGH";
+    case CHRSND_TANGO_TWO_OCLOCK_HIGH:
+        return "CHRSND_TANGO_TWO_OCLOCK_HIGH";
+    case CHRSND_TANGO_THREE_OCLOCK_HIGH:
+        return "CHRSND_TANGO_THREE_OCLOCK_HIGH";
+    case CHRSND_TANGO_FOUR_OCLOCK_HIGH:
+        return "CHRSND_TANGO_FOUR_OCLOCK_HIGH";
+    case CHRSND_TANGO_FIVE_OCLOCK_HIGH:
+        return "CHRSND_TANGO_FIVE_OCLOCK_HIGH";
+    case CHRSND_TANGO_SIX_OCLOCK_HIGH:
+        return "CHRSND_TANGO_SIX_OCLOCK_HIGH";
+    case CHRSND_TANGO_SEVEN_OCLOCK_HIGH:
+        return "CHRSND_TANGO_SEVEN_OCLOCK_HIGH";
+    case CHRSND_TANGO_EIGHT_OCLOCK_HIGH:
+        return "CHRSND_TANGO_EIGHT_OCLOCK_HIGH";
+    case CHRSND_TANGO_NINE_OCLOCK_HIGH:
+        return "CHRSND_TANGO_NINE_OCLOCK_HIGH";
+    case CHRSND_TANGO_TEN_OCLOCK_HIGH:
+        return "CHRSND_TANGO_TEN_OCLOCK_HIGH";
+    case CHRSND_TANGO_ELEVEN_OCLOCK_HIGH:
+        return "CHRSND_TANGO_ELEVEN_OCLOCK_HIGH";
+    case CHRSND_TANGO_TWELVE_OCLOCK_HIGH:
+        return "CHRSND_TANGO_TWELVE_OCLOCK_HIGH";
+    case CHRSND_TANGO_MOVING:
+        return "CHRSND_TANGO_MOVING";
+    case CHRSND_ENEMY_SIGHTED:
+        return "CHRSND_ENEMY_SIGHTED";
+    case CHRSND_ENEMY_AWARE:
+        return "CHRSND_ENEMY_AWARE";
+    case CHRSND_ENEMY_HOSTILE:
+        return "CHRSND_ENEMY_HOSTILE";
+    case CHRSND_ENEMY_CLOSE:
+        return "CHRSND_ENEMY_CLOSE";
+    case CHRSND_ENGAGING:
+        return "CHRSND_ENGAGING";
+    case CHRSND_THANKYOU:
+        return "CHRSND_THANKYOU";
+    case CHRSND_GREETING:
+        return "CHRSND_GREETING";
+    case CHRSND_STATUS_OK:
+        return "CHRSND_STATUS_OK";
+    case CHRSND_STATUS_HOT:
+        return "CHRSND_STATUS_HOT";
+    case CHRSND_DEPLOY_TOO_FAR:
+        return "CHRSND_DEPLOY_TOO_FAR";
+    case CHRSND_WAIT_UP:
+        return "CHRSND_WAIT_UP";
+    case CHRSND_GRENADE_I_GOT_IT:
+        return "CHRSND_GRENADE_I_GOT_IT";
+    case CHRSND_GRENADE_OH_HECK:
+        return "CHRSND_GRENADE_OH_HECK";
+    case CHRSND_COVER_CANT_SEE:
+        return "CHRSND_COVER_CANT_SEE";
+    case CHRSND_GRENADE_ALERT:
+        return "CHRSND_GRENADE_ALERT";
+    case CHRSND_NOAMMO:
+        return "CHRSND_NOAMMO";
+    case CHRSND_RELOAD:
+        return "CHRSND_RELOAD";
+    case CHRSND_SUSPICIOUS:
+        return "CHRSND_SUSPICIOUS";
+    case CHRSND_SURPRISED:
+        return "CHRSND_SURPRISED";
+    case CHRSND_SURRENDER:
+        return "CHRSND_SURRENDER";
+    case CHRSND_RESTRAINED:
+        return "CHRSND_RESTRAINED";
+    case CHRSND_BATTLE_CRY:
+        return "CHRSND_BATTLE_CRY";
+    case CHRSND_PANIC_CRY:
+        return "CHRSND_PANIC_CRY";
+    case CHRSND_HELPME:
+        return "CHRSND_HELPME";
+    case CHRSND_PLAYER_IDLE:
+        return "CHRSND_PLAYER_IDLE";
+    case CHRSND_FRIENDLYFIRE:
+        return "CHRSND_FRIENDLYFIRE";
+    case CHRSND_TURNCOAT:
+        return "CHRSND_TURNCOAT";
+    case CHRSND_INPOSITION:
+        return "CHRSND_INPOSITION";
+    case CHRSND_NOTSURE:
+        return "CHRSND_NOTSURE";
+    }
+    return "CHRSND_NONE";
 }
