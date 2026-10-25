@@ -10880,8 +10880,8 @@
 0x005B0CD0 0x58 func_005B0CD0  # OVL2
 0x005B0D30 0x94 func_005B0D30  # OVL2
 0x005B0DD0 0xDC Slide__10CZSealBodyFPQ23zdb15IntersectStruct  # OVL2; s1:calls
-0x005B0EB0 0x1FC func_005B0EB0  # OVL2
-0x005B10B0 0x78 func_005B10B0  # OVL2
+0x005B0EB0 0x1FC CheckDILadder__10CZSealBodyFv  # OVL2; s1:calls by hand (PostCheckDILadder, 0x5B10B0, calls it where SOCOM 1's PostCheckDILadder calls CheckDILadder__10CZSealBodyFRfRfRf; SOCOM II's takes only this -- it reads no argument register -- and sits right after Slide, as SOCOM 1's; seal_env.cpp)
+0x005B10B0 0x78 PostCheckDILadder__10CZSealBodyFv  # OVL2; s1:calls by hand (SOCOM 1's PostCheckDILadder__10CZSealBodyFRfRfRf: a float tested against a global float -- 0.03 here, a variable in both builds -- passing at once, else CheckDILadder's answer; SOCOM II's takes no arguments, reads the float at 0x240 and passes a remote SEAL first; CZSealBody::Tick calls it; seal_env.cpp)
 0x005B1130 0x220 func_005B1130  # OVL2
 0x005B1350 0x190 func_005B1350  # OVL2
 0x005B14E0 0x84 func_005B14E0  # OVL2

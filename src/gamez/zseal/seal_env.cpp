@@ -158,6 +158,23 @@ void CZSealBody::Slide(zdb::IntersectStruct *hit)
     m_velM.Sub(&n, &m_velM);
 }
 
+extern "C" {
+/* the least value at 0x240 the ladder check waits for (OVL1 data, 0.03: a variable, as SOCOM 1's) */
+extern float data_003F3428;
+}
+
+/* the ladder check taken only for a SEAL this console drives and past the threshold; otherwise
+ * passed (OVL2 0x5B10B0; SOCOM 1's took three float references and tested the first, SOCOM II's
+ * reads its own member and passes a remote SEAL) */
+bool CZSealBody::PostCheckDILadder()
+{
+    if (IsRemote())
+        return true;
+    if (m_240 < data_003F3428)
+        return true;
+    return CheckDILadder();
+}
+
 /* where a hit lands (SOCOM 1's DAMAGE_LOCATION, a byte: only the name matters here) */
 enum DAMAGE_LOCATION { DAMAGE_LOCATION_0 = 0, DAMAGE_LOCATION_LAST = 255 };
 
@@ -296,6 +313,26 @@ void CZSealBody::CheckForRegionTrigger(unsigned int regions)
         }
     }
     m_lastregion = regions;
+}
+
+extern "C" {
+/* the SEALs' pool of ray intersections, its count and a third word (OVL1 bss; new in SOCOM II) */
+extern zdb::DiIntersect **data_0044D588;
+extern int data_0044D590;
+extern int data_0044D598;
+}
+
+/* the intersection pool let go: each deleted, the array freed, the words cleared (OVL2 0x5B61A0, new
+ * in SOCOM II; CCoreState::UnInit, CMPExitState::Init and CMission::ReOpen_Unload1 call it) */
+extern "C" void func_005B61A0()
+{
+    for (int i = 0; i < data_0044D590; i++)
+        delete data_0044D588[i];
+    if (data_0044D588)
+        _free(data_0044D588, 0, 0);
+    data_0044D588 = 0;
+    data_0044D590 = 0;
+    data_0044D598 = 0;
 }
 
 /* whether the SEAL's timed action is due: set at all, and offline at once, online once the network's
@@ -594,8 +631,9 @@ extern "C" bool func_0059D830(CZSealBody *seal)
 class CLadderData {
 public:
     unsigned char _0[0x1c];
-    int m_users;   // 0x1c (the name ours)
-    unsigned char _20[0x28 - 0x20];
+    int m_users;   // 0x1c (the names ours)
+    unsigned int m_owner;   // 0x20: the entity id of the SEAL holding it
+    unsigned char _24[0x28 - 0x24];
 };
 
 class CLadderList {
@@ -631,6 +669,29 @@ extern "C" void func_0059D750(CZSealBody *seal)
             ladder->m_users--;
         seal->m_ladder = data_003F3438;
     }
+}
+
+/* the SEAL's hold on its ladder let go: the ladder's owner cleared if it is this SEAL, the hold
+ * reset (OVL2 0x5B14E0, new in SOCOM II; OnDeath, the destructor and two more call it after 0x59D750
+ * with the SEAL's m_climb). The states a switch: its chain tests 3, then 1, then branches past.
+ * OPEN, 2 instructions: the target loads the ladder list (a0) right after its lui and the index (a1)
+ * in the call's delay slot; MW here loads the index first and the list in the slot. Tried: the list
+ * in a pointer local, a reference local, through an inline accessor, the index in a local, the hold
+ * through a reference. */
+extern "C" void func_005B14E0(CZSealBody::CSealClimb *climb, CZSealBody *seal)
+{
+    switch (seal->m_climb.m_state) {
+    case 1:
+    case 3: {
+        CLadderData *ladder = theMission.m_ladders->GetLadderByIndex(seal->m_climb.m_ladder);
+
+        if (ladder && ladder->m_owner == seal->m_id)
+            ladder->m_owner = CEntity::invalidId;
+        break;
+    }
+    }
+    climb->m_state = 0;
+    climb->m_active = 0;
 }
 
 /* whether the SEAL is on a given ladder (OVL2 0x59D6C0, new in SOCOM II; 0x56BD10 asks it) */

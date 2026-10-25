@@ -619,6 +619,12 @@ public:
 
     /* whether a player drives it (an inline the code shows: m_control tested, IsPlayer called) */
     bool IsPlayer() { return m_control ? ((CSealCtrl *)m_control)->IsPlayer() : false; }
+    /* whether another console drives it (the same shape, IsRemote at +0x34) */
+    bool IsRemote() { return m_control ? ((CSealCtrl *)m_control)->IsRemote() : false; }
+    /* the ladder's polygons checked, and the check taken only when it should be (SOCOM 1's took three
+     * float references; OVL2 0x5B0EB0, 0x5B10B0) */
+    bool CheckDILadder();
+    bool PostCheckDILadder();
     float SetHealth(float health, enum SEAL_DEATH_TYPE type);
     /* the character the SEAL was made from (SOCOM 1's; OVL2 0x599810) */
     CCharacterType *GetCharacter();
@@ -680,7 +686,9 @@ public:
     float m_blooddriptimer;   // 0x214 (SOCOM 1's 0x170)
     unsigned char _218[0x22c - 0x218];
     int m_22c;   // 0x22c: a time on the network's clock 0x5A8850 waits for (the names ours)
-    unsigned char _230[0x2e4 - 0x230];
+    unsigned char _230[0x240 - 0x230];
+    float m_240;   // 0x240: PostCheckDILadder checks the ladder only from 0.03 up (the name ours)
+    unsigned char _244[0x2e4 - 0x244];
     float m_alt;   // 0x2e4 (SOCOM 1's 0xe98)
     CZBodyPart *m_root;   // 0x2e8 (SOCOM 1's 0x26c)
     unsigned char _2ec[0x374 - 0x2ec];
@@ -776,7 +784,15 @@ public:
     /* the ladder the SEAL is on, an index into the mission's list (new in SOCOM II: read with lhu
      * and re-masked for an int argument, as a 16-bit field is; the name ours) */
     unsigned int m_ladder : 16;   // 0x1062
-    unsigned char _1064[0x1336 - 0x1064];
+    unsigned char _1064[0x1328 - 0x1064];
+    /* the SEAL's hold on a ladder: a flag, the ladder's index, a state (1 and 3 hold it) -- new in
+     * SOCOM II (0x5B14E0 lets go of it; the names ours) */
+    struct CSealClimb {
+        unsigned char m_active;   // 0x0
+        int m_ladder;   // 0x4
+        unsigned char m_state;   // 0x8
+    } m_climb;   // 0x1328
+    unsigned char _1334[0x1336 - 0x1334];
     short m_weapon_id;   // 0x1336: the weapon in hand, looked up in the AI's kind table (the name ours)
     unsigned char _1338[0x14e0 - 0x1338];   // (0x14E0 bytes: Create news 5344)
 };
