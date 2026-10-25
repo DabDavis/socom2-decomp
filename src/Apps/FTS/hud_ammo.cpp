@@ -43,9 +43,12 @@ static float s_magsx = 95.0f;
 static float s_bitmapx = 20.0f;
 static const char *s_backtex = "newweapnbkrnd.tif";
 static const char *s_magtexname = "firemode.tif";
-/* the captions' y and the bitmap's (bss, set elsewhere; no rows yet) */
-extern float data_004145C0;
-extern float data_004145D8;
+/* the captions' y, the magazines' first bitmap's x and y and the bitmap's y, off the backing's
+ * corner and the captions' x: computed by the unit's initialiser (0x3FF610), in this order */
+static float s_texty = 18.0f + s_polyy;
+static float s_magx = s_ammox - 5.0f;
+static float s_magy = 58.0f + s_polyy;
+static float s_bitmapy = 25.0f + s_polyy;
 
 /* the magazines last shown: the texture past three (bss 0x4145E0) and the count (data 0x3DCBD8,
  * -1 for none); the unit's statics, no rows yet */
@@ -130,9 +133,6 @@ CZSealBody *ftsGetPlayer();
 /* whether the local player spectates (the network glue's; no name yet) */
 extern "C" bool func_002C2FA0();
 
-/* where the magazines' first bitmap sits (bss 0x4145C8, 0x4145D0: set by Init; no rows yet) */
-extern float data_004145C8;
-extern float data_004145D0;
 
 CAmmoDisplay::CAmmoDisplay()
 {
@@ -155,26 +155,26 @@ void CAmmoDisplay::Init(C2DFont *font)
     m_poly.Load(s_polyx, s_polyy, s_polyx, s_polyy + s_polyh, s_polyx + s_polyw, s_polyy + s_polyh,
                 s_polyx + s_polyw, s_polyy, back ? back->m_texture : 0);
     theHUD->Add2D(&m_poly, -1, true);
-    m_bitmap.Load(s_bitmapx, data_004145D8, back);
+    m_bitmap.Load(s_bitmapx, s_bitmapy, back);
     m_poly.push_back(&m_bitmap);
     theHUD->Add2D(&m_head, 1, true);
     m_ammo.m_color[0] = 128.0f;
     m_ammo.m_color[1] = 128.0f;
     m_ammo.m_color[2] = 128.0f;
     m_ammo.m_color[3] = 80.0f;
-    m_ammo.Load(0.9f, "AMMO", font, s_ammox, data_004145C0, true);
+    m_ammo.Load(0.9f, "AMMO", font, s_ammox, s_texty, true);
     m_head.push_back(&m_ammo);
     m_mags.m_color[0] = 128.0f;
     m_mags.m_color[1] = 128.0f;
     m_mags.m_color[2] = 128.0f;
     m_mags.m_color[3] = 80.0f;
-    m_mags.Load(0.9f, "MAGS", font, s_magsx, data_004145C0, true);
+    m_mags.Load(0.9f, "MAGS", font, s_magsx, s_texty, true);
     m_head.push_back(&m_mags);
     m_magtex = zdb::CAssetMgr::m_assets.GetTexHandle(s_magtexname);
     for (unsigned int i = 0; i < 4; i++) {
         m_bitmaps[i].SetUV(0.01f, 0.0f, 1.0f, 1.0f);
         m_bitmaps[i].SetColor(128.0f, 128.0f, 128.0f);
-        m_bitmaps[i].Load(s_ammox + 36.0f * (float)i, data_004145D0, m_magtex);
+        m_bitmaps[i].Load(s_ammox + 36.0f * (float)i, s_magy, m_magtex);
         m_head.push_back(&m_bitmaps[i]);
     }
 }
@@ -270,7 +270,7 @@ void CAmmoDisplay::SetMags(int mags, zdb::CTexHandle *tex)
         }
         break;
     }
-    m_bitmaps[0].Load(data_004145C8, data_004145D0, own ? m_magtex : tex);
+    m_bitmaps[0].Load(s_magx, s_magy, own ? m_magtex : tex);
 }
 
 /* the counts from the HUD owner's kit: the clip's rounds over all the rounds, the magazines left
@@ -334,5 +334,5 @@ void CAmmoDisplay::Update()
         data_004145E0 = 0;
         data_003DCBD8 = -1;
     }
-    m_bitmap.Load(s_bitmapx, data_004145D8, kit ? kit->GetCurIcon() : 0);
+    m_bitmap.Load(s_bitmapx, s_bitmapy, kit ? kit->GetCurIcon() : 0);
 }

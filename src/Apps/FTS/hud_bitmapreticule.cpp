@@ -9,6 +9,14 @@
 
 class CHUD;
 
+/* the reticle's colours, built by the unit's initialiser (0x3FE490) in this order: SOCOM 1's
+ * color_base (its symbol table; 12 bytes there too), then SOCOM II's two (the names ours: the
+ * green and the grey 0x215C10 picks when the weapon is ready and when it has no ammo; SOCOM 1
+ * computed its timer's image rectangle here instead) */
+CPnt3D color_base(86.0f, 63.0f, 27.0f);
+static CPnt3D s_colorReady(24.0f, 200.0f, 44.0f);
+static CPnt3D s_colorNoAmmo(24.0f, 24.0f, 24.0f);
+
 class BitmapReticule : public C2D {
 public:
     virtual void Draw(zdb::CCamera *cam);

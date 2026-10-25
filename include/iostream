@@ -1,0 +1,27 @@
+/* iostream -- only what SOCOM II's units take from MSL's <iostream>: its two static init objects.
+ * Every unit that includes it builds one of each first in its initialiser and registers their
+ * destructors (__nInit's 0x184C80/0x184FA0, __wInit's 0x1851C0/0x1854E0 in MAIN), SOCOM 1's
+ * initialisers alike -- the narrow and the wide streams' set-up. The object names are ours. */
+#ifndef _MSL_IOSTREAM
+#define _MSL_IOSTREAM
+
+namespace std {
+
+class __nInit {
+public:
+    __nInit();
+    ~__nInit();
+};
+
+class __wInit {
+public:
+    __wInit();
+    ~__wInit();
+};
+
+static __nInit __msl_nInit;
+static __wInit __msl_wInit;
+
+}
+
+#endif

@@ -90,8 +90,51 @@ extern "C" const char *func_002C3A70(int player);
 /* a string's width measured into m_charheight (its slot 0x3C; ztwod's, no name yet) */
 extern "C" void func_00362B70(C2DString *s);
 
-/* the name's room in the box (a variable: read with lwc1) */
+/* the box's places, in their data order (variables: read with lwc1), then the bss ones the unit's
+ * initialiser (0x3FF680) computes from them, in this order: the static icon and the icons' size,
+ * the dynamic icon, the radio backing's top and size, the radio texts', the name, the health bar
+ * and the name's room (s_namewidth), and the box. The names of the ones only the initialiser
+ * reads are ours, and their roles guesses */
+static float s_staticx = 590.0f;
+static float s_staticy = 361.0f;
+static float s_iconw = 32.0f;
+static float s_iconh = 32.0f;
+static float s_dynamicx = 545.0f;
+static float s_dynamicy = 361.0f;
+static float s_backing_y1 = 359.0f;
+static float s_backing_w = 16.0f;
+static float s_backing_h = 16.0f;
+static float s_text2_y = 371.0f;
+static float s_text1_x0 = 598.0f;
+static float s_text1_dx = 24.0f;
+static float s_text1_y = 352.0f;
+static float s_name_x = 555.0f;
+static float s_name_y = 409.0f;
+static float s_name_scale = 0.8f;
+static float s_bar_x = 488.0f;
+static float s_bar_y = 396.0f;
 static float s_namewidth = 134.0f;
+static float s_bar_h = 18.0f;
+static float s_talk_x = 485.0f;
+static float s_talk_y = 357.0f;
+static float s_talk_w = 140.0f;
+static float s_talk_h = 82.0f;
+static float s_box_y1 = 418.0f;
+static float s_box_h = 20.0f;
+
+static float s_backing_x1 = s_staticx - 8.0f;
+static float s_backing_x2 = s_backing_x1 + s_backing_w;
+static float s_backing_y2 = s_backing_y1 + s_backing_h;
+static float s_text2_x = s_staticx - 1.0f;
+static float s_text1_x = s_text1_x0 + s_text1_dx;
+static float s_bar_x2 = s_bar_x + s_namewidth;
+static float s_bar_y2 = s_bar_y + s_bar_h;
+static float s_talk_x2 = s_talk_x + s_talk_w;
+static float s_talk_y2 = s_talk_y + s_talk_h;
+static float s_box_x1 = s_bar_x;
+static float s_box_w = s_namewidth;
+static float s_box_x2 = s_box_x1 + s_box_w;
+static float s_box_y2 = s_box_y1 + s_box_h;
 
 /* a seal's clan tag, if it has a seal */
 static inline const char *ClanTag(CZSealBody *owner)
@@ -99,11 +142,6 @@ static inline const char *ClanTag(CZSealBody *owner)
     return owner ? func_002C3AC0(owner->m_player) : 0;
 }
 
-/* where the static icon sits and how big the icons are (variables: read with lwc1) */
-static float s_staticx = 590.0f;
-static float s_staticy = 361.0f;
-static float s_iconw = 32.0f;
-static float s_iconh = 32.0f;
 
 /* the icon off, white and clear, fading in to half; its six textures (the spectators' falling back
  * on the team's), listed under its parent. The unit's last function: the radio icons' Ticks and
@@ -165,9 +203,6 @@ void CRadioIcon_Static::Tick(float dT)
     }
 }
 
-/* where the dynamic icon sits (variables: read with lwc1; it shares the static icon's size) */
-static float s_dynamicx = 545.0f;
-static float s_dynamicy = 361.0f;
 
 /* in a network game, the talk icon while this player may talk, or the listen icon for a second
  * after anyone else spoke; hidden otherwise. The texture's name kept in a string is never read
@@ -202,15 +237,6 @@ void CRadioIcon_Dynamic::Tick(float dT)
     }
 }
 
-/* the radio part's places (the bss ones set by its Init; no rows yet) */
-extern float data_004145F8;
-extern float data_00414600;
-extern float data_00414608;
-extern float data_00414610;
-extern float data_00414618;
-static float s_backing_y1 = 359.0f;
-static float s_text2_y = 371.0f;
-static float s_text1_y = 352.0f;
 
 inline void CRadioIcon_Dynamic::Init(C2D *parent)
 {
@@ -243,14 +269,14 @@ void CWhosTalking::Init(C2DFont *font)
     m_text1.m_color[1] = CHUD::m_hud_textcolor.y;
     m_text1.m_color[2] = CHUD::m_hud_textcolor.z;
     m_text1.m_color[3] = CHUD::m_hud_textcolor.w;
-    m_text1.SetPos((int)data_00414618, (int)s_text1_y);
+    m_text1.SetPos((int)s_text1_x, (int)s_text1_y);
     push_back(&m_text1);
     m_static.Init(this);
     m_dynamic.Init(this);
     m_bitmap2.SetHasTexture(false);
     m_bitmap2.SetColor(0.0f, 0.0f, 0.0f);
     m_bitmap2.SetTrans(50.0f);
-    m_bitmap2.SetPos((int)data_004145F8, (int)s_backing_y1, (int)data_00414600, (int)data_00414608);
+    m_bitmap2.SetPos((int)s_backing_x1, (int)s_backing_y1, (int)s_backing_x2, (int)s_backing_y2);
     push_back(&m_bitmap2);
     m_text2.SetFont(font);
     m_text2.m_scale = 0.8f;
@@ -259,7 +285,7 @@ void CWhosTalking::Init(C2DFont *font)
     m_text2.m_color[2] = CHUD::m_hud_textcolor.z;
     m_text2.m_color[3] = CHUD::m_hud_textcolor.w;
     m_text2.SetTrans(128.0f);
-    m_text2.SetPos((int)data_00414610, (int)s_text2_y);
+    m_text2.SetPos((int)s_text2_x, (int)s_text2_y);
     m_text2.m_isCentered = 1;
     push_back(&m_text2);
 }
@@ -274,7 +300,7 @@ void CWhosTalking::ReInit()
     m_text1.m_color[1] = CHUD::m_hud_textcolor.y;
     m_text1.m_color[2] = CHUD::m_hud_textcolor.z;
     m_text1.m_color[3] = CHUD::m_hud_textcolor.w;
-    m_text1.SetPos((int)data_00414618, (int)s_text1_y);
+    m_text1.SetPos((int)s_text1_x, (int)s_text1_y);
     m_static.Off();
     m_static.SetColor(128.0f, 128.0f, 128.0f);
     m_static.SetTrans(0.0f);
@@ -290,14 +316,14 @@ void CWhosTalking::ReInit()
     m_bitmap2.SetHasTexture(false);
     m_bitmap2.SetColor(0.0f, 0.0f, 0.0f);
     m_bitmap2.SetTrans(50.0f);
-    m_bitmap2.SetPos((int)data_004145F8, (int)s_backing_y1, (int)data_00414600, (int)data_00414608);
+    m_bitmap2.SetPos((int)s_backing_x1, (int)s_backing_y1, (int)s_backing_x2, (int)s_backing_y2);
     m_text2.m_scale = 0.8f;
     m_text2.m_color[0] = CHUD::m_hud_textcolor.x;
     m_text2.m_color[1] = CHUD::m_hud_textcolor.y;
     m_text2.m_color[2] = CHUD::m_hud_textcolor.z;
     m_text2.m_color[3] = CHUD::m_hud_textcolor.w;
     m_text2.SetTrans(128.0f);
-    m_text2.SetPos((int)data_00414610, (int)s_text2_y);
+    m_text2.SetPos((int)s_text2_x, (int)s_text2_y);
     m_text2.m_isCentered = 1;
 }
 
@@ -326,7 +352,7 @@ void CWhosTalking::Tick(float dT)
     }
     m_text1.SetString(speaker ? speaker : " ", true);
     if (speaker) {
-        m_text1.SetPos((int)data_00414618, (int)s_text1_y);
+        m_text1.SetPos((int)s_text1_x, (int)s_text1_y);
         func_00362B70(&m_text1);
         m_text1.On();
     } else {
@@ -348,17 +374,6 @@ void CWhosTalking::Tick(float dT)
     m_dynamic.Tick(dT);
 }
 
-/* the box's corners and the health bar's place (the bss ones set by Init; no rows yet) */
-extern float data_00414640;
-extern float data_00414650;
-extern float data_00414658;
-static float s_box_y1 = 418.0f;
-static float s_bar_h = 18.0f;
-static float s_bar_x = 488.0f;
-static float s_bar_y = 396.0f;
-static float s_name_scale = 0.8f;
-static float s_name_x = 555.0f;
-static float s_name_y = 409.0f;
 
 
 /* the box made: the first bitmap off, the second the backing's texture, the health bar, the name
@@ -370,7 +385,7 @@ void CMPInfoBox::Init(C2DFont *font)
     m_bitmap2.SetUV(1.0f, 1.0f, 0.0f, 0.0f);
     m_bitmap2.SetColor(128.0f, 128.0f, 128.0f);
     m_bitmap2.SetTrans(68.0f);
-    m_bitmap2.SetPos((int)data_00414640, (int)s_box_y1, (int)data_00414650, (int)data_00414658);
+    m_bitmap2.SetPos((int)s_box_x1, (int)s_box_y1, (int)s_box_x2, (int)s_box_y2);
     theHUD->Add2D(&m_bitmap2, -1, true);
     m_healthbar.SetSize(s_namewidth, s_bar_h);
     m_healthbar.SetPos(s_bar_x, s_bar_y);
@@ -398,7 +413,7 @@ void CMPInfoBox::ReInit()
     m_bitmap2.SetUV(1.0f, 1.0f, 0.0f, 0.0f);
     m_bitmap2.SetColor(128.0f, 128.0f, 128.0f);
     m_bitmap2.SetTrans(68.0f);
-    m_bitmap2.SetPos((int)data_00414640, (int)s_box_y1, (int)data_00414650, (int)data_00414658);
+    m_bitmap2.SetPos((int)s_box_x1, (int)s_box_y1, (int)s_box_x2, (int)s_box_y2);
     m_healthbar.SetSize(s_namewidth, s_bar_h);
     m_healthbar.SetPos(s_bar_x, s_bar_y);
     m_text.m_scale = s_name_scale;
