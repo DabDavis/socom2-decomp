@@ -57,7 +57,7 @@ CRdrEditor::~CRdrEditor()
 
 /* SOCOM 1's: a list opened, its tag (when there is one) its first value. The new vector is a
  * statement of its own: as push()'s argument its constructor would sit a level deeper and be
- * called, not inlined */
+ * called, not inlined (measured at -inline level=4: an inline height, to recheck at level 5) */
 bool CRdrEditor::push(const char *tag)
 {
     if (tag && *tag)

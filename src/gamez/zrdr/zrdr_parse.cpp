@@ -130,7 +130,8 @@ int CRdrFile::ReadToken(CRdrIO *io, _zrdr **out)
 /* SOCOM 1's: the values up to the closing parenthesis gathered, a nested list read as an array,
  * then copied into an array of their own (at the top, the file's own value). The front is taken
  * off with erase(begin()), MSL's own pop_front: include/list's pop_front builds the iterator a
- * level shallower and its temporaries then sit below the push_backs' (the target's are above).
+ * level shallower and its temporaries then sit below the push_backs' (the target's are above) --
+ * an inline height: include/list's pop_front may serve once the headers are refitted for level 5.
  * OPEN, 17 instructions (23 with include/list as it stands): (1) the list's destructor, inlined
  * down to the range erase, reads end_.next_ through the sentinel's address held in s1 and stores
  * the end iterator first -- include/list's ~__list_deleter written as its constructor is, `node_base
