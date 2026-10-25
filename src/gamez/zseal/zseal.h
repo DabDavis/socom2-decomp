@@ -386,7 +386,12 @@ public:
     unsigned char m_3f4;   // 0x3f4: a mode (7 keeps the AI-map collision off; the name ours)
     unsigned char _3f5[0x468 - 0x3f5];
     CZAnim *m_task_anim;   // 0x468: an anim the AI plays, stopped at the mission's end
-    unsigned char _46c[0x5bc - 0x46c];
+    unsigned char _46c[0x4ec - 0x46c];
+    unsigned char m_4ec;   // 0x4ec: a state (1-3 and, with 0x508 set, 4 hold the next byte back; the name ours)
+    signed char m_4ed;   // 0x4ed
+    unsigned char _4ee[0x508 - 0x4ee];
+    void *m_508;   // 0x508
+    unsigned char _50c[0x5bc - 0x50c];
     signed char m_5bc;   // 0x5bc (read after the update at 0x555420; the name ours)
     unsigned char _5bd[0x750 - 0x5bd];
     void *m_750[3];   // 0x750: three slots by a byte index (the name ours)

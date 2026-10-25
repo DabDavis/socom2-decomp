@@ -1,6 +1,6 @@
 /* seal.cpp -- the SEAL's body, CZSealBody: its ticks, its states, its actions, its stats (SOCOM 1's
  * unit, __sinit_seal.cpp; the press beta's asserts file OpenHeartbeatSounds and
- * ExecuteDelayedAction_Jump under it). OVL2 0x542E50-0x5552BF in SOCOM 1's order -- the heartbeat
+ * ExecuteDelayedAction_Jump under it). OVL2 0x542FE0-0x5552BF (0x542E50 is CPickup::Close, pickup_main.cpp's) in SOCOM 1's order -- the heartbeat
  * first, the constructor and SealInitCharacterDynamics last, then the template tail. Defined in
  * reverse of their image order (-inline deferred). */
 
