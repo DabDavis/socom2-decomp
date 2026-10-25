@@ -556,6 +556,18 @@ public:
      * ClearAiState, the AI-states lane's 0x5F5F20) */
     void SetAiMode(AI_MODE mode);
     bool ClearAiState(bool all);   /* returns a bool (the kit lane: 0x5F5F20 sets v0) */
+    /* the state stack's operations as the controller offers them (SOCOM 1's, their bodies the
+     * stack's now: OVL2 0x5F5BA0-0x5F5CB0 and 0x5F5FC0, the AI-states lane's seal_aistate.cpp):
+     * a state set or pushed when CanPushAiState allows it -- SOCOM 1's bool now a flags word it
+     * tests (0x5F5CD0) -- popped to a state or a kind, popped, and found */
+    bool SetAiState(AI_STATE state, unsigned int flags);
+    bool PushAiState(AI_STATE state, unsigned int flags);
+    bool PopToAiState(CAiState *state, bool inclusive);
+    bool PopToAiState(AI_STATE state, bool inclusive);
+    AI_STATE PopAiState();
+    AI_STATE PopAiState(AI_STATE state);
+    CAiState *FindAiState(AI_STATE state) const;
+    bool CanPushAiState(AI_STATE state, unsigned int flags);
 
     /* the animations bound (SOCOM 1's; OVL2 0x562AD0) and a task begun: its kind, a flag, then the
      * task's own arguments (SOCOM 1's; OVL2 0x561F00) */

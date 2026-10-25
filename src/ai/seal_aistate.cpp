@@ -542,13 +542,8 @@ void CAiState::Signal(CAiStateStack *stack, CAiState *state, SIGNAL sig, CSealCt
 /* the current state popped: told it is left (1), noted as the last popped, deleted, and the state
  * under it told it is back on top (3); its kind returned, or 0 (OVL2 0x5F7C40; SOCOM 1's
  * CSealCtrlAi::PopAiState(), whose wrapper 0x5F5CA0 now calls the stack's -- the name ours).
- * OPEN, 10 instructions, one register: before the erase the target takes &end_.next_ (this + 8)
- * into s3 and reads the new front through it after the call; here the front is reloaded from
- * 8(this) and a nop follows. Tried: the const GetState, erase(begin()) for pop_front, the deleted
- * front in a local, the ternary on front() -- all the same 10; round 5: the erase's iterator built
- * from a `node_base *const &` to the link (znode.h's PtrListFirst shape), GetState reading the
- * link through a reference -- the same 10 (the reference form likely belongs in include/list's
- * begin(), the other lane's) */
+ * The new front is read through the &end_.next_ the erase's begin() computed (s3): GetState()
+ * reads its front through the wrapper's begin(), as the erase does (round 6) */
 AI_STATE CAiStateStack::Pop(CSealCtrlAi *ai)
 {
     AI_STATE kind = AI_STATE_UNKNOWN;
@@ -610,7 +605,9 @@ bool CAiStateStack::Remove(AI_STATE state)
     return r;
 }
 
-/* the state of a kind, or 0 (OVL2 0x5F8270; SOCOM 1's CSealCtrlAi::FindAiState) */
+/* the state of a kind, or 0 (OVL2 0x5F8270; SOCOM 1's CSealCtrlAi::FindAiState). This and the
+ * pops below are pinned: the controller's wrappers call them out of line */
+#pragma auto_inline off
 CAiState *CAiStateStack::Find(AI_STATE state) const
 {
     const_iterator i;
@@ -620,6 +617,7 @@ CAiState *CAiStateStack::Find(AI_STATE state) const
             return *i;
     return 0;
 }
+#pragma auto_inline reset
 
 /* a new state of a kind pushed: the current one told it is covered (2), the new one entered (0)
  * and, when it has a script response and the covered state is the script, the response run on
@@ -673,6 +671,7 @@ bool CAiStateStack::Set(CSealCtrlAi *ai, AI_STATE state, unsigned int flags)
  * OPEN, 0x124 against 0x130: Is(), as in Pop(ai, state) below -- the target materialises its
  * whole `&&` (both operands into one register, the false arm a `move v0,zero`, then one test);
  * here MW threads the second operand's test into the branch */
+#pragma auto_inline off
 bool CAiStateStack::PopTo(CSealCtrlAi *ai, AI_STATE state, bool inclusive)
 {
     bool found;
@@ -685,8 +684,10 @@ bool CAiStateStack::PopTo(CSealCtrlAi *ai, AI_STATE state, bool inclusive)
         Pop(ai);
     return found;
 }
+#pragma auto_inline reset
 
 /* popped down to a state, it too when `inclusive`; whether it was found (OVL2 0x5F7A40) */
+#pragma auto_inline off
 bool CAiStateStack::PopTo(CSealCtrlAi *ai, CAiState *state, bool inclusive)
 {
     bool found = false;
@@ -701,6 +702,7 @@ bool CAiStateStack::PopTo(CSealCtrlAi *ai, CAiState *state, bool inclusive)
     }
     return found;
 }
+#pragma auto_inline reset
 
 /* the current state popped if it is of a kind; the kind on top after (OVL2 0x5F7990; SOCOM 1's
  * CSealCtrlAi::PopAiState(AI_STATE)).
@@ -709,13 +711,20 @@ bool CAiStateStack::PopTo(CSealCtrlAi *ai, CAiState *state, bool inclusive)
  * past the false arm's `move v0,zero`, then one beqz -- where MW narrows the first operand (andi)
  * and branches on the second. Tried: Is() returning through a bool local, `size() != 0`, the
  * ternary, an inline Empty(), Is() as a plain auto-inlined member, the caller testing `!= false`
- * / `== true` / a bool local / a ternary / a result local (all 0xA4 or worse) */
+ * / `== true` / a bool local / a ternary / a result local (all 0xA4 or worse). Round 6: Is() over
+ * size_ itself, `bool r = A; if (r) r = B; return r;` (with and without Empty()), the if-return,
+ * Is() returning int (two andi then), the comparison's operands swapped or cast, its second
+ * operand an inline of its own (StateIs/StateOf) or a comma expression, the first an inline
+ * NotEmpty() -- 0xA0 to 0xA8, never the target's unnarrowed first operand and explicit false arm.
+ * One clue: with the second operand an out-of-line call, MW drops the first operand's andi */
+#pragma auto_inline off
 AI_STATE CAiStateStack::Pop(CSealCtrlAi *ai, AI_STATE state)
 {
     if (Is(state))
         return Pop(ai);
     return GetStateEnum();
 }
+#pragma auto_inline reset
 
 /* the current state ticked: its own stack first, then (once that is empty and done) its Tick, or
  * else its sub-step (slot 0x14, handed the sub-stack's state); a state done is popped, its result
@@ -897,15 +906,20 @@ extern "C" unsigned int func_005F62C0(CAiState *s, unsigned int phase, float del
     return s->m_phase;
 }
 
-/* the controller's state of a kind (SOCOM 1's FindAiState; OVL2 0x5F5FC0, a byte-exact draft:
- * zseal.h's CSealCtrlAi does not declare it) */
-extern "C" CAiState *FindAiState__11CSealCtrlAiCF8AI_STATE(const CSealCtrlAi *ai, AI_STATE state);
+/* the controller's state of a kind (SOCOM 1's FindAiState; OVL2 0x5F5FC0, a jump to the stack's
+ * walk): Virtual0C calls it out of line */
+#pragma auto_inline off
+CAiState *CSealCtrlAi::FindAiState(AI_STATE state) const
+{
+    return m_stateStack.Find(state);
+}
+#pragma auto_inline reset
 
 /* the script state (kind 1) running sequence `id` and told event 2: this state is done (OVL2
  * 0x5F6050) */
 void CAiState::Virtual0C(int id, int event, CSealCtrlAi *ai)
 {
-    CAiState *s = FindAiState__11CSealCtrlAiCF8AI_STATE(ai, (AI_STATE)1);
+    CAiState *s = ai->FindAiState((AI_STATE)1);
     CAiSScript *script = s && s->m_state == 1 ? (CAiSScript *)s : 0;
 
     if (script && script->m_58 == id && (unsigned char)event == 2)
@@ -925,6 +939,47 @@ bool CSealCtrlAi::ClearAiState(bool all)
     }
     func_005F7470(&m_stateStack, this, 1);
     return cleared;
+}
+
+/* the stack's operations as the controller offers them (SOCOM 1's CSealCtrlAi members, their
+ * bodies the stack's now; OVL2 0x5F5CB0 back to 0x5F5BA0) */
+AI_STATE CSealCtrlAi::PopAiState(AI_STATE state)
+{
+    return m_stateStack.Pop(this, state);
+}
+
+AI_STATE CSealCtrlAi::PopAiState()
+{
+    return m_stateStack.Pop(this);
+}
+
+bool CSealCtrlAi::PopToAiState(AI_STATE state, bool inclusive)
+{
+    return m_stateStack.PopTo(this, state, inclusive);
+}
+
+bool CSealCtrlAi::PopToAiState(CAiState *state, bool inclusive)
+{
+    return m_stateStack.PopTo(this, state, inclusive);
+}
+
+/* pushed, or set in the current one's place, when CanPushAiState allows it (the flags its) */
+bool CSealCtrlAi::PushAiState(AI_STATE state, unsigned int flags)
+{
+    bool r = CanPushAiState(state, flags);
+
+    if (r)
+        r = m_stateStack.Push(this, state, flags);
+    return r;
+}
+
+bool CSealCtrlAi::SetAiState(AI_STATE state, unsigned int flags)
+{
+    bool r = CanPushAiState(state, flags);
+
+    if (r)
+        r = m_stateStack.Set(this, state, flags);
+    return r;
 }
 
 /* the state on top of the controller's stack, or the unknown state when it is empty (OVL2
@@ -957,12 +1012,14 @@ CAiStateStack::~CAiStateStack()
 }
 
 /* the current state: the front, or 0 when the stack is empty (OVL2 0x5F8360, 0x5F8330 -- the
- * same code twice, the non-const and the const one) */
+ * same code twice, the non-const and the const one). The non-const one reads it through begin()
+ * (the sentinel by reference): Pop's GetState after the erase then reuses the &end_.next_ the
+ * erase's begin() kept in a saved register */
 CAiState *CAiStateStack::GetState()
 {
     if (size() == 0)
         return 0;
-    return front();
+    return *begin();
 }
 
 CAiState *CAiStateStack::GetState() const
