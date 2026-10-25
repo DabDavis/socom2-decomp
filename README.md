@@ -504,9 +504,31 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     three this-tests, not four;
   - a member whose `this` is never read still passes its arguments in a1 onward
     (GetIntersectBatch).
+- **Tells from the sound system** (989snd.c and zsnd/, round 6):
+  - the EE sound API is Metrowerks code (16-aligned, MW's prologue, two C++-mangled senders):
+    SOCOM 1's `989snd.c`, compiled with `#pragma cplusplus on`; its wrappers pack their
+    arguments into a local int array;
+  - a loop counter whose type differs from the inline accessor's parameter (unsigned into
+    `Item(int)`, int into `operator[](unsigned)`) stops MW strength-reducing the element
+    address (CreateSequence, the reverb loaders, the group's pick);
+  - a virtual call on a global object is devirtualised: the target's vtable dispatch needs a
+    reference to it (CSnd::Open, NetOpen);
+  - an inline helper called with a constant keeps products like `0.0f * x` that MW folds when
+    the expression is written out (FadeOut's `CalcVol(0.0f)`), and its by-value arguments are
+    loaded before its body runs;
+  - `n <= m_current` branches on `slt at`; `m_current >= n` materialises the test in v0;
+  - `while (!(bool)f())` gives the `sltu; xori` pair before the branch;
+  - an early `return;` in each arm explains a branch to the very next instruction
+    (CSndJukebox::FadeOut);
+  - vectors of float, int and unsigned int run on `__vector_pod<unsigned int>` as the pointer
+    vectors do (`~vector<float>` is three this-tested levels, LoadCSndGroup pushes through the
+    pod insert at 0x1FE340).
 - **Tool notes**: scdiff accepts the image's one non-zero pad word (0xFFFFFFFF at 0x1E70F4,
   after main); `automatch --stale` can drop a renamed destructor's draft when its re-draft
-  misses (SlotList's and CWeaponSlot's were restored by hand, the old drafts renamed).
+  misses (SlotList's and CWeaponSlot's were restored by hand, the old drafts renamed). A
+  hand-written unit's inline copy supersedes a draft only when it is byte-exact (sccheck and
+  automatch alike): a copy that misses leaves the draft's match standing, as the linker keeps
+  a strong definition over the copies.
 
 ## The map: `symbols.txt`
 
@@ -650,7 +672,8 @@ are counted apart by `sccheck.py`, and are **not finished source**: placeholder 
   of them -- the overlays were built with the toolchain zlib settled, throughout);
 - a correct starting body for whoever writes the real TU;
 - disposable: hand-written source supersedes them (sccheck skips a generated function the
-  hand tier defines and says so), and `automatch.py --emit` deletes superseded files.
+  hand tier defines, or emits a byte-exact inline copy of, and says so), and
+  `automatch.py --emit` deletes superseded files.
 
 Data references in a draft are `data_<VA>` placeholders (BSS included) or `data.txt` names,
 so the relocation check verifies them; none reads a literal address.
