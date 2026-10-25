@@ -5721,10 +5721,10 @@
 0x003282B0 0x2C0 Tick__Q28Particle8InstanceFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00328570 0x74 func_00328570  # OVL1
 0x003285F0 0xDC func_003285F0  # OVL1
-0x003286D0 0x80 func_003286D0  # OVL1
-0x00328750 0x108 func_00328750  # OVL1
-0x00328860 0x1EC func_00328860  # OVL1
-0x00328A50 0xB8 func_00328A50  # OVL1
+0x003286D0 0x80 GetOpacity__Q28Particle5PropsCFf  # OVL1; s1:order by hand (SOCOM 1's GetOpacity, 0x80 against 0x88 (no load-delay nops): zero outside nearFade1..farFade2 (0x48/0x54), the ramps through invNearFade/invFarFade (0x58/0x5C), else 1) -- the rdr lane
+0x00328750 0x108 GetScale__Q28Particle5PropsCFfRf  # OVL1; s1:order by hand (SOCOM 1's GetScale, between GetOpacity and GetColor: the scale sequence (+0x1C) searched as GetTexture's, the value interpolated between the keys around the age, held at the ends, 1 when empty) -- the rdr lane
+0x00328860 0x1EC GetColor__Q28Particle5PropsCFfR6CPnt4D  # OVL1; s1:order by hand (SOCOM 1's GetColor, between GetScale and GetTexture: the colour sequence (+0x10) searched as GetTexture's, the keys around the age interpolated with sceVu0InterVector, held at the ends; white fading over the first unit of age when empty) -- the rdr lane
+0x00328A50 0xB8 GetTexture__Q28Particle5PropsCFfRPQ23zdb10CTexHandle  # OVL1; s1:order by hand (SOCOM 1's GetTexture, the key before the first later than the age in the texture sequence (+4), clamped, its texture out through the reference; none for an empty sequence) -- the rdr lane
 0x00328B10 0xB8 DecRefCount__Q28Particle5PropsFi  # OVL1; s1:align, checked (SOCOM 1's DecRefCount: the props deleted with its three sequences' vectors (0x329330/0x3293A0/0x329410) when the count runs out; Instance::Expire and ~Source call it)
 0x00328BD0 0x184 Branch__Q28Particle5PropsFv  # OVL1; s1:callee (the six sequence adds and clears call it first and store its result as the source's props, where SOCOM 1's call Props::Branch: a props shared by several sources copied before it changes)
 0x00328D60 0x28 __ct__6CPnt4DFRC6CPnt4D  # OVL1; s1:exact
@@ -5739,9 +5739,9 @@
 0x00328FC0 0x10C func_00328FC0  # OVL1
 0x003290D0 0x14C func_003290D0  # OVL1
 0x00329220 0x10C func_00329220  # OVL1
-0x00329330 0x68 func_00329330  # OVL1
-0x003293A0 0x68 func_003293A0  # OVL1
-0x00329410 0x68 func_00329410  # OVL1
+0x00329330 0x68 __dt__Q23std132__vector_deleter<Q28Particle34SequenceEntry<PQ23zdb10CTexHandle>,Q23std58allocator<Q28Particle34SequenceEntry<PQ23zdb10CTexHandle>>>Fv  # OVL1; the rdr lane: Props::DecRefCount's inlined ~Props calls it on the texture sequence (+4) with 0 (include/vector's out-of-class deleter destructor; SOCOM 1's __dt__ of the same deleter, 0x68 both)
+0x003293A0 0x68 __dt__Q23std108__vector_deleter<Q28Particle22SequenceEntry<6CPnt4D>,Q23std46allocator<Q28Particle22SequenceEntry<6CPnt4D>>>Fv  # OVL1; the rdr lane: Props::DecRefCount's inlined ~Props calls it on the colour sequence (+0x10) with 0
+0x00329410 0x68 __dt__Q23std96__vector_deleter<Q28Particle16SequenceEntry<f>,Q23std40allocator<Q28Particle16SequenceEntry<f>>>Fv  # OVL1; the rdr lane: Props::DecRefCount's inlined ~Props calls it on the scale sequence (+0x1C) with 0
 0x00329480 0x8 clear__Q23std132__vector_deleter<Q28Particle34SequenceEntry<PQ23zdb10CTexHandle>,Q23std58allocator<Q28Particle34SequenceEntry<PQ23zdb10CTexHandle>>>Fv  # OVL1; the rdr lane: TextureSequenceClear's vector clear() calls it on the props' texture sequence (+4): include/vector's out-of-class deleter clear, the trivial destroy gone, `size_ = 0` (SOCOM 1's clear__Q23std132__vector_deleter<...CTexHandle...>Fv, 0x48 there); the three copies close zparticle_instance.cpp
 0x00329490 0x8 clear__Q23std108__vector_deleter<Q28Particle22SequenceEntry<6CPnt4D>,Q23std46allocator<Q28Particle22SequenceEntry<6CPnt4D>>>Fv  # OVL1; the rdr lane: ColorSequenceClear's vector clear() calls it on the props' colour sequence (+0x10) (SOCOM 1's clear__Q23std108__vector_deleter<...CPnt4D...>Fv)
 0x003294A0 0x8 clear__Q23std96__vector_deleter<Q28Particle16SequenceEntry<f>,Q23std40allocator<Q28Particle16SequenceEntry<f>>>Fv  # OVL1; the rdr lane: ScaleSequenceClear's vector clear() calls it on the props' scale sequence (+0x1C) (SOCOM 1's clear__Q23std96__vector_deleter<...f...>Fv)

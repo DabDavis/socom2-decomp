@@ -48,16 +48,30 @@ public:
     T m_data;   // 0x4
 };
 
+/* a sequence of keys (SOCOM 1's DWARF names the members' type Sequence): a vector of entries, a
+ * class of its own -- Props' implicit destructor tests three levels of each before the deleter's
+ * destructor, where a plain vector has two */
+template <class T>
+class Sequence : public std::vector<SequenceEntry<T> > {
+public:
+    /* MSL's const element read (include/vector has only the non-const one) */
+    const SequenceEntry<T> &operator[](unsigned int n) const { return this->data_[n]; }
+};
+
 /* the properties sources share, copied on write (Branch) and counted (SOCOM 1's DWARF, 0x68) */
 class Props {
 public:
-    Props *Branch();
+    float GetOpacity(float dist) const;
+    void GetScale(float age, float &scale) const;
+    void GetColor(float age, CPnt4D &color) const;
+    void GetTexture(float age, zdb::CTexHandle *&tex) const;
     void DecRefCount(int n);
+    Props *Branch();
 
     int m_refCount;   // 0x0
-    std::vector<SequenceEntry<zdb::CTexHandle *> > m_textureSeq;   // 0x4
-    std::vector<SequenceEntry<CPnt4D> > m_colorSeq;   // 0x10
-    std::vector<SequenceEntry<float> > m_scaleSeq;   // 0x1c
+    Sequence<zdb::CTexHandle *> m_textureSeq;   // 0x4
+    Sequence<CPnt4D> m_colorSeq;   // 0x10
+    Sequence<float> m_scaleSeq;   // 0x1c
     zdb::CModel *m_model;   // 0x28
     float m_friction;   // 0x2c
     CPnt4D m_accelW;   // 0x30
