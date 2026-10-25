@@ -11046,7 +11046,7 @@
 0x005C3740 0x34 GetItemByIndex__5CZKitCFi  # OVL2; by hand: an item by index -- the index through 0x5C6600 (with 255), then the item array at 0xE4 (SOCOM 1's m_item at 0xD0, 0x14 on); GetCurItem (const) tail-calls it with the selected item, so it is const here
 0x005C3780 0x8 GetCurItem__5CZKitCFv  # OVL2; s1:calls by hand (the HUD lane: at SOCOM 1's call site in ZoomIn/ZoomOut; its result's type byte is compared with 11)
 0x005C3790 0x14 func_005C3790  # OVL2
-0x005C37B0 0xD4 func_005C37B0  # OVL2
+0x005C37B0 0xD4 SetCurFireMode__5CZKitF8FIREMODE  # OVL2; s1:calls by hand (CSealCtrlSquirm::Initalize calls it on the kit with 3 right after SetCurItemByIndex, as SOCOM 1's Initalize calls SetCurFireMode)
 0x005C3890 0x8 func_005C3890  # OVL2
 0x005C38A0 0x36C func_005C38A0  # OVL2
 0x005C3C10 0xD0 func_005C3C10  # OVL2
@@ -11062,7 +11062,7 @@
 0x005C4960 0x8 func_005C4960  # OVL2
 0x005C4970 0x40 func_005C4970  # OVL2
 0x005C49B0 0x154 func_005C49B0  # OVL2
-0x005C4B10 0x4B8 func_005C4B10  # OVL2
+0x005C4B10 0x4B8 SetCurItemByIndex__5CZKitFi  # OVL2; s1:calls by hand (CSealCtrlSquirm::Initalize calls it on the SEAL's kit (+0x5E0) with 0, where SOCOM 1's Initalize calls SetCurItemByIndex(0), right before SetCurFireMode)
 0x005C4FD0 0x60 func_005C4FD0  # OVL2
 0x005C5030 0x80 func_005C5030  # OVL2
 0x005C50B0 0x290 func_005C50B0  # OVL2
