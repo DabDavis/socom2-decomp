@@ -1,8 +1,24 @@
 /* thezoom.cpp -- the scope's zoom: its goal, the HUD and SEAL it serves, and seeing farther while
- * zoomed (SOCOM 1's Apps/FTS/thezoom.cpp; OVL1 0x1F0490-0x1F19FF). Defined in reverse of their
- * image order (-inline deferred). */
+ * zoomed (SOCOM 1's Apps/FTS/thezoom.cpp; OVL1 0x1F0490-0x1F19FF) -- and SOCOM II's lens effects
+ * (the ZAnims a scope, binoculars, night vision or thermal put over the screen) ahead of it, from
+ * 0x1EF940. Defined in reverse of their image order (-inline deferred). */
 
 #include "camera.h"
+
+/* SOCOM II's lens effects, as the anims are named (a byte under -enum min; 9 is never asked for,
+ * and the effect before is taken as the current one while it is 9; the names ours) */
+enum LENS_FX {
+    lens_fx_init = 0,
+    lens_fx_none = 1,
+    lens_fx_thermal = 2,
+    lens_fx_nvg = 3,
+    lens_fx_starlight_scope = 4,
+    lens_fx_scope = 5,
+    lens_fx_binocs = 6,
+    lens_fx_first_person = 7,
+    lens_fx_third_person = 8,
+    lens_fx_9 = 9
+};
 
 /* the zoom's statics, unnamed yet in data.txt (SOCOM 1's names in the comments) */
 extern "C" {
@@ -21,7 +37,17 @@ extern int data_00408CF0;                        /* (set: SeeFarther does not no
 extern CPnt4D data_004B4AB0;                     /* zdb::CVisual::m_basefog_color */
 extern unsigned char data_00408C50;              /* CameraZoom::m_iszoom */
 extern CAMVIEW data_003DC348;                    /* CameraZoom::m_oldview */
+/* SOCOM II's lens effects (the names ours) */
+extern CZAnim *data_00408CA0[9];                 /* the effects' anims: init_lens_fx, to_no_lens_fx ... */
+extern CZAnim *data_00408C88[3];                 /* blindplayer01..03 */
+extern CZAnim *data_00408CC8;                    /* the effect playing */
+extern CZAnim *data_00408CD0;                    /* and its activation */
+extern int data_00408CE8;                        /* effects asked for with no anim */
+extern LENS_FX data_003DC350;                    /* the effect before (8) */
+extern LENS_FX data_003DC358;                    /* the effect (8) */
+extern unsigned char data_003DC360;              /* lens effects on (1) */
 }
+
 
 /* the kit and the HUD, unnamed yet (SOCOM 1's names) */
 extern "C" void func_005BE570(void *kit, int reticule);   /* CZKit::SetCurReticule */
@@ -44,7 +70,43 @@ public:
     static void SetGoal(float goal);
     static void AttachHud(CHUD *hud);
     static void AttachSeal(CZSealBody *seal);
+    static void Reset();
+    static void ClearLensFx();
+    static void SetLensFx(unsigned char fx);
+    static unsigned char LensFxOn();
+    static void SetLensFxAnim(CZAnim *anim);
 };
+
+/* the zoom put back to none: no step, not zooming, at 1 and aiming for it, the old view first
+ * person, the clip and fog bases forgotten; the app camera in the third person view at zoom 1 and
+ * mode 2; the third person's lens effect put up, and SeeFarther's notes cleared (SOCOM II's; the
+ * name ours) */
+void CameraZoom::Reset()
+{
+    data_00408C48 = 0.0f;
+    data_00408C50 = 0;
+    data_003DC338 = 1.0f;
+    data_003DC340 = 1.0f;
+    data_003DC348 = cam_view_first;
+    data_00408C68 = 0;
+    data_00408C70 = 0.0f;
+    data_00408C78 = 0.0f;
+    data_00408C80 = 0.0f;
+    if (appCamera) {
+        appCamera->m_ctrl_view = cam_view_third;
+        appCamera->SetZoom(1.0f);
+        appCamera->SetCameraMode(2);
+        appCamera->m_camera_last_mode = 2;
+    }
+    data_003DC350 = lens_fx_third_person;
+    data_003DC358 = lens_fx_third_person;
+    SetLensFx(lens_fx_third_person);
+    data_00408CD0 = 0;
+    data_00408CD8 = 0;
+    data_00408CE0 = 0.0f;
+    data_00408CE8 = 0;
+    data_00408CF0 = 0;
+}
 
 
 void CameraZoom::AttachSeal(CZSealBody *seal)
@@ -197,4 +259,69 @@ bool CameraZoom::Tick(float dT)
     }
     appCamera->SetZoom(data_003DC338);
     return false;
+}
+
+/* the effect's anim, or no lens's when it has none (the name ours) */
+static inline CZAnim *LensFxAnim(unsigned char fx)
+{
+    CZAnim *anim = data_00408CA0[lens_fx_none];
+
+    if (data_00408CA0[fx])
+        anim = data_00408CA0[fx];
+    return anim;
+}
+
+/* the lens effects' anims forgotten (the playing one stopped) */
+void CameraZoom::ClearLensFx()
+{
+    data_00408CA0[0] = 0;
+    data_00408CA0[1] = 0;
+    data_00408CA0[2] = 0;
+    data_00408CA0[3] = 0;
+    data_00408CA0[4] = 0;
+    data_00408CA0[5] = 0;
+    data_00408CA0[6] = 0;
+    data_00408CA0[7] = 0;
+    data_00408CA0[8] = 0;
+    data_00408C88[0] = 0;
+    data_00408C88[1] = 0;
+    data_00408C88[2] = 0;
+    if (data_00408CC8)
+        func_002707C0(data_00408CC8, false);
+    data_00408CC8 = 0;
+    data_00408CD0 = 0;
+}
+
+/* a lens effect put up (unless held): the one before noted, the playing anim stopped, the effect's
+ * anim (or no lens's) activated -- counted when there is none; the one before taken as this one if
+ * it was 9 */
+void CameraZoom::SetLensFx(unsigned char fx)
+{
+    if (!data_00408CF0) {
+        data_003DC350 = data_003DC358;
+        data_003DC358 = (LENS_FX)fx;
+        if (data_00408CC8) {
+            func_002707C0(data_00408CC8, false);
+            data_00408CD0 = 0;
+        }
+        data_00408CC8 = LensFxAnim(fx);
+        if (data_00408CC8) {
+            data_00408CD0 = data_00408CC8->Activate(0);
+            data_00408CE8 = 0;
+        } else {
+            data_00408CE8++;
+        }
+        if (data_003DC350 == lens_fx_9)
+            data_003DC350 = data_003DC358;
+    }
+}
+
+unsigned char CameraZoom::LensFxOn()
+{
+    return data_003DC360;
+}
+
+void CameraZoom::SetLensFxAnim(CZAnim *anim)
+{
+    data_00408CD0 = anim;
 }
