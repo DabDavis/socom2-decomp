@@ -222,7 +222,32 @@ public:
     /* the reference passed on as the base's, no temporary (the pointer stays where it is), to
      * the base's insert, the end iterator made here from the sentinel: shorter than through the
      * base's push_back and end(), which CNode::CreateInstance's auto-inlining needs (an
-     * auto-inline callee more than four high is not inlined at all -- no one-level fallback) */
+     * auto-inline callee more than four high is not inlined at all -- no one-level fallback).
+     *
+     * OPEN, the shape SOCOM II's own MSL has here (the entity lane, round 7; scratch in
+     * build/scratch/list/, lv.py scoring every hand-written unit per variant). ai_events.cpp's
+     * template tail is SOCOM 1's chain, list<T *>::push_back -> the base's push_back -> insert(end(),
+     * x): 0x50F810 is the BASE push_back's copy (end() inlined) and 0x50FE80 the event list's
+     * (end() called, 0x50FED0) -- the map has the two names the wrong way round. Written so
+     * (variant vc: this push_back calls base::push_back, which is insert(end(), x), and insert
+     * DEFINED after the class), MW reproduces the whole tail: an out-of-class member that the
+     * unit's own code instantiated counts in tail code's heights (never in own code), and insert
+     * is taller than the limit, so _tick::operator()'s copy inlines this push_back one level and
+     * calls the base's, remove_copy_if inlines _tick one level (Tick called) and calls this one,
+     * whose copy inlines the base's one level (end() called). With the names swapped and _tick
+     * written `bool r = e->Tick(m_dT); if (r) m_pool->push_back(e); return r;`, _tick, remove_copy_if,
+     * both push_backs, end(), Release and Create match (and ent_target's SetIncludeInTargetList);
+     * but this push_back is then four high in own code, and CreateInstance(model) (AddInstance ->
+     * push_back, auto-inlined into CreateInstance(name)), CreateEntity (into CreateRecycler) and
+     * the stack slots of Add2D, CZHudMissionCams::Init and GetLoadedLibRefs are lost: at
+     * -inline level=4 no list shape satisfies both. At level=6 the same variant keeps
+     * CreateInstance x2 and CreateRecycler as well; and level 5 or 6 with the headers as they
+     * stand already matches ~C2D, CCompass::CreateAnchor, __sinit_compass.cpp,
+     * __sinit_game_state.cpp and CCell::GetMidPoint -- four of them the open "too tall by one"
+     * puzzles -- while losing 63 functions fitted to level 4 (node_world 13, zsnd_jukebox 7,
+     * zanim_set 5, compass 5, ai_events 5, ...; a sample of the drafts is unchanged). The level
+     * and the headers' heights were fitted together; a level above 4 with SOCOM 1's deeper MSL
+     * is the integrator's question. */
     void push_back(T *const &x)
     {
         base::insert(typename base::iterator(&this->end_node()), (const void *const &)x);
@@ -263,7 +288,11 @@ public:
         generic_iterator(base_iterator i) : i_(i) {}
         operator base_iterator() const { return i_; }
         /* the element by reference, but a const_iterator's by value: GetEntity reloads it after
-         * strcasecmp, where a reference kept the element's address in a saved register */
+         * strcasecmp, where a reference kept the element's address in a saved register.
+         * Measured (round 7): by value for the plain iterator too, CZWeaponList::GetWeapon and
+         * CZAmmoList::GetAmmo match (the element re-read after strcmp), but CGNode::FindEdge and
+         * CGraph::FindEdge are lost and four units stop building (they assign through it:
+         * ai_events.cpp, ent_main.cpp, node_assetlib.cpp, valve_list.cpp) */
         typedef typename select<IsConst, T *, T *&>::type reference;
         reference operator*() const { return (reference)*i_; }
         generic_iterator &operator++()
