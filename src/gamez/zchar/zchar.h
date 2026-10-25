@@ -11,6 +11,7 @@
 
 class CVehicleRdrEntry;
 struct _zrdr;
+class CRdrFile;
 
 /* how a character behaves (SOCOM 1's DWARF, 0x3C bytes; SOCOM II's vehicle entry keeps it whole,
  * 0x120-0x15B) */
@@ -261,6 +262,8 @@ public:
     static CCharacterType *Create(const char *name, const CCharacterType *base, bool reinit);
     static void CleanupTemporary();
     static void AcquireSoundHandles();
+    static CCharacterType *RdrFetch_CharacterType(const char *name);
+    static const char *match_name_to_chartype(CRdrFile *rdr, const char *group, const char *name);
     EQUIP_ITEM GetWeaponByIndex(unsigned int i) const;
     char *GetBaseName();
     /* a sound by kind, none out of range (new in SOCOM II, the name ours: CSealCtrlAi::OnStunDamage

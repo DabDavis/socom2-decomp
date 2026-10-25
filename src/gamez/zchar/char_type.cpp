@@ -7,6 +7,14 @@
 
 #include "zchar.h"
 #include "../zsnd/zsnd.h"
+#include "../zanim/zanim.h"
+
+/* the reader file of that name, out of the loaded archives (SOCOM 1's CRdrArchive::FindRdr took the
+ * name alone; SOCOM II passes a second argument, zero here) */
+extern "C" CRdrFile *func_0032C040(const char *name, const char *archive);
+const char *zrdr_findstring(const _zrdr *rdr, const char *tag);
+void zrdr_free(CRdrFile *file);
+extern "C" int strcasecmp(const char *, const char *);
 
 /* the type of that name, or none (SOCOM 1's; SOCOM II tests the name first and walks on until
  * it has one) */
@@ -322,4 +330,50 @@ char *CCharacterType::GetBaseName()
 EQUIP_ITEM CCharacterType::GetWeaponByIndex(unsigned int i) const
 {
     return i < m_weapons.size() ? ((CCharacterWeapList &)m_weapons)[i].m_wepId : EQUIP_NONE;
+}
+
+/* the character a group of chartype.rdr gives the name, or none (SOCOM 1's): the group's items
+ * searched by "name", the match's "character" handed back */
+const char *CCharacterType::match_name_to_chartype(CRdrFile *rdr, const char *group, const char *name)
+{
+    _zrdr *list = func_0032F0D0((_zrdr *)rdr, group);
+    const char *tagName = "name";
+    const char *tagChar = "character";
+
+    if (list && list->type == 4) {
+        unsigned int n = list->Count();
+
+        for (unsigned int i = 0; i < n; i++) {
+            _zrdr *item = i < list->Count() ? &list->array[i] : 0;
+            const char *s = zrdr_findstring(item, tagName);
+
+            if (s && !strcasecmp(s, name))
+                return zrdr_findstring(item, tagChar);
+        }
+    }
+    return 0;
+}
+
+/* the type a character name is, out of chartype.rdr's three groups (SOCOM 1's); GetByNameMod
+ * inlines whole in the target, the group names held in saved registers from the start.
+ * OPEN (0x150 against 0x140): Create's include/vector height -- the inlined GetByNameMod's loop
+ * test calls the pointer vector's base end() and __iter out of line here */
+CCharacterType *CCharacterType::RdrFetch_CharacterType(const char *name)
+{
+    CRdrFile *rdr = func_0032C040("chartype.rdr", 0);
+
+    if (!rdr)
+        return 0;
+    const char *tangos = "terrorists";
+    const char *escortees = "escortees";
+    const char *type = match_name_to_chartype(rdr, "navyseals", name);
+
+    if (!type)
+        type = match_name_to_chartype(rdr, tangos, name);
+    if (!type)
+        type = match_name_to_chartype(rdr, escortees, name);
+    CCharacterType *t = GetByNameMod(type);
+
+    zrdr_free(rdr);
+    return t;
 }
