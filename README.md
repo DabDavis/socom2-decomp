@@ -1642,6 +1642,28 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the states, round 15** (fts_missionlist.cpp, CGraph::BuildTree, st_core.cpp's strings):
+  - a function calling dozens of trivial pieces out of line while inlining others is inlining big
+    helpers one level: BuildTree needed three (the graph's reset, the queue's pop and update);
+  - a helper's named locals take stack slots ahead of its call temporaries;
+  - under deferred inlining `#pragma dont_inline on` around one function does nothing;
+    `#pragma inline_max_total_size(N)` acts, but cuts calls deep inside the chain (not the target's
+    pattern);
+  - a plain function template's instance follows its first caller, its own callees inlining by the
+    normal rules (FreeVector<cue vector> 0x1ECF60);
+  - `c = f(); c += a*b;` emits `f + a*b`; `f() + a*b` emits `a*b + f`;
+  - `bool b = (x & M) ? p == q : false;` branches on the raw AND with zero in the delay slot; the `&&`
+    form converts the AND to bool first;
+  - an inline find returns through a result local (`m = 0; ... m = *i; break; ... return m;`) to inline
+    into callers as the target does;
+  - `delete` of a class with a derived-string member gives two null tests (delete's and the
+    destructor's); an extra `if (p)` makes three;
+  - include/list gained the base iterator's postfix `operator++(int)` (additive); the pointer list's
+    begin() written `iterator(base::begin())` (FindNode, Destroy) and list's remove_if shape (0x2D2540,
+    0x20CB50) are header requests;
+  - units: fts_missionlist.cpp (SOCOM II-only: the multiplayer mission list, then CMsgEditor, up to the
+    patch downloader at 0x2CA330); graph_tree.cpp runs to 0x2D2830 (BuildTree, its copies, FindNode,
+    Destroy, then the queue list's template code).
 - **Tells from the sound, round 5** (zsnd_queue.cpp, zsnd_positions.cpp, CSched_Manager::Tick):
   - the original auto-inlined only functions DEFINED EARLIER in the unit: every call in
     zsnd_queue.cpp that stays a call goes to a function defined later (in our source order), every
