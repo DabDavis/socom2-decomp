@@ -461,6 +461,9 @@ public:
     void InitStream();
     void Flush();
     bool DeQueue(int **data, unsigned int *id, CSnd **sound, int *vol);
+    /* the sound (or a member of its group) waiting in the queue or streaming (SOCOM II's, 0x34A7B0;
+     * name ours) */
+    bool IsQueued(CSnd *sound);
     /* the device found (ours: ftsGetHeadset's arguments load before the stores, as an inline's) */
     void SetDevice(int device, int format, unsigned char channels)
     {

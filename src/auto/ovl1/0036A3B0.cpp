@@ -37,7 +37,7 @@ struct VC_C {
     virtual void v_64();
     virtual void v_68();
     virtual void v_6C();
-    virtual M2C_UNK v_70(s32, M2C_UNK);
+    virtual M2C_UNK v_70(char *, M2C_UNK);
     virtual void v_74();
     virtual void v_78();
     virtual void v_7C();
@@ -47,19 +47,19 @@ struct VC_C {
     virtual M2C_UNK v_8C(s32);
 };
 extern "C" {
-M2C_UNK func_00362B70(char *);                      /* extern */
-
-void InitButton__FP9C2DButtonPQ23zdb10CTexHandlePQ23zdb10CTexHandlePQ23zdb10CTexHandlePQ23zdb10CTexHandlePCc(char *arg0, s32 arg1, s32 arg2, s32 arg3, s32 arg4, s32 arg5) {
+void InitButton__FP9C2DButtonPQ23zdb10CTexHandlePQ23zdb10CTexHandlePQ23zdb10CTexHandlePQ23zdb10CTexHandlePCc(char * arg0, char * arg1, char * arg2, char * arg3, char * arg4, char * arg5);
+M2C_UNK UpdatePos__9C2DStringFv(char * arg0);
+void InitButton__FP9C2DButtonPQ23zdb10CTexHandlePQ23zdb10CTexHandlePQ23zdb10CTexHandlePQ23zdb10CTexHandlePCc(char *arg0, char *arg1, char *arg2, char *arg3, char *arg4, char *arg5) {
     s32 temp_a1;
 
-    SC_MEMBER(arg0, s32 *, 0x13C) = arg1;
-    SC_MEMBER(arg0, s32 *, 0x108) = arg2;
-    SC_MEMBER(arg0, s32 *, 0xD4) = arg3;
-    SC_MEMBER(arg0, s32 *, 0x170) = arg4;
-    SC_MEMBER(arg0, s32 *, 0x18) = arg5;
-    if (arg5 != 0) {
+    SC_MEMBER(arg0, char **, 0x13C) = arg1;
+    SC_MEMBER(arg0, char **, 0x108) = arg2;
+    SC_MEMBER(arg0, char **, 0xD4) = arg3;
+    SC_MEMBER(arg0, char **, 0x170) = arg4;
+    SC_MEMBER(arg0, char **, 0x18) = arg5;
+    if (arg5 != NULL) {
         ((VC_C *)(arg0 + 0x1C))->v_70(arg5, 1);
-        func_00362B70(arg0 + 0x1C);
+        UpdatePos__9C2DStringFv(arg0 + 0x1C);
     }
     temp_a1 = SC_MEMBER(arg0, s32 *, 0xC4);
     if (temp_a1 != 0) {

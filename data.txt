@@ -1006,6 +1006,7 @@
 0x004B5290 0xC m_decalsets__10CZDecalSet  # OVL1 bss; SOCOM 1's static (12 bytes, m_decalsets__10CZDecalSet at 0x511DE0 in the demo, its vector of decal sets): GetDecalSetByName walks it and DestroyDecalSet empties it as SOCOM 1's do, 0x3D0630 pushes onto it, the initialiser 0x404C10 zeroes it -- the wep lane; 19 references in 4 functions
 0x004B52B8 0x4 m_timer_maxval__8CZWeapon  # OVL1 bss; s1:data-seq (size SOCOM 1's; via RetrieveTimerRegistration__8CZWeaponFPPfPfPb)
 0x004B52C0 0x4 m_timer_pCurval__8CZWeapon  # OVL1 bss; s1:data-seq (size SOCOM 1's; via RetrieveTimerRegistration__8CZWeaponFPPfPfPb)
+0x004B52F0 0xC m_sounddistance__8CZWeapon  # OVL1 bss; SOCOM II's (the name ours): three floats, zweapon.rdr's WEAPON_GLOBAL SoundDistanceClose/Med/Far squared by the setter 0x3D0100 (indexed by its byte), the fire sound's pick 0x3D2C50 and 0x3D2D70 comparing against [1] and [2] -- the wep lane; 5 references in 3 functions
 0x004B5310 0xC m_ammolist__6CZAmmo  # OVL1 bss; SOCOM 1's static (12 bytes, m_ammolist__6CZAmmo at 0x511E00 in the demo): __sinit_zwep_ammo.cpp (0x404CD0) builds it with CZAmmoList's constructor, CZAmmo::GetAmmoId/GetAmmo hand it to the list's, as SOCOM 1's -- the wep lane; 13 references in 10 functions
 0x004B5320 0x4 pFlyout_Model_Registered__14CFlyoutMachine  # OVL1 bss; SOCOM 1's static (its HookupReset sets it to the standard model as SOCOM II's does; SetTracerModel sets it) -- the wep lane; 6 references in 3 functions
 0x004B5328 0x4 pFlyout_Model_Standard__14CFlyoutMachine  # OVL1 bss; SOCOM 1's static (HookupReset's "tracer") -- the wep lane; 5 references in 2 functions
@@ -1150,6 +1151,7 @@
 0x0066A088 0xC m_callbacks__8CAiEvent  # OVL2 bss; s1:data-exact (size SOCOM 1's; via __sinit_ai_events.cpp)
 0x0066A098 0x4 s_eventTickTime  # OVL2 bss; ours (ai_events.cpp's static: the time CAiEvent::Tick(float, void*) gathers before it ticks the events; 3 references in 1 function)
 0x0066A0A0 0x1 s_eventFlag  # OVL2 bss; ours (ai_events.cpp's static byte: CAiEvent::Open and Close clear it, nothing in the image reads it; 2 references in 2 functions)
+0x0066A0B8 0xC overlays__2ai  # OVL2 bss; ours (a list of CAiOverlay pointers, 12 bytes: size, then the sentinel at +4 whose next is +8 -- ai_astar.cpp's 0x510530 pushes onto it, 0x5104E0 clears it, the base planner's fcost and the look and cover searches' 0x53A500 walk it; 11 functions reference it)
 0x0066A0C8 0x4 s_plannerStart  # OVL2 bss; ours (ai_astar.cpp's static, SOCOM 1's unnamed gp word at -29944: the T0 count TickPathPlanner starts from; 2 references in 1 function)
 0x0066A168 0x4 _plan_path__2ai  # OVL2 bss; SOCOM 1's (_plan_path__2ai): the path PathPlanBegin starts, PathPlanAddLeg extends, PathPlanExecute queues and PathPlanAbort clears; 7 references in 4 functions
 0x0066A180 0x18 path_queue__2ai  # OVL2 bss; SOCOM 1's (path_queue__2ai, 24 bytes at 0x49B160: the planner queue, a list of CAiPath * and three words): __sinit_ai_astar.cpp builds it and registers ~CAiPathQueue, AbortPathPlan removes a path from it as SOCOM 1's does; 19 references in 7 functions

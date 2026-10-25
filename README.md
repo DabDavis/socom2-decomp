@@ -1642,6 +1642,108 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the AI core, round 9** (the line callbacks, SetCellLink and the links, char_type.cpp):
+  - an inline is cut to one level only when its tree is 6 or more high: links::Remove inlined whole
+    until Find compared through a `link == CAiMapLoc` operator, one level more; under such a cut even
+    CAiMapLoc's implicit assignment (0x52F3C0) and a mem-initializer constructor are called out of
+    line;
+  - in `b > a ? b - a : a - b` MW loads `a` first, in `a < b ? ...` it loads `b` first: the
+    comparison's right operand is evaluated first;
+  - the soil test written out in the caller reuses its load for the next compare; through
+    CAiCell::IsTraversable it reloads (_TravelLineCallback);
+  - two inline calls compared directly are evaluated left to right; locals in the target's order fix
+    it; `float h = 0.0f; float cover = h;` gives the target's mtc1 then mov.s;
+  - a bit-test `||` materialised and then branched on comes from an inline bool helper;
+  - 0x530980 is the links' back(): its old s1:exact name (CAiPath::point's back) matched only because
+    the two compile to identical code -- another case of words not proving the instance;
+  - units: SetCellLink's out-of-line copies follow it (0x530980-0x530BCF); ai_maptable.cpp's tail runs
+    _min<int> 0x5311C0, a sort helper 0x5311E0, the sort 0x5312D0, erase(T *) 0x532000; the walker
+    unit's tail 0x539BC0-0x539E9F is the list<CAiMapLoc> pieces (FloodFill's); _find_look/_find_cover
+    (open: the target inlines the open-cell helper one level, as if a depth budget were spent from the
+    call site).
+- **Tells from the states, round 15** (fts_missionlist.cpp, CGraph::BuildTree, st_core.cpp's strings):
+  - a function calling dozens of trivial pieces out of line while inlining others is inlining big
+    helpers one level: BuildTree needed three (the graph's reset, the queue's pop and update);
+  - a helper's named locals take stack slots ahead of its call temporaries;
+  - under deferred inlining `#pragma dont_inline on` around one function does nothing;
+    `#pragma inline_max_total_size(N)` acts, but cuts calls deep inside the chain (not the target's
+    pattern);
+  - a plain function template's instance follows its first caller, its own callees inlining by the
+    normal rules (FreeVector<cue vector> 0x1ECF60);
+  - `c = f(); c += a*b;` emits `f + a*b`; `f() + a*b` emits `a*b + f`;
+  - `bool b = (x & M) ? p == q : false;` branches on the raw AND with zero in the delay slot; the `&&`
+    form converts the AND to bool first;
+  - an inline find returns through a result local (`m = 0; ... m = *i; break; ... return m;`) to inline
+    into callers as the target does;
+  - `delete` of a class with a derived-string member gives two null tests (delete's and the
+    destructor's); an extra `if (p)` makes three;
+  - include/list gained the base iterator's postfix `operator++(int)` (additive); the pointer list's
+    begin() written `iterator(base::begin())` (FindNode, Destroy) and list's remove_if shape (0x2D2540,
+    0x20CB50) are header requests;
+  - units: fts_missionlist.cpp (SOCOM II-only: the multiplayer mission list, then CMsgEditor, up to the
+    patch downloader at 0x2CA330); graph_tree.cpp runs to 0x2D2830 (BuildTree, its copies, FindNode,
+    Destroy, then the queue list's template code).
+- **Tells from the sound, round 5** (zsnd_queue.cpp, zsnd_positions.cpp, CSched_Manager::Tick):
+  - the original auto-inlined only functions DEFINED EARLIER in the unit: every call in
+    zsnd_queue.cpp that stays a call goes to a function defined later (in our source order), every
+    inlined one to a function defined earlier; `-inline deferred` here reaches every function, so
+    `#pragma auto_inline off` pins stand in -- and a callee inlined by later callers but called by
+    earlier ones cannot be modelled that way (CSndQueue::Open). Probably behind many existing pins
+    (see "Open, and next");
+  - an empty walk with a postfix step, `for (i = begin(); i != end(); i++) ;`, gives the loop with its
+    entry test after the body (all four empty walks first time; the prefix form does not);
+  - `(p = new T)->field = x;` stores through new's result before reloading `p` when p is later pushed
+    by reference; a pushed copy, `T *q = p; v.push_back(q);`, gives the target's reload into the next
+    stack slot; a pushed copy taken before a call is saved ahead of it and reloaded after, taken
+    after the call the original stays in a saved register;
+  - a vtable slot pointing into the middle of a map row means the seed merged a tail call with the
+    function after it (0x34CD10, CSndQueueEntry::CanPlay, split from 0x34CCF0);
+  - units: zsnd_positions.cpp 0x34BD40-0x34C55F (initialiser 0x403370, tail destructor 0x34C4F0);
+    zsnd_queue.cpp 0x34C560-0x34D17F; 0x34D180-0x34E06F is a separate unit (two tables of 12-byte
+    records, closed by their reserve at 0x34DED0; CSnd::Init builds its global at 0x48DC30);
+    zsys_sched.cpp starts at 0x34E070; 0x34BCA0-0x34BD10 belongs to the headset unit.
+- **Tells from the weapons, round 7** (the turret's template tail, CZWeapon's sounds/timers/AI params):
+  - a class temporary in an argument list whose type has a user destructor (even an empty inline
+    one) is built before the inline end()/size() are expanded; without a destructor MW expands
+    those first;
+  - a user-declared copy assignment on a member's member makes the enclosing class's implicit
+    assignment a real function, called out of line once the outer assignment passes
+    inline_max_size; left implicit it is a block copy;
+  - a class with a user-declared constructor gets a member-by-member implicit copy constructor while
+    its implicit assignment stays a block copy -- the copy constructor and the assignment can copy the
+    same member differently (CTurretAiParams); an empty user constructor on a vector element makes
+    insert copy it member by member (CZDecalDef);
+  - a tail instance an earlier unit already emitted is deduplicated by name, so a unit's own use of a
+    vector destructor can be invisible in the image (zwep_weapon.cpp's DestroyMarkList calls
+    0x2CDB30, an earlier unit's copy);
+  - DEAD-STRIPPED STAND-INS: an insert inlines the element destructor and clear only if the unit's
+    own code generated them first; where no such caller is left in the image, a minimal stand-in for
+    the dead-stripped original (no row: it scores as no-target) restores the order --
+    DeadTurretDefinitionsKill made the turret's insert byte-exact (veh_turret.cpp), and
+    DeadVehicleDefinitionsKill gives 0x3AF040 the target's size (its end-pointer register still open);
+  - veh_turret.cpp's tail starts at resize 0x3AB8C0; CTurretDef() (0x3AB5F0) is an ordinary function
+    right after Parse, as in SOCOM 1.
+- **Tells from the HUD, round 15** (the weapon selector's states and scrolling, zui_2d.cpp complete):
+  - an inline's side-effect-free argument used once on each path is substituted into each arm, so
+    SOCOM 1's `Increment(2*(475*dT), ...)` computes the product in both arms, as the target; the
+    operand order needed `2.0f * (float)(475.0f * dT)`;
+  - a CPnt3D struct copy reloads its source; written field by field, the first field reuses the load
+    a preceding compare made;
+  - `(f(4, pad) == 1) != false` is the one form tried that materialises an `== 1` test (andi; xori;
+    sltiu) inside an `&&` chain;
+  - where the target keeps a sum's non-product operand first, that operand must be in a local;
+    `int x, y; y = ...; x = ...;` gives the target's saved registers where initialised declarations
+    in either order swap them;
+  - an inline const accessor reuses the type byte its caller tested only through a const view (`const
+    CUIVariable *v = var`); through the non-const parameter it reloads it;
+  - a secondary vtable sits at the primary table's size, so stand-in classes need the real slot
+    counts (C3StateButton 29, C2DString 34, C2DBitmap 26);
+  - THIS-ADJUSTING THUNKS have MW's names `@<offset>@<target>` (`j target; addiu a0,a0,-offset`):
+    zui_2d.cpp's classes emit `@192@__dt__9CCheckBoxFv` and its kin for their secondary bases, and
+    naming the rows 0x37D020-0x37D0E0 so made eight of them byte-exact (a thunk's row named after the
+    function it jumps to and the offset it subtracts);
+  - zui_2d.cpp's tail order: ~CCheckBox, ~CHProgressBar, ~CSliderBar, ~CHandlerButton,
+    C3StateButton::Tick, ~CTeleType, then the thunks.
 - **Tells from the online lobby, round 6** (the account save module, the universe list, the LAN lobby):
   - a temporary is laid out below the named locals: the target's struct sitting below an inner
     block's object was `push_back(T(args))`;
@@ -2312,6 +2414,15 @@ What is open across lanes, and what comes next:
   USB-audio lgAud in OVL1 0x243000-0x258000, the speech recogniser at OVL2's start, the Medius/DME
   network libraries from 0x610000) are not MW code: EQOA's EE-GCC toolchains could match them, a
   separate effort.
+- **Does the original auto-inline only functions defined earlier?** The sound lane's round 5 found
+  every inlined call in zsnd_queue.cpp goes to a function defined earlier (our source order) and every
+  kept call to one defined later; `-inline auto,deferred` reaches every function, so lanes pin
+  callees with `#pragma auto_inline off` unit by unit (dozens of pins across the tree). If MW has a
+  mode that keeps deferred's reverse emission but auto-inlines only what it has already seen (or the
+  original's units were ordered so it holds), switching to it would retire the pins and may close
+  opens no pin can (a callee inlined by later callers and called by earlier ones: CSndQueue::Open).
+  Worth a refit-style measurement: `mwccps2.exe -help all` for the inline/defer options, then the
+  hand-written units scored with the pins removed under each candidate.
 - **`tools/scperm.py`** (EQOA's tree-sitter mutations driven by MW) has not yet closed a
   function: its finds so far trade correctness for score.
 - Tell 3.0b50 from 3.0b52; port eqrefcheck's data-reference audit to absolute addresses. The
