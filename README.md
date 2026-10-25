@@ -1642,6 +1642,24 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the HUD, round 16** (the weapon selector's constructor and OnOpen, three initialisers):
+  - the seed reads a virtual tail call (`jr t9`) as a jump table and merges the next function when only
+    a vtable references it: a "dead `jr ra`" after a tail call is a function of its own (0x36B1F0 and
+    0x37BF40 split, the AddToRdr writers; a map-wide scan found no others);
+  - a copy into a saved register that dies early means the variable is reused at a later call (MW
+    folds that use into the same register: PlaceWeaponText's seal read again at the third call);
+  - `return;` closing the last block inside an `if` gives `b epilogue; nop` over the pad; an error block
+    that must sit ahead of the body wants `if (a && b) { ...; if (!c) { err; return; } } else { err;
+    return; }` then the body (OnOpen);
+  - defining a unit's dynamically initialised statics in order makes MW emit its `__sinit_<file>`
+    byte-exact, reusing a just-stored value for the next initialiser (hud_weaponsel, hud_teamnames,
+    hud_teammatenames);
+  - `int len; const char *s = ...; len = strlen(s);` gives `s` the lower saved register;
+  - A THUNK IS EMITTED WITH A VTABLE THAT USES IT: when CCheckBox overrode UpdateUIVar, zui_2d.cpp
+    stopped emitting C2DButton's thunk 0x37D0E0 (C2DButton's own table goes with ~C2DButton's
+    unit); defining CHandlerButton's destructor in zui_2d.cpp (its table 0x407700 keeps the
+    button's slot, as CRadioStrip's does) brought it back, with @192@~CHandlerButton. A partial
+    `--files` check cannot see a function that stops being emitted -- only the full check does.
 - **Tells from the weapons, round 8** (CMesh's decals and LODs, CZProjectileList, the decal pools):
   - MW 3.0 pads a short loop's head with nops when the found block ends in `break`; with `return`
     inside it gets no padding (RemoveMeshDecal, RemoveDecal);

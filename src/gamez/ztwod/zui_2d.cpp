@@ -204,6 +204,15 @@ public:
     int m_intervals;   // 0x500
 } __attribute__((aligned(16)));   // 0x510 bytes
 
+/* a button showing a spec of its own (SOCOM 1's CHandlerButton; SOCOM II's 0x440 bytes, zui_2d.h's
+ * layout). It keeps C2DButton's UpdateUIVar, so its vtable (0x407700) is one of the three that take
+ * the button's thunk 0x37D0E0 -- defining its destructor here is what emits that thunk, since
+ * C2DButton's own table belongs with ~C2DButton's unit and CCheckBox overrides the slot */
+class CHandlerButton : public C2DButton {
+public:
+    virtual ~CHandlerButton();
+} __attribute__((aligned(16)));   // 0x440 bytes
+
 /* the pop-up dialog as its command-type lookup sees it (slot 24 of its vtable, 0x36D970; the
  * renderable string's (0x36FC10) and the button's (0x3767C0) are declared with their classes
  * above). Each answers its own commands as the UI's count plus an index, and an empty name
@@ -481,6 +490,11 @@ void CListItemStringTypeImpl::Tick(float dT)
 /* the teletype's destructor (implicit: the cursor, the text, then the renderable string's;
  * reached only through the thunk 0x37D030) */
 CTeleType::~CTeleType()
+{
+}
+
+/* the handler button's destructor (implicit: the button's; reached through the thunk 0x37D050) */
+CHandlerButton::~CHandlerButton()
 {
 }
 

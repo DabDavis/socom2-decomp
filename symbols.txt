@@ -10828,7 +10828,7 @@
 0x005A8850 0x70 func_005A8850  # OVL2
 0x005A88C0 0xF8 func_005A88C0  # OVL2
 0x005A89C0 0x2E4 func_005A89C0  # OVL2
-0x005A8CB0 0xF0 func_005A8CB0  # OVL2
+0x005A8CB0 0xF0 CanChangeItem__10CZSealBodyFv  # OVL2; s1:calls (the HUD lane's round 16, vetted by the integrator: CWeaponSel::OnOpen/HandleOpenState call it where SOCOM 1's call CanChangeItem__10CZSealBodyFv; 0xF0 here against SOCOM 1's 0x78)
 0x005A8DA0 0x310 func_005A8DA0  # OVL2
 0x005A90B0 0x370 func_005A90B0  # OVL2
 0x005A9420 0xD8 func_005A9420  # OVL2
@@ -11054,8 +11054,8 @@
 0x005C4970 0x40 GetNumMags__5CZKitFi  # OVL2; s1:order by hand (SOCOM 1's GetNumMags: counts the item's ten magazines (0x1D4 + 40*index, SOCOM 1's 0x1C0) holding rounds)
 0x005C49B0 0x154 GetCurNumMags__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's GetCurNumMags, after GetNumMags as there: the selected item -- or, in its grenade launcher's mode (0x5BD7E0), the first item of its fire mode's kind with ammunition -- and GetNumMags inlined; 0 for none)
 0x005C4B10 0x4B8 SetCurItemByIndex__5CZKitFi  # OVL2; s1:calls by hand (CSealCtrlSquirm::Initalize calls it on the SEAL's kit (+0x5E0) with 0, where SOCOM 1's Initalize calls SetCurItemByIndex(0), right before SetCurFireMode)
-0x005C4FD0 0x60 func_005C4FD0  # OVL2
-0x005C5030 0x80 func_005C5030  # OVL2
+0x005C4FD0 0x60 CanChangeItem__5CZKitFv  # OVL2; s1:calls (the HUD lane's round 16, vetted by the integrator: the weapon selector calls it where SOCOM 1's calls CanChangeItem__5CZKitFv; 0x60 against SOCOM 1's 0x64)
+0x005C5030 0x80 unwrap__5CZKitFii  # OVL2; s1:calls (the HUD lane's round 16, vetted by the integrator: the weapon selector calls it where SOCOM 1's calls unwrap__5CZKitFii; 0x80 against SOCOM 1's 0x7C)
 0x005C50B0 0x290 func_005C50B0  # OVL2
 0x005C5340 0x11D0 func_005C5340  # OVL2
 0x005C6510 0x18 func_005C6510  # OVL2
