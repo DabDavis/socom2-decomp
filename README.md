@@ -590,6 +590,23 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - operand order in a comparison carries through to `bne`: `mode == x` puts the parameter
     first;
   - SOCOM 1's symbol table names every 989snd.c global, and they are defined in that unit.
+- **Tells from the network objects** (round 7: fts_net_persona/grenade/bomb/blather/game,
+  fts_controller, fts_objectivecam):
+  - reading a value into a local before an unrelated store changes the register choice
+    (`n = x; t = 2.0f; x = n + 1` against `x++`, which merges the sum into the load's register);
+  - a reference local to a global taken after a call reads the first member absolutely and the
+    next through an address built in the delay slot; taken before the call, the address sits in
+    a saved register;
+  - a range test written as a ternary folds into one unsigned compare (sltiu); `if (in range)
+    return t[i]; return 0;` keeps the two compares; `if (p) return p->x; return 0;` leaves a
+    nop after `move v0,zero` where the ternary does not;
+  - an inline bool compared `== false` keeps its sltu inside an && chain, `!` drops it; a
+    returned && chain of plain tests builds each step in v0 and branches on it;
+  - the network registration's field offsets need `T *p = &local; (int)&p->f - (int)p` (char *
+    casts fold them to constants, int casts recompute the address each time);
+  - a dead data load the target keeps needs a volatile read (MW 3.0 drops it and tail-calls);
+  - `CPnt3D p(s.x, s.y, s.z)` loads z, y, x and stores x, y, z;
+  - `int i = t - 1; f(i)` keeps the subtraction, `f(t - 1)` folds the -1 into the table address.
 - **The class vector's deleter destructor is out of class** (include/vector): MSL 3.0.1 defines
   it after the class body, not inline, so MW emits it in each unit's template tail and inlines it
   only where the unit has already instantiated it -- an implicit destructor chain over a class

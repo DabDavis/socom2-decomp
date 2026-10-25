@@ -29,12 +29,8 @@ extern CHUD *theHUD;
 
 /* a valve's change of state, its callbacks told (SOCOM 1's CValve::MakeCallbacks; zanim.h's CValve
  * has neither the enum nor the setter, so they are spelled here as fts_remote.cpp spells them) */
-enum VALVE_STATE {
-    VALVE_SAME,
-    VALVE_ON,
-    VALVE_OFF
-};
-
+/* VALVE_STATE and CValve::MakeCallbacks are zanim.h's now; the call still goes by its
+ * placeholder */
 extern "C" void func_003519F0(CValve *valve, VALVE_STATE state);   /* CValve::MakeCallbacks */
 
 /* CValve::SetValue, inlined in both builds */

@@ -5302,7 +5302,7 @@
 0x0030CDD0 0x10 func_0030CDD0  # OVL1
 0x0030CDE0 0x8 func_0030CDE0  # OVL1
 0x0030CDF0 0x88 func_0030CDF0  # OVL1
-0x0030CE80 0x6C func_0030CE80  # OVL1
+0x0030CE80 0x6C zNetRegisterRemoteObjectCallback__9CZNetworkFiPFii_vPFiii_vPFiii_vPFii_v  # OVL1; s1:calls (every zNetRegister* calls it last with the index and four callbacks, as SOCOM 1's; the same 0x6C) -- the states lane
 0x0030CEF0 0x100 zNetSendApplicationMessage__9CZNetworkFciiiiPUcb  # OVL1; s1:calls by hand (the states lane: every network sender calls it at SOCOM 1's call site, 39 of them, with the same register handling and calls; zNetDme.cpp's)
 0x0030CFF0 0xC func_0030CFF0  # OVL1
 0x0030D000 0x8 func_0030D000  # OVL1
@@ -5320,7 +5320,7 @@
 0x0030D5E0 0x40 func_0030D5E0  # OVL1
 0x0030D620 0x8 func_0030D620  # OVL1
 0x0030D630 0x34 zNetGetObject__9CZNetworkFi  # OVL1; s1:calls (RemoteSealDeletionCallback, as SOCOM 1's) -- the states lane
-0x0030D670 0xF8 func_0030D670  # OVL1
+0x0030D670 0xF8 zNetCreateObject__9CZNetworkFPi18NetOwnershipStatus17NetObjectLifespanUiiUiiPvPci  # OVL1; s1:calls (CreateLocalGame/Grenade/Bomb pass SOCOM 1's ten arguments, the stack layout included) -- the states lane
 0x0030D770 0x58 func_0030D770  # OVL1
 0x0030D7D0 0x98 func_0030D7D0  # OVL1
 0x0030D870 0x90 func_0030D870  # OVL1
@@ -8245,7 +8245,7 @@
 0x003CC1F0 0xD4 GetNumRemoteExplosives__16CZProjectileListFi  # OVL1; s1:align
 0x003CC2D0 0xE4 func_003CC2D0  # OVL1
 0x003CC3C0 0x134 func_003CC3C0  # OVL1
-0x003CC500 0x17C func_003CC500  # OVL1
+0x003CC500 0x17C NetRemoveProjectile__16CZProjectileListFP12CZProjectile  # OVL1; s1:calls (called on CZWeapon::m_pProjectilelist where SOCOM 1's calls it) -- the states lane
 0x003CC680 0xF0 func_003CC680  # OVL1
 0x003CC770 0x218 func_003CC770  # OVL1
 0x003CC990 0x100 PreTick__16CZProjectileListFf  # OVL1; s1:align
@@ -10987,7 +10987,7 @@
 0x005BC5D0 0xCC func_005BC5D0  # OVL2
 0x005BC6A0 0x8C func_005BC6A0  # OVL2
 0x005BC730 0x900 func_005BC730  # OVL2
-0x005BD030 0xC8 func_005BD030  # OVL2
+0x005BD030 0xC8 FireGrenade__5CZKitFPC6CPnt3DPC6CPnt3D  # OVL2; s1:calls (called on the SEAL's kit at +0x5E0 where SOCOM 1's calls it) -- the states lane
 0x005BD100 0x424 func_005BD100  # OVL2
 0x005BD530 0x198 func_005BD530  # OVL2
 0x005BD6D0 0x8 func_005BD6D0  # OVL2
@@ -12128,9 +12128,9 @@
 0x00620B40 0x98 func_00620B40  # OVL2
 0x00620BD8 0x88 func_00620BD8  # OVL2 unaligned
 0x00620C60 0xC4 func_00620C60  # OVL2
-0x00620D28 0x88 func_00620D28  # OVL2 unaligned
-0x00620DB0 0xE4 func_00620DB0  # OVL2
-0x00620E98 0xB8 func_00620E98  # OVL2 unaligned
+0x00620D28 0x88 NetRegisterObjectStart  # OVL2 unaligned; s1:calls (the DME's; every registration opens with it, as SOCOM 1's) -- the states lane
+0x00620DB0 0xE4 NetObjectField  # OVL2; s1:calls (the DME's; once per field between start and structure, as SOCOM 1's) -- the states lane
+0x00620E98 0xB8 NetRegisterStructure  # OVL2 unaligned; s1:calls (the DME's; closes each registration before the callbacks, as SOCOM 1's) -- the states lane
 0x00620F50 0xC4 func_00620F50  # OVL2
 0x00621018 0xB8 func_00621018  # OVL2 unaligned
 0x006210D0 0xA4 func_006210D0  # OVL2
@@ -12185,7 +12185,7 @@
 0x00623288 0xA4 func_00623288  # OVL2 unaligned
 0x00623330 0xA4 func_00623330  # OVL2
 0x006233D8 0x98 func_006233D8  # OVL2 unaligned
-0x00623470 0x98 func_00623470  # OVL2
+0x00623470 0x98 NetFreeObject  # OVL2; s1:calls (the DME's; UpdateLocalGrenade calls it where SOCOM 1's does) -- the states lane
 0x00623508 0x88 func_00623508  # OVL2 unaligned
 0x00623590 0x98 func_00623590  # OVL2
 0x00623628 0x98 func_00623628  # OVL2 unaligned

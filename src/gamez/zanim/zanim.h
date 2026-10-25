@@ -658,10 +658,20 @@ public:
 
 enum VALVE_TYPE {};   // its values are not in SOCOM 1's DWARF, only its name in CValve::Create's
 
+/* a valve's change of state, its callbacks told with it (SOCOM 1's MakeCallbacks takes one; the
+ * names are the states lane's) */
+enum VALVE_STATE {
+    VALVE_SAME,
+    VALVE_ON,
+    VALVE_OFF
+};
+
 class CValve {
 public:
     static CValve *Create(const char *name, VALVE_TYPE type);
+    static CValve *Create(const char *name, unsigned int value, VALVE_TYPE type);
     static CValve *GetByName(const char *name);
+    void MakeCallbacks(VALVE_STATE state);
 
     char* m_name;   // 0x0
     unsigned int m_value : 16;   // 0x4
