@@ -487,6 +487,23 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     statement leaves a join block (Add2D);
   - a true function-local static matches, but scdiff leaves its BSS guard and object
     unchecked: placeholders hold them to their addresses (SetupGhostText).
+- **Tells from the zdb world** (node_saveload, node_util, node_shadow, node_world):
+  - a bool returned straight from a bool call tail-calls; kept in a local first it gets `jal`
+    plus `andi 0xff` (LoadAssetLib);
+  - `if ((p = f()) != 0)` branches on v0 with the copy in the delay slot; `p = f(); if (p)` and a
+    declaration in the condition move first and test the copy;
+  - a test made once before the loop's own test is `if (c) while (c) ...` (FilterAssetLibFolder);
+  - GetChildren() taken into a reference inlines one recursion level deeper than
+    `x.GetChildren().begin()` (find_node);
+  - a value-initialised empty functor stores a zero byte; a user-declared empty constructor
+    stores nothing;
+  - MW hoists a read of an old bitfield above a store to another field of the same object, then
+    reloads the object pointer for the later read-modify-write (GetAltitudes); an inline bool
+    accessor's test reloads the byte for a following bitfield store (DeleteLandmark);
+  - SOCOM II instantiates FreeVector on the base std::vector: the temporary's destructor has
+    three this-tests, not four;
+  - a member whose `this` is never read still passes its arguments in a1 onward
+    (GetIntersectBatch).
 - **Tool notes**: scdiff accepts the image's one non-zero pad word (0xFFFFFFFF at 0x1E70F4,
   after main); `automatch --stale` can drop a renamed destructor's draft when its re-draft
   misses (SlotList's and CWeaponSlot's were restored by hand, the old drafts renamed).
