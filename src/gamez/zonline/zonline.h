@@ -305,6 +305,8 @@ public:
     void GetLeaderMessages();
     void DeleteClanMessage(int id);
 
+    void *DMEInit();
+    void RunStateHandler(LOBBY_STATE state, LOBBY_STATE_FLAG flag);
     bool RefreshRoomList(C2D *page);
     bool RejoinRoom();
     bool RefreshGameList(C2D *page);

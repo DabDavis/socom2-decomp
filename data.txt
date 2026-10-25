@@ -178,6 +178,7 @@
 0x003DF218 0x4 deadZoneScaleFactor  # OVL1; s1:data-seq (size SOCOM 1's; via SetDeadZone__4CPadFif)
 0x003DF298 0x4 PlayerClanID  # OVL1 data; s1 by hand (SOCOM 1's PlayerClanID: IsMemberOfClan 0x2E6830 tests it against -1, QuitClan and GetClanRoster send it as the clan id; initialised data in SOCOM II); size SOCOM 1's; 13 references in 10 functions
 0x003DF2A0 0x4 RemovePlayerFromClanID  # OVL1 data; s1 by hand (SOCOM 1's RemovePlayerFromClanID: RemovePlayerFromClan 0x2E7450 keeps the member it asks to remove there, as SOCOM 1's keeps its); size SOCOM 1's; 1 reference in 1 function
+0x003DF308 0x4 myConnectionIndex  # OVL1 data; s1 by hand (SOCOM 1's myConnectionIndex: MediusConnectionIndex 0x2DF640 returns it, as SOCOM 1's returns its); size SOCOM 1's; 9 references in 6 functions
 0x003DF320 0x4 data_003DF320  # OVL1 data: 1.0f, an anonymous constant (SlerpFaster passes _close_enough(len2, 1.0f, 0.004f) by reference)
 0x003DF328 0x4 data_003DF328  # OVL1 data: 0.004f, the other
 0x003DF330 0x4 m_pointer__6CStack  # OVL1; s1:data-seq (size SOCOM 1's; via Multiply__6CStackFPC7CMatrixb)
@@ -923,7 +924,7 @@
 0x0066A4D0 0x11 SessionKey  # OVL2 bss; s1 by hand (SOCOM 1's SessionKey: every Medius request copies these 17 bytes to its +0x15, as SOCOM 1's do); size SOCOM 1's; 91 references in 78 functions
 0x0066A4F0 0x44 AccountInfo  # OVL2 bss; s1 by hand (SOCOM 1's AccountInfo: QuitClan sends its first word as the player's account, IsLeaderOfClan compares it, the account name at +4); size SOCOM 1's; 46 references in 29 functions
 0x0066A538 0x4 LobbyWorldID  # OVL2 bss; s1 by hand (SOCOM 1's LobbyWorldID: RejoinRoom 0x2E3730 goes back to the room only when it is not negative, as SOCOM 1's does; JoinRoom stores it); size SOCOM 1's; 12 references in 9 functions
-0x0066A5E8 0x1 g_bJoiningRandomGame__24@unnamed@zNetMedius_cpp@  # OVL2 bss; s1:data-seq (size SOCOM 1's; via UnInit__13CZOnlineLobbyFv)
+0x0066A5E8 0x1 g_bJoiningRandomGame  # OVL2 bss; s1:data-seq (SOCOM 1's g_bJoiningRandomGame, a static of its zNetMedius.cpp: UnInit, ReleaseUIResources and Init clear it as SOCOM 1's do); in OVL2's bss in SOCOM II, so another unit's global, the unnamed-namespace mangling dropped
 0x0066A5F0 0x4 MediusWorldID  # OVL2 bss; s1 by hand (SOCOM 1's MediusWorldID: BanSelfFromGame and SendEndGameReport send it as the game's world, as SOCOM 1's send theirs); size SOCOM 1's; 14 references in 12 functions
 0x0066B540 0xC projDirDown  # OVL2 bss; s1:data-seq (size SOCOM 1's; via HandleBloodDrip__10CZSealBodyFf)
 0x0066BAC8 0xC ai_line_pos__2ai  # OVL2 bss; s1:data-exact (size SOCOM 1's; via MoveTo__2aiFRC6CPnt3D)
