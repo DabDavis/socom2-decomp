@@ -15,6 +15,29 @@ extern int data_0044F310;
 
 namespace zdb {
 
+/* a point set from three values (the arguments evaluated right to left, so z, y and x are loaded
+ * before the stores; an inline leaves no symbol: the name is ours) */
+inline void PntSet(CPnt3D &p, float x, float y, float z)
+{
+    p.x = x;
+    p.y = y;
+    p.z = z;
+}
+
+/* a box's eight corners: the bottom four, then the top four, each ring from the low x, high z
+ * corner (new in SOCOM II, after SOCOM 1's SetCDIBBox; the name is ours) */
+void GetBBoxCorners(CPnt3D *out, const CBBox *b)
+{
+    PntSet(out[0], b->m_min.x, b->m_min.y, b->m_max.z);
+    out[1] = b->m_min;
+    PntSet(out[2], b->m_max.x, b->m_min.y, b->m_min.z);
+    PntSet(out[3], b->m_max.x, b->m_min.y, b->m_max.z);
+    PntSet(out[4], b->m_min.x, b->m_max.y, b->m_max.z);
+    PntSet(out[5], b->m_min.x, b->m_max.y, b->m_min.z);
+    PntSet(out[6], b->m_max.x, b->m_max.y, b->m_min.z);
+    out[7] = b->m_max;
+}
+
 /* a hit set for n hits: characters and proximity hit, no node ignored, every mask bit (SOCOM 1's;
  * the mask and the bit after the flags SOCOM II's) */
 DiIntersect::DiIntersect(int n)
@@ -60,6 +83,43 @@ void CDI::Free()
     m_pnts = 0;
     m_pnts = 0;
     m_flags.m_ptcount = 0;
+}
+
+/* a polygon read from the open key, or none (SOCOM 1's) */
+CDI *CDI::Create(CSaveLoad &io)
+{
+    CDI *di = 0;
+
+    if (io.m_zfile.GetOpenKey()) {
+        di = new CDIPoly;
+        if (!di->Read(io)) {
+            delete di;
+            di = 0;
+        }
+    }
+    return di;
+}
+
+/* the parameters and then the points read from the open key, a shape without a type made a
+ * polygon, no holders yet (SOCOM 1's; the result declared after the key is fetched, so it is not
+ * live across that call and stays out of the saved registers) */
+bool CDI::Read(CSaveLoad &io)
+{
+    zar::CZAR *zfile = &io.m_zfile;
+    zar::CKey *key = zfile->GetOpenKey();
+    bool ok = false;
+
+    if (key) {
+        ok = zfile->Fetch("params", this, 12);
+        if (ok) {
+            if (m_flags.m_ditype == 0)
+                m_flags.m_ditype = 3;
+            Allocate(m_flags.m_ptcount);
+            ok = zfile->Fetch("points", m_pnts, m_flags.m_ptcount * sizeof(CPnt4D));
+            m_refcount = 0;
+        }
+    }
+    return ok;
 }
 
 int IntersectStruct::GetMaterial()

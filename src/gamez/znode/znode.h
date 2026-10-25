@@ -132,6 +132,8 @@ public:
     virtual bool Read(CSaveLoad &io);
     /* one holder fewer, the count left given back (SOCOM 1's, 0x14 bytes in both) */
     int Release();
+    /* a polygon read from the archive's open key (SOCOM 1's static) */
+    static CDI *Create(CSaveLoad &io);
 
     CPnt4D *m_pnts;   // 0x10: its points, 16 bytes each (Allocate mallocs them; the name ours)
 };

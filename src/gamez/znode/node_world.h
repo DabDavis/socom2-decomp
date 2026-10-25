@@ -90,6 +90,19 @@ public:
     const CBBox *m_bbox;   // 0x14 (after CDI's points pointer at 0x10)
 };   // 0x18 bytes
 
+/* a polygon DI: its points the polygon's (SOCOM 1's CDIPoly; SOCOM II's is CDI's 0x14 bytes, the
+ * size CDI::Create news) */
+class CDIPoly : public CDI {
+public:
+    CDIPoly();
+    virtual ~CDIPoly();
+    virtual int GetIntersect(DiIntersect *di);
+    virtual int GetAltitude(DiIntersect *di);
+};   // 0x14 bytes
+
+/* a box's eight corners (new in SOCOM II, int_main.cpp's; the name is ours) */
+void GetBBoxCorners(CPnt3D *out, const CBBox *b);
+
 /* what a render map projects (SOCOM 1's enum, by its mangled name; a byte under -enum min): a
  * shadow (0) makes its light a shadow */
 enum _tag_render_map_type {
