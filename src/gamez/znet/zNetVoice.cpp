@@ -62,8 +62,14 @@ struct VoiceRadio {
     unsigned char m_state;   // 0x0: 3, talking
     unsigned char _1[0x24 - 1];
     int m_slot;   // 0x24
-    unsigned char _28[0x70 - 0x28];
-    VoiceSlot m_slots[1];   // 0x70
+    int m_channel;   // 0x28
+    int m_team;   // 0x2c
+    unsigned char _30[0x4a - 0x30];
+    unsigned char m_quiet;   // 0x4a
+    unsigned char _4b[0x64 - 0x4b];
+    int m_msg;   // 0x64: the radio's application message
+    unsigned char _68[0x70 - 0x68];
+    VoiceSlot m_slots[12];   // 0x70
 };
 struct VoiceTalk {
     unsigned char m_state;   // 0x0
@@ -87,12 +93,88 @@ struct VoiceEncoder {
     VoiceFrame m_frame;   // 0x8
 };
 
+/* a client's radio channel as the DME has it */
+struct VoiceChannelInfo {
+    int m_0;
+    int m_4;
+    int m_on;   // 0x8
+    int m_channel;   // 0xc
+};
+
 extern "C" {
 void func_0024F888(void *h, VoiceFrame *f);
 extern VoiceRadio *data_0045B718;   /* the radio */
+int func_00623BA0(int conn, int client, VoiceChannelInfo *info);   /* (the DME: a client's channel) */
+int func_00623998(int conn, int channel);   /* (the DME: our channel set) */
 }
 
 extern "C" {
+
+/* our channel set to a team's (the team and the squad ORed), unless the DME has us on it already
+ * (OVL1 0x30FD90's twin; OVL1 0x30FCD0) */
+int func_0030FCD0(VoiceRadio *r, int team, int squad)
+{
+    r->m_team = team;
+    int conn = theNetwork.m_GameConnectionIndex;
+    VoiceChannelInfo info;
+
+    func_00623BA0(conn, theNetwork.zNetGetMyGameClientIndex(), &info);
+    int channel = team | squad;
+
+    if ((info.m_channel != channel && info.m_on) || !info.m_on) {
+        r->m_quiet = 0;
+        if (!func_00623998(theNetwork.m_GameConnectionIndex, channel))
+            r->m_slot = r->m_channel = channel;
+    }
+    return channel;
+}
+
+/* our channel set, unless the DME has us on it already (OVL1 0x30FD90) */
+int func_0030FD90(VoiceRadio *r, int channel)
+{
+    int conn = theNetwork.m_GameConnectionIndex;
+    VoiceChannelInfo info;
+
+    func_00623BA0(conn, theNetwork.zNetGetMyGameClientIndex(), &info);
+    if ((info.m_channel != channel && info.m_on) || !info.m_on) {
+        r->m_quiet = 0;
+        if (!func_00623998(theNetwork.m_GameConnectionIndex, channel))
+            r->m_slot = r->m_channel = channel;
+    }
+    return channel;
+}
+
+/* the master's channel slots cleared and sent to everyone (OVL1 0x30E7F0) */
+void func_0030E7F0(VoiceRadio *r)
+{
+    if (theNetwork.m_bSessionMaster) {
+        for (int i = 0; i < 12; i++) {
+            r->m_slots[i].m_client = 256;
+            r->m_slots[i].m_4 = 0;
+        }
+        short data[12];
+
+        for (int j = 0; j < 12; j++)
+            data[j] = r->m_slots[j].m_client;
+        theNetwork.zNetSendApplicationMessage(64, theNetwork.m_GameConnectionIndex, -1, r->m_msg, 24,
+                                              (unsigned char *)data, false);
+    }
+}
+
+/* our channel set to the all-hands one, 11 (OVL1 0x30E490) */
+void func_0030E490(VoiceRadio *r)
+{
+    int conn = theNetwork.m_GameConnectionIndex;
+    VoiceChannelInfo info;
+
+    func_00623BA0(conn, theNetwork.zNetGetMyGameClientIndex(), &info);
+    if ((info.m_channel != 11 && info.m_on) || !info.m_on) {
+        r->m_quiet = 0;
+        if (!func_00623998(theNetwork.m_GameConnectionIndex, 11))
+            r->m_slot = r->m_channel = 11;
+    }
+    r->m_quiet = 0;
+}
 
 /* a frame of samples encoded: the packed bytes handed out and their count returned, a carried
  * byte moved to the front (OVL1 0x310750) */
