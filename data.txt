@@ -812,6 +812,7 @@
 0x004B5050 0x14 m_permPool__Q23zdb6CDecal  # OVL1 bss; s1:data-seq (size SOCOM 1's; via PutPermDecal__Q23zdb6CDecalFPQ23zdb6CDecal +1)
 0x004B5080 0x14 m_tempPool__Q23zdb10CMeshDecal  # OVL1 bss; s1:data-seq (size SOCOM 1's; via PutTempDecal__Q23zdb10CMeshDecalFPQ23zdb10CMeshDecal +1)
 0x004B51B8 0xC m_callbacks  # OVL1 bss; s1:data-exact (size SOCOM 1's; via AddWeaponEventCallback__8CZWeaponFPFP12CZProjectileUiPv_vUiPv)
+0x004B5210 0xC m_listWeapons__8CZWeapon  # OVL1 bss; s1:name by hand (SOCOM 1's CZWeapon::m_listWeapons, a 12-byte CZWeaponList: SetItem passes it to the list's GetWeapon, OVL1 0x3C4B40, where SOCOM 1's SetItem passes 0x511D90; CZWeapon::Open, Close and GetWeaponId take it too) -- 61 references in 36 functions
 0x004B5220 0x4 m_pProjectilelist__8CZWeapon  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Close__8CZWeaponFv +1)
 0x004B5248 0x4 m_pMarklist__8CZWeapon  # OVL1 bss; SOCOM 1's (CCoreState::auxUnload reads it beside m_pProjectilelist, as SOCOM 1's): 7 references in 6 functions take 0x4B5248
 0x004B52B8 0x4 m_timer_maxval__8CZWeapon  # OVL1 bss; s1:data-seq (size SOCOM 1's; via RetrieveTimerRegistration__8CZWeaponFPPfPfPb)

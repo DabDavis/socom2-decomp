@@ -10981,9 +10981,9 @@
 0x005BDB00 0x14 CurItemHasAmmo__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's CurItemHasAmmo, next: the selected item and its fire mode (0x6FC) passed to ItemHasAmmo(int, FIREMODE))
 0x005BDB20 0x110 ItemHasAmmo__5CZKitF10EQUIP_ITEM  # OVL2; s1:calls by hand (another lane's lead, verified: SOCOM II's CSealCtrl::CanPlaceBomb and CanPerformAction call it after HasItem, where SOCOM 1's call ItemHasAmmo(EQUIP_ITEM); the same item walk on the type byte, then the ammunition)
 0x005BDC30 0x1E4 func_005BDC30  # OVL2
-0x005BDE20 0x94 func_005BDE20  # OVL2
-0x005BDEC0 0xE4 func_005BDEC0  # OVL2
-0x005BDFB0 0x6C func_005BDFB0  # OVL2
+0x005BDE20 0x94 SetItemAmmo__5CZKitFUiPv  # OVL2; s1:order by hand (SOCOM 1's SetItemAmmo(unsigned int, CZAmmo *): below 30 slots and with an item, the four-argument one with the weapon's magazine size and count (OVL1 0x3D2810, 0x3D2800))
+0x005BDEC0 0xE4 SetItemAmmo__5CZKitFUiPvii  # OVL2; s1:order by hand (SOCOM 1's SetItemAmmo(unsigned int, CZAmmo *, int, int): the weapon's default ammunition (OVL1 0x3D1F00) when none, then the first count magazines (at most 10, 0x1D4) set to rounds and m_ammo (0x15C) set; SOCOM 1's took CZAmmo *, here void *)
+0x005BDFB0 0x6C SetItem__5CZKitFUi10EQUIP_ITEM  # OVL2; s1:exact by hand (SOCOM 1's SetItem(unsigned int, EQUIP_ITEM): the same 0x64-byte shape -- CZWeapon::m_listWeapons' GetWeapon (OVL1 0x3C4B40) for the kind, then SetItemByIndex below 30 slots; before SetBody as there)
 0x005BE020 0x8 SetBody__5CZKitFP10CZSealBody  # OVL2; s1:order by hand (SOCOM 1's SetBody, before GetNumItems and GetSelectedItemNum as there: the body at 0x830, SOCOM 1's 0x814)
 0x005BE030 0x8 GetNumItems__5CZKitCFv  # OVL2; s1:order by hand (SOCOM 1's GetNumItems: the word at 0x82C, SOCOM 1's 0x810)
 0x005BE040 0x8 GetSelectedItemNum__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's GetSelectedItemNum: the word at 0x824, SOCOM 1's 0x808)

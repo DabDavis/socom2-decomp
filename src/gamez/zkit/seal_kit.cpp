@@ -27,6 +27,12 @@ const char *func_003D2830(CZFTSWeapon *w);
  * weapon's magazine size (OVL1 0x3D2810, unclaimed) */
 EQUIP_IDTYPE func_003D1A60(EQUIP_ITEM item);
 int func_003D2810(CZWeapon *w);
+/* a weapon's magazine count and its default ammunition (SOCOM 1's GetDefaultAmmo; OVL1
+ * 0x3D2800, 0x3D1F00, unclaimed) and the list's weapon of a kind (SOCOM 1's
+ * CZWeaponList::GetWeapon; OVL1 0x3C4B40, unclaimed) */
+int func_003D2800(CZWeapon *w);
+void *func_003D1F00(CZWeapon *w);
+CZWeapon *func_003C4B40(CZWeaponList *list, EQUIP_ITEM item);
 /* a controller's word at 0x11C cleared (OVL2 0x592D40, the SEAL lane's row) */
 void func_00592D40(CKitCtrl *ctrl);
 }
@@ -323,6 +329,51 @@ void *CZKit::GetIcon(int index)
 void *CZKit::GetCurIcon()
 {
     return GetIcon(m_selected_item);
+}
+
+/* an item of a kind, from the weapon list, put in a slot (OVL2 0x5BDFB0; SOCOM 1's) */
+bool CZKit::SetItem(unsigned int index, EQUIP_ITEM item)
+{
+    CZWeapon *w = func_003C4B40(&CZWeapon::m_listWeapons, item);
+
+    if (w && index < 30) {
+        SetItemByIndex(index, w);
+        return true;
+    }
+    return false;
+}
+
+/* an item's ammunition set, and its first magazines filled -- with the weapon's default
+ * ammunition when none is given (OVL2 0x5BDEC0, 0x5BDE20; SOCOM 1's) */
+bool CZKit::SetItemAmmo(unsigned int index, void *ammo, int rounds, int count)
+{
+    bool r = false;
+
+    if (!ammo) {
+        CZFTSWeapon *w = m_item[index];
+
+        if (w)
+            ammo = func_003D1F00(w);
+    }
+    if (ammo && index < 30 && m_item[index]) {
+        for (int i = 0; i < count && i < 10; i++)
+            m_reloads[index][i] = rounds;
+        m_ammo[index] = ammo;
+        r = true;
+    }
+    return r;
+}
+
+bool CZKit::SetItemAmmo(unsigned int index, void *ammo)
+{
+    bool r = false;
+
+    if (index < 30 && m_item[index]) {
+        int size = func_003D2810(m_item[index]);
+
+        r = SetItemAmmo(index, ammo, size, func_003D2800(m_item[index]));
+    }
+    return r;
 }
 
 /* the kit's ammunition for an item kind (OVL2 0x5BDB20; SOCOM 1's walked the items itself) */

@@ -36,8 +36,16 @@ enum FIREMODE {
     FIREMODE_CURRENT = 255
 };
 
+/* the weapons the game knows (SOCOM 1's CZWeaponList, 12 bytes) */
+class CZWeaponList {
+public:
+    unsigned char _0[0xc];
+};
+
 /* a weapon (SOCOM 1's CZWeapon; empty here, so CZFTSWeapon's members keep their offsets) */
 class CZWeapon {
+public:
+    static CZWeaponList m_listWeapons;   // OVL1 bss 0x4B5210 (SOCOM 1's)
 };
 
 /* an item of the kit (SOCOM 1's CZFTSWeapon : CZWeapon; only the byte its kind is read from --
@@ -85,6 +93,9 @@ public:
     RETICULE_TYPE GetCurReticule();
     RETICULE_TYPE GetCurItemReticule();
     bool IsZoomed();
+    bool SetItemAmmo(unsigned int index, void *ammo);
+    bool SetItemAmmo(unsigned int index, void *ammo, int rounds, int count);
+    bool SetItem(unsigned int index, EQUIP_ITEM item);
     void FillWeaponEnum(int index, CZFTSWeapon **out);
     bool SetItem(unsigned int index, CZWeapon *w, void *ammo, int rounds);
     bool SetItemByIndex(int index, CZWeapon *w);
