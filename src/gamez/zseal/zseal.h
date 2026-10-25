@@ -597,6 +597,9 @@ public:
     void StabBuddy(CZSealBody *victim);
     bool ExecuteAction_ApplyRestraint(CZSealBody *victim);
     bool ExecuteAction_CQBAttack(CZSealBody *victim);
+    /* a pickup taken up: a grenade thrown back, the others each their own way (SOCOM 1's; OVL2
+     * 0x547570) */
+    class CZAnim *PickupObject(CPickup *pickup);
     class CPickup *CurrentPickupSecondary();
     class CPickup *CurrentPickup();
     bool CompassAnchor_MPBase(CCompassAnchor *anchor);

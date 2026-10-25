@@ -255,6 +255,67 @@ static void _rethrow_grenade(CValve *valve, void *data)
     func_003CAEE0(grenade, &vel);
 }
 
+/* the AI's aiming helper (SOCOM 1's CAi, ai.h's: only its alignment) */
+class CAi {
+public:
+    static void AlignToPoint(const CMatrix *m, const CPnt3D *p, CMatrix *out, float f);
+};
+
+extern "C" {
+/* CValve::AddCallback (SOCOM 1's AddCallback__6CValveFUiPFP6CValvePv_vPv; zanim.h's CValve lacks
+ * it: OVL1 0x351960 by its address) */
+void func_00351960(CValve *valve, unsigned int mask, void (*func)(CValve *, void *), void *user);
+/* the other kinds' takers: a weapon, ammunition, the MP bomb (OVL2 0x59F610, 0x59F6F0, 0x59DEF0,
+ * seal_env.cpp's; not written yet) */
+void func_0059F610(CZSealBody *seal, CPickup *pickup);
+void func_0059F6F0(CZSealBody *seal, CPickup *pickup);
+void func_0059DEF0(CZSealBody *seal, CPickup *pickup);
+}
+
+/* a pickup taken up by the living: a grenade (kind 1) thrown back -- stopped, turned toward the
+ * SEAL, and the pickup anim run with a valve whose callback throws it; a weapon, ammunition or the
+ * MP bomb each taken by its own function; the anim returned (OVL2 0x547570; SOCOM 1's) */
+CZAnim *CZSealBody::PickupObject(CPickup *pickup)
+{
+    if (!m_isAlive)
+        return 0;
+    CZAnim *done = 0;
+
+    if (pickup) {
+        switch (pickup->m_type) {
+        case CPickup::PU_TYPE_1: {
+            CZAnim *anim = ZAnim.GetAnim("ai_pickup_grenade", 0);
+
+            if (anim) {
+                CValve *valve = CValve::Create(0, (VALVE_TYPE)2);
+
+                func_00351960(valve, 1, _rethrow_grenade, pickup);
+                func_003CAEE0((CZProjectile *)pickup->m_data, 0);
+                CMatrix m;
+                const CMatrix *from = &m_node->m_matrix;
+
+                CAi::AlignToPoint(from, pickup->GetPosW(), &m, 0.0f);
+                pickup->m_node->SetMatrix(&m);
+                done = anim->ActivateArg(1, 3, pickup->m_node, 1, m_select, 4, valve, 0);
+            }
+            break;
+        }
+        case CPickup::PU_WEAPON:
+            func_0059F610(this, pickup);
+            break;
+        case CPickup::PU_AMMO:
+            func_0059F6F0(this, pickup);
+            break;
+        case CPickup::PU_MPBOMB:
+            func_0059DEF0(this, pickup);
+            break;
+        case 10:
+            break;
+        }
+    }
+    return done;
+}
+
 /* the health set: a living SEAL brought to nothing dies of the given cause, anything else is
  * stored and the controller told (OVL2 0x5477A0; SOCOM 1's clamped and fiddled more) */
 float CZSealBody::SetHealth(float health, SEAL_DEATH_TYPE type)
