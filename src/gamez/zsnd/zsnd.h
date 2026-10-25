@@ -141,6 +141,52 @@ public:
     float m_38;                         /* 0x38 */
 };   /* 0x3C bytes */
 
+/* A weighted choice of sounds (sounds.rdr's groups; SOCOM 1's class, 0x60 bytes there): each play
+ * picks a member by weight, then lowers the winner's weight by m_decay and renormalises. */
+class CSndGroup : public CSnd {
+public:
+    virtual ~CSndGroup();
+    virtual CSndInstance *PlaySound(CSndInstance *inst, unsigned int flags);
+    virtual CSndInstance *PlaySoundVol(float vol, CSndInstance *inst, unsigned int flags);
+    virtual CSndInstance *PlaySound3D(const CPnt3D *pos, float vol, int pitch, CSndInstance *inst, unsigned int flags);
+    virtual CSndInstance *PlaySoundVolPanPitch(float vol, int pan, int pitch, CSndInstance *inst, unsigned int flags);
+    virtual CSnd *GetSound(unsigned int i)
+    {
+        if (i > m_sounds.size())
+            return 0;
+        return m_sounds[i];
+    }
+    virtual unsigned int GetNumSounds() { return m_sounds.size(); }
+    virtual void SetDialogMode()
+    {
+        for (std::vector<CSnd *>::iterator i = m_sounds.begin(); i != m_sounds.end(); ++i)
+            (*i)->SetDialogMode();
+    }
+    void NormalizeWeights();
+    /* the member to play (ours: the four plays inline it) */
+    CSnd *PickSound()
+    {
+        if (m_isDisabled)
+            return 0;
+        float r = (float)rand() * 4.656613e-10f;
+        float sum = 0.0f;
+
+        for (int i = 0; i < m_sounds.size(); i++) {
+            sum += m_weights[i];
+            if (sum > r) {
+                m_weights[i] *= m_decay;
+                NormalizeWeights();
+                return m_sounds[i];
+            }
+        }
+        return 0;
+    }
+
+    std::vector<CSnd *> m_sounds;       /* 0x3C */
+    std::vector<float> m_weights;       /* 0x48 */
+    float m_decay;                      /* 0x54 */
+};   /* 0x58 bytes */
+
 /* the instances' pool (SOCOM 1's class, a vector of pointers) */
 class CSndInstanceVec : public std::vector<CSndInstance *> {
 };

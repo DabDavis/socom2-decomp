@@ -6111,7 +6111,7 @@
 0x003408C0 0x2C snd_StopSoundSystem  # OVL1; s1:align
 0x003408F0 0x484 snd_FlushSoundCommands  # OVL1; s1:callee by hand (snd_SendCache tail-calls it in both builds; at SOCOM 1's position between snd_StopSoundSystem and snd_StartSoundSystem; CSnd::WaitForCDRead loops on it as SOCOM 1's does)
 0x00340D80 0x1F0 snd_StartSoundSystem  # OVL1; s1:calls
-0x00340F70 0x1C func_00340F70  # OVL1
+0x00340F70 0x1C SetDialogMode__4CSndFv  # OVL1; SOCOM II's, name ours (CSnd's vtable slot 0x34: the 3-bit field at 0x1D bits 5-7 set to 3, which the constructor sets to 1; CSndGroup's override, 0x347CB0, calls it on every member)
 0x00340F90 0xC func_00340F90  # OVL1
 0x00340FA0 0x68 func_00340FA0  # OVL1
 0x00341010 0x50 func_00341010  # OVL1
@@ -6126,8 +6126,8 @@
 0x003416B0 0x1B0 func_003416B0  # OVL1
 0x00341860 0x70 SetGroupVol__4CSndFif  # OVL1; s1:align
 0x003418D0 0x4C func_003418D0  # OVL1
-0x00341920 0x8 func_00341920  # OVL1
-0x00341930 0x8 func_00341930  # OVL1
+0x00341920 0x8 GetNumSounds__4CSndFv  # OVL1; SOCOM II's, name ours (CSnd's vtable slot 0x30, returning 0; CSndGroup's override, 0x347C70, returns its member count)
+0x00341930 0x8 GetSound__4CSndFUi  # OVL1; SOCOM II's, name ours (CSnd's vtable slot 0x2C, returning 0; CSndGroup's override, 0x347C80, returns its i-th member)
 0x00341940 0x7C WaitForCDRead__4CSndFv  # OVL1; s1:calls
 0x003419C0 0x3C PlayErrorSound__4CSndFv  # OVL1; s1:align
 0x00341A00 0x14 func_00341A00  # OVL1
@@ -6230,9 +6230,9 @@
 0x00347AA0 0x78 __dt__15CSndInstanceVecFv  # OVL1; s1:align
 0x00347B20 0x80 __dt__Q23std56list<P12CSndInstance,Q23std26allocator<P12CSndInstance>>Fv  # OVL1; s1:align
 0x00347BA0 0xC8 __dt__9CSndGroupFv  # OVL1; s1:align
-0x00347C70 0x8 func_00347C70  # OVL1
-0x00347C80 0x30 func_00347C80  # OVL1
-0x00347CB0 0x8C func_00347CB0  # OVL1
+0x00347C70 0x8 GetNumSounds__9CSndGroupFv  # OVL1; SOCOM II's, name ours (CSndGroup's vtable slot 0x30: the member vector's size)
+0x00347C80 0x30 GetSound__9CSndGroupFUi  # OVL1; SOCOM II's, name ours (CSndGroup's vtable slot 0x2C: the member vector's i-th, 0 past its size)
+0x00347CB0 0x8C SetDialogMode__9CSndGroupFv  # OVL1; SOCOM II's, name ours (CSndGroup's vtable slot 0x34: the slot called on each member)
 0x00347D40 0x1B8 NormalizeWeights__9CSndGroupFv  # OVL1; s1:align
 0x00347F00 0x224 LoadCSndGroup__9CSndGroupFP5_zrdr  # OVL1; s1:align
 0x00348130 0x134 func_00348130  # OVL1

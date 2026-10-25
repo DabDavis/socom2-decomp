@@ -267,6 +267,22 @@ class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, all
     }
 };
 
+/* A vector of floats runs on __vector_pod<unsigned int> too, as the pointer vectors do: SOCOM 1's
+ * CSndGroup reads its weights through that data() and SOCOM II's LoadCSndGroup pushes them with its
+ * insert (0x1FE340); the destructor is three this-tested levels (0x348270), no size cleared.
+ * An element is read through data()'s reference, which keeps MW from hoisting the storage out of
+ * a loop that stores to an element (the group's weighted pick) */
+template <class Allocator>
+class __vector_imp<float, Allocator, true> : public __vector_pod<unsigned int, allocator<unsigned int> > {
+    typedef __vector_pod<unsigned int, allocator<unsigned int> > __base;
+
+public:
+    unsigned int size() const { return this->size_; }
+    unsigned int capacity() const { return this->capacity_; }
+    float &operator[](unsigned int n) { return ((float *)__base::data())[n]; }
+    void push_back(const float &x) { __base::push_back((const unsigned int &)x); }
+};
+
 /* the bounds-checked element reads, out of line (a template member defined outside its class is
  * never auto-inlined here): each unit that calls one emits its copy, with its own message */
 template <class T, class Allocator>
@@ -381,6 +397,10 @@ template <class T, class Allocator = allocator<T> >
 class vector : public __vector_imp<T, Allocator, false> {
 public:
     void clear() { __vector_imp<T, Allocator, false>::clear(); }
+};
+
+template <class Allocator>
+class vector<float, Allocator> : public __vector_imp<float, Allocator, true> {
 };
 
 template <class T, class Allocator>
