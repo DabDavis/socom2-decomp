@@ -1,4 +1,5 @@
-/* <memory>: the part of MSL's std::allocator the matched functions need (its name). */
+/* <memory>: the part of MSL's std::allocator the matched functions need (its name, and the default
+ * constructor <deque> builds its empty allocator bases with). */
 
 #ifndef _MSL_MEMORY
 #define _MSL_MEMORY
@@ -7,7 +8,18 @@ namespace std {
 
 template <class T>
 class allocator {
+public:
+    /* defined after the class, so -- a template member out of its class -- never inlined into a
+     * unit's own functions: the deque's constructor calls SOCOM II's 0x2CEE30 (`jr ra; move v0,a0`)
+     * for its allocator base, as do the deque and cdeque copy constructors of four other units.
+     * No-throw: the deque's constructor references no cleanup of the base built before it */
+    allocator() throw();
 };
+
+template <class T>
+allocator<T>::allocator() throw()
+{
+}
 
 }
 

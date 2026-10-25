@@ -1,53 +1,14 @@
-/* game_state.cpp -- the game's states: CGame's tick, its state stack and the commands that change
- * it, kept in a pool (the file name SOCOM 1's: its static initialiser builds the pool, m_pool, and
- * registers ~CPool, as SOCOM II's 0x401BD0 does -- after game_main.cpp's, which only sets
- * OurGameName). OVL1 0x2CE930-0x2D032F, NetTickThreadEntry to the pool's destructor (SOCOM 1's
- * order; the engine's start and stop follow, game_engine.cpp's), before graph_tree.cpp. Only some
- * of it so far. Defined in reverse of their image order (-inline deferred). */
+/* game_state.cpp -- the commands that change the game's state stack (CGame's Pop, Push, Switch and
+ * PopTo queue them; CGame::Tick in game_main.cpp carries them out), kept in a pool (the file name
+ * SOCOM 1's: its static initialiser builds the pool, m_pool, and registers ~CPool, as SOCOM II's
+ * 0x401BD0 does -- after game_main.cpp's, which only sets OurGameName). OVL1 0x2CF1D0-0x2D032F,
+ * PopTo to the pool's destructor (SOCOM 1's order; the engine's start and stop follow,
+ * game_engine.cpp's), before graph_tree.cpp; the deque's push_back (0x2CF970) is this unit's, in its
+ * tail among the pool's vector pieces. Only some of it so far. Defined in reverse of their image
+ * order (-inline deferred). */
 
-#include <vector>
-
-class CGameState;
-
-/* a change of state waiting in the game's queue: what to do, to which state, with what -- kept
- * in a pool (m_pool) and newed only when the pool runs dry */
-class CGameStateChangeCmd {
-public:
-    /* the bools stored through parameters: MW computes `b & 1` for each bit even when the
-     * argument is a constant (Release, the constructor, resize's default element) */
-    CGameStateChangeCmd(unsigned int cmd = 0, CGameState *state = 0, unsigned int arg = 0,
-                        bool pooled = false, bool inuse = false)
-    {
-        m_pooled = pooled;
-        m_inuse = inuse;
-        m_cmd = cmd;
-        m_state = state;
-        m_arg = arg;
-    }
-    /* user-declared (SOCOM 1 links an out-of-line copy): Release's delete keeps its null test,
-     * which a trivial destructor lets MW fold into the test before it */
-    ~CGameStateChangeCmd() {}
-    void Set(unsigned int cmd, CGameState *state, unsigned int arg, bool inuse)
-    {
-        m_cmd = cmd;
-        m_state = state;
-        m_arg = arg;
-        m_inuse = inuse;
-    }
-
-    static void DestroyPool();
-    static void CreatePool(unsigned int n);
-    static void Release(CGameStateChangeCmd *cmd);
-    static CGameStateChangeCmd *Acquire(unsigned int cmd, CGameState *state, unsigned int arg);
-
-    CGameState *m_state;   // 0x0
-    unsigned int m_arg;   // 0x4
-    unsigned char m_cmd;   // 0x8
-    bool m_pooled : 1;   // 0x9, bit 0: one of the pool's
-    bool m_inuse : 1;   // 0x9, bit 1: handed out
-};   // 0xc bytes
-
-typedef std::vector<CGameStateChangeCmd> CGameStateChangeCmdVector;
+#include "zgame.h"
+#include "../zsys/zsys.h"
 
 /* the pool (SOCOM 1's global m_pool, a CPool: its destructor's name) */
 class CPool : public CGameStateChangeCmdVector {
@@ -87,4 +48,85 @@ void CGameStateChangeCmd::Release(CGameStateChangeCmd *cmd)
         else
             delete cmd;
     }
+}
+
+/* the pool emptied and its storage freed (OVL1 0x2CF4C0): FreeVector on the base vector, its four
+ * pieces called out of line (the temporary's constructor 0x2CF5C0, clear 0x2CF5B0, swap 0x2CF570,
+ * the temporary's destructor 0x2CF510) */
+void CGameStateChangeCmd::DestroyPool()
+{
+    FreeVector<CGameStateChangeCmdVector>(m_pool);
+}
+
+/* the top state replaced: the switch queued, the old state told it is going and the new one to get
+ * ready; the old one given back (OVL1 0x2CF410, SOCOM 1's) */
+CGameState *CGame::Switch(CGameState *state, unsigned int arg)
+{
+    if (!state)
+        return 0;
+    CGameState *cur = GetCurrentState();
+
+    m_StateChangeQueue.push_back(CGameStateChangeCmd::Acquire(CGameStateChangeCmd::SWITCH, state, arg));
+    if (cur)
+        cur->PreUnInit();
+    state->PreInit();
+    return cur;
+}
+
+/* a state pushed on the stack: the push queued, the state told to get ready; the state that was on
+ * top given back (OVL1 0x2CF380, SOCOM 1's) */
+CGameState *CGame::Push(CGameState *state, unsigned int arg)
+{
+    if (!state)
+        return 0;
+    CGameState *cur = GetCurrentState();
+
+    m_StateChangeQueue.push_back(CGameStateChangeCmd::Acquire(CGameStateChangeCmd::PUSH, state, arg));
+    state->PreInit();
+    return cur;
+}
+
+/* the top state popped: the pop queued, the state told it is going (OVL1 0x2CF2F0, SOCOM 1's
+ * CGame::Pop -- spelled as its placeholder while 0x2EAB80 carries the name, see zgame.h. Pinned:
+ * PopTo calls it, where SOCOM 1's inlined it) */
+#pragma auto_inline off
+extern "C" CGameState *func_002CF2F0(CGame *game, unsigned int arg)
+{
+    CGameState *cur = game->GetCurrentState();
+
+    game->m_StateChangeQueue.push_back(CGameStateChangeCmd::Acquire(CGameStateChangeCmd::POP, 0, arg));
+    if (cur)
+        cur->PreUnInit();
+    return cur;
+}
+#pragma auto_inline reset
+
+/* pops queued down to a state, the state given back -- none when it is already on top; with no
+ * state, down to the bottom one (OVL1 0x2CF1D0, SOCOM 1's, its Pop now a call) */
+CGameState *CGame::PopTo(CGameState *state, unsigned int arg)
+{
+    if (state) {
+        /* i declared ahead of top: top takes s1, i s2, as the target's */
+        unsigned int i;
+        unsigned int top = m_CurrentState;
+
+        i = top;
+        for (;;) {
+            if (m_Stack[i] == state)
+                break;
+            i--;
+        }
+        if (i < top) {
+            for (; i < top; top--) {
+                if (m_Stack[top] == state)
+                    break;
+                Pop(arg);
+            }
+            return m_Stack[top];
+        }
+        return 0;
+    }
+    for (unsigned int n = m_CurrentState; n; n--)
+        Pop(arg);
+    return m_Stack[0];
 }

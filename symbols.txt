@@ -1497,7 +1497,7 @@
 0x001ED000 0x8 func_001ED000  # OVL1
 0x001ED010 0x54C Tick__15CCinematicStateFf  # OVL1; s1:vtable (CCinematicState's Tick slot)
 0x001ED560 0x4F4 Init__15CCinematicStateFv  # OVL1; s1:vtable (CCinematicState's Init slot)
-0x001EDA60 0x408 func_001EDA60  # OVL1
+0x001EDA60 0x408 func_001EDA60  # OVL1; s1~ SetMovie__15CCinematicStateFPCc (the UI-commands lane's lead: SOCOM 1's paired handler calls SetMovie from the same place, but SOCOM II's takes three arguments after this -- (name, 0, 0) at that call -- so SOCOM 1's signature does not carry; the states lane)
 0x001EDE70 0x18 func_001EDE70  # OVL1
 0x001EDE90 0xC func_001EDE90  # OVL1
 0x001EDEA0 0x1C func_001EDEA0  # OVL1
@@ -3834,7 +3834,7 @@
 0x002A9A70 0xC0 func_002A9A70  # OVL1
 0x002A9B30 0x3AC func_002A9B30  # OVL1
 0x002A9EE0 0x8 func_002A9EE0  # OVL1
-0x002A9EF0 0x8 func_002A9EF0  # OVL1
+0x002A9EF0 0x8 DestroyNetGame__8CMissionFv  # OVL1; s1:ref by hand (the UI-commands lane's lead, vetted by the states lane: SOCOM 1's paired UI handler calls DestroyNetGame__8CMissionFv from the same place; SOCOM II's is SOCOM 1's 8 bytes, the online game at 0x1808 (fts_state.h's m_netGame) handed to 0x2A75F0 as a tail call)
 0x002A9F00 0x2C CreateNetGame__8CMissionFv  # OVL1; s1:align
 0x002A9F30 0x558 func_002A9F30  # OVL1
 0x002AA490 0x3F8 Tick__8CMissionFf  # OVL1; s1:align
@@ -4020,7 +4020,7 @@
 0x002B7EE0 0x218 func_002B7EE0  # OVL1
 0x002B8100 0x284 func_002B8100  # OVL1
 0x002B8390 0x44 DMEDisconnectFromGameServer__Fv  # OVL1; s1:align
-0x002B83E0 0x19C func_002B83E0  # OVL1
+0x002B83E0 0x19C DMEJoinGameServer__Fv  # OVL1; s1:ref by hand (the UI-commands lane's lead, vetted by the states lane: SOCOM 1's paired UI handler calls DMEJoinGameServer__Fv from the same place; no argument read at entry -- SOCOM II's body grew, 0x19C against 0xA8)
 0x002B8580 0x40 DMEConnectToGameServer__Fv  # OVL1; s1:align
 0x002B85C0 0x9C func_002B85C0  # OVL1
 0x002B8660 0xAE4 func_002B8660  # OVL1
@@ -4197,7 +4197,7 @@
 0x002C5A10 0x278 zNetRegisterPersona__14CZPersonaStateFv  # OVL1; s1:order by hand (the states lane: the persona unit's last function as in SOCOM 1; registers the four persona callbacks under 0x4413E0, SOCOM 1's m_NetStructIndexPersonaObject)
 0x002C5C90 0x80 func_002C5C90  # OVL1
 0x002C5D10 0x44 func_002C5D10  # OVL1
-0x002C5D60 0x110 func_002C5D60  # OVL1
+0x002C5D60 0x110 SelectConfig__13CCtrlrConfigsFPCc  # OVL1; s1:ref by hand (the UI-commands lane's lead, vetted by the states lane: SOCOM 1's paired UI handler calls it from the same place; the name strcasecmp'd against each config's string as SOCOM 1's (a0, a const char *), the match stored as the current config -- SOCOM II's then updates the pad's settings)
 0x002C5E70 0x174 func_002C5E70  # OVL1
 0x002C5FF0 0x34 func_002C5FF0  # OVL1
 0x002C6030 0xC func_002C6030  # OVL1
@@ -4370,31 +4370,31 @@
 0x002CE9E0 0x32C Tick__5CGameFf  # OVL1; s1:align
 0x002CED10 0x80 __dt__5CGameFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002CED90 0x68 __ct__5CGameFv  # OVL1; s1:vtable by hand (the states lane: stores CGame's vtable 0x4065C0, RTTI-named; COurGame's constructor calls it for its base)
-0x002CEE00 0x30 func_002CEE00  # OVL1
-0x002CEE30 0x8 func_002CEE30  # OVL1
-0x002CEE40 0x30 func_002CEE40  # OVL1
-0x002CEE70 0x18 func_002CEE70  # OVL1
-0x002CEE90 0x70 func_002CEE90  # OVL1
-0x002CEF00 0xA8 func_002CEF00  # OVL1
-0x002CEFB0 0x138 func_002CEFB0  # OVL1
-0x002CF0F0 0x30 func_002CF0F0  # OVL1
-0x002CF120 0xA8 func_002CF120  # OVL1
-0x002CF1D0 0x114 func_002CF1D0  # OVL1
+0x002CEE00 0x30 __ct__Q23std39__deque_imp<PCv,Q23std14allocator<PCv>>Fv  # OVL1; by hand (the states lane: game_main.cpp's tail, include/deque -- the queue's deque<PCv> built: its blocks' owner 0x2CEE40, then the allocator base at +0x18 0x2CEE30; CGame's constructor calls it on m_StateChangeQueue; byte-exact; the class name ours)
+0x002CEE30 0x8 __ct__Q23std14allocator<PCv>Fv  # OVL1; by hand (the states lane: include/memory -- the allocator's empty constructor, out of class, called for the deque's allocator base at +0x18 and by the deque and cdeque copy constructors of four other units at +0x18/+0x10; byte-exact)
+0x002CEE40 0x30 __ct__Q23std39__deque_buf<PCv,Q23std14allocator<PCv>>Fv  # OVL1; by hand (the states lane: include/deque -- the blocks' owner built: the buffer's storage 0x2CEE70 called, start_ and size_ at 0x10/0x14 cleared; byte-exact; the class name ours)
+0x002CEE70 0x18 __ct__Q210Metrowerks40__cdeque_buf<PCv,Q23std14allocator<PCv>>Fv  # OVL1; by hand (the states lane: include/deque -- the circular buffer's capacity, size, start and data cleared, SOCOM 1's cdeque layout; byte-exact; the class name ours)
+0x002CEE90 0x70 __dt__Q210Metrowerks36cdeque<PPCv,Q23std15allocator<PPCv>>Fv  # OVL1; by hand (the states lane: include/deque -- SOCOM 1's name: the block buffer's implicit destructor, three this-tested levels, the data freed; emitted for __deque_buf's constructor; byte-exact)
+0x002CEF00 0xA8 pop_front__Q23std39__deque_imp<PCv,Q23std14allocator<PCv>>Fv  # OVL1; by hand (the states lane: include/deque -- SOCOM 1's deque<PCv>::pop_front in role: clear() when it held one, else the start advanced and blocks wholly before it freed through cdeque::pop_front 0x2CF0F0; CGame::Tick calls it; byte-exact)
+0x002CEFB0 0x138 __dt__Q23std39__deque_buf<PCv,Q23std14allocator<PCv>>Fv  # OVL1; by hand (the states lane: include/deque -- the blocks freed walking the buffer, then the buffer's storage; ~CGame and the std::stack holder 0x333A20 call it with 0 after four inlined levels; OPEN in game_main.cpp; the class name ours)
+0x002CF0F0 0x30 pop_front__Q210Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>Fv  # OVL1; by hand (the states lane: include/deque -- SOCOM 1's name: the size dropped, the start wrapped at the capacity; byte-exact)
+0x002CF120 0xA8 clear__Q23std39__deque_imp<PCv,Q23std14allocator<PCv>>Fv  # OVL1; by hand (the states lane: include/deque -- size_ cleared, all but two blocks freed, the start mid-block (64); deque::pop_front calls it)
+0x002CF1D0 0x114 PopTo__5CGameFP10CGameStateUi  # OVL1; by hand (the states lane: game_state.cpp -- SOCOM 1's CGame::PopTo, its Pop now called out of line: pops queued down to the given state, or to the bottom when none)
 0x002CF2F0 0x88 func_002CF2F0  # OVL1
-0x002CF380 0x90 func_002CF380  # OVL1
-0x002CF410 0xB0 func_002CF410  # OVL1
+0x002CF380 0x90 Push__5CGameFP10CGameStateUi  # OVL1; by hand (the states lane: game_state.cpp -- SOCOM 1's CGame::Push: Acquire(1, state, arg) queued, the state's PreInit; the UI-commands lane's GameStatePushCommand calls it)
+0x002CF410 0xB0 Switch__5CGameFP10CGameStateUi  # OVL1; by hand (the states lane: game_state.cpp -- SOCOM 1's CGame::Switch: Acquire(2, state, arg) queued, the current state's PreUnInit, the new one's PreInit)
 0x002CF4C0 0x44 DestroyPool__19CGameStateChangeCmdFv  # OVL1; s1:align
 0x002CF510 0x60 __dt__Q23std70vector<19CGameStateChangeCmd,Q23std32allocator<19CGameStateChangeCmd>>Fv  # OVL1; s1:align; by hand (the states lane: not std::swap, the s1:align name -- DestroyPool calls it last, with -1, on the temporary it built with 0x2CF5C0 and swapped with m_pool through 0x2CF570, where SOCOM 1's destroys its temporary; two this-tests, the vector's and __vector_imp's, then the deleter's destructor 0x2CF900 called, as a class vector's implicit destructor chain is)
-0x002CF570 0x40 func_002CF570  # OVL1
-0x002CF5B0 0x8 func_002CF5B0  # OVL1
+0x002CF570 0x40 swap__Q23std80__vector_deleter<19CGameStateChangeCmd,Q23std32allocator<19CGameStateChangeCmd>>FRQ23std80__vector_deleter<19CGameStateChangeCmd,Q23std32allocator<19CGameStateChangeCmd>>  # OVL1; by hand (the states lane: game_state.cpp -- FreeVector's swap in DestroyPool: capacity, data, size traded unless the same; byte-exact)
+0x002CF5B0 0x8 clear__Q23std70vector<19CGameStateChangeCmd,Q23std32allocator<19CGameStateChangeCmd>>Fv  # OVL1; by hand (the states lane: game_state.cpp -- FreeVector's clear in DestroyPool, vector::clear and __vector_imp::clear inlined around a tail call of the deleter's out-of-class clear 0x2CF8F0; byte-exact)
 0x002CF5C0 0x14 __ct__Q23std70vector<19CGameStateChangeCmd,Q23std32allocator<19CGameStateChangeCmd>>Fv  # OVL1; by hand (the states lane: DestroyPool's first call, on its temporary, where SOCOM 1's constructs it -- capacity, size and data zeroed; game_state.cpp's copy is byte-exact)
 0x002CF5E0 0xA4 CreatePool__19CGameStateChangeCmdFUi  # OVL1; s1:align
 0x002CF690 0x64 Release__19CGameStateChangeCmdFP19CGameStateChangeCmd  # OVL1; s1:exact
 0x002CF700 0x120 Acquire__19CGameStateChangeCmdFUiP10CGameStateUi  # OVL1; s1:align
 0x002CF820 0xCC resize__Q23std78__vector_imp<19CGameStateChangeCmd,Q23std32allocator<19CGameStateChangeCmd>,0>FUi  # OVL1; s1:align
-0x002CF8F0 0x8 func_002CF8F0  # OVL1
+0x002CF8F0 0x8 clear__Q23std80__vector_deleter<19CGameStateChangeCmd,Q23std32allocator<19CGameStateChangeCmd>>Fv  # OVL1; by hand (the states lane: game_state.cpp -- the deleter's out-of-class clear, SOCOM 1's clear__Q23std80__vector_deleter<19CGameStateChangeCmd...> at 0x20C360: no destructor loop for this class in SOCOM II's MSL, the size cleared)
 0x002CF900 0x68 __dt__Q23std80__vector_deleter<19CGameStateChangeCmd,Q23std32allocator<19CGameStateChangeCmd>>Fv  # OVL1; s1:align
-0x002CF970 0x290 func_002CF970  # OVL1
+0x002CF970 0x290 push_back__Q23std39__deque_imp<PCv,Q23std14allocator<PCv>>FRCPCv  # OVL1; by hand (the states lane: include/deque -- SOCOM 1's deque<PCv>::push_back in role, its grow_buf_back inlined; "deque::push_back length error"; CGame's Pop/Push/Switch and five other units' pointer deques call it)
 0x002CFC00 0x1D8 func_002CFC00  # OVL1
 0x002CFDE0 0x4C4 insert__Q23std78__vector_imp<19CGameStateChangeCmd,Q23std32allocator<19CGameStateChangeCmd>,0>FP19CGameStateChangeCmdUiRC19CGameStateChangeCmd  # OVL1; s1:align
 0x002D02B0 0x80 __dt__5CPoolFv  # OVL1; s1:align
