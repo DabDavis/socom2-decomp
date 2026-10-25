@@ -285,6 +285,9 @@ public:
     void GetLeaderMessages();
     void DeleteClanMessage(int id);
 
+    void GetLadderInfo();
+    void GetLadderRanking();
+    void GetClanLadderLeaders(int n);
     void GetFriendsList();
     void RemoveFriend(int id);
     void GetFriendInvitations();
