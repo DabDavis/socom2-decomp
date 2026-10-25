@@ -104,6 +104,57 @@ IntersectStruct *DiIntersect::GetNearestIntersect()
     return &m_Intersects[best];
 }
 
+/* every cell of the grid walked: its props with collision (SOCOM II's second clutter list) and
+ * the node itself given their descendants' collision (SOCOM 1's) */
+void CGrid::InitDescendantsDI()
+{
+    CPnt3D box[2];
+
+    box[0].x = m_extents.left;
+    box[1].x = m_extents.right;
+    box[0].z = m_extents.top;
+    box[1].z = m_extents.bottom;
+    SetTraversalBoundary(box, 2, false);
+    for (CGridAtom *atom = StartTraversal(); atom; atom = GetNextAtom()) {
+        CCell *cell = atom->GetCell();
+
+        if (cell) {
+            CClutterList &list = cell->m_clutterListDI;
+
+            if (list.size()) {
+                for (CClutterList::iterator it = list.begin(); it != list.end(); ++it)
+                    (*it)->m_node->SetDescendantDI(true);
+            }
+        }
+        atom->Ent->SetDescendantDI(true);
+    }
+}
+
+/* the same walk for the visuals (SOCOM 1's) */
+void CGrid::InitDescendantsVisuals()
+{
+    CPnt3D box[2];
+
+    box[0].x = m_extents.left;
+    box[1].x = m_extents.right;
+    box[0].z = m_extents.top;
+    box[1].z = m_extents.bottom;
+    SetTraversalBoundary(box, 2, false);
+    for (CGridAtom *atom = StartTraversal(); atom; atom = GetNextAtom()) {
+        CCell *cell = atom->GetCell();
+
+        if (cell) {
+            CClutterList &list = cell->m_clutterListDI;
+
+            if (list.size()) {
+                for (CClutterList::iterator it = list.begin(); it != list.end(); ++it)
+                    (*it)->m_node->SetDescendantVisuals(true);
+            }
+        }
+        atom->Ent->SetDescendantVisuals(true);
+    }
+}
+
 /* the highest hit no more than alt above the point, or none (SOCOM 1's) */
 IntersectStruct *DiIntersect::GetHighestAltitude(const CPnt3D *p, float alt)
 {
