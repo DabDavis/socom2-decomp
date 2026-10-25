@@ -9458,29 +9458,29 @@
 0x00519130 0x118 func_00519130  # OVL2
 0x00519250 0x18 _max<Us>__2aiFRCUsRCUs_RCUs  # OVL2; s1:exact; by hand: MW 3.0 mangles a function template's return type (README), so SOCOM 1's _max<Us>__2aiFRCUsRCUs is this name in SOCOM II; the body is SOCOM 1's (the larger by reference, lhu, signed after promotion)
 0x00519270 0x18 _min<Us>__2aiFRCUsRCUs_RCUs  # OVL2; s1:exact; by hand: MW 3.0 mangles the return type (SOCOM 1's _min<Us>__2aiFRCUsRCUs)
-0x00519290 0x50 func_00519290  # OVL2
+0x00519290 0x50 _saturate<i>__FPiRCiRCi_b  # OVL2; s1:order by hand (the demo's 0x187EE0, right after _min<Us> in both builds; InflateRegion's four clamps call it as SOCOM 1's call _saturate<i>; it returns whether it clamped, as SOCOM II's _saturate<f> does -- MW 3.0 mangles the bool)
 0x005192E0 0x420 func_005192E0  # OVL2; OVL2's copy of the pod vector's insert (OVL1 0x1FE340, the same 0x420 bytes but its two error strings' addresses; the pointer vectors' push_back calls it -- CAiMap's constructor, CCharacterType::Create); ovl-copy: insert__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPUiUiRCUi
 0x00519700 0x9C func_00519700  # OVL2
-0x005197A0 0x68 func_005197A0  # OVL2
-0x00519810 0x68 func_00519810  # OVL2
-0x00519880 0x68 func_00519880  # OVL2
-0x005198F0 0x68 func_005198F0  # OVL2
-0x00519960 0x68 func_00519960  # OVL2
-0x005199D0 0x68 func_005199D0  # OVL2
-0x00519A40 0x68 func_00519A40  # OVL2
-0x00519AB0 0x68 func_00519AB0  # OVL2
-0x00519B20 0x68 func_00519B20  # OVL2
+0x005197A0 0x68 __dt__Q23std66__vector_deleter<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>>Fv  # OVL2; s1:order by hand (the first of nine 0x68 deleter destructors at 0x5197A0-0x519B87, SOCOM 1's nine at 0x187FC0 in the same order: name, action, link, region, spore, line, reader, scanline, route; each calls its own clear, 0x51A2C0-0x51A3C0 in that order, line's and route's the two that destroy elements)
+0x00519810 0x68 __dt__Q23std70__vector_deleter<Q26CAiMap6action,Q23std27allocator<Q26CAiMap6action>>Fv  # OVL2; s1:order by hand (the second of the nine deleter destructors, SOCOM 1's order: see 0x5197A0)
+0x00519880 0x68 __dt__Q23std66__vector_deleter<Q26CAiMap4link,Q23std25allocator<Q26CAiMap4link>>Fv  # OVL2; s1:order by hand (the third of the nine deleter destructors, SOCOM 1's order: see 0x5197A0)
+0x005198F0 0x68 __dt__Q23std70__vector_deleter<Q26CAiMap6region,Q23std27allocator<Q26CAiMap6region>>Fv  # OVL2; s1:order by hand (the fourth of the nine deleter destructors, SOCOM 1's order: see 0x5197A0)
+0x00519960 0x68 __dt__Q23std68__vector_deleter<Q26CAiMap5spore,Q23std26allocator<Q26CAiMap5spore>>Fv  # OVL2; s1:order by hand (the fifth of the nine deleter destructors, SOCOM 1's order: see 0x5197A0)
+0x005199D0 0x68 __dt__Q23std66__vector_deleter<Q26CAiMap4line,Q23std25allocator<Q26CAiMap4line>>Fv  # OVL2; s1:order by hand (the sixth of the nine deleter destructors; it calls 0x51A310, the clear that destroys 16-byte elements' vectors -- line is 0x10)
+0x00519A40 0x68 __dt__Q23std70__vector_deleter<Q26CAiMap6reader,Q23std27allocator<Q26CAiMap6reader>>Fv  # OVL2; s1:order by hand (the seventh of the nine deleter destructors; CAiMap::readers::~readers calls it with 0 after freeing each reader's script)
+0x00519AB0 0x68 __dt__Q23std74__vector_deleter<Q26CAiMap8scanline,Q23std29allocator<Q26CAiMap8scanline>>Fv  # OVL2; s1:order by hand (the eighth of the nine deleter destructors, SOCOM 1's order: see 0x5197A0)
+0x00519B20 0x68 __dt__Q23std68__vector_deleter<Q26CAiMap5route,Q23std26allocator<Q26CAiMap5route>>Fv  # OVL2; s1:order by hand (the ninth of the nine deleter destructors; it calls 0x51A3C0, the clear that destroys 0x24-byte routes' two vectors)
 0x00519B90 0x220 func_00519B90  # OVL2
 0x00519DB0 0x504 func_00519DB0  # OVL2
-0x0051A2C0 0x8 func_0051A2C0  # OVL2
-0x0051A2D0 0x8 func_0051A2D0  # OVL2
-0x0051A2E0 0x8 func_0051A2E0  # OVL2
-0x0051A2F0 0x8 func_0051A2F0  # OVL2
-0x0051A300 0x8 func_0051A300  # OVL2
-0x0051A310 0x8C func_0051A310  # OVL2
-0x0051A3A0 0x8 func_0051A3A0  # OVL2
-0x0051A3B0 0x8 func_0051A3B0  # OVL2
-0x0051A3C0 0xC4 func_0051A3C0  # OVL2
+0x0051A2C0 0x8 clear__Q23std66__vector_deleter<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>>Fv  # OVL2; s1:order by hand (the first of the nine deleter clears 0x51A2C0-0x51A3C0, SOCOM 1's nine at 0x188A20 in the same order; name's deleter destructor 0x5197A0 calls it)
+0x0051A2D0 0x8 clear__Q23std70__vector_deleter<Q26CAiMap6action,Q23std27allocator<Q26CAiMap6action>>Fv  # OVL2; s1:order by hand (the second deleter clear; action's deleter destructor 0x519810 calls it)
+0x0051A2E0 0x8 clear__Q23std66__vector_deleter<Q26CAiMap4link,Q23std25allocator<Q26CAiMap4link>>Fv  # OVL2; s1:order by hand (the third deleter clear; link's deleter destructor 0x519880 calls it)
+0x0051A2F0 0x8 clear__Q23std70__vector_deleter<Q26CAiMap6region,Q23std27allocator<Q26CAiMap6region>>Fv  # OVL2; s1:order by hand (the fourth deleter clear; region's deleter destructor 0x5198F0 calls it)
+0x0051A300 0x8 clear__Q23std68__vector_deleter<Q26CAiMap5spore,Q23std26allocator<Q26CAiMap5spore>>Fv  # OVL2; s1:order by hand (the fifth deleter clear; spore's deleter destructor 0x519960 calls it)
+0x0051A310 0x8C clear__Q23std66__vector_deleter<Q26CAiMap4line,Q23std25allocator<Q26CAiMap4line>>Fv  # OVL2; s1:order by hand (the sixth deleter clear, the 16-byte lines' vectors destroyed; line's deleter destructor 0x5199D0 calls it)
+0x0051A3A0 0x8 clear__Q23std70__vector_deleter<Q26CAiMap6reader,Q23std27allocator<Q26CAiMap6reader>>Fv  # OVL2; s1:order by hand (the seventh deleter clear; reader's deleter destructor 0x519A40 calls it)
+0x0051A3B0 0x8 clear__Q23std74__vector_deleter<Q26CAiMap8scanline,Q23std29allocator<Q26CAiMap8scanline>>Fv  # OVL2; s1:order by hand (the eighth deleter clear; scanline's deleter destructor 0x519AB0 calls it)
+0x0051A3C0 0xC4 clear__Q23std68__vector_deleter<Q26CAiMap5route,Q23std26allocator<Q26CAiMap5route>>Fv  # OVL2; s1:order by hand (the ninth deleter clear, each 0x24-byte route's two vectors destroyed; route's deleter destructor 0x519B20 calls it)
 0x0051A490 0x238 func_0051A490  # OVL2
 0x0051A6D0 0x238 func_0051A6D0  # OVL2
 0x0051A910 0x238 func_0051A910  # OVL2
@@ -9671,7 +9671,7 @@
 0x0052EB60 0x38 func_0052EB60  # OVL2; OVL2's copy of _close_enough<f> (OVL1 0x28F1E0, the same 0x38 bytes word for word; ai_maps.cpp's template tail after _max<Ui>, as SOCOM 1's 0x19D950 follows _max<Ui> at 0x19D930; CSealCtrlAi::Tick and 57 other OVL2 call sites call it); ovl-copy: _close_enough<f>__FRCfRCfRCf_b
 0x0052EBA0 0xB4 func_0052EBA0  # OVL2
 0x0052EC60 0x240 func_0052EC60  # OVL2
-0x0052EEA0 0x3C func_0052EEA0  # OVL2
+0x0052EEA0 0x3C DestroyGraph__6CAiMapFv  # OVL2; s1:order by hand (the demo's 0x19DCA0, the first of SOCOM 1's map-table stretch as this is of SOCOM II's: the same 0x3C -- CGraph::Destroy(m_graph), m_graph = 0, bit 0 of m_flags cleared)
 0x0052EEE0 0x410 func_0052EEE0  # OVL2
 0x0052F2F0 0x18 func_0052F2F0  # OVL2
 0x0052F310 0x18 func_0052F310  # OVL2
@@ -9692,11 +9692,11 @@
 0x0052FD90 0xD0 func_0052FD90  # OVL2
 0x0052FE60 0xE0 func_0052FE60  # OVL2
 0x0052FF40 0x78 GetCenter__Q26CAiMap6regionCFR9CAiMapLoc  # OVL2; s1:exact
-0x0052FFC0 0xD4 func_0052FFC0  # OVL2
-0x005300A0 0x190 func_005300A0  # OVL2
-0x00530230 0x140 func_00530230  # OVL2
-0x00530370 0xD4 func_00530370  # OVL2
-0x00530450 0xB0 func_00530450  # OVL2
+0x0052FFC0 0xD4 Union__Q26CAiMap6regionFRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19E710, after GetCenter in both builds: how far the cell lies outside the rectangle on each side, then InflateRegion(l, t, r, b, 0) when it does)
+0x005300A0 0x190 InflateRegion__Q26CAiMap6regionFiiiiPC6CAiMap  # OVL2; s1:order by hand (the demo's 0x19E7E0, after Union in both builds: the corner and size clamped by four _saturate<int> calls to 0x1FFF or the map's m_nx - 1 / m_ny - 1)
+0x00530230 0x140 GetRegionContaining__6CAiMapFRC9CAiMapLocQ36CAiMap6region4TYPEb  # OVL2; s1:order by hand (the demo's 0x19E970 after InflateRegion: the regions walked, hidden ones skipped on the bool, type 7 or the region's own, the cell inside)
+0x00530370 0xD4 GetRegion__6CAiMapFPCcR9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19EA90: strcasecmp against each region's name at +0xC, the corner copied out)
+0x00530450 0xB0 GetRegion__6CAiMapFRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19EB30: the region whose corner is the cell)
 0x00530500 0x1E4 func_00530500  # OVL2
 0x005306F0 0xB0 func_005306F0  # OVL2
 0x005307A0 0x1E0 func_005307A0  # OVL2

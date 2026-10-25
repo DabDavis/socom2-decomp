@@ -7,6 +7,7 @@
 #define AI_H
 
 #include <list>
+#include <vector>
 
 #include "../gamez/zmath/zmath.h"
 #include "../gamez/zentity/zentity.h"
@@ -205,12 +206,118 @@ public:
     short m_astar_g;   // 0x6
 };
 
+class CRdrFile;
+int zrdr_free(CRdrFile *file);
+
+/* the AI maps' graph (graph_tree.cpp's CGraph; only what the maps call) */
+class CGraph {
+public:
+    static void Destroy(CGraph *graph);
+};
+
+/* two cells are the same cell when x and y agree, the map aside: an inline bool, which the
+ * walks materialise (x's test, then y's into the same register) before they branch -- SOCOM 1's
+ * code alike. A free function here, CAiMapLoc being the entity lane's (zentity.h) */
+inline bool operator==(const CAiMapLoc &a, const CAiMapLoc &b)
+{
+    return a.x == b.x && a.y == b.y;
+}
+
+/* a run of cells (SOCOM 1's DWARF: a vector of CAiMapLoc and nothing more) */
+class CAiMapLocVec : public std::vector<CAiMapLoc> {
+};
+
 /* an AI map (SOCOM 1's DWARF: CAiMap : AIMAP_PARAMS, 0x12C bytes; SOCOM II's tables sit 0x34
  * further on -- the routes at 0x140, the scanlines at 0x14C, the graph at 0x15C). Only what the
  * code written so far reads */
 class CAiMap {
 public:
     enum DIR { N = 0, NE = 1, E = 2, SE = 3, S = 4, SW = 5, W = 6, NW = 7, DIR_COUNT = 8 };
+
+    /* a named cell (SOCOM 1's DWARF, 0x18 bytes) */
+    class name {
+    public:
+        CAiMapLoc m_loc;   // 0x0
+        float m_altitude;   // 0x4
+        char m_name[15];   // 0x8
+        unsigned char m_type;   // 0x17
+    };
+    class names : public std::vector<name> {
+    };
+
+    /* a cell linked to another (SOCOM 1's DWARF, 8 bytes) */
+    class link {
+    public:
+        CAiMapLoc m_loc;   // 0x0
+        CAiMapLoc m_link;   // 0x4
+    };
+    class links : public std::vector<link> {
+    };
+
+    /* a rectangle of cells, named and typed (SOCOM 1's DWARF, 0x1C bytes) */
+    class region {
+    public:
+        /* the kinds (seven; 7 asks for any -- GetRegionContaining's test; the names ours) */
+        enum TYPE { ANY = 7 };
+
+        CAiMapLoc &GetCenter(CAiMapLoc &loc) const;
+        void Union(const CAiMapLoc &loc);
+        void InflateRegion(int left, int top, int right, int bottom, const CAiMap *map);
+        /* SOCOM 1's Contains, out of line there (0x19E020) and inlined here: the same map, and
+         * the cell inside the rectangle -- each test materialised */
+        bool Contains(const CAiMapLoc &loc) const
+        {
+            bool in = false;
+
+            if (loc.m_mapid == m_loc.m_mapid) {
+                int dx = loc.x - m_loc.x;
+                int dy = loc.y - m_loc.y;
+
+                in = dx >= 0 && dx < (int)m_dx && dy >= 0 && dy < (int)m_dy;
+            }
+            return in;
+        }
+        /* whether the line map shows it (the name ours; materialised where it is tested) */
+        bool IsDisplayed() const { return !m_nodisplay; }
+
+        CAiMapLoc m_loc;   // 0x0
+        unsigned int m_dx : 16;   // 0x4
+        unsigned int m_dy : 16;
+        unsigned int m_type : 5;   // 0x8
+        unsigned int m_nodisplay : 1;
+        unsigned int m_flags : 16;
+        unsigned int m_unused : 10;
+        char m_name[16];   // 0xc
+    };
+    class regions : public std::vector<region> {
+    };
+
+    /* a cell an AI reads a script from (SOCOM 1's DWARF, 0x10 bytes) */
+    class reader {
+    public:
+        /* the old script freed and the new one kept (SOCOM 1's; inlined into ~readers) */
+        void SetReader(CRdrFile *r);
+
+        CAiMapLoc m_loc;   // 0x0
+        CRdrFile *m_reader;   // 0x4
+        unsigned int m_flags;   // 0x8
+        unsigned int m_bytes;   // 0xc
+    };
+    class readers : public std::vector<reader> {
+    public:
+        ~readers();
+    };
+
+    /* a way between two regions (SOCOM 1's DWARF, 0x24 bytes) */
+    class route {
+    public:
+        unsigned int m_flags;   // 0x0
+        CAiMapLoc m_region[2];   // 0x4
+        CAiMapLocVec m_waypts;   // 0xc
+        CAiMapLocVec m_path;   // 0x18
+    };
+    class routes : public std::vector<route> {
+    };
 
     /* a cell's action: a door, a ladder, a switch (SOCOM 1's DWARF, 0x28 bytes; SOCOM II reads
      * the same bits) */
@@ -232,7 +339,13 @@ public:
         CAiMapLoc m_locEx[6];   // 0xc
         CAiMapLoc m_region;   // 0x24
     };
+    class actions : public std::vector<action> {
+    };
 
+    void DestroyGraph();
+    region *GetRegion(const char *name, CAiMapLoc &loc);
+    region *GetRegion(const CAiMapLoc &loc);
+    region *GetRegionContaining(const CAiMapLoc &loc, region::TYPE type, bool displayed);
     action *GetCellAction(const CAiMapLoc &loc);
     char *GetMapEx(const CAiMapLoc &loc);
     void FreeEx();
@@ -267,10 +380,17 @@ public:
     char *m_mapex;   // 0xe0: SOCOM 1's 0xac
     void *m_maps;   // 0xe4: the constructor's argument
     float m_alt_quant;   // 0xe8: SOCOM 1's 0xb4
-    unsigned char m_tables[0x6c];   // 0xec: names, actions, links, regions, spores, lines, readers,
-                                    //       routes (0x140), scanlines (0x14c)
+    names m_namesTable;   // 0xec
+    actions m_actionTable;   // 0xf8
+    links m_linksTable;   // 0x104
+    regions m_regionTable;   // 0x110
+    unsigned char m_sporeTable[0xc];   // 0x11c: spores, not laid out yet
+    unsigned char m_lineTable[0xc];   // 0x128: lines, not laid out yet
+    readers m_readerTable;   // 0x134
+    routes m_routeTable;   // 0x140
+    unsigned char m_scanlines[0xc];   // 0x14c: scanlines, not laid out yet
     void *m_overlay;   // 0x158
-    void *m_graph;   // 0x15c
+    CGraph *m_graph;   // 0x15c
 };
 
 /* a planned path (SOCOM 1's DWARF, 0x9C bytes; SOCOM II's members from the search limit on sit
