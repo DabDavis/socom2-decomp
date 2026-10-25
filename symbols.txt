@@ -3399,7 +3399,7 @@
 0x002892B0 0xC zBoneArchive__Fv  # OVL1; ours (bone_init.cpp: &boneArchive (0x415D40))
 0x002892C0 0xC zBoneSetCurArchive__FP14CScriptArchive  # OVL1; ours (bone_init.cpp: curArchive (0x415F70) set; the SEAL's 0x58C600 calls it)
 0x002892D0 0x20 zBoneCurArchive__Fv  # OVL1; ours (bone_init.cpp: curArchive, the common archive when none)
-0x002892F0 0x14 func_002892F0  # OVL1
+0x002892F0 0x14 __ct__22CZBodyAnimCallbackListFv  # OVL1; by hand, the MSL headers round 4 (the callback list's implicit constructor, its vector's three words zeroed: bone_init.cpp's initialiser calls it for each archive's +0xD4 once CScriptArchive's constructor is cut to one level -- the pointer vector constructor's inline cost, include/vector)
 0x00289310 0x70 __dt__Q23std70vector<P18CZBodyAnimCallback,Q23std32allocator<P18CZBodyAnimCallback>>Fv  # OVL1; by hand (CZBodyAnimCallbackList::Clear's FreeVector destroys its temporary with this copy, bone_init.cpp's -- the linker kept the earlier unit's instance)
 0x00289380 0xE8 Read__10CZSIObjectFPUcUiPCc  # OVL1; s1:align by hand (0.68 to SOCOM 1's Read of a buffer, the unit's first function as there: the flags word's 0x20/0x10 bits make the track constant, positions then rotations laid over the buffer -- three shorts and four shorts a frame where SOCOM 1 read floats)
 0x00289470 0xF8 GetRotFast__10CZSIObjectFiifP5CQuat  # OVL1; s1:order by hand (SOCOM 1's GetRotFast(int, int, float, CQuat *), the unit's second function as there: the nearer frame's rotation by t < 0.5 -- SOCOM II's four 1.15 shorts through vitof15 -- returned)

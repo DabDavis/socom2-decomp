@@ -206,7 +206,22 @@ __vector_deleter<T, Allocator>::~__vector_deleter()
 template <class T, class Allocator>
 class __vector_pod {
 public:
-    __vector_pod() { capacity_ = 0; size_ = 0; data_ = 0; }
+    /* the three words cleared, the zero held in a local first: the same three stores, but more
+     * inline units than three plain ones (the MSL headers' round 4) -- SOCOM II's pointer vector
+     * constructor is fatter than its level shows (SOCOM 1's pod builds its capacity as a compressed
+     * pair), enough to push CScriptArchive's constructor (four pointer vectors, the callback
+     * list's, a ZAR) past inline_max_size, so bone_init.cpp's initialiser inlines it one level and
+     * calls the members' constructors out of line (0x3FFCE0), while CHUD's, CCell's and CVisual's
+     * constructors and __sinit_compass.cpp still inline theirs whole. A level more instead (the
+     * stores in a helper) cuts those four too */
+    __vector_pod()
+    {
+        unsigned int z = 0;
+
+        capacity_ = z;
+        size_ = z;
+        data_ = 0;
+    }
     /* n copies of value: the words zeroed, then init (CVisual's m_lodMesh(0): init called out of line) */
     __vector_pod(unsigned int n, const T &value) { capacity_ = 0; size_ = 0; data_ = 0; init(n, value); }
     __vector_pod(const __vector_pod &x);
