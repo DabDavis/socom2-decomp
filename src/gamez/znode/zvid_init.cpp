@@ -133,6 +133,34 @@ extern CValve *lodLevel;
 /* an address through the EE's uncached mirror */
 #define UNCACHED(p) ((unsigned int)(p) | 0x20000000)
 
+/* the last sixteen frames' times, a ring, and the newest's place in it (new in SOCOM II, not
+ * named) */
+extern float data_004A4560[16];
+extern int data_004A45A0;
+
+/* the mean of the last n frames' times: all sixteen in order, or n back from the newest (new in
+ * SOCOM II, not named). OPEN, 17 instructions, the same size: the unrolled walk's index and its
+ * bound (n - 8) trade v1 and a1; the single exit gave the sum $f0 and declaring i first its a2 (the
+ * index declared before i, at the top, unsigned, a while loop: no better) */
+extern "C" float func_003B1BF0(unsigned int n)
+{
+    float sum = 0.0f;
+
+    if (n == 16) {
+        for (unsigned int i = 0; i < 16; i++)
+            sum += data_004A4560[i];
+        sum /= 16.0f;
+    } else {
+        unsigned int i;
+        int idx = data_004A45A0;
+
+        for (i = 0; i < n; i++)
+            sum += data_004A4560[idx--];
+        sum /= n;
+    }
+    return sum;
+}
+
 /* the EE kernel's (eekernel.h) */
 struct ThreadParam {
     int status;
@@ -442,6 +470,60 @@ extern "C" void func_003B09E0(unsigned int x, unsigned int y, unsigned int w, un
 extern "C" void func_003B0A70(ZVID_RECT *r)
 {
     func_003B09E0(r->x, r->y, r->w, r->h);
+}
+
+/* the GS's FRAME register (Sony's sceGsFrame) */
+struct sceGsFrame {
+    unsigned long FBP : 9;
+    unsigned long pad09 : 7;
+    unsigned long FBW : 6;
+    unsigned long pad22 : 2;
+    unsigned long PSM : 6;
+    unsigned long pad30 : 2;
+    unsigned long FBMSK : 32;
+};
+
+/* the two ten-quadword packets the swap sends by reference (new in SOCOM II, not named): FRAME the
+ * second quadword, a coordinate pair the third */
+extern u_long128 data_003E0FC0[10];
+extern u_long128 data_003E1080[10];
+
+/* a packet sent through the FIFO by reference (inline: SOCOM 1's zvid_KickPacket's FIFO arm, the
+ * name ours) */
+static inline void KickRef(u_long128 *packet, int qwc)
+{
+    _word128 *p = (_word128 *)zSysSprGetPacket(0);
+
+    p->u32[0] = qwc | 0x30000000;
+    p->u32[1] = (unsigned int)packet;
+    p->u32[2] = 0x13000000;
+    p->u32[3] = qwc | 0x50000000;
+    zSysFifoKick((u_long128 *)p, 1);
+}
+
+/* the frame presented: in the timer's sync or the whole-copy mode, the display cleared and the
+ * final copy sent; otherwise one of the two packets aimed at the render buffer; then that packet
+ * sent (new in SOCOM II, not named) */
+extern "C" void func_003B07B0(bool fifo)
+{
+    u_long128 *pkt = data_003E0FC0;
+
+    if (zVid.syncMode == 2 || zVid.swapMode == 1) {
+        CVideo::Clear(false, 0, 0, 0, 0);
+        ((sceGsFrame *)&data_003E0FC0[1])->FBP = zVid.renderBuf;
+        func_003B0C00(fifo);
+    } else {
+        if (zVid.swapMode == 2) {
+            pkt = data_003E1080;
+            *(unsigned long *)&data_003E1080[1] = (unsigned long)zVid.renderBuf | 0xA0000;
+            *(unsigned long *)&data_003E1080[2] = 0x6C00 | ((unsigned long)0x7900 << 32);
+        } else {
+            *(unsigned long *)&data_003E0FC0[1] = (unsigned long)zVid.renderBuf | 0xA0000;
+            *(unsigned long *)&data_003E0FC0[2] = 0x6C00 | ((unsigned long)0x7200 << 32);
+        }
+        FlushCache(0);
+    }
+    KickRef(pkt, 10);
 }
 
 /* the final sprite's rectangle within the 640x448 display, in the GS's 12.4 coordinates offset to

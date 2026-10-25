@@ -36,7 +36,10 @@ struct _zvid_public {
     /* 2: the frame waits on the timer for a thirtieth of a second, else on the vertical blank
      * (0x3B0660; the name ours) */
     unsigned char syncMode;   // 0x75
-    unsigned char _76[0x92 - 0x76];
+    unsigned char _76[0x7c - 0x76];
+    /* 1: the frame copied whole each swap; 2: the copy's other packet (0x3B07B0; the name ours) */
+    unsigned char swapMode;   // 0x7c
+    unsigned char _7d[0x92 - 0x7d];
     /* the final copy blends (its alpha word 96, else 0: the wep lane's; the name ours) */
     unsigned char finalBlend;   // 0x92
     unsigned char _93[0x94 - 0x93];
