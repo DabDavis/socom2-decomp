@@ -84,6 +84,9 @@ public:
     unsigned char _ca4[0xce0 - 0xca4];
 } __attribute__((aligned(16)));   // 0xce0 bytes
 
+/* an item (zweapon.h's EQUIP_ITEM, a byte enum: copied with lb, compared with lbu; 255 none) */
+enum EQUIP_ITEM { EQUIP_NONE = 255 };
+
 /* the in-game selector: SOCOM 1's DWARF moved by SOCOM II's sizes (C2D 4 bytes less, C2DString
  * 0x98, one selected name fewer). OnClose is inline (SOCOM 1 links none) and reads the HUD's owner:
  * hud_ingame_weaponsel.cpp defines it, after its CHUD */
@@ -132,30 +135,47 @@ public:
     float m_menustartx;   // 0x1168
     float m_curheight;   // 0x116c
     float m_goalheight;   // 0x1170
-    unsigned char _1174[0x11b0 - 0x1174];
+    unsigned char _1174[0x11a4 - 0x1174];
+    EQUIP_ITEM m_selected_item_index[5];   // 0x11a4 (SOCOM 1: six)
+    unsigned char _11a9[0x11b0 - 0x11a9];
 } __attribute__((aligned(16)));   // 0x11b0 bytes
 
 /* the network selector's slots (their vtables found by their RTTI names: CWeaponSlot 0x405E00,
  * CategorySlot 0x405D80, SelectedSlot 0x405D00, SlotList 0x405E80) */
 class CWeaponSlot : public C2D {
 public:
+    /* slot 11: nothing to fade (0x2405F0, after SlotList::SetTrans) */
+    virtual void SetTrans(float trans);
+
     unsigned char _18[0x20 - 0x18];
 };   // 0x20 bytes
 
 class CategorySlot : public CWeaponSlot {
 public:
+    /* slot 11: the name and the bitmap faded together (0x23D810) */
+    virtual void SetTrans(float trans);
+
     C2DBitmap m_bitmap;   // 0x20
     C2DString m_name;   // 0xa0
 } __attribute__((aligned(16)));   // 0x140 bytes
 
 class SelectedSlot : public CWeaponSlot {
 public:
+    /* slot 11: the name faded (0x23B990) */
+    virtual void SetTrans(float trans);
+
     C2DString m_name;   // 0x20
 };   // 0xb8 bytes
 
 class SlotList : public C2D {
 public:
-    unsigned char _18[0x38 - 0x18];
+    /* slots 1 and 11: the slots drawn while the list is on (0x23CCB0), all faded (0x240580) */
+    virtual void Draw(zdb::CCamera *cam);
+    virtual void SetTrans(float trans);
+
+    unsigned char _18[0x20 - 0x18];
+    CWeaponSlot *m_slots[5];   // 0x20
+    unsigned char _34[0x38 - 0x34];
 };   // 0x38 bytes
 
 class CMPWeaponCategories;

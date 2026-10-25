@@ -4,8 +4,11 @@
  * OVL2 0x5EF9D0-0x5F8BFF: the states' destructors and the inline virtuals their tables pull in,
  * CAiStateStack's out-of-line members, CSealCtrlAi::GetAiState, the base's slot 0x0C and the
  * helpers the response states' Ticks call, the CQB/unknown/pickup Ticks and five OnSignals
- * (round 3). CAiState::Create (0x5F6550) inlines every state's constructor and wants the member
- * constructors' OVL2 copies named first (0x516900 CPnt3D(), 0x516120 an empty CAiMapLoc()). */
+ * (round 3); CAiState::Create (0x5F6550, every state's constructor inlined one level), Reset's
+ * copy (0x5F6D40), CAiState::Signal (0x5F6FA0, Reset inlined whole), the stack's constructor and
+ * its Pop (round 4). The stack's other members (0x5F7470-0x5F8270: SOCOM 1's PushAiState,
+ * SetAiState, PopToAiState, StateTick ... moved onto CAiStateStack, the AI passed) and the
+ * controller's wrappers after StateTick (0x5F5B10-0x5F5CB0) are next. */
 
 #include "../gamez/zseal/zseal.h"
 #include "../gamez/zanim/zanim.h"
@@ -42,6 +45,12 @@ inline float StateTimer(CSealCtrlAi *ai)
 struct CAiCtrlStack {
     unsigned char _0[0x41c];
     CAiStateStack m_stack;   // 0x41c
+};
+
+/* the controller's word at 0x10C (CSealCtrl's: its squad; zseal.h does not name it) */
+struct CAiCtrl10C {
+    unsigned char _0[0x10c];
+    void *m_10c;   // 0x10c
 };
 
 /* a SEAL of the player's side (an inline bool accessor: its callers keep the sltu) */
@@ -253,6 +262,305 @@ void CAiSPlan::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
     }
 }
 
+/* the states seal_ai.cpp defines (the SEAL lane's unit declares them for itself): here only what
+ * Create builds -- each one's size, its members' constructors and its table (stored, not emitted:
+ * the destructors are seal_ai.cpp's) */
+class CAiSRescued : public CAiState {
+public:
+    CAiSRescued() : CAiState(AI_STATE_RESCUED) {}
+    virtual ~CAiSRescued();
+
+    unsigned char _58[0x64 - 0x58];
+};
+
+class CAiSPursue : public CAiState {
+public:
+    CAiSPursue() : CAiState(AI_STATE_PURSUE) {}
+    virtual ~CAiSPursue();
+
+    unsigned char _58[0x60 - 0x58];
+};
+
+class CAiSAnimate : public CAiState {
+public:
+    /* two lists of types not known yet, built by hand (Create's copies 0x5F6F70, 0x5F6F40) */
+    CAiSAnimate() : CAiState(AI_STATE_ANIMATE)
+    {
+        func_005F6F70(m_64);
+        func_005F6F40(m_70);
+    }
+    virtual ~CAiSAnimate();
+
+    unsigned char _58[0x64 - 0x58];
+    unsigned char m_64[0xc];   // 0x64: a list (~CAiSAnimate erases it, 0x575CF0)
+    unsigned char m_70[0xc];   // 0x70: a list (0x575F40)
+};
+
+class CAiSGrenade : public CAiState {
+public:
+    CAiSGrenade() : CAiState(AI_STATE_GRENADE) {}
+    virtual ~CAiSGrenade();
+
+    unsigned char _58[0x70 - 0x58];
+    CPnt3D m_70;   // 0x70
+    CAiMapLoc m_7c;   // 0x7c
+    CAiMapLoc m_80;   // 0x80
+    unsigned char _84[0x88 - 0x84];
+    CPnt3D m_88;   // 0x88
+    CPnt3D m_94;   // 0x94
+    CPnt3D m_a0;   // 0xa0 (0xac bytes)
+};
+
+class CAiSDeploy : public CAiState {
+public:
+    CAiSDeploy() : CAiState(AI_STATE_DEPLOY) {}
+    virtual ~CAiSDeploy();
+
+    CPnt3D m_58;   // 0x58
+    CPnt3D m_64;   // 0x64
+    unsigned char _70[0x74 - 0x70];
+    CAiMapLoc m_74;   // 0x74
+    CAiMapLoc m_78;   // 0x78
+    unsigned char _7c[0x9c - 0x7c];   // 0x9c bytes
+};
+
+/* a new state of a kind (OVL2 0x5F6550; SOCOM 1's, the cases in the same order -- alphabetical
+ * by the state's name -- and a plain CAiState for the kinds it does not know). Every state's
+ * constructor is inlined one level (CAiState's expansion is past inline_max_size): CAiState's
+ * constructor and the members' are called, the table stored between them */
+CAiState *CAiState::Create(AI_STATE state)
+{
+    CAiState *s;
+
+    switch (state) {
+    case AI_STATE_ACTION:
+        s = new CAiSAction;
+        break;
+    case AI_STATE_ANIMATE:
+        s = new CAiSAnimate;
+        break;
+    case AI_STATE_AVOID:
+        s = new CAiSAvoid;
+        break;
+    case AI_STATE_BREACH:
+        s = new CAiSBreach;
+        break;
+    case AI_STATE_CQBATTACK:
+        s = new CAiSCQBAttack;
+        break;
+    case AI_STATE_DEPLOY:
+        s = new CAiSDeploy;
+        break;
+    case AI_STATE_EVENT:
+        s = new CAiSEvent;
+        break;
+    case AI_STATE_FLEE:
+        s = new CAiSFlee;
+        break;
+    case AI_STATE_FOLLOW:
+        s = new CAiSFollow;
+        break;
+    case AI_STATE_GOTO:
+        s = new CAiSGoto;
+        break;
+    case AI_STATE_GRENADE:
+        s = new CAiSGrenade;
+        break;
+    case AI_STATE_HOLD:
+        s = new CAiSHold;
+        break;
+    case AI_STATE_HOSTAGE:
+        s = new CAiSHostage;
+        break;
+    case AI_STATE_NOAMMO:
+        s = new CAiSNoAmmo;
+        break;
+    case AI_STATE_PLAN:
+        s = new CAiSPlan;
+        break;
+    case AI_STATE_PATHRECOVER:
+        s = new CAiSPathRecover;
+        break;
+    case AI_STATE_PICKUP:
+        s = new CAiSPickup;
+        break;
+    case AI_STATE_PURSUE:
+        s = new CAiSPursue;
+        break;
+    case AI_STATE_RELOAD:
+        s = new CAiSReload;
+        break;
+    case AI_STATE_RESCUED:
+        s = new CAiSRescued;
+        break;
+    case AI_STATE_RUSH:
+        s = new CAiSRush;
+        break;
+    case AI_STATE_SCRIPT:
+        s = new CAiSScript;
+        break;
+    case AI_STATE_SHOTAT:
+        s = new CAiSShotAt;
+        break;
+    case AI_STATE_STUNRESPONSE:
+        s = new CAiSStunResponse;
+        break;
+    case AI_STATE_SURRENDER:
+        s = new CAiSSurrender;
+        break;
+    case AI_STATE_SUSPENDED:
+        s = new CAiSSuspended;
+        break;
+    case AI_STATE_TARGET:
+        s = new CAiSTarget;
+        break;
+    case AI_STATE_USEVEHICLE:
+        s = new CAiSUseVehicle;
+        break;
+    default:
+        s = new CAiState(state);
+        break;
+    }
+    return s;
+}
+
+extern "C" {
+/* the state's signal handed on (OVL2 0x5F6350, unwritten: the state, the AI, the signal), the
+ * stack emptied (0x5F7920, a byte-exact draft), a squad's member (0x5EDBB0, seal_unit.cpp's,
+ * unwritten), and the controller's calls (0x56D890, 0x5631B0, 0x570F90: the SEAL lane's rows) */
+void func_005F6350(CAiState *s, CSealCtrlAi *ai, CAiState::SIGNAL sig);
+void func_005F7920(CAiStateStack *stack, CSealCtrlAi *ai);
+CEntity *func_005EDBB0(void *unit, int a, int b);
+void func_0056D890(CSealCtrlAi *ai, int x);
+void func_005631B0(CSealCtrlAi *ai, int a, int b, float f);
+void func_00570F90(CSealCtrlAi *ai, float t);
+/* the last state popped: its result and its kind (OVL1 bss 0x44D628, 0x44D630: the stack's pop
+ * stores them, the stop signal tests them -- unnamed) */
+extern int data_0044D628;
+extern AI_STATE data_0044D630;
+void func_005F6190(CAiState *s, CSealCtrlAi *ai);
+/* the stack's bits brought up to date (OVL2 0x5F7470, unwritten: the stack, the AI, a flag --
+ * SOCOM 1's UpdateStackFlags?) */
+void func_005F7470(CAiStateStack *stack, CSealCtrlAi *ai, int x);
+}
+
+/* a SEAL's bit the signals set (CZSealBody at 0x105D, bit 1; zseal.h does not name it -- the
+ * name ours) */
+struct CSealSignalBits {
+    unsigned char _0[0x105d];
+    unsigned char m_bit0 : 1;
+    unsigned char m_signalled : 1;
+};
+
+/* a state of a stack told a signal (OVL2 0x5F6FA0; SOCOM 1's CAiState::Signal, moved onto the
+ * stack): entering (0) resets it to its own kind, sends it the reset (4) and starts its stack's
+ * clock; leaving (1) empties its own stack; then, for the controller's own stack, the SEAL (and,
+ * squad mode 2, the squad's leader) marked, the trigger let go and the per-signal goals dropped;
+ * the state's OnSignal last */
+void CAiState::Signal(CAiStateStack *stack, CAiState *state, SIGNAL sig, CSealCtrlAi *ai)
+{
+    CEntity *seal = ai ? ai->m_entity : 0;
+    bool own = &((CAiCtrlStack *)ai)->m_stack == stack;
+
+    switch (sig) {
+    case SIGNAL_4:
+        break;
+    case SIGNAL_0:
+        state->SetBit0(true);
+        state->Reset(state->m_state);
+        state->OnSignal(SIGNAL_4, 0);
+        state->SetActive(true);
+        func_005F6350(state, ai, sig);
+        stack->m_timer = 0.0f;
+        break;
+    case SIGNAL_1:
+        func_005F6350(state, ai, sig);
+        func_005F7920(&state->m_stack, ai);
+        func_005F6190(state, ai);
+        break;
+    case SIGNAL_2:
+        func_005F6350(state, ai, sig);
+        func_0056D890(ai, 0);
+        break;
+    case SIGNAL_3:
+        func_005F6350(state, ai, sig);
+        if (data_0044D630 == 24 && data_0044D628 == 3)
+            ai->SetAiMode((AI_MODE)3);
+        break;
+    }
+    if (own && ai) {
+        ((CSealSignalBits *)seal)->m_signalled = true;
+        if (ai->m_26c == 2 && ((CAiCtrl10C *)ai)->m_10c) {
+            CEntity *leader = func_005EDBB0(((CAiCtrl10C *)ai)->m_10c, 1, 0);
+
+            if (leader)
+                ((CSealSignalBits *)leader)->m_signalled = true;
+        }
+        ai->SetTrigger(false);
+        ai->SetTrigger(false);
+        func_005631B0(ai, 2, 1, 0.0f);
+        switch (sig) {
+        case SIGNAL_4:
+            break;
+        case SIGNAL_0:
+            ai->SetAiMode((AI_MODE)1);
+            func_00570F90(ai, 1.0f);
+            func_0056D890(ai, 0);
+            ai->ClearGoal(GOAL_NONE);
+            break;
+        case SIGNAL_1:
+            ai->ClearGoal(GOAL_NONE);
+            func_0056D890(ai, 0);
+            break;
+        case SIGNAL_2:
+            ai->ClearGoal(GOAL_NONE);
+            break;
+        case SIGNAL_3:
+            ai->ClearGoal(GOAL_NONE);
+            break;
+        }
+    }
+    state->OnSignal(sig, ai);
+}
+
+/* the current state popped: told it is left (1), noted as the last popped, deleted, and the state
+ * under it told it is back on top (3); its kind returned, or 0 (OVL2 0x5F7C40; SOCOM 1's
+ * CSealCtrlAi::PopAiState(), whose wrapper 0x5F5CA0 now calls the stack's -- the name ours).
+ * OPEN, 10 instructions, one register: before the erase the target takes &end_.next_ (this + 8)
+ * into s3 and reads the new front through it after the call; here the front is reloaded from
+ * 8(this) and a nop follows. Tried: the const GetState, erase(begin()) for pop_front, the deleted
+ * front in a local, the ternary on front() -- all the same 10 */
+AI_STATE CAiStateStack::Pop(CSealCtrlAi *ai)
+{
+    AI_STATE kind = AI_STATE_UNKNOWN;
+
+    if (size() != 0) {
+        CAiState *s = GetState();
+        CAiState *next;
+
+        CAiState::Signal(this, s, CAiState::SIGNAL_1, ai);
+        data_0044D630 = s->m_state;
+        data_0044D628 = s->m_done;
+        next = 0;
+        if (size() != 0) {
+            delete GetState();
+            pop_front();
+            next = GetState();
+        }
+        if (next) {
+            kind = next->m_state;
+            CAiState::Signal(this, next, CAiState::SIGNAL_3, ai);
+        }
+        func_005F7470(this, ai, 1);
+    }
+    return kind;
+}
+
+/* the stack's constructor (OVL2 0x5F8520): out of line, as its destructor is */
+CAiStateStack::CAiStateStack() : m_c(-1), m_10(0), m_14(0)
+{
+}
+
 /* (OVL2 0x5605A0, the SEAL lane's row: the controller told a byte) */
 extern "C" void func_005605A0(CSealCtrlAi *ai, unsigned char x);
 
@@ -450,12 +758,6 @@ void CAiSBreach::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
     }
 }
 
-/* the controller's word at 0x10C (CSealCtrl's; zseal.h does not name it) */
-struct CAiCtrl10C {
-    unsigned char _0[0x10c];
-    void *m_10c;   // 0x10c
-};
-
 /* a goto's events: reset (no goal, the invalid cell); on entry the stance after half a second
  * (not for the player's side) and the controller's mask bit 5; the bit off for a sub-state; at
  * the end the route given up unless arrived (OVL2 0x5F5010; SOCOM 1's) */
@@ -463,7 +765,7 @@ void CAiSGoto::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
 {
     switch (sig) {
     case SIGNAL_4:
-        m_cell = *(unsigned int *)&CAiMapLoc::invalid;
+        *(unsigned int *)&m_cell = *(unsigned int *)&CAiMapLoc::invalid;
         m_pos = CPnt3D::zero;
         m_6c = 1.0f;
         m_58 = 0;

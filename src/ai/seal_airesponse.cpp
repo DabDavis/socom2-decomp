@@ -5,6 +5,8 @@
  * destructors and the inline virtuals their tables pull in, the NoAmmo/Flee/Reload Ticks and seven
  * OnSignals (round 3). Defined in reverse of their image order (-inline deferred). */
 
+#include <string.h>
+
 #include "../gamez/zkit/zkit.h"
 
 /* a chance taken: a random float in [0, 1) against the odds (an inline, seal_control.cpp's shape:
@@ -200,7 +202,7 @@ AI_RESULT CAiSNoAmmo::Tick(float dT, CSealCtrlAi *ai)
         if ((m_pickup = func_006082E0(&seal->m_posW, 5000.0f, kit, w)) != 0) {
             unsigned int loc;
 
-            m_pickupLoc = *(unsigned int *)&seal->m_mapLocValid;
+            *(unsigned int *)&m_pickupLoc = *(unsigned int *)&seal->m_mapLocValid;
             if (func_00529A30(&AiMaps, m_pickup->GetPosW(), &loc) && func_005623B0(ai, &loc)) {
                 phase = 1;
                 func_005631A0(ai, 0);
@@ -328,7 +330,7 @@ void CAiSEvent::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
         m_58 = 0;
         m_pos = CPnt3D::zero;
         m_pos2 = CPnt3D::zero;
-        m_8e = 0;
+        m_name[0] = 0;
         m_88 = 0;
         m_8c = 0;
         m_8d = 0;
@@ -354,6 +356,15 @@ void CAiSEvent::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
     }
 }
 
+/* the event's name, up to sixteen characters, or none (OVL2 0x605A10) */
+void CAiSEvent::SetName(const char *name)
+{
+    if (name)
+        strncpy(m_name, name, 16);
+    else
+        m_name[0] = 0;
+}
+
 /* the hold's signed-byte count (a file static: its Tick reads it too; OVL2 data 0x650E10) */
 static signed char s_holdCount = 3;
 
@@ -366,7 +377,7 @@ void CAiSHold::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
     switch (sig) {
     case SIGNAL_4:
         m_58 = -1;
-        m_cell = *(unsigned int *)&CAiMapLoc::invalid;
+        *(unsigned int *)&m_cell = *(unsigned int *)&CAiMapLoc::invalid;
         m_78 = 0;
         m_70 = 0;
         m_6c = 0;
@@ -557,9 +568,9 @@ AI_RESULT CAiSFlee::Tick(float dT, CSealCtrlAi *ai)
 
         if (!cell)
             step = STEP_2;
-        else if (func_00529EE0(&AiMaps, cell, &m_cell)) {
+        else if (func_00529EE0(&AiMaps, cell, (unsigned int *)&m_cell)) {
             step = STEP_2;
-            func_005F0830(ai, &m_cell, 4, 1, 2);
+            func_005F0830(ai, (unsigned int *)&m_cell, 4, 1, 2);
             ai->PlayAiSound((CHARACTER_SOUND)72, 0.75f, -1);
             func_005631A0(ai, 0);
             func_00570F90(ai, 1.0f);
@@ -608,6 +619,17 @@ void CAiSFlee::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
         break;
     case SIGNAL_3:
         break;
+    }
+}
+
+/* the hostage's captor: its id and team, the flags' bit 0 when asked (OVL2 0x601E50) */
+void CAiSHostage::SetCaptor(CEntity *e, bool flag)
+{
+    if (flag)
+        SetFlags(1, 0);
+    if (e) {
+        m_5c = e->m_id;
+        m_58 = e->m_team;
     }
 }
 

@@ -121,7 +121,10 @@ struct tag_DI_HEAD {
             unsigned int m_appflags : 3;
             unsigned int m_inside : 1;
             unsigned int m_shadow : 2;
-            unsigned int m_reserved : 6;
+            unsigned int m_reserved26 : 1;
+            /* SOCOM II's: IntersectStruct::GetPolyFlag27 reads it (the name ours) */
+            unsigned int m_flag27 : 1;
+            unsigned int m_reserved : 4;
         } m_flags;
     };
 };
@@ -143,6 +146,14 @@ public:
     int Release();
     /* a polygon read from the archive's open key (SOCOM 1's static) */
     static CDI *Create(CSaveLoad &io);
+    /* the faces a query skips (SOCOM 1's static: CGrid::GetAltitude sets 32) */
+    static int m_backface_mask;
+    /* the normal of the first three points (SOCOM 1's; SOCOM II keeps it in a static) */
+    void SetEdgeVecsAndNorm();
+    /* the edges a point's vertical crosses, their count; the two edge points through a point
+     * (SOCOM 1's) */
+    int GetEdgeIntersectsY(CPnt3D *p, CPnt3D *out);
+    bool GetEdgeIntersects(CPnt3D *p, CPnt3D *a, CPnt3D *b);
 
     CPnt4D *m_pnts;   // 0x10: its points, 16 bytes each (Allocate mallocs them; the name ours)
 };
@@ -609,7 +620,10 @@ public:
             unsigned char bit3 : 1;
             unsigned char bit4 : 1;
             unsigned char bit5 : 1;
-            unsigned char hi : 2;
+            unsigned char bit6 : 1;
+            /* LightList_Search sets it on a node whose first visual's material is of type 2 (the
+             * name ours) */
+            unsigned char bit7 : 1;
         } m_socom2_a1_bits;
     };
     unsigned char _socom2_a2[2];   // 0xa2
@@ -979,6 +993,9 @@ public:
     /* the world's queries, cell by cell (SOCOM 1's) */
     void InitDescendantsVisuals();
     void InitDescendantsDI();
+    /* a ray's hits gathered, and a point's altitude hits (grid_di.cpp's, SOCOM 1's) */
+    bool GetIntersect(DiIntersect *di);
+    bool GetAltitude(DiIntersect *di);
 
     /* the atoms a grid makes (SOCOM 1's static; Read takes the parameters' count from it) */
     static int N_ATOMS;
@@ -1117,20 +1134,105 @@ public:
     CClutter(CNode *node);
     CMatrix *GetMatrix();
     CPnt3D *GetTranslate();
+    /* its parameters (the first 0x60 bytes) and its inverse scale read from the archive's open key,
+     * its node made dynamic first (SOCOM 1's; SOCOM II clears the 4-bit count before the second
+     * read) */
+    bool Read(zar::CZAR *zar);
+    /* the flag word's setters: SOCOM II's constructor clears each field through one -- a
+     * constant stored through an inline's parameter is masked at run time, `(0 & 1) << n` (the
+     * names are ours) */
+    void SetBit0(bool b) { m_bit0 = b; }
+    void SetQuat(bool b) { m_quat = b; }
+    void SetBit2(bool b) { m_bit2 = b; }
+    void SetBit3(bool b) { m_bit3 = b; }
+    void SetBits4(int n) { m_bits4 = n; }
+    void SetBit12(bool b) { m_bit12 = b; }
+    void SetBit13(bool b) { m_bit13 = b; }
+    void SetCount(int n) { m_count = n; }
+    void SetBits18(int n) { m_bits18 = n; }
 
     CMatrix m_matrix;   // 0x0
     unsigned char _40[0x4c - 0x40];
     unsigned int m_bit0 : 1;   // 0x4c
     unsigned int m_quat : 1;   // 0x4c
-    unsigned int m_flags : 30;   // 0x4c (more bits the constructor clears, a count at 14)
-    unsigned char _50[0x64 - 0x50];
+    unsigned int m_bit2 : 1;   // 0x4c
+    unsigned int m_bit3 : 1;   // 0x4c
+    unsigned int m_bits4 : 2;   // 0x4c
+    unsigned int m_bits6 : 6;   // 0x4c
+    unsigned int m_bit12 : 1;   // 0x4c (SOCOM II's: SOCOM 1's last twenty bits are split)
+    unsigned int m_bit13 : 1;   // 0x4c
+    unsigned int m_count : 4;   // 0x4c (bits 14-17: Read clears it)
+    unsigned int m_bits18 : 14;   // 0x4c
+    unsigned char _50[0x5c - 0x50];
+    int m_5c;   // 0x5c (the constructor sets -1)
+    float m_scale_inverse;   // 0x60 (the archive's "scale_inverse")
     CNode *m_node;   // 0x64
-    unsigned char _68[0x70 - 0x68];
+    /* the animation moving the prop, cleared when it is deleted (ClearAnimations, l_Tick; the
+     * name ours) */
+    class CClutterAnim *m_anim;   // 0x68
+    unsigned char _6c[0x70 - 0x6c];
 };   // 0x70 bytes
 
-class CClutterAnim;
-/* a body pushing the clutter about (SOCOM 1's list element; the name ours) */
-struct CClutterEffector;
+/* a prop's animation (SOCOM 1's grid_clutter.cpp class): the prop it moves and a node it made.
+ * Its destructor is inline in SOCOM II (SOCOM 1's out-of-line copy, 0x218980, has no counterpart):
+ * the prop's rotation reset and the node deleted. The names past m_clutter are ours */
+class CClutterAnim {
+public:
+    ~CClutterAnim()
+    {
+        if (m_clutter)
+            ((CQuat *)m_clutter->m_matrix.m_matrix[1])->MakeYXZRot(0.0f, 0.0f, 0.0f);
+        if (m_node)
+            delete m_node;
+        m_node = 0;
+    }
+    void TickForce(CPnt3D *force, CPnt3D *pos, float a, float b);
+
+    CClutter *m_clutter;   // 0x0
+    CNode *m_node;   // 0x4
+    unsigned char _8[0x14 - 0x8];
+    float m_14;   // 0x14
+    float m_18;   // 0x18
+    float m_1c;   // 0x1c
+    float m_20;   // 0x20
+};
+
+/* a body pushing the clutter about (SOCOM 1's list element, 0x28 bytes, the size RegisterEffector
+ * news: its owner, its position and velocity borrowed, two vectors zeroed and its radius; the
+ * names ours) */
+struct CClutterEffector {
+    const void *m_owner;   // 0x0
+    const CPnt3D *m_pos;   // 0x4
+    const CPnt3D *m_vel;   // 0x8
+    CPnt3D m_c;   // 0xc
+    CPnt3D m_18;   // 0x18
+    float m_radius;   // 0x24
+};
+
+/* SOCOM II's pointer-list walks: the first node is built from a REFERENCE to the sentinel's next_
+ * link, so &end_.next_ is a compiler temporary -- computed once, CSE'd across a walk and the clear
+ * (or the list's destructor) after it, and kept in the lowest saved register (ClearEffectors,
+ * ClearAnimations, ~CClutterAnimManager; the same shape is open in several lanes: CValve::
+ * DeleteCallbacks, ~CZAmmoList, zNetFlushMessages). include/list's begin() takes the link by value;
+ * these stand in for SOCOM II's MSL until it does (the names ours) */
+/* a vector between two points, by value: Sub out of line into a temporary, copied out (ld/sd and
+ * lwc1/swc1) -- the collision code's differences (grid_di.cpp, int_main.cpp; SOCOM II's CPnt3D
+ * operator-, which zmath.h lacks; the name is ours) */
+inline CPnt3D PntMinus(const CPnt3D &a, const CPnt3D &b)
+{
+    CPnt3D r;
+
+    a.Sub(&b, &r);
+    return r;
+}
+
+typedef std::__list_deleter<const void *, std::allocator<const void *> > PtrListBase;
+struct PtrListFirst : public PtrListBase::iterator {
+    PtrListFirst(PtrListBase::node_base *const &link) : PtrListBase::iterator(link) {}
+};
+inline PtrListBase::iterator ListBegin(PtrListBase &l) { return PtrListFirst(l.end_node().next_); }
+inline PtrListBase::iterator ListEnd(PtrListBase &l) { return PtrListBase::iterator(&l.end_node()); }
+inline void ListClear(PtrListBase &l) { l.erase(ListBegin(l), ListEnd(l)); }
 
 /* the clutter's animation: the props pushed about by effectors (SOCOM 1's grid_clutter.cpp class,
  * 0x70 bytes, its DWARF) */
@@ -1140,6 +1242,10 @@ public:
     ~CClutterAnimManager();
     /* every effector deleted, the list emptied (SOCOM 1's) */
     void ClearEffectors();
+    /* every animation deleted, the list emptied (SOCOM 1's) */
+    void ClearAnimations(bool detach);
+    /* an owner's effector taken off (SOCOM 1's) */
+    void UnRegisterEffector(const void *owner);
 
     unsigned char m_CellAnimate;   // 0x0
     CMatrix m_matrix;   // 0x10
@@ -1229,12 +1335,31 @@ public:
     bool Read(CSaveLoad *io);
     unsigned char _0[0x10];
 };
+/* a material of the world's table: 0x3C bytes, its type at 0x14 (LightList_Search tests 2; the
+ * names ours) */
+struct MATERIAL_ENTRY {
+    unsigned char _0[0x14];
+    int m_type;   // 0x14
+    unsigned char _18[0x3c - 0x18];
+};
 class CMaterial_Object {
 public:
     CMaterial_Object();
     ~CMaterial_Object();
     bool Read(CSaveLoad *io);
-    unsigned char _0[0x10];
+    /* a material by its 1-based index, none for 0 or past the end (inline: LightList_Search's
+     * copy tests the index twice; the name ours) */
+    MATERIAL_ENTRY *GetMaterial(unsigned int i)
+    {
+        if (i == 0)
+            return 0;
+        return i <= m_size ? &m_data[i - 1] : 0;
+    }
+
+    unsigned int m_capacity;   // 0x0 (the table's vector)
+    unsigned int m_size;   // 0x4
+    MATERIAL_ENTRY *m_data;   // 0x8
+    unsigned char _c[4];   // 0xc
 };
 class CSubSurf_Object {
 public:
@@ -1287,6 +1412,8 @@ public:
     /* a shadow caster made for the node and listed (new in SOCOM II: AddChild and node_main.cpp's
      * code call it; the name is ours) */
     void AddShadowCaster(CNode *node);
+    /* the shadow casters brought up to date (new in SOCOM II; the name ours) */
+    void UpdateShadowCasters();
     bool Initalize();
     void Update();
     void ReleaseLandmarkList();

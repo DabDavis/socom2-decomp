@@ -19,11 +19,11 @@ struct VC_0 {
 };
 extern "C" {
 M2C_UNK __dl__FPv(char *);                          /* extern */
+M2C_UNK __dt__11ButtonStateFv(char *, M2C_UNK);     /* extern */
 M2C_UNK __dt__11CDlgObjSpecFv(char *, M2C_UNK);     /* extern */
+M2C_UNK __dt__13CDesignDlgObjFv(s32, M2C_UNK);      /* extern */
 M2C_UNK __dt__9CSaferStrFv(char *, M2C_UNK);        /* extern */
 M2C_UNK func_00367670(char *, M2C_UNK);             /* extern */
-M2C_UNK func_0036E650(char *, M2C_UNK);             /* extern */
-M2C_UNK func_0037D9B0(s32, M2C_UNK);                /* extern */
 extern M2C_UNK __vt__11CButtonSpec;
 extern M2C_UNK __vt__18CHandlerButtonSpec;
 
@@ -31,17 +31,17 @@ char *__dt__18CHandlerButtonSpecFv(char *arg0, s64 arg1) {
     if (arg0 != NULL) {
         SC_MEMBER(arg0, M2C_UNK **, 0) = &__vt__18CHandlerButtonSpec;
         if (((VC_0 *)(arg0))->v_1C() != 0) {
-            func_0037D9B0(SC_MEMBER(arg0, s32 *, 0x118), 1);
+            __dt__13CDesignDlgObjFv(SC_MEMBER(arg0, s32 *, 0x118), 1);
         }
         if (arg0 != NULL) {
             SC_MEMBER(arg0, M2C_UNK **, 0) = &__vt__11CButtonSpec;
             __dt__9CSaferStrFv(arg0 + 0x10C, -1);
             func_00367670(arg0 + 0xFC, -1);
             __dt__9CSaferStrFv(arg0 + 0xEC, -1);
-            func_0036E650(arg0 + 0xB8, -1);
-            func_0036E650(arg0 + 0x84, -1);
-            func_0036E650(arg0 + 0x50, -1);
-            func_0036E650(arg0 + 0x1C, -1);
+            __dt__11ButtonStateFv(arg0 + 0xB8, -1);
+            __dt__11ButtonStateFv(arg0 + 0x84, -1);
+            __dt__11ButtonStateFv(arg0 + 0x50, -1);
+            __dt__11ButtonStateFv(arg0 + 0x1C, -1);
             __dt__11CDlgObjSpecFv(arg0, 0);
         }
         if (((s64) (arg1 << 0x30) >> 0x30) > 0) {

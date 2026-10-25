@@ -51,6 +51,7 @@ public:
     void InitMap(zdb::CWorld *world);
     float GetZoomOut() const;
     void SwitchToCompassMap();
+    void CalcNewMatrix();
     /* the world window, its width (no narrower than the minimum) and centre at once: the width's
      * setter passes the centre back in, read before the clamp (the name is ours) */
     void SetWorldView(float width, float cx, float cy);

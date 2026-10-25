@@ -4,21 +4,22 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_0037D910();                            /* extern */
+M2C_UNK __as__13CDesignDlgObjFRC13CDesignDlgObj();  /* extern */
 
-void *func_00384B70(void *arg0) {
-    M2C_FIELD(arg0, s32 *, 0) = 0;
-    M2C_FIELD(arg0, s32 *, 4) = 0;
-    M2C_FIELD(arg0, s32 *, 8) = 0;
-    M2C_FIELD(arg0, s32 *, 0xC) = 0x3F800000;
-    M2C_FIELD(arg0, s32 *, 0x10) = 0;
-    M2C_FIELD(arg0, s32 *, 0x14) = 0;
-    M2C_FIELD(arg0, s32 *, 0x18) = 0;
-    M2C_FIELD(arg0, s32 *, 0x1C) = 0;
-    M2C_FIELD(arg0, s32 *, 0x20) = 0;
-    M2C_FIELD(arg0, s32 *, 0x24) = 0;
-    func_0037D910();
+char *func_00384B70(char *arg0) {
+    SC_MEMBER(arg0, s32 *, 0) = 0;
+    SC_MEMBER(arg0, s32 *, 4) = 0;
+    SC_MEMBER(arg0, s32 *, 8) = 0;
+    SC_MEMBER(arg0, s32 *, 0xC) = 0x3F800000;
+    SC_MEMBER(arg0, s32 *, 0x10) = 0;
+    SC_MEMBER(arg0, s32 *, 0x14) = 0;
+    SC_MEMBER(arg0, s32 *, 0x18) = 0;
+    SC_MEMBER(arg0, s32 *, 0x1C) = 0;
+    SC_MEMBER(arg0, s32 *, 0x20) = 0;
+    SC_MEMBER(arg0, s32 *, 0x24) = 0;
+    __as__13CDesignDlgObjFRC13CDesignDlgObj();
     return arg0;
 }

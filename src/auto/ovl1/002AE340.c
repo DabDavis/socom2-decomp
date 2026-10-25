@@ -4,19 +4,20 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
 s32 GetName__6CZAnimFi(s32, u8);                    /* extern */
 char *ftsGetPlayer__Fv();                           /* extern */
-M2C_UNK func_0022BD50(s32);                         /* extern */
+M2C_UNK hudTriggerPopup__FPCc(s32);                 /* extern */
 extern s32 data_00414BE8;
 
 s32 func_002AE340(char *arg0) {
     char *temp_v0;
 
     temp_v0 = ftsGetPlayer__Fv();
-    if ((temp_v0 != NULL) && (((u64) ((s64) M2C_FIELD(temp_v0, u8 *, 0xE1) << 0x3B) >> 0x3F) != 0)) {
-        func_0022BD50(GetName__6CZAnimFi(data_00414BE8, M2C_FIELD(arg0, u8 *, 4)));
+    if ((temp_v0 != NULL) && (((u64) ((s64) SC_MEMBER(temp_v0, u8 *, 0xE1) << 0x3B) >> 0x3F) != 0)) {
+        hudTriggerPopup__FPCc(GetName__6CZAnimFi(data_00414BE8, SC_MEMBER(arg0, u8 *, 4)));
     }
     return 1;
 }

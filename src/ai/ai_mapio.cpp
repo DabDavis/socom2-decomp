@@ -362,22 +362,17 @@ void _fixupNode(CGraph *, CGNode *node, bool fix, unsigned int &n, void *data)
 #pragma auto_inline off
 
 /* the rows' runs read whole, then each run's first cell numbered on from the last (SOCOM 1's
- * pointed each run into the cells and zeroed its extra data instead).
- * OPEN, right size, 12 instructions: the target keeps &data_ in s1 from before the read (SOCOM 1's
- * code too) and loads begin through it, its first end() sharing that load (data + size * 12 off
- * the begin register) while the loop's later end()s read size and data off `this` -- what a
- * begin()/end() through a data() REFERENCE gives; include/vector's class vector reads data_
- * itself. Through a pointer to data_ the register and the begin load match, the first end()
- * still loads data_ again (written plainly: 0xD8, no s1) */
+ * pointed each run into the cells and zeroed its extra data instead). The target keeps &data_ in
+ * s1 from before the read (SOCOM 1's code too) and loads begin through it, its first end() sharing
+ * that load while the loop's later end()s read size and data off `this`: include/vector's begin()
+ * and end() read through the deleter's data() reference, as the read does */
 bool CAiMap::read_scanlines(CFileIO &f)
 {
     func_00519700(&m_scanlines, m_ny);
-    scanline **data = &m_scanlines.data_;
-
-    f.fread(*data, m_ny * sizeof(scanline));
+    f.fread(m_scanlines.data(), m_ny * sizeof(scanline));
     int index = 0;
 
-    for (scanlines::iterator i = *data; i != m_scanlines.end(); ++i) {
+    for (scanlines::iterator i = m_scanlines.begin(); i != m_scanlines.end(); ++i) {
         (*i).m_index = index;
         index += (*i).m_end - (*i).m_start;
     }

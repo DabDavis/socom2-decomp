@@ -1298,6 +1298,139 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - libvu0-style GCC asm (`mfc1 $8, %n` with an "f" operand and a $8 clobber) reproduces
     mfc1/nop/qmtc2; the buffers held in pointer locals give register-based stores;
   - `new T[n]` calls MSL's __construct_new_array (MAIN 0x182070); CScriptArchive is 0x108 bytes.
+- **Tells from the sound and the valves, round 4** (zsnd_csndinstance, zsnd_csndgroup, valve_list.cpp ...):
+  - `iterator e = end(); i = remove_if(begin(), e, p); erase(i, e);` gives the target's single
+    end in s0; written as one expression, MW builds end() twice;
+  - a vector walk whose iterators live in stack slots (copied with lwc1/swc1) is `std::for_each`
+    with a functor (CValvePool::Free);
+  - an unsigned counter compared `(int)i < n` stops MW strength-reducing `_zrdr::Item()`'s address
+    (Parse, LoadCSndGroup); `len <= size - (int)(next - names)` branches on `slt at` with the
+    target's registers;
+  - a byte enum given real non-negative enumerators becomes unsigned and compares with `andi
+    0xff` (VALVE_TYPE: ANY 0, PERM 1, TEMP 2, PERSIST 3);
+  - bit-fields set in a constructor's initialiser list compile to one word read-mask-write each
+    (CValve's constructor);
+  - SOCOM II's CSndInstance::Tick adds a Doppler shift: the word at 0xC is the listener distance
+    (a float), CalcVolPan returns the new one;
+  - `989snd.c`'s name starts with a digit: sccheck counts its matches but lists them only with
+    `-v`.
+- **Tells from the states, round 11** (CGame::Tick, the bomb, the remote SEALs, the persona):
+  - a byte enum copied into an enum-typed field loads with `lb`, into an `unsigned char` with
+    `lbu`;
+  - an `unsigned char` bitfield compared through a byte-enum cast gets `andi 0xff`; MW extracts
+    any byte bitfield with dsll32/dsrl32, so those shifts do not mean a 64-bit field;
+  - a ternary of enum constants cast as a whole (to an enum with no enumerators) sign-extends;
+    casting each arm does not;
+  - a switch returning through a result local (`bool r = false; ... r = true; break;`) puts
+    `move v0,zero` ahead of its first test; `bool r = c ? f() : false;` gives `move` then
+    `andi`, `if (c) r = f();` gives `andi` straight from v0;
+  - in `id == f()->x` MW keeps `id` in a saved register across the call; taking `f()` into a
+    block-local first makes it re-read the field;
+  - `if (A && B) ... else if (C && D)` sends a failing B to C's test; nested ifs do not;
+  - a caller that leaves an argument register unset shows the callee's last parameter does not
+    exist (NetSendE3Index takes three in SOCOM II);
+  - CGame::Tick: testing Init's bool `!= false` gives the target's `andi`, and the nops were
+    label padding; the thread wait is `while (!flag)`.
+- **Tells from the entity and the console, round 8** (ent_main.cpp, con_ps2.cpp, zentity.h):
+  - SOCOM II stores through a pointer list's node at its offset where SOCOM 1 reused `*it`'s
+    reference temporary: write the node's `data_` directly (RecycleEntity);
+  - a ternary bool with an int `0` false arm puts the `andi` on the compare's arm only; with
+    `: false` it lands at the join; `int n = c ? m : 0` gives the target's saved registers where
+    the if-assign swaps them (CConsole::Tick);
+  - `!(bool)f()` with `continue` materialises `sltu; xori` before the branch; `!= false` and
+    `== false` do not (FindPacket);
+  - two `new`s in a ternary each branch on v0 with the copy in the delay slot;
+  - strlen in an argument walk: take the length into a local and add `(len + 1)` to recompute
+    the element address after the call;
+  - an inline setter's `this` copy avoids reloading an address-taken local between two field
+    stores (AddHandler); con_ps2.cpp is `#pragma auto_inline off` throughout (the target calls
+    every function of it out of line);
+  - zentity.h: CAiMapLoc() is empty (SOCOM II's, 0x516120) with SOCOM 1's field-by-field copy
+    constructor, CEntity initialising from `invalid`; CEntity's slot +0x0C is `const CMatrix
+    *GetPosW() const`, +0x60/+0x68 take a CPnt3D * and return bool, +0x64 returns a node.
+- **Tells from completing the MSL headers** (include/vector, include/string, zmath.h):
+  - the class `__vector_imp::insert` is defined after SOCOM 1's lines 1428-1485 and returns
+    void (five of the thirteen class inserts byte-exact; the two 8-byte-element ones one
+    register off); the deleter has `T *&data()`, the class push_back/begin/end read through it,
+    and its destructor is `clear(); if (data_) delete` with clear's loop in clear's own body
+    (inlined into tail code clear came in one level only, its static helper called);
+  - `resize(n)` is written (`insert(end(), n - size(), T())`, else an erase) but no instance
+    matches yet: each waits on its element's constructor, and the 412-byte turret element's
+    insert/erase call copy, copy_backward, fill_n and the copy constructor out of line
+    (0x3ABAE0, 0x3AC460, 0x3AC200, 0x3AC6D0) where the header writes those loops inline; the
+    CAiMapLoc instance (0x51C4A0) misses with the empty constructor too;
+  - in a unit's template tail, out-of-class members are generated in rounds -- first those the
+    unit's own code uses, then those those use -- and within a round in declaration order,
+    later-declared class templates first; a tail function inlines another only if that one was
+    generated before it;
+  - inline calls in an argument list (`end()`, `size()`) are expanded ahead of an out-of-line
+    constructor call in the same list;
+  - at a join, `if (n) do ... while (--n)` gives the target's top-tested loop; `for`/`while` are
+    entered at their bottom test;
+  - `newsize > newcap` and `X <= xp` branch on the compare directly; the reversed forms put the
+    result in a register first;
+  - CPnt3D's `+ - *` are const members (SOCOM II's 0x557DC0, 0x557E10, 0x557E90), Cross
+    declared; CPnt4D's written copy constructor still loses SeeFarther and stays out;
+  - still open: include/deque's copy constructor (CRdrEditor() waits), list<T *>'s
+    insert(iterator, T *const &)/postfix ++/iterator copy constructor (PathPlanExecute), the
+    list clear keeping `&end_.next_` in a register (five functions), the iterator's `*` by value.
+- **Tells from the zdb world, round 5** (grid_di.cpp, grid_clutter.cpp, int_main.cpp, node_world.cpp):
+  - SOCOM II's pointer-list begin() builds its first node from a REFERENCE to the sentinel's
+    link (`node_base *const &`): `&end_.next_` becomes a temporary MW computes once and reuses
+    for a walk and the clear after it, in the lowest saved register -- the shape behind CValve's
+    destructor, ~CZAmmoList, zNetFlushMessages and others; znode.h's stand-ins (PtrListFirst,
+    ListBegin, ListEnd, ListClear) carry it until include/list does;
+  - a constant stored into a bitfield through an inline setter is masked at run time (`(0 & 1)
+    << n`); assigned directly, it folds;
+  - taking a vector by reference before its size() test keeps the address in a saved register
+    for the walk;
+  - in an inline, `if (i == 0) return 0; return i <= n ? &d[i-1] : 0;` gives the target's two
+    tests with a zero in each delay slot;
+  - `if (!p) return false; return p->bit ? true : false;` puts the false block first; `!= 0`
+    puts it last;
+  - a float comparator written `if (a < b) return -1; if (a == b) return 0; return 1;` pads as
+    the target does; `return a != b;` misses by the pads;
+  - grid_di.cpp (SOCOM 1's name) runs ~0x2D2890-0x2D4FDB, closed by ~CStack's copy, its
+    initialiser 0x401CC0; 0x2D2070-0x2D2830 look like the graph unit's tail.
+- **Tells from the AI states, round 4** (CAiState::Create, Reset, Signal):
+  - a function inlined whole in one caller and called out of line in another sits between two
+    size limits: Reset expands to at most inline_max_size (Signal inlines it whole) while
+    CAiState(AI_STATE) -- Reset plus the table store and the stack's constructor -- exceeds it
+    (Create calls it out of line);
+  - `a = b = c = 0.0f` stores c, b, then a, and costs fewer inline units than three statements;
+  - a constructor inlined one level calls its members' constructors out of line, even empty ones
+    (CPnt3D(), CAiMapLoc()): a member built by hand in the body matches only if it is the last
+    one, or every later member is built by hand too;
+  - an inline setter called with a constant can reuse the register a switch's compare chain
+    loaded (`li v0,1` feeding `andi t1,v0,1`): the mask stays unfolded there, folds elsewhere.
+- **Tells from the UI, round 4** (zui.cpp, the specs' CreateDisplayObj):
+  - an abs written `f >= 0.0f ? f : -f` gives the target's `bc1t`-to-negate and a `b` over it;
+    `f < 0.0f ? -f : f` if-converts to `bc1f` over a `neg.s`;
+  - MW gives an override of a secondary base's virtual a new primary slot after all the tables
+    (CPlainBmp::UpdateUIVar at +0x80), the derived class's new virtuals after it;
+  - two struct members with inline constructors are built inline, an array of them in a loop;
+  - an inline constructor too big to inline whole is inlined one level, calling its members'
+    copies; a class wrapping it then calls it out of line (CWrappedText -> CScrollText);
+  - declaring a defined virtual first among a derived class's non-inline virtuals makes the
+    unit emit its table and implicit destructor; slot order still follows the base;
+  - zui.cpp is 0x365200-0x36AF9F (CDblBufTextureRelocator's inline virtuals open it); the soft
+    keyboard and the rdr-table code after 0x3A2510 wait on an MSL map/tree (not in include/).
+- **Tells from the HUD, round 12** (hud_healthbar.cpp complete, hud_scorepopup.cpp, ~CHUD):
+  - 8-byte-spaced float pools are function-local statics (a float literal is lui/ori/mtc1; a
+    target loading constants with lwc1 there wants statics) -- write them as file statics, which
+    scdiff compares by content;
+  - MW 3.0 calls a global object's virtual through the vtable when its class inherits the
+    function without overriding it (CScoreBmp, CHudBrightText); it devirtualises only on the
+    declaring class;
+  - two inline calls in one argument list expand right to left: an inline accessor's load in the
+    last argument goes ahead of the first argument's `c_str()` ternary, which then compiles
+    branchy;
+  - a stand-in class declared only for one virtual must declare its destructor without defining
+    it, or the unit's implicit copy supersedes a matching draft;
+  - ~CHUD matches at level 5 with CHUD's texture lists as znode.h's zdb::CDynTexList (SOCOM 1's
+    classes over the pointer vectors); the font stretch from 0x359740 is SOCOM II's rewritten
+    font system ("faces", "glowtexture", "charoffsets", "Korean", "dropshadow") -- no SOCOM 1
+    counterparts.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
@@ -1466,8 +1599,9 @@ every hand-written unit (`--files '^(?!auto/)'`) before it is committed. A workt
 `extracted/` and `decomp/toolchains/` linked in from the main tree.
 
 `--files '^(?!auto/)'` leaves out the drafts, so a hand-written inline copy that only its draft
-matches reports as a regression there (0x29FF60, 0x2D02B0): rerun with those drafts' files
-included before believing one.
+matches reports as a regression there (0x32C5F0, ~CRdrArchiveList's copy, is the one left --
+0x29FF60 and 0x2D02B0 match from hand source since the MSL headers' completion): rerun with
+that draft's file included before believing one.
 
 ## The generated tier: `src/auto/`
 

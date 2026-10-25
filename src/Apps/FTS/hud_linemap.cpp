@@ -3,8 +3,8 @@
  * names it in SOCOM II too), OVL1 0x20D390-0x210AA0: Draw, Clip, the tick of the way points,
  * regions and lines, the point iterator, Tick, the polygon set-up, LineTo, the constructor and the
  * line and polygon types' readers, as SOCOM 1's. Written: the polygon and line types' readers
- * (0x210140, 0x210210) and the point iterator's GetPt (0x210A70), as SOCOM 1's (its line 37: an
- * inline of the class's, its copy linked from here). Defined in reverse of their image order
+ * (0x210140, 0x210210), the point iterator's IsValid (0x20F1C0) and GetPt (0x210A70), as SOCOM 1's (its lines 37-38:
+ * inlines of the class's, their copies linked from here). Defined in reverse of their image order
  * (-inline deferred). */
 
 #include "../../gamez/zmath/zmath.h"
@@ -13,6 +13,20 @@
 class CPtItr {
 public:
     virtual PNT2D GetPt() const = 0;
+    virtual bool IsValid() const = 0;
+};
+
+class CAiMapLoc;
+
+/* an AI map line as the iterator reads it (SOCOM 1's `line : CAiMapLocVec, line_data`: the
+ * vector of its locations first, its size at 4 and its elements at 8) */
+class line {
+public:
+    CAiMapLoc **end() const { return m_data + m_size; }
+
+    unsigned int _0;
+    unsigned int m_size;   // 0x4
+    CAiMapLoc **m_data;   // 0x8
 };
 
 namespace {
@@ -22,12 +36,20 @@ namespace {
 class CAiLinePtItr : public CPtItr {
 public:
     virtual PNT2D GetPt() const;
+    virtual bool IsValid() const;
 
-    void *_line;   // 0x4 (a reference to the line)
-    void *_it;   // 0x8
+    line *_line;   // 0x4 (a reference to the line)
+    CAiMapLoc **_it;   // 0x8
     void *_map;   // 0xc (a reference to the line map)
     CPnt3D _pt;   // 0x10
 };
+
+/* whether the walk is still on the line (SOCOM 1's line 38, an inline there; SOCOM II's vtable
+ * slot 2, the iterators' `!=` written as `!(==)`) */
+bool CAiLinePtItr::IsValid() const
+{
+    return !(_it == _line->end());
+}
 
 /* the point's first two coordinates as a 2D point (SOCOM 1's: through a local, assigned -- a brace
  * initialiser zeroes it first) */

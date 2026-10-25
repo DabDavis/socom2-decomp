@@ -4,15 +4,16 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK __dl__FPv(char * arg0);
-M2C_UNK func_005281B0(s32 arg0, s32 arg1);
-s32 func_00573F20(s32 arg0, s64 arg1) {
-    if (arg0 != 0) {
-        func_005281B0(arg0, -1);
+M2C_UNK __dt__7CAiPathFv(char * arg0, s16 arg1);
+char *func_00573F20(char *arg0, s64 arg1) {
+    if (arg0 != NULL) {
+        __dt__7CAiPathFv(arg0, -1);
         if (((s64) (arg1 << 0x30) >> 0x30) > 0) {
-            __dl__FPv((char *) arg0);
+            __dl__FPv(arg0);
         }
     }
     return arg0;

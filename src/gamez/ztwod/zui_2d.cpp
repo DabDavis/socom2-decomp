@@ -63,6 +63,29 @@ public:
     float m_time;   // 0xa8: the seconds a full bar takes
 };
 
+/* three controls as their command-type lookups see them (slot 24 of each vtable; only that slot
+ * declared): the pop-up dialog (0x36D970), the renderable string (0x36FC10, CSecureText's and
+ * C2DClock's too) and the button (0x3767C0, its subclasses' too). Each answers its own commands
+ * as the UI's count plus an index, and an empty name with 0 */
+class CPopUpDialog : public C2D {
+public:
+    /* declared, not defined: stand-ins whose implicit destructors would supersede the drafts */
+    virtual ~CPopUpDialog();
+    virtual int GetZAnimCmdType(const char *name);
+};
+
+class CRenderableString : public C2D {
+public:
+    virtual ~CRenderableString();
+    virtual int GetZAnimCmdType(const char *name);
+};
+
+class C2DButton : public C2D {
+public:
+    virtual ~C2DButton();
+    virtual int GetZAnimCmdType(const char *name);
+};
+
 /* slot 12: filled at its rate, to full */
 void CHProgressBar::Tick(float dT)
 {
@@ -122,4 +145,46 @@ void CPlainBmp::Tick(float dT)
 void CPlainBmp::SetMapOffset(int x, int y)
 {
     SetPos(x, y, x + m_iWidth, y + m_iHeight);
+}
+
+/* the button's commands: Caption and Valve (SOCOM II added Valve: SOCOM 1's answered Caption only) */
+int C2DButton::GetZAnimCmdType(const char *name)
+{
+    if (!name)
+        return C2D::GetZAnimCmdType(name) + 3;
+    if (!*name)
+        return 0;
+    if (!strcasecmp("Caption", name))
+        return C2D::GetZAnimCmdType(name) + 1;
+    if (!strcasecmp("Valve", name))
+        return C2D::GetZAnimCmdType(name) + 2;
+    return C2D::GetZAnimCmdType(name);
+}
+
+/* the renderable string's commands, the button's two */
+int CRenderableString::GetZAnimCmdType(const char *name)
+{
+    if (!name)
+        return C2D::GetZAnimCmdType(name) + 3;
+    if (!*name)
+        return 0;
+    if (!strcasecmp("Caption", name))
+        return C2D::GetZAnimCmdType(name) + 1;
+    if (!strcasecmp("Valve", name))
+        return C2D::GetZAnimCmdType(name) + 2;
+    return C2D::GetZAnimCmdType(name);
+}
+
+/* the dialog's commands: Caption and Background (its count, as the image has it, one) */
+int CPopUpDialog::GetZAnimCmdType(const char *name)
+{
+    if (!name)
+        return C2D::GetZAnimCmdType(name) + 1;
+    if (!*name)
+        return 0;
+    if (!strcasecmp("Caption", name))
+        return C2D::GetZAnimCmdType(name) + 1;
+    if (!strcasecmp("Background", name))
+        return C2D::GetZAnimCmdType(name) + 2;
+    return C2D::GetZAnimCmdType(name);
 }

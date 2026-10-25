@@ -8,13 +8,17 @@
  * variable spec's) where zui_spec.cpp calls them; that makes every spec's implicit copy and
  * destructor taller here: CTextSpec's copy is inlined one level (its members' copies are calls).
  *
- * OPEN, not written yet: the button family's Copies and destructors (CButtonSpec's copy out of
- * line 0x387630, the radio strip's, check box's, slider's, handler button's, list box's and map
- * control's; their destructors call 0x36E650 and 0x367670 -- the 0x34-byte button-state string's
- * and vector<ActionItem>'s destructors, rows outside the lane), the CreateDisplayObjs (the C2D
- * classes' constructors, as zui_spec.cpp's) and 0x389B00 (a vector<CDesignDlgObj> instance). */
+ * The CreateDisplayObjs of the text, teletype, secure text and scrolling text match; the wrapped
+ * text's waits on 0x20CD50 named __ct__9CPlainBmpFv, the radio strip's and handler button's on
+ * 0x377800 named __ct__9C2DButtonFv (each measured with the row renamed).
+ *
+ * OPEN, not written yet: the button family's Copies (CButtonSpec's copy constructor out of line
+ * 0x387630 copies vector<ActionItem>, whose copy constructor include/vector lacks), their
+ * destructors (each inlines ~CButtonSpec one level and calls ~ButtonState, 0x36E650, a row outside
+ * the lane; ~CHandlerButtonSpec is held in #if 0 below) and 0x389B00 (a vector<CDesignDlgObj>
+ * instance). */
 
-#include "zui_spec.h"
+#include "zui_2d.h"
 
 CDlgObjSpec *CImageSpec::Copy()
 {
@@ -41,9 +45,29 @@ CDlgObjSpec *CTextSpec::Copy()
     return new CTextSpec(*this);
 }
 
+/* a renderable string of the spec's text (SOCOM 1's) */
+C2D *CTextSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
+{
+    CRenderableString *str = new CRenderableString;
+
+    str->SetFont(font);
+    str->LoadSpec(*this);
+    return str;
+}
+
 CDlgObjSpec *CTtySpec::Copy()
 {
     return new CTtySpec(*this);
+}
+
+/* a teletype of the spec's text (SOCOM 1's) */
+C2D *CTtySpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
+{
+    CTeleType *tty = new CTeleType;
+
+    tty->SetFont(font);
+    func_00378B00(tty, this);
+    return tty;
 }
 
 CDlgObjSpec *CSecureTextSpec::Copy()
@@ -51,14 +75,47 @@ CDlgObjSpec *CSecureTextSpec::Copy()
     return new CSecureTextSpec(*this);
 }
 
+/* the spec's text drawn as stars (SOCOM II's) */
+C2D *CSecureTextSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
+{
+    CSecureText *str = new CSecureText;
+
+    str->SetFont(font);
+    str->LoadSpec(*this);
+    return str;
+}
+
 CDlgObjSpec *CWrapSpec::Copy()
 {
     return new CWrapSpec(*this);
 }
 
+/* wrapped text of the spec's (SOCOM 1's) *
+ * OPEN until a row outside the lane is named: byte-exact with 0x20CD50 (hud_newhudmap.cpp's tail)
+ * as __ct__9CPlainBmpFv -- CPlainBmp's inline constructor out of line, which CWrappedText's body
+ * calls for its two arrows (measured with the row renamed) */
+C2D *CWrapSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
+{
+    CWrappedText *text = new CWrappedText;
+
+    text->SetFont(font);
+    func_0037A430(text, this, mgr);
+    return text;
+}
+
 CDlgObjSpec *CScrollSpec::Copy()
 {
     return new CScrollSpec(*this);
+}
+
+/* scrolling text of the spec's (SOCOM 1's) */
+C2D *CScrollSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
+{
+    CScrollText *text = new CScrollText;
+
+    text->SetFont(font);
+    func_00370340(text, this);
+    return text;
 }
 
 CDlgObjSpec *CHProgressBarSpec::Copy()
@@ -100,3 +157,43 @@ CUIVariableSpec::~CUIVariableSpec()
         delete m_value;
     }
 }
+
+/* a radio strip (SOCOM 1's) *
+ * OPEN until a row outside the lane is named: byte-exact with 0x377800 (zui_2d.cpp's) as
+ * __ct__9C2DButtonFv -- C2DButton's constructor, out of line (measured with the row renamed) */
+C2D *CRadioStripSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
+{
+    CRadioStrip *strip = new CRadioStrip;
+
+    strip->_strCaption.SetFont(font);
+    func_003710C0(strip, this, 0);
+    InitializeButton(strip, mgr);
+    return strip;
+}
+
+/* a handler button (SOCOM 1's) *
+ * OPEN until a row outside the lane is named: byte-exact with 0x377800 (zui_2d.cpp's) as
+ * __ct__9C2DButtonFv -- C2DButton's constructor, out of line (measured with the row renamed) */
+C2D *CHandlerButtonSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
+{
+    CHandlerButton *button = new CHandlerButton;
+
+    button->_strCaption.SetFont(font);
+    func_00376690(button, this);
+    InitializeButton(button, mgr);
+    return button;
+}
+
+/* the subordinate object deleted (SOCOM 1's) -- held out of the build: the generated draft
+ * (src/auto/ovl1/003880F0.cpp) matches through placeholders. OPEN, two things: 0x36E650
+ * (zui_2d.cpp's) wants the name __dt__11ButtonStateFv, and the target calls the design object's
+ * destructor out of line (0x37D9B0) where MW inlines zui_spec.h's in-class one here (0x14C bytes
+ * against 0xF0) -- SOCOM II's ~CDesignDlgObj is likely an ordinary function of zui_spec.cpp's.
+ * ~CSliderBarSpec, the same inlined ~CButtonSpec, is byte-exact with 0x36E650 renamed (measured) */
+#if 0
+CHandlerButtonSpec::~CHandlerButtonSpec()
+{
+    if (HasChildren())
+        delete m_child;
+}
+#endif

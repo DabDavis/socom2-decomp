@@ -18,7 +18,26 @@ public:
     static int m_defaultMaterial;
 };
 
+/* the last polygon's normal, w zero (new in SOCOM II: SOCOM 1's SetEdgeVecsAndNorm stored it in
+ * the DI itself; the name is ours) */
+static PNT4D diNorm;
+
 namespace zdb {
+
+/* the polygon's normal from its first three points, normalised on VU0 (SOCOM 1's) */
+void CDI::SetEdgeVecsAndNorm()
+{
+    CPnt4D *p = m_pnts;
+    CPnt3D e0 = PntMinus(*(CPnt3D *)&p[1], *(CPnt3D *)&p[0]);
+    CPnt3D e1 = PntMinus(*(CPnt3D *)&p[2], *(CPnt3D *)&p[0]);
+    CPnt4D n;
+    CPnt4D a(e0.x, e0.y, e0.z, 1.0f);
+    CPnt4D b(e1.x, e1.y, e1.z, 1.0f);
+
+    sceVu0OuterProduct((float *)&n, (float *)&a, (float *)&b);
+    sceVu0Normalize((float *)&n, (float *)&n);
+    VecSet(&diNorm.x, n.x, n.y, n.z, 0.0f);
+}
 
 /* a point set from three values (the arguments evaluated right to left, so z, y and x are loaded
  * before the stores; an inline leaves no symbol: the name is ours) */
@@ -136,6 +155,60 @@ int IntersectStruct::GetMaterial()
     if (!material)
         material = CMaterialExArray::m_defaultMaterial;
     return material;
+}
+
+/* whether the hit polygon has the flag at bit 27 of its parameters (new in SOCOM II, between
+ * SOCOM 1's edge-point queries and IsInside; the name is ours) */
+bool IntersectStruct::GetPolyFlag27()
+{
+    if (!m_poly)
+        return false;
+    return m_poly->m_flags.m_flag27 ? true : false;
+}
+
+/* the hit polygon's edges crossed by the vertical through the hit, in the world's frame, their
+ * count given back when two or more (SOCOM 1's; SOCOM II transforms through the matrix's
+ * out-of-line Transform) */
+bool IntersectStruct::GetIntersectedEdgePointsY(CPnt3D *out)
+{
+    CMatrix mtw, unused;
+
+    if (!m_node->BuildMTW(mtw))
+        return false;
+    CMatrix inv;
+
+    Vu0MatrixInverseWithUniformScale(&inv, &mtw);
+    CPnt3D p;
+
+    inv.Transform(&m_pos, &p, 1);
+    int n = m_poly->GetEdgeIntersectsY(&p, out);
+
+    if (n > 1) {
+        mtw.Transform(out, n);
+        return true;
+    }
+    return false;
+}
+
+/* the hit polygon's two edge points through the hit, in the world's frame (SOCOM 1's) */
+bool IntersectStruct::GetIntersectedEdgePoints(CPnt3D *a, CPnt3D *b)
+{
+    CMatrix mtw, unused;
+
+    if (!m_node->BuildMTW(mtw))
+        return false;
+    CMatrix inv;
+
+    Vu0MatrixInverseWithUniformScale(&inv, &mtw);
+    CPnt3D p;
+
+    inv.Transform(&m_pos, &p, 1);
+    if (m_poly->GetEdgeIntersects(&p, a, b)) {
+        mtw.Transform(a, 1);
+        mtw.Transform(b, 1);
+        return true;
+    }
+    return false;
 }
 
 }

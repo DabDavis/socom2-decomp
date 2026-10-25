@@ -4,6 +4,7 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK Clear__14CSched_ManagerFv(M2C_UNK *);       /* extern */
@@ -13,11 +14,11 @@ M2C_UNK InitInstancePool__12CSndInstanceFi(M2C_UNK); /* extern */
 M2C_UNK Init__3C2DFv();                             /* extern */
 M2C_UNK Init__5CPipeFv();                           /* extern */
 M2C_UNK Init__6CInputFv();                          /* extern */
+M2C_UNK Init__6CValveFv();                          /* extern */
 M2C_UNK Init__Q23zdb6CWorldFv();                    /* extern */
 M2C_UNK Init__Q23zdb8CTextureFv();                  /* extern */
 M2C_UNK Open__3C2DFv();                             /* extern */
 M2C_UNK func_003221F0();                            /* extern */
-M2C_UNK func_00351EE0();                            /* extern */
 M2C_UNK func_003C0740(M2C_UNK *, M2C_UNK);          /* extern */
 M2C_UNK func_005128F0();                            /* extern */
 M2C_UNK func_005761B0();                            /* extern */
@@ -30,7 +31,7 @@ s32 StartEngine__5CGameFv(void) {
     Clear__14CSched_ManagerFv(&zTaskScheduler);
     func_003221F0();
     func_003C0740(&data_004B50D0, 0x14);
-    func_00351EE0();
+    Init__6CValveFv();
     Init__Q23zdb8CTextureFv();
     Init__3C2DFv();
     Init__Q23zdb6CWorldFv();
