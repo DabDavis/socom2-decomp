@@ -3265,20 +3265,20 @@
 0x0027E720 0x3E4 UISwitchMenu__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "SwitchMenu" in both builds' UI command tables: SOCOM II's id 0xD at 0x3DD590, SOCOM 1's UICommandTable id 0x7 -> UISwitchMenu__FP13C2DAnimCmdHdrPf)
 0x0027EB10 0x38 UIPopUpDialog__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "PopUpDialog" in both builds' UI command tables: SOCOM II's id 0xE at 0x3DD5A0, SOCOM 1's UICommandTable id 0x8 -> UIPopUpDialog__FP13C2DAnimCmdHdrPf)
 0x0027EB50 0x108 UISetMission__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "SetMission" in both builds' UI command tables: SOCOM II's id 0x1 at 0x3DD4D0, SOCOM 1's UICommandTable id 0x1 -> UISetMission__FP13C2DAnimCmdHdrPf)
-0x0027EC60 0xBC func_0027EC60  # OVL1
-0x0027ED20 0x70 func_0027ED20  # OVL1
+0x0027EC60 0xBC __ct__12CMenuHistoryFv  # OVL1; s1:align (SOCOM 1's CMenuHistory constructor, the same body: the two name vectors reserved to 32, then 32 pool slots of 48 bytes set to MENUHISTORY_STRPOOL and pushed on the free list; called from the stack's constructor on +0x828)
+0x0027ED20 0x70 __dt__Q23std32vector<Pc,Q23std13allocator<Pc>>Fv  # OVL1; by hand (vector<char *>'s destructor, three this-tests, the history's two vectors' type; SOCOM 1's __vector_imp<Pc> destructor sits at the same place, after CMenuHistory's constructor)
 0x0027ED90 0x5C KillPopUp__10CMenuStackFv  # OVL1; s1:align (SOCOM 1's KillPopUp, the same body at SOCOM II's offsets: the pop-up at +0xE40, the menu root's FindChild("POPUP", true) and SetActive(false); UIKillPopUp inlines it, as SOCOM 1's does)
-0x0027EDF0 0x114 func_0027EDF0  # OVL1
-0x0027EF10 0x50 func_0027EF10  # OVL1
+0x0027EDF0 0x114 FlushHistory__10CMenuStackFb  # OVL1; s1:align (SOCOM 1's FlushHistory: every entry's name reset to DEFAULT_ARGNAME, the history's names given back to the pool, the pop-up deleted when all; st_exit.cpp and st_menu.cpp call it with the stack)
+0x0027EF10 0x50 CleanPopup__10CMenuStackFv  # OVL1; s1:align (SOCOM 1's CleanPopup: the pop-up at +0xE40 deleted through its virtual destructor and cleared)
 0x0027EF60 0xC FetchMissionFontsRdr__Fv  # OVL1; s1:order (SOCOM 1's FetchMissionFontsRdr sits between CleanPopup and Unload_MissionReader, as this between 0x27EF10 and 0x27EF70; the same one load: theMission's fonts reader, +0x5A0 there, +0x1824 here)
-0x0027EF70 0x80 func_0027EF70  # OVL1
+0x0027EF70 0x80 Unload_MissionReader__Fv  # OVL1; s1:order (SOCOM 1's Unload_MissionReader, between FetchMissionFontsRdr and PopUpDialog in both builds: the mission's database name, a 1024-byte "run/" path built and unused, CRdrArchive::RemoveArchive("readerm.zar", database))
 0x0027EFF0 0x194 PopUpDialog__10CMenuStackFPCc  # OVL1; s1:calls (UIPopUpDialog calls it from the same instruction as SOCOM 1's calls PopUpDialog__10CMenuStackFPCc, with g_MenuStack and the argument's name)
 0x0027F190 0xB8 func_0027F190  # OVL1
 0x0027F250 0x198 func_0027F250  # OVL1
 0x0027F3F0 0x70 AddToHistory__10CMenuStackFPCc  # OVL1; s1:align (SOCOM 1's AddToHistory: the last free name slot popped, inserted at the history's end, the name copied in -- the vectors at +0xE34 and +0x828 here, +0xA24 and +0x418 there)
 0x0027F460 0x124 func_0027F460  # OVL1
-0x0027F590 0x1C8 func_0027F590  # OVL1
-0x0027F760 0x6C func_0027F760  # OVL1
+0x0027F590 0x1C8 __dt__10CMenuStackFv  # OVL1; s1:align (SOCOM 1's ~CMenuStack: FlushHistory(true) and CleanPopup inlined, the history's vectors destroyed, the deleting flag)
+0x0027F760 0x6C __ct__10CMenuStackFv  # OVL1; by hand (the stack's constructor, called by the unit's initialiser 0x3FFCA0 on g_MenuStack: 40 entries of 52 bytes set to -1 and DEFAULT_ARGNAME, the history constructed, the two words at +0x820 and the pop-up cleared; SOCOM 1 links no copy)
 0x0027F7D0 0xC GetMenuNode__Fv  # OVL1; s1:callee by hand (GetDatabaseNode's MENU scope calls it twice where SOCOM 1's calls GetMenuNode; both return one global)
 0x0027F7E0 0xC UnRegisterMenuNode__Fv  # OVL1; s1:order (SOCOM 1's GetMenuNode, UnRegisterMenuNode, RegisterMenuNode, GetDatabase, SetDatabase; the same bodies)
 0x0027F7F0 0xC RegisterMenuNode__FPQ23zdb5CNode  # OVL1; s1:order (as UnRegisterMenuNode)

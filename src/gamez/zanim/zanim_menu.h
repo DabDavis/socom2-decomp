@@ -68,6 +68,27 @@ inline void SetValveValue(CValve *valve, int value)
 
 /* ---- the classes the handlers call ---- */
 
+/* a 2D object's visual: C2DVisual (SOCOM 1's, a zdb::CVisual made from a C2D), its C2D at 0x68 */
+class C2DVisual {
+public:
+    unsigned char _0[0x68];
+    C2D *m_c2d;   // 0x68
+};
+
+/* a node's visual as the menu sees it: zdb::CVisual's table up to Get2DVisual, its sixth slot (+0x1C;
+ * SOCOM 1's seventh). znode.h's CVisual does not declare it yet, so its out-of-line copy (0x274860,
+ * this unit's in both builds: `return 0;`) is still the generated draft's */
+class CVisualView {
+public:
+    unsigned char _0[0x20];
+    virtual ~CVisualView();
+    virtual void Slot0C();
+    virtual void Slot10();
+    virtual void Slot14();
+    virtual void Slot18();
+    virtual C2DVisual *Get2DVisual();
+};
+
 /* a UI variable (SOCOM 1's DWARF: CUIVariable : _zrdr, 0x1C bytes) */
 enum UIVAR_LONGEVITY {
     UIVAR_TEMPORARY = 0,   /* (the values' names ours: the handlers pass 1 and 2) */
@@ -154,7 +175,9 @@ class CMission {
 public:
     void CreateNetGame();
 
-    unsigned char _0[0x1808];
+    unsigned char _0[0x1c];
+    char *m_database;   // 0x1c (SOCOM 1's)
+    unsigned char _20[0x1808 - 0x20];
     CZNetGame *m_pNetGame;   // 0x1808 (SOCOM 1's at 0x584)
     unsigned char _180c[0x1824 - 0x180c];
     CRdrFile *m_fontsRdr;   // 0x1824 (SOCOM 1's at 0x5A0)
@@ -211,22 +234,63 @@ extern COurGame theGame;
 
 zdb::CNode *GetMenuNode();
 
-/* the menu's screen stack (SOCOM 1's CMenuStack, 0xA34 bytes there, 0xE44 here): the history of
- * screens, kept as names in string slots taken from a free list, and the pop-up (SOCOM II's offsets
- * read off AddToHistory and KillPopUp; the members' names ours) */
+/* the menu's pop-up (SOCOM 1's CPopUpDialog, a C2D: its table's first slot the destructor) */
+class CPopUpDialog : public C2D {
+public:
+    virtual ~CPopUpDialog();
+};
+
+/* the default name of a stack entry and of a history slot (SOCOM 1's DEFAULT_ARGNAME and
+ * MENUHISTORY_STRPOOL: "NO_ARG" and "POOL") */
+extern const char *DEFAULT_ARGNAME;
+extern const char *MENUHISTORY_STRPOOL;
+
+/* a screen on the stack: its id and its argument's name, 52 bytes (ours: the stack's constructor
+ * and FlushHistory write them so) */
+struct CMenuEntry {
+    CMenuEntry()
+    {
+        m_id = -1;
+        strcpy(m_argname, DEFAULT_ARGNAME);
+    }
+
+    int m_id;   // 0x0
+    char m_argname[48];   // 0x4
+};
+
+/* a pointer vector's storage, as MSL keeps it (include/vector) */
+typedef std::__vector_pod<unsigned int, std::allocator<unsigned int> > PtrVec;
+
+/* the screens gone back over: names in slots of a pool, a free list of the unused slots (SOCOM 1's
+ * CMenuHistory, 0x618 bytes in both builds; its members' names ours) */
+class CMenuHistory {
+public:
+    CMenuHistory();
+    /* every name given back to the pool (ours: FlushHistory and the destructor inline it) */
+    void Flush();
+
+    std::vector<char *> m_used;   // 0x0
+    char m_pool[32][48];   // 0xc
+    std::vector<char *> m_free;   // 0x60c
+};
+
+/* the menu's screen stack (SOCOM 1's CMenuStack, 0xA34 bytes there, 0xE44 here: twice the
+ * entries) */
 class CMenuStack {
 public:
+    CMenuStack();
+    ~CMenuStack();
     void KillPopUp();
     void CleanPopup();
     void AddToHistory(const char *name);
     void PopUpDialog(const char *name);
     void FlushHistory(bool all);
 
-    unsigned char _0[0x828];
-    std::vector<char *> m_history;   // 0x828 (SOCOM 1's at 0x418)
-    unsigned char _834[0xe34 - 0x834];
-    std::vector<char *> m_free;   // 0xe34 (SOCOM 1's at 0xA24): the unused name slots
-    void *m_popup;   // 0xe40 (SOCOM 1's at 0xA30)
+    CMenuEntry m_entries[40];   // 0x0 (SOCOM 1's 20)
+    int m_820;   // 0x820
+    int m_824;   // 0x824
+    CMenuHistory m_history;   // 0x828 (SOCOM 1's at 0x418)
+    CPopUpDialog *m_popup;   // 0xe40 (SOCOM 1's at 0xA30)
 };
 CMenuStack *GetMenuStack();
 
@@ -246,6 +310,17 @@ void SendChatMsg(const char *text);
 
 /* text the user types, sent to a callback with whom it is for (SOCOM II's; 0x281D40) */
 typedef void (*UITextCallback)(const char *text, const char *to);
+
+/* a character type (SOCOM 1's CCharacterType, 0x2FC bytes; SOCOM II's weapons list at 0x2E8) */
+class CCharacterWeapList;
+
+class CCharacterType {
+public:
+    unsigned char _0[0x2e8];
+    unsigned char m_weapons[0xc];   // 0x2e8 (SOCOM 1's CCharacterWeapList at 0x250)
+};
+
+const char *GetCustomCharTypeName(int index);
 
 /* ---- placeholders: methods and functions not named yet (SOCOM 1's names, by the call SOCOM 1's
  * handler makes at the same place, in the comments) ---- */
@@ -348,6 +423,9 @@ double func_00191478(const char *s);                                /* atof */
 void func_0037B980(float f);                                        /* UiSetTtySpeedFactor (SOCOM 1's) */
 void func_0037B990(float f);                                        /* UiSetCounterSpeedFactor */
 void func_002C5D60(const char *name);                               /* CCtrlrConfigs::SelectConfig (SOCOM 1's) */
+CCharacterType *func_0053E170(const char *name);                    /* CCharacterType::GetByNameMod (SOCOM 1's) */
+char *func_0039C580();                                              /* (a path: the game's directory?) */
+void func_0032C2B0(const char *archive, const char *name);          /* CRdrArchive::RemoveArchive (SOCOM 1's) */
 
 /* SOCOM II's: whether the player is a terrorist, whether the player was banned */
 bool func_002C31A0();

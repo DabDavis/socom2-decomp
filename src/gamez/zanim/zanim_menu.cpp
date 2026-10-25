@@ -111,21 +111,88 @@ zdb::CNode *GetMenuNode()
     return g_menuRootNode;
 }
 
-/* a pointer vector's storage, as MSL keeps it (include/vector) */
-typedef std::__vector_pod<unsigned int, std::allocator<unsigned int> > PtrVec;
+
+CMenuStack::CMenuStack()
+{
+    m_824 = 0;
+    m_820 = 0;
+    m_popup = 0;
+}
+
+/* OPEN, 2 instructions (0x1C0 of 0x1C8): the target inlines FlushHistory whole (with all true:
+ * the pop-up's test without the flag's, then CleanPopup's), the history's flush and the vectors'
+ * pieces with it. Here the chain is one level too tall at this depth: the base's end() inside back()
+ * is called out of line (FlushHistory itself matches, one level up). Written out instead (the
+ * entries loop, m_history.Flush(), the pop-up's delete, CleanPopup()) everything inlines and one
+ * instruction is left: the history's member destruction reads m_free's data_ through its this,
+ * lw a0,8(v0), where MW folds it into lw a0,0xE3C(s2) (m_used's, destroyed after, is folded in the
+ * target too) -- not the history's base class (measured: m_used as CMenuHistory's base gives the same
+ * fold). include/vector's pointer back() and push_back a level lower would likely settle the first
+ * form */
+CMenuStack::~CMenuStack()
+{
+    FlushHistory(true);
+    CleanPopup();
+}
 
 void CMenuStack::AddToHistory(const char *name)
 {
-    char *slot = m_free.back();
+    char *slot = m_history.m_free.back();
 
-    m_free.pop_back();
-    m_history.PtrVec::insert(m_history.PtrVec::end(), 1, (unsigned int &)slot);
+    m_history.m_free.pop_back();
+    m_history.m_used.PtrVec::insert(m_history.m_used.PtrVec::end(), 1, (unsigned int &)slot);
     strcpy(slot, name);
+}
+
+/* the mission's reader archive let go of (SOCOM 1's builds the path and does not use it either) */
+void Unload_MissionReader()
+{
+    const char *db = theMission.m_database;
+
+    if (db) {
+        char path[1024] = "run/";
+
+        func_0039C580();
+        strcat(path, db);
+        func_0032C2B0("readerm.zar", db);
+    }
 }
 
 CRdrFile *FetchMissionFontsRdr()
 {
     return theMission.m_fontsRdr;
+}
+
+void CMenuStack::CleanPopup()
+{
+    if (m_popup) {
+        delete m_popup;
+        m_popup = 0;
+    }
+}
+
+/* (the base's push_back() and back() stand in for the vector's: include/vector's pointer back() is
+ * three high -- it calls the base's, which calls end() -- and its push_back two, which keeps
+ * FlushHistory too tall for ~CMenuStack to inline it whole and fetches push_back's argument out of
+ * line; SOCOM II's must each be a level lower) */
+void CMenuHistory::Flush()
+{
+    while (m_used.size()) {
+        m_free.PtrVec::push_back(m_used.PtrVec::back());
+        strcpy((char *)m_free.PtrVec::back(), MENUHISTORY_STRPOOL);
+        m_used.pop_back();
+    }
+}
+
+void CMenuStack::FlushHistory(bool all)
+{
+    for (int i = 0; i < 40; i++)
+        strcpy(m_entries[i].m_argname, DEFAULT_ARGNAME);
+    m_history.Flush();
+    if (m_popup && all) {
+        delete m_popup;
+        m_popup = 0;
+    }
 }
 
 void CMenuStack::KillPopUp()
@@ -137,6 +204,19 @@ void CMenuStack::KillPopUp()
             node->SetActive(false);
     }
 }
+
+/* (pinned: the stack's constructor calls it, where MW would inline it) */
+#pragma auto_inline off
+CMenuHistory::CMenuHistory()
+{
+    m_used.reserve(32);
+    m_free.reserve(32);
+    for (unsigned int i = 0; i < 32; i++) {
+        strcpy(m_pool[i], MENUHISTORY_STRPOOL);
+        m_free.push_back(m_pool[i]);
+    }
+}
+#pragma auto_inline reset
 
 bool UIPopUpDialog(C2DAnimCmdHdr *hdr, float *dT)
 {
@@ -925,7 +1005,132 @@ CMenuStack *GetMenuStack()
     return &g_MenuStack;
 }
 
+/* the command's type by its name: 0 for none, the count of types for no name at all */
+int GetUICommandType(const char *name)
+{
+    if (!name)
+        return 232;
+    if (!*name)
+        return 0;
+    /* (a do-while: the table is never empty -- SOCOM 1's has the same shape) */
+    int i = 0;
+
+    do {
+        if (!strcasecmp(UICommandTable[i].name, name))
+            return UICommandTable[i].id;
+    } while (UICommandTable[++i].id);
+    return 0;
+}
+
+/* the 2D object a command's node draws, if it has one (ours) */
+inline C2D *GetCommandC2D(unsigned short node_ref)
+{
+    C2D *c2d = 0;
+
+    if (node_ref) {
+        ZAnim.m_CurAnim->Refresh(false);
+        CNode *node = ZAnim.m_CurAnim->GetNode(node_ref, false);
+
+        if (node) {
+            CVisualView *visual = (CVisualView *)node->GetFirstVisual();
+
+            if (visual) {
+                C2DVisual *v2d = visual->Get2DVisual();
+
+                if (v2d)
+                    c2d = v2d->m_c2d;
+            }
+        }
+    }
+    return c2d;
+}
+
+/* a UI command's handler run: the table's own record when the type indexes it, else the record
+ * that carries the type; true when there is none (ours) */
+inline bool RunUICommand(C2DAnimCmdHdr *hdr, float *dT)
+{
+    int i = 0;
+    int type = hdr->m_command_type;
+
+    if (!type) {
+        type = GetUICommandType(ZAnim.m_CurAnim->GetName(hdr->m_command_index));
+        hdr->m_command_type = type;
+    }
+    if (UICommandTable[type].id == type) {
+        if (UICommandTable[type].func)
+            return UICommandTable[type].func(hdr, dT);
+    } else {
+        do {
+            if (UICommandTable[i].id == type && UICommandTable[i].func)
+                return UICommandTable[i].func(hdr, dT);
+        } while (UICommandTable[++i].id);
+    }
+    return true;
+}
+
+/* UI_COMMAND's tick: the command goes to its node's 2D object when the node has one, else to the
+ * handler its name registers (the names looked up and left unused are SOCOM 1's too: debug output
+ * compiled away) */
+bool zAnimUIMenuTick(_zanim_cmd_hdr *cmd, float *dT)
+{
+    C2DAnimCmdHdr *hdr = (C2DAnimCmdHdr *)cmd;
+    bool handled = false;
+    bool done = true;
+    CZAnim *anim = ZAnim.m_CurAnim;
+
+    anim->GetName(hdr->m_command_index);
+    unsigned short node_ref = hdr->node_ref_index;
+
+    if (node_ref) {
+        C2D *c2d = GetCommandC2D(node_ref);
+
+        if (c2d) {
+            handled = c2d->TickZAnimCmd(cmd, dT, &done);
+        } else {
+            ZAnim.m_CurAnim->GetNode(hdr->node_ref_index, false);
+            anim->GetName();
+        }
+    }
+    if (!handled) {
+        anim->GetName(hdr->m_argument_index);
+        done = RunUICommand(hdr, dT);
+    }
+    return done;
+}
+
 bool zAnimUIAppMenuTick(_zanim_cmd_hdr *hdr, float *dT)
 {
     return true;
+}
+
+namespace {
+
+/* the selected characters one by one: a bit for each of the 32 in a mask, the weapons list of the
+ * character the index is on (SOCOM 1's class; the members' names ours) */
+class CSelectedCharsItr {
+public:
+    void Advance();
+    /* (an accessor: the loop's test then reads the index apart from the body, as the target's
+     * does -- written out, MW keeps the test's load for the shift) */
+    bool Valid() const { return m_index < 32; }
+
+    unsigned int m_mask;   // 0x0
+    int m_index;   // 0x4
+    void *m_weapons;   // 0x8
+};
+
+/* on to the next selected character that has a type (and so its weapons) */
+void CSelectedCharsItr::Advance()
+{
+    for (m_index++; Valid(); m_index++) {
+        if ((1 << m_index) & m_mask) {
+            CCharacterType *type = func_0053E170(GetCustomCharTypeName(m_index));
+
+            m_weapons = type ? type->m_weapons : 0;
+            if (m_weapons)
+                break;
+        }
+    }
+}
+
 }

@@ -156,6 +156,8 @@
 0x003DCFB4 0x0 devRpcData  # OVL1; s1:data-seq (size SOCOM 1's; via lgAudClose +4)
 0x003DCFB8 0x4 devicechanged  # OVL1; s1:data-exact (size SOCOM 1's; via lgAudClose +3)
 0x003DCFBC 0x4 threadsafeSema  # OVL1; s1:data-exact (size SOCOM 1's; via lgAudClose +4)
+0x003DD048 0x4 DEFAULT_ARGNAME  # OVL1 data; SOCOM 1's (gp-32368 there; "NO_ARG"): a stack entry's default argument name -- the stack's constructor, FlushHistory and ~CMenuStack copy it into each entry where SOCOM 1's do; 5 references in 5 functions
+0x003DD050 0x4 MENUHISTORY_STRPOOL  # OVL1 data; SOCOM 1's (gp-32364 there, next after DEFAULT_ARGNAME as here; "POOL"): a history slot's default name -- CMenuHistory's constructor, FlushHistory and ~CMenuStack copy it into each slot given back where SOCOM 1's do; 6 references in 5 functions
 0x003DD4D0 0xD00 UICommandTable  # OVL1; s1:data-seq (via GetUICommandType__FPCc); size SOCOM II's: 208 records of 16 bytes {id, name, handler, second function} and a zero record at 0x3DE1C0 that ends GetUICommandType's walk (SOCOM 1's 149 records of 12 bytes, 0x6F0); 3 references in 2 functions (GetUICommandType, zAnimUIMenuTick)
 0x003DE200 0x1 m_dynamics_controlled__Q23zdb7CCamera  # OVL1; s1:data-seq (size SOCOM 1's; via CmdTickControlSwitch__Q23zdb7CCameraFP14_zanim_cmd_hdrPf)
 0x003DE208 0x1 m_do_region_test__Q23zdb7CCamera  # OVL1; s1:data-seq (size SOCOM 1's; via CmdTickGetRegions__Q23zdb7CCameraFP14_zanim_cmd_hdrPf +1)
