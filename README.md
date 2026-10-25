@@ -399,7 +399,41 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     (`andi 0xffff`) for the add; likewise a byte tested and then passed wants `== 0`;
   - MW's saved registers follow declaration order for most locals, but an anim pointer read
     from `ZAnim.m_CurAnim` takes the lowest wherever it is declared (the motion-script tick and
-    the from-to begin, where the target gives it s2: still open).
+    the from-to begin, where the target gives it s2: still open);
+  - an address-taken local's fields read through an inline's REFERENCE parameter come off the
+    frame (`lwc1 268(sp)`); read directly they reuse an address MW hoisted into a saved
+    register for the local's copies (the light tick's `SetPosition(const CPnt3D &)`);
+  - a union's implicit copy (SOCOM 1's BLENDMODE: sceGsAlpha and the word) holds its source
+    address from the block's start; a one-member class's copy loads the word directly.
+- **Tells from round 4** (the game states and the HUD):
+  - an inlined loop's compiler temporaries count as declared last: they take the lowest saved
+    registers and push named values up (CMenuState::Tick);
+  - a 16-byte value passed by value to an inline is copied twice: into the return's temporary
+    (lq/sq), then into the parameter's (a 128-bit move, `paddub` with zero, and sq) -- SeeFarther;
+    MW uses lq/sq only where it trusts 16-byte alignment (a global's start), element by element
+    at other offsets of a struct of 4-aligned PNT4D;
+  - a byte enum passed to an inline taking the same enum is loaded with lb and narrowed inside
+    with andi; an unsigned char or int parameter folds the conversion into an lbu at the load;
+  - a global passed to a bool parameter must itself be bool (an unsigned char adds an sltu);
+    a test that re-reads members and materialises `&&` before branching is an inline bool;
+  - MSL's basic_string destructor is never inlined: called with -1 for a member, 0 for a base;
+  - a constructor too tall to inline whole is inlined one level, and its callees' out-of-line
+    copies are emitted in that unit; MW 3.0 counts implicit constructors as inline levels, an
+    empty user constructor too (probes in build/scratch/hud/p_ctor*.cpp) -- SOCOM 1's debug
+    build expanded implicit constructors in place, so its code says nothing about heights;
+  - the end iterator taken once into a local (`iterator i, e = end();`) keeps it in a saved
+    register, as the target's list loops do; `i != end()` recomputes it from `this`. After a
+    call, write `i = begin();` then `iterator e = end();` so `this` dies at the loop;
+  - a list constructed before the vtable store is a base class (CLensFlareManager : list, vptr
+    at 0xc); a member is constructed after it. A three-word vtable is one virtual function and
+    no virtual destructor;
+  - a hand unit's out-of-line copy supersedes a draft of the same name even when it misses:
+    declare stub destructors non-inline so the unit emits nothing;
+  - s1:calls names can slide one member where SOCOM II inserts a call: check each call's
+    receiver offset against the member its constructor builds (three were shifted back).
+- **Tool notes**: scdiff accepts the image's one non-zero pad word (0xFFFFFFFF at 0x1E70F4,
+  after main); `automatch --stale` can drop a renamed destructor's draft when its re-draft
+  misses (SlotList's and CWeaponSlot's were restored by hand, the old drafts renamed).
 
 ## The map: `symbols.txt`
 
