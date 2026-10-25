@@ -143,6 +143,12 @@
 0x001E0440 0x200 _sprtagdata.24  # MAIN bss; s1:data-exact (size SOCOM 1's; via dmaRefImage)
 0x001E0640 0x0 _packet_buffer  # MAIN bss; s1:data-exact (size SOCOM 1's; via sceSifMInitRpc)
 0x003D7540 0x0 vu0_CodeSegment  # OVL1; s1:data-seq (size SOCOM 1's; via zMath_Init__Fv)
+0x003DC338 0x4 m_current__10CameraZoom  # OVL1; SOCOM 1's (m_current__10CameraZoom, a CameraZoom static): the zoom's current value, 1.0 in data; 15 references in 4 functions (Tick, HandleZoomIn, HandleNewZoom, Reset)
+0x003DC340 0x4 m_goal__10CameraZoom  # OVL1; SOCOM 1's (m_goal__10CameraZoom): the zoom's goal, 1.0 in data; 11 references in 6 functions (SetGoal, Tick, OnGoal, HandleZoomIn, HandleNewZoom, Reset)
+0x003DC348 0x1 m_oldview__10CameraZoom  # OVL1; SOCOM 1's (m_oldview__10CameraZoom, a CAMVIEW): the view kept while zoomed; 4 references in 2 functions (HandleZoomIn, Reset)
+0x003DC350 0x1 data_003DC350  # OVL1; SOCOM II's lens effect before the current one (a LENS_FX byte, 8 in data; thezoom.cpp's name for it ours): 43 references in 6 functions (SetLensFx, Reset, HandleNewZoom, 0x1EFA50, 0x1EFC30, 0x1F0030)
+0x003DC358 0x1 data_003DC358  # OVL1; SOCOM II's current lens effect (a LENS_FX byte, 8 in data): 44 references in 6 functions (SetLensFx, Reset, HandleNewZoom, 0x1EFA50, 0x1EFC30, 0x1F0030)
+0x003DC360 0x1 data_003DC360  # OVL1; SOCOM II's lens effects switch (1 in data; CameraZoom::LensFxOn returns it): 7 references in 3 functions (LensFxOn, HandleNewZoom, 0x1F0030)
 0x003DC3D0 0x1B gopt  # OVL1; SOCOM 1's (27 bytes, the game options; CCoreState's Init and Tick test its first byte, as SOCOM 1's): 15 references in 10 functions take 0x3DC3D0-0x3DC3E0
 0x003DC468 0x4 m_U1__17CZClaymoreMapItem  # OVL1 data; SOCOM 1's static (1.0: CZClaymoreMapItem's Tick reads it where SOCOM 1's does, and a CZNewHudMap function (0x20B2C0) sets it): 2 references in 2 functions
 0x003DC470 0x4 m_V1__17CZClaymoreMapItem  # OVL1 data; SOCOM 1's static (1.0, after m_U1 as in SOCOM 1): 2 references in 2 functions
@@ -153,6 +159,17 @@
 0x003DE200 0x1 m_dynamics_controlled__Q23zdb7CCamera  # OVL1; s1:data-seq (size SOCOM 1's; via CmdTickControlSwitch__Q23zdb7CCameraFP14_zanim_cmd_hdrPf)
 0x003DE208 0x1 m_do_region_test__Q23zdb7CCamera  # OVL1; s1:data-seq (size SOCOM 1's; via CmdTickGetRegions__Q23zdb7CCameraFP14_zanim_cmd_hdrPf +1)
 0x003DE210 0x1 fogCheck  # OVL1; SOCOM 1 name (zcam_main.cpp's file static, 1; TestFOG and TestLandmarkFOG read it)
+0x003DE218 0x4 data_003DE218  # OVL1; SOCOM II's degrees-to-radians factor (0.0174533 in data, a variable: TickCameraWiggle reads it with lwc1): 2 references in 1 function
+0x003DE220 0x4 data_003DE220  # OVL1; SOCOM II's shake: the x ripple's angle in degrees (90 in data; StopShake puts it at 90 or 270): 9 references in 5 functions (the shake's, the constructor)
+0x003DE228 0x4 data_003DE228  # OVL1; SOCOM II's shake: the x rate, degrees a second (-1 in data, no shake): 8 references in 6 functions
+0x003DE230 0x4 data_003DE230  # OVL1; SOCOM II's shake: the y rate (-1): 8 references in 6 functions
+0x003DE238 0x4 data_003DE238  # OVL1; SOCOM II's shake: the x base amplitude (-1): 7 references in 6 functions
+0x003DE240 0x4 data_003DE240  # OVL1; SOCOM II's shake: the x random amplitude (-1): 7 references in 6 functions
+0x003DE248 0x4 data_003DE248  # OVL1; SOCOM II's shake: the x decay per frame (-1): 8 references in 6 functions
+0x003DE250 0x4 data_003DE250  # OVL1; SOCOM II's shake: the y base amplitude (-1): 8 references in 6 functions
+0x003DE258 0x4 data_003DE258  # OVL1; SOCOM II's shake: the y random amplitude (-1): 7 references in 6 functions
+0x003DE260 0x4 data_003DE260  # OVL1; SOCOM II's shake: the y decay per frame (-1): 8 references in 6 functions
+0x003DE268 0x4 save_short_tether_length  # OVL1; SOCOM 1's (save_short_tether_length, camera.cpp's; 10000 in data, as ResetDeathCam puts back): 8 references in 2 functions (ResetDeathCam, ClipCameraChord)
 0x003DE2D0 0x4 m_debug__8CConsole  # OVL1; s1:data-seq (size SOCOM 1's; via Debug__8CConsoleFiP7CPacketPCc)
 0x003DE2E0 0x4 recycler_index  # OVL1; s1:data-seq (size SOCOM 1's; via CreateEntity__7CEntityFP7CEntityb)
 0x003DE5F8 0x4 LADDER_MASK  # OVL1; s1:data-seq (size SOCOM 1's; via GetLadderByIndex__11CLadderListFi)
@@ -560,6 +577,22 @@
 0x004083F0 0x14 __vt__17CProjectileNodeEx  # vtable of CProjectileNodeEx: found by its RTTI's name
 0x004084C0 0x2B0 theGame  # OVL1 bss; size COurGame's (main.cpp: its destructor and constructor reach the reboot state at 0x2A0, 8 bytes, and CCoreState's matrices align it to 16; SOCOM 1's was 0x210); at 0x4084C0, not the data-seq pass's 0x4084CC (a field): 43 references take 0x4084C0 as the object
 0x00408C10 0x4 load_thread_stack  # OVL1 bss; SOCOM 1's name (its static array for the load thread's stack; SOCOM II's is a pointer to one allocated once): 7 references in 2 functions take 0x408C10 (CCoreState's StartLoadThread and FreeLoadThread)
+0x00408C48 0x4 m_increment__10CameraZoom  # OVL1 bss; SOCOM 1's (m_increment__10CameraZoom): the zoom's step a second; 9 references in 4 functions (Tick, HandleZoomIn, HandleNewZoom, Reset)
+0x00408C50 0x1 m_iszoom__10CameraZoom  # OVL1 bss; SOCOM 1's (m_iszoom__10CameraZoom): zooming; 8 references in 3 functions (HandleZoomIn, OnGoal, Reset)
+0x00408C58 0x4 m_seal__10CameraZoom  # OVL1 bss; SOCOM 1's (m_seal__10CameraZoom): the SEAL zoomed for; 17 references in 6 functions (AttachSeal, Tick, OnGoal, HandleZoomIn, HandleNewZoom, 0x1EFA50)
+0x00408C60 0x4 m_hud__10CameraZoom  # OVL1 bss; SOCOM 1's (m_hud__10CameraZoom): the HUD zoomed in and out; 9 references in 4 functions (AttachHud, OnGoal, HandleZoomIn, HandleNewZoom)
+0x00408C68 0x1 m_isGoalHit__10CameraZoom  # OVL1 bss; SOCOM 1's (m_isGoalHit__10CameraZoom): the goal still to be met; 9 references in 5 functions (SetGoal, Tick, HandleZoomIn, HandleNewZoom, Reset)
+0x00408C70 0x4 BaseFarClip  # OVL1 bss; SOCOM 1's (BaseFarClip, thezoom.cpp's): the camera's far clip before SeeFarther; 9 references in 4 functions (SeeFarther, AttachHud, Reset, HandleNewZoom)
+0x00408C78 0x4 BaseMidClip  # OVL1 bss; SOCOM 1's (BaseMidClip): the mid clip before SeeFarther; 9 references in 4 functions
+0x00408C80 0x4 BaseFogFar  # OVL1 bss; SOCOM 1's (BaseFogFar): the fog's far before SeeFarther; 9 references in 4 functions
+0x00408C88 0xC data_00408C88  # OVL1 bss; SOCOM II's blindplayer01..03 anims (three CZAnim pointers; ClearLensFx forgets them): 15 references in 5 functions (ClearLensFx, 0x1EF940, 0x1EFA50, 0x1EFC30, 0x1F0030)
+0x00408CA0 0x24 data_00408CA0  # OVL1 bss; SOCOM II's nine lens effect anims, by LENS_FX (init_lens_fx, to_no_lens_fx ...; ClearLensFx forgets them): 56 references in 7 functions
+0x00408CC8 0x4 data_00408CC8  # OVL1 bss; SOCOM II's lens effect anim playing (SetLensFx stops it before the next): 30 references in 7 functions
+0x00408CD0 0x4 data_00408CD0  # OVL1 bss; SOCOM II's playing lens effect's activation (SetLensFxAnim sets it): 31 references in 8 functions
+0x00408CD8 0x1 data_00408CD8  # OVL1 bss; SOCOM II's SeeFarther note: its last switch (unless suppressed by 0x408CF0): 3 references in 3 functions (SeeFarther, Reset, 0x1EFC30)
+0x00408CE0 0x4 data_00408CE0  # OVL1 bss; SOCOM II's SeeFarther note: its last factor: 3 references in 3 functions (SeeFarther, Reset, 0x1EFC30)
+0x00408CE8 0x4 data_00408CE8  # OVL1 bss; SOCOM II's count of lens effects asked for with no anim (SetLensFx): 37 references in 5 functions
+0x00408CF0 0x4 data_00408CF0  # OVL1 bss; SOCOM II's hold on the lens effects and SeeFarther's notes (set: neither changes): 23 references in 7 functions
 0x00408D80 0x4 animfile__21@unnamed@st_exit_cpp@  # OVL1 bss; SOCOM 1's static (CExitState::Init opens the screen's anims into it, UnInit closes them): 4 references in 2 functions take 0x408D80
 0x00408DB8 0x4 g_pSkbLib__21@unnamed@st_menu_cpp@  # OVL1 bss; SOCOM 1's static (the soft keyboard's library, released in CMenuState::UnInit as in SOCOM 1): 4 references in 2 functions take 0x408DB8 (CMenuState's Init and UnInit)
 0x00408DC0 0x20 g_relocDblBuf__21@unnamed@st_menu_cpp@  # OVL1 bss; SOCOM 1's static (0x1C bytes; SOCOM II's menu tick clears its words at 0x14-0x1C, UnInit hands it to func_003654A0): 10 references in 4 functions take 0x408DC0-0x408DDC
@@ -593,8 +626,14 @@
 0x00414E40 0x4 g_menuRootNode  # OVL1 bss; s1:by hand (GetMenuNode and its register pair read and write it where SOCOM 1's use g_menuRootNode)
 0x00414E90 0x4 g_can_use_switch  # OVL1 bss; s1:data-seq (size SOCOM 1's; via UISwitchSides__FP13C2DAnimCmdHdrPf)
 0x00415FF0 0x4 appCamera  # OVL1 bss; SOCOM 1's (CHUD::GetHUDOwner reads its owner, as SOCOM 1's read gp-29416): 87 references in 61 functions take 0x415FF0
+0x00416018 0x4 data_00416018  # OVL1 bss; SOCOM II's shake: the y ripple's angle in degrees: 9 references in 5 functions
+0x00416020 0x4 data_00416020  # OVL1 bss; SOCOM II's shake: the x amplitude running: 13 references in 6 functions
+0x00416028 0x4 data_00416028  # OVL1 bss; SOCOM II's shake: the y amplitude running: 14 references in 6 functions
 0x00416038 0x1 camera_tether_intersects_something  # OVL1 bss; s1:data-seq (size SOCOM 1's; via GetNearestIntersectCamPoint__FPQ23zdb11DiIntersectP6CPnt3D)
 0x004161C0 0x4 peekCur__20@unnamed@camera_cpp@  # OVL1 bss; s1 by hand (SOCOM 1's camera.cpp static, gp-29408: CAppCamera::Tick eases it toward the peek's goal and stores it back; SOCOM II's Tick does the same with 0x4161C0)
+0x00416208 0x4 DeltaRot  # OVL1 bss; SOCOM 1's (DeltaRot, camera.cpp's; ResetDeathCam zeroes it, as SOCOM 1's): 12 references in 3 functions (ResetDeathCam, 0x2956E0, 0x297A30)
+0x00416210 0x4 DeltaAim  # OVL1 bss; SOCOM 1's (DeltaAim; ResetDeathCam zeroes it next): 7 references in 3 functions (ResetDeathCam, 0x2956E0, 0x297A30)
+0x00416218 0x4 data_00416218  # OVL1 bss; SOCOM II's third delta beside DeltaRot and DeltaAim (ResetDeathCam zeroes it with them): 6 references in 3 functions (ResetDeathCam, 0x297410, 0x297A30)
 0x00416220 0x4 _counter  # OVL1 bss; s1:data-seq (size SOCOM 1's; via OnRecvPacket__7CPacketFPCv +1)
 0x004162C0 0x10000 _wbuf  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Initalize__8CConsoleFv +1)
 0x004262C0 0x10000 _rbuf  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Initalize__8CConsoleFv +1)
