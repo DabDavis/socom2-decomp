@@ -1,9 +1,15 @@
 /* hud_weaponsel.cpp -- the single-player weapon selector (CWeaponSel): SOCOM 1's unit (its DWARF
  * names it, Z:\dev\Apps\FTS\hud_weaponsel.cpp), its functions in SOCOM 1's order (OVL1
  * 0x219330-0x21DE4F: PlaceWeaponText ... OnClose, the state handlers, OnOpen, UnInit, Init, the
- * constructor). Written: AfterClose (0x21AAA0), AfterCloseFirst (0x21B0A0), OnClose (0x21B3E0)
- * and UnInit (0x21CBA0), which inlines OnClose as SOCOM 1's called it. The layout is hud_weaponsel.h's.
- * Defined in reverse of their image order (-inline deferred). */
+ * constructor). Written, byte-exact: PlaceHotSwapLabels, PlaceMiddleIcon (SOCOM 1's SetItemPos
+ * states 1 and 7, out of line here: ours), SetItemPos, HudTick (its switch: SOCOM 1's states 1 and
+ * 6 functions of their own, HandleOpenFirstState and HandleCloseFirstState -- ours), TickHotSwap
+ * (ours), ResetHotSwap (ours), AfterOpenSecond, AfterScrollUp, AfterScrollDown, AfterClose,
+ * OnScrollUp, OnScrollDown, AfterCloseFirst, OnClose, HandleScrollDownState, HandleScrollUpState,
+ * PulseSelectionArrows, UnInit (which inlines OnClose as SOCOM 1's called it) and Init; written
+ * and OPEN: PlaceWeaponText. Not yet: the hot-swap check (0x21A1F0), HandleOpenState, OnOpen and
+ * the constructor. SOCOM 1's static Increment is an inline here (no copy linked). The layout is
+ * hud_weaponsel.h's. Defined in reverse of their image order (-inline deferred). */
 
 #include <stdio.h>
 #include <string.h>
