@@ -4,11 +4,12 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK Remove__14CSndVocalQueueFi(M2C_UNK *, s32); /* extern */
 s32 ftsGetHeadset__7HeadsetFv();                    /* extern */
 M2C_UNK func_0034AAC0(s32, s32, M2C_UNK, M2C_UNK);  /* extern */
-M2C_UNK func_0034CDB0(M2C_UNK *, s32);              /* extern */
 extern M2C_UNK data_0048DEE0;
 
 void func_003428A0(s32 arg0) {
@@ -18,5 +19,5 @@ void func_003428A0(s32 arg0) {
     if (temp_v0 != 0) {
         func_0034AAC0(temp_v0, arg0, 1, 1);
     }
-    func_0034CDB0(&data_0048DEE0, arg0);
+    Remove__14CSndVocalQueueFi(&data_0048DEE0, arg0);
 }

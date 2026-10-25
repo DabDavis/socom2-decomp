@@ -1642,6 +1642,25 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the sound, round 5** (zsnd_queue.cpp, zsnd_positions.cpp, CSched_Manager::Tick):
+  - the original auto-inlined only functions DEFINED EARLIER in the unit: every call in
+    zsnd_queue.cpp that stays a call goes to a function defined later (in our source order), every
+    inlined one to a function defined earlier; `-inline deferred` here reaches every function, so
+    `#pragma auto_inline off` pins stand in -- and a callee inlined by later callers but called by
+    earlier ones cannot be modelled that way (CSndQueue::Open). Probably behind many existing pins
+    (see "Open, and next");
+  - an empty walk with a postfix step, `for (i = begin(); i != end(); i++) ;`, gives the loop with its
+    entry test after the body (all four empty walks first time; the prefix form does not);
+  - `(p = new T)->field = x;` stores through new's result before reloading `p` when p is later pushed
+    by reference; a pushed copy, `T *q = p; v.push_back(q);`, gives the target's reload into the next
+    stack slot; a pushed copy taken before a call is saved ahead of it and reloaded after, taken
+    after the call the original stays in a saved register;
+  - a vtable slot pointing into the middle of a map row means the seed merged a tail call with the
+    function after it (0x34CD10, CSndQueueEntry::CanPlay, split from 0x34CCF0);
+  - units: zsnd_positions.cpp 0x34BD40-0x34C55F (initialiser 0x403370, tail destructor 0x34C4F0);
+    zsnd_queue.cpp 0x34C560-0x34D17F; 0x34D180-0x34E06F is a separate unit (two tables of 12-byte
+    records, closed by their reserve at 0x34DED0; CSnd::Init builds its global at 0x48DC30);
+    zsys_sched.cpp starts at 0x34E070; 0x34BCA0-0x34BD10 belongs to the headset unit.
 - **Tells from the weapons, round 7** (the turret's template tail, CZWeapon's sounds/timers/AI params):
   - a class temporary in an argument list whose type has a user destructor (even an empty inline
     one) is built before the inline end()/size() are expanded; without a destructor MW expands
@@ -2354,6 +2373,15 @@ What is open across lanes, and what comes next:
   USB-audio lgAud in OVL1 0x243000-0x258000, the speech recogniser at OVL2's start, the Medius/DME
   network libraries from 0x610000) are not MW code: EQOA's EE-GCC toolchains could match them, a
   separate effort.
+- **Does the original auto-inline only functions defined earlier?** The sound lane's round 5 found
+  every inlined call in zsnd_queue.cpp goes to a function defined earlier (our source order) and every
+  kept call to one defined later; `-inline auto,deferred` reaches every function, so lanes pin
+  callees with `#pragma auto_inline off` unit by unit (dozens of pins across the tree). If MW has a
+  mode that keeps deferred's reverse emission but auto-inlines only what it has already seen (or the
+  original's units were ordered so it holds), switching to it would retire the pins and may close
+  opens no pin can (a callee inlined by later callers and called by earlier ones: CSndQueue::Open).
+  Worth a refit-style measurement: `mwccps2.exe -help all` for the inline/defer options, then the
+  hand-written units scored with the pins removed under each candidate.
 - **`tools/scperm.py`** (EQOA's tree-sitter mutations driven by MW) has not yet closed a
   function: its finds so far trade correctness for score.
 - Tell 3.0b50 from 3.0b52; port eqrefcheck's data-reference audit to absolute addresses. The
