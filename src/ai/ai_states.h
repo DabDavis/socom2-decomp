@@ -21,6 +21,7 @@
 
 class CSealCtrlAi;
 class CAiEvent;
+class CZSealBody;
 
 /* the state kinds (SOCOM 1's AI_STATE, a byte: CAiState's constructor stores it with sb). The
  * values are the ones CAiState::Create (0x5F6550) builds each state for; the names ours, after
@@ -130,7 +131,12 @@ public:
     virtual bool CanScan() const { return true; }                         /* +0x28 */
     virtual bool CanPursue(CSealCtrlAi *ai) const { return true; }        /* +0x2C */
     virtual const char *GetScriptResponse() const { return 0; }           /* +0x30: a string, or 0 */
-    virtual bool Virtual34() { return true; }                             /* +0x34 (new) */
+    /* +0x34 (new): whether an event the AI noticed may be taken up -- the AI, the event, its
+     * owner when that is a SEAL, and whether that SEAL is no friend (the one call, 0x5F95D0's,
+     * passes them so: the owner from GetEntityById kept only for an entity of type 2, the bool
+     * `!func_00572D30(ai, owner)`; CAiSAction's 0x5F0740 and CAiSBreach's 0x5F34D0 read the event
+     * in a2 and the bool in t0; the names ours) */
+    virtual bool Virtual34(CSealCtrlAi *ai, CAiEvent *e, CZSealBody *seal, bool enemy) { return true; }
     virtual bool Virtual38() { return true; }                             /* +0x38 (new) */
     virtual bool Virtual3C() { return true; }                             /* +0x3C (new) */
     virtual bool Virtual40() { return false; }                            /* +0x40 (new) */
@@ -292,6 +298,7 @@ public:
     CAiSBreach() : CAiState(AI_STATE_BREACH) { func_005EA550(m_timer, 0.0f); }
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual bool CanPursue(CSealCtrlAi *ai) const { return false; }
+    virtual bool Virtual34(CSealCtrlAi *ai, CAiEvent *e, CZSealBody *seal, bool enemy);
     /* +0x3C (the name ours, by slot) */
     virtual bool Virtual3C() { return false; }
     virtual ~CAiSBreach();
@@ -405,6 +412,7 @@ public:
     virtual bool CanAttack() const;
     virtual bool CanScan() const;
     virtual bool CanPursue(CSealCtrlAi *ai) const;
+    virtual bool Virtual34(CSealCtrlAi *ai, CAiEvent *e, CZSealBody *seal, bool enemy);
     virtual bool Virtual38();
     virtual ~CAiSAction();
 

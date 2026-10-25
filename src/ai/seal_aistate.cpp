@@ -159,6 +159,37 @@ void CAiSAction::Virtual0C(int id, int event, CSealCtrlAi *ai)
     }
 }
 
+/* an event's kind as the states read it (ai.h's CAiEvent::m_type, the halfword at 0x1A, bits
+ * 1-15: this unit cannot include ai.h, whose CAiMaps zseal.h's stand-in rivals) and the kinds
+ * they test, a signed byte as ai.h's EVENT is (the names ai.h's) */
+enum AI_EVENT_KIND { AIEK_NONE = -1, AIEK_ENTITY = 3, AIEK_WEPHIT = 6, AIEK_WEPFIRE = 7, AIEK_LAST = 127 };
+
+struct CAiEventKind {
+    unsigned char _0[0x18];
+    unsigned int m_id : 16;   // 0x18
+    unsigned int m_visible : 1;   // 0x1a
+    unsigned int m_type : 15;
+};
+
+/* +0x34: an event taken up while the phase is under 6, else a friend's sighting or weapon hit
+ * (OVL2 0x5F0740) */
+bool CAiSAction::Virtual34(CSealCtrlAi *ai, CAiEvent *e, CZSealBody *seal, bool enemy)
+{
+    bool r = false;
+
+    if (m_phase < 6)
+        r = true;
+    else if (!enemy) {
+        switch ((AI_EVENT_KIND)((CAiEventKind *)e)->m_type) {
+        case AIEK_WEPHIT:
+        case AIEK_ENTITY:
+            r = true;
+            break;
+        }
+    }
+    return r;
+}
+
 /* +0x38: the state's phase word below 6 (the name ours) */
 bool CAiSAction::Virtual38()
 {
@@ -756,6 +787,20 @@ void CAiSBreach::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
         m_valve = 0;
         break;
     }
+}
+
+/* +0x34: a breach takes up only a sighting or a shot (OVL2 0x5F34D0) */
+bool CAiSBreach::Virtual34(CSealCtrlAi *ai, CAiEvent *e, CZSealBody *seal, bool enemy)
+{
+    bool r = false;
+
+    switch ((AI_EVENT_KIND)((CAiEventKind *)e)->m_type) {
+    case AIEK_WEPFIRE:
+    case AIEK_ENTITY:
+        r = true;
+        break;
+    }
+    return r;
 }
 
 /* a goto's events: reset (no goal, the invalid cell); on entry the stance after half a second
