@@ -5,9 +5,13 @@
  * code, and the directory name is ours. Only some of it so far. Defined in reverse of their image
  * order (-inline deferred). */
 
+#include <stdarg.h>
 #include <string.h>
 
 extern "C" int sceDeci2Close(int s);
+extern "C" int printf(const char *fmt, ...);
+/* MSL's vsprintf (MAIN 0x19E7E8: SOCOM 1's Debug, the same code, calls vsprintf there) */
+extern "C" int func_0019E7E8(char *buf, const char *fmt, va_list ap);
 
 class CPacketMsg;
 
@@ -29,6 +33,7 @@ public:
 
     unsigned int GetPacketID() const;
     unsigned int GetFlags() const;
+    static bool Compare(CPacket *a, CPacket *b);
     unsigned int GetPacketType() const;
     int CopyTo(void *dst, int size);
 
@@ -46,6 +51,11 @@ public:
         return 0;
     }
     void *GetArg(unsigned int index) const;
+    /* the message itself (CPacket's answers 0: slot 0xC of both tables) */
+    virtual CPacketMsg *GetPacketMsg();
+    /* written, not implicit (0x29D910, 0xA0: not yet here) -- declared so this unit, which defines
+     * a virtual of the class, emits no implicit copy */
+    virtual ~CPacketMsg();
 
     void **m_args;   // 0xc
 };
@@ -59,6 +69,13 @@ public:
 
     int Disconnect();
     bool IsConnected() const { return m_socket >= 0; }
+    /* debug output at a level, printed when the console's level reaches it (statics: no console
+     * is passed in either build) */
+    static void Debug(int level, const char *fmt, ...);
+    static void Debug(int level, CPacket *packet, const char *prefix);
+
+    /* the debug level (0x3DE2D0) */
+    static int m_debug;
 
     unsigned char _4[0x2c];
     int m_socket;   // 0x30
@@ -75,6 +92,52 @@ int CConsole::Disconnect()
     return 0;
 }
 
+/* formatted debug output, when the level allows it (SOCOM 1's, the same code). `m_debug >= level`
+ * materialises the test in v1 as the target does; `level <= m_debug` branches on `slt at` */
+void CConsole::Debug(int level, const char *fmt, ...)
+{
+    if (m_debug >= level) {
+        char buf[1024];
+        va_list ap;
+
+        va_start(ap, fmt);
+        func_0019E7E8(buf, fmt, ap);
+        printf(buf);
+    }
+}
+
+/* a packet's header described (SOCOM 1's, the same code) */
+void CConsole::Debug(int level, CPacket *packet, const char *prefix)
+{
+    if (m_debug >= level) {
+        unsigned int flags = packet->GetFlags();
+        unsigned int type = packet->GetPacketType();
+
+        Debug(level, "%s: id=%d, cmd=%d, ", prefix, packet->GetPacketID(), type);
+        if (flags & 1)
+            Debug(level, "FLAG_WANTACK ");
+        if (flags & 2)
+            Debug(level, "FLAG_ACK ");
+        Debug(level, "\n");
+    }
+}
+
+/* whether two packets are the same: id, type and size alike (SOCOM 1's, the same code). The ids'
+ * test is a bool assigned true (daddiu), each && its own materialised step; the two headers in
+ * locals, a's first, give the target's registers (read straight off the packets, b's loads first) */
+bool CPacket::Compare(CPacket *a, CPacket *b)
+{
+    _con_packet_hdr *da = a->m_data;
+    _con_packet_hdr *db = b->m_data;
+    bool same = false;
+
+    if (da->id == db->id)
+        same = true;
+    bool r = same && da->type == db->type;
+
+    return r && a->m_size == b->m_size;
+}
+
 /* the data copied out, if the room is enough: its size, or -1 */
 int CPacket::CopyTo(void *dst, int size)
 {
@@ -84,6 +147,9 @@ int CPacket::CopyTo(void *dst, int size)
     return m_size;
 }
 
+/* the header's fields, or 0 without data: called out of line by the packet Debug (in SOCOM 1 too),
+ * so pinned */
+#pragma auto_inline off
 unsigned int CPacket::GetPacketType() const
 {
     if (m_data)
@@ -104,6 +170,7 @@ unsigned int CPacket::GetPacketID() const
         return m_data->id;
     return 0;
 }
+#pragma auto_inline reset
 
 /* an argument, or none past the count (SOCOM 1's, the same code).
  * OPEN, 4 bytes long: the target tests the data with `beqz` to a return 0 placed last and the count
@@ -118,6 +185,12 @@ void *CPacketMsg::GetArg(unsigned int index) const
     if (index >= m_data->argc)
         return 0;
     return m_args[index];
+}
+
+/* (OVL1 0x29D890, CPacketMsg's table slot 0xC) */
+CPacketMsg *CPacketMsg::GetPacketMsg()
+{
+    return this;
 }
 
 CPacketMsg *CPacket::GetPacketMsg()
