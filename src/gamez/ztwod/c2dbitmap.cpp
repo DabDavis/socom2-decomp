@@ -126,3 +126,26 @@ void C2DBitmap::SetPos(int x1, int y1, int x2, int y2)
     m_iWidth = x2 - x1;
     m_iHeight = y2 - y1;
 }
+
+/* while fading, the alpha stepped towards the limit (no lower than 0, no higher than 128) */
+void C2DBitmap::TickFade()
+{
+    if (m_fade_enable) {
+        float trans = m_RGB[0][3];
+
+        trans += m_fade_dx;
+
+        if (m_fade_dx < 0.0f) {
+            if (trans < m_fade_limit)
+                trans = m_fade_limit;
+            else if (trans < 0.0f)
+                trans = 0.0f;
+        } else {
+            if (trans > m_fade_limit)
+                trans = m_fade_limit;
+            else if (trans > 128.0f)
+                trans = 128.0f;
+        }
+        SetTrans(trans);
+    }
+}
