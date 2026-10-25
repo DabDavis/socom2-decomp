@@ -113,6 +113,20 @@ CGEdge::CGEdge(CGNode *from, CGNode *to, float weight)
 }
 #pragma auto_inline reset
 
+/* SOCOM II's: the flag 0x40000000 of the word at 0x1c set or cleared, and on setting it the two
+ * ends replaced when the first differs (OVL1 0x2D1410; no caller found -- the name ours) */
+extern "C" void func_002D1410(CGEdge *edge, bool on, CGNode *from, CGNode *to)
+{
+    if (on)
+        edge->m_1c |= 0x40000000;
+    else
+        edge->m_1c &= ~0x40000000;
+    if (on && edge->m_from != from) {
+        edge->m_from = from;
+        edge->m_to = to;
+    }
+}
+
 /* an edge taken out of both its ends' lists and deleted (OVL1 0x2D1350: a copy of the edge's
  * pointer has its address taken for the lists' remove and lives on the stack, every access
  * through it re-read; the delete takes the parameter, kept in a register from the start. Pinned:

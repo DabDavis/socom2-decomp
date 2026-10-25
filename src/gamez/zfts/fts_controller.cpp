@@ -83,7 +83,13 @@ extern "C" PAD_BUTTON func_002C6430(unsigned char func)
  * OPEN, 0x38 against 0x40: the target loads the button with lb and narrows it with andi 0xff (a
  * byte enum's copy, then its compare), and leaves a nop after the 0.0f; every form here folds the
  * two into one lbu. Tried: the enum through an inline taking it (GetPressure), an enum local, a
- * signed char local converted at each use, the test inverted, a negative enumerator. */
+ * signed char local converted at each use, the test inverted, a negative enumerator; round 8: a
+ * switch on it, unsigned char and int locals, the body as an inline of its own, the button
+ * through GetButton and then GetPressure. The same lb/andi pair opens 0x2C5C90, 0x2C5D10 and
+ * 0x2C60C0 (CCtrlrConfigs' inlined GetButtonState, as in SOCOM 1's GetStrafeStickPos, whose
+ * out-of-line GetButtonState folds to lbu), and 0x2C60C0 keeps an inline's constant KEY_DOWN as
+ * `li a2,2; andi v1,a2,0xff` where every probe here folds it into xori: the target's inlining
+ * kept its parameters' conversions, ours does not */
 extern "C" float func_002C63F0(unsigned char func, const CPad *pad)
 {
     return pad->GetPressure(g_pCurrentConfig->m_btns[func]);
