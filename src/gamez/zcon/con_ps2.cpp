@@ -5,9 +5,13 @@
  * code, and the directory name is ours. Only some of it so far. Defined in reverse of their image
  * order (-inline deferred). */
 
+#include <stdarg.h>
 #include <string.h>
 
 extern "C" int sceDeci2Close(int s);
+extern "C" int printf(const char *fmt, ...);
+/* MSL's vsprintf (MAIN 0x19E7E8: SOCOM 1's Debug, the same code, calls vsprintf there) */
+extern "C" int func_0019E7E8(char *buf, const char *fmt, va_list ap);
 
 class CPacketMsg;
 
@@ -60,6 +64,13 @@ public:
 
     int Disconnect();
     bool IsConnected() const { return m_socket >= 0; }
+    /* debug output at a level, printed when the console's level reaches it (statics: no console
+     * is passed in either build) */
+    static void Debug(int level, const char *fmt, ...);
+    static void Debug(int level, CPacket *packet, const char *prefix);
+
+    /* the debug level (0x3DE2D0) */
+    static int m_debug;
 
     unsigned char _4[0x2c];
     int m_socket;   // 0x30
@@ -74,6 +85,36 @@ int CConsole::Disconnect()
         m_socket = -1;
     }
     return 0;
+}
+
+/* formatted debug output, when the level allows it (SOCOM 1's, the same code). `m_debug >= level`
+ * materialises the test in v1 as the target does; `level <= m_debug` branches on `slt at` */
+void CConsole::Debug(int level, const char *fmt, ...)
+{
+    if (m_debug >= level) {
+        char buf[1024];
+        va_list ap;
+
+        va_start(ap, fmt);
+        func_0019E7E8(buf, fmt, ap);
+        printf(buf);
+    }
+}
+
+/* a packet's header described (SOCOM 1's, the same code) */
+void CConsole::Debug(int level, CPacket *packet, const char *prefix)
+{
+    if (m_debug >= level) {
+        unsigned int flags = packet->GetFlags();
+        unsigned int type = packet->GetPacketType();
+
+        Debug(level, "%s: id=%d, cmd=%d, ", prefix, packet->GetPacketID(), type);
+        if (flags & 1)
+            Debug(level, "FLAG_WANTACK ");
+        if (flags & 2)
+            Debug(level, "FLAG_ACK ");
+        Debug(level, "\n");
+    }
 }
 
 /* whether two packets are the same: id, type and size alike (SOCOM 1's, the same code). The ids'
@@ -101,6 +142,9 @@ int CPacket::CopyTo(void *dst, int size)
     return m_size;
 }
 
+/* the header's fields, or 0 without data: called out of line by the packet Debug (in SOCOM 1 too),
+ * so pinned */
+#pragma auto_inline off
 unsigned int CPacket::GetPacketType() const
 {
     if (m_data)
@@ -121,6 +165,7 @@ unsigned int CPacket::GetPacketID() const
         return m_data->id;
     return 0;
 }
+#pragma auto_inline reset
 
 /* an argument, or none past the count (SOCOM 1's, the same code).
  * OPEN, 4 bytes long: the target tests the data with `beqz` to a return 0 placed last and the count
