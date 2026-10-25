@@ -114,14 +114,18 @@ class CZNetGame {
 public:
     unsigned char _0[0x44];
     CValve *m_pPlayerJoinCountValve;   // 0x44 (SOCOM 1's at 0x40)
-    unsigned char _48[0xac - 0x48];
+    unsigned char _48[0x6c - 0x48];
+    CValve *m_6c;   // 0x6c: set from each action packet (SOCOM II's)
+    unsigned char _70[0xac - 0x70];
     int m_persona_object_index;   // 0xac (SOCOM 1's at 0x70)
     int m_game_object_index;   // 0xb0 (SOCOM 1's at 0x74)
     unsigned char _b4[0xcc - 0xb4];
     bool m_late_joiner;   // 0xcc (SOCOM 1's at 0x94)
     unsigned char _cd[0xcf - 0xcd];
     unsigned char m_persona_created;   // 0xcf (SOCOM 1's at 0x97)
-    unsigned char _d0[0x111 - 0xd0];
+    unsigned char _d0[0xda - 0xd0];
+    unsigned char m_da;   // 0xda: set while held actions are handled at once (SOCOM II's)
+    unsigned char _db[0x111 - 0xdb];
     char m_111;   // 0x111 (SOCOM 1's at 0xd9: m_game_type)
     unsigned char _112;
     unsigned char m_mp_major_game_state;   // 0x113 (SOCOM 1's at 0xdb)
@@ -167,6 +171,10 @@ public:
 class CNodeAction {
 public:
     static CNodeAction *GetActionById(unsigned int id);
+    void ExecuteAction(CZSealBody *body, unsigned int arg);
+
+    /* (the name ours: the action senders test the bit materialised) */
+    bool IsNetworkLogged() const { return m_network_log != 0; }
 
     unsigned char _0[0x38];
     int m_38;   // 0x38
@@ -282,6 +290,44 @@ extern unsigned int data_00440EB8;   /* (SOCOM II's: the vote's tally) */
 extern unsigned int data_00440E28;   /* PacketTypeAiOrders */
 }
 
+
+extern "C" double fabs(double x);
+
+/* a float field's change tested: the object's (a0's index) data present, a change of more than 4
+ * sent; no change not; a smaller one only while the data's two bytes at 0x7a and 0x7c are both
+ * zero (SOCOM II's; nothing in either overlay takes its address. OVL1 0x2BD270) */
+struct NetFieldCompare {
+    int m_index;   // 0x0: the object
+    unsigned char _4[0x10 - 0x4];
+    float *m_new;   // 0x10
+    float *m_old;   // 0x14
+};
+
+struct NetObjectData {
+    unsigned char _0[0x1c];
+    signed char *m_data;   // 0x1c
+};
+
+extern "C" bool func_002BD270(NetFieldCompare *cmp)
+{
+    float *a = cmp->m_new;
+    float *b = cmp->m_old;
+    NetObjectData *obj = (NetObjectData *)theNetwork.zNetGetObject(cmp->m_index);
+
+    if (!obj)
+        return false;
+    signed char *data = obj->m_data;
+
+    if (!data)
+        return false;
+    float d = fabs(*a - *b);
+
+    if (d > 4.0f)
+        return true;
+    if (d != 0.0f && data[0x7a] == 0.0f && data[0x7c] == 0.0f)
+        return true;
+    return false;
+}
 
 /* an int clamped into [lo, hi], saying whether it moved (a template instance closing the unit,
  * its name unknown; OVL1 0x2BD220) */
@@ -535,6 +581,122 @@ int ActionAnimPacketHandler(int, int, int, void *data)
         action->m_network_log = 1;
     }
     return 4;
+}
+
+/* an action packet (SOCOM II's, the names ours): the SEAL's object, the action, the argument the
+ * action runs with, and whether the action's valve goes on */
+struct HeldActionPacket {
+    unsigned short obj;   // 0x0
+    unsigned short action;   // 0x2
+    unsigned short m_4;   // 0x4
+    unsigned short arg;   // 0x6
+    unsigned short on;   // 0x8
+};
+
+/* the actions held back while the game's are not live: up to 16 action packets and a flag each
+ * (SOCOM II's; the names ours) */
+extern "C" {
+extern HeldActionPacket data_00440F40[16];
+extern unsigned char data_00440FE0[16];
+extern unsigned int data_00440E08;   /* (SOCOM II's: the action packet) */
+extern unsigned int data_00440E10;   /* PacketTypeActionAnim (the 4-byte packet) */
+}
+
+/* the action's anim, for an action whose anim the network plays and that has not yet been sent:
+ * sent to every client and played here (SOCOM 1's NetSendActionAnim, sent and handled at once;
+ * the name ours) */
+inline void SendActionAnim(int obj, int id)
+{
+    CNodeAction *action = CNodeAction::GetActionById(id);
+
+    if (!action || action->IsNetworkLogged() != false || !action->m_38)
+        return;
+    ActionAnimPacket p = {0};
+
+    p.obj = obj;
+    p.action = id;
+    theNetwork.zNetSendApplicationMessage(64, theNetwork.GetGameConnectionIndex(), -1,
+        data_00440E10, 4, (unsigned char *)&p, false);
+    ActionAnimPacketHandler(0, 0, 0, &p);
+}
+
+/* an action sent, to one client or (-1) to all; the session master playing it to all also sends
+ * and plays its anim (SOCOM II's; OVL1 0x2BB5B0) */
+extern "C" void func_002BB5B0(int obj, int id, unsigned char c, int arg, int who)
+{
+    if (!theNetwork.m_bNetwork)
+        return;
+    HeldActionPacket p = {0};
+
+    p.arg = arg;
+    p.m_4 = c;
+    p.obj = obj;
+    p.action = id;
+    if (who != -1)
+        p.on = 1;
+    theNetwork.zNetSendApplicationMessage(64, theNetwork.GetGameConnectionIndex(), who,
+        data_00440E08, 10, (unsigned char *)&p, false);
+    if (theNetwork.m_bSessionMaster && who == -1)
+        SendActionAnim(obj, id);
+}
+
+/* an action packet: held while the game's held actions are not being handled (the game's flag at
+ * 0xDA clear), else, in a game under way, the action's valve set, the action marked and run, and
+ * its anim sent by the session master (SOCOM II's; OVL1 0x2BB310) */
+extern "C" int func_002BB310(int, int, int, void *data)
+{
+    HeldActionPacket *p = (HeldActionPacket *)data;
+    CZSealBody *body;
+    CNodeAction *action;
+    CZNetGame *game = theMission.m_pNetGame;
+
+    if (game && !game->m_da) {
+        int i = p->action;
+
+        if (i >= 0 && i < 16) {
+            data_00440F40[i] = *p;
+            data_00440FE0[i] = 1;
+        }
+    } else if (game && game->m_mp_major_game_state == 3) {
+        body = CZSealState::GetBodyFromObjectIndex(p->obj);
+        action = CNodeAction::GetActionById(p->action);
+
+        game->m_6c->SetValue(p->on);
+        if (p->on && action)
+            action->m_network_log = 1;
+        if (action)
+            action->ExecuteAction(body, p->arg);
+        if (theNetwork.m_bSessionMaster)
+            SendActionAnim(p->obj, p->action);
+    }
+    return 10;
+}
+
+/* the held actions dropped and the game's flag at 0xDA cleared (OVL1 0x2BB1D0) */
+extern "C" void func_002BB1D0()
+{
+    HeldActionPacket empty = {0};
+
+    for (int i = 0; i < 16; i++) {
+        data_00440F40[i] = empty;
+        data_00440FE0[i] = 0;
+    }
+    theMission.m_pNetGame->m_da = 0;
+}
+
+/* the game's flag at 0xDA set and the held actions handled, each then dropped (OVL1 0x2BB0C0) */
+extern "C" void func_002BB0C0()
+{
+    HeldActionPacket empty = {0};
+
+    theMission.m_pNetGame->m_da = 1;
+    for (int i = 0; i < 16; i++) {
+        if (data_00440FE0[i]) {
+            func_002BB310(0, 0, 0, &data_00440F40[i]);
+            data_00440F40[i] = empty;
+            data_00440FE0[i] = 0;
+        }
+    }
 }
 
 /* the E3 index sent: handled here when it is our own (OVL1 0x2BAEA0) */
