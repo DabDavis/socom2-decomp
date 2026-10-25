@@ -23,7 +23,16 @@
  *     is append (0x1EEB70: replace(size(), 0, s)); replace(pos, n1, const char *) (0x1EF390)
  *     hands the range s..s+strlen(s) to the template replace taking two iterators and the
  *     iterator's category, an empty class passed by value -- loaded as a byte off the stack and
- *     never stored (0x1EE780; 0x1EF400 is assign(first, last) through it);
+ *     never stored (0x1EE780; 0x1EF400 is assign(first, last) through it). The three are this
+ *     header's out-of-class members since the MSL headers round 5 (body.cpp's, fts_patch.cpp's and
+ *     five more units' tails emit them byte-exact; OVL2's copies 0x53FAA0 and 0x540B50), the
+ *     placeholders kept for the units that still call them by address;
+ *   - fts_state.h keeps its own basic_string (the MSL headers round 5): its default constructor is
+ *     four inline levels high (init, clear_words, zero), as the states fitted it, and include/string's
+ *     at four (zero() a member looping over a reference local) cost nothing over every hand-written
+ *     unit until the UI lane's round 6 -- then zui_spec.cpp's GetControlSpec 0x382890 (0x2CC against
+ *     0x304) -- so this header stays two high and fts_state.h apart; st_core.cpp's stand-ins under
+ *     the placeholders still score the three members' rows by address;
  *   - erase() is that template replace over (0, npos) with an empty range of const char *, inline
  *     (SetString__16C2DMessageStringFPCc, the menu's string handlers);
  *   - the copies, out of class (the MSL lane, 2026-10-25; each byte-exact): the copy constructor
@@ -34,6 +43,21 @@
  *     the text and the size, short form first); push_back(char) (0x284B40) replaces the empty range
  *     at the end with the character itself, its address taken. zrdr_parse.cpp's CRdrIO::Open
  *     assigns through the operator, and its tail emits 0x22E4D0 and 0x22E690.
+ *   - compare, out of class (the MSL headers round 5; both byte-exact as probes, OVL1 0x2DEE30 and
+ *     0x2DF030, OVL2's copies 0x58D250 and 0x58D740): compare(str) takes the other's text and size in
+ *     ONE short-first test (two inline accessors keep two tests: MW does not merge them), this size()
+ *     after, and tail-jumps to compare(pos1, n1, s, n2) -- SOCOM 1's CFUiUiPCcUi over the old string,
+ *     the same code: "string compare: pos > len", min(size - pos1, n1) through MSL's by-reference
+ *     min (`b < a ? b : a`, so the count's and the temporary's addresses are taken), memcmp, then
+ *     `if (len < n2) return -1; if (len != n2) return 1; return 0;` inside `if (result == 0)` (the
+ *     only shape of fourteen with the target's branch to the exit and its pad). operator< is inline,
+ *     `lhs.compare(rhs) < 0`: every string-keyed tree's comparator calls 0x2DEE30 and tests the sign
+ *     (less<string> over the map's value_compare, as SOCOM 1's map<CSaferStr,...> inlines it). The
+ *     trees' tail code inlines the destructor (find_or_insert's temporary pair) where the unit's own
+ *     code generated it first. Not pinned (the UI lane's round 6 request: resize<CDesignDlgObj> 0x383960
+ *     inlines it for its temporary's two strings): an out-of-class member is never inlined into the
+ *     units' own functions anyway, and removing `#pragma auto_inline off` moved nothing over every
+ *     hand-written unit (the MSL headers round 5).
  * The pieces the map has not named yet are called through their placeholders, C functions under
  * the address's name (they resolve by address whatever the row is later named); reserve and the
  * destructor are the map's names. */
@@ -48,6 +72,20 @@
 namespace std {
 
 template <class charT> struct char_traits {};
+
+/* the character compare the string's compare runs (memcmp, called out of line) */
+template <>
+struct char_traits<char> {
+    static int compare(const char *s1, const char *s2, unsigned int n) { return memcmp(s1, s2, n); }
+};
+
+/* the smaller of two (MSL's: the second only when it is less, both by reference -- the string's
+ * compare takes the addresses of its counts and temporaries) */
+template <class T>
+inline const T &min(const T &a, const T &b)
+{
+    return b < a ? b : a;
+}
 
 /* the out-of-line members not named in the map yet (`this` first) */
 extern "C" {
@@ -70,8 +108,8 @@ public:
 
     basic_string &operator=(const charT *s) { return assign(s); }
     basic_string &operator=(const basic_string &str);
-    basic_string &assign(const charT *s) { return *(basic_string *)func_001EEB40(this, s); }
-    basic_string &append(const charT *s) { return *(basic_string *)func_001EEB70(this, s); }
+    basic_string &assign(const charT *s);
+    basic_string &append(const charT *s);
     basic_string &operator+=(const charT *s) { return append(s); }
     basic_string &erase()
     {
@@ -82,7 +120,10 @@ public:
 
     void reserve(size_type n);
     basic_string &replace(size_type pos, size_type n1, const basic_string &str);
+    basic_string &replace(size_type pos, size_type n1, const charT *s);
     void push_back(charT c);
+    int compare(const basic_string &str) const;
+    int compare(size_type pos1, size_type n1, const charT *s, size_type n2) const;
 
     bool is_long() const { return w_[0] & 1; }
     /* the short form's size cast back to its byte (0x2CA700, the copy closing fts_patch.cpp,
@@ -185,6 +226,30 @@ basic_string<charT, traits, Allocator> &basic_string<charT, traits, Allocator>::
     return *(basic_string *)func_001EE780(this, pos, n1, p, p + n, category);
 }
 
+/* the text replaced by a C string (0x1EEB40: replace(0, size(), s), a tail call) */
+template <class charT, class traits, class Allocator>
+basic_string<charT, traits, Allocator> &basic_string<charT, traits, Allocator>::assign(const charT *s)
+{
+    return replace(0, size(), s);
+}
+
+/* a C string appended (0x1EEB70: replace(size(), 0, s), a tail call) */
+template <class charT, class traits, class Allocator>
+basic_string<charT, traits, Allocator> &basic_string<charT, traits, Allocator>::append(const charT *s)
+{
+    return replace(size(), 0, s);
+}
+
+/* a range replaced by a C string (0x1EF390): s..s+strlen(s) handed to the template replace */
+template <class charT, class traits, class Allocator>
+basic_string<charT, traits, Allocator> &basic_string<charT, traits, Allocator>::replace(size_type pos, size_type n1,
+                                                                                        const charT *s)
+{
+    forward_iterator_tag category;
+
+    return *(basic_string *)func_001EE780(this, pos, n1, s, s + strlen(s), category);
+}
+
 /* a character appended (0x284B40): the template replace at the end, over the character itself */
 template <class charT, class traits, class Allocator>
 void basic_string<charT, traits, Allocator>::push_back(charT c)
@@ -194,14 +259,63 @@ void basic_string<charT, traits, Allocator>::push_back(charT c)
     func_001EE780(this, size(), 0, &c, &c + 1, category);
 }
 
-#pragma auto_inline off
+template <class charT, class traits, class Allocator>
+int basic_string<charT, traits, Allocator>::compare(const basic_string &str) const
+{
+    const charT *p;
+    size_type n;
+
+    if (!str.is_long()) {
+        p = str.s_.data_;
+        n = (unsigned char)str.s_.size_;
+    } else {
+        p = (const charT *)str.w_[2];
+        n = str.w_[1];
+    }
+    return compare(0, size(), p, n);
+}
+
+template <class charT, class traits, class Allocator>
+int basic_string<charT, traits, Allocator>::compare(size_type pos1, size_type n1, const charT *s,
+                                                    size_type n2) const
+{
+    const charT *p;
+    size_type sz;
+
+    if (!is_long()) {
+        p = s_.data_;
+        sz = (unsigned char)s_.size_;
+    } else {
+        p = (const charT *)w_[2];
+        sz = w_[1];
+    }
+    if (pos1 > sz)
+        __msl_error("string compare: pos > len");
+    size_type len = min(sz - pos1, n1);
+    int result = traits::compare(p + pos1, s, min(len, n2));
+    if (result == 0) {
+        if (len < n2)
+            return -1;
+        if (len != n2)
+            return 1;
+        return 0;
+    }
+    return result;
+}
+
+template <class charT, class traits, class Allocator>
+inline bool operator<(const basic_string<charT, traits, Allocator> &lhs,
+                      const basic_string<charT, traits, Allocator> &rhs)
+{
+    return lhs.compare(rhs) < 0;
+}
+
 template <class charT, class traits, class Allocator>
 basic_string<charT, traits, Allocator>::~basic_string()
 {
     if (w_[0] & 1)
         operator delete((void *)w_[2]);
 }
-#pragma auto_inline reset
 
 typedef basic_string<char> string;
 

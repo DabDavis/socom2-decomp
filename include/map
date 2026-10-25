@@ -42,7 +42,13 @@ private:
 public:
     typedef typename tree_type::iterator iterator;
 
-    explicit map(const Compare &comp = Compare(), const Allocator &a = Allocator())
+    /* no arguments (the UI lane's round 6: CreateSoftKeyboard 0x38E160 calls 0x38E740 with a0 only;
+     * the defaulted constructor alone built its arguments at the call site). Its own copy still
+     * calls the allocator's out-of-line constructor where the image passes a bare stack slot --
+     * an inline allocator() matches it but costs the deque's two constructor copies (game_main.cpp,
+     * zrdr_edit.cpp), measured in the MSL headers round 5: open */
+    map() : tree_(value_compare(Compare()), Allocator()) {}
+    explicit map(const Compare &comp, const Allocator &a = Allocator())
         : tree_(value_compare(comp), a)
     {
     }
@@ -54,6 +60,8 @@ public:
     void clear() { tree_.clear(); }
     iterator find(const key_type &x) { return tree_.find(x); }
     pair<iterator, bool> insert(const value_type &x) { return tree_.insert_one(x); }
+    void erase(iterator position) { tree_.erase(position); }
+    size_type erase(const key_type &x) { return tree_.erase_one(x); }
     mapped_type &operator[](const key_type &x) { return tree_.template find_or_insert<key_type, mapped_type>(x).second; }
 
 private:

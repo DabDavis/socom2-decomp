@@ -46,6 +46,7 @@ and data reference resolved to the address the shipped code uses.
 | `tools/beta_tu.py` | which source file a function was in, out of the press beta's asserts |
 | `tools/rename.py` | rename map rows by hand, keeping the note, refusing a taken name, listing the source still using the old one |
 | `tools/s1units.py` | SOCOM II's translation units: its static initialisers against SOCOM 1's named `__sinit_<file>`s |
+| `tools/unitscan.py` | where one hand-written unit could be two: its pinned and inlined pairs, the target's own calls, every cut that separates the first and none of the second |
 | `tools/s1vtables.py` | virtual functions named slot by slot: SOCOM II's vtables found by their RTTI's class-name string, aligned with the demo's `__vt__` tables; `--holdout` measures it on names the map already has |
 | `tools/try.py` | compile one unit with one textual substitution at a time and score one symbol, in a scratch copy of `src/` |
 | `tools/scperm.py` | the permuter: EQOA's tree-sitter mutations of one function, MW-compiled and alignment-scored (needs `.venv`) |
@@ -1642,6 +1643,155 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the online lobby, round 7** (the room and ladder units, zNetMediusFile.cpp):
+  - a function handed to std::transform by address becomes a direct, never-inlined `jal` with the
+    element in a0 (DeleteRoom); a functor's operator() would have `this` in a0;
+  - a destructor testing `this` three times for a pointer vector means the object holds std::vector
+    itself (BriefingRoom : vector<RoomGame *>, the channel-list record a second base at 0xC); a derived
+    list class adds a fourth test;
+  - zsys.h's FreeVector<std::vector<T *> > reproduces the out-of-line constructor/clear/swap/
+    destructor calls (BriefingRoomDB::Release);
+  - structs with odd-length char arrays are assigned member by member, user constructor or not;
+  - when two plain loads are compared, the left one is loaded first (`field > global` loads the
+    field first);
+  - a clamp written as the call argument `x - 2 <= 0 ? 1 : x` matches; into a local, `s = x; if (x <=
+    0) s = 1;`;
+  - `err = f(); flag = 1; Check(err);` puts the flag store in Check's delay slot; `int c =
+    strcasecmp(...); return c < 0;` keeps the target's empty delay slot;
+  - CLobbyFileIO's 15 slots are CIO's (zutil.h) in the vtable at 0x406760; the file API's map is
+    `map<string, CLobbyFileIO *>` (freadAsync and Close insert the Medius key with `this`, the transfer
+    callbacks find it and read node+0x18); requests: MSL's std::sort (eight room/ladder sorts and the
+    chat unit's), c_str() on a string member read off the containing object (UpdateLadderBestDisplay),
+    the deque copy constructor (SOCOM II's circular-buffer iterator is four words: current, data,
+    data+start, data+capacity).
+- **Tells from completing the MSL headers, round 5** (the string trees, list, the class vector):
+  - the string-keyed trees' compare is MSL's `basic_string::compare(const basic_string &)` (0x2DEE30,
+    every caller tests the sign) and `compare(pos1, n1, s, n2)` (0x2DF030, SOCOM 1's
+    CFUiUiPCcUi); `operator<` is inline. The Medius file API's `map<string, CLobbyFileIO *>`
+    (0x450070) tail, the material unit's `map<string, int>` and the IOP module table (keyed by
+    std::string, not CSaferStr: a CSaferStr key's implicit copy is one inline level more) are
+    byte-exact as probes; include/tree has increment, balance_erase, erase, erase_one, clear()
+    out of class, include/map erase and a no-argument map();
+  - list remove_if takes begin() before end() and finds the run's end with a for loop breaking on the
+    first refused element: `for (++j; j != e; ++j) if (!pred(*j)) break;` (0x20CB50, its OVL2 copy,
+    0x2D2540); the pointer list's begin() through base::begin() measured -1 and is not adopted;
+  - the class vector's end() takes `data() + size` into a const local (a walk then re-reads the data
+    pointer each pass: CMesh::SetLOD, GetRouteIndex, GetRegionContaining), its operator[] reads the
+    data pointer into a const local and keeps the index (AddLOD's `m_lods[size() - 2]`), its iterator
+    has operator->; the scalar vectors have iterators, begin(), end(), erase (CZItemStash::Compact);
+  - include/string's assign(const char *), append and replace(pos, n1, s) are out of class (seven
+    units' tails emit them byte-exact); its default constructor stays two inline levels high
+    (four cost zui_spec.cpp's GetControlSpec), so fts_state.h keeps its own string; its destructor
+    is no longer pinned (it only ever mattered for units' own functions);
+  - MW does not merge two adjacent is_long() tests (write one if/else); in tail code, within one
+    generation round, later-declared members are generated first (declaring erase, erase_one, find in
+    that order makes erase_one inline find and call erase); a user-declared copy constructor on the
+    tree iterator makes MW pass it by address; a reference local taken before a test keeps a member's
+    address in a saved register across a call; a loop descending through a reference stores it every
+    step, through a local once; `get_bit() == false` gives sltu then bnez (a branch) or xor/sltiu (a
+    value), `== true` li 1/bne;
+  - git merged two identical RTArray::GetOldestUsed definitions silently (two lanes added it): a
+    merge can duplicate an additive member -- the build catches it.
+- **Tells from the HUD, round 16** (the weapon selector's constructor and OnOpen, three initialisers):
+  - the seed reads a virtual tail call (`jr t9`) as a jump table and merges the next function when only
+    a vtable references it: a "dead `jr ra`" after a tail call is a function of its own (0x36B1F0 and
+    0x37BF40 split, the AddToRdr writers; a map-wide scan found no others);
+  - a copy into a saved register that dies early means the variable is reused at a later call (MW
+    folds that use into the same register: PlaceWeaponText's seal read again at the third call);
+  - `return;` closing the last block inside an `if` gives `b epilogue; nop` over the pad; an error block
+    that must sit ahead of the body wants `if (a && b) { ...; if (!c) { err; return; } } else { err;
+    return; }` then the body (OnOpen);
+  - defining a unit's dynamically initialised statics in order makes MW emit its `__sinit_<file>`
+    byte-exact, reusing a just-stored value for the next initialiser (hud_weaponsel, hud_teamnames,
+    hud_teammatenames);
+  - `int len; const char *s = ...; len = strlen(s);` gives `s` the lower saved register;
+  - A THUNK IS EMITTED WITH A VTABLE THAT USES IT: when CCheckBox overrode UpdateUIVar, zui_2d.cpp
+    stopped emitting C2DButton's thunk 0x37D0E0 (C2DButton's own table goes with ~C2DButton's
+    unit); defining CHandlerButton's destructor in zui_2d.cpp (its table 0x407700 keeps the
+    button's slot, as CRadioStrip's does) brought it back, with @192@~CHandlerButton. A partial
+    `--files` check cannot see a function that stops being emitted -- only the full check does.
+- **Tells from the weapons, round 8** (CMesh's decals and LODs, CZProjectileList, the decal pools):
+  - MW 3.0 pads a short loop's head with nops when the found block ends in `break`; with `return`
+    inside it gets no padding (RemoveMeshDecal, RemoveDecal);
+  - a local initialised from a member after the tests that read it takes the register those tests
+    loaded it into; declared before them it lands elsewhere (GetNextFreeProjectile);
+  - SOCOM II's class-vector operator[] reads the data pointer through begin() and keeps the index as
+    its own value (AddLOD's `m_lods[size()-2]`); a class-vector walk re-reads the data pointer each
+    pass (CMesh::SetLOD, 2 off: include/vector's class end() lets MW hoist the whole end) -- both
+    requests to the MSL lane, with the class iterator's missing operator->;
+  - `d = a(); d += b();` keeps a two-call float sum in the result's own register (GetDamage);
+  - SOCOM II inlines CZProjectileList's FreeIdx and FindLastUsed and keeps no copy; 0x3BF9B0-0x3C356F
+    (where vis_texfx.cpp should be) is ~0x3BC0 bytes against SOCOM 1's 0xAD0 -- mostly new code with
+    no vtables, CTextureFX's Tick/ScrollTexture/engine init among it.
+- **Tells from the UI, round 6** (the soft keyboard, CSaferStr : std::string):
+  - zui_spec.h's CSaferStr is include/string's basic_string now (its copies and destructor implicit,
+    +3); its operator=(const char *) returns nothing -- the out-of-line copy 0x22DCC0 keeps no `this`
+    for a result (returning `CSaferStr &` lost it at the merge);
+  - a file read and freed around a block the target keeps in a stack slot is an object holding the
+    file, with a destructor that frees it (ZuiInit);
+  - `!f()` of an int call materialises (sltu, xori) inside an `&&` only through an inline bool
+    returning the negation (OnEnterKey);
+  - a member pointer to a virtual function is pooled as {0, slot offset, vptr offset}:
+    `&C2DButton::SetNormal` is {0, 0x54, 0xC}, stored identically at 0x3E0468 and 0x3E0478;
+  - basic_string's destructor is inlined in tail code (resize<CDesignDlgObj>) and called in a unit's
+    own functions (~CDesignDlgObj), so include/string must not pin it (a request to the MSL lane);
+  - units: zui_skb.cpp 0x38B180-0x39039F (ending on its `@128@~CBmpWithNode` thunk, as SOCOM 1's;
+    initialiser 0x403730); 0x3903A0 on is another keyboard unit (the Korean input rules, the props
+    parsers; 0x403800 builds its eight CBmpWithNode globals); 0x3A3100-0x3A5500 localisation
+    (LOC.rdr, LanguageChoice); 0x3A59C0-0x3A5CB0 thread helpers; 0x3A5CC0-0x3A71A0
+    CSimpleStateMachine over cdeque<const void *>.
+- **The inlining mode, measured** (a measurement lane, after the sound lane's zsnd_queue.cpp):
+  - no MW mode both emits a unit in reverse and auto-inlines only earlier definitions (17 builds,
+    3.0b22-020926 to 3.0.1b210): `-inline ...,deferred` (= `#pragma defer_codegen on`) emits in
+    reverse and inlines in both directions; non-deferred emits in source order and inlines only
+    earlier-defined callees; mwldps2 keeps object order, so the image's reverse order is the
+    compiler's; `defer_codegen` toggled mid-unit flushes the pending functions, it combines nothing;
+  - the image itself refutes "earlier only": C2DBitmap::SetColor(fff) (0x364930) is inlined both by a
+    caller below it (0x364900) and by the constructor above it (0x364C50) -- only a deferred inliner
+    does that; master's flags stay (non-deferred over the tree: 3,818 of 4,214 against 3,999);
+  - CLUSTERED PINS CAN MEAN A UNIT BOUNDARY: auto-inlining never crosses units, so a cut that every
+    pinned pair straddles and no inlined pair does is a candidate split. build/scratch/inlmode/
+    split_scan.py (and split_best.txt, its results over the 60 pinned units) found such a cut in 33;
+    strong ones: zsnd_csndsequence.cpp at 0x349C70 (7 of 7 pins), hud_objectives.cpp at 0x206F90
+    (6/6), graph_tree.cpp at 0x2D12D0 (5/5), int_main.cpp at 0x2DC660 (5/5), zrdr_edit.cpp at
+    0x333540 (8/9), body.cpp at 0x28F190 (14/18). Each needs the template-placement check:
+    ai_mapio.cpp's 20/20 cut at 0x51AEF0 fails because read_v19-v23's ReadCellTable instances close
+    the range above it;
+  - THE SPLIT LANE (2026-10-25) adopted four, each scoring as before with its pins gone:
+    zsnd_csndsequenceentry.cpp 0x349A70-0x349C6F | zsnd_csndsequence.cpp (the press beta's two
+    zsnd_csndsequence.cpp asserts are CreateSequence's and ~CSndSequence's); graph_main.cpp
+    0x2D04F0-0x2D12FF | graph_tree.cpp 0x2D1300-0x2D288F (its initialiser 0x401C80 builds the tree
+    pool, ~CGTreePool 0x2D2830 last, as SOCOM 1's __sinit_graph_tree.cpp); int_main.cpp |
+    int_shapes.cpp 0x2DC7A0-0x2DDC2F (diNorm's initialiser 0x401D80, byte-exact as
+    __sinit_int_shapes.cpp); grid_main.cpp | grid_cell.cpp 0x2D79D0-0x2D7E9B (CCell). New names ours;
+    the half SOCOM 1 names (initialiser, asserts) keeps the old one. tools/unitscan.py rescans one
+    unit (pinned pairs, inlined pairs, the target's own calls, every cut);
+  - the scan's cut is only the lowest address of a feasible range; the exact one comes from other
+    evidence: an inlined pair a draft shows (~CGRoute, 0x2D1210, inlines Clear: graph_tree's cut is
+    above it), a call only a boundary explains (SetCDIBBox calls CDI(), which inlines into any caller
+    of its unit: int_main's cut is SetCDIBBox's first word, and SOCOM 1's int_main.cpp asserts end at
+    DiIntersect(n) just below), the data a half alone uses (diNorm), whole classes;
+  - SOCOM 1 is -inline deferred as well (zcam_main.cpp's DWARF lines fall as addresses rise), so an
+    EMPTY function SOCOM 1 calls out of line is a unit boundary there: its CGrid::AddClutter and
+    DeleteClutter call CCell's empty stubs (0x2170E0, 0x2170F0). The other way round, what SOCOM 1
+    inlines is one unit there: zrdr_edit.cpp's wrappers inline push and the add*node in SOCOM 1, and
+    SOCOM II's push calls addstringnode inside any upper unit -- no split;
+  - rejected: body.cpp's cut falls inside its own tail (RTList's Add/Remove and _close_enough<f>
+    above it are SetBlendAnims' and Normalize's below; the 14 are calls to the flag helpers
+    0x28F190/0x28F1B0, which sit in the tail among the instances: out-of-class template members,
+    likely); valve_list.cpp's remove_if (0x352500, above) is Close's, Reset's and Uninit's (below);
+    con_ps2.cpp and ai_util.cpp inline no own function anywhere -- a unit without auto-inlining, not
+    two units; zcam_main.cpp's pinned pairs are all in SOCOM 1's DWARF zcam_main.cpp;
+    seal_control.cpp's "cut" is Cross's copy after its first caller; ai_map.cpp's pin is its
+    initialiser's (tail code); zanim_anim.cpp and node_assetlib.cpp explain 2 of 5; the small ones
+    (zsnd_csnd, node_saveload, zsav_manager, zrdr_archive, game_state, game_main, fts_action,
+    fts_net_bomb, fts_net_platform, seal_create) pin one or two callers' calls to 0x88-0x1F0-byte
+    callees -- their statement counts explain them as well, and SOCOM 1 calls the same callee out
+    of line where it has one (RemoteBombPostUpdateCallback, PreCreateSeal, LoadPalettes_PS2);
+  - compiled-out statements (debug prints) still count toward the inline limit: DumpQueue/DumpFree
+    keep their pins;
+  - generation order changes code as well as inlining: zlib's inflate_trees_dynamic loses 8 bytes
+    non-deferred, its static callee huft_build already generated.
 - **Tells from the kit and AI states, round 8** (seal_tasks.cpp, the task commands):
   - SOCOM II's own command table names the task handlers: CSealCtrlAi::RegisterCommands (0x5DE320)
     makes 34 AddCmd calls, 92 Parse/Begin/Tick/End handlers named after SOCOM 1's class for the same
@@ -1705,12 +1855,11 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     patch downloader at 0x2CA330); graph_tree.cpp runs to 0x2D2830 (BuildTree, its copies, FindNode,
     Destroy, then the queue list's template code).
 - **Tells from the sound, round 5** (zsnd_queue.cpp, zsnd_positions.cpp, CSched_Manager::Tick):
-  - the original auto-inlined only functions DEFINED EARLIER in the unit: every call in
-    zsnd_queue.cpp that stays a call goes to a function defined later (in our source order), every
-    inlined one to a function defined earlier; `-inline deferred` here reaches every function, so
-    `#pragma auto_inline off` pins stand in -- and a callee inlined by later callers but called by
-    earlier ones cannot be modelled that way (CSndQueue::Open). Probably behind many existing pins
-    (see "Open, and next");
+  - zsnd_queue.cpp's calls looked as if the original auto-inlined only functions defined earlier in
+    the unit; the measurement that followed (below, "The inlining mode, measured") found it was a UNIT
+    BOUNDARY: CSndQueue/CSndQueueEntry (zsnd_queue.cpp, 0x34C560-0x34CD6F) and CSndVocalQueue
+    (zsnd_vocalqueue.cpp, 0x34CD70-0x34D17F) are two units -- split, they match with 2 pins instead
+    of 8 and CSndQueue::Open (0x34CC00) is byte-exact;
   - an empty walk with a postfix step, `for (i = begin(); i != end(); i++) ;`, gives the loop with its
     entry test after the body (all four empty walks first time; the prefix form does not);
   - `(p = new T)->field = x;` stores through new's result before reloading `p` when p is later pushed
@@ -1720,7 +1869,7 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - a vtable slot pointing into the middle of a map row means the seed merged a tail call with the
     function after it (0x34CD10, CSndQueueEntry::CanPlay, split from 0x34CCF0);
   - units: zsnd_positions.cpp 0x34BD40-0x34C55F (initialiser 0x403370, tail destructor 0x34C4F0);
-    zsnd_queue.cpp 0x34C560-0x34D17F; 0x34D180-0x34E06F is a separate unit (two tables of 12-byte
+    zsnd_queue.cpp 0x34C560-0x34CD6F and zsnd_vocalqueue.cpp 0x34CD70-0x34D17F; 0x34D180-0x34E06F is a separate unit (two tables of 12-byte
     records, closed by their reserve at 0x34DED0; CSnd::Init builds its global at 0x48DC30);
     zsys_sched.cpp starts at 0x34E070; 0x34BCA0-0x34BD10 belongs to the headset unit.
 - **Tells from the weapons, round 7** (the turret's template tail, CZWeapon's sounds/timers/AI params):
@@ -2435,15 +2584,12 @@ What is open across lanes, and what comes next:
   USB-audio lgAud in OVL1 0x243000-0x258000, the speech recogniser at OVL2's start, the Medius/DME
   network libraries from 0x610000) are not MW code: EQOA's EE-GCC toolchains could match them, a
   separate effort.
-- **Does the original auto-inline only functions defined earlier?** The sound lane's round 5 found
-  every inlined call in zsnd_queue.cpp goes to a function defined earlier (our source order) and every
-  kept call to one defined later; `-inline auto,deferred` reaches every function, so lanes pin
-  callees with `#pragma auto_inline off` unit by unit (dozens of pins across the tree). If MW has a
-  mode that keeps deferred's reverse emission but auto-inlines only what it has already seen (or the
-  original's units were ordered so it holds), switching to it would retire the pins and may close
-  opens no pin can (a callee inlined by later callers and called by earlier ones: CSndQueue::Open).
-  Worth a refit-style measurement: `mwccps2.exe -help all` for the inline/defer options, then the
-  hand-written units scored with the pins removed under each candidate.
+- **Unit boundaries behind pins**: the inlining-mode question is answered (no such mode; "The
+  inlining mode, measured") -- of the pinned units' candidate cuts (build/scratch/inlmode/
+  split_best.txt) the split lane adopted zsnd_csndsequence.cpp, graph_tree.cpp, int_main.cpp and
+  grid_main.cpp and turned down the rest of its list with reasons (same section);
+  hud_objectives.cpp (the HUD lane's) is unmeasured. Units with no auto-inlined pair at all
+  (con_ps2.cpp, ai_util.cpp) may want a file-wide `#pragma auto_inline off` instead of their pins.
 - **`tools/scperm.py`** (EQOA's tree-sitter mutations driven by MW) has not yet closed a
   function: its finds so far trade correctness for score.
 - Tell 3.0b50 from 3.0b52; port eqrefcheck's data-reference audit to absolute addresses. The
