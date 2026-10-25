@@ -19,6 +19,19 @@ const T &_min(const T &a, const T &b)
 }
 }
 
+/* MSL's sort, declared only: its instance for the names closes the unit (0x5312D0) */
+namespace std {
+template <class RandomAccessIterator, class Compare>
+void sort(RandomAccessIterator first, RandomAccessIterator last, Compare comp);
+}
+
+/* two names in order: case-blind over their fifteen characters (the names' sort's comparator,
+ * 0x531190; the name ours) */
+static bool _name_less(const CAiMap::name &a, const CAiMap::name &b)
+{
+    return func_001993C0(a.m_name, b.m_name, 15) < 0;
+}
+
 /* two cells' x and y distances summed (the name ours) */
 inline int loc_dist(const CAiMapLoc &a, const CAiMapLoc &b)
 {
@@ -79,6 +92,11 @@ CAiMap::name *CAiMap::GetCellName(const CAiMapLoc &loc)
         if ((*i).m_loc == loc)
             return &*i;
     return 0;
+}
+
+void CAiMap::names::Sort()
+{
+    std::sort(begin(), end(), _name_less);
 }
 
 void CAiMap::name::SetName(const char *s)

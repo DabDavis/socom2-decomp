@@ -393,6 +393,10 @@ public:
         unsigned int m_unk14;   // 0x14
     };
     class names : public std::vector<name> {
+    public:
+        /* the names put in order, case-blind (SOCOM 1's SortByNames, the name the SetName row's
+         * note gives; 0x530EC0 -- CAiMaps sorts its six name tables with it) */
+        void Sort();
     };
 
     /* a cell linked to another (SOCOM 1's DWARF, 8 bytes; SOCOM II's is 0xC, a word of bits after

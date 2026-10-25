@@ -9719,17 +9719,17 @@
 0x00530C60 0xB0 GetCellAction__6CAiMapCFRC9CAiMapLoc  # OVL2; ours (byte for byte GetCellAction's code, between FindActionLocation and GetCellAction where SOCOM 1 has nothing: a second overload -- const is our guess)
 0x00530D10 0xB0 GetCellAction__6CAiMapFRC9CAiMapLoc  # OVL2; s1:callee by hand (CRestrainedPlanner::is_traversable calls it with the map and the destination cell where SOCOM 1's CRestrainedTravel calls GetCellAction__6CAiMapFRC9CAiMapLoc, and reads the result as an action: m_type_invalid, m_type, m_state)
 0x00530DC0 0xFC GetLocation__6CAiMapFPCcR9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19F0D0 after GetCellAction: the names walked with strncasecmp behind a second null test, the cell copied out, true; 15 characters where SOCOM 1 compared 14); non-const in SOCOM II: only a walk straight over this->m_namesTable keeps this in s4 as the target does (through a cast this, MW hoists the table's address)
-0x00530EC0 0x48 func_00530EC0  # OVL2
+0x00530EC0 0x48 Sort__Q26CAiMap5namesFv  # OVL2; ours (SOCOM 1's SortByNames by the SetName row's note: std::sort over the names' begin and end, by value, with _name_less; CAiMaps sorts its six name tables (this + 0x3C, 12 apart) through it from 0x52B820; byte-exact in ai_maptable.cpp)
 0x00530F10 0x30 SetName__Q26CAiMap4nameFPCc  # OVL2; ours (new in SOCOM II, between SortByNames and GetCellName: strncpy of 15 characters into the name at +4, the sixteenth byte zeroed)
 0x00530F40 0xB0 GetCellName__6CAiMapFRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19F1C0 before ValidateName and GetMapEx: the 0x18-byte names walked for the cell)
 0x00530FF0 0x8 ValidateName__Q26CAiMap4nameFv  # OVL2; s1:order by hand (the demo's 0x19F260, 8 bytes in both builds, between GetCellName and GetMapEx: the name's last byte zeroed, at 0x13 here)
 0x00531000 0xF0 GetMapEx__6CAiMapFRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19F270 before FreeEx and AllocEx: no extra data, or a cell outside the map, gives none; else m_mapex + the cell's index times m_mapex_bytes -- SOCOM II finds the index through the cell's scanline)
 0x005310F0 0x30 FreeEx__6CAiMapFv  # OVL2; s1:order by hand (the demo's 0x19F330, between GetMapEx and AllocEx: m_mapex (0xE0, SOCOM 1's 0xAC) deleted[] and zeroed, m_mapex_bytes (0x60) zeroed)
 0x00531120 0x70 AllocEx__6CAiMapFUi  # OVL2; s1:order by hand (the demo's 0x19F390, after FreeEx: the old block deleted[], m_mapex_bytes set and bytes * m_cellcount (0x70) allocated and zeroed; SOCOM II no longer points each scanline into it)
-0x00531190 0x28 func_00531190  # OVL2
+0x00531190 0x28 _name_less__FRCQ26CAiMap4nameRCQ26CAiMap4name  # OVL2; ours (the names' sort comparator: strncasecmp over 15 characters < 0; names::Sort takes its address; byte-exact in ai_maptable.cpp, superseding its draft)
 0x005311C0 0x18 _min<i>__2aiFRCiRCi_RCi  # OVL2; ours, by its body (the smaller of two ints by reference: slt, movn -- _min<Us>'s and _min<Ui>'s shape signed; the CAiMap table unit's template tail, after the names' sort comparator)
 0x005311E0 0xE4 func_005311E0  # OVL2
-0x005312D0 0xD30 func_005312D0  # OVL2
+0x005312D0 0xD30 sort<Q33std64__vector_imp<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>,0>8iterator,PFRCQ26CAiMap4nameRCQ26CAiMap4name_b>__3stdFQ33std64__vector_imp<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>,0>8iteratorQ33std64__vector_imp<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>,0>8iteratorPFRCQ26CAiMap4nameRCQ26CAiMap4name_b_v  # OVL2; by hand (MSL's sort instance for the names: names::Sort 0x530EC0 calls it with the two iterators and the comparator 0x531190; 0xD30 bytes in ai_maptable.cpp's template tail -- include/algorithm has no sort yet, the unit declares it)
 0x00532000 0x1AC erase__Q23std64__vector_imp<Q26CAiMap4link,Q23std25allocator<Q26CAiMap4link>,0>FPQ26CAiMap4link  # OVL2; by hand (the class vector's single-element erase for the links: the elements after copied down 8x unrolled, the size counted down; the iterator wrapper 0x530AA0 calls it)
 0x005321B0 0x72C func_005321B0  # OVL2
 0x005328E0 0x10C func_005328E0  # OVL2
