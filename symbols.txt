@@ -4581,7 +4581,7 @@
 0x002DBCE0 0x2C ClosePadIO__6CInputFv  # OVL1; s1:order by hand (SOCOM 1's ClosePadIO after the CPad constructor: DeletePad(0), then libpad2's end and the module's)
 0x002DBD10 0x30 OpenPadIO__6CInputFv  # OVL1; s1:order by hand (SOCOM 1's OpenPadIO after ClosePadIO: the modules started, libpad2 initialised, CreatePad(0), 0 given back)
 0x002DBD40 0x44 KeyboardAttached__Fv  # OVL1; new in SOCOM II, the name ours (the world lane): the USB keyboard library's information read into a zeroed 136-byte block and synchronised, its byte at 8 tested; 0x38D8F0 calls it
-0x002DBD90 0x158 func_002DBD90  # OVL1
+0x002DBD90 0x158 GetKeyReadThisFrame__FP8KeyInput  # OVL1; s1:order by hand (the world lane: SOCOM 1's GetKeyReadThisFrame(KeyInput *) before InitKeyreadStuff as there: the KeyInput cleared (32 bytes), the keyboard library read again when its last read is used up, the next key's code and modifier flags stored, the code given back)
 0x002DBEF0 0x8 UninitKeyreadStuff__Fv  # OVL1; new in SOCOM II, the name ours (after SOCOM 1's InitKeyreadStuff): a tail call into the USB keyboard library's teardown (0x1BE898); CInput::Uninit and the reboot handler's close path call it
 0x002DBF00 0x40 InitKeyreadStuff__Fv  # OVL1; s1:order by hand (SOCOM 1's InitKeyreadStuff before CKeyboard::Tick: the USB keyboard library set up; CInput::Init and the reboot handler call it)
 0x002DBF40 0x8 Tick__9CKeyboardFf  # OVL1; s1:order by hand (SOCOM 1's CKeyboard::Tick, empty in both, before ~CKeyboard; CInput::Tick calls it)
