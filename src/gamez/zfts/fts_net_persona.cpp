@@ -181,6 +181,14 @@ void *func_002BD0E0();
 void func_002C4500();                       /* (the teams counted) */
 bool func_002C2FA0();
 bool func_002C3300(unsigned int team);      /* (whether a team is the SEALs') */
+unsigned int func_002C32E0();               /* (the terrorists' team mask) */
+unsigned int func_002C32C0();               /* (the SEALs' team mask) */
+/* fts_remote.cpp's NetSendE3Index under the map's name: SOCOM II's takes three arguments (its fourth,
+ * SOCOM 1's bool, is never read, and the team switch below leaves a3 as it is) */
+void NetSendE3Index__FiUiib(int who, unsigned int index, int flag);
+void func_002C4440();
+int func_002C4810();
+int func_002C4A20();
 int strcmp(const char *a, const char *b);
 unsigned char func_002EAEE0(CZOnlineLobby *lobby, int a);   /* (the lobby's: the persona's byte at 0x42) */
 }
@@ -321,8 +329,34 @@ struct PendingSlot {
 
 extern "C" PendingSlot data_00441580[24];
 
-extern "C" int func_002C4810();
-extern "C" int func_002C4A20();
+/* a client moved to the other side when that side has a slot free: its slot and team taken there,
+ * the switch sent and the counts moved (OVL1 0x2C4290; the session master's answer to a team
+ * switch, fts_remote.cpp's NetSendRequestTeamSwitch) */
+extern "C" void func_002C4290(int client)
+{
+    PersonaData *p = CZPersonaState::GetPersona(client);
+
+    if (!p)
+        return;
+    func_002C4440();
+    if (IsTerroristTeam(p->m_team) && data_00441450 < 8) {
+        signed char slot = func_002C4810();
+
+        p->m_3e = slot;
+        p->m_team = func_002C32C0();
+        NetSendE3Index__FiUiib(client, func_002C32C0(), slot);
+        data_00441450++;
+        data_00441448--;
+    } else if (func_002C3300(p->m_team) && data_00441448 < 8) {
+        signed char slot = func_002C4A20();
+
+        p->m_3e = slot;
+        p->m_team = func_002C32E0();
+        NetSendE3Index__FiUiib(client, func_002C32E0(), slot);
+        data_00441450--;
+        data_00441448++;
+    }
+}
 
 /* the sides counted, the slots held ahead of their personas added (OVL1 0x2C4440) */
 extern "C" void func_002C4440()
