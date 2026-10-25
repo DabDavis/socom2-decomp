@@ -331,12 +331,31 @@ public:
     bool m_fading;                              /* 0x15 */
 };   /* 0x18 bytes */
 
-enum MUSIC_MODE {};   // its values are not in SOCOM 1's DWARF; the SOUND tick passes 1 and 3
+/* the music's intensity: its values are not in SOCOM 1's DWARF (names ours); the SOUND tick passes
+ * 1 and 3, SetIntensity steps 0-3 by a level's thresholds (1, 3, 5) */
+enum MUSIC_MODE {
+    MUSIC_MODE_0 = 0,
+    MUSIC_MODE_1 = 1,
+    MUSIC_MODE_2 = 2,
+    MUSIC_MODE_3 = 3
+};
 
 class CSndJukebox {
 public:
+    static void Stop();
+    static void Start();
+    static void SetIntensity(float level);
     static void Play(MUSIC_MODE mode, CSnd *sound);
+    static void ClearQueue();
     static void FadeOut();
+
+    static CSndInstance *m_instance;    /* 0x48E080 (names ours) */
+    static CSndSequence *m_sequence;    /* 0x48E088 */
+    static MUSIC_MODE m_mode;           /* 0x48E0A0 */
+    static bool m_modeChanged;          /* 0x48E0A8 */
+    static int m_queued;                /* 0x48E0B0 */
+    static signed char m_queuedMode;    /* 0x48E0B4 */
+    static bool m_inFight;              /* 0x3E0080 (SOCOM 1's Start clears a byte so) */
 };
 
 #endif

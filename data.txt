@@ -183,6 +183,7 @@
 0x003DFD18 0x4 DELETED_NODE  # OVL1; SOCOM 1 name (the name a node is left with as it is destroyed; ~CNode stores it after SetName(0), as SOCOM 1's)
 0x003DFE10 0x4 m_scale__Q23zdb6CWorld  # OVL1; s1:data-seq (size SOCOM 1's; via Load__17CharacterDynamicsFRC8CRdrFile)
 0x003E0070 0x4 m_mastervol__12CSndInstance  # OVL1; s1:data-seq (size SOCOM 1's; via SetVol__12CSndInstanceFf)
+0x003E0080 0x1 m_inFight__11CSndJukebox  # OVL1 data; CSndJukebox static (name ours: SOCOM 1's Start clears a flag byte so); 4 references in 4 functions
 0x003E0980 0xC0 framecode  # OVL1; s1:data-seq (size SOCOM 1's; via zVid_FrameRestore__Fv)
 0x003E1200 0x10 zon_writeon_dmaref  # OVL1; s1:data-exact (size SOCOM 1's; via zVid_ZTestOnWriteSet__Fb)
 0x003E13F8 0x4 m_defaultFrameRate__6CVideo  # OVL1; SOCOM 1's (CCoreState::Init gives it back to MaxFrameRate, as SOCOM 1's): 2 references in 2 functions take 0x3E13F8
@@ -697,7 +698,13 @@
 0x0048DFD8 0xC m_vec__12CSndInstance  # OVL1 bss; CSndInstance static (name ours): a vector<CSndInstance *> RemoveFromList releases and Cleanup clears (0x403230 registers its destructor); 18 references in 6 functions
 0x0048DFE8 0x4 m_numAllocated__12CSndInstance  # OVL1 bss; CSndInstance static (name ours): the voices built, InitInstancePool and AcquireSoundInstance count them; 4 references in 2 functions
 0x0048DFF0 0x4 m_numInits__12CSndInstance  # OVL1 bss; CSndInstance static (name ours): InitInstance counts its calls; 2 references in 1 function
+0x0048E080 0x4 m_instance__11CSndJukebox  # OVL1 bss; CSndJukebox static (name ours): the music's playing voice, FadeOut fades it when no sequence plays; 26 references in 7 functions
+0x0048E088 0x4 m_sequence__11CSndJukebox  # OVL1 bss; CSndJukebox static (name ours): the music's playing sequence, FadeOut fades it first; 19 references in 7 functions
 0x0048E098 0x1 m_playlists_loaded__11CSndJukebox  # OVL1 bss; s1:data-seq (size SOCOM 1's; via LoadPlaylists__11CSndJukeboxFPCc)
+0x0048E0A0 0x1 m_mode__11CSndJukebox  # OVL1 bss; CSndJukebox static (name ours): the music mode, a byte MUSIC_MODE that SetIntensity steps; 13 references in 4 functions
+0x0048E0A8 0x1 m_modeChanged__11CSndJukebox  # OVL1 bss; CSndJukebox static (name ours): whether SetIntensity changed the mode; 3 references in 2 functions
+0x0048E0B0 0x4 m_queued__11CSndJukebox  # OVL1 bss; CSndJukebox static (name ours): the queue's count, ClearQueue and Start zero it; 10 references in 5 functions
+0x0048E0B4 0x1 m_queuedMode__11CSndJukebox  # OVL1 bss; CSndJukebox static (name ours): the queued mode, -1 for none; 12 references in 5 functions
 0x0049E150 0x1 theHeadsetState__7Headset  # OVL1 bss; s1:data-seq (size SOCOM 1's; via SoundSysCallback__7HeadsetFUi)
 0x0049E260 0x20 zTaskScheduler  # OVL1 bss; s1:data-seq (size SOCOM 1's; via TaskScheduler__9CZAnimSetFv)
 0x0049E280 0x4 __HeapSize  # OVL1 bss; s1:data-seq (size SOCOM 1's; via zsys_FullAllocAndFree__Fv)
