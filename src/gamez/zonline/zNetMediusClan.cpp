@@ -65,6 +65,25 @@ struct MediusGetMyClansRequest {
     int PageSize;   // 0x2c
 };   // 0x30
 
+/* an invitation to the clan sent: the account and a message */
+struct MediusInvitePlayerToClanRequest {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];   // 0x15
+    int PlayerAccountID;   // 0x28
+    char InviteMessage[200];   // 0x2c
+};   // 0xf4
+
+/* an account's number: the status after it (as the friends unit's) */
+struct MediusAccountGetIDResponse {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    int AccountID;   // 0x18
+    MediusCallbackStatus StatusCode;   // 0x1c
+};
+
+struct MediusInvitePlayerToClanResponse { MEDIUS_RESPONSE_HEAD };
+void cbInvitePlayerToClanInvitation(MediusErrorCode, MediusErrorCode, MediusErrorCode,
+                                    MediusInvitePlayerToClanResponse *);
+
 struct MediusRevokeClanInvitationResponse { MEDIUS_RESPONSE_HEAD };
 struct MediusUpdateClanStatsResponse { MEDIUS_RESPONSE_HEAD };
 struct MediusGetMyClansResponse;
@@ -92,6 +111,10 @@ inline char *VarText(_zrdr *z)
 
 extern "C" {
 extern int data_0044F770;   /* the clan's icon */
+extern int data_0044F798;   /* the invitation's progress: 2 sent, 3 no such player */
+void func_002F4D60(CZOnlineLobby *lobby, int account, int n, const char *text);   /* told the player */
+MediusErrorCode MediusInvitePlayerToClan(MediusInvitePlayerToClanRequest *req,
+    void (*cb)(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusInvitePlayerToClanResponse *));
 extern int data_0044F788;   /* the clan asked for: 0 not yet, 1 waiting, 2 answered */
 extern bool data_0044F790;   /* in a clan, or about to be */
 extern char data_0066A790;   /* (OVL2) */
@@ -434,6 +457,27 @@ void CZOnlineLobby::UpdateClanStats()
     req.ClanID = StoredClanInfo.ClanID;
     CheckMediusError(MediusUpdateClanStats(&req, cbUpdateClanStats));
     func_002E7F50(this);
+}
+
+/* the player to invite found: invited, with a message he is also told (SOCOM 1's; OVL1 0x2E7850) */
+void cbInvitePlayerToClanGetID(int, int, int, MediusAccountGetIDResponse *resp)
+{
+    MediusInvitePlayerToClanRequest req;
+    char text[1024];
+
+    if (CheckMediusCallbackStatus("MediusGetPlayerForInvitation", resp->StatusCode)) {
+        memset(&req, 0, sizeof(req));
+        SetSessionKey(req.SessionKey);
+        req.PlayerAccountID = resp->AccountID;
+        sprintf(text, "Clan %s invites you to join.", StoredClanInfo.ClanName);
+        strncpy(req.InviteMessage, text, sizeof(req.InviteMessage));
+        CheckMediusError(MediusInvitePlayerToClan(&req, cbInvitePlayerToClanInvitation));
+        data_0044F798 = 2;
+        func_002F4D60(&theLobby, resp->AccountID, 1, text);
+        return;
+    }
+    LobbyEvent("MP_PLAYER_NOT_FOUND", 0);
+    data_0044F798 = 3;
 }
 
 /* the clan's name back from the filter: the clan created under it, or the menu told and the
