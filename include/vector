@@ -88,9 +88,18 @@ class __vector_capacity {
 public:
     __vector_capacity() { n_ = 0; }
     operator unsigned int() const { return n_; }
+    /* the pair's swap (SOCOM 1's compressed_pair_imp::swap, msl_utility lines 859-860) */
+    void swap(__vector_capacity &x) { std::swap(n_, x.n_); }
 
     unsigned int n_;
 };
+
+/* the pair swapped through its member (MSL's free swap of a compressed_pair) */
+template <class Allocator>
+inline void swap(__vector_capacity<Allocator> &x, __vector_capacity<Allocator> &y)
+{
+    x.swap(y);
+}
 
 template <class T, class Allocator>
 class __vector_deleter {
@@ -118,25 +127,28 @@ public:
             __msl_error("Memory allocation failure");
         return p;
     }
-    void swap(__vector_deleter &x)
-    {
-        if (this != &x) {
-            unsigned int c = capacity_.n_;
-            capacity_.n_ = x.capacity_.n_;
-            x.capacity_.n_ = c;
-            T *d = data_;
-            data_ = x.data_;
-            x.data_ = d;
-            unsigned int z = size_;
-            size_ = x.size_;
-            x.size_ = z;
-        }
-    }
+    /* through the free swap below (SOCOM 1's member swap, line 973, calls the free one at 960) */
+    void swap(__vector_deleter &x) { std::swap(*this, x); }
 
     __vector_capacity<Allocator> capacity_;
     unsigned int size_;
     T *data_;
 };
+
+/* the storage traded (SOCOM 1's free swap, lines 960-967: the this test, the capacity pair through
+ * its own swap -- SOCOM 1's copy calls swap<Ui> there out of line -- then data and size): the
+ * deleter's swap is five high (member, this, the pair's free swap, its member, std::swap), so a
+ * class vector's FreeVector, six, is inlined one level at -inline level=5 and calls its pieces
+ * (CGameStateChangeCmd::DestroyPool, ~MapCompass, CVehicleRdr::Close) */
+template <class T, class Allocator>
+inline void swap(__vector_deleter<T, Allocator> &x, __vector_deleter<T, Allocator> &y)
+{
+    if (&x != &y) {
+        swap(x.capacity_, y.capacity_);
+        std::swap(x.data_, y.data_);
+        std::swap(x.size_, y.size_);
+    }
+}
 
 /* the deleter's destructor, out of class and not inline, as MSL 3.0.1 has it after the class body
  * (SOCOM 1's DWARF: the constructor at <vector> line 916 and data() at 923 inside the class, the
