@@ -8,10 +8,10 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 s32 Delete__Q23zdb5CNodeFPQ23zdb5CNode(s32);        /* extern */
+M2C_UNK Destroy__7CPickupFP7CPickup(s32);           /* extern */
 M2C_UNK __dl__FPv(char *);                          /* extern */
 M2C_UNK func_002707C0(s32, M2C_UNK);                /* extern */
 M2C_UNK func_003C8750();                            /* extern */
-M2C_UNK func_00542470(s32);                         /* extern */
 extern M2C_UNK __vt__12CZProjectile;
 
 char *func_003CB7E0(char *arg0, s64 arg1) {
@@ -38,7 +38,7 @@ char *func_003CB7E0(char *arg0, s64 arg1) {
         }
         temp_a0_3 = SC_MEMBER(arg0, s32 *, 0x14);
         if (temp_a0_3 != 0) {
-            func_00542470(temp_a0_3);
+            Destroy__7CPickupFP7CPickup(temp_a0_3);
             SC_MEMBER(arg0, s32 *, 0x14) = 0;
         }
         if (((s64) (arg1 << 0x30) >> 0x30) > 0) {

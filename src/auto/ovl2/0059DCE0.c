@@ -4,12 +4,13 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK CompassAnchor_MPBomb__10CZSealBodyFP14CCompassAnchor(char *, M2C_UNK); /* extern */
 M2C_UNK DeleteAnchor__8CCompassFP14CCompassAnchor(s32); /* extern */
 char *ftsGetPlayer__Fv();                           /* extern */
 M2C_UNK func_00542180();                            /* extern */
-M2C_UNK func_00544C60(char *, M2C_UNK);             /* extern */
 
 void func_0059DCE0(void) {
     char *temp_v0;
@@ -17,7 +18,7 @@ void func_0059DCE0(void) {
     func_00542180();
     temp_v0 = ftsGetPlayer__Fv();
     if (temp_v0 != NULL) {
-        DeleteAnchor__8CCompassFP14CCompassAnchor(M2C_FIELD(temp_v0, s32 *, 0xEC0));
-        func_00544C60(temp_v0, 0);
+        DeleteAnchor__8CCompassFP14CCompassAnchor(SC_MEMBER(temp_v0, s32 *, 0xEC0));
+        CompassAnchor_MPBomb__10CZSealBodyFP14CCompassAnchor(temp_v0, 0);
     }
 }

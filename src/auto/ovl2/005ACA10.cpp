@@ -5,10 +5,11 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
 extern "C" {
-char *func_0059ACD0();                              /* extern */
+char *GetSeal__10CZSealBodyFPQ23zdb5CNode();        /* extern */
 extern u8 data_0045A0C1;
 
 bool func_005ACA10(void) {
@@ -17,8 +18,8 @@ bool func_005ACA10(void) {
 
     var_s0 = true;
     if (data_0045A0C1 != 0) {
-        temp_v0 = func_0059ACD0();
-        if ((temp_v0 != NULL) && (((u64) ((s64) M2C_FIELD(temp_v0, u8 *, 0xE1) << 0x3B) >> 0x3F) == 0)) {
+        temp_v0 = GetSeal__10CZSealBodyFPQ23zdb5CNode();
+        if ((temp_v0 != NULL) && (((u64) ((s64) SC_MEMBER(temp_v0, u8 *, 0xE1) << 0x3B) >> 0x3F) == 0)) {
             var_s0 = false;
         }
     }

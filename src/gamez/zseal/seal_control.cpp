@@ -62,13 +62,6 @@ CSealCtrl::~CSealCtrl()
 {
 }
 
-/* OnMissionStart and OnMissionEnd are byte-exact by scdiff --target 0x597F50 / 0x597EB0, but the
- * map still gives their names to CRemoteCtrl's own overrides (0x5E6270/0x5E6280, the 8-byte
- * stubs in __vt__11CRemoteCtrl's slots 0x5C/0x60, which a draft matches): defined here they would
- * score against those rows. Held out until those rows are OnMissionStart/End__11CRemoteCtrlFv
- * and 0x597F50/0x597EB0 take these names (the lane's report). */
-#ifdef SC_SEAL_REMOTE_RENAMED
-
 /* the mission begun: online, the squad told to take up its places (unless the player is a
  * ghost); the body crouched and the controls given (OVL2 0x597F50; SOCOM 1's did nothing) */
 void CSealCtrl::OnMissionStart()
@@ -92,8 +85,6 @@ void CSealCtrl::OnMissionEnd()
     m_input_enabled = false;
     StopRumbler();
 }
-
-#endif
 
 /* hurt: the pain cry, and the pad shaken unless the SEAL is a remote one (OVL2 0x597B00) */
 void CSealCtrl::OnSetHealth(float health, float old)

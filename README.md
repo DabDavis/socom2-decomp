@@ -756,6 +756,21 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - an s1 "exact" pair with relocations masked cannot tell which global it passes: check the
     address (UIGameStatePopCommand passed theLobby -- it is GetClanRanking's handler);
   - the lobby's `uiv_*` members are read through `theLobby.` even inside member functions.
+- **Tells from the SEALs** (src/gamez/zseal/):
+  - a `neg.s` of a loaded constant needs a local (`float g = -98.0f; ... -g`); a literal
+    `-(-98.0f)` or a `const` local folds;
+  - MW 3.0 lays out SOCOM 1's guarded function-local statics as plain initialised data, 8 bytes
+    apart, and scdiff compares them by content (the static is 0.707107f, not sqrt(1/2));
+  - `ai::_max` is `a >= b ? a : b` (`a < b ? b : a` inverts the branch), and MW auto-inlines no
+    template function, so `_max`/`_min` calls are jals in both builds;
+  - a member load the target places before a branch needs a local taken first;
+  - CSealCtrlCopy's OVL1 table shows which CSealCtrl virtuals are inline: any OVL1 address in a
+    slot it does not override;
+  - a vtable slot's name carried over from SOCOM 1 can land on a subclass's override when SOCOM
+    1's base function was an empty stub of the same 8 bytes: check each class's own table
+    (OnMissionStart/End are CRemoteCtrl's at 0x5E6270/80, CSealCtrl's at 0x597F50/0x597EB0);
+  - a `jr t9` tail call can run on into the next function, and a nop before an epilogue can end
+    a row early: the seed split three of the lane's functions in two.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has

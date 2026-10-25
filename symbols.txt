@@ -8229,7 +8229,7 @@
 0x003C9FB0 0x5E4 PostTick__12CZProjectileFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003CA5A0 0x63C func_003CA5A0  # OVL1
 0x003CABE0 0x300 func_003CABE0  # OVL1
-0x003CAEE0 0x80 func_003CAEE0  # OVL1
+0x003CAEE0 0x80 SetVelW__12CZProjectileFPC6CPnt3D  # OVL1; s1:calls (called where SOCOM 1's calls it; 0x80 against SOCOM 1's 0x7C) -- the SEAL lane
 0x003CAF60 0x234 func_003CAF60  # OVL1
 0x003CB1A0 0x454 func_003CB1A0  # OVL1
 0x003CB600 0x1E0 func_003CB600  # OVL1
@@ -10677,8 +10677,8 @@
 0x00597C00 0x240 OnStunDamage__9CSealCtrlF9STUN_TYPEfPC6CPnt3D  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00597E40 0x40 OnWeaponHit__9CSealCtrlFPQ23zdb15IntersectStructP12CZProjectile  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00597E80 0x24 Initalize__9CSealCtrlFv  # OVL2; slot 0x40 of __vt__9CSealCtrl, and SOCOM 1's order (Initalize, OnMissionEnd, OnMissionStart, OnRecycleEntity, OnWeaponEvent, the destructor, the constructor)
-0x00597EB0 0x98 func_00597EB0  # OVL2
-0x00597F50 0x9C func_00597F50  # OVL2
+0x00597EB0 0x98 OnMissionEnd__9CSealCtrlFv  # OVL2; by hand (the SEAL lane: CSealCtrl's vtable slot 0x60; seal_control.cpp byte-exact)
+0x00597F50 0x9C OnMissionStart__9CSealCtrlFv  # OVL2; by hand (the SEAL lane: CSealCtrl's vtable slot 0x5C points here in SOCOM II, which gave it a body where SOCOM 1's was empty; seal_control.cpp byte-exact)
 0x00597FF0 0x8 OnRecycleEntity__9CSealCtrlFP7CEntity  # OVL2; slot 0x48 of __vt__9CSealCtrl, and SOCOM 1's order
 0x00598000 0x218 OnWeaponEvent__9CSealCtrlFP12CZProjectileUiPv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00598220 0x60 __dt__9CSealCtrlFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -11085,7 +11085,7 @@
 0x005C75F0 0x1B4 func_005C75F0  # OVL2
 0x005C77B0 0x80 func_005C77B0  # OVL2
 0x005C7830 0x8 func_005C7830  # OVL2
-0x005C7840 0x498 func_005C7840  # OVL2
+0x005C7840 0x498 PostSetupItems__5CZKitFv  # OVL2; s1:calls (called where SOCOM 1's calls CZKit::PostSetupItems) -- the SEAL lane
 0x005C7CE0 0x120 func_005C7CE0  # OVL2
 0x005C7E00 0x238 func_005C7E00  # OVL2
 0x005C8040 0x34 func_005C8040  # OVL2
@@ -11121,7 +11121,7 @@
 0x005C9B10 0x20 NotifyTargetDown__11CSealCtrlAiFP10CZSealBody  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005C9B30 0x63C func_005C9B30  # OVL2
 0x005CA170 0x2E4 func_005CA170  # OVL2
-0x005CA460 0x8 func_005CA460  # OVL2
+0x005CA460 0x8 SetTarget__9CSealCtrlFP7CTarget  # OVL2; s1:vtable (slot 0xB0, jr ra; nop as SOCOM 1's) -- the SEAL lane
 0x005CA470 0x580 func_005CA470  # OVL2
 0x005CA9F0 0x210 func_005CA9F0  # OVL2
 0x005CAC00 0x848 func_005CAC00  # OVL2
@@ -11279,7 +11279,7 @@
 0x005DF600 0x2AC func_005DF600  # OVL2
 0x005DF8B0 0x74 func_005DF8B0  # OVL2
 0x005DF930 0x198 func_005DF930  # OVL2
-0x005DFAD0 0x94 func_005DFAD0  # OVL2
+0x005DFAD0 0x94 Virtual64__10CZSealBodyFv  # OVL2; by hand (CZSealBody's vtable slot 0x64; the name ours, as the lane's Virtual5C/60/68) -- the SEAL lane
 0x005DFB70 0x108 func_005DFB70  # OVL2
 0x005DFC80 0x1AC WeaponsTick__10CZSealBodyFf  # OVL2; s1:calls
 0x005DFE30 0x188 SetWeaponState__10CZSealBodyF12WEAPON_STATE  # OVL2; s1:order (the same ~0x10 state mask, 0x184 -> 0x188)
@@ -11334,8 +11334,8 @@
 0x005E6240 0x8 OnStunDamage__11CRemoteCtrlF9STUN_TYPEfPC6CPnt3D  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005E6250 0x8 IsPlayer__11CRemoteCtrlCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005E6260 0x8 IsRemote__11CRemoteCtrlCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x005E6270 0x8 OnMissionStart__9CSealCtrlFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x005E6280 0x8 OnMissionEnd__9CSealCtrlFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x005E6270 0x8 OnMissionStart__11CRemoteCtrlFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); by hand (the SEAL lane: CRemoteCtrl's own override, in its vtable's slot 0x5C -- empty as SOCOM 1's CSealCtrl one was; SOCOM II's CSealCtrl table points at 0x597F50 instead)
+0x005E6280 0x8 OnMissionEnd__11CRemoteCtrlFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); by hand (the SEAL lane: CRemoteCtrl's override, its vtable's slot 0x60; CSealCtrl's table points at 0x597EB0)
 0x005E6290 0x6C func_005E6290  # OVL2
 0x005E6300 0x8 PostTick__11CRemoteCtrlFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005E6310 0xE4 PostMortemPreTick__11CRemoteCtrlFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)

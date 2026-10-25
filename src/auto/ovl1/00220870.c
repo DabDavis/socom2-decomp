@@ -7,10 +7,10 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+char *CurrentPickupSecondary__10CZSealBodyFv(s32);  /* extern */
+char *CurrentPickup__10CZSealBodyFv(s32);           /* extern */
 M2C_UNK *func_003D2830(s32);                        /* extern */
 s32 func_00541A90(char *);                          /* extern */
-char *func_00544C20(s32);                           /* extern */
-char *func_00544C30(s32);                           /* extern */
 M2C_UNK strcpy(char *, M2C_UNK *);                  /* extern */
 extern M2C_UNK data_003E4B98;
 extern s32 data_0040D554;
@@ -30,7 +30,7 @@ s32 func_00220870(char *arg0) {
         if (temp_a0 != 0) {
             temp_v1 = M2C_FIELD(*data_0040D558, u8 *, 4);
             if (temp_v1 == 4) {
-                temp_v0 = func_00544C30(temp_a0);
+                temp_v0 = CurrentPickup__10CZSealBodyFv(temp_a0);
                 if ((temp_v0 != NULL) && (SC_MEMBER(temp_v0, u8 *, 0xC) == 8)) {
                     temp_v0_2 = func_00541A90(temp_v0);
                     SC_MEMBER(arg0, s32 *, 0x1B0) = (s32) SC_MEMBER(temp_v0, s32 *, 4);
@@ -41,7 +41,7 @@ s32 func_00220870(char *arg0) {
                     }
                 }
             } else if (temp_v1 == 5) {
-                temp_v0_3 = func_00544C20(temp_a0);
+                temp_v0_3 = CurrentPickupSecondary__10CZSealBodyFv(temp_a0);
                 if ((temp_v0_3 != NULL) && (SC_MEMBER(temp_v0_3, u8 *, 0xC) == 8)) {
                     temp_v0_4 = func_00541A90(temp_v0_3);
                     SC_MEMBER(arg0, s32 *, 0x1B0) = (s32) SC_MEMBER(temp_v0_3, s32 *, 4);

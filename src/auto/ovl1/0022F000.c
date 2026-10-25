@@ -4,10 +4,11 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+s32 CanPerformAction__9CSealCtrlFP11CNodeAction(s32, char *); /* extern */
 M2C_UNK ExecuteAction__11CNodeActionFP10CZSealBodyUi(char *, char *, M2C_UNK); /* extern */
-s32 func_00594350(s32, char *);                     /* extern */
 M2C_UNK func_005EAD70(s32, M2C_UNK, M2C_UNK, M2C_UNK); /* extern */
 s32 func_005EF2F0(u8);                              /* extern */
 extern char *data_00412FF0;
@@ -21,20 +22,20 @@ s32 func_0022F000(char *arg0) {
 
     if (data_00413000 != 0) {
         temp_v0 = func_005EF2F0(data_00413008);
-        if ((temp_v0 != 0) && (arg0 != NULL) && (((u64) ((s64) M2C_FIELD(arg0, u8 *, 0xE1) << 0x3B) >> 0x3F) != 0)) {
+        if ((temp_v0 != 0) && (arg0 != NULL) && (((u64) ((s64) SC_MEMBER(arg0, u8 *, 0xE1) << 0x3B) >> 0x3F) != 0)) {
             func_005EAD70(temp_v0, 1, 0, 0);
         }
         return 1;
     }
-    temp_s0 = M2C_FIELD(data_00412FF0, char **, 0x744);
+    temp_s0 = SC_MEMBER(data_00412FF0, char **, 0x744);
     if (arg0 != NULL) {
-        var_a0 = M2C_FIELD(arg0, s32 *, 0xC0);
+        var_a0 = SC_MEMBER(arg0, s32 *, 0xC0);
     } else {
         var_a0 = 0;
     }
-    if ((var_a0 != 0) && (temp_s0 != NULL) && (func_00594350(var_a0, temp_s0) != 0) && (M2C_FIELD(temp_s0, u8 *, 0x24) != 4)) {
+    if ((var_a0 != 0) && (temp_s0 != NULL) && (CanPerformAction__9CSealCtrlFP11CNodeAction(var_a0, temp_s0) != 0) && (SC_MEMBER(temp_s0, u8 *, 0x24) != 4)) {
         ExecuteAction__11CNodeActionFP10CZSealBodyUi(temp_s0, arg0, 0);
-        M2C_FIELD(arg0, s32 *, 0x538) = (s32) M2C_FIELD(temp_s0, s32 *, 0x10);
+        SC_MEMBER(arg0, s32 *, 0x538) = (s32) SC_MEMBER(temp_s0, s32 *, 0x10);
     }
     return 0;
 }

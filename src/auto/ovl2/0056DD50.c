@@ -8,15 +8,15 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 s32 GetNode__7CEntityFv(char *);                    /* extern */
+M2C_UNK ResetToInitialState__9CSealCtrlFv();        /* extern */
 M2C_UNK func_00561F00(char *, M2C_UNK, M2C_UNK, M2C_UNK, s32, M2C_UNK, s32, M2C_UNK); /* extern */
-M2C_UNK func_00597890();                            /* extern */
 M2C_UNK func_005F5F20(char *, M2C_UNK);             /* extern */
 
 void ResetToInitialState__11CSealCtrlAiFv(char *arg0) {
     s32 temp_s0;
     char *temp_a0;
 
-    func_00597890();
+    ResetToInitialState__9CSealCtrlFv();
     func_005F5F20(arg0, 1);
     temp_a0 = SC_MEMBER(arg0, char **, 4);
     temp_s0 = SC_MEMBER(temp_a0, s32 *, 0x3B0);
