@@ -9934,10 +9934,10 @@
 0x00543480 0x2C func_00543480  # OVL2
 0x005434B0 0x1D0 func_005434B0  # OVL2
 0x00543680 0x150 func_00543680  # OVL2
-0x005437D0 0x160 func_005437D0  # OVL2
+0x005437D0 0x160 TickHeartbeat__10CZSealBodyFv  # OVL2; s1:calls (SOCOM 1's TickHeartbeat__10CZSealBodyFv: Adrenaline's level into three bands at 0.33 and 0.66, the playing loop stopped and released and the band's loop played (CSnd slot 0xC with 0, 255) when the band changes, or one started when none plays -- SOCOM II tests the loop for null; first of the heartbeat stretch as SOCOM 1's) -- the SEAL lane, round 7
 0x00543930 0x150 func_00543930  # OVL2
 0x00543A80 0x4C StopAllHeartbeatSounds__10CZSealBodyFv  # OVL2; s1:calls (StopRumbler calls it where SOCOM 1's does; two Stop/ReleaseSoundInstance pairs as SOCOM 1's)
-0x00543AD0 0x64 func_00543AD0  # OVL2
+0x00543AD0 0x64 CloseHeartbeatSounds__10CZSealBodyFv  # OVL2; s1:order by hand (SOCOM 1's CloseHeartbeatSounds__10CZSealBodyFv: StopAllHeartbeatSounds' body inlined, then the three loops at 0x44CE00 zeroed; between StopAllHeartbeatSounds and OpenHeartbeatSounds in both builds) -- the SEAL lane, round 7
 0x00543B40 0x50 OpenHeartbeatSounds__10CZSealBodyFv  # OVL2; tu: seal.cpp~ (1.0 beta); s1:exact
 0x00543B90 0x1A4 func_00543B90  # OVL2
 0x00543D40 0x8 func_00543D40  # OVL2; s1~ SetAiNetState__9CSealCtrlFUi (one of 2 out-of-line copies of an inline, by s1:vtable)
@@ -10037,7 +10037,7 @@
 0x00550570 0x124 PostTick__10CZSealBodyFf  # OVL2; slot 0x24 of __vt__10CZSealBody (CEntity's PostTick slot, as PostTickAll calls it)
 0x005506A0 0x3D4 PrePostTick__10CZSealBodyFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); slot 0x20 of __vt__10CZSealBody, which SOCOM II's CEntity table and ent_main.cpp's matched PrePostTickAll make PrePostTick (s1:vtable had given it PostTick by code likeness: SOCOM II moved SOCOM 1's PostTick body here)
 0x00550A80 0x3D0 func_00550A80  # OVL2
-0x00550E50 0x98 func_00550E50  # OVL2; tu: seal.cpp~ (1.0 beta)
+0x00550E50 0x98 CreateAiEvent__10CZSealBodyFv  # OVL2; tu: seal.cpp~ (1.0 beta); s1:calls (SOCOM 1's CreateAiEvent__10CZSealBodyFv: CAiEvent::Acquire then Create, the type 3, NoExpire, the range 1e-4 and the owner stored as SOCOM 1's -- SOCOM II reads the position off the entity where SOCOM 1 called GetPosW; the event pointer at 0x428, SOCOM 1's 0x380) -- the SEAL lane, round 7
 0x00550EF0 0xFCC Tick__10CZSealBodyFf  # OVL2; slot 0x18 of __vt__10CZSealBody (CEntity's Tick slot); calls CreateMPBombPickup first, as SOCOM 1's Tick
 0x00551EC0 0x8BC PreTick__10CZSealBodyFf  # OVL2; slot 0x14 of __vt__10CZSealBody (CEntity's PreTick slot)
 0x00552780 0xD0 func_00552780  # OVL2
@@ -10379,7 +10379,7 @@
 0x005780E0 0x28 func_005780E0  # OVL2
 0x00578110 0x40 func_00578110  # OVL2
 0x00578150 0x58 AdrenalineIncr__10CZSealBodyFf  # OVL2; s1:calls (CZKit::InitializeSniperKick tail-calls it with a float, as SOCOM 1's; 0x58 bytes in both) -- the kit lane
-0x005781B0 0x8 func_005781B0  # OVL2
+0x005781B0 0x8 Adrenaline__10CZSealBodyFv  # OVL2; s1:order by hand (SOCOM 1's Adrenaline__10CZSealBodyFv: one load and return, the member at 0xEB0 where SOCOM 1's read 0xDAC; seal_anim.cpp's last function in both builds; TickHeartbeat calls it first, as SOCOM 1's) -- the SEAL lane, round 7
 0x005781C0 0x2D4 func_005781C0  # OVL2
 0x005784A0 0x41C func_005784A0  # OVL2
 0x005788C0 0x18 func_005788C0  # OVL2

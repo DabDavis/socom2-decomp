@@ -12,6 +12,12 @@ extern "C" {
 AnimType func_005E1A90(AnimSet *set, AnimType type);
 }
 
+/* the SEAL's adrenaline (OVL2 0x5781B0, the unit's last; SOCOM 1's, the same load) */
+CAdrenaline *CZSealBody::Adrenaline()
+{
+    return m_adrenaline;
+}
+
 /* whether an anim type is the blend on top: itself, or its base anim (OVL2 0x577E40; SOCOM 1's,
  * which compared the base anim only) */
 bool CZSealBody::IsCurrentBlend(AnimType type) const

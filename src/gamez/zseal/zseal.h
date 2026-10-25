@@ -631,6 +631,11 @@ public:
     CPnt3D m_rotation;   // 0x28
 };
 
+/* the SEAL's adrenaline: its level, 0 to 1 (only what the heartbeat reads; the names ours) */
+struct CAdrenaline {
+    float m_level;   // 0x0
+};
+
 /* how far a SEAL's aim strays, sideways and up, and the random part's scale (SOCOM 1's DWARF,
  * 0xc bytes) */
 class CAccuracy {
@@ -666,6 +671,9 @@ public:
     static const CCharacterType *PreCreateSeal(const CCharacterType *type, const char *name, zdb::CNode **node);
     /* every heartbeat loop stopped (SOCOM 1's; StopRumbler calls it with no body) */
     static void StopAllHeartbeatSounds();
+    /* the loops let go, and looked up (SOCOM 1's; OVL2 0x543AD0, 0x543B40) */
+    static void CloseHeartbeatSounds();
+    static void OpenHeartbeatSounds();
     /* the stance a state stands for, or the fallback (SOCOM 1's; the AI-states lane's 0x5FC910) */
     static SEAL_STANCE GetStanceFromState(SEAL_STATE state, SEAL_STANCE fallback);
     /* a body part made a gear's (SOCOM 1's; OVL2 0x58B040, seal_cfg.cpp) */
@@ -763,6 +771,17 @@ public:
     void HandlePickupMPBomb(CPickup *pickup);
     /* the regions entered: each new one's OnEnterRegion anim run (SOCOM 1's; OVL2 0x5A2F90) */
     void CheckForRegionTrigger(unsigned int regions);
+    /* the SEAL's own AI event made where it stands (SOCOM 1's; OVL2 0x550E50, seal.cpp) */
+    void CreateAiEvent();
+    /* the SEAL's adrenaline, its level first (SOCOM 1's; OVL2 0x5781B0, seal_anim.cpp's last) */
+    struct CAdrenaline *Adrenaline();
+    /* the heartbeat's loop kept at the adrenaline's pace (SOCOM 1's; OVL2 0x5437D0, seal.cpp), and
+     * its statics: the three loops (OVL1 bss 0x44CE00), the one playing and its index (SOCOM 1's
+     * m_heartbeat_sndisnt and m_heartbeat_curindex, OVL1 bss 0x44CE10, 0x44CE18) */
+    void TickHeartbeat();
+    static class CSnd *m_heartbeat_sound[3];
+    static class CSndInstance *m_heartbeat_sndisnt;
+    static int m_heartbeat_curindex;
 
     unsigned char _200[0x214 - 0x200];
     float m_blooddriptimer;   // 0x214 (SOCOM 1's 0x170)
@@ -780,7 +799,9 @@ public:
     void *m_select;   // 0x3b0: a TASK_SELECT (SOCOM 1's 0x318), the AI's tasks' argument
     unsigned char _3b4[0x400 - 0x3b4];
     zdb::IntersectStruct m_last_altitude;   // 0x400 (SOCOM 1's 0x320)
-    unsigned char _420[0x434 - 0x420];
+    unsigned char _420[0x428 - 0x420];
+    CAiEvent *m_aiEvent;   // 0x428: the SEAL's own AI event (SOCOM 1's 0x380)
+    unsigned char _42c[0x434 - 0x42c];
     unsigned char m_snakePath[4];   // 0x434: a CAiPath (SOCOM 1's 0x384)
     unsigned char _438[0x528 - 0x438];
     class AnimSet *m_animset;   // 0x528 (SOCOM 1's 0x45c)
@@ -793,7 +814,9 @@ public:
     unsigned char _5ba[0x5d4 - 0x5ba];
     CAccuracy m_accuracy;   // 0x5d4 (SOCOM 1's 0x514: PerturbAimVector reads it)
     CZKit m_kit;   // 0x5e0 (SOCOM 1's 0x520)
-    unsigned char _5e4[0xeb8 - 0x5e4];
+    unsigned char _5e4[0xeb0 - 0x5e4];
+    struct CAdrenaline *m_adrenaline;   // 0xeb0 (SOCOM 1's 0xdac: Adrenaline returns it)
+    unsigned char _eb4[0xeb8 - 0xeb4];
     int m_eb8;   // 0xeb8: 0x5A8850 tests it first (the name ours)
     unsigned char _ebc[0xec0 - 0xebc];
     CCompassAnchor *m_mpbomb_anchor;   // 0xec0 (SOCOM 1's 0xdb4)

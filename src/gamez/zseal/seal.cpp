@@ -7,6 +7,8 @@
 #include "zseal.h"
 #include "../zkit/zkit.h"
 #include "../zanim/zanim.h"
+#include "../../ai/ai.h"
+#include "../zsnd/zsnd.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -255,11 +257,7 @@ static void _rethrow_grenade(CValve *valve, void *data)
     func_003CAEE0(grenade, &vel);
 }
 
-/* the AI's aiming helper (SOCOM 1's CAi, ai.h's: only its alignment) */
-class CAi {
-public:
-    static void AlignToPoint(const CMatrix *m, const CPnt3D *p, CMatrix *out, float f);
-};
+/* the AI's aiming helper, CAi, is ai.h's */
 
 extern "C" {
 /* CValve::AddCallback (SOCOM 1's AddCallback__6CValveFUiPFP6CValvePv_vPv; zanim.h's CValve lacks
@@ -606,4 +604,84 @@ bool CZSealBody::Virtual60(CPnt3D *out)
 int CZSealBody::Virtual5C()
 {
     return 0;
+}
+
+/* the SEAL's own AI event: an entity event that never expires, heard only close by, where the SEAL
+ * stands, the SEAL its owner (OVL2 0x550E50; SOCOM 1's, which asked GetPosW for the place) */
+void CZSealBody::CreateAiEvent()
+{
+    m_aiEvent = CAiEvent::Acquire();
+    m_aiEvent->m_type = CAiEvent::AIE_ENTITY;
+    m_aiEvent->m_duration = CAiEvent::NoExpire;
+    m_aiEvent->m_rangeSq = 0.0001f;
+    m_aiEvent->m_pos = m_posW;
+    m_aiEvent->m_owner = m_id;
+    CAiEvent::Create(m_aiEvent);
+}
+
+/* the heartbeat kept at the adrenaline's pace: three loops by level (none as 1), the one playing
+ * swapped when the pace changes -- none when that loop is missing (SOCOM II's test) -- or started
+ * when none plays (OVL2 0x5437D0; SOCOM 1's) */
+void CZSealBody::TickHeartbeat()
+{
+    CAdrenaline *a = Adrenaline();
+    float level = a ? a->m_level : 1.0f;
+    int index;
+
+    if (level < 0.33f)
+        index = 0;
+    else if (level < 0.66f)
+        index = 1;
+    else
+        index = 2;
+    if (m_heartbeat_sndisnt && m_heartbeat_curindex != index) {
+        m_heartbeat_sndisnt->Stop();
+        CSndInstance::ReleaseSoundInstance(m_heartbeat_sndisnt);
+        m_heartbeat_sndisnt = 0;
+        CSnd *snd = m_heartbeat_sound[index];
+
+        if (!snd)
+            m_heartbeat_sndisnt = 0;
+        else
+            m_heartbeat_sndisnt = snd->PlaySound((CSndInstance *)0, 255);
+        m_heartbeat_curindex = index;
+    } else if (!m_heartbeat_sndisnt) {
+        CSnd *snd = m_heartbeat_sound[index];
+
+        if (snd) {
+            CSndInstance *inst = snd->PlaySound((CSndInstance *)0, 255);
+
+            m_heartbeat_curindex = index;
+            m_heartbeat_sndisnt = inst;
+        }
+    }
+}
+
+/* every heartbeat loop stopped: the playing one released, none current (OVL2 0x543A80; SOCOM 1's;
+ * StopRumbler calls it) */
+void CZSealBody::StopAllHeartbeatSounds()
+{
+    if (m_heartbeat_sndisnt) {
+        m_heartbeat_sndisnt->Stop();
+        CSndInstance::ReleaseSoundInstance(m_heartbeat_sndisnt);
+        m_heartbeat_sndisnt = 0;
+        m_heartbeat_curindex = -1;
+    }
+}
+
+/* the loops let go: stopped, then the three forgotten (OVL2 0x543AD0; SOCOM 1's, StopAll inlined) */
+void CZSealBody::CloseHeartbeatSounds()
+{
+    StopAllHeartbeatSounds();
+    m_heartbeat_sound[0] = 0;
+    m_heartbeat_sound[1] = 0;
+    m_heartbeat_sound[2] = 0;
+}
+
+/* the three loops looked up by name (OVL2 0x543B40; SOCOM 1's) */
+void CZSealBody::OpenHeartbeatSounds()
+{
+    m_heartbeat_sound[0] = CSnd::GetSoundByName("~HEART_SLOW");
+    m_heartbeat_sound[1] = CSnd::GetSoundByName("~HEART_MED");
+    m_heartbeat_sound[2] = CSnd::GetSoundByName("~HEART_MED_FAST");
 }
