@@ -1,10 +1,13 @@
 # `decomp/` — matching decomp of SOCOM II (SCUS-97275 r0001)
 
-**3,178 functions byte-exact** (2026-10-24, 4.19 % of the map's bytes): **110 hand-written** --
-zlib 1.1.4 in MAIN (the calibration), the boot loader's overlay decode, the engine's zMath
-(CQuat, the projector matrices, CPnt3D/CPnt4D) and 37 of ZAnim's command handlers -- and
-**3,068 generated**, m2c's drafts that are byte-exact as they stand (`src/auto/`, counted
-apart; see "The generated tier"). Ten functions are open, each diagnosed in its source. Canary: `./test_scdecomp.py`.
+**4,503 functions byte-exact** (2026-10-25, 11.16 % of the map's bytes): **1,352 hand-written** --
+zlib 1.1.4 in MAIN (the calibration), the boot loader's overlay decode, the engine's zMath, ZAnim
+(the command handlers, CZAnimMain/Set/Anim), zdb (CNode, CWorld and its save/load, the asset
+manager, intersections), CCamera, the input classes, the sound system (989snd.c and zsnd), the
+game states and app camera, the mission and network game, the entities and the compass, the HUD
+and the C2D 2D-graphics family -- and **3,151 generated**, m2c's drafts that are byte-exact as
+they stand (`src/auto/`, counted apart; see "The generated tier"). Every open function is
+diagnosed in its source. Canary: `./test_scdecomp.py`.
 
 This is the start of a function-by-function, byte-exact decomp of the game, built the way
 `~/claude-eqoa/decomp` (github.com/DabDavis/eqoa-decomp) is: offline Python tooling, a
@@ -775,13 +778,14 @@ every hand-written unit (`--files '^(?!auto/)'`) before it is committed. A workt
 m2c, compiles the draft **as it stands** with the settled toolchain, and keeps it only if
 it is byte-exact with every relocation resolved -- the same `scdiff.compare` hand-written
 source must pass. 2,335 of 7,007 did on the first pass (61 % of those up to 0x40 bytes, 33 %
-overall); with the corrections below, 3,068 do (the last run, over everything up to 0x400: 149
-from callee prototypes, 37 as C++). They
+overall); with the corrections below, 3,068 did by 2026-10-24 (149 from callee prototypes, 37
+as C++), and the automatch lane's fixes (below) added 424 in one run over everything up to 0x400
+on 2026-10-25 (5,835 tried) -- 3,151 stand now, hand-written source superseding the rest. They
 live one per file in `src/auto/<segment>/<VA>.c` (two drafts' prototypes can disagree),
 are counted apart by `sccheck.py`, and are **not finished source**: placeholder names,
 `void *` and `M2C_FIELD` offsets, C rather than the game's C++, and no TU grouping. They are:
 
-- a regression guard for the toolchain: 3,068 functions across both overlays compile on
+- a regression guard for the toolchain: 3,151 functions across both overlays compile on
   every check, so a wrong flag or build fails loudly (one build and one flag set match all
   of them -- the overlays were built with the toolchain zlib settled, throughout);
 - a correct starting body for whoever writes the real TU;
