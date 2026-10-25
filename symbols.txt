@@ -7617,7 +7617,7 @@
 0x003A1980 0x244 func_003A1980  # OVL1
 0x003A1BD0 0x90 DeletePatchFile__8CMemCardFv  # OVL1; ours (sceMcDelete of PATCHFILE.DAT on the chosen port and slot unless a file is open)
 0x003A1C60 0x90 DeleteScratchpad__8CMemCardFv  # OVL1; ours (sceMcDelete of SCRATCHPAD.DAT on the chosen port and slot unless a file is open)
-0x003A1CF0 0x118 func_003A1CF0  # OVL1
+0x003A1CF0 0x118 GetCardStatus__8CMemCardFv  # OVL1; ours (polls sceMcGetInfo twice at most: 0 ready, 2 no card, 1 unformatted, 6 when the result is -5)
 0x003A1E10 0x84 LoadConfig__8CMemCardFPCc  # OVL1; s1:order (the config save manager at 0x18 loads with flags 0xC, after SaveConfig in memory as SOCOM 1's LoadConfig before SaveConfig in source)
 0x003A1EA0 0x98 SaveConfig__8CMemCardFPCcPCc  # OVL1; s1:order (the config save manager at 0x18 saves with flags 0xC; SOCOM II passes a description)
 0x003A1F40 0xA4 Uninit__8CMemCardFv  # OVL1; s1:order (before Init as SOCOM 1's Uninit: sceMcEnd and the module unloaded when libmc is up, then MEMCARD_STATUS 0)

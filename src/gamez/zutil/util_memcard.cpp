@@ -208,6 +208,33 @@ void CMemCard::LoadConfig(const char *name)
         MemCardError();
 }
 
+/* the card's state: 0 ready, 2 none, 1 unformatted, 6 full (ours) */
+int CMemCard::GetCardStatus()
+{
+    int status = 0;
+    int tries = 2;
+    int type, cmd, result, format;
+
+    sceMcSync(0, &data_004A37C0, &data_004A37C8);
+    do {
+        if ((bool)sceMcGetInfo(m_selPort, m_selSlot, &type, 0, &format) < 0) {
+            MemCardError();
+            return 0;
+        }
+        sceMcSync(0, &cmd, &result);
+        if (result < -9)
+            status = 2;
+        else if (type != 2)
+            status = 2;
+        else if (format == 0)
+            status = 1;
+        else if (result == -5)
+            status = 6;
+        tries = status == 0 ? 0 : tries - 1;
+    } while (tries > 0);
+    return status;
+}
+
 void CMemCard::DeleteScratchpad()
 {
     int cmd, result;
@@ -322,6 +349,42 @@ int CMemCard::GetFreeSpace()
         tries = result > -10 ? 0 : tries - 1;
     } while (tries > 0);
     return free;
+}
+
+/* Sony's ASCII-to-Shift-JIS sample, for the icon's title (its tables at 0x3E0660 and 0x3E06E8) */
+extern unsigned short data_003E0660[33][2];
+extern unsigned short data_003E06E8[3][2];
+extern "C" int printf(const char *fmt, ...);
+
+unsigned short Ascii2Sjis(unsigned char ascii_code)
+{
+    unsigned char stmp;
+    unsigned char stmp2 = 0;
+    unsigned short sjis_code = 0;
+
+    if (ascii_code >= 0x20 && ascii_code <= 0x2f)
+        stmp2 = 1;
+    else if (ascii_code >= 0x30 && ascii_code <= 0x39)
+        stmp = 0;
+    else if (ascii_code >= 0x3a && ascii_code <= 0x40)
+        stmp2 = 11;
+    else if (ascii_code >= 0x41 && ascii_code <= 0x5a)
+        stmp = 1;
+    else if (ascii_code >= 0x5b && ascii_code <= 0x60)
+        stmp2 = 37;
+    else if (ascii_code >= 0x61 && ascii_code <= 0x7a)
+        stmp = 2;
+    else if (ascii_code >= 0x7b && ascii_code <= 0x7e)
+        stmp2 = 63;
+    else {
+        printf("bad ASCII code 0x%x\n", ascii_code);
+        return 0;
+    }
+    if (stmp2)
+        sjis_code = data_003E0660[ascii_code - 0x20 - (stmp2 - 1)][0];
+    else
+        sjis_code = data_003E06E8[stmp][0] + ascii_code - data_003E06E8[stmp][1];
+    return sjis_code;
 }
 
 bool CMemCard::Exists(const char *name)

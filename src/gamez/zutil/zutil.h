@@ -170,6 +170,7 @@ public:
     void SaveGame(const char *name, char *desc);
     void DeletePatchFile();
     void DeleteScratchpad();
+    int GetCardStatus();
     void Uninit();
     void Reset();
     void Init();
