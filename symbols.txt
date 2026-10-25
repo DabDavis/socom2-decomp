@@ -10368,9 +10368,9 @@
 0x00575C20 0x8 func_00575C20  # OVL2
 0x00575C30 0x8 IsPlayer__11CSealCtrlAiCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00575C40 0x8 IsAi__11CSealCtrlAiCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00575C50 0x2C func_00575C50  # OVL2
-0x00575C80 0x2C func_00575C80  # OVL2
-0x00575CB0 0x38 func_00575CB0  # OVL2
+0x00575C50 0x2C _max<f>__2aiFRCfRCf_RCf  # OVL2; s1:order (seal_ai.cpp's template tail after CSealCtrlAi's inline copies, as SOCOM 1's _max<f>__2aiFRCfRCf at 0x26C8A0; MW 3.0 mangles the return type); the larger by reference; CDynGrenade::ComputeTimeToImpact calls it where SOCOM 1's does
+0x00575C80 0x2C _min<f>__2aiFRCfRCf_RCf  # OVL2; s1:order (after _max<f>; SOCOM 1's _min<f>__2aiFRCfRCf is another unit's, 0x1FAC10); the smaller by reference
+0x00575CB0 0x38 _close_enough<i>__FRCiRCiRCi_b  # OVL2; s1:order (the tail's last, as SOCOM 1's _close_enough<i>__FRCiRCiRCi at 0x26C8D0; MW 3.0 mangles the return type): |a - b| within eps on ints
 0x00575CF0 0xBC func_00575CF0  # OVL2
 0x00575DB0 0x74 func_00575DB0  # OVL2
 0x00575E30 0x110 func_00575E30  # OVL2
@@ -10662,11 +10662,11 @@
 0x005974F0 0x3C func_005974F0  # OVL2
 0x00597530 0x7C func_00597530  # OVL2
 0x005975B0 0x14 func_005975B0  # OVL2
-0x005975D0 0x54 func_005975D0  # OVL2
+0x005975D0 0x54 ComputeTimeToImpact__11CDynGrenadeFfff  # OVL2; s1:order (before ComputeElevOfs); SOCOM 1's quadratic(-49, b, c) and _max, scaled by a new first float argument -- the signature ours
 0x00597630 0x1C func_00597630  # OVL2
 0x00597650 0x4C func_00597650  # OVL2
-0x005976A0 0x40 func_005976A0  # OVL2
-0x005976E0 0x60 func_005976E0  # OVL2
+0x005976A0 0x40 ComputeElevOfs__11CDynGrenadeFf  # OVL2; s1:order; SOCOM 1's lerp of two statics (10, 12) times pi/180
+0x005976E0 0x60 ComputeMaxVel__11CDynGrenadeFffPf  # OVL2; s1:order (seal_control.cpp's tail after PostTick: ComputeTimeToImpact, ComputeElevOfs, ComputeMaxVel as SOCOM 1's); SOCOM 1's code but the guarded statics (MW 3.0 initialises them statically) and an inline sqrt
 0x00597740 0x48 SetMenuState__9CSealCtrlF10MENU_STATEb  # OVL2; the HUD lane's lead: CWeaponSel::AfterClose (0x21AAA0) and CInGameWeaponSel::AfterClose (0x227730) call it where SOCOM 1's call SetMenuState__9CSealCtrlF10MENU_STATE, passing 0 in a second argument; s1:order (seal_control.cpp: before SetTrigger, as SOCOM 1's); m_menustate (0x221) stored under SOCOM 1's stateLast test; the second parameter is bool by its use (a flag tested once, the callers passing 0 or `x == 5`), not pinned: int compiles the same in it and at all 17 call sites (probe: build/scratch/seal/p)
 0x00597790 0x78 SetTrigger__9CSealCtrlFb  # OVL2; s1:order; m_trigger (a byte enum, now 0x118) stepped by a switch as SOCOM 1's
 0x00597810 0x78 SetTrigger__9CSealCtrlFbf  # OVL2; s1:order; m_trigger_power (0x11C) stored, then the same switch

@@ -9,6 +9,49 @@
 extern "C" {
 extern bool data_00650698;   /* the rumble switch (SOCOM 1's file static) */
 extern float data_006505E8;  /* (the weapon's raise time a closed menu restarts) */
+/* ai::quadratic (SOCOM 1's quadratic__2aiFfffRfRf, an earlier unit's): the roots of a x^2 + b x
+ * + c, false when there are none */
+bool func_0050DE20(float a, float b, float c, float &r0, float &r1);
+}
+
+/* a grenade's flight time and launch speed; SOCOM 1's function-local statics, which MW 3.0 lays
+ * out initialised, with no guard (OVL2 0x5976E0, 0x5976A0, 0x5975D0) */
+float CDynGrenade::ComputeMaxVel(float dist, float height, float *vel)
+{
+    static float k_rise = 1.0f;
+    static float k_cos = 0.707107f;
+    float g = -98.0f;
+    float v = sqrtf(2.0f * (height + k_rise * dist) / -g);
+    float t = dist / (k_cos * v);
+
+    if (vel)
+        *vel = v;
+    return t;
+}
+
+/* a straight blend (out of line at 0x597630; the name ours) */
+inline float lerpf(float a, float b, float t)
+{
+    return a * (1.0f - t) + b * t;
+}
+
+/* OPEN, 4 instructions: the target loads pi/180 into $f1 after the mula and madds the blend into
+ * $f0 (`mtc1 v0,$f1; nop; madd.s $f0,$f0,$f12`), where every form tried -- this one, the blend
+ * written out, the factor first, either in a local, the blend in a local, the terms swapped
+ * (0x38 bytes) -- madds into $f1 and loads the factor into $f0: SOCOM 1's register choice. */
+float CDynGrenade::ComputeElevOfs(float t)
+{
+    static float lo = 10.0f;
+    static float hi = 12.0f;
+
+    return lerpf(lo, hi, t) * 0.017453292f;
+}
+
+float CDynGrenade::ComputeTimeToImpact(float scale, float b, float c)
+{
+    float t0, t1;
+
+    return scale * (func_0050DE20(-49.0f, b, c, t0, t1) ? ai::_max(t0, t1) : 0.0f);
 }
 
 /* (OVL2 0x598220) */
@@ -113,6 +156,28 @@ void CSealCtrl::SetLowRumbleTime(float t, float strength)
             m_rumblestr = strength;
         if (m_rumbletime < t)
             m_rumbletime = t;
+    }
+}
+
+/* the motors run down: the weak one at its strength while its time lasts, the strong one on or
+ * off (OVL2 0x5929A0) */
+void CSealCtrl::TickRumbler(float dT)
+{
+    CPad *pad = m_padid < CInput::NUM_PADS ? CInput::m_pads[m_padid] : 0;
+
+    if (pad) {
+        if (m_rumbletime > 0.0f) {
+            pad->m_ActData[1] = m_rumblestr;
+            m_rumbletime -= dT;
+        } else {
+            m_rumblestr = 0.0f;
+            pad->m_ActData[1] = m_rumblestr;
+        }
+        if (m_highrumbletime > 0.0f) {
+            pad->m_ActData[0] = 1;
+            m_highrumbletime -= dT;
+        } else
+            pad->m_ActData[0] = 0;
     }
 }
 

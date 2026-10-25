@@ -49,6 +49,31 @@ enum FT_COMMAND { CMD_UNKNOWN = 0, CMD_ACTION = 1, CMD_LAST = 255 };
 enum CHARACTER_SOUND { CHARACTER_SOUND_NONE = 0, CHARACTER_SOUND_LAST = 255 };
 enum STUN_TYPE { STUN_NONE = 0, STUN_LAST = 6 };
 
+/* the AI's small templates (SOCOM 1's namespace ai; never inlined -- MW auto-inlines no template
+ * function -- so each is a call to the copy seal_ai.cpp's tail links) */
+namespace ai {
+template <class T>
+const T &_max(const T &a, const T &b)
+{
+    return a >= b ? a : b;
+}
+
+template <class T>
+const T &_min(const T &a, const T &b)
+{
+    return a <= b ? a : b;
+}
+}
+
+/* a thrown grenade's flight, solved (SOCOM 1's; only the statics) */
+class CDynGrenade {
+public:
+    /* SOCOM II's takes a scale first (the signature ours) */
+    static float ComputeTimeToImpact(float scale, float b, float c);
+    static float ComputeElevOfs(float t);
+    static float ComputeMaxVel(float dist, float height, float *vel);
+};
+
 /* a SEAL's controller: a pad, the AI or the network (SOCOM 1's DWARF: CSealCtrl, 0x240 bytes;
  * SOCOM II's is 0x250 -- ftsCreateSeal news 592). The virtual functions are SOCOM II's table,
  * __vt__9CSealCtrl at 0x6694B0: SOCOM 1's without PerformCollisionActions, with three setters of
@@ -105,6 +130,7 @@ public:
     virtual void SetDoAiMapCollide(bool on) { m_do_aimap_collide = on; }
 
     /* the pad's rumble motors (SOCOM 1's) */
+    void TickRumbler(float dT);
     void SetHighRumbleTime(float t);
     void SetLowRumbleTime(float t, float strength);
     void StopRumbler();
