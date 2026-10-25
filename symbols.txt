@@ -9904,13 +9904,11 @@
 0x00541A90 0x1C func_00541A90  # OVL2
 0x00541AB0 0x1C func_00541AB0  # OVL2
 0x00541AD0 0xD8 func_00541AD0  # OVL2
-0x00541BB0 0x60 func_00541BB0  # OVL2
-0x00541C10 0x4C func_00541C10  # OVL2
+0x00541BB0 0xAC func_00541BB0  # OVL2; size 0xAC (the seed split it at 0x541C10, the delay slot of its jal to CPickup::Destroy: the rest runs on its saved s0/s1 and pops its 48-byte frame)
 0x00541C60 0x60 func_00541C60  # OVL2
 0x00541CC0 0xC func_00541CC0  # OVL2
 0x00541CD0 0x70 FindPickup__7CPickupFUi  # OVL2; s1:calls (CurrentPickup and CurrentPickupSecondary call it where SOCOM 1's call FindPickup)
-0x00541D40 0x40 func_00541D40  # OVL2
-0x00541D80 0x190 func_00541D80  # OVL2
+0x00541D40 0x1D0 func_00541D40  # OVL2; size 0x1D0 (the seed split it at 0x541D80, in the middle of its prologue's float saves: one 192-byte frame to 0x541F0C)
 0x00541F10 0x11C func_00541F10  # OVL2
 0x00542030 0x78 func_00542030  # OVL2
 0x005420B0 0xC0 func_005420B0  # OVL2
@@ -9955,22 +9953,16 @@
 0x00544200 0x8 func_00544200  # OVL2; s1~ IsRemote__9CSealCtrlCFv (one of 2 out-of-line copies of an inline, by s1:vtable)
 0x00544210 0xAC func_00544210  # OVL2
 0x005442C0 0x138 NetworkPlayerCreate__10CZSealBodyFv  # OVL2; s1:calls
-0x00544400 0x150 func_00544400  # OVL2
-0x00544550 0x58 func_00544550  # OVL2
-0x005445B0 0x158 func_005445B0  # OVL2
-0x00544708 0x80 func_00544708  # OVL2 unaligned
-0x00544788 0x50 func_00544788  # OVL2 unaligned
-0x005447D8 0x88 func_005447D8  # OVL2 unaligned
-0x00544860 0x34 func_00544860  # OVL2
-0x005448A0 0x58 func_005448A0  # OVL2
-0x005448F8 0x260 func_005448F8  # OVL2 unaligned
+0x00544400 0x1A8 DecrZoomState__10CZSealBodyFv  # OVL2; size 0x1A8 (the seed split it at 0x544550, a branch target after its last call: 0x544550's code runs on s3/s4 and pops this function's 96-byte frame); s1:order (seal.cpp: before IncrZoomState and SetCurZoomState, as SOCOM 1's DecrZoomState at 0x24DCC0; CSealCtrl::PreTick calls both); the zoom state at 0x200 stepped down through the kit's current item and handed to SetCurZoomState, the new state returned
+0x005445B0 0x2E4 IncrZoomState__10CZSealBodyFv  # OVL2; size 0x2E4 (the seed split it at 0x544708, 0x544788, 0x5447D8 -- unaligned -- and at 0x544860, after a nop before the epilogue: all run on its saved registers and pop its 112-byte frame); s1:order (between DecrZoomState and SetCurZoomState, as SOCOM 1's IncrZoomState at 0x24DDB0); ends calling SetCurZoomState with the new state, as SOCOM 1's
+0x005448A0 0x2B8 SetCurZoomState__10CZSealBodyF9ZOOMSTATE  # OVL2; size 0x2B8 (the seed split it at 0x5448F8, unaligned: the rest of its code to the epilogue at 0x544B48); s1:order (after IncrZoomState, as SOCOM 1's at 0x24DF40); its head is SOCOM 1's word for word, offsets moved: the byte enum at 0x200 compared, the old one stored at 0x201, the new at 0x200, 1 at 0x202 (SOCOM 1's m_zoomstate, m_zoomstate_prev, m_zoomstate_echo at 0x160-0x162)
 0x00544B60 0xC0 func_00544B60  # OVL2
 0x00544C20 0xC CurrentPickupSecondary__10CZSealBodyFv  # OVL2; s1:order (seal.cpp: after the zoom states, before CurrentPickup, as SOCOM 1's); FindPickup of m_control's secondary pickup id (SOCOM 1's 0x14C, now 0x150), tail-called without SOCOM 1's null test
 0x00544C30 0xC CurrentPickup__10CZSealBodyFv  # OVL2; s1:order (after CurrentPickupSecondary); FindPickup of m_control's pickup id (SOCOM 1's 0x148, now 0x14C)
 0x00544C40 0x18 CompassAnchor_MPBase__10CZSealBodyFP14CCompassAnchor  # OVL2; s1:order (SOCOM 1's CompassAnchor_Hostage, the one before it, is gone); the anchor at 0xEC4 (SOCOM 1's 0xDB8) swapped in, whether there was none returned
 0x00544C60 0x18 CompassAnchor_MPBomb__10CZSealBodyFP14CCompassAnchor  # OVL2; s1:order (after CompassAnchor_MPBase); the anchor at 0xEC0 (SOCOM 1's 0xDB4)
 0x00544C80 0x14 func_00544C80  # OVL2
-0x00544CA0 0x50 func_00544CA0  # OVL2; size 0x50 (the seed split it after its first branch: 0x544CA8 was its body): a bit (1 << id) set in or cleared from the mask at 0xED0 by a bool, SOCOM 1's ActionSelectionMask or ActionAvailableMask reshaped (which one unproven)
+0x00544CA0 0x50 ActionAvailableMask__10CZSealBodyFUcb  # OVL2; size 0x50 (the seed split it after its first branch: 0x544CA8 was its body): a bit (1 << id) set in or cleared from the mask at 0xED0 by a bool, SOCOM 1's ActionSelectionMask or ActionAvailableMask reshaped (which one unproven); s1:calls by hand (CSealCtrl::PerformReticleActions calls it with (14, true) and (15, true) where SOCOM 1's calls ActionAvailableMask__10CZSealBodyFUib; SOCOM II's narrows the id to a byte, andi 0xff, so an unsigned char parameter)
 0x00544CF0 0x64 func_00544CF0  # OVL2
 0x00544D60 0x260 func_00544D60  # OVL2
 0x00544FC0 0x134 func_00544FC0  # OVL2
@@ -9989,8 +9981,7 @@
 0x00545530 0x9C func_00545530  # OVL2
 0x005455D0 0x80 func_005455D0  # OVL2
 0x00545650 0xF8 func_00545650  # OVL2
-0x00545750 0xB0 func_00545750  # OVL2
-0x00545800 0x8C func_00545800  # OVL2
+0x00545750 0x13C func_00545750  # OVL2; size 0x13C (the seed split it at 0x545800, the delay slot of its jal to 0x544D60: the rest runs on its saved s0-s3 and pops its 80-byte frame)
 0x00545890 0x8 func_00545890  # OVL2
 0x005458A0 0x114 func_005458A0  # OVL2
 0x005459C0 0x64 func_005459C0  # OVL2
@@ -10089,10 +10080,10 @@
 0x00555350 0x8 CanScan__11CAiSRescuedCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00555360 0xC GetScriptResponse__11CAiSRescuedCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00555370 0x8 func_00555370  # OVL2
-0x00555380 0xC func_00555380  # OVL2
-0x00555390 0x8 func_00555390  # OVL2
-0x005553A0 0x8 func_005553A0  # OVL2
-0x005553B0 0x8 func_005553B0  # OVL2
+0x00555380 0xC GetStatus__8CAiStateCFv  # OVL2; slot 0x18 of __vt__8CAiState (0x669950), SOCOM 1's slot 0x10: SOCOM II inserted one virtual after OnSignal and one before this slot, aligned by the overrides both builds share (CAiSRescued's OnSignal, Tick, CanAttack, CanScan, GetScriptResponse; CAiSPursue's GetStatus here); an inline's copy returning an empty string, as SOCOM 1's (0xC bytes)
+0x00555390 0x8 CanPushAiState__8CAiStateF8AI_STATEP11CSealCtrlAi  # OVL2; slot 0x1C of __vt__8CAiState, SOCOM 1's slot 0x14 (aligned as GetStatus__8CAiStateCFv); returns true as SOCOM 1's
+0x005553A0 0x8 CanSwitchAiState__8CAiStateF8AI_STATEP11CSealCtrlAi  # OVL2; slot 0x20 of __vt__8CAiState, SOCOM 1's slot 0x18 (aligned as GetStatus__8CAiStateCFv); returns true as SOCOM 1's
+0x005553B0 0x8 CanPursue__8CAiStateCFP11CSealCtrlAi  # OVL2; slot 0x2C of __vt__8CAiState, SOCOM 1's slot 0x24 (aligned as GetStatus__8CAiStateCFv); returns true as SOCOM 1's
 0x005553C0 0x8 func_005553C0  # OVL2
 0x005553D0 0x8 func_005553D0  # OVL2
 0x005553E0 0x8 func_005553E0  # OVL2
@@ -10271,7 +10262,7 @@
 0x0056C220 0x118 func_0056C220  # OVL2
 0x0056C340 0x208 func_0056C340  # OVL2
 0x0056C550 0x698 func_0056C550  # OVL2
-0x0056CBF0 0x49C func_0056CBF0  # OVL2
+0x0056CBF0 0x49C SetAiMode__11CSealCtrlAiF7AI_MODE  # OVL2; s1:calls by hand (CSealCtrlAi::OnMissionEnd calls it with 2 at the place SOCOM 1's calls SetAiMode__11CSealCtrlAiF7AI_MODE, last, after ClearAiState and the anim's Stop; OnMissionEnd byte-exact against it)
 0x0056D090 0x30 func_0056D090  # OVL2
 0x0056D0C0 0x1E8 func_0056D0C0  # OVL2
 0x0056D2B0 0x1A0 func_0056D2B0  # OVL2
@@ -10279,9 +10270,9 @@
 0x0056D530 0x170 func_0056D530  # OVL2
 0x0056D6A0 0x1EC func_0056D6A0  # OVL2
 0x0056D890 0x88 func_0056D890  # OVL2
-0x0056D920 0x178 func_0056D920  # OVL2
-0x0056DAA0 0xF4 func_0056DAA0  # OVL2
-0x0056DBA0 0xF8 func_0056DBA0  # OVL2
+0x0056D920 0x178 SetGoalDir__9CSealCtrlF9GOAL_TYPEPC6CPnt3Db  # OVL2; s1:calls by hand (SetGoalPos and ClearGoal call it with (type, 0, false) where SOCOM 1's call SetGoalDir__9CSealCtrlF9GOAL_TYPEPC6CPnt3Db; the row before SetGoalPos as SOCOM 1's)
+0x0056DAA0 0xF4 SetGoalPos__9CSealCtrlF9GOAL_TYPEPC6CPnt3Df  # OVL2; s1:order by hand (between SetGoalDir and ClearGoal as SOCOM 1's SetGoalPos at 0x267380; its code SOCOM 1's word for word with the goal fields 8 bytes on)
+0x0056DBA0 0xF8 SetGoalPos__9CSealCtrlF9GOAL_TYPERC9CAiMapLocf  # OVL2; new in SOCOM II: a map cell's centre (AiMaps.GetCellCenter) handed to the point's SetGoalPos, which it inlines -- the overload's name ours
 0x0056DCA0 0xA8 ClearGoal__9CSealCtrlF9GOAL_TYPE  # OVL2; s1:callee
 0x0056DD50 0x68 ResetToInitialState__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0056DDC0 0x50 OnRecycleEntity__11CSealCtrlAiFP7CEntity  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -10294,7 +10285,7 @@
 0x0056F960 0x8 GetAiNetState__9CSealCtrlCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0056F970 0x390 PostTick__11CSealCtrlAiFf  # OVL2; slot 0x3C of __vt__11CSealCtrlAi (CSealCtrl's PostTick slot)
 0x0056FD00 0x1010 Tick__11CSealCtrlAiFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00570D10 0x8 func_00570D10  # OVL2
+0x00570D10 0x8 CanScan__8CAiStateCFv  # OVL2; slot 0x28 of __vt__8CAiState, SOCOM 1's slot 0x20 (CAiSRescued overrides it in both builds); returns true as SOCOM 1's
 0x00570D20 0x28 func_00570D20  # OVL2
 0x00570D50 0xC func_00570D50  # OVL2
 0x00570D60 0x30 func_00570D60  # OVL2
@@ -10353,9 +10344,9 @@
 0x005758D0 0x78 __dt__10CAiSPursueFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00575950 0x14 func_00575950  # OVL2
 0x00575970 0x14 CanAttack__10CAiSPursueCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00575990 0x8 func_00575990  # OVL2
+0x00575990 0x8 GetScriptResponse__8CAiStateCFv  # OVL2; slot 0x30 of __vt__8CAiState, SOCOM 1's slot 0x28 (CAiSRescued overrides it in both builds); returns 0 as SOCOM 1's
 0x005759A0 0xF8 __dt__11CAiSAnimateFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00575AA0 0x8 func_00575AA0  # OVL2
+0x00575AA0 0x8 CanAttack__8CAiStateCFv  # OVL2; slot 0x24 of __vt__8CAiState, SOCOM 1's slot 0x1C (CAiSRescued and CAiSPursue override it in both builds: CanAttack__11CAiSRescuedCFv, CanAttack__10CAiSPursueCFv); returns true as SOCOM 1's
 0x00575AB0 0x78 __dt__11CAiSGrenadeFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00575B30 0x8 func_00575B30  # OVL2
 0x00575B40 0x8 func_00575B40  # OVL2
@@ -10872,7 +10863,7 @@
 0x005AD730 0x140 BlinkTick__6CBlinkFf  # OVL2; s1:calls
 0x005AD870 0xAC Blink__6CBlinkFi  # OVL2; s1:calls
 0x005AD920 0xA8 LookTick__5CLookFf  # OVL2; s1:calls
-0x005AD9D0 0x29C func_005AD9D0  # OVL2
+0x005AD9D0 0x29C SetDir__5CLookFPC6CPnt3Df  # OVL2; s1:calls by hand (CBlink::Blink calls it twice where SOCOM 1's calls SetDir__5CLookFPC6CPnt3DPC6CPnt3Df: SOCOM II passes the direction and the rate, the start dropped; the row after LookTick as SOCOM 1's SetDir)
 0x005ADC70 0x3C4 func_005ADC70  # OVL2
 0x005AE040 0x36C func_005AE040  # OVL2
 0x005AE3B0 0x9C func_005AE3B0  # OVL2

@@ -32,22 +32,18 @@ float CDynGrenade::ComputeMaxVel(float dist, float height, float *vel)
     return t;
 }
 
-/* a straight blend (out of line at 0x597630; the name ours) */
-inline float lerpf(float a, float b, float t)
-{
-    return a * (1.0f - t) + b * t;
-}
-
-/* OPEN, 4 instructions: the target loads pi/180 into $f1 after the mula and madds the blend into
- * $f0 (`mtc1 v0,$f1; nop; madd.s $f0,$f0,$f12`), where every form tried -- this one, the blend
- * written out, the factor first, either in a local, the blend in a local, the terms swapped
- * (0x38 bytes) -- madds into $f1 and loads the factor into $f0: SOCOM 1's register choice. */
+/* the elevation offset: a blend of the two statics, made radians by a scaling statement of its
+ * own -- `d *= k;` is the only form that madds the blend into $f0 and loads pi/180 into $f1 after
+ * the mula; `return blend * k`, an inline DegToRad, a lerp inline or out of line, a local factor
+ * all give SOCOM 1's registers (probes: build/scratch/seal/elev.spec, v7). */
 float CDynGrenade::ComputeElevOfs(float t)
 {
     static float lo = 10.0f;
     static float hi = 12.0f;
+    float d = lo * (1.0f - t) + hi * t;
 
-    return lerpf(lo, hi, t) * 0.017453292f;
+    d *= 0.017453292f;
+    return d;
 }
 
 float CDynGrenade::ComputeTimeToImpact(float scale, float b, float c)
@@ -133,6 +129,24 @@ void CSealCtrl::SetMenuState(MENU_STATE state, bool keep)
         if (state != m_menustate && state == stateNone && !keep)
             ((CZSealBody *)m_entity)->m_wep_upT = data_006505E8;
         m_menustate = state;
+    }
+}
+
+/* the reticle's actions: the squad asked whether orders 4 and 5 are allowed now, actions 14 and
+ * 15 offered if so (OVL2 0x593D00; SOCOM 1's without its flag and the reticle seal's tail). The
+ * squad declared first: the SEAL takes s0, the squad s1, as the target's. */
+void CSealCtrl::PerformReticleActions()
+{
+    CSealUnit *unit;
+    CZSealBody *seal = (CZSealBody *)m_entity;
+
+    unit = func_005EF2F0(17);
+
+    if (unit) {
+        if (unit->AllowCommand(seal, (FT_COMMAND)4, 0))
+            seal->ActionAvailableMask(14, true);
+        if (unit->AllowCommand(seal, (FT_COMMAND)5, 0))
+            seal->ActionAvailableMask(15, true);
     }
 }
 
