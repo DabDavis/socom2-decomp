@@ -9568,10 +9568,10 @@
 0x00525C60 0x18 func_00525C60  # OVL2
 0x00525C80 0x68C func_00525C80  # OVL2
 0x00526310 0x68 func_00526310  # OVL2
-0x00526380 0xCC func_00526380  # OVL2
-0x00526450 0x60 func_00526450  # OVL2
-0x005264B0 0x40 func_005264B0  # OVL2
-0x005264F0 0x4C func_005264F0  # OVL2
+0x00526380 0xCC SmoothPath__7CAiPathFb  # OVL2; s1:callee by hand (PostProcess's first call, with false, as SOCOM 1's PostProcess calls SmoothPath__7CAiPathFv first: the legs smoothed by 0x525810, the invalid points dropped (0x527CE0), the points trimmed by a copy and swap -- ai_path.cpp)
+0x00526450 0x60 __dt__Q23std60vector<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>>Fv  # OVL2; by hand (SmoothPath's trim destroys its copy with -1: the points' implicit destructor, ~__vector_deleter called); by hand: SmoothPath's trim copy is a std::vector<point>, as node_world.cpp's TrimVector<std::vector<CNode *> > (two this-tests; the points subclass's would be three)
+0x005264B0 0x40 swap__Q23std70__vector_deleter<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>>FRQ23std70__vector_deleter<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>>  # OVL2; by hand (SmoothPath's trim swaps the copy in through it: the this test, capacity, data, size)
+0x005264F0 0x4C __ct__Q23std60vector<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>>FRCQ23std60vector<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>>  # OVL2; by hand (SmoothPath's trim: the points' implicit copy, out of line after its first caller, the words zeroed and the range init called); by hand: the trim copy's constructor, std::vector<point>'s
 0x00526540 0x258 func_00526540  # OVL2
 0x005267A0 0x68 PostProcess__7CAiPathFv  # OVL2; s1:callee by hand (plan_complete calls it between zeroing the leg counters and bumping the path id, as SOCOM 1's inlined plan_complete calls PostProcess__7CAiPathFv; the same tail: UpdatePathWidth(5) when flag 4, PrintPath when flag 0x40)
 0x00526810 0x3F4 func_00526810  # OVL2
@@ -9597,7 +9597,7 @@
 0x00528430 0xDC resize__Q23std68__vector_imp<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>,0>FUi  # OVL2; s1:callee by hand (SetSnakeLength calls it on m_points (0x98) with the length when it is below the size, as the demo's SetSnakeLength calls resize<point> 0x196910; its temporary point zeroes the 8-byte point's bits)
 0x00528510 0x18 _min<Ui>__2aiFRCUiRCUi_RCUi  # OVL2; s1:exact; by hand: MW 3.0 mangles the return type (SOCOM 1's _min<Ui>__2aiFRCUiRCUi)
 0x00528530 0xBC func_00528530  # OVL2
-0x005285F0 0x1DC func_005285F0  # OVL2
+0x005285F0 0x1DC init<PCQ27CAiPath5point>__Q23std68__vector_imp<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>,0>FPCQ27CAiPath5pointPCQ27CAiPath5pointQ23std20forward_iterator_tag_v  # OVL2; by hand (the points' copy 0x5264F0 calls it with the other's data and end, as MSL's range init)
 0x005287D0 0x460 func_005287D0  # OVL2
 0x00528C30 0x4C func_00528C30  # OVL2
 0x00528C80 0x160 erase__Q23std68__vector_imp<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>,0>FPQ27CAiPath5pointPQ27CAiPath5point  # OVL2; by hand (the points' resize 0x528430 calls it with data + n and the end, as MSL's resize erases the tail; 8-byte steps)

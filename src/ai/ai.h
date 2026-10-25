@@ -864,6 +864,7 @@ public:
         unsigned int m_flags : 8;
         unsigned int m_unused : 16;
     };
+    /* (SOCOM 1's DWARF; ~CAiPath's three this-tests on it say SOCOM II's is the same subclass) */
     class points : public std::vector<point> {
     };
 
@@ -897,6 +898,12 @@ public:
     }
     /* the snake's length: none empties the path, a new one cuts and reserves the points (SOCOM 1's) */
     void SetSnakeLength(unsigned int len);
+    /* each leg smoothed, the invalid points dropped and the points' storage trimmed to them, when
+     * the plan is complete and smoothing is on or forced (SOCOM 1's took no flag) */
+    bool SmoothPath(bool force);
+    /* points made and the plan complete (the name ours: SmoothPath materialises both tests, as a
+     * call of an inline bool does -- SOCOM 1's SmoothPath alike) */
+    bool HasPoints() const { return !m_points.empty() && m_state == COMPLETE; }
     void UpdatePathWidth(unsigned int width);
     /* the path drawn for debugging, under a name (SOCOM 1's took none) */
     void PrintPath(const char *name) const;

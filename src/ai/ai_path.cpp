@@ -8,8 +8,19 @@
 #include "ai.h"
 
 /* what the path's functions call that is not written yet (this unit's) */
-extern "C" void func_00526380(CAiPath *path, int leg);   /* the points made from the legs */
 extern "C" void func_00525520(CAiPath *path);   /* SOCOM 1's UpdateTurnAngles, by position */
+extern "C" void func_00525810(CAiPath *path, unsigned int leg);   /* SOCOM 1's SmoothPathLeg */
+extern "C" int func_00527CE0(CAiPath *path);   /* the invalid points removed, their count back */
+
+/* a vector's storage cut to its size: a copy of it swapped in (node_world.cpp's, the name ours):
+ * inlined one level, its copy constructor, swap and destructor called out of line */
+template <class V>
+inline void TrimVector(V &v)
+{
+    V tmp(v);
+
+    v.swap(tmp);
+}
 
 /* a path with no plan: the vectors empty, the tallies reset, flags 3 and the type's bias 1
  * (SOCOM 1's, the new fields zeroed in among the old) */
@@ -166,7 +177,7 @@ void CAiPath::SetTemplatePath(CAiPath *path)
 #pragma auto_inline off
 void CAiPath::PostProcess()
 {
-    func_00526380(this, 0);
+    SmoothPath(false);
     func_00525520(this);
     if (m_flags & 4)
         UpdatePathWidth(5);
@@ -174,6 +185,23 @@ void CAiPath::PostProcess()
         PrintPath("dbg_path");
 }
 #pragma auto_inline reset
+
+/* each leg smoothed, the invalid points dropped and the points' storage trimmed, when there are
+ * points, the plan is complete and smoothing is forced or on (SOCOM 1's dropped the invalid points
+ * itself and trimmed nothing) */
+bool CAiPath::SmoothPath(bool force)
+{
+    bool done = false;
+
+    if (HasPoints() && (force || (m_flags & 1))) {
+        for (unsigned int i = 0; i < m_legcount; i++)
+            func_00525810(this, i);
+        func_00527CE0(this);
+        TrimVector<std::vector<point> >(m_points);
+        done = true;
+    }
+    return done;
+}
 
 /* the snake's length: none (when one was set) clears flag 2 and empties the path, Clear inlined;
  * a new one cuts the points to it, reserves them, sets flag 2 and completes the plan (SOCOM 1's) */
