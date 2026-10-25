@@ -20,6 +20,37 @@ extern "C" unsigned short func_0058A920(unsigned short flags, unsigned short bit
     return flags;
 }
 
+extern "C" {
+/* an animation set the SEALs share (OVL1 bss 0x44D408) and a set's anim of a type, negative for none
+ * (OVL2 0x5E3E80, the kit lane's range) */
+extern AnimSet *data_0044D408;
+int func_005E3E80(AnimSet *set, int type);
+}
+
+/* the SEAL's animation set (an inline: in a call's argument list it is expanded first, so the set
+ * loads ahead of the anim number; the first test reads it through a const view, which keeps MW from
+ * sharing that load with the calls -- the target loads it again) */
+static inline AnimSet *SetOf(CZSealBody *seal)
+{
+    return seal->m_animset;
+}
+
+/* whether the SEAL can take a stance now: always with the shared set; otherwise its set must have
+ * anims 18 and 84, and a SEAL in water must be slow enough (OVL2 0x5857E0, new in SOCOM II;
+ * CSealCtrl::PreTick asks it twice) */
+extern "C" bool func_005857E0(CZSealBody *seal)
+{
+    if (((const CZSealBody *)seal)->m_animset == data_0044D408)
+        return true;
+    if (func_005E3E80(SetOf(seal), 18) < 0)
+        return false;
+    if (func_005E3E80(SetOf(seal), 84) < 0)
+        return false;
+    if (seal->m_inwater && !(seal->m_f88 <= 8.5f))
+        return false;
+    return true;
+}
+
 /* whether the SEAL counts: not a remote SEAL with bit 9 of 0x1060 set (OVL2 0x57DFE0, new in SOCOM
  * II; 0x5AF930 asks it) */
 extern "C" bool func_0057DFE0(CZSealBody *seal)

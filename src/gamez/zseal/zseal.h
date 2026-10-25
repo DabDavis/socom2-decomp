@@ -714,7 +714,9 @@ public:
     unsigned int m_action_available;   // 0xed0: a bit per action (SOCOM 1's ActionAvailableMask word, 0xdc0)
     unsigned char _ed4[0xee0 - 0xed4];
     float m_wep_upT;   // 0xee0 (SOCOM 1's 0xdd0)
-    unsigned char _ee4[0xfb0 - 0xee4];
+    unsigned char _ee4[0xf88 - 0xee4];
+    float m_f88;   // 0xf88: a speed (0x5857E0 refuses a SEAL in water above 8.5; the name ours)
+    unsigned char _f8c[0xfb0 - 0xf8c];
     SEAL_DEATH_TYPE m_deathType;   // 0xfb0 (SOCOM 1's 0xea4)
     unsigned char _fb1[0xfb4 - 0xfb1];
     float m_time_of_death;   // 0xfb4 (SOCOM 1's 0xea8)
