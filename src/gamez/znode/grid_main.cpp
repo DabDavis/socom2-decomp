@@ -6,13 +6,16 @@
  * grid_di.cpp's queries come before it (its static initialiser registers CStack's destructor, whose
  * linked copy, 0x2D4FE0, closes that unit), grid_clutter.cpp's clutter animation after it. Defined
  * in reverse of their image order (-inline deferred).
- * Unwritten: ReadClutter (0x2D5060), AddClutter (0x2D55C0), Create (0x2D5C80), gridAddNodeToGrids (0x2D7580). CGrid() is written and byte-exact once its CFRect
+ * Unwritten: ReadClutter (0x2D5060), Create (0x2D5C80), gridAddNodeToGrids (0x2D7580). CGrid() is written and byte-exact once its CFRect
  * constructor's row is named (below). */
 
 #include "node_world.h"
 
 /* the node's atom count set (node_main.cpp's SOCOM 1 CNode::SetAtomCnt(int), not named yet) */
 extern "C" void func_003149D0(zdb::CNode *node, int n);
+/* a CFRect from two corners: top and bottom their z, left and right their x (zmath's, out of
+ * line before CMatrix's unit; not named yet -- SOCOM 1's CFRect(const CPnt3D *, const CPnt3D *)) */
+extern "C" void func_00306620(void *rect, const CPnt3D *a, const CPnt3D *b);
 /* MSL's abs (MAIN, 0x191428, named): called by its address, since MW expands a call spelled abs
  * through <stdlib.h> inline (its builtin) where addOrderedCellAtom's target calls it twice */
 extern "C" int func_00191428(int x);
@@ -79,7 +82,8 @@ void CCell::DeleteClutter()
 #pragma auto_inline reset
 
 /* a clutter put in the list its node's collision says: its DI set up first when it has none
- * (SOCOM 1's an empty stub) */
+ * (SOCOM 1's an empty stub). Pinned: CGrid::AddClutter calls it out of line */
+#pragma auto_inline off
 bool CCell::AddClutter(CClutter *clutter)
 {
     bool ok;
@@ -92,6 +96,7 @@ bool CCell::AddClutter(CClutter *clutter)
         ok = m_clutterList.Add(clutter);
     return ok;
 }
+#pragma auto_inline reset
 
 void CCell::SetClutterFlag(bool on)
 {
@@ -710,6 +715,61 @@ void CGrid::Destroy()
     if (m_AtomBuf)
         _free(m_AtomBuf, 0, 0);
     m_AtomBuf = 0;
+}
+
+/* a point scaled, and two points' sum, by value: the operation out of line into a temporary,
+ * copied out (ld/sd and lwc1/swc1) -- as znode.h's PntMinus (the names are ours) */
+inline CPnt3D PntScale(const CPnt3D &a, float k)
+{
+    CPnt3D r;
+
+    a.Scale(k, &r);
+    return r;
+}
+
+inline CPnt3D PntPlus(const CPnt3D &a, const CPnt3D &b)
+{
+    CPnt3D r;
+
+    a.Add(&b, &r);
+    return r;
+}
+
+/* a prop handed to every cell its box covers in x/z: refused off the grid or without a node; its
+ * node's box unscaled by the prop's inverse scale and moved by its matrix's translation, the
+ * rectangle walked (SOCOM 1's; SOCOM II tests the prop's cell first and walks a CFRect through
+ * the new boundary overload) */
+bool CGrid::AddClutter(CClutter *clutter)
+{
+    bool ok = true;
+    CPnt3D *t = clutter->GetTranslate();
+
+    if (!GetCell(t->x, t->z))
+        return false;
+    if (!clutter->m_node)
+        return false;
+    const CBBox *bb = clutter->m_node->GetBBox();
+    CPnt3D box[2];
+    float rect[4];
+
+    box[0] = PntScale(bb->m_min, 1.0f / clutter->m_scale_inverse);
+    box[1] = PntScale(bb->m_max, 1.0f / clutter->m_scale_inverse);
+    CMatrix *m = clutter->GetMatrix();
+
+    box[0] = PntPlus(box[0], *(CPnt3D *)m->m_matrix[3]);
+    box[1] = PntPlus(box[1], *(CPnt3D *)m->m_matrix[3]);
+    func_00306620(rect, &box[0], &box[1]);
+    SetTraversalBoundary((CFRect *)rect);
+    for (CGridAtom *atom = StartTraversal(); atom; atom = GetNextAtom()) {
+        CCell *cell = atom->GetCell();
+
+        if (cell) {
+            ok = cell->AddClutter(clutter);
+            if (!ok)
+                break;
+        }
+    }
+    return ok;
 }
 
 /* every cell's clutter let go of (SOCOM 1's) */
