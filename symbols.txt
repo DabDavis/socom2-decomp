@@ -9376,7 +9376,7 @@
 0x00510E40 0x19C CreatePlanner__7CAiPathFv  # OVL2; s1:order by hand (the demo's 0x1812D0: four function-local planners guarded (CAiPlanner, CBasicPlanner, CStealthPlanner, CRestrainedPlanner vtables), chosen by m_type unless the path owns one, then new CAiStar (0x14 bytes in SOCOM II) with the planner, GetLegMap(-1), &m_stats and GetLegPoints(-1))
 0x00510FE0 0x10 SetPlanner__7CAiPathFP10CAiPlanner  # OVL2; ours (new in SOCOM II, between CreatePlanner and find_path: m_planner = p and m_custom = 1; an AI state (0x5F15A0) hands it its planner)
 0x00510FF0 0xF48 find_path__7CAiStarFP7CAiPath  # OVL2; s1:order by hand (the demo's 0x1814C0, 0xF98 there: the A* loop over the open and closed lists -- SOCOM II's two static vectors 0x66A0E8/0x66A108 -- with the planner's virtuals; TickPathPlanner and PathPlanImmediate call it on CreatePlanner's result)
-0x00511F40 0x3C func_00511F40  # OVL2
+0x00511F40 0x3C IsTraversable__7CAiCellCFv  # OVL2; by hand (CAiCell::IsTraversable's out-of-line copy: the soil's bit test against 0, 8, 9, 10, materialised and negated; the walker unit's GetLocationWidth calls it where its inline is inlined one level, ai_astar.cpp's copy linked first)
 0x00511F80 0x120 GetCell__6CAiMapCFRC9CAiMapLoci  # OVL2; ours (new in SOCOM II: a layer's cell, none off the map -- out of line where it is called whole: CAiMaps::GetAltitude, GetCellCenter, the look and cover searches)
 0x005120A0 0x8 GetMapId__6CAiMapCFv  # OVL2; ours (CAiMap's id at 0xE4, SOCOM 1's m_mapid: ai_astar.cpp's out-of-line copy, which the walks and ValidateCells call)
 0x005120B0 0x10 __vc__Q23std64__vector_imp<P11CAiMapLayer,Q23std25allocator<P11CAiMapLayer>,1>CFUi  # OVL2; by hand (the layers' const operator[], GetCell's, out of line beside the scanlines')
@@ -9777,19 +9777,19 @@
 0x00537400 0xA48 WalkLine__6CAiMapFRC9CAiMapLocPC6CPnt3DPFRC19MAP_LINEWALK_STRUCTPv_bPvf  # OVL2; s1:order by hand (the demo's WalkLine(loc, CPnt3D *) 0x1A6B00, 0xA64 bytes, before the two-cell one as here; CanSeeLine(loc, dir) 0x539070 tail-calls it with _SeeLineCallback as SOCOM 1's does -- SOCOM II adds the step, 0.2f in $f12)
 0x00537E50 0xB28 WalkLine__6CAiMapFRC9CAiMapLocRC9CAiMapLocPFRC19MAP_LINEWALK_STRUCTPv_bPvf  # OVL2; s1:order by hand (the demo's WalkLine(loc, loc) 0x1A7570, 0xD04 bytes; CanSeeLine and CanTravelLine 0x539090/0x5390B0 tail-call it with their callbacks as SOCOM 1's do, the step 0.2f added)
 0x00538980 0xD8 CanSeePoint__7CAiMapsFPC6CPnt3DPC6CPnt3Df  # OVL2; ours (new in SOCOM II, first of the walker unit's visibility tests: the walk 0x5352D0 between two points with the callback 0x538A60, a range and visibility 1; seen when nothing is lost, not when all is, else by chance (rand) of what is left -- the AI states call it on AiMaps)
-0x00538A60 0x2A4 func_00538A60  # OVL2
+0x00538A60 0x2A4 _SightLineCallback__FRC19MAP_LINEWALK_STRUCTPv  # OVL2; ours (CAiMaps::CanSeePoint's walk callback: the first cell kept, the range squared tested, each cell's share of the visibility taken -- other map off its link 0.2, cover 0.9, in/out of doors 0.75, through a shut door 0.25; byte-exact in ai_mapwalk.cpp)
 0x00538D10 0x120 ComputeLineVisibility__7CAiMapsFRC9CAiMapLocPC6CPnt3DUif  # OVL2; ours (new in SOCOM II: from a cell's centre (GetCellCenter) raised by a height, the point test 0x538E30 inlined -- its literal pool shared, 0x64FA28/0x64FA30)
 0x00538E30 0xB4 ComputeLineVisibility__7CAiMapsFPC6CPnt3DPC6CPnt3DUi  # OVL2; ours (new in SOCOM II, after SOCOM 1's ComputeLineVisibility: the AI states call it on AiMaps (0x66A1B0) with two points and flags; the walk 0x5352D0 with the visibility callback flag 1 picks, its loss held in [0, 1] and taken from 1)
 0x00538EF0 0x17C ComputeLineVisibility__6CAiMapFRC9CAiMapLocRC9CAiMapLocUiff  # OVL2; s1:order by hand (the demo's CAiMap::ComputeLineVisibility 0x1A8280, right before the three line tests in both builds: the cells' altitudes raised by two heights, WalkLine(loc, loc) with the visibility callback, the loss saturated and taken from 1)
 0x00539070 0x20 CanSeeLine__6CAiMapFRC9CAiMapLocPC6CPnt3DP9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x1A8330, the first of the three line tests in both builds: WalkLine(from, dir, _SeeLineCallback, out, 0.2f))
 0x00539090 0x20 CanSeeLine__6CAiMapFRC9CAiMapLocRC9CAiMapLocP9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x1A8340: WalkLine(from, to, _SeeLineCallback, out, 0.2f); CAiMaps::CanSeeLine calls it)
 0x005390B0 0x20 CanTravelLine__6CAiMapFRC9CAiMapLocRC9CAiMapLocP9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x1A8350: WalkLine(from, to, _TravelLineCallback 0x539580, out, 0.2f); CAiMaps::CanTravelLine calls it)
-0x005390D0 0x168 func_005390D0  # OVL2
-0x00539240 0x1B4 func_00539240  # OVL2
+0x005390D0 0x168 _VisSeeLineCallback__FRC19MAP_LINEWALK_STRUCTPv  # OVL2; ours (ComputeLineVisibility's callback without flag 1: _SeeLineCallback's opaque and shut-door tests set the visibility to 1, then it returns 0x539240's result; byte-exact in ai_mapwalk.cpp)
+0x00539240 0x1B4 _VisLineCallback__FRC19MAP_LINEWALK_STRUCTPv  # OVL2; s1:order by hand (SOCOM 1's _VisLineCallback, the soils' visibility adds 12/4/5 as the demo's 0x1A8360, here 0.35/0.5/0.85 with heights 15/18/20 past a range of 30 and the line's blended height against the cell's altitude; ComputeLineVisibility's callback with flag 1; byte-exact in ai_mapwalk.cpp)
 0x00539400 0x17C _SeeLineCallback__FRC19MAP_LINEWALK_STRUCTPv  # OVL2; s1:order by hand (the demo's _SeeLineCallback 0x1A8460, the eye's line callback CanSeeLine x2 hand WalkLine in both builds: opaque soils 0/8/10 stop it, and SOCOM II's shut doors (actions of kind 1 or 7 in state 0); the blocking cell handed back)
-0x00539580 0x138 func_00539580  # OVL2
-0x005396C0 0x3E0 func_005396C0  # OVL2
-0x00539AA0 0xD0 func_00539AA0  # OVL2
+0x00539580 0x138 _TravelLineCallback__FRC19MAP_LINEWALK_STRUCTPv  # OVL2; s1:order by hand (the demo's _TravelLineCallback 0x1A84C0 after _SeeLineCallback in both builds: the four no-go soils, then steep ground that climbs from the previous cell; CanTravelLine's callback; byte-exact in ai_mapwalk.cpp)
+0x005396C0 0x3E0 GetLocationWidth__6CAiMapFRC9CAiMapLoci  # OVL2; s1:order by hand (the demo's GetLocationWidth 0x1A8630 after _TravelLineCallback in both builds: rings of cells around one tested out to a limit, the map's bounds and each ring's rows and sides through a CAiMap::IsTraversable-shaped inline inlined one level -- GetCell and 0x511F40 out of line; returns the width)
+0x00539AA0 0xD0 _lerp__FPC6CPnt3DPC6CPnt3DP6CPnt3Df  # OVL2; ours (CAiMaps::WalkLine's step: a*(1-t) + b*t through CPnt3D's const * and +, Scale and Add out of line; byte-exact in ai_mapwalk.cpp)
 0x00539B70 0x50 func_00539B70  # OVL2; OVL2's copy of _saturate<f> (OVL1 0x267A60, the same 0x50 bytes; CRemoteCtrl::PostMortemPreTick calls it -- the kit lane); ovl-copy: _saturate<f>__FPfRCfRCf_b
 0x00539BC0 0xBC func_00539BC0  # OVL2
 0x00539C80 0x74 func_00539C80  # OVL2

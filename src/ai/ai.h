@@ -328,6 +328,12 @@ struct MAP_LINEWALK_STRUCT {
     CAiCell *m_cell;   // 0x10
     float m_dist;   // 0x14: how far along (the sighting callback squares it against its range)
     CAiCell *m_prev;   // 0x18: the cell before (the travel callback's)
+    /* the points' walk (CAiMaps::WalkLine, 0x5352D0, builds them: the step's direction, the point
+     * reached -- the interpolation 0x539AA0 writes it -- and the fraction of the line walked, which
+     * the visibility callbacks blend the two heights by; the names ours) */
+    PNT3D m_dir;   // 0x1c
+    PNT3D m_pos;   // 0x28
+    float m_t;   // 0x34
 };
 
 /* two cells are the same cell when x and y agree, the map aside: an inline bool, which the
@@ -618,6 +624,9 @@ public:
     /* whether a step may end on the cell (new in SOCOM II, the name ours: ai_maps.cpp's 0x52A090,
      * GetCell inlined one level) */
     bool IsTraversable(const CAiMapLoc &loc) const;
+    /* how many rings of open cells surround one, up to a limit (SOCOM 1's; the walker unit's
+     * 0x5396C0) */
+    int GetLocationWidth(const CAiMapLoc &loc, int max);
     /* a layer index the map has (the name ours; 0x512120) */
     bool IsLayer(int layer) const { return layer >= 0 && layer < GetLayerCount(); }
     /* the layers' count (the name ours) */
