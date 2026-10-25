@@ -6367,10 +6367,10 @@
 0x0034E560 0x80 RemoveTask__14CSched_ManagerFPvb  # OVL1; s1:callee by hand (CZAnim's flagged Stop removes the anim from its set's scheduler with it, false, where SOCOM 1's Stop calls RemoveTask)
 0x0034E5E0 0xC4 RemoveTask__14CSched_ManagerFPCcb  # OVL1; s1:align
 0x0034E6B0 0x1B0 AddTask__14CSched_ManagerFPCcPFfPv_bfPv  # OVL1; s1:align
-0x0034E860 0x5C func_0034E860  # OVL1
+0x0034E860 0x5C __ct__14CSched_ManagerFv  # OVL1; zsys_sched.cpp's static initialiser (0x403420) calls it on zTaskScheduler (0x49E260) before registering 0x34EA70 as its destructor; s1names' calls pass proposes the same name (SOCOM 1's __ct__14CSched_ManagerFv, 0x2F4180)
 0x0034E8C0 0xE4 remove_if<Q33std54list<P11CSched_Task,Q23std25allocator<P11CSched_Task>>19generic_iterator<0>,PFP11CSched_Task_b>__3stdFQ33std54list<P11CSched_Task,Q23std25allocator<P11CSched_Task>>19generic_iterator<0>Q33std54list<P11CSched_Task,Q23std25allocator<P11CSched_Task>>19generic_iterator<0>PFP11CSched_Task_b  # OVL1; s1:align
 0x0034E9B0 0xB8 remove_copy_if<Q33std54list<P11CSched_Task,Q23std25allocator<P11CSched_Task>>19generic_iterator<0>,Q33std54list<P11CSched_Task,Q23std25allocator<P11CSched_Task>>19generic_iterator<0>,PFP11CSched_Task_b>__3stdFQ33std54list<P11CSched_Task,Q23std25allocator<P11CSched_Task>>19generic_iterator<0>Q33std54list<P11CSched_Task,Q23std25allocator<P11CSched_Task>>19generic_iterator<0>Q33std54list<P11CSched_Task,Q23std25allocator<P11CSched_Task>>19generic_iterator<0>PFP11CSched_Task_b  # OVL1; s1:align
-0x0034EA70 0x70 func_0034EA70  # OVL1
+0x0034EA70 0x70 __dt__14CSched_ManagerFv  # OVL1; the destructor 0x403420 registers for zTaskScheduler: destroys the free list (+0x14) and the base list, then deletes -- NOT _strdup, which s1names' align pass proposes here
 0x0034EAE0 0x70 _calloc__FUiUiPCci  # OVL1; SOCOM 1 name (its code: DIntr, malloc, EIntr, the assert, memset; the allocators' order, before _realloc; called with no file or line)
 0x0034EB50 0x68 _realloc__FPvUiPCci  # OVL1; s1:order (called by CBits::Resize where SOCOM 1 calls _realloc)
 0x0034EBC0 0x68 _memalign__FUiUiPCci  # OVL1; s1:align
