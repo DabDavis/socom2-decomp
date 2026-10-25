@@ -22,6 +22,8 @@ byte-exact; a function in it that no longer matches is a REGRESSION and a
 non-zero exit, so a source change made for function N cannot quietly break N-1.
 
 A TU may carry its own flags on its first line:   /* sc: flags=-O4,s */
+and its own toolchain -- a GCC-built library unit names its ee-gcc (README "The GCC front"):
+                                                   /* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
 
 An inline function's out-of-line copy (MW's binding 13: every unit that needs one emits one,
 and the linker keeps the first) is scored like any function, but when it misses and its map
@@ -58,6 +60,8 @@ def sources() -> list[Path]:
 
 
 def tu_options(src: Path) -> dict[str, str]:
+    """The `/* sc: key=value; ... */` directives in a unit's first three lines (a generated
+    draft can carry two: its rename and its compiler); the first line to give a key wins."""
     opts = {}
     for line in src.read_text(errors="replace").splitlines()[:3]:
         m = _DIRECTIVE.search(line)
@@ -65,8 +69,7 @@ def tu_options(src: Path) -> dict[str, str]:
             for part in m.group(1).split(";"):
                 if "=" in part:
                     k, v = part.split("=", 1)
-                    opts[k.strip()] = v.strip()
-            break
+                    opts.setdefault(k.strip(), v.strip())
     return opts
 
 
@@ -95,11 +98,22 @@ def build_one(src: Path, build: Path = BUILD) -> tuple[Path, Path | None, str]:
 MULTIDEF = 13   # MW's binding for an inline function's (or a template's) out-of-line copy
 
 
+def is_copy(elf: E.Elf, f: E.ElfSymbol) -> bool:
+    """An inline function's (or a template's) out-of-line copy, which every unit that needs one
+    emits and the linker keeps one of: MW binds it 13 (MULTIDEF); GCC makes it weak in its own
+    `.gnu.linkonce.t.<name>` section (binding 13 is MW's alone)."""
+    if f.bind == MULTIDEF:
+        return True
+    return (f.bind == 2 and 0 < f.shndx < len(elf.sections)
+            and elf.sections[f.shndx].name.startswith(".gnu.linkonce."))
+
+
 def unit_span(obj: Path, st) -> tuple[int, int] | None:
     """The map addresses the unit's own (non-inline) functions cover."""
     lo = hi = None
-    for f in E.Elf.read(obj).functions():
-        if f.bind == MULTIDEF:
+    elf = E.Elf.read(obj)
+    for f in elf.functions():
+        if is_copy(elf, f):
             continue
         try:
             sym = st.get(f.name)
@@ -144,11 +158,12 @@ def main(argv=None) -> int:
     hand_names: set[str] = set()     # what hand-written source defines as its own (not inline copies)
     for src, obj, err in built:
         if obj is not None:
-            fns = E.Elf.read(obj).functions()
+            elf = E.Elf.read(obj)
+            fns = elf.functions()
             if "auto" in src.relative_to(SRC).parts:
                 auto_names.update(f.name for f in fns)
             else:
-                hand_names.update(f.name for f in fns if f.bind != MULTIDEF)
+                hand_names.update(f.name for f in fns if not is_copy(elf, f))
     # hand-written source supersedes the generated tier where it defines a function, or emits a
     # byte-exact inline copy of it -- a copy that misses does not: the linker keeps a strong
     # definition over every unit's copy, so the draft's match stands (zsnd_csndsequence.cpp's
@@ -166,7 +181,8 @@ def main(argv=None) -> int:
         # the unit's own overlay when the map lists one there (`ovl-copy:`), not the named row
         # (fts_remote.cpp's _saturate<int> is OVL1's 0x2BD220, the name OVL2's 0x519290)
         home = span[0] if span else None
-        for fs in E.Elf.read(obj).functions():
+        elf = E.Elf.read(obj)
+        for fs in elf.functions():
             if rx and not rx.search(fs.name):
                 continue
             if is_auto and (fs.name in hand_names or fs.name in hand_copies):
@@ -184,14 +200,14 @@ def main(argv=None) -> int:
                 if copy is not None and copy != sym.addr and st.at_addr(copy) is not None:
                     sym = st.at_addr(copy)
             res = D.compare(obj, fs.name, sym, img, st)
-            if not res.match and fs.bind == MULTIDEF and span and not span[0] <= sym.addr < span[1]:
+            if not res.match and is_copy(elf, fs) and span and not span[0] <= sym.addr < span[1]:
                 rows.append(("elsewhere", src.name, fs.name, f"inline copy; linked at {sym.addr:#x}"))
                 continue
             scored_at.add(sym.addr)
             if res.match:
                 matched.append((fs.name, sym.addr))
                 (auto_at if is_auto else hand_at).add(sym.addr)
-                if not is_auto and fs.bind == MULTIDEF:
+                if not is_auto and is_copy(elf, fs):
                     hand_copies.add(fs.name)
                 note = f"{len(res.relocs)} relocs" + (f", {len(res.reloc_unchecked)} unchecked"
                                                        if res.reloc_unchecked else "")
