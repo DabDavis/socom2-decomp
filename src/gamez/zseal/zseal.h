@@ -738,6 +738,9 @@ public:
     void SetRestrained(bool on) { m_restrained = on; }
     /* the squad-joined flag set (an inline: `(b & 1) << 6` even for a constant) */
     void SetJoinedUnit(bool on) { m_joined_unit = on; }
+    /* the gas and smoke flags set (inlines: a constant true is `daddiu 1 << n`) */
+    void SetInGas(bool on) { m_isingas = on; }
+    void SetInSmoke(bool on) { m_isinsmoke = on; }
     /* the stance's change taken, once (seal_body.cpp) */
     bool StanceChanged();
     /* whether an anim type is the blend on top (SOCOM 1's; OVL2 0x577E40, seal_anim.cpp) */
@@ -756,6 +759,8 @@ public:
     int CanClimbLadder();
     void HandleBombDefuse();
     void AttemptBombDefuse();
+    /* the MP bomb picked up (SOCOM 1's; OVL2 0x59DEF0) */
+    void HandlePickupMPBomb(CPickup *pickup);
     /* the regions entered: each new one's OnEnterRegion anim run (SOCOM 1's; OVL2 0x5A2F90) */
     void CheckForRegionTrigger(unsigned int regions);
 

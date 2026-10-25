@@ -580,6 +580,24 @@ void CZSealBody::AttemptBombDefuse()
     CZBombState::RequestNewBombState(m_id, CZBombState::BOMB_STATE_DEFUSING, &pos);
 }
 
+extern "C" {
+extern CNetGameState *data_00437CE8;
+/* (OVL1, unowned: a test of a SEAL against the game, both builds' net code; seal.cpp's too) */
+int func_002C31D0(const CZSealBody *seal);
+}
+
+/* the MP bomb picked up: the bomb told it is carried -- in game mode 1 only by a SEAL the test
+ * passes (OVL2 0x59DEF0; SOCOM 1's HandlePickupMPBomb by its place before EnableMPBombGear and its
+ * body, without the test) */
+void CZSealBody::HandlePickupMPBomb(CPickup *pickup)
+{
+    if (data_00437CE8->m_mode == 1 && !func_002C31D0(this))
+        return;
+    CPnt3D pos(0.0f, 0.0f, 0.0f);
+
+    CZBombState::RequestNewBombState(m_id, (CZBombState::EnumBombState)2, &pos);
+}
+
 /* the bomb's defusal handled: nothing, in both builds (OVL2 0x59DA70; SOCOM 1's, 8 bytes) */
 void CZSealBody::HandleBombDefuse()
 {
@@ -733,4 +751,23 @@ extern "C" bool func_0059D6C0(CZSealBody *seal, CLadderData *ladder)
     if (!ladder || seal->m_ladder == data_003F3438)
         return false;
     return theMission.m_ladders->GetLadderByIndex(seal->m_ladder) == ladder;
+}
+
+/* a hit's stun, by the item that hit (SOCOM 1's HandleStunFromHit by its place before
+ * HandleStunDamage and its tests of items 122, 123, 125 and 127; OVL2 0x5A5250, not written yet:
+ * SOCOM II's takes two more arguments) */
+extern "C" void func_005A5250(CZSealBody *seal, int item, const CPnt3D *from, int x);
+
+/* in tear gas (item 125): its stun taken and the flag set (OVL2 0x5A0B60; 0x5B5050 calls it) */
+extern "C" void func_005A0B60(CZSealBody *seal)
+{
+    func_005A5250(seal, 125, 0, 0);
+    seal->SetInGas(true);
+}
+
+/* in smoke (item 122): the same with the smoke flag (OVL2 0x5A0BB0; 0x5B5050 calls it) */
+extern "C" void func_005A0BB0(CZSealBody *seal)
+{
+    func_005A5250(seal, 122, 0, 0);
+    seal->SetInSmoke(true);
 }

@@ -265,11 +265,10 @@ extern "C" {
 /* CValve::AddCallback (SOCOM 1's AddCallback__6CValveFUiPFP6CValvePv_vPv; zanim.h's CValve lacks
  * it: OVL1 0x351960 by its address) */
 void func_00351960(CValve *valve, unsigned int mask, void (*func)(CValve *, void *), void *user);
-/* the other kinds' takers: a weapon, ammunition, the MP bomb (OVL2 0x59F610, 0x59F6F0, 0x59DEF0,
- * seal_env.cpp's; not written yet) */
+/* the other kinds' takers: a weapon, ammunition (OVL2 0x59F610, 0x59F6F0, seal_env.cpp's, matched
+ * as drafts; the MP bomb's is HandlePickupMPBomb, 0x59DEF0) */
 void func_0059F610(CZSealBody *seal, CPickup *pickup);
 void func_0059F6F0(CZSealBody *seal, CPickup *pickup);
-void func_0059DEF0(CZSealBody *seal, CPickup *pickup);
 }
 
 /* a pickup taken up by the living: a grenade (kind 1) thrown back -- stopped, turned toward the
@@ -307,7 +306,7 @@ CZAnim *CZSealBody::PickupObject(CPickup *pickup)
             func_0059F6F0(this, pickup);
             break;
         case CPickup::PU_MPBOMB:
-            func_0059DEF0(this, pickup);
+            HandlePickupMPBomb(pickup);
             break;
         case 10:
             break;
