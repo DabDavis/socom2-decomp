@@ -2334,7 +2334,7 @@
 0x00241C30 0x64 SetTrans__10CHealthBarFf  # OVL1; by hand (slot 11 of CHealthBar's vtable 0x405EF0, C2D's SetTrans: SetTrans on the bitmaps at +0x30, +0xB0, +0x130)
 0x00241CA0 0xC SetPos__10CHealthBarFff  # OVL1; by hand (the floats at CHealthBar+0x1C/0x20; CMPInfoBox's Init and re-init call it on CMPInfoBox+0x20 before SetSize; the name ours)
 0x00241CB0 0xC SetSize__10CHealthBarFff  # OVL1; by hand (the floats at CHealthBar+0x24/0x28, after SetPos; the name ours)
-0x00241CC0 0x388 func_00241CC0  # OVL1
+0x00241CC0 0x388 Update__10CHealthBarFP10CZSealBodyb  # OVL1; by hand (the HUD lane: the health bar set from its owner's health; CMPInfoBox::Tick calls it with the HUD's owner and true; the name ours)
 0x00242050 0x2AC func_00242050  # OVL1
 0x00242300 0xC8 __dt__10CHealthBarFv  # OVL1; s1:vtable by hand (the HUD lane: slot 0 of CHealthBar's vtable 0x405EF0)
 0x002423D0 0x204 __ct__10CHealthBarFv  # OVL1; s1:vtable by hand (the HUD lane: builds a C2D, then stores CHealthBar's vtable 0x405EF0, found by its RTTI's name; CHUD's constructor calls it for a member)

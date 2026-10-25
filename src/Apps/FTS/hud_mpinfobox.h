@@ -84,10 +84,18 @@ public:
     float m_y;   // 0x20
     float m_w;   // 0x24
     float m_h;   // 0x28
-    C2DBitmap m_bitmap1;   // 0x30
-    C2DBitmap m_bitmap2;   // 0xb0
-    C2DBitmap m_bitmap3;   // 0x130
-    unsigned char _1b0[0x1d0 - 0x1b0];
+    C2DBitmap m_bitmap1;   // 0x30: the health left
+    C2DBitmap m_bitmap2;   // 0xb0: the rest of the bar (its colour says whether the owner is dead)
+    C2DBitmap m_bitmap3;   // 0x130: the health just lost, draining
+    unsigned char _1b0[0x1b2 - 0x1b0];
+    unsigned char m_draining;   // 0x1b2: the lost part shown
+    unsigned char m_centered : 1;   // 0x1b3: the bar centred on its x
+    unsigned char _1b4[0x1bc - 0x1b4];
+    float m_drainend;   // 0x1bc
+    float m_drainx;   // 0x1c0: where the lost part starts
+    float m_drainw;   // 0x1c4: and how wide it is
+    class CZSealBody *m_owner;   // 0x1c8: the owner last shown
+    unsigned char _1cc[0x1d0 - 0x1cc];
 };   // 0x1d0 bytes
 
 /* the box (its vtable 0x405B40 overrides Off, On and Tick) */

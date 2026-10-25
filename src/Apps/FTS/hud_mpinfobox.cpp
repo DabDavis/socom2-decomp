@@ -83,8 +83,6 @@ public:
 
 extern CHUD *theHUD;
 
-/* the health bar's update from its owner (its own unit's; no name yet) */
-extern "C" void func_00241CC0(CHealthBar *bar, CZSealBody *owner, bool b);
 /* a player's clan tag, or "" (the player list's; no name yet) */
 extern "C" const char *func_002C3AC0(int player);
 /* a player's name, or 0 (the player list's; no name yet) */
@@ -437,7 +435,7 @@ void CMPInfoBox::Tick(float dT)
 {
     CZSealBody *owner = CHUD::GetHUDOwner();
 
-    func_00241CC0(&m_healthbar, owner, true);
+    m_healthbar.Update(owner, true);
     m_healthbar.Tick(dT);
     const char *clan = ClanTag(owner);
     const char *name = owner->m_name;
