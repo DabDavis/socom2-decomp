@@ -115,6 +115,13 @@ public:
      * place (SOCOM 1's SetAiState; 0x5F7D80); both answer true, the flag unread */
     bool Push(CSealCtrlAi *ai, AI_STATE state, bool b);
     bool Set(CSealCtrlAi *ai, AI_STATE state, bool b);
+    /* every state popped (0x5F7920: SOCOM 1's ClearAiState's loop; CSealCtrlAi::ClearAiState and
+     * a leaving state's Signal call it -- the name ours) */
+    void PopAll(CSealCtrlAi *ai);
+    /* the current state ticked, its own stack first: done once it answers so (it is then popped,
+     * its result kept, and AI_FINISHED returned), else the clocks run (SOCOM 1's
+     * CSealCtrlAi::StateTick's core; 0x5F8030) */
+    AI_RESULT Tick(float dT, CSealCtrlAi *ai);
     /* the list's own insert at the front (MSL's push_front: insert(begin(), x), the base's
      * iterator and the pointer passed by address -- 0x50FAD0), two inline levels deep: a frame's
      * temporaries are laid out by inline depth first, then in order of appearance, and Set's

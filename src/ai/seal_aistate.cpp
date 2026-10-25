@@ -462,7 +462,6 @@ extern "C" {
  * stack emptied (0x5F7920, a byte-exact draft), a squad's member (0x5EDBB0, seal_unit.cpp's,
  * unwritten), and the controller's calls (0x56D890, 0x5631B0, 0x570F90: the SEAL lane's rows) */
 void func_005F6350(CAiState *s, CSealCtrlAi *ai, CAiState::SIGNAL sig);
-void func_005F7920(CAiStateStack *stack, CSealCtrlAi *ai);
 CEntity *func_005EDBB0(void *unit, int a, int b);
 void func_0056D890(CSealCtrlAi *ai, int x);
 void func_005631B0(CSealCtrlAi *ai, int a, int b, float f);
@@ -508,7 +507,7 @@ void CAiState::Signal(CAiStateStack *stack, CAiState *state, SIGNAL sig, CSealCt
         break;
     case SIGNAL_1:
         func_005F6350(state, ai, sig);
-        func_005F7920(&state->m_stack, ai);
+        state->m_stack.PopAll(ai);
         func_005F6190(state, ai);
         break;
     case SIGNAL_2:
@@ -734,6 +733,63 @@ AI_STATE CAiStateStack::Pop(CSealCtrlAi *ai, AI_STATE state)
     return GetStateEnum();
 }
 
+/* the current state ticked: its own stack first, then (once that is empty and done) its Tick, or
+ * else its sub-step (slot 0x14, handed the sub-stack's state -- a CAiState * the slot's declared
+ * int stands for until seal_ai.cpp's override changes with it); a state done is popped, its result
+ * kept; else the stack's clock and the state's step clock run (OVL2 0x5F8030).
+ * OPEN, 0x1A8 against 0x1A0: the target takes the states' Tick and slot 0x14 results as they come
+ * (`move s1,v0`, no andi) -- slot 0x10/0x14 return int in SOCOM II (each Tick's `andi` is its
+ * `(AI_RESULT)` cast, then `sw` to the int m_done and the return), where ai_states.h's AI_RESULT
+ * return makes MW zero-extend each result (andi); the base's return type cannot change while
+ * seal_ai.cpp's overrides (the SEAL lane's) declare AI_RESULT. And the result local takes a1 here,
+ * v0 in the target. The shape (the `li v0,1` hoisted, one exit) is the result local's */
+AI_RESULT CAiStateStack::Tick(float dT, CSealCtrlAi *ai)
+{
+    int result = AI_DONE;
+
+    CAiState::m_dT = dT;
+    if (size() != 0) {
+        CAiState *s = GetState();
+        int r;
+
+        if (s->m_active) {
+            if (s->m_stack.Tick(dT, ai) && s->m_stack.size() == 0) {
+                r = s->Tick(dT, ai);
+                if (r == AI_RUNNING) {
+                    func_005F7470(this, ai, (s->m_flags & 0x80000000) != 0);
+                    s->SetFlags(0, 0x80000000);
+                }
+            } else
+                r = s->Virtual14(ai, (int)s->m_stack.GetState());
+        } else
+            r = AI_DONE;
+        if (r != AI_RUNNING) {
+            Pop(ai);
+            m_result = r;
+            result = AI_FINISHED;
+        } else {
+            m_timer += dT;
+            s->m_phaseTime += dT;
+            s->SetBit0(false);
+            result = AI_RUNNING;
+        }
+    }
+    return (AI_RESULT)result;
+}
+
+/* every state popped, then the flags brought up to date (OVL2 0x5F7920: its callers here,
+ * ClearAiState and Signal, call it out of line) */
+#pragma auto_inline off
+void CAiStateStack::PopAll(CSealCtrlAi *ai)
+{
+    if (size() != 0)
+        do
+            Pop(ai);
+        while (size() != 0);
+    func_005F7470(this, ai, 1);
+}
+#pragma auto_inline reset
+
 /* the stack's constructor (OVL2 0x5F8520): out of line, as its destructor is */
 CAiStateStack::CAiStateStack() : m_c(-1), m_10(0), m_14(0)
 {
@@ -810,6 +866,21 @@ void CAiState::Virtual0C(int id, int event, CSealCtrlAi *ai)
 
     if (script && script->m_58 == id && (unsigned char)event == 2)
         m_active = false;
+}
+
+/* the AI's states dropped: every one popped when asked, or when the SEAL is dead, a Navy SEAL or
+ * on the team bit 18 -- whether they were; the flags brought up to date either way (OVL2 0x5F5F20;
+ * SOCOM 1's ClearAiState(bool), its loop the stack's PopAll now) */
+bool CSealCtrlAi::ClearAiState(bool all)
+{
+    bool cleared = false;
+
+    if (all || !m_entity->m_isAlive || IsNavySeal() || (m_entity->m_team & 0x40000)) {
+        ((CAiCtrlStack *)this)->m_stack.PopAll(this);
+        cleared = true;
+    }
+    func_005F7470(&((CAiCtrlStack *)this)->m_stack, this, 1);
+    return cleared;
 }
 
 /* the state on top of the controller's stack, or the unknown state when it is empty (OVL2
