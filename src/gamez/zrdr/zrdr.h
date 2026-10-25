@@ -36,7 +36,7 @@ struct _zrdr {
     unsigned int type : 8;   // 0x0
     unsigned int isclone : 1;   // 0x0: the array is the value's own (Clone's), DeleteChildren frees it
     unsigned int packed : 1;   // 0x0
-    unsigned int flag : 1;   // 0x0: SOCOM II's, cleared by the constructor (the name ours)
+    unsigned int nofree : 1;   // 0x0: SOCOM II's: the array lives in a packed buffer, zrdr_freearray leaves it (the name ours)
     unsigned int unused : 5;   // 0x0
     unsigned int length : 16;   // 0x0: an array's count
     union {
@@ -53,7 +53,7 @@ struct _zrdr {
         type = 0;
         isclone = false;
         packed = false;
-        flag = false;
+        nofree = false;
         unused = 0;
         length = 0;
     }
