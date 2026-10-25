@@ -8322,14 +8322,14 @@
 0x003D1C90 0x1C UnpackItemAndAmmoEnums__8CZWeaponFUsP10EQUIP_ITEMP10EQUIP_AMMO  # OVL1; tu: zwep_weapon.cpp~ (1.0 beta); s1:exact
 0x003D1CB0 0x28 func_003D1CB0  # OVL1
 0x003D1CE0 0x28 func_003D1CE0  # OVL1
-0x003D1D10 0x74 func_003D1D10  # OVL1
+0x003D1D10 0x74 IsPrimary__8CZWeaponF10EQUIP_ITEM  # OVL1; s1:order by hand (SOCOM 1's: the item's class against the primary classes, 30/50/80/90/140/100 then, 31/51/81/91/141/101 now)
 0x003D1D90 0x10 func_003D1D90  # OVL1
 0x003D1DA0 0x10 func_003D1DA0  # OVL1
 0x003D1DB0 0x58 func_003D1DB0  # OVL1
 0x003D1E10 0x8 GetIDType__8CZWeaponFv  # OVL1; s1:order by hand (SOCOM 1's 8 bytes: the static GetIDType of the id byte, tail-called; IsGrenadeLauncherAmmo's callee in both builds)
-0x003D1E20 0x74 func_003D1E20  # OVL1
-0x003D1EA0 0x5C func_003D1EA0  # OVL1
-0x003D1F00 0x44 func_003D1F00  # OVL1
+0x003D1E20 0x74 IsDirectFire__8CZWeaponFv  # OVL1; s1:order by hand (SOCOM 1's: false for the indirect classes of GetIDType(m_ID), true otherwise; after GetIDType() as in SOCOM 1)
+0x003D1EA0 0x5C GetDefaultAmmoId__8CZWeaponFv  # OVL1; s1:order by hand (SOCOM 1's shape: GetDefaultAmmo inlined -- the legal ammo list's first, its id byte or 255)
+0x003D1F00 0x44 GetDefaultAmmo__8CZWeaponFv  # OVL1; s1:order by hand (SOCOM 1's: the legal ammo list's first ammo, none when it is empty)
 0x003D1F50 0x3C func_003D1F50  # OVL1
 0x003D1F90 0x6C func_003D1F90  # OVL1
 0x003D2000 0x8 func_003D2000  # OVL1
