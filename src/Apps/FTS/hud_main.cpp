@@ -9,10 +9,12 @@
  * Written, all byte-exact: the timer and zoom texts, Add2D, the two map switches, ZoomIn, ZoomOut,
  * IsOn, Off, On, PostDITick, PreDITick, Flash, the four network texts Tick calls (spectator,
  * spectating, respawn, ghost), PauseGame, ReInit_Init, ReInit_Uninit, GetTextureByName,
- * DrawPhase, ReleaseHUD, HudText_to_upper, GetHUDOwner and the constructor. Not yet: Tick
- * (0x1158), Init (0xF98; the font's constructor inlines one level, its pieces 0x1FB370-0x1FB3F0
- * out of line), the destructor (0xA40: it inlines every member's destructor, and needs the
- * texture lists as classes -- see CTexList), and the four inline copies at the unit's head
+ * DrawPhase, ReleaseHUD, HudText_to_upper, GetHUDOwner and the constructor; and, with the
+ * members laid out, the implicit destructors the unit links (the selectors', the team names',
+ * the stance icon's, the network selector's slots and category page). Written and OPEN: the
+ * destructor (0xA40; two headers' inline heights, diagnosed there). Not yet: Tick (0x1158),
+ * Init (0xF98; the font's constructor inlines one level, its pieces 0x1FB370-0x1FB3F0 out of
+ * line), and the four inline copies at the unit's head
  * (0x1F6A90-0x1F6B00: C2DString helpers the reticle's unit calls; their caller here must be
  * dead-stripped). 0x1F6A80 is CLoadMenu's (st_load.cpp's vtable slot).
  * Defined in reverse of their image order (-inline deferred). */
@@ -282,25 +284,89 @@ public:
 
 
 
-/* the classes with constructors of their own */
 /* the 2D classes as SOCOM 1's DWARF derives them (C2D's vtable at 0xC: CHUD's Off and On call
- * slots 4 and 5 there). Their destructors are declared so that this unit emits none: their
- * members are not placed (the linked copies, 0x1FD8C0-0x1FDA10 and the others, are implicit) */
+ * slots 4 and 5 there), laid out from their constructors and the implicit destructors this unit
+ * links (0x1FC700-0x1FC98F, 0x1FD730-0x1FDBDF): only the members with destructors are placed */
 class CWeaponSel : public C2D {
 public:
     CWeaponSel();
-    virtual ~CWeaponSel();
     void UnInit();
-    unsigned char _18[0xce0 - 0x18];
-} __attribute__((aligned(16)));
+
+    unsigned char _18[0x20 - 0x18];
+    C2DBitmap m_slots[4];   // 0x20
+    int m_socom2_220[4];   // 0x220
+    C2DBitmap m_bitmap1;   // 0x230
+    C2DBitmap m_bitmap2;   // 0x2b0
+    C2DBitmap m_bitmap3;   // 0x330
+    C2DBitmap m_bitmap4;   // 0x3b0
+    C2DBitmapPoly m_polys[2];   // 0x430
+    CHudBrightText m_text1;   // 0x810
+    CHudBrightText m_text2;   // 0x8a8
+    CHudBrightText m_text3;   // 0x940
+    C2DString m_text4;   // 0x9d8
+    C2DString m_text5;   // 0xa70
+    CHudBrightText m_text6;   // 0xb08
+    CHudBrightText m_text7;   // 0xba0
+    unsigned char _c38[0xce0 - 0xc38];
+} __attribute__((aligned(16)));   // 0xce0 bytes
 
 class CInGameWeaponSel : public C2D {
 public:
     CInGameWeaponSel();
-    virtual ~CInGameWeaponSel();
     void UnInit();
-    unsigned char _18[0x11b0 - 0x18];
-} __attribute__((aligned(16)));
+
+    unsigned char _18[0x20 - 0x18];
+    C2DBitmap m_slots[4];   // 0x20
+    C2DString m_texts[3];   // 0x220
+    unsigned char _3e8[0x410 - 0x3e8];
+    C2DBitmap m_bitmap;   // 0x410
+    C2DBitmap m_bitmaps[4];   // 0x490
+    C2DBitmapPoly m_polys[2];   // 0x690
+    C2DString m_text1;   // 0xa70
+    C2DString m_text2;   // 0xb08
+    C2DString m_text3;   // 0xba0
+    C2DString m_text4;   // 0xc38
+    C2DString m_text5;   // 0xcd0
+    C2DString m_lines[5];   // 0xd68
+    C2DString m_text6;   // 0x1060
+    unsigned char _10f8[0x11b0 - 0x10f8];
+} __attribute__((aligned(16)));   // 0x11b0 bytes
+
+/* the network selector's slots (their vtables found by their RTTI names: CWeaponSlot 0x405E00,
+ * CategorySlot 0x405D80, SelectedSlot 0x405D00, SlotList 0x405E80) */
+class CWeaponSlot : public C2D {
+public:
+    unsigned char _18[0x20 - 0x18];
+};   // 0x20 bytes
+
+class CategorySlot : public CWeaponSlot {
+public:
+    C2DBitmap m_bitmap;   // 0x20
+    C2DString m_name;   // 0xa0
+} __attribute__((aligned(16)));   // 0x140 bytes
+
+class SelectedSlot : public CWeaponSlot {
+public:
+    C2DString m_name;   // 0x20
+};   // 0xb8 bytes
+
+class SlotList : public C2D {
+public:
+    unsigned char _18[0x38 - 0x18];
+};   // 0x38 bytes
+
+/* the selector's category page (no vtable, so no RTTI name: the name is ours) */
+class CMPWeaponCategories {
+public:
+    C2DString m_title;   // 0x0
+    C2DBitmap m_bitmap1;   // 0xa0
+    C2DBitmap m_bitmap2;   // 0x120
+    C2DBitmapPoly m_polys[4];   // 0x1a0
+    SlotList m_list;   // 0x960
+    CategorySlot m_categories[4];   // 0x9a0
+    C2DBitmap m_bitmap3;   // 0xea0
+    unsigned char _f20[0xf40 - 0xf20];
+} __attribute__((aligned(16)));   // 0xf40 bytes
 
 /* the network game's weapon selector: slot lists honouring the server's weapon valves
  * (Enable_203FRAG and the rest), UnInit only in a network game (SOCOM II's; no vtable, so no
@@ -312,20 +378,39 @@ public:
     void UnInit();
     void Off();
     void On();
-    unsigned char _0[0x1540];
-} __attribute__((aligned(16)));
 
+    int m_socom2_0;   // 0x0
+    C2DString m_title;   // 0x4
+    C2DBitmap m_bitmap1;   // 0xa0
+    C2DBitmap m_bitmap2;   // 0x120
+    C2DBitmap m_bitmap3;   // 0x1a0
+    CMPWeaponCategories m_categories;   // 0x220
+    SlotList m_list;   // 0x1160
+    SelectedSlot m_selected[5];   // 0x1198
+    unsigned char _1530[0x1540 - 0x1530];
+} __attribute__((aligned(16)));   // 0x1540 bytes
+
+/* the stance icon (hud_posebitmap.cpp's layout) */
 class PoseBitmap : public C2DBitmap {
 public:
     PoseBitmap();
-    virtual ~PoseBitmap();
     void Clear();
     void ReInit();
-    unsigned char _80[0x150 - 0x80];
-} __attribute__((aligned(16)));
+
+    int m_curpose;   // 0x80
+    zdb::CTexture *m_posetex[3];   // 0x84
+    float m_posx;   // 0x90
+    float m_posy;   // 0x94
+    unsigned char m_error;   // 0x98
+    C2DString m_text;   // 0x9c
+    float m_textposx;   // 0x134
+    float m_textposy;   // 0x138
+    C2DFont *m_myfont;   // 0x13c
+    float m_trans;   // 0x140
+};   // 0x150 bytes
 
 /* the reticle's bitmaps and strings (0x47B0 bytes); 0x215180 turns on its bitmap at 0x34 (the
- * paused HUD's Off keeps it) */
+ * paused HUD's Off keeps it). Its destructor is its unit's own (0x219090): ~CHUD calls it */
 class BitmapReticule : public C2D {
 public:
     BitmapReticule();
@@ -339,13 +424,17 @@ extern "C" void func_00215180(BitmapReticule *reticule);
 class CTeamNames : public C2D {
 public:
     CTeamNames();
-    /* declared here so that this unit emits no copy: its members are not placed (the linked
-     * copy, 0x1FD730, is an implicit one; ~CHUD will need the real shape) */
-    virtual ~CTeamNames();
     void Init();
     void Clear();
-    unsigned char _18[0xf30 - 0x18];
-} __attribute__((aligned(16)));
+
+    unsigned char _18[0x28 - 0x18];
+    CHudBrightText m_names[4];   // 0x28
+    C2DString m_texts[4];   // 0x288
+    C2DBitmap m_bitmap1;   // 0x4f0
+    C2DBitmap m_bitmap2;   // 0x570
+    CHealthBar m_healthbars[4];   // 0x5f0
+    C2DBitmap m_icons[4];   // 0xd30
+} __attribute__((aligned(16)));   // 0xf30 bytes
 
 class CSpectatorInfo : public C2D {
 public:
@@ -357,6 +446,7 @@ public:
 class CZPauseTest {
 public:
     CZPauseTest();
+    ~CZPauseTest();
     void Clear();
     void ClosePauseMenu();
     unsigned char _0[0x13c0];
@@ -598,6 +688,72 @@ bool CHUD::ReleaseHUD(CHUD **ppHud)
     return true;
 }
 
+/* what ~CHUD calls, not named yet: the network HUD's clean-ups (0x2370D0 on the state at
+ * 0x413120, 0x22F3B0 a flag, 0x23B200 on the bss object at 0x414680, in single player), the
+ * string table's unregister by name (0x3A3740), the fourth queue's (0x2CA050) and two of ztwod's
+ * static setters (0x363E60, 0x363E50: floats at 0x49E9A0 and 0x49E9A8) */
+class CameraZoom {
+public:
+    static void Reset();
+};
+
+void hudTurnOffScorePopup();
+struct CHudNetState;
+extern CHudNetState data_00413120;
+struct CHudScoreState;
+extern CHudScoreState data_00414680;
+extern unsigned char data_003DC3E0;
+extern "C" void func_002370D0(CHudNetState *state);
+extern "C" void func_0022F3B0();
+extern "C" void func_0023B200(CHudScoreState *state);
+extern "C" void func_003A3740(CStringTables *tables, const char *name);
+extern "C" void func_002CA050(C2DMessage_Q *q);
+extern "C" void func_00363E60(float f);
+extern "C" void func_00363E50(float f);
+
+/* the HUD taken down: the action icon's textures let go, the network HUD's states cleared, the
+ * map deleted, the HUD's string table unregistered, the zoom reset, the fourth queue's, ztwod's
+ * two statics zeroed, the flag at 0x3DC3E0 set and the score popup off; then every member's
+ * destructor, inlined -- whole, but the weapon selectors' (CWeaponSel, CMPWeaponSel), the info
+ * box's and the texture lists', each one level (their trees too tall), calling their members'.
+ * OPEN, 6 instructions long (0xA58 against 0xA40), in two places -- the rest lines up:
+ * (1) the lens flare manager: the target inlines its destructor whole (four this tests, the
+ * vtable store, the range erase), which needs the pointer list's destructor three high; include/
+ * list's is taller (probe build/scratch/hud/p/c6.cpp: a class over list<T *> calls ~list), as
+ * ~CEntityList (0x2A00C0, the entity lane's: ~list inlined one level) needs it -- the two targets
+ * disagree under the level-4 rule, so the list's shape is the entity lane's to settle;
+ * (2) the texture lists. The target's CDynTexList destructor goes one level
+ * and calls two class destructors of four this tests each (0x1FC5A0, 0x1FC520: SOCOM 1's
+ * zdb::CTexList and CTexPalList, classes over the pointer vectors), and its out-of-line copy
+ * (0x1FDCE0) is linked unreferenced -- a probe reproduces all three with the classes
+ * (build/scratch/hud/p/c1.cpp). But the classes make CHUD's constructor call their constructors
+ * where the target inlines CDynTexList's whole (six stores; CVisual's constructor, 0x3C4390,
+ * too): with include/vector's pointer vector (constructor three high, as __vector_pod's user
+ * copy constructor 0x259B40 forces) the class makes it five. Only a chain where one destructor
+ * level has no constructor level gives both (p/c4.cpp: the pod trivially constructible, the
+ * zeroing one level up), which that copy constructor rules out. Typedefs here, so the
+ * constructor holds; this destructor inlines the vectors whole instead */
+CHUD::~CHUD()
+{
+    m_actionbitmap.UnInit();
+    func_002370D0(&data_00413120);
+    func_0022F3B0();
+    if (!theNetwork.m_bNetwork)
+        func_0023B200(&data_00414680);
+    if (m_newmap) {
+        delete m_newmap;
+        m_newmap = 0;
+    }
+    theHUD = 0;
+    func_003A3740(func_00361BC0(), "HudCommon");
+    CameraZoom::Reset();
+    func_002CA050(&theMission.m_messages4);
+    func_00363E60(0.0f);
+    func_00363E50(0.0f);
+    data_003DC3E0 = 1;
+    hudTurnOffScorePopup();
+}
+
 /* while the HUD draws, one of its three phase lists drawn (the HUD's three render phases) */
 void CHUD::DrawPhase(zdb::_RenderPhase phase, zdb::CCamera *cam)
 {
@@ -677,12 +833,6 @@ void CHUD::ReInit_Uninit()
     m_lensflares.Reset();
     func_00237310(&data_00413120);
 }
-
-
-class CameraZoom {
-public:
-    static void Reset();
-};
 
 extern "C" int sprintf(char *buf, const char *fmt, ...);
 
