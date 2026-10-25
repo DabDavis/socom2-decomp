@@ -669,6 +669,9 @@
 0x00415F68 0x4 bone_archive_version  # OVL1 bss; SOCOM 1's (gp-29452 there, bone_init.cpp's): the version both archives' ZARs open with (zBoneLoad's and zBoneLoadMap's Open calls pass it) -- 3 references in 2 functions
 0x00415F70 0x4 curArchive  # OVL1 bss; ours (bone_init.cpp's): the CScriptArchive scripts are read into -- set to an archive by the loaders, cleared by zBoneUnloadAll, read by CZSIScript::Read and CreateAndReadIt; 11 references in 7 functions
 0x00415F78 0x4 numSiObject  # OVL1 bss; SOCOM 1's (gp-29444 there, si_object.cpp's): the objects alive -- CZSIObject's constructor counts it up and its destructor down, 2 references each
+0x00415F80 0x10 siFloatBuf  # OVL1 bss; ours (si_object.cpp's file static, 16-aligned): the VU0 conversions' float result, copied out to the position -- the track readers' sqc2 target
+0x00415F90 0x10 siIntBuf  # OVL1 bss; ours (si_object.cpp's file static, 16-aligned): a frame's shorts widened to ints for lqc2/vitof
+0x00415FA0 0x10 siIntBuf2  # OVL1 bss; ours (si_object.cpp's file static, 16-aligned): the second frame's ints for GetPosRaw's interpolation
 0x00415FB0 0x4 numSiScript  # OVL1 bss; SOCOM 1's (gp-29440 there, si_script.cpp's): the scripts alive -- CZSIScript's constructor and CreateAndReadIt count it up, its destructor down; 6 references in 3 functions
 0x00415FB8 0x4 numSiCommon  # OVL1 bss; SOCOM 1's (gp-29436 there, si_script.cpp's): the script commons alive -- CZSIScriptCommon's constructor counts it up, its destructor down; 4 references in 2 functions
 0x00415FF0 0x4 appCamera  # OVL1 bss; SOCOM 1's (CHUD::GetHUDOwner reads its owner, as SOCOM 1's read gp-29416): 87 references in 61 functions take 0x415FF0

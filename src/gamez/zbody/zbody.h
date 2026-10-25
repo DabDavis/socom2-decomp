@@ -654,7 +654,16 @@ public:
     bool Read(CZSIScript *script, zar::CZAR &zar);
     bool Initalize(CZSIScriptCommon *common);
     /* the track's velocity between two frames (SOCOM 1's took the CZSIScript) */
-    void GetVelRaw(CZSIScriptCommon *script, int f0, int f1, CPnt3D *vel);
+    CPnt3D *GetVelRaw(CZSIScriptCommon *script, int f0, int f1, CPnt3D *vel);
+    /* the track at a frame: the rotation as four 1.15 shorts, the position as three 8.8 shorts,
+     * converted through VU0 (SOCOM II's; SOCOM 1 kept floats) -- one frame, the nearer of two, or
+     * between two (SOCOM 1's Fast and Raw readers) */
+    void GetRot(int frame, CQuat *rot);
+    void GetPos(int frame, CPnt3D *pos);
+    CQuat *GetRotFast(int f0, int f1, float t, CQuat *rot);
+    CQuat *GetRotRaw(int f0, int f1, float t, CQuat *rot);
+    CPnt3D *GetPosFast(int f0, int f1, float t, CPnt3D *pos);
+    CPnt3D *GetPosRaw(int f0, int f1, float t, CPnt3D *pos);
 
     short *m_positionData;   // 0x0
     short *m_rotations;   // 0x4

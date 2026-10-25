@@ -16,8 +16,6 @@ extern "C" int strncasecmp(const char *a, const char *b, size_t n);
 /* the pod vector's resize, OVL1's out-of-line copy (include/vector has no resize; MAIN's
  * 0x18B050 carries the name) */
 extern "C" void func_0028B0E0(void *vec, unsigned int n, const unsigned int &x);
-/* an object's position at a frame (si_object.cpp's, not named yet) */
-extern "C" void func_00289A30(CZSIObject *obj, int frame, CPnt3D *pos);
 
 int CZSIScript::m_version = 5;
 int siNumBodyObjects = 32;
@@ -140,8 +138,8 @@ void CZSIScriptCommon::CalcDistance()
         CPnt3D p1;
         CPnt3D d;
 
-        func_00289A30(root, 0, &p0);
-        func_00289A30(root, m_nFrames - 1, &p1);
+        root->GetPos(0, &p0);
+        root->GetPos(m_nFrames - 1, &p1);
         p1.Sub(&p0, &d);
         if (m_looped && m_nFrames > 1) {
             float n = (unsigned int)m_nFrames;
