@@ -5627,7 +5627,7 @@
 0x00320760 0x8 Uninit__Q23zdb6CWorldFv  # OVL1; s1:order by hand (SOCOM 1's Uninit, Init, GetVersion in that order, each as empty)
 0x00320770 0x8 Init__Q23zdb6CWorldFv  # OVL1; s1:order by hand (SOCOM 1's Init, between Uninit and GetVersion)
 0x00320780 0xC GetVersion__Q23zdb6CWorldFv  # OVL1; s1:exact by hand (SOCOM 1's GetVersion, the same three words returning 0x10001, after Uninit and Init as there; Load and LoadAssetLib_PS2 pass it to the archive's Open)
-0x00320790 0x6C func_00320790  # OVL1
+0x00320790 0x6C remove_copy<Q33std70__vector_imp<PQ23zdb9CLightMap,Q23std28allocator<PQ23zdb9CLightMap>,1>8iterator,Q33std70__vector_imp<PQ23zdb9CLightMap,Q23std28allocator<PQ23zdb9CLightMap>,1>8iterator,PQ23zdb9CLightMap>__3stdFQ33std70__vector_imp<PQ23zdb9CLightMap,Q23std28allocator<PQ23zdb9CLightMap>,1>8iteratorQ33std70__vector_imp<PQ23zdb9CLightMap,Q23std28allocator<PQ23zdb9CLightMap>,1>8iteratorQ33std70__vector_imp<PQ23zdb9CLightMap,Q23std28allocator<PQ23zdb9CLightMap>,1>8iteratorRCPQ23zdb9CLightMap_Q33std70__vector_imp<PQ23zdb9CLightMap,Q23std28allocator<PQ23zdb9CLightMap>,1>8iterator  # OVL1; the std::remove_copy instance DeleteLightMap calls (SOCOM 1's remove_copy<CLightMap **> at the same place, after GetVersion; SOCOM II's iterators are classes, by value on the stack)
 0x00320800 0x110 func_00320800  # OVL1
 0x00320910 0xE4 func_00320910  # OVL1
 0x00320A00 0xB4 func_00320A00  # OVL1
