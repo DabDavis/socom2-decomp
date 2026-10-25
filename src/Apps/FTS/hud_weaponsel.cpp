@@ -9,11 +9,17 @@
 #include "../../gamez/zinput/zinput.h"
 #include "hud_weaponsel.h"
 
-/* the seal's kit: the reticule switch (SOCOM 1's SetCurReticule, a flag added) */
+/* the seal's kit: the reticule switch (SOCOM 1's SetCurReticule, a flag added), its items and
+ * their icons */
 class CZKit {
 public:
     void SetCurReticule(bool flag);
+    int GetNumItems() const;
+    zdb::CTexHandle *GetIcon(int index);
 };
+
+/* SOCOM 1's CZKit::isSelectableItem (OVL2 0x5BDC30, the row unnamed: called as C) */
+extern "C" int func_005BDC30(CZKit *kit, int index);
 
 /* the seal's controller as the selector reads it: the pad it reads (SOCOM 1's at 0xE8) */
 class CSealCtrl {
@@ -32,6 +38,17 @@ public:
     CSealCtrl *m_ctrl;   // 0xc0
     unsigned char _c4[0x5e0 - 0xc4];
     CZKit m_kit;   // 0x5e0
+
+    CZKit *GetKit() { return &m_kit; }
+};
+
+/* the selector's sounds: the second slot plays one (zsnd.h's PlaySound(inst, flags)) */
+class CSnd {
+public:
+    virtual ~CSnd();
+    virtual void *PlaySound(void *inst, unsigned int flags);
+
+    static CSnd *GetSoundByName(const char *name);
 };
 
 /* a pad by its index, none past the last (SOCOM 1's inline over CInput's table) */
@@ -65,10 +82,6 @@ public:
 /* a texture of the world's by name (hud_main.cpp's) */
 zdb::CTexture *GetTextureByName(zdb::CWorld *world, const char *name);
 
-class CSnd {
-public:
-    static CSnd *GetSoundByName(const char *name);
-};
 
 /* the corner boxes' and the off arrow's textures (hud_main.cpp's data; SOCOM 1's
  * c_szCornerBoxesTx) */
@@ -240,6 +253,116 @@ void CWeaponSel::AfterCloseFirst()
     m_weaponicon[2].Off();
 }
 
+/* the item after `item` the HUD owner's kit can select, wrapping round (none without an owner) */
+static inline int NextItem(int cur)
+{
+    CZSealBody *seal = CHUD::GetHUDOwner();
+
+    if (!seal)
+        return 0;
+
+    int next = cur + 1;
+
+    if (next >= seal->m_kit.GetNumItems())
+        next = 0;
+    while (!(bool)func_005BDC30(seal->GetKit(), next)) {
+        next++;
+        if (next >= seal->m_kit.GetNumItems())
+            next = 0;
+    }
+    return next;
+}
+
+/* the item before `cur` the HUD owner's kit can select, wrapping round (none without an owner) */
+static inline int PrevItem(int cur)
+{
+    CZSealBody *seal = CHUD::GetHUDOwner();
+
+    if (!seal)
+        return 0;
+
+    int prev = cur - 1;
+
+    if (prev < 0)
+        prev = seal->m_kit.GetNumItems() - 1;
+    while (!(bool)func_005BDC30(seal->GetKit(), prev)) {
+        prev--;
+        if (prev < 0)
+            prev = seal->m_kit.GetNumItems() - 1;
+    }
+    return prev;
+}
+
+/* scrolling down: the fourth row brought in at the first's place with the item before it, the
+ * arrows lit (the lower one brighter), the rows' fades set, the scroll sound played, the texts off */
+void CWeaponSel::OnScrollDown()
+{
+    m_openstate = 5;
+    m_menuposx[3] = m_menuposx[0];
+    m_menuposy[3] = m_menuposy[0];
+    m_menugoalx = 0.0f;
+    m_menugoaly = m_menuposy[2] - m_menuposy[1];
+
+    CZSealBody *seal = CHUD::GetHUDOwner();
+
+    if (!seal)
+        return;
+
+    int prev = PrevItem(m_weaponnum[0]);
+
+    m_weapontex[3] = seal->m_kit.GetIcon(prev);
+    m_weaponnum[3] = prev;
+    m_weaponicon[3].Load(m_menuposx[3] + m_iconoffsetx, m_menuposy[3] + m_iconoffsety, m_weapontex[3]);
+    m_weaponicon[3].On();
+    m_arrow[1].SetTrans(128.0f);
+    m_arrow[1].SetColor(100.0f, 100.0f, 100.0f);
+    m_arrow[0].SetColor(60.0f, 60.0f, 60.0f);
+    m_arrowcolor = 50.0f;
+    m_arrowincrement = 1;
+    m_goaltrans[0] = 127.0f;
+    m_curtrans[0] = 40.0f;
+    m_goaltrans[1] = 40.0f;
+    m_curtrans[1] = 127.0f;
+    if (m_scrolldownsound)
+        m_scrolldownsound->PlaySound(0, 255);
+    TextOff();
+}
+
+/* scrolling up: the fourth row brought in below the third with the item after it, the arrows lit
+ * (the upper one brighter), the rows' fades set, the scroll sound played, the texts off */
+void CWeaponSel::OnScrollUp()
+{
+    m_openstate = 4;
+    m_menuposx[3] = m_menuposx[2];
+    m_menuposy[3] = m_menuposy[2];
+    m_menugoalx = 0.0f;
+    m_menugoaly = m_menuposy[2] - m_menuposy[1];
+
+    CZSealBody *seal = CHUD::GetHUDOwner();
+
+    if (!seal)
+        return;
+
+    int next = NextItem(m_weaponnum[2]);
+
+    m_weaponnum[3] = next;
+    m_weapontex[3] = seal->m_kit.GetIcon(next);
+    m_weaponicon[3].Load(m_menuposx[3] + m_iconoffsetx, m_menuposy[3] + m_iconoffsety, m_weapontex[3]);
+    m_weaponicon[3].On();
+    m_arrow[0].SetTrans(128.0f);
+    m_arrow[0].SetColor(100.0f, 100.0f, 100.0f);
+    m_arrow[1].SetColor(60.0f, 60.0f, 60.0f);
+    m_arrowcolor = 50.0f;
+    m_arrowincrement = 1;
+    m_goaltrans[0] = 40.0f;
+    m_curtrans[0] = 127.0f;
+    m_goaltrans[1] = 127.0f;
+    m_curtrans[1] = 40.0f;
+    if (m_scrollupsound)
+        m_scrollupsound->PlaySound(0, 255);
+    TextOff();
+}
+
 /* shut: the seal's menu state back to none, its pad's cross, circle and triangle released, the
  * icons, arrows and weapon texts off, closed (0) */
 void CWeaponSel::AfterClose()
@@ -267,5 +390,77 @@ void CWeaponSel::AfterClose()
         m_ammocount.Off();
         m_magcount.Off();
         m_openstate = 0;
+    }
+}
+
+/* scrolled down: each row takes the one above it (the top row the hidden fourth's), the fourth
+ * icon off, the arrows dimmed to 70, the HUD's reticule on, the colour pulse restarted, the icons
+ * dimmed but the middle one, the texts placed again (SOCOM 1's, the selection backings gone) */
+void CWeaponSel::AfterScrollDown()
+{
+    if (CHUD::GetHUDOwner()) {
+        m_openstate = 3;
+        m_current_item = m_weaponnum[0];
+        m_menuposx[2] = m_menuposx[1];
+        m_menuposy[2] = m_menuposy[1];
+        m_weapontex[2] = m_weapontex[1];
+        m_weaponicon[2].Load(m_menuposx[2] + m_iconoffsetx, m_menuposy[2] + m_iconoffsety, m_weapontex[2]);
+        m_weaponnum[2] = m_weaponnum[1];
+        m_menuposx[1] = m_menuposx[0];
+        m_menuposy[1] = m_menuposy[0];
+        m_weapontex[1] = m_weapontex[0];
+        m_weaponicon[1].Load(m_menuposx[1] + m_iconoffsetx, m_menuposy[1] + m_iconoffsety, m_weapontex[1]);
+        m_weaponnum[1] = m_weaponnum[0];
+        m_menuposx[0] = m_menuposx[3];
+        m_menuposy[0] = m_menuposy[3];
+        m_weapontex[0] = m_weapontex[3];
+        m_weaponicon[0].Load(m_menuposx[0] + m_iconoffsetx, m_menuposy[0] + m_iconoffsety, m_weapontex[0]);
+        m_weaponnum[0] = m_weaponnum[3];
+        m_weaponicon[3].Off();
+        m_arrow[0].SetTrans(70.0f);
+        m_arrow[1].SetTrans(70.0f);
+        m_parent->m_usehudret = true;
+        m_curcolor = 1.0f;
+        m_incCurcolor = 0;
+        for (int i = 0; i < 4; i++)
+            m_weaponicon[i].SetTrans(40.0f);
+        m_weaponicon[1].SetTrans(128.0f);
+        PlaceWeaponText();
+        PlaceHotSwapLabels();
+    }
+}
+
+/* scrolled up: each row takes the one below it, as AfterScrollDown the other way round */
+void CWeaponSel::AfterScrollUp()
+{
+    if (CHUD::GetHUDOwner()) {
+        m_openstate = 3;
+        m_current_item = m_weaponnum[2];
+        m_menuposx[0] = m_menuposx[1];
+        m_menuposy[0] = m_menuposy[1];
+        m_weapontex[0] = m_weapontex[1];
+        m_weaponicon[0].Load(m_menuposx[0] + m_iconoffsetx, m_menuposy[0] + m_iconoffsety, m_weapontex[0]);
+        m_weaponnum[0] = m_weaponnum[1];
+        m_menuposx[1] = m_menuposx[2];
+        m_menuposy[1] = m_menuposy[2];
+        m_weapontex[1] = m_weapontex[2];
+        m_weaponicon[1].Load(m_menuposx[1] + m_iconoffsetx, m_menuposy[1] + m_iconoffsety, m_weapontex[1]);
+        m_weaponnum[1] = m_weaponnum[2];
+        m_menuposx[2] = m_menuposx[3];
+        m_menuposy[2] = m_menuposy[3];
+        m_weapontex[2] = m_weapontex[3];
+        m_weaponicon[2].Load(m_menuposx[2] + m_iconoffsetx, m_menuposy[2] + m_iconoffsety, m_weapontex[2]);
+        m_weaponnum[2] = m_weaponnum[3];
+        m_weaponicon[3].Off();
+        m_arrow[0].SetTrans(70.0f);
+        m_arrow[1].SetTrans(70.0f);
+        m_parent->m_usehudret = true;
+        m_curcolor = 1.0f;
+        m_incCurcolor = 0;
+        for (int i = 0; i < 4; i++)
+            m_weaponicon[i].SetTrans(40.0f);
+        m_weaponicon[1].SetTrans(128.0f);
+        PlaceWeaponText();
+        PlaceHotSwapLabels();
     }
 }

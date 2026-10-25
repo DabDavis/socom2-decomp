@@ -32,6 +32,14 @@ public:
     void OnClose();
     void AfterCloseFirst();
     void AfterClose();
+    void AfterScrollUp();
+    void AfterScrollDown();
+    void OnScrollUp();
+    void OnScrollDown();
+    /* the selected weapon's texts and the hot-swap labels placed (SOCOM 1's, 0x2193D0 and
+     * 0x2196F0) */
+    void PlaceWeaponText();
+    void PlaceHotSwapLabels();
 
     /* the texts off, and let go of (one line each in SOCOM 1's OnClose and UnInit: inline) */
     void TextOff()
