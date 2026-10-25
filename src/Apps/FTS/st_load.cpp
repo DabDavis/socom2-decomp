@@ -25,9 +25,30 @@ extern "C" char *strncpy(char *dst, const char *src, unsigned int n);
 extern "C" int strcmp(const char *a, const char *b);
 const char *GetDatabase();
 
-/* the online game's state (unnamed: only its flags here) */
-class CNetGame {
+/* the online game's state (SOCOM 1's CZNetGame: only its flags here and the two states it sets) */
+class CZNetGame {
 public:
+    enum MP_MINOR_GAME_STATE {
+        MP_MINOR_UNKNOWN = 0,
+        MP_MINOR_NOTREADY = 1,
+        MP_MINOR_READY = 2
+    };
+    enum MP_MAJOR_GAME_STATE {
+        MP_MAJOR_UNKNOWN = 0,
+        MP_MAJOR_MENUS = 1,
+        MP_MAJOR_LOADING = 2,
+        MP_MAJOR_INPLAY = 3,
+        MP_MAJOR_ROUNDOVER = 4,
+        MP_MAJOR_NEWROUND = 5,
+        MP_MAJOR_GAMEOVER = 6,
+        MP_MAJOR_PLAY = 12,
+        MP_MAJOR_GAMELOBBY = 13,
+        MP_MAJOR_GHOST = 14
+    };
+
+    MP_MAJOR_GAME_STATE MPMajorGameState(MP_MAJOR_GAME_STATE state);
+    MP_MINOR_GAME_STATE MyMinorGameState(MP_MINOR_GAME_STATE state);
+
     unsigned char _0[0xcc];
     unsigned char m_cc;   // 0xcc
     unsigned char m_cd;   // 0xcd
@@ -44,14 +65,17 @@ public:
     static void UninitBomb();
 };
 
+class CZPersonaState {
+public:
+    static void UpdateLocalPersona();
+};
+
 extern "C" {
 void func_002AF360(const char *name);
 zdb::CAssetLib *func_00320D70(const char *name); /* zdb::CAssetMgr's library load */
 void func_003A3900(void *snd, const char *bank, void *arg);
 void *func_003A4460();
 void func_00368570(CGameMenu *menu, void *reloc, CZAnimZAR *zar);   /* CGameMenu::Init */
-void func_002A73B0(CNetGame *game, int arg);
-void func_002C5360();
 void func_002C2C20(int arg);
 void func_0030E6E0(void *net, int arg);
 void func_0030E7F0(void *net);
@@ -60,7 +84,6 @@ void func_0030E5A0(void *net, bool arg);
 void func_002BD630();
 void func_002C79E0();
 void func_002BB1D0();
-void func_002A7490(CNetGame *game, int arg);
 
 extern void (*data_0044F3CC)(int);               /* the net error handler */
 extern void *data_0045B718;
@@ -113,15 +136,15 @@ bool CLoadState::Init()
     m_18 = false;
     m_19 = true;
     if (theNetwork.m_9) {
-        CNetGame *game = theMission.m_netGame;
+        CZNetGame *game = theMission.m_netGame;
 
         data_0044F3CC = CMission::_RecoverFromNetError;
         CZBombState::UninitBomb();
         game->m_d0 = 0;
         game->m_cd = 0;
-        func_002A73B0(game, 1);
+        game->MyMinorGameState(CZNetGame::MP_MINOR_NOTREADY);
         if (!game->m_cc) {
-            func_002C5360();
+            CZPersonaState::UpdateLocalPersona();
             func_002C2C20(0);
             func_0030E6E0(data_0045B718, 0);
             func_0030E7F0(data_0045B718);
@@ -138,7 +161,7 @@ bool CLoadState::Init()
         func_002BB1D0();
     }
     if (theNetwork.m_9 && !theNetwork.m_8 && theMission.m_netGame->m_cc)
-        func_002A7490(theMission.m_netGame, 2);
+        theMission.m_netGame->MPMajorGameState(CZNetGame::MP_MAJOR_LOADING);
     zVid_Sync0();
     if (theNetwork.m_9) {
         const char *mission = theMission.m_1c;

@@ -18,6 +18,8 @@ public:
     unsigned char _4[0x171 - 0x4];
     unsigned char _171_0 : 3;
     unsigned char m_input_enabled : 1;   // 0x171, bit 3 (SOCOM 1's at 0x169)
+    unsigned char _171_4 : 3;
+    unsigned char m_171_7 : 1;   // 0x171, bit 7
     unsigned char _172[0x250 - 0x172];
 };
 
@@ -42,8 +44,13 @@ public:
     virtual ~CSealCtrlCopy();
 };
 
+/* a character type (only its temporary types' cleanup) */
+class CCharacterType {
+public:
+    static void CleanupTemporary();
+};
+
 /* the SEAL (only what this unit touches) */
-class CCharacterType;
 
 class CZSealBody : public CEntity {
 public:
@@ -102,8 +109,14 @@ public:
 
 extern CSpawners spawners;
 
+/* the vehicles' rdr (only its opening and closing) */
+class CVehicleRdr {
+public:
+    void Open(const char *name);
+    void Close();
+};
+
 /* the mission (only what this unit touches, at SOCOM II's offsets) */
-class CVehicleRdr;
 
 class CMission {
 public:
@@ -130,10 +143,7 @@ void func_005EC9F0(CZSealBody *seal, int arg);   /* CSealUnit::InitalizeSealUnit
 void func_0026ADA0(CZAnimMain *zanim, zdb::CNode *node);
 
 CValve *func_003520D0(const char *name, unsigned int value, VALVE_TYPE type);   /* CValve::Create,
-                                                                       SOCOM 1's with a value */
-void func_0053DF50();   /* CCharacterType::CleanupTemporary */
-void func_00533920(CVehicleRdr *rdr);   /* CVehicleRdr::Close */
-void func_005337F0(CVehicleRdr *rdr, const char *name);   /* CVehicleRdr::Open */
+                                     SOCOM 1's with a value: zanim.h's CValve lacks the overload */
 }
 
 /* the squirm switch (SOCOM 1's file static) */
@@ -141,6 +151,13 @@ static bool doSquirm;
 
 int sprintf(char *buf, const char *fmt, ...);
 void *operator new(unsigned int size);
+
+/* a controller's flag at 0x171, bit 7, set (SOCOM II's; OVL1 0x2B3C70, after the copy
+ * controller's destructor) */
+extern "C" void func_002B3C70(CSealCtrl *ctrl, bool on)
+{
+    ctrl->m_171_7 = on;
+}
 
 /* (OVL1 0x2B3B70: the copy controller's, linked after the unit's functions as SOCOM 1's is) */
 CSealCtrlCopy::~CSealCtrlCopy()
@@ -346,31 +363,31 @@ unsigned int ParseTeamBlock(_zrdr *rdr)
 void CMission::OpenVehicleRdr()
 {
     if (m_vehicle_rdr)
-        func_005337F0(m_vehicle_rdr, "vehicles.rdr");
+        m_vehicle_rdr->Open("vehicles.rdr");
 }
 
 void CMission::CloseVehicleRdr()
 {
-    func_0053DF50();
+    CCharacterType::CleanupTemporary();
     if (m_vehicle_rdr)
-        func_00533920(m_vehicle_rdr);
+        m_vehicle_rdr->Close();
 }
 
 /* an entity given back: a SEAL's anims stopped, or, with vehicles waiting, the spawners' timer
- * restarted and one more owed (OVL1 0x2B2310; SOCOM 1's had only the second).
- * OPEN, 4 instructions: the timer's and the count's stores. The target takes the constant 2.0 into
- * v0 and stores it before the increment (lui v0; lw v1; sw v0; addiu v0,v1,1 -- SOCOM 1's
- * RecycleEntity has the same four); this keeps the count in v0 and stores both after the add.
- * Tried: the two statements swapped, `+= 1`, `= n + 1` through a local, the object through a
- * reference or pointer local, an inline member, the two arms of the if swapped. */
+ * restarted and one more owed (OVL1 0x2B2310; SOCOM 1's had only the second). The count is read
+ * into a local before the timer's store: only so does the constant take v0 and the store go ahead
+ * of the add (lui v0; lw v1; sw v0; addiu v0,v1,1), as in both builds; `m_count++` after the
+ * store coalesces the sum with the load and stores both after the add. */
 void CMission::RecycleEntity(CEntity *e)
 {
     bool b = e->m_bit13;
 
     if (b || spawners.m_spawns.size()) {
         if (!b) {
+            int n = spawners.m_count;
+
             spawners.m_timer = 2.0f;
-            spawners.m_count++;
+            spawners.m_count = n + 1;
         } else
             func_0026ADA0(&ZAnim, e->GetNode());
         CEntity::RecycleEntity(e);

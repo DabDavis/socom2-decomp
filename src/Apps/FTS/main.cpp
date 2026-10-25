@@ -15,7 +15,6 @@ unsigned int strlen(const char *s);
 void func_003AFF30(bool wait, bool swap);        /* zVid_Swap */
 void func_003566C0(TexBufferVector *texmanager, const char *name, float a, float b);   /* zdb::CTexManager::doAddBuffer */
 void func_0038A7A0();                            /* InitSystemTuners */
-void func_003520D0(const char *name, int value, int flag);
 void func_002ACC10(CMission *mission, const char *database);   /* CMission::PreOpen */
 zdb::CAssetLib *func_00320D70(const char *name); /* zdb::CAssetMgr::GetLoadedLibRef */
 void func_002E0450(void *lobby);                 /* CZOnlineLobby::Init */
@@ -34,6 +33,15 @@ extern char data_00414680[];
 
 const char *GetDatabase();
 extern char theUIVarManager[];
+
+/* a valve: a named value (only its creation, SOCOM 1's CValve::Create with SOCOM II's value; the
+ * type's values are not in SOCOM 1's DWARF, as zanim.h says) */
+enum VALVE_TYPE {};
+
+class CValve {
+public:
+    static CValve *Create(const char *name, unsigned int value, VALVE_TYPE type);
+};
 
 /* the online lobby (SOCOM 1's theLobby) */
 extern char theLobby[];
@@ -57,8 +65,8 @@ bool COurGame::StartEngine()
         func_003566C0(&zdb::CTexManager::m_texmanager, "default", 0.0f, 1.0f);
         theMission.Init();
         func_0038A7A0();
-        func_003520D0("R_NAME_SIZE", 31, 1);
-        func_003520D0("MAX_CHAT_TEXT_LENGTH", 99, 1);
+        CValve::Create("R_NAME_SIZE", 31, (VALVE_TYPE)1);
+        CValve::Create("MAX_CHAT_TEXT_LENGTH", 99, (VALVE_TYPE)1);
         if (GetDatabase() && strlen(GetDatabase()))
             func_002ACC10(&theMission, GetDatabase());
         ((unsigned char *)func_00320D70("common/assetlib/font"))[0x2c] = 0;

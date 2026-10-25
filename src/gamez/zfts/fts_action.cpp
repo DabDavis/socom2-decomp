@@ -38,6 +38,8 @@ public:
     unsigned char m_3e;   // 0x3e
     unsigned char m_networked : 1;   // 0x3f (SOCOM 1's at 0x2e)
     unsigned char m_network_log : 1;
+    unsigned char m_3f_2 : 1;
+    unsigned char m_3f_3 : 1;
 
     static Container m_actions;
 };
@@ -146,6 +148,14 @@ CNodeAction *CNodeAction::GetActionById(unsigned int id)
         if ((*i)->m_id == id)
             return *i;
     return 0;
+}
+
+/* whether the action can start: no anim running, its flag 3 clear or the byte at 0x3E zero, and
+ * its valve not at 99 (SOCOM II's; OVL1 0x2B46F0) */
+extern "C" bool func_002B46F0(CNodeAction *action)
+{
+    return action->m_anim == 0 && (!action->m_3f_3 || action->m_3e == 0) &&
+           action->m_valve->m_value != 99;
 }
 
 /* the action let go by its user (SOCOM II's; OVL1 0x2B49D0) */

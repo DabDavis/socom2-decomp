@@ -4113,16 +4113,16 @@
 0x002C0090 0x5C func_002C0090  # OVL1
 0x002C00F0 0x4EC UpdateLocalGame__11CZGameStateFP9CZNetGame  # OVL1; s1:calls by hand (the states lane: at SOCOM 1's call site)
 0x002C05E0 0xA4 CreateLocalGame__11CZGameStateFP9CZNetGame  # OVL1; s1:calls
-0x002C0690 0x8 func_002C0690  # OVL1
-0x002C06A0 0x108 func_002C06A0  # OVL1
-0x002C07B0 0x98 func_002C07B0  # OVL1
-0x002C0850 0x8CC func_002C0850  # OVL1
-0x002C1120 0x2FC func_002C1120  # OVL1
+0x002C0690 0x8 RemoteGameDeletionCallback__11CZGameStateFii  # OVL1; s1:order by hand (the states lane: zNetRegisterGame (0x2C1120) hands it to 0x30CE80 in the deletion slot, where SOCOM 1's hands RemoteGameDeletionCallback to zNetRegisterRemoteObjectCallback; 8 bytes both, an empty function)
+0x002C06A0 0x108 RemoteGameCreationCallback__11CZGameStateFii  # OVL1; s1:order by hand (the states lane: the creation slot of zNetRegisterGame's registration; after the deletion callback as in SOCOM 1)
+0x002C07B0 0x98 RemoteGamePostUpdateCallback__11CZGameStateFiii  # OVL1; s1:order by hand (the states lane: the post-update slot of zNetRegisterGame's registration; between the creation and update callbacks as in SOCOM 1)
+0x002C0850 0x8CC RemoteGameUpdateCallback__11CZGameStateFiii  # OVL1; s1:order by hand (the states lane: the update slot of zNetRegisterGame's registration; the creation callback calls it with field -1, as SOCOM 1's)
+0x002C1120 0x2FC zNetRegisterGame__11CZGameStateFv  # OVL1; s1:order by hand (the states lane: after RemoteGameUpdateCallback as in SOCOM 1; registers the game object's structure under m_NetStructIndexGameObject with the four game callbacks)
 0x002C1420 0xE4 UpdateLocalGrenade__14CZGrenadeStateFP12CZProjectile  # OVL1; s1:align
 0x002C1510 0xC4 CreateLocalGrenade__14CZGrenadeStateFP12CZProjectile  # OVL1; s1:align
 0x002C15E0 0x84 RemoteGrenadeDeletionCallback__14CZGrenadeStateFii  # OVL1; s1:align
 0x002C1670 0x2C RemoteGrenadePostUpdateCallback__14CZGrenadeStateFiii  # OVL1; s1:align
-0x002C16A0 0x10C func_002C16A0  # OVL1
+0x002C16A0 0x10C RemoteGrenadeUpdateCallback__14CZGrenadeStateFiii  # OVL1; s1:order by hand (the states lane: between the post-update and creation callbacks as in SOCOM 1, and zNetRegisterGrenade hands it to 0x30CE80 in the update slot, where SOCOM 1's hands RemoteGrenadeUpdateCallback to zNetRegisterRemoteObjectCallback)
 0x002C17B0 0xA0 RemoteGrenadeCreationCallback__14CZGrenadeStateFii  # OVL1; s1:align
 0x002C1850 0x118 zNetRegisterGrenade__14CZGrenadeStateFv  # OVL1; s1:align
 0x002C1970 0x110 UninitBomb__11CZBombStateFv  # OVL1; s1:align
@@ -4133,11 +4133,11 @@
 0x002C2090 0x2C RequestNewBombState__11CZBombStateFiQ211CZBombState13EnumBombStatePC6CPnt3D  # OVL1; s1:exact
 0x002C20C0 0x194 UpdateLocalBomb__11CZBombStateFv  # OVL1; s1:align
 0x002C2260 0x13C CreateLocalBomb__11CZBombStateFv  # OVL1; s1:align
-0x002C23A0 0xC func_002C23A0  # OVL1
-0x002C23B0 0x94 func_002C23B0  # OVL1
-0x002C2450 0x134 func_002C2450  # OVL1
+0x002C23A0 0xC RemoteBombDeletionCallback__11CZBombStateFii  # OVL1; s1:order by hand (the states lane: after CreateLocalBomb as in SOCOM 1, and zNetRegisterBomb (0x2C26E0) hands it to 0x30CE80 in the deletion slot, where SOCOM 1's hands RemoteBombDeletionCallback to zNetRegisterRemoteObjectCallback)
+0x002C23B0 0x94 RemoteBombPostUpdateCallback__11CZBombStateFiii  # OVL1; s1:order by hand (the states lane: the post-update slot of zNetRegisterBomb's registration, as SOCOM 1's; its code takes up the object's state and calls ChangeBombState, as SOCOM 1's does)
+0x002C2450 0x134 RemoteBombUpdateCallback__11CZBombStateFiii  # OVL1; s1:order by hand (the states lane: the update slot of zNetRegisterBomb's registration, between the post-update and creation callbacks as in SOCOM 1)
 0x002C2590 0x150 RemoteBombCreationCallback__11CZBombStateFii  # OVL1; s1:calls
-0x002C26E0 0x118 func_002C26E0  # OVL1
+0x002C26E0 0x118 zNetRegisterBomb__11CZBombStateFv  # OVL1; s1:order by hand (the states lane: after RemoteBombCreationCallback as in SOCOM 1; registers "BombState", SOCOM 1's structure name, with the four bomb callbacks)
 0x002C2800 0x254 func_002C2800  # OVL1
 0x002C2A60 0x2C func_002C2A60  # OVL1
 0x002C2A90 0x2C func_002C2A90  # OVL1
@@ -4173,8 +4173,8 @@
 0x002C3B10 0x50 func_002C3B10  # OVL1
 0x002C3B60 0xC8 func_002C3B60  # OVL1
 0x002C3C30 0xC0 func_002C3C30  # OVL1
-0x002C3CF0 0x2CC func_002C3CF0  # OVL1
-0x002C3FC0 0x54 func_002C3FC0  # OVL1
+0x002C3CF0 0x2CC CheckStateSwitch__14CZPersonaStateFv  # OVL1; s1:calls by hand (the states lane: the deletion callback's second call, after UpdatePersonaLists, as SOCOM 1's calls CheckStateSwitch; just before ToggleReady, as in SOCOM 1's order)
+0x002C3FC0 0x54 ToggleReady__14CZPersonaStateFv  # OVL1; s1:exact shape by hand (the states lane: SOCOM 1's ToggleReady, 0x54 both, instruction for instruction: theMission's net game, its minor state 2 -> 1 else 2, then UpdateLocalPersona)
 0x002C4020 0x98 func_002C4020  # OVL1
 0x002C40C0 0x1D0 func_002C40C0  # OVL1
 0x002C4290 0x1A4 func_002C4290  # OVL1
@@ -4186,14 +4186,14 @@
 0x002C4A20 0x128 func_002C4A20  # OVL1
 0x002C4B50 0x294 func_002C4B50  # OVL1
 0x002C4DF0 0x21C func_002C4DF0  # OVL1
-0x002C5010 0x350 func_002C5010  # OVL1
+0x002C5010 0x350 UpdatePersonaLists__14CZPersonaStateFv  # OVL1; s1:calls by hand (the states lane: the deletion and post-update callbacks call it where SOCOM 1's call UpdatePersonaLists; just before UpdateLocalPersona, as in SOCOM 1's order)
 0x002C5360 0xE4 UpdateLocalPersona__14CZPersonaStateFv  # OVL1; s1:calls by hand (the states lane: at SOCOM 1's call site)
 0x002C5450 0x2F8 CreateLocalPersona__14CZPersonaStateFv  # OVL1; s1:calls by hand (the states lane: at SOCOM 1's call site in the network setup)
-0x002C5750 0x80 func_002C5750  # OVL1
-0x002C57D0 0x24 func_002C57D0  # OVL1
-0x002C5800 0x2C func_002C5800  # OVL1
-0x002C5830 0x1DC func_002C5830  # OVL1
-0x002C5A10 0x278 func_002C5A10  # OVL1
+0x002C5750 0x80 RemotePersonaDeletionCallback__14CZPersonaStateFii  # OVL1; s1:order by hand (the states lane: zNetRegisterPersona (0x2C5A10) hands it to 0x30CE80 in the deletion slot; like SOCOM 1's it looks the object up, forgets the client's persona and calls UpdatePersonaLists and CheckStateSwitch)
+0x002C57D0 0x24 RemotePersonaPostUpdateCallback__14CZPersonaStateFiii  # OVL1; s1:order by hand (the states lane: the post-update slot of zNetRegisterPersona's registration; UpdatePersonaLists then UpdateLocalPersona, SOCOM 1's two calls, 0x24 both)
+0x002C5800 0x2C RemotePersonaUpdateCallback__14CZPersonaStateFiii  # OVL1; s1:order by hand (the states lane: the update slot of zNetRegisterPersona's registration, between the post-update and creation callbacks as in SOCOM 1)
+0x002C5830 0x1DC RemotePersonaCreationCallback__14CZPersonaStateFii  # OVL1; s1:order by hand (the states lane: the creation slot of zNetRegisterPersona's registration, before it as in SOCOM 1)
+0x002C5A10 0x278 zNetRegisterPersona__14CZPersonaStateFv  # OVL1; s1:order by hand (the states lane: the persona unit's last function as in SOCOM 1; registers the four persona callbacks under 0x4413E0, SOCOM 1's m_NetStructIndexPersonaObject)
 0x002C5C90 0x80 func_002C5C90  # OVL1
 0x002C5D10 0x44 func_002C5D10  # OVL1
 0x002C5D60 0x110 func_002C5D60  # OVL1
@@ -4211,10 +4211,10 @@
 0x002C6280 0x10 func_002C6280  # OVL1
 0x002C6290 0xC0 func_002C6290  # OVL1
 0x002C6350 0x80 func_002C6350  # OVL1
-0x002C63D0 0x20 func_002C63D0  # OVL1
+0x002C63D0 0x1C IsJumpAndActionShared__13CCtrlrConfigsFv  # OVL1; s1:exact shape by hand (the states lane: SOCOM 1's IsJumpAndActionShared instruction for instruction -- the current layout's buttons 0 and 5 compared -- at SOCOM II's offsets 18/23 for SOCOM 1's 10/15) ; size by hand (the states lane: the seed counted the trailing zero padding after jr ra's delay slot)
 0x002C63F0 0x40 func_002C63F0  # OVL1
-0x002C6430 0x30 func_002C6430  # OVL1
-0x002C6460 0x30 func_002C6460  # OVL1
+0x002C6430 0x28 func_002C6430  # OVL1 ; size by hand (the states lane: the seed counted the trailing zero padding after jr ra's delay slot)
+0x002C6460 0x28 func_002C6460  # OVL1 ; size by hand (the states lane: the seed counted the trailing zero padding after jr ra's delay slot)
 0x002C6490 0x50 func_002C6490  # OVL1
 0x002C64E0 0x40 func_002C64E0  # OVL1
 0x002C6520 0x148 func_002C6520  # OVL1
@@ -4223,7 +4223,7 @@
 0x002C6C70 0x254 func_002C6C70  # OVL1
 0x002C6ED0 0x70 func_002C6ED0  # OVL1
 0x002C6F40 0xB4 func_002C6F40  # OVL1
-0x002C7000 0x68 func_002C7000  # OVL1
+0x002C7000 0x68 ClearValves__24CMissionObjectiveCamListFv  # OVL1; s1:order by hand (the states lane: after the list's Reset and before IsInvalid as in SOCOM 1; it walks the list storing zero into each objective's three valve pointers (0x2C/0x30/0x34), as SOCOM 1's ClearValves does)
 0x002C7070 0x24 IsInvalid__20CMissionObjectiveCamCFv  # OVL1; s1:exact
 0x002C70A0 0x24 IsDisplayOn__20CMissionObjectiveCamCFv  # OVL1; s1:gap
 0x002C70D0 0x24 IsComplete__20CMissionObjectiveCamCFv  # OVL1; s1:exact

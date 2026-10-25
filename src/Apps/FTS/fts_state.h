@@ -577,16 +577,16 @@ void func_002CF410(COurGame *game, void *state, unsigned int arg);         /* CG
 }
 
 /* the mission: only what the states touch */
-class CNetGame;
+class CZNetGame;
 
 /* the network (only its flags: 9 set in an online game) */
-class CNetwork {
+class CZNetwork {
 public:
     unsigned char m_8;   // 0x0: the session master (SOCOM 1's at 0x8: SOCOM II dropped the two team indices)
     unsigned char m_9;   // 0x1: an online game
 };
 
-extern CNetwork theNetwork;
+extern CZNetwork theNetwork;
 
 class CVideo {
 public:
@@ -639,7 +639,7 @@ public:
     unsigned char _1b0[0x11b0 - 0x1b0];
     unsigned char m_netQueue[0x10];   // 0x11b0: the network's messages for the player
     unsigned char _11c0[0x1808 - 0x11c0];
-    CNetGame *m_netGame;   // 0x1808: the online game (SOCOM 1's at 0x584)
+    CZNetGame *m_netGame;   // 0x1808: the online game (SOCOM 1's at 0x584)
     unsigned char _180c[0x183c - 0x180c];
     CStateString m_libname;   // 0x183c: the load screen's asset library's name
     unsigned char _1848[0x1854 - 0x1848];
