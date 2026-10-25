@@ -184,6 +184,8 @@ template <class T, class Allocator>
 class __vector_pod {
 public:
     __vector_pod() { capacity_ = 0; size_ = 0; data_ = 0; }
+    /* n copies of value: the words zeroed, then init (CVisual's m_lodMesh(0): init called out of line) */
+    __vector_pod(unsigned int n, const T &value) { capacity_ = 0; size_ = 0; data_ = 0; init(n, value); }
     __vector_pod(const __vector_pod &x);
     /* the storage given back through the allocator (CW 2.5's MSL: the pod's destructor calls
      * alloc() and deallocate): a pointer vector's destructor is four high, one more than its
@@ -211,6 +213,7 @@ public:
     T *begin() { return data(); }
     T *end() { return data_ + size_; }
     T &back() { return *(end() - 1); }
+    unsigned int size() const { return size_; }
     static unsigned int max_size() { return (unsigned int)-1 / sizeof(T); }
     static T *allocate(unsigned int n)
     {
@@ -225,6 +228,11 @@ public:
     T &at(unsigned int n);
     template <class InputIterator>
     void init(InputIterator first, InputIterator last, forward_iterator_tag);
+    /* n copies of value (SOCOM 1's init__...FUiRCUi, the same 0xE8 bytes as SOCOM II's 0x3C45B0) */
+    void init(unsigned int n, const T &value);
+    /* grown by copies of c through insert, or cut through erase (out of class: CVisual::Init calls
+     * OVL1's copy, 0x28B0E0; MAIN's is 0x18B050) */
+    void resize(unsigned int sz, const T &c);
     void push_back(const T &x) { insert(data_ + size_, 1, x); }
 public:
     unsigned int capacity_;
@@ -304,6 +312,8 @@ template <class T, class Allocator>
 class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, allocator<unsigned int> > {
     typedef __vector_pod<unsigned int, allocator<unsigned int> > __base;
     __MSL_VECTOR_ACCESS(T *)
+    __vector_imp() {}
+    __vector_imp(unsigned int n, T *const &value) : __base(n, (const unsigned int &)value) {}
     iterator __iter(unsigned int *const &p) { return iterator((elem_t *)p); }
     /* the base's pointer held in a const local first: begin() is three high so (SetDynamic and
      * SetUseParentBBoxTree assign it to a declared iterator and inline it whole in their outer
@@ -352,6 +362,7 @@ class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, all
         unsigned int size() const { return this->size_; }                                       \
         unsigned int capacity() const { return this->capacity_; }                               \
         T &operator[](unsigned int n) { return ((T *)__base::data())[n]; }                      \
+        T &at(unsigned int n) { return (T &)__base::at(n); }                                    \
         void push_back(const T &x) { __base::push_back((const unsigned int &)x); }              \
         void clear() { __base::clear(); }                                                       \
         void swap(__vector_imp &x) { __base::swap(x); }                                         \
@@ -419,6 +430,33 @@ void __vector_pod<T, Allocator>::init(InputIterator first, InputIterator last, f
         for (InputIterator p = first; p < last; ++p, ++d)
             *d = *p;
     }
+}
+
+/* n copies of value: the length checked, the block allocated and stored through data()'s
+ * reference, size and capacity set, value re-read for every element (0x3C45B0; written under
+ * that placeholder in vis_main.cpp until now) */
+template <class T, class Allocator>
+void __vector_pod<T, Allocator>::init(unsigned int n, const T &value)
+{
+    if (n) {
+        if (n > max_size())
+            __msl_error("vector length error\n");
+        data() = allocate(n);
+        size_ = n;
+        cap() = n;
+        for (T *first = data_; n > 0; --n, ++first)
+            *first = value;
+    }
+}
+
+/* SOCOM 1's lines 337-342: copies of c inserted at the end, or the tail erased */
+template <class T, class Allocator>
+void __vector_pod<T, Allocator>::resize(unsigned int sz, const T &c)
+{
+    if (sz > size())
+        insert(end(), sz - size(), c);
+    else if (sz < size())
+        erase(begin() + sz, end());
 }
 
 /* reserve: the old elements copied into a fresh block -- word by word for the POD storage, by
@@ -505,6 +543,9 @@ __MSL_VECTOR_SCALAR(unsigned int)
 template <class T, class Allocator>
 class vector<T *, Allocator> : public __vector_imp<T *, Allocator, true> {
 public:
+    vector() {}
+    /* n copies of value (CVisual's m_lodMesh(0) calls the pod's init(0, a zero) out of line) */
+    explicit vector(unsigned int n, T *const &value = 0) : __vector_imp<T *, Allocator, true>(n, value) {}
     void clear() { __vector_imp<T *, Allocator, true>::clear(); }
     void swap(vector &x) { __vector_imp<T *, Allocator, true>::swap(x); }
 };
