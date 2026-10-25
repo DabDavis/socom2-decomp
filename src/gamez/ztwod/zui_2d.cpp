@@ -1,7 +1,7 @@
 /* zui_2d.cpp -- the UI's 2D controls (the press beta's asserts name the unit, zui_2d.cpp; SOCOM 1
  * kept it beside zui.h, in gamez/zui -- here with the 2D family until the UI has a directory of its
- * own). Written so far: CPlainBmp's Tick, Draw and SetMapOffset (OVL1 0x378FC0-0x37925B,
- * 0x37C180), in SOCOM 1's order. Defined in reverse of their image order (-inline deferred). */
+ * own). Written so far: CHProgressBar::Tick (0x3719E0) and CPlainBmp's Tick, Draw and
+ * SetMapOffset (OVL1 0x378FC0-0x37925B, 0x37C180), in SOCOM 1's order. Defined in reverse of their image order (-inline deferred). */
 
 #include <string.h>
 
@@ -49,6 +49,26 @@ public:
     float m_period;   // 0x8c
     float m_curtrans;   // 0x90
 };   // 0xa0 bytes
+
+/* a horizontal progress bar (SOCOM 1's CHProgressBar, a C2D: its layout not in SOCOM 1's DWARF;
+ * only what Tick reads placed, the names ours) */
+class CHProgressBar : public C2D {
+public:
+    virtual void Tick(float dT);
+
+    unsigned char _18[0xa0 - 0x18];
+    float m_fill;   // 0xa0: 0 to 1
+    float _a4;
+    float m_time;   // 0xa8: the seconds a full bar takes
+};
+
+/* slot 12: filled at its rate, to full */
+void CHProgressBar::Tick(float dT)
+{
+    m_fill += dT / m_time;
+    if (!(m_fill <= 1.0f))
+        m_fill = 1.0f;
+}
 
 /* slot 2: a string variable naming another texture loads it in the same rectangle first */
 void CPlainBmp::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
