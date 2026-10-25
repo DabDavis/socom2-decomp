@@ -44,6 +44,9 @@ extern "C" void func_002707C0(CZAnim *anim, int b);
  * named) */
 extern "C" void func_003CFFD0(float *timer);
 
+/* the tracers' speed (0x3E1570, initialised data; not named) */
+extern "C" float data_003E1570;
+
 /* ---- the members ---- */
 
 /* the extension built, the members set, the extension pointed at the projectile */
@@ -78,6 +81,73 @@ CZProjectile::~CZProjectile()
 
 /* every member's first value (SOCOM 1's constructor's stores, in its order, with SOCOM II's
  * members among them) */
+/* (the bit tested for the tracer is bit 5 of the flags, SOCOM 1's bit 3; the flyout machine taken
+ * between the count's two tests, as the target loads it; the diagonals set matrix by matrix) */
+void CZProjectile::SetModelOrientation(bool b, const CPnt3D *dir)
+{
+    if (!m_instance)
+        return;
+    m_instance->SetActive(true);
+    CPnt3D d = m_frameendpos - m_framestartpos;
+    float len = d.Length();
+
+    d.Normalize();
+    CMatrix m(m_instance->m_matrix);
+    CMatrix scale;
+    CMatrix stretch;
+
+    if (b) {
+        len *= 0.1f;
+        scale.SetIdentity();
+        stretch = scale;
+        stretch.m_matrix[0][0] = len;
+        stretch.m_matrix[1][1] = len;
+        stretch.m_matrix[2][2] = len;
+        scale.m_matrix[0][0] = 7.5f;
+        scale.m_matrix[1][1] = 7.5f;
+        scale.m_matrix[2][2] = 7.5f;
+    }
+    CMatrix rot;
+    CPnt3D fwd(1.0f, 0.0f, 0.0f);
+    CQuat q;
+
+    q.Align(fwd, d);
+    q.ToMatrix(&rot);
+    CBBox box;
+
+    if (b) {
+        sceVu0MulMatrix(scale.m_matrix, rot.m_matrix, scale.m_matrix);
+        sceVu0MulMatrix(stretch.m_matrix, rot.m_matrix, stretch.m_matrix);
+        m_instance->SetMatrix(&stretch);
+        box = *m_instance->GetBBox();
+        box.m_max.x = len;
+        box.m_max.y = 0.1f;
+        box.m_max.z = 0.1f;
+    }
+    if (b && m_lastHitWasVolumetric) {
+        if (m_tracer_count) {
+            CFlyoutMachine *machine = &CZWeapon::m_flyout_machine;
+
+            if (!(m_tracer_count % 4)) {
+                if (m_flyout_idx == 0)
+                    CFlyoutMachine::SetTracerModel(CFlyoutMachine::pFlyout_Model_Ally);
+                else if (m_flyout_idx == 1)
+                    CFlyoutMachine::SetTracerModel(CFlyoutMachine::pFlyout_Model_Enemy);
+                machine->AcquireFlyout(m_framestartpos, m_frameendpos, 0, m_weapon, data_003E1570,
+                                       &scale, &box);
+                CFlyoutMachine::SetTracerModel(CFlyoutMachine::pFlyout_Model_Standard);
+                m_tracer_count = 0;
+            }
+        }
+    } else {
+        EQUIP_ITEM type = m_weapon->GetIDType();
+
+        if (m_weapon->IsDirectFire() || type == 171 || type == 185 || type == 230)
+            m_instance->SetMatrix(&rot);
+    }
+    m_instance->SetPosition(m_framestartpos.x, m_framestartpos.y, m_framestartpos.z);
+}
+
 void CZProjectile::Init()
 {
     m_heading = m_pitch = m_roll = 0.0f;
