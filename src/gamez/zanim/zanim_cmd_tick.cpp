@@ -1814,6 +1814,31 @@ extern "C" void func_00261300(_zanim_cmd_hdr *hdr)
 /* a texture scrolled by the texture effects (not named yet) */
 extern "C" void func_003C0280(char *fx, int handle, bool a, bool b, float du, float dv);
 
+/* 2D helpers through out-parameters (the names are ours) */
+static inline void Set2D(PNT2D *out, float x, float y)
+{
+    out->x = x;
+    out->y = y;
+}
+
+static inline void Sub2D(PNT2D *out, const PNT2D *a, const PNT2D *b)
+{
+    out->x = a->x - b->x;
+    out->y = a->y - b->y;
+}
+
+static inline void Mul2D(PNT2D *out, const PNT2D *a, const PNT2D *b)
+{
+    out->x = a->x * b->x;
+    out->y = a->y * b->y;
+}
+
+static inline void Scale2D(PNT2D *out, const PNT2D *a, float s)
+{
+    out->x = a->x * s;
+    out->y = a->y * s;
+}
+
 /* SCROLL_MOTION: scroll a texture by how far a node has moved -- the point a node carries,
  * reflected about its up axis through the centre a second node gives, in x/z since the last
  * tick (flag 8); else the second node's own travel, signed by its heading against the point it
@@ -1839,10 +1864,11 @@ struct zanim_cmd_scroll_motion {
     float time;                     /* 0x44 */
 };
 
-/* OPEN, right size (0x468), registers and frame offsets: the target's frame is 16 bytes larger
- * (8-byte temporaries at 0xC0 and 0x120 this source does not make) and it stores each 2D value
- * and reads it straight back, as if the PNT2Ds lived behind references or by-value 2D operators;
- * its first GetNode takes the anim through v0 */
+/* OPEN, right size (0x468), frame offsets and a few registers: the 2D steps through the
+ * out-parameter helpers give the target's store-and-reload exactly, and the named objects sit as
+ * the target's (declaration order from the frame's top), but the target's frame holds two 8-byte
+ * objects more -- one between pos and delta, one below the else branch's operator- temporary --
+ * which no unused local gives (MW drops those); its first GetNode also takes the anim through v0 */
 extern "C" bool func_00260B40(_zanim_cmd_hdr *hdr, float *dT)
 {
     zanim_cmd_scroll_motion *cmd = (zanim_cmd_scroll_motion *)hdr;
@@ -1876,14 +1902,12 @@ extern "C" bool func_00260B40(_zanim_cmd_hdr *hdr, float *dT)
 
         r += p;
         PNT2D pos;
-        pos.x = r.x;
-        pos.y = r.z;
         PNT2D delta;
-        delta.x = pos.x - cmd->last.x;
-        delta.y = pos.y - cmd->last.y;
         PNT2D s;
-        s.x = cmd->su * delta.x;
-        s.y = cmd->sv * delta.y;
+
+        Set2D(&pos, r.x, r.z);
+        Sub2D(&delta, &pos, (PNT2D *)&cmd->last);
+        Mul2D(&s, (PNT2D *)&cmd->su, &delta);
         if (fabsf(s.x) > 0.001f || fabsf(s.y) > 0.001f)
             func_003C0280(data_004B50D0, cmd->handle, cmd->a, cmd->b, s.x, s.y);
         cmd->last.x = pos.x;
@@ -1901,8 +1925,8 @@ extern "C" bool func_00260B40(_zanim_cmd_hdr *hdr, float *dT)
         if (dq.x * dc.x + dq.z * dc.z < 0.0f)
             len = -len;
         PNT2D s;
-        s.x = cmd->su * len;
-        s.y = cmd->sv * len;
+
+        Scale2D(&s, (PNT2D *)&cmd->su, len);
         func_003C0280(data_004B50D0, cmd->handle, cmd->a, cmd->b, s.x, s.y);
     }
     if (cmd->timed) {
