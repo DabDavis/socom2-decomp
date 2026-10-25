@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "zchar.h"
+#include "../zsys/zsys.h"
 #include "../zsnd/zsnd.h"
 #include "../zanim/zanim.h"
 
@@ -34,11 +35,8 @@ CCharacterType *CCharacterType::GetByNameMod(const char *name)
 }
 
 /* a type made, or made again in place when asked; one that exists is not handed back otherwise
- * (SOCOM 1's returned it). GetByNameMod inlines whole in the target.
- * OPEN (0x168 against 0x158): an include/vector height -- inlined here, GetByNameMod's loop test
- * calls the pointer vector's base end() and __iter out of line (end() as an argument of the inline
- * != sits a level deeper, five high under Create), where the target computes data + size inline;
- * GetByNameMod alone matches. `!(i == end())` and `end() != i` do not change it */
+ * (SOCOM 1's returned it). GetByNameMod inlines whole in the target -- byte-exact since the pointer
+ * vector's end() takes the base's end into a const local (the MSL headers' round 4) */
 CCharacterType *CCharacterType::Create(const char *name, const CCharacterType *base, bool reinit)
 {
     CCharacterType *t = GetByNameMod(name);
@@ -291,6 +289,33 @@ const char *GetCharacterSoundTypeString(CHARACTER_SOUND s)
         return "CHRSND_NOTSURE";
     }
     return "CHRSND_NONE";
+}
+
+/* a message deleted, for std::for_each (the name ours) */
+struct DeleteMultiplayerMsg {
+    DeleteMultiplayerMsg() {}
+    void operator()(MultiplayerMsg *m) { delete m; }
+};
+
+/* the messages deleted, the vector cleared and its storage traded away (FreeVector on the base
+ * vector: its temporary's constructor, clear, swap and destructor called, 0x53BAE0, 0x53BAD0,
+ * 0x53BA90, 0x53BA20) */
+void CCharacterType::DeleteMultiplayerMessages()
+{
+    if (m_mpMessages.size()) {
+        std::for_each(m_mpMessages.begin(), m_mpMessages.end(), DeleteMultiplayerMsg());
+        m_mpMessages.clear();
+        FreeVector<std::vector<MultiplayerMsg *> >(m_mpMessages);
+    }
+}
+
+/* every type's multiplayer messages' sounds dropped (SOCOM 1's): the type re-read through the
+ * list's iterator at each inner pass, the stores possibly aliasing it */
+void CCharacterType::ClearMultiplayerMessageSounds()
+{
+    for (CCharTypeVec::iterator i = m_char_list.begin(); i != m_char_list.end(); ++i)
+        for (CMultiplayerMsgVec::iterator j = (*i)->m_mpMessages.begin(); j != (*i)->m_mpMessages.end(); ++j)
+            (*j)->m_sound = 0;
 }
 
 /* a sound by kind, none out of range (new in SOCOM II; the name ours) */

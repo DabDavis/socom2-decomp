@@ -9830,12 +9830,12 @@
 0x0053B5F0 0x11C match_name_to_chartype__14CCharacterTypeFP8CRdrFilePCcPCc  # OVL2; s1:calls
 0x0053B710 0x1D8 func_0053B710  # OVL2
 0x0053B8F0 0x40 GetSound__14CCharacterTypeCF15CHARACTER_SOUND  # OVL2; ours (new in SOCOM II: m_sounds[s] at 0x168 for 0 <= s < 85, none otherwise; CSealCtrlAi::OnStunDamage calls it twice)
-0x0053B930 0xE8 func_0053B930  # OVL2
-0x0053BA20 0x70 func_0053BA20  # OVL2
-0x0053BA90 0x40 func_0053BA90  # OVL2
-0x0053BAD0 0x8 func_0053BAD0  # OVL2
-0x0053BAE0 0x14 func_0053BAE0  # OVL2
-0x0053BB00 0xC8 func_0053BB00  # OVL2
+0x0053B930 0xE8 DeleteMultiplayerMessages__14CCharacterTypeFv  # OVL2; ours (new in SOCOM II, after GetSound: the messages at 0x3A0 deleted through std::for_each (stack-slot iterators), cleared, then FreeVector on the base vector -- its four pieces out of line after it; byte-exact in char_type.cpp)
+0x0053BA20 0x70 __dt__Q23std62vector<P14MultiplayerMsg,Q23std28allocator<P14MultiplayerMsg>>Fv  # OVL2; by hand (FreeVector's temporary destroyed in DeleteMultiplayerMessages with -1: three this-tests, the base vector's)
+0x0053BA90 0x40 swap__Q23std62vector<P14MultiplayerMsg,Q23std28allocator<P14MultiplayerMsg>>FRQ23std62vector<P14MultiplayerMsg,Q23std28allocator<P14MultiplayerMsg>>  # OVL2; by hand (FreeVector's swap in DeleteMultiplayerMessages)
+0x0053BAD0 0x8 clear__Q23std62vector<P14MultiplayerMsg,Q23std28allocator<P14MultiplayerMsg>>Fv  # OVL2; by hand (FreeVector's clear in DeleteMultiplayerMessages: size zeroed)
+0x0053BAE0 0x14 __ct__Q23std62vector<P14MultiplayerMsg,Q23std28allocator<P14MultiplayerMsg>>Fv  # OVL2; by hand (FreeVector's temporary in DeleteMultiplayerMessages: the three words zeroed)
+0x0053BB00 0xC8 ClearMultiplayerMessageSounds__14CCharacterTypeFv  # OVL2; s1:order by hand (the demo's ClearMultiplayerMessageSounds 0x247BB0, before InitMultiplayerMessages in both builds: every type's messages' sounds zeroed -- SOCOM II's messages are the pointer vector at 0x3A0, the sound at +0x10; byte-exact in char_type.cpp)
 0x0053BBD0 0x320 InitMultiplayerMessages__14CCharacterTypeFP5_zrdr  # OVL2; s1:calls
 0x0053BEF0 0x214 func_0053BEF0  # OVL2
 0x0053C110 0xF0 func_0053C110  # OVL2
