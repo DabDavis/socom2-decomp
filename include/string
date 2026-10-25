@@ -52,7 +52,10 @@
  *     `lhs.compare(rhs) < 0`: every string-keyed tree's comparator calls 0x2DEE30 and tests the sign
  *     (less<string> over the map's value_compare, as SOCOM 1's map<CSaferStr,...> inlines it). The
  *     trees' tail code inlines the destructor (find_or_insert's temporary pair) where the unit's own
- *     code generated it first -- the pragma below holds only for units' own functions.
+ *     code generated it first. Not pinned (the UI lane's round 6 request: resize<CDesignDlgObj> 0x383960
+ *     inlines it for its temporary's two strings): an out-of-class member is never inlined into the
+ *     units' own functions anyway, and removing `#pragma auto_inline off` moved nothing over every
+ *     hand-written unit (the MSL headers round 5).
  * The pieces the map has not named yet are called through their placeholders, C functions under
  * the address's name (they resolve by address whatever the row is later named); reserve and the
  * destructor are the map's names. */
@@ -307,14 +310,12 @@ inline bool operator<(const basic_string<charT, traits, Allocator> &lhs,
     return lhs.compare(rhs) < 0;
 }
 
-#pragma auto_inline off
 template <class charT, class traits, class Allocator>
 basic_string<charT, traits, Allocator>::~basic_string()
 {
     if (w_[0] & 1)
         operator delete((void *)w_[2]);
 }
-#pragma auto_inline reset
 
 typedef basic_string<char> string;
 
