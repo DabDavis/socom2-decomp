@@ -2,9 +2,9 @@
  * projectiles (0x3D4810-0x3D4B7F, the CZWeapon static at 0x4B5238 that zwep_weapon.cpp's
  * initialiser builds), CProjectileNodeEx, and the flyout machine -- SOCOM 1's CFlyoutMachine and
  * CFlyout, which sat between zwep_global.cpp and zwep_projectile.cpp in the demo (0x316550-
- * 0x31718F) and moved here. SOCOM 1 gives the flyouts no unit name; the file name is ours. Tick and
- * the two classes' destructors and the machine's constructor stay placeholders or drafts. Defined
- * in reverse of their image order (-inline deferred). */
+ * 0x31718F) and moved here. SOCOM 1 gives the flyouts no unit name; the file name is ours. The two
+ * classes' destructors and the machine's constructor stay drafts. Defined in reverse of their image
+ * order (-inline deferred). */
 
 #include <msl_utility>
 #include <stdlib.h>
@@ -62,6 +62,9 @@ public:
     static void HookupReset();
     void ReleaseAllActive();
     bool ReleaseFlyout(CFlyout *flyout, int index);
+    /* the done flyouts released, then every active one moved on by its speed: done once past its
+     * range, or arrived when the step would overshoot its end (SOCOM 1's) */
+    bool Tick(float dT);
     /* a free flyout sent from start to end at a speed, unless the two are within 70 (SOCOM 1's) */
     bool AcquireFlyout(CPnt3D &start, CPnt3D &end, CZAnim *anim, CZWeapon *weapon, float speed,
                        CMatrix *m, CBBox *box);
@@ -149,6 +152,51 @@ void CFlyoutMachine::HookupReset()
         return;
     }
     pFlyout_Anim_Enemy = pFlyout_Anim_Ally = 0;
+}
+
+/* (one counter for both loops, declared after the count; the zero point copied once into a local
+ * that both working points start from) */
+bool CFlyoutMachine::Tick(float dT)
+{
+    int n = m_active.size();
+    int i;
+
+    if (n == 0)
+        return false;
+    for (i = 0; i < n; i++) {
+        CFlyout *flyout = m_active[i];
+
+        if (flyout->m_done && ReleaseFlyout(flyout, i)) {
+            i--;
+            n--;
+        }
+    }
+    n = m_active.size();
+    for (i = 0; i < n; i++) {
+        CFlyout *flyout = m_active[i];
+        CPnt3D d = flyout->m_vel - flyout->m_pos;
+        CPnt3D zero = CPnt3D::zero;
+        CPnt3D step = zero;
+        CPnt3D pos = zero;
+
+        *(float *)&flyout->m_24 += dT * *(float *)&flyout->m_20;
+        if (*(float *)&flyout->m_24 > flyout->m_maxdist) {
+            flyout->m_done = 1;
+        } else {
+            d.Normalize(&step);
+            step.Scale(1.0f + *(float *)&flyout->m_24, &step);
+            if (step.x * step.x + step.y * step.y + step.z * step.z > d.x * d.x + d.y * d.y + d.z * d.z) {
+                flyout->m_instance->SetPosition(flyout->m_vel.x, flyout->m_vel.y, flyout->m_vel.z);
+                flyout->m_pos = flyout->m_vel;
+                flyout->m_done = 1;
+            } else {
+                pos = flyout->m_pos + step;
+                flyout->m_instance->SetPosition(pos.x, pos.y, pos.z);
+                flyout->m_pos = pos;
+            }
+        }
+    }
+    return true;
 }
 
 /* SOCOM 1's, with SOCOM II's tracer animations: the free flyout on top taken, its node given the
