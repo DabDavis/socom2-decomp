@@ -7,6 +7,21 @@
 
 #include "../../ai/ai_states.h"
 
+extern "C" {
+/* CSealCtrlAi::GetAiState (OVL2 0x5F6010, seal_aistate.cpp's; zseal.h's CSealCtrlAi does not
+ * declare it yet) */
+CAiState *func_005F6010(CSealCtrlAi *ai);
+}
+
+/* the controller's current state if it is a breach (kind 17), else 0 (OVL2 0x5EA780, after
+ * CAiState's constructor; the name ours) */
+CAiSBreach *GetBreachState(CSealCtrlAi *ai)
+{
+    CAiState *s = func_005F6010(ai);
+
+    return s && s->m_state == 17 ? (CAiSBreach *)s : 0;
+}
+
 /* a squad (SOCOM 1's DWARF: CSealUnit, 0xa4 bytes; zseal.h, the SEAL lane's, declares a stub of
  * its own -- this unit does not include it). Only what a written function touches */
 class CSealUnit {

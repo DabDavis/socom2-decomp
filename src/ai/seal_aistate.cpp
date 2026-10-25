@@ -5,7 +5,23 @@
  * virtuals their tables pull in, and CAiStateStack's two out-of-line members. Defined in reverse
  * of their image order (-inline deferred). */
 
-#include "ai_states.h"
+#include "../gamez/zseal/zseal.h"
+
+extern "C" {
+/* a CSealCtrlAi function (OVL2 0x56D090, the SEAL lane's range), called twice on leaving the
+ * unknown state */
+void func_0056D090(CSealCtrlAi *ai);
+/* the AI's mode, a byte (OVL2 0x560A60, the SEAL lane's range) */
+unsigned char func_00560A60(CSealCtrlAi *ai);
+}
+
+/* the AI controller's bit the CQB attack's delay reads (CSealCtrlAi at 0x264, bit 1; zseal.h does
+ * not name it -- the names ours) */
+struct CAiCtrlBits {
+    unsigned char _0[0x264];
+    unsigned char m_bit0 : 1;
+    unsigned char m_nodelay : 1;
+};
 
 /* the "action" state's answers (OVL2 0x5F07E0 back to 0x5F07A0): no attacking, scanning or
  * pushing a state of kind 3 while its object is held; kind 25 never */
@@ -45,6 +61,31 @@ bool CAiSAction::Virtual38()
     return m_34 < 6;
 }
 
+/* a script takes kinds 12 and 26 only when it may be pursued from (OVL2 0x5F40F0).
+ * OPEN, 0x84 against 0x80: the target keeps the inlined test's result in s0, zeroed in the delay
+ * slot of the !m_hold branch (materialised, sltu/xori, as NotHeld() gives it) and set to 1 after
+ * the virtual CanPursue, then copies it with andi; here the inline's return true/false lands in
+ * v0 at its own labels -- a result local assigned false first is if-converted into an sltu on
+ * the call's result instead (0x6C), with == true or != false 0x74 */
+bool CAiSScript::CanPushAiState(AI_STATE state, CSealCtrlAi *ai)
+{
+    bool ok = true;
+
+    switch (state) {
+    case 12:
+    case 26:
+        ok = Pursuable(ai);
+        break;
+    }
+    return ok;
+}
+
+/* pursued from: in its own AI mode and half a second on (OVL2 0x5F4090; SOCOM 1's 0x6C bytes) */
+bool CAiSScript::CanPursue(CSealCtrlAi *ai) const
+{
+    return m_mode == func_00560A60(ai) && m_60 >= 0.5f;
+}
+
 /* (OVL2 0x5F4080) */
 bool CAiSScript::CanAttack() const
 {
@@ -55,6 +96,22 @@ bool CAiSScript::CanAttack() const
 CAiStateStack::~CAiStateStack()
 {
     Clear();
+}
+
+/* the current state: the front, or 0 when the stack is empty (OVL2 0x5F8360, 0x5F8330 -- the
+ * same code twice, the non-const and the const one) */
+CAiState *CAiStateStack::GetState()
+{
+    if (size() == 0)
+        return 0;
+    return front();
+}
+
+CAiState *CAiStateStack::GetState() const
+{
+    if (size() == 0)
+        return 0;
+    return ((CAiStateStack *)this)->front();
 }
 
 /* every state deleted, the stack emptied (OVL2 0x5F8390; ~CSealCtrlAi calls it too).
@@ -74,6 +131,64 @@ void CAiStateStack::Clear()
     for (i = s.begin(); i != e; ++i)
         delete *i;
     erase(begin(), end());
+}
+
+/* a pickup's reset (OVL2 0x5F5590; SOCOM 1's) */
+void CAiSPickup::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
+{
+    switch (sig) {
+    case SIGNAL_4:
+        m_58 = 0;
+        m_5c = 0;
+        break;
+    case SIGNAL_0:
+        break;
+    case SIGNAL_1:
+        break;
+    case SIGNAL_2:
+        break;
+    case SIGNAL_3:
+        break;
+    }
+}
+
+/* the unknown state: the AI's mode 8 on entry and exit, 0x56D090 twice otherwise (OVL2 0x5F1BF0;
+ * SOCOM 1's was empty) */
+void CAiSUnknown::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
+{
+    switch (sig) {
+    case SIGNAL_4:
+        break;
+    case SIGNAL_0:
+    case SIGNAL_3:
+        ai->SetAiMode((AI_MODE)8);
+        break;
+    case SIGNAL_1:
+    case SIGNAL_2:
+        func_0056D090(ai);
+        func_0056D090(ai);
+        break;
+    }
+}
+
+/* a CQB attack's reset, and its delay on entry (OVL2 0x5F1AD0; SOCOM 1's) */
+void CAiSCQBAttack::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
+{
+    switch (sig) {
+    case SIGNAL_4:
+        m_58 = 0;
+        m_5c = 0.0f;
+        break;
+    case SIGNAL_0:
+        m_5c = ((CAiCtrlBits *)ai)->m_nodelay ? 0.0f : 0.75f;
+        break;
+    case SIGNAL_1:
+        break;
+    case SIGNAL_2:
+        break;
+    case SIGNAL_3:
+        break;
+    }
 }
 
 /* the destructors (OVL2 0x5F8A70, 0x5F89C0, 0x5F8940, 0x5F8880, 0x5F8800, 0x5F8770): each its
