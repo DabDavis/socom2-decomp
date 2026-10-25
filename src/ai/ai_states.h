@@ -333,8 +333,15 @@ public:
 
 class CAiSStunResponse : public CAiState {
 public:
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual bool CanAttack() const { return false; }
     virtual ~CAiSStunResponse();
+
+    unsigned int m_58;   // 0x58
+    int m_5c;   // 0x5c (-1 on a reset)
+    float m_wait;   // 0x60: a random wait (under 0.75) on entry (SOCOM 1's at 0x30)
+    unsigned int m_64;   // 0x64
+    unsigned char m_timer[0xc];   // 0x68: a CAiTimer (Create builds it with 0.0)
 };
 
 class CAiSHold : public CAiState {

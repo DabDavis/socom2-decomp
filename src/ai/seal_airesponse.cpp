@@ -7,15 +7,16 @@
 
 #include "../gamez/zkit/zkit.h"
 
-/* a chance taken: a random float in [0, 1) against the odds (an inline taking them by reference --
- * the target stores the constant and reads it back; the name ours) */
-inline bool Chance(const float &odds)
+/* a chance taken: a random float in [0, 1) against the odds (an inline, seal_control.cpp's shape:
+ * the odds by value, read through a reference -- the target stores them and reads them back) */
+inline bool Chance(float odds)
 {
+    const float &c = odds;
     Rfloat r;
 
     r.m_min = 0.0f;
     r.m_range = 1.0f;
-    return r <= odds;
+    return r <= c;
 }
 
 /* the controller's bits (CSealCtrlAi at 0x264: SOCOM 1's m_debug word at 0x280 -- bit 1 is
@@ -81,6 +82,10 @@ void *func_0052A3C0(CAiMaps *maps, CAiCell *from, int a, int b);
 bool func_00529EE0(CAiMaps *maps, void *cell, unsigned int *loc);
 /* the goto pushed to a cell (OVL2 0x5F0830, seal_aistate.cpp's) */
 void func_005F0830(CSealCtrlAi *ai, unsigned int *loc, int mode, int kind, int step);
+/* (OVL2 0x567840, 0x570D60: the SEAL lane's rows -- a stun's controller calls, the second
+ * taking a float) */
+void func_00567840(CSealCtrlAi *ai, int x);
+void func_00570D60(CSealCtrlAi *ai, int x, float f);
 /* the AI's target held (OVL2 0x60A850, after the response states: CAiTarget's, the target at
  * CSealCtrlAi 0x67C) and a look pushed at a point (OVL2 0x5F0B30, seal_aistate.cpp's) */
 bool func_0060A850(void *target);
@@ -242,6 +247,44 @@ void CAiSTarget::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
     }
 }
 
+/* a float of the controller's (CSealCtrl at 0xD8; zseal.h does not name it -- the name ours) */
+struct CAiCtrlD8 {
+    unsigned char _0[0xd8];
+    float m_d8;   // 0xd8
+};
+
+/* a stun response's events: reset; on entry a random wait under 0.75 and the AI's mode 2; done
+ * on the way out (OVL2 0x605F90; SOCOM 1's) */
+void CAiSStunResponse::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
+{
+    switch (sig) {
+    case SIGNAL_4:
+        m_wait = 0.0f;
+        m_5c = -1;
+        m_64 = 0;
+        m_time = 0.0f;
+        break;
+    case SIGNAL_0: {
+        Rfloat r;
+
+        r.m_min = 0.0f;
+        r.m_range = 0.75f;
+        m_wait = r;
+        func_00567840(ai, 0);
+        func_00570D60(ai, 0, 0.0f);
+        ai->SetAiMode((AI_MODE)2);
+        break;
+    }
+    case SIGNAL_1:
+        func_00570D60(ai, 0, ((CAiCtrlD8 *)ai)->m_d8);
+        break;
+    case SIGNAL_2:
+    case SIGNAL_3:
+        m_active = false;
+        break;
+    }
+}
+
 /* the controller's target (CSealCtrlAi at 0x67C: SOCOM 1's CAiTarget m_target at 0x4BC, its
  * entity first; zseal.h does not name it) */
 struct CAiCtrlTarget {
@@ -251,34 +294,27 @@ struct CAiCtrlTarget {
 
 /* a reload: weapon down, the stance kept, a crouch one time in ten and a move one in four, a look
  * at the target when there is one (the flags' bits 0-2), then the sub-states' turn (OVL2
- * 0x6085C0; SOCOM 1's reloaded itself).
- * OPEN, 0x284 against 0x27C: each chance's odds are stored to the frame (0x5C, 0x58) before
- * rand() and read back through a pointer kept in s0, as SOCOM 1's (0x3D8F5C29 at 132(sp)) --
- * here MW folds the odds into the compare (no frame slots, 80 bytes against 96). Tried: the
- * odds as a literal, a named local, through a template, a pointer, a local reference. The
- * compare chain (2, 1, 0), the phase re-read after Virtual14 and the early seal load are the
- * target's. */
+ * 0x6085C0; SOCOM 1's reloaded itself) */
 AI_RESULT CAiSReload::Tick(float dT, CSealCtrlAi *ai)
 {
     CEntity *seal = ai->m_entity;
     unsigned int phase = m_phase;
 
     switch (phase) {
-    case 0: {
-        float crouch = 0.1f;
-        float move = 0.25f;
-
+    case 0:
         SetWeaponState__10CZSealBodyF12WEAPON_STATE(seal, 2);
         m_stance = ai->m_stance;
-        if (Chance(crouch))
+        if (Chance(0.1f))
             SetFlags(1, 0);
         else
             SetFlags(0, 1);
-        if (Chance(move))
+        if (Chance(0.25f))
             SetFlags(2, 0);
         else
             SetFlags(0, 2);
-        if (func_0060A850(&((CAiCtrlTarget *)ai)->m_target)) {
+        /* the target object's address, spelled apart from its entity's load: taken as
+         * &...->m_target MW keeps it in a saved register for both */
+        if (func_0060A850((char *)ai + 0x67c)) {
             CEntity *t = ((CAiCtrlTarget *)ai)->m_target;
 
             if (func_005F0B30(ai, t ? &t->m_posW : 0, 5, -1, -1))
@@ -286,7 +322,6 @@ AI_RESULT CAiSReload::Tick(float dT, CSealCtrlAi *ai)
         }
         phase = 1;
         break;
-    }
     case 1:
     case 2:
         Virtual14(ai, 0);

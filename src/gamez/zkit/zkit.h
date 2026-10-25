@@ -24,15 +24,18 @@ public:
         m_range = 0.0f;
         return *this;
     }
-    /* through a local, as the target's registers and add order want */
+    /* through a local, and the random factor through one of its own, as the target's registers
+     * and add order want (CAiSStunResponse::OnSignal) */
     operator float() const
     {
         float f;
 
         if (m_range == 0.0f)
             f = m_min;
-        else
-            f = m_min + m_range * (4.656613e-10f * rand());
+        else {
+            float r = 4.656613e-10f * rand();
+            f = m_min + m_range * r;
+        }
         return f;
     }
 
