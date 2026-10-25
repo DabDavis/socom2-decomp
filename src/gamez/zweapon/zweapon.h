@@ -549,6 +549,23 @@ public:
     CMatrix m_matrix;   // 0xd0
 };   // 0x110 bytes
 
+/* the charges set down that go off near a SEAL (new in SOCOM II: a pointer vector of its own,
+ * CZWeapon's static at 0x4B5238, which zwep_weapon.cpp's initialiser 0x404C10 builds and registers;
+ * the projectile list takes a charge out when it goes, OVL2's proximity test 0x543930 walks it by
+ * index and sets off one within its ammo's proximity distance, the kit adds a charge it sets down
+ * (0x5BC730). Its functions are out of line at the head of OVL1's last unit, zwep_flyout.cpp; the
+ * names ours) */
+class CPlacedExplosiveList : public std::vector<PlacedExplosive *> {
+public:
+    CPlacedExplosiveList();
+    ~CPlacedExplosiveList();
+    void Clear();
+    void Add(PlacedExplosive *explosive);
+    void Remove(PlacedExplosive *explosive);
+    int Count();
+    PlacedExplosive *Get(int i);
+};
+
 /* the projectiles in flight and the intersections they test with (SOCOM 1's DWARF: 0x208 bytes;
  * the direct- and indirect-fire tables sit where SOCOM 1's do -- its Release*FireDI are
  * byte-identical) */

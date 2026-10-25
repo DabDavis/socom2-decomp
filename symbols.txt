@@ -8455,13 +8455,13 @@
 0x003D46B0 0x5C SetName__6CZAmmoFPc  # OVL1; s1:order by hand (the wep lane: the string at 0, SOCOM 1's shape; the reader passes "InternalName")
 0x003D4710 0x90 __dt__6CZAmmoFv  # OVL1; s1:order by hand (SOCOM 1's: the name, the description and a third string freed, deleted when asked; CZAmmoList's destructor calls it)
 0x003D47A0 0x6C __ct__6CZAmmoFv  # OVL1; s1:order by hand (the wep lane: SOCOM 1's last in zwep_ammo.cpp -- the strings and the anim cleared, the id 255; the reader news 0x40 bytes and calls it)
-0x003D4810 0x14 func_003D4810  # OVL1; tu: zui_cleanup.cpp~ (1.0 beta)
-0x003D4830 0x8 func_003D4830  # OVL1
-0x003D4840 0xBC func_003D4840  # OVL1
-0x003D4900 0x34 func_003D4900  # OVL1
-0x003D4940 0x98 func_003D4940  # OVL1
-0x003D49E0 0xE8 func_003D49E0  # OVL1
-0x003D4AD0 0xA4 func_003D4AD0  # OVL1
+0x003D4810 0x14 Get__20CPlacedExplosiveListFi  # OVL1; tu: zui_cleanup.cpp~ (1.0 beta); by hand (the wep lane: the element at an index of the pointer vector at 0x4B5238 -- OVL2's proximity test 0x543930 walks the charges with it and Count; the class and names ours); zwep_flyout.cpp
+0x003D4830 0x8 Count__20CPlacedExplosiveListFv  # OVL1; by hand (the wep lane: the size of the vector at 0x4B5238, the proximity test's bound; the name ours); zwep_flyout.cpp
+0x003D4840 0xBC Remove__20CPlacedExplosiveListFP15PlacedExplosive  # OVL1; by hand (the wep lane: every entry of a charge erased from the vector at 0x4B5238 through the pod's single erase 0x28F220 -- the projectile list's five removals and the proximity test call it on a PlacedExplosive; the name ours); zwep_flyout.cpp
+0x003D4900 0x34 Add__20CPlacedExplosiveListFP15PlacedExplosive  # OVL1; by hand (the wep lane: a charge pushed onto the vector at 0x4B5238 -- the kit's 0x5BC730 adds the one it sets down; the name ours); zwep_flyout.cpp
+0x003D4940 0x98 Clear__20CPlacedExplosiveListFv  # OVL1; by hand (the wep lane: every element erased one at a time -- CZWeapon::Close calls it on 0x4B5238; the name ours); zwep_flyout.cpp
+0x003D49E0 0xE8 __dt__20CPlacedExplosiveListFv  # OVL1; by hand (the wep lane: Clear inlined, then the pointer vector's three this-tested levels -- the initialiser 0x404C10 registers it for 0x4B5238); zwep_flyout.cpp
+0x003D4AD0 0xA4 __ct__20CPlacedExplosiveListFv  # OVL1; by hand (the wep lane: the storage zeroed and Clear inlined -- the initialiser 0x404C10 builds 0x4B5238 with it); zwep_flyout.cpp
 0x003D4B80 0x28 OnWeaponHit__17CProjectileNodeExFPQ23zdb5CNodePQ23zdb15IntersectStructP12CZProjectile  # OVL1; by hand (the wep lane: slot +0x08 of __vt__17CProjectileNodeEx, overriding CNodeEx::OnWeaponHit -- the hit and the projectile handed to the projectile at 4's OnWeaponHit (0x3C69C0), 0 returned)
 0x003D4BB0 0x8 SetProjectile__17CProjectileNodeExFP12CZProjectile  # OVL1; by hand (the wep lane: the projectile stored at 4; CZProjectile's constructor calls it on this + 0x18 with this -- the name ours)
 0x003D4BC0 0x20 __ct__17CProjectileNodeExFv  # OVL1; by hand (the wep lane: stores __vt__Q23zdb7CNodeEx then __vt__17CProjectileNodeEx (0x4083F0); CZProjectile's constructor calls it on this + 0x18)

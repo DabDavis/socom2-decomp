@@ -196,6 +196,70 @@ void CFlyoutMachine::SetTracerModel(CModel *model)
     pFlyout_Model_Registered = model;
 }
 
+/* ---- CPlacedExplosiveList (0x3D4810-0x3D4B7F) ---- */
+
+/* MSL's single-element erase of the pod storage (0x28F220: body.cpp's tail emits it; include/vector
+ * has no single erase -- called through its placeholder) */
+extern "C" unsigned int *func_0028F220(void *v, unsigned int *position);
+
+/* one element erased, the iterator after it given back (inline: the iterator handed over by value,
+ * copied bitwise, and the raw pointer the erase returns made the iterator) */
+static inline CPlacedExplosiveList::iterator Erase(CPlacedExplosiveList *list,
+                                                   CPlacedExplosiveList::iterator pos)
+{
+    return CPlacedExplosiveList::iterator((PlacedExplosive **)func_0028F220(list, (unsigned int *)pos.m_p));
+}
+
+/* the storage cleared, then emptied element by element (Clear inlined) */
+CPlacedExplosiveList::CPlacedExplosiveList()
+{
+    Clear();
+}
+
+CPlacedExplosiveList::~CPlacedExplosiveList()
+{
+    Clear();
+}
+
+/* every charge erased, one at a time */
+void CPlacedExplosiveList::Clear()
+{
+    iterator it;
+
+    it = begin();
+    while (it != end())
+        it = Erase(this, it);
+}
+
+void CPlacedExplosiveList::Add(PlacedExplosive *explosive)
+{
+    push_back(explosive);
+}
+
+/* every entry of the charge erased */
+void CPlacedExplosiveList::Remove(PlacedExplosive *explosive)
+{
+    iterator it;
+
+    it = begin();
+    while (it != end()) {
+        if (explosive == *it)
+            it = Erase(this, it);
+        else
+            ++it;
+    }
+}
+
+int CPlacedExplosiveList::Count()
+{
+    return size();
+}
+
+PlacedExplosive *CPlacedExplosiveList::Get(int i)
+{
+    return (*this)[i];
+}
+
 /* ---- CProjectileNodeEx (0x3D4B80-0x3D4BDF) ---- */
 
 CProjectileNodeEx::CProjectileNodeEx()
