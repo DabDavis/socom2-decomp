@@ -5,6 +5,9 @@
 
 #include "zseal.h"
 #include "../zinput/zinput.h"
+#include "../zanim/zanim.h"
+
+extern "C" int rand(void);
 
 extern "C" {
 extern bool data_00650698;   /* the rumble switch (SOCOM 1's file static) */
@@ -22,6 +25,100 @@ extern CNetGameState *data_00437CE8;
 extern "C" float func_005975B0(const CPnt3D *v)
 {
     return v->x * v->x + v->z * v->z;
+}
+
+/* the world's camera and its far plane (zdb::CWorld holds it at 0x128, the plane at 0xEC) */
+struct CViewCamera {
+    unsigned char _0[0xec];
+    float m_far;   // 0xec
+};
+
+struct CViewWorld {
+    unsigned char _0[0x128];
+    CViewCamera *m_camera;   // 0x128
+};
+
+/* the MP bomb's state machine (SOCOM 1's CZBombState, OVL1's): its status, the state first */
+class CZBombState {
+public:
+    struct STATUS {
+        unsigned char m_state;   // 0x0
+        unsigned char _1[0x20 - 1];
+    };
+
+    static STATUS m_BombStatus;   // OVL1 bss 0x4413B0
+};
+
+/* whether an action can be taken: none by the dead; the bomb's by its state (planting asks
+ * CanPlaceBomb), a breach with a charge and a closed valve, a kind 5 never, any other always
+ * (OVL2 0x594350; SOCOM 1's, the life test and kind 5 new).
+ * OPEN, 13 instructions: the target reads the bomb's state again for the 1-or-3 test, through its
+ * address built in the first test's delay slot (lbu 0(a3)); MW here reuses the first load (SOCOM
+ * 1's code has the same reload). Tried: the first test through inline accessors (a parameter, an
+ * int, a ternary), the second as inline calls, a reference, a pointer, a switch. */
+static inline bool IsBombState(unsigned char state)
+{
+    return CZBombState::m_BombStatus.m_state == state;
+}
+
+/* a breach: a charge with ammunition in the kit and the door's valve closed */
+static inline bool CanBreach(CZSealBody *seal, CValve *valve)
+{
+    if (seal && seal->m_kit.HasItem((EQUIP_ITEM)152) && seal->m_kit.ItemHasAmmo((EQUIP_ITEM)152) && valve &&
+        valve->m_value == 0)
+        return true;
+    return false;
+}
+
+bool CSealCtrl::CanPerformAction(CNodeAction *action)
+{
+    CZSealBody *seal = (CZSealBody *)m_entity;
+
+    if (!seal->m_isAlive)
+        return false;
+    bool can = false;
+
+    switch (action->m_type) {
+    case 4:
+        if (IsBombState(2))
+            can = CanPlaceBomb(action);
+        else if (CZBombState::m_BombStatus.m_state == 1 || CZBombState::m_BombStatus.m_state == 3)
+            can = false;
+        break;
+    case 6:
+        can = CanBreach(seal, action->m_valve);
+        break;
+    case 5:
+        can = false;
+        break;
+    default:
+        can = true;
+        break;
+    }
+    return can;
+}
+
+/* the view range's floor (OVL2 data 0x6506A0, read as a variable) */
+extern "C" float data_006506A0;
+
+/* the view range: a given one held between the floor and the camera's reach (95 % of its far
+ * plane, or 1000), none taking that reach (OVL2 0x5924B0; SOCOM 1's took any positive range).
+ * OPEN, 3 instructions: the target loads the far plane into $f1 and 0.95 into $f0, the product
+ * over the constant; here the other way round (SOCOM 1's code is the target's). Tried: the
+ * factor on either side, (float) casts, the plane in a local, `*=`, a ternary. */
+void CSealCtrl::SetViewRange(float range)
+{
+    float far = 1000.0f;
+    CViewCamera *cam = ((CViewWorld *)zdb::CWorld::m_world)->m_camera;
+
+    if (cam)
+        far = 0.95f * cam->m_far;
+    if (range <= 0.0f)
+        range = far;
+    else
+        _saturate(&range, data_006506A0, far);
+    m_visrange.m_goal = m_visrange.m_value = range;
+    m_ec = range;
 }
 
 /* a grenade's flight time and launch speed; SOCOM 1's function-local statics, which MW 3.0 lays
@@ -87,6 +184,98 @@ void CSealCtrl::OnMissionEnd()
     ClearGoal(GOAL_NONE);
     m_input_enabled = false;
     StopRumbler();
+}
+
+extern "C" {
+/* CSealUnit::Notify (SOCOM 1's Notify__9CSealUnitFP10CZSealBody12UNIT_MESSAGEPv by its call here;
+ * OVL2 0x5ED7B0, the kit lane's) */
+void func_005ED7B0(CSealUnit *unit, CZSealBody *seal, int message, void *data);
+/* (OVL1 0x30E6E0, unowned: told of a death online, with the global at 0x45B718) */
+void func_0030E6E0(void *obj, int a);
+extern void *data_0045B718;
+/* (OVL2 0x552780, seal.cpp's: the body told something with two times) */
+void func_00552780(CZSealBody *seal, int a, float b, float c);
+}
+
+/* dead: the squad told, the death cry (none for a ghost), the restraint undone; online, the squad
+ * ordered on unless the game holds the body back, which then waits (OVL2 0x5979A0; SOCOM 1's with
+ * SOCOM II's network ending) */
+void CSealCtrl::OnDeath()
+{
+    func_005ED7B0(m_unit, (CZSealBody *)m_entity, 1, 0);
+    switch (((CZSealBody *)m_entity)->m_deathType) {
+    case DEATH_KNIFE_KILL:
+    case DEATH_CQB:
+    case DEATH_HEADSHOT:
+        PlayAiSound((CHARACTER_SOUND)61, 1.0f, -1);
+        break;
+    case DEATH_GHOST:
+        break;
+    default:
+        PlayAiSound((CHARACTER_SOUND)60, 1.0f, -1);
+        break;
+    }
+    CZSealBody *seal = (CZSealBody *)m_entity;
+
+    seal->SetRestrained(false);
+    if (theNetwork.m_9) {
+        if (!data_00437CE8->m_dc || data_00437CE8->m_ghost) {
+            func_0030E6E0(data_0045B718, 0);
+            func_005EF2F0(24)->IssueCommand(seal, (FT_COMMAND)34, 0, false);
+        } else
+            func_00552780(seal, 2, 0.0f, 0.1f);
+    }
+}
+
+/* a random value in a range (SOCOM 1's Rfloat; seal_ai.cpp holds its operator's out-of-line copy) */
+class Rfloat {
+public:
+    Rfloat(float min, float range) : m_min(min), m_range(range) {}
+    operator float() const
+    {
+        if (m_range == 0.0f)
+            return m_min;
+        float r = 4.656613e-10f * (float)rand();
+
+        return m_min + m_range * r;
+    }
+
+    float m_min;   // 0x0
+    float m_range;   // 0x4
+};
+
+/* whether a chance comes up (an inline: seal_ai.cpp holds its out-of-line copy, 0x5608B0) */
+static inline bool Chance(float chance)
+{
+    const float &c = chance;
+
+    return Rfloat(0.0f, 1.0f) <= c;
+}
+
+extern "C" {
+/* CCharacterType::PlayAt (SOCOM 1's PlayAt__14CCharacterTypeF15CHARACTER_SOUNDUiPC6CPnt3D, which
+ * SOCOM II's returns a bool from; OVL2 0x53B710, the AI-core lane's) */
+bool func_0053B710(CCharacterType *type, CHARACTER_SOUND sound, unsigned int id, const CPnt3D *pos);
+/* the voice's AI event made where the SEAL stands (OVL2 0x55FEE0, seal_ai.cpp's) */
+void func_0055FEE0(CSealCtrl *ctrl, int event);
+}
+
+/* a sound of the SEAL's character played where it stands, if the chance comes up, and its AI
+ * event made; whether it played (OVL2 0x5978A0; SOCOM 1's played it always) */
+bool CSealCtrl::PlayAiSound(CHARACTER_SOUND sound, float chance, int event)
+{
+    bool played;
+    CZSealBody *seal = (CZSealBody *)m_entity;
+    bool go = true;
+
+    played = false;
+    if (chance < 1.0f)
+        go = Chance(chance);
+    if (go) {
+        played = func_0053B710(seal->GetCharacter(), sound, seal->m_id, &seal->m_posW);
+        func_0055FEE0(this, event);
+    }
+    return played;
 }
 
 /* hurt: the pain cry, and the pad shaken unless the SEAL is a remote one (OVL2 0x597B00) */

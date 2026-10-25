@@ -7,10 +7,10 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+s32 GetAmmoCapacity__8CZWeaponFv(s32);              /* extern */
 s8 GetDefaultAmmoId__8CZWeaponFv(s32);              /* extern */
+s32 GetNumMags__8CZWeaponFv(s32);                   /* extern */
 s32 GetWeapon__12CZWeaponListF10EQUIP_ITEM(M2C_UNK *); /* extern */
-s32 func_003D2800(s32);                             /* extern */
-s32 func_003D2810(s32);                             /* extern */
 extern M2C_UNK m_listWeapons__8CZWeapon;
 
 void func_0053EEE0(char *arg0, s8 arg1) {
@@ -19,8 +19,8 @@ void func_0053EEE0(char *arg0, s8 arg1) {
     SC_MEMBER(arg0, s8 *, 0) = arg1;
     temp_v0 = GetWeapon__12CZWeaponListF10EQUIP_ITEM(&m_listWeapons__8CZWeapon);
     if (temp_v0 != 0) {
-        SC_MEMBER(arg0, s32 *, 4) = func_003D2810(temp_v0);
-        SC_MEMBER(arg0, s32 *, 8) = func_003D2800(temp_v0);
+        SC_MEMBER(arg0, s32 *, 4) = GetAmmoCapacity__8CZWeaponFv(temp_v0);
+        SC_MEMBER(arg0, s32 *, 8) = GetNumMags__8CZWeaponFv(temp_v0);
         SC_MEMBER(arg0, s8 *, 1) = GetDefaultAmmoId__8CZWeaponFv(temp_v0);
     }
 }

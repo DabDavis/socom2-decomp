@@ -7,10 +7,10 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK DeleteAll__14RoomGameVectorFv();            /* extern */
 M2C_UNK __dl__FPv(char *);                          /* extern */
 M2C_UNK _free__FPvPCci(s32, M2C_UNK, M2C_UNK);      /* extern */
 M2C_UNK func_001F5C30(char *, M2C_UNK);             /* extern */
-M2C_UNK func_002E47D0();                            /* extern */
 M2C_UNK func_002E56F0(char *, M2C_UNK);             /* extern */
 
 char *func_002E48C0(char *arg0, s64 arg1) {
@@ -20,7 +20,7 @@ char *func_002E48C0(char *arg0, s64 arg1) {
     char *temp_a0_4;
 
     if (arg0 != NULL) {
-        func_002E47D0();
+        DeleteAll__14RoomGameVectorFv();
         temp_a0 = SC_MEMBER(arg0, s32 *, 0x94);
         if (temp_a0 != 0) {
             _free__FPvPCci(temp_a0, 0, 0);

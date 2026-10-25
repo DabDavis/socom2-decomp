@@ -4,27 +4,28 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-f32 func_0028ADA0(void *);                          /* extern */
+f32 TrueLoopTime__16CZSIScriptCommonFv(char *);     /* extern */
 
 /* Warning: Gap in callee-saved word stack region.
  * Saved: [0x0, 0x10, 0x14, 0x18, 0x1c, 0x20, 0x24, 0x28, 0x2c, 0x30, 0x34, 0x38, 0x3c, 0x40, 0x44], gap at: 0x8. */
-void func_005876B0(void *arg0, void *arg1) {
+void func_005876B0(char *arg0, char *arg1) {
     f32 temp_f0;
     f32 var_f20;
-    void *temp_s2;
+    char *temp_s2;
 
-    if (((u64) ((s64) M2C_FIELD(arg0, u8 *, 0x105E) << 0x3A) >> 0x3F) != 0) {
+    if (((u64) ((s64) SC_MEMBER(arg0, u8 *, 0x105E) << 0x3A) >> 0x3F) != 0) {
         var_f20 = -4.0f;
     } else {
         var_f20 = 0.0f;
     }
-    temp_s2 = M2C_FIELD(arg1, void **, 4);
-    temp_f0 = M2C_FIELD(temp_s2, f32 *, 0x10) * func_0028ADA0(temp_s2);
-    M2C_FIELD(arg0, void **, 0x1E4) = arg1;
-    M2C_FIELD(arg0, f32 *, 0x1E8) = var_f20;
-    M2C_FIELD(arg0, f32 *, 0x1EC) = temp_f0;
-    M2C_FIELD(arg0, s16 *, 0x1F0) = 0;
-    M2C_FIELD(arg0, s16 *, 0x1F2) = 5;
+    temp_s2 = SC_MEMBER(arg1, char **, 4);
+    temp_f0 = SC_MEMBER(temp_s2, f32 *, 0x10) * TrueLoopTime__16CZSIScriptCommonFv(temp_s2);
+    SC_MEMBER(arg0, char **, 0x1E4) = arg1;
+    SC_MEMBER(arg0, f32 *, 0x1E8) = var_f20;
+    SC_MEMBER(arg0, f32 *, 0x1EC) = temp_f0;
+    SC_MEMBER(arg0, s16 *, 0x1F0) = 0;
+    SC_MEMBER(arg0, s16 *, 0x1F2) = 5;
 }

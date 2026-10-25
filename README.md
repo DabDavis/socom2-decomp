@@ -1040,6 +1040,122 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - include/string: `operator[]` (0x2CA6E0) and size() casting the short form back to its byte
     (0x2CA700 masks it), measured over every hand-written unit; zanim.h's CValve has
     SetValue(int) (0x2CA740), which several units still spell as helpers of their own.
+- **Tells from the rdr parser and editor, the particles, the pipe** (zrdr_parse.cpp,
+  zrdr_edit.cpp, src/gamez/zparticle/, src/gamez/zrender/):
+  - keep `strtol`'s result `long` until the store: the conversion (`dsll32`/`dsra32`) lands in the
+    store's arm (MakeUnion);
+  - early returns from a float function hoist a constant into the last test's delay slot; one
+    result variable assigned in every arm keeps the target's layout (GetOpacity);
+  - a CPnt4D temporary bound to a const-reference parameter is optimised away unless the copy
+    constructor copies through the base; a named local placed after the call then gives the
+    target's stack slots (ColorSequenceAdd) -- SOCOM II's CPnt4D has a written copy constructor
+    through PNT4D's (0x328D60), which zmath.h lacks (zparticle.h carries its own CPnt4D);
+  - a string index written through an inline taking the text pointer into a local gives the
+    target's `ptr + i` order; `c_str()[i]` gives `i + ptr`;
+  - an inline's own local (erase()'s category byte) takes its stack slot in order of appearance,
+    so a hand-written `erase(pos, n)` must be an inline too;
+  - a function a unit defines first can sit after the out-of-line copies that follow its
+    last-emitted function (zrdr_newarray);
+  - a 64-bit GIF-tag constant written as one literal matches li/dsll32/li/or (FIFO_Signal);
+  - `new T` as an inline call's argument is checked a level deeper, as its own statement it
+    inlines whole (CRdrEditor::push) -- an inline height, to recheck at the corrected level.
+- **Tells from the zdb render classes** (zvid_init.cpp, vis_mesh.cpp, vis_main.cpp, vis_decal.cpp):
+  - a pointer the target keeps in v0 throughout and stores at the end is the return value (the
+    mangled name does not carry it): declared void, GetTextureSelectBlock_ver2 spills a saved
+    register;
+  - `unsigned char *flag = &p->u8[2]` gives the target's address computed once and stored
+    through; a cast on the base does not;
+  - a loop count loaded from a halfword but declared `unsigned int` swaps the count's and the
+    counter's saved registers into the target's order;
+  - a single-case `switch` gives `beq; nop; b`;
+  - a GS packet written through a cursor apart from the packet's start, one `p++` per quadword,
+    gives SOCOM II's layout (SetGSReg, zVid_Scissor);
+  - MW 3.0 inlines float-to-unsigned conversion where SOCOM 1 called `fptoui`;
+  - zbody.h's RTArray serves the decal arrays too (the same 0x20 bytes).
+- **Tells from the AI maps** (ai_maptable.cpp, ai_mapio.cpp):
+  - a field compared with a parameter goes first in the `bne` only when read into a local first
+    (`aid = x.m_actionId; if (aid == id)`); both spellings of `x.f == id` put the parameter first;
+  - `i = m_index + (int)(x - m_start)` loads m_index before the subtraction; without the cast the
+    subtraction is scheduled first;
+  - a walk over `this->m_table` keeps `this` in a saved register only in a non-const member;
+    through a cast `this` or a reference local MW keeps the table's address (GetLocation is
+    non-const in SOCOM II);
+  - each class-vector deleter destructor in ai_map.cpp's tail calls its own clear out of line,
+    unlike include/vector's in-place destroy; SOCOM II's CAiMap::Read is 0x51AFE0, handing map
+    versions 19-23 to 0x51AD90, 0x51AB50, 0x51A910, 0x51A6D0, 0x51A490.
+- **Tells from the file I/O, round 2** (util_stable.cpp, util_sonyio.cpp, util_main.cpp):
+  - a const member walking a pointer vector through a cast `this` hoists `&size_`/`&data_` into
+    saved registers; the non-const member does not (CSTable::FindString is non-const in SOCOM II);
+  - an empty loop stepping a class iterator with postfix `i++` puts its entry test at the end of
+    the function (Relocate);
+  - MW puts a constant temporary bound to a const-reference parameter in static data: `resize(n,
+    0)` uses SOCOM 1's `@533`, SOCOM II's 0x3E0658;
+  - `p = buf = malloc()` keeps v0; `buf = malloc(); p = buf;` reloads from the spill slot (Pack);
+  - a literal passed on every loop pass inside an inline helper stays in a saved register only as
+    a local of that helper (`const char *delim`);
+  - `*s != 0` as a loop test lets the body's char compare reuse the loaded byte; a bare `*s`
+    re-extends it (CFileIO::Open); `(bool)c && ...` materialises the char test inside a loop's
+    `&&` (UTF8Strncpy);
+  - `s = f(); if (!s) return s;` avoids the `move v0,zero` of `return 0`, and `s = p;` falling
+    into a shared `return s` avoids a branch to the next instruction (CreateString);
+  - newlib's strtok tail-jumps into strtok_r right after it: the seed had them as one 0xE8 row
+    (split at 0x19AA20) -- a `j` to the next instruction is a tail call too.
+- **Tells from the SEALs, round 4** (seal_create.cpp, seal_command.cpp, seal_ai.cpp's helpers):
+  - Rfloat's random product through a local (`float r = K*rand(); return min + range*r;`) gives
+    the join pad and the inlined copies' registers;
+  - a by-value inline parameter with a `const float &` bound to it is stored on the stack and read
+    back after the call, as the target does;
+  - MW puts a derived class's virtuals that its primary base lacks after all its tables and calls
+    them through the primary pointer (CZSealBody's +0x88/+0x8C/+0x90): tables can run past
+    data.txt's sizes; CBody's has four slots (GetRootPart pure, BodySetState);
+  - `switch (x) { case K: ...; break; default: ...; }` puts the case block first behind `beq`
+    with a `b` to the default; an if/else falls through instead;
+  - testing a field through an inline accessor makes MW load it again for an inlined callee's
+    test of the same field;
+  - `(unsigned int)(t - 1) < 3` written out gives the target's one range test (three `==` joined
+    by `||` fold only two);
+  - in a string switch, cases sharing the default's string are `case K: break;` before the
+    common return, which keeps their compare or table slot;
+  - `if (n == 0) s = 0; else s = f();` puts the zero arm first; a ternary or an if-assign puts the
+    call first; `int r = 0; if (c) r = f(); return r;` sets the zero first, so the other path
+    branches straight to the epilogue;
+  - converting a pointer to a base at a non-zero offset adds a null test; passing `*this` to a
+    reference parameter avoids it; a pointer taken into a local before a call keeps its load
+    ahead of the call, in a saved register;
+  - open on zmath.h: SOCOM II's CPnt3D operators are const members (`__pl__6CPnt3DCFRC6CPnt3D`
+    0x557DC0, `__ml__6CPnt3DCFf` 0x557E10, the minus 0x557E90) where zmath.h declares free
+    functions, and CPnt3D::Cross (0x592400) is undeclared.
+- **Tells from the online lobby, round 2** (the lobby's lists, friends, clan requests):
+  - MW 3.0 copies a class with a user-declared constructor member by member (arrays in loops,
+    nested plain structs as words); a plain struct is copied as one block -- the lobby's
+    whole-response copies need that constructor;
+  - a non-inline function template's instances follow their first caller in reverse order of
+    first use, each with its whole body inlined (ReleaseVector<T>);
+  - an inline switch returning constants compiles each case to `li` returning `int`, to `daddiu`
+    returning `unsigned char`;
+  - a type tested twice with a zero in both delay slots is `if (t == 3) return t == 3 ? s : 0;
+    return 0;`;
+  - a local declared earlier takes the higher stack slot: the request is declared before the
+    1 KB text buffer;
+  - after 0x306670 come zMath, then a movie/IOP stretch (0x309550-0x30CE80: audioDec*,
+    loadImage, CIOPManager); CZNetwork starts around 0x30CE80.
+- **Tells from the body animation, round 2** (body.cpp):
+  - a field saved around a VU0 write wants `*(float *)&p->m_node`; spelled
+    `((float *)&p->m_pos)[3]` it keeps the address in a register;
+  - a bool bitfield accessor tested with `!= false` gives the target's `sltu`; tested plainly it
+    folds (SmoothAnims);
+  - a vector walked through a saved `&member` register wants a reference local (`T &parts =
+    m_body_parts;`); the plain member walk reads `this` each pass (OrientParts against
+    OrientAuxParts); a non-const member keeps `this` in a saved register, the const one with a
+    cast keeps the member's address (FindPart is non-const in SOCOM II);
+  - fields loaded into float locals before a call keep the element pointer out of a saved
+    register (Propagate); a pointer local to a stack vector (`CPnt3D *p = (CPnt3D *)&v`) keeps
+    the address in a saved register for the calls that take it (GetVelocity);
+  - two-case dispatch written `if / else if / else return` gives the target's test-body-test-body
+    layout, a switch puts the tests first; two arms each ending in a call, then one shared
+    `return false`, gives the shared `move v0,zero` tail (Tick);
+  - named locals for two pushed `new` pointers take frame slots in declaration order
+    (AddCallback); CBody's vector at 0x68 is the auxiliary parts, not the anims.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has

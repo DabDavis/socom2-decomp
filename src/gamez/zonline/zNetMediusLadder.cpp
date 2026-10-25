@@ -27,16 +27,12 @@ struct MediusGetClanLadderListRequest {
 };   // 0x28
 
 struct MediusLadderPositionResponse { MEDIUS_RESPONSE_HEAD };
-struct MediusGetClanLadderListResponse { MEDIUS_RESPONSE_HEAD };
 
 /* the account logged in (OVL2 bss; SOCOM 1's AccountInfo) */
 struct AccountInfoType {
     int AccountID;   // 0x0
     char AccountName[32];   // 0x4
 };
-
-/* a ladder's list (only what is passed on) */
-struct LadderList;
 
 void cbGetLadderRanking(int, int, int, MediusLadderPositionResponse *);
 void cbGetLadderPosition(int, int, int, MediusLadderPositionResponse *);
@@ -45,15 +41,39 @@ void cbGetClanLadderList(MediusErrorCode, MediusErrorCode, MediusErrorCode,
 
 extern "C" {
 extern AccountInfoType AccountInfo;
-extern LadderList data_0044F820;   /* the clan ladder's leaders */
 
-void func_002EC060(LadderList *list);   /* a clan ladder list emptied */
 MediusErrorCode MediusLadderPosition(MediusLadderPositionRequest *req,
                                      void (*cb)(int, int, int, MediusLadderPositionResponse *));
 MediusErrorCode func_006467A8(MediusGetClanLadderListRequest *req,
                               void (*cb)(MediusErrorCode, MediusErrorCode, MediusErrorCode,
                                          MediusGetClanLadderListResponse *));   /* MediusGetClanLadderList? */
 }
+
+/* The clan ladders' list members, defined first: they follow the unit's own code in the image
+ * (0x2EBCF0, 0x2EC060), among the ladders' other members. Pinned: never inlined. */
+#pragma auto_inline off
+
+/* the clans deleted and the list emptied (OVL1 0x2EC060) */
+void ClanLadderList::DeleteAll()
+{
+    std::transform(begin(), end(), begin(), DeleteItem<ClanLadderItem>());
+    clear();
+}
+
+/* a clan kept, unless its position is there, and the lowest position kept (OVL1 0x2EBCF0): the
+ * pushed pointer read back from the frame, its address having been taken */
+void ClanLadderList::Add(MediusGetClanLadderListResponse *resp)
+{
+    if (!Find(resp->LadderPosition)) {
+        ClanLadderItem *item = new ClanLadderItem(*resp);
+
+        push_back(item);
+        if (m_lowest < item->LadderPosition)
+            m_lowest = item->LadderPosition;
+    }
+}
+
+#pragma auto_inline reset
 
 /* our position on the ladder, in the active lobby (SOCOM 1's; OVL1 0x2EB2C0) */
 void CZOnlineLobby::GetLadderInfo()
@@ -84,7 +104,7 @@ void CZOnlineLobby::GetLadderRanking()
 /* the clan ladder's leaders emptied and the first n asked for (SOCOM II's; OVL1 0x2EA6B0) */
 void CZOnlineLobby::GetClanLadderLeaders(int n)
 {
-    func_002EC060(&data_0044F820);
+    ClanLadderLeaders.DeleteAll();
     MediusGetClanLadderListRequest req;
 
     memset(&req, 0, sizeof(req));

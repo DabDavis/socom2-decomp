@@ -7,10 +7,10 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK ActivateEx__11CSealCtrlAiF9SEAL_TASKbe(char *, M2C_UNK, M2C_UNK, M2C_UNK, s32, M2C_UNK, s32, M2C_UNK); /* extern */
 M2C_UNK ClearAiState__11CSealCtrlAiFb(char *, M2C_UNK); /* extern */
 s32 GetNode__7CEntityFv(char *);                    /* extern */
 M2C_UNK ResetToInitialState__9CSealCtrlFv();        /* extern */
-M2C_UNK func_00561F00(char *, M2C_UNK, M2C_UNK, M2C_UNK, s32, M2C_UNK, s32, M2C_UNK); /* extern */
 
 void ResetToInitialState__11CSealCtrlAiFv(char *arg0) {
     s32 temp_s0;
@@ -20,5 +20,5 @@ void ResetToInitialState__11CSealCtrlAiFv(char *arg0) {
     ClearAiState__11CSealCtrlAiFb(arg0, 1);
     temp_a0 = SC_MEMBER(arg0, char **, 4);
     temp_s0 = SC_MEMBER(temp_a0, s32 *, 0x3B0);
-    func_00561F00(arg0, 1, 1, 1, temp_s0, 3, GetNode__7CEntityFv(temp_a0), 0);
+    ActivateEx__11CSealCtrlAiF9SEAL_TASKbe(arg0, 1, 1, 1, temp_s0, 3, GetNode__7CEntityFv(temp_a0), 0);
 }

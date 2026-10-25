@@ -7,12 +7,21 @@
 #ifndef ZNODE_H
 #define ZNODE_H
 
+#include <deque>
+#include <eetypes.h>
 #include <list>
 #include <vector>
 
 #include "../zmath/zmath.h"
 
 class CZProjectile;
+/* a quadword seen every way (zsys_public.h's union: the visuals' texture selects are arrays of them) */
+union _word128;
+namespace zar {
+class CZAR;
+}
+class C2DVisual;
+class CBBox;
 
 /* the node count (SOCOM 1's numNodes, a global outside zdb, after NodeUniverse) */
 extern int numNodes;
@@ -164,25 +173,159 @@ struct tag_VISUAL_HEAD {
     union {
         unsigned int m_flags;   // 0x0: tested by mask, the whole word loaded (AddVisual)
         struct {
-            unsigned int _b0 : 14;
+            /* CVisual's constructor clears the word, then sets bits 1, 19, 3-7, 14-16 and clears 9,
+             * 17 and 18, in that order (the wep lane; the names ours) */
+            unsigned int _b0 : 1;
+            unsigned int m_b1 : 1;
+            unsigned int _b2 : 1;
+            unsigned int m_b3 : 1;
+            unsigned int m_b4 : 1;
+            unsigned int m_b5 : 1;
+            unsigned int m_b6 : 1;
+            unsigned int m_b7 : 1;
+            unsigned int _b8 : 1;
+            unsigned int m_b9 : 1;
+            unsigned int m_b10 : 1;   /* bit 10: CVisual::Read gives the word at 0x1c -2 for it, 3 without */
+            unsigned int _b11 : 3;
             unsigned int m_multipass : 1;   /* bit 14: SetApplyMultipassEffects sets it by byte */
-            unsigned int _b15 : 1;
+            unsigned int m_b15 : 1;
             unsigned int m_decals : 1;   /* bit 16: SetApplyDecals' */
-            unsigned int _b17 : 15;
+            unsigned int m_b17 : 1;
+            unsigned int m_b18 : 1;
+            unsigned int m_b19 : 1;
+            unsigned int _b20 : 12;
         } m_bits;
     };
     signed char m_type;   // 0x4
-    unsigned char _5[0x18 - 5];
-    int m_refs;   // 0x18
-    unsigned char _1c[0x20 - 0x1c];
-};
+    /* the constructor zeroes the three bytes and two halfwords, and the centroid from CPnt3D::zero
+     * (UpdateCentroid zeroes it); the vparams fetch reads these 0x18 bytes (the names ours) */
+    unsigned char m_5;   // 0x5
+    unsigned char m_6;   // 0x6
+    unsigned char m_7;   // 0x7
+    unsigned short m_8;   // 0x8
+    unsigned short m_a;   // 0xa
+    CPnt3D m_centroid;   // 0xc
+};   // 0x18 bytes
 
 class CTexHandle;
 class BLENDMODE;
+class CTexture;
+class CTexPalette;
+
+/* a library's textures (SOCOM 1's DWARF: CTexList : vector). Its code is vis code, out of line
+ * (SOCOM 1's names, in SOCOM 1's order at 0x354510-0x354790). Declared ahead of CVisual, which
+ * holds a CDynTexList */
+class CTexList : public std::vector<CTexHandle *> {
+public:
+    /* every handle let go of, the list emptied */
+    void Free();
+    /* a texture's handle made and listed */
+    CTexHandle *Append(CTexture *tex, bool b);
+    /* the handle of a texture of that name, or none */
+    CTexHandle *GetHandle(const char *name);
+    /* the handle of that texture, or none (SOCOM 1's, right after the name overload) */
+    CTexHandle *GetHandle(CTexture *tex);
+};   // 0xc bytes
+
+/* a library's palettes (SOCOM 1's DWARF: CTexPalList : vector) */
+class CTexPalList : public std::vector<CTexPalette *> {
+};   // 0xc bytes
+
+/* a texture buffer's dynamic textures (SOCOM 1's DWARF: CDynTexList, two vectors) */
+class CDynTexList {
+public:
+    void Add(CTexHandle *tex, bool b);
+    /* a palette listed (SOCOM 1's overload, 0x357860 here) */
+    void Add(CTexPalette *pal, bool b);
+
+    CTexList m_tex_list;   // 0x0
+    CTexPalList m_pal_list;   // 0xc
+};   // 0x18 bytes
+
+class CMesh;
+
+}
+
+/* the pod storage's sized construction: MSL's __vector_pod::init(n, value), out of line in
+ * vis_main.cpp's template tail (0x3C45B0, SOCOM 1's init__Q23std38__vector_pod<Ui,...>FUiRCUi in
+ * shape) -- include/vector does not model it yet, so it is called by its placeholder */
+extern "C" void func_003C45B0(void *v, unsigned int n, const unsigned int &value);
+
+namespace std {
+
+/* the visual's per-view vector, the one pointer vector built with a size (MSL's vector(n, value),
+ * the value a constant temporary; SOCOM 1's CVisual() calls init(0, ...) there too): the wep lane's
+ * stand-in until include/vector has the constructor -- the same bases, so the same three-level
+ * destructor and accessors as every pointer vector */
+template <class Allocator>
+class vector<zdb::CMesh *, Allocator> : public __vector_imp<zdb::CMesh *, Allocator, true> {
+public:
+    vector() {}
+    explicit vector(unsigned int n, const unsigned int &value = 0) { func_003C45B0(this, n, value); }
+    void clear() { __vector_imp<zdb::CMesh *, Allocator, true>::clear(); }
+    void swap(vector &x) { __vector_imp<zdb::CMesh *, Allocator, true>::swap(x); }
+};
+
+}
+
+void _free(void *p, const char *file, int line);
+
+/* the owner of a visual's VU buffer, shared by the buffers of each view (SOCOM 1's CVisBase, no
+ * DWARF; its constructor and destructor inline in SOCOM II -- CopyBuffer and 0x3B2CB0 build one,
+ * ~CVisual deletes one). The block, its holders, its size and a flag that the block is not its own
+ * to free (the names ours but the count's) */
+class CVisBase {
+public:
+    ~CVisBase()
+    {
+        if (!m_static) {
+            if (m_data)
+                _free(m_data, 0, 0);
+            m_data = 0;
+        }
+        m_instance_count--;
+    }
+    /* one holder fewer, the count left given back (re-read: as CVisual::Release) */
+    int Release()
+    {
+        m_refs--;
+        return m_refs;
+    }
+
+    void *m_data;   // 0x0
+    int m_refs;   // 0x4
+    unsigned int m_size;   // 0x8
+    unsigned int m_c;   // 0xc
+    unsigned char m_static;   // 0x10
+
+    /* the owners alive (SOCOM 1's static) */
+    static int m_instance_count;
+};
+
+namespace zdb {
 
 class CVisual : public tag_VISUAL_HEAD {
 public:
-    virtual ~CVisual();
+    /* the holders and a word set by bit 10, CVisual's own ahead of its table: its constructor
+     * zeroes the count first of its members, after the vtable pointer (SOCOM 1's too) */
+    int m_refs;   // 0x18
+    int m_1c;   // 0x1c: -2 or 3 by bit 10 (CVisual::Read; the name ours)
+
+    /* SOCOM II's table (__vt__Q23zdb7CVisual, 0x408380; the wep lane's): CMesh overrides the
+     * bounding box, the centroid and Read, and adds InitMatrices after Get2DVisual */
+    virtual ~CVisual();                                 /* +0x08 */
+    virtual void Render(CMatrix *mtw);                  /* +0x0C */
+    virtual void ComputeBBox(CBBox *box);               /* +0x10 */
+    virtual void UpdateCentroid();                      /* +0x14 */
+    /* the head's parameters and the detail layers read from the archive (SOCOM 1's) */
+    virtual bool Read(zar::CZAR &zar);                  /* +0x18 */
+    /* none: a visual that draws in 2D overrides it (inline; zanim_menu.cpp's copy, 0x274860, is
+     * the linked one) */
+    virtual C2DVisual *Get2DVisual() { return 0; }      /* +0x1C */
+    /* constructed empty, its type -1 (0x3C4390); one made and read by the type the archive gives
+     * (SOCOM 1's static) */
+    CVisual();
+    static CVisual *Create(zar::CZAR &zar);
     /* the type as a byte: ScrollTexture and the decal walk test it with lbu where GetMesh and
      * AddVisual's test of the member loads it signed (SOCOM 1's split the same way; the name is
      * ours) */
@@ -198,18 +341,53 @@ public:
     /* a decal projected onto the visual (SOCOM 1's, by name) */
     void ApplyDecalRender(CMatrix *mtw, CNode *node, float size, CPnt3D *pos, CPnt3D *normal,
                           CTexHandle *tex, CMatrix *uv);
+    /* a texture select's name resolved against the world's textures, the default one failing it:
+     * the handle and its palette listed, the select copied in (SOCOM 1's; the wep lane's) */
+    CTexture *ResolveTextureName(_word128 *names, _word128 *select);
+    /* a block of n texture selects opened at the cursor: its zeroed head, the end tag, and the
+     * DMA reference and tag that send it (SOCOM 1's static, byte for byte) */
+    /* the specular maps let go of (SOCOM 1's static; the wep lane's) */
+    static void Flush();
+    static std::vector<CLightMap *> m_specMapList;
+    /* the view ids' stack primed, the map lists sized, the meshes' statics set (SOCOM 1's static;
+     * the wep lane's) */
+    static void Init();
+    /* the free view ids (SOCOM 1's stack<unsigned int>; SOCOM II's calls the pointer deque's
+     * push_back and pop_back, so it is spelled as that deque here), and the light, shadow and
+     * projected maps' lists (SOCOM 1's statics: vis's initialiser 0x404570 builds them) */
+    static std::deque<const void *> m_stack_vid;
+    static std::vector<CLightMap *> m_lightMapList;
+    static std::vector<CLightMap *> m_shadowMapList;
+    static std::vector<void *> m_projectedMapList;
+    static _word128 *GetTextureSelectBlock_ver2(unsigned int n, _word128 **cursor, _word128 *ref,
+                                           _word128 *tag);
 
-    unsigned char _24[0x3c - 0x24];
+    /* the wep lane's, from the constructor (0x3C4390): two vectors before the blend words, and the
+     * dynamic textures and two words after them -- CSubMesh's own members start at 0x68 */
+    std::vector<void *> m_24;   // 0x24 (not read yet)
+    /* per view, the mesh of the level of detail in use (CMesh::SetLOD; the name ours) -- a plain
+     * visual's VU buffer per view (SOCOM 1's SetBuffer stores it there; ~CVisual frees them) */
+    std::vector<CMesh *> m_lodMesh;   // 0x30
     /* the blend words its packets use, each written by CNode::SetBlendMode (the name ours) */
     std::vector<BLENDMODE *> m_blendmodes;   // 0x3c
-};
-
-class CMesh;
+    /* its textures and palettes (ResolveTextureName adds to it) */
+    CDynTexList m_dynTexList;   // 0x48
+    /* its detail layers: a count and one allocated block, each layer 0x10 bytes with its
+     * vertices after them (CVisual::Read; the names ours) */
+    struct DETAIL {
+        unsigned int m_0;   // 0x0
+        unsigned short m_count;   // 0x4: its entries, 0xc bytes each
+        unsigned short m_6;   // 0x6
+        unsigned int m_8;   // 0x8
+        void *m_data;   // 0xc: set at load, into the block
+    };
+    DETAIL *m_details;   // 0x60
+    unsigned int m_numDetails;   // 0x64
+};   // 0x68 bytes
 
 class CSubMesh : public CVisual {
 public:
     CSubMesh(CMesh *mesh);
-    unsigned char _48[0x68 - 0x48];
     int m_index;   // 0x68: its place in its mesh's matrices (the names ours)
     CVisual *m_mesh;   // 0x6c
 };
@@ -218,8 +396,33 @@ class CMesh : public CVisual {
 public:
     /* a copy of the mesh, its own data, for a node (SOCOM 1's took no node) */
     CMesh *Clone(CNode *owner);
-    unsigned char _48[0x90 - 0x48];
-    CMatrix **m_palette;   // 0x90: its sub-meshes' matrices, by index (the name ours)
+    /* the wep lane's (vis_mesh.cpp, SOCOM 1's names): its table (__vt__Q23zdb5CMesh, 0x408350)
+     * overrides these and adds InitMatrices (+0x20) */
+    CMesh();   // 0x3B9760
+    virtual ~CMesh();
+    /* the meshes' statics set (SOCOM 1's static, 0x3B9820; CVisual::Init calls it) */
+    static void Init();
+    virtual void ComputeBBox(CBBox *box);
+    virtual void UpdateCentroid();
+    virtual bool Read(zar::CZAR &zar);
+    virtual void InitMatrices();
+    void SetMeshTextureSelects(_word128 *head, _word128 *names);
+    void SetLOD(unsigned int view, unsigned int lod);
+
+    /* a level of detail (SOCOM 1's CMesh::CMeshLOD, 0xc bytes: the mesh last) */
+    class CMeshLOD {
+    public:
+        unsigned int m_0;   // 0x0
+        float m_4;   // 0x4
+        CMesh *m_mesh;   // 0x8
+    };
+
+    unsigned char _68[0x78 - 0x68];
+    std::vector<CMeshLOD> m_lods;   // 0x78
+    unsigned int m_numMatrices;   // 0x84
+    /* its sub-meshes' matrices, by index: InitMatrices pushes one new CMatrix per sub-mesh (the
+     * name ours; znode.h had only the vector's data, as m_palette at 0x90) */
+    std::vector<CMatrix *> m_palette;   // 0x88
 };
 
 class CVisualVector : public std::vector<CVisual *> {
@@ -493,7 +696,12 @@ public:
     unsigned char _4[0x10 - 4];   // the rest of TEXTURE_PARAMS
     CAssetLib *m_AssetLib;   // 0x10 (AddTexture sets it)
     char *m_name;   // 0x14
-    unsigned char _18[0x54 - 0x18];
+    void *m_buffer;   // 0x18 (SOCOM 1's DWARF, from here; the wep lane's)
+    CTexPalette *m_palette;   // 0x1c
+    unsigned char _20[0x40 - 0x20];
+    /* the VU's DMA reference to its select (SOCOM 1's _word128; ResolveTextureName copies it) */
+    u_long128 m_dmaRefVu;   // 0x40
+    unsigned char _50[0x54 - 0x50];
     /* the first mip level's register (SOCOM 1's sceGsMiptbp1 *): a texture with mip levels has one
      * (the asset manager's mip walk tests it) */
     void *m_MIP1;   // 0x54
@@ -574,25 +782,7 @@ enum _RenderPhase {
     CHARSETCUSTOMCHARS, NUM_RENDER_PHASES
 };
 
-class CTexPalette;
-
-/* a library's textures (SOCOM 1's DWARF: CTexList : vector). Its code is vis code, out of line
- * (SOCOM 1's names, in SOCOM 1's order at 0x354510-0x354790) */
-class CTexList : public std::vector<CTexHandle *> {
-public:
-    /* every handle let go of, the list emptied */
-    void Free();
-    /* a texture's handle made and listed */
-    CTexHandle *Append(CTexture *tex, bool b);
-    /* the handle of a texture of that name, or none */
-    CTexHandle *GetHandle(const char *name);
-    /* the handle of that texture, or none (SOCOM 1's, right after the name overload) */
-    CTexHandle *GetHandle(CTexture *tex);
-};   // 0xc bytes
-
-/* a library's palettes (SOCOM 1's DWARF: CTexPalList : vector) */
-class CTexPalList : public std::vector<CTexPalette *> {
-};   // 0xc bytes
+/* (CTexList and CTexPalList are declared ahead of CVisual) */
 
 /* a library of models and textures (SOCOM 1's DWARF has its render phase at 0x2B, after the name
  * and three lists; CNode::CreateXRef reads it at 0x2F here: SOCOM II adds a word after the name --
@@ -981,14 +1171,7 @@ public:
     unsigned char m_socom2_19;   // 0x19 (CCell's setter at 0x2D7AF0 writes it in both lists)
 };   // 0x1c bytes
 
-/* a texture buffer's dynamic textures (SOCOM 1's DWARF: CDynTexList, two vectors) */
-class CDynTexList {
-public:
-    void Add(CTexHandle *tex, bool b);
-
-    CTexList m_tex_list;   // 0x0
-    CTexPalList m_pal_list;   // 0xc
-};   // 0x18 bytes
+/* (CDynTexList is declared ahead of CVisual) */
 
 /* a cell of the world's grid: SOCOM 1's DWARF has its lights, its clutter list (0xcc) and its
  * dynamic textures (0xe0) after the node, 0x100 bytes; SOCOM II's has two clutter lists, so its
@@ -1083,6 +1266,9 @@ class CAssetList;
 class CWorld : public CNode {
 public:
     static CWorld *m_world;
+    /* a texture's handle by name, from the asset manager's list (SOCOM 1's four words, out of
+     * line at 0x1EC940; the wep lane's) */
+    static CTexHandle *GetTexHandle(const char *name);
     static CNode *GetModel(const char *name);
     /* the asset manager's library list (SOCOM 1's, 0xC bytes in both; out of line in SOCOM II's
      * node_assetlib.cpp, which AddModel and other units call) */

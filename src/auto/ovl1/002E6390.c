@@ -9,15 +9,15 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define NULL 0
 #pragma mpwc_relax on
 void cbGetLeaderMessages__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP32MediusGetAllClanMessagesResponse(s32 arg0, s32 arg1, s32 arg2, char * arg3);
+M2C_UNK Add__17ClanMessageVectorFP32MediusGetAllClanMessagesResponse(char * arg0, char * arg1);
 s32 CheckMediusCallbackStatus__FPCc20MediusCallbackStatus(char * arg0, s32 arg1);
 M2C_UNK func_002E6400(void);
-M2C_UNK func_002E65B0(s32 arg0, s32 arg1);
+extern M2C_UNK ClanMessageVec;
 extern M2C_UNK data_003F3EE0;
-extern M2C_UNK data_0044F760;
 
 void cbGetLeaderMessages__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP32MediusGetAllClanMessagesResponse(s32 arg0, s32 arg1, s32 arg2, char *arg3) {
     if (CheckMediusCallbackStatus__FPCc20MediusCallbackStatus(&data_003F3EE0, SC_MEMBER(arg3, s32 *, 0x18)) != 0) {
-        func_002E65B0((s32) &data_0044F760, (s32) arg3);
+        Add__17ClanMessageVectorFP32MediusGetAllClanMessagesResponse(&ClanMessageVec, arg3);
         if (SC_MEMBER(arg3, s8 *, 0xEC) != 0) {
             func_002E6400();
         }

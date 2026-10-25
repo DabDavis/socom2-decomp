@@ -24,6 +24,16 @@ void CZWeapon::SetHasFireMode(FIREMODE mode)
         m_maxfiremode = mode;
 }
 
+int CZWeapon::GetAmmoCapacity()
+{
+    return m_ammocap;
+}
+
+int CZWeapon::GetNumMags()
+{
+    return m_nummags;
+}
+
 bool CZWeapon::SetHitAnim(int material, CZAnim *anim)
 {
     if (material < (int)CMaterialExArray::m_materialex_list.size()) {

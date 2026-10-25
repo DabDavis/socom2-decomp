@@ -38,6 +38,8 @@ public:
     CZAR(const char *name, CIO *io);
     virtual ~CZAR();
     bool Fetch(const char *name, void *buf, int size);
+    /* a key's size by name (0x25AB70; CVisual::Create's) */
+    bool Fetch(const char *name, int *size);
     CKey *GetOpenKey();
     CKey *OpenKey(CKey *key);
     CKey *OpenKey(const char *name);

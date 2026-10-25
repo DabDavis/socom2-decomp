@@ -622,7 +622,9 @@ public:
 
 class CMission {
 public:
-    static void _RecoverFromNetError(int error);
+    /* the net-error callback: theMission's _RecoverFromNetError (SOCOM 1's pair, 0x2A45F0) */
+    static void RecoverFromNetError(int error);
+    bool _RecoverFromNetError(int error);
     void Init();
     void ReOpen_Load();
     void ReOpen_Unload1();
