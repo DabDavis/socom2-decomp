@@ -23,7 +23,6 @@ void func_003A88C0(CTurret *turret, float dT);
 void func_003A8D20(CTurret *turret);
 void func_002C7A60(CTurret *turret, int n);
 int func_0052DC70(CAiMaps *maps, const CPnt3D *pos, unsigned int *loc);
-void func_003AB8C0(CTurretDefVector *v, unsigned int n);
 /* the turrets made, and the most there may be (-1: no limit) -- the unit's statics */
 extern int data_004A4020;
 extern int data_003E0800;
@@ -38,6 +37,42 @@ CZSealBody *ftsGetPlayer();
  * stores), which is not defined here yet */
 CTurretDefVector CTurret::m_turret_def;
 CTurretList CTurret::m_turrets;
+
+/* the limits' defaults, in degrees (the unit's statics, 60 and 30; not named) */
+extern "C" float data_003E0808;
+extern "C" float data_003E0810;
+
+/* a definition's defaults: no weapon or ammo, the strings empty, the trigger 1-2 up and 2-4 down,
+ * the AI looking down -z, yaw within 60 degrees and pitch within 30, the rates 1, flag 2 set and
+ * the AI's accuracy, range and discipline the turret's (SOCOM 1's constructor, the members SOCOM
+ * II's; out of line, as SOCOM 1's: right after Parse in the image, ahead of the template tail) */
+CTurretDef::CTurretDef() : m_weapon(EQUIP_NONE), m_ammo(AMMO_NONE), m_flags(0)
+{
+    m_name[0] = 0;
+    m_20[0] = 0;
+    m_destroyAnim[0] = 0;
+    m_effect[0] = 0;
+    m_parts[0][0] = 0;
+    m_parts[1][0] = 0;
+    m_parts[2][0] = 0;
+    m_health = 0.0f;
+    m_effectValue = 0.0f;
+    m_team = 0;
+    m_trigger.Set(Rfloat(2.0f, 4.0f), Rfloat(1.0f, 2.0f));
+    m_lookDir = CPnt3D::unit_nz;
+    m_yaw.m_min = 0.017453292f * -data_003E0808;
+    m_yaw.m_max = 0.017453292f * data_003E0808;
+    m_pitch.m_min = 0.017453292f * -data_003E0810;
+    m_pitch.m_max = 0.017453292f * data_003E0810;
+    m_yawRate = 1.0f;
+    m_pitchRate = 1.0f;
+    SetFlag(2, true);
+    m_aiParams.accuracy = 0.8f;
+    m_aiParams.visual_range = 1000.0f;
+    m_aiParams.target_discipline = 0.996195f;
+    m_thermal = false;
+    m_compass = false;
+}
 
 /* the definition whose name starts the node's (SOCOM 1's; called, never inlined) */
 #pragma auto_inline off
@@ -64,9 +99,8 @@ const CTurretDef *CTurretDefVector::PrefixMatch(const char *name)
 /* the definitions read: the vector sized to the "TURRET" list's pairs, each parsed from its name
  * and value. The count goes into a local ahead of the counter's zero, which then fills the resize
  * call's delay slot as the target's does (computed in the call's argument, MW put the this-move
- * there and sank the zero to the loop's first test). The resize is MSL's class-vector resize
- * (0x3AB8C0), called through its placeholder until CTurretDef's constructor (0x3AB5F0) and the
- * insert/erase it brings are modelled. */
+ * there and sank the zero to the loop's first test). The resize is include/vector's over
+ * CTurretDef's constructor: the unit's template tail (0x3AB5F0-0x3AC6DF) */
 int CTurretDefVector::Init(const char *name, const char *path)
 {
     _zrdr *rdr = zrdr_read(name, path, 0);
@@ -78,7 +112,7 @@ int CTurretDefVector::Init(const char *name, const char *path)
         unsigned int n = (list ? list->Count() : 0) / 2;
 
         i = 0;
-        func_003AB8C0(this, n);
+        resize(n);
         for (iterator it = begin(); it != end(); ++it, i += 2)
             (*it).Parse(list->Item(i)->String(), list->Item(i + 1));
     }
@@ -244,7 +278,7 @@ void CTurret::PreTick(float dT)
 
         m_254 = r;
         m_260 = 1.0f / r;
-        m_258 = r * m_def->m_120;
+        m_258 = r * m_def->m_tanHalfAngle;
         m_25c = 25.0f;
         m_264 = m_posW;
         m_270 = m_38c;
@@ -306,8 +340,8 @@ void CTurret::Tick(float dT)
     else if (m_control) {
         CEntityCtrl *ctrl = m_control;
 
-        m_3a8 = m_def->m_114 * ctrl->m_throttle[2];
-        m_3ac = m_def->m_118 * ctrl->m_throttle[3];
+        m_3a8 = m_def->m_yawRate * ctrl->m_throttle[2];
+        m_3ac = m_def->m_pitchRate * ctrl->m_throttle[3];
         m_velR.x = m_3ac;
         m_velR.y = m_3a8;
         m_velR.z = 0.0f;
@@ -346,4 +380,15 @@ void CTurret::UpdatePosW()
 
 void CTurret::ComputeNextPosition(float dT)
 {
+}
+
+/* STAND-IN for a dead-stripped original (no row in the map: it scores as no-target). The insert
+ * (0x3ABD90) inlines its temporary's destruction -- the deleter's destructor, with clear inside --
+ * which the template tail does only for members generated before it, i.e. requested by the unit's
+ * own code; nothing left in the image clears or destroys a vector of definitions, which fits an own
+ * function the linker stripped (the integrator's measurement on veh_vehicle.cpp's 0x3AF040) */
+void DeadTurretDefinitionsKill()
+{
+    CTurret::m_turret_def.clear();
+    std::vector<CTurretDef> tmp;
 }
