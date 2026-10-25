@@ -1083,6 +1083,23 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - each class-vector deleter destructor in ai_map.cpp's tail calls its own clear out of line,
     unlike include/vector's in-place destroy; SOCOM II's CAiMap::Read is 0x51AFE0, handing map
     versions 19-23 to 0x51AD90, 0x51AB50, 0x51A910, 0x51A6D0, 0x51A490.
+- **Tells from the file I/O, round 2** (util_stable.cpp, util_sonyio.cpp, util_main.cpp):
+  - a const member walking a pointer vector through a cast `this` hoists `&size_`/`&data_` into
+    saved registers; the non-const member does not (CSTable::FindString is non-const in SOCOM II);
+  - an empty loop stepping a class iterator with postfix `i++` puts its entry test at the end of
+    the function (Relocate);
+  - MW puts a constant temporary bound to a const-reference parameter in static data: `resize(n,
+    0)` uses SOCOM 1's `@533`, SOCOM II's 0x3E0658;
+  - `p = buf = malloc()` keeps v0; `buf = malloc(); p = buf;` reloads from the spill slot (Pack);
+  - a literal passed on every loop pass inside an inline helper stays in a saved register only as
+    a local of that helper (`const char *delim`);
+  - `*s != 0` as a loop test lets the body's char compare reuse the loaded byte; a bare `*s`
+    re-extends it (CFileIO::Open); `(bool)c && ...` materialises the char test inside a loop's
+    `&&` (UTF8Strncpy);
+  - `s = f(); if (!s) return s;` avoids the `move v0,zero` of `return 0`, and `s = p;` falling
+    into a shared `return s` avoids a branch to the next instruction (CreateString);
+  - newlib's strtok tail-jumps into strtok_r right after it: the seed had them as one 0xE8 row
+    (split at 0x19AA20) -- a `j` to the next instruction is a tail call too.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
