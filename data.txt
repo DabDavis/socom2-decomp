@@ -750,6 +750,7 @@
 0x0049E368 0x1 s_fifoPaused  # OVL1 bss; SOCOM II's, name ours (set by zSysFifoPause, cleared by zSysFifoResume); 2 references -- the sound/system lane
 0x0049E370 0x4 m_refCount__3CVU  # OVL1 bss; s1:data-seq (size SOCOM 1's; via __dt__3CVUFv)
 0x0049E378 0x4 m_VifHandlerID__3CVU  # OVL1 bss; s1:data-seq (size SOCOM 1's; via __dt__3CVUFv)
+0x0049E380 0x460 s_vu0Context  # OVL1 bss; SOCOM II's, name ours (two 0x230-byte VU0 register contexts: zSysVu0Save/zSysVu0Restore index it by 0x230 * n; m_running follows it at 0x49E7E0); 2 references -- the sound/system lane
 0x0049E7E0 0x4 m_running  # OVL1 bss; SOCOM 1's file static of the VU unit (InterruptFromVIF0 clears it, as SOCOM 1's clears m_running at gp-26268, after m_VifHandlerID there); 1 reference (InterruptFromVIF0) -- the sound/system lane
 0x0049E840 0x4 m_baseAddress__Q23zdb8CTexture  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Init__Q23zdb8CTextureFv +1)
 0x0049E860 0x4 m_palId__Q23zdb11CTexPalette  # OVL1 bss; s1:data-seq (size SOCOM 1's; via __ct__Q23zdb11CTexPaletteFPCc)
