@@ -4,11 +4,12 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_002F42D0(M2C_UNK *, s32);              /* extern */
+M2C_UNK CheckMediusCallbackStatus__FPCc20MediusCallbackStatus(M2C_UNK *, s32); /* extern */
 extern M2C_UNK data_003F5BC0;
 
 void func_002FAB60(s32 arg0, s32 arg1, s32 arg2, char *arg3) {
-    func_002F42D0(&data_003F5BC0, M2C_FIELD(arg3, s32 *, 0x18));
+    CheckMediusCallbackStatus__FPCc20MediusCallbackStatus(&data_003F5BC0, SC_MEMBER(arg3, s32 *, 0x18));
 }

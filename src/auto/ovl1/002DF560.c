@@ -8,8 +8,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 char *Add__13CUIVarManagerFPCcP5_zrdr15UIVAR_LONGEVITY(M2C_UNK *, M2C_UNK *, M2C_UNK, M2C_UNK); /* extern */
-M2C_UNK func_0032F350(char *);                      /* extern */
-M2C_UNK func_003863D0(char *);                      /* extern */
+M2C_UNK DeleteChildren__5_zrdrFv(char *);           /* extern */
+M2C_UNK UpdateDependents__11CUIVariableFv(char *);  /* extern */
 extern M2C_UNK data_003F3880;
 extern char *data_0044F45C;
 extern M2C_UNK theUIVarManager;
@@ -22,9 +22,9 @@ void SyncGameClock__13CZOnlineLobbyFi(s32 arg0, s32 arg1) {
     }
     temp_s0 = data_0044F45C;
     if ((SC_MEMBER(temp_s0, u8 *, 0) != 2) || (SC_MEMBER(temp_s0, f32 *, 4) != (10.0f + (f32) arg1))) {
-        func_0032F350(temp_s0);
+        DeleteChildren__5_zrdrFv(temp_s0);
         SC_MEMBER(temp_s0, s8 *, 0) = 2;
         SC_MEMBER(temp_s0, f32 *, 4) = (f32) (10.0f + (f32) arg1);
-        func_003863D0(temp_s0);
+        UpdateDependents__11CUIVariableFv(temp_s0);
     }
 }

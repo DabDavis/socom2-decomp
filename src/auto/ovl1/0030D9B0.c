@@ -4,20 +4,21 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK RecoverFromNetError__13CZOnlineLobbyFi(M2C_UNK *, s32); /* extern */
 M2C_UNK func_002DFE50(M2C_UNK *);                   /* extern */
-M2C_UNK func_002F4090(M2C_UNK *, s32);              /* extern */
 s32 func_006237E0();                                /* extern */
-extern M2C_UNK data_0044F370;
+extern M2C_UNK theLobby;
 
 s32 func_0030D9B0(void) {
     s32 temp_v0;
 
     temp_v0 = func_006237E0();
     if (temp_v0 != 0) {
-        func_002F4090(&data_0044F370, temp_v0);
+        RecoverFromNetError__13CZOnlineLobbyFi(&theLobby, temp_v0);
     }
-    func_002DFE50(&data_0044F370);
+    func_002DFE50(&theLobby);
     return temp_v0;
 }

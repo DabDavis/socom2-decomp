@@ -5827,7 +5827,7 @@
 0x0032F0E0 0x11C func_0032F0E0  # OVL1
 0x0032F200 0xFC func_0032F200  # OVL1
 0x0032F300 0x44 __dt__5_zrdrFv  # OVL1; s1:align
-0x0032F350 0x3C func_0032F350  # OVL1
+0x0032F350 0x3C DeleteChildren__5_zrdrFv  # OVL1; s1:calls (CZOnlineLobby::SyncGameClock calls it, between CUIVarManager::Add and UpdateDependents, where SOCOM 1's does; SOCOM II's tests the owned-array flag and calls the freeing helper 0x335AA0 that SOCOM 1's inlines) -- the online lane
 0x0032F390 0x218 func_0032F390  # OVL1
 0x0032F5B0 0x4C zrdr_findfile__FPCcPCc  # OVL1; s1:align
 0x0032F600 0x20 func_0032F600  # OVL1
@@ -7122,8 +7122,8 @@
 0x00385E50 0x48 func_00385E50  # OVL1
 0x00385EA0 0x248 func_00385EA0  # OVL1
 0x003860F0 0x1B0 func_003860F0  # OVL1
-0x003862A0 0x124 func_003862A0  # OVL1
-0x003863D0 0x8C func_003863D0  # OVL1
+0x003862A0 0x124 __as__11CUIVariableFPCc  # OVL1; s1:calls (the lobby callbacks' (variable, string) setter, as SOCOM 1's) -- the online lane
+0x003863D0 0x8C UpdateDependents__11CUIVariableFv  # OVL1; s1:calls (SyncGameClock calls it third, as SOCOM 1's) -- the online lane
 0x00386460 0x1F8 func_00386460  # OVL1
 0x00386660 0x90 func_00386660  # OVL1
 0x003866F0 0x220 func_003866F0  # OVL1

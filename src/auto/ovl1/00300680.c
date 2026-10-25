@@ -4,17 +4,18 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_002F42E0(s32);                         /* extern */
+M2C_UNK CheckMediusError__F15MediusErrorCode(s32);  /* extern */
 s32 func_006479B8(u8);                              /* extern */
-extern s32 data_003DF308;
 extern u8 data_0044FDA0;
+extern s32 myConnectionIndex;
 
 void func_00300680(void) {
     if (data_0044FDA0 == 1) {
-        func_002F42E0(func_006479B8(data_0044FDA0));
+        CheckMediusError__F15MediusErrorCode(func_006479B8(data_0044FDA0));
     }
     data_0044FDA0 = 0;
-    data_003DF308 = -1;
+    myConnectionIndex = -1;
 }

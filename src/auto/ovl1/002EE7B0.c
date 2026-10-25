@@ -4,21 +4,22 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+s32 CheckMediusCallbackStatus__FPCc20MediusCallbackStatus(M2C_UNK *, s32); /* extern */
 M2C_UNK func_002E1610(M2C_UNK *, s8 *);             /* extern */
-s32 func_002F42D0(M2C_UNK *, s32);                  /* extern */
 M2C_UNK memset(M2C_UNK *, M2C_UNK, M2C_UNK);        /* extern */
+extern M2C_UNK SessionKey;
 extern M2C_UNK data_003F49F0;
 extern M2C_UNK data_0044F3D4;
-extern M2C_UNK data_0066A4D0;
 
 void func_002EE7B0(s32 arg0, s32 arg1, s32 arg2, char *arg3) {
     s8 sp2F;
     s8 sp2E;
 
-    memset(&data_0066A4D0, 0, 0x11);
-    if (func_002F42D0(&data_003F49F0, M2C_FIELD(arg3, s32 *, 0x18)) != 0) {
+    memset(&SessionKey, 0, 0x11);
+    if (CheckMediusCallbackStatus__FPCc20MediusCallbackStatus(&data_003F49F0, SC_MEMBER(arg3, s32 *, 0x18)) != 0) {
         sp2F = 0;
         func_002E1610(&data_0044F3D4, &sp2F);
         return;

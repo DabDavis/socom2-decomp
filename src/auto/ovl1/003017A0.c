@@ -4,18 +4,19 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_002F42D0(M2C_UNK *, s32);                  /* extern */
+s32 CheckMediusCallbackStatus__FPCc20MediusCallbackStatus(M2C_UNK *, s32); /* extern */
 M2C_UNK func_00301A70(M2C_UNK *);                   /* extern */
 M2C_UNK func_003020A0(M2C_UNK *, char *);           /* extern */
 extern M2C_UNK data_003F6108;
 extern M2C_UNK data_0044FDC0;
 
 void func_003017A0(s32 arg0, s32 arg1, s32 arg2, char *arg3) {
-    if (func_002F42D0(&data_003F6108, M2C_FIELD(arg3, s32 *, 0x18)) != 0) {
+    if (CheckMediusCallbackStatus__FPCc20MediusCallbackStatus(&data_003F6108, SC_MEMBER(arg3, s32 *, 0x18)) != 0) {
         func_003020A0(&data_0044FDC0, arg3);
-        if (M2C_FIELD(arg3, s8 *, 0xCC) != 0) {
+        if (SC_MEMBER(arg3, s8 *, 0xCC) != 0) {
             func_00301A70(&data_0044FDC0);
         }
     } else {

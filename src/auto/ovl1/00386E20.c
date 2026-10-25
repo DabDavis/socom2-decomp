@@ -8,10 +8,10 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 #pragma mpwc_relax on
+M2C_UNK DeleteChildren__5_zrdrFv(s32);              /* extern */
 M2C_UNK __dl__FPv(char *);                          /* extern */
 M2C_UNK __dt__5_zrdrFv(s32, M2C_UNK);               /* extern */
 M2C_UNK _free__FPvPCci(s32, M2C_UNK, M2C_UNK);      /* extern */
-M2C_UNK func_0032F350(s32);                         /* extern */
 M2C_UNK func_0036AC10(s32, M2C_UNK);                /* extern */
 M2C_UNK func_0036AC80(char *, M2C_UNK);             /* extern */
 M2C_UNK func_0039FB30(char *, M2C_UNK);             /* extern */
@@ -46,7 +46,7 @@ char *func_00386E20(char *arg0, s64 arg1) {
                 SC_MEMBER(temp_s0, s32 *, 0) = 0;
                 temp_a0_4 = SC_MEMBER(temp_s0, s32 *, 4);
                 if (temp_a0_4 != 0) {
-                    func_0032F350(temp_a0_4);
+                    DeleteChildren__5_zrdrFv(temp_a0_4);
                     __dt__5_zrdrFv(SC_MEMBER(temp_s0, s32 *, 4), 1);
                 }
                 func_0039FB30(temp_s0 + 8, -1);

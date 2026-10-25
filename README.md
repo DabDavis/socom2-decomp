@@ -742,6 +742,20 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - `va_arg(ap, EVENT)` reads a byte enum with `lb`; `(EVENT)va_arg(ap, int)` does not;
   - SOCOM II's CAiPlanner::reset is empty where SOCOM 1's cleared a byte: a name carried over from
     the vtable says nothing about the body.
+- **Tells from the online lobby** (src/gamez/zonline/):
+  - the lobby's units are fixed by the static initialisers in link order and by string copies --
+    the same text at two addresses means two units ("Retrieving messages from server..." in the
+    clan unit and the lobby unit);
+  - two of three `==` tests on one variable joined by `||` fold into an unsigned range test plus
+    one `==`; a `switch` gives a compare chain instead;
+  - `x > -1` branches on `slti` as the target does; `x >= 0` gives `bltz`;
+  - a local zeroed before an early-return test puts the zero in that test's delay slot;
+  - an inline bool returning a negation, used as the whole test, is materialised (`sltu`,
+    `xori`) before the branch;
+  - the source order of a request's field assignments decides how its stores are scheduled;
+  - an s1 "exact" pair with relocations masked cannot tell which global it passes: check the
+    address (UIGameStatePopCommand passed theLobby -- it is GetClanRanking's handler);
+  - the lobby's `uiv_*` members are read through `theLobby.` even inside member functions.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
