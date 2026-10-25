@@ -1415,6 +1415,22 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     unit emit its table and implicit destructor; slot order still follows the base;
   - zui.cpp is 0x365200-0x36AF9F (CDblBufTextureRelocator's inline virtuals open it); the soft
     keyboard and the rdr-table code after 0x3A2510 wait on an MSL map/tree (not in include/).
+- **Tells from the HUD, round 12** (hud_healthbar.cpp complete, hud_scorepopup.cpp, ~CHUD):
+  - 8-byte-spaced float pools are function-local statics (a float literal is lui/ori/mtc1; a
+    target loading constants with lwc1 there wants statics) -- write them as file statics, which
+    scdiff compares by content;
+  - MW 3.0 calls a global object's virtual through the vtable when its class inherits the
+    function without overriding it (CScoreBmp, CHudBrightText); it devirtualises only on the
+    declaring class;
+  - two inline calls in one argument list expand right to left: an inline accessor's load in the
+    last argument goes ahead of the first argument's `c_str()` ternary, which then compiles
+    branchy;
+  - a stand-in class declared only for one virtual must declare its destructor without defining
+    it, or the unit's implicit copy supersedes a matching draft;
+  - ~CHUD matches at level 5 with CHUD's texture lists as znode.h's zdb::CDynTexList (SOCOM 1's
+    classes over the pointer vectors); the font stretch from 0x359740 is SOCOM II's rewritten
+    font system ("faces", "glowtexture", "charoffsets", "Korean", "dropshadow") -- no SOCOM 1
+    counterparts.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
