@@ -508,6 +508,36 @@ void CMission::CreateCompassNavPoints()
     }
 }
 
+/* a box: its two corners (the names ours) */
+struct CornerBox {
+    float min[3];   // 0x0
+    float max[3];   // 0xc
+};
+
+/* a box's corners put in order, axis by axis (SOCOM II's; the rdr save code at 0x338B30 and
+ * 0x339058 calls it; OVL1 0x2A94E0) */
+extern "C" void func_002A94E0(CornerBox *box)
+{
+    if (box->min[0] > box->max[0]) {
+        float t = box->min[0];
+
+        box->min[0] = box->max[0];
+        box->max[0] = t;
+    }
+    if (box->min[1] > box->max[1]) {
+        float t = box->min[1];
+
+        box->min[1] = box->max[1];
+        box->max[1] = t;
+    }
+    if (box->min[2] > box->max[2]) {
+        float t = box->min[2];
+
+        box->min[2] = box->max[2];
+        box->max[2] = t;
+    }
+}
+
 /* a range kept at 0xF4 (the top) and 0xF8 (the bottom) of the object 0x341A60 asks (SOCOM II's; the
  * names ours) */
 struct FadeRange {
