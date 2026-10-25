@@ -4,8 +4,11 @@
  * OVL2 0x5EF9D0-0x5F8BFF: the states' destructors and the inline virtuals their tables pull in,
  * CAiStateStack's out-of-line members, CSealCtrlAi::GetAiState, the base's slot 0x0C and the
  * helpers the response states' Ticks call, the CQB/unknown/pickup Ticks and five OnSignals
- * (round 3). CAiState::Create (0x5F6550) inlines every state's constructor and wants the member
- * constructors' OVL2 copies named first (0x516900 CPnt3D(), 0x516120 an empty CAiMapLoc()). */
+ * (round 3); CAiState::Create (0x5F6550, every state's constructor inlined one level), Reset's
+ * copy (0x5F6D40), CAiState::Signal (0x5F6FA0, Reset inlined whole), the stack's constructor and
+ * its Pop (round 4). The stack's other members (0x5F7470-0x5F8270: SOCOM 1's PushAiState,
+ * SetAiState, PopToAiState, StateTick ... moved onto CAiStateStack, the AI passed) and the
+ * controller's wrappers after StateTick (0x5F5B10-0x5F5CB0) are next. */
 
 #include "../gamez/zseal/zseal.h"
 #include "../gamez/zanim/zanim.h"

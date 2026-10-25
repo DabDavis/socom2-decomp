@@ -249,8 +249,7 @@ public:
     unsigned int m_bit14 : 1;
     unsigned int m_bit15 : 1;
     float m_4c;   // 0x4c (Reset: 1.0)
-    CAiMapLoc m_loc;   // 0x50 (Reset: the invalid cell; its constructor is an empty one, 0x516120,
-                       // where zentity.h's copies the invalid cell in -- open with the entity lane)
+    CAiMapLoc m_loc;   // 0x50 (Reset: the invalid cell; its constructor is the empty one, 0x516120)
     int m_54;   // 0x54 (Reset: -1)
 };
 
