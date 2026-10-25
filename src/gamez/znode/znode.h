@@ -1188,8 +1188,23 @@ public:
     void SetCount(int n) { m_count = n; }
     void SetBits18(int n) { m_bits18 = n; }
 
+    /* a prop held once more, refused at fifteen holders (new in SOCOM II: CClutterList::Add asks
+     * it; the name ours) */
+    bool AddHolder()
+    {
+        if (m_count < 15) {
+            m_count++;
+            return true;
+        }
+        return false;
+    }
+
     CMatrix m_matrix;   // 0x0
-    unsigned char _40[0x4c - 0x40];
+    unsigned char _40[0x44 - 0x40];
+    /* the squared distance it fades out at (CClutterList::Add keeps the list's farthest, SOCOM 1's
+     * m_max_farFadeSq, and orders the fading props by it; the name ours) */
+    float m_farFadeSq;   // 0x44
+    unsigned char _48[0x4c - 0x48];
     unsigned int m_bit0 : 1;   // 0x4c
     unsigned int m_quat : 1;   // 0x4c
     unsigned int m_bit2 : 1;   // 0x4c

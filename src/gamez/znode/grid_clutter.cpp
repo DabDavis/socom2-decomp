@@ -19,6 +19,67 @@ extern CSched_Manager zTaskScheduler;
 
 namespace zdb {
 
+/* two props traded (MSL's swap through references, written here: MW inlines no template
+ * function; the name is ours) */
+inline void ClutterSwap(CClutter *&a, CClutter *&b)
+{
+    CClutter *t = a;
+
+    a = b;
+    b = t;
+}
+
+/* one prop inserted before position, through the pointer vector's pod insert (MSL's
+ * insert(iterator, const T &), which include/vector lacks: the position a class iterator passed by
+ * value, so copied, then its pointer handed on; the name is ours) */
+inline void ClutterInsert(CClutterList *list, CClutterList::iterator pos, CClutter *const &x)
+{
+    list->std::__vector_pod<unsigned int, std::allocator<unsigned int> >::insert(
+        (unsigned int *)pos.m_p, 1, (const unsigned int &)x);
+}
+
+/* a prop listed: the list's repel flag and farthest fade kept up, room made ten at a time, the prop
+ * held once more (refused at fifteen holders), put at the end when its node has the flag, else
+ * after the props put in front so far; then moved down past every fading prop that fades nearer
+ * (SOCOM 1's; the holders and the front insertion SOCOM II's).
+ * OPEN, 13 instructions (the right size), registers only: in the front insertion the target
+ * loads the index into a1 and its increment into t0, and in the sort keeps &data[i] in a1 and the
+ * prop in a2 -- here each pair the other way round (both the first-made temporary in the lower
+ * register there). The swap traded as words (a typed view, or a volatile read) is what makes MW
+ * reload the element as the target does; a swap of the CClutter pointers reuses the tested one.
+ * Tried: the insert as a member, through begin(), the index taken first; the counter's types and
+ * declaration places; a local or a reference for the tested prop */
+bool CClutterList::Add(CClutter *clutter)
+{
+    if (size_ == 0) {
+        m_ContainsRepelClutter = 0;
+        m_max_farFadeSq = 0.0f;
+    }
+    if (clutter->m_quat)
+        m_ContainsRepelClutter = 1;
+    if (clutter->m_bit0 && clutter->m_farFadeSq > m_max_farFadeSq)
+        m_max_farFadeSq = clutter->m_farFadeSq;
+    if (size_ == capacity_)
+        reserve(size_ + 10);
+    if (!clutter->AddHolder())
+        return false;
+    if (clutter->m_node->m_reflective)
+        push_back(clutter);
+    else
+        ClutterInsert(this, iterator(&(*this)[m_socom2_14++]), clutter);
+    if (size() > 1) {
+        for (int i = size() - 2; i >= 0; i--) {
+            if ((*this)[i]->m_bit0) {
+                if (!clutter->m_bit0 || clutter->m_farFadeSq > (*this)[i]->m_farFadeSq)
+                    std::swap((unsigned int &)(*this)[i], (unsigned int &)(*this)[i + 1]);
+                else
+                    return true;
+            }
+        }
+    }
+    return true;
+}
+
 /* a point set from three values (the arguments evaluated right to left: z, y and x loaded before
  * the stores; the name is ours) */
 inline void ClutterPntSet(float *p, float x, float y, float z)
