@@ -1,0 +1,31 @@
+/* <queue>: MSL's std::queue, an adaptor over its container (a deque by default), as far as the
+ * matched code needs it. A reconstruction, not MSL. Its default constructor copies a default
+ * container: `queue(const Container &x = Container()) : c(x)` -- CSimpleStateMachine() (OVL1
+ * 0x3A5DD0) builds the temporary deque out of line, copies it in (the deque's copy constructor,
+ * 0x3A5E50) and destroys it. */
+
+#ifndef _MSL_QUEUE
+#define _MSL_QUEUE
+
+#include <deque>
+
+namespace std {
+
+template <class T, class Container = deque<T> >
+class queue {
+public:
+    explicit queue(const Container &x = Container()) : c(x) {}
+
+    bool empty() const { return c.empty(); }
+    unsigned int size() const { return c.size(); }
+    T &front() { return c.front(); }
+    void push(const T &x) { c.push_back(x); }
+    void pop() { c.pop_front(); }
+
+protected:
+    Container c;
+};
+
+}
+
+#endif
