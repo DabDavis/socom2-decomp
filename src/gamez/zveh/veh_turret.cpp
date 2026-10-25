@@ -30,13 +30,28 @@ extern int data_003E0800;
 
 CZSealBody *ftsGetPlayer();
 
-/* OPEN, the initialiser (__sinit_veh_turret.cpp, 0x404240: 0x7C against 0x160): the target
- * zeroes both vectors' three words in place (their constructors inlined whole -- the class
- * vector's constructor height, open in include/vector) and then sets turret_debug_mask's seven
- * bits (0x4A4068: 1, 0, 1, 1, 0, 0, 0, the false ones as `(0 & 1) << n`, a constructor's bool
- * stores), which is not defined here yet */
+/* SOCOM 1's file-static turret_debug_mask (0x4A4068: seven 1-bit flags, SOCOM II's 1, 0, 1, 1, 0,
+ * 0, 0 where SOCOM 1's were 0, 0, 1, 1, 0, 0, 0; the class and the bits' names ours). Set in the
+ * mem-initializer list, each is a word read-mask-write, `true` folded and `false` left `(0 & 1) << n`,
+ * as both builds' initialisers have it */
+class CTurretDebugMask {
+public:
+    CTurretDebugMask() : m_0(true), m_1(false), m_2(true), m_3(true), m_4(false), m_5(false), m_6(false) {}
+
+    unsigned int m_0 : 1;
+    unsigned int m_1 : 1;
+    unsigned int m_2 : 1;
+    unsigned int m_3 : 1;
+    unsigned int m_4 : 1;
+    unsigned int m_5 : 1;
+    unsigned int m_6 : 1;
+};
+
+/* the initialiser (__sinit_veh_turret.cpp, 0x404240) builds these in order: the definitions and the
+ * turret list (each vector's words zeroed in place, its destructor registered), then the switches */
 CTurretDefVector CTurret::m_turret_def;
 CTurretList CTurret::m_turrets;
+static CTurretDebugMask turret_debug_mask;
 
 /* the limits' defaults, in degrees (the unit's statics, 60 and 30; not named) */
 extern "C" float data_003E0808;

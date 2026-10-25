@@ -361,6 +361,31 @@ public:
     }
 };
 
+/* an AI map's region: ai.h's CAiMap::region (0x1C bytes, out of sight here), its constructor's
+ * mem-initializer bitfields word by word (OVL2's walker 0x536230 takes one) */
+class CVehicleAiRegion {
+public:
+    CVehicleAiRegion() : m_dx(0), m_dy(0), m_type(0), m_nodisplay(0), m_flags(0), m_unused(0) { m_name[0] = 0; }
+
+    CAiMapLoc m_loc;   // 0x0
+    unsigned int m_dx : 16;   // 0x4
+    unsigned int m_dy : 16;
+    unsigned int m_type : 5;   // 0x8
+    unsigned int m_nodisplay : 1;
+    unsigned int m_flags : 16;
+    unsigned int m_unused : 10;
+    char m_name[16];   // 0xc
+};
+
+/* the AI-map region a vehicle marks (0x28 bytes): a region and the cells it covers (the names ours).
+ * CVehicle's constructor inlines it whole (five high: the region's bitfields, then the vector's three
+ * words) -- with the cells a vector subclass, as CAiMapLocVec, it would be six and inlined one level;
+ * ~CVehicle wants that subclass level (see there) */
+class CVehicleRegion : public CVehicleAiRegion {
+public:
+    std::vector<CAiMapLoc> m_cells;   // 0x1c
+};
+
 /* a vehicle (new in SOCOM II, CEntity's type 4; CTurret's unit's twin -- the names ours). Its
  * table overrides UpdatePosW, PreTick, Tick, PrePostTick, ComputeNextPosition, GetNeckPosW,
  * UpdateAiMapLoc and OnMissionStart */
@@ -393,12 +418,12 @@ public:
         m_flags |= on ? mask : 0;
     }
 
-    /* an AI-map region it marks (0x28 bytes: bitfields, a byte, a vector at 0x1C -- OVL2's
-     * 0x515880 fills it from the corners) */
-    unsigned char m_region[0x28];   // 0x170
+    /* an AI-map region it marks (OVL2's 0x515880 fills it from the corners) */
+    CVehicleRegion m_region;   // 0x170
     CPnt3D m_corners[4];   // 0x198: m_bounds grown by 5 in x and z, in the world
     const CVehicleDef *m_def;   // 0x1c8
-    unsigned char _1cc[0x1d4 - 0x1cc];
+    int m_1cc;   // 0x1cc
+    zdb::CNode *m_1d0;   // 0x1d0: the node it was made for
     zdb::CNode *m_1d4;   // 0x1d4: deactivates the vehicle once switched off
     zdb::CNode *m_root;   // 0x1d8: the node's ancestor under the world
     unsigned char _1dc[0x1e0 - 0x1dc];

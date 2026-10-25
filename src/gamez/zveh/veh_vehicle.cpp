@@ -15,6 +15,7 @@ extern "C" {
  * lookup, map and region fill (OVL2) */
 void func_003ACC10(CVehicle *vehicle, float dT);
 void func_003AD3B0(CVehicle *vehicle);
+void func_003ADAB0(CVehicle *vehicle, CNode *node, const CVehicleDef *def);
 int func_0052DC70(CAiMaps *maps, const CPnt3D *pos, unsigned int *loc);
 void *func_0052E6B0(CAiMaps *maps, unsigned int mapid);
 void func_00515880(void *map, CPnt3D *corners, void *region);
@@ -23,9 +24,25 @@ extern int data_004A4120;
 extern int data_003E0860;
 }
 
-/* OPEN, the initialiser (__sinit_veh_vehicle.cpp, 0x4043A0: 0x34 against 0xEC): as the turret
- * unit's -- the vector's words zeroed in place, then five bits at 0x4A4148 (1, 1, 1, 0, 0) */
+/* the unit's debug switches (0x4A4148: five 1-bit flags; the unit's twin of SOCOM 1's file-static
+ * turret_debug_mask, the names ours). Set in the mem-initializer list, each is a word read-mask-write
+ * with `true` folded (`daddiu 1<<n`) and `false` left `(0 & 1) << n`; assigned in the body MW narrows
+ * the accesses to bytes, and inline bool setters do too */
+class CVehicleDebugMask {
+public:
+    CVehicleDebugMask() : m_0(true), m_1(true), m_2(true), m_3(false), m_4(false) {}
+
+    unsigned int m_0 : 1;
+    unsigned int m_1 : 1;
+    unsigned int m_2 : 1;
+    unsigned int m_3 : 1;
+    unsigned int m_4 : 1;
+};
+
+/* the initialiser (__sinit_veh_vehicle.cpp, 0x4043A0) builds these in order: the definitions (the
+ * vector's words zeroed in place, its destructor registered), then the debug switches */
 CVehicleDefVector CVehicle::m_vehicle_def;
+static CVehicleDebugMask vehicle_debug_mask;
 
 /* the definition whose name starts the node's (called, never inlined) */
 #pragma auto_inline off
@@ -105,6 +122,33 @@ void CVehicle::LoadVehicles()
     for (CNodeVector::iterator it = landmarks.begin(); it != landmarks.end(); ++it)
         ScanForVehicleDefinitionHookups(*it, true);
     ScanForVehicleDefinitionHookups(world, true);
+}
+
+/* a vehicle for a node: CEntity's type 4, the region and matrices built, the definition kept, the
+ * node's parts hooked up (0x3ADAB0) and its ancestor under the world found */
+CVehicle::CVehicle(CNode *node, const CVehicleDef &def) : CEntity((CEntity::TYPE)4, node), m_def(&def)
+{
+    m_flags = 0;
+    m_1cc = 0;
+    m_1d0 = node;
+    m_root = 0;
+    m_1d4 = 0;
+    m_1e0.SetIdentity();
+    m_220.SetIdentity();
+    func_003ADAB0(this, node, &def);
+
+    CNode *p = node ? node->GetParent() : 0;
+
+    if (p) {
+        do {
+            if (p == CWorld::m_world)
+                break;
+            node = p;
+            p = p->GetParent();
+        } while (p);
+    }
+    m_root = node;
+    m_flags |= 3;
 }
 
 int CVehicle::ScanForVehicleDefinitionHookups(CNode *node, bool recurse)
@@ -222,7 +266,7 @@ void CVehicle::Tick(float dT)
     m.SetIdentity();
     m_root->BuildMTW(m);
     m.Transform(m_corners, 4);
-    func_00515880(map, m_corners, m_region);
+    func_00515880(map, m_corners, &m_region);
 }
 
 void CVehicle::PrePostTick(float dT)
@@ -269,6 +313,18 @@ void CVehicle::UpdateAiMapLoc()
         *(unsigned int *)&m_mapLoc = loc;
         *(unsigned int *)&m_mapLocValid = loc;
     }
+}
+
+/* the table stored, the region's cells destroyed (the deleter's destructor called -- 0x3AFAA0, this
+ * unit's copy of OVL2's -- ~vector and ~__vector_imp inlined), then CEntity's.
+ * OPEN, 8 bytes short: after the two tests of the cells' address the target has a third, a `b` to
+ * the call (the delay slot's a1 = 0 under it) -- what one more inlined destructor level gives: with
+ * the cells a vector subclass (CAiMapLocVec's shape), as a member or as a second base of the region,
+ * this matches byte for byte, but the region's constructor is then six high and CVehicle's
+ * constructor (0x3ADE90, byte-exact as it stands) inlines it one level only. A user-declared
+ * destructor on the region and the cells as a second base change nothing */
+CVehicle::~CVehicle()
+{
 }
 
 /* STAND-IN for a dead-stripped original (no row in the map: it scores as no-target). The insert
