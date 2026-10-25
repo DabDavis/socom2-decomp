@@ -413,15 +413,9 @@ public:
     template <class Key, class V>
     value_type &find_or_insert(const Key &key);
     pair<iterator, bool> insert_one(const value_type &x);
-    void clear()
-    {
-        if (root() != 0) {
-            destroy((node *)root());
-            size_ = 0;
-            root() = 0;
-            leftmost_ = (node_base *)&tail();
-        }
-    }
+    /* out of class (SOCOM 1's clear__ of map<string, int>, 0x40 bytes, and SOCOM II's 0x2DEDF0,
+     * which the material unit's own code calls) */
+    void clear();
 
     node_base *&root() { return tail_.left_; }
     /* through a reference (MSL's comp_ pair's second()): erase keeps its address in a register */
@@ -580,6 +574,17 @@ __tree<T, Compare, Allocator>::erase_one(const Key &x)
         return 0;
     erase(i);
     return 1;
+}
+
+template <class T, class Compare, class Allocator>
+void __tree<T, Compare, Allocator>::clear()
+{
+    if (root() != 0) {
+        destroy((node *)root());
+        size_ = 0;
+        root() = 0;
+        leftmost_ = (node_base *)&tail();
+    }
 }
 
 template <class T, class Compare, class Allocator>
