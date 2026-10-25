@@ -323,17 +323,10 @@ CEntity::CEntity(TYPE type, zdb::CNode *node)
 #endif
 
 /* the name freed, out of the target lists, the compass anchor deleted (SOCOM 1's, the anchor
- * new).
- * OPEN, 0x10 bytes short: the target inlines ~CTargetList, ~vector and ~__vector_imp (three
- * this-tests) and calls ~__vector_deleter<CTarget> (0x29FF60, which calls the deleter's clear out
- * of line, 0x2A0090) -- as if the deleter's destructor could not be inlined at all; with
- * include/vector's six-high class-vector destructor MW inlines ~CTargetList one level and calls
- * ~vector<CTarget>. SetUpdateTargetList is the same problem: the deleter's clear() called
- * directly. (CPnt3D's and nav_package's deleter destructors inline the clear, 0x26D300 and
- * 0x2135A0: the element type decides). Compiled out: compiled, it makes this unit emit
- * ~__vector_deleter<CTarget>, whose copy (inlining the clear) then supersedes 0x29FF60's draft and
- * misses */
-#if 0
+ * new). The target list's destructor inlines ~CTargetList, ~vector and ~__vector_imp (three
+ * this-tests) and calls ~__vector_deleter<CTarget> (0x29FF60), which include/vector defines out of
+ * class as MSL does; that copy (it calls the deleter's clear out of line, 0x2A0090) is still the
+ * draft's */
 CEntity::~CEntity()
 {
     if (m_display_name)
@@ -343,7 +336,6 @@ CEntity::~CEntity()
     CCompass::DeleteAnchor(m_anchor);
     SetCompassAnchor(0);
 }
-#endif
 
 zdb::CNode *CEntity::GetNode()
 {
