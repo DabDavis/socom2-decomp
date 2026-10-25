@@ -10174,7 +10174,7 @@
 0x0055F940 0x148 func_0055F940  # OVL2
 0x0055FA90 0x44C func_0055FA90  # OVL2
 0x0055FEE0 0x74 func_0055FEE0  # OVL2
-0x0055FF60 0x320 PlayAiSound__11CSealCtrlAiF15CHARACTER_SOUND  # OVL2; slot 0x24 of __vt__11CSealCtrlAi (CSealCtrl's PlayAiSound slot); SOCOM 1's signature, unproven
+0x0055FF60 0x320 PlayAiSound__11CSealCtrlAiF15CHARACTER_SOUNDfi  # OVL2; slot 0x24 of __vt__11CSealCtrlAi (CSealCtrl's PlayAiSound slot); SOCOM 1's signature, unproven; the base's SOCOM II signature (slot 0x24 overridden), the same unpinned float-int order
 0x00560280 0xC0 func_00560280  # OVL2
 0x00560340 0x178 func_00560340  # OVL2
 0x005604C0 0x8 func_005604C0  # OVL2
@@ -10671,7 +10671,7 @@
 0x00597790 0x78 SetTrigger__9CSealCtrlFb  # OVL2; s1:order; m_trigger (a byte enum, now 0x118) stepped by a switch as SOCOM 1's
 0x00597810 0x78 SetTrigger__9CSealCtrlFbf  # OVL2; s1:order; m_trigger_power (0x11C) stored, then the same switch
 0x00597890 0x8 ResetToInitialState__9CSealCtrlFv  # OVL2; slot 0x58 of __vt__9CSealCtrl, and SOCOM 1's order (after SetTrigger(b, f))
-0x005978A0 0xF8 PlayAiSound__9CSealCtrlF15CHARACTER_SOUND  # OVL2; slot 0x24 of __vt__9CSealCtrl, and sealctrl.cpp's order (after ResetToInitialState, before OnDeath, as SOCOM 1's); SOCOM 1's signature, unproven
+0x005978A0 0xF8 PlayAiSound__9CSealCtrlF15CHARACTER_SOUNDfi  # OVL2; slot 0x24 of __vt__9CSealCtrl, and sealctrl.cpp's order (after ResetToInitialState, before OnDeath, as SOCOM 1's); SOCOM 1's signature, unproven; SOCOM II's signature: it plays the sound (a1) only when a roll is under the float (f12) and passes an int (a2) on; OnSetHealth calls it (59, 1.0f, -1). The float-int order is not pinned: (sound, int, float) compiles the same in the caller (probe via tools/try.py)
 0x005979A0 0x160 OnDeath__9CSealCtrlFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00597B00 0xF8 OnSetHealth__9CSealCtrlFff  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00597C00 0x240 OnStunDamage__9CSealCtrlF9STUN_TYPEfPC6CPnt3D  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)

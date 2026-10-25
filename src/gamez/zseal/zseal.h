@@ -130,7 +130,8 @@ public:
     virtual bool Tick(float dT);
     virtual bool PostMortemPreTick(float dT);
     virtual void OnDeath();                                                 /* +0x18 */
-    virtual void PlayAiSound(CHARACTER_SOUND sound);                        /* +0x24 */
+    /* SOCOM II's takes a chance to play it and a further int */
+    virtual void PlayAiSound(CHARACTER_SOUND sound, float chance, int x);   /* +0x24 */
     virtual bool AllowCommand(CZSealBody *seal, FT_COMMAND cmd, void *data);
     virtual bool IsPlayer() const;
     virtual bool IsAi() const { return false; }

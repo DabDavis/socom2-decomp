@@ -95,6 +95,16 @@ void CSealCtrl::OnMissionEnd()
 
 #endif
 
+/* hurt: the pain cry, and the pad shaken unless the SEAL is a remote one (OVL2 0x597B00) */
+void CSealCtrl::OnSetHealth(float health, float old)
+{
+    PlayAiSound((CHARACTER_SOUND)59, 1.0f, -1);
+    if (IsRemote())
+        return;
+    SetLowRumbleTime(0.18f, 175.0f);
+    SetHighRumbleTime(0.04f);
+}
+
 /* the trigger stepped with its pressure (OVL2 0x597810) */
 void CSealCtrl::SetTrigger(bool down, float power)
 {
