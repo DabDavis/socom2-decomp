@@ -219,6 +219,10 @@ public:
 /* the turrets made, a pointer list (new in SOCOM II: each turret adds itself in its constructor
  * and takes itself out in its destructor) */
 class CTurretList : public std::vector<class CTurret *> {
+public:
+    /* a turret taken out: std::remove's find inlined, its remove_copy called (0x3AB9A0), the tail
+     * erased (the name ours; 0x3A71F0, the unit's last-defined function, called by ~CTurret) */
+    void Remove(class CTurret *turret);
 };
 
 class CTurret : public CEntity {

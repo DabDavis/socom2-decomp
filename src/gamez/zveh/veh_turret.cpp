@@ -5,6 +5,7 @@
  * destructors; CVehicle's unit follows. Defined in reverse of their image order (-inline
  * deferred). */
 
+#include <algorithm>
 #include <string.h>
 
 #include "zveh.h"
@@ -14,7 +15,6 @@ using namespace zdb;
 /* not yet written here (placeholders): the turret list's remove, the turret's halves of the
  * tick, the network turret's send (fts_*'s, 0x2C7A60) and the AI maps' cell lookup */
 extern "C" {
-void func_003A71F0(CTurretList *list, CTurret *turret);
 void func_003A7350(CTurret *turret, float dT);
 void func_003A78E0(CTurret *turret, float dT);
 void func_003A82C0(CTurret *turret);
@@ -163,7 +163,7 @@ void CTurret::LoadTurrets()
 
 CTurret::~CTurret()
 {
-    func_003A71F0(&m_turrets, this);
+    m_turrets.Remove(this);
     if (m_turrets.size() == 0)
         FreeVector<std::vector<CTurret *> >(m_turrets);
 }
@@ -396,6 +396,19 @@ void CTurret::UpdatePosW()
 void CTurret::ComputeNextPosition(float dT)
 {
 }
+
+/* (called, never inlined: ~CTurret calls it). Its remove_copy instance (0x3AB9A0) is byte-exact.
+ * OPEN, 12 bytes short: the same calls and loop, but the target builds one end() temporary first
+ * (sp+76) and serves both std::remove's last and erase's last from it, std::remove's result in a
+ * slot of its own (sp+72) copied into erase's parameters; here end() is built twice (and with `e`
+ * a named local the temporaries' copies fold away: 0x11C/0x100). Tried: the end in a local, the
+ * result in a local, begin() in a local, this->end(), a copy of the pointer */
+#pragma auto_inline off
+void CTurretList::Remove(CTurret *turret)
+{
+    erase(std::remove(begin(), end(), turret), end());
+}
+#pragma auto_inline reset
 
 /* STAND-IN for a dead-stripped original (no row in the map: it scores as no-target). The insert
  * (0x3ABD90) inlines its temporary's destruction -- the deleter's destructor, with clear inside --
