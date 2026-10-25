@@ -16,6 +16,18 @@
 
 #include <functional>
 #include <memory>
+#include <msl_utility>
+#include <new>
+#include <stdio.h>
+#include <stdlib.h>
+
+#ifndef __msl_error
+#define __msl_error(str) \
+    {                    \
+        fprintf(stderr, str); \
+        abort();         \
+    }
+#endif
 
 namespace std {
 
@@ -81,6 +93,14 @@ public:
      * implicit list destructor in a unit that instantiated the erase (~CEntityList, ~CAssetList,
      * ~CAiEventList) inlines ~list one level and calls ~__list_imp at -inline level=5 */
     struct node_allocator {
+        node *allocate()
+        {
+            node *p = (node *)operator new(sizeof(node));
+
+            if (!p)
+                __msl_error("Memory allocation failure");
+            return p;
+        }
         void deallocate(node_base *p) { operator delete(p); }
     };
     node_allocator &node_alloc() { return end_first(); }
@@ -160,6 +180,28 @@ __list_deleter<T, Allocator>::erase(iterator first, iterator last)
         --size_;
     }
     return last;
+}
+
+/* a node made for the value and linked in before position (SOCOM II's for the pointer lists is
+ * 0x1FEAE0, OVL2's 0x50FAD0): allocated by the node allocator and held in MSL's alloc_ptr while
+ * the value is built in it, released, then linked and counted */
+template <class T, class Allocator>
+typename __list_deleter<T, Allocator>::iterator
+__list_deleter<T, Allocator>::insert(iterator position, const T &x)
+{
+    node_allocator &a = node_alloc();
+    Metrowerks::alloc_ptr<node, node_allocator &> ap(a.allocate(), a);
+
+    new (&ap.get()->data_) T(x);
+    node *n = ap.release();
+    node_base *p = position.node_;
+
+    p->prev_->next_ = n;
+    n->prev_ = p->prev_;
+    p->prev_ = n;
+    n->next_ = p;
+    ++size_;
+    return iterator(n);
 }
 
 /* one node unlinked and freed, the iterator after it given back (SOCOM II's for the pointer lists
