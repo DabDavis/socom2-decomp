@@ -1628,8 +1628,8 @@
 0x001FBA30 0x34 GetTextureByName__FPQ23zdb6CWorldPCc  # OVL1; s1:exact
 0x001FBA70 0x64 DrawPhase__4CHUDFQ23zdb12_RenderPhasePQ23zdb7CCamera  # OVL1; s1:exact shape (while the HUD is on, one of its three phase lists drawn: phase - 12 into 0x18-byte C2Ds)
 0x001FBAE0 0xA40 __dt__4CHUDFv  # OVL1; s1:order (hud_main.cpp: after DrawPhase, as SOCOM 1's; a this test, the members, the delete)
-0x001FC520 0x78 func_001FC520  # OVL1
-0x001FC5A0 0x78 func_001FC5A0  # OVL1
+0x001FC520 0x78 __dt__Q23zdb8CTexListFv  # OVL1; by hand (called with -1 on CDynTexList's first member and on CHUD's +0x98; four this-tests -- the zdb-world and HUD lanes alike; SOCOM 1 inlines it)
+0x001FC5A0 0x78 __dt__Q23zdb11CTexPalListFv  # OVL1; by hand (called with -1 on CDynTexList's second member and on CHUD's +0xA4 -- the zdb-world and HUD lanes alike; SOCOM 1 inlines it)
 0x001FC620 0x60 __dt__7C2DPolyFv  # OVL1; s1:ref (taken by address where SOCOM 1 takes __dt__7C2DPolyFv's)
 0x001FC680 0x80 __dt__13C2DBitmapPolyFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FC700 0x108 __dt__19CMPWeaponCategoriesFv  # OVL1; by hand (hud_main.cpp: the implicit destructor of the network selector's category page at CMPWeaponSel+0x220, which ~CHUD calls with -1 from its one-level inline of CMPWeaponSel's; a C2DString at 0, bitmaps at 0xA0/0x120/0xEA0, four C2DBitmapPolys, a SlotList at 0x960 and four CategorySlots at 0x9A0; no vtable, the class name ours)
@@ -5187,7 +5187,7 @@
 0x00306030 0x56C func_00306030  # OVL1
 0x003065A0 0x78 func_003065A0  # OVL1
 0x00306620 0x28 func_00306620  # OVL1
-0x00306650 0x18 func_00306650  # OVL1
+0x00306650 0x18 __ct__6CFRectFv  # OVL1; s1:calls (CGrid's constructor calls it on m_extents at +0x14 as SOCOM 1's does; the same 0x18 bytes; CFRect is global, not zdb's) -- the zdb-world lane
 0x00306670 0x54 zMath_Init__Fv  # OVL1; s1:calls
 0x003066D0 0xD4 Exp__5CQuatFPC6CPnt3Df  # OVL1; s1:order (same position in the same TU, signature fits the code)
 0x003067B0 0xD4 Exp__5CQuatFPC6CPnt3D  # OVL1; SOCOM 1 name
@@ -5450,7 +5450,7 @@
 0x00314320 0x218 SetDynamicLight__Q23zdb5CNodeFbb  # OVL1; s1:order (SOCOM 1's SetDynamicLight, SetDynamicMotion, SetDynamic, as here; the light bit)
 0x00314540 0x218 SetDynamicMotion__Q23zdb5CNodeFbb  # OVL1; s1:order (SOCOM 1's SetDynamicLight, SetDynamicMotion, SetDynamic, as here; the motion bit)
 0x00314760 0x270 SetDynamic__Q23zdb5CNodeFbb  # OVL1; s1:order (SOCOM 1's SetDynamicLight, SetDynamicMotion, SetDynamic, then SetAtomCnt and GetAtom, as here; both dynamic bits set, the recursion inlined)
-0x003149D0 0x8 func_003149D0  # OVL1
+0x003149D0 0x8 SetAtomCnt__Q23zdb5CNodeFi  # OVL1; s1:calls (sh a1,0xA8(a0); called where SOCOM 1's gridRemoveNodeFromGrids calls SetAtomCnt; the same 8 bytes) -- the zdb-world lane
 0x003149E0 0x30 GetAtom__Q23zdb5CNodeFi  # OVL1; s1:align
 0x00314A10 0x20 InsertAtom__Q23zdb5CNodeFPQ23zdb9CGridAtom  # OVL1; tu: node_main.cpp~ (1.0 beta); s1:align
 0x00314A30 0x44 FreeAtom__Q23zdb5CNodeFv  # OVL1; s1:align

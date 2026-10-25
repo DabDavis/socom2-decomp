@@ -771,6 +771,17 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     (OnMissionStart/End are CRemoteCtrl's at 0x5E6270/80, CSealCtrl's at 0x597F50/0x597EB0);
   - a `jr t9` tail call can run on into the next function, and a nop before an epilogue can end
     a row early: the seed split three of the lane's functions in two.
+- **Tells from the grid** (round 4 of the zdb world: grid_main.cpp, grid_clutter.cpp):
+  - SOCOM II's CGrid threads its spare atoms through their Next pointers (a free list): SOCOM 1's
+    m_AtomFreeCnt/m_AtomFreePtr are gone, every later member sits 8 bytes earlier, 0x6514 bytes;
+  - MW expands `abs` inline when it comes through <stdlib.h>: a target calling MSL's abs
+    (0x191428) needs it reached by address;
+  - an unsigned compare written `b <= a` branches on `sltu at`; `a >= b` puts the test in v0;
+  - a void function whose paths all end on `++member` allocates its temporaries from v1;
+    returning the incremented value gives the target's v0;
+  - `x = MAX(0, x); x = MIN(n - 1, x);` gives gridGetAtomBasePtr's clamp; written as ifs it
+    becomes bgez;
+  - reusing `len = 1.0f / len` instead of a new `inv` local swaps the FPRs to the target's order.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has

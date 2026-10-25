@@ -133,10 +133,8 @@ CNode *CCell::Copy(CNode *to) const
 }
 
 /* the cells' list heads, the free atoms and the ordered walk's counts cleared (SOCOM 1's; its
- * atom buffer pointer is left alone in SOCOM II's). Byte-exact once 0x306650 is named
- * __ct__6CFRectFv (measured): until then its row is a placeholder outside this lane's ranges, the
- * constructor's call cannot resolve, and the generated draft (src/auto/ovl1/002D7970.c) stands */
-#ifdef SC_CFRECT_NAMED
+ * atom buffer pointer is left alone in SOCOM II's); m_extents built by CFRect's constructor
+ * (0x306650, called) */
 CGrid::CGrid() : m_Atoms(0), m_FreeAtoms(0)
 {
     m_CellCount.cx = 0;
@@ -147,7 +145,6 @@ CGrid::CGrid() : m_Atoms(0), m_FreeAtoms(0)
     m_ClutterAnimManager = 0;
     m_ClutterCreated = 0;
 }
-#endif
 
 /* the grid torn down and its clutter animation deleted (SOCOM 1's) */
 CGrid::~CGrid()

@@ -4,12 +4,13 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK __dl__FPv(char *);                          /* extern */
+M2C_UNK __dt__Q23zdb11CTexPalListFv(char *, M2C_UNK); /* extern */
+M2C_UNK __dt__Q23zdb8CTexListFv(char *, M2C_UNK);   /* extern */
 M2C_UNK _free__FPvPCci(s32, M2C_UNK, M2C_UNK);      /* extern */
-M2C_UNK func_001FC520(char *, M2C_UNK);             /* extern */
-M2C_UNK func_001FC5A0(char *, M2C_UNK);             /* extern */
 M2C_UNK func_0033C350(char *);                      /* extern */
 M2C_UNK func_0033C360(char *, M2C_UNK);             /* extern */
 
@@ -18,17 +19,17 @@ char *__dt__Q23zdb12CGSTexBufferFv(char *arg0, s64 arg1) {
     char *temp_a0_2;
 
     if (arg0 != NULL) {
-        temp_a0 = M2C_FIELD(arg0, s32 *, 0);
+        temp_a0 = SC_MEMBER(arg0, s32 *, 0);
         if (temp_a0 != 0) {
             _free__FPvPCci(temp_a0, 0, 0);
         }
-        M2C_FIELD(arg0, s32 *, 0) = 0;
-        M2C_FIELD(arg0, s32 *, 0x2C) = 0;
-        M2C_FIELD(arg0, s32 *, 0x38) = 0;
+        SC_MEMBER(arg0, s32 *, 0) = 0;
+        SC_MEMBER(arg0, s32 *, 0x2C) = 0;
+        SC_MEMBER(arg0, s32 *, 0x38) = 0;
         func_0033C350(arg0 + 0x1C);
         if ((arg0 + 0x28) != NULL) {
-            func_001FC5A0(arg0 + 0x34, -1);
-            func_001FC520(arg0 + 0x28, -1);
+            __dt__Q23zdb11CTexPalListFv(arg0 + 0x34, -1);
+            __dt__Q23zdb8CTexListFv(arg0 + 0x28, -1);
         }
         temp_a0_2 = arg0 + 0x1C;
         if ((temp_a0_2 != NULL) && (temp_a0_2 != NULL)) {
