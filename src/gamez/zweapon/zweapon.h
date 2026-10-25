@@ -224,6 +224,36 @@ public:
     std::vector<float> m_zoommode;   // 0x280
 };   // 0x28c bytes
 
+class CZProjectile;
+namespace zdb {
+class DiIntersect;
+}
+
+/* the projectiles in flight and the intersections they test with (SOCOM 1's DWARF: 0x208 bytes;
+ * the direct- and indirect-fire tables sit where SOCOM 1's do -- its Release*FireDI are
+ * byte-identical) */
+class CZProjectileList {
+public:
+    bool GetNextIndirectFireDI(zdb::DiIntersect **di, int *handle);
+    void ReleaseIndirectFireDI(zdb::DiIntersect **di, int *handle);
+    bool GetNextDirectFireDI(zdb::DiIntersect **di, int *handle);
+    void ReleaseDirectFireDI(zdb::DiIntersect **di, int *handle);
+    void NetRemoveProjectile(CZProjectile *proj);
+
+    CZProjectile *m_projectiles;   // 0x0
+    unsigned char _4[0xc];   // 0x4: m_explosives, a vector
+    unsigned char *m_used;   // 0x10
+    int m_firstfree;   // 0x14
+    int m_lastused;   // 0x18
+    int m_size;   // 0x1c
+    zdb::DiIntersect *m_directFireDI[60];   // 0x20
+    unsigned char m_directFireDIUsed[60];   // 0x110
+    int m_direct_firstfree;   // 0x14c
+    zdb::DiIntersect *m_indirectFireDI[30];   // 0x150
+    unsigned char m_indirectFireDIUsed[60];   // 0x1c8 (60, as SOCOM 1's, for 30 intersections)
+    int m_indirect_firstfree;   // 0x204
+};   // 0x208 bytes
+
 /* the weapons, a pointer list (SOCOM 1's, out of line in a unit of its own); its elements are its
  * own */
 class CZWeaponList : public std::list<CZWeapon *> {

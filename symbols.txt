@@ -8240,9 +8240,9 @@
 0x003CBC60 0x188 func_003CBC60  # OVL1
 0x003CBDF0 0x188 func_003CBDF0  # OVL1
 0x003CBF80 0x38 ReleaseIndirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi  # OVL1; s1:exact
-0x003CBFC0 0xE8 func_003CBFC0  # OVL1
+0x003CBFC0 0xE8 GetNextIndirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi  # OVL1; s1:order by hand (SOCOM 1's, before ReleaseIndirectFireDI: the first free indirect-fire intersection handed out and marked used, the next free found; SOCOM II also clears its bit 19 and its mask)
 0x003CC0B0 0x38 ReleaseDirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi  # OVL1; s1:exact
-0x003CC0F0 0xF8 func_003CC0F0  # OVL1
+0x003CC0F0 0xF8 GetNextDirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi  # OVL1; s1:order by hand (the same over the 60 direct-fire intersections, before ReleaseDirectFireDI)
 0x003CC1F0 0xD4 GetNumRemoteExplosives__16CZProjectileListFi  # OVL1; s1:align
 0x003CC2D0 0xE4 func_003CC2D0  # OVL1
 0x003CC3C0 0x134 func_003CC3C0  # OVL1
