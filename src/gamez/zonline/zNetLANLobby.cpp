@@ -93,7 +93,7 @@ extern LANMissionRules *data_00437CE8;
 
 extern "C" {
 /* the room's members, called through their placeholders (the room unit's) */
-void func_002E2CE0(BriefingRoom *room);   /* (the room's game list updated) */
+
 void func_002E1E10(RoomGame *game, LANGameInfo *info);   /* (a game's info set) */
 void func_002E1E00(RoomGame *game, unsigned char seq);
 /* the chat unit's */
@@ -174,7 +174,7 @@ void cbLANGameInfo(LANGameInfo *info)
         } else {
             game->m_info.m_ip = -1;
         }
-        func_002E2CE0(room);
+        UpdateGameListDisplay(room);
     }
 }
 
@@ -210,7 +210,7 @@ bool CZLANLobby::RefreshGameList(C2D *page)
 {
     m_room->RemoveEmptyGames();
     m_room->RemoveUncheckedGames();
-    func_002E2CE0(m_room);
+    UpdateGameListDisplay(m_room);
     for (BriefingRoom::iterator i = m_room->begin(); i != m_room->end(); ++i)
         (*i)->m_unchecked = 1;
     data_0044F528 = 0;

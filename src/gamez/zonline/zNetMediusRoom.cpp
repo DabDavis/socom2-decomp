@@ -5,6 +5,7 @@
  * so far. Defined in reverse of their image order (-inline deferred). */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include "zonline.h"
 #include "../zsys/zsys.h"
 #include "../znet/znet.h"
@@ -32,9 +33,30 @@ enum VALVE_TYPE {
     VALVE_TYPE_1
 };
 
+enum VALVE_STATE {
+    VALVE_SAME,
+    VALVE_ON,
+    VALVE_OFF
+};
+
 class CValve {
 public:
     static CValve *Create(const char *name, VALVE_TYPE type);
+    void MakeCallbacks(VALVE_STATE state);
+    /* the value set, the callbacks told when it turns on or off (the chat unit's, zanim.h's) */
+    bool SetValue(int value)
+    {
+        VALVE_STATE state = VALVE_SAME;
+
+        if (m_value != value)
+            state = value == 0 ? VALVE_OFF : VALVE_ON;
+        m_value = value;
+        if (state != VALVE_SAME) {
+            MakeCallbacks(state);
+            return true;
+        }
+        return false;
+    }
 
     char *m_name;   // 0x0
     unsigned short m_value;   // 0x4
@@ -583,6 +605,43 @@ void BriefingRoom::DeleteGames()
     clear();
 }
 #pragma auto_inline reset
+
+/* a room joined by name -- RANDOM for any of the list, NONE for none -- the room's rank bits put in
+ * their valve; a room the list does not hold is created (SOCOM 1's; OVL1 0x2E3790) */
+bool CZOnlineLobby::JoinRoom(const char *name)
+{
+    if (!m_isopen)
+        return false;
+    if (m_current_state != LOBBY_ACTIVE)
+        return false;
+    LobbyWorldID = -1;
+    if (!strcmp(name, "RANDOM")) {
+        int n = data_0044F568.size();
+
+        if (n > 0) {
+            int i = (int)((float)(n - 1) * ((float)rand() / 2147483648.0f));
+
+            LobbyWorldID = data_0044F568[i]->MediusWorldID;
+            name = data_0044F568[i]->LobbyName;
+            CValve::Create("room_rank_bits", VALVE_TYPE_1)->SetValue(data_0044F568[i]->GenericField & 0xF);
+        }
+    } else if (!strcmp(name, "NONE")) {
+        return true;
+    } else {
+        BriefingRoom *room = data_0044F568.Find(name);
+
+        if (room) {
+            LobbyWorldID = room->MediusWorldID;
+            CValve::Create("room_rank_bits", VALVE_TYPE_1)->SetValue(room->GenericField & 0xF);
+        }
+    }
+    *uiv_LobbyWorldNameVar = name;
+    if (LobbyWorldID > -1)
+        ChangeState(JOIN_ROOM);
+    else
+        ChangeState(CREATE_ROOM);
+    return true;
+}
 
 /* the room list asked for again, in the active lobby (SOCOM 1's; OVL1 0x2E3A30). The page is
  * taken into a local zeroed before the first test (the target's zero in that test's delay slot) */

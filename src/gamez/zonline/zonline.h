@@ -694,6 +694,9 @@ public:
     char *m_password;   // 0x94
 };   // 0x98
 
+/* the room's games sorted and handed to the menus (SOCOM 1's; the rooms' unit's, 0x2E2CE0) */
+void UpdateGameListDisplay(BriefingRoom *room);
+
 /* the room list (SOCOM 1's BriefingRoomDB: 0x44F568, the rooms' unit's) */
 class BriefingRoomDB : public std::vector<BriefingRoom *> {
 public:
@@ -808,6 +811,7 @@ public:
     void RunStateHandler(LOBBY_STATE state, LOBBY_STATE_FLAG flag);
     bool RefreshRoomList(C2D *page);
     bool RejoinRoom();
+    bool JoinRoom(const char *name);
     bool RefreshGameList(C2D *page);
     void GetLadderInfo();
     void GetLadderRanking();
