@@ -10960,7 +10960,7 @@
 0x005BC200 0xA0 func_005BC200  # OVL2
 0x005BC2A0 0x8 func_005BC2A0  # OVL2
 0x005BC2B0 0x8 func_005BC2B0  # OVL2
-0x005BC2C0 0x40 func_005BC2C0  # OVL2
+0x005BC2C0 0x40 WeaponInfoChanged__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's WeaponInfoChanged: the same test-and-clear of bit 2, m_weaponinfoChanged; SOCOM 1's order puts it after HandlePlaceMPBomb)
 0x005BC300 0x8 func_005BC300  # OVL2
 0x005BC310 0x100 func_005BC310  # OVL2
 0x005BC410 0x1C0 func_005BC410  # OVL2
@@ -10976,9 +10976,9 @@
 0x005BD7F0 0xF4 func_005BD7F0  # OVL2
 0x005BD8F0 0x108 func_005BD8F0  # OVL2
 0x005BDA00 0x8 func_005BDA00  # OVL2
-0x005BDA10 0x58 func_005BDA10  # OVL2
-0x005BDA70 0x90 func_005BDA70  # OVL2
-0x005BDB00 0x14 func_005BDB00  # OVL2
+0x005BDA10 0x58 ItemHasAmmo__5CZKitCFi  # OVL2; s1:order by hand (SOCOM 1's ItemHasAmmo(int): the index under m_num_items (0x82C), then any of its ten magazines at 0x1D4 + 40*index above 0, SOCOM 1's 0x1C0; first of the three ItemHasAmmo as there; const in SOCOM II, as unwrap (const, through GetItemByIndex) inlines it)
+0x005BDA70 0x90 ItemHasAmmo__5CZKitCFi8FIREMODE  # OVL2; s1:order by hand (SOCOM 1's ItemHasAmmo(int, FIREMODE), next: the index tested, through 0x5C6600 with the mode, then ItemHasAmmo(int) inlined)
+0x005BDB00 0x14 CurItemHasAmmo__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's CurItemHasAmmo, next: the selected item and its fire mode (0x6FC) passed to ItemHasAmmo(int, FIREMODE))
 0x005BDB20 0x110 ItemHasAmmo__5CZKitF10EQUIP_ITEM  # OVL2; s1:calls by hand (another lane's lead, verified: SOCOM II's CSealCtrl::CanPlaceBomb and CanPerformAction call it after HasItem, where SOCOM 1's call ItemHasAmmo(EQUIP_ITEM); the same item walk on the type byte, then the ammunition)
 0x005BDC30 0x1E4 func_005BDC30  # OVL2
 0x005BDE20 0x94 func_005BDE20  # OVL2
@@ -11017,7 +11017,7 @@
 0x005C1660 0x1A0 func_005C1660  # OVL2
 0x005C1800 0x170 func_005C1800  # OVL2
 0x005C1970 0xA8C func_005C1970  # OVL2
-0x005C2400 0x24 func_005C2400  # OVL2
+0x005C2400 0x24 IsFireDelayed__5CZKitFv  # OVL2; by hand: the float at 0x820 (SOCOM 1's m_fire_delay at 0x804, before m_selected_item as there) above zero (the name ours)
 0x005C2430 0x240 func_005C2430  # OVL2
 0x005C2670 0x414 func_005C2670  # OVL2
 0x005C2A90 0x568 func_005C2A90  # OVL2
@@ -11026,7 +11026,7 @@
 0x005C3360 0x3E0 func_005C3360  # OVL2
 0x005C3740 0x34 GetItemByIndex__5CZKitCFi  # OVL2; by hand: an item by index -- the index through 0x5C6600 (with 255), then the item array at 0xE4 (SOCOM 1's m_item at 0xD0, 0x14 on); GetCurItem (const) tail-calls it with the selected item, so it is const here
 0x005C3780 0x8 GetCurItem__5CZKitCFv  # OVL2; s1:calls by hand (the HUD lane: at SOCOM 1's call site in ZoomIn/ZoomOut; its result's type byte is compared with 11)
-0x005C3790 0x14 func_005C3790  # OVL2
+0x005C3790 0x14 GetCurFireMode__5CZKitFv  # OVL2; s1:exact by hand (SOCOM 1's GetCurFireMode: the selected item's m_firemode, its low byte; 0x14 bytes in both, after GetCurItem as there)
 0x005C37B0 0xD4 SetCurFireMode__5CZKitF8FIREMODE  # OVL2; s1:calls by hand (CSealCtrlSquirm::Initalize calls it on the kit with 3 right after SetCurItemByIndex, as SOCOM 1's Initalize calls SetCurFireMode)
 0x005C3890 0x8 func_005C3890  # OVL2
 0x005C38A0 0x36C func_005C38A0  # OVL2
@@ -11041,7 +11041,7 @@
 0x005C48A0 0x8 func_005C48A0  # OVL2
 0x005C48B0 0xA8 func_005C48B0  # OVL2
 0x005C4960 0x8 func_005C4960  # OVL2
-0x005C4970 0x40 func_005C4970  # OVL2
+0x005C4970 0x40 GetNumMags__5CZKitFi  # OVL2; s1:order by hand (SOCOM 1's GetNumMags: counts the item's ten magazines (0x1D4 + 40*index, SOCOM 1's 0x1C0) holding rounds)
 0x005C49B0 0x154 func_005C49B0  # OVL2
 0x005C4B10 0x4B8 SetCurItemByIndex__5CZKitFi  # OVL2; s1:calls by hand (CSealCtrlSquirm::Initalize calls it on the SEAL's kit (+0x5E0) with 0, where SOCOM 1's Initalize calls SetCurItemByIndex(0), right before SetCurFireMode)
 0x005C4FD0 0x60 func_005C4FD0  # OVL2
@@ -11050,7 +11050,7 @@
 0x005C5340 0x11D0 func_005C5340  # OVL2
 0x005C6510 0x18 func_005C6510  # OVL2
 0x005C6530 0xC8 func_005C6530  # OVL2
-0x005C6600 0x1C4 func_005C6600  # OVL2
+0x005C6600 0x1C4 unwrap__5CZKitCFi8FIREMODE  # OVL2; by hand: SOCOM 1's unwrap(int, int) inlined on m_num_items, then the item's fire mode (255: its own, m_firemode at 0x6FC) and, for a grenade launcher (0x3C5D80) in a mode of 4 and up, the first item of that kind with ammunition (the name ours, after the unwrap it inlines; GetItemByIndex passes 255)
 0x005C67D0 0x144 func_005C67D0  # OVL2
 0x005C6920 0x48 func_005C6920  # OVL2
 0x005C6970 0x8 func_005C6970  # OVL2
@@ -11069,9 +11069,9 @@
 0x005C7840 0x498 PostSetupItems__5CZKitFv  # OVL2; s1:calls (called where SOCOM 1's calls CZKit::PostSetupItems) -- the SEAL lane
 0x005C7CE0 0x120 func_005C7CE0  # OVL2
 0x005C7E00 0x238 func_005C7E00  # OVL2
-0x005C8040 0x34 func_005C8040  # OVL2
-0x005C8080 0x68 func_005C8080  # OVL2
-0x005C80F0 0x14 func_005C80F0  # OVL2
+0x005C8040 0x34 GetCurItemIDType__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's GetCurItemIDType: the selected item's GetIDType (OVL1 0x3D1E10), 254 without one; 0x34 bytes in both, before NVG_Enabled as there)
+0x005C8080 0x68 NVG_Enabled__5CZKitFb  # OVL2; s1:order by hand (SOCOM 1's NVG_Enabled(bool): bit 4 set only while zdb::CWorld::m_world's m_night_mission (0x5DC) is set, cleared otherwise)
+0x005C80F0 0x14 NVG_Enabled__5CZKitCFv  # OVL2; s1:order by hand (SOCOM 1's NVG_Enabled() const, next: the body's zoom-class byte (0x200, SOCOM 1's 0x160) == 3, SOCOM 1's 2)
 0x005C8110 0x80 func_005C8110  # OVL2
 0x005C8190 0x438 func_005C8190  # OVL2
 0x005C85D0 0x70 func_005C85D0  # OVL2
