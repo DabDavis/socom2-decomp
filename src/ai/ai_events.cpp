@@ -1,10 +1,350 @@
-/* ai_events.cpp (OVL2): the AI event lists. Only what has been matched so far: the deleter
- * constructor of the callback list's std::list<CAiEventCallback>, a template instance
- * (OVL2 0x50FFC0). The unit name is SOCOM 1's (__sinit_ai_events.cpp, exact at 0x668480);
- * its directory is not known. */
+/* ai_events.cpp (OVL2 0x50E730-0x51027F): the AI events -- the pool, the running and the
+ * persistent lists, the walks over them, the callbacks told of each new one -- and a SEAL's queue
+ * of handled events. SOCOM 1's unit (__sinit_ai_events.cpp, exact at 0x668480; its directory is
+ * not known), its functions in the demo's order (0x17F070-0x180AE0); defined here in reverse of
+ * the image's order (-inline deferred). The template instances that close it (0x50F670 on) are
+ * still the generated drafts', but for the callback list's deleter constructor. */
 
+#include <algorithm>
 #include <list>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <string.h>
 
-class CAiEventCallback;
+#include "ai.h"
+
+extern "C" int strcasecmp(const char *, const char *);
 
 template class std::__list_deleter<CAiEventCallback, std::allocator<CAiEventCallback> >;
+
+unsigned int CAiEvent::bit_count = 32;
+unsigned int CAiEvent::nextId;
+CAiEventList CAiEvent::m_pool;
+CAiEventList CAiEvent::m_inuse;
+CAiEventList CAiEvent::m_persist;
+CAiEventCallbackList CAiEvent::m_callbacks;
+
+/* new in SOCOM II, read from data (variables, so not folded; the names are ours): the shortest
+ * duration a running event gets, and what the three kinds of event are heard across */
+static float s_minDuration = 0.1f;
+static float s_rangeDefault = 200.0f;
+static float s_rangeGeneric = 250.0f;
+static float s_rangeEntity = 80.0f;
+/* the time the event tick has gathered (bss; the name is ours) */
+static float s_tickTime;
+/* cleared by Open and Close, read elsewhere (bss; the name is ours) */
+static bool s_flag;
+
+/* a kind's name (SOCOM 1's; the cases in this order, the enumerators in another) */
+const char *CAiEvent::GetEventString(EVENT e)
+{
+    switch (e) {
+    case AIE_UNKNOWN:
+        return "UNKNOWN";
+    case AIE_GENERIC:
+        return "GENERIC";
+    case AIE_ALARM:
+        return "ALARM";
+    case AIE_POINT:
+        return "POINT";
+    case AIE_ENTITY:
+        return "ENTITY";
+    case AIE_VOICE:
+        return "VOICE";
+    case AIE_WEPHIT:
+        return "WEPHIT";
+    case AIE_CORPSE:
+        return "CORPSE";
+    case AIE_DOOR:
+        return "DOOR";
+    case AIE_WEPFIRE:
+        return "WEPFIRE";
+    case AIE_EXPLOSION:
+        return "EXPLOSION";
+    case AIE_HELPME:
+        return "HELPME";
+    case AIE_LIGHTSOFF:
+        return "LIGHTS";
+    }
+    return "UNKNOWN";
+}
+
+/* how often a kind repeats: only a call for help does (SOCOM 1's) */
+float CAiEvent::GetEventRate(EVENT e)
+{
+    float rate = 0.0f;
+
+    switch (e) {
+    case AIE_GENERIC:
+    case AIE_POINT:
+    case AIE_ENTITY:
+    case AIE_VOICE:
+    case AIE_CORPSE:
+    case AIE_WEPHIT:
+    case AIE_WEPFIRE:
+    case AIE_EXPLOSION:
+    case AIE_ALARM:
+    case AIE_LIGHTSOFF:
+    case AIE_DOOR:
+        return 0.0f;
+    case AIE_HELPME:
+        rate = 5.0f;
+    default:
+        return rate;
+    }
+}
+
+/* how far a kind is heard (new in SOCOM II; the name is ours) */
+float CAiEvent::GetEventRange(EVENT e)
+{
+    float range = s_rangeDefault;
+
+    switch (e) {
+    case AIE_GENERIC:
+        range = s_rangeGeneric;
+        break;
+    case AIE_ENTITY:
+        range = s_rangeEntity;
+        break;
+    }
+    return range;
+}
+
+/* the kind a name gives, or the default (SOCOM 1's) */
+CAiEvent::EVENT CAiEvent::GetEventFromString(const char *s, EVENT def)
+{
+    if (s) {
+        for (unsigned int i = 0; i < AIE_MAX; i++) {
+            if (!strcasecmp(GetEventString((EVENT)i), s))
+                return (EVENT)i;
+        }
+    }
+    return def;
+}
+
+/* every event back in the pool and the pool freed (SOCOM 1's Close did this itself; SOCOM II's
+ * calls it. The name is ours).
+ * OPEN (0x16C against 0x180): the target's first walk keeps its iterator in memory, assigned
+ * (sp+152/156, bitwise copies) and re-read each pass, and its delete loop walks two cursors;
+ * a list-iterator shape for the list remodel */
+void CAiEvent::FreeEvents()
+{
+    CAiEventList::iterator i;
+
+    for (i = m_inuse.begin(); i != m_inuse.end(); ++i)
+        m_pool.push_back(*i);
+    m_inuse.clear();
+    for (CAiEventList::iterator j = m_pool.begin(), e = m_pool.end(); j != e; ++j) {
+        delete *j;
+        *j = 0;
+    }
+    m_pool.clear();
+}
+
+/* a mission's events begin: walks of so many bits, nothing running */
+void CAiEvent::Open(unsigned int bits)
+{
+    bit_count = bits;
+    s_flag = false;
+    if (m_inuse.size())
+        m_inuse.clear();
+}
+
+void CAiEvent::Close()
+{
+    bit_count = 32;
+    FreeEvents();
+    s_flag = false;
+}
+
+/* a fresh event: from the pool if it has one, the next id given (SOCOM 1's) */
+CAiEvent *CAiEvent::Acquire()
+{
+    CAiEvent *e;
+
+    if (m_pool.size() == 0) {
+        e = new CAiEvent;
+    } else {
+        e = m_pool.front();
+        m_pool.pop_front();
+        e->Initalize();
+    }
+    e->m_id = nextId++;
+    return e;
+}
+
+/* an event made: running down its duration (at least the shortest) or kept for ever, and every
+ * callback told (SOCOM 1's, the shortest duration new). The test is the inline IsPersistent:
+ * written out, MW reuses its load of the duration for the clamp, where the target reloads it */
+void CAiEvent::Create(CAiEvent *e)
+{
+    if (e->IsPersistent()) {
+        m_persist.push_back(e);
+    } else {
+        if (e->m_duration < s_minDuration)
+            e->m_duration = s_minDuration;
+        m_inuse.push_back(e);
+    }
+    for (CAiEventCallbackList::iterator i = m_callbacks.begin(), end = m_callbacks.end(); i != end; ++i)
+        (*i).m_func(e, (*i).m_data);
+}
+
+/* an event taken off its list and back to the pool (SOCOM 1's).
+ * OPEN (right size, 5 instructions): only stack slots -- the target puts push_back's end
+ * iterator and insert's result (sp+48/52) below the removes' equal_to temporaries (sp+56/60),
+ * this build the other way round; a list-shape question (include/list is being remodelled) */
+void CAiEvent::Release(CAiEvent *e)
+{
+    if (e->IsPersistent())
+        m_persist.remove(e);
+    else
+        m_inuse.remove(e);
+    m_pool.push_back(e);
+}
+
+const float CAiEvent::NoExpire = -99.0f;
+
+/* the running events counted down, the expired ones back to the pool (SOCOM 1's function
+ * object) */
+struct _tick {
+    _tick(CAiEventList &pool, float dT) : m_pool(&pool), m_dT(dT) {}
+    bool operator()(CAiEvent *e)
+    {
+        if (e->Tick(m_dT)) {
+            m_pool->push_back(e);
+            return true;
+        }
+        return false;
+    }
+
+    CAiEventList *m_pool;
+    float m_dT;
+};
+
+/* the scheduler's task, "CAiEventTick" (SOCOM 1's, the time gathered new).
+ * OPEN (0xAC against 0xA4): the target compares the gathered time with itself (c.lt.s $f0,$f0,
+ * an uninitialised bound sharing its register?) and returns through one `move v0,zero`; it also
+ * keeps m_inuse's sentinel in s0 for both end()s, where this build rematerialises it */
+bool CAiEvent::Tick(float dT, void *)
+{
+    float min;
+
+    s_tickTime += dT;
+    if (s_tickTime < min)
+        return false;
+    float t = s_tickTime;
+
+    s_tickTime = 0.0f;
+    m_inuse.erase(std::remove_if(m_inuse.begin(), m_inuse.end(), _tick(m_pool, t)), m_inuse.end());
+    return false;
+}
+
+/* a walk over one list (SOCOM 1's) */
+CAiEvent::iterator CAiEvent::GetFirstEvent(EVENT_CLASS c)
+{
+    switch (c) {
+    case EC_INUSE:
+        return iterator(&m_inuse);
+    case EC_PERSIST:
+        return iterator(&m_persist);
+    }
+    return iterator();
+}
+
+/* the walk's next event heard at a point: of a wanted kind, not the walk's owner's, not seen,
+ * and within its range scaled (SOCOM 1's; SOCOM II measures the distance first).
+ * OPEN (right size, 39 instructions): the loop's shape -- the target tests `!found` and the end
+ * at the bottom and keeps the walk's fields in other registers; not yet worked */
+CAiEvent *CAiEvent::GetNextEvent(const CPnt3D *pos, iterator &it, float scale)
+{
+    CAiEvent *found = 0;
+
+    while (!found && it.m_it != it.m_list->end()) {
+        CAiEvent *e = *it.m_it;
+
+        ++it.m_it;
+        EVENT type = (EVENT)e->m_type;
+
+        if (!(it.m_mask & (1 << type)))
+            continue;
+        if (it.m_type != AIE_MAX && it.m_type != type)
+            continue;
+        if (it.m_owner == e->m_owner)
+            continue;
+        if (it.m_bit != ~0 && e->Seen(it.m_bit))
+            continue;
+        CPnt3D d;
+
+        e->m_pos.Sub(pos, &d);
+        float distSq = d.x * d.x + d.y * d.y + d.z * d.z;
+
+        if (e->m_rangeSq == 0.0f || distSq < e->m_rangeSq * scale) {
+            found = e;
+            it.m_distSq = distSq;
+        }
+    }
+    return found;
+}
+
+CAiEvent::CAiEvent()
+    : m_bits(bit_count)
+{
+    Initalize();
+}
+
+/* an event as new (SOCOM 1's) */
+void CAiEvent::Initalize()
+{
+    m_duration = 0.0f;
+    m_pos = CPnt3D::zero;
+    m_type = AIE_UNKNOWN;
+    m_owner = -1;
+    m_visible = 0;
+    m_id = 0;
+    m_userdata = 0;
+    m_bits.ClearAll();
+}
+
+/* whether the event has run out, counting it down unless it never expires (SOCOM 1's) */
+bool CAiEvent::Tick(float dT)
+{
+    if (m_duration == NoExpire)
+        return false;
+    m_duration -= dT;
+    return m_duration <= 0.0f;
+}
+
+/* the kinds listed, AIE_NONE last, as a mask (SOCOM 1's) */
+unsigned int CAiEvent::MakeMaskEx(EVENT e, ...)
+{
+    unsigned int mask = 0;
+    va_list ap;
+
+    va_start(ap, e);
+    while (e != AIE_NONE) {
+        mask |= 1 << e;
+        e = va_arg(ap, EVENT);
+    }
+    va_end(ap);
+    return mask;
+}
+
+/* the handle of an event, added if the queue has none (SOCOM 1's).
+ * OPEN (right size, 9 instructions): the walk's registers and the push_back's temporaries (the
+ * handle at sp+44, the end iterator at sp+36) -- list shapes, left for the list remodel */
+CAiEventHandle *CAiEventQ::Create(unsigned int id)
+{
+    CAiEventHandle *h = 0;
+
+    for (iterator i = begin(); i != end(); ++i) {
+        if ((*i).m_id == id) {
+            h = &*i;
+            break;
+        }
+    }
+    if (!h) {
+        push_back(CAiEventHandle(id));
+        h = &((node *)end_.prev_)->data_;
+    }
+    return h;
+}

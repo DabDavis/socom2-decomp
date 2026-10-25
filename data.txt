@@ -821,6 +821,7 @@
 0x0065A698 0x13C _LangVirtualTable  # OVL2; s1:data-seq (size SOCOM 1's; via FillLanguageVirtualTable)
 0x0065A838 0x8 g_lhNullHandle  # OVL2; s1:data-seq (size SOCOM 1's; via gsapi_EngineSetImmediateContext +4)
 0x0065A858 0x4 infinite__8CAiTimer  # OVL2; s1:data-seq (size SOCOM 1's; via ClearGoal__9CSealCtrlF9GOAL_TYPE)
+0x0065A860 0x4 NoExpire__8CAiEvent  # OVL2 data; SOCOM 1's (NoExpire__8CAiEvent, -99.0): Release and Create compare an event's duration with it, read from data; Tick folds it (2 references in 2 functions)
 0x0065A9F0 0x8 __RTTI__10CAiPlanner  # RTTI of CAiPlanner: found by its RTTI's name
 0x0065AA38 0x8 __RTTI__18CRestrainedPlanner  # RTTI of CRestrainedPlanner: found by its RTTI's name
 0x0065AA60 0x8 __RTTI__15CStealthPlanner  # RTTI of CStealthPlanner: found by its RTTI's name
@@ -919,6 +920,7 @@
 0x0066A020 0xC m_pool__8CAiEvent  # OVL2 bss; s1:data-exact (size SOCOM 1's; via __sinit_ai_events.cpp)
 0x0066A040 0xC m_inuse__8CAiEvent  # OVL2 bss; s1:data-exact (size SOCOM 1's; via __sinit_ai_events.cpp)
 0x0066A060 0xC m_persist__8CAiEvent  # OVL2 bss; s1:data-exact (size SOCOM 1's; via __sinit_ai_events.cpp)
+0x0066A070 0x4 nextId__8CAiEvent  # OVL2 bss; SOCOM 1's (nextId__8CAiEvent): Acquire gives each event the next id, as the demo's (3 references in 1 function)
 0x0066A088 0xC m_callbacks__8CAiEvent  # OVL2 bss; s1:data-exact (size SOCOM 1's; via __sinit_ai_events.cpp)
 0x0066A1B0 0xE0 AiMaps  # OVL2 bss; s1:data-seq (size SOCOM 1's; via CreateCompassNavPoints__8CMissionFv +1)
 0x0066A5E8 0x1 g_bJoiningRandomGame__24@unnamed@zNetMedius_cpp@  # OVL2 bss; s1:data-seq (size SOCOM 1's; via UnInit__13CZOnlineLobbyFv)
