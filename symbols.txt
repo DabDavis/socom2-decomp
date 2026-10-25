@@ -6237,7 +6237,7 @@
 0x00347D40 0x1B8 NormalizeWeights__9CSndGroupFv  # OVL1; s1:align
 0x00347F00 0x224 LoadCSndGroup__9CSndGroupFP5_zrdr  # OVL1; s1:align
 0x00348130 0x134 func_00348130  # OVL1
-0x00348270 0x70 func_00348270  # OVL1
+0x00348270 0x70 __dt__Q23std30vector<f,Q23std12allocator<f>>Fv  # OVL1; by hand (vector<float>'s destructor, three this-tests; zsnd_csndgroup.cpp's copy -- CSndGroup's weights -- linked first, Cleanup's FreeVector calls it) -- the sound lane
 0x003482E0 0x170 PlaySoundVolPanPitch__9CSndGroupFfiiP12CSndInstanceUi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00348450 0x170 PlaySound3D__9CSndGroupFPC6CPnt3DfiP12CSndInstanceUi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003485C0 0x150 PlaySoundVol__9CSndGroupFfP12CSndInstanceUi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -6252,16 +6252,16 @@
 0x00349080 0x7C FadeOut__11CSndJukeboxFv  # OVL1; s1:calls
 0x00349100 0x1A4 func_00349100  # OVL1
 0x003492B0 0x1DC func_003492B0  # OVL1
-0x00349490 0x1DC func_00349490  # OVL1
+0x00349490 0x1DC LoadMusicLists__11CSndJukeboxFP5_zrdri  # OVL1; s1:calls by hand (LoadPlaylists calls it with each intensity's record and its index, as SOCOM 1's calls LoadMusicLists; four where SOCOM 1 had two) -- the sound lane
 0x00349670 0x114 LoadPlaylists__11CSndJukeboxFPCc  # OVL1; s1:align
-0x00349790 0x148 func_00349790  # OVL1
-0x003498E0 0x40 func_003498E0  # OVL1
-0x00349920 0x8 func_00349920  # OVL1
-0x00349930 0x14 func_00349930  # OVL1
-0x00349950 0x70 func_00349950  # OVL1
-0x003499C0 0x40 func_003499C0  # OVL1
-0x00349A00 0x8 func_00349A00  # OVL1
-0x00349A10 0x14 func_00349A10  # OVL1
+0x00349790 0x148 Cleanup__11CSndJukeboxFv  # OVL1; s1:calls by hand (SOCOM 1's CSndJukebox::Cleanup: LoadPlaylists calls it when the playlists are loaded, as SOCOM 1's; the same body -- each list's sequences deleted and the lists and weights freed, the current sound, mode and sequence reset, m_jukebox_stopped set; four lists where SOCOM 1 had two) -- the sound lane
+0x003498E0 0x40 swap__Q23std30vector<f,Q23std12allocator<f>>FRQ23std30vector<f,Q23std12allocator<f>>  # OVL1; by hand (Cleanup's FreeVector of a weights vector: the swap, out of line) -- the sound lane
+0x00349920 0x8 clear__Q23std30vector<f,Q23std12allocator<f>>Fv  # OVL1; by hand (Cleanup's FreeVector of a weights vector: the clear, out of line) -- the sound lane
+0x00349930 0x14 __ct__Q23std30vector<f,Q23std12allocator<f>>Fv  # OVL1; by hand (Cleanup's FreeVector of a weights vector: the temporary's constructor, out of line as a pointer vector's) -- the sound lane
+0x00349950 0x70 __dt__Q23std58vector<P12CSndSequence,Q23std26allocator<P12CSndSequence>>Fv  # OVL1; by hand (Cleanup's FreeVector of a playlist: the temporary's destructor, called with -1, three this-tests) -- the sound lane
+0x003499C0 0x40 swap__Q23std58vector<P12CSndSequence,Q23std26allocator<P12CSndSequence>>FRQ23std58vector<P12CSndSequence,Q23std26allocator<P12CSndSequence>>  # OVL1; by hand (Cleanup's FreeVector of a playlist: the swap, four high, out of line) -- the sound lane
+0x00349A00 0x8 clear__Q23std58vector<P12CSndSequence,Q23std26allocator<P12CSndSequence>>Fv  # OVL1; by hand (Cleanup's FreeVector of a playlist: the clear, out of line) -- the sound lane
+0x00349A10 0x14 __ct__Q23std58vector<P12CSndSequence,Q23std26allocator<P12CSndSequence>>Fv  # OVL1; by hand (CSndJukebox::Cleanup's FreeVector of a playlist: the temporary's constructor, out of line -- FreeVector is inlined one level; the name is what zsnd_jukebox.cpp emits) -- the sound lane
 0x00349A30 0x1C func_00349A30  # OVL1
 0x00349A50 0x1C func_00349A50  # OVL1
 0x00349A70 0x28 IsFading__17CSndSequenceEntryFv  # OVL1; s1:exact

@@ -416,6 +416,14 @@ public:
     static void Play(MUSIC_MODE mode, CSnd *sound);
     static void ClearQueue();
     static void FadeOut();
+    static void LoadPlaylists(const char *name);
+    static void LoadMusicLists(_zrdr *rdr, int mode);
+    static void Cleanup();
+
+    static std::vector<CSndSequence *> m_playlists[4];  /* 0x48E010: by intensity (SOCOM 1 had two) */
+    static std::vector<float> m_weights[4];             /* 0x48E050 */
+    static signed char m_currentmode;                   /* 0x48E090 (SOCOM 1's) */
+    static bool m_playlists_loaded;                     /* 0x48E098 (SOCOM 1's) */
 
     static CSndInstance *m_instance;    /* 0x48E080 (names ours) */
     static CSndSequence *m_sequence;    /* 0x48E088 */
@@ -423,7 +431,7 @@ public:
     static bool m_modeChanged;          /* 0x48E0A8 */
     static int m_queued;                /* 0x48E0B0 */
     static signed char m_queuedMode;    /* 0x48E0B4 */
-    static bool m_inFight;              /* 0x3E0080 (SOCOM 1's Start clears a byte so) */
+    static bool m_jukebox_stopped;      /* 0x3E0080 (SOCOM 1's: Start clears it, Cleanup sets it) */
 };
 
 /* The headset's voice stream (SOCOM 1's class, no DWARF): a queue of streamed sounds played
