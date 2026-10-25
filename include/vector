@@ -179,17 +179,14 @@ public:
             operator delete(data_);
     }
     void clear() { size_ = 0; }
-    /* the storage traded with another's: capacity, data, size, each through std::swap -- the
-     * fourth level of a pointer vector's swap, which CFlashFXVector::Reset's free idiom needs
-     * (its four pieces all called out of line, SOCOM II's 0x228780 among them) */
-    void swap(__vector_pod &x)
-    {
-        if (this != &x) {
-            std::swap(capacity_, x.capacity_);
-            std::swap(data_, x.data_);
-            std::swap(size_, x.size_);
-        }
-    }
+    /* the storage traded with another's through the free swap below, as SOCOM 1's deleter swaps
+     * (its member swap at <vector> line 973 calls the free one at 960): a pointer vector's swap is
+     * five high, so FreeVector (zsys.h) and TrimVector (node_world.cpp), six, are inlined one level
+     * at -inline level=5 and call their pieces, as the target does. Measured at level 5 over every
+     * hand-written unit: the 32 FreeVector/TrimVector functions level 5 lost come back (CFlashFXVector::
+     * Reset, CCompass::Close, CWorld's three, CSndJukebox::Cleanup, Headset::Flush and their copies),
+     * nothing else moves */
+    void swap(__vector_pod &x) { std::swap(*this, x); }
     /* references to the fields (SOCOM 1 keeps out-of-line copies: data() is this + 8, cap() this) */
     T *&data() { return data_; }
     unsigned int &cap() { return capacity_; }
@@ -212,11 +209,23 @@ public:
     template <class InputIterator>
     void init(InputIterator first, InputIterator last, forward_iterator_tag);
     void push_back(const T &x) { insert(data_ + size_, 1, x); }
-protected:
+public:
     unsigned int capacity_;
     unsigned int size_;
     T *data_;
 };
+
+/* the storage traded: capacity, data, size, each through std::swap (SOCOM 1's free swap of the
+ * deleter, lines 960-967: the this test, then the three fields in that order) */
+template <class T, class Allocator>
+inline void swap(__vector_pod<T, Allocator> &x, __vector_pod<T, Allocator> &y)
+{
+    if (&x != &y) {
+        std::swap(x.capacity_, y.capacity_);
+        std::swap(x.data_, y.data_);
+        std::swap(x.size_, y.size_);
+    }
+}
 
 /* what every vector shows its users: the iterators and accessors over its storage (a macro, so
  * that neither kind of vector carries a class of its own for them) */
