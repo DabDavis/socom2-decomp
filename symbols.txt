@@ -4074,7 +4074,7 @@
 0x002BBA80 0x6C PushBlendAnimPacketHandler__FiiiPv  # OVL1; s1:align
 0x002BBAF0 0xE0 func_002BBAF0  # OVL1
 0x002BBBD0 0x1C4 HitPacketHandler__FiiiPv  # OVL1; s1:calls
-0x002BBDA0 0x170 func_002BBDA0  # OVL1
+0x002BBDA0 0x170 SendHitMessage__FiiiffbUc  # OVL1; by hand (the states lane: SOCOM 1's SendHitMessage(int, int, int, float, float, bool, unsigned char) by its arguments' registers and its _saturate calls on the packet's bytes, after HitPacketHandler as in SOCOM 1)
 0x002BBF10 0x84 SaveFireMessage__FP10CZSealBodyPC6CPnt3D  # OVL1; s1:align
 0x002BBFA0 0xE0 zRemoteDelayedAction__FPQ29CZNetwork18TypeRTimeFixStruct  # OVL1; s1:align
 0x002BC080 0x380 zDoClientLeavesCallback__Fi  # OVL1; s1:align
