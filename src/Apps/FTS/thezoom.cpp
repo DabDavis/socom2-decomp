@@ -96,7 +96,7 @@ void CameraZoom::Reset()
         appCamera->m_ctrl_view = cam_view_third;
         appCamera->SetZoom(1.0f);
         appCamera->SetCameraMode(2);
-        appCamera->m_camera_last_mode = 2;
+        appCamera->m_camera_last_mode = cam_mode_FP;
     }
     data_003DC350 = lens_fx_third_person;
     data_003DC358 = lens_fx_third_person;

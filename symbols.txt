@@ -3600,7 +3600,7 @@
 0x002980D0 0x1068 func_002980D0  # OVL1
 0x00299140 0xC func_00299140  # OVL1
 0x00299150 0x68 ResetDeathCam__10CAppCameraFv  # OVL1; s1:calls (SOCOM 1's ResetDeathCam: no death state, the automatic death camera on, save_short_tether_length 10000, DeltaRot and DeltaAim 0; SOCOM II puts back a few more; CMPExitState::UnInit and the mission's fades call it)
-0x002991C0 0x160 func_002991C0  # OVL1
+0x002991C0 0x160 APLookAt__10CAppCameraFfP7CEntityR7CMatrix  # OVL1; s1:calls (SOCOM 1's APLookAt(dT, target, cTw): the target's and the SEAL's matrices transforming two points, the chord clipped, LookAt; Tick's mode 4 calls it with m_track as SOCOM 1's mode 3 did)
 0x00299320 0x1B4 Shake__10CAppCameraFUc  # OVL1; the name ours (one of the camera's three shake presets at 0x50 begun, else the shake stopped; CmdBeginShake inlines it, OVL2 calls it)
 0x002994E0 0x21C BeginShake__10CAppCameraFffffffff  # OVL1; the name ours (SOCOM II's shake begun: the larger rates and decays kept, the amplitudes rolled with rand()%100; Shake and an OVL2 caller pass eight floats)
 0x00299700 0xE4 StopShake__10CAppCameraFv  # OVL1; the name ours (SOCOM II's shake stopped: its eight parameters -1, the echo off, the angles to a random quarter, the amplitudes 0; inlined in Shake and TickCameraWiggle)
@@ -3615,7 +3615,7 @@
 0x0029A660 0x2F0 func_0029A660  # OVL1
 0x0029A950 0x4FC func_0029A950  # OVL1
 0x0029AE50 0x270 func_0029AE50  # OVL1
-0x0029B0C0 0x224 func_0029B0C0  # OVL1
+0x0029B0C0 0x224 FTSTick__10CAppCameraFv  # OVL1; s1:calls (SOCOM 1's FTSTick: the pad's two-button view cycle over m_ctrl_view, then the view's preset taken up -- SOCOM II's ResetView, called -- when it changed; Tick calls it second, as SOCOM 1's, without SOCOM 1's unused frame time)
 0x0029B2F0 0x40 SetZoom__10CAppCameraFf  # OVL1; s1:calls (SOCOM 1's SetZoom: the camera's aspect and range scale set from the zoom; SOCOM II scales zVid's aspect)
 0x0029B330 0x88 SetCameraMode__10CAppCameraFUc  # OVL1; the name ours (the camera's mode set, except online at mode 6 while the followed SEAL is down; the HUD's mission cams and the zoom call it)
 0x0029B3C0 0x1B0 AttachTo__10CAppCameraFP10CZSealBody  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)

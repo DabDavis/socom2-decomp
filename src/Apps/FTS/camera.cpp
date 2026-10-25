@@ -35,6 +35,46 @@ extern float data_00416210;   /* DeltaAim */
 extern float data_00416218;   /* (SOCOM II's) */
 }
 
+/* what the tick reaches for (SOCOM 1's names in the comments) */
+extern "C" {
+float expf(float x);
+bool func_00299C00();                            /* zdb::CCamera::GetDynamicsControl (m_dynamics_controlled) */
+void func_0029A180(CAppCamera *cam);             /* (FirstToThirdPersonTransition's place) */
+void func_00299ED0(CAppCamera *cam);             /* (ThirdToFirstPersonTransition's place) */
+void func_0029A3F0(CAppCamera *cam);
+void func_00295F20(CAppCamera *cam, CMatrix &cTw, float dT);   /* (APTeatherCam's place) */
+void func_00296F10(CAppCamera *cam, CMatrix &cTw, float dT);   /* (APFirstPersonCam's place) */
+void func_00295B00(CAppCamera *cam, CMatrix &cTw, float dT);
+void func_002964F0(CAppCamera *cam, CMatrix &cTw, float dT);
+void func_005AA6E0(CZSealBody *seal, CPnt3D *pos, CMatrix &cTw);   /* CZSealBody::CheckDIShoot */
+}
+
+/* the character's tuning (SOCOM 1's CharacterDynamics: only the peek's rate here) */
+class CharacterDynamics {
+public:
+    unsigned char _0[0x16c];
+    float m_cameraPeekDecayRate;   // 0x16c
+};
+
+extern CharacterDynamics theCharacterDynamics;
+extern unsigned char OurGameName;
+
+/* the system: its timer's seconds per tick (SOCOM 1's _zsys_public::timerScale at 0x24; SOCOM II's
+ * at 0x28) */
+struct _zsys_public {
+    unsigned char _0[0x28];
+    float timerScale;   // 0x28
+};
+
+extern _zsys_public zSys;
+
+#define T0_COUNT ((volatile unsigned int *)0x10000000)
+
+namespace {
+/* the peek eased toward its goal (SOCOM 1's file static) */
+float peekCur;
+}
+
 /* the network (only its online flag) */
 class CNetwork {
 public:
@@ -232,7 +272,7 @@ void CAppCamera::SetCameraMode(unsigned char mode)
     if (theNetwork.m_9 && m_bc && func_002C2FD0(m_bc) && m_camera_mode == 6)
         keep = true;
     if (!keep)
-        m_camera_mode = mode;
+        m_camera_mode = (PLAYER_CAM_STATE)mode;
 }
 
 /* the zoom: the screen's aspect scaled by it, the range scale divided by it */
@@ -283,6 +323,73 @@ bool CAppCamera::TickTask(float dT, void *data)
 {
     appCamera->Tick(dT);
     return false;
+}
+
+/* a frame of the camera, while the dynamics hold it: the view's buttons (FTSTick), the peek eased
+ * toward the SEAL's (none while dead or prone), the mode's camera -- entering the tether or the
+ * third mode from first person, or first person from anything, through a transition -- the
+ * effects' matrix on top, the camera's node placed, the SEAL's shot checked against it (SOCOM 2,
+ * not in mode 6) and the shake (SOCOM 1's Tick; SOCOM II's modes 1-6 and their tick functions
+ * take the frame time) */
+void CAppCamera::Tick(float dT)
+{
+    if (func_00299C00()) {
+        CMatrix camMatrix;
+        float peekGoal;
+
+        FTSTick();
+        peekGoal = 0.0f;
+        if (m_bc) {
+            if (m_bc->m_state == 8 || m_bc->m_state == 2)
+                peekGoal = 0.0f;
+            else if (m_bc->m_desiredPeek == PEEK_LEFT)
+                peekGoal = -1.0f;
+            else if (m_bc->m_desiredPeek == PEEK_RIGHT)
+                peekGoal = 1.0f;
+        }
+        peekCur = peekGoal + (peekCur - peekGoal) *
+            expf(-theCharacterDynamics.m_cameraPeekDecayRate * ((float)*T0_COUNT * zSys.timerScale));
+        switch (m_camera_mode) {
+        case cam_mode_tether:
+            if (FromFirstToTether())
+                func_0029A180(this);
+            func_00295F20(this, camMatrix, dT);
+            break;
+        case cam_mode_FP:
+            if (IntoFirstPerson())
+                func_00299ED0(this);
+            func_00296F10(this, camMatrix, dT);
+            break;
+        case cam_mode_3:
+            if (FromFirstToMode3())
+                func_0029A3F0(this);
+            func_00295B00(this, camMatrix, dT);
+            break;
+        case cam_mode_apLook:
+            APLookAt(dT, m_track, camMatrix);
+            break;
+        case cam_mode_net:
+            break;
+        case cam_mode_6:
+            func_002964F0(this, camMatrix, dT);
+            break;
+        default:
+            func_00296F10(this, camMatrix, dT);
+            break;
+        }
+        m_camera_last_mode = m_camera_mode;
+        if (m_camera_effects) {
+            CMatrix tmp_mtx;
+
+            sceVu0MulMatrix(tmp_mtx.m_matrix, camMatrix.m_matrix, *(sceVu0FMATRIX *)m_camera_effects);
+            sceVu0CopyMatrix(camMatrix.m_matrix, tmp_mtx.m_matrix);
+        }
+        m_camera->SetMatrix(&camMatrix);
+        if (OurGameName == 1 && m_bc && m_camera_mode != cam_mode_6)
+            func_005AA6E0(m_bc, &m_wPos, camMatrix);
+        if (m_wiggle_echo)
+            TickCameraWiggle(dT, m_camera);
+    }
 }
 
 /* SOCOM 1's: the wiggle's echo, its clock restarted when set */

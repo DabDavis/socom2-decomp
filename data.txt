@@ -594,6 +594,7 @@
 0x00414E90 0x4 g_can_use_switch  # OVL1 bss; s1:data-seq (size SOCOM 1's; via UISwitchSides__FP13C2DAnimCmdHdrPf)
 0x00415FF0 0x4 appCamera  # OVL1 bss; SOCOM 1's (CHUD::GetHUDOwner reads its owner, as SOCOM 1's read gp-29416): 87 references in 61 functions take 0x415FF0
 0x00416038 0x1 camera_tether_intersects_something  # OVL1 bss; s1:data-seq (size SOCOM 1's; via GetNearestIntersectCamPoint__FPQ23zdb11DiIntersectP6CPnt3D)
+0x004161C0 0x4 peekCur__20@unnamed@camera_cpp@  # OVL1 bss; s1 by hand (SOCOM 1's camera.cpp static, gp-29408: CAppCamera::Tick eases it toward the peek's goal and stores it back; SOCOM II's Tick does the same with 0x4161C0)
 0x00416220 0x4 _counter  # OVL1 bss; s1:data-seq (size SOCOM 1's; via OnRecvPacket__7CPacketFPCv +1)
 0x004162C0 0x10000 _wbuf  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Initalize__8CConsoleFv +1)
 0x004262C0 0x10000 _rbuf  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Initalize__8CConsoleFv +1)
@@ -648,7 +649,7 @@
 0x0049E260 0x20 zTaskScheduler  # OVL1 bss; s1:data-seq (size SOCOM 1's; via TaskScheduler__9CZAnimSetFv)
 0x0049E280 0x4 __HeapSize  # OVL1 bss; s1:data-seq (size SOCOM 1's; via zsys_FullAllocAndFree__Fv)
 0x0049E2A0 0xC theIOPManager  # OVL1 bss; SOCOM 1's (CMenuState registers its reboot callback on it in Init and removes it in UnInit, as SOCOM 1's): 28 references in 21 functions take 0x49E2A0-0x49E2A8
-0x0049E2B0 0x28 zSys  # OVL1 bss; s1:data-exact (size SOCOM 1's; via WriteGsMemory__6CVideoFUiP1Ui)
+0x0049E2B0 0x2C zSys  # OVL1 bss; s1:data-exact (via WriteGsMemory__6CVideoFUiP1Ui); SOCOM 1's _zsys_public is 0x28 with timerScale at 0x24, SOCOM II's has it at 0x28 (CAppCamera::Tick's peek easing reads it where SOCOM 1's read 0x24), so 0x2C
 0x0049E2F0 0x4 m_last_id__Q211CIOPManager11CRegistrant  # OVL1 bss; s1:data-seq (size SOCOM 1's; via RegisterRebootCallback__11CIOPManagerFPFQ211CIOPManager11RebootPhaseQ211CIOPManager10RebootModePv_bPv)
 0x0049E308 0x4 sprBeingKicked  # OVL1 bss; s1:data-seq (size SOCOM 1's; via zSysFifoEnd__Fv)
 0x0049E310 0x4 sprBeingWritten  # OVL1 bss; s1:data-seq (size SOCOM 1's; via zSysFifoEnd__Fv)
