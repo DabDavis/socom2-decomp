@@ -10950,19 +10950,19 @@
 0x005B8FF0 0x2C func_005B8FF0  # OVL2
 0x005B9020 0xC func_005B9020  # OVL2
 0x005B9030 0x8C func_005B9030  # OVL2
-0x005B90C0 0x10 func_005B90C0  # OVL2
-0x005B90D0 0x8 func_005B90D0  # OVL2
-0x005B90E0 0x8 func_005B90E0  # OVL2
-0x005B90F0 0x14 func_005B90F0  # OVL2
+0x005B90C0 0x10 IncrScreenOffsetY__5CZKitFf  # OVL2; s1:order by hand (SOCOM 1's IncrScreenOffsetY: the same add to the screen offset's y, at 0x5C here where SOCOM 1's is 0x48 -- the reticle block 0x14 on; the kit's first accessors in SOCOM 1's order)
+0x005B90D0 0x8 ScreenOffsetY__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's ScreenOffsetY, after IncrScreenOffsetY: the float at 0x5C, SOCOM 1's 0x48)
+0x005B90E0 0x8 ScreenOffsetX__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's ScreenOffsetX, next: the float at 0x58, SOCOM 1's 0x44)
+0x005B90F0 0x14 IsUsingBinocs__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's IsUsingBinocs, next: the body's byte (0x200, SOCOM 1's 0x160) compared with 4 where SOCOM 1's compares 3)
 0x005B9110 0x70 func_005B9110  # OVL2
-0x005B9180 0x34 func_005B9180  # OVL2
+0x005B9180 0x34 InitializeSniperKick__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's InitializeSniperKick: the kick's distance zeroed, its baseline from the controller's +0x130 when there is one, AdrenalineIncr(0.5) tail-called -- the same code with the fields 0x14 on)
 0x005B91C0 0xB4 func_005B91C0  # OVL2
 0x005B9280 0x518 func_005B9280  # OVL2
 0x005B97A0 0x120 func_005B97A0  # OVL2
 0x005B98C0 0xC4 func_005B98C0  # OVL2
-0x005B9990 0x14 func_005B9990  # OVL2
+0x005B9990 0x14 IsUsingScope__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's IsUsingScope, before SetWeaponInfoChanged as there: the body's byte at least 5 where SOCOM 1's is 4)
 0x005B99B0 0x1C SetWeaponInfoChanged__5CZKitFv  # OVL2; s1:exact
-0x005B99D0 0x24 func_005B99D0  # OVL2
+0x005B99D0 0x24 PendingPickupHandled__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's PendingPickupHandled, after SetWeaponInfoChanged as there: a flag bit cleared (bit 14, SOCOM 1's 13) and the pickup wait zeroed, 0x8B8 here, SOCOM 1's 0x878)
 0x005B9A00 0x1A8 func_005B9A00  # OVL2
 0x005B9BB0 0x258 func_005B9BB0  # OVL2
 0x005B9E10 0xEC func_005B9E10  # OVL2
@@ -11003,9 +11003,9 @@
 0x005BDE20 0x94 func_005BDE20  # OVL2
 0x005BDEC0 0xE4 func_005BDEC0  # OVL2
 0x005BDFB0 0x6C func_005BDFB0  # OVL2
-0x005BE020 0x8 func_005BE020  # OVL2
-0x005BE030 0x8 func_005BE030  # OVL2
-0x005BE040 0x8 func_005BE040  # OVL2
+0x005BE020 0x8 SetBody__5CZKitFP10CZSealBody  # OVL2; s1:order by hand (SOCOM 1's SetBody, before GetNumItems and GetSelectedItemNum as there: the body at 0x830, SOCOM 1's 0x814)
+0x005BE030 0x8 GetNumItems__5CZKitCFv  # OVL2; s1:order by hand (SOCOM 1's GetNumItems: the word at 0x82C, SOCOM 1's 0x810)
+0x005BE040 0x8 GetSelectedItemNum__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's GetSelectedItemNum: the word at 0x824, SOCOM 1's 0x808)
 0x005BE050 0xC0 func_005BE050  # OVL2
 0x005BE110 0xB8 func_005BE110  # OVL2
 0x005BE1D0 0x68 func_005BE1D0  # OVL2
@@ -11043,7 +11043,7 @@
 0x005C3000 0x2B0 func_005C3000  # OVL2
 0x005C32B0 0xB0 func_005C32B0  # OVL2
 0x005C3360 0x3E0 func_005C3360  # OVL2
-0x005C3740 0x34 func_005C3740  # OVL2
+0x005C3740 0x34 GetItemByIndex__5CZKitCFi  # OVL2; by hand: an item by index -- the index through 0x5C6600 (with 255), then the item array at 0xE4 (SOCOM 1's m_item at 0xD0, 0x14 on); GetCurItem (const) tail-calls it with the selected item, so it is const here
 0x005C3780 0x8 GetCurItem__5CZKitCFv  # OVL2; s1:calls by hand (the HUD lane: at SOCOM 1's call site in ZoomIn/ZoomOut; its result's type byte is compared with 11)
 0x005C3790 0x14 func_005C3790  # OVL2
 0x005C37B0 0xD4 func_005C37B0  # OVL2
