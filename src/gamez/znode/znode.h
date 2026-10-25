@@ -174,8 +174,11 @@ public:
     std::vector<BLENDMODE *> m_blendmodes;   // 0x3c
 };
 
+class CMesh;
+
 class CSubMesh : public CVisual {
 public:
+    CSubMesh(CMesh *mesh);
     unsigned char _48[0x68 - 0x48];
     int m_index;   // 0x68: its place in its mesh's matrices (the names ours)
     CVisual *m_mesh;   // 0x6c
@@ -183,6 +186,8 @@ public:
 
 class CMesh : public CVisual {
 public:
+    /* a copy of the mesh, its own data, for a node (SOCOM 1's took no node) */
+    CMesh *Clone(CNode *owner);
     unsigned char _48[0x90 - 0x48];
     CMatrix **m_palette;   // 0x90: its sub-meshes' matrices, by index (the name ours)
 };

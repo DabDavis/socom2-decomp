@@ -7908,7 +7908,7 @@
 0x003B9150 0x8 UpdateCentroid__Q23zdb5CMeshFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003B9160 0x8 ComputeBBox__Q23zdb5CMeshFP5CBBox  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003B9170 0x10 func_003B9170  # OVL1
-0x003B9180 0x18C Clone__Q23zdb5CMeshFv  # OVL1; s1:align
+0x003B9180 0x18C Clone__Q23zdb5CMeshFPQ23zdb5CNode  # OVL1; s1:align; s1:align, with a node now (SOCOM 1's took none; _Copy passes the node it copies into)
 0x003B9310 0x28 func_003B9310  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
 0x003B9340 0x54 func_003B9340  # OVL1
 0x003B93A0 0xD4 func_003B93A0  # OVL1

@@ -60,6 +60,9 @@ extern "C" void func_003C0120(void *fx, float dt);
 extern "C" int func_003C0460(void *fx, float u, float v, bool b, CVisual *visual, CNode *node,
                              int index);
 extern "C" char data_004B50D0[];
+/* the mesh _Copy cloned last, which the sub-meshes after it are made over (node_main.cpp's
+ * .bss, not named yet) */
+extern "C" CMesh *data_0045C2E8;
 
 /* a node's parameters from another's, field by field -- or, given none, the defaults: type 1,
  * active, lit, fogged and clipped, the unit matrix and an unset box (SOCOM 1's, with SOCOM II's
@@ -143,6 +146,76 @@ CNode::CNode()
         NodeUniverse->AddNode(this);
     numNodes++;
     m_name = UNNAMED_NODE;
+}
+
+/* the node copied into another (a new node when none): its parameters, then its visuals -- a
+ * mesh cloned, the sub-meshes after it made over the clone, anything else shared -- its DIs, and
+ * its children, an instance made anew from its model at the child's place and turn, anything
+ * else copied (SOCOM 1's, with the parameters a call now) */
+CNode *CNode::_Copy(CNode *to) const
+{
+    CNode *self = (CNode *)this;
+
+    if (!to)
+        to = new CNode;
+    CopyParams(to);
+    to->ReserveVisuals(m_visual.size());
+    for (CVisualVector::iterator v = self->m_visual.begin(); v != self->m_visual.end(); ++v) {
+        CVisual *visual = *v;
+        CMesh *mesh = visual->GetType() == 1 ? (CMesh *)visual : 0;
+        CSubMesh *sub = visual->GetType() == 2 ? (CSubMesh *)visual : 0;
+
+        if (mesh) {
+            data_0045C2E8 = mesh->Clone(to);
+            to->AddVisual(data_0045C2E8);
+        } else if (sub) {
+            CSubMesh *copy = new CSubMesh(data_0045C2E8);
+
+            copy->m_index = sub->m_index;
+            to->AddVisual(copy);
+        } else {
+            to->AddVisual(visual);
+            data_0045C2E8 = 0;
+        }
+    }
+    to->ReserveDI(m_di.size());
+    for (CDIVector::iterator d = self->m_di.begin(); d != self->m_di.end(); ++d)
+        to->AddDI(*d);
+    to->ReserveChildren(m_child.size());
+    for (CNodeVector::iterator c = self->m_child.begin(); c != self->m_child.end(); ++c) {
+        CNode *child = *c;
+        CNode *instance = child->m_type == 2 ? child : 0;
+        CNode *copy;
+
+        if (instance) {
+            CQuat rot;
+
+            child->m_matrix.ToQuat(&rot);
+            CPnt3D pos;
+
+            pos.x = child->m_matrix.m_matrix[3][0];
+            pos.y = child->m_matrix.m_matrix[3][1];
+            pos.z = child->m_matrix.m_matrix[3][2];
+
+            copy = CreateInstance(child->m_model, &pos, &rot);
+            child->CopyParams(copy);
+        } else
+            copy = child->_Copy(0);
+        if (copy)
+            to->AddChild(copy);
+    }
+    return to;
+}
+
+/* room for n more visuals, children */
+void CNode::ReserveVisuals(int n)
+{
+    m_visual.reserve(m_visual.size() + n);
+}
+
+void CNode::ReserveChildren(int n)
+{
+    m_child.reserve(m_child.size() + n);
 }
 
 /* a copy of the node: _Copy into a new one */
