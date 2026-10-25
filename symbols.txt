@@ -1632,7 +1632,7 @@
 0x001FC5A0 0x78 func_001FC5A0  # OVL1
 0x001FC620 0x60 __dt__7C2DPolyFv  # OVL1; s1:ref (taken by address where SOCOM 1 takes __dt__7C2DPolyFv's)
 0x001FC680 0x80 __dt__13C2DBitmapPolyFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x001FC700 0x108 func_001FC700  # OVL1
+0x001FC700 0x108 __dt__19CMPWeaponCategoriesFv  # OVL1; by hand (hud_main.cpp: the implicit destructor of the network selector's category page at CMPWeaponSel+0x220, which ~CHUD calls with -1 from its one-level inline of CMPWeaponSel's; a C2DString at 0, bitmaps at 0xA0/0x120/0xEA0, four C2DBitmapPolys, a SlotList at 0x960 and four CategorySlots at 0x9A0; no vtable, the class name ours)
 0x001FC810 0xA0 __dt__12CategorySlotFv  # OVL1; by hand (slot 0 of CategorySlot's vtable 0x405D80: the implicit destructor, CWeaponSlot's vtable 0x405E00 stored before the base's)
 0x001FC8B0 0x60 __dt__8SlotListFv  # OVL1; by hand (slot 0 of SlotList's vtable 0x405E80: the implicit destructor)
 0x001FC910 0x80 __dt__12SelectedSlotFv  # OVL1; by hand (slot 0 of SelectedSlot's vtable 0x405D00: the implicit destructor)
