@@ -3,7 +3,7 @@
  * SOCOM 1's (its __sinit_zparticle_buf.cpp; SOCOM II's 0x402BB0 builds the 5000 32-byte elements
  * at 0x45C4B0 with the constructor 0x326F40). SOCOM 1's demo holds DrawRange to the element's
  * constructor in this order. Defined in reverse of their image order (-inline deferred). Written
- * so far: the sort's comparison. */
+ * so far: DrawRange, DrawFlush and the sort's comparison. */
 
 #include "zparticle.h"
 
@@ -48,6 +48,53 @@ extern BufferElement **pParticleBuf;   // 0x4835D8
 extern zdb::CTexHandle *m_lastTexture;   // 0x4835D0
 
 int bufferPtrCompare(BufferElement *const &a, BufferElement *const &b);
+
+/* whether a depth is still inside the range (ours: the target materialises the compare as a bool
+ * before the loop's other test) */
+static inline bool InRange(float depth, float end)
+{
+    return depth > end;
+}
+
+/* SOCOM 1's: the buffered elements drawn, last first, while their depth stays beyond `end`; the
+ * next element's depth returned (-1 past the first). SOCOM II compares the depth itself where
+ * SOCOM 1 squared it.
+ * OPEN, 2 words (0x144 against 0x13C): every instruction agrees but for two alignment nops around
+ * the next depth's select -- the target falls from the null arm (`b` over the load) straight into
+ * the non-null arm and the join without padding either label; this if/else pads both to 8 bytes.
+ * Tried: the ternary both ways round, `!= 0`, a pointer local, an if-assign and three inline
+ * helpers (all put the non-null arm first, 0x134, or keep the pads); the materialised range test
+ * (`depth > end` through an inline bool) and everything else match */
+float DrawRange(float depth, float end)
+{
+    m_lastTexture = 0;
+    while (InRange(depth, end) && pParticleBuf >= bufferPtr) {
+        BufferElement *e = *pParticleBuf;
+        float (&m)[4][4] = thePipe.m_camera->m_mtx->m;
+
+        switch (e->m_instance->m_source->m_drawType) {
+        case PT_BILLBOARD:
+            e->Draw(m);
+            break;
+        case PT_ROTATED:
+            e->DrawRotated(m);
+            break;
+        case PT_STREAKED:
+            e->DrawStreaked(m);
+            break;
+        case PT_XZ:
+            e->DrawXZ(m);
+            break;
+        }
+        if (*pParticleBuf == 0)
+            depth = -1.0f;
+        else
+            depth = (*pParticleBuf)->m_depth;
+        pParticleBuf--;
+    }
+    m_lastTexture = 0;
+    return depth;
+}
 
 /* SOCOM 1's: every buffered element drawn by its source's type, last first, through the pipe
  * camera's view matrix */

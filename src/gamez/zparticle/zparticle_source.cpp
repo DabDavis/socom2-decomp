@@ -2,7 +2,8 @@
  * texture, its texture list, its tick (OVL1 0x3294B0-0x32C03F). The unit name is SOCOM 1's (its
  * __sinit_zparticle_source.cpp; SOCOM II's 0x402CE0). Defined in reverse of their image order
  * (-inline deferred). Written so far: the sequence setters, which branch the shared properties
- * before changing them, as SOCOM 1's do. */
+ * before changing them, as SOCOM 1's do; RenderBBox, CheckExtents, the destructor and
+ * Source::List::Uninit. */
 
 #include "zparticle.h"
 

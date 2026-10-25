@@ -2,7 +2,9 @@
  * share (OVL1 0x3271D0?-0x3294AF): a particle's tick and render, its list, the properties'
  * lookups by distance and by age, their reference count and copy on write. The unit name is
  * SOCOM 1's (its __sinit_zparticle_instance.cpp; SOCOM II's 0x402C40). Defined in reverse of
- * their image order (-inline deferred). Written so far: some of the properties' members. */
+ * their image order (-inline deferred). Written so far: the properties' members, the pools'
+ * recycling and purge, Instance::List's walks, Destruction_Instance's destructor and Render.
+ * Its range starts at 0x326F50 at the latest (Destruction_Instance::Recycle). */
 
 #include "zparticle.h"
 

@@ -3,7 +3,7 @@
  * the start. The unit name is SOCOM 1's (its __sinit_zparticle.cpp; SOCOM II's 0x402AD0 builds the
  * node pool, 0x45C440, and the texture list, 0x45C460). SOCOM 1's demo holds these functions in
  * this order, ReleaseInstance to Init. Defined in reverse of their image order (-inline deferred).
- * Written so far: Tick and Open. */
+ * Written so far: GetFreeInstance, FlushDynTexList, Close, FreeNodePool, Tick and Open. */
 
 #include "zparticle.h"
 #include "../zsys/zsys.h"
