@@ -11527,7 +11527,7 @@
 0x005F6F00 0x10 func_005F6F00  # OVL2
 0x005F6F10 0xC func_005F6F10  # OVL2
 0x005F6F20 0x10 func_005F6F20  # OVL2; tu: orders.cpp~ (1.0 beta)
-0x005F6F30 0x10 func_005F6F30  # OVL2
+0x005F6F30 0x10 __ct__6RfloatFf  # OVL2; by hand (the kit lane, round 7): Rfloat(float) -- f stored at 0 and 0 at 4, this returned; CAiState::Create's out-of-line copy (CAiSEvent's member), called out of line by CSealCtrlSquirm()'s one-level CAiTrigger() as by SEAL_AI_PARAMS()
 0x005F6F40 0x28 func_005F6F40  # OVL2; tu: vis_mesh.cpp~ (1.0 beta)
 0x005F6F70 0x28 func_005F6F70  # OVL2; tu: vis_mesh.cpp~ (1.0 beta)
 0x005F6FA0 0x478 Signal__8CAiStateFP13CAiStateStackP8CAiStateQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand: SOCOM 1's CAiState::Signal (0x2DBDC0, 0x47C against 0x478: the same switch on the signal, SIGNAL_0 inlining Reset with the state's own kind, the debug log gone) moved onto the stack -- a0 is the stack (compared with &ai->m_stateStack at 0x41C), the state its first argument; the stack's Signal(sig, ai) (0x5F7420) and five more stack functions call it (the kit lane, round 3); a static of CAiState taking the stack (a member of CAiStateStack could not name CAiState::SIGNAL: CAiState embeds the stack) -- the name and owner ours (the kit lane, round 3)
@@ -11615,7 +11615,7 @@
 0x005FEF60 0x128 Initalize__15CSealCtrlSquirmFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005FF090 0x60 __dt__15CSealCtrlSquirmFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005FF0F0 0x104 __ct__15CSealCtrlSquirmFv  # OVL2; s1:calls (ftsCreateSeal's squirm branch, where SOCOM 1's calls __ct__15CSealCtrlSquirmFv; ftsCreateSeal byte-exact with it) -- the states lane
-0x005FF200 0xEC func_005FF200  # OVL2
+0x005FF200 0xEC SetTimes__10CAiTriggerFRC6RfloatRC6Rfloat  # OVL2; by hand (the kit lane, round 7): CAiTrigger's times set -- the first Rfloat to m_dn_time (+8), the second to m_up_time (+0), m_marker = (float)m_up_time, m_timer = m_marker + (float)m_dn_time; the squirm's and SEAL_AI_PARAMS' constructors call it with (0.5-1.2, 0.1-0.5), SOCOM 1's inline CAiTrigger() -- the name ours
 0x005FF2F0 0xAB8 func_005FF2F0  # OVL2
 0x005FFDB0 0xC func_005FFDB0  # OVL2
 0x005FFDC0 0x8 func_005FFDC0  # OVL2
