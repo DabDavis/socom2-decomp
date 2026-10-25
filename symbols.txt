@@ -7262,7 +7262,7 @@
 0x0038BE80 0x154 func_0038BE80  # OVL1
 0x0038BFE0 0x14 func_0038BFE0  # OVL1
 0x0038C000 0x3C func_0038C000  # OVL1
-0x0038C040 0xEC func_0038C040  # OVL1
+0x0038C040 0xEC OnEnterKey__Q221@unnamed@zui_skb_cpp@13CSoftKeyboardFP9CGameMenu  # OVL1; ours, by its body (unless 0x3999D0: an unchanged string while IgnoreUnchangedString holds, or an empty one, goes to 0x38C000; else 0x399D20, ShutdownBegin and 0x395DE0(4)) -- zui_skb.cpp
 0x0038C130 0x320 func_0038C130  # OVL1
 0x0038C450 0x58 func_0038C450  # OVL1
 0x0038C4B0 0x8 func_0038C4B0  # OVL1

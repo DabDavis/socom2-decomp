@@ -112,6 +112,8 @@ typedef std::map<CSkbKey, CSkbKeyProps *> CSkbKeyMap;
 int g_iSkbGridPosX;
 int g_iSkbGridPosY;
 CSoftKeyboard *g_pActiveSkb;
+/* the showing keyboard's IgnoreUnchangedString, copied when it is shown (the name ours) */
+bool g_bIgnoreUnchanged;
 
 /* the keys by grid position, a vector of rows (SOCOM 1's CSkbGrid: GetSkbKey at 0x3A3230 there,
  * inlined in SOCOM II). The column tests are an inline bool's tail: they branch the target's way
@@ -216,6 +218,7 @@ public:
     void ParseKeyProps(_zrdr *rdr);
     void SwitchTo(CSoftKeyboard *to);
     void ShutdownBegin(CGameMenu *menu);
+    void OnEnterKey(CGameMenu *menu);
 
     CSkbGrid m_grid;   // 0x158
     CSkbKeyMap m_keyProps;   // 0x164
@@ -332,6 +335,45 @@ void func_00399C10(CSoftKeyboard *skb);
 void func_00395DE0(int on);
 /* CGameMenu::RunEventAnim (zui.cpp's 0x367810: the menu, an event, a flag) */
 void func_00367810(CGameMenu *menu, int event, int flag);
+}
+
+extern "C" {
+int func_003999D0();
+int func_003998A0();
+int func_00395110();
+int func_003996B0();
+void func_00399D20(CGameMenu *menu);
+void func_0038C000(CSoftKeyboard *skb, CGameMenu *menu);
+}
+
+/* a count of none (ours: an inline bool returning the negation, materialised before each branch) */
+static inline bool IsNone(int n)
+{
+    return !n;
+}
+
+/* the enter key: nothing while 0x3999D0 says so; an unchanged string (when that counts) or an
+ * empty one goes to 0x38C000, anything else is taken and the keyboard closes (SOCOM II's; the
+ * name ours) */
+void CSoftKeyboard::OnEnterKey(CGameMenu *menu)
+{
+    if (!func_003999D0()) {
+        bool unchanged = false;
+
+        if (g_bIgnoreUnchanged && func_003998A0())
+            unchanged = true;
+        bool empty = false;
+
+        if (IsNone(func_00395110()) && IsNone(func_003996B0()))
+            empty = true;
+        if (unchanged || empty) {
+            func_0038C000(this, menu);
+            return;
+        }
+        func_00399D20(menu);
+        ShutdownBegin(menu);
+        func_00395DE0(4);
+    }
 }
 
 /* the keyboard closing: the cursor's key let go, its elements hidden, the shared pieces put away,

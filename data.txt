@@ -970,6 +970,7 @@
 0x0049EC58 0x4 s_headsetTuner  # OVL1 bss; zui_tuners.cpp's static (name ours): the CHeadsetTuner (HEADSET_CONTROLLER); 1 reference in 1 function (InitSystemTuners; neither Uninit nor Refresh touches it)
 0x0049EC60 0x4 s_rebootCallbackId  # OVL1 bss; zui_tuners.cpp's static (name ours): the id RegisterRebootCallback returns; 2 references in 2 functions (InitSystemTuners stores it, UninitSystemTuners unregisters it)
 0x0049ECB0 0x1 @GUARD@GetSkbKey__Q221@unnamed@zui_skb_cpp@8CSkbGridCFii@s_nullKey  # OVL1 bss; zui_skb.cpp's: the guard of CSkbGrid::GetSkbKey's function-local null key (SOCOM 1's shares one guard between GetSkbKey and GetKeyAtGridPos); 4 references in each of GetCurKey 0x38CB90 and GetCurKeyProps 0x38B2A0
+0x0049ECB8 0x1 g_bIgnoreUnchanged__21@unnamed@zui_skb_cpp@  # OVL1 bss; zui_skb.cpp's static (name ours): the showing keyboard's IgnoreUnchangedString byte (0x175), copied by 0x38B440 when it shows; read by OnEnterKey 0x38C040
 0x0049ECC0 0x4 g_iSkbGridPosX__21@unnamed@zui_skb_cpp@  # OVL1 bss; zui_skb.cpp's static, SOCOM 1's name: the cursor's column; read by GetCurKey and GetCurKeyProps (the inner index)
 0x0049ECC8 0x4 g_iSkbGridPosY__21@unnamed@zui_skb_cpp@  # OVL1 bss; zui_skb.cpp's static, SOCOM 1's name: the cursor's row; read by GetCurKey and GetCurKeyProps (the grid's row)
 0x0049ECD0 0x4 g_pActiveSkb__21@unnamed@zui_skb_cpp@  # OVL1 bss; zui_skb.cpp's static, SOCOM 1's name: the keyboard showing; cleared by PrepSkbsForDisplay and InvalidateSkbsDisplay, set by 0x38B180 and 0x38B440
