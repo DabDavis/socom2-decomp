@@ -54,6 +54,13 @@ public:
     virtual void PrepControls(zdb::CTextureRelocMgr *mgr);
 };
 
+/* a pad button (SOCOM 1's DWARF, zinput.h's) */
+enum PAD_BUTTON {
+    PAD_START, PAD_SELECT, PAD_RIGHT, PAD_LEFT, PAD_UP, PAD_DOWN, PAD_TRIANGLE, PAD_CIRCLE,
+    PAD_SQUARE, PAD_CROSS, PAD_TRIGGER_R1, PAD_TRIGGER_R2, PAD_TRIGGER_L1, PAD_TRIGGER_L2,
+    PAD_RIGHT_STICK, PAD_LEFT_STICK, PAD_MAX_BUTTONS
+};
+
 /* which way the stick was pushed (ours; the menus' Prev and Next are up and down) */
 enum STICK_DIR {
     STICK_NONE = 0,
@@ -90,6 +97,40 @@ bool DidStickMoveNext()
 bool DidStickMovePrev()
 {
     return UiGetDirStickMoved() == STICK_UP;
+}
+
+/* the pad button an rdr names, START for none (SOCOM 1's) */
+PAD_BUTTON GetButton(const char *name)
+{
+    if (!name)
+        return PAD_START;
+    if (!strcmp(name, "START"))
+        return PAD_START;
+    if (!strcmp(name, "SELECT"))
+        return PAD_SELECT;
+    if (!strcmp(name, "TRIANGLE"))
+        return PAD_TRIANGLE;
+    if (!strcmp(name, "CROSS"))
+        return PAD_CROSS;
+    if (!strcmp(name, "SQUARE"))
+        return PAD_SQUARE;
+    if (!strcmp(name, "CIRCLE"))
+        return PAD_CIRCLE;
+    if (!strcmp(name, "UP"))
+        return PAD_UP;
+    if (!strcmp(name, "DOWN"))
+        return PAD_DOWN;
+    if (!strcmp(name, "LEFT"))
+        return PAD_LEFT;
+    if (!strcmp(name, "RIGHT"))
+        return PAD_RIGHT;
+    if (!strcmp(name, "TRIGGER_L1"))
+        return PAD_TRIGGER_L1;
+    if (!strcmp(name, "TRIGGER_L2"))
+        return PAD_TRIGGER_L2;
+    if (!strcmp(name, "TRIGGER_R1"))
+        return PAD_TRIGGER_R1;
+    return !strcmp(name, "TRIGGER_R2") ? PAD_TRIGGER_R2 : PAD_START;
 }
 
 /* the stick's direction, by its larger axis (SOCOM 1's) */
