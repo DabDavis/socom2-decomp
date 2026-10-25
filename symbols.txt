@@ -8093,16 +8093,16 @@
 0x003C5020 0x44 AddAmmo__10CZAmmoListFP6CZAmmo  # OVL1; s1:order by hand (a non-null ammo pushed on the list)
 0x003C5070 0xFC __dt__10CZAmmoListFv  # OVL1; s1:order by hand (each ammo deleted through CZAmmo's destructor, 0x3D4710, then the list cleared)
 0x003C5170 0x28 __ct__10CZAmmoListFv  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); s1:order by hand (the list deleter's constructor only; CZWeapon's constructor builds m_LegalAmmoList at 0xC4 through it)
-0x003C51A0 0x8 func_003C51A0  # OVL1
+0x003C51A0 0x8 SetFlag__15PlacedExplosiveFUc  # OVL1; by hand (the wep lane: the byte at 0xC6 stored, the image's first in zwep_explosive.cpp, a third flag after m_detonate/m_remote; new in SOCOM II, the name ours)
 0x003C51B0 0x8 IsRemote__15PlacedExplosiveFv  # OVL1; by hand (returns the byte at 0xC5, SOCOM 1's m_remote -- GetNumRemoteExplosives tests it where SOCOM 1's read m_remote directly; the name is ours)
 0x003C51C0 0x8 SetRemote__15PlacedExplosiveFb  # OVL1; by hand (stores the byte at 0xC5, m_remote; the name is ours)
-0x003C51D0 0x24 func_003C51D0  # OVL1
-0x003C5200 0x8 func_003C5200  # OVL1
-0x003C5210 0xFC func_003C5210  # OVL1
-0x003C5310 0x414 func_003C5310  # OVL1
-0x003C5730 0xC func_003C5730  # OVL1
-0x003C5740 0xF0 func_003C5740  # OVL1
-0x003C5830 0x5C func_003C5830  # OVL1
+0x003C51D0 0x24 SetMatrix__15PlacedExplosiveFiPC7CMatrix  # OVL1; by hand (the wep lane: the word at 0xC8 stored and the matrix at 0xD0 copied from the argument or CMatrix::identity; new in SOCOM II, the name ours)
+0x003C5200 0x8 SetWord__15PlacedExplosiveFi  # OVL1; by hand (the wep lane: the word at 0xCC stored; new in SOCOM II, the name ours)
+0x003C5210 0xFC PreTick__15PlacedExplosiveFf  # OVL1; s1:vtable by hand (the wep lane: slot +0x08 of __vt__15PlacedExplosive, 0x4083A0, where SOCOM 1's table has PreTick__15PlacedExplosiveFf)
+0x003C5310 0x414 PostTick__15PlacedExplosiveFf  # OVL1; s1:vtable by hand (the wep lane: slot +0x0C of __vt__15PlacedExplosive, where SOCOM 1's table has PostTick__15PlacedExplosiveFf)
+0x003C5730 0xC RemoteDetonate__15PlacedExplosiveFv  # OVL1; s1:order by hand (the wep lane: m_detonate set to 1, the same 0xC bytes as SOCOM 1's RemoteDetonate, after PostTick and before the destructor as there)
+0x003C5740 0xF0 __dt__15PlacedExplosiveFv  # OVL1; s1:order by hand (the wep lane: stores __vt__15PlacedExplosive, releases the intersections and calls ~CZProjectile, as SOCOM 1's ~PlacedExplosive after RemoteDetonate)
+0x003C5830 0x5C __ct__15PlacedExplosiveFv  # OVL1; s1:order by hand (the wep lane: CZProjectile's constructor, then __vt__15PlacedExplosive stored and m_detonate cleared, as SOCOM 1's constructor, last in the unit)
 0x003C5890 0x98 __dt__11CZFTSWeaponFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003C5930 0x20 func_003C5930  # OVL1
 0x003C5950 0x10 ResolveFTSDamage__11CZFTSWeaponFf  # OVL1; s1:exact
@@ -8199,7 +8199,7 @@
 0x003C6C30 0x8C func_003C6C30  # OVL1
 0x003C6CC0 0x208 func_003C6CC0  # OVL1
 0x003C6ED0 0x30 WasDetonated__12CZProjectileFv  # OVL1; s1:callee (CZClaymoreMapItem::Tick asks it, as SOCOM 1's; it tests the state byte for 5 or 6)
-0x003C6F00 0x58 func_003C6F00  # OVL1
+0x003C6F00 0x58 SetProjectileState__12CZProjectileF16PROJECTILE_STATEb  # OVL1; s1:calls by hand (the wep lane: PlacedExplosive::PreTick calls it (this, 4, 1) where SOCOM 1's calls SetProjectileState; the state stored at 0xA, 2 also setting the byte at 0xB, unless the game holds it)
 0x003C6F60 0xF4 func_003C6F60  # OVL1
 0x003C7060 0x78 func_003C7060  # OVL1
 0x003C70E0 0x90 func_003C70E0  # OVL1
@@ -8227,14 +8227,14 @@
 0x003C99A0 0x1D0 func_003C99A0  # OVL1
 0x003C9B70 0x440 func_003C9B70  # OVL1
 0x003C9FB0 0x5E4 PostTick__12CZProjectileFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x003CA5A0 0x63C func_003CA5A0  # OVL1
+0x003CA5A0 0x63C PreTick__12CZProjectileFf  # OVL1; s1:vtable by hand (the wep lane: slot +0x08 of __vt__12CZProjectile, 0x4083D0, where SOCOM 1's has PreTick__12CZProjectileFf; PostTick, the next slot, already carries its name)
 0x003CABE0 0x300 func_003CABE0  # OVL1
 0x003CAEE0 0x80 SetVelW__12CZProjectileFPC6CPnt3D  # OVL1; s1:calls (called where SOCOM 1's calls it; 0x80 against SOCOM 1's 0x7C) -- the SEAL lane
 0x003CAF60 0x234 func_003CAF60  # OVL1
 0x003CB1A0 0x454 func_003CB1A0  # OVL1
 0x003CB600 0x1E0 func_003CB600  # OVL1
 0x003CB7E0 0xC0 __dt__12CZProjectileFv  # OVL1; s1:align, checked by hand (stores __vt__12CZProjectile, cleans up; PlacedExplosive's destructor calls it as its base's)
-0x003CB8A0 0x50 func_003CB8A0  # OVL1
+0x003CB8A0 0x50 __ct__12CZProjectileFv  # OVL1; s1:calls by hand (the wep lane: stores __vt__12CZProjectile first; PlacedExplosive's constructor calls it before storing its own table, as SOCOM 1's calls CZProjectile's constructor)
 0x003CB8F0 0x240 func_003CB8F0  # OVL1
 0x003CBB30 0x12C func_003CBB30  # OVL1
 0x003CBC60 0x188 func_003CBC60  # OVL1
@@ -8435,7 +8435,7 @@
 0x003D44C0 0x18 func_003D44C0  # OVL1
 0x003D44E0 0x8 func_003D44E0  # OVL1
 0x003D44F0 0x8 func_003D44F0  # OVL1
-0x003D4500 0x8 func_003D4500  # OVL1
+0x003D4500 0x8 GetExplosionRadius__6CZAmmoFv  # OVL1; s1:calls by hand (the wep lane: PlacedExplosive::PreTick passes its result to RegProximityDelayed where SOCOM 1's passes GetExplosionRadius's; the float at 0x1C)
 0x003D4510 0x8 func_003D4510  # OVL1
 0x003D4520 0x8 func_003D4520  # OVL1
 0x003D4530 0x8 func_003D4530  # OVL1

@@ -42,6 +42,7 @@ class CTexture;
 }
 class CZWeaponList;
 class CZProjectile;
+class CZProjectileList;
 
 /* a cartridge type (SOCOM 1's DWARF: a byte enum, AMMO_NONE 255 and AMMO_END 254) */
 enum EQUIP_AMMO {
@@ -61,9 +62,14 @@ public:
      * own only so; the name is ours) */
     EQUIP_AMMO GetId() const { return m_ID; }
 
+    /* the blast's radius (SOCOM 1's, out of line in zwep_ammo.cpp: 0x3D4500) */
+    float GetExplosionRadius();
+
     char *m_name;   // 0x0
     char *m_description;   // 0x4
-    unsigned char _8[0x30 - 0x8];
+    unsigned char _8[0x1c - 0x8];
+    float m_explosionRadius;   // 0x1c (the name ours)
+    unsigned char _20[0x30 - 0x20];
     EQUIP_AMMO m_ID;   // 0x30
 };
 
@@ -155,6 +161,8 @@ public:
 
     /* the weapons (SOCOM 1's static, 12 bytes: 0x4B5210) */
     static CZWeaponList m_listWeapons;
+    /* the projectiles in flight (SOCOM 1's static: 0x4B5220) */
+    static CZProjectileList *m_pProjectilelist;
 };   // 0xf8 bytes (CZFTSWeapon's targetmods start there)
 
 /* the materials' table (int_material.cpp's, SOCOM 1's class): only the extension list, whose size
@@ -259,31 +267,104 @@ class CNode;
 class DiIntersect;
 }
 
+/* a projectile's state (SOCOM 1's DWARF: a byte enum) */
+enum PROJECTILE_STATE {
+    PROJECTILE_EXPIRED = 0,
+    PROJECTILE_FLYOUT = 1,
+    PROJECTILE_AT_REST = 2,
+    PROJECTILE_TO_BE_DETONATED = 3,
+    PROJECTILE_DETONATION_TO_BE_HANDLED = 4,
+    PROJECTILE_WAS_DETONATED = 5,
+    PROJECTILE_TO_BE_REMOVED = 6
+};
+
 /* a projectile (SOCOM 1's DWARF: 0xa8 bytes, the vtable pointer at 0; SOCOM II's is 0xc4 -- only
- * what the matched code reads is placed: the instance 8 bytes on, the shooter's id 0x1c on) */
+ * what the matched code reads is placed: the instance 8 bytes on, the shooter's id 0x1c on). Its
+ * table is SOCOM 1's two slots, PreTick and PostTick (__vt__12CZProjectile, 0x4083D0): no virtual
+ * destructor, as in SOCOM 1 */
 class CZProjectile {
 public:
-    virtual ~CZProjectile();
+    /* (0x3CB8A0: the table stored first, its node extension built at 0x18) */
+    CZProjectile();
+    ~CZProjectile();
+    virtual bool PreTick(float dT);    /* +0x08 */
+    virtual bool PostTick(float dT);   /* +0x0C */
     /* the node it flies (SOCOM 1's, out of line in zwep_projectile.cpp: 0x3C7AE0) */
     zdb::CNode *GetInstance();
+    /* the state set, unless the game holds it (forced, or a player's or a person-hit projectile
+     * passes; SOCOM 1's, 0x3C6F00) */
+    void SetProjectileState(PROJECTILE_STATE state, bool force);
 
-    unsigned char _4[0x20 - 0x4];
+    /* SOCOM 1's flags at 0x4 (m_done .. m_echo, bits 0-6); SOCOM II's two at bits 17 and 18 (the
+     * explosive's PreTick tests them; the names ours) */
+    unsigned int m_done : 1;   // 0x4
+    unsigned int m_isfirsthit : 1;
+    unsigned int m_isplayer : 1;
+    unsigned int m_useflyout : 1;
+    unsigned int m_lastHitWasPerson : 1;
+    unsigned int m_lastHitWasVolumetric : 1;
+    unsigned int m_echo : 1;
+    unsigned int _b7 : 10;
+    unsigned int m_b17 : 1;
+    unsigned int m_b18 : 1;
+    unsigned int _b19 : 13;
+    unsigned char m_grenadestate;   // 0x8
+    /* 1: direct fire (its intersection released to the direct-fire table: SOCOM 1's
+     * PROJECTILE_TYPE, a byte) */
+    unsigned char m_shottype;   // 0x9
+    PROJECTILE_STATE m_state;   // 0xa
+    unsigned char _b[0x10 - 0xb];
+    CZAmmo *m_ammo;   // 0x10
+    unsigned char _14[0x20 - 0x14];
     zdb::CNode *m_instance;   // 0x20 (SOCOM 1: 0x18)
-    unsigned char _24[0xac - 0x24];
+    unsigned char _24[0x28 - 0x24];
+    /* its intersection and the table's handle (SOCOM 1: 0x20, 0x24), and a second, always
+     * direct-fire (SOCOM II's; the names ours) */
+    zdb::DiIntersect *m_di;   // 0x28
+    int m_di_handle;   // 0x2c
+    zdb::DiIntersect *m_di2;   // 0x30
+    int m_di2_handle;   // 0x34
+    unsigned char _38[0x48 - 0x38];
+    /* where it is (SOCOM 1's m_framestartpos, 0x38: the explosive's proximity is registered
+     * there) */
+    CPnt3D m_framestartpos;   // 0x48
+    unsigned char _54[0x8c - 0x54];
+    /* a time, "never" at first (PlacedExplosive's constructor sets 9999999; the name ours) */
+    float m_8c;   // 0x8c
+    unsigned char _90[0xa8 - 0x90];
+    /* the world's handle of its proximity registration (SOCOM 1's m_intersecthandle, 0x8c) */
+    int m_intersecthandle;   // 0xa8
     int m_shooterID;   // 0xac (SOCOM 1: 0x90)
     unsigned char _b0[0xc4 - 0xb0];
 };   // 0xc4 bytes
 
 /* a charge set down (SOCOM 1's DWARF: CZProjectile and two flags, m_detonate and m_remote; SOCOM
- * II's flags at 0xc4 and 0xc5, its accessors out of line in zwep_explosive.cpp) */
+ * II's flags at 0xc4 and 0xc5, a third flag, two words and a matrix after them -- 0x110 bytes; its
+ * accessors out of line in zwep_explosive.cpp) */
 class PlacedExplosive : public CZProjectile {
 public:
+    PlacedExplosive();
+    ~PlacedExplosive();
+    virtual bool PreTick(float dT);
+    virtual bool PostTick(float dT);
+    /* set off from afar (SOCOM 1's) */
+    void RemoteDetonate();
     bool IsRemote();
     void SetRemote(bool remote);
+    /* SOCOM II's setters (0x3C51A0, 0x3C51D0, 0x3C5200; the names ours): the third flag, the word
+     * at 0xc8 with the matrix (the identity when given none), the word at 0xcc */
+    void SetFlag(unsigned char flag);
+    void SetMatrix(int n, const CMatrix *m);
+    void SetWord(int n);
 
-    unsigned char m_detonate;   // 0xc4
-    unsigned char m_remote;   // 0xc5
-};
+    /* bools (SOCOM 1's DWARF writes them as unsigned char: IsRemote returns the byte as is) */
+    bool m_detonate;   // 0xc4
+    bool m_remote;   // 0xc5
+    unsigned char m_flag;   // 0xc6
+    int m_c8;   // 0xc8
+    int m_cc;   // 0xcc
+    CMatrix m_matrix;   // 0xd0
+};   // 0x110 bytes
 
 /* the projectiles in flight and the intersections they test with (SOCOM 1's DWARF: 0x208 bytes;
  * the direct- and indirect-fire tables sit where SOCOM 1's do -- its Release*FireDI are
