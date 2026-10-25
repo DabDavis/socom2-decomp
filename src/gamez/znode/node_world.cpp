@@ -7,6 +7,7 @@
  * Defined in reverse of their image order (-inline deferred). */
 
 #include <algorithm>
+#include <stdio.h>
 #include <string.h>
 
 #include "node_world.h"
@@ -373,6 +374,48 @@ int CWorld::RegProximityDelayed(DiIntersect *di, const CPnt3D *p, float radius, 
     return i;
 }
 
+/* a node's children sorted into the cells and the rest; whether the node is the world is asked
+ * and the answer dropped (SOCOM 1's, the same; its this is not read) */
+void CWorld::Segregate_CCells(CNode *node, CNodeVector &cells, CNodeVector &others)
+{
+    if (node) {
+        CNodeVector::iterator it = node->m_child.begin(), e = node->m_child.end();
+
+        dynamic_cast<CWorld *>(node);
+        for (; it != e; ++it) {
+            CNode *cell = dynamic_cast<CCell *>(*it);
+
+            if (cell)
+                cells.push_back(cell);
+            else
+                others.push_back(*it);
+        }
+    }
+}
+
+/* the world model's children made the world's own, each put in the grid, and the emptied model
+ * deleted (SOCOM 1's; read through the inline accessor, which keeps &m_child in a register for the
+ * loop's end, the member's clear stored directly) */
+bool CWorld::DismemberWorldModel()
+{
+    CModel *model = CAssetMgr::m_assets.GetModel("worldmodel");
+
+    if (!model)
+        return false;
+    ReserveChildren(model->GetChildren().size());
+    for (CNodeVector::iterator it = model->GetChildren().begin(); it != model->GetChildren().end();
+         ++it) {
+        CNode *child = *it;
+
+        m_child.push_back(child);
+        child->m_parent = this;
+        m_grid.Update(child);
+    }
+    model->m_child.clear();
+    delete model;
+    return true;
+}
+
 /* a textured character's texture added for every character (SOCOM 1's) */
 void CWorld::AddTextureAssetCharacterAll(CTexHandle *tex)
 {
@@ -384,6 +427,84 @@ void CWorld::AddTextureAssetDecals(CTexHandle *tex)
 {
     if (!func_00354790(&m_TextureDecals, tex->m_texture))
         m_TextureDecals.push_back(tex);
+}
+
+/* a node no longer drawn with its character set's textures: taken off the first set that has it,
+ * of the libraries of a name or a render phase (SOCOM 1's took it off every set and deleted the
+ * sets left empty; SOCOM II leaves that to RemoveEmptyTextureAssetCharacters) */
+inline void CWorld::DeleteTextureAssetCharacter(CAssetLib *lib, CNode *node)
+{
+    if (lib) {
+        bool removed = false;
+
+        for (CTextureAssetCharacterList::iterator it = m_TextureAssetCharacters.begin(),
+                                                  e = m_TextureAssetCharacters.end();
+             it != e && removed == false; ++it)
+            removed = (*it)->m_nodes.Remove(node);
+    }
+}
+
+void CWorld::DeleteTextureAssetCharacter(char *name, CNode *node)
+{
+    DeleteTextureAssetCharacter(CAssetMgr::m_assets.FindLib(name), node);
+}
+
+void CWorld::DeleteTextureAssetCharacter(_RenderPhase phase, CNode *node)
+{
+    DeleteTextureAssetCharacter(CAssetMgr::m_assets.FindLib(phase), node);
+}
+
+/* the character sets no node is drawn with any more deleted, the walk begun again after each (new
+ * in SOCOM II: SOCOM 1's DeleteTextureAssetCharacter did this as it went).
+ * OPEN, 0x11C of 0x144: `delete c` inlines the destructor and the nodes' vector teardown whole in
+ * the target (the set's null test, doDelBuffer, then four this-tests of &m_nodes and the block
+ * freed) -- five destructor levels under the delete, where include/vector's pointer vector makes
+ * ~CNodeVector a call (-1) here; it turns on the vector remodel. Apart from that the target keeps
+ * the set in s0 across the remove (loaded from its stack home before the size test), where this
+ * reloads it after the call */
+void CWorld::RemoveEmptyTextureAssetCharacters()
+{
+    CTextureAssetCharacterList::iterator it = m_TextureAssetCharacters.begin(),
+                                         e = m_TextureAssetCharacters.end();
+
+    while (it != e) {
+        CTextureAssetCharacters *c = *it;
+
+        if (c->m_nodes.size() == 0) {
+            m_TextureAssetCharacters.remove(c);
+            delete c;
+            it = m_TextureAssetCharacters.begin();
+            e = m_TextureAssetCharacters.end();
+        } else
+            ++it;
+    }
+}
+
+/* every character set's buffer released (new in SOCOM II: CCoreState::Init) */
+void CWorld::ReleaseTextureAssetCharacters()
+{
+    CTextureAssetCharacterList::iterator it, e = m_TextureAssetCharacters.end();
+
+    for (it = m_TextureAssetCharacters.begin(); it != e; ++it)
+        if ((*it)->m_buffer)
+            func_00356BE0((*it)->m_buffer, false);
+}
+
+/* every character set's nodes let go of and the set deleted, the list emptied (SOCOM 1's).
+ * OPEN, 0xF0 of 0x124: as RemoveEmptyTextureAssetCharacters, `delete c` inlines ~CNodeVector's four
+ * this-tested levels in the target and calls it here (the vector remodel); FreeVector's
+ * constructor, clear, swap and destructor calls and the list's clear already line up */
+void CWorld::WipeoutTextureAssetCharacters()
+{
+    CTextureAssetCharacterList::iterator it, e = m_TextureAssetCharacters.end();
+
+    for (it = m_TextureAssetCharacters.begin(); it != e; ++it) {
+        CTextureAssetCharacters *c = *it;
+
+        FreeVector<std::vector<CNode *> >(c->m_nodes);
+        delete c;
+    }
+    m_TextureAssetCharacters.clear();
 }
 
 /* the light maps deleted, the list emptied and its storage given up (SOCOM 1's). FreeVector runs
@@ -424,6 +545,30 @@ void CWorld::RemoveDecals()
         m_child[i]->RemoveDecals(0);
     func_003BF050(&CDecal::m_tempPool);
     func_003BF050(&CDecal::m_permPool);
+}
+
+/* a character set for a library's textures, in a buffer of its own named after the node (with a
+ * dynamic list) or the library, its first node listed (SOCOM 1's; the node's presence is tested
+ * and the answer dropped, as there) */
+CTextureAssetCharacters::CTextureAssetCharacters(CAssetLib *lib, CNode *node, CDynTexList *dyntex)
+{
+    m_visible = 0;
+    m_lib = lib;
+    m_buffer = 0;
+    if (node) {
+        char name[256];
+
+        m_nodes.Exists(node);
+        m_nodes.push_back(node);
+        sprintf(name, "%s", dyntex ? node->m_name : lib->RootName());
+        m_buffer = CTexManager::m_texmanager[func_003566C0(&CTexManager::m_texmanager, name,
+                                                           CTexManager::TexBufParams[0],
+                                                           CTexManager::TexBufParams[1])];
+        if (dyntex)
+            func_00357820(m_buffer, dyntex);
+        else
+            func_003569F0(m_buffer, lib, true);
+    }
 }
 
 }

@@ -668,6 +668,8 @@ public:
 class CGrid {
 public:
     CGrid();
+    /* a node's place in the grid brought up to date (SOCOM 1's) */
+    void Update(CNode *node);
 
     unsigned char _0[0x14];   // tag_GRID_PARAMS
     CFRect m_extents;   // 0x14
@@ -840,6 +842,17 @@ public:
     void RemoveDecals();
     void ClearShadowList();
     void ClearLightMapList();
+    /* the character sets' textures (SOCOM 1's names; the library overload inline in SOCOM II, the
+     * purge and the release new in it, their names ours) */
+    /* the world model's children made the world's (SOCOM 1's) */
+    bool DismemberWorldModel();
+    void Segregate_CCells(CNode *node, CNodeVector &cells, CNodeVector &others);
+    void WipeoutTextureAssetCharacters();
+    void ReleaseTextureAssetCharacters();
+    void RemoveEmptyTextureAssetCharacters();
+    void DeleteTextureAssetCharacter(CAssetLib *lib, CNode *node);
+    void DeleteTextureAssetCharacter(_RenderPhase phase, CNode *node);
+    void DeleteTextureAssetCharacter(char *name, CNode *node);
     /* the foliage sound's name, copied (new in SOCOM II: Load sets it; the name is ours) */
     void SetFoliageSound(const char *name);
     /* SOCOM II's REMOVE_DECALS command (the names ours, after CWind's) */

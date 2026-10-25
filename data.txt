@@ -726,6 +726,7 @@
 0x0049E840 0x4 m_baseAddress__Q23zdb8CTexture  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Init__Q23zdb8CTextureFv +1)
 0x0049E860 0x4 m_palId__Q23zdb11CTexPalette  # OVL1 bss; s1:data-seq (size SOCOM 1's; via __ct__Q23zdb11CTexPaletteFPCc)
 0x0049E880 0x1C m_texmanager__Q23zdb11CTexManager  # OVL1 bss; SOCOM 1's (the texture buffers' vector first: the states index its data at 8 and pass it to DestroyBuffers): 114 references in 30 functions take 0x49E880-0x49E888
+0x0049E8A0 0x10 TexBufParams__Q23zdb11CTexManager  # OVL1 bss; SOCOM 1's (16 bytes at m_texmanager + 0x20, as the demo's 0x50EB20 after its 0x50EB00): the CTextureAssetCharacters constructor passes its first two floats to doAddBuffer as SOCOM 1's does; 27 references in 4 functions take 0x49E8A0-0x49E8AC
 0x0049E8B0 0xDC TexPhase__Q23zdb11CTexManager  # OVL1 bss; SOCOM 1's (0xCC bytes; SOCOM II's states read entries to 0xD8 as buffer indices): 82 references in 12 functions take 0x49E8B0-0x49E988
 0x0049EA00 0x4 m_topx__3C2D  # OVL1 bss; SOCOM 1's static (CZNewHudMap::SetMapScreenPos adds it to the clipping circle's x, as SOCOM 1's did from gp-26216): 13 references in 9 functions take 0x49EA00, C2DLine::SetPos among them
 0x0049EA04 0x4 m_topy__3C2D  # OVL1 bss; SOCOM 1's static (the circle's y; 8 after m_topx in SOCOM 1, 4 now): 12 references in 8 functions take 0x49EA04

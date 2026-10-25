@@ -199,12 +199,47 @@ public:
     CDynTexList m_dyntex;   // 0x28
 };
 
-/* the texture manager: the buffers, and each render phase's buffer index (SOCOM 1's statics) */
+/* the texture manager: the buffers, and each render phase's buffer index (SOCOM 1's statics; SOCOM
+ * 1's DWARF has m_texmanager a CTexManager whose first member is the buffers' vector, and its
+ * methods are called on it) */
 class CTexManager {
 public:
     static std::vector<CGSTexBuffer *> m_texmanager;
+    /* a new buffer's two sizes, first (SOCOM 1's 16-byte static after m_texmanager) */
+    static float TexBufParams[4];
     static int TexPhase[55];
 };
+
+}
+
+/* the texture manager's buffer made, by name and size, its index given back, and its buffer let go
+ * of (vis code, not named yet: SOCOM 1's CTexManager::doAddBuffer and doDelBuffer, called on
+ * m_texmanager); a buffer's dynamic list set, a library added, and its textures released (SOCOM 1's
+ * CGSTexBuffer::SetDynTexList and Add; the third SOCOM II's) */
+extern "C" int func_003566C0(void *texmanager, const char *name, float a, float b);
+extern "C" void func_00356570(void *texmanager, zdb::CGSTexBuffer *buf);
+extern "C" void func_00357820(zdb::CGSTexBuffer *buf, zdb::CDynTexList *list);
+extern "C" void func_003569F0(zdb::CGSTexBuffer *buf, zdb::CAssetLib *lib, bool b);
+extern "C" void func_00356BE0(zdb::CGSTexBuffer *buf, bool b);
+
+namespace zdb {
+
+/* a character set's textures in a texture buffer of their own, and the nodes drawn with them
+ * (SOCOM 1's: its constructor takes the library, the first node and a dynamic list; SOCOM II's
+ * news 0x18 bytes). The buffer is given back when it is deleted (inline: the world's purges
+ * inline the destructor, the nodes' vector torn down after it); the names are ours */
+class CTextureAssetCharacters {
+public:
+    CTextureAssetCharacters(CAssetLib *lib, CNode *node, CDynTexList *dyntex);
+    ~CTextureAssetCharacters() { func_00356570(&CTexManager::m_texmanager, m_buffer); }
+    /* the visible nodes counted, each node's in-view bit set (SOCOM 1's) */
+    int TestFOV(CCamera *cam);
+
+    int m_visible;   // 0x0: the nodes in view, as TestFOV last counted them
+    CAssetLib *m_lib;   // 0x4
+    CNodeVector m_nodes;   // 0x8
+    CGSTexBuffer *m_buffer;   // 0x14
+};   // 0x18 bytes
 
 /* a shadow caster: what the world keeps for each node casting a shadow (new in SOCOM II, 0x70
  * bytes, the size AddShadowCaster news; the name is ours) */

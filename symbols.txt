@@ -5550,7 +5550,7 @@
 0x0031B770 0x230 CmdTickWind__5CWindFP14_zanim_cmd_hdrPf  # OVL1; s1:align
 0x0031B9A0 0x94C CmdParseWind__5CWindFP5_zrdr  # OVL1; s1:align
 0x0031C2F0 0x2C RegisterAnimCommands__5CWindFv  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:align
-0x0031C320 0x11C func_0031C320  # OVL1
+0x0031C320 0x11C __ct__Q23zdb23CTextureAssetCharactersFPQ23zdb9CAssetLibPQ23zdb5CNodePQ23zdb11CDynTexList  # OVL1; s1:order by hand (SOCOM 1's CTextureAssetCharacters constructor, first after CWind's commands as there: the 3 words zeroed, the library at 4 and the buffer at 0x14 cleared, Exists then push_back of the node, sprintf of the node's or library's name, doAddBuffer on m_texmanager with TexBufParams, SetDynTexList or Add(lib, true))
 0x0031C440 0x324 func_0031C440  # OVL1
 0x0031C770 0x10C func_0031C770  # OVL1
 0x0031C880 0xA4 RemoveDecals__Q23zdb6CWorldFv  # OVL1; s1:order by hand (SOCOM 1's CWorld::RemoveDecals between TestFOV and ClearShadowList: RemoveDecals on every child by index; SOCOM II recycles the decal pools around it)
@@ -5565,12 +5565,12 @@
 0x0031CD20 0x8 clear__Q23std62vector<PQ23zdb9CLightMap,Q23std28allocator<PQ23zdb9CLightMap>>Fv  # OVL1; ClearLightMapList's FreeVector clear, out of line after it (the name what node_world.cpp emits)
 0x0031CD30 0x14 __ct__Q23std62vector<PQ23zdb9CLightMap,Q23std28allocator<PQ23zdb9CLightMap>>Fv  # OVL1; ClearLightMapList's FreeVector temporary's constructor, out of line after it (the name what node_world.cpp emits)
 0x0031CD50 0x124 WipeoutTextureAssetCharacters__Q23zdb6CWorldFv  # OVL1; s1:align
-0x0031CE80 0x40 func_0031CE80  # OVL1
-0x0031CEC0 0x8 func_0031CEC0  # OVL1
-0x0031CED0 0x80 func_0031CED0  # OVL1
-0x0031CF50 0x144 func_0031CF50  # OVL1
-0x0031D0A0 0x88 func_0031D0A0  # OVL1
-0x0031D130 0x88 func_0031D130  # OVL1
+0x0031CE80 0x40 swap__Q23std54vector<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>>FRQ23std54vector<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>>  # OVL1; the template instance WipeoutTextureAssetCharacters' FreeVector calls (capacity, data, size swapped), emitted after it
+0x0031CEC0 0x8 clear__Q23std54vector<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>>Fv  # OVL1; the template instance WipeoutTextureAssetCharacters' FreeVector calls (sw zero,4(a0)), emitted after it
+0x0031CED0 0x80 ReleaseTextureAssetCharacters__Q23zdb6CWorldFv  # OVL1; new in SOCOM II, the name ours: walks m_TextureAssetCharacters (0x6BA8) calling 0x356BE0(set->buffer, false) for each set with a buffer; CCoreState::Init calls it
+0x0031CF50 0x144 RemoveEmptyTextureAssetCharacters__Q23zdb6CWorldFv  # OVL1; new in SOCOM II, the name ours: at SOCOM 1's DeleteTextureAssetCharacter(CAssetLib *, CNode *) place, its purge half alone (a set with no nodes removed, its destructor inlined -- doDelBuffer, the vector -- and the walk restarted); 0x339DE0 calls it
+0x0031D0A0 0x88 DeleteTextureAssetCharacter__Q23zdb6CWorldFQ23zdb12_RenderPhasePQ23zdb5CNode  # OVL1; s1:order by hand (SOCOM 1's overload by phase at the same place: FindLib(phase), then the library overload inlined -- each set's nodes' Remove until one succeeds)
+0x0031D130 0x88 DeleteTextureAssetCharacter__Q23zdb6CWorldFPcPQ23zdb5CNode  # OVL1; s1:order by hand (SOCOM 1's overload by name at the same place: FindLib(name), the library overload inlined; ~CZSealBody calls it)
 0x0031D1C0 0x60 AddTextureAssetDecals__Q23zdb6CWorldFPQ23zdb10CTexHandle  # OVL1; s1:align
 0x0031D220 0x38 AddTextureAssetCharacterAll__Q23zdb6CWorldFPQ23zdb10CTexHandle  # OVL1; s1:order by hand (SOCOM 1's: a push onto m_TextureCharacterCommon, 0x6BB4 here, after AddTextureAssetDecals as there)
 0x0031D260 0x330 func_0031D260  # OVL1
