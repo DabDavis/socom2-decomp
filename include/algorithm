@@ -46,6 +46,17 @@ inline ForwardIterator remove(ForwardIterator first, ForwardIterator last, const
     return remove_copy(++i, last, first, value);
 }
 
+/* the iterators and the operation by value, as for_each's (CWorld::ClearShadowList and
+ * ClearLightMapList copy all three through the stack) */
+template <class InputIterator, class OutputIterator, class UnaryOperation>
+inline OutputIterator transform(InputIterator first, InputIterator last, OutputIterator result,
+                                UnaryOperation op)
+{
+    for (; first != last; ++first, ++result)
+        *result = op(*first);
+    return result;
+}
+
 template <class InputIterator, class Predicate>
 inline InputIterator find_if(InputIterator first, InputIterator last, Predicate pred)
 {

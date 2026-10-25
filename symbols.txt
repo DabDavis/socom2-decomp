@@ -5552,16 +5552,16 @@
 0x0031C440 0x324 func_0031C440  # OVL1
 0x0031C770 0x10C func_0031C770  # OVL1
 0x0031C880 0xA4 RemoveDecals__Q23zdb6CWorldFv  # OVL1; s1:order by hand (SOCOM 1's CWorld::RemoveDecals between TestFOV and ClearShadowList: RemoveDecals on every child by index; SOCOM II recycles the decal pools around it)
-0x0031C930 0x12C func_0031C930  # OVL1
-0x0031CA60 0x70 func_0031CA60  # OVL1
-0x0031CAD0 0x40 func_0031CAD0  # OVL1
-0x0031CB10 0x8 func_0031CB10  # OVL1
-0x0031CB20 0x14 func_0031CB20  # OVL1
-0x0031CB40 0x12C func_0031CB40  # OVL1
-0x0031CC70 0x70 func_0031CC70  # OVL1
-0x0031CCE0 0x40 func_0031CCE0  # OVL1
-0x0031CD20 0x8 func_0031CD20  # OVL1
-0x0031CD30 0x14 func_0031CD30  # OVL1
+0x0031C930 0x12C ClearShadowList__Q23zdb6CWorldFv  # OVL1; s1:order by hand (SOCOM 1's ClearShadowList after RemoveDecals: each shadow deleted through its vtable and its slot cleared, the list emptied, then cleared and swapped with an empty one -- SOCOM II calls those four pieces out of line, 0x31CA60-0x31CB2F)
+0x0031CA60 0x70 __dt__Q23std66vector<PQ23zdb10CRenderMap,Q23std30allocator<PQ23zdb10CRenderMap>>Fv  # OVL1; ClearShadowList's FreeVector temporary's destructor, out of line after it (the name what node_world.cpp emits)
+0x0031CAD0 0x40 swap__Q23std66vector<PQ23zdb10CRenderMap,Q23std30allocator<PQ23zdb10CRenderMap>>FRQ23std66vector<PQ23zdb10CRenderMap,Q23std30allocator<PQ23zdb10CRenderMap>>  # OVL1; ClearShadowList's FreeVector swap, out of line after it (the name what node_world.cpp emits)
+0x0031CB10 0x8 clear__Q23std66vector<PQ23zdb10CRenderMap,Q23std30allocator<PQ23zdb10CRenderMap>>Fv  # OVL1; ClearShadowList's FreeVector clear, out of line after it (the name what node_world.cpp emits)
+0x0031CB20 0x14 __ct__Q23std66vector<PQ23zdb10CRenderMap,Q23std30allocator<PQ23zdb10CRenderMap>>Fv  # OVL1; ClearShadowList's FreeVector temporary's constructor, out of line after it (an inline's copy following its first caller; the name what node_world.cpp emits)
+0x0031CB40 0x12C ClearLightMapList__Q23zdb6CWorldFv  # OVL1; s1:order by hand (SOCOM 1's ClearLightMapList, the same on the light maps at 0x574; its four pieces 0x31CC70-0x31CD43)
+0x0031CC70 0x70 __dt__Q23std62vector<PQ23zdb9CLightMap,Q23std28allocator<PQ23zdb9CLightMap>>Fv  # OVL1; ClearLightMapList's FreeVector temporary's destructor, out of line after it (the name what node_world.cpp emits)
+0x0031CCE0 0x40 swap__Q23std62vector<PQ23zdb9CLightMap,Q23std28allocator<PQ23zdb9CLightMap>>FRQ23std62vector<PQ23zdb9CLightMap,Q23std28allocator<PQ23zdb9CLightMap>>  # OVL1; ClearLightMapList's FreeVector swap, out of line after it (the name what node_world.cpp emits)
+0x0031CD20 0x8 clear__Q23std62vector<PQ23zdb9CLightMap,Q23std28allocator<PQ23zdb9CLightMap>>Fv  # OVL1; ClearLightMapList's FreeVector clear, out of line after it (the name what node_world.cpp emits)
+0x0031CD30 0x14 __ct__Q23std62vector<PQ23zdb9CLightMap,Q23std28allocator<PQ23zdb9CLightMap>>Fv  # OVL1; ClearLightMapList's FreeVector temporary's constructor, out of line after it (the name what node_world.cpp emits)
 0x0031CD50 0x124 WipeoutTextureAssetCharacters__Q23zdb6CWorldFv  # OVL1; s1:align
 0x0031CE80 0x40 func_0031CE80  # OVL1
 0x0031CEC0 0x8 func_0031CEC0  # OVL1

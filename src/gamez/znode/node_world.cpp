@@ -6,6 +6,7 @@
  * inlined into the command's tick, so they are this unit's), and adds a shadow caster list.
  * Defined in reverse of their image order (-inline deferred). */
 
+#include <algorithm>
 #include <string.h>
 
 #include "node_world.h"
@@ -45,6 +46,18 @@ extern "C" zdb::CAssetLib *func_003210E0(zdb::CAssetList *list, zdb::_RenderPhas
 extern "C" int func_00354790(zdb::CTexList *list, zdb::CTexture *tex);
 
 namespace zdb {
+
+/* a pointer's object deleted and the pointer cleared: the operation SOCOM 1's lists are freed
+ * with, through std::transform (the name is ours) */
+template <class T>
+struct DeleteAndClear {
+    DeleteAndClear() {}
+    T *operator()(T *p) const
+    {
+        delete p;
+        return 0;
+    }
+};
 
 /* the version the world's archives carry (SOCOM 1's) */
 int CWorld::GetVersion()
@@ -362,6 +375,32 @@ void CWorld::AddTextureAssetDecals(CTexHandle *tex)
 {
     if (!func_00354790(&m_TextureDecals, tex->m_texture))
         m_TextureDecals.push_back(tex);
+}
+
+/* the light maps deleted, the list emptied and its storage given up (SOCOM 1's). FreeVector runs
+ * on the base vector: its temporary's out-of-line destructor (0x31CC70) has three this tests, a
+ * pointer vector's, where CLightMapVector's own has four */
+void CWorld::ClearLightMapList()
+{
+    CLightMapVector &v = m_lightMaps;
+
+    if (v.size()) {
+        std::transform(v.begin(), v.end(), v.begin(), DeleteAndClear<CLightMap>());
+        v.clear();
+    }
+    FreeVector<std::vector<CLightMap *> >(m_lightMaps);
+}
+
+/* the shadows deleted, the list emptied and its storage given up (SOCOM 1's) */
+void CWorld::ClearShadowList()
+{
+    CRenderMapVector &v = m_shadows;
+
+    if (v.size()) {
+        std::transform(v.begin(), v.end(), v.begin(), DeleteAndClear<CRenderMap>());
+        v.clear();
+    }
+    FreeVector<std::vector<CRenderMap *> >(m_shadows);
 }
 
 /* every child's decals removed, the decal pools recycled and emptied (SOCOM 1's; inlined into the

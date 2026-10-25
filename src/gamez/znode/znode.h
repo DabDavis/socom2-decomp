@@ -795,6 +795,8 @@ public:
     void AddTextureAssetDecals(CTexHandle *tex);
     void AddTextureAssetCharacterAll(CTexHandle *tex);
     void RemoveDecals();
+    void ClearShadowList();
+    void ClearLightMapList();
     /* the foliage sound's name, copied (new in SOCOM II: Load sets it; the name is ours) */
     void SetFoliageSound(const char *name);
     /* SOCOM II's REMOVE_DECALS command (the names ours, after CWind's) */
