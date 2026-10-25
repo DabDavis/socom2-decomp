@@ -764,7 +764,8 @@ public:
     unsigned int m_type : 8;   // 0x4
     unsigned int m_name_pooled : 1;   // 0x4
     unsigned int m_pooled : 1;   // 0x4
-    unsigned int m_unused : 6;   // 0x4
+    unsigned int m_socom2_bit26 : 1;    // 0x4: SOCOM II's (the constructor clears it; the valve lane's)
+    unsigned int m_unused : 5;   // 0x4
     CValveCBList m_callbacks;   // 0x8 (SOCOM 1's DWARF; the valve lane's)
 
     static std::list<CValve *> m_list;   // 0x49E800: every valve (SOCOM 1's)

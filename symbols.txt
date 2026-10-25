@@ -6442,8 +6442,8 @@
 0x00352870 0x88 func_00352870  # OVL1
 0x00352900 0x60 func_00352900  # OVL1
 0x00352960 0xD4 UnSerialize__17CValveSaveManagerFPCcP8CRdrFilei  # OVL1; s1:align
-0x00352A40 0x50 func_00352A40  # OVL1
-0x00352A90 0xE4 Serialize__17CValveSaveManagerFi  # OVL1; s1:align
+0x00352A40 0x50 Serialize__17CValveSaveManagerFi  # OVL1; s1:order by hand (SOCOM 1's Serialize(int): a CRdrEditor built on the stack, the valves written into it -- here through 0x352A90 -- and CSaveModule::SaveRdr("PersistentValves"), after UnSerialize as SOCOM 1's; the s1:align pass had put the name one function on)
+0x00352A90 0xE4 SerializeValves__17CValveSaveManagerFP10CRdrEditor  # OVL1; s1:align; SOCOM II's, name ours (every persistent valve written into the editor it is given as NAME and VAL: SOCOM 1's Serialize body; the s1:align name it carried is Serialize's, 0x352A40, which calls it)
 0x00352B80 0x70 FreeName__6CValveFv  # OVL1; s1:align
 0x00352BF0 0xB8 SetName__6CValveFPCc  # OVL1; s1:align
 0x00352CB0 0x94 AssignName__6CValveFPc  # OVL1; s1:align
