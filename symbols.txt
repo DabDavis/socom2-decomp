@@ -8294,12 +8294,12 @@
 0x003D0090 0xC func_003D0090  # OVL1
 0x003D00A0 0x30 func_003D00A0  # OVL1
 0x003D00D0 0x28 func_003D00D0  # OVL1
-0x003D0100 0x20 func_003D0100  # OVL1
-0x003D0120 0x14 func_003D0120  # OVL1
-0x003D0140 0x74 func_003D0140  # OVL1
-0x003D01C0 0x14 func_003D01C0  # OVL1
-0x003D01E0 0xA8 func_003D01E0  # OVL1
-0x003D0290 0xBC func_003D0290  # OVL1
+0x003D0100 0x20 SetSoundDistance__8CZWeaponFUcf  # OVL1; by hand (the wep lane: the zweapon.rdr reader 0x3CD810 passes WEAPON_GLOBAL's SoundDistanceClose/Med/Far times 10 with the index 0, 1, 2; stored squared at 0x4B52F0; the name ours); zwep_weapon.cpp
+0x003D0120 0x14 GetFireSoundName__8CZWeaponFUc  # OVL1; by hand (the wep lane: InitializeWeapons reads 0xEC + 4i for i 0..2; the name ours); zwep_weapon.cpp
+0x003D0140 0x74 SetFireSoundName__8CZWeaponFUcPCc  # OVL1; by hand (the wep lane: the reader's FireSoundClose/Med/Far strdup'ed into 0xEC + 4i, the old one freed; the name ours); zwep_weapon.cpp
+0x003D01C0 0x14 SetFireSound__8CZWeaponFUcP4CSnd  # OVL1; by hand (the wep lane: InitializeWeapons stores CSnd::GetSoundByName of each fire-sound name at 0xE0 + 4i, i a byte; the name ours); zwep_weapon.cpp
+0x003D01E0 0xA8 GetAccuracy__Q28CZWeapon9AI_PARAMSCFf  # OVL1; by hand (the wep lane: SOCOM 1's name (its body returned 1.0); SOCOM II's reads the hard_min bit and the optimal range of the struct at weapon+0x70; OVL2's 0x5C9340 calls it); zwep_weapon.cpp
+0x003D0290 0xBC Read__Q28CZWeapon9AI_PARAMSFP5_zrdr  # OVL1; by hand (the wep lane: called on the weapon+0x70 with zrdr_findtag(entry, "ai_params"): sets the custom bit, "optimal_range" pair into 4/8 when min < max, "hard_min" sets bit 1 -- SOCOM 1's AI_PARAMS layout (DWARF); the name ours); zwep_weapon.cpp
 0x003D0350 0x64 Close__8CZWeaponFv  # OVL1; s1:align
 0x003D03C0 0xC func_003D03C0  # OVL1
 0x003D03D0 0x44 Open__8CZWeaponFv  # OVL1; s1:calls
@@ -8351,8 +8351,8 @@
 0x003D2150 0x60 func_003D2150  # OVL1
 0x003D21B0 0x8 func_003D21B0  # OVL1
 0x003D21C0 0x60 ClearAnims__8CZWeaponFv  # OVL1; s1:order by hand (SOCOM 1's shape: m_hitanim freed, three anims cleared -- one more in SOCOM II -- m_specialmaterialanim freed)
-0x003D2220 0x50 func_003D2220  # OVL1
-0x003D2270 0x10 func_003D2270  # OVL1
+0x003D2220 0x50 GetTimer__8CZWeaponFi  # OVL1; by hand (the wep lane: 0xD8 + 4i, or the mission's float at theMission+0x1864 for the item 152, 9999999 when negative; HandleDelayedDetonate and the kit call it; the name ours); zwep_weapon.cpp
+0x003D2270 0x10 SetTimer__8CZWeaponFif  # OVL1; by hand (the wep lane: the reader stores the entry's Timer1/Timer2 (default 9999999) at 0xD8 + 4i; the name ours); zwep_weapon.cpp
 0x003D2280 0x8 func_003D2280  # OVL1
 0x003D2290 0x8 func_003D2290  # OVL1
 0x003D22A0 0x8 func_003D22A0  # OVL1
@@ -8374,7 +8374,7 @@
 0x003D2530 0x6C func_003D2530  # OVL1
 0x003D25A0 0x6C func_003D25A0  # OVL1
 0x003D2610 0x6C func_003D2610  # OVL1
-0x003D2680 0xC0 func_003D2680  # OVL1
+0x003D2680 0xC0 IsLegalAmmo__8CZWeaponFP6CZAmmo  # OVL1; s1:align confirmed by hand (the wep lane: walks m_LegalAmmoList (0xC4) comparing CZAmmo::GetName's strings, as SOCOM 1's); zwep_weapon.cpp
 0x003D2740 0x8 func_003D2740  # OVL1
 0x003D2750 0x8 func_003D2750  # OVL1
 0x003D2760 0x8 func_003D2760  # OVL1
@@ -8411,7 +8411,7 @@
 0x003D2C20 0x8 func_003D2C20  # OVL1
 0x003D2C30 0x8 func_003D2C30  # OVL1
 0x003D2C40 0x8 func_003D2C40  # OVL1
-0x003D2C50 0x11C func_003D2C50  # OVL1
+0x003D2C50 0x11C PlayFireSound__8CZWeaponFPC6CPnt3D  # OVL1; by hand (the wep lane: picks m_firesound[0..2] (0xE0) by the listener's squared distance against the WEAPON_GLOBAL sound distances 0x4B52F8/0x4B52F4 and plays it through CSnd's slot +0x14, PlaySound3D(pos, 1.0, 0, 0, 255); the name ours); zwep_weapon.cpp
 0x003D2D70 0x4B4 func_003D2D70  # OVL1
 0x003D3230 0x520 func_003D3230  # OVL1
 0x003D3750 0x40 func_003D3750  # OVL1

@@ -53,6 +53,8 @@ enum EQUIP_AMMO {
 
 class CZAmmoList;
 class CZAnim;
+class CSnd;
+struct _zrdr;
 
 /* a cartridge type's stats (SOCOM 1's DWARF: 0x24 bytes, m_ID at 0x20; SOCOM II's is 0x40, its
  * reader news 0x40). SOCOM II's members past SOCOM 1's take the names of the rdr fields its ammo
@@ -183,6 +185,50 @@ public:
     int GetNumMags();
     int GetAmmoCapacity();
 
+    /* the range the AI fires it at (SOCOM 1's DWARF: 0xc bytes -- a version byte, the custom and
+     * hard-minimum flags, the optimal range; SOCOM II's at 0x70 of the weapon). SOCOM II reads the
+     * flags a byte at a time, so their container is a byte */
+    class AI_PARAMS {
+    public:
+        /* the weapon entry's "ai_params": the optimal range, when its minimum is the smaller, and
+         * the hard minimum's tag; marked custom (new in SOCOM II, 0x3D0290: SOCOM 1 read a ZAR --
+         * the name ours) */
+        void Read(_zrdr *rdr);
+        /* the accuracy at a distance: none at no distance or under a hard minimum, rising to the
+         * minimum, full to the maximum and as far again past it, then none (SOCOM 1's answered
+         * 1.0; 0x3D01E0) */
+        float GetAccuracy(float d) const;
+        /* (inline: a constant through the bool parameter is stored as `(b & 1) << n` -- the
+         * names ours) */
+        void SetCustom(bool b) { m_custom = b; }
+        void SetHardMin(bool b) { m_hard_min = b; }
+
+        unsigned char m_version;   // 0x0
+        unsigned char m_custom : 1;   // 0x1
+        unsigned char m_hard_min : 1;
+        float m_min_range;   // 0x4
+        float m_max_range;   // 0x8
+    };   // 0xc bytes
+
+    /* the three fire sounds by distance, close, medium and far (new in SOCOM II: their names from
+     * the weapon entry's FireSoundClose/Med/Far, the sounds looked up by InitializeWeapons; the
+     * names ours) */
+    void SetFireSoundName(unsigned char i, const char *name);
+    char *GetFireSoundName(unsigned char i);
+    void SetFireSound(unsigned char i, CSnd *snd);
+    /* the sound of the distance from the listener played at the point (0x3D2C50; the name ours) */
+    void PlayFireSound(const CPnt3D *pos);
+    /* the distances (squared) out to which the close and medium sounds play, from zweapon.rdr's
+     * WEAPON_GLOBAL SoundDistanceClose/Med/Far (new in SOCOM II, 0x4B52F0; the names ours) */
+    static void SetSoundDistance(unsigned char i, float d);
+    static float m_sounddistance[3];
+    /* the entry's Timer1 and Timer2 (new in SOCOM II; "never" when not given -- the names ours); the
+     * item 152's first comes from the mission (theMission+0x1864) */
+    void SetTimer(int i, float t);
+    float GetTimer(int i);
+    /* in the legal ammo list, by name (SOCOM 1's) */
+    bool IsLegalAmmo(CZAmmo *ammo);
+
     char *m_name;   // 0x4
     char *m_description;   // 0x8
     unsigned char _c[0x24 - 0xc];
@@ -190,7 +236,8 @@ public:
     unsigned char _25[0x28 - 0x25];
     int m_ammocap;   // 0x28 (SOCOM 1: 0x24)
     int m_nummags;   // 0x2c (SOCOM 1: 0x28)
-    unsigned char _30[0x7c - 0x30];
+    unsigned char _30[0x70 - 0x30];
+    AI_PARAMS m_ai_params;   // 0x70 (SOCOM 1: 0x54)
     EQUIP_ITEM m_ID;   // 0x7c (SOCOM 1: 0x60)
     unsigned char _7d[0x80 - 0x7d];
     CZAnim **m_hitanim;   // 0x80 (SOCOM 1: 0x64; ClearAnims frees it)
@@ -206,7 +253,10 @@ public:
     CZAmmoList m_LegalAmmoList;   // 0xc4 (SOCOM 1: 0x9c)
     unsigned char m_hasFireModes[5];   // 0xd0 (SOCOM 1: 0xa8)
     unsigned char m_socom2_d5;   // 0xd5
-    unsigned char _d6[0xf8 - 0xd6];
+    unsigned char _d6[0xd8 - 0xd6];
+    float m_timer[2];   // 0xd8 (SOCOM II's, as the rest)
+    CSnd *m_firesound[3];   // 0xe0
+    char *m_firesoundname[3];   // 0xec
     /* the weapon events' callbacks, called and listed (zwep_global.cpp's, SOCOM 1's statics) */
     static void MakeWeaponEventCallbacks(unsigned int event, CZProjectile *proj);
     static void AddWeaponEventCallback(void (*callback)(CZProjectile *, unsigned int, void *),
