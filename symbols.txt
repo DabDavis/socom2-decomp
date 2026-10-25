@@ -6206,16 +6206,16 @@
 0x003467A0 0x144 func_003467A0  # OVL1
 0x003468F0 0x154 func_003468F0  # OVL1
 0x00346A50 0xE0 StopAllSounds__12CSndInstanceF10SOUND_MODE  # OVL1; s1:calls by hand (CSnd::OnListenerDeath calls it with 3 after CSndJukebox::FadeOut, as SOCOM 1's calls StopAllSounds(SOUND_MODE))
-0x00346B30 0xC4 func_00346B30  # OVL1
+0x00346B30 0xC4 StopAllSounds__12CSndInstanceFv  # OVL1; s1:order by hand (SOCOM 1's StopAllSounds(): right after StopAllSounds(SOUND_MODE) in both builds, the voice list walked, the voices kept in m_vec, RemoveFromList, then PostTick(0.0f, 0) as SOCOM 1's; SOCOM II stops every sound with one command first) -- the sound lane
 0x00346C00 0x2C func_00346C00  # OVL1
-0x00346C30 0xFC func_00346C30  # OVL1
+0x00346C30 0xFC FadeOutAllSounds__12CSndInstanceFv  # OVL1; SOCOM II's, name ours (every voice in the list faded: CSndInstance::FadeOut(1.5f) inlined, 360 ticks; a UI command, 0x277910, calls it) -- the sound lane
 0x00346D30 0x1C TerminateOnFinish__12CSndInstanceFv  # OVL1; s1:callee by hand (CZAnim::StopSounds lets a fading or still-playing instance finish with it where SOCOM 1's calls TerminateOnFinish; the flag a bit at 0x1C here)
 0x00346D50 0x20 Set3D__12CSndInstanceFf  # OVL1; s1:order by hand (SOCOM 1's Set3D, the same body: the volume stored and the 3D flag set, now a bit; between TerminateOnFinish and IsPlaying in both builds)
 0x00346D70 0x2C IsPlaying__12CSndInstanceFv  # OVL1; s1:order by hand (SOCOM 1's IsPlaying, m_handle != 0, with a SOCOM II flag tested first; after Set3D in both builds; CZAnim::StopSounds asks it where SOCOM 1's does)
 0x00346DA0 0x24 IsFading__12CSndInstanceFv  # OVL1; s1:callee
 0x00346DD0 0xC8 FadeOut__12CSndInstanceFf  # OVL1; s1:order by hand (SOCOM 1's FadeOut, after IsFading in both builds: the fade time stored, snd_AutoVol to zero; the SOUND tick fades with it where SOCOM 1's calls FadeOut)
 0x00346EA0 0x274 func_00346EA0  # OVL1
-0x00347120 0x114 func_00347120  # OVL1
+0x00347120 0x114 PostTick__12CSndInstanceFfPv  # OVL1; s1:calls by hand (StopAllSounds() calls it with (0.0f, 0) where SOCOM 1's calls PostTick__12CSndInstanceFfPv; after Tick as in SOCOM 1; it calls the instances' Tick, 0x346EA0) -- the sound lane
 0x00347240 0x58 func_00347240  # OVL1
 0x003472A0 0x174 func_003472A0  # OVL1
 0x00347420 0x30 SetPos__12CSndInstanceFPC6CPnt3D  # OVL1; s1:align

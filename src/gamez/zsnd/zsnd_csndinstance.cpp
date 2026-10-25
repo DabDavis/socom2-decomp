@@ -6,6 +6,7 @@
 #include "zsnd.h"
 
 extern "C" void func_00341010();        /* zsnd_csnd.cpp (not named yet) */
+extern "C" void func_00341060();        /* zsnd_csnd.cpp: the group-volume fade restarted */
 extern "C" bool func_00346270();        /* zsnd_csnd.cpp (not named yet) */
 
 std::list<CSndInstance *> CSndInstance::m_list;
@@ -162,6 +163,63 @@ void CSndInstance::Set3D(float vol)
 void CSndInstance::TerminateOnFinish()
 {
     m_terminateOnFinish = true;
+}
+
+/* every voice faded out over a second and a half (SOCOM II's; name ours: a UI command calls it) */
+void CSndInstance::FadeOutAllSounds()
+{
+    if (CSnd::m_isDisabled)
+        return;
+    std::list<CSndInstance *>::iterator e = m_list.end();
+
+    for (std::list<CSndInstance *>::iterator i = m_list.begin(); i != e; ++i) {
+        CSndInstance *inst = *i;
+
+        if (inst)
+            inst->FadeOut(1.5f);
+    }
+}
+
+extern "C" void func_00340270(void);    /* 989snd's command 24: every sound stopped */
+
+/* SOCOM 1's: every voice let go -- SOCOM II stops them all with one command, then zeroes each
+ * handle where SOCOM 1 stopped each voice */
+void CSndInstance::StopAllSounds()
+{
+    if (CSnd::m_isDisabled)
+        return;
+    func_00341060();
+    func_00340270();
+    std::list<CSndInstance *>::iterator e = m_list.end();
+
+    for (std::list<CSndInstance *>::iterator i = m_list.begin(); i != e; ++i) {
+        CSndInstance *inst = *i;
+
+        if (inst) {
+            inst->m_handle = 0;
+            /* pushed through a copy: only the copy goes to memory, the voice stays in v0 */
+            CSndInstance *kept = inst;
+
+            m_vec.push_back(kept);
+        }
+    }
+    RemoveFromList();
+    PostTick(0.0f, 0);
+}
+
+/* SOCOM 1's: the voices of one mode stopped (the mode now a field of SOCOM II's packed flags) */
+void CSndInstance::StopAllSounds(SOUND_MODE mode)
+{
+    if (CSnd::m_isDisabled)
+        return;
+    std::list<CSndInstance *>::iterator e = m_list.end();
+
+    for (std::list<CSndInstance *>::iterator i = m_list.begin(); i != e; ++i) {
+        CSndInstance *inst = *i;
+
+        if (inst && mode == (SOUND_MODE)inst->m_parent->m_soundmode)
+            inst->Stop();
+    }
 }
 
 /* the voice taken off the list of those playing (SOCOM II's, name ours). Pinned:

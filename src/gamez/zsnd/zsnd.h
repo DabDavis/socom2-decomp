@@ -283,6 +283,10 @@ public:
     static void RemoveFromList();
     static void RemoveFromList(CSndInstance *instance);
     static void DebugSoundList();
+    static void StopAllSounds(SOUND_MODE mode);
+    static void StopAllSounds();
+    static void FadeOutAllSounds();
+    static void PostTick(float dT, void *data);
     static void Init();
     static void Cleanup();
     void TerminateOnFinish();
