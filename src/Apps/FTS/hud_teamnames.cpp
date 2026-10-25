@@ -12,13 +12,20 @@
 #include "hud_mpinfobox.h"
 #include "../../gamez/zvid/zvid.h"
 
-class CZSealBody;
+/* a SEAL as the names read it: its name (CEntity's, at 0x14) */
+class CZSealBody {
+public:
+    unsigned char _0[0x14];
+    char *m_name;   // 0x14
+};
 
 /* the HUD's layout (hud_main.cpp's data: the bottom block's top, the screen's last line) and the
  * corner boxes' texture (SOCOM 1's c_szCornerBoxesTx, a static of each unit there) */
 extern float data_003E2FF8;
 extern float data_003E2FE8;
 extern const char *data_003E3048;
+/* the HUD's bitmaps' alpha (hud_main.cpp's data: 76.8, SOCOM 1's c_fBracketTrans) */
+extern float data_003E3000;
 
 namespace zdb {
 class CAssetList {
@@ -32,11 +39,18 @@ public:
 };
 }
 
-/* the HUD's text colour (SOCOM 1's static) */
+/* the HUD's text colour (SOCOM 1's static) and its upper-casing */
 class CHUD {
 public:
+    static void HudText_to_upper(char *instr);
     static PNT4D m_hud_textcolor;
 };
+
+/* a string placed by its position and centring (no row named yet) */
+extern "C" void func_00362B70(C2DString *s);
+
+/* the BLUDSHOT name's scale (data 0x3DC720: a variable, read with lwc1) */
+static float s_bludshotscale = 0.74f;
 
 /* a squad by its team (OVL2), and its SEALs by their place (SOCOM 1's GetSealByIndex, a
  * second argument added; no row named yet) */
@@ -56,6 +70,7 @@ public:
     /* one teammate's name, order and health bar set up from its SEAL (SOCOM 1's, a flag added
      * that lists the bar's bitmaps too; 0x2216D0) */
     void SetupTeamNameEntry(int index, CZSealBody *seal, bool add);
+    void SetOpacity(float fOpacity);
 
     /* a row's height on the screen from the first row's: 15 apart, the second fire team 9
      * lower */
@@ -68,7 +83,7 @@ public:
         return data_003E2FF8 + 15.0f + 15.0f * index + (index < 2 ? 0 : 9);
     }
 
-    unsigned char m_18[0x10];   // 0x18: zeroed by the constructor
+    CZSealBody *m_ally[4];   // 0x18: zeroed by the constructor (SOCOM 1: 0x7c)
     CHudBrightText m_teamname[4];   // 0x28 (SOCOM 1: 0x8c)
     C2DString m_order[4];   // 0x288 (SOCOM 1: 0x2ac)
     C2DFont *m_myfont;   // 0x4e8 (SOCOM 1: 0x4dc)
@@ -83,7 +98,7 @@ public:
  * constructor's copy follows it, its address handed to the array constructor) */
 CTeamNames::CTeamNames()
 {
-    memset(m_18, 0, sizeof(m_18));
+    memset(m_ally, 0, sizeof(m_ally));
 }
 
 /* two strings of the unit's own (OVL1 bss 0x40D7A0 and 0x40D850; no rows yet: SOCOM 1's Clear
@@ -95,6 +110,91 @@ extern C2DBitmap data_0040D900;
 extern C2DBitmap data_0040D990;
 /* the dividers' line (the unit's initialiser computes it) */
 extern float data_003E4F60;
+
+/* SetOpacity's local static (SOCOM 1's c_fBracketTrans) and its guard, held to their addresses
+ * (scdiff leaves a true function-local static unchecked). A `static float c_fBracketTrans =
+ * BracketAlpha();` through an inline returning 48 matches too -- the guard says the initialiser was
+ * not a constant to MW 3.0, which initialises `= 48.0f` (or a const float) statically */
+extern signed char data_0040DA10;
+extern float data_003E4F68;
+
+/* everything faded to a fraction of the HUD's alpha: the bitmaps and bars to its bitmaps', the
+ * names and orders to its text colour's, the dots to full, the brackets to theirs (SOCOM 1's) */
+void CTeamNames::SetOpacity(float fOpacity)
+{
+    if (!data_0040DA10) {
+        data_003E4F68 = 48.0f;
+        data_0040DA10 = 1;
+    }
+    m_bitmap1.SetTrans(fOpacity * data_003E3000);
+    m_bitmap2.SetTrans(fOpacity * data_003E3000);
+    data_0040D900.SetTrans(fOpacity * data_003E3000);
+    data_0040D990.SetTrans(fOpacity * data_003E3000);
+    for (unsigned int i = 0; i < 4; i++) {
+        m_teamname[i].SetTrans(fOpacity * CHUD::m_hud_textcolor.w);
+        m_order[i].SetTrans(fOpacity * CHUD::m_hud_textcolor.w);
+        m_healthbar[i].SetTrans(fOpacity * data_003E3000);
+        m_bitmaps[i].SetTrans(128.0f * fOpacity);
+    }
+    data_0040D850.m_color[3] = data_0040D7A0.m_color[3] = 0.3f * fOpacity * data_003E4F68;
+}
+
+
+/* a string in the HUD's text colour (an inline: its pointer parameter keeps the reference's address
+ * in a register for the four stores) */
+static inline void SetTextColor(C2DString *s)
+{
+    s->m_color[0] = CHUD::m_hud_textcolor.x;
+    s->m_color[1] = CHUD::m_hud_textcolor.y;
+    s->m_color[2] = CHUD::m_hud_textcolor.z;
+    s->m_color[3] = CHUD::m_hud_textcolor.w;
+}
+
+/* a teammate's name upper-cased and loaded, placed right-aligned on its row (BLUDSHOT's smaller and a
+ * line lower), its order coloured and off, its dot off; both listed when asked (SOCOM 1's, the
+ * flag SOCOM II's). The scale is 0.9f * 0.95f (0x3F5AE147; 0.855f rounds to ...148).
+ * OPEN, 2 instructions: SetPos's arguments are scheduled differently -- the target loads the 510
+ * into a1 ahead of the y expression's constants and does the `bludshot ? 2 : 1` movz after the row's
+ * operands, where MW here does the movz first and loads 510 into v0 after it, leaving a nop before
+ * the sub.s (and, two words on, a label pad after the second push_back). Tried: x or y (int or
+ * float) in a local first, the offset in a local, a float cast on it, `!bludshot ? 1 : 2`, the width
+ * through an inline accessor, the bool assigned apart, the locals swapped. Everything else (the
+ * `= {0}` buffer, the reference in memory, the colour through an inline) matches */
+void CTeamNames::SetupTeamNameEntry(int index, CZSealBody *seal, bool add)
+{
+    if (!seal)
+        return;
+    m_ally[index] = seal;
+
+    C2DString &strName = m_teamname[index];
+    char name_upper[32] = {0};
+
+    if (seal->m_name) {
+        strncpy(name_upper, seal->m_name, 31);
+        CHUD::HudText_to_upper(name_upper);
+    }
+    strName.Load(0.9f * 0.95f, name_upper, m_myfont, 0.0f, 0.0f, true);
+
+    bool bludshot = false;
+
+    if (strlen(name_upper) && !strcasecmp(name_upper, "BLUDSHOT"))
+        bludshot = true;
+    if (bludshot)
+        strName.m_scale = s_bludshotscale;
+    func_00362B70(&strName);
+    strName.SetPos((int)(510.0f - strName.m_charheight), (int)(RowY(index) - (bludshot ? 2 : 1)));
+    SetTextColor(&strName);
+    if (add) {
+        push_back(&strName);
+        push_back(&m_order[index]);
+    }
+    m_order[index].m_color[0] = CHUD::m_hud_textcolor.x;
+    m_order[index].m_color[1] = CHUD::m_hud_textcolor.y;
+    m_order[index].m_color[2] = CHUD::m_hud_textcolor.z;
+    m_order[index].m_color[3] = CHUD::m_hud_textcolor.w;
+    m_order[index].Off();
+    m_bitmaps[index].Off();
+}
 
 /* the background, the dividers, the bars and the dots placed and listed; both fire teams' names
  * set up; the brackets loaded in the HUD's colour */
