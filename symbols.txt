@@ -5956,7 +5956,7 @@
 0x00336460 0x40 func_00336460  # OVL1
 0x003364A0 0x8 func_003364A0  # OVL1
 0x003364B0 0x14 func_003364B0  # OVL1
-0x003364D0 0x4C func_003364D0  # OVL1
+0x003364D0 0x4C Release__12CFlareSystemFi  # OVL1; the rdr lane: SOCOM II's, the name ours and the class the HUD lane's (hud_lensflare.cpp's CFlareSystem at 0x488F10: CLensFlareManager::Reset releases each flare's handle through it -- a handle in range has bit 0 of its flare's first byte cleared, the pointer vector at 4 read through the pod's out-of-line at)
 0x00336520 0x60 func_00336520  # OVL1
 0x00336580 0x58 func_00336580  # OVL1
 0x003365E0 0x6C func_003365E0  # OVL1

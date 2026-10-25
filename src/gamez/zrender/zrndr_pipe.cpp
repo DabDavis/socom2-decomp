@@ -142,6 +142,28 @@ public:
 extern "C" void func_003B0D50(unsigned int v);
 extern "C" void func_003B0CC0(unsigned int v);
 
+/* the lens flares' system (OVL1 bss 0x488F10, after thePipe; the HUD lane's name, hud_lensflare.cpp
+ * calls it): its flares a pointer vector at 4, each with an active bit first (the names ours) */
+struct CFlare {
+    unsigned char m_active : 1;   // 0x0
+
+    void SetActive(bool on) { m_active = on; }
+};
+class CFlareSystem {
+public:
+    void Release(int handle);
+
+    unsigned int _0;   // 0x0
+    std::vector<CFlare *> m_flares;   // 0x4
+};
+
+/* SOCOM II's: a flare let go of -- its active bit cleared, when the handle is one */
+void CFlareSystem::Release(int handle)
+{
+    if (handle >= 0 && handle < m_flares.size())
+        m_flares.at(handle)->SetActive(false);
+}
+
 extern CPipe thePipe;   // 0x4887C0
 /* the thread a flushed FIFO wakes (SOCOM II's; not named) */
 extern int data_003E1418;
