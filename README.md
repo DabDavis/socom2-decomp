@@ -1642,6 +1642,23 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the UI, round 6** (the soft keyboard, CSaferStr : std::string):
+  - zui_spec.h's CSaferStr is include/string's basic_string now (its copies and destructor implicit,
+    +3); its operator=(const char *) returns nothing -- the out-of-line copy 0x22DCC0 keeps no `this`
+    for a result (returning `CSaferStr &` lost it at the merge);
+  - a file read and freed around a block the target keeps in a stack slot is an object holding the
+    file, with a destructor that frees it (ZuiInit);
+  - `!f()` of an int call materialises (sltu, xori) inside an `&&` only through an inline bool
+    returning the negation (OnEnterKey);
+  - a member pointer to a virtual function is pooled as {0, slot offset, vptr offset}:
+    `&C2DButton::SetNormal` is {0, 0x54, 0xC}, stored identically at 0x3E0468 and 0x3E0478;
+  - basic_string's destructor is inlined in tail code (resize<CDesignDlgObj>) and called in a unit's
+    own functions (~CDesignDlgObj), so include/string must not pin it (a request to the MSL lane);
+  - units: zui_skb.cpp 0x38B180-0x39039F (ending on its `@128@~CBmpWithNode` thunk, as SOCOM 1's;
+    initialiser 0x403730); 0x3903A0 on is another keyboard unit (the Korean input rules, the props
+    parsers; 0x403800 builds its eight CBmpWithNode globals); 0x3A3100-0x3A5500 localisation
+    (LOC.rdr, LanguageChoice); 0x3A59C0-0x3A5CB0 thread helpers; 0x3A5CC0-0x3A71A0
+    CSimpleStateMachine over cdeque<const void *>.
 - **The inlining mode, measured** (a measurement lane, after the sound lane's zsnd_queue.cpp):
   - no MW mode both emits a unit in reverse and auto-inlines only earlier definitions (17 builds,
     3.0b22-020926 to 3.0.1b210): `-inline ...,deferred` (= `#pragma defer_codegen on`) emits in

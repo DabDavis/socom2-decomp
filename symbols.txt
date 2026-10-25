@@ -1623,7 +1623,7 @@
 0x001FB300 0x70 __dt__Q23std62vector<PQ23zdb9CAssetLib,Q23std28allocator<PQ23zdb9CAssetLib>>Fv  # OVL1; by hand (a pointer vector's destructor, three this tests and data_ at 8 freed, as include/vector's; hud_main.cpp emits vector<CAssetLib *>'s for Add2D's C2D::CLibList, and the font code's callers (0x35A650 frees the font's list at +0x10 through a swapped temporary) link this copy)
 0x001FB370 0x44 func_001FB370  # OVL1
 0x001FB3C0 0x8 __ct__6CPnt3DFv  # OVL1; zmath.h's inline CPnt3D() {} out of line (jr ra; move v0,a0): new CZBodyPart calls it for the points at 0x0 and 0x10 before CQuat's copy 0x28EB60 for 0x20/0x30, and CHUD::Init calls it -- the body lane
-0x001FB3D0 0x14 func_001FB3D0  # OVL1
+0x001FB3D0 0x14 __ct__Q23std62vector<PQ23zdb9CAssetLib,Q23std28allocator<PQ23zdb9CAssetLib>>Fv  # OVL1; by hand (the UI lane's round 6, vetted by the integrator: a pointer vector's default constructor -- three words zeroed, this returned -- paired with ~vector<CAssetLib *> (0x1FB300) in the keyboard's __construct_array 0x38E6F0)
 0x001FB3F0 0x30 func_001FB3F0  # OVL1
 0x001FB420 0x36C ReInit_Init__4CHUDFv  # OVL1; s1:order (hud_main.cpp: after Init, as SOCOM 1's; the states' call)
 0x001FB790 0x2A0 ReInit_Uninit__4CHUDFv  # OVL1; s1:calls (SOCOM 1's sequence: the map's UninitMap, the team names' Clear, both weapon selectors' UnInit, the mission cameras', the action bitmap's and the reticle's UnInit, in order)
