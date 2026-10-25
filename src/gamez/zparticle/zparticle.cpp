@@ -18,25 +18,9 @@ public:
     void RemoveTask(const char *name, bool all);
 };
 
-/* the instances and their pools emptied (SOCOM II's, in zparticle_instance.cpp's range; not named
- * yet) */
-extern "C" void func_00326FF0();
+
 extern CSched_Manager zTaskScheduler;
 
-namespace zdb {
-class CCamera {
-public:
-    float m_matrix[4][4];   // 0x0: the node's matrix, its position the last row (CNode's)
-};
-/* the world, as much as the particles use (znode.h's class brings zmath.h's CPnt4D with it) */
-class CWorld : public CNode {
-public:
-    static CWorld *m_world;
-
-    unsigned char _64[0x128 - 0x64];
-    CCamera *m_camera;   // 0x128
-};
-}
 
 /* a list emptied and its storage given up (zonline.h's ReleaseVector, the same template: not
  * inline, so an instance per list follows FlushDynTexList, the textures' at 0x3247A0 and the
@@ -78,7 +62,7 @@ void Close()
     FlushDynTexList();
     Source::list.Uninit();
     Instance::list.Uninit();
-    func_00326FF0();
+    FreeInstances();
     while ((p = Destruction_Instance::m_instance_pool.Pop()) != 0)
         delete p;
     zTaskScheduler.RemoveTask("ParticleTick", false);

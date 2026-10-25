@@ -86,6 +86,19 @@ public:
     void SetPosition(float x, float y, float z);
     void DeleteVisuals();
 };
+
+class CCamera {
+public:
+    float m_matrix[4][4];   // 0x0: the node's matrix, its position the last row (CNode's)
+};
+/* the world, as much as the particles use (znode.h's class brings zmath.h's CPnt4D with it) */
+class CWorld : public CNode {
+public:
+    static CWorld *m_world;
+
+    unsigned char _64[0x128 - 0x64];
+    CCamera *m_camera;   // 0x128
+};
 }
 
 namespace std {
@@ -125,6 +138,14 @@ public:
         } else
             p = 0;
         return p;
+    }
+
+    /* an object given back, linked in front: the link a select (the target computes it into one
+     * register on both arms and stores it in each; an if/else stores zero directly) */
+    void Push(T *p)
+    {
+        p->m_next = m_head ? m_head : 0;
+        m_head = p;
     }
 
     T *m_head;
@@ -250,8 +271,9 @@ public:
     unsigned char m_checkFade;   // 0x64
 };   // 0x68 bytes
 
-/* a live particle (SOCOM 1's Instance; no DWARF): its age at 0xC, its position from 0x20 (the
- * members' names ours, the rest opaque) */
+/* a live particle (SOCOM 1's Instance; no DWARF): its age at 0xC, its position from 0x20, its
+ * properties at 0x40 (the members' names ours, the rest opaque). SOCOM II's table: Expire (new,
+ * first), Tick, Render, Recycle (new) */
 class Instance {
 public:
     /* the live instances (SOCOM 1's Instance::List; its members out of line) */
@@ -259,16 +281,34 @@ public:
     public:
         void Tick(float dT);
         void Uninit();
+        /* SOCOM II's: the instances past their life recycled (the name ours) */
+        void RemoveDead();
+
+        bool Empty() const { return !m_head; }
 
         unsigned char _0[0xc];
-    };   // 0xc bytes
+        Instance *m_head;   // 0xc: linked through m_listNext
+    };
 
-    virtual void Render(const CMatrix &m);
+    /* whether a link is the list's end (ours: the target materialises each null test) */
+    static bool End(const Instance *p) { return !p; }
+    bool Alive() const { return m_age < m_lifespan; }
+
+    /* inline: its table stored and the virtual Expire, in every destructor that inlines it (no
+     * out-of-line copy in the image) */
+    ~Instance() { Expire(); }
+
+    virtual void Expire();   // +0x08
+    virtual void Tick(float dT);   // +0x0c
+    virtual void Render(const CMatrix &m);   // +0x10
+    /* SOCOM II's: expired and given back to the class's pool (the name ours) */
+    virtual void Recycle();   // +0x14
 
     static float fadeFactor;   // 0x488440
     static float ageFactor;   // 0x488448
     static int spawnFactor;   // 0x488450
     static List list;   // 0x488480
+    static InstancePool<Instance> m_instance_pool;   // 0x488460
 
     union {
         Source *m_source;   // 0x4: the emitter (SOCOM 1's; Expire drops its count)
@@ -278,22 +318,33 @@ public:
     float m_age;   // 0xc
     unsigned char _10[0x10];   // 0x10
     float m_pos[3];   // 0x20
-};
+    unsigned char _2c[0x14];   // 0x2c
+    Props *m_props;   // 0x40
+    unsigned char _44[4];   // 0x44
+    float m_lifespan;   // 0x48
+    unsigned char _4c[4];   // 0x4c
+    Instance *m_listNext;   // 0x50: the next live instance (List's link), cleared when recycled
+    unsigned char _54[4];   // 0x54
+};   // 0x58 bytes
 
 /* a piece of a destroyed object flying off (SOCOM 1's Destruction_Instance): its life at 0x48, the
  * node it moves at 0x58 */
 class Destruction_Instance : public Instance {
 public:
     ~Destruction_Instance();
+    void Expire();
+    void Tick(float dT);
     void Render(const CMatrix &m);
+    void Recycle();
 
     static InstancePool<Destruction_Instance> m_instance_pool;   // 0x488468
 
-    unsigned char _2c[0x1c];   // 0x2c
-    float m_lifespan;   // 0x48
-    unsigned char _4c[0xc];   // 0x4c
     zdb::CNode *m_node;   // 0x58
 };
+
+/* SOCOM II's: the dead instances recycled and both pools emptied (zparticle_instance.cpp; the
+ * name ours) */
+void FreeInstances();
 
 /* the textures a particle draws with, registered with the draw buffer (0x324A10) */
 void AddDynTexture(zdb::CTexHandle *tex);

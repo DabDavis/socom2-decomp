@@ -11,6 +11,76 @@ extern "C" void sceVu0InterVector(float *v0, float *v1, float *v2, float t);
 
 namespace Particle {
 
+/* SOCOM II's: the instances whose age has reached their life unlinked and recycled, the head's
+ * run first */
+void Instance::List::RemoveDead()
+{
+    while (!Empty() && !m_head->Alive()) {
+        Instance *p = m_head;
+
+        m_head = p->m_listNext;
+        p->Recycle();
+    }
+    for (Instance *prev = m_head; prev; ) {
+        Instance *p = prev->m_listNext;
+
+        while (!End(p) && !p->Alive()) {
+            Instance *d = p;
+
+            p = p->m_listNext;
+            prev->m_listNext = p;
+            d->Recycle();
+        }
+        prev = p;
+    }
+}
+
+/* SOCOM 1's: every live instance deleted */
+void Instance::List::Uninit()
+{
+    Instance *p;
+
+    while ((p = m_head) != 0) {
+        m_head = p->m_listNext;
+        delete p;
+    }
+}
+
+/* SOCOM II's: the dead instances recycled, then every pooled instance and piece deleted */
+void FreeInstances()
+{
+    Instance *p;
+    Destruction_Instance *d;
+
+    Instance::list.RemoveDead();
+    while ((p = Instance::m_instance_pool.Pop()) != 0)
+        delete p;
+    while ((d = Destruction_Instance::m_instance_pool.Pop()) != 0)
+        delete d;
+}
+
+/* SOCOM II's: the piece expired and given back to its pool */
+void Destruction_Instance::Recycle()
+{
+    Expire();
+    m_listNext = 0;
+    m_instance_pool.Push(this);
+}
+
+/* SOCOM II's: the particle expired and given back to its pool */
+void Instance::Recycle()
+{
+    Expire();
+    m_listNext = 0;
+    m_instance_pool.Push(this);
+}
+
+/* the piece's node taken out of the world (SOCOM II's) */
+Destruction_Instance::~Destruction_Instance()
+{
+    zdb::CWorld::m_world->DeleteChild(m_node);
+}
+
 /* the piece's node moved to it while it lives */
 void Destruction_Instance::Render(const CMatrix &m)
 {
