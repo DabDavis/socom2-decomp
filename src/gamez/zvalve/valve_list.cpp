@@ -11,6 +11,33 @@
 _zrdr *zrdr_read(const char *name, const char *path, int flags);   /* zrdr.h's (which redefines
                                                                     zanim.h's _zrdr) */
 int zrdr_free(CRdrFile *file);
+_zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
+char *zrdr_findstring(const _zrdr *rdr, const char *tag);
+bool zrdr_findint(const _zrdr *rdr, const char *tag, int *out, int n);
+extern "C" int strcasecmp(const char *a, const char *b);
+
+/* a valve deleted (ours: the pool's emptying deletes its valves through std::for_each, the
+ * iterators its parameters -- copied into memory, as the target's are) */
+struct CValveDelete {
+    CValveDelete() {}
+    void operator()(CValve *valve) { delete valve; }
+};
+
+/* the pool emptied: its valves deleted, its names freed (SOCOM 1's destructor did this inline;
+ * SOCOM II's calls it -- name ours) */
+void CValvePool::Free()
+{
+    if (m_initialized) {
+        m_initialized = false;
+        FlushNames(true);
+        std::for_each(m_free.begin(), m_free.end(), CValveDelete());
+        m_free.clear();
+        delete m_names;
+        m_names = 0;
+        m_namesNext = 0;
+        m_namesSize = 0;
+    }
+}
 
 /* the pool's names flushed when no valve holds one, or by force; whether any did (SOCOM 1's).
  * Pinned: Close, Reset and Uninit call it, and MW would inline it there (SOCOM 1's Close did) */
@@ -172,6 +199,39 @@ void CValve::Close()
 
     m_list.erase(i, e);
     data_0049E820.FlushNames(false);
+}
+
+/* the valve file's "valves" list made into valves: each record's name, value and type -- the
+ * type string's, or the caller's (SOCOM 1's); whether the list was there */
+bool CValve::Parse(CRdrFile *rdr, VALVE_TYPE type)
+{
+    _zrdr *list = zrdr_findtag((_zrdr *)rdr, "valves");
+    bool found = list != 0;
+
+    if (found) {
+        int n = list->Count();
+
+        for (unsigned int i = 0; (int)i < n; i++) {
+            _zrdr *item = list->Item(i);
+            int value = 0;
+            const char *name = zrdr_findstring(item, "name");
+
+            zrdr_findint(item, "value", &value, 1);
+            const char *t = zrdr_findstring(item, "type");
+            VALVE_TYPE vt = type;
+
+            if (t) {
+                if (!strcasecmp(t, "PERM"))
+                    vt = VALVE_PERM;
+                else if (!strcasecmp(t, "TEMP"))
+                    vt = VALVE_TEMP;
+                else if (!strcasecmp(t, "PERSIST"))
+                    vt = VALVE_PERSIST;
+            }
+            Create(name, value, vt);
+        }
+    }
+    return found;
 }
 
 void CValve::MakeCallbacks(VALVE_STATE state)

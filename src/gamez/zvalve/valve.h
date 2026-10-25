@@ -16,6 +16,7 @@ public:
     CValve *Acquire(const char *name, VALVE_TYPE type);
     void Release(CValve *valve);
     bool FlushNames(bool force);
+    void Free();
 
     std::vector<CValve *> m_free;   /* 0x00 */
     bool m_initialized;             /* 0x0C */

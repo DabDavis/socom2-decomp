@@ -692,10 +692,11 @@ public:
 };   // 0x8 bytes
 
 /* its values are not in SOCOM 1's DWARF, only its name in CValve::Create's; the valve lane's
- * enumerators (names ours) make it unsigned, as the code compares it (andi 0xff in CValve::Create
- * and CValvePool::Acquire): 0 any (the delete predicate's), 2 a plain valve (the pool's, Destroy's,
- * ParseValveName's; only its names go to the pool's buffer), 1 and 3 kinds Create raises a valve to */
-enum VALVE_TYPE { VALVE_TYPE_0 = 0, VALVE_TYPE_1 = 1, VALVE_TYPE_2 = 2, VALVE_TYPE_3 = 3 };
+ * enumerators make it unsigned, as the code compares it (andi 0xff in CValve::Create and
+ * CValvePool::Acquire). Their names are the valve file's type strings, which CValve::Parse maps
+ * to 1-3 ("PERM", "TEMP", "PERSIST"); 0 is the delete predicate's any. A temporary valve is the
+ * default (the pool's, Destroy's, ParseValveName's; only its names go to the pool's buffer) */
+enum VALVE_TYPE { VALVE_ANY = 0, VALVE_PERM = 1, VALVE_TEMP = 2, VALVE_PERSIST = 3 };
 
 /* a valve's change of state, its callbacks told with it (SOCOM 1's MakeCallbacks takes one; the
  * names are the states lane's) */
@@ -725,7 +726,7 @@ public:
      * emptied and the pool made (valve_list.cpp) */
     CValve(const char *name, unsigned int value, VALVE_TYPE type);
     ~CValve();
-    static void Parse(CRdrFile *rdr, VALVE_TYPE type);
+    static bool Parse(CRdrFile *rdr, VALVE_TYPE type);
     static void Close();
     static void Reset();
     static bool Open(const char *name, VALVE_TYPE type);
