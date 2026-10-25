@@ -211,6 +211,7 @@ public:
     void SetBit3(bool b) { m_bit3 = b; }
     void SetBit4(bool b) { m_bit4 = b; }
     void SetBit13(bool b) { m_bit13 = b; }
+    void SetBit14(bool b) { m_bit14 = b; }
     void SetBit15(bool b) { m_bit15 = b; }
     void SetNibble5(unsigned int n) { m_nibble5 = n; }
     void SetNibble9(unsigned int n) { m_nibble9 = n; }

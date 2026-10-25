@@ -463,7 +463,7 @@ extern "C" {
  * unwritten), and the controller's calls (0x56D890, 0x5631B0, 0x570F90: the SEAL lane's rows) */
 void func_005F6350(CAiState *s, CSealCtrlAi *ai, CAiState::SIGNAL sig);
 CEntity *func_005EDBB0(void *unit, int a, int b);
-void func_0056D890(CSealCtrlAi *ai, int x);
+void func_0056D890(CSealCtrlAi *ai, bool on);
 void func_005631B0(CSealCtrlAi *ai, int a, int b, float f);
 void func_00570F90(CSealCtrlAi *ai, float t);
 /* the last state popped: its result and its kind (OVL1 bss 0x44D628, 0x44D630: the stack's pop
@@ -793,6 +793,76 @@ void CAiStateStack::PopAll(CSealCtrlAi *ai)
 /* the stack's constructor (OVL2 0x5F8520): out of line, as its destructor is */
 CAiStateStack::CAiStateStack() : m_c(-1), m_10(0), m_14(0)
 {
+}
+
+/* the controller's settings a covered state keeps (CSealCtrlAi: the bits at 0x264 -- bit 0 the
+ * debug bit zseal.h names, bit 2 the one 0x56D890 takes -- the float 0x570F90 takes at 0x1C4, the
+ * stance at 0x278 and the mode at 0x3F4, a signed byte here; zseal.h names neither the bit nor the
+ * float -- the names ours) */
+struct CAiCtrlSaved {
+    void SetDebug(bool b) { m_debug = b; }
+
+    unsigned char _0[0x1c4];
+    float m_1c4;   // 0x1c4
+    unsigned char _1c8[0x264 - 0x1c8];
+    unsigned char m_debug : 1;   // 0x264 bit 0
+    unsigned char m_bit1 : 1;
+    unsigned char m_bit2 : 1;
+    unsigned char _264_3 : 5;
+    unsigned char _265[0x278 - 0x265];
+    SEAL_STANCE m_stance;   // 0x278
+    unsigned char _279[0x3f4 - 0x279];
+    signed char m_mode;   // 0x3f4
+};
+
+/* a state's hold on the controller's settings: its sub-state's entry clears bit 14, its leaving
+ * the debug bit; covered (2) it keeps the stance, the mode, bit 2, the float and the SEAL's cell,
+ * back on top (3) it gives the first four back (OVL2 0x5F6350; the name ours) */
+extern "C" void func_005F6350(CAiState *s, CSealCtrlAi *ai, CAiState::SIGNAL sig)
+{
+    switch (sig) {
+    case CAiState::SIGNAL_0:
+        s->SetBit14(false);
+        break;
+    case CAiState::SIGNAL_1:
+        ((CAiCtrlSaved *)ai)->SetDebug(false);
+        break;
+    case CAiState::SIGNAL_2:
+        s->SetBit4(((CAiCtrlSaved *)ai)->m_bit2);
+        s->SetNibble5(((CAiCtrlSaved *)ai)->m_stance);
+        s->SetNibble9(((CAiCtrlSaved *)ai)->m_mode);
+        s->m_4c = ((CAiCtrlSaved *)ai)->m_1c4;
+        s->m_loc = CAiMapLoc(ai->m_entity->m_mapLocValid);
+        break;
+    case CAiState::SIGNAL_3:
+        func_00563100(ai, (SEAL_STANCE)s->m_nibble5, -1.0f);
+        func_0056D890(ai, s->m_bit4);
+        ai->SetAiMode((AI_MODE)s->m_nibble9);
+        func_00570F90(ai, s->m_4c);
+        break;
+    }
+}
+
+extern "C" {
+/* the AI's weapon kind, and a kind asked for -- whether it took (OVL2 0x560540, 0x5604D0: the
+ * SEAL lane's seal_ai.cpp, its AI_WEAPON_KIND a byte) */
+unsigned char func_00560540(CSealCtrlAi *ai);
+bool func_005604D0(CSealCtrlAi *ai, int kind);
+}
+
+/* a weapon kind asked of the AI: whether it took; the kind it had kept in the word at 0x54 when
+ * `keep` (0x5F6190 gives it back) (OVL2 0x5F6100; a CAiState member, unnamed) */
+extern "C" bool func_005F6100(CAiState *s, CSealCtrlAi *ai, int kind, bool keep)
+{
+    bool r = false;
+    int old = func_00560540(ai);
+
+    if (func_005604D0(ai, kind)) {
+        if (keep)
+            s->m_54 = old;
+        r = true;
+    }
+    return r;
 }
 
 /* (OVL2 0x5605A0, the SEAL lane's row: the controller told a byte) */
