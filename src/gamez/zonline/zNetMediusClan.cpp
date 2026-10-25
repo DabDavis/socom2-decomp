@@ -6,6 +6,7 @@
  * 0x44F740, 0x44F760) whose destructors close it (0x2EA3C0-0x2EA5BF). Only some of it so far.
  * Defined in reverse of their image order (-inline deferred). */
 
+#include <stdio.h>
 #include <string.h>
 #include "zonline.h"
 
@@ -45,6 +46,11 @@ void cbGetClanInvitationsSent(MediusErrorCode, MediusErrorCode, MediusErrorCode,
 void cbCheckMyClanInvitations(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusCheckMyClanInvitationsResponse *);
 void cbRespondToClanInvitation(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusRespondToClanInvitationResponse *);
 void cbQuitClan(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusRemovePlayerFromClanResponse *);
+void cbDeleteClanMessage(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusDeleteClanMessageResponse *);
+void cbGetLeaderMessages(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusGetAllClanMessagesResponse *);
+void cbGetMyClanMessages(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusGetMyClanMessagesResponse *);
+void cbSendClanMessage(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusSendClanMessageResponse *);
+void cbFilterClanName(int, int, int, MediusTextFilterResponse *);
 
 extern "C" {
 extern AccountInfoType AccountInfo;
@@ -53,7 +59,8 @@ extern int PlayerClanID;   /* -1 outside a clan */
 extern LobbyList InvitationVec;   /* the invitations received */
 extern LobbyList ClanInvitationVec;   /* the invitations sent */
 extern LobbyList ClanMemberVec;
-
+extern LobbyList data_0044F760;   /* the leader's messages (SOCOM II's) */
+void func_002E66F0(LobbyList *list);   /* the leader's messages deleted */
 
 ClanMemberItem *func_002E9460(LobbyList *list, const char *name);   /* the member by name */
 void func_002E9380(LobbyList *list);   /* the received invitations deleted */
@@ -120,6 +127,69 @@ void CZOnlineLobby::CheckClanInvitations()
     req.PageSize = 999;
     CheckMediusError(MediusCheckMyClanInvitations(&req,
         cbCheckMyClanInvitations));
+}
+
+/* the clan's messages asked for, the menu told meanwhile (SOCOM II's; OVL1 0x2E8460) */
+void CZOnlineLobby::GetClanMessages()
+{
+    func_003862A0(uiv_ClanMessages, "Retrieving messages from server...");
+    MediusGetMyClanMessagesRequest req;
+
+    memset(&req, 0, sizeof(req));
+    SetSessionKey(req.SessionKey);
+    req.ClanID = StoredClanInfo.ClanID;
+    req.Start = 1;
+    req.PageSize = 999;
+    CheckMediusError(MediusGetMyClanMessages(&req, cbGetMyClanMessages));
+}
+
+/* the message sent: the leader's list asked for again, or the failure spelled out for no one
+ * (SOCOM 1's; OVL1 0x2E83F0) */
+void cbSendClanMessage(MediusErrorCode, MediusErrorCode, MediusErrorCode,
+                       MediusSendClanMessageResponse *resp)
+{
+    char text[1000];
+
+    if (CheckMediusCallbackStatus("SendClanMessage", resp->StatusCode))
+        theLobby.GetLeaderMessages();
+    else
+        sprintf(text, "Failed To Send Message. Error -> %s", LookupMediusCallbackStatus(resp->StatusCode));
+}
+
+/* a message to the clan: an empty one refused with an event (SOCOM 1's, the censor gone; OVL1
+ * 0x2E8310) */
+bool CZOnlineLobby::SendClanMessage(const char *text)
+{
+    if (!m_isopen)
+        return true;
+    if (m_current_state != LOBBY_ACTIVE)
+        return true;
+    if (!text || !text[0]) {
+        LobbyEvent("CLAN_MESSAGE_EMPTY", 0);
+        return true;
+    }
+    MediusSendClanMessageRequest req;
+
+    memset(&req, 0, sizeof(req));
+    SetSessionKey(req.SessionKey);
+    strncpy(req.Message, text, sizeof(req.Message));
+    CheckMediusError(MediusSendClanMessage(&req, cbSendClanMessage));
+    return true;
+}
+
+/* the clan's name filtered first; cbFilterClanName creates it (SOCOM 1's; OVL1 0x2E7A10) */
+void CZOnlineLobby::CreateClan(const char *name)
+{
+    if (m_isopen && m_current_state == LOBBY_ACTIVE) {
+        MediusTextFilterRequest req;
+
+        memset(&req, 0, sizeof(req));
+        SetSessionKey(req.SessionKey);
+        req.TextFilterType = 0;
+        if (name)
+            memcpy(req.Text, name, 32);
+        CheckMediusError(MediusTextFilter(&req, cbFilterClanName));
+    }
 }
 
 /* any invitations sent (SOCOM 1's; OVL1 0x2E7290) */
@@ -198,4 +268,35 @@ bool CZOnlineLobby::IsLeaderOfClan(const char *name)
     if (m)
         return m->AccountID == StoredClanInfo.LeaderAccountID;
     return AccountInfo.AccountID == StoredClanInfo.LeaderAccountID;
+}
+
+/* the leader's messages emptied and asked for (SOCOM II's; OVL1 0x2E6310). Never inlined in the
+ * target, though three callbacks of this unit call it: pinned */
+#pragma auto_inline off
+void CZOnlineLobby::GetLeaderMessages()
+{
+    func_002E66F0(&data_0044F760);
+    MediusGetAllClanMessagesRequest req;
+
+    memset(&req, 0, sizeof(req));
+    SetSessionKey(req.SessionKey);
+    req.Start = 1;
+    req.PageSize = 999;
+    CheckMediusError(func_00646520(&req, cbGetLeaderMessages));
+}
+#pragma auto_inline reset
+
+/* a message deleted (SOCOM II's; OVL1 0x2E6010): the API's result not looked at, a success
+ * handed to the check instead */
+void CZOnlineLobby::DeleteClanMessage(int id)
+{
+    if (id != -1) {
+        MediusDeleteClanMessageRequest req;
+
+        memset(&req, 0, sizeof(req));
+        SetSessionKey(req.SessionKey);
+        req.ClanMessageID = id;
+        func_006460B0(&req, cbDeleteClanMessage);
+        CheckMediusError(MediusSuccess);
+    }
 }

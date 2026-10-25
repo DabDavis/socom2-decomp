@@ -84,12 +84,77 @@ struct MediusGetClanMemberListRequest {
     int PageSize;   // 0x20
 };   // 0x24
 
-struct MediusDisbandClanResponse;
-struct MediusGetClanMemberListResponse;
-struct MediusRemovePlayerFromClanResponse;
-struct MediusCheckMyClanInvitationsResponse;
-struct MediusGetClanInvitationsSentResponse;
-struct MediusRespondToClanInvitationResponse;
+struct MediusDeleteClanMessageRequest {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];   // 0x15
+    int ClanMessageID;   // 0x28
+};   // 0x2c
+
+/* the leader's messages (SOCOM II's request; the API at 0x646520, unnamed) */
+struct MediusGetAllClanMessagesRequest {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];   // 0x15
+    int Start;   // 0x28
+    int PageSize;   // 0x2c
+};   // 0x30
+
+struct MediusGetMyClanMessagesRequest {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];   // 0x15
+    int ClanID;   // 0x28
+    int Start;   // 0x2c
+    int PageSize;   // 0x30
+};   // 0x34
+
+struct MediusSendClanMessageRequest {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];   // 0x15
+    char Message[200];   // 0x26
+};   // 0xee
+
+struct MediusTextFilterRequest {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];   // 0x15
+    int TextFilterType;   // 0x28
+    char Text[64];   // 0x2c
+};   // 0x6c
+
+/* a response's head: its status follows the message id */
+#define MEDIUS_RESPONSE_HEAD                                                                        \
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   /* 0x0 */                                           \
+    MediusCallbackStatus StatusCode;   /* 0x18 */
+
+struct MediusDisbandClanResponse { MEDIUS_RESPONSE_HEAD };
+struct MediusGetClanMemberListResponse { MEDIUS_RESPONSE_HEAD };
+struct MediusRemovePlayerFromClanResponse { MEDIUS_RESPONSE_HEAD };
+struct MediusCheckMyClanInvitationsResponse { MEDIUS_RESPONSE_HEAD };
+struct MediusGetClanInvitationsSentResponse { MEDIUS_RESPONSE_HEAD };
+struct MediusRespondToClanInvitationResponse { MEDIUS_RESPONSE_HEAD };
+struct MediusDeleteClanMessageResponse { MEDIUS_RESPONSE_HEAD };
+struct MediusGetAllClanMessagesResponse { MEDIUS_RESPONSE_HEAD };
+struct MediusGetMyClanMessagesResponse { MEDIUS_RESPONSE_HEAD };
+struct MediusSendClanMessageResponse { MEDIUS_RESPONSE_HEAD };
+struct MediusTextFilterResponse { MEDIUS_RESPONSE_HEAD };
+
+typedef void (*MediusDeleteClanMessageCallback)(MediusErrorCode, MediusErrorCode, MediusErrorCode,
+                                                MediusDeleteClanMessageResponse *);
+typedef void (*MediusGetAllClanMessagesCallback)(MediusErrorCode, MediusErrorCode, MediusErrorCode,
+                                                 MediusGetAllClanMessagesResponse *);
+typedef void (*MediusGetMyClanMessagesCallback)(MediusErrorCode, MediusErrorCode, MediusErrorCode,
+                                                MediusGetMyClanMessagesResponse *);
+typedef void (*MediusSendClanMessageCallback)(MediusErrorCode, MediusErrorCode, MediusErrorCode,
+                                              MediusSendClanMessageResponse *);
+typedef void (*MediusTextFilterCallback)(int, int, int, MediusTextFilterResponse *);
+
+extern "C" {
+void func_006460B0(MediusDeleteClanMessageRequest *req, MediusDeleteClanMessageCallback cb);   /* MediusDeleteClanMessage? */
+MediusErrorCode func_00646520(MediusGetAllClanMessagesRequest *req, MediusGetAllClanMessagesCallback cb);
+MediusErrorCode MediusGetMyClanMessages(MediusGetMyClanMessagesRequest *req,
+                                        MediusGetMyClanMessagesCallback cb);
+MediusErrorCode MediusSendClanMessage(MediusSendClanMessageRequest *req,
+                                      MediusSendClanMessageCallback cb);
+MediusErrorCode MediusTextFilter(MediusTextFilterRequest *req, MediusTextFilterCallback cb);
+}
 
 typedef void (*MediusDisbandClanCallback)(MediusErrorCode, MediusErrorCode, MediusErrorCode,
                                           MediusDisbandClanResponse *);
@@ -186,6 +251,11 @@ public:
     void DeclineClanInvitation(int id);
     bool ClanHasInvitations();
     bool HasClanInvitations();
+    void CreateClan(const char *name);
+    bool SendClanMessage(const char *text);
+    void GetClanMessages();
+    void GetLeaderMessages();
+    void DeleteClanMessage(int id);
 
     /* the lobby open (SOCOM 1's m_isopen) and its state */
     bool IsOpen() { return m_isopen; }
@@ -226,8 +296,23 @@ public:
 
 extern CZOnlineLobby theLobby;
 
+/* an event told to the menus, when they listen: through theLobby, from members and callbacks
+ * alike (the name ours) */
+inline void LobbyEvent(const char *event, const char *arg)
+{
+    if (theLobby.m_event_handler)
+        theLobby.m_event_handler(event, arg);
+}
+
 /* a Medius call's result looked at, and a response's status (SOCOM II's; the names ours) */
 bool CheckMediusError(MediusErrorCode err);
 bool CheckMediusCallbackStatus(const char *what, MediusCallbackStatus status);
+const char *LookupMediusCallbackStatus(MediusCallbackStatus status);
+
+/* the UI variables' setters (unnamed yet: CUIVariable::operator=(const char *) and
+ * CUIVarManager::Add) */
+extern "C" {
+void func_003862A0(CUIVariable *var, const char *text);
+}
 
 #endif

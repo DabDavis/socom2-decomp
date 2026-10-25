@@ -4757,12 +4757,12 @@
 0x002E5F60 0x80 func_002E5F60  # OVL1
 0x002E5FE0 0x1C func_002E5FE0  # OVL1
 0x002E6000 0xC func_002E6000  # OVL1
-0x002E6010 0x70 func_002E6010  # OVL1
-0x002E6080 0x34 func_002E6080  # OVL1
-0x002E60C0 0x20C func_002E60C0  # OVL1
-0x002E62D0 0x34 func_002E62D0  # OVL1
-0x002E6310 0x74 func_002E6310  # OVL1
-0x002E6390 0x68 func_002E6390  # OVL1
+0x002E6010 0x70 DeleteClanMessage__13CZOnlineLobbyFi  # OVL1; ours (the UI command table's 'DeleteClanMessage' handler 0x27A1C0 calls it on theLobby; a message id, -1 none; its callback 0x2E6080 reports 'DeleteClanMessage')
+0x002E6080 0x34 cbDeleteClanMessage__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP31MediusDeleteClanMessageResponse  # OVL1; ours (DeleteClanMessage's callback; reports 'DeleteClanMessage', then the leader's messages asked for again)
+0x002E60C0 0x20C ModifyClanMessage__13CZOnlineLobbyFiPCc  # OVL1; ours ('ModifyClanMessage' 0x27A0E0 calls it on theLobby; a message id and the text: a new message sent when the id is none)
+0x002E62D0 0x34 cbModifyClanMessage__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP31MediusModifyClanMessageResponse  # OVL1; ours (ModifyClanMessage's callback; reports 'ModifyClanMessage')
+0x002E6310 0x74 GetLeaderMessages__13CZOnlineLobbyFv  # OVL1; ours ('GetLeaderMessages' 0x27A0B0 calls it on theLobby; the leader's messages list emptied and asked for, its callback 0x2E6390 reports 'GetLeaderMessages')
+0x002E6390 0x68 cbGetLeaderMessages__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP32MediusGetAllClanMessagesResponse  # OVL1; ours (GetLeaderMessages' callback; reports 'GetLeaderMessages'); the mangled length corrected (32)
 0x002E6400 0x1AC func_002E6400  # OVL1
 0x002E65B0 0x13C func_002E65B0  # OVL1
 0x002E66F0 0xD4 func_002E66F0  # OVL1
@@ -4799,7 +4799,7 @@
 0x002E82A0 0x6C cbTransferClanLeadership__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP36MediusTransferClanLeadershipResponse  # OVL1; s1 by hand (TransferLeadership's callback; reports 'TransferClanLeadership')
 0x002E8310 0xE0 SendClanMessage__13CZOnlineLobbyFPCc  # OVL1; s1:ui ('SendClanMessage' 0x2797F0, as SOCOM 1's UISendClanMessage)
 0x002E83F0 0x68 cbSendClanMessage__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP29MediusSendClanMessageResponse  # OVL1; s1 by hand (SendClanMessage's callback; reports 'SendClanMessage')
-0x002E8460 0x80 func_002E8460  # OVL1
+0x002E8460 0x80 GetClanMessages__13CZOnlineLobbyFv  # OVL1; ours ('GetClanMessages' 0x279790 calls it on theLobby: 'Retrieving messages from server...' into uiv_ClanMessages, then MediusGetMyClanMessages with cbGetMyClanMessages)
 0x002E84E0 0x164 cbGetMyClanMessages__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP31MediusGetMyClanMessagesResponse  # OVL1; s1 by hand (reports 'GetMyClanMessages'; 'No clan messages.')
 0x002E8650 0x6C CheckClanInvitations__13CZOnlineLobbyFv  # OVL1; s1:ui ('CheckMyInvites' 0x27A3C0; SOCOM 1's UICheckClanInvites calls CheckClanInvitations, and this one's callback reports 'CheckMyClanInvitations', SOCOM 1's cbCheckMyClanInvitations)
 0x002E86C0 0xB0 cbCheckMyClanInvitations__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP36MediusCheckMyClanInvitationsResponse  # OVL1; s1 by hand (CheckClanInvitations' callback; reports 'CheckMyClanInvitations')
@@ -4934,8 +4934,8 @@
 0x002F4240 0x88 Bailout__13CZOnlineLobbyFv  # OVL1; s1:ui ('LobbyBailout' 0x27DC90, as SOCOM 1's UILobbyBailout calls Bailout)
 0x002F42D0 0xC CheckMediusCallbackStatus__FPCc20MediusCallbackStatus  # OVL1; ours (every lobby callback opens with it: the request's name as a string and the response's status, true for 0)
 0x002F42E0 0x18 CheckMediusError__F15MediusErrorCode  # OVL1; ours (every Medius request in OVL1 0x2DF560-0x306670 hands the API call's result to it and drops the answer: true for 0, MediusSuccess)
-0x002F4300 0x560 func_002F4300  # OVL1
-0x002F4860 0x1B4 func_002F4860  # OVL1
+0x002F4300 0x560 LookupMediusCallbackStatus__F20MediusCallbackStatus  # OVL1; s1 by hand (the callbacks sprintf its string for a failed status, as SOCOM 1's callbacks call LookupMediusCallbackStatus for theirs: cbSendClanMessage's 'Failed To Send Message. Error -> %s', cbDisbandClan's 'Clan Disband Error: %s')
+0x002F4860 0x1B4 SendChat__13CZOnlineLobbyFPCcPCc  # OVL1; s1 by hand (the UI-commands lane's lead: SOCOM 1's chat senders call CZOnlineLobby::SendChat where these call it on theLobby; SOCOM II's takes the text and a second string, a whisper's target -- null for the room, a type 1 message otherwise)
 0x002F4A20 0x180 func_002F4A20  # OVL1
 0x002F4BA0 0x1B8 func_002F4BA0  # OVL1
 0x002F4D60 0x90 func_002F4D60  # OVL1
