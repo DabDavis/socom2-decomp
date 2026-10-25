@@ -238,12 +238,19 @@ public:
     static CPickup *GetNext(iterator &it, PU_TYPE type);
     static CPickup *GetNext(iterator &it, const CPnt3D *pos, float range, PU_TYPE type);
     static void Open(unsigned int bits);
+    /* every pickup destroyed, the MP bomb's node deleted and, when told to, the pool's pickups
+     * deleted (SOCOM 1's; OVL2 0x542E50) */
+    static void Close(bool all);
+    /* the MP bomb's node taken out of the world and deleted (new in SOCOM II, the name ours:
+     * OVL2 0x542180 touches only m_mpbombnode; Close inlines it) */
+    static void DeleteMPBombNode();
     unsigned int GetPickupNetEntityID();
     const CPnt3D *GetPosW() const;
     void SetVisibleByUnit(unsigned int unit);
     bool GetVisibleByUnit(unsigned int unit);
 
     static std::list<CPickup *> m_list;   // OVL1 bss 0x44D470
+    static std::list<CPickup *> m_pool;   // OVL1 bss 0x44D490 (SOCOM 1's m_pool__7CPickup, after m_list)
     static zdb::CNode *m_mpbombnode;   // OVL1 bss 0x44D4A0
     static unsigned int bit_count;   // OVL1 data 0x3DF178
     static bool m_isOpen;   // OVL1 bss 0x44D4B0
@@ -257,7 +264,7 @@ public:
     unsigned int m_unused : 6;
     unsigned int m_id : 16;   // 0xe
     unsigned int m_owner;   // 0x10: the owner's entity id (new in SOCOM II)
-    unsigned char m_bits[8];   // 0x14: a CBits (SOCOM 1's 0x10)
+    CBits m_bits;   // 0x14 (SOCOM 1's 0x10: Close's delete inlines its destructor)
     unsigned int m_visible_by_units;   // 0x1c (SOCOM 1's 0x18)
 };
 

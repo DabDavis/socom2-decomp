@@ -9906,7 +9906,7 @@
 0x00542030 0x78 GetNext__7CPickupFRQ33std44list<P7CPickup,Q23std20allocator<P7CPickup>>19generic_iterator<0>Q27CPickup7PU_TYPE  # OVL2; s1:order (SOCOM 1's GetNext(iterator &, PU_TYPE): the list's size tested, the walk from the caller's iterator, a type of 0 taking any, the iterator stepped past the one returned) (the SEAL lane, round 3)
 0x005420B0 0xC0 IsWeaponNear__7CPickupFUcPC6CPnt3Df  # OVL2; ours (new in SOCOM II, after GetNext(type)): GetNext(iterator &, point, range, 8) from the list's start until a weapon pickup whose kind byte (0x7C, CZFTSWeapon::m_equip) is the argument -- true then, false at the end (the SEAL lane, round 3)
 0x00542170 0x10 GetFirst__7CPickupFv  # OVL2; s1:order (SOCOM 1's GetFirst__7CPickupFv: m_list's first node returned as an iterator, through the hidden result pointer) (the SEAL lane, round 3)
-0x00542180 0x70 func_00542180  # OVL2
+0x00542180 0x70 DeleteMPBombNode__7CPickupFv  # OVL2; ours (new in SOCOM II): only m_mpbombnode__7CPickup touched -- taken from its parent, its texture character dropped, deleted, zeroed; Close inlines it (the SEAL lane, round 8)
 0x005421F0 0x94 DestroyNetPickups__7CPickupFUi  # OVL2; s1:calls (CZSealBody::OnMissionEnd calls it with m_id where SOCOM 1's does): CPickup's list walked, each pickup whose owner word at 0x10 matches destroyed -- SOCOM 1's compared a byte (Uc), SOCOM II's a word
 0x00542290 0x14C TickTimers__7CPickupFPC6CPnt3Df  # OVL2; ours (new in SOCOM II, after DestroyNetPickups): every pickup's time (the float at 0) run down by the second argument unless it is -1 (0x3F3440); one run out is destroyed when farther than 300 from the point (90000 squared, 0x64FC50), else given 60 again (0x64FC58) (the SEAL lane, round 3)
 0x005423E0 0x88 func_005423E0  # OVL2
@@ -9917,7 +9917,7 @@
 0x00542930 0x258 func_00542930  # OVL2
 0x00542B90 0x260 func_00542B90  # OVL2
 0x00542DF0 0x60 DebugPickups__7CPickupFv  # OVL2; s1:order (after NetworkCreate's place, before Close, as SOCOM 1's DebugPickups__7CPickupFv: the list walked with an assigned iterator and nothing done -- its printing compiled out in both) (the SEAL lane, round 3)
-0x00542E50 0x16C func_00542E50  # OVL2
+0x00542E50 0x16C Close__7CPickupFb  # OVL2; s1:order by hand (SOCOM 1's Close__7CPickupFb, between DebugPickups and Open as here: the list's pickups destroyed while it has any, the bomb's node deleted, then with the flag the pool's pickups deleted through std::transform and the pool erased, m_isOpen cleared -- the SEAL lane, round 8)
 0x00542FC0 0x18 Open__7CPickupFUi  # OVL2; s1:order (pickup_main.cpp's last, as SOCOM 1's Open__7CPickupFUi: the argument stored to bit_count, m_isOpen set -- the same two stores) (the SEAL lane, round 3)
 0x00542FE0 0x8 func_00542FE0  # OVL2
 0x00542FF0 0x8 func_00542FF0  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); s1~ not PrePostTick__10CZSealBodyFf (s1:vtable paired the wrong slot): slot 0xC of __vt__10CZSealBody is CEntity's inline GetPosNode (zentity.h), `jr ra; lw v0,0x28(a0)` -- OVL2's out-of-line copy of it, as OVL1's 0x295F10 (one of 2 copies of an inline); OVL2's copy of CEntity::GetPosW() const (OVL1's 0x295F10 carries the name, the same 8 bytes) -- the entity lane; ovl-copy: GetPosW__7CEntityCFv

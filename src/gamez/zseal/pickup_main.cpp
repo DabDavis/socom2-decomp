@@ -6,6 +6,7 @@
 
 #include "zseal.h"
 #include "../zweapon/zweapon.h"
+#include <algorithm>
 
 extern "C" {
 /* the ammunition's (OVL1, unowned): its rounds tidied, and how many kinds it still holds */
@@ -25,6 +26,30 @@ void CPickup::Open(unsigned int bits)
 {
     bit_count = bits;
     m_isOpen = true;
+}
+
+/* a pool pickup deleted, its slot left null (std::transform's operation) */
+struct DeletePickup {
+    DeletePickup() {}
+    CPickup *operator()(CPickup *p) const
+    {
+        delete p;
+        return 0;
+    }
+};
+
+/* every pickup destroyed, the MP bomb's node deleted (SOCOM 1's destroyed the bomb's pickup first)
+ * and, when told to, the pool's pickups deleted and the pool emptied (OVL2 0x542E50; SOCOM 1's) */
+void CPickup::Close(bool all)
+{
+    while (m_list.size())
+        Destroy(m_list.front());
+    DeleteMPBombNode();
+    if (all) {
+        std::transform(m_pool.begin(), m_pool.end(), m_pool.begin(), DeletePickup());
+        m_pool.clear();
+    }
+    m_isOpen = false;
 }
 
 /* the list walked, its printing gone (OVL2 0x542DF0; SOCOM 1's, as empty) */
@@ -49,6 +74,20 @@ void CPickup::DestroyNetPickups(unsigned int owner)
         ++i;
         if (owner == p->m_owner)
             Destroy(p);
+    }
+}
+
+/* (OVL2 0x542180) */
+void CPickup::DeleteMPBombNode()
+{
+    zdb::CNode *node = m_mpbombnode;
+
+    if (node) {
+        if (node->m_parent)
+            node->m_parent->DeleteChild(node);
+        zdb::CWorld::m_world->DeleteTextureAssetCharacter(zdb::CHARSETCOMMON, node);
+        zdb::CNode::Delete(node);
+        m_mpbombnode = 0;
     }
 }
 
