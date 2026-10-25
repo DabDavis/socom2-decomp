@@ -686,9 +686,17 @@
 0x00488EE0 0x4 VifHandlerID  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Uninit__5CPipeFv)
 0x00488FB0 0x4 gStreamingInited  # OVL1 bss; s1:data-seq (size SOCOM 1's; via snd_StopSoundSystem +1)
 0x0048DD28 0x1 m_isDisabled__4CSnd  # OVL1 bss; s1:data-seq (size SOCOM 1's; via LoadCSndGroup__9CSndGroupFP5_zrdr +8)
+0x0048DD80 0x4 m_numStreams__4CSnd  # OVL1 bss; SOCOM II's CSnd static (name ours): the streamed voices playing, ReleaseSoundInstance takes one off; 7 references in 5 functions
+0x0048DD88 0x4 m_numActive__4CSnd  # OVL1 bss; SOCOM II's CSnd static (name ours): the voices acquired, AcquireSoundInstance counts up and ReleaseSoundInstance down; 4 references in 2 functions
 0x0048DD90 0x4 m_errorsound__4CSnd  # OVL1 bss; s1:data-seq (size SOCOM 1's; via PlayErrorSound__4CSndFv)
 0x0048DD98 0x4 m_max_num_vags__4CSnd  # OVL1 bss; s1:data-seq (size SOCOM 1's; via WaitForCDRead__4CSndFv)
 0x0048DF30 0x1 snd_system_initialized  # OVL1 bss; s1:data-seq (size SOCOM 1's; via WaitForCDRead__4CSndFv)
+0x0048DF80 0x1 m_paused__12CSndInstance  # OVL1 bss; CSndInstance static (name ours): Init clears it, PauseAllSounds sets it; 2 references in 2 functions
+0x0048DF98 0xC m_list__12CSndInstance  # OVL1 bss; CSndInstance static (name ours): the voices playing, a list<CSndInstance *> (0x403230 constructs it and registers its destructor); 28 references in 13 functions
+0x0048DFB8 0xC m_pool__12CSndInstance  # OVL1 bss; CSndInstance static (name ours): the free voices, a CSndInstanceVec (0x403230 registers its destructor; CSnd's constructor reserves it); 23 references in 5 functions
+0x0048DFD8 0xC m_vec__12CSndInstance  # OVL1 bss; CSndInstance static (name ours): a vector<CSndInstance *> RemoveFromList releases and Cleanup clears (0x403230 registers its destructor); 18 references in 6 functions
+0x0048DFE8 0x4 m_numAllocated__12CSndInstance  # OVL1 bss; CSndInstance static (name ours): the voices built, InitInstancePool and AcquireSoundInstance count them; 4 references in 2 functions
+0x0048DFF0 0x4 m_numInits__12CSndInstance  # OVL1 bss; CSndInstance static (name ours): InitInstance counts its calls; 2 references in 1 function
 0x0048E098 0x1 m_playlists_loaded__11CSndJukebox  # OVL1 bss; s1:data-seq (size SOCOM 1's; via LoadPlaylists__11CSndJukeboxFPCc)
 0x0049E150 0x1 theHeadsetState__7Headset  # OVL1 bss; s1:data-seq (size SOCOM 1's; via SoundSysCallback__7HeadsetFUi)
 0x0049E260 0x20 zTaskScheduler  # OVL1 bss; s1:data-seq (size SOCOM 1's; via TaskScheduler__9CZAnimSetFv)

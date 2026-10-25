@@ -6195,24 +6195,24 @@
 0x00346260 0x8 func_00346260  # OVL1
 0x00346270 0x90 func_00346270  # OVL1
 0x00346300 0x10 PlaySoundCallback__12CSndInstanceFUiUl  # OVL1; s1:exact
-0x00346310 0x70 func_00346310  # OVL1
-0x00346380 0x1C4 func_00346380  # OVL1
-0x00346550 0xF4 func_00346550  # OVL1
-0x00346650 0x6C func_00346650  # OVL1
-0x003466C0 0x28 func_003466C0  # OVL1
-0x003466F0 0x4C func_003466F0  # OVL1
-0x00346740 0x54 func_00346740  # OVL1
+0x00346310 0x70 __dt__Q23std58vector<P12CSndInstance,Q23std26allocator<P12CSndInstance>>Fv  # OVL1; s1:order by hand (SOCOM 1's vector<CSndInstance *> destructor, right after PlaySoundCallback in both builds; the unit's static initialiser 0x403230 registers it for the second vector of instances)
+0x00346380 0x1C4 InitInstancePool__12CSndInstanceFi  # OVL1; s1:order by hand (SOCOM 1's InitInstancePool, after the vector destructor in both builds: the pool and the second vector reserved to n, the shortfall built and pushed)
+0x00346550 0xF4 RemoveFromList__12CSndInstanceFv  # OVL1; s1:order by hand (SOCOM 1's RemoveFromList, next in both builds: each instance of the second vector released and erased from the voice list)
+0x00346650 0x6C RemoveFromList__12CSndInstanceFP12CSndInstance  # OVL1; SOCOM II's, name ours (an instance erased from the voice list; ReleaseSoundInstance's last call)
+0x003466C0 0x28 Init__12CSndInstanceFv  # OVL1; s1:order by hand (SOCOM 1's Init, the same body: unless CSnd::m_isDisabled, the paused flag cleared and m_mastervol set to 1)
+0x003466F0 0x4C ResumeAllSounds__12CSndInstanceFv  # OVL1; s1:order by hand (after Init as SOCOM 1's ResumeAllSounds: SOCOM II sends 989snd command 23 for every group and resumes the headset)
+0x00346740 0x54 PauseAllSounds__12CSndInstanceFv  # OVL1; s1:order by hand (after ResumeAllSounds as in SOCOM 1: command 22 for every group, the paused flag set, the headset paused)
 0x003467A0 0x144 func_003467A0  # OVL1
 0x003468F0 0x154 func_003468F0  # OVL1
-0x00346A50 0xE0 func_00346A50  # OVL1
+0x00346A50 0xE0 StopAllSounds__12CSndInstanceF10SOUND_MODE  # OVL1; s1:calls by hand (CSnd::OnListenerDeath calls it with 3 after CSndJukebox::FadeOut, as SOCOM 1's calls StopAllSounds(SOUND_MODE))
 0x00346B30 0xC4 func_00346B30  # OVL1
 0x00346C00 0x2C func_00346C00  # OVL1
 0x00346C30 0xFC func_00346C30  # OVL1
 0x00346D30 0x1C TerminateOnFinish__12CSndInstanceFv  # OVL1; s1:callee by hand (CZAnim::StopSounds lets a fading or still-playing instance finish with it where SOCOM 1's calls TerminateOnFinish; the flag a bit at 0x1C here)
-0x00346D50 0x20 func_00346D50  # OVL1
-0x00346D70 0x2C func_00346D70  # OVL1
+0x00346D50 0x20 Set3D__12CSndInstanceFf  # OVL1; s1:order by hand (SOCOM 1's Set3D, the same body: the volume stored and the 3D flag set, now a bit; between TerminateOnFinish and IsPlaying in both builds)
+0x00346D70 0x2C IsPlaying__12CSndInstanceFv  # OVL1; s1:order by hand (SOCOM 1's IsPlaying, m_handle != 0, with a SOCOM II flag tested first; after Set3D in both builds; CZAnim::StopSounds asks it where SOCOM 1's does)
 0x00346DA0 0x24 IsFading__12CSndInstanceFv  # OVL1; s1:callee
-0x00346DD0 0xC8 func_00346DD0  # OVL1
+0x00346DD0 0xC8 FadeOut__12CSndInstanceFf  # OVL1; s1:order by hand (SOCOM 1's FadeOut, after IsFading in both builds: the fade time stored, snd_AutoVol to zero; the SOUND tick fades with it where SOCOM 1's calls FadeOut)
 0x00346EA0 0x274 func_00346EA0  # OVL1
 0x00347120 0x114 func_00347120  # OVL1
 0x00347240 0x58 func_00347240  # OVL1
@@ -6222,11 +6222,11 @@
 0x003474C0 0x74 SetPan__12CSndInstanceFi  # OVL1; s1:align
 0x00347540 0xC8 SetVol__12CSndInstanceFf  # OVL1; s1:align
 0x00347610 0x74 Stop__12CSndInstanceFv  # OVL1; s1:align
-0x00347690 0x174 func_00347690  # OVL1
+0x00347690 0x174 InitInstance__12CSndInstanceFUiP4CSnd  # OVL1; s1:order by hand (SOCOM 1's InitInstance, between Stop and ReleaseSoundInstance in both builds; AcquireSoundInstance calls it with the handle and the parent)
 0x00347810 0x14C ReleaseSoundInstance__12CSndInstanceFP12CSndInstance  # OVL1; s1:callee by hand (CZAnim::StopSounds releases a stopped instance with it where SOCOM 1's calls the static ReleaseSoundInstance)
 0x00347960 0xE8 AcquireSoundInstance__12CSndInstanceFUiP4CSnd  # OVL1; s1:align
-0x00347A50 0x40 func_00347A50  # OVL1
-0x00347A90 0xC func_00347A90  # OVL1
+0x00347A50 0x40 DebugSoundList__12CSndInstanceFv  # OVL1; SOCOM 1's by its body (an empty walk of the voice list: DebugSoundList with its report compiled out; SOCOM II's sits after AcquireSoundInstance)
+0x00347A90 0xC Cleanup__12CSndInstanceFv  # OVL1; s1:order by hand (SOCOM 1's Cleanup, the same store: the second vector's size zeroed; before the CSndInstanceVec destructor in both builds)
 0x00347AA0 0x78 __dt__15CSndInstanceVecFv  # OVL1; s1:align
 0x00347B20 0x80 __dt__Q23std56list<P12CSndInstance,Q23std26allocator<P12CSndInstance>>Fv  # OVL1; s1:align
 0x00347BA0 0xC8 __dt__9CSndGroupFv  # OVL1; s1:align
