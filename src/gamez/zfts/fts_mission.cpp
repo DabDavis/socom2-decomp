@@ -208,6 +208,24 @@ bool CMission::FadeToEndMissionTick(float dT)
     return false;
 }
 
+/* the external whispers' option: its global (0x3DE620, the HUD reads it) and EnableExternalWhispers
+ * (SOCOM II's; the options' store and the HUD call it; OVL1 0x2A41F0) */
+extern "C" bool data_003DE620;
+
+extern "C" void func_002A41F0(bool on)
+{
+    /* the valve set written out: `on` converted for the comparison and again for the store */
+    CValve *valve = CValve::Create("EnableExternalWhispers", (VALVE_TYPE)1);
+    VALVE_STATE state = VALVE_SAME;
+
+    if (valve->m_value != on)
+        state = on == 0 ? VALVE_OFF : VALVE_ON;
+    valve->m_value = on;
+    if (state != VALVE_SAME)
+        valve->MakeCallbacks(state);
+    data_003DE620 = on;
+}
+
 /* a range kept at 0xF4 (the top) and 0xF8 (the bottom) of the object 0x341A60 asks (SOCOM II's; the
  * names ours) */
 struct FadeRange {
