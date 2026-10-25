@@ -61,6 +61,45 @@ extern "C" int func_003C0460(void *fx, float u, float v, bool b, CVisual *visual
                              int index);
 extern "C" char data_004B50D0[];
 
+/* a node's parameters from another's, field by field -- or, given none, the defaults: type 1,
+ * active, lit, fogged and clipped, the unit matrix and an unset box (SOCOM 1's, with SOCOM II's
+ * fields at 0x5a and a few moved) */
+void InitNodeParams(tag_NODE_PARAMS *to, const tag_NODE_PARAMS *from)
+{
+    to->m_type = from ? from->m_type : 1;
+    to->m_socom2_mode = from ? from->m_socom2_mode : 0;
+    to->m_socom2_5a_bit2 = from ? from->m_socom2_5a_bit2 : 0;
+    to->m_socom2_5a = 0;
+    to->m_active = from ? from->m_active : 1;
+    to->m_dynamic_motion = from ? from->m_dynamic_motion : 0;
+    to->m_dynamic_light = from ? from->m_dynamic_light : 0;
+    to->m_landmark = from ? from->m_landmark : 0;
+    to->m_light = from ? from->m_light : 1;
+    to->m_prelight = from ? from->m_prelight : 0;
+    to->m_fog = from ? from->m_fog : 1;
+    to->m_apply_clip = from ? from->m_apply_clip : 1;
+    to->m_matrix = from ? from->m_matrix : CMatrix::identity;
+    to->m_bbox = from ? from->m_bbox : CBBox();
+    to->m_transparent = from ? from->m_transparent : 0;
+    to->m_reflective = from ? from->m_reflective : 0;
+    to->m_shadow = from ? from->m_shadow : 0;
+    to->m_bumpmap = from ? from->m_bumpmap : 0;
+    to->m_region_shift = from ? from->m_region_shift : 0;
+    to->m_worldchild = from ? from->m_worldchild : 0;
+    to->m_char_common = from ? from->m_char_common : 0;
+    to->m_facade = from ? from->m_facade : 0;
+    to->m_hasDI = from ? from->m_hasDI : 0;
+    to->m_hasVisuals = from ? from->m_hasVisuals : 0;
+    to->m_NOTUSED = from ? from->m_NOTUSED : 0;
+    to->m_hasMesh = from ? from->m_hasMesh : 0;
+    to->m_light_static = from ? from->m_light_static : 0;
+    to->m_light_dynamic = from ? from->m_light_dynamic : 0;
+    to->m_clutter = from ? from->m_clutter : 0;
+    to->m_use_parent_bbox = from ? from->m_use_parent_bbox : 0;
+    to->m_has_visuals_prior_to_export = from ? from->m_has_visuals_prior_to_export : 0;
+    to->m_scrolling_texture = from ? from->m_scrolling_texture : 0;
+}
+
 /* a node: no parent, children, DIs (the first intersection stops a search) or visuals, no name,
  * model or atoms, opaque, its parameters the defaults; then its flags, an empty box at the origin,
  * and it counted into the universe with the shared default name (SOCOM 1's, but for SOCOM II's

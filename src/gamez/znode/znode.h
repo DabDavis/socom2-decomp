@@ -54,7 +54,8 @@ public:
     /* SOCOM II's: two bits set through a whole tree (OVL2 sets 2 on models it loads), the rest
      * unread here -- the names are ours */
     unsigned short m_socom2_mode : 2;   // 0x5a
-    unsigned short m_socom2_5a : 14;   // 0x5a
+    unsigned short m_socom2_5a_bit2 : 1;   // 0x5a (InitNodeParams copies it)
+    unsigned short m_socom2_5a : 13;   // 0x5a (InitNodeParams clears it)
     unsigned int m_active : 1;   // 0x5c
     unsigned int m_dynamic_motion : 1;   // 0x5c
     unsigned int m_dynamic_light : 1;   // 0x5c
