@@ -6819,7 +6819,7 @@
 0x0036B9D0 0x8 func_0036B9D0  # OVL1
 0x0036B9E0 0x34 func_0036B9E0  # OVL1
 0x0036BA20 0x8 func_0036BA20  # OVL1
-0x0036BA30 0x30 func_0036BA30  # OVL1
+0x0036BA30 0x30 IsEnabled__8ListItemFv  # OVL1; ours by hand (the HUD lane: zui_2d.cpp -- slot 1 of ListItem's vtable 0x407240: the look at 0x28 asked through its slot 15, true without one, as SOCOM 1's CListItemTypeImpl::IsEnabled answers true; byte-exact)
 0x0036BA60 0x8 func_0036BA60  # OVL1
 0x0036BA70 0x8 func_0036BA70  # OVL1
 0x0036BA80 0x140 func_0036BA80  # OVL1
