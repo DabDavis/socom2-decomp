@@ -304,6 +304,12 @@ inline bool operator==(const CAiMapLoc &a, const CAiMapLoc &b)
 {
     return a.x == b.x && a.y == b.y;
 }
+/* and different when either differs: materialised as `!=` (sltu) where `!(a == b)` gives the
+ * `==` (sltiu) and the other branches (CAiMaps::GetDistanceSq) */
+inline bool operator!=(const CAiMapLoc &a, const CAiMapLoc &b)
+{
+    return a.x != b.x || a.y != b.y;
+}
 
 /* a run of cells (SOCOM 1's DWARF: a vector of CAiMapLoc and nothing more) */
 class CAiMapLocVec : public std::vector<CAiMapLoc> {
@@ -456,6 +462,10 @@ public:
          * ours) */
         class range {
         public:
+            /* the run's length (the name ours: read through it, after GetRange, MW does not reuse
+             * the address of the field it zeroed -- GetSporeCount) */
+            int GetCount() const { return m_count; }
+
             unsigned int m_id;   // 0x0
             int m_first;   // 0x4
             int m_last;   // 0x8

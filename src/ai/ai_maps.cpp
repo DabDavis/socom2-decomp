@@ -8,6 +8,19 @@
 
 #include "ai_maps.h"
 
+/* the run of an id's spores, counted (new in SOCOM II) */
+int CAiMaps::GetSporeCount(unsigned int id)
+{
+    CAiMap::spores::range r;
+
+    r.m_id = 0;
+    r.m_first = 0;
+    r.m_last = 0;
+    r.m_count = 0;
+    m_spores.GetRange(id, r);
+    return r.GetCount();
+}
+
 /* the map with that index, none past the last (SOCOM 1's; inlined into every lookup by cell) */
 CAiMap *CAiMaps::GetMapByIndex(unsigned int i) const
 {
@@ -178,3 +191,29 @@ const char *CAiMaps::GetCellNameString(const CAiMapLoc &loc) const
 
     return n ? n->m_name : "";
 }
+
+float CAiMaps::GetDistance(const CAiMapLoc &a, const CAiMapLoc &b)
+{
+    return sqrtf(GetDistanceSq(a, b));
+}
+
+#pragma auto_inline off
+float CAiMaps::GetDistanceSq(const CAiMapLoc &a, const CAiMapLoc &b)
+{
+    float d = 0.0f;
+
+    if (a != b) {
+        CPnt3D pa;
+        CPnt3D pb;
+
+        if (GetCellCenter(a, &pa) && GetCellCenter(b, &pb)) {
+            CPnt3D v;
+
+            pa.Sub(&pb, &v);
+            return v.x * v.x + v.y * v.y + v.z * v.z;
+        }
+        d = 1e12f;
+    }
+    return d;
+}
+#pragma auto_inline reset

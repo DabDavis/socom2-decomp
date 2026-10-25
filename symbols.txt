@@ -9603,8 +9603,8 @@
 0x00528C80 0x160 func_00528C80  # OVL2
 0x00528DE0 0x248 func_00528DE0  # OVL2
 0x00529030 0x1C0 func_00529030  # OVL2
-0x005291F0 0xDC func_005291F0  # OVL2
-0x005292D0 0x2C func_005292D0  # OVL2
+0x005291F0 0xDC GetDistanceSq__7CAiMapsFRC9CAiMapLocRC9CAiMapLoc  # OVL2; ours (new in SOCOM II, ai_maps.cpp's first function: two cells' centres by GetCellCenter, their difference's squared length; 0 for the same cell, 1e12 without a centre)
+0x005292D0 0x2C GetDistance__7CAiMapsFRC9CAiMapLocRC9CAiMapLoc  # OVL2; ours (new in SOCOM II: sqrtf of GetDistanceSq, called by CAiSPlan::Tick)
 0x00529300 0x724 func_00529300  # OVL2
 0x00529A30 0x54 func_00529A30  # OVL2
 0x00529A90 0x16C func_00529A90  # OVL2
@@ -9630,7 +9630,7 @@
 0x0052B2E0 0x178 func_0052B2E0  # OVL2
 0x0052B460 0x158 func_0052B460  # OVL2
 0x0052B5C0 0x21C func_0052B5C0  # OVL2
-0x0052B7E0 0x34 func_0052B7E0  # OVL2
+0x0052B7E0 0x34 GetSporeCount__7CAiMapsFUi  # OVL2; ours (new in SOCOM II, after GetSporeLocation: a zeroed range filled by spores::GetRange, its count returned)
 0x0052B820 0x350 func_0052B820  # OVL2
 0x0052BB70 0x274 func_0052BB70  # OVL2
 0x0052BDF0 0x518 func_0052BDF0  # OVL2
@@ -9655,7 +9655,7 @@
 0x0052D9F0 0xB0 GetRegion__7CAiMapsFPCcR9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19C720: every map's GetRegion(name) in turn, the cell made invalid when none has it)
 0x0052DAA0 0xC4 GetActionById__7CAiMapsFUiR9CAiMapLocPPQ26CAiMap6action  # OVL2; s1:order by hand (the demo's 0x19C800, between GetRegion(name) and GetLocation(name): every map's FindActionLocation in turn, the finder's index given to the cell)
 0x0052DB70 0xF8 GetLocation__7CAiMapsFPCcR9CAiMapLoc  # OVL2; s1:calls (CMission::LoadVehicle and GetStartMatrix call it on AiMaps where SOCOM 1's call GetLocation__7CAiMapsFPCcR9CAiMapLoc); by hand: const in SOCOM II -- only the const begin()/end() build the walk's iterators in stack slots as the target does (ai_maps.cpp); (back: the walk reads the list through a const view, InitBomb calls the non-const name)
-0x0052DC70 0xA34 func_0052DC70  # OVL2
+0x0052DC70 0xA34 GetLocation__7CAiMapsFPC6CPnt3DR9CAiMapLoc  # OVL2; s1:order by hand (the demo's GetLocation(CPnt3D *, loc) 0x19C9B0, 0xA04 bytes, right after GetLocation(name) as here: a point's cell, every map tried)
 0x0052E6B0 0x70 GetMapByIndex__7CAiMapsCFUi  # OVL2; s1:order by hand (the demo's 0x19D3C0, after the GetLocations and before Reset in both builds: the index tested against the list's size, the first node stepped i times, its map returned -- inlined into every CAiMaps lookup by cell, as here)
 0x0052E720 0x5C func_0052E720  # OVL2
 0x0052E780 0x40 func_0052E780  # OVL2

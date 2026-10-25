@@ -35,6 +35,14 @@ public:
     CAiMap::region *GetRegion(const char *name, CAiMapLoc &loc);
     bool GetActionById(unsigned int id, CAiMapLoc &loc, CAiMap::action **pa);
     bool GetLocation(const char *name, CAiMapLoc &loc);
+    bool GetLocation(const CPnt3D *pos, CAiMapLoc &loc);
+    bool GetCellCenter(const CAiMapLoc &loc, CPnt3D *center);
+    /* the distance between two cells' centres, squared and not (new in SOCOM II, the names ours:
+     * 0 for one cell, 1e12 when a centre is missing) */
+    float GetDistanceSq(const CAiMapLoc &a, const CAiMapLoc &b);
+    float GetDistance(const CAiMapLoc &a, const CAiMapLoc &b);
+    /* how many spores an id has (new in SOCOM II, the name ours) */
+    int GetSporeCount(unsigned int id);
 
     CAiMap::spores m_spores;   // 0x30
     CAiMap::names m_names[6];   // 0x3c
