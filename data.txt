@@ -648,6 +648,7 @@
 0x00414E90 0x4 g_can_use_switch  # OVL1 bss; s1:data-seq (size SOCOM 1's; via UISwitchSides__FP13C2DAnimCmdHdrPf)
 0x00414E98 0x4 g_can_use_ready  # OVL1 bss; SOCOM 1's (gp-29660 there, beside g_can_use_switch): UIReadyToLoad compares the network's local time with it and sets it 5000 on, as SOCOM 1's does; 2 references in 1 function
 0x00414ED0 0xE44 g_MenuStack  # OVL1 bss; SOCOM 1's (0xA34 there): GetMenuStack returns it where SOCOM 1's returns g_MenuStack, UIPopUpDialog passes it to CMenuStack::PopUpDialog as SOCOM 1's does; the pop-up at +0xE40 (SOCOM 1's +0xA30, UIKillPopUp's test) is the last member read and the next object starts at 0x415D18; 41 references in 9 functions (GetMenuStack, the three button handlers, FlushMenuHistory, KillPopUp, SwitchMenu, PopUpDialog, the unit's initialiser 0x3FFCA0)
+0x00415F78 0x4 numSiObject  # OVL1 bss; SOCOM 1's (gp-29444 there, si_object.cpp's): the objects alive -- CZSIObject's constructor counts it up and its destructor down, 2 references each
 0x00415FF0 0x4 appCamera  # OVL1 bss; SOCOM 1's (CHUD::GetHUDOwner reads its owner, as SOCOM 1's read gp-29416): 87 references in 61 functions take 0x415FF0
 0x00416018 0x4 data_00416018  # OVL1 bss; SOCOM II's shake: the y ripple's angle in degrees: 9 references in 5 functions
 0x00416020 0x4 data_00416020  # OVL1 bss; SOCOM II's shake: the x amplitude running: 13 references in 6 functions

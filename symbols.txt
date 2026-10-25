@@ -3352,16 +3352,16 @@
 0x00285D30 0x428 func_00285D30  # OVL1
 0x00286160 0x868 func_00286160  # OVL1
 0x002869D0 0x1A4 PartInSpace__5CBodyCFP10CZBodyPartPC6CPnt3DP6CPnt3DP5CQuat  # OVL1; s1:calls
-0x00286B80 0x108 func_00286B80  # OVL1
+0x00286B80 0x108 Weight__9CSequenceFv  # OVL1; s1:align by hand (opcode-identical to SOCOM 1's Weight__9CSequenceFv, between PartInSpace and LinearWeight as there; it is quadW(LinearWeight()) with both inlined, bone_math.cpp)
 0x00286C90 0xB0 LinearWeight__9CSequenceFv  # OVL1; s1:align
-0x00286D40 0x28 func_00286D40  # OVL1
+0x00286D40 0x28 Tick__9CSequenceFf  # OVL1; s1:align by hand (opcode-identical to SOCOM 1's Tick__9CSequenceFf, between LinearWeight and Clear as there: m_currT run down by dT, held at zero, returned)
 0x00286D70 0x14 Clear__9CSequenceFv  # OVL1; s1:exact
 0x00286D90 0x1C Start__9CSequenceFfff  # OVL1; s1:exact
-0x00286DB0 0x6C func_00286DB0  # OVL1
+0x00286DB0 0x6C LineIntersectPlane__FfRC6CPnt3DRC6CPnt3DRC6CPnt3D  # OVL1; s1:align by hand (opcode-identical to SOCOM 1's, right before PlaneConstant as there: (-d - n.a) / n.(b - a))
 0x00286E20 0x30 PlaneConstant__FRC6CPnt3DRC6CPnt3D  # OVL1; s1:exact
-0x00286E50 0x3C0 func_00286E50  # OVL1
-0x00287210 0x2D8 func_00287210  # OVL1
-0x002874F0 0x60 func_002874F0  # OVL1
+0x00286E50 0x3C0 ClipToBox__FRC6CPnt3DRC6CPnt3DR6CPnt3Dffff  # OVL1; s1:align by hand (opcode skeleton 0.79 to SOCOM 1's ClipToBox, the only candidate, after PlaneConstant as there; four bounds tested on x and y, the segment clipped)
+0x00287210 0x2D8 GetFractionalRotations__FPC6CPnt3DPfPf  # OVL1; s1:align by hand (0.78 to SOCOM 1's, the only candidate, after ClipToBox as there; three clamped acosf of the vector's components, its xz length through sqrt)
+0x002874F0 0x60 quadW__Ff  # OVL1; s1:align by hand (opcode-identical to SOCOM 1's quadW__Ff, right before QFromRot as there; the SEAL lane's lead: CLook::LookTick calls it where SOCOM 1's calls quadW)
 0x00287550 0x74 QFromRot__FP5CQuatPC6CPnt3D  # OVL1; s1:calls
 0x002875D0 0x44 func_002875D0  # OVL1
 0x00287620 0xE98 func_00287620  # OVL1
@@ -3372,7 +3372,7 @@
 0x002886A0 0x18 func_002886A0  # OVL1
 0x002886C0 0x44 func_002886C0  # OVL1
 0x00288710 0x40 func_00288710  # OVL1
-0x00288750 0x178 func_00288750  # OVL1
+0x00288750 0x178 __dt__14CScriptArchiveFv  # OVL1; s1:align by hand (0.62 to SOCOM 1's ~CScriptArchive; bone_init.cpp's initialiser 0x3FFCE0 registers it as the destructor of both 0x120-byte archives, 0x415D40 and 0x415E60; it frees their scripts and destroys the CZAR at +0xC)
 0x002888D0 0x4C func_002888D0  # OVL1
 0x00288920 0xC func_00288920  # OVL1
 0x00288930 0xC func_00288930  # OVL1
@@ -3399,20 +3399,20 @@
 0x002892D0 0x20 func_002892D0  # OVL1
 0x002892F0 0x14 func_002892F0  # OVL1
 0x00289310 0x70 func_00289310  # OVL1
-0x00289380 0xE8 func_00289380  # OVL1
+0x00289380 0xE8 Read__10CZSIObjectFPUcUiPCc  # OVL1; s1:align by hand (0.68 to SOCOM 1's Read of a buffer, the unit's first function as there: the flags word's 0x20/0x10 bits make the track constant, positions then rotations laid over the buffer -- three shorts and four shorts a frame where SOCOM 1 read floats)
 0x00289470 0xF8 func_00289470  # OVL1
 0x00289570 0x258 func_00289570  # OVL1
 0x002897D0 0xC8 func_002897D0  # OVL1
 0x002898A0 0x188 func_002898A0  # OVL1
 0x00289A30 0x118 func_00289A30  # OVL1
 0x00289B50 0x5C func_00289B50  # OVL1
-0x00289BB0 0x20C func_00289BB0  # OVL1
-0x00289DC0 0x54 func_00289DC0  # OVL1
-0x00289E20 0x1C8 func_00289E20  # OVL1
-0x00289FF0 0x70 func_00289FF0  # OVL1
-0x0028A060 0x9C func_0028A060  # OVL1
+0x00289BB0 0x20C GetVelRaw__10CZSIObjectFP10CZSIScriptiiP6CPnt3D  # OVL1; s1:align by hand (0.49, the best of the unit, right before ~CZSIObject as SOCOM 1's GetVelRaw: two frames' positions read, their difference scaled; the weakest name here)
+0x00289DC0 0x54 __dt__10CZSIObjectFv  # OVL1; s1:align by hand (0.91 to SOCOM 1's destructor: numSiObject counted down, the deleting flag)
+0x00289E20 0x1C8 Read__10CZSIObjectFP10CZSIScriptRQ23zar4CZAR  # OVL1; s1:calls by hand (0.80 to SOCOM 1's; SOCOM II's CZSIScript::Read calls Initalize (0x289FF0) and then it on each new object, as SOCOM 1's Read does)
+0x00289FF0 0x70 Initalize__10CZSIObjectFP16CZSIScriptCommon  # OVL1; s1:align by hand (0.87 to SOCOM 1's Initalize: false for no common, else the constant bits and both pointers cleared -- SOCOM II also clears the use bit and the part id)
+0x0028A060 0x9C __ct__10CZSIObjectFv  # OVL1; s1:align by hand (0.67 to SOCOM 1's constructor, the unit's last function as there; the two pointers and the name cleared, the bits and part id zeroed, numSiObject counted up)
 0x0028A100 0x158 ReadLIP__10CZSIScriptFRQ23zar4CZARPCcPviPv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0028A260 0x108 func_0028A260  # OVL1
+0x0028A260 0x108 GetObject__10CZSIScriptFPCcb  # OVL1; s1:align by hand (0.98 opcode skeleton to SOCOM 1's GetObject, right after ReadLIP as there: the objects searched by name with strcasecmp)
 0x0028A370 0xF8 func_0028A370  # OVL1
 0x0028A470 0x70 func_0028A470  # OVL1
 0x0028A4E0 0x40 func_0028A4E0  # OVL1
@@ -3420,7 +3420,7 @@
 0x0028A530 0x14 func_0028A530  # OVL1
 0x0028A550 0x6C __dt__10CZSIScriptFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0028A5C0 0x29C Read__10CZSIScriptFRQ23zar4CZARi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0028A860 0x18C func_0028A860  # OVL1
+0x0028A860 0x18C CreateAndReadIt__10CZSIScriptFRQ23zar4CZARPCcPviPv  # OVL1; s1:align by hand (0.70 to SOCOM 1's CreateAndReadIt, after Read as there; its address is the callback 0x288710 hands the archive's walk 0x25A390, as SOCOM 1's loader hands CreateAndReadIt to CZAR::FetchAll; it news a CZSIScript, its table stored, and reads it)
 0x0028A9F0 0x2C func_0028A9F0  # OVL1
 0x0028AA20 0x98 func_0028AA20  # OVL1
 0x0028AAC0 0x50 func_0028AAC0  # OVL1
@@ -3432,27 +3432,27 @@
 0x0028AFE0 0x100 func_0028AFE0  # OVL1
 0x0028B0E0 0x6C func_0028B0E0  # OVL1
 0x0028B150 0x120 erase__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPUiPUi  # OVL1; s1:exact by hand (SOCOM 1's erase__ of __vector_pod<Ui> line for line, the copy unrolled 8x); CNodeVector::Remove's erase calls it
-0x0028B270 0x1D8 func_0028B270  # OVL1
+0x0028B270 0x1D8 AddCallback__22CZBodyAnimCallbackListFPCcf  # OVL1; s1:align by hand (0.70 to SOCOM 1's AddCallback, the first function of body.cpp as there: a "null" callback first when empty, the index of an equal (time, name) one, else a new 24-byte callback pushed)
 0x0028B450 0x68 func_0028B450  # OVL1
-0x0028B4C0 0xC0 func_0028B4C0  # OVL1
+0x0028B4C0 0xC0 Clear__22CZBodyAnimCallbackListFv  # OVL1; s1:align by hand (0.78 to SOCOM 1's Clear: each callback's string destroyed and the callback deleted, then the vector swapped with an empty one)
 0x0028B580 0x40 func_0028B580  # OVL1
 0x0028B5C0 0x8 func_0028B5C0  # OVL1
 0x0028B5D0 0x14 func_0028B5D0  # OVL1
-0x0028B5F0 0x80 func_0028B5F0  # OVL1
+0x0028B5F0 0x80 __dt__22CZBodyAnimCallbackListFv  # OVL1; s1:order by hand (after Clear as SOCOM 1's destructor follows it in its unit; Clear called, the pointer vector's three this-tested levels inlined, the deleting flag)
 0x0028B670 0x60 __dt__10CZBodyAnimFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0028B6D0 0x42C func_0028B6D0  # OVL1
+0x0028B6D0 0x42C Destroy__5CBodyFv  # OVL1; s1:calls by hand (SOCOM II's ~CBody calls it first, after storing CBody's table, exactly as SOCOM 1's ~CBody calls Destroy__5CBodyFv first; it frees the parts and anims and resets the blends)
 0x0028BB00 0x150 __dt__5CBodyFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0028BC50 0x40 func_0028BC50  # OVL1
-0x0028BC90 0x48 func_0028BC90  # OVL1
-0x0028BCE0 0x80 func_0028BCE0  # OVL1
-0x0028BD60 0x6C func_0028BD60  # OVL1
-0x0028BDD0 0x20 func_0028BDD0  # OVL1
+0x0028BC50 0x40 PutBack__10CBlendPoolFP15CZBodyAnimBlend  # OVL1; ours (SOCOM II's, between ~CBody and CountAnims: the blend cleared, then RTArray<CZBodyAnimBlend>::PutBack on this pool)
+0x0028BC90 0x48 GetNext__10CBlendPoolFv  # OVL1; ours (SOCOM II's: RTArray<CZBodyAnimBlend>::GetNext(true) on this pool, the blend cleared when there is one)
+0x0028BCE0 0x80 CountAnims__15CZBodyAnimBlendFv  # OVL1; s1:align by hand (0.88 opcode skeleton to SOCOM 1's CountAnims, the best of the unit; each anim and its overlays counted through RTList<ACTIVE_ANIM>'s Begin/Next, body.cpp)
+0x0028BD60 0x6C FindAnim__15CZBodyAnimBlendFi  # OVL1; s1:align by hand (0.79 to SOCOM 1's FindAnim, next to CountAnims as there; SOCOM II's compares the ACTIVE_ANIM's id at 0x22 with an int where SOCOM 1's took the CZBodyAnim: the signature ours)
+0x0028BDD0 0x20 AddOverlay__15CZBodyAnimBlendFP11ACTIVE_ANIMP11ACTIVE_ANIMf  # OVL1; s1:order by hand (SOCOM 1's AddOverlay follows FindAnim as this does and begins with the same stores: anim->overlay, overlay->overlay = 0, its weight from $f12, two fields copied; SOCOM II's drops the flag handling)
 0x0028BDF0 0xF4 func_0028BDF0  # OVL1
 0x0028BEF0 0x26C func_0028BEF0  # OVL1
-0x0028C160 0x74 func_0028C160  # OVL1
-0x0028C1E0 0x8 func_0028C1E0  # OVL1
-0x0028C1F0 0x2C func_0028C1F0  # OVL1
-0x0028C220 0x24 func_0028C220  # OVL1
+0x0028C160 0x74 ReverseDir__15CZBodyAnimBlendFv  # OVL1; s1:align by hand (0.66; SOCOM 1's ReverseDir line for line: flag 0x20 set, the first anim's playback made -fabsf, m_tfrac = m_quitT unless flag 0x40)
+0x0028C1E0 0x8 Representative__15CZBodyAnimBlendFv  # OVL1; s1:order by hand (after ReverseDir and before SetRepresentativeWt as in SOCOM 1; the first anim, m_anims.Begin() -- SOCOM 1's returned its CZBodyAnim)
+0x0028C1F0 0x2C SetRepresentativeWt__15CZBodyAnimBlendFf  # OVL1; s1:align by hand (0.91 to SOCOM 1's: the first anim's weight set)
+0x0028C220 0x24 ThisFoot__15CZBodyAnimBlendFv  # OVL1; s1:order by hand (after SetRepresentativeWt as in SOCOM 1, the same (int)(60 * m_tfrac), the conversion inline where SOCOM 1 called fptosi)
 0x0028C250 0x124 func_0028C250  # OVL1
 0x0028C380 0x16C func_0028C380  # OVL1
 0x0028C4F0 0x1F0 func_0028C4F0  # OVL1
@@ -3460,9 +3460,9 @@
 0x0028C7C0 0x220 func_0028C7C0  # OVL1
 0x0028C9E0 0x230 func_0028C9E0  # OVL1
 0x0028CC10 0x290 func_0028CC10  # OVL1
-0x0028CEA0 0x104 func_0028CEA0  # OVL1
-0x0028CFB0 0x8 func_0028CFB0  # OVL1
-0x0028CFC0 0x5C func_0028CFC0  # OVL1
+0x0028CEA0 0x104 Clear__15CZBodyAnimBlendFv  # OVL1; s1:align by hand (0.56 to SOCOM 1's Clear, the only candidate: its anims' RTList cleared and the blend's points zeroed; CBlendPool's get and put call it)
+0x0028CFB0 0x8 PushAnim__FP15CActiveAnimListP11ACTIVE_ANIMf  # OVL1; s1:align by hand (opcode-identical to SOCOM 1's PushAnim: the weight stored, RTList<ACTIVE_ANIM>::Add tail-called; SOCOM II moved it from bone_math.cpp into body.cpp)
+0x0028CFC0 0x5C RenormAnims__FP15CActiveAnimListf  # OVL1; s1:align by hand (0.95 to SOCOM 1's RenormAnims, right after PushAnim as there: every weight on the list scaled)
 0x0028D020 0x74 func_0028D020  # OVL1
 0x0028D0A0 0xC4 func_0028D0A0  # OVL1
 0x0028D170 0x278 func_0028D170  # OVL1
@@ -3488,40 +3488,40 @@
 0x0028E480 0xAC func_0028E480  # OVL1
 0x0028E530 0x24C func_0028E530  # OVL1
 0x0028E780 0x30 func_0028E780  # OVL1
-0x0028E7B0 0xC8 func_0028E7B0  # OVL1
-0x0028E880 0xF8 func_0028E880  # OVL1
-0x0028E980 0x80 func_0028E980  # OVL1
+0x0028E7B0 0xC8 FindPart__5CBodyCFPCc  # OVL1; s1:align by hand (0.83 to SOCOM 1's FindPart: the parts' nodes' names compared with strcmp)
+0x0028E880 0xF8 FindAuxNode__5CBodyFPCcb  # OVL1; s1:align by hand (0.86 to SOCOM 1's FindAuxNode)
+0x0028E980 0x80 AttachAuxPart__5CBodyFP10CZBodyPartP10CZBodyPart  # OVL1; s1:align by hand (0.88 to SOCOM 1's AttachAuxPart: the part pushed on a vector)
 0x0028EA00 0x160 func_0028EA00  # OVL1
-0x0028EB60 0x8 func_0028EB60  # OVL1
+0x0028EB60 0x8 __ct__5CQuatFv  # OVL1; by hand (an empty constructor's out-of-line copy: new CZBodyPart calls it for the two CQuat members at 0x20 and 0x30, after CPnt3D's 0x1FB3C0 for the two at 0x0 and 0x10, in member order; it follows AttachAuxNode, its first caller)
 0x0028EB70 0x68 func_0028EB70  # OVL1
-0x0028EBE0 0x40 func_0028EBE0  # OVL1
+0x0028EBE0 0x40 AddBodyPart__5CBodyFPQ23zdb5CNodeP10CZBodyPart  # OVL1; s1:order by hand (SOCOM 1's AttachAuxNode, AddBodyPart, NullNode, NewBodyPart, BodySetup run in this order here too: NewBodyPart called, the part filed in m_body_parts by its id)
 0x0028EC20 0x8 NullNode__5CBodyCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0028EC30 0xBC func_0028EC30  # OVL1
-0x0028ECF0 0xD8 func_0028ECF0  # OVL1
+0x0028EC30 0xBC NewBodyPart__5CBodyFPQ23zdb5CNodeP10CZBodyPart  # OVL1; s1:order by hand (as AddBodyPart: NullNode's id, else the bone id of the node's name, then new CZBodyPart(node) with parent and id)
+0x0028ECF0 0xD8 BodySetup__5CBodyFPQ23zdb5CNodeP10CZBodyPart  # OVL1; s1:order by hand (as AddBodyPart: the part filed, then itself on every child of the node)
 0x0028EDD0 0xB0 func_0028EDD0  # OVL1
 0x0028EE80 0x4C func_0028EE80  # OVL1
-0x0028EED0 0x5C func_0028EED0  # OVL1
-0x0028EF30 0xDC func_0028EF30  # OVL1
-0x0028F010 0x74 func_0028F010  # OVL1
-0x0028F090 0x38 func_0028F090  # OVL1
-0x0028F0D0 0x48 func_0028F0D0  # OVL1
-0x0028F120 0x28 func_0028F120  # OVL1
-0x0028F150 0x40 func_0028F150  # OVL1
+0x0028EED0 0x5C Orient__10CZBodyPartFv  # OVL1; s1:align by hand (opcode-identical to SOCOM 1's Orient: the node's position and rotation set from the part's)
+0x0028EF30 0xDC Clear__10CZBodyPartFv  # OVL1; ours (every field of a CZBodyPart to rest: node and parent 0, position zero, rotation identity, the saved pair likewise, two bits set, id -1; the constructor's body, which new inlines one level -- NewBodyPart and AttachAuxNode call the four members' constructors, then this)
+0x0028F010 0x74 __ct__26RTStack<15CZBodyAnimBlend>FUi  # OVL1; s1:align by hand (0.89 to SOCOM 1's; CBody's constructor builds its stack of blends at 0x50 with it, size 8)
+0x0028F090 0x38 Push__26RTStack<15CZBodyAnimBlend>FP15CZBodyAnimBlend  # OVL1; s1:align by hand (opcode-identical to SOCOM 1's Push)
+0x0028F0D0 0x48 Pop__26RTStack<15CZBodyAnimBlend>Fv  # OVL1; s1:align by hand (0.93 to SOCOM 1's Pop)
+0x0028F120 0x28 Begin__21RTList<11ACTIVE_ANIM>Fv  # OVL1; s1:align by hand (opcode-identical to SOCOM 1's; body.cpp's tail, called by CountAnims and the blend's walks)
+0x0028F150 0x40 Next__21RTList<11ACTIVE_ANIM>Fv  # OVL1; s1:align by hand (opcode-identical to SOCOM 1's, after Begin)
 0x0028F190 0x14 func_0028F190  # OVL1
 0x0028F1B0 0x28 func_0028F1B0  # OVL1
 0x0028F1E0 0x38 _close_enough<f>__FRCfRCfRCf_b  # OVL1; s1:callee by hand (SlerpFaster calls it where SOCOM 1 calls _close_enough<f>; the same compare, a newer compiler); MW 3.0 appends a function template's return type (_b), which SOCOM 1's compiler did not
 0x0028F220 0xFC func_0028F220  # OVL1
-0x0028F320 0x48 func_0028F320  # OVL1
-0x0028F370 0xC0 func_0028F370  # OVL1
-0x0028F430 0x80 func_0028F430  # OVL1
-0x0028F4B0 0x7C func_0028F4B0  # OVL1
-0x0028F530 0x8C func_0028F530  # OVL1
+0x0028F320 0x48 Clear__21RTList<11ACTIVE_ANIM>Fv  # OVL1; s1:align by hand (0.81 to SOCOM 1's: head, tail and cursor cleared, every pool link zeroed)
+0x0028F370 0xC0 Remove__21RTList<11ACTIVE_ANIM>FP11ACTIVE_ANIM  # OVL1; s1:align by hand (0.94 to SOCOM 1's Remove)
+0x0028F430 0x80 Add__21RTList<11ACTIVE_ANIM>FP11ACTIVE_ANIM  # OVL1; s1:align by hand (0.95 to SOCOM 1's Add)
+0x0028F4B0 0x7C PutBack__22RTArray<11ACTIVE_ANIM>FP11ACTIVE_ANIM  # OVL1; s1:align by hand (0.95 to SOCOM 1's PutBack; the first RTArray instance of the tail, its element constructor 0x28F960 that of a 0x2C-byte ACTIVE_ANIM)
+0x0028F530 0x8C GetNext__22RTArray<11ACTIVE_ANIM>Fb  # OVL1; s1:align by hand (0.91 to SOCOM 1's GetNext, after its PutBack)
 0x0028F5C0 0x1A0 func_0028F5C0  # OVL1
 0x0028F760 0xA4 func_0028F760  # OVL1
 0x0028F810 0x144 func_0028F810  # OVL1
 0x0028F960 0x6C func_0028F960  # OVL1
-0x0028F9D0 0x7C func_0028F9D0  # OVL1
-0x0028FA50 0x8C func_0028FA50  # OVL1
+0x0028F9D0 0x7C PutBack__26RTArray<15CZBodyAnimBlend>FP15CZBodyAnimBlend  # OVL1; s1:align by hand (0.95 to SOCOM 1's PutBack of either RTArray; this one is CBlendPool's: 0x28BC50 calls it, and the RTArray<CZBodyAnimBlend> destructor and constructor follow it)
+0x0028FA50 0x8C GetNext__26RTArray<15CZBodyAnimBlend>Fb  # OVL1; s1:align by hand (0.91 to SOCOM 1's GetNext; CBlendPool's GetNext calls it with true)
 0x0028FAE0 0x184 func_0028FAE0  # OVL1
 0x0028FC70 0x58 func_0028FC70  # OVL1
 0x0028FCD0 0x8C func_0028FCD0  # OVL1
@@ -3530,10 +3530,10 @@
 0x0028FF00 0xC4 func_0028FF00  # OVL1
 0x0028FFD0 0x144 func_0028FFD0  # OVL1
 0x00290120 0xC0 func_00290120  # OVL1
-0x002901E0 0x60 func_002901E0  # OVL1
-0x00290240 0x44 func_00290240  # OVL1
-0x00290290 0xB0 func_00290290  # OVL1
-0x00290340 0x14 func_00290340  # OVL1
+0x002901E0 0x60 __dt__21RTList<11ACTIVE_ANIM>Fv  # OVL1; by hand (the pool deleted through __destroy_new_array with LIST_ITEM's destructor 0x290240, the deleting flag; the last of body.cpp's tail with the constructor 0x290290, which CZBodyAnimBlend's constructor calls)
+0x00290240 0x44 __dt__Q221RTList<11ACTIVE_ANIM>9LIST_ITEMFv  # OVL1; s1:align by hand (0.97 to SOCOM 1's; handed to the pool's new[] and delete[] as the element destructor)
+0x00290290 0xB0 __ct__21RTList<11ACTIVE_ANIM>FUi  # OVL1; s1:align by hand (0.93 to SOCOM 1's: the size, three links cleared, the pool new[]'d with LIST_ITEM's constructor 0x290340 and zeroed)
+0x00290340 0x14 __ct__Q221RTList<11ACTIVE_ANIM>9LIST_ITEMFv  # OVL1; s1:align by hand (opcode-identical to SOCOM 1's: three words zeroed)
 0x00290360 0x8 IsCell__Q23zdb5CNodeFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00290370 0xD8 func_00290370  # OVL1
 0x00290450 0x88 func_00290450  # OVL1
