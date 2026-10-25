@@ -614,7 +614,7 @@ public:
     void SendEndGameReport();
     void GetAnnouncements();
     void GetUsagePolicy();
-    void PasswordSecurity();
+    static void PasswordSecurity();
     bool RemovePlayerFromClan(const char *name);
     bool SendClanMessage(const char *text);
     void GetClanMessages();
@@ -662,7 +662,7 @@ public:
     int m_curr_seq_idx;   // 0xa4
     unsigned char m_a8;   // 0xa8: set by the constructor (SOCOM II's)
     unsigned char _a9[3];
-    int m_ac;   // 0xac
+    float m_loginTime;   // 0xac: when the account logged in (the clock 0x4A44A0; SOCOM II's)
     /* SOCOM 1's uiv_* statics, members now */
     CUIVariable *uiv_GameList;   // 0xb0
     CUIVariable *uiv_RoomList;   // 0xb4

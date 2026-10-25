@@ -191,7 +191,33 @@ struct MediusSessionBeginResponse { MEDIUS_RESPONSE_HEAD };
 struct MediusVersionServerResponse { MEDIUS_RESPONSE_HEAD };
 struct MediusSessionEndResponse { MEDIUS_RESPONSE_HEAD };
 struct MediusAccountRegistrationResponse { MEDIUS_RESPONSE_HEAD };
-struct MediusAccountLoginResponse { MEDIUS_RESPONSE_HEAD };
+struct MediusAccountLoginResponse {
+    MEDIUS_RESPONSE_HEAD
+    int AccountID;   // 0x1c
+    int AccountType;   // 0x20
+    int MediusWorldID;   // 0x24
+    NetConnectionInfo ConnectInfo;   // 0x28
+};   // 0xc4
+
+/* the console's language and text encoding told to Medius (SOCOM II's) */
+struct MediusSetLocalizationParamsRequest {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];   // 0x15
+    int CharacterEncoding;   // 0x28: 2
+    int Language;   // 0x2c
+};   // 0x30
+
+/* the console's DNAS id posted (SOCOM II's) */
+struct MediusMachineSignaturePost {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];   // 0x15
+    int _28;   // 0x28
+    unsigned char Length;   // 0x2c
+    unsigned char Signature[32];   // 0x2d
+    unsigned char _4d[0x50 - 0x4d];
+};   // 0x50
+
+struct MediusSetLocalizationParamsResponse { MEDIUS_RESPONSE_HEAD };
 
 extern "C" {
 extern ChatAccountInfo AccountInfo;
@@ -211,7 +237,15 @@ MediusErrorCode func_00647F48(MediusAccountLoginRequest *req,
 void func_002EE910(int, int, int, MediusSessionBeginResponse *);   /* cbSessionBegin */
 void func_002EFE00(int, int, int, MediusVersionServerResponse *);   /* cbVersionServer */
 void func_002EE7B0(int, int, int, MediusSessionEndResponse *);   /* cbSessionEnd */
-void func_002EEC10(int, int, int, MediusAccountLoginResponse *);   /* cbAccountLoginAfterRegister */
+MediusErrorCode func_0064AB98(MediusSetLocalizationParamsRequest *req,
+                              void (*cb)(int, int, int, MediusSetLocalizationParamsResponse *));   /* MediusSetLocalizationParams */
+MediusErrorCode func_00647EC0(MediusMachineSignaturePost *req);   /* the DNAS id posted */
+void func_002EF3B0(int, int, int, MediusSetLocalizationParamsResponse *);   /* its callback */
+int func_002EF340(unsigned char language);   /* the console's language as Medius's */
+unsigned char func_003A4460();   /* the console's language */
+extern NetConnectionInfo data_0066A840;   /* the account's lobby server (OVL2 bss) */
+extern unsigned char data_0044F890[64];   /* the server's key kept */
+extern unsigned char data_0066A8E0;   /* logged in */
 
 MediusErrorCode func_00648840(MediusCreateChannelRequest *req,
                               void (*cb)(int, int, int, MediusCreateChannelResponse *));   /* MediusCreateChannel */
@@ -524,6 +558,99 @@ void CreateRoomStateHandler(LOBBY_STATE_FLAG flag)
 
 void cbAccountRegistration(int, int, int, MediusAccountRegistrationResponse *resp);
 
+unsigned char *GetDNASUniqueID(int *size);
+
+/* the account logged in: its lobby server kept for the room, the menus told otherwise (SOCOM
+ * 1's; OVL1 0x2EEFA0) */
+void cbAccountLogin(int, int, int, MediusAccountLoginResponse *resp)
+{
+    if (CheckMediusCallbackStatus("AccountLogin", resp->StatusCode)) {
+        AccountInfo.AccountID = resp->AccountID;
+        data_0066A840 = resp->ConnectInfo;
+        data_0066A540 = data_0066A840;
+        CopyField(data_0044F890, resp->ConnectInfo.ServerKey, sizeof(data_0044F890));
+        theLobby.ChangeState(LOBBY_SERVER_CONNECT);
+        data_0066A8E0 = 1;
+        CZOnlineLobby::PasswordSecurity();
+        theLobby.m_loginTime = data_004A44A0;
+    } else {
+        switch (resp->StatusCode) {
+        case (MediusCallbackStatus)-978:
+            LobbyEvent("MP_INVALID_PASSWORD", 0);
+            break;
+        case (MediusCallbackStatus)-997:
+            LobbyEvent("MP_PLAYER_LOGGED_IN", 0);
+            break;
+        case (MediusCallbackStatus)-998:
+            theLobby.ChangeState(LOGIN_FAILURE);
+            break;
+        default:
+            LobbyEvent("MP_MEDIUS_ERROR", "Login Failure");
+            break;
+        }
+    }
+}
+
+/* ACCOUNT_LOGIN: the language told, the console's DNAS id posted, the account logged in (SOCOM
+ * 1's, which only logged in; OVL1 0x2EEDE0) */
+void AccountLoginStateHandler(LOBBY_STATE_FLAG flag)
+{
+    switch (flag) {
+    case REGISTER:
+        break;
+    case ENTRY: {
+        int len;
+        MediusAccountLoginRequest login;
+        MediusMachineSignaturePost post;
+        MediusSetLocalizationParamsRequest loc;
+
+        memset(&loc, 0, sizeof(loc));
+        SetSessionKey(loc.SessionKey);
+        loc.CharacterEncoding = 2;
+        loc.Language = func_002EF340(func_003A4460());
+        CheckMediusError(func_0064AB98(&loc, func_002EF3B0));
+        unsigned char *id = GetDNASUniqueID(&len);
+        if (id && len > 0 && len < 33) {
+            memset(&post, 0, sizeof(post));
+            memset(&post, 0, sizeof(post));
+            SetSessionKey(post.SessionKey);
+            post._28 = 0;
+            post.Length = len;
+            memcpy(post.Signature, id, len);
+            func_002F4080(&post, 138);
+            CheckMediusError(func_00647EC0(&post));
+        }
+        memset(&login, 0, sizeof(login));
+        SetSessionKey(login.SessionKey);
+        CopyFrom(login.AccountName, AccountInfo.AccountName, sizeof(login.AccountName));
+        CopyFrom(login.Password, AccountInfo.Password, sizeof(login.Password));
+        CheckMediusError(func_00647F48(&login, cbAccountLogin));
+        break;
+    }
+    case TICK:
+        break;
+    case EXIT:
+        break;
+    case UNREGISTER:
+        break;
+    }
+}
+
+/* the account just registered logged in: its lobby server kept (SOCOM 1's; OVL1 0x2EEC10) */
+void cbAccountLoginAfterRegister(int, int, int, MediusAccountLoginResponse *resp)
+{
+    if (CheckMediusCallbackStatus("AccountLoginAfterRegister", resp->StatusCode)) {
+        AccountInfo.AccountID = resp->AccountID;
+        data_0066A540 = resp->ConnectInfo;
+        CopyField(data_0044F890, resp->ConnectInfo.ServerKey, sizeof(data_0044F890));
+        data_0066A8E0 = 1;
+        theLobby.ChangeState(LOBBY_SERVER_CONNECT);
+        CZOnlineLobby::PasswordSecurity();
+    } else {
+        theLobby.ChangeState(REGISTRATION_FAILURE);
+    }
+}
+
 /* the account just registered logged in (SOCOM 1's; OVL1 0x2EEB50) */
 void cbAccountRegistration(int, int, int, MediusAccountRegistrationResponse *resp)
 {
@@ -534,7 +661,7 @@ void cbAccountRegistration(int, int, int, MediusAccountRegistrationResponse *res
         SetSessionKey(req.SessionKey);
         CopyFrom(req.AccountName, AccountInfo.AccountName, sizeof(req.AccountName));
         CopyFrom(req.Password, AccountInfo.Password, sizeof(req.Password));
-        CheckMediusError(func_00647F48(&req, func_002EEC10));
+        CheckMediusError(func_00647F48(&req, cbAccountLoginAfterRegister));
     } else {
         theLobby.ChangeState(REGISTRATION_FAILURE);
     }
