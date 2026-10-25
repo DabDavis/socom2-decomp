@@ -183,8 +183,9 @@
 0x003DFD10 0x4 UNNAMED_NODE  # OVL1; SOCOM 1 name (node_main.cpp's file static: the name nameless nodes share; CNode::SetName reads it)
 0x003DFD18 0x4 DELETED_NODE  # OVL1; SOCOM 1 name (the name a node is left with as it is destroyed; ~CNode stores it after SetName(0), as SOCOM 1's)
 0x003DFE10 0x4 m_scale__Q23zdb6CWorld  # OVL1; s1:data-seq (size SOCOM 1's; via Load__17CharacterDynamicsFRC8CRdrFile)
+0x003DFFD0 0x4 m_bnkoffset__4CSnd  # OVL1 data; SOCOM 1's CSnd static (its symbol): CSnd::Init stores the bank archive's disc offset (CFileCD's entry for BNKSTORE.ZAR, word 1) in it as SOCOM 1's Init stores m_bnkoffset; 2 references in 2 functions
 0x003E0070 0x4 m_mastervol__12CSndInstance  # OVL1; s1:data-seq (size SOCOM 1's; via SetVol__12CSndInstanceFf)
-0x003E0080 0x1 m_inFight__11CSndJukebox  # OVL1 data; CSndJukebox static (name ours: SOCOM 1's Start clears a flag byte so); 4 references in 4 functions
+0x003E0080 0x1 m_jukebox_stopped__11CSndJukebox  # OVL1 data; SOCOM 1's CSndJukebox static (its symbol, 0x4755B0 there): Start clears it and Cleanup sets it in both builds (was m_inFight, ours); 4 references in 4 functions
 0x003E0980 0xC0 framecode  # OVL1; s1:data-seq (size SOCOM 1's; via zVid_FrameRestore__Fv)
 0x003E1200 0x10 zon_writeon_dmaref  # OVL1; s1:data-exact (size SOCOM 1's; via zVid_ZTestOnWriteSet__Fb)
 0x003E13F8 0x4 m_defaultFrameRate__6CVideo  # OVL1; SOCOM 1's (CCoreState::Init gives it back to MaxFrameRate, as SOCOM 1's): 2 references in 2 functions take 0x3E13F8
@@ -693,11 +694,19 @@
 0x004887C0 0x720 thePipe  # OVL1 bss; SOCOM 1's (0x694 bytes; SOCOM II's runs to VifHandlerID at 0x720: the camera at 0x628, the UI node at 0x630, its flags at 0x711 and 0x714 as the states use them): 115 references in 32 functions take 0x4887C0-0x488ED8
 0x00488EE0 0x4 VifHandlerID  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Uninit__5CPipeFv)
 0x00488FB0 0x4 gStreamingInited  # OVL1 bss; s1:data-seq (size SOCOM 1's; via snd_StopSoundSystem +1)
+0x00488FC0 0x4 gSSRead  # OVL1 bss; SOCOM 1's global (its symbol): snd_StreamSafeCdRead sets it as SOCOM 1's does (gp 0x476414 there); 3 references in 2 functions
+0x00488FC8 0x4 gSSReadDone  # OVL1 bss; SOCOM 1's global (its symbol): snd_StreamSafeCdSync stores the status block's !busy in it as SOCOM 1's does (0x476418 there); 13 references in 6 functions
+0x0048DA00 0x40 gStats  # OVL1 bss; SOCOM 1's global (its symbol, 32 bytes there): the status block the IOP writes (word 0 busy, word 4 the read's error), invalidated by snd_StreamSafeCdSync, registered by snd_StartSoundSystem; 22 references in 7 functions
+0x0048DA48 0x4 gCaching  # OVL1 bss; SOCOM 1's global (its symbol, 0x476424): snd_StartCaching sets it, snd_SendCache clears it, the senders test it; 8 references in 5 functions
+0x0048DA78 0x4 gLoadBusy  # OVL1 bss; SOCOM 1's global (its symbol, 0x476428): tested before streaming starts or stops as SOCOM 1's is; 8 references in 6 functions
+0x0048DC70 0xA4 m_bnkArchive__4CSnd  # OVL1 bss; SOCOM 1's CSnd static (its symbol, a zar::CZAR, size SOCOM 1's): CSnd::Init opens run/sounds/bnkstore.zar on it and keeps its directory, as SOCOM 1's Init does with m_bnkArchive; 4 references in 2 functions
 0x0048DD28 0x1 m_isDisabled__4CSnd  # OVL1 bss; s1:data-seq (size SOCOM 1's; via LoadCSndGroup__9CSndGroupFP5_zrdr +8)
+0x0048DD30 0x1 m_hasreverb__4CSnd  # OVL1 bss; SOCOM 1's CSnd static (its symbol): CSnd::Init (and the reboot handler) ramp the reverb down and clear it when set, as SOCOM 1's Init does with m_hasreverb; 10 references in 3 functions
 0x0048DD80 0x4 m_numStreams__4CSnd  # OVL1 bss; SOCOM II's CSnd static (name ours): the streamed voices playing, ReleaseSoundInstance takes one off; 7 references in 5 functions
 0x0048DD88 0x4 m_numActive__4CSnd  # OVL1 bss; SOCOM II's CSnd static (name ours): the voices acquired, AcquireSoundInstance counts up and ReleaseSoundInstance down; 4 references in 2 functions
 0x0048DD90 0x4 m_errorsound__4CSnd  # OVL1 bss; s1:data-seq (size SOCOM 1's; via PlayErrorSound__4CSndFv)
 0x0048DD98 0x4 m_max_num_vags__4CSnd  # OVL1 bss; s1:data-seq (size SOCOM 1's; via WaitForCDRead__4CSndFv)
+0x0048DF10 0x1 bnkArchiveIsOpen  # OVL1 bss; SOCOM 1's static of zsnd_csnd.cpp (LOCAL in its symbols): CSnd::Init sets it before opening the bank archive, once, as SOCOM 1's; 2 references in 1 function
 0x0048DF30 0x1 snd_system_initialized  # OVL1 bss; s1:data-seq (size SOCOM 1's; via WaitForCDRead__4CSndFv)
 0x0048DF80 0x1 m_paused__12CSndInstance  # OVL1 bss; CSndInstance static (name ours): Init clears it, PauseAllSounds sets it; 2 references in 2 functions
 0x0048DF98 0xC m_list__12CSndInstance  # OVL1 bss; CSndInstance static (name ours): the voices playing, a list<CSndInstance *> (0x403230 constructs it and registers its destructor); 28 references in 13 functions
@@ -705,8 +714,11 @@
 0x0048DFD8 0xC m_vec__12CSndInstance  # OVL1 bss; CSndInstance static (name ours): a vector<CSndInstance *> RemoveFromList releases and Cleanup clears (0x403230 registers its destructor); 18 references in 6 functions
 0x0048DFE8 0x4 m_numAllocated__12CSndInstance  # OVL1 bss; CSndInstance static (name ours): the voices built, InitInstancePool and AcquireSoundInstance count them; 4 references in 2 functions
 0x0048DFF0 0x4 m_numInits__12CSndInstance  # OVL1 bss; CSndInstance static (name ours): InitInstance counts its calls; 2 references in 1 function
+0x0048E010 0x30 m_playlists__11CSndJukebox  # OVL1 bss; CSndJukebox static (name ours; SOCOM 1 kept two such lists): four vectors of CSndSequence pointers, one per intensity, freed by Cleanup and filled by LoadMusicLists; 5 references (to the array's start) in 4 functions
+0x0048E050 0x30 m_weights__11CSndJukebox  # OVL1 bss; CSndJukebox static (name ours): the four playlists' weights, vectors of float, freed by Cleanup; 8 references (to the array's start) in 5 functions
 0x0048E080 0x4 m_instance__11CSndJukebox  # OVL1 bss; CSndJukebox static (name ours): the music's playing voice, FadeOut fades it when no sequence plays; 26 references in 7 functions
 0x0048E088 0x4 m_sequence__11CSndJukebox  # OVL1 bss; CSndJukebox static (name ours): the music's playing sequence, FadeOut fades it first; 19 references in 7 functions
+0x0048E090 0x1 m_currentmode__11CSndJukebox  # OVL1 bss; SOCOM 1's CSndJukebox static (its symbol, 0x4764A4 there): Cleanup sets it to -1 after the current sound and before the current sequence, as SOCOM 1's; 14 references in 4 functions
 0x0048E098 0x1 m_playlists_loaded__11CSndJukebox  # OVL1 bss; s1:data-seq (size SOCOM 1's; via LoadPlaylists__11CSndJukeboxFPCc)
 0x0048E0A0 0x1 m_mode__11CSndJukebox  # OVL1 bss; CSndJukebox static (name ours): the music mode, a byte MUSIC_MODE that SetIntensity steps; 13 references in 4 functions
 0x0048E0A8 0x1 m_modeChanged__11CSndJukebox  # OVL1 bss; CSndJukebox static (name ours): whether SetIntensity changed the mode; 3 references in 2 functions

@@ -53,12 +53,34 @@ void snd_StopAllStreams(void);
 int snd_StreamSafeCheckCDIdle(int block);
 void snd_DoExternCall(unsigned int id, int func, int a, int b, int c, int d, int e);
 void snd_DoExternCall_A(unsigned int id, int func, int a, int b, int c, int d, int e);
+void snd_DoExternCall_CB(unsigned int id, int func, int a, int b, int c, int d, int e,
+                         SndCompleteProc callback, unsigned long user_data);
+int func_0033F050(int x);
+int snd_GetTransStatus(void);
+void snd_StartMovieSound(void *buf, int size, int end, int freq, int channels);
+void snd_CloseMovieSound(void);
+void snd_ResetMovieSound(void);
+int snd_InitMovieSound(int bytes, int a, int vol, int b, int c, int mode);
+void func_0033F260(int core, int type, int depth, int delay, int feedback);
+void snd_SetReverbType(int core, int type);
+int snd_StreamSafeCdGetError(void);
+int snd_StreamSafeCdSync(int mode);
+int snd_StreamSafeCdRead(unsigned int lbn, unsigned int sectors, void *buf, void *mode);
+void snd_PlayVAGStreamByLoc_CB(int loc1, int loc2, int offset1, int offset2, int vol, int pan,
+                               int group, int parent, int priority, int flags,
+                               SndCompleteProc callback, unsigned long user_data);
+void snd_CloseVAGStreaming(void);
+int snd_StartSoundSystem(int flags);
+void snd_StopSoundSystem(void);
 }
 
 /* --- the game's classes --- */
 
 class CSndInstance;
 class CValve;
+namespace zar {
+class CZAR;
+}
 struct _zrdr;
 
 /* SOCOM 1's DWARF (bytes under -enum min) */
@@ -101,10 +123,12 @@ public:
     virtual void SetDialogMode() { m_mode = 3; }
 
     static CSnd *GetSoundByName(const char *name);
+    static void AddNewCSnd(CSnd *sound);
     static void SetGroupVol(int group, float vol);
     static void LoadReverbs(_zrdr *rdr);
     static void LoadIndoorReverbs(_zrdr *rdr);
     static void LoadOutdoorReverbs(_zrdr *rdr);
+    static void Init();
     static void Close();
     static void Open();
     static void UIOpen();
@@ -120,6 +144,9 @@ public:
     static int m_max_num_vags;          /* 0x48DD98 */
     static int m_numStreams;            /* 0x48DD80: streamed voices playing (name ours) */
     static int m_numActive;             /* 0x48DD88: voices acquired (name ours) */
+    static bool m_hasreverb;            /* 0x48DD30 (SOCOM 1's) */
+    static int m_bnkoffset;             /* 0x3DFFD0: the bank archive's disc offset (SOCOM 1's) */
+    static zar::CZAR m_bnkArchive;      /* 0x48DC70: the bank archive (SOCOM 1's) */
 
     float m_vol;                        /* 0x04 */
     char *m_name;                       /* 0x08 */
@@ -155,6 +182,7 @@ public:
  * picks a member by weight, then lowers the winner's weight by m_decay and renormalises. */
 class CSndGroup : public CSnd {
 public:
+    CSndGroup() : m_decay(0.0f) {}
     virtual ~CSndGroup();
     virtual CSndInstance *PlaySound(CSndInstance *inst, unsigned int flags);
     virtual CSndInstance *PlaySoundVol(float vol, CSndInstance *inst, unsigned int flags);
@@ -173,6 +201,8 @@ public:
             (*i)->SetDialogMode();
     }
     void NormalizeWeights();
+    void LoadCSndGroup(_zrdr *rdr);
+    static void LoadSoundGroups(const char *name);
     /* the member to play (ours: the four plays inline it) */
     CSnd *PickSound()
     {
@@ -213,20 +243,21 @@ class CSndInstanceVec : public std::vector<CSndInstance *> {
 /* One playing voice: SOCOM 1's 0x28 bytes, a word added at 0xC and the flag bytes packed. */
 class CSndInstance {
 public:
+    /* the early return: InitInstancePool's inlined copy branches over the stores so */
     CSndInstance()
     {
-        if (!CSnd::m_isDisabled) {
-            m_handle = 0;
-            m_parent = 0;
-            m_is3D = false;
-            m_forcedLoop = false;
-            m_terminateOnFinish = false;
-            m_terminateASAP = false;
-            m_pauseASAP = false;
-            m_continueASAP = false;
-            m_socom2_bit6 = false;
-            m_c = 0;
-        }
+        if (CSnd::m_isDisabled)
+            return;
+        m_handle = 0;
+        m_parent = 0;
+        m_is3D = false;
+        m_forcedLoop = false;
+        m_terminateOnFinish = false;
+        m_terminateASAP = false;
+        m_pauseASAP = false;
+        m_continueASAP = false;
+        m_socom2_bit6 = false;
+        m_c = 0;
     }
     CSndInstance(unsigned int handle, CSnd *parent)
     {
@@ -250,6 +281,34 @@ public:
         }
         return false;
     }
+    /* SOCOM II's (names ours): a voice paused and continued -- while its play command is queued,
+     * by the pending flags. Bit 1 is the paused flag here */
+    void PauseVoice()
+    {
+        if (CSnd::m_isDisabled)
+            return;
+        m_forcedLoop = true;
+        if (m_handle == -1) {
+            if (m_continueASAP)
+                m_continueASAP = false;
+            m_pauseASAP = true;
+        } else
+            snd_PauseSound(m_handle);
+    }
+    void ContinueVoice()
+    {
+        if (CSnd::m_isDisabled)
+            return;
+        if (!m_forcedLoop)
+            return;
+        if (m_handle == -1) {
+            if (m_pauseASAP)
+                m_pauseASAP = false;
+            else
+                m_continueASAP = true;
+        } else
+            snd_ContinueSound(m_handle);
+    }
     /* the 989snd volume of a level (name ours): FadeOut's call with 0 keeps its products */
     int CalcVol(float vol) { return (int)(m_vol * (1024.0f * vol * m_mastervol)); }
     static void PlaySoundCallback(unsigned int handle, unsigned long user_data);
@@ -257,6 +316,12 @@ public:
     static void RemoveFromList();
     static void RemoveFromList(CSndInstance *instance);
     static void DebugSoundList();
+    static void ResumeAllSounds(SOUND_MODE mode);
+    static void PauseAllSounds(SOUND_MODE mode);
+    static void StopAllSounds(SOUND_MODE mode);
+    static void StopAllSounds();
+    static void FadeOutAllSounds();
+    static bool PostTick(float dT, void *data);
     static void Init();
     static void Cleanup();
     void TerminateOnFinish();
@@ -265,6 +330,12 @@ public:
     bool IsFading();
     void FadeOut(float time);
     void SetPos(const CPnt3D *pos);
+    bool Tick(float dT);
+    static void AwarenessUpgrade(unsigned int entityID);
+    static void Remove(unsigned int entityID, bool efx, bool music, bool all);
+    /* the sound's mode is n (ours: Remove's test, as SOCOM 1's -- whose parent test is inverted,
+     * in both builds: a voice with a sound reads as no mode, one without reads through null) */
+    bool IsMode(int n) { return m_parent ? false : m_parent->m_mode == n; }
     void SetPitch(int pitch);
     void SetPan(int pan);
     void SetVol(float vol);
@@ -349,6 +420,14 @@ public:
     static void Play(MUSIC_MODE mode, CSnd *sound);
     static void ClearQueue();
     static void FadeOut();
+    static void LoadPlaylists(const char *name);
+    static void LoadMusicLists(_zrdr *rdr, int mode);
+    static void Cleanup();
+
+    static std::vector<CSndSequence *> m_playlists[4];  /* 0x48E010: by intensity (SOCOM 1 had two) */
+    static std::vector<float> m_weights[4];             /* 0x48E050 */
+    static signed char m_currentmode;                   /* 0x48E090 (SOCOM 1's) */
+    static bool m_playlists_loaded;                     /* 0x48E098 (SOCOM 1's) */
 
     static CSndInstance *m_instance;    /* 0x48E080 (names ours) */
     static CSndSequence *m_sequence;    /* 0x48E088 */
@@ -356,7 +435,7 @@ public:
     static bool m_modeChanged;          /* 0x48E0A8 */
     static int m_queued;                /* 0x48E0B0 */
     static signed char m_queuedMode;    /* 0x48E0B4 */
-    static bool m_inFight;              /* 0x3E0080 (SOCOM 1's Start clears a byte so) */
+    static bool m_jukebox_stopped;      /* 0x3E0080 (SOCOM 1's: Start clears it, Cleanup sets it) */
 };
 
 /* The headset's voice stream (SOCOM 1's class, no DWARF): a queue of streamed sounds played
@@ -372,7 +451,19 @@ public:
     void Resume();                      /* SOCOM II's (names ours) */
     void Pause();
     static Headset *ftsGetHeadset();
-    static void Create();
+    static Headset *Create();
+    static bool FindDevice(int *device, int *format, unsigned char *channels);
+    void InitStream();
+    void Flush();
+    bool DeQueue(int **data, unsigned int *id, CSnd **sound, int *vol);
+    /* the device found (ours: ftsGetHeadset's arguments load before the stores, as an inline's) */
+    void SetDevice(int device, int format, unsigned char channels)
+    {
+        m_0 = device;
+        m_4 = format;
+        m_8 = channels;
+        m_stop = 0;
+    }
     static void ResetStream();
     static void Reset();
 
@@ -385,10 +476,12 @@ public:
     unsigned char m_state;      /* 0x09: the stream request's state, 0-4 */
     unsigned char m_stop;       /* 0x0A */
     unsigned char m_b;          /* 0x0B */
-    int m_c;                    /* 0x0C */
+    unsigned int m_c;           /* 0x0C: the dequeued entry's id */
     CSnd *m_sound;              /* 0x10 */
     int m_vol;                  /* 0x14 */
-    unsigned char _18[0x34 - 0x18];
+    std::vector<int> m_queue;   /* 0x18: the queued entries' indices (SOCOM 1's at 0x18 too) */
+    std::vector<int> m_free;    /* 0x24: the free entries' indices, 0-19 when built */
+    unsigned int *m_entries;    /* 0x30: twenty entries of three words */
     int m_34;                   /* 0x34 */
     CSndInstance *m_instance;   /* 0x38 */
     int m_3c;                   /* 0x3C */

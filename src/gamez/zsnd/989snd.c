@@ -218,16 +218,271 @@ void snd_AutoVol(unsigned int handle, int vol, int time, int final)
 }
 
 /* the flag the command senders test: set, a sender flushes before queueing (SOCOM 1's
- * snd_StartCaching and snd_SendCache, by position: SOCOM II's store a word) */
-static int snd_caching;
+ * snd_StartCaching and snd_SendCache, by position: SOCOM II's store a word; the flag is SOCOM 1's
+ * global gCaching) */
+int gCaching;
 
 void snd_StartCaching(void)
 {
-    snd_caching = 1;
+    gCaching = 1;
 }
 
 int snd_SendCache(void)
 {
-    snd_caching = 0;
+    gCaching = 0;
     return snd_FlushSoundCommands();
+}
+
+/* --- streaming: while the IOP streams it owns the CD, so the game's reads go through it --- */
+
+extern "C" {
+int sceCdSync(int mode);
+int sceCdRead(unsigned int lbn, unsigned int sectors, void *buf, void *mode);
+int sceCdGetError(void);
+void InvalidDCache(void *start, void *end);
+void SyncDCache(void *start, void *end);
+}
+
+/* SOCOM 1's globals (its symbols); the status block is the one the IOP writes (64 bytes in SOCOM
+ * II, 32 in SOCOM 1): word 0 busy while a stream-safe read runs, word 4 that read's error */
+int gStreamingInited;
+int gSSRead;
+int gSSReadDone;
+int gLoadBusy;
+unsigned int gStats[16];
+
+int snd_InitVAGStreamingEx(int num_channels, int buffer_size, int a, int b)
+{
+    int data[4];
+
+    if (gStreamingInited == 1)
+        return 0;
+    if (gLoadBusy)
+        while (snd_FlushSoundCommands())
+            ;
+    snd_StreamSafeCdSync(0);
+    data[0] = num_channels;
+    data[1] = buffer_size;
+    data[2] = a;
+    data[3] = b;
+    gStreamingInited = snd_SendIOPCommandAndWait(42, 16, (char *)data);
+    return gStreamingInited;
+}
+
+void snd_StopAllStreams(void)
+{
+    snd_SendIOPCommandNoWait(52, 0, 0, 0, 0);
+}
+
+void snd_CloseVAGStreaming(void)
+{
+    if (gStreamingInited) {
+        if (gLoadBusy)
+            while (snd_FlushSoundCommands())
+                ;
+        snd_StreamSafeCdSync(0);
+        snd_SendIOPCommandAndWait(53, 0, 0);
+        gStreamingInited = 0;
+    }
+}
+
+/* SOCOM II adds a word (SOCOM 1's took eleven arguments) */
+void snd_PlayVAGStreamByLoc_CB(int loc1, int loc2, int offset1, int offset2, int vol, int pan,
+                               int group, int parent, int priority, int flags,
+                               SndCompleteProc callback, unsigned long user_data)
+{
+    int data[8];
+
+    data[0] = loc1;
+    data[1] = loc2;
+    data[2] = (vol << 16) | (offset1 & 0xFFFF);
+    data[3] = (pan << 16) | (offset2 & 0xFFFF);
+    data[4] = group;
+    data[5] = parent;
+    data[6] = priority;
+    data[7] = flags;
+    snd_SendIOPCommandNoWait(44, 32, (char *)data, callback, user_data);
+}
+
+int snd_StreamSafeCheckCDIdle(int block)
+{
+    int data[1];
+
+    data[0] = block;
+    return snd_SendIOPCommandAndWait(54, 4, (char *)data);
+}
+
+int snd_StreamSafeCdRead(unsigned int lbn, unsigned int sectors, void *buf, void *mode)
+{
+    int data[3];
+
+    if (!gStreamingInited)
+        return sceCdRead(lbn, sectors, buf, mode);
+    if (snd_StreamSafeCdSync(1) == 1)
+        return 0;
+    gStats[0] = 1;
+    gStats[4] = 0;
+    SyncDCache(gStats, (char *)gStats + 63);
+    gSSRead = 1;
+    data[0] = lbn;
+    data[1] = sectors;
+    data[2] = (int)buf;
+    gSSReadDone = 0;
+    snd_SendIOPCommandNoWait(56, 12, (char *)data, 0, 0);
+    return 1;
+}
+
+/* SOCOM 1's (0x33F320 by position, between the error query and the read in both builds); SOCOM
+ * II invalidates the status block where SOCOM 1 flushed the whole cache */
+int snd_StreamSafeCdSync(int mode)
+{
+    if (!gStreamingInited)
+        return sceCdSync(mode);
+    InvalidDCache(gStats, (char *)gStats + 63);
+    gSSReadDone = gStats[0] ? 0 : 1;
+    if (gSSReadDone == 1)
+        return 0;
+    if (mode == 1)
+        return 1;
+    while (gSSReadDone == 0) {
+        snd_FlushSoundCommands();
+        InvalidDCache(gStats, (char *)gStats + 63);
+        gSSReadDone = gStats[0] ? 0 : 1;
+    }
+    return 0;
+}
+
+int snd_StreamSafeCdGetError(void)
+{
+    if (gStreamingInited)
+        return gStats[4];
+    return sceCdGetError();
+}
+
+void snd_SetReverbType(int core, int type)
+{
+    int data[2];
+
+    data[0] = core;
+    data[1] = type;
+    snd_SendIOPCommandNoWait(14, 8, (char *)data, 0, 0);
+}
+
+/* SOCOM II's: command 80, five words (989SND.IRX's reverb setter: core, type, depth, delay,
+ * feedback -- socom-unzipped's reading; name unknown) */
+void func_0033F260(int core, int type, int depth, int delay, int feedback)
+{
+    int data[5];
+
+    data[0] = core;
+    data[1] = type;
+    data[2] = depth;
+    data[3] = delay;
+    data[4] = feedback;
+    snd_SendIOPCommandNoWait(80, 20, (char *)data, 0, 0);
+}
+
+void snd_AutoReverb(int core, int depth, int delta, int channel)
+{
+    int data[4];
+
+    data[0] = core;
+    data[1] = depth;
+    data[2] = delta;
+    data[3] = channel;
+    snd_SendIOPCommandNoWait(16, 16, (char *)data, 0, 0);
+}
+
+/* SOCOM II passes six words (SOCOM 1 four) */
+int snd_InitMovieSound(int bytes, int a, int vol, int b, int c, int mode)
+{
+    int data[6];
+
+    data[0] = bytes;
+    data[1] = a;
+    data[2] = vol;
+    data[3] = b;
+    data[4] = c;
+    data[5] = mode;
+    return snd_SendIOPCommandAndWait(59, 24, (char *)data);
+}
+
+void snd_ResetMovieSound(void)
+{
+    snd_SendIOPCommandAndWait(61, 0, 0);
+}
+
+void snd_CloseMovieSound(void)
+{
+    snd_SendIOPCommandAndWait(60, 0, 0);
+}
+
+/* SOCOM II passes five words (SOCOM 1 three) */
+void snd_StartMovieSound(void *buf, int size, int end, int freq, int channels)
+{
+    int data[5];
+
+    data[0] = (int)buf;
+    data[1] = size;
+    data[2] = end;
+    data[3] = freq;
+    data[4] = channels;
+    snd_SendIOPCommandAndWait(62, 20, (char *)data);
+}
+
+int snd_GetTransStatus(void)
+{
+    return snd_SendIOPCommandAndWait(64, 0, 0);
+}
+
+/* the extern calls: a function of another IRX that registered with 989SND (the headset's stream
+ * module, id 0x12C4E67A) */
+void snd_DoExternCall(unsigned int id, int func, int a, int b, int c, int d, int e)
+{
+    int data[7];
+
+    data[0] = id;
+    data[1] = func;
+    data[2] = a;
+    data[3] = b;
+    data[4] = c;
+    data[5] = d;
+    data[6] = e;
+    snd_SendIOPCommandAndWait(76, 28, (char *)data);
+}
+
+void snd_DoExternCall_A(unsigned int id, int func, int a, int b, int c, int d, int e)
+{
+    int data[7];
+
+    data[0] = id;
+    data[1] = func;
+    data[2] = a;
+    data[3] = b;
+    data[4] = c;
+    data[5] = d;
+    data[6] = e;
+    snd_SendIOPCommandNoWait(76, 28, (char *)data, 0, 0);
+}
+
+void snd_DoExternCall_CB(unsigned int id, int func, int a, int b, int c, int d, int e,
+                         SndCompleteProc callback, unsigned long user_data)
+{
+    int data[7];
+
+    data[0] = id;
+    data[1] = func;
+    data[2] = a;
+    data[3] = b;
+    data[4] = c;
+    data[5] = d;
+    data[6] = e;
+    snd_SendIOPCommandNoWait(76, 28, (char *)data, callback, user_data);
+}
+
+/* SOCOM II's, before the API (name unknown): a scale by 1524/741, which the instances' tick
+ * applies */
+int func_0033F050(int x)
+{
+    return x * 1524 / 741;
 }

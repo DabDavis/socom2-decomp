@@ -6074,7 +6074,7 @@
 0x0033F260 0x40 func_0033F260  # OVL1
 0x0033F2A0 0x34 snd_SetReverbType  # OVL1; s1:exact
 0x0033F2E0 0x34 snd_StreamSafeCdGetError  # OVL1; s1:align
-0x0033F320 0xF4 func_0033F320  # OVL1
+0x0033F320 0xF4 snd_StreamSafeCdSync  # OVL1; s1:order by hand (SOCOM 1's snd_StreamSafeCdSync: between snd_StreamSafeCdGetError and snd_StreamSafeCdRead in both builds, the same body -- sceCdSync unless streaming, else the status block polled with snd_FlushSoundCommands; SOCOM II invalidates the block where SOCOM 1 flushed the cache) -- the sound lane
 0x0033F420 0x128 snd_StreamSafeCdRead  # OVL1; s1:align
 0x0033F550 0x28 snd_StreamSafeCheckCDIdle  # OVL1; s1:exact
 0x0033F580 0x6C snd_PlayVAGStreamByLoc_CB  # OVL1; s1:gap
@@ -6160,7 +6160,7 @@
 0x003435B0 0xC SetSubtitles__4CSndFb  # OVL1; s1:order by hand (SOCOM 1's SetSubtitles, the same byte stored)
 0x003435C0 0x810 func_003435C0  # OVL1
 0x00343DD0 0x1BC func_00343DD0  # OVL1
-0x00343F90 0xFC func_00343F90  # OVL1
+0x00343F90 0xFC AddNewCSnd__4CSndFP4CSnd  # OVL1; s1:calls by hand (LoadSoundGroups adds each group with it after LoadCSndGroup, as SOCOM 1's calls AddNewCSnd; after the bank loader as SOCOM 1's AddNewCSnd follows LoadBank) -- the sound lane
 0x00344090 0x32C func_00344090  # OVL1
 0x003443C0 0x90 CopyUpper__FPCcPci  # OVL1; SOCOM II's, name ours (a string copied upper-cased into a buffer of n characters, strlen and toupper)
 0x00344450 0x478 func_00344450  # OVL1
@@ -6180,8 +6180,8 @@
 0x003450F0 0x7C UIOpen__4CSndFv  # OVL1; s1:order by hand (SOCOM 1's UIOpen, between Open and NetOpen in both builds)
 0x00345170 0x84 NetOpen__4CSndFv  # OVL1; s1:calls
 0x00345200 0x28 Uninit__4CSndFv  # OVL1; s1:align
-0x00345230 0x294 func_00345230  # OVL1
-0x003454D0 0xF8 func_003454D0  # OVL1
+0x00345230 0x294 Init__4CSndFv  # OVL1; s1:order by hand (SOCOM 1's CSnd::Init: between Uninit and the reboot handler in both builds, the same course -- m_isDisabled tested, the VAG archive opened under a swapped root path, snd_StartSoundSystem, CSndInstance::Init, sounds.rdr read once, the reverb set, RegisterRebootCallback with the handler, the initialised flag set) -- the sound lane
+0x003454D0 0xF8 IOPRebootHandler__FQ211CIOPManager11RebootPhaseQ211CIOPManager10RebootModePv  # OVL1; s1:order by hand (SOCOM 1's static IOPRebootHandler of zsnd_csnd.cpp: between CSnd::Init and ~CSnd in both builds, the phase a byte tested against 0 -- snd_StopSoundSystem, else snd_StartSoundSystem -- returning true; SOCOM II turns the reverb off first and sets the voice ranges and reverb up after; Init (0x345230) registers it with RegisterRebootCallback as SOCOM 1's Init does) -- the sound lane
 0x003455D0 0x4C __dt__4CSndFv  # OVL1; s1:align; s1:vtable (the same slot of the same class's vtable in both builds, code alike); was clear__Q23std503__tree<Q23std81pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P4CSnd>,Q33std271map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P4CSnd,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std100allocator<Q23std81pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P4CSnd>>>13value_compare,Q23std100allocator<Q23std81pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P4CSnd>>>Fv
 0x00345620 0x1D8 __ct__4CSndFv  # OVL1; s1:order by hand (SOCOM 1's CSnd constructor, after the destructor in both builds: CSnd's vtable stored, nothing more when CSnd::m_isDisabled, the instance pool reserved to 48 as SOCOM 1's reserves its vector)
 0x00345800 0xC GetSoundRdrFile__Fv  # OVL1; s1:order by hand (SOCOM 1's GetSoundRdrFile, after the constructor in both builds: the sounds file Open reads)
@@ -6203,21 +6203,21 @@
 0x003466C0 0x28 Init__12CSndInstanceFv  # OVL1; s1:order by hand (SOCOM 1's Init, the same body: unless CSnd::m_isDisabled, the paused flag cleared and m_mastervol set to 1)
 0x003466F0 0x4C ResumeAllSounds__12CSndInstanceFv  # OVL1; s1:order by hand (after Init as SOCOM 1's ResumeAllSounds: SOCOM II sends 989snd command 23 for every group and resumes the headset)
 0x00346740 0x54 PauseAllSounds__12CSndInstanceFv  # OVL1; s1:order by hand (after ResumeAllSounds as in SOCOM 1: command 22 for every group, the paused flag set, the headset paused)
-0x003467A0 0x144 func_003467A0  # OVL1
-0x003468F0 0x154 func_003468F0  # OVL1
+0x003467A0 0x144 ResumeAllSounds__12CSndInstanceF10SOUND_MODE  # OVL1; SOCOM II's, name ours (ResumeAllSounds() for one mode: the voices whose sound's mode matches continued -- a pending flag while the play command is queued -- and the headset resumed for the dialogue; CZHudMissionCams::CleanupCamera calls it) -- the sound lane
+0x003468F0 0x154 PauseAllSounds__12CSndInstanceF10SOUND_MODE  # OVL1; SOCOM II's, name ours (PauseAllSounds() for one mode: the voices whose sound's mode matches paused, the headset paused for the dialogue; CZHudMissionCams::PlayCamera calls it) -- the sound lane
 0x00346A50 0xE0 StopAllSounds__12CSndInstanceF10SOUND_MODE  # OVL1; s1:calls by hand (CSnd::OnListenerDeath calls it with 3 after CSndJukebox::FadeOut, as SOCOM 1's calls StopAllSounds(SOUND_MODE))
-0x00346B30 0xC4 func_00346B30  # OVL1
+0x00346B30 0xC4 StopAllSounds__12CSndInstanceFv  # OVL1; s1:order by hand (SOCOM 1's StopAllSounds(): right after StopAllSounds(SOUND_MODE) in both builds, the voice list walked, the voices kept in m_vec, RemoveFromList, then PostTick(0.0f, 0) as SOCOM 1's; SOCOM II stops every sound with one command first) -- the sound lane
 0x00346C00 0x2C func_00346C00  # OVL1
-0x00346C30 0xFC func_00346C30  # OVL1
+0x00346C30 0xFC FadeOutAllSounds__12CSndInstanceFv  # OVL1; SOCOM II's, name ours (every voice in the list faded: CSndInstance::FadeOut(1.5f) inlined, 360 ticks; a UI command, 0x277910, calls it) -- the sound lane
 0x00346D30 0x1C TerminateOnFinish__12CSndInstanceFv  # OVL1; s1:callee by hand (CZAnim::StopSounds lets a fading or still-playing instance finish with it where SOCOM 1's calls TerminateOnFinish; the flag a bit at 0x1C here)
 0x00346D50 0x20 Set3D__12CSndInstanceFf  # OVL1; s1:order by hand (SOCOM 1's Set3D, the same body: the volume stored and the 3D flag set, now a bit; between TerminateOnFinish and IsPlaying in both builds)
 0x00346D70 0x2C IsPlaying__12CSndInstanceFv  # OVL1; s1:order by hand (SOCOM 1's IsPlaying, m_handle != 0, with a SOCOM II flag tested first; after Set3D in both builds; CZAnim::StopSounds asks it where SOCOM 1's does)
 0x00346DA0 0x24 IsFading__12CSndInstanceFv  # OVL1; s1:callee
 0x00346DD0 0xC8 FadeOut__12CSndInstanceFf  # OVL1; s1:order by hand (SOCOM 1's FadeOut, after IsFading in both builds: the fade time stored, snd_AutoVol to zero; the SOUND tick fades with it where SOCOM 1's calls FadeOut)
-0x00346EA0 0x274 func_00346EA0  # OVL1
-0x00347120 0x114 func_00347120  # OVL1
-0x00347240 0x58 func_00347240  # OVL1
-0x003472A0 0x174 func_003472A0  # OVL1
+0x00346EA0 0x274 Tick__12CSndInstanceFf  # OVL1; s1:order by hand (SOCOM 1's CSndInstance::Tick(float): between FadeOut and PostTick in both builds; PostTick calls it on each voice with dT and keeps its bool result, as SOCOM 1's) -- the sound lane
+0x00347120 0x114 PostTick__12CSndInstanceFfPv  # OVL1; s1:calls by hand (StopAllSounds() calls it with (0.0f, 0) where SOCOM 1's calls PostTick__12CSndInstanceFfPv; after Tick as in SOCOM 1; it calls the instances' Tick, 0x346EA0) -- the sound lane
+0x00347240 0x58 AwarenessUpgrade__12CSndInstanceFUi  # OVL1; s1:order by hand (SOCOM 1's AwarenessUpgrade(unsigned int): after PostTick in both builds, the entity's EFX voices stopped -- SOCOM 1 inlined the walk, SOCOM II calls Remove(id, true, false, false) -- the disabled flag tested first in both; it then stops the headset's sounds of the entity; CSealCtrlAi::Tick calls it) -- the sound lane
+0x003472A0 0x174 Remove__12CSndInstanceFUibbb  # OVL1; s1:order by hand (SOCOM 1's Remove(unsigned int, bool, bool): after AwarenessUpgrade in both builds, the voice list walked for the entity id at 0x24, mode 1 stopped when the first flag is set and mode 2 with the second, SOCOM 1's inverted parent test kept; SOCOM II adds a fourth flag stopping every mode) -- the sound lane
 0x00347420 0x30 SetPos__12CSndInstanceFPC6CPnt3D  # OVL1; s1:align
 0x00347450 0x6C SetPitch__12CSndInstanceFi  # OVL1; s1:align
 0x003474C0 0x74 SetPan__12CSndInstanceFi  # OVL1; s1:align
@@ -6236,8 +6236,8 @@
 0x00347CB0 0x8C SetDialogMode__9CSndGroupFv  # OVL1; SOCOM II's, name ours (CSndGroup's vtable slot 0x34: the slot called on each member)
 0x00347D40 0x1B8 NormalizeWeights__9CSndGroupFv  # OVL1; s1:align
 0x00347F00 0x224 LoadCSndGroup__9CSndGroupFP5_zrdr  # OVL1; s1:align
-0x00348130 0x134 func_00348130  # OVL1
-0x00348270 0x70 func_00348270  # OVL1
+0x00348130 0x134 LoadSoundGroups__9CSndGroupFPCc  # OVL1; s1:order by hand (SOCOM 1's CSndGroup::LoadSoundGroups: after LoadCSndGroup in both builds, the sounds file's GROUPS record walked, each item a new CSndGroup loaded with LoadCSndGroup and added with AddNewCSnd; SOCOM II names the list to read, a parameter) -- the sound lane
+0x00348270 0x70 __dt__Q23std30vector<f,Q23std12allocator<f>>Fv  # OVL1; by hand (vector<float>'s destructor, three this-tests; zsnd_csndgroup.cpp's copy -- CSndGroup's weights -- linked first, Cleanup's FreeVector calls it) -- the sound lane
 0x003482E0 0x170 PlaySoundVolPanPitch__9CSndGroupFfiiP12CSndInstanceUi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00348450 0x170 PlaySound3D__9CSndGroupFPC6CPnt3DfiP12CSndInstanceUi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003485C0 0x150 PlaySoundVol__9CSndGroupFfP12CSndInstanceUi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -6252,16 +6252,16 @@
 0x00349080 0x7C FadeOut__11CSndJukeboxFv  # OVL1; s1:calls
 0x00349100 0x1A4 func_00349100  # OVL1
 0x003492B0 0x1DC func_003492B0  # OVL1
-0x00349490 0x1DC func_00349490  # OVL1
+0x00349490 0x1DC LoadMusicLists__11CSndJukeboxFP5_zrdri  # OVL1; s1:calls by hand (LoadPlaylists calls it with each intensity's record and its index, as SOCOM 1's calls LoadMusicLists; four where SOCOM 1 had two) -- the sound lane
 0x00349670 0x114 LoadPlaylists__11CSndJukeboxFPCc  # OVL1; s1:align
-0x00349790 0x148 func_00349790  # OVL1
-0x003498E0 0x40 func_003498E0  # OVL1
-0x00349920 0x8 func_00349920  # OVL1
-0x00349930 0x14 func_00349930  # OVL1
-0x00349950 0x70 func_00349950  # OVL1
-0x003499C0 0x40 func_003499C0  # OVL1
-0x00349A00 0x8 func_00349A00  # OVL1
-0x00349A10 0x14 func_00349A10  # OVL1
+0x00349790 0x148 Cleanup__11CSndJukeboxFv  # OVL1; s1:calls by hand (SOCOM 1's CSndJukebox::Cleanup: LoadPlaylists calls it when the playlists are loaded, as SOCOM 1's; the same body -- each list's sequences deleted and the lists and weights freed, the current sound, mode and sequence reset, m_jukebox_stopped set; four lists where SOCOM 1 had two) -- the sound lane
+0x003498E0 0x40 swap__Q23std30vector<f,Q23std12allocator<f>>FRQ23std30vector<f,Q23std12allocator<f>>  # OVL1; by hand (Cleanup's FreeVector of a weights vector: the swap, out of line) -- the sound lane
+0x00349920 0x8 clear__Q23std30vector<f,Q23std12allocator<f>>Fv  # OVL1; by hand (Cleanup's FreeVector of a weights vector: the clear, out of line) -- the sound lane
+0x00349930 0x14 __ct__Q23std30vector<f,Q23std12allocator<f>>Fv  # OVL1; by hand (Cleanup's FreeVector of a weights vector: the temporary's constructor, out of line as a pointer vector's) -- the sound lane
+0x00349950 0x70 __dt__Q23std58vector<P12CSndSequence,Q23std26allocator<P12CSndSequence>>Fv  # OVL1; by hand (Cleanup's FreeVector of a playlist: the temporary's destructor, called with -1, three this-tests) -- the sound lane
+0x003499C0 0x40 swap__Q23std58vector<P12CSndSequence,Q23std26allocator<P12CSndSequence>>FRQ23std58vector<P12CSndSequence,Q23std26allocator<P12CSndSequence>>  # OVL1; by hand (Cleanup's FreeVector of a playlist: the swap, four high, out of line) -- the sound lane
+0x00349A00 0x8 clear__Q23std58vector<P12CSndSequence,Q23std26allocator<P12CSndSequence>>Fv  # OVL1; by hand (Cleanup's FreeVector of a playlist: the clear, out of line) -- the sound lane
+0x00349A10 0x14 __ct__Q23std58vector<P12CSndSequence,Q23std26allocator<P12CSndSequence>>Fv  # OVL1; by hand (CSndJukebox::Cleanup's FreeVector of a playlist: the temporary's constructor, out of line -- FreeVector is inlined one level; the name is what zsnd_jukebox.cpp emits) -- the sound lane
 0x00349A30 0x1C func_00349A30  # OVL1
 0x00349A50 0x1C func_00349A50  # OVL1
 0x00349A70 0x28 IsFading__17CSndSequenceEntryFv  # OVL1; s1:exact
@@ -6285,7 +6285,7 @@
 0x0034A640 0xC func_0034A640  # OVL1
 0x0034A650 0x4C Resume__7HeadsetFv  # OVL1; SOCOM II's, name ours (CSndInstance::ResumeAllSounds calls it on the headset: extern call 5 while connected)
 0x0034A6A0 0x4C Pause__7HeadsetFv  # OVL1; SOCOM II's, name ours (CSndInstance::PauseAllSounds calls it: extern call 4 while connected)
-0x0034A6F0 0xC0 func_0034A6F0  # OVL1
+0x0034A6F0 0xC0 Flush__7HeadsetFv  # OVL1; SOCOM II's, name ours (a Headset member: the stream module stopped (extern call 6) unless idle, every queued entry dequeued, the queue freed (FreeVector of its vector<int>, the four pieces out of line at 0x2C7290-0x2C7350), m_b set; CCinematicState::Init calls it) -- the sound lane
 0x0034A7B0 0x15C func_0034A7B0  # OVL1
 0x0034A910 0x158 StopSound__7HeadsetFiP4CSnd  # OVL1; s1:order by hand (SOCOM 1's StopSound(int, CSnd *), first of the unit in both builds; CZAnim::StopSounds and the SOUND tick stop a headset stream with it, (headset, channel, sound), as SOCOM 1's do)
 0x0034AA70 0x48 func_0034AA70  # OVL1
@@ -6295,13 +6295,13 @@
 0x0034B3B0 0x54 Tick__7HeadsetFf  # OVL1; s1:align
 0x0034B410 0xD0 SoundSysCallback__7HeadsetFUi  # OVL1; s1:callee
 0x0034B4E0 0x2C StaticSoundSysCallback__7HeadsetFUiUl  # OVL1; s1:exact
-0x0034B510 0x1B0 func_0034B510  # OVL1
+0x0034B510 0x1B0 DeQueue__7HeadsetFPPiPUiPP4CSndPi  # OVL1; s1:order by hand (SOCOM 1's Headset::DeQueue(int **, unsigned int *, CSnd **, int *): after StaticSoundSysCallback and before Queue in both builds; the queue flush calls it with 0 and the addresses of m_c, m_sound and m_vol until it fails, ConnectedTick and DisconnectedTick too) -- the sound lane
 0x0034B6C0 0x1CC func_0034B6C0  # OVL1
 0x0034B890 0x28 ResetStream__7HeadsetFv  # OVL1; SOCOM II's, name ours (the headset's instance cleared and its id -1)
 0x0034B8C0 0x4C Reset__7HeadsetFv  # OVL1; SOCOM II's, name ours (the stream request reset, the headset state 0; CSnd::Close calls it)
 0x0034B910 0xC8 __ct__7HeadsetFv  # OVL1; SOCOM 1's Headset() by its call (Create news 64 bytes and calls it on them, keeping what it returns as the headset)
-0x0034B9E0 0x80 func_0034B9E0  # OVL1
-0x0034BA60 0x120 func_0034BA60  # OVL1
+0x0034B9E0 0x80 InitStream__7HeadsetFv  # OVL1; SOCOM II's, name ours (a Headset member: unless a network game, 989snd extern call 0 to the headset's stream module (id 0x12C4E67A) with a 0xF000-byte buffer at 22050 Hz on the device ftsGetHeadset found, then the request state 3; CSnd::Open calls it on ftsGetHeadset's headset) -- the sound lane
+0x0034BA60 0x120 FindDevice__7HeadsetFPiPiPUc  # OVL1; SOCOM II's, name ours (lgAudEnumerate walked for the first device with a 16-bit mono format at 22050 Hz, its index, format and channels returned through three pointers; false in a network game; ftsGetHeadset's only callee) -- the sound lane
 0x0034BB80 0xD4 ftsGetHeadset__7HeadsetFv  # OVL1; s1:calls by hand (CSnd::PostTick gets the headset with it and ticks it, as SOCOM 1's PostTick calls ftsGetHeadset then Headset::Tick; ZAnim's sound code asks it for the headset)
 0x0034BC60 0x34 Create__7HeadsetFv  # OVL1; SOCOM II's, name ours (the headset made: new, the constructor, the static pointer)
 0x0034BCA0 0xC func_0034BCA0  # OVL1

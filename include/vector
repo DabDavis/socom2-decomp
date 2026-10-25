@@ -276,7 +276,10 @@ class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, all
  * as the pointer vectors do: SOCOM 1's CSndGroup reads its weights through that data() and SOCOM
  * II's LoadCSndGroup pushes them with its insert (0x1FE340), CSnd's reverb tables likewise; the
  * destructor is three this-tested levels (0x348270), no size cleared, and clear() is the store.
- * An element is read through data()'s reference. No other unit has such a vector */
+ * An element is read through data()'s reference. Their clear() and swap() are the pointer
+ * vectors' two-level wrappers too: FreeVector of a vector<float> or vector<int> calls all four
+ * pieces out of line, as of a pointer vector (CSndJukebox::Cleanup's weights, 0x349920-0x349940;
+ * the headset's queue, 0x2C7290-0x2C7350) */
 #define __MSL_VECTOR_SCALAR(T)                                                                    \
     template <class Allocator>                                                                  \
     class __vector_imp<T, Allocator, true> : public __vector_pod<unsigned int, allocator<unsigned int> > { \
@@ -287,9 +290,14 @@ class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, all
         unsigned int capacity() const { return this->capacity_; }                               \
         T &operator[](unsigned int n) { return ((T *)__base::data())[n]; }                      \
         void push_back(const T &x) { __base::push_back((const unsigned int &)x); }              \
+        void clear() { __base::clear(); }                                                       \
+        void swap(__vector_imp &x) { __base::swap(x); }                                         \
     };                                                                                          \
     template <class Allocator>                                                                  \
     class vector<T, Allocator> : public __vector_imp<T, Allocator, true> {                      \
+    public:                                                                                     \
+        void clear() { __vector_imp<T, Allocator, true>::clear(); }                             \
+        void swap(vector &x) { __vector_imp<T, Allocator, true>::swap(x); }                     \
     };
 
 /* the bounds-checked element reads, out of line (a template member defined outside its class is

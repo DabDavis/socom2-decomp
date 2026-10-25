@@ -6,6 +6,7 @@
 #include "zsnd.h"
 
 extern "C" void func_00341010();        /* zsnd_csnd.cpp (not named yet) */
+extern "C" void func_00341060();        /* zsnd_csnd.cpp: the group-volume fade restarted */
 extern "C" bool func_00346270();        /* zsnd_csnd.cpp (not named yet) */
 
 std::list<CSndInstance *> CSndInstance::m_list;
@@ -133,6 +134,84 @@ void CSndInstance::SetPitch(int pitch)
     snd_SetSoundPitch(m_handle, pitch);
 }
 
+/* SOCOM 1's (a fourth flag added: every mode): the voices of an entity stopped, those of mode 1
+ * when efx, of mode 2 when music */
+void CSndInstance::Remove(unsigned int entityID, bool efx, bool music, bool all)
+{
+    if (CSnd::m_isDisabled)
+        return;
+    std::list<CSndInstance *>::iterator e = m_list.end();
+
+    for (std::list<CSndInstance *>::iterator i = m_list.begin(); i != e; ++i) {
+        CSndInstance *inst = *i;
+
+        if (inst->m_entityID == entityID) {
+            if ((inst->IsMode(1) && efx) || (inst->IsMode(2) && music) || all)
+                inst->Stop();
+        }
+    }
+}
+
+extern "C" void func_0034A640(Headset *h, int entityID);    /* the headset's sounds of an entity
+                                                                stopped (SOCOM II's) */
+
+/* SOCOM 1's: an entity's effects stopped when it grows aware -- SOCOM II's calls Remove where
+ * SOCOM 1 inlined the walk, and stops the headset's too */
+void CSndInstance::AwarenessUpgrade(unsigned int entityID)
+{
+    if (CSnd::m_isDisabled)
+        return;
+    Remove(entityID, true, false, false);
+    Headset *h = Headset::ftsGetHeadset();
+
+    if (h)
+        func_0034A640(h, entityID);
+}
+
+extern "C" void snd_StartCaching(void);
+extern "C" int snd_SendCache(void);
+
+/* SOCOM 1's: every voice ticked under one batch of commands, the finished ones let go.
+ * OPEN, 3 instructions: the end iterator's address is built before snd_StartCaching here (lui
+ * ahead of the call, addiu in its delay slot), after it in the target (begin's load in the delay
+ * slot). The begin is read before the call in both builds (SOCOM 1 builds its iterator there);
+ * declared after begin, the end gets the target's schedule but begin and end trade s0/s1 (the
+ * later-defined iterator takes the lower register). Tried: end in the loop test (recomputed each
+ * pass), end assigned after the call (copied through memory), begin copied through another
+ * iterator, a const end. The arms each step on (three copies of the step, as SOCOM 1's) */
+bool CSndInstance::PostTick(float dT, void *data)
+{
+    if (CSnd::m_isDisabled)
+        return false;
+    m_vec.clear();
+    std::list<CSndInstance *>::iterator e = m_list.end();
+    std::list<CSndInstance *>::iterator i = m_list.begin();
+
+    snd_StartCaching();
+
+    /* each arm steps on by itself (SOCOM 1's too: an erasing walk's shape) */
+    while (i != e) {
+        CSndInstance *inst = *i;
+
+        if (inst) {
+            bool done = inst->Tick(dT);
+
+            if (done && inst->m_terminateOnFinish) {
+                CSndInstance *kept = inst;
+
+                m_vec.push_back(kept);
+                ++i;
+            } else
+                ++i;
+        } else
+            ++i;
+    }
+    snd_SendCache();
+    RemoveFromList();
+    snd_FlushSoundCommands();
+    return false;
+}
+
 void CSndInstance::FadeOut(float time)
 {
     m_fadeTime = time;
@@ -164,6 +243,110 @@ void CSndInstance::TerminateOnFinish()
     m_terminateOnFinish = true;
 }
 
+/* every voice faded out over a second and a half (SOCOM II's; name ours: a UI command calls it) */
+void CSndInstance::FadeOutAllSounds()
+{
+    if (CSnd::m_isDisabled)
+        return;
+    std::list<CSndInstance *>::iterator e = m_list.end();
+
+    for (std::list<CSndInstance *>::iterator i = m_list.begin(); i != e; ++i) {
+        CSndInstance *inst = *i;
+
+        if (inst)
+            inst->FadeOut(1.5f);
+    }
+}
+
+extern "C" void func_00340270(void);    /* 989snd's command 24: every sound stopped */
+
+/* SOCOM 1's: every voice let go -- SOCOM II stops them all with one command, then zeroes each
+ * handle where SOCOM 1 stopped each voice */
+void CSndInstance::StopAllSounds()
+{
+    if (CSnd::m_isDisabled)
+        return;
+    func_00341060();
+    func_00340270();
+    std::list<CSndInstance *>::iterator e = m_list.end();
+
+    for (std::list<CSndInstance *>::iterator i = m_list.begin(); i != e; ++i) {
+        CSndInstance *inst = *i;
+
+        if (inst) {
+            inst->m_handle = 0;
+            /* pushed through a copy: only the copy goes to memory, the voice stays in v0 */
+            CSndInstance *kept = inst;
+
+            m_vec.push_back(kept);
+        }
+    }
+    RemoveFromList();
+    PostTick(0.0f, 0);
+}
+
+/* SOCOM 1's: the voices of one mode stopped (the mode now a field of SOCOM II's packed flags) */
+void CSndInstance::StopAllSounds(SOUND_MODE mode)
+{
+    if (CSnd::m_isDisabled)
+        return;
+    std::list<CSndInstance *>::iterator e = m_list.end();
+
+    for (std::list<CSndInstance *>::iterator i = m_list.begin(); i != e; ++i) {
+        CSndInstance *inst = *i;
+
+        if (inst && mode == (SOUND_MODE)inst->m_parent->m_soundmode)
+            inst->Stop();
+    }
+}
+
+/* the voices of one mode paused, and the headset's stream with the dialogue (SOCOM II's; names
+ * ours: the mission cameras pause the game's sounds with it). The disabled flag is tested twice */
+void CSndInstance::PauseAllSounds(SOUND_MODE mode)
+{
+    if (CSnd::m_isDisabled)
+        return;
+    if (CSnd::m_isDisabled)
+        return;
+    std::list<CSndInstance *>::iterator e = m_list.end();
+
+    for (std::list<CSndInstance *>::iterator i = m_list.begin(); i != e; ++i) {
+        CSndInstance *inst = *i;
+
+        if (inst && mode == (SOUND_MODE)inst->m_parent->m_soundmode)
+            inst->PauseVoice();
+    }
+    if (mode == SND_MODE_DIALOG) {
+        Headset *h = Headset::ftsGetHeadset();
+
+        if (h)
+            h->Pause();
+    }
+}
+
+/* ... and continued (the cameras' cleanup) */
+void CSndInstance::ResumeAllSounds(SOUND_MODE mode)
+{
+    if (CSnd::m_isDisabled)
+        return;
+    if (CSnd::m_isDisabled)
+        return;
+    std::list<CSndInstance *>::iterator e = m_list.end();
+
+    for (std::list<CSndInstance *>::iterator i = m_list.begin(); i != e; ++i) {
+        CSndInstance *inst = *i;
+
+        if (inst && mode == (SOUND_MODE)inst->m_parent->m_soundmode)
+            inst->ContinueVoice();
+    }
+    if (mode == SND_MODE_DIALOG) {
+        Headset *h = Headset::ftsGetHeadset();
+
+        if (h)
+            h->Resume();
+    }
+}
+
 /* the voice taken off the list of those playing (SOCOM II's, name ours). Pinned:
  * ReleaseSoundInstance calls it */
 #pragma auto_inline off
@@ -179,6 +362,48 @@ void CSndInstance::RemoveFromList(CSndInstance *instance)
     }
 }
 #pragma auto_inline reset
+
+/* SOCOM 1's: the voices kept in m_vec released and taken off the list of those playing */
+void CSndInstance::RemoveFromList()
+{
+    for (std::vector<CSndInstance *>::iterator v = m_vec.begin(); v != m_vec.end(); ++v) {
+        CSndInstance *inst = *v;
+
+        if (inst) {
+            ReleaseSoundInstance(inst);
+            /* found by hand: std::find compares the other way round (`*first == value`) */
+            std::list<CSndInstance *>::iterator i = m_list.begin();
+            std::list<CSndInstance *>::iterator e = m_list.end();
+
+            while (i != e && inst != *i)
+                ++i;
+
+            if (*i == inst)
+                m_list.erase(i);
+        }
+    }
+}
+
+/* SOCOM 1's: the pool and the kept list made room for n voices, the shortfall built */
+void CSndInstance::InitInstancePool(int n)
+{
+    int count = n;
+
+    if (m_pool.capacity() < n) {
+        count = n - m_pool.capacity();
+        m_pool.reserve(n);
+    }
+    if (m_vec.capacity() < n) {
+        count = n - m_vec.capacity();
+        m_vec.reserve(n);
+    }
+    for (int i = 0; i < count; i++) {
+        CSndInstance *inst = new CSndInstance;
+
+        m_numAllocated++;
+        m_pool.push_back(inst);
+    }
+}
 
 void CSndInstance::PlaySoundCallback(unsigned int handle, unsigned long user_data)
 {
