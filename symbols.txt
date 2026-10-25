@@ -9286,19 +9286,19 @@
 0x0050D9B8 0xE8 func_0050D9B8  # OVL2 unaligned
 0x0050DAA0 0xE4 func_0050DAA0  # OVL2
 0x0050DB88 0xC0 func_0050DB88  # OVL2 unaligned
-0x0050DC50 0x1C8 func_0050DC50  # OVL2
-0x0050DE20 0xF0 func_0050DE20  # OVL2
+0x0050DC50 0x1C8 get_clock_direction__2aiFPC6CPnt3D  # OVL2; s1:order by hand (the demo's 0x17DE90, the first function before quadratic: the same fabsf of x, the same three constants 0.2833, 0.708, -0.2833 and the same twelve hour returns in the same branch shape)
+0x0050DE20 0xF0 quadratic__2aiFfffRfRf  # OVL2; s1:order by hand (the SEAL lane's lead, vetted: the demo's 0x17E070 -- the same 4.0/1.0/2.0 constants, the bool through a local, and the linear case storing its root twice into r2; SOCOM II inlines sqrtf)
 0x0050DF10 0x20 elevate__2aiFR6CPnt3Dff  # OVL2; s1:exact
-0x0050DF30 0xC func_0050DF30  # OVL2
-0x0050DF40 0x4C func_0050DF40  # OVL2
-0x0050DF90 0xC func_0050DF90  # OVL2
-0x0050DFA0 0x4C func_0050DFA0  # OVL2
-0x0050DFF0 0x1A0 func_0050DFF0  # OVL2
-0x0050E190 0x240 func_0050E190  # OVL2
-0x0050E3D0 0x34 func_0050E3D0  # OVL2
+0x0050DF30 0xC AddNoiseXZ__2aiFP6CPnt3DRC5PNT2D  # OVL2; ours (new in SOCOM II: tail-calls 0x50DF40 with the point twice, as SOCOM 1's AddNoise(CPnt3D *, const PNT2D &) wraps the three-argument one)
+0x0050DF40 0x4C AddNoiseXZ__2aiFPC6CPnt3DP6CPnt3DRC5PNT2D  # OVL2; ours (new in SOCOM II: out = p + MakeNoiseXZ(range), out returned)
+0x0050DF90 0xC AddNoise__2aiFP6CPnt3DRC5PNT2D  # OVL2; s1:order by hand (SOCOM 1's two-argument AddNoise, now a tail call of the three-argument one with the point twice)
+0x0050DFA0 0x4C AddNoise__2aiFPC6CPnt3DP6CPnt3DRC5PNT2D  # OVL2; s1:order by hand (SOCOM 1's three-argument AddNoise: out = p + MakeNoise(range) through 0x50E190, out returned)
+0x0050DFF0 0x1A0 MakeNoiseXZ__2aiFP6CPnt3DRC5PNT2D  # OVL2; ours (new in SOCOM II: MakeNoise's draws for x and z, y zeroed; AddNoiseXZ calls it)
+0x0050E190 0x240 MakeNoise__2aiFP6CPnt3DRC5PNT2D  # OVL2; s1:order by hand (the demo's 0x17E8A0: three axes, each a random sign from rand <= 0.5 times a random value in the range, SOCOM 1's in doubles)
+0x0050E3D0 0x34 is_moving__2aiFPC6CPnt3Df  # OVL2; s1:order by hand (the demo's 0x17EC00: the same length squared compared with the float, 0x38 there for 0x34)
 0x0050E410 0x130 AlignToPoint__3CAiFPC7CMatrixPC6CPnt3DP7CMatrixf  # OVL2; s1:calls
 0x0050E540 0x48 Extrapolate__3CAiFPC6CPnt3DPC6CPnt3DfP6CPnt3D  # OVL2; s1:exact
-0x0050E590 0x198 func_0050E590  # OVL2
+0x0050E590 0x198 LeadTargetG__3CAiFPC6CPnt3DPC6CPnt3DfPC6CPnt3DPC6CPnt3DP6CPnt3D  # OVL2; s1:order by hand (the demo's 0x17EEB0 after Extrapolate: five pointers and a float in the same registers, the same 1/t, Sub, copy, Scale, Sub opening)
 0x0050E730 0x88 Create__9CAiEventQFUi  # OVL2; s1:order (ai_events.cpp's first function as in the demo; finds a handle by its 16-bit id in the list or pushes one, as the demo's 0x17F080)
 0x0050E7C0 0x88 MakeMaskEx__8CAiEventFQ28CAiEvent5EVENTe  # OVL2; s1:order (the demo's 0x17F180, the same variadic mask loop)
 0x0050E850 0x50 Tick__8CAiEventFf  # OVL2; s1:order (the demo's 0x17F210, the same code: NoExpire, duration counted down)
