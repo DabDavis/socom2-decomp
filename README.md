@@ -1503,6 +1503,21 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - left for the next states round (the definitions switch with them): 0x2BAF30 ->
     E3IndexPacketHandler__FiiiPv, 0x2BA9D0 -> ChatPacketHandler__FiiiPv, 0x2BD220 ->
     `_saturate<i>__FPiRCiRCi_b` (SOCOM 1's call sites).
+- **Tells from the movie, IOP and network units, round 4** (src/gamez/zmpeg/, zNetCnf.cpp, trc.cpp):
+  - `own = p = 0;` into a bool compiles to `sltu v1,zero,zero`: the pointer-to-bool conversion is
+    not folded (CMPEG::Uninit);
+  - in a comparison MW evaluates the right operand first: `present + size > end` matched where
+    `end < present + size` did not (nodataCallback);
+  - GS display bitfields need 32-bit fields: `unsigned long` turns the DY update into
+    ld/sd/daddiu/dsll (playPss);
+  - `(unsigned char *)&s->hdr + n` gives `addu n,base` where the array decay gives `base,n`;
+  - a `= {0}` pointer array zeroes bytewise, the loop count giving the array's size;
+  - Sony's ezmpeg sample code reproduces nearly as written (three audiodec functions matched on
+    the first try); the Sony units are split where tiny functions are called out of line
+    (`-inline auto` would have inlined them within one unit);
+  - zmpeg.cpp 0x309550, audiodec.cpp 0x309F60, playpss.cpp 0x30A860, ldimage.cpp 0x30B740,
+    strfile.cpp 0x30B9D0, zNetCnf.cpp 0x30BD40, trc.cpp 0x30C760, zNetDme.cpp from 0x30CA50
+    (SOCOM II's new CZNetwork functions sit ahead of SOCOM 1's first).
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has

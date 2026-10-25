@@ -1059,9 +1059,9 @@
 0x001BAF18 0x150 _pack_header  # MAIN unaligned; s1:exact
 0x001BB068 0x6C _system_header  # MAIN unaligned; s1:exact
 0x001BB0D8 0x5B0 _PES_packet  # MAIN unaligned; s1:exact
-0x001BB688 0xB0 func_001BB688  # MAIN unaligned
+0x001BB688 0xB0 sceMpegInit  # MAIN unaligned; s1:calls (startPss calls it just before sceMpegCreate where SOCOM 1's calls sceMpegInit; 0xB0 against 0xA8) -- the online lane
 0x001BB738 0x20C sceMpegCreate  # MAIN unaligned; s1:calls
-0x001BB948 0x8 func_001BB948  # MAIN unaligned
+0x001BB948 0x8 sceMpegDelete  # MAIN unaligned; s1:calls (stopPss's call where SOCOM 1's calls sceMpegDelete; 8 bytes in both) -- the online lane
 0x001BB950 0x3C func_001BB950  # MAIN
 0x001BB990 0x48 sceMpegGetPicture  # MAIN; s1:exact
 0x001BB9D8 0x44 sceMpegGetPictureRAW8  # MAIN unaligned; s1:exact
@@ -1069,9 +1069,9 @@
 0x001BBA70 0x10 func_001BBA70  # MAIN
 0x001BBA80 0x14 sceMpegSetDecodeMode  # MAIN; s1:exact
 0x001BBA98 0x20 sceMpegGetDecodeMode  # MAIN unaligned; s1:exact
-0x001BBAB8 0xC func_001BBAB8  # MAIN unaligned
+0x001BBAB8 0xC sceMpegIsEnd  # MAIN unaligned; s1:calls (testdonePss's call where SOCOM 1's calls sceMpegIsEnd; 0xC bytes in both) -- the online lane
 0x001BBAC8 0x10 sceMpegIsRefBuffEmpty  # MAIN unaligned; s1:exact
-0x001BBAD8 0x58 func_001BBAD8  # MAIN unaligned
+0x001BBAD8 0x58 sceMpegReset  # MAIN unaligned; s1:calls (stopPss calls it after audioDecReset where SOCOM 1's calls sceMpegReset; 0x58 bytes against SOCOM 1's 0x50, a later libmpeg) -- the online lane
 0x001BBB30 0x54 sceMpegClearRefBuff  # MAIN; s1:exact
 0x001BBB88 0x24 sceMpegAddCallback  # MAIN unaligned; s1:exact
 0x001BBBB0 0x50 _dispatchMpegCallback  # MAIN; s1:exact
