@@ -8,8 +8,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK __dl__FPv(char *);                          /* extern */
+M2C_UNK __dt__8CRdrFileFv(char *, M2C_UNK);         /* extern */
 M2C_UNK func_002CEFB0(char *, M2C_UNK);             /* extern */
-M2C_UNK func_0032D540(char *, M2C_UNK);             /* extern */
 M2C_UNK func_00333770(char *);                      /* extern */
 
 char *func_00333A20(char *arg0, s64 arg1) {
@@ -25,7 +25,7 @@ char *func_00333A20(char *arg0, s64 arg1) {
         if ((temp_a0 != NULL) && (temp_a0 != NULL) && (temp_a0 != NULL) && (temp_a0 != NULL)) {
             func_002CEFB0(temp_a0, 0);
         }
-        func_0032D540(arg0, 0);
+        __dt__8CRdrFileFv(arg0, 0);
         if (((s64) (arg1 << 0x30) >> 0x30) > 0) {
             __dl__FPv(arg0);
         }

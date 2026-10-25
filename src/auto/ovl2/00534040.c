@@ -8,9 +8,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 f32 fabsf(f32);                                     /* extern */
-s32 func_0032E820(s32, M2C_UNK *, char *, M2C_UNK); /* extern */
-s32 func_0032F0D0(s32, M2C_UNK *);                  /* extern */
 s32 zrdr_findreal__FPC5_zrdrPCcPfi(s32, M2C_UNK *, char *, M2C_UNK); /* extern */
+s32 zrdr_findtag__FPC5_zrdrPCc(s32, M2C_UNK *);     /* extern */
+s32 zrdr_finduint__FPC5_zrdrPCcPUii(s32, M2C_UNK *, char *, M2C_UNK); /* extern */
 extern M2C_UNK data_0065B0F8;
 extern M2C_UNK data_0065B108;
 extern M2C_UNK data_0065B110;
@@ -51,7 +51,7 @@ void Parse__9AI_PARAMSFP5_zrdr(char *arg0, s32 arg1) {
         if (zrdr_findreal__FPC5_zrdrPCcPfi(arg1, &data_0065B150, arg0 + 0x34, 1) != 0) {
             SC_MEMBER(arg0, s32 *, 0) = (s32) (SC_MEMBER(arg0, s32 *, 0) | 0x1000);
         }
-        temp_v0 = func_0032F0D0(arg1, &data_0065B168);
+        temp_v0 = zrdr_findtag__FPC5_zrdrPCc(arg1, &data_0065B168);
         if (temp_v0 != 0) {
             if (zrdr_findreal__FPC5_zrdrPCcPfi(temp_v0, &data_0065B170, arg0 + 0x1C, 1) != 0) {
                 SC_MEMBER(arg0, s32 *, 0) = (s32) (SC_MEMBER(arg0, s32 *, 0) | 0x20);
@@ -72,7 +72,7 @@ void Parse__9AI_PARAMSFP5_zrdr(char *arg0, s32 arg1) {
                 SC_MEMBER(arg0, f32 *, 0x24) = (f32) -fabsf(SC_MEMBER(arg0, f32 *, 0x24));
             }
         }
-        if (func_0032E820(arg1, &data_0065B1C0, arg0 + 0x2C, 1) != 0) {
+        if (zrdr_finduint__FPC5_zrdrPCcPUii(arg1, &data_0065B1C0, arg0 + 0x2C, 1) != 0) {
             SC_MEMBER(arg0, s32 *, 0) = (s32) (SC_MEMBER(arg0, s32 *, 0) | 0x400);
         }
     }

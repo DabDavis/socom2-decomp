@@ -11,6 +11,8 @@
  * three async ones) */
 #include "../zutil/zutil.h"
 
+class CSTable;
+
 namespace zar {
 
 class CKey;
@@ -41,6 +43,7 @@ public:
     CKey *OpenKey(const char *name);
     CKey *FindKey(const char *name);
     void CloseKey(CKey *key);
+    void Close();
     bool IsOpen() { return m_pFile ? m_pFile->IsOpen() : false; }
 
     CKeyRing m_keys;   // 0x4: the open keys, innermost last
@@ -48,7 +51,9 @@ public:
     CIO* m_pFile;   // 0x14
     unsigned char _18[0x9C - 0x18];   // 0x18: SOCOM 1's m_databuffer .. m_tail, grown by 0x14
     CKey* m_root;   // 0x9c (SOCOM 1: 0x88)
-    unsigned char _a0[0xB8 - 0xA0];   // 0xa0: SOCOM 1's m_stable .. m_bSecure
+    CSTable* m_stable;   // 0xa0 (SOCOM 1: 0x8c)
+    char* m_filename;   // 0xa4 (SOCOM 1: 0x90): CRdrArchive's walks compare their names with it
+    unsigned char _a8[0xB8 - 0xA8];   // 0xa8: SOCOM 1's m_key_buffer .. m_bSecure
 };   // 0xb8 bytes (OpenZAR's new; SOCOM 1's 0xA4)
 
 }

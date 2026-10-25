@@ -7,10 +7,10 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+s32 CreateString__7CSTableFPCc(s32, s32);           /* extern */
 M2C_UNK func_00385EA0(char *, s32);                 /* extern */
-s32 func_0039F1C0(s32, s32);                        /* extern */
 
 void func_00385E50(char *arg0, s32 arg1) {
-    SC_MEMBER(arg0, s32 *, 0x14) = func_0039F1C0(arg1, SC_MEMBER(arg0, s32 *, 0x14));
+    SC_MEMBER(arg0, s32 *, 0x14) = CreateString__7CSTableFPCc(arg1, SC_MEMBER(arg0, s32 *, 0x14));
     func_00385EA0(arg0, arg1);
 }

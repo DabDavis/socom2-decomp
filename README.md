@@ -931,6 +931,50 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     and blend pools (RTArray, 0x20 bytes each) at 0x10/0x30, the blend stack at 0x50, the
     part and anim vectors at 0x5C/0x68, the overlay at 0x74; zanim_menu.cpp runs to 0x2869C4
     (cdeque<const void *>'s instances close it), the body code from 0x2869D0 to 0x29035C.
+- **Tells from the rdr reader** (src/gamez/zrdr/: zrdr.h, zrdr_main.cpp, zrdr_archive.cpp,
+  zrdr_file.cpp, zrdr_pack.cpp; src/gamez/zsave/):
+  - an inline const member called through a non-const pointer reloads a field the caller just
+    tested; through a const pointer, or written out, it reuses the register;
+  - MW folds a null test of a local array's address, even through an inline's parameter; written
+    as `(int)p` the test stays (both builds' FindRdr keep it);
+  - the target's bool-materialised tag test is `bool m = type == 3 ? strcmp(...) == 0 : false;`
+    written in the caller; as an inline bool member it reloads the type;
+  - `Item(unsigned)` with an int counter keeps the element address recomputed each pass, as the
+    target does; matching types strength-reduce it;
+  - a pointer-list walk whose element the target reloads after a call reads it through `*i.i_`,
+    cast out by value; `i = begin();` written before `iterator e = end();` loads the first node
+    ahead of the sentinel's address;
+  - a placeholder constructor or destructor wrapped in an inline gains MW's null test: call the
+    placeholder by hand where the member's would run;
+  - a 16-bit bitfield in `type == 4 ? length : 0` compares signed; through an unsigned-returning
+    accessor, unsigned;
+  - _zrdr is `type:8 isclone:1 packed:1 nofree:1 unused:5 length:16` and a word union; zanim.h
+    (and zui.h) still have their own `struct _zrdr` (Item(int), non-const accessors, no
+    constructor). Measured: swapping zanim.h's for zrdr.h's breaks 4 units' builds and 14
+    matched functions (ten menu handlers, CCamera::CmdParseParams, ParseTeamBlock,
+    LoadSoundGroups, ~CRdrArchiveList's copy) -- the two families of code want different
+    accessors (const or not, the index unsigned or int) and zrdr.h's constructor. Overloads cannot
+    serve both (each side calls with int counters through non-const pointers); a unit that needs
+    both headers waits on renamed accessor families.
+- **Tells from the HUD, round 10** (hud_objectives.cpp complete, hud_ammo.cpp, hud_mpinfobox.cpp,
+  hud_healthbar.cpp):
+  - an inline bool written `if (i < 0 || i >= n) return false; ...; return true;` puts the false
+    block first, as the target does (ResolveIndex, after SOCOM 1's line table); the `&&` form
+    puts it after;
+  - scdiff leaves a function-local static float unchecked but compares a file-scope static by
+    content: prefer file statics;
+  - a local that comes from an inline helper takes a lower saved register than the caller's
+    named locals and earlier inlined loop temporaries (NextObjective's greying moved into an
+    inline for `newindex` to land in s1);
+  - MSL's `vector<bool>`: its destructor one null-tested level (`if (data_) operator
+    delete(data_)`); an element read goes through SOCOM 1's `reference {vec, n}` to the
+    out-of-line `test_bit`, the reference kept on the stack inside a loop, folded outside one;
+  - a same-unit function the target calls out of line is pinned with `#pragma auto_inline off`
+    (SetCurColor);
+  - `if (own) tex = x;` before a call pads the join with a nop; a ternary in the call's argument
+    does not;
+  - include/string lacks `basic_string(const char *)` (its out-of-line copy is 0x2396F0):
+    CRadioIcon_Dynamic::Tick waits on it.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has

@@ -13,6 +13,11 @@ public:
     /* the counts and their bitmaps off (0x237DE0) and, in play, on (0x237E50) */
     void Off();
     void On();
+    /* everything faded to an alpha (0x237D00; the name ours, from its members' SetTrans calls) */
+    void SetTrans(float trans);
+    /* one to three magazines shown as bitmaps, more as a texture of their own (0x237B40; the
+     * name ours) */
+    void SetMags(int mags, zdb::CTexHandle *tex);
 
     C2DBitmapPoly m_poly;   // 0x0
     C2DBitmap m_bitmap;   // 0x1f0
@@ -20,7 +25,7 @@ public:
     C2DString m_ammo;   // 0x288
     C2DString m_mags;   // 0x320
     C2DBitmap m_bitmaps[4];   // 0x3c0
-    int m_socom2_5c0;   // 0x5c0
+    zdb::CTexHandle *m_magtex;   // 0x5c0: the magazines' texture (Init's)
 } __attribute__((aligned(16)));   // 0x5d0 bytes
 
 #endif

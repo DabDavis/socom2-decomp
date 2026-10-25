@@ -8,8 +8,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 s32 __nw__FUi(M2C_UNK);                             /* extern */
-s32 func_0032F0D0(s32, M2C_UNK *);                  /* extern */
 s32 func_00386FF0(s32, s32);                        /* extern */
+s32 zrdr_findtag__FPC5_zrdrPCc(s32, M2C_UNK *);     /* extern */
 extern M2C_UNK __vt__11CDlgObjSpec;
 extern M2C_UNK data_003F9B80;
 
@@ -20,7 +20,7 @@ char *func_003832E0(char *arg0, s32 arg1) {
     SC_MEMBER(arg0, M2C_UNK **, 0) = &__vt__11CDlgObjSpec;
     SC_MEMBER(arg0, s32 *, 4) = 0;
     if (arg1 != 0) {
-        temp_v0 = func_0032F0D0(arg1, &data_003F9B80);
+        temp_v0 = zrdr_findtag__FPC5_zrdrPCc(arg1, &data_003F9B80);
         if (temp_v0 != 0) {
             var_v0 = __nw__FUi(0x2C);
             if (var_v0 != 0) {
