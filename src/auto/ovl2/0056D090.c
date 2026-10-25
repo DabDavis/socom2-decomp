@@ -7,8 +7,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_0056CBF0(s32 arg0, s32 arg1, s32 arg2, s32 arg3, s32 arg4, s32 arg5);
-void func_0056D090(char *arg0, s32 arg1, s32 arg2, s32 arg3, s32 arg4, s32 arg5) {
-    func_0056CBF0((s32) arg0, (s32) SC_MEMBER(arg0, s8 *, 0x3F5), arg2, arg3, arg4, arg5);
+M2C_UNK SetAiMode__11CSealCtrlAiF7AI_MODE(char * arg0, s32 arg1);
+void func_0056D090(char *arg0) {
+    SetAiMode__11CSealCtrlAiF7AI_MODE(arg0, (s32) SC_MEMBER(arg0, s8 *, 0x3F5));
     SC_MEMBER(arg0, s8 *, 0x3F5) = 1;
 }

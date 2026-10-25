@@ -9904,11 +9904,11 @@
 0x00541A90 0x1C func_00541A90  # OVL2
 0x00541AB0 0x1C func_00541AB0  # OVL2
 0x00541AD0 0xD8 func_00541AD0  # OVL2
-0x00541BB0 0xAC func_00541BB0  # OVL2; size 0xAC (the seed split it at 0x541C10, the delay slot of its jal to CPickup::Destroy: the rest runs on its saved s0/s1 and pops its 48-byte frame)
+0x00541BB0 0xAC func_00541BB0  # OVL2; size 0xAC (the seed split it at 0x541C10, the delay slot of its jal to CPickup::Destroy: the rest runs on its saved s0/s1 and pops its 48-byte frame); the seed's cut (0x541c10): jal target of OVL1's DNAS client, which calls DNAS.BIN loaded in the OVL2 slot (README)
 0x00541C60 0x60 func_00541C60  # OVL2
 0x00541CC0 0xC func_00541CC0  # OVL2
 0x00541CD0 0x70 FindPickup__7CPickupFUi  # OVL2; s1:calls (CurrentPickup and CurrentPickupSecondary call it where SOCOM 1's call FindPickup)
-0x00541D40 0x1D0 func_00541D40  # OVL2; size 0x1D0 (the seed split it at 0x541D80, in the middle of its prologue's float saves: one 192-byte frame to 0x541F0C)
+0x00541D40 0x1D0 func_00541D40  # OVL2; size 0x1D0 (the seed split it at 0x541D80, in the middle of its prologue's float saves: one 192-byte frame to 0x541F0C); the seed's cut (0x541d80): jal target of OVL1's DNAS client, which calls DNAS.BIN loaded in the OVL2 slot (README)
 0x00541F10 0x11C func_00541F10  # OVL2
 0x00542030 0x78 func_00542030  # OVL2
 0x005420B0 0xC0 func_005420B0  # OVL2
@@ -9953,16 +9953,16 @@
 0x00544200 0x8 func_00544200  # OVL2; s1~ IsRemote__9CSealCtrlCFv (one of 2 out-of-line copies of an inline, by s1:vtable)
 0x00544210 0xAC func_00544210  # OVL2
 0x005442C0 0x138 NetworkPlayerCreate__10CZSealBodyFv  # OVL2; s1:calls
-0x00544400 0x1A8 DecrZoomState__10CZSealBodyFv  # OVL2; size 0x1A8 (the seed split it at 0x544550, a branch target after its last call: 0x544550's code runs on s3/s4 and pops this function's 96-byte frame); s1:order (seal.cpp: before IncrZoomState and SetCurZoomState, as SOCOM 1's DecrZoomState at 0x24DCC0; CSealCtrl::PreTick calls both); the zoom state at 0x200 stepped down through the kit's current item and handed to SetCurZoomState, the new state returned
-0x005445B0 0x2E4 IncrZoomState__10CZSealBodyFv  # OVL2; size 0x2E4 (the seed split it at 0x544708, 0x544788, 0x5447D8 -- unaligned -- and at 0x544860, after a nop before the epilogue: all run on its saved registers and pop its 112-byte frame); s1:order (between DecrZoomState and SetCurZoomState, as SOCOM 1's IncrZoomState at 0x24DDB0); ends calling SetCurZoomState with the new state, as SOCOM 1's
-0x005448A0 0x2B8 SetCurZoomState__10CZSealBodyF9ZOOMSTATE  # OVL2; size 0x2B8 (the seed split it at 0x5448F8, unaligned: the rest of its code to the epilogue at 0x544B48); s1:order (after IncrZoomState, as SOCOM 1's at 0x24DF40); its head is SOCOM 1's word for word, offsets moved: the byte enum at 0x200 compared, the old one stored at 0x201, the new at 0x200, 1 at 0x202 (SOCOM 1's m_zoomstate, m_zoomstate_prev, m_zoomstate_echo at 0x160-0x162)
+0x00544400 0x1A8 DecrZoomState__10CZSealBodyFv  # OVL2; size 0x1A8 (the seed split it at 0x544550, a branch target after its last call: 0x544550's code runs on s3/s4 and pops this function's 96-byte frame); s1:order (seal.cpp: before IncrZoomState and SetCurZoomState, as SOCOM 1's DecrZoomState at 0x24DCC0; CSealCtrl::PreTick calls both); the zoom state at 0x200 stepped down through the kit's current item and handed to SetCurZoomState, the new state returned; the seed's cut (0x544550): jal target of OVL1's DNAS client, which calls DNAS.BIN loaded in the OVL2 slot (README)
+0x005445B0 0x2E4 IncrZoomState__10CZSealBodyFv  # OVL2; size 0x2E4 (the seed split it at 0x544708, 0x544788, 0x5447D8 -- unaligned -- and at 0x544860, after a nop before the epilogue: all run on its saved registers and pop its 112-byte frame); s1:order (between DecrZoomState and SetCurZoomState, as SOCOM 1's IncrZoomState at 0x24DDB0); ends calling SetCurZoomState with the new state, as SOCOM 1's; the seed's cuts (0x544708, 0x544788, 0x5447d8, 0x544860): jal targets of OVL1's DNAS client, which calls DNAS.BIN loaded in the OVL2 slot (README)
+0x005448A0 0x2B8 SetCurZoomState__10CZSealBodyF9ZOOMSTATE  # OVL2; size 0x2B8 (the seed split it at 0x5448F8, unaligned: the rest of its code to the epilogue at 0x544B48); s1:order (after IncrZoomState, as SOCOM 1's at 0x24DF40); its head is SOCOM 1's word for word, offsets moved: the byte enum at 0x200 compared, the old one stored at 0x201, the new at 0x200, 1 at 0x202 (SOCOM 1's m_zoomstate, m_zoomstate_prev, m_zoomstate_echo at 0x160-0x162); the seed's cut (0x5448f8): jal target of OVL1's DNAS client, which calls DNAS.BIN loaded in the OVL2 slot (README)
 0x00544B60 0xC0 func_00544B60  # OVL2
 0x00544C20 0xC CurrentPickupSecondary__10CZSealBodyFv  # OVL2; s1:order (seal.cpp: after the zoom states, before CurrentPickup, as SOCOM 1's); FindPickup of m_control's secondary pickup id (SOCOM 1's 0x14C, now 0x150), tail-called without SOCOM 1's null test
 0x00544C30 0xC CurrentPickup__10CZSealBodyFv  # OVL2; s1:order (after CurrentPickupSecondary); FindPickup of m_control's pickup id (SOCOM 1's 0x148, now 0x14C)
 0x00544C40 0x18 CompassAnchor_MPBase__10CZSealBodyFP14CCompassAnchor  # OVL2; s1:order (SOCOM 1's CompassAnchor_Hostage, the one before it, is gone); the anchor at 0xEC4 (SOCOM 1's 0xDB8) swapped in, whether there was none returned
 0x00544C60 0x18 CompassAnchor_MPBomb__10CZSealBodyFP14CCompassAnchor  # OVL2; s1:order (after CompassAnchor_MPBase); the anchor at 0xEC0 (SOCOM 1's 0xDB4)
 0x00544C80 0x14 func_00544C80  # OVL2
-0x00544CA0 0x50 ActionAvailableMask__10CZSealBodyFUcb  # OVL2; size 0x50 (the seed split it after its first branch: 0x544CA8 was its body): a bit (1 << id) set in or cleared from the mask at 0xED0 by a bool, SOCOM 1's ActionSelectionMask or ActionAvailableMask reshaped (which one unproven); s1:calls by hand (CSealCtrl::PerformReticleActions calls it with (14, true) and (15, true) where SOCOM 1's calls ActionAvailableMask__10CZSealBodyFUib; SOCOM II's narrows the id to a byte, andi 0xff, so an unsigned char parameter)
+0x00544CA0 0x50 ActionAvailableMask__10CZSealBodyFUcb  # OVL2; size 0x50 (the seed split it after its first branch: 0x544CA8 was its body): a bit (1 << id) set in or cleared from the mask at 0xED0 by a bool, SOCOM 1's ActionSelectionMask or ActionAvailableMask reshaped (which one unproven); s1:calls by hand (CSealCtrl::PerformReticleActions calls it with (14, true) and (15, true) where SOCOM 1's calls ActionAvailableMask__10CZSealBodyFUib; SOCOM II's narrows the id to a byte, andi 0xff, so an unsigned char parameter); the seed's cut (0x544ca8): jal target of OVL1's DNAS client, which calls DNAS.BIN loaded in the OVL2 slot (README)
 0x00544CF0 0x64 func_00544CF0  # OVL2
 0x00544D60 0x260 func_00544D60  # OVL2
 0x00544FC0 0x134 func_00544FC0  # OVL2
@@ -9981,7 +9981,7 @@
 0x00545530 0x9C func_00545530  # OVL2
 0x005455D0 0x80 func_005455D0  # OVL2
 0x00545650 0xF8 func_00545650  # OVL2
-0x00545750 0x13C func_00545750  # OVL2; size 0x13C (the seed split it at 0x545800, the delay slot of its jal to 0x544D60: the rest runs on its saved s0-s3 and pops its 80-byte frame)
+0x00545750 0x13C func_00545750  # OVL2; size 0x13C (the seed split it at 0x545800, the delay slot of its jal to 0x544D60: the rest runs on its saved s0-s3 and pops its 80-byte frame); the seed's cut (0x545800): jal target of OVL1's DNAS client, which calls DNAS.BIN loaded in the OVL2 slot (README)
 0x00545890 0x8 func_00545890  # OVL2
 0x005458A0 0x114 func_005458A0  # OVL2
 0x005459C0 0x64 func_005459C0  # OVL2
@@ -9996,9 +9996,9 @@
 0x00546210 0x1AC func_00546210  # OVL2
 0x005463C0 0x5FC func_005463C0  # OVL2
 0x005469C0 0x20 ExecuteDelayedAction_Jump__10CZSealBodyFv  # OVL2; tu: seal.cpp~ (1.0 beta); SOCOM 1's word for word but the offset (bit 18 of the flag word, SOCOM 1's 0xF58 now 0x105C: +0x104 as m_inside's), in SOCOM 1's order (Jump, then Climb)
-0x005469E0 0x20 ExecuteDelayedAction_Climb__10CZSealBodyFv  # OVL2; size 0x20 (the seed split it at the delay slot of its jr ra: 0x5469F8 was its last two words); SOCOM 1's word for word but the offset (bit 17 of the flag word at 0x105C)
+0x005469E0 0x20 ExecuteDelayedAction_Climb__10CZSealBodyFv  # OVL2; size 0x20 (the seed split it at the delay slot of its jr ra: 0x5469F8 was its last two words); SOCOM 1's word for word but the offset (bit 17 of the flag word at 0x105C); the seed's cut (0x5469f8): jal target of OVL1's DNAS client, which calls DNAS.BIN loaded in the OVL2 slot (README)
 0x00546A00 0x34 ExecuteAction_ApplyRestraint__10CZSealBodyFP10CZSealBody  # OVL2; s1:order (seal.cpp: after the delayed actions, before ExecuteAction_CQBAttack, as SOCOM 1's); RestrainBuddy on the victim, true -- SOCOM 1's counted a stat too
-0x00546A40 0x108 ExecuteAction_CQBAttack__10CZSealBodyFP10CZSealBody  # OVL2; s1:calls; size 0x108 (the seed cut it at a nop before its epilogue: 0x546B30 was its last six words)
+0x00546A40 0x108 ExecuteAction_CQBAttack__10CZSealBodyFP10CZSealBody  # OVL2; s1:calls; size 0x108 (the seed cut it at a nop before its epilogue: 0x546B30 was its last six words); the seed's cut (0x546b30): jal target of OVL1's DNAS client, which calls DNAS.BIN loaded in the OVL2 slot (README)
 0x00546B50 0xA8 ExecuteAction_KnifeAttack__10CZSealBodyFP10CZSealBody  # OVL2; s1:order (after ExecuteAction_CQBAttack); StabBuddy on the victim first, as SOCOM 1's
 0x00546C00 0x34 func_00546C00  # OVL2
 0x00546C40 0x8C SetSnakePathUpdate__10CZSealBodyFbUi  # OVL2; s1:order (before ResetAltitude); SOCOM 1's code but the offsets (m_snake_path bit 16 of 0x105C, the path at 0x434)

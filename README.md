@@ -833,6 +833,18 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - reading a loop-invariant record field into a local before the loop frees the record's saved
     register for the iterator;
   - member-pointer constants are pooled per unit as `{0, -1, f}`.
+- **Tells from the SEALs, round 2** (seal_body.cpp, seal_cfg.cpp, seal_env.cpp):
+  - an inline's out-of-line copies after their first caller sit in exactly reverse first-use
+    order (PostTick is followed by eight, CDynGrenade's three statics among them);
+  - a unit that defines one of a class's virtuals also emits its implicit destructor, which then
+    supersedes a matching draft; declare the destructor non-inline where the target calls it
+    (CAiSAnimate);
+  - `T *a; U *b = x; a = f();` swaps the two locals' saved registers compared with initialising
+    `a` at its declaration;
+  - a scaling written as its own statement (`d *= k; return d;`) is the only form that madds a
+    blend into $f0 and loads the factor into $f1 after the mula (ComputeElevOfs);
+  - CZSealBody is `: CEntity, CBody` -- CBody at 0x170, 0x90 bytes (its constructor at 0x28EDD0
+    zeroes through 0x8C); every CAiState holds a CAiStateStack (`: list<CAiState*>`) at +8.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
@@ -867,6 +879,18 @@ hand**: rename a `func_<VA>` to the mangled name its source defines. A placehold
 the address in its name, so source can call `func_001C5EC0` before that function is written.
 Data symbols go in the same file (`inflate_mask`). `src/ABSENT.txt` lists what the source
 defines and the image does not hold.
+
+**OVL1's DNAS client calls DNAS.BIN, not OVL2, and the seed split OVL2 at those calls.**
+`OVERLAY/REL/DNAS.BIN` (plaintext, `extracted/overlays/disc/OVERLAY/REL/`, mapped 1:1 from
+0x4C5380) is loaded into the OVL2 slot for the authentication. OVL1's DNAS client
+(0x2CA340-0x2CD360, fifteen functions calling it) jals into 0x4C5380-0x568180, and those targets
+name DNAS.BIN functions: all twelve that land mid-function in r0001's OVL2 land on a DNAS.BIN
+prologue. The seed made a row at every jal target, so it cut r0001 OVL2 functions there. The
+SEAL lane merged DecrZoomState, IncrZoomState, SetCurZoomState and six more back, and its notes
+say so. `build/scratch/seal/fallthru.py` finds rows that run into the next one, and
+`build/scratch/seal/ovl2_splits.txt` lists the rest. Six of them (0x4C6C28, 0x4C6DF0, 0x4C7238,
+0x4C73F0, 0x534830, 0x539D50) are DNAS targets too. Scoring the DNAS client will need DNAS.BIN's
+functions resolved apart from OVL2's, as `ovl-copy` does for template copies.
 
 ### Names from SOCOM 1 (`tools/s1names.py`)
 
