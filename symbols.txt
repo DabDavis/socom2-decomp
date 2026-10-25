@@ -5951,11 +5951,11 @@
 0x00335E20 0x1A8 func_00335E20  # OVL1
 0x00335FD0 0x258 zRndrInit__Fv  # OVL1; s1:calls
 0x00336230 0x10C func_00336230  # OVL1
-0x00336340 0xA8 func_00336340  # OVL1
-0x003363F0 0x70 func_003363F0  # OVL1
-0x00336460 0x40 func_00336460  # OVL1
-0x003364A0 0x8 func_003364A0  # OVL1
-0x003364B0 0x14 func_003364B0  # OVL1
+0x00336340 0xA8 Clear__12CFlareSystemFv  # OVL1; the rdr lane: SOCOM II's, the name ours (CFlareSystem at 0x488F10: every flare of the pointer vector at 4 deleted, its size zeroed, FreeVector's pieces called -- 0x3364B0, 0x3364A0, 0x336460, 0x3363F0; 0x33B720 calls it)
+0x003363F0 0x70 __dt__Q23std44vector<P6CFlare,Q23std19allocator<P6CFlare>>Fv  # OVL1; the rdr lane: the flare system's pointer vector's destructor (three this tests, the pod's storage deleted), FreeVector's temporary's in CFlareSystem::Clear (zrndr_pipe.cpp's inline copy); the element class name ours
+0x00336460 0x40 swap__Q23std44vector<P6CFlare,Q23std19allocator<P6CFlare>>FRQ23std44vector<P6CFlare,Q23std19allocator<P6CFlare>>  # OVL1; the rdr lane: the flare system's pointer vector's swap, FreeVector's in CFlareSystem::Clear (zrndr_pipe.cpp's inline copy)
+0x003364A0 0x8 clear__Q23std44vector<P6CFlare,Q23std19allocator<P6CFlare>>Fv  # OVL1; the rdr lane: the flare system's pointer vector's clear, FreeVector's in CFlareSystem::Clear (zrndr_pipe.cpp's inline copy)
+0x003364B0 0x14 __ct__Q23std44vector<P6CFlare,Q23std19allocator<P6CFlare>>Fv  # OVL1; the rdr lane: the flare system's pointer vector's constructor, FreeVector's temporary in CFlareSystem::Clear (zrndr_pipe.cpp's inline copy)
 0x003364D0 0x4C Release__12CFlareSystemFi  # OVL1; the rdr lane: SOCOM II's, the name ours and the class the HUD lane's (hud_lensflare.cpp's CFlareSystem at 0x488F10: CLensFlareManager::Reset releases each flare's handle through it -- a handle in range has bit 0 of its flare's first byte cleared, the pointer vector at 4 read through the pod's out-of-line at)
 0x00336520 0x60 func_00336520  # OVL1
 0x00336580 0x58 func_00336580  # OVL1

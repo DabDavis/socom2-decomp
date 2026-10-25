@@ -9,6 +9,7 @@
 #include <vector>
 #include <list>
 #include "../zsys/zsys_public.h"
+#include "../zsys/zsys.h"
 
 namespace zdb {
 /* a texture buffer the GS loads (SOCOM 1's DWARF, 0x40 bytes): its DMA chain at 0x18, the word
@@ -151,11 +152,22 @@ struct CFlare {
 };
 class CFlareSystem {
 public:
+    void Clear();
     void Release(int handle);
 
     unsigned int _0;   // 0x0
     std::vector<CFlare *> m_flares;   // 0x4
 };
+
+/* SOCOM II's: every flare deleted, the vector emptied and its storage given back (FreeVector
+ * inlined one level: its pieces called) */
+void CFlareSystem::Clear()
+{
+    for (std::vector<CFlare *>::iterator i = m_flares.begin(); i != m_flares.end(); ++i)
+        delete *i;
+    m_flares.clear();
+    FreeVector(m_flares);
+}
 
 /* SOCOM II's: a flare let go of -- its active bit cleared, when the handle is one */
 void CFlareSystem::Release(int handle)
