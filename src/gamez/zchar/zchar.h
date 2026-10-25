@@ -7,6 +7,8 @@
 
 #include <vector>
 
+#include "../zweapon/zweapon.h"
+
 class CVehicleRdrEntry;
 struct _zrdr;
 
@@ -232,6 +234,19 @@ public:
 class CSnd;
 class CModel;
 
+/* a weapon a type carries, with its ammunition (SOCOM 1's DWARF, 0xC bytes) */
+class CCharacterWeap {
+public:
+    EQUIP_ITEM m_wepId;   // 0x0
+    EQUIP_AMMO m_ammoId;   // 0x1
+    int m_ammoCount;   // 0x4
+    int m_magCount;   // 0x8
+};
+
+/* a type's weapons (SOCOM 1's DWARF: a vector and nothing more) */
+class CCharacterWeapList : public std::vector<CCharacterWeap> {
+};
+
 /* a kind of character: model, sounds, gear, weapons, AI and health (SOCOM 1's DWARF, 0x2FC bytes;
  * SOCOM II's is 0x3AC -- 85 sounds where SOCOM 1 had 66, each name a plain pointer where SOCOM 1
  * kept a 4-byte CSaferStr, so everything from the LODs on sits 0x98 further, the temporary flag at
@@ -246,6 +261,11 @@ public:
     static CCharacterType *Create(const char *name, const CCharacterType *base, bool reinit);
     static void CleanupTemporary();
     static void AcquireSoundHandles();
+    EQUIP_ITEM GetWeaponByIndex(unsigned int i) const;
+    char *GetBaseName();
+    /* a sound by kind, none out of range (new in SOCOM II, the name ours: CSealCtrlAi::OnStunDamage
+     * calls it) */
+    CSnd *GetSound(CHARACTER_SOUND s) const;
 
     char *m_name;   // 0x0
     int m_ref_count;   // 0x4
@@ -259,7 +279,7 @@ public:
     char *m_texture_asset;   // 0x2d4
     CModel *m_model;   // 0x2d8
     unsigned char m_gear[0xc];   // 0x2dc: CCharacterGearList
-    unsigned char m_weapons[0xc];   // 0x2e8: CCharacterWeapList
+    CCharacterWeapList m_weapons;   // 0x2e8
     int m_strength;   // 0x2f4
     int m_recovery_factor;   // 0x2f8
     int m_controller_id;   // 0x2fc

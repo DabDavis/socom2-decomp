@@ -284,3 +284,42 @@ const char *GetCharacterSoundTypeString(CHARACTER_SOUND s)
     }
     return "CHRSND_NONE";
 }
+
+/* a sound by kind, none out of range (new in SOCOM II; the name ours) */
+CSnd *CCharacterType::GetSound(CHARACTER_SOUND s) const
+{
+    if (!(s > CHRSND_NONE) || s >= CHRSND_MAX)
+        return 0;
+    return m_sounds[s];
+}
+
+/* the list's nth type: the iterator walked n steps (MSL's advance; the name ours) */
+static inline CCharacterType *nth_type(unsigned int n)
+{
+    CCharTypeVec::iterator i = CCharacterType::m_char_list.begin();
+
+    while (n--)
+        ++i;
+    return *i;
+}
+
+/* the name of the type this one was made from, or none -- the type itself not counted (SOCOM 1's,
+ * the self test new): the parent's index walked along the list.
+ * OPEN (0x84 against 0x88): the range test. The target materialises it (sltu v0, then bnez to the
+ * walk, the base zeroed in the delay slot and a `b` to the self test; SOCOM 1's has the same
+ * shape), this build branches on `sltu at`; the test as `size() > id`, an if/else, the base
+ * zeroed first and an inline bool helper all compile to one of two shorter forms */
+char *CCharacterType::GetBaseName()
+{
+    CCharacterType *base = m_parentID < m_char_list.size() ? nth_type(m_parentID) : 0;
+
+    if (base == this)
+        base = 0;
+    return base ? base->m_name : 0;
+}
+
+/* a carried weapon by index, none past the end (SOCOM 1's) */
+EQUIP_ITEM CCharacterType::GetWeaponByIndex(unsigned int i) const
+{
+    return i < m_weapons.size() ? ((CCharacterWeapList &)m_weapons)[i].m_wepId : EQUIP_NONE;
+}

@@ -9817,12 +9817,12 @@
 0x0053B160 0x194 func_0053B160  # OVL2
 0x0053B300 0x9C func_0053B300  # OVL2
 0x0053B3A0 0x4C func_0053B3A0  # OVL2
-0x0053B3F0 0x30 func_0053B3F0  # OVL2
-0x0053B420 0x88 func_0053B420  # OVL2
+0x0053B3F0 0x30 GetWeaponByIndex__14CCharacterTypeCFUi  # OVL2; s1:order by hand (char_type.cpp's first function as in the demo's 0x2477A0, the same 0x30 shape: the index tested against m_weapons' size, the weapon id read signed, EQUIP_NONE 255 otherwise; m_weapons at 0x2E8, SOCOM 1's 0x250 + 0x98)
+0x0053B420 0x88 GetBaseName__14CCharacterTypeFv  # OVL2; s1:order by hand (the demo's 0x2477E0, next: m_parentID tested against m_char_list's size, the list walked that many steps, the found type's name -- SOCOM II also refuses the type itself)
 0x0053B4B0 0x140 RdrFetch_CharacterType__14CCharacterTypeFPCc  # OVL2; s1:calls (CreateCustomCharTypes(_zrdr *) calls it, then GetByNameMod and Create, where SOCOM 1's calls RdrFetch_CharacterType; SOCOM II reads chartype.rdr's navyseals/terrorists/escortees through match_name_to_chartype)
 0x0053B5F0 0x11C match_name_to_chartype__14CCharacterTypeFP8CRdrFilePCcPCc  # OVL2; s1:calls
 0x0053B710 0x1D8 func_0053B710  # OVL2
-0x0053B8F0 0x40 func_0053B8F0  # OVL2
+0x0053B8F0 0x40 GetSound__14CCharacterTypeCF15CHARACTER_SOUND  # OVL2; ours (new in SOCOM II: m_sounds[s] at 0x168 for 0 <= s < 85, none otherwise; CSealCtrlAi::OnStunDamage calls it twice)
 0x0053B930 0xE8 func_0053B930  # OVL2
 0x0053BA20 0x70 func_0053BA20  # OVL2
 0x0053BA90 0x40 func_0053BA90  # OVL2
@@ -9835,7 +9835,7 @@
 0x0053C200 0x19C AcquireSoundHandles__14CCharacterTypeFv  # OVL2; s1:calls
 0x0053C3A0 0x5A0 GetCharacterSoundTypeString__F15CHARACTER_SOUND  # OVL2; s1:order (SOCOM 1's switch of "CHRSND_*" names over a signed byte enum, CHRSND_NONE = -1; 85 sounds where SOCOM 1 had 66)
 0x0053C940 0x68 func_0053C940  # OVL2
-0x0053C9B0 0x90 func_0053C9B0  # OVL2
+0x0053C9B0 0x90 CreateInstance__14CCharacterTypeFPCc  # OVL2; s1:calls by hand (CZSealBody::PreCreateSeal calls it as SOCOM 1's calls CreateInstance__14CCharacterTypeFPCc; the same body: CNode::CreateInstance(m_model, 0, 0), a flag byte of the model set, SetName)
 0x0053CA40 0xD4 func_0053CA40  # OVL2
 0x0053CB20 0x17C func_0053CB20  # OVL2
 0x0053CCA0 0x160 func_0053CCA0  # OVL2
