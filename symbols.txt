@@ -4038,7 +4038,7 @@
 0x002BA040 0x100 func_002BA040  # OVL1
 0x002BA140 0x5C SendVoteMessage__Fiib  # OVL1; s1:align
 0x002BA1A0 0x4C PickupAckPacketHandler__FiiiPv  # OVL1; s1:align
-0x002BA1F0 0x64 SendPickupAckMessage__FiUsUc8AckUnion  # OVL1; s1:align
+0x002BA1F0 0x64 SendPickupAckMessage__FUsii8AckUnion  # OVL1; s1:align; SOCOM II's signature, by hand: its caller 0x59E830 zero-extends the first argument (andi 0xffff) and passes an int second and third; the callee stores the second whole (sw) and the third with sh, neither extended -- SOCOM 1's (int, ushort, uchar) would add two andi; the packet is 8 bytes, the id first (fts_remote.cpp)
 0x002BA260 0x54 PickupMayIPacketHandler__FiiiPv  # OVL1; s1:align
 0x002BA2C0 0xA4 func_002BA2C0  # OVL1
 0x002BA370 0x74 AmmoPUPacketHandler__FiiiPv  # OVL1; s1:align
