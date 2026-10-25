@@ -523,6 +523,57 @@ public:
 
     /* whether the row is in the map (the name ours; materialised, then the column's test) */
     bool IsRow(unsigned short y) const { return y >= 0 && y < m_ny; }
+    /* whether the cell is on its row's run (new in SOCOM II, the name ours: GetCell's first test,
+     * out of line at 0x512140 where GetCell is inlined one level -- the row as IsRow takes it, the
+     * run's test into a bool assigned true) */
+    bool IsMapCell(const CAiMapLoc &loc) const
+    {
+        unsigned short y = loc.y;
+
+        if (y >= 0 && y < m_ny) {
+            const scanline &sl = GetScanline(y);
+            bool in = false;
+
+            unsigned int x = loc.x;
+
+            if (x >= sl.m_start && x < sl.m_end)
+                in = true;
+            return in;
+        }
+        return false;
+    }
+    /* a cell's altitude (new in SOCOM II, the names ours: ai_map.cpp's 0x516940 from the cell; by
+     * its location too big to inline whole -- GetCell is past inline_max_size -- so a caller
+     * inlines it one level and calls GetCell and the first out of line, CAiMaps::GetAltitude) */
+    bool GetAltitude(const CAiCell *cell, float &alt) const;
+    bool GetAltitude(const CAiMapLoc &loc, float &alt) const
+    {
+        CAiCell *cell = GetCell(loc, 0);
+
+        return cell ? GetAltitude(cell, alt) : false;
+    }
+    /* a layer index the map has (the name ours; 0x512120) */
+    bool IsLayer(int layer) const { return layer >= 0 && layer < GetLayerCount(); }
+    /* the layers' count (the name ours) */
+    unsigned int GetLayerCount() const { return m_layers.size(); }
+    /* a row's run (the name ours) */
+    const scanline &GetScanline(unsigned int y) const { return m_scanlines[y]; }
+    /* a layer's cell, none off the map (new in SOCOM II, the name ours: SOCOM 1 read the cell off
+     * the scanline. Out of line at 0x511F80; inlined one level its pieces are the calls 0x512140,
+     * 0x512120, 0x512100 (the scanlines' const []), 0x5120C0 (GetIndex), 0x5120B0 (the layers' []),
+     * the run's index taken before the layer) */
+    CAiCell *GetCell(const CAiMapLoc &loc, int layer) const
+    {
+        CAiCell *cell = 0;
+
+        if (IsMapCell(loc) && IsLayer(layer)) {
+            const scanline &sl = m_scanlines[loc.y];
+            int i = sl.GetIndex(loc.x);
+
+            cell = &m_layers[layer]->m_cells[i];
+        }
+        return cell;
+    }
     bool IsCell(const CAiMapLoc &loc) const { return IsRow(loc.y) && loc.x < m_nx; }
     /* the entry of a name (the name ours: GetLocation's inline walk, which tests the name again) */
     name *FindName(const char *s)

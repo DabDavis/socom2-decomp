@@ -444,6 +444,16 @@ CAiCell *CAiCell::Alloc(unsigned int n)
 
 /* called, not inlined, by the initialiser (the target's jal 0x515720): pinned */
 #pragma auto_inline off
+/* a cell's altitude: the box's floor plus its quantised height (new in SOCOM II, the name ours) */
+bool CAiMap::GetAltitude(const CAiCell *cell, float &alt) const
+{
+    if (cell) {
+        alt = m_bbox.m_min.y + m_alt_quant * (float)cell->m_altitude;
+        return true;
+    }
+    return false;
+}
+
 CAiCell::CAiCell()
 {
     Reset();

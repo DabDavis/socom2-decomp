@@ -20,6 +20,34 @@ CAiMap *CAiMaps::GetMapByIndex(unsigned int i) const
     return *it;
 }
 
+/* the cell's altitude, false off the maps (SOCOM 1's; the map's lookup inlined one level) */
+bool CAiMaps::GetAltitude(const CAiMapLoc &loc, float &alt)
+{
+    CAiMap *map = GetMapByIndex(loc.m_mapid);
+
+    return map ? map->GetAltitude(loc, alt) : false;
+}
+
+/* the cell's boundary bits, 0 off the maps (SOCOM 1's GetBoundary computed them; SOCOM II's reads
+ * the cell's) */
+unsigned int CAiMaps::GetBoundary(const CAiMapLoc &loc)
+{
+    unsigned int b = 0;
+    CAiCell *cell = GetCell(loc);
+
+    if (cell)
+        b = cell->m_boundary;
+    return b;
+}
+
+/* the cell of the first layer of the cell's map (SOCOM 1's; GetCell inlined one level) */
+CAiCell *CAiMaps::GetCell(const CAiMapLoc &loc)
+{
+    CAiMap *map = GetMapByIndex(loc.m_mapid);
+
+    return map ? map->GetCell(loc, 0) : 0;
+}
+
 /* the map that knows the name, the cell given its index (SOCOM 1's) */
 bool CAiMaps::GetLocation(const char *name, CAiMapLoc &loc)
 {
@@ -92,6 +120,11 @@ CAiMap::link *CAiMaps::GetCellLink(const CAiMapLoc &loc)
     CAiMap *map = GetMapByIndex(loc.m_mapid);
 
     return map ? map->GetCellLink(loc) : 0;
+}
+
+CAiMap *CAiMaps::GetMap(const CAiMapLoc &loc) const
+{
+    return GetMapByIndex(loc.m_mapid);
 }
 
 /* the cell's name, its map's; as a string, empty when it has none (SOCOM 1's) */

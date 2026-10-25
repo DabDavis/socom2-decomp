@@ -305,6 +305,9 @@ public:                                                                         
     unsigned int capacity() const { return this->capacity_; }                                   \
     bool empty() const { return this->size_ == 0; }                                             \
     elem_t &operator[](unsigned int n) { return ((elem_t *)this->data_)[n]; }                   \
+    /* the const read (the AI lane: CAiMap::GetCell's scanline and layer, OVL2 0x512100 and    \
+     * 0x5120B0 -- the non-const scanline [] is 0x5176E0, another copy) */                      \
+    const elem_t &operator[](unsigned int n) const { return ((const elem_t *)this->data_)[n]; } \
     void pop_back() { this->size_--; }
 
 template <class T, class Allocator, bool IsPOD>

@@ -20,6 +20,11 @@ public:
 class CAiMaps : public std::list<CAiMap *>, public AIMAPS_PARAMS {
 public:
     CAiMap *GetMapByIndex(unsigned int i) const;
+    /* the cell's map (new in SOCOM II, the name ours) */
+    CAiMap *GetMap(const CAiMapLoc &loc) const;
+    CAiCell *GetCell(const CAiMapLoc &loc);
+    unsigned int GetBoundary(const CAiMapLoc &loc);
+    bool GetAltitude(const CAiMapLoc &loc, float &alt);
     CAiMap::name *GetCellName(const CAiMapLoc &loc) const;
     const char *GetCellNameString(const CAiMapLoc &loc) const;
     CAiMap::link *GetCellLink(const CAiMapLoc &loc);
