@@ -16,6 +16,10 @@ class CZSealBody;
 /* the kit's items (SOCOM 1's EQUIP_ITEM, a byte; the values are not needed yet) */
 enum EQUIP_ITEM { EQUIP_NONE = 0, EQUIP_LAST = 255 };
 
+/* an item's class as CZWeapon::GetIDType gives it (a byte; SOCOM II's sniper rifles are 101, 254
+ * is no item -- the names ours) */
+enum EQUIP_IDTYPE { IDTYPE_SNIPER_RIFLE = 101, IDTYPE_NONE = 254, IDTYPE_LAST = 255 };
+
 /* a weapon's fire modes (SOCOM 1's DWARF, a byte; SOCOM II's item lookups take 255 for the item's
  * current mode -- that name ours) */
 enum FIREMODE {
@@ -72,7 +76,14 @@ public:
     FIREMODE GetCurFireMode();
     int GetNumMags(int index);
     int unwrap(int index, FIREMODE mode) const;
-    int GetCurItemIDType();
+    EQUIP_IDTYPE GetCurItemIDType();
+    bool HasSniperRifle();
+    bool HasItemWithAmmo(EQUIP_ITEM item);
+    EQUIP_ITEM GetSecondaryEnum() const;
+    EQUIP_ITEM GetPrimaryEnum() const;
+    EQUIP_ITEM GetCurItemEnum() const;
+    void *GetAmmoByIndex(int index);
+    void *GetCurAmmo();
     void NVG_Enabled(bool on);
     bool NVG_Enabled() const;
 

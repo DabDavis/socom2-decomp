@@ -14,7 +14,31 @@ void func_00578150(CZSealBody *body, float amount);
 bool func_003C5D80(CZFTSWeapon *w);
 /* CZWeapon::GetIDType (SOCOM 1's GetIDType__8CZWeaponFv, called from the same GetCurItemIDType;
  * OVL1 0x3D1E10, unclaimed) */
-int func_003D1E10(CZFTSWeapon *w);
+EQUIP_IDTYPE func_003D1E10(CZFTSWeapon *w);
+}
+
+/* the item kinds of the first two items and the current one, 255 without one (OVL2 0x5C89D0,
+ * 0x5C8980, 0x5C8930; the current one SOCOM 1's GetCurItemEnum, the first two new -- their names
+ * ours) */
+EQUIP_ITEM CZKit::GetCurItemEnum() const
+{
+    CZFTSWeapon *w = m_item[unwrap(m_selected_item, FIREMODE_CURRENT)];
+
+    return w ? w->m_equip : EQUIP_LAST;
+}
+
+EQUIP_ITEM CZKit::GetPrimaryEnum() const
+{
+    CZFTSWeapon *w = m_item[unwrap(0, FIREMODE_CURRENT)];
+
+    return w ? w->m_equip : EQUIP_LAST;
+}
+
+EQUIP_ITEM CZKit::GetSecondaryEnum() const
+{
+    CZFTSWeapon *w = m_item[unwrap(1, FIREMODE_CURRENT)];
+
+    return w ? w->m_equip : EQUIP_LAST;
 }
 
 /* whether the kit holds an item of that kind (OVL2 0x5C86F0; SOCOM 1's) */
@@ -23,6 +47,29 @@ bool CZKit::HasItem(EQUIP_ITEM item) const
     for (int i = 0; i < m_num_items; i++)
         if (m_item[i] && item == m_item[i]->m_equip)
             return true;
+    return false;
+}
+
+/* the first item of that kind, and its ammunition (OVL2 0x5C8640, new in SOCOM II: CSealCtrl's
+ * OnActionButton and PerformProximityActions call it where SOCOM 1's called HasItem and then
+ * ItemHasAmmo; the name ours) */
+bool CZKit::HasItemWithAmmo(EQUIP_ITEM item)
+{
+    for (int i = 0; i < GetNumItems(); i++) {
+        if (m_item[i] && item == m_item[i]->m_equip) {
+            if (ItemHasAmmo(i))
+                return true;
+            break;
+        }
+    }
+    return false;
+}
+
+/* a sniper rifle in hand, loaded (OVL2 0x5C85D0; SOCOM 1's, whose class was 100) */
+bool CZKit::HasSniperRifle()
+{
+    if (GetCurItemIDType() == IDTYPE_SNIPER_RIFLE && CurItemHasAmmo())
+        return true;
     return false;
 }
 
@@ -43,10 +90,10 @@ void CZKit::NVG_Enabled(bool on)
 }
 
 /* the current item's id type, 254 without one (OVL2 0x5C8040; SOCOM 1's) */
-int CZKit::GetCurItemIDType()
+EQUIP_IDTYPE CZKit::GetCurItemIDType()
 {
     CZFTSWeapon *w = m_item[m_selected_item];
-    int r = 254;
+    EQUIP_IDTYPE r = IDTYPE_NONE;
 
     if (w)
         r = func_003D1E10(w);
@@ -74,6 +121,21 @@ int CZKit::unwrap(int index, FIREMODE mode) const
             result = i;
     }
     return result;
+}
+
+/* an item's ammunition, and the current item's (OVL2 0x5C6970, 0x5C6920; new in SOCOM II, where
+ * SOCOM 1's callers used GetWeapon -- the names ours) */
+void *CZKit::GetCurAmmo()
+{
+    return GetAmmoByIndex(m_selected_item);
+}
+
+void *CZKit::GetAmmoByIndex(int index)
+{
+    int i = unwrap(index, FIREMODE_CURRENT);
+
+    GetCurItem();
+    return m_ammo[i];
 }
 
 /* the magazines of an item that hold rounds (OVL2 0x5C4970; SOCOM 1's) */

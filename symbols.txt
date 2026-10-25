@@ -11052,8 +11052,8 @@
 0x005C6530 0xC8 func_005C6530  # OVL2
 0x005C6600 0x1C4 unwrap__5CZKitCFi8FIREMODE  # OVL2; by hand: SOCOM 1's unwrap(int, int) inlined on m_num_items, then the item's fire mode (255: its own, m_firemode at 0x6FC) and, for a grenade launcher (0x3C5D80) in a mode of 4 and up, the first item of that kind with ammunition (the name ours, after the unwrap it inlines; GetItemByIndex passes 255)
 0x005C67D0 0x144 func_005C67D0  # OVL2
-0x005C6920 0x48 func_005C6920  # OVL2
-0x005C6970 0x8 func_005C6970  # OVL2
+0x005C6920 0x48 GetAmmoByIndex__5CZKitFi  # OVL2; by hand: new in SOCOM II -- m_ammo (0x15C, SOCOM 1's 0x148) at unwrap(index, 255), after a GetCurItem whose result is dropped; CAiSNoAmmo::Tick calls it after GetItemByIndex where SOCOM 1's called GetWeapon (the name ours)
+0x005C6970 0x8 GetCurAmmo__5CZKitFv  # OVL2; by hand: GetAmmoByIndex(m_selected_item), tail-called (the name ours)
 0x005C6980 0xC0 func_005C6980  # OVL2
 0x005C6A40 0x358 func_005C6A40  # OVL2
 0x005C6DA0 0x368 func_005C6DA0  # OVL2
@@ -11074,14 +11074,14 @@
 0x005C80F0 0x14 NVG_Enabled__5CZKitCFv  # OVL2; s1:order by hand (SOCOM 1's NVG_Enabled() const, next: the body's zoom-class byte (0x200, SOCOM 1's 0x160) == 3, SOCOM 1's 2)
 0x005C8110 0x80 func_005C8110  # OVL2
 0x005C8190 0x438 func_005C8190  # OVL2
-0x005C85D0 0x70 func_005C85D0  # OVL2
-0x005C8640 0xB0 func_005C8640  # OVL2
+0x005C85D0 0x70 HasSniperRifle__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's HasSniperRifle, after the constructor as there: the current item's GetIDType (OVL1 0x3D1E10) of the sniper class (101, SOCOM 1's 100), and CurItemHasAmmo)
+0x005C8640 0xB0 HasItemWithAmmo__5CZKitF10EQUIP_ITEM  # OVL2; by hand: new in SOCOM II between HasSniperRifle and HasItem -- the first item of that kind (m_equip at 0x7C), then ItemHasAmmo(int) inlined; CSealCtrl's OnActionButton and PerformProximityActions call it where SOCOM 1's call HasItem and ItemHasAmmo(EQUIP_ITEM) (the name ours)
 0x005C86F0 0x60 HasItem__5CZKitCF10EQUIP_ITEM  # OVL2; s1:calls by hand (another lane's lead, verified: SOCOM 1's HasItem -- each of m_num_items (0x82C here) items non-null with its type byte (0x7C here, 0x60 there) the argument; SOCOM II's CanPerformAction/CanPlaceBomb callers call it where SOCOM 1's call HasItem)
 0x005C8750 0x120 func_005C8750  # OVL2
 0x005C8870 0xB8 func_005C8870  # OVL2
-0x005C8930 0x4C func_005C8930  # OVL2
-0x005C8980 0x4C func_005C8980  # OVL2
-0x005C89D0 0x4C func_005C89D0  # OVL2
+0x005C8930 0x4C GetSecondaryEnum__5CZKitCFv  # OVL2; by hand: GetCurItemEnum's code on item 1 (new in SOCOM II, before it; the name ours)
+0x005C8980 0x4C GetPrimaryEnum__5CZKitCFv  # OVL2; by hand: GetCurItemEnum's code on item 0 (new in SOCOM II, before it; the name ours)
+0x005C89D0 0x4C GetCurItemEnum__5CZKitCFv  # OVL2; s1:order by hand (SOCOM 1's GetCurItemEnum, after HasItem and the index lookups as there: the selected item through unwrap(sel, 255), its m_equip (lb 0x7C), 255 without one)
 0x005C8A20 0x778 func_005C8A20  # OVL2
 0x005C91A0 0xC func_005C91A0  # OVL2
 0x005C91B0 0x7C func_005C91B0  # OVL2
