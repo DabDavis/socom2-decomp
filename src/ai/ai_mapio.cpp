@@ -2,8 +2,8 @@
  * read a map in one Read (0x189390) and its tables through read_readers, read_routes, read_lines
  * and the ReadCellTable templates; SOCOM II splits Read (0x51AFE0) by file version (0x51A490,
  * 0x51A6D0, 0x51A910, 0x51AB50, 0x51AD90 for 23 down to 19), each calling the same table readers.
- * Each read goes through CFileIO's fread slot (0x24). Still unwritten: the scanlines' reader
- * (0x51AEF0), the layer reader (0x51B150) and the two converting readers. */
+ * Each read goes through CFileIO's fread slot (0x24). Still unwritten: the layer reader (0x51B150)
+ * and the two converting readers. */
 
 #include "ai.h"
 #include "../gamez/zrdr/zrdr.h"
@@ -36,7 +36,9 @@ inline void table_resize(CAiMap::links &t, unsigned int n) { func_0051C840(&t, n
 /* what the version readers call that is not written yet: the cell layer's allocation (0x53A8F0,
  * the layer object at 0xA8), the scanlines' reader and the two converting table readers */
 extern "C" CAiCell *func_0053A8F0(void *layer, unsigned int count);
-extern "C" bool func_0051AEF0(CAiMap *map, CFileIO &f);
+/* the scanlines' resize (MSL's vector::resize, ai_map.cpp's template tail: SOCOM 1's
+ * resize__Q23std72__vector_imp<Q26CAiMap8scanline,...,0>FUi) */
+extern "C" void func_00519700(CAiMap::scanlines *v, unsigned int n);
 extern "C" bool func_0051BBE0(CFileIO &f, CAiMap::names &t);
 extern "C" bool func_0051BD40(CFileIO &f, CAiMap::links &t);
 /* a further layer of cells read (0x51B150, called from the version-20 readers on) */
@@ -103,7 +105,7 @@ bool CAiMap::read_v19(CFileIO &f)
         if (bytes == count * sizeof(CAiCell))
             f.fread(cells, bytes);
     }
-    func_0051AEF0(this, f);
+    read_scanlines(f);
     func_0051BBE0(f, m_namesTable);
     ReadCellTable<actions, action>(f, m_actionTable);
     func_0051BD40(f, m_linksTable);
@@ -159,7 +161,7 @@ bool CAiMap::read_v20(CFileIO &f)
         if (bytes == count * sizeof(CAiCell))
             f.fread(cells, bytes);
     }
-    func_0051AEF0(this, f);
+    read_scanlines(f);
     func_0051BBE0(f, m_namesTable);
     ReadCellTable<actions, action>(f, m_actionTable);
     func_0051BD40(f, m_linksTable);
@@ -194,7 +196,7 @@ bool CAiMap::read_v21(CFileIO &f)
         if (bytes == count * sizeof(CAiCell))
             f.fread(cells, bytes);
     }
-    func_0051AEF0(this, f);
+    read_scanlines(f);
     ReadCellTable<names, name>(f, m_namesTable);
     ReadCellTable<actions, action>(f, m_actionTable);
     func_0051BD40(f, m_linksTable);
@@ -229,7 +231,7 @@ bool CAiMap::read_v22(CFileIO &f)
         if (bytes == count * sizeof(CAiCell))
             f.fread(cells, bytes);
     }
-    func_0051AEF0(this, f);
+    read_scanlines(f);
     ReadCellTable<names, name>(f, m_namesTable);
     ReadCellTable<actions, action>(f, m_actionTable);
     func_0051BD40(f, m_linksTable);
@@ -264,7 +266,7 @@ bool CAiMap::read_v23(CFileIO &f)
         if (bytes == count * sizeof(CAiCell))
             f.fread(cells, bytes);
     }
-    func_0051AEF0(this, f);
+    read_scanlines(f);
     ReadCellTable<names, name>(f, m_namesTable);
     ReadCellTable<actions, action>(f, m_actionTable);
     ReadCellTable<links, link>(f, m_linksTable);
@@ -355,8 +357,33 @@ void _fixupNode(CGraph *, CGNode *node, bool fix, unsigned int &n, void *data)
     }
 }
 
-/* the three table readers are called by every version reader, never inlined: pinned */
+/* the scanlines' reader and the three table readers are called by every version reader, never
+ * inlined: pinned */
 #pragma auto_inline off
+
+/* the rows' runs read whole, then each run's first cell numbered on from the last (SOCOM 1's
+ * pointed each run into the cells and zeroed its extra data instead).
+ * OPEN, right size, 12 instructions: the target keeps &data_ in s1 from before the read (SOCOM 1's
+ * code too) and loads begin through it, its first end() sharing that load (data + size * 12 off
+ * the begin register) while the loop's later end()s read size and data off `this` -- what a
+ * begin()/end() through a data() REFERENCE gives; include/vector's class vector reads data_
+ * itself. Through a pointer to data_ the register and the begin load match, the first end()
+ * still loads data_ again (written plainly: 0xD8, no s1) */
+bool CAiMap::read_scanlines(CFileIO &f)
+{
+    func_00519700(&m_scanlines, m_ny);
+    scanline **data = &m_scanlines.data_;
+
+    f.fread(*data, m_ny * sizeof(scanline));
+    int index = 0;
+
+    for (scanlines::iterator i = *data; i != m_scanlines.end(); ++i) {
+        (*i).m_index = index;
+        index += (*i).m_end - (*i).m_start;
+    }
+    return true;
+}
+
 
 /* the lines: their count, then each line's cells and, from version 10 on, its data (SOCOM 1's) */
 bool CAiMap::read_lines(CFileIO &f)

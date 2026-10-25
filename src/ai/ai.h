@@ -443,6 +443,7 @@ public:
     route *GetRoute(unsigned int i);
     link *GetCellLink(const CAiMapLoc &loc);
     bool Read(CFileIO &f);
+    bool read_scanlines(CFileIO &f);
     bool read_v19(CFileIO &f);
     bool read_v20(CFileIO &f);
     bool read_v21(CFileIO &f);
