@@ -7537,7 +7537,7 @@
 0x0039CD40 0x78 func_0039CD40  # OVL1
 0x0039CDC0 0x8 GetSize__7CFileIOCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0039CDD0 0x94 fwrite__7CFileIOFPCc  # OVL1; s1:align
-0x0039CE70 0xC func_0039CE70  # OVL1
+0x0039CE70 0xC SetErrorHandler__7CFileIOFPFi_v  # OVL1; ours (stores its argument to the handler fread, fwrite and fseek call with 2 on a failure when the file's flags have 2)
 0x0039CE80 0x194 func_0039CE80  # OVL1
 0x0039D020 0x24 func_0039D020  # OVL1
 0x0039D050 0x430 func_0039D050  # OVL1

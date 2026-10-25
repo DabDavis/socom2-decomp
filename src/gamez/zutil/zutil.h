@@ -15,6 +15,7 @@
 /* the allocators, with a file and line SOCOM II passes as 0 (zsys_memory.cpp; MAIN's _free) */
 void *_malloc(unsigned int size, const char *file, int line);
 void *_realloc(void *p, unsigned int size, const char *file, int line);
+void *_memalign(unsigned int align, unsigned int size, const char *file, int line);
 void _free(void *p, const char *file, int line);
 char *_strdup(const char *s, const char *file, int line);
 
@@ -72,6 +73,7 @@ public:
 
     static bool PS2FileName(const char *name, char *out, bool cd);
     static void SetRootPath(const char *path);
+    static void SetErrorHandler(void (*handler)(int error));
 
     union {
         int m_file;          // 0x4
