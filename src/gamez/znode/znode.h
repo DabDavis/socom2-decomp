@@ -1117,13 +1117,38 @@ public:
     CClutter(CNode *node);
     CMatrix *GetMatrix();
     CPnt3D *GetTranslate();
+    /* its parameters (the first 0x60 bytes) and its inverse scale read from the archive's open key,
+     * its node made dynamic first (SOCOM 1's; SOCOM II clears the 4-bit count before the second
+     * read) */
+    bool Read(zar::CZAR *zar);
+    /* the flag word's setters: SOCOM II's constructor clears each field through one -- a
+     * constant stored through an inline's parameter is masked at run time, `(0 & 1) << n` (the
+     * names are ours) */
+    void SetBit0(bool b) { m_bit0 = b; }
+    void SetQuat(bool b) { m_quat = b; }
+    void SetBit2(bool b) { m_bit2 = b; }
+    void SetBit3(bool b) { m_bit3 = b; }
+    void SetBits4(int n) { m_bits4 = n; }
+    void SetBit12(bool b) { m_bit12 = b; }
+    void SetBit13(bool b) { m_bit13 = b; }
+    void SetCount(int n) { m_count = n; }
+    void SetBits18(int n) { m_bits18 = n; }
 
     CMatrix m_matrix;   // 0x0
     unsigned char _40[0x4c - 0x40];
     unsigned int m_bit0 : 1;   // 0x4c
     unsigned int m_quat : 1;   // 0x4c
-    unsigned int m_flags : 30;   // 0x4c (more bits the constructor clears, a count at 14)
-    unsigned char _50[0x64 - 0x50];
+    unsigned int m_bit2 : 1;   // 0x4c
+    unsigned int m_bit3 : 1;   // 0x4c
+    unsigned int m_bits4 : 2;   // 0x4c
+    unsigned int m_bits6 : 6;   // 0x4c
+    unsigned int m_bit12 : 1;   // 0x4c (SOCOM II's: SOCOM 1's last twenty bits are split)
+    unsigned int m_bit13 : 1;   // 0x4c
+    unsigned int m_count : 4;   // 0x4c (bits 14-17: Read clears it)
+    unsigned int m_bits18 : 14;   // 0x4c
+    unsigned char _50[0x5c - 0x50];
+    int m_5c;   // 0x5c (the constructor sets -1)
+    float m_scale_inverse;   // 0x60 (the archive's "scale_inverse")
     CNode *m_node;   // 0x64
     /* the animation moving the prop, cleared when it is deleted (ClearAnimations, l_Tick; the
      * name ours) */
