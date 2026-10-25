@@ -835,9 +835,29 @@ class CRdrFile;
  * 0x415D40 and 0x415E60, the second's destructor record at 0x415E48 right after the first) */
 class CScriptArchive {
 public:
+    /* built closed and empty: the members' constructors out of line (it is five high), then Init,
+     * another unit's (bone_init.cpp's initialiser inlines it for both statics) */
+    CScriptArchive() : m_zar(0, 0) { Init(); }
     ~CScriptArchive();
+    /* every field to rest: no name, no buffer, no scripts, no motion.rdr (0x2888D0) */
+    void Init();
+    /* every script of the ZAR read through CreateAndReadIt; true when there were some (SOCOM 1's,
+     * 0x288710) */
+    bool LoadAll();
+    /* motion.rdr: read unless held, taken from a caller unless held, given up unless the caller's
+     * (0x2886C0, 0x2886A0, 0x288660) */
+    CRdrFile *ReadRdr(const char *name, const char *path);
+    CRdrFile *SetRdr(CRdrFile *rdr);
+    void FreeRdr(CRdrFile *keep);
     /* the common data of a name, or none (0x2885B0) */
     CZSIScriptCommon *FindCommon(const char *name);
+    /* each common's id filed under the archive's index in the SEAL's tables, and taken out
+     * (0x288510, 0x2884C0) */
+    void Register();
+    void Unregister();
+    /* the scripts' settings read from motion.rdr (0x287620) */
+    void ReadMotionRdr();
+    void SetPresent(bool b) { m_present = b; }
 
     std::vector<CZSIScript *> m_scripts;   // 0x0: every script read (CreateAndReadIt)
     zar::CZAR m_zar;   // 0xc
@@ -857,7 +877,27 @@ public:
 /* the archive scripts are being read into (bone_init.cpp's, 0x415F70) */
 extern CScriptArchive *curArchive;
 
-/* the archive of an index: 1 and 2 the two statics, else none (bone_init.cpp's, not named yet) */
+/* bone_init.cpp's: the common archive (SOCOM 1's boneArchive) and the map's, the version their ZARs
+ * open with, and the loaders (SOCOM 1's zBoneOpen, zBoneLoadAll and zBoneClose became one each) */
+extern CScriptArchive boneArchive;
+extern CScriptArchive mapBoneArchive;
+extern int bone_archive_version;
+void zBoneUnloadAll(CScriptArchive *archive);
+void zBoneLoad();
+void zBoneLoadMap(const char *dir, CRdrFile *rdr);
+void zBoneUnloadMap();
+int zBoneMotionRdrSize();
+void *zBoneMotionRdrBuffer();
+CScriptArchive *zBoneGetArchive(int which);
+CScriptArchive *zBoneArchive();
+CScriptArchive *zBoneMapArchive();
+void zBoneSetCurArchive(CScriptArchive *archive);
+CScriptArchive *zBoneCurArchive();
+/* both archives' callbacks to be looked up again (bone_archive.cpp's) */
+void zBoneResetCallbacks();
+
+/* the archive of an index: 1 and 2 the two statics, else none (bone_init.cpp's zBoneGetArchive;
+ * body.cpp calls its placeholder) */
 extern "C" CScriptArchive *func_00289240(int which);
 
 /* the plane and quaternion helpers (bone_math.cpp, SOCOM 1's free functions) */
