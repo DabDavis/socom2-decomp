@@ -5803,32 +5803,32 @@
 0x0032DAA0 0x8 func_0032DAA0  # OVL1
 0x0032DAB0 0x20 func_0032DAB0  # OVL1
 0x0032DAD0 0x130 func_0032DAD0  # OVL1
-0x0032DC00 0x34 func_0032DC00  # OVL1
-0x0032DC40 0x34 func_0032DC40  # OVL1
-0x0032DC80 0xFC func_0032DC80  # OVL1
-0x0032DD80 0xF4 func_0032DD80  # OVL1
+0x0032DC00 0x34 zrdr_findbool__FPC5_zrdrPCcPb  # OVL1; s1:order (the unit's first function as SOCOM 1's 0x23D030, the same 0x34: findtag then tobool)
+0x0032DC40 0x34 zrdr_findRECT__FPC5_zrdrPCcP8tag_RECT  # OVL1; the name ours (SOCOM II's: findtag then 0x32E600, four integers; read for "DEST_RECT" and "SOURCE_RECT" at 0x27AF9C into SOCOM 1's tag_RECT {left, top, right, bottom})
+0x0032DC80 0xFC zrdr_findIPNT2D__FPC5_zrdrPCcP6IPNT2D  # OVL1; s1:order (SOCOM 1's next, findIPNT2D: findtag and toINT inlined with n = 2)
+0x0032DD80 0xF4 zrdr_findPNT2D__FPC5_zrdrPCcP5PNT2D  # OVL1; s1:order (SOCOM 1's next, findPNT2D: findtag and toREAL inlined with n = 2)
 0x0032DE80 0xF4 zrdr_findPNT3D__FPC5_zrdrPCcP5PNT3D  # OVL1; s1:calls (called with "Color" and a PNT3D * where SOCOM 1's is) -- the HUD lane
-0x0032DF80 0x11C func_0032DF80  # OVL1
-0x0032E0A0 0xD0 func_0032E0A0  # OVL1
-0x0032E170 0xD8 func_0032E170  # OVL1
+0x0032DF80 0x11C zrdr_findSTRING__FPC5_zrdrPCcPPCc  # OVL1; s1:order (SOCOM 1's next after findPNT3D, findSTRING: a string into a const char **, an integer 0 as no string)
+0x0032E0A0 0xD0 zrdr_toREAL__FPC5_zrdrPfi  # OVL1; s1:order (SOCOM 1's next, toREAL: n numbers as reals; findreal inlines it whole)
+0x0032E170 0xD8 zrdr_toINT__FPC5_zrdrPii  # OVL1; s1:order (SOCOM 1's next, toINT: n numbers as integers; findint and finduint inline it whole)
 0x0032E250 0x1AC zrdr_tobool__FPC5_zrdrPb  # OVL1; s1:align
-0x0032E400 0x1F8 func_0032E400  # OVL1
-0x0032E600 0x218 func_0032E600  # OVL1
-0x0032E820 0x108 func_0032E820  # OVL1
-0x0032E930 0x34 zrdr_finduint__FPC5_zrdrPCcPUii  # OVL1; s1:align
+0x0032E400 0x1F8 zrdr_toRfloat__FPC5_zrdrP6Rfloat  # OVL1; the name ours (SOCOM 1's findRfloat did this in place: one number is (n, 0), two are (a, b - a))
+0x0032E600 0x218 zrdr_toRECT__FPC5_zrdrP8tag_RECT  # OVL1; the name ours (four integers into SOCOM 1's tag_RECT; zrdr_findRECT's)
+0x0032E820 0x108 zrdr_finduint__FPC5_zrdrPCcPUii  # OVL1; s1:calls by hand (AI_PARAMS::Parse calls it last, after its findreals, where SOCOM 1's calls finduint; byte-identical to findint, 0x32E970, as an unsigned * twin is)
+0x0032E930 0x34 zrdr_findRfloat__FPC5_zrdrPCcP6Rfloat  # OVL1; s1:align; by hand, was zrdr_finduint by s1:align (wrong): it passes its third argument alone to 0x32E400, which stores a float and a difference of floats into it -- SOCOM 1's findRfloat's (min, range); its callers hand it a zeroed two-word local read back as floats (0x3AB0B0, 0x5CDF20, tag "wait")
 0x0032E970 0x108 zrdr_findint__FPC5_zrdrPCcPii  # OVL1; s1:calls (the line map's type readers call it with ("Type", &int, 1) as SOCOM 1's do; the same 0x108) -- the HUD lane
 0x0032EA80 0x100 zrdr_findreal__FPC5_zrdrPCcPfi  # OVL1; s1:calls by hand (an array of n reals into a float*, as SOCOM 1's 0x23D9D0; CreateSequence calls it where SOCOM 1's does) -- the sound lane
-0x0032EB80 0xA0 func_0032EB80  # OVL1
-0x0032EC20 0x1E8 func_0032EC20  # OVL1
+0x0032EB80 0xA0 zrdr_isitemtype__FPC5_zrdrii  # OVL1; the name ours (SOCOM II's: an array's item `index` exists and has type `type`; called with 3, a string)
+0x0032EC20 0x1E8 zrdr_flat_findstring__FPC5_zrdrPCci  # OVL1; the name ours (SOCOM II's: zrdr_findstring's body over zrdr_flat_findtag_startidx inlined from its start index)
 0x0032EE10 0x10C zrdr_findstring__FPC5_zrdrPCc  # OVL1; s1:calls by hand (the tag's string, or an array's first string; CSndSequence::CreateSequence calls it where SOCOM 1's does) -- the sound lane
 0x0032EF20 0x70 zrdr_nexttag__FPC5_zrdrPCcP5_zrdr  # OVL1; s1:align
 0x0032EF90 0x13C _zrdr_nexttag__FPC5_zrdrPCciP5_zrdr  # OVL1; s1:align
-0x0032F0D0 0x8 func_0032F0D0  # OVL1
-0x0032F0E0 0x11C func_0032F0E0  # OVL1
-0x0032F200 0xFC func_0032F200  # OVL1
+0x0032F0D0 0x8 zrdr_findtag__FPC5_zrdrPCc  # OVL1; s1:order (SOCOM 1's 8-byte tail call into findtag_startidx, its start index 0 where SOCOM 1's is 1: SOCOM II's arrays keep their count in `length`)
+0x0032F0E0 0x11C zrdr_findtag_startidx__FPC5_zrdrPCci  # OVL1; s1:order (SOCOM 1's next: the depth-first tag search, recursing into arrays from index 0)
+0x0032F200 0xFC zrdr_flat_findtag_startidx__FPC5_zrdrPCci  # OVL1; s1:order (SOCOM 1's flat_findtag_startidx: the same search not recursing; it takes the start index, as SOCOM 1's)
 0x0032F300 0x44 __dt__5_zrdrFv  # OVL1; s1:align
 0x0032F350 0x3C DeleteChildren__5_zrdrFv  # OVL1; s1:calls (CZOnlineLobby::SyncGameClock calls it, between CUIVarManager::Add and UpdateDependents, where SOCOM 1's does; SOCOM II's tests the owned-array flag and calls the freeing helper 0x335AA0 that SOCOM 1's inlines) -- the online lane
-0x0032F390 0x218 func_0032F390  # OVL1
+0x0032F390 0x218 Clone__5_zrdrFP5_zrdrP7CSTable  # OVL1; s1:calls by hand (SOCOM 1's Clone: the type switch, strings through the string table (0x39F1C0, SOCOM 1's CSTable::CreateString), arrays recursed with packed cleared, isclone set; the function-local warning flag 0x3DFF60 is SOCOM 1's guarded gp pair)
 0x0032F5B0 0x4C zrdr_findfile__FPCcPCc  # OVL1; s1:align
 0x0032F600 0x20 func_0032F600  # OVL1
 0x0032F620 0x8 func_0032F620  # OVL1
