@@ -7257,7 +7257,7 @@
 0x0038B8A0 0x48 func_0038B8A0  # OVL1
 0x0038B8F0 0x1B8 func_0038B8F0  # OVL1
 0x0038BAB0 0x8 func_0038BAB0  # OVL1
-0x0038BAC0 0x374 func_0038BAC0  # OVL1
+0x0038BAC0 0x374 PrepForDisplay__Q221@unnamed@zui_skb_cpp@13CSoftKeyboardFPQ23zdb16CTextureRelocMgrP7C2DFont  # OVL1; s1:calls by hand (SOCOM 1's CSoftKeyboard::PrepForDisplay, its textures SkbRecipState0/1.tif and the key caps; PrepSkbsForDisplay calls it per keyboard with the manager and font) -- zui_skb.cpp
 0x0038BE40 0x34 func_0038BE40  # OVL1
 0x0038BE80 0x154 func_0038BE80  # OVL1
 0x0038BFE0 0x14 func_0038BFE0  # OVL1
@@ -7267,29 +7267,29 @@
 0x0038C450 0x58 func_0038C450  # OVL1
 0x0038C4B0 0x8 func_0038C4B0  # OVL1
 0x0038C4C0 0x8 func_0038C4C0  # OVL1
-0x0038C4D0 0x158 func_0038C4D0  # OVL1
+0x0038C4D0 0x158 InvalidateDisplay__Q221@unnamed@zui_skb_cpp@13CSoftKeyboardFv  # OVL1; s1:calls by hand (SOCOM 1's CSoftKeyboard::InvalidateDisplay: InvalidateSkbsDisplay calls it per keyboard, the constructor at its end) -- zui_skb.cpp
 0x0038C630 0x358 func_0038C630  # OVL1
 0x0038C990 0x1F0 func_0038C990  # OVL1
 0x0038CB80 0x8 func_0038CB80  # OVL1
 0x0038CB90 0xB8 GetCurKey__Q221@unnamed@zui_skb_cpp@13CSoftKeyboardCFv  # OVL1; s1:calls by hand (SOCOM 1's GetCurKey 0x3A6150: the grid positions g_iSkbGridPosX/Y, the shared null-key static, the row's bounds; SOCOM II's keys 4 bytes, the grid at 0x158) -- zui_skb.cpp
 0x0038CC50 0x44 FindKeyProps__Q221@unnamed@zui_skb_cpp@13CSoftKeyboardFRCQ221@unnamed@zui_skb_cpp@7CSkbKey  # OVL1; s1:exact by hand (the MSL headers' round 3: SOCOM 1's FindKeyProps 0x3A6280 instruction for instruction, the key map at 0x164 where SOCOM 1's is at 0x2C; find<CSkbKey> then the found node's value at +16, else 0; byte-exact in zui_skb.cpp)
-0x0038CCA0 0x48C func_0038CCA0  # OVL1
+0x0038CCA0 0x48C __dt__Q221@unnamed@zui_skb_cpp@13CSoftKeyboardFv  # OVL1; by its body (the key map's props deleted through ~CSkbKeyProps 0x394370, then the fonts, the six bitmaps, the node lists, the map, the grid and the look's members destroyed in reverse; ZuiUnInit deletes each keyboard through it) -- zui_skb.cpp
 0x0038D130 0x68 func_0038D130  # OVL1
 0x0038D1A0 0x60 __dt__Q221@unnamed@zui_skb_cpp@11CSkbCapLookFv  # OVL1; by hand (the 0x24-byte element's implicit destructor: the string at 8; __construct_array's and __destroy_arr's partner of 0x38E890) -- zui_skb.cpp
 0x0038D200 0x2E0 func_0038D200  # OVL1
-0x0038D4E0 0xDC func_0038D4E0  # OVL1
+0x0038D4E0 0xDC ZuiUnInit__Fv  # OVL1; ours (every keyboard deleted through std::for_each, then g_arrSkbs freed through FreeVector's temporary; CMenuState::UnInit calls it, ZuiInit's opposite) -- zui_skb.cpp
 0x0038D5C0 0x70 __dt__Q23std110vector<PQ221@unnamed@zui_skb_cpp@13CSoftKeyboard,Q23std52allocator<PQ221@unnamed@zui_skb_cpp@13CSoftKeyboard>>Fv  # OVL1; by hand (the pointer vector's destructor: __sinit_zui_skb.cpp 0x403730 registers it for g_arrSkbs at 0x49ECE8, as SOCOM 1's tail has it) -- zui_skb.cpp
-0x0038D630 0x40 func_0038D630  # OVL1
-0x0038D670 0x8 func_0038D670  # OVL1
-0x0038D680 0x14 func_0038D680  # OVL1
-0x0038D6A0 0xC4 func_0038D6A0  # OVL1
+0x0038D630 0x40 swap__Q23std110vector<PQ221@unnamed@zui_skb_cpp@13CSoftKeyboard,Q23std52allocator<PQ221@unnamed@zui_skb_cpp@13CSoftKeyboard>>FRQ23std110vector<PQ221@unnamed@zui_skb_cpp@13CSoftKeyboard,Q23std52allocator<PQ221@unnamed@zui_skb_cpp@13CSoftKeyboard>>  # OVL1; by hand (the pointer vector's swap out of line: ZuiUnInit's FreeVector, three words exchanged) -- zui_skb.cpp
+0x0038D670 0x8 clear__Q23std110vector<PQ221@unnamed@zui_skb_cpp@13CSoftKeyboard,Q23std52allocator<PQ221@unnamed@zui_skb_cpp@13CSoftKeyboard>>Fv  # OVL1; by hand (the pointer vector's clear out of line, size_ zeroed: ZuiUnInit's FreeVector) -- zui_skb.cpp
+0x0038D680 0x14 __ct__Q23std110vector<PQ221@unnamed@zui_skb_cpp@13CSoftKeyboard,Q23std52allocator<PQ221@unnamed@zui_skb_cpp@13CSoftKeyboard>>Fv  # OVL1; by hand (the pointer vector's constructor out of line, three words zeroed: FreeVector's temporary in ZuiUnInit) -- zui_skb.cpp
+0x0038D6A0 0xC4 ZuiInit__Fv  # OVL1; s1:calls by hand (SOCOM 1's ZuiInit: UiParams.rdr from data/common read, each of its SoftKeyboards made by CreateSoftKeyboard, the file freed; CMenuState::Init calls it) -- zui_skb.cpp
 0x0038D770 0x174 func_0038D770  # OVL1
 0x0038D8F0 0x17C func_0038D8F0  # OVL1
 0x0038DA70 0x184 func_0038DA70  # OVL1
 0x0038DC00 0xA4 func_0038DC00  # OVL1
 0x0038DCB0 0x1F0 func_0038DCB0  # OVL1
-0x0038DEA0 0x98 func_0038DEA0  # OVL1
-0x0038DF40 0x80 func_0038DF40  # OVL1
+0x0038DEA0 0x98 PrepSkbsForDisplay__FPQ23zdb5CNodePQ23zdb16CTextureRelocMgrP7C2DFont  # OVL1; s1:calls by hand (SOCOM 1's PrepSkbsForDisplay: g_pActiveSkb cleared, each keyboard's PrepForDisplay with the manager and font; CGameMenu::LoadFromDesign calls it) -- zui_skb.cpp
+0x0038DF40 0x80 InvalidateSkbsDisplay__Fv  # OVL1; s1:calls by hand (SOCOM 1's InvalidateSkbsDisplay: g_pActiveSkb cleared, each keyboard's InvalidateDisplay; CGameMenu::Clear calls it) -- zui_skb.cpp
 0x0038DFC0 0x18 func_0038DFC0  # OVL1
 0x0038DFE0 0x174 func_0038DFE0  # OVL1
 0x0038E160 0x324 CreateSoftKeyboard__21@unnamed@zui_skb_cpp@FP5_zrdr  # OVL1; s1:calls by hand (SOCOM 1's CreateSoftKeyboard: new CSoftKeyboard, pushed onto g_arrSkbs, the Grid rows of key names or codes into the grid, IgnoreUnchangedString; SOCOM II's hands the look and the key props to 0x3963F0 and 0x38DCB0) -- zui_skb.cpp

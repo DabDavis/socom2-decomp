@@ -13,14 +13,47 @@
  * symbol table: g_iSkbGridPosX/Y, g_pActiveSkb, g_arrSkbs), at SOCOM II's addresses (data.txt). */
 
 #include <map>
+#include <algorithm>
 #include "zui_2d.h"
+#include "../zsys/zsys.h"
 
 namespace zdb {
 class CNode;
 }
 
-/* (the Korean input unit's: an rdr array's count, 0 for anything else or none) */
-extern "C" int func_003910B0(_zrdr *rdr);
+/* an rdr file (zrdr.h's: : _zrdr) and its reader */
+class CRdrFile : public _zrdr {};
+CRdrFile *zrdr_read(const char *name, const char *dir, int flags);
+void zrdr_free(CRdrFile *file);
+
+/* a file read for a block and freed with it (ours: ZuiInit keeps the file in a stack slot, read
+ * back for the tag and the free, as only an object holding it explains) */
+class CRdrFileHolder {
+public:
+    CRdrFileHolder(const char *name, const char *dir) : m_file(zrdr_read(name, dir, 0)) {}
+    ~CRdrFileHolder() { zrdr_free(m_file); }
+    operator CRdrFile *() const { return m_file; }
+
+    CRdrFile *m_file;
+};
+
+/* a font (zui.cpp's C2DFont, 0x64 bytes in SOCOM II: its glyph map's constructor 0x1FEAC0, its
+ * destructor 0x369EB0 -- a stand-in of what the keyboard's three need) */
+class C2DFont {
+public:
+    unsigned char _0[0x64];
+};
+
+/* (the units after this one, by address: an rdr array's count, 0 for anything else or none; the
+ * keyboards' shared bitmaps prepared with a callback; three more of their invalidations) */
+extern "C" {
+int func_003910B0(_zrdr *rdr);
+void func_00398FC0();
+void func_003958D0(zdb::CNode *node, zdb::CTextureRelocMgr *mgr, C2DFont *font, void (*callback)());
+void func_00396F30();
+void func_003997F0();
+void func_0039AD10();
+}
 
 namespace {
 
@@ -60,8 +93,15 @@ public:
 };
 
 class CSkbKeyProps;
+class CSoftKeyboard;
 
 typedef std::map<CSkbKey, CSkbKeyProps *> CSkbKeyMap;
+
+/* the cursor's grid position (SOCOM 1's g_iSkbGridPosX/Y) and the keyboard showing (its
+ * g_pActiveSkb) */
+int g_iSkbGridPosX;
+int g_iSkbGridPosY;
+CSoftKeyboard *g_pActiveSkb;
 
 /* the keys by grid position, a vector of rows (SOCOM 1's CSkbGrid: GetSkbKey at 0x3A3230 there,
  * inlined in SOCOM II). The column tests are an inline bool's tail: they branch the target's way
@@ -90,13 +130,6 @@ public:
 
     zdb::CNode *m_node;   // 0xa0
 } __attribute__((aligned(16)));   // 0xb0 bytes
-
-/* a font (zui.cpp's C2DFont, 0x64 bytes in SOCOM II: its glyph map's constructor 0x1FEAC0, its
- * destructor 0x369EB0 -- a stand-in of what the keyboard's three need) */
-class C2DFont {
-public:
-    unsigned char _0[0x64];
-};
 
 /* the keyboard's three fonts (the constructor's out-of-line copy is 0x38E550) */
 struct CSkbFonts {
@@ -148,8 +181,6 @@ struct CSkbLook {
     std::vector<CSaferStr> m_strings;   // 0x14c
 };   // 0x158 bytes
 
-class CSoftKeyboard;
-
 /* the keyboards, as CreateSoftKeyboard makes them (SOCOM 1's g_arrSkbs) */
 std::vector<CSoftKeyboard *> g_arrSkbs;
 
@@ -158,7 +189,9 @@ std::vector<CSoftKeyboard *> g_arrSkbs;
 class CSoftKeyboard : public CSkbLook {
 public:
     CSoftKeyboard() { InvalidateDisplay(); }
+    ~CSoftKeyboard();
     void InvalidateDisplay();
+    void PrepForDisplay(zdb::CTextureRelocMgr *mgr, C2DFont *font);
     CSkbKeyProps *FindKeyProps(const CSkbKey &key);
     /* the key under the cursor (SOCOM 1's GetCurKey: the grid positions are loaded first, as an
      * inline's arguments) */
@@ -166,9 +199,6 @@ public:
     CSkbKeyProps *GetCurKeyProps();
     void ParseLook(_zrdr *rdr);
     void ParseKeyProps(_zrdr *rdr);
-
-    static int g_iSkbGridPosX;
-    static int g_iSkbGridPosY;
 
     CSkbGrid m_grid;   // 0x158
     CSkbKeyMap m_keyProps;   // 0x164
@@ -187,10 +217,57 @@ public:
     CSkbFonts m_fonts;   // 0x5e0
 };   // 0x710 bytes
 
-int CSoftKeyboard::g_iSkbGridPosX;
-int CSoftKeyboard::g_iSkbGridPosY;
-
 CSkbKey StrToSkbKey(const char *s);
+void CreateSoftKeyboard(_zrdr *rdr);
+
+/* a keyboard deleted (as a function object, std::for_each's) */
+struct DeleteSkb {
+    DeleteSkb() {}
+    void operator()(CSoftKeyboard *skb) { delete skb; }
+};
+
+}
+
+/* every keyboard's display invalidated, none showing (SOCOM 1's; CGameMenu::Clear calls it) */
+void InvalidateSkbsDisplay()
+{
+    g_pActiveSkb = 0;
+    for (int i = 0; i < g_arrSkbs.size(); i++)
+        g_arrSkbs[i]->InvalidateDisplay();
+    func_00396F30();
+    func_003997F0();
+    func_0039AD10();
+}
+
+/* every keyboard prepared for the menu's display, none showing (SOCOM 1's; CGameMenu::LoadFromDesign
+ * calls it) */
+void PrepSkbsForDisplay(zdb::CNode *node, zdb::CTextureRelocMgr *mgr, C2DFont *font)
+{
+    g_pActiveSkb = 0;
+    func_003958D0(node, mgr, font, func_00398FC0);
+    for (int i = 0; i < g_arrSkbs.size(); i++)
+        g_arrSkbs[i]->PrepForDisplay(mgr, font);
+}
+
+/* the keyboards deleted and their vector freed (SOCOM II's: CMenuState::UnInit calls it; the name
+ * ours, after ZuiInit) */
+void ZuiUnInit()
+{
+    std::for_each(g_arrSkbs.begin(), g_arrSkbs.end(), DeleteSkb());
+    FreeVector(g_arrSkbs);
+}
+
+/* the keyboards made from UiParams.rdr's SoftKeyboards block (SOCOM 1's; CMenuState::Init calls it) */
+void ZuiInit()
+{
+    CRdrFileHolder file("UiParams.rdr", "data/common");
+    _zrdr *skbs = zrdr_findtag(file, "SoftKeyboards");
+
+    for (int i = 0; i < func_003910B0(skbs); i++)
+        CreateSoftKeyboard(skbs->Item(i));
+}
+
+namespace {
 
 /* a keyboard made from its rdr block and added to the keyboards: its look, its key props, its grid
  * of keys (rows of names or codes) and whether an unchanged string counts (SOCOM 1's
