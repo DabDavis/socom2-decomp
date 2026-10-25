@@ -45,6 +45,8 @@ public:
 class CWhosTalking : public C2D {
 public:
     virtual void Tick(float dT);
+    /* the parts placed again (CMPInfoBox::ReInit's last call; 0x238D00, the name ours) */
+    void ReInit();
 
     unsigned char _18[0x20 - 0x18];
     CRadioIcon_Static m_static;   // 0x20
@@ -60,8 +62,25 @@ class CHealthBar : public C2D {
 public:
     CHealthBar();
     virtual ~CHealthBar();
+    /* slots 11 and 12 (vtable 0x405EF0): its three bitmaps faded together (0x241C30), the tick
+     * (0x242050) */
+    virtual void SetTrans(float trans);
+    virtual void Tick(float dT);
+    /* where the bar sits and how big it is (0x241CA0, 0x241CB0; the names ours) */
+    void SetPos(float x, float y);
+    void SetSize(float w, float h);
+    /* the bar set from its owner's health (0x241CC0; the name ours) */
+    void Update(class CZSealBody *owner, bool force);
 
-    unsigned char _18[0x1d0 - 0x18];
+    float m_health;   // 0x18: the health shown (Update compares the owner's against it)
+    float m_x;   // 0x1c
+    float m_y;   // 0x20
+    float m_w;   // 0x24
+    float m_h;   // 0x28
+    C2DBitmap m_bitmap1;   // 0x30
+    C2DBitmap m_bitmap2;   // 0xb0
+    C2DBitmap m_bitmap3;   // 0x130
+    unsigned char _1b0[0x1d0 - 0x1b0];
 };   // 0x1d0 bytes
 
 /* the box (its vtable 0x405B40 overrides Off, On and Tick) */
@@ -71,6 +90,8 @@ public:
     virtual void On();
     virtual void Tick(float dT);
     void UnInit();
+    /* the parts placed again (CHUD::ReInit_Init's; 0x238710, the name ours) */
+    void ReInit();
 
     unsigned char _18[0x20 - 0x18];
     CHealthBar m_healthbar;   // 0x20

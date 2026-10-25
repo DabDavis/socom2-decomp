@@ -1738,17 +1738,17 @@
 0x00205C40 0x1C0 __dt__15CZObjectiveListFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00205E00 0x990 func_00205E00  # OVL1
 0x00206790 0x18 IsPlayingAnimation__15CZObjectiveListFv  # OVL1; s1:exact shape (theHUD's mission cameras' IsPlaying, tail-called, as SOCOM 1's 0x14 bytes)
-0x002067B0 0x118 func_002067B0  # OVL1
-0x002068D0 0x8 func_002068D0  # OVL1
-0x002068E0 0xC8 func_002068E0  # OVL1
+0x002067B0 0x118 MissionEndCleanup__15CZObjectiveListFv  # OVL1; s1:order by hand (between IsPlayingAnimation and GetCurrentObjectiveRetainer as SOCOM 1's MissionEndCleanup; SOCOM II's wipes the list's strings and the unit's static ones, then calls FreeList(true))
+0x002068D0 0x8 GetCurrentObjectiveRetainer__15CZObjectiveListCFv  # OVL1; s1:order by hand (SOCOM 1's 8-byte GetCurrentObjectiveRetainer: m_cur_selected_objective, at SOCOM II's 0x71C)
+0x002068E0 0xC8 GetCurrentObjective__15CZObjectiveListCFv  # OVL1; s1:order by hand (SOCOM 1's GetCurrentObjective, GetObjective inlined: the selected index tested against the names' count, the mission's objective list (theMission+0x1854) walked to it, the camera returned; after GetCurrentObjectiveRetainer as in SOCOM 1)
 0x002069B0 0xAC Draw__15CZObjectiveListFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00206A60 0x140 func_00206A60  # OVL1
-0x00206BA0 0xD0 func_00206BA0  # OVL1
-0x00206C70 0x13C func_00206C70  # OVL1
-0x00206DB0 0xA0 func_00206DB0  # OVL1
-0x00206E50 0x13C func_00206E50  # OVL1
-0x00206F90 0x98 func_00206F90  # OVL1
-0x00207030 0x308 func_00207030  # OVL1
+0x00206A60 0x140 SelectObjective__15CZObjectiveListFv  # OVL1; s1:calls by hand (SOCOM 1's SelectObjective: the selected objective (GetObjective inlined) played through CZHudMissionCams::PlayCamera(cam, false) unless a camera plays or the HUD's menu state, CHUD+0x1A220, is the orders menu)
+0x00206BA0 0xD0 SelectPreviousObjective__15CZObjectiveListFv  # OVL1; s1:calls by hand (SOCOM 1's SelectPreviousObjective: as SelectNextObjective, stepping back and wrapping to the last)
+0x00206C70 0x13C PreviousObjective__15CZObjectiveListFv  # OVL1; s1:calls by hand (SOCOM 1's PreviousObjective: as NextObjective, through SelectPreviousObjective)
+0x00206DB0 0xA0 SelectNextObjective__15CZObjectiveListFv  # OVL1; s1:calls by hand (SOCOM 1's SelectNextObjective: the selection stepped on, its camera held and CMission::TickObjectives(1000) called, wrapped to 0 past the names' count, recursing while vector<bool>::test_bit says unselectable)
+0x00206E50 0x13C NextObjective__15CZObjectiveListFv  # OVL1; s1:calls by hand (SOCOM 1's NextObjective: IsAnySelectable inlined over vector<bool>::test_bit, then SelectNextObjective, SetCurColor(old) and the old name greyed)
+0x00206F90 0x98 SetCurColor__15CZObjectiveListFi  # OVL1; s1:order by hand (SOCOM 1's SetCurColor: the same two ResolveIndex tests, the colour of one name copied to the selected one, at SOCOM II's offsets; after the next-objective pair as SOCOM 1's follows NextObjective)
+0x00207030 0x308 FreeList__15CZObjectiveListFb  # OVL1; s1:order by hand (after SetCurColor where SOCOM 1's FreeList follows its inline IsAnySelectable and ResolveIndex; MissionEndCleanup calls it with true; vector erases, swaps and deletes)
 0x00207340 0x60 func_00207340  # OVL1
 0x002073A0 0x70 func_002073A0  # OVL1
 0x00207410 0x40 func_00207410  # OVL1
@@ -1764,7 +1764,7 @@
 0x002079B0 0x50 Init__15CZObjectiveListFv  # OVL1; s1:calls
 0x00207A00 0x460 func_00207A00  # OVL1
 0x00207E60 0xF8 func_00207E60  # OVL1
-0x00207F60 0x2C func_00207F60  # OVL1
+0x00207F60 0x2C test_bit__Q23std30vector<b,Q23std12allocator<b>>FUi  # OVL1; s1:calls by hand (SOCOM 1's Select*Objective call vector<bool>::test_bit at the same place; a bit test on the data word at +8, out of line in hud_objectives.cpp's template tail)
 0x00207F90 0x40 swap__Q23std30vector<b,Q23std12allocator<b>>FRQ23std30vector<b,Q23std12allocator<b>>  # OVL1; s1:exact
 0x00207FD0 0x6C func_00207FD0  # OVL1
 0x00208040 0x214 insert__Q23std30vector<b,Q23std12allocator<b>>FQ33std30vector<b,Q23std12allocator<b>>8iteratorUiRCb  # OVL1; s1:calls
@@ -2231,8 +2231,8 @@
 0x00237390 0x1E8 func_00237390  # OVL1
 0x00237580 0x1E0 func_00237580  # OVL1
 0x00237760 0x3D8 func_00237760  # OVL1
-0x00237B40 0x1C0 func_00237B40  # OVL1
-0x00237D00 0xD8 func_00237D00  # OVL1
+0x00237B40 0x1C0 SetMags__12CAmmoDisplayFiPQ23zdb10CTexHandle  # OVL1; by hand (the ammo unit's: a switch on a byte, 1-3 lighting the four magazine bitmaps at CAmmoDisplay+0x3C0, past that a texture argument in the first; On passes the cached count 0x3DCBD8 and texture 0x4145E0; the name ours); an int count, narrowed to a byte inside (andi 0xff) where On passes the cached word whole
+0x00237D00 0xD8 SetTrans__12CAmmoDisplayFf  # OVL1; by hand (the ammo unit's, between Off and the unit's 0x237B40: SetTrans on the poly (76.8 x), the bitmap and the four bitmaps (128 x), the two count strings by CHUD::m_hud_textcolor's alpha; the name ours)
 0x00237DE0 0x6C Off__12CAmmoDisplayFv  # OVL1; by hand (CHUD::Off calls it on the ammo counts at CHUD+0x1A700; slot 4, Off, of its poly, bitmaps and strings)
 0x00237E50 0x10C On__12CAmmoDisplayFv  # OVL1; by hand (CHUD::On calls it on CHUD+0x1A700, as Off its pair; slot 5, On, unless spectating)
 0x00237F60 0x54 Reset__12CAmmoDisplayFv  # OVL1; by hand (CHUD's ReInit_Init and ReInit_Uninit call it on CHUD+0x1A700: both count strings wiped, the cached counts reset; the name ours)
@@ -2243,10 +2243,10 @@
 0x00238490 0x64 On__10CMPInfoBoxFv  # OVL1; by hand (slot 5 of CMPInfoBox's vtable 0x405B40: C2D's On, then its parts')
 0x00238500 0x160 Tick__10CMPInfoBoxFf  # OVL1; by hand (slot 12 of CMPInfoBox's vtable 0x405B40)
 0x00238660 0xA4 UnInit__10CMPInfoBoxFv  # OVL1; by hand (CHUD::ReInit_Uninit's call on CHUD+0x17B70, beside CMPTeammateNames::UnInit: off, the strings emptied; the name ours)
-0x00238710 0x18C func_00238710  # OVL1
+0x00238710 0x18C ReInit__10CMPInfoBoxFv  # OVL1; by hand (the info box's re-placing: CHUD::ReInit_Init's call on CMPInfoBox, after UnInit in the image; bitmaps, the health bar's SetSize/SetPos, the name string in the HUD text colour, then 0x238D00 on the radio part; the name ours)
 0x002388A0 0x220 func_002388A0  # OVL1
 0x00238AC0 0x234 Tick__12CWhosTalkingFf  # OVL1; by hand (slot 12 of CWhosTalking's vtable 0x405BB0)
-0x00238D00 0x248 func_00238D00  # OVL1
+0x00238D00 0x248 ReInit__12CWhosTalkingFv  # OVL1; by hand (the radio part's re-placing: CMPInfoBox::ReInit's last call, on CMPInfoBox+0x390; its strings' scale and colour, both radio icons' fades, the backing; the name ours)
 0x00238F50 0x2FC func_00238F50  # OVL1
 0x00239250 0x19C Tick__18CRadioIcon_DynamicFf  # OVL1; s1:vtable (CRadioIcon_Dynamic's slot 12: SOCOM 1's CZDynamicRadioBitmap::HudTick)
 0x002393F0 0x17C Tick__17CRadioIcon_StaticFf  # OVL1; s1:calls; by hand (CRadioIcon_Static's vtable slot 12, C2D's Tick: SOCOM 1's CZStaticRadioBitmap::HudTick, renamed in SOCOM II's RTTI)
@@ -2329,9 +2329,9 @@
 0x00240E60 0xC2C func_00240E60  # OVL1
 0x00241A90 0x150 __ct__12CMPWeaponSelFv  # OVL1; by hand (CHUD's constructor builds CHUD+0x38E0 with it, after UnInit and Init at 0x240D50/0x240E60; no vtable, so no RTTI name: the class name ours)
 0x00241BE0 0x48 func_00241BE0  # OVL1
-0x00241C30 0x64 func_00241C30  # OVL1
-0x00241CA0 0xC func_00241CA0  # OVL1
-0x00241CB0 0xC func_00241CB0  # OVL1
+0x00241C30 0x64 SetTrans__10CHealthBarFf  # OVL1; by hand (slot 11 of CHealthBar's vtable 0x405EF0, C2D's SetTrans: SetTrans on the bitmaps at +0x30, +0xB0, +0x130)
+0x00241CA0 0xC SetPos__10CHealthBarFff  # OVL1; by hand (the floats at CHealthBar+0x1C/0x20; CMPInfoBox's Init and re-init call it on CMPInfoBox+0x20 before SetSize; the name ours)
+0x00241CB0 0xC SetSize__10CHealthBarFff  # OVL1; by hand (the floats at CHealthBar+0x24/0x28, after SetPos; the name ours)
 0x00241CC0 0x388 func_00241CC0  # OVL1
 0x00242050 0x2AC func_00242050  # OVL1
 0x00242300 0xC8 __dt__10CHealthBarFv  # OVL1; s1:vtable by hand (the HUD lane: slot 0 of CHealthBar's vtable 0x405EF0)
