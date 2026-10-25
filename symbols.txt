@@ -6511,7 +6511,7 @@
 0x00357470 0x50 HasMipLevel__Q23zdb8CTextureFPQ23zdb8CTexture  # OVL1; ours by hand (the HUD lane: ztex_manager.cpp -- whether a texture is in this texture's vector of mip levels at 0x5C; zdb::CAssetList::FindMipLevel's test (0x321300); byte-exact)
 0x003574C0 0xD4 FindPalette__Q23zdb8CTextureFPQ23zdb11CTexPalList  # OVL1; ours by hand (the HUD lane: ztex_manager.cpp -- the texture's palette looked for in a palette list by id (0x2a against the palette's 0x10) and name, stored at 0x1c when found; called three times by 0x3571D0; byte-exact)
 0x003575A0 0x18 func_003575A0  # OVL1
-0x003575C0 0x190 func_003575C0  # OVL1
+0x003575C0 0x190 Setup__Q23zdb12CGSTexBufferFff  # OVL1; s1:order by hand (the HUD lane: ztex_manager.cpp -- SOCOM 1's CGSTexBuffer::Setup(float, float) at its place after Hookup: the buffer placed between two fractions of the texture memory (m_baseAddress to 0x49E850), its next address reset and chain dropped when it moves; SOCOM II returns the end; byte-exact)
 0x00357750 0xC8 Add__Q23zdb12CGSTexBufferFPQ23zdb8CTexListb  # OVL1; s1:order by hand (the HUD lane: ztex_manager.cpp -- SOCOM 1's CGSTexBuffer::Add(CTexList *, bool) at its place before SetDynTexList and CDynTexList's Adds: each handle and then its palette put on the dynamic list at 0x28, the chain dropped after each, SOCOM 1's inline store now the call 0x355A20)
 0x00357820 0x34 func_00357820  # OVL1
 0x00357860 0xF0 Add__Q23zdb11CDynTexListFPQ23zdb11CTexPaletteb  # OVL1; s1:callee

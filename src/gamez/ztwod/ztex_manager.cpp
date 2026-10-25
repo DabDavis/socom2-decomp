@@ -24,6 +24,9 @@ public:
     bool FindPalette(CTexPalList *list);
     bool HasMipLevel(CTexture *tex);
 
+    /* the GS memory textures start at (SOCOM 1's) */
+    static unsigned int m_baseAddress;
+
     unsigned char _0[0x10];
     char **m_name;   // 0x10: the name first
     unsigned char _14[0x1c - 0x14];
@@ -79,6 +82,7 @@ class CAssetLib;
 class CGSTexBuffer {
 public:
     void Add(CTexList *list, bool b);
+    unsigned int Setup(float start, float end);
 
     char *m_name;   // 0x0
     unsigned char m_checkForOverflow;   // 0x4
@@ -126,6 +130,31 @@ bool CTexture::FindPalette(CTexPalList *list)
         }
     }
     return found;
+}
+
+}
+
+/* the end of the GS memory textures may use (by address, unnamed; m_baseAddress's neighbour) */
+extern unsigned int data_0049E850;
+
+namespace zdb {
+
+/* the buffer placed between two fractions of the texture memory: when it moves, its next address
+ * goes back to its start and its chain is dropped; its end given back (SOCOM 1's Setup, which
+ * called its helpers; SOCOM II's a leaf) */
+unsigned int CGSTexBuffer::Setup(float start, float end)
+{
+    unsigned int size = data_0049E850 - CTexture::m_baseAddress;
+    unsigned int s = (unsigned int)((float)CTexture::m_baseAddress + start * (float)size);
+    unsigned int e = (unsigned int)((float)CTexture::m_baseAddress + end * (float)size - 1.0f);
+
+    if (m_startAddress != s || m_endAddress != e) {
+        m_nextAddress = s;
+        m_startAddress = s;
+        m_endAddress = e;
+        m_chainp = 0;
+    }
+    return m_endAddress;
 }
 
 /* a library's textures put on the buffer's dynamic list, each palette after its texture, the chain
