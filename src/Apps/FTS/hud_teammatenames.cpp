@@ -7,9 +7,12 @@
 /* C2DBitmap's placement by ints (0x364660; no row yet) */
 extern "C" void func_00364660(C2DBitmap *bitmap, int x, int y, int w, int h);
 
-/* the two bitmaps' sizes (variables: read with lwc1) */
+/* the two bitmaps' sizes (variables: read with lwc1), and their halves, which the unit's
+ * initialiser (0x3FE940) computes and Tick reads (the names ours) */
 static float s_bitmap1Size = 32.0f;
 static float s_bitmap2Size = 32.0f;
+static float s_bitmap1Half = 0.5f * s_bitmap1Size;
+static float s_bitmap2Half = 0.5f * s_bitmap2Size;
 
 namespace zdb {
 class CAssetList {
