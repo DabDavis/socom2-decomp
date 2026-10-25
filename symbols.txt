@@ -5721,10 +5721,10 @@
 0x003282B0 0x2C0 Tick__Q28Particle8InstanceFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00328570 0x74 func_00328570  # OVL1
 0x003285F0 0xDC func_003285F0  # OVL1
-0x003286D0 0x80 func_003286D0  # OVL1
-0x00328750 0x108 func_00328750  # OVL1
-0x00328860 0x1EC func_00328860  # OVL1
-0x00328A50 0xB8 func_00328A50  # OVL1
+0x003286D0 0x80 GetOpacity__Q28Particle5PropsCFf  # OVL1; s1:order by hand (SOCOM 1's GetOpacity, 0x80 against 0x88 (no load-delay nops): zero outside nearFade1..farFade2 (0x48/0x54), the ramps through invNearFade/invFarFade (0x58/0x5C), else 1) -- the rdr lane
+0x00328750 0x108 GetScale__Q28Particle5PropsCFfRf  # OVL1; s1:order by hand (SOCOM 1's GetScale, between GetOpacity and GetColor: the scale sequence (+0x1C) searched as GetTexture's, the value interpolated between the keys around the age, held at the ends, 1 when empty) -- the rdr lane
+0x00328860 0x1EC GetColor__Q28Particle5PropsCFfR6CPnt4D  # OVL1; s1:order by hand (SOCOM 1's GetColor, between GetScale and GetTexture: the colour sequence (+0x10) searched as GetTexture's, the keys around the age interpolated with sceVu0InterVector, held at the ends; white fading over the first unit of age when empty) -- the rdr lane
+0x00328A50 0xB8 GetTexture__Q28Particle5PropsCFfRPQ23zdb10CTexHandle  # OVL1; s1:order by hand (SOCOM 1's GetTexture, the key before the first later than the age in the texture sequence (+4), clamped, its texture out through the reference; none for an empty sequence) -- the rdr lane
 0x00328B10 0xB8 DecRefCount__Q28Particle5PropsFi  # OVL1; s1:align, checked (SOCOM 1's DecRefCount: the props deleted with its three sequences' vectors (0x329330/0x3293A0/0x329410) when the count runs out; Instance::Expire and ~Source call it)
 0x00328BD0 0x184 Branch__Q28Particle5PropsFv  # OVL1; s1:callee (the six sequence adds and clears call it first and store its result as the source's props, where SOCOM 1's call Props::Branch: a props shared by several sources copied before it changes)
 0x00328D60 0x28 __ct__6CPnt4DFRC6CPnt4D  # OVL1; s1:exact
@@ -5739,12 +5739,12 @@
 0x00328FC0 0x10C func_00328FC0  # OVL1
 0x003290D0 0x14C func_003290D0  # OVL1
 0x00329220 0x10C func_00329220  # OVL1
-0x00329330 0x68 func_00329330  # OVL1
-0x003293A0 0x68 func_003293A0  # OVL1
-0x00329410 0x68 func_00329410  # OVL1
-0x00329480 0x8 func_00329480  # OVL1
-0x00329490 0x8 func_00329490  # OVL1
-0x003294A0 0x8 func_003294A0  # OVL1
+0x00329330 0x68 __dt__Q23std132__vector_deleter<Q28Particle34SequenceEntry<PQ23zdb10CTexHandle>,Q23std58allocator<Q28Particle34SequenceEntry<PQ23zdb10CTexHandle>>>Fv  # OVL1; the rdr lane: Props::DecRefCount's inlined ~Props calls it on the texture sequence (+4) with 0 (include/vector's out-of-class deleter destructor; SOCOM 1's __dt__ of the same deleter, 0x68 both)
+0x003293A0 0x68 __dt__Q23std108__vector_deleter<Q28Particle22SequenceEntry<6CPnt4D>,Q23std46allocator<Q28Particle22SequenceEntry<6CPnt4D>>>Fv  # OVL1; the rdr lane: Props::DecRefCount's inlined ~Props calls it on the colour sequence (+0x10) with 0
+0x00329410 0x68 __dt__Q23std96__vector_deleter<Q28Particle16SequenceEntry<f>,Q23std40allocator<Q28Particle16SequenceEntry<f>>>Fv  # OVL1; the rdr lane: Props::DecRefCount's inlined ~Props calls it on the scale sequence (+0x1C) with 0
+0x00329480 0x8 clear__Q23std132__vector_deleter<Q28Particle34SequenceEntry<PQ23zdb10CTexHandle>,Q23std58allocator<Q28Particle34SequenceEntry<PQ23zdb10CTexHandle>>>Fv  # OVL1; the rdr lane: TextureSequenceClear's vector clear() calls it on the props' texture sequence (+4): include/vector's out-of-class deleter clear, the trivial destroy gone, `size_ = 0` (SOCOM 1's clear__Q23std132__vector_deleter<...CTexHandle...>Fv, 0x48 there); the three copies close zparticle_instance.cpp
+0x00329490 0x8 clear__Q23std108__vector_deleter<Q28Particle22SequenceEntry<6CPnt4D>,Q23std46allocator<Q28Particle22SequenceEntry<6CPnt4D>>>Fv  # OVL1; the rdr lane: ColorSequenceClear's vector clear() calls it on the props' colour sequence (+0x10) (SOCOM 1's clear__Q23std108__vector_deleter<...CPnt4D...>Fv)
+0x003294A0 0x8 clear__Q23std96__vector_deleter<Q28Particle16SequenceEntry<f>,Q23std40allocator<Q28Particle16SequenceEntry<f>>>Fv  # OVL1; the rdr lane: ScaleSequenceClear's vector clear() calls it on the props' scale sequence (+0x1C) (SOCOM 1's clear__Q23std96__vector_deleter<...f...>Fv)
 0x003294B0 0x5C func_003294B0  # OVL1
 0x00329510 0x404 func_00329510  # OVL1
 0x00329920 0x118 CheckExtents__Q28Particle6SourceF6CPnt4Df  # OVL1; s1:align (0.81 on instruction skeleton, 0x118 against SOCOM 1's 0x12C; Instance::Render calls it, as SOCOM 1's does)
@@ -5767,9 +5767,9 @@
 0x0032B110 0x8 func_0032B110  # OVL1
 0x0032B120 0x58 Create__Q28Particle6SourceFv  # OVL1; s1:align, checked (SOCOM 1's Create: a new source built (0x32A800) and pushed on the source list at 0x4884F0; CZAnim::GetParticleSource calls it)
 0x0032B180 0x90 func_0032B180  # OVL1
-0x0032B210 0x43C func_0032B210  # OVL1
-0x0032B650 0x53C func_0032B650  # OVL1
-0x0032BB90 0x43C func_0032BB90  # OVL1
+0x0032B210 0x43C insert__Q23std130__vector_imp<Q28Particle34SequenceEntry<PQ23zdb10CTexHandle>,Q23std58allocator<Q28Particle34SequenceEntry<PQ23zdb10CTexHandle>>,0>FPQ28Particle34SequenceEntry<PQ23zdb10CTexHandle>UiRCQ28Particle34SequenceEntry<PQ23zdb10CTexHandle>  # OVL1; s1:callee by hand (TextureSequenceAdd's push_back calls it where SOCOM 1's calls this name: the texture sequence's insert, 0x43C against 0x41C) -- the rdr lane
+0x0032B650 0x53C insert__Q23std106__vector_imp<Q28Particle22SequenceEntry<6CPnt4D>,Q23std46allocator<Q28Particle22SequenceEntry<6CPnt4D>>,0>FPQ28Particle22SequenceEntry<6CPnt4D>UiRCQ28Particle22SequenceEntry<6CPnt4D>  # OVL1; s1:callee by hand (ColorSequenceAdd's push_back calls it where SOCOM 1's calls this name: the CPnt4D sequence's insert, 0x53C against 0x4EC) -- the rdr lane
+0x0032BB90 0x43C insert__Q23std94__vector_imp<Q28Particle16SequenceEntry<f>,Q23std40allocator<Q28Particle16SequenceEntry<f>>,0>FPQ28Particle16SequenceEntry<f>UiRCQ28Particle16SequenceEntry<f>  # OVL1; s1:callee by hand (ScaleSequenceAdd's push_back calls it where SOCOM 1's calls this name: the float sequence's insert, 0x43C against SOCOM 1's 0x41C) -- the rdr lane
 0x0032BFD0 0x68 func_0032BFD0  # OVL1
 0x0032C040 0x194 FindRdr__11CRdrArchiveFPCci  # OVL1; s1:align (SOCOM 1's FindRdr: the base name copied, each archive ReOpened, OpenKey, the file loaded, CloseKey, Close; SOCOM II passes a flags argument on to the loader, 0x32C980)
 0x0032C1E0 0xCC AddArchive__11CRdrArchiveFPCcPCc  # OVL1; s1:align (SOCOM 1's AddArchive: "%s/%s" or the name, a new archive pushed on the list; the states call it with (name, path))
@@ -5850,12 +5850,12 @@
 0x0032FE70 0x1588 func_0032FE70  # OVL1
 0x00331400 0x174 func_00331400  # OVL1
 0x00331580 0x110 func_00331580  # OVL1
-0x00331690 0x80 func_00331690  # OVL1
-0x00331710 0x144 func_00331710  # OVL1
+0x00331690 0x80 Open__6CRdrIOFPvUi  # OVL1; slot 0x44 of CRdrIO's vtable (0x406A50, CBufferIO's Open(void *, unsigned int) there): the name and directory strings at 0x3C/0x30 erased, then CBufferIO::Open(buf, size) -- the rdr lane
+0x00331710 0x144 Open__6CRdrIOFPCcUi  # OVL1; slot 0x08 of CRdrIO's vtable (0x406A50): the name kept at 0x3C, its directory split off at the last of "\\/" into 0x30 with backslashes made slashes, then CBufferIO::Open(name, mode); zrdr_read inlines it -- the rdr lane
 0x00331860 0xD8 func_00331860  # OVL1
-0x00331940 0x1D8 func_00331940  # OVL1
-0x00331B20 0x1FC func_00331B20  # OVL1
-0x00331D20 0x100 func_00331D20  # OVL1
+0x00331940 0x1D8 ReadArray__8CRdrFileFP6CRdrIOi  # OVL1; s1:order by hand (SOCOM 1's ReadArray: tokens gathered into a pointer list until ')', '(' recursing (itself), the values copied into an array from the allocator 0x335BC0 and freed; SOCOM II passes the CRdrIO and the depth, the top level filling the file itself -- zrdr_read calls it with (file, &io, 0)) -- the rdr lane
+0x00331B20 0x1FC ReadToken__8CRdrFileFP6CRdrIOPP5_zrdr  # OVL1; s1:order by hand (SOCOM 1's ReadToken: ';' comments skipped to the line's end, a token ended by '(' ')' or white space and made a value by MakeUnion (0x331D20), a quoted string read whole, the 800-byte limit; SOCOM II reads through the CRdrIO passed in (fread, slot 0x24) where SOCOM 1 read its file stack's top) -- the rdr lane
+0x00331D20 0x100 MakeUnion__8CRdrFileFPCcb  # OVL1; s1:order by hand (SOCOM 1's MakeUnion, the same 0x100: a token made an integer (strtol over all of it), else a real (strtod), else a string through the file's CSTable::CreateString at this+8; the value from the allocator 0x335BC0 where SOCOM 1's called _calloc) -- the rdr lane
 0x00331E20 0xC func_00331E20  # OVL1
 0x00331E30 0x94 func_00331E30  # OVL1
 0x00331ED0 0x54 func_00331ED0  # OVL1
@@ -5884,19 +5884,19 @@
 0x00333260 0xC4 func_00333260  # OVL1
 0x00333330 0x58 func_00333330  # OVL1
 0x00333390 0x60 func_00333390  # OVL1
-0x003333F0 0x48 func_003333F0  # OVL1
-0x00333440 0x48 func_00333440  # OVL1
-0x00333490 0x60 func_00333490  # OVL1
-0x003334F0 0x48 func_003334F0  # OVL1
-0x00333540 0x80 func_00333540  # OVL1
+0x003333F0 0x48 addSTRING__10CRdrEditorFPCcPCc  # OVL1; s1:order by hand (SOCOM 1's addSTRING, first of CRdrEditor's members in both demos' order: push(tag) 0x3339B0, addstringnode 0x333610, pop 0x333770, true) -- the rdr lane
+0x00333440 0x48 addbool__10CRdrEditorFPCcb  # OVL1; the rdr lane: SOCOM II's, between addSTRING and addPNT3D: push(tag), addintnode (0x333700) of the bool re-extended (andi 0xff), pop -- the name ours
+0x00333490 0x60 addPNT3D__10CRdrEditorFPCcRC5PNT3D  # OVL1; s1:order by hand (SOCOM 1's addPNT3D: push, three reals added (0x333690) from the point's x, y, z, pop) -- the rdr lane
+0x003334F0 0x48 addint__10CRdrEditorFPCci  # OVL1; s1:order by hand (SOCOM 1's addint: push, addintnode (0x333700), pop) -- the rdr lane
+0x00333540 0x80 addrdrnode__10CRdrEditorFP5_zrdr  # OVL1; s1:order by hand (SOCOM 1's addrdrnode: a value _calloc'ed, cloned into the file's string table at this+8, pushed on the stack top's vector) -- the rdr lane
 0x003335C0 0x4C func_003335C0  # OVL1
-0x00333610 0x7C func_00333610  # OVL1
-0x00333690 0x70 func_00333690  # OVL1
-0x00333700 0x70 func_00333700  # OVL1
-0x00333770 0x238 func_00333770  # OVL1
-0x003339B0 0x6C func_003339B0  # OVL1
-0x00333A20 0xB8 func_00333A20  # OVL1
-0x00333AE0 0x48 func_00333AE0  # OVL1
+0x00333610 0x7C addstringnode__10CRdrEditorFPCc  # OVL1; s1:order by hand (SOCOM 1's addstringnode: a string value (0x335BC0 with 3), its text through CSTable::CreateString, pushed on the stack top's vector; push calls it with the tag) -- the rdr lane
+0x00333690 0x70 addrealnode__10CRdrEditorFf  # OVL1; the rdr lane: SOCOM II's, addPNT3D's helper: a real value (0x335BC0 with 2) pushed on the stack top's vector -- the name ours (zrdr's word for a float)
+0x00333700 0x70 addintnode__10CRdrEditorFi  # OVL1; s1:order by hand (SOCOM 1's addintnode: an integer value (0x335BC0 with 1) pushed on the stack top's vector; addint and addbool call it) -- the rdr lane
+0x00333770 0x238 pop__10CRdrEditorFv  # OVL1; s1:order by hand (SOCOM 1's pop: the top vector's values copied into a new array and freed, the vector deleted, the stack popped (0x3349C0), the array pushed on the next vector or made the editor's own value) -- the rdr lane
+0x003339B0 0x6C push__10CRdrEditorFPCc  # OVL1; s1:order by hand (SOCOM 1's push: the tag added when non-empty, a new CRDRNodeVec (0xC bytes) pushed on the stack's deque (0x2CF970), false) -- the rdr lane
+0x00333A20 0xB8 __dt__10CRdrEditorFv  # OVL1; s1:order by hand (SOCOM 1's ~CRdrEditor: pop until the stack (this+0x34, its size at 0x48) is empty, the stack's four this-tested levels and __deque_buf's destructor, then ~CRdrFile) -- the rdr lane
+0x00333AE0 0x48 __ct__10CRdrEditorFv  # OVL1; s1:order by hand (SOCOM 1's CRdrEditor(): CRdrFile's constructor, then the stack built from a temporary deque by copy, as MSL's stack(const Container & = Container())); zanim_menu.cpp's NetCnf readers construct it -- the rdr lane
 0x00333B30 0x78 func_00333B30  # OVL1
 0x00333BB0 0x118 func_00333BB0  # OVL1
 0x00333CD0 0x5C func_00333CD0  # OVL1
@@ -5914,7 +5914,7 @@
 0x003340F0 0x28 func_003340F0  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
 0x00334120 0x30 func_00334120  # OVL1
 0x00334150 0x18 func_00334150  # OVL1
-0x00334170 0x44 func_00334170  # OVL1
+0x00334170 0x44 zrdr_newarray__FP5_zrdri  # OVL1; the rdr lane: a value made an array of n zeroed values (0x335BC0 with 1), its count and type set; _zrdr::Clone calls it out of line and CRdrEditor::pop inlines it (a2 copy of the array pointer), so it is zrdr_edit.cpp's own function, defined first (it follows the deque copy constructor's pieces) -- the name ours
 0x003341C0 0x27C func_003341C0  # OVL1
 0x00334440 0x3D4 func_00334440  # OVL1
 0x00334820 0x38 func_00334820  # OVL1

@@ -12,6 +12,7 @@
 #define ZRDR_H
 
 #include "../zar/zar.h"
+#include <deque>
 
 class CSTable;
 class CRdrFile;
@@ -141,9 +142,12 @@ extern "C" void func_0039FB30(CSTable *table, int flags);
 class CSTable {
 public:
     void LoadTable(void *table, unsigned int bytes, bool copy);
+    char *CreateString(const char *s);
 
     unsigned char _0[0x20];
 };   // 0x20 bytes
+
+class CRdrIO;
 
 /* a file read or fetched whole: SOCOM 1's CRdrFile, the tree's root, its strings and the buffer
  * it was read into; SOCOM II added the flags it was read with (0x34 bytes, new'd so) */
@@ -158,6 +162,11 @@ public:
     zar::CKey *Insert(zar::CZAR *zar, zar::CKey *key);
     bool Resolve(bool pack);
     void Pack();
+    /* the parser (zrdr_parse.cpp): SOCOM 1's, reading from the file given rather than its file
+     * stack's top, an array's depth passed down */
+    _zrdr *ReadArray(CRdrIO *io, int depth);
+    int ReadToken(CRdrIO *io, _zrdr **out);
+    _zrdr *MakeUnion(const char *token, bool quoted);
 
     /* a packed buffer's tree: its root's offset at 8, its strings from 12 (ours) */
     _zrdr *Root() { return m_buffer ? (_zrdr *)(m_buffer + *(int *)(m_buffer + 8)) : 0; }
@@ -171,5 +180,57 @@ public:
 /* the files (zrdr_file.cpp, zrdr_parse.cpp) */
 _zrdr *zrdr_read(const char *name, const char *path, int flags);
 int zrdr_free(CRdrFile *file);
+
+/* the deque pieces the editor's stack calls that include/deque does not declare yet, out of line
+ * in zrdr_edit.cpp's template tail (placeholders, the deque first): back() (0x3335C0) and
+ * pop_back() (0x3349C0), both deque<const void *>'s (SOCOM 1's back__Q23std33deque<PCv,...>Fv,
+ * pop_back__Q23std33deque<PCv,...>Fv) */
+extern "C" const void **func_003335C0(void *deque);
+extern "C" void func_003349C0(void *deque);
+
+namespace std {
+
+/* <stack>, not in include/ yet: SOCOM 1's DWARF gives CRdrEditor a `stack m_stack` holding its
+ * deque as `c` (0x1c bytes there; SOCOM II's deque is 0x18). The members MSL's would forward to
+ * the deque's back() and pop_back() call them out of line, as every SOCOM II caller does but
+ * CRdrEditor::pop's first top() (see there) */
+template <class T, class Container = deque<T> >
+class stack {
+public:
+    bool empty() const { return c.empty(); }
+    unsigned int size() const { return c.size(); }
+    T &top() { return (T &)*func_003335C0(&c); }
+    void push(const T &x) { c.push_back(x); }
+    void pop() { func_003349C0(&c); }
+
+    Container c;   // 0x0
+};
+
+}
+
+/* an .rdr built in memory (zrdr_edit.cpp): SOCOM 1's CRdrEditor, a CRdrFile with a stack of the
+ * open lists' values; push opens a list (its tag the first value), pop closes it into an array
+ * of the enclosing list, or of the file itself at the bottom */
+class CRdrEditor : public CRdrFile {
+public:
+    /* an open list's values (SOCOM 1's CRdrEditor::CRDRNodeVec) */
+    class CRDRNodeVec : public std::vector<_zrdr *> {
+    };
+
+    CRdrEditor();
+    ~CRdrEditor();
+    bool push(const char *tag);
+    bool pop();
+    bool addintnode(int i);
+    bool addrealnode(float f);
+    bool addstringnode(const char *s);
+    bool addrdrnode(_zrdr *rdr);
+    bool addint(const char *tag, int i);
+    bool addPNT3D(const char *tag, const PNT3D &p);
+    bool addbool(const char *tag, bool b);
+    bool addSTRING(const char *tag, const char *s);
+
+    std::stack<CRDRNodeVec *> m_stack;   // 0x34
+};   // 0x4c bytes
 
 #endif

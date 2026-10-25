@@ -81,6 +81,7 @@
 0x001D0848 0x28 isclr  # MAIN; s1:data-exact (size SOCOM 1's; via sceDmaReset)
 0x001D0880 0xA stdtbl  # MAIN; s1:data-exact (size SOCOM 1's; via sceDmaPutEnv)
 0x001D0890 0xA mfdtbl  # MAIN; s1:data-exact (size SOCOM 1's; via sceDmaPutEnv)
+0x001D08D0 0x101 _ctype_  # MAIN; the SDK libc's (newlib's) character table, read as (_ctype_ + 1)[c] & 8 for white space (newlib's _S): 7 %hi/%lo references in the overlays -- ReadToken (0x331BD0), the preprocessor 0x32FE70, 0x281D40 (3), 0x3996B0, 0x39AE50 -- the rdr lane
 0x001D1930 0x18 __thenan_df  # MAIN; s1:data-exact (size SOCOM 1's; via _fpadd_parts +2)
 0x001D2DE0 0x10 atanhi  # MAIN; s1:data-exact (size SOCOM 1's; via atanf)
 0x001D2DF0 0x10 atanlo  # MAIN; s1:data-exact (size SOCOM 1's; via atanf)
