@@ -208,6 +208,39 @@ bool CMission::FadeToEndMissionTick(float dT)
     return false;
 }
 
+/* a range kept at 0xF4 (the top) and 0xF8 (the bottom) of the object 0x341A60 asks (SOCOM II's; the
+ * names ours) */
+struct FadeRange {
+    unsigned char _0[0xf4];
+    float top;   // 0xf4
+    float bottom;   // 0xf8
+};
+
+/* where a value lies in the range, 0 to 1 (a half when the range is empty), the ends put in order
+ * first (OVL1 0x2ACA30) */
+extern "C" float func_002ACA30(FadeRange *r, float x)
+{
+    float f = 0.5f;
+
+    if (r->top < r->bottom) {
+        float t = r->top;
+
+        r->top = r->bottom;
+        r->bottom = t;
+    }
+    if (!(x <= r->top))
+        f = 1.0f;
+    else if (x < r->bottom)
+        f = 0.0f;
+    else {
+        float d = r->top - r->bottom;
+
+        if (d != 0.0f)
+            f = (x - r->bottom) / d;
+    }
+    return f;
+}
+
 /* the task's callback (SOCOM 1's fadeToEndMissionTick, the same jump; OVL1 0x2A98A0) */
 bool CMission::fadeToEndMissionTick(float dT, void *data)
 {
