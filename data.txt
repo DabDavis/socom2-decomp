@@ -662,6 +662,7 @@
 0x004412D0 0x4 m_NetStructIndexGameObject__11CZGameState  # OVL1 bss; s1:data-seq (size SOCOM 1's; via CreateLocalGame__11CZGameStateFP9CZNetGame)
 0x00441378 0x4 m_NetStructIndexGrenadeObject__14CZGrenadeState  # OVL1 bss; s1:data-seq (size SOCOM 1's; via CreateLocalGrenade__14CZGrenadeStateFP12CZProjectile +1)
 0x004413B0 0x20 m_BombStatus__11CZBombState  # OVL1 bss; s1:data-exact (size SOCOM 1's; via CreateBombHere__11CZBombStateFP6CPnt3D +1)
+0x004413D0 0x4 m_NetStructIndexBombObject__11CZBombState  # OVL1 bss; s1 by hand (the states lane: SOCOM 1's name; zNetRegisterBomb (0x2C26E0) hands its address to the structure registration with "BombState" and passes its value to 0x30CE80, as SOCOM 1's zNetRegisterBomb does with m_NetStructIndexBombObject)
 0x004414C0 0xC0 m_PersonaList__14CZPersonaState  # OVL1 bss; by hand (the states lane: SOCOM 1's name for CZPersonaState's persona list, a list<int> there; SOCOM II's is 24 clients of {network object, data}: ClearPersonaList (0x2C2BB0) stores -1 and 0 into 24 eight-byte entries, and every accessor tests the client against 0..23 before reading +4; 42 references)
 0x0044C250 0x1BC theCharacterDynamics  # OVL1 bss; s1:data-exact (size SOCOM 1's; via Load__17CharacterDynamicsFRC8CRdrFile +1)
 0x0044CCF0 0x1C MultiplayerMsgStrings  # OVL1 bss; s1:data-seq (size SOCOM 1's; via InitMultiplayerMessages__14CCharacterTypeFP5_zrdr)

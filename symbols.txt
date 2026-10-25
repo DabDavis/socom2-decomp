@@ -4133,11 +4133,11 @@
 0x002C2090 0x2C RequestNewBombState__11CZBombStateFiQ211CZBombState13EnumBombStatePC6CPnt3D  # OVL1; s1:exact
 0x002C20C0 0x194 UpdateLocalBomb__11CZBombStateFv  # OVL1; s1:align
 0x002C2260 0x13C CreateLocalBomb__11CZBombStateFv  # OVL1; s1:align
-0x002C23A0 0xC func_002C23A0  # OVL1
-0x002C23B0 0x94 func_002C23B0  # OVL1
-0x002C2450 0x134 func_002C2450  # OVL1
+0x002C23A0 0xC RemoteBombDeletionCallback__11CZBombStateFii  # OVL1; s1:order by hand (the states lane: after CreateLocalBomb as in SOCOM 1, and zNetRegisterBomb (0x2C26E0) hands it to 0x30CE80 in the deletion slot, where SOCOM 1's hands RemoteBombDeletionCallback to zNetRegisterRemoteObjectCallback)
+0x002C23B0 0x94 RemoteBombPostUpdateCallback__11CZBombStateFiii  # OVL1; s1:order by hand (the states lane: the post-update slot of zNetRegisterBomb's registration, as SOCOM 1's; its code takes up the object's state and calls ChangeBombState, as SOCOM 1's does)
+0x002C2450 0x134 RemoteBombUpdateCallback__11CZBombStateFiii  # OVL1; s1:order by hand (the states lane: the update slot of zNetRegisterBomb's registration, between the post-update and creation callbacks as in SOCOM 1)
 0x002C2590 0x150 RemoteBombCreationCallback__11CZBombStateFii  # OVL1; s1:calls
-0x002C26E0 0x118 func_002C26E0  # OVL1
+0x002C26E0 0x118 zNetRegisterBomb__11CZBombStateFv  # OVL1; s1:order by hand (the states lane: after RemoteBombCreationCallback as in SOCOM 1; registers "BombState", SOCOM 1's structure name, with the four bomb callbacks)
 0x002C2800 0x254 func_002C2800  # OVL1
 0x002C2A60 0x2C func_002C2A60  # OVL1
 0x002C2A90 0x2C func_002C2A90  # OVL1
