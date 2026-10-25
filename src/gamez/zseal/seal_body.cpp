@@ -5,6 +5,35 @@
 
 #include "zseal.h"
 
+/* whether an anim type is anywhere on the blend stack, the top first (OVL2 0x58A470; new in
+ * SOCOM II, its name unknown -- seal_env.cpp's 0x5A7AB0 asks it).
+ * OPEN, 8 instructions: the target indexes the stack afresh each pass (`sll; addu` off the array
+ * loaded once before the loop, through the stack's address); MW here strength-reduces it to a
+ * pointer stepped by -4. Tried: the members straight off the SEAL, the stack through a pointer and
+ * a reference, the counter declared apart, the compare reversed, an inline element accessor. */
+static inline CZBodyAnimBlend *BlendAt(CBodyAnimBlendStack *stack, int i)
+{
+    return stack->m_stack[i];
+}
+
+extern "C" bool func_0058A470(CZSealBody *seal, AnimType type)
+{
+    CBodyAnimBlendStack *stack = &seal->m_blends;
+
+    for (int i = stack->m_top; i >= 0; i--)
+        if (type == BlendAt(stack, i)->m_animType)
+            return true;
+    return false;
+}
+
+/* whether one of three anim types is the blend on top (OVL2 0x588080; new in SOCOM II, its name
+ * unknown -- seal.cpp's 0x552EF4 and seal_control.cpp's 0x593C20 ask it) */
+extern "C" bool func_00588080(CZSealBody *seal)
+{
+    return seal->IsCurrentBlend((AnimType)17) || seal->IsCurrentBlend((AnimType)19) ||
+           seal->IsCurrentBlend((AnimType)25);
+}
+
 extern "C" {
 /* (OVL2 0x58A4D0 and seal.cpp's 0x555170: what the SEAL holds, on a ladder or off it) */
 void *func_0058A4D0(CZSealBody *seal, int a);
