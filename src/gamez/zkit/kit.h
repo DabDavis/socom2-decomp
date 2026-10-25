@@ -120,6 +120,11 @@ public:
     void *GetCurAmmo();
     void NVG_Enabled(bool on);
     bool NVG_Enabled() const;
+    /* the per-item pointers at 0x834: read, cleared, set (grown with nulls as needed) -- OVL2
+     * 0x5B8FF0, 0x5B8FC0, 0x5B8F20 (the names ours) */
+    void *GetItemPtr(int index);
+    void ClearItemPtr(int index);
+    void SetItemPtr(int index, void *p);
 
     /* an index wrapped into [0, n), or -1 (SOCOM 1's unwrap__5CZKitFii, out of line there; SOCOM
      * II inlines it everywhere) */
@@ -196,7 +201,11 @@ public:
     int m_last_selected;   // 0x828
     int m_num_items;   // 0x82c (SOCOM 1's 0x810)
     CZSealBody *m_body;   // 0x830 (SOCOM 1's 0x814)
-    unsigned char _834[0x8b8 - 0x834];
+    /* 0x834 (new in SOCOM II): a pointer per item, kept one place on (slot 0 for item -1) -- the
+     * environment's pickup code (OVL2 0x59F0C0, 0x59F730) sets, reads and clears it through the
+     * three accessors below 0x5B9020 (the names ours) */
+    std::vector<void *> m_itemptr;
+    unsigned char _840[0x8b8 - 0x840];
     float m_pickupRequestWait;   // 0x8b8 (SOCOM 1's 0x878)
 };
 

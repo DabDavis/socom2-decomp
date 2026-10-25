@@ -106,6 +106,10 @@ class CSealCtrlAi;
 enum GOAL_TYPE { GOAL_NONE = 0, GOAL_SCAN = 1, GOAL_LOOK = 2, GOAL_MOVE = 3, GOAL_SHOOT = 4, GOAL_AVOID = 5, GOAL_RECOVER = 6 };
 
 /* a SEAL's stance (SOCOM 1's DWARF, a signed byte) */
+/* a SEAL's weapon state (SOCOM 1's WEAPON_STATE, a byte: GetWeaponState narrows with andi -- the
+ * enumerators' names unknown, so only the extent here) */
+enum WEAPON_STATE { WEAPON_STATE_0 = 0, WEAPON_STATE_LAST = 255 };
+
 enum SEAL_STANCE {
     STANCE_NONE = -1, STANCE_STAND = 0, STANCE_CROUCH = 1, STANCE_PRONE = 2, STANCE_IDLE = 3,
     STANCE_MAX = 4
@@ -843,6 +847,8 @@ public:
     void SetInSmoke(bool on) { m_isinsmoke = on; }
     /* the stance's change taken, once (seal_body.cpp) */
     bool StanceChanged();
+    /* the weapon's state without its bit 4 (SOCOM 1's; OVL2 0x5E0010, seal_weapon.cpp) */
+    WEAPON_STATE GetWeaponState() const;
     /* whether an anim type is the blend on top (SOCOM 1's; OVL2 0x577E40, seal_anim.cpp) */
     bool IsCurrentBlend(AnimType type) const;
     /* a stun taken: the kind's highest kept, the controller told (SOCOM 1's; OVL2 0x5A53D0) */
@@ -929,7 +935,10 @@ public:
     unsigned int m_action_available;   // 0xed0: a bit per action (SOCOM 1's ActionAvailableMask word, 0xdc0)
     unsigned char _ed4[0xee0 - 0xed4];
     float m_wep_upT;   // 0xee0 (SOCOM 1's 0xdd0)
-    unsigned char _ee4[0xf88 - 0xee4];
+    unsigned char _ee4[0xf74 - 0xee4];
+    /* the weapon's state, bit 4 a flag GetWeaponState masks off (SOCOM 1's m_weapon_state, 0xe54) */
+    unsigned int m_weapon_state;   // 0xf74
+    unsigned char _f78[0xf88 - 0xf78];
     float m_f88;   // 0xf88: a speed (0x5857E0 refuses a SEAL in water above 8.5; the name ours)
     unsigned char _f8c[0xfb0 - 0xf8c];
     SEAL_DEATH_TYPE m_deathType;   // 0xfb0 (SOCOM 1's 0xea4)
