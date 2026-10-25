@@ -7528,7 +7528,7 @@
 0x0039C580 0xC func_0039C580  # OVL1
 0x0039C590 0x80 UnRegisterRebootCallback__11CIOPManagerFi  # OVL1; s1:calls (UninitSystemTuners passes it theIOPManager and the id InitSystemTuners' RegisterRebootCallback returned)
 0x0039C610 0x6C RegisterRebootCallback__11CIOPManagerFPFQ211CIOPManager11RebootPhaseQ211CIOPManager10RebootModePv_bPv  # OVL1; s1:align
-0x0039C680 0x6C func_0039C680  # OVL1
+0x0039C680 0x6C zUtilStrUpr__FPc  # OVL1; ours (strlen, then toupper over each character in place; between the reboot registration and zUtilInit's empty stubs)
 0x0039C6F0 0x8 func_0039C6F0  # OVL1
 0x0039C700 0x8 func_0039C700  # OVL1
 0x0039C710 0xE0 func_0039C710  # OVL1
