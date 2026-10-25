@@ -9872,7 +9872,7 @@
 0x00540990 0xBC func_00540990  # OVL2
 0x00540A50 0xF8 func_00540A50  # OVL2
 0x00540B50 0x68 func_00540B50  # OVL2
-0x00540BC0 0xAC func_00540BC0  # OVL2
+0x00540BC0 0xAC remove_copy_if<Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,PFP14CCharacterType_b>__3stdFQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorPFP14CCharacterType_b_Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator  # OVL2; s1:calls (char_type.cpp's remove_if, byte-exact but this call, calls it where SOCOM 1's remove_if calls remove_copy_if at 0x24C190; the name as char_type.cpp emits it) -- the AI-core lane
 0x00540C70 0x8C func_00540C70  # OVL2
 0x00540D00 0x3BC func_00540D00  # OVL2
 0x005410C0 0x84 func_005410C0  # OVL2

@@ -975,6 +975,22 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     does not;
   - include/string lacks `basic_string(const char *)` (its out-of-line copy is 0x2396F0):
     CRadioIcon_Dynamic::Tick waits on it.
+- **Tells from the AI core, round 3** (char_type.cpp, ai_maps.cpp, the new ai_maptable.cpp):
+  - string literals a loop passes on every pass, hoisted into saved registers at the function's
+    start, were string locals declared at the top (match_name_to_chartype);
+  - where the target loads the right operand of `a * b` first, write `a * (int)b` (AllocEx);
+  - a bitfield ternary `invalid == 0 ? (TYPE)type : NONE` with a byte enum puts the valid arm
+    first without materialising the bit; `!invalid` is normalised to the other order;
+  - a base virtual called qualified and written in terms of the reference parameter shares its
+    loads with the caller; through a member inline on the pointee it does not;
+  - a jump-table switch of string returns regenerates mechanically: the case blocks in address
+    order are the source's case order, the enum values come from the table
+    (GetCharacterSoundTypeString's 85);
+  - `!(s > NONE)` on a signed byte enum gives `slti`/`bnez` (GetSound);
+  - open on include/vector, five functions in two lanes: the pointer vector's end() is one level
+    too tall where GetByNameMod is inlined a level deeper (CCharacterType::Create,
+    RdrFetch_CharacterType), and the target builds end() once and copies it for the erase after
+    remove_if (CleanupTemporary, CWorld::DeleteLightMap, DeleteChild).
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
