@@ -283,7 +283,6 @@ public:
     T *GetOldestUsed();
     void PutBack(T *item);
     T *GetNext(bool b);
-    T *GetOldestUsed();
 
     T **m_pool;   // 0x0
     std::list<T *> m_inuse;   // 0x4
@@ -314,21 +313,6 @@ void RTArray<T>::PutBack(T *item)
         if (m_supportRecycle)
             m_inuse.remove(item);
     }
-}
-
-/* the item handed out longest ago taken back off the in-use list (SOCOM 1's GetOldestUsed, added
- * by the MSL headers round 5; SOCOM II's binder holds the item by reference, so it lives in the
- * frame and is reloaded for the return: OVL1 0x3BF3D0 and 0x3BF6F0 byte-exact as probes) */
-template <class T>
-T *RTArray<T>::GetOldestUsed()
-{
-    if (m_inuse.size()) {
-        T *item = m_inuse.front();
-
-        m_inuse.remove(item);
-        return item;
-    }
-    return 0;
 }
 
 template <class T>
