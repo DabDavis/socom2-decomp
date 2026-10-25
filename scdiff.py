@@ -116,6 +116,9 @@ FIELD = {
     "R_MIPS_32": 0xFFFFFFFF,
 }
 
+# known non-zero words in a function's 16-byte padding, by address (see compare())
+PAD_EXCEPTIONS = {0x1E70F4: 0xFFFFFFFF}
+
 
 def _s16(v: int) -> int:
     return v - 0x10000 if v & 0x8000 else v
@@ -331,7 +334,14 @@ def compare(obj: Path, name: str, sym: E.Symbol, img: E.Image, st: E.SymbolTable
     nxt = st._addrs[k] if k < len(st._addrs) else None
     if nxt is not None and sym.addr + sym.size <= nxt < pad_end:
         pad_end = max(nxt, sym.addr + len(cand))
-    padding = img.read(sym.addr + len(cand), pad_end - sym.addr - len(cand))
+    padding = bytearray(img.read(sym.addr + len(cand), pad_end - sym.addr - len(cand)))
+    # the image's one known non-zero pad word: 0xFFFFFFFF at 0x1E70F4, after main, OVL1's
+    # first function (tools/seed_symbols.py's sweep skips it too)
+    for a, w in PAD_EXCEPTIONS.items():
+        off = a - (sym.addr + len(cand))
+        if 0 <= off <= len(padding) - 4 and padding[off:off + 4] == w.to_bytes(4, "little"):
+            padding[off:off + 4] = b"\0\0\0\0"
+    padding = bytes(padding)
     t = mask(target[:len(cand)], relocs)
     c = mask(cand, relocs)
     res = Result(name, sym.addr, sym.size, len(cand),
