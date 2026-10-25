@@ -8,6 +8,15 @@
 
 namespace zdb {
 
+/* an instance let go of: off the list, and no longer the model's parent if it was -- written out
+ * (through RemoveInstance the by-value copy shares the binder's frame block: 16 bytes short) */
+void CModel::Release(CNode *node)
+{
+    m_list.remove(node);
+    if (m_parent == node)
+        m_parent = 0;
+}
+
 /* a facade's rotation (a billboard): its first three rows turned to face from the viewer's
  * position to its own -- about y only (facade 1), or about y and then x (facade 2: the direction
  * turned into the yz plane to find the x angle).
