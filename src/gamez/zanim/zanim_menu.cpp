@@ -1025,6 +1025,29 @@ bool UISetScreenOrigin(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+/* the first pad's right stick given the preset the valve picks, its figures shown in the UI
+ * variables (the sensitivity, the inertia as 1 less it, the dead zone less 0.02) */
+bool UISetStickPreset(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CPad *pad = CInput::m_pads[0];
+
+    if (pad) {
+        unsigned int preset = CValve::Create("stick_preset", (VALVE_TYPE)2)->m_value;
+
+        if (preset < 3) {
+            pad->SetPreset(1, preset);
+            CUIVariable *sensitivity = func_003857C0(&theUIVarManager, "STICK_SENSITIVITY", 0, UIVAR_SESSION);
+            CUIVariable *inertia = func_003857C0(&theUIVarManager, "STICK_INERTIA", 0, UIVAR_SESSION);
+            CUIVariable *deadzone = func_003857C0(&theUIVarManager, "STICK_DEADZONE", 0, UIVAR_SESSION);
+
+            sensitivity->SetReal(pad->GetAcceleration(1));
+            inertia->SetReal(1.0f - pad->m_stickType[1].m_socom2_20);
+            deadzone->SetReal(pad->GetDeadZone(1) - 0.02f);
+        }
+    }
+    return true;
+}
+
 bool UIIsSpaceForSaveGameFile(C2DAnimCmdHdr *hdr, float *dT)
 {
     int space = func_003A1210(&theMemCard);
