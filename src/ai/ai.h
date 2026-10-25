@@ -193,6 +193,7 @@ public:
      * it out of line: fifteen statements and the return are past -inline auto's fifteen) */
     CAiCell();
     void Reset();
+    static CAiCell *Alloc(unsigned int n);
     /* the soil (the name ours: read through it, the field is loaded again for a following
      * store -- _reset_cell) */
     unsigned int GetSoil() const { return m_soil; }
@@ -231,8 +232,12 @@ public:
 class CRdrFile;
 class CFileIO;
 /* one layer of an AI map's cells (new in SOCOM II, the name ours: the map keeps the first at 0xA8
- * and the rest by pointer) */
-class CAiMapLayer;
+ * and the rest by pointer; 0x2C bytes, built by 0x53A9C0). Only the cells are laid out */
+class CAiMapLayer {
+public:
+    unsigned char _0[0x28];
+    CAiCell *m_cells;   // 0x28: CAiCell::Alloc's
+};
 int zrdr_free(CRdrFile *file);
 /* MAIN's strncasecmp (0x1993C0, a placeholder still: SOCOM 1's CAiMap::GetLocation calls
  * strncasecmp where SOCOM II's calls it) */
@@ -353,6 +358,16 @@ public:
                 in = dx >= 0 && dx < (int)m_dx && dy >= 0 && dy < (int)m_dy;
             }
             return in;
+        }
+        /* every field zeroed but the cell, each bitfield read, masked and written back as a word
+         * (the mem-initializer list's way) and the name emptied (new in SOCOM II: SOCOM 1's had no
+         * constructor; out of line at 0x517790) */
+        region() : m_dx(0), m_dy(0), m_type(0), m_nodisplay(0), m_flags(0), m_unused(0) { m_name[0] = 0; }
+        /* the width and height, both taken before either is stored (the name ours) */
+        void SetSize(unsigned int dx, unsigned int dy)
+        {
+            m_dx = dx;
+            m_dy = dy;
         }
         /* whether the line map shows it (the name ours; materialised where it is tested) */
         bool IsDisplayed() const { return !m_nodisplay; }
@@ -494,7 +509,15 @@ public:
 
     static const char *GetSoilString(SOIL soil);
     static SOIL GetSoilByName(const char *name);
+    static DIR GetClosestDir(const CPnt3D *v);
+    static DIR GetClosestDir(const CAiMapLoc &from, const CAiMapLoc &to);
     static int GetDirDelta(DIR a, DIR b);
+    /* the whole map as a region: its first cell, its width and height (SOCOM 1's) */
+    void GetMapRegion(region &r) const;
+    /* a layer's cells, none for a layer it has not (new in SOCOM II, the name ours) */
+    CAiCell *GetLayerCells(int layer);
+    static CPnt3D &GetDirVec(DIR dir, CPnt3D &v);
+    static CQuat &GetDirQuat(DIR dir, CQuat &q, bool reverse);
     static float GetDirCos(DIR a, DIR b);
     static bool _reset_rtflag(const MAP_FOREACH_STRUCT &s, void *data);
     static bool _reset_cell(const MAP_FOREACH_STRUCT &s, void *data);

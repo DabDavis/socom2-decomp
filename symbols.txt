@@ -9428,9 +9428,9 @@
 0x00516940 0x70 func_00516940  # OVL2
 0x005169B0 0x558 func_005169B0  # OVL2
 0x00516F10 0xA4 func_00516F10  # OVL2
-0x00516FC0 0x88 func_00516FC0  # OVL2
+0x00516FC0 0x88 Alloc__7CAiCellFUi  # OVL2; ours (new in SOCOM II: n cells from _calloc, each through CAiCell::Reset; the layers' allocation 0x53A8F0 calls it)
 0x00517050 0x388 func_00517050  # OVL2
-0x005173E0 0x84 func_005173E0  # OVL2
+0x005173E0 0x84 GetMapRegion__6CAiMapCFRQ26CAiMap6region  # OVL2; s1:order by hand (the demo's 0x185FF0, the same 0x84 bytes: a CAiMapLoc(0, 0, 0) temporary copied into the region's cell, then m_nx and m_ny as its width and height; 0x517470 and ValidateCells call it)
 0x00517470 0x254 func_00517470  # OVL2
 0x005176D0 0x8 func_005176D0  # OVL2
 0x005176E0 0x18 func_005176E0  # OVL2
@@ -9452,13 +9452,13 @@
 0x00518760 0x78 GetSoilByName__6CAiMapFPCc  # OVL2; s1:order by hand (the demo's 0x1871D0: strcasecmp against each soil's name, 1 when none or no name; after CAiMap's construction in both builds)
 0x005187E0 0x118 GetSoilString__6CAiMapFQ26CAiMap4SOIL  # OVL2; ours (new in SOCOM II: the 14-case switch of soil names "nogo" .. "collision", default "default", that SOCOM 1's GetSoilByName had inline; GetSoilByName 0x518760 calls it)
 0x00518900 0x1E0 func_00518900  # OVL2
-0x00518AE0 0x7C func_00518AE0  # OVL2
-0x00518B60 0x1D8 func_00518B60  # OVL2
+0x00518AE0 0x7C GetClosestDir__6CAiMapFRC9CAiMapLocRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x187790: the step from one cell to the other as a vector, normalized, handed to GetClosestDir(const CPnt3D *))
+0x00518B60 0x1D8 GetClosestDir__6CAiMapFPC6CPnt3D  # OVL2; s1:order by hand (the demo's 0x187890, the same 0x1D8 bytes: north's vector dotted with the argument, then W..E or E..W tried through GetDirVec, the least 1 - dot kept)
 0x00518D40 0x38 GetDirDelta__6CAiMapFQ26CAiMap3DIRQ26CAiMap3DIR  # OVL2; s1:order by hand (the demo's 0x187A70, the same subtraction of two byte enums folded into -4..4; between the GetClosestDirs and GetDirByName in both builds)
 0x00518D80 0x118 func_00518D80  # OVL2
 0x00518EA0 0x1D8 GetDirQuat__6CAiMapFQ26CAiMap3DIRR5CQuatb  # OVL2; s1:calls
 0x00519080 0xA8 GetDirCos__6CAiMapFQ26CAiMap3DIRQ26CAiMap3DIR  # OVL2; ours (new in SOCOM II, after GetDirQuat where SOCOM 1 had GetDirVec: the cosine between two directions -- 1, the 0.7071 static at 0x65AB38, 0, its negation, -1 for a difference of 0, 1, 2, 3, 4 steps)
-0x00519130 0x118 func_00519130  # OVL2
+0x00519130 0x118 GetDirVec__6CAiMapFQ26CAiMap3DIRR6CPnt3D  # OVL2; s1:order by hand (the demo's 0x187D90, the last of SOCOM 1's direction functions: the same eight unit vectors by a jump table, -z for north and for any other value; SOCOM II reads the diagonals' 0.7071 from the static at 0x65AB38 where SOCOM 1 loaded a literal)
 0x00519250 0x18 _max<Us>__2aiFRCUsRCUs_RCUs  # OVL2; s1:exact; by hand: MW 3.0 mangles a function template's return type (README), so SOCOM 1's _max<Us>__2aiFRCUsRCUs is this name in SOCOM II; the body is SOCOM 1's (the larger by reference, lhu, signed after promotion)
 0x00519270 0x18 _min<Us>__2aiFRCUsRCUs_RCUs  # OVL2; s1:exact; by hand: MW 3.0 mangles the return type (SOCOM 1's _min<Us>__2aiFRCUsRCUs)
 0x00519290 0x50 _saturate<i>__FPiRCiRCi_b  # OVL2; s1:order by hand (the demo's 0x187EE0, right after _min<Us> in both builds; InflateRegion's four clamps call it as SOCOM 1's call _saturate<i>; it returns whether it clamped, as SOCOM II's _saturate<f> does -- MW 3.0 mangles the bool)
