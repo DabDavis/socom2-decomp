@@ -7669,8 +7669,8 @@
 0x003A5C30 0x3C func_003A5C30  # OVL1
 0x003A5C70 0x40 func_003A5C70  # OVL1
 0x003A5CB0 0x8 func_003A5CB0  # OVL1
-0x003A5CC0 0x108 func_003A5CC0  # OVL1
-0x003A5DD0 0x78 func_003A5DD0  # OVL1
+0x003A5CC0 0x108 __dt__19CSimpleStateMachineFv  # OVL1; by hand, the UI-commands lane's lead vetted (stores the same vtable first, drains the queue, frees 0x30, destroys the queue at 0x14 and deletes itself when its flag is positive: MW's destructor shape; the inlined ~CSMInitNetwork calls it with 0)
+0x003A5DD0 0x78 __ct__19CSimpleStateMachineFv  # OVL1; by hand, the UI-commands lane's lead vetted (stores __vt__19CSimpleStateMachine, 0x408240, before anything else and copy-builds the state queue at 0x14 from a temporary; UIInitNetwork calls it right after operator new(60))
 0x003A5E50 0x78 func_003A5E50  # OVL1
 0x003A5ED0 0xB0 func_003A5ED0  # OVL1
 0x003A5F80 0x5C func_003A5F80  # OVL1
