@@ -4221,7 +4221,8 @@
 0x002C6460 0x28 func_002C6460  # OVL1 ; size by hand (the states lane: the seed counted the trailing zero padding after jr ra's delay slot)
 0x002C6490 0x50 func_002C6490  # OVL1
 0x002C64E0 0x40 func_002C64E0  # OVL1
-0x002C6520 0x148 func_002C6520  # OVL1
+0x002C6520 0x84 func_002C6520  # OVL1; split by the integrator: ends at its jr ra (0x2C65A0), padded to 0x2C65B0
+0x002C65B0 0xB8 func_002C65B0  # OVL1; split from 0x2C6520 by the integrator: a function reached only by 0x2C6280's tail `j`, so the seed never cut it (a byte read at +0x13 tested against 16, a signed byte of a table returned)
 0x002C6670 0x180 func_002C6670  # OVL1
 0x002C67F0 0x480 func_002C67F0  # OVL1
 0x002C6C70 0x254 func_002C6C70  # OVL1
@@ -4643,7 +4644,8 @@
 0x002DED30 0xC0 func_002DED30  # OVL1
 0x002DEDF0 0x40 func_002DEDF0  # OVL1
 0x002DEE30 0x60 func_002DEE30  # OVL1
-0x002DEE90 0x2C4 func_002DEE90  # OVL1
+0x002DEE90 0x194 func_002DEE90  # OVL1; split by the integrator: ends at its jr ra (0x2DF01C, the frame popped in the delay slot), padded to 0x2DF030
+0x002DF030 0x124 func_002DF030  # OVL1; split from 0x2DEE90 by the integrator: a function reached only by the string compare 0x2DEE30's tail `j` (at 0x2DEE88), so the seed never cut it
 0x002DF160 0x3F4 func_002DF160  # OVL1
 0x002DF560 0xD4 SyncGameClock__13CZOnlineLobbyFi  # OVL1; s1:calls
 0x002DF640 0xC MediusConnectionIndex__13CZOnlineLobbyFv  # OVL1; s1:calls by hand (the states lane: the network senders take the connection index through it where SOCOM 1's do)
@@ -6997,12 +6999,14 @@
 0x0037C1A0 0x8 func_0037C1A0  # OVL1
 0x0037C1B0 0x70 __dt__11CRadioStripFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037C220 0xA0 DrawBackground__9C2DButtonFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0037C2C0 0x118 func_0037C2C0  # OVL1
+0x0037C2C0 0x24 func_0037C2C0  # OVL1; split by the integrator: a 0x24-byte virtual call (slot 0x34 through the object at +0x1A0, the float scaled by 128), padded to 0x37C2F0
+0x0037C2F0 0xE8 func_0037C2F0  # OVL1; split from 0x37C2C0 by the integrator: a destructor (two vtable stores, the members' tests) reached only by the this-adjusting thunk 0x37D0D0's `j`, so the seed never cut it (the UI lane's find)
 0x0037C3E0 0x8 func_0037C3E0  # OVL1
 0x0037C3F0 0xD0 __dt__13CHProgressBarFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037C4C0 0xD0 __dt__10CSliderBarFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037C590 0x70 __dt__14CHandlerButtonFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0037C600 0x108 func_0037C600  # OVL1
+0x0037C600 0x14 func_0037C600  # OVL1; split by the integrator: a 0x14-byte virtual call (slot 0x38 through the object at +0x1C), padded to 0x37C620
+0x0037C620 0xE8 func_0037C620  # OVL1; split from 0x37C600 by the integrator: a destructor (vtable stores at +0xC and +0x98, DetachUIVar) reached only by the this-adjusting thunk 0x37D030's `j` (addiu a0,a0,-152), so the seed never cut it (the UI lane's find)
 0x0037C710 0x18 func_0037C710  # OVL1
 0x0037C730 0x148 func_0037C730  # OVL1
 0x0037C880 0x84 func_0037C880  # OVL1
