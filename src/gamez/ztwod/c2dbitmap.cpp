@@ -10,6 +10,14 @@
 #include <eetypes.h>
 
 #include "ztwod.h"
+#include "zvid2d.h"
+
+/* libvu0's float-to-fixed copies (MAIN, prebuilt) */
+extern "C" void sceVu0FTOI0Vector(int *v0, sceVu0FVECTOR v1);
+extern "C" void sceVu0FTOI4Vector(int *v0, sceVu0FVECTOR v1);
+
+/* the scratchpad packet (zsys) */
+u_long128 *zSysSprGetPacket(u_long128 **end);
 
 /* the texture a handle holds, as the bitmap reads it: its size two halfwords at 0 */
 namespace zdb {
@@ -17,6 +25,8 @@ class CTexture {
 public:
     unsigned short m_width;   // 0x0
     unsigned short m_height;   // 0x2
+    unsigned char _4[0x30 - 0x4];
+    sceVu0FVECTOR m_gsregs;   // 0x30: its GS registers, packeted first
 };
 
 class CTexHandle {
@@ -222,6 +232,63 @@ void C2DBitmap::SetPos(int x1, int y1, int x2, int y2)
     m_y = y1;
     m_iWidth = x2 - x1;
     m_iHeight = y2 - y1;
+}
+
+/* the relocator told of the texture first; then its registers, the DMA and VIF tags (seven
+ * quadwords, DIRECT), a GIF tag (two loops of ST, RGBAQ, XYZ2 under the PRIM word: a sprite) and
+ * the corners, through the matrix when there is one (at the 2D depth when not), scaled into the
+ * window; handed to the relocator to draw */
+void C2DBitmap::MakePacket(zdb::CCamera *cam, zdb::CTextureRelocMgr *mgr, const CMatrix *m)
+{
+    mgr->PreGetSprPacket(m_pTexHandle);
+
+    u_long128 *packet = zSysSprGetPacket(0);
+    sceVu0FVECTOR *p = (sceVu0FVECTOR *)packet;
+    zdb::CTexture *tex = m_pTexHandle ? m_pTexHandle->m_texture : 0;
+
+    if (tex) {
+        sceVu0CopyVector(*p, tex->m_gsregs);
+        p++;
+    }
+    ((unsigned int *)p)[0] = 0x10000007;
+    ((unsigned int *)p)[1] = 0;
+    ((unsigned int *)p)[2] = 0;
+    ((unsigned int *)p)[3] = 0x50000007;
+    p++;
+    ((unsigned long *)p)[0] = 0x3000400000008002 | ((unsigned long)m_prim << 47);
+    ((unsigned long *)p)[1] = 0x512;
+    p++;
+
+    CPnt3D a(m_x, m_y, 0.0f);
+    CPnt3D b(m_x + m_iWidth, m_y + m_iHeight, 0.0f);
+
+    if (m) {
+        m->Transform(&a, 1);
+        m->Transform(&b, 1);
+    } else
+        a.z = b.z = zVid.maxZ;
+
+    sceVu0FVECTOR v;
+
+    v[0] = m_topx + a.x * m_fXPixel;
+    v[1] = m_topy + a.y * m_fYPixel;
+    v[2] = a.z;
+    v[3] = 1.0f;
+    sceVu0CopyVector(*p, m_NewUV[0]);
+    p++;
+    sceVu0FTOI0Vector((int *)p, m_RGB[0]);
+    p++;
+    sceVu0FTOI4Vector((int *)p, v);
+    p++;
+    v[0] = m_topx + b.x * m_fXPixel;
+    v[1] = m_topy + b.y * m_fYPixel;
+    sceVu0CopyVector(*p, m_NewUV[1]);
+    p++;
+    sceVu0FTOI0Vector((int *)p, m_RGB[1]);
+    p++;
+    sceVu0FTOI4Vector((int *)p, v);
+    p++;
+    mgr->TakeDrawPacket(packet, (u_long128 *)p - packet);
 }
 
 /* while fading, the alpha stepped towards the limit (no lower than 0, no higher than 128) */
