@@ -75,6 +75,7 @@ public:
     static void AttachSeal(CZSealBody *seal);
     static void Reset();
     static void ClearLensFx();
+    static void LoadLensFx();
     static void SetLensFx(unsigned char fx);
     static unsigned char LensFxOn();
     static void SetLensFxAnim(CZAnim *anim);
@@ -261,6 +262,66 @@ bool CameraZoom::Tick(float dT)
     }
     appCamera->SetZoom(data_003DC338);
     return false;
+}
+
+/* the lens effects' colours kept (SOCOM II's: four taken from a struct of them at 0x4B4D40, one
+ * made; unnamed) */
+struct CLensColors {
+    PNT4D m_c[4];
+};
+
+extern "C" {
+extern CLensColors data_004B4D40;
+extern PNT4D data_00408D00;
+extern PNT4D data_00408D10;
+extern PNT4D data_00408D20;
+extern PNT4D data_00408D30;
+extern PNT4D data_00408D40;
+PNT4D func_003B7620(int arg);
+}
+
+/* a colour by value (the name ours): the struct's first copied by quadword, the others element by
+ * element (MW trusts only the struct's start to be 16-aligned) */
+static inline PNT4D LensColor(const PNT4D &c) { return c; }
+
+/* the lens effects loaded (SOCOM II's; the name ours): the effects before and now the third
+ * person's, the anims forgotten, the three blindplayer anims, the nine effects' anims when the
+ * lens effects are on (else none), the third person's effect put up, and the colours kept */
+void CameraZoom::LoadLensFx()
+{
+    data_003DC350 = lens_fx_third_person;
+    data_003DC358 = lens_fx_third_person;
+    ClearLensFx();
+    data_00408C88[0] = ZAnim.GetAnim("blindplayer01", 0);
+    data_00408C88[1] = ZAnim.GetAnim("blindplayer02", 0);
+    data_00408C88[2] = ZAnim.GetAnim("blindplayer03", 0);
+    if (LensFxOn()) {
+        data_00408CA0[lens_fx_init] = ZAnim.GetAnim("init_lens_fx", 0);
+        data_00408CA0[lens_fx_none] = ZAnim.GetAnim("to_no_lens_fx", 0);
+        data_00408CA0[lens_fx_thermal] = ZAnim.GetAnim("to_thermal_lens_fx", 0);
+        data_00408CA0[lens_fx_nvg] = ZAnim.GetAnim("to_nvg_lens_fx", 0);
+        data_00408CA0[lens_fx_starlight_scope] = ZAnim.GetAnim("to_starlight_scope_lens_fx", 0);
+        data_00408CA0[lens_fx_scope] = ZAnim.GetAnim("to_scope_lens_fx", 0);
+        data_00408CA0[lens_fx_binocs] = ZAnim.GetAnim("to_binocs_lens_fx", 0);
+        data_00408CA0[lens_fx_first_person] = ZAnim.GetAnim("to_first_person_lens_fx", 0);
+        data_00408CA0[lens_fx_third_person] = ZAnim.GetAnim("to_third_person_lens_fx", 0);
+    } else {
+        data_00408CA0[lens_fx_init] = 0;
+        data_00408CA0[lens_fx_none] = 0;
+        data_00408CA0[lens_fx_thermal] = 0;
+        data_00408CA0[lens_fx_nvg] = 0;
+        data_00408CA0[lens_fx_starlight_scope] = 0;
+        data_00408CA0[lens_fx_scope] = 0;
+        data_00408CA0[lens_fx_binocs] = 0;
+        data_00408CA0[lens_fx_first_person] = 0;
+        data_00408CA0[lens_fx_third_person] = 0;
+    }
+    SetLensFx(lens_fx_third_person);
+    data_00408D00 = LensColor(data_004B4D40.m_c[0]);
+    data_00408D10 = LensColor(data_004B4D40.m_c[1]);
+    data_00408D20 = LensColor(data_004B4D40.m_c[2]);
+    data_00408D30 = LensColor(data_004B4D40.m_c[3]);
+    data_00408D40 = func_003B7620(0);
 }
 
 /* the effect's anim, or no lens's when it has none (the name ours) */
