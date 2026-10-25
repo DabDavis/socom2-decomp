@@ -3743,14 +3743,14 @@
 0x002A2370 0x198 func_002A2370  # OVL1
 0x002A2510 0x44 UpdateNextPosition__7CEntityFv  # OVL1; s1:align
 0x002A2560 0x104 ComputeNextPosition__7CEntityFf  # OVL1; s1:calls
-0x002A2670 0x8 func_002A2670  # OVL1
+0x002A2670 0x8 PostTick__7CEntityFf  # OVL1; s1:vtable by hand (slot 0x24 of __vt__7CEntity, SOCOM 1's PostTick slot 0x20 with the new slot before it; empty as SOCOM 1's, and before PrePostTick in the image as there); ent_ctrl.cpp
 0x002A2680 0x8 PrePostTick__7CEntityFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x002A2690 0x8 func_002A2690  # OVL1
+0x002A2690 0x8 PostPreTick__7CEntityFf  # OVL1; s1:vtable by hand (slot 0x1C of __vt__7CEntity, SOCOM 1's PostPreTick slot 0x18 with the new slot before it; empty, between PrePostTick and Tick as in SOCOM 1); ent_ctrl.cpp
 0x002A26A0 0x8 Tick__7CEntityFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002A26B0 0x8 PreTick__7CEntityFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002A26C0 0x8 PostMortemPreTick__11CEntityCtrlFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x002A26D0 0x8 func_002A26D0  # OVL1; s1~ GetRemoteControl__11CEntityCtrlFv (one of 2 out-of-line copies of an inline, by s1:vtable)
-0x002A26E0 0x10 func_002A26E0  # OVL1; s1~ SetThrottle__11CEntityCtrlFUif (one of 2 out-of-line copies of an inline, by s1:vtable)
+0x002A26D0 0x8 GetRemoteControl__11CEntityCtrlFv  # OVL1; s1~ GetRemoteControl__11CEntityCtrlFv (one of 2 out-of-line copies of an inline, by s1:vtable); slot 0x1C of __vt__11CEntityCtrl (SOCOM 1's GetRemoteControl slot, returning 0): OVL1's out-of-line copy of the inline, emitted with the vtable by ent_ctrl.cpp (OVL2 links its own, left unnamed); ent_ctrl.cpp
+0x002A26E0 0x10 SetThrottle__11CEntityCtrlFUif  # OVL1; s1~ SetThrottle__11CEntityCtrlFUif (one of 2 out-of-line copies of an inline, by s1:vtable); slot 0x20 of __vt__11CEntityCtrl (SOCOM 1's SetThrottle slot: m_throttle[axis] = value): OVL1's out-of-line copy of the inline, emitted with the vtable by ent_ctrl.cpp (OVL2's is 0x567340, left unnamed); ent_ctrl.cpp
 0x002A26F0 0x30 SetController__7CEntityFP11CEntityCtrl  # OVL1; s1:align
 0x002A2720 0x8 Tick__11CEntityCtrlFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002A2730 0x8 PreTick__11CEntityCtrlFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
