@@ -18,6 +18,8 @@ public:
         m_pRadioChannelDeadTexture = 0;
     }
     virtual void Tick(float dT);
+    /* its textures loaded, listed under its parent (0x239570; the name ours) */
+    void Init(C2D *parent);
 
     zdb::CTexHandle *m_pRadioOffTexture;   // 0x80
     zdb::CTexHandle *m_pRadioChannelTeamTexture;   // 0x84
@@ -35,6 +37,9 @@ public:
         m_pRadioChannelCanTalkTexture = 0;
     }
     virtual void Tick(float dT);
+    /* its textures loaded, listed under its parent (inline: CWhosTalking::Init holds its only
+     * copy; the name ours) */
+    void Init(C2D *parent);
 
     zdb::CTexHandle *m_pRadioChannelInUseTexture;   // 0x80
     zdb::CTexHandle *m_pRadioChannelCanTalkTexture;   // 0x84
@@ -47,6 +52,8 @@ public:
     virtual void Tick(float dT);
     /* the parts placed again (CMPInfoBox::ReInit's last call; 0x238D00, the name ours) */
     void ReInit();
+    /* the parts made and listed (0x238F50; the name ours) */
+    void Init(C2DFont *font);
 
     unsigned char _18[0x20 - 0x18];
     CRadioIcon_Static m_static;   // 0x20
@@ -92,6 +99,8 @@ public:
     void UnInit();
     /* the parts placed again (CHUD::ReInit_Init's; 0x238710, the name ours) */
     void ReInit();
+    /* the parts made and added to the HUD (0x2388A0; the name ours) */
+    void Init(C2DFont *font);
 
     unsigned char _18[0x20 - 0x18];
     CHealthBar m_healthbar;   // 0x20

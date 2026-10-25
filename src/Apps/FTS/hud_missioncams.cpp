@@ -25,13 +25,9 @@ CZHudMissionCams::~CZHudMissionCams()
 {
 }
 
-/* the strings shown in the letterbox listed as the HUD's children, each off.
- * OPEN (0xE8 of 0x104) until include/list changes: the target hoists the list's end node
- * (this + 4, in s2) out of the loop, which MW does once the pointer list's push_back builds its
- * iterator from a node_base & accessor -- `iterator(&this->end_node())`, end_node() returning
- * end_ by reference (SOCOM 1's end node came through compressed_pair's second()). With that
- * change this matches and every other hand-written unit still does (CNode::CreateInstance by
- * name too: the accessor sits in argument position, so the tree is no taller) */
+/* the strings shown in the letterbox listed as the HUD's children, each off (the list's end node,
+ * this + 4, hoisted out of the loop: include/list's push_back builds its iterator from the end
+ * node's reference accessor) */
 void CZHudMissionCams::Init()
 {
     push_back(&m_letterboxobjectivename);
