@@ -2119,11 +2119,11 @@
 0x0022EA50 0x8 func_0022EA50  # OVL1
 0x0022EA60 0x8 func_0022EA60  # OVL1
 0x0022EA70 0xE0 func_0022EA70  # OVL1
-0x0022EB50 0x74 func_0022EB50  # OVL1
+0x0022EB50 0x74 __ct__14CShutdownStateFv  # OVL1; s1:vtable by hand (the states lane: CGameState's base inlined -- its vtable 0x404F30 and name -- then CShutdownState's vtable 0x405AE0, RTTI-named)
 0x0022EBD0 0x8 func_0022EBD0  # OVL1
 0x0022EBE0 0x8 func_0022EBE0  # OVL1
 0x0022EBF0 0x98 func_0022EBF0  # OVL1
-0x0022EC90 0x74 func_0022EC90  # OVL1
+0x0022EC90 0x74 __ct__12CRebootStateFv  # OVL1; s1:vtable by hand (the states lane: CGameState's base inlined, then CRebootState's vtable 0x405B10, RTTI-named)
 0x0022ED10 0x94 func_0022ED10  # OVL1
 0x0022EDB0 0x38 func_0022EDB0  # OVL1
 0x0022EDF0 0x30 func_0022EDF0  # OVL1
@@ -4366,7 +4366,7 @@
 0x002CE930 0xA4 NetTickThreadEntry__FPv  # OVL1; s1:calls
 0x002CE9E0 0x32C Tick__5CGameFf  # OVL1; s1:align
 0x002CED10 0x80 __dt__5CGameFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x002CED90 0x68 func_002CED90  # OVL1
+0x002CED90 0x68 __ct__5CGameFv  # OVL1; s1:vtable by hand (the states lane: stores CGame's vtable 0x4065C0, RTTI-named; COurGame's constructor calls it for its base)
 0x002CEE00 0x30 func_002CEE00  # OVL1
 0x002CEE30 0x8 func_002CEE30  # OVL1
 0x002CEE40 0x30 func_002CEE40  # OVL1
@@ -8470,7 +8470,7 @@
 0x003D57D0 0x24 func_003D57D0  # OVL1
 0x003D5800 0x60 func_003D5800  # OVL1
 0x003D5860 0xE8 func_003D5860  # OVL1
-0x003FD680 0x8C func_003FD680  # OVL1 data area; a static initialiser; s1~ ai_events.cpp (shape 0.53, a hint)
+0x003FD680 0x8C __sinit_main.cpp  # OVL1 data area; a static initialiser; s1~ ai_events.cpp (shape 0.53, a hint); s1:unit by hand (the states lane: builds theGame with COurGame's constructor and registers 0x1E7100, ~COurGame, as its destructor -- main.cpp's initialiser, not ai_events.cpp's)
 0x003FD710 0x94 func_003FD710  # OVL1 data area; a static initialiser
 0x003FD7B0 0x98 func_003FD7B0  # OVL1 data area; a static initialiser
 0x003FD850 0x7C func_003FD850  # OVL1 data area; a static initialiser
