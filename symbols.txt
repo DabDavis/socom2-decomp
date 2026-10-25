@@ -4261,14 +4261,14 @@
 0x002C84F0 0x68 __dt__Q23std118__vector_deleter<Q215CZPlatformState19TypePendingPlatform,Q23std51allocator<Q215CZPlatformState19TypePendingPlatform>>Fv  # OVL1; by hand (the states lane, round 13: fts_net_platform.cpp's template tail -- the reserve's temporary's deleter destructor)
 0x002C8560 0x180 reserve__Q23std116__vector_imp<Q215CZPlatformState19TypePendingPlatform,Q23std51allocator<Q215CZPlatformState19TypePendingPlatform>,0>FUi  # OVL1; by hand (the states lane, round 13: fts_net_platform.cpp's template tail -- the static initialiser's reserve(20))
 0x002C86E0 0x80 __dt__Q215CZPlatformState12CPendingListFv  # OVL1; by hand (the states lane, round 13: fts_net_platform.cpp's template tail -- the waiting list's implicit destructor, four this-tests, registered by 0x400770)
-0x002C8760 0xE0 func_002C8760  # OVL1
+0x002C8760 0xE0 Find__17CMultiMissionListFPCc  # OVL1; by hand (the states lane, round 15; the names ours): the newest version (the word at 0x18) of the list's missions named so -- a walk over the pointer vector at 0x441650 comparing each mission's string at 0 with strcmp; 0x2C94F0 compares its result with a mission
 0x002C8840 0x1B4 func_002C8840  # OVL1
 0x002C8A00 0xD4 func_002C8A00  # OVL1
-0x002C8AE0 0x98 func_002C8AE0  # OVL1
-0x002C8B80 0x88 func_002C8B80  # OVL1
+0x002C8AE0 0x98 GetName__17CMultiMissionListFib  # OVL1; by hand (the states lane, round 15; the names ours): the name of the mission of an id (0x10) and kind (the byte at 0xC), "unknown" without one -- 0x2C9040 inlined
+0x002C8B80 0x88 GetMultiValue__17CMultiMissionListFi  # OVL1; by hand (the states lane, round 15; the names ours): the signed byte at 0x14 of the multiplayer mission of an id, 0 without one -- 0x2C9040 inlined with the kind 1
 0x002C8C10 0x198 func_002C8C10  # OVL1
 0x002C8DB0 0x284 func_002C8DB0  # OVL1
-0x002C9040 0x70 func_002C9040  # OVL1
+0x002C9040 0x70 Find__17CMultiMissionListFib  # OVL1; by hand (the states lane, round 15; the names ours): the mission of an id (0x10) and kind (the bool at 0xC), returned through a result local
 0x002C90B0 0xE8 func_002C90B0  # OVL1
 0x002C91A0 0x238 func_002C91A0  # OVL1
 0x002C93E0 0x108 func_002C93E0  # OVL1
