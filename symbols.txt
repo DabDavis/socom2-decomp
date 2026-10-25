@@ -10006,11 +10006,11 @@
 0x005463C0 0x5FC func_005463C0  # OVL2
 0x005469C0 0x20 ExecuteDelayedAction_Jump__10CZSealBodyFv  # OVL2; tu: seal.cpp~ (1.0 beta); SOCOM 1's word for word but the offset (bit 18 of the flag word, SOCOM 1's 0xF58 now 0x105C: +0x104 as m_inside's), in SOCOM 1's order (Jump, then Climb)
 0x005469E0 0x20 ExecuteDelayedAction_Climb__10CZSealBodyFv  # OVL2; size 0x20 (the seed split it at the delay slot of its jr ra: 0x5469F8 was its last two words); SOCOM 1's word for word but the offset (bit 17 of the flag word at 0x105C)
-0x00546A00 0x34 func_00546A00  # OVL2
+0x00546A00 0x34 ExecuteAction_ApplyRestraint__10CZSealBodyFP10CZSealBody  # OVL2; s1:order (seal.cpp: after the delayed actions, before ExecuteAction_CQBAttack, as SOCOM 1's); RestrainBuddy on the victim, true -- SOCOM 1's counted a stat too
 0x00546A40 0x108 ExecuteAction_CQBAttack__10CZSealBodyFP10CZSealBody  # OVL2; s1:calls; size 0x108 (the seed cut it at a nop before its epilogue: 0x546B30 was its last six words)
-0x00546B50 0xA8 func_00546B50  # OVL2
+0x00546B50 0xA8 ExecuteAction_KnifeAttack__10CZSealBodyFP10CZSealBody  # OVL2; s1:order (after ExecuteAction_CQBAttack); StabBuddy on the victim first, as SOCOM 1's
 0x00546C00 0x34 func_00546C00  # OVL2
-0x00546C40 0x8C func_00546C40  # OVL2
+0x00546C40 0x8C SetSnakePathUpdate__10CZSealBodyFbUi  # OVL2; s1:order (before ResetAltitude); SOCOM 1's code but the offsets (m_snake_path bit 16 of 0x105C, the path at 0x434)
 0x00546CD0 0x20 ResetAltitude__10CZSealBodyFf  # OVL2; s1:order (seal.cpp: right before TeleportTo(matrix), as SOCOM 1's); SOCOM 1's two statements: m_alt (now 0x2E4) stored, the entity's new-altitude bit set (bit 8 of 0xE0 in SOCOM II, SOCOM 1's bit 7)
 0x00546CF0 0x144 TeleportTo__10CZSealBodyFPC7CMatrix  # OVL2; slot 0x40 of __vt__10CZSealBody; calls CEntity's TeleportTo(matrix), as SOCOM 1's
 0x00546E40 0x158 TeleportTo__10CZSealBodyFPC6CPnt3DPC5CQuat  # OVL2; slot 0x3C of __vt__10CZSealBody; calls CEntity's TeleportTo(pos, quat), as SOCOM 1's
@@ -10407,10 +10407,10 @@
 0x00578960 0x10 func_00578960  # OVL2; tu: char_type.cpp~ (1.0 beta)
 0x00578970 0xC func_00578970  # OVL2
 0x00578980 0x8 func_00578980  # OVL2
-0x00578990 0x37C func_00578990  # OVL2
+0x00578990 0x37C RestrainBuddy__10CZSealBodyFP10CZSealBody  # OVL2; s1:calls (ExecuteAction_ApplyRestraint calls it where SOCOM 1's does)
 0x00578D10 0x8 func_00578D10  # OVL2
 0x00578D20 0x264 func_00578D20  # OVL2
-0x00578F90 0x27C func_00578F90  # OVL2
+0x00578F90 0x27C StabBuddy__10CZSealBodyFP10CZSealBody  # OVL2; s1:calls (ExecuteAction_KnifeAttack calls it where SOCOM 1's does)
 0x00579210 0x8 func_00579210  # OVL2
 0x00579220 0x2AC func_00579220  # OVL2
 0x005794D0 0x244 func_005794D0  # OVL2

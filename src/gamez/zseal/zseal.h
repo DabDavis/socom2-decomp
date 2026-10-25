@@ -246,6 +246,10 @@ public:
     /* whether a player drives it (an inline the code shows: m_control tested, IsPlayer called) */
     bool IsPlayer() { return m_control ? ((CSealCtrl *)m_control)->IsPlayer() : false; }
     void ResetAltitude(float y);
+    void SetSnakePathUpdate(bool on, unsigned int length);
+    void RestrainBuddy(CZSealBody *victim);
+    void StabBuddy(CZSealBody *victim);
+    bool ExecuteAction_ApplyRestraint(CZSealBody *victim);
     class CPickup *CurrentPickupSecondary();
     class CPickup *CurrentPickup();
     bool CompassAnchor_MPBase(CCompassAnchor *anchor);

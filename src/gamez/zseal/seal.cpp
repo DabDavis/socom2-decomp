@@ -15,6 +15,8 @@ public:
 extern "C" {
 void func_005C7840(CZKit *kit);   /* CZKit::PostSetupItems (SOCOM 1's OnMissionStart calls it) */
 void func_00525200(void *path);   /* (a CAiPath reset: its member at 0x98's, tail-called) */
+void func_00525210(void *path, unsigned int length);   /* CAiPath::SetSnakeLength (SOCOM 1's
+                                                          SetSnakePathUpdate calls it) */
 }
 
 /* the world's camera (zdb::CWorld at 0x128; only that) */
@@ -22,6 +24,20 @@ struct CWorldCamera {
     unsigned char _0[0x128];
     zdb::CCamera *m_camera;   // 0x128
 };
+
+/* the snake path: on with a length, or off; already on, left alone (OVL2 0x546C40) */
+void CZSealBody::SetSnakePathUpdate(bool on, unsigned int length)
+{
+    if (on && m_snake_path)
+        return;
+    if (on) {
+        m_snake_path = true;
+        func_00525210(m_snakePath, length);
+    } else {
+        m_snake_path = false;
+        func_00525210(m_snakePath, 0);
+    }
+}
 
 /* teleported: the altitude and the last ground hit reset to the new place, the snake path
  * cleared; a player's camera sees every region again (OVL2 0x546E40, 0x546CF0; SOCOM II's) */
@@ -96,6 +112,15 @@ void CZSealBody::OnMissionEnd()
 void CZSealBody::OnRecycleEntity(CEntity *e)
 {
     ((CSealCtrl *)m_control)->OnRecycleEntity(e);
+}
+
+/* a victim restrained (OVL2 0x546A00) */
+bool CZSealBody::ExecuteAction_ApplyRestraint(CZSealBody *victim)
+{
+    if (!victim)
+        return false;
+    RestrainBuddy(victim);
+    return true;
 }
 
 /* the delayed actions: jump and climb, taken on the next tick (OVL2 0x5469E0, 0x5469C0) */
