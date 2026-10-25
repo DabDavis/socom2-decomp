@@ -684,7 +684,8 @@ public:
     int m_22c;   // 0x22c: a time on the network's clock 0x5A8850 waits for (the names ours)
     unsigned char _230[0x240 - 0x230];
     float m_240;   // 0x240: PostCheckDILadder checks the ladder only from 0.03 up (the name ours)
-    unsigned char _244[0x2e4 - 0x244];
+    unsigned char _244[0x2e0 - 0x244];
+    float m_2e0;   // 0x2e0: the time step the overlay ticks by (0x579EF0; the names ours)
     float m_alt;   // 0x2e4 (SOCOM 1's 0xe98)
     CZBodyPart *m_root;   // 0x2e8 (SOCOM 1's 0x26c)
     unsigned char _2ec[0x374 - 0x2ec];
@@ -784,7 +785,9 @@ public:
     /* the ladder the SEAL is on, an index into the mission's list (new in SOCOM II: read with lhu
      * and re-masked for an int argument, as a 16-bit field is; the name ours) */
     unsigned int m_ladder : 16;   // 0x1062
-    unsigned char _1064[0x1328 - 0x1064];
+    unsigned char _1064[0x10d0 - 0x1064];
+    float m_10d0;   // 0x10d0: set to 0.4 when the overlay plays out (0x579EF0)
+    unsigned char _10d4[0x1328 - 0x10d4];
     /* the SEAL's hold on a ladder: a flag, the ladder's index, a state (1 and 3 hold it) -- new in
      * SOCOM II (0x5B14E0 lets go of it; the names ours) */
     struct CSealClimb {

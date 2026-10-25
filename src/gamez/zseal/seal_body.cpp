@@ -27,6 +27,44 @@ extern AnimSet *data_0044D408;
 int func_005E3E80(AnimSet *set, int type);
 }
 
+extern "C" {
+/* (OVL2 0x5A60D0: a stance change, a kind and a flag; 0x5765F0, seal_anim.cpp's) */
+void func_005A60D0(CZSealBody *seal, int a, int b);
+void func_005765F0(CZSealBody *seal);
+}
+
+/* the overlay stepped: once it plays out its event's stance change made (5, 6, 8 and 10), the blend
+ * pushed on when the body interpolates, the 0x10D0 timer set (OVL2 0x579EF0, new in SOCOM II;
+ * 0x57A330 calls it) */
+extern "C" void func_00579EF0(CZSealBody *seal)
+{
+    CBlendOverlay &ov = seal->m_overlay;
+
+    if (ov.m_anim) {
+        int event = ov.m_event;
+
+        if (ov.Tick(seal, seal->m_2e0) != false) {
+            switch (event) {
+            case 5:
+                func_005A60D0(seal, 1, 0);
+                break;
+            case 6:
+                func_005A60D0(seal, 2, 0);
+                break;
+            case 8:
+                func_005A60D0(seal, 1, 4);
+                break;
+            case 10:
+                func_005A60D0(seal, 2, 4);
+                break;
+            }
+            if (!(seal->m_interp1 <= 0.0f))
+                func_005765F0(seal);
+            seal->m_10d0 = 0.4f;
+        }
+    }
+}
+
 /* the SEAL's animation set (an inline: in a call's argument list it is expanded first, so the set
  * loads ahead of the anim number; the first test reads it through a const view, which keeps MW from
  * sharing that load with the calls -- the target loads it again) */
