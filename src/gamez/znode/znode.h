@@ -228,7 +228,8 @@ public:
      * name is ours: an overload, between the two SOCOM 1 had) */
     virtual CNode *FindChild(const char *name, int start, int *index, bool deep);
     virtual bool IsCell();
-    virtual void Read(CSaveLoad &io);
+    /* every override returns true (li v0,1: CNode's, CLight's, CModel's, CWorld's) */
+    virtual bool Read(CSaveLoad &io);
     /* the old setting given back (SOCOM 1's DWARF: inline in znode.h, returning the bit) */
     virtual bool SetActive(bool on)
     {
@@ -265,6 +266,8 @@ public:
      * an earlier unit's) -- the names are ours */
     void SetMode(int mode) { m_socom2_mode = mode; }
     CNodeVector &GetChildren() { return m_child; }
+    /* inline: find_node's innermost copy calls the out-of-line copy (0x319F10; the name ours) */
+    char *GetName() { return m_name; }
     void ShrinkAtomBasePtrs();
     void AllocateAtomBasePtrs(int x, int z);
     void SetNodeEx(CNodeEx *ex, bool b);
@@ -443,9 +446,13 @@ public:
     CPnt3D m_WorldPosition;   // 0xe8
 };   // 0x100 bytes (16-aligned)
 
-/* a texture: only its size placed (SOCOM 1's DWARF: CTexture : TEXTURE_PARAMS, the width first) */
+/* a texture: only its size placed (SOCOM 1's DWARF: CTexture : TEXTURE_PARAMS, the width first;
+ * 0x70 bytes, the size CSaveLoad::LoadTextures_PS2 news) */
 class CTexture {
 public:
+    ~CTexture();
+    bool Read(CSaveLoad &io);
+
     unsigned short m_width;   // 0x0
     unsigned short m_height;   // 0x2
 };
@@ -521,13 +528,37 @@ enum _RenderPhase {
     NUM_RENDER_PHASES
 };
 
-/* a library of models and textures: only its render phase placed (SOCOM 1's DWARF has it at
- * 0x2B, after the name and three lists; CNode::CreateXRef reads it at 0x2F here) */
+class CTexPalette;
+
+/* a library's textures (SOCOM 1's DWARF: CTexList : vector) */
+class CTexList : public std::vector<CTexHandle *> {
+};   // 0xc bytes
+
+/* a library's palettes (SOCOM 1's DWARF: CTexPalList : vector) */
+class CTexPalList : public std::vector<CTexPalette *> {
+};   // 0xc bytes
+
+/* a library of models and textures (SOCOM 1's DWARF has its render phase at 0x2B, after the name
+ * and three lists; CNode::CreateXRef reads it at 0x2F here: SOCOM II adds a word after the name --
+ * AddModel pushes onto the vector at 8, AddPalette walks the one at 0x20, LoadTextures_PS2 stores
+ * the texture buffer at 0x30) */
 class CAssetLib {
 public:
-    unsigned char _0[0x2f];
+    char *m_name;   // 0x0
+    unsigned char _4[4];   // 0x4: SOCOM II's
+    CModelVector m_models;   // 0x8 (SOCOM 1: 0x4)
+    CTexList m_textures;   // 0x14
+    CTexPalList m_palettes;   // 0x20
+    unsigned char m_autoload;   // 0x2c
+    unsigned char m_locked;   // 0x2d (AddModel refuses a locked library)
+    unsigned char m_gearlib;   // 0x2e
     _RenderPhase m_renderphase;   // 0x2f (SOCOM 1: 0x2b)
-};
+    void *m_texture_buffer;   // 0x30
+    void *m_model_buffer;   // 0x34
+    int m_iRefCount;   // 0x38
+
+    CTexHandle *AddTexture(const char *name);
+};   // 0x3c bytes
 
 /* a model's instances (SOCOM 1's DWARF: CRefList : list) */
 class CRefList : public std::list<CNode *> {
@@ -589,6 +620,10 @@ class CWorld : public CNode {
 public:
     static CWorld *m_world;
     static CNode *GetModel(const char *name);
+    /* the archive version the world's files carry (SOCOM 1's, the same 0x10001) */
+    static int GetVersion();
+    virtual ~CWorld();
+    virtual bool Read(CSaveLoad &io);
     void DeleteLightMap(CLightMap *light);
     void AddLightMap(CLightMap *light);
 
