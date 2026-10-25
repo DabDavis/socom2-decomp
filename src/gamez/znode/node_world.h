@@ -133,6 +133,11 @@ struct IntersectStruct {
 
     /* the hit polygon's material, or the default one (SOCOM 1's) */
     int GetMaterial();
+    /* the hit polygon's edges through the hit, in the world's frame (SOCOM 1's) */
+    bool GetIntersectedEdgePoints(CPnt3D *a, CPnt3D *b);
+    bool GetIntersectedEdgePointsY(CPnt3D *out);
+    /* the hit polygon's flag at bit 27 (new in SOCOM II; the name ours) */
+    bool GetPolyFlag27();
 };
 
 /* a ray's intersection set (SOCOM 1's DWARF; SOCOM II adds the mask at 0x44, so its hits are 4

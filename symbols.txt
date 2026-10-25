@@ -4590,9 +4590,9 @@
 0x002DBF40 0x8 Tick__9CKeyboardFf  # OVL1; s1:order by hand (SOCOM 1's CKeyboard::Tick, empty in both, before ~CKeyboard; CInput::Tick calls it)
 0x002DBF50 0x44 __dt__9CKeyboardFv  # OVL1; s1:align
 0x002DBFA0 0xC __ct__9CKeyboardFv  # OVL1; s1:order by hand (SOCOM 1's CKeyboard(), three words in both, after ~CKeyboard; CInput::Init news one byte and calls it)
-0x002DBFB0 0xD8 func_002DBFB0  # OVL1
-0x002DC090 0xBC func_002DC090  # OVL1
-0x002DC150 0x30 func_002DC150  # OVL1
+0x002DBFB0 0xD8 GetIntersectedEdgePoints__Q23zdb15IntersectStructFP6CPnt3DP6CPnt3D  # OVL1; s1:order by hand (the zdb-world lane: SOCOM 1's int_main.cpp's first function, as here: the node's MTW built, the hit taken into the polygon's frame, CDI::GetEdgeIntersects (0x2DD4D0) called where SOCOM 1's calls it, both points transformed back)
+0x002DC090 0xBC GetIntersectedEdgePointsY__Q23zdb15IntersectStructFP6CPnt3D  # OVL1; s1:order by hand (the zdb-world lane: SOCOM 1's second, the same frame dance around CDI::GetEdgeIntersectsY (0x2DD2B0), the count tested > 1 as there)
+0x002DC150 0x30 GetPolyFlag27__Q23zdb15IntersectStructFv  # OVL1; new in SOCOM II, the name ours (the zdb-world lane): between SOCOM 1's edge-point queries and IsInside -- the hit polygon's parameter bit 27 as a bool, false without a polygon
 0x002DC180 0x2C IsInside__Q23zdb15IntersectStructFv  # OVL1; s1:align
 0x002DC1B0 0x20 GetRegion__Q23zdb15IntersectStructFv  # OVL1; s1:align
 0x002DC1D0 0x38 GetMaterial__Q23zdb15IntersectStructFv  # OVL1; s1:align
@@ -4615,8 +4615,8 @@
 0x002DD130 0x1C func_002DD130  # OVL1
 0x002DD150 0xC0 GetIntersect__Q23zdb7CDIPolyFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002DD210 0x9C func_002DD210  # OVL1
-0x002DD2B0 0x21C func_002DD2B0  # OVL1
-0x002DD4D0 0x1BC func_002DD4D0  # OVL1
+0x002DD2B0 0x21C GetEdgeIntersectsY__Q23zdb3CDIFP6CPnt3DP6CPnt3D  # OVL1; s1:callee by hand (the zdb-world lane: GetIntersectedEdgePointsY calls it where SOCOM 1's calls GetEdgeIntersectsY, after LoadTipAndTail as there)
+0x002DD4D0 0x1BC GetEdgeIntersects__Q23zdb3CDIFP6CPnt3DP6CPnt3DP6CPnt3D  # OVL1; s1:callee by hand (the zdb-world lane: GetIntersectedEdgePoints calls it where SOCOM 1's calls GetEdgeIntersects, after GetEdgeIntersectsY as there)
 0x002DD690 0x244 func_002DD690  # OVL1
 0x002DD8E0 0x1D0 GetAltitude__Q23zdb7CDIPolyFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002DDAB0 0x78 __dt__Q23zdb7CDIBBoxFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)

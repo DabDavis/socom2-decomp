@@ -121,7 +121,10 @@ struct tag_DI_HEAD {
             unsigned int m_appflags : 3;
             unsigned int m_inside : 1;
             unsigned int m_shadow : 2;
-            unsigned int m_reserved : 6;
+            unsigned int m_reserved26 : 1;
+            /* SOCOM II's: IntersectStruct::GetPolyFlag27 reads it (the name ours) */
+            unsigned int m_flag27 : 1;
+            unsigned int m_reserved : 4;
         } m_flags;
     };
 };
@@ -147,6 +150,10 @@ public:
     static int m_backface_mask;
     /* the normal of the first three points (SOCOM 1's; SOCOM II keeps it in a static) */
     void SetEdgeVecsAndNorm();
+    /* the edges a point's vertical crosses, their count; the two edge points through a point
+     * (SOCOM 1's) */
+    int GetEdgeIntersectsY(CPnt3D *p, CPnt3D *out);
+    bool GetEdgeIntersects(CPnt3D *p, CPnt3D *a, CPnt3D *b);
 
     CPnt4D *m_pnts;   // 0x10: its points, 16 bytes each (Allocate mallocs them; the name ours)
 };
