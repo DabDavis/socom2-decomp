@@ -203,7 +203,7 @@ AI_RESULT CAiSNoAmmo::Tick(float dT, CSealCtrlAi *ai)
         m_active = false;
         break;
     }
-    SetPhase(phase);
+    UpdatePhase(phase);
     return Result();
 }
 
@@ -293,7 +293,7 @@ AI_RESULT CAiSReload::Tick(float dT, CSealCtrlAi *ai)
         phase = m_phase;
         break;
     }
-    SetPhase(phase);
+    UpdatePhase(phase);
     return Result();
 }
 
@@ -341,7 +341,7 @@ AI_RESULT CAiSFlee::Tick(float dT, CSealCtrlAi *ai)
     }
     if (step != m_phase)
         StateStack(ai).SetFlags(1, 0);
-    SetPhase(step);
+    UpdatePhase(step);
     return Result();
 }
 

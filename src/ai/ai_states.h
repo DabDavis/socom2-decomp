@@ -75,7 +75,9 @@ public:
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai) {}               /* +0x08 */
     virtual void Virtual0C(int a, int b, int c);                          /* +0x0C (new) */
     virtual AI_RESULT Tick(float dT, CSealCtrlAi *ai) { return AI_DONE; }   /* +0x10 */
-    virtual int Virtual14(CSealCtrlAi *ai, int x) { return 0; }           /* +0x14 (new) */
+    /* +0x14 (new): a sub-step a Tick hands over to, its result the Tick's (CAiSPursue's, 0x55A760,
+     * ends on Result(); CAiSReload's Tick calls it with 0) */
+    virtual AI_RESULT Virtual14(CSealCtrlAi *ai, int x) { return AI_RUNNING; }
     virtual const char *GetStatus() const { return ""; }                  /* +0x18 */
     virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai) { return true; }   /* +0x1C */
     virtual bool CanSwitchAiState(AI_STATE state, CSealCtrlAi *ai) { return true; } /* +0x20 */
@@ -87,8 +89,11 @@ public:
     virtual bool Virtual38() { return true; }                             /* +0x38 (new) */
     virtual bool Virtual3C() { return true; }                             /* +0x3C (new) */
     virtual bool Virtual40() { return false; }                            /* +0x40 (new) */
-    virtual bool Virtual44() { return false; }                            /* +0x44 (new) */
-    virtual bool Virtual48() { return false; }                            /* +0x48 (new) */
+    /* +0x44 (new): of a kind (0x575950 answers m_state == state) */
+    virtual bool Virtual44(AI_STATE state) { return false; }
+    /* +0x48 (new): taken over from another state (CAiSPursue's, 0x55A7D0, copies a pursuit's
+     * two members and answers true) */
+    virtual bool Virtual48(int x, CAiState *other) { return false; }
     virtual ~CAiState() {}                                                /* +0x4C */
 
     /* a Tick's steps, where its switch takes m_phase's low byte (a byte enum; the names ours) */
@@ -107,8 +112,9 @@ public:
     }
 
     /* the step a state's Tick ends on: a new phase restarts its clock (inlined in every Tick and
-     * in the stack's delay; the name ours) */
-    void SetPhase(unsigned int phase)
+     * in the stack's delay; the name ours -- not SetPhase, which seal_ai.cpp spells as a free
+     * function of its own and a member would hide) */
+    void UpdatePhase(unsigned int phase)
     {
         if (phase != m_phase) {
             m_phaseTime = 0.0f;

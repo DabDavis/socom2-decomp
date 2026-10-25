@@ -66,6 +66,8 @@ public:
     float m_rest_until;   // 0x26c
     Rfloat m_timer;   // 0x270
     float m_timer_value;   // 0x278
+    unsigned char _27c[0x280 - 0x27c];   // 0x280 bytes in all: ftsCreateSeal and
+                                         // CZSealBody::NetworkPlayerCreate new 640
 };
 
 #endif

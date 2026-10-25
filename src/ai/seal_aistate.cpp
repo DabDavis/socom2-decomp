@@ -35,6 +35,17 @@ inline float StateTimer(CSealCtrlAi *ai)
     return ((CAiCtrlClock *)ai)->m_stateTimer;
 }
 
+/* the controller's state stack (CSealCtrlAi at 0x41C; zseal.h keeps a word there) */
+struct CAiCtrlStack {
+    unsigned char _0[0x41c];
+    CAiStateStack m_stack;   // 0x41c
+};
+
+/* the state an empty stack answers with (SOCOM 1's _unknown, 0x509870: this unit's static,
+ * built by its initialiser; OVL2 bss 0x66B990 -- declared here, not defined, so this unit emits
+ * no initialiser yet) */
+extern CAiSUnknown _unknown;
+
 extern "C" {
 /* CPickup's and the AI maps' (OVL1 0x5416C0 named; OVL2 0x52DC70, 0x529A30, the AI core's rows:
  * a cell for a point, and SOCOM 1's free FindTraversableNeighbor) */
@@ -122,6 +133,22 @@ bool CAiSScript::CanPursue(CSealCtrlAi *ai) const
 bool CAiSScript::CanAttack() const
 {
     return true;
+}
+
+/* the state on top of the controller's stack, or the unknown state when it is empty (OVL2
+ * 0x5F6010, 0x5F5FD0 -- the same code twice; SOCOM 1's tested the top for 0 instead) */
+CAiState *CSealCtrlAi::GetAiState()
+{
+    if (((CAiCtrlStack *)this)->m_stack.size() == 0)
+        return &_unknown;
+    return ((CAiCtrlStack *)this)->m_stack.GetState();
+}
+
+const CAiState *CSealCtrlAi::GetAiState() const
+{
+    if (((const CAiCtrlStack *)this)->m_stack.size() == 0)
+        return &_unknown;
+    return ((CAiCtrlStack *)this)->m_stack.GetState();
 }
 
 /* the stack's destructor: its states deleted, then the list's own (OVL2 0x5F8490) */
@@ -225,7 +252,7 @@ AI_RESULT CAiSPickup::Tick(float dT, CSealCtrlAi *ai)
         m_active = false;
         break;
     }
-    SetPhase(step);
+    UpdatePhase(step);
     return Result();
 }
 
@@ -382,7 +409,7 @@ AI_RESULT CAiSCQBAttack::Tick(float dT, CSealCtrlAi *ai)
             m_active = false;
         break;
     }
-    SetPhase(phase);
+    UpdatePhase(phase);
     return Result();
 }
 
