@@ -3080,14 +3080,14 @@
 0x00274C00 0x154 UIUpdateServerInfo__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "UpdateServerInfo" (id 0x9B, the UI command table's record at 0x3DDE70), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
 0x00274D60 0x50 UILobbyDisconnect__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "LobbyDisconnect" (id 0x99, the UI command table's record at 0x3DDE50), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
 0x00274DB0 0x208 UICompareValues__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "CompareValues" (id 0xB1, the UI command table's record at 0x3DDFC0), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
-0x00274FC0 0x168 func_00274FC0  # OVL1
+0x00274FC0 0x168 UICompareValuesParse__FPCcP5_zrdr  # OVL1; ours: the parser registered as CompareValues's second function (the UI command table's record at 0x3DDFC0, id 0xB1): its 24-byte record, VALUE1/UIVAR1, VALUE2/UIVAR2, CASE_INSENSITIVE, COMPARE_AFTER_FORMATTING
 0x00275130 0x218 UIUpdateAcctInfo__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "UpdateAcctInfo" (id 0x9A, the UI command table's record at 0x3DDE60), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
 0x00275350 0x350 UIGetMUISPersonaInfo__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "GetMUISPersonaInfo" (id 0xAF, the UI command table's record at 0x3DDFA0), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
-0x002756A0 0xC4 func_002756A0  # OVL1
+0x002756A0 0xC4 UIPersonaParse__FPCcP5_zrdr  # OVL1; ours: the parser registered as GetMUISPersonaInfo's second function (the UI command table's record at 0x3DDFA0, id 0xAF): its 20-byte record, the persona by INDEX (1) or NAME (2), the one given named as the argument
 0x00275770 0x5B4 UICharacterProfile__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "CharacterProfile" (id 0xBA, the UI command table's record at 0x3DE050), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
-0x00275D30 0x1C0 func_00275D30  # OVL1
+0x00275D30 0x1C0 UICharacterProfileParse__FPCcP5_zrdr  # OVL1; ours: the parser registered as CharacterProfile's second function (the UI command table's record at 0x3DE050, id 0xBA): its 20-byte record, the operation by EXISTS/LOAD/SAVE/SaveToServer/WaitForServerSaveComplete/LoadFromServer/WaitForLoadComplete/DELETE, 0xFFFFFF for none
 0x00275EF0 0x190 UIGetMissionInformation__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "GetMissionInformation" (id 0xBC, the UI command table's record at 0x3DE070), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
-0x00276080 0x114 func_00276080  # OVL1
+0x00276080 0x114 UIGetMissionInformationParse__FPCcP5_zrdr  # OVL1; ours: the parser registered as GetMissionInformation's second function (the UI command table's record at 0x3DE070, id 0xBC): its 32-byte record, MULTIPLAYER, the NAME, NUMBER and INDEX names
 0x002761A0 0x3DC UIDeleteMUISPersona__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "DeleteMUISPersona" (id 0xB0, the UI command table's record at 0x3DDFB0), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
 0x00276580 0x12C UIMUISPersonaExists__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "MUISPersonaExists" (id 0xB2, the UI command table's record at 0x3DDFD0), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
 0x002766B0 0xC8 UIVerifyPatchLevel__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "VerifyPatchLevel" (id 0xC5, the UI command table's record at 0x3DE100), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
@@ -3133,7 +3133,7 @@
 0x00278200 0x16C UITestUIVar__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
 0x00278370 0x160 UIPruneUIVarSpaces__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "PruneUIVarSpaces" (id 0x8B, the UI command table's record at 0x3DDD70), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
 0x002784D0 0x278 UIGetLadderInfo__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "GetLadderInfo" in both builds' UI command tables: SOCOM II's id 0x5C at 0x3DDA90, SOCOM 1's UICommandTable id 0x58 -> UIGetLadderInfo__FP13C2DAnimCmdHdrPf)
-0x00278750 0x230 func_00278750  # OVL1
+0x00278750 0x230 UIGetLadderInfoParse__FPCcP5_zrdr  # OVL1; ours: the parser registered as GetLadderInfo's second function (the UI command table's record at 0x3DDA90, id 0x5C): its 20-byte record, the list and the move by CLAN, Top10, LadderPressUp/Down, LadderUp/Down
 0x00278980 0x294 UIHardDriveOperation__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "HardDriveOperation" (id 0xCD, the UI command table's record at 0x3DE180), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
 0x00278C20 0xDC HardDriveOperationCallback__Fi  # OVL1; ours: HardDriveOperation hands it to the hard disk code (0x39CE70) as the operation's callback; it keeps the result in a byte (0x414EB0), sets hard_disk_error_code to 1, 2, 3 or 5 and tells the lobby's event handler HDD_ERROR
 0x00278D00 0x24 UIQuitClan__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "QuitClan" in both builds' UI command tables: SOCOM II's id 0x5B at 0x3DDA80, SOCOM 1's UICommandTable id 0x57 -> UIQuitClan__FP13C2DAnimCmdHdrPf)
@@ -3155,7 +3155,7 @@
 0x00279A20 0x8C UIGetClanMemberInfo__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "GetClanMemberInfo" (id 0xAE, the UI command table's record at 0x3DDF90), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
 0x00279AB0 0x94 UIGetFriendInfo__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "GetFriendInfo" (id 0xA4, the UI command table's record at 0x3DDF00), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
 0x00279B50 0xA0 UIGetPlayerInfo__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "GetPlayerInfo" (id 0xAD, the UI command table's record at 0x3DDF80), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
-0x00279BF0 0x160 func_00279BF0  # OVL1
+0x00279BF0 0x160 UIGetPlayerInfoParse__FPCcP5_zrdr  # OVL1; ours: the parser registered as GetPlayerInfo's second function (the UI command table's record at 0x3DDF80, id 0xAD): its 20-byte record, the ARGUMENT copied to a buffer and named, what to ask for by BRIEFING/CLAN/FRIEND/LADDER
 0x00279D50 0xBC UIGetGameInfo__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "GetGameInfo" (id 0xAC, the UI command table's record at 0x3DDF70), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
 0x00279E10 0x94 UIRejectFriend__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "RejectFriend" (id 0xA9, the UI command table's record at 0x3DDF50), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
 0x00279EB0 0x94 UIConfirmFriend__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "ConfirmFriend" (id 0xA8, the UI command table's record at 0x3DDF40), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
@@ -3189,7 +3189,7 @@
 0x0027AA60 0xC UIGetClan__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "GetClan" in both builds' UI command tables: SOCOM II's id 0x36 at 0x3DD850, SOCOM 1's UICommandTable id 0x32 -> UIGetClan__FP13C2DAnimCmdHdrPf)
 0x0027AA70 0xBC UIPlayMPEGNoFade__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "PlayMPEGNoFade" (id 0x86, the UI command table's record at 0x3DDD20), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
 0x0027AB30 0x230 UIPlayMPEG__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "PlayMPEG" in both builds' UI command tables: SOCOM II's id 0x17 at 0x3DD630, SOCOM 1's UICommandTable id 0x12 -> UIPlayMPEG__FP13C2DAnimCmdHdrPf)
-0x0027AD60 0x290 func_0027AD60  # OVL1
+0x0027AD60 0x290 UIPlayMPEGParse__FPCcP5_zrdr  # OVL1; ours: the parser registered as PlayMPEG's second function (the UI command table's record at 0x3DD630, id 0x17): its 68-byte record, ARGUMENT/FILE/INDEX, FADE, INGAME, INTERLACE, AUDIOSTREAM (a number, VALVE or UIVAR), DEST_RECT, SOURCE_RECT, BILINEAR
 0x0027AFF0 0xC UIMediusEnabled__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "MediusEnabled" in both builds' UI command tables: SOCOM II's id 0x2E at 0x3DD7B0, SOCOM 1's UICommandTable id 0x2A -> UIMediusEnabled__FP13C2DAnimCmdHdrPf)
 0x0027B000 0xDC UISaveConfig__FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "SaveConfig" in both builds' UI command tables: SOCOM II's id 0x40 at 0x3DD8F0, SOCOM 1's UICommandTable id 0x3C -> UISaveConfig__FP13C2DAnimCmdHdrPf)
 0x0027B0E0 0xA8 UILoadConfig__FP13C2DAnimCmdHdrPf  # OVL1; s1:align
@@ -3287,8 +3287,8 @@
 0x0027F820 0x21C _SaveSavedGame__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "SaveSavedGame" in both builds' UI command tables: SOCOM II's id 0x3D at 0x3DD8C0, SOCOM 1's UICommandTable id 0x39 -> _SaveSavedGame__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf)
 0x0027FA40 0xF8 _LoadSavedGame__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf  # OVL1; s1:calls
 0x0027FB40 0x80 UISetControllerConfig__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "SetControllerConfig" in both builds' UI command tables: SOCOM II's id 0x60 at 0x3DDAB0, SOCOM 1's UICommandTable id 0x5C -> UISetControllerConfig__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf)
-0x0027FBC0 0x1A4 func_0027FBC0  # OVL1
-0x0027FD70 0x190 func_0027FD70  # OVL1
+0x0027FBC0 0x1A4 UIChatParse__FPCcP5_zrdr  # OVL1; ours: the parser registered as the second function of SendChatText and SendMediusChat (the UI command table's records at 0x3DD660 and 0x3DD7F0): its 48-byte record, the ARGUMENT and the RECIP_UIVAR name up to 31 characters
+0x0027FD70 0x190 UICopyUIVarParse__FPCcP5_zrdr  # OVL1; ours: the parser registered as CopyUIVar's second function (the UI command table's record at 0x3DE080, id 0xBD): its 24-byte record, From and To as name indices or -1, the command's type by GetUICommandType inlined
 0x0027FF00 0x20 UIUpdateMpFinalStatsUiVars__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "UpdateMpFinalStatsUiVars" (id 0x91, the UI command table's record at 0x3DDDD0), a SOCOM II command; named UI<command> as SOCOM 1 names its global handlers
 0x0027FF20 0x90 OnSetTtySpeedFactor__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "SetTtySpeedFactor" in both builds' UI command tables: SOCOM II's id 0x75 at 0x3DDC00, SOCOM 1's UICommandTable id 0x83 -> OnSetTtySpeedFactor__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf)
 0x0027FFB0 0x90 OnSetCounterSpeedFactor__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "SetCounterSpeedFactor" in both builds' UI command tables: SOCOM II's id 0x76 at 0x3DDC10, SOCOM 1's UICommandTable id 0x84 -> OnSetCounterSpeedFactor__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf)

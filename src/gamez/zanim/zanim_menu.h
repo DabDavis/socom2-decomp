@@ -24,12 +24,116 @@ public:
     unsigned char m_command_type;     // 0xa (SOCOM 1's at 6): 0 until GetUICommandType names it
 };
 
+/* a UI command whose record a parser builds (the eleven commands with a second function in the
+ * table, called with the command's name and its rdr data): the header, then a halfword the parsers
+ * zero with the argument's name (SOCOM II's; the names ours) */
+struct UIParsedCmd : public C2DAnimCmdHdr {
+    /* the argument's name added to the anim's names, if there is one (the parsers'; ours) */
+    void SetArgument(const char *name)
+    {
+        if (name) {
+            m_argument_index = ZAnim.m_CurAnim->AddName(name);
+            m_c = 0;
+        }
+    }
+
+    unsigned short m_c;   // 0xc
+};
+
 /* GetPlayerInfo's record: the command and what to ask for, read by its parser out of the tags
  * (0..3; SOCOM II's; the names ours) */
-struct UIPlayerInfoCmd : public C2DAnimCmdHdr {
-    unsigned short m_c;   // 0xc
+struct UIPlayerInfoCmd : public UIParsedCmd {
     int m_what;   // 0x10
 };
+
+/* CompareValues's record: two values, each a name (VALUE1/2) or a UI variable's (UIVAR1/2), and
+ * how to compare them (SOCOM II's; the names ours) */
+struct UICompareValuesCmd : public UIParsedCmd {
+    unsigned char m_value1;   // 0x10
+    unsigned char m_uivar1;   // 0x11: m_value1 names a UI variable
+    unsigned char m_value2;   // 0x12
+    unsigned char m_uivar2;   // 0x13
+    unsigned char m_case_insensitive;   // 0x14
+    unsigned char m_after_formatting;   // 0x15
+};
+
+/* GetMUISPersonaInfo's record: the persona by its INDEX (1) or its NAME (2), the argument naming
+ * which (SOCOM II's; the names ours) */
+struct UIPersonaCmd : public UIParsedCmd {
+    unsigned char m_by;   // 0x10
+};
+
+/* CharacterProfile's record: what to do with the profile (SOCOM II's; the names ours) */
+enum UIPROFILE_OP {
+    UIPROFILE_LOAD = 0,
+    UIPROFILE_SAVE = 1,
+    UIPROFILE_EXISTS = 2,
+    UIPROFILE_SAVE_TO_SERVER = 3,
+    UIPROFILE_WAIT_FOR_SERVER_SAVE = 4,
+    UIPROFILE_LOAD_FROM_SERVER = 5,
+    UIPROFILE_WAIT_FOR_LOAD = 6,
+    UIPROFILE_DELETE = 7,
+    UIPROFILE_NONE = 0xFFFFFF
+};
+
+struct UIProfileCmd : public UIParsedCmd {
+    UIPROFILE_OP m_op;   // 0x10
+};
+
+/* GetMissionInformation's record: the mission set and the names its fields go to (SOCOM II's; the
+ * names ours) */
+struct UIMissionInfoCmd : public UIParsedCmd {
+    unsigned char m_multiplayer;   // 0x10
+    int m_name;   // 0x14
+    int m_number;   // 0x18
+    int m_index;   // 0x1c
+};
+
+/* GetLadderInfo's record: which list and which move (1..5, 7..11 for the clan ladder; SOCOM II's;
+ * the name ours) */
+struct UILadderCmd : public UIParsedCmd {
+    int m_op;   // 0x10
+};
+
+/* PlayMPEG's record: the film (by name or by index), how it plays, the audio stream as a number or
+ * a valve's or UI variable's name, and the rectangles (SOCOM II's; the names ours) */
+struct UIPlayMPEGCmd : public UIParsedCmd {
+    bool m_fade;   // 0x10
+    bool m_ingame;   // 0x11
+    bool m_interlace;   // 0x12
+    int m_stream_type;   // 0x14: 0 a number, 1 a valve, 2 a UI variable
+    int m_stream;   // 0x18
+    unsigned char m_has_dest;   // 0x1c
+    bool m_bilinear;   // 0x1d
+    unsigned char _1e[2];
+    int m_source[4];   // 0x20
+    int m_dest[4];   // 0x30
+    unsigned char m_by_index;   // 0x40
+};
+
+/* SendChatText's and SendMediusChat's record: the UI variable the recipient is in (SOCOM II's; the
+ * names ours) */
+struct UIChatCmd : public UIParsedCmd {
+    char m_recip_uivar[32];   // 0x10
+};
+
+/* CopyUIVar's record: the variables' names, -1 for none (SOCOM II's; the names ours) */
+struct UICopyUIVarCmd : public UIParsedCmd {
+    int m_from;   // 0x10
+    int m_to;   // 0x14
+};
+
+/* a command's type by its name (zanim_menu.cpp's) */
+int GetUICommandType(const char *name);
+
+/* the reader's lookups the parsers use (SOCOM 1's zrdr_findstring; the others not named yet:
+ * a tag's bool, its rectangle, a string in an array) */
+char *zrdr_findstring(const _zrdr *rdr, const char *tag);
+extern "C" {
+bool func_0032DC00(_zrdr *rdr, const char *tag, bool *out);
+unsigned char func_0032DC40(_zrdr *rdr, const char *tag, int *out);
+bool func_0032DF80(_zrdr *rdr, const char *tag, char **out);
+}
 
 /* a UI command's handler: whether the command is done */
 typedef bool (*UICommandFunc)(C2DAnimCmdHdr *hdr, float *dT);

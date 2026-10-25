@@ -16,6 +16,7 @@
 #include <string.h>
 
 #include "zanim_menu.h"
+#include "../zsys/zsys.h"
 
 /* the lobby objects the handlers also reach (not named yet) */
 class CZLANLobby;
@@ -99,6 +100,46 @@ bool UIUpdateMpFinalStatsUiVars(C2DAnimCmdHdr *hdr, float *dT)
 {
     func_002241C0();
     return true;
+}
+
+/* CopyUIVar's parser: the two variables' names (-1 for none). The command's type goes where the
+ * other records keep the command's name (SOCOM II's; the name ours) */
+_zanim_cmd_hdr *UICopyUIVarParse(const char *name, _zrdr *rdr)
+{
+    UICopyUIVarCmd *cmd = (UICopyUIVarCmd *)_calloc(1, sizeof(UICopyUIVarCmd), 0, 0);
+    const char *s;
+
+    cmd->header.timeless = 1;
+    cmd->header.data_size = sizeof(UICopyUIVarCmd);
+    cmd->node_ref_index = 0;
+    cmd->m_command_index = GetUICommandType(name);
+    s = zrdr_findstring(rdr, "From");
+    cmd->m_from = s ? ZAnim.m_CurAnim->AddName(s) : -1;
+    s = zrdr_findstring(rdr, "To");
+    cmd->m_to = s ? ZAnim.m_CurAnim->AddName(s) : -1;
+    return (_zanim_cmd_hdr *)cmd;
+}
+
+/* SendChatText's and SendMediusChat's parser: the argument and the UI variable holding whom the
+ * text is for (SOCOM II's; the name ours) */
+_zanim_cmd_hdr *UIChatParse(const char *name, _zrdr *rdr)
+{
+    UIChatCmd *cmd = (UIChatCmd *)_calloc(1, sizeof(UIChatCmd), 0, 0);
+    const char *s;
+
+    cmd->header.timeless = 1;
+    cmd->header.data_size = sizeof(UIChatCmd);
+    cmd->node_ref_index = 0;
+    cmd->m_command_index = GetUICommandType(name);
+    s = zrdr_findstring(rdr, "ARGUMENT");
+    if (s)
+        cmd->SetArgument(s);
+    s = zrdr_findstring(rdr, "RECIP_UIVAR");
+    if (s && strlen(s) < 32)
+        strcpy(cmd->m_recip_uivar, s);
+    else
+        cmd->m_recip_uivar[0] = 0;
+    return (_zanim_cmd_hdr *)cmd;
 }
 
 namespace {
@@ -798,6 +839,63 @@ bool UIMediusEnabled(C2DAnimCmdHdr *hdr, float *dT)
     return theNetwork.m_bMediusEnabled;
 }
 
+/* PlayMPEG's parser: the film by ARGUMENT or FILE (or its INDEX), whether it fades, plays in the
+ * game and interlaced, the audio stream (a number, a valve or a UI variable), the rectangles and
+ * the filtering (SOCOM II's; the name ours) */
+_zanim_cmd_hdr *UIPlayMPEGParse(const char *name, _zrdr *rdr)
+{
+    char *var;
+    char buf[800];
+    UIPlayMPEGCmd *cmd = (UIPlayMPEGCmd *)_calloc(1, sizeof(UIPlayMPEGCmd), 0, 0);
+    const char *s;
+    _zrdr *stream;
+
+    cmd->header.timeless = 1;
+    cmd->header.data_size = sizeof(UIPlayMPEGCmd);
+    s = zrdr_findstring(rdr, "ARGUMENT");
+    if (!s)
+        s = zrdr_findstring(rdr, "FILE");
+    cmd->m_by_index = 0;
+    if (!s) {
+        s = zrdr_findstring(rdr, "INDEX");
+        if (s)
+            cmd->m_by_index = 1;
+    }
+    if (s && *s) {
+        strcpy(buf, s);
+        cmd->SetArgument(buf);
+    }
+    cmd->m_fade = true;
+    func_0032DC00(rdr, "FADE", &cmd->m_fade);
+    cmd->m_ingame = true;
+    func_0032DC00(rdr, "INGAME", &cmd->m_ingame);
+    cmd->m_interlace = true;
+    func_0032DC00(rdr, "INTERLACE", &cmd->m_interlace);
+    cmd->m_stream_type = 0;
+    cmd->m_stream = 0;
+    stream = func_0032F0D0(rdr, "AUDIOSTREAM");
+    if (stream) {
+        if (stream->type == 1) {
+            cmd->m_stream_type = 0;
+            cmd->m_stream = stream->Int();
+        } else {
+            var = 0;
+            if (func_0032DF80(stream, "VALVE", &var)) {
+                cmd->m_stream_type = 1;
+                cmd->m_stream = ZAnim.m_CurAnim->AddName(var);
+            } else if (func_0032DF80(stream, "UIVAR", &var)) {
+                cmd->m_stream_type = 2;
+                cmd->m_stream = ZAnim.m_CurAnim->AddName(var);
+            }
+        }
+    }
+    cmd->m_has_dest = func_0032DC40(rdr, "DEST_RECT", cmd->m_dest);
+    func_0032DC40(rdr, "SOURCE_RECT", cmd->m_source);
+    cmd->m_bilinear = false;
+    func_0032DC00(rdr, "BILINEAR", &cmd->m_bilinear);
+    return (_zanim_cmd_hdr *)cmd;
+}
+
 /* PlayMPEGNoFade's toggle: a function-local static in the original (SOCOM 1's UIPlayMPEG has one,
  * alt), held to its address by its placeholder -- scdiff leaves a local static's object unchecked */
 extern "C" bool data_00414EA8;
@@ -1030,6 +1128,33 @@ bool UIGetGameInfo(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+/* GetPlayerInfo's parser: the argument and what to ask for (SOCOM II's; the name ours) */
+_zanim_cmd_hdr *UIGetPlayerInfoParse(const char *name, _zrdr *rdr)
+{
+    char buf[128];
+    UIPlayerInfoCmd *cmd = (UIPlayerInfoCmd *)_calloc(1, sizeof(UIPlayerInfoCmd), 0, 0);
+    const char *s;
+
+    cmd->header.timeless = 1;
+    cmd->header.data_size = sizeof(UIPlayerInfoCmd);
+    s = zrdr_findstring(rdr, "ARGUMENT");
+    if (s && *s) {
+        strcpy(buf, s);
+        cmd->SetArgument(buf);
+    }
+    if (func_0032F0D0(rdr, "BRIEFING"))
+        cmd->m_what = 0;
+    else if (func_0032F0D0(rdr, "CLAN"))
+        cmd->m_what = 1;
+    else if (func_0032F0D0(rdr, "FRIEND"))
+        cmd->m_what = 2;
+    else if (func_0032F0D0(rdr, "LADDER"))
+        cmd->m_what = 3;
+    else
+        cmd->m_what = 0;
+    return (_zanim_cmd_hdr *)cmd;
+}
+
 bool UIGetPlayerInfo(C2DAnimCmdHdr *hdr, float *dT)
 {
     const char *name = ArgText(ArgName(hdr));
@@ -1130,6 +1255,43 @@ bool UIQuitClan(C2DAnimCmdHdr *hdr, float *dT)
 {
     func_002E8EF0(&theLobby);
     return true;
+}
+
+/* GetLadderInfo's parser: which list and which move, the clan ladder's numbered after the player
+ * ladder's (SOCOM II's; the name ours) */
+_zanim_cmd_hdr *UIGetLadderInfoParse(const char *name, _zrdr *rdr)
+{
+    UILadderCmd *cmd = (UILadderCmd *)_calloc(1, sizeof(UILadderCmd), 0, 0);
+
+    cmd->header.timeless = 1;
+    cmd->header.data_size = sizeof(UILadderCmd);
+    if (func_0032F0D0(rdr, "CLAN")) {
+        if (func_0032F0D0(rdr, "Top10"))
+            cmd->m_op = 7;
+        else if (func_0032F0D0(rdr, "LadderPressUp"))
+            cmd->m_op = 8;
+        else if (func_0032F0D0(rdr, "LadderPressDown"))
+            cmd->m_op = 9;
+        else if (func_0032F0D0(rdr, "LadderUp"))
+            cmd->m_op = 10;
+        else if (func_0032F0D0(rdr, "LadderDown"))
+            cmd->m_op = 11;
+        else
+            cmd->m_op = 6;
+    } else if (func_0032F0D0(rdr, "Top10")) {
+        cmd->m_op = 1;
+    } else if (func_0032F0D0(rdr, "LadderPressUp")) {
+        cmd->m_op = 2;
+    } else if (func_0032F0D0(rdr, "LadderPressDown")) {
+        cmd->m_op = 3;
+    } else if (func_0032F0D0(rdr, "LadderUp")) {
+        cmd->m_op = 4;
+    } else if (func_0032F0D0(rdr, "LadderDown")) {
+        cmd->m_op = 5;
+    } else {
+        cmd->m_op = 0;
+    }
+    return (_zanim_cmd_hdr *)cmd;
 }
 
 /* the hard disk operation's result, told to the menu through a valve and the lobby's event handler
@@ -1376,6 +1538,108 @@ bool UIVerifyPatchLevel(C2DAnimCmdHdr *hdr, float *dT)
         func_003862A0(var, func_002FD610(data_0044FC60, level));
     }
     return ok;
+}
+
+/* GetMissionInformation's parser: the mission set and the names the mission's fields go to
+ * (SOCOM II's; the name ours) */
+_zanim_cmd_hdr *UIGetMissionInformationParse(const char *name, _zrdr *rdr)
+{
+    UIMissionInfoCmd *cmd = (UIMissionInfoCmd *)_calloc(1, sizeof(UIMissionInfoCmd), 0, 0);
+
+    cmd->header.timeless = 1;
+    cmd->header.data_size = sizeof(UIMissionInfoCmd);
+    if (func_0032F0D0(rdr, "MULTIPLAYER"))
+        cmd->m_multiplayer = 1;
+    else
+        cmd->m_multiplayer = 0;
+    cmd->m_name = ZAnim.m_CurAnim->AddName(zrdr_findstring(rdr, "NAME"));
+    cmd->m_number = ZAnim.m_CurAnim->AddName(zrdr_findstring(rdr, "NUMBER"));
+    cmd->m_index = ZAnim.m_CurAnim->AddName(zrdr_findstring(rdr, "INDEX"));
+    return (_zanim_cmd_hdr *)cmd;
+}
+
+/* CharacterProfile's parser: what to do with the profile (SOCOM II's; the name ours) */
+_zanim_cmd_hdr *UICharacterProfileParse(const char *name, _zrdr *rdr)
+{
+    UIProfileCmd *cmd = (UIProfileCmd *)_calloc(1, sizeof(UIProfileCmd), 0, 0);
+
+    cmd->header.timeless = 1;
+    cmd->header.data_size = sizeof(UIProfileCmd);
+    if (func_0032F0D0(rdr, "EXISTS"))
+        cmd->m_op = UIPROFILE_EXISTS;
+    else if (func_0032F0D0(rdr, "LOAD"))
+        cmd->m_op = UIPROFILE_LOAD;
+    else if (func_0032F0D0(rdr, "SAVE"))
+        cmd->m_op = UIPROFILE_SAVE;
+    else if (func_0032F0D0(rdr, "SaveToServer"))
+        cmd->m_op = UIPROFILE_SAVE_TO_SERVER;
+    else if (func_0032F0D0(rdr, "WaitForServerSaveComplete"))
+        cmd->m_op = UIPROFILE_WAIT_FOR_SERVER_SAVE;
+    else if (func_0032F0D0(rdr, "LoadFromServer"))
+        cmd->m_op = UIPROFILE_LOAD_FROM_SERVER;
+    else if (func_0032F0D0(rdr, "WaitForLoadComplete"))
+        cmd->m_op = UIPROFILE_WAIT_FOR_LOAD;
+    else if (func_0032F0D0(rdr, "DELETE"))
+        cmd->m_op = UIPROFILE_DELETE;
+    else
+        cmd->m_op = UIPROFILE_NONE;
+    return (_zanim_cmd_hdr *)cmd;
+}
+
+/* GetMUISPersonaInfo's parser: the persona by INDEX or by NAME, the argument the one given (SOCOM
+ * II's; the name ours) */
+_zanim_cmd_hdr *UIPersonaParse(const char *name, _zrdr *rdr)
+{
+    UIPersonaCmd *cmd = (UIPersonaCmd *)_calloc(1, sizeof(UIPersonaCmd), 0, 0);
+    const char *s;
+
+    cmd->header.timeless = 1;
+    cmd->header.data_size = sizeof(UIPersonaCmd);
+    s = zrdr_findstring(rdr, "INDEX");
+    if (s) {
+        cmd->m_by = 1;
+    } else {
+        s = zrdr_findstring(rdr, "NAME");
+        cmd->m_by = 2;
+    }
+    cmd->m_argument_index = ZAnim.m_CurAnim->AddName(s);
+    return (_zanim_cmd_hdr *)cmd;
+}
+
+/* CompareValues's parser: the two values, each a name or a UI variable's, and how to compare them
+ * (SOCOM II's; the name ours) */
+_zanim_cmd_hdr *UICompareValuesParse(const char *name, _zrdr *rdr)
+{
+    UICompareValuesCmd *cmd = (UICompareValuesCmd *)_calloc(1, sizeof(UICompareValuesCmd), 0, 0);
+    const char *s;
+
+    cmd->header.timeless = 1;
+    cmd->header.data_size = sizeof(UICompareValuesCmd);
+    s = zrdr_findstring(rdr, "VALUE1");
+    cmd->m_uivar1 = 0;
+    if (!s) {
+        s = zrdr_findstring(rdr, "UIVAR1");
+        cmd->m_uivar1 = 1;
+    }
+    if (s)
+        cmd->m_value1 = ZAnim.m_CurAnim->AddName(s);
+    s = zrdr_findstring(rdr, "VALUE2");
+    cmd->m_uivar2 = 0;
+    if (!s) {
+        s = zrdr_findstring(rdr, "UIVAR2");
+        cmd->m_uivar2 = 1;
+    }
+    if (s)
+        cmd->m_value2 = ZAnim.m_CurAnim->AddName(s);
+    if (func_0032F0D0(rdr, "CASE_INSENSITIVE"))
+        cmd->m_case_insensitive = 1;
+    else
+        cmd->m_case_insensitive = 0;
+    if (func_0032F0D0(rdr, "COMPARE_AFTER_FORMATTING"))
+        cmd->m_after_formatting = 1;
+    else
+        cmd->m_after_formatting = 0;
+    return (_zanim_cmd_hdr *)cmd;
 }
 
 bool UILobbyDisconnect(C2DAnimCmdHdr *hdr, float *dT)
