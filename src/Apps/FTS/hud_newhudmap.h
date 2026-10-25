@@ -5,6 +5,7 @@
 #define HUD_NEWHUDMAP_H
 
 #include "../../gamez/ztwod/ztwod.h"
+#include "hud_mapitem.h"
 
 class CZSealBody;
 
@@ -26,8 +27,17 @@ public:
     float m_Radius;   // 0x10
 };
 
+class CZClaymoreMapItem;
+class CZMPBombMapItem;
+class CZProjectile;
+
 class CZNewHudMap : public C2D {
 public:
+    CPnt3D MapPoint(const CPnt3D *p) const;
+    CZClaymoreMapItem *FindClaymoreItem(CZProjectile *projectile);
+    CZMPBombMapItem *FindMPBombItem();
+    void UpdateMPBomb();
+    void UpdateExplosives();
     float CalcDrawPos(float y) const;
     void SetWorldWidth(float width);
     void SetMapScreenPos(float x1, float y1, float x2, float y2);
@@ -38,7 +48,7 @@ public:
      * setter passes the centre back in, read before the clamp (the name is ours) */
     void SetWorldView(float width, float cx, float cy);
 
-    unsigned char m_itemlist[0xc];   // 0x18: SOCOM 1's `list m_itemlist`
+    std::list<CZMapItem *> m_itemlist;   // 0x18
     CZSealBody *m_viewer;   // 0x24
     float m_screenx1;   // 0x28
     float m_screeny1;   // 0x2c

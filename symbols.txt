@@ -1783,11 +1783,11 @@
 0x00208F60 0x4C __dt__9CZMapItemFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00208FB0 0x8 Tick__9CZMapItemFP11CZNewHudMapf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00208FC0 0x8 Draw__9CZMapItemFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00208FD0 0x7C func_00208FD0  # OVL1
-0x00209050 0xAC func_00209050  # OVL1
-0x00209100 0xA8 func_00209100  # OVL1
-0x002091B0 0x78 func_002091B0  # OVL1
-0x00209230 0x11C func_00209230  # OVL1
+0x00208FD0 0x7C MapPoint__11CZNewHudMapCFPC6CPnt3D  # OVL1; hud_newhudmap.cpp by hand (a world point through the map's matrix, its height scaled; SOCOM II's, the name ours)
+0x00209050 0xAC FindClaymoreItem__11CZNewHudMapFP12CZProjectile  # OVL1; hud_newhudmap.cpp by hand (the item list searched for a projectile's claymore; SOCOM 1's UpdateExplosives did it inline; the name ours)
+0x00209100 0xA8 FindMPBombItem__11CZNewHudMapFv  # OVL1; s1:name by hand (hud_newhudmap.cpp; SOCOM 1's bomb search, called from the bomb's half of UpdateExplosives as there)
+0x002091B0 0x78 UpdateMPBomb__11CZNewHudMapFv  # OVL1; hud_newhudmap.cpp by hand (SOCOM 1's UpdateExplosives' second half; the name ours)
+0x00209230 0x11C UpdateExplosives__11CZNewHudMapFv  # OVL1; s1:calls by hand (hud_newhudmap.cpp; the explosives walked for claymores, then the bomb, as SOCOM 1's)
 0x00209350 0x434 func_00209350  # OVL1
 0x00209790 0x348 Draw__11CZNewHudMapFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00209AE0 0x3F8 func_00209AE0  # OVL1
