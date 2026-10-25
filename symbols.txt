@@ -7519,11 +7519,11 @@
 0x0039C250 0x14 Release__9CBufferIOFv  # OVL1; s1:order (after Open(const char *, unsigned) as SOCOM 1's Release; zeroes the four buffer members and calls CFileIO's Release as SOCOM 1's does)
 0x0039C270 0x70 Open__9CBufferIOFPvUi  # OVL1; s1:vtable by hand (CBufferIO's slot 0x44, SOCOM 1's Open__9CBufferIOFPvUi at 0x38 before SOCOM II's three new CIO slots; takes the buffer and size as SOCOM 1's)
 0x0039C2E0 0x44 __ct__9CBufferIOFv  # OVL1; s1:align
-0x0039C330 0x94 func_0039C330  # OVL1
-0x0039C3D0 0xC func_0039C3D0  # OVL1
-0x0039C3E0 0xC func_0039C3E0  # OVL1
-0x0039C3F0 0x4C func_0039C3F0  # OVL1
-0x0039C440 0xBC func_0039C440  # OVL1
+0x0039C330 0x94 Find__8CPackageFPCc  # OVL1; ours (SOCOM II's package, the class name ours: the header's entries from 0xA0, 92 bytes each, up to the count at 0x98, compared with strcasecmp at +4; CFileIO::Open calls it with &0x4A15F8 and the upper-cased name)
+0x0039C3D0 0xC Seek__8CPackageFii  # OVL1; ours (the package's static file 0x4A1630 seeked, a tail call of CFileIO::fseek; CFileIO::Open seeks to the entry's offset with it)
+0x0039C3E0 0xC GetFile__8CPackageFv  # OVL1; ours (the package's static file 0x4A1630; CFileIO::Open shares its descriptor and flags)
+0x0039C3F0 0x4C Close__8CPackageFv  # OVL1; ours (the static file closed, the header freed and both fields cleared, false; fts_mission's UpdateMissionArchive calls it; the destructor at 0x39C500 inlines it)
+0x0039C440 0xBC Open__8CPackageFPCc  # OVL1; ours (the static file opened for reading, the 252-byte header read, the header and its count - 1 further entries allocated and read; UpdateMissionArchive calls it)
 0x0039C500 0x78 __dt__7COutputFv  # OVL1; s1:align
 0x0039C580 0xC func_0039C580  # OVL1
 0x0039C590 0x80 UnRegisterRebootCallback__11CIOPManagerFi  # OVL1; s1:calls (UninitSystemTuners passes it theIOPManager and the id InitSystemTuners' RegisterRebootCallback returned)
