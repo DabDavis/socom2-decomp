@@ -39,10 +39,19 @@ void func_0030E3A0(CZNetwork *net, int arg);
 void func_002A9EF0(CMission *mission);
 bool func_002B83E0();                       /* DMEJoinGameServer (SOCOM 1's, by UIJoinGameServer) */
 extern int data_00441470;
-extern void *data_0045B718;
 extern char data_00437E30[];               /* the career stats */
-void func_0030E6E0(void *p, int arg);
-void func_0030E490(void *p);
+}
+
+/* the online armory (an object at 0x45B718; only the flag VCButton tests) */
+struct COnlineArmoryView {
+    unsigned char _0[0x4a];
+    unsigned char m_4a;   // 0x4a
+};
+
+extern "C" {
+extern COnlineArmoryView *data_0045B718;
+void func_0030E6E0(COnlineArmoryView *p, int arg);
+void func_0030E490(COnlineArmoryView *p);
 }
 
 class CZGameState {
@@ -79,6 +88,8 @@ inline C2D *GetCommandC2D(unsigned short node_ref)
 
 char database[64];
 zdb::CNode *g_menuRootNode;
+/* the saved game's name the memory card handlers build (0x414E50) */
+static char s_savename[64];
 
 namespace {
 
@@ -150,6 +161,19 @@ bool UISetControllerConfig(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+/* a saved game loaded from the slot the argument numbers, the loading valve cleared */
+bool _LoadSavedGame(C2DAnimCmdHdr *hdr, float *dT)
+{
+    int slot = atoi(ArgText(ArgName(hdr)));
+    CValve *valve = CValve::GetByName("LoadingSavedGame");
+
+    sprintf(s_savename, "SaveGame%d", slot);
+    func_003A1E10(&theMemCard, s_savename);
+    if (valve)
+        SetValveValue(valve, 0);
+    return true;
+}
+
 }
 
 void SetDatabase(const char *name)
@@ -185,20 +209,55 @@ CMenuStack::CMenuStack()
     m_popup = 0;
 }
 
-/* OPEN, 2 instructions (0x1C0 of 0x1C8): the target inlines FlushHistory whole (with all true:
- * the pop-up's test without the flag's, then CleanPopup's), the history's flush and the vectors'
- * pieces with it. Here the chain is one level too tall at this depth: the base's end() inside back()
- * is called out of line (FlushHistory itself matches, one level up). Written out instead (the
- * entries loop, m_history.Flush(), the pop-up's delete, CleanPopup()) everything inlines and one
- * instruction is left: the history's member destruction reads m_free's data_ through its this,
- * lw a0,8(v0), where MW folds it into lw a0,0xE3C(s2) (m_used's, destroyed after, is folded in the
- * target too) -- not the history's base class (measured: m_used as CMenuHistory's base gives the same
- * fold). include/vector's pointer back() and push_back a level lower would likely settle the first
- * form */
+/* OPEN, 1 instruction (round 2: the size now right, written as FlushHistory(true) and CleanPopup()):
+ * the history's member destruction reads m_free's data_ through the pointer its this-tests use,
+ * `addiu v0,s2,3636 ... lw a0,8(v0)`, where MW folds it into lw a0,0xE3C(s2) -- m_used's, destroyed
+ * after, is folded in the target too (lw a0,2096(s2)). Round 1: with FlushHistory written out the
+ * same instruction was left; m_used as CMenuHistory's base gives the same fold. include/vector's
+ * pointer back() and push_back a level lower would likely settle the first form */
 CMenuStack::~CMenuStack()
 {
     FlushHistory(true);
     CleanPopup();
+}
+
+/* the top entry's command done with: its argument's name reset, the entry popped as its command
+ * says (SOCOM 1's, the same ten cases in the same order; the name unused in both) */
+void CMenuStack::HandleCommand(const char *name)
+{
+    strcpy(m_entries[m_top].m_argname, DEFAULT_ARGNAME);
+    CMenuEntry &entry = m_entries[m_top];
+
+    switch (entry.m_id) {
+    case -1:
+        break;
+    case 0:
+        entry.m_id = -1;
+        break;
+    case 2:
+        entry.m_id = -1;
+        m_top--;
+        break;
+    case 1:
+        m_top--;
+        break;
+    case 3:
+    case 4:
+        entry.m_id = -1;
+        m_top--;
+        break;
+    case 5:
+        entry.m_id = -1;
+        m_top--;
+        break;
+    case 6:
+    case 7:
+    case 8:
+        entry.m_id = -1;
+        m_top--;
+        break;
+    }
+    m_count--;
 }
 
 void CMenuStack::AddToHistory(const char *name)
@@ -428,6 +487,20 @@ bool UICheckJoinMP(C2DAnimCmdHdr *hdr, float *dT)
     if (data_003DD490 == data_003DD498 && data_003DD490 == 1) {
         SetValveValue(theMission.m_pNetGame->m_pJoinGameValve, 10);
         theMission.m_pNetGame->m_joined = 1;
+    }
+    return true;
+}
+
+/* the voice chat's button: 1 on (unless already), 0 off -- not for a late joiner */
+bool UIVCButton(C2DAnimCmdHdr *hdr, float *dT)
+{
+    if (theMission.m_pNetGame && !theMission.m_pNetGame->m_late_joiner) {
+        const char *text = ArgText(ArgName(hdr));
+
+        if (*text == '1' && !data_0045B718->m_4a)
+            func_0030E6E0(data_0045B718, 1);
+        else if (*text == '0')
+            func_0030E6E0(data_0045B718, 0);
     }
     return true;
 }
@@ -840,8 +913,6 @@ bool UILoadConfig(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
-static char s_savename[64];
-
 bool UISaveConfig(C2DAnimCmdHdr *hdr, float *dT)
 {
     const char *name = ArgName(hdr);
@@ -1030,6 +1101,20 @@ bool UIVagStreaming(C2DAnimCmdHdr *hdr, float *dT)
         CSnd::Close();
         data_0048DDA0 = 0;
     }
+    return true;
+}
+
+/* the menu's background film: ON the default, OFF none, else the one named */
+bool UIBackgroundMPEG(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *text = ArgText(ArgName(hdr));
+
+    if (!strcmp(text, "ON"))
+        func_001F3BD0(&theGame.m_menuState, 0);
+    else if (!strcmp(text, "OFF"))
+        func_001F3BE0(&theGame.m_menuState);
+    else
+        func_001F3BD0(&theGame.m_menuState, text);
     return true;
 }
 

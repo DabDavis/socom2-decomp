@@ -3276,7 +3276,7 @@
 0x0027F190 0xB8 func_0027F190  # OVL1
 0x0027F250 0x198 func_0027F250  # OVL1
 0x0027F3F0 0x70 AddToHistory__10CMenuStackFPCc  # OVL1; s1:align (SOCOM 1's AddToHistory: the last free name slot popped, inserted at the history's end, the name copied in -- the vectors at +0xE34 and +0x828 here, +0xA24 and +0x418 there)
-0x0027F460 0x124 func_0027F460  # OVL1
+0x0027F460 0x124 HandleCommand__10CMenuStackFPCc  # OVL1; s1:order by hand (SOCOM 1's HandleCommand__10CMenuStackFPCc sits right before ~CMenuStack as this does, and is this code instruction for instruction: the top entry's name reset to DEFAULT_ARGNAME, the ten-case jump table on its id + 1, m_count decremented; CGameMenu::Tick 0x3654C0 calls it twice)
 0x0027F590 0x1C8 __dt__10CMenuStackFv  # OVL1; s1:align (SOCOM 1's ~CMenuStack: FlushHistory(true) and CleanPopup inlined, the history's vectors destroyed, the deleting flag)
 0x0027F760 0x6C __ct__10CMenuStackFv  # OVL1; by hand (the stack's constructor, called by the unit's initialiser 0x3FFCA0 on g_MenuStack: 40 entries of 52 bytes set to -1 and DEFAULT_ARGNAME, the history constructed, the two words at +0x820 and the pop-up cleared; SOCOM 1 links no copy)
 0x0027F7D0 0xC GetMenuNode__Fv  # OVL1; s1:callee by hand (GetDatabaseNode's MENU scope calls it twice where SOCOM 1's calls GetMenuNode; both return one global)

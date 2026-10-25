@@ -436,6 +436,7 @@ public:
     void AddToHistory(const char *name);
     void PopUpDialog(const char *name);
     void FlushHistory(bool all);
+    void HandleCommand(const char *name);
     /* an entry put on top: a command for the screen and its argument (the button handlers inline it,
      * both builds; the name ours) */
     void Push(int id, const char *argname)
@@ -660,6 +661,9 @@ void func_00300AF0(CZOnlineLobby *lobby, int index);                /* (friend r
 void func_00300A70(CZOnlineLobby *lobby, int index);                /* (friend confirmed) */
 void func_00300B70(CZOnlineLobby *lobby, int index);                /* (friend added directly) */
 void func_001F3BB0(CMenuState *state, float time);                  /* (the menu's input suspended) */
+void func_001F3BD0(CMenuState *state, const char *movie);           /* (the background film set) */
+void func_001F3BE0(CMenuState *state);                              /* (the background film stopped) */
+void func_003A1E10(CMemCard *card, const char *name);               /* (a saved game loaded) */
 double func_00191478(const char *s);                                /* atof */
 void func_0037B980(float f);                                        /* UiSetTtySpeedFactor (SOCOM 1's) */
 void func_0037B990(float f);                                        /* UiSetCounterSpeedFactor */
