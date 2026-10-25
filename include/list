@@ -74,6 +74,17 @@ public:
     void push_back(const T &x) { insert(end(), x); }
 
     unsigned int size() const { return size_; }
+    /* the node allocator: MSL keeps it as the empty base of the end node's pair (SOCOM 1's DWARF:
+     * end_ is a compressed_pair whose compressed_pair_imp derives from the allocator), reached
+     * through the pair's first() -- the names are ours. Only the out-of-line members free nodes
+     * through it, so it counts only in tail code: the range erase is three high there, and an
+     * implicit list destructor in a unit that instantiated the erase (~CEntityList, ~CAssetList,
+     * ~CAiEventList) inlines ~list one level and calls ~__list_imp at -inline level=5 */
+    struct node_allocator {
+        void deallocate(node_base *p) { operator delete(p); }
+    };
+    node_allocator &node_alloc() { return end_first(); }
+    node_allocator &end_first() { return *(node_allocator *)&end_; }
     /* the sentinel by reference (CZHudMissionCams::Init keeps the end node in a register outside
      * its loop only so; the name is ours) */
     node_base &end_node() { return end_; }
@@ -145,7 +156,7 @@ __list_deleter<T, Allocator>::erase(iterator first, iterator last)
         node_base *n = first.node_;
 
         first.node_ = n->next_;
-        operator delete(n);
+        node_alloc().deallocate(n);
         --size_;
     }
     return last;
