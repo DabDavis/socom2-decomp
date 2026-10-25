@@ -430,10 +430,110 @@ enum SEAL_TASK { TASK_0 = 0, TASK_LAST = 255 };
  * the two a reset ends) */
 enum AI_ROUTE { ROUTE_NONE = 0, ROUTE_1 = 1, ROUTE_2 = 2 };
 
-class CSealCtrlAi : public CSealCtrl {
+/* the destructors the AI's data runs by hand (its members' own, out of line: a route's (OVL2
+ * 0x573F20, the implicit destructor of a CAiPath plus a byte), CAiEvent's (0x573F80) and
+ * CAiEventQ's (0x573FF0) -- seal_ai.cpp's copies, after ~CSealCtrlAi -- and CAiPath's (0x5281B0,
+ * which ai.h does not declare: its implicit one would be inlined) */
+extern "C" {
+void *func_00573FF0(void *queue, int flags);
+void *func_00573F80(void *event, int flags);
+void *func_00573F20(void *route, int flags);
+void *func_005281B0(void *path, int flags);
+}
+
+/* a CAiPath's bytes (ai.h's class, 0xA8: built and destroyed by hand here, as ai.h does not
+ * declare SOCOM II's ~CAiPath) and the fields the controller reads: the plan's state, the search's
+ * status, the smoothed points' end (an empty vector's is 0) */
+struct CAiPathBytes {
+    unsigned char _0[0x80];
+    unsigned char m_state;   // 0x80: CAiPath::PATH_STATE (1-3 planning, 4 complete)
+    signed char m_status;   // 0x81: CAiPath::ASTAR_STATUS
+    unsigned char _82[0x9c - 0x82];
+    void *m_9c;   // 0x9c: the points vector's second word
+    unsigned char _a0[0xa8 - 0xa0];
+};
+
+/* a route: a path and its state (a byte enum: copied with lb, compared with lbu; the class and its
+ * names ours -- SEAL_AI_PARAMS's constructor builds the path and zeroes the byte, its implicit
+ * destructor's copy is OVL2 0x573F20) */
+struct CAiRouteBytes {
+    CAiPathBytes m_path;   // 0x0
+    AI_ROUTE m_state;   // 0xa8
+};
+
+/* the AI's data, CSealCtrlAi's second base (new in SOCOM II: CSealCtrlAi's RTTI, OVL2 0x65C6D0,
+ * lists SEAL_AI_PARAMS at 0x250 -- after CEntityCtrl and CSealCtrl at 0 -- and SEAL_AI_PARAMS's own,
+ * 0x65C660, no bases). It holds what SOCOM 1's CSealCtrlAi held, in the same order: its
+ * constructor (OVL2 0x60BF40, out of line, in the AI states' range) runs before CSealCtrlAi's table
+ * is stored and builds the state stack (+0x1CC), two CAiPaths (+0x21C, the route's +0x2C4), the
+ * event (+0x3D8), the event queue (+0x400), the target (+0x42C, as CTurret's constructor does) and
+ * the trigger (+0x4E4); ~CSealCtrlAi inlines its destructor behind the base conversion's null
+ * test of `this + 0x250`, the members destroyed out of line in reverse order. Offsets below are
+ * the controller's (the base's plus 0x250). Its end is not proven: everything past CSealCtrl is
+ * here (CSealCtrlAi itself has no member with a destructor, none being destroyed outside the
+ * null test). */
+class SEAL_AI_PARAMS {
+public:
+    SEAL_AI_PARAMS();
+    /* written out, its members' destructors called by hand where the implicit one would run them
+     * (CAiPath's is undeclared), the state stack last as a real member */
+    ~SEAL_AI_PARAMS()
+    {
+        func_00573FF0(m_eventQueue, -1);
+        func_00573F80(m_event, -1);
+        func_00573F20(&m_route, -1);
+        func_005281B0(&m_path, -1);
+    }
+
+    unsigned char _250[0x254 - 0x250];
+    float m_throttle_goal[3];   // 0x254 (as SOCOM 1's 0x274: the throttles the AI asks for)
+    unsigned int m_260;   // 0x260
+    unsigned int m_debug : 1;   // 0x264 (SOCOM 1's 0x280, the same bits as far as they are read)
+    unsigned int m_navyseal : 1;
+    unsigned int m_bits264 : 30;
+    unsigned char _268[0x26c - 0x268];
+    unsigned char m_26c;   // 0x26c: a mode byte (4: any target taken; the name ours)
+    unsigned char _26d[0x270 - 0x26d];
+    int m_270;   // 0x270: a count 0x56D450 sets with the cell it finds (the names ours)
+    void *m_274;   // 0x274: that cell
+    SEAL_STANCE m_stance;   // 0x278 (SOCOM 1's 0x285)
+    float m_stance_delay;   // 0x27c (SOCOM 1's 0x288)
+    unsigned char _280[0x3f4 - 0x280];
+    unsigned char m_3f4;   // 0x3f4: a mode (7 keeps the AI-map collision off; the name ours)
+    unsigned char _3f5[0x41c - 0x3f5];
+    /* the state on top of the stack (SOCOM 1's; OVL2 0x5F5FD0, 0x5F6010, the AI-states lane's
+     * seal_aistate.cpp defines them -- which is const by SOCOM 1's order) */
+    CAiStateStack m_stateStack;   // 0x41c (SOCOM 1's 0x324; 0x20 bytes in SOCOM II)
+    unsigned char _43c[0x450 - 0x43c];
+    /* the anims the tasks play (SOCOM 1's m_task_anim[6], 0x33c there, its m_task_handle[6] 0x18
+     * after: SetupAnimations binds [0] to <node>_start and [2] to <node>_ambient) -- so the
+     * m_task_anim below, at 0x468, is SOCOM 1's m_task_handle[0] */
+    CZAnim *m_anims[6];   // 0x450
+    CZAnim *m_task_anim;   // 0x468: an anim the AI plays, stopped at the mission's end
+    CAiPathBytes m_path;   // 0x46c: a CAiPath (SOCOM 1's m_path, 0x36c)
+    CAiRouteBytes m_route;   // 0x514: a route (its path reset at 0x527310, its state read after
+                             // the update at 0x555420)
+    unsigned char _5c0[0x628 - 0x5c0];
+    unsigned char m_event[0x28];   // 0x628: a CAiEvent (SOCOM 1's m_event, 0x480)
+    unsigned char m_eventQueue[0x10];   // 0x650: a CAiEventQ (SOCOM 1's m_eventQueue, 0x4a8)
+    unsigned char m_660;   // 0x660: set at the mission's start in mode 1 (the names ours)
+    unsigned char _661[0x664 - 0x661];
+    CZSealBody *m_664;   // 0x664: the player, in mode 1
+    unsigned char _668[0x674 - 0x668];
+    float m_674;   // 0x674: a range, and its square
+    float m_678;   // 0x678
+    unsigned char m_67c[4];   // 0x67c: an object the state CAiSPursue tests (0x60A850)
+    unsigned char _680[0x750 - 0x680];
+    CValve *m_valve[3];   // 0x750 (SOCOM 1's 0x5bc, four there)
+    unsigned char _75c[0x76c - 0x75c];
+    unsigned char m_weapon_kind;   // 0x76c: the kind 0x560540 reads off the body's weapon (the name ours)
+    unsigned char _76d[0x7c0 - 0x76d];
+};
+
+class CSealCtrlAi : public CSealCtrl, public SEAL_AI_PARAMS {
 public:
     CSealCtrlAi();
-    /* (0x573E60, not written yet: declared so no unit emits an implicit one) */
+    /* (0x573E60: the stack emptied, then the bases' destructors) */
     virtual ~CSealCtrlAi();
     virtual void SetThrottle(unsigned int axis, float value);
     virtual bool SlideTick(float dT);
@@ -476,55 +576,10 @@ public:
     bool IsNavySeal() const { return m_navyseal ? true : false; }
     /* the body's task argument (an inline: expanded ahead of the call it is passed with) */
     inline void *GetSelect();
-
-    unsigned char _250[0x254 - 0x250];
-    float m_throttle_goal[3];   // 0x254 (as SOCOM 1's 0x274: the throttles the AI asks for)
-    unsigned int m_260;   // 0x260
-    unsigned int m_debug : 1;   // 0x264 (SOCOM 1's 0x280, the same bits as far as they are read)
-    unsigned int m_navyseal : 1;
-    unsigned int m_bits264 : 30;
-    unsigned char _268[0x26c - 0x268];
-    unsigned char m_26c;   // 0x26c: a mode byte (4: any target taken; the name ours)
-    unsigned char _26d[0x270 - 0x26d];
-    int m_270;   // 0x270: a count 0x56D450 sets with the cell it finds (the names ours)
-    void *m_274;   // 0x274: that cell
-    SEAL_STANCE m_stance;   // 0x278 (SOCOM 1's 0x285)
-    float m_stance_delay;   // 0x27c (SOCOM 1's 0x288)
-    unsigned char _280[0x3f4 - 0x280];
-    unsigned char m_3f4;   // 0x3f4: a mode (7 keeps the AI-map collision off; the name ours)
-    unsigned char _3f5[0x41c - 0x3f5];
-    /* the state on top of the stack at 0x41C (SOCOM 1's; OVL2 0x5F5FD0, 0x5F6010, the AI-states
-     * lane's seal_aistate.cpp defines them -- which is const by SOCOM 1's order) */
+    /* the state on top of SEAL_AI_PARAMS's stack (SOCOM 1's; OVL2 0x5F5FD0, 0x5F6010, the
+     * AI-states lane's seal_aistate.cpp defines them -- which is const by SOCOM 1's order) */
     CAiState *GetAiState();
     const CAiState *GetAiState() const;
-    unsigned int m_41c;   // 0x41c: a state stack's size word (SOCOM 1's m_stateStack, a CAiStateStack)
-    unsigned char _420[0x450 - 0x420];
-    /* the anims the tasks play (SOCOM 1's m_task_anim[6], 0x33c there, its m_task_handle[6] 0x18
-     * after: SetupAnimations binds [0] to <node>_start and [2] to <node>_ambient) -- so the
-     * m_task_anim below, at 0x468, is SOCOM 1's m_task_handle[0] */
-    CZAnim *m_anims[6];   // 0x450
-    CZAnim *m_task_anim;   // 0x468: an anim the AI plays, stopped at the mission's end
-    unsigned char _46c[0x4ec - 0x46c];
-    unsigned char m_4ec;   // 0x4ec: a state (1-3 and, with 0x508 set, 4 hold the next byte back; the name ours)
-    signed char m_4ed;   // 0x4ed
-    unsigned char _4ee[0x508 - 0x4ee];
-    void *m_508;   // 0x508
-    unsigned char _50c[0x514 - 0x50c];
-    unsigned char m_path[0x5bc - 0x514];   // 0x514: a CAiPath (SOCOM 1's m_path, 0x36c), reset at 0x527310
-    AI_ROUTE m_route;   // 0x5bc: the route's state (read after the update at 0x555420)
-    unsigned char _5bd[0x660 - 0x5bd];
-    unsigned char m_660;   // 0x660: set at the mission's start in mode 1 (the names ours)
-    unsigned char _661[0x664 - 0x661];
-    CZSealBody *m_664;   // 0x664: the player, in mode 1
-    unsigned char _668[0x674 - 0x668];
-    float m_674;   // 0x674: a range, and its square
-    float m_678;   // 0x678
-    unsigned char m_67c[4];   // 0x67c: an object the state CAiSPursue tests (0x60A850)
-    unsigned char _680[0x750 - 0x680];
-    CValve *m_valve[3];   // 0x750 (SOCOM 1's 0x5bc, four there)
-    unsigned char _75c[0x76c - 0x75c];
-    unsigned char m_weapon_kind;   // 0x76c: the kind 0x560540 reads off the body's weapon (the name ours)
-    unsigned char _76d[0x7c0 - 0x76d];
 };
 
 /* the network's controller: a SEAL another console drives (SOCOM 1's CRemoteCtrl : CSealCtrl;
@@ -561,6 +616,35 @@ public:
  * lane's) */
 #include "../zbody/zbody.h"
 
+/* a piece of gear a character wears (SOCOM 1's DWARF: CCharacterGear, 0x34 bytes; the made ones in
+ * zchar.h's CCharacterType::m_gear_list) */
+class CCharacterGear {
+public:
+    int m_ref_count;   // 0x0
+    int m_partid;   // 0x4
+    unsigned int m_gearid;   // 0x8
+    char *m_name;   // 0xc
+    char *m_model_file;   // 0x10
+    char *m_model_name;   // 0x14
+    void *m_model;   // 0x18
+    CPnt3D m_offset;   // 0x1c
+    CPnt3D m_rotation;   // 0x28
+};
+
+/* the SEAL's adrenaline: its level, 0 to 1 (only what the heartbeat reads; the names ours) */
+struct CAdrenaline {
+    float m_level;   // 0x0
+};
+
+/* how far a SEAL's aim strays, sideways and up, and the random part's scale (SOCOM 1's DWARF,
+ * 0xc bytes) */
+class CAccuracy {
+public:
+    float m_factorX;   // 0x0 (SOCOM 1's FactorX)
+    float m_factorY;   // 0x4 (FactorY)
+    float m_factor;   // 0x8 (Factor)
+};
+
 /* the SEAL (SOCOM 1's DWARF: CZSealBody : CEntity, CBody, 0x1140 bytes; SOCOM II's CBody base at
  * 0x170, after its 0x170-byte CEntity, the SEAL's own members from 0x200 -- the constructor at
  * 0x553EA0 builds the CBody at 0x170 and stores the second table there) -- only what the written
@@ -587,10 +671,15 @@ public:
     static const CCharacterType *PreCreateSeal(const CCharacterType *type, const char *name, zdb::CNode **node);
     /* every heartbeat loop stopped (SOCOM 1's; StopRumbler calls it with no body) */
     static void StopAllHeartbeatSounds();
+    /* the loops let go, and looked up (SOCOM 1's; OVL2 0x543AD0, 0x543B40) */
+    static void CloseHeartbeatSounds();
+    static void OpenHeartbeatSounds();
     /* the stance a state stands for, or the fallback (SOCOM 1's; the AI-states lane's 0x5FC910) */
     static SEAL_STANCE GetStanceFromState(SEAL_STATE state, SEAL_STANCE fallback);
     /* a body part made a gear's (SOCOM 1's; OVL2 0x58B040, seal_cfg.cpp) */
     void SetPartAsGear(CZBodyPart *part, class CCharacterGear *gear);
+    /* a gear by name, or none (SOCOM 1's; OVL2 0x59A730, seal_create.cpp: `this` unread) */
+    CCharacterGear *FindGear(const char *name);
     /* the animation set's limits on the sideways and forward motion (seal_cfg.cpp) */
     void GetMaxXMotion(float &a, float &b);
     void GetMaxZMotion(float &a, float &b);
@@ -634,6 +723,8 @@ public:
     static std::vector<class CZDecalDef> m_blooddriptexhandles;
     /* the database's handles let go (SOCOM 1's static; OVL2 0x5A3BB0) */
     static void UninitDatabaseHandles();
+    /* a weapon's event handed to every SEAL's controller (SOCOM 1's static callback; OVL2 0x5A4F80) */
+    static void HandleWeaponEvent(CZProjectile *proj, unsigned int event, void *data);
     void SetSnakePathUpdate(bool on, unsigned int length);
     void RestrainBuddy(CZSealBody *victim);
     void StabBuddy(CZSealBody *victim);
@@ -657,6 +748,9 @@ public:
     void SetRestrained(bool on) { m_restrained = on; }
     /* the squad-joined flag set (an inline: `(b & 1) << 6` even for a constant) */
     void SetJoinedUnit(bool on) { m_joined_unit = on; }
+    /* the gas and smoke flags set (inlines: a constant true is `daddiu 1 << n`) */
+    void SetInGas(bool on) { m_isingas = on; }
+    void SetInSmoke(bool on) { m_isinsmoke = on; }
     /* the stance's change taken, once (seal_body.cpp) */
     bool StanceChanged();
     /* whether an anim type is the blend on top (SOCOM 1's; OVL2 0x577E40, seal_anim.cpp) */
@@ -675,12 +769,37 @@ public:
     int CanClimbLadder();
     void HandleBombDefuse();
     void AttemptBombDefuse();
+    /* the MP bomb picked up (SOCOM 1's; OVL2 0x59DEF0) */
+    void HandlePickupMPBomb(CPickup *pickup);
+    /* the MP bomb made a pickup at a point (SOCOM 1's; OVL2 0x59DAB0, not written yet) and every
+     * item dropped (SOCOM 1's; OVL2 0x59DDB0) */
+    static class CPickup *CreateMPBombPickup(const CPnt3D *pos, bool b);
+    void DropAllItems();
     /* the regions entered: each new one's OnEnterRegion anim run (SOCOM 1's; OVL2 0x5A2F90) */
     void CheckForRegionTrigger(unsigned int regions);
+    /* the ground under a point found, the SEAL's own node off for it (SOCOM 1's; OVL2 0x5B4F30,
+     * seal_env.cpp), and the hits handled (SOCOM 1's SealProcessAltitude; OVL2 0x5B5D40) */
+    void SealGetAltitude(CPnt3D *pos, float f);
+    /* the SEAL's own AI event made where it stands (SOCOM 1's; OVL2 0x550E50, seal.cpp) */
+    void CreateAiEvent();
+    /* the SEAL's adrenaline, its level first (SOCOM 1's; OVL2 0x5781B0, seal_anim.cpp's last) */
+    struct CAdrenaline *Adrenaline();
+    /* the heartbeat's loop kept at the adrenaline's pace (SOCOM 1's; OVL2 0x5437D0, seal.cpp), and
+     * its statics: the three loops (OVL1 bss 0x44CE00), the one playing and its index (SOCOM 1's
+     * m_heartbeat_sndisnt and m_heartbeat_curindex, OVL1 bss 0x44CE10, 0x44CE18) */
+    void TickHeartbeat();
+    static class CSnd *m_heartbeat_sound[3];
+    static class CSndInstance *m_heartbeat_sndisnt;
+    static int m_heartbeat_curindex;
 
     unsigned char _200[0x214 - 0x200];
     float m_blooddriptimer;   // 0x214 (SOCOM 1's 0x170)
-    unsigned char _218[0x22c - 0x218];
+    unsigned char _218[0x21c - 0x218];
+    unsigned char m_21c_bit0 : 1;   // 0x21c
+    unsigned char m_altitude_characters : 1;   // bit 1: SealGetAltitude hits characters too (SOCOM 1's
+                                               // flag at 0xde8 bit 0; the name ours)
+    unsigned char _21c_bits : 6;
+    unsigned char _21d[0x22c - 0x21d];
     int m_22c;   // 0x22c: a time on the network's clock 0x5A8850 waits for (the names ours)
     unsigned char _230[0x240 - 0x230];
     float m_240;   // 0x240: PostCheckDILadder checks the ladder only from 0.03 up (the name ours)
@@ -694,7 +813,9 @@ public:
     void *m_select;   // 0x3b0: a TASK_SELECT (SOCOM 1's 0x318), the AI's tasks' argument
     unsigned char _3b4[0x400 - 0x3b4];
     zdb::IntersectStruct m_last_altitude;   // 0x400 (SOCOM 1's 0x320)
-    unsigned char _420[0x434 - 0x420];
+    unsigned char _420[0x428 - 0x420];
+    CAiEvent *m_aiEvent;   // 0x428: the SEAL's own AI event (SOCOM 1's 0x380)
+    unsigned char _42c[0x434 - 0x42c];
     unsigned char m_snakePath[4];   // 0x434: a CAiPath (SOCOM 1's 0x384)
     unsigned char _438[0x528 - 0x438];
     class AnimSet *m_animset;   // 0x528 (SOCOM 1's 0x45c)
@@ -704,9 +825,12 @@ public:
     unsigned short m_5b0;   // 0x5b0: two of the stats' counters (the CQB attack adds 2 and 1; the
     unsigned char _5b2[0x5b8 - 0x5b2];   //  names ours)
     unsigned short m_5b8;   // 0x5b8
-    unsigned char _5ba[0x5e0 - 0x5ba];
+    unsigned char _5ba[0x5d4 - 0x5ba];
+    CAccuracy m_accuracy;   // 0x5d4 (SOCOM 1's 0x514: PerturbAimVector reads it)
     CZKit m_kit;   // 0x5e0 (SOCOM 1's 0x520)
-    unsigned char _5e4[0xeb8 - 0x5e4];
+    unsigned char _5e4[0xeb0 - 0x5e4];
+    struct CAdrenaline *m_adrenaline;   // 0xeb0 (SOCOM 1's 0xdac: Adrenaline returns it)
+    unsigned char _eb4[0xeb8 - 0xeb4];
     int m_eb8;   // 0xeb8: 0x5A8850 tests it first (the name ours)
     unsigned char _ebc[0xec0 - 0xebc];
     CCompassAnchor *m_mpbomb_anchor;   // 0xec0 (SOCOM 1's 0xdb4)

@@ -9934,10 +9934,10 @@
 0x00543480 0x2C func_00543480  # OVL2
 0x005434B0 0x1D0 func_005434B0  # OVL2
 0x00543680 0x150 func_00543680  # OVL2
-0x005437D0 0x160 func_005437D0  # OVL2
+0x005437D0 0x160 TickHeartbeat__10CZSealBodyFv  # OVL2; s1:calls (SOCOM 1's TickHeartbeat__10CZSealBodyFv: Adrenaline's level into three bands at 0.33 and 0.66, the playing loop stopped and released and the band's loop played (CSnd slot 0xC with 0, 255) when the band changes, or one started when none plays -- SOCOM II tests the loop for null; first of the heartbeat stretch as SOCOM 1's) -- the SEAL lane, round 7
 0x00543930 0x150 func_00543930  # OVL2
 0x00543A80 0x4C StopAllHeartbeatSounds__10CZSealBodyFv  # OVL2; s1:calls (StopRumbler calls it where SOCOM 1's does; two Stop/ReleaseSoundInstance pairs as SOCOM 1's)
-0x00543AD0 0x64 func_00543AD0  # OVL2
+0x00543AD0 0x64 CloseHeartbeatSounds__10CZSealBodyFv  # OVL2; s1:order by hand (SOCOM 1's CloseHeartbeatSounds__10CZSealBodyFv: StopAllHeartbeatSounds' body inlined, then the three loops at 0x44CE00 zeroed; between StopAllHeartbeatSounds and OpenHeartbeatSounds in both builds) -- the SEAL lane, round 7
 0x00543B40 0x50 OpenHeartbeatSounds__10CZSealBodyFv  # OVL2; tu: seal.cpp~ (1.0 beta); s1:exact
 0x00543B90 0x1A4 func_00543B90  # OVL2
 0x00543D40 0x8 func_00543D40  # OVL2; s1~ SetAiNetState__9CSealCtrlFUi (one of 2 out-of-line copies of an inline, by s1:vtable)
@@ -10037,7 +10037,7 @@
 0x00550570 0x124 PostTick__10CZSealBodyFf  # OVL2; slot 0x24 of __vt__10CZSealBody (CEntity's PostTick slot, as PostTickAll calls it)
 0x005506A0 0x3D4 PrePostTick__10CZSealBodyFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); slot 0x20 of __vt__10CZSealBody, which SOCOM II's CEntity table and ent_main.cpp's matched PrePostTickAll make PrePostTick (s1:vtable had given it PostTick by code likeness: SOCOM II moved SOCOM 1's PostTick body here)
 0x00550A80 0x3D0 func_00550A80  # OVL2
-0x00550E50 0x98 func_00550E50  # OVL2; tu: seal.cpp~ (1.0 beta)
+0x00550E50 0x98 CreateAiEvent__10CZSealBodyFv  # OVL2; tu: seal.cpp~ (1.0 beta); s1:calls (SOCOM 1's CreateAiEvent__10CZSealBodyFv: CAiEvent::Acquire then Create, the type 3, NoExpire, the range 1e-4 and the owner stored as SOCOM 1's -- SOCOM II reads the position off the entity where SOCOM 1 called GetPosW; the event pointer at 0x428, SOCOM 1's 0x380) -- the SEAL lane, round 7
 0x00550EF0 0xFCC Tick__10CZSealBodyFf  # OVL2; slot 0x18 of __vt__10CZSealBody (CEntity's Tick slot); calls CreateMPBombPickup first, as SOCOM 1's Tick
 0x00551EC0 0x8BC PreTick__10CZSealBodyFf  # OVL2; slot 0x14 of __vt__10CZSealBody (CEntity's PreTick slot)
 0x00552780 0xD0 func_00552780  # OVL2
@@ -10310,8 +10310,8 @@
 0x00573D20 0x134 Initalize__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00573E60 0xB8 __dt__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00573F20 0x58 func_00573F20  # OVL2
-0x00573F80 0x70 func_00573F80  # OVL2
-0x00573FF0 0x88 func_00573FF0  # OVL2
+0x00573F80 0x70 __dt__8CAiEventFv  # OVL2; the implicit destructor of CAiEvent (ai.h): ~CSealCtrlAi (0x573E60) calls it on SEAL_AI_PARAMS's +0x3D8, where SEAL_AI_PARAMS's constructor (0x60BF40) runs __ct__8CAiEventFv; its body is CBits' inline destructor on m_bits at +0x20 (_free(m_vec, 0, 0), m_vec zeroed, behind the member's this-test); the second of the three copies after ~CSealCtrlAi, in reverse first use (the SEAL lane, round 7)
+0x00573FF0 0x88 __dt__9CAiEventQFv  # OVL2; the implicit destructor of CAiEventQ (ai.h, : list<CAiEventHandle>): ~CSealCtrlAi calls it first, on SEAL_AI_PARAMS's +0x400 (SOCOM 1's m_eventQueue follows m_event as here), which 0x60C170 builds; four this-tests (CAiEventQ, list, __list_imp, __list_deleter) then the CAiEventHandle deleter's erase (0x50FBD0) over the whole list (the SEAL lane, round 7)
 0x00574080 0x340 __ct__11CSealCtrlAiFv  # OVL2; s1:calls (ftsCreateSeal's AI branch, where SOCOM 1's calls __ct__11CSealCtrlAiFv; ftsCreateSeal byte-exact with it) -- the states lane
 0x005743C0 0x364 func_005743C0  # OVL2
 0x00574730 0xC4 get_valve__11CSealCtrlAiFPCc  # OVL2; s1:order (after the constructor, as SOCOM 1's get_valve__11CSealCtrlAiFPCc: each valve's name, the inlined get_valve(SEAL_VALVE), compared with strcmp, its index returned; 4 for none) -- the SEAL lane, round 4
@@ -10379,7 +10379,7 @@
 0x005780E0 0x28 func_005780E0  # OVL2
 0x00578110 0x40 func_00578110  # OVL2
 0x00578150 0x58 AdrenalineIncr__10CZSealBodyFf  # OVL2; s1:calls (CZKit::InitializeSniperKick tail-calls it with a float, as SOCOM 1's; 0x58 bytes in both) -- the kit lane
-0x005781B0 0x8 func_005781B0  # OVL2
+0x005781B0 0x8 Adrenaline__10CZSealBodyFv  # OVL2; s1:order by hand (SOCOM 1's Adrenaline__10CZSealBodyFv: one load and return, the member at 0xEB0 where SOCOM 1's read 0xDAC; seal_anim.cpp's last function in both builds; TickHeartbeat calls it first, as SOCOM 1's) -- the SEAL lane, round 7
 0x005781C0 0x2D4 func_005781C0  # OVL2
 0x005784A0 0x41C func_005784A0  # OVL2
 0x005788C0 0x18 func_005788C0  # OVL2
@@ -10690,7 +10690,7 @@
 0x0059A700 0x8 func_0059A700  # OVL2
 0x0059A710 0x8 func_0059A710  # OVL2
 0x0059A720 0xC func_0059A720  # OVL2
-0x0059A730 0xB8 func_0059A730  # OVL2
+0x0059A730 0xB8 FindGear__10CZSealBodyFPCc  # OVL2; s1:order by hand (SOCOM 1's FindGear__10CZSealBodyFPCc: this unread, the gear whose name at +0xC strcmps equal, else 0 -- SOCOM 1's walked m_gear_list__14CCharacterType, a list 0x20 after m_char_list; SOCOM II's walks the pointer vector at the same 0x20 on, 0x44CD68; after the iterator copies, before PreCreateSeal, as SOCOM 1's sits right before PreCreateSeal; seal_cfg.cpp's 0x58B0F0 calls it three times with this and a name) -- the SEAL lane, round 7
 0x0059A7F0 0xF0 PreCreateSeal__10CZSealBodyFPC14CCharacterTypePCcPPQ23zdb5CNode  # OVL2; s1:order (after FindGear's tail); Create calls it first, as SOCOM 1's (the character's Acquire, CreateInstance, SetDynamic, CreateLODs); SOCOM 1's signature, unproven
 0x0059A8E0 0x178 func_0059A8E0  # OVL2
 0x0059AA60 0xC8 func_0059AA60  # OVL2
@@ -10719,7 +10719,7 @@
 0x0059DCE0 0x48 func_0059DCE0  # OVL2
 0x0059DD30 0x78 DropMPBomb__10CZSealBodyFv  # OVL2; s1:calls
 0x0059DDB0 0x140 DropAllItems__10CZSealBodyFv  # OVL2; s1:calls
-0x0059DEF0 0x68 func_0059DEF0  # OVL2
+0x0059DEF0 0x68 HandlePickupMPBomb__10CZSealBodyFP7CPickup  # OVL2; s1:order by hand (SOCOM 1's HandlePickupMPBomb__10CZSealBodyFP7CPickup: RequestNewBombState(m_id, 2, zero point) as SOCOM 1's 0x30 bytes, SOCOM II adding a game-mode-1 test through 0x2C31D0; between DropAllItems and EnableMPBombGear, SOCOM 1's between RemoteDropMPBomb and EnableMPBombGear) -- the SEAL lane, round 7
 0x0059DF60 0x50 EnableMPBombGear__10CZSealBodyFb  # OVL2; s1:calls
 0x0059DFB0 0x5C4 func_0059DFB0  # OVL2
 0x0059E580 0x2B0 func_0059E580  # OVL2
@@ -10746,7 +10746,7 @@
 0x005A1620 0x284 func_005A1620  # OVL2
 0x005A18B0 0x2C0 func_005A18B0  # OVL2
 0x005A1B70 0x10 RemoteWeaponDamageNonVictim__10CZSealBodyF15DAMAGE_LOCATIONP10CZSealBodyP10CZSealBodyUcb  # OVL2; s1:exact
-0x005A1B80 0x44C func_005A1B80  # OVL2
+0x005A1B80 0x44C RemoteWeaponDamageVictim__10CZSealBodyF15DAMAGE_LOCATIONffP10CZSealBodyP10CZSealBodyUcb  # OVL2; s1:callee by hand (the states lane's lead, vetted: RemoteWeaponDamageNonVictim, s1:exact at 0x5A1B70, is `mtc1 zero; j 0x5A1B80; mov.s` in both builds, SOCOM 1's j targeting RemoteWeaponDamageVictim, the next function there as here; the prologue keeps SOCOM 1's parameters -- a0 this, a1 the location, f12/f13 two floats, a2/a3 two seals, t0 a byte, t1 a bool; HitPacketHandler calls it) -- the SEAL lane, round 7
 0x005A1FD0 0x1C func_005A1FD0  # OVL2
 0x005A1FF0 0x1B4 func_005A1FF0  # OVL2
 0x005A21B0 0x1DC func_005A21B0  # OVL2
@@ -10898,7 +10898,7 @@
 0x005B3CE0 0x660 CanTraverse__10CZSealBodyF7CDIType  # OVL2; s1:callee
 0x005B4340 0x7FC func_005B4340  # OVL2
 0x005B4B40 0x3F0 func_005B4B40  # OVL2
-0x005B4F30 0x120 func_005B4F30  # OVL2
+0x005B4F30 0x120 SealGetAltitude__10CZSealBodyFP6CPnt3Df  # OVL2; s1:calls (SOCOM 1's SealGetAltitude__10CZSealBodyFP6CPnt3Df: the world's altitude query with the SEAL's node deactivated (CNode slot 0x38 here, 0x34 there) and the query's character flag set from the SEAL's bit, both restored, then SealProcessAltitude (0x5B5D40) with the point and the float; SOCOM II passes no height to GetAltitudes) -- the SEAL lane, round 7
 0x005B5050 0x260 func_005B5050  # OVL2
 0x005B52B0 0x404 func_005B52B0  # OVL2
 0x005B56C0 0x674 func_005B56C0  # OVL2

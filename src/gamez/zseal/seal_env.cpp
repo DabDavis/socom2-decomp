@@ -401,10 +401,29 @@ extern void *data_0044D548;
 extern int data_0044D508;
 extern int data_0044D510;
 extern int data_0044D518;
-/* CZSealBody::HandleWeaponEvent, the callback InitDatabaseHandles registers (SOCOM 1's
- * HandleWeaponEvent__10CZSealBodyFP12CZProjectileUiPv, the one UninitDatabaseHandles removes; OVL2
- * 0x5A4F80) */
-void func_005A4F80(CZProjectile *proj, unsigned int event, void *data);
+}
+
+/* an entity that is a SEAL (kind 2), or none (the inline cast the walk shows) */
+static inline CZSealBody *AsSeal(CEntity *e)
+{
+    return e && e->m_type == (CEntity::TYPE)2 ? (CZSealBody *)e : 0;
+}
+
+/* a weapon's event handed to every SEAL's controller (OVL2 0x5A4F80; SOCOM 1's
+ * HandleWeaponEvent__10CZSealBodyFP12CZProjectileUiPv, the callback InitDatabaseHandles registers
+ * and UninitDatabaseHandles removes): the entities walked through a const reference, the iterator
+ * assigned from begin() -- the target's four copies -- and end() rebuilt each pass */
+void CZSealBody::HandleWeaponEvent(CZProjectile *proj, unsigned int event, void *data)
+{
+    const CEntityList &list = CEntity::m_list;
+    CEntityList::const_iterator i;
+
+    for (i = list.begin(); i != list.end(); ++i) {
+        CZSealBody *seal = AsSeal(*i);
+
+        if (seal)
+            ((CSealCtrl *)seal->m_control)->OnWeaponEvent(proj, event, data);
+    }
 }
 
 /* a 12-byte vector temporary (the class vector's three words) */
@@ -433,7 +452,7 @@ void CZSealBody::UninitDatabaseHandles()
     if (data_0044D548)
         _free(data_0044D548, 0, 0);
     data_0044D548 = 0;
-    CZWeapon::RemoveWeaponEventCallback(func_005A4F80);
+    CZWeapon::RemoveWeaponEventCallback(HandleWeaponEvent);
 }
 
 /* six values run down at their rates, none below zero (OVL2 0x5AC620, new in SOCOM II: the arrays at
@@ -578,6 +597,72 @@ void CZSealBody::AttemptBombDefuse()
     CPnt3D pos(0.0f, 0.0f, 0.0f);
 
     CZBombState::RequestNewBombState(m_id, CZBombState::BOMB_STATE_DEFUSING, &pos);
+}
+
+extern "C" {
+extern CNetGameState *data_00437CE8;
+/* (OVL1, unowned: a test of a SEAL against the game, both builds' net code; seal.cpp's too) */
+int func_002C31D0(const CZSealBody *seal);
+}
+
+/* the MP bomb picked up: the bomb told it is carried -- in game mode 1 only by a SEAL the test
+ * passes (OVL2 0x59DEF0; SOCOM 1's HandlePickupMPBomb by its place before EnableMPBombGear and its
+ * body, without the test) */
+void CZSealBody::HandlePickupMPBomb(CPickup *pickup)
+{
+    if (data_00437CE8->m_mode == 1 && !func_002C31D0(this))
+        return;
+    CPnt3D pos(0.0f, 0.0f, 0.0f);
+
+    CZBombState::RequestNewBombState(m_id, (CZBombState::EnumBombState)2, &pos);
+}
+
+extern "C" {
+/* the kit's item at an index let go (OVL2 0x5B9BB0, the kit lane's), the ground under a point
+ * within a depth (OVL1 0x2A2EB0), a weapon readied (OVL2 0x57D540, seal_body.cpp's) and the item it
+ * takes (OVL1 data 0x3DEB48, a short) */
+void func_005B9BB0(CZKit *kit, int index);
+zdb::IntersectStruct *func_002A2EB0(const CPnt3D *p, float depth, int chars);
+void func_0057D540(CZSealBody *seal, short item, int x);
+extern short data_003DEB48;
+}
+
+/* the controller's HUD weapon flag set (an inline: a constant true is `daddiu 16`) */
+static inline void SetHudUpdateWeapon(CSealCtrl *ctrl, bool on)
+{
+    ctrl->m_HudUpdateWeapon = on;
+}
+
+/* everything dropped: the MP bomb out of the kit and made a pickup on the ground under the SEAL, the
+ * satchel gear hidden, a local SEAL's weapon readied again, the HUD told (OVL2 0x59DDB0; SOCOM 1's).
+ * The point copied field by field, its height through a reference (the target keeps &pos.y in a
+ * saved register); a copy construction loads all three first */
+void CZSealBody::DropAllItems()
+{
+    int i = m_kit.GetItemIndex((EQUIP_ITEM)154);
+
+    if (i != -1)
+        func_005B9BB0(&m_kit, i);
+    CPnt3D pos;
+    float &y = pos.y;
+
+    pos.x = m_posW.x;
+    pos.y = m_posW.y;
+    pos.z = m_posW.z;
+
+    y += 1.0f;
+    zdb::IntersectStruct *hit = func_002A2EB0(&pos, 8.0f, 1);
+
+    if (hit)
+        y = hit->m_pos.y;
+    CreateMPBombPickup(&pos, false);
+    zdb::CNode *gear = FindAuxNode("Satchel", false);
+
+    if (gear)
+        gear->SetActive(false);
+    if (!IsRemote())
+        func_0057D540(this, data_003DEB48, 0);
+    SetHudUpdateWeapon((CSealCtrl *)m_control, true);
 }
 
 /* the bomb's defusal handled: nothing, in both builds (OVL2 0x59DA70; SOCOM 1's, 8 bytes) */
@@ -733,4 +818,63 @@ extern "C" bool func_0059D6C0(CZSealBody *seal, CLadderData *ladder)
     if (!ladder || seal->m_ladder == data_003F3438)
         return false;
     return theMission.m_ladders->GetLadderByIndex(seal->m_ladder) == ladder;
+}
+
+/* a hit's stun, by the item that hit (SOCOM 1's HandleStunFromHit by its place before
+ * HandleStunDamage and its tests of items 122, 123, 125 and 127; OVL2 0x5A5250, not written yet:
+ * SOCOM II's takes two more arguments) */
+extern "C" void func_005A5250(CZSealBody *seal, int item, const CPnt3D *from, int x);
+
+/* in tear gas (item 125): its stun taken and the flag set (OVL2 0x5A0B60; 0x5B5050 calls it) */
+extern "C" void func_005A0B60(CZSealBody *seal)
+{
+    func_005A5250(seal, 125, 0, 0);
+    seal->SetInGas(true);
+}
+
+/* in smoke (item 122): the same with the smoke flag (OVL2 0x5A0BB0; 0x5B5050 calls it) */
+extern "C" void func_005A0BB0(CZSealBody *seal)
+{
+    func_005A5250(seal, 122, 0, 0);
+    seal->SetInSmoke(true);
+}
+
+/* the hits under a point handled (SOCOM 1's SealProcessAltitude; OVL2 0x5B5D40, not written yet) */
+extern "C" void func_005B5D40(CZSealBody *seal, zdb::DiIntersect *di, CPnt3D *pos, float f);
+/* zdb::CWorld::GetAltitudes (OVL1 0x31DEA0): SOCOM II's takes no height -- none of its five callers
+ * sets $f12 -- where znode.h declares SOCOM 1's (p, alt); called by its address until the zdb lane
+ * drops the float */
+extern "C" zdb::DiIntersect *func_0031DEA0(zdb::CWorld *world, const CPnt3D *p);
+
+/* the inline setter of the altitude query's character flag (the stores `(b & 1) << 1`) */
+static inline void SetAltitudeCharacters(zdb::DiIntersect *di, bool on)
+{
+    di->m_AltitudeCharacters = on;
+}
+
+/* the ground under a point: the SEAL's node switched off for the query, characters hit when the
+ * SEAL asks, both restored after, the hits handled (OVL2 0x5B4F30; SOCOM 1's, which asked for
+ * 10000 units down -- SOCOM II's GetAltitudes takes no height). The declarations' order is
+ * tools/perm.py's: every local declared first, uninitialised, the hits apart from the world */
+void CZSealBody::SealGetAltitude(CPnt3D *pos, float f)
+{
+    zdb::CNode *node;
+    zdb::CWorld *world;
+    zdb::DiIntersect *hits;
+    bool active;
+    zdb::DiIntersect *di;
+    bool chars;
+
+    world = zdb::CWorld::m_world;
+    node = GetNode();
+    active = node->m_active;
+    node->SetActive(false);
+    di = world->m_diInt;
+    chars = di->m_AltitudeCharacters;
+    if (m_altitude_characters)
+        SetAltitudeCharacters(di, true);
+    hits = func_0031DEA0(world, pos);
+    SetAltitudeCharacters(di, chars);
+    node->SetActive(active);
+    func_005B5D40(this, hits, pos, f);
 }
