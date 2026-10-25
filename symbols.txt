@@ -2074,9 +2074,9 @@
 0x0022A290 0x614 func_0022A290  # OVL1
 0x0022A8B0 0x2C8 Draw__Q228@unnamed@hud_scorepopup_cpp@11CScorePopupFPQ23zdb7CCamera  # OVL1; s1:vtable by hand (the HUD lane: slot 1 of CScorePopup's vtable 0x405990, its RTTI's name; SOCOM 1's 0x421760 draws the same teams' and box's objects behind g_bOn)
 0x0022AB80 0xA4 Draw__Q228@unnamed@hud_scorepopup_cpp@10CHudPopupsFPQ23zdb7CCamera  # OVL1; by hand (the HUD lane: slot 1 of the vtable 0x405A08, whose RTTI names @unnamed@hud_scorepopup_cpp@::CHudPopups)
-0x0022AC30 0x254 func_0022AC30  # OVL1
-0x0022AE90 0x4C4 func_0022AE90  # OVL1
-0x0022B360 0x140 func_0022B360  # OVL1
+0x0022AC30 0x254 SetupSpectatorBox__28@unnamed@hud_scorepopup_cpp@Fv  # OVL1; ours by hand (the HUD lane: hud_scorepopup.cpp's -- lays out the spectators' box under the pop-up: the title bar, "SPECTATORS", the box and eight name lines; called once by 0x22CC10 after SetupBackgroundBox; in the unnamed namespace as its neighbour SetupBackgroundBox is in SOCOM 1)
+0x0022AE90 0x4C4 SetupBackgroundBox__28@unnamed@hud_scorepopup_cpp@Fv  # OVL1; s1:order by hand (the HUD lane: hud_scorepopup.cpp -- SOCOM 1's SetupBackgroundBox at the same place, between Draw and the hudTurnOffScorePopup group; the same nine pieces loaded and UV'd from one texture, plus SOCOM II's local static bottom and sixteen bitmaps)
+0x0022B360 0x140 GetTagIPNT2D__FPC5_zrdrPCc  # OVL1; ours by hand (the HUD lane: hud_scorepopup.cpp's -- a tag's first two numbers as integers through zrdr.h's Item/Int, returned by value; called twice by 0x22D660, the message loader; byte-exact)
 0x0022B4A0 0x628 func_0022B4A0  # OVL1
 0x0022BAD0 0x60 func_0022BAD0  # OVL1
 0x0022BB30 0x10C hudTurnOffScorePopup__Fv  # OVL1; s1:calls by hand (CHUD::ReInit_Uninit's call right after CZPlayerMapItem::MissionEndCleanup, as SOCOM 1's; the same shape: a flag byte cleared, then two loops wiping string arrays, 45 entries where SOCOM 1 had 27)
