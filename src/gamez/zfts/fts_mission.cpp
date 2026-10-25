@@ -158,12 +158,14 @@ extern "C" void ClearFreeList__14CSched_ManagerFb(CSched_Manager *sched, bool al
 extern "C" bool AddTask__14CSched_ManagerFPCcPFfPv_bfPv(CSched_Manager *sched, const char *name,
                                                          bool (*func)(float dT, void *data), float priority, void *data);
 
+/* the mission completed (SOCOM 1's name, at its call; OVL1 0x2AA910, not written yet) */
+void _OnMissionComplete();
+
 extern "C" {
 void Flash__4CHUDFfRC6CPnt3Dfff(CHUD *hud, float time, const CPnt3D *colour, float in, float hold, float out);
 void Reset__14CFlashFXVectorFv(void *flashes);
 void ResetDeathCam__10CAppCameraFv(void *camera);
 void Push__5CGameFP10CGameStateUi(void *game, void *state, unsigned int arg);
-void func_002AA910();                                   /* _OnMissionComplete (SOCOM 1's name, at its call) */
 void func_003AFD50(int a0, int a1, int a2, int a3, int a4);   /* (the screen cleared: SOCOM 1's CVideo::Clear) */
 extern void *appCamera;
 extern unsigned char theGame[];
@@ -190,7 +192,7 @@ bool CMission::FadeToEndMissionTick(float dT)
             } else {
                 SetDelayEndMission(false);
                 if (!m_DelayEndMission) {
-                    func_002AA910();
+                    _OnMissionComplete();
                     func_003AFD50(1, 0, 0, 0, 0);
                     Reset__14CFlashFXVectorFv(theHUD->m_flashes);
                     theMission.SetDelayEndMission(false);
