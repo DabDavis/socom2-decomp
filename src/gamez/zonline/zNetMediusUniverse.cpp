@@ -492,7 +492,13 @@ extern "C" void func_0033EEA0(CLobbySaveModule &module, const char *blob, int si
 /* --- the lobby's blob (CLobbySaveModule) and the profile file (CSaveModule) ------------------ */
 
 /* the current account's missions' equipment written as the lobby's blob: a count byte, then the
- * named entries as they are */
+ * named entries as they are.
+ * OPEN, 4 instructions: two pairs of argument moves come out in parameter order where the target
+ * has them the other way round -- _malloc(total, 0, 0)'s `move a0,s1` ahead of `move a1,zero`, and
+ * memcpy(out, ...)'s `move a0,s3` ahead of the source's `addiu a1` (the target loads the plain
+ * variable last both times). No change from: total unsigned, total assigned after its declaration,
+ * no total (the size + 1 then lands in a0 straight), blob and out declared apart, a char * cursor,
+ * `r->m_missions + i`, memcpy(out++, ...) */
 void CAcctDB::Save()
 {
     CURRENT_ACCOUNT();
@@ -891,7 +897,7 @@ void CAcctDB::Add(const char *host, int port, const char *name, const char *pass
         if (sum)
             for (; j < 0x10 && (unsigned int)j < sum->Count(); j++)
                 r->m_checksum[j] = sum->Item(j)->Int();
-        for (unsigned int k = 0; k < info->Count(); k++) {
+        for (int k = 0; k < info->Count(); k++) {
             _zrdr *entry = info->Item(k);
 
             if (entry) {
