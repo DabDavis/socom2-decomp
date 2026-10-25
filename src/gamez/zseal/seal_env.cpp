@@ -55,6 +55,120 @@ extern float data_0044C2DC;
 extern float data_0044C2E0;
 }
 
+/* where a hit lands (SOCOM 1's DAMAGE_LOCATION, a byte: only the name matters here) */
+enum DAMAGE_LOCATION { DAMAGE_LOCATION_0 = 0, DAMAGE_LOCATION_LAST = 255 };
+
+/* a SEAL's animations (SOCOM 1's DWARF: AnimSet) -- only its readers of the damage animations,
+ * static: each reads a location's block, its STAND, CROUCH and PRONE lists */
+class AnimSet {
+public:
+    static void ReadFlinchAnimations(_zrdr *rdr, const char *name, DAMAGE_LOCATION loc);
+    static void ReadDeathAnimations(_zrdr *rdr, const char *name, DAMAGE_LOCATION loc);
+    static void ReadTeammateDeathAnimations(_zrdr *rdr, const char *name, DAMAGE_LOCATION loc);
+};
+
+/* an array's item by an unsigned index (zrdr.h's Item, which this unit cannot include beside
+ * zanim.h's _zrdr: the index unsigned keeps MW from strength-reducing an int counter's walk) */
+static inline _zrdr *ItemAt(_zrdr *a, unsigned int i)
+{
+    return i < a->Count() ? &a->array[i] : 0;
+}
+
+extern "C" {
+/* one animation of a list read into the location's and the state's tables: a flinch, a death, a
+ * teammate's death (OVL2 0x5A3D30, 0x5A3E90, 0x5A3FF0; SOCOM 1's readers did it inline) */
+void func_005A3D30(_zrdr *anim, int state, DAMAGE_LOCATION loc);
+void func_005A3E90(_zrdr *anim, int state, DAMAGE_LOCATION loc);
+void func_005A3FF0(_zrdr *anim, int state, DAMAGE_LOCATION loc);
+}
+
+/* a location's teammate deaths: each list's animations by stance (OVL2 0x5A44F0; SOCOM 1's, the
+ * reading of each one moved into a helper). The three readers differ only in their helper and in
+ * where each stance's counter is declared: MW gives the later-declared of a list, its count and
+ * its counter the lower saved register, and the target's registers rotate from stance to stance
+ * (the flinches' prone loop declares its counter in the for, the deaths' before the count) */
+void AnimSet::ReadTeammateDeathAnimations(_zrdr *rdr, const char *name, DAMAGE_LOCATION loc)
+{
+    _zrdr *block;
+
+    if ((block = func_0032F0D0(rdr, name)) == 0)
+        return;
+    int i;
+    int n;
+    _zrdr *stand = func_0032F0D0(block, "STAND");
+
+    n = stand->Count();
+    for (i = 0; i < n; i++)
+        func_005A3FF0(ItemAt(stand, i), stateStand, loc);
+    _zrdr *crouch = func_0032F0D0(block, "CROUCH");
+    int j;
+    int nc = crouch->Count();
+
+    for (j = 0; j < nc; j++)
+        func_005A3FF0(ItemAt(crouch, j), stateCrouch, loc);
+    _zrdr *prone = func_0032F0D0(block, "PRONE");
+    int k;
+    int np = prone->Count();
+
+    for (k = 0; k < np; k++)
+        func_005A3FF0(ItemAt(prone, k), stateProne, loc);
+}
+
+/* a location's deaths (OVL2 0x5A4320; SOCOM 1's, as the teammates') */
+void AnimSet::ReadDeathAnimations(_zrdr *rdr, const char *name, DAMAGE_LOCATION loc)
+{
+    _zrdr *block;
+
+    if ((block = func_0032F0D0(rdr, name)) == 0)
+        return;
+    int i;
+    int n;
+    _zrdr *stand = func_0032F0D0(block, "STAND");
+
+    n = stand->Count();
+    for (i = 0; i < n; i++)
+        func_005A3E90(ItemAt(stand, i), stateStand, loc);
+    _zrdr *crouch = func_0032F0D0(block, "CROUCH");
+    int j;
+    int nc = crouch->Count();
+
+    for (j = 0; j < nc; j++)
+        func_005A3E90(ItemAt(crouch, j), stateCrouch, loc);
+    _zrdr *prone = func_0032F0D0(block, "PRONE");
+    int k;
+    int np = prone->Count();
+
+    for (k = 0; k < np; k++)
+        func_005A3E90(ItemAt(prone, k), stateProne, loc);
+}
+
+/* a location's flinches (OVL2 0x5A4150; SOCOM 1's, as the teammates') */
+void AnimSet::ReadFlinchAnimations(_zrdr *rdr, const char *name, DAMAGE_LOCATION loc)
+{
+    _zrdr *block;
+
+    if ((block = func_0032F0D0(rdr, name)) == 0)
+        return;
+    int i;
+    int n;
+    _zrdr *stand = func_0032F0D0(block, "STAND");
+
+    n = stand->Count();
+    for (i = 0; i < n; i++)
+        func_005A3D30(ItemAt(stand, i), stateStand, loc);
+    _zrdr *crouch = func_0032F0D0(block, "CROUCH");
+    int j;
+    int nc = crouch->Count();
+
+    for (j = 0; j < nc; j++)
+        func_005A3D30(ItemAt(crouch, j), stateCrouch, loc);
+    _zrdr *prone = func_0032F0D0(block, "PRONE");
+    int np = prone->Count();
+
+    for (int k = 0; k < np; k++)
+        func_005A3D30(ItemAt(prone, k), stateProne, loc);
+}
+
 /* the regions the SEAL stands in: on a change each region's OnEnterRegion anim run, region 0's
  * when it is in none (OVL2 0x5A2F90; SOCOM 1's word for word) */
 void CZSealBody::CheckForRegionTrigger(unsigned int regions)
