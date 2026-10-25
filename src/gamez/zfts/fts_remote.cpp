@@ -551,7 +551,11 @@ extern "C" void func_005A1B80(CZSealBody *body, DAMAGE_LOCATION where, CZSealBod
  * and t1 where the target -- a member call, `this` loaded last -- sets it after them. Tried: the
  * test as a switch inline (cases 2, 1 and 1, 2), `if (m == 1 || m == 2) return true;`, two early
  * returns, bool locals for each compare (`one || two` folds into the range test, `sltiu`), and
- * the plain `||` (folds too). The member call waits on 0x5A1B80's name (OVL2, the SEAL lane's) */
+ * the plain `||` (folds too). 0x5A1B80 is SOCOM 1's RemoteWeaponDamageVictim(DAMAGE_LOCATION,
+ * float, float, CZSealBody *, CZSealBody *, unsigned char, bool) (right after NonVictim in both
+ * builds, the same registers): measured with the row renamed and the member called, the call's
+ * moves match and 13 differ (the mode test's and the bitfield's registers). The member call waits
+ * on that OVL2 row's name (the SEAL lane's) */
 /* whether the mission's mode takes no hits (the name ours: the handler's test materialised) */
 inline bool NoHitMode()
 {
