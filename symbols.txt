@@ -7245,7 +7245,7 @@
 0x0038B170 0x8 UpdateUIVar__11SystemTunerFP11CUIVariable  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0038B180 0xCC func_0038B180  # OVL1
 0x0038B250 0x44 SetButtonState__Q221@unnamed@zui_skb_cpp@12CSkbKeyPropsFM9C2DButtonFPCvPv_v  # OVL1; s1:exact
-0x0038B2A0 0xF0 func_0038B2A0  # OVL1
+0x0038B2A0 0xF0 GetCurKeyProps__Q221@unnamed@zui_skb_cpp@13CSoftKeyboardFv  # OVL1; ours, by its body (FindKeyProps of the cursor's key: SOCOM 1's GetCurKey's grid test and null-key static inlined, the map at 0x164 searched, the found node's second) -- zui_skb.cpp
 0x0038B390 0xA8 func_0038B390  # OVL1
 0x0038B440 0xF0 func_0038B440  # OVL1
 0x0038B530 0x8 func_0038B530  # OVL1
@@ -7271,14 +7271,14 @@
 0x0038C630 0x358 func_0038C630  # OVL1
 0x0038C990 0x1F0 func_0038C990  # OVL1
 0x0038CB80 0x8 func_0038CB80  # OVL1
-0x0038CB90 0xB8 func_0038CB90  # OVL1
+0x0038CB90 0xB8 GetCurKey__Q221@unnamed@zui_skb_cpp@13CSoftKeyboardCFv  # OVL1; s1:calls by hand (SOCOM 1's GetCurKey 0x3A6150: the grid positions g_iSkbGridPosX/Y, the shared null-key static, the row's bounds; SOCOM II's keys 4 bytes, the grid at 0x158) -- zui_skb.cpp
 0x0038CC50 0x44 FindKeyProps__Q221@unnamed@zui_skb_cpp@13CSoftKeyboardFRCQ221@unnamed@zui_skb_cpp@7CSkbKey  # OVL1; s1:exact by hand (the MSL headers' round 3: SOCOM 1's FindKeyProps 0x3A6280 instruction for instruction, the key map at 0x164 where SOCOM 1's is at 0x2C; find<CSkbKey> then the found node's value at +16, else 0; byte-exact in zui_skb.cpp)
 0x0038CCA0 0x48C func_0038CCA0  # OVL1
 0x0038D130 0x68 func_0038D130  # OVL1
-0x0038D1A0 0x60 func_0038D1A0  # OVL1
+0x0038D1A0 0x60 __dt__Q221@unnamed@zui_skb_cpp@11CSkbCapLookFv  # OVL1; by hand (the 0x24-byte element's implicit destructor: the string at 8; __construct_array's and __destroy_arr's partner of 0x38E890) -- zui_skb.cpp
 0x0038D200 0x2E0 func_0038D200  # OVL1
 0x0038D4E0 0xDC func_0038D4E0  # OVL1
-0x0038D5C0 0x70 func_0038D5C0  # OVL1
+0x0038D5C0 0x70 __dt__Q23std110vector<PQ221@unnamed@zui_skb_cpp@13CSoftKeyboard,Q23std52allocator<PQ221@unnamed@zui_skb_cpp@13CSoftKeyboard>>Fv  # OVL1; by hand (the pointer vector's destructor: __sinit_zui_skb.cpp 0x403730 registers it for g_arrSkbs at 0x49ECE8, as SOCOM 1's tail has it) -- zui_skb.cpp
 0x0038D630 0x40 func_0038D630  # OVL1
 0x0038D670 0x8 func_0038D670  # OVL1
 0x0038D680 0x14 func_0038D680  # OVL1
@@ -7292,18 +7292,18 @@
 0x0038DF40 0x80 func_0038DF40  # OVL1
 0x0038DFC0 0x18 func_0038DFC0  # OVL1
 0x0038DFE0 0x174 func_0038DFE0  # OVL1
-0x0038E160 0x324 func_0038E160  # OVL1
-0x0038E490 0xC0 func_0038E490  # OVL1
+0x0038E160 0x324 CreateSoftKeyboard__21@unnamed@zui_skb_cpp@FP5_zrdr  # OVL1; s1:calls by hand (SOCOM 1's CreateSoftKeyboard: new CSoftKeyboard, pushed onto g_arrSkbs, the Grid rows of key names or codes into the grid, IgnoreUnchangedString; SOCOM II's hands the look and the key props to 0x3963F0 and 0x38DCB0) -- zui_skb.cpp
+0x0038E490 0xC0 __dt__Q221@unnamed@zui_skb_cpp@12CBmpWithNodeFv  # OVL1; s1:order (SOCOM 1's __dt__...CBmpWithNodeFv: CBmpWithNode's vtable slot 0, the thunk 0x390390 jumps to it) -- zui_skb.cpp
 0x0038E550 0x40 func_0038E550  # OVL1
 0x0038E590 0x88 func_0038E590  # OVL1
-0x0038E620 0xD0 func_0038E620  # OVL1
+0x0038E620 0xD0 __ct__Q221@unnamed@zui_skb_cpp@12CBmpWithNodeFv  # OVL1; by hand (CPlainBmp's inline constructor, then CBmpWithNode's tables and the node zeroed: CreateSoftKeyboard calls it six times, 0x1C0 on) -- zui_skb.cpp
 0x0038E6F0 0x40 func_0038E6F0  # OVL1
-0x0038E730 0xC func_0038E730  # OVL1
+0x0038E730 0xC __ct__Q221@unnamed@zui_skb_cpp@10CInit<b,0>Fv  # OVL1; s1:order by hand (SOCOM 1's CInit<b,0> template, its constructor a zero byte: CreateSoftKeyboard calls it for 0x174 and 0x175) -- zui_skb.cpp
 0x0038E740 0x30 func_0038E740  # OVL1
-0x0038E770 0x14 func_0038E770  # OVL1
+0x0038E770 0x14 __ct__Q221@unnamed@zui_skb_cpp@8CSkbGridFv  # OVL1; by hand (CSkbGrid's implicit constructor out of line, the grid's vector zeroed: CreateSoftKeyboard calls it for this + 0x158, the keyboard's constructor inlined one level) -- zui_skb.cpp
 0x0038E790 0xF4 func_0038E790  # OVL1
-0x0038E890 0x34 func_0038E890  # OVL1
-0x0038E8D0 0x14 func_0038E8D0  # OVL1
+0x0038E890 0x34 __ct__Q221@unnamed@zui_skb_cpp@11CSkbCapLookFv  # OVL1; by hand (a 0x24-byte element: two words, a string, 1.0f and three 128s; CSkbLook's constructor builds three through __construct_array with 0x38D1A0) -- zui_skb.cpp
+0x0038E8D0 0x14 __ct__Q23std94vector<Q221@unnamed@zui_skb_cpp@7CSkbKey,Q23std44allocator<Q221@unnamed@zui_skb_cpp@7CSkbKey>>Fv  # OVL1; by hand (include/vector's class vector constructor, three zero words: CSkbLook's four key vectors are built through __construct_array with it) -- zui_skb.cpp
 0x0038E8F0 0xB0 find<Q221@unnamed@zui_skb_cpp@7CSkbKey>__Q23std469__tree<Q23std81pair<CQ221@unnamed@zui_skb_cpp@7CSkbKey,PQ221@unnamed@zui_skb_cpp@12CSkbKeyProps>,Q33std237map<Q221@unnamed@zui_skb_cpp@7CSkbKey,PQ221@unnamed@zui_skb_cpp@12CSkbKeyProps,Q23std39less<Q221@unnamed@zui_skb_cpp@7CSkbKey>,Q23std100allocator<Q23std81pair<CQ221@unnamed@zui_skb_cpp@7CSkbKey,PQ221@unnamed@zui_skb_cpp@12CSkbKeyProps>>>13value_compare,Q23std100allocator<Q23std81pair<CQ221@unnamed@zui_skb_cpp@7CSkbKey,PQ221@unnamed@zui_skb_cpp@12CSkbKeyProps>>>FRCQ221@unnamed@zui_skb_cpp@7CSkbKey_Q33std469__tree<Q23std81pair<CQ221@unnamed@zui_skb_cpp@7CSkbKey,PQ221@unnamed@zui_skb_cpp@12CSkbKeyProps>,Q33std237map<Q221@unnamed@zui_skb_cpp@7CSkbKey,PQ221@unnamed@zui_skb_cpp@12CSkbKeyProps,Q23std39less<Q221@unnamed@zui_skb_cpp@7CSkbKey>,Q23std100allocator<Q23std81pair<CQ221@unnamed@zui_skb_cpp@7CSkbKey,PQ221@unnamed@zui_skb_cpp@12CSkbKeyProps>>>13value_compare,Q23std100allocator<Q23std81pair<CQ221@unnamed@zui_skb_cpp@7CSkbKey,PQ221@unnamed@zui_skb_cpp@12CSkbKeyProps>>>8iterator  # OVL1; (include/tree, the soft keyboard's map<CSkbKey, CSkbKeyProps *> (SOCOM 1's zui_skb.cpp names: the unnamed namespace's CSkbKey and CSkbKeyProps); byte-exact as a probe, build/tree/zui_skb.cpp (CSkbKey: a signed byte compared unsigned, then a halfword at 2; a member-wise copy constructor): find<CSkbKey>, SOCOM 1's 0x3A8F40)
 0x0038E9A0 0x22C destroy__Q23std469__tree<Q23std81pair<CQ221@unnamed@zui_skb_cpp@7CSkbKey,PQ221@unnamed@zui_skb_cpp@12CSkbKeyProps>,Q33std237map<Q221@unnamed@zui_skb_cpp@7CSkbKey,PQ221@unnamed@zui_skb_cpp@12CSkbKeyProps,Q23std39less<Q221@unnamed@zui_skb_cpp@7CSkbKey>,Q23std100allocator<Q23std81pair<CQ221@unnamed@zui_skb_cpp@7CSkbKey,PQ221@unnamed@zui_skb_cpp@12CSkbKeyProps>>>13value_compare,Q23std100allocator<Q23std81pair<CQ221@unnamed@zui_skb_cpp@7CSkbKey,PQ221@unnamed@zui_skb_cpp@12CSkbKeyProps>>>FPQ33std469__tree<Q23std81pair<CQ221@unnamed@zui_skb_cpp@7CSkbKey,PQ221@unnamed@zui_skb_cpp@12CSkbKeyProps>,Q33std237map<Q221@unnamed@zui_skb_cpp@7CSkbKey,PQ221@unnamed@zui_skb_cpp@12CSkbKeyProps,Q23std39less<Q221@unnamed@zui_skb_cpp@7CSkbKey>,Q23std100allocator<Q23std81pair<CQ221@unnamed@zui_skb_cpp@7CSkbKey,PQ221@unnamed@zui_skb_cpp@12CSkbKeyProps>>>13value_compare,Q23std100allocator<Q23std81pair<CQ221@unnamed@zui_skb_cpp@7CSkbKey,PQ221@unnamed@zui_skb_cpp@12CSkbKeyProps>>>4node  # OVL1; (include/tree, the soft keyboard's map<CSkbKey, CSkbKeyProps *> (SOCOM 1's zui_skb.cpp names: the unnamed namespace's CSkbKey and CSkbKeyProps); byte-exact as a probe, build/tree/zui_skb.cpp (CSkbKey: a signed byte compared unsigned, then a halfword at 2; a member-wise copy constructor): the nodes freed, self-inlined twice)
 0x0038EBD0 0x8 deallocate__Q23std494allocator<Q33std469__tree<Q23std81pair<CQ221@unnamed@zui_skb_cpp@7CSkbKey,PQ221@unnamed@zui_skb_cpp@12CSkbKeyProps>,Q33std237map<Q221@unnamed@zui_skb_cpp@7CSkbKey,PQ221@unnamed@zui_skb_cpp@12CSkbKeyProps,Q23std39less<Q221@unnamed@zui_skb_cpp@7CSkbKey>,Q23std100allocator<Q23std81pair<CQ221@unnamed@zui_skb_cpp@7CSkbKey,PQ221@unnamed@zui_skb_cpp@12CSkbKeyProps>>>13value_compare,Q23std100allocator<Q23std81pair<CQ221@unnamed@zui_skb_cpp@7CSkbKey,PQ221@unnamed@zui_skb_cpp@12CSkbKeyProps>>>4node>FPQ33std469__tree<Q23std81pair<CQ221@unnamed@zui_skb_cpp@7CSkbKey,PQ221@unnamed@zui_skb_cpp@12CSkbKeyProps>,Q33std237map<Q221@unnamed@zui_skb_cpp@7CSkbKey,PQ221@unnamed@zui_skb_cpp@12CSkbKeyProps,Q23std39less<Q221@unnamed@zui_skb_cpp@7CSkbKey>,Q23std100allocator<Q23std81pair<CQ221@unnamed@zui_skb_cpp@7CSkbKey,PQ221@unnamed@zui_skb_cpp@12CSkbKeyProps>>>13value_compare,Q23std100allocator<Q23std81pair<CQ221@unnamed@zui_skb_cpp@7CSkbKey,PQ221@unnamed@zui_skb_cpp@12CSkbKeyProps>>>4nodeUi  # OVL1; (include/tree, the soft keyboard's map<CSkbKey, CSkbKeyProps *> (SOCOM 1's zui_skb.cpp names: the unnamed namespace's CSkbKey and CSkbKeyProps); byte-exact as a probe, build/tree/zui_skb.cpp (CSkbKey: a signed byte compared unsigned, then a halfword at 2; a member-wise copy constructor): include/memory's deallocate)
@@ -7329,7 +7329,7 @@
 0x0038FFA0 0x8 func_0038FFA0  # OVL1
 0x0038FFB0 0x10C func_0038FFB0  # OVL1
 0x003900C0 0x2D0 func_003900C0  # OVL1
-0x00390390 0x8 func_00390390  # OVL1
+0x00390390 0x8 @128@__dt__Q221@unnamed@zui_skb_cpp@12CBmpWithNodeFv  # OVL1; s1:order (SOCOM 1's zui_skb.cpp ends on the same thunk: j ~CBmpWithNode, this - 128, the UIVarMixin's) -- zui_skb.cpp's last function
 0x003903A0 0x2E4 func_003903A0  # OVL1
 0x00390690 0x88 func_00390690  # OVL1
 0x00390720 0xC func_00390720  # OVL1
@@ -8588,7 +8588,7 @@
 0x004035C0 0x60 func_004035C0  # OVL1 data area; a static initialiser
 0x00403620 0x9C func_00403620  # OVL1 data area; a static initialiser
 0x004036C0 0x64 func_004036C0  # OVL1 data area; a static initialiser; s1~ seal_aimoves.cpp (shape 0.50, a hint)
-0x00403730 0x34 func_00403730  # OVL1 data area; a static initialiser
+0x00403730 0x34 __sinit_zui_skb.cpp  # OVL1 data area; a static initialiser; by hand (g_arrSkbs zeroed and its destructor 0x38D5C0 registered: SOCOM 1's .p__sinit_zui_skb.cpp does the same) -- zui_skb.cpp's static initialiser
 0x00403770 0x84 func_00403770  # OVL1 data area; a static initialiser
 0x00403800 0x90C func_00403800  # OVL1 data area; a static initialiser
 0x00404110 0x8C func_00404110  # OVL1 data area; a static initialiser; s1~ zsnd_csndinstance.cpp (shape 0.54, a hint)

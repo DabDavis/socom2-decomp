@@ -619,7 +619,7 @@
 0x00408070 0x10 __vt__19CStickDeadzoneTuner  # vtable of CStickDeadzoneTuner: found by its RTTI's name
 0x00408080 0x10 __vt__11SystemTuner  # vtable of SystemTuner: found by its RTTI's name
 0x00408090 0x10 __vt__12CDialogTuner  # vtable of CDialogTuner: found by its RTTI's name
-0x004080A0 0x70 __vt__12CBmpWithNode  # vtable of CBmpWithNode: found by its RTTI's name
+0x004080A0 0x70 __vt__Q221@unnamed@zui_skb_cpp@12CBmpWithNode  # vtable of CBmpWithNode: found by its RTTI's name; the unnamed namespace's name (zui_skb.cpp defines the class, SOCOM 1's __vt__Q221@unnamed@zui_skb_cpp@12CBmpWithNode); 2 references in 2 functions (its constructor 0x38E620 and destructor 0x38E490)
 0x00408130 0x40 __vt__9CBufferIO  # OVL1; s1:data-seq (size SOCOM 1's; via __ct__9CBufferIOFv)
 0x00408180 0x44 __vt__7CFileIO  # vtable of CFileIO: found by its RTTI's name
 0x004081D0 0x1C __vt__7CSTable  # vtable of CSTable: found by its RTTI's name
