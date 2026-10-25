@@ -87,8 +87,7 @@ public:
  * SetDIBBox news) */
 class CDIBBox : public CDI {
 public:
-    unsigned char _10[4];   // 0x10
-    const CBBox *m_bbox;   // 0x14
+    const CBBox *m_bbox;   // 0x14 (after CDI's points pointer at 0x10)
 };   // 0x18 bytes
 
 /* what a render map projects (SOCOM 1's enum, by its mangled name; a byte under -enum min): a
@@ -120,6 +119,9 @@ struct IntersectStruct {
     CDI *m_poly;   // 0xc
     CPnt3D m_norm;   // 0x10
     CNode *m_node;   // 0x1c
+
+    /* the hit polygon's material, or the default one (SOCOM 1's) */
+    int GetMaterial();
 };
 
 /* a ray's intersection set (SOCOM 1's DWARF; SOCOM II adds the mask at 0x44, so its hits are 4
@@ -128,6 +130,8 @@ class DiIntersect {
 public:
     DiIntersect(int n);
     ~DiIntersect();
+    /* the hit mask, its low bit forced on, or every bit for none (new in SOCOM II; the name ours) */
+    void SetMask(unsigned int mask);
     IntersectStruct *GetHighestAltitude(const CPnt3D *p, float alt);
     IntersectStruct *GetNearestIntersect();
     /* whether characters are hit, the old setting given back (inline: the queries save and
@@ -144,7 +148,8 @@ public:
     unsigned int m_IntersectCharacters : 1;
     unsigned int m_AltitudeCharacters : 1;
     unsigned int m_ProximityCharacters : 1;
-    unsigned int m_Unused : 13;
+    unsigned int m_socom2_bit19 : 1;   // SOCOM II's: the constructor clears it (the name ours)
+    unsigned int m_Unused : 12;
     CPnt3D m_Tail;   // 0x4
     CPnt3D m_Tip;   // 0x10
     CPnt3D m_MTail;   // 0x1c

@@ -117,11 +117,23 @@ struct tag_DI_HEAD {
     };
 };
 
+class DiIntersect;
+class CSaveLoad;
+
 class CDI : public tag_DI_HEAD {
 public:
     virtual ~CDI();
+    /* SOCOM II's table (__vt__Q23zdb3CDI, 0x406650): the destructor, Allocate, Free, two pure
+     * slots (SOCOM 1's GetIntersect and GetAltitude, each shape's own) and Read */
+    virtual void Allocate(int n);
+    virtual void Free();
+    virtual int GetIntersect(DiIntersect *di) = 0;
+    virtual int GetAltitude(DiIntersect *di) = 0;
+    virtual bool Read(CSaveLoad &io);
     /* one holder fewer, the count left given back (SOCOM 1's, 0x14 bytes in both) */
     int Release();
+
+    CPnt4D *m_pnts;   // 0x10: its points, 16 bytes each (Allocate mallocs them; the name ours)
 };
 
 class CDIVector : public std::vector<CDI *> {

@@ -4600,7 +4600,7 @@
 0x002DC450 0x68 __dt__Q23zdb3CDIFv  # OVL1; s1:align
 0x002DC4C0 0x158 func_002DC4C0  # OVL1
 0x002DC620 0x38 func_002DC620  # OVL1
-0x002DC660 0x20 func_002DC660  # OVL1
+0x002DC660 0x20 SetMask__Q23zdb11DiIntersectFUi  # OVL1; new in SOCOM II, the name ours (the world lane): the mask at 0x44 set to the argument with its low bit forced on, or to -1 for none; RegIntersectDelayed and RegProximityDelayed call it after setting the type
 0x002DC680 0x60 __dt__Q23zdb11DiIntersectFv  # OVL1; s1:align
 0x002DC6E0 0xB4 __ct__Q23zdb11DiIntersectFi  # OVL1; s1:align
 0x002DC7A0 0x52C func_002DC7A0  # OVL1
