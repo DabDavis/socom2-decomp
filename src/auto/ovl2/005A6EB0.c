@@ -7,9 +7,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+s32 IsCurrentBlend__10CZSealBodyCF8AnimType(char * arg0, s32 arg1);
 char * func_00555170(s32 arg0);
 s32 func_005551A0(s32 arg0, s32 arg1);
-s32 func_00577E40(s32 arg0, s32 arg1);
 M2C_UNK func_00588BC0(s32 arg0, s32 arg1, s32 arg2, s32 arg3, s32 arg4);
 extern s16 data_003DF108;
 extern s16 data_003DF110;
@@ -21,7 +21,7 @@ s32 func_005A6EB0(char *arg0, s32 arg1) {
     if (SC_MEMBER(arg0, s32 *, 0x528) != data_0044D410) {
         return 0;
     }
-    if (((func_00577E40((s32) arg0, (s32) data_003DF108) != 0) || (func_00577E40((s32) arg0, (s32) data_003DF110) != 0)) && (func_005551A0((s32) SC_MEMBER(func_00555170((s32) (arg0 + 0x1C0)), u16 *, 0x28), 0x20) != 0)) {
+    if (((IsCurrentBlend__10CZSealBodyCF8AnimType(arg0, (s32) data_003DF108) != 0) || (IsCurrentBlend__10CZSealBodyCF8AnimType(arg0, (s32) data_003DF110) != 0)) && (func_005551A0((s32) SC_MEMBER(func_00555170((s32) (arg0 + 0x1C0)), u16 *, 0x28), 0x20) != 0)) {
         return 0;
     }
     temp_v1 = arg1 & 0xFF;

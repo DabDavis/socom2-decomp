@@ -230,9 +230,9 @@ extern "C" GameClient *func_0030D5E0(CZNetwork *net, int client);   /* (SOCOM 1'
 
 /* CZSealBody::CreateRemoteSeal (OVL2 0x599690) under the map's name, which carries SOCOM 1's
  * signature: SOCOM II's sixth parameter is a word of flags (the body tests it against 0x10020000;
- * the caller loads it with lw), not SOCOM 1's unsigned char -- spelled by hand until the row is
- * renamed */
-extern "C" CZSealBody *CreateRemoteSeal__10CZSealBodyFiiPCciPcUcPUc(int client, int index, const char *name,
+ * the caller loads it with lw), not SOCOM 1's unsigned char -- the row carries SOCOM II's
+ * signature now (the SEAL lane's round 6) */
+extern "C" CZSealBody *CreateRemoteSeal__10CZSealBodyFiiPCciPcUiPUc(int client, int index, const char *name,
                                                                     int chartype, char *a, unsigned int flags,
                                                                     unsigned char *weapons);
 
@@ -398,7 +398,7 @@ void CZSealState::RemoteSealCreationCallback(int client, int index)
             valve->SetValue(1);
     } else
         name = func_002C3A70(client);
-    data->m_body = CreateRemoteSeal__10CZSealBodyFiiPCciPcUcPUc(owner, index, name, data->m_chartype, data->m_14,
+    data->m_body = CreateRemoteSeal__10CZSealBodyFiiPCciPcUiPUc(owner, index, name, data->m_chartype, data->m_14,
                                                                 data->m_c, data->m_weapons);
     if (data->m_body) {
         data->m_body->m_fcc = 0;

@@ -7,9 +7,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK HookupReset__14CFlyoutMachineFv(M2C_UNK *); /* extern */
 M2C_UNK InitializeWeapons__12CZWeaponListFv(M2C_UNK *); /* extern */
 s32 func_002DE9E0(M2C_UNK *);                       /* extern */
-M2C_UNK func_003D5520(M2C_UNK *);                   /* extern */
 extern M2C_UNK data_003FD328;
 extern M2C_UNK data_004B5260;
 extern M2C_UNK m_listWeapons__8CZWeapon;
@@ -17,7 +17,7 @@ extern s32 personMaterialId__4zwep;
 
 s32 Open__8CZWeaponFv(void) {
     InitializeWeapons__12CZWeaponListFv(&m_listWeapons__8CZWeapon);
-    func_003D5520(&data_004B5260);
+    HookupReset__14CFlyoutMachineFv(&data_004B5260);
     personMaterialId__4zwep = func_002DE9E0(&data_003FD328);
     return 1;
 }

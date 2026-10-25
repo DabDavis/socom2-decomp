@@ -1431,6 +1431,38 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     classes over the pointer vectors); the font stretch from 0x359740 is SOCOM II's rewritten
     font system ("faces", "glowtexture", "charoffsets", "Korean", "dropshadow") -- no SOCOM 1
     counterparts.
+- **Tells from the SEALs, round 6** (the ladder/jump stretch, seal_anim.cpp, seal_cfg.cpp):
+  - each CPnt3D local takes a 16-byte frame slot;
+  - a byte-enum local is assigned with `li`, and comparing it with its zero enumerator gives `andi
+    0xff` plus `sltu`; an `unsigned char` local is assigned with `daddiu` and its conversion to
+    bool drops the `andi`; converting a bitfield to the enum before masking keeps the `andi 0xff`;
+  - in a lookup loop, a byte local declared inside the loop, after the counter, takes s0 and the
+    counter s1;
+  - writing the random fraction out instead of calling the Rand01 inline gives the target's float
+    registers for the constants (CBlink);
+  - an uninitialised flag declared before the object pointer and set after a call keeps the
+    higher register and the zero's position after the call (CanPlaceBomb);
+  - a short field read into an `int` local before a switch is tested from the `lh`-loaded
+    register with no re-extension;
+  - CAiTimer lives in zseal/aitimer.h, included ahead of ai_states.h (its float constructor
+    0x5EA550); seal_anim.cpp runs 0x575CF0-0x5781BF, seal_env.cpp from 0x59D6C0 to 0x5B818B.
+- **Tells from the weapons, round 5** (zwep_ammo.cpp, zwep_projectile.cpp, zwep_flyout.cpp):
+  - in a float function `if (!(x != 0.0f)) return s;` gives the target's `bc1f` over a `b`; `==
+    0.0f` or an if-block fold into one `bc1t`;
+  - `Dot(d, d)` through zmath.h's const-reference inline reads the fields off the frame; written
+    out, their addresses stay in registers (IsInRange);
+  - an inline search that reads size() into its own local reuses the caller's earlier load;
+    passing the count as a parameter swaps two argument registers (ReleaseFlyout);
+  - FreeVector on a CNodeVector calls CNodeVector's own constructor and destructor; the target's
+    std::vector<CNode *>'s -- write `FreeVector<std::vector<CNode *> >(...)`;
+  - a whole CBBox local assigned to a member keeps its six stores and copies; two CPnt3D locals
+    assigned field by field fold away (CFlyout's constructor);
+  - Init and Reset match only with every flag stored through an inline bool setter in the
+    original order (`false` shares one `andi rX,zero,1`, `true` becomes `daddiu ...,1<<n`);
+  - `if (!a || t == 1 || t == 2 || c) return; f(this);` reproduces the shared-`b` layout with
+    the range test folded; nested ifs do not;
+  - OVL1's last code unit is 0x3D4810-0x3D5947 (a pointer vector, CProjectileNodeEx, the flyout
+    machine -- moved from between zwep_global and zwep_projectile in SOCOM 1).
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
