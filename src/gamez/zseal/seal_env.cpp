@@ -55,6 +55,107 @@ extern float data_0044C2DC;
 extern float data_0044C2E0;
 }
 
+/* a decal a SEAL can leave: its size range and its texture (SOCOM 1's DWARF: CZDecalDef, 0xc
+ * bytes) */
+class CZDecalDef {
+public:
+    float m_decalminsize;   // 0x0
+    float m_decalmaxsize;   // 0x4
+    zdb::CTexHandle *m_texture;   // 0x8
+};
+
+extern "C" {
+/* GetVisualNode (SOCOM 1's GetVisualNode__FPQ23zdb5CNode, called where SOCOM 1's HandleBloodDrip
+ * calls it; OVL1 0x3D0FD0, unowned) */
+zdb::CNode *func_003D0FD0(zdb::CNode *node);
+int rand(void);
+}
+zdb::CNode *GetDecalNode(zdb::CNode *node);
+/* the decals' projection, straight down (OVL2 bss, data.txt's) */
+extern CPnt3D projDirDown;
+
+/* a random fraction of one (rand() over 2^31) */
+static inline float Rand01()
+{
+    return 4.656612873e-10f * (float)rand();
+}
+
+/* a size in a decal's range (an inline: its arguments are loaded before rand() runs; the range
+ * is lost -- (hi - hi) -- in both builds) */
+static inline float RandSize(float lo, float hi)
+{
+    return lo + Rand01() * (hi - hi);
+}
+
+/* now and then a wounded SEAL drips blood: offline only, a random decal of the set at random size
+ * under it, along its altitude hit (OVL2 0x5A33B0; SOCOM 1's word for word, the timer at 0x214 --
+ * its size range is min + r * (max - max), as both builds have it).
+ * OPEN, 0x1BC against 0x1B8 (93 of 110 instructions in place): the target computes the whole size
+ * before GetDecalNode is called (the sum in $f20, hi's register, in the call's delay slot) and so
+ * saves only $f20/$f21; MW here keeps the random product in $f20 across the call and adds after
+ * it, saving $f22 too. Tried: the size in a local, the decal node in a local, the helper's sum
+ * through a local, the product written inside the argument with min and max in locals (either
+ * order). The early return and the zero-first pick (`if (n == 0) def = 0; else ...`) are the
+ * target's. */
+void CZSealBody::HandleBloodDrip(float dT)
+{
+    if (!(m_health < 1.0f) || theNetwork.m_9)
+        return;
+    if (m_blooddriptimer > 0.0f) {
+        m_blooddriptimer -= dT;
+        return;
+    }
+    m_blooddriptimer = 3.0f * Rand01();
+    int n = m_blooddriptexhandles.size();
+    CZDecalDef *def;
+
+    if (n == 0)
+        def = 0;
+    else
+        def = &m_blooddriptexhandles[n == 1 ? 0 : rand() % n];
+
+    if (def) {
+        zdb::IntersectStruct *alt = &m_last_altitude;
+        zdb::CNode *node = func_003D0FD0(alt->m_node);
+
+        if (node) {
+            CPnt3D dir;
+
+            alt->m_norm.Scale(-1.0f, &dir);
+            float size = RandSize(def->m_decalminsize, def->m_decalmaxsize);
+
+            node->ApplyDecal(GetDecalNode(alt->m_node), 100.0f, &alt->m_pos, &dir, &projDirDown,
+                             def->m_texture, size, 0);
+        }
+    }
+}
+
+/* a float negated in place (an inline taking it by reference: the target negates the quaternion's
+ * y and z through their addresses) */
+static inline void Negate(float &f)
+{
+    f = -f;
+}
+
+/* the motion slid along a wall: the wall's normal brought into the SEAL's frame (the inverse of
+ * its quaternion), flipped, and the velocity's part along it taken away (OVL2 0x5B0DD0; SOCOM 1's,
+ * the velocity now CEntity's m_velM). Its unit is SOCOM 1's DI-collision stretch (CheckDIDown,
+ * SetWallHit, Slide, CheckDILadder), kept here beside the look code until its boundary is read */
+void CZSealBody::Slide(zdb::IntersectStruct *hit)
+{
+    CQuat inv = m_quat;
+
+    Negate(inv.vec.x);
+    Negate(inv.vec.y);
+    Negate(inv.vec.z);
+    CPnt3D n;
+
+    inv.Apply(&hit->m_norm, &n, 1);
+    n.Scale(-1.0f, &n);
+    n.Scale(Dot(n, m_velM), &n);
+    m_velM.Sub(&n, &m_velM);
+}
+
 /* where a hit lands (SOCOM 1's DAMAGE_LOCATION, a byte: only the name matters here) */
 enum DAMAGE_LOCATION { DAMAGE_LOCATION_0 = 0, DAMAGE_LOCATION_LAST = 255 };
 

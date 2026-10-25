@@ -602,6 +602,13 @@ public:
     /* the character the SEAL was made from (SOCOM 1's; OVL2 0x599810) */
     CCharacterType *GetCharacter();
     void ResetAltitude(float y);
+    /* the velocity slid along a wall it hit (SOCOM 1's; OVL2 0x5B0DD0) */
+    void Slide(zdb::IntersectStruct *hit);
+    /* a wounded SEAL's blood dripped on the ground now and then (SOCOM 1's; OVL2 0x5A33B0) */
+    void HandleBloodDrip(float dT);
+    /* the blood decals, one picked at random (SOCOM 1's static vector<CZDecalDef>; OVL1 bss
+     * 0x44D568) */
+    static std::vector<class CZDecalDef> m_blooddriptexhandles;
     void SetSnakePathUpdate(bool on, unsigned int length);
     void RestrainBuddy(CZSealBody *victim);
     void StabBuddy(CZSealBody *victim);
@@ -636,7 +643,9 @@ public:
     /* the regions entered: each new one's OnEnterRegion anim run (SOCOM 1's; OVL2 0x5A2F90) */
     void CheckForRegionTrigger(unsigned int regions);
 
-    unsigned char _200[0x2e4 - 0x200];
+    unsigned char _200[0x214 - 0x200];
+    float m_blooddriptimer;   // 0x214 (SOCOM 1's 0x170)
+    unsigned char _218[0x2e4 - 0x218];
     float m_alt;   // 0x2e4 (SOCOM 1's 0xe98)
     CZBodyPart *m_root;   // 0x2e8 (SOCOM 1's 0x26c)
     unsigned char _2ec[0x374 - 0x2ec];
