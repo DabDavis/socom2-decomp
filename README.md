@@ -1223,6 +1223,22 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - zNetDme.cpp starts at 0x30CDF0 (its initialiser builds theNetwork at 0x45A0C0, registering
     ~CZNetwork 0x30E410), zNetVoice.cpp is 0x30E490-0x31097F (the radio and USB headset);
     znet.h can become the one CZNetwork declaration.
+- **Tells from the SEALs, round 5** (seal_dyn.cpp, AnimSet's readers, Slide):
+  - in three repeated list loops MW gives the later-declared of list, count and counter the lower
+    saved register; the target's registers rotate loop to loop, so each loop's declaration order
+    follows them;
+  - a member copy-constructed in an init list from a CPnt3D is ld/sd plus lwc1/swc1; from a PNT3D
+    cast to a CPnt3D reference, three lwc1/swc1 through pointers;
+  - the product lands in the operand's own register (`mul.s $f1,$f1,$f0`) only inside an inline
+    that multiplies its parameter in place (`v *= s; return v;`); plain `*=`, `x = x * s` and a
+    `(float)` cast all give $f0;
+  - `a = b = c = 0.0f` zeroes c first; separate initialisers zero the first variable first;
+  - reading a vector's end through a reference to `data_` keeps `&data_` in a saved register
+    across repeated push_backs (CharacterDynamics::Load, through a local helper);
+  - open on include/vector: the class `__vector_imp::insert` returns void (0x59CF10 sets no v0;
+    one definition would serve 13 class-vector inserts, ~18 KB), the class push_back through a
+    deleter data() reference (SOCOM 1's line 923), and the deleter's destructor in a unit's tail
+    calling clear out of line (seal_dyn.cpp, ai_map.cpp).
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
