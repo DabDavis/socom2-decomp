@@ -5031,12 +5031,12 @@
 0x002FB080 0x134 func_002FB080  # OVL1
 0x002FB1C0 0x174 func_002FB1C0  # OVL1
 0x002FB340 0x130 func_002FB340  # OVL1
-0x002FB470 0x19C func_002FB470  # OVL1
-0x002FB610 0x310 func_002FB610  # OVL1
-0x002FB920 0xCC func_002FB920  # OVL1
-0x002FB9F0 0xE8 func_002FB9F0  # OVL1
-0x002FBAE0 0x110 func_002FBAE0  # OVL1
-0x002FBBF0 0xE8 func_002FBBF0  # OVL1
+0x002FB470 0x19C GetLoadout__Q226CZUniversInformationServer7CAcctDBFPCciPCcPCci  # OVL1; ours (a side's saved equipment for a mission, 0 SEALs at +0xE / 1 terrorists at +0, the mission name at +0x1C of each 0x24-byte entry: UICharacterProfile 0x2759D4 calls it on theAcctDB) -- byte-exact, zNetMediusUniverse.cpp
+0x002FB610 0x310 SetLoadout__Q226CZUniversInformationServer7CAcctDBFPCciPCcPCcP11AcctLoadouti  # OVL1; ours (a side's equipment for a mission set, the mission added in the first free entry: UICharacterProfile 0x275BBC, CAcctDB's profile readers 0x2FBCE0/0x2FC800)
+0x002FB920 0xCC Count__Q226CZUniversInformationServer7CAcctDBFPCci  # OVL1; ours (the accounts kept for a lobby server, host and port matched: UpdatePersonaList 0x276B28 calls it on theAcctDB 0x44FC60 with LOBBY_HOST/LOBBY_PORT; the class name is the RTTI's at 0x3F5CA8) -- byte-exact, zNetMediusUniverse.cpp
+0x002FB9F0 0xE8 IndexOf__Q226CZUniversInformationServer7CAcctDBFPCciPCc  # OVL1; ours (the named account's place among the lobby server's, the walk broken on the name: UIGetMUISPersonaInfo 0x2754C0 calls it on theAcctDB) -- byte-exact, zNetMediusUniverse.cpp
+0x002FBAE0 0x110 Delete__Q226CZUniversInformationServer7CAcctDBFPCcii  # OVL1; ours (the index-th account on a lobby server erased through the one-element erase 0x2FE230: UIDeleteMUISPersona 0x276340 calls it on theAcctDB) -- byte-exact, zNetMediusUniverse.cpp
+0x002FBBF0 0xE8 Find__Q226CZUniversInformationServer7CAcctDBFPCciPCc  # OVL1; ours (the account by host, port and name, 0 none: UIMUISPersonaExists 0x27668C calls it on theAcctDB) -- byte-exact, zNetMediusUniverse.cpp
 0x002FBCE0 0x5A0 func_002FBCE0  # OVL1
 0x002FC280 0x1B8 func_002FC280  # OVL1
 0x002FC440 0x3B8 func_002FC440  # OVL1
@@ -5047,18 +5047,18 @@
 0x002FD000 0x68 func_002FD000  # OVL1
 0x002FD070 0x60 func_002FD070  # OVL1
 0x002FD0D0 0x34 func_002FD0D0  # OVL1
-0x002FD110 0xFC func_002FD110  # OVL1
-0x002FD210 0xFC func_002FD210  # OVL1
-0x002FD310 0xFC func_002FD310  # OVL1
-0x002FD410 0xFC func_002FD410  # OVL1
-0x002FD510 0xFC func_002FD510  # OVL1
-0x002FD610 0xCC func_002FD610  # OVL1
-0x002FD6E0 0xF4 func_002FD6E0  # OVL1
-0x002FD7E0 0xCC func_002FD7E0  # OVL1
-0x002FD8B0 0xCC func_002FD8B0  # OVL1
-0x002FD980 0xCC func_002FD980  # OVL1
-0x002FDA50 0x48 func_002FDA50  # OVL1
-0x002FDAA0 0x48 func_002FDAA0  # OVL1
+0x002FD110 0xFC GetGender__Q226CZUniversInformationServer7CAcctDBFPCcii  # OVL1; ours (the index-th account's gender byte at 0x103, 0 none: the persona handlers call it on theAcctDB) -- byte-exact, zNetMediusUniverse.cpp
+0x002FD210 0xFC GetSavePassword__Q226CZUniversInformationServer7CAcctDBFPCcii  # OVL1; ours (the index-th account's SAVEPASSWORD flag at 0x1314) -- byte-exact, zNetMediusUniverse.cpp
+0x002FD310 0xFC GetTown__Q226CZUniversInformationServer7CAcctDBFPCcii  # OVL1; ours (the index-th account's TOWN at 0xC4) -- byte-exact, zNetMediusUniverse.cpp
+0x002FD410 0xFC GetPassword__Q226CZUniversInformationServer7CAcctDBFPCcii  # OVL1; ours (the index-th account's PASSWORD at 0xA4) -- byte-exact, zNetMediusUniverse.cpp
+0x002FD510 0xFC GetName__Q226CZUniversInformationServer7CAcctDBFPCcii  # OVL1; ours (the index-th account's NAME at 0x84: UpdatePersonaList, the persona handlers and UILobbyConnect call it on theAcctDB) -- byte-exact, zNetMediusUniverse.cpp
+0x002FD610 0xCC GetPatchURL__Q226CZUniversInformationServer7CAcctDBFPCc  # OVL1; ours (the named universe's patch server URL, the second word of its extended info: UIVerifyPatchLevel 0x276748 calls it) -- byte-exact, zNetMediusUniverse.cpp
+0x002FD6E0 0xF4 VerifyPatchLevel__Q226CZUniversInformationServer7CAcctDBFPCc  # OVL1; ours (the named universe's patch level against "r0001", yes when it names none: UIVerifyPatchLevel 0x276710) -- byte-exact, zNetMediusUniverse.cpp
+0x002FD7E0 0xCC GetUniverseStatus__Q226CZUniversInformationServer7CAcctDBFPCc  # OVL1; ours (the named universe's status word at 0x220: UILobbyConnect 0x276858) -- byte-exact, zNetMediusUniverse.cpp
+0x002FD8B0 0xCC GetUniversePort__Q226CZUniversInformationServer7CAcctDBFPCc  # OVL1; ours (the named universe's port at 0x11C: UILobbyConnect 0x276880) -- byte-exact, zNetMediusUniverse.cpp
+0x002FD980 0xCC GetUniverseDNS__Q226CZUniversInformationServer7CAcctDBFPCc  # OVL1; ours (the named universe's address at 0x9C: UILobbyConnect 0x27686C) -- byte-exact, zNetMediusUniverse.cpp
+0x002FDA50 0x48 GetUniverseDescription__Q226CZUniversInformationServer7CAcctDBFUi  # OVL1; ours (the i-th universe's description at 0x120, "" past the end: UIUpdateServerInfo 0x274C4C) -- byte-exact, zNetMediusUniverse.cpp
+0x002FDAA0 0x48 GetUniverseName__Q226CZUniversInformationServer7CAcctDBFUi  # OVL1; ours (the i-th universe's name at 0x1C, "" past the end: UIUpdateServerInfo 0x274D1C) -- byte-exact, zNetMediusUniverse.cpp
 0x002FDAF0 0x3B0 func_002FDAF0  # OVL1
 0x002FDEA0 0x20 func_002FDEA0  # OVL1
 0x002FDEC0 0xC func_002FDEC0  # OVL1
@@ -5066,7 +5066,7 @@
 0x002FDF60 0x248 func_002FDF60  # OVL1
 0x002FE1B0 0x18 func_002FE1B0  # OVL1
 0x002FE1D0 0x54 func_002FE1D0  # OVL1
-0x002FE230 0x1AC func_002FE230  # OVL1
+0x002FE230 0x1AC erase__Q23std60__vector_imp<10AcctRecord,Q23std23allocator<10AcctRecord>,0>FP10AcctRecord  # OVL1; ours (the accounts vector's one-element erase: CAcctDB::Delete 0x2FBAE0 passes the iterator's word, the tail assigned down member by member, the count cut, the position returned in v0; include/vector's erase(T *))
 0x002FE3E0 0x6E8 func_002FE3E0  # OVL1
 0x002FEAD0 0x1C4 func_002FEAD0  # OVL1
 0x002FECA0 0x8 func_002FECA0  # OVL1
