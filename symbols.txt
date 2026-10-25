@@ -449,7 +449,7 @@
 0x00199178 0x7C func_00199178  # MAIN unaligned
 0x001991F8 0x8C strdup  # MAIN unaligned; s1:callee
 0x00199288 0x138 strlen  # MAIN unaligned; s1:exact
-0x001993C0 0xD8 func_001993C0  # MAIN
+0x001993C0 0xD8 strncasecmp  # MAIN; s1:calls (CAiMap::GetLocation calls it with (name, s, 15) where SOCOM 1's calls strncasecmp(name, s, 14); its first instruction keeps the third argument, the count; 0xD8 bytes beside strcasecmp's 0xD8) -- the AI-core lane
 0x00199498 0x1AC strncat  # MAIN unaligned; s1:exact
 0x00199648 0x1B8 strncmp  # MAIN unaligned; s1:exact
 0x00199800 0x1BC strncpy  # MAIN; s1:callee

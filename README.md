@@ -1059,6 +1059,30 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - a 64-bit GIF-tag constant written as one literal matches li/dsll32/li/or (FIFO_Signal);
   - `new T` as an inline call's argument is checked a level deeper, as its own statement it
     inlines whole (CRdrEditor::push) -- an inline height, to recheck at the corrected level.
+- **Tells from the zdb render classes** (zvid_init.cpp, vis_mesh.cpp, vis_main.cpp, vis_decal.cpp):
+  - a pointer the target keeps in v0 throughout and stores at the end is the return value (the
+    mangled name does not carry it): declared void, GetTextureSelectBlock_ver2 spills a saved
+    register;
+  - `unsigned char *flag = &p->u8[2]` gives the target's address computed once and stored
+    through; a cast on the base does not;
+  - a loop count loaded from a halfword but declared `unsigned int` swaps the count's and the
+    counter's saved registers into the target's order;
+  - a single-case `switch` gives `beq; nop; b`;
+  - a GS packet written through a cursor apart from the packet's start, one `p++` per quadword,
+    gives SOCOM II's layout (SetGSReg, zVid_Scissor);
+  - MW 3.0 inlines float-to-unsigned conversion where SOCOM 1 called `fptoui`;
+  - zbody.h's RTArray serves the decal arrays too (the same 0x20 bytes).
+- **Tells from the AI maps** (ai_maptable.cpp, ai_mapio.cpp):
+  - a field compared with a parameter goes first in the `bne` only when read into a local first
+    (`aid = x.m_actionId; if (aid == id)`); both spellings of `x.f == id` put the parameter first;
+  - `i = m_index + (int)(x - m_start)` loads m_index before the subtraction; without the cast the
+    subtraction is scheduled first;
+  - a walk over `this->m_table` keeps `this` in a saved register only in a non-const member;
+    through a cast `this` or a reference local MW keeps the table's address (GetLocation is
+    non-const in SOCOM II);
+  - each class-vector deleter destructor in ai_map.cpp's tail calls its own clear out of line,
+    unlike include/vector's in-place destroy; SOCOM II's CAiMap::Read is 0x51AFE0, handing map
+    versions 19-23 to 0x51AD90, 0x51AB50, 0x51A910, 0x51A6D0, 0x51A490.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
