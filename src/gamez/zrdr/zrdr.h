@@ -16,6 +16,7 @@
 class CSTable;
 class CRdrFile;
 class CRdrArchiveList;
+class CFileIO;
 struct PNT2D;
 struct PNT3D;
 struct IPNT2D;
@@ -35,7 +36,8 @@ struct _zrdr {
     unsigned int type : 8;   // 0x0
     unsigned int isclone : 1;   // 0x0: the array is the value's own (Clone's), DeleteChildren frees it
     unsigned int packed : 1;   // 0x0
-    unsigned int unused : 6;   // 0x0
+    unsigned int flag : 1;   // 0x0: SOCOM II's, cleared by the constructor (the name ours)
+    unsigned int unused : 5;   // 0x0
     unsigned int length : 16;   // 0x0: an array's count
     union {
         float real;
@@ -44,6 +46,17 @@ struct _zrdr {
         _zrdr *array;
     };   // 0x4
 
+    /* SOCOM 1's (0x3C there); SOCOM II's clears its new flag too, each field read, masked and
+     * written back as MW stores a constant into a bitfield */
+    _zrdr()
+    {
+        type = 0;
+        isclone = false;
+        packed = false;
+        flag = false;
+        unused = 0;
+        length = 0;
+    }
     ~_zrdr();
     void DeleteChildren();
     void Clone(_zrdr *src, CSTable *strings);
@@ -119,8 +132,44 @@ public:
     static CRdrArchiveList m_list;   // 0x488510
 };   // 0xb8 bytes
 
+/* the engine's string table (util_stable.cpp, not written yet): SOCOM 1's CSTable grown by a
+ * vtable pointer at 0xC, 0x20 bytes. Its constructor and destructor are still placeholders, so
+ * CRdrFile calls them by hand where its member's would run: an inline wrapper adds the null test
+ * MW puts around an inlined member destructor */
+extern "C" void func_0039FBD0(CSTable *table, unsigned int bytes, unsigned int strings);
+extern "C" void func_0039FB30(CSTable *table, int flags);
+class CSTable {
+public:
+    void LoadTable(void *table, unsigned int bytes, bool copy);
+
+    unsigned char _0[0x20];
+};   // 0x20 bytes
+
+/* a file read or fetched whole: SOCOM 1's CRdrFile, the tree's root, its strings and the buffer
+ * it was read into; SOCOM II added the flags it was read with (0x34 bytes, new'd so) */
+class CRdrFile : public _zrdr {
+public:
+    CRdrFile();
+    ~CRdrFile();
+
+    static CRdrFile *Load(zar::CZAR *zar, zar::CKey *key, int flags);
+    static CRdrFile *Create(void *buf, unsigned int size, int flags);
+    bool ReadPacked(CFileIO &io, unsigned int size);
+    zar::CKey *Insert(zar::CZAR *zar, zar::CKey *key);
+    bool Resolve(bool pack);
+    void Pack();
+
+    /* a packed buffer's tree: its root's offset at 8, its strings from 12 (ours) */
+    _zrdr *Root() { return m_buffer ? (_zrdr *)(m_buffer + *(int *)(m_buffer + 8)) : 0; }
+
+    CSTable m_strings;   // 0x08
+    unsigned char *m_buffer;   // 0x28
+    unsigned int m_size;   // 0x2c
+    int m_flags;   // 0x30: 4, the buffer is not the file's to free
+};   // 0x34 bytes
+
 /* the files (zrdr_file.cpp, zrdr_parse.cpp) */
 _zrdr *zrdr_read(const char *name, const char *path, int flags);
-void zrdr_free(CRdrFile *file);
+int zrdr_free(CRdrFile *file);
 
 #endif

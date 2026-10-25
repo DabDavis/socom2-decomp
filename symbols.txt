@@ -5781,19 +5781,19 @@
 0x0032C5F0 0x60 __dt__15CRdrArchiveListFv  # OVL1; s1:order (SOCOM 1's CRdrArchiveList destructor: __sinit_zrdr_archive.cpp's 0x402D70 registers it for the list at 0x488510)
 0x0032C650 0x10 func_0032C650  # OVL1
 0x0032C660 0x10 IsArray__5_zrdrCFv  # OVL1; tu: zanim_cmd_parse.cpp~ (1.0 beta); s1:exact
-0x0032C670 0xA0 func_0032C670  # OVL1
-0x0032C710 0x1F8 func_0032C710  # OVL1
-0x0032C910 0x6C func_0032C910  # OVL1
-0x0032C980 0xD4 func_0032C980  # OVL1
-0x0032CA60 0x128 func_0032CA60  # OVL1
+0x0032C670 0xA0 ReadPacked__8CRdrFileFR7CFileIOUi  # OVL1; s1:align (SOCOM 1's ReadPacked(CFileIO &, unsigned): the buffer malloc'd and read through the file's fread slot, the root an array, Resolve(false); CAiMap::read_readers calls it as SOCOM 1's does)
+0x0032C710 0x1F8 Create__8CRdrFileFPvUii  # OVL1; the name ours (SOCOM II's: a buffer whose first halfword is the format's version made a new CRdrFile (0x34 bytes, the constructor inlined), resolved, deleted if that fails; SOCOM 1's Load built the file in place)
+0x0032C910 0x6C Insert__8CRdrFileFPQ23zar4CZARPQ23zar4CKey  # OVL1; s1:order (SOCOM 1's Insert: Pack, the offsets made again, the buffer written as the key's data (0x25A120, SOCOM 1's CZAR::Insert), resolved again)
+0x0032C980 0xD4 Load__8CRdrFileFPQ23zar4CZARPQ23zar4CKeyi  # OVL1; s1:calls by hand (SOCOM 1's Load(CZAR *, CKey *) with a flags argument: the key's size, the data fetched, the file made; FindRdr and CSaveManager::Load call it where SOCOM 1's call Load)
+0x0032CA60 0x128 Resolve__8CRdrFileFb  # OVL1; s1:order (SOCOM 1's Resolve(bool): the packed buffer's offsets resolved one way or the other, the root's word and count copied, the strings loaded with CSTable::LoadTable)
 0x0032CB90 0x120 func_0032CB90  # OVL1
 0x0032CCB0 0x278 func_0032CCB0  # OVL1
 0x0032CF30 0x8 func_0032CF30  # OVL1
-0x0032CF40 0x26C func_0032CF40  # OVL1
+0x0032CF40 0x26C Pack__8CRdrFileFv  # OVL1; s1:calls by hand (Insert calls it first, before Resolve(true), where SOCOM 1's Insert calls Pack__8CRdrFileFv; it calls the string table's Pack__7CSTable as SOCOM 1's does)
 0x0032D1B0 0x210 func_0032D1B0  # OVL1
 0x0032D3C0 0x180 func_0032D3C0  # OVL1
-0x0032D540 0xA8 func_0032D540  # OVL1
-0x0032D5F0 0xEC func_0032D5F0  # OVL1
+0x0032D540 0xA8 __dt__8CRdrFileFv  # OVL1; s1:align (SOCOM 1's destructor: the tree freed or the buffer, the string table destroyed)
+0x0032D5F0 0xEC __ct__8CRdrFileFv  # OVL1; s1:order (SOCOM 1's constructor, next to the destructor: the value's bitfields cleared, the string table built with (0, 1024), the buffer, size and flags zeroed; zrdr_read calls it on new(0x34))
 0x0032D6E0 0x94 zrdr_free__FP8CRdrFile  # OVL1; s1:callee
 0x0032D780 0xB4 func_0032D780  # OVL1
 0x0032D840 0x22C func_0032D840  # OVL1
