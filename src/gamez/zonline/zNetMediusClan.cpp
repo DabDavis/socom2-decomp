@@ -56,6 +56,7 @@ void cbGetLeaderMessages(MediusErrorCode, MediusErrorCode, MediusErrorCode, Medi
 void cbGetMyClanMessages(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusGetMyClanMessagesResponse *);
 void cbSendClanMessage(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusSendClanMessageResponse *);
 void cbFilterClanName(int, int, int, MediusTextFilterResponse *);
+void cbCreateClan(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusCreateClanResponse *);
 
 extern "C" {
 extern AccountInfoType AccountInfo;
@@ -235,6 +236,25 @@ void CZOnlineLobby::TransferLeadership(const char *name)
     CheckMediusError(MediusTransferClanLeadership(&req, cbTransferClanLeadership));
 }
 
+/* the clan's name back from the filter: the clan created under it, or the menu told and the
+ * name put back (SOCOM 1's; OVL1 0x2E7AA0) */
+void cbFilterClanName(int, int, int, MediusTextFilterResponse *resp)
+{
+    if (resp->Result >= 0) {
+        func_003862A0(theLobby.uiv_ClanNameVar, resp->Text);
+        MediusCreateClanRequest req;
+
+        memset(&req, 0, sizeof(req));
+        SetSessionKey(req.SessionKey);
+        strncpy(req.ClanName, resp->Text, sizeof(req.ClanName));
+        CheckMediusError(MediusCreateClan(&req, cbCreateClan));
+    } else {
+        LobbyEvent("MP_FILTER_FAILURE", 0);
+        func_003862A0(theLobby.uiv_ClanNameVar, "Unaffiliated");
+        func_003862A0(theLobby.uiv_ClanDescription, " ");
+    }
+}
+
 /* the clan's name filtered first; cbFilterClanName creates it (SOCOM 1's; OVL1 0x2E7A10) */
 void CZOnlineLobby::CreateClan(const char *name)
 {
@@ -320,6 +340,30 @@ bool CZOnlineLobby::GetClanRoster()
     CheckMediusError(MediusGetClanMemberList(&req,
         cbGetClanMemberList));
     return true;
+}
+
+/* the clan gone: its name, description, messages and members cleared, our membership with them;
+ * or the failure told with its reason (SOCOM 1's; OVL1 0x2E68E0) */
+void cbDisbandClan(MediusErrorCode, MediusErrorCode, MediusErrorCode,
+                   MediusDisbandClanResponse *resp)
+{
+    char text[1024];
+
+    if (CheckMediusCallbackStatus("MediusDisbandClan", resp->StatusCode)) {
+        func_003862A0(theLobby.uiv_ClanNameVar, "");
+        func_003862A0(theLobby.uiv_ClanDescription, " ");
+        func_003862A0(theLobby.uiv_ClanMessages, "No clan messages.");
+        func_002E9740(&ClanMemberVec);
+        func_002E6AF0();
+        PlayerClanID = -1;
+        StoredClanInfo.ClanID = -1;
+        StoredClanInfo.LeaderAccountID = -1;
+        memset(StoredClanInfo.ClanName, 0, sizeof(StoredClanInfo.ClanName));
+        LobbyEvent("MP_DISBAND_CLAN_SUCCESS", 0);
+    } else {
+        sprintf(text, "Clan Disband Error: %s", LookupMediusCallbackStatus(resp->StatusCode));
+        LobbyEvent("MP_DISBAND_CLAN_FAILURE", text);
+    }
 }
 
 /* the clan disbanded (SOCOM 1's; OVL1 0x2E6850) */

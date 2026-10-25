@@ -151,7 +151,25 @@ struct MediusDeleteClanMessageResponse { MEDIUS_RESPONSE_HEAD };
 struct MediusGetAllClanMessagesResponse { MEDIUS_RESPONSE_HEAD };
 struct MediusGetMyClanMessagesResponse { MEDIUS_RESPONSE_HEAD };
 struct MediusSendClanMessageResponse { MEDIUS_RESPONSE_HEAD };
-struct MediusTextFilterResponse { MEDIUS_RESPONSE_HEAD };
+/* the filter's answer: the text handed back, its status after it */
+struct MediusTextFilterResponse {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    char Text[64];   // 0x15
+    int Result;   // 0x58: negative, refused
+};
+
+struct MediusCreateClanRequest {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];   // 0x15
+    int ApplicationID;   // 0x28
+    char ClanName[32];   // 0x2c
+};   // 0x4c
+
+struct MediusCreateClanResponse { MEDIUS_RESPONSE_HEAD };
+
+typedef void (*MediusCreateClanCallback)(MediusErrorCode, MediusErrorCode, MediusErrorCode,
+                                         MediusCreateClanResponse *);
+extern "C" MediusErrorCode MediusCreateClan(MediusCreateClanRequest *req, MediusCreateClanCallback cb);
 
 typedef void (*MediusDeleteClanMessageCallback)(MediusErrorCode, MediusErrorCode, MediusErrorCode,
                                                 MediusDeleteClanMessageResponse *);
