@@ -59,6 +59,10 @@ zdb::CTexHandle *PrepTexture(const char *name, zdb::CTextureRelocMgr *mgr);
 
 extern "C" void func_00385D90(class UIVarMixin *mixin, CUIVariable *var);
 
+/* a UI variable's value written out as text into a buffer (zui_var.cpp's, 0x3860F0; no row
+ * named yet) */
+extern "C" char *func_003860F0(CUIVariable *var, char *buf, int size);
+
 /* a UI variable's hook (SOCOM 1's DWARF; the vtable pointer first) */
 class UIVarMixin {
 public:
@@ -137,6 +141,7 @@ public:
     /* slot 26: the background's alpha, a fraction of 128 (0x37C2C0) */
     virtual void SetBackgroundAlpha(float a) { m_background.SetTrans(128.0f * a); }
     virtual int GetZAnimCmdType(const char *name);
+    virtual void UpdateUIVar(CUIVariable *var);
 
     unsigned char _c8[0x1a0 - 0xc8];
     CPlainBmp m_background;   // 0x1a0
@@ -207,6 +212,23 @@ public:
     virtual int GetZAnimCmdType(const char *name);
 };
 
+
+/* the caption from the button's own variable, as text (SOCOM 1's C2DButton::UpdateUIVar; reached
+ * through the thunk 0x37D0E0) */
+void C2DButton::UpdateUIVar(CUIVariable *var)
+{
+    char buf[10500] = {0};
+
+    if (UIVarMixin::m_uivar && UIVarMixin::m_uivar == var) {
+        char *caption = func_003860F0(UIVarMixin::m_uivar, buf, 10499);
+
+        _szCaption = caption;
+        if (caption) {
+            _strCaption.SetString(caption, true);
+            _strCaption.UpdatePos();
+        }
+    }
+}
 
 /* the slider set from a real: below the centre value the left half in proportion, above it the
  * right half (SOCOM 1's; reached through the thunk 0x37D080). Read through a const view: the
