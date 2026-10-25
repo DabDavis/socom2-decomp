@@ -3352,16 +3352,16 @@
 0x00285D30 0x428 func_00285D30  # OVL1
 0x00286160 0x868 func_00286160  # OVL1
 0x002869D0 0x1A4 PartInSpace__5CBodyCFP10CZBodyPartPC6CPnt3DP6CPnt3DP5CQuat  # OVL1; s1:calls
-0x00286B80 0x108 func_00286B80  # OVL1
+0x00286B80 0x108 Weight__9CSequenceFv  # OVL1; s1:align by hand (opcode-identical to SOCOM 1's Weight__9CSequenceFv, between PartInSpace and LinearWeight as there; it is quadW(LinearWeight()) with both inlined, bone_math.cpp)
 0x00286C90 0xB0 LinearWeight__9CSequenceFv  # OVL1; s1:align
-0x00286D40 0x28 func_00286D40  # OVL1
+0x00286D40 0x28 Tick__9CSequenceFf  # OVL1; s1:align by hand (opcode-identical to SOCOM 1's Tick__9CSequenceFf, between LinearWeight and Clear as there: m_currT run down by dT, held at zero, returned)
 0x00286D70 0x14 Clear__9CSequenceFv  # OVL1; s1:exact
 0x00286D90 0x1C Start__9CSequenceFfff  # OVL1; s1:exact
-0x00286DB0 0x6C func_00286DB0  # OVL1
+0x00286DB0 0x6C LineIntersectPlane__FfRC6CPnt3DRC6CPnt3DRC6CPnt3D  # OVL1; s1:align by hand (opcode-identical to SOCOM 1's, right before PlaneConstant as there: (-d - n.a) / n.(b - a))
 0x00286E20 0x30 PlaneConstant__FRC6CPnt3DRC6CPnt3D  # OVL1; s1:exact
-0x00286E50 0x3C0 func_00286E50  # OVL1
-0x00287210 0x2D8 func_00287210  # OVL1
-0x002874F0 0x60 func_002874F0  # OVL1
+0x00286E50 0x3C0 ClipToBox__FRC6CPnt3DRC6CPnt3DR6CPnt3Dffff  # OVL1; s1:align by hand (opcode skeleton 0.79 to SOCOM 1's ClipToBox, the only candidate, after PlaneConstant as there; four bounds tested on x and y, the segment clipped)
+0x00287210 0x2D8 GetFractionalRotations__FPC6CPnt3DPfPf  # OVL1; s1:align by hand (0.78 to SOCOM 1's, the only candidate, after ClipToBox as there; three clamped acosf of the vector's components, its xz length through sqrt)
+0x002874F0 0x60 quadW__Ff  # OVL1; s1:align by hand (opcode-identical to SOCOM 1's quadW__Ff, right before QFromRot as there; the SEAL lane's lead: CLook::LookTick calls it where SOCOM 1's calls quadW)
 0x00287550 0x74 QFromRot__FP5CQuatPC6CPnt3D  # OVL1; s1:calls
 0x002875D0 0x44 func_002875D0  # OVL1
 0x00287620 0xE98 func_00287620  # OVL1
