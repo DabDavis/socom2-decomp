@@ -519,13 +519,59 @@ public:
 extern LadderList LadderLeaders;   /* 0x44F7B0 */
 extern LadderList LadderRanking;   /* 0x44F7E0 */
 
+/* a game's info as the game list reports it, and as a LAN host hosts and announces it (the SDK's
+ * MediusGameListResponse, 0x190 bytes: the head of every RoomGame; a class with a constructor of its
+ * own, copied member by member -- the id bytewise, the strings two bytes a pass. Its assignment is
+ * too big to inline: the copy at 0x2E1E10 follows the game's constructor, its first caller. The
+ * field names are the LAN unit's) */
+struct LANGameInfo {
+    LANGameInfo() {}
+
+    char m_id[21];   // 0x0
+    int m_18;   // 0x18: the response's status
+    int m_ip;   // 0x1c: the game's world (Medius), the host's address (LAN)
+    unsigned short m_players;   // 0x20
+    unsigned short m_22;   // 0x22
+    unsigned short m_maxPlayers;   // 0x24
+    int m_mission;   // 0x28
+    int m_2c;   // 0x2c
+    int m_30;   // 0x30
+    int m_port;   // 0x34
+    int m_38;   // 0x38
+    int m_3c;   // 0x3c
+    int m_flags;   // 0x40: 1 a player password, 4 a spectators' one
+    int m_lock;   // 0x44: 3 locked, else 1 or 2
+    int m_48;   // 0x48
+    char m_name[64];   // 0x4c
+    unsigned char m_rules[256];   // 0x8c
+    char m_18c;   // 0x18c: the list's last
+};   // 0x190
+
+extern "C" void func_002F7D90(void *dst, void *rules);   /* a game's mission sequence read from its rules (the lobby unit's) */
+
 /* a game in a room (SOCOM 1's RoomGame: a table, but not a virtual destructor -- its delete calls
  * operator delete straight). SOCOM II's keeps the game's 0x190-byte info first and its table after
  * it (the constructor 0x2E1D50 stores the vtable at 0x190 and clears the 400 bytes before it); its
  * one virtual, SOCOM 1's IsPersistent slot, hands back the mission sequence at 0x1A2 (0x2E24C0) */
 class RoomGame {
 public:
-    unsigned char m_info[0x190];   // 0x0: the game's info (the LAN unit's LANGameInfo)
+    RoomGame(LANGameInfo *info);
+    /* the game's info taken from the list (SOCOM 1's UpdateInfo): too big to inline whole, so the
+     * constructor and the game list's callback expand it one level, calling the info's assignment
+     * and SetMission out of line */
+    void UpdateInfo(LANGameInfo *info)
+    {
+        if (info) {
+            m_info = *info;
+            func_002F7D90(m_19a, info->m_rules);
+            if (!m_info.m_mission)
+                SetMission(m_missionSeq[0]);
+        } else
+            m_info.m_ip = -1;
+    }
+    void SetMission(int mission) { m_info.m_mission = mission; }
+
+    LANGameInfo m_info;   // 0x0
 
     virtual unsigned char *GetMissionSequence();
     bool AllowsType(int type);
@@ -538,6 +584,12 @@ public:
     unsigned char m_types;   // 0x1a1: the game types it allows, a bit each (none: any)
     unsigned char m_missionSeq[0x22];   // 0x1a2
 };   // 0x1c4
+
+/* a game the game list reported (SOCOM II's, by its RTTI at 0x4066D0: no virtual of its own) */
+class TransientGame : public RoomGame {
+public:
+    TransientGame(LANGameInfo *info) : RoomGame(info) {}
+};
 
 /* a room as the channel list reports it (the Medius SDK's MediusChannelListResponse, 0x70 bytes:
  * copied member by member into the room -- the id bytewise, the name two bytes a pass) */

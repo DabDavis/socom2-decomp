@@ -23,7 +23,7 @@ struct MediusGameListRequest {
     short PageSize;   // 0x18
 };   // 0x1a
 
-struct MediusGameListResponse { MEDIUS_RESPONSE_HEAD };
+typedef LANGameInfo MediusGameListResponse;   /* the game list's report: a game's info */
 
 /* a valve: a named 16-bit value (SOCOM 1's CValve; only what is read here) */
 enum VALVE_TYPE {
@@ -60,6 +60,8 @@ extern int data_0044F540;
 extern int data_0044F548;
 extern int data_0044F550;
 void func_002F4080(void *msg, int type);   /* a request put into the network's order (empty) */
+void func_002F4030(void *msg, int type);   /* a message's byte order converted (the chat unit's) */
+void func_002E2CE0(BriefingRoom *room);   /* the room's game list sorted and shown */
 MediusErrorCode func_0064B008(MediusGameListRequest *req,
                               void (*cb)(int, int, int, MediusGameListResponse *));   /* MediusGameList */
 void func_002E2B00(int, int, int, MediusGameListResponse *);   /* a game of the list kept */
@@ -92,7 +94,7 @@ void BriefingRoom::SetPassword(const char *password)
 /* a game forgotten when nobody is in it (0x2E4700's remove_if predicate; OVL1 0x2E4790) */
 bool RemoveEmptyGame(RoomGame *g)
 {
-    bool empty = *(unsigned short *)&g->m_info[0x20] == 0;
+    bool empty = g->m_info.m_players == 0;
 
     if (empty)
         delete g;
@@ -132,14 +134,16 @@ void BriefingRoom::RemoveUncheckedGames()
 }
 #pragma auto_inline reset
 
-/* the room's game by name, if it has one (SOCOM 1's BriefingRoom::FindGame; OVL1 0x2E4570) */
+/* the room's game by name, if it has one (SOCOM 1's BriefingRoom::FindGame; OVL1 0x2E4570: the
+ * game list's callback calls it out of line, pinned) */
+#pragma auto_inline off
 RoomGame *BriefingRoom::FindGame(const char *name)
 {
     RoomGame *game = 0;
 
     if (name) {
         for (iterator i = begin(); i != end(); ++i) {
-            if (!strcmp((char *)&(*i)->m_info[0x4c], name)) {
+            if (!strcmp((*i)->m_info.m_name, name)) {
                 game = *i;
                 break;
             }
@@ -147,6 +151,7 @@ RoomGame *BriefingRoom::FindGame(const char *name)
     }
     return game;
 }
+#pragma auto_inline reset
 
 /* the room's game by its mission number (OVL1 0x2E4410) */
 RoomGame *BriefingRoom::FindGame(int mission)
@@ -154,7 +159,7 @@ RoomGame *BriefingRoom::FindGame(int mission)
     RoomGame *game = 0;
 
     for (iterator i = begin(); i != end(); ++i) {
-        if (mission == *(int *)&(*i)->m_info[0x28]) {
+        if (mission == (*i)->m_info.m_mission) {
             game = *i;
             break;
         }
@@ -219,6 +224,52 @@ bool RoomLess(BriefingRoom *a, BriefingRoom *b)
     int c = strcasecmp(a->LobbyName, b->LobbyName);
 
     return c < 0;
+}
+
+/* a game of the room set up, from the game list's report or empty (SOCOM 1's; OVL1 0x2E1D50:
+ * LANGame's constructor, the game list's callback and the lobby unit's 0x2F8FD0 call it) */
+RoomGame::RoomGame(LANGameInfo *info) : m_194(0)
+{
+    memset(&m_info, 0, sizeof(m_info));
+    m_info.m_ip = -1;
+    m_info.m_flags = 0xFFFFFF;
+    UpdateInfo(info);
+    m_199 = 0;
+}
+
+/* a game of the room's list reported: its game updated or a new one kept, and the list shown once
+ * the last has come (SOCOM 1's cbGameList; OVL1 0x2E2B00) */
+void func_002E2B00(int, int, int, MediusGameListResponse *resp)
+{
+    if (CheckMediusCallbackStatus("GameList Callback", (MediusCallbackStatus)resp->m_18)) {
+        func_002F4030(resp, 129);
+        if (resp->m_ip > -1) {
+            BriefingRoom *room = data_0044F568.FindRoom(RoomVarText(theLobby.uiv_LobbyWorldNameVar));
+
+            if (room) {
+                RoomGame *game = room->FindGame(resp->m_name);
+
+                if (game)
+                    game->UpdateInfo(resp);
+                else {
+                    game = new TransientGame(resp);
+                    room->push_back(game);
+                }
+                game->m_unchecked = false;
+            }
+        }
+        if (resp->m_18c) {
+            BriefingRoom *room = data_0044F568.FindRoom(RoomVarText(theLobby.uiv_LobbyWorldNameVar));
+
+            if (room)
+                func_002E2CE0(room);
+        }
+    } else {
+        BriefingRoom *room = data_0044F568.FindRoom(RoomVarText(theLobby.uiv_LobbyWorldNameVar));
+
+        if (room)
+            func_002E2CE0(room);
+    }
 }
 
 /* a player of the room by name (for find_if; the name ours) */

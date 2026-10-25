@@ -38,32 +38,6 @@ public:
     unsigned short m_flags;   // 0x6
 };
 
-/* a LAN game's info as it is hosted and announced (0x190 bytes, the head of every RoomGame: a
- * class with a constructor of its own, copied member by member -- the name bytewise, the strings
- * two bytes a pass; the names ours) */
-struct LANGameInfo {
-    LANGameInfo() {}
-
-    char m_id[21];   // 0x0
-    int m_18;   // 0x18
-    int m_ip;   // 0x1c: the host's address
-    unsigned short m_players;   // 0x20
-    unsigned short m_22;   // 0x22
-    unsigned short m_maxPlayers;   // 0x24
-    int m_mission;   // 0x28
-    int m_2c;   // 0x2c
-    int m_30;   // 0x30
-    int m_port;   // 0x34
-    int m_38;   // 0x38
-    int m_3c;   // 0x3c
-    int m_flags;   // 0x40: 1 a player password, 4 a spectators' one
-    int m_lock;   // 0x44: 3 locked, else 1 or 2
-    int m_48;   // 0x48
-    char m_name[64];   // 0x4c
-    unsigned char m_rules[256];   // 0x8c
-    char m_18c;   // 0x18c
-};   // 0x190
-
 /* a network address as the DME builds it (16 bytes) */
 struct LANAddress {
     unsigned char m_bytes[16];
@@ -125,7 +99,6 @@ void func_002E1E00(RoomGame *game, unsigned char seq);
 /* the chat unit's */
 void func_002F4030(void *msg, int type);   /* a message's byte order converted */
 void func_002F7C40(void *rules);   /* the game's rules filled in */
-void func_002F7D90(void *dst, void *rules);
 /* the lobby's */
 void func_002DF6A0(CZOnlineLobby *lobby);
 int func_002EF9F0();   /* (the game's type for the info) */
@@ -196,10 +169,10 @@ void cbLANGameInfo(LANGameInfo *info)
         if (info) {
             func_002E1E10(game, info);
             func_002F7D90(game->m_19a, info->m_rules);
-            if (!*(int *)&game->m_info[0x28])
+            if (!game->m_info.m_mission)
                 func_002E1E00(game, game->m_missionSeq[0]);
         } else {
-            *(int *)&game->m_info[0x1c] = -1;
+            game->m_info.m_ip = -1;
         }
         func_002E2CE0(room);
     }
@@ -350,7 +323,7 @@ bool CZLANLobby::GameHasPassword(const char *game)
 {
     RoomGame *g = m_room->FindGame(game);
 
-    if (g && (*(int *)&g->m_info[0x40] & 1))
+    if (g && (g->m_info.m_flags & 1))
         return true;
     return false;
 }

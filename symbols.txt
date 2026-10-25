@@ -4702,9 +4702,9 @@
 0x002E1B20 0x88 func_002E1B20  # OVL1
 0x002E1BB0 0x130 func_002E1BB0  # OVL1
 0x002E1CE0 0x70 __ct__7LANGameFP10LANAddressi  # OVL1; ours (LANGame's constructor, the RTTI's class at 0x4066C0: RoomGame's 0x2E1D50 with no info, TransientGame's table then LANGame's stored at 0x190, the 16-byte address at 0x1C4 and the port at 0x1D4; cbLANGameInfo 0x304470 news 0x1D8 bytes and calls it)
-0x002E1D50 0xAC func_002E1D50  # OVL1
-0x002E1E00 0x8 func_002E1E00  # OVL1
-0x002E1E10 0x108 func_002E1E10  # OVL1
+0x002E1D50 0xAC __ct__8RoomGameFP11LANGameInfo  # OVL1; ours (SOCOM 1's RoomGame constructor: the table at 0x190, the info cleared, its world -1, UpdateInfo inlined one level; LANGame's constructor passes 0, the game list's callback a response)
+0x002E1E00 0x8 SetMission__8RoomGameFi  # OVL1; ours (the game's mission, the word at +0x28, set: UpdateInfo, inlined one level, calls it out of line with the sequence's first byte)
+0x002E1E10 0x108 __as__11LANGameInfoFRC11LANGameInfo  # OVL1; ours (the game info's implicit assignment, member by member -- 21 bytes, the words and halfwords, the name and rules two bytes a pass: too big to inline, its copy follows the game's constructor; UpdateInfo calls it)
 0x002E1F20 0x5A0 func_002E1F20  # OVL1
 0x002E24C0 0x8 GetMissionSequence__8RoomGameFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike); ours (RoomGame's one virtual, slot 0 of the three game tables 0x4066B0/C0/D0: it returns this + 0x1A2, the mission sequence JoinLANGame hands SetMissionSequence -- SOCOM 1's slot held IsPersistent, the s1:vtable name this row had)
 0x002E24D0 0x400 func_002E24D0  # OVL1
