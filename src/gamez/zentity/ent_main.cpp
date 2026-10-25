@@ -144,7 +144,11 @@ bool CEntity::RecycleEntity(CEntity *e)
     return true;
 }
 
-/* an entity into a recycled place: the stand-in at that place traded for it (SOCOM 1's) */
+/* an entity into a recycled place: the stand-in at that place traded for it (SOCOM 1's). The new
+ * entity is stored at the node's offset (`sw a1,8(a3)`): through `*it` the reference the tests
+ * read by is shared with the store, its address computed once in the first test's delay slot --
+ * SOCOM 1's code, not SOCOM II's -- whatever spelling reads the element (by value, through
+ * `*it.i_`, a local pointer or reference to it) */
 bool CEntity::RecycleEntity(unsigned int index, CEntity *e, bool include)
 {
     bool done = false;
@@ -157,7 +161,7 @@ bool CEntity::RecycleEntity(unsigned int index, CEntity *e, bool include)
     while (index--)
         ++it;
     if (*it && (*it)->m_type == ENT_TYPE_RECYCLE) {
-        *it = e;
+        ((std::list<CEntity *>::base::node *)it.i_.node_)->data_ = e;
         e->SetIncludeInTargetList(include);
         UpdateTargetList(true);
         done = true;
