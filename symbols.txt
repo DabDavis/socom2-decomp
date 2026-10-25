@@ -7628,8 +7628,8 @@
 0x003A2130 0x134 Init__8CMemCardFv  # OVL1; s1:order (before ~CMemCard as SOCOM 1's Init: the module loaded, sceMcInit, both ports probed)
 0x003A2270 0x68 __dt__8CMemCardFv  # OVL1; s1:align
 0x003A22E0 0x90 __ct__8CMemCardFv  # OVL1; s1:calls
-0x003A2370 0x94 func_003A2370  # OVL1
-0x003A2410 0x100 func_003A2410  # OVL1
+0x003A2370 0x94 CRC32String__FPCc  # OVL1; ours (the string's CRC-32 over a table built on first use: 0xFFFFFFFF in, (crc >> 8) ^ table[(crc & 0xFF) ^ c], complemented out; 0 for no string -- docs/audio.md's crc32_string, the r0004 0x3C2BC0; no SOCOM 1 counterpart) -- util_crc.cpp
+0x003A2410 0x100 BuildCRCTable__Fv  # OVL1; ours (the CRC-32 table built once, the classic reflecting generator, polynomial 0x04C11DB7; static, called by CRC32String) -- util_crc.cpp
 0x003A2510 0x3A8 func_003A2510  # OVL1
 0x003A28C0 0x23C func_003A28C0  # OVL1
 0x003A2B00 0x7C func_003A2B00  # OVL1
