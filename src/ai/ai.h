@@ -294,6 +294,8 @@ class CAiMap;
 
 /* a cell handed to a walk's callback (below CAiMap: it points at a CAiMap::region) */
 struct MAP_FOREACH_STRUCT;
+/* a cell handed to a line walk's callback (SOCOM 1's; not laid out yet) */
+struct MAP_LINEWALK_STRUCT;
 
 /* two cells are the same cell when x and y agree, the map aside: an inline bool, which the
  * walks materialise (x's test, then y's into the same register) before they branch -- SOCOM 1's
@@ -552,6 +554,20 @@ public:
 
         return cell ? GetAltitude(cell, alt) : false;
     }
+    /* a line of cells walked from a cell, along a direction or to another cell, each handed to a
+     * callback until one returns false (SOCOM 1's WalkLine pair, 0x537400 and 0x537E50 in the map
+     * walkers' unit; SOCOM II adds the step, 0.2 from every caller written) */
+    bool WalkLine(const CAiMapLoc &from, const CPnt3D *dir, bool (*f)(const MAP_LINEWALK_STRUCT &s, void *data),
+                  void *data, float step);
+    bool WalkLine(const CAiMapLoc &from, const CAiMapLoc &to, bool (*f)(const MAP_LINEWALK_STRUCT &s, void *data),
+                  void *data, float step);
+    /* whether the line is clear to the eye and to the feet, the blocking cell given (SOCOM 1's) */
+    bool CanSeeLine(const CAiMapLoc &from, const CPnt3D *dir, CAiMapLoc *out);
+    bool CanSeeLine(const CAiMapLoc &from, const CAiMapLoc &to, CAiMapLoc *out);
+    bool CanTravelLine(const CAiMapLoc &from, const CAiMapLoc &to, CAiMapLoc *out);
+    /* whether a step may end on the cell (new in SOCOM II, the name ours: ai_maps.cpp's 0x52A090,
+     * GetCell inlined one level) */
+    bool IsTraversable(const CAiMapLoc &loc) const;
     /* a layer index the map has (the name ours; 0x512120) */
     bool IsLayer(int layer) const { return layer >= 0 && layer < GetLayerCount(); }
     /* the layers' count (the name ours) */

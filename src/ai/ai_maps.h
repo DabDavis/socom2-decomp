@@ -25,6 +25,8 @@ public:
     CAiCell *GetCell(const CAiMapLoc &loc);
     unsigned int GetBoundary(const CAiMapLoc &loc);
     bool GetAltitude(const CAiMapLoc &loc, float &alt);
+    bool CanSeeLine(const CAiMapLoc &from, const CAiMapLoc &to, CAiMapLoc *out);
+    bool CanTravelLine(const CAiMapLoc &from, const CAiMapLoc &to, CAiMapLoc *out);
     CAiMap::name *GetCellName(const CAiMapLoc &loc) const;
     const char *GetCellNameString(const CAiMapLoc &loc) const;
     CAiMap::link *GetCellLink(const CAiMapLoc &loc);

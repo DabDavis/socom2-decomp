@@ -9616,7 +9616,7 @@
 0x00529EB0 0x18 func_00529EB0  # OVL2
 0x00529ED0 0x8 func_00529ED0  # OVL2
 0x00529EE0 0x1AC func_00529EE0  # OVL2
-0x0052A090 0xF0 func_0052A090  # OVL2
+0x0052A090 0xF0 IsTraversable__6CAiMapCFRC9CAiMapLoc  # OVL2; ours (new in SOCOM II, between GetRandomLoc and GetMap: the cell by GetCell inlined one level, then CAiCell::IsTraversable -- not soils 0, 8, 9, 10 -- false off the map)
 0x0052A180 0x78 GetMap__7CAiMapsCFRC9CAiMapLoc  # OVL2; ours (new in SOCOM II, after GetRandomLoc's helper: GetMapByIndex of the cell's map index, inlined -- called by the AI states, the SEAL body and the controller)
 0x0052A200 0x1BC func_0052A200  # OVL2
 0x0052A3C0 0x2F0 func_0052A3C0  # OVL2
@@ -9638,8 +9638,8 @@
 0x0052C320 0x284 func_0052C320  # OVL2
 0x0052C5B0 0xC func_0052C5B0  # OVL2
 0x0052C5C0 0x608 func_0052C5C0  # OVL2
-0x0052CBD0 0xAC func_0052CBD0  # OVL2
-0x0052CC80 0xAC func_0052CC80  # OVL2
+0x0052CBD0 0xAC CanSeeLine__7CAiMapsFRC9CAiMapLocRC9CAiMapLocP9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19A480, after ComputeLineVisibility: the two cells' common map's CanSeeLine, false across maps)
+0x0052CC80 0xAC CanTravelLine__7CAiMapsFRC9CAiMapLocRC9CAiMapLocP9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19A570, after CanSeeLine: the common map's CanTravelLine)
 0x0052CD30 0xDC GetAltitude__7CAiMapsFRC9CAiMapLocRf  # OVL2; s1:order by hand (the demo's 0x19A660, after CanTravelLine in both builds: the cell's map's altitude, its lookup inlined one level -- GetCell 0x511F80 and the cell's altitude 0x516940 called)
 0x0052CE10 0x3E8 func_0052CE10  # OVL2
 0x0052D200 0x6C __ct__9CAiMapLocFUiUiUi  # OVL2; s1:exact
@@ -9770,16 +9770,16 @@
 0x00536B90 0x50 func_00536B90  # OVL2
 0x00536BE0 0x98 func_00536BE0  # OVL2
 0x00536C80 0x780 func_00536C80  # OVL2
-0x00537400 0xA48 func_00537400  # OVL2
-0x00537E50 0xB28 func_00537E50  # OVL2
+0x00537400 0xA48 WalkLine__6CAiMapFRC9CAiMapLocPC6CPnt3DPFRC19MAP_LINEWALK_STRUCTPv_bPvf  # OVL2; s1:order by hand (the demo's WalkLine(loc, CPnt3D *) 0x1A6B00, 0xA64 bytes, before the two-cell one as here; CanSeeLine(loc, dir) 0x539070 tail-calls it with _SeeLineCallback as SOCOM 1's does -- SOCOM II adds the step, 0.2f in $f12)
+0x00537E50 0xB28 WalkLine__6CAiMapFRC9CAiMapLocRC9CAiMapLocPFRC19MAP_LINEWALK_STRUCTPv_bPvf  # OVL2; s1:order by hand (the demo's WalkLine(loc, loc) 0x1A7570, 0xD04 bytes; CanSeeLine and CanTravelLine 0x539090/0x5390B0 tail-call it with their callbacks as SOCOM 1's do, the step 0.2f added)
 0x00538980 0xD8 func_00538980  # OVL2
 0x00538A60 0x2A4 func_00538A60  # OVL2
 0x00538D10 0x120 func_00538D10  # OVL2
 0x00538E30 0xB4 func_00538E30  # OVL2
 0x00538EF0 0x17C func_00538EF0  # OVL2
-0x00539070 0x20 func_00539070  # OVL2
-0x00539090 0x20 func_00539090  # OVL2
-0x005390B0 0x20 func_005390B0  # OVL2
+0x00539070 0x20 CanSeeLine__6CAiMapFRC9CAiMapLocPC6CPnt3DP9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x1A8330, the first of the three line tests in both builds: WalkLine(from, dir, _SeeLineCallback, out, 0.2f))
+0x00539090 0x20 CanSeeLine__6CAiMapFRC9CAiMapLocRC9CAiMapLocP9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x1A8340: WalkLine(from, to, _SeeLineCallback, out, 0.2f); CAiMaps::CanSeeLine calls it)
+0x005390B0 0x20 CanTravelLine__6CAiMapFRC9CAiMapLocRC9CAiMapLocP9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x1A8350: WalkLine(from, to, _TravelLineCallback 0x539580, out, 0.2f); CAiMaps::CanTravelLine calls it)
 0x005390D0 0x168 func_005390D0  # OVL2
 0x00539240 0x1B4 func_00539240  # OVL2
 0x00539400 0x17C func_00539400  # OVL2

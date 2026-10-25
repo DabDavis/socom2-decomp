@@ -20,6 +20,32 @@ CAiMap *CAiMaps::GetMapByIndex(unsigned int i) const
     return *it;
 }
 
+/* whether the line between two cells of one map is clear to the feet, to the eye (SOCOM 1's;
+ * false across maps) */
+bool CAiMaps::CanTravelLine(const CAiMapLoc &from, const CAiMapLoc &to, CAiMapLoc *out)
+{
+    bool r = false;
+
+    if (from.m_mapid == to.m_mapid) {
+        CAiMap *map = GetMapByIndex(from.m_mapid);
+
+        r = map ? map->CanTravelLine(from, to, out) : false;
+    }
+    return r;
+}
+
+bool CAiMaps::CanSeeLine(const CAiMapLoc &from, const CAiMapLoc &to, CAiMapLoc *out)
+{
+    bool r = false;
+
+    if (from.m_mapid == to.m_mapid) {
+        CAiMap *map = GetMapByIndex(from.m_mapid);
+
+        r = map ? map->CanSeeLine(from, to, out) : false;
+    }
+    return r;
+}
+
 /* the cell's altitude, false off the maps (SOCOM 1's; the map's lookup inlined one level) */
 bool CAiMaps::GetAltitude(const CAiMapLoc &loc, float &alt)
 {
@@ -120,6 +146,14 @@ CAiMap::link *CAiMaps::GetCellLink(const CAiMapLoc &loc)
     CAiMap *map = GetMapByIndex(loc.m_mapid);
 
     return map ? map->GetCellLink(loc) : 0;
+}
+
+/* whether a step may end on the cell: on the map, and not a no-go soil (new in SOCOM II) */
+bool CAiMap::IsTraversable(const CAiMapLoc &loc) const
+{
+    CAiCell *cell = GetCell(loc, 0);
+
+    return cell ? cell->IsTraversable() : false;
 }
 
 CAiMap *CAiMaps::GetMap(const CAiMapLoc &loc) const
