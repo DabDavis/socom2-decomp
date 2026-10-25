@@ -211,6 +211,7 @@ public:
     iterator find(const Key &x);
     template <class Key, class V>
     value_type &find_or_insert(const Key &key);
+    pair<iterator, bool> insert_one(const value_type &x);
     void clear()
     {
         if (root() != 0) {
@@ -292,6 +293,36 @@ __tree<T, Compare, Allocator>::find_or_insert(const Key &key)
     if (prev == 0 || comp()(prev->data_, key))
         return insert_node_at(p, leftchild, is_leftmost, value_type(key, V()))->data_;
     return prev->data_;
+}
+
+/* a value inserted unless its key is there (the map's insert, SOCOM 1's insert_one): the walk of
+ * find_or_insert, the result's bool a constant read from the unit's pool (`true` and `false` bound
+ * to pair's const references) */
+template <class T, class Compare, class Allocator>
+pair<typename __tree<T, Compare, Allocator>::iterator, bool>
+__tree<T, Compare, Allocator>::insert_one(const value_type &x)
+{
+    node *prev = 0;
+    node *p = (node *)&tail();
+    node *n = (node *)root();
+    bool leftchild = true;
+    bool is_leftmost = true;
+
+    while (n != 0) {
+        p = n;
+        if (comp()(x, n->data_)) {
+            n = (node *)n->left_;
+            leftchild = true;
+        } else {
+            prev = n;
+            n = (node *)n->right_;
+            leftchild = false;
+            is_leftmost = false;
+        }
+    }
+    if (prev == 0 || comp()(prev->data_, x))
+        return pair<iterator, bool>(iterator(insert_node_at(p, leftchild, is_leftmost, x)), true);
+    return pair<iterator, bool>(iterator(prev), false);
 }
 
 template <class T, class Compare, class Allocator>
