@@ -84,6 +84,9 @@ public:
     ~CAiStateStack();
     /* every state deleted, the stack emptied (the name ours; 0x5F8390) */
     void Clear();
+    /* the current state popped, the one under it resumed (SOCOM 1's CSealCtrlAi::PopAiState();
+     * the name ours, 0x5F7C40) */
+    AI_STATE Pop(CSealCtrlAi *ai);
     /* the current state, the front, or 0 (seal_aistate.cpp's, out of line: the SEAL units call
      * them; CSealCtrlAi::GetAiState inlines one; the names ours -- 0x5F8330, 0x5F8360) */
     CAiState *GetState() const;
@@ -494,6 +497,9 @@ public:
     virtual bool CanAttack() const { return false; }
     virtual bool CanScan() const { return true; }
     virtual ~CAiSHostage();
+    /* the captor: its id and team kept, the flags' bit 0 set when asked (OVL2 0x601E50; the name
+     * ours -- the AI's OnCommand calls it on its hostage state, kind 23) */
+    void SetCaptor(CEntity *e, bool flag);
 
     int m_58;   // 0x58 (-1 on a reset)
     unsigned int m_5c;   // 0x5c: an entity's id (CEntity::invalidId on a reset)
@@ -587,6 +593,8 @@ public:
     virtual bool CanAttack() const { return !(m_flags & 0xc); }
     virtual bool CanPursue(CSealCtrlAi *ai) const { return false; }
     virtual ~CAiSEvent();
+    /* the event's name copied in, or cleared (OVL2 0x605A10; the name ours) */
+    void SetName(const char *name);
 
     unsigned char m_58;   // 0x58
     unsigned char _59[0x5c - 0x59];
@@ -600,8 +608,8 @@ public:
     unsigned int m_88;   // 0x88
     unsigned char m_8c;   // 0x8c
     unsigned char m_8d;   // 0x8d
-    unsigned char m_8e;   // 0x8e
-    unsigned char _8f[0xa0 - 0x8f];
+    char m_name[16];   // 0x8e: a name, up to 16 characters (SetName; cleared on a reset)
+    unsigned char _9e[0xa0 - 0x9e];   // 0xa0 bytes, Create's new
 };
 
 class CAiSStunResponse : public CAiState {

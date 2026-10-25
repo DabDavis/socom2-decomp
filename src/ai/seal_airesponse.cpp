@@ -5,6 +5,8 @@
  * destructors and the inline virtuals their tables pull in, the NoAmmo/Flee/Reload Ticks and seven
  * OnSignals (round 3). Defined in reverse of their image order (-inline deferred). */
 
+#include <string.h>
+
 #include "../gamez/zkit/zkit.h"
 
 /* a chance taken: a random float in [0, 1) against the odds (an inline, seal_control.cpp's shape:
@@ -328,7 +330,7 @@ void CAiSEvent::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
         m_58 = 0;
         m_pos = CPnt3D::zero;
         m_pos2 = CPnt3D::zero;
-        m_8e = 0;
+        m_name[0] = 0;
         m_88 = 0;
         m_8c = 0;
         m_8d = 0;
@@ -352,6 +354,15 @@ void CAiSEvent::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
         SetFlags(0, 0x40);
         break;
     }
+}
+
+/* the event's name, up to sixteen characters, or none (OVL2 0x605A10) */
+void CAiSEvent::SetName(const char *name)
+{
+    if (name)
+        strncpy(m_name, name, 16);
+    else
+        m_name[0] = 0;
 }
 
 /* the hold's signed-byte count (a file static: its Tick reads it too; OVL2 data 0x650E10) */
@@ -608,6 +619,17 @@ void CAiSFlee::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
         break;
     case SIGNAL_3:
         break;
+    }
+}
+
+/* the hostage's captor: its id and team, the flags' bit 0 when asked (OVL2 0x601E50) */
+void CAiSHostage::SetCaptor(CEntity *e, bool flag)
+{
+    if (flag)
+        SetFlags(1, 0);
+    if (e) {
+        m_5c = e->m_id;
+        m_58 = e->m_team;
     }
 }
 

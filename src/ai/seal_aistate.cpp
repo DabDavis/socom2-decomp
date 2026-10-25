@@ -431,10 +431,14 @@ CEntity *func_005EDBB0(void *unit, int a, int b);
 void func_0056D890(CSealCtrlAi *ai, int x);
 void func_005631B0(CSealCtrlAi *ai, int a, int b, float f);
 void func_00570F90(CSealCtrlAi *ai, float t);
-/* two OVL1 globals the stop signal tests (bss 0x44D628, 0x44D630: unnamed) */
+/* the last state popped: its result and its kind (OVL1 bss 0x44D628, 0x44D630: the stack's pop
+ * stores them, the stop signal tests them -- unnamed) */
 extern int data_0044D628;
-extern unsigned char data_0044D630;
+extern AI_STATE data_0044D630;
 void func_005F6190(CAiState *s, CSealCtrlAi *ai);
+/* the stack's bits brought up to date (OVL2 0x5F7470, unwritten: the stack, the AI, a flag --
+ * SOCOM 1's UpdateStackFlags?) */
+void func_005F7470(CAiStateStack *stack, CSealCtrlAi *ai, int x);
 }
 
 /* a SEAL's bit the signals set (CZSealBody at 0x105D, bit 1; zseal.h does not name it -- the
@@ -514,6 +518,39 @@ void CAiState::Signal(CAiStateStack *stack, CAiState *state, SIGNAL sig, CSealCt
         }
     }
     state->OnSignal(sig, ai);
+}
+
+/* the current state popped: told it is left (1), noted as the last popped, deleted, and the state
+ * under it told it is back on top (3); its kind returned, or 0 (OVL2 0x5F7C40; SOCOM 1's
+ * CSealCtrlAi::PopAiState(), whose wrapper 0x5F5CA0 now calls the stack's -- the name ours).
+ * OPEN, 10 instructions, one register: before the erase the target takes &end_.next_ (this + 8)
+ * into s3 and reads the new front through it after the call; here the front is reloaded from
+ * 8(this) and a nop follows. Tried: the const GetState, erase(begin()) for pop_front, the deleted
+ * front in a local, the ternary on front() -- all the same 10 */
+AI_STATE CAiStateStack::Pop(CSealCtrlAi *ai)
+{
+    AI_STATE kind = AI_STATE_UNKNOWN;
+
+    if (size() != 0) {
+        CAiState *s = GetState();
+        CAiState *next;
+
+        CAiState::Signal(this, s, CAiState::SIGNAL_1, ai);
+        data_0044D630 = s->m_state;
+        data_0044D628 = s->m_done;
+        next = 0;
+        if (size() != 0) {
+            delete GetState();
+            pop_front();
+            next = GetState();
+        }
+        if (next) {
+            kind = next->m_state;
+            CAiState::Signal(this, next, CAiState::SIGNAL_3, ai);
+        }
+        func_005F7470(this, ai, 1);
+    }
+    return kind;
 }
 
 /* the stack's constructor (OVL2 0x5F8520): out of line, as its destructor is */

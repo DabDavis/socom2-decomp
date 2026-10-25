@@ -11533,7 +11533,7 @@
 0x005F7990 0xAC func_005F7990  # OVL2
 0x005F7A40 0xC4 func_005F7A40  # OVL2
 0x005F7B10 0x130 func_005F7B10  # OVL2
-0x005F7C40 0x138 func_005F7C40  # OVL2
+0x005F7C40 0x138 Pop__13CAiStateStackFP11CSealCtrlAi  # OVL2; by hand (the kit lane, round 4): the stack's pop -- the front state told SIGNAL_1 (0x5F6FA0), its kind and result kept in OVL1 bss 0x44D630/0x44D628, deleted through slot 0x4C and erased (0x50FA50), the new front told SIGNAL_3, then 0x5F7470(stack, ai, 1); returns the new front's kind -- SOCOM 1's CSealCtrlAi::PopAiState(), whose wrapper (0x5F5CA0) tail-calls it on the stack at 0x41C (the name ours)
 0x005F7D80 0x15C func_005F7D80  # OVL2
 0x005F7EE0 0x144 func_005F7EE0  # OVL2
 0x005F8030 0x1A0 func_005F8030  # OVL2
@@ -11649,7 +11649,7 @@
 0x00601880 0x78 __dt__11CAiSHostageFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00601900 0x8 CanAttack__11CAiSHostageCFv  # OVL2; by hand: CAiSHostage's vtable slot +0x24 (CanAttack)
 0x00601910 0x538 Tick__11CAiSHostageFfP11CSealCtrlAi  # OVL2; by hand: CAiSHostage's vtable slot +0x10 (Tick)
-0x00601E50 0x58 func_00601E50  # OVL2
+0x00601E50 0x58 SetCaptor__11CAiSHostageFP7CEntityb  # OVL2; by hand (the kit lane, round 4): the flags' bit 0 set (SetFlags(1, 0)) when its bool asks, then the entity's id (CEntity 0x4) at 0x5C and its team (0xC8) at 0x58 -- the fields CAiSHostage::OnSignal's reset clears to invalidId and -1; CSealCtrlAi::OnCommand and 0x5784A0 call it on the AI's state of kind 23 (the name ours)
 0x00601EB0 0x8 CanScan__11CAiSHostageCFv  # OVL2; by hand: CAiSHostage's vtable slot +0x28 (CanScan)
 0x00601EC0 0x58 CanPushAiState__11CAiSHostageF8AI_STATEP11CSealCtrlAi  # OVL2; by hand: CAiSHostage's vtable slot +0x1C (CanPushAiState)
 0x00601F20 0x60 OnSignal__11CAiSHostageFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -11677,7 +11677,7 @@
 0x00605800 0x14C func_00605800  # OVL2
 0x00605950 0xAC func_00605950  # OVL2
 0x00605A00 0x8 GetStatus__9CAiSEventCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00605A10 0x34 func_00605A10  # OVL2
+0x00605A10 0x34 SetName__9CAiSEventFPCc  # OVL2; by hand (the kit lane, round 4): strncpy of up to 16 characters into the event state's 0x8E, or its first byte cleared for none -- the byte CAiSEvent::OnSignal's reset clears; 0x558AE0 calls it on a state after setting its flags' bit 0 (the name ours)
 0x00605A50 0x8 CanPursue__9CAiSEventCFP11CSealCtrlAi  # OVL2; by hand: CAiSEvent's vtable slot +0x2C (CanPursue, as SOCOM 1's)
 0x00605A60 0x14 CanAttack__9CAiSEventCFv  # OVL2; by hand: CAiSEvent's vtable slot +0x24 (CanAttack; SOCOM 1's 0x2C bytes, this 0x14)
 0x00605A80 0x1DC OnSignal__9CAiSEventFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand: CAiSEvent's vtable slot +0x8 (OnSignal)
