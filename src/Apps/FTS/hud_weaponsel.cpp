@@ -73,6 +73,13 @@ public:
     CTexHandle *GetTexHandle(const char *name);
 };
 
+/* a texture's size, first (c2dbitmap.cpp's) */
+class CTexture {
+public:
+    unsigned short m_width;   // 0x0
+    unsigned short m_height;   // 0x2
+};
+
 class CAssetMgr {
 public:
     static CAssetList m_assets;
@@ -218,6 +225,117 @@ void CWeaponSel::UnInit()
     if (m_openstate)
         OnClose();
     TextClearAndWipe();
+}
+
+/* a value moved toward its goal by an increment, not past it (SOCOM 1's static
+ * CWeaponSel::Increment, inline here: SOCOM II links no copy, and the increment's product is
+ * substituted into both arms) */
+static inline float Increment(float increment, float val, float goal)
+{
+    if (val < goal) {
+        val += increment;
+        if (val > goal)
+            val = goal;
+    } else if (val > goal) {
+        val -= increment;
+        if (val < goal)
+            val = goal;
+    }
+    return val;
+}
+
+/* the arrows' colours: the brighter one fades down to the other's (lit at 100 and the pulse
+ * restarted from it when it gets there), else both pulse between 60 and 120 (SOCOM 1's) */
+void CWeaponSel::PulseSelectionArrows(float dT)
+{
+    CPnt3D tempcolor1 = m_arrow[0].m_tris[0].GetColor();
+    CPnt3D tempcolor2 = m_arrow[1].m_tris[0].GetColor();
+
+    if (tempcolor1.x > tempcolor2.x) {
+        CPnt3D step;
+
+        step.x = step.y = step.z = 500.0f * dT;
+        tempcolor1.Sub(&step, &tempcolor1);
+        if (tempcolor1.x < tempcolor2.x) {
+            tempcolor1.x = tempcolor2.x;
+            tempcolor1.y = tempcolor2.y;
+            tempcolor1.z = tempcolor2.z;
+            m_arrow[0].SetTrans(100.0f);
+            m_arrowincrement = 1;
+            m_arrowcolor = tempcolor1.x;
+        }
+        m_arrow[0].SetColor(tempcolor1.x, tempcolor1.y, tempcolor1.z);
+    } else if (tempcolor2.x > tempcolor1.x) {
+        CPnt3D step;
+
+        step.x = step.y = step.z = 500.0f * dT;
+        tempcolor2.Sub(&step, &tempcolor2);
+        if (tempcolor2.x < tempcolor1.x) {
+            tempcolor2.x = tempcolor1.x;
+            tempcolor2.y = tempcolor1.y;
+            tempcolor2.z = tempcolor1.z;
+            m_arrow[1].SetTrans(100.0f);
+            m_arrowincrement = 1;
+            m_arrowcolor = tempcolor2.x;
+        }
+        m_arrow[1].SetColor(tempcolor2.x, tempcolor2.y, tempcolor2.z);
+    } else {
+        if (m_arrowincrement) {
+            m_arrowcolor += 250.0f * dT;
+            if (m_arrowcolor > 120.0f) {
+                m_arrowincrement = !m_arrowincrement;
+                m_arrowcolor = 120.0f;
+            }
+        } else {
+            m_arrowcolor -= 250.0f * dT;
+            if (m_arrowcolor < 60.0f) {
+                m_arrowincrement = !m_arrowincrement;
+                m_arrowcolor = 60.0f;
+            }
+        }
+        m_arrow[0].SetColor(m_arrowcolor, m_arrowcolor, m_arrowcolor);
+        m_arrow[1].SetColor(m_arrowcolor, m_arrowcolor, m_arrowcolor);
+    }
+}
+
+/* scrolling up: the second and third rows slid toward the fourth's place (the second twice as
+ * far), their fades following, the scroll finished there; the items placed */
+void CWeaponSel::HandleScrollUpState(float dT)
+{
+    m_menuposx[1] = Increment(2.0f * (float)(475.0f * dT), m_menuposx[1], m_menuposx[3] - m_menugoalx);
+    m_menuposy[1] = Increment(2.0f * (float)(475.0f * dT), m_menuposy[1], m_menuposy[3] - 2.0f * m_menugoaly);
+    m_menuposx[2] = Increment(2.0f * (float)(475.0f * dT), m_menuposx[2], m_menuposx[3] - m_menugoalx);
+    m_menuposy[2] = Increment(2.0f * (float)(475.0f * dT), m_menuposy[2], m_menuposy[3] - m_menugoaly);
+
+    float r = 1.0f + (m_menuposy[3] - m_menugoaly - m_menuposy[2]) / m_menugoaly;
+
+    m_curtrans[0] = 40.0f + 87.0f * (1.0f - r);
+    m_curtrans[1] = 40.0f + 87.0f * r;
+    m_weaponicon[2].SetTrans(m_curtrans[1]);
+    m_weaponicon[1].SetTrans(m_curtrans[0]);
+    if (m_menuposy[2] == m_menuposy[3] - m_menugoaly)
+        AfterScrollUp();
+    SetItemPos(4);
+}
+
+/* scrolling down: the first two rows slid toward the fourth's place (the second twice as far),
+ * their fades following, the scroll finished there; the items placed */
+void CWeaponSel::HandleScrollDownState(float dT)
+{
+    m_menuposx[0] = Increment(2.0f * (float)(475.0f * dT), m_menuposx[0], m_menuposx[3] + m_menugoalx);
+    m_menuposy[0] = Increment(2.0f * (float)(475.0f * dT), m_menuposy[0], m_menuposy[3] + m_menugoaly);
+    m_menuposx[1] = Increment(2.0f * (float)(475.0f * dT), m_menuposx[1], m_menuposx[3] + 2.0f * m_menugoalx);
+    m_menuposy[1] = Increment(2.0f * (float)(475.0f * dT), m_menuposy[1], m_menuposy[3] + 2.0f * m_menugoaly);
+
+    float r = (m_menuposy[3] + m_menugoaly - m_menuposy[0]) / m_menugoaly;
+
+    m_curtrans[0] = 40.0f + 87.0f * (1.0f - r);
+    m_curtrans[1] = 40.0f + 87.0f * r;
+    m_weaponicon[0].SetTrans(m_curtrans[0]);
+    m_weaponicon[1].SetTrans(m_curtrans[1]);
+    if (m_menuposy[0] == m_menuposy[3] + m_menugoaly)
+        AfterScrollDown();
+    SetItemPos(5);
 }
 
 /* the arrows, the backdrop and two backings off, closed (6), the HUD's reticule back and the
@@ -463,4 +581,45 @@ void CWeaponSel::AfterScrollUp()
         PlaceWeaponText();
         PlaceHotSwapLabels();
     }
+}
+
+/* opened: the arrows centred on the selector's width at its top and bottom rows (with an arrow
+ * texture), the texts placed, scrolling (3), the select sound played (SOCOM 1's, the arrows'
+ * placing reworked and the backings gone) */
+void CWeaponSel::AfterOpenSecond()
+{
+    if (m_arrowtex) {
+        float h = (int)m_arrowtex->m_height;
+        float w = (int)m_arrowtex->m_width;
+
+        m_arrow[0].On();
+
+        /* the upper arrow's lower edge taken first: it is loaded ahead of the centring */
+        float y = data_003E4AA0 + h;
+        float right = (w + data_0040C108) / 2.0f;
+        float left = right - w;
+
+        m_arrow[0].Load(left, data_003E4AA0, left, y, right, y, right, data_003E4AA0, m_arrowtex);
+        m_arrow[1].On();
+        m_arrow[1].Load(right, data_003E4A90, right, data_003E4A90 - h, left, data_003E4A90 - h, left,
+                        data_003E4A90, m_arrowtex);
+    }
+    PlaceHotSwapLabels();
+    PlaceWeaponText();
+    m_openstate = 3;
+    if (m_selectsound)
+        m_selectsound->PlaySound(0, 255);
+}
+
+/* the hot-swap highlight faded out and off, the middle icon off when asked or closed, the hot-swap
+ * labels back to 80 (SOCOM II's: CHUD::Tick calls it with true after a close; the name ours) */
+void CWeaponSel::ResetHotSwap(bool force)
+{
+    m_selectionback2.SetTrans(0.0f);
+    m_selectionback2.m_fade_dx = 2.0f;
+    m_selectionback2.Off();
+    if (force || !m_openstate)
+        m_weaponicon[1].Off();
+    m_hotswapL1text.SetTrans(80.0f);
+    m_hotswapL2text.SetTrans(80.0f);
 }

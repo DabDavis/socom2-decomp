@@ -1935,12 +1935,12 @@
 0x002193D0 0x31C PlaceWeaponText__10CWeaponSelFv  # OVL1; s1:order by hand (the HUD lane: the unit's first function as SOCOM 1's; AfterScrollUp/Down call it, then PlaceHotSwapLabels, as SOCOM 1's do)
 0x002196F0 0x250 PlaceHotSwapLabels__10CWeaponSelFv  # OVL1; s1:order by hand (the HUD lane: second in the unit as SOCOM 1's; called right after PlaceWeaponText by AfterScrollUp/Down as there)
 0x00219940 0x134 func_00219940  # OVL1
-0x00219A80 0x200 func_00219A80  # OVL1
+0x00219A80 0x200 SetItemPos__10CWeaponSelFi  # OVL1; s1:order by hand (the HUD lane: SOCOM 1's SetItemPos(int), which HandleScrollDownState/UpState end on with 5 as there; SOCOM II's is shorter, its pieces in neighbouring functions)
 0x00219C80 0x324 func_00219C80  # OVL1
 0x00219FB0 0x240 func_00219FB0  # OVL1
 0x0021A1F0 0x314 func_0021A1F0  # OVL1
-0x0021A510 0xAC func_0021A510  # OVL1
-0x0021A5C0 0x134 func_0021A5C0  # OVL1
+0x0021A510 0xAC ResetHotSwap__10CWeaponSelFb  # OVL1; ours (the HUD lane: SOCOM II's, no SOCOM 1 counterpart; CHUD::Tick calls it with true right after OnClose/AfterCloseFirst/AfterClose: the hot-swap highlight (the third backing) faded and off, the middle icon off when forced or closed, the hot-swap labels to 80)
+0x0021A5C0 0x134 AfterOpenSecond__10CWeaponSelFv  # OVL1; s1:order by hand (the HUD lane: SOCOM 1's AfterOpenSecond, before AfterScrollUp as there: the arrows loaded from the arrow texture's size, PlaceHotSwapLabels then PlaceWeaponText, state 3; SOCOM II adds the select sound)
 0x0021A700 0x1C8 AfterScrollUp__10CWeaponSelFv  # OVL1; s1:order by hand (the HUD lane: SOCOM 1's AfterScrollUp, the same shape -- the rows shifted up a slot from the fourth, the icons reloaded, PlaceWeaponText and PlaceHotSwapLabels called last; SOCOM II dropped the selection backings' loads)
 0x0021A8D0 0x1C8 AfterScrollDown__10CWeaponSelFv  # OVL1; s1:order by hand (the HUD lane: SOCOM 1's AfterScrollDown, after AfterScrollUp as there, the rows shifted down a slot)
 0x0021AAA0 0x150 AfterClose__10CWeaponSelFv  # OVL1; s1:order by hand (hud_weaponsel.cpp: SOCOM 1's AfterClose, 0x170 there -- GetHUDOwner, the controller's SetMenuState(0) (a flag added), the pad's cross, circle and triangle set up (now behind a null test), the icons, arrows and weapon texts off, m_openstate = 0; three functions before AfterCloseFirst as SOCOM 1's)
@@ -1949,9 +1949,9 @@
 0x0021B0A0 0xA0 AfterCloseFirst__10CWeaponSelFv  # OVL1; s1:order by hand (hud_weaponsel.cpp: right before OnClose as SOCOM 1's AfterCloseFirst, 0xA0 against 0xC0: the folded menu's height 2 + (32 + y1) - (y1 - 1), half of it the centre, the goal at the second row, m_openstate 7, two icons off -- the in-game selector's inlined AfterCloseFirst at its own offsets)
 0x0021B140 0x298 func_0021B140  # OVL1
 0x0021B3E0 0x114 OnClose__10CWeaponSelFv  # OVL1; s1:order by hand (hud_weaponsel.cpp: SOCOM 1's OnClose, 0x130 there -- GetHUDOwner, the arrows and backdrop off, m_openstate = 6 at 0xC58, the HUD's m_usehudret cleared, the kit's SetCurReticule(false), the seven texts off; UnInit 0x21CBA0 inlines the same body behind its open test as SOCOM 1's UnInit calls OnClose)
-0x0021B500 0x314 func_0021B500  # OVL1
-0x0021B820 0x324 func_0021B820  # OVL1
-0x0021BB50 0x244 func_0021BB50  # OVL1
+0x0021B500 0x314 HandleScrollDownState__10CWeaponSelFf  # OVL1; s1:order by hand (the HUD lane: SOCOM 1's HandleScrollDownState, after OnClose as there: four inlined Increments by 2*475*dT, the fades from the first row's progress, AfterScrollDown at the goal, SetItemPos(5))
+0x0021B820 0x324 HandleScrollUpState__10CWeaponSelFf  # OVL1; s1:order by hand (the HUD lane: SOCOM 1's HandleScrollUpState, after HandleScrollDownState as there: four inlined Increments, AfterScrollUp at the goal, SetItemPos(4))
+0x0021BB50 0x244 PulseSelectionArrows__10CWeaponSelFf  # OVL1; s1:order by hand (the HUD lane: SOCOM 1's PulseSelectionArrows, after the two scroll-state handlers as there: the arrows' C2DPoly colours compared, the brighter faded by 500*dT through CPnt3D::Sub, else both pulsed 60-120 by 250*dT)
 0x0021BDA0 0x734 func_0021BDA0  # OVL1
 0x0021C4E0 0x210 func_0021C4E0  # OVL1
 0x0021C6F0 0x4A4 func_0021C6F0  # OVL1
