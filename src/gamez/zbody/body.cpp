@@ -170,13 +170,10 @@ void CBody::SetBodyPart(int id, CZBodyPart *part)
 /* an archive's anim of a motion.rdr index readied for the body, once: each part's object found by
  * its node's name and filed by the part's id, then the other objects whose bone ids lie past the
  * body's parts filed from the top slot down (SOCOM 1's BodyAddAnim, which took a name; SOCOM II's
- * returns its stack anim, gone by then).
- * OPEN, 16 instructions (right size): the first walk's registers -- the target keeps the iterator
- * in s3, the part in s4 and the slot pointer in s2 (this's, loaded in the walk's entry delay slot),
- * where this source gives the iterator s2, the slot s4 (loaded ahead of the test) and the part s3.
- * Tried: the slot declared before the reference, the iterator declared before the slot, an index
- * instead of the slot pointer (int or unsigned: 8 bytes longer). The stack anim through a pointer
- * and the decrement as the index's pre-decrement each took off a block of differences. */
+ * returns its stack anim, gone by then). The first walk's iterators are both the vectors' class
+ * iterators, the parts' initialised before the slots' (the slot then takes this's register, loaded
+ * in the walk's entry delay slot); a raw slot pointer, or the slots' iterator first, trade three
+ * saved registers */
 CZBodyAnim *CBody::BodyAddAnim(CScriptArchive *archive, int index)
 {
     if (index <= 0)
@@ -191,9 +188,10 @@ CZBodyAnim *CBody::BodyAddAnim(CScriptArchive *archive, int index)
     a->m_pCommon = common;
     if (!common->m_objects_ready) {
         std::vector<CZBodyPart *> &parts = m_body_parts;
-        CZSIObject **slot = &common->m_objects_for_body[0];
+        std::vector<CZBodyPart *>::iterator i = parts.begin();
+        std::vector<CZSIObject *>::iterator slot = common->m_objects_for_body.begin();
 
-        for (std::vector<CZBodyPart *>::iterator i = parts.begin(); i != parts.end(); ++i, slot++) {
+        for (; i != parts.end(); ++i, ++slot) {
             CZBodyPart *part = *i;
 
             if (part && !*slot) {
