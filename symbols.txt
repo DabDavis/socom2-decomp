@@ -4862,7 +4862,7 @@
 0x002EB770 0xC func_002EB770  # OVL1
 0x002EB780 0xC func_002EB780  # OVL1
 0x002EB790 0xC func_002EB790  # OVL1
-0x002EB7A0 0x15C func_002EB7A0  # OVL1
+0x002EB7A0 0x15C UpdateLadderBestDisplay__Fv  # OVL1; ours (the player ladder's best, LadderRanking 0x44F7E0, sorted -- std::sort's instance 0x2EC260 -- and built into uiv_MediusLadderTop10: '%d', the name and clan strings at +0x8C/+0x98)
 0x002EB900 0x318 func_002EB900  # OVL1
 0x002EBC20 0xC8 func_002EBC20  # OVL1
 0x002EBCF0 0x154 Add__14ClanLadderListFP31MediusGetClanLadderListResponse  # OVL1; ours (cbGetClanLadderList keeps a clan through it: the 0x48-byte response copied whole unless its position (+0x3c) is there, the highest position kept at +0xc; byte-exact)

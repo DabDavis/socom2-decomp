@@ -423,6 +423,38 @@ MediusErrorCode func_0064B128(MediusLadderListRequest *req,
                               void (*cb)(int, int, int, MediusLadderListResponse *));   /* MediusLadderList */
 }
 
+/* the player ladder's order (std::sort's comparator, empty, by value) */
+struct LadderLess {
+    LadderLess() {}
+};
+extern "C" void func_002EC260(LadderList::iterator first, LadderList::iterator last,
+                              LadderLess less);   /* std::sort's instance */
+
+/* the player ladder's best sorted and handed to the menus: each one's position, name and clan
+ * (SOCOM II's; OVL1 0x2EB7A0; the name ours).
+ * OPEN, 0x164 against 0x15C: the target reads each name's words off the item (0x8C/0x8D/0x94,
+ * 0x98/0x99/0xA0) where include/string's inline c_str() keeps the string's own address in a
+ * register (item + 0x98, then +1, +8) -- the MSL string's c_str(), or a different member type */
+void UpdateLadderBestDisplay()
+{
+    CRdrEditor ed;
+
+    func_002EC260(LadderRanking.begin(), LadderRanking.end(), LadderLess());
+    ed.push(0);
+    for (LadderList::iterator i = LadderRanking.begin(); i != LadderRanking.end(); ++i) {
+        char pos[32];
+
+        sprintf(pos, "%d", (*i)->m_position);
+        ed.push(0);
+        ed.addstringnode(pos);
+        ed.addstringnode((*i)->m_name.c_str());
+        ed.addstringnode((*i)->m_clan.c_str());
+        ed.pop();
+    }
+    ed.pop();
+    theLobby.uiv_MediusLadderTop10->Set(&ed);
+}
+
 /* the player ladder's best n asked for (SOCOM II's; OVL1 0x2EB610; the name ours) */
 void CZOnlineLobby::GetLadderBest(int n)
 {
