@@ -93,7 +93,13 @@ public:
     NetCreateObjectCallback m_leave_cb;   // 0x1110
     NetUpdateObjectCallback m_ObjectUpdateCallbackList[16];   // 0x1114 (SOCOM 1's at 0x10e8)
     NetUpdateObjectCallback m_ObjectPostUpdateCallbackList[16];   // 0x1154
-    unsigned char _1194[0x1248 - 0x1194];
+    unsigned char _1194[0x1198 - 0x1194];
+    /* SOCOM II's game-info exchange on a LAN: the callback the info goes to and the two DME
+     * message types registered for the request and the reply (0x30CB90; the names ours) */
+    void (*m_infoCallback)(void *info);   // 0x1198
+    int m_infoRequestType;   // 0x119c
+    int m_infoType;   // 0x11a0
+    unsigned char _11a4[0x1248 - 0x11a4];
     std::list<TypeAppMessage *> m_message_list;   // 0x1248
     std::list<TypeRTimeFixStruct *> m_fix_list;   // 0x1254
 };   // 0x1260
