@@ -316,6 +316,38 @@ C2D *CClockSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) con
     return clock;
 }
 
+/* the check's offset, size and texture and the actions run on checking and unchecking (SOCOM 1's;
+ * CButtonSpec's constructor out of line, ActionItem's inlined) */
+CCheckBoxSpec::CCheckBoxSpec(_zrdr *rdr) : CButtonSpec(rdr)
+{
+    zrdr_findint(rdr, "CHECK_X", &m_checkOffset.x, 1);
+    zrdr_findint(rdr, "CHECK_Y", &m_checkOffset.y, 1);
+    zrdr_findIPNT2D(rdr, "CHECK_OFFSET", &m_checkOffset);
+    zrdr_findint(rdr, "CHECKSIZE_X", &m_checkSize.x, 1);
+    zrdr_findint(rdr, "CHECKSIZE_Y", &m_checkSize.y, 1);
+    zrdr_findIPNT2D(rdr, "CHECK_SIZE", &m_checkSize);
+    m_checkTexture = zrdr_findstring(rdr, "CHECK_TEXTURE");
+    m_onCheck = new ActionItem;
+    m_onUncheck = new ActionItem;
+    _zrdr *anim = zrdr_findtag(rdr, "ONCHECK");
+    if (anim)
+        ParseButtonAnim(anim, m_onCheck);
+    anim = zrdr_findtag(rdr, "ONUNCHECK");
+    if (anim)
+        ParseButtonAnim(anim, m_onUncheck);
+}
+
+/* a copy (SOCOM 1's, out of line: Copy calls it): the button's implicit copy inlined one level,
+ * the check's fields assigned, its actions copied */
+CCheckBoxSpec::CCheckBoxSpec(CCheckBoxSpec &spec) : CButtonSpec(spec)
+{
+    m_checkOffset = spec.m_checkOffset;
+    m_checkSize = spec.m_checkSize;
+    m_checkTexture = spec.m_checkTexture;
+    m_onCheck = new ActionItem(*spec.m_onCheck);
+    m_onUncheck = new ActionItem(*spec.m_onUncheck);
+}
+
 /* a check box of the spec's check (SOCOM 1's) *
  * OPEN until a row outside the lane is named: byte-exact with 0x377800 (zui_2d.cpp's) as
  * __ct__9C2DButtonFv -- C2DButton's constructor, out of line (measured with the row renamed) */
@@ -328,4 +360,24 @@ C2D *CCheckBoxSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) 
     func_00371550(box, this, check);
     InitializeButton(box, mgr);
     return box;
+}
+
+/* the design object's spec deleted, its strings destroyed (SOCOM II's, an ordinary function: zui.cpp's
+ * tail and the radio strip's and handler button's destructors call it) */
+CDesignDlgObj::~CDesignDlgObj()
+{
+    delete m_spec;
+}
+
+/* a copy of another's: the old spec deleted and the other's copied through its Copy slot, the
+ * position, opacity, name and parent assigned (SOCOM 1's CDesignDlgObj assignment; out of line) */
+void CDesignDlgObj::operator=(const CDesignDlgObj &o)
+{
+    delete m_spec;
+    m_spec = o.m_spec ? o.m_spec->Copy() : 0;
+    m_xpos = o.m_xpos;
+    m_ypos = o.m_ypos;
+    m_opacity = o.m_opacity;
+    m_name = o.m_name;
+    m_childOf = o.m_childOf;
 }

@@ -20,6 +20,18 @@
 
 #include "zui_2d.h"
 
+/* the action's strings freed (SOCOM 1's lines 23-24, the unit's first function: last of its own in
+ * the image, 0x3890C0) */
+ActionItem::~ActionItem()
+{
+    if (Animation)
+        _free(Animation, 0, 0);
+    Animation = 0;
+    if (Argument)
+        _free(Argument, 0, 0);
+    Argument = 0;
+}
+
 CDlgObjSpec *CImageSpec::Copy()
 {
     return new CImageSpec(*this);
@@ -184,16 +196,52 @@ C2D *CHandlerButtonSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *
     return button;
 }
 
-/* the subordinate object deleted (SOCOM 1's) -- held out of the build: the generated draft
- * (src/auto/ovl1/003880F0.cpp) matches through placeholders. OPEN, two things: 0x36E650
- * (zui_2d.cpp's) wants the name __dt__11ButtonStateFv, and the target calls the design object's
- * destructor out of line (0x37D9B0) where MW inlines zui_spec.h's in-class one here (0x14C bytes
- * against 0xF0) -- SOCOM II's ~CDesignDlgObj is likely an ordinary function of zui_spec.cpp's.
- * ~CSliderBarSpec, the same inlined ~CButtonSpec, is byte-exact with 0x36E650 renamed (measured) */
-#if 0
+/* the subordinate object deleted (SOCOM 1's): HasChildren called through the table, the design
+ * object's destructor out of line (zui_spec.cpp's), ~CButtonSpec inlined one level */
 CHandlerButtonSpec::~CHandlerButtonSpec()
 {
     if (HasChildren())
         delete m_child;
 }
-#endif
+
+/* a copy, the subordinate object handed over to it (SOCOM 1's: the source's pointer cleared) */
+CDlgObjSpec *CHandlerButtonSpec::Copy()
+{
+    CHandlerButtonSpec *spec = new CHandlerButtonSpec(*this);
+
+    m_child = 0;
+    return spec;
+}
+
+/* a copy (SOCOM 1's; the slider's implicit copy inlined, CButtonSpec's called) */
+CDlgObjSpec *CSliderBarSpec::Copy()
+{
+    return new CSliderBarSpec(*this);
+}
+
+/* a copy (SOCOM 1's; out of line, zui_spec.cpp's) */
+CDlgObjSpec *CCheckBoxSpec::Copy()
+{
+    return new CCheckBoxSpec(*this);
+}
+
+/* a copy, the strip's objects handed over to it (SOCOM 1's: the source's list emptied) */
+CDlgObjSpec *CRadioStripSpec::Copy()
+{
+    CRadioStripSpec *spec = new CRadioStripSpec(*this);
+
+    m_items.clear();
+    return spec;
+}
+
+/* a copy (SOCOM 1's; the map control's implicit copy inlined one level) */
+CDlgObjSpec *CUIMapCtrlSpec::Copy()
+{
+    return new CUIMapCtrlSpec(*this);
+}
+
+/* a copy (SOCOM 1's; the button's implicit copy inlined one level, its members' copies called) */
+CDlgObjSpec *CButtonSpec::Copy()
+{
+    return new CButtonSpec(*this);
+}

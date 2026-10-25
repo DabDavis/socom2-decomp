@@ -6739,7 +6739,7 @@
 0x003654A0 0x1C func_003654A0  # OVL1
 0x003654C0 0x538 func_003654C0  # OVL1
 0x00365A00 0x34C func_00365A00  # OVL1
-0x00365D50 0x9D8 func_00365D50  # OVL1
+0x00365D50 0x9D8 ParseButtonAnim__FP5_zrdrP10ActionItem  # OVL1; s1:calls by hand (CCheckBoxSpec(_zrdr *) calls it with ONCHECK's and ONUNCHECK's tags and the two new ActionItems where SOCOM 1's calls ParseButtonAnim__FP5_zrdrP10ActionItem; the rdr in a0, the item filled through a1, void) -- zui.cpp
 0x00366730 0x208 func_00366730  # OVL1
 0x00366940 0xC0 func_00366940  # OVL1
 0x00366A00 0x104 func_00366A00  # OVL1
@@ -6772,7 +6772,7 @@
 0x00369B60 0x348 __ct__9CGameMenuFv  # OVL1; s1:calls
 0x00369EB0 0xC0 func_00369EB0  # OVL1
 0x00369F70 0x24 __ct__10ActionItemFv  # OVL1; tu: zui.cpp~ (1.0 beta); s1:exact
-0x00369FA0 0xB8 func_00369FA0  # OVL1
+0x00369FA0 0xB8 __as__10ActionItemFRC10ActionItem  # OVL1; s1:order by hand (SOCOM 1's __as__10ActionItemFRC10ActionItem, zui.cpp lines 404-407, instruction for instruction but the file/line arguments: the type byte, each string freed and duplicated, PadButton then State; vector<ActionItem>'s range init calls it after the inline copy constructor's three stores, as SOCOM 1's) -- zui.cpp
 0x0036A060 0x1A0 UiGetDirStickMoved__Fv  # OVL1; s1:order by hand (zui.cpp's free helpers in reverse alphabetical order as SOCOM 1's, UiGetDirStickMoved first; its body is the one DidStickMovePrev/Next inline) -- the UI-widgets lane
 0x0036A200 0xC func_0036A200  # OVL1
 0x0036A210 0x20 func_0036A210  # OVL1
@@ -6789,11 +6789,11 @@
 0x0036AB20 0xC0 func_0036AB20  # OVL1
 0x0036ABE0 0x30 zUISchedulerClear__Fv  # OVL1; s1:exact
 0x0036AC10 0x68 __dt__Q23std62__vector_deleter<10ActionItem,Q23std23allocator<10ActionItem>>Fv  # OVL1; s1:calls (SOCOM 1's CButtonSpec destructor calls the ActionItem vector's deleter destructor for the same member) -- the UI-widgets lane
-0x0036AC80 0x68 func_0036AC80  # OVL1
-0x0036ACF0 0x68 func_0036ACF0  # OVL1
-0x0036AD60 0x6C func_0036AD60  # OVL1
-0x0036ADD0 0x7C func_0036ADD0  # OVL1
-0x0036AE50 0xD4 func_0036AE50  # OVL1
+0x0036AC80 0x68 __dt__Q23std68__vector_deleter<13CDesignDlgObj,Q23std26allocator<13CDesignDlgObj>>Fv  # OVL1; by its body and callers (the clear 0x36ADD0, then the data deleted, then the object when asked: include/vector's deleter destructor over 40-byte design objects; ~CUIMapCtrlSpec calls it for its ELEMENTS, as zui_cleanup.cpp's source does) -- zui.cpp's template tail
+0x0036ACF0 0x68 __dt__Q23std70__vector_deleter<15CDlgDesignModel,Q23std28allocator<15CDlgDesignModel>>Fv  # OVL1; by its body (the clear 0x36AE50, the data, the object when asked; the fourth of zui.cpp's closing deleters, SOCOM 1's ActionItem/CSaferStr/CDesignDlgObj/CDlgDesignModel set) -- zui.cpp's template tail
+0x0036AD60 0x6C clear__Q23std62__vector_deleter<10ActionItem,Q23std23allocator<10ActionItem>>Fv  # OVL1; by its body (16-byte elements destroyed from the end through ~ActionItem 0x3890C0, the size zeroed; the ActionItem deleter's destructor 0x36AC10 beside it) -- zui.cpp's template tail
+0x0036ADD0 0x7C clear__Q23std68__vector_deleter<13CDesignDlgObj,Q23std26allocator<13CDesignDlgObj>>Fv  # OVL1; by its body (40-byte elements destroyed from the end through ~CDesignDlgObj 0x37D9B0, the size zeroed: include/vector's deleter clear) -- zui.cpp's template tail
+0x0036AE50 0xD4 clear__Q23std70__vector_deleter<15CDlgDesignModel,Q23std28allocator<15CDlgDesignModel>>Fv  # OVL1; by its body (52-byte elements destroyed from the end, each model's two strings (0, 0xC) freed inline: the CDlgDesignModel deleter's clear, called by 0x36ACF0) -- zui.cpp's template tail
 0x0036AF30 0x70 func_0036AF30  # OVL1
 0x0036AFA0 0x8 Tick__17CRenderableStringFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0036AFB0 0x8 func_0036AFB0  # OVL1
@@ -7057,10 +7057,10 @@
 0x0037DA50 0x2D8 __ct__15CRadioStripSpecFP5_zrdr  # OVL1; s1:calls by hand (GetControlSpec's RADIOSTRIP branch, as SOCOM 1's) -- the UI-widgets lane
 0x0037DD30 0x130 __dt__11CButtonSpecFv  # OVL1; by its vtable (slot 0x08 of __vt__11CButtonSpec 0x407FB0) -- the UI-widgets lane
 0x0037DE60 0x198 CreateDisplayObj__13CCheckBoxSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0037E000 0x188 func_0037E000  # OVL1
-0x0037E190 0x4C func_0037E190  # OVL1
+0x0037E000 0x188 __ct__13CCheckBoxSpecFR13CCheckBoxSpec  # OVL1; s1:calls by hand (Copy__13CCheckBoxSpecFv news 0x13C and calls it, as SOCOM 1's Copy calls __ct__13CCheckBoxSpecFR13CCheckBoxSpec; CButtonSpec's implicit copy inlined one level, the check's fields and actions copied) -- zui_spec.cpp
+0x0037E190 0x4C __ct__Q23std52vector<10ActionItem,Q23std23allocator<10ActionItem>>FRCQ23std52vector<10ActionItem,Q23std23allocator<10ActionItem>>  # OVL1; by hand (include/vector's class copy: the deleter's words zeroed, the range init 0x3836E0 over the other's data; the button specs' copies call it for their ANIMATIONS) -- zui_spec.cpp
 0x0037E1E0 0x28 __ct__9CSaferStrFRC9CSaferStr  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); by hand (the string's copy constructor 0x22E560 called on this and returned: CSaferStr's implicit copy out of line, which zui_cleanup.cpp's Copies call for their string members) -- zui_spec.cpp
-0x0037E210 0x84 func_0037E210  # OVL1
+0x0037E210 0x84 __ct__11ButtonStateFRC11ButtonState  # OVL1; by hand (ButtonState's implicit copy out of line: the string's copy 0x22E560, then the texture, glow, pulse, colour and scale; the button specs' copies call it for their four states) -- zui_spec.cpp
 0x0037E2A0 0x1D0 __ct__13CCheckBoxSpecFP5_zrdr  # OVL1; s1:calls by hand (GetControlSpec's CHECKBOX branch, as SOCOM 1's) -- the UI-widgets lane
 0x0037E470 0x184 CreateDisplayObj__17CHProgressBarSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037E600 0xB0 __ct__17CHProgressBarSpecFP5_zrdr  # OVL1; by hand (CImageSpec's constructor called, CHProgressBarSpec's vtable stored, FILENAME_IS_UIVAR and LEADING_EDGE_NODE parsed; GetObjectSpec's PROGRESSBAR) -- zui_spec.cpp
@@ -7090,7 +7090,7 @@
 0x00383360 0x2B8 func_00383360  # OVL1
 0x00383620 0xB0 __dt__12CCounterSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003836D0 0xC GetType__12CCounterSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x003836E0 0x11C func_003836E0  # OVL1
+0x003836E0 0x11C init<PC10ActionItem>__Q23std60__vector_imp<10ActionItem,Q23std23allocator<10ActionItem>,0>FPC10ActionItemPC10ActionItemQ23std20forward_iterator_tag_v  # OVL1; s1:exact-shape (SOCOM 1's init<PC10ActionItem> at 0x39AE40, two saved registers swapped: each element built by ActionItem's inline copy, then its assignment 0x369FA0) -- zui_spec.cpp's template tail
 0x00383800 0xAC func_00383800  # OVL1
 0x003838B0 0xA4 func_003838B0  # OVL1
 0x00383960 0x138 func_00383960  # OVL1
@@ -7155,12 +7155,12 @@
 0x00386F50 0x98 __dt__15CUIVariableSpecFv  # OVL1; s1:order by hand (SOCOM 1's __dt__15CUIVariableSpecFv after GetType__14CUIMapCtrlSpecFv: the name freed, the value's children deleted and the value, the CSTable member) -- zui_cleanup.cpp
 0x00386FF0 0x258 __ct__15CUIVariableSpecFP5_zrdr  # OVL1; s1:order by hand (SOCOM 1's __ct__15CUIVariableSpecFP5_zrdr after ~CUIVariableSpec in zui_cleanup.cpp: NAME strdup'd, VALUE cloned into its CSTable(0, 1024), LONGEVITY parsed) -- zui_cleanup.cpp
 0x00387250 0x90 Copy__14CUIMapCtrlSpecFv  # OVL1; by its vtable (slot 0x0C of __vt__14CUIMapCtrlSpec 0x407D40) -- the UI-widgets lane
-0x003872E0 0x54 func_003872E0  # OVL1
+0x003872E0 0x54 __ct__Q23std58vector<13CDesignDlgObj,Q23std26allocator<13CDesignDlgObj>>FRCQ23std58vector<13CDesignDlgObj,Q23std26allocator<13CDesignDlgObj>>  # OVL1; by hand (include/vector's class copy over 40-byte elements: the words zeroed, the range init 0x389B00; CUIMapCtrlSpec::Copy calls it for the map control's ELEMENTS) -- zui_cleanup.cpp
 0x00387340 0x19C __dt__15CRadioStripSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003874E0 0xA4 CreateDisplayObj__15CRadioStripSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00387590 0x64 Copy__15CRadioStripSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00387600 0x28 func_00387600  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
-0x00387630 0x3A8 func_00387630  # OVL1
+0x00387600 0x28 __ct__Q23std60vector<P13CDesignDlgObj,Q23std27allocator<P13CDesignDlgObj>>FRCQ23std60vector<P13CDesignDlgObj,Q23std27allocator<P13CDesignDlgObj>>  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); s1:calls by hand (CRadioStripSpec::Copy calls it on the strip's objects, where SOCOM 1's calls the pod vector's copy directly: the pointer vector's implicit copy out of line, the pod's copy 0x259B40 called) -- zui_cleanup.cpp
+0x00387630 0x3A8 __ct__11CButtonSpecFR11CButtonSpec  # OVL1; s1:calls by hand (SOCOM 1's __ct__11CButtonSpecFR11CButtonSpec, 0x39F570 in zui_cleanup.cpp: the radio strip's, slider's and handler button's Copies call it first, as SOCOM 1's do; CButtonSpec's implicit copy out of line, CDlgObjSpec's copy, the states' and the actions' copies inlined) -- zui_cleanup.cpp
 0x003879E0 0x38 Copy__13CCheckBoxSpecFv  # OVL1; tu: zui_cleanup.cpp~ (1.0 beta); s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00387A20 0x68 Copy__17CHProgressBarSpecFv  # OVL1; s1:vtable (slot 0x0C of CHProgressBarSpec's table 0x407DD0; SOCOM 1's Copy__17CHProgressBarSpecFv) -- zui_cleanup.cpp
 0x00387A90 0x1DC __ct__10CImageSpecFR10CImageSpec  # OVL1; by hand (CImageSpec's implicit copy out of line: CDlgObjSpec's copy inlined, the vtable, the members; the progress bar's and the list box's Copies call it) -- zui_cleanup.cpp
@@ -7189,7 +7189,7 @@
 0x00388D70 0xE0 Copy__11CButtonSpecFv  # OVL1; by its vtable (slot 0x0C of __vt__11CButtonSpec 0x407FB0) -- the UI-widgets lane
 0x00388E50 0xCC __dt__11CDlgObjSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00388F20 0x198 __ct__11CDlgObjSpecFR11CDlgObjSpec  # OVL1; s1:order by hand (SOCOM 1's __ct__11CDlgObjSpecFR11CDlgObjSpec after ~CDlgObjSpec in zui_cleanup.cpp; stores CDlgObjSpec's vtable, copies the variable spec through new(0x2C) -- zui_cleanup.cpp
-0x003890C0 0x78 func_003890C0  # OVL1
+0x003890C0 0x78 __dt__10ActionItemFv  # OVL1; s1:order by hand (SOCOM 1's __dt__10ActionItemFv, zui_cleanup.cpp lines 23-24 -- the two strings freed and cleared, the deleting flag; CGameMenu's constructor hands it to __construct_array with ActionItem() 0x369F70 for its 30 actions) -- zui_cleanup.cpp
 0x00389140 0xC HasChildren__15CRadioStripSpecCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389150 0x8 NumChildren__15CRadioStripSpecCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389160 0x14 GetChild__15CRadioStripSpecCFi  # OVL1; tu: zui_cleanup.cpp~ (1.0 beta); s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -7215,7 +7215,7 @@
 0x00389AD0 0xC GetType__9CTextSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389AE0 0xC GetType__10CImageSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389AF0 0xC GetType__11CButtonSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00389B00 0x15C func_00389B00  # OVL1
+0x00389B00 0x15C init<PC13CDesignDlgObj>__Q23std66__vector_imp<13CDesignDlgObj,Q23std26allocator<13CDesignDlgObj>,0>FPC13CDesignDlgObjPC13CDesignDlgObjQ23std20forward_iterator_tag_v  # OVL1; by hand (the range init of vector<CDesignDlgObj>'s copy 0x3872E0: each element built by the design object's inline copy, the assignment 0x37D910 called) -- zui_cleanup.cpp's template tail
 0x00389C60 0x154 RefreshSystemTuners__Fv  # OVL1; ours (calls UpdateUIVar, slot 0xC, of each of the ten tuners InitSystemTuners makes, with its variable, skipping a null one)
 0x00389DC0 0xA8 UpdateUIVar__12CDialogTunerFP11CUIVariable  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389E70 0x9C UpdateUIVar__19CStickDeadzoneTunerFP11CUIVariable  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
