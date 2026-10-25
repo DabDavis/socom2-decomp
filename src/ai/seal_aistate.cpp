@@ -131,6 +131,23 @@ bool CAiSAction::CanAttack() const
     return m_84 == 0;
 }
 
+/* the object's id told an event: 1 drops it, 6 sets the flags' bit 2; the AI's stack bit 0 set
+ * either way (OVL2 0x5F06B0) */
+void CAiSAction::Virtual0C(int id, int event, CSealCtrlAi *ai)
+{
+    if (id == m_84) {
+        switch ((unsigned char)event) {
+        case 1:
+            m_84 = 0;
+            break;
+        case 6:
+            SetFlags(4, 0);
+            break;
+        }
+        ((CAiCtrlStack *)ai)->m_stack.SetFlags(1, 0);
+    }
+}
+
 /* +0x38: the state's phase word below 6 (the name ours) */
 bool CAiSAction::Virtual38()
 {

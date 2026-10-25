@@ -294,6 +294,7 @@ public:
 /* the "action" state (new in SOCOM II, the name its RTTI's): an object at +0x84 it waits on */
 class CAiSAction : public CAiState {
 public:
+    virtual void Virtual0C(int id, int event, CSealCtrlAi *ai);
     virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual bool CanAttack() const;
     virtual bool CanScan() const;
@@ -302,7 +303,7 @@ public:
     virtual ~CAiSAction();
 
     unsigned char _58[0x84 - 0x58];
-    void *m_84;   // 0x84
+    int m_84;   // 0x84: the object waited on (an id: slot 0x0C's event 1 drops it)
 };
 
 class CAiSFollow : public CAiState {
