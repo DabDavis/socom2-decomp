@@ -650,6 +650,15 @@ bool UIInitializeOnlineArmory(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+bool UIRefreshRoomPlayerList(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *text = ArgText(ArgName(hdr));
+
+    if (text && !strcasecmp(text, "CLAN_TAGS"))
+        return func_002F0EA0(&theLobby, GetCommandC2D(hdr->node_ref_index));
+    return func_002F11F0(&theLobby, GetCommandC2D(hdr->node_ref_index));
+}
+
 bool UIRefreshGamePlayerList(C2DAnimCmdHdr *hdr, float *dT)
 {
     return func_002F6EC0(&theLobby, GetCommandC2D(hdr->node_ref_index));
@@ -1463,10 +1472,10 @@ bool UIAdvanceMPMission(C2DAnimCmdHdr *hdr, float *dT)
 
         if (index == 254) {
             strncpy(current, database, 16);
-            index = func_002C8DB0(data_00441650, atoi(current + 2), 1)->m_index;
+            index = func_002C8DB0(&data_00441650, atoi(current + 2), 1)->m_index;
         }
         if (index == 255)
-            index = func_002C8840(data_00441650, 1)->m_index;
+            index = func_002C8840(&data_00441650, 1)->m_index;
         if (index > 0) {
             sprintf(name, "mp%d", index);
             strcpy(database, name);
@@ -1608,6 +1617,35 @@ bool UIPruneUIVarSpaces(C2DAnimCmdHdr *hdr, float *dT)
         func_003862A0(var, start);
     }
     return true;
+}
+
+/* whether the UI variable the argument names holds something: a number not 0, a text not empty, an
+ * array with items */
+bool UITestUIVar(C2DAnimCmdHdr *hdr, float *dT)
+{
+    bool result = false;
+    const char *name = ArgName(hdr);
+
+    if (name) {
+        CUIVariable *var = func_00385900(&theUIVarManager, name);
+
+        if (var) {
+            int type = var->type;
+
+            if (type == 1) {
+                result = var->Int() != 0;
+            } else if (type == 2) {
+                result = var->Real() != 0.0f;
+            } else if (type == 3) {
+                const char *text = var->String();
+
+                result = text && *text;
+            } else if (type == 4) {
+                result = var->Count() != 0;
+            }
+        }
+    }
+    return result;
 }
 
 /* the UI variable the argument names emptied as its type has it: 0, 0.0, "" or an empty array.
@@ -2052,6 +2090,34 @@ bool UIVerifyPatchLevel(C2DAnimCmdHdr *hdr, float *dT)
         func_003862A0(var, func_002FD610(data_0044FC60, level));
     }
     return ok;
+}
+
+/* a mission's information put in the names its record carries: the mission the index valve picks
+ * among the set's (single or multiplayer), its name to a UI variable and its number to a valve */
+bool UIGetMissionInformation(C2DAnimCmdHdr *hdr, float *dT)
+{
+    UIMissionInfoCmd *cmd = (UIMissionInfoCmd *)hdr;
+    const char *name = ZAnim.m_CurAnim->GetName(cmd->m_name);
+    const char *number = ZAnim.m_CurAnim->GetName(cmd->m_number);
+    const char *index = ZAnim.m_CurAnim->GetName(cmd->m_index);
+
+    if (index && name && number) {
+        int want = CValve::Create(index, (VALVE_TYPE)1)->m_value - 1;
+        unsigned char multiplayer = cmd->m_multiplayer;
+        int n = 0;
+
+        for (std::vector<MPMissionInfo *>::iterator it = data_00441650.begin(); it != data_00441650.end(); ++it) {
+            if (multiplayer == (*it)->m_multiplayer) {
+                if (n == want) {
+                    func_003862A0(func_003857C0(&theUIVarManager, name, 0, UIVAR_SESSION), (*it)->m_name.c_str());
+                    SetValveValue(CValve::Create(number, (VALVE_TYPE)1), (*it)->m_number);
+                    break;
+                }
+                n++;
+            }
+        }
+    }
+    return true;
 }
 
 /* GetMissionInformation's parser: the mission set and the names the mission's fields go to

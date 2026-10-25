@@ -763,12 +763,22 @@ struct MPMissionView {
     unsigned char _0[0x10];
     int m_index;   // 0x10
 };
-extern char data_00441650[];
+
+/* the missions as GetMissionInformation walks them: the same object seen as a vector of records,
+ * each a name, whether it is multiplayer and its number (ours) */
+struct MPMissionInfo {
+    std::string m_name;   // 0x0
+    unsigned char m_multiplayer;   // 0xc
+    int m_number;   // 0x10
+};
+extern std::vector<MPMissionInfo *> data_00441650;
 MPMissionView *func_002C8DB0(void *missions, int number, int arg);
 MPMissionView *func_002C8840(void *missions, int arg);
 int func_002F8120(CZOnlineLobby *lobby);
 bool func_003042B0(void *lan, C2D *list);
 bool func_002E28D0(CZOnlineLobby *lobby, C2D *list);
+bool func_002F0EA0(CZOnlineLobby *lobby, C2D *list);
+bool func_002F11F0(CZOnlineLobby *lobby, C2D *list);
 
 /* the network configurations found (an object at 0x457C40: the count, then 0x68-byte entries from
  * 0x30, each valid when its first word is not negative, its name at 8; ours) */
