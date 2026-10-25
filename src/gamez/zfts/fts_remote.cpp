@@ -269,7 +269,6 @@ int func_00541CC0(int id);
 void func_0059E830(CZSealBody *body, unsigned short who, int id, void *c, int obj);
 void func_002C0040(bool on);
 void func_002C4290(int me);   /* CZPersonaState::RequestTeamSwitch (SOCOM II's one argument) */
-int func_002BAF30(int a, int b, int who, void *data);   /* E3IndexPacketHandler */
 void func_002C34F0(int value);
 struct VotePacket;
 int func_002B9BD0(int a, int b, int who, VotePacket *p);
@@ -375,25 +374,6 @@ extern "C" bool func_002BD270(NetFieldCompare *cmp)
         return true;
     return false;
 }
-
-/* an int clamped into [lo, hi], saying whether it moved (a template instance closing the unit:
- * SOCOM 1's _saturate<int>, which SendHitMessage calls on each of its bytes -- out of line, so
- * pinned, MW auto-inlining no template function;
- * OVL1 0x2BD220) */
-#pragma auto_inline off
-extern "C" bool func_002BD220(int &v, const int &lo, const int &hi)
-{
-    if (hi < v) {
-        v = hi;
-        return true;
-    }
-    if (v < lo) {
-        v = lo;
-        return true;
-    }
-    return false;
-}
-#pragma auto_inline reset
 
 /* a client disconnected: its word and its pending slot cleared; in a game already under way,
  * fewer than three clients left with no word set abandons it, and otherwise the game's object
@@ -514,12 +494,12 @@ void SendHitMessage(int shooter, int victim, int part, float damage, float f, bo
     p.victim = victim;
     p.c = c;
     d = (int)damage;
-    func_002BD220(d, 0, 255);
+    _saturate(&d, 0, 255);
     p.damage = d;
     g = (int)(20.0f * f);
-    func_002BD220(g, 0, 255);
+    _saturate(&g, 0, 255);
     p.m_6 = g;
-    func_002BD220(part, 0, 15);
+    _saturate(&part, 0, 15);
     p.part = part;
     p.flag = flag;
     theNetwork.zNetSendApplicationMessage(64, theNetwork.GetGameConnectionIndex(), -1,
@@ -868,7 +848,7 @@ struct E3IndexPacket {
 
 extern "C" void (*data_0044F3C8)(const char *event, const char *arg);   /* (the lobby's UI event) */
 
-extern "C" int func_002BAF30(int, int, int, void *data)
+int E3IndexPacketHandler(int, int, int, void *data)
 {
     E3IndexPacket *p = (E3IndexPacket *)data;
 
@@ -918,7 +898,7 @@ void NetSendE3Index(int who, unsigned int index, int flag)
     p.index = index;
     p.flag = flag;
     if (who == theNetwork.zNetGetMyGameClientIndex())
-        func_002BAF30(0, 0, theNetwork.zNetGetMyGameClientIndex(), &p);
+        E3IndexPacketHandler(0, 0, theNetwork.zNetGetMyGameClientIndex(), &p);
     else
         theNetwork.zNetSendApplicationMessage(64, theNetwork.GetGameConnectionIndex(), who,
             data_00440E30, 8, (unsigned char *)&p, false);
@@ -1018,7 +998,6 @@ struct ChatPacket {
 
 extern "C" {
 extern unsigned int data_00440E40;   /* PacketTypeChat */
-int func_002BA9D0(int a, int b, int who, void *data);   /* ChatPacketHandler */
 const char *func_002C3A70(int client);   /* (a client's name, fts_net_persona.cpp's) */
 }
 
@@ -1062,7 +1041,7 @@ public:
  * not hold, empty, or from an ignored player; else the history's last 20 lines and the new one
  * (its sender's name, Team or All) made the chat variable's new value (SOCOM 1's
  * ChatPacketHandler, its history in a UI variable; OVL1 0x2BA9D0) */
-extern "C" int func_002BA9D0(int, int, int who, void *data)
+int ChatPacketHandler(int, int, int who, void *data)
 {
     ChatPacket *p = (ChatPacket *)data;
     CZNetGame *game = theMission.m_pNetGame;
@@ -1132,7 +1111,7 @@ void AuxSendChatMsg(const char *text, void *arg)
     strcpy(p->text, text);
     theNetwork.zNetSendApplicationMessage(64, theNetwork.GetGameConnectionIndex(),
         arg ? *(int *)arg : -1, data_00440E40, size, (unsigned char *)p, false);
-    func_002BA9D0(0, 0, theNetwork.zNetGetMyGameClientIndex(), p);
+    ChatPacketHandler(0, 0, theNetwork.zNetGetMyGameClientIndex(), p);
     _free(p, 0, 0);
 }
 

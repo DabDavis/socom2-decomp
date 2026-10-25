@@ -4053,7 +4053,7 @@
 0x002BA660 0x1E4 func_002BA660  # OVL1
 0x002BA850 0x1C SendChatMsg__FPCc  # OVL1; s1:exact
 0x002BA870 0x154 AuxSendChatMsg__FPCcPv  # OVL1; s1:ref (taken by address where SOCOM 1 takes AuxSendChatMsg__FPCcPv's)
-0x002BA9D0 0x264 func_002BA9D0  # OVL1
+0x002BA9D0 0x264 ChatPacketHandler__FiiiPv  # OVL1; s1:calls by hand (the states lane: AuxSendChatMsg calls it after sending with (0, 0, my client index, packet), as SOCOM 1's AuxSendChatMsg calls ChatPacketHandler; returns the packet's size)
 0x002BAC40 0x100 func_002BAC40  # OVL1
 0x002BAD40 0x58 SendMessageMessage__Fi9R_SEND_TOi  # OVL1; s1:align
 0x002BADA0 0x14 func_002BADA0  # OVL1
@@ -4061,7 +4061,7 @@
 0x002BADD0 0x98 NetSendRequestTeamSwitch__Fi  # OVL1; s1:align
 0x002BAE70 0x30 TeamSwitchPacketHandler__FiiiPv  # OVL1; s1:align
 0x002BAEA0 0x90 NetSendE3Index__FiUii  # OVL1; s1:align; s1:align, signature by its callers (SOCOM 1's NetSendE3Index took a fourth, bool, argument; SOCOM II's never reads one and the team switch leaves a3 unset -- three arguments) -- the states lane
-0x002BAF30 0x184 func_002BAF30  # OVL1
+0x002BAF30 0x184 E3IndexPacketHandler__FiiiPv  # OVL1; s1:calls by hand (the states lane: SOCOM 1's E3IndexPacketHandler -- NetworkTeam, SetE3Index, UpdateLocalPersona, return 8 -- grown by SOCOM II's ejection case; NetSendE3Index calls it for its own index where SOCOM 1's inlines the same body)
 0x002BB0C0 0x104 func_002BB0C0  # OVL1
 0x002BB1D0 0x140 func_002BB1D0  # OVL1
 0x002BB310 0x2A0 func_002BB310  # OVL1
@@ -4090,7 +4090,7 @@
 0x002BD160 0x3C func_002BD160  # OVL1
 0x002BD1A0 0x3C func_002BD1A0  # OVL1
 0x002BD1E0 0x3C func_002BD1E0  # OVL1
-0x002BD220 0x50 func_002BD220  # OVL1
+0x002BD220 0x50 func_002BD220  # OVL1; OVL1's copy of _saturate<int> (OVL2's 0x519290 carries the name, the same 0x50 bytes word for word; fts_remote.cpp's template tail -- SendHitMessage makes the same three _saturate<int> calls as SOCOM 1's, which call _saturate<i>) -- the states lane; ovl-copy: _saturate<i>__FPiRCiRCi_b
 0x002BD270 0x110 func_002BD270  # OVL1
 0x002BD380 0x44 RemoveNetSeal__11CZSealStateFib  # OVL1; s1:align
 0x002BD3D0 0x4C GetPackedWeaponData__11CZSealStateFP10CZSealBody  # OVL1; s1:align
