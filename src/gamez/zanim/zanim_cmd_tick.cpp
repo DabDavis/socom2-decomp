@@ -1402,20 +1402,203 @@ bool zAnimObjectOpacityFromToTick(_zanim_cmd_hdr *hdr, float *dT)
     return done;
 }
 
-/* OBJECT_MOTION_SI_SCRIPT: several nodes each run a motion script; 0x3C bytes a node */
-struct zanim_object_motion_script {
-    unsigned char _0[0xC];
-    int frame;                      /* 0xC */
-    int timer;                      /* 0x10 */
-    unsigned char _14[0x24];
-    int done;                       /* 0x38 */
+/* OBJECT_MOTION_SI_SCRIPT: several nodes each run a motion script (one of the anim set's), 0x3C
+ * bytes a node, each record laid out as a command of its own (the names are apply_script_frame's
+ * mangling; the fields are read off the code) */
+struct _zanim_object_motion_script {
+    _zanim_cmd_hdr hdr;
+    unsigned char flags;            /* 0x4: 1 relative to `origin`, 0x10 each frame's key as it is */
+    unsigned char node;             /* 0x5 */
+    unsigned char _6;
+    unsigned char script;           /* 0x7: the set's script index */
+    unsigned char _8[4];
+    float time;                     /* 0xC: into the current frame */
+    int offset;                     /* 0x10: the current frame's, into the script's data */
+    CPnt3D origin;                  /* 0x14 */
+    unsigned char _20[0x18];
+    int frames;                     /* 0x38: frames run */
 };
+
+/* a script frame: this header, then a track for each flag -- 1 the position, 2 the rotation, 4
+ * one the player skips */
+struct zanim_script_frame_header {
+    unsigned int flags;             /* 0x0 */
+    float start;                    /* 0x4: on the sequence's clock */
+    float end;                      /* 0x8 */
+    int _c;
+};
+
+/* a track: the key, its rate (a linear script) and a cubic in the frame's time per axis (a
+ * spline script, whose key is the cubics' constant terms) */
+struct zanim_script_track {
+    CQuat key;                      /* 0x0: x, y, z a position */
+    CPnt3D rate;                    /* 0x10: a rotation's as the log of a quaternion */
+    float _1c;
+    float spline[3][4];             /* 0x20: per axis a + u(b + u(c + u d)) */
+};
+
+/* Play a frame of the script from time t for up to *dT: wait for its start, then move the node
+ * along it to its end -- on into the next frame without a stop when that frame carries the same
+ * tracks and starts by then. Returns the time used, *dT left what is not.
+ * OPEN, 13 instructions: `used` and `step` take each other's FP register ($f20/$f21). Not the
+ * declaration order, not which is defined first, not the early return's spelling. */
+float apply_script_frame(_zanim_object_motion_script *cmd, _zanim_si_script *script, CNode *node,
+                         zanim_script_frame_header *frame, float t, float *dT)
+{
+    float used = 0.0f;
+
+    if (t + *dT < frame->start) {
+        float wait = *dT;
+
+        *dT = 0.0f;
+        return wait;
+    }
+    if (t < frame->start) {
+        used = frame->start - t;
+        t = frame->start;
+        *dT -= used;
+    }
+    float step;
+    if (t + *dT > frame->end) {
+        int offset = cmd->offset;
+        float time = cmd->time;
+
+        cmd->frames++;
+        cmd->offset += 16;
+        if (frame->flags & 1)
+            cmd->offset += 80;
+        if (frame->flags & 2)
+            cmd->offset += 80;
+        if (frame->flags & 4)
+            cmd->offset += 80;
+        cmd->time = 0.0f;
+        if (cmd->offset < script->script_data_size) {
+            zanim_script_frame_header *next =
+                (zanim_script_frame_header *)&((int *)script->script_data)[(unsigned int)cmd->offset / 4];
+
+            if (next->flags == frame->flags && t + *dT > next->start) {
+                step = frame->end - t;
+                *dT -= step;
+                used += step;
+                cmd->time = frame->end;
+                cmd->offset = offset;
+                return used;
+            }
+        }
+        cmd->offset = offset;
+        cmd->time = time;
+        cmd->frames--;
+        step = frame->end - t;
+    } else
+        step = *dT;
+    cmd->time += step;
+    zanim_script_track *keys = (zanim_script_track *)(frame + 1);
+    if (frame->flags & 1) {
+        float x, y, z;
+
+        if (cmd->flags & 0x10) {
+            if (script->spline_interp) {
+                x = keys->spline[0][0];
+                y = keys->spline[1][0];
+                z = keys->spline[2][0];
+            } else {
+                x = keys->key.vec.x;
+                y = keys->key.vec.y;
+                z = keys->key.vec.z;
+            }
+        } else if (script->spline_interp) {
+            x = keys->spline[0][0] + cmd->time * (keys->spline[0][1] + cmd->time * (keys->spline[0][2] + cmd->time * keys->spline[0][3]));
+            y = keys->spline[1][0] + cmd->time * (keys->spline[1][1] + cmd->time * (keys->spline[1][2] + cmd->time * keys->spline[1][3]));
+            z = keys->spline[2][0] + cmd->time * (keys->spline[2][1] + cmd->time * (keys->spline[2][2] + cmd->time * keys->spline[2][3]));
+        } else {
+            x = keys->key.vec.x + keys->rate.x * cmd->time;
+            y = keys->key.vec.y + keys->rate.y * cmd->time;
+            z = keys->key.vec.z + keys->rate.z * cmd->time;
+        }
+        if (cmd->flags & 1) {
+            x += cmd->origin.x;
+            y += cmd->origin.y;
+            z += cmd->origin.z;
+        }
+        node->SetPosition(x, y, z);
+        keys++;
+    }
+    if (frame->flags & 2) {
+        CQuat q;
+
+        if (cmd->flags & 0x10) {
+            q = keys->key;
+        } else {
+            CPnt3D v;
+            CQuat e;
+
+            if (script->spline_interp) {
+                v.x = keys->spline[0][0] + cmd->time * (keys->spline[0][1] + cmd->time * (keys->spline[0][2] + cmd->time * keys->spline[0][3]));
+                v.y = keys->spline[1][0] + cmd->time * (keys->spline[1][1] + cmd->time * (keys->spline[1][2] + cmd->time * keys->spline[1][3]));
+                v.z = keys->spline[2][0] + cmd->time * (keys->spline[2][1] + cmd->time * (keys->spline[2][2] + cmd->time * keys->spline[2][3]));
+            } else {
+                v = keys->rate * cmd->time;
+            }
+            e.Exp(&v);
+            e.Mul(&keys->key, &q);
+            q.Normalize();
+        }
+        node->SetRotation(q);
+    }
+    used += step;
+    *dT -= step;
+    return used;
+}
+
+/* one node's script, frame after frame until the time runs out or the script does */
+bool zAnimObjectMotionScriptTick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    bool done = false;
+    _zanim_object_motion_script *cmd = (_zanim_object_motion_script *)hdr;
+    CZAnim *anim = ZAnim.m_CurAnim;
+
+    if (cmd == 0 || cmd->node == 0)     /* `!cmd->node` re-extends the byte for the call */
+        return true;
+    CNode *node = anim->GetNode(cmd->node, false);
+    if (!node)
+        return true;
+    int index = cmd->script;
+    CZAnimSet *set = ZAnim.GetAnimSet(anim->m_animset_index);
+    _zanim_si_script *script = set ? set->SIScript(index) : 0;
+    if (!script)
+        return true;
+    float t = ZAnim.m_CurSeq->cmd_timer;
+    if (cmd->offset >= script->script_data_size) {
+        done = true;
+    } else {
+        do {
+            zanim_script_frame_header *frame =
+                (zanim_script_frame_header *)(script->script_data + cmd->offset);
+
+            t += apply_script_frame(cmd, script, node, frame, t, dT);
+            if (*dT > 0.0f) {
+                cmd->frames++;
+                cmd->offset += 16;
+                if (frame->flags & 1)
+                    cmd->offset += 80;
+                if (frame->flags & 2)
+                    cmd->offset += 80;
+                if (frame->flags & 4)
+                    cmd->offset += 80;
+                cmd->time = 0.0f;
+                if (cmd->offset >= script->script_data_size)
+                    done = true;
+            }
+        } while (*dT > 0.0f && !done);
+    }
+    return done;
+}
 
 struct zanim_cmd_multiscript {
     _zanim_cmd_hdr hdr;
     unsigned short count;
     unsigned short pad;
-    zanim_object_motion_script script[1];
+    _zanim_object_motion_script script[1];
 };
 
 void zAnimMultiObjectMotionScriptBegin(_zanim_cmd_hdr *hdr)
@@ -1425,17 +1608,15 @@ void zAnimMultiObjectMotionScriptBegin(_zanim_cmd_hdr *hdr)
     if (cmd == 0 || cmd->count <= 0)
         return;
     for (int i = 0; i < cmd->count; i++) {
-        zanim_object_motion_script *s = &cmd->script[i];
+        _zanim_object_motion_script *s = &cmd->script[i];
 
         if (s) {                    /* (tested, as SOCOM 1's is too) */
-            s->timer = 0;
-            s->frame = 0;
-            s->done = 0;
+            s->offset = 0;
+            s->time = 0.0f;
+            s->frames = 0;
         }
     }
 }
-
-bool zAnimObjectMotionScriptTick(_zanim_cmd_hdr *hdr, float *dT);
 
 /* each node's script run on the same frame time; done when all are, with the least time left */
 bool zAnimMultiObjectMotionScriptTick(_zanim_cmd_hdr *hdr, float *dT)
