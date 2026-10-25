@@ -24,13 +24,15 @@
  *     hands the range s..s+strlen(s) to the template replace taking two iterators and the
  *     iterator's category, an empty class passed by value -- loaded as a byte off the stack and
  *     never stored (0x1EE780; 0x1EF400 is assign(first, last) through it). The three are this
- *     header's out-of-class members since the MSL headers round 5 (st_core.cpp's tail emits them
- *     byte-exact, OVL2's copies 0x53FAA0 and 0x540B50), the placeholders kept for the units that
- *     still call them by address;
- *   - the default constructor is four inline levels high (init, clear_words, zero -- the loop over
- *     a reference local), the height the states fitted fts_state.h's copy to: fts_state.h includes
- *     this header since round 5 (measured over every hand-written unit, nothing lost; zero() taking
- *     the words as a reference PARAMETER stores them off sp and loses CMenuStack::PopUpDialog);
+ *     header's out-of-class members since the MSL headers round 5 (body.cpp's, fts_patch.cpp's and
+ *     five more units' tails emit them byte-exact; OVL2's copies 0x53FAA0 and 0x540B50), the
+ *     placeholders kept for the units that still call them by address;
+ *   - fts_state.h keeps its own basic_string (the MSL headers round 5): its default constructor is
+ *     four inline levels high (init, clear_words, zero), as the states fitted it, and include/string's
+ *     at four (zero() a member looping over a reference local) cost nothing over every hand-written
+ *     unit until the UI lane's round 6 -- then zui_spec.cpp's GetControlSpec 0x382890 (0x2CC against
+ *     0x304) -- so this header stays two high and fts_state.h apart; st_core.cpp's stand-ins under
+ *     the placeholders still score the three members' rows by address;
  *   - erase() is that template replace over (0, npos) with an empty range of const char *, inline
  *     (SetString__16C2DMessageStringFPCc, the menu's string handlers);
  *   - the copies, out of class (the MSL lane, 2026-10-25; each byte-exact): the copy constructor
@@ -142,9 +144,7 @@ private:
     };
     void copy_rep(const basic_string &str) { *(rep_words *)w_ = *(const rep_words *)str.w_; }
 
-    void init() { clear_words(); }
-    void clear_words() { zero(); }
-    void zero()
+    void init()
     {
         unsigned int (&a)[3] = w_;
 

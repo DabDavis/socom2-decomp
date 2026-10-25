@@ -315,12 +315,82 @@ public:
     int m_20;   // 0x20
 };
 
-/* MSL's basic_string: include/string's (its default constructor four high at -inline level=5, as
- * the states fitted it: COurGame's constructor inlines CMenuState's one level -- calling
- * CGameState's constructor, CSaferStr's and SetDefaultMenu out of line -- while CCinematicState's,
- * as tall but for the strings, inlines whole; the destructor never inlined into the units' own
- * functions: main.cpp's destructors call 0x1E7EF0 with -1 for a member and 0 for CSaferStr's base) */
-#include <string>
+/* MSL's basic_string as the states hold it (CodeWarrior 3.0's: three words, the short form's text
+ * in place after the first byte, bit 0 of the first word set for the long form; its reserve's
+ * "basic_string::reserve length_error"). A stand-in until a string model exists: the class and
+ * its template arguments are MSL's so the names mangle as the map's, the members only what the
+ * states use (assign is func_001EEB40).
+ * The levels are fitted: the default constructor is four high at -inline level=5 (COurGame's
+ * constructor inlines CMenuState's one level -- calling CGameState's constructor, CSaferStr's and
+ * SetDefaultMenu out of line -- while CCinematicState's, as tall but for the strings, inlines
+ * whole; three high fitted level 4, and with level 5 CMenuState's inlined whole: its expanded
+ * size, 224 units with the words stored straight and 248 with include/string's loop, stays under
+ * MW's inline_max_size of 256, the other way a callee is cut to one level), and the
+ * destructor is never inlined (main.cpp's destructors call 0x1E7EF0, the instance closing the
+ * unit, with -1 for a member and 0 for CSaferStr's base) */
+#include <iterator>
+#include <memory>
+
+namespace std {
+template <class charT> struct char_traits {};
+
+/* include/string's out-of-line members, under their placeholders (st_core.cpp's template tail
+ * holds them) */
+extern "C" {
+void *func_001EEB40(void *str, const char *s);   /* assign(const char *) */
+void *func_001EEB70(void *str, const char *s);   /* append(const char *) */
+void *func_001EE780(void *str, unsigned int pos, unsigned int n1, const char *first, const char *last,
+                    forward_iterator_tag);   /* replace(pos, n1, first, last, category) */
+}
+
+template <class charT, class traits = char_traits<charT>, class Allocator = allocator<charT> >
+class basic_string {
+public:
+    basic_string() { init(); }
+    ~basic_string();
+
+    void reserve(unsigned int n);
+
+    /* include/string's: assign and append out of line, erase() the template replace over (0, npos)
+     * with an empty range */
+    basic_string &assign(const charT *s) { return *(basic_string *)func_001EEB40(this, s); }
+    basic_string &append(const charT *s) { return *(basic_string *)func_001EEB70(this, s); }
+    basic_string &operator+=(const charT *s) { return append(s); }
+    basic_string &erase()
+    {
+        forward_iterator_tag category;
+
+        return *(basic_string *)func_001EE780(this, 0, (unsigned int)-1, 0, 0, category);
+    }
+
+    /* the short form: its text in place after the first byte (bit 0 of the first word clear) */
+    bool IsShort() const { return !(w[0] & 1); }
+    const charT *c_str() const { return IsShort() ? (const charT *)this + 1 : (const charT *)w[2]; }
+
+    unsigned int w[3];
+
+private:
+    void init() { clear_words(); }
+    void clear_words() { zero(w); }
+    /* the words zeroed as include/string's init does it: a loop over a reference to them */
+    static void zero(unsigned int (&a)[3])
+    {
+        for (unsigned int i = 0; i < 3; ++i)
+            a[i] = 0;
+    }
+};
+
+#pragma auto_inline off
+template <class charT, class traits, class Allocator>
+basic_string<charT, traits, Allocator>::~basic_string()
+{
+    if (w[0] & 1)
+        operator delete((void *)w[2]);
+}
+#pragma auto_inline reset
+
+typedef basic_string<char> string;
+}
 
 typedef std::string CStateString;
 
