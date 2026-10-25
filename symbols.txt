@@ -10153,7 +10153,7 @@
 0x0055ECC0 0x3DC func_0055ECC0  # OVL2
 0x0055F0A0 0x30C func_0055F0A0  # OVL2
 0x0055F3B0 0x338 func_0055F3B0  # OVL2
-0x0055F6F0 0xF4 func_0055F6F0  # OVL2
+0x0055F6F0 0xF4 reset__13AI_FIREPARAMSFv  # OVL2; s1:calls (the kit lane, vetted by the integrator: SEAL_AI_PARAMS() calls it on +0x120 right after zeroing +0x6C, where SOCOM 1's CSealCtrlAi constructor calls AI_FIREPARAMS::reset; 0xF4 here against SOCOM 1's 0xE4)
 0x0055F7F0 0x148 func_0055F7F0  # OVL2
 0x0055F940 0x148 func_0055F940  # OVL2
 0x0055FA90 0x44C func_0055FA90  # OVL2
@@ -10172,7 +10172,7 @@
 0x00560940 0x8 func_00560940  # OVL2
 0x00560950 0x8 func_00560950  # OVL2
 0x00560960 0x68 __opf__6RfloatCFv  # OVL2; s1:order (SOCOM 1's __opf__6RfloatCFv, the same 0x68 bytes word for word but rand's address: Rfloat's inline operator float, its out-of-line copy after 0x5605A0, its one caller, as SOCOM 1's follows CAiSPursue::Tick) -- the SEAL lane, round 4
-0x005609D0 0x14 func_005609D0  # OVL2
+0x005609D0 0x14 __ct__6RfloatFff  # OVL2; ours (the kit lane, vetted by the integrator: min stored at 0 and max - min at 4, this returned -- Rfloat's two-float constructor; SEAL_AI_PARAMS() builds both of its trigger's temporaries with it)
 0x005609F0 0x68 func_005609F0  # OVL2
 0x00560A60 0x58 func_00560A60  # OVL2
 0x00560AC0 0x58 func_00560AC0  # OVL2

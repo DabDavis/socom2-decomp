@@ -747,7 +747,9 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   0x2BD220 while the name stays on OVL2's 0x519290, and five OVL2 copies hand units already
   emitted (0x50F990, 0x50FAD0, 0x51BED0, 0x539B70, 0x53AAC0) matched the day this went in.
   automatch's superseded test follows the same rule. To diff one copy by hand: `./scdiff.py SRC
-  NAME --target 0xADDR`.
+  NAME --target 0xADDR`. `tools/ovlcopies.py` finds unmarked copies (a placeholder's words equal to
+  a named row's in another overlay, the link's address fields masked, every call to the same callee
+  or its overlay's copy, one twin per overlay) and `--apply` notes them.
 - **Tells from the AI core** (ai_events.cpp, ai_astar.cpp, zchar/):
   - testing a field through an inline bool accessor makes MW load it again for the next
     statement; written out, the first load is reused;
@@ -1722,6 +1724,28 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     CZDecalSet and CZMarkList live in zwep_weapon.cpp (0x3D0470-0x3D17CF), not the header;
     zwep_weapon.cpp's template tail runs through 0x3D4260 and zwep_ammo.cpp starts at 0x3D4380;
     the placed-explosive pointer vector (0x3D4810-0x3D4B7F) opens the flyout unit.
+- **Tells from the kit and AI states, round 6** (CAiStateStack::Tick, SEAL_AI_PARAMS(), the wrappers):
+  - a virtual call whose caller never sets $f12 proves the slot takes no float, even when the same
+    function sets $f12 for other calls: SOCOM II's state Tick (slot 0x10) is `int Tick(CSealCtrlAi
+    *)` (the states read the m_dT static) and slot 0x14 `int Virtual14(CSealCtrlAi *, CAiState
+    *sub)` -- 31 rows re-mangled;
+  - reading a list's front through `*begin()` lets a later front reuse the `&end_.next_` an erase's
+    begin() kept in a saved register (Pop);
+  - an auto-inline candidate (15 statements or fewer) too big to inline whole stops every caller
+    from being auto-inlined; pinning it (`#pragma auto_inline off`) frees them (PushAiState inlines
+    into 0x5F51A0 once the stack's Push is pinned);
+  - a unit can declare its own layout-compatible class so members a shared header keeps as byte
+    stand-ins get real constructors, built in declaration order (seal_aiparams.cpp);
+  - declaring a member class's destructor, even undefined, changes the enclosing constructor (with
+    ~CAiPath() declared the route's address stays in s1 across its path's construction);
+  - an array of 8 CAiMapLoc (an empty inline constructor) compiles to an empty counted loop; a byte
+    enum copied into a local loads with lb;
+  - `if (ok && cond) { ... } return ok;` around the rest of a function gives two branches straight
+    to the shared return;
+  - still open: the `Is()` built whole in a register with an explicit false arm (Pop(ai, AI_STATE),
+    PopTo, 0x5F43B0) -- when the second operand is an out-of-line call MW drops the first operand's
+    andi; 0x5B818C-0x5B901F is SOCOM 1's seal_ex.cpp and seal_ik.cpp (CSealEx::OnWeaponHit at
+    0x5B8260).
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
