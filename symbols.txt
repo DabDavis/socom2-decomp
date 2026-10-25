@@ -1595,8 +1595,8 @@
 0x001F6AD0 0x10 func_001F6AD0  # OVL1
 0x001F6AE0 0x1C func_001F6AE0  # OVL1
 0x001F6B00 0x60 func_001F6B00  # OVL1
-0x001F6B60 0x17C func_001F6B60  # OVL1
-0x001F6CE0 0x128 func_001F6CE0  # OVL1
+0x001F6B60 0x17C SetupTimerText__4CHUDFv  # OVL1; by hand (hud_main.cpp: CHUD::Tick's call on the HUD; prints the mission clock '%02d:%02d' from 0x2A6AD0's seconds into m_timertext (CHUD+0x4E20) when the seconds change, as SOCOM II's own; the name ours)
+0x001F6CE0 0x128 SetupZoomText__4CHUDFv  # OVL1; by hand (hud_main.cpp: SOCOM 1's ZoomIn printed the zoom into its static zoomtext; SOCOM II's ZoomIn and ZoomOut both call this, which sprintf's 'ZOOM: %2.1fx' into the static at 0x3DC3F0 and loads m_zoomleveltext with it; the name ours, after SOCOM 1's Setup* pair)
 0x001F6E10 0x1B8 Add2D__4CHUDFP3C2Dib  # OVL1; s1:calls (SOCOM 1's Add2D(C2D *, int phase, bool add_to_back): the phase tested against -1, two list inserts; before the map switches)
 0x001F6FD0 0x60 GetAssetLibs__3C2DFRQ23C2D8CLibList  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F7030 0x190 SwitchToCompassMap__4CHUDFv  # OVL1; s1:calls (calls ZoomOut and ZoomIn as SOCOM 1's SwitchToCompassMap; before SwitchToFullScreenMap)
@@ -1612,13 +1612,13 @@
 0x001F7F80 0x70 __dt__6CFaderFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F7FF0 0x1158 Tick__4CHUDFf  # OVL1; s1:calls (CCoreState::Tick calls it on m_hud with dT under gopt's first byte, before the HUD's three DrawPhases, where SOCOM 1's calls CHUD::Tick; much grown)
 0x001F9150 0x8 SetTrans__9C2DStringFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x001F9160 0x260 func_001F9160  # OVL1
-0x001F93C0 0x3E4 func_001F93C0  # OVL1
-0x001F97B0 0x764 func_001F97B0  # OVL1
-0x001F9F20 0x3D8 func_001F9F20  # OVL1
-0x001FA300 0x5C func_001FA300  # OVL1
+0x001F9160 0x260 SetupSpectatorText__4CHUDF10MENU_STATE  # OVL1; by hand (hud_main.cpp: CHUD::Tick's call with the menu state; puts 'You are a spectator.  Use the directional' and three more lines on the piggyback strings (CHUD+0x19D58), turns theHUD off and places the six lines, SOCOM II's own; the name ours)
+0x001F93C0 0x3E4 SetupSpectatingText__4CHUDF10MENU_STATE  # OVL1; by hand (hud_main.cpp: CHUD::Tick's call with the menu state; in no menu, the string table's 0xEC4F and the watched entity's name upper-cased on the first two piggyback strings, the rest blank, theHUD off and its letterbox in, SOCOM II's own; the name ours)
+0x001F97B0 0x764 SetupRespawnText__4CHUDF10MENU_STATE  # OVL1; by hand (hud_main.cpp: CHUD::Tick's call with the menu state; the ghost's or the dead's lines on the piggyback strings, 'Press the %c button to respawn.' offered five seconds after death, then theHUD on and the six lines placed, SOCOM II's own; the name ours)
+0x001F9F20 0x3D8 SetupGhostText__4CHUDF10MENU_STATE  # OVL1; by hand (hud_main.cpp: CHUD::Tick's two calls with the menu state; puts 'You are a ghost.  You will play the next' (a ghost) or 'You have died.  Use the ...' on the piggyback strings, turns theHUD off and places the six lines, SOCOM II's own; the name ours)
+0x001FA300 0x5C PauseGame__4CHUDFv  # OVL1; s1:order by hand (hud_main.cpp: between Tick and Init as SOCOM 1's PauseGame; returns the bool CCoreState::Tick tests before ticking the world, as SOCOM 1's -- the menu state among pause/map/orders and not networked)
 0x001FA360 0xF98 Init__4CHUDFPQ23zdb6CWorld  # OVL1; s1:callee (CCoreState::Init's call after the constructor, with the world, as SOCOM 1's; 0xF98 to SOCOM 1's 0xFA0)
-0x001FB300 0x70 func_001FB300  # OVL1
+0x001FB300 0x70 __dt__Q23std62vector<PQ23zdb9CAssetLib,Q23std28allocator<PQ23zdb9CAssetLib>>Fv  # OVL1; by hand (a pointer vector's destructor, three this tests and data_ at 8 freed, as include/vector's; hud_main.cpp emits vector<CAssetLib *>'s for Add2D's C2D::CLibList, and the font code's callers (0x35A650 frees the font's list at +0x10 through a swapped temporary) link this copy)
 0x001FB370 0x44 func_001FB370  # OVL1
 0x001FB3C0 0x8 func_001FB3C0  # OVL1
 0x001FB3D0 0x14 func_001FB3D0  # OVL1
@@ -1701,7 +1701,7 @@
 0x001FEE90 0x7C Draw__10CLetterBoxFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FEF10 0x144 __ct__10CLetterBoxFv  # OVL1; s1:order by hand (hud_letterbox.cpp's last, as SOCOM 1's; its bars set up through C2D's new slots)
 0x001FF060 0x94 Tick__17CLensFlareManagerFf  # OVL1; by hand (the only slot of CLensFlareManager's vtable 0x4052A0, which is three words: while active and not empty, every entry's C2D Tick given the float; the name ours)
-0x001FF100 0x154 func_001FF100  # OVL1
+0x001FF100 0x154 PreDITick__17CLensFlareManagerFf  # OVL1; s1:calls by hand (CHUD::PreDITick tail-calls it on the manager at CHUD+0x1A698, where SOCOM 1's calls CLensFlareSaturate::PreDITick)
 0x001FF260 0xC4 Clear__17CLensFlareManagerFv  # OVL1; by hand (CHUD::ReleaseHUD's call on the manager: every flare deleted through its virtual destructor, the list emptied, inactive; the name ours)
 0x001FF330 0x40 Init__17CLensFlareManagerFv  # OVL1; by hand (inactive, LoadRdr of lensflare.rdr, active if that gave any flare; the name ours)
 0x001FF370 0xE4 func_001FF370  # OVL1
@@ -2232,8 +2232,8 @@
 0x00237760 0x3D8 func_00237760  # OVL1
 0x00237B40 0x1C0 func_00237B40  # OVL1
 0x00237D00 0xD8 func_00237D00  # OVL1
-0x00237DE0 0x6C func_00237DE0  # OVL1
-0x00237E50 0x10C func_00237E50  # OVL1
+0x00237DE0 0x6C Off__12CAmmoDisplayFv  # OVL1; by hand (CHUD::Off calls it on the ammo counts at CHUD+0x1A700; slot 4, Off, of its poly, bitmaps and strings)
+0x00237E50 0x10C On__12CAmmoDisplayFv  # OVL1; by hand (CHUD::On calls it on CHUD+0x1A700, as Off its pair; slot 5, On, unless spectating)
 0x00237F60 0x54 Reset__12CAmmoDisplayFv  # OVL1; by hand (CHUD's ReInit_Init and ReInit_Uninit call it on CHUD+0x1A700: both count strings wiped, the cached counts reset; the name ours)
 0x00237FC0 0x2FC func_00237FC0  # OVL1
 0x002382C0 0xF0 __dt__12CAmmoDisplayFv  # OVL1; by hand (CHUD's destructor calls it on CHUD+0x1A700, the member CAmmoDisplay's constructor builds: its arrays, strings, plain C2D, bitmap and poly destroyed in reverse; the implicit destructor)
@@ -2313,8 +2313,8 @@
 0x0023E030 0x340 func_0023E030  # OVL1
 0x0023E370 0x268 func_0023E370  # OVL1
 0x0023E5E0 0x11C func_0023E5E0  # OVL1
-0x0023E700 0xF8 func_0023E700  # OVL1
-0x0023E800 0x108 func_0023E800  # OVL1
+0x0023E700 0xF8 Off__12CMPWeaponSelFv  # OVL1; by hand (CHUD::Off calls it on the network weapon selector at CHUD+0x38E0 in a network game, among the other selectors' Off; it calls slot 4, Off, of each list and bitmap it holds)
+0x0023E800 0x108 On__12CMPWeaponSelFv  # OVL1; by hand (CHUD::On calls it on CHUD+0x38E0 in a network game, as Off its pair; slot 5, On, of each list and bitmap)
 0x0023E910 0x1C4 func_0023E910  # OVL1
 0x0023EAE0 0xE0 func_0023EAE0  # OVL1
 0x0023EBC0 0xD4 func_0023EBC0  # OVL1

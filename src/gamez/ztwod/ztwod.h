@@ -14,6 +14,7 @@
 #define ZTWOD_H
 
 #include <list>
+#include <vector>
 
 #include "../zmath/zmath.h"
 
@@ -37,6 +38,15 @@ int GetUICommandType(const char *name);
 /* SOCOM 1's DWARF: `class C2Dlist : public list` (0xC bytes) -- a pointer list (CZHudMissionCams::
  * Init pushes its strings through __list_deleter<PCv>'s insert, 0x1FEAE0) */
 class C2Dlist : public std::list<C2D *> {
+public:
+    typedef std::__list_deleter<const void *, std::allocator<const void *> > __deleter;
+
+    /* an item put first: the base's insert at the first node (CHUD::Add2D's front insert reads
+     * the end node's next_ as SOCOM 1's begin() did; the name is ours) */
+    void push_front(C2D *const &x)
+    {
+        __deleter::insert(__deleter::iterator(this->end_node().next_), (const void *const &)x);
+    }
 };
 
 class C2D : public C2Dlist {
@@ -93,6 +103,11 @@ public:
     unsigned int m_unused : 24;
 };   // 0x18 bytes
 
+/* the asset libraries a 2D object draws from (SOCOM 1's DWARF: `class CLibList : public vector`,
+ * 0xC bytes, of CAssetLib pointers -- CHUD::Add2D reads each one's render phase) */
+class C2D::CLibList : public std::vector<zdb::CAssetLib *> {
+};
+
 class C2DFont;
 
 /* a text string: 0x98 bytes in SOCOM II (an array's stride; SOCOM 1's 0x88), its vtable 34 slots
@@ -124,7 +139,8 @@ public:
 
     unsigned char _18[0x48 - 0x18];
     float m_color[4];   // 0x48 (SOCOM 1's CPnt4D at 0x50; the HUD writes it a float at a time)
-    unsigned char _58[0x6a - 0x58];
+    unsigned char _58[0x69 - 0x58];
+    unsigned char m_socom2_69;   // 0x69: the HUD's spectator lines set it to 1
     unsigned char m_socom2_6a;   // 0x6a: PoseBitmap sets it for the network game's position
     unsigned char _6b[0x98 - 0x6b];
 };   // 0x98 bytes

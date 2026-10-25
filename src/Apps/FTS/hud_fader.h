@@ -55,6 +55,10 @@ public:
 
 class CFlashFXVector {
 public:
+    /* a flash kept: the pointer a parameter of its own, whose address the push_back takes --
+     * CHUD::Flash keeps its fader in a saved register through its calls and stores this copy
+     * only for the push_back (the name is ours) */
+    void Add(CFlashFX *fx) { m_FlashFX.push_back(fx); }
     void Reset();
     void Draw(zdb::CCamera *cam);
     void Tick(float dT);

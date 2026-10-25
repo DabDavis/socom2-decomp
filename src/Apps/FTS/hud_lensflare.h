@@ -22,6 +22,7 @@ public:
 class CLensFlareManager : public std::list<CLensFlareEntry *> {
 public:
     virtual void Tick(float dT);
+    void PreDITick(float dT);
     void Reset();
     void LoadRdr(const char *name);
     void Init();
