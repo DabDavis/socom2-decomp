@@ -1211,12 +1211,6 @@ struct CClutterEffector {
     float m_radius;   // 0x24
 };
 
-/* SOCOM II's pointer-list walks: the first node is built from a REFERENCE to the sentinel's next_
- * link, so &end_.next_ is a compiler temporary -- computed once, CSE'd across a walk and the clear
- * (or the list's destructor) after it, and kept in the lowest saved register (ClearEffectors,
- * ClearAnimations, ~CClutterAnimManager; the same shape is open in several lanes: CValve::
- * DeleteCallbacks, ~CZAmmoList, zNetFlushMessages). include/list's begin() takes the link by value;
- * these stand in for SOCOM II's MSL until it does (the names ours) */
 /* a vector between two points, by value: Sub out of line into a temporary, copied out (ld/sd and
  * lwc1/swc1) -- the collision code's differences (grid_di.cpp, int_main.cpp; SOCOM II's CPnt3D
  * operator-, which zmath.h lacks; the name is ours) */
@@ -1227,14 +1221,6 @@ inline CPnt3D PntMinus(const CPnt3D &a, const CPnt3D &b)
     a.Sub(&b, &r);
     return r;
 }
-
-typedef std::__list_deleter<const void *, std::allocator<const void *> > PtrListBase;
-struct PtrListFirst : public PtrListBase::iterator {
-    PtrListFirst(PtrListBase::node_base *const &link) : PtrListBase::iterator(link) {}
-};
-inline PtrListBase::iterator ListBegin(PtrListBase &l) { return PtrListFirst(l.end_node().next_); }
-inline PtrListBase::iterator ListEnd(PtrListBase &l) { return PtrListBase::iterator(&l.end_node()); }
-inline void ListClear(PtrListBase &l) { l.erase(ListBegin(l), ListEnd(l)); }
 
 /* the clutter's animation: the props pushed about by effectors (SOCOM 1's grid_clutter.cpp class,
  * 0x70 bytes, its DWARF) */

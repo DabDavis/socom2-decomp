@@ -379,7 +379,7 @@ void LightList_Search(CNode *node, CLightList &lights)
 
         if (node->GetType() == 8) {
             if ((light = dynamic_cast<CLight *>(node)) != 0)
-                ((PtrListBase &)lights).insert(ListBegin(lights), (const void *const &)light);
+                lights.insert(lights.begin(), light);
         }
         if (node->m_visual.size()) {
             for (CVisualVector::iterator it = node->m_visual.begin(), e = node->m_visual.end(); it != e;
@@ -404,17 +404,17 @@ void LightList_Search(CNode *node, CLightList &lights)
 }
 
 /* the lights gathered afresh, each placed in the world and listed in every cell its range covers
- * in x/z, their count given back (SOCOM 1's). The clear and the walk's first node both bind the
- * sentinel's link by reference (znode.h's ListClear and PtrListFirst, SOCOM II's begin()): the
- * target computes &m_lights.end_.next_ once, before the clear, and reads the walk's first node
- * through it after the search; the iterator is assigned (a bitwise copy, then kept in memory) */
+ * in x/z, their count given back (SOCOM 1's). The clear and the walk's first node both read the
+ * sentinel through a reference (include/list's begin(), SOCOM II's): the target computes
+ * &m_lights.end_.next_ once, before the clear, and reads the walk's first node through it after
+ * the search; the iterator is assigned (a bitwise copy, then kept in memory) */
 int CWorld::GenerateLightList()
 {
-    ListClear(m_lights);
+    m_lights.clear();
     LightList_Search(this, m_lights);
     CLightList::iterator it, e = m_lights.end();
 
-    for (it = CLightList::iterator(PtrListFirst(m_lights.end_node().next_)); it != e; ++it) {
+    for (it = m_lights.begin(); it != e; ++it) {
         CLight *light = *it;
         CPnt3D pos(0.0f, 0.0f, 0.0f);
         CPnt3D bounds[2];
