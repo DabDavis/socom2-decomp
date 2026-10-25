@@ -10101,7 +10101,7 @@
 0x00557E10 0x48 __ml__6CPnt3DCFf  # OVL2; s1:exact
 0x00557E60 0x2C func_00557E60  # OVL2
 0x00557E90 0x4C func_00557E90  # OVL2
-0x00557EE0 0x50 func_00557EE0  # OVL2
+0x00557EE0 0x50 SetDoAiMapCollide__11CSealCtrlAiFb  # OVL2; slot 0xB4 of __vt__11CSealCtrlAi (CSealCtrl's SetDoAiMapCollide at 0x592030 in the base): off whenever the byte at 0x3F4 is 7, the bit stored only when it changes (the SEAL lane, round 3)
 0x00557F30 0x2C func_00557F30  # OVL2
 0x00557F60 0xC8 func_00557F60  # OVL2
 0x00558030 0x274 func_00558030  # OVL2

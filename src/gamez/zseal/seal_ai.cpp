@@ -104,6 +104,35 @@ extern "C" signed char func_005558A0(CSealCtrlAi *ai)
     return ai->m_5bc;
 }
 
+/* the slide stepped: the AI's throttles and the body's stopped first; done sliding, the AI's mode
+ * goes back to 1 (OVL2 0x566CF0, slot 0x8C) */
+bool CSealCtrlAi::SlideTick(float dT)
+{
+    SetThrottle(1, 0.0f);
+    SetThrottle(2, 0.0f);
+    SetThrottle(0, 0.0f);
+    SetThrottle(3, 0.0f);
+    m_throttle[1] = 0.0f;
+    m_throttle[2] = 0.0f;
+    m_throttle[0] = 0.0f;
+    m_throttle[3] = 0.0f;
+    bool slid = CSealCtrl::SlideTick(dT);
+
+    if (!slid)
+        SetAiMode((AI_MODE)1);
+    return slid;
+}
+
+/* the AI-map collision bit, kept off in mode 7 and stored only when it changes (OVL2 0x557EE0,
+ * slot 0xB4) */
+void CSealCtrlAi::SetDoAiMapCollide(bool on)
+{
+    if (m_3f4 == 7)
+        on = false;
+    if (m_do_aimap_collide != on)
+        m_do_aimap_collide = on;
+}
+
 /* the sign of a value, as one (OVL2 0x557D90; the inline's copy after its caller, 0x557190) */
 extern "C" float func_00557D90(float x)
 {

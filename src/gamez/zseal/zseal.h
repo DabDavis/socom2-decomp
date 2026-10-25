@@ -267,7 +267,7 @@ public:
     virtual void PerformProximityActions();
     virtual void OnCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);
     virtual void CreepTick(float dT);                                       /* +0x88 */
-    virtual void SlideTick(float dT);
+    virtual bool SlideTick(float dT);   /* SOCOM II's returns whether the SEAL slid */
     /* +0x90-0x98, new in SOCOM II: the fudge velocities set (the names ours) */
     virtual void SetFudgeVelM(const CPnt3D *v) { m_fudge_velM = *v; }
     virtual void SetFudgeVelR(const CPnt3D *v) { m_fudge_velR = *v; }
@@ -363,6 +363,9 @@ public:
     /* (0x573E60, not written yet: declared so no unit emits an implicit one) */
     virtual ~CSealCtrlAi();
     virtual void SetThrottle(unsigned int axis, float value);
+    virtual bool SlideTick(float dT);
+    /* never on in the AI mode 7 (OVL2 0x557EE0) */
+    virtual void SetDoAiMapCollide(bool on);
     virtual void OnSetHealth(float health, float old);
     virtual void OnMissionEnd();
     virtual void OnStateChange(SEAL_STATE from, SEAL_STATE to);
@@ -379,7 +382,9 @@ public:
     unsigned char _26d[0x278 - 0x26d];
     SEAL_STANCE m_stance;   // 0x278 (SOCOM 1's 0x285)
     float m_stance_delay;   // 0x27c (SOCOM 1's 0x288)
-    unsigned char _280[0x468 - 0x280];
+    unsigned char _280[0x3f4 - 0x280];
+    unsigned char m_3f4;   // 0x3f4: a mode (7 keeps the AI-map collision off; the name ours)
+    unsigned char _3f5[0x468 - 0x3f5];
     CZAnim *m_task_anim;   // 0x468: an anim the AI plays, stopped at the mission's end
     unsigned char _46c[0x5bc - 0x46c];
     signed char m_5bc;   // 0x5bc (read after the update at 0x555420; the name ours)
