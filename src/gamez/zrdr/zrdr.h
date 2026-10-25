@@ -11,9 +11,11 @@
 #ifndef ZRDR_H
 #define ZRDR_H
 
+#include "../zar/zar.h"
+
 class CSTable;
 class CRdrFile;
-class CIO;
+class CRdrArchiveList;
 struct PNT2D;
 struct PNT3D;
 struct IPNT2D;
@@ -99,6 +101,23 @@ bool zrdr_tobool(const _zrdr *rdr, bool *out);
 bool zrdr_toRfloat(const _zrdr *rdr, Rfloat *out);
 bool zrdr_toRECT(const _zrdr *rdr, tag_RECT *out);
 const char *zrdr_findfile(const char *name, const char *path);
+
+/* the archives .rdr files are fetched from before the disc (zrdr_archive.cpp): SOCOM 1's class,
+ * a ZAR and its file name; the list of them is the class's (SOCOM 1's m_list) */
+class CRdrArchive : public zar::CZAR {
+public:
+    CRdrArchive(const char *name) : zar::CZAR(name, 0) {}
+    virtual ~CRdrArchive();
+
+    static CRdrFile *FindRdr(const char *path, int flags);
+    static CRdrArchive *AddArchive(const char *name, const char *path);
+    static bool RemoveArchive(const char *name, const char *path);
+    static CRdrArchive *Find(const char *name);
+    static void CloseAll();
+    static void OpenAll();
+
+    static CRdrArchiveList m_list;   // 0x488510
+};   // 0xb8 bytes
 
 /* the files (zrdr_file.cpp, zrdr_parse.cpp) */
 _zrdr *zrdr_read(const char *name, const char *path, int flags);

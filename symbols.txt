@@ -5771,14 +5771,14 @@
 0x0032B650 0x53C func_0032B650  # OVL1
 0x0032BB90 0x43C func_0032BB90  # OVL1
 0x0032BFD0 0x68 func_0032BFD0  # OVL1
-0x0032C040 0x194 func_0032C040  # OVL1
-0x0032C1E0 0xCC func_0032C1E0  # OVL1
+0x0032C040 0x194 FindRdr__11CRdrArchiveFPCci  # OVL1; s1:align (SOCOM 1's FindRdr: the base name copied, each archive ReOpened, OpenKey, the file loaded, CloseKey, Close; SOCOM II passes a flags argument on to the loader, 0x32C980)
+0x0032C1E0 0xCC AddArchive__11CRdrArchiveFPCcPCc  # OVL1; s1:align (SOCOM 1's AddArchive: "%s/%s" or the name, a new archive pushed on the list; the states call it with (name, path))
 0x0032C2B0 0x11C RemoveArchive__11CRdrArchiveFPCcPCc  # OVL1; s1:calls (called where SOCOM 1's UI handler calls it) -- the UI-commands lane
 0x0032C3D0 0x60 __dt__11CRdrArchiveFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0032C430 0xB8 func_0032C430  # OVL1
-0x0032C4F0 0x78 func_0032C4F0  # OVL1
-0x0032C570 0x80 func_0032C570  # OVL1
-0x0032C5F0 0x60 func_0032C5F0  # OVL1
+0x0032C430 0xB8 Find__11CRdrArchiveFPCc  # OVL1; the name ours (SOCOM II's: the archive whose m_filename is the name, strcasecmp; AddArchive calls it before adding)
+0x0032C4F0 0x78 CloseAll__11CRdrArchiveFv  # OVL1; s1:order (SOCOM 1's CloseAll: CZAR::Close on every archive of the list)
+0x0032C570 0x80 OpenAll__11CRdrArchiveFv  # OVL1; s1:order (SOCOM 1's OpenAll: ReOpen(1, 1) on every archive of the list)
+0x0032C5F0 0x60 __dt__15CRdrArchiveListFv  # OVL1; s1:order (SOCOM 1's CRdrArchiveList destructor: __sinit_zrdr_archive.cpp's 0x402D70 registers it for the list at 0x488510)
 0x0032C650 0x10 func_0032C650  # OVL1
 0x0032C660 0x10 IsArray__5_zrdrCFv  # OVL1; tu: zanim_cmd_parse.cpp~ (1.0 beta); s1:exact
 0x0032C670 0xA0 func_0032C670  # OVL1
