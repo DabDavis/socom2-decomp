@@ -12,10 +12,14 @@ void func_003A3740(void *snd, const char *bank);
 void func_00321D30();                            /* zdb::EmptyAssetRecycleBin */
 void func_00385C30(void *vars);                  /* CUIVarManager::Reset */
 
-extern zdb::CAssetLib *data_00408E28;            /* the load screen's asset library */
 }
 
 extern char theUIVarManager[];
+
+namespace {
+/* the load screen's asset library */
+zdb::CAssetLib *g_pMissionLoadingLib;
+}
 
 extern "C" char *strncpy(char *dst, const char *src, unsigned int n);
 extern "C" int strcmp(const char *a, const char *b);
@@ -58,14 +62,9 @@ void func_002C79E0();
 void func_002BB1D0();
 void func_002A7490(CNetGame *game, int arg);
 
-extern int data_00408534;                        /* theGame's word at 0x74 */
-extern CStateString data_00437D1C;               /* the load screen's asset library's name */
-extern CNetGame *data_00437CE8;                  /* the online game */
 extern void (*data_0044F3CC)(int);               /* the net error handler */
 extern void *data_0045B718;
 extern unsigned char data_003DF1A8;
-extern unsigned char data_0045A0C0;              /* theNetwork's +8 */
-extern unsigned char data_0045A0C1;              /* theNetwork's +9 (an online game) */
 }
 
 const char *CLoadMenu::GetReaderFileName()
@@ -93,13 +92,13 @@ CLoadState::~CLoadState()
 bool CLoadState::Init()
 {
     m_abort = false;
-    data_00408534 = 0;
+    theGame.m_pad = 0;
     func_002AF360(theMission.m_1c);
-    const char *libname = data_00437D1C.c_str();
+    const char *libname = theMission.m_libname.c_str();
 
     if (libname && *libname) {
-        data_00408E28 = func_00320D70(data_00437D1C.c_str());
-        ((unsigned char *)data_00408E28)[0x2c] = 0;
+        g_pMissionLoadingLib = func_00320D70(theMission.m_libname.c_str());
+        ((unsigned char *)g_pMissionLoadingLib)[0x2c] = 0;
     }
     m_menu = new CLoadMenu;
     CZAnimZAR *zar = ZAnim.OpenZAR("run/ldzanim.zar");
@@ -113,8 +112,8 @@ bool CLoadState::Init()
     m_time_elapsed = 0.0f;
     m_18 = false;
     m_19 = true;
-    if (data_0045A0C1) {
-        CNetGame *game = data_00437CE8;
+    if (theNetwork.m_9) {
+        CNetGame *game = theMission.m_netGame;
 
         data_0044F3CC = CMission::_RecoverFromNetError;
         CZBombState::UninitBomb();
@@ -138,10 +137,10 @@ bool CLoadState::Init()
         func_002C79E0();
         func_002BB1D0();
     }
-    if (data_0045A0C1 && !data_0045A0C0 && data_00437CE8->m_cc)
-        func_002A7490(data_00437CE8, 2);
+    if (theNetwork.m_9 && !theNetwork.m_8 && theMission.m_netGame->m_cc)
+        func_002A7490(theMission.m_netGame, 2);
     zVid_Sync0();
-    if (data_0045A0C1) {
+    if (theNetwork.m_9) {
         const char *mission = theMission.m_1c;
 
         if (strcmp(mission, GetDatabase()))
@@ -161,8 +160,8 @@ void CLoadState::UnInit()
         delete m_menu;
     m_menu = 0;
     func_003A3740(func_00361BC0(), "UILd");
-    zdb::CAssetMgr::ReleaseLibRef(data_00408E28);
-    data_00408E28 = 0;
+    zdb::CAssetMgr::ReleaseLibRef(g_pMissionLoadingLib);
+    g_pMissionLoadingLib = 0;
     func_00321D30();
     func_00385C30(theUIVarManager);
     if (m_abort && theGame.m_coreState.IsLoaded())

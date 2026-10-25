@@ -1523,20 +1523,20 @@
 0x001EF940 0x10C func_001EF940  # OVL1
 0x001EFA50 0x1E0 func_001EFA50  # OVL1
 0x001EFC30 0x250 func_001EFC30  # OVL1
-0x001EFE80 0xC func_001EFE80  # OVL1
-0x001EFE90 0xC func_001EFE90  # OVL1
-0x001EFEA0 0xE8 func_001EFEA0  # OVL1
-0x001EFF90 0x9C func_001EFF90  # OVL1
+0x001EFE80 0xC SetLensFxAnim__10CameraZoomFP6CZAnim  # OVL1; the name ours (SOCOM II's: the playing lens effect's activation set; CMPExitState::UnInit clears it)
+0x001EFE90 0xC LensFxOn__10CameraZoomFv  # OVL1; the name ours (SOCOM II's: the lens effects' switch at 0x3DC360, 1; the loader reads it before asking for the anims)
+0x001EFEA0 0xE8 SetLensFx__10CameraZoomFUc  # OVL1; the name ours (SOCOM II's: a lens effect put up unless held -- the one before noted, the playing anim stopped, the effect's anim or to_no_lens_fx activated; the HUD map, the mission cams and the SEAL's destructor call it)
+0x001EFF90 0x9C ClearLensFx__10CameraZoomFv  # OVL1; the name ours (SOCOM II's: the nine lens effect anims and the three blindplayer anims forgotten, the playing one stopped; the loader calls it first)
 0x001F0030 0x460 func_001F0030  # OVL1
-0x001F0490 0x178 func_001F0490  # OVL1
-0x001F0610 0x134 func_001F0610  # OVL1
-0x001F0750 0xD1C func_001F0750  # OVL1
-0x001F1470 0x198 func_001F1470  # OVL1
-0x001F1610 0x204 func_001F1610  # OVL1
-0x001F1820 0x18 func_001F1820  # OVL1
-0x001F1840 0x24 func_001F1840  # OVL1
-0x001F1870 0xC func_001F1870  # OVL1
-0x001F1880 0x17C func_001F1880  # OVL1
+0x001F0490 0x178 Tick__10CameraZoomFf  # OVL1; s1:calls (SOCOM 1's Tick: HandleNewZoom, the goal's handler once, the current zoom stepped to the goal and given to SetZoom; CCoreState::Tick calls it)
+0x001F0610 0x134 OnGoal__10CameraZoomFv  # OVL1; s1:calls (Tick's call at the goal, as SOCOM 1's)
+0x001F0750 0xD1C HandleNewZoom__10CameraZoomFv  # OVL1; s1:calls (Tick's first call, as SOCOM 1's; much grown)
+0x001F1470 0x198 SeeFarther__Fbf  # OVL1; s1:calls (SOCOM 1's SeeFarther: the world camera's mid and far clips and fog far pushed out by a factor, or the bases put back with the base fog colour; SOCOM II notes the call unless suppressed)
+0x001F1610 0x204 HandleZoomIn__10CameraZoomFff  # OVL1; s1:calls (SOCOM 1's HandleZoomIn: the goal set and stepped three times as fast, the HUD zoomed in, the view kept and made first person; SOCOM II adds 1 to 1 and trades 1.5 for 1.01; HandleNewZoom calls it with the new and current zoom)
+0x001F1820 0x18 SetGoal__10CameraZoomFf  # OVL1; s1:exact shape (SOCOM 1's SetGoal: the goal and the goal flag; CCoreState::OnPop calls it with 1.0)
+0x001F1840 0x24 AttachHud__10CameraZoomFP4CHUD  # OVL1; s1:calls (SOCOM 1's AttachHud; SOCOM II also clears SeeFarther's three bases; CCoreState's Init and auxUnload call it)
+0x001F1870 0xC AttachSeal__10CameraZoomFP10CZSealBody  # OVL1; s1:exact shape (SOCOM 1's AttachSeal; CCoreState's Init, OnPop and auxUnload call it)
+0x001F1880 0x17C Reset__10CameraZoomFv  # OVL1; the name ours (SOCOM II's: the zoom put back to 1 and not zooming, the clip bases cleared, the app camera to the third person view at zoom 1 and mode 2, the third person's lens effect put up -- SetLensFx(8) inlined -- and SeeFarther's notes cleared; two callers outside the unit)
 0x001F1A00 0xD4 UnInit__10CExitStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F1AE0 0x60 __dt__9CExitMenuFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F1B40 0x68 Tick__10CExitStateFf  # OVL1; s1:calls
@@ -3599,16 +3599,16 @@
 0x00297A30 0x69C func_00297A30  # OVL1
 0x002980D0 0x1068 func_002980D0  # OVL1
 0x00299140 0xC func_00299140  # OVL1
-0x00299150 0x68 func_00299150  # OVL1
+0x00299150 0x68 ResetDeathCam__10CAppCameraFv  # OVL1; s1:calls (SOCOM 1's ResetDeathCam: no death state, the automatic death camera on, save_short_tether_length 10000, DeltaRot and DeltaAim 0; SOCOM II puts back a few more; CMPExitState::UnInit and the mission's fades call it)
 0x002991C0 0x160 func_002991C0  # OVL1
-0x00299320 0x1B4 func_00299320  # OVL1
-0x002994E0 0x21C func_002994E0  # OVL1
-0x00299700 0xE4 func_00299700  # OVL1
+0x00299320 0x1B4 Shake__10CAppCameraFUc  # OVL1; the name ours (one of the camera's three shake presets at 0x50 begun, else the shake stopped; CmdBeginShake inlines it, OVL2 calls it)
+0x002994E0 0x21C BeginShake__10CAppCameraFffffffff  # OVL1; the name ours (SOCOM II's shake begun: the larger rates and decays kept, the amplitudes rolled with rand()%100; Shake and an OVL2 caller pass eight floats)
+0x00299700 0xE4 StopShake__10CAppCameraFv  # OVL1; the name ours (SOCOM II's shake stopped: its eight parameters -1, the echo off, the angles to a random quarter, the amplitudes 0; inlined in Shake and TickCameraWiggle)
 0x002997F0 0xFC func_002997F0  # OVL1
 0x002998F0 0x310 Tick__10CAppCameraFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00299C00 0xC func_00299C00  # OVL1
-0x00299C10 0x30 func_00299C10  # OVL1
-0x00299C40 0x288 func_00299C40  # OVL1
+0x00299C10 0x30 TickTask__10CAppCameraFfPv  # OVL1; the name ours (CCoreState::Init's appCamera_tick task: the app camera's virtual Tick)
+0x00299C40 0x288 TickCameraWiggle__10CAppCameraFfPQ23zdb7CCamera  # OVL1; s1:order (SOCOM 1's TickCameraWiggle's place: after Tick and GetDynamicsControl, called by Tick with the camera; SOCOM II's shake: two ripples on the screen offset, decayed, then StopShake)
 0x00299ED0 0x2B0 func_00299ED0  # OVL1
 0x0029A180 0x270 func_0029A180  # OVL1
 0x0029A3F0 0x268 func_0029A3F0  # OVL1
@@ -3616,18 +3616,18 @@
 0x0029A950 0x4FC func_0029A950  # OVL1
 0x0029AE50 0x270 func_0029AE50  # OVL1
 0x0029B0C0 0x224 func_0029B0C0  # OVL1
-0x0029B2F0 0x40 func_0029B2F0  # OVL1
-0x0029B330 0x88 func_0029B330  # OVL1
+0x0029B2F0 0x40 SetZoom__10CAppCameraFf  # OVL1; s1:calls (SOCOM 1's SetZoom: the camera's aspect and range scale set from the zoom; SOCOM II scales zVid's aspect)
+0x0029B330 0x88 SetCameraMode__10CAppCameraFUc  # OVL1; the name ours (the camera's mode set, except online at mode 6 while the followed SEAL is down; the HUD's mission cams and the zoom call it)
 0x0029B3C0 0x1B0 AttachTo__10CAppCameraFP10CZSealBody  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0029B570 0x5C func_0029B570  # OVL1
+0x0029B570 0x5C __dt__10CAppCameraFv  # OVL1; s1:calls (SOCOM 1's destructor: the vtable, then the camera, effects, entity, skeleton and track pointers cleared)
 0x0029B5D0 0x2F4 func_0029B5D0  # OVL1
-0x0029B8D0 0x1C4 func_0029B8D0  # OVL1
-0x0029BAA0 0xF0 func_0029BAA0  # OVL1
-0x0029BB90 0x1C func_0029BB90  # OVL1
-0x0029BBB0 0x6C func_0029BBB0  # OVL1
-0x0029BC20 0x6C func_0029BC20  # OVL1
-0x0029BC90 0x158 func_0029BC90  # OVL1
-0x0029BDF0 0x178 func_0029BDF0  # OVL1
+0x0029B8D0 0x1C4 CmdBeginShake__10CAppCameraFP14_zanim_cmd_hdr  # OVL1; the name ours (RegisterAnimCommands' begin for CAMERA_SHAKE: the app camera shaken with one of its presets)
+0x0029BAA0 0xF0 CmdParseShake__10CAppCameraFP5_zrdr  # OVL1; the name ours (RegisterAnimCommands' parser for SOCOM II's CAMERA_SHAKE: SMALL, MEDIUM or LARGE)
+0x0029BB90 0x1C CmdTick3rdPersonTest__10CAppCameraFP14_zanim_cmd_hdrPf  # OVL1; s1:exact shape (RegisterAnimCommands' tick for CAMERA_3RD_PERSON: the app camera's mode tested, SOCOM II's 3 for SOCOM 1's 2)
+0x0029BBB0 0x6C CmdParse3rdPersonTest__10CAppCameraFP5_zrdr  # OVL1; s1:exact shape (RegisterAnimCommands' parser for CAMERA_3RD_PERSON: a timeless four-byte command)
+0x0029BC20 0x6C RegisterAnimCommands__10CAppCameraFv  # OVL1; s1:calls (AddCmd for CAMERA_3RD_PERSON with SOCOM 1's parse and tick; SOCOM II adds CAMERA_SHAKE; CMission::Init calls it)
+0x0029BC90 0x158 LookAt__10CAppCameraFPC6CPnt3DPC6CPnt3DR7CMatrix  # OVL1; s1:calls (SOCOM 1's LookAt: Sub, Normalize twice, sceVu0OuterProduct, the matrix rows and the eye noted; AttachTo and the camera modes call it)
+0x0029BDF0 0x178 ResetView__10CAppCameraFv  # OVL1; the name ours (the view's preset taken up: goal position, aim, tether length; with a SEAL attached the camera placed through LookAt and SetMatrix; FTSTick's view switch calls it)
 0x0029BF70 0xC38 func_0029BF70  # OVL1
 0x0029CBB0 0x164 func_0029CBB0  # OVL1
 0x0029CD20 0x198 GetNearestIntersectCamPoint__FPQ23zdb11DiIntersectP6CPnt3D  # OVL1; s1:calls

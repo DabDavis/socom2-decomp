@@ -30,8 +30,8 @@ int StartThread(int id, void *arg);
 void ExitDeleteThread(void);
 int sceGsSyncPath(int mode, unsigned short timeout);
 
-/* unnamed yet: the linker's _gp, 0x1DD2F0 */
-extern char data_001DD2F0[];
+/* the linker's $gp */
+extern char _gp[];
 }
 
 void zSysFifoEnd();
@@ -155,12 +155,25 @@ public:
     zdb::CNode *m_uiNode;   // 0x630
     unsigned char _634[0x711 - 0x634];
     unsigned char m_renderingUi;   // 0x711
+    unsigned char _712[2];
+    unsigned char m_714;   // 0x714
 };
 
-extern "C" {
-extern TexBufferVector data_0049E880;            /* zdb::CTexManager::m_texmanager */
-extern CPipe data_004887C0;                      /* thePipe */
+namespace zdb {
+/* the texture manager: the buffers' vector, and each render phase's buffer index (SOCOM 1's) */
+class CTexManager {
+public:
+    static TexBufferVector m_texmanager;
+    static int TexPhase[55];
+};
+
+class CVisual {
+public:
+    static CCamera *m_camera;
+};
 }
+
+extern CPipe thePipe;
 
 class CGameMenu {
 public:
@@ -410,7 +423,8 @@ public:
  * 0x110, exit state at 0x1E0, multiplayer exit state at 0x208 */
 class COurGame {
 public:
-    unsigned char _0[0x78];
+    unsigned char _0[0x74];
+    int m_pad;   // 0x74 (SOCOM 1's CGame::m_pad)
     CMenuState m_menuState;   // 0x78
     CLoadState m_loadState;   // 0xec
     CCoreState m_coreState;   // 0x110
@@ -425,6 +439,33 @@ void func_002CF410(COurGame *game, void *state, unsigned int arg);         /* CG
 }
 
 /* the mission: only what the states touch */
+class CNetGame;
+
+/* the network (only its flags: 9 set in an online game) */
+class CNetwork {
+public:
+    unsigned char _0[8];
+    unsigned char m_8;   // 0x8
+    unsigned char m_9;   // 0x9: an online game
+};
+
+extern CNetwork theNetwork;
+
+class CVideo {
+public:
+    static int m_defaultFrameRate;
+};
+
+/* the app's camera: its zdb camera at 0xB4 (SOCOM 1's at 0x34) */
+class CAppCamera {
+public:
+    unsigned char _0[0xb4];
+    zdb::CCamera *m_camera;   // 0xb4
+};
+
+extern CAppCamera *appCamera;
+extern unsigned char gopt[0x1b];
+
 class CMissionInfo {
 public:
     unsigned int _0;
@@ -448,7 +489,13 @@ public:
     float m_108;   // 0x108
     unsigned char _10c[0x1ac - 0x10c];
     CMissionInfo *m_1ac;   // 0x1ac
-    unsigned char _1b0[0x1854 - 0x1b0];
+    unsigned char _1b0[0x11b0 - 0x1b0];
+    unsigned char m_netQueue[0x10];   // 0x11b0: the network's messages for the player
+    unsigned char _11c0[0x1808 - 0x11c0];
+    CNetGame *m_netGame;   // 0x1808: the online game (SOCOM 1's at 0x584)
+    unsigned char _180c[0x183c - 0x180c];
+    CStateString m_libname;   // 0x183c: the load screen's asset library's name
+    unsigned char _1848[0x1854 - 0x1848];
     unsigned char m_objectives[0xc];   // 0x1854: a list of the mission's objectives
 };
 
