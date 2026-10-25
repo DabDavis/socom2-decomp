@@ -9385,10 +9385,10 @@
 0x005128C0 0x8 func_005128C0  # OVL2
 0x005128D0 0x14 func_005128D0  # OVL2
 0x005128F0 0x34 func_005128F0  # OVL2
-0x00512930 0x378 func_00512930  # OVL2
-0x00512CB0 0x10C func_00512CB0  # OVL2
-0x00512DC0 0x2B8 func_00512DC0  # OVL2
-0x00513080 0x218 func_00513080  # OVL2
+0x00512930 0x378 fcost__10CAiPlannerFR6CAiMapRC9CAiMapLocQ26CAiMap3DIRRC9CAiMapLoc  # OVL2; s1:vtable by hand (slot +0x18 of __vt__10CAiPlanner 0x669120, after reset/is_goal/dist/is_traversable; CRestrainedPlanner's and CAiHidePlanner's tables inherit it -- SOCOM 1's slot of the same name, its fcost__10CAiPlanner at 0x182500)
+0x00512CB0 0x10C is_traversable__18CRestrainedPlannerFP6CAiMapP7CAiPathRC9CAiMapLocQ26CAiMap3DIRR9CAiMapLocRP7CAiCell  # OVL2; s1:vtable by hand (slot +0x14 of __vt__18CRestrainedPlanner 0x669140, where the other planners keep CAiPlanner's; SOCOM 1's CRestrainedTravel::is_traversable 0x182DB0 instruction for instruction: the search limit clamped to 5000, soil 6 refused, an action cell of type 1 and state 0 refused)
+0x00512DC0 0x2B8 fcost__15CStealthPlannerFR6CAiMapRC9CAiMapLocQ26CAiMap3DIRRC9CAiMapLoc  # OVL2; s1:vtable by hand (slot +0x18 of __vt__15CStealthPlanner 0x669160; SOCOM 1's CStealthTravel::fcost)
+0x00513080 0x218 fcost__13CBasicPlannerFR6CAiMapRC9CAiMapLocQ26CAiMap3DIRRC9CAiMapLoc  # OVL2; s1:vtable by hand (slot +0x18 of __vt__13CBasicPlanner 0x669180; SOCOM 1's CBasicTravel::fcost)
 0x005132A0 0x8 func_005132A0  # OVL2
 0x005132B0 0x1A8 func_005132B0  # OVL2
 0x00513460 0x24C func_00513460  # OVL2
@@ -9456,10 +9456,10 @@
 0x00518EA0 0x1D8 GetDirQuat__6CAiMapFQ26CAiMap3DIRR5CQuatb  # OVL2; s1:calls
 0x00519080 0xA8 func_00519080  # OVL2
 0x00519130 0x118 func_00519130  # OVL2
-0x00519250 0x18 _max<Us>__2aiFRCUsRCUs  # OVL2; s1:exact
-0x00519270 0x18 _min<Us>__2aiFRCUsRCUs  # OVL2; s1:exact
+0x00519250 0x18 _max<Us>__2aiFRCUsRCUs_RCUs  # OVL2; s1:exact; by hand: MW 3.0 mangles a function template's return type (README), so SOCOM 1's _max<Us>__2aiFRCUsRCUs is this name in SOCOM II; the body is SOCOM 1's (the larger by reference, lhu, signed after promotion)
+0x00519270 0x18 _min<Us>__2aiFRCUsRCUs_RCUs  # OVL2; s1:exact; by hand: MW 3.0 mangles the return type (SOCOM 1's _min<Us>__2aiFRCUsRCUs)
 0x00519290 0x50 func_00519290  # OVL2
-0x005192E0 0x420 func_005192E0  # OVL2
+0x005192E0 0x420 func_005192E0  # OVL2; OVL2's copy of the pod vector's insert (OVL1 0x1FE340, the same 0x420 bytes but its two error strings' addresses; the pointer vectors' push_back calls it -- CAiMap's constructor, CCharacterType::Create); ovl-copy: insert__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPUiUiRCUi
 0x00519700 0x9C func_00519700  # OVL2
 0x005197A0 0x68 func_005197A0  # OVL2
 0x00519810 0x68 func_00519810  # OVL2
@@ -9592,7 +9592,7 @@
 0x005281B0 0x188 func_005281B0  # OVL2
 0x00528340 0xE4 func_00528340  # OVL2
 0x00528430 0xDC func_00528430  # OVL2
-0x00528510 0x18 _min<Ui>__2aiFRCUiRCUi  # OVL2; s1:exact
+0x00528510 0x18 _min<Ui>__2aiFRCUiRCUi_RCUi  # OVL2; s1:exact; by hand: MW 3.0 mangles the return type (SOCOM 1's _min<Ui>__2aiFRCUiRCUi)
 0x00528530 0xBC func_00528530  # OVL2
 0x005285F0 0x1DC func_005285F0  # OVL2
 0x005287D0 0x460 func_005287D0  # OVL2
@@ -9667,8 +9667,8 @@
 0x0052EA10 0xE8 func_0052EA10  # OVL2
 0x0052EB00 0x14 func_0052EB00  # OVL2
 0x0052EB20 0x14 func_0052EB20  # OVL2
-0x0052EB40 0x18 _max<Ui>__2aiFRCUiRCUi  # OVL2; s1:exact
-0x0052EB60 0x38 func_0052EB60  # OVL2
+0x0052EB40 0x18 _max<Ui>__2aiFRCUiRCUi_RCUi  # OVL2; s1:exact; by hand: MW 3.0 mangles the return type (SOCOM 1's _max<Ui>__2aiFRCUiRCUi)
+0x0052EB60 0x38 func_0052EB60  # OVL2; OVL2's copy of _close_enough<f> (OVL1 0x28F1E0, the same 0x38 bytes word for word; ai_maps.cpp's template tail after _max<Ui>, as SOCOM 1's 0x19D950 follows _max<Ui> at 0x19D930; CSealCtrlAi::Tick and 57 other OVL2 call sites call it); ovl-copy: _close_enough<f>__FRCfRCfRCf_b
 0x0052EBA0 0xB4 func_0052EBA0  # OVL2
 0x0052EC60 0x240 func_0052EC60  # OVL2
 0x0052EEA0 0x3C func_0052EEA0  # OVL2
@@ -9710,17 +9710,17 @@
 0x00530B20 0xB0 func_00530B20  # OVL2
 0x00530BD0 0x88 func_00530BD0  # OVL2
 0x00530C60 0xB0 func_00530C60  # OVL2
-0x00530D10 0xB0 func_00530D10  # OVL2
+0x00530D10 0xB0 GetCellAction__6CAiMapFRC9CAiMapLoc  # OVL2; s1:callee by hand (CRestrainedPlanner::is_traversable calls it with the map and the destination cell where SOCOM 1's CRestrainedTravel calls GetCellAction__6CAiMapFRC9CAiMapLoc, and reads the result as an action: m_type_invalid, m_type, m_state)
 0x00530DC0 0xFC func_00530DC0  # OVL2
 0x00530EC0 0x48 func_00530EC0  # OVL2
 0x00530F10 0x30 func_00530F10  # OVL2
 0x00530F40 0xB0 func_00530F40  # OVL2
 0x00530FF0 0x8 func_00530FF0  # OVL2
-0x00531000 0xF0 func_00531000  # OVL2
-0x005310F0 0x30 func_005310F0  # OVL2
-0x00531120 0x70 func_00531120  # OVL2
+0x00531000 0xF0 GetMapEx__6CAiMapFRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19F270 before FreeEx and AllocEx: no extra data, or a cell outside the map, gives none; else m_mapex + the cell's index times m_mapex_bytes -- SOCOM II finds the index through the cell's scanline)
+0x005310F0 0x30 FreeEx__6CAiMapFv  # OVL2; s1:order by hand (the demo's 0x19F330, between GetMapEx and AllocEx: m_mapex (0xE0, SOCOM 1's 0xAC) deleted[] and zeroed, m_mapex_bytes (0x60) zeroed)
+0x00531120 0x70 AllocEx__6CAiMapFUi  # OVL2; s1:order by hand (the demo's 0x19F390, after FreeEx: the old block deleted[], m_mapex_bytes set and bytes * m_cellcount (0x70) allocated and zeroed; SOCOM II no longer points each scanline into it)
 0x00531190 0x28 func_00531190  # OVL2
-0x005311C0 0x18 func_005311C0  # OVL2
+0x005311C0 0x18 _min<i>__2aiFRCiRCi_RCi  # OVL2; ours, by its body (the smaller of two ints by reference: slt, movn -- _min<Us>'s and _min<Ui>'s shape signed; the CAiMap table unit's template tail, after the names' sort comparator)
 0x005311E0 0xE4 func_005311E0  # OVL2
 0x005312D0 0xD30 func_005312D0  # OVL2
 0x00532000 0x1AC func_00532000  # OVL2
@@ -9801,7 +9801,7 @@
 0x0053A960 0x60 func_0053A960  # OVL2
 0x0053A9C0 0x8C func_0053A9C0  # OVL2
 0x0053AA50 0x6C func_0053AA50  # OVL2
-0x0053AAC0 0x120 func_0053AAC0  # OVL2
+0x0053AAC0 0x120 func_0053AAC0  # OVL2; OVL2's copy of the pod vector's erase (OVL1 0x28B150, the same 0x120 bytes; CCharacterType::CleanupTemporary's erase calls it, as SOCOM 1's calls erase__Q23std38__vector_pod<Ui,...>FPUiPUi); ovl-copy: erase__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPUiPUi
 0x0053ABE0 0x238 func_0053ABE0  # OVL2
 0x0053AE20 0xC8 func_0053AE20  # OVL2
 0x0053AEF0 0x3C func_0053AEF0  # OVL2
@@ -9817,12 +9817,12 @@
 0x0053B160 0x194 func_0053B160  # OVL2
 0x0053B300 0x9C func_0053B300  # OVL2
 0x0053B3A0 0x4C func_0053B3A0  # OVL2
-0x0053B3F0 0x30 func_0053B3F0  # OVL2
-0x0053B420 0x88 func_0053B420  # OVL2
+0x0053B3F0 0x30 GetWeaponByIndex__14CCharacterTypeCFUi  # OVL2; s1:order by hand (char_type.cpp's first function as in the demo's 0x2477A0, the same 0x30 shape: the index tested against m_weapons' size, the weapon id read signed, EQUIP_NONE 255 otherwise; m_weapons at 0x2E8, SOCOM 1's 0x250 + 0x98)
+0x0053B420 0x88 GetBaseName__14CCharacterTypeFv  # OVL2; s1:order by hand (the demo's 0x2477E0, next: m_parentID tested against m_char_list's size, the list walked that many steps, the found type's name -- SOCOM II also refuses the type itself)
 0x0053B4B0 0x140 RdrFetch_CharacterType__14CCharacterTypeFPCc  # OVL2; s1:calls (CreateCustomCharTypes(_zrdr *) calls it, then GetByNameMod and Create, where SOCOM 1's calls RdrFetch_CharacterType; SOCOM II reads chartype.rdr's navyseals/terrorists/escortees through match_name_to_chartype)
 0x0053B5F0 0x11C match_name_to_chartype__14CCharacterTypeFP8CRdrFilePCcPCc  # OVL2; s1:calls
 0x0053B710 0x1D8 func_0053B710  # OVL2
-0x0053B8F0 0x40 func_0053B8F0  # OVL2
+0x0053B8F0 0x40 GetSound__14CCharacterTypeCF15CHARACTER_SOUND  # OVL2; ours (new in SOCOM II: m_sounds[s] at 0x168 for 0 <= s < 85, none otherwise; CSealCtrlAi::OnStunDamage calls it twice)
 0x0053B930 0xE8 func_0053B930  # OVL2
 0x0053BA20 0x70 func_0053BA20  # OVL2
 0x0053BA90 0x40 func_0053BA90  # OVL2
@@ -9835,13 +9835,13 @@
 0x0053C200 0x19C AcquireSoundHandles__14CCharacterTypeFv  # OVL2; s1:calls
 0x0053C3A0 0x5A0 GetCharacterSoundTypeString__F15CHARACTER_SOUND  # OVL2; s1:order (SOCOM 1's switch of "CHRSND_*" names over a signed byte enum, CHRSND_NONE = -1; 85 sounds where SOCOM 1 had 66)
 0x0053C940 0x68 func_0053C940  # OVL2
-0x0053C9B0 0x90 func_0053C9B0  # OVL2
+0x0053C9B0 0x90 CreateInstance__14CCharacterTypeFPCc  # OVL2; s1:calls by hand (CZSealBody::PreCreateSeal calls it as SOCOM 1's calls CreateInstance__14CCharacterTypeFPCc; the same body: CNode::CreateInstance(m_model, 0, 0), a flag byte of the model set, SetName)
 0x0053CA40 0xD4 func_0053CA40  # OVL2
 0x0053CB20 0x17C func_0053CB20  # OVL2
 0x0053CCA0 0x160 func_0053CCA0  # OVL2
 0x0053CE00 0x7EC Parse__14CCharacterTypeFP5_zrdr  # OVL2; s1:calls (calls HEALTH_PARAMS::Parse and AI_PARAMS::Parse, as SOCOM 1's Parse__14CCharacterTypeFP5_zrdr does)
 0x0053D5F0 0x1C8 __dt__14CCharacterTypeFv  # OVL2; s1:calls (DeleteTemporaryCharType calls it with 1, as SOCOM 1's calls __dt__14CCharacterTypeFv)
-0x0053D7C0 0x5EC func_0053D7C0  # OVL2
+0x0053D7C0 0x5EC __ct__14CCharacterTypeFPCcPC14CCharacterType  # OVL2; s1:callee by hand (CCharacterType::Create calls it on operator new(940)'s block and again in place after the explicit destructor, with the name and the base type, as SOCOM 1's Create calls __ct__14CCharacterTypeFPCcPC14CCharacterType; SOCOM II's type is 0x3AC bytes)
 0x0053DDB0 0x198 Parse__13HEALTH_PARAMSFP5_zrdr  # OVL2; s1:calls (CCharacterType::Parse calls it as SOCOM 1's calls Parse__13HEALTH_PARAMSFP5_zrdr; reads "health", "head", "body", "larm", "rarm" ...)
 0x0053DF50 0x80 CleanupTemporary__14CCharacterTypeFv  # OVL2; s1:calls (CloseVehicleRdr calls it where SOCOM 1's does) -- the states lane
 0x0053DFD0 0x3C DeleteTemporaryCharType__FP14CCharacterType  # OVL2; s1:ref (CleanupTemporary takes its address for remove_if, as SOCOM 1's; the same code: a temporary type is deleted through the deleting destructor and true returned)
@@ -9857,7 +9857,7 @@
 0x0053EFD0 0x1C func_0053EFD0  # OVL2
 0x0053EFF0 0xB8 func_0053EFF0  # OVL2
 0x0053F0B0 0xF0 func_0053F0B0  # OVL2
-0x0053F1A0 0xEC func_0053F1A0  # OVL2
+0x0053F1A0 0xEC remove_if<Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,PFP14CCharacterType_b>__3stdFQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorPFP14CCharacterType_b_Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator  # OVL2; s1:callee by hand (CCharacterType::CleanupTemporary calls it with the list's begin, end and DeleteTemporaryCharType, as SOCOM 1's calls remove_if<PP14CCharacterType,PFP14CCharacterType_b>; SOCOM II's vector iterators are classes, by value, the result through a hidden pointer)
 0x0053F290 0xE0 func_0053F290  # OVL2
 0x0053F370 0x3C0 func_0053F370  # OVL2
 0x0053F730 0x368 func_0053F730  # OVL2
