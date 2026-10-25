@@ -11522,7 +11522,7 @@
 0x005F5CA0 0xC func_005F5CA0  # OVL2
 0x005F5CB0 0x14 func_005F5CB0  # OVL2
 0x005F5CD0 0x250 func_005F5CD0  # OVL2
-0x005F5F20 0x98 func_005F5F20  # OVL2
+0x005F5F20 0x98 ClearAiState__11CSealCtrlAiFb  # OVL2; s1:calls by hand (the SEAL lane's lead, verified: SOCOM II's CSealCtrlAi::OnDeath and ResetToInitialState call it where SOCOM 1's call ClearAiState(bool), and the CSealCtrlAi OnMissionEnd at 0x555900 where SOCOM 1's calls ClearAiState(1); SOCOM II's hands the stack at +0x41C to 0x5F7920/0x5F7470 and returns whether it cleared)
 0x005F5FC0 0x8 func_005F5FC0  # OVL2
 0x005F5FD0 0x38 func_005F5FD0  # OVL2
 0x005F6010 0x38 func_005F6010  # OVL2
@@ -11593,7 +11593,7 @@
 0x005FC550 0x38 func_005FC550  # OVL2
 0x005FC590 0x238 func_005FC590  # OVL2
 0x005FC7D0 0x140 func_005FC7D0  # OVL2
-0x005FC910 0x58 func_005FC910  # OVL2
+0x005FC910 0x58 GetStanceFromState__10CZSealBodyF10SEAL_STATE11SEAL_STANCE  # OVL2; s1:calls by hand (the SEAL lane's lead, verified: SOCOM II's CSealCtrlAi::OnStateChange calls it twice where SOCOM 1's calls GetStanceFromState twice; a switch on the state byte (0, 1, 2), the given stance otherwise)
 0x005FC970 0x2C8 func_005FC970  # OVL2
 0x005FCC40 0xE8 func_005FCC40  # OVL2
 0x005FCD30 0x1CC func_005FCD30  # OVL2
