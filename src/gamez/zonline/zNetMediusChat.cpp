@@ -1015,15 +1015,6 @@ struct ChatSlot {
 /* the text filter's answer awaited: the caller's callback and its data (SOCOM 1's Censor kept
  * them likewise) */
 typedef void (*CensorCallback)(const char *text, void *data);
-/* a chat message forwarded (SOCOM 1's MediusChatFwdMessage) */
-struct MediusChatFwdMessage {
-    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
-    int OriginatorAccountID;   // 0x18
-    char OriginatorAccountName[32];   // 0x1c
-    int MessageType;   // 0x3c: 1 private, 2 clan
-    char Message[64];   // 0x40
-};
-
 /* a chat line's colour (a byte enum: assigned with li, compared through andi; the names ours) */
 enum CHAT_COLOR {
     CHAT_WHITE = 0,

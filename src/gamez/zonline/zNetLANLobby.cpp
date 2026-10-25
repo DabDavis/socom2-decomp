@@ -119,9 +119,6 @@ extern LANMissionRules *data_00437CE8;
 
 extern "C" {
 /* the room's members, called through their placeholders (the room unit's) */
-RoomGame *func_002E4570(BriefingRoom *room, const char *name);   /* (a game by name) */
-void func_002E4630(BriefingRoom *room);   /* (the room's games kept for the new list) */
-void func_002E4700(BriefingRoom *room);   /* (the room's games emptied) */
 void func_002E2CE0(BriefingRoom *room);   /* (the room's game list updated) */
 void func_002E1E10(RoomGame *game, LANGameInfo *info);   /* (a game's info set) */
 void func_002E1E00(RoomGame *game, unsigned char seq);
@@ -183,11 +180,11 @@ void cbLANGameInfo(LANGameInfo *info)
 
         func_00622770(&addr, &ip);
         int port = info->m_port;
-        RoomGame *g = func_002E4570(room, info->m_name);
+        RoomGame *g = room->FindGame(info->m_name);
 
         if (!g) {
             g = new LANGame(&addr, port);
-            room->m_games.push_back(g);
+            room->push_back(g);
         } else {
             memcpy(&((LANGame *)g)->m_addr, &addr, sizeof(addr));
             ((LANGame *)g)->m_port = port;
@@ -238,10 +235,10 @@ void cbLANInfoRequest(int client, int arg)
  * cleared, the LAN asked */
 bool CZLANLobby::RefreshGameList(C2D *page)
 {
-    func_002E4700(m_room);
-    func_002E4630(m_room);
+    m_room->RemoveEmptyGames();
+    m_room->RemoveUncheckedGames();
     func_002E2CE0(m_room);
-    for (RoomGameVector::iterator i = m_room->m_games.begin(); i != m_room->m_games.end(); ++i)
+    for (BriefingRoom::iterator i = m_room->begin(); i != m_room->end(); ++i)
         (*i)->m_unchecked = 1;
     data_0044F528 = 0;
     data_0044F530 = 0;
@@ -351,7 +348,7 @@ void CZLANLobby::GetGameInfo(LANGameInfo *out)
 /* whether a game of the room asks for a password */
 bool CZLANLobby::GameHasPassword(const char *game)
 {
-    RoomGame *g = func_002E4570(m_room, game);
+    RoomGame *g = m_room->FindGame(game);
 
     if (g && (*(int *)&g->m_info[0x40] & 1))
         return true;

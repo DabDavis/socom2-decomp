@@ -21,7 +21,6 @@ void func_006305C8(void *a, void *b);   /* (OVL2: the DME's set up) */
 extern unsigned char data_0044F568[];   /* the room list (the rooms' unit's) */
 extern BriefingRoom data_0044FAB0;   /* a room (the lobby unit's) */
 extern BriefingRoom *data_0044FE10;   /* the room we are in, if any */
-void func_002E4010(void *rooms);   /* the room list released */
 void func_002EC140(LadderList *list);   /* a player ladder deleted (LadderList::DeleteAll) */
 void func_002E81A0();   /* the clan team forgotten (the clan unit's) */
 void func_00305640();   /* (the unit after the friends') */
@@ -44,7 +43,7 @@ void *CZOnlineLobby::DMEInit()
  * (0xec-0xf4) */
 void CZOnlineLobby::ReleaseUIResources()
 {
-    func_002E4010(data_0044F568);
+    ((BriefingRoomDB *)data_0044F568)->Release();
     func_002EC140(&LadderLeaders);
     ReleaseVector(LadderLeaders);
     func_002EC140(&LadderRanking);
@@ -59,8 +58,8 @@ void CZOnlineLobby::ReleaseUIResources()
     ReleaseVector(ClanInvitationVec);
     ClanMemberVec.DeleteAll();
     ReleaseVector(ClanMemberVec);
-    data_0044FAB0.m_games.DeleteAll();
-    ReleaseVector(data_0044FAB0.m_games);
+    data_0044FAB0.DeleteGames();
+    ReleaseVector<RoomGame>(data_0044FAB0);
     FriendVec.DeleteAll();
     ReleaseVector(FriendVec);
     func_002E81A0();
@@ -82,8 +81,8 @@ void CZOnlineLobby::ReleaseUIResources()
     BriefingRoom *room = data_0044FE10;
 
     if (room) {
-        room->m_games.DeleteAll();
-        ReleaseVector(room->m_games);
+        room->DeleteGames();
+        ReleaseVector<RoomGame>(*room);
     }
 }
 

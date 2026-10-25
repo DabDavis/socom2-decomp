@@ -4716,7 +4716,7 @@
 0x002E31E0 0x1EC func_002E31E0  # OVL1
 0x002E33D0 0x10 func_002E33D0  # OVL1
 0x002E33E0 0xAC func_002E33E0  # OVL1
-0x002E3490 0x40 func_002E3490  # OVL1
+0x002E3490 0x40 AllowsType__8RoomGameFi  # OVL1; ours (a game's type mask at +0x1A1 tested for bit type-1, none set allowing any; the bit test 0x2E34E0 makes inline on a room)
 0x002E34D0 0x10 func_002E34D0  # OVL1
 0x002E34E0 0x124 func_002E34E0  # OVL1
 0x002E3610 0x11C func_002E3610  # OVL1
@@ -4726,40 +4726,40 @@
 0x002E3AA0 0x58 func_002E3AA0  # OVL1
 0x002E3B00 0x1C0 func_002E3B00  # OVL1
 0x002E3CC0 0x2B8 func_002E3CC0  # OVL1
-0x002E3F80 0x88 func_002E3F80  # OVL1
-0x002E4010 0x4C func_002E4010  # OVL1
-0x002E4060 0x70 func_002E4060  # OVL1
-0x002E40D0 0x40 func_002E40D0  # OVL1
-0x002E4110 0x8 func_002E4110  # OVL1
-0x002E4120 0x14 func_002E4120  # OVL1
-0x002E4140 0xD4 func_002E4140  # OVL1
-0x002E4220 0x20 func_002E4220  # OVL1
-0x002E4240 0xB4 func_002E4240  # OVL1
-0x002E4300 0xA4 func_002E4300  # OVL1
-0x002E43B0 0x14 func_002E43B0  # OVL1
-0x002E43D0 0x14 func_002E43D0  # OVL1
-0x002E43F0 0x14 func_002E43F0  # OVL1
-0x002E4410 0x60 func_002E4410  # OVL1
+0x002E3F80 0x88 RoomLess__FP12BriefingRoomP12BriefingRoom  # OVL1; ours (the room list's sort comparator: the key in the top halfword of +0x34, the names' lengths, then strcasecmp of the names at +0x38)
+0x002E4010 0x4C Release__14BriefingRoomDBFv  # OVL1; ours (the room list's rooms deleted, then cleared and swapped with an empty vector: the vector's pieces after it, 0x2E4060-0x2E4120)
+0x002E4060 0x70 __dt__Q23std58vector<P12BriefingRoom,Q23std26allocator<P12BriefingRoom>>Fv  # OVL1; ours (Release's FreeVector temporary destroyed with -1: three this-tests, the base std::vector's)
+0x002E40D0 0x40 swap__Q23std58vector<P12BriefingRoom,Q23std26allocator<P12BriefingRoom>>FRQ23std58vector<P12BriefingRoom,Q23std26allocator<P12BriefingRoom>>  # OVL1; ours (Release's FreeVector: the room list swapped with the temporary, out of line)
+0x002E4110 0x8 clear__Q23std58vector<P12BriefingRoom,Q23std26allocator<P12BriefingRoom>>Fv  # OVL1; ours (Release's FreeVector: the room list cleared, out of line)
+0x002E4120 0x14 __ct__Q23std58vector<P12BriefingRoom,Q23std26allocator<P12BriefingRoom>>Fv  # OVL1; ours (Release's FreeVector temporary constructed: zsys.h's FreeVector inlined one level calls it)
+0x002E4140 0xD4 DeleteAll__14BriefingRoomDBFv  # OVL1; ours (std::transform of the room list through DeleteItem<BriefingRoom> -- its call 0x2E4220 out of line -- then the size zeroed; the room list's request 0x2E3AA0 calls it)
+0x002E4220 0x20 DeleteRoom__FP12BriefingRoom  # OVL1; ours (the room list's deleter: ~BriefingRoom with 1, then 0 returned; DeleteAll's transform calls it out of line); ours (by its own code: the room in a0, ~BriefingRoom with 1, 0 returned -- a function handed to std::transform by address, so DeleteAll calls it directly)
+0x002E4240 0xB4 Add__14BriefingRoomDBFP25MediusChannelListResponse  # OVL1; ours (a room new'd from a channel list response -- BriefingRoom's inline constructor, its members' constructors called -- and pushed through the pod insert)
+0x002E4300 0xA4 Set__12BriefingRoomFP25MediusChannelListResponse  # OVL1; ours (the channel list's record copied member by member into the room's base at +0xC, the conversion null-tested; BriefingRoom(resp) calls it out of line)
+0x002E43B0 0x14 __ct__Q23std72vector<20MediusChatFwdMessage,Q23std33allocator<20MediusChatFwdMessage>>Fv  # OVL1; ours (the room's second list constructed, at +0x88: BriefingRoom's constructor calls it out of line); the room's chat (SOCOM 1's BriefingRoom kept a vector<MediusChatFwdMessage>; the menu state's 0x1F5020 builds a 0x80-byte message and inserts it); (the mangled length corrected)
+0x002E43D0 0x14 __ct__Q23std52vector<10RoomPlayer,Q23std23allocator<10RoomPlayer>>Fv  # OVL1; ours (the room's players constructed, at +0x7C: BriefingRoom's constructor calls it out of line)
+0x002E43F0 0x14 __ct__Q23std48vector<P8RoomGame,Q23std21allocator<P8RoomGame>>Fv  # OVL1; ours (the room's games constructed: BriefingRoom's constructor calls it out of line, at +0); the room's games constructed (BriefingRoom's base vector at +0: its inline constructor calls it out of line)
+0x002E4410 0x60 FindGame__12BriefingRoomFi  # OVL1; ours (a room's game whose word at +0x28, the mission, equals the argument); a member of the room (the games are its base: ~BriefingRoom's three this-tests)
 0x002E4470 0xB8 FindRoom__14BriefingRoomDBFPCc  # OVL1; s1 by hand (SOCOM 1's FindRoom: the room list 0x44F568 searched with strcmp on the room's name, +0x38 in SOCOM II, 0 for a null name; the chat unit's CreateRoom handler, cbCreateRoom and 0x2F0EA0 call it)
 0x002E4530 0x3C func_002E4530  # OVL1
-0x002E4570 0xB8 func_002E4570  # OVL1
-0x002E4630 0x84 func_002E4630  # OVL1
-0x002E46C0 0x34 func_002E46C0  # OVL1
-0x002E4700 0x84 func_002E4700  # OVL1
-0x002E4790 0x3C func_002E4790  # OVL1
-0x002E47D0 0xD4 DeleteAll__14RoomGameVectorFv  # OVL1; ours (a room's games deleted and the list emptied -- std::transform with a deleter, then clear: ReleaseUIResources on the room 0x44FAB0 and on *0x44FE10, JoinGame, 0x2F9220, the room's destructor 0x2E48C0; byte-exact)
-0x002E48B0 0x8 func_002E48B0  # OVL1
+0x002E4570 0xB8 FindGame__12BriefingRoomFPCc  # OVL1; ours (SOCOM 1's BriefingRoom::FindGame: strcmp of the game names at +0x4C; the LAN unit calls it); SOCOM 1's BriefingRoom::FindGame (its name in the demo's symbols)
+0x002E4630 0x84 RemoveUncheckedGames__12BriefingRoomFv  # OVL1; ours (erase(remove_if(begin, end, RemoveUncheckedGame), end): the game list's request 0x2E2920 and the LAN unit); a member of the room, as FindGame
+0x002E46C0 0x34 RemoveUncheckedGame__FP8RoomGame  # OVL1; ours (RemoveUnchecked's remove_if predicate, its address taken at 0x2E4634: a game the new list did not report, the bool at +0x198, deleted)
+0x002E4700 0x84 RemoveEmptyGames__12BriefingRoomFv  # OVL1; ours (erase(remove_if(begin, end, RemoveEmptyGame), end): the game list's request 0x2E2920 and the LAN unit); a member of the room, as FindGame
+0x002E4790 0x3C RemoveEmptyGame__FP8RoomGame  # OVL1; ours (RemoveEmpty's remove_if predicate, its address taken at 0x2E4704: a game with no players, the halfword at +0x20, deleted and true returned)
+0x002E47D0 0xD4 DeleteGames__12BriefingRoomFv  # OVL1; ours (a room's games deleted and the list emptied -- std::transform with a deleter, then clear: ReleaseUIResources on the room 0x44FAB0 and on *0x44FE10, JoinGame, 0x2F9220, the room's destructor 0x2E48C0; byte-exact); a member of the room, as FindGame (~BriefingRoom calls it on itself)
+0x002E48B0 0x8 SetPassword__12BriefingRoomFPCc  # OVL1; ours (empty: BriefingRoom's constructor calls it with "" -- the LAN room's initialiser 0x4024F0 and Add)
 0x002E48C0 0xD8 func_002E48C0  # OVL1
-0x002E49A0 0xEC func_002E49A0  # OVL1; the same words as remove_if<Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,PFP14CCharacterType_b>__3stdFQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorPFP14CCharacterType_b_Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator (0x53f1a0) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
+0x002E49A0 0xEC remove_if<Q33std56__vector_imp<P8RoomGame,Q23std21allocator<P8RoomGame>,1>8iterator,PFP8RoomGame_b>__3stdFQ33std56__vector_imp<P8RoomGame,Q23std21allocator<P8RoomGame>,1>8iteratorQ33std56__vector_imp<P8RoomGame,Q23std21allocator<P8RoomGame>,1>8iteratorPFP8RoomGame_b_Q33std56__vector_imp<P8RoomGame,Q23std21allocator<P8RoomGame>,1>8iterator  # OVL1; the same words as remove_if<Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,PFP14CCharacterType_b>__3stdFQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorPFP14CCharacterType_b_Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator (0x53f1a0) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies); ours (RemoveUnchecked's and RemoveEmpty's remove_if over the games, the room unit's template tail)
 0x002E4A90 0x6BC func_002E4A90  # OVL1
 0x002E5150 0x598 func_002E5150  # OVL1
 0x002E56F0 0x68 func_002E56F0  # OVL1
 0x002E5760 0x220 func_002E5760  # OVL1
 0x002E5980 0x1B4 func_002E5980  # OVL1
-0x002E5B40 0xAC func_002E5B40  # OVL1; the same words as remove_copy_if<Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,PFP14CCharacterType_b>__3stdFQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorPFP14CCharacterType_b_Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator (0x540bc0) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
+0x002E5B40 0xAC remove_copy_if<Q33std56__vector_imp<P8RoomGame,Q23std21allocator<P8RoomGame>,1>8iterator,Q33std56__vector_imp<P8RoomGame,Q23std21allocator<P8RoomGame>,1>8iterator,PFP8RoomGame_b>__3stdFQ33std56__vector_imp<P8RoomGame,Q23std21allocator<P8RoomGame>,1>8iteratorQ33std56__vector_imp<P8RoomGame,Q23std21allocator<P8RoomGame>,1>8iteratorQ33std56__vector_imp<P8RoomGame,Q23std21allocator<P8RoomGame>,1>8iteratorPFP8RoomGame_b_Q33std56__vector_imp<P8RoomGame,Q23std21allocator<P8RoomGame>,1>8iterator  # OVL1; the same words as remove_copy_if<Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,PFP14CCharacterType_b>__3stdFQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorPFP14CCharacterType_b_Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator (0x540bc0) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies); ours (remove_if's remove_copy_if over the games, the room unit's template tail)
 0x002E5BF0 0x1A0 func_002E5BF0  # OVL1
 0x002E5D90 0x1BC func_002E5D90  # OVL1
-0x002E5F50 0x8 func_002E5F50  # OVL1
+0x002E5F50 0x8 clear__Q23std62__vector_deleter<10RoomPlayer,Q23std23allocator<10RoomPlayer>>Fv  # OVL1; ours (the room players' deleter's clear: the size zeroed; the deleter's destructor 0x2E56F0 calls it)
 0x002E5F60 0x80 func_002E5F60  # OVL1
 0x002E5FE0 0x1C func_002E5FE0  # OVL1
 0x002E6000 0xC func_002E6000  # OVL1

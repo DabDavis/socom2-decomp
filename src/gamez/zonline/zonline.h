@@ -528,32 +528,91 @@ public:
     unsigned char m_info[0x190];   // 0x0: the game's info (the LAN unit's LANGameInfo)
 
     virtual unsigned char *GetMissionSequence();
+    bool AllowsType(int type);
 
     int m_194;   // 0x194
-    unsigned char m_unchecked;   // 0x198: set for every game as the game list is asked for again
+    bool m_unchecked;   // 0x198: set for every game as the game list is asked for again
     unsigned char m_199;   // 0x199
-    unsigned char m_19a[8];   // 0x19a
+    unsigned char m_19a[7];   // 0x19a
+    unsigned char m_types;   // 0x1a1: the game types it allows, a bit each (none: any)
     unsigned char m_missionSeq[0x22];   // 0x1a2
 };   // 0x1c4
 
-class RoomGameVector : public std::vector<RoomGame *> {
-public:
-    void DeleteAll();
-};
+/* a room as the channel list reports it (the Medius SDK's MediusChannelListResponse, 0x70 bytes:
+ * copied member by member into the room -- the id bytewise, the name two bytes a pass) */
+struct MediusChannelListResponse {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    MediusCallbackStatus StatusCode;   // 0x18
+    int MediusWorldID;   // 0x1c
+    unsigned short PlayerCount;   // 0x20
+    unsigned short MaxPlayers;   // 0x22
+    int GameWorldCount;   // 0x24
+    unsigned int GenericField;   // 0x28: the game types the room allows (a bit each, the low four),
+                                 // the room list's sort key (the top sixteen)
+    char LobbyName[64];   // 0x2c
+    char EndOfList;   // 0x6c
+};   // 0x70
 
-/* a room (SOCOM 1's BriefingRoom, 0x98 bytes in SOCOM II): its games first */
-class BriefingRoom {
+/* a player in a room (the SDK's MediusLobbyWorldPlayerListResponse, 0xD0 bytes) */
+struct RoomPlayer {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    MediusCallbackStatus StatusCode;   // 0x18
+    int AccountID;   // 0x1c
+    char AccountName[32];   // 0x20
+    MediusPlayerOnlineState OnlineState;   // 0x40
+    char EndOfList;   // 0xcc
+};   // 0xd0
+
+/* a chat message forwarded (SOCOM 1's MediusChatFwdMessage, 0x80 bytes: a room keeps its chat in
+ * a vector of them, as SOCOM 1's BriefingRoom did -- the menu state's 0x1F5020 builds one and
+ * inserts it, through the insert 0x1F5640 whose deleter's destructor 0x1F5C30 ~BriefingRoom calls) */
+struct MediusChatFwdMessage {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    int OriginatorAccountID;   // 0x18
+    char OriginatorAccountName[32];   // 0x1c
+    int MessageType;   // 0x3c: 1 private, 2 clan
+    char Message[64];   // 0x40
+};   // 0x80
+
+/* a room (SOCOM 1's BriefingRoom, 0x98 bytes in SOCOM II): its games (the base vector itself --
+ * ~BriefingRoom tests `this` three times for it, a derived list would be four), then the channel
+ * list's record of it (a base at 0xc: the copy converts the room with a null test), its players,
+ * the other list and the password. The constructor is inline, too big to inline whole: it calls
+ * its bases' and members' constructors out of line (0x2E43F0, 0x2E43D0, 0x2E43B0), the record's
+ * copy (0x2E4300) and the password's setter */
+class BriefingRoom : public std::vector<RoomGame *>, public MediusChannelListResponse {
 public:
-    RoomGameVector m_games;   // 0x0
-    unsigned char _c[0x38 - 0xc];
-    char m_name[64];   // 0x38 (SOCOM 1's at 0x48)
-    unsigned char _78[0x98 - 0x78];
+    BriefingRoom(MediusChannelListResponse *resp)
+    {
+        m_password = 0;
+        MaxPlayers = 256;
+        PlayerCount = 0;
+        if (resp)
+            Set(resp);
+        SetPassword("");
+    }
+    ~BriefingRoom();
+    void Set(MediusChannelListResponse *resp) { *(MediusChannelListResponse *)this = *resp; }
+    void SetPassword(const char *password);
+    RoomPlayer *FindPlayer(const char *name);
+    void DeleteGames();
+    RoomGame *FindGame(int mission);
+    RoomGame *FindGame(const char *name);
+    void RemoveEmptyGames();
+    void RemoveUncheckedGames();
+
+    std::vector<RoomPlayer> m_players;   // 0x7c
+    std::vector<MediusChatFwdMessage> m_chat;   // 0x88
+    char *m_password;   // 0x94
 };   // 0x98
 
 /* the room list (SOCOM 1's BriefingRoomDB: 0x44F568, the rooms' unit's) */
 class BriefingRoomDB : public std::vector<BriefingRoom *> {
 public:
     BriefingRoom *FindRoom(const char *name);
+    void Add(MediusChannelListResponse *resp);
+    void DeleteAll();
+    void Release();
 };
 
 /* --- the lobby --------------------------------------------------------------------------- */
