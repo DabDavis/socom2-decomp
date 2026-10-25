@@ -109,6 +109,15 @@ public:
     static float infinite;
 };
 
+/* a value easing toward a goal (SOCOM 1's DWARF: CAiDecay, 0xc bytes; only the two floats the view
+ * range sets are named, the names ours) */
+class CAiDecay {
+public:
+    float m_value;   // 0x0
+    float m_goal;   // 0x4
+    float m_8;   // 0x8
+};
+
 /* the AI's maps (SOCOM 1's CAiMaps; the global AiMaps, OVL2 bss) -- only the cell's centre */
 class CAiMaps {
 public:
@@ -140,7 +149,9 @@ class CNetGameState {
 public:
     unsigned char _0[0xd2];
     unsigned char m_ghost;   // 0xd2
-    unsigned char _d3[0x111 - 0xd3];
+    unsigned char _d3[0xdc - 0xd3];
+    unsigned char m_dc;   // 0xdc: a SEAL's death sends no squad order unless set (the name ours)
+    unsigned char _dd[0x111 - 0xdd];
     unsigned char m_mode;   // 0x111: the game's kind (the stats test 1 and 3; the name ours)
 };
 
@@ -304,8 +315,16 @@ public:
     void SetMenuState(MENU_STATE state, bool keep);
     void SetTrigger(bool down);
     void SetTrigger(bool down, float power);
+    /* how far the SEAL sees: none for the camera's far plane (SOCOM 1's; OVL2 0x5924B0) */
+    void SetViewRange(float range);
 
-    unsigned char _18[0x114 - 0x18];
+    unsigned char _18[0xa8 - 0x18];
+    CAiDecay m_visrange;   // 0xa8 (as SOCOM 1's)
+    unsigned char _b4[0xec - 0xb4];
+    float m_ec;   // 0xec: the view range again (new in SOCOM II; the name ours)
+    unsigned char _f0[0x10c - 0xf0];
+    CSealUnit *m_unit;   // 0x10c: the squad (SOCOM 1's 0xdc)
+    unsigned char _110[0x114 - 0x110];
     unsigned int m_padid;   // 0x114 (SOCOM 1's 0xe8: SOCOM II dropped the ten button readings)
     TRIGGER m_trigger;   // 0x118 (SOCOM 1's 0xec)
     float m_trigger_power;   // 0x11c
@@ -537,6 +556,8 @@ public:
     bool ExecuteDelayedAction_Climb();
     /* an action offered or withdrawn (SOCOM 1's took an unsigned int id) */
     void ActionAvailableMask(unsigned char id, bool on);
+    /* the restraint flag set (an inline: its bool is stored as `(b & 1)`) */
+    void SetRestrained(bool on) { m_restrained = on; }
     /* the stance's change taken, once (seal_body.cpp) */
     bool StanceChanged();
     /* the HUD's flags: the hit set, and each taken once (seal_env.cpp, SOCOM 1's) */

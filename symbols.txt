@@ -10608,7 +10608,7 @@
 0x005920C0 0x19C func_005920C0  # OVL2
 0x00592260 0x1A0 PerturbAimVector__9CSealCtrlFP6CPnt3D  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00592400 0xA4 Cross__6CPnt3DCFPC6CPnt3DP6CPnt3Db  # OVL2; s1:calls
-0x005924B0 0xAC func_005924B0  # OVL2
+0x005924B0 0xAC SetViewRange__9CSealCtrlFf  # OVL2; s1:order (after PerturbAimVector and its Cross copy, before PostMortemPreTick, as SOCOM 1's SetViewRange__9CSealCtrlFf: the range to the view-range decay at 0xA8 and 0xAC, the camera's far plane times 0.95 for none; SOCOM II's clamps a given one) -- the SEAL lane, round 4
 0x00592560 0x320 PostMortemPreTick__9CSealCtrlFf  # OVL2; slot 0x14 of __vt__9CSealCtrl (CEntityCtrl's PostMortemPreTick slot)
 0x00592880 0x88 GetSpeedFromThrottle__9CSealCtrlFfi  # OVL2; s1:order (sealctrl.cpp: after PostMortemPreTick, before GetThrottleFromSpeed); calls GetMaxZMotion then GetMaxXMotion off m_entity with (f, int) as SOCOM 1's
 0x00592910 0x88 GetThrottleFromSpeed__9CSealCtrlFfi  # OVL2; s1:order (after GetSpeedFromThrottle); the same callees as SOCOM 1's

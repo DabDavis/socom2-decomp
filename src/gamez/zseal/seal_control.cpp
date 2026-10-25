@@ -26,6 +26,40 @@ extern "C" float func_005975B0(const CPnt3D *v)
     return v->x * v->x + v->z * v->z;
 }
 
+/* the world's camera and its far plane (zdb::CWorld holds it at 0x128, the plane at 0xEC) */
+struct CViewCamera {
+    unsigned char _0[0xec];
+    float m_far;   // 0xec
+};
+
+struct CViewWorld {
+    unsigned char _0[0x128];
+    CViewCamera *m_camera;   // 0x128
+};
+
+/* the view range's floor (OVL2 data 0x6506A0, read as a variable) */
+extern "C" float data_006506A0;
+
+/* the view range: a given one held between the floor and the camera's reach (95 % of its far
+ * plane, or 1000), none taking that reach (OVL2 0x5924B0; SOCOM 1's took any positive range).
+ * OPEN, 3 instructions: the target loads the far plane into $f1 and 0.95 into $f0, the product
+ * over the constant; here the other way round (SOCOM 1's code is the target's). Tried: the
+ * factor on either side, (float) casts, the plane in a local, `*=`, a ternary. */
+void CSealCtrl::SetViewRange(float range)
+{
+    float far = 1000.0f;
+    CViewCamera *cam = ((CViewWorld *)zdb::CWorld::m_world)->m_camera;
+
+    if (cam)
+        far = 0.95f * cam->m_far;
+    if (range <= 0.0f)
+        range = far;
+    else
+        _saturate(&range, data_006506A0, far);
+    m_visrange.m_goal = m_visrange.m_value = range;
+    m_ec = range;
+}
+
 /* a grenade's flight time and launch speed; SOCOM 1's function-local statics, which MW 3.0 lays
  * out initialised, with no guard (OVL2 0x5976E0, 0x5976A0, 0x5975D0) */
 float CDynGrenade::ComputeMaxVel(float dist, float height, float *vel)
@@ -89,6 +123,47 @@ void CSealCtrl::OnMissionEnd()
     ClearGoal(GOAL_NONE);
     m_input_enabled = false;
     StopRumbler();
+}
+
+extern "C" {
+/* CSealUnit::Notify (SOCOM 1's Notify__9CSealUnitFP10CZSealBody12UNIT_MESSAGEPv by its call here;
+ * OVL2 0x5ED7B0, the kit lane's) */
+void func_005ED7B0(CSealUnit *unit, CZSealBody *seal, int message, void *data);
+/* (OVL1 0x30E6E0, unowned: told of a death online, with the global at 0x45B718) */
+void func_0030E6E0(void *obj, int a);
+extern void *data_0045B718;
+/* (OVL2 0x552780, seal.cpp's: the body told something with two times) */
+void func_00552780(CZSealBody *seal, int a, float b, float c);
+}
+
+/* dead: the squad told, the death cry (none for a ghost), the restraint undone; online, the squad
+ * ordered on unless the game holds the body back, which then waits (OVL2 0x5979A0; SOCOM 1's with
+ * SOCOM II's network ending) */
+void CSealCtrl::OnDeath()
+{
+    func_005ED7B0(m_unit, (CZSealBody *)m_entity, 1, 0);
+    switch (((CZSealBody *)m_entity)->m_deathType) {
+    case DEATH_KNIFE_KILL:
+    case DEATH_CQB:
+    case DEATH_HEADSHOT:
+        PlayAiSound((CHARACTER_SOUND)61, 1.0f, -1);
+        break;
+    case DEATH_GHOST:
+        break;
+    default:
+        PlayAiSound((CHARACTER_SOUND)60, 1.0f, -1);
+        break;
+    }
+    CZSealBody *seal = (CZSealBody *)m_entity;
+
+    seal->SetRestrained(false);
+    if (theNetwork.m_9) {
+        if (!data_00437CE8->m_dc || data_00437CE8->m_ghost) {
+            func_0030E6E0(data_0045B718, 0);
+            func_005EF2F0(24)->IssueCommand(seal, (FT_COMMAND)34, 0, false);
+        } else
+            func_00552780(seal, 2, 0.0f, 0.1f);
+    }
 }
 
 /* a random value in a range (SOCOM 1's Rfloat; seal_ai.cpp holds its operator's out-of-line copy) */
