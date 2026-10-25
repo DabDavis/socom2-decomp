@@ -39,6 +39,29 @@ void Source::List::Uninit()
     ListClear(*this);
 }
 
+/* SOCOM 1's: the source off the list, its instances let go of, its properties and collision
+ * node given up */
+Source::~Source()
+{
+    List::iterator e = list.end();
+
+    for (List::iterator i = list.begin(); i != e; ++i) {
+        if (*i == this) {
+            list.erase(i);
+            break;
+        }
+    }
+    Instance::list.RemoveSource(this);
+    if (m_props)
+        m_props->DecRefCount(1);
+    if (m_diNode) {
+        zdb::CWorld::m_world->DeleteChild(m_diNode);
+        delete m_diNode;
+    }
+    if (m_particleEx)
+        delete m_particleEx;
+}
+
 /* SOCOM 1's: the texture sequence emptied */
 void Source::TextureSequenceClear()
 {

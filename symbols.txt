@@ -5717,7 +5717,7 @@
 0x00327CD0 0x16C func_00327CD0  # OVL1
 0x00327E40 0xCC func_00327E40  # OVL1
 0x00327F10 0x58 Recycle__Q28Particle8InstanceFv  # OVL1; the rdr lane: slot 0x14 of Instance's table (0x406A00), new in SOCOM II (the name ours): the virtual Expire, 0x50 cleared, the instance pushed onto m_instance_pool (0x488460)
-0x00327F70 0xC8 func_00327F70  # OVL1
+0x00327F70 0xC8 RemoveSource__Q38Particle8Instance4ListFPQ28Particle6Source  # OVL1; the rdr lane: SOCOM II's (the name ours): Source's destructor calls it on Instance::list with the dying source, before its properties go
 0x00328040 0x58 func_00328040  # OVL1
 0x003280A0 0xCC RemoveDead__Q38Particle8Instance4ListFv  # OVL1; the rdr lane: SOCOM II's (the name ours): the list (head at +0xC, linked through +0x50) walked, every instance whose age (+0xC) has reached its life (+0x48) unlinked and recycled through slot 0x14
 0x00328170 0x140 Tick__Q38Particle8Instance4ListFf  # OVL1; s1:calls by hand (Particle::Tick calls it on Instance::list (0x488480) with dT, right after copying the camera's position, as SOCOM 1's Tick calls Instance::List::Tick) -- the rdr lane

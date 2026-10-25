@@ -122,6 +122,12 @@ public:
 
 }
 
+/* a particle effect's collision node (no destructor: deleted with operator delete) */
+class CParticleEx {
+public:
+    int _0;
+};
+
 namespace Particle {
 
 class Source;
@@ -290,6 +296,8 @@ public:
         void Uninit();
         /* SOCOM II's: the instances past their life recycled (the name ours) */
         void RemoveDead();
+        /* SOCOM II's: a dying source's instances let go of (0x327F70; the name ours) */
+        void RemoveSource(Source *source);
 
         bool Empty() const { return !m_head; }
 
@@ -386,6 +394,10 @@ public:
     unsigned char _1a[0xdc - 0x1a];   // 0x1a: SOCOM 1's m_doSpawnLOD .. m_initialAgeRange
     std::vector<zdb::CTexHandle *> m_textures;   // 0xdc
     Props *m_props;   // 0xe8
+    unsigned char _ec[0x18];   // 0xec: SOCOM 1's m_bbox
+    zdb::CNode *m_diNode;   // 0x104
+    unsigned char _108[0x20];   // 0x108: SOCOM 1's m_diPolies .. m_filled_volume
+    CParticleEx *m_particleEx;   // 0x128
 
     static float distanceFactor;   // 0x4884C0
     static float frequencyFactor;   // 0x4884C8
