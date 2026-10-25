@@ -11277,7 +11277,7 @@
 0x005E19D0 0x40 func_005E19D0  # OVL2
 0x005E1A10 0x40 func_005E1A10  # OVL2
 0x005E1A50 0x40 func_005E1A50  # OVL2
-0x005E1A90 0x60 func_005E1A90  # OVL2
+0x005E1A90 0x60 BaseAnim__7AnimSetF8AnimType  # OVL2; s1:calls (SOCOM 1's IsCurrentBlend calls AnimSet::BaseAnim where SOCOM II's, 0x577E40, calls this; 0x60 bytes against SOCOM 1's 0x40) -- the SEAL lane
 0x005E1AF0 0x100 func_005E1AF0  # OVL2
 0x005E1BF0 0x100 func_005E1BF0  # OVL2
 0x005E1CF0 0x100 func_005E1CF0  # OVL2
