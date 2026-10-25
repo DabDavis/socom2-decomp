@@ -50,10 +50,12 @@ public:
         unsigned char m_data[4];   // 0x14
     };   // 0x18
 
+    int zNetLookupHost(const char *host, char *ip, int len);
     int zNetUpdate();
     void zNetFlushMessages();
     void AddToFixList(TypeRTimeFixStruct *fix);
     void zNetPlayFixList();
+    int zNetJoin(NetCreateObjectCallback join, NetCreateObjectCallback leave);
     int zNetCreateObject(int *index, NetOwnershipStatus own, NetObjectLifespan life, unsigned int a,
                          int b, unsigned int c, int d, void *data, char *name, int e);
     int zNetSendApplicationMessage(char type, int conn, int to, int msg, int size,

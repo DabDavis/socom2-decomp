@@ -42,6 +42,66 @@ extern CLanRoom data_0044FE10;
 
 void zRemoteDelayedAction(CZNetwork::TypeRTimeFixStruct *fix);
 
+/* the DME's join: the game connection's session joined by name, with the object and stream
+ * counts, the client events to zNetClientCallback (SOCOM II's parameter block; the names ours) */
+struct NetClientEventInfo {
+    int m_event;   // 0x0: 0 joined, 1 left, 0xFFFFFF none
+    int m_client;   // 0x4
+    int m_8;   // 0x8
+    CZNetwork *m_net;   // 0xc
+};
+struct NetJoinParams {
+    int m_0;   // 0x0
+    int m_conn;   // 0x4
+    char m_name[12];   // 0x8
+    int m_objects;   // 0x14
+    int m_streams;   // 0x18
+    int m_1c;   // 0x1c: 2
+    int m_20;   // 0x20
+    int m_24;   // 0x24
+    void (*m_cb)(NetClientEventInfo *);   // 0x28
+    CZNetwork *m_user;   // 0x2c
+    int m_30;   // 0x30
+    int m_34;   // 0x34
+};   // 0x38
+struct NetJoinResult {
+    int m_0;
+    int m_4;
+};
+
+/* Sony's libinet (prebuilt, OVL1) */
+struct sceInetAddress {
+    int data[4];
+};
+extern "C" {
+int sceInetName2Address(void *cd, void *net_buf, int flags, sceInetAddress *paddr, const char *name,
+                        int ms, int nretry);
+int sceInetAddress2String(void *cd, void *net_buf, char *name, int len, sceInetAddress *paddr);
+extern unsigned char data_00456780[];   /* the inet RPC client */
+extern unsigned char data_00455F80[];   /* and its buffer */
+
+void func_00621DB8(NetJoinParams *p);   /* NetSetDefaultJoinParams */
+int func_00621E50(NetJoinParams *p, NetJoinResult *r);   /* NetJoin */
+const char *func_002FA7E0(CZOnlineLobby *lobby);   /* the game's session name (the lobby's) */
+}
+
+/* a host name's address as text, 30 when it cannot be had (SOCOM II's; OVL1 0x30DE30: the server
+ * list's connect, 0x2FDF60, asks it of theNetwork; the name ours) */
+int CZNetwork::zNetLookupHost(const char *host, char *ip, int len)
+{
+    sceInetAddress addr;
+    char name[256];
+    int err = 0;
+
+    strncpy(name, host, 64);
+    if (!sceInetName2Address(data_00456780, data_00455F80, 0, &addr, name, 6000, 4)) {
+        if (sceInetAddress2String(data_00456780, data_00455F80, ip, len, &addr))
+            err = 30;
+    } else
+        err = 30;
+    return err;
+}
+
 /* the network's work for a frame: the queued messages sent, the Medius connection (or, on a LAN,
  * the DME's) updated and the lobby ticked, the delayed actions played, the post-update callbacks
  * of every object whose fields changed, the clocks read; the error returned (SOCOM 1's; OVL1
@@ -144,6 +204,54 @@ void CZNetwork::zNetPlayFixList()
     m_fix_list.L::erase(L::iterator(first), L::iterator(&m_fix_list.end_node()));
 }
 #pragma auto_inline reset
+
+/* a client's event in the joined game, past to the join's callbacks unless it is the lobby's own
+ * connection (SOCOM II's; OVL1 0x30D110: zNetJoin hands it to the DME; the name ours) */
+void zNetClientCallback(NetClientEventInfo *info)
+{
+    CZNetwork *net = info->m_net;
+    int client = info->m_client;
+
+    if (client == theLobby.MediusConnectionIndex())
+        return;
+    switch (info->m_event) {
+    case 0:
+        net->m_join_cb(client, info->m_8);
+        break;
+    case 1:
+        net->m_leave_cb(client, info->m_8);
+        break;
+    case 0xFFFFFF:
+        break;
+    }
+}
+
+/* the game connection's session joined, the callbacks kept for its client events; the DME's
+ * answer returned (SOCOM 1's, whose NetJoin took the counts as arguments; OVL1 0x30D060) */
+int CZNetwork::zNetJoin(NetCreateObjectCallback join, NetCreateObjectCallback leave)
+{
+    NetJoinParams p;
+    NetJoinResult r;
+
+    m_join_cb = join;
+    m_leave_cb = leave;
+    func_00621DB8(&p);
+    m_bJoined = 0;
+    p.m_conn = m_GameConnectionIndex;
+    strncpy(p.m_name, func_002FA7E0(&theLobby), 12);
+    p.m_name[11] = 0;
+    p.m_objects = m_NetObjectCount;
+    p.m_streams = m_DataStreamCount;
+    p.m_1c = 2;
+    p.m_cb = zNetClientCallback;
+    p.m_user = this;
+    int err = func_00621E50(&p, &r);
+
+    if (err)
+        return err;
+    m_bJoined = 1;
+    return err;
+}
 
 /* the connection's object count, -1 when it cannot be had (the name ours) */
 inline int ObjectCount(int conn)

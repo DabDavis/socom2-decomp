@@ -5312,8 +5312,8 @@
 0x0030D000 0x8 func_0030D000  # OVL1
 0x0030D010 0x8 func_0030D010  # OVL1
 0x0030D020 0x40 func_0030D020  # OVL1
-0x0030D060 0xA8 func_0030D060  # OVL1
-0x0030D110 0xA0 func_0030D110  # OVL1
+0x0030D060 0xA8 zNetJoin__9CZNetworkFPFii_vPFii_v  # OVL1; s1 by hand (SOCOM 1's zNetJoin, two client callbacks: here kept at +0x110C/+0x1110 and the game connection's session joined through a parameter block -- NetSetDefaultJoinParams 0x621DB8, NetJoin 0x621E50 -- m_bJoined set on success, the answer returned)
+0x0030D110 0xA0 zNetClientCallback__FP18NetClientEventInfo  # OVL1; ours (zNetJoin's client-event callback: the lobby's own connection skipped, event 0 to the join callback at +0x110C, 1 to the leave one at +0x1110)
 0x0030D1B0 0x1C8 func_0030D1B0  # OVL1
 0x0030D380 0x188 func_0030D380  # OVL1
 0x0030D510 0x28 zNetGetValidGameClientCount__9CZNetworkFv  # OVL1; tu: zNetDme.cpp~ (1.0 beta); s1:calls by hand (the states lane: at SOCOM 1's call sites; tu: zNetDme.cpp~)
@@ -5333,7 +5333,7 @@
 0x0030DA00 0x1B0 zNetUpdate__9CZNetworkFv  # OVL1; s1 by hand (SOCOM 1's zNetUpdate: game_main.cpp calls it at SOCOM 1's call site; the messages flushed, the Medius or DME update and the lobby's Tick, the delayed actions, the post-update callbacks over the 4096 field flags, NetGetLocalTime and NetGetTime into +0x104/+0x100)
 0x0030DBB0 0x130 func_0030DBB0  # OVL1
 0x0030DCE0 0x148 func_0030DCE0  # OVL1
-0x0030DE30 0xAC func_0030DE30  # OVL1
+0x0030DE30 0xAC zNetLookupHost__9CZNetworkFPCcPci  # OVL1; ours (the server list's connect 0x2FDF60 calls it on theNetwork: sceInetName2Address then sceInetAddress2String into the caller's buffer, 30 on failure)
 0x0030DEE0 0x37C func_0030DEE0  # OVL1
 0x0030E260 0x2C func_0030E260  # OVL1
 0x0030E290 0x64 func_0030E290  # OVL1
