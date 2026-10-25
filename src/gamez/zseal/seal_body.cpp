@@ -20,6 +20,15 @@ extern "C" unsigned short func_0058A920(unsigned short flags, unsigned short bit
     return flags;
 }
 
+/* whether the SEAL counts: not a remote SEAL with bit 9 of 0x1060 set (OVL2 0x57DFE0, new in SOCOM
+ * II; 0x5AF930 asks it) */
+extern "C" bool func_0057DFE0(CZSealBody *seal)
+{
+    if (seal->IsRemote() && seal->m_bit9)
+        return false;
+    return true;
+}
+
 /* a table of three-word entries with three words of state (the names ours) */
 struct CTripleTable {
     unsigned int m_count;   // 0x0

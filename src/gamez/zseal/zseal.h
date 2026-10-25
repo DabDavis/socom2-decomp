@@ -13,6 +13,7 @@
 #include "../zentity/zentity.h"
 #include "../znode/node_world.h"
 #include "../zcamera/zcamera.h"
+#include "aitimer.h"
 #include "../../ai/ai_states.h"
 #include "../zchar/zchar.h"
 
@@ -110,17 +111,7 @@ enum SEAL_STANCE {
     STANCE_MAX = 4
 };
 
-/* a random period and its countdown (SOCOM 1's DWARF: CAiTimer, an Rfloat {m_min, m_range} and
- * the timer; 0xc bytes) */
-class CAiTimer {
-public:
-    float m_min;   // 0x0
-    float m_range;   // 0x4
-    float m_timer;   // 0x8
-
-    /* the never-expiring period (SOCOM 1's infinite__8CAiTimer; OVL2 data, read as a variable) */
-    static float infinite;
-};
+/* a random period and its countdown, CAiTimer, is aitimer.h's (included ahead of ai_states.h) */
 
 /* a value easing toward a goal (SOCOM 1's DWARF: CAiDecay, 0xc bytes; only the two floats the view
  * range sets are named, the names ours) */
@@ -140,7 +131,8 @@ class CValve;
 
 class CNodeAction {
 public:
-    unsigned char _0[0x18];
+    unsigned char _0[0x14];
+    unsigned int m_team;   // 0x14: the team it is for (CanPlaceBomb matches it; the name ours)
     CValve *m_valve;   // 0x18
     unsigned char _1c[0x24 - 0x1c];
     NODEACTION_TYPE m_type;   // 0x24
@@ -413,7 +405,9 @@ public:
     CAiTimer m_goal_timer;   // 0x1b8
     unsigned char _1c4[0x221 - 0x1c4];
     MENU_STATE m_menustate;   // 0x221 (as SOCOM 1's)
-    unsigned char _222[0x250 - 0x222];
+    unsigned char _222[0x244 - 0x222];
+    float m_244;   // 0x244: CanPlaceBomb's wait, set to 1.5 when it refuses (the name ours)
+    unsigned char _248[0x250 - 0x248];
 };
 
 /* the AI's controller (SOCOM 1's DWARF: CSealCtrlAi, 0x5d0 bytes; SOCOM II's is 0x7c0 --
@@ -452,7 +446,7 @@ public:
     /* the AI's mode set (SOCOM 1's; OVL2 0x56CBF0) and its states dropped (SOCOM 1's
      * ClearAiState, the AI-states lane's 0x5F5F20) */
     void SetAiMode(AI_MODE mode);
-    void ClearAiState(bool all);
+    bool ClearAiState(bool all);   /* returns a bool (the kit lane: 0x5F5F20 sets v0) */
 
     /* the animations bound (SOCOM 1's; OVL2 0x562AD0) and a task begun: its kind, a flag, then the
      * task's own arguments (SOCOM 1's; OVL2 0x561F00) */
@@ -782,7 +776,9 @@ public:
     unsigned int m_prev_have_aim_norm : 1;
     unsigned int m_am_stunned : 1;
     unsigned int m_iszooming : 1;   // bit 5 (camera.h's reading)
-    unsigned int m_unused_bits : 10;
+    unsigned int m_unused_bits : 3;
+    unsigned int m_bit9 : 1;   // bit 9: a remote SEAL with it set is skipped by 0x57DFE0 (the name ours)
+    unsigned int m_unused_bits2 : 6;
     /* the ladder the SEAL is on, an index into the mission's list (new in SOCOM II: read with lhu
      * and re-masked for an int argument, as a 16-bit field is; the name ours) */
     unsigned int m_ladder : 16;   // 0x1062
