@@ -4738,7 +4738,7 @@
 0x002E43D0 0x14 func_002E43D0  # OVL1
 0x002E43F0 0x14 func_002E43F0  # OVL1
 0x002E4410 0x60 func_002E4410  # OVL1
-0x002E4470 0xB8 func_002E4470  # OVL1
+0x002E4470 0xB8 FindRoom__14BriefingRoomDBFPCc  # OVL1; s1 by hand (SOCOM 1's FindRoom: the room list 0x44F568 searched with strcmp on the room's name, +0x38 in SOCOM II, 0 for a null name; the chat unit's CreateRoom handler, cbCreateRoom and 0x2F0EA0 call it)
 0x002E4530 0x3C func_002E4530  # OVL1
 0x002E4570 0xB8 func_002E4570  # OVL1
 0x002E4630 0x84 func_002E4630  # OVL1

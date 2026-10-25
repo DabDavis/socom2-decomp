@@ -39,6 +39,23 @@ bool CZOnlineLobby::RefreshRoomList(C2D *page)
     return true;
 }
 
+/* the room of that name, if the list has one (SOCOM 1's; OVL1 0x2E4470: the chat unit's
+ * CreateRoom handler and callback call it) */
+BriefingRoom *BriefingRoomDB::FindRoom(const char *name)
+{
+    BriefingRoom *room = 0;
+
+    if (name) {
+        for (iterator i = begin(); i != end(); ++i) {
+            if (!strcmp((*i)->m_name, name)) {
+                room = *i;
+                break;
+            }
+        }
+    }
+    return room;
+}
+
 /* back to the room we were in, when there is one (SOCOM 1's; OVL1 0x2E3730): `> -1` branches on
  * an slti as the target does, `>= 0` on bltz */
 bool CZOnlineLobby::RejoinRoom()

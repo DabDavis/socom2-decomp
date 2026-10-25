@@ -535,8 +535,16 @@ public:
 class BriefingRoom {
 public:
     RoomGameVector m_games;   // 0x0
-    unsigned char _c[0x98 - 0xc];
+    unsigned char _c[0x38 - 0xc];
+    char m_name[64];   // 0x38 (SOCOM 1's at 0x48)
+    unsigned char _78[0x98 - 0x78];
 };   // 0x98
+
+/* the room list (SOCOM 1's BriefingRoomDB: 0x44F568, the rooms' unit's) */
+class BriefingRoomDB : public std::vector<BriefingRoom *> {
+public:
+    BriefingRoom *FindRoom(const char *name);
+};
 
 /* --- the lobby --------------------------------------------------------------------------- */
 
