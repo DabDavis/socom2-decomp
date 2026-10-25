@@ -30,6 +30,17 @@ extern "C" void func_00341A60(float dT, void *data);
 /* how fast the selected name pulses (data 0x3DC460: a variable, read with lwc1) */
 static float s_pulserate = 1000.0f;
 
+/* the mission: only its objectives (theMission, fts_state.h's CMission at 0x1854) */
+class CMissionObjectiveCam;
+
+class CMission {
+public:
+    unsigned char _0[0x1854];
+    std::list<CMissionObjectiveCam *> m_objectives;   // 0x1854
+};
+
+extern CMission theMission;
+
 /* MSL's vector<bool> as the list's implicit destructor shows it (one level: its words deleted);
  * its swap and insert in the unit's tail are not modelled here */
 namespace std {
@@ -53,6 +64,7 @@ public:
     virtual void Draw(zdb::CCamera *cam);
     virtual void Tick(float dT);
     void Init();
+    void SetCurColor(int index);
     static bool IsPlayingAnimation();
     /* an objective's index, if it is one (inline in SOCOM II: no copy of its own). SOCOM 1's
      * line table puts the test and `return false` first: the true block follows the false one */
@@ -65,6 +77,28 @@ public:
         *newindex = index;
         return true;
     }
+    /* whether an index is an objective's (SOCOM 1's GetObjective tests it so; the name ours) */
+    bool IsValidIndex(int index) const
+    {
+        int size = m_objectivenames.size();
+
+        if (index < 0 || index >= size)
+            return false;
+        return true;
+    }
+    /* an objective's camera: the mission's list walked to it (inline in SOCOM II) */
+    CMissionObjectiveCam *GetObjective(int index) const
+    {
+        if (!IsValidIndex(index))
+            return 0;
+        std::list<CMissionObjectiveCam *>::iterator it = theMission.m_objectives.begin();
+
+        for (int i = 0; i < index; i++)
+            ++it;
+        return *it;
+    }
+    CMissionObjectiveCam *GetCurrentObjective() const;
+    CMissionObjectiveCam *GetCurrentObjectiveRetainer() const;
 
     std::vector<C2DString *> m_objectivenames;   // 0x18
     std::vector<C2DBitmap *> m_objectivecompletedbitmap;   // 0x24
@@ -82,7 +116,7 @@ public:
     C2DString m_strXLabel;   // 0x5e8
     C2DString m_arrAnchorStrings[1];   // 0x680
     int m_selected_objective;   // 0x718
-    void *m_cur_selected_objective;   // 0x71c
+    CMissionObjectiveCam *m_cur_selected_objective;   // 0x71c
     zdb::CTexHandle *m_backgroundtex;   // 0x720
     zdb::CTexHandle *m_checkboxtex;   // 0x724
     zdb::CTexHandle *m_checktex;   // 0x728
@@ -131,6 +165,26 @@ void CZObjectiveList::Tick(float dT)
     }
 }
 
+/* the selected objective's name given the colour of another's (SOCOM 1's) */
+void CZObjectiveList::SetCurColor(int index)
+{
+    int newindex;
+
+    if (!ResolveIndex(index, &newindex))
+        return;
+    C2DString *curstring = m_objectivenames[newindex];
+    float r = curstring->m_color[0];
+    float g = curstring->m_color[1];
+    float b = curstring->m_color[2];
+
+    if (ResolveIndex(m_selected_objective, &newindex)) {
+        curstring = m_objectivenames[newindex];
+        curstring->m_color[0] = r;
+        curstring->m_color[1] = g;
+        curstring->m_color[2] = b;
+    }
+}
+
 /* the children drawn while the list is on and no mission camera plays. SOCOM 1 cast each child
  * to C2D first and dropped the result; SOCOM II has no cast. The iterator is assigned from
  * begin() (it lives in memory), and the end taken after it into a local: begun first, `this`
@@ -146,6 +200,18 @@ void CZObjectiveList::Draw(zdb::CCamera *cam)
         for (; i != e; ++i)
             (*i)->Draw(cam);
     }
+}
+
+/* the selected objective's camera (SOCOM 1's, GetObjective inlined: SOCOM II has no copy of it) */
+CMissionObjectiveCam *CZObjectiveList::GetCurrentObjective() const
+{
+    return GetObjective(m_selected_objective);
+}
+
+/* the objective whose camera is held (SOCOM 1's) */
+CMissionObjectiveCam *CZObjectiveList::GetCurrentObjectiveRetainer() const
+{
+    return m_cur_selected_objective;
 }
 
 bool CZObjectiveList::IsPlayingAnimation()

@@ -1739,15 +1739,15 @@
 0x00205E00 0x990 func_00205E00  # OVL1
 0x00206790 0x18 IsPlayingAnimation__15CZObjectiveListFv  # OVL1; s1:exact shape (theHUD's mission cameras' IsPlaying, tail-called, as SOCOM 1's 0x14 bytes)
 0x002067B0 0x118 func_002067B0  # OVL1
-0x002068D0 0x8 func_002068D0  # OVL1
-0x002068E0 0xC8 func_002068E0  # OVL1
+0x002068D0 0x8 GetCurrentObjectiveRetainer__15CZObjectiveListCFv  # OVL1; s1:order by hand (SOCOM 1's 8-byte GetCurrentObjectiveRetainer: m_cur_selected_objective, at SOCOM II's 0x71C)
+0x002068E0 0xC8 GetCurrentObjective__15CZObjectiveListCFv  # OVL1; s1:order by hand (SOCOM 1's GetCurrentObjective, GetObjective inlined: the selected index tested against the names' count, the mission's objective list (theMission+0x1854) walked to it, the camera returned; after GetCurrentObjectiveRetainer as in SOCOM 1)
 0x002069B0 0xAC Draw__15CZObjectiveListFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00206A60 0x140 func_00206A60  # OVL1
 0x00206BA0 0xD0 func_00206BA0  # OVL1
 0x00206C70 0x13C func_00206C70  # OVL1
 0x00206DB0 0xA0 func_00206DB0  # OVL1
 0x00206E50 0x13C func_00206E50  # OVL1
-0x00206F90 0x98 func_00206F90  # OVL1
+0x00206F90 0x98 SetCurColor__15CZObjectiveListFi  # OVL1; s1:order by hand (SOCOM 1's SetCurColor: the same two ResolveIndex tests, the colour of one name copied to the selected one, at SOCOM II's offsets; after the next-objective pair as SOCOM 1's follows NextObjective)
 0x00207030 0x308 func_00207030  # OVL1
 0x00207340 0x60 func_00207340  # OVL1
 0x002073A0 0x70 func_002073A0  # OVL1
