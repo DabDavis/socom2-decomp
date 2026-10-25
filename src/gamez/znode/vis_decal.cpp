@@ -54,6 +54,7 @@ class CMeshDecal {
 public:
     void FreeMem();
     static void PutTempDecal(CMeshDecal *d);
+    static void PutPermDecal(CMeshDecal *d);
 
     unsigned char _0[0x10];
     void *m_verts;   // 0x10: allocated, through the uncached mirror
@@ -62,6 +63,7 @@ public:
     unsigned int m_34;   // 0x34
 
     static CMeshDecalPool m_tempPool;
+    static CMeshDecalPool m_permPool;
 };
 
 }
@@ -124,6 +126,14 @@ void CMeshDecal::PutTempDecal(CMeshDecal *d)
         m_tempPool.m_overflow--;
     m_tempPool.m_count--;
     m_tempPool.m_pool->PutBack(d);
+}
+
+/* a permanent mesh decal given back: CDecal::PutPermDecal's twin over the mesh decals' permanent
+ * pool, which SOCOM 1 did not have (the same 0x24 bytes; 0x3BE8C0) */
+void CMeshDecal::PutPermDecal(CMeshDecal *d)
+{
+    m_permPool.m_count--;
+    m_permPool.m_pool->PutBack(d);
 }
 
 /* the vertex block freed (SOCOM 1's, without its file and line) */
