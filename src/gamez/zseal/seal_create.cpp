@@ -5,6 +5,8 @@
  * Defined in reverse of their image order (-inline deferred). */
 
 #include "zseal.h"
+#include "../zanim/zanim.h"
+#include "../zsys/zsys.h"
 #include <stdio.h>
 
 extern "C" {
@@ -206,3 +208,51 @@ const CCharacterType *CZSealBody::PreCreateSeal(const CCharacterType *type, cons
     return t;
 }
 #pragma auto_inline reset
+
+/* the body-part commands (new in SOCOM II, ZAnim commands this unit registers at 0x59AC60:
+ * RESET_BODY_PARTS, parsed at 0x59ABC0 and ticked at 0x59AB30, and BODY_FALL_ON_MATERIAL_SOUND,
+ * parsed at 0x59AA60 and ticked at 0x59A8E0; the functions' names unknown) -- a timeless command
+ * holding a node reference */
+struct _body_node_cmd {
+    _zanim_cmd_hdr hdr;   // 0x0
+    unsigned char node;   // 0x4: the node's reference in the current anim
+};
+
+/* (OVL1 0x26E2D0, zanim_anim.cpp's: a ZRDR path's node reference, searched as the current anim
+ * searches) */
+extern "C" int func_0026E2D0(CZAnim *anim, _zrdr *rdr);
+
+/* RESET_BODY_PARTS: the node is the command's own argument (OVL2 0x59ABC0) */
+extern "C" _zanim_cmd_hdr *func_0059ABC0(_zrdr *rdr)
+{
+    _body_node_cmd *cmd;
+
+    if (!rdr)
+        return 0;
+    cmd = (_body_node_cmd *)_calloc(1, sizeof(_body_node_cmd), 0, 0);
+    cmd->hdr.data_size = sizeof(_body_node_cmd);
+    cmd->hdr.timeless = 1;
+    cmd->node = func_0026E2D0(ZAnim.m_CurAnim, rdr);
+    return (_zanim_cmd_hdr *)cmd;
+}
+
+/* BODY_FALL_ON_MATERIAL_SOUND: the node under the BODY_NODE tag, the command dropped without one
+ * (OVL2 0x59AA60) */
+extern "C" _zanim_cmd_hdr *func_0059AA60(_zrdr *rdr)
+{
+    _body_node_cmd *cmd;
+    _zrdr *tag;
+
+    if (!rdr)
+        return 0;
+    cmd = (_body_node_cmd *)_calloc(1, sizeof(_body_node_cmd), 0, 0);
+    cmd->hdr.data_size = sizeof(_body_node_cmd);
+    cmd->hdr.timeless = 1;
+    if ((tag = func_0032F0D0(rdr, "BODY_NODE")) != 0)
+        cmd->node = func_0026E2D0(ZAnim.m_CurAnim, tag);
+    else {
+        _free(cmd, 0, 0);
+        cmd = 0;
+    }
+    return (_zanim_cmd_hdr *)cmd;
+}
