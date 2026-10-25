@@ -174,18 +174,74 @@ public:
 
 class CAiPath;
 
-/* a cell of an AI map: its soil first (SOCOM 1's DWARF, 8 bytes; only what the planners read) */
+/* a cell of an AI map (SOCOM 1's DWARF, 8 bytes; SOCOM II reads the same bits) */
 class CAiCell {
 public:
+    /* whether a step may end in it: not on soils 0, 8, 9 or 10 (new in SOCOM II, the name ours:
+     * SOCOM 1's planner tested the soil itself. Called from every AI unit, inlined in the
+     * planners' is_traversable; ai_astar.cpp's out-of-line copy is 0x511F40) */
+    bool IsTraversable() const
+    {
+        unsigned int soil = m_soil;
+
+        return !(soil == 0 || soil == 10 || soil == 8 || soil == 9);
+    }
+
     unsigned int m_soil : 5;   // 0x0
-    unsigned int m_rest : 27;
-    unsigned int m_word4;   // 0x4
+    unsigned int m_occupied : 1;
+    unsigned int m_name : 1;
+    unsigned int m_action : 1;
+    unsigned int m_link : 1;
+    unsigned int m_altitude : 10;
+    unsigned int m_boundary : 2;
+    unsigned int m_mes : 1;
+    unsigned int m_shadow : 2;
+    unsigned int m_inside : 1;
+    unsigned int m_badalt : 1;
+    unsigned int m_rtflag : 1;
+    unsigned int m_bilinear : 1;
+    unsigned int m_astar_dir : 4;
+    short m_astar_f;   // 0x4
+    short m_astar_g;   // 0x6
 };
 
-/* an AI map, so far only its directions (SOCOM 1's DWARF: CAiMap : AIMAP_PARAMS, 0x12C bytes) */
+/* an AI map (SOCOM 1's DWARF: CAiMap : AIMAP_PARAMS, 0x12C bytes; SOCOM II's tables sit 0x34
+ * further on -- the routes at 0x140, the scanlines at 0x14C, the graph at 0x15C). Only what the
+ * code written so far reads */
 class CAiMap {
 public:
     enum DIR { N = 0, NE = 1, E = 2, SE = 3, S = 4, SW = 5, W = 6, NW = 7, DIR_COUNT = 8 };
+
+    /* a cell's action: a door, a ladder, a switch (SOCOM 1's DWARF, 0x28 bytes; SOCOM II reads
+     * the same bits) */
+    class action {
+    public:
+        /* the kind, none once it is marked invalid (the name ours) */
+        enum TYPE { NONE = 0, DOOR = 1, TYPE_MAX = 31 };
+
+        TYPE GetType() const { return m_type_invalid == 0 ? (TYPE)m_type : NONE; }
+
+        CAiMapLoc m_loc;   // 0x0
+        unsigned int m_direction : 4;   // 0x4
+        unsigned int m_actionId : 16;
+        unsigned int m_state : 3;
+        unsigned int m_type : 5;
+        unsigned int m_locExValid : 1;
+        unsigned int m_offset : 4;   // 0x8
+        unsigned int m_type_invalid : 1;
+        CAiMapLoc m_locEx[6];   // 0xc
+        CAiMapLoc m_region;   // 0x24
+    };
+
+    action *GetCellAction(const CAiMapLoc &loc);
+};
+
+/* a planned path (SOCOM 1's DWARF, 0x9C bytes; SOCOM II's members from the search limit on sit
+ * 8 further). Only what the code written so far reads; the rest is a hole */
+class CAiPath {
+public:
+    unsigned char m_unk0[0x8c];   // 0x0: not laid out yet
+    unsigned int m_search_limit;   // 0x8c: SOCOM 1's 0x84
 };
 
 /* how the A* search weighs a step (SOCOM 1's; SOCOM II's vtable has a slot more after reset, and
@@ -200,6 +256,13 @@ public:
     virtual bool is_traversable(CAiMap *map, CAiPath *path, const CAiMapLoc &from, CAiMap::DIR dir,
                                 CAiMapLoc &to, CAiCell *&cell);
     virtual int fcost(CAiMap &map, const CAiMapLoc &from, CAiMap::DIR dir, const CAiMapLoc &to);
+};
+
+/* a planner that keeps off doors (SOCOM 1's CRestrainedTravel) */
+class CRestrainedPlanner : public CAiPlanner {
+public:
+    virtual bool is_traversable(CAiMap *map, CAiPath *path, const CAiMapLoc &from, CAiMap::DIR dir,
+                                CAiMapLoc &to, CAiCell *&cell);
 };
 
 #endif

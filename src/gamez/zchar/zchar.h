@@ -110,12 +110,28 @@ public:
 /* a kind of character: model, sounds, gear, weapons, AI and health (SOCOM 1's DWARF, 0x2FC bytes;
  * SOCOM II's is larger -- the temporary flag SOCOM 1 kept at 0x268 is at 0x300). Only what the
  * code written so far reads; the rest is a hole */
+class CCharTypeVec;
+
 class CCharacterType {
 public:
+    CCharacterType(const char *name, const CCharacterType *base);
     ~CCharacterType();
 
-    unsigned char m_unk0[0x300];   // 0x0: not laid out yet
+    static CCharacterType *GetByNameMod(const char *name);
+    static CCharacterType *Create(const char *name, const CCharacterType *base, bool reinit);
+    static void CleanupTemporary();
+
+    char *m_name;   // 0x0
+    unsigned char m_unk4[0x2fc];   // 0x4: not laid out yet
     unsigned char m_istemporary;   // 0x300
+    unsigned char m_unk301[0xab];   // 0x301: not laid out yet (0x3AC bytes: Create's new)
+
+    /* every type made, by name (SOCOM 1's; OVL1 bss in SOCOM II, 0x44CD48) */
+    static CCharTypeVec m_char_list;
+};
+
+/* the types (SOCOM 1's DWARF: a vector of pointers and nothing more) */
+class CCharTypeVec : public std::vector<CCharacterType *> {
 };
 
 bool DeleteTemporaryCharType(CCharacterType *t);

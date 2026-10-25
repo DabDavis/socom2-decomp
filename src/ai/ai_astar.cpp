@@ -6,6 +6,24 @@
 
 #include "ai.h"
 
+/* the restrained planner's step: the search limited to 5000 cells, the base's test, no soil 6,
+ * and no closed door (SOCOM 1's CRestrainedTravel, the same tests) */
+bool CRestrainedPlanner::is_traversable(CAiMap *map, CAiPath *path, const CAiMapLoc &from,
+                                        CAiMap::DIR dir, CAiMapLoc &to, CAiCell *&cell)
+{
+    if (path->m_search_limit > 5000)
+        path->m_search_limit = 5000;
+    if (!CAiPlanner::is_traversable(map, path, from, dir, to, cell) || cell->m_soil == 6)
+        return false;
+    if (cell->m_action) {
+        CAiMap::action *a = map->GetCellAction(to);
+
+        if (a->GetType() == 1 && a->m_state == 0)
+            return false;
+    }
+    return true;
+}
+
 /* whether a step may be taken into a cell: not into one of soils 0, 8, 9 or 10 (SOCOM 1's four
  * tests, which MW folds into one range test) */
 bool CAiPlanner::is_traversable(CAiMap *, CAiPath *, const CAiMapLoc &, CAiMap::DIR, CAiMapLoc &,

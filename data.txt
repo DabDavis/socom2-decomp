@@ -687,6 +687,7 @@
 0x004415A8 0x4 g_pCurrentConfig__28@unnamed@fts_controller_cpp@  # OVL1 bss; s1 by hand (the states lane: SOCOM 1's fts_controller.cpp static; IsJumpAndActionShared (0x2C63D0) reads the current layout through it as SOCOM 1's does through g_pCurrentConfig)
 0x0044C250 0x1BC theCharacterDynamics  # OVL1 bss; s1:data-exact (size SOCOM 1's; via Load__17CharacterDynamicsFRC8CRdrFile +1)
 0x0044CCF0 0x1C MultiplayerMsgStrings  # OVL1 bss; s1:data-seq (size SOCOM 1's; via InitMultiplayerMessages__14CCharacterTypeFP5_zrdr)
+0x0044CD48 0xC m_char_list__14CCharacterType  # OVL1 bss; s1 by hand (SOCOM 1's CCharacterType::m_char_list, a CCharTypeVec at the demo's 0x5063C0: GetByNameMod walks its data (+8) and size (+4) as the demo's does, CleanupTemporary removes the temporaries from it with DeleteTemporaryCharType; 27 references in 10 functions, OVL1's initialiser 0x400870 among them)
 0x0044CE00 0xC m_heartbeat_sound__10CZSealBody  # OVL1 bss; s1:data-exact (size SOCOM 1's; via OpenHeartbeatSounds__10CZSealBodyFv)
 0x0044D450 0xC list__12CAnimAuxData  # OVL1 bss; s1:data-exact (size SOCOM 1's; via Get__12CAnimAuxDataFUi)
 0x0044D4A0 0x4 m_mpbombnode__7CPickup  # OVL1 bss; s1:data-seq (size SOCOM 1's; via CreateMPBombPickup__10CZSealBodyFPC6CPnt3Db)
