@@ -15,7 +15,7 @@
  * cdeque<const void *> -- each through a partial specialization on const void *, which a T *
  * specialization deriving from it cannot itself match (MW would recurse into an incomplete base).
  *
- * The levels are load-bearing (-inline level=4), counted on the destructors: CGame's destructor
+ * The levels are load-bearing (written at -inline level=4; level 5 since), counted on the destructors: CGame's destructor
  * inlines four this-tested levels of its queue (CStateCmdQueue, deque<T *>, deque<PCv>,
  * __deque_imp) and calls __deque_buf's out-of-class destructor (0x2CEFB0) with 0, as a std::stack
  * member's destructor does (0x333A20); the buffer's destructor is three levels (cdeque<PPCv>,
@@ -147,7 +147,9 @@ namespace std {
  * (0x2CEE40) and torn down (0x2CEFB0) out of class. OPEN: the teardown's tail inlines five
  * this-tested levels after its loop in the target, the buffer's three (cdeque<PPCv>, cdeque<PCv>,
  * __cdeque_buf: 0x2CEE90) and two more -- past -inline level=4 for any class shape tried (two
- * implicit bases over the members inline one level and call the next; see game_main.cpp) */
+ * implicit bases over the members inline one level and call the next; see game_main.cpp): the
+ * evidence that the level is 5. At level 5 (the default since 2026-10-25) the shapes tried at 4
+ * are still to be re-run: the copy is "elsewhere" (still unmatched) in both units that emit it */
 template <class T, class Allocator>
 class __deque_buf {
 public:

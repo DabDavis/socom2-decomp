@@ -6,10 +6,17 @@
  * __list_deleter<PCv,...> in the names of every list<T *>'s calls -- and wraps its iterators
  * (SOCOM 1's list<T *>::generic_iterator<0> is built from the base's).
  *
- * The constructor and erase are defined outside the class, so neither is ever auto-inlined:
- * CSaveManager's and CZAnimArgList's constructors call the deleter's (0x1EABB0), and clear() is
- * a call to the range erase (0x1EAAF0 for the pointer lists). The destructor chain is three
- * this-tested levels above clear() (CZAnimArgList's destructor shows all three). */
+ * The constructor, insert and erase are defined outside the class, so none is ever inlined into
+ * a unit's own functions: CSaveManager's and CZAnimArgList's constructors call the deleter's
+ * (0x1EABB0), clear() is a call to the range erase (0x1EAAF0 for the pointer lists), push_back a
+ * call to insert. The destructor chain is three this-tested levels above clear() (CZAnimArgList's
+ * destructor shows all three). In tail code they count, and at -inline level=5 their depths are
+ * load-bearing (measured over every unit, 2026-10-25): the range erase frees through the node
+ * allocator (three high), so an implicit list destructor where the erase was instantiated inlines
+ * ~list one level (~CEntityList, ~CAssetList, ~CAiEventList); insert, written with MSL's alloc_ptr
+ * (its copies byte-exact in 21 units), expands past inline_max_size in an out-of-line push_back
+ * (253 units -- 3 under -- without the allocator's construct) and makes ai_events.cpp's remove_if
+ * cut find_if. */
 
 #ifndef _MSL_LIST
 #define _MSL_LIST
@@ -284,7 +291,7 @@ public:
     /* the reference passed on as the base's, no temporary (the pointer stays where it is), to
      * the base's insert, the end iterator made here from the sentinel: shorter than through the
      * base's push_back and end(), which CNode::CreateInstance's auto-inlining needs (an
-     * auto-inline callee more than four high is not inlined at all -- no one-level fallback).
+     * auto-inline callee taller than the level is not inlined at all -- no one-level fallback).
      *
      * OPEN, the shape SOCOM II's own MSL has here (the entity lane, round 7; scratch in
      * build/scratch/list/, lv.py scoring every hand-written unit per variant). ai_events.cpp's
@@ -302,14 +309,15 @@ public:
      * but this push_back is then four high in own code, and CreateInstance(model) (AddInstance ->
      * push_back, auto-inlined into CreateInstance(name)), CreateEntity (into CreateRecycler) and
      * the stack slots of Add2D, CZHudMissionCams::Init and GetLoadedLibRefs are lost: at
-     * -inline level=4 no list shape satisfies both. At level=6 the same variant keeps
-     * CreateInstance x2 and CreateRecycler as well; and level 5 or 6 with the headers as they
-     * stand already matches ~C2D, CCompass::CreateAnchor, __sinit_compass.cpp,
-     * __sinit_game_state.cpp and CCell::GetMidPoint -- four of them the open "too tall by one"
-     * puzzles -- while losing 63 functions fitted to level 4 (node_world 13, zsnd_jukebox 7,
-     * zanim_set 5, compass 5, ai_events 5, ...; a sample of the drafts is unchanged). The level
-     * and the headers' heights were fitted together; a level above 4 with SOCOM 1's deeper MSL
-     * is the integrator's question. */
+     * -inline level=4 no list shape satisfies both.
+     * At level 5 (the inline-level lane, 2026-10-25) this shape stays: vc keeps CreateInstance(model)
+     * auto-inlined only at level 6 (measured there with ~__list_deleter as erase(begin(), end()),
+     * which OVL2's ~__list_imp copy 0x510080 shows and ~C2D allows only at 6: ~C2D, CreateInstance
+     * x2, Release, SetIncludeInTargetList and end()'s copy match, the three stack-slot losses stay,
+     * and every chain refitted for 5 wants a level more -- README "Open, and next"). With insert
+     * now written (its alloc_ptr), level 5 reproduces ai_events.cpp's remove_if (the wrapper
+     * iterator's copies) and this push_back's out-of-line copy (insert past inline_max_size: 0x50F810
+     * under its present map name); _tick::operator() and remove_copy_if stay open on vc. */
     void push_back(T *const &x)
     {
         base::insert(typename base::iterator(&this->end_node()), (const void *const &)x);

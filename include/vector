@@ -34,33 +34,35 @@
  *   - back() is the base's, cast (through end() it would be a level taller than
  *     CZAR::GetOpenKey's inlining allows).
  *
- * The inline LEVELS are load-bearing (-inline level=4: a call whose callee's inline tree is at
- * most four high inlines all of it, a taller one only the callee's own body). Counted from the
- * vector down:
+ * The inline LEVELS are load-bearing (-inline level=5: a call whose callee's inline tree is at
+ * most five high inlines all of it, a taller one only the callee's own body -- and so does a
+ * callee whose expanded body passes MW's inline_max_size, 256 units). Counted from the vector
+ * down, as refitted at level 5 (the inline-level lane, 2026-10-25; level 4 had them one shallower
+ * in the swaps and the pod's destructor):
  *   vector of pointers  constructor 3 (vector, __vector_imp, __vector_pod)
- *                       destructor  3 (each with its this test), clear() 3
+ *                       destructor  4 (three this tests, then the pod's deallocate)
+ *                       clear()     3
+ *                       swap()      5 (vector, __vector_imp, the pod's member swap, the free swap,
+ *                                   std::swap): FreeVector and TrimVector are six
  *   vector of a class   constructor 4 (the capacity member's own constructor)
  *                       destructor  2 inline (~vector, ~__vector_imp), then __vector_deleter's
  *                                   destructor -- out of class, see there: a call where the unit
  *                                   had not instantiated it yet, four levels where it had
- *                       clear()     5
- * So `new CZAnimExVector` and its delete inline whole (CZAnimSet::AddAnimEx and Unload), while
- * CZAnimSetSave's implicit constructor and destructor, four high or more under its vector of
- * CPnt3D, inline only themselves and call all four vectors' (SaveNodeStates, Unload); the
- * out-of-line ~vector<CPnt3D> calls the deleter's destructor, and CZAnimSetSave::Free inlines the
- * pointer vectors' clear() but calls __vector_imp<CPnt3D>::clear().
- * OPEN: CCompass::CreateAnchor inlines CCompassAnchor's constructor whole, its vector<CPnt3D>
- * three stores included -- a class-vector constructor three high -- where SaveNodeStates needs
- * four (the capacity's constructor); the constructor side has no out-of-class piece found yet.
- * OPEN, the same kind on the pointer side: CCharacterType::Create inlines GetByNameMod whole with
- * its loop's end() (data + size, every pass) inline, where this model's end() -- an argument of
- * the inline !=, checked a level deeper -- is called out of line (0x158 against 0x168;
- * RdrFetch_CharacterType likewise). Measured over every hand-written unit (build/scratch/vec/):
- * end() built straight from data_ + size_ matches Create and brings RdrFetch to its size, but
- * loses CHUD::Add2D, UIGetMissionInformation and find_node (0x319C90, one of the self-inlining
- * walks that fixed this model); end() through iterator((elem_t *)__base::end()) overshoots
- * (Create 0x150). The deque's teardown destructor inlines five levels where every shape stops at
- * four: the level rule above is not the whole story. */
+ *                       clear()     5 (2 in a unit's own code: the deleter's is out of class)
+ *                       swap()      5 (the deleter's member swap, the free swap, the capacity
+ *                                   pair's free swap and member swap, std::swap)
+ * So `new CZAnimExVector` and its delete inline whole (CZAnimSet::AddAnimEx and Unload), and so
+ * does CCompassAnchor's constructor in CCompass::CreateAnchor (five high with its vector<CPnt3D>),
+ * and CCharacterType::Create's GetByNameMod with its loop's end(); the out-of-line ~vector<CPnt3D>
+ * calls the deleter's destructor, and CZAnimSetSave::Free inlines the pointer vectors' clear() but
+ * calls __vector_imp<CPnt3D>::clear().
+ * Measured at level 5 over every unit, drafts included, master merged (build/scratch/lvl/): the
+ * level-4 fit's matches all hold but SaveNodeStates -- `new CZAnimSetSave`, five high, must be
+ * inlined only one level, which no height can do while CreateAnchor and AddAnimEx inline theirs
+ * whole: it is the size limit, CZAnimSetSave() expanding to 179 units here against 256 needed
+ * (zanim_set.cpp's OPEN) -- and CPnt3D's copy (0x387F90, a level-4 artefact of grid_main.cpp);
+ * gained CreateAnchor, CCharacterType::Create, __sinit_compass.cpp, __sinit_game_state.cpp,
+ * CCell::GetMidPoint, ~C2D and CVisual's constructor. */
 
 #ifndef _MSL_VECTOR
 #define _MSL_VECTOR
