@@ -152,11 +152,17 @@ class CPipe {
 public:
     void RenderUiNode(zdb::CNode *node);
 
-    unsigned char _0[0x628];
+    unsigned char _0[0x618];
+    void *m_assetHUD1;   // 0x618 (SOCOM 1's CGSTexBuffer pointers, at the same offsets)
+    void *m_assetHUD2;   // 0x61c
+    void *m_assetHUDX;   // 0x620
+    unsigned char _624[0x628 - 0x624];
     zdb::CCamera *m_camera;   // 0x628
     unsigned char _62c[0x630 - 0x62c];
     zdb::CNode *m_uiNode;   // 0x630
-    unsigned char _634[0x711 - 0x634];
+    unsigned char _634[0x688 - 0x634];
+    unsigned char m_688[0x10];   // 0x688: SOCOM II's (CCoreState::Tick hands it to 0x33CD50; the name ours)
+    unsigned char _698[0x711 - 0x698];
     unsigned char m_renderingUi;   // 0x711
     unsigned char _712[2];
     unsigned char m_714;   // 0x714
@@ -536,7 +542,8 @@ public:
     CGameState *m_TestVariable;   // 0x10
     CGameState *m_Stack[16];   // 0x14
     int m_MinIdlePeriod;   // 0x54
-    unsigned char m_StateChangeQueue[0x70 - 0x58];   // 0x58
+    unsigned char m_StateChangeQueue[0x6c - 0x58];   // 0x58 (SOCOM 1's CStateCmdQueue, a deque)
+    unsigned int m_6c;   // 0x6c: the queue's count (CCoreState::Tick clears the screen while it holds any)
     int m_70;   // 0x70
     int m_pad;   // 0x74
 };
@@ -587,11 +594,18 @@ public:
     static int m_defaultFrameRate;
 };
 
-/* the app's camera: its zdb camera at 0xB4 (SOCOM 1's at 0x34) */
+/* the app's camera: its zdb camera at 0xB4 (SOCOM 1's at 0x34), the entity it follows at 0xBC and
+ * its mode at 0x139 (camera.h has the whole of it) */
+class CZSealBody;
+
 class CAppCamera {
 public:
     unsigned char _0[0xb4];
     zdb::CCamera *m_camera;   // 0xb4
+    unsigned char _b8[0xbc - 0xb8];
+    CZSealBody *m_bc;   // 0xbc
+    unsigned char _c0[0x139 - 0xc0];
+    unsigned char m_camera_mode;   // 0x139
 };
 
 extern CAppCamera *appCamera;
@@ -612,12 +626,14 @@ public:
     void ReOpen_Unload2();
 
     unsigned char _0[0x18];
-    unsigned char m_18;   // 0x18: 4 in an online game (SOCOM 1's too)
+    unsigned char m_18;   // 0x18: 4 in an online game (SOCOM 1's too); at 1 the core state's fade waits
     unsigned char _19[0x1c - 0x19];
     const char *m_1c;   // 0x1c: the mission's database name
     unsigned char _20[0xe8 - 0x20];
     float m_e8;   // 0xe8 (-1 when the mission starts; SOCOM 1's at 0x68)
-    unsigned char _ec[0x108 - 0xec];
+    unsigned char _ec[0xfc - 0xec];
+    unsigned char m_fc;   // 0xfc: bit 0 holds the core state's fade too
+    unsigned char _fd[0x108 - 0xfd];
     float m_108;   // 0x108
     unsigned char _10c[0x1ac - 0x10c];
     CMissionInfo *m_1ac;   // 0x1ac

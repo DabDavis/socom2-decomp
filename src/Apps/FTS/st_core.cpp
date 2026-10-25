@@ -127,6 +127,116 @@ extern CSched_Manager zTaskScheduler;
 
 extern "C" void func_00356080(TexBufferVector *texmanager, bool all);   /* zdb::CTexManager::DestroyBuffers */
 
+/* what the core state's tick reaches for */
+namespace zdb {
+/* the render phases (SOCOM 1's _RenderPhase; only the HUD's three, by number) */
+enum _RenderPhase {
+    RENDER_PHASE_12 = 12,
+    RENDER_PHASE_13 = 13,
+    RENDER_PHASE_14 = 14
+};
+}
+
+class MapCompass {
+public:
+    void Draw(zdb::CCamera *cam);
+};
+
+class CFlashFXVector {
+public:
+    void Tick(float dT);
+    void Draw(zdb::CCamera *cam);
+};
+
+/* a 2D item: its vtable pointer after a list (C2D's), Draw the second virtual */
+class CTickItem {
+public:
+    unsigned char _0[0xc];
+    virtual ~CTickItem();
+    virtual void Draw(zdb::CCamera *cam);
+};
+
+/* the HUD as the core state ticks it (SOCOM 1's CHUD: its compass, its items, its flashes) */
+class CHUD {
+public:
+    void PreDITick(float dT);
+    void PostDITick(float dT);
+    void Tick(float dT);
+    void DrawPhase(zdb::_RenderPhase phase, zdb::CCamera *cam);
+
+    unsigned char _0[0x4fe0];
+    MapCompass m_compass;   // 0x4fe0
+    unsigned char _4fe1[0x18900 - 0x4fe1];
+    CTickItem m_18900;   // 0x18900
+    unsigned char _18910[0x1a2d0 - 0x18910];
+    CFlashFXVector m_flashfx;   // 0x1a2d0
+};
+
+/* the entity's node as the tick hides it: its active bit, SetActive the 13th virtual (CNode's,
+ * its vtable pointer at 0x60) */
+class CTickNode {
+public:
+    unsigned char _0[0x5c];
+    unsigned int m_active : 1;   // 0x5c
+    unsigned int _5c : 31;
+    virtual void v08();
+    virtual void v0c();
+    virtual void v10();
+    virtual void v14();
+    virtual void v18();
+    virtual void v1c();
+    virtual void v20();
+    virtual void v24();
+    virtual void v28();
+    virtual void v2c();
+    virtual void v30();
+    virtual void v34();
+    virtual bool SetActive(bool on);
+};
+
+/* SOCOM II's voice recognition (unnamed: 0x414680; main sets it up, the tick ticks it, and bit 1
+ * at 0x38 is SOCOM 1's recoIsRecognizing) */
+struct CVoice {
+    unsigned char _0[0x38];
+    unsigned char _b0 : 1;
+    unsigned char m_recognizing : 1;   // 0x38
+    unsigned char _b2 : 6;
+};
+
+class CameraZoom {
+public:
+    static bool Tick(float dT);
+};
+
+extern unsigned char OurGameName;
+
+extern "C" {
+extern CVoice data_00414680;                      /* the voice (0x414680) */
+extern int data_00408C08;                        /* SOCOM 1's oddeven, a static of Tick's */
+extern char data_00488F10[];
+extern char data_004B5170[];
+void func_002A9A70(CMission *mission);
+void func_0023AD90(CVoice *voice, float dT);
+bool func_001FA300(CHUD *hud);                   /* CHUD::PauseGame */
+void func_0034E070(CSched_Manager *sched, float dT);   /* CSched_Manager::Tick */
+void func_00336230(void *arg);
+void func_003C3390(void *arg, float dT);
+void func_003B1160(int arg);
+CTickNode *func_0029ED20(CZSealBody *entity);    /* CEntity::GetNode */
+int func_00339DE0(CPipe *pipe, zdb::CWorld *world);   /* CPipe::RenderWorld */
+void func_0033CD50(void *arg);
+void func_0033B370(CPipe *pipe);
+void func_0033B5B0(CPipe *pipe);
+void func_0033B570(CPipe *pipe);
+void func_0033B500(CPipe *pipe);
+void func_0033BF30(CPipe *pipe, void *texbuffer);   /* CPipe::FIFO_Signal (SOCOM 1's second argument gone) */
+void func_0033BE70(CPipe *pipe, void *texbuffer);   /* CPipe::FIFO_Signal */
+CTickItem *func_0022D590();
+void func_003AFD50(int r, int g, int b, int a, int z);   /* CVideo::Clear */
+void func_002D9E40(float dT);                    /* CInput::Tick */
+void func_003AFF30(bool wait, bool swap);        /* zVid_Swap */
+}
+
 static void LoadThreadEntry(void *arg);
 
 /* the load thread's stack (SOCOM 1's static array of it; SOCOM II's allocated once) */
@@ -309,6 +419,111 @@ bool CCoreState::Init()
     func_003B17D0(CVideo::m_defaultFrameRate);
     zVid_Sync0();
     return true;
+}
+
+/* a frame of the mission. While the mission is not yet running (its m_18 at 1, its flag at 0xFC,
+ * or online) the fade-in waits; otherwise it counts down and, done, starts the mission. Input;
+ * while running the voice, the HUD's lens flare, the tasks (unless paused) and -- for SOCOM 2 --
+ * the zoom; the frame swapped (or not, while swaps are skipped); the camera updated; the world
+ * drawn with the camera's own entity hidden in first person or while its controller holds the
+ * zoom; the HUD drawn between texture loads (with the option), its compass, flashes and items.
+ * SOCOM 1's Tick without its benchmark timers (line order kept) */
+bool CCoreState::Tick(float dT)
+{
+    bool running;
+    bool hide;
+    CTickNode *pEntNode;
+    bool camera_entity_active;
+    zdb::CCamera *cam;
+
+    cam = thePipe.m_camera;
+    running = true;
+    if (theMission.m_18 != 1 && !(theMission.m_fc & 1) && !theNetwork.m_9) {
+        m_c8 -= dT;
+        float fade = m_c8 * m_c4;
+
+        if (fade < 0.0f) {
+            fade = 1.0f;
+            func_002A9A70(&theMission);
+        }
+        func_003B1760(0, 0, 0, fade);
+        running = false;
+    } else {
+        m_c8 = m_c0;
+    }
+    func_002D9E40(dT);
+    if (running) {
+        func_0023AD90(&data_00414680, dT);
+        m_hud->PreDITick(dT);
+        if (!data_00414680.m_recognizing && !func_001FA300(m_hud))
+            func_0034E070(&zTaskScheduler, dT);
+        if (OurGameName == 1)
+            CameraZoom::Tick(dT);
+    }
+    zSysFifoEnd();
+    if (m_skip_swap > 0) {
+        m_skip_swap--;
+        func_003AFF30(false, true);
+        zVid.m_90 = 0;
+    } else {
+        func_003AFF30(true, true);
+    }
+    func_00336230(data_00488F10);
+    cam->Update(zdb::ZCAM_TYPE_0);
+    m_hud->PostDITick(dT);
+    if (running && !func_001FA300(m_hud))
+        func_003C3390(data_004B5170, dT);
+    func_003B1160(1);
+    hide = appCamera->m_camera_mode == 3;
+    pEntNode = func_0029ED20(appCamera->m_bc);
+    CZSealBody *player = func_002B3580();
+    void *control = player ? player->m_control : 0;
+
+    if (!hide && control && ((unsigned char *)control)[0x221] == 5)
+        hide = true;
+    if (hide) {
+        camera_entity_active = pEntNode->m_active;
+        pEntNode->SetActive(false);
+    }
+    data_00408C08 = func_00339DE0(&thePipe, m_world);
+    if (hide)
+        pEntNode->SetActive(camera_entity_active);
+    if (running && !func_001FA300(m_hud)) {
+        func_0033CD50(thePipe.m_688);
+        func_0033B370(&thePipe);
+    }
+    func_0033B5B0(&thePipe);
+    func_0033B570(&thePipe);
+    func_0033B500(&thePipe);
+    if (gopt[0]) {
+        if (running)
+            m_hud->Tick(dT);
+        func_003B7150(1);
+        thePipe.m_assetHUD2 =
+            zdb::CTexManager::m_texmanager.data_[zdb::CTexManager::TexPhase[39 + data_00408C08]];
+        func_0033BF30(&thePipe, thePipe.m_assetHUD2);
+        func_0033BE70(&thePipe, thePipe.m_assetHUD1);
+        m_hud->DrawPhase(zdb::RENDER_PHASE_12, cam);
+        thePipe.m_assetHUDX = zdb::CTexManager::m_texmanager.data_[zdb::CTexManager::TexPhase[42]];
+        func_0033BF30(&thePipe, thePipe.m_assetHUDX);
+        func_0033BE70(&thePipe, thePipe.m_assetHUD2);
+        m_hud->DrawPhase(zdb::RENDER_PHASE_13, cam);
+        func_0033BF30(&thePipe, zdb::CTexManager::m_texmanager.data_[zdb::CTexManager::TexPhase[0]]);
+        func_0033BE70(&thePipe, thePipe.m_assetHUDX);
+        m_hud->DrawPhase(zdb::RENDER_PHASE_14, cam);
+        m_hud->m_compass.Draw(cam);
+        if (!data_00414680.m_recognizing && !func_001FA300(m_hud))
+            m_hud->m_flashfx.Tick(dT);
+        m_hud->m_flashfx.Draw(cam);
+        m_hud->m_18900.Draw(cam);
+        func_0022D590()->Draw(cam);
+        func_003B7150(0);
+    } else {
+        func_0033BF30(&thePipe, zdb::CTexManager::m_texmanager.data_[zdb::CTexManager::TexPhase[0]]);
+    }
+    if (!theNetwork.m_9 && theGame.m_6c)
+        func_003AFD50(1, 0, 0, 0, 0);
+    return false;
 }
 
 /* torn down: the GIF's path 3 masked again, the frame rate freed, the mission unloaded, the

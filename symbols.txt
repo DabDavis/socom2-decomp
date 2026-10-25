@@ -1606,11 +1606,11 @@
 0x001F77A0 0x1C func_001F77A0  # OVL1
 0x001F77C0 0x2C4 func_001F77C0  # OVL1
 0x001F7A90 0x3C0 func_001F7A90  # OVL1
-0x001F7E50 0x1C func_001F7E50  # OVL1; size 0x1c (a tail call through t9; the seed ran on into the padding)
-0x001F7E70 0x10 func_001F7E70  # OVL1
+0x001F7E50 0x1C PostDITick__4CHUDFf  # OVL1; size 0x1c (a tail call through t9; the seed ran on into the padding); s1:exact shape (SOCOM 1's PostDITick: the lens flare member's virtual tail-called through t9 -- the member at 0x1A698 for SOCOM 1's 0x14460; CCoreState::Tick calls it on m_hud after the camera's update, as SOCOM 1's)
+0x001F7E70 0x10 PreDITick__4CHUDFf  # OVL1; s1:exact shape (SOCOM 1's PreDITick: CLensFlareSaturate::PreDITick tail-called on the member at 0x1A698 for SOCOM 1's 0x14460; CCoreState::Tick calls it on m_hud after the input's tick, as SOCOM 1's)
 0x001F7E80 0xF8 func_001F7E80  # OVL1
 0x001F7F80 0x70 __dt__6CFaderFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x001F7FF0 0x1158 func_001F7FF0  # OVL1
+0x001F7FF0 0x1158 Tick__4CHUDFf  # OVL1; s1:calls (CCoreState::Tick calls it on m_hud with dT under gopt's first byte, before the HUD's three DrawPhases, where SOCOM 1's calls CHUD::Tick; much grown)
 0x001F9150 0x8 SetTrans__9C2DStringFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F9160 0x260 func_001F9160  # OVL1
 0x001F93C0 0x3E4 func_001F93C0  # OVL1
