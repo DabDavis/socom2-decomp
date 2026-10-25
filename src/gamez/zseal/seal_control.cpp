@@ -5,6 +5,7 @@
 
 #include "zseal.h"
 #include "../zinput/zinput.h"
+#include "../zanim/zanim.h"
 
 extern "C" int rand(void);
 
@@ -36,6 +37,76 @@ struct CViewWorld {
     unsigned char _0[0x128];
     CViewCamera *m_camera;   // 0x128
 };
+
+/* an action a node offers (SOCOM 1's CNodeAction: its valve at 0x18 in both builds, its kind at 0x24
+ * -- SOCOM 1's 0x20; only those here) */
+class CNodeAction {
+public:
+    unsigned char _0[0x18];
+    CValve *m_valve;   // 0x18
+    unsigned char _1c[0x24 - 0x1c];
+    unsigned char m_type;   // 0x24: 4 the bomb, 5 none, 6 a door to breach (the names ours)
+};
+
+/* the MP bomb's state machine (SOCOM 1's CZBombState, OVL1's): its status, the state first */
+class CZBombState {
+public:
+    struct STATUS {
+        unsigned char m_state;   // 0x0
+        unsigned char _1[0x20 - 1];
+    };
+
+    static STATUS m_BombStatus;   // OVL1 bss 0x4413B0
+};
+
+/* whether an action can be taken: none by the dead; the bomb's by its state (planting asks
+ * CanPlaceBomb), a breach with a charge and a closed valve, a kind 5 never, any other always
+ * (OVL2 0x594350; SOCOM 1's, the life test and kind 5 new).
+ * OPEN, 13 instructions: the target reads the bomb's state again for the 1-or-3 test, through its
+ * address built in the first test's delay slot (lbu 0(a3)); MW here reuses the first load (SOCOM
+ * 1's code has the same reload). Tried: the first test through inline accessors (a parameter, an
+ * int, a ternary), the second as inline calls, a reference, a pointer, a switch. */
+static inline bool IsBombState(unsigned char state)
+{
+    return CZBombState::m_BombStatus.m_state == state;
+}
+
+/* a breach: a charge with ammunition in the kit and the door's valve closed */
+static inline bool CanBreach(CZSealBody *seal, CValve *valve)
+{
+    if (seal && seal->m_kit.HasItem((EQUIP_ITEM)152) && seal->m_kit.ItemHasAmmo((EQUIP_ITEM)152) && valve &&
+        valve->m_value == 0)
+        return true;
+    return false;
+}
+
+bool CSealCtrl::CanPerformAction(CNodeAction *action)
+{
+    CZSealBody *seal = (CZSealBody *)m_entity;
+
+    if (!seal->m_isAlive)
+        return false;
+    bool can = false;
+
+    switch (action->m_type) {
+    case 4:
+        if (IsBombState(2))
+            can = CanPlaceBomb(action);
+        else if (CZBombState::m_BombStatus.m_state == 1 || CZBombState::m_BombStatus.m_state == 3)
+            can = false;
+        break;
+    case 6:
+        can = CanBreach(seal, action->m_valve);
+        break;
+    case 5:
+        can = false;
+        break;
+    default:
+        can = true;
+        break;
+    }
+    return can;
+}
 
 /* the view range's floor (OVL2 data 0x6506A0, read as a variable) */
 extern "C" float data_006506A0;

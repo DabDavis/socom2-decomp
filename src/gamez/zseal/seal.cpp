@@ -5,6 +5,8 @@
  * reverse of their image order (-inline deferred). */
 
 #include "zseal.h"
+#include "../zkit/zkit.h"
+#include <stdio.h>
 #include <string.h>
 
 class CValve;
@@ -394,6 +396,65 @@ void CZSealBody::ActionAvailableMask(unsigned char id, bool on)
         m_action_available |= 1 << id;
     else
         m_action_available &= ~(1 << id);
+}
+
+/* a UI variable's value (SOCOM 1's _zrdr through CUIVarManager::Find: a type byte, a string for type
+ * 3) and the variables (OVL1 bss 0x437E80) */
+struct CUIVarValue {
+    unsigned char m_type;   // 0x0
+    unsigned char _1[3];
+    char *m_string;   // 0x4
+
+    const char *GetString() { return m_type == 3 ? m_string : 0; }
+};
+
+class CUIVarManager;
+extern CUIVarManager theUIVarManager;
+
+extern "C" {
+/* CUIVarManager::Find (SOCOM 1's Find__13CUIVarManagerFPCc by this call; OVL1 0x385900, unowned) */
+CUIVarValue *func_00385900(CUIVarManager *mgr, const char *name);
+/* a flag the network player's making sets (OVL1 bss 0x44CE50; SOCOM 1's a small-data byte) and the
+ * local team's mask (OVL1 bss 0x441470) */
+extern unsigned char data_0044CE50;
+extern unsigned int data_00441470;
+}
+
+bool ftsGetSquirm();
+void ftsSetPlayer(CZSealBody *seal);
+
+/* the local player made for a network game: named by the UI's variable or by the client index,
+ * of the game's character, a hostage's squirming controller if so set, then made the player
+ * (OVL2 0x5442C0; SOCOM 1's with the character read from the game state).
+ * OPEN, 1 instruction: `new CSealCtrlSquirm` allocates 640 in the target, 636 here -- zkit.h's
+ * CSealCtrlSquirm (the kit lane's) ends at 0x27C; with four bytes more after m_timer_value it is
+ * byte-exact (try.py). */
+void CZSealBody::NetworkPlayerCreate()
+{
+    char name[31];
+
+    data_0044CE50 = 1;
+    CUIVarValue *var = func_00385900(&theUIVarManager, "PLAYERNAMEVAR");
+
+    if (var)
+        strncpy(name, var->GetString(), 31);
+    else
+        sprintf(name, "Player%d", theNetwork.zNetGetMyGameClientIndex());
+    name[30] = 0;
+    CCharacterType *type = CCharacterType::GetByNameMod(data_00437CE8->m_charname);
+    CSealCtrl *ctrl;
+
+    if (ftsGetSquirm())
+        ctrl = new CSealCtrlSquirm;
+    else
+        ctrl = new CSealCtrl;
+    CZSealBody *seal = Create(type, name, ctrl);
+
+    ftsSetPlayer(seal);
+    seal->m_node->SetName(name);
+    seal->SetTeamMask(data_00441470);
+    seal->m_vehicle_index = 0;
+    seal->SetDisplayName(name);
 }
 
 /* the compass anchors the SEAL carries: swapped in, whether there was none returned (OVL2

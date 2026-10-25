@@ -81,6 +81,11 @@ const T &_min(const T &a, const T &b)
 /* the SEAL's kit: its weapons and gear (SOCOM 1's CZKit, 0x87c bytes there; only its start here) */
 class CZKit {
 public:
+    /* whether the kit holds an item, and whether that item has ammunition (SOCOM 1's; OVL2
+     * 0x5C86F0, 0x5BDB20, the kit lane's) */
+    bool HasItem(EQUIP_ITEM item) const;
+    bool ItemHasAmmo(EQUIP_ITEM item);
+
     unsigned int m_0;
 };
 
@@ -139,6 +144,9 @@ public:
  * reading) and the net game's state (OVL1 bss 0x437CE8, the HUD lane's reading) */
 class CZNetwork {
 public:
+    /* this console's client index in the game (SOCOM 1's) */
+    int zNetGetMyGameClientIndex();
+
     unsigned char m_8;   // 0x0: the session master
     unsigned char m_9;   // 0x1: an online game
 };
@@ -153,6 +161,8 @@ public:
     unsigned char m_dc;   // 0xdc: a SEAL's death sends no squad order unless set (the name ours)
     unsigned char _dd[0x111 - 0xdd];
     unsigned char m_mode;   // 0x111: the game's kind (the stats test 1 and 3; the name ours)
+    unsigned char _112[0x12c - 0x112];
+    char m_charname[32];   // 0x12c: the local player's character (the name ours)
 };
 
 /* a pickup: a weapon, ammunition, a grenade or the MP bomb lying in the world (SOCOM 1's DWARF:
@@ -317,6 +327,10 @@ public:
     void SetTrigger(bool down, float power);
     /* how far the SEAL sees: none for the camera's far plane (SOCOM 1's; OVL2 0x5924B0) */
     void SetViewRange(float range);
+    /* whether an action node's action can be taken now, and the bomb's planting (SOCOM 1's; OVL2
+     * 0x594350, 0x594480) */
+    bool CanPerformAction(class CNodeAction *action);
+    bool CanPlaceBomb(class CNodeAction *action);
 
     unsigned char _18[0xa8 - 0x18];
     CAiDecay m_visrange;   // 0xa8 (as SOCOM 1's)
@@ -518,6 +532,13 @@ public:
  * functions touch */
 class CZSealBody : public CEntity, public CBody {
 public:
+    /* a SEAL made from a character type with a controller (SOCOM 1's; OVL2 0x5999E0), and the local
+     * player's made for a network game (SOCOM 1's; OVL2 0x5442C0) */
+    static CZSealBody *Create(const CCharacterType *type, const char *name, CSealCtrl *ctrl);
+    static void NetworkPlayerCreate();
+    /* the character type taken and its model instanced, dynamic, with its LODs, in the world, its
+     * textures added (SOCOM 1's; OVL2 0x59A7F0) */
+    static const CCharacterType *PreCreateSeal(const CCharacterType *type, const char *name, zdb::CNode **node);
     /* every heartbeat loop stopped (SOCOM 1's; StopRumbler calls it with no body) */
     static void StopAllHeartbeatSounds();
     /* the stance a state stands for, or the fallback (SOCOM 1's; the AI-states lane's 0x5FC910) */
