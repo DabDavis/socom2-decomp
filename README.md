@@ -46,6 +46,7 @@ and data reference resolved to the address the shipped code uses.
 | `tools/beta_tu.py` | which source file a function was in, out of the press beta's asserts |
 | `tools/rename.py` | rename map rows by hand, keeping the note, refusing a taken name, listing the source still using the old one |
 | `tools/s1units.py` | SOCOM II's translation units: its static initialisers against SOCOM 1's named `__sinit_<file>`s |
+| `tools/unitscan.py` | where one hand-written unit could be two: its pinned and inlined pairs, the target's own calls, every cut that separates the first and none of the second |
 | `tools/s1vtables.py` | virtual functions named slot by slot: SOCOM II's vtables found by their RTTI's class-name string, aligned with the demo's `__vt__` tables; `--holdout` measures it on names the map already has |
 | `tools/try.py` | compile one unit with one textual substitution at a time and score one symbol, in a scratch copy of `src/` |
 | `tools/scperm.py` | the permuter: EQOA's tree-sitter mutations of one function, MW-compiled and alignment-scored (needs `.venv`) |
@@ -1654,12 +1655,42 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - CLUSTERED PINS CAN MEAN A UNIT BOUNDARY: auto-inlining never crosses units, so a cut that every
     pinned pair straddles and no inlined pair does is a candidate split. build/scratch/inlmode/
     split_scan.py (and split_best.txt, its results over the 60 pinned units) found such a cut in 33;
-    strong ones: zsnd_csndsequence.cpp at 0x349C70 (7 of 7 pins; split, 6/6 + 11/11 with no pins --
-    not adopted yet: the press beta names zsnd_csndsequence.cpp in an assert), hud_objectives.cpp at
-    0x206F90 (6/6), graph_tree.cpp at 0x2D12D0 (5/5), int_main.cpp at 0x2DC660 (5/5), zrdr_edit.cpp
-    at 0x333540 (8/9), body.cpp at 0x28F190 (14/18). Each needs the template-placement check:
+    strong ones: zsnd_csndsequence.cpp at 0x349C70 (7 of 7 pins), hud_objectives.cpp at 0x206F90
+    (6/6), graph_tree.cpp at 0x2D12D0 (5/5), int_main.cpp at 0x2DC660 (5/5), zrdr_edit.cpp at
+    0x333540 (8/9), body.cpp at 0x28F190 (14/18). Each needs the template-placement check:
     ai_mapio.cpp's 20/20 cut at 0x51AEF0 fails because read_v19-v23's ReadCellTable instances close
     the range above it;
+  - THE SPLIT LANE (2026-10-25) adopted four, each scoring as before with its pins gone:
+    zsnd_csndsequenceentry.cpp 0x349A70-0x349C6F | zsnd_csndsequence.cpp (the press beta's two
+    zsnd_csndsequence.cpp asserts are CreateSequence's and ~CSndSequence's); graph_main.cpp
+    0x2D04F0-0x2D12FF | graph_tree.cpp 0x2D1300-0x2D288F (its initialiser 0x401C80 builds the tree
+    pool, ~CGTreePool 0x2D2830 last, as SOCOM 1's __sinit_graph_tree.cpp); int_main.cpp |
+    int_shapes.cpp 0x2DC7A0-0x2DDC2F (diNorm's initialiser 0x401D80, byte-exact as
+    __sinit_int_shapes.cpp); grid_main.cpp | grid_cell.cpp 0x2D79D0-0x2D7E9B (CCell). New names ours;
+    the half SOCOM 1 names (initialiser, asserts) keeps the old one. tools/unitscan.py rescans one
+    unit (pinned pairs, inlined pairs, the target's own calls, every cut);
+  - the scan's cut is only the lowest address of a feasible range; the exact one comes from other
+    evidence: an inlined pair a draft shows (~CGRoute, 0x2D1210, inlines Clear: graph_tree's cut is
+    above it), a call only a boundary explains (SetCDIBBox calls CDI(), which inlines into any caller
+    of its unit: int_main's cut is SetCDIBBox's first word, and SOCOM 1's int_main.cpp asserts end at
+    DiIntersect(n) just below), the data a half alone uses (diNorm), whole classes;
+  - SOCOM 1 is -inline deferred as well (zcam_main.cpp's DWARF lines fall as addresses rise), so an
+    EMPTY function SOCOM 1 calls out of line is a unit boundary there: its CGrid::AddClutter and
+    DeleteClutter call CCell's empty stubs (0x2170E0, 0x2170F0). The other way round, what SOCOM 1
+    inlines is one unit there: zrdr_edit.cpp's wrappers inline push and the add*node in SOCOM 1, and
+    SOCOM II's push calls addstringnode inside any upper unit -- no split;
+  - rejected: body.cpp's cut falls inside its own tail (RTList's Add/Remove and _close_enough<f>
+    above it are SetBlendAnims' and Normalize's below; the 14 are calls to the flag helpers
+    0x28F190/0x28F1B0, which sit in the tail among the instances: out-of-class template members,
+    likely); valve_list.cpp's remove_if (0x352500, above) is Close's, Reset's and Uninit's (below);
+    con_ps2.cpp and ai_util.cpp inline no own function anywhere -- a unit without auto-inlining, not
+    two units; zcam_main.cpp's pinned pairs are all in SOCOM 1's DWARF zcam_main.cpp;
+    seal_control.cpp's "cut" is Cross's copy after its first caller; ai_map.cpp's pin is its
+    initialiser's (tail code); zanim_anim.cpp and node_assetlib.cpp explain 2 of 5; the small ones
+    (zsnd_csnd, node_saveload, zsav_manager, zrdr_archive, game_state, game_main, fts_action,
+    fts_net_bomb, fts_net_platform, seal_create) pin one or two callers' calls to 0x88-0x1F0-byte
+    callees -- their statement counts explain them as well, and SOCOM 1 calls the same callee out
+    of line where it has one (RemoteBombPostUpdateCallback, PreCreateSeal, LoadPalettes_PS2);
   - compiled-out statements (debug prints) still count toward the inline limit: DumpQueue/DumpFree
     keep their pins;
   - generation order changes code as well as inlining: zlib's inflate_trees_dynamic loses 8 bytes
@@ -2457,9 +2488,11 @@ What is open across lanes, and what comes next:
   network libraries from 0x610000) are not MW code: EQOA's EE-GCC toolchains could match them, a
   separate effort.
 - **Unit boundaries behind pins**: the inlining-mode question is answered (no such mode; "The
-  inlining mode, measured") -- the pinned units' candidate cuts in build/scratch/inlmode/
-  split_best.txt are each worth a split-and-score by their lane (zsnd_csndsequence.cpp,
-  hud_objectives.cpp, graph_tree.cpp, int_main.cpp, zrdr_edit.cpp, body.cpp first).
+  inlining mode, measured") -- of the pinned units' candidate cuts (build/scratch/inlmode/
+  split_best.txt) the split lane adopted zsnd_csndsequence.cpp, graph_tree.cpp, int_main.cpp and
+  grid_main.cpp and turned down the rest of its list with reasons (same section);
+  hud_objectives.cpp (the HUD lane's) is unmeasured. Units with no auto-inlined pair at all
+  (con_ps2.cpp, ai_util.cpp) may want a file-wide `#pragma auto_inline off` instead of their pins.
 - **`tools/scperm.py`** (EQOA's tree-sitter mutations driven by MW) has not yet closed a
   function: its finds so far trade correctness for score.
 - Tell 3.0b50 from 3.0b52; port eqrefcheck's data-reference audit to absolute addresses. The
