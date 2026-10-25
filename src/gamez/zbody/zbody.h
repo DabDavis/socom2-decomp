@@ -174,18 +174,20 @@ T *RTList<T>::Remove(T *item)
 template <class T>
 T *RTList<T>::Add(T *item)
 {
+    LIST_ITEM *tail = m_tail;
     LIST_ITEM *p = m_pool;
+    unsigned int i;
 
-    if (!m_tail) {
+    if (!tail) {
         p->m_item = item;
         m_head = p;
         m_tail = p;
         return item;
     }
-    for (unsigned int i = 0; i < m_size; i++, p++) {
-        if (p != m_tail && !p->m_item) {
-            m_tail->m_next = p;
-            p->m_prev = m_tail;
+    for (i = 0; i < m_size; i++, p++) {
+        if (p != tail && !p->m_item) {
+            tail->m_next = p;
+            p->m_prev = tail;
             p->m_item = item;
             p->m_next = 0;
             m_tail = p;
