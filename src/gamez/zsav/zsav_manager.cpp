@@ -81,6 +81,15 @@ public:
 
 /* the archive's tail word SOCOM II's Save sets before opening it (ours: zar.h keeps the archive's
  * middle opaque) */
+/* MSL's list::sort(), the comparator its own local (as a local of Save's it takes the slot above
+ * begin()'s temporary; the target's sits below it) */
+static inline void SortModules(CSaveManager *m)
+{
+    std::less<const void *> comp;
+
+    func_0033E510(m, comp);
+}
+
 static inline char *&zar_tag(zar::CZAR &archive)
 {
     return *(char **)((char *)&archive + 0x2c);
@@ -118,11 +127,13 @@ void SaveDecrypt(char *buf, int size);
 CSaferStr RemoveExtension(const char *name);
 
 /* SOCOM 1's (with SOCOM II's tag): every module whose flags take part serialised under a key of its
- * own in a ZAR built in memory, the header first; the buffer scrambled and written to the file.
- * OPEN, 57 instructions: first draft, not yet worked */
+ * own in a ZAR built in memory, the header first; the buffer scrambled and written to the file. The
+ * header is declared first (the frame's order), `ok` set ahead of the archive's write (its store in
+ * the call's delay slot) */
 bool CSaveManager::Save(const char *name, int flags, int version, char *desc, char *tag)
 {
     CScopeTrace trace("CSaveManager::Save");
+    CSaveHeader header;
     bool ok = false;
     CBufferIO buf;
 
@@ -134,8 +145,6 @@ bool CSaveManager::Save(const char *name, int flags, int version, char *desc, ch
     zar_tag(archive) = tag;
     m_pZar = &archive;
     if (func_00258920(&archive, name, flags, 26, 16, 0)) {
-        CSaveHeader header;
-
         m_AbortSave = false;
         header.m_size = 268;
         header.m_flags = flags;
@@ -144,10 +153,9 @@ bool CSaveManager::Save(const char *name, int flags, int version, char *desc, ch
         func_0025A2F0(&archive, "zSaveHeader", &header, header.m_size);
         zar::CKey *modules = func_00258740(&archive, "CSaveModuleList");
         if (modules) {
-            std::less<const void *> comp;
             iterator it;
 
-            func_0033E510(this, comp);
+            SortModules(this);
             it = begin();
             for (iterator e = end(); it != e; ++it) {
                 CSaveModule *module = *it;
@@ -165,8 +173,8 @@ bool CSaveManager::Save(const char *name, int flags, int version, char *desc, ch
             }
             archive.CloseKey(modules);
         }
-        func_00258BD0(&archive);
         ok = true;
+        func_00258BD0(&archive);
         if (m_pFile->Open(name, 26)) {
             char *data = buf.m_buffer;
 
@@ -185,42 +193,44 @@ bool CSaveManager::Save(const char *name, int flags, int version, char *desc, ch
     return ok;
 }
 
-/* OPEN (both scramblers), 0x218 against 0x1F0 and 0x1A0 against 0x1C8: first drafts, the loops'
- * shapes not yet worked */
+/* (the two loops each with their own counter: a shared one re-colours the second loop) */
 #pragma auto_inline off
 void SaveDecrypt(char *buf, int size)
 {
     unsigned char key = buf[size - 1];
-    int i;
 
-    for (i = size - 2; i >= 0; i--) {
+    for (int i = size - 2; i >= 0; i--) {
         buf[i] ^= key;
-        key ^= key + buf[i];
+        key = key ^ (key + buf[i]);
     }
     key = 150;
-    for (i = 0; i < size; i++) {
-        buf[i] ^= key;
-        key ^= key + buf[i];
+    for (int j = 0; j < size; j++) {
+        buf[j] ^= key;
+        key = key ^ (key + buf[j]);
     }
 }
 
+/* OPEN, 7 instructions: the target masks a copy of the key for the update first and sign-extends
+ * the raw key register for the store (`andi t3,t1; dsll32 t1,t1`); with the old key in a local, as
+ * here, the sign extension reads the masked copy (`dsll32 t1,t3`), and every form that xors with
+ * the key itself (`buf[i] ^= key` before the update, a temporary for the new key, casts) orders the
+ * sign extension first, which re-colours the unrolled loop (84 differing) */
 void SaveEncrypt(char *buf, int size)
 {
     unsigned char key = 150;
-    int i;
 
-    for (i = 0; i < size; i++) {
-        char c = buf[i];
+    for (int i = 0; i < size; i++) {
+        unsigned char old = key;
 
-        buf[i] = c ^ key;
-        key ^= key + c;
+        key = key ^ (key + buf[i]);
+        buf[i] ^= old;
     }
     key = buf[size - 1];
-    for (i = size - 2; i >= 0; i--) {
-        char c = buf[i];
+    for (int j = size - 2; j >= 0; j--) {
+        unsigned char old = key;
 
-        buf[i] = c ^ key;
-        key ^= key + c;
+        key = key ^ (key + buf[j]);
+        buf[j] ^= old;
     }
 }
 
