@@ -48,13 +48,18 @@ void func_003AFF30(bool a, bool b);              /* zVid_Swap */
 extern char theIOPManager[];
 
 namespace {
-/* the menus' double-buffered texture relocation (SOCOM 1's: 0x1C bytes; the words at 0x14-0x1C
- * the tick clears after each texture load) */
+/* the menus' double-buffered texture relocation (SOCOM 1's CDblBufTextureRelocator, 0x1C bytes:
+ * its saved packet, size and palette; SOCOM II's are three words at 0x14, cleared after each
+ * texture load -- the name of the clear ours) */
 struct CRelocDblBuf {
     unsigned char _0[0x14];
-    int m_14;   // 0x14
-    int m_18;   // 0x18
-    int m_1c;   // 0x1c
+    int m_saved[3];   // 0x14
+
+    void ClearSaved()
+    {
+        for (int i = 0; i < 3; i++)
+            m_saved[i] = 0;
+    }
 };
 
 zdb::CAssetLib *g_pSkbLib;
@@ -71,11 +76,10 @@ const char *CMenuStateMenu::GetReaderFileName()
 
 /* a frame of the menus: the film, input, sound, the menu ticked, the network's messages shown,
  * the menu's backplane, the world behind it (if one is loaded) and the foreplane drawn between
- * texture loads, and the frame swapped -- not waited for while swaps are skipped.
- * OPEN (the size and every instruction's kind right): the saved registers -- the target keeps
- * this in s2, the queue in s1 and the message's text in s0 (this here takes s0), and keeps the
- * second and third of the three words cleared after each texture load in s1/s0 too (here each
- * store makes its own address); no declaration order or local moved them */
+ * texture loads -- the relocator's saved packet cleared after each -- and the frame swapped, not
+ * waited for while swaps are skipped. (SOCOM 1 cleared the relocator through a virtual; SOCOM II's
+ * clear is an inline loop over three words, which is what keeps the second and third words'
+ * addresses in s1/s0 for the second clear and, being the last values made, puts this in s2) */
 bool CMenuState::Tick(float dT)
 {
     CQueuedMessage msg;
@@ -97,9 +101,7 @@ bool CMenuState::Tick(float dT)
     thePipe.RenderUiNode(m_menu->m_pBackplaneNode);
     thePipe.m_renderingUi = 0;
     func_00356BE0(zdb::CTexManager::m_texmanager.data_[0], true);
-    g_relocDblBuf.m_14 = 0;
-    g_relocDblBuf.m_18 = 0;
-    g_relocDblBuf.m_1c = 0;
+    g_relocDblBuf.ClearSaved();
     if (zdb::CWorld::m_world) {
         func_0033BF30(&thePipe, zdb::CTexManager::m_texmanager.data_[zdb::CTexManager::TexPhase[0]]);
         if (zdb::CWorld::m_world->m_camera)
@@ -108,10 +110,8 @@ bool CMenuState::Tick(float dT)
     }
     m_menu->DrawForeplane();
     func_00356BE0(zdb::CTexManager::m_texmanager.data_[0], true);
-    g_relocDblBuf.m_14 = 0;
-    g_relocDblBuf.m_18 = 0;
+    g_relocDblBuf.ClearSaved();
     zSysFifoEnd();
-    g_relocDblBuf.m_1c = 0;
     if (m_skip_swap > 0) {
         m_skip_swap--;
         func_003AFF30(false, true);
