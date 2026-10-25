@@ -183,6 +183,7 @@
 0x003DFD10 0x4 UNNAMED_NODE  # OVL1; SOCOM 1 name (node_main.cpp's file static: the name nameless nodes share; CNode::SetName reads it)
 0x003DFD18 0x4 DELETED_NODE  # OVL1; SOCOM 1 name (the name a node is left with as it is destroyed; ~CNode stores it after SetName(0), as SOCOM 1's)
 0x003DFE10 0x4 m_scale__Q23zdb6CWorld  # OVL1; s1:data-seq (size SOCOM 1's; via Load__17CharacterDynamicsFRC8CRdrFile)
+0x003DFFD0 0x4 m_bnkoffset__4CSnd  # OVL1 data; SOCOM 1's CSnd static (its symbol): CSnd::Init stores the bank archive's disc offset (CFileCD's entry for BNKSTORE.ZAR, word 1) in it as SOCOM 1's Init stores m_bnkoffset; 2 references in 2 functions
 0x003E0070 0x4 m_mastervol__12CSndInstance  # OVL1; s1:data-seq (size SOCOM 1's; via SetVol__12CSndInstanceFf)
 0x003E0080 0x1 m_inFight__11CSndJukebox  # OVL1 data; CSndJukebox static (name ours: SOCOM 1's Start clears a flag byte so); 4 references in 4 functions
 0x003E0980 0xC0 framecode  # OVL1; s1:data-seq (size SOCOM 1's; via zVid_FrameRestore__Fv)
@@ -694,11 +695,14 @@
 0x0048DA00 0x40 gStats  # OVL1 bss; SOCOM 1's global (its symbol, 32 bytes there): the status block the IOP writes (word 0 busy, word 4 the read's error), invalidated by snd_StreamSafeCdSync, registered by snd_StartSoundSystem; 22 references in 7 functions
 0x0048DA48 0x4 gCaching  # OVL1 bss; SOCOM 1's global (its symbol, 0x476424): snd_StartCaching sets it, snd_SendCache clears it, the senders test it; 8 references in 5 functions
 0x0048DA78 0x4 gLoadBusy  # OVL1 bss; SOCOM 1's global (its symbol, 0x476428): tested before streaming starts or stops as SOCOM 1's is; 8 references in 6 functions
+0x0048DC70 0xA4 m_bnkArchive__4CSnd  # OVL1 bss; SOCOM 1's CSnd static (its symbol, a zar::CZAR, size SOCOM 1's): CSnd::Init opens run/sounds/bnkstore.zar on it and keeps its directory, as SOCOM 1's Init does with m_bnkArchive; 4 references in 2 functions
 0x0048DD28 0x1 m_isDisabled__4CSnd  # OVL1 bss; s1:data-seq (size SOCOM 1's; via LoadCSndGroup__9CSndGroupFP5_zrdr +8)
+0x0048DD30 0x1 m_hasreverb__4CSnd  # OVL1 bss; SOCOM 1's CSnd static (its symbol): CSnd::Init (and the reboot handler) ramp the reverb down and clear it when set, as SOCOM 1's Init does with m_hasreverb; 10 references in 3 functions
 0x0048DD80 0x4 m_numStreams__4CSnd  # OVL1 bss; SOCOM II's CSnd static (name ours): the streamed voices playing, ReleaseSoundInstance takes one off; 7 references in 5 functions
 0x0048DD88 0x4 m_numActive__4CSnd  # OVL1 bss; SOCOM II's CSnd static (name ours): the voices acquired, AcquireSoundInstance counts up and ReleaseSoundInstance down; 4 references in 2 functions
 0x0048DD90 0x4 m_errorsound__4CSnd  # OVL1 bss; s1:data-seq (size SOCOM 1's; via PlayErrorSound__4CSndFv)
 0x0048DD98 0x4 m_max_num_vags__4CSnd  # OVL1 bss; s1:data-seq (size SOCOM 1's; via WaitForCDRead__4CSndFv)
+0x0048DF10 0x1 bnkArchiveIsOpen  # OVL1 bss; SOCOM 1's static of zsnd_csnd.cpp (LOCAL in its symbols): CSnd::Init sets it before opening the bank archive, once, as SOCOM 1's; 2 references in 1 function
 0x0048DF30 0x1 snd_system_initialized  # OVL1 bss; s1:data-seq (size SOCOM 1's; via WaitForCDRead__4CSndFv)
 0x0048DF80 0x1 m_paused__12CSndInstance  # OVL1 bss; CSndInstance static (name ours): Init clears it, PauseAllSounds sets it; 2 references in 2 functions
 0x0048DF98 0xC m_list__12CSndInstance  # OVL1 bss; CSndInstance static (name ours): the voices playing, a list<CSndInstance *> (0x403230 constructs it and registers its destructor); 28 references in 13 functions

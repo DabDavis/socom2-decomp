@@ -70,12 +70,17 @@ void snd_PlayVAGStreamByLoc_CB(int loc1, int loc2, int offset1, int offset2, int
                                int group, int parent, int priority, int flags,
                                SndCompleteProc callback, unsigned long user_data);
 void snd_CloseVAGStreaming(void);
+int snd_StartSoundSystem(int flags);
+void snd_StopSoundSystem(void);
 }
 
 /* --- the game's classes --- */
 
 class CSndInstance;
 class CValve;
+namespace zar {
+class CZAR;
+}
 struct _zrdr;
 
 /* SOCOM 1's DWARF (bytes under -enum min) */
@@ -122,6 +127,7 @@ public:
     static void LoadReverbs(_zrdr *rdr);
     static void LoadIndoorReverbs(_zrdr *rdr);
     static void LoadOutdoorReverbs(_zrdr *rdr);
+    static void Init();
     static void Close();
     static void Open();
     static void UIOpen();
@@ -137,6 +143,9 @@ public:
     static int m_max_num_vags;          /* 0x48DD98 */
     static int m_numStreams;            /* 0x48DD80: streamed voices playing (name ours) */
     static int m_numActive;             /* 0x48DD88: voices acquired (name ours) */
+    static bool m_hasreverb;            /* 0x48DD30 (SOCOM 1's) */
+    static int m_bnkoffset;             /* 0x3DFFD0: the bank archive's disc offset (SOCOM 1's) */
+    static zar::CZAR m_bnkArchive;      /* 0x48DC70: the bank archive (SOCOM 1's) */
 
     float m_vol;                        /* 0x04 */
     char *m_name;                       /* 0x08 */
