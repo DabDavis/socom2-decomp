@@ -6,10 +6,10 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+char *GetCurItem__5CZKitCFv(s32);                   /* extern */
 M2C_UNK SetWeaponState__10CZSealBodyF12WEAPON_STATE(s32, M2C_UNK); /* extern */
-char *func_005C3780(s32);                           /* extern */
 M2C_UNK func_005DF8B0(s32, M2C_UNK *, M2C_UNK);     /* extern */
-extern M2C_UNK data_003F6500;
+extern M2C_UNK unit_nz__6CPnt3D;
 
 /* Warning: Gap in callee-saved word stack region.
  * Saved: [0x0, 0x10, 0x14, 0x18, 0x1c, 0x20, 0x24, 0x28, 0x2c, 0x30, 0x34], gap at: 0x8. */
@@ -18,11 +18,11 @@ void func_00565AE0(char *arg0, f32 fparg0) {
     char *temp_v0;
 
     temp_s0 = M2C_FIELD(arg0, s32 *, 4);
-    temp_v0 = func_005C3780(temp_s0 + 0x5E0);
+    temp_v0 = GetCurItem__5CZKitCFv(temp_s0 + 0x5E0);
     if ((M2C_FIELD(arg0, u8 *, 0x26E) == 2) || (temp_v0 == NULL) || ((s32) M2C_FIELD(temp_v0, u8 *, 0x24) < 3)) {
         return;
     }
     SetWeaponState__10CZSealBodyF12WEAPON_STATE(temp_s0, 1);
-    func_005DF8B0(temp_s0, &data_003F6500, 0);
+    func_005DF8B0(temp_s0, &unit_nz__6CPnt3D, 0);
     M2C_FIELD(arg0, f32 *, 0x74C) = fparg0;
 }
