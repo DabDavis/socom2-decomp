@@ -5,6 +5,7 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
 typedef unsigned int u_long128 __attribute__((mode(TI)));
@@ -26,16 +27,16 @@ struct VC_60 {
 };
 extern "C" {
 void DropMPBomb__10CZSealBodyFv(char * arg0);
+s32 HasItem__5CZKitCF10EQUIP_ITEM(char * arg0, s32 arg1);
 M2C_UNK RequestNewBombState__11CZBombStateFiQ211CZBombState13EnumBombStatePC6CPnt3D(s32 arg0, s32 arg1, char * arg2);
 char * func_0028E880(s32 arg0, s32 arg1, s32 arg2);
-s32 func_005C86F0(s32 arg0, s32 arg1);
 extern M2C_UNK data_0065F0F8;
 
 void DropMPBomb__10CZSealBodyFv(char *arg0) {
     char *temp_v0;
 
-    if (func_005C86F0((s32) (arg0 + 0x5E0), 0x9A) != 0) {
-        RequestNewBombState__11CZBombStateFiQ211CZBombState13EnumBombStatePC6CPnt3D(M2C_FIELD(arg0, s32 *, 4), 1, arg0 + 0x1C);
+    if (HasItem__5CZKitCF10EQUIP_ITEM(arg0 + 0x5E0, 0x9A) != 0) {
+        RequestNewBombState__11CZBombStateFiQ211CZBombState13EnumBombStatePC6CPnt3D(SC_MEMBER(arg0, s32 *, 4), 1, arg0 + 0x1C);
         temp_v0 = func_0028E880((s32) (arg0 + 0x170), (s32) &data_0065F0F8, 0);
         if (temp_v0 != NULL) {
             ((VC_60 *)(temp_v0))->v_38(0);

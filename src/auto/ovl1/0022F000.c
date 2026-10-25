@@ -9,8 +9,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define NULL 0
 s32 CanPerformAction__9CSealCtrlFP11CNodeAction(s32, char *); /* extern */
 M2C_UNK ExecuteAction__11CNodeActionFP10CZSealBodyUi(char *, char *, M2C_UNK); /* extern */
+s32 GetUnitByTeam__9CSealUnitFUi(u8);               /* extern */
 M2C_UNK func_005EAD70(s32, M2C_UNK, M2C_UNK, M2C_UNK); /* extern */
-s32 func_005EF2F0(u8);                              /* extern */
 extern char *data_00412FF0;
 extern u8 data_00413000;
 extern u8 data_00413008;
@@ -21,7 +21,7 @@ s32 func_0022F000(char *arg0) {
     char *temp_s0;
 
     if (data_00413000 != 0) {
-        temp_v0 = func_005EF2F0(data_00413008);
+        temp_v0 = GetUnitByTeam__9CSealUnitFUi(data_00413008);
         if ((temp_v0 != 0) && (arg0 != NULL) && (((u64) ((s64) SC_MEMBER(arg0, u8 *, 0xE1) << 0x3B) >> 0x3F) != 0)) {
             func_005EAD70(temp_v0, 1, 0, 0);
         }

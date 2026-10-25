@@ -845,6 +845,22 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     blend into $f0 and loads the factor into $f1 after the mula (ComputeElevOfs);
   - CZSealBody is `: CEntity, CBody` -- CBody at 0x170, 0x90 bytes (its constructor at 0x28EDD0
     zeroes through 0x8C); every CAiState holds a CAiStateStack (`: list<CAiState*>`) at +8.
+- **Tells from the kit and the AI states** (seal_aistate.cpp, seal_airesponse.cpp,
+  seal_aifollow.cpp, remote_control.cpp, seal_squirm.cpp, seal_kit.cpp, seal_unit.cpp):
+  - SOCOM II's CAiState table has 18 slots (SOCOM 1's ten, eight added, the destructor last at
+    +0x4C), read off every SOCOM 1 override; ai/ai_states.h is the one declaration (zseal.h
+    includes it), the base's answers inline: a unit that emits a state's table emits the copies
+    its slots need;
+  - a member destructor the target calls from every unit (not inlined a level) is an ordinary
+    function defined in one unit (CAiStateStack's, seal_aistate.cpp);
+  - a class's inline-virtual stub copies come with its table, so a unit's tail of stubs needs one
+    of the class's virtuals defined non-inline in that unit;
+  - `bool ok = false; switch ... ok = f(); break;` gives a `jal` then `andi 0xff` per case, with
+    the zero in the delay slot (CRemoteCtrl::AllowCommand);
+  - a struct copied with memcpy and read through a `bool` member returns without `sltu`
+    (GetJumpFlag);
+  - the GCC libraries start at OVL2 0x60FB50 (an empty `jal` delay slot, GCC's prologue order,
+    8-aligned with no padding); the last Metrowerks function is 0x60FB30.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has

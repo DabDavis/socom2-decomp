@@ -40,26 +40,30 @@ public:
 
 class CAiState {
 public:
-    /* what a state is told (SOCOM 1's CAiState::SIGNAL, a byte; the values are not needed yet) */
-    enum SIGNAL { SIGNAL_NONE = 0, SIGNAL_LAST = 255 };
+    /* what a state is told (SOCOM 1's CAiState::SIGNAL, a byte; SOCOM 1's names unknown: the
+     * states test 0-4, CAiSPursue's and CAiSAnimate's OnSignal reset on 4) */
+    enum SIGNAL { SIGNAL_0 = 0, SIGNAL_1 = 1, SIGNAL_2 = 2, SIGNAL_3 = 3, SIGNAL_4 = 4, SIGNAL_LAST = 255 };
 
+    /* the base's answers are inline: a unit that emits a state's table emits the copies its
+     * slots need (seal_ai.cpp's are the ones linked, 0x555380-0x5553B0, 0x570D10, 0x575990,
+     * 0x575AA0; seal_unit.cpp's OnSignal and Tick, 0x5F81D0) */
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai) {}               /* +0x08 */
     virtual void Virtual0C(int a, int b, int c);                          /* +0x0C (new) */
     virtual bool Tick(float dT, CSealCtrlAi *ai) { return true; }        /* +0x10 */
-    virtual int Virtual14();                                              /* +0x14 (new) */
-    virtual const char *GetStatus() const;                                /* +0x18 */
-    virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);         /* +0x1C */
-    virtual bool CanSwitchAiState(AI_STATE state, CSealCtrlAi *ai);       /* +0x20 */
-    virtual bool CanAttack() const;                                       /* +0x24 */
-    virtual bool CanScan() const;                                         /* +0x28 */
-    virtual bool CanPursue(CSealCtrlAi *ai) const;                        /* +0x2C */
-    virtual const char *GetScriptResponse() const;                        /* +0x30: a string, or 0 */
-    virtual bool Virtual34();                                             /* +0x34 (new) */
-    virtual bool Virtual38();                                             /* +0x38 (new) */
-    virtual bool Virtual3C();                                             /* +0x3C (new) */
-    virtual bool Virtual40();                                             /* +0x40 (new) */
-    virtual bool Virtual44();                                             /* +0x44 (new) */
-    virtual bool Virtual48();                                             /* +0x48 (new) */
+    virtual int Virtual14() { return 0; }                                 /* +0x14 (new) */
+    virtual const char *GetStatus() const { return ""; }                  /* +0x18 */
+    virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai) { return true; }   /* +0x1C */
+    virtual bool CanSwitchAiState(AI_STATE state, CSealCtrlAi *ai) { return true; } /* +0x20 */
+    virtual bool CanAttack() const { return true; }                       /* +0x24 */
+    virtual bool CanScan() const { return true; }                         /* +0x28 */
+    virtual bool CanPursue(CSealCtrlAi *ai) const { return true; }        /* +0x2C */
+    virtual const char *GetScriptResponse() const { return 0; }           /* +0x30: a string, or 0 */
+    virtual bool Virtual34() { return true; }                             /* +0x34 (new) */
+    virtual bool Virtual38() { return true; }                             /* +0x38 (new) */
+    virtual bool Virtual3C() { return true; }                             /* +0x3C (new) */
+    virtual bool Virtual40() { return false; }                            /* +0x40 (new) */
+    virtual bool Virtual44() { return false; }                            /* +0x44 (new) */
+    virtual bool Virtual48() { return false; }                            /* +0x48 (new) */
     virtual ~CAiState() {}                                                /* +0x4C */
 
     unsigned int m_4;   // 0x4 (zeroed by the constructor)

@@ -4067,7 +4067,7 @@
 0x002BB7F0 0x84 ZAnimNetworkPacketHandler__FiiiPv  # OVL1; s1:align
 0x002BB880 0x54 SendZAnimNetworkPacket__FPvi  # OVL1; s1:align
 0x002BB8E0 0x88 func_002BB8E0  # OVL1
-0x002BB970 0x104 func_002BB970  # OVL1
+0x002BB970 0x104 NetSendAiOrders__FUiUiUiPv  # OVL1; s1:calls (CRemoteCtrl::OnCommand calls it at SOCOM 1's site, SOCOM II passing 0 as the data; four arguments, the fourth kept in s0 as SOCOM 1's) -- the kit lane
 0x002BBA80 0x6C PushBlendAnimPacketHandler__FiiiPv  # OVL1; s1:align
 0x002BBAF0 0xE0 func_002BBAF0  # OVL1
 0x002BBBD0 0x1C4 HitPacketHandler__FiiiPv  # OVL1; s1:calls
@@ -10385,7 +10385,7 @@
 0x00577EA0 0x238 func_00577EA0  # OVL2
 0x005780E0 0x28 func_005780E0  # OVL2
 0x00578110 0x40 func_00578110  # OVL2
-0x00578150 0x58 func_00578150  # OVL2
+0x00578150 0x58 AdrenalineIncr__10CZSealBodyFf  # OVL2; s1:calls (CZKit::InitializeSniperKick tail-calls it with a float, as SOCOM 1's; 0x58 bytes in both) -- the kit lane
 0x005781B0 0x8 func_005781B0  # OVL2
 0x005781C0 0x2D4 func_005781C0  # OVL2
 0x005784A0 0x41C func_005784A0  # OVL2
@@ -10605,8 +10605,8 @@
 0x005911F0 0x18C func_005911F0  # OVL2
 0x00591380 0x1A0 func_00591380  # OVL2
 0x00591520 0x250 func_00591520  # OVL2
-0x00591770 0x33C func_00591770  # OVL2
-0x00591AB0 0x308 func_00591AB0  # OVL2
+0x00591770 0x33C AllowCommandHOLDPOS__9CSealCtrlFP10CZSealBody  # OVL2; s1:calls (CRemoteCtrl::AllowCommand's case-5 call, where SOCOM 1's calls AllowCommandHOLDPOS) -- the kit lane
+0x00591AB0 0x308 AllowCommandFOLLOW__9CSealCtrlFP10CZSealBody  # OVL2; s1:calls (CRemoteCtrl::AllowCommand's case-4 call, where SOCOM 1's calls AllowCommandFOLLOW; both images put HOLDPOS first) -- the kit lane
 0x00591DC0 0x1FC func_00591DC0  # OVL2
 0x00591FC0 0x1C func_00591FC0  # OVL2
 0x00591FE0 0x1C func_00591FE0  # OVL2

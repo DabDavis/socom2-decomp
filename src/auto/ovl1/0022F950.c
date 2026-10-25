@@ -4,10 +4,11 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+char *GetUnitByTeam__9CSealUnitFUi(M2C_UNK);        /* extern */
 s32 func_002C2C20(s32);                             /* extern */
-char *func_005EF2F0(M2C_UNK);                       /* extern */
 extern u8 data_0045A0C1;
 
 s32 func_0022F950(s32 arg0, s32 arg1) {
@@ -16,7 +17,7 @@ s32 func_0022F950(s32 arg0, s32 arg1) {
     if ((data_0045A0C1 != 0) && (arg1 >= 0) && (arg1 < 3)) {
         temp_v0 = func_002C2C20(arg1);
         if ((temp_v0 >= 0) && (temp_v0 < 3)) {
-            M2C_FIELD(func_005EF2F0(0x18), s32 *, 0xC4) = temp_v0;
+            SC_MEMBER(GetUnitByTeam__9CSealUnitFUi(0x18), s32 *, 0xC4) = temp_v0;
         }
     }
     return 0;

@@ -9,9 +9,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define NULL 0
 #pragma mpwc_relax on
 M2C_UNK __dl__FPv(char *);                          /* extern */
+M2C_UNK __dt__13CAiStateStackFv(char *, M2C_UNK);   /* extern */
 M2C_UNK func_00575CF0(M2C_UNK *, char *, s32 *, char **); /* extern */
 M2C_UNK func_00575F40(M2C_UNK *, s32, s32 *, char **); /* extern */
-M2C_UNK func_005F8490(char *, M2C_UNK);             /* extern */
 extern M2C_UNK __vt__11CAiSAnimate;
 extern M2C_UNK __vt__8CAiState;
 
@@ -41,7 +41,7 @@ char *__dt__11CAiSAnimateFv(char *arg0, s64 arg1) {
         }
         if (arg0 != NULL) {
             SC_MEMBER(arg0, M2C_UNK **, 0) = &__vt__8CAiState;
-            func_005F8490(arg0 + 8, -1);
+            __dt__13CAiStateStackFv(arg0 + 8, -1);
         }
         if (((s64) (arg1 << 0x30) >> 0x30) > 0) {
             __dl__FPv(arg0);

@@ -380,9 +380,9 @@ struct AiOrdersPacket {
     char z;   // 0x6
 };
 
-extern "C" void func_002BB970(unsigned int obj, unsigned int target, unsigned int order,
-                              const CPnt3D *pos)
+void NetSendAiOrders(unsigned int obj, unsigned int target, unsigned int order, void *data)
 {
+    const CPnt3D *pos = (const CPnt3D *)data;
     CZSealBody *body = CZSealState::GetBodyFromObjectIndex(obj);
 
     if (!(theNetwork.m_bNetwork && !func_002C2FD0(body)))
