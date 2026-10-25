@@ -15,13 +15,22 @@ class CZSealBody;
 class CZSealState {
 public:
     /* a remote SEAL whose object came before the mission was ready: its client and object (SOCOM
-     * 1's list held them newed; SOCOM II's is a vector of them, 8 bytes each -- the name ours) */
+     * 1's list held them newed; SOCOM II's is a vector of them, 8 bytes each -- the name ours).
+     * The empty constructor makes MW copy it word by word in the vector's insert (lw/sw, as the
+     * target's 0x2BF980; without it the copies go through the FPRs) */
     struct TypeRemoteGuy {
+        TypeRemoteGuy() {}
+
         int client;   // 0x0
         int index;   // 0x4
     };
 
+    /* the list reserves 30 when it is built (the static initialiser 0x400650 inlines this: three
+     * words zeroed, then reserve(30) out of line); its implicit destructor (0x2BFFC0) tests `this`
+     * four times, the class's own and the vector's three levels */
     class CRemoteGuyList : public std::vector<TypeRemoteGuy> {
+    public:
+        CRemoteGuyList() { reserve(30); }
     };
 
     /* the SEAL's network data, 0x90 bytes (SOCOM 1's 0x98): only the packed weapons, the unit's id
@@ -56,6 +65,8 @@ public:
 };
 
 typedef CZSealState::TypeSealState NetObjectData;
+
+CZSealState::CRemoteGuyList CZSealState::m_RemoteGuyList;
 
 /* a network object as the DME hands it out: its kind's name, and its data (only what this unit
  * touches) */
