@@ -20,6 +20,10 @@ enum EQUIP_ITEM { EQUIP_NONE = 0, EQUIP_LAST = 255 };
  * is no item -- the names ours) */
 enum EQUIP_IDTYPE { IDTYPE_SNIPER_RIFLE = 101, IDTYPE_NONE = 254, IDTYPE_LAST = 255 };
 
+/* a reticle (a signed byte: SetCurReticule sign-extends GetReticuleByIndex's result only to
+ * compare it; the names ours) */
+enum RETICULE_TYPE { RETICULE_NONE = -1, RETICULE_LAST = 127 };
+
 /* a weapon's fire modes (SOCOM 1's DWARF, a byte; SOCOM II's item lookups take 255 for the item's
  * current mode -- that name ours) */
 enum FIREMODE {
@@ -33,6 +37,8 @@ class CZFTSWeapon {
 public:
     unsigned char _0[0x7c];
     EQUIP_ITEM m_equip;   // 0x7c
+    unsigned char _7d[0x284 - 0x7d];
+    unsigned int m_num_zoommodes;   // 0x284: the zoom-mode vector's size (SOCOM 1's m_zoommode at 0x1c0)
 };
 
 /* the body's controller as the kit reads it (CSealCtrl; only the float the sniper's kick starts
@@ -53,6 +59,12 @@ struct CKitBody {
 
 class CZKit {
 public:
+    void ResetScreenOffsetXY();
+    void Binocs_Enabled(bool on);
+    void SetCurReticule(bool force);
+    bool CurReticuleTypeChanged();
+    float GetCurZoom();
+    RETICULE_TYPE GetReticuleByIndex(int index);
     float ScreenOffsetX();
     float ScreenOffsetY();
     void IncrScreenOffsetY(float dy);
@@ -136,10 +148,17 @@ public:
     unsigned int m_current_requested_ammo : 1;   // bit 14 (SOCOM 1's bit 13)
     unsigned int m_heartbeat_enabled : 1;
     unsigned int m_unused : 16;
-    unsigned char _4[0x38 - 0x4];
+    unsigned char _4[0x28 - 0x4];
+    float m_sniper_posx;   // 0x28 (SOCOM 1's 0x14)
+    float m_sniper_posy;   // 0x2c (SOCOM 1's 0x18)
+    unsigned char _30[0x38 - 0x30];
     float m_firerifle_kick_baseline;   // 0x38 (SOCOM 1's 0x24)
     float m_firerifle_kick_movedist;   // 0x3c (SOCOM 1's 0x28)
-    unsigned char _40[0x58 - 0x40];
+    float m_firerifle_kick_accum;   // 0x40 (SOCOM 1's 0x2c)
+    int m_firerifle_kick_state;   // 0x44 (SOCOM 1's 0x30)
+    unsigned char _48[0x54 - 0x48];
+    RETICULE_TYPE m_curitemreticule;   // 0x54 (SOCOM 1's int at 0x40)
+    unsigned char _55[0x58 - 0x55];
     float m_screenoffset_x;   // 0x58 (SOCOM 1's 0x44)
     float m_screenoffset_y;   // 0x5c (SOCOM 1's 0x48)
     unsigned char _60[0xe4 - 0x60];

@@ -4,6 +4,7 @@
  * small accessors. Defined in reverse of their image order (-inline deferred). */
 
 #include "kit.h"
+#include "../zcamera/zcamera.h"
 
 extern "C" {
 /* CZSealBody::AdrenalineIncr (SOCOM 1's AdrenalineIncr__10CZSealBodyFf, tail-called from the same
@@ -15,6 +16,11 @@ bool func_003C5D80(CZFTSWeapon *w);
 /* CZWeapon::GetIDType (SOCOM 1's GetIDType__8CZWeaponFv, called from the same GetCurItemIDType;
  * OVL1 0x3D1E10, unclaimed) */
 EQUIP_IDTYPE func_003D1E10(CZFTSWeapon *w);
+/* CZFTSWeapon::GetZoomRange (SOCOM 1's GetZoomRange__11CZFTSWeaponFUi, called from the same
+ * GetCurZoom; OVL1 0x3C5980, unclaimed) */
+float func_003C5980(CZFTSWeapon *w, unsigned int mode);
+/* a controller's word at 0x11C cleared (OVL2 0x592D40, the SEAL lane's row) */
+void func_00592D40(CKitCtrl *ctrl);
 }
 
 /* the item kinds of the first two items and the current one, 255 without one (OVL2 0x5C89D0,
@@ -87,6 +93,45 @@ void CZKit::NVG_Enabled(bool on)
             m_nvg_enabled = true;
     } else
         m_nvg_enabled = false;
+}
+
+/* the current item's zoom at the body's zoom class, 1 outside its zoom modes (OVL2 0x5BE660;
+ * SOCOM 1's) */
+float CZKit::GetCurZoom()
+{
+    CZFTSWeapon *w = m_item[m_selected_item];
+    float zoom = 1.0f;
+
+    if (w) {
+        unsigned int mode = ((CKitBody *)m_body)->m_200 - 4;
+
+        if (mode < w->m_num_zoommodes)
+            zoom = func_003C5980(w, mode);
+    }
+    return zoom;
+}
+
+/* the reticle's change taken, once, with a little adrenaline (OVL2 0x5BE5F0; SOCOM 1's) */
+bool CZKit::CurReticuleTypeChanged()
+{
+    if (m_reticuletypeChanged) {
+        m_reticuletypeChanged = false;
+        func_00578150(m_body, 0.5f);
+        return true;
+    }
+    return false;
+}
+
+/* the current item's reticle, flagged when it changes or when forced (OVL2 0x5BE570; SOCOM 1's
+ * took no flag and always flagged it) */
+void CZKit::SetCurReticule(bool force)
+{
+    RETICULE_TYPE r = GetReticuleByIndex(m_selected_item);
+
+    if (force || r != m_curitemreticule) {
+        m_curitemreticule = r;
+        m_reticuletypeChanged = true;
+    }
 }
 
 /* the current item's id type, 254 without one (OVL2 0x5C8040; SOCOM 1's) */
@@ -270,6 +315,15 @@ void CZKit::InitializeSniperKick()
     func_00578150(m_body, 0.5f);
 }
 
+/* the binoculars put away or taken out: put away, the controller's word at 0x11C cleared (OVL2
+ * 0x5B9110; SOCOM 1's only set the bit) */
+void CZKit::Binocs_Enabled(bool on)
+{
+    if (m_binocs_enabled && !on)
+        func_00592D40(((CKitBody *)m_body)->m_control);
+    m_binocs_enabled = on;
+}
+
 /* the binoculars' zoom class (OVL2 0x5B90F0; SOCOM 1's 3, SOCOM II's 4) */
 bool CZKit::IsUsingBinocs()
 {
@@ -290,4 +344,21 @@ float CZKit::ScreenOffsetY()
 void CZKit::IncrScreenOffsetY(float dy)
 {
     m_screenoffset_y += dy;
+}
+
+/* the offsets cleared, and the camera's set to the scope's or to none (OVL2 0x5B9030; SOCOM 1's
+ * set the camera's fields itself) */
+void CZKit::ResetScreenOffsetXY()
+{
+    m_screenoffset_x = 0.0f;
+    m_screenoffset_y = 0.0f;
+    zdb::CCamera *cam = zdb::CWorld::m_world->m_camera;
+
+    if (m_body && ((CKitBody *)m_body)->m_200 > 4) {
+        cam->SetScreenOffsetX(m_sniper_posx);
+        cam->SetScreenOffsetY(m_sniper_posy);
+    } else {
+        cam->SetScreenOffsetX(0.0f);
+        cam->SetScreenOffsetY(0.0f);
+    }
 }

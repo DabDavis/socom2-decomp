@@ -10930,12 +10930,12 @@
 0x005B8FC0 0x30 func_005B8FC0  # OVL2
 0x005B8FF0 0x2C func_005B8FF0  # OVL2
 0x005B9020 0xC func_005B9020  # OVL2
-0x005B9030 0x8C func_005B9030  # OVL2
+0x005B9030 0x8C ResetScreenOffsetXY__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's ResetScreenOffsetXY, the unit's first as there: both screen offsets zeroed; SOCOM II then hands the camera (CWorld::m_world->m_camera) the sniper position (0x28/0x2C, SOCOM 1's 0x14/0x18) under a scope's zoom class, else zero)
 0x005B90C0 0x10 IncrScreenOffsetY__5CZKitFf  # OVL2; s1:order by hand (SOCOM 1's IncrScreenOffsetY: the same add to the screen offset's y, at 0x5C here where SOCOM 1's is 0x48 -- the reticle block 0x14 on; the kit's first accessors in SOCOM 1's order)
 0x005B90D0 0x8 ScreenOffsetY__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's ScreenOffsetY, after IncrScreenOffsetY: the float at 0x5C, SOCOM 1's 0x48)
 0x005B90E0 0x8 ScreenOffsetX__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's ScreenOffsetX, next: the float at 0x58, SOCOM 1's 0x44)
 0x005B90F0 0x14 IsUsingBinocs__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's IsUsingBinocs, next: the body's byte (0x200, SOCOM 1's 0x160) compared with 4 where SOCOM 1's compares 3)
-0x005B9110 0x70 func_005B9110  # OVL2
+0x005B9110 0x70 Binocs_Enabled__5CZKitFb  # OVL2; s1:order by hand (SOCOM 1's Binocs_Enabled, after IsUsingBinocs as there: bit 5 set from the flag; SOCOM II first calls 0x592D40 on the body's controller when the binoculars go away)
 0x005B9180 0x34 InitializeSniperKick__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's InitializeSniperKick: the kick's distance zeroed, its baseline from the controller's +0x130 when there is one, AdrenalineIncr(0.5) tail-called -- the same code with the fields 0x14 on)
 0x005B91C0 0xB4 func_005B91C0  # OVL2
 0x005B9280 0x518 func_005B9280  # OVL2
@@ -10992,10 +10992,10 @@
 0x005BE1D0 0x68 func_005BE1D0  # OVL2
 0x005BE240 0xA8 func_005BE240  # OVL2
 0x005BE2F0 0x8 func_005BE2F0  # OVL2
-0x005BE300 0x258 func_005BE300  # OVL2
+0x005BE300 0x258 GetReticuleByIndex__5CZKitFi  # OVL2; s1:order by hand (SOCOM 1's GetReticuleByIndex, before SetCurReticule, which calls it on the selected item as there; SOCOM II's result a signed byte, sign-extended at the call)
 0x005BE560 0x8 func_005BE560  # OVL2
 0x005BE570 0x74 SetCurReticule__5CZKitFb  # OVL2; s1:calls by hand (the HUD lane: CHUD::ZoomIn/ZoomOut call it where SOCOM 1's call SetCurReticule; SOCOM II added a bool parameter, hence Fb)
-0x005BE5F0 0x5C func_005BE5F0  # OVL2
+0x005BE5F0 0x5C CurReticuleTypeChanged__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's CurReticuleTypeChanged, after SetCurReticule as there: bit 1 tested and cleared, AdrenalineIncr(0.5) on the body)
 0x005BE650 0x8 func_005BE650  # OVL2
 0x005BE660 0x5C GetCurZoom__5CZKitFv  # OVL2; s1:calls by hand (the HUD lane: at SOCOM 1's call site in ZoomIn/ZoomOut; 0x5C bytes against SOCOM 1's 0x58)
 0x005BE6C0 0x30 func_005BE6C0  # OVL2
