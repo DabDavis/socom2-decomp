@@ -47,13 +47,13 @@ public:
     CSaferStr() {}
     /* the string made empty, then assigned (SOCOM 1's, as its operator=) */
     CSaferStr(const char *sz) { *this = sz; }
-    CSaferStr &operator=(const char *sz)
+    /* nothing returned: the out-of-line copy (0x22DCC0) keeps no `this` for a result */
+    void operator=(const char *sz)
     {
         if (sz)
             assign(sz);
         else
             erase();
-        return *this;
     }
 };   // 0xC bytes
 
