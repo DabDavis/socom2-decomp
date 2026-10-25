@@ -192,6 +192,7 @@
 0x003DF330 0x4 m_pointer__6CStack  # OVL1; s1:data-seq (size SOCOM 1's; via Multiply__6CStackFPC7CMatrixb)
 0x003DF338 0x4 m_top__6CStack  # OVL1; s1:data-seq (size SOCOM 1's; via Multiply__6CStackFPC7CMatrixb)
 0x003DF340 0x4 m_exp_scl  # OVL1; s1:data-seq (size SOCOM 1's; via exp_tl__Ff)
+0x003DF348 0x4 _Max_Height  # OVL1 data; SOCOM 1's _Max_Height (0x475468, small data: SetMaxHeight__5CMPEGFi stores it, Loop sizes the buffers by it): CMPEG::SetMaxHeight (0x309550) stores it, Run sets it to zVid's render height, Init and Loop size the buffers by it, tickPss reads it; 480 in the image; 9 references in 6 functions -- the online lane, round 4
 0x003DFD10 0x4 UNNAMED_NODE  # OVL1; SOCOM 1 name (node_main.cpp's file static: the name nameless nodes share; CNode::SetName reads it)
 0x003DFD18 0x4 DELETED_NODE  # OVL1; SOCOM 1 name (the name a node is left with as it is destroyed; ~CNode stores it after SetName(0), as SOCOM 1's)
 0x003DFE10 0x4 m_scale__Q23zdb6CWorld  # OVL1; s1:data-seq (size SOCOM 1's; via Load__17CharacterDynamicsFRC8CRdrFile)
@@ -764,6 +765,16 @@
 0x00451090 0x404 exptbl  # OVL1 bss; s1:data-seq (size SOCOM 1's; via exp_tl__Ff +1)
 0x004514A0 0x404 sintbl  # OVL1 bss; s1:data-order by hand (init_trig_table stores sinf's results here and cosf's at 0x4518B0, as SOCOM 1's sintbl and costbl)
 0x004518B0 0x404 costbl  # OVL1 bss; s1:data-order by hand (the cosf table, after sintbl)
+0x00451CB8 0x1 BlockingPSSPlayback  # OVL1 bss; SOCOM 1's BlockingPSSPlayback (0x4767D8): CMPEG::Run stores its bool there, Loop and Tick test it, the nodata callback 0x30A970 reads it; 4 references in 4 functions -- the online lane, round 4
+0x00451CC0 0x28 rsrcs__19@unnamed@zmpeg_cpp@  # OVL1 bss; SOCOM 1's zmpeg.cpp anonymous-namespace rsrcs (0x52CB90, 0x30 there): the playPssRsrcs CMPEG::Init fills and Run, Loop, Tick hand the player; 0x28 to the next row; 31 references in 6 functions -- the online lane, round 4
+0x00451CF0 0x1 internal_init__19@unnamed@zmpeg_cpp@  # OVL1 bss; SOCOM 1's internal_init (0x4767DC): CMPEG::Run sets it when it made the buffers, End frees them then; 4 references in 2 functions -- the online lane, round 4
+0x00451CF8 0x4 p_mp__19@unnamed@zmpeg_cpp@  # OVL1 bss; SOCOM 1's p_mp (0x4767E0): the 72-byte sceMpeg CMPEG::Run allocates; 16 references in 6 functions -- the online lane, round 4
+0x00451D00 0x4 startArg__19@unnamed@zmpeg_cpp@  # OVL1 bss; SOCOM II's, the name ours: CMPEG::Run keeps its fourth argument there, Loop hands it to startPss again; 2 references in 2 functions -- the online lane, round 4
+0x00451D08 0x1 mpegBuffAlloc__19@unnamed@zmpeg_cpp@  # OVL1 bss; SOCOM 1's mpegBuffAlloc (0x4767E4): CMPEG::Init sets it when the buffer was allocated, Uninit frees it then; 3 references in 2 functions -- the online lane, round 4
+0x00451D10 0x1 rgb32Alloc__19@unnamed@zmpeg_cpp@  # OVL1 bss; SOCOM 1's rgb32Alloc (0x4767E8), as mpegBuffAlloc; 3 references in 2 functions -- the online lane, round 4
+0x00451D18 0x1 path3tagAlloc__19@unnamed@zmpeg_cpp@  # OVL1 bss; SOCOM 1's path3tagAlloc (0x4767EC), as mpegBuffAlloc; 3 references in 2 functions -- the online lane, round 4
+0x00451D20 0x1 demuxBuffAlloc__19@unnamed@zmpeg_cpp@  # OVL1 bss; SOCOM 1's demuxBuffAlloc (0x4767F0), as mpegBuffAlloc; 3 references in 2 functions -- the online lane, round 4
+0x00451D28 0x1 audioBuffAlloc__19@unnamed@zmpeg_cpp@  # OVL1 bss; SOCOM 1's audioBuffAlloc (0x4767F4), as mpegBuffAlloc; 3 references in 2 functions -- the online lane, round 4
 0x0045A0C0 0x125C theNetwork  # OVL1 bss; s1:data-seq (via HandleBombStateRequest__11CZBombStateFiUcP6CPnt3D), moved by hand from 0x45A0B8: every network sender passes 0x45A0C0 as CZNetwork::zNetSendApplicationMessage's this where SOCOM 1 passes theNetwork, and the session-master and network flags SOCOM 1 keeps at 8 and 9 sit at 0x45A0C0/0x45A0C1 -- SOCOM II dropped the two team indices ahead of them (the states lane, round 5); size SOCOM 1's less those 8 bytes
 0x0045C298 0x4 NodeUniverse__3zdb  # OVL1 bss; s1:by hand (GetDatabaseNode tests and searches it where SOCOM 1's reads NodeUniverse__3zdb)
 0x0045C2A0 0x4 numNodes  # OVL1 bss; SOCOM 1 name (the node count, after NodeUniverse as in SOCOM 1; ~CNode counts it down)
