@@ -125,16 +125,18 @@ void __list_deleter<T, Allocator>::init(InputIterator first, InputIterator last)
         insert(end(), *first);
 }
 
-/* the nodes [first, last) unlinked around the last one's links, then freed one by one.
- * OPEN (0x1EAAF0, and every type's 0xBC copy): 7 instructions -- first's node and the last
- * node take each other's registers (a2/a1), whatever the declaration order or loop shape */
+/* the nodes [first, last) unlinked around the last one's links, then freed one by one
+ * (0x1EAAF0, and every type's 0xBC copy). first's node is taken into a local before the test,
+ * which compares it with last's: the node then keeps the register it was loaded into (a2), where
+ * `first == last` first and the local after gave the last node that register and first's a1 */
 template <class T, class Allocator>
 typename __list_deleter<T, Allocator>::iterator
 __list_deleter<T, Allocator>::erase(iterator first, iterator last)
 {
-    if (first == last)
-        return last;
     node_base *f = first.node_;
+
+    if (f == last.node_)
+        return last;
     node_base *l = last.node_->prev_;
 
     f->prev_->next_ = l->next_;
