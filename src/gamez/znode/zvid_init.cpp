@@ -15,17 +15,37 @@ struct sceGsLoadImage {
     u_long128 giftag1;
 };
 
+/* and back (Sony's: a GIF tag and six register pairs, FINISH among them, 0x70 bytes) */
+struct sceGsStoreImage {
+    u_long128 giftag0;
+    unsigned long regs[12];
+};
+
 extern "C" {
 int sceGsSetDefLoadImage(sceGsLoadImage *lp, short dbp, short dbw, short dpsm, short x, short y,
                          short w, short h);
 int sceGsExecLoadImage(sceGsLoadImage *lp, u_long128 *srcaddr);
+int sceGsSetDefStoreImage(sceGsStoreImage *sp, short sbp, short sbw, short spsm, short x, short y,
+                          short w, short h);
+int sceGsExecStoreImage(sceGsStoreImage *sp, u_long128 *dstaddr);
+int sceGsSyncPath(int mode, unsigned short timeout);
 }
+
+/* the FIFO held while the GS is read (zsys_fifo.cpp's) */
+void zSysFifoPause();
+void zSysFifoResume(bool kick);
+
+/* the stored image's width in pixels (256) and its pixel format (not named: SOCOM 1's reader
+ * took both from its arguments) */
+extern unsigned int data_003E1410;
+extern short data_004A4540;
 
 /* the video's statics (SOCOM 1's class; only what this unit's matched code touches) */
 class CVideo {
 public:
     static void Brightness(float b);
     static void WriteGsMemory(unsigned int addr, u_long128 *data, unsigned int size);
+    static void ReadGsMemory(unsigned int addr, u_long128 *data, unsigned int size);
     static void Fade(float t, unsigned char r, unsigned char g, unsigned char b);
     static int MaxFrameRate(int rate);
 
@@ -177,6 +197,28 @@ void CVideo::Fade(float t, unsigned char r, unsigned char g, unsigned char b)
     zvid_fade[1] = g;
     zvid_fade[2] = b;
     zvid_fade[3] = (unsigned int)(255.0f * t);
+}
+
+/* GS memory read back in 256x256 blocks, the FIFO paused (SOCOM 1's took the blocks' size and
+ * format from its arguments) */
+void CVideo::ReadGsMemory(unsigned int addr, u_long128 *data, unsigned int size)
+{
+    sceGsStoreImage si;
+
+    DIntr();
+    zSysFifoPause();
+    sceGsSyncPath(0, 0);
+    do {
+        sceGsSetDefStoreImage(&si, addr, data_003E1410 >> 6, data_004A4540, 0, 0, 256, 256);
+        FlushCache(0);
+        sceGsExecStoreImage(&si, data);
+        size -= 0x40000;
+        data += 0x4000;
+        addr += 1024;
+        sceGsSyncPath(0, 0);
+    } while (size);
+    zSysFifoResume(true);
+    EIntr();
 }
 
 /* the image written to GS memory in 256x256 blocks of 32 bits (SOCOM 1's, byte for byte) */

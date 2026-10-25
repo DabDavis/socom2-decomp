@@ -13,6 +13,11 @@
 #include "../zmath/zmath.h"
 
 class CZProjectile;
+/* a quadword seen every way (zsys_public.h's union: the visuals' texture selects are arrays of them) */
+union _word128;
+namespace zar {
+class CZAR;
+}
 
 /* the node count (SOCOM 1's numNodes, a global outside zdb, after NodeUniverse) */
 extern int numNodes;
@@ -179,6 +184,40 @@ struct tag_VISUAL_HEAD {
 
 class CTexHandle;
 class BLENDMODE;
+class CTexture;
+class CTexPalette;
+
+/* a library's textures (SOCOM 1's DWARF: CTexList : vector). Its code is vis code, out of line
+ * (SOCOM 1's names, in SOCOM 1's order at 0x354510-0x354790). Declared ahead of CVisual, which
+ * holds a CDynTexList */
+class CTexList : public std::vector<CTexHandle *> {
+public:
+    /* every handle let go of, the list emptied */
+    void Free();
+    /* a texture's handle made and listed */
+    CTexHandle *Append(CTexture *tex, bool b);
+    /* the handle of a texture of that name, or none */
+    CTexHandle *GetHandle(const char *name);
+    /* the handle of that texture, or none (SOCOM 1's, right after the name overload) */
+    CTexHandle *GetHandle(CTexture *tex);
+};   // 0xc bytes
+
+/* a library's palettes (SOCOM 1's DWARF: CTexPalList : vector) */
+class CTexPalList : public std::vector<CTexPalette *> {
+};   // 0xc bytes
+
+/* a texture buffer's dynamic textures (SOCOM 1's DWARF: CDynTexList, two vectors) */
+class CDynTexList {
+public:
+    void Add(CTexHandle *tex, bool b);
+    /* a palette listed (SOCOM 1's overload, 0x357860 here) */
+    void Add(CTexPalette *pal, bool b);
+
+    CTexList m_tex_list;   // 0x0
+    CTexPalList m_pal_list;   // 0xc
+};   // 0x18 bytes
+
+class CMesh;
 
 class CVisual : public tag_VISUAL_HEAD {
 public:
@@ -198,18 +237,26 @@ public:
     /* a decal projected onto the visual (SOCOM 1's, by name) */
     void ApplyDecalRender(CMatrix *mtw, CNode *node, float size, CPnt3D *pos, CPnt3D *normal,
                           CTexHandle *tex, CMatrix *uv);
+    /* a texture select's name resolved against the world's textures, the default one failing it:
+     * the handle and its palette listed, the select copied in (SOCOM 1's; the wep lane's) */
+    CTexture *ResolveTextureName(_word128 *names, _word128 *select);
 
-    unsigned char _24[0x3c - 0x24];
+    /* the wep lane's, from the constructor (0x3C4390): two vectors before the blend words, and the
+     * dynamic textures and two words after them -- CSubMesh's own members start at 0x68 */
+    std::vector<void *> m_24;   // 0x24 (not read yet)
+    /* per view, the mesh of the level of detail in use (CMesh::SetLOD; the name ours) */
+    std::vector<CMesh *> m_lodMesh;   // 0x30
     /* the blend words its packets use, each written by CNode::SetBlendMode (the name ours) */
     std::vector<BLENDMODE *> m_blendmodes;   // 0x3c
-};
-
-class CMesh;
+    /* its textures and palettes (ResolveTextureName adds to it) */
+    CDynTexList m_dynTexList;   // 0x48
+    unsigned int m_60;   // 0x60
+    unsigned int m_64;   // 0x64
+};   // 0x68 bytes
 
 class CSubMesh : public CVisual {
 public:
     CSubMesh(CMesh *mesh);
-    unsigned char _48[0x68 - 0x48];
     int m_index;   // 0x68: its place in its mesh's matrices (the names ours)
     CVisual *m_mesh;   // 0x6c
 };
@@ -218,8 +265,25 @@ class CMesh : public CVisual {
 public:
     /* a copy of the mesh, its own data, for a node (SOCOM 1's took no node) */
     CMesh *Clone(CNode *owner);
-    unsigned char _48[0x90 - 0x48];
-    CMatrix **m_palette;   // 0x90: its sub-meshes' matrices, by index (the name ours)
+    /* the wep lane's (vis_mesh.cpp, SOCOM 1's names) */
+    void SetMeshTextureSelects(_word128 *head, _word128 *names);
+    void SetLOD(unsigned int view, unsigned int lod);
+    void InitMatrices();
+
+    /* a level of detail (SOCOM 1's CMesh::CMeshLOD, 0xc bytes: the mesh last) */
+    class CMeshLOD {
+    public:
+        unsigned int m_0;   // 0x0
+        float m_4;   // 0x4
+        CMesh *m_mesh;   // 0x8
+    };
+
+    unsigned char _68[0x78 - 0x68];
+    std::vector<CMeshLOD> m_lods;   // 0x78
+    unsigned int m_numMatrices;   // 0x84
+    /* its sub-meshes' matrices, by index: InitMatrices pushes one new CMatrix per sub-mesh (the
+     * name ours; znode.h had only the vector's data, as m_palette at 0x90) */
+    std::vector<CMatrix *> m_palette;   // 0x88
 };
 
 class CVisualVector : public std::vector<CVisual *> {
@@ -574,25 +638,7 @@ enum _RenderPhase {
     CHARSETCUSTOMCHARS, NUM_RENDER_PHASES
 };
 
-class CTexPalette;
-
-/* a library's textures (SOCOM 1's DWARF: CTexList : vector). Its code is vis code, out of line
- * (SOCOM 1's names, in SOCOM 1's order at 0x354510-0x354790) */
-class CTexList : public std::vector<CTexHandle *> {
-public:
-    /* every handle let go of, the list emptied */
-    void Free();
-    /* a texture's handle made and listed */
-    CTexHandle *Append(CTexture *tex, bool b);
-    /* the handle of a texture of that name, or none */
-    CTexHandle *GetHandle(const char *name);
-    /* the handle of that texture, or none (SOCOM 1's, right after the name overload) */
-    CTexHandle *GetHandle(CTexture *tex);
-};   // 0xc bytes
-
-/* a library's palettes (SOCOM 1's DWARF: CTexPalList : vector) */
-class CTexPalList : public std::vector<CTexPalette *> {
-};   // 0xc bytes
+/* (CTexList and CTexPalList are declared ahead of CVisual) */
 
 /* a library of models and textures (SOCOM 1's DWARF has its render phase at 0x2B, after the name
  * and three lists; CNode::CreateXRef reads it at 0x2F here: SOCOM II adds a word after the name --
@@ -981,14 +1027,7 @@ public:
     unsigned char m_socom2_19;   // 0x19 (CCell's setter at 0x2D7AF0 writes it in both lists)
 };   // 0x1c bytes
 
-/* a texture buffer's dynamic textures (SOCOM 1's DWARF: CDynTexList, two vectors) */
-class CDynTexList {
-public:
-    void Add(CTexHandle *tex, bool b);
-
-    CTexList m_tex_list;   // 0x0
-    CTexPalList m_pal_list;   // 0xc
-};   // 0x18 bytes
+/* (CDynTexList is declared ahead of CVisual) */
 
 /* a cell of the world's grid: SOCOM 1's DWARF has its lights, its clutter list (0xcc) and its
  * dynamic textures (0xe0) after the node, 0x100 bytes; SOCOM II's has two clutter lists, so its
