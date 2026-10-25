@@ -31,7 +31,7 @@ extern CZSealBody *data_00408C58;                /* CameraZoom::m_seal */
 extern float data_00408C70;                      /* BaseFarClip */
 extern float data_00408C78;                      /* BaseMidClip */
 extern float data_00408C80;                      /* BaseFogFar */
-extern unsigned char data_00408CD8;              /* SeeFarther's last switch */
+extern bool data_00408CD8;                       /* SeeFarther's last switch */
 extern float data_00408CE0;                      /* and its factor */
 extern int data_00408CF0;                        /* (set: SeeFarther does not note them) */
 extern CPnt4D data_004B4AB0;                     /* zdb::CVisual::m_basefog_color */
@@ -78,6 +78,7 @@ public:
     static void LoadLensFx();
     static void ResetLensColors();
     static void HoldLensFx(unsigned char hold);
+    static void ReleaseLensFx(unsigned char hold);
     static void SetLensFx(unsigned char fx);
     static unsigned char LensFxOn();
     static void SetLensFxAnim(CZAnim *anim);
@@ -413,8 +414,61 @@ static inline void ResetLensColorsOnly()
     CPnt4D white(1.0f, 1.0f, 1.0f, 0.0f);
 
     func_003B78D0(&white, 0.0f);
-    data_00488EA0 = 0;
-    data_00488E90 = 0;
+}
+
+/* SetLensFx's body taking the effect as the enum itself (the restore below copies the effect before
+ * into it -- lb, a byte enum's copy -- and the body narrows it for the index with andi) */
+static inline void SetLensFxEnum(LENS_FX fx)
+{
+    if (!data_00408CF0) {
+        data_003DC350 = data_003DC358;
+        data_003DC358 = fx;
+        if (data_00408CC8) {
+            func_002707C0(data_00408CC8, false);
+            data_00408CD0 = 0;
+        }
+        data_00408CC8 = LensFxAnim(fx);
+        if (data_00408CC8) {
+            data_00408CD0 = data_00408CC8->Activate(0);
+            data_00408CE8 = 0;
+        } else {
+            data_00408CE8++;
+        }
+        if (data_003DC350 == lens_fx_9)
+            data_003DC350 = data_003DC358;
+    }
+}
+
+/* the effect before put back while nothing holds the lens effects (an inline; the name ours) */
+static inline void RestoreLensFx()
+{
+    if (!data_00408CF0) {
+        SetLensFxEnum(data_003DC350);
+        data_00408CF0 = 0;
+    }
+}
+
+/* the lens effects let go of (the hold xor-ed with its byte): with nothing holding them, the effect
+ * before put back, the camera's sight as SeeFarther last noted it, the colours reset, the
+ * blindplayer anims restarted and the first person's effect stopped if running (SOCOM II's; the
+ * name ours) */
+void CameraZoom::ReleaseLensFx(unsigned char hold)
+{
+    data_00408CF0 ^= hold;
+    if (!data_00408CF0) {
+        RestoreLensFx();
+        if (!data_00408CF0)
+            SeeFarther(data_00408CD8, data_00408CE0);
+        ResetLensColorsOnly();
+        if (data_00408C88[0])
+            func_002709B0(data_00408C88[0], 1);
+        if (data_00408C88[1])
+            func_002709B0(data_00408C88[1], 1);
+        if (data_00408C88[2])
+            func_002709B0(data_00408C88[2], 1);
+        if (data_00408CA0[lens_fx_first_person] && data_00408CA0[lens_fx_first_person]->Running())
+            func_002707C0(data_00408CA0[lens_fx_first_person], false);
+    }
 }
 
 /* the lens effects held (or not): held, the kit's own lens effects off and the playing effect
@@ -438,6 +492,8 @@ void CameraZoom::HoldLensFx(unsigned char hold)
         !data_00408CA0[lens_fx_first_person]->Running())
         data_00408CA0[lens_fx_first_person]->Activate(0);
     ResetLensColorsOnly();
+    data_00488EA0 = 0;
+    data_00488E90 = 0;
     if (data_00408C88[0])
         func_00270BE0(data_00408C88[0], 1);
     if (data_00408C88[1])
@@ -450,6 +506,8 @@ void CameraZoom::HoldLensFx(unsigned char hold)
 void CameraZoom::ResetLensColors()
 {
     ResetLensColorsOnly();
+    data_00488EA0 = 0;
+    data_00488E90 = 0;
     if (data_00408C88[0])
         func_00270960(data_00408C88[0], false);
     if (data_00408C88[1])
