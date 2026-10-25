@@ -123,6 +123,21 @@ public:
     float m_8;   // 0x8
 };
 
+/* an action a node offers: the bomb, a breach, ... (SOCOM 1's CNodeAction: its valve at 0x18 in
+ * both builds, its kind at 0x24 -- SOCOM 1's 0x20; only those here). The kinds are a byte enum
+ * (copied with lb, compared with lbu); the names ours, 8 what CanDeploy takes for no action */
+enum NODEACTION_TYPE { NODEACTION_0 = 0, NODEACTION_BOMB = 4, NODEACTION_5 = 5, NODEACTION_BREACH = 6, NODEACTION_NONE = 8 };
+
+class CValve;
+
+class CNodeAction {
+public:
+    unsigned char _0[0x18];
+    CValve *m_valve;   // 0x18
+    unsigned char _1c[0x24 - 0x1c];
+    NODEACTION_TYPE m_type;   // 0x24
+};
+
 /* the AI's maps (SOCOM 1's CAiMaps; the global AiMaps, OVL2 bss) -- only the cell's centre */
 class CAiMaps {
 public:
@@ -587,6 +602,9 @@ public:
     bool CompassAnchor_MPBomb(CCompassAnchor *anchor);
     bool ExecuteDelayedAction_Jump();
     bool ExecuteDelayedAction_Climb();
+    /* an order given to the SEAL's controller, which may refuse order 17; a given order flagged
+     * (SOCOM 1's; OVL2 0x590AC0) */
+    void IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);
     /* an action offered or withdrawn (SOCOM 1's took an unsigned int id) */
     void ActionAvailableMask(unsigned char id, bool on);
     /* the restraint flag set (an inline: its bool is stored as `(b & 1)`) */

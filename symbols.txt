@@ -10588,7 +10588,7 @@
 0x0058FA70 0x164 func_0058FA70  # OVL2
 0x0058FBE0 0xEC4 OnCommand__11CSealCtrlAiFP10CZSealBody10FT_COMMANDPvb  # OVL2; slot 0x84 of __vt__11CSealCtrlAi (CSealCtrl's OnCommand, a slot earlier than SOCOM 1's: PerformCollisionActions is gone)
 0x00590AB0 0x8 OnCommand__9CSealCtrlFP10CZSealBody10FT_COMMANDPvb  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00590AC0 0xF4 func_00590AC0  # OVL2
+0x00590AC0 0xF4 IssueCommand__10CZSealBodyFP10CZSealBody10FT_COMMANDPvb  # OVL2; s1:order (seal_command.cpp: between CSealCtrl::OnCommand and CSealCtrlAi::AllowCommand, as SOCOM 1's IssueCommand__10CZSealBodyFP10CZSealBody10FT_COMMANDPvb: the controller's AllowCommand (slot 0x28) for one order, its OnCommand (slot 0x84), the order flag at 0x105C bit 9 set) -- the SEAL lane, round 4
 0x00590BC0 0x570 AllowCommand__11CSealCtrlAiFP10CZSealBody10FT_COMMANDPv  # OVL2; slot 0x28 of __vt__11CSealCtrlAi, and SOCOM 1's order (after IssueCommand, before CanDeploy)
 0x00591130 0xB0 CanDeploy__FP5CZKit10EQUIP_ITEMP11CNodeAction  # OVL2; s1:order (between AllowCommand__11CSealCtrlAi and AllowCommand__9CSealCtrl, 0xB0 bytes against SOCOM 1's 0xA4)
 0x005911E0 0x8 AllowCommand__9CSealCtrlFP10CZSealBody10FT_COMMANDPv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)

@@ -38,16 +38,6 @@ struct CViewWorld {
     CViewCamera *m_camera;   // 0x128
 };
 
-/* an action a node offers (SOCOM 1's CNodeAction: its valve at 0x18 in both builds, its kind at 0x24
- * -- SOCOM 1's 0x20; only those here) */
-class CNodeAction {
-public:
-    unsigned char _0[0x18];
-    CValve *m_valve;   // 0x18
-    unsigned char _1c[0x24 - 0x1c];
-    unsigned char m_type;   // 0x24: 4 the bomb, 5 none, 6 a door to breach (the names ours)
-};
-
 /* the MP bomb's state machine (SOCOM 1's CZBombState, OVL1's): its status, the state first */
 class CZBombState {
 public:
