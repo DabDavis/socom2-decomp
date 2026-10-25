@@ -167,6 +167,7 @@ class CSealUnit {
 public:
     unsigned int m_0;   // 0x0
     virtual void IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);
+    virtual bool AllowCommand(CZSealBody *seal, FT_COMMAND cmd, void *data);   /* +0xC (SOCOM 1's) */
 };
 
 /* the network (SOCOM II's theNetwork at 0x45A0C0: SOCOM 1's flags at 8 and 9, the states lane's
@@ -413,6 +414,8 @@ public:
     bool CompassAnchor_MPBomb(CCompassAnchor *anchor);
     bool ExecuteDelayedAction_Jump();
     bool ExecuteDelayedAction_Climb();
+    /* an action offered or withdrawn (SOCOM 1's took an unsigned int id) */
+    void ActionAvailableMask(unsigned char id, bool on);
     /* the stance's change taken, once (seal_body.cpp) */
     bool StanceChanged();
     /* the terrain a SEAL can cross: an int, the callers make it a bool (seal_env.cpp) */
@@ -435,7 +438,9 @@ public:
     unsigned char _5e4[0xec0 - 0x5e4];
     CCompassAnchor *m_mpbomb_anchor;   // 0xec0 (SOCOM 1's 0xdb4)
     CCompassAnchor *m_mpbase_anchor;   // 0xec4 (SOCOM 1's 0xdb8)
-    unsigned char _ec8[0xee0 - 0xec8];
+    unsigned char _ec8[0xed0 - 0xec8];
+    unsigned int m_action_available;   // 0xed0: a bit per action (SOCOM 1's ActionAvailableMask word, 0xdc0)
+    unsigned char _ed4[0xee0 - 0xed4];
     float m_wep_upT;   // 0xee0 (SOCOM 1's 0xdd0)
     unsigned char _ee4[0xfb0 - 0xee4];
     SEAL_DEATH_TYPE m_deathType;   // 0xfb0 (SOCOM 1's 0xea4)

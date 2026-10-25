@@ -187,6 +187,16 @@ bool CZSealBody::ExecuteDelayedAction_Jump()
     return true;
 }
 
+/* an action offered or withdrawn: its bit in the mask (OVL2 0x544CA0; SOCOM 1's cleared the whole
+ * mask for (0, false), SOCOM II's takes a byte) */
+void CZSealBody::ActionAvailableMask(unsigned char id, bool on)
+{
+    if (on)
+        m_action_available |= 1 << id;
+    else
+        m_action_available &= ~(1 << id);
+}
+
 /* the compass anchors the SEAL carries: swapped in, whether there was none returned (OVL2
  * 0x544C60, 0x544C40) */
 bool CZSealBody::CompassAnchor_MPBomb(CCompassAnchor *anchor)

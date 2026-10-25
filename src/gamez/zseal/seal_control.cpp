@@ -132,6 +132,24 @@ void CSealCtrl::SetMenuState(MENU_STATE state, bool keep)
     }
 }
 
+/* the reticle's actions: the squad asked whether orders 4 and 5 are allowed now, actions 14 and
+ * 15 offered if so (OVL2 0x593D00; SOCOM 1's without its flag and the reticle seal's tail). The
+ * squad declared first: the SEAL takes s0, the squad s1, as the target's. */
+void CSealCtrl::PerformReticleActions()
+{
+    CSealUnit *unit;
+    CZSealBody *seal = (CZSealBody *)m_entity;
+
+    unit = func_005EF2F0(17);
+
+    if (unit) {
+        if (unit->AllowCommand(seal, (FT_COMMAND)4, 0))
+            seal->ActionAvailableMask(14, true);
+        if (unit->AllowCommand(seal, (FT_COMMAND)5, 0))
+            seal->ActionAvailableMask(15, true);
+    }
+}
+
 /* the scope's zoom (OVL2 0x592C70, 0x592C30, 0x592C10, 0x592BF0) */
 void CSealCtrl::SetCameraZoom(float level, float increment)
 {

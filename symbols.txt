@@ -9962,7 +9962,7 @@
 0x00544C40 0x18 CompassAnchor_MPBase__10CZSealBodyFP14CCompassAnchor  # OVL2; s1:order (SOCOM 1's CompassAnchor_Hostage, the one before it, is gone); the anchor at 0xEC4 (SOCOM 1's 0xDB8) swapped in, whether there was none returned
 0x00544C60 0x18 CompassAnchor_MPBomb__10CZSealBodyFP14CCompassAnchor  # OVL2; s1:order (after CompassAnchor_MPBase); the anchor at 0xEC0 (SOCOM 1's 0xDB4)
 0x00544C80 0x14 func_00544C80  # OVL2
-0x00544CA0 0x50 func_00544CA0  # OVL2; size 0x50 (the seed split it after its first branch: 0x544CA8 was its body): a bit (1 << id) set in or cleared from the mask at 0xED0 by a bool, SOCOM 1's ActionSelectionMask or ActionAvailableMask reshaped (which one unproven)
+0x00544CA0 0x50 ActionAvailableMask__10CZSealBodyFUcb  # OVL2; size 0x50 (the seed split it after its first branch: 0x544CA8 was its body): a bit (1 << id) set in or cleared from the mask at 0xED0 by a bool, SOCOM 1's ActionSelectionMask or ActionAvailableMask reshaped (which one unproven); s1:calls by hand (CSealCtrl::PerformReticleActions calls it with (14, true) and (15, true) where SOCOM 1's calls ActionAvailableMask__10CZSealBodyFUib; SOCOM II's narrows the id to a byte, andi 0xff, so an unsigned char parameter)
 0x00544CF0 0x64 func_00544CF0  # OVL2
 0x00544D60 0x260 func_00544D60  # OVL2
 0x00544FC0 0x134 func_00544FC0  # OVL2
@@ -10863,7 +10863,7 @@
 0x005AD730 0x140 BlinkTick__6CBlinkFf  # OVL2; s1:calls
 0x005AD870 0xAC Blink__6CBlinkFi  # OVL2; s1:calls
 0x005AD920 0xA8 LookTick__5CLookFf  # OVL2; s1:calls
-0x005AD9D0 0x29C func_005AD9D0  # OVL2
+0x005AD9D0 0x29C SetDir__5CLookFPC6CPnt3Df  # OVL2; s1:calls by hand (CBlink::Blink calls it twice where SOCOM 1's calls SetDir__5CLookFPC6CPnt3DPC6CPnt3Df: SOCOM II passes the direction and the rate, the start dropped; the row after LookTick as SOCOM 1's SetDir)
 0x005ADC70 0x3C4 func_005ADC70  # OVL2
 0x005AE040 0x36C func_005AE040  # OVL2
 0x005AE3B0 0x9C func_005AE3B0  # OVL2
