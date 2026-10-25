@@ -92,6 +92,45 @@ public:
      * them; CSealCtrlAi::GetAiState inlines one; the names ours -- 0x5F8330, 0x5F8360) */
     CAiState *GetState() const;
     CAiState *GetState();
+    /* the current state's kind, or 0 (SOCOM 1's CSealCtrlAi::GetAiStateEnum; inline) and whether
+     * it is of a kind (SOCOM 1's AiStateIs: `!(size() == 0) &&`, materialised -- the
+     * xor/sltiu/xori the pops test it with); defined after CAiState */
+    inline AI_STATE GetStateEnum();
+    inline bool Is(AI_STATE state);
+    bool Empty() const { return size() == 0; }
+    /* the state of a kind, or 0 (SOCOM 1's CSealCtrlAi::FindAiState, whose wrapper 0x5F5FC0 jumps
+     * here; 0x5F8270) */
+    CAiState *Find(AI_STATE state) const;
+    /* every state of a kind deleted and taken off (0x5F81E0; the name ours) */
+    bool Remove(AI_STATE state);
+    /* the current state popped if it is of a kind; the kind on top after (SOCOM 1's
+     * PopAiState(AI_STATE); 0x5F7990) */
+    AI_STATE Pop(CSealCtrlAi *ai, AI_STATE state);
+    /* popped down to a state, it too when `inclusive`; whether it was found (0x5F7A40), and the
+     * same down to a kind, when the kind is on the stack (SOCOM 1's PopToAiState; 0x5F7B10) --
+     * the names ours */
+    bool PopTo(CSealCtrlAi *ai, CAiState *state, bool inclusive);
+    bool PopTo(CSealCtrlAi *ai, AI_STATE state, bool inclusive);
+    /* a new state of a kind pushed (SOCOM 1's PushAiState; 0x5F7EE0), or put in the current one's
+     * place (SOCOM 1's SetAiState; 0x5F7D80); both answer true, the flag unread */
+    bool Push(CSealCtrlAi *ai, AI_STATE state, bool b);
+    bool Set(CSealCtrlAi *ai, AI_STATE state, bool b);
+    /* the list's own insert at the front (MSL's push_front: insert(begin(), x), the base's
+     * iterator and the pointer passed by address -- 0x50FAD0), two inline levels deep: a frame's
+     * temporaries are laid out by inline depth first, then in order of appearance, and Set's
+     * erase (pop_front, one level) must take its slots above both inserts' */
+    void push_front(CAiState *const &s) { insert_front(s); }
+    void insert_front(CAiState *const &s)
+    {
+        insert(std::__list_deleter<const void *, std::allocator<const void *> >::begin(),
+               (const void *const &)s);
+    }
+    /* a new state of a kind created and put at the front, and returned (inlined in Push and Set:
+     * the returned copy is what they read after the insert -- one load, kept in a register; the
+     * name ours) */
+    inline CAiState *PushNew(AI_STATE state);
+    /* the current state, if any, deleted and taken off (inlined in Set; the name ours) */
+    inline void DeleteFront();
     /* `clear` cleared and `set` set in the word at 0xC... 0x14 (inlined with constants; the name
      * ours) */
     void SetFlags(unsigned int set, unsigned int clear)
@@ -101,7 +140,7 @@ public:
     }
 
     int m_c;   // 0xc (-1 when new)
-    unsigned int m_10;   // 0x10
+    unsigned int m_10;   // 0x10: the kinds on the stack, a bit each (PopTo(AI_STATE) tests it)
     unsigned int m_14;   // 0x14
     float m_timer;   // 0x18: the time in the current state (SOCOM 1's CSealCtrlAi::m_stateTimer)
     int m_result;   // 0x1c: the last state's result (the name ours)
@@ -259,6 +298,34 @@ public:
     int m_54;   // 0x54 (Reset: -1)
 };
 
+inline AI_STATE CAiStateStack::GetStateEnum()
+{
+    CAiState *s = GetState();
+
+    return s ? s->m_state : AI_STATE_UNKNOWN;
+}
+
+inline CAiState *CAiStateStack::PushNew(AI_STATE state)
+{
+    CAiState *s = CAiState::Create(state);
+
+    push_front(s);
+    return s;
+}
+
+inline void CAiStateStack::DeleteFront()
+{
+    if (size() != 0) {
+        delete GetState();
+        pop_front();
+    }
+}
+
+inline bool CAiStateStack::Is(AI_STATE state)
+{
+    return !(size() == 0) && GetState()->m_state == state;
+}
+
 /* the states whose code is this lane's (each class only what a written function needs) */
 class CAiSCQBAttack : public CAiState {
 public:
@@ -323,6 +390,8 @@ public:
     virtual bool CanAttack() const;
     virtual bool CanPursue(CSealCtrlAi *ai) const;
     virtual ~CAiSScript();
+    /* a response sequence run (OVL2 0x5F41F0, named: a name and flags; whether it began) */
+    bool ActivateSequence(const char *name, unsigned int flags);
     /* not held, and free to be pursued from (inlined in CanPushAiState; the names ours) */
     bool NotHeld() const { return !m_hold; }
     bool Pursuable(CSealCtrlAi *ai)

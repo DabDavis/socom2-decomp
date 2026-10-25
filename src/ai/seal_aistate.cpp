@@ -13,6 +13,8 @@
 #include "../gamez/zseal/zseal.h"
 #include "../gamez/zanim/zanim.h"
 
+#include <algorithm>
+
 extern "C" {
 /* a CSealCtrlAi function (OVL2 0x56D090, the SEAL lane's range), called twice on leaving the
  * unknown state */
@@ -560,7 +562,10 @@ void CAiState::Signal(CAiStateStack *stack, CAiState *state, SIGNAL sig, CSealCt
  * OPEN, 10 instructions, one register: before the erase the target takes &end_.next_ (this + 8)
  * into s3 and reads the new front through it after the call; here the front is reloaded from
  * 8(this) and a nop follows. Tried: the const GetState, erase(begin()) for pop_front, the deleted
- * front in a local, the ternary on front() -- all the same 10 */
+ * front in a local, the ternary on front() -- all the same 10; round 5: the erase's iterator built
+ * from a `node_base *const &` to the link (znode.h's PtrListFirst shape), GetState reading the
+ * link through a reference -- the same 10 (the reference form likely belongs in include/list's
+ * begin(), the other lane's) */
 AI_STATE CAiStateStack::Pop(CSealCtrlAi *ai)
 {
     AI_STATE kind = AI_STATE_UNKNOWN;
@@ -585,6 +590,148 @@ AI_STATE CAiStateStack::Pop(CSealCtrlAi *ai)
         func_005F7470(this, ai, 1);
     }
     return kind;
+}
+
+/* a state of a kind deleted, for remove_if (Remove's; the template tail's remove_if and
+ * remove_copy_if, 0x5F8AF0 and 0x5F8C40, inline it -- the name ours).
+ * OPEN, both instances (include/algorithm's, the other lane's this round): the target's inlined
+ * find_if reads the functor from remove_if's parameter slot at every step (`lbu a1,104(sp)`, the
+ * functor's kind first in the bne), where include/algorithm's find_if takes its copy -- a byte
+ * copied to a fresh slot and held in s0 -- so remove_if is 0x124 against 0x110; MSL's find_if
+ * passing the predicate on without a copy (or by reference) should close both */
+struct CAiStateDeleteKind {
+    CAiStateDeleteKind(AI_STATE state) : m_state(state) {}
+    bool operator()(CAiState *s) const
+    {
+        if (s->m_state == m_state) {
+            delete s;
+            return true;
+        }
+        return false;
+    }
+
+    AI_STATE m_state;
+};
+
+/* every state of a kind deleted and taken off; whether there was one (OVL2 0x5F81E0) */
+bool CAiStateStack::Remove(AI_STATE state)
+{
+    bool r = false;
+    iterator e = end();
+    iterator i = std::remove_if(begin(), e, CAiStateDeleteKind(state));
+
+    if (i != e) {
+        erase(i, e);
+        r = true;
+    }
+    return r;
+}
+
+/* the state of a kind, or 0 (OVL2 0x5F8270; SOCOM 1's CSealCtrlAi::FindAiState) */
+CAiState *CAiStateStack::Find(AI_STATE state) const
+{
+    const_iterator i;
+
+    for (i = begin(); i != end(); ++i)
+        if ((*i)->m_state == state)
+            return *i;
+    return 0;
+}
+
+/* a new state of a kind pushed: the current one told it is covered (2), the new one entered (0)
+ * and, when it has a script response and the covered state is the script, the response run on
+ * it (the new state's bit 3 then set) (OVL2 0x5F7EE0; SOCOM 1's CSealCtrlAi::PushAiState) */
+bool CAiStateStack::Push(CSealCtrlAi *ai, AI_STATE state, bool b)
+{
+    CAiState *top = GetState();
+    CAiSScript *script = 0;
+
+    if (top) {
+        CAiState::Signal(this, top, CAiState::SIGNAL_2, ai);
+        script = top && top->m_state == AI_STATE_SCRIPT ? (CAiSScript *)top : 0;
+    }
+    CAiState *s = PushNew(state);
+
+    CAiState::Signal(this, s, CAiState::SIGNAL_0, ai);
+    const char *response = s->GetScriptResponse();
+
+    if (response && script && script->ActivateSequence(response, 7))
+        s->SetBit3(true);
+    func_005F7470(this, ai, 1);
+    return true;
+}
+
+/* a new state of a kind in the current one's place: the current one told it is left (1) and
+ * deleted, the new one entered (0) (OVL2 0x5F7D80; SOCOM 1's CSealCtrlAi::SetAiState) */
+bool CAiStateStack::Set(CSealCtrlAi *ai, AI_STATE state, bool b)
+{
+    if (size() == 0) {
+        CAiState *s = CAiState::Create(state);
+
+        push_front(s);
+        CAiState::Signal(this, s, CAiState::SIGNAL_0, ai);
+    } else {
+        CAiState::Signal(this, GetState(), CAiState::SIGNAL_1, ai);
+        if (size() != 0) {
+            delete GetState();
+            pop_front();
+        }
+        CAiState *s = CAiState::Create(state);
+
+        push_front(s);
+        CAiState::Signal(this, s, CAiState::SIGNAL_0, ai);
+    }
+    func_005F7470(this, ai, 1);
+    return true;
+}
+
+/* popped down to a kind (when the kind is on the stack at all), it too when `inclusive`; whether
+ * it was found (OVL2 0x5F7B10; SOCOM 1's CSealCtrlAi::PopToAiState).
+ * OPEN, 0x124 against 0x130: Is(), as in Pop(ai, state) below -- the target materialises its
+ * whole `&&` (both operands into one register, the false arm a `move v0,zero`, then one test);
+ * here MW threads the second operand's test into the branch */
+bool CAiStateStack::PopTo(CSealCtrlAi *ai, AI_STATE state, bool inclusive)
+{
+    bool found;
+
+    if (m_10 & (1 << state))
+        while (size() != 0 && !Is(state))
+            Pop(ai);
+    found = Is(state);
+    if (found && inclusive)
+        Pop(ai);
+    return found;
+}
+
+/* popped down to a state, it too when `inclusive`; whether it was found (OVL2 0x5F7A40) */
+bool CAiStateStack::PopTo(CSealCtrlAi *ai, CAiState *state, bool inclusive)
+{
+    bool found = false;
+
+    while (!found && size() != 0) {
+        if (GetState() == state) {
+            found = true;
+            if (inclusive)
+                Pop(ai);
+        } else
+            Pop(ai);
+    }
+    return found;
+}
+
+/* the current state popped if it is of a kind; the kind on top after (OVL2 0x5F7990; SOCOM 1's
+ * CSealCtrlAi::PopAiState(AI_STATE)).
+ * OPEN, 0xA4 against 0xAC: the target materialises Is()'s `!(size() == 0) && GetState()->m_state
+ * == state` whole -- xor/sltiu/xori with no andi, the second operand's sltiu, a `b` to the join
+ * past the false arm's `move v0,zero`, then one beqz -- where MW narrows the first operand (andi)
+ * and branches on the second. Tried: Is() returning through a bool local, `size() != 0`, the
+ * ternary, an inline Empty(), Is() as a plain auto-inlined member, the caller testing `!= false`
+ * / `== true` / a bool local / a ternary / a result local (all 0xA4 or worse) */
+AI_STATE CAiStateStack::Pop(CSealCtrlAi *ai, AI_STATE state)
+{
+    if (Is(state))
+        return Pop(ai);
+    return GetStateEnum();
 }
 
 /* the stack's constructor (OVL2 0x5F8520): out of line, as its destructor is */

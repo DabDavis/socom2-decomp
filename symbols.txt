@@ -11530,16 +11530,16 @@
 0x005F7420 0x4C Signal__8CAiStateFP13CAiStateStackQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand: the stack's front state told (GetState inlined, nothing when empty), through 0x5F6FA0; CSealCtrlAi::OnCommand calls it (the kit lane, round 3); a static of CAiState taking the stack, as 0x5F6FA0 (the kit lane, round 3)
 0x005F7470 0x4B0 func_005F7470  # OVL2
 0x005F7920 0x64 func_005F7920  # OVL2
-0x005F7990 0xAC func_005F7990  # OVL2
-0x005F7A40 0xC4 func_005F7A40  # OVL2
-0x005F7B10 0x130 func_005F7B10  # OVL2
+0x005F7990 0xAC Pop__13CAiStateStackFP11CSealCtrlAi8AI_STATE  # OVL2; by hand (the kit lane, round 5): SOCOM 1's CSealCtrlAi::PopAiState(AI_STATE) moved onto the stack -- the top popped when it is of the kind, else its kind returned; the wrapper 0x5F5CB0 jumps here (the name ours)
+0x005F7A40 0xC4 PopTo__13CAiStateStackFP11CSealCtrlAiP8CAiStateb  # OVL2; by hand (the kit lane, round 5): popped down to a state (a pointer), it too when asked; whether it was found; the wrapper 0x5F5C60 jumps here (the name ours)
+0x005F7B10 0x130 PopTo__13CAiStateStackFP11CSealCtrlAi8AI_STATEb  # OVL2; by hand (the kit lane, round 5): SOCOM 1's CSealCtrlAi::PopToAiState moved onto the stack -- popped while the top is not the kind (when the kind's bit is set in the word at 0x10), then that one too when asked; the wrapper 0x5F5C80 jumps here (the name ours)
 0x005F7C40 0x138 Pop__13CAiStateStackFP11CSealCtrlAi  # OVL2; by hand (the kit lane, round 4): the stack's pop -- the front state told SIGNAL_1 (0x5F6FA0), its kind and result kept in OVL1 bss 0x44D630/0x44D628, deleted through slot 0x4C and erased (0x50FA50), the new front told SIGNAL_3, then 0x5F7470(stack, ai, 1); returns the new front's kind -- SOCOM 1's CSealCtrlAi::PopAiState(), whose wrapper (0x5F5CA0) tail-calls it on the stack at 0x41C (the name ours)
-0x005F7D80 0x15C func_005F7D80  # OVL2
-0x005F7EE0 0x144 func_005F7EE0  # OVL2
+0x005F7D80 0x15C Set__13CAiStateStackFP11CSealCtrlAi8AI_STATEb  # OVL2; by hand (the kit lane, round 5): SOCOM 1's CSealCtrlAi::SetAiState moved onto the stack -- the top told 1, deleted and erased, the new one created at the front and told 0; the wrapper 0x5F5BA0 calls it after 0x5F5CD0 (the name ours)
+0x005F7EE0 0x144 Push__13CAiStateStackFP11CSealCtrlAi8AI_STATEb  # OVL2; by hand (the kit lane, round 5): SOCOM 1's CSealCtrlAi::PushAiState moved onto the stack -- the top told 2, Create, insert at the front, told 0, the script response run, 0x5F7470; the wrapper 0x5F5C00 calls it after 0x5F5CD0 (the name ours)
 0x005F8030 0x1A0 func_005F8030  # OVL2
 0x005F81D0 0x8 Tick__8CAiStateFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x005F81E0 0x8C func_005F81E0  # OVL2
-0x005F8270 0xC0 func_005F8270  # OVL2
+0x005F81E0 0x8C Remove__13CAiStateStackF8AI_STATE  # OVL2; by hand (the kit lane, round 5): every state of a kind deleted (remove_if, 0x5F8AF0, with a functor holding the kind) and erased; whether any was (the name ours)
+0x005F8270 0xC0 Find__13CAiStateStackCF8AI_STATE  # OVL2; by hand (the kit lane, round 5): the stack's state of a kind (a const walk, the iterator assigned from begin()) -- SOCOM 1's CSealCtrlAi::FindAiState, whose wrapper 0x5F5FC0 jumps here (the name ours)
 0x005F8330 0x24 GetState__13CAiStateStackCFv  # OVL2; by hand: a CAiStateStack's front state, 0 when its size (at 0) is 0 -- the SEAL units call it on a controller's stack (the SEAL lane's lead), CSealCtrlAi::GetAiState (0x5F5FD0/0x5F6010) inlines the same test; the first of two identical copies, taken as the const one by GetAiState's order (the name ours)
 0x005F8360 0x24 GetState__13CAiStateStackFv  # OVL2; by hand: 0x5F8330's code again, the non-const copy (the name ours)
 0x005F8390 0xF4 Clear__13CAiStateStackFv  # OVL2; by hand: every state in the stack deleted through its virtual destructor (slot +0x4C of CAiState's table) and the nodes erased (the OVL2 pointer list's erase 0x50F990); SOCOM 1's CAiStateStack : list (DWARF, 0xC bytes, CSealCtrlAi::m_stateStack) -- the name ours; ~CSealCtrlAi and ~CAiStateStack call it
@@ -11562,10 +11562,10 @@
 0x005F8A40 0x8 Virtual40__8CAiSGotoFv  # OVL2; by hand: CAiSGoto's vtable slot +0x40, one of SOCOM II's six new CAiState slots (the name ours, by its slot): true (the base's is false)
 0x005F8A50 0x14 Virtual3C__8CAiSGotoFv  # OVL2; by hand: CAiSGoto's vtable slot +0x3C, one of SOCOM II's six new CAiState slots (the name ours, by its slot): true while the flag word (+0x2C) lacks bit 2
 0x005F8A70 0x78 __dt__10CAiSPickupFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x005F8AF0 0x110 func_005F8AF0  # OVL2
+0x005F8AF0 0x110 remove_if<Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>,18CAiStateDeleteKind>__3stdFQ33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>18CAiStateDeleteKind_Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>  # OVL2; by hand (the kit lane, round 5): std::remove_if over the state stack with CAiStateDeleteKind (Remove's, 0x5F81E0), the template tail of seal_aistate.cpp; find_if and the functor inlined
 0x005F8C00 0x18 func_005F8C00  # OVL2
 0x005F8C20 0x18 func_005F8C20  # OVL2
-0x005F8C40 0x100 func_005F8C40  # OVL2
+0x005F8C40 0x100 remove_copy_if<Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>,Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>,18CAiStateDeleteKind>__3stdFQ33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>18CAiStateDeleteKind_Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>  # OVL2; by hand (the kit lane, round 5): std::remove_copy_if over the state stack with CAiStateDeleteKind (remove_if's, 0x5F8AF0), the functor inlined
 0x005F8D40 0x884 func_005F8D40  # OVL2
 0x005F95D0 0x1504 func_005F95D0  # OVL2
 0x005FAAE0 0x218 func_005FAAE0  # OVL2
