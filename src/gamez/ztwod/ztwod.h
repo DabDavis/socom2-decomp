@@ -151,6 +151,7 @@ public:
     virtual void GetAssetLibs(CLibList &liblist);
     void Load(float x, float y, float w, float h, zdb::CTexHandle *tex);
     void SetColor(float r, float g, float b);
+    void TickFade();
 
     int m_x;   // 0x24
     int m_y;   // 0x28
