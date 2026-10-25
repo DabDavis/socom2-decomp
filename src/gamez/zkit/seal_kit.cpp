@@ -23,6 +23,10 @@ float func_003C5980(CZFTSWeapon *w, unsigned int mode);
  * GetFiremodeGraphic and GetItemName; OVL1 0x3C5D20, 0x3D2830, unclaimed) */
 bool func_003C5D20(CZFTSWeapon *w);
 const char *func_003D2830(CZFTSWeapon *w);
+/* an item kind's class (the static under CZWeapon::GetIDType; OVL1 0x3D1A60, unclaimed) and a
+ * weapon's magazine size (OVL1 0x3D2810, unclaimed) */
+EQUIP_IDTYPE func_003D1A60(EQUIP_ITEM item);
+int func_003D2810(CZWeapon *w);
 /* a controller's word at 0x11C cleared (OVL2 0x592D40, the SEAL lane's row) */
 void func_00592D40(CKitCtrl *ctrl);
 }
@@ -359,6 +363,72 @@ bool CZKit::ItemHasAmmo(int index) const
         }
     }
     return r;
+}
+
+/* an item by index, wrapped, handed back through a pointer (OVL2 0x5BC6A0; SOCOM 1's) */
+void CZKit::FillWeaponEnum(int index, CZFTSWeapon **out)
+{
+    index = wrap(index, m_num_items);
+    *out = m_item[index];
+}
+
+/* an item put in a slot with its ammunition, the rounds dealt into its magazines (OVL2 0x5BC5D0,
+ * new in SOCOM II between SetItemByIndex and FillWeaponEnum; the name ours) */
+bool CZKit::SetItem(unsigned int index, CZWeapon *w, void *ammo, int rounds)
+{
+    if (index >= m_num_items)
+        m_num_items = index + 1;
+    /* a copy: it takes the lowest saved register, after the parameters' */
+    int slot = index;
+
+    SetItemByIndex(slot, w);
+    m_ammo[slot] = ammo;
+    m_currentmag[slot] = 0;
+    if (w) {
+        int size = func_003D2810(w);
+        int i = 0;
+
+        while (rounds > 0) {
+            if (size < rounds) {
+                m_reloads[slot][i] = size;
+                rounds -= size;
+            } else {
+                m_reloads[slot][i] = rounds;
+                rounds = 0;
+            }
+            i++;
+        }
+    }
+    return true;
+}
+
+/* whether an item's fire mode has a graphic: not for explosives, grenades, binoculars and two
+ * new classes -- the current item's class, whatever the index (OVL2 0x5BC310, 0x5BC300; SOCOM 1's
+ * CurItemHasFiremodeGraphic, the first's name ours) */
+bool CZKit::ItemHasFiremodeGraphic(int index)
+{
+    bool r = true;
+    int i = wrap(index, m_num_items);
+
+    if (!GetCurItem())
+        r = false;
+    else {
+        switch (func_003D1A60(GetCurItem()->m_equip)) {
+        case 201:
+        case IDTYPE_BINOCULARS:
+        case 230:
+        case IDTYPE_GRENADE:
+        case IDTYPE_EXPLOSIVE:
+            r = false;
+            break;
+        }
+    }
+    return r;
+}
+
+bool CZKit::CurItemHasFiremodeGraphic()
+{
+    return ItemHasFiremodeGraphic(m_selected_item);
 }
 
 /* the weapon information's change taken, once (OVL2 0x5BC2C0; SOCOM 1's) */

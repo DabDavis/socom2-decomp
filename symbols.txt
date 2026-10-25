@@ -10961,11 +10961,11 @@
 0x005BC2A0 0x8 func_005BC2A0  # OVL2
 0x005BC2B0 0x8 func_005BC2B0  # OVL2
 0x005BC2C0 0x40 WeaponInfoChanged__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's WeaponInfoChanged: the same test-and-clear of bit 2, m_weaponinfoChanged; SOCOM 1's order puts it after HandlePlaceMPBomb)
-0x005BC300 0x8 func_005BC300  # OVL2
-0x005BC310 0x100 func_005BC310  # OVL2
-0x005BC410 0x1C0 func_005BC410  # OVL2
-0x005BC5D0 0xCC func_005BC5D0  # OVL2
-0x005BC6A0 0x8C func_005BC6A0  # OVL2
+0x005BC300 0x8 CurItemHasFiremodeGraphic__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's CurItemHasFiremodeGraphic, after WeaponInfoChanged as there: ItemHasFiremodeGraphic(m_selected_item), tail-called)
+0x005BC310 0x100 ItemHasFiremodeGraphic__5CZKitFi  # OVL2; by hand: SOCOM 1's CurItemHasFiremodeGraphic's test on an index -- wraps it (the result dead), then the current item's class (OVL1 0x3D1A60) none of 151, 121, 230, 190, 201 (the name ours)
+0x005BC410 0x1C0 SetItemByIndex__5CZKitFiP8CZWeapon  # OVL2; s1:order by hand (SOCOM 1's SetItemByIndex(int, CZWeapon *), after CurItemHasFiremodeGraphic as there; 0x5BC5D0 calls it with its index and weapon)
+0x005BC5D0 0xCC SetItem__5CZKitFUiP8CZWeaponPvi  # OVL2; by hand: new in SOCOM II between SetItemByIndex and FillWeaponEnum -- m_num_items raised past the index, SetItemByIndex, the ammunition (0x15C) set, the current magazine (0x684) zeroed, and the rounds dealt into the magazines (0x1D4) by the weapon's magazine size (OVL1 0x3D2810) (the name ours)
+0x005BC6A0 0x8C FillWeaponEnum__5CZKitFiPP11CZFTSWeapon  # OVL2; s1:order by hand (SOCOM 1's FillWeaponEnum: the same code -- the index wrapped on m_num_items, the item (0xE4, SOCOM 1's 0xD0) stored through the pointer)
 0x005BC730 0x900 func_005BC730  # OVL2
 0x005BD030 0xC8 FireGrenade__5CZKitFPC6CPnt3DPC6CPnt3D  # OVL2; s1:calls (called on the SEAL's kit at +0x5E0 where SOCOM 1's calls it) -- the states lane
 0x005BD100 0x424 func_005BD100  # OVL2

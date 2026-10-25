@@ -36,9 +36,13 @@ enum FIREMODE {
     FIREMODE_CURRENT = 255
 };
 
+/* a weapon (SOCOM 1's CZWeapon; empty here, so CZFTSWeapon's members keep their offsets) */
+class CZWeapon {
+};
+
 /* an item of the kit (SOCOM 1's CZFTSWeapon : CZWeapon; only the byte its kind is read from --
  * SOCOM 1's at 0x60) */
-class CZFTSWeapon {
+class CZFTSWeapon : public CZWeapon {
 public:
     unsigned char _0[0x24];
     unsigned char m_maxfiremode;   // 0x24: the highest fire mode it has (the name ours)
@@ -81,6 +85,11 @@ public:
     RETICULE_TYPE GetCurReticule();
     RETICULE_TYPE GetCurItemReticule();
     bool IsZoomed();
+    void FillWeaponEnum(int index, CZFTSWeapon **out);
+    bool SetItem(unsigned int index, CZWeapon *w, void *ammo, int rounds);
+    bool SetItemByIndex(int index, CZWeapon *w);
+    bool ItemHasFiremodeGraphic(int index);
+    bool CurItemHasFiremodeGraphic();
     bool IsUsingItem(int index);
     bool IsUsingItem(EQUIP_ITEM item);
     bool SetCurFireMode(FIREMODE mode);
