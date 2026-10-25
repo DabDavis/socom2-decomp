@@ -52,6 +52,8 @@ void snd_AutoReverb(int core, int depth, int delta, int channel);
 int func_0033F720(int num_channels, int buffer_size, int a, int b);
 void snd_StopAllStreams(void);
 int snd_StreamSafeCheckCDIdle(int block);
+void snd_DoExternCall(unsigned int id, int func, int a, int b, int c, int d, int e);
+void snd_DoExternCall_A(unsigned int id, int func, int a, int b, int c, int d, int e);
 }
 
 /* --- the game's classes --- */
@@ -357,5 +359,40 @@ public:
     static signed char m_queuedMode;    /* 0x48E0B4 */
     static bool m_inFight;              /* 0x3E0080 (SOCOM 1's Start clears a byte so) */
 };
+
+/* The headset's voice stream (SOCOM 1's class, no DWARF): a queue of streamed sounds played
+ * through the USB headset's IRX by 989snd extern calls (id 0x12C4E67A). */
+class Headset {
+public:
+    Headset();
+    void ConnectedTick(float dT);
+    void DisconnectedTick(float dT);
+    void Tick(float dT);
+    void SoundSysCallback(unsigned int handle);
+    static void StaticSoundSysCallback(unsigned int handle, unsigned long user_data);
+    void Resume();                      /* SOCOM II's (names ours) */
+    void Pause();
+    static Headset *ftsGetHeadset();
+    static void Create();
+    static void ResetStream();
+    static void Reset();
+
+    static unsigned char theHeadsetState;   /* 0x49E150: 1 connected, 2 disconnected */
+    static Headset *theHeadset;             /* 0x49E158 (name ours) */
+
+    int m_0;                    /* 0x00 */
+    int m_4;                    /* 0x04 */
+    unsigned char m_8;          /* 0x08 */
+    unsigned char m_state;      /* 0x09: the stream request's state, 0-4 */
+    unsigned char m_stop;       /* 0x0A */
+    unsigned char m_b;          /* 0x0B */
+    int m_c;                    /* 0x0C */
+    CSnd *m_sound;              /* 0x10 */
+    int m_vol;                  /* 0x14 */
+    unsigned char _18[0x34 - 0x18];
+    int m_34;                   /* 0x34 */
+    CSndInstance *m_instance;   /* 0x38 */
+    int m_3c;                   /* 0x3C */
+};   /* 0x40 bytes (operator new's) */
 
 #endif

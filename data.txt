@@ -706,6 +706,7 @@
 0x0048E0B0 0x4 m_queued__11CSndJukebox  # OVL1 bss; CSndJukebox static (name ours): the queue's count, ClearQueue and Start zero it; 10 references in 5 functions
 0x0048E0B4 0x1 m_queuedMode__11CSndJukebox  # OVL1 bss; CSndJukebox static (name ours): the queued mode, -1 for none; 12 references in 5 functions
 0x0049E150 0x1 theHeadsetState__7Headset  # OVL1 bss; s1:data-seq (size SOCOM 1's; via SoundSysCallback__7HeadsetFUi)
+0x0049E158 0x4 theHeadset__7Headset  # OVL1 bss; Headset static (name ours): the headset, made by Create (new and the constructor), tested by Reset, ResetStream and ftsGetHeadset; 9 references in 5 functions
 0x0049E260 0x20 zTaskScheduler  # OVL1 bss; s1:data-seq (size SOCOM 1's; via TaskScheduler__9CZAnimSetFv)
 0x0049E280 0x4 __HeapSize  # OVL1 bss; s1:data-seq (size SOCOM 1's; via zsys_FullAllocAndFree__Fv)
 0x0049E2A0 0xC theIOPManager  # OVL1 bss; SOCOM 1's (CMenuState registers its reboot callback on it in Init and removes it in UnInit, as SOCOM 1's): 28 references in 21 functions take 0x49E2A0-0x49E2A8

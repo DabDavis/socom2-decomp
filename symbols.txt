@@ -6282,27 +6282,27 @@
 0x0034A610 0x8 clear__Q23std76__vector_deleter<17CSndSequenceEntry,Q23std30allocator<17CSndSequenceEntry>>Fv  # OVL1; s1:order by hand (SOCOM 1's clear of the entries' deleter, after its destructor in both builds, which calls it; SOCOM II's element loop is gone)
 0x0034A620 0x20 func_0034A620  # OVL1
 0x0034A640 0xC func_0034A640  # OVL1
-0x0034A650 0x4C func_0034A650  # OVL1
-0x0034A6A0 0x4C func_0034A6A0  # OVL1
+0x0034A650 0x4C Resume__7HeadsetFv  # OVL1; SOCOM II's, name ours (CSndInstance::ResumeAllSounds calls it on the headset: extern call 5 while connected)
+0x0034A6A0 0x4C Pause__7HeadsetFv  # OVL1; SOCOM II's, name ours (CSndInstance::PauseAllSounds calls it: extern call 4 while connected)
 0x0034A6F0 0xC0 func_0034A6F0  # OVL1
 0x0034A7B0 0x15C func_0034A7B0  # OVL1
-0x0034A910 0x158 func_0034A910  # OVL1
+0x0034A910 0x158 StopSound__7HeadsetFiP4CSnd  # OVL1; s1:order by hand (SOCOM 1's StopSound(int, CSnd *), first of the unit in both builds; CZAnim::StopSounds and the SOUND tick stop a headset stream with it, (headset, channel, sound), as SOCOM 1's do)
 0x0034AA70 0x48 func_0034AA70  # OVL1
 0x0034AAC0 0x23C func_0034AAC0  # OVL1
-0x0034AD00 0x2C4 func_0034AD00  # OVL1
-0x0034AFD0 0x3D4 func_0034AFD0  # OVL1
+0x0034AD00 0x2C4 ConnectedTick__7HeadsetFf  # OVL1; s1:calls by hand (Headset::Tick calls it when the state is 1, as SOCOM 1's Tick calls ConnectedTick; between Remove and DisconnectedTick in both builds)
+0x0034AFD0 0x3D4 DisconnectedTick__7HeadsetFf  # OVL1; s1:calls by hand (Headset::Tick calls it when the state is 2, as SOCOM 1's Tick calls DisconnectedTick)
 0x0034B3B0 0x54 Tick__7HeadsetFf  # OVL1; s1:align
 0x0034B410 0xD0 SoundSysCallback__7HeadsetFUi  # OVL1; s1:callee
 0x0034B4E0 0x2C StaticSoundSysCallback__7HeadsetFUiUl  # OVL1; s1:exact
 0x0034B510 0x1B0 func_0034B510  # OVL1
 0x0034B6C0 0x1CC func_0034B6C0  # OVL1
-0x0034B890 0x28 func_0034B890  # OVL1
-0x0034B8C0 0x4C func_0034B8C0  # OVL1
-0x0034B910 0xC8 func_0034B910  # OVL1
+0x0034B890 0x28 ResetStream__7HeadsetFv  # OVL1; SOCOM II's, name ours (the headset's instance cleared and its id -1)
+0x0034B8C0 0x4C Reset__7HeadsetFv  # OVL1; SOCOM II's, name ours (the stream request reset, the headset state 0; CSnd::Close calls it)
+0x0034B910 0xC8 __ct__7HeadsetFv  # OVL1; SOCOM 1's Headset() by its call (Create news 64 bytes and calls it on them, keeping what it returns as the headset)
 0x0034B9E0 0x80 func_0034B9E0  # OVL1
 0x0034BA60 0x120 func_0034BA60  # OVL1
-0x0034BB80 0xD4 func_0034BB80  # OVL1
-0x0034BC60 0x34 func_0034BC60  # OVL1
+0x0034BB80 0xD4 ftsGetHeadset__7HeadsetFv  # OVL1; s1:calls by hand (CSnd::PostTick gets the headset with it and ticks it, as SOCOM 1's PostTick calls ftsGetHeadset then Headset::Tick; ZAnim's sound code asks it for the headset)
+0x0034BC60 0x34 Create__7HeadsetFv  # OVL1; SOCOM II's, name ours (the headset made: new, the constructor, the static pointer)
 0x0034BCA0 0xC func_0034BCA0  # OVL1
 0x0034BCB0 0x20 func_0034BCB0  # OVL1
 0x0034BCD0 0x34 func_0034BCD0  # OVL1
