@@ -6,7 +6,8 @@
  * word at 0x10, reads through an open package (0x4A15F8/FC: the package unit's, 0x39C330-0x39C4FB)
  * and a CD file opened by its sector (the DNAS client's).
  *
- * OPEN, not written yet: BuildTOC (0x39DFD0), CreatePath (0x39E4F0), the hard disk's mount and
+ * OPEN, not written yet: BuildTOC (0x39DFD0: the ISO 9660 walk, 0x520 -- m2c's draft is a start), the
+ * hard disk's mount and
  * reboot handlers (0x39CE80-0x39D910), 0x39DDB0 and 0x39DFC0. */
 
 #include "zutil.h"
@@ -61,6 +62,7 @@ public:
     int XferSectorsToCaller(char *buf, int sectors);
     bool OpenSector(unsigned int sector);
     static _FILECD *Find(const char *name);
+    static char *CreatePath(char *dir, char *path);
     /* the sector the next read starts from (ours: fseek, Open and OpenSector share it) */
     void SetHeadSector(int sector)
     {
@@ -405,6 +407,27 @@ int CFileIO::ftell() const
 
 void CFileIO::fflush()
 {
+}
+
+/* a directory entered on a path: "." leaves it, ".." strips its last part, any other name is
+ * appended after a backslash (SOCOM 1's; BuildTOC walks the disc with it) */
+char *CFileCD::CreatePath(char *dir, char *path)
+{
+    char *p = path;
+
+    if (!strcmp(dir, "."))
+        return path;
+    if (!strcmp(dir, "..")) {
+        for (p += strlen(path) - 1; *p != '\\' && p != path; p--)
+            *p = 0;
+        if (strcmp(path, "\\"))
+            *p = 0;
+    } else {
+        if (strlen(path))
+            strcpy(path + strlen(path), "\\");
+        strcpy(path + strlen(path), dir);
+    }
+    return path;
 }
 
 /* the file's TOC entry by name, under the root's directory (SOCOM 1's, the directory SOCOM II's) */
