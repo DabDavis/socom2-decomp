@@ -7267,7 +7267,7 @@
 0x0038C990 0x1F0 func_0038C990  # OVL1
 0x0038CB80 0x8 func_0038CB80  # OVL1
 0x0038CB90 0xB8 func_0038CB90  # OVL1
-0x0038CC50 0x44 func_0038CC50  # OVL1
+0x0038CC50 0x44 FindKeyProps__Q221@unnamed@zui_skb_cpp@13CSoftKeyboardFRCQ221@unnamed@zui_skb_cpp@7CSkbKey  # OVL1; s1:exact by hand (the MSL headers' round 3: SOCOM 1's FindKeyProps 0x3A6280 instruction for instruction, the key map at 0x164 where SOCOM 1's is at 0x2C; find<CSkbKey> then the found node's value at +16, else 0; byte-exact in zui_skb.cpp)
 0x0038CCA0 0x48C func_0038CCA0  # OVL1
 0x0038D130 0x68 func_0038D130  # OVL1
 0x0038D1A0 0x60 func_0038D1A0  # OVL1
