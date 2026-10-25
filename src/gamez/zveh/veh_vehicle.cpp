@@ -15,7 +15,7 @@ extern "C" {
  * and resize, and the AI maps' cell lookup, map and region fill (OVL2) */
 void func_003ACC10(CVehicle *vehicle, float dT);
 void func_003AD3B0(CVehicle *vehicle);
-void func_003AE530(CVehicleDefVector *v, unsigned int n);
+void func_003AE750(CVehicleDefVector *v, unsigned int n);   /* the definitions resized (Init calls it) */
 int func_0052DC70(CAiMaps *maps, const CPnt3D *pos, unsigned int *loc);
 void *func_0052E6B0(CAiMaps *maps, unsigned int mapid);
 void func_00515880(void *map, CPnt3D *corners, void *region);
