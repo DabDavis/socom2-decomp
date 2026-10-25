@@ -9928,10 +9928,10 @@
 0x00542E50 0x16C func_00542E50  # OVL2
 0x00542FC0 0x18 func_00542FC0  # OVL2
 0x00542FE0 0x8 func_00542FE0  # OVL2
-0x00542FF0 0x8 PrePostTick__10CZSealBodyFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00543000 0x8 func_00543000  # OVL2
-0x00543010 0x8 func_00543010  # OVL2
-0x00543020 0x8 func_00543020  # OVL2
+0x00542FF0 0x8 func_00542FF0  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); s1~ not PrePostTick__10CZSealBodyFf (s1:vtable paired the wrong slot): slot 0xC of __vt__10CZSealBody is CEntity's inline GetPosNode (zentity.h), `jr ra; lw v0,0x28(a0)` -- OVL2's out-of-line copy of it, as OVL1's 0x295F10 (one of 2 copies of an inline)
+0x00543000 0x8 Virtual5C__10CZSealBodyFv  # OVL2; slot 0x5C of __vt__10CZSealBody (CEntity's Virtual5C, the name the entity lane's); returns 0
+0x00543010 0x8 Virtual60__10CZSealBodyFv  # OVL2; slot 0x60 of __vt__10CZSealBody (CEntity's Virtual60); returns 0
+0x00543020 0x8 Virtual68__10CZSealBodyFv  # OVL2; slot 0x68 of __vt__10CZSealBody (CEntity's Virtual68); returns 0
 0x00543030 0x1AC func_00543030  # OVL2
 0x005431E0 0x8 func_005431E0  # OVL2; s1~ GetSealCtrlAi__9CSealCtrlFv (one of 2 out-of-line copies of an inline, by s1:vtable)
 0x005431F0 0x8 IsPlayer__9CSealCtrlCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -9944,7 +9944,7 @@
 0x00543680 0x150 func_00543680  # OVL2
 0x005437D0 0x160 func_005437D0  # OVL2
 0x00543930 0x150 func_00543930  # OVL2
-0x00543A80 0x4C func_00543A80  # OVL2
+0x00543A80 0x4C StopAllHeartbeatSounds__10CZSealBodyFv  # OVL2; s1:calls (StopRumbler calls it where SOCOM 1's does; two Stop/ReleaseSoundInstance pairs as SOCOM 1's)
 0x00543AD0 0x64 func_00543AD0  # OVL2
 0x00543B40 0x50 OpenHeartbeatSounds__10CZSealBodyFv  # OVL2; tu: seal.cpp~ (1.0 beta); s1:exact
 0x00543B90 0x1A4 func_00543B90  # OVL2
@@ -10004,18 +10004,16 @@
 0x00545EE0 0x328 func_00545EE0  # OVL2
 0x00546210 0x1AC func_00546210  # OVL2
 0x005463C0 0x5FC func_005463C0  # OVL2
-0x005469C0 0x20 func_005469C0  # OVL2; tu: seal.cpp~ (1.0 beta)
-0x005469E0 0x18 func_005469E0  # OVL2
-0x005469F8 0x8 func_005469F8  # OVL2 unaligned
+0x005469C0 0x20 ExecuteDelayedAction_Jump__10CZSealBodyFv  # OVL2; tu: seal.cpp~ (1.0 beta); SOCOM 1's word for word but the offset (bit 18 of the flag word, SOCOM 1's 0xF58 now 0x105C: +0x104 as m_inside's), in SOCOM 1's order (Jump, then Climb)
+0x005469E0 0x20 ExecuteDelayedAction_Climb__10CZSealBodyFv  # OVL2; size 0x20 (the seed split it at the delay slot of its jr ra: 0x5469F8 was its last two words); SOCOM 1's word for word but the offset (bit 17 of the flag word at 0x105C)
 0x00546A00 0x34 func_00546A00  # OVL2
-0x00546A40 0xF0 ExecuteAction_CQBAttack__10CZSealBodyFP10CZSealBody  # OVL2; s1:calls
-0x00546B30 0x18 func_00546B30  # OVL2
+0x00546A40 0x108 ExecuteAction_CQBAttack__10CZSealBodyFP10CZSealBody  # OVL2; s1:calls; size 0x108 (the seed cut it at a nop before its epilogue: 0x546B30 was its last six words)
 0x00546B50 0xA8 func_00546B50  # OVL2
 0x00546C00 0x34 func_00546C00  # OVL2
 0x00546C40 0x8C func_00546C40  # OVL2
 0x00546CD0 0x20 func_00546CD0  # OVL2
-0x00546CF0 0x144 func_00546CF0  # OVL2
-0x00546E40 0x158 func_00546E40  # OVL2
+0x00546CF0 0x144 TeleportTo__10CZSealBodyFPC7CMatrix  # OVL2; slot 0x40 of __vt__10CZSealBody; calls CEntity's TeleportTo(matrix), as SOCOM 1's
+0x00546E40 0x158 TeleportTo__10CZSealBodyFPC6CPnt3DPC5CQuat  # OVL2; slot 0x3C of __vt__10CZSealBody; calls CEntity's TeleportTo(pos, quat), as SOCOM 1's
 0x00546FA0 0x1D0 func_00546FA0  # OVL2
 0x00547170 0x1D8 func_00547170  # OVL2
 0x00547350 0x21C func_00547350  # OVL2
@@ -10026,7 +10024,7 @@
 0x00547860 0x22C func_00547860  # OVL2
 0x00547A90 0x8 func_00547A90  # OVL2
 0x00547AA0 0x50 func_00547AA0  # OVL2
-0x00547AF0 0x55C func_00547AF0  # OVL2
+0x00547AF0 0x55C OnDeath__10CZSealBodyFv  # OVL2; slot 0x58 of __vt__10CZSealBody; calls CEntity::OnDeath, as SOCOM 1's
 0x00548050 0x34 func_00548050  # OVL2
 0x00548090 0x338 func_00548090  # OVL2
 0x005483D0 0x15F8 func_005483D0  # OVL2
@@ -10037,9 +10035,9 @@
 0x0054A3D0 0x300 func_0054A3D0  # OVL2
 0x0054A6D0 0x1D4 func_0054A6D0  # OVL2
 0x0054A8B0 0x178 func_0054A8B0  # OVL2
-0x0054AA30 0x2BEC func_0054AA30  # OVL2
+0x0054AA30 0x2BEC PostPreTick__10CZSealBodyFf  # OVL2; slot 0x1C of __vt__10CZSealBody (CEntity's PostPreTick slot)
 0x0054D620 0x380 func_0054D620  # OVL2
-0x0054D9A0 0xA88 func_0054D9A0  # OVL2
+0x0054D9A0 0xA88 ComputeNextPosition__10CZSealBodyFf  # OVL2; slot 0x28 of __vt__10CZSealBody (CEntity's ComputeNextPosition slot)
 0x0054E430 0x32C func_0054E430  # OVL2
 0x0054E760 0x184 func_0054E760  # OVL2
 0x0054E8F0 0x190 func_0054E8F0  # OVL2
@@ -10052,12 +10050,12 @@
 0x0054F6E0 0xFC func_0054F6E0  # OVL2
 0x0054F7E0 0xB50 func_0054F7E0  # OVL2
 0x00550330 0x23C func_00550330  # OVL2
-0x00550570 0x124 func_00550570  # OVL2
-0x005506A0 0x3D4 PostTick__10CZSealBodyFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00550570 0x124 PostTick__10CZSealBodyFf  # OVL2; slot 0x24 of __vt__10CZSealBody (CEntity's PostTick slot, as PostTickAll calls it)
+0x005506A0 0x3D4 PrePostTick__10CZSealBodyFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); slot 0x20 of __vt__10CZSealBody, which SOCOM II's CEntity table and ent_main.cpp's matched PrePostTickAll make PrePostTick (s1:vtable had given it PostTick by code likeness: SOCOM II moved SOCOM 1's PostTick body here)
 0x00550A80 0x3D0 func_00550A80  # OVL2
 0x00550E50 0x98 func_00550E50  # OVL2; tu: seal.cpp~ (1.0 beta)
-0x00550EF0 0xFCC func_00550EF0  # OVL2
-0x00551EC0 0x8BC func_00551EC0  # OVL2
+0x00550EF0 0xFCC Tick__10CZSealBodyFf  # OVL2; slot 0x18 of __vt__10CZSealBody (CEntity's Tick slot); calls CreateMPBombPickup first, as SOCOM 1's Tick
+0x00551EC0 0x8BC PreTick__10CZSealBodyFf  # OVL2; slot 0x14 of __vt__10CZSealBody (CEntity's PreTick slot)
 0x00552780 0xD0 func_00552780  # OVL2
 0x00552850 0x508 func_00552850  # OVL2
 0x00552D60 0x158 func_00552D60  # OVL2
@@ -10067,7 +10065,8 @@
 0x00553D60 0x44 func_00553D60  # OVL2
 0x00553DB0 0x8 func_00553DB0  # OVL2
 0x00553DC0 0x40 func_00553DC0  # OVL2
-0x00553E00 0x5C OnMissionEnd__10CZSealBodyFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00553E00 0x14 OnRecycleEntity__10CZSealBodyFP7CEntity  # OVL2; slot 0x54 of __vt__10CZSealBody (SOCOM II's CEntity order: OnMissionStart 0x4C, OnMissionEnd 0x50, OnRecycleEntity 0x54): m_control's OnRecycleEntity tail-called, SOCOM 1's 0x14 bytes word for word; size 0x14 (the seed ran a j-less tail call on into 0x553E20, the next function, and the s1:vtable pass named the pair OnMissionEnd)
+0x00553E20 0x3C OnMissionEnd__10CZSealBodyFv  # OVL2; slot 0x50 of __vt__10CZSealBody: m_control's OnMissionEnd (slot 0x60) after a call with m_id, as SOCOM 1's (which called DestroyNetPickups(m_id) under a test); split off the 0x553E00 row
 0x00553E60 0x3C OnMissionStart__10CZSealBodyFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00553EA0 0x119C func_00553EA0  # OVL2
 0x00555040 0x70 func_00555040  # OVL2
@@ -10175,7 +10174,7 @@
 0x0055F940 0x148 func_0055F940  # OVL2
 0x0055FA90 0x44C func_0055FA90  # OVL2
 0x0055FEE0 0x74 func_0055FEE0  # OVL2
-0x0055FF60 0x320 func_0055FF60  # OVL2
+0x0055FF60 0x320 PlayAiSound__11CSealCtrlAiF15CHARACTER_SOUND  # OVL2; slot 0x24 of __vt__11CSealCtrlAi (CSealCtrl's PlayAiSound slot); SOCOM 1's signature, unproven
 0x00560280 0xC0 func_00560280  # OVL2
 0x00560340 0x178 func_00560340  # OVL2
 0x005604C0 0x8 func_005604C0  # OVL2
@@ -10241,13 +10240,13 @@
 0x00566540 0x3A8 func_00566540  # OVL2
 0x005668F0 0x48 func_005668F0  # OVL2
 0x00566940 0x3B0 SlideTick__9CSealCtrlFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00566CF0 0xC4 func_00566CF0  # OVL2
+0x00566CF0 0xC4 SlideTick__11CSealCtrlAiFf  # OVL2; slot 0x8C of __vt__11CSealCtrlAi (CSealCtrl's SlideTick slot, 0x566940 in the base)
 0x00566DC0 0x57C CreepTick__9CSealCtrlFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00567340 0x10 func_00567340  # OVL2; s1~ SetThrottle__11CEntityCtrlFUif (one of 2 out-of-line copies of an inline, by s1:vtable)
-0x00567350 0x33C func_00567350  # OVL2
+0x00567350 0x33C CreepTick__11CSealCtrlAiFf  # OVL2; slot 0x88 of __vt__11CSealCtrlAi (CSealCtrl's CreepTick slot, 0x566DC0 in the base)
 0x00567690 0x1AC func_00567690  # OVL2
 0x00567840 0xA4 func_00567840  # OVL2
-0x005678F0 0x10 func_005678F0  # OVL2
+0x005678F0 0x10 SetThrottle__11CSealCtrlAiFUif  # OVL2; slot 0x20 of __vt__11CSealCtrlAi (CEntityCtrl's SetThrottle slot); a float array at 0x254 indexed
 0x00567900 0x1C24 func_00567900  # OVL2
 0x00569530 0x14 func_00569530  # OVL2
 0x00569550 0x344 func_00569550  # OVL2
@@ -10286,35 +10285,35 @@
 0x0056DCA0 0xA8 ClearGoal__9CSealCtrlF9GOAL_TYPE  # OVL2; s1:callee
 0x0056DD50 0x68 ResetToInitialState__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0056DDC0 0x50 OnRecycleEntity__11CSealCtrlAiFP7CEntity  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0056DE10 0x1064 func_0056DE10  # OVL2
+0x0056DE10 0x1064 PreTick__11CSealCtrlAiFf  # OVL2; slot 0x0C of __vt__11CSealCtrlAi (CEntityCtrl's PreTick slot)
 0x0056EE80 0x384 PostMortemPreTick__11CSealCtrlAiFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0056F210 0x248 func_0056F210  # OVL2
 0x0056F460 0x60 __dt__11CRemoteCtrlFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0056F4C0 0x1FC SetAiNetState__11CRemoteCtrlFUi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0056F6C0 0x29C GetAiNetState__11CSealCtrlAiCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0056F960 0x8 GetAiNetState__9CSealCtrlCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0056F970 0x390 func_0056F970  # OVL2
+0x0056F970 0x390 PostTick__11CSealCtrlAiFf  # OVL2; slot 0x3C of __vt__11CSealCtrlAi (CSealCtrl's PostTick slot)
 0x0056FD00 0x1010 Tick__11CSealCtrlAiFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00570D10 0x8 func_00570D10  # OVL2
 0x00570D20 0x28 func_00570D20  # OVL2
 0x00570D50 0xC func_00570D50  # OVL2
 0x00570D60 0x30 func_00570D60  # OVL2
 0x00570D90 0x68 func_00570D90  # OVL2
-0x00570E00 0x18C func_00570E00  # OVL2
+0x00570E00 0x18C Dump__9CSealCtrlFv  # OVL2; slot 0x68 of __vt__9CSealCtrl, inherited by CSealCtrlAi, CSealCtrlSquirm, CRemoteCtrl and CSealCtrlCopy (SOCOM II's CSealCtrlAi has no Dump of its own); sprintf/strcat over the entity's team bits
 0x00570F90 0x6C func_00570F90  # OVL2
 0x00571000 0x8 func_00571000  # OVL2
 0x00571010 0xEC func_00571010  # OVL2
 0x00571100 0x48 func_00571100  # OVL2
 0x00571150 0x198 func_00571150  # OVL2
 0x005712F0 0x12C func_005712F0  # OVL2
-0x00571420 0x84 func_00571420  # OVL2
-0x005714B0 0x5F4 func_005714B0  # OVL2
+0x00571420 0x84 OnStateChange__11CSealCtrlAiF10SEAL_STATE10SEAL_STATE  # OVL2; slot 0x64 of __vt__11CSealCtrlAi (CSealCtrl's OnStateChange slot)
+0x005714B0 0x5F4 OnDeath__11CSealCtrlAiFv  # OVL2; slot 0x18 of __vt__11CSealCtrlAi (CEntityCtrl's OnDeath slot)
 0x00571AB0 0x60 OnSetHealth__11CSealCtrlAiFff  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00571B10 0x674 OnStunDamage__11CSealCtrlAiF9STUN_TYPEfPC6CPnt3D  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00572190 0xAC func_00572190  # OVL2
 0x00572240 0xC4 func_00572240  # OVL2
 0x00572310 0x18 func_00572310  # OVL2
-0x00572330 0x550 func_00572330  # OVL2
+0x00572330 0x550 OnWeaponHit__11CSealCtrlAiFPQ23zdb15IntersectStructP12CZProjectile  # OVL2; slot 0x4C of __vt__11CSealCtrlAi (CSealCtrl's OnWeaponHit slot)
 0x00572880 0x168 func_00572880  # OVL2
 0x005729F0 0x340 OnWeaponEvent__11CSealCtrlAiFP12CZProjectileUiPv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00572D30 0x3C func_00572D30  # OVL2
@@ -10323,7 +10322,7 @@
 0x00573110 0x20 func_00573110  # OVL2
 0x00573130 0xA4C func_00573130  # OVL2
 0x00573B80 0x4C OnMissionEnd__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00573BD0 0x144 func_00573BD0  # OVL2
+0x00573BD0 0x144 OnMissionStart__11CSealCtrlAiFv  # OVL2; slot 0x5C of __vt__11CSealCtrlAi (CSealCtrl's OnMissionStart slot)
 0x00573D20 0x134 Initalize__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00573E60 0xB8 __dt__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00573F20 0x58 func_00573F20  # OVL2
@@ -10332,7 +10331,7 @@
 0x00574080 0x340 __ct__11CSealCtrlAiFv  # OVL2; s1:calls (ftsCreateSeal's AI branch, where SOCOM 1's calls __ct__11CSealCtrlAiFv; ftsCreateSeal byte-exact with it) -- the states lane
 0x005743C0 0x364 func_005743C0  # OVL2
 0x00574730 0xC4 func_00574730  # OVL2
-0x00574800 0x30 func_00574800  # OVL2
+0x00574800 0x30 GetJumpFlag__11CSealCtrlAiCFv  # OVL2; slot 0xA4 of __vt__11CSealCtrlAi, the base's inline GetJumpFlag (0x592020, returns 0) overridden, as SOCOM 1's CSealCtrlAi had its own
 0x00574830 0x2A4 func_00574830  # OVL2
 0x00574AE0 0x50 func_00574AE0  # OVL2
 0x00574B30 0x70 func_00574B30  # OVL2
@@ -10526,7 +10525,7 @@
 0x0058A4D0 0x10C func_0058A4D0  # OVL2
 0x0058A5E0 0xC8 func_0058A5E0  # OVL2
 0x0058A6B0 0x60 func_0058A6B0  # OVL2
-0x0058A710 0x8 func_0058A710  # OVL2
+0x0058A710 0x8 OnStateChange__9CSealCtrlF10SEAL_STATE10SEAL_STATE  # OVL2; slot 0x64 of __vt__9CSealCtrl, which CSealCtrlSquirm and CRemoteCtrl inherit (the vtables pass withheld it: CRemoteCtrl's misnamed OnMissionStart override at 0x5E6270 pulled the alignment)
 0x0058A720 0x100 func_0058A720  # OVL2
 0x0058A820 0x98 func_0058A820  # OVL2
 0x0058A8C0 0x58 func_0058A8C0  # OVL2
@@ -10548,8 +10547,8 @@
 0x0058B790 0x1CC func_0058B790  # OVL2
 0x0058B960 0x148 func_0058B960  # OVL2
 0x0058BAB0 0x98 func_0058BAB0  # OVL2
-0x0058BB50 0xA8 func_0058BB50  # OVL2
-0x0058BC00 0xA8 func_0058BC00  # OVL2
+0x0058BB50 0xA8 GetMaxXMotion__10CZSealBodyFRfRf  # OVL2; s1:calls (GetSpeedFromThrottle and GetThrottleFromSpeed call it from SOCOM 1's places, with two float slots)
+0x0058BC00 0xA8 GetMaxZMotion__10CZSealBodyFRfRf  # OVL2; s1:calls (GetSpeedFromThrottle and GetThrottleFromSpeed call it from SOCOM 1's places, with two float slots)
 0x0058BCB0 0x13C func_0058BCB0  # OVL2
 0x0058BDF0 0x4C0 func_0058BDF0  # OVL2
 0x0058C2B0 0x38 func_0058C2B0  # OVL2
@@ -10606,11 +10605,11 @@
 0x0058F8A0 0xBC func_0058F8A0  # OVL2
 0x0058F960 0x10C func_0058F960  # OVL2
 0x0058FA70 0x164 func_0058FA70  # OVL2
-0x0058FBE0 0xEC4 func_0058FBE0  # OVL2
+0x0058FBE0 0xEC4 OnCommand__11CSealCtrlAiFP10CZSealBody10FT_COMMANDPvb  # OVL2; slot 0x84 of __vt__11CSealCtrlAi (CSealCtrl's OnCommand, a slot earlier than SOCOM 1's: PerformCollisionActions is gone)
 0x00590AB0 0x8 OnCommand__9CSealCtrlFP10CZSealBody10FT_COMMANDPvb  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00590AC0 0xF4 func_00590AC0  # OVL2
-0x00590BC0 0x570 func_00590BC0  # OVL2
-0x00591130 0xB0 func_00591130  # OVL2
+0x00590BC0 0x570 AllowCommand__11CSealCtrlAiFP10CZSealBody10FT_COMMANDPv  # OVL2; slot 0x28 of __vt__11CSealCtrlAi, and SOCOM 1's order (after IssueCommand, before CanDeploy)
+0x00591130 0xB0 CanDeploy__FP5CZKit10EQUIP_ITEMP11CNodeAction  # OVL2; s1:order (between AllowCommand__11CSealCtrlAi and AllowCommand__9CSealCtrl, 0xB0 bytes against SOCOM 1's 0xA4)
 0x005911E0 0x8 AllowCommand__9CSealCtrlFP10CZSealBody10FT_COMMANDPv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005911F0 0x18C func_005911F0  # OVL2
 0x00591380 0x1A0 func_00591380  # OVL2
@@ -10621,42 +10620,42 @@
 0x00591FC0 0x1C func_00591FC0  # OVL2
 0x00591FE0 0x1C func_00591FE0  # OVL2
 0x00592000 0x1C func_00592000  # OVL2
-0x00592020 0x8 SetTarget__9CSealCtrlFP7CTarget  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00592020 0x8 func_00592020  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); s1~ not SetTarget__9CSealCtrlFP7CTarget (s1:vtable shifted it): slot 0xA4 returns 0 where SOCOM 1's SetTarget is void (jr ra; nop) -- it is GetJumpFlag, SOCOM 1's CSealCtrlAi and CSealCtrlSquirm virtual (move v0,zero) moved into the base, inline: OVL1's copy is 0x2B3C60 (CSealCtrlCopy's slot 0xA4); one of 2 copies of an inline. SOCOM II's SetTarget is slot 0xB0, 0x5CA460 (jr ra; nop)
 0x00592030 0x20 func_00592030  # OVL2
 0x00592050 0x48 func_00592050  # OVL2
-0x005920A0 0x20 func_005920A0  # OVL2
+0x005920A0 0x20 MPBomb_TimerAvailable__9CSealCtrlFb  # OVL2; s1:order; bit 12 of the flag word (m_mpbomb_bTimerAvailable) as SOCOM 1's
 0x005920C0 0x19C func_005920C0  # OVL2
 0x00592260 0x1A0 PerturbAimVector__9CSealCtrlFP6CPnt3D  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00592400 0xA4 Cross__6CPnt3DCFPC6CPnt3DP6CPnt3Db  # OVL2; s1:calls
 0x005924B0 0xAC func_005924B0  # OVL2
-0x00592560 0x320 func_00592560  # OVL2
-0x00592880 0x88 func_00592880  # OVL2
-0x00592910 0x88 func_00592910  # OVL2
-0x005929A0 0x120 func_005929A0  # OVL2
-0x00592AC0 0x78 func_00592AC0  # OVL2
-0x00592B40 0x60 func_00592B40  # OVL2
-0x00592BA0 0x30 func_00592BA0  # OVL2
-0x00592BD0 0xC func_00592BD0  # OVL2
-0x00592BE0 0xC func_00592BE0  # OVL2
-0x00592BF0 0x20 func_00592BF0  # OVL2
-0x00592C10 0x20 func_00592C10  # OVL2
-0x00592C30 0x40 func_00592C30  # OVL2
-0x00592C70 0x24 func_00592C70  # OVL2
+0x00592560 0x320 PostMortemPreTick__9CSealCtrlFf  # OVL2; slot 0x14 of __vt__9CSealCtrl (CEntityCtrl's PostMortemPreTick slot)
+0x00592880 0x88 GetSpeedFromThrottle__9CSealCtrlFfi  # OVL2; s1:order (sealctrl.cpp: after PostMortemPreTick, before GetThrottleFromSpeed); calls GetMaxZMotion then GetMaxXMotion off m_entity with (f, int) as SOCOM 1's
+0x00592910 0x88 GetThrottleFromSpeed__9CSealCtrlFfi  # OVL2; s1:order (after GetSpeedFromThrottle); the same callees as SOCOM 1's
+0x005929A0 0x120 TickRumbler__9CSealCtrlFf  # OVL2; s1:order (after GetThrottleFromSpeed, before StopRumbler)
+0x00592AC0 0x78 StopRumbler__9CSealCtrlFv  # OVL2; s1:order; flushes the input and stops the heartbeat, as SOCOM 1's (SOCOM II ticks the pad first)
+0x00592B40 0x60 SetLowRumbleTime__9CSealCtrlFff  # OVL2; s1:order (after StopRumbler; 0x60 bytes as SOCOM 1's)
+0x00592BA0 0x30 SetHighRumbleTime__9CSealCtrlFf  # OVL2; s1:order (after SetLowRumbleTime)
+0x00592BD0 0xC IsRumbleOn__Fv  # OVL2; s1:order (a byte global read; SOCOM 1's reads its own the same way)
+0x00592BE0 0xC SetRumbleOn__Fb  # OVL2; s1:order (the same byte global written)
+0x00592BF0 0x20 GetZoomIncrement__9CSealCtrlFv  # OVL2; s1:order; clears m_update_zoom (bit 8 of the flag word, now 0x170) and returns m_zoomincrement at 0x12C as SOCOM 1's
+0x00592C10 0x20 GetZoomLevel__9CSealCtrlFv  # OVL2; s1:order; clears m_update_zoom and returns m_zoomlevel at 0x128 as SOCOM 1's
+0x00592C30 0x40 UpdateHudWeapon__9CSealCtrlFv  # OVL2; s1:order; m_HudUpdateWeapon (bit 4) tested and cleared as SOCOM 1's
+0x00592C70 0x24 SetCameraZoom__9CSealCtrlFff  # OVL2; s1:order; m_zoomlevel and m_zoomincrement stored and m_update_zoom set as SOCOM 1's
 0x00592CA0 0x98 func_00592CA0  # OVL2
 0x00592D40 0x8 func_00592D40  # OVL2
 0x00592D50 0x7A8 OnActionButton__9CSealCtrlFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00593500 0x2BC func_00593500  # OVL2
+0x00593500 0x2BC SampleActionAvailable__9CSealCtrlFv  # OVL2; s1:order (after OnActionButton, before PerformProximityActions)
 0x005937C0 0x540 PerformProximityActions__9CSealCtrlFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00593D00 0x9C PerformReticleActions__9CSealCtrlFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00593DA0 0x330 func_00593DA0  # OVL2
-0x005940D0 0x278 func_005940D0  # OVL2
-0x00594350 0x124 func_00594350  # OVL2
-0x00594480 0x17C func_00594480  # OVL2
+0x00593DA0 0x330 TickPickups__9CSealCtrlFf  # OVL2; s1:order (after PerformReticleActions; calls PickupObject as SOCOM 1's); ThrottlesPreTick calls it first, as SOCOM 1's
+0x005940D0 0x278 TickVictims__9CSealCtrlFv  # OVL2; s1:order (after TickPickups; ThrottlesPreTick calls it second, as SOCOM 1's)
+0x00594350 0x124 CanPerformAction__9CSealCtrlFP11CNodeAction  # OVL2; s1:order (after TickVictims); calls the next function first, as SOCOM 1's calls CanPlaceBomb
+0x00594480 0x17C CanPlaceBomb__9CSealCtrlFP11CNodeAction  # OVL2; s1:order (after CanPerformAction, which calls it)
 0x00594600 0x56C func_00594600  # OVL2
 0x00594B70 0x11C func_00594B70  # OVL2
 0x00594C90 0x5C func_00594C90  # OVL2
 0x00594CF0 0x19A8 PreTick__9CSealCtrlFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x005966A0 0x6C0 func_005966A0  # OVL2
+0x005966A0 0x6C0 ThrottlesPreTick__9CSealCtrlFP4CPadf  # OVL2; s1:order (after PreTick, before Tick); calls SetWeaponState, then TickPickups and TickVictims, as SOCOM 1's
 0x00596D60 0x1B0 func_00596D60  # OVL2
 0x00596F10 0x1A0 Tick__9CSealCtrlFf  # OVL2; s1:calls
 0x005970B0 0x43C PostTick__9CSealCtrlFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -10669,18 +10668,18 @@
 0x005976A0 0x40 func_005976A0  # OVL2
 0x005976E0 0x60 func_005976E0  # OVL2
 0x00597740 0x48 func_00597740  # OVL2
-0x00597790 0x78 func_00597790  # OVL2
-0x00597810 0x78 func_00597810  # OVL2
-0x00597890 0x8 func_00597890  # OVL2
-0x005978A0 0xF8 func_005978A0  # OVL2
+0x00597790 0x78 SetTrigger__9CSealCtrlFb  # OVL2; s1:order; m_trigger (a byte enum, now 0x118) stepped by a switch as SOCOM 1's
+0x00597810 0x78 SetTrigger__9CSealCtrlFbf  # OVL2; s1:order; m_trigger_power (0x11C) stored, then the same switch
+0x00597890 0x8 ResetToInitialState__9CSealCtrlFv  # OVL2; slot 0x58 of __vt__9CSealCtrl, and SOCOM 1's order (after SetTrigger(b, f))
+0x005978A0 0xF8 PlayAiSound__9CSealCtrlF15CHARACTER_SOUND  # OVL2; slot 0x24 of __vt__9CSealCtrl, and sealctrl.cpp's order (after ResetToInitialState, before OnDeath, as SOCOM 1's); SOCOM 1's signature, unproven
 0x005979A0 0x160 OnDeath__9CSealCtrlFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00597B00 0xF8 OnSetHealth__9CSealCtrlFff  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00597C00 0x240 OnStunDamage__9CSealCtrlF9STUN_TYPEfPC6CPnt3D  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00597E40 0x40 OnWeaponHit__9CSealCtrlFPQ23zdb15IntersectStructP12CZProjectile  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00597E80 0x24 func_00597E80  # OVL2
+0x00597E80 0x24 Initalize__9CSealCtrlFv  # OVL2; slot 0x40 of __vt__9CSealCtrl, and SOCOM 1's order (Initalize, OnMissionEnd, OnMissionStart, OnRecycleEntity, OnWeaponEvent, the destructor, the constructor)
 0x00597EB0 0x98 func_00597EB0  # OVL2
 0x00597F50 0x9C func_00597F50  # OVL2
-0x00597FF0 0x8 func_00597FF0  # OVL2
+0x00597FF0 0x8 OnRecycleEntity__9CSealCtrlFP7CEntity  # OVL2; slot 0x48 of __vt__9CSealCtrl, and SOCOM 1's order
 0x00598000 0x218 OnWeaponEvent__9CSealCtrlFP12CZProjectileUiPv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00598220 0x60 __dt__9CSealCtrlFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00598280 0x5B8 __ct__9CSealCtrlFv  # OVL2; s1:calls (ftsCreateSeal's new of 0x5B8... constructs it where SOCOM 1's calls __ct__9CSealCtrlFv; ftsCreateSeal byte-exact with it) -- the states lane
@@ -10773,9 +10772,9 @@
 0x005A2690 0x900 func_005A2690  # OVL2
 0x005A2F90 0xD4 CheckForRegionTrigger__10CZSealBodyFUi  # OVL2; s1:calls
 0x005A3070 0xF0 func_005A3070  # OVL2
-0x005A3160 0x58 func_005A3160  # OVL2
-0x005A31C0 0x58 func_005A31C0  # OVL2
-0x005A3220 0x58 func_005A3220  # OVL2
+0x005A3160 0x58 GetNeckPosW__10CZSealBodyFP6CPnt3D  # OVL2; slot 0x38 of __vt__10CZSealBody (CEntity's slot 0x38, GetNeckPosW in zentity.h; the name ours)
+0x005A31C0 0x58 GetHeadPosW__10CZSealBodyFP6CPnt3D  # OVL2; slot 0x34 of __vt__10CZSealBody (CEntity's slot 0x34, GetHeadPosW in zentity.h; the name ours)
+0x005A3220 0x58 GetTargetPosW__10CZSealBodyFP6CPnt3D  # OVL2; slot 0x30 of __vt__10CZSealBody (CEntity's GetTargetPosW slot)
 0x005A3280 0x12C func_005A3280  # OVL2
 0x005A33B0 0x1B8 HandleBloodDrip__10CZSealBodyFf  # OVL2; s1:calls
 0x005A3570 0x434 func_005A3570  # OVL2
@@ -10934,7 +10933,7 @@
 0x005B7920 0x68 func_005B7920  # OVL2
 0x005B7990 0x190 func_005B7990  # OVL2
 0x005B7B20 0x74 func_005B7B20  # OVL2
-0x005B7BA0 0x5EC func_005B7BA0  # OVL2
+0x005B7BA0 0x5EC UpdateAiMapLoc__10CZSealBodyFv  # OVL2; slot 0x48 of __vt__10CZSealBody (CEntity's UpdateAiMapLoc slot; SOCOM II's takes no argument, as UpdateAiMapLoc__7CEntityFv)
 0x005B8190 0xC8 func_005B8190  # OVL2
 0x005B8260 0x10 OnWeaponHit__7CSealExFPQ23zdb5CNodePQ23zdb15IntersectStructP12CZProjectile  # OVL2; s1:exact
 0x005B8270 0x60 func_005B8270  # OVL2
