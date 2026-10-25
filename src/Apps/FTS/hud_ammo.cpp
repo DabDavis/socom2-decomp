@@ -29,3 +29,12 @@ void CAmmoDisplay::Reset()
     data_004145E0 = 0;
     data_003DCBD8 = -1;
 }
+
+/* the poly, the head and the four bitmaps off */
+void CAmmoDisplay::Off()
+{
+    m_poly.Off();
+    m_head.Off();
+    for (unsigned int i = 0; i < 4; i++)
+        m_bitmaps[i].Off();
+}

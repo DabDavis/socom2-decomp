@@ -12,6 +12,7 @@
 #include <eetypes.h>
 
 #include "ztwod.h"
+#include "zvid2d.h"
 
 /* libvu0's float-to-fixed copies (MAIN, prebuilt) */
 typedef int sceVu0IVECTOR[4] __attribute__((aligned(16)));
@@ -31,20 +32,17 @@ public:
 };
 }
 
-/* the 2D depth the video setup leaves (OVL1 bss, inside zVid: SOCOM II's; no row of its own) */
-extern float data_004A44E0;
-
 /* untextured, white then grey and opaque, the UVs the texture's diagonal, and a line's PRIM word
- * (1) with the flags' bits (the vertices' small offsets are SOCOM 1's; the depth SOCOM II's) */
+ * (1) with the flags' bits (the vertices' small offsets are SOCOM 1's; the depth, zVid's maxZ, SOCOM II's) */
 C2DLine::C2DLine()
 {
     m_vertex[0][0] = -6.3e-05f;
     m_vertex[0][1] = -4.6e-05f;
-    m_vertex[0][2] = data_004A44E0;
+    m_vertex[0][2] = zVid.maxZ;
     m_vertex[0][3] = 1.0f;
     m_vertex[1][0] = -3e-05f;
     m_vertex[1][1] = -2e-05f;
-    m_vertex[1][2] = data_004A44E0;
+    m_vertex[1][2] = zVid.maxZ;
     m_vertex[1][3] = 1.0f;
     m_x = 0;
     m_y = 0;
@@ -155,10 +153,10 @@ void C2DLine::SetPos(int x1, int y1, int x2, int y2)
     m_y = y1;
     m_vertex[0][0] = m_topx + x1 * m_fXPixel;
     m_vertex[0][1] = m_topy + y1 * m_fYPixel;
-    m_vertex[0][2] = data_004A44E0;
+    m_vertex[0][2] = zVid.maxZ;
     m_vertex[1][0] = m_topx + x2 * m_fXPixel;
     m_vertex[1][1] = m_topy + y2 * m_fYPixel;
-    m_vertex[1][2] = data_004A44E0;
+    m_vertex[1][2] = zVid.maxZ;
 }
 
 /* v counts down the texture */
@@ -179,40 +177,41 @@ void C2DLine::Draw(zdb::CCamera *cam)
     }
 }
 
-/* the texture's registers, a GIF tag (two loops of ST, RGBAQ, XYZ2 under the PRIM word), then
- * both ends, kicked.
- * OPEN, 3 instructions short (0x10C against 0x118): MW folds the packet pointer's steps into
- * constant offsets from one register (a0 = s0 + 48, + 64, ...); the target advances s0 by 32 after
- * each pair of quadwords, as C2DBitmap::MakePacket does (0x3643B0) -- some form of the steps MW
- * cannot fold (&p[n], p = p + 2, a pair struct, a by-reference inline all fold or grow). A p++
- * statement after each call gets the stepping by 32, but paired one call off (the tag's step
- * merged into the first pair's) and the last step folded into the kick's size */
+/* the texture's registers, the DMA and VIF tags (seven quadwords, DIRECT), a GIF tag (two loops of
+ * ST, RGBAQ, XYZ2 under the PRIM word), then both ends, kicked. The cursor is a vector pointer, not
+ * the packet's type: through the conversion MW keeps it apart from the packet (with one type, MW
+ * passes the packet's register for the texture's copy); each quadword is its own step, which MW
+ * pairs into the target's steps of 32 */
 void C2DLine::MakePacket(zdb::CCamera *cam)
 {
     u_long128 *packet = zSysSprGetPacket(0);
-    u_long128 *p = packet;
+    sceVu0FVECTOR *p = (sceVu0FVECTOR *)packet;
 
     if (m_texture) {
-        sceVu0CopyVector((float *)p, m_texture->m_gsregs);
+        sceVu0CopyVector(*p, m_texture->m_gsregs);
         p++;
     }
     ((unsigned int *)p)[0] = 0x10000007;
     ((unsigned int *)p)[1] = 0;
     ((unsigned int *)p)[2] = 0;
     ((unsigned int *)p)[3] = 0x50000007;
-    ((unsigned long *)p)[2] = 0x3000400000008002 | ((unsigned long)m_prim << 47);
-    ((unsigned long *)p)[3] = 0x512;
-    p += 2;
-    sceVu0CopyVector((float *)p, m_NewUV[0]);
-    sceVu0FTOI0Vector((int *)(p + 1), m_RGB[0]);
-    p += 2;
+    p++;
+    ((unsigned long *)p)[0] = 0x3000400000008002 | ((unsigned long)m_prim << 47);
+    ((unsigned long *)p)[1] = 0x512;
+    p++;
+    sceVu0CopyVector(*p, m_NewUV[0]);
+    p++;
+    sceVu0FTOI0Vector((int *)p, m_RGB[0]);
+    p++;
     sceVu0FTOI4Vector((int *)p, m_vertex[0]);
-    sceVu0CopyVector((float *)(p + 1), m_NewUV[1]);
-    p += 2;
+    p++;
+    sceVu0CopyVector(*p, m_NewUV[1]);
+    p++;
     sceVu0FTOI0Vector((int *)p, m_RGB[1]);
-    sceVu0FTOI4Vector((int *)(p + 1), m_vertex[1]);
-    p += 2;
-    zSysFifoKick(packet, p - packet);
+    p++;
+    sceVu0FTOI4Vector((int *)p, m_vertex[1]);
+    p++;
+    zSysFifoKick(packet, (u_long128 *)p - packet);
 }
 
 void C2DLine::FillClipInfo(float (*vertex)[4], float (*rgb)[4], float (*uv)[4])

@@ -9,7 +9,32 @@
  * constructor; the tri-fan's Draw and destructor OPEN on include/vector. Defined in reverse of
  * their image order (-inline deferred). */
 
+#include <eetypes.h>
+
 #include "ztwod.h"
+#include "zvid2d.h"
+
+/* libvu0's float-to-fixed copy (MAIN, prebuilt) */
+extern "C" void sceVu0FTOI0Vector(int *v0, sceVu0FVECTOR v1);
+
+/* the scratchpad packet and its kick (zsys) */
+u_long128 *zSysSprGetPacket(u_long128 **end);
+void zSysFifoKick(u_long128 *packet, unsigned int qwc);
+
+/* libgraph's GIF tag (eestruct.h's SCE_GIF_SET_TAG): MW folds the constant fields into one word
+ * where every field but the PRIM is constant (C2DLine's), and ORs them in this order otherwise */
+#define SCE_GIF_SET_TAG(nloop, eop, pre, prim, flg, nreg)                                       \
+    ((unsigned long)(nloop) | ((unsigned long)(eop) << 15) | ((unsigned long)(pre) << 46) |   \
+     ((unsigned long)(prim) << 47) | ((unsigned long)(flg) << 58) | ((unsigned long)(nreg) << 60))
+
+/* the texture as the triangle packets it: its GS registers at 0x30 */
+namespace zdb {
+class CTexture {
+public:
+    unsigned char _0[0x30];
+    sceVu0FVECTOR m_gsregs;   // 0x30
+};
+}
 
 /* the triangle at 0,0, untextured, white, blended, then grey and opaque, a triangle's PRIM word (3)
  * with the flags' bits (the vertices' small offsets are SOCOM 1's) */
@@ -193,6 +218,68 @@ void C2DPoly::Draw(zdb::CCamera *cam)
         MakePacket(cam);
         C2D::Draw(cam);
     }
+}
+
+/* the texture's registers, the DMA and VIF tags (sized at the end), the frame-buffer alpha's blend
+ * (an A+D write of ALPHA_1) when asked for, a GIF tag (three loops of ST, RGBAQ, XYZ2, the last
+ * packet unless the blend is restored after), then the corners: x and y as 12.4 fixed point in the
+ * window, y squeezed about the screen's top by the aspect in video mode 1, the 2D depth */
+void C2DPoly::MakePacket(zdb::CCamera *cam)
+{
+    int i;
+    u_long128 *packet = zSysSprGetPacket(0);
+    sceVu0FVECTOR *p = (sceVu0FVECTOR *)packet;
+    sceVu0FVECTOR *tag;
+    unsigned int eop;
+
+    if (m_texture) {
+        sceVu0CopyVector(*p, m_texture->m_gsregs);
+        p++;
+    }
+    tag = p;
+    p++;
+    if (m_isFrameAlpha) {
+        ((unsigned long *)p)[0] = SCE_GIF_SET_TAG(1, 0, 0, 0, 0, 1);
+        ((unsigned long *)p)[1] = 0xe;
+        ((unsigned long *)p)[2] = 0x54;
+        ((unsigned long *)p)[3] = 0x42;
+        eop = 0;
+        p += 2;
+    } else
+        eop = 1;
+    ((unsigned long *)p)[0] = SCE_GIF_SET_TAG(3, eop, 1, m_prim, 0, 3);
+    ((unsigned long *)p)[1] = 0x512;
+    p++;
+    for (i = 0; i < 3; i++) {
+        sceVu0CopyVector(*p, m_NewUV[i]);
+        p++;
+        sceVu0FTOI0Vector((int *)p, m_RGB[i]);
+        p++;
+        ((int *)p)[0] = (int)(16.0f * (m_topx + m_vertex[i][0] * m_fXPixel));
+        if (zVid.videoMode == 1)
+            ((int *)p)[1] = (int)(16.0f * (zVid.screenTop +
+                                           zVid.aspect[1] * (m_vertex[i][1] - zVid.screenTop)));
+        else
+            ((int *)p)[1] = (int)(16.0f * (m_topy + m_vertex[i][1] * m_fYPixel));
+        ((int *)p)[2] = zVid.iMaxZ;
+        ((int *)p)[3] = (int)m_vertex[i][3];
+        p++;
+    }
+    if (m_isFrameAlpha) {
+        ((unsigned long *)p)[0] = SCE_GIF_SET_TAG(1, 1, 0, 0, 0, 1);
+        ((unsigned long *)p)[1] = 0xe;
+        ((unsigned long *)p)[2] = 0x44;
+        ((unsigned long *)p)[3] = 0x42;
+        p += 2;
+    }
+
+    int qwc = (u_long128 *)p - (u_long128 *)tag - 1;
+
+    ((unsigned int *)tag)[0] = 0x10000000 | qwc;
+    ((unsigned int *)tag)[1] = 0;
+    ((unsigned int *)tag)[2] = 0;
+    ((unsigned int *)tag)[3] = 0x50000000 | qwc;
+    zSysFifoKick(packet, (u_long128 *)p - packet);
 }
 
 /* room for five triangles */
