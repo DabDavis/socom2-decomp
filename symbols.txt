@@ -11423,7 +11423,7 @@
 0x005EDDC0 0x10 func_005EDDC0  # OVL2
 0x005EDDD0 0x70 func_005EDDD0  # OVL2
 0x005EDE40 0x150 func_005EDE40  # OVL2
-0x005EDF90 0x1D0 func_005EDF90  # OVL2
+0x005EDF90 0x1D0 SealLeaveUnit__9CSealUnitFP10CZSealBody  # OVL2; s1:calls by hand (the kit lane, round 5): EscorteeJoinUnit and SealJoinUnit (0x5EE160, 0x5EE250) call it first with the seal alone, as SOCOM 1's call SealLeaveUnit (static)
 0x005EE160 0xE8 EscorteeJoinUnit__9CSealUnitFP10CZSealBody  # OVL2; s1:calls by hand (the kit lane, round 5, from another lane's lead): UpdateRollandsUnitStuff calls it where SOCOM 1's calls EscorteeJoinUnit (twice, after ftsGetPlayer's GetUnitByTeam and after Create)
 0x005EE250 0x278 SealJoinUnit__9CSealUnitFP10CZSealBody  # OVL2; s1:calls by hand (the kit lane, round 5, from another lane's lead): UpdateRollandsUnitStuff calls it where SOCOM 1's calls SealJoinUnit (twice, after Create and after GetUnitByTeam); recursive as SOCOM 1's
 0x005EE4D0 0x220 func_005EE4D0  # OVL2

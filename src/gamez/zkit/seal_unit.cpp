@@ -7,6 +7,7 @@
 
 #include "../../ai/ai_states.h"
 #include "../zanim/zanim.h"
+#include "../znet/znet.h"
 
 extern "C" {
 /* CSealCtrlAi::GetAiState (OVL2 0x5F6010, seal_aistate.cpp's; zseal.h's CSealCtrlAi does not
@@ -31,15 +32,64 @@ public:
     CSealUnit(unsigned int team);
     static CSealUnit *GetUnitByTeam(unsigned int team);
     static CSealUnit *Create(unsigned int team);
+    /* a SEAL taken out of its squad (SOCOM 1's, static; OVL2 0x5EDF90, not written yet) */
+    static void SealLeaveUnit(CZSealBody *seal);
+    void SealJoinUnit(CZSealBody *seal);
+    void EscorteeJoinUnit(CZSealBody *seal);
+    /* this squad's escort taken up on the session master of a network game: a squad number outside
+     * the single-player squads' 1-32, then the network's two bytes (an inline bool through one
+     * local -- the `||` materialised with its true set first, the `&&` re-assigned to it; the name
+     * ours) */
+    bool HostEscort() const
+    {
+        bool open = m_unit_num == 0 || m_unit_num > 32;
+
+        if (open)
+            open = theNetwork.m_bNetwork && theNetwork.m_bSessionMaster;
+        return open;
+    }
 
     unsigned char _0[0x58];
     unsigned int m_unit_num;   // 0x58 (SOCOM 1's 0x38)
-    unsigned char _5c[0xc0 - 0x5c];
+    unsigned char _5c[0x70 - 0x5c];
+    std::list<CZSealBody *> m_escortees;   // 0x70: the escorted SEALs (SOCOM 1's at 0x4c)
+    unsigned char _7c[0x9c - 0x7c];
+    unsigned char *m_9c;   // 0x9c: a block whose byte 8 is 4 for ... (SOCOM 1's at 0x78)
+    unsigned char m_a0;   // 0xa0: set when an escortee joins so (SOCOM 1's 0x7c)
+    unsigned char _a1[0xc0 - 0xa1];
     CValve *m_valve;   // 0xc0: the radio channel's valve, team 24's (SOCOM 1's 0xa0)
     unsigned int m_c4;   // 0xc4 (zeroed with the valve; new in SOCOM II -- the name ours)
 
     static std::list<CSealUnit *> m_list;   // 0x44D5B0 (OVL1 bss): every squad (SOCOM 1's)
 };
+
+extern "C" {
+/* a squad's update after a member joins (OVL2 0x5E7830, unwritten; new in SOCOM II) */
+void func_005E7830(CSealUnit *unit);
+}
+
+/* the controller's squad word (CSealCtrl at 0x10C; zseal.h does not name it -- the view ours) */
+struct CUnitCtrl {
+    unsigned char _0[0x10c];
+    CSealUnit *m_unit;   // 0x10c
+};
+
+/* an escortee taken in: out of its old squad, then the leader's squad itself when this is squad
+ * 17, else onto the escort list, its controller pointed here and the flag at 0xA0 set for ... (OVL2
+ * 0x5EE160; SOCOM 1's, which recursed on a sub-squad) */
+void CSealUnit::EscorteeJoinUnit(CZSealBody *seal)
+{
+    SealLeaveUnit(seal);
+    if (m_unit_num == 17) {
+        SealJoinUnit(seal);
+        return;
+    }
+    m_escortees.push_back(seal);
+    ((CUnitCtrl *)((CEntity *)seal)->m_control)->m_unit = this;
+    if (m_9c[8] == 4 || HostEscort())
+        m_a0 = 1;
+    func_005E7830(this);
+}
 
 /* the squad of a number, made and listed when there is none; team 24's gets the radio channel's
  * valve (OVL2 0x5EF380; SOCOM 1's, the word after the valve zeroed with it) */
