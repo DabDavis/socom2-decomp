@@ -1642,6 +1642,27 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the kit and AI states, round 8** (seal_tasks.cpp, the task commands):
+  - SOCOM II's own command table names the task handlers: CSealCtrlAi::RegisterCommands (0x5DE320)
+    makes 34 AddCmd calls, 92 Parse/Begin/Tick/End handlers named after SOCOM 1's class for the same
+    command name (CTCreate, CTDrain, CTGroup, CTTurret ours: SOCOM 1 has no such commands);
+  - ONE REGISTER, 13 HANDLERS: every handler that uses its command block after the inlined find
+    misses on that block's register alone -- the target puts it in s1, between the find's list (s0)
+    and its counter (s2), every spelling tried here gives s4 (CTHold, CTWait, CTStance, CTPursue,
+    CTMacro, CTGroup, CTLookAt, CTGoto); cracking it should close most of ~60 handlers;
+  - an inlined find ending on `if (!(bool)p) break; ... return 0;` gives the target's materialised
+    (sltu, xori) exit after the loop; `if (!p) return 0;` branches inline; declaring the counter
+    before the list gives the list s0, the counter s1;
+  - `seal ? SealAi(seal) : 0` with the call in an inline of its own keeps the result in both arms
+    (`b; move s0,v0` / `move s0,zero`); straight in the ternary MW puts the zero in the delay slot;
+  - fields a parser reads before its allocation come from an inline Create(): its by-value arguments
+    are evaluated before its body (CTStopAll, CTComm);
+  - in scripts, test scdiff's verdict as a line starting `  MATCH`: relocation lines say MISMATCH;
+  - units by SOCOM 1's initialisers: seal_kit, seal_sensors (0x5C9400-0x5CDBCF), seal_tasks
+    (0x5CDBD0-~0x5DEEBF), seal_weapon (probably from ~0x5DEEC0), anim.cpp (0x5E0030-0x5E622F, AnimSet:
+    the demo has its DWARF), remote_control, seal_unit, seal_aistate, seal_aievent, seal_aimoves,
+    seal_aifollow, seal_squirm, seal_ailines, seal_handsig, seal_aiscan, seal_airesponse; 0x60C170-
+    ~0x60EDFF is SOCOM II's CAiGroup with act_camera/act_zanim/act_anim/act_sound.
 - **Tells from the AI core, round 9** (the line callbacks, SetCellLink and the links, char_type.cpp):
   - an inline is cut to one level only when its tree is 6 or more high: links::Remove inlined whole
     until Find compared through a `link == CAiMapLoc` operator, one level more; under such a cut even

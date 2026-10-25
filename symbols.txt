@@ -3032,7 +3032,7 @@
 0x00271AE0 0x4C __dt__9CZAnimArgFv  # OVL1; s1:align
 0x00271B30 0x3B0 ParseNetworkPacketArgs__13CZAnimArgListFP6CZAnimP18ZAnimNetworkPacket  # OVL1; s1:calls (SOCOM 1's NetworkReceive calls it on the copy's list, as SOCOM II's func_00273780 does)
 0x00271EE0 0x1FC AddNetworkPacketArgs__13CZAnimArgListFP6CZAnimP18ZAnimNetworkPacket  # OVL1; s1:align
-0x002720E0 0xD8 func_002720E0  # OVL1
+0x002720E0 0xD8 GetCmd__13CZAnimArgListFi  # OVL1; s1:calls (the kit lane's round 8, vetted by the integrator: the find inlined into every task handler calls it with (list, i) exactly as SOCOM 1's taskFindParam calls GetCmd__13CZAnimArgListFi)
 0x002721C0 0xD8 func_002721C0  # OVL1
 0x002722A0 0xF0 func_002722A0  # OVL1
 0x00272390 0xE8 func_00272390  # OVL1
@@ -10321,7 +10321,7 @@
 0x005743C0 0x364 func_005743C0  # OVL2
 0x00574730 0xC4 get_valve__11CSealCtrlAiFPCc  # OVL2; s1:order (after the constructor, as SOCOM 1's get_valve__11CSealCtrlAiFPCc: each valve's name, the inlined get_valve(SEAL_VALVE), compared with strcmp, its index returned; 4 for none) -- the SEAL lane, round 4
 0x00574800 0x30 GetJumpFlag__11CSealCtrlAiCFv  # OVL2; slot 0xA4 of __vt__11CSealCtrlAi, the base's inline GetJumpFlag (0x592020, returns 0) overridden, as SOCOM 1's CSealCtrlAi had its own
-0x00574830 0x2A4 func_00574830  # OVL2
+0x00574830 0x2A4 SetAiEnabled__11CSealCtrlAiFbb  # OVL2; s1:calls (the kit lane's round 8, vetted by the integrator: CTStopAll::Tick passes it (!bit0, !bit1) as SOCOM 1's CTStopAll::Tick passes SetAiEnabled__11CSealCtrlAiFbb)
 0x00574AE0 0x50 StopAiSound__11CSealCtrlAiF8AI_SOUND  # OVL2; s1:order by hand (SOCOM 1's StopAiSound__11CSealCtrlAiF8AI_SOUND word for word bar the statics' gp addressing: the indexed instance stopped and cleared; UpdateAiMapLoc calls it -- the SEAL lane, round 8)
 0x00574B30 0x70 PlayAiSound__11CSealCtrlAiF8AI_SOUND  # OVL2; s1:order by hand (SOCOM 1's PlayAiSound__11CSealCtrlAiF8AI_SOUND, after StopAiSound as here, word for word bar the gp addressing: the indexed sound played (PlaySound, slot 0xC, with 0 and 255) unless its instance plays -- the SEAL lane, round 8)
 0x00574BA0 0x24 func_00574BA0  # OVL2
