@@ -6300,8 +6300,8 @@
 0x0034B890 0x28 ResetStream__7HeadsetFv  # OVL1; SOCOM II's, name ours (the headset's instance cleared and its id -1)
 0x0034B8C0 0x4C Reset__7HeadsetFv  # OVL1; SOCOM II's, name ours (the stream request reset, the headset state 0; CSnd::Close calls it)
 0x0034B910 0xC8 __ct__7HeadsetFv  # OVL1; SOCOM 1's Headset() by its call (Create news 64 bytes and calls it on them, keeping what it returns as the headset)
-0x0034B9E0 0x80 func_0034B9E0  # OVL1
-0x0034BA60 0x120 func_0034BA60  # OVL1
+0x0034B9E0 0x80 InitStream__7HeadsetFv  # OVL1; SOCOM II's, name ours (a Headset member: unless a network game, 989snd extern call 0 to the headset's stream module (id 0x12C4E67A) with a 0xF000-byte buffer at 22050 Hz on the device ftsGetHeadset found, then the request state 3; CSnd::Open calls it on ftsGetHeadset's headset) -- the sound lane
+0x0034BA60 0x120 FindDevice__7HeadsetFPiPiPUc  # OVL1; SOCOM II's, name ours (lgAudEnumerate walked for the first device with a 16-bit mono format at 22050 Hz, its index, format and channels returned through three pointers; false in a network game; ftsGetHeadset's only callee) -- the sound lane
 0x0034BB80 0xD4 ftsGetHeadset__7HeadsetFv  # OVL1; s1:calls by hand (CSnd::PostTick gets the headset with it and ticks it, as SOCOM 1's PostTick calls ftsGetHeadset then Headset::Tick; ZAnim's sound code asks it for the headset)
 0x0034BC60 0x34 Create__7HeadsetFv  # OVL1; SOCOM II's, name ours (the headset made: new, the constructor, the static pointer)
 0x0034BCA0 0xC func_0034BCA0  # OVL1

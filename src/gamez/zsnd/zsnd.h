@@ -398,7 +398,17 @@ public:
     void Resume();                      /* SOCOM II's (names ours) */
     void Pause();
     static Headset *ftsGetHeadset();
-    static void Create();
+    static Headset *Create();
+    static bool FindDevice(int *device, int *format, unsigned char *channels);
+    void InitStream();
+    /* the device found (ours: ftsGetHeadset's arguments load before the stores, as an inline's) */
+    void SetDevice(int device, int format, unsigned char channels)
+    {
+        m_0 = device;
+        m_4 = format;
+        m_8 = channels;
+        m_stop = 0;
+    }
     static void ResetStream();
     static void Reset();
 
@@ -414,7 +424,9 @@ public:
     int m_c;                    /* 0x0C */
     CSnd *m_sound;              /* 0x10 */
     int m_vol;                  /* 0x14 */
-    unsigned char _18[0x34 - 0x18];
+    std::vector<int> m_queue;   /* 0x18: the queued entries' indices (SOCOM 1's at 0x18 too) */
+    std::vector<int> m_free;    /* 0x24: the free entries' indices, 0-19 when built */
+    unsigned int *m_entries;    /* 0x30: twenty entries of three words */
     int m_34;                   /* 0x34 */
     CSndInstance *m_instance;   /* 0x38 */
     int m_3c;                   /* 0x3C */
