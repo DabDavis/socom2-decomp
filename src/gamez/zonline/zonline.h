@@ -8,6 +8,16 @@
 #define ZONLINE_H
 
 #include <string.h>
+#include <vector>
+#include <algorithm>
+
+/* a field copied when both ends are there (the items' constructors test both addresses, as SOCOM
+ * 1's do; a local array's test folds away -- TransferLeadership, CreateClan. The name ours) */
+inline void CopyField(void *dst, const void *src, unsigned int n)
+{
+    if (dst && src)
+        memcpy(dst, src, n);
+}
 
 /* --- the Medius SDK's types (Sony's prebuilt library in OVL2; only what the lobby passes) ---- */
 
@@ -133,22 +143,71 @@ struct MediusTransferClanLeadershipRequest {
     char NewLeaderAccountName[32];   // 0x2c
 };   // 0x4c
 
+/* a player's whereabouts (the SDK's MediusPlayerOnlineState: 0x8c bytes, copied as 35 words) */
+struct MediusPlayerOnlineState {
+    int ConnectStatus;   // 0x0
+    int MediusLobbyWorldID;   // 0x4
+    int MediusGameWorldID;   // 0x8
+    char LobbyName[64];   // 0xc
+    char GameName[64];   // 0x4c
+};   // 0x8c
+
+/* the responses the lobby keeps whole (a member: its list's Add copies it, as a class of its own:
+ * MW copies a class with a user-declared constructor member by member -- the arrays in loops, the
+ * nested struct as words -- where a plain struct is copied as one block of words; the constructor
+ * is ours, the copy the target's) */
+struct MediusGetClanMemberListResponse {
+    MediusGetClanMemberListResponse() {}
+
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    MediusCallbackStatus StatusCode;   // 0x18
+    int AccountID;   // 0x1c
+    char AccountName[32];   // 0x20
+    char Stats[256];   // 0x40
+    MediusPlayerOnlineState OnlineState;   // 0x140
+    int LadderStat;   // 0x1cc
+    unsigned int LadderPosition;   // 0x1d0
+    unsigned int TotalRankings;   // 0x1d4
+    char EndOfList;   // 0x1d8
+};   // 0x1dc
+
+/* a leader's message */
+struct MediusGetAllClanMessagesResponse {
+    MediusGetAllClanMessagesResponse() {}
+
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    MediusCallbackStatus StatusCode;   // 0x18
+    int ClanMessageID;   // 0x1c
+    char Message[200];   // 0x20
+    int Status;   // 0xe8
+    char EndOfList;   // 0xec
+};   // 0xf0
+
 struct MediusDisbandClanResponse { MEDIUS_RESPONSE_HEAD };
-struct MediusGetClanMemberListResponse { MEDIUS_RESPONSE_HEAD };
 struct MediusRemovePlayerFromClanResponse { MEDIUS_RESPONSE_HEAD };
 struct MediusTransferClanLeadershipResponse { MEDIUS_RESPONSE_HEAD };
+/* an invitation to a clan received */
 struct MediusCheckMyClanInvitationsResponse {
     MEDIUS_RESPONSE_HEAD
     int ClanInvitationID;   // 0x1c
     int ClanID;   // 0x20
     int ResponseStatus;   // 0x24: 0-2 kept
-    unsigned char _28[0x114 - 0x28];
+    char Message[200];   // 0x28
+    int LeaderAccountID;   // 0xf0
+    char LeaderAccountName[32];   // 0xf4
     char EndOfList;   // 0x114
 };
-struct MediusGetClanInvitationsSentResponse { MEDIUS_RESPONSE_HEAD };
+/* an invitation the clan sent */
+struct MediusGetClanInvitationsSentResponse {
+    MEDIUS_RESPONSE_HEAD
+    int AccountID;   // 0x1c
+    char AccountName[32];   // 0x20
+    char Message[200];   // 0x40
+    int ResponseStatus;   // 0x108
+    char EndOfList;   // 0x10c
+};
 struct MediusRespondToClanInvitationResponse { MEDIUS_RESPONSE_HEAD };
 struct MediusDeleteClanMessageResponse { MEDIUS_RESPONSE_HEAD };
-struct MediusGetAllClanMessagesResponse { MEDIUS_RESPONSE_HEAD };
 struct MediusGetMyClanMessagesResponse { MEDIUS_RESPONSE_HEAD };
 struct MediusSendClanMessageResponse { MEDIUS_RESPONSE_HEAD };
 /* the filter's answer: the text handed back, its status after it */
@@ -226,6 +285,142 @@ MediusErrorCode MediusRespondToClanInvitation(MediusRespondToClanInvitationReque
 MediusErrorCode MediusGetClanMemberList(MediusGetClanMemberListRequest *req,
                                         MediusGetClanMemberListCallback cb);
 }
+
+/* --- the lobby's lists -------------------------------------------------------------------- */
+
+/* the lobby keeps its lists in vectors of pointers that own their items (SOCOM 1's were plain
+ * vectors, emptied in place): each list's destructor deletes its items through DeleteAll (the
+ * clan unit's 0x2EA3C0-0x2EA5BF), and every list also has an Add that skips an item already there
+ * and a Find by id. The classes and member names are ours. */
+
+/* an item deleted and its slot cleared, for std::transform (the items' destructors are trivial:
+ * the delete calls operator delete with no null test) */
+template <class T>
+struct DeleteItem {
+    DeleteItem() {}
+    T *operator()(T *p) const
+    {
+        delete p;
+        return 0;
+    }
+};
+
+/* a list emptied and its storage given up: cleared, then traded for an empty one's. Not inline: a
+ * template's instance per list follows its first caller, ReleaseUIResources (0x2DFA50-0x2DFD50,
+ * in reverse of their first use), with the whole body inlined in it; the name ours */
+template <class T>
+void ReleaseVector(std::vector<T *> &v)
+{
+    std::vector<T *> tmp;
+
+    v.clear();
+    v.swap(tmp);
+}
+
+/* the invitations received (SOCOM 1's InvitationItem, its constructor from the response) */
+struct InvitationItem {
+    InvitationItem(MediusCheckMyClanInvitationsResponse *r)
+    {
+        ClanInvitationID = r->ClanInvitationID;
+        ClanID = r->ClanID;
+        CopyField(Message, r->Message, sizeof(Message));
+        LeaderAccountID = r->LeaderAccountID;
+        CopyField(LeaderAccountName, r->LeaderAccountName, sizeof(LeaderAccountName));
+        ResponseStatus = r->ResponseStatus;
+    }
+
+    int ClanInvitationID;   // 0x0
+    int ClanID;   // 0x4
+    int ResponseStatus;   // 0x8
+    char Message[200];   // 0xc
+    int LeaderAccountID;   // 0xd4
+    char LeaderAccountName[32];   // 0xd8
+};   // 0xf8
+
+/* the invitations sent (SOCOM 1's ClanInvitationItem, its constructor from the response) */
+struct ClanInvitationItem {
+    ClanInvitationItem(MediusGetClanInvitationsSentResponse *r)
+    {
+        AccountID = r->AccountID;
+        CopyField(Message, r->Message, sizeof(Message));
+        CopyField(AccountName, r->AccountName, sizeof(AccountName));
+        ResponseStatus = r->ResponseStatus;
+    }
+
+    int AccountID;   // 0x0
+    char AccountName[32];   // 0x4
+    int ResponseStatus;   // 0x24
+    char Message[200];   // 0x28
+};   // 0xf0
+
+/* a member of the clan and a leader's message: the responses kept whole */
+typedef MediusGetClanMemberListResponse ClanMemberItem;
+typedef MediusGetAllClanMessagesResponse ClanMessageItem;
+
+/* The finds by id walk with the end taken once (`i = begin(), e = end()`): with `i != end()` the
+ * inlined Find is a level too tall inside Add, which then calls end() out of line. */
+class InvitationVector : public std::vector<InvitationItem *> {
+public:
+    ~InvitationVector() { DeleteAll(); }
+    InvitationItem *Find(int id)
+    {
+        for (iterator i = begin(), e = end(); i != e; ++i)
+            if (id == (*i)->ClanInvitationID)
+                return *i;
+        return 0;
+    }
+    void Add(MediusCheckMyClanInvitationsResponse *resp);
+    void DeleteAll();
+};
+
+class ClanInvitationVector : public std::vector<ClanInvitationItem *> {
+public:
+    ~ClanInvitationVector() { DeleteAll(); }
+    ClanInvitationItem *Find(int id)
+    {
+        for (iterator i = begin(), e = end(); i != e; ++i)
+            if (id == (*i)->AccountID)
+                return *i;
+        return 0;
+    }
+    void Add(MediusGetClanInvitationsSentResponse *resp);
+    void DeleteAll();
+};
+
+class ClanMemberVector : public std::vector<ClanMemberItem *> {
+public:
+    ~ClanMemberVector() { DeleteAll(); }
+    ClanMemberItem *Find(int id)
+    {
+        for (iterator i = begin(), e = end(); i != e; ++i)
+            if (id == (*i)->AccountID)
+                return *i;
+        return 0;
+    }
+    ClanMemberItem *Find(const char *name);
+    void Add(MediusGetClanMemberListResponse *resp);
+    void DeleteAll();
+};
+
+class ClanMessageVector : public std::vector<ClanMessageItem *> {
+public:
+    ~ClanMessageVector() { DeleteAll(); }
+    ClanMessageItem *Find(int id)
+    {
+        for (iterator i = begin(), e = end(); i != e; ++i)
+            if (id == (*i)->ClanMessageID)
+                return *i;
+        return 0;
+    }
+    void Add(MediusGetAllClanMessagesResponse *resp);
+    void DeleteAll();
+};
+
+/* the clan unit's lists (its initialiser 0x401EB0 builds them) */
+extern InvitationVector InvitationVec;   /* the invitations received */
+extern ClanInvitationVector ClanInvitationVec;   /* the invitations sent */
+extern ClanMemberVector ClanMemberVec;
+extern ClanMessageVector ClanMessageVec;   /* the leader's messages (SOCOM II's; the name ours) */
 
 /* --- the lobby --------------------------------------------------------------------------- */
 

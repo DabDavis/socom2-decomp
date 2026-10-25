@@ -7,15 +7,9 @@
  * Defined in reverse of their image order (-inline deferred). */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "zonline.h"
-
-/* a vector of pointers, as the lobby's lists are (only the size is read here) */
-struct LobbyList {
-    unsigned int capacity_;   // 0x0
-    unsigned int size_;   // 0x4
-    void **data_;   // 0x8
-};
 
 /* the account logged in (OVL2 bss, as SessionKey; SOCOM 1's AccountInfo) */
 struct AccountInfoType {
@@ -30,13 +24,6 @@ struct StoredClanInfoType {
     unsigned char _20[4];
     char ClanName[32];   // 0x24
     int LeaderAccountID;   // 0x44
-};
-
-/* a member of the clan (only its account) */
-struct ClanMemberItem {
-    unsigned char _0[0x1c];
-    int AccountID;   // 0x1c
-    char AccountName[32];   // 0x20
 };
 
 void UpdateInvitations();   /* the received invitations shown (SOCOM 1's) */
@@ -62,20 +49,69 @@ extern "C" {
 extern AccountInfoType AccountInfo;
 extern StoredClanInfoType StoredClanInfo;
 extern int PlayerClanID;   /* -1 outside a clan */
-extern LobbyList InvitationVec;   /* the invitations received */
-extern LobbyList ClanInvitationVec;   /* the invitations sent */
-extern LobbyList ClanMemberVec;
-extern LobbyList data_0044F760;   /* the leader's messages (SOCOM II's) */
 extern int RemovePlayerFromClanID;   /* the member being put out */
-void func_002E9240(LobbyList *list, MediusCheckMyClanInvitationsResponse *resp);   /* one kept */
-void func_002E66F0(LobbyList *list);   /* the leader's messages deleted */
-
-ClanMemberItem *func_002E9460(LobbyList *list, const char *name);   /* the member by name */
-void func_002E9380(LobbyList *list);   /* the received invitations deleted */
-void func_002E9160(LobbyList *list);   /* the sent invitations deleted */
-void func_002E9740(LobbyList *list);   /* the members deleted */
 void func_002E6AF0();   /* the roster's UI variable rebuilt */
 }
+
+/* The lists' members, defined first: they close the unit's own code in the image (0x2E9030-0x2E981F),
+ * ahead of the clan-team helpers and the member sort. Never inlined in the target -- their callers
+ * call them, the destructors too: pinned. */
+#pragma auto_inline off
+
+/* the members deleted and the list emptied (OVL1 0x2E9740) */
+void ClanMemberVector::DeleteAll()
+{
+    std::transform(begin(), end(), begin(), DeleteItem<ClanMemberItem>());
+    clear();
+}
+
+/* a member kept, unless already there: the response copied whole (OVL1 0x2E9590) */
+void ClanMemberVector::Add(MediusGetClanMemberListResponse *resp)
+{
+    if (!Find(resp->AccountID))
+        push_back(new ClanMemberItem(*resp));
+}
+
+/* the member by name, or by the account number the name spells (OVL1 0x2E9460) */
+ClanMemberItem *ClanMemberVector::Find(const char *name)
+{
+    if (!name || !name[0])
+        return 0;
+    for (iterator i = begin(); i != end(); ++i)
+        if (!strcasecmp((*i)->AccountName, name))
+            return *i;
+    return Find(atoi(name));
+}
+
+/* the invitations received deleted (OVL1 0x2E9380) */
+void InvitationVector::DeleteAll()
+{
+    std::transform(begin(), end(), begin(), DeleteItem<InvitationItem>());
+    clear();
+}
+
+/* an invitation received kept, unless already there (OVL1 0x2E9240) */
+void InvitationVector::Add(MediusCheckMyClanInvitationsResponse *resp)
+{
+    if (!Find(resp->ClanInvitationID))
+        push_back(new InvitationItem(resp));
+}
+
+/* the invitations sent deleted (OVL1 0x2E9160) */
+void ClanInvitationVector::DeleteAll()
+{
+    std::transform(begin(), end(), begin(), DeleteItem<ClanInvitationItem>());
+    clear();
+}
+
+/* an invitation sent kept, unless already there (OVL1 0x2E9030) */
+void ClanInvitationVector::Add(MediusGetClanInvitationsSentResponse *resp)
+{
+    if (!Find(resp->AccountID))
+        push_back(new ClanInvitationItem(resp));
+}
+
+#pragma auto_inline reset
 
 /* the clan left (SOCOM 1's; OVL1 0x2E8EF0) */
 void CZOnlineLobby::QuitClan()
@@ -121,7 +157,7 @@ void CZOnlineLobby::DeclineClanInvitation(int id)
 /* any invitations received (SOCOM 1's; OVL1 0x2E8770) */
 bool CZOnlineLobby::HasClanInvitations()
 {
-    return InvitationVec.size_ != 0;
+    return InvitationVec.size() != 0;
 }
 
 /* an invitation received kept; at the list's end the menu told and the list shown (SOCOM 1's;
@@ -132,8 +168,8 @@ void cbCheckMyClanInvitations(MediusErrorCode, MediusErrorCode, MediusErrorCode,
     if (CheckMediusCallbackStatus("CheckMyClanInvitations", resp->StatusCode)) {
         /* (MW folds the first two tests into one unsigned compare) */
         if (resp->ResponseStatus == 0 || resp->ResponseStatus == 1 || resp->ResponseStatus == 2)
-            func_002E9240(&InvitationVec, resp);
-        if (resp->EndOfList && InvitationVec.size_) {
+            InvitationVec.Add(resp);
+        if (resp->EndOfList && InvitationVec.size()) {
             LobbyEvent("MP_MEDIUS_HAS_INVITES", 0);
             UpdateInvitations();
         }
@@ -145,7 +181,7 @@ void cbCheckMyClanInvitations(MediusErrorCode, MediusErrorCode, MediusErrorCode,
 /* the invitations received asked for again (SOCOM 1's; OVL1 0x2E8650) */
 void CZOnlineLobby::CheckClanInvitations()
 {
-    func_002E9380(&InvitationVec);
+    InvitationVec.DeleteAll();
     MediusCheckMyClanInvitationsRequest req;
 
     memset(&req, 0, sizeof(req));
@@ -220,7 +256,7 @@ void CZOnlineLobby::TransferLeadership(const char *name)
         LobbyEvent("MP_PLAYER_NOT_FOUND", 0);
         return;
     }
-    ClanMemberItem *m = func_002E9460(&ClanMemberVec, name);
+    ClanMemberItem *m = ClanMemberVec.Find(name);
 
     if (!m) {
         LobbyEvent("MP_PLAYER_NOT_FOUND", 0);
@@ -277,7 +313,7 @@ bool CZOnlineLobby::RemovePlayerFromClan(const char *name)
         return false;
     if (m_current_state != LOBBY_ACTIVE)
         return false;
-    ClanMemberItem *m = func_002E9460(&ClanMemberVec, name);
+    ClanMemberItem *m = ClanMemberVec.Find(name);
 
     if (m) {
         if (AccountInfo.AccountID == m->AccountID) {
@@ -301,7 +337,7 @@ bool CZOnlineLobby::RemovePlayerFromClan(const char *name)
 /* any invitations sent (SOCOM 1's; OVL1 0x2E7290) */
 bool CZOnlineLobby::ClanHasInvitations()
 {
-    return ClanInvitationVec.size_ != 0;
+    return ClanInvitationVec.size() != 0;
 }
 
 /* the invitations sent asked for again (SOCOM 1's; OVL1 0x2E6EA0) */
@@ -311,7 +347,7 @@ bool CZOnlineLobby::GetInvitedPlayers()
         return false;
     if (m_current_state != LOBBY_ACTIVE)
         return false;
-    func_002E9160(&ClanInvitationVec);
+    ClanInvitationVec.DeleteAll();
     MediusGetClanInvitationsSentRequest req;
 
     memset(&req, 0, sizeof(req));
@@ -329,7 +365,7 @@ bool CZOnlineLobby::GetClanRoster()
         return false;
     if (m_current_state != LOBBY_ACTIVE)
         return false;
-    func_002E9740(&ClanMemberVec);
+    ClanMemberVec.DeleteAll();
     func_002E6AF0();
     MediusGetClanMemberListRequest req;
 
@@ -353,7 +389,7 @@ void cbDisbandClan(MediusErrorCode, MediusErrorCode, MediusErrorCode,
         func_003862A0(theLobby.uiv_ClanNameVar, "");
         func_003862A0(theLobby.uiv_ClanDescription, " ");
         func_003862A0(theLobby.uiv_ClanMessages, "No clan messages.");
-        func_002E9740(&ClanMemberVec);
+        ClanMemberVec.DeleteAll();
         func_002E6AF0();
         PlayerClanID = -1;
         StoredClanInfo.ClanID = -1;
@@ -393,19 +429,41 @@ bool CZOnlineLobby::IsMemberOfClan()
  * ternary, a bool local, if/else. */
 bool CZOnlineLobby::IsLeaderOfClan(const char *name)
 {
-    ClanMemberItem *m = func_002E9460(&ClanMemberVec, name);
+    ClanMemberItem *m = ClanMemberVec.Find(name);
 
     if (m)
         return m->AccountID == StoredClanInfo.LeaderAccountID;
     return AccountInfo.AccountID == StoredClanInfo.LeaderAccountID;
 }
 
+/* the leader's messages' list (its two members sit here, after their first user, where the other
+ * lists' close the unit: pinned like theirs) */
+#pragma auto_inline off
+
+/* the messages deleted (OVL1 0x2E66F0) */
+void ClanMessageVector::DeleteAll()
+{
+    std::transform(begin(), end(), begin(), DeleteItem<ClanMessageItem>());
+    clear();
+}
+
+/* a message kept, unless already there: the response copied whole (OVL1 0x2E65B0) */
+void ClanMessageVector::Add(MediusGetAllClanMessagesResponse *resp)
+{
+    if (!resp)
+        return;
+    if (!Find(resp->ClanMessageID))
+        push_back(new ClanMessageItem(*resp));
+}
+
+#pragma auto_inline reset
+
 /* the leader's messages emptied and asked for (SOCOM II's; OVL1 0x2E6310). Never inlined in the
  * target, though three callbacks of this unit call it: pinned */
 #pragma auto_inline off
 void CZOnlineLobby::GetLeaderMessages()
 {
-    func_002E66F0(&data_0044F760);
+    ClanMessageVec.DeleteAll();
     MediusGetAllClanMessagesRequest req;
 
     memset(&req, 0, sizeof(req));

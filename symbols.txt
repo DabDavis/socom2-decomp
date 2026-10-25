@@ -4765,8 +4765,8 @@
 0x002E6310 0x74 GetLeaderMessages__13CZOnlineLobbyFv  # OVL1; ours ('GetLeaderMessages' 0x27A0B0 calls it on theLobby; the leader's messages list emptied and asked for, its callback 0x2E6390 reports 'GetLeaderMessages')
 0x002E6390 0x68 cbGetLeaderMessages__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP32MediusGetAllClanMessagesResponse  # OVL1; ours (GetLeaderMessages' callback; reports 'GetLeaderMessages'); the mangled length corrected (32)
 0x002E6400 0x1AC func_002E6400  # OVL1
-0x002E65B0 0x13C func_002E65B0  # OVL1
-0x002E66F0 0xD4 func_002E66F0  # OVL1
+0x002E65B0 0x13C Add__17ClanMessageVectorFP32MediusGetAllClanMessagesResponse  # OVL1; ours (cbGetLeaderMessages keeps a message through it on 0x44F760: the response copied whole, 0xF0 bytes, unless its id is there; byte-exact)
+0x002E66F0 0xD4 DeleteAll__17ClanMessageVectorFv  # OVL1; ours (the leader's messages 0x44F760 deleted: GetLeaderMessages and the list's destructor 0x2EA3C0; byte-exact)
 0x002E67D0 0x54 IsLeaderOfClan__13CZOnlineLobbyFPCc  # OVL1; s1:ui ('IsLeaderOfClan' = UIIsLeaderOfClan, as SOCOM 1's calls IsLeaderOfClan; the name passed on to the member search)
 0x002E6830 0x14 IsMemberOfClan__13CZOnlineLobbyFv  # OVL1; s1:ui ('IsMemberOfClan' 0x27A910, as SOCOM 1's UIIsMemberOfClan; the clan id against -1)
 0x002E6850 0x84 DisbandClan__13CZOnlineLobbyFv  # OVL1; s1:ui ('DisbandClan' = UIDisbandClan; the code SOCOM 1's DisbandClan's but for MediusCreateMessageID and the status test)
@@ -4813,13 +4813,13 @@
 0x002E8BD0 0x314 cbGetMyClans__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP24MediusGetMyClansResponse  # OVL1; s1 by hand (GetClan's callback; reports 'GetMyClans')
 0x002E8EF0 0x7C QuitClan__13CZOnlineLobbyFv  # OVL1; s1:ui ('QuitClan' 0x278D00, as SOCOM 1's UIQuitClan)
 0x002E8F70 0xBC cbQuitClan__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP34MediusRemovePlayerFromClanResponse  # OVL1; s1 by hand (QuitClan's callback; reports 'QuitClan')
-0x002E9030 0x128 func_002E9030  # OVL1
-0x002E9160 0xD4 func_002E9160  # OVL1
-0x002E9240 0x138 func_002E9240  # OVL1
-0x002E9380 0xD4 func_002E9380  # OVL1
-0x002E9460 0x130 func_002E9460  # OVL1
-0x002E9590 0x1AC func_002E9590  # OVL1
-0x002E9740 0xD4 func_002E9740  # OVL1
+0x002E9030 0x128 Add__20ClanInvitationVectorFP36MediusGetClanInvitationsSentResponse  # OVL1; ours (cbGetClanInvitationsSent's: SOCOM 1's ClanInvitationItem constructor inlined, 0xF0 bytes, unless the account is there; byte-exact)
+0x002E9160 0xD4 DeleteAll__20ClanInvitationVectorFv  # OVL1; ours (ClanInvitationVec's items deleted: GetInvitedPlayers, ReleaseUIResources and its destructor 0x2EA4C0; byte-exact)
+0x002E9240 0x138 Add__16InvitationVectorFP36MediusCheckMyClanInvitationsResponse  # OVL1; ours (cbCheckMyClanInvitations keeps an invitation through it: SOCOM 1's InvitationItem constructor inlined, 0xF8 bytes, unless the invitation id is there; byte-exact)
+0x002E9380 0xD4 DeleteAll__16InvitationVectorFv  # OVL1; ours (InvitationVec's items deleted, the list emptied: CheckClanInvitations, ReleaseUIResources and its destructor 0x2EA540; byte-exact)
+0x002E9460 0x130 Find__16ClanMemberVectorFPCc  # OVL1; ours (the member by name -- strcasecmp on +0x20 -- or by atoi(name) as an account id: IsLeaderOfClan, RemovePlayerFromClan, TransferLeadership, InvitePlayerToClan call it on ClanMemberVec; byte-exact)
+0x002E9590 0x1AC Add__16ClanMemberVectorFP31MediusGetClanMemberListResponse  # OVL1; ours (cbGetClanMemberList's only call, on ClanMemberVec: a member not found by account id is kept as a whole copy of the response, 0x1DC bytes; byte-exact)
+0x002E9740 0xD4 DeleteAll__16ClanMemberVectorFv  # OVL1; ours (ClanMemberVec's items deleted and the list emptied -- std::transform with a deleter, then clear: GetClanRoster, cbDisbandClan, cbQuitClan, ReleaseUIResources and the list's destructor 0x2EA440 call it on 0x44F740; byte-exact)
 0x002E9820 0x1C func_002E9820  # OVL1
 0x002E9840 0xD8 func_002E9840  # OVL1
 0x002E9920 0x14 func_002E9920  # OVL1
