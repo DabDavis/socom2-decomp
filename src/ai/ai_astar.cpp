@@ -67,7 +67,7 @@ void CAiPath::SetPlanner(CAiPlanner *planner)
 
 /* the search made for the path's current leg, with the planner its type asks for unless it has
  * its own (SOCOM 1's; the four planners are function statics, built by their vtable alone; the
- * CAiStar's two cells unbuilt -- SOCOM II's empty CAiMapLoc(), through ai.h's CAiMapLocBits) */
+ * CAiStar's two cells unbuilt -- SOCOM II's empty CAiMapLoc(), zentity.h's now) */
 CAiStar *CAiPath::CreatePlanner()
 {
     static CAiPlanner defaultPlanner;

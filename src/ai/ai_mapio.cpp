@@ -339,17 +339,18 @@ void _fixupEdge(CGraph *, CGEdge *edge, bool fix, unsigned int &n, void *data)
 }
 
 /* the graph's nodes saved and read back: each node's region as the packed cell of its corner
- * (SOCOM 1's). The cell is a CAiMapLoc left unbuilt, its fields assigned one by one */
+ * (SOCOM 1's). The cell is a CAiMapLoc left unbuilt (its constructor empty), its fields assigned
+ * one by one */
 void _fixupNode(CGraph *, CGNode *node, bool fix, unsigned int &n, void *data)
 {
     if (fix) {
-        CAiMapLocBits loc;
+        CAiMapLoc loc;
         unsigned int packed = n;
 
         loc.m_mapid = packed >> 26;
         loc.x = (packed >> 13) & 0x1fff;
         loc.y = packed & 0x1fff;
-        node->m_region = ((CAiMap *)data)->GetRegion((const CAiMapLoc &)loc);
+        node->m_region = ((CAiMap *)data)->GetRegion(loc);
     } else {
         const CAiMapLoc &loc = node->m_region->m_loc;
 

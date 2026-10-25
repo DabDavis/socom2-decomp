@@ -516,15 +516,6 @@ class CAiStar;
 class CAiOverlay;
 class CAiPlanner;
 
-/* CAiMapLoc's storage without its constructor. SOCOM II's CAiMapLoc() is empty (0x516120), where
- * zentity.h's stand-in copies `invalid`: a member the original left unbuilt holds this until the
- * entity header's constructor is SOCOM II's (then it is CAiMapLoc again) */
-struct CAiMapLocBits {
-    unsigned int m_mapid : 6;
-    unsigned int x : 13;
-    unsigned int y : 13;
-};
-
 /* the maps a path crosses (SOCOM 1's DWARF: a vector of CAiMap pointers and nothing more) */
 class CAiMapVec : public std::vector<CAiMap *> {
 };
@@ -558,7 +549,7 @@ public:
     int path_cost;   // 0x18
     int m_ticks;   // 0x1c
     float m_time;   // 0x20
-    CAiMapLocBits m_current;   // 0x24: a CAiMapLoc, left unbuilt (CAiPath's constructor)
+    CAiMapLoc m_current;   // 0x24: left unbuilt (CAiMapLoc() is empty in SOCOM II)
     /* a plain vector (SOCOM 1's DWARF: a CAiMapLocVec): CAiPath's constructor inlines the stats'
      * whole, one level shallower than through CAiMapLocVec's implicit constructor */
     std::vector<CAiMapLoc> m_visited;   // 0x28
@@ -664,15 +655,15 @@ public:
     {
         m_map = path->GetLegMap(-1);
         m_stats = &path->m_stats;
-        path->GetLegPoints((CAiMapLoc &)m_start, (CAiMapLoc &)m_goal, -1);
+        path->GetLegPoints(m_start, m_goal, -1);
     }
     ~CAiStar();
     void find_path(CAiPath *path);
 
     CAiPlanner *m_planner;   // 0x0
     CAiMap *m_map;   // 0x4
-    CAiMapLocBits m_start;   // 0x8: a CAiMapLoc
-    CAiMapLocBits m_goal;   // 0xc: a CAiMapLoc
+    CAiMapLoc m_start;   // 0x8
+    CAiMapLoc m_goal;   // 0xc
     CAiPathStats *m_stats;   // 0x10
 };
 
