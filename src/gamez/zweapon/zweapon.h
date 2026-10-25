@@ -157,6 +157,8 @@ public:
      * own only so; the name is ours) */
     EQUIP_ITEM GetId() const { return m_ID; }
 
+    /* the decal sets read from the decals rdr's DECAL_SETS list (SOCOM 1's) */
+    static void OpenDecals();
     /* the name, packed with the ammo into a word for the network (SOCOM 1's statics) */
     static unsigned short PackItemAndAmmoEnums(EQUIP_ITEM item, EQUIP_AMMO ammo);
     static void UnpackItemAndAmmoEnums(unsigned short packed, EQUIP_ITEM *item, EQUIP_AMMO *ammo);
@@ -215,6 +217,10 @@ public:
     static CZWeaponList m_listWeapons;
     /* the projectiles in flight (SOCOM 1's static: 0x4B5220) */
     static CZProjectileList *m_pProjectilelist;
+    /* the timer registered for the HUD, by the value it counts (SOCOM 1's static: 0x4B52C0) */
+    static float *m_timer_pCurval;
+    /* the tracers (SOCOM 1's static, 0x1c bytes: 0x4B5260) */
+    static class CFlyoutMachine m_flyout_machine;
 };   // 0xf8 bytes (CZFTSWeapon's targetmods start there)
 
 /* the materials' table (int_material.cpp's, SOCOM 1's class): only the extension list, whose size
@@ -415,8 +421,13 @@ public:
      * (SOCOM II's; the name ours) */
     bool HandleNextHit();
     void Detonate();
+    /* the detonation's damage dealt once its proximity test has run (SOCOM 1's, 0x3C8330 -- not
+     * written) */
+    void HandleDelayedDetonate();
     void Cleanup();
-    bool SetModelOrientation(bool b, const CPnt3D *dir);
+    /* the node shown along the frame's travel: a stretched tracer flown every fourth frame when
+     * asked, or the shot's own orientation (SOCOM 1's; nothing returned -- no path sets v0) */
+    void SetModelOrientation(bool b, const CPnt3D *dir);
     void SetVelW(const CPnt3D *vel);
     /* SOCOM II's: a hit on the projectile itself from another (CProjectileNodeEx hands it on; the
      * name ours) */
@@ -545,6 +556,95 @@ public:
     int m_cc;   // 0xcc
     CMatrix m_matrix;   // 0xd0
 };   // 0x110 bytes
+
+/* the charges set down that go off near a SEAL (new in SOCOM II: a pointer vector of its own,
+ * CZWeapon's static at 0x4B5238, which zwep_weapon.cpp's initialiser 0x404C10 builds and registers;
+ * the projectile list takes a charge out when it goes, OVL2's proximity test 0x543930 walks it by
+ * index and sets off one within its ammo's proximity distance, the kit adds a charge it sets down
+ * (0x5BC730). Its functions are out of line at the head of OVL1's last unit, zwep_flyout.cpp; the
+ * names ours) */
+class CPlacedExplosiveList : public std::vector<PlacedExplosive *> {
+public:
+    CPlacedExplosiveList();
+    ~CPlacedExplosiveList();
+    void Clear();
+    void Add(PlacedExplosive *explosive);
+    void Remove(PlacedExplosive *explosive);
+    int Count();
+    PlacedExplosive *Get(int i);
+};
+
+namespace zdb {
+class CModel;
+}
+class CBBox;
+
+/* the flyouts (zwep_flyout.cpp's: SOCOM 1's classes, moved here for the projectile's tracers) */
+/* a tracer in flight: its node (an empty xref the tracer model is set on), its anim, where and how
+ * fast (SOCOM 1's class, 0x3c bytes in both; only what the code here touches is named) */
+class CFlyout {
+public:
+    CFlyout();
+    ~CFlyout();
+
+    zdb::CNode *m_instance;   // 0x0
+    CZAnim *m_anim;   // 0x4
+    CPnt3D m_pos;   // 0x8
+    CPnt3D m_vel;   // 0x14: the end it flies to (the name SOCOM 1's slot, the use the target's)
+    int m_20;   // 0x20: the speed (a float: AcquireFlyout stores it, Tick reads it)
+    int m_24;   // 0x24: the distance flown (a float)
+    float m_maxdist;   // 0x28: the weapon's range, or 300 (the name ours)
+    unsigned char m_done;   // 0x2c (SOCOM 1's Tick releases a flyout whose byte is set)
+    unsigned char _2d[0x30 - 0x2d];
+    CPnt3D m_30;   // 0x30: zeroed when it is acquired (not named)
+};   // 0x3c bytes
+
+/* the tracers: a pool of flyouts, the free ones and the active ones by pointer (SOCOM 1's
+ * CFlyoutMachine, 0x1c bytes; CZWeapon's static m_flyout_machine, 0x4B5260) */
+class CFlyoutMachine {
+public:
+    CFlyoutMachine();
+    ~CFlyoutMachine();
+    void Init(unsigned int count);
+    static void HookupReset();
+    void ReleaseAllActive();
+    bool ReleaseFlyout(CFlyout *flyout, int index);
+    /* the done flyouts released, then every active one moved on by its speed: done once past its
+     * range, or arrived when the step would overshoot its end (SOCOM 1's) */
+    bool Tick(float dT);
+    /* a free flyout sent from start to end at a speed, unless the two are within 70 (SOCOM 1's) */
+    bool AcquireFlyout(CPnt3D &start, CPnt3D &end, CZAnim *anim, CZWeapon *weapon, float speed,
+                       CMatrix *m, CBBox *box);
+    /* an active flyout's index, or -1 (inline: ReleaseFlyout's search; the name ours) */
+    int FindActive(CFlyout *flyout)
+    {
+        unsigned int n = m_active.size();
+
+        for (unsigned int i = 0; i < n; i++) {
+            if (m_active[i] == flyout)
+                return i;
+        }
+        return -1;
+    }
+    /* the model the next tracer takes (new in SOCOM II: SetModelOrientation picks the standard,
+     * enemy or ally one; the name ours) */
+    static void SetTracerModel(zdb::CModel *model);
+
+    CFlyout *m_flyouts;   // 0x0
+    std::vector<CFlyout *> m_free;   // 0x4
+    std::vector<CFlyout *> m_active;   // 0x10
+
+    /* SOCOM 1's statics: the model in use and the three tracer models */
+    static zdb::CModel *pFlyout_Model_Registered;
+    static zdb::CModel *pFlyout_Model_Standard;
+    static zdb::CModel *pFlyout_Model_Enemy;
+    static zdb::CModel *pFlyout_Model_Ally;
+    /* SOCOM II's: the enemy's and the ally's tracer animations, looked up only when the flag
+     * says so (the names ours) */
+    static CZAnim *pFlyout_Anim_Ally;
+    static CZAnim *pFlyout_Anim_Enemy;
+    static bool m_tracer_anims;
+};   // 0x1c bytes
 
 /* the projectiles in flight and the intersections they test with (SOCOM 1's DWARF: 0x208 bytes;
  * the direct- and indirect-fire tables sit where SOCOM 1's do -- its Release*FireDI are
