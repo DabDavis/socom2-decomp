@@ -30,11 +30,19 @@ int sceGsSetDefStoreImage(sceGsStoreImage *sp, short sbp, short sbw, short spsm,
 int sceGsExecStoreImage(sceGsStoreImage *sp, u_long128 *dstaddr);
 int sceGsSyncPath(int mode, unsigned short timeout);
 void sceDmaSendN(sceDmaChan *d, void *addr, int size);
+int sceGsSyncV(int mode);
 }
+
+/* a point or a size in pixels (SOCOM 1's IPNT2D) */
+struct IPNT2D {
+    int x;
+    int y;
+};
 
 /* the FIFO held while the GS is read (zsys_fifo.cpp's) */
 void zSysFifoPause();
 void zSysFifoResume(bool kick);
+void zSysFifoEnd();
 
 /* the stored image's width in pixels (256) and its pixel format (not named: SOCOM 1's reader
  * took both from its arguments) */
@@ -125,6 +133,46 @@ extern CValve *lodLevel;
 /* an address through the EE's uncached mirror */
 #define UNCACHED(p) ((unsigned int)(p) | 0x20000000)
 
+/* the EE kernel's (eekernel.h) */
+struct ThreadParam {
+    int status;
+    void (*entry)(void *);
+    void *stack;
+    int stackSize;
+    void *gpReg;
+    int initPriority;
+    int currentPriority;
+    unsigned int attr;
+    unsigned int option;
+    int waitType;
+    int waitId;
+    int wakeupCount;
+};
+extern "C" {
+int CreateThread(ThreadParam *param);
+int StartThread(int id, void *arg);
+}
+extern char _gp[];
+
+/* the video thread's body, its stack and its id (new in SOCOM II, not named) */
+extern "C" void func_003B1DD0(void *arg);
+extern unsigned char data_004A45D0[];
+extern int data_003E1418;
+
+/* the video thread started at priority 4 on its 64 KB stack (new in SOCOM II, not named) */
+extern "C" void func_003B2450()
+{
+    ThreadParam param;
+
+    param.entry = func_003B1DD0;
+    param.stack = data_004A45D0;
+    param.stackSize = 0x10000;
+    param.initPriority = 4;
+    param.gpReg = _gp;
+    data_003E1418 = CreateThread(&param);
+    StartThread(data_003E1418, 0);
+}
+
 /* GS memory read back in 256x256 blocks, the FIFO paused (SOCOM 1's took the blocks' size and
  * format from its arguments) */
 void CVideo::ReadGsMemory(unsigned int addr, u_long128 *data, unsigned int size)
@@ -190,6 +238,24 @@ void CVideo::WriteGsMemory(unsigned int addr, u_long128 *data, unsigned int size
     EIntr();
 }
 
+/* a rectangle of GS memory read back at once, the FIFO paused, in the render width (new in SOCOM
+ * II, not named; pinned: the depth read calls it out of line) */
+#pragma auto_inline off
+extern "C" void func_003B1800(int addr, IPNT2D *pos, IPNT2D *size, int psm, u_long128 *data)
+{
+    sceGsStoreImage si;
+
+    DIntr();
+    zSysFifoPause();
+    sceGsSyncPath(0, 0);
+    sceGsSetDefStoreImage(&si, addr, zVid.renderWidth >> 6, psm, pos->x, pos->y, size->x, size->y);
+    FlushCache(0);
+    sceGsExecStoreImage(&si, data);
+    zSysFifoResume(true);
+    EIntr();
+}
+#pragma auto_inline reset
+
 int CVideo::MaxFrameRate(int rate)
 {
     if (rate == 60)
@@ -252,6 +318,132 @@ void zVid_Scissor(int x0, int y0, int x1, int y1)
     zSysFifoKick((u_long128 *)packet, 3);
 }
 
+/* the two GS packets new in SOCOM II (not named): 31 quadwords sent n times (its FRAME words the
+ * eleventh and nineteenth, its two coordinates the twenty-fourth and twenty-sixth), and 21 sent once
+ * (a word the fourth, its four corners' coordinates every fourth from the eighth) */
+extern u_long128 data_003E0C40[31];
+extern u_long128 data_003E0E40[21];
+
+/* a rectangle of the display (x, y, width, height: the name ours) */
+struct ZVID_RECT {
+    unsigned int x;
+    unsigned int y;
+    unsigned int w;
+    unsigned int h;
+};
+
+/* one pixel read back (1 by 1, from page 0x2300) */
+extern IPNT2D data_003E1370;
+
+/* the point within the 640x448 display, in the GS's coordinates (inline; the name ours) */
+static inline bool OnScreen(const float *p)
+{
+    if (p[0] < 1728.0f || !(p[0] <= 2368.0f) || p[1] < 1824.0f || !(p[1] <= 2272.0f))
+        return false;
+    return true;
+}
+
+/* the depth under a point of the display, read back from the z buffer: false off the screen (new in
+ * SOCOM II, not named) */
+extern "C" bool func_003B0E70(const float *p, unsigned int *z)
+{
+    if (OnScreen(p)) {
+        IPNT2D pos = {0};
+        u_long128 buf;
+
+        pos.x = (int)(p[0] - 1728.0f);
+        pos.y = (int)(p[1] - 1824.0f);
+        func_003B1800(0x2300, &pos, &data_003E1370, 58, &buf);
+        *z = *(unsigned short *)&buf;
+        return true;
+    }
+    return false;
+}
+
+/* the 31-quadword packet's two coordinate words (new in SOCOM II, not named) */
+extern "C" void func_003B0E50(unsigned int v)
+{
+    *(unsigned long *)UNCACHED(&data_003E0C40[25]) = v;
+}
+
+extern "C" void func_003B0E30(unsigned long v)
+{
+    *(unsigned long *)UNCACHED(&data_003E0C40[23]) = v;
+}
+
+/* the 31-quadword packet aimed at the frame buffer (its FRAME words: width 640, the format's and
+ * the buffer's base) and sent n times (new in SOCOM II, not named) */
+extern "C" void func_003B0D70(int n)
+{
+    *(unsigned long *)UNCACHED(&data_003E0C40[10]) =
+        (unsigned long)(zVid.renderBuf << 5) | ((unsigned long)0xA802 << 16 | 0x8000 | (unsigned long)6 << 32);
+    *(unsigned long *)UNCACHED(&data_003E0C40[18]) = (unsigned long)zVid.renderBuf | 0xA0000;
+    while (n--)
+        zvid_KickPacket((unsigned long *)data_003E0C40, 31, true, true);
+}
+
+/* the 21-quadword packet's word (new in SOCOM II, not named) */
+extern "C" void func_003B0D50(unsigned int v)
+{
+    *(unsigned long *)UNCACHED(&data_003E0E40[3]) = v;
+}
+
+/* the 21-quadword packet's four corners set to one point, in 12.4 (new in SOCOM II, not named) */
+extern "C" void func_003B0CE0(unsigned int x, unsigned int y)
+{
+    unsigned long xy = (unsigned long)(x * 16) | ((unsigned long)(y * 16) << 16);
+
+    *(unsigned long *)UNCACHED(&data_003E0E40[7]) = xy;
+    *(unsigned long *)UNCACHED(&data_003E0E40[11]) = xy;
+    *(unsigned long *)UNCACHED(&data_003E0E40[15]) = xy;
+    *(unsigned long *)UNCACHED(&data_003E0E40[19]) = xy;
+}
+
+/* the 21-quadword packet sent, copied (new in SOCOM II, not named) */
+extern "C" void func_003B0CC0()
+{
+    zvid_KickPacket((unsigned long *)data_003E0E40, 21, true, true);
+}
+
+/* the final copy sent: the frame buffer read at its base and width, the texture's format and the
+ * flag's alpha (new in SOCOM II, not named) */
+extern "C" void func_003B0C00(bool fifo)
+{
+    *(unsigned long *)&finalcode[1] = (unsigned long)zVid.displayBuf | 0xA0000;
+    *(unsigned long *)&finalcode[5] =
+        (unsigned long)(zVid.renderBuf << 5) | ((unsigned long)0xA802 << 16 | 0x8000 | (unsigned long)6 << 32);
+    if (zVid.finalBlend)
+        *(unsigned long *)&finalcode[6] = 96;
+    else
+        *(unsigned long *)&finalcode[6] = 0;
+    FlushCache(0);
+    zvid_KickPacket((unsigned long *)finalcode, 17, fifo, false);
+}
+
+/* the final sprite's texture rectangle, in 12.4 (new in SOCOM II, not named) */
+extern "C" void func_003B0B90(unsigned int x, unsigned int y, unsigned int w, unsigned int h)
+{
+    *(unsigned long *)UNCACHED(&finalcode[13]) = (unsigned long)(x * 16) | ((unsigned long)(y * 16) << 16);
+    *(unsigned long *)UNCACHED(&finalcode[15]) = (unsigned long)(w * 16) | ((unsigned long)(h * 16) << 16);
+}
+
+/* the same of a rectangle, through it (inline) */
+extern "C" void func_003B0B10(ZVID_RECT *r)
+{
+    func_003B0B90(r->x, r->y, r->w, r->h);
+}
+
+extern "C" void func_003B09E0(unsigned int x, unsigned int y, unsigned int w, unsigned int h);
+
+/* func_003B09E0 of a rectangle, through it (inline; new in SOCOM II, not named). OPEN, 35
+ * instructions, the same size: scheduling -- the target loads h, y, w, x and keeps more of the
+ * products live (t3-t5); the inline call, the fields into locals (both orders) and the two words
+ * built first all schedule as the by-value setter does */
+extern "C" void func_003B0A70(ZVID_RECT *r)
+{
+    func_003B09E0(r->x, r->y, r->w, r->h);
+}
+
 /* the final sprite's rectangle within the 640x448 display, in the GS's 12.4 coordinates offset to
  * 1728,1824 (new in SOCOM II; the name is not known) */
 extern "C" void func_003B09E0(unsigned int x, unsigned int y, unsigned int w, unsigned int h)
@@ -268,6 +460,36 @@ void zVid_ClearColor(unsigned int *rgb)
     *(unsigned long *)UNCACHED(zvid_clearColor) =
         (unsigned long)rgb[0] | ((unsigned long)rgb[1] << 8) | ((unsigned long)rgb[2] << 16) |
         ((unsigned long)0x80 << 24) | ((unsigned long)0x3F800000 << 32);
+}
+
+/* the timer's count register (T0_COUNT) */
+#define T0_COUNT ((volatile unsigned int *)0x10000000)
+
+/* the frame waited for: a thirtieth of a second on the timer, or the next vertical blank; the timer
+ * restarted (new in SOCOM II, not named) */
+extern "C" void func_003B0660()
+{
+    if (zVid.syncMode == 2) {
+        unsigned int t = zSys.timerTicksPerSecond / 30;
+
+        do
+            sceGsSyncV(0);
+        while (*T0_COUNT < t);
+    } else {
+        while (sceGsSyncV(0) == 0)
+            ;
+    }
+    *T0_COUNT = 0;
+}
+
+/* the frame closed: its time from the timer, the frame counted, the FIFO ended and drained (new in
+ * SOCOM II, not named) */
+extern "C" void func_003B05E0()
+{
+    zVid.procTime = (float)*T0_COUNT * zSys.timerScale;
+    zVid.frameNumber++;
+    zSysFifoEnd();
+    sceGsSyncPath(0, 0);
 }
 
 /* the frame rate's level of detail (SOCOM 1's) */
@@ -305,7 +527,7 @@ void CVideo::Clear(bool all, unsigned char r, unsigned char g, unsigned char b, 
 {
     if (all == false) {
         *(unsigned long *)UNCACHED(&vramcode[2]) =
-            (unsigned long)zVid.frameBuf | 0xA0000 | ((unsigned long)zVid.framePsm << 24);
+            (unsigned long)zVid.displayBuf | 0xA0000 | ((unsigned long)zVid.framePsm << 24);
         *(unsigned long *)UNCACHED(&vramcode[9]) = 0x1C002800;
         zvid_KickPacket((unsigned long *)vramcode, 10, true, false);
     } else {
