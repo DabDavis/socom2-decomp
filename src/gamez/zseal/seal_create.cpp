@@ -29,8 +29,7 @@ void func_003CCEB0(CZProjectileList *list, int id, int a);
 /* CMission::RefreshTeamValves (SOCOM 1's, called here; OVL1 0x2B23A0) on theMission (0x4364E0) */
 void func_002B23A0(void *mission);
 extern unsigned char data_004364E0[];
-/* CSealUnit::Notify (the kit lane's 0x5ED7B0) and a unit's own clean-up of the SEAL (0x5EDF90) */
-void func_005ED7B0(CSealUnit *unit, CZSealBody *seal, int message, void *data);
+/* a squad's own clean-up of the SEAL (OVL2 0x5EDF90, the kit lane's range) */
 void func_005EDF90(CZSealBody *seal);
 }
 
@@ -62,7 +61,7 @@ void CZSealBody::Destroy(CZSealBody *seal)
 
     if (unit) {
         if (theNetwork.m_8)
-            func_005ED7B0(unit, seal, 1, 0);
+            unit->Notify(seal, UNIT_MESSAGE_DEATH, 0);
         func_005EDF90(seal);
     }
 }

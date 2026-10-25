@@ -24,15 +24,18 @@ public:
         m_range = 0.0f;
         return *this;
     }
-    /* through a local, as the target's registers and add order want */
+    /* through a local, and the random factor through one of its own, as the target's registers
+     * and add order want (CAiSStunResponse::OnSignal) */
     operator float() const
     {
         float f;
 
         if (m_range == 0.0f)
             f = m_min;
-        else
-            f = m_min + m_range * (4.656613e-10f * rand());
+        else {
+            float r = 4.656613e-10f * rand();
+            f = m_min + m_range * r;
+        }
         return f;
     }
 
@@ -66,6 +69,8 @@ public:
     float m_rest_until;   // 0x26c
     Rfloat m_timer;   // 0x270
     float m_timer_value;   // 0x278
+    unsigned char _27c[0x280 - 0x27c];   // 0x280 bytes in all: ftsCreateSeal and
+                                         // CZSealBody::NetworkPlayerCreate new 640
 };
 
 #endif

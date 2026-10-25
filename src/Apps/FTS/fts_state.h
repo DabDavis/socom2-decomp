@@ -318,9 +318,12 @@ public:
  * "basic_string::reserve length_error"). A stand-in until a string model exists: the class and
  * its template arguments are MSL's so the names mangle as the map's, the members only what the
  * states use (assign is func_001EEB40).
- * The levels are fitted: the default constructor is three high (COurGame's constructor inlines
- * CMenuState's one level -- calling CGameState's constructor, CSaferStr's and SetDefaultMenu out
- * of line -- while CCinematicState's, as tall but for the strings, inlines whole), and the
+ * The levels are fitted: the default constructor is four high at -inline level=5 (COurGame's
+ * constructor inlines CMenuState's one level -- calling CGameState's constructor, CSaferStr's and
+ * SetDefaultMenu out of line -- while CCinematicState's, as tall but for the strings, inlines
+ * whole; three high fitted level 4, and with level 5 CMenuState's inlined whole: its expanded
+ * size, 224 units with the words stored straight and 248 with include/string's loop, stays under
+ * MW's inline_max_size of 256, the other way a callee is cut to one level), and the
  * destructor is never inlined (main.cpp's destructors call 0x1E7EF0, the instance closing the
  * unit, with -1 for a member and 0 for CSaferStr's base) */
 #include <memory>
@@ -344,11 +347,12 @@ public:
 
 private:
     void init() { clear_words(); }
-    void clear_words()
+    void clear_words() { zero(w); }
+    /* the words zeroed as include/string's init does it: a loop over a reference to them */
+    static void zero(unsigned int (&a)[3])
     {
-        w[0] = 0;
-        w[1] = 0;
-        w[2] = 0;
+        for (unsigned int i = 0; i < 3; ++i)
+            a[i] = 0;
     }
 };
 

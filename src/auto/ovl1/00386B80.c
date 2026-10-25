@@ -9,7 +9,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define NULL 0
 #pragma mpwc_relax on
 s32 CreateString__7CSTableFPCc(char *);             /* extern */
-M2C_UNK func_00386460(char *, s32);                 /* extern */
+M2C_UNK Set__11CUIVariableFP5_zrdr(char *, s32);    /* extern */
 extern s32 data_00437EA8;
 extern M2C_UNK theUIVarManager;
 
@@ -17,6 +17,6 @@ void func_00386B80(char *arg0, s32 arg1, s32 arg2, s8 arg3) {
     SC_MEMBER(arg0, s32 *, 0x14) = CreateString__7CSTableFPCc((M2C_UNK *)((char *)&theUIVarManager + (data_00437EA8 << 5) + 0x2C));
     SC_MEMBER(arg0, s8 *, 0x24) = arg3;
     if (arg2 != 0) {
-        func_00386460(arg0, arg2);
+        Set__11CUIVariableFP5_zrdr(arg0, arg2);
     }
 }

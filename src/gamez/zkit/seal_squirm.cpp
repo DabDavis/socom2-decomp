@@ -20,13 +20,7 @@ CSealCtrlSquirm::~CSealCtrlSquirm()
 }
 
 /* the hostage's start: the kit's first item, fire mode 3, and the squirm's rhythm (OVL2
- * 0x5FEF60).
- * OPEN, 0x118 against 0x128: the target has four nops more and the range and minimum in $f0/$f1
- * the other way round (min + range * r: the range loaded first into $f0) --
- * each inlined Rfloat conversion has a dead nop between its `b` over the random arm and the
- * random arm, and one after the random sum before the join (SOCOM 1 called __opf__6RfloatCFv out
- * of line, so its code says nothing). Early return, a result local, a ternary, braces, `!x`:
- * all the same 0x118. The constructor's timer at 0x5EA550 has the same nops. */
+ * 0x5FEF60; byte-exact once Rfloat's conversion took its random factor into a local of its own) */
 void CSealCtrlSquirm::Initalize()
 {
     m_254 = 1;
