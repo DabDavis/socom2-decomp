@@ -405,7 +405,7 @@
 0x00196C20 0x70 printf  # MAIN; s1:callee
 0x00196C90 0x84 func_00196C90  # MAIN
 0x00196D18 0x20 puts  # MAIN unaligned; by hand (newlib's: _puts_r on _impure_ptr; the FIFO kick passes it "D9 Busy"/"D8 Busy") -- the sound lane
-0x00196D38 0x9EC func_00196D38  # MAIN unaligned
+0x00196D38 0x9EC qsort  # MAIN unaligned; s1:calls (DiIntersect::SortNearToFar calls it with (idx, n, 4, _cmpdi) where SOCOM 1's calls qsort; newlib's, 0x9EC bytes against SOCOM 1's 0xA24) -- the zdb-world lane
 0x00197728 0x18 func_00197728  # MAIN unaligned
 0x00197740 0x64 rand  # MAIN; s1:callee by hand (zAnimRandomWeightTick calls it where SOCOM 1 calls rand; newlib's 64-bit LCG)
 0x001977A8 0x60 func_001977A8  # MAIN unaligned
@@ -8537,7 +8537,7 @@
 0x00401BD0 0x34 __sinit_game_state.cpp  # OVL1 data area; a static initialiser; s1:order (zeroes m_pool and registers ~CPool, as SOCOM 1's) -- the states lane
 0x00401C10 0x64 func_00401C10  # OVL1 data area; a static initialiser; s1~ zin_cheats.cpp (shape 0.52, a hint)
 0x00401C80 0x34 func_00401C80  # OVL1 data area; a static initialiser
-0x00401CC0 0x24 func_00401CC0  # OVL1 data area; a static initialiser
+0x00401CC0 0x24 __sinit_grid_di.cpp  # OVL1 data area; a static initialiser; s1:calls (it clears stack's owner byte and registers ~CStack -- grid_di.cpp's static initialiser; scores WRONG until zmath.h's CStack has a constructor that does not push) -- the zdb-world lane
 0x00401CF0 0x88 func_00401CF0  # OVL1 data area; a static initialiser
 0x00401D80 0x28 func_00401D80  # OVL1 data area; a static initialiser
 0x00401DB0 0x78 func_00401DB0  # OVL1 data area; a static initialiser; s1~ int_material.cpp (shape 0.54, a hint)

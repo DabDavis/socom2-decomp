@@ -1374,6 +1374,24 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - still open: include/deque's copy constructor (CRdrEditor() waits), list<T *>'s
     insert(iterator, T *const &)/postfix ++/iterator copy constructor (PathPlanExecute), the
     list clear keeping `&end_.next_` in a register (five functions), the iterator's `*` by value.
+- **Tells from the zdb world, round 5** (grid_di.cpp, grid_clutter.cpp, int_main.cpp, node_world.cpp):
+  - SOCOM II's pointer-list begin() builds its first node from a REFERENCE to the sentinel's
+    link (`node_base *const &`): `&end_.next_` becomes a temporary MW computes once and reuses
+    for a walk and the clear after it, in the lowest saved register -- the shape behind CValve's
+    destructor, ~CZAmmoList, zNetFlushMessages and others; znode.h's stand-ins (PtrListFirst,
+    ListBegin, ListEnd, ListClear) carry it until include/list does;
+  - a constant stored into a bitfield through an inline setter is masked at run time (`(0 & 1)
+    << n`); assigned directly, it folds;
+  - taking a vector by reference before its size() test keeps the address in a saved register
+    for the walk;
+  - in an inline, `if (i == 0) return 0; return i <= n ? &d[i-1] : 0;` gives the target's two
+    tests with a zero in each delay slot;
+  - `if (!p) return false; return p->bit ? true : false;` puts the false block first; `!= 0`
+    puts it last;
+  - a float comparator written `if (a < b) return -1; if (a == b) return 0; return 1;` pads as
+    the target does; `return a != b;` misses by the pads;
+  - grid_di.cpp (SOCOM 1's name) runs ~0x2D2890-0x2D4FDB, closed by ~CStack's copy, its
+    initialiser 0x401CC0; 0x2D2070-0x2D2830 look like the graph unit's tail.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
