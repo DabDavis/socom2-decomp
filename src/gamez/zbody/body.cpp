@@ -188,7 +188,8 @@ void CBody::ReadParts()
     }
 }
 
-/* each part's pose saved (SOCOM II's; the name ours) */
+/* each part's pose saved (SOCOM II's; the name ours; pinned: PushBlend and PopBlend call it) */
+#pragma auto_inline off
 void CBody::SaveParts()
 {
     std::vector<CZBodyPart *> &parts = m_body_parts;
@@ -202,6 +203,8 @@ void CBody::SaveParts()
         }
     }
 }
+#pragma auto_inline reset
+
 
 /* one part's pose saved (SOCOM II's; the name ours) */
 void CBody::SavePart(CZBodyPart *part)
@@ -301,7 +304,10 @@ void CBody::BodySetState(int state)
 }
 
 /* a blend started on a script: the top blend's homing reset, a blend and an anim taken from the
- * pools, the blend reset on the anim and pushed (SOCOM 1's took the anim by id) */
+ * pools, the blend reset on the anim and pushed (SOCOM 1's took the anim by id).
+ * OPEN, 69 instructions (right size, every call in place): registers and scheduling -- the
+ * target keeps the top blend's fraction in $f20 and its homing's address in s1 from the start,
+ * the looped bool in s3; not yet permuted */
 CZBodyAnimBlend *CBody::PushBlend(CZSIScriptCommon *anim, short id, char state)
 {
     float tfrac = 0.0f;
@@ -354,7 +360,10 @@ CZBodyAnimBlend *CBody::PushBlend(CZSIScriptCommon *anim, short id, char state)
 }
 
 /* the top blend popped: its anims and their overlays put back, the blend too; the new top's
- * state set and its fraction carried over when both loop (SOCOM 1's) */
+ * state set and its fraction carried over when both loop (SOCOM 1's).
+ * OPEN, 0x38 bytes short: the walks are the target's `b`-to-a-bottom-preheader loops (the pool's
+ * address hoisted into a saved register in a block after the loop's test), which every loop
+ * spelling tried compiles as a guarded do-while -- see ClearOverlays, the same loop alone */
 CZBodyAnimBlend *CBody::PopBlend()
 {
     CZBodyAnimBlend *blend = func_00219390(&m_blends);
@@ -462,7 +471,12 @@ void ACTIVE_ANIM::SetFrac(float t)
     }
 }
 
-/* every overlay put back in the body's pool (SOCOM 1's) */
+/* every overlay put back in the body's pool (SOCOM 1's).
+ * OPEN, 5 instructions short: the target enters the loop with a `b` to a preheader placed after
+ * the loop's bottom test, which hoists &body->m_active_anim_pool into s0 (body itself dropped);
+ * MW gives a guarded do-while with the address recomputed from body each pass. Tried: the walk
+ * with the next link read first or last, for(;;) with a break, a for with the next pointer
+ * declared outside, the pool through a pointer local, a null test inside */
 void ACTIVE_ANIM::ClearOverlays(CBody *body)
 {
     ACTIVE_ANIM *o = m_overlay;
@@ -532,19 +546,19 @@ bool CBlendOverlay::Trigger(bool reverse)
     return false;
 }
 
-/* the overlay run on: its time moved by dT, the anim placed, put back once played out (SOCOM 1's) */
+/* the overlay run on: its time moved by dT, the anim placed, put back once played out (SOCOM 1's).
+ * OPEN, 3 instructions: the first division's operands trade float registers (the target loads
+ * m_ovlyT into $f0, the script's time into $f1), as in IsTriggerTime(float, float); tried a
+ * (float) cast, the time through a local, a compound division */
 bool CBlendOverlay::Tick(CBody *body, float dT)
 {
-    switch (m_state) {
-    case 1:
+    if (m_state == 1)
         m_ovlyT += dT;
-        break;
-    case -1:
+    else if (m_state == -1)
         m_ovlyT -= dT;
-        break;
-    default:
+    else
         return false;
-    }
+
     if (!m_anim)
         return false;
     CZSIScriptCommon *anim = m_anim->m_anim;
@@ -558,13 +572,18 @@ bool CBlendOverlay::Tick(CBody *body, float dT)
             Clear();
             return true;
         }
-    } else if (!(done < 1.0f)) {
-        body->m_active_anim_pool.PutBack(m_anim);
-        Clear();
-        return true;
+        m_anim->SetFrac(frac);
+    } else {
+        if (!(done < 1.0f)) {
+            body->m_active_anim_pool.PutBack(m_anim);
+            Clear();
+            return true;
+        }
+        m_anim->SetFrac(frac);
     }
-    m_anim->SetFrac(frac);
     return false;
+
+
 }
 
 /* within dT of its anim's fraction, ahead or behind as it runs (SOCOM 1's; pinned: CallbackTick
@@ -728,7 +747,8 @@ void CZBodyAnimBlend::CallbackTick(CBody *body, float t0, float t1)
     }
 }
 
-/* a time inside the step from t0 to t1, around the wrap when the blend loops (SOCOM 1's) */
+/* a time inside the step from t0 to t1, around the wrap when the blend loops (SOCOM 1's).
+ * OPEN, 80 instructions: the window tests' block layout and returns -- first draft, not worked */
 bool CZBodyAnimBlend::IsTriggerTime(float t, float t0, float t1)
 {
     bool reverse;
@@ -793,7 +813,10 @@ bool CZBodyAnimBlend::IsDone(float dT)
 }
 
 /* the fraction run on by dT through every anim's weighted rate, wrapped when looping, else held
- * between zero and the end; stored when asked (SOCOM 1's) */
+ * between zero and the end; stored when asked (SOCOM 1's).
+ * OPEN, 2 instructions short: the target materialises flag 8's test (andi, sltu, beqz) and reloads
+ * the flags for the clear; an inline bool accessor folds (as written, `!= false`, a bool local, a
+ * ternary), `== true` materialises but compares with 1 and keeps the load */
 float CZBodyAnimBlend::Propagate(float dT, bool set)
 {
     if (!m_anims.m_size)
@@ -919,7 +942,8 @@ void CZBodyAnimBlend::ReverseDir()
 }
 
 /* the anims replaced by a list's: the old ones and their overlays put back, the weights
- * normalised, the callback flag set when an anim has callbacks (SOCOM 1's) */
+ * normalised, the callback flag set when an anim has callbacks (SOCOM 1's).
+ * OPEN, 0x8C bytes long: the walks are ClearOverlays' bottom-preheader loops (open there) */
 void CZBodyAnimBlend::SetBlendAnims(CBody *body, CActiveAnimList *list)
 {
     ACTIVE_ANIM *a = m_anims.Begin();
@@ -1014,7 +1038,11 @@ CBody::~CBody()
     Destroy();
 }
 
-/* the overlay cleared, every blend popped, the parts deleted (SOCOM 1's) */
+/* the overlay cleared, every blend popped, the parts deleted (SOCOM 1's).
+ * OPEN, 0x1A8 bytes short: the target inlines each part's destructor whole (Clear's stores, then
+ * operator delete) inside the transform; here the delete calls CZBodyPart::Clear out of line, as
+ * NewBodyPart's constructor does in both builds -- an inline height: may resolve at level 5 */
+
 void CBody::Destroy()
 {
     ClearBlendOverlay();
