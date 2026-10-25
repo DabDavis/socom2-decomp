@@ -7807,7 +7807,7 @@
 0x003B05E0 0x80 func_003B05E0  # OVL1
 0x003B0660 0xA0 func_003B0660  # OVL1
 0x003B0700 0x60 zVid_Sync0__Fv  # OVL1; s1:align
-0x003B0760 0x4C func_003B0760  # OVL1
+0x003B0760 0x4C zVid_ClearColor__FPUi  # OVL1; s1:order by hand (the wep lane: SOCOM 1's zVid_ClearColor -- the three words of the colour packed with alpha 0x80 and Q 1.0 into the RGBAQ word its packet pointer names -- through the uncached mirror here)
 0x003B07B0 0x224 func_003B07B0  # OVL1
 0x003B09E0 0x90 func_003B09E0  # OVL1
 0x003B0A70 0xA0 func_003B0A70  # OVL1
@@ -7829,11 +7829,11 @@
 0x003B1200 0x1A4 zVid_Init__F10_zvid_mode  # OVL1; s1:align
 0x003B13B0 0xE4 func_003B13B0  # OVL1
 0x003B14A0 0x2B4 func_003B14A0  # OVL1
-0x003B1760 0x6C func_003B1760  # OVL1
-0x003B17D0 0x24 func_003B17D0  # OVL1
+0x003B1760 0x6C Fade__6CVideoFfUcUcUc  # OVL1; s1:order by hand (the wep lane: SOCOM 1's Fade -- r, g, b stored and 255*t converted to the fourth byte -- with the float-to-unsigned conversion inline where SOCOM 1's called fptoui; right before MaxFrameRate as in SOCOM 1)
+0x003B17D0 0x24 MaxFrameRate__6CVideoFi  # OVL1; s1:order by hand (the wep lane: SOCOM 1's MaxFrameRate word for word -- 60 means -1, the old m_maxFrameRate returned; CCoreState's frame-rate calls, already noted so in st_core.cpp)
 0x003B1800 0xC8 func_003B1800  # OVL1
 0x003B18D0 0xC0 WriteGsMemory__6CVideoFUiP1Ui  # OVL1; s1:exact
-0x003B1990 0xD8 func_003B1990  # OVL1
+0x003B1990 0xD8 ReadGsMemory__6CVideoFUiP1Ui  # OVL1; s1:calls by hand (the wep lane: CCoreState calls it where SOCOM 1's calls ReadGsMemory, as st_core.cpp notes; WriteGsMemory's store-image twin -- sceGsSetDefStoreImage/sceGsExecStoreImage per 256x256 block, the FIFO paused around them)
 0x003B1A70 0x180 func_003B1A70  # OVL1
 0x003B1BF0 0x1D8 func_003B1BF0  # OVL1
 0x003B1DD0 0x674 func_003B1DD0  # OVL1
@@ -7920,7 +7920,7 @@
 0x003B94F0 0xA0 func_003B94F0  # OVL1
 0x003B9590 0x130 AddLOD__Q23zdb5CMeshFPQ23zdb5CMeshf  # OVL1; s1:align
 0x003B96C0 0x98 InitMatrices__Q23zdb5CMeshFv  # OVL1; s1:align
-0x003B9760 0xB4 func_003B9760  # OVL1
+0x003B9760 0xB4 __ct__Q23zdb5CMeshFv  # OVL1; s1:calls by hand (the wep lane: CVisual::Create news 0x94 bytes and calls it for type 1, as SOCOM 1's Create calls CMesh's constructor; it runs CVisual's constructor first and stores __vt__Q23zdb5CMesh)
 0x003B9820 0x2C Init__Q23zdb5CMeshFv  # OVL1; s1:align
 0x003B9850 0x378 func_003B9850  # OVL1
 0x003B9BD0 0x4FC func_003B9BD0  # OVL1
@@ -7985,7 +7985,7 @@
 0x003BE800 0xBC RecycleTick__Q23zdb14CMeshDecalPoolFv  # OVL1; s1:align
 0x003BE8C0 0x24 func_003BE8C0  # OVL1
 0x003BE8F0 0x40 PutTempDecal__Q23zdb10CMeshDecalFPQ23zdb10CMeshDecal  # OVL1; s1:align
-0x003BE930 0x80 func_003BE930  # OVL1
+0x003BE930 0x80 Get__Q23zdb14CMeshDecalPoolFb  # OVL1; by hand (the wep lane: CDecalPool::Get's twin over RTArray<CMeshDecal> -- the same 0x80 bytes, GetNext of the mesh decals' array; SOCOM 1 had none out of line)
 0x003BE9B0 0x6C Init__Q23zdb14CMeshDecalPoolFUiUi  # OVL1; s1:align
 0x003BEA20 0x3C func_003BEA20  # OVL1
 0x003BEA60 0x98 func_003BEA60  # OVL1
@@ -8003,14 +8003,14 @@
 0x003BF220 0x6C Init__Q23zdb10CDecalPoolFUiUi  # OVL1; s1:align
 0x003BF290 0x140 func_003BF290  # OVL1
 0x003BF3D0 0x64 func_003BF3D0  # OVL1
-0x003BF440 0x7C func_003BF440  # OVL1
-0x003BF4C0 0x8C func_003BF4C0  # OVL1
+0x003BF440 0x7C PutBack__22RTArray<Q23zdb6CDecal>FPQ23zdb6CDecal  # OVL1; s1:callee by hand (the wep lane: CDecal::PutTempDecal and PutPermDecal call it where SOCOM 1's call PutBack__22RTArray<Q23zdb6CDecal>; zbody.h's PutBack shape)
+0x003BF4C0 0x8C GetNext__22RTArray<Q23zdb6CDecal>Fb  # OVL1; s1:callee by hand (the wep lane: CDecalPool::Get calls it where SOCOM 1's calls GetNext__22RTArray<Q23zdb6CDecal>Fb; zbody.h's RTArray<T>::GetNext shape -- m_available at 0x18, m_supportRecycle at 0x1C)
 0x003BF550 0x13C func_003BF550  # OVL1
 0x003BF690 0x44 func_003BF690  # OVL1
 0x003BF6E0 0x8 func_003BF6E0  # OVL1
 0x003BF6F0 0x64 func_003BF6F0  # OVL1
-0x003BF760 0x7C func_003BF760  # OVL1
-0x003BF7E0 0x8C func_003BF7E0  # OVL1
+0x003BF760 0x7C PutBack__27RTArray<Q23zdb10CMeshDecal>FPQ23zdb10CMeshDecal  # OVL1; s1:callee by hand (the wep lane: CMeshDecal::PutTempDecal calls it where SOCOM 1's calls PutBack__27RTArray<Q23zdb10CMeshDecal>)
+0x003BF7E0 0x8C GetNext__27RTArray<Q23zdb10CMeshDecal>Fb  # OVL1; by hand (the wep lane: CMeshDecalPool::Get calls it as CDecalPool::Get calls RTArray<CDecal>'s; the same 0x8C bytes)
 0x003BF870 0x140 __dt__27RTArray<Q23zdb10CMeshDecal>Fv  # OVL1; s1:callee
 0x003BF9B0 0x44 func_003BF9B0  # OVL1
 0x003BFA00 0x134 func_003BFA00  # OVL1
@@ -8065,12 +8065,12 @@
 0x003C36C0 0x8 ComputeBBox__Q23zdb7CVisualFP5CBBox  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003C36D0 0x1EC func_003C36D0  # OVL1
 0x003C38C0 0x370 func_003C38C0  # OVL1
-0x003C3C30 0xA4 func_003C3C30  # OVL1
+0x003C3C30 0xA4 ResolveTextureName__Q23zdb7CVisualFP8_word128P8_word128  # OVL1; s1:calls by hand (the wep lane: CMesh::SetMeshTextureSelects calls it at the instruction SOCOM 1's calls ResolveTextureName(_word128 *, _word128 *); SOCOM 1's body -- GetTexHandle by the name at +4, the default name failing it, CDynTexList::Add of the handle and its palette at +0x48, the select copied from the texture's +0x40 with type 5 -- with one delay slot filled differently)
 0x003C3CE0 0xA8 GetTextureSelectBlock_ver2__Q23zdb7CVisualFUiPP8_word128P8_word128P8_word128  # OVL1; tu: vis_main.cpp~ (1.0 beta); s1:exact
 0x003C3D90 0xFC func_003C3D90  # OVL1
 0x003C3E90 0x290 __dt__Q23zdb7CVisualFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003C4120 0x14 Release__Q23zdb7CVisualFv  # OVL1; s1:exact
-0x003C4140 0x44 func_003C4140  # OVL1
+0x003C4140 0x44 Flush__Q23zdb7CVisualFv  # OVL1; s1:order by hand (the wep lane: SOCOM 1's Flush -- a temporary vector constructed, the static list cleared and swapped with it, the temporary destroyed -- on a vector<CLightMap *> here; between Release and Create as SOCOM 1's sits between GetTextureSelectBlock and the destructor)
 0x003C4190 0x140 Create__Q23zdb7CVisualFRQ23zar4CZAR  # OVL1; s1:calls
 0x003C42D0 0xB4 func_003C42D0  # OVL1
 0x003C4390 0x218 __ct__Q23zdb7CVisualFv  # OVL1; s1:callee
@@ -8121,8 +8121,8 @@
 0x003C5C70 0x28 func_003C5C70  # OVL1
 0x003C5CA0 0x28 func_003C5CA0  # OVL1
 0x003C5CD0 0x48 IsGrenadeLauncherWeapon__11CZFTSWeaponFv  # OVL1; s1:order by hand (SOCOM 1's test of the id byte against 52, 61, 142 and 143; SOCOM II adds 63)
-0x003C5D20 0x60 func_003C5D20  # OVL1
-0x003C5D80 0x84 func_003C5D80  # OVL1
+0x003C5D20 0x60 IsGrenadeLauncherAmmo__11CZFTSWeaponFv  # OVL1; s1:calls by hand (the wep lane, on the kit lane's lead: CZKit calls it where SOCOM 1's calls IsGrenadeLauncherAmmo; SOCOM 1's test of GetIDType() against 170 with SOCOM II's ids one on, 171, and 185 added)
+0x003C5D80 0x84 IsLauncherWeapon__11CZFTSWeaponFv  # OVL1; by hand (the wep lane, on the kit lane's lead: IsGrenadeLauncherWeapon inlined -- 52, 61, 142-143, 63, its true daddiu -- or GetIDType() 145; new in SOCOM II, the name ours)
 0x003C5E10 0x30 IsM203Weapon__11CZFTSWeaponF10EQUIP_ITEM  # OVL1; by hand (the same test as IsM203Weapon of an id byte, 52 or 61; the member one, next to it, inlines it -- its true a daddiu; the name is ours)
 0x003C5E40 0x30 IsM203Weapon__11CZFTSWeaponFv  # OVL1; s1:order by hand (SOCOM 1's test of the id byte against 52 and 61)
 0x003C5E70 0x38 AddZoommode__11CZFTSWeaponFf  # OVL1; s1:order by hand (a float pushed on the zoom vector at 0x280 through the pod insert)
@@ -8377,8 +8377,8 @@
 0x003D27D0 0x8 func_003D27D0  # OVL1
 0x003D27E0 0x8 func_003D27E0  # OVL1
 0x003D27F0 0x8 func_003D27F0  # OVL1
-0x003D2800 0x8 func_003D2800  # OVL1
-0x003D2810 0x8 func_003D2810  # OVL1
+0x003D2800 0x8 GetNumMags__8CZWeaponFv  # OVL1; s1:order by hand (the wep lane, on the kit lane's lead: returns the word at 0x2C, SOCOM 1's m_nummags at 0x28 four bytes on as m_maxfiremode is; in SOCOM 1's order, GetNumMags then GetAmmoCapacity before GetDescription)
+0x003D2810 0x8 GetAmmoCapacity__8CZWeaponFv  # OVL1; s1:order by hand (the wep lane, on the kit lane's lead: returns the word at 0x28, SOCOM 1's m_ammocap at 0x24)
 0x003D2820 0x8 func_003D2820  # OVL1
 0x003D2830 0x8 GetDescription__8CZWeaponCFv  # OVL1; s1:order by hand (returns the word at 8, SOCOM 1's m_description; next to GetName as in SOCOM 1's zwep_weapon.cpp)
 0x003D2840 0x8 GetName__8CZWeaponCFv  # OVL1; s1:order by hand (returns the word at 4, m_name; CZWeaponList::GetWeapon(name) compares it)

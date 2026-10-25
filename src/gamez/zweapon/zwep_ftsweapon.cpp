@@ -96,6 +96,25 @@ bool CZFTSWeapon::IsM203Weapon(EQUIP_ITEM id)
     return false;
 }
 
+/* a launcher of any kind: the grenade launchers (inlined, its true an assignment -- daddiu) or the
+ * class 145 (new in SOCOM II, SOCOM 1's IsM203Weapon and IsGrenadeLauncherWeapon tests joined;
+ * the name is ours) */
+bool CZFTSWeapon::IsLauncherWeapon()
+{
+    if (IsGrenadeLauncherWeapon() || GetIDType() == 145)
+        return true;
+    return false;
+}
+
+/* the grenade launchers' ammunition classes (SOCOM 1's tested 170 alone; SOCOM II's ids are one
+ * on, and 185 is added) */
+bool CZFTSWeapon::IsGrenadeLauncherAmmo()
+{
+    if (GetIDType() == 171 || GetIDType() == 185)
+        return true;
+    return false;
+}
+
 bool CZFTSWeapon::IsGrenadeLauncherWeapon()
 {
     if (m_ID == 52 || m_ID == 61 || m_ID == 142 || m_ID == 143 || m_ID == 63)
