@@ -8,6 +8,7 @@
  * order (-inline deferred). */
 
 #include "zgame.h"
+#include "../zsys/zsys.h"
 
 /* the pool (SOCOM 1's global m_pool, a CPool: its destructor's name) */
 class CPool : public CGameStateChangeCmdVector {
@@ -47,6 +48,14 @@ void CGameStateChangeCmd::Release(CGameStateChangeCmd *cmd)
         else
             delete cmd;
     }
+}
+
+/* the pool emptied and its storage freed (OVL1 0x2CF4C0): FreeVector on the base vector, its four
+ * pieces called out of line (the temporary's constructor 0x2CF5C0, clear 0x2CF5B0, swap 0x2CF570,
+ * the temporary's destructor 0x2CF510) */
+void CGameStateChangeCmd::DestroyPool()
+{
+    FreeVector<CGameStateChangeCmdVector>(m_pool);
 }
 
 /* the top state replaced: the switch queued, the old state told it is going and the new one to get
