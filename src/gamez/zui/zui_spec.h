@@ -293,6 +293,7 @@ public:
 };   // 0x34 bytes
 
 class C2DButton;
+class CDesignDlgObj;
 
 /* what a button does on an event (SOCOM 1's DWARF: 0x10 bytes; its constructor is zui.cpp's,
  * 0x369F70, out of line) */
@@ -351,6 +352,7 @@ public:
 class CHandlerButtonSpec : public CButtonSpec {
 public:
     CHandlerButtonSpec(_zrdr *rdr);
+    ~CHandlerButtonSpec();
     CDlgObjSpec *Copy();
     C2D *CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const;
     const char *GetType() { return "HANDLERBUTTON"; }
@@ -358,7 +360,7 @@ public:
     bool HasChildren() const;
     int NumChildren() const;
 
-    CDlgObjSpec *m_child;                // 0x118
+    CDesignDlgObj *m_child;              // 0x118: the SUBORDINATE block's object
 };   // 0x11c bytes
 
 /* a strip of buttons, one of them chosen (SOCOM 1's CRadioStripSpec) */
@@ -400,8 +402,10 @@ public:
         zrdr_findIPNT2D(rdr, "KNOB_SIZE", &m_knobSize);
         zrdr_findreal(rdr, "CENTER_VALUE", &m_centerValue, 1);
     }
-    CDlgObjSpec *Copy();
+    /* (declared first: the key function, so a unit defining it emits the table and the implicit
+     * destructor) */
     C2D *CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const;
+    CDlgObjSpec *Copy();
     const char *GetType() { return "SLIDERBAR"; }
 
     CSaferStr m_knobTexture;             // 0x118: KNOB_TEXTURE
@@ -436,7 +440,26 @@ public:
  * CDesignDlgObj; the assignment copies the spec through its Copy) */
 class CDesignDlgObj {
 public:
+    /* (SOCOM II's; the handler button's constructor news one so) */
+    CDesignDlgObj() : m_spec(0), m_xpos(0), m_ypos(0), m_opacity(1.0f) {}
     ~CDesignDlgObj() { delete m_spec; }
+    /* (ours: the handler button's constructor sets its object so, each pointer loaded once) */
+    void SetSpec(CDlgObjSpec *spec)
+    {
+        delete m_spec;
+        m_spec = spec;
+    }
+    void SetPos(int x, int y)
+    {
+        m_xpos = x;
+        m_ypos = y;
+    }
+    void SetName(const char *name)
+    {
+        if (!name || !*name)
+            name = "unnamed";
+        m_name = name;
+    }
     void operator=(const CDesignDlgObj &o)
     {
         delete m_spec;

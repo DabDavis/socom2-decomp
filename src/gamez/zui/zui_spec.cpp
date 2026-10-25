@@ -110,6 +110,38 @@ CDlgObjSpec *GetControlSpec(_zrdr *rdr, const char *type)
     return GetObjectSpec(rdr, type);
 }
 
+/* the button and the object its SUBORDINATE block describes: its NAME ("unnamed" if none), TYPE,
+ * XPOS, YPOS and SPEC (SOCOM 1's) *
+ * OPEN, 8 instructions (two delay slots): the target leaves the spec test's slot empty and puts
+ * `li a0,40` in new's, and repeats the name string's address in both arms of the inlined
+ * CSaferStr assignment; here MW fills the test's slot with the li, hoists the address into the
+ * name test's slot and pads before "unnamed". The design object's three inline setters are what
+ * give the target's loads of m_child (written out, 34 instructions differ); an early return for
+ * the spec test is 8 bytes longer */
+CHandlerButtonSpec::CHandlerButtonSpec(_zrdr *rdr) : CButtonSpec(rdr), m_child(0)
+{
+    _zrdr *sub = zrdr_findtag(rdr, "SUBORDINATE");
+
+    if (!sub)
+        return;
+    const char *name = zrdr_findstring(sub, "NAME");
+    const char *type = zrdr_findstring(sub, "TYPE");
+    int x, y;
+
+    zrdr_findint(sub, "XPOS", &x, 1);
+    zrdr_findint(sub, "YPOS", &y, 1);
+    _zrdr *specRdr = zrdr_findtag(sub, "SPEC");
+    if (!specRdr)
+        return;
+    CDlgObjSpec *spec = GetControlSpec(specRdr, type);
+    if (spec) {
+        m_child = new CDesignDlgObj;
+        m_child->SetSpec(spec);
+        m_child->SetPos(x, y);
+        m_child->SetName(name);
+    }
+}
+
 /* a button (SOCOM 1's) -- held out of the build until 0x377800 is named: the generated draft
  * (src/auto/ovl1/00380470.c) matches through the placeholder, and this one, measured byte-exact
  * with the row renamed, would supersede it with a wrong reference until then */

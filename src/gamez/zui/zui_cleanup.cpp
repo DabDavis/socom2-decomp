@@ -179,3 +179,17 @@ C2D *CHandlerButtonSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *
     InitializeButton(button, mgr);
     return button;
 }
+
+/* the subordinate object deleted (SOCOM 1's) -- held out of the build: the generated draft
+ * (src/auto/ovl1/003880F0.cpp) matches through placeholders. OPEN, two things: 0x36E650
+ * (zui_2d.cpp's) wants the name __dt__11ButtonStateFv, and the target calls the design object's
+ * destructor out of line (0x37D9B0) where MW inlines zui_spec.h's in-class one here (0x14C bytes
+ * against 0xF0) -- SOCOM II's ~CDesignDlgObj is likely an ordinary function of zui_spec.cpp's.
+ * ~CSliderBarSpec, the same inlined ~CButtonSpec, is byte-exact with 0x36E650 renamed (measured) */
+#if 0
+CHandlerButtonSpec::~CHandlerButtonSpec()
+{
+    if (HasChildren())
+        delete m_child;
+}
+#endif
