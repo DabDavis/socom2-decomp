@@ -922,6 +922,7 @@
 0x0066A1B0 0xE0 AiMaps  # OVL2 bss; s1:data-seq (size SOCOM 1's; via CreateCompassNavPoints__8CMissionFv +1)
 0x0066A4D0 0x11 SessionKey  # OVL2 bss; s1 by hand (SOCOM 1's SessionKey: every Medius request copies these 17 bytes to its +0x15, as SOCOM 1's do); size SOCOM 1's; 91 references in 78 functions
 0x0066A4F0 0x44 AccountInfo  # OVL2 bss; s1 by hand (SOCOM 1's AccountInfo: QuitClan sends its first word as the player's account, IsLeaderOfClan compares it, the account name at +4); size SOCOM 1's; 46 references in 29 functions
+0x0066A538 0x4 LobbyWorldID  # OVL2 bss; s1 by hand (SOCOM 1's LobbyWorldID: RejoinRoom 0x2E3730 goes back to the room only when it is not negative, as SOCOM 1's does; JoinRoom stores it); size SOCOM 1's; 12 references in 9 functions
 0x0066A5E8 0x1 g_bJoiningRandomGame__24@unnamed@zNetMedius_cpp@  # OVL2 bss; s1:data-seq (size SOCOM 1's; via UnInit__13CZOnlineLobbyFv)
 0x0066A5F0 0x4 MediusWorldID  # OVL2 bss; s1 by hand (SOCOM 1's MediusWorldID: BanSelfFromGame and SendEndGameReport send it as the game's world, as SOCOM 1's send theirs); size SOCOM 1's; 14 references in 12 functions
 0x0066B540 0xC projDirDown  # OVL2 bss; s1:data-seq (size SOCOM 1's; via HandleBloodDrip__10CZSealBodyFf)

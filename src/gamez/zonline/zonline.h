@@ -7,6 +7,8 @@
 #ifndef ZONLINE_H
 #define ZONLINE_H
 
+#include <string.h>
+
 /* --- the Medius SDK's types (Sony's prebuilt library in OVL2; only what the lobby passes) ---- */
 
 /* an API call's result: 0 on success (int-sized: its values run past a byte) */
@@ -285,6 +287,9 @@ public:
     void GetLeaderMessages();
     void DeleteClanMessage(int id);
 
+    bool RefreshRoomList(C2D *page);
+    bool RejoinRoom();
+    bool RefreshGameList(C2D *page);
     void GetLadderInfo();
     void GetLadderRanking();
     void GetClanLadderLeaders(int n);
