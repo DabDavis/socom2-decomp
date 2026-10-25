@@ -9,6 +9,49 @@
 #include "../../gamez/zcamera/zcamera.h"
 #include "../../gamez/zanim/zanim.h"
 
+namespace zdb {
+/* the collision piece's kind (two bits of its byte at 0xA: SOCOM 1's at 0x1A; the name ours) */
+struct CDIKind {
+    unsigned char _0[0xa];
+    unsigned char _b0 : 2;
+    unsigned char m_kind : 2;   // 0xa
+    unsigned char _b4 : 4;
+
+    /* the kind as a byte (the hit test compares it masked to one) */
+    unsigned char Kind() const { return m_kind; }
+};
+
+/* a hit along a ray (SOCOM 1's DWARF) */
+struct IntersectStruct {
+    CPnt3D m_pos;   // 0x0
+    CDI *m_poly;   // 0xc
+    CPnt3D m_norm;   // 0x10
+    CNode *m_node;   // 0x1c
+};
+
+/* a ray's intersection set (SOCOM 1's DWARF; SOCOM II's hits are 4 bytes further on) */
+class DiIntersect {
+public:
+    unsigned int m_Type : 16;   // 0x0
+    unsigned int m_IntersectCharacters : 1;
+    unsigned int m_AltitudeCharacters : 1;
+    unsigned int m_ProximityCharacters : 1;
+    unsigned int m_Unused : 13;
+    CPnt3D m_Tail;   // 0x4
+    CPnt3D m_Tip;   // 0x10
+    CPnt3D m_MTail;   // 0x1c
+    CPnt3D m_MTip;   // 0x28
+    int m_Cnt;   // 0x34
+    int m_BufCnt;   // 0x38
+    CNode *m_Node;   // 0x3c
+    CNode *m_TreeDoneNode;   // 0x40
+    unsigned int _44;
+    IntersectStruct *m_Intersects;   // 0x48 (SOCOM 1: 0x44)
+};
+}
+
+zdb::IntersectStruct *GetNearestIntersectCamPoint(zdb::DiIntersect *diSet, CPnt3D *p0);
+
 class CZSealBody;
 class CHUD;
 class CEntity;
@@ -21,6 +64,8 @@ public:
     virtual bool AttachTo(CZSealBody *prey);
 
     void SetZoom(float zoom);
+    void SetCameraMode(unsigned char mode);
+    static bool TickTask(float dT, void *data);
     void LookAt(const CPnt3D *from, const CPnt3D *to, CMatrix &cTw);
     static bool CmdTick3rdPersonTest(_zanim_cmd_hdr *hdr, float *dT);
     static _zanim_cmd_hdr *CmdParse3rdPersonTest(_zrdr *rdr);
@@ -31,7 +76,7 @@ public:
     unsigned char _4[0xb4 - 4];
     zdb::CCamera *m_camera;   // 0xb4 (SOCOM 1: 0x34)
     zdb::CNode *m_camera_effects;   // 0xb8 (SOCOM 1: 0x38)
-    unsigned int _bc;
+    CZSealBody *m_bc;   // 0xbc: SOCOM II's, a SEAL the mode setter asks after (the name ours)
     CZSealBody *m_entity;   // 0xc0 (SOCOM 1: 0x3c)
     unsigned int _c4;
     CZBodyPart *m_skel_root;   // 0xc8 (SOCOM 1: 0x40)

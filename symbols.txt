@@ -3607,7 +3607,7 @@
 0x002997F0 0xFC func_002997F0  # OVL1
 0x002998F0 0x310 Tick__10CAppCameraFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00299C00 0xC func_00299C00  # OVL1
-0x00299C10 0x30 func_00299C10  # OVL1
+0x00299C10 0x30 TickTask__10CAppCameraFfPv  # OVL1; the name ours (CCoreState::Init's appCamera_tick task: the app camera's virtual Tick)
 0x00299C40 0x288 func_00299C40  # OVL1
 0x00299ED0 0x2B0 func_00299ED0  # OVL1
 0x0029A180 0x270 func_0029A180  # OVL1
@@ -3617,7 +3617,7 @@
 0x0029AE50 0x270 func_0029AE50  # OVL1
 0x0029B0C0 0x224 func_0029B0C0  # OVL1
 0x0029B2F0 0x40 SetZoom__10CAppCameraFf  # OVL1; s1:calls (SOCOM 1's SetZoom: the camera's aspect and range scale set from the zoom; SOCOM II scales zVid's aspect)
-0x0029B330 0x88 func_0029B330  # OVL1
+0x0029B330 0x88 SetCameraMode__10CAppCameraFUc  # OVL1; the name ours (the camera's mode set, except online at mode 6 while the followed SEAL is down; the HUD's mission cams and the zoom call it)
 0x0029B3C0 0x1B0 AttachTo__10CAppCameraFP10CZSealBody  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0029B570 0x5C __dt__10CAppCameraFv  # OVL1; s1:calls (SOCOM 1's destructor: the vtable, then the camera, effects, entity, skeleton and track pointers cleared)
 0x0029B5D0 0x2F4 func_0029B5D0  # OVL1

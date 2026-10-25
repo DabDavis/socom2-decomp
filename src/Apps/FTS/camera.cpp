@@ -7,6 +7,49 @@
 /* unnamed yet */
 extern "C" void *func_0032EE10(_zrdr *rdr, const char *tag);
 
+extern bool camera_tether_intersects_something;
+extern "C" bool func_002C2FD0(CZSealBody *seal);
+
+/* the network (only its online flag) */
+class CNetwork {
+public:
+    unsigned char _0[9];
+    unsigned char m_9;   // 0x9: an online game
+};
+
+extern CNetwork theNetwork;
+
+/* the hit nearest the ray's tail, skipping hits on pieces of kind 1 too close to p0 (their
+ * direction from p0 measured first); the camera's tether marked as hitting something */
+zdb::IntersectStruct *GetNearestIntersectCamPoint(zdb::DiIntersect *diSet, CPnt3D *p0)
+{
+    zdb::IntersectStruct *Di = 0;
+
+    if (diSet->m_Cnt <= 0)
+        return 0;
+    camera_tether_intersects_something = true;
+    float Dist = 1.0e9f;
+
+    for (int i = 0; i < diSet->m_Cnt; i++) {
+        zdb::IntersectStruct *is = &diSet->m_Intersects[i];
+        CPnt3D intersect = is->m_pos;
+
+        intersect.Sub(p0, &intersect);
+        float len = intersect.Normalize();
+
+        if (((zdb::CDIKind *)is->m_poly)->Kind() == 1 && len <= 2.75f)
+            continue;
+        CPnt3D newDelta = is->m_pos - diSet->m_Tail;
+        float d = Dot(newDelta, newDelta);
+
+        if (d <= Dist) {
+            Di = is;
+            Dist = d;
+        }
+    }
+    return Di;
+}
+
 /* the camera's matrix to look from one point at another: level (its x axis in the ground plane),
  * up from the cross product, looking down -z; the eye noted.
  * OPEN (0x184 of 0x158): MW keeps the views' second and third components' addresses in saved
@@ -83,6 +126,17 @@ _zanim_cmd_hdr *CAppCamera::CmdParseShake(_zrdr *rdr)
     return (_zanim_cmd_hdr *)cmd;
 }
 
+/* the camera's mode -- kept at 6 online while the SEAL it follows is down (the name ours) */
+void CAppCamera::SetCameraMode(unsigned char mode)
+{
+    bool keep = false;
+
+    if (theNetwork.m_9 && m_bc && func_002C2FD0(m_bc) && m_camera_mode == 6)
+        keep = true;
+    if (!keep)
+        m_camera_mode = mode;
+}
+
 CAppCamera::~CAppCamera()
 {
     m_track = 0;
@@ -102,4 +156,11 @@ void CAppCamera::SetZoom(float zoom)
     cam->m_screenAspect[0] = x;
     cam->m_screenAspect[1] = y;
     m_camera->m_ZoomedRangeScale = m_camera->m_RangeScale / zoom;
+}
+
+/* the scheduler's task for the app camera: its tick (SOCOM II's, the name ours) */
+bool CAppCamera::TickTask(float dT, void *data)
+{
+    appCamera->Tick(dT);
+    return false;
 }
