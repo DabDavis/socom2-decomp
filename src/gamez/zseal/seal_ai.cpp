@@ -5,13 +5,40 @@
 
 #include "zseal.h"
 #include "../zsnd/zsnd.h"
+#include "../zanim/zanim.h"
+#include <stdio.h>
+#include <string.h>
 
 /* the states this unit defines (SOCOM 1's; only what their destructors need -- none of them has
  * a member with a destructor of its own, so each destructor is the base's, inlined) */
 class CAiSRescued : public CAiState {
 public:
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ctrl);
     virtual ~CAiSRescued();
+
+    unsigned int m_58;   // 0x58 (SOCOM 1's 0x28)
+    unsigned int m_5c;   // 0x5c
+    unsigned int m_60;   // 0x60
 };
+
+/* the base's phase and its timer (CAiState's words at 0x34 and 0x38: ai_states.h names the first) */
+struct CAiStatePhase {
+    unsigned char _0[0x34];
+    unsigned int m_phase;   // 0x34
+    unsigned int m_phase_timer;   // 0x38
+};
+
+/* the phase set, its timer restarted when it changes (an inline both rescued and action states
+ * show) */
+static inline void SetPhase(CAiState *s, unsigned int phase)
+{
+    CAiStatePhase *p = (CAiStatePhase *)s;
+
+    if (p->m_phase != phase) {
+        p->m_phase_timer = 0;
+        p->m_phase = phase;
+    }
+}
 
 class CAiSPursue : public CAiState {
 public:
@@ -43,6 +70,115 @@ class CAiSDeploy : public CAiState {
 public:
     virtual ~CAiSDeploy();
 };
+
+/* (OVL2 0x543480, seal.cpp's: the hostage's compass anchor deleted, as SOCOM 1's OnSignal did here
+ * with CompassAnchor_Hostage) */
+extern "C" void func_00543480(CZSealBody *seal);
+
+/* the rescued state told: signal 4 clears its three words; signal 0 drops the hostage's anchor
+ * and, online, moves to phase 2 with the SEAL made invincible (OVL2 0x5594B0; SOCOM 1's) */
+void CAiSRescued::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
+{
+    CZSealBody *seal = ai ? (CZSealBody *)ai->m_entity : 0;
+
+    switch (sig) {
+    case SIGNAL_4:
+        m_58 = 0;
+        m_5c = 0;
+        m_60 = 0;
+        break;
+    case SIGNAL_0:
+        func_00543480(seal);
+        if (theNetwork.m_9) {
+            SetPhase(this, 2);
+            seal->m_invincible = true;
+        }
+        break;
+    case SIGNAL_1:
+        break;
+    case SIGNAL_2:
+        break;
+    case SIGNAL_3:
+        break;
+    }
+}
+
+/* the entities of kind 4 counted at a mission's start (OVL2 bss 0x66AFE8) */
+extern "C" int data_0066AFE8;
+/* a range the AI's mode 1 starts with (OVL2 data 0x64FF88, read as a variable) */
+extern "C" float data_0064FF88;
+CZSealBody *ftsGetPlayer();
+
+/* an entity of kind 4, or none (the inline cast the count shows) */
+static inline CEntity *AsKind4(CEntity *e)
+{
+    return e && e->m_type == (CEntity::TYPE)4 ? e : 0;
+}
+
+/* the mission begun: the animations bound, the two standing tasks begun (the first unless a Navy
+ * SEAL), and in mode 1 the player taken as the one to follow, with the entities of kind 4
+ * counted (OVL2 0x573BD0; SOCOM 1's had the two tasks only) */
+void CSealCtrlAi::OnMissionStart()
+{
+    SetupAnimations();
+    if (!IsNavySeal())
+        ActivateEx((SEAL_TASK)1, true, true, GetSelect(), 3, m_entity->GetNode(), 0);
+    ActivateEx((SEAL_TASK)3, false, true, GetSelect(), 3, m_entity->GetNode(), 0);
+    if (m_26c == 1) {
+        m_664 = ftsGetPlayer();
+        m_660 = 1;
+        m_674 = data_0064FF88;
+        m_678 = m_674 * m_674;
+        for (CEntityList::iterator e = CEntity::m_list.end(), i = CEntity::m_list.begin(); i != e; ++i) {
+            if (AsKind4(*i))
+                data_0066AFE8++;
+        }
+    }
+}
+
+/* the valve of a name, or none (OVL2 0x574730; SOCOM 1's, without its fourth valve and the alias) */
+SEAL_VALVE CSealCtrlAi::get_valve(const char *name)
+{
+    if (name) {
+        for (int i = 0; i < 3; i++)
+            if (!strcmp(name, get_valve((SEAL_VALVE)i)))
+                return (SEAL_VALVE)i;
+    }
+    return SEAL_VALVE_NONE;
+}
+
+/* a valve set, its callbacks told whether it went on or off (CValve::SetValue, inlined in both
+ * builds; the name zanim_menu.h's) */
+static inline void SetValveValue(CValve *valve, int value)
+{
+    VALVE_STATE state = VALVE_SAME;
+
+    if (valve->m_value != value)
+        state = value == 0 ? VALVE_OFF : VALVE_ON;
+    valve->m_value = value;
+    if (state != VALVE_SAME)
+        valve->MakeCallbacks(state);
+}
+
+/* the valves' names built in (OVL2 bss 0x66B110) */
+extern "C" char data_0066B110[];
+
+/* the AI made ready: a valve per kind, named for the body's node, the alive valve opened, the mode
+ * 1 (OVL2 0x573D20; SOCOM 1's, with three valves) */
+void CSealCtrlAi::Initalize()
+{
+    CEntity *e = m_entity;
+
+    for (int i = 0; i < 3; i++) {
+        sprintf(data_0066B110, "%s_%s", e->m_node->GetName(), get_valve((SEAL_VALVE)i));
+        m_valve[i] = CValve::Create(data_0066B110, 0, (VALVE_TYPE)2);
+    }
+    CValve *alive = m_valve[SEAL_VALVE_ALIVE];
+
+    if (alive)
+        SetValveValue(alive, 1);
+    m_3f4 = 1;
+}
 
 /* the states' destructors: their own table stored, then CAiState's inlined -- its table, and the
  * stack at 8 destroyed out of line (OVL2 0x575B50, 0x575AB0, 0x5758D0, 0x5552C0). Every byte
@@ -180,11 +316,11 @@ extern "C" bool func_00572D30(CSealCtrlAi *ai, CEntity *e)
     return ai->m_26c == 4 || (e && !(e->m_team & me->m_team));
 }
 
-/* (OVL2 0x5621C0) */
-extern "C" void *func_005621C0(CSealCtrlAi *ai, unsigned char i)
+/* a valve, or none past the three (OVL2 0x5621C0; SOCOM 1's, which had four) */
+CValve *CSealCtrlAi::GetValve(SEAL_VALVE v) const
 {
-    if (i < 3)
-        return ai->m_750[i];
+    if (v < 3)
+        return m_valve[v];
     return 0;
 }
 

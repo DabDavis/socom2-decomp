@@ -10180,10 +10180,10 @@
 0x00561B90 0x18C func_00561B90  # OVL2
 0x00561D20 0xF4 func_00561D20  # OVL2
 0x00561E20 0xD4 func_00561E20  # OVL2
-0x00561F00 0x12C func_00561F00  # OVL2
+0x00561F00 0x12C ActivateEx__11CSealCtrlAiF9SEAL_TASKbe  # OVL2; s1:calls (CSealCtrlAi::OnMissionStart calls it twice with (task, flag, 1, the body's TASK_SELECT, 3, the node, 0), as SOCOM 1's calls ActivateEx__11CSealCtrlAiF9SEAL_TASKbe; variadic: it stores a3-t3 to its frame) -- the SEAL lane, round 4
 0x00562030 0x180 func_00562030  # OVL2
 0x005621B0 0x8 func_005621B0  # OVL2
-0x005621C0 0x2C func_005621C0  # OVL2
+0x005621C0 0x2C GetValve__11CSealCtrlAiCF10SEAL_VALVE  # OVL2; s1:order (SOCOM 1's GetValve__11CSealCtrlAiCF10SEAL_VALVE word for word but the bound, 3, and the array, 0x750: the valve of a kind or 0) -- the SEAL lane, round 4
 0x005621F0 0x8 func_005621F0  # OVL2
 0x00562200 0x1A8 func_00562200  # OVL2
 0x005623B0 0x3DC func_005623B0  # OVL2
@@ -10193,7 +10193,7 @@
 0x00562960 0x50 func_00562960  # OVL2
 0x005629B0 0x58 func_005629B0  # OVL2
 0x00562A10 0xB4 func_00562A10  # OVL2
-0x00562AD0 0xA0 func_00562AD0  # OVL2
+0x00562AD0 0xA0 SetupAnimations__11CSealCtrlAiFv  # OVL2; s1:calls (CSealCtrlAi::OnMissionStart calls it first, where SOCOM 1's calls SetupAnimations__11CSealCtrlAiFv) -- the SEAL lane, round 4
 0x00562B70 0x110 func_00562B70  # OVL2
 0x00562C80 0x33C func_00562C80  # OVL2
 0x00562FC0 0x84 func_00562FC0  # OVL2
@@ -10311,7 +10311,7 @@
 0x00573FF0 0x88 func_00573FF0  # OVL2
 0x00574080 0x340 __ct__11CSealCtrlAiFv  # OVL2; s1:calls (ftsCreateSeal's AI branch, where SOCOM 1's calls __ct__11CSealCtrlAiFv; ftsCreateSeal byte-exact with it) -- the states lane
 0x005743C0 0x364 func_005743C0  # OVL2
-0x00574730 0xC4 func_00574730  # OVL2
+0x00574730 0xC4 get_valve__11CSealCtrlAiFPCc  # OVL2; s1:order (after the constructor, as SOCOM 1's get_valve__11CSealCtrlAiFPCc: each valve's name, the inlined get_valve(SEAL_VALVE), compared with strcmp, its index returned; 4 for none) -- the SEAL lane, round 4
 0x00574800 0x30 GetJumpFlag__11CSealCtrlAiCFv  # OVL2; slot 0xA4 of __vt__11CSealCtrlAi, the base's inline GetJumpFlag (0x592020, returns 0) overridden, as SOCOM 1's CSealCtrlAi had its own
 0x00574830 0x2A4 func_00574830  # OVL2
 0x00574AE0 0x50 func_00574AE0  # OVL2
