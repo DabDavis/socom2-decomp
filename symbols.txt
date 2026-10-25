@@ -10781,7 +10781,7 @@
 0x005A4CE0 0x8 func_005A4CE0  # OVL2
 0x005A4CF0 0x278 func_005A4CF0  # OVL2
 0x005A4F70 0x10 func_005A4F70  # OVL2
-0x005A4F80 0x11C func_005A4F80  # OVL2
+0x005A4F80 0x11C HandleWeaponEvent__10CZSealBodyFP12CZProjectileUiPv  # OVL2; s1:ref by hand (UninitDatabaseHandles, 0x5A3BB0, removes it with CZWeapon::RemoveWeaponEventCallback where SOCOM 1's UninitDatabaseHandles removes HandleWeaponEvent__10CZSealBodyFP12CZProjectileUiPv; the callback's type is that static member's; seal_env.cpp, not written yet)
 0x005A50A0 0x1A4 func_005A50A0  # OVL2
 0x005A5250 0x174 func_005A5250  # OVL2
 0x005A53D0 0x5C HandleStunDamage__10CZSealBodyF9STUN_TYPEfPC6CPnt3D  # OVL2; s1:order by hand (SOCOM 1's HandleStunDamage__10CZSealBodyF9STUN_TYPEfPC6CPnt3D: the kind under 8, m_stunned set, the kind's m_stunval kept at its highest and passed to the controller's OnStunDamage (slot 0x50) with the kind and the source unchanged -- SOCOM II drops the recovery's switch; right before SetHudHitFlag in both builds; seal_env.cpp)
