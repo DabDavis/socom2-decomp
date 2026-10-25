@@ -1156,6 +1156,24 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     `return false`, gives the shared `move v0,zero` tail (Tick);
   - named locals for two pushed `new` pointers take frame slots in declaration order
     (AddCallback); CBody's vector at 0x68 is the auxiliary parts, not the anims.
+- **Tells from the zdb render classes, round 3** (zvid_init.cpp, vis_main.cpp, zwep_explosive.cpp):
+  - a bool or unsigned char parameter compared `== false` gets an `andi 0xff` before the branch;
+    written `!x` it does not;
+  - a field zeroed right after the vtable store, before the member objects, is a derived-class
+    member in the initializer list; a base-class constructor's store lands before the vtable
+    store (CVisual's reference count);
+  - storing through an unsigned view of a signed byte gives `li 255` where `li -1` would be the
+    signed store;
+  - MW pools identical constant temporaries bound to `const T &`, default arguments included,
+    into one static per unit;
+  - `f(r->x, r->y, r->w, r->h)` with f inlined loads all four fields before the first store;
+    written out, the stores pin the loads; `w = global; r = call(); w->g(r)` keeps the global's
+    load ahead of the call, `global->g(call())` puts the call first;
+  - a same-unit stand-in for an out-of-class template member needs `#pragma auto_inline off`;
+  - CVisual's constructor is byte-exact at -inline level=5 and not at 4 (CDynTexList's
+    constructor five inline levels deep) -- one more for the corrected level;
+  - CTurret's unit (veh_turret.cpp) runs 0x3A71A0-~0x3ACA5F, opening with its inline virtual
+    overrides' copies; CVehicle's 0x3ACA60-~0x3AFB2F; zvid_init.cpp from 0x3AFBA0.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has

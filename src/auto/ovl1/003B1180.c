@@ -4,22 +4,23 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK FlushCache(M2C_UNK);                        /* extern */
-M2C_UNK func_003B13B0(M2C_UNK *, M2C_UNK, M2C_UNK, M2C_UNK); /* extern */
+M2C_UNK zvid_KickPacket__FPUlibb(M2C_UNK *, M2C_UNK, M2C_UNK, M2C_UNK); /* extern */
 extern M2C_UNK data_003E0880;
 extern M2C_UNK data_003E09B0;
 extern M2C_UNK data_003E09C4;
 extern M2C_UNK data_003E0A30;
 extern M2C_UNK *data_004A43B4;
 extern M2C_UNK *data_004A43B8;
-extern M2C_UNK *data_004A43C4;
+extern M2C_UNK *zvid_clearColor;
 
 void func_003B1180(void) {
     data_004A43B4 = &data_003E09B0;
     data_004A43B8 = &data_003E09C4;
-    data_004A43C4 = &data_003E0A30;
+    zvid_clearColor = &data_003E0A30;
     FlushCache(0);
-    func_003B13B0(&data_003E0880, 0x10, 0, 0);
+    zvid_KickPacket__FPUlibb(&data_003E0880, 0x10, 0, 0);
 }
