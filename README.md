@@ -962,8 +962,10 @@ merged back, each row's note saying so:
 
 `build/scratch/seal/fallthru.py` finds rows that run into the next one, and
 `build/scratch/seal/ovl2_splits.txt` lists what it found; 0x610010 and 0x643018 there are not
-DNAS targets. Scoring either client will need DNAS.BIN's functions resolved apart from OVL2's, as
-`ovl-copy` does for template copies.
+DNAS targets. Scoring either client needs nothing new: a placeholder resolves by the address in its
+name when no row carries it (`scdiff._sym_address`), so a call spelled `func_00544550` compares
+equal with the target's jal into DNAS.BIN -- spell DNAS.BIN's functions that way, never by the
+OVL2 name that covers the address.
 
 ### Names from SOCOM 1 (`tools/s1names.py`)
 
