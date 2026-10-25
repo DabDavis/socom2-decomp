@@ -9681,8 +9681,8 @@
 0x0052F3D0 0x8 func_0052F3D0  # OVL2
 0x0052F3E0 0xC func_0052F3E0  # OVL2
 0x0052F3F0 0x10 func_0052F3F0  # OVL2
-0x0052F400 0x70 func_0052F400  # OVL2
-0x0052F470 0x2C func_0052F470  # OVL2
+0x0052F400 0x70 GetRouteIndex__6CAiMapFPCQ26CAiMap5route  # OVL2; ours (new in SOCOM II, among the routes' functions after CreateGraph: the 0x24-byte routes at 0x140 walked for the pointer, its index or -1)
+0x0052F470 0x2C GetRoute__6CAiMapFUi  # OVL2; ours (new in SOCOM II, next to GetRouteIndex: the route of an index below the routes' size, or 0)
 0x0052F4A0 0x438 func_0052F4A0  # OVL2
 0x0052F8E0 0x10 func_0052F8E0  # OVL2
 0x0052F8F0 0x348 func_0052F8F0  # OVL2
@@ -9698,7 +9698,7 @@
 0x00530370 0xD4 GetRegion__6CAiMapFPCcR9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19EA90: strcasecmp against each region's name at +0xC, the corner copied out)
 0x00530450 0xB0 GetRegion__6CAiMapFRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19EB30: the region whose corner is the cell)
 0x00530500 0x1E4 func_00530500  # OVL2
-0x005306F0 0xB0 func_005306F0  # OVL2
+0x005306F0 0xB0 GetCellLink__6CAiMapFRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19EBD0, after the two GetRegions in both builds: the links at 0x104 walked for the cell -- 12-byte links in SOCOM II)
 0x005307A0 0x1E0 func_005307A0  # OVL2
 0x00530980 0x20 back__Q23std68__vector_imp<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>,0>Fv  # OVL2; s1:exact
 0x005309A0 0x24 func_005309A0  # OVL2

@@ -126,6 +126,17 @@ CAiMap::action *CAiMap::GetCellAction(const CAiMapLoc &loc)
     return 0;
 }
 
+/* the link from a cell, or none (SOCOM 1's) */
+CAiMap::link *CAiMap::GetCellLink(const CAiMapLoc &loc)
+{
+    links::iterator e = m_linksTable.end();
+
+    for (links::iterator i = m_linksTable.begin(); i != e; ++i)
+        if ((*i).m_loc == loc)
+            return &*i;
+    return 0;
+}
+
 /* the region whose corner is the cell (SOCOM 1's GetRegion(const CAiMapLoc &)) */
 CAiMap::region *CAiMap::GetRegion(const CAiMapLoc &loc)
 {
@@ -249,6 +260,28 @@ void CAiMap::reader::SetReader(CRdrFile *r)
         zrdr_free(m_reader);
         m_reader = r;
     }
+}
+
+/* the route of an index, or none (new in SOCOM II, the name ours) */
+CAiMap::route *CAiMap::GetRoute(unsigned int i)
+{
+    return i < m_routeTable.size() ? &m_routeTable[i] : 0;
+}
+
+/* a route's index in the table, or -1 (new in SOCOM II, the name ours).
+ * OPEN, 2 instructions short (0x68 against 0x70): GetRegionContaining's difference -- the target
+ * reloads data_ for each pass's end test (the size times 0x24 hoisted) though the loop holds no
+ * call and no store; this build computes the end once. Postfix steps, a while, the count stepped
+ * in the body, a const_iterator, a raw pointer walk, !(i == end()) and the end built from a
+ * reference-returning data() were tried: perhaps include/vector's end() */
+int CAiMap::GetRouteIndex(const route *r)
+{
+    int n = 0;
+
+    for (routes::iterator i = m_routeTable.begin(); i != m_routeTable.end(); ++i, ++n)
+        if (&*i == r)
+            return n;
+    return -1;
 }
 
 /* the graph given up, its flag cleared (SOCOM 1's) */

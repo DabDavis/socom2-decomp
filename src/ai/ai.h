@@ -254,11 +254,14 @@ public:
     class names : public std::vector<name> {
     };
 
-    /* a cell linked to another (SOCOM 1's DWARF, 8 bytes) */
+    /* a cell linked to another (SOCOM 1's DWARF, 8 bytes; SOCOM II's is 0xC, a word of bits after
+     * the two cells whose low four a new link sets to 8 -- 0x5309D0) */
     class link {
     public:
         CAiMapLoc m_loc;   // 0x0
         CAiMapLoc m_link;   // 0x4
+        unsigned int m_kind : 4;   // 0x8: the name ours
+        unsigned int m_unk8 : 28;
     };
     class links : public std::vector<link> {
     };
@@ -409,6 +412,9 @@ public:
         return 0;
     }
 
+    int GetRouteIndex(const route *r);
+    route *GetRoute(unsigned int i);
+    link *GetCellLink(const CAiMapLoc &loc);
     bool read_v19(CFileIO &f);
     bool read_lines(CFileIO &f);
     bool read_routes(CFileIO &f);
