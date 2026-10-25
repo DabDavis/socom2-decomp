@@ -6369,10 +6369,10 @@
 0x0034EBC0 0x68 _memalign__FUiUiPCci  # OVL1; s1:align
 0x0034EC30 0x60 _malloc__FUiPCci  # OVL1; s1:order (called by CBits::Resize where SOCOM 1 calls _malloc; DIntr, malloc, EIntr, assert)
 0x0034EC90 0x64 zsys_FullAllocAndFree__Fv  # OVL1; s1:calls
-0x0034ED00 0x1AC func_0034ED00  # OVL1
-0x0034EEB0 0x144 func_0034EEB0  # OVL1
-0x0034F000 0x60 func_0034F000  # OVL1
-0x0034F060 0x78 func_0034F060  # OVL1
+0x0034ED00 0x1AC Free__5CHeapFPv  # OVL1; SOCOM II's, class and name ours (a free into an address-ordered free list, merged with its neighbours; a pointer outside the block goes to _free and the fallback count drops; returns the block's size; the wrapper at 0x30E3B0 tail-calls it on the global at 0x45B328) -- the sound/system lane
+0x0034EEB0 0x144 Alloc__5CHeapFUi  # OVL1; SOCOM II's, class and name ours (first a block within 8 bytes of the rounded size, else the closest larger one split; _malloc when none, counted) -- the sound/system lane
+0x0034F000 0x60 __dt__5CHeapFv  # OVL1; SOCOM II's, class ours (the block given back with _free; 0x30E300 deletes the global with it) -- the sound/system lane
+0x0034F060 0x78 __ct__5CHeapFUi  # OVL1; SOCOM II's, class ours (the block taken with _malloc, one free block of the whole size) -- the sound/system lane
 0x0034F0E0 0x40 zSysSleep__Fi  # OVL1; s1:exact
 0x0034F120 0x8 SleepAlarmCB__FiUsPv  # OVL1; s1:order+ref (SOCOM 1's static SleepAlarmCB(int, unsigned short, void *) after zSysSleep, which passes its address to SetAlarm in both builds; it wakes the thread its argument names) -- the sound/system lane
 0x0034F130 0xAC zSysTimerInit__Fv  # OVL1; SOCOM II's, name ours (zSys.timerTicksPerSecond from zVid's H-blank rate, timerScale its reciprocal: SOCOM 1's zSysReset did this inline, SOCOM II's inlines this function) -- the sound/system lane

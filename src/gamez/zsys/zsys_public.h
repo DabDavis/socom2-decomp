@@ -91,8 +91,11 @@ public:
     static _word128 *m_sprPacketEnd;    /* 0x49E338 */
 };
 
-/* the allocators (zsys_memory.cpp) */
+/* the allocators (zsys_memory.cpp; _free and _strdup are MAIN's copies, 0x180280/0x1801E0) */
 int zsys_FullAllocAndFree();
+void *_malloc(unsigned int size, const char *file, int line);
+void *_memalign(unsigned int align, unsigned int size, const char *file, int line);
+void _free(void *p, const char *file, int line);
 
 /* the system's start (zsys_init.cpp) */
 void zSysInit();

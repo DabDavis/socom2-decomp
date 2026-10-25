@@ -7,12 +7,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "zsys.h"
+#include "zsys_public.h"
 #include "../zvid/zvid.h"
 
 extern "C" {
-int DIntr(void);
-int EIntr(void);
 void *func_00197808(void *p, unsigned int size);        /* newlib's realloc (MAIN) */
 void *func_00194A00(unsigned int align, unsigned int size); /* newlib's memalign (MAIN) */
 }
