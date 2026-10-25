@@ -6080,8 +6080,8 @@
 0x0033F5F0 0x110 snd_CloseVAGStreaming  # OVL1; s1:gap
 0x0033F700 0x18 snd_StopAllStreams  # OVL1; s1:exact
 0x0033F720 0x168 func_0033F720  # OVL1
-0x0033F890 0xC func_0033F890  # OVL1
-0x0033F8A0 0x10 func_0033F8A0  # OVL1
+0x0033F890 0xC snd_SendCache  # OVL1; s1:order by hand (SOCOM 1's snd_SendCache, the same two instructions: the caching flag cleared in the delay slot of a tail call to snd_FlushSoundCommands; just ahead of snd_StartCaching in both builds)
+0x0033F8A0 0x10 snd_StartCaching  # OVL1; s1:order by hand (SOCOM 1's snd_StartCaching, the same three instructions: 1 stored to the flag snd_SendCache clears)
 0x0033F8B0 0x3E4 snd_SendIOPCommandNoWait__FiiPcPFUiUl_vUl  # OVL1; s1:callee
 0x0033FCA0 0x428 snd_SendIOPCommandAndWait__FiiPc  # OVL1; s1:callee
 0x003400D0 0x3C snd_AutoVol  # OVL1; s1:exact
@@ -6109,7 +6109,7 @@
 0x00340570 0x1E4 snd_BankLoadByLoc  # OVL1; s1:align
 0x00340760 0x160 snd_BankLoad  # OVL1; s1:align
 0x003408C0 0x2C snd_StopSoundSystem  # OVL1; s1:align
-0x003408F0 0x484 func_003408F0  # OVL1
+0x003408F0 0x484 snd_FlushSoundCommands  # OVL1; s1:callee by hand (snd_SendCache tail-calls it in both builds; at SOCOM 1's position between snd_StopSoundSystem and snd_StartSoundSystem; CSnd::WaitForCDRead loops on it as SOCOM 1's does)
 0x00340D80 0x1F0 snd_StartSoundSystem  # OVL1; s1:calls
 0x00340F70 0x1C func_00340F70  # OVL1
 0x00340F90 0xC func_00340F90  # OVL1
