@@ -29,6 +29,10 @@ CAssetList g_assetsRecycle;
 
 CAssetList CAssetMgr::m_assets;
 
+/* the static initialiser (0x402A00) is OPEN, 0x9C of 0x8C: the target builds each list's sentinel
+ * through &end_ held in v0 (sw v0,4(v0); sw v0,0(v0)), where include/list's deleter constructor
+ * (end_.prev_ = end_.next_ = &end_, inlined here) stores through absolute addresses */
+
 /* a library deleted, its slot cleared (the operation the lists are emptied with): the null test
  * written out, each path returning its own zero (Clear's two `move v0,zero`, SOCOM 1's alike) */
 struct DeleteLib {
@@ -82,7 +86,12 @@ CAssetLib::CAssetLib(const char *name)
 }
 
 /* the models let go of and deleted, the buffers freed, the textures and palettes freed, the names
- * freed (SOCOM 1's) */
+ * freed (SOCOM 1's).
+ * OPEN, 4 instructions short (0x2D8 of 0x2E8): the target computes the models' end from the same
+ * load of data_ as their begin (begin() reads through data()'s reference, end() would have to as
+ * well), and keeps &m_models.data_ and &m_palettes.data_ in s1/s0 for the vectors' destructors;
+ * include/vector's pod end() reads data_ directly -- made data() + size_, 44 matched functions
+ * elsewhere fall (end() a level deeper), so it stays */
 CAssetLib::~CAssetLib()
 {
     std::transform(m_models.begin(), m_models.end(), m_models.begin(), DeleteModel());
@@ -197,7 +206,11 @@ CModel *CAssetLib::AddModel(CModel *model)
     return model;
 }
 
-/* a palette added, unless it is listed already when asked to check (SOCOM 1's) */
+/* a palette added, unless it is listed already when asked to check (SOCOM 1's).
+ * OPEN, 2 instructions short (0xC8 of 0xD0): the target re-reads m_palettes.data_ at every test of
+ * the walk while keeping size_ * 4 hoisted -- an end() through data()'s reference would do that
+ * (see ~CAssetLib); every loop form tried (!(==), postfix, const_iterator, raw pointers, the end
+ * built from data() by hand) hoists the whole end */
 CTexPalette *CAssetLib::AddPalette(CTexPalette *pal, bool check)
 {
     bool add = true;
@@ -242,6 +255,11 @@ CTexHandle *CAssetList::GetTexHandle(const char *name)
     return h;
 }
 
+/* OPEN, 1 instruction (0x104 of 0x100): the target reloads the library from its node (8(node)) at
+ * each of its three uses and re-derives end() from `this` each pass; here MW keeps the element's
+ * address (node + 8) in a saved register -- the base iterator's by-value cast avoids that only in
+ * the one-use walks (FindTextureLib); by-value helpers, the node's data read directly and end()
+ * per pass were tried */
 CTexHandle *CAssetList::FindMipLevel(_RenderPhase phase, CTexHandle *tex)
 {
     CTexHandle *found = 0;
@@ -421,7 +439,7 @@ void CAssetMgr::ReleaseLibRef(CAssetLib *lib)
 
 void CAssetMgr::AddMipLevels(CDynTexList *list, _RenderPhase phase)
 {
-    for (unsigned int i = 0; i < list->m_tex_list.size(); i++) {
+    for (int i = 0; i < list->m_tex_list.size(); i++) {
         CTexHandle *h = list->m_tex_list[i];
 
         do {
