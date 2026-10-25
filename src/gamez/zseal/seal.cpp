@@ -594,14 +594,14 @@ CPickup *CZSealBody::CurrentPickupSecondary()
 }
 
 /* the new entity virtuals: a SEAL says no to them too (OVL2 0x543020, 0x543010, 0x543000) */
-int CZSealBody::Virtual68()
+bool CZSealBody::Virtual68(CPnt3D *out)
 {
-    return 0;
+    return false;
 }
 
-int CZSealBody::Virtual60()
+bool CZSealBody::Virtual60(CPnt3D *out)
 {
-    return 0;
+    return false;
 }
 
 int CZSealBody::Virtual5C()

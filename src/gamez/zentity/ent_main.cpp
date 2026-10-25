@@ -504,19 +504,19 @@ void CEntity::UpdateCompassAnchor()
 }
 
 /* the four new virtuals that say no (the names are ours) */
-int CEntity::Virtual68()
+bool CEntity::Virtual68(CPnt3D *out)
+{
+    return false;
+}
+
+zdb::CNode *CEntity::Virtual64()
 {
     return 0;
 }
 
-int CEntity::Virtual64()
+bool CEntity::Virtual60(CPnt3D *out)
 {
-    return 0;
-}
-
-int CEntity::Virtual60()
-{
-    return 0;
+    return false;
 }
 
 int CEntity::Virtual5C()

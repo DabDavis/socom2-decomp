@@ -219,11 +219,12 @@ public:
     virtual void OnRecycleEntity(CEntity *e);
     virtual void OnDeath();                                     /* +0x58 */
     /* +0x5C-0x6C, new in SOCOM II: four that say no and one that moves the entity's compass anchor
-     * to it (the names are ours) */
+     * to it (the names are ours). CTurret's overrides give the signatures: +0x60 and +0x68 fill a
+     * point and answer true (0x3A71A0, 0x3A71D0), +0x64 hands back a node (0x3A71C0) */
     virtual int Virtual5C();
-    virtual int Virtual60();
-    virtual int Virtual64();
-    virtual int Virtual68();
+    virtual bool Virtual60(CPnt3D *out);
+    virtual zdb::CNode *Virtual64();
+    virtual bool Virtual68(CPnt3D *out);
     virtual void UpdateCompassAnchor();
 
     void SetDisplayName(const char *name);
