@@ -4174,7 +4174,7 @@
 0x002C3B60 0xC8 func_002C3B60  # OVL1
 0x002C3C30 0xC0 func_002C3C30  # OVL1
 0x002C3CF0 0x2CC func_002C3CF0  # OVL1
-0x002C3FC0 0x54 func_002C3FC0  # OVL1
+0x002C3FC0 0x54 ToggleReady__14CZPersonaStateFv  # OVL1; s1:exact shape by hand (the states lane: SOCOM 1's ToggleReady, 0x54 both, instruction for instruction: theMission's net game, its minor state 2 -> 1 else 2, then UpdateLocalPersona)
 0x002C4020 0x98 func_002C4020  # OVL1
 0x002C40C0 0x1D0 func_002C40C0  # OVL1
 0x002C4290 0x1A4 func_002C4290  # OVL1
