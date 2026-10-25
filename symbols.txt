@@ -1428,7 +1428,7 @@
 0x001E8FE0 0x138 func_001E8FE0  # OVL1
 0x001E9120 0x94 func_001E9120  # OVL1
 0x001E91C0 0x1090 func_001E91C0  # OVL1
-0x001EA250 0x78 func_001EA250  # OVL1
+0x001EA250 0x78 __dt__Q23std38__list_imp<PCv,Q23std14allocator<PCv>>Fv  # OVL1; the pointer lists' __list_imp destructor out of line (include/list's: its this test, the deleter's inlined -- a second this test and the range erase over end_.next_..&end_ -- then delete): ~CEntityList (0x2A00C0) calls it through the implicit ~list<CEntity *>
 0x001EA2D0 0x70 func_001EA2D0  # OVL1; the pointer lists' deleter destructor out of line (__dt__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>Fv: the range erase over end_.next_..&end_, then delete; 0x3177C0 calls it) -- left unnamed so the generated drafts calling it can spell it
 0x001EA340 0x78 func_001EA340  # OVL1
 0x001EA3C0 0x70 __dt__Q23std54vector<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>>Fv  # OVL1; by hand (Unload destroys the save's parents at 0x24 with it: the one copy linked, an earlier unit's)
@@ -3669,53 +3669,54 @@
 0x0029E280 0xA4 FindPacket__8CAckListFP7CPacket  # OVL1; s1:align
 0x0029E330 0xAC func_0029E330  # OVL1
 0x0029E3E0 0x90 func_0029E3E0  # OVL1
-0x0029E470 0x70 func_0029E470  # OVL1
-0x0029E4E0 0xB0 func_0029E4E0  # OVL1
-0x0029E590 0xE0 func_0029E590  # OVL1
-0x0029E670 0x8 func_0029E670  # OVL1
-0x0029E680 0x8 func_0029E680  # OVL1
-0x0029E690 0x8 func_0029E690  # OVL1
-0x0029E6A0 0x8 func_0029E6A0  # OVL1
+0x0029E470 0x70 GetEntityByIndex__11CEntityListCFUi  # OVL1; s1:order (CEntityList's first, as SOCOM 1's 0x1EE0F0: past the end gives none, else the walk index steps along a const_iterator); ent_main.cpp
+0x0029E4E0 0xB0 GetEntityById__11CEntityListCFUi  # OVL1; s1:order (CEntityList's second, as SOCOM 1's 0x1EE190: none for CEntity::invalidId (0x3EFFB0, SOCOM 1's invalidId__7CEntity), else the entity whose m_id matches); ent_main.cpp
+0x0029E590 0xE0 GetEntity__11CEntityListCFPCc  # OVL1; s1:order (CEntityList's third, as SOCOM 1's 0x1EE290: strcasecmp of the name against each entity's node's name); ent_main.cpp
+0x0029E670 0x8 Virtual5C__7CEntityFv  # OVL1; slot 0x5C of __vt__7CEntity, new in SOCOM II (returns 0) -- the name is ours; ent_main.cpp
+0x0029E680 0x8 Virtual60__7CEntityFv  # OVL1; slot 0x60 of __vt__7CEntity, new in SOCOM II (returns 0) -- the name is ours; ent_main.cpp
+0x0029E690 0x8 Virtual64__7CEntityFv  # OVL1; slot 0x64 of __vt__7CEntity, new in SOCOM II (returns 0) -- the name is ours; ent_main.cpp
+0x0029E6A0 0x8 Virtual68__7CEntityFv  # OVL1; slot 0x68 of __vt__7CEntity, new in SOCOM II (returns 0) -- the name is ours; ent_main.cpp
 0x0029E6B0 0x80 func_0029E6B0  # OVL1
 0x0029E730 0x174 func_0029E730  # OVL1
-0x0029E8B0 0x38 OnDeath__7CEntityFv  # OVL1; s1:align
-0x0029E8F0 0x8 func_0029E8F0  # OVL1
-0x0029E900 0x8 UpdateAiMapLoc__7CEntityFRb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0029E910 0x20 func_0029E910  # OVL1; tu: node_main.cpp~ (1.0 beta)
-0x0029E930 0x20 func_0029E930  # OVL1; tu: node_main.cpp~ (1.0 beta)
-0x0029E950 0x20 func_0029E950  # OVL1; tu: node_main.cpp~ (1.0 beta)
+0x0029E8B0 0x30 OnDeath__7CEntityFv  # OVL1; s1:align; split from 0x38: the last 8 bytes are CEntityCtrl::OnDeath
+0x0029E8E0 0x8 OnDeath__11CEntityCtrlFv  # OVL1; slot 0x18 of __vt__11CEntityCtrl (0x406248) points here, inside the old OnDeath row; SOCOM 1 links the same pair in the same order (0x1EE390, 0x1EE3C0)
+0x0029E8F0 0x8 OnRecycleEntity__7CEntityFP7CEntity  # OVL1; s1:vtable by hand (slot 0x54 of __vt__7CEntity, SOCOM 1's slot 0x48 with SOCOM II's three new slots before it; empty as SOCOM 1's; ent_main.cpp)
+0x0029E900 0x8 UpdateAiMapLoc__7CEntityFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike); SOCOM II's signature: TeleportTo calls slot 0x48 with no argument set up (SOCOM 1's took a bool &); ent_main.cpp
+0x0029E910 0x20 GetNeckPosW__7CEntityFP6CPnt3D  # OVL1; tu: node_main.cpp~ (1.0 beta); slot 0x38 of __vt__7CEntity, new in SOCOM II (SOCOM 1's GetTargetPosW slot grew to three): the position copied out and returned; CZSealBody's override reads the body part SOCOM 1's DWARF calls m_neck (0x290, 0x7C on: 780) -- the name is ours; ent_main.cpp
+0x0029E930 0x20 GetHeadPosW__7CEntityFP6CPnt3D  # OVL1; tu: node_main.cpp~ (1.0 beta); slot 0x34 of __vt__7CEntity, new in SOCOM II: CZSealBody's override reads SOCOM 1's m_head (0x28C, 0x7C on: 776) -- the name is ours; ent_main.cpp
+0x0029E950 0x20 GetTargetPosW__7CEntityFP6CPnt3D  # OVL1; tu: node_main.cpp~ (1.0 beta); s1:vtable by hand (slot 0x30, SOCOM 1's GetTargetPosW slot: CZSealBody's override at it does what SOCOM 1's CZSealBody::GetTargetPosW does, PartInSpace of the spinehi part, 0x294 there and 0x310 here, then the node's matrix); ent_main.cpp
 0x0029E970 0x180 TeleportTo__7CEntityFPC6CPnt3DPC5CQuat  # OVL1; s1:calls
 0x0029EAF0 0x124 TeleportTo__7CEntityFPC7CMatrix  # OVL1; s1:align
-0x0029EC20 0x20 func_0029EC20  # OVL1
-0x0029EC40 0x8 func_0029EC40  # OVL1
+0x0029EC20 0x20 UpdatePosW__7CEntityFv  # OVL1; slot 0x10 of __vt__7CEntity, new in SOCOM II: the node's position copied to 0x1C, which the three Get*PosW return; TeleportTo calls it after SetMatrix -- the name is ours; ent_main.cpp
+0x0029EC40 0x8 OnMissionEnd__7CEntityFv  # OVL1; s1:vtable by hand (slot 0x50, SOCOM 1's 0x44; empty as SOCOM 1's); ent_main.cpp
 0x0029EC50 0x8 OnMissionStart__7CEntityFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0029EC60 0x8 func_0029EC60  # OVL1
+0x0029EC60 0x8 ResetToInitialState__7CEntityFv  # OVL1; s1:vtable by hand (slot 0x44, SOCOM 1's 0x38; empty as SOCOM 1's); ent_main.cpp
 0x0029EC70 0x6C SetDisplayName__7CEntityFPCc  # OVL1; s1:align
 0x0029ECE0 0x28 JoinTeam__7CEntityFUi  # OVL1; tu: ent_main.cpp~ (1.0 beta); s1:align
-0x0029ED10 0x8 func_0029ED10  # OVL1
-0x0029ED20 0x8 func_0029ED20  # OVL1
+0x0029ED10 0x8 SetTeamMask__7CEntityFUi  # OVL1; s1:order (after JoinTeam as in SOCOM 1, 0x1EE790, the same store to m_team -- 0xC8 here); ent_main.cpp
+0x0029ED20 0x8 GetNode__7CEntityFv  # OVL1; s1:order (before ~CEntity as in SOCOM 1, 0x1EE7A0: m_node, at 0x28 here); ent_main.cpp
 0x0029ED30 0xD8 __dt__7CEntityFv  # OVL1; s1:align
-0x0029EE10 0x370 func_0029EE10  # OVL1
-0x0029F180 0x14 func_0029F180  # OVL1
-0x0029F1A0 0x1A8 func_0029F1A0  # OVL1
-0x0029F350 0xE0 func_0029F350  # OVL1
-0x0029F430 0xE0 func_0029F430  # OVL1
+0x0029EE10 0x370 __ct__7CEntityFQ27CEntity4TYPEPQ23zdb5CNode  # OVL1; s1:order (after ~CEntity as in SOCOM 1, 0x1EE870: stores __vt__7CEntity, the type byte and the node, makes the recycler's stand-in in CreateRecycler and DoRecycleEntity with type 1 as SOCOM 1's); ent_main.cpp
+0x0029F180 0x14 GetEntityIndex__7CEntityFPC7CEntity  # OVL1; s1:order (after the constructor as in SOCOM 1, 0x1EEC50: the index, or -1 for none); ent_main.cpp
+0x0029F1A0 0x1A8 PostTickAll__7CEntityFfPv  # OVL1; s1:name by hand (CCoreState::Init schedules it as "entity_post_tick", where SOCOM 1's schedules PostTickAll; it calls PrePostTick then PostTick on every entity as SOCOM 1's); ent_main.cpp
+0x0029F350 0xE0 PrePostTickAll__7CEntityFfPv  # OVL1; scheduled by CCoreState::Init as "entity_preposttick" (new in SOCOM II, between entity_tick and entity_post_tick): PostPreTick (slot 0x1C) on every entity -- the name after the task's; ent_main.cpp
+0x0029F430 0xE0 TickAll__7CEntityFfPv  # OVL1; s1:name by hand (CCoreState::Init schedules it as "entity_tick", where SOCOM 1's schedules TickAll; Tick, slot 0x18, on every entity); ent_main.cpp
 0x0029F510 0xF8 PreTickAll__7CEntityFfPv  # OVL1; s1:align
 0x0029F610 0x238 RemoveAll__7CEntityFv  # OVL1; s1:align
 0x0029F850 0x1A0 DoRecycleEntity__7CEntityFP7CEntity  # OVL1; s1:align
 0x0029F9F0 0x11C CreateRecycler__7CEntityFv  # OVL1; s1:align
-0x0029FB10 0xA4 func_0029FB10  # OVL1
+0x0029FB10 0xA4 RecycleEntity__7CEntityFUiP7CEntityb  # OVL1; s1:order (between CreateRecycler and RecycleEntity(CEntity *) as in SOCOM 1, 0x1EF540: the entity at an index, if it is the recycler's stand-in (type 1), traded for the argument, then SetIncludeInTargetList and UpdateTargetList(true)); ent_main.cpp
 0x0029FBC0 0x4C RecycleEntity__7CEntityFP7CEntity  # OVL1; s1:align
 0x0029FC10 0x98 CreateEntity__7CEntityFP7CEntityb  # OVL1; s1:align
-0x0029FCB0 0xCC func_0029FCB0  # OVL1
-0x0029FD80 0x44 func_0029FD80  # OVL1
+0x0029FCB0 0xCC PurgeEntities__7CEntityFv  # OVL1; new in SOCOM II (called from CMPExitState::Tick): remove_if over m_list with 0x29FD80, the rest erased, the survivors renumbered -- the name is ours; ent_main.cpp
+0x0029FD80 0x44 DeleteIfIdless__FP7CEntity  # OVL1; new in SOCOM II, PurgeEntities' predicate (its address taken there): an entity whose id is -1 deleted -- the name is ours; ent_main.cpp
 0x0029FDD0 0x78 EntityIsValid__7CEntityFP7CEntity  # OVL1; s1:callee (CZPlayerMapItem::Tick's first call, as SOCOM 1's; it walks CEntity::m_list)
-0x0029FE50 0x10 func_0029FE50  # OVL1
-0x0029FE60 0xC func_0029FE60  # OVL1
-0x0029FE70 0xE4 func_0029FE70  # OVL1
+0x0029FE50 0x10 CloseRecycler__7CEntityFv  # OVL1; s1:order (after EntityIsValid as in SOCOM 1, 0x1EF7A0: recycler_index = -1); ent_main.cpp
+0x0029FE60 0xC OpenRecycler__7CEntityFUi  # OVL1; s1:order (after CloseRecycler as in SOCOM 1, 0x1EF7B0: recycler_index = the argument); ent_main.cpp
+0x0029FE70 0xE4 remove_if<Q33std44list<P7CEntity,Q23std20allocator<P7CEntity>>19generic_iterator<0>,PFP7CEntity_b>__3stdFQ33std44list<P7CEntity,Q23std20allocator<P7CEntity>>19generic_iterator<0>Q33std44list<P7CEntity,Q23std20allocator<P7CEntity>>19generic_iterator<0>PFP7CEntity_b_Q33std44list<P7CEntity,Q23std20allocator<P7CEntity>>19generic_iterator<0>  # OVL1; MSL's remove_if over list<CEntity *> with a function pointer (PurgeEntities calls it; find_if inlined, remove_copy_if called, as SOCOM 1's remove_if over list<CSched_Task *>, 0x2F41F0); ent_main.cpp
 0x0029FF60 0x68 __dt__Q23std54__vector_deleter<7CTarget,Q23std19allocator<7CTarget>>Fv  # OVL1; s1:align
-0x0029FFD0 0xB8 func_0029FFD0  # OVL1
-0x002A0090 0x8 func_002A0090  # OVL1
+0x0029FFD0 0xB8 remove_copy_if<Q33std44list<P7CEntity,Q23std20allocator<P7CEntity>>19generic_iterator<0>,Q33std44list<P7CEntity,Q23std20allocator<P7CEntity>>19generic_iterator<0>,PFP7CEntity_b>__3stdFQ33std44list<P7CEntity,Q23std20allocator<P7CEntity>>19generic_iterator<0>Q33std44list<P7CEntity,Q23std20allocator<P7CEntity>>19generic_iterator<0>Q33std44list<P7CEntity,Q23std20allocator<P7CEntity>>19generic_iterator<0>PFP7CEntity_b_Q33std44list<P7CEntity,Q23std20allocator<P7CEntity>>19generic_iterator<0>  # OVL1; MSL's remove_copy_if, called by the remove_if instance before it; ent_main.cpp
+0x002A0090 0x8 clear__Q23std54__vector_deleter<7CTarget,Q23std19allocator<7CTarget>>Fv  # OVL1; s1:callee (~__vector_deleter<CTarget> at 0x29FF60 calls it where SOCOM 1's calls clear__Q23std54__vector_deleter<7CTarget,...>Fv, 0x1EF830; the elements' destruction is empty, so only the count is cleared); SetUpdateTargetList calls it too
 0x002A00A0 0xC func_002A00A0  # OVL1
 0x002A00B0 0xC func_002A00B0  # OVL1
 0x002A00C0 0x60 __dt__11CEntityListFv  # OVL1; s1:ref (taken by address where SOCOM 1 takes __dt__11CEntityListFv's)
@@ -3724,10 +3725,10 @@
 0x002A0190 0x70 func_002A0190  # OVL1
 0x002A0200 0x108 func_002A0200  # OVL1
 0x002A0310 0x140 func_002A0310  # OVL1
-0x002A0450 0x468 func_002A0450  # OVL1
+0x002A0450 0x468 UpdateTargetList__7CEntityFb  # OVL1; s1:callee (CEntity::PreTickAll calls it with false and func_0029FB10, SOCOM 1's RecycleEntity(Ui,CEntity*,b), with true, at the places SOCOM 1's call UpdateTargetList__7CEntityFb, 0x1EFBF0); ent_target.cpp
 0x002A08C0 0x148 func_002A08C0  # OVL1
 0x002A0A10 0x3C8 func_002A0A10  # OVL1
-0x002A0DE0 0x18C func_002A0DE0  # OVL1
+0x002A0DE0 0x18C ReplaceTargetList__7CEntityFP7CEntityP7CEntity  # OVL1; s1:callee (DoRecycleEntity calls it with the recycled entity and the stand-in, where SOCOM 1's calls ReplaceTargetList__7CEntityFP7CEntityP7CEntity, 0x1F0930); ent_target.cpp
 0x002A0F70 0x150 SetIncludeInTargetList__7CEntityFb  # OVL1; s1:align
 0x002A10C0 0x74 SetUpdateTargetList__7CEntityFb  # OVL1; s1:align
 0x002A1140 0x20 _sort_target__FRC7CTargetRC7CTarget  # OVL1; s1:align
@@ -3742,14 +3743,14 @@
 0x002A2370 0x198 func_002A2370  # OVL1
 0x002A2510 0x44 UpdateNextPosition__7CEntityFv  # OVL1; s1:align
 0x002A2560 0x104 ComputeNextPosition__7CEntityFf  # OVL1; s1:calls
-0x002A2670 0x8 func_002A2670  # OVL1
+0x002A2670 0x8 PostTick__7CEntityFf  # OVL1; s1:vtable by hand (slot 0x24 of __vt__7CEntity, SOCOM 1's PostTick slot 0x20 with the new slot before it; empty as SOCOM 1's, and before PrePostTick in the image as there); ent_ctrl.cpp
 0x002A2680 0x8 PrePostTick__7CEntityFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x002A2690 0x8 func_002A2690  # OVL1
+0x002A2690 0x8 PostPreTick__7CEntityFf  # OVL1; s1:vtable by hand (slot 0x1C of __vt__7CEntity, SOCOM 1's PostPreTick slot 0x18 with the new slot before it; empty, between PrePostTick and Tick as in SOCOM 1); ent_ctrl.cpp
 0x002A26A0 0x8 Tick__7CEntityFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002A26B0 0x8 PreTick__7CEntityFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002A26C0 0x8 PostMortemPreTick__11CEntityCtrlFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x002A26D0 0x8 func_002A26D0  # OVL1; s1~ GetRemoteControl__11CEntityCtrlFv (one of 2 out-of-line copies of an inline, by s1:vtable)
-0x002A26E0 0x10 func_002A26E0  # OVL1; s1~ SetThrottle__11CEntityCtrlFUif (one of 2 out-of-line copies of an inline, by s1:vtable)
+0x002A26D0 0x8 GetRemoteControl__11CEntityCtrlFv  # OVL1; s1~ GetRemoteControl__11CEntityCtrlFv (one of 2 out-of-line copies of an inline, by s1:vtable); slot 0x1C of __vt__11CEntityCtrl (SOCOM 1's GetRemoteControl slot, returning 0): OVL1's out-of-line copy of the inline, emitted with the vtable by ent_ctrl.cpp (OVL2 links its own, left unnamed); ent_ctrl.cpp
+0x002A26E0 0x10 SetThrottle__11CEntityCtrlFUif  # OVL1; s1~ SetThrottle__11CEntityCtrlFUif (one of 2 out-of-line copies of an inline, by s1:vtable); slot 0x20 of __vt__11CEntityCtrl (SOCOM 1's SetThrottle slot: m_throttle[axis] = value): OVL1's out-of-line copy of the inline, emitted with the vtable by ent_ctrl.cpp (OVL2's is 0x567340, left unnamed); ent_ctrl.cpp
 0x002A26F0 0x30 SetController__7CEntityFP11CEntityCtrl  # OVL1; s1:align
 0x002A2720 0x8 Tick__11CEntityCtrlFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002A2730 0x8 PreTick__11CEntityCtrlFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
