@@ -141,6 +141,80 @@ public:
     unsigned char m_ghost;   // 0xd2
 };
 
+/* a pickup: a weapon, ammunition, a grenade or the MP bomb lying in the world (SOCOM 1's DWARF:
+ * CPickup, 0x1c bytes; SOCOM II's puts a float first -- its life, run down by the pickups' tick
+ * -- so every member sits 4 further, and makes the type a whole byte and the owner's entity id a
+ * word of its own at 0x10). pickup_main.cpp's; the list and the statics are OVL1 data. */
+/* a weapon lying in the world (a CZFTSWeapon: only the kind kit.h names at 0x7c) and the
+ * ammunition (an OVL1 class: only its name) a pickup holds */
+class CPickupWeapon {
+public:
+    unsigned char _0[0x7c];
+    unsigned char m_equip;   // 0x7c: its EQUIP_ITEM
+};
+
+class CPickupAmmo;
+
+class CPickup {
+public:
+    /* the kinds (SOCOM 1's PU_TYPE, nested; the values SOCOM II's code tests -- 8 a weapon, 9
+     * ammunition (SOCOM 1's CleanupAmmoPickup tests the same two), 11 the MP bomb; the names
+     * ours) */
+    enum PU_TYPE {
+        PU_NONE = 0, PU_TYPE_1 = 1, PU_TYPE_2 = 2, PU_TYPE_3 = 3, PU_TYPE_4 = 4, PU_TYPE_5 = 5,
+        PU_TYPE_6 = 6, PU_TYPE_7 = 7, PU_WEAPON = 8, PU_AMMO = 9, PU_MPBOMB = 11, PU_LAST = 255
+    };
+    typedef std::list<CPickup *>::iterator iterator;
+
+    static bool IsWeaponNear(unsigned char item, const CPnt3D *pos, float range);
+    static void CleanupAmmoPickup(CPickup *pickup);
+    CPickupAmmo *GetAmmo();
+    CPickupWeapon *GetWeapon();
+    void *GetData4567();
+    void *GetData123();
+    /* the kinds' groups (inline: the accessors materialise each `||`). `m_type == 1 || m_type ==
+     * 2` folds into one range test (sltiu); the ternary keeps GetData123's two compares */
+    bool IsType1() { return m_type == PU_TYPE_1; }
+    bool IsType2() { return m_type == PU_TYPE_2 ? true : false; }
+    bool IsType12() { return IsType1() || IsType2(); }
+    bool IsType123() { return IsType12() || m_type == PU_TYPE_3; }
+    bool IsType75() { return m_type == PU_TYPE_7 || m_type == PU_TYPE_5; }
+    bool IsType754() { return IsType75() || m_type == PU_TYPE_4; }
+    bool IsType4567() { return IsType754() || m_type == PU_TYPE_6; }
+
+    static CPickup *FindPickup(unsigned int id);
+    static void DestroyNetPickups(unsigned int owner);
+    static void Destroy(CPickup *pickup);
+    static CPickup *GetMPBomb();
+    /* SOCOM II's takes the whole id, the entity's in its upper half */
+    static unsigned short GetEntityIDFromNetID(unsigned int netid);
+    static iterator GetFirst();
+    static CPickup *GetNext(iterator &it, PU_TYPE type);
+    static CPickup *GetNext(iterator &it, const CPnt3D *pos, float range, PU_TYPE type);
+    static void Open(unsigned int bits);
+    unsigned int GetPickupNetEntityID();
+    const CPnt3D *GetPosW() const;
+    void SetVisibleByUnit(unsigned int unit);
+    bool GetVisibleByUnit(unsigned int unit);
+
+    static std::list<CPickup *> m_list;   // OVL1 bss 0x44D470
+    static zdb::CNode *m_mpbombnode;   // OVL1 bss 0x44D4A0
+    static unsigned int bit_count;   // OVL1 data 0x3DF178
+    static bool m_isOpen;   // OVL1 bss 0x44D4B0
+
+    float m_timer;   // 0x0 (new in SOCOM II)
+    zdb::CNode *m_node;   // 0x4
+    void *m_data;   // 0x8: a grenade's projectile, a weapon's...
+    unsigned int m_type : 8;   // 0xc (SOCOM 1's 7 bits)
+    unsigned int m_locked : 1;
+    unsigned int m_secondary : 1;
+    unsigned int m_unused : 6;
+    unsigned int m_id : 16;   // 0xe
+    unsigned int m_owner;   // 0x10: the owner's entity id (new in SOCOM II)
+    unsigned char m_bits[8];   // 0x14: a CBits (SOCOM 1's 0x10)
+    unsigned int m_visible_by_units;   // 0x1c (SOCOM 1's 0x18)
+};
+
 /* a thrown grenade's flight, solved (SOCOM 1's; only the statics) */
 class CDynGrenade {
 public:

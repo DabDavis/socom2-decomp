@@ -177,6 +177,7 @@
 0x003DE2D0 0x4 m_debug__8CConsole  # OVL1; s1:data-seq (size SOCOM 1's; via Debug__8CConsoleFiP7CPacketPCc)
 0x003DE2E0 0x4 recycler_index  # OVL1; s1:data-seq (size SOCOM 1's; via CreateEntity__7CEntityFP7CEntityb)
 0x003DE5F8 0x4 LADDER_MASK  # OVL1; s1:data-seq (size SOCOM 1's; via GetLadderByIndex__11CLadderListFi)
+0x003DF178 0x4 bit_count__7CPickup  # OVL1 data; SOCOM 1's bit_count__7CPickup (0x474EFC, the word Open__7CPickupFUi stores its argument to, gp-relative there): Open (0x542FC0) stores its argument here, 0x542930 and 0x542B90 (Create, NetworkCreate by SOCOM 1's order) read it -- 3 references in 3 functions (the SEAL lane, round 3)
 0x003DF218 0x4 deadZoneScaleFactor  # OVL1; s1:data-seq (size SOCOM 1's; via SetDeadZone__4CPadFif)
 0x003DF298 0x4 PlayerClanID  # OVL1 data; s1 by hand (SOCOM 1's PlayerClanID: IsMemberOfClan 0x2E6830 tests it against -1, QuitClan and GetClanRoster send it as the clan id; initialised data in SOCOM II); size SOCOM 1's; 13 references in 10 functions
 0x003DF2A0 0x4 RemovePlayerFromClanID  # OVL1 data; s1 by hand (SOCOM 1's RemovePlayerFromClanID: RemovePlayerFromClan 0x2E7450 keeps the member it asks to remove there, as SOCOM 1's keeps its); size SOCOM 1's; 1 reference in 1 function
@@ -689,7 +690,9 @@
 0x0044CCF0 0x1C MultiplayerMsgStrings  # OVL1 bss; s1:data-seq (size SOCOM 1's; via InitMultiplayerMessages__14CCharacterTypeFP5_zrdr)
 0x0044CE00 0xC m_heartbeat_sound__10CZSealBody  # OVL1 bss; s1:data-exact (size SOCOM 1's; via OpenHeartbeatSounds__10CZSealBodyFv)
 0x0044D450 0xC list__12CAnimAuxData  # OVL1 bss; s1:data-exact (size SOCOM 1's; via Get__12CAnimAuxDataFUi)
+0x0044D470 0xC m_list__7CPickup  # OVL1 bss; SOCOM 1's m_list__7CPickup (0x506440, a list<CPickup *>): its size word here, the sentinel at 0x44D474, the first node at 0x44D478 -- FindPickup, GetMPBomb, GetNext, GetFirst, DestroyNetPickups, Destroy and Close (0x542E50) walk it as SOCOM 1's do; 36 references in 17 functions (the OVL1 initialiser at 0x400870 builds it) (the SEAL lane, round 3)
 0x0044D4A0 0x4 m_mpbombnode__7CPickup  # OVL1 bss; s1:data-seq (size SOCOM 1's; via CreateMPBombPickup__10CZSealBodyFPC6CPnt3Db)
+0x0044D4B0 0x1 m_isOpen__7CPickup  # OVL1 bss; SOCOM 1's m_isOpen__7CPickup (0x475CB4, a byte Open__7CPickupFUi sets): Open (0x542FC0) stores 1, Close (0x542E50) and CZSealBody::Tick/CreateMPBombPickup read it -- 9 references in 9 functions (the SEAL lane, round 3)
 0x0044D5B0 0xC m_list__9CSealUnit  # OVL1 bss; SOCOM 1's m_list__9CSealUnit (0x5097B0, a list<CSealUnit *> built by __sinit_seal_unit.cpp); every squad, walked by GetUnitByTeam (0x5EF2F0) -- 59 references in 15 functions (IssueCommand 12, 0x5EC9F0 14, the initialiser at 0x400870 3) -- the kit lane
 0x0044D688 0x1 OurGameName  # OVL1 bss; s1 by hand (SOCOM 1's CCoreState::Tick ticks CameraZoom only while OurGameName, gp-28920, a byte, is 1; SOCOM II's tests 0x44D688 == 1 at the same place)
 0x0044D6B8 0xC m_pool  # OVL1 bss; SOCOM 1's (m_pool, a global CPool -- a vector of CGameStateChangeCmd: capacity, size, data -- that game_state.cpp's initialiser 0x401BD0 builds, as SOCOM 1's does); read and written by CreatePool, Acquire and DestroyPool (9 word references) and built by 0x401BD0

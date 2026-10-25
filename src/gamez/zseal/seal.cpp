@@ -8,17 +8,6 @@
 
 class CValve;
 
-/* a pickup (SOCOM 1's CPickup; only what this unit touches) */
-class CPickup {
-public:
-    static CPickup *FindPickup(unsigned int id);
-    static void DestroyNetPickups(unsigned int owner);
-
-    unsigned int m_0;   // 0x0
-    zdb::CNode *m_node;   // 0x4
-    CZProjectile *m_grenade;   // 0x8: a grenade's projectile
-};
-
 extern "C" {
 void func_005C7840(CZKit *kit);   /* CZKit::PostSetupItems (SOCOM 1's OnMissionStart calls it) */
 void func_003CAEE0(CZProjectile *proj, const CPnt3D *vel);   /* CZProjectile::SetVelW (SOCOM 1's
@@ -44,7 +33,7 @@ static void _rethrow_grenade(CValve *valve, void *data)
 
     if (!pickup || !pickup->m_node)
         return;
-    CZProjectile *grenade = pickup->m_grenade;
+    CZProjectile *grenade = (CZProjectile *)pickup->m_data;
     CPnt3D vel = *(CPnt3D *)pickup->m_node->m_matrix.m_matrix[2];
 
     vel.y = up;
