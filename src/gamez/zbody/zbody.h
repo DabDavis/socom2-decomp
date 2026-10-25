@@ -629,6 +629,11 @@ public:
     CZBodyPart *AttachAuxNode(CNode *node, CZBodyPart *parent, const CPnt3D *pos, const CPnt3D *rot);
     /* an archive's anim readied for the body (SOCOM 1's BodyAddAnim, which took a name) */
     class CZBodyAnim *BodyAddAnim(class CScriptArchive *archive, int index);
+    /* the anim pool (SOCOM 1's was a pointer member; the name ours): reached through this inline,
+     * the pool's address is a temporary MW hoists out of a loop into a preheader of its own, after
+     * the loop's bottom test -- the walks that put anims back (ClearOverlays, PopBlend,
+     * SetBlendAnims) need it; `&body->m_active_anim_pool` is recomputed every pass */
+    CActiveAnimPool *ActiveAnimPool() { return &m_active_anim_pool; }
 
     short m_state;   // 0x4: the SEAL's state (SOCOM 1's char at 0xd)
     float m_interp1;   // 0x8

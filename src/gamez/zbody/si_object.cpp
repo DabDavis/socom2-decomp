@@ -20,19 +20,13 @@ extern "C" void func_00257EE0(zar::CZAR *zar, char **str);
         (p) = 0;                \
     }
 
-/* OPEN, 0x28 bytes short: the target sets the four bit fields with word-wide read-modify-writes
- * (lw/sw at 8, the part id under a 64-bit mask 0xFFFFFFFF00FFFFFF), one (0 & 1) shared by the three
- * bits and a (0 & 0xff) for the id -- inline setters called with constants -- where MW gives these
- * lbu/sb and a byte store of the id, as it does (and the target does) in Initalize and Read; SOCOM 1's
- * constructor is word-wide and its Initalize byte-wide too, so it is the constructor context, not
- * the class. Inline setters taking bool or unsigned int change nothing; unchanged at level 5. */
-CZSIObject::CZSIObject() : m_positionData(0), m_rotations(0)
+/* the bit fields in the initialiser list: each a word-wide read-mask-write (lw/sw at 8, the part id
+ * under a 64-bit mask 0xFFFFFFFF00FFFFFF, one (0 & 1) shared by the three bits); assigned in the
+ * body, MW narrows them to lbu/sb and a byte store, 0x28 bytes short */
+CZSIObject::CZSIObject()
+    : m_positionData(0), m_rotations(0), m_inUse(false), m_constPos(false), m_constRot(false),
+      m_body_part_id(0), m_pName(0)
 {
-    m_inUse = false;
-    m_constPos = false;
-    m_constRot = false;
-    m_body_part_id = 0;
-    m_pName = 0;
     numSiObject++;
 }
 

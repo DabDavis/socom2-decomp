@@ -416,18 +416,16 @@ CZBodyAnimBlend *CBody::PushBlend(CZSIScriptCommon *anim, short id, char state)
 }
 
 /* the top blend popped: its anims and their overlays put back, the blend too; the new top's
- * state set and its fraction carried over when both loop (SOCOM 1's).
- * OPEN, 0x38 bytes short: the walks are the target's `b`-to-a-bottom-preheader loops (the pool's
- * address hoisted into a saved register in a block after the loop's test), which every loop
- * spelling tried compiles as a guarded do-while -- see ClearOverlays, the same loop alone */
+ * state set and its fraction carried over when both loop (SOCOM 1's). Both walks reach the pool
+ * through ActiveAnimPool(), the target's hoisted address in a preheader after each loop's test */
 CZBodyAnimBlend *CBody::PopBlend()
 {
     CZBodyAnimBlend *blend = func_00219390(&m_blends);
 
     if (m_interp1 > 0.0f)
         SaveParts();
-    float tfrac = blend->m_tfrac;
     bool looped = func_0028F190(blend->m_flags, 0x40);
+    float tfrac = blend->m_tfrac;
     ACTIVE_ANIM *a = blend->m_anims.Begin();
 
     while (a) {
@@ -435,7 +433,7 @@ CZBodyAnimBlend *CBody::PopBlend()
 
         a = blend->m_anims.Next();
         cur->ClearOverlays(this);
-        m_active_anim_pool.PutBack(cur);
+        ActiveAnimPool()->PutBack(cur);
     }
     m_blend_pool.PutBack(blend);
     m_blends.Pop();
@@ -527,21 +525,17 @@ void ACTIVE_ANIM::SetFrac(float t)
     }
 }
 
-/* every overlay put back in the body's pool (SOCOM 1's).
- * OPEN, 5 instructions short: the target enters the loop with a `b` to a preheader placed after
- * the loop's bottom test, which hoists &body->m_active_anim_pool into s0 (body itself dropped);
- * MW gives a guarded do-while with the address recomputed from body each pass. Tried: the walk
- * with the next link read first or last, for(;;) with a break, a for with the next pointer
- * declared outside, the pool through a pointer local, a null test inside */
+/* every overlay put back in the body's pool (SOCOM 1's): the pool through the body's accessor, so
+ * its address is hoisted into a preheader after the loop's test (the target's `b` into the walk) */
 void ACTIVE_ANIM::ClearOverlays(CBody *body)
 {
     ACTIVE_ANIM *o = m_overlay;
 
     while (o) {
-        ACTIVE_ANIM *next = o->m_overlay;
+        ACTIVE_ANIM *cur = o;
 
-        body->m_active_anim_pool.PutBack(o);
-        o = next;
+        o = o->m_overlay;
+        body->ActiveAnimPool()->PutBack(cur);
     }
     m_overlay = 0;
 }
@@ -1000,9 +994,9 @@ void CZBodyAnimBlend::ReverseDir()
         m_tfrac = m_quitT;
 }
 
-/* the anims replaced by a list's: the old ones and their overlays put back, the weights
- * normalised, the callback flag set when an anim has callbacks (SOCOM 1's).
- * OPEN, 0x8C bytes long: the walks are ClearOverlays' bottom-preheader loops (open there) */
+/* the anims replaced by a list's: the old ones and their overlays put back (through
+ * ActiveAnimPool(), as PopBlend), the weights normalised (out of line), the callback flag set when
+ * an anim has callbacks (SOCOM 1's) */
 void CZBodyAnimBlend::SetBlendAnims(CBody *body, CActiveAnimList *list)
 {
     ACTIVE_ANIM *a = m_anims.Begin();
@@ -1013,7 +1007,7 @@ void CZBodyAnimBlend::SetBlendAnims(CBody *body, CActiveAnimList *list)
         a = m_anims.Next();
         m_anims.Remove(cur);
         cur->ClearOverlays(body);
-        body->m_active_anim_pool.PutBack(cur);
+        body->ActiveAnimPool()->PutBack(cur);
     }
     for (a = list->Begin(); a; a = list->Next())
         m_anims.Add(a);
@@ -1027,7 +1021,9 @@ void CZBodyAnimBlend::SetBlendAnims(CBody *body, CActiveAnimList *list)
     }
 }
 
-/* the weights scaled to sum to one, unless they nearly do or sum to nothing (SOCOM 1's) */
+/* the weights scaled to sum to one, unless they nearly do or sum to nothing (SOCOM 1's; pinned:
+ * SetBlendAnims calls it) */
+#pragma auto_inline off
 void CZBodyAnimBlend::Normalize()
 {
     if (m_anims.m_size) {
@@ -1039,6 +1035,7 @@ void CZBodyAnimBlend::Normalize()
             RenormAnims(&m_anims, 1.0f / sum);
     }
 }
+#pragma auto_inline reset
 
 /* an overlay hung on an anim, at a weight, playing as it does (SOCOM 1's) */
 void CZBodyAnimBlend::AddOverlay(ACTIVE_ANIM *anim, ACTIVE_ANIM *overlay, float wt)
