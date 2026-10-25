@@ -341,6 +341,18 @@ public:
         float m_altitude;   // 0x8
     };
     class spores : public std::vector<spore> {
+    public:
+        /* the run of one id's spores in the table, kept sorted by id (new in SOCOM II, the names
+         * ours) */
+        class range {
+        public:
+            unsigned int m_id;   // 0x0
+            int m_first;   // 0x4
+            int m_last;   // 0x8
+            int m_count;   // 0xc
+        };
+
+        void GetRange(unsigned int id, range &r);
     };
 
     /* a line drawn on the map: its cells and four bytes of data (SOCOM 1's DWARF, 0x10 bytes) */

@@ -9690,7 +9690,7 @@
 0x0052FC90 0xD4 __dt__Q26CAiMap7readersFv  # OVL2; s1:calls
 0x0052FD70 0x14 __ct__Q26CAiMap6readerFv  # OVL2; s1:exact
 0x0052FD90 0xD0 func_0052FD90  # OVL2
-0x0052FE60 0xE0 func_0052FE60  # OVL2
+0x0052FE60 0xE0 GetRange__Q26CAiMap6sporesFUiRQ36CAiMap6spores5range  # OVL2; ours (new in SOCOM II, in the map tables between the reader's constructor and GetCenter: the 12-byte spores walked by their 12-bit id at +4 -- the first at or past the id, the last before a greater one -- into a {id, first, last, count} record; CAiMaps' 0x52B5C0 and 0x52B7E0 call it)
 0x0052FF40 0x78 GetCenter__Q26CAiMap6regionCFR9CAiMapLoc  # OVL2; s1:exact
 0x0052FFC0 0xD4 Union__Q26CAiMap6regionFRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19E710, after GetCenter in both builds: how far the cell lies outside the rectangle on each side, then InflateRegion(l, t, r, b, 0) when it does)
 0x005300A0 0x190 InflateRegion__Q26CAiMap6regionFiiiiPC6CAiMap  # OVL2; s1:order by hand (the demo's 0x19E7E0, after Union in both builds: the corner and size clamped by four _saturate<int> calls to 0x1FFF or the map's m_nx - 1 / m_ny - 1)

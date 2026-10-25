@@ -238,6 +238,44 @@ void CAiMap::region::Union(const CAiMapLoc &loc)
         InflateRegion(left, top, right, bottom, 0);
 }
 
+/* the run of an id's spores: the first at or past the id and the last before the next id, or
+ * -1s and no count (new in SOCOM II, called from two CAiMaps functions -- 0x52B5C0, 0x52B7E0).
+ * OPEN, right size, 9 instructions: registers only -- the target walks in t2 with the end in t0
+ * and the id read into t1, this build t0, t1, t2; the iterators declared together, apart, the
+ * end first, the id hoisted to the top were tried */
+void CAiMap::spores::GetRange(unsigned int id, range &r)
+{
+    int first = -1;
+    int last = -1;
+    int n = 0;
+    iterator e = end();
+
+    for (iterator i = begin(); i != e; ++i, ++n) {
+        unsigned int sid = (*i).m_id;
+
+        if (sid < id)
+            continue;
+        if (first == -1)
+            first = n;
+        if (id < sid) {
+            last = n - 1;
+            break;
+        }
+    }
+    r.m_id = id;
+    if (first == -1) {
+        r.m_first = -1;
+        r.m_last = -1;
+        r.m_count = 0;
+        return;
+    }
+    r.m_first = first;
+    if (last == -1)
+        last = size() - 1;
+    r.m_last = last;
+    r.m_count = r.m_last - r.m_first + 1;
+}
+
 /* the rectangle's middle cell (SOCOM 1's) */
 CAiMapLoc &CAiMap::region::GetCenter(CAiMapLoc &loc) const
 {
