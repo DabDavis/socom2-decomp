@@ -4122,7 +4122,7 @@
 0x002C1510 0xC4 CreateLocalGrenade__14CZGrenadeStateFP12CZProjectile  # OVL1; s1:align
 0x002C15E0 0x84 RemoteGrenadeDeletionCallback__14CZGrenadeStateFii  # OVL1; s1:align
 0x002C1670 0x2C RemoteGrenadePostUpdateCallback__14CZGrenadeStateFiii  # OVL1; s1:align
-0x002C16A0 0x10C func_002C16A0  # OVL1
+0x002C16A0 0x10C RemoteGrenadeUpdateCallback__14CZGrenadeStateFiii  # OVL1; s1:order by hand (the states lane: between the post-update and creation callbacks as in SOCOM 1, and zNetRegisterGrenade hands it to 0x30CE80 in the update slot, where SOCOM 1's hands RemoteGrenadeUpdateCallback to zNetRegisterRemoteObjectCallback)
 0x002C17B0 0xA0 RemoteGrenadeCreationCallback__14CZGrenadeStateFii  # OVL1; s1:align
 0x002C1850 0x118 zNetRegisterGrenade__14CZGrenadeStateFv  # OVL1; s1:align
 0x002C1970 0x110 UninitBomb__11CZBombStateFv  # OVL1; s1:align
