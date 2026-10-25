@@ -1,0 +1,54 @@
+/* CAppCamera -- the player's camera: first and third person, the tether, the death camera, the
+ * wiggle -- and CameraZoom, the scope's zoom (SOCOM 1's Apps/FTS/camera.cpp and thezoom.cpp).
+ * Layouts are SOCOM 1's DWARF moved to where SOCOM II's code reads them: CAppCamera grew 0x80 bytes
+ * of shake presets ahead of its camera pointer (CAMERA_SHAKE's begin reads three sets of eight
+ * floats from 0x50), and a few words further on. The header's name is ours. */
+#ifndef CAMERA_H
+#define CAMERA_H
+
+#include "../../gamez/zcamera/zcamera.h"
+#include "../../gamez/zanim/zanim.h"
+
+class CZSealBody;
+class CHUD;
+class CEntity;
+class CZBodyPart;
+
+class CAppCamera {
+public:
+    ~CAppCamera();
+    virtual void Tick(float dT);
+    virtual bool AttachTo(CZSealBody *prey);
+
+    void SetZoom(float zoom);
+    void LookAt(const CPnt3D *from, const CPnt3D *to, CMatrix &cTw);
+    static bool CmdTick3rdPersonTest(_zanim_cmd_hdr *hdr, float *dT);
+    static _zanim_cmd_hdr *CmdParse3rdPersonTest(_zrdr *rdr);
+    static _zanim_cmd_hdr *CmdParseShake(_zrdr *rdr);
+    static void CmdBeginShake(_zanim_cmd_hdr *hdr);
+    static void RegisterAnimCommands();
+
+    unsigned char _4[0xb4 - 4];
+    zdb::CCamera *m_camera;   // 0xb4 (SOCOM 1: 0x34)
+    zdb::CNode *m_camera_effects;   // 0xb8 (SOCOM 1: 0x38)
+    unsigned int _bc;
+    CZSealBody *m_entity;   // 0xc0 (SOCOM 1: 0x3c)
+    unsigned int _c4;
+    CZBodyPart *m_skel_root;   // 0xc8 (SOCOM 1: 0x40)
+    CPnt3D m_rPos;   // 0xcc (SOCOM 1: 0x44)
+    CPnt3D m_wPos;   // 0xd8 (SOCOM 1: 0x50)
+    unsigned char _e4[0x139 - 0xe4];
+    unsigned char m_camera_mode;   // 0x139 (SOCOM 1: 0x89)
+    unsigned char _13a[2];
+    CEntity *m_track;   // 0x13c (SOCOM 1: 0x8c)
+};
+
+extern CAppCamera *appCamera;
+
+/* CAMERA_SHAKE: how hard (SMALL, MEDIUM, LARGE: the presets' index) */
+struct _camera_shake_cmd {
+    _zanim_cmd_hdr hdr;
+    unsigned char level;   // 0x4
+};
+
+#endif
