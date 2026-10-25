@@ -723,6 +723,8 @@ public:
     static std::vector<class CZDecalDef> m_blooddriptexhandles;
     /* the database's handles let go (SOCOM 1's static; OVL2 0x5A3BB0) */
     static void UninitDatabaseHandles();
+    /* a weapon's event handed to every SEAL's controller (SOCOM 1's static callback; OVL2 0x5A4F80) */
+    static void HandleWeaponEvent(CZProjectile *proj, unsigned int event, void *data);
     void SetSnakePathUpdate(bool on, unsigned int length);
     void RestrainBuddy(CZSealBody *victim);
     void StabBuddy(CZSealBody *victim);

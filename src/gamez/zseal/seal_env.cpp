@@ -401,10 +401,29 @@ extern void *data_0044D548;
 extern int data_0044D508;
 extern int data_0044D510;
 extern int data_0044D518;
-/* CZSealBody::HandleWeaponEvent, the callback InitDatabaseHandles registers (SOCOM 1's
- * HandleWeaponEvent__10CZSealBodyFP12CZProjectileUiPv, the one UninitDatabaseHandles removes; OVL2
- * 0x5A4F80) */
-void func_005A4F80(CZProjectile *proj, unsigned int event, void *data);
+}
+
+/* an entity that is a SEAL (kind 2), or none (the inline cast the walk shows) */
+static inline CZSealBody *AsSeal(CEntity *e)
+{
+    return e && e->m_type == (CEntity::TYPE)2 ? (CZSealBody *)e : 0;
+}
+
+/* a weapon's event handed to every SEAL's controller (OVL2 0x5A4F80; SOCOM 1's
+ * HandleWeaponEvent__10CZSealBodyFP12CZProjectileUiPv, the callback InitDatabaseHandles registers
+ * and UninitDatabaseHandles removes): the entities walked through a const reference, the iterator
+ * assigned from begin() -- the target's four copies -- and end() rebuilt each pass */
+void CZSealBody::HandleWeaponEvent(CZProjectile *proj, unsigned int event, void *data)
+{
+    const CEntityList &list = CEntity::m_list;
+    CEntityList::const_iterator i;
+
+    for (i = list.begin(); i != list.end(); ++i) {
+        CZSealBody *seal = AsSeal(*i);
+
+        if (seal)
+            ((CSealCtrl *)seal->m_control)->OnWeaponEvent(proj, event, data);
+    }
 }
 
 /* a 12-byte vector temporary (the class vector's three words) */
@@ -433,7 +452,7 @@ void CZSealBody::UninitDatabaseHandles()
     if (data_0044D548)
         _free(data_0044D548, 0, 0);
     data_0044D548 = 0;
-    CZWeapon::RemoveWeaponEventCallback(func_005A4F80);
+    CZWeapon::RemoveWeaponEventCallback(HandleWeaponEvent);
 }
 
 /* six values run down at their rates, none below zero (OVL2 0x5AC620, new in SOCOM II: the arrays at
