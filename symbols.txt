@@ -4464,7 +4464,7 @@
 0x002D2040 0x10 func_002D2040  # OVL1
 0x002D2050 0xC func_002D2050  # OVL1
 0x002D2060 0x8 func_002D2060  # OVL1
-0x002D2070 0x1AC func_002D2070  # OVL1
+0x002D2070 0x1AC FindNode__6CGTreeFP6CGNode  # OVL1; s1:calls (the states lane's lead, vetted by the integrator: CGraph::BuildRoute calls it where SOCOM 1's BuildRoute calls FindNode__6CGTreeFP6CGNode, after BuildTree and the leaf list's begin())
 0x002D2220 0x14 func_002D2220  # OVL1
 0x002D2240 0x14 func_002D2240  # OVL1
 0x002D2260 0x10 func_002D2260  # OVL1; tu: char_type.cpp~ (1.0 beta)
@@ -4474,7 +4474,7 @@
 0x002D22C0 0xC func_002D22C0  # OVL1
 0x002D22D0 0xC func_002D22D0  # OVL1
 0x002D22E0 0x10 func_002D22E0  # OVL1; tu: char_type.cpp~ (1.0 beta)
-0x002D22F0 0x1F8 func_002D22F0  # OVL1
+0x002D22F0 0x1F8 Destroy__6CGTreeFP6CGTree  # OVL1; s1:calls (the states lane's lead, vetted by the integrator: CGraph::BuildRoute calls it where SOCOM 1's BuildRoute calls Destroy__6CGTreeFP6CGTree, at the end)
 0x002D24F0 0x10 func_002D24F0  # OVL1; tu: char_type.cpp~ (1.0 beta)
 0x002D2500 0xC func_002D2500  # OVL1
 0x002D2510 0xC func_002D2510  # OVL1

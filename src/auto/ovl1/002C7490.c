@@ -4,27 +4,30 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK __dl__FPv(char * arg0);
-M2C_UNK func_002C71E0(s32 arg0);
-M2C_UNK func_002C7810(s32 arg0, s32 arg1);
-s32 func_002C7490(s32 arg0, s64 arg1) {
+#pragma mpwc_relax on
+M2C_UNK FreeText__20CMissionObjectiveCamFv();       /* extern */
+M2C_UNK __dl__FPv(char *);                          /* extern */
+M2C_UNK __dt__11CMissionCamFv(char *, M2C_UNK);     /* extern */
+
+char *func_002C7490(char *arg0, s64 arg1) {
     s32 temp_v0;
     char *temp_a0;
 
-    if (arg0 != 0) {
-        func_002C71E0(arg0);
-        temp_v0 = arg0 + 0x44;
+    if (arg0 != NULL) {
+        FreeText__20CMissionObjectiveCamFv();
+        temp_v0 = (int)(arg0 + 0x44);
         if ((temp_v0 != 0) && (temp_v0 != 0) && (temp_v0 != 0)) {
-            temp_a0 = M2C_FIELD(arg0, char **, 0x4C);
+            temp_a0 = SC_MEMBER(arg0, char **, 0x4C);
             if (temp_a0 != NULL) {
                 __dl__FPv(temp_a0);
             }
         }
-        func_002C7810(arg0, 0);
+        __dt__11CMissionCamFv(arg0, 0);
         if (((s64) (arg1 << 0x30) >> 0x30) > 0) {
-            __dl__FPv((char *) arg0);
+            __dl__FPv(arg0);
         }
     }
     return arg0;

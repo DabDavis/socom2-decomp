@@ -1642,6 +1642,24 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the states, round 14** (the graph's BuildRoute/PopulateTree, the objective cams):
+  - an rvalue (an accessor's result) passed to a list insert binds a temporary whose stack slot comes
+    after the call's outer temporaries (BuildRoute's `insert(it, leaf->GetNode())`); a named local
+    or the member itself gets the wrong slot;
+  - an element address the target recomputes every pass needs an unsigned index; an int index is
+    strength-reduced into a saved register (0x2AF360);
+  - `CMissionCam();` written inside a constructor's body builds and destroys a temporary (both builds
+    do it in CMissionObjectiveCam());
+  - an end iterator declared before the `for` takes the higher saved register (PopulateTree);
+  - zNetRegisterSeal (0x6C0 bytes) matched on the first try once TypeSealState's fields were laid out
+    from its 38 registrations (0x90 bytes);
+  - graph_tree.cpp continues past BuildTree (CGQueue's push 0x2D1DA0 and find 0x2D1DE0, the
+    CGQueueAtom list's remove 0x2D1E30); BuildTree and SetMovie (0x1EDA60) call ~30 trivial MSL
+    pieces out of line, as if compiled with inlining off (untested); 0x2C8760-0x2CA32F is a SOCOM
+    II-only multiplayer mission list unit; st_core.cpp's tail 0x1EE000-0x1EF8C0 holds std::sort and
+    MSL string members (0x1EEB40 assign(const char *), 0x1EEB70 an append through replace,
+    0x1EF390 replace(pos, n, s)); 0x440B80 is "ExtraStringTables", so 0x361BC0, 0x3A3900 and
+    0x3A4460 are the string-table manager's.
 - **Tells from the SEALs, round 8** (CPickup's Close/Create/NetworkCreate, the AI sound statics):
   - an empty functor passed by value needs a user-declared empty constructor; without one MW
     zero-stores its byte on the stack (CPickup::Close's std::transform);
