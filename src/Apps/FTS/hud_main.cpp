@@ -19,6 +19,7 @@
 #include "hud_mapcompass.h"
 #include "hud_missioncams.h"
 #include "hud_newhudmap.h"
+#include "hud_teammatenames.h"
 
 namespace zdb {
 class CWorld;
@@ -226,20 +227,6 @@ public:
     C2DString m_text;   // 0x2f0
     CWhosTalking m_whostalking;   // 0x390
 };   // 0x710 bytes
-
-/* the teammates' names over their heads in a network game (SOCOM 1's CTeamMateNames, eight
- * strings now and two bitmaps) */
-class CMPTeammateNames : public C2D {
-public:
-    virtual void Draw(zdb::CCamera *cam);
-    void UnInit();
-    void Init();
-
-    C2DString m_names[8];   // 0x18
-    C2DBitmap m_bitmap1;   // 0x4e0
-    C2DBitmap m_bitmap2;   // 0x560
-    int m_socom2_5e0;   // 0x5e0: not set in the constructor
-};   // 0x5f0 bytes
 
 
 /* the classes with constructors of their own */

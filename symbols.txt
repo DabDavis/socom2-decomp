@@ -2029,9 +2029,9 @@
 0x00226060 0x598 func_00226060  # OVL1
 0x00226600 0x1B4 func_00226600  # OVL1
 0x002267C0 0x1A0 func_002267C0  # OVL1
-0x00226960 0x3C func_00226960  # OVL1
-0x002269A0 0x784 func_002269A0  # OVL1
-0x00227130 0xA0 func_00227130  # OVL1
+0x00226960 0x3C On__16CMPTeammateNamesFv  # OVL1; by hand (slot 5 of CMPTeammateNames' vtable 0x4057D0: C2D's On or Off by a flag at 0x5E4)
+0x002269A0 0x784 Tick__16CMPTeammateNamesFf  # OVL1; by hand (slot 12 of CMPTeammateNames' vtable 0x4057D0, as SOCOM 1's CTeamMateNames::Tick; the unit's first function after On)
+0x00227130 0xA0 WordIntersectionTest__FiiiiP9C2DString  # OVL1; s1:order by hand (hud_teammatenames.cpp: between Tick and UnInit, as SOCOM 1's; four ints and a C2DString in t0, the same signature, true when the rectangles overlap)
 0x002271D0 0x64 UnInit__16CMPTeammateNamesFv  # OVL1; s1:calls by hand (CHUD::ReInit_Uninit's call on CHUD+0x17580 after CFlashFXVector::Reset, where SOCOM 1 calls CTeamMateNames::UnInit; SOCOM II's class: each of its eight strings off and emptied)
 0x00227240 0xF8 Init__16CMPTeammateNamesFv  # OVL1; s1:calls by hand (CHUD::ReInit_Init's call on CHUD+0x17580 in a network game, where SOCOM 1 calls CTeamMateNames::Init; after UnInit in the unit, as SOCOM 1's; no argument set up: SOCOM 1's took the font)
 0x00227340 0x220 func_00227340  # OVL1
