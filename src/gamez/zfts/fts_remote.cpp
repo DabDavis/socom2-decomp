@@ -149,6 +149,7 @@ class CZAnimMain;
 extern CZAnimMain ZAnim;
 
 const char *GetDatabase();
+CZSealBody *ftsGetPlayer();
 void *_malloc(unsigned int size, const char *file, int line);
 void _free(void *p, const char *file, int line);
 extern "C" void *memcpy(void *dst, const void *src, unsigned int n);
@@ -205,7 +206,9 @@ void func_00590AC0(CZSealBody *a, CZSealBody *b, unsigned char c, int d, int e);
 void func_002B6530(void *queue, const char *text, int a, int b, int c, float d);   /* C2DMessage_Q::Add_Message */
 bool func_002C2FA0();
 void func_002A47B0(CMission *mission, const char *dialog);
-extern int data_00440EC0[];   /* (SOCOM II's: a word per client, cleared when one joins) */
+extern int data_00440EC0[];
+void func_005B1130(unsigned char a, unsigned short b);
+   /* (SOCOM II's: a word per client, cleared when one joins) */
 
 /* the application packets' type ids (SOCOM 1's PacketType<name>) */
 extern unsigned int data_00440E20;   /* PacketTypeZAnim */
@@ -218,9 +221,26 @@ extern unsigned int data_00440E98;   /* PacketTypeTeamSwitch */
 extern unsigned int data_00440EB0;   /* PacketTypeGameSignal */
 extern unsigned int data_00440E78;   /* (SOCOM II's: a variable-length packet) */
 extern unsigned int data_00440EA8;   /* PacketTypeNewBombState */
+extern unsigned int data_00440E70;   /* (SOCOM II's) */
+extern unsigned int data_00440E58;   /* PacketTypePUMayI */
 }
 
 #define theNetwork data_0045A0C0
+
+/* an int clamped into [lo, hi], saying whether it moved (a template instance closing the unit,
+ * its name unknown; OVL1 0x2BD220) */
+extern "C" bool func_002BD220(int &v, const int &lo, const int &hi)
+{
+    if (hi < v) {
+        v = hi;
+        return true;
+    }
+    if (v < lo) {
+        v = lo;
+        return true;
+    }
+    return false;
+}
 
 /* a client joined: its word cleared and the join count's valve set (OVL1 0x2BC490) */
 void zRemoteClientJoinsCallback(int index, int client)
@@ -428,6 +448,31 @@ int AmmoPUPacketHandler(int, int, int, void *data)
     return 52;
 }
 
+/* a pickup asked of the item's owner (SOCOM 1's SendMayIPickupMessage, its packet SOCOM II's 24
+ * bytes; OVL1 0x2BA2C0) */
+struct MayIRequest {
+    int id;   // 0x0
+    unsigned short ids[8];   // 0x4
+    short obj;   // 0x14
+    unsigned char who;   // 0x16
+};
+
+extern "C" void func_002BA2C0(int who, int id, const unsigned short *ids, int obj, int owner)
+{
+    MayIRequest p;
+
+    p.who = who & 0xf;
+    p.id = id;
+    p.obj = obj;
+    for (int i = 0; i < 8; i++)
+        p.ids[i] = ids[i];
+    CZSealBody *body = CZSealState::GetBodyFromObjectIndex(owner);
+
+    if (body)
+        func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), body->m_fc8, data_00440E58,
+                      24, &p, false);
+}
+
 /* the answer to a pickup request (OVL1 0x2BA260) */
 struct MayIPacket {
     int m_0;   // 0x0
@@ -487,6 +532,39 @@ void SendVoteMessage(int who, int voter, bool vote)
     if (body)
         func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), body->m_fc8,
                       data_00440E80, 4, &p, true);
+}
+
+/* (SOCOM II's: a SEAL's two shorts sent to its own client -- the player's handled here when we
+ * are the session master; OVL1 0x2B9E50) */
+struct ShortPairPacket {
+    short a;   // 0x0
+    unsigned short b;   // 0x2
+};
+
+extern "C" int func_002B9E20(int, int, int, void *data);
+
+extern "C" void func_002B9E50(CZSealBody *body, int a, int b)
+{
+    if (!body)
+        return;
+    ShortPairPacket p = {0};
+
+    p.a = a;
+    p.b = b;
+    if (theNetwork.m_bSessionMaster && body == ftsGetPlayer())
+        func_002B9E20(0, 0, func_0030D5A0(&theNetwork), &p);
+    else
+        func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), body->m_fc8, data_00440E70,
+                      4, &p, false);
+}
+
+/* (its handler; OVL1 0x2B9E20) */
+extern "C" int func_002B9E20(int, int, int, void *data)
+{
+    ShortPairPacket *p = (ShortPairPacket *)data;
+
+    func_005B1130(p->a, p->b);
+    return 4;
 }
 
 /* (SOCOM II's: the spectators thrown out -- a message, the spectator valve cleared, and a banned
