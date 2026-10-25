@@ -5850,12 +5850,12 @@
 0x0032FE70 0x1588 func_0032FE70  # OVL1
 0x00331400 0x174 func_00331400  # OVL1
 0x00331580 0x110 func_00331580  # OVL1
-0x00331690 0x80 func_00331690  # OVL1
-0x00331710 0x144 func_00331710  # OVL1
+0x00331690 0x80 Open__6CRdrIOFPvUi  # OVL1; slot 0x44 of CRdrIO's vtable (0x406A50, CBufferIO's Open(void *, unsigned int) there): the name and directory strings at 0x3C/0x30 erased, then CBufferIO::Open(buf, size) -- the rdr lane
+0x00331710 0x144 Open__6CRdrIOFPCcUi  # OVL1; slot 0x08 of CRdrIO's vtable (0x406A50): the name kept at 0x3C, its directory split off at the last of "\\/" into 0x30 with backslashes made slashes, then CBufferIO::Open(name, mode); zrdr_read inlines it -- the rdr lane
 0x00331860 0xD8 func_00331860  # OVL1
-0x00331940 0x1D8 func_00331940  # OVL1
-0x00331B20 0x1FC func_00331B20  # OVL1
-0x00331D20 0x100 func_00331D20  # OVL1
+0x00331940 0x1D8 ReadArray__8CRdrFileFP6CRdrIOi  # OVL1; s1:order by hand (SOCOM 1's ReadArray: tokens gathered into a pointer list until ')', '(' recursing (itself), the values copied into an array from the allocator 0x335BC0 and freed; SOCOM II passes the CRdrIO and the depth, the top level filling the file itself -- zrdr_read calls it with (file, &io, 0)) -- the rdr lane
+0x00331B20 0x1FC ReadToken__8CRdrFileFP6CRdrIOPP5_zrdr  # OVL1; s1:order by hand (SOCOM 1's ReadToken: ';' comments skipped to the line's end, a token ended by '(' ')' or white space and made a value by MakeUnion (0x331D20), a quoted string read whole, the 800-byte limit; SOCOM II reads through the CRdrIO passed in (fread, slot 0x24) where SOCOM 1 read its file stack's top) -- the rdr lane
+0x00331D20 0x100 MakeUnion__8CRdrFileFPCcb  # OVL1; s1:order by hand (SOCOM 1's MakeUnion, the same 0x100: a token made an integer (strtol over all of it), else a real (strtod), else a string through the file's CSTable::CreateString at this+8; the value from the allocator 0x335BC0 where SOCOM 1's called _calloc) -- the rdr lane
 0x00331E20 0xC func_00331E20  # OVL1
 0x00331E30 0x94 func_00331E30  # OVL1
 0x00331ED0 0x54 func_00331ED0  # OVL1

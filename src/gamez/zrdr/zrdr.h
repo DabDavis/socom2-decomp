@@ -141,9 +141,12 @@ extern "C" void func_0039FB30(CSTable *table, int flags);
 class CSTable {
 public:
     void LoadTable(void *table, unsigned int bytes, bool copy);
+    char *CreateString(const char *s);
 
     unsigned char _0[0x20];
 };   // 0x20 bytes
+
+class CRdrIO;
 
 /* a file read or fetched whole: SOCOM 1's CRdrFile, the tree's root, its strings and the buffer
  * it was read into; SOCOM II added the flags it was read with (0x34 bytes, new'd so) */
@@ -158,6 +161,11 @@ public:
     zar::CKey *Insert(zar::CZAR *zar, zar::CKey *key);
     bool Resolve(bool pack);
     void Pack();
+    /* the parser (zrdr_parse.cpp): SOCOM 1's, reading from the file given rather than its file
+     * stack's top, an array's depth passed down */
+    _zrdr *ReadArray(CRdrIO *io, int depth);
+    int ReadToken(CRdrIO *io, _zrdr **out);
+    _zrdr *MakeUnion(const char *token, bool quoted);
 
     /* a packed buffer's tree: its root's offset at 8, its strings from 12 (ours) */
     _zrdr *Root() { return m_buffer ? (_zrdr *)(m_buffer + *(int *)(m_buffer + 8)) : 0; }
