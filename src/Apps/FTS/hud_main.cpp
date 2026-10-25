@@ -14,6 +14,7 @@
 #include "../../gamez/ztwod/ztwod.h"
 #include "../../gamez/znode/znode.h"
 #include "hud_fader.h"
+#include "hud_lensflare.h"
 #include "hud_letterbox.h"
 #include "hud_mapcompass.h"
 #include "hud_missioncams.h"
@@ -206,6 +207,7 @@ public:
 class CHealthBar : public C2D {
 public:
     CHealthBar();
+    virtual ~CHealthBar();
     virtual void Draw(zdb::CCamera *cam);
 
     unsigned char _18[0x1d0 - 0x18];
@@ -239,16 +241,6 @@ public:
     int m_socom2_5e0;   // 0x5e0: not set in the constructor
 };   // 0x5f0 bytes
 
-class CLensFlareEntry;
-
-/* the lens flares (SOCOM II's, where SOCOM 1 had CLensFlareSaturate): a list of them as its base
- * (built before the vtable pointer is stored, which follows it at 0xc) */
-class CLensFlareManager : public std::list<CLensFlareEntry *> {
-public:
-    virtual ~CLensFlareManager();
-
-    unsigned int m_10;   // 0x10
-};   // 0x14 bytes
 
 /* the classes with constructors of their own */
 class CWeaponSel {
@@ -293,6 +285,9 @@ public:
 class CTeamNames : public C2D {
 public:
     CTeamNames();
+    /* declared here so that this unit emits no copy: its members are not placed (the linked
+     * copy, 0x1FD730, is an implicit one; ~CHUD will need the real shape) */
+    virtual ~CTeamNames();
     void Init();
     void Clear();
     unsigned char _18[0xf30 - 0x18];
@@ -301,6 +296,7 @@ public:
 class CSpectatorInfo : public C2D {
 public:
     CSpectatorInfo();
+    virtual ~CSpectatorInfo();
     unsigned char _18[0x680 - 0x18];
 } __attribute__((aligned(16)));
 

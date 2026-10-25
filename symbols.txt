@@ -1633,11 +1633,11 @@
 0x001FC620 0x60 __dt__7C2DPolyFv  # OVL1; s1:ref (taken by address where SOCOM 1 takes __dt__7C2DPolyFv's)
 0x001FC680 0x80 __dt__13C2DBitmapPolyFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FC700 0x108 func_001FC700  # OVL1
-0x001FC810 0xA0 func_001FC810  # OVL1
-0x001FC8B0 0x60 func_001FC8B0  # OVL1
-0x001FC910 0x80 func_001FC910  # OVL1
+0x001FC810 0xA0 __dt__12CategorySlotFv  # OVL1; by hand (slot 0 of CategorySlot's vtable 0x405D80: the implicit destructor, CWeaponSlot's vtable 0x405E00 stored before the base's)
+0x001FC8B0 0x60 __dt__8SlotListFv  # OVL1; by hand (slot 0 of SlotList's vtable 0x405E80: the implicit destructor)
+0x001FC910 0x80 __dt__12SelectedSlotFv  # OVL1; by hand (slot 0 of SelectedSlot's vtable 0x405D00: the implicit destructor)
 0x001FC990 0x60 __dt__14CHudBrightTextFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x001FC9F0 0x120 func_001FC9F0  # OVL1
+0x001FC9F0 0x120 __dt__12CWhosTalkingFv  # OVL1; by hand (slot 0 of CWhosTalking's vtable 0x405BB0: the implicit destructor)
 0x001FCB10 0x60 __dt__9C2DBitmapFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FCB70 0x190 ReleaseHUD__4CHUDFPP4CHUD  # OVL1; s1:order (hud_main.cpp: after the destructor, as SOCOM 1's; the states' call)
 0x001FCD00 0x6C HudText_to_upper__4CHUDFPc  # OVL1; s1:exact shape (strlen, then toupper on each byte, 0x6C as SOCOM 1's)
@@ -1645,10 +1645,10 @@
 0x001FCD80 0x514 __ct__4CHUDFv  # OVL1; s1:callee (CCoreState::Init news 0x1ACD0 bytes and constructs them with it, then calls Init and CameraZoom::AttachHud, as SOCOM 1's; hud_main.cpp's last but hudInit in both builds)
 0x001FD2A0 0x70 __dt__Q23std48vector<P8CFlashFX,Q23std21allocator<P8CFlashFX>>Fv  # OVL1; by hand (the linked copy CFlashFXVector::Reset calls; three this tests, the pointer vector's destructor chain)
 0x001FD310 0x80 __dt__10CLetterBoxFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x001FD390 0x190 func_001FD390  # OVL1
+0x001FD390 0x190 __dt__10CMPInfoBoxFv  # OVL1; by hand (slot 0 of CMPInfoBox's vtable 0x405B40, found by its RTTI name: the implicit destructor)
 0x001FD520 0x70 __dt__18CRadioIcon_DynamicFv  # OVL1; s1:vtable (CRadioIcon_Dynamic's slot 0, the implicit destructor)
 0x001FD590 0x70 __dt__17CRadioIcon_StaticFv  # OVL1; by hand (the implicit destructor, CRadioIcon_Static's vtable slot 0)
-0x001FD600 0xC0 func_001FD600  # OVL1
+0x001FD600 0xC0 __dt__16CMPTeammateNamesFv  # OVL1; by hand (slot 0 of CMPTeammateNames' vtable 0x4057D0: the implicit destructor)
 0x001FD6C0 0x70 __dt__14CZActionBitmapFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FD730 0x108 __dt__10CTeamNamesFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FD840 0x80 __dt__10PoseBitmapFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -1700,7 +1700,7 @@
 0x001FECC0 0x1D0 Tick__10CLetterBoxFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FEE90 0x7C Draw__10CLetterBoxFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FEF10 0x144 __ct__10CLetterBoxFv  # OVL1; s1:order by hand (hud_letterbox.cpp's last, as SOCOM 1's; its bars set up through C2D's new slots)
-0x001FF060 0x94 func_001FF060  # OVL1
+0x001FF060 0x94 Tick__17CLensFlareManagerFf  # OVL1; by hand (the only slot of CLensFlareManager's vtable 0x4052A0, which is three words: while active and not empty, every entry's C2D Tick given the float; the name ours)
 0x001FF100 0x154 func_001FF100  # OVL1
 0x001FF260 0xC4 func_001FF260  # OVL1
 0x001FF330 0x40 func_001FF330  # OVL1
@@ -1711,7 +1711,7 @@
 0x001FF8A0 0x69C func_001FF8A0  # OVL1
 0x001FFF40 0x920 func_001FFF40  # OVL1
 0x00200860 0x110 func_00200860  # OVL1
-0x00200970 0x150 func_00200970  # OVL1
+0x00200970 0x150 __dt__15CLensFlareEntryFv  # OVL1; by hand (slot 0 of CLensFlareEntry's vtable 0x4052B0: the destructor)
 0x00200AC0 0x150 func_00200AC0  # OVL1
 0x00200C10 0x144 func_00200C10  # OVL1
 0x00200D60 0x1C8 func_00200D60  # OVL1
@@ -1737,7 +1737,7 @@
 0x00205A70 0x1D0 func_00205A70  # OVL1
 0x00205C40 0x1C0 __dt__15CZObjectiveListFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00205E00 0x990 func_00205E00  # OVL1
-0x00206790 0x18 func_00206790  # OVL1
+0x00206790 0x18 IsPlayingAnimation__15CZObjectiveListFv  # OVL1; s1:exact shape (theHUD's mission cameras' IsPlaying, tail-called, as SOCOM 1's 0x14 bytes)
 0x002067B0 0x118 func_002067B0  # OVL1
 0x002068D0 0x8 func_002068D0  # OVL1
 0x002068E0 0xC8 func_002068E0  # OVL1
@@ -2309,7 +2309,7 @@
 0x0023D810 0x50 func_0023D810  # OVL1
 0x0023D860 0x714 func_0023D860  # OVL1
 0x0023DF80 0x50 func_0023DF80  # OVL1
-0x0023DFD0 0x60 func_0023DFD0  # OVL1
+0x0023DFD0 0x60 __dt__11CWeaponSlotFv  # OVL1; by hand (slot 0 of CWeaponSlot's vtable 0x405E00: the implicit destructor)
 0x0023E030 0x340 func_0023E030  # OVL1
 0x0023E370 0x268 func_0023E370  # OVL1
 0x0023E5E0 0x11C func_0023E5E0  # OVL1
