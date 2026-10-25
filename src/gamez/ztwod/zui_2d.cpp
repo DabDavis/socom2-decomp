@@ -1,7 +1,8 @@
 /* zui_2d.cpp -- the UI's 2D controls (the press beta's asserts name the unit, zui_2d.cpp; SOCOM 1
  * kept it beside zui.h, in gamez/zui -- here with the 2D family until the UI has a directory of its
- * own). Written so far: CHProgressBar::Tick (0x3719E0) and CPlainBmp's Tick, Draw and
- * SetMapOffset (OVL1 0x378FC0-0x37925B, 0x37C180), in SOCOM 1's order. Defined in reverse of their image order (-inline deferred). */
+ * own). Written so far: CHProgressBar::Tick (0x3719E0), CPlainBmp's Tick, Draw and
+ * SetMapOffset (OVL1 0x378FC0-0x37925B, 0x37C180) and the two speed setters (0x37B980, 0x37B990),
+ * in SOCOM 1's order. Defined in reverse of their image order (-inline deferred). */
 
 #include <string.h>
 
@@ -68,6 +69,24 @@ void CHProgressBar::Tick(float dT)
     m_fill += dT / m_time;
     if (!(m_fill <= 1.0f))
         m_fill = 1.0f;
+}
+
+/* the speeds the counters count and the teletypes type at (SOCOM 1's statics, its symbol table's
+ * names: C2DCounter::Tick and CTeleType::Tick read them; the menus' ZAnim commands and
+ * CGameMenu::LoadFromDesign set them through the two setters, 0x37B990 and 0x37B980) */
+namespace {
+float g_fCounterSpeedFactor = 1.0f;
+float g_fTtySpeedFactor = 1.0f;
+}
+
+void UiSetCounterSpeedFactor(float f)
+{
+    g_fCounterSpeedFactor = f;
+}
+
+void UiSetTtySpeedFactor(float f)
+{
+    g_fTtySpeedFactor = f;
 }
 
 /* slot 2: a string variable naming another texture loads it in the same rectangle first */

@@ -6954,8 +6954,8 @@
 0x0037B5C0 0x130 Tick__10C2DCounterFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037B6F0 0x150 ParseZAnimCmd__10C2DCounterFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037B840 0x138 GetZAnimCmdType__10C2DCounterFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0037B980 0xC func_0037B980  # OVL1
-0x0037B990 0xC func_0037B990  # OVL1
+0x0037B980 0xC UiSetTtySpeedFactor__Ff  # OVL1; s1:calls by hand (the UI-commands lane's lead, vetted: SOCOM 1's OnSetTtySpeedFactor, zanim_menu.cpp's handler, is SOCOM II's 0x27FF20 -- GetName, strcmp, GetCharP, atof, dptofp alike -- and calls this at the same instruction where SOCOM 1 calls UiSetTtySpeedFactor__Ff; the other callers pair too, 0x367950+0xA8 and SOCOM 1's CGameMenu::LoadFromDesign+0x54; both bodies store the float to one global and return)
+0x0037B990 0xC UiSetCounterSpeedFactor__Ff  # OVL1; s1:calls by hand (SOCOM 1's OnSetCounterSpeedFactor, zanim_menu.cpp's handler, is SOCOM II's 0x27FFB0 and calls this at the same instruction, +0x74, where SOCOM 1 calls UiSetCounterSpeedFactor__Ff; 0x367950+0x98 pairs with SOCOM 1's CGameMenu::LoadFromDesign+0x44; right after UiSetTtySpeedFactor as in SOCOM 1's zui_2d.cpp; the float stored to the global C2DCounter::Tick reads)
 0x0037B9A0 0xC8 func_0037B9A0  # OVL1
 0x0037BA70 0x8 func_0037BA70  # OVL1
 0x0037BA80 0xC func_0037BA80  # OVL1
