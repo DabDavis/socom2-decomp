@@ -25,26 +25,6 @@ public:
     CTexture *m_texture;   // 0xc
 };
 
-/* the texture relocation managers (SOCOM 1's; the slots as CBatchRelocator's vtable 0x406C10 holds
- * them): a batch relocator is only its vtable pointer, all its state the texture manager's */
-class CTextureRelocMgr {
-public:
-    virtual void AddToBatch(CTexHandle *tex) const;
-    virtual void EndBatchReloc() const;
-    virtual void PreGetSprPacket(CTexHandle *tex);
-    virtual void StartBatchReloc() const;
-    virtual void TakeDrawPacket(u_long128 *packet, unsigned int qwc);
-    virtual void ClearAll();
-};
-
-class CBatchRelocator : public CTextureRelocMgr {
-public:
-    virtual void AddToBatch(CTexHandle *tex) const;
-    virtual void EndBatchReloc() const;
-    virtual void StartBatchReloc() const;
-    virtual void TakeDrawPacket(u_long128 *packet, unsigned int qwc);
-    virtual void ClearAll();
-};
 }
 
 /* a texture asked for and not there: the first-draw flag dropped instead of drawing (SOCOM 1's test,

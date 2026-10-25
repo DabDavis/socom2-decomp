@@ -16,6 +16,7 @@
 #include <list>
 #include <vector>
 
+#include <eetypes.h>
 #include <libvu0.h>
 
 #include "../zmath/zmath.h"
@@ -25,7 +26,27 @@ class CAssetLib;
 class CCamera;
 class CTexHandle;
 class CTexture;
-class CTextureRelocMgr;
+
+/* the texture relocation managers (SOCOM 1's; the slots as CBatchRelocator's vtable 0x406C10 holds
+ * them): a batch relocator is only its vtable pointer, all its state the texture manager's */
+class CTextureRelocMgr {
+public:
+    virtual void AddToBatch(CTexHandle *tex) const;
+    virtual void EndBatchReloc() const;
+    virtual void PreGetSprPacket(CTexHandle *tex);
+    virtual void StartBatchReloc() const;
+    virtual void TakeDrawPacket(u_long128 *packet, unsigned int qwc);
+    virtual void ClearAll();
+};
+
+class CBatchRelocator : public CTextureRelocMgr {
+public:
+    virtual void AddToBatch(CTexHandle *tex) const;
+    virtual void EndBatchReloc() const;
+    virtual void StartBatchReloc() const;
+    virtual void TakeDrawPacket(u_long128 *packet, unsigned int qwc);
+    virtual void ClearAll();
+};
 }
 class CPad;
 class CUIVariable;
@@ -133,12 +154,20 @@ inline void C2D::GetAssetLibs(CLibList &liblist)
 
 class C2DFont;
 
-/* a text string: 0x98 bytes in SOCOM II (an array's stride; SOCOM 1's 0x88), its vtable 34 slots
- * (0x406DF0): C2D's 26, then SOCOM 1's eight with one new after SetString and the scaled Load
- * gone -- slot 29 now takes a scale and a float position and calls slot 30 with them as ints.
- * The parameter lists of 26, 27, 29 and 30 and the names of 26 and 27 are ours (slot 26 takes a
- * string and a flag that sends it through a lookup; 27 an int). SetPos stores two floats at
- * 0x90. Its members past C2D are not placed yet */
+/* a string's kind (SOCOM 1's tag_string_type, a byte): 1 pulses its alpha (Tick) */
+enum tag_string_type {
+    STRING_NORMAL = 0,
+    STRING_PULSE = 1,
+};
+
+/* a text string: 0x98 bytes in SOCOM II (an array's stride; SOCOM 1's 0x88), laid out from its
+ * constructor against SOCOM 1's DWARF -- the members SOCOM 1 has, four bytes earlier with C2D, but
+ * SOCOM 1's m_length and m_height gone and words of SOCOM II's own after m_numChars, at 0x6A and
+ * from 0x78; the position two floats at 0x90 (SOCOM 1's IPNT2D at 0x80). Its vtable has 34 slots
+ * (0x406DF0): C2D's 26, then SOCOM 1's eight with SOCOM II's changes -- slot 27 sets a string by
+ * its id in the string table, slot 29 takes a scale and a float position and calls slot 30 with
+ * them as ints, and the Loads pass SetString's flag on. The parameter lists of 26, 27 and 29-31
+ * and the name of 27 are ours (26 takes a string and a flag that sends it through a lookup) */
 class C2DString : public C2D {
 public:
     C2DString();
@@ -147,25 +176,57 @@ public:
     virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     virtual void Off();
     virtual void On();
-    virtual void SetTrans(float trans);
+    /* inline, as SOCOM 1's DWARF files it (hud_main.cpp's copy is linked, 0x1F9150) */
+    virtual void SetTrans(float trans) { m_color[3] = trans; }
     virtual void Tick(float dT);
     virtual void SetString(const char *s, bool translate);
-    virtual void SetStringLength(int len);
+    virtual void SetStringId(int id);
     virtual void Format(const char *fmt, ...);
-    virtual void Load(float scale, const char *s, C2DFont *font, float x, float y, int flags);
-    virtual void Load(const char *s, C2DFont *font, int x, int y, int flags);
-    virtual void Load(const char *s, C2DFont *font, int x, int y, int w, int h);
+    virtual void Load(float scale, const char *s, C2DFont *font, float x, float y, bool translate);
+    virtual void Load(const char *s, C2DFont *font, int x, int y, bool translate);
+    virtual void Load(const char *s, C2DFont *font, int x, int y, int w, int h, bool translate);
     virtual float GetSpacing();
     virtual void ClearAndWipe();
 
+    void SetFont(C2DFont *font);
+    void DeleteCharacter();
+    void NewLine();
+    void AddCharacter(char c);
     void SetPos(int x, int y);
+    void Draw(zdb::CTextureRelocMgr *mgr, zdb::CCamera *cam, int depth);
+    void MakePacket(zdb::CTextureRelocMgr *mgr, int depth);
 
-    unsigned char _18[0x48 - 0x18];
+    C2DFont *m_font;   // 0x18
+    char *m_string;   // 0x1c
+    int m_stringlen_max;   // 0x20
+    int m_numChars;   // 0x24
+    int m_socom2_28;   // 0x28
+    char *m_Ustring;   // 0x2c
+    int m_Ustringlen_max;   // 0x30
+    int m_numUChars;   // 0x34
+    float m_charwidth;   // 0x38
+    float m_charheight;   // 0x3c
+    float m_scale;   // 0x40
+    int m_numLines;   // 0x44
     float m_color[4];   // 0x48 (SOCOM 1's CPnt4D at 0x50; the HUD writes it a float at a time)
-    unsigned char _58[0x69 - 0x58];
-    unsigned char m_socom2_69;   // 0x69: the HUD's spectator lines set it to 1
+    int m_revnum;   // 0x58
+    float m_fadeTime;   // 0x5c
+    float m_fadeMax;   // 0x60
+    float m_fadeMin;   // 0x64
+    tag_string_type m_Type;   // 0x68
+    unsigned char m_isCentered;   // 0x69: the HUD's spectator lines set it
     unsigned char m_socom2_6a;   // 0x6a: PoseBitmap sets it for the network game's position
-    unsigned char _6b[0x98 - 0x6b];
+    unsigned int m_firstCharPos;   // 0x6c
+    int m_shortLength;   // 0x70
+    float m_elapsedTime;   // 0x74
+    float m_socom2_78;   // 0x78: a second scale (1; slot 27 takes it from the string table)
+    int m_socom2_7c;   // 0x7c
+    int m_socom2_80;   // 0x80
+    int m_stringid;   // 0x84: the id slot 27 looked up
+    int m_stringrev;   // 0x88: the string table's revision then (the draws look it up again on a change)
+    unsigned char m_socom2_8c;   // 0x8c
+    float m_posx;   // 0x90
+    float m_posy;   // 0x94
 };   // 0x98 bytes
 
 /* a fade's state (SOCOM 1's DWARF); its constructor inline: off, no step, the limit opaque */
