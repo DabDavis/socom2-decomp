@@ -20,7 +20,7 @@ struct VC_60 {
     virtual char * v_24(M2C_UNK *, M2C_UNK);
 };
 extern "C" {
-char *func_0029ED20();                              /* extern */
+char *GetNode__7CEntityFv();                        /* extern */
 extern M2C_UNK data_0065E698;
 
 void DeleteCameraEffectsNode__10CZSealBodyFv(void) {
@@ -28,7 +28,7 @@ void DeleteCameraEffectsNode__10CZSealBodyFv(void) {
     char *temp_v0;
     char *temp_v0_2;
 
-    temp_v0 = func_0029ED20();
+    temp_v0 = GetNode__7CEntityFv();
     temp_v0_2 = ((VC_60 *)(temp_v0))->v_24(&data_0065E698, 1);
     if (temp_v0_2 != NULL) {
         temp_a0 = M2C_FIELD(temp_v0_2, char **, 0x64);
