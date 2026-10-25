@@ -1642,6 +1642,34 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from completing the MSL headers, round 5** (the string trees, list, the class vector):
+  - the string-keyed trees' compare is MSL's `basic_string::compare(const basic_string &)` (0x2DEE30,
+    every caller tests the sign) and `compare(pos1, n1, s, n2)` (0x2DF030, SOCOM 1's
+    CFUiUiPCcUi); `operator<` is inline. The Medius file API's `map<string, CLobbyFileIO *>`
+    (0x450070) tail, the material unit's `map<string, int>` and the IOP module table (keyed by
+    std::string, not CSaferStr: a CSaferStr key's implicit copy is one inline level more) are
+    byte-exact as probes; include/tree has increment, balance_erase, erase, erase_one, clear()
+    out of class, include/map erase and a no-argument map();
+  - list remove_if takes begin() before end() and finds the run's end with a for loop breaking on the
+    first refused element: `for (++j; j != e; ++j) if (!pred(*j)) break;` (0x20CB50, its OVL2 copy,
+    0x2D2540); the pointer list's begin() through base::begin() measured -1 and is not adopted;
+  - the class vector's end() takes `data() + size` into a const local (a walk then re-reads the data
+    pointer each pass: CMesh::SetLOD, GetRouteIndex, GetRegionContaining), its operator[] reads the
+    data pointer into a const local and keeps the index (AddLOD's `m_lods[size() - 2]`), its iterator
+    has operator->; the scalar vectors have iterators, begin(), end(), erase (CZItemStash::Compact);
+  - include/string's assign(const char *), append and replace(pos, n1, s) are out of class (seven
+    units' tails emit them byte-exact); its default constructor stays two inline levels high
+    (four cost zui_spec.cpp's GetControlSpec), so fts_state.h keeps its own string; its destructor
+    is no longer pinned (it only ever mattered for units' own functions);
+  - MW does not merge two adjacent is_long() tests (write one if/else); in tail code, within one
+    generation round, later-declared members are generated first (declaring erase, erase_one, find in
+    that order makes erase_one inline find and call erase); a user-declared copy constructor on the
+    tree iterator makes MW pass it by address; a reference local taken before a test keeps a member's
+    address in a saved register across a call; a loop descending through a reference stores it every
+    step, through a local once; `get_bit() == false` gives sltu then bnez (a branch) or xor/sltiu (a
+    value), `== true` li 1/bne;
+  - git merged two identical RTArray::GetOldestUsed definitions silently (two lanes added it): a
+    merge can duplicate an additive member -- the build catches it.
 - **Tells from the HUD, round 16** (the weapon selector's constructor and OnOpen, three initialisers):
   - the seed reads a virtual tail call (`jr t9`) as a jump table and merges the next function when only
     a vtable references it: a "dead `jr ra`" after a tail call is a function of its own (0x36B1F0 and

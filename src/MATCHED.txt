@@ -119,12 +119,12 @@
 0x001EDEC0 func_001EDEC0
 0x001EDF10 func_001EDF10
 0x001EDF40 __dt__15CCinematicStateFv
-0x001EEB40 func_001EEB40
-0x001EEB70 func_001EEB70
+0x001EEB40 assign__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FPCc
+0x001EEB70 append__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FPCc
 0x001EEBA0 reserve__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FUi
 0x001EF310 clear__Q23std58__vector_deleter<9CMovieCue,Q23std21allocator<9CMovieCue>>Fv
 0x001EF320 __dt__Q23std58__vector_deleter<9CMovieCue,Q23std21allocator<9CMovieCue>>Fv
-0x001EF390 func_001EF390
+0x001EF390 replace__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FUiUiPCc
 0x001EF400 func_001EF400
 0x001EF8C0 func_001EF8C0
 0x001EF940 ResetLensColors__10CameraZoomFv
@@ -349,6 +349,7 @@
 0x0020B1F0 ReInit__11CZNewHudMapFv
 0x0020B7E0 GetZoomOut__11CZNewHudMapCFv
 0x0020BA00 __dt__11CZNewHudMapFv
+0x0020CB50 remove_if<Q23std36binder2nd<Q23std13equal_to<PCv>,PCv>>__Q23std38__list_imp<PCv,Q23std14allocator<PCv>>FQ23std36binder2nd<Q23std13equal_to<PCv>,PCv>_v
 0x0020CC50 erase__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>FQ33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<0>
 0x0020CCD0 __dt__7C2DLineFv
 0x0020CD30 func_0020CD30
@@ -1976,11 +1977,11 @@
 0x002CE1A0 func_002CE1A0
 0x002CE1E0 func_002CE1E0
 0x002CE210 func_002CE210
-0x002CE4F0 func_002CE4F0
-0x002CE550 func_002CE550
-0x002CE560 func_002CE560
-0x002CE570 func_002CE570
-0x002CE5A0 func_002CE5A0
+0x002CE4F0 __dt__Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>Fv
+0x002CE550 deallocate__Q23std506allocator<Q33std481__tree<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>,Q33std260map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>13value_compare,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>4node>FPQ33std481__tree<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>,Q33std260map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>13value_compare,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>4nodeUi
+0x002CE560 node_alloc__Q23std481__tree<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>,Q33std260map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>13value_compare,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>Fv
+0x002CE570 destroy__Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>FPQ23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>
+0x002CE5A0 alloc__Q23std481__tree<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>,Q33std260map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>13value_compare,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>Fv
 0x002CE770 clear__Q23std62__vector_deleter<10CZDecalDef,Q23std23allocator<10CZDecalDef>>Fv
 0x002CE780 func_002CE780
 0x002CE7F0 func_002CE7F0
@@ -2087,6 +2088,7 @@
 0x002D2510 func_002D2510
 0x002D2520 func_002D2520
 0x002D2530 func_002D2530
+0x002D2540 remove_if<Q23std56binder2nd<Q23std23equal_to<11CGQueueAtom>,11CGQueueAtom>>__Q23std58__list_imp<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>FQ23std56binder2nd<Q23std23equal_to<11CGQueueAtom>,11CGQueueAtom>_v
 0x002D2640 erase__Q23std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>FQ33std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>19generic_iterator<0>Q33std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>19generic_iterator<0>
 0x002D2700 insert__Q23std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>FQ33std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>19generic_iterator<0>RC11CGQueueAtom
 0x002D2810 __ct__Q23std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>Fv
@@ -2205,7 +2207,7 @@
 0x002DE950 func_002DE950
 0x002DEA50 func_002DEA50
 0x002DEAC0 func_002DEAC0
-0x002DEDF0 func_002DEDF0
+0x002DEDF0 clear__Q23std481__tree<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>,Q33std260map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>13value_compare,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>Fv
 0x002DF560 SyncGameClock__13CZOnlineLobbyFi
 0x002DF640 MediusConnectionIndex__13CZOnlineLobbyFv
 0x002DF650 UnInit__13CZOnlineLobbyFv
@@ -2553,8 +2555,8 @@
 0x00305B50 func_00305B50
 0x00305B90 func_00305B90
 0x00305BA0 func_00305BA0
-0x00305DC0 func_00305DC0
-0x00305F80 func_00305F80
+0x00305DC0 __ct__Q23std539__tree<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>,Q33std289map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>13value_compare,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>FRCQ33std289map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>13value_compareRCQ23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>
+0x00305F80 erase__Q23std539__tree<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>,Q33std289map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>13value_compare,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>FQ33std539__tree<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>,Q33std289map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>13value_compare,Q23std109allocator<Q23std90pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P12CLobbyFileIO>>>8iterator
 0x00306620 __ct__6CFRectFPC6CPnt3DPC6CPnt3D
 0x00306650 __ct__6CFRectFv
 0x00306670 zMath_Init__Fv
@@ -4414,6 +4416,7 @@
 0x003B9310 func_003B9310
 0x003B9480 func_003B9480
 0x003B94A0 SetLOD__Q23zdb5CMeshFUiUi
+0x003B94F0 SetLOD__Q23zdb5CMeshFUif
 0x003B9590 AddLOD__Q23zdb5CMeshFPQ23zdb5CMeshf
 0x003B96C0 InitMatrices__Q23zdb5CMeshFv
 0x003B9760 __ct__Q23zdb5CMeshFv
@@ -4924,6 +4927,7 @@
 0x0050F840 __ml__Q33std46list<P8CAiEvent,Q23std21allocator<P8CAiEvent>>19generic_iterator<0>CFv
 0x0050F850 __ne__Q33std46list<P8CAiEvent,Q23std21allocator<P8CAiEvent>>19generic_iterator<0>CFRCQ33std46list<P8CAiEvent,Q23std21allocator<P8CAiEvent>>19generic_iterator<0>
 0x0050F870 __pp__Q33std46list<P8CAiEvent,Q23std21allocator<P8CAiEvent>>19generic_iterator<0>Fv
+0x0050F890 func_0050F890
 0x0050F990 func_0050F990
 0x0050FA50 func_0050FA50
 0x0050FAD0 func_0050FAD0
@@ -5150,6 +5154,7 @@
 0x0052F3D0 func_0052F3D0
 0x0052F3E0 func_0052F3E0
 0x0052F3F0 func_0052F3F0
+0x0052F400 GetRouteIndex__6CAiMapFPCQ26CAiMap5route
 0x0052F470 GetRoute__6CAiMapFUi
 0x0052F8E0 _invalid_route__FRQ26CAiMap5route
 0x0052FC40 SetReader__Q26CAiMap6readerFP8CRdrFile
@@ -5157,6 +5162,7 @@
 0x0052FD70 __ct__Q26CAiMap6readerFv
 0x0052FF40 GetCenter__Q26CAiMap6regionCFR9CAiMapLoc
 0x0052FFC0 Union__Q26CAiMap6regionFRC9CAiMapLoc
+0x00530230 GetRegionContaining__6CAiMapFRC9CAiMapLocQ36CAiMap6region4TYPEb
 0x00530370 GetRegion__6CAiMapFPCcR9CAiMapLoc
 0x00530450 GetRegion__6CAiMapFRC9CAiMapLoc
 0x00530500 GetDistance__Q26CAiMap4linkCFRC9CAiMapLocRC9CAiMapLoc
