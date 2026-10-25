@@ -8215,7 +8215,7 @@
 0x003C71D0 0xB0 IsInRange__12CZProjectileFPC6CPnt3Df  # OVL1; s1:order by hand (the wep lane: SOCOM 1's IsInRange -- the point less m_framestartpos (0x48) through Sub, its squared length against the range's)
 0x003C7280 0x17C IsInCone__12CZProjectileFPC6CPnt3DPC6CPnt3DPC6CPnt3Df  # OVL1; by hand (the wep lane: the point less the apex, its projection on the direction between 0 and the ammo's explosion radius, its distance off the axis within the radius tan(angle) widens to; GetDamage(const CPnt3D *, float) calls it twice -- new in SOCOM II, the name and the float's place ours)
 0x003C7400 0x90 ResolveDamage__12CZProjectileFPfPfff  # OVL1; s1:order by hand (the wep lane: SOCOM 1's static ResolveDamage, the piercing's factor (10 - p)/10 where SOCOM 1's had p/10)
-0x003C7490 0x170 func_003C7490  # OVL1
+0x003C7490 0x170 GetDamage__12CZProjectileFPC6CPnt3DPfPff  # OVL1; by hand (the wep lane: SOCOM 1's CZProjectile::GetDamage(pos, health, armor, f), between IsInCone and the two-argument GetDamage as in SOCOM 1; SOCOM II's adds the weapon's damage bonus)
 0x003C7600 0x4D0 GetDamage__12CZProjectileFPC6CPnt3Df  # OVL1; s1:order by hand (the wep lane: SOCOM 1's GetDamage(const CPnt3D *, float), 0x498 there, after ResolveDamage and the four-argument GetDamage; OnWeaponHit calls it on the other projectile with (&m_frameendpos, 1.0f))
 0x003C7AD0 0x8 SetInstance__12CZProjectileFPQ23zdb5CNode  # OVL1; s1:order by hand (the wep lane: SOCOM 1's SetInstance right before GetInstance -- the node at 0x20)
 0x003C7AE0 0x8 GetInstance__12CZProjectileFv  # OVL1; s1:calls by hand (SOCOM 1's GetNumRemoteExplosives calls GetInstance at the same place SOCOM II's calls this; it returns the word at 0x20, SOCOM 1's m_instance 0x18 moved 8 on)
@@ -8345,7 +8345,7 @@
 0x003D2020 0x8 func_003D2020  # OVL1
 0x003D2030 0x8 func_003D2030  # OVL1
 0x003D2040 0x8 func_003D2040  # OVL1
-0x003D2050 0x8 func_003D2050  # OVL1
+0x003D2050 0x8 GetDamageBonus__8CZWeaponFv  # OVL1; by hand (the wep lane: returns the float at 0x64, which CZProjectile::GetDamage adds to the ammunition's impact or explosion damage; the name ours)
 0x003D2060 0x8 func_003D2060  # OVL1
 0x003D2070 0x64 func_003D2070  # OVL1
 0x003D20E0 0x64 func_003D20E0  # OVL1

@@ -152,6 +152,9 @@ public:
     /* the name and the description (zwep_weapon.cpp's, out of line: 0x3D2840, 0x3D2830 -- in
      * SOCOM 1's order, GetDescription before GetName) */
     char *GetName() const;
+    /* the damage the weapon adds to its ammunition's (SOCOM II's, out of line: 0x3D2050; the name
+     * ours) */
+    float GetDamageBonus();
     char *GetDescription() const;
     /* the animations let go of (SOCOM 1's ClearAnims, 0x3D21C0) */
     void ClearAnims();
@@ -236,7 +239,10 @@ public:
     unsigned char _25[0x28 - 0x25];
     int m_ammocap;   // 0x28 (SOCOM 1: 0x24)
     int m_nummags;   // 0x2c (SOCOM 1: 0x28)
-    unsigned char _30[0x70 - 0x30];
+    unsigned char _30[0x64 - 0x30];
+    /* added to the ammunition's damage by CZProjectile::GetDamage (SOCOM II's; the name ours) */
+    float m_damagebonus;   // 0x64
+    unsigned char _68[0x70 - 0x68];
     AI_PARAMS m_ai_params;   // 0x70 (SOCOM 1: 0x54)
     EQUIP_ITEM m_ID;   // 0x7c (SOCOM 1: 0x60)
     unsigned char _7d[0x80 - 0x7d];
@@ -467,6 +473,9 @@ public:
     bool IsInRange(const CPnt3D *pos, float range);
     static float ResolveDamage(float *health, float *armor, float damage, float pierce);
     float GetDamage(const CPnt3D *pos, float scale);
+    /* the damage a hit does at a point, nothing below the minimum, resolved through the health
+     * and armour given (SOCOM 1's; SOCOM II's adds the weapon's bonus) */
+    float GetDamage(const CPnt3D *pos, float *health, float *armor, float minimum);
     /* a point inside the blast's cone: from the apex along the direction for the explosion's
      * radius, widening by the angle's tangent (SOCOM II's; GetDamage asks it twice -- the name
      * and the parameters' order ours) */
