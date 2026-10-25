@@ -5095,26 +5095,26 @@
 0x003008A0 0x34 cbErrorMessage__FiiiP18MediusErrorMessage  # OVL1; s1:calls
 0x003008E0 0xDC func_003008E0  # OVL1
 0x003009C0 0xA4 func_003009C0  # OVL1
-0x00300A70 0x78 func_00300A70  # OVL1
-0x00300AF0 0x78 func_00300AF0  # OVL1
-0x00300B70 0x64 func_00300B70  # OVL1
+0x00300A70 0x78 ConfirmFriend__13CZOnlineLobbyFi  # OVL1; ours (the UI command table's 'ConfirmFriend' handler 0x279EB0 calls it on theLobby; a buddy request answered 2, accepted, and dropped from the invitations list 0x44FE00)
+0x00300AF0 0x78 RejectFriend__13CZOnlineLobbyFi  # OVL1; ours ('RejectFriend' 0x279E10 calls it on theLobby; the same answer with -985, refused)
+0x00300B70 0x64 AddFriendDirectly__13CZOnlineLobbyFi  # OVL1; ours ('AddFriendDirectly' 0x279FB0 calls it on theLobby; an account id into a 44-byte request)
 0x00300BE0 0x2C func_00300BE0  # OVL1
 0x00300C10 0x34 func_00300C10  # OVL1
 0x00300C50 0x154 func_00300C50  # OVL1
 0x00300DB0 0xA8 func_00300DB0  # OVL1
 0x00300E60 0x9C func_00300E60  # OVL1
-0x00300F00 0x64 func_00300F00  # OVL1
+0x00300F00 0x64 GetIgnoreList__13CZOnlineLobbyFv  # OVL1; ours ('GetIgnoreList' 0x27A280 calls it on theLobby; the ignore list 0x44FDE0 emptied and asked for)
 0x00300F70 0x70 func_00300F70  # OVL1
 0x00300FE0 0xE0 func_00300FE0  # OVL1
 0x003010C0 0x74 func_003010C0  # OVL1
 0x00301140 0x1A8 func_00301140  # OVL1
-0x003012F0 0x5C func_003012F0  # OVL1
+0x003012F0 0x5C GetFriendInvitations__13CZOnlineLobbyFv  # OVL1; ours ('GetFriendInvitations' 0x27A2B0 calls it on theLobby, in the active lobby only)
 0x00301350 0x70 func_00301350  # OVL1
 0x003013C0 0x204 func_003013C0  # OVL1
 0x003015D0 0xD0 func_003015D0  # OVL1
-0x003016A0 0x64 func_003016A0  # OVL1
+0x003016A0 0x64 RemoveFriend__13CZOnlineLobbyFi  # OVL1; ours ('RemoveFriend' 0x279980 calls it on theLobby; an account id)
 0x00301710 0x34 func_00301710  # OVL1
-0x00301750 0x48 func_00301750  # OVL1
+0x00301750 0x48 GetFriendsList__13CZOnlineLobbyFv  # OVL1; ours ('GetFriendsList' 0x27A2E0 calls it on theLobby; the friends list 0x44FDC0 emptied and asked for)
 0x003017A0 0x70 func_003017A0  # OVL1
 0x00301810 0x108 func_00301810  # OVL1
 0x00301920 0x150 func_00301920  # OVL1

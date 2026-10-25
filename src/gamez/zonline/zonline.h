@@ -285,8 +285,17 @@ public:
     void GetLeaderMessages();
     void DeleteClanMessage(int id);
 
-    /* the lobby open (SOCOM 1's m_isopen) and its state */
-    bool IsOpen() { return m_isopen; }
+    void GetFriendsList();
+    void RemoveFriend(int id);
+    void GetFriendInvitations();
+    void GetIgnoreList();
+    void AddFriendDirectly(int id);
+    void RejectFriend(int id);
+    void ConfirmFriend(int id);
+
+    /* open and in the lobby proper (the name ours: GetFriendInvitations materialises the && before
+     * it branches, an inline bool's shape) */
+    bool IsActive() { return m_isopen && m_current_state == LOBBY_ACTIVE; }
 
     LobbyStateHandler m_state_handler[MAX_LOBBY_STATES];   // 0x0
     LobbyEventHandler m_event_handler;   // 0x58
