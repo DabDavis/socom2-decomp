@@ -7,8 +7,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK Release__9CBufferIOFv(s32);                 /* extern */
 s32 __dynamic_cast(s32, M2C_UNK, M2C_UNK *, M2C_UNK *, M2C_UNK); /* extern */
-M2C_UNK func_0039C250(s32);                         /* extern */
 extern M2C_UNK __RTTI__9CBufferIO;
 extern M2C_UNK data_003ECBA0;
 
@@ -19,7 +19,7 @@ s32 ReleaseDataBuffer__Q23zar4CZARFv(char *arg0) {
     if (SC_MEMBER(arg0, s32 *, 0x1C) != 0) {
         temp_v0_2 = __dynamic_cast(SC_MEMBER(arg0, s32 *, 0x14), 0, &__RTTI__9CBufferIO, &data_003ECBA0, 0);
         if (temp_v0_2 != 0) {
-            func_0039C250(temp_v0_2);
+            Release__9CBufferIOFv(temp_v0_2);
         }
         temp_v0 = SC_MEMBER(arg0, s32 *, 0x1C);
         SC_MEMBER(arg0, s32 *, 0x1C) = 0;

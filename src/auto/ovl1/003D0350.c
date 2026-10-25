@@ -4,15 +4,16 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_003C46A0(M2C_UNK *);                   /* extern */
+M2C_UNK ClearAnimations__12CZWeaponListFv(M2C_UNK *); /* extern */
 M2C_UNK func_003CD150(s32);                         /* extern */
 M2C_UNK func_003D4940(M2C_UNK *);                   /* extern */
 M2C_UNK func_003D53D0(M2C_UNK *);                   /* extern */
-extern M2C_UNK data_004B5210;
 extern M2C_UNK data_004B5238;
 extern M2C_UNK data_004B5260;
+extern M2C_UNK m_listWeapons__8CZWeapon;
 extern s32 m_pProjectilelist__8CZWeapon;
 extern s32 personMaterialId__4zwep;
 
@@ -22,7 +23,7 @@ s32 Close__8CZWeaponFv(void) {
         func_003CD150(m_pProjectilelist__8CZWeapon);
     }
     func_003D4940(&data_004B5238);
-    func_003C46A0(&data_004B5210);
+    ClearAnimations__12CZWeaponListFv(&m_listWeapons__8CZWeapon);
     personMaterialId__4zwep = -1;
     return 1;
 }

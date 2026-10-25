@@ -4306,9 +4306,9 @@
 0x002CB860 0xC8 func_002CB860  # OVL1
 0x002CB930 0xE0 func_002CB930  # OVL1
 0x002CBA10 0x94 fwrite__3CIOFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x002CBAB0 0x8 func_002CBAB0  # OVL1
-0x002CBAC0 0x8 func_002CBAC0  # OVL1
-0x002CBAD0 0x8 func_002CBAD0  # OVL1
+0x002CBAB0 0x8 freadAsync__3CIOFPvi  # OVL1; ours (CIO's table slot 0x30, the first of SOCOM II's three async slots after fwrite; the base answers 0; zutil.h's inline declaration) -- the UI-widgets lane
+0x002CBAC0 0x8 fwriteAsync__3CIOFPCvi  # OVL1; ours (CIO's slot 0x34, the base answers 0; zutil.h) -- the UI-widgets lane
+0x002CBAD0 0x8 fsyncAsync__3CIOFiPi  # OVL1; ours (CIO's slot 0x38, the base answers true; zutil.h) -- the UI-widgets lane
 0x002CBAE0 0x180 func_002CBAE0  # OVL1
 0x002CBC60 0x508 func_002CBC60  # OVL1
 0x002CC170 0x110 func_002CC170  # OVL1
@@ -7798,7 +7798,7 @@
 0x003AFB10 0x8 func_003AFB10  # OVL1
 0x003AFB20 0x80 func_003AFB20  # OVL1
 0x003AFBA0 0x3C func_003AFBA0  # OVL1
-0x003AFBE0 0x164 func_003AFBE0  # OVL1
+0x003AFBE0 0x164 Brightness__6CVideoFf  # OVL1; s1:calls (the brightness tuner tail-calls it; SOCOM 1's head word for word: 0.5 compared with the argument, 128 stored) -- the UI-widgets lane
 0x003AFD50 0x11C func_003AFD50  # OVL1
 0x003AFE70 0x54 zVid_ZTestOnWriteSet__Fb  # OVL1; s1:exact
 0x003AFED0 0x54 zVid_FrameRestore__Fv  # OVL1; s1:align

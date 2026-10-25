@@ -4,15 +4,16 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK *func_003C4B90(M2C_UNK *, s32);             /* extern */
+M2C_UNK *GetWeaponName__12CZWeaponListF10EQUIP_ITEM(M2C_UNK *, s32); /* extern */
 extern M2C_UNK data_003FD520;
-extern M2C_UNK data_004B5210;
+extern M2C_UNK m_listWeapons__8CZWeapon;
 
 M2C_UNK *func_003D19A0(s32 arg0) {
     if ((arg0 & 0xFF) == 0xFD) {
         return &data_003FD520;
     }
-    return func_003C4B90(&data_004B5210, arg0);
+    return GetWeaponName__12CZWeaponListF10EQUIP_ITEM(&m_listWeapons__8CZWeapon, arg0);
 }
