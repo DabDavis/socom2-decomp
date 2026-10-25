@@ -5535,13 +5535,13 @@
 0x0031A140 0x3C __ct__Q23zdb9CSaveLoadFv  # OVL1; s1:align
 0x0031A180 0x78C func_0031A180  # OVL1
 0x0031A910 0x90 __dt__Q23zdb10CRenderMapFv  # OVL1; s1:align
-0x0031A9A0 0x488 func_0031A9A0  # OVL1
+0x0031A9A0 0x488 __ct__Q23zdb10CRenderMapFPQ23zdb5CNodeQ23zdb20_tag_render_map_typePCQ23zdb8CTexture  # OVL1; s1:order by hand (SOCOM 1's CRenderMap constructor after ~CRenderMap: CLightMap's constructor, CRenderMap's vtable, three unit matrices, the 0x2E0-byte object AddShadow news with (node, 0, texture) as SOCOM 1's does)
 0x0031AE30 0x90 SetMaterial__FPQ23zdb5CNodei  # OVL1; s1:order by hand (SOCOM 1's SetMaterial(CNode *, int): each of the node's DIs given the material, eight bits at bit 10 of its flag word (at 8 here, 0x18 in SOCOM 1); before SetDIBBox as there)
 0x0031AEC0 0xA4 SetDIBBox__FPQ23zdb5CNodePC5CBBoxb  # OVL1; s1:align
-0x0031AF70 0xB0 func_0031AF70  # OVL1
-0x0031B020 0x6C func_0031B020  # OVL1
-0x0031B090 0x2C func_0031B090  # OVL1; tu: node_world.cpp~ (1.0 beta)
-0x0031B0C0 0x64 func_0031B0C0  # OVL1
+0x0031AF70 0xB0 CmdTickRemoveDecals__Q23zdb6CWorldFP14_zanim_cmd_hdrPf  # OVL1; new in SOCOM II, the name ours (after CWind's): the REMOVE_DECALS command's tick (0x31B090 registers it as the tick handler); CWorld::m_world->RemoveDecals() inlined, which puts it in node_world.cpp
+0x0031B020 0x6C CmdParseRemoveDecals__Q23zdb6CWorldFP5_zrdr  # OVL1; new in SOCOM II, the name ours: REMOVE_DECALS's parse handler (0x31B090 registers it): a bare timeless 4-byte header
+0x0031B090 0x2C RegisterAnimCommands__Q23zdb6CWorldFv  # OVL1; tu: node_world.cpp~ (1.0 beta); new in SOCOM II, the name ours (after CWind's): AddCmd("REMOVE_DECALS", parse 0x31B020, 0, tick 0x31AF70, 0)
+0x0031B0C0 0x64 SetFoliageSound__Q23zdb6CWorldFPCc  # OVL1; new in SOCOM II, the name ours: the string at 0x134 freed and replaced by a copy; Load calls it with the "FoliageSound" fetch (or "none")
 0x0031B130 0x80 Reset__5CWindFv  # OVL1; s1:align
 0x0031B1B0 0x198 TickGoal__5CWindFf  # OVL1; s1:align
 0x0031B350 0x418 Tick__5CWindFf  # OVL1; s1:calls
@@ -5551,7 +5551,7 @@
 0x0031C320 0x11C func_0031C320  # OVL1
 0x0031C440 0x324 func_0031C440  # OVL1
 0x0031C770 0x10C func_0031C770  # OVL1
-0x0031C880 0xA4 func_0031C880  # OVL1
+0x0031C880 0xA4 RemoveDecals__Q23zdb6CWorldFv  # OVL1; s1:order by hand (SOCOM 1's CWorld::RemoveDecals between TestFOV and ClearShadowList: RemoveDecals on every child by index; SOCOM II recycles the decal pools around it)
 0x0031C930 0x12C func_0031C930  # OVL1
 0x0031CA60 0x70 func_0031CA60  # OVL1
 0x0031CAD0 0x40 func_0031CAD0  # OVL1
@@ -5570,7 +5570,7 @@
 0x0031D0A0 0x88 func_0031D0A0  # OVL1
 0x0031D130 0x88 func_0031D130  # OVL1
 0x0031D1C0 0x60 AddTextureAssetDecals__Q23zdb6CWorldFPQ23zdb10CTexHandle  # OVL1; s1:align
-0x0031D220 0x38 func_0031D220  # OVL1
+0x0031D220 0x38 AddTextureAssetCharacterAll__Q23zdb6CWorldFPQ23zdb10CTexHandle  # OVL1; s1:order by hand (SOCOM 1's: a push onto m_TextureCharacterCommon, 0x6BB4 here, after AddTextureAssetDecals as there)
 0x0031D260 0x330 func_0031D260  # OVL1
 0x0031D590 0x48 func_0031D590  # OVL1; tu: node_world.cpp~ (1.0 beta)
 0x0031D5E0 0x48 func_0031D5E0  # OVL1; tu: node_world.cpp~ (1.0 beta)
@@ -5578,21 +5578,21 @@
 0x0031D6F0 0x12C DismemberWorldModel__Q23zdb6CWorldFv  # OVL1; s1:align
 0x0031D820 0x114 Segregate_CCells__Q23zdb6CWorldFPQ23zdb5CNodeRQ23zdb11CNodeVectorRQ23zdb11CNodeVector  # OVL1; s1:align
 0x0031D940 0x34C func_0031D940  # OVL1
-0x0031DC90 0xA8 func_0031DC90  # OVL1
+0x0031DC90 0xA8 RegProximityDelayed__Q23zdb6CWorldFPQ23zdb11DiIntersectPC6CPnt3DfUi  # OVL1; s1:order by hand (SOCOM 1's RegProximityDelayed before ClearIgnoreNodeDelayed: type 4, the point, the radius in the tip; SOCOM II takes a mask, handed to 0x2DC660)
 0x0031DD40 0x20 ClearIgnoreNodeDelayed__Q23zdb6CWorldFPQ23zdb11DiIntersect  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:exact
 0x0031DD60 0x30 RegIgnoreNodeDelayed__Q23zdb6CWorldFPQ23zdb11DiIntersectPQ23zdb5CNode  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:exact
-0x0031DD90 0xA0 RegIntersectDelayed__Q23zdb6CWorldFPQ23zdb11DiIntersectPC6CPnt3DPC6CPnt3D  # OVL1; s1:align
+0x0031DD90 0xA0 RegIntersectDelayed__Q23zdb6CWorldFPQ23zdb11DiIntersectPC6CPnt3DPC6CPnt3DUi  # OVL1; s1:align; the s1:align name's signature corrected: SOCOM II takes a fourth argument, the set's mask, handed to 0x2DC660
 0x0031DE30 0x3C diTick__Q23zdb6CWorldFfPv  # OVL1; s1:align
-0x0031DE70 0x8 func_0031DE70  # OVL1
-0x0031DE80 0x8 func_0031DE80  # OVL1
-0x0031DE90 0x10 func_0031DE90  # OVL1
-0x0031DEA0 0xA8 func_0031DEA0  # OVL1
+0x0031DE70 0x8 InitDescendantsVisuals__Q23zdb6CWorldFv  # OVL1; s1:order by hand (SOCOM 1's: a jump to the grid's InitDescendantsVisuals, the grid at 0x684 here)
+0x0031DE80 0x8 InitDescendantsDI__Q23zdb6CWorldFv  # OVL1; s1:order by hand (SOCOM 1's: the grid's InitDescendantsDI)
+0x0031DE90 0x10 GetIntersectBatch__Q23zdb6CWorldFPPQ23zdb11DiIntersecti  # OVL1; s1:order by hand (SOCOM 1's: the world's grid's GetIntersectBatch, the arguments passed on; diTick inlines it)
+0x0031DEA0 0xA8 GetAltitudes__Q23zdb6CWorldFPC6CPnt3Df  # OVL1; s1:order by hand (SOCOM 1's GetAltitudes before GetAltitude: the grid's GetAltitude on the world's set, type 2, characters off, the height unread)
 0x0031DF50 0x78 GetAltitude__Q23zdb6CWorldFPC6CPnt3Df  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:align
-0x0031DFD0 0xC8 func_0031DFD0  # OVL1
-0x0031E0A0 0xB8 func_0031E0A0  # OVL1
+0x0031DFD0 0xC8 GetAltitude__Q23zdb6CWorldFPC6CPnt3Dfb  # OVL1; new in SOCOM II, SOCOM 1's name with a bool: GetAltitude with the set's characters flag set to !b for the query and restored
+0x0031E0A0 0xB8 GetIntersects__Q23zdb6CWorldFPC6CPnt3DPC6CPnt3Db  # OVL1; new in SOCOM II, SOCOM 1's name with a bool: GetIntersects with characters !b, restored
 0x0031E160 0x68 GetIntersects__Q23zdb6CWorldFPC6CPnt3DPC6CPnt3D  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:align
 0x0031E1D0 0x7C GetIntersect__Q23zdb6CWorldFPC6CPnt3DPC6CPnt3D  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:align
-0x0031E250 0xCC func_0031E250  # OVL1
+0x0031E250 0xCC GetIntersect__Q23zdb6CWorldFPC6CPnt3DPC6CPnt3Db  # OVL1; new in SOCOM II, SOCOM 1's name with a bool: GetIntersect with characters !b, restored
 0x0031E320 0xAC FindLandmark__Q23zdb6CWorldFPCc  # OVL1; s1:align
 0x0031E3D0 0x4C DeleteLandmark__Q23zdb6CWorldFPQ23zdb5CNode  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:align
 0x0031E420 0x78 AddLandmark__Q23zdb6CWorldFPQ23zdb5CNode  # OVL1; s1:align
@@ -5610,9 +5610,9 @@
 0x0031F240 0x1E8 AddChild__Q23zdb6CWorldFPQ23zdb5CNode  # OVL1; s1:align
 0x0031F430 0x10 ReserveChildren__Q23zdb6CWorldFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0031F440 0xB8 func_0031F440  # OVL1
-0x0031F500 0x68 func_0031F500  # OVL1
+0x0031F500 0x68 AddShadowCaster__Q23zdb6CWorldFPQ23zdb5CNode  # OVL1; new in SOCOM II, the name ours: a 0x70-byte object made from the node (0x31F780) pushed onto the vector at 0x580; AddChild and node_main.cpp call it
 0x0031F570 0x204 func_0031F570  # OVL1
-0x0031F780 0x228 func_0031F780  # OVL1
+0x0031F780 0x228 __ct__Q23zdb13CShadowCasterFPQ23zdb5CNode  # OVL1; new in SOCOM II, the names ours: AddShadowCaster news 0x70 bytes and calls it with the node
 0x0031F9B0 0xD8 GarbageCollect__Q23zdb6CWorldFv  # OVL1; s1:align
 0x0031FA90 0x28 func_0031FA90  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
 0x0031FAC0 0x8C AddShadow__Q23zdb6CWorldFPQ23zdb5CNode  # OVL1; s1:align
@@ -5624,8 +5624,8 @@
 0x00320310 0x344 func_00320310  # OVL1
 0x00320660 0x78 func_00320660  # OVL1
 0x003206E0 0x78 func_003206E0  # OVL1
-0x00320760 0x8 func_00320760  # OVL1
-0x00320770 0x8 func_00320770  # OVL1
+0x00320760 0x8 Uninit__Q23zdb6CWorldFv  # OVL1; s1:order by hand (SOCOM 1's Uninit, Init, GetVersion in that order, each as empty)
+0x00320770 0x8 Init__Q23zdb6CWorldFv  # OVL1; s1:order by hand (SOCOM 1's Init, between Uninit and GetVersion)
 0x00320780 0xC GetVersion__Q23zdb6CWorldFv  # OVL1; s1:exact by hand (SOCOM 1's GetVersion, the same three words returning 0x10001, after Uninit and Init as there; Load and LoadAssetLib_PS2 pass it to the archive's Open)
 0x00320790 0x6C func_00320790  # OVL1
 0x00320800 0x110 func_00320800  # OVL1

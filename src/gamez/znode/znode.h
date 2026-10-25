@@ -177,6 +177,8 @@ public:
     int Release();
     /* the texture light maps project by default (SOCOM 1's static) */
     static CTexHandle *m_lightMapTexture;
+    /* the camera the visuals are drawn from (SOCOM 1's static; CWorld::Initalize sets it) */
+    static CCamera *m_camera;
     /* the decals of one view let go of (SOCOM 1's, by name) */
     void DereferenceDecals(unsigned int vid);
     /* a decal projected onto the visual (SOCOM 1's, by name) */
@@ -279,6 +281,8 @@ public:
     /* inline: SetModeTree's innermost copy calls the out-of-line copies (0x3134A0, and 0x1EA880,
      * an earlier unit's) -- the names are ours */
     void SetMode(int mode) { m_socom2_mode = mode; }
+    /* inline: DeleteLandmark's test loads the byte apart from the store's (the name ours) */
+    bool IsLandmark() const { return m_landmark; }
     CNodeVector &GetChildren() { return m_child; }
     /* inline: find_node's innermost copy calls the out-of-line copy (0x319F10; the name ours) */
     char *GetName() { return m_name; }
@@ -475,6 +479,8 @@ public:
 /* a texture's handle (SOCOM 1's DWARF) */
 class CTexHandle {
 public:
+    static CTexHandle *Create(CTexture *tex);
+
     char *m_name;   // 0x0
     int m_count;   // 0x4
     unsigned int m_gsAddr;   // 0x8
@@ -755,8 +761,48 @@ public:
     static int GetVersion();
     virtual ~CWorld();
     virtual bool Read(CSaveLoad &io);
+    virtual void ReserveChildren(int n);
     void DeleteLightMap(CLightMap *light);
     void AddLightMap(CLightMap *light);
+    void AddShadow(CNode *node);
+    /* a shadow caster made for the node and listed (new in SOCOM II: AddChild and node_main.cpp's
+     * code call it; the name is ours) */
+    void AddShadowCaster(CNode *node);
+    bool Initalize();
+    void Update();
+    void ReleaseLandmarkList();
+    void ReleaseLightList();
+    void AddLandmark(CNode *node);
+    void DeleteLandmark(CNode *node);
+    CNode *FindLandmark(const char *name);
+    IntersectStruct *GetIntersect(const CPnt3D *p0, const CPnt3D *p1);
+    /* SOCOM II's overloads take whether characters are hit (the names SOCOM 1's) */
+    IntersectStruct *GetIntersect(const CPnt3D *p0, const CPnt3D *p1, bool characters);
+    DiIntersect *GetIntersects(const CPnt3D *p0, const CPnt3D *p1);
+    DiIntersect *GetIntersects(const CPnt3D *p0, const CPnt3D *p1, bool characters);
+    IntersectStruct *GetAltitude(const CPnt3D *p, float alt);
+    IntersectStruct *GetAltitude(const CPnt3D *p, float alt, bool characters);
+    DiIntersect *GetAltitudes(const CPnt3D *p, float alt);
+    /* the world's grid's, whichever world it is called on (SOCOM 1's: its this is not read) */
+    int GetIntersectBatch(DiIntersect **di, int n);
+    void InitDescendantsDI();
+    void InitDescendantsVisuals();
+    static int diTick(float dt, void *data);
+    int RegIntersectDelayed(DiIntersect *di, const CPnt3D *tail, const CPnt3D *tip, unsigned int mask);
+    int RegIgnoreNodeDelayed(DiIntersect *di, CNode *node);
+    int ClearIgnoreNodeDelayed(DiIntersect *di);
+    int RegProximityDelayed(DiIntersect *di, const CPnt3D *p, float radius, unsigned int mask);
+    void AddTextureAssetDecals(CTexHandle *tex);
+    void AddTextureAssetCharacterAll(CTexHandle *tex);
+    void RemoveDecals();
+    /* the foliage sound's name, copied (new in SOCOM II: Load sets it; the name is ours) */
+    void SetFoliageSound(const char *name);
+    /* SOCOM II's REMOVE_DECALS command (the names ours, after CWind's) */
+    static bool CmdTickRemoveDecals(_zanim_cmd_hdr *cmd, float *dt);
+    static _zanim_cmd_hdr *CmdParseRemoveDecals(_zrdr *rdr);
+    static void RegisterAnimCommands();
+    static void Uninit();
+    static void Init();
 
     CWind m_Wind;   // 0xc0 (SOCOM 1: 0x4d4)
     CCamera *m_camera;   // 0x128 (CCamera::CmdBeginParams; SOCOM 1: 0xc0)

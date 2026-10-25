@@ -67,6 +67,102 @@ public:
     unsigned char _2d4[0x2e0 - 0x2d4];
 };   // 0x2e0 bytes
 
+/* a hit along a ray (SOCOM 1's DWARF) */
+struct IntersectStruct {
+    CPnt3D m_pos;   // 0x0
+    CDI *m_poly;   // 0xc
+    CPnt3D m_norm;   // 0x10
+    CNode *m_node;   // 0x1c
+};
+
+/* a ray's intersection set (SOCOM 1's DWARF; SOCOM II adds the mask at 0x44, so its hits are 4
+ * bytes further on -- camera.h has the same; 0x4C bytes, the size CWorld's constructor news) */
+class DiIntersect {
+public:
+    DiIntersect(int n);
+    ~DiIntersect();
+    IntersectStruct *GetHighestAltitude(const CPnt3D *p, float alt);
+    IntersectStruct *GetNearestIntersect();
+    /* whether characters are hit, the old setting given back (inline: the queries save and
+     * restore it -- read old, store new, store old; the name is ours) */
+    bool SetIntersectCharacters(bool on)
+    {
+        bool was = m_IntersectCharacters;
+
+        m_IntersectCharacters = on;
+        return was;
+    }
+
+    unsigned int m_Type : 16;   // 0x0
+    unsigned int m_IntersectCharacters : 1;
+    unsigned int m_AltitudeCharacters : 1;
+    unsigned int m_ProximityCharacters : 1;
+    unsigned int m_Unused : 13;
+    CPnt3D m_Tail;   // 0x4
+    CPnt3D m_Tip;   // 0x10
+    CPnt3D m_MTail;   // 0x1c
+    CPnt3D m_MTip;   // 0x28
+    int m_Cnt;   // 0x34
+    int m_BufCnt;   // 0x38
+    CNode *m_Node;   // 0x3c
+    CNode *m_TreeDoneNode;   // 0x40
+    unsigned int m_mask;   // 0x44: SOCOM II's (0x2DC660 sets it, the low bit forced on; the name ours)
+    IntersectStruct *m_Intersects;   // 0x48 (SOCOM 1: 0x44)
+};   // 0x4c bytes
+
+/* the decal pools (SOCOM 1's: the visual effects' units) */
+class CDecalPool {
+public:
+    void RecycleTick();
+};
+class CMeshDecalPool {
+public:
+    void RecycleTick();
+};
+class CDecal {
+public:
+    static CDecalPool m_tempPool;
+    static CDecalPool m_permPool;
+};
+class CMeshDecal {
+public:
+    static CMeshDecalPool m_tempPool;
+};
+
+/* a texture buffer's dynamic textures (SOCOM 1's DWARF: CDynTexList, two vectors) */
+class CDynTexList {
+public:
+    void Add(CTexHandle *tex, bool b);
+
+    CTexList m_tex_list;   // 0x0
+    CTexPalList m_pal_list;   // 0xc
+};   // 0x18 bytes
+
+/* a GS texture buffer: only what the world touches (its dynamic list at 0x28) */
+class CGSTexBuffer {
+public:
+    unsigned char _0[0x18];
+    int m_18;   // 0x18
+    unsigned char _1c[0x28 - 0x1c];
+    CDynTexList m_dyntex;   // 0x28
+};
+
+/* the texture manager: the buffers, and each render phase's buffer index (SOCOM 1's statics) */
+class CTexManager {
+public:
+    static std::vector<CGSTexBuffer *> m_texmanager;
+    static int TexPhase[55];
+};
+
+/* a shadow caster: what the world keeps for each node casting a shadow (new in SOCOM II, 0x70
+ * bytes, the size AddShadowCaster news; the name is ours) */
+class CShadowCaster {
+public:
+    CShadowCaster(CNode *node);
+
+    unsigned char _0[0x70];
+};   // 0x70 bytes
+
 /* the save/load driver: the world it builds, the archive it reads and the file's name (SOCOM 1's
  * DWARF; SOCOM II's archive is 0x14 bytes longer, so the name sits at 0xbc) */
 class CSaveLoad {
