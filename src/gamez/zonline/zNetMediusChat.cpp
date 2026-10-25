@@ -1,9 +1,13 @@
-/* zNetMediusChat.cpp -- the lobby's chat and its message plumbing: the chat queues, the
- * censor, the messages' byte-order converters (SOCOM 1's zNetMedius.cpp's chat code; the unit and
- * its name are ours: OVL1 from about 0x2ED460, after the ladder unit, to 0x2F628F, its static
- * initialiser 0x4020E0 building the two queues 0x44FA20 and 0x44FA50, whose destructor 0x2F5E50
- * and deque instances close it). Only some of it so far. Defined in reverse of their image order
- * (-inline deferred). */
+/* zNetMediusChat.cpp -- the lobby's state machine and its chat: the state handlers the table at
+ * 0x2ED460 registers (SOCOM 1's Open registered the same ones, by state) and their Medius
+ * callbacks, the player-info pages, the chat queues, the censor, the messages' byte-order
+ * converters (SOCOM 1's zNetMedius.cpp's code; the unit and its name are ours: OVL1 from about
+ * 0x2ED460, after the ladder unit, to 0x2F628F, its static initialiser 0x4020E0 building the two
+ * queues 0x44FA20 and 0x44FA50, whose destructor 0x2F5E50 and deque instances close it). Still
+ * unwritten: the game's world report 0x2EF590 and details 0x2EF7F0, the player-info callback
+ * 0x2F0020 and the player lists 0x2F0EA0-0x2F3B90 (class-vector walks and their sort), the chat's
+ * private-line callbacks 0x2F4A20/0x2F4BA0 (cdeque front() inline) and the deque instances.
+ * Defined in reverse of their image order (-inline deferred). */
 
 #include <stdio.h>
 #include <stdlib.h>
