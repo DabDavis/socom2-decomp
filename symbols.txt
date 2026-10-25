@@ -3400,7 +3400,7 @@
 0x002892C0 0xC func_002892C0  # OVL1
 0x002892D0 0x20 func_002892D0  # OVL1
 0x002892F0 0x14 func_002892F0  # OVL1
-0x00289310 0x70 func_00289310  # OVL1
+0x00289310 0x70 __dt__Q23std70vector<P18CZBodyAnimCallback,Q23std32allocator<P18CZBodyAnimCallback>>Fv  # OVL1; by hand (CZBodyAnimCallbackList::Clear's FreeVector destroys its temporary with this copy, bone_init.cpp's -- the linker kept the earlier unit's instance)
 0x00289380 0xE8 Read__10CZSIObjectFPUcUiPCc  # OVL1; s1:align by hand (0.68 to SOCOM 1's Read of a buffer, the unit's first function as there: the flags word's 0x20/0x10 bits make the track constant, positions then rotations laid over the buffer -- three shorts and four shorts a frame where SOCOM 1 read floats)
 0x00289470 0xF8 func_00289470  # OVL1
 0x00289570 0x258 func_00289570  # OVL1
@@ -3437,9 +3437,9 @@
 0x0028B270 0x1D8 AddCallback__22CZBodyAnimCallbackListFPCcf  # OVL1; s1:align by hand (0.70 to SOCOM 1's AddCallback, the first function of body.cpp as there: a "null" callback first when empty, the index of an equal (time, name) one, else a new 24-byte callback pushed)
 0x0028B450 0x68 ResetAnims__22CZBodyAnimCallbackListFv  # OVL1; ours (SOCOM II's: every callback's ZAnim zeroed and its lookup flag set; bone_init's 0x2875D0 calls it on both archives' lists at +0xD4)
 0x0028B4C0 0xC0 Clear__22CZBodyAnimCallbackListFv  # OVL1; s1:align by hand (0.78 to SOCOM 1's Clear: each callback's string destroyed and the callback deleted, then the vector swapped with an empty one)
-0x0028B580 0x40 func_0028B580  # OVL1
-0x0028B5C0 0x8 func_0028B5C0  # OVL1
-0x0028B5D0 0x14 func_0028B5D0  # OVL1
+0x0028B580 0x40 swap__Q23std70vector<P18CZBodyAnimCallback,Q23std32allocator<P18CZBodyAnimCallback>>FRQ23std70vector<P18CZBodyAnimCallback,Q23std32allocator<P18CZBodyAnimCallback>>  # OVL1; by hand (CZBodyAnimCallbackList::Clear's FreeVector: the swap with the temporary, out of line after Clear)
+0x0028B5C0 0x8 clear__Q23std70vector<P18CZBodyAnimCallback,Q23std32allocator<P18CZBodyAnimCallback>>Fv  # OVL1; by hand (CZBodyAnimCallbackList::Clear's FreeVector: the list's clear, out of line after Clear)
+0x0028B5D0 0x14 __ct__Q23std70vector<P18CZBodyAnimCallback,Q23std32allocator<P18CZBodyAnimCallback>>Fv  # OVL1; by hand (CZBodyAnimCallbackList::Clear's FreeVector: the temporary's constructor, out of line after Clear, its first caller)
 0x0028B5F0 0x80 __dt__22CZBodyAnimCallbackListFv  # OVL1; s1:order by hand (after Clear as SOCOM 1's destructor follows it in its unit; Clear called, the pointer vector's three this-tested levels inlined, the deleting flag)
 0x0028B670 0x60 __dt__10CZBodyAnimFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0028B6D0 0x42C Destroy__5CBodyFv  # OVL1; s1:calls by hand (SOCOM II's ~CBody calls it first, after storing CBody's table, exactly as SOCOM 1's ~CBody calls Destroy__5CBodyFv first; it frees the parts and anims and resets the blends)
@@ -3490,7 +3490,7 @@
 0x0028E480 0xAC ReadParts__5CBodyFv  # OVL1; ours (SOCOM II's: each part's pose read back from its node's matrix and rotation)
 0x0028E530 0x24C func_0028E530  # OVL1
 0x0028E780 0x30 SetBodyPart__5CBodyFiP10CZBodyPart  # OVL1; ours (SOCOM II's: a part filed at an id in range)
-0x0028E7B0 0xC8 FindPart__5CBodyCFPCc  # OVL1; s1:align by hand (0.83 to SOCOM 1's FindPart: the parts' nodes' names compared with strcmp)
+0x0028E7B0 0xC8 FindPart__5CBodyFPCc  # OVL1; s1:align by hand (0.83 to SOCOM 1's FindPart: the parts' nodes' names compared with strcmp); by hand: non-const in SOCOM II (the walk keeps this in a saved register, which MW does only in a non-const member; the const name was SOCOM 1's signature by s1:align)
 0x0028E880 0xF8 FindAuxNode__5CBodyFPCcb  # OVL1; s1:align by hand (0.86 to SOCOM 1's FindAuxNode)
 0x0028E980 0x80 AttachAuxPart__5CBodyFP10CZBodyPartP10CZBodyPart  # OVL1; s1:align by hand (0.88 to SOCOM 1's AttachAuxPart: the part pushed on a vector)
 0x0028EA00 0x160 AttachAuxNode__5CBodyFPQ23zdb5CNodeP10CZBodyPartPC6CPnt3DPC5CQuat  # OVL1; s1:order by hand (SOCOM 1's AttachAuxNode, before AddBodyPart as there; SOCOM II's takes the rotation as a quaternion)

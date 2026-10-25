@@ -145,10 +145,10 @@ CNode *CBody::FindAuxNode(const char *name, bool deep)
 }
 
 /* the part whose node has a name (SOCOM 1's) */
-CZBodyPart *CBody::FindPart(const char *name) const
+CZBodyPart *CBody::FindPart(const char *name)
 {
-    for (std::vector<CZBodyPart *>::iterator i = ((CBody *)this)->m_body_parts.begin();
-         i != ((CBody *)this)->m_body_parts.end(); ++i) {
+    for (std::vector<CZBodyPart *>::iterator i = m_body_parts.begin(); i != m_body_parts.end(); ++i) {
+
 
         if (*i) {
             CNode *node = (*i)->m_node;
@@ -449,7 +449,7 @@ void ACTIVE_ANIM::SetFrac(float t)
     while (t < 0.0f)
         t += 1.0f;
     m_tfrac = t;
-    unsigned int n = m_anim->m_nFrames;
+    int n = m_anim->m_nFrames;
 
     m_ffrac = t * n;
     float f = floorf(m_ffrac);
@@ -653,7 +653,8 @@ void CZBodyAnimBlend::Reset()
     } else {
         unsigned int n = anim->m_nFrames;
 
-        if (n >= 2) {
+        if (n > 1) {
+
             float f = n;
 
             m_quitT = (f - 1.0f) / f;
@@ -799,7 +800,7 @@ float CZBodyAnimBlend::Propagate(float dT, bool set)
         return 0.0f;
     float df = 0.0f;
 
-    if (m_flags & 8) {
+    if (Holding()) {
         m_flags &= ~8;
     } else {
         for (ACTIVE_ANIM *a = m_anims.Begin(); a; a = m_anims.Next()) {
@@ -808,10 +809,13 @@ float CZBodyAnimBlend::Propagate(float dT, bool set)
             if (s != 1.0f)
                 dT *= s;
             CZSIScriptCommon *anim = a->m_anim;
+            float pb = a->m_playback;
+            float wt = a->m_wt;
 
-            df += dT * (a->m_wt * a->m_playback) / (anim->m_10 * anim->TrueLoopTime());
+            df += dT * (wt * pb) / (anim->m_10 * anim->TrueLoopTime());
         }
     }
+
     float t = df + m_tfrac;
 
     if (func_0028F190(m_flags, 0x40)) {
@@ -861,12 +865,14 @@ void CZBodyAnimBlend::GetVelocity(CPnt3D *vel)
 {
     CPnt4D v;
     CPnt4D sum = CPnt4D::zero;
+    CPnt3D *p = (CPnt3D *)&v;
 
     for (ACTIVE_ANIM *a = m_anims.Begin(); a; a = m_anims.Next()) {
         CZSIScriptCommon *anim = a->m_anim;
 
-        anim->m_root->GetVelRaw(anim, a->m_frame, a->m_frame + 1, (CPnt3D *)&v);
-        ((CPnt3D *)&v)->Scale(a->m_playback, (CPnt3D *)&v);
+        anim->m_root->GetVelRaw(anim, a->m_frame, a->m_frame + 1, p);
+        p->Scale(a->m_playback, p);
+
         if (!func_0028F190(m_flags, 0x40)) {
             float s = a->m_script_wt;
 
@@ -1053,8 +1059,12 @@ void CZBodyAnimCallbackList::ResetAnims()
  * first (SOCOM 1's) */
 int CZBodyAnimCallbackList::AddCallback(const char *name, float t)
 {
-    if (m_callbacks.size() == 0)
-        m_callbacks.push_back(new CZBodyAnimCallback("null", 0.0f));
+    if (m_callbacks.size() == 0) {
+        CZBodyAnimCallback *null = new CZBodyAnimCallback("null", 0.0f);
+
+        m_callbacks.push_back(null);
+    }
+
     int i = 0;
 
     for (std::vector<CZBodyAnimCallback *>::iterator it = m_callbacks.begin(); it != m_callbacks.end(); ++it, i++) {

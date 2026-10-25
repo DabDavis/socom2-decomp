@@ -494,6 +494,8 @@ public:
     bool IsDone(float dT);
     bool IsTriggerTime(float t, float t0, float t1);
     void CallbackTick(CBody *body, float t0, float t1);
+    /* the step to be held back once: flag 8 (SOCOM II's; the name ours) */
+    bool Holding() { return m_flags & 8 ? true : false; }
     /* the blend restarted from its first anim */
     void Reset();
 
@@ -618,7 +620,7 @@ public:
     void SaveParts();
     void ReadParts();
     void SetBodyPart(int id, CZBodyPart *part);
-    CZBodyPart *FindPart(const char *name) const;
+    CZBodyPart *FindPart(const char *name);
     CNode *FindAuxNode(const char *name, bool deep);
     CZBodyPart *AttachAuxPart(CZBodyPart *part, CZBodyPart *parent);
     CZBodyPart *AttachAuxNode(CNode *node, CZBodyPart *parent, const CPnt3D *pos, const CQuat *rot);
@@ -749,9 +751,9 @@ public:
     /* the callback of an index, none out of range */
     CZBodyAnimCallback *Get(int i)
     {
-        if (i >= 0 && i < m_callbacks.size())
-            return *(CZBodyAnimCallback **)func_002679F0(&m_callbacks, i);
-        return 0;
+        if (i < 0 || i >= m_callbacks.size())
+            return 0;
+        return *(CZBodyAnimCallback **)func_002679F0(&m_callbacks, i);
     }
 
     std::vector<CZBodyAnimCallback *> m_callbacks;   // 0x0
