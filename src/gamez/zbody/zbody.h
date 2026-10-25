@@ -391,6 +391,11 @@ public:
     CBody();
     virtual ~CBody();
     virtual int NullNode() const { return -1; }
+    /* +0x10 and +0x14 (the table at 0x406100 runs on past NullNode: a pure slot, then 0x28DFB0,
+     * which stores the state; CZSealBody overrides both -- SOCOM 1's GetRootPart and BodySetState,
+     * by CZSealBody's overrides) -- the SEAL lane */
+    virtual CZBodyPart *GetRootPart() const = 0;
+    virtual void BodySetState(int state);
 
     /* a part's position and rotation in the body's space: up its chain of parents (SOCOM 1's) */
     void PartInSpace(CZBodyPart *part, const CPnt3D *offset, CPnt3D *pos, CQuat *rot) const;

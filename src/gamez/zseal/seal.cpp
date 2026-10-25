@@ -5,6 +5,9 @@
  * reverse of their image order (-inline deferred). */
 
 #include "zseal.h"
+#include "../zkit/zkit.h"
+#include "../zanim/zanim.h"
+#include <stdio.h>
 #include <string.h>
 
 class CValve;
@@ -252,6 +255,67 @@ static void _rethrow_grenade(CValve *valve, void *data)
     func_003CAEE0(grenade, &vel);
 }
 
+/* the AI's aiming helper (SOCOM 1's CAi, ai.h's: only its alignment) */
+class CAi {
+public:
+    static void AlignToPoint(const CMatrix *m, const CPnt3D *p, CMatrix *out, float f);
+};
+
+extern "C" {
+/* CValve::AddCallback (SOCOM 1's AddCallback__6CValveFUiPFP6CValvePv_vPv; zanim.h's CValve lacks
+ * it: OVL1 0x351960 by its address) */
+void func_00351960(CValve *valve, unsigned int mask, void (*func)(CValve *, void *), void *user);
+/* the other kinds' takers: a weapon, ammunition, the MP bomb (OVL2 0x59F610, 0x59F6F0, 0x59DEF0,
+ * seal_env.cpp's; not written yet) */
+void func_0059F610(CZSealBody *seal, CPickup *pickup);
+void func_0059F6F0(CZSealBody *seal, CPickup *pickup);
+void func_0059DEF0(CZSealBody *seal, CPickup *pickup);
+}
+
+/* a pickup taken up by the living: a grenade (kind 1) thrown back -- stopped, turned toward the
+ * SEAL, and the pickup anim run with a valve whose callback throws it; a weapon, ammunition or the
+ * MP bomb each taken by its own function; the anim returned (OVL2 0x547570; SOCOM 1's) */
+CZAnim *CZSealBody::PickupObject(CPickup *pickup)
+{
+    if (!m_isAlive)
+        return 0;
+    CZAnim *done = 0;
+
+    if (pickup) {
+        switch (pickup->m_type) {
+        case CPickup::PU_TYPE_1: {
+            CZAnim *anim = ZAnim.GetAnim("ai_pickup_grenade", 0);
+
+            if (anim) {
+                CValve *valve = CValve::Create(0, (VALVE_TYPE)2);
+
+                func_00351960(valve, 1, _rethrow_grenade, pickup);
+                func_003CAEE0((CZProjectile *)pickup->m_data, 0);
+                CMatrix m;
+                const CMatrix *from = &m_node->m_matrix;
+
+                CAi::AlignToPoint(from, pickup->GetPosW(), &m, 0.0f);
+                pickup->m_node->SetMatrix(&m);
+                done = anim->ActivateArg(1, 3, pickup->m_node, 1, m_select, 4, valve, 0);
+            }
+            break;
+        }
+        case CPickup::PU_WEAPON:
+            func_0059F610(this, pickup);
+            break;
+        case CPickup::PU_AMMO:
+            func_0059F6F0(this, pickup);
+            break;
+        case CPickup::PU_MPBOMB:
+            func_0059DEF0(this, pickup);
+            break;
+        case 10:
+            break;
+        }
+    }
+    return done;
+}
+
 /* the health set: a living SEAL brought to nothing dies of the given cause, anything else is
  * stored and the controller told (OVL2 0x5477A0; SOCOM 1's clamped and fiddled more) */
 float CZSealBody::SetHealth(float health, SEAL_DEATH_TYPE type)
@@ -358,10 +422,57 @@ void CZSealBody::OnMissionEnd()
     ((CSealCtrl *)m_control)->OnMissionEnd();
 }
 
+/* the root body part (OVL2 0x553DB0; SOCOM 1's, CBody's slot 0x10) */
+CZBodyPart *CZSealBody::GetRootPart() const
+{
+    return m_root;
+}
+
 /* (OVL2 0x553E00) */
 void CZSealBody::OnRecycleEntity(CEntity *e)
 {
     ((CSealCtrl *)m_control)->OnRecycleEntity(e);
+}
+
+extern "C" {
+/* the victim struck down (OVL2 0x547860, seal.cpp's) and the killer's credit (OVL2 0x59EE20,
+ * seal_env.cpp's) -- not written yet */
+void func_00547860(CZSealBody *victim);
+void func_0059EE20(CZSealBody *victim, unsigned int killer, int a);
+/* (OVL1 bss 0x44D400: an animation set the stats skip) */
+extern AnimSet *data_0044D400;
+}
+
+/* a close-quarters attack on a victim: its hit flag set, a living one killed and the kill
+ * credited; the attack's anim run between the two, and counted unless the attacker has the skipped
+ * set (OVL2 0x546A40; SOCOM 1's made an AI event instead of the stats) */
+bool CZSealBody::ExecuteAction_CQBAttack(CZSealBody *victim)
+{
+    bool done = false;
+
+    if (victim) {
+        bool alive = victim->m_isAlive;
+
+        victim->SetHudHitFlag();
+        if (alive) {
+            unsigned int id = m_id;
+
+            victim->m_lastkiller_id = id;
+            func_00547860(victim);
+            func_0059EE20(victim, id, 0);
+        }
+        CZAnim *anim = ZAnim.GetAnim("ai_cqb_attack", 0);
+        CZAnim *act = anim ? anim->ActivateEx(2, m_select, victim->m_select, 0) : 0;
+
+        if (act) {
+            if (m_animset != data_0044D400) {
+                m_5b8++;
+                m_5b0 += 2;
+            }
+            done = true;
+        }
+    }
+    return done;
 }
 
 /* a victim restrained (OVL2 0x546A00) */
@@ -394,6 +505,65 @@ void CZSealBody::ActionAvailableMask(unsigned char id, bool on)
         m_action_available |= 1 << id;
     else
         m_action_available &= ~(1 << id);
+}
+
+/* a UI variable's value (SOCOM 1's _zrdr through CUIVarManager::Find: a type byte, a string for type
+ * 3) and the variables (OVL1 bss 0x437E80) */
+struct CUIVarValue {
+    unsigned char m_type;   // 0x0
+    unsigned char _1[3];
+    char *m_string;   // 0x4
+
+    const char *GetString() { return m_type == 3 ? m_string : 0; }
+};
+
+class CUIVarManager;
+extern CUIVarManager theUIVarManager;
+
+extern "C" {
+/* CUIVarManager::Find (SOCOM 1's Find__13CUIVarManagerFPCc by this call; OVL1 0x385900, unowned) */
+CUIVarValue *func_00385900(CUIVarManager *mgr, const char *name);
+/* a flag the network player's making sets (OVL1 bss 0x44CE50; SOCOM 1's a small-data byte) and the
+ * local team's mask (OVL1 bss 0x441470) */
+extern unsigned char data_0044CE50;
+extern unsigned int data_00441470;
+}
+
+bool ftsGetSquirm();
+void ftsSetPlayer(CZSealBody *seal);
+
+/* the local player made for a network game: named by the UI's variable or by the client index,
+ * of the game's character, a hostage's squirming controller if so set, then made the player
+ * (OVL2 0x5442C0; SOCOM 1's with the character read from the game state).
+ * OPEN, 1 instruction: `new CSealCtrlSquirm` allocates 640 in the target, 636 here -- zkit.h's
+ * CSealCtrlSquirm (the kit lane's) ends at 0x27C; with four bytes more after m_timer_value it is
+ * byte-exact (try.py). */
+void CZSealBody::NetworkPlayerCreate()
+{
+    char name[31];
+
+    data_0044CE50 = 1;
+    CUIVarValue *var = func_00385900(&theUIVarManager, "PLAYERNAMEVAR");
+
+    if (var)
+        strncpy(name, var->GetString(), 31);
+    else
+        sprintf(name, "Player%d", theNetwork.zNetGetMyGameClientIndex());
+    name[30] = 0;
+    CCharacterType *type = CCharacterType::GetByNameMod(data_00437CE8->m_charname);
+    CSealCtrl *ctrl;
+
+    if (ftsGetSquirm())
+        ctrl = new CSealCtrlSquirm;
+    else
+        ctrl = new CSealCtrl;
+    CZSealBody *seal = Create(type, name, ctrl);
+
+    ftsSetPlayer(seal);
+    seal->m_node->SetName(name);
+    seal->SetTeamMask(data_00441470);
+    seal->m_vehicle_index = 0;
+    seal->SetDisplayName(name);
 }
 
 /* the compass anchors the SEAL carries: swapped in, whether there was none returned (OVL2

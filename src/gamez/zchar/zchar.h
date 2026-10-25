@@ -253,6 +253,8 @@ class CCharacterWeapList : public std::vector<CCharacterWeap> {
  * kept a 4-byte CSaferStr, so everything from the LODs on sits 0x98 further, the temporary flag at
  * 0x300; 0x18 bytes new at the end). The vectors and the gear list are holes of their size until
  * code reads them */
+namespace zdb { class CNode; }
+
 class CCharacterType {
 public:
     CCharacterType(const char *name, const CCharacterType *base);
@@ -266,6 +268,8 @@ public:
     static const char *match_name_to_chartype(CRdrFile *rdr, const char *group, const char *name);
     EQUIP_ITEM GetWeaponByIndex(unsigned int i) const;
     char *GetBaseName();
+    /* the character's model instanced under a name (SOCOM 1's; OVL2 0x53C9B0) -- the SEAL lane */
+    zdb::CNode *CreateInstance(const char *name);
     /* a sound by kind, none out of range (new in SOCOM II, the name ours: CSealCtrlAi::OnStunDamage
      * calls it) */
     CSnd *GetSound(CHARACTER_SOUND s) const;
