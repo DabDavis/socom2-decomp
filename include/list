@@ -382,7 +382,21 @@ public:
          * Measured (round 7): by value for the plain iterator too, CZWeaponList::GetWeapon and
          * CZAmmoList::GetAmmo match (the element re-read after strcmp), but CGNode::FindEdge and
          * CGraph::FindEdge are lost and four units stop building (they assign through it:
-         * ai_events.cpp, ent_main.cpp, node_assetlib.cpp, valve_list.cpp) */
+         * ai_events.cpp, ent_main.cpp, node_assetlib.cpp, valve_list.cpp).
+         * Measured again (2026-10-25, the MSL lane, round 2): no one form serves both families.
+         * FindEdge needs the reference -- its second `*i` (the return) reuses the value the first
+         * loaded, which a by-value read never does, not even with no call between -- while GetWeapon
+         * wants the element re-read off the iterator after its calls; the two read their elements
+         * through the same iterator, so one family's source differs from the other's in the
+         * original. The reference stays, and a walk that re-reads after a call casts the element
+         * out by value through the base iterator, `(T *)*it.i_` (GetWeapon, GetAmmo, CAckList::
+         * FindPacket). Tried and dropped: a functional cast, a cast of the address, the node read
+         * directly, a copy of the base iterator (by a local or a temporary: SerializeValves 39 ->
+         * 26 lines off, still an address kept for its third read), a user-declared copy constructor
+         * (no change) or copy assignment (the iterator leaves memory: every walk shrinks).
+         * SerializeValves and CSched_Manager::RemoveTask(name) stay open: the target re-reads the
+         * iterator itself after each call, as if it were visible to the callee (an escape probe --
+         * the iterator's address passed out -- does give that), and no form tried makes MW think so */
         typedef typename select<IsConst, T *, T *&>::type reference;
         reference operator*() const { return (reference)*i_; }
         generic_iterator &operator++()
