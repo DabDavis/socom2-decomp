@@ -106,6 +106,10 @@ class CSealCtrlAi;
 enum GOAL_TYPE { GOAL_NONE = 0, GOAL_SCAN = 1, GOAL_LOOK = 2, GOAL_MOVE = 3, GOAL_SHOOT = 4, GOAL_AVOID = 5, GOAL_RECOVER = 6 };
 
 /* a SEAL's stance (SOCOM 1's DWARF, a signed byte) */
+/* a SEAL's weapon state (SOCOM 1's WEAPON_STATE, a byte: GetWeaponState narrows with andi -- the
+ * enumerators' names unknown, so only the extent here) */
+enum WEAPON_STATE { WEAPON_STATE_0 = 0, WEAPON_STATE_LAST = 255 };
+
 enum SEAL_STANCE {
     STANCE_NONE = -1, STANCE_STAND = 0, STANCE_CROUCH = 1, STANCE_PRONE = 2, STANCE_IDLE = 3,
     STANCE_MAX = 4
@@ -238,26 +242,73 @@ public:
     static CPickup *GetNext(iterator &it, PU_TYPE type);
     static CPickup *GetNext(iterator &it, const CPnt3D *pos, float range, PU_TYPE type);
     static void Open(unsigned int bits);
+    /* a pickup made (from the pool when it holds one) and listed: an owner's (its id the next
+     * pickup id) or one the network names (the owner in the id's upper half) -- SOCOM 1's, the
+     * owner new; OVL2 0x542B90, 0x542930 */
+    static CPickup *Create(unsigned int owner, PU_TYPE type, zdb::CNode *node, void *data);
+    static CPickup *NetworkCreate(unsigned int netid, PU_TYPE type, zdb::CNode *node, void *data);
+    /* (SOCOM 1's new CPickup: the secondary flag cleared through its bool, the bits sized) */
+    CPickup(bool secondary = false) : m_secondary(secondary), m_bits(bit_count) {}
+    /* a made pickup given its kind, node, contents, owner and id, its bits cleared (an inline:
+     * Create and NetworkCreate store all five through one load of the pickup) */
+    void Set(PU_TYPE type, zdb::CNode *node, void *data, unsigned int owner, unsigned short id)
+    {
+        m_type = type;
+        m_node = node;
+        m_data = data;
+        m_owner = owner;
+        m_id = id;
+        m_bits.ClearAll();
+    }
+    /* the flags set (inlines: a constant false is `(b & 1) << n`) */
+    void SetLocked(bool on) { m_locked = on; }
+    void SetSecondary(bool on) { m_secondary = on; }
+    /* every pickup destroyed, the MP bomb's node deleted and, when told to, the pool's pickups
+     * deleted (SOCOM 1's; OVL2 0x542E50) */
+    static void Close(bool all);
+    /* the MP bomb's node taken out of the world and deleted (new in SOCOM II, the name ours:
+     * OVL2 0x542180 touches only m_mpbombnode; Close inlines it) */
+    static void DeleteMPBombNode();
     unsigned int GetPickupNetEntityID();
     const CPnt3D *GetPosW() const;
     void SetVisibleByUnit(unsigned int unit);
     bool GetVisibleByUnit(unsigned int unit);
 
     static std::list<CPickup *> m_list;   // OVL1 bss 0x44D470
+    static std::list<CPickup *> m_pool;   // OVL1 bss 0x44D490 (SOCOM 1's m_pool__7CPickup, after m_list)
     static zdb::CNode *m_mpbombnode;   // OVL1 bss 0x44D4A0
+    static unsigned short nextPickupId;   // OVL1 data 0x3DF170 (SOCOM 1's, 1 at the start)
     static unsigned int bit_count;   // OVL1 data 0x3DF178
     static bool m_isOpen;   // OVL1 bss 0x44D4B0
 
     float m_timer;   // 0x0 (new in SOCOM II)
     zdb::CNode *m_node;   // 0x4
     void *m_data;   // 0x8: a grenade's projectile, a weapon's...
-    unsigned int m_type : 8;   // 0xc (SOCOM 1's 7 bits)
-    unsigned int m_locked : 1;
-    unsigned int m_secondary : 1;
-    unsigned int m_unused : 6;
-    unsigned int m_id : 16;   // 0xe
+    /* (SOCOM 1's bit-fields of one word, 7 bits of type first: SOCOM II's code reads and writes
+     * the flags a byte at a time -- Create's lbu/sb on 0xd) */
+    unsigned char m_type;   // 0xc
+    unsigned char m_locked : 1;   // 0xd
+    unsigned char m_secondary : 1;
+    unsigned char m_unused : 6;
+    unsigned short m_id;   // 0xe
     unsigned int m_owner;   // 0x10: the owner's entity id (new in SOCOM II)
-    unsigned char m_bits[8];   // 0x14: a CBits (SOCOM 1's 0x10)
+    /* SOCOM 1's CBits (at 0x10 there): Close's delete inlines its destructor, the constructors size
+     * it, Create clears it. Spelled as CBits's layout with the same inlines and a conversion to a
+     * CBits pointer, as the kit lane's seal_aistate.cpp reads it (`(CBits *)p->m_bits`); a class
+     * derived from CBits would add its own destructor's this-test to Close's delete */
+    struct Bits {
+        Bits(unsigned int bits) : m_bits(0), m_vec(0) { ((CBits *)this)->Resize(bits); }
+        ~Bits()
+        {
+            _free(m_vec, 0, 0);
+            m_vec = 0;
+        }
+        operator CBits *() { return (CBits *)this; }
+        void ClearAll() { ((CBits *)this)->ClearAll(); }
+
+        unsigned int m_bits;
+        unsigned int *m_vec;
+    } m_bits;   // 0x14
     unsigned int m_visible_by_units;   // 0x1c (SOCOM 1's 0x18)
 };
 
@@ -357,7 +408,9 @@ public:
 
     unsigned char _18[0xa8 - 0x18];
     CAiDecay m_visrange;   // 0xa8 (as SOCOM 1's)
-    unsigned char _b4[0xec - 0xb4];
+    unsigned char _b4[0xd8 - 0xb4];
+    float m_d8;   // 0xd8: a range 0x570D90 falls back to (the name ours)
+    unsigned char _dc[0xec - 0xdc];
     float m_ec;   // 0xec: the view range again (new in SOCOM II; the name ours)
     unsigned char _f0[0x10c - 0xf0];
     CSealUnit *m_unit;   // 0x10c: the squad (SOCOM 1's 0xdc)
@@ -413,6 +466,10 @@ public:
 /* the AI's controller (SOCOM 1's DWARF: CSealCtrlAi, 0x5d0 bytes; SOCOM II's is 0x7c0 --
  * ftsCreateSeal news 1984) -- only what the written functions touch */
 class CZAnim;
+
+/* the AI's sound loops (SOCOM 1's AI_SOUND, a signed byte -- the statics' index is sign-extended;
+ * two of them, the names ours) */
+enum AI_SOUND { AI_SOUND_NONE = -1, AI_SOUND_0 = 0, AI_SOUND_1 = 1, AI_SOUND_MAX = 2 };
 
 /* the AI's modes (SOCOM 1's DWARF, a byte; only the size matters here) */
 enum AI_MODE { AI_MODE_0 = 0, AI_MODE_LAST = 255 };
@@ -535,7 +592,11 @@ public:
     float m_674;   // 0x674: a range, and its square
     float m_678;   // 0x678
     unsigned char m_67c[4];   // 0x67c: an object the state CAiSPursue tests (0x60A850)
-    unsigned char _680[0x750 - 0x680];
+    unsigned char _680[0x6f4 - 0x680];
+    /* a range and its goal, set together unless the range stands at 42 (0x570D90; the names ours) */
+    float m_6f4;   // 0x6f4
+    float m_6f8;   // 0x6f8
+    unsigned char _6fc[0x750 - 0x6fc];
     CValve *m_valve[3];   // 0x750 (SOCOM 1's 0x5bc, four there)
     unsigned char _75c[0x76c - 0x75c];
     unsigned char m_weapon_kind;   // 0x76c: the kind 0x560540 reads off the body's weapon (the name ours)
@@ -595,6 +656,15 @@ public:
     }
     static SEAL_VALVE get_valve(const char *name);
     CValve *GetValve(SEAL_VALVE v) const;
+    /* a loop stopped, and started when it is not playing (SOCOM 1's statics; OVL2 0x574AE0,
+     * 0x574B30 -- UpdateAiMapLoc calls them), its sounds and their instances (SOCOM 1's
+     * aiSoundHandle and aiSoundInstance; OVL1 bss 0x44D4D8, 0x44D4E0). The base's PlayAiSound
+     * stays visible beside the static */
+    static void StopAiSound(AI_SOUND sound);
+    static void PlayAiSound(AI_SOUND sound);
+    using CSealCtrl::PlayAiSound;
+    static class CSnd *aiSoundHandle[2];
+    static class CSndInstance *aiSoundInstance[2];
     virtual void Initalize();
     /* a Navy SEAL (SOCOM 1's bit; the accessor ours, as the code tests it materialised) */
     bool IsNavySeal() const { return m_navyseal ? true : false; }
@@ -777,6 +847,8 @@ public:
     void SetInSmoke(bool on) { m_isinsmoke = on; }
     /* the stance's change taken, once (seal_body.cpp) */
     bool StanceChanged();
+    /* the weapon's state without its bit 4 (SOCOM 1's; OVL2 0x5E0010, seal_weapon.cpp) */
+    WEAPON_STATE GetWeaponState() const;
     /* whether an anim type is the blend on top (SOCOM 1's; OVL2 0x577E40, seal_anim.cpp) */
     bool IsCurrentBlend(AnimType type) const;
     /* a stun taken: the kind's highest kept, the controller told (SOCOM 1's; OVL2 0x5A53D0) */
@@ -863,7 +935,10 @@ public:
     unsigned int m_action_available;   // 0xed0: a bit per action (SOCOM 1's ActionAvailableMask word, 0xdc0)
     unsigned char _ed4[0xee0 - 0xed4];
     float m_wep_upT;   // 0xee0 (SOCOM 1's 0xdd0)
-    unsigned char _ee4[0xf88 - 0xee4];
+    unsigned char _ee4[0xf74 - 0xee4];
+    /* the weapon's state, bit 4 a flag GetWeaponState masks off (SOCOM 1's m_weapon_state, 0xe54) */
+    unsigned int m_weapon_state;   // 0xf74
+    unsigned char _f78[0xf88 - 0xf78];
     float m_f88;   // 0xf88: a speed (0x5857E0 refuses a SEAL in water above 8.5; the name ours)
     unsigned char _f8c[0xfb0 - 0xf8c];
     SEAL_DEATH_TYPE m_deathType;   // 0xfb0 (SOCOM 1's 0xea4)

@@ -8,8 +8,19 @@
 #include "ai.h"
 
 /* what the path's functions call that is not written yet (this unit's) */
-extern "C" void func_00526380(CAiPath *path, int leg);   /* the points made from the legs */
 extern "C" void func_00525520(CAiPath *path);   /* SOCOM 1's UpdateTurnAngles, by position */
+extern "C" void func_00525810(CAiPath *path, unsigned int leg);   /* SOCOM 1's SmoothPathLeg */
+
+
+/* a vector's storage cut to its size: a copy of it swapped in (node_world.cpp's, the name ours):
+ * inlined one level, its copy constructor, swap and destructor called out of line */
+template <class V>
+inline void TrimVector(V &v)
+{
+    V tmp(v);
+
+    v.swap(tmp);
+}
 
 /* a path with no plan: the vectors empty, the tallies reset, flags 3 and the type's bias 1
  * (SOCOM 1's, the new fields zeroed in among the old) */
@@ -50,6 +61,29 @@ CAiPath::~CAiPath()
     DeletePlanner(true);
     Clear();
 }
+
+/* the points on no cell dropped through MSL's remove and the range erase, the count dropped handed
+ * back (new in SOCOM II, the name ours; SmoothPath calls it, never inlined).
+ * OPEN (0x188 against 0x18C), left out of the build: two include/vector questions. The target
+ * builds end() once (sp+92) for remove and again copies it for erase's last after the call (the
+ * CleanupTemporary/DeleteLayers shape -- an end local passed to both is 0x170, a remove result in
+ * a local 0x15C), and inlines find whole where this build calls the iterator's operator* out of
+ * line (one level too tall). Compiled, it also costs resize<point> (0x528430): its erase, now
+ * instantiated by the unit's own code and declared before resize in include/vector, is generated
+ * first and inlined into resize, where the target's resize calls it -- the original MSL declares
+ * resize ahead of erase, or this function reached erase another way. Its remove_copy (0x528530)
+ * matches once point == CAiMapLoc reads the cell first (ai.h) */
+#if 0
+#pragma auto_inline off
+int CAiPath::RemoveInvalidPoints()
+{
+    unsigned int n = m_points.size();
+
+    m_points.erase(std::remove(m_points.begin(), m_points.end(), CAiMapLoc::invalid), m_points.end());
+    return n - m_points.size();
+}
+#pragma auto_inline reset
+#endif
 
 /* the legs' two ends, for one leg or the one being planned (SOCOM 1's; true either way) */
 bool CAiPath::GetLegPoints(CAiMapLoc &start, CAiMapLoc &goal, int leg) const
@@ -97,6 +131,15 @@ void CAiPath::plan_complete(PATH_STATE state)
     m_pathId++;
 }
 #pragma auto_inline reset
+
+/* the id moved on, the path drawn when asked (SOCOM 1's IncrementPathId; called from ai_maps.cpp
+ * and the path-recover state) */
+void CAiPath::IncrementPathId()
+{
+    m_pathId++;
+    if (m_flags & 0x40)
+        PrintPath("dbg_path");
+}
 
 /* a leg's search over: true while legs remain to plan, the next leg queued; else the plan
  * completes in the state the search left (SOCOM 1's).
@@ -157,7 +200,7 @@ void CAiPath::SetTemplatePath(CAiPath *path)
 #pragma auto_inline off
 void CAiPath::PostProcess()
 {
-    func_00526380(this, 0);
+    SmoothPath(false);
     func_00525520(this);
     if (m_flags & 4)
         UpdatePathWidth(5);
@@ -165,3 +208,81 @@ void CAiPath::PostProcess()
         PrintPath("dbg_path");
 }
 #pragma auto_inline reset
+
+/* each leg smoothed, the invalid points dropped and the points' storage trimmed, when there are
+ * points, the plan is complete and smoothing is forced or on (SOCOM 1's dropped the invalid points
+ * itself and trimmed nothing) */
+bool CAiPath::SmoothPath(bool force)
+{
+    bool done = false;
+
+    if (HasPoints() && (force || (m_flags & 1))) {
+        for (unsigned int i = 0; i < m_legcount; i++)
+            func_00525810(this, i);
+        RemoveInvalidPoints();
+        TrimVector<std::vector<point> >(m_points);
+        done = true;
+    }
+    return done;
+}
+
+/* the snake's length: none (when one was set) clears flag 2 and empties the path, Clear inlined;
+ * a new one cuts the points to it, reserves them, sets flag 2 and completes the plan (SOCOM 1's) */
+void CAiPath::SetSnakeLength(unsigned int len)
+{
+    if (len == 0 && m_snake_len != 0) {
+        m_flags &= ~4;
+        Clear();
+    } else if (len != m_snake_len) {
+        if (len < m_points.size())
+            m_points.resize(len);
+        m_points.reserve(len);
+        m_snake_len = len;
+        SetFlags(4, 0);
+        m_state = COMPLETE;
+    }
+}
+
+/* the last point taken off, its cell handed back when asked (new in SOCOM II, the name ours: the
+ * SEALs call it). Emptiness tested through the inline bool, so back() reads the size again */
+bool CAiPath::PopPoint(CAiMapLoc *loc)
+{
+    bool popped = false;
+
+    if (!m_points.empty()) {
+        point &p = m_points.back();
+
+        if (loc)
+            *loc = p.m_loc;
+        popped = true;
+        m_points.pop_back();
+    }
+    return popped;
+}
+
+/* whether a point lies on the cell, its index handed back when asked (SOCOM 1's; SOCOM II's
+ * wants the cell itself where SOCOM 1's took a point within its width, and no snake flag).
+ * OPEN (0xC8 against 0xD0): GetRouteIndex's and GetRegionContaining's question (ai_maptable.cpp)
+ * -- the target re-reads data_ and size_ for each pass's end test (the first test reusing the
+ * emptiness test's size and begin's data), this build hoists the end out of the loop. Postfix
+ * steps, a cast `this`, `!(it == end())` and the iterator declared outside were tried; perhaps
+ * the original iterator stays in memory (a user-declared copy constructor?) long enough that its
+ * stores block the hoist */
+bool CAiPath::PointInPath(const CAiMapLoc &loc, unsigned int *index) const
+{
+    if (m_points.size() == 0)
+        return false;
+    points &p = const_cast<points &>(m_points);
+    bool found = false;
+    unsigned int i = 0;
+
+    for (points::iterator it = p.begin(); it != p.end(); ++it, ++i) {
+        if ((*it).m_loc == loc) {
+            if (index)
+                *index = i;
+            found = true;
+            break;
+        }
+    }
+    return found;
+}

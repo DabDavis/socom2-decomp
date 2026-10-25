@@ -1612,6 +1612,20 @@ CAiSCQBAttack::~CAiSCQBAttack()
 {
 }
 
+/* (OVL2 0x5F86C0) its members destroyed by hand, as ai_states.h keeps them as bytes: the route
+ * (~CAiPath, 0x5281B0, with -1), then the vector (std::vector<CAiMapLoc>'s deleter destructor,
+ * 0x515200, with 0, behind the three this-tests of ~vector and ~__vector_imp inlined) */
+CAiSPlan::~CAiSPlan()
+{
+    func_005281B0(m_path, -1);
+    unsigned char *v = _58;
+
+    if (v)
+        if (v)
+            if (v)
+                func_00515200(v, 0);
+}
+
 /* (OVL2 0x5EF9D0, the unit's first function) */
 CAiSAction::~CAiSAction()
 {

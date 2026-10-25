@@ -11,13 +11,13 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 M2C_UNK __construct_array(); /* extern */
 M2C_UNK __ct__3C2DFv();                             /* extern */
 extern M2C_UNK __ct__10ActionItemFv;
+extern M2C_UNK __dt__10ActionItemFv;
 extern M2C_UNK __vt__10CUIMapCtrl;
-extern M2C_UNK func_003890C0;
 
 char *func_0036D850(char *arg0) {
     __ct__3C2DFv();
     SC_MEMBER(arg0, M2C_UNK **, 0xC) = &__vt__10CUIMapCtrl;
-    __construct_array(arg0 + 0x18, &__ct__10ActionItemFv, &func_003890C0, 0x10, 0x1E);
+    __construct_array(arg0 + 0x18, &__ct__10ActionItemFv, &__dt__10ActionItemFv, 0x10, 0x1E);
     SC_MEMBER(arg0, s32 *, 0x1F8) = 0;
     SC_MEMBER(arg0, s32 *, 0x20C) = 0;
     return arg0;

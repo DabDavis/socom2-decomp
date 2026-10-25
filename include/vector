@@ -67,6 +67,7 @@
 #ifndef _MSL_VECTOR
 #define _MSL_VECTOR
 
+#include <algorithm>
 #include <iterator>
 #include <memory>
 #include <msl_utility>
@@ -123,6 +124,14 @@ public:
     }
     /* through the free swap below (SOCOM 1's member swap, line 973, calls the free one at 960) */
     void swap(__vector_deleter &x) { std::swap(*this, x); }
+    /* an element copied into raw storage: every class-vector construction (insert, reserve, the
+     * range init) goes through it, as MSL 3.0's allocator construct does. An element whose copy
+     * expands past inline_max_size cuts it to one level, so the placement new and the copy
+     * constructor are both called out of line, the new's null test between them -- the image's
+     * 0x2FECA0 (OVL1) and 0x51D210 (OVL2), `jr ra; move v0,a1`, called six times by each such
+     * insert (LOD, CDesignDlgObj, the turret's) and once by vector<C2DPoly>::reserve (0x361790,
+     * byte-exact so); a smaller element inlines both, as the loops always did. The name ours */
+    static void construct(T *p, const T &x) { new (p) T(x); }
 
     __vector_capacity<Allocator> capacity_;
     unsigned int size_;
@@ -197,7 +206,22 @@ __vector_deleter<T, Allocator>::~__vector_deleter()
 template <class T, class Allocator>
 class __vector_pod {
 public:
-    __vector_pod() { capacity_ = 0; size_ = 0; data_ = 0; }
+    /* the three words cleared, the zero held in a local first: the same three stores, but more
+     * inline units than three plain ones (the MSL headers' round 4) -- SOCOM II's pointer vector
+     * constructor is fatter than its level shows (SOCOM 1's pod builds its capacity as a compressed
+     * pair), enough to push CScriptArchive's constructor (four pointer vectors, the callback
+     * list's, a ZAR) past inline_max_size, so bone_init.cpp's initialiser inlines it one level and
+     * calls the members' constructors out of line (0x3FFCE0), while CHUD's, CCell's and CVisual's
+     * constructors and __sinit_compass.cpp still inline theirs whole. A level more instead (the
+     * stores in a helper) cuts those four too */
+    __vector_pod()
+    {
+        unsigned int z = 0;
+
+        capacity_ = z;
+        size_ = z;
+        data_ = 0;
+    }
     /* n copies of value: the words zeroed, then init (CVisual's m_lodMesh(0): init called out of line) */
     __vector_pod(unsigned int n, const T &value) { capacity_ = 0; size_ = 0; data_ = 0; init(n, value); }
     __vector_pod(const __vector_pod &x);
@@ -223,9 +247,13 @@ public:
     /* references to the fields (SOCOM 1 keeps out-of-line copies: data() is this + 8, cap() this) */
     T *&data() { return data_; }
     unsigned int &cap() { return capacity_; }
-    /* the raw iterators a vector of pointers makes its own from */
+    /* the raw iterators a vector of pointers makes its own from, both through data()'s reference:
+     * end() so keeps a local vector's &data_ in its register across a call (CGrid::Destroy,
+     * CWorld::GenerateLandmarkList and DeleteChildren, CAssetLib::AddPalette -- the zdb world's
+     * round 6 measurement), the extra level paid back by the pointer vector's end() taking it into
+     * a const local as begin() does (the MSL headers' round 4) */
     T *begin() { return data(); }
-    T *end() { return data_ + size_; }
+    T *end() { return data() + size_; }
     T &back() { return *(end() - 1); }
     unsigned int size() const { return size_; }
     static unsigned int max_size() { return (unsigned int)-1 / sizeof(T); }
@@ -239,6 +267,8 @@ public:
     void reserve(unsigned int n);
     void insert(T *position, unsigned int n, const T &x);
     T *erase(T *first, T *last);
+    /* one element erased (out of class: SOCOM 1's erase__...FPUi, SOCOM II's OVL1 0x28F220) */
+    T *erase(T *position);
     T &at(unsigned int n);
     template <class InputIterator>
     void init(InputIterator first, InputIterator last, forward_iterator_tag);
@@ -367,13 +397,26 @@ class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, all
 
         return __iter(p);
     }
-    iterator end() { return __iter(__base::end()); }
+    /* the base's end held in a const local first, as begin() holds its pointer: with the base's
+     * end() reading through data(), passed straight to __iter it would sit a level too deep for
+     * CCharacterType::Create's inlined GetByNameMod, while find_node still calls the base's end()
+     * out of line as its target does (measured over every hand-written unit, the MSL headers'
+     * round 4) */
+    iterator end()
+    {
+        unsigned int *const p = __base::end();
+
+        return __iter(p);
+    }
     /* the base's, cast: through end() it would be a level taller (CZAR::GetOpenKey inlines it) */
     T *&back() { return (T *&)__base::back(); }
     iterator erase(iterator first, iterator last)
     {
         return __iter(__base::erase((unsigned int *)first.m_p, (unsigned int *)last.m_p));
     }
+    /* one element erased: the iterator taken by value, the pod's single erase called (the UI lane:
+     * ~CRadioStripSpec's walk) */
+    iterator erase(iterator position) { return __iter(__base::erase((unsigned int *)position.m_p)); }
     void clear() { __vector_pod<unsigned int, allocator<unsigned int> >::clear(); }
     void swap(__vector_imp &x) { __base::swap(x); }
     T *&at(unsigned int n)
@@ -445,6 +488,24 @@ T *__vector_pod<T, Allocator>::erase(T *first, T *last)
     }
     size_ -= last - first;
     return first;
+}
+
+/* one element erased: the words after it moved down one, the size counted down (SOCOM 1's
+ * erase__ of __vector_pod<Ui> taking one position, 0x1DEF80; SOCOM II's 0x28F220, the copy unrolled
+ * 8x as the range erase's) */
+template <class T, class Allocator>
+T *__vector_pod<T, Allocator>::erase(T *position)
+{
+    T *e = data_ + size_;
+
+    if (e - position - 1) {
+        T *s, *d = position;
+
+        for (s = position + 1; s < e; ++s, ++d)
+            *d = *s;
+    }
+    --size_;
+    return position;
 }
 
 template <class T, class Allocator>
@@ -537,28 +598,31 @@ void __vector_imp<T, Allocator, IsPOD>::reserve(unsigned int n)
         T *last = p + this->size_;
 
         for (; p < last; ++p, ++d) {
-            new (d) T(*p);
+            temp.construct(d, *p);
             temp.size_++;
         }
         temp.swap(*this);
     }
 }
 
-/* the tail moved down over the range by assignment, as the POD storage's erase does it word by
- * word (the source walker declared first, the destination initialised first) */
+/* the tail moved down over the range through std::copy (out of line for a big element: the turret's
+ * 0x3ABAE0, CDesignDlgObj's 0x3845B0), then the elements left past the new end destroyed: n, the
+ * count after the range, is a signed int, and the destroy loop starts n past first (the UI lane's
+ * measurement: erase<ActionItem> 0x383E00 byte-exact so, ~ActionItem called with -1). MW 3.0
+ * deletes the destroy loop for a trivially destructible element, so the other class erases are
+ * unchanged */
 template <class T, class Allocator, bool IsPOD>
 T *__vector_imp<T, Allocator, IsPOD>::erase(T *first, T *last)
 {
     if (first == last)
         return first;
     T *e = this->data_ + this->size_;
+    int n = e - last;
 
-    if (e - last) {
-        T *s, *d = first;
-
-        for (s = last; s < e; ++s, ++d)
-            *d = *s;
-    }
+    if (n)
+        std::copy(last, e, first);
+    for (T *p = first + n; p < e; ++p)
+        p->~T();
     this->size_ -= last - first;
     return first;
 }
@@ -587,17 +651,41 @@ T *__vector_imp<T, Allocator, IsPOD>::erase(T *position)
  * the rest assigned (1443-1461, x's address moved along when it lies in the part shifted up, 1456);
  * otherwise a fresh block in a temporary deleter, the capacity doubled from 1 until it holds the new
  * size (1465-1471), the three runs built into it (1477-1482) and the storage swapped in (1483), the
- * temporary's destructor then freeing the old. The fill is a guarded do-while (a for or while loop
- * is entered at its bottom test), and `newsize > newcap` branches on the compare as the target's
- * loop does (`newcap < newsize` materialises it). Byte-exact as the copies of vector<CPnt3D>
- * (0x26CC80, zanim_set.cpp), vector<CTarget> (0x2A1AD0), CharacterDynamics' cameras (0x59CF10),
- * Particle::SequenceEntry<CPnt4D> (0x32B650) and CSndSequenceEntry (0x34A0D0). Still open (the MSL
- * lane, round 2): the 8-byte elements' (CZSealState::TypeRemoteGuy 0x2BF980, SequenceEntry<float>
- * 0x32BB90, SequenceEntry<CTexHandle *> 0x32B210 -- each the right size, ~50 lines off), CAiMapLoc's
- * (0x5136B0, 8 bytes short) and CIOPManager::CRegistrant's (0x39C7F0): the target computes the
- * in-place branch's end pointer into a fresh register (a2) where MW here reuses data_'s (v1), and
- * every register after follows. No change from: i, m or e declared first, `T *i, *e`, the end
- * through end(), data() or &data_[size_], m cast */
+ * temporary's destructor then freeing the old. `newsize > newcap` branches on the compare as the
+ * target's loop does (`newcap < newsize` materialises it). SOCOM II's MSL (3.0) builds each element
+ * through construct() and moves the old ones through std::copy_backward and std::fill_n (the MSL
+ * headers' round 4): the turret's 412-byte definitions show all three cut to calls (placement new
+ * and the copy constructor 0x3AC6D0, copy_backward 0x3AC460, fill_n 0x3AC200 -- a stand-in with the
+ * definition's scalar members reproduces the whole tail's call structure and order, build/m4/p/
+ * turret2.cpp), where SOCOM 1's insert of the same vector calls the copy constructor and the
+ * assignment directly. Byte-exact as the copies of vector<CPnt3D> (0x26CC80, zanim_set.cpp),
+ * vector<CTarget> (0x2A1AD0), CharacterDynamics' cameras (0x59CF10), Particle::SequenceEntry<CPnt4D>
+ * (0x32B650), CSndSequenceEntry (0x34A0D0), TypeRemoteGuy (0x2BF980), TypePendingPlatform and
+ * CGameStateChangeCmd.
+ * The temporary's destructor (out of class, see the deleter) is a call, inlined, or inlined with
+ * clear inlined in it, by the unit's tail generation rounds (measured, build/m4/p/g1.cpp): the
+ * insert inlines it only if the destructor was generated before it -- requested in an earlier round
+ * or in the same round, the deleter's members going before __vector_imp's -- and clear likewise.
+ * So it is the unit's own code that decides: seal_dyn.cpp's (push_back only) calls it (0x59CF10),
+ * zsnd_csndsequence.cpp's (whose own code also destroys a vector) inlines it and calls clear
+ * (0x34A0D0), vehicle_rdr.cpp's (Close clears, the vector is destroyed) and ai_astar.cpp's (clear
+ * and destructor both requested by its own functions) inline both. The image's tail ORDER does not
+ * show the rounds (vehicle_rdr.cpp's clear and destructor follow its insert though generated
+ * before it: the linker lays the tail out depth first). veh_vehicle.cpp's 0x3AF040, veh_turret.cpp's
+ * 0x3ABD90 and zwep_weapon.cpp's 0x3D3D90 inline both with no caller of either left in the image --
+ * consistent with an own function of each unit that clears and destroys the vector and was
+ * dead-stripped with the copies only it called: appending such a function to veh_vehicle.cpp makes
+ * 0x3AF040 the target's size, its tail byte-exact (SOCOM 1's DestroyMarkList deletes the mark list,
+ * both blood-decal vectors with it; SOCOM II has no copy of it).
+ * Still open, the in-place branch's registers (no change from the helpers above): the end pointer
+ * e = data_ + size_ shares data_'s register in the target where MW gives it a fresh one here
+ * (CVehicleDef 0x3AF040, CIOPManager::CRegistrant 0x39C7F0 -- which wants a user-declared constructor
+ * first: 99 lines off without, 38 with), and takes a fresh one in the target where MW reuses data_'s
+ * (SequenceEntry<float> 0x32BB90, SequenceEntry<CTexHandle *> 0x32B210, CAiMapLoc 0x5136B0); the
+ * eight matches keep theirs. No change from: i, m or e declared first, `T *i, *e`, the end through
+ * end(), data() or &data_[size_], m cast, a size_ local, xp declared late, i declared per branch or
+ * initialised at the top, a separate cursor for the second loop; i and j both declared at the top
+ * lose all eight matches */
 template <class T, class Allocator, bool IsPOD>
 void __vector_imp<T, Allocator, IsPOD>::insert(T *position, unsigned int n, const T &x)
 {
@@ -614,30 +702,25 @@ void __vector_imp<T, Allocator, IsPOD>::insert(T *position, unsigned int n, cons
 
         if (m < n) {
             for (i = e; m < n; --n, ++i) {
-                new (i) T(*xp);
+                this->construct(i, *xp);
                 ++this->size_;
             }
             for (T *j = position; j < e; ++j, ++i) {
-                new (i) T(*j);
+                this->construct(i, *j);
                 ++this->size_;
             }
         } else {
             T *j = e - n;
 
             for (i = e; j < e; ++j, ++i) {
-                new (i) T(*j);
+                this->construct(i, *j);
                 ++this->size_;
             }
             if (e - (m - n) <= xp && xp < e)
                 xp += n;
-            for (T *s = position + (m - n), *d = e; position < s;)
-                *--d = *--s;
+            std::copy_backward(position, position + (m - n), e);
         }
-        if (n)
-            do {
-                *position = *xp;
-                ++position;
-            } while (--n);
+        std::fill_n(position, n, *xp);
     } else {
         __vector_deleter<T, Allocator> tmp;
         unsigned int newsize = this->size_ + n;
@@ -656,15 +739,15 @@ void __vector_imp<T, Allocator, IsPOD>::insert(T *position, unsigned int n, cons
         T *e = this->data_ + this->size_;
 
         for (; j < position; ++j, ++i) {
-            new (i) T(*j);
+            this->construct(i, *j);
             ++tmp.size_;
         }
         for (; n > 0; --n, ++i) {
-            new (i) T(*xp);
+            this->construct(i, *xp);
             ++tmp.size_;
         }
         for (; j < e; ++j, ++i) {
-            new (i) T(*j);
+            this->construct(i, *j);
             ++tmp.size_;
         }
         tmp.swap(*this);
@@ -718,7 +801,7 @@ void __vector_imp<T, Allocator, IsPOD>::init(InputIterator first, InputIterator 
         this->data() = this->allocate(n);
         this->capacity_.n_ = n;
         for (T *p = this->data_; first != last; ++first, ++p) {
-            new (p) T(*first);
+            this->construct(p, *first);
             ++this->size_;
         }
     }

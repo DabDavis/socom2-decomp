@@ -87,6 +87,15 @@ CAiCell *CAiMaps::GetCell(const CAiMapLoc &loc)
     return map ? map->GetCell(loc, 0) : 0;
 }
 
+/* the cell's centre on its map (SOCOM 1's; the map's lookup inlined whole, CAiMap's centre one
+ * level) */
+CPnt3D *CAiMaps::GetCellCenter(const CAiMapLoc &loc, CPnt3D *center)
+{
+    CAiMap *map = GetMapByIndex(loc.m_mapid);
+
+    return map ? map->GetCellCenter(loc, center) : 0;
+}
+
 /* the map that knows the name, the cell given its index (SOCOM 1's) */
 bool CAiMaps::GetLocation(const char *name, CAiMapLoc &loc)
 {

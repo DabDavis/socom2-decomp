@@ -139,6 +139,16 @@ public:
     int m_4;   // 0x4: its network object
 };
 
+/* a turret (veh_turret.cpp's CTurret: only its network object here) */
+class CTurret : public CZVehicle {
+};
+
+/* the turrets' network objects (fts_net_platform.cpp's) */
+class CZPlatformState {
+public:
+    static int CreateLocalPlatform(CTurret *turret);
+};
+
 class CUIVariable;
 
 /* the online game (SOCOM 1's CZNetGame: only what this unit touches, at SOCOM II's offsets) */
@@ -264,7 +274,6 @@ extern CZOnlineLobby theLobby;
 void NetFreeObject(int index);
 void func_005423E0(int a, float b);
 void func_002BD640(CZSealBody *body, int arg);   /* CZSealState::UpdateLocalSeal */
-int func_002C7BF0(CZVehicle *vehicle);
 int func_002C3B10(int arg);
 void func_002F9690(void *lobby, int arg, int mode);
 int func_00541CC0(int id);
@@ -1638,12 +1647,12 @@ extern "C" void func_002B7CF0(void *, CZSealBody *body)
     func_002BD640(body, 0);
 }
 
-/* a vehicle's network object (SOCOM II's; OVL1 0x2B7C90) */
-extern "C" void func_002B7C90(CZVehicle *vehicle)
+/* a turret's network object (SOCOM II's; OVL1 0x2B7C90) */
+extern "C" void func_002B7C90(CTurret *turret)
 {
-    if (!(theNetwork.m_bNetwork && theNetwork.m_bSessionMaster && vehicle))
+    if (!(theNetwork.m_bNetwork && theNetwork.m_bSessionMaster && turret))
         return;
-    vehicle->m_4 = func_002C7BF0(vehicle);
+    turret->m_4 = CZPlatformState::CreateLocalPlatform(turret);
 }
 
 /* the game's and the persona's network objects made (OVL1 0x2B7A20) */

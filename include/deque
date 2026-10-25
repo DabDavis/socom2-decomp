@@ -249,7 +249,13 @@ void __deque_imp<T, Allocator>::pop_front()
  * (the rdr lane's 0x3349C0: the buffer popped, its new back deleted and cleared).
  * OPEN, 8 bytes short (0xCC against 0xD4): the target lays the capacity ternary's zero arm out
  * first and jumps from it to the join (start_'s load in both arms); this form, an inline
- * accessor, an if/return and `n == 0 ? 0 : ...` all if-convert the zero into beqz's delay slot */
+ * accessor, an if/return and `n == 0 ? 0 : ...` all if-convert the zero into beqz's delay slot.
+ * The MSL headers' round 4 (probe build/m4/p/dq.cpp): the multiply after the ternary, `(size() ?
+ * size() - 1 : 0) * buf_size`, keeps the zero arm a block of its own -- the right size, five
+ * instructions off: the arms come in the other order (the nonzero one falls through) and the
+ * zero is built in v1 before the multiply where the target puts it straight into the product's
+ * a1; `== 0`, `!`, empty(), an unsigned zero, a for/break test and the multiply written first
+ * change nothing */
 template <class T, class Allocator>
 void __deque_imp<T, Allocator>::pop_back()
 {
