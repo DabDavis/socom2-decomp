@@ -1817,7 +1817,7 @@
 0x0020CC50 0x74 erase__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>FQ33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<0>  # OVL1; the pointer lists' single erase, out of line (DeleteDeferredVisuals' pop_back calls it)
 0x0020CCD0 0x60 __dt__7C2DLineFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0020CD30 0x1C func_0020CD30  # OVL1
-0x0020CD50 0xB4 func_0020CD50  # OVL1
+0x0020CD50 0xB4 __ct__9CPlainBmpFv  # OVL1; by its body (CPlainBmp's inline constructor out of line: C2DBitmap(), the UIVarMixin and CPlainBmp tables, grey 128, three virtual calls; in hud_newhudmap.cpp's tail; SOCOM 1 names the class's constructor) -- the UI lane
 0x0020CE10 0x1C func_0020CE10  # OVL1
 0x0020CE30 0x1C func_0020CE30  # OVL1
 0x0020CE50 0x1C __arraydtor$2546  # OVL1; s1:exact
@@ -6844,7 +6844,7 @@
 0x0036D8B0 0xB4 Render__9C2DVisualFP7CMatrix  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0036D970 0xA8 GetZAnimCmdType__12CPopUpDialogFPCc  # OVL1; s1:calls
 0x0036DA20 0xC2C TickZAnimCmd__12CPopUpDialogFP14_zanim_cmd_hdrPfPb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0036E650 0x60 func_0036E650  # OVL1
+0x0036E650 0x60 __dt__11ButtonStateFv  # OVL1; ours (the 0x34-byte button state's destructor: a string at 0 destroyed, deleted when asked; every button-spec destructor calls it for its four states; the class name ours) -- the UI lane
 0x0036E6B0 0x80 SetCanHandleInput__9C2DButtonFb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0036E730 0x60 func_0036E730  # OVL1
 0x0036E790 0x9C func_0036E790  # OVL1
@@ -6919,7 +6919,7 @@
 0x00377380 0x6C func_00377380  # OVL1
 0x003773F0 0x114 func_003773F0  # OVL1
 0x00377510 0x2E8 __dt__9C2DButtonFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00377800 0x22C func_00377800  # OVL1
+0x00377800 0x22C __ct__9C2DButtonFv  # OVL1; s1:calls (SOCOM 1's CButtonSpec::CreateDisplayObj calls __ct__9C2DButtonFv right after new; SOCOM II's calls 0x377800 at the same place) -- the UI lane
 0x00377A30 0x70 __dt__13C3StateButtonFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00377AA0 0xE0 Draw__13C3StateButtonFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00377B80 0x8DC Tick__9CTeleTypeFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -9592,7 +9592,7 @@
 0x00527E70 0x144 func_00527E70  # OVL2
 0x00527FC0 0x8 func_00527FC0  # OVL2
 0x00527FD0 0x1DC func_00527FD0  # OVL2
-0x005281B0 0x188 func_005281B0  # OVL2
+0x005281B0 0x188 __dt__7CAiPathFv  # OVL2; s1:order (right before CAiPath's constructor, as SOCOM 1's; ~CAiSPlan and ~CAiSPathRecover call it on their path members) -- the kit lane
 0x00528340 0xE4 __ct__7CAiPathFv  # OVL2; s1:order by hand (the demo's 0x1967D0, right after ~CAiPath in both builds: the waypoint, map and point vectors and the stats' visited cells built empty, the stats reset, m_type_bias 1.0, m_flags 3, every other field zeroed -- SOCOM II's new 0x18, 0x24, 0x88-0x90 among them)
 0x00528430 0xDC func_00528430  # OVL2
 0x00528510 0x18 _min<Ui>__2aiFRCUiRCUi_RCUi  # OVL2; s1:exact; by hand: MW 3.0 mangles the return type (SOCOM 1's _min<Ui>__2aiFRCUiRCUi)

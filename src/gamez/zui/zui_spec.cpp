@@ -145,11 +145,7 @@ CHandlerButtonSpec::CHandlerButtonSpec(_zrdr *rdr) : CButtonSpec(rdr), m_child(0
     }
 }
 
-/* a button (SOCOM 1's) -- held out of the build until 0x377800 is named: the generated draft
- * (src/auto/ovl1/00380470.c) matches through the placeholder, and this one, measured byte-exact
- * with the row renamed, would supersede it with a wrong reference until then */
-#if 0
-/* a button (SOCOM 1's) */
+/* a button (SOCOM 1's; 0x377800 is C2DButton's constructor) */
 C2D *CButtonSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
 {
     C2DButton *button = new C2DButton;
@@ -159,7 +155,6 @@ C2D *CButtonSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) co
     InitializeButton(button, mgr);
     return button;
 }
-#endif
 
 /* the wrapped text's WIDTH, line SPACING (10) and HEIGHT (-1: unbounded), its arrows' TEXTURE,
  * SIZE and OFFSET, AUTOSCROLL and DISPLAY_ONE_LINE (SOCOM 1's). Declared inline: GetObjectSpec

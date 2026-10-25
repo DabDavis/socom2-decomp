@@ -1392,6 +1392,29 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     the target does; `return a != b;` misses by the pads;
   - grid_di.cpp (SOCOM 1's name) runs ~0x2D2890-0x2D4FDB, closed by ~CStack's copy, its
     initialiser 0x401CC0; 0x2D2070-0x2D2830 look like the graph unit's tail.
+- **Tells from the AI states, round 4** (CAiState::Create, Reset, Signal):
+  - a function inlined whole in one caller and called out of line in another sits between two
+    size limits: Reset expands to at most inline_max_size (Signal inlines it whole) while
+    CAiState(AI_STATE) -- Reset plus the table store and the stack's constructor -- exceeds it
+    (Create calls it out of line);
+  - `a = b = c = 0.0f` stores c, b, then a, and costs fewer inline units than three statements;
+  - a constructor inlined one level calls its members' constructors out of line, even empty ones
+    (CPnt3D(), CAiMapLoc()): a member built by hand in the body matches only if it is the last
+    one, or every later member is built by hand too;
+  - an inline setter called with a constant can reuse the register a switch's compare chain
+    loaded (`li v0,1` feeding `andi t1,v0,1`): the mask stays unfolded there, folds elsewhere.
+- **Tells from the UI, round 4** (zui.cpp, the specs' CreateDisplayObj):
+  - an abs written `f >= 0.0f ? f : -f` gives the target's `bc1t`-to-negate and a `b` over it;
+    `f < 0.0f ? -f : f` if-converts to `bc1f` over a `neg.s`;
+  - MW gives an override of a secondary base's virtual a new primary slot after all the tables
+    (CPlainBmp::UpdateUIVar at +0x80), the derived class's new virtuals after it;
+  - two struct members with inline constructors are built inline, an array of them in a loop;
+  - an inline constructor too big to inline whole is inlined one level, calling its members'
+    copies; a class wrapping it then calls it out of line (CWrappedText -> CScrollText);
+  - declaring a defined virtual first among a derived class's non-inline virtuals makes the
+    unit emit its table and implicit destructor; slot order still follows the base;
+  - zui.cpp is 0x365200-0x36AF9F (CDblBufTextureRelocator's inline virtuals open it); the soft
+    keyboard and the rdr-table code after 0x3A2510 wait on an MSL map/tree (not in include/).
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
