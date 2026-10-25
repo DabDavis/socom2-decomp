@@ -15,17 +15,17 @@ struct VC_0 {
 extern "C" {
 s32 GetDatabase__Fv();                              /* extern */
 M2C_UNK Open__8CMissionFPCci(M2C_UNK *, s32);       /* extern */
+s32 ftsGetPlayer__Fv();                             /* extern */
 s32 func_001E91C0(s32);                             /* extern */
-s32 func_002B3580();                                /* extern */
 M2C_UNK func_0032C2B0(M2C_UNK *, M2C_UNK *);        /* extern */
 M2C_UNK func_003D37D0();                            /* extern */
 M2C_UNK func_003D38B0();                            /* extern */
 M2C_UNK func_003D3980(M2C_UNK);                     /* extern */
+extern char *appCamera;
 extern M2C_UNK data_003E1DA8;
 extern M2C_UNK data_003E1DB8;
-extern char *data_00415FF0;
-extern M2C_UNK data_004364E0;
 extern s32 data_0048DB48;
+extern M2C_UNK theMission;
 
 s32 func_001EA720(void) {
     s32 temp_s0;
@@ -38,9 +38,9 @@ s32 func_001EA720(void) {
     func_003D3980(0x64);
     func_003D38B0();
     func_003D37D0();
-    Open__8CMissionFPCci(&data_004364E0, temp_s0);
-    ((VC_0 *)(data_00415FF0))->v_C(func_002B3580());
-    data_0048DB48 = M2C_FIELD(data_00415FF0, s32 *, 0xB4);
-    return func_002B3580() != 0;
+    Open__8CMissionFPCci(&theMission, temp_s0);
+    ((VC_0 *)(appCamera))->v_C(ftsGetPlayer__Fv());
+    data_0048DB48 = M2C_FIELD(appCamera, s32 *, 0xB4);
+    return ftsGetPlayer__Fv() != 0;
 }
 }

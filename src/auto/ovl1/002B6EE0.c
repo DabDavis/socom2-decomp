@@ -6,10 +6,10 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK Clear_Messages__12C2DMessage_QFv();         /* extern */
 M2C_UNK __destroy_arr(char *, M2C_UNK *, M2C_UNK, M2C_UNK); /* extern */
 M2C_UNK __dl__FPv(char *);                          /* extern */
 M2C_UNK __dt__3C2DFv(char *, M2C_UNK);              /* extern */
-M2C_UNK func_002B6DE0();                            /* extern */
 extern M2C_UNK __dt__7C2DPolyFv;
 extern M2C_UNK __vt__12C2DMessage_Q;
 extern M2C_UNK __vt__13C2DBitmapPoly;
@@ -17,7 +17,7 @@ extern M2C_UNK __vt__13C2DBitmapPoly;
 char *__dt__12C2DMessage_QFv(char *arg0, s64 arg1) {
     if (arg0 != NULL) {
         M2C_FIELD(arg0, M2C_UNK **, 0xC) = &__vt__12C2DMessage_Q;
-        func_002B6DE0();
+        Clear_Messages__12C2DMessage_QFv();
         if ((arg0 + 0x210) != NULL) {
             M2C_FIELD(arg0, M2C_UNK **, 0x21C) = &__vt__13C2DBitmapPoly;
             __destroy_arr(arg0 + 0x250, &__dt__7C2DPolyFv, 0xD0, 2);

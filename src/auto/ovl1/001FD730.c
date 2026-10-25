@@ -9,12 +9,12 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 M2C_UNK __destroy_arr(char *, M2C_UNK *, M2C_UNK, M2C_UNK); /* extern */
 M2C_UNK __dl__FPv(char *);                          /* extern */
 M2C_UNK __dt__3C2DFv(char *, M2C_UNK);              /* extern */
+extern M2C_UNK __dt__10CHealthBarFv;
 extern M2C_UNK __dt__14CHudBrightTextFv;
 extern M2C_UNK __dt__9C2DBitmapFv;
 extern M2C_UNK __dt__9C2DStringFv;
 extern M2C_UNK __vt__10CTeamNames;
 extern M2C_UNK __vt__9C2DBitmap;
-extern M2C_UNK func_00242300;
 
 char *__dt__10CTeamNamesFv(char *arg0, s64 arg1) {
     char *temp_a0;
@@ -23,7 +23,7 @@ char *__dt__10CTeamNamesFv(char *arg0, s64 arg1) {
     if (arg0 != NULL) {
         M2C_FIELD(arg0, M2C_UNK **, 0xC) = &__vt__10CTeamNames;
         __destroy_arr(arg0 + 0xD30, &__dt__9C2DBitmapFv, 0x80, 4);
-        __destroy_arr(arg0 + 0x5F0, &func_00242300, 0x1D0, 4);
+        __destroy_arr(arg0 + 0x5F0, &__dt__10CHealthBarFv, 0x1D0, 4);
         temp_a0 = arg0 + 0x570;
         if (temp_a0 != NULL) {
             M2C_FIELD(arg0, M2C_UNK **, 0x57C) = &__vt__9C2DBitmap;

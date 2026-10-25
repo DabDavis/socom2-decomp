@@ -6,16 +6,16 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-void *func_002B3580();                              /* extern */
+char *ftsGetPlayer__Fv();                           /* extern */
 M2C_UNK func_005EAD70(s32, M2C_UNK, M2C_UNK, M2C_UNK); /* extern */
 s32 func_005EF2F0(u8);                              /* extern */
 extern u8 data_00413008;
 
 void func_0022F330(void) {
     s32 temp_v0;
-    void *temp_s0;
+    char *temp_s0;
 
-    temp_s0 = func_002B3580();
+    temp_s0 = ftsGetPlayer__Fv();
     temp_v0 = func_005EF2F0(data_00413008);
     if ((temp_v0 != 0) && (temp_s0 != NULL) && (((u64) ((s64) M2C_FIELD(temp_s0, u8 *, 0xE1) << 0x3B) >> 0x3F) != 0)) {
         func_005EAD70(temp_v0, 0, 0, 0);
