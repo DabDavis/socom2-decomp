@@ -46,7 +46,27 @@ public:
 }
 
 class CUIVariable;
-class CZSealBody;
+
+/* the seal's controller as the HUD reads it: the menu it is in (SOCOM 1's
+ * CSealCtrl::GetMenuState, a call there, inline in SOCOM II: its byte read in place) */
+class CSealCtrl {
+public:
+    MENU_STATE GetMenuState() { return m_menustate; }
+
+    unsigned char _0[0x221];
+    MENU_STATE m_menustate;   // 0x221
+};
+
+/* the seal as the HUD reads it: its controller (CEntity's, at 0xC0) */
+class CZSealBody {
+public:
+    unsigned char _0[0xc0];
+    CSealCtrl *m_ctrl;   // 0xc0
+    unsigned char _c4[0xe1 - 0xc4];
+    unsigned char _e1_0 : 4;
+    unsigned char m_socom2_e1_4 : 1;   // 0xe1 bit 4 (MapCompass::On tests it too)
+    unsigned char _e1_5 : 3;
+};
 
 /* MSL's toupper (MAIN; no map row yet) */
 extern "C" int func_0019AFD0(int c);
@@ -245,13 +265,20 @@ class CHUD {
 public:
     CHUD();
     ~CHUD();
+    void Add2D(C2D *p2d, int phase, bool add_to_back);
+    bool IsOn();
+    void Off();
+    void On();
+    void PostDITick(float dT);
+    void PreDITick(float dT);
+    void Flash(float brightness, const CPnt3D &color, float fadeout_time, float fade_time,
+               float fadein_time);
+    bool PauseGame();
     void ReInit_Init();
     void ReInit_Uninit();
     void DrawPhase(zdb::_RenderPhase phase, zdb::CCamera *cam);
     static void HudText_to_upper(char *instr);
     static CZSealBody *GetHUDOwner();
-
-    bool IsOn() { return m_ison; }
 
     C2DString m_socom2_0;   // 0x0
     CDynTexList m_dyntexlist;   // 0x98
@@ -315,7 +342,10 @@ public:
     CLensFlareManager m_lensflares;   // 0x1a698
     C2D m_phase[3];   // 0x1a6ac
     HUD_MODE m_hudmode;   // 0x1a6f4
-    unsigned char m_ison : 1;   // 0x1a6f5
+    /* SOCOM 1's m_ison byte, now two bits: IsOn reads bit 1 (Off clears it, On and Init set
+     * it), DrawPhase draws only while bit 0 is set (Init sets it; the name is ours) */
+    unsigned char m_draw : 1;   // 0x1a6f5
+    unsigned char m_ison : 1;
     CAmmoDisplay m_ammodisplay;   // 0x1a700
 };   // 0x1acd0 bytes
 
@@ -347,10 +377,10 @@ void CHUD::HudText_to_upper(char *instr)
         instr[kk] = func_0019AFD0(instr[kk]);
 }
 
-/* while the HUD is on, one of its three phase lists drawn (the HUD's three render phases) */
+/* while the HUD draws, one of its three phase lists drawn (the HUD's three render phases) */
 void CHUD::DrawPhase(zdb::_RenderPhase phase, zdb::CCamera *cam)
 {
-    if (IsOn())
+    if (m_draw)
         m_phase[phase - zdb::HUDSET1].Draw(cam);
 }
 
@@ -555,4 +585,82 @@ void CHUD::ReInit_Init()
     func_0021A510(&m_weaponsel, 1);
     func_001FF370(&m_lensflares);
     m_socom2_1a0e8 = 0.0f;
+}
+
+/* the game paused under a menu: the pause menu, the full-screen map or the orders, single player
+ * only (SOCOM 1 asked the pause menu and the controller's menu state; SOCOM II only the state).
+ * Each test is a bool of its own: written in the || itself, MW folds the three into one range
+ * test (ms - 2 < 3), where the target materialises each and chains them */
+bool CHUD::PauseGame()
+{
+    MENU_STATE menustate = GetHUDOwner()->m_ctrl->GetMenuState();
+    bool pausemenu = menustate == statePauseTestMenu;
+    bool mapmenu = menustate == stateFullScreenMapMenu;
+    bool orders = menustate == stateOrders;
+
+    return (pausemenu || mapmenu || orders) && !theNetwork.m_bNetwork;
+}
+
+/* a flash: a fader made, darkened no further than the brightness, coloured, flashed and kept */
+void CHUD::Flash(float brightness, const CPnt3D &color, float fadeout_time, float fade_time,
+                 float fadein_time)
+{
+    CFlashFX *fader = new CFlashFX;
+
+    fader->SetMinBrightness(brightness);
+    fader->SetColor(color.x, color.y, color.z);
+    fader->Flash(fadeout_time, fade_time, fadein_time);
+    m_FlashFXVector.Add(fader);
+}
+
+void CHUD::PreDITick(float dT)
+{
+    m_lensflares.PreDITick(dT);
+}
+
+void CHUD::PostDITick(float dT)
+{
+    m_lensflares.Tick(dT);
+}
+
+bool CHUD::IsOn()
+{
+    return m_ison;
+}
+
+/* a 2D object put on one of the HUD's three phase lists, at the back or the front; phase -1 takes
+ * the render phase of the first of its asset libraries that has one (a HUD set, else the third).
+ * The shape is the target's: the phase zeroed before the call (it shares the parameter's saved
+ * register), the walk guarded by the size and written as a while (the size test, then the
+ * materialised compare twice, as the target), each library's phase read before the test, and the
+ * back insert returning early (as an else, both arms meet at a branch of their own) */
+void CHUD::Add2D(C2D *p2d, int phase, bool add_to_back)
+{
+    if (phase == -1) {
+        C2D::CLibList liblist;
+
+        zdb::_RenderPhase rphase = zdb::WORLD;
+
+        p2d->GetAssetLibs(liblist);
+        if (liblist.size()) {
+            C2D::CLibList::iterator ii = liblist.begin();
+
+            while (ii != liblist.end()) {
+                zdb::_RenderPhase libphase = (*ii)->m_renderphase;
+
+                if (rphase == zdb::WORLD)
+                    rphase = libphase;
+                ii++;
+            }
+        }
+        if (rphase >= zdb::HUDSET1 && rphase <= zdb::HUDSETSMALL)
+            phase = rphase - zdb::HUDSET1;
+        else
+            phase = 2;
+    }
+    if (add_to_back) {
+        m_phase[phase].push_back(p2d);
+        return;
+    }
+    m_phase[phase].push_front(p2d);
 }

@@ -1616,7 +1616,7 @@
 0x001F93C0 0x3E4 func_001F93C0  # OVL1
 0x001F97B0 0x764 func_001F97B0  # OVL1
 0x001F9F20 0x3D8 func_001F9F20  # OVL1
-0x001FA300 0x5C func_001FA300  # OVL1
+0x001FA300 0x5C PauseGame__4CHUDFv  # OVL1; s1:order by hand (hud_main.cpp: between Tick and Init as SOCOM 1's PauseGame; returns the bool CCoreState::Tick tests before ticking the world, as SOCOM 1's -- the menu state among pause/map/orders and not networked)
 0x001FA360 0xF98 Init__4CHUDFPQ23zdb6CWorld  # OVL1; s1:callee (CCoreState::Init's call after the constructor, with the world, as SOCOM 1's; 0xF98 to SOCOM 1's 0xFA0)
 0x001FB300 0x70 func_001FB300  # OVL1
 0x001FB370 0x44 func_001FB370  # OVL1
@@ -1701,7 +1701,7 @@
 0x001FEE90 0x7C Draw__10CLetterBoxFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FEF10 0x144 __ct__10CLetterBoxFv  # OVL1; s1:order by hand (hud_letterbox.cpp's last, as SOCOM 1's; its bars set up through C2D's new slots)
 0x001FF060 0x94 Tick__17CLensFlareManagerFf  # OVL1; by hand (the only slot of CLensFlareManager's vtable 0x4052A0, which is three words: while active and not empty, every entry's C2D Tick given the float; the name ours)
-0x001FF100 0x154 func_001FF100  # OVL1
+0x001FF100 0x154 PreDITick__17CLensFlareManagerFf  # OVL1; s1:calls by hand (CHUD::PreDITick tail-calls it on the manager at CHUD+0x1A698, where SOCOM 1's calls CLensFlareSaturate::PreDITick)
 0x001FF260 0xC4 Clear__17CLensFlareManagerFv  # OVL1; by hand (CHUD::ReleaseHUD's call on the manager: every flare deleted through its virtual destructor, the list emptied, inactive; the name ours)
 0x001FF330 0x40 Init__17CLensFlareManagerFv  # OVL1; by hand (inactive, LoadRdr of lensflare.rdr, active if that gave any flare; the name ours)
 0x001FF370 0xE4 func_001FF370  # OVL1
