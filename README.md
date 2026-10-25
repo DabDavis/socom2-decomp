@@ -957,73 +957,42 @@ those 428 has ever matched (a filter the generator could apply).
 
 ## Open, and next
 
-- **zMath (OVL1 0x306670-0x30954C, 4 units): 47 of 54 functions byte-exact.** Open:
-  `CMatrix::SetRotate` (callee-saved registers right, two scratch temporaries and one `madd`
-  operand order not), `CQuat::Align` (right size; where MW keeps `&half.y` in an `s` register),
-  `CBits::Resize` (the 8x-unrolled clear loop saves one register fewer), `CPnt3D::Reflect`
-  (a by-value operator chain MW keeps four copies of), `CBBox::GetIntersect` (above), and the
-  two `DistToVector`s (written; far).
-- **zcamera (`zcam_main.cpp`, `zcam_update.cpp`, `fov.cpp`): CCamera written byte-exact but one.**
-  Open: `CCamera::Update` (13 instructions, the stack offsets of the near plane point's VU0
-  temporaries; diagnosed in its source). CmdParseParams and CmdTickParams, the keyed parameter
-  tracks (0x1120 and 0x9E8), are byte-exact: SOCOM II adds a fog colour track (a component past 1
-  read as a byte), makes the LOD value optional, and the command grows to 0x28 bytes. Their
-  registers settled on the source's locals -- one tag pointer for every track in the parser,
-  per-track locals and key pointers in the tick (MW spills three of its fifteen floats, as the
-  target does). The pins: `theta_x_z`, `SetHorizontalFOV`, `SetVerticalFOV` (each a few
-  statements, each called in the target). CAppCamera (`camera.cpp`) is next door, much changed
-  since SOCOM 1 (its camera pointer 0x80 further on).
-- **ZAnim's command handlers (`zanim_cmd_tick.cpp`): 52 of 58 written are byte-exact.** Open:
-  `zAnimIfTick`, `zAnimLODTestTick`, `zAnimObjectOpacityFromToTick`, TRUE_COLOR_SCALE,
-  UPDATE_SHADOW_MAP_LIGHTING and `apply_script_frame` (its two accumulators trade `$f20` and
-  `$f21`; not the declaration order, not which is defined first), each diagnosed in its source.
-  Unwritten: SCROLL_MOTION's tick (an inlined VU0 transform), OBJECT_MOTION_FROM_TO (0x25F9B0,
-  which also links CNode::GetBBox's copy, 0x262550) and the big ones (Light, ParticleSource,
-  Sound, CallAnimBegin).
-- **CZAnimMain (`anim_main.cpp`, `zanim_zar.cpp`), the name tables (`zanim_names.cpp`), CZAnimSet
-  (`zanim_set.cpp`) and CZAnim (`zanim_anim.cpp`): all written byte-exact but five.**
-  Open: SequenceRunning, GetCmd, GetAnimSetIndex, Open (registers in the inlined NewAnimSet --
-  the permuter found nothing in Open's own text), CZAnim::LoadNodeNames (a strength-reduced
-  index), ZAnimWildcardApply (two registers and a strength reduction; the wildcard search's Init
-  and Next match, on SOCOM 1's statics). Unwritten: the rest of CZAnim. MSL's vector reserve (pod and class)
-  and at() match from include/vector; insert does not yet (the pod one 8 bytes short:
-  build/scratch/ins/BEST-pod-insert-0x418.txt -- the target reloads the capacity in the growth
-  path, where every form tried keeps it).
-- **zdb::CNode: `node_vector.cpp` (0x310980-0x3124EB, the typed lists and the code before
-  them), `node_main.cpp` (0x3124F0-0x31789F) and `node_model.cpp` -- the first and last names
-  ours.** The boundaries are inlining evidence (DeleteChild and AddVisual call the lists'
-  Exists and Remove, which MW inlines within a unit; Create inlines SetName; CreateXRef calls
-  SetName and SetPosition) and the template instances that close each unit. Byte-exact: the
-  FindChild trio, AddChild, AddVisual, AddDI, SetNodeEx, DeleteChild(ren), Copy, the atoms, the
-  radius, SetName, the setters through the tree (SetDynamic and its pair, the SetApply four,
-  SetUseParentBBoxTree, SetModeTree, SetDescendantVisuals/DI), ScrollTexture, RemoveDecals,
-  DeleteDI, BuildMatrixPalette, VisualEffectsTick, the CLight and CLightMap code, and
-  node_model.cpp's GetMesh/GetSubMesh/GetFirstVisual, CreateXRef, CreateInstance and Delete.
-  The destructor, _Copy, InitNodeParams, CopyParams, Create, SetBlendMode, DeleteDI and the
-  deferred-visual teardown match too. Open: ApplyDecal (two instructions), DeleteVisuals (four
-  bytes), InheritRegionMasks (four), the constructor (a word store where MW narrows to a byte),
-  BuildMTW, ComputeFacadeMatrix, CNodeVector::Remove -- each diagnosed in its source.
-  Unwritten: SetParentHasVisuals and DeleteVisual (std::list walks the new wrapper iterator may
-  now reach), Read, FindMeshTextures and the functions between them.
-- **The game states, the app camera and the HUD (`src/Apps/FTS/`, the DWARF's directory),
-  written in parallel in worktrees** over three rounds: st_core, st_exit, st_load, st_mpexit
-  and st_menu (fts_state.h); camera.cpp (CAppCamera's commands, mode, AttachTo, ResetView and
-  SOCOM II's shake) and thezoom.cpp (CameraZoom's Tick, goals, lens effects); hud_fader,
-  hud_missioncams, hud_letterbox, hud_posebitmap, hud_playermapitem, hud_mapcompass,
-  hud_bitmapreticule, hud_actionbitmap (C2D's small virtuals, defined in ztwod.h as SOCOM 1's
-  DWARF files them), hud_newhudmap and the claymore and bomb map items. Open:
-  CAppCamera::CmdBeginShake (registers), LookAt (vector addresses kept in saved registers),
-  CameraZoom::SeeFarther (one fog colour copy short), CEntityItr::Advance (needs the const
-  wrapper iterator), CMenuState::Tick (saved-register numbering), CZClaymoreMapItem::Tick (two
-  instructions: a sum staged through `$f0`), CFlashFXVector::Reset.
-- **`CZWeaponList::GetWeapon` (`0x3C4B40`)** -- 2 instructions from exact with an `int`
-  parameter, but SOCOM 1's mangled name says `EQUIP_ITEM`, and every enum-typed variant sinks
-  the zero-extension into the loop preheader.
-- **`tools/scperm.py`** (EQOA's tree-sitter mutations driven by MW, ~195 candidates a second
-  on 6 cores) has not yet closed a function: its finds so far trade correctness for score.
-- Tell 3.0b50 from 3.0b52; port eqrefcheck's data-reference audit to absolute addresses.
-- The MSL runtime in MAIN (`_delete_vec` and friends) is MW-built library code -- a second
-  calibration set once its source is pinned down.
+The work runs in lanes (see "Working in parallel"), each an address range with its own units;
+their open functions are diagnosed in their sources (`grep -rn "OPEN" src/ --include=*.cpp`).
+What is open across lanes, and what comes next:
+
+- **The class vector's constructor** (include/vector): CCompass::CreateAnchor and CEntity's
+  constructor inline a vector<CPnt3D>/CTargetList member's constructor whole -- three levels --
+  while zanim_set.cpp's SaveNodeStates needs `new CZAnimSetSave` (a pointer vector base and three
+  vector members) to inline only its implicit constructor, which wants four, and AddAnimEx pins
+  the pointer vector's at three. No out-of-class piece explains it yet: every piece of the chain
+  is inlined into a unit's own function somewhere, which out-of-class members never are.
+- **The list destructor's height** (include/list): ~C2D and ~CHUD's flare list inline four
+  destructor levels plus the deleter's iterator temporaries, which every probe says costs a
+  fifth; the cut that ~CEntityList and ~CAssetList show is explained (a range erase the unit's own
+  code instantiated).
+- **MSL pieces not modelled yet**: deque<const void *> (CGame's state stack -- the states lane),
+  the class vector's destroy for elements with a virtual destructor (C2DPoly's deleter),
+  __vector_imp::resize out of line (CPool), and the pod vector's end() reusing begin()'s load
+  (AddPalette, ~CAssetLib, DeleteChildren).
+- **zMath** (0x306670-0x30954C, 47 of 54): CMatrix::SetRotate, CQuat::Align, CBits::Resize,
+  CPnt3D::Reflect, CBBox::GetIntersect and the two DistToVectors. **zcamera**: CCamera::Update
+  (13 instructions, the near plane's VU0 temporaries' stack offsets). **ZAnim**: the big handlers
+  (OBJECT_MOTION tick/begin, PARTICLE_SOURCE, CallAnimBegin, InitCommands) and apply_script_frame
+  ($f20/$f21), ComputeRunTime, OBJECT_MOTION_FROM_TO's begin, SCROLL_MOTION.
+- **Unclaimed ranges** for the next lanes: OVL1 0x280000-0x293000 (CBody, CSequence,
+  CZSIScript, CZBodyAnim -- SOCOM 1 names them, no DWARF), 0x322000-0x33F000 (Particle, CPipe,
+  zrdr, CSaveModule/CSaveManager), 0x37D000-0x408480 (CBufferIO/CFileIO/CMemCardIO, CZWeapon,
+  CZProjectileList, the UI specs, CTurret); OVL2 0x5B8000-0x610000 (CZKit, CRemoteCtrl, the AI
+  state family CAiS*, CSealCtrlSquirm). The prebuilt GCC libraries (Sony's libnetb/inet and the
+  USB-audio lgAud in OVL1 0x243000-0x258000, the speech recogniser at OVL2's start, the Medius/DME
+  network libraries from 0x610000) are not MW code: EQOA's EE-GCC toolchains could match them, a
+  separate effort.
+- **`tools/scperm.py`** (EQOA's tree-sitter mutations driven by MW) has not yet closed a
+  function: its finds so far trade correctness for score.
+- Tell 3.0b50 from 3.0b52; port eqrefcheck's data-reference audit to absolute addresses. The
+  MSL runtime in MAIN (`_delete_vec` and friends) is MW-built library code -- a second calibration
+  set once its source is pinned down.
 
 ## Credits and licence scope
 
