@@ -658,7 +658,9 @@ bool CZOnlineLobby::IsMemberOfClan()
  * OPEN, 1 instruction: the member's compare is `xor v0,v0,v1` in the target (the leader first, the
  * member's id loaded into v1), `xor v0,v1,v0` here; written leader-first the member's id lands in v0
  * instead and the loads trade registers. Tried: either operand order, an accessor, a local id, a
- * ternary, a bool local, if/else. */
+ * ternary, a bool local, if/else; and (round 5) the member's arm through an inline taking the id,
+ * `IsClanLeader(m->AccountID)`: `leader == id` inside gives the target's xor order with the loads
+ * swapped (the id in v0), `id == leader` the target's loads with the xor reversed. */
 bool CZOnlineLobby::IsLeaderOfClan(const char *name)
 {
     ClanMemberItem *m = ClanMemberVec.Find(name);

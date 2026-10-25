@@ -243,6 +243,7 @@
 0x003E2EB0 0x8 __RTTI__14CMenuStateMenu  # RTTI of CMenuStateMenu: found by its RTTI's name
 0x003E2F40 0x8 __RTTI__10CLoadState  # RTTI of CLoadState: found by its RTTI's name
 0x003E2FD0 0x8 __RTTI__9CLoadMenu  # RTTI of CLoadMenu: found by its RTTI's name
+0x003E3048 0x4 c_szCornerBoxesTx  # OVL1 data; SOCOM 1's name (a static of each HUD unit there; one global in SOCOM II, in hud_main.cpp's data after its layout floats): "newweapnbkrnd.tif" -- 11 references in 6 functions take 0x3E3048 (CHUD::Init, CWeaponSel::Init, CTeamNames::Init, SetupBackgroundBox x5, SetupSpectatorBox, 0x22CC10); the HUD lane
 0x003E3618 0x8 __RTTI__10UIVarMixin  # RTTI of UIVarMixin: found by its RTTI's name
 0x003E36A8 0x8 __RTTI__3C2D  # RTTI of C2D: found by its RTTI's name
 0x003E36E0 0x8 __RTTI__9C2DString  # RTTI of C2DString: found by its RTTI's name
@@ -264,6 +265,7 @@
 0x003E43F0 0x8 __RTTI__9CZLineMap  # RTTI of CZLineMap: found by its RTTI's name
 0x003E4830 0x8 __RTTI__14BitmapReticule  # RTTI of BitmapReticule: found by its RTTI's name
 0x003E4AE0 0x8 __RTTI__10CWeaponSel  # RTTI of CWeaponSel: found by its RTTI's name
+0x003E4F60 0x4 s_fDividerY__27@unnamed@hud_teamnames_cpp@  # OVL1 data; ours (the HUD lane): the dividers' line, 3 + 15 + 17 + the HUD's bottom block (0x3E2FF8), computed by hud_teamnames.cpp's initialiser 0x3FE700 -- 5 references in 2 functions take 0x3E4F60 (CTeamNames::Init x4)
 0x003E4FA0 0x8 __RTTI__10CTeamNames  # RTTI of CTeamNames: found by its RTTI's name
 0x003E5020 0x8 __RTTI__10PoseBitmap  # RTTI of PoseBitmap: found by its RTTI's name
 0x003E51B0 0x8 __RTTI__15CZPlayerMapItem  # RTTI of CZPlayerMapItem: found by its RTTI's name
@@ -273,6 +275,9 @@
 0x003E5660 0x8 __RTTI__6CFader  # RTTI of CFader: found by its RTTI's name
 0x003E56A8 0x8 __RTTI__8CFlashFX  # RTTI of CFlashFX: found by its RTTI's name
 0x003E56F0 0x8 __RTTI__16CZHudMissionCams  # RTTI of CZHudMissionCams: found by its RTTI's name
+0x003E5718 0x4 s_fCornerU__28@unnamed@hud_scorepopup_cpp@  # OVL1 data (zero in the image); ours: the pop-up's corner texture coordinate SetupBackgroundBox reads, set by the unit's initialiser 0x3FE980 -- 7 references in 2 functions take 0x3E5718; the HUD lane
+0x003E5720 0x4 s_fCornerV__28@unnamed@hud_scorepopup_cpp@  # OVL1 data (zero in the image); ours: the other corner coordinate, set by 0x3FE980 -- 7 references in 2 functions take 0x3E5720; the HUD lane
+0x003E5728 0x4 s_fInnerBottom__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: SetupBackgroundBox's guarded local static, the box's inner bottom (guard 0x412E80) -- 5 references in 1 function take 0x3E5728; the HUD lane
 0x003E5B58 0x8 __RTTI__14CShutdownState  # RTTI of CShutdownState: found by its RTTI's name
 0x003E5C58 0x8 __RTTI__12CRebootState  # RTTI of CRebootState: found by its RTTI's name
 0x003E6710 0x8 __RTTI__10CMPInfoBox  # RTTI of CMPInfoBox: found by its RTTI's name
@@ -654,11 +659,24 @@
 0x0040BF40 0x10 g_mapLineProps__25@unnamed@hud_linemap_cpp@  # OVL1 bss; SOCOM 1's static (its symbol table: hud_linemap.cpp's unnamed namespace, a std::map<int, LINE_DATA>): the line types by id -- hudAddLineType reads it through operator[], the unit's initialiser 0x3FE190 builds it and registers ~map (0x2110F0)
 0x0040BF60 0x10 g_mapPolyProps__25@unnamed@hud_linemap_cpp@  # OVL1 bss; SOCOM 1's static (its symbol table: hud_linemap.cpp's unnamed namespace, a std::map<int, LINE_DATA>): the polygon types by id -- hudAddPolyType reads it through operator[], built and registered by 0x3FE190 after the line types
 0x0040C060 0xC navpoint_vec  # OVL1 bss; SOCOM 1's global (a vector of nav packages: hud_mapcompass.cpp's initialiser builds it, MapCompass's constructor reserves it, its destructor frees it, Tick fills it): 7 references in 4 functions take 0x40C060
+0x0040D7A0 0x98 g_strAlphaBracket__27@unnamed@hud_teamnames_cpp@  # OVL1 bss; SOCOM 1's (hud_teamnames.cpp's unnamed namespace): a C2DString, built and registered by 0x3FE700 -- 4 references in 3 functions take 0x40D7A0 (Clear, Init), the colour stores more; the HUD lane
+0x0040D850 0x98 g_strBravoBracket__27@unnamed@hud_teamnames_cpp@  # OVL1 bss; SOCOM 1's (hud_teamnames.cpp's unnamed namespace): a C2DString, built and registered by 0x3FE700 -- 4 references in 3 functions take 0x40D850; the HUD lane
+0x0040D900 0x80 g_lnDivider__27@unnamed@hud_teamnames_cpp@  # OVL1 bss; SOCOM 1's (its one divider; SOCOM II has two, this the upper): a C2DBitmap, built and registered by 0x3FE700 -- 6 references in 3 functions take 0x40D900 (Init x3, SetOpacity); the HUD lane
+0x0040D990 0x80 g_lnDivider2__27@unnamed@hud_teamnames_cpp@  # OVL1 bss; ours (SOCOM II's second divider, after the first and its registration record): a C2DBitmap, built and registered by 0x3FE700 -- 6 references in 3 functions take 0x40D990; the HUD lane
 0x0040DA18 0x4 m_conetex__15CZPlayerMapItem  # OVL1 bss; SOCOM 1's static (CZPlayerMapItem's constructor copies it into its own cone texture, as SOCOM 1's did): 3 references in 3 functions take 0x40DA18
 0x0040DA20 0x4 m_alivebliptex__15CZPlayerMapItem  # OVL1 bss; SOCOM 1's static (the constructor's blip texture, next after m_conetex as in SOCOM 1; the statics 8 apart now): 3 references in 3 functions take 0x40DA20
 0x0040DA28 0x4 m_deadbliptex__15CZPlayerMapItem  # OVL1 bss; SOCOM 1's static (the third of the three, which TickSealCone reads where the others are not): 3 references in 3 functions take 0x40DA28
 0x0040DA40 0x98 m_ablestring__15CZPlayerMapItem  # OVL1 bss; SOCOM 1's static (a C2DString, 0x98 in SOCOM II): 7 references in 5 functions take 0x40DA40 (CZPlayerMapItem's InitStaticItems, UnInitStaticItems, DrawAlphaBravo and MissionEndCleanup among them)
 0x0040DAF0 0x98 m_bravostring__15CZPlayerMapItem  # OVL1 bss; SOCOM 1's static (a C2DString): 7 references in 5 functions take 0x40DAF0 (the same functions, in the same pairs)
+0x0040F628 0x4 g_iBoxLeftX__28@unnamed@hud_scorepopup_cpp@  # OVL1 bss; SOCOM 1's (hud_scorepopup.cpp's unnamed namespace: g_iBoxLeftX, g_iBoxRightX, g_iBoxTopY 4 apart there, 8 here): the pop-up's left, (int)153 set by 0x22CC10 -- 10 references in 4 functions take 0x40F628 (SetupTeam 0x229D00, AddRow 0x22A290, SetupBackgroundBox, 0x22CC10); the HUD lane
+0x0040F630 0x4 g_iBoxRightX__28@unnamed@hud_scorepopup_cpp@  # OVL1 bss; SOCOM 1's: the pop-up's right, the left + 477 (0x22CC10) -- 12 references in 4 functions take 0x40F630; the HUD lane
+0x0040F638 0x4 g_iBoxTopY__28@unnamed@hud_scorepopup_cpp@  # OVL1 bss; SOCOM 1's: the pop-up's top, theMission's two counts + 5 (0x22CC10) -- 8 references in 2 functions take 0x40F638 (SetupBackgroundBox, 0x22CC10); the HUD lane
+0x0040F640 0x4 g_iSpecBoxLeftX__28@unnamed@hud_scorepopup_cpp@  # OVL1 bss; ours (SOCOM II's spectators' box): its left, 10 (0x22CC10) -- 14 references in 3 functions take 0x40F640 (the tick 0x22BE20, 0x22CC10, SetupSpectatorBox); the HUD lane
+0x0040F648 0x4 g_iSpecBoxRightX__28@unnamed@hud_scorepopup_cpp@  # OVL1 bss; ours: the spectators' box's right, the pop-up's left - 1 (0x22CC10) -- 12 references in 3 functions take 0x40F648; the HUD lane
+0x0040F650 0x4 g_iSpecBoxTopY__28@unnamed@hud_scorepopup_cpp@  # OVL1 bss; ours: the spectators' box's top, the pop-up's top (0x22CC10) -- 8 references in 3 functions take 0x40F650; the HUD lane
+0x0040F658 0x4 g_iSpecBoxBottomY__28@unnamed@hud_scorepopup_cpp@  # OVL1 bss; ours: (int)(25 + the spectators' top + 100), stored by 0x22CC10 -- 1 reference; the HUD lane
+0x00412E68 0xC g_vSpecBoxColor__28@unnamed@hud_scorepopup_cpp@  # OVL1 bss; ours: a CPnt3D the spectators' box bitmaps take through SetColor(const CPnt3D &), built by 0x3FE980 -- 3 references in 3 functions take 0x412E68 (SetupSpectatorBox, 0x22CC10, 0x3FE980); the HUD lane
+0x00412E80 0x1 s_fInnerBottom_guard__28@unnamed@hud_scorepopup_cpp@  # OVL1 bss; ours: the guard byte of SetupBackgroundBox's local static 0x3E5728 -- 2 references in 1 function take 0x412E80; the HUD lane
 0x004148B0 0xC s_hbHealthColor  # OVL1 bss; hud_healthbar.cpp's static (0, 128, 64), name ours: the health left -- the initialiser 0x3FF9C0 builds it, CHealthBar's constructor sets its first bitmap to it, the Tick fades the flash back to it; 9 references in 3 functions -- the HUD lane
 0x004148C0 0xC s_hbFlashColor  # OVL1 bss; hud_healthbar.cpp's static (128, 128, 128), name ours: the flash a rise starts from (CHealthBar::Tick); 5 references in 2 functions (the Tick, the initialiser) -- the HUD lane
 0x004148D0 0xC s_hbRestColor  # OVL1 bss; hud_healthbar.cpp's static (128, 64, 64), name ours: the rest of the bar while its owner lives (the constructor, Update); 5 references in 3 functions -- the HUD lane
@@ -906,6 +924,7 @@
 0x0049E7E0 0x4 m_running  # OVL1 bss; SOCOM 1's file static of the VU unit (InterruptFromVIF0 clears it, as SOCOM 1's clears m_running at gp-26268, after m_VifHandlerID there); 1 reference (InterruptFromVIF0) -- the sound/system lane
 0x0049E800 0xC m_list__6CValve  # OVL1 bss; SOCOM 1's (every valve: CValve::GetByName walks it, Create pushes onto it; its sentinel at 0x49E804); the sound/system lane
 0x0049E840 0x4 m_baseAddress__Q23zdb8CTexture  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Init__Q23zdb8CTextureFv +1)
+0x0049E850 0x4 m_endAddress__Q23zdb8CTexture  # OVL1 bss; SOCOM 1's by position (its CTexture statics m_baseAddress, m_startAddress, m_endAddress, m_freeAfterLoad, then CTexPalette::m_palId, 4 apart; SOCOM II's 8 apart from m_baseAddress 0x49E840 to m_palId 0x49E860): ztex_manager.cpp's buffer size is it less m_baseAddress -- 4 references in 4 functions take 0x49E850 (doAddBuffer, CTexture::Init, PreGetSprPacket, CGSTexBuffer::Setup); the HUD lane
 0x0049E860 0x4 m_palId__Q23zdb11CTexPalette  # OVL1 bss; s1:data-seq (size SOCOM 1's; via __ct__Q23zdb11CTexPaletteFPCc)
 0x0049E880 0x1C m_texmanager__Q23zdb11CTexManager  # OVL1 bss; SOCOM 1's (the texture buffers' vector first: the states index its data at 8 and pass it to DestroyBuffers): 114 references in 30 functions take 0x49E880-0x49E888
 0x0049E8A0 0x10 TexBufParams__Q23zdb11CTexManager  # OVL1 bss; SOCOM 1's (16 bytes at m_texmanager + 0x20, as the demo's 0x50EB20 after its 0x50EB00): the CTextureAssetCharacters constructor passes its first two floats to doAddBuffer as SOCOM 1's does; 27 references in 4 functions take 0x49E8A0-0x49E8AC
@@ -957,11 +976,14 @@
 0x004B5030 0x14 m_tempPool__Q23zdb6CDecal  # OVL1 bss; s1:data-seq (size SOCOM 1's; via PutTempDecal__Q23zdb6CDecalFPQ23zdb6CDecal +2)
 0x004B5050 0x14 m_permPool__Q23zdb6CDecal  # OVL1 bss; s1:data-seq (size SOCOM 1's; via PutPermDecal__Q23zdb6CDecalFPQ23zdb6CDecal +1)
 0x004B5080 0x14 m_tempPool__Q23zdb10CMeshDecal  # OVL1 bss; s1:data-seq (size SOCOM 1's; via PutTempDecal__Q23zdb10CMeshDecalFPQ23zdb10CMeshDecal +1)
+0x004B50A0 0x14 m_permPool__Q23zdb10CMeshDecal  # OVL1 bss; SOCOM 1's static (20 bytes, m_permPool__Q23zdb10CMeshDecal at 0x511C00 in the demo, after m_tempPool): CZMarkList::UnInit empties it with CMeshDecalPool::Uninit as SOCOM 1's does, after the temporary pool at 0x4B5080 -- the wep lane; 9 references in 5 functions
 0x004B51A0 0x4 m_instance_count__8CVisBase  # OVL1 bss; s1:data by hand (the wep lane: SOCOM 1's CVisBase::m_instance_count -- ~CVisual's inlined ~CVisBase decrements it, as SOCOM 1's ~CVisBase; CopyBuffer (0x3C36D0) and 0x3B2CB0 increment it in the inlined constructor; 6 references in 3 functions)
 0x004B51B8 0xC m_callbacks  # OVL1 bss; s1:data-exact (size SOCOM 1's; via AddWeaponEventCallback__8CZWeaponFPFP12CZProjectileUiPv_vUiPv)
 0x004B5210 0xC m_listWeapons__8CZWeapon  # OVL1 bss; SOCOM 1's static (12 bytes, its GetWeaponId passes it to CZWeaponList::GetWeaponId as SOCOM II's does, 0x3D19E0; CZKit::SetItem passes it to the list's GetWeapon, 0x3C4B40, as SOCOM 1's -- the kit lane); 60 references in 36 functions
 0x004B5220 0x4 m_pProjectilelist__8CZWeapon  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Close__8CZWeaponFv +1)
 0x004B5248 0x4 m_pMarklist__8CZWeapon  # OVL1 bss; SOCOM 1's (CCoreState::auxUnload reads it beside m_pProjectilelist, as SOCOM 1's): 7 references in 6 functions take 0x4B5248
+0x004B5260 0x1C m_flyout_machine__8CZWeapon  # OVL1 bss; SOCOM 1's static (28 bytes, m_flyout_machine__8CZWeapon at 0x511DB0 in the demo): the initialiser 0x404C10 builds it with CFlyoutMachine's constructor, CZProjectile::SetModelOrientation acquires a tracer from it, CZWeapon::Open hooks it up -- the wep lane; 7 references in 6 functions
+0x004B5290 0xC m_decalsets__10CZDecalSet  # OVL1 bss; SOCOM 1's static (12 bytes, m_decalsets__10CZDecalSet at 0x511DE0 in the demo, its vector of decal sets): GetDecalSetByName walks it and DestroyDecalSet empties it as SOCOM 1's do, 0x3D0630 pushes onto it, the initialiser 0x404C10 zeroes it -- the wep lane; 19 references in 4 functions
 0x004B52B8 0x4 m_timer_maxval__8CZWeapon  # OVL1 bss; s1:data-seq (size SOCOM 1's; via RetrieveTimerRegistration__8CZWeaponFPPfPfPb)
 0x004B52C0 0x4 m_timer_pCurval__8CZWeapon  # OVL1 bss; s1:data-seq (size SOCOM 1's; via RetrieveTimerRegistration__8CZWeaponFPPfPfPb)
 0x004B5310 0xC m_ammolist__6CZAmmo  # OVL1 bss; SOCOM 1's static (12 bytes, m_ammolist__6CZAmmo at 0x511E00 in the demo): __sinit_zwep_ammo.cpp (0x404CD0) builds it with CZAmmoList's constructor, CZAmmo::GetAmmoId/GetAmmo hand it to the list's, as SOCOM 1's -- the wep lane; 13 references in 10 functions

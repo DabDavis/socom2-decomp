@@ -10,6 +10,7 @@
 #include "../znode/znode.h"
 #include "../znode/node_world.h"
 #include "zweapon.h"
+#include "../zsys/zsys.h"
 
 using namespace zdb;
 
@@ -38,6 +39,13 @@ extern "C" double tan(double x);
 
 /* an animation stopped (0x2707C0, not named) */
 extern "C" void func_002707C0(CZAnim *anim, int b);
+
+/* the HUD's timer cleared when it is the one given, or when given none (0x3CFFD0, CZWeapon's; not
+ * named) */
+extern "C" void func_003CFFD0(float *timer);
+
+/* the tracers' speed (0x3E1570, initialised data; not named) */
+extern "C" float data_003E1570;
 
 /* ---- the members ---- */
 
@@ -73,6 +81,73 @@ CZProjectile::~CZProjectile()
 
 /* every member's first value (SOCOM 1's constructor's stores, in its order, with SOCOM II's
  * members among them) */
+/* (the bit tested for the tracer is bit 5 of the flags, SOCOM 1's bit 3; the flyout machine taken
+ * between the count's two tests, as the target loads it; the diagonals set matrix by matrix) */
+void CZProjectile::SetModelOrientation(bool b, const CPnt3D *dir)
+{
+    if (!m_instance)
+        return;
+    m_instance->SetActive(true);
+    CPnt3D d = m_frameendpos - m_framestartpos;
+    float len = d.Length();
+
+    d.Normalize();
+    CMatrix m(m_instance->m_matrix);
+    CMatrix scale;
+    CMatrix stretch;
+
+    if (b) {
+        len *= 0.1f;
+        scale.SetIdentity();
+        stretch = scale;
+        stretch.m_matrix[0][0] = len;
+        stretch.m_matrix[1][1] = len;
+        stretch.m_matrix[2][2] = len;
+        scale.m_matrix[0][0] = 7.5f;
+        scale.m_matrix[1][1] = 7.5f;
+        scale.m_matrix[2][2] = 7.5f;
+    }
+    CMatrix rot;
+    CPnt3D fwd(1.0f, 0.0f, 0.0f);
+    CQuat q;
+
+    q.Align(fwd, d);
+    q.ToMatrix(&rot);
+    CBBox box;
+
+    if (b) {
+        sceVu0MulMatrix(scale.m_matrix, rot.m_matrix, scale.m_matrix);
+        sceVu0MulMatrix(stretch.m_matrix, rot.m_matrix, stretch.m_matrix);
+        m_instance->SetMatrix(&stretch);
+        box = *m_instance->GetBBox();
+        box.m_max.x = len;
+        box.m_max.y = 0.1f;
+        box.m_max.z = 0.1f;
+    }
+    if (b && m_lastHitWasVolumetric) {
+        if (m_tracer_count) {
+            CFlyoutMachine *machine = &CZWeapon::m_flyout_machine;
+
+            if (!(m_tracer_count % 4)) {
+                if (m_flyout_idx == 0)
+                    CFlyoutMachine::SetTracerModel(CFlyoutMachine::pFlyout_Model_Ally);
+                else if (m_flyout_idx == 1)
+                    CFlyoutMachine::SetTracerModel(CFlyoutMachine::pFlyout_Model_Enemy);
+                machine->AcquireFlyout(m_framestartpos, m_frameendpos, 0, m_weapon, data_003E1570,
+                                       &scale, &box);
+                CFlyoutMachine::SetTracerModel(CFlyoutMachine::pFlyout_Model_Standard);
+                m_tracer_count = 0;
+            }
+        }
+    } else {
+        EQUIP_ITEM type = m_weapon->GetIDType();
+
+        if (m_weapon->IsDirectFire() || type == 171 || type == 185 || type == 230)
+            m_instance->SetMatrix(&rot);
+    }
+    m_instance->SetPosition(m_framestartpos.x, m_framestartpos.y, m_framestartpos.z);
+}
+
 void CZProjectile::Init()
 {
     m_heading = m_pitch = m_roll = 0.0f;
@@ -161,6 +236,48 @@ void CZProjectile::ForgetHitNode(zdb::CNode *node)
 
         if (hit && hit->m_node == node)
             hit->m_node = 0;
+    }
+}
+
+/* the timer given up if it is this one's, the intersections released, the node emptied and taken
+ * out of the world, the pickup destroyed and the anim stopped (SOCOM 1's, with the second
+ * intersection SOCOM II's) */
+void CZProjectile::Cleanup()
+{
+    if (&m_time == CZWeapon::m_timer_pCurval)
+        func_003CFFD0(0);
+    if (m_di) {
+        if (m_shottype == ONE_FRAME)
+            CZWeapon::m_pProjectilelist->ReleaseDirectFireDI(&m_di, &m_di_handle);
+        else
+            CZWeapon::m_pProjectilelist->ReleaseIndirectFireDI(&m_di, &m_di_handle);
+        m_di = 0;
+        m_di_handle = -1;
+    }
+    if (m_di2) {
+        CZWeapon::m_pProjectilelist->ReleaseDirectFireDI(&m_di2, &m_di2_handle);
+        m_di2 = 0;
+        m_di2_handle = -1;
+    }
+    if (m_instance) {
+        m_instance->SetNodeEx(0, true);
+        m_instance->DeleteChildren();
+        m_instance->SetActive(false);
+        if (m_weapon && !m_weapon->IsDirectFire())
+            CWorld::m_world->DeleteTextureAssetCharacter(CHARSETCOMMON, m_instance);
+        if (m_instance->m_parent)
+            m_instance->m_parent->DeleteChild(m_instance);
+        FreeVector<std::vector<CNode *> >(m_instance->GetChildren());
+        m_instance->SetModel(0);
+        m_instance->DeleteDI();
+    }
+    if (m_pickup) {
+        CPickup::Destroy(m_pickup);
+        m_pickup = 0;
+    }
+    if (m_animinstance) {
+        func_002707C0(m_animinstance, 0);
+        m_animinstance = 0;
     }
 }
 

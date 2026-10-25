@@ -319,6 +319,25 @@ CAiMap::CAiMap(int mapid) : m_layer0(0)
     m_layers.push_back(&m_layer0);
 }
 
+/* the map emptied: the box and the size back to nothing, the first layer's cells, the extra data,
+ * the other layers and the graph given up, then the tables destroyed (SOCOM 1's, the layers new).
+ * OPEN (0x250 against 0x258): only the box, CAiMap(int)'s question above -- the target copies the
+ * point into the second corner and that corner into m_bbox through registers (sp+80 in a2, sp+60
+ * in v0), where MW folds the stand-in's to sp offsets; every call and member destructor after it
+ * is the target's, in its order */
+CAiMap::~CAiMap()
+{
+    m_bbox = (const CBBox &)CBBoxInit(CPnt3D::zero);
+    m_ny = 0;
+    m_nx = 0;
+    m_dy = 0.0f;
+    m_dx = 0.0f;
+    m_layer0.FreeCells();
+    FreeEx();
+    DeleteLayers();
+    DestroyGraph();
+}
+
 /* bit 1 of the map's flags set or cleared, the old value returned (new in SOCOM II, the name ours:
  * SetCellLink and the layers' removal set it after a change) */
 bool CAiMap::SetModified(bool modified)
@@ -425,6 +444,16 @@ CAiCell *CAiCell::Alloc(unsigned int n)
 
 /* called, not inlined, by the initialiser (the target's jal 0x515720): pinned */
 #pragma auto_inline off
+/* a cell's altitude: the box's floor plus its quantised height (new in SOCOM II, the name ours) */
+bool CAiMap::GetAltitude(const CAiCell *cell, float &alt) const
+{
+    if (cell) {
+        alt = m_bbox.m_min.y + m_alt_quant * (float)cell->m_altitude;
+        return true;
+    }
+    return false;
+}
+
 CAiCell::CAiCell()
 {
     Reset();
