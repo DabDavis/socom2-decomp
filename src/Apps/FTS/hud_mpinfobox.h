@@ -60,10 +60,25 @@ class CHealthBar : public C2D {
 public:
     CHealthBar();
     virtual ~CHealthBar();
+    /* slots 11 and 12 (vtable 0x405EF0): its three bitmaps faded together (0x241C30), the tick
+     * (0x242050) */
+    virtual void SetTrans(float trans);
+    virtual void Tick(float dT);
+    /* where the bar sits and how big it is (0x241CA0, 0x241CB0; the names ours) */
+    void SetPos(float x, float y);
+    void SetSize(float w, float h);
     /* the bar set from its owner's health (0x241CC0; the name ours) */
     void Update(class CZSealBody *owner, bool force);
 
-    unsigned char _18[0x1d0 - 0x18];
+    float m_health;   // 0x18: the health shown (Update compares the owner's against it)
+    float m_x;   // 0x1c
+    float m_y;   // 0x20
+    float m_w;   // 0x24
+    float m_h;   // 0x28
+    C2DBitmap m_bitmap1;   // 0x30
+    C2DBitmap m_bitmap2;   // 0xb0
+    C2DBitmap m_bitmap3;   // 0x130
+    unsigned char _1b0[0x1d0 - 0x1b0];
 };   // 0x1d0 bytes
 
 /* the box (its vtable 0x405B40 overrides Off, On and Tick) */
