@@ -12,6 +12,7 @@
 #define ZUI_SPEC_H
 
 #include <iterator>
+#include <string>
 
 #include "zui.h"
 #include "../zutil/util_stable.h"
@@ -37,39 +38,16 @@ bool zrdr_findPNT3D(const _zrdr *rdr, const char *tag, PNT3D *out);
 extern "C" int strcasecmp(const char *a, const char *b);
 extern "C" int strcmp(const char *a, const char *b);
 
-/* <string>'s out-of-line members, by address: include/string has neither the copy constructor
- * (0x22E560: the short form copied whole, the long form reserved and replaced in) nor the copy
- * assignment (0x22E4D0) yet. The others are include/string's placeholders and the map's
- * destructor (0x1E7EF0) */
-extern "C" {
-void *func_0022E560(void *str, const void *src);
-void *func_0022E4D0(void *str, const void *src);
-void func_001E7EF0(void *str, int flags);
-void *func_001EEB40(void *str, const char *s);
-void *func_001EE780(void *str, unsigned int pos, unsigned int n1, const char *first, const char *last,
-                    std::forward_iterator_tag);
-}
-
 /* SOCOM 1's CSaferStr (zutil.h: MSL's basic_string under a name of its own, a null pointer
- * assigned as the empty string). A stand-in of SOCOM II's 12-byte string until include/string has
- * the copies: its pieces call the string's out-of-line members, the destructor handing the
- * string's 0 as the real one's implicit destructor does for its base */
-class CSaferStr {
+ * assigned as the empty string; SOCOM 1's symbols name its operator=(const char *)). Its copy, copy
+ * assignment and destructor are implicit: they run include/string's out-of-class members (0x22E560,
+ * 0x22E4D0, 0x1E7EF0 -- the destructor with 0, a base subobject's) */
+class CSaferStr : public std::string {
 public:
-    CSaferStr() { init(); }
+    CSaferStr() {}
     /* the string made empty, then assigned (SOCOM 1's, as its operator=) */
-    CSaferStr(const char *sz)
-    {
-        init();
-        *this = sz;
-    }
-    CSaferStr(const CSaferStr &s) { func_0022E560(this, &s); }
-    ~CSaferStr() { func_001E7EF0(this, 0); }
-    CSaferStr &operator=(const CSaferStr &s)
-    {
-        func_0022E4D0(this, &s);
-        return *this;
-    }
+    CSaferStr(const char *sz) { *this = sz; }
+    /* nothing returned: the out-of-line copy (0x22DCC0) keeps no `this` for a result */
     void operator=(const char *sz)
     {
         if (sz)
@@ -77,26 +55,6 @@ public:
         else
             erase();
     }
-    void assign(const char *s) { func_001EEB40(this, s); }
-    void erase()
-    {
-        std::forward_iterator_tag category;
-
-        func_001EE780(this, 0, (unsigned int)-1, 0, 0, category);
-    }
-    bool is_long() const { return w_[0] & 1; }
-    const char *c_str() const { return is_long() ? (const char *)w_[2] : (const char *)this + 1; }
-
-private:
-    void init()
-    {
-        unsigned int (&a)[3] = w_;
-
-        for (unsigned int i = 0; i < 3; ++i)
-            a[i] = 0;
-    }
-
-    unsigned int w_[3];
 };   // 0xC bytes
 
 /* a UI variable a spec declares: its name, its value with a string table of its own, and how
