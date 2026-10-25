@@ -38,12 +38,18 @@ PRELUDE = """typedef signed char s8; typedef unsigned char u8; typedef short s16
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
 """
 
 
 TRIPLES = ("mipsee-gcc-c", "mipsee-mwcc-c")   # the second converts about 1 % more of the misses
+
+
+def _on(correction: str) -> bool:
+    """Each correction can be switched off (SC_AM_<NAME>=0) to measure it against the rest."""
+    return os.environ.get(f"SC_AM_{correction}", "1") != "0"
 
 
 def attempt(addr: int):
@@ -99,37 +105,122 @@ def try_draft(tmp: Path, out: str, sym, real: str, addr: int, img, st) -> tuple[
     # byte offsets and compiles to the same code
     body = fill_params(re.sub(r"\bvoid(\s*\*)", r"char\1", out), sym.name)
     worst = "build"
-    for variant in variants(body):
-        src = PRELUDE + variant
-        hit = try_one(tmp, src, sym, real, addr, img, st)
-        if hit == "hit":
-            if real != sym.name:
-                src = f"/* sc: as={sym.name} {real} */\n" + src
-            return "hit", src
-        worst = hit if worst == "build" else worst
-    # as C++ with real bools, when the target materialises a `true` (daddiu r,zero,1)
-    if any(w >> 26 == 0x19 and (w >> 21) & 31 == 0 and w & 0xFFFF == 1
-           for w in E.words(img.read(addr, sym.size))):
-        bsrc = bool_draft(body, sym.name)
-        if bsrc is not None:
-            hit = try_one(tmp, bsrc, sym, real, addr, img, st, suffix=".cpp")
+    # a field of a base that is already a char * read without converting it (members), then as
+    # m2c's macro has it: every cast on the base -- even (char *) of a char * -- makes MW keep
+    # the field's address in a register, where the original's member access addresses it off
+    # the base (and the cast moves registers besides)
+    forms = [members(body)] if _on("MEMBERS") else []
+    forms += [body] if not forms or forms[0] != body else []
+    for form in forms:
+        for variant in variants(form):
+            src = PRELUDE + variant
+            hit = try_one(tmp, src, sym, real, addr, img, st)
             if hit == "hit":
-                bsrc = "/* sc: c++ */\n" + bsrc
                 if real != sym.name:
-                    bsrc = f"/* sc: as={sym.name} {real} */\n" + bsrc
-                return "hit", bsrc
+                    src = f"/* sc: as={sym.name} {real} */\n" + src
+                return "hit", src
             worst = hit if worst == "build" else worst
-    # as C++: its member calls made as member calls, its virtual calls as virtual calls
-    cpp = cxx_draft(body, sym.name, img, st)
-    if cpp is not None:
-        hit = try_one(tmp, cpp, sym, real, addr, img, st, suffix=".cpp")
-        if hit == "hit":
-            cpp = "/* sc: c++ */\n" + cpp          # (emit's marker; sccheck reads `as=` in the first 3 lines)
-            if real != sym.name:
-                cpp = f"/* sc: as={sym.name} {real} */\n" + cpp
-            return "hit", cpp
-        worst = hit if worst == "build" else worst
+    trues = any(w >> 26 == 0x19 and (w >> 21) & 31 == 0 and w & 0xFFFF == 1
+                for w in E.words(img.read(addr, sym.size)))
+    for body in forms:
+        # as C++ with real bools, when the target materialises a `true` (daddiu r,zero,1)
+        if trues:
+            bsrc = bool_draft(body, sym.name)
+            if bsrc is not None:
+                hit = try_one(tmp, bsrc, sym, real, addr, img, st, suffix=".cpp")
+                if hit == "hit":
+                    bsrc = "/* sc: c++ */\n" + bsrc
+                    if real != sym.name:
+                        bsrc = f"/* sc: as={sym.name} {real} */\n" + bsrc
+                    return "hit", bsrc
+                worst = hit if worst == "build" else worst
+        # as C++: its member calls made as member calls, its virtual calls as virtual calls
+        cpp = cxx_draft(body, sym.name, img, st)
+        if cpp is not None:
+            hit = try_one(tmp, cpp, sym, real, addr, img, st, suffix=".cpp")
+            if hit == "hit":
+                cpp = "/* sc: c++ */\n" + cpp          # (emit's marker; sccheck reads `as=` in the first 3 lines)
+                if real != sym.name:
+                    cpp = f"/* sc: as={sym.name} {real} */\n" + cpp
+                return "hit", cpp
+            worst = hit if worst == "build" else worst
     return worst, None
+
+
+def members(body: str) -> str:
+    """Each M2C_FIELD whose base is already a char * -- declared one, a char * field, a char *
+    plus an int, a call returning one -- as SC_MEMBER, which adds the offset to the base as it
+    is. The same length, so nested fields keep their places."""
+    decl = {k: v.replace(" ", "") for k, v in _declared(body).items()}
+    rets = {m.group("name"): m.group("ret").replace(" ", "")
+            for m in re.finditer(r"^(?P<ret>[^\n(;{}]*?)\s*\b(?P<name>[A-Za-z_]\w*)\([^()\n]*\);", body, re.M)}
+    out, i = list(body), 0
+    while True:
+        k = body.find("M2C_FIELD(", i)
+        if k < 0:
+            break
+        a = _args(body, k + len("M2C_FIELD"))
+        if a is not None and len(a[0]) == 3 and _char_ptr(a[0][0], decl, rets):
+            out[k:k + 9] = list("SC_MEMBER")
+        i = k + 1
+    return "".join(out)
+
+
+def _char_ptr(e: str, decl: dict[str, str], rets: dict[str, str]) -> bool:
+    e = e.strip()
+    while e.startswith("(") and _group(e, 0) == len(e):
+        e = e[1:-1].strip()
+    if re.fullmatch(r"[A-Za-z_]\w*", e):
+        return decl.get(e) == "char*"
+    for macro in ("M2C_FIELD(", "SC_MEMBER("):
+        if e.startswith(macro):
+            a = _args(e, len(macro) - 1)
+            return a is not None and a[1] == len(e) and len(a[0]) == 3 and a[0][1].replace(" ", "") == "char**"
+    m = re.match(r"^([A-Za-z_]\w*)\(", e)
+    if m and _group(e, m.end() - 1) == len(e):
+        return rets.get(m.group(1)) == "char*"
+    # base + int: the leading term a char *, nothing after it a pointer
+    depth = 0
+    for j, c in enumerate(e):
+        if c in "([":
+            depth += 1
+        elif c in ")]":
+            depth -= 1
+        elif depth == 0 and c in "+-" and e[j - 1:j] == " " and e[j + 1:j + 2] == " ":
+            rest = e[j + 1:]
+            return (_char_ptr(e[:j], decl, rets) and "&" not in rest and "M2C_FIELD" not in rest
+                    and "SC_MEMBER" not in rest
+                    and not any("*" in decl.get(n, "") for n in re.findall(r"\b[A-Za-z_]\w*\b", rest)))
+    return False
+
+
+_DECL = re.compile(r"^\s*(?:extern\s+)?(?!(?:return|goto|case|else|do|break|continue)\b)"
+                   r"(?P<type>(?:const\s+)?(?:unsigned\s+)?[A-Za-z_]\w*(?:\s*\*+)?)\s*"
+                   r"(?P<name>[A-Za-z_]\w*)(?:\[[^\]]*\])?;", re.M)
+
+
+def _declared(text: str) -> dict[str, str]:
+    """name -> declared type, for the draft's globals, locals and parameters."""
+    out = {m.group("name"): m.group("type") for m in _DECL.finditer(text)}
+    for m in re.finditer(r"^[^\n;{}]*?\b[A-Za-z_]\w*\(([^()]*)\)\s*\{", text, re.M):
+        for p in m.group(1).split(","):
+            pm = re.match(r"^\s*(.*?)\s*\b([A-Za-z_]\w*)\s*$", p)
+            if pm and pm.group(1):
+                out[pm.group(2)] = pm.group(1)
+    return out
+
+
+def _group(s: str, i: int) -> int:
+    """s[i] is an opening bracket: the index past its match (or -1)."""
+    depth = 0
+    for j in range(i, len(s)):
+        if s[j] in "([":
+            depth += 1
+        elif s[j] in ")]":
+            depth -= 1
+            if depth == 0:
+                return j + 1
+    return -1
 
 
 def cxx_draft(body: str, own: str, img, st) -> str | None:
@@ -238,38 +329,63 @@ def _member_calls(body: str, name: str, f) -> tuple[str, int]:
 _FN = re.compile(r"^(?P<ret>.*?)\s*\(\*\*\)\((?P<params>.*)\)$", re.S)
 
 
+_FIELD = re.compile(r"\b(M2C_FIELD|SC_MEMBER)\(")
+
+
+def _vtable_load(txt: str) -> tuple[str, int] | None:
+    """`M2C_FIELD(obj, T **, VPTR)` (or SC_MEMBER) -> (obj, VPTR)."""
+    t = txt.strip()
+    m = _FIELD.match(t)
+    if m:
+        a = _args(t, m.end() - 1)
+        if a is None or a[1] != len(t) or len(a[0]) != 3 or a[0][1].count("*") < 2:
+            return None
+        try:
+            return a[0][0], int(a[0][2], 0)
+        except ValueError:
+            return None
+    return None
+
+
 def _virtualize(body: str):
     """m2c's `M2C_FIELD(M2C_FIELD(obj, T **, VPTR), R (**)(P...), SLOT)(obj, ...)` -> a call
     of slot SLOT on a class whose vtable pointer is at VPTR: (struct text, body) or None."""
     classes, out, i, n = {}, [], 0, 0
-    while True:
-        k = body.find("M2C_FIELD(M2C_FIELD(", i)
-        if k < 0:
-            break
-        outer = _args(body, k + len("M2C_FIELD"))
+    for fm in _FIELD.finditer(body):
+        k = fm.start()
+        if k < i:
+            continue
+        outer = _args(body, fm.end() - 1)
         ok = outer is not None and len(outer[0]) == 3
         if ok:
             (inner_txt, fntype, slot), end = outer
-            inner = _args(inner_txt, len("M2C_FIELD"))
             m = _FN.match(fntype)
-            ok = inner is not None and len(inner[0]) == 3 and m is not None and body[end:end + 1] == "("
+            vt = _vtable_load(inner_txt)
+            ok = vt is not None and m is not None and body[end:end + 1] == "("
         if ok:
-            obj, _, vptr = inner[0]
+            obj, vptr_off = vt
             call = _args(body, end)
-            ok = call is not None and call[0][:1] == [obj]
+            ok = call is not None
+        if ok:
+            args = call[0]
+            first = args[0].strip() if args else None
+            while first and first.startswith("(") and _group(first, 0) == len(first):
+                first = first[1:-1].strip()
+            if first == obj:
+                this, rest = obj, args[1:]
+            else:
+                ok = False
         if ok:
             try:
-                vptr_off, slot_off = int(vptr, 0), int(slot, 0)
+                slot_off = int(slot, 0)
             except ValueError:
                 ok = False
         if not ok or slot_off < 8 or slot_off % 4:
-            out.append(body[i:k + 1])
-            i = k + 1
             continue
         params = [x.strip() for x in m.group("params").split(",")][1:]
         classes.setdefault(vptr_off, {}).setdefault(slot_off, (m.group("ret").strip(), params))
         out.append(body[i:k])
-        out.append(f"((VC_{vptr_off:X} *)({obj}))->v_{slot_off:X}({', '.join(call[0][1:])})")
+        out.append(f"((VC_{vptr_off:X} *)({this}))->v_{slot_off:X}({', '.join(rest)})")
         i = call[1]
         n += 1
     if not n:
