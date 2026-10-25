@@ -46,12 +46,33 @@ extern char data_00437E30[];               /* the career stats */
 struct COnlineArmoryView {
     unsigned char _0[0x4a];
     unsigned char m_4a;   // 0x4a
+    unsigned char _4b[0x4f - 0x4b];
+    unsigned char m_4f;   // 0x4f: the scale defaulted
+    unsigned char m_50;   // 0x50: the range defaulted
+};
+
+/* a character type's figures the armory is told (six floats: the last three a range and a scale,
+ * defaulted when negative; ours) */
+struct CharTypeFigures {
+    float m_0;
+    float m_4;
+    float m_8;
+    float m_min;   // 0xc
+    float m_max;   // 0x10
+    float m_scale;   // 0x14
 };
 
 extern "C" {
 extern COnlineArmoryView *data_0045B718;
 void func_0030E6E0(COnlineArmoryView *p, int arg);
 void func_0030E490(COnlineArmoryView *p);
+void func_0030E6A0(COnlineArmoryView *p, CharTypeFigures *figures);
+float func_0053B060(void *stats);
+float func_0053B050(void *stats);
+float func_0053B040(void *stats);
+float func_0053B030(void *stats);
+float func_0053B020(void *stats);
+float func_0053B010(void *stats);
 }
 
 class CZGameState {
@@ -859,6 +880,40 @@ bool UIClearGameState(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+/* the game list's filter the argument names given its title (the filters' UI variables made first) */
+bool UISetFilters(C2DAnimCmdHdr *hdr, float *dT)
+{
+    /* (the out-of-line call written out: through ArgName the inline's result would take its
+     * saved register after the named locals) */
+    const char *name = ZAnim.m_CurAnim->GetName(hdr->m_argument_index);
+    CUIVariable *gametype = func_003857C0(&theUIVarManager, "FILTER_GAMETYPE", 0, UIVAR_SESSION);
+    CUIVariable *ratecategory = func_003857C0(&theUIVarManager, "FILTER_RATECATEGORY", 0, UIVAR_SESSION);
+    CUIVariable *map = func_003857C0(&theUIVarManager, "FILTER_MAP", 0, UIVAR_SESSION);
+    CUIVariable *clanaffiliation = func_003857C0(&theUIVarManager, "FILTER_CLANAFFILIATION", 0, UIVAR_SESSION);
+    CUIVariable *responsetime = func_003857C0(&theUIVarManager, "FILTER_RESPONSETIME", 0, UIVAR_SESSION);
+    CUIVariable *buddies = func_003857C0(&theUIVarManager, "FILTER_BUDDIES", 0, UIVAR_SESSION);
+    CUIVariable *clanonly = func_003857C0(&theUIVarManager, "FILTER_CLANONLY", 0, UIVAR_SESSION);
+    CUIVariable *raterequirement = func_003857C0(&theUIVarManager, "FILTER_RATEREQUIREMENT", 0, UIVAR_SESSION);
+
+    if (!strcasecmp(name, "GameType"))
+        func_003862A0(gametype, "Game Type");
+    else if (!strcasecmp(name, "RateCategory"))
+        func_003862A0(ratecategory, "Rate Category");
+    else if (!strcasecmp(name, "Map"))
+        func_003862A0(map, "Map");
+    else if (!strcasecmp(name, "ClanAffiliation"))
+        func_003862A0(clanaffiliation, "Clan Affiliation");
+    else if (!strcasecmp(name, "ResponseTime"))
+        func_003862A0(responsetime, "Response Time");
+    else if (!strcasecmp(name, "BuddiesOnly"))
+        func_003862A0(buddies, "Buddies Only");
+    else if (!strcasecmp(name, "ClanOnly"))
+        func_003862A0(clanonly, "Clan Only");
+    else if (!strcasecmp(name, "RateRequirement"))
+        func_003862A0(raterequirement, "Rate Requirement");
+    return true;
+}
+
 bool UIToggleAutoMessages(C2DAnimCmdHdr *hdr, float *dT)
 {
     CUIVariable *var = func_003857C0(&theUIVarManager, "AUTOMESSAGES", 0, UIVAR_SESSION);
@@ -1440,6 +1495,41 @@ bool UISendClanMessage(C2DAnimCmdHdr *hdr, float *dT)
 bool UIGetUsagePolicy(C2DAnimCmdHdr *hdr, float *dT)
 {
     func_002F79F0(&theLobby);
+    return true;
+}
+
+/* the player's character type changed to the custom one the argument numbers (from 1), the armory
+ * told its figures */
+bool UIChangeCharacterType(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *type = GetCustomCharTypeName(atoi(ArgText(ArgName(hdr))) - 1);
+    CZNetGame *game = theMission.m_pNetGame;
+
+    strncpy(game->m_chartype, type, 31);
+    game->m_chartype[30] = 0;
+    CCharacterType *ct = func_0053E170(type);
+
+    if (ct) {
+        CharTypeFigures figures;
+        void *stats = ct->m_stats;
+
+        figures.m_0 = func_0053B060(stats);
+        figures.m_4 = func_0053B050(stats);
+        figures.m_8 = func_0053B040(stats);
+        figures.m_min = func_0053B030(stats);
+        figures.m_max = func_0053B020(stats);
+        figures.m_scale = func_0053B010(stats);
+        if (figures.m_min < 0.0f || figures.m_max < 0.0f) {
+            figures.m_min = 0.0f;
+            figures.m_max = 0.0f;
+            data_0045B718->m_50 = 1;
+        }
+        if (figures.m_scale < 0.0f) {
+            figures.m_scale = 0.5f;
+            data_0045B718->m_4f = 1;
+        }
+        func_0030E6A0(data_0045B718, &figures);
+    }
     return true;
 }
 

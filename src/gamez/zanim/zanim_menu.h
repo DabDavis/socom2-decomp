@@ -319,6 +319,8 @@ public:
     unsigned char m_joined;   // 0xd9: CheckJoinMP sets it (SOCOM II's; the name ours)
     unsigned char _da[0xe4 - 0xda];
     unsigned int m_launch_time;   // 0xe4 (SOCOM 1's clock's at 0xA8)
+    unsigned char _e8[0x12c - 0xe8];
+    char m_chartype[31];   // 0x12c: the character type's name (ChangeCharacterType)
 };
 
 class CZPersonaState {
@@ -527,6 +529,8 @@ class CCharacterType {
 public:
     unsigned char _0[0x2e8];
     unsigned char m_weapons[0xc];   // 0x2e8 (SOCOM 1's CCharacterWeapList at 0x250)
+    unsigned char _2f4[0x388 - 0x2f4];
+    unsigned char m_stats[4];   // 0x388: what ChangeCharacterType reads its figures from
 };
 
 const char *GetCustomCharTypeName(int index);
