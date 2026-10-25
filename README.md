@@ -1642,6 +1642,27 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the online lobby, round 7** (the room and ladder units, zNetMediusFile.cpp):
+  - a function handed to std::transform by address becomes a direct, never-inlined `jal` with the
+    element in a0 (DeleteRoom); a functor's operator() would have `this` in a0;
+  - a destructor testing `this` three times for a pointer vector means the object holds std::vector
+    itself (BriefingRoom : vector<RoomGame *>, the channel-list record a second base at 0xC); a derived
+    list class adds a fourth test;
+  - zsys.h's FreeVector<std::vector<T *> > reproduces the out-of-line constructor/clear/swap/
+    destructor calls (BriefingRoomDB::Release);
+  - structs with odd-length char arrays are assigned member by member, user constructor or not;
+  - when two plain loads are compared, the left one is loaded first (`field > global` loads the
+    field first);
+  - a clamp written as the call argument `x - 2 <= 0 ? 1 : x` matches; into a local, `s = x; if (x <=
+    0) s = 1;`;
+  - `err = f(); flag = 1; Check(err);` puts the flag store in Check's delay slot; `int c =
+    strcasecmp(...); return c < 0;` keeps the target's empty delay slot;
+  - CLobbyFileIO's 15 slots are CIO's (zutil.h) in the vtable at 0x406760; the file API's map is
+    `map<string, CLobbyFileIO *>` (freadAsync and Close insert the Medius key with `this`, the transfer
+    callbacks find it and read node+0x18); requests: MSL's std::sort (eight room/ladder sorts and the
+    chat unit's), c_str() on a string member read off the containing object (UpdateLadderBestDisplay),
+    the deque copy constructor (SOCOM II's circular-buffer iterator is four words: current, data,
+    data+start, data+capacity).
 - **Tells from completing the MSL headers, round 5** (the string trees, list, the class vector):
   - the string-keyed trees' compare is MSL's `basic_string::compare(const basic_string &)` (0x2DEE30,
     every caller tests the sign) and `compare(pos1, n1, s, n2)` (0x2DF030, SOCOM 1's

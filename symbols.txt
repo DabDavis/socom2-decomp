@@ -1577,8 +1577,8 @@
 0x001F5620 0xC GetReaderFileName__14CMenuStateMenuFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F5630 0x8 func_001F5630  # OVL1
 0x001F5640 0x5E4 func_001F5640  # OVL1
-0x001F5C30 0x68 func_001F5C30  # OVL1
-0x001F5CA0 0x8 func_001F5CA0  # OVL1
+0x001F5C30 0x68 __dt__Q23std82__vector_deleter<20MediusChatFwdMessage,Q23std33allocator<20MediusChatFwdMessage>>Fv  # OVL1; by hand (the online lane's round 7, vetted by the integrator: ~BriefingRoom calls it for the room's chat vector at +0x88; 0x1F5020 builds a 0x80-byte MediusChatFwdMessage and inserts it through 0x1F5640, whose deleter destructor this is; clear 0x1F5CA0 then the data deleted)
+0x001F5CA0 0x8 clear__Q23std82__vector_deleter<20MediusChatFwdMessage,Q23std33allocator<20MediusChatFwdMessage>>Fv  # OVL1; by hand (the online lane's round 7, vetted by the integrator: the chat vector's deleter destructor 0x1F5C30 calls it first)
 0x001F5CB0 0x8 AddToBatch__Q23zdb16CTextureRelocMgrCFPQ23zdb10CTexHandle  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F5CC0 0x8 EndBatchReloc__Q23zdb16CTextureRelocMgrCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F5CD0 0x8 PreGetSprPacket__Q23zdb16CTextureRelocMgrFPQ23zdb10CTexHandle  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -4749,7 +4749,7 @@
 0x002E4790 0x3C RemoveEmptyGame__FP8RoomGame  # OVL1; ours (RemoveEmpty's remove_if predicate, its address taken at 0x2E4704: a game with no players, the halfword at +0x20, deleted and true returned)
 0x002E47D0 0xD4 DeleteGames__12BriefingRoomFv  # OVL1; ours (a room's games deleted and the list emptied -- std::transform with a deleter, then clear: ReleaseUIResources on the room 0x44FAB0 and on *0x44FE10, JoinGame, 0x2F9220, the room's destructor 0x2E48C0; byte-exact); a member of the room, as FindGame (~BriefingRoom calls it on itself)
 0x002E48B0 0x8 SetPassword__12BriefingRoomFPCc  # OVL1; ours (empty: BriefingRoom's constructor calls it with "" -- the LAN room's initialiser 0x4024F0 and Add)
-0x002E48C0 0xD8 func_002E48C0  # OVL1
+0x002E48C0 0xD8 __dt__12BriefingRoomFv  # OVL1; by hand (the online lane's round 7: BriefingRoom derives from vector<RoomGame *> -- three this-tests -- with the channel-list record at 0xC; its games deleted, the chat vector's deleter destroyed; byte-exact from zNetMediusRoom.cpp once 0x1F5C30 is named)
 0x002E49A0 0xEC remove_if<Q33std56__vector_imp<P8RoomGame,Q23std21allocator<P8RoomGame>,1>8iterator,PFP8RoomGame_b>__3stdFQ33std56__vector_imp<P8RoomGame,Q23std21allocator<P8RoomGame>,1>8iteratorQ33std56__vector_imp<P8RoomGame,Q23std21allocator<P8RoomGame>,1>8iteratorPFP8RoomGame_b_Q33std56__vector_imp<P8RoomGame,Q23std21allocator<P8RoomGame>,1>8iterator  # OVL1; the same words as remove_if<Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,PFP14CCharacterType_b>__3stdFQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorPFP14CCharacterType_b_Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator (0x53f1a0) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies); ours (RemoveUnchecked's and RemoveEmpty's remove_if over the games, the room unit's template tail)
 0x002E4A90 0x6BC func_002E4A90  # OVL1
 0x002E5150 0x598 func_002E5150  # OVL1
