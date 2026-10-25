@@ -1941,10 +1941,10 @@
 0x0021A5C0 0x134 func_0021A5C0  # OVL1
 0x0021A700 0x1C8 func_0021A700  # OVL1
 0x0021A8D0 0x1C8 func_0021A8D0  # OVL1
-0x0021AAA0 0x150 func_0021AAA0  # OVL1
+0x0021AAA0 0x150 AfterClose__10CWeaponSelFv  # OVL1; s1:order by hand (hud_weaponsel.cpp: SOCOM 1's AfterClose, 0x170 there -- GetHUDOwner, the controller's SetMenuState(0) (a flag added), the pad's cross, circle and triangle set up (now behind a null test), the icons, arrows and weapon texts off, m_openstate = 0; three functions before AfterCloseFirst as SOCOM 1's)
 0x0021ABF0 0x258 func_0021ABF0  # OVL1
 0x0021AE50 0x250 func_0021AE50  # OVL1
-0x0021B0A0 0xA0 func_0021B0A0  # OVL1
+0x0021B0A0 0xA0 AfterCloseFirst__10CWeaponSelFv  # OVL1; s1:order by hand (hud_weaponsel.cpp: right before OnClose as SOCOM 1's AfterCloseFirst, 0xA0 against 0xC0: the folded menu's height 2 + (32 + y1) - (y1 - 1), half of it the centre, the goal at the second row, m_openstate 7, two icons off -- the in-game selector's inlined AfterCloseFirst at its own offsets)
 0x0021B140 0x298 func_0021B140  # OVL1
 0x0021B3E0 0x114 OnClose__10CWeaponSelFv  # OVL1; s1:order by hand (hud_weaponsel.cpp: SOCOM 1's OnClose, 0x130 there -- GetHUDOwner, the arrows and backdrop off, m_openstate = 6 at 0xC58, the HUD's m_usehudret cleared, the kit's SetCurReticule(false), the seven texts off; UnInit 0x21CBA0 inlines the same body behind its open test as SOCOM 1's UnInit calls OnClose)
 0x0021B500 0x314 func_0021B500  # OVL1
