@@ -185,11 +185,16 @@ class __vector_pod {
 public:
     __vector_pod() { capacity_ = 0; size_ = 0; data_ = 0; }
     __vector_pod(const __vector_pod &x);
+    /* the storage given back through the allocator (CW 2.5's MSL: the pod's destructor calls
+     * alloc() and deallocate): a pointer vector's destructor is four high, one more than its
+     * constructor, so CVisual's destructor (vis_main.cpp) inlines CDynTexList's implicit one only
+     * one level and calls ~CTexList and ~CTexPalList, where its constructor builds them whole */
     ~__vector_pod()
     {
         if (data_)
-            operator delete(data_);
+            deallocate(data_);
     }
+    static void deallocate(T *p) { operator delete(p); }
     void clear() { size_ = 0; }
     /* the storage traded with another's through the free swap below, as SOCOM 1's deleter swaps
      * (its member swap at <vector> line 973 calls the free one at 960): a pointer vector's swap is
