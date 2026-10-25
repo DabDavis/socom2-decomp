@@ -4,10 +4,11 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_0050F560(s8);                          /* extern */
+M2C_UNK GetEventString__8CAiEventFQ28CAiEvent5EVENT(s8); /* extern */
 
 void GetStatus__9CAiSEventCFv(char *arg0) {
-    func_0050F560(M2C_FIELD(arg0, s8 *, 0x58));
+    GetEventString__8CAiEventFQ28CAiEvent5EVENT(SC_MEMBER(arg0, s8 *, 0x58));
 }

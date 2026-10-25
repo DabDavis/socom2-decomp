@@ -966,16 +966,33 @@ def emit(hits: dict[int, str], img: E.Image, st: E.SymbolTable) -> None:
             old.unlink()
         (d / f"{addr:08X}{ext}").write_text(HEADER.format(name=name) + src)
         written += 1
-    stale = 0
+    stale = renamed = 0
     hand = hand_defined()
     for f in auto_files():
-        s = st.at_addr(int(f.stem, 16))
+        a = int(f.stem, 16)
+        s = st.at_addr(a)
         txt = f.read_text()
         defines = (f"{s.name}(" in txt or f" {s.name} */" in txt) if s is not None else False
+        own = f"func_{a:08X}"
+        if s is not None and s.name not in hand and not defines and f"{own}(" in txt:
+            # the row was renamed and its re-draft (if one was tried) missed: keep the draft that
+            # matched under the placeholder, renamed -- deleting it loses the match (it did, three
+            # times: SlotList's and CWeaponSlot's destructors, HEALTH_PARAMS::Parse)
+            if C_IDENT.match(s.name):
+                txt = re.sub(rf"\b{own}\b", s.name, txt)
+            elif "/* sc: as=" not in txt:
+                txt = txt.replace("*/\n", f"*/\n/* sc: as={own} {s.name} */\n", 1)
+            else:
+                f.unlink()
+                stale += 1
+                continue
+            f.write_text(txt)
+            renamed += 1
+            continue
         if s is None or s.name in hand or not defines:
-            f.unlink()                      # gone, hand-written now, or renamed since (re-emitted below)
+            f.unlink()                      # gone or hand-written now
             stale += 1
-    print(f"emitted {written} into {AUTO}; removed {stale} superseded")
+    print(f"emitted {written} into {AUTO}; removed {stale} superseded; renamed {renamed} in place")
 
 
 if __name__ == "__main__":

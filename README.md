@@ -725,6 +725,23 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     saved register (ForceMPLaunch);
   - a callback that returns true (`li v0,1`) frees v0 for a function-pointer call inside it;
   - scdiff leaves a function-local static's object unchecked: hold it by its placeholder.
+- **Each overlay links its own template copies** (the AI lane): OVL2 is linked apart from OVL1, so
+  a template instance or an inline's out-of-line copy exists once per overlay (the pointer list's
+  erase: OVL1 0x1EAAF0, OVL2 0x50F990). The map keeps one name per function; the other overlay's
+  copy stays a placeholder whose note says `ovl-copy: <name>`, and scdiff resolves a call from
+  that overlay to it (`SymbolTable.address_in`).
+- **Tells from the AI core** (ai_events.cpp, ai_astar.cpp, zchar/):
+  - testing a field through an inline bool accessor makes MW load it again for the next
+    statement; written out, the first load is reused;
+  - a bitfield read from a halfword is promoted to int and compares signed, one read from the full
+    word compares unsigned -- the same source gives both (CAiPlanner::dist);
+  - an inline helper that returns through a local (`r = 0; if (c) r = ...; return r;`) gives the
+    target's registers and add order; early returns do not;
+  - `deleted = true;` before `delete t` keeps the flag in a saved register across the call; MW
+    3.0 drops the delete's null test once the pointer has been dereferenced;
+  - `va_arg(ap, EVENT)` reads a byte enum with `lb`; `(EVENT)va_arg(ap, int)` does not;
+  - SOCOM II's CAiPlanner::reset is empty where SOCOM 1's cleared a byte: a name carried over from
+    the vtable says nothing about the body.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
@@ -741,8 +758,9 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   `C:\apps\cw301` (the game's headers) and CodeWarrior 2.4's (the prebuilt MSL library: locale,
   iostreams).
 - **Tool notes**: scdiff accepts the image's one non-zero pad word (0xFFFFFFFF at 0x1E70F4,
-  after main); `automatch --stale` can drop a renamed destructor's draft when its re-draft
-  misses (SlotList's and CWeaponSlot's were restored by hand, the old drafts renamed). A
+  after main); when a renamed row's re-draft misses, `automatch --stale` now keeps the old draft
+  and renames the function it defines (an `sc: as=` line for a template name) instead of
+  deleting it -- three matches had been lost that way and restored by hand. A
   hand-written unit's inline copy supersedes a draft only when it is byte-exact (sccheck and
   automatch alike): a copy that misses leaves the draft's match standing, as the linker keeps
   a strong definition over the copies.
