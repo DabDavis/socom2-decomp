@@ -128,11 +128,6 @@ extern "C" void func_00258E60(void *zar);           /* zar::CZAR::CloseKeepDir *
 extern "C" void func_0034D180(void *p);
 extern "C" void func_0034C4A0();
 
-class CFileIO {
-public:
-    static void SetRootPath(const char *path);
-};
-
 class CSTable {
 public:
     void LoadTable(void *data, unsigned int size, bool copy);

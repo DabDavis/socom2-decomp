@@ -8,8 +8,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 #pragma mpwc_relax on
-M2C_UNK func_001FB3C0(char *);                      /* extern */
-M2C_UNK func_0028CEA0(char *);                      /* extern */
+M2C_UNK Clear__15CZBodyAnimBlendFv(char *);         /* extern */
+M2C_UNK __ct__6CPnt3DFv(char *);                    /* extern */
 M2C_UNK func_0028FF00(char *);                      /* extern */
 M2C_UNK func_00290290();                /* extern */
 extern f32 data_003F64C4;
@@ -28,12 +28,12 @@ char *func_00290120(char *arg0) {
     SC_MEMBER(arg0, s32 *, 0x64) = 0;
     SC_MEMBER(arg0, s32 *, 0x60) = 0;
     SC_MEMBER(arg0, s32 *, 0x68) = 0;
-    func_001FB3C0(arg0 + 0x6C);
-    func_001FB3C0(arg0 + 0x7C);
-    func_001FB3C0(arg0 + 0x8C);
-    func_001FB3C0(arg0 + 0x9C);
-    func_001FB3C0(arg0 + 0xA8);
+    __ct__6CPnt3DFv(arg0 + 0x6C);
+    __ct__6CPnt3DFv(arg0 + 0x7C);
+    __ct__6CPnt3DFv(arg0 + 0x8C);
+    __ct__6CPnt3DFv(arg0 + 0x9C);
+    __ct__6CPnt3DFv(arg0 + 0xA8);
     func_0028FF00(arg0 + 0x6C);
-    func_0028CEA0(arg0);
+    Clear__15CZBodyAnimBlendFv(arg0);
     return arg0;
 }

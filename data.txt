@@ -649,6 +649,7 @@
 0x00414E90 0x4 g_can_use_switch  # OVL1 bss; s1:data-seq (size SOCOM 1's; via UISwitchSides__FP13C2DAnimCmdHdrPf)
 0x00414E98 0x4 g_can_use_ready  # OVL1 bss; SOCOM 1's (gp-29660 there, beside g_can_use_switch): UIReadyToLoad compares the network's local time with it and sets it 5000 on, as SOCOM 1's does; 2 references in 1 function
 0x00414ED0 0xE44 g_MenuStack  # OVL1 bss; SOCOM 1's (0xA34 there): GetMenuStack returns it where SOCOM 1's returns g_MenuStack, UIPopUpDialog passes it to CMenuStack::PopUpDialog as SOCOM 1's does; the pop-up at +0xE40 (SOCOM 1's +0xA30, UIKillPopUp's test) is the last member read and the next object starts at 0x415D18; 41 references in 9 functions (GetMenuStack, the three button handlers, FlushMenuHistory, KillPopUp, SwitchMenu, PopUpDialog, the unit's initialiser 0x3FFCA0)
+0x00415F78 0x4 numSiObject  # OVL1 bss; SOCOM 1's (gp-29444 there, si_object.cpp's): the objects alive -- CZSIObject's constructor counts it up and its destructor down, 2 references each
 0x00415FF0 0x4 appCamera  # OVL1 bss; SOCOM 1's (CHUD::GetHUDOwner reads its owner, as SOCOM 1's read gp-29416): 87 references in 61 functions take 0x415FF0
 0x00416018 0x4 data_00416018  # OVL1 bss; SOCOM II's shake: the y ripple's angle in degrees: 9 references in 5 functions
 0x00416020 0x4 data_00416020  # OVL1 bss; SOCOM II's shake: the x amplitude running: 13 references in 6 functions
@@ -710,6 +711,7 @@
 0x0044F250 0x88 kbdData  # OVL1 bss; zin_keyboard.cpp's static, new in SOCOM II (the name ours): the keyboard library's last read (lights, modifier keys, count, key codes): GetKeyReadThisFrame (0x2DBD90) reads into it and takes its keys; 1 function
 0x0044F2D8 0x4 kbdIndex  # OVL1 bss; zin_keyboard.cpp's static, new in SOCOM II (the name ours): the next key of kbdData to hand out: GetKeyReadThisFrame (0x2DBD90) steps it and resets it after each read; 1 function
 0x0044F310 0x4 m_defaultMaterial__16CMaterialExArray  # OVL1 bss; new in SOCOM II (SOCOM 1's GetMaterial returned 0 without a polygon), the name ours: int_material.cpp's SetDefaultMaterial (0x2DDC30, SOCOM 1's first function there) stores its index first, IntersectStruct::GetMaterial reports it for a polygon without a material; 2 references in 2 functions
+0x0044F350 0xC m_materialex_list__16CMaterialExArray  # OVL1 bss; SOCOM 1's static (a vector: GetHitAnim and GetSpecialMaterialAnim bound their index by its size at +4, 0x44F354, as SOCOM 1's read 0x4D7954 = this list + 4); 62 references in 47 functions take its size
 0x0044F370 0xF8 theLobby  # OVL1 bss; s1 by hand (SOCOM 1's COurGame::StartEngine and StopEngine pass theLobby to CZOnlineLobby's Init and UnInit; SOCOM II's pass 0x44F370 at the same two places, UnInit__13CZOnlineLobbyFv named); 0xF8 in SOCOM II, not SOCOM 1's 0x98: Init and 0x2DF6A0 store CUIVariable pointers at +0xB0 to +0xF4, SOCOM 1's uiv_* statics made members (0x44F45C, data-seq's uiv_GameClock, is +0xEC, which SyncGameClock reads); 400 references in 228 functions
 0x0044F580 0x170 StoredClanInfo  # OVL1 bss; s1 by hand (SOCOM 1's StoredClanInfo, the field offsets alike: DisbandClan sends +0x1c as the clan id, IsLeaderOfClan compares +0x44, Init clears the name at +0x24); size SOCOM 1's; 44 references in 19 functions
 0x0044F700 0xC InvitationVec  # OVL1 bss; s1 by hand (SOCOM 1's InvitationVec, the invitations received: HasClanInvitations tests its size, CheckClanInvitations empties it); built by the clan unit's initialiser 0x401EB0, destroyed by 0x2EA540; 15 references in 6 functions
@@ -805,6 +807,18 @@
 0x0049EA04 0x4 m_topy__3C2D  # OVL1 bss; SOCOM 1's static (the circle's y; 8 after m_topx in SOCOM 1, 4 now): 12 references in 8 functions take 0x49EA04
 0x0049EA08 0x4 m_botx__3C2D  # OVL1 bss; SOCOM 1's static (gp-26212): C2D::Init stores 2048 plus half the screen's width, as SOCOM 1's Init stored 2048 + 320: 1 reference (Init)
 0x0049EA0C 0x4 m_boty__3C2D  # OVL1 bss; SOCOM 1's static (gp-26204): C2D::Init stores 2048 plus half the screen's height, as SOCOM 1's Init stored 2048 + 224: 1 reference (Init)
+0x0049EC08 0x4 s_soundTuner  # OVL1 bss; zui_tuners.cpp's static (name ours): the CSoundTuner (SOUND_VOLUME) InitSystemTuners news; 3 references in 3 functions (InitSystemTuners stores it, UninitSystemTuners deletes and zeroes it, RefreshSystemTuners reads it)
+0x0049EC10 0x4 s_musicTuner  # OVL1 bss; zui_tuners.cpp's static (name ours): the CMusicTuner (MUSIC_VOLUME); 3 references in 3 functions (InitSystemTuners, UninitSystemTuners, RefreshSystemTuners)
+0x0049EC18 0x4 s_brightnessTuner  # OVL1 bss; zui_tuners.cpp's static (name ours): the CBrightnessTuner (BRIGHTNESS); 3 references in 3 functions (InitSystemTuners, UninitSystemTuners, RefreshSystemTuners)
+0x0049EC20 0x4 s_stickSensitivityTuner0  # OVL1 bss; zui_tuners.cpp's static (name ours): the CStickSensitivityTuner of stick 0; 3 references in 3 functions (InitSystemTuners, UninitSystemTuners, RefreshSystemTuners)
+0x0049EC28 0x4 s_stickInertiaTuner0  # OVL1 bss; zui_tuners.cpp's static (name ours): the CStickInertiaTuner of stick 0; 3 references in 3 functions (InitSystemTuners, UninitSystemTuners, RefreshSystemTuners)
+0x0049EC30 0x4 s_stickDeadzoneTuner0  # OVL1 bss; zui_tuners.cpp's static (name ours): the CStickDeadzoneTuner of stick 0; 3 references in 3 functions (InitSystemTuners, UninitSystemTuners, RefreshSystemTuners)
+0x0049EC38 0x4 s_stickSensitivityTuner1  # OVL1 bss; zui_tuners.cpp's static (name ours): the CStickSensitivityTuner of stick 1; 3 references in 3 functions (InitSystemTuners, UninitSystemTuners, RefreshSystemTuners)
+0x0049EC40 0x4 s_stickInertiaTuner1  # OVL1 bss; zui_tuners.cpp's static (name ours): the CStickInertiaTuner of stick 1; 3 references in 3 functions (InitSystemTuners, UninitSystemTuners, RefreshSystemTuners)
+0x0049EC48 0x4 s_stickDeadzoneTuner1  # OVL1 bss; zui_tuners.cpp's static (name ours): the CStickDeadzoneTuner of stick 1; 3 references in 3 functions (InitSystemTuners, UninitSystemTuners, RefreshSystemTuners)
+0x0049EC50 0x4 s_dialogTuner  # OVL1 bss; zui_tuners.cpp's static (name ours): the CDialogTuner (DIALOG_VOLUME); 3 references in 3 functions (InitSystemTuners, UninitSystemTuners, RefreshSystemTuners)
+0x0049EC58 0x4 s_headsetTuner  # OVL1 bss; zui_tuners.cpp's static (name ours): the CHeadsetTuner (HEADSET_CONTROLLER); 1 reference in 1 function (InitSystemTuners; neither Uninit nor Refresh touches it)
+0x0049EC60 0x4 s_rebootCallbackId  # OVL1 bss; zui_tuners.cpp's static (name ours): the id RegisterRebootCallback returns; 2 references in 2 functions (InitSystemTuners stores it, UninitSystemTuners unregisters it)
 0x004A1798 0x1 m_streamingSndActive__7CFileCD  # OVL1 bss; s1:data-seq (size SOCOM 1's; via UISysPostInit__FP13C2DAnimCmdHdrPf)
 0x004A4480 0x94 zVid  # OVL1 bss; s1:data-seq (via Update__Q23zdb6CWorldFv); SOCOM 1's _zvid_public is 0x80, SOCOM II's runs to at least 0x92 (the game states set the byte at 0x91), so 0x94 to the word
 0x004B4810 0x4 m_camera__Q23zdb7CVisual  # OVL1 bss; SOCOM 1's (CCoreState::Init sets it with the world's camera beside the pipe's, as SOCOM 1's): 10 references in 6 functions take 0x4B4810
@@ -815,6 +829,7 @@
 0x004B5050 0x14 m_permPool__Q23zdb6CDecal  # OVL1 bss; s1:data-seq (size SOCOM 1's; via PutPermDecal__Q23zdb6CDecalFPQ23zdb6CDecal +1)
 0x004B5080 0x14 m_tempPool__Q23zdb10CMeshDecal  # OVL1 bss; s1:data-seq (size SOCOM 1's; via PutTempDecal__Q23zdb10CMeshDecalFPQ23zdb10CMeshDecal +1)
 0x004B51B8 0xC m_callbacks  # OVL1 bss; s1:data-exact (size SOCOM 1's; via AddWeaponEventCallback__8CZWeaponFPFP12CZProjectileUiPv_vUiPv)
+0x004B5210 0xC m_listWeapons__8CZWeapon  # OVL1 bss; SOCOM 1's static (12 bytes, its GetWeaponId passes it to CZWeaponList::GetWeaponId as SOCOM II's does, 0x3D19E0); 60 references in 36 functions
 0x004B5220 0x4 m_pProjectilelist__8CZWeapon  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Close__8CZWeaponFv +1)
 0x004B5248 0x4 m_pMarklist__8CZWeapon  # OVL1 bss; SOCOM 1's (CCoreState::auxUnload reads it beside m_pProjectilelist, as SOCOM 1's): 7 references in 6 functions take 0x4B5248
 0x004B52B8 0x4 m_timer_maxval__8CZWeapon  # OVL1 bss; s1:data-seq (size SOCOM 1's; via RetrieveTimerRegistration__8CZWeaponFPPfPfPb)

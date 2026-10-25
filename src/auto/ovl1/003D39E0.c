@@ -8,9 +8,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK __dl__FPv(char *);                          /* extern */
+M2C_UNK __dt__10CZAmmoListFv(char *, M2C_UNK);      /* extern */
 M2C_UNK _free__FPvPCci(s32, M2C_UNK, M2C_UNK);      /* extern */
 M2C_UNK func_001EAAF0(M2C_UNK *, char *, s32 *, char **); /* extern */
-M2C_UNK func_003C5070(char *, M2C_UNK);             /* extern */
 extern M2C_UNK __vt__8CZWeapon;
 
 char *__dt__8CZWeaponFv(char *arg0, s64 arg1) {
@@ -127,7 +127,7 @@ char *__dt__8CZWeaponFv(char *arg0, s64 arg1) {
         sp54 = arg0 + 0xC8;
         sp58 = SC_MEMBER(arg0, s32 *, 0xCC);
         func_001EAAF0(&sp5C, arg0 + 0xC4, &sp58, &sp54);
-        func_003C5070(arg0 + 0xC4, -1);
+        __dt__10CZAmmoListFv(arg0 + 0xC4, -1);
         if (((s64) (arg1 << 0x30) >> 0x30) > 0) {
             __dl__FPv(arg0);
         }

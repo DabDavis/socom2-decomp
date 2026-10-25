@@ -11,7 +11,7 @@ M2C_UNK __destroy_new_array(s32, M2C_UNK *);        /* extern */
 M2C_UNK __dla__FPv(s32);                            /* extern */
 M2C_UNK __dt__Q23zdb11DiIntersectFv(s32, M2C_UNK);  /* extern */
 M2C_UNK func_003CD150();                            /* extern */
-extern M2C_UNK func_003CB7E0;
+extern M2C_UNK __dt__12CZProjectileFv;
 
 void UnInit__16CZProjectileListFv(char *arg0) {
     s32 temp_a0;
@@ -24,7 +24,7 @@ void UnInit__16CZProjectileListFv(char *arg0) {
     func_003CD150();
     temp_a0 = SC_MEMBER(arg0, s32 *, 0);
     if (temp_a0 != 0) {
-        __destroy_new_array(temp_a0, &func_003CB7E0);
+        __destroy_new_array(temp_a0, &__dt__12CZProjectileFv);
         SC_MEMBER(arg0, s32 *, 0) = 0;
     }
     var_s2 = 0;

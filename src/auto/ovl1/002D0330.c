@@ -4,6 +4,7 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK Clear__14CSched_ManagerFv(M2C_UNK *);       /* extern */
@@ -11,6 +12,7 @@ M2C_UNK Close__10CZAnimMainFv(M2C_UNK *);           /* extern */
 M2C_UNK DeletePad__6CInputFUi(M2C_UNK);             /* extern */
 M2C_UNK DestroyPool__19CGameStateChangeCmdFv();     /* extern */
 M2C_UNK Reset__7HeadsetFv();                        /* extern */
+M2C_UNK UninitSystemTuners__Fv();                   /* extern */
 M2C_UNK Uninit__4CSndFv();                          /* extern */
 M2C_UNK Uninit__5CPipeFv();                         /* extern */
 M2C_UNK Uninit__6CInputFv();                        /* extern */
@@ -18,7 +20,6 @@ M2C_UNK Uninit__Q23zdb6CWorldFv();                  /* extern */
 M2C_UNK Uninit__Q23zdb7CRippleFv();                 /* extern */
 M2C_UNK func_0032C4F0();                            /* extern */
 M2C_UNK func_00351E60();                            /* extern */
-M2C_UNK func_0038A210();                            /* extern */
 M2C_UNK func_0039C6F0();                            /* extern */
 M2C_UNK func_003B11F0();                            /* extern */
 M2C_UNK func_003C0620(M2C_UNK *);                   /* extern */
@@ -33,7 +34,7 @@ extern M2C_UNK zTaskScheduler;
 void StopEngine__5CGameFv(void) {
     Uninit__Q23zdb6CWorldFv();
     Close__10CZAnimMainFv(&ZAnim);
-    func_0038A210();
+    UninitSystemTuners__Fv();
     func_003C0620(&data_004B50D0);
     Uninit__Q23zdb7CRippleFv();
     Uninit__5CPipeFv();

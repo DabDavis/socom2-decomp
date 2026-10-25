@@ -1620,7 +1620,7 @@
 0x001FA360 0xF98 Init__4CHUDFPQ23zdb6CWorld  # OVL1; s1:callee (CCoreState::Init's call after the constructor, with the world, as SOCOM 1's; 0xF98 to SOCOM 1's 0xFA0)
 0x001FB300 0x70 __dt__Q23std62vector<PQ23zdb9CAssetLib,Q23std28allocator<PQ23zdb9CAssetLib>>Fv  # OVL1; by hand (a pointer vector's destructor, three this tests and data_ at 8 freed, as include/vector's; hud_main.cpp emits vector<CAssetLib *>'s for Add2D's C2D::CLibList, and the font code's callers (0x35A650 frees the font's list at +0x10 through a swapped temporary) link this copy)
 0x001FB370 0x44 func_001FB370  # OVL1
-0x001FB3C0 0x8 func_001FB3C0  # OVL1
+0x001FB3C0 0x8 __ct__6CPnt3DFv  # OVL1; zmath.h's inline CPnt3D() {} out of line (jr ra; move v0,a0): new CZBodyPart calls it for the points at 0x0 and 0x10 before CQuat's copy 0x28EB60 for 0x20/0x30, and CHUD::Init calls it -- the body lane
 0x001FB3D0 0x14 func_001FB3D0  # OVL1
 0x001FB3F0 0x30 func_001FB3F0  # OVL1
 0x001FB420 0x36C ReInit_Init__4CHUDFv  # OVL1; s1:order (hud_main.cpp: after Init, as SOCOM 1's; the states' call)
@@ -3352,16 +3352,16 @@
 0x00285D30 0x428 func_00285D30  # OVL1
 0x00286160 0x868 func_00286160  # OVL1
 0x002869D0 0x1A4 PartInSpace__5CBodyCFP10CZBodyPartPC6CPnt3DP6CPnt3DP5CQuat  # OVL1; s1:calls
-0x00286B80 0x108 func_00286B80  # OVL1
+0x00286B80 0x108 Weight__9CSequenceFv  # OVL1; s1:align by hand (opcode-identical to SOCOM 1's Weight__9CSequenceFv, between PartInSpace and LinearWeight as there; it is quadW(LinearWeight()) with both inlined, bone_math.cpp)
 0x00286C90 0xB0 LinearWeight__9CSequenceFv  # OVL1; s1:align
-0x00286D40 0x28 func_00286D40  # OVL1
+0x00286D40 0x28 Tick__9CSequenceFf  # OVL1; s1:align by hand (opcode-identical to SOCOM 1's Tick__9CSequenceFf, between LinearWeight and Clear as there: m_currT run down by dT, held at zero, returned)
 0x00286D70 0x14 Clear__9CSequenceFv  # OVL1; s1:exact
 0x00286D90 0x1C Start__9CSequenceFfff  # OVL1; s1:exact
-0x00286DB0 0x6C func_00286DB0  # OVL1
+0x00286DB0 0x6C LineIntersectPlane__FfRC6CPnt3DRC6CPnt3DRC6CPnt3D  # OVL1; s1:align by hand (opcode-identical to SOCOM 1's, right before PlaneConstant as there: (-d - n.a) / n.(b - a))
 0x00286E20 0x30 PlaneConstant__FRC6CPnt3DRC6CPnt3D  # OVL1; s1:exact
-0x00286E50 0x3C0 func_00286E50  # OVL1
-0x00287210 0x2D8 func_00287210  # OVL1
-0x002874F0 0x60 func_002874F0  # OVL1
+0x00286E50 0x3C0 ClipToBox__FRC6CPnt3DRC6CPnt3DR6CPnt3Dffff  # OVL1; s1:align by hand (opcode skeleton 0.79 to SOCOM 1's ClipToBox, the only candidate, after PlaneConstant as there; four bounds tested on x and y, the segment clipped)
+0x00287210 0x2D8 GetFractionalRotations__FPC6CPnt3DPfPf  # OVL1; s1:align by hand (0.78 to SOCOM 1's, the only candidate, after ClipToBox as there; three clamped acosf of the vector's components, its xz length through sqrt)
+0x002874F0 0x60 quadW__Ff  # OVL1; s1:align by hand (opcode-identical to SOCOM 1's quadW__Ff, right before QFromRot as there; the SEAL lane's lead: CLook::LookTick calls it where SOCOM 1's calls quadW)
 0x00287550 0x74 QFromRot__FP5CQuatPC6CPnt3D  # OVL1; s1:calls
 0x002875D0 0x44 func_002875D0  # OVL1
 0x00287620 0xE98 func_00287620  # OVL1
@@ -3372,7 +3372,7 @@
 0x002886A0 0x18 func_002886A0  # OVL1
 0x002886C0 0x44 func_002886C0  # OVL1
 0x00288710 0x40 func_00288710  # OVL1
-0x00288750 0x178 func_00288750  # OVL1
+0x00288750 0x178 __dt__14CScriptArchiveFv  # OVL1; s1:align by hand (0.62 to SOCOM 1's ~CScriptArchive; bone_init.cpp's initialiser 0x3FFCE0 registers it as the destructor of both 0x120-byte archives, 0x415D40 and 0x415E60; it frees their scripts and destroys the CZAR at +0xC)
 0x002888D0 0x4C func_002888D0  # OVL1
 0x00288920 0xC func_00288920  # OVL1
 0x00288930 0xC func_00288930  # OVL1
@@ -3399,20 +3399,20 @@
 0x002892D0 0x20 func_002892D0  # OVL1
 0x002892F0 0x14 func_002892F0  # OVL1
 0x00289310 0x70 func_00289310  # OVL1
-0x00289380 0xE8 func_00289380  # OVL1
+0x00289380 0xE8 Read__10CZSIObjectFPUcUiPCc  # OVL1; s1:align by hand (0.68 to SOCOM 1's Read of a buffer, the unit's first function as there: the flags word's 0x20/0x10 bits make the track constant, positions then rotations laid over the buffer -- three shorts and four shorts a frame where SOCOM 1 read floats)
 0x00289470 0xF8 func_00289470  # OVL1
 0x00289570 0x258 func_00289570  # OVL1
 0x002897D0 0xC8 func_002897D0  # OVL1
 0x002898A0 0x188 func_002898A0  # OVL1
 0x00289A30 0x118 func_00289A30  # OVL1
 0x00289B50 0x5C func_00289B50  # OVL1
-0x00289BB0 0x20C func_00289BB0  # OVL1
-0x00289DC0 0x54 func_00289DC0  # OVL1
-0x00289E20 0x1C8 func_00289E20  # OVL1
-0x00289FF0 0x70 func_00289FF0  # OVL1
-0x0028A060 0x9C func_0028A060  # OVL1
+0x00289BB0 0x20C GetVelRaw__10CZSIObjectFP10CZSIScriptiiP6CPnt3D  # OVL1; s1:align by hand (0.49, the best of the unit, right before ~CZSIObject as SOCOM 1's GetVelRaw: two frames' positions read, their difference scaled; the weakest name here)
+0x00289DC0 0x54 __dt__10CZSIObjectFv  # OVL1; s1:align by hand (0.91 to SOCOM 1's destructor: numSiObject counted down, the deleting flag)
+0x00289E20 0x1C8 Read__10CZSIObjectFP10CZSIScriptRQ23zar4CZAR  # OVL1; s1:calls by hand (0.80 to SOCOM 1's; SOCOM II's CZSIScript::Read calls Initalize (0x289FF0) and then it on each new object, as SOCOM 1's Read does)
+0x00289FF0 0x70 Initalize__10CZSIObjectFP16CZSIScriptCommon  # OVL1; s1:align by hand (0.87 to SOCOM 1's Initalize: false for no common, else the constant bits and both pointers cleared -- SOCOM II also clears the use bit and the part id)
+0x0028A060 0x9C __ct__10CZSIObjectFv  # OVL1; s1:align by hand (0.67 to SOCOM 1's constructor, the unit's last function as there; the two pointers and the name cleared, the bits and part id zeroed, numSiObject counted up)
 0x0028A100 0x158 ReadLIP__10CZSIScriptFRQ23zar4CZARPCcPviPv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0028A260 0x108 func_0028A260  # OVL1
+0x0028A260 0x108 GetObject__10CZSIScriptFPCcb  # OVL1; s1:align by hand (0.98 opcode skeleton to SOCOM 1's GetObject, right after ReadLIP as there: the objects searched by name with strcasecmp)
 0x0028A370 0xF8 func_0028A370  # OVL1
 0x0028A470 0x70 func_0028A470  # OVL1
 0x0028A4E0 0x40 func_0028A4E0  # OVL1
@@ -3420,7 +3420,7 @@
 0x0028A530 0x14 func_0028A530  # OVL1
 0x0028A550 0x6C __dt__10CZSIScriptFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0028A5C0 0x29C Read__10CZSIScriptFRQ23zar4CZARi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0028A860 0x18C func_0028A860  # OVL1
+0x0028A860 0x18C CreateAndReadIt__10CZSIScriptFRQ23zar4CZARPCcPviPv  # OVL1; s1:align by hand (0.70 to SOCOM 1's CreateAndReadIt, after Read as there; its address is the callback 0x288710 hands the archive's walk 0x25A390, as SOCOM 1's loader hands CreateAndReadIt to CZAR::FetchAll; it news a CZSIScript, its table stored, and reads it)
 0x0028A9F0 0x2C func_0028A9F0  # OVL1
 0x0028AA20 0x98 func_0028AA20  # OVL1
 0x0028AAC0 0x50 func_0028AAC0  # OVL1
@@ -3432,27 +3432,27 @@
 0x0028AFE0 0x100 func_0028AFE0  # OVL1
 0x0028B0E0 0x6C func_0028B0E0  # OVL1
 0x0028B150 0x120 erase__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPUiPUi  # OVL1; s1:exact by hand (SOCOM 1's erase__ of __vector_pod<Ui> line for line, the copy unrolled 8x); CNodeVector::Remove's erase calls it
-0x0028B270 0x1D8 func_0028B270  # OVL1
+0x0028B270 0x1D8 AddCallback__22CZBodyAnimCallbackListFPCcf  # OVL1; s1:align by hand (0.70 to SOCOM 1's AddCallback, the first function of body.cpp as there: a "null" callback first when empty, the index of an equal (time, name) one, else a new 24-byte callback pushed)
 0x0028B450 0x68 func_0028B450  # OVL1
-0x0028B4C0 0xC0 func_0028B4C0  # OVL1
+0x0028B4C0 0xC0 Clear__22CZBodyAnimCallbackListFv  # OVL1; s1:align by hand (0.78 to SOCOM 1's Clear: each callback's string destroyed and the callback deleted, then the vector swapped with an empty one)
 0x0028B580 0x40 func_0028B580  # OVL1
 0x0028B5C0 0x8 func_0028B5C0  # OVL1
 0x0028B5D0 0x14 func_0028B5D0  # OVL1
-0x0028B5F0 0x80 func_0028B5F0  # OVL1
+0x0028B5F0 0x80 __dt__22CZBodyAnimCallbackListFv  # OVL1; s1:order by hand (after Clear as SOCOM 1's destructor follows it in its unit; Clear called, the pointer vector's three this-tested levels inlined, the deleting flag)
 0x0028B670 0x60 __dt__10CZBodyAnimFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0028B6D0 0x42C func_0028B6D0  # OVL1
+0x0028B6D0 0x42C Destroy__5CBodyFv  # OVL1; s1:calls by hand (SOCOM II's ~CBody calls it first, after storing CBody's table, exactly as SOCOM 1's ~CBody calls Destroy__5CBodyFv first; it frees the parts and anims and resets the blends)
 0x0028BB00 0x150 __dt__5CBodyFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0028BC50 0x40 func_0028BC50  # OVL1
-0x0028BC90 0x48 func_0028BC90  # OVL1
-0x0028BCE0 0x80 func_0028BCE0  # OVL1
-0x0028BD60 0x6C func_0028BD60  # OVL1
-0x0028BDD0 0x20 func_0028BDD0  # OVL1
+0x0028BC50 0x40 PutBack__10CBlendPoolFP15CZBodyAnimBlend  # OVL1; ours (SOCOM II's, between ~CBody and CountAnims: the blend cleared, then RTArray<CZBodyAnimBlend>::PutBack on this pool)
+0x0028BC90 0x48 GetNext__10CBlendPoolFv  # OVL1; ours (SOCOM II's: RTArray<CZBodyAnimBlend>::GetNext(true) on this pool, the blend cleared when there is one)
+0x0028BCE0 0x80 CountAnims__15CZBodyAnimBlendFv  # OVL1; s1:align by hand (0.88 opcode skeleton to SOCOM 1's CountAnims, the best of the unit; each anim and its overlays counted through RTList<ACTIVE_ANIM>'s Begin/Next, body.cpp)
+0x0028BD60 0x6C FindAnim__15CZBodyAnimBlendFi  # OVL1; s1:align by hand (0.79 to SOCOM 1's FindAnim, next to CountAnims as there; SOCOM II's compares the ACTIVE_ANIM's id at 0x22 with an int where SOCOM 1's took the CZBodyAnim: the signature ours)
+0x0028BDD0 0x20 AddOverlay__15CZBodyAnimBlendFP11ACTIVE_ANIMP11ACTIVE_ANIMf  # OVL1; s1:order by hand (SOCOM 1's AddOverlay follows FindAnim as this does and begins with the same stores: anim->overlay, overlay->overlay = 0, its weight from $f12, two fields copied; SOCOM II's drops the flag handling)
 0x0028BDF0 0xF4 func_0028BDF0  # OVL1
 0x0028BEF0 0x26C func_0028BEF0  # OVL1
-0x0028C160 0x74 func_0028C160  # OVL1
-0x0028C1E0 0x8 func_0028C1E0  # OVL1
-0x0028C1F0 0x2C func_0028C1F0  # OVL1
-0x0028C220 0x24 func_0028C220  # OVL1
+0x0028C160 0x74 ReverseDir__15CZBodyAnimBlendFv  # OVL1; s1:align by hand (0.66; SOCOM 1's ReverseDir line for line: flag 0x20 set, the first anim's playback made -fabsf, m_tfrac = m_quitT unless flag 0x40)
+0x0028C1E0 0x8 Representative__15CZBodyAnimBlendFv  # OVL1; s1:order by hand (after ReverseDir and before SetRepresentativeWt as in SOCOM 1; the first anim, m_anims.Begin() -- SOCOM 1's returned its CZBodyAnim)
+0x0028C1F0 0x2C SetRepresentativeWt__15CZBodyAnimBlendFf  # OVL1; s1:align by hand (0.91 to SOCOM 1's: the first anim's weight set)
+0x0028C220 0x24 ThisFoot__15CZBodyAnimBlendFv  # OVL1; s1:order by hand (after SetRepresentativeWt as in SOCOM 1, the same (int)(60 * m_tfrac), the conversion inline where SOCOM 1 called fptosi)
 0x0028C250 0x124 func_0028C250  # OVL1
 0x0028C380 0x16C func_0028C380  # OVL1
 0x0028C4F0 0x1F0 func_0028C4F0  # OVL1
@@ -3460,9 +3460,9 @@
 0x0028C7C0 0x220 func_0028C7C0  # OVL1
 0x0028C9E0 0x230 func_0028C9E0  # OVL1
 0x0028CC10 0x290 func_0028CC10  # OVL1
-0x0028CEA0 0x104 func_0028CEA0  # OVL1
-0x0028CFB0 0x8 func_0028CFB0  # OVL1
-0x0028CFC0 0x5C func_0028CFC0  # OVL1
+0x0028CEA0 0x104 Clear__15CZBodyAnimBlendFv  # OVL1; s1:align by hand (0.56 to SOCOM 1's Clear, the only candidate: its anims' RTList cleared and the blend's points zeroed; CBlendPool's get and put call it)
+0x0028CFB0 0x8 PushAnim__FP15CActiveAnimListP11ACTIVE_ANIMf  # OVL1; s1:align by hand (opcode-identical to SOCOM 1's PushAnim: the weight stored, RTList<ACTIVE_ANIM>::Add tail-called; SOCOM II moved it from bone_math.cpp into body.cpp)
+0x0028CFC0 0x5C RenormAnims__FP15CActiveAnimListf  # OVL1; s1:align by hand (0.95 to SOCOM 1's RenormAnims, right after PushAnim as there: every weight on the list scaled)
 0x0028D020 0x74 func_0028D020  # OVL1
 0x0028D0A0 0xC4 func_0028D0A0  # OVL1
 0x0028D170 0x278 func_0028D170  # OVL1
@@ -3488,40 +3488,40 @@
 0x0028E480 0xAC func_0028E480  # OVL1
 0x0028E530 0x24C func_0028E530  # OVL1
 0x0028E780 0x30 func_0028E780  # OVL1
-0x0028E7B0 0xC8 func_0028E7B0  # OVL1
-0x0028E880 0xF8 func_0028E880  # OVL1
-0x0028E980 0x80 func_0028E980  # OVL1
+0x0028E7B0 0xC8 FindPart__5CBodyCFPCc  # OVL1; s1:align by hand (0.83 to SOCOM 1's FindPart: the parts' nodes' names compared with strcmp)
+0x0028E880 0xF8 FindAuxNode__5CBodyFPCcb  # OVL1; s1:align by hand (0.86 to SOCOM 1's FindAuxNode)
+0x0028E980 0x80 AttachAuxPart__5CBodyFP10CZBodyPartP10CZBodyPart  # OVL1; s1:align by hand (0.88 to SOCOM 1's AttachAuxPart: the part pushed on a vector)
 0x0028EA00 0x160 func_0028EA00  # OVL1
-0x0028EB60 0x8 func_0028EB60  # OVL1
+0x0028EB60 0x8 __ct__5CQuatFv  # OVL1; by hand (an empty constructor's out-of-line copy: new CZBodyPart calls it for the two CQuat members at 0x20 and 0x30, after CPnt3D's 0x1FB3C0 for the two at 0x0 and 0x10, in member order; it follows AttachAuxNode, its first caller)
 0x0028EB70 0x68 func_0028EB70  # OVL1
-0x0028EBE0 0x40 func_0028EBE0  # OVL1
+0x0028EBE0 0x40 AddBodyPart__5CBodyFPQ23zdb5CNodeP10CZBodyPart  # OVL1; s1:order by hand (SOCOM 1's AttachAuxNode, AddBodyPart, NullNode, NewBodyPart, BodySetup run in this order here too: NewBodyPart called, the part filed in m_body_parts by its id)
 0x0028EC20 0x8 NullNode__5CBodyCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0028EC30 0xBC func_0028EC30  # OVL1
-0x0028ECF0 0xD8 func_0028ECF0  # OVL1
+0x0028EC30 0xBC NewBodyPart__5CBodyFPQ23zdb5CNodeP10CZBodyPart  # OVL1; s1:order by hand (as AddBodyPart: NullNode's id, else the bone id of the node's name, then new CZBodyPart(node) with parent and id)
+0x0028ECF0 0xD8 BodySetup__5CBodyFPQ23zdb5CNodeP10CZBodyPart  # OVL1; s1:order by hand (as AddBodyPart: the part filed, then itself on every child of the node)
 0x0028EDD0 0xB0 func_0028EDD0  # OVL1
 0x0028EE80 0x4C func_0028EE80  # OVL1
-0x0028EED0 0x5C func_0028EED0  # OVL1
-0x0028EF30 0xDC func_0028EF30  # OVL1
-0x0028F010 0x74 func_0028F010  # OVL1
-0x0028F090 0x38 func_0028F090  # OVL1
-0x0028F0D0 0x48 func_0028F0D0  # OVL1
-0x0028F120 0x28 func_0028F120  # OVL1
-0x0028F150 0x40 func_0028F150  # OVL1
+0x0028EED0 0x5C Orient__10CZBodyPartFv  # OVL1; s1:align by hand (opcode-identical to SOCOM 1's Orient: the node's position and rotation set from the part's)
+0x0028EF30 0xDC Clear__10CZBodyPartFv  # OVL1; ours (every field of a CZBodyPart to rest: node and parent 0, position zero, rotation identity, the saved pair likewise, two bits set, id -1; the constructor's body, which new inlines one level -- NewBodyPart and AttachAuxNode call the four members' constructors, then this)
+0x0028F010 0x74 __ct__26RTStack<15CZBodyAnimBlend>FUi  # OVL1; s1:align by hand (0.89 to SOCOM 1's; CBody's constructor builds its stack of blends at 0x50 with it, size 8)
+0x0028F090 0x38 Push__26RTStack<15CZBodyAnimBlend>FP15CZBodyAnimBlend  # OVL1; s1:align by hand (opcode-identical to SOCOM 1's Push)
+0x0028F0D0 0x48 Pop__26RTStack<15CZBodyAnimBlend>Fv  # OVL1; s1:align by hand (0.93 to SOCOM 1's Pop)
+0x0028F120 0x28 Begin__21RTList<11ACTIVE_ANIM>Fv  # OVL1; s1:align by hand (opcode-identical to SOCOM 1's; body.cpp's tail, called by CountAnims and the blend's walks)
+0x0028F150 0x40 Next__21RTList<11ACTIVE_ANIM>Fv  # OVL1; s1:align by hand (opcode-identical to SOCOM 1's, after Begin)
 0x0028F190 0x14 func_0028F190  # OVL1
 0x0028F1B0 0x28 func_0028F1B0  # OVL1
 0x0028F1E0 0x38 _close_enough<f>__FRCfRCfRCf_b  # OVL1; s1:callee by hand (SlerpFaster calls it where SOCOM 1 calls _close_enough<f>; the same compare, a newer compiler); MW 3.0 appends a function template's return type (_b), which SOCOM 1's compiler did not
 0x0028F220 0xFC func_0028F220  # OVL1
-0x0028F320 0x48 func_0028F320  # OVL1
-0x0028F370 0xC0 func_0028F370  # OVL1
-0x0028F430 0x80 func_0028F430  # OVL1
-0x0028F4B0 0x7C func_0028F4B0  # OVL1
-0x0028F530 0x8C func_0028F530  # OVL1
+0x0028F320 0x48 Clear__21RTList<11ACTIVE_ANIM>Fv  # OVL1; s1:align by hand (0.81 to SOCOM 1's: head, tail and cursor cleared, every pool link zeroed)
+0x0028F370 0xC0 Remove__21RTList<11ACTIVE_ANIM>FP11ACTIVE_ANIM  # OVL1; s1:align by hand (0.94 to SOCOM 1's Remove)
+0x0028F430 0x80 Add__21RTList<11ACTIVE_ANIM>FP11ACTIVE_ANIM  # OVL1; s1:align by hand (0.95 to SOCOM 1's Add)
+0x0028F4B0 0x7C PutBack__22RTArray<11ACTIVE_ANIM>FP11ACTIVE_ANIM  # OVL1; s1:align by hand (0.95 to SOCOM 1's PutBack; the first RTArray instance of the tail, its element constructor 0x28F960 that of a 0x2C-byte ACTIVE_ANIM)
+0x0028F530 0x8C GetNext__22RTArray<11ACTIVE_ANIM>Fb  # OVL1; s1:align by hand (0.91 to SOCOM 1's GetNext, after its PutBack)
 0x0028F5C0 0x1A0 func_0028F5C0  # OVL1
 0x0028F760 0xA4 func_0028F760  # OVL1
 0x0028F810 0x144 func_0028F810  # OVL1
 0x0028F960 0x6C func_0028F960  # OVL1
-0x0028F9D0 0x7C func_0028F9D0  # OVL1
-0x0028FA50 0x8C func_0028FA50  # OVL1
+0x0028F9D0 0x7C PutBack__26RTArray<15CZBodyAnimBlend>FP15CZBodyAnimBlend  # OVL1; s1:align by hand (0.95 to SOCOM 1's PutBack of either RTArray; this one is CBlendPool's: 0x28BC50 calls it, and the RTArray<CZBodyAnimBlend> destructor and constructor follow it)
+0x0028FA50 0x8C GetNext__26RTArray<15CZBodyAnimBlend>Fb  # OVL1; s1:align by hand (0.91 to SOCOM 1's GetNext; CBlendPool's GetNext calls it with true)
 0x0028FAE0 0x184 func_0028FAE0  # OVL1
 0x0028FC70 0x58 func_0028FC70  # OVL1
 0x0028FCD0 0x8C func_0028FCD0  # OVL1
@@ -3530,10 +3530,10 @@
 0x0028FF00 0xC4 func_0028FF00  # OVL1
 0x0028FFD0 0x144 func_0028FFD0  # OVL1
 0x00290120 0xC0 func_00290120  # OVL1
-0x002901E0 0x60 func_002901E0  # OVL1
-0x00290240 0x44 func_00290240  # OVL1
-0x00290290 0xB0 func_00290290  # OVL1
-0x00290340 0x14 func_00290340  # OVL1
+0x002901E0 0x60 __dt__21RTList<11ACTIVE_ANIM>Fv  # OVL1; by hand (the pool deleted through __destroy_new_array with LIST_ITEM's destructor 0x290240, the deleting flag; the last of body.cpp's tail with the constructor 0x290290, which CZBodyAnimBlend's constructor calls)
+0x00290240 0x44 __dt__Q221RTList<11ACTIVE_ANIM>9LIST_ITEMFv  # OVL1; s1:align by hand (0.97 to SOCOM 1's; handed to the pool's new[] and delete[] as the element destructor)
+0x00290290 0xB0 __ct__21RTList<11ACTIVE_ANIM>FUi  # OVL1; s1:align by hand (0.93 to SOCOM 1's: the size, three links cleared, the pool new[]'d with LIST_ITEM's constructor 0x290340 and zeroed)
+0x00290340 0x14 __ct__Q221RTList<11ACTIVE_ANIM>9LIST_ITEMFv  # OVL1; s1:align by hand (opcode-identical to SOCOM 1's: three words zeroed)
 0x00290360 0x8 IsCell__Q23zdb5CNodeFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00290370 0xD8 func_00290370  # OVL1
 0x00290450 0x88 func_00290450  # OVL1
@@ -4306,9 +4306,9 @@
 0x002CB860 0xC8 func_002CB860  # OVL1
 0x002CB930 0xE0 func_002CB930  # OVL1
 0x002CBA10 0x94 fwrite__3CIOFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x002CBAB0 0x8 func_002CBAB0  # OVL1
-0x002CBAC0 0x8 func_002CBAC0  # OVL1
-0x002CBAD0 0x8 func_002CBAD0  # OVL1
+0x002CBAB0 0x8 freadAsync__3CIOFPvi  # OVL1; ours (CIO's table slot 0x30, the first of SOCOM II's three async slots after fwrite; the base answers 0; zutil.h's inline declaration) -- the UI-widgets lane
+0x002CBAC0 0x8 fwriteAsync__3CIOFPCvi  # OVL1; ours (CIO's slot 0x34, the base answers 0; zutil.h) -- the UI-widgets lane
+0x002CBAD0 0x8 fsyncAsync__3CIOFiPi  # OVL1; ours (CIO's slot 0x38, the base answers true; zutil.h) -- the UI-widgets lane
 0x002CBAE0 0x180 func_002CBAE0  # OVL1
 0x002CBC60 0x508 func_002CBC60  # OVL1
 0x002CC170 0x110 func_002CC170  # OVL1
@@ -7118,14 +7118,14 @@
 0x00385C30 0xA4 func_00385C30  # OVL1
 0x00385CE0 0xA8 __dt__13CUIVarManagerFv  # OVL1; s1:calls
 0x00385D90 0x5C DetachUIVar__10UIVarMixinFP11CUIVariable  # OVL1; s1:calls by hand (the HUD lane: UIVarMixin's destructor makes this call where SOCOM 1's calls DetachUIVar)
-0x00385DF0 0x5C func_00385DF0  # OVL1
+0x00385DF0 0x5C AttachUIVar__10UIVarMixinFP11CUIVariable  # OVL1; s1:calls (SystemTuner's constructor calls it with the new variable where SOCOM 1's calls AttachUIVar; detaches the old variable first, as SOCOM 1's)
 0x00385E50 0x48 func_00385E50  # OVL1
 0x00385EA0 0x248 func_00385EA0  # OVL1
 0x003860F0 0x1B0 func_003860F0  # OVL1
 0x003862A0 0x124 __as__11CUIVariableFPCc  # OVL1; s1:calls (the lobby callbacks' (variable, string) setter, as SOCOM 1's) -- the online lane
 0x003863D0 0x8C UpdateDependents__11CUIVariableFv  # OVL1; s1:calls (SyncGameClock calls it third, as SOCOM 1's) -- the online lane
 0x00386460 0x1F8 func_00386460  # OVL1
-0x00386660 0x90 func_00386660  # OVL1
+0x00386660 0x90 DetachAll__11CUIVariableFv  # OVL1; s1:calls by hand (detaches each watcher through UIVarMixin::DetachUIVar until none is left, as SOCOM 1's DetachAll; Destroy calls it first)
 0x003866F0 0x220 func_003866F0  # OVL1
 0x00386910 0xC func_00386910  # OVL1
 0x00386920 0x8 func_00386920  # OVL1
@@ -7137,9 +7137,9 @@
 0x003869A0 0x14 func_003869A0  # OVL1
 0x003869C0 0xC func_003869C0  # OVL1
 0x003869D0 0x18 func_003869D0  # OVL1
-0x003869F0 0xC0 func_003869F0  # OVL1
+0x003869F0 0xC0 Attach__11CUIVariableFP10UIVarMixin  # OVL1; ours (AttachUIVar calls it with the mixin once m_uivar is set; it adds the mixin to the variable's watchers unless already there, through the pod vector's insert)
 0x00386AB0 0x44 func_00386AB0  # OVL1
-0x00386B00 0x80 func_00386B00  # OVL1
+0x00386B00 0x80 Destroy__11CUIVariableFv  # OVL1; s1:calls by hand (DetachAll, then DeleteChildren and the fields cleared, as SOCOM 1's Destroy)
 0x00386B80 0x70 func_00386B80  # OVL1
 0x00386BF0 0x15C func_00386BF0  # OVL1
 0x00386D50 0x84 func_00386D50  # OVL1
@@ -7213,27 +7213,27 @@
 0x00389AE0 0xC GetType__10CImageSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389AF0 0xC GetType__11CButtonSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389B00 0x15C func_00389B00  # OVL1
-0x00389C60 0x154 func_00389C60  # OVL1
+0x00389C60 0x154 RefreshSystemTuners__Fv  # OVL1; ours (calls UpdateUIVar, slot 0xC, of each of the ten tuners InitSystemTuners makes, with its variable, skipping a null one)
 0x00389DC0 0xA8 UpdateUIVar__12CDialogTunerFP11CUIVariable  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389E70 0x9C UpdateUIVar__19CStickDeadzoneTunerFP11CUIVariable  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00389F10 0x78 func_00389F10  # OVL1
+0x00389F10 0x78 UpdateUIVar__18CStickInertiaTunerFP11CUIVariable  # OVL1; s1:vtable by hand (CStickInertiaTuner's slot 0xC; SOCOM 1's CStickAccelerationTuner's renamed; writes the pad's stick type at 0x2A4)
 0x00389F90 0x6C UpdateUIVar__22CStickSensitivityTunerFP11CUIVariable  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0038A000 0x40 UpdateUIVar__16CBrightnessTunerFP11CUIVariable  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0038A040 0x5C UpdateUIVar__11CMusicTunerFP11CUIVariable  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0038A0A0 0x168 func_0038A0A0  # OVL1
-0x0038A210 0x208 func_0038A210  # OVL1
+0x0038A0A0 0x168 UpdateUIVar__11CSoundTunerFP11CUIVariable  # OVL1; s1:vtable by hand (CSoundTuner's slot 0xC, as SOCOM 1's; sets sound groups 0, 3, 4, 5 and 14)
+0x0038A210 0x208 UninitSystemTuners__Fv  # OVL1; s1:order (deletes the tuners InitSystemTuners made and zeroes each, as SOCOM 1's; first of the unit's destructors as SOCOM 1's)
 0x0038A420 0x80 __dt__12CDialogTunerFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0038A4A0 0x80 __dt__19CStickDeadzoneTunerFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0038A520 0x80 func_0038A520  # OVL1
+0x0038A520 0x80 __dt__18CStickInertiaTunerFv  # OVL1; s1:vtable by hand (CStickInertiaTuner's slot 0x8; SOCOM 1's CStickAccelerationTuner renamed by its RTTI)
 0x0038A5A0 0x80 __dt__22CStickSensitivityTunerFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0038A620 0x80 __dt__16CBrightnessTunerFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0038A6A0 0x80 __dt__11CMusicTunerFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0038A720 0x80 __dt__11CSoundTunerFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0038A7A0 0x84C func_0038A7A0  # OVL1
+0x0038A7A0 0x84C InitSystemTuners__Fv  # OVL1; s1:order (news each tuner on SOUND_VOLUME ... HEADSET_CONTROLLER as SOCOM 1's does, between the destructors and ~SystemTuner as SOCOM 1's)
 0x0038AFF0 0x70 __dt__11SystemTunerFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0038B060 0x24 func_0038B060  # OVL1
-0x0038B090 0x80 func_0038B090  # OVL1
-0x0038B110 0x5C func_0038B110  # OVL1
+0x0038B060 0x24 TunersRebootHandler__FQ211CIOPManager11RebootPhaseQ211CIOPManager10RebootModePv  # OVL1; ours (the callback InitSystemTuners registers with theIOPManager: UIStoreOptions(0, 0), true)
+0x0038B090 0x80 __dt__13CHeadsetTunerFv  # OVL1; s1:vtable by hand (CHeadsetTuner's slot 0x8, SOCOM II's class)
+0x0038B110 0x5C UpdateUIVar__13CHeadsetTunerFP11CUIVariable  # OVL1; s1:vtable by hand (CHeadsetTuner's slot 0xC, SOCOM II's class: sound group 7)
 0x0038B170 0x8 UpdateUIVar__11SystemTunerFP11CUIVariable  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0038B180 0xCC func_0038B180  # OVL1
 0x0038B250 0x44 SetButtonState__Q221@unnamed@zui_skb_cpp@12CSkbKeyPropsFM9C2DButtonFPCvPv_v  # OVL1; s1:exact
@@ -7505,7 +7505,7 @@
 0x0039B670 0x4CC func_0039B670  # OVL1
 0x0039BB40 0x68 func_0039BB40  # OVL1
 0x0039BBB0 0x8 func_0039BBB0  # OVL1
-0x0039BBC0 0xD0 func_0039BBC0  # OVL1
+0x0039BBC0 0xD0 fwrite__9CBufferIOFPCvi  # OVL1; s1:vtable by hand (CBufferIO's slot 0x2C, the slot CIO::fwrite(const char *) calls with (&len, 4); falls back on CFileIO's slot 0x2C; SOCOM 1's slot 0x2C is fwrite__9CBufferIOFPCvi)
 0x0039BC90 0xA0 fwrite__9CBufferIOFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0039BD30 0x2C fflush__9CBufferIOFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0039BD60 0x7C freadchar__9CBufferIOFPc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -7516,8 +7516,8 @@
 0x0039C040 0x50 Close__9CBufferIOFv  # OVL1; s1:align
 0x0039C090 0xF4 LoadBuffer__9CBufferIOFv  # OVL1; s1:align
 0x0039C190 0xC0 Open__9CBufferIOFPCcUi  # OVL1; s1:align
-0x0039C250 0x14 func_0039C250  # OVL1
-0x0039C270 0x70 func_0039C270  # OVL1
+0x0039C250 0x14 Release__9CBufferIOFv  # OVL1; s1:order (after Open(const char *, unsigned) as SOCOM 1's Release; zeroes the four buffer members and calls CFileIO's Release as SOCOM 1's does)
+0x0039C270 0x70 Open__9CBufferIOFPvUi  # OVL1; s1:vtable by hand (CBufferIO's slot 0x44, SOCOM 1's Open__9CBufferIOFPvUi at 0x38 before SOCOM II's three new CIO slots; takes the buffer and size as SOCOM 1's)
 0x0039C2E0 0x44 __ct__9CBufferIOFv  # OVL1; s1:align
 0x0039C330 0x94 func_0039C330  # OVL1
 0x0039C3D0 0xC func_0039C3D0  # OVL1
@@ -7526,9 +7526,9 @@
 0x0039C440 0xBC func_0039C440  # OVL1
 0x0039C500 0x78 __dt__7COutputFv  # OVL1; s1:align
 0x0039C580 0xC func_0039C580  # OVL1
-0x0039C590 0x80 func_0039C590  # OVL1
+0x0039C590 0x80 UnRegisterRebootCallback__11CIOPManagerFi  # OVL1; s1:calls (UninitSystemTuners passes it theIOPManager and the id InitSystemTuners' RegisterRebootCallback returned)
 0x0039C610 0x6C RegisterRebootCallback__11CIOPManagerFPFQ211CIOPManager11RebootPhaseQ211CIOPManager10RebootModePv_bPv  # OVL1; s1:align
-0x0039C680 0x6C func_0039C680  # OVL1
+0x0039C680 0x6C zUtilStrUpr__FPc  # OVL1; ours (strlen, then toupper over each character in place; between the reboot registration and zUtilInit's empty stubs)
 0x0039C6F0 0x8 func_0039C6F0  # OVL1
 0x0039C700 0x8 func_0039C700  # OVL1
 0x0039C710 0xE0 func_0039C710  # OVL1
@@ -7537,7 +7537,7 @@
 0x0039CD40 0x78 func_0039CD40  # OVL1
 0x0039CDC0 0x8 GetSize__7CFileIOCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0039CDD0 0x94 fwrite__7CFileIOFPCc  # OVL1; s1:align
-0x0039CE70 0xC func_0039CE70  # OVL1
+0x0039CE70 0xC SetErrorHandler__7CFileIOFPFi_v  # OVL1; ours (stores its argument to the handler fread, fwrite and fseek call with 2 on a failure when the file's flags have 2)
 0x0039CE80 0x194 func_0039CE80  # OVL1
 0x0039D020 0x24 func_0039D020  # OVL1
 0x0039D050 0x430 func_0039D050  # OVL1
@@ -7557,13 +7557,13 @@
 0x0039E4F0 0x110 CreatePath__7CFileCDFPcPc  # OVL1; s1:calls
 0x0039E600 0x8 fflush__7CFileIOFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0039E610 0x8 ftell__7CFileIOCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0039E620 0x70 func_0039E620  # OVL1
+0x0039E620 0x70 fwrite__7CFileIOFPCvi  # OVL1; s1:vtable by hand (CFileIO's slot 0x2C, the slot CIO::fwrite(const char *) calls with (&len, 4), as SOCOM 1's slot 0x2C)
 0x0039E690 0x8C fread__7CFileIOFPvi  # OVL1; s1:calls
 0x0039E720 0x178 fseek__7CFileIOFii  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0039E8A0 0x104 Close__7CFileIOFv  # OVL1; s1:align
-0x0039E9B0 0x4A0 func_0039E9B0  # OVL1
+0x0039E9B0 0x4A0 Open__7CFileIOFPCcUi  # OVL1; s1:vtable by hand (CFileIO's slot 0x08, as SOCOM 1's; CBufferIO::Open(const char *, unsigned) calls it with its own arguments)
 0x0039EE50 0x104 PS2FileName__7CFileIOFPCcPcb  # OVL1; s1:calls (zSysLoadIRX calls it where SOCOM 1's does) -- the sound lane
-0x0039EF60 0xC func_0039EF60  # OVL1
+0x0039EF60 0xC Release__7CFileIOFv  # OVL1; s1:calls (CBufferIO::Release calls it last, as SOCOM 1's calls Release__7CFileIOFv; stores -1 to m_file, 0xC bytes as SOCOM 1's)
 0x0039EF70 0xC IsOpen__9CBufferIOCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0039EF80 0x50 IsOpen__7CFileIOCFv  # OVL1; s1:align
 0x0039EFD0 0x34 __ct__7CFileIOFv  # OVL1; s1:align
@@ -7587,42 +7587,42 @@
 0x0039FC60 0x120 func_0039FC60  # OVL1
 0x0039FD80 0x128 func_0039FD80  # OVL1
 0x0039FEB0 0x8 GetMode__10CMemCardIOCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0039FEC0 0x80 fwrite__10CMemCardIOFPCvi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0039FF40 0xE0 func_0039FF40  # OVL1
-0x003A0020 0xE0 func_003A0020  # OVL1
+0x0039FEC0 0x80 fsyncAsync__10CMemCardIOFiPi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike); corrected (the s1:vtable name was slot 0x38's by position, but SOCOM II's CIO grew three slots before fwrite(const char *): this is sceMcSync(1, ...) -- whether the asynchronous command finished, its result stored; the name ours)
+0x0039FF40 0xE0 fwriteAsync__10CMemCardIOFPCvi  # OVL1; ours (CMemCardIO's slot 0x34, SOCOM II's: MEMCARD_STATUS 3, then sceMcWrite without waiting, 6 on success)
+0x003A0020 0xE0 freadAsync__10CMemCardIOFPvi  # OVL1; ours (CMemCardIO's slot 0x30, SOCOM II's: MEMCARD_STATUS 2, then sceMcRead without waiting)
 0x003A0100 0x54 fflush__10CMemCardIOFv  # OVL1; s1:align
-0x003A0160 0x10C func_003A0160  # OVL1
-0x003A0270 0x10C func_003A0270  # OVL1
+0x003A0160 0x10C fwrite__10CMemCardIOFPCvi  # OVL1; s1:vtable by hand (CMemCardIO's slot 0x2C, the slot CIO::fwrite(const char *) calls with (&len, 4); sceMcWrite then sceMcSync, as SOCOM 1's)
+0x003A0270 0x10C fread__10CMemCardIOFPvi  # OVL1; s1:vtable by hand (CMemCardIO's slot 0x24, as SOCOM 1's; sceMcRead then sceMcSync)
 0x003A0380 0xC fread__10CMemCardIOFiPPv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003A0390 0xA0 fseek__10CMemCardIOFii  # OVL1; s1:align
 0x003A0430 0x80 ftell__10CMemCardIOCFv  # OVL1; s1:align
 0x003A04B0 0x8 GetSize__10CMemCardIOCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003A04C0 0x10 IsOpen__10CMemCardIOCFv  # OVL1; s1:exact
-0x003A04D0 0xD0 func_003A04D0  # OVL1
+0x003A04D0 0xD0 Close__10CMemCardIOFv  # OVL1; s1:vtable by hand (CMemCardIO's slot 0x0C, as SOCOM 1's: sceMcClose, then the descriptor -1)
 0x003A05A0 0x224 Open__10CMemCardIOFPCcUi  # OVL1; s1:align
 0x003A07D0 0xB4 chdir__8CMemCardFPCc  # OVL1; s1:calls+order (UI handlers call it where SOCOM 1's do; chdir, mkdir, Exists in SOCOM 1's order) -- the UI-commands lane
 0x003A0890 0xBC mkdir__8CMemCardFPCc  # OVL1; s1:calls+order (after chdir as SOCOM 1's; called where SOCOM 1's UI handlers call it) -- the UI-commands lane
 0x003A0950 0xB8 Exists__8CMemCardFPCc  # OVL1; s1:calls+order (after mkdir as SOCOM 1's; called where SOCOM 1's UI handlers call it) -- the UI-commands lane
 0x003A0A10 0x4C4 CreateIconFiles__8CMemCardFv  # OVL1; s1:align
 0x003A0EE0 0x17C Ascii2Sjis__FUc  # OVL1; s1:align
-0x003A1060 0x1A8 func_003A1060  # OVL1
+0x003A1060 0x1A8 GetUsedSpace__8CMemCardFv  # OVL1; ours (when the save directory exists: the files of ./* summed in kilobytes, plus half the entry count and one when any file has bytes)
 0x003A1210 0xC4 GetFreeSpace__8CMemCardFv  # OVL1; s1:calls (the save handlers call it where SOCOM 1's do) -- the UI-commands lane
 0x003A12E0 0x88 Format__8CMemCardFv  # OVL1; s1:align
 0x003A1370 0x208 func_003A1370  # OVL1
 0x003A1580 0xC8 IsFormatted__8CMemCardFv  # OVL1; s1:align
 0x003A1650 0xE0 IsInserted__8CMemCardFv  # OVL1; s1:align
-0x003A1730 0xA4 func_003A1730  # OVL1
-0x003A17E0 0xA0 func_003A17E0  # OVL1
-0x003A1880 0xF8 func_003A1880  # OVL1
-0x003A1980 0x244 func_003A1980  # OVL1
-0x003A1BD0 0x90 func_003A1BD0  # OVL1
-0x003A1C60 0x90 func_003A1C60  # OVL1
-0x003A1CF0 0x118 func_003A1CF0  # OVL1
-0x003A1E10 0x84 func_003A1E10  # OVL1
-0x003A1EA0 0x98 func_003A1EA0  # OVL1
-0x003A1F40 0xA4 func_003A1F40  # OVL1
-0x003A1FF0 0x13C func_003A1FF0  # OVL1
-0x003A2130 0x134 func_003A2130  # OVL1
+0x003A1730 0xA4 LoadGame__8CMemCardFPCc  # OVL1; s1:order (after the reserve-file deletes as SOCOM 1's saves follow IsInserted; the game save manager at 0x1C loads with flags 0xE, then LOADED_FROM_MEMCARD)
+0x003A17E0 0xA0 SaveGame__8CMemCardFPCcPc  # OVL1; s1:order (the game save manager at 0x1C saves with flags 0xE; SOCOM II passes a second string)
+0x003A1880 0xF8 CreateReserveFiles__8CMemCardFv  # OVL1; ours (PATCHFILE.DAT of 2000 KB unless a *.zdb exists, then SCRATCHPAD.DAT of 2999 KB less the save directory's use)
+0x003A1980 0x244 CreateReserveFile__8CMemCardFPCci  # OVL1; ours (unless the named file exists: opened with create, seeked to the last kilobyte of the size given and 1 KB of 0xEE written)
+0x003A1BD0 0x90 DeletePatchFile__8CMemCardFv  # OVL1; ours (sceMcDelete of PATCHFILE.DAT on the chosen port and slot unless a file is open)
+0x003A1C60 0x90 DeleteScratchpad__8CMemCardFv  # OVL1; ours (sceMcDelete of SCRATCHPAD.DAT on the chosen port and slot unless a file is open)
+0x003A1CF0 0x118 GetCardStatus__8CMemCardFv  # OVL1; ours (polls sceMcGetInfo twice at most: 0 ready, 2 no card, 1 unformatted, 6 when the result is -5)
+0x003A1E10 0x84 LoadConfig__8CMemCardFPCc  # OVL1; s1:order (the config save manager at 0x18 loads with flags 0xC, after SaveConfig in memory as SOCOM 1's LoadConfig before SaveConfig in source)
+0x003A1EA0 0x98 SaveConfig__8CMemCardFPCcPCc  # OVL1; s1:order (the config save manager at 0x18 saves with flags 0xC; SOCOM II passes a description)
+0x003A1F40 0xA4 Uninit__8CMemCardFv  # OVL1; s1:order (before Init as SOCOM 1's Uninit: sceMcEnd and the module unloaded when libmc is up, then MEMCARD_STATUS 0)
+0x003A1FF0 0x13C Reset__8CMemCardFv  # OVL1; ours (when libmc is up: sceMcInit again, both ports probed, MEMCARD_STATUS 0; between Uninit and Init)
+0x003A2130 0x134 Init__8CMemCardFv  # OVL1; s1:order (before ~CMemCard as SOCOM 1's Init: the module loaded, sceMcInit, both ports probed)
 0x003A2270 0x68 __dt__8CMemCardFv  # OVL1; s1:align
 0x003A22E0 0x90 __ct__8CMemCardFv  # OVL1; s1:calls
 0x003A2370 0x94 func_003A2370  # OVL1
@@ -7669,8 +7669,8 @@
 0x003A5C30 0x3C func_003A5C30  # OVL1
 0x003A5C70 0x40 func_003A5C70  # OVL1
 0x003A5CB0 0x8 func_003A5CB0  # OVL1
-0x003A5CC0 0x108 func_003A5CC0  # OVL1
-0x003A5DD0 0x78 func_003A5DD0  # OVL1
+0x003A5CC0 0x108 __dt__19CSimpleStateMachineFv  # OVL1; by hand, the UI-commands lane's lead vetted (stores the same vtable first, drains the queue, frees 0x30, destroys the queue at 0x14 and deletes itself when its flag is positive: MW's destructor shape; the inlined ~CSMInitNetwork calls it with 0)
+0x003A5DD0 0x78 __ct__19CSimpleStateMachineFv  # OVL1; by hand, the UI-commands lane's lead vetted (stores __vt__19CSimpleStateMachine, 0x408240, before anything else and copy-builds the state queue at 0x14 from a temporary; UIInitNetwork calls it right after operator new(60))
 0x003A5E50 0x78 func_003A5E50  # OVL1
 0x003A5ED0 0xB0 func_003A5ED0  # OVL1
 0x003A5F80 0x5C func_003A5F80  # OVL1
@@ -7798,7 +7798,7 @@
 0x003AFB10 0x8 func_003AFB10  # OVL1
 0x003AFB20 0x80 func_003AFB20  # OVL1
 0x003AFBA0 0x3C func_003AFBA0  # OVL1
-0x003AFBE0 0x164 func_003AFBE0  # OVL1
+0x003AFBE0 0x164 Brightness__6CVideoFf  # OVL1; s1:calls (the brightness tuner tail-calls it; SOCOM 1's head word for word: 0.5 compared with the argument, 128 stored) -- the UI-widgets lane
 0x003AFD50 0x11C func_003AFD50  # OVL1
 0x003AFE70 0x54 zVid_ZTestOnWriteSet__Fb  # OVL1; s1:exact
 0x003AFED0 0x54 zVid_FrameRestore__Fv  # OVL1; s1:align
@@ -7951,10 +7951,10 @@
 0x003BB230 0x68 __dt__Q23zdb16CPreLight_ObjectFv  # OVL1; s1:calls
 0x003BB2A0 0x1C __ct__Q23zdb16CPreLight_ObjectFv  # OVL1; s1:calls by hand (CWorld's constructor builds m_PreLight_Object at 0x5bc through it)
 0x003BB2C0 0x1B0 func_003BB2C0  # OVL1
-0x003BB470 0x68 func_003BB470  # OVL1
+0x003BB470 0x68 __dt__Q23zdb16CMaterial_ObjectFv  # OVL1; s1:align, checked by hand (right before CMaterial_Object's constructor, as each *_Object's destructor precedes its constructor here and in SOCOM 1; calls a band vector deleter's destructor, 0x3BCDF0)
 0x003BB4E0 0x1C __ct__Q23zdb16CMaterial_ObjectFv  # OVL1; s1:calls by hand (CWorld's constructor builds m_Material_Object at 0x59c through it)
 0x003BB500 0x114 func_003BB500  # OVL1
-0x003BB620 0x68 func_003BB620  # OVL1
+0x003BB620 0x68 __dt__Q23zdb15CSubSurf_ObjectFv  # OVL1; s1:align, checked by hand (right before CSubSurf_Object's constructor, the same pattern)
 0x003BB690 0x1C __ct__Q23zdb15CSubSurf_ObjectFv  # OVL1; s1:calls by hand (CWorld's constructor builds m_SubSurf_Object at 0x5ac through it)
 0x003BB6B0 0x98 Read__Q23zdb11CLOD_ObjectFPQ23zdb9CSaveLoad  # OVL1; s1:calls
 0x003BB750 0x68 __dt__Q23zdb11CLOD_ObjectFv  # OVL1; s1:align
@@ -8075,27 +8075,27 @@
 0x003C42D0 0xB4 func_003C42D0  # OVL1
 0x003C4390 0x218 __ct__Q23zdb7CVisualFv  # OVL1; s1:callee
 0x003C45B0 0xE8 func_003C45B0  # OVL1
-0x003C46A0 0x54 func_003C46A0  # OVL1
-0x003C4700 0x3AC func_003C4700  # OVL1
-0x003C4AB0 0x48 func_003C4AB0  # OVL1
-0x003C4B00 0x40 func_003C4B00  # OVL1
-0x003C4B40 0x48 func_003C4B40  # OVL1
-0x003C4B90 0x74 func_003C4B90  # OVL1
-0x003C4C10 0x30 func_003C4C10  # OVL1
-0x003C4C40 0xA4 func_003C4C40  # OVL1
-0x003C4CF0 0x44 func_003C4CF0  # OVL1
-0x003C4D40 0x10C func_003C4D40  # OVL1
-0x003C4E50 0x28 func_003C4E50  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
-0x003C4E80 0x30 func_003C4E80  # OVL1
-0x003C4EB0 0x78 func_003C4EB0  # OVL1
-0x003C4F30 0x40 func_003C4F30  # OVL1
-0x003C4F70 0xAC func_003C4F70  # OVL1
-0x003C5020 0x44 func_003C5020  # OVL1
-0x003C5070 0xFC func_003C5070  # OVL1
-0x003C5170 0x28 func_003C5170  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
+0x003C46A0 0x54 ClearAnimations__12CZWeaponListFv  # OVL1; s1:order by hand (SOCOM 1's CZWeaponList unit, first in the image: each weapon's ClearAnims, 0x3D21C0)
+0x003C4700 0x3AC InitializeWeapons__12CZWeaponListFv  # OVL1; s1:order by hand (second in the unit; the bullet-pass sounds .BUL_PASSING/.ROCKET_BY, the decal sets, the %s_zoom anims, as SOCOM 1's)
+0x003C4AB0 0x48 GetWeaponIndex__12CZWeaponListFP8CZWeapon  # OVL1; by hand (new in SOCOM II, between InitializeWeapons and GetWeaponByIndex: the list walked for the pointer, its index or -1; the name is ours)
+0x003C4B00 0x40 GetWeaponByIndex__12CZWeaponListFi  # OVL1; s1:order by hand (the list walked to the index'th weapon, 0 past the end)
+0x003C4B40 0x48 GetWeapon__12CZWeaponListF10EQUIP_ITEM  # OVL1; s1:order by hand (the weapon whose id byte, 0x7C, equals the argument's low byte)
+0x003C4B90 0x74 GetWeaponName__12CZWeaponListF10EQUIP_ITEM  # OVL1; s1:order by hand (GetWeapon(EQUIP_ITEM) inlined, then the weapon's string or "Unknown Weapon")
+0x003C4C10 0x30 GetWeaponId__12CZWeaponListFPCc  # OVL1; s1:order by hand (GetWeapon(name)'s id byte, or 255 -- SOCOM 1's li 255)
+0x003C4C40 0xA4 GetWeapon__12CZWeaponListFPCc  # OVL1; s1:order by hand (strcmp against each weapon's GetName); a const member (its walk reads the element by value, through the const iterator); back to non-const (a const walk copies its iterator four times; the target twice)
+0x003C4CF0 0x44 AddWeapon__12CZWeaponListFP8CZWeapon  # OVL1; by hand (new in SOCOM II: a non-null weapon pushed on the list, as CZAmmoList::AddAmmo; the name is ours)
+0x003C4D40 0x10C __dt__12CZWeaponListFv  # OVL1; s1:order by hand (each weapon deleted through its virtual destructor, then the list cleared)
+0x003C4E50 0x28 __ct__12CZWeaponListFv  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); s1:order by hand (the list deleter's constructor only)
+0x003C4E80 0x30 GetAmmoId__10CZAmmoListFPCc  # OVL1; s1:order by hand (GetAmmo(name)'s id byte, 0x30, or 255)
+0x003C4EB0 0x78 GetAmmo__10CZAmmoListF10EQUIP_AMMO  # OVL1; s1:order by hand (the ammo whose id byte, 0x30, equals the argument's low byte)
+0x003C4F30 0x40 GetAmmo__10CZAmmoListFi  # OVL1; s1:order by hand (the index'th ammo)
+0x003C4F70 0xAC GetAmmo__10CZAmmoListFPCc  # OVL1; s1:order by hand (strcmp against each ammo's GetName, 0x3D4540)
+0x003C5020 0x44 AddAmmo__10CZAmmoListFP6CZAmmo  # OVL1; s1:order by hand (a non-null ammo pushed on the list)
+0x003C5070 0xFC __dt__10CZAmmoListFv  # OVL1; s1:order by hand (each ammo deleted through CZAmmo's destructor, 0x3D4710, then the list cleared)
+0x003C5170 0x28 __ct__10CZAmmoListFv  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); s1:order by hand (the list deleter's constructor only; CZWeapon's constructor builds m_LegalAmmoList at 0xC4 through it)
 0x003C51A0 0x8 func_003C51A0  # OVL1
-0x003C51B0 0x8 func_003C51B0  # OVL1
-0x003C51C0 0x8 func_003C51C0  # OVL1
+0x003C51B0 0x8 IsRemote__15PlacedExplosiveFv  # OVL1; by hand (returns the byte at 0xC5, SOCOM 1's m_remote -- GetNumRemoteExplosives tests it where SOCOM 1's read m_remote directly; the name is ours)
+0x003C51C0 0x8 SetRemote__15PlacedExplosiveFb  # OVL1; by hand (stores the byte at 0xC5, m_remote; the name is ours)
 0x003C51D0 0x24 func_003C51D0  # OVL1
 0x003C5200 0x8 func_003C5200  # OVL1
 0x003C5210 0xFC func_003C5210  # OVL1
@@ -8108,24 +8108,24 @@
 0x003C5950 0x10 ResolveFTSDamage__11CZFTSWeaponFf  # OVL1; s1:exact
 0x003C5960 0x8 func_003C5960  # OVL1
 0x003C5970 0x8 func_003C5970  # OVL1
-0x003C5980 0x38 func_003C5980  # OVL1
-0x003C59C0 0x8C func_003C59C0  # OVL1
-0x003C5A50 0x30 func_003C5A50  # OVL1
-0x003C5A80 0x8 func_003C5A80  # OVL1
+0x003C5980 0x38 GetZoomRange__11CZFTSWeaponFUi  # OVL1; s1:order by hand (SOCOM 1's size, 0x38: the zoom vector's i'th range, 500 past its end)
+0x003C59C0 0x8C __ct__11CTargetModsFv  # OVL1; by hand (CZFTSWeapon's constructor runs it over targetmods[3], 0x74 apart from 0xF8: SOCOM 1's CTargetMods constructor, the class grown to 0x74)
+0x003C5A50 0x30 TargetMods__11CZFTSWeaponFi  # OVL1; s1:order by hand (SOCOM 1's: &targetmods[i < 3 ? i : 0], elements of 0x74 at 0xF8)
+0x003C5A80 0x8 SetWiggleReport__11CTargetModsFf  # OVL1; s1:order by hand (stores the float at 0x70, the last member, as SOCOM 1's at its last, 0x48; right after TargetMods as in SOCOM 1)
 0x003C5A90 0x8 func_003C5A90  # OVL1
-0x003C5AA0 0x8 func_003C5AA0  # OVL1
+0x003C5AA0 0x8 GetWiggleReport__11CTargetModsFv  # OVL1; s1:order by hand (loads the float at 0x70)
 0x003C5AB0 0x8 func_003C5AB0  # OVL1
 0x003C5AC0 0x58 func_003C5AC0  # OVL1
 0x003C5B20 0x100 func_003C5B20  # OVL1
 0x003C5C20 0x50 func_003C5C20  # OVL1
 0x003C5C70 0x28 func_003C5C70  # OVL1
 0x003C5CA0 0x28 func_003C5CA0  # OVL1
-0x003C5CD0 0x48 func_003C5CD0  # OVL1
+0x003C5CD0 0x48 IsGrenadeLauncherWeapon__11CZFTSWeaponFv  # OVL1; s1:order by hand (SOCOM 1's test of the id byte against 52, 61, 142 and 143; SOCOM II adds 63)
 0x003C5D20 0x60 func_003C5D20  # OVL1
 0x003C5D80 0x84 func_003C5D80  # OVL1
-0x003C5E10 0x30 func_003C5E10  # OVL1
-0x003C5E40 0x30 func_003C5E40  # OVL1
-0x003C5E70 0x38 func_003C5E70  # OVL1
+0x003C5E10 0x30 IsM203Weapon__11CZFTSWeaponF10EQUIP_ITEM  # OVL1; by hand (the same test as IsM203Weapon of an id byte, 52 or 61; the member one, next to it, inlines it -- its true a daddiu; the name is ours)
+0x003C5E40 0x30 IsM203Weapon__11CZFTSWeaponFv  # OVL1; s1:order by hand (SOCOM 1's test of the id byte against 52 and 61)
+0x003C5E70 0x38 AddZoommode__11CZFTSWeaponFf  # OVL1; s1:order by hand (a float pushed on the zoom vector at 0x280 through the pod insert)
 0x003C5EB0 0x8 func_003C5EB0  # OVL1
 0x003C5EC0 0x8 func_003C5EC0  # OVL1
 0x003C5ED0 0x8 func_003C5ED0  # OVL1
@@ -8162,7 +8162,7 @@
 0x003C60F0 0x8 func_003C60F0  # OVL1
 0x003C6100 0x8 func_003C6100  # OVL1
 0x003C6110 0x8 func_003C6110  # OVL1
-0x003C6120 0x1C func_003C6120  # OVL1
+0x003C6120 0x1C SetTarget_DilateUponMovement__11CTargetModsFf  # OVL1; s1:order by hand (SOCOM 1's: the value and its square root, at 0x24 and 0x2C)
 0x003C6140 0x8 func_003C6140  # OVL1
 0x003C6150 0x8 func_003C6150  # OVL1
 0x003C6160 0x8 func_003C6160  # OVL1
@@ -8171,14 +8171,14 @@
 0x003C6190 0x8 func_003C6190  # OVL1
 0x003C61A0 0x8 func_003C61A0  # OVL1
 0x003C61B0 0x8 Recoil__11CZFTSWeaponFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x003C61C0 0x50 func_003C61C0  # OVL1
-0x003C6210 0x50 func_003C6210  # OVL1
-0x003C6260 0x50 func_003C6260  # OVL1
-0x003C62B0 0x50 func_003C62B0  # OVL1
-0x003C6300 0x8 func_003C6300  # OVL1
-0x003C6310 0x8 func_003C6310  # OVL1
+0x003C61C0 0x50 AccuracyScalar_Max__11CZFTSWeaponFf  # OVL1; s1:order by hand (SOCOM 1's shape: the maximum stored, the slope over the burst counts recomputed; 0xC0 later)
+0x003C6210 0x50 AccuracyScalar_Min__11CZFTSWeaponFf  # OVL1; s1:order by hand (the same for the minimum)
+0x003C6260 0x50 AccuracyBurstCnt_Max__11CZFTSWeaponFi  # OVL1; s1:order by hand (the same for the maximum burst count)
+0x003C62B0 0x50 AccuracyBurstCnt_Min__11CZFTSWeaponFi  # OVL1; s1:order by hand (the same for the minimum burst count)
+0x003C6300 0x8 AccuracyBurstCnt_Max__11CZFTSWeaponCFv  # OVL1; s1:order by hand (loads the word at 0x26C, SOCOM 1's at 0x1AC)
+0x003C6310 0x8 AccuracyBurstCnt_Min__11CZFTSWeaponCFv  # OVL1; s1:order by hand (loads the word at 0x268)
 0x003C6320 0xA4 __ct__11CZFTSWeaponFv  # OVL1; s1:align
-0x003C63D0 0x8C func_003C63D0  # OVL1
+0x003C63D0 0x8C MakeWeaponEventCallbacks__8CZWeaponFUiP12CZProjectile  # OVL1; s1:order by hand (SOCOM 1's first zwep_global.cpp function: each callback in m_callbacks whose event mask has the event called with the projectile, the event and its data)
 0x003C6460 0xB0 RemoveWeaponEventCallback__8CZWeaponFPFP12CZProjectileUiPv_v  # OVL1; s1:align
 0x003C6510 0x44 AddWeaponEventCallback__8CZWeaponFPFP12CZProjectileUiPv_vUiPv  # OVL1; s1:exact
 0x003C6560 0xB0 remove_if<Q33std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>19generic_iterator<0>,17_compare_callback>__3stdFQ33std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>19generic_iterator<0>Q33std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>19generic_iterator<0>17_compare_callback  # OVL1; s1:align
@@ -8186,7 +8186,7 @@
 0x003C66D0 0x110 insert__Q23std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>FQ33std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>19generic_iterator<0>RC22WEAPON_CALLBACK_STRUCT  # OVL1; s1:callee
 0x003C67E0 0x80 func_003C67E0  # OVL1
 0x003C6860 0x18 func_003C6860  # OVL1
-0x003C6880 0x80 func_003C6880  # OVL1
+0x003C6880 0x80 __dt__16CWepCallbackListFv  # OVL1; s1:align, checked by hand (erases WEAPON_CALLBACK_STRUCT nodes through that list's erase, 0x3C6610 -- the one list of that type)
 0x003C6900 0xC func_003C6900  # OVL1
 0x003C6910 0xC func_003C6910  # OVL1
 0x003C6920 0x60 func_003C6920  # OVL1
@@ -8210,7 +8210,7 @@
 0x003C7490 0x170 func_003C7490  # OVL1
 0x003C7600 0x4D0 func_003C7600  # OVL1
 0x003C7AD0 0x8 func_003C7AD0  # OVL1
-0x003C7AE0 0x8 func_003C7AE0  # OVL1
+0x003C7AE0 0x8 GetInstance__12CZProjectileFv  # OVL1; s1:calls by hand (SOCOM 1's GetNumRemoteExplosives calls GetInstance at the same place SOCOM II's calls this; it returns the word at 0x20, SOCOM 1's m_instance 0x18 moved 8 on)
 0x003C7AF0 0x258 func_003C7AF0  # OVL1
 0x003C7D50 0x78 func_003C7D50  # OVL1
 0x003C7DD0 0x110 func_003C7DD0  # OVL1
@@ -8233,16 +8233,16 @@
 0x003CAF60 0x234 func_003CAF60  # OVL1
 0x003CB1A0 0x454 func_003CB1A0  # OVL1
 0x003CB600 0x1E0 func_003CB600  # OVL1
-0x003CB7E0 0xC0 func_003CB7E0  # OVL1
+0x003CB7E0 0xC0 __dt__12CZProjectileFv  # OVL1; s1:align, checked by hand (stores __vt__12CZProjectile, cleans up; PlacedExplosive's destructor calls it as its base's)
 0x003CB8A0 0x50 func_003CB8A0  # OVL1
 0x003CB8F0 0x240 func_003CB8F0  # OVL1
 0x003CBB30 0x12C func_003CBB30  # OVL1
 0x003CBC60 0x188 func_003CBC60  # OVL1
-0x003CBDF0 0x188 func_003CBDF0  # OVL1
+0x003CBDF0 0x188 AcquireProjectile__16CZProjectileListFR8CZWeaponR6CZAmmo  # OVL1; s1:align, checked by hand (directly before ReleaseIndirectFireDI, CZProjectileList's first function as in SOCOM 1)
 0x003CBF80 0x38 ReleaseIndirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi  # OVL1; s1:exact
-0x003CBFC0 0xE8 func_003CBFC0  # OVL1
+0x003CBFC0 0xE8 GetNextIndirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi  # OVL1; s1:order by hand (SOCOM 1's, before ReleaseIndirectFireDI: the first free indirect-fire intersection handed out and marked used, the next free found; SOCOM II also clears its bit 19 and its mask)
 0x003CC0B0 0x38 ReleaseDirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi  # OVL1; s1:exact
-0x003CC0F0 0xF8 func_003CC0F0  # OVL1
+0x003CC0F0 0xF8 GetNextDirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi  # OVL1; s1:order by hand (the same over the 60 direct-fire intersections, before ReleaseDirectFireDI)
 0x003CC1F0 0xD4 GetNumRemoteExplosives__16CZProjectileListFi  # OVL1; s1:align
 0x003CC2D0 0xE4 func_003CC2D0  # OVL1
 0x003CC3C0 0x134 func_003CC3C0  # OVL1
@@ -8317,19 +8317,19 @@
 0x003D17D0 0x1D0 func_003D17D0  # OVL1
 0x003D19A0 0x3C func_003D19A0  # OVL1; tu: zwep_weapon.cpp~ (1.0 beta)
 0x003D19E0 0x78 GetWeaponId__8CZWeaponFPCc  # OVL1; s1:calls
-0x003D1A60 0x210 func_003D1A60  # OVL1
-0x003D1C70 0x1C func_003D1C70  # OVL1
+0x003D1A60 0x210 GetIDType__8CZWeaponF10EQUIP_ITEM  # OVL1; s1:order by hand (SOCOM 1's: the item's class from its range of ids)
+0x003D1C70 0x1C PackItemAndAmmoEnums__8CZWeaponF10EQUIP_ITEM10EQUIP_AMMO  # OVL1; s1:order by hand (SOCOM 1's: the item byte shifted over the ammo byte, a halfword; right before UnpackItemAndAmmoEnums as in SOCOM 1)
 0x003D1C90 0x1C UnpackItemAndAmmoEnums__8CZWeaponFUsP10EQUIP_ITEMP10EQUIP_AMMO  # OVL1; tu: zwep_weapon.cpp~ (1.0 beta); s1:exact
 0x003D1CB0 0x28 func_003D1CB0  # OVL1
 0x003D1CE0 0x28 func_003D1CE0  # OVL1
-0x003D1D10 0x74 func_003D1D10  # OVL1
+0x003D1D10 0x74 IsPrimary__8CZWeaponF10EQUIP_ITEM  # OVL1; s1:order by hand (SOCOM 1's: the item's class against the primary classes, 30/50/80/90/140/100 then, 31/51/81/91/141/101 now)
 0x003D1D90 0x10 func_003D1D90  # OVL1
 0x003D1DA0 0x10 func_003D1DA0  # OVL1
 0x003D1DB0 0x58 func_003D1DB0  # OVL1
-0x003D1E10 0x8 func_003D1E10  # OVL1
-0x003D1E20 0x74 func_003D1E20  # OVL1
-0x003D1EA0 0x5C func_003D1EA0  # OVL1
-0x003D1F00 0x44 func_003D1F00  # OVL1
+0x003D1E10 0x8 GetIDType__8CZWeaponFv  # OVL1; s1:order by hand (SOCOM 1's 8 bytes: the static GetIDType of the id byte, tail-called; IsGrenadeLauncherAmmo's callee in both builds)
+0x003D1E20 0x74 IsDirectFire__8CZWeaponFv  # OVL1; s1:order by hand (SOCOM 1's: false for the indirect classes of GetIDType(m_ID), true otherwise; after GetIDType() as in SOCOM 1)
+0x003D1EA0 0x5C GetDefaultAmmoId__8CZWeaponFv  # OVL1; s1:order by hand (SOCOM 1's shape: GetDefaultAmmo inlined -- the legal ammo list's first, its id byte or 255)
+0x003D1F00 0x44 GetDefaultAmmo__8CZWeaponFv  # OVL1; s1:order by hand (SOCOM 1's: the legal ammo list's first ammo, none when it is empty)
 0x003D1F50 0x3C func_003D1F50  # OVL1
 0x003D1F90 0x6C func_003D1F90  # OVL1
 0x003D2000 0x8 func_003D2000  # OVL1
@@ -8343,7 +8343,7 @@
 0x003D20E0 0x64 func_003D20E0  # OVL1
 0x003D2150 0x60 func_003D2150  # OVL1
 0x003D21B0 0x8 func_003D21B0  # OVL1
-0x003D21C0 0x60 func_003D21C0  # OVL1
+0x003D21C0 0x60 ClearAnims__8CZWeaponFv  # OVL1; s1:order by hand (SOCOM 1's shape: m_hitanim freed, three anims cleared -- one more in SOCOM II -- m_specialmaterialanim freed)
 0x003D2220 0x50 func_003D2220  # OVL1
 0x003D2270 0x10 func_003D2270  # OVL1
 0x003D2280 0x8 func_003D2280  # OVL1
@@ -8351,13 +8351,13 @@
 0x003D22A0 0x8 func_003D22A0  # OVL1
 0x003D22B0 0x1C func_003D22B0  # OVL1
 0x003D22D0 0x8 func_003D22D0  # OVL1
-0x003D22E0 0x2C func_003D22E0  # OVL1
+0x003D22E0 0x2C GetHitAnim__8CZWeaponFi  # OVL1; s1:order by hand (SOCOM 1's shape: m_hitanim[i], 0 unless i is below CMaterialExArray's list size)
 0x003D2310 0x8 func_003D2310  # OVL1
-0x003D2320 0x2C func_003D2320  # OVL1
-0x003D2350 0x40 func_003D2350  # OVL1
+0x003D2320 0x2C GetSpecialMaterialAnim__8CZWeaponFi  # OVL1; s1:order by hand (the same over m_specialmaterialanim, 0x94)
+0x003D2350 0x40 SetSpecialMaterialAnim__8CZWeaponFiP6CZAnim  # OVL1; s1:order by hand (the same over m_specialmaterialanim, 0x94; before SetHitAnim as in SOCOM 1)
 0x003D2390 0x8 func_003D2390  # OVL1
 0x003D23A0 0x8 func_003D23A0  # OVL1
-0x003D23B0 0x40 func_003D23B0  # OVL1
+0x003D23B0 0x40 SetHitAnim__8CZWeaponFiP6CZAnim  # OVL1; s1:order by hand (SOCOM 1's: m_hitanim[i] set when i is below the materials' count, true; false otherwise)
 0x003D23F0 0x8 func_003D23F0  # OVL1
 0x003D2400 0x8 func_003D2400  # OVL1
 0x003D2410 0x8 func_003D2410  # OVL1
@@ -8380,8 +8380,8 @@
 0x003D2800 0x8 func_003D2800  # OVL1
 0x003D2810 0x8 func_003D2810  # OVL1
 0x003D2820 0x8 func_003D2820  # OVL1
-0x003D2830 0x8 func_003D2830  # OVL1
-0x003D2840 0x8 func_003D2840  # OVL1
+0x003D2830 0x8 GetDescription__8CZWeaponCFv  # OVL1; s1:order by hand (returns the word at 8, SOCOM 1's m_description; next to GetName as in SOCOM 1's zwep_weapon.cpp)
+0x003D2840 0x8 GetName__8CZWeaponCFv  # OVL1; s1:order by hand (returns the word at 4, m_name; CZWeaponList::GetWeapon(name) compares it)
 0x003D2850 0x6C func_003D2850  # OVL1
 0x003D28C0 0x6C func_003D28C0  # OVL1
 0x003D2930 0x6C func_003D2930  # OVL1
@@ -8394,9 +8394,9 @@
 0x003D2A00 0x10 func_003D2A00  # OVL1; tu: zwep_weapon.cpp~ (1.0 beta)
 0x003D2A10 0x8 func_003D2A10  # OVL1
 0x003D2A20 0x8 func_003D2A20  # OVL1
-0x003D2A30 0x30 func_003D2A30  # OVL1
+0x003D2A30 0x30 SetHasFireMode__8CZWeaponF8FIREMODE  # OVL1; s1:order by hand (SOCOM 1's: the mode's flag set at 0xD0, the maximum mode at 0x24 raised to it)
 0x003D2A60 0x20 func_003D2A60  # OVL1
-0x003D2A80 0x40 func_003D2A80  # OVL1
+0x003D2A80 0x40 SetMaxFireMode__8CZWeaponF8FIREMODE  # OVL1; by hand (new in SOCOM II, right after SetHasFireMode: the maximum mode stored at 0x24 and every mode up to it, at most five, flagged at 0xD0; the name is ours)
 0x003D2AC0 0x6C func_003D2AC0  # OVL1
 0x003D2B30 0x6C func_003D2B30  # OVL1
 0x003D2BA0 0x6C func_003D2BA0  # OVL1
@@ -8418,7 +8418,7 @@
 0x003D3930 0x44 func_003D3930  # OVL1
 0x003D3980 0x58 func_003D3980  # OVL1
 0x003D39E0 0x240 __dt__8CZWeaponFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x003D3C20 0x170 func_003D3C20  # OVL1
+0x003D3C20 0x170 __ct__8CZWeaponFv  # OVL1; by hand (stores __vt__8CZWeapon, builds m_LegalAmmoList at 0xC4; CZFTSWeapon's constructor calls it first)
 0x003D3D90 0x4CC func_003D3D90  # OVL1
 0x003D4260 0x120 func_003D4260  # OVL1
 0x003D4380 0x10 func_003D4380  # OVL1
@@ -8439,7 +8439,7 @@
 0x003D4510 0x8 func_003D4510  # OVL1
 0x003D4520 0x8 func_003D4520  # OVL1
 0x003D4530 0x8 func_003D4530  # OVL1
-0x003D4540 0x8 func_003D4540  # OVL1
+0x003D4540 0x8 GetName__6CZAmmoFv  # OVL1; s1:order by hand (returns the word at 0, m_name; CZAmmoList::GetAmmo(name) compares it)
 0x003D4550 0x8 func_003D4550  # OVL1
 0x003D4560 0x8 func_003D4560  # OVL1
 0x003D4570 0x8 func_003D4570  # OVL1
@@ -8450,7 +8450,7 @@
 0x003D45F0 0x58 func_003D45F0  # OVL1
 0x003D4650 0x5C func_003D4650  # OVL1
 0x003D46B0 0x5C func_003D46B0  # OVL1
-0x003D4710 0x90 func_003D4710  # OVL1
+0x003D4710 0x90 __dt__6CZAmmoFv  # OVL1; s1:order by hand (SOCOM 1's: the name, the description and a third string freed, deleted when asked; CZAmmoList's destructor calls it)
 0x003D47A0 0x6C func_003D47A0  # OVL1
 0x003D4810 0x14 func_003D4810  # OVL1; tu: zui_cleanup.cpp~ (1.0 beta)
 0x003D4830 0x8 func_003D4830  # OVL1

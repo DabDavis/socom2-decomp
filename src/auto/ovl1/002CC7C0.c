@@ -9,13 +9,13 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define NULL 0
 #pragma mpwc_relax on
 M2C_UNK __dl__FPv(char * arg0);
-M2C_UNK func_003A5CC0(s32 arg0, s32 arg1);
+M2C_UNK __dt__19CSimpleStateMachineFv(char * arg0, s16 arg1);
 extern M2C_UNK __vt__19CSMDNASAuthenticate;
 
 M2C_UNK **func_002CC7C0(M2C_UNK **arg0, s64 arg1) {
     if (arg0 != NULL) {
         *arg0 = &__vt__19CSMDNASAuthenticate;
-        func_003A5CC0((s32) arg0, 0);
+        __dt__19CSimpleStateMachineFv(arg0, 0);
         if (((s64) (arg1 << 0x30) >> 0x30) > 0) {
             __dl__FPv(arg0);
         }

@@ -4,11 +4,12 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_003C4E80(M2C_UNK *, s32);              /* extern */
+M2C_UNK GetAmmoId__10CZAmmoListFPCc(M2C_UNK *, s32); /* extern */
 extern M2C_UNK data_004B5310;
 
 void func_003D4380(s32 arg0) {
-    func_003C4E80(&data_004B5310, arg0);
+    GetAmmoId__10CZAmmoListFPCc(&data_004B5310, arg0);
 }

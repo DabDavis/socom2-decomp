@@ -370,29 +370,7 @@ struct MemCardFileInfo {
     char m_text[260];   // 0xc
 };
 
-/* the memory card (SOCOM 1's CMemCard, 0x28 bytes; only what the handlers use) */
-class CMemCard {
-public:
-    bool IsInserted();
-    bool IsFormatted();
-    bool Format();
-    void CreateIconFiles();
-    /* the port and slot chosen made the current ones (SOCOM II's; the name ours) */
-    void SelectPortSlot()
-    {
-        m_cur_slot = m_slot;
-        m_cur_port = m_port;
-    }
-
-    unsigned char _0[0x8];
-    int m_cur_port;   // 0x8
-    int m_cur_slot;   // 0xc
-    unsigned char _10[0x18 - 0x10];
-    void *m_18;   // 0x18: what the file information is read from (0x33D4A0)
-    unsigned char _1c[0x20 - 0x1c];
-    int m_port;   // 0x20
-    int m_slot;   // 0x24 (SOCOM 1's MC_ChSlot sets it)
-};
+/* the memory card: zutil.h's CMemCard (zanim.h includes it through zar.h) */
 extern CMemCard theMemCard;
 
 /* the game and its load state (only what the handlers call) */

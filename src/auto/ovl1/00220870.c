@@ -9,7 +9,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define NULL 0
 char *CurrentPickupSecondary__10CZSealBodyFv(s32);  /* extern */
 char *CurrentPickup__10CZSealBodyFv(s32);           /* extern */
-M2C_UNK *func_003D2830(s32);                        /* extern */
+M2C_UNK *GetDescription__8CZWeaponCFv(s32);         /* extern */
 s32 func_00541A90(char *);                          /* extern */
 M2C_UNK strcpy(char *, M2C_UNK *);                  /* extern */
 extern M2C_UNK data_003E4B98;
@@ -35,7 +35,7 @@ s32 func_00220870(char *arg0) {
                     temp_v0_2 = func_00541A90(temp_v0);
                     SC_MEMBER(arg0, s32 *, 0x1B0) = (s32) SC_MEMBER(temp_v0, s32 *, 4);
                     if (temp_v0_2 != 0) {
-                        strcpy(arg0 + 0x1B4, func_003D2830(temp_v0_2));
+                        strcpy(arg0 + 0x1B4, GetDescription__8CZWeaponCFv(temp_v0_2));
                     } else {
                         strcpy(arg0 + 0x1B4, &data_003E4B98);
                     }
@@ -46,7 +46,7 @@ s32 func_00220870(char *arg0) {
                     temp_v0_4 = func_00541A90(temp_v0_3);
                     SC_MEMBER(arg0, s32 *, 0x1B0) = (s32) SC_MEMBER(temp_v0_3, s32 *, 4);
                     if (temp_v0_4 != 0) {
-                        strcpy(arg0 + 0x1B4, func_003D2830(temp_v0_4));
+                        strcpy(arg0 + 0x1B4, GetDescription__8CZWeaponCFv(temp_v0_4));
                     } else {
                         strcpy(arg0 + 0x1B4, &data_003E4B98);
                     }

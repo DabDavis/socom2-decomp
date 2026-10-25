@@ -11,7 +11,7 @@ M2C_UNK DeleteTextureAssetCharacter__Q23zdb6CWorldFQ23zdb12_RenderPhasePQ23zdb5C
 M2C_UNK ReleaseDirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi(s32, char *, char *); /* extern */
 M2C_UNK ReleaseIndirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi(s32, char *, char *); /* extern */
 M2C_UNK __dl__FPv(char *);                          /* extern */
-M2C_UNK func_003CB7E0(char *, M2C_UNK);             /* extern */
+M2C_UNK __dt__12CZProjectileFv(char *, M2C_UNK);    /* extern */
 extern M2C_UNK __vt__15PlacedExplosive;
 extern s32 m_pProjectilelist__8CZWeapon;
 extern s32 m_world__Q23zdb6CWorld;
@@ -30,7 +30,7 @@ char *func_003C5740(char *arg0, s64 arg1) {
         if (SC_MEMBER(arg0, s32 *, 0x30) != 0) {
             ReleaseDirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi(m_pProjectilelist__8CZWeapon, arg0 + 0x30, arg0 + 0x34);
         }
-        func_003CB7E0(arg0, 0);
+        __dt__12CZProjectileFv(arg0, 0);
         if (((s64) (arg1 << 0x30) >> 0x30) > 0) {
             __dl__FPv(arg0);
         }

@@ -4,46 +4,48 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK __dl__FPv(char * arg0);
-M2C_UNK func_0028CEA0(s32 arg0);
-M2C_UNK func_0028FF00(s32 arg0);
-M2C_UNK func_002901E0(s32 arg0, s32 arg1);
+#pragma mpwc_relax on
+M2C_UNK Clear__15CZBodyAnimBlendFv();               /* extern */
+M2C_UNK __dl__FPv(char *);                          /* extern */
+M2C_UNK func_0028FF00(s32);                         /* extern */
+M2C_UNK func_002901E0(char *, M2C_UNK);             /* extern */
 extern f32 data_003F64C4;
 extern f32 data_003F64C8;
 extern f32 zero__6CPnt3D;
 
-s32 func_0028FE10(s32 arg0, s64 arg1) {
+char *func_0028FE10(char *arg0, s64 arg1) {
     s32 temp_a0;
-    s32 temp_a0_2;
+    char *temp_a0_2;
 
-    if (arg0 != 0) {
-        func_0028CEA0(arg0);
-        temp_a0 = arg0 + 0x6C;
+    if (arg0 != NULL) {
+        Clear__15CZBodyAnimBlendFv();
+        temp_a0 = (int)(arg0 + 0x6C);
         if (temp_a0 != 0) {
             func_0028FF00(temp_a0);
         }
         if ((arg0 + 0x60) != 0) {
-            M2C_FIELD(arg0, s32 *, 0x64) = 0;
-            M2C_FIELD(arg0, s32 *, 0x60) = 0;
-            M2C_FIELD(arg0, s32 *, 0x68) = 0;
+            SC_MEMBER(arg0, s32 *, 0x64) = 0;
+            SC_MEMBER(arg0, s32 *, 0x60) = 0;
+            SC_MEMBER(arg0, s32 *, 0x68) = 0;
         }
-        if ((arg0 + 0x44) != 0) {
-            M2C_FIELD(arg0, f32 *, 0x44) = (f32) zero__6CPnt3D;
-            M2C_FIELD(arg0, f32 *, 0x48) = (f32) data_003F64C4;
-            M2C_FIELD(arg0, f32 *, 0x4C) = (f32) data_003F64C8;
-            M2C_FIELD(arg0, f32 *, 0x54) = (f32) zero__6CPnt3D;
-            M2C_FIELD(arg0, f32 *, 0x58) = (f32) data_003F64C4;
-            M2C_FIELD(arg0, f32 *, 0x5C) = (f32) data_003F64C8;
-            M2C_FIELD(arg0, s8 *, 0x50) = 0;
+        if ((arg0 + 0x44) != NULL) {
+            SC_MEMBER(arg0, f32 *, 0x44) = (f32) zero__6CPnt3D;
+            SC_MEMBER(arg0, f32 *, 0x48) = (f32) data_003F64C4;
+            SC_MEMBER(arg0, f32 *, 0x4C) = (f32) data_003F64C8;
+            SC_MEMBER(arg0, f32 *, 0x54) = (f32) zero__6CPnt3D;
+            SC_MEMBER(arg0, f32 *, 0x58) = (f32) data_003F64C4;
+            SC_MEMBER(arg0, f32 *, 0x5C) = (f32) data_003F64C8;
+            SC_MEMBER(arg0, s8 *, 0x50) = 0;
         }
         temp_a0_2 = arg0 + 0x30;
-        if (temp_a0_2 != 0) {
+        if (temp_a0_2 != NULL) {
             func_002901E0(temp_a0_2, 0);
         }
         if (((s64) (arg1 << 0x30) >> 0x30) > 0) {
-            __dl__FPv((char *) arg0);
+            __dl__FPv(arg0);
         }
     }
     return arg0;

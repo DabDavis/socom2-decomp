@@ -879,6 +879,58 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - labels after a `b` in hand-matched code: 487 padded to 8 bytes, 130 not, 117 delay slots
     filled from the target -- padding against filling depends on context, and blocks
     GetNextEvent, MakeNoise and MakeNoiseXZ.
+- **Tells from the UI widgets and the file I/O** (zui_var.cpp, zui_tuners.cpp, src/gamez/zutil/):
+  - a destructor that stores no table means the polymorphic object at offset 0 is a member, not
+    a base (CMemCard holds its CMemCardIO);
+  - `tries = ok ? 0 : tries - 1;` matches the memory card's retry loops; the if/else form leaves
+    a nop before the loop branch;
+  - `x > -10` branches on `slti at`, where `x >= -9` computes the test into v0 first;
+  - `int end = pos + size;` written before an early return puts the add in the branch's delay
+    slot (CBufferIO's freads);
+  - `int s = b; a2 = a; b2 = s;` reproduces a load-load-store-store order (SelectPortSlot);
+  - a materialised `&&` assigned inside an if/else comes from an inline bool helper
+    (CFileIO::IsOpen);
+  - `if (p) delete p;` gives the double null test around a virtual-destructor delete; a delete
+    whose destructor has no name in the map can be written as the placeholder called with
+    `(p, 1)`;
+  - SOCOM II's CIO has three async slots after fwrite (0x30-0x38): table positions from SOCOM 1
+    shift by three past them (0x39FEC0 was misnamed fwrite that way);
+  - libmc's directory table: 64-byte aligned matches the out-of-line Exists and Open, but where
+    Exists is inlined the target lays it out 16-aligned (GetUsedSpace and the reserve files, open).
+- **Tells from the weapons** (src/gamez/zweapon/):
+  - an inlined bool callee's `return true` becomes `daddiu`; IsM203Weapon and IsPrimary match only
+    by calling a separate `if (...) return true; return false;` test, which out of line uses `li`;
+  - in a pointer-list walk with end() in a local, the declaration order decides the registers
+    (`it = begin(), e = end()` against `e` first), and an inlined copy can need the other order
+    from its out-of-line copy (GetWeapon against GetWeaponName);
+  - an iterator that is assigned (so it lives in memory) with the end in a register is
+    `it = begin(); for (iterator e = end(); it != e; ++it)` (GetAmmo);
+  - `m = c != 0.0f ? x / c : 0.0f;` puts the result in $f0 on both arms; `float s = 0; if (c) s =
+    ...;` puts it in $f1 (the accuracy setters);
+  - a reference local to a struct element (`T &cb = *it`) gives the target's `addiu a3,s2,8` in a
+    walk over a list of structs (MakeWeaponEventCallbacks);
+  - Recoil is CZFTSWeapon's key function: its table and implicit destructor come out in
+    zwep_ftsweapon.cpp, first in the image; SOCOM 1's link order here is ztex_manager, zvid_init,
+    vis_main, vis_decal, vis_texfx, zwep_explosive, zwep_global, zwep_projectile, zwep_weapon,
+    zwep_ammo, and SOCOM II's CTurret sits before zvid_init.
+- **Tells from the body animation** (src/gamez/zbody/: bone_math.cpp, body.cpp, si_object.cpp):
+  - an explicit `(float)` cast on a float product flips MW's multiply operand order: `a->m_wt =
+    (float)(scale * a->m_wt)` matches where no spelling without the cast does -- which is why
+    m2c's `(f32)` drafts match;
+  - a member read once into a local stays in a saved register across calls (CZBodyPart::Orient's
+    node); RTList::Add's tail local, declared first, takes the higher argument register;
+  - a single-exit if/else chain into a local gives the target's shared `jr ra` (LinearWeight);
+    early returns add nops; `if (a >= b) w = 1; else w = a / b;` branches on `a < b` to the
+    division;
+  - `new` with a constructor whose body calls a too-tall inline calls the member constructors out
+    of line in member order, then the inline (CZBodyPart: CPnt3D() is 0x1FB3C0, CQuat()
+    0x28EB60);
+  - a loop-scoped CPnt3D declared first at function scope takes the highest frame slot
+    (PartInSpace);
+  - CBody (0x90 bytes; zseal.h includes zbody.h): its table, `short m_state` at 4, the active-anim
+    and blend pools (RTArray, 0x20 bytes each) at 0x10/0x30, the blend stack at 0x50, the
+    part and anim vectors at 0x5C/0x68, the overlay at 0x74; zanim_menu.cpp runs to 0x2869C4
+    (cdeque<const void *>'s instances close it), the body code from 0x2869D0 to 0x29035C.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
@@ -928,8 +980,10 @@ merged back, each row's note saying so:
 
 `build/scratch/seal/fallthru.py` finds rows that run into the next one, and
 `build/scratch/seal/ovl2_splits.txt` lists what it found; 0x610010 and 0x643018 there are not
-DNAS targets. Scoring either client will need DNAS.BIN's functions resolved apart from OVL2's, as
-`ovl-copy` does for template copies.
+DNAS targets. Scoring either client needs nothing new: a placeholder resolves by the address in its
+name when no row carries it (`scdiff._sym_address`), so a call spelled `func_00544550` compares
+equal with the target's jal into DNAS.BIN -- spell DNAS.BIN's functions that way, never by the
+OVL2 name that covers the address.
 
 ### Names from SOCOM 1 (`tools/s1names.py`)
 
@@ -1043,6 +1097,10 @@ check, `--baseline` and `tools/automatch.py` (after a merge: `--stale`, twice if
 superseded drafts), and only the integrator publishes. A change under `include/` is proved on
 every hand-written unit (`--files '^(?!auto/)'`) before it is committed. A worktree needs
 `extracted/` and `decomp/toolchains/` linked in from the main tree.
+
+`--files '^(?!auto/)'` leaves out the drafts, so a hand-written inline copy that only its draft
+matches reports as a regression there (0x29FF60, 0x2D02B0): rerun with those drafts' files
+included before believing one.
 
 ## The generated tier: `src/auto/`
 

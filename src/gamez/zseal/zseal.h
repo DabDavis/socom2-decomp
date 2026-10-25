@@ -407,20 +407,9 @@ public:
     float m_fade_time;   // 0x254: the corpse's fade time (2.0)
 };
 
-/* the animated body: its blends, pools and parts (SOCOM 1's DWARF: CBody, 0x48 bytes, its table
- * first; SOCOM II's is 0x90 -- its constructor, OVL1 0x28EDD0, zeroes through 0x8C). OVL1's code
- * (0x2869D0-0x28BB00) is unowned: only declared. SOCOM II's table (0x406100) has two slots, the
- * destructor and NullNode, an inline returning -1 (OVL2's copy 0x542FE0, in CZSealBody's CBody
- * table at 0x669210 after the destructor's this-adjusting thunk 0x5552B0). */
-class CBody {
-public:
-    CBody();
-    virtual ~CBody();
-    virtual int NullNode() const { return -1; }
-
-    short m_state;   // 0x4: the SEAL's state (SOCOM 1's char at 0xd; its constructor leaves it)
-    unsigned char _6[0x90 - 0x6];
-};
+/* the animated body, CBody (0x90 bytes; its constructor OVL1 0x28EDD0), is zbody.h's (the body
+ * lane's) */
+#include "../zbody/zbody.h"
 
 /* the SEAL (SOCOM 1's DWARF: CZSealBody : CEntity, CBody, 0x1140 bytes; SOCOM II's CBody base at
  * 0x170, after its 0x170-byte CEntity, the SEAL's own members from 0x200 -- the constructor at

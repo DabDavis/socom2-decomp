@@ -4,11 +4,12 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-void *func_0028C1E0(s32);                           /* extern */
+char *Representative__15CZBodyAnimBlendFv(s32);     /* extern */
 s32 func_00555170(s32);                             /* extern */
 
 s32 func_0057B510(s32 arg0) {
-    return ((u64) ((s64) M2C_FIELD(M2C_FIELD(func_0028C1E0(func_00555170(arg0 + 0x1C0)), void **, 4), u8 *, 0x4A) << 0x3B) >> 0x3F) != 0;
+    return ((u64) ((s64) SC_MEMBER(SC_MEMBER(Representative__15CZBodyAnimBlendFv(func_00555170(arg0 + 0x1C0)), char **, 4), u8 *, 0x4A) << 0x3B) >> 0x3F) != 0;
 }
