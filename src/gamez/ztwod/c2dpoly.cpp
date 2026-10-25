@@ -288,11 +288,9 @@ C2DTriFan::C2DTriFan()
     m_polylist.reserve(5);
 }
 
-/* the triangles cleared, then the vector and C2D torn down.
- * OPEN, 2 instructions short (0x88 against 0x90): the target calls the triangle vector's clear and
- * its deleter's destructor out of line (0x3619A0, 0x361A30) behind two this tests, where
- * include/vector's class vector inlines a level differently -- a vector of a class's destructor
- * depth, include/vector's (the integrator's this round) */
+/* the triangles cleared, then the vector and C2D torn down: the triangle vector's clear and its
+ * deleter's destructor are calls (0x3619A0, 0x361A30) behind two this tests -- both defined after
+ * their class in include/vector, as MSL has them */
 C2DTriFan::~C2DTriFan()
 {
     m_polylist.clear();

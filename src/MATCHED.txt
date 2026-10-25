@@ -781,7 +781,7 @@
 0x0026CBE0 TaskScheduler__9CZAnimSetFv
 0x0026CC10 at__Q23std50__vector_imp<6CPnt3D,Q23std18allocator<6CPnt3D>,0>FUi
 0x0026D150 reserve__Q23std50__vector_imp<6CPnt3D,Q23std18allocator<6CPnt3D>,0>FUi
-0x0026D2F0 clear__Q23std50__vector_imp<6CPnt3D,Q23std18allocator<6CPnt3D>,0>Fv
+0x0026D2F0 clear__Q23std52__vector_deleter<6CPnt3D,Q23std18allocator<6CPnt3D>>Fv
 0x0026D300 __dt__Q23std52__vector_deleter<6CPnt3D,Q23std18allocator<6CPnt3D>>Fv
 0x0026D370 Load__6CZAnimFRQ23zar4CZAR
 0x0026D560 Unload__6CZAnimFv
@@ -1189,6 +1189,7 @@
 0x002A0160 __ct__7CTargetFv
 0x002A0190 FindTarget__11CTargetListFP7CEntity
 0x002A0200 AddTarget__11CTargetListFP7CEntityP7CEntity
+0x002A10C0 SetUpdateTargetList__7CEntityFb
 0x002A1140 _sort_target__FRC7CTargetRC7CTarget
 0x002A19B0 func_002A19B0
 0x002A19C0 erase__Q23std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>FP7CTargetP7CTarget
@@ -2799,6 +2800,7 @@
 0x00360890 SetHasTexture__7C2DLineFb
 0x003608F0 __ct__7C2DLineFv
 0x00360A20 GetAssetLibs__9C2DTriFanFRQ23C2D8CLibList
+0x00360BC0 __dt__9C2DTriFanFv
 0x00360C50 __ct__9C2DTriFanFv
 0x00360CA0 MakePacket__7C2DPolyFPQ23zdb7CCamera
 0x00360F60 Draw__7C2DPolyFPQ23zdb7CCamera

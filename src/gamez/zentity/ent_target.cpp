@@ -18,9 +18,8 @@ bool _sort_target(const CTarget &a, const CTarget &b)
 }
 
 /* whether the entity keeps a target list: dropping it empties the list (SOCOM 1's).
- * OPEN (right size, one call): the target calls the deleter's clear (0x2A0090, the one
- * ~__vector_deleter<CTarget> calls); include/vector's vector<class>::clear() inlines a level less
- * here and calls __vector_imp's */
+ * The list's clear() calls the deleter's clear (0x2A0090) out of line, which include/vector
+ * defines after the class as MSL does: vector::clear and __vector_imp::clear inline around it */
 void CEntity::SetUpdateTargetList(bool on)
 {
     if (on != m_update_targetlist) {

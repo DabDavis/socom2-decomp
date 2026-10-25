@@ -704,10 +704,13 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - an inline accessor on a product's last factor makes it the right operand of the final
     multiply; `n > 1` branches on `sltiu at` with the delay slot filled where `n >= 2`
     materialises the test; `delete p` under its own `if (p)` keeps two null tests.
-- **The class vector's deleter destructor is out of class** (include/vector): MSL 3.0.1 defines
-  it after the class body, not inline, so MW emits it in each unit's template tail and inlines it
-  only where the unit has already instantiated it -- an implicit destructor chain over a class
-  vector stops at it (~vector and ~__vector_imp inline, the deleter's destructor is a call:
+- **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
+  3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
+  emits them in each unit's template tail and inlines them only in tail code the unit has
+  instantiated them for (the rule above). vector::clear() and __vector_imp::clear() inline around
+  a call to the deleter's clear (CZAnimSetSave::Free, ~C2DTriFan, CEntity::SetUpdateTargetList --
+  0x26D2F0 is that clear for CPnt3D, not __vector_imp's), and an implicit destructor chain over a
+  class vector stops at the deleter's destructor (~vector and ~__vector_imp inline, the deleter's destructor is a call:
   ~CSndSequence, ~CEntity, CCompass::DeleteAnchor, SOCOM 1's ~CEntity alike), while
   zanim_set.cpp's Unload counts it and the class reserves inline it into their temporary's
   destruction. Probes in build/scratch/vec/ (ip.py, vscore.py; the c*.cpp variants record the

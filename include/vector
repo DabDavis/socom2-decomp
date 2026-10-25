@@ -89,11 +89,7 @@ public:
     __vector_deleter() { size_ = 0; data_ = 0; }
     /* the destructor is defined after the class, not inline (see there) */
     ~__vector_deleter();
-    void clear()
-    {
-        destroy(data_, data_ + size_);
-        size_ = 0;
-    }
+    void clear();
     /* the elements' destructors: nothing for a trivially destructible class -- SOCOM II's MSL
      * keeps no loop for CPnt3D, where SOCOM 1's kept an empty one -- but three inline levels all
      * the same (an empty inline function still counts as one): vector<nav_package>::clear's copy
@@ -138,6 +134,18 @@ public:
  * CCompass::DeleteAnchor -- SOCOM 1's ~CEntity too), while zanim_set.cpp's Unload counts it (its
  * ~CZAnimSetSave inlines one level) and the class reserves inline it whole into their temporary's
  * destruction. The elements destroyed and the count cleared in place, not through clear(). */
+/* the deleter's clear, out of class and not inline like its destructor (SOCOM 1's DWARF: line 949,
+ * after the class body): the unit's own functions call it -- CZAnimSetSave::Free (0x26D2F0) and
+ * ~C2DTriFan (0x3619A0) inline vector::clear and __vector_imp::clear around the call -- while
+ * tail code that the unit has instantiated it for inlines it (the CPnt3D and nav_package deleters'
+ * destructors) */
+template <class T, class Allocator>
+void __vector_deleter<T, Allocator>::clear()
+{
+    destroy(data_, data_ + size_);
+    size_ = 0;
+}
+
 template <class T, class Allocator>
 __vector_deleter<T, Allocator>::~__vector_deleter()
 {

@@ -2969,7 +2969,7 @@
 0x0026CC10 0x70 at__Q23std50__vector_imp<6CPnt3D,Q23std18allocator<6CPnt3D>,0>FUi  # OVL1; s1:align
 0x0026CC80 0x4C4 insert__Q23std50__vector_imp<6CPnt3D,Q23std18allocator<6CPnt3D>,0>FP6CPnt3DUiRC6CPnt3D  # OVL1; s1:name (SOCOM 1's insert of vector<CPnt3D>; CZAnimSetSave::Add pushes a node's translation through it)
 0x0026D150 0x198 reserve__Q23std50__vector_imp<6CPnt3D,Q23std18allocator<6CPnt3D>,0>FUi  # OVL1; s1:name (SOCOM 1's reserve of vector<CPnt3D>; Add grows the translations by 5 through it)
-0x0026D2F0 0x8 clear__Q23std50__vector_imp<6CPnt3D,Q23std18allocator<6CPnt3D>,0>Fv  # OVL1; by hand (CZAnimSetSave::Free clears its translations through it; the size zeroed, the elements trivially destroyed)
+0x0026D2F0 0x8 clear__Q23std52__vector_deleter<6CPnt3D,Q23std18allocator<6CPnt3D>>Fv  # OVL1; by hand (CZAnimSetSave::Free clears its translations through it; the size zeroed, the elements trivially destroyed); by hand (CZAnimSetSave::Free calls the deleter's clear directly: MSL defines it after the class, not inline, so the unit's own functions never inline it -- vector::clear and __vector_imp::clear inline around the call, as ~C2DTriFan's does for C2DPoly; the size zeroed, the elements trivially destroyed)
 0x0026D300 0x68 __dt__Q23std52__vector_deleter<6CPnt3D,Q23std18allocator<6CPnt3D>>Fv  # OVL1; s1:align
 0x0026D370 0x1E4 Load__6CZAnimFRQ23zar4CZAR  # OVL1; s1:callee by hand (CZAnimSet::Load calls it on each new anim where SOCOM 1's calls CZAnim::Load; the same opening: the open key, the 0x18-byte params fetched into the anim, State(1))
 0x0026D560 0x304 Unload__6CZAnimFv  # OVL1; s1:align
