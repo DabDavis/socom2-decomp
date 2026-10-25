@@ -16,6 +16,8 @@
 #include <list>
 #include <vector>
 
+#include <libvu0.h>
+
 #include "../zmath/zmath.h"
 
 namespace zdb {
@@ -78,6 +80,8 @@ public:
     virtual void SetActive() {}
     virtual void SetNormal() {}
     virtual void SetUseFrameBufferAlpha(bool isFrameAlpha) { m_isFrameAlpha = isFrameAlpha; }
+    /* the children's libraries (inline, as SOCOM 1's DWARF files it: hud_main.cpp's copy is linked,
+     * 0x1F6FD0) */
     virtual void GetAssetLibs(CLibList &liblist);
     virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr) { return 0; }
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *cmd, float *t, bool *done) { return false; }
@@ -118,6 +122,14 @@ public:
  * 0xC bytes, of CAssetLib pointers -- CHUD::Add2D reads each one's render phase) */
 class C2D::CLibList : public std::vector<zdb::CAssetLib *> {
 };
+
+inline void C2D::GetAssetLibs(CLibList &liblist)
+{
+    iterator e = end();
+
+    for (iterator i = begin(); i != e; ++i)
+        (*i)->GetAssetLibs(liblist);
+}
 
 class C2DFont;
 
@@ -205,11 +217,14 @@ public:
     int m_iHeight;   // 0x78
 } __attribute__((aligned(16)));   // 0x80 bytes
 
-/* a textured triangle: 0xD0 bytes in SOCOM II as in SOCOM 1 (CZPlayerMapItem's arrays' stride),
- * its members past C2D not placed; its destructor is implicit (an out-of-line copy is emitted
- * wherever an array of them is destroyed: hud_main.cpp's is linked, 0x1FC620) */
+/* a textured triangle: 0xD0 bytes in SOCOM II as in SOCOM 1 (CZPlayerMapItem's arrays' stride), the
+ * arrays where SOCOM 1's DWARF has them; m_x and m_y moved up with C2D and SOCOM II's PRIM word in
+ * the gap after them (the flag setters, slots 6-9, keep its bits as C2DBitmap's do). Its destructor
+ * is implicit (an out-of-line copy is emitted wherever an array of them is destroyed: hud_main.cpp's
+ * is linked, 0x1FC620) */
 class C2DPoly : public C2D {
 public:
+    C2DPoly();
     virtual void Draw(zdb::CCamera *cam);
     virtual void SetHasTexture(bool on);
     virtual void SetAA(bool on);
@@ -217,28 +232,75 @@ public:
     virtual void SetGouraud(bool on);
     virtual void SetTrans(float trans);
     virtual void GetAssetLibs(CLibList &liblist);
+    /* one corner's alpha (SOCOM II's: past the last, the last; Gouraud then, so it shades) */
+    void SetTrans(unsigned int vertex, float trans);
+    void SetPos(float x0, float y0, float x1, float y1, float x2, float y2);
+    void SetUV(float u0, float v0, float u1, float v1, float u2, float v2);
+    void Load(float x0, float y0, float x1, float y1, float x2, float y2, zdb::CTexture *tex);
+    float GetTrans();
+    CPnt3D GetColor();
+    void SetColor(float r, float g, float b);
 
-    unsigned char _18[0xd0 - 0x18];
+    int m_x;   // 0x18
+    int m_y;   // 0x1c
+    unsigned int m_prim;   // 0x20
+    sceVu0FVECTOR m_RGB[3];   // 0x30 (SOCOM 1's DWARF: float[3][4], 16-aligned)
+    sceVu0FVECTOR m_NewUV[3];   // 0x60
+    sceVu0FVECTOR m_vertex[3];   // 0x90
+    zdb::CTexture *m_texture;   // 0xc0
 } __attribute__((aligned(16)));   // 0xd0 bytes
 
 /* a bitmap of two triangles (SOCOM 1's DWARF; the offsets unchanged, the 16-alignment absorbing
- * C2D's lost 4 bytes); its destructor is implicit too */
+ * C2D's lost 4 bytes), the first the top left, bottom left and bottom right corners, the second
+ * the top left, bottom right and top right. The flag setters are inline: they pass the flag on to
+ * both triangles (their out-of-line copies come with the vtable: c2dbitmap_poly.cpp's SetAA and
+ * SetGouraud are linked, 0x357E90 and 0x357EE0, the CZPauseTest unit's SetHasTexture and
+ * SetIsTrans, 0x204190 and 0x204140). Its destructor is implicit too */
 class C2DBitmapPoly : public C2D, public C2DFade {
 public:
     C2DBitmapPoly();
     virtual void Draw(zdb::CCamera *cam);
-    virtual void SetHasTexture(bool on);
-    virtual void SetAA(bool on);
-    virtual void SetIsTrans(bool on);
-    virtual void SetGouraud(bool on);
+    virtual void SetHasTexture(bool on)
+    {
+        m_tris[0].SetHasTexture(on);
+        m_tris[1].SetHasTexture(on);
+    }
+    virtual void SetAA(bool on)
+    {
+        m_tris[0].SetAA(on);
+        m_tris[1].SetAA(on);
+    }
+    virtual void SetIsTrans(bool on)
+    {
+        m_tris[0].SetIsTrans(on);
+        m_tris[1].SetIsTrans(on);
+    }
+    virtual void SetGouraud(bool on)
+    {
+        m_tris[0].SetGouraud(on);
+        m_tris[1].SetGouraud(on);
+    }
     virtual void SetTrans(float trans);
     virtual void SetUseFrameBufferAlpha(bool isFrameAlpha);
     virtual void GetAssetLibs(CLibList &liblist);
-    /* the corners, clockwise from the top left as MapCompass::SetPos passes them */
+    /* the corners, counter-clockwise from the top left */
     void Load(float x1, float y1, float x2, float y2, float x3, float y3, float x4, float y4,
               zdb::CTexture *tex);
-    void SetColor(float r, float g, float b);
+    void SetPos(float x1, float y1, float x2, float y2, float x3, float y3, float x4, float y4);
+    /* a rectangle at a point (SOCOM II's; the name ours) */
+    void SetPos(float x, float y, float w, float h);
+    void SetCenterPos(PNT2D center, float w, float h);
+    void SetUV(float u1, float v1, float u2, float v2, float u3, float v3, float u4, float v4);
     void SetUV(float u0, float v0, float u1, float v1);
+    void SetColor(float r, float g, float b);
+    /* one corner's alpha (SOCOM II's; the name ours) */
+    void SetTrans(int corner, float trans);
+    float GetTrans();
+    void FlipImage_Xaxis();
+    void FlipImage_Yaxis();
+    void FlipImage_XYaxis();
+    void Rotate_Zaxis(float s);
+    void Rotate_Zaxis(float s, float c);
 
     int x1;   // 0x24
     int x2;   // 0x28

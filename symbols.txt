@@ -1725,8 +1725,8 @@
 0x00202210 0x154 Clear__11CZPauseTestFv  # OVL1; s1:calls by hand (CHUD::ReInit_Uninit's second call on CHUD+0x18900, after ClosePauseMenu, as SOCOM 1's; right after HudTick in hud_pausemenu.cpp, as SOCOM 1's)
 0x00202370 0x1B0 func_00202370  # OVL1
 0x00202520 0x1C20 func_00202520  # OVL1
-0x00204140 0x50 func_00204140  # OVL1
-0x00204190 0x50 func_00204190  # OVL1
+0x00204140 0x50 SetIsTrans__13C2DBitmapPolyFb  # OVL1; by hand (slot 8 of C2DBitmapPoly's vtable 0x406C30: both triangles' slot 8; an inline's out-of-line copy, the CZPauseTest unit's, linked first; the name ours, as C2DBitmap's)
+0x00204190 0x50 SetHasTexture__13C2DBitmapPolyFb  # OVL1; by hand (slot 6 of C2DBitmapPoly's vtable 0x406C30: both triangles' slot 6; an inline's out-of-line copy, this one the CZPauseTest unit's, linked first; the name ours, as C2DBitmap's)
 0x002041E0 0x854 func_002041E0  # OVL1
 0x00204A40 0x7B4 func_00204A40  # OVL1
 0x00205200 0x278 ClosePauseMenu__11CZPauseTestFv  # OVL1; s1:calls by hand (CHUD::ReInit_Uninit's first call on CHUD+0x18900, as SOCOM 1's; the last function before the pause menu's destructor and constructor, as SOCOM 1's before its constructor)
@@ -6519,8 +6519,8 @@
 0x00357C20 0x6C func_00357C20  # OVL1
 0x00357C90 0x178 func_00357C90  # OVL1
 0x00357E10 0x78 func_00357E10  # OVL1
-0x00357E90 0x50 func_00357E90  # OVL1
-0x00357EE0 0x50 func_00357EE0  # OVL1
+0x00357E90 0x50 SetAA__13C2DBitmapPolyFb  # OVL1; by hand (slot 7 of C2DBitmapPoly's vtable 0x406C30: both triangles' slot 7; the inline's copy c2dbitmap_poly.cpp emits with the vtable; the name ours, as C2DBitmap's)
+0x00357EE0 0x50 SetGouraud__13C2DBitmapPolyFb  # OVL1; by hand (slot 9 of C2DBitmapPoly's vtable 0x406C30: both triangles' slot 9; the inline's copy c2dbitmap_poly.cpp emits with the vtable; the name ours, as C2DBitmap's)
 0x00357F30 0x670 func_00357F30  # OVL1
 0x003585A0 0xC8 GetAssetLibs__13C2DBitmapPolyFRQ23C2D8CLibList  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00358670 0x1C func_00358670  # OVL1
@@ -6528,20 +6528,20 @@
 0x003586B0 0x44 func_003586B0  # OVL1
 0x00358700 0x18 func_00358700  # OVL1
 0x00358720 0xC func_00358720  # OVL1
-0x00358730 0x298 func_00358730  # OVL1
-0x003589D0 0x2EC func_003589D0  # OVL1
-0x00358CC0 0x84 func_00358CC0  # OVL1
-0x00358D50 0xC4 func_00358D50  # OVL1
-0x00358E20 0xC4 func_00358E20  # OVL1
+0x00358730 0x298 Rotate_Zaxis__13C2DBitmapPolyFff  # OVL1; s1:calls by hand (MapCompass::Tick calls it right after SetCenterPos, as SOCOM 1's Tick calls Rotate_Zaxis(float, float); 0x298 against SOCOM 1's 0x294, the same centre-and-rotate code)
+0x003589D0 0x2EC Rotate_Zaxis__13C2DBitmapPolyFf  # OVL1; s1:order by hand (after Rotate_Zaxis(float, float) as in SOCOM 1's unit, 0x2EC against 0x2E4; the reticle's 0x215250 calls it after SetCenterPos)
+0x00358CC0 0x84 FlipImage_XYaxis__13C2DBitmapPolyFv  # OVL1; s1:order by hand (c2dbitmap_poly.cpp: the first of SOCOM 1's three flips, 0x84 in both, after the two Rotate_Zaxis)
+0x00358D50 0xC4 FlipImage_Yaxis__13C2DBitmapPolyFv  # OVL1; s1:order by hand (c2dbitmap_poly.cpp: SOCOM 1's second flip, 0xC4 in both)
+0x00358E20 0xC4 FlipImage_Xaxis__13C2DBitmapPolyFv  # OVL1; s1:order by hand (c2dbitmap_poly.cpp: SOCOM 1's third flip, 0xC4 in both, before SetUseFrameBufferAlpha)
 0x00358EF0 0x6C SetUseFrameBufferAlpha__13C2DBitmapPolyFb  # OVL1; s1:align
-0x00358F60 0x8 func_00358F60  # OVL1
-0x00358F70 0xFC func_00358F70  # OVL1
+0x00358F60 0x8 GetTrans__13C2DBitmapPolyFv  # OVL1; s1:order by hand (c2dbitmap_poly.cpp: after SetUseFrameBufferAlpha as SOCOM 1's GetTrans, 0x8 in both: the first triangle's)
+0x00358F70 0xFC SetTrans__13C2DBitmapPolyFif  # OVL1; by hand (c2dbitmap_poly.cpp: SOCOM II's, between GetTrans and SetTrans; one corner's alpha through C2DPoly's per-vertex SetTrans, the shared corners in both triangles, then the blend and Gouraud bits; the name ours)
 0x00359070 0x68 SetTrans__13C2DBitmapPolyFf  # OVL1; s1:align
 0x003590E0 0x60 SetColor__13C2DBitmapPolyFfff  # OVL1; s1:exact
 0x00359140 0x90 SetUV__13C2DBitmapPolyFffffffff  # OVL1; s1:exact
 0x003591D0 0x84 SetUV__13C2DBitmapPolyFffff  # OVL1; s1:exact
 0x00359260 0xAC SetCenterPos__13C2DBitmapPolyF5PNT2Dff  # OVL1; s1:align
-0x00359310 0x180 func_00359310  # OVL1
+0x00359310 0x180 SetPos__13C2DBitmapPolyFffff  # OVL1; by hand (c2dbitmap_poly.cpp: SOCOM II's, before SetPos by the corners; a rectangle's four corners as PNT2Ds handed by value to an inline that sets both triangles; the name ours)
 0x00359490 0x90 SetPos__13C2DBitmapPolyFffffffff  # OVL1; s1:exact
 0x00359520 0x6C Draw__13C2DBitmapPolyFPQ23zdb7CCamera  # OVL1; s1:gap
 0x00359590 0xA4 Load__13C2DBitmapPolyFffffffffPQ23zdb8CTexture  # OVL1; s1:exact
@@ -6648,8 +6648,8 @@
 0x00360FC0 0x38 SetPos__7C2DPolyFffffff  # OVL1; s1:callee
 0x00361000 0x28 SetUV__7C2DPolyFffffff  # OVL1; s1:exact
 0x00361030 0x48 Load__7C2DPolyFffffffPQ23zdb8CTexture  # OVL1; s1:callee
-0x00361080 0x8 func_00361080  # OVL1
-0x00361090 0x90 func_00361090  # OVL1
+0x00361080 0x8 GetTrans__7C2DPolyFv  # OVL1; s1:order by hand (between Load and SetTrans as SOCOM 1's GetTrans, 0x8 in both: the first vertex's alpha)
+0x00361090 0x90 SetTrans__7C2DPolyFUif  # OVL1; by hand (C2DBitmapPoly::SetTrans(int, float) calls it per corner; one vertex's alpha, the index clamped to 2 unsigned, then the blend and Gouraud bits with their PRIM bits; SOCOM II's, the name ours)
 0x00361120 0x98 func_00361120  # OVL1
 0x003611C0 0x40 GetColor__7C2DPolyFv  # OVL1; s1:exact
 0x00361200 0x28 SetColor__7C2DPolyFfff  # OVL1; s1:exact
@@ -6657,7 +6657,7 @@
 0x00361280 0x50 func_00361280  # OVL1
 0x003612D0 0x50 func_003612D0  # OVL1
 0x00361320 0x60 func_00361320  # OVL1
-0x00361380 0x174 func_00361380  # OVL1
+0x00361380 0x174 __ct__7C2DPolyFv  # OVL1; s1:calls by hand (C2DBitmapPoly's constructor builds its two triangles with it through __construct_array, with C2DPoly's implicit destructor, as SOCOM 1's builds them with __ct__7C2DPolyFv)
 0x00361500 0xC8 GetAssetLibs__7C2DPolyFRQ23C2D8CLibList  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003615D0 0x1BC func_003615D0  # OVL1
 0x00361790 0x20C func_00361790  # OVL1
