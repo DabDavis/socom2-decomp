@@ -4900,6 +4900,7 @@
 0x00400770 __sinit_fts_net_platform.cpp
 0x00401BD0 __sinit_game_state.cpp
 0x00401CC0 __sinit_grid_di.cpp
+0x00401D80 __sinit_int_shapes.cpp
 0x004025E0 __sinit_zmath_main.cpp
 0x00402630 __sinit_zmath_matrix.cpp
 0x004026C0 __sinit_zmath_pnt3d.cpp
