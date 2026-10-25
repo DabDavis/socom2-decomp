@@ -320,7 +320,16 @@ class CAiMap;
 struct MAP_FOREACH_STRUCT;
 /* a cell handed to a line walk's callback (SOCOM 1's; not laid out yet) */
 /* a cell handed to a flood fill's callback (SOCOM 1's; not laid out yet) */
-struct MAP_FLOODFILL_STRUCT;
+struct MAP_FLOODFILL_STRUCT {
+    CAiMap *m_map;   // 0x0
+    unsigned int m_unk4[2];   // 0x4
+    CAiMapLoc m_loc;   // 0xc: the cell reached
+    CAiMapLoc m_start;   // 0x10: the cell the fill started from
+    CAiCell *m_cell;   // 0x14
+    signed char m_dir;   // 0x18: the direction the fill was sent (a CAiMap::DIR, read with lb)
+    unsigned char m_mode;   // 0x19: what a search's callback is doing -- 0 looking for a cell, 1 testing
+                            // it, 2 done (the look and cover searches'; the names ours)
+};
 struct MAP_LINEWALK_STRUCT {
     CAiMap *m_map;   // 0x0
     unsigned int m_unk4[2];   // 0x4
@@ -720,6 +729,9 @@ public:
     static SOIL GetSoilByName(const char *name);
     static DIR GetClosestDir(const CPnt3D *v);
     static DIR GetClosestDir(const CAiMapLoc &from, const CAiMapLoc &to);
+    /* the direction from a cell toward a point (SOCOM 1's, before the two static ones in both
+     * builds: 0x518900) */
+    DIR GetClosestDir(const CAiMapLoc &from, const CPnt3D *to);
     static int GetDirDelta(DIR a, DIR b);
     /* the whole map as a region: its first cell, its width and height (SOCOM 1's) */
     void GetMapRegion(region &r) const;
@@ -929,6 +941,40 @@ inline bool CAiMap::ForEachCell(bool (*f)(const MAP_FOREACH_STRUCT &s, void *dat
 class CAiStar;
 class CAiOverlay;
 class CAiPlanner;
+
+/* cells laid over a map that the planners and the searches keep off -- the vehicles' (the name
+ * ours, after SOCOM 1's CAiPath::m_overlay's class): a region and each row's run of cells */
+class CAiOverlay {
+public:
+    /* whether the cell is under it: inside the region, then on its row's run (ai_map.cpp's
+     * 0x515750) */
+    bool Contains(const CAiMapLoc &loc) const;
+
+    CAiMap::region m_region;   // 0x0
+    CAiMap::scanlines m_scanlines;   // 0x1c
+};
+
+/* the overlays (ai_astar.cpp's list, OVL2 0x66A0B8: the vehicles' unit adds to it through
+ * 0x510530 and 0x5104E0 clears it; the names ours) */
+class CAiOverlayList : public std::list<CAiOverlay *> {
+public:
+    /* whether an occupied cell lies under any of them (the name ours: the base planner's cost
+     * inlines it, the searches' callbacks call its out-of-line copy 0x53A500) -- a const walk, its
+     * iterators in stack slots */
+    bool Contains(const CAiCell *cell, const CAiMapLoc &loc) const
+    {
+        if (cell->IsOccupied()) {
+            for (const_iterator i = begin(); i != end(); ++i)
+                if ((*i)->Contains(loc))
+                    return true;
+        }
+        return false;
+    }
+};
+
+namespace ai {
+extern CAiOverlayList overlays;
+}
 
 /* the maps a path crosses (SOCOM 1's DWARF: a vector of CAiMap pointers and nothing more) */
 class CAiMapVec : public std::vector<CAiMap *> {

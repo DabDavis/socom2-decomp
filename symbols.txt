@@ -9415,7 +9415,7 @@
 0x00515520 0x60 func_00515520  # OVL2
 0x00515580 0x194 Reset__7CAiCellFv  # OVL2; ours (SOCOM 1's CAiCell() body, 0x185200, as a function of its own: the constructor 0x515720 and the layers' allocation 0x516FC0 call it; the name ours)
 0x00515720 0x28 __ct__7CAiCellFv  # OVL2; tu: vis_mesh.cpp~ (1.0 beta); s1:order by hand (the demo's 0x185200, ai_map.cpp's first function: __sinit_ai_map.cpp (0x668630) builds the dummy cell with it as SOCOM 1's does; SOCOM II's body calls Reset, 0x515580)
-0x00515750 0x128 func_00515750  # OVL2
+0x00515750 0x128 Contains__10CAiOverlayCFRC9CAiMapLoc  # OVL2; ours (an overlay's cell test: the region's Contains materialised, then the row's run in the scanlines vector at +0x1C; the overlay list's walks call it -- 0x53A500, fcost 0x512930)
 0x00515880 0x78 func_00515880  # OVL2
 0x00515900 0x4D4 func_00515900  # OVL2
 0x00515DE0 0x198 func_00515DE0  # OVL2
@@ -9455,7 +9455,7 @@
 0x00518700 0x60 func_00518700  # OVL2
 0x00518760 0x78 GetSoilByName__6CAiMapFPCc  # OVL2; s1:order by hand (the demo's 0x1871D0: strcasecmp against each soil's name, 1 when none or no name; after CAiMap's construction in both builds)
 0x005187E0 0x118 GetSoilString__6CAiMapFQ26CAiMap4SOIL  # OVL2; ours (new in SOCOM II: the 14-case switch of soil names "nogo" .. "collision", default "default", that SOCOM 1's GetSoilByName had inline; GetSoilByName 0x518760 calls it)
-0x00518900 0x1E0 func_00518900  # OVL2
+0x00518900 0x1E0 GetClosestDir__6CAiMapFRC9CAiMapLocPC6CPnt3D  # OVL2; s1:order by hand (the demo's GetClosestDir(loc, CPnt3D *) 0x187330, before GetClosestDir(loc, loc) and GetClosestDir(CPnt3D *) in both builds; a member: _find_cover calls it on the map with the fill's start and the point)
 0x00518AE0 0x7C GetClosestDir__6CAiMapFRC9CAiMapLocRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x187790: the step from one cell to the other as a vector, normalized, handed to GetClosestDir(const CPnt3D *))
 0x00518B60 0x1D8 GetClosestDir__6CAiMapFPC6CPnt3D  # OVL2; s1:order by hand (the demo's 0x187890, the same 0x1D8 bytes: north's vector dotted with the argument, then W..E or E..W tried through GetDirVec, the least 1 - dot kept)
 0x00518D40 0x38 GetDirDelta__6CAiMapFQ26CAiMap3DIRQ26CAiMap3DIR  # OVL2; s1:order by hand (the demo's 0x187A70, the same subtraction of two byte enums folded into -4..4; between the GetClosestDirs and GetDirByName in both builds)
@@ -9798,9 +9798,9 @@
 0x00539E90 0x20 func_00539E90  # OVL2
 0x00539EB0 0x2B0 FindLookLoc__6CAiMapFRC9CAiMapLocPC6CPnt3DR9CAiMapLocRQ26CAiMap3DIRi  # OVL2; s1:order by hand (the demo's FindLookLoc 0x1A9590, first of the look and cover searches in both builds: the start's centre (GetCellCenter inlined one level), the XZ direction to the point, FloodFill with _find_look 0x53A410)
 0x0053A160 0x2B0 func_0053A160  # OVL2
-0x0053A410 0xEC func_0053A410  # OVL2
-0x0053A500 0xE0 func_0053A500  # OVL2
-0x0053A5E0 0x150 func_0053A5E0  # OVL2
+0x0053A410 0xEC _find_look__FR20MAP_FLOODFILL_STRUCTPv  # OVL2; s1:order by hand (the demo's _find_look 0x1A9D50, the same switch on the floodfill byte at +0x19 and CanSeeLine(loc, &data->pos) in its testing case; SOCOM II's open-cell test calls IsTraversable, HasAction and the overlay walk 0x53A500 out of line; FindLookLoc hands it to FloodFill) -- written in ai_maplayer.cpp, OPEN
+0x0053A500 0xE0 Contains__14CAiOverlayListCFPC7CAiCellRC9CAiMapLoc  # OVL2; ours (the overlays' const walk, an inline's out-of-line copy right after its first caller _find_look: an occupied cell tested against each CAiOverlay::Contains (0x515750), the iterators in stack slots; called on the list at 0x66A0B8 by both search callbacks, inlined by the base planner's fcost)
+0x0053A5E0 0x150 _find_cover__FR20MAP_FLOODFILL_STRUCTPv  # OVL2; s1:order by hand (the demo's _find_cover 0x1A9E40 after _find_look: the open-cell test, then an opaque cell whose direction from the start toward the point is the fill's own (GetClosestDir(loc, point), GetDirDelta == 0) ends the search) -- written in ai_maplayer.cpp, OPEN
 0x0053A730 0x134 DeleteLayers__6CAiMapFv  # OVL2; ours (new in SOCOM II: ~CAiMap's call after FreeEx -- every layer past the first deleted through ~CAiMapLayer inlined, the pod erase 0x53AAC0 over them, SetModified(true); ai_maplayer.cpp)
 0x0053A870 0x78 __dt__14CAiMapLayerVecFv  # OVL2; ours (~CAiMap destroys m_layers through it with -1, as it does readers through ~readers: four this-tests, a class over the pointer vector's three -- ai_maplayer.cpp)
 0x0053A8F0 0x30 AllocCells__11CAiMapLayerFUi  # OVL2; ours (the map readers' call: m_cells = CAiCell::Alloc(n), returned -- ai_maplayer.cpp)
