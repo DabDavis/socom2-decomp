@@ -9556,13 +9556,13 @@
 0x00524660 0xF4 func_00524660  # OVL2
 0x00524760 0x120 func_00524760  # OVL2
 0x00524880 0xD0 func_00524880  # OVL2
-0x00524950 0x380 func_00524950  # OVL2
+0x00524950 0x380 PrintPath__7CAiPathCFPCc  # OVL2; s1:callee by hand (PostProcess calls it when bit 6 of m_flags is set, where SOCOM 1's calls PrintPath__7CAiPathCFv; SOCOM II passes a name -- "dbg_path" -- and builds the text with sprintf/strcat; TickPathPlanner and the AI states call it too)
 0x00524CD0 0x2C func_00524CD0  # OVL2
 0x00524D00 0x48 func_00524D00  # OVL2
 0x00524D50 0x4AC func_00524D50  # OVL2
 0x00525200 0x8 func_00525200  # OVL2
 0x00525210 0x12C SetSnakeLength__7CAiPathFUi  # OVL2; s1:order by hand (the SEAL lane's lead, vetted: the demo's 0x193D40 -- a zero length with a buffer set clears flag bit 2, a path planning (state 1-3) is aborted through AbortPathPlan, then the point and location vectors are cleared and the stats reset; SOCOM II's fields 0xC further on)
-0x00525340 0x1DC func_00525340  # OVL2
+0x00525340 0x1DC UpdatePathWidth__7CAiPathFUi  # OVL2; s1:callee by hand (PostProcess calls it with 5 when bit 2 of m_flags is set, as SOCOM 1's PostProcess calls UpdatePathWidth__7CAiPathFUi; 0x1DC against the demo's 0x1EC, after SetSnakeLength in both builds)
 0x00525520 0x2F0 func_00525520  # OVL2
 0x00525810 0x450 func_00525810  # OVL2
 0x00525C60 0x18 func_00525C60  # OVL2
@@ -9573,11 +9573,11 @@
 0x005264B0 0x40 func_005264B0  # OVL2
 0x005264F0 0x4C func_005264F0  # OVL2
 0x00526540 0x258 func_00526540  # OVL2
-0x005267A0 0x68 func_005267A0  # OVL2
+0x005267A0 0x68 PostProcess__7CAiPathFv  # OVL2; s1:callee by hand (plan_complete calls it between zeroing the leg counters and bumping the path id, as SOCOM 1's inlined plan_complete calls PostProcess__7CAiPathFv; the same tail: UpdatePathWidth(5) when flag 4, PrintPath when flag 0x40)
 0x00526810 0x3F4 func_00526810  # OVL2
 0x00526C10 0x310 func_00526C10  # OVL2
 0x00526F20 0x3DC func_00526F20  # OVL2
-0x00527300 0x8 func_00527300  # OVL2
+0x00527300 0x8 SetTemplatePath__7CAiPathFP7CAiPath  # OVL2; s1:order by hand (the demo's 0x1958D0, 8 bytes in both builds, just before Clear: m_template (0x10) stored)
 0x00527310 0xA8 Clear__7CAiPathFv  # OVL2; s1:order by hand (the demo's 0x1958E0: a planning path aborted through AbortPathPlan, then unless still planning the points and cells cleared, the stats reset and the legs zeroed, true; the three state tests one range test in SOCOM II)
 0x005273C0 0xAC plan_legcomplete__7CAiPathFQ27CAiPath10PATH_STATE  # OVL2; s1:callee by hand (TickPathPlanner calls it with the path and its state at the same place as SOCOM 1's calls plan_legcomplete__7CAiPathFQ27CAiPath10PATH_STATE, and pops the queue when it returns false)
 0x00527470 0x3C func_00527470  # OVL2

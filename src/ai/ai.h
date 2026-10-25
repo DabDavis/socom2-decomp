@@ -600,12 +600,17 @@ public:
      * an AI state hands it a CAiHidePlanner) */
     void SetPlanner(CAiPlanner *planner);
     bool Clear();
+    void SetTemplatePath(CAiPath *path);
+    void PostProcess();
+    void UpdatePathWidth(unsigned int width);
+    /* the path drawn for debugging, under a name (SOCOM 1's took none) */
+    void PrintPath(const char *name) const;
     void plan_setup();
     bool plan_addleg(CAiMap *map, const CAiMapLoc &start, const CAiMapLoc &goal);
     bool plan_legcomplete(PATH_STATE state);
     void plan_complete(PATH_STATE state);
     CAiMap *GetLegMap(int leg);
-    void GetLegPoints(CAiMapLoc &start, CAiMapLoc &goal, int leg) const;
+    bool GetLegPoints(CAiMapLoc &start, CAiMapLoc &goal, int leg) const;
 
     CAiStar *m_astar;   // 0x0
     CAiPlanner *m_planner;   // 0x4
