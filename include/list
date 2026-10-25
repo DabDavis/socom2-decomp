@@ -376,6 +376,9 @@ public:
     public:
         generic_iterator() {}
         generic_iterator(base_iterator i) : i_(i) {}
+        /* user-declared (SOCOM II's 0x510BD0: `lw v1,0(a1); move v0,a0; sw v1,0(a0)`, the copy
+         * ai::PathPlanExecute hands the list's insert) */
+        generic_iterator(const generic_iterator &x) : i_(x.i_) {}
         operator base_iterator() const { return i_; }
         /* the element by reference, but a const_iterator's by value: GetEntity reloads it after
          * strcasecmp, where a reference kept the element's address in a saved register.
@@ -403,6 +406,14 @@ public:
         {
             ++i_;
             return *this;
+        }
+        /* the copy, the step, the copy given back (SOCOM II's 0x510BE0 for list<CAiPath *>) */
+        generic_iterator operator++(int)
+        {
+            generic_iterator tmp(*this);
+
+            ++*this;
+            return tmp;
         }
         bool operator==(const generic_iterator &x) const { return i_ == x.i_; }
         bool operator!=(const generic_iterator &x) const { return i_ != x.i_; }
@@ -437,6 +448,14 @@ public:
         return const_iterator(typename base::const_iterator(t->next_));
     }
     const_iterator end() const { return const_iterator(typename base::const_iterator(this->tail())); }
+    /* the value linked in before position through the base's insert, the base's iterator it gives
+     * back wrapped (SOCOM II's 0x510B90 for list<CAiPath *>: position converted to a base iterator
+     * on the stack, the reference passed on as it is). After the wrapper's iterator: declared
+     * before it, `iterator` would still name the base's */
+    iterator insert(iterator position, T *const &x)
+    {
+        return iterator(base::insert(position, (const void *const &)x));
+    }
 };
 
 }
