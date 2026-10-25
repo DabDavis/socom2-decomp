@@ -646,6 +646,7 @@ public:
     bool GetClan();
     bool IsIgnored(const char *name);
     void Censor(const char *text, void (*cb)(const char *text, void *data), void *data);
+    bool SendChat(const char *text, const char *to);
 
     /* open and in the lobby proper (the name ours: GetFriendInvitations materialises the && before
      * it branches, an inline bool's shape) */

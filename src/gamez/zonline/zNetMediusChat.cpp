@@ -6,6 +6,7 @@
  * (-inline deferred). */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include "zonline.h"
 #include "../znet/znet.h"
 
@@ -1048,7 +1049,46 @@ struct MediusSendDirectMessageRequest {
     char Message[64];   // 0x30
 };   // 0x70
 
+/* a player's info asked for (SOCOM 1's MediusGetPlayerInfo) */
+struct MediusPlayerInfoRequest {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];   // 0x15
+    int AccountID;   // 0x28
+};   // 0x2c
+
+struct MediusPlayerInfoResponse { MEDIUS_RESPONSE_HEAD };
+
+/* a chat line (SOCOM 1's MediusChatMessage: 1 private, the target looked up first) */
+struct MediusChatMessage {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];   // 0x15
+    int MessageType;   // 0x28
+    int TargetID;   // 0x2c
+    char Message[64];   // 0x30
+};   // 0x70
+
+/* a player looked up by name (SOCOM 1's MediusFindPlayer: 1, by name) */
+struct MediusFindPlayerRequest {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];   // 0x15
+    int SearchType;   // 0x28
+    int ID;   // 0x2c
+    char Name[32];   // 0x30
+};   // 0x50
+
+struct MediusFindPlayerResponse { MEDIUS_RESPONSE_HEAD };
+
 extern "C" {
+extern unsigned char data_0044FA20[];   /* the public lines waiting for the filter (a queue) */
+extern unsigned char data_0044FA50[];   /* the private lines waiting for their player */
+void func_002F5290(void *queue, const MediusChatMessage *msg);   /* a line queued */
+MediusErrorCode func_00648F10(MediusFindPlayerRequest *req,
+                              void (*cb)(int, int, int, MediusFindPlayerResponse *));   /* MediusFindPlayer */
+void func_002F4A20(int, int, int, MediusFindPlayerResponse *);   /* the private line's player found */
+void func_002F4BA0(const char *text, void *data);   /* the public line filtered: sent */
+MediusErrorCode func_00648D30(MediusPlayerInfoRequest *req,
+                              void (*cb)(int, int, int, MediusPlayerInfoResponse *));   /* MediusGetPlayerInfo */
+void func_002F0020(int, int, int, MediusPlayerInfoResponse *);   /* the player's info shown */
 void func_00300670();   /* the Medius library closed */
 void func_0030D770(CZNetwork *net);   /* the DME left (CZNetwork's) */
 void func_0030E3A0(CZNetwork *net, int);   /* and closed (CZNetwork's) */
@@ -1060,6 +1100,73 @@ extern char data_00437690[];   /* the chat's window */
 extern "C" {
 extern CensorCallback data_0044FA00;
 extern void *data_0044FA08;
+}
+
+/* a chat line sent: queued, then a private one's player looked up, a public one filtered first
+ * (SOCOM 1's SendChat filtered every line; OVL1 0x2F4860). The filter is Censor, inlined */
+bool CZOnlineLobby::SendChat(const char *text, const char *to)
+{
+    if (!m_isopen)
+        return false;
+    MediusChatMessage msg;
+
+    memset(&msg, 0, sizeof(msg));
+    SetSessionKey(msg.SessionKey);
+    if (text)
+        memcpy(msg.Message, text, sizeof(msg.Message));
+    msg.Message[sizeof(msg.Message) - 1] = 0;
+    if (to) {
+        msg.MessageType = 1;
+        msg.TargetID = -1;
+        func_002F5290(data_0044FA50, &msg);
+        MediusFindPlayerRequest find;
+
+        memset(&find, 0, sizeof(find));
+        SetSessionKey(find.SessionKey);
+        find.ID = 0;
+        find.SearchType = 1;
+        if (to)
+            memcpy(find.Name, to, sizeof(find.Name));
+        CheckMediusError(func_00648F10(&find, func_002F4A20));
+    } else {
+        msg.TargetID = -1;
+        msg.MessageType = 0;
+        func_002F5290(data_0044FA20, &msg);
+        Censor(msg.Message, func_002F4BA0, &msg);
+    }
+    return true;
+}
+
+/* a player's info asked for, the menu's fields blanked meanwhile; the request's message id names
+ * the menu it is for (SOCOM II's; OVL1 0x2EFE50: UIGetPlayerInfo calls it on theLobby) */
+extern "C" void func_002EFE50(CZOnlineLobby *lobby, const char *id, int what)
+{
+    *theUIVarManager.Add("PLAYER_INFO_VAR1", 0, UIVL_TEMPORARY) = "Retrieving Player Info";
+    *theUIVarManager.Add("PLAYER_INFO_VAR2", 0, UIVL_TEMPORARY) = " ";
+    *theUIVarManager.Add("PLAYER_INFO_DESCRIPTION", 0, UIVL_TEMPORARY) = " ";
+    MediusPlayerInfoRequest req;
+
+    memset(&req, 0, sizeof(req));
+    SetSessionKey(req.SessionKey);
+    req.AccountID = atoi(id);
+    switch (what) {
+    case 0:
+        memcpy(req.MessageID, "BRIEFING", MEDIUS_MESSAGEID_MAXLEN);
+        break;
+    case 1:
+        memcpy(req.MessageID, "CLAN", MEDIUS_MESSAGEID_MAXLEN);
+        break;
+    case 2:
+        memcpy(req.MessageID, "FRIEND", MEDIUS_MESSAGEID_MAXLEN);
+        break;
+    case 3:
+        memcpy(req.MessageID, "LADDER", MEDIUS_MESSAGEID_MAXLEN);
+        break;
+    default:
+        memcpy(req.MessageID, "BRIEFING", MEDIUS_MESSAGEID_MAXLEN);
+        break;
+    }
+    func_00648D30(&req, func_002F0020);
 }
 
 /* the online session left: the Medius and DME connections closed, the lobby with them (SOCOM 1's;
