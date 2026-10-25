@@ -1567,6 +1567,21 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - zparticle.cpp 0x3223D0-0x324C6F, zparticle_buf.cpp from 0x324C70, the instance unit from
     0x326F50, zrndr_init.cpp 0x335FD0-0x33622F; 0x321E00-0x3223CF is a vis unit's CLensFlare/
     CRipple code.
+- **Tells from the SEALs, round 7** (~CSealCtrlAi, SEAL_AI_PARAMS):
+  - an RTTI's base list gives a second base's offset: that base is constructed before the vtable
+    store, and its inlined destructor sits behind a null test of `this + offset`
+    (CSealCtrlAi : CSealCtrl, SEAL_AI_PARAMS at 0x250 -- its state stack at 0x41C, a CAiPath at
+    0x46C, a route at 0x514, a CAiEvent at 0x628, a CAiEventQ at 0x650);
+  - a caller that never sets $f12 shows the callee has no float parameter;
+  - a product's member factor read through an inline accessor is loaded first (SetViewRange);
+  - a signed square `if (r < 0) r = -(r*r); else r = r*r;` gives the target's two arms; a ternary
+    or a separate result local if-converts;
+  - a load the target puts in a null test's delay slot needs a local taken before the test;
+  - a CPnt3D copied field by field gives load/store pairs through one register; copy
+    construction loads all three fields first;
+  - tools/perm.py fixed a locals-only register miss in one run (SealGetAltitude);
+  - `ovl-copy:` notes are read from data rows too (scdecomp's address_in): an RTTI's overlay copy
+    (0x65C220 for zdb::CNodeEx's) resolves a `dynamic_cast` in OVL2.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
