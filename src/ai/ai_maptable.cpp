@@ -145,6 +145,29 @@ CAiMap::action *CAiMap::GetCellAction(const CAiMapLoc &loc)
     return 0;
 }
 
+/* a cell's link set or dropped: a set link made when the cell has none, the cell made walkable
+ * when it was not and marked linked; a dropped one unmarked (new in SOCOM II). The cell read
+ * through GetCell, inlined one level, the links' inlines too */
+CAiMap::link *CAiMap::SetCellLink(const CAiMapLoc &loc, bool set)
+{
+    CAiCell *cell = GetCell(loc, 0);
+    link *l = 0;
+
+    if (!set) {
+        m_linksTable.Remove(loc);
+        cell->SetLink(0);
+    } else {
+        l = m_linksTable.Add(loc);
+        if (l) {
+            if (!cell->IsTraversable())
+                cell->m_soil = SOIL_DEFAULT;
+            cell->SetLink(1);
+        }
+    }
+    SetModified(true);
+    return l;
+}
+
 /* the link from a cell, or none (SOCOM 1's) */
 CAiMap::link *CAiMap::GetCellLink(const CAiMapLoc &loc)
 {

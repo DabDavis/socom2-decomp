@@ -403,6 +403,11 @@ public:
          * cells' x and y distances summed, the shorter of the two legs (new in SOCOM II, the name
          * ours: 0x530500, ai_maps.cpp's 0x52ACC0 calls it) */
         int GetDistance(const CAiMapLoc &from, const CAiMapLoc &to) const;
+        /* a new link is of kind 8 (0x5309D0, out of line where it is built) */
+        link() : m_kind(8) {}
+        /* the link on a cell: its first cell's x and y (the name ours; a level of its own under
+         * links::Find, which makes Remove too tall to inline whole) */
+        bool operator==(const CAiMapLoc &loc) const { return m_loc == loc; }
 
         CAiMapLoc m_loc;   // 0x0
         CAiMapLoc m_link;   // 0x4
@@ -410,6 +415,47 @@ public:
         unsigned int m_unk8 : 28;
     };
     class links : public std::vector<link> {
+    public:
+        /* the link on a cell, end() for none (the names ours: SetCellLink's pieces, out of line
+         * after it where the two inlines below are inlined one level -- 0x530B20, 0x5309F0) */
+        iterator Find(const CAiMapLoc &loc)
+        {
+            iterator e = end();
+
+            for (iterator i = begin(); i != e; ++i)
+                if (*i == loc)
+                    return i;
+            return e;
+        }
+        link *FindLink(const CAiMapLoc &loc)
+        {
+            for (iterator i = begin(); i != end(); ++i)
+                if ((*i).m_loc == loc)
+                    return &*i;
+            return 0;
+        }
+        /* the cell's link dropped (the name ours) */
+        void Remove(const CAiMapLoc &loc)
+        {
+            iterator i = Find(loc);
+
+            if (i != end())
+                erase(i);
+        }
+        /* the cell's link, made when it has none (the name ours) */
+        link *Add(const CAiMapLoc &loc)
+        {
+            link *l = FindLink(loc);
+
+            if (!l) {
+                link n;
+
+                n.m_loc = loc;
+                push_back(n);
+                l = &back();
+            }
+            return l;
+        }
     };
 
     /* a rectangle of cells, named and typed (SOCOM 1's DWARF, 0x1C bytes) */
@@ -740,6 +786,9 @@ public:
     /* bit 1 of the flags: the map changed since it was read (the names ours) */
     bool IsModified() const { return (m_flags & 2) != 0; }
     bool SetModified(bool modified);
+    /* a link set on a cell or taken off it, the cell marked and the map changed (new in SOCOM II,
+     * the name ours: 0x5307A0) */
+    link *SetCellLink(const CAiMapLoc &loc, bool set);
     /* the map with its first layer and nothing read (SOCOM 1's took no id) */
     CAiMap(int mapid);
     ~CAiMap();

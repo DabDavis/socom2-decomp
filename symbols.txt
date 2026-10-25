@@ -9545,7 +9545,7 @@
 0x0051F7A0 0x3D0 func_0051F7A0  # OVL2
 0x0051FB70 0xD3C func_0051FB70  # OVL2
 0x005208B0 0x1D8 func_005208B0  # OVL2
-0x00520A90 0x99C func_00520A90  # OVL2
+0x00520A90 0x99C insert__Q23std64__vector_imp<Q26CAiMap4link,Q23std25allocator<Q26CAiMap4link>,0>FPQ26CAiMap4linkUiRCQ26CAiMap4link  # OVL2; by hand (the links' class insert: max_size 0xFFFFFFFF/12 = 0x15555555, the links' resize 0x51C840 and push_back 0x5309A0 call it with (end, n, x))
 0x00521430 0x388 func_00521430  # OVL2
 0x005217C0 0x914 func_005217C0  # OVL2
 0x005220E0 0x1D8 func_005220E0  # OVL2
@@ -9684,7 +9684,7 @@
 0x0052F310 0x18 func_0052F310  # OVL2
 0x0052F330 0x64 func_0052F330  # OVL2
 0x0052F3A0 0x14 func_0052F3A0  # OVL2
-0x0052F3C0 0x10 func_0052F3C0  # OVL2; tu: char_type.cpp~ (1.0 beta)
+0x0052F3C0 0x10 __as__9CAiMapLocFRC9CAiMapLoc  # OVL2; tu: char_type.cpp~ (1.0 beta); by hand (CAiMapLoc's implicit assignment, a word copy: out of line where SetCellLink's Add is inlined one level)
 0x0052F3D0 0x8 func_0052F3D0  # OVL2
 0x0052F3E0 0xC func_0052F3E0  # OVL2
 0x0052F3F0 0x10 func_0052F3F0  # OVL2
@@ -9706,15 +9706,15 @@
 0x00530450 0xB0 GetRegion__6CAiMapFRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19EB30: the region whose corner is the cell)
 0x00530500 0x1E4 GetDistance__Q26CAiMap4linkCFRC9CAiMapLocRC9CAiMapLoc  # OVL2; ours (new in SOCOM II, in the map tables between GetRegion(loc) and GetCellLink: a link's Manhattan legs -- from the cell to the link's end on its map, or from the other end to the goal -- the shorter through _min<int>; ai_maps.cpp's 0x52ACC0 calls it; byte-exact in ai_maptable.cpp)
 0x005306F0 0xB0 GetCellLink__6CAiMapFRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19EBD0, after the two GetRegions in both builds: the links at 0x104 walked for the cell -- 12-byte links in SOCOM II)
-0x005307A0 0x1E0 func_005307A0  # OVL2
-0x00530980 0x20 back__Q23std68__vector_imp<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>,0>Fv  # OVL2; s1:exact
-0x005309A0 0x24 func_005309A0  # OVL2
-0x005309D0 0x20 func_005309D0  # OVL2
-0x005309F0 0xB0 func_005309F0  # OVL2
-0x00530AA0 0x34 func_00530AA0  # OVL2
-0x00530AE0 0x18 func_00530AE0  # OVL2
-0x00530B00 0x20 func_00530B00  # OVL2
-0x00530B20 0xB0 func_00530B20  # OVL2
+0x005307A0 0x1E0 SetCellLink__6CAiMapFRC9CAiMapLocb  # OVL2; ours (new in SOCOM II, between GetRegion's helpers and the links' pieces: the cell's link dropped (links' Remove inlined one level: Find, end, !=, erase out of line) or made (Add inlined one level: FindLink, link(), CAiMapLoc's =, push_back, back), the cell made walkable and marked, the map marked changed; byte-exact in ai_maptable.cpp)
+0x00530980 0x20 back__Q23std64__vector_imp<Q26CAiMap4link,Q23std25allocator<Q26CAiMap4link>,0>Fv  # OVL2; s1:exact; by hand (the links' back(): 12-byte elements, so not SOCOM 1's CAiPath::point back the s1:exact pairing gave (identical words, SOCOM 1's point was 12 bytes); SetCellLink's Add takes the new link through it)
+0x005309A0 0x24 push_back__Q23std64__vector_imp<Q26CAiMap4link,Q23std25allocator<Q26CAiMap4link>,0>FRCQ26CAiMap4link  # OVL2; by hand (the links' push_back: insert(end, 1, x) through 0x520A90; SetCellLink's Add)
+0x005309D0 0x20 __ct__Q26CAiMap4linkFv  # OVL2; ours (a new link's kind 8 set in the mem-initializer list, word read-mask-write; SetCellLink's Add builds its temporary with it)
+0x005309F0 0xB0 FindLink__Q26CAiMap5linksFRC9CAiMapLoc  # OVL2; ours (the link on a cell or none: SetCellLink's Add calls it out of line; byte-exact from ai.h)
+0x00530AA0 0x34 erase__Q23std64__vector_imp<Q26CAiMap4link,Q23std25allocator<Q26CAiMap4link>,0>FQ33std64__vector_imp<Q26CAiMap4link,Q23std25allocator<Q26CAiMap4link>,0>8iterator  # OVL2; by hand (the class vector's single-element erase's iterator wrapper, new in include/vector: the iterator homed, erase(T *) 0x532000 called; SetCellLink's Remove)
+0x00530AE0 0x18 __ne__Q33std64__vector_imp<Q26CAiMap4link,Q23std25allocator<Q26CAiMap4link>,0>8iteratorCFRCQ33std64__vector_imp<Q26CAiMap4link,Q23std25allocator<Q26CAiMap4link>,0>8iterator  # OVL2; by hand (the links' iterator !=, out of line in SetCellLink's Remove; byte-exact from include/vector)
+0x00530B00 0x20 end__Q23std64__vector_imp<Q26CAiMap4link,Q23std25allocator<Q26CAiMap4link>,0>Fv  # OVL2; by hand (the links' end() by value, out of line where SetCellLink's Remove is inlined one level; byte-exact from include/vector)
+0x00530B20 0xB0 Find__Q26CAiMap5linksFRC9CAiMapLoc  # OVL2; ours (the link on a cell as an iterator, end() for none: SetCellLink's Remove calls it out of line, first of the links' pieces after it; byte-exact from ai.h)
 0x00530BD0 0x88 FindActionLocation__6CAiMapFUiR9CAiMapLocPPQ26CAiMap6action  # OVL2; s1:order by hand (the demo's 0x19EFC0, before GetCellAction in both builds: the actions walked for an id (bits 4-19 of the second word), the action handed back when asked, the cell copied out, true)
 0x00530C60 0xB0 GetCellAction__6CAiMapCFRC9CAiMapLoc  # OVL2; ours (byte for byte GetCellAction's code, between FindActionLocation and GetCellAction where SOCOM 1 has nothing: a second overload -- const is our guess)
 0x00530D10 0xB0 GetCellAction__6CAiMapFRC9CAiMapLoc  # OVL2; s1:callee by hand (CRestrainedPlanner::is_traversable calls it with the map and the destination cell where SOCOM 1's CRestrainedTravel calls GetCellAction__6CAiMapFRC9CAiMapLoc, and reads the result as an action: m_type_invalid, m_type, m_state)
@@ -9730,7 +9730,7 @@
 0x005311C0 0x18 _min<i>__2aiFRCiRCi_RCi  # OVL2; ours, by its body (the smaller of two ints by reference: slt, movn -- _min<Us>'s and _min<Ui>'s shape signed; the CAiMap table unit's template tail, after the names' sort comparator)
 0x005311E0 0xE4 func_005311E0  # OVL2
 0x005312D0 0xD30 func_005312D0  # OVL2
-0x00532000 0x1AC func_00532000  # OVL2
+0x00532000 0x1AC erase__Q23std64__vector_imp<Q26CAiMap4link,Q23std25allocator<Q26CAiMap4link>,0>FPQ26CAiMap4link  # OVL2; by hand (the class vector's single-element erase for the links: the elements after copied down 8x unrolled, the size counted down; the iterator wrapper 0x530AA0 calls it)
 0x005321B0 0x72C func_005321B0  # OVL2
 0x005328E0 0x10C func_005328E0  # OVL2
 0x005329F0 0x31C func_005329F0  # OVL2
