@@ -1269,6 +1269,19 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     (initialiser 0x4043A0), a near-copy with 136-byte definitions and 688-byte vehicles;
   - open on include/vector: a class-vector resize would unblock both definition-vector Inits,
     the two template tails and ~CTurretDefVector (0x3AC9E0).
+- **Tells from the AI core, round 5** (ai_astar.cpp, ai_mapio.cpp, ai_path.cpp):
+  - to keep a second load of a member MW would share, read it through a const view of `this`
+    (plain, int-cast and volatile reads all share it: read_v19's m_cellcount);
+  - `(unsigned)(s - 1) > 2` branches on `sltiu at`; the negated `< 3` inline or `>= 3`
+    materialises the test (CAiPath::Clear);
+  - `size() != 0 &&` as a while test branches on the size directly; a bare `size() &&`
+    materialises a bool (TickPathPlanner);
+  - a packed value read through a reference parameter is reloaded after every store to an
+    address-taken local: copy it into a local first (_fixupNode);
+  - CAiMapLocVec's implicit constructor adds an inline level: CAiPathStats with one is too tall
+    for CAiPath's constructor at level 5, a plain `std::vector<CAiMapLoc>` member inlines whole;
+  - CAiPath is 0xA8 bytes in SOCOM II, CAiStar 0x14 (its open and closed lists became the unit's
+    statics: ai_astar.cpp's initialiser 0x668540 builds them and path_queue).
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
