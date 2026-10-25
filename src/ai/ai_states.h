@@ -295,7 +295,27 @@ public:
 
 class CAiSAvoid : public CAiState {
 public:
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual ~CAiSAvoid();
+
+    unsigned int m_58;   // 0x58 (cleared on a reset)
+};
+
+/* the path recovery (SOCOM 1's; 0x15C bytes, Create's: a route at 0x5C, a word triple at 0x104,
+ * a pair at 0x110 built (15, 0)) */
+class CAiSPathRecover : public CAiState {
+public:
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    virtual const char *GetStatus() const;
+    virtual bool CanAttack() const { return false; }
+    virtual bool CanPursue(CSealCtrlAi *ai) const { return false; }
+    /* (0x609810, not written yet: its members' destructors) */
+    virtual ~CAiSPathRecover();
+
+    unsigned int m_58;   // 0x58
+    unsigned char _5c[0x114 - 0x5c];
+    int m_tries;   // 0x114: reset to the unit's static count (10)
+    unsigned char _118[0x15c - 0x118];
 };
 
 class CAiSRush : public CAiState {
@@ -346,9 +366,21 @@ public:
 
 class CAiSHold : public CAiState {
 public:
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     /* +0x40: a hold the flag's bit 8 has not ended (the name ours) */
     virtual bool Virtual40() { return !(m_flags & 0x100); }
     virtual ~CAiSHold();
+
+    short m_58;   // 0x58 (-1 on a reset)
+    unsigned char _5a[0x5c - 0x5a];
+    float m_pos[3];   // 0x5c: a CPnt3D (Create builds it)
+    unsigned int m_cell;   // 0x68: a CAiMapLoc (the invalid cell on a reset)
+    unsigned char m_6c;   // 0x6c
+    unsigned char _6d[0x70 - 0x6d];
+    unsigned int m_70;   // 0x70
+    unsigned char _74[0x78 - 0x74];
+    unsigned int m_78;   // 0x78
+    unsigned char _7c[0x98 - 0x7c];
 };
 
 class CAiSSurrender : public CAiState {
@@ -381,8 +413,13 @@ public:
 
 class CAiSShotAt : public CAiState {
 public:
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual bool CanPursue(CSealCtrlAi *ai) const { return false; }
     virtual ~CAiSShotAt();
+
+    unsigned char _58[0x5a - 0x58];
+    signed char m_stance;   // 0x5a: the AI's stance when shot at (a SEAL_STANCE)
+    unsigned char _5b[0x6c - 0x5b];
 };
 
 #endif

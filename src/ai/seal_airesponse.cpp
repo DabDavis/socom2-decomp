@@ -82,6 +82,23 @@ void *func_0052A3C0(CAiMaps *maps, CAiCell *from, int a, int b);
 bool func_00529EE0(CAiMaps *maps, void *cell, unsigned int *loc);
 /* the goto pushed to a cell (OVL2 0x5F0830, seal_aistate.cpp's) */
 void func_005F0830(CSealCtrlAi *ai, unsigned int *loc, int mode, int kind, int step);
+/* (OVL2 0x558590: the SEAL lane's row, on the controller's object at 0x324; 0x563050, a goal
+ * set with a float) */
+void func_00558590(void *obj);
+void func_00563050(CSealCtrlAi *ai, int a, int b, float f);
+/* (OVL2 0x5628F0, 0x5B3890: the SEAL lane's rows -- the first on the controller, the second on
+ * the SEAL) and a byte of the SEAL lane's (OVL2 bss 0x66AFE0, cleared by a hold) */
+void func_005628F0(CSealCtrlAi *ai);
+void func_005B3890(CEntity *seal, int x);
+extern unsigned char data_0066AFE0;
+/* the AI's mode, a byte (OVL2 0x560A60); an order given (0x571010) with a target this unit
+ * picks (0x609530); the stance set after a delay (0x563100); a CSealCtrl call taking a signed
+ * byte (0x600D40, this lane's range, unwritten) -- the SEAL lane's rows but 0x609530/0x600D40 */
+unsigned char func_00560A60(CSealCtrlAi *ai);
+void func_00571010(CSealCtrlAi *ai, void *target, int a, int kind);
+void *func_00609530(int x);
+void func_00563100(CSealCtrlAi *ai, signed char stance, float delay);
+void func_00600D40(CSealCtrlAi *ai, int x);
 /* (OVL2 0x567840, 0x570D60: the SEAL lane's rows -- a stun's controller calls, the second
  * taking a float) */
 void func_00567840(CSealCtrlAi *ai, int x);
@@ -243,6 +260,159 @@ void CAiSTarget::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
         break;
     case SIGNAL_3:
         ai->ClearGoal(GOAL_NONE);
+        break;
+    }
+}
+
+/* the controller's word at 0x718 (zseal.h does not name it -- the name ours) */
+struct CAiCtrl718 {
+    unsigned char _0[0x718];
+    unsigned int m_718;   // 0x718
+};
+
+/* a random float: a minimum and a range (zkit.h's Rfloat, built in place) */
+inline float Random(float min, float range)
+{
+    Rfloat r;
+
+    r.m_min = min;
+    r.m_range = range;
+    return r;
+}
+
+/* shot at: the stance noted and a short random wait on entry, an order (kind 11) in the AI's
+ * first two modes; on leaving for a sub-state the stance back after a random delay (OVL2 0x6093F0;
+ * SOCOM 1's) */
+void CAiSShotAt::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
+{
+    switch (sig) {
+    case SIGNAL_4:
+        break;
+    case SIGNAL_0:
+        m_stance = ai->m_stance;
+        m_time = Random(0.05f, 0.2f);
+        if (func_00560A60(ai) < 2)
+            func_00571010(ai, func_00609530(0), 2, 11);
+        break;
+    case SIGNAL_1:
+        func_00563100(ai, m_stance, Random(0.25f, 0.25f));
+        func_00600D40(ai, 6);
+        ((CAiCtrl718 *)ai)->m_718 = 0;
+        break;
+    case SIGNAL_2:
+        break;
+    case SIGNAL_3:
+        break;
+    }
+}
+
+/* the controller's bit 17 at 0x170 (zseal.h's m_bit17), set through a bool: an inline setter */
+inline void SetBit17(CSealCtrlAi *ai, bool on)
+{
+    ai->m_bit17 = on;
+}
+
+/* the hold's signed-byte count (a file static: its Tick reads it too; OVL2 data 0x650E10) */
+static signed char s_holdCount = 3;
+
+/* a hold's events: reset; entering and leaving, the AI's goals dropped and the bit off; a sub-state
+ * (1, 2) puts a goal back and the bit on (OVL2 0x607650; SOCOM 1's) */
+void CAiSHold::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
+{
+    CEntity *seal = ai ? ai->m_entity : 0;
+
+    switch (sig) {
+    case SIGNAL_4:
+        m_58 = -1;
+        m_cell = *(unsigned int *)&CAiMapLoc::invalid;
+        m_78 = 0;
+        m_70 = 0;
+        m_6c = 0;
+        break;
+    case SIGNAL_0:
+        func_005628F0(ai);
+        ai->ClearGoal(GOAL_NONE);
+        func_005B3890(seal, 1);
+        SetBit17(ai, false);
+        break;
+    case SIGNAL_1:
+        func_00563050(ai, 2, 1, -1.0f);
+        func_00600D40(ai, s_holdCount);
+        if (m_flags & 0x80)
+            data_0066AFE0 = 0;
+        ai->m_bit17 = true;
+        func_005B3890(seal, 1);
+        break;
+    case SIGNAL_2:
+        func_00563050(ai, 2, 1, -1.0f);
+        ai->m_bit17 = true;
+        break;
+    case SIGNAL_3:
+        func_005628F0(ai);
+        ai->ClearGoal(GOAL_NONE);
+        SetBit17(ai, false);
+        if (m_flags & 0x20)
+            UpdatePhase(0);
+        break;
+    }
+}
+
+/* the path recovery's tries (a file static: its Tick reads it too; OVL2 data 0x651000) */
+static int s_pathTries = 10;
+
+/* a path recovery's events: reset its tries; on entry the AI's mode 4 and a goal, the bit off;
+ * the bit on again on leaving for a sub-state; done at the end (OVL2 0x604490; SOCOM 1's) */
+void CAiSPathRecover::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
+{
+    switch (sig) {
+    case SIGNAL_4:
+        m_tries = s_pathTries;
+        break;
+    case SIGNAL_0:
+        ai->SetAiMode((AI_MODE)4);
+        func_00567840(ai, 0);
+        func_00558590((char *)ai + 0x324);
+        func_00563050(ai, 2, 0, 0.1f);
+        SetBit17(ai, false);
+        m_58 = 0;
+        m_time = 0.0f;
+        break;
+    case SIGNAL_1:
+        SetBit17(ai, true);
+        break;
+    case SIGNAL_2:
+        break;
+    case SIGNAL_3:
+        m_active = false;
+        break;
+    }
+}
+
+/* an avoidance's events: reset; up from prone on entry and on the way out; its goal dropped when
+ * a sub-state takes over (1) or it is left (2, done) (OVL2 0x602D10; SOCOM 1's) */
+void CAiSAvoid::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
+{
+    switch (sig) {
+    case SIGNAL_4:
+        m_58 = 0;
+        break;
+    case SIGNAL_0:
+        if (ai->m_stance == STANCE_PRONE)
+            func_005631A0(ai, 1);
+        break;
+    case SIGNAL_2:
+        ai->ClearGoal(GOAL_AVOID);
+        func_00558590((char *)ai + 0x324);
+        m_active = false;
+        break;
+    case SIGNAL_1:
+        ai->ClearGoal(GOAL_AVOID);
+        func_00558590((char *)ai + 0x324);
+        break;
+    case SIGNAL_3:
+        if (ai->m_stance == STANCE_PRONE)
+            func_005631A0(ai, 1);
+        UpdatePhase(0);
         break;
     }
 }
