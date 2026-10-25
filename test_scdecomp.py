@@ -221,8 +221,11 @@ def test_exact_pass_refuses_a_thin_wrapper():
         return
     img, st, demo = E.image(), E.symbols(), N.Demo()
     exact, callee, _ = N.run(demo, img, st)
-    ck(0x319580 not in exact, "the SetStance-shaped wrapper is not exact")
-    ck(0x3199C0 not in callee, "nor is its callee named through it")
+    # 0x319580 is CSaveLoad::LoadAssetLib, a thin wrapper of LoadAssetLib_PS2: once the callee is
+    # named, the exact pass may pair it with SOCOM 1's own LoadAssetLib (its relocation names
+    # agree) -- but never with the SetStance wrapper its masked words also equal
+    ck("SetStance" not in exact.get(0x319580, ""), "the SetStance-shaped wrapper is not named SetStance")
+    ck("DoSetStance" not in callee.get(0x3199C0, ""), "nor is its callee named DoSetStance through it")
     ck(exact.get(0x3070C0) == "Mul__5CQuatCFPC5CQuatP5CQuat", "positive control: CQuat::Mul is exact")
 
 

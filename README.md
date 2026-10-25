@@ -607,6 +607,24 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - a dead data load the target keeps needs a volatile read (MW 3.0 drops it and tail-calls);
   - `CPnt3D p(s.x, s.y, s.z)` loads z, y, x and stores x, y, z;
   - `int i = t - 1; f(i)` keeps the subtraction, `f(t - 1)` folds the -1 into the table address.
+- **Tells from the C2D implementation** (round 7: c2dbitmap_poly, c2dpoly, c2dline, c2dstring,
+  zui_2d):
+  - float rows that must land on 16-byte offsets need a 16-aligned type (`sceVu0FVECTOR`):
+    C2DPoly's arrays reach 0x30 after its PRIM word only that way;
+  - an inline virtual's out-of-line copy comes with each unit that emits the vtable, the linker
+    keeping the first: one class's slots can end up split between two units (C2DBitmapPoly's
+    6/8 against 7/9);
+  - `if (IsOn() != false)` (or a bool local) gives the target's `andi 0xff` after an
+    out-of-line bool call; `if (IsOn())` branches on v0;
+  - a test the target branches on directly must be written out each time: an inline bool
+    function makes MW compute the result first;
+  - `m_RGB[i < 3 ? i : 2]` keeps the ternary's empty arm as a `b`; `if (i >= 3) i = 2;` loses it;
+  - a chained `a = b = c = K;` stores c first (C2DString's colour: z, y, x, then w);
+  - a local array initialiser copied in with memcpy reproduces MW's lq/sq copy from anonymous
+    data (C2DLine's UVs);
+  - a bitfield read into a bool local adds an `sltu`, into an unsigned char local `andi 0xff`;
+  - when a byte is tested twice, MW reuses the load only if the first test is also an inline
+    accessor (CPlainBmp::Draw's `IsString()`).
 - **The class vector's deleter destructor is out of class** (include/vector): MSL 3.0.1 defines
   it after the class body, not inline, so MW emits it in each unit's template tail and inlines it
   only where the unit has already instantiated it -- an implicit destructor chain over a class
