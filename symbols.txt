@@ -10685,16 +10685,16 @@
 0x00598280 0x5B8 __ct__9CSealCtrlFv  # OVL2; s1:calls (ftsCreateSeal's new of 0x5B8... constructs it where SOCOM 1's calls __ct__9CSealCtrlFv; ftsCreateSeal byte-exact with it) -- the states lane
 0x00598840 0x20 func_00598840  # OVL2
 0x00598860 0x32C func_00598860  # OVL2
-0x00598B90 0x910 func_00598B90  # OVL2
-0x005994A0 0x1EC func_005994A0  # OVL2
-0x00599690 0x178 func_00599690  # OVL2
-0x00599810 0x8 func_00599810  # OVL2
+0x00598B90 0x910 RemoteRespawn__10CZSealBodyFb  # OVL2; s1:order (seal_create.cpp's first function after the controller's unit, as SOCOM 1's); calls CZSealState::GetPackedWeaponData first, as SOCOM 1's; SOCOM 1's signature, unproven
+0x005994A0 0x1EC DoRespawn__10CZSealBodyFv  # OVL2; s1:order (after RemoteRespawn, before CreateRemoteSeal); SOCOM 1's signature, unproven
+0x00599690 0x178 CreateRemoteSeal__10CZSealBodyFiiPCciPcUcPUc  # OVL2; s1:order (before GetCharacter); news a CSealCtrl and calls CZSealBody::Create, as SOCOM 1's; SOCOM 1's signature, unproven
+0x00599810 0x8 GetCharacter__10CZSealBodyFv  # OVL2; s1:order (before DeleteCameraEffectsNode); SOCOM 1's one-word getter, its member now at 0x540 (SOCOM 1's m_charType at 0x468)
 0x00599820 0x90 DeleteCameraEffectsNode__10CZSealBodyFv  # OVL2; s1:calls
 0x005998B0 0x124 Destroy__10CZSealBodyFP10CZSealBody  # OVL2; s1:calls (RemoteSealDeletionCallback, as SOCOM 1's) -- the states lane
 0x005999E0 0x180 Create__10CZSealBodyFPC14CCharacterTypePCcP9CSealCtrl  # OVL2; s1:calls (ftsCreateSeal's last call, as SOCOM 1's; byte-exact with it) -- the states lane
-0x00599B60 0x39C func_00599B60  # OVL2
-0x00599F00 0x548 func_00599F00  # OVL2
-0x0059A450 0x1DC func_0059A450  # OVL2
+0x00599B60 0x39C ReCreate__10CZSealBodyFP10CZSealBodyPC14CCharacterType  # OVL2; s1:order (after Create, before PostCreateSeal); SetWeaponInfoChanged, the matrix copy and _strdup as SOCOM 1's; SOCOM 1's signature, unproven
+0x00599F00 0x548 PostCreateSeal__10CZSealBodyFP10CZSealBodyP9CSealCtrl  # OVL2; s1:order (after ReCreate); SetNodeEx and SetController as SOCOM 1's; Create calls it second, as SOCOM 1's; SOCOM 1's signature, unproven
+0x0059A450 0x1DC FindGear__10CZSealBodyFPCc  # OVL2; s1:order (after PostCreateSeal; a list walk over the small iterator copies after it); SOCOM 1's signature, unproven
 0x0059A630 0x14 func_0059A630  # OVL2
 0x0059A650 0x14 func_0059A650  # OVL2
 0x0059A670 0x10 func_0059A670  # OVL2; tu: char_type.cpp~ (1.0 beta)
@@ -10707,13 +10707,13 @@
 0x0059A710 0x8 func_0059A710  # OVL2
 0x0059A720 0xC func_0059A720  # OVL2
 0x0059A730 0xB8 func_0059A730  # OVL2
-0x0059A7F0 0xF0 func_0059A7F0  # OVL2
+0x0059A7F0 0xF0 PreCreateSeal__10CZSealBodyFPC14CCharacterTypePCcPPQ23zdb5CNode  # OVL2; s1:order (after FindGear's tail); Create calls it first, as SOCOM 1's (the character's Acquire, CreateInstance, SetDynamic, CreateLODs); SOCOM 1's signature, unproven
 0x0059A8E0 0x178 func_0059A8E0  # OVL2
 0x0059AA60 0xC8 func_0059AA60  # OVL2
 0x0059AB30 0x88 func_0059AB30  # OVL2
 0x0059ABC0 0x98 func_0059ABC0  # OVL2
 0x0059AC60 0x70 func_0059AC60  # OVL2
-0x0059ACD0 0x54 func_0059ACD0  # OVL2
+0x0059ACD0 0x54 GetSeal__10CZSealBodyFPQ23zdb5CNode  # OVL2; s1:order (seal_create.cpp's last before the new body-part commands, as SOCOM 1's last); a __dynamic_cast, as SOCOM 1's
 0x0059AD30 0x298 func_0059AD30  # OVL2
 0x0059AFD0 0x470 func_0059AFD0  # OVL2
 0x0059B440 0x42C func_0059B440  # OVL2
