@@ -360,6 +360,12 @@ void CZSealBody::OnMissionEnd()
     ((CSealCtrl *)m_control)->OnMissionEnd();
 }
 
+/* the root body part (OVL2 0x553DB0; SOCOM 1's, CBody's slot 0x10) */
+CZBodyPart *CZSealBody::GetRootPart() const
+{
+    return m_root;
+}
+
 /* (OVL2 0x553E00) */
 void CZSealBody::OnRecycleEntity(CEntity *e)
 {

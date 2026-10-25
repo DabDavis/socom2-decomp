@@ -10044,7 +10044,7 @@
 0x00553290 0x14C func_00553290  # OVL2
 0x005533E0 0x974 __dt__10CZSealBodyFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00553D60 0x44 func_00553D60  # OVL2
-0x00553DB0 0x8 func_00553DB0  # OVL2
+0x00553DB0 0x8 GetRootPart__10CZSealBodyCFv  # OVL2; s1:order (seal.cpp, right before OnRecycleEntity, as SOCOM 1's GetRootPart__10CZSealBodyCFv: the root part, m_root at 0x2E8 -- SOCOM 1's 0x26C; CBody's slot 0x10, through the thunk 0x5552A0, and CZSealBody's 0x88) -- the SEAL lane, round 4
 0x00553DC0 0x40 func_00553DC0  # OVL2
 0x00553E00 0x14 OnRecycleEntity__10CZSealBodyFP7CEntity  # OVL2; slot 0x54 of __vt__10CZSealBody (SOCOM II's CEntity order: OnMissionStart 0x4C, OnMissionEnd 0x50, OnRecycleEntity 0x54): m_control's OnRecycleEntity tail-called, SOCOM 1's 0x14 bytes word for word; size 0x14 (the seed ran a j-less tail call on into 0x553E20, the next function, and the s1:vtable pass named the pair OnMissionEnd)
 0x00553E20 0x3C OnMissionEnd__10CZSealBodyFv  # OVL2; slot 0x50 of __vt__10CZSealBody: m_control's OnMissionEnd (slot 0x60) after a call with m_id, as SOCOM 1's (which called DestroyNetPickups(m_id) under a test); split off the 0x553E00 row
@@ -10505,7 +10505,7 @@
 0x0058A470 0x58 func_0058A470  # OVL2
 0x0058A4D0 0x10C func_0058A4D0  # OVL2
 0x0058A5E0 0xC8 func_0058A5E0  # OVL2
-0x0058A6B0 0x60 func_0058A6B0  # OVL2
+0x0058A6B0 0x60 BodySetState__10CZSealBodyFi  # OVL2; s1:exact by hand (SOCOM 1's BodySetState__10CZSealBodyFi: the controller's OnStateChange (slot 0x64) when the state changes, then CBody's; SOCOM II's tests m_control first, and is virtual: CZSealBody's slot 0x90, through the thunk 0x555290 in its CBody table) -- the SEAL lane, round 4
 0x0058A710 0x8 func_0058A710  # OVL2; slot 0x64 of __vt__9CSealCtrl, which CSealCtrlSquirm and CRemoteCtrl inherit (the vtables pass withheld it: CRemoteCtrl's misnamed OnMissionStart override at 0x5E6270 pulled the alignment); s1~ OnStateChange__9CSealCtrlF10SEAL_STATE10SEAL_STATE after all: CSealCtrlCopy's OVL1 table holds an OVL1 copy at slot 0x64 (0x2B3BE0), so the base's OnStateChange is inline and this is OVL2's copy (one of 2 copies of an inline)
 0x0058A720 0x100 func_0058A720  # OVL2
 0x0058A820 0x98 func_0058A820  # OVL2

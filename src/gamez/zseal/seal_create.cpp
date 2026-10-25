@@ -14,6 +14,58 @@ const CCharacterType *func_0053CCA0(const CCharacterType *type);
 void func_0053CB20(const CCharacterType *type, zdb::CNode *node);
 }
 
+class CZSealState {
+public:
+    static void SealDeleteCleanup(int id);
+};
+
+extern "C" {
+/* CZWeapon's projectile list (OVL1 bss 0x4B5220, data.txt's m_pProjectilelist__8CZWeapon) and its
+ * clear of an owner's projectiles (SOCOM 1's Clear__16CZProjectileListFi, a further int in SOCOM
+ * II; OVL1 0x3CCEB0) */
+extern CZProjectileList *data_004B5220;
+void func_003CCEB0(CZProjectileList *list, int id, int a);
+/* CMission::RefreshTeamValves (SOCOM 1's, called here; OVL1 0x2B23A0) on theMission (0x4364E0) */
+void func_002B23A0(void *mission);
+extern unsigned char data_004364E0[];
+/* CSealUnit::Notify (the kit lane's 0x5ED7B0) and a unit's own clean-up of the SEAL (0x5EDF90) */
+void func_005ED7B0(CSealUnit *unit, CZSealBody *seal, int message, void *data);
+void func_005EDF90(CZSealBody *seal);
+}
+
+/* a remote SEAL unmade: its node's name dropped, its projectiles and its state cleared, dead, no
+ * team, its id invalid, state 8, the team valves refreshed, its squad told (OVL2 0x5998B0; SOCOM
+ * 1's with the name and the unit's clean-up) */
+void CZSealBody::Destroy(CZSealBody *seal)
+{
+    if (!seal)
+        return;
+    unsigned int id = seal->m_id;
+    bool remote = seal->m_control ? ((CSealCtrl *)seal->m_control)->IsRemote() : false;
+
+    if (!remote)
+        return;
+    seal->m_node->SetName("");
+    if (id == CEntity::invalidId)
+        return;
+    if (data_004B5220)
+        func_003CCEB0(data_004B5220, id, 255);
+    CZSealState::SealDeleteCleanup(id);
+    seal->SetHealth(0.0f, DEATH_NONE);
+    seal->m_time_of_death = 0.0f;
+    seal->SetTeamMask(0);
+    seal->m_id = CEntity::invalidId;
+    seal->BodySetState(8);
+    func_002B23A0(data_004364E0);
+    CSealUnit *unit = ((CSealCtrl *)seal->m_control)->m_unit;
+
+    if (unit) {
+        if (theNetwork.m_8)
+            func_005ED7B0(unit, seal, 1, 0);
+        func_005EDF90(seal);
+    }
+}
+
 /* the character type taken and its model instanced: dynamic, its LODs made, added to the world,
  * flagged, its textures added; none without a type or a model (OVL2 0x59A7F0; SOCOM 1's with a
  * second flag) */

@@ -536,6 +536,9 @@ public:
      * player's made for a network game (SOCOM 1's; OVL2 0x5442C0) */
     static CZSealBody *Create(const CCharacterType *type, const char *name, CSealCtrl *ctrl);
     static void NetworkPlayerCreate();
+    /* a remote SEAL unmade: its id cleared everywhere, dead, no team, the squad told (SOCOM 1's; OVL2
+     * 0x5998B0) */
+    static void Destroy(CZSealBody *seal);
     /* the character type taken and its model instanced, dynamic, with its LODs, in the world, its
      * textures added (SOCOM 1's; OVL2 0x59A7F0) */
     static const CCharacterType *PreCreateSeal(const CCharacterType *type, const char *name, zdb::CNode **node);
@@ -558,6 +561,12 @@ public:
     virtual int Virtual5C();
     virtual int Virtual60();
     virtual int Virtual68();
+    /* the root part and the state set (CBody's virtuals, overridden), with one of the SEAL's own
+     * between them: MW lists them after the CBody table, from +0x88, and calls them through the
+     * primary pointer (Destroy's state set reads +0x90) */
+    virtual CZBodyPart *GetRootPart() const;                                /* +0x88 */
+    virtual void Virtual8C();                                               /* +0x8C (0x547350) */
+    virtual void BodySetState(int state);                                   /* +0x90 */
 
     /* whether a player drives it (an inline the code shows: m_control tested, IsPlayer called) */
     bool IsPlayer() { return m_control ? ((CSealCtrl *)m_control)->IsPlayer() : false; }
@@ -592,7 +601,8 @@ public:
 
     unsigned char _200[0x2e4 - 0x200];
     float m_alt;   // 0x2e4 (SOCOM 1's 0xe98)
-    unsigned char _2e8[0x374 - 0x2e8];
+    CZBodyPart *m_root;   // 0x2e8 (SOCOM 1's 0x26c)
+    unsigned char _2ec[0x374 - 0x2ec];
     SEAL_STATE m_desiredState;   // 0x374 (SOCOM 1's 0x304; the HUD's pose bitmap reads it)
     unsigned char _375[0x3b0 - 0x375];
     void *m_select;   // 0x3b0: a TASK_SELECT (SOCOM 1's 0x318), the AI's tasks' argument
@@ -613,7 +623,9 @@ public:
     float m_wep_upT;   // 0xee0 (SOCOM 1's 0xdd0)
     unsigned char _ee4[0xfb0 - 0xee4];
     SEAL_DEATH_TYPE m_deathType;   // 0xfb0 (SOCOM 1's 0xea4)
-    unsigned char _fb1[0x1044 - 0xfb1];
+    unsigned char _fb1[0xfb4 - 0xfb1];
+    float m_time_of_death;   // 0xfb4 (SOCOM 1's 0xea8)
+    unsigned char _fb8[0x1044 - 0xfb8];
     float m_health;   // 0x1044 (SOCOM 1's 0xea0)
     unsigned char _1048[0x105c - 0x1048];
     unsigned int m_HudUpdateViewCone : 1;   // 0x105c (SOCOM 1's 0xf58, the same bits)
