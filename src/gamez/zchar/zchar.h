@@ -249,6 +249,17 @@ public:
 class CCharacterWeapList : public std::vector<CCharacterWeap> {
 };
 
+/* a multiplayer message a type can say (SOCOM 1's MultiplayerMsg; only the sound laid out) */
+class MultiplayerMsg {
+public:
+    unsigned char m_unk0[0x10];   // 0x0
+    CSnd *m_sound;   // 0x10
+};
+
+/* a type's multiplayer messages (SOCOM 1's CMultiplayerMsgVec: a vector of pointers) */
+class CMultiplayerMsgVec : public std::vector<MultiplayerMsg *> {
+};
+
 /* a kind of character: model, sounds, gear, weapons, AI and health (SOCOM 1's DWARF, 0x2FC bytes;
  * SOCOM II's is 0x3AC -- 85 sounds where SOCOM 1 had 66, each name a plain pointer where SOCOM 1
  * kept a 4-byte CSaferStr, so everything from the LODs on sits 0x98 further, the temporary flag at
@@ -265,6 +276,11 @@ public:
     static CCharacterType *Create(const char *name, const CCharacterType *base, bool reinit);
     static void CleanupTemporary();
     static void AcquireSoundHandles();
+    /* every type's multiplayer messages' sounds let go (SOCOM 1's; 0x53BB00) */
+    static void ClearMultiplayerMessageSounds();
+    /* the type's multiplayer messages deleted and their storage given up (new in SOCOM II, the
+     * name ours: 0x53B930) */
+    void DeleteMultiplayerMessages();
     static CCharacterType *RdrFetch_CharacterType(const char *name);
     static const char *match_name_to_chartype(CRdrFile *rdr, const char *group, const char *name);
     EQUIP_ITEM GetWeaponByIndex(unsigned int i) const;
@@ -295,7 +311,10 @@ public:
     AI_PARAMS m_aiParams;   // 0x304
     HEALTH_PARAMS m_healthParams;   // 0x340
     unsigned char MultiplayerMessages[0xc];   // 0x388: CMultiplayerMsgVec
-    unsigned char m_unk394[0x18];   // 0x394: new in SOCOM II, not laid out yet
+    unsigned char m_unk394[0xc];   // 0x394: new in SOCOM II, not laid out yet
+    /* the multiplayer messages (SOCOM II's, 0x3A0: ClearMultiplayerMessageSounds 0x53BB00 walks
+     * them and zeroes each one's sound) */
+    CMultiplayerMsgVec m_mpMessages;   // 0x3a0
 
     /* every type made, by name (SOCOM 1's; OVL1 bss in SOCOM II, 0x44CD48) */
     static CCharTypeVec m_char_list;
