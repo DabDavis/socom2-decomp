@@ -36,7 +36,11 @@ class CZSealBody {
 public:
     unsigned char _0[0xc0];
     CSealCtrl *m_ctrl;   // 0xc0
-    unsigned char _c4[0x5e0 - 0xc4];
+    unsigned char _c4[0xe1 - 0xc4];
+    unsigned char _e1_0 : 4;
+    unsigned char m_socom2_e1_4 : 1;   // 0xe1 bit 4: the selector opens only with it (hud_main.cpp's)
+    unsigned char _e1_5 : 3;
+    unsigned char _e2[0x5e0 - 0xe2];
     CZKit m_kit;   // 0x5e0
 
     CZKit *GetKit() { return &m_kit; }
@@ -101,6 +105,24 @@ extern int data_0040C108;
 extern float data_003E4A90;
 extern float data_003E4A98;
 extern float data_003E4AA0;
+
+/* the HUD's backdrop alpha (hud_main.cpp's layout float, 76.8) */
+extern float data_003E3000;
+
+/* the backdrops' fade-in clock: -1 idle, counting up to half a second (SOCOM 1's
+ * g_fFadeInTime, the unit's anonymous namespace: its symbol table names it at gp-30408) */
+namespace {
+float g_fFadeInTime = -1.0f;
+}
+
+/* SOCOM 1's CCtrlrConfigs::GetButtonState(PadBtnFunc, const CPad &) (0x2C64E0, no row named) and
+ * CZSealBody::IsChangingWeapons with a flag added (OVL2 0x5A7980): called as C */
+extern "C" unsigned char func_002C64E0(int func, CPad *pad);
+extern "C" bool func_005A7980(CZSealBody *seal, int flag);
+
+/* SOCOM II's two per-tick updates after the state's (no rows named yet) */
+extern "C" void func_0021A1F0(CWeaponSel *sel);
+extern "C" void func_00219FB0(CWeaponSel *sel, float dT);
 
 /* the textures fetched, the backdrops and backings loaded, the texts coloured and loaded off, the
  * pieces listed (SOCOM 1's, the backings three members now) */
@@ -219,6 +241,24 @@ void CWeaponSel::Init(zdb::CWorld *world, C2DFont *font)
     m_scrolldownsound = CSnd::GetSoundByName(".TCM_SLIDE");
 }
 
+/* the menu opened to its middle row: the first and third icons on, the goal a row (62) down,
+ * the outer rows started at the middle one's place and loaded (SOCOM 1's AfterOpenFirst, inline
+ * in SOCOM II: only the opening state calls it, and no copy is linked) */
+inline void CWeaponSel::AfterOpenFirst()
+{
+    m_weaponicon[0].On();
+    m_weaponicon[2].On();
+    m_openstate = 2;
+    m_menugoaly = 62.0f;
+    m_menugoalx = 0.0f;
+    m_menuposx[0] = m_menuposx[2] = m_menuposx[1];
+    m_menuposy[0] = m_menuposy[2] = m_menuposy[1];
+    m_weaponicon[0].Load(m_menuposx[0] + m_iconoffsetx, m_menuposy[0] + m_iconoffsety, m_weapontex[0]);
+    m_weaponicon[0].On();
+    m_weaponicon[2].Load(m_menuposx[2] + m_iconoffsetx, m_menuposy[2] + m_iconoffsety, m_weapontex[2]);
+    m_weaponicon[2].On();
+}
+
 /* open, it closes first; the texts let go of */
 void CWeaponSel::UnInit()
 {
@@ -242,6 +282,19 @@ static inline float Increment(float increment, float val, float goal)
             val = goal;
     }
     return val;
+}
+
+/* opening: the height grown with the middle row's slide, the row slid to its goal, the items
+ * placed; there, the outer rows opened (SOCOM 1's HudTick's state 1, a function of its own in
+ * SOCOM II: the name ours) */
+void CWeaponSel::HandleOpenFirstState(float dT)
+{
+    m_curheight = m_goalheight * ((m_menuposx[1] - m_menustartx) / m_menugoalx - m_menustartx);
+    m_menuposx[1] = Increment(475.0f * dT, m_menuposx[1], m_menugoalx);
+    m_menuposy[1] = Increment(475.0f * dT, m_menuposy[1], m_menugoaly);
+    SetItemPos(1);
+    if (m_menuposx[1] == m_menugoalx && m_menuposy[1] == m_menugoaly)
+        AfterOpenFirst();
 }
 
 /* the arrows' colours: the brighter one fades down to the other's (lit at 100 and the pulse
@@ -355,6 +408,20 @@ void CWeaponSel::OnClose()
         seal->m_kit.SetCurReticule(false);
         TextOff();
     }
+}
+
+/* closing: the outer rows slid in to the middle one, the items placed; there, the menu folded
+ * (SOCOM 1's HudTick's state 6, a function of its own in SOCOM II: the name ours; AfterCloseFirst
+ * auto-inlined) */
+void CWeaponSel::HandleCloseFirstState(float dT)
+{
+    m_menuposx[0] = Increment(475.0f * dT, m_menuposx[0], m_menuposx[1]);
+    m_menuposy[0] = Increment(475.0f * dT, m_menuposy[0], m_menuposy[1]);
+    m_menuposx[2] = Increment(475.0f * dT, m_menuposx[2], m_menuposx[1]);
+    m_menuposy[2] = Increment(475.0f * dT, m_menuposy[2], m_menuposy[1]);
+    SetItemPos(6);
+    if (m_menuposx[0] == m_menuposx[1] && m_menuposy[0] == m_menuposy[1])
+        AfterCloseFirst();
 }
 
 /* the menu folded to its second row: the height, its centre and the goal there; shut (7), the
@@ -622,4 +689,67 @@ void CWeaponSel::ResetHotSwap(bool force)
         m_weaponicon[1].Off();
     m_hotswapL1text.SetTrans(80.0f);
     m_hotswapL2text.SetTrans(80.0f);
+}
+
+/* the menu's tick: closed, the weapon-select button opens it (with a seal not changing weapons);
+ * opening, scrolling and closing run their states (SOCOM 1's, the opening and the first closing
+ * states functions of their own); then the backdrops fade in over half a second */
+void CWeaponSel::HudTick(CPad *pad, float dT)
+{
+    switch (m_openstate) {
+    case 0: {
+        CZSealBody *seal = CHUD::GetHUDOwner();
+
+        /* the button's state compared as a bool (`!= false`: the target materialises the test) */
+        if (seal && (func_002C64E0(4, pad) == 1) != false && !func_005A7980(seal, 1) && seal->m_socom2_e1_4)
+            OnOpen();
+        break;
+    }
+    case 1:
+        HandleOpenFirstState(dT);
+        break;
+    case 2:
+        m_menuposx[0] = m_menuposx[1] - m_menugoalx;
+        m_menuposy[0] = m_menuposy[1] - m_menugoaly;
+        m_menuposx[2] = m_menuposx[1] + m_menugoalx;
+        m_menuposy[2] = m_menuposy[1] + m_menugoaly;
+        SetItemPos(2);
+        AfterOpenSecond();
+        break;
+    case 3:
+        HandleOpenState(pad, dT);
+        break;
+    case 5:
+        HandleScrollDownState(dT);
+        break;
+    case 4:
+        HandleScrollUpState(dT);
+        break;
+    case 6:
+        HandleCloseFirstState(dT);
+        break;
+    case 7:
+        m_curheight = m_goalheight * ((m_menuposx[1] - m_menustartx) / m_menugoalx - m_menustartx);
+        m_menuposx[1] = Increment(475.0f * dT, m_menuposx[1], m_menustartx);
+        SetItemPos(7);
+        if (m_menuposx[1] == m_menustartx)
+            AfterClose();
+        break;
+    }
+    func_0021A1F0(this);
+    if (!(g_fFadeInTime < 0.0f)) {
+        float t;
+
+        g_fFadeInTime += dT;
+        if (g_fFadeInTime < 0.5f)
+            t = 2.0f * g_fFadeInTime;
+        else
+            t = 1.0f;
+        m_weaponselbkrnd.SetTrans(t * data_003E3000);
+        m_selectionback0.SetTrans(t * data_003E3000);
+        m_selectionback1.SetTrans(t * data_003E3000);
+        if (!(g_fFadeInTime < 0.5f))
+            g_fFadeInTime = -1.0f;
+    }
+    func_00219FB0(this, dT);
 }

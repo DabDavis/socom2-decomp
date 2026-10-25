@@ -12,6 +12,7 @@
 
 class CHUD;
 class C2DFont;
+class CPad;
 
 namespace zdb {
 class CWorld;
@@ -39,6 +40,12 @@ public:
     void AfterOpenSecond();
     void ResetHotSwap(bool force);
     void PulseSelectionArrows(float dT);
+    inline void AfterOpenFirst();
+    void HandleOpenFirstState(float dT);
+    void HandleCloseFirstState(float dT);
+    void HudTick(CPad *pad, float dT);
+    void OnOpen();
+    void HandleOpenState(CPad *pad, float dT);
     void HandleScrollDownState(float dT);
     void HandleScrollUpState(float dT);
     /* the rows' icons placed for a state (SOCOM 1's, 0x219A80) */
