@@ -415,6 +415,9 @@ public:
      * (SOCOM II's; the name ours) */
     bool HandleNextHit();
     void Detonate();
+    /* the detonation's damage dealt once its proximity test has run (SOCOM 1's, 0x3C8330 -- not
+     * written) */
+    void HandleDelayedDetonate();
     void Cleanup();
     bool SetModelOrientation(bool b, const CPnt3D *dir);
     void SetVelW(const CPnt3D *vel);

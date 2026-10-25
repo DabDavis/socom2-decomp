@@ -8221,7 +8221,7 @@
 0x003C80E0 0x204 CheckHit__12CZProjectileFPQ23zdb11DiIntersectPQ23zdb15IntersectStruct  # OVL1; by hand (the wep lane: HandleNextHit calls it with m_di2 and m_di's next hit and tests the bool -- new in SOCOM II, the name ours)
 0x003C82F0 0x20 SetFlag9__12CZProjectileFb  # OVL1; by hand (the wep lane: bit 9 of the word at 4 from a bool -- new in SOCOM II, the name ours)
 0x003C8310 0x14 GetFlag9__12CZProjectileFv  # OVL1; by hand (the wep lane: bit 9 of the word at 4 as a bool -- new in SOCOM II, the name ours)
-0x003C8330 0x408 func_003C8330  # OVL1
+0x003C8330 0x408 HandleDelayedDetonate__12CZProjectileFv  # OVL1; s1:calls by hand (the wep lane: PlacedExplosive::PostTick calls it for PROJECTILE_DETONATION_TO_BE_HANDLED, where SOCOM 1's PostTick calls HandleDelayedDetonate__12CZProjectileFv -- 0x2D0 bytes there)
 0x003C8740 0xC Detonate__12CZProjectileFv  # OVL1; s1:order by hand (the wep lane: SOCOM 1's Detonate, the state byte set to 3, before Cleanup)
 0x003C8750 0x1CC Cleanup__12CZProjectileFv  # OVL1; s1:order by hand (the wep lane: SOCOM 1's Cleanup after Detonate; the destructor calls it first, as SOCOM 1's does)
 0x003C8920 0x630 func_003C8920  # OVL1
