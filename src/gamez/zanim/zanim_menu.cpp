@@ -2322,6 +2322,24 @@ _zanim_cmd_hdr *UICharacterProfileParse(const char *name, _zrdr *rdr)
     return (_zanim_cmd_hdr *)cmd;
 }
 
+/* the account's details sent to the lobby server (its host and port, the name, password, home town,
+ * gender and whether the password is kept secure), then the personas listed again */
+bool UIUpdateAcctInfo(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CUIVariable *host = func_003857C0(&theUIVarManager, "LOBBY_HOST", 0, UIVAR_PERMANENT);
+    CUIVariable *port = func_003857C0(&theUIVarManager, "LOBBY_PORT", 0, UIVAR_PERMANENT);
+    CUIVariable *name = func_003857C0(&theUIVarManager, "PLAYERNAMEVAR", 0, UIVAR_SESSION);
+    CUIVariable *password = func_003857C0(&theUIVarManager, "PLAYERPASSWORD", 0, UIVAR_SESSION);
+    CUIVariable *hometown = func_003857C0(&theUIVarManager, "PLAYERHOMETOWN", 0, UIVAR_SESSION);
+    CValve *gender = CValve::Create("PLAYERGENDER", (VALVE_TYPE)3);
+    bool secure = CValve::Create("SecurePassword", (VALVE_TYPE)1)->m_value != 0;
+
+    func_002FD0D0(data_0044FC60, host->String(), port->Int(), name->String(), password->String(),
+                  hometown->String(), gender->m_value ? ACCT_FEMALE : ACCT_MALE, secure);
+    UpdatePersonaList(host->String(), port->Int());
+    return true;
+}
+
 /* GetMUISPersonaInfo's parser: the persona by INDEX or by NAME, the argument the one given (SOCOM
  * II's; the name ours) */
 _zanim_cmd_hdr *UIPersonaParse(const char *name, _zrdr *rdr)

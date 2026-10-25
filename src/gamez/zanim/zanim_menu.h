@@ -139,6 +139,9 @@ struct UICopyUIVarCmd : public UIParsedCmd {
     int m_to;   // 0x14
 };
 
+/* the personas listed into PLAYERPERSONALIST (zanim_menu.cpp's) */
+void UpdatePersonaList(const char *host, int port);
+
 /* a command's type by its name (zanim_menu.cpp's) */
 int GetUICommandType(const char *name);
 
@@ -834,6 +837,9 @@ void func_00333610(NetCnfRdr *rdr, const char *text);
 void func_00386460(CUIVariable *var, NetCnfRdr *rdr);
 void func_00333700(NetCnfRdr *rdr, int value);
 int func_002FB920(void *svc, const char *host, int port);                   /* (the persona count) */
+enum ACCT_GENDER { ACCT_MALE = 0, ACCT_FEMALE = 1 };
+void func_002FD0D0(void *svc, const char *host, int port, const char *name, const char *password,
+                   const char *hometown, ACCT_GENDER gender, bool secure);  /* (the account's details) */
 const char *func_002FD510(void *svc, const char *host, int port, int i);    /* (a persona's name) */
 const char *func_002FDA50(void *svc, int server);   /* (a server's message) */
 const char *func_002FDAA0(void *svc, int server);   /* (a server's name) */
