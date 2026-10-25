@@ -1930,7 +1930,7 @@
 0x00218DE0 0x2B0 __ct__14BitmapReticuleFv  # OVL1; by hand (stores BitmapReticule's vtable 0x4055A0; CHUD's constructor builds CHUD+0x11DF0 with it)
 0x00219090 0x2A0 __dt__14BitmapReticuleFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00219330 0x54 func_00219330  # OVL1
-0x00219390 0x28 func_00219390  # OVL1
+0x00219390 0x28 Top__26RTStack<15CZBodyAnimBlend>Fv  # OVL1; s1:calls (CBody's Destroy, PopBlend, PushBlend and Tick call it on CBody+0x50, the blend stack, where SOCOM 1's call RTStack<CZBodyAnimBlend>::Top; its body: the index at 8, none when negative; the only copy, in an earlier unit's tail) -- the body lane
 0x002193C0 0x8 func_002193C0  # OVL1
 0x002193D0 0x31C func_002193D0  # OVL1
 0x002196F0 0x250 func_002196F0  # OVL1
