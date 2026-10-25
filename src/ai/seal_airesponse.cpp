@@ -77,7 +77,7 @@ bool CAiSSurrender::CanPushAiState(AI_STATE state, CSealCtrlAi *ai)
 {
     bool ok = false;
 
-    if ((int)m_34 >= 5) {
+    if ((int)m_phase >= 5) {
         if (ai->m_entity->m_team & 0x20000)
             ok = true;
         else
@@ -149,7 +149,7 @@ void CAiSHostage::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
 bool CAiSHostage::CanPushAiState(AI_STATE state, CSealCtrlAi *ai)
 {
     bool ok = true;
-    unsigned char phase = m_34;
+    unsigned char phase = m_phase;
 
     switch (state) {
     case 19:

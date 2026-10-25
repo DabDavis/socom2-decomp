@@ -25,11 +25,19 @@ enum AI_STATE { AI_STATE_UNKNOWN = 0, AI_STATE_LAST = 255 };
 
 class CAiState;
 
+/* what a state's Tick says (a byte: every Tick ends on a ternary between two enumerators, `li 1;
+ * movz` narrowed; the stack's tick returns 2 once its state is done -- the names ours) */
+enum AI_RESULT { AI_RUNNING = 0, AI_DONE = 1, AI_FINISHED = 2, AI_RESULT_LAST = 255 };
+
 /* the states a controller (or a state) runs, the current one at the front (SOCOM 1's DWARF:
- * CAiStateStack : list, 0xc bytes -- CSealCtrlAi::m_stateStack there; SOCOM II also gives every
- * CAiState one, at +8). The stack owns its states. */
+ * CAiStateStack : list, 0xc bytes -- CSealCtrlAi::m_stateStack there, followed by m_stateTimer
+ * and m_stateFlags; SOCOM II also gives every CAiState one, at +8). SOCOM II's is 0x20 bytes: its
+ * constructor (0x5F8520) sets three words after the list, and its tick (0x5F8030) runs the clock
+ * at 0x18 that SOCOM 1 kept in the controller (CSealCtrlAi's 0x434: the stack sits at 0x41C there).
+ * The stack owns its states. */
 class CAiStateStack : public std::list<CAiState *> {
 public:
+    CAiStateStack() : m_c(-1), m_10(0), m_14(0) {}
     /* both out of line, seal_aistate.cpp's: every other unit calls the destructor (~CAiState's
      * copy in seal_unit.cpp's tail, 0x5EA450, calls it where an inline one would be inlined a
      * level) */
@@ -40,6 +48,12 @@ public:
      * them; CSealCtrlAi::GetAiState inlines one; the names ours -- 0x5F8330, 0x5F8360) */
     CAiState *GetState() const;
     CAiState *GetState();
+
+    int m_c;   // 0xc (-1 when new)
+    unsigned int m_10;   // 0x10
+    unsigned int m_14;   // 0x14
+    float m_timer;   // 0x18: the time in the current state (SOCOM 1's CSealCtrlAi::m_stateTimer)
+    int m_result;   // 0x1c: the last state's result (the name ours)
 };
 
 class CAiState {
@@ -53,7 +67,7 @@ public:
      * 0x575AA0; seal_unit.cpp's OnSignal and Tick, 0x5F81D0) */
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai) {}               /* +0x08 */
     virtual void Virtual0C(int a, int b, int c);                          /* +0x0C (new) */
-    virtual bool Tick(float dT, CSealCtrlAi *ai) { return true; }        /* +0x10 */
+    virtual AI_RESULT Tick(float dT, CSealCtrlAi *ai) { return AI_DONE; }   /* +0x10 */
     virtual int Virtual14() { return 0; }                                 /* +0x14 (new) */
     virtual const char *GetStatus() const { return ""; }                  /* +0x18 */
     virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai) { return true; }   /* +0x1C */
@@ -70,36 +84,74 @@ public:
     virtual bool Virtual48() { return false; }                            /* +0x48 (new) */
     virtual ~CAiState() {}                                                /* +0x4C */
 
-    unsigned int m_4;   // 0x4 (zeroed by the constructor)
+    /* the step a state's Tick ends on: a new phase restarts its clock (inlined in every Tick and
+     * in the stack's delay; the name ours) */
+    void SetPhase(unsigned int phase)
+    {
+        if (phase != m_phase) {
+            m_phaseTime = 0.0f;
+            m_phase = phase;
+        }
+    }
+
+    /* what every Tick ends on: running while m_active holds, else done -- kept in m_done too (the
+     * name ours) */
+    AI_RESULT Result() { return (AI_RESULT)(m_done = m_active ? AI_RUNNING : AI_DONE); }
+
+    /* the frame's time, as the stack's tick sets it for the states (OVL1 bss 0x44D620, read by
+     * every Tick in place of its dT; the name ours) */
+    static float m_dT;
+
+    float m_time;   // 0x4: a time on the AI's state clock (SOCOM 1's at 0x8; zeroed by Reset)
     CAiStateStack m_stack;   // 0x8: the state's own sub-states (new in SOCOM II)
-    unsigned char _14[0x2c - 0x14];
+    int m_done;   // 0x28: what the last Tick returned (the name ours)
     unsigned int m_flags;   // 0x2c (zeroed by the constructor; the overrides test single bits)
     AI_STATE m_state;   // 0x30
     unsigned char _31[0x34 - 0x31];
-    unsigned int m_34;   // 0x34 (zeroed by the constructor; CAiSAction's phase)
-    unsigned int m_38;   // 0x38 (zeroed by the constructor)
-    unsigned char _3c[0x58 - 0x3c];
+    unsigned int m_phase;   // 0x34: the state's step (SOCOM 1's at 0x14; zeroed by Reset)
+    float m_phaseTime;   // 0x38: the time in that step (the stack's tick adds dT to it)
+    unsigned int m_nextPhase;   // 0x3c: the step a delay ends on (0x5F61E0)
+    float m_delay;   // 0x40: that delay
+    unsigned char _44[0x48 - 0x44];
+    unsigned int m_48 : 16;   // 0x48 (never touched by the code read so far)
+    unsigned int m_bit0 : 1;   // 0x4a bit 0 (set by Reset)
+    unsigned int m_active : 1;   // bit 1: running (a state's Tick returns !m_active once it is cleared)
+    unsigned int m_bit2 : 1;
+    unsigned int m_bit3 : 1;
+    unsigned int m_bit4 : 1;
+    unsigned int m_nibble5 : 4;   // bits 5-8 (Reset: all set)
+    unsigned int m_nibble9 : 4;   // bits 9-12 (Reset: 1)
+    unsigned int m_bit13 : 1;
+    unsigned int m_bit14 : 1;
+    unsigned int m_bit15 : 1;
+    float m_4c;   // 0x4c (Reset: 1.0)
+    unsigned int m_loc;   // 0x50: a CAiMapLoc (Reset: the invalid cell; its constructor here is an
+                          // empty one, 0x516120, where zentity.h's copies the invalid cell in)
+    int m_54;   // 0x54 (Reset: -1)
 };
 
 /* the states whose code is this lane's (each class only what a written function needs) */
 class CAiSCQBAttack : public CAiState {
 public:
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    virtual AI_RESULT Tick(float dT, CSealCtrlAi *ai);
     virtual bool CanAttack() const { return false; }
     virtual ~CAiSCQBAttack();
 
-    unsigned int m_58;   // 0x58
+    class CEntity *m_target;   // 0x58: the SEAL attacked (SOCOM 1's at 0x28)
     float m_5c;   // 0x5c: a delay (0.75, or none when the AI's bit at 0x264 is set)
 };
 
 class CAiSUnknown : public CAiState {
 public:
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    virtual AI_RESULT Tick(float dT, CSealCtrlAi *ai);
     virtual ~CAiSUnknown();
 };
 
 class CAiSSuspended : public CAiState {
 public:
+    virtual AI_RESULT Tick(float dT, CSealCtrlAi *ai);
     virtual bool CanAttack() const { return false; }
     virtual bool CanPursue(CSealCtrlAi *ai) const { return false; }
     virtual ~CAiSSuspended();

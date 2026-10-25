@@ -23,6 +23,29 @@ struct CAiCtrlBits {
     unsigned char m_nodelay : 1;
 };
 
+/* the controller's state clock: its stack's (CSealCtrlAi's stack at 0x41C, the clock 0x18 into
+ * it -- SOCOM 1's m_stateTimer at 0x330; zseal.h does not name it) */
+struct CAiCtrlClock {
+    unsigned char _0[0x434];
+    float m_stateTimer;   // 0x434
+};
+
+inline float StateTimer(CSealCtrlAi *ai)
+{
+    return ((CAiCtrlClock *)ai)->m_stateTimer;
+}
+
+extern "C" {
+/* CSealCtrlAi::SetStance (SOCOM 1's SetStance__11CSealCtrlAiF11SEAL_STANCE, called from the same
+ * Ticks; OVL2 0x5631A0, the SEAL lane's row) */
+void func_005631A0(CSealCtrlAi *ai, int stance);
+/* CZSealBody::CanUseCQB (SOCOM 1's CanUseCQB__10CZSealBodyFP10CZSealBody, called from the same
+ * CQB Tick; OVL2 0x5A9500, the SEAL lane's row) */
+bool func_005A9500(CEntity *seal, CEntity *target);
+/* CZSealBody::ExecuteAction_CQBAttack (named; zseal.h's CZSealBody does not declare it) */
+void ExecuteAction_CQBAttack__10CZSealBodyFP10CZSealBody(CEntity *seal, CEntity *target);
+}
+
 /* the "action" state's answers (OVL2 0x5F07E0 back to 0x5F07A0): no attacking, scanning or
  * pushing a state of kind 3 while its object is held; kind 25 never */
 bool CAiSAction::CanPushAiState(AI_STATE state, CSealCtrlAi *ai)
@@ -58,7 +81,7 @@ bool CAiSAction::CanAttack() const
 /* +0x38: the state's phase word below 6 (the name ours) */
 bool CAiSAction::Virtual38()
 {
-    return m_34 < 6;
+    return m_phase < 6;
 }
 
 /* a script takes kinds 12 and 26 only when it may be pursued from (OVL2 0x5F40F0).
@@ -176,7 +199,7 @@ void CAiSCQBAttack::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
 {
     switch (sig) {
     case SIGNAL_4:
-        m_58 = 0;
+        m_target = 0;
         m_5c = 0.0f;
         break;
     case SIGNAL_0:
@@ -189,6 +212,107 @@ void CAiSCQBAttack::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
     case SIGNAL_3:
         break;
     }
+}
+
+/* a suspended SEAL: faded out first when its flag's bit 3 asks (the node's opacity run to 0 at
+ * 0.75 a second, then the node shut and the fade dropped), then held out of the world -- its node
+ * off (bit 0, unless it faded), its target list no longer updated (bit 1) nor holding it (bit 2)
+ * (OVL2 0x5F1C70; SOCOM 1's, which faded in from below as well).
+ * OPEN, 10 instructions, the fade's two arms only: the target computes the step into $f1 (over
+ * the opacity it just compared) and re-reads the opacity from its frame slot in each arm, as
+ * SOCOM 1's does; here MW keeps the compared value in $f1 and builds the step in $f0. Tried: the
+ * step inline in each arm or as a local (before, inside, uninitialised ahead), the arms through
+ * a reference or `*&o`, the compare on node->m_Opacity (reloads it). The registers, the
+ * declaration order (node, seal, fading) and the early m_dT load are the target's. */
+AI_RESULT CAiSSuspended::Tick(float dT, CSealCtrlAi *ai)
+{
+    zdb::CNode *node;
+    CEntity *seal = ai->m_entity;
+    bool fading = (m_flags & 8) != 0;
+
+    node = seal->GetNode();
+    if (fading) {
+        static float lo = 0.0f;
+        static float hi = 1.0f;
+        float dT = m_dT;
+        float target = 0.0f;
+        float o = node->m_Opacity;
+
+        if (o != target) {
+            float step = 0.75f * dT;
+
+            if (target > o) {
+                o += step;
+                _saturate(&o, lo, target);
+            } else {
+                o -= step;
+                _saturate(&o, target, hi);
+            }
+            node->m_Opacity = o;
+        }
+        node->SetActive(o != 0.0f);
+        if (!node->m_active) {
+            m_flags |= 0x80000000;
+            m_flags &= ~8;
+        }
+    }
+    if (m_bit0) {
+        if (!fading && (m_flags & 1))
+            node->SetActive(false);
+        if (m_flags & 2)
+            seal->SetUpdateTargetList(false);
+        if (m_flags & 4)
+            seal->SetIncludeInTargetList(false);
+    }
+    return Result();
+}
+
+/* the unknown state holds the AI still: its throttles set each frame (OVL2 0x5F1B50; SOCOM 1's was
+ * empty) */
+AI_RESULT CAiSUnknown::Tick(float dT, CSealCtrlAi *ai)
+{
+    static float x = 1.0f;
+    static float z = 1.0f;
+
+    ai->SetThrottle(0, x);
+    ai->SetThrottle(1, 0.0f);
+    ai->SetThrottle(2, z);
+    return Result();
+}
+
+/* a CQB attack: the delay run down, the attack (or a second's pause when the target is out of
+ * reach), then done once the state clock passes the deadline (OVL2 0x5F1960; SOCOM 1's, the
+ * frame's time now the states' static and the result inverted -- true when done) */
+AI_RESULT CAiSCQBAttack::Tick(float dT, CSealCtrlAi *ai)
+{
+    CEntity *seal = ai->m_entity;
+
+    if (!m_target)
+        return AI_DONE;
+    unsigned int phase = m_phase;
+
+    switch (phase) {
+    case 0:
+        m_5c -= m_dT;
+        if (m_5c <= 0.0f)
+            phase = 1;
+        break;
+    case 1:
+        func_005631A0(ai, 0);
+        if (func_005A9500(seal, m_target)) {
+            ExecuteAction_CQBAttack__10CZSealBodyFP10CZSealBody(seal, m_target);
+            m_time = StateTimer(ai) + 2.5f;
+        } else
+            m_time = StateTimer(ai) + 1.0f;
+        phase = 2;
+        break;
+    case 2:
+        if (!(StateTimer(ai) < m_time))
+            m_active = false;
+        break;
+    }
+    SetPhase(phase);
+    return Result();
 }
 
 /* the destructors (OVL2 0x5F8A70, 0x5F89C0, 0x5F8940, 0x5F8880, 0x5F8800, 0x5F8770): each its

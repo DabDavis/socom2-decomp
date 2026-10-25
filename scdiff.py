@@ -162,6 +162,8 @@ def local_object_ok(elf: E.Elf, sec_index: int, start: int, want: int, fsym: E.E
     relocated words (a table), else the string up to its terminator."""
     sec = elf.sections[sec_index]
     data = sec.data
+    if sec.type == 8:                           # SHT_NOBITS (.bss): a zeroed static's bytes
+        data = bytes(sec.size)
     rels = {r.offset: r for r in elf.relocs_for(sec_index)}
     if not size:
         if start in rels:
