@@ -5592,7 +5592,7 @@
 0x0031DE70 0x8 InitDescendantsVisuals__Q23zdb6CWorldFv  # OVL1; s1:order by hand (SOCOM 1's: a jump to the grid's InitDescendantsVisuals, the grid at 0x684 here)
 0x0031DE80 0x8 InitDescendantsDI__Q23zdb6CWorldFv  # OVL1; s1:order by hand (SOCOM 1's: the grid's InitDescendantsDI)
 0x0031DE90 0x10 GetIntersectBatch__Q23zdb6CWorldFPPQ23zdb11DiIntersecti  # OVL1; s1:order by hand (SOCOM 1's: the world's grid's GetIntersectBatch, the arguments passed on; diTick inlines it)
-0x0031DEA0 0xA8 GetAltitudes__Q23zdb6CWorldFPC6CPnt3Df  # OVL1; s1:order by hand (SOCOM 1's GetAltitudes before GetAltitude: the grid's GetAltitude on the world's set, type 2, characters off, the height unread)
+0x0031DEA0 0xA8 GetAltitudes__Q23zdb6CWorldFPC6CPnt3D  # OVL1; s1:order by hand (SOCOM 1's GetAltitudes before GetAltitude: the grid's GetAltitude on the world's set, type 2, characters off, the height unread); signature corrected (the SEAL lane's lead, vetted by the world lane): no float -- the body never reads $f12 and none of its five callers (0x261728, 0x296C78, 0x296CE8, 0x5B4FD4, 0x5C2520) sets it
 0x0031DF50 0x78 GetAltitude__Q23zdb6CWorldFPC6CPnt3Df  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:align
 0x0031DFD0 0xC8 GetAltitude__Q23zdb6CWorldFPC6CPnt3Dfb  # OVL1; new in SOCOM II, SOCOM 1's name with a bool: GetAltitude with the set's characters flag set to !b for the query and restored
 0x0031E0A0 0xB8 GetIntersects__Q23zdb6CWorldFPC6CPnt3DPC6CPnt3Db  # OVL1; new in SOCOM II, SOCOM 1's name with a bool: GetIntersects with characters !b, restored

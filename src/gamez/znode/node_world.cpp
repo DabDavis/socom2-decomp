@@ -592,9 +592,9 @@ IntersectStruct *CWorld::GetAltitude(const CPnt3D *p, float alt)
     return 0;
 }
 
-/* every ground hit under a point, characters not hit, no node ignored (SOCOM 1's; the height is
- * not read) */
-DiIntersect *CWorld::GetAltitudes(const CPnt3D *p, float alt)
+/* every ground hit under a point, characters not hit, no node ignored (SOCOM 1's; SOCOM II takes
+ * no height -- none of its five callers sets $f12, the SEAL lane's reading) */
+DiIntersect *CWorld::GetAltitudes(const CPnt3D *p)
 {
     bool was = m_diInt->m_IntersectCharacters;
 

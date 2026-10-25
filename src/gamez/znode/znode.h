@@ -1463,7 +1463,7 @@ public:
     DiIntersect *GetIntersects(const CPnt3D *p0, const CPnt3D *p1, bool characters);
     IntersectStruct *GetAltitude(const CPnt3D *p, float alt);
     IntersectStruct *GetAltitude(const CPnt3D *p, float alt, bool characters);
-    DiIntersect *GetAltitudes(const CPnt3D *p, float alt);
+    DiIntersect *GetAltitudes(const CPnt3D *p);
     /* the world's grid's, whichever world it is called on (SOCOM 1's: its this is not read) */
     int GetIntersectBatch(DiIntersect **di, int n);
     void InitDescendantsDI();

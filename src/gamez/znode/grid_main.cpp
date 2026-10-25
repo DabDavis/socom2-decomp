@@ -7,8 +7,8 @@
  * linked copy, 0x2D4FE0, closes that unit), grid_clutter.cpp's clutter animation after it. Defined
  * in reverse of their image order (-inline deferred).
  * Unwritten: ReadClutter (0x2D5060), AddClutter (0x2D55C0), 0x2D5B50 (new),
- * Create (0x2D5C80), SetTraversalBoundaryOrdered (0x2D6920), 0x2D6AB0 (new), SetTraversalExtents
- * (0x2D6C40), gridAddNodeToGrids (0x2D7580). CGrid() is written and byte-exact once its CFRect
+ * Create (0x2D5C80), SetTraversalBoundaryOrdered (0x2D6920), 0x2D6AB0 (new), gridAddNodeToGrids
+ * (0x2D7580). CGrid() is written and byte-exact once its CFRect
  * constructor's row is named (below). */
 
 #include "node_world.h"
@@ -297,6 +297,49 @@ void CGrid::gridRemoveNodeFromGrids(CNode *node)
         m_FreeAtoms = atom;
     }
     func_003149D0(node, 0);
+}
+
+/* a coordinate's cell index: its offset from the origin, a ten-thousandth in, in cells, held
+ * inside the grid (SOCOM 1's form; SOCOM II converts inline where SOCOM 1 called fptosi; the
+ * name is ours) */
+inline int GridCellIndex(float v, float o, float inv, const int &n)
+{
+    int i = (int)(inv * (0.0001f + (v - o)));
+
+    i = MAX(0, i);
+    i = MIN(n - 1, i);
+    return i;
+}
+
+/* the walk's points (at most five) kept, and the box of cells they cover: the first point's cell,
+ * widened by each point's, its far edges one past (SOCOM 1's).
+ * OPEN, 4 instructions (the right size), scheduling only: the target materialises the first
+ * point's 0.0001f (lui) before it loads the point's x and the origin's (SOCOM 1's too, a
+ * store-to-load wait after m_PntCnt's store); here the loads go first. Tried: the index written
+ * out, the constant in a local (declared first or at the use), the operands reordered, reference
+ * parameters, the store moved; the clamp's MAX/MIN forms, the const reference count and the
+ * indexed loop fixed everything else */
+void CGrid::SetTraversalExtents(const CPnt3D *pnts, int n, bool b)
+{
+    m_LineWalk = b;
+    n = MAX(0, n);
+    if (n > 5)
+        n = 5;
+    m_PntCnt = n;
+    m_ix = m_ixb = GridCellIndex(pnts->x, m_origin.x, m_InvCellDim, m_CellCount.cx);
+    m_iz = m_izb = GridCellIndex(pnts->z, m_origin.z, m_InvCellDim, m_CellCount.cy);
+    for (int i = 0; i < n; i++) {
+        m_Pnts[i] = pnts[i];
+        int ix = GridCellIndex(pnts[i].x, m_origin.x, m_InvCellDim, m_CellCount.cx);
+        int iz = GridCellIndex(pnts[i].z, m_origin.z, m_InvCellDim, m_CellCount.cy);
+
+        m_ix = MIN(m_ix, ix);
+        m_iz = MIN(m_iz, iz);
+        m_ixb = MAX(m_ixb, ix);
+        m_izb = MAX(m_izb, iz);
+    }
+    m_ixb++;
+    m_izb++;
 }
 
 /* the walk's boundary: its points and extents set, each edge's inward normal in x/z made unit
