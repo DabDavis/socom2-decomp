@@ -8,15 +8,56 @@
 #include "../zanim/zanim.h"
 #include "../zsys/zsys.h"
 
-class CZSealBody;
+/* a SEAL's controller: only the slot this unit calls (fts_remote.cpp's CEntityCtrl, the names
+ * ours) */
+class CActionCtrl {
+public:
+    virtual void _slot0();
+    virtual void _slot1();
+    virtual void _slot2();
+    virtual void _slot3();
+    virtual void _slot4();
+    virtual void _slot5();
+    virtual void _slot6();
+    virtual void _slot7();
+    virtual void _slot8();
+    virtual void _slot9();
+    virtual bool IsPlayer();   // 0x30
+    virtual bool IsRemote();   // 0x34
+};
+
+/* a SEAL: only what ExecuteAction reads */
+class CZSealBody {
+public:
+    unsigned char _0[4];
+    int m_4;   // 0x4: its network object (SOCOM 1's m_NetObjectIndex)
+    unsigned char _8[0xc0 - 0x8];
+    CActionCtrl *m_ctrl;   // 0xc0
+    unsigned char _c4[0x3b0 - 0xc4];
+    int m_3b0;   // 0x3b0 (SOCOM 1's at 0x318): handed to the action's anim
+};
+
+/* the network: only its flag (fts_remote.cpp's CZNetwork, theNetwork at 0x45A0C0) */
+class CZNetwork {
+public:
+    unsigned char m_bSessionMaster;   // 0x0
+    unsigned char m_bNetwork;   // 0x1
+};
+
+extern CZNetwork theNetwork;
 
 /* a map's action: a node that runs an anim when a SEAL uses it, driven by a valve (SOCOM 1's
  * CNodeAction, at SOCOM II's offsets: only what this unit touches) */
-class CNodeAction {
+class CNodeAction : public zdb::CNodeEx {
 public:
     /* every action (SOCOM 1's m_actions, a pointer list) */
     class Container : public std::list<CNodeAction *> {
     };
+
+    CNodeAction(zdb::CNode *node, CZAnim *anim, CValve *valve, zdb::CTexHandle *tex);
+    /* the node's slot, SOCOM 1's OnAction (OVL1 0x2B4750: ExecuteAction for the body passed);
+     * declared only, so this unit emits no table */
+    virtual int OnWeaponHit(zdb::CNode *node, zdb::IntersectStruct *hit, CZProjectile *projectile);
 
     static void SyncActionsMP(int who);
     static void Reset();
@@ -27,19 +68,36 @@ public:
     /* whether the action's state goes to the other clients (the name ours) */
     bool IsNetworked() { return m_networked ? true : false; }
 
-    unsigned char _0[0x10];
-    CZAnim *m_anim;   // 0x10
-    unsigned char _14[4];
+    /* the flags set one by one (the constructor's order; the names ours) */
+    void SetNetworked(bool b) { m_networked = b; }
+    void SetNetworkLog(bool b) { m_network_log = b; }
+    void SetFlag2(bool b) { m_3f_2 = b; }
+    void SetFlag3(bool b) { m_3f_3 = b; }
+    void SetBits4(int n) { m_3f_4 = n; }
+
+    std::vector<CZAnim *> m_anims;   // 0x4: SOCOM 1's m_anim
+    CZAnim *m_anim;   // 0x10: the one running (SOCOM 1's m_handle)
+    zdb::CNode *m_node;   // 0x14
     CValve *m_valve;   // 0x18
-    unsigned char _1c[0x34 - 0x1c];
+    float m_range;   // 0x1c
+    float m_20;   // 0x20 (SOCOM II's)
+    unsigned char m_type;   // 0x24: SOCOM 1's ACTION_TYPE (0 a door, 2 a switch ...)
+    zdb::CTexHandle *m_tex;   // 0x28
+    const char *m_uidesc;   // 0x2c: a description of its own, in place of its type's (SOCOM 1's
+                            // m_descriptor)
+    int m_30;   // 0x30
     unsigned int m_owner;   // 0x34: the entity using it (SOCOM II's)
-    unsigned char _38[4];
+    int m_38;   // 0x38
     unsigned short m_id;   // 0x3c (SOCOM 1's at 0x2c)
     unsigned char m_3e;   // 0x3e
     unsigned char m_networked : 1;   // 0x3f (SOCOM 1's at 0x2e)
     unsigned char m_network_log : 1;
     unsigned char m_3f_2 : 1;
     unsigned char m_3f_3 : 1;
+    unsigned char m_3f_4 : 4;
+
+    /* the flag at bit 2 of 0x3f (the name ours) */
+    bool IsFlag2() { return m_3f_2 ? true : false; }
 
     static Container m_actions;
 };
@@ -157,6 +215,21 @@ CNodeAction *CNodeAction::FindActionByValve(const CValve *valve)
     return found;
 }
 
+/* every action flagged at bit 2 of 0x3f appended to a vector (SOCOM II's; OVL1 0x2B4CD0) */
+extern "C" void func_002B4CD0(std::vector<CNodeAction *> *list)
+{
+    if (list) {
+        CNodeAction::Container::iterator e = CNodeAction::m_actions.end();
+
+        for (CNodeAction::Container::iterator i = CNodeAction::m_actions.begin(); i != e; ++i) {
+            CNodeAction *action = *i;
+
+            if (action && action->IsFlag2())
+                list->push_back(action);
+        }
+    }
+}
+
 /* the action with this id (OVL1 0x2B4D80) */
 CNodeAction *CNodeAction::GetActionById(unsigned int id)
 {
@@ -168,12 +241,115 @@ CNodeAction *CNodeAction::GetActionById(unsigned int id)
     return 0;
 }
 
+/* the action's types described for the UI (SOCOM 1's UISTR_ACT_* pointers; SOCOM II's second
+ * set: the door's pair by its valve, then one each) */
+extern "C" {
+extern const char *data_003DE698[2];   /* "Close target door under reticule", "Open ..." */
+extern const char *data_003DE6A0;      /* "Activate switch" */
+extern const char *data_003DE6A8;
+extern const char *data_003DE6B0;
+extern const char *data_003DE6B8;
+extern const char *data_003DE6C0;
+extern const char *data_003DE6C8;      /* "Breach doorway under reticule" */
+}
+
+/* the action described for the UI: its own description, else its type's (SOCOM II's; OVL1
+ * 0x2B4760 -- SOCOM 1's GetUIString beside it, 0x2B4820, is the same switch over the names) */
+extern "C" const char *func_002B4760(CNodeAction *action)
+{
+    const char *s = action->m_uidesc;
+
+    if (!s) {
+        switch (action->m_type) {
+        case 0:
+            s = action->m_valve->m_value ? data_003DE698[0] : data_003DE698[1];
+            break;
+        case 2:
+            s = data_003DE6A0;
+            break;
+        case 7:
+            s = data_003DE6A8;
+            break;
+        case 3:
+            s = data_003DE6B0;
+            break;
+        case 4:
+            s = data_003DE6B8;
+            break;
+        case 6:
+            s = data_003DE6C0;
+            break;
+        case 5:
+            s = data_003DE6C8;
+            break;
+        }
+    }
+    return s;
+}
+
 /* whether the action can start: no anim running, its flag 3 clear or the byte at 0x3E zero, and
  * its valve not at 99 (SOCOM II's; OVL1 0x2B46F0) */
 extern "C" bool func_002B46F0(CNodeAction *action)
 {
     return action->m_anim == 0 && (!action->m_3f_3 || action->m_3e == 0) &&
            action->m_valve->m_value != 99;
+}
+
+/* the action whose node is nearest a point across the ground, within a height of it unless the
+ * height is -1, and its distance; none when no node is placed (SOCOM 1's GetClosestAction, which
+ * returned the id; OVL1 0x2B4B40) */
+extern "C" CNodeAction *func_002B4B40(const CPnt3D *pos, float *dist, float height)
+{
+    float best = 9999999.0f * 9999999.0f;
+    CNodeAction *closest = 0;
+    CMatrix m;
+    CNodeAction::Container::iterator e = CNodeAction::m_actions.end();
+
+    for (CNodeAction::Container::iterator i = CNodeAction::m_actions.begin(); i != e; ++i) {
+        CNodeAction *action = *i;
+        zdb::CNode *node = action->m_node;
+
+        if (node) {
+            m.SetIdentity();
+            if (node->BuildMTW(m)) {
+                CPnt3D d = *(CPnt3D *)m.m_matrix[3] - *pos;
+
+                if (height == -1.0f || fabsf(d.y) < height) {
+                    float r = d.x * d.x + d.z * d.z;
+
+                    if (r < best) {
+                        closest = action;
+                        best = r;
+                    }
+                }
+            }
+        }
+    }
+    if (closest)
+        *dist = sqrtf(best);
+    return closest;
+}
+
+/* an action on a node, its anim (if any) kept in its list: a range of 32, networked, no user
+ * (OVL1 0x2B49F0: SOCOM 1's constructor, the type 8 where SOCOM 1 had 7) */
+CNodeAction::CNodeAction(zdb::CNode *node, CZAnim *anim, CValve *valve, zdb::CTexHandle *tex)
+    : m_anim(0), m_node(node), m_valve(valve), m_type(8), m_tex(tex)
+{
+    if (anim)
+        m_anims.push_back(anim);
+    m_uidesc = 0;
+    m_38 = 0;
+    m_30 = -1;
+    m_id = 0;
+    m_3e = 0;
+    SetNetworked(true);
+    SetNetworkLog(false);
+    SetFlag2(false);
+    SetFlag3(false);
+    SetBits4(0);
+    m_range = 32.0f;
+    m_20 = -1.0f;
+    m_owner = CEntity::invalidId;
 }
 
 /* the action let go by its user (SOCOM II's; OVL1 0x2B49D0) */
@@ -193,6 +369,58 @@ extern "C" bool func_002B49A0(CNodeAction *action, unsigned int who)
         taken = true;
     }
     return taken;
+}
+
+/* an anim's done callback set (CZAnim's fields at 0x1c/0x20; the anim a copy, so both stores go
+ * through one load) */
+inline void SetDoneCallback(CZAnim *anim, void (*cb)(CZAnim *anim, void *arg), void *arg)
+{
+    anim->m_done_callback = cb;
+    anim->m_done_arg = arg;
+}
+
+/* the action's anim done: the action free again, its uses counted (SOCOM II's; OVL1 0x2B46D0,
+ * ExecuteAction's done callback) */
+extern "C" void func_002B46D0(CZAnim *anim, void *arg)
+{
+    CNodeAction *action = (CNodeAction *)arg;
+
+    action->m_anim = 0;
+    action->m_3e++;
+}
+
+/* one of the action's anims run (the index's, else the first) on its node and valve for a SEAL,
+ * told to the other clients when networked; whether it runs (OVL1 0x2B44E0: SOCOM 1's, with the
+ * use limit, the SEAL's object index passed on when it has one, and the done callback SOCOM II's) */
+int CNodeAction::ExecuteAction(CZSealBody *body, unsigned int index)
+{
+    if (m_anim && m_anim->Running())
+        return 0;
+    if (m_3f_3 && m_3e > 0)
+        return 0;
+    if (m_anims.size() == 0)
+        return 0;
+    CZAnim *anim = index < m_anims.size() ? m_anims[index] : m_anims[0];
+
+    if (!anim)
+        return 0;
+    m_anim = 0;
+    int who = -1;
+
+    if (body)
+        who = body->m_4;
+
+    if (who >= 0)
+        m_anim = anim->ActivateArg(1, 3, m_node, 4, m_valve, 1, body ? body->m_3b0 : 0, 9, who, 0);
+    else
+        m_anim = anim->ActivateArg(1, 3, m_node, 4, m_valve, 1, body ? body->m_3b0 : 0, 0);
+    if (m_anim) {
+        SetDoneCallback(m_anim, func_002B46D0, this);
+        if (IsNetworked() && theNetwork.m_bNetwork && body &&
+            !(body->m_ctrl ? body->m_ctrl->IsRemote() : false))
+            func_002BB5B0(body->m_4, m_id, m_valve->m_value, index, -1);
+    }
+    return m_anim != 0;
 }
 
 /* every networked action's valve sent to a client that joins (OVL1 0x2B4440) */
@@ -224,13 +452,39 @@ extern "C" void func_002B4380(bool pause)
     }
 }
 
-/* EXECUTE_ACTION: the action named by the command, run for the player (SOCOM II's; OVL1
- * 0x2B41C0) */
+/* EXECUTE_ACTION's command: its header and the action's name, an index into the anim's names */
 struct _execute_action_cmd {
     _zanim_cmd_hdr hdr;
     unsigned char name;   // 0x4
 };
 
+_zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
+extern "C" int func_0026ED00(CZAnim *anim, const char *name);   /* CZAnim::AddName */
+
+/* EXECUTE_ACTION parsed: the NAME tag's (or the block's own) first string kept as a name of the
+ * current anim (SOCOM II's; OVL1 0x2B4230, registered by 0x2B4190) */
+extern "C" _zanim_cmd_hdr *func_002B4230(_zrdr *rdr)
+{
+    _execute_action_cmd *cmd = 0;
+
+    if (rdr) {
+        _zrdr *tag = zrdr_findtag(rdr, "NAME");
+
+        if (!tag)
+            tag = rdr;
+        if (tag->type == 4 && tag->Count() && tag->Item(0)->type == 3) {
+            CZAnim *anim = ZAnim.m_CurAnim;
+
+            cmd = (_execute_action_cmd *)_calloc(1, sizeof(_execute_action_cmd), 0, 0);
+            cmd->hdr.data_size = sizeof(_execute_action_cmd);
+            cmd->name = func_0026ED00(anim, tag->Item(0)->String());
+        }
+    }
+    return &cmd->hdr;
+}
+
+/* EXECUTE_ACTION: the action named by the command, run for the player (SOCOM II's; OVL1
+ * 0x2B41C0) */
 extern "C" bool func_002B41C0(_zanim_cmd_hdr *hdr, float *dT)
 {
     const char *name = ZAnim.m_CurAnim->GetName(((_execute_action_cmd *)hdr)->name);
