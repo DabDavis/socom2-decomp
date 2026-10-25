@@ -1738,7 +1738,7 @@
 0x00205970 0xF8 func_00205970  # OVL1
 0x00205A70 0x1D0 func_00205A70  # OVL1
 0x00205C40 0x1C0 __dt__15CZObjectiveListFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00205E00 0x990 func_00205E00  # OVL1
+0x00205E00 0x990 RefreshStatics__15CZObjectiveListFv  # OVL1; s1:calls by hand (the HUD lane: SOCOM 1's RefreshStatics -- RefreshList's (0x207570) one callee, the tactical map's statics loaded, UV'd and listed: the titles 'TACTICAL MAP' and 'OBJECTIVES', the legend's lines; SOCOM II moved it to the unit's end, so it sits right after the implicit destructor)
 0x00206790 0x18 IsPlayingAnimation__15CZObjectiveListFv  # OVL1; s1:exact shape (theHUD's mission cameras' IsPlaying, tail-called, as SOCOM 1's 0x14 bytes)
 0x002067B0 0x118 MissionEndCleanup__15CZObjectiveListFv  # OVL1; s1:order by hand (between IsPlayingAnimation and GetCurrentObjectiveRetainer as SOCOM 1's MissionEndCleanup; SOCOM II's wipes the list's strings and the unit's static ones, then calls FreeList(true))
 0x002068D0 0x8 GetCurrentObjectiveRetainer__15CZObjectiveListCFv  # OVL1; s1:order by hand (SOCOM 1's 8-byte GetCurrentObjectiveRetainer: m_cur_selected_objective, at SOCOM II's 0x71C)
