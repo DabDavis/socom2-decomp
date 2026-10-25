@@ -686,6 +686,7 @@
 0x0044CE00 0xC m_heartbeat_sound__10CZSealBody  # OVL1 bss; s1:data-exact (size SOCOM 1's; via OpenHeartbeatSounds__10CZSealBodyFv)
 0x0044D450 0xC list__12CAnimAuxData  # OVL1 bss; s1:data-exact (size SOCOM 1's; via Get__12CAnimAuxDataFUi)
 0x0044D4A0 0x4 m_mpbombnode__7CPickup  # OVL1 bss; s1:data-seq (size SOCOM 1's; via CreateMPBombPickup__10CZSealBodyFPC6CPnt3Db)
+0x0044D5B0 0xC m_list__9CSealUnit  # OVL1 bss; SOCOM 1's m_list__9CSealUnit (0x5097B0, a list<CSealUnit *> built by __sinit_seal_unit.cpp); every squad, walked by GetUnitByTeam (0x5EF2F0) -- 59 references in 15 functions (IssueCommand 12, 0x5EC9F0 14, the initialiser at 0x400870 3) -- the kit lane
 0x0044D688 0x1 OurGameName  # OVL1 bss; s1 by hand (SOCOM 1's CCoreState::Tick ticks CameraZoom only while OurGameName, gp-28920, a byte, is 1; SOCOM II's tests 0x44D688 == 1 at the same place)
 0x0044D6B8 0xC m_pool  # OVL1 bss; SOCOM 1's (m_pool, a global CPool -- a vector of CGameStateChangeCmd: capacity, size, data -- that game_state.cpp's initialiser 0x401BD0 builds, as SOCOM 1's does); read and written by CreatePool, Acquire and DestroyPool (9 word references) and built by 0x401BD0
 0x0044F108 0x8 m_pads__6CInput  # OVL1 bss; s1:data-seq (size SOCOM 1's; via DeletePad__6CInputFUi +1)

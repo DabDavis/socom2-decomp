@@ -11,6 +11,15 @@ extern "C" {
 void func_00578150(CZSealBody *body, float amount);
 }
 
+/* whether the kit holds an item of that kind (OVL2 0x5C86F0; SOCOM 1's) */
+bool CZKit::HasItem(EQUIP_ITEM item) const
+{
+    for (int i = 0; i < m_num_items; i++)
+        if (m_item[i] && item == m_item[i]->m_equip)
+            return true;
+    return false;
+}
+
 /* the current item (OVL2 0x5C3780; SOCOM II's goes through GetItemByIndex, 0x5C3740) */
 CZFTSWeapon *CZKit::GetCurItem() const
 {

@@ -10998,7 +10998,7 @@
 0x005BDA10 0x58 func_005BDA10  # OVL2
 0x005BDA70 0x90 func_005BDA70  # OVL2
 0x005BDB00 0x14 func_005BDB00  # OVL2
-0x005BDB20 0x110 func_005BDB20  # OVL2
+0x005BDB20 0x110 ItemHasAmmo__5CZKitF10EQUIP_ITEM  # OVL2; s1:calls by hand (another lane's lead, verified: SOCOM II's CSealCtrl::CanPlaceBomb and CanPerformAction call it after HasItem, where SOCOM 1's call ItemHasAmmo(EQUIP_ITEM); the same item walk on the type byte, then the ammunition)
 0x005BDC30 0x1E4 func_005BDC30  # OVL2
 0x005BDE20 0x94 func_005BDE20  # OVL2
 0x005BDEC0 0xE4 func_005BDEC0  # OVL2
@@ -11095,7 +11095,7 @@
 0x005C8190 0x438 func_005C8190  # OVL2
 0x005C85D0 0x70 func_005C85D0  # OVL2
 0x005C8640 0xB0 func_005C8640  # OVL2
-0x005C86F0 0x60 func_005C86F0  # OVL2
+0x005C86F0 0x60 HasItem__5CZKitCF10EQUIP_ITEM  # OVL2; s1:calls by hand (another lane's lead, verified: SOCOM 1's HasItem -- each of m_num_items (0x82C here) items non-null with its type byte (0x7C here, 0x60 there) the argument; SOCOM II's CanPerformAction/CanPlaceBomb callers call it where SOCOM 1's call HasItem)
 0x005C8750 0x120 func_005C8750  # OVL2
 0x005C8870 0xB8 func_005C8870  # OVL2
 0x005C8930 0x4C func_005C8930  # OVL2
@@ -11444,12 +11444,12 @@
 0x005EE250 0x278 func_005EE250  # OVL2
 0x005EE4D0 0x220 func_005EE4D0  # OVL2
 0x005EE6F0 0xF4 func_005EE6F0  # OVL2
-0x005EE7F0 0x5BC func_005EE7F0  # OVL2
+0x005EE7F0 0x5BC AllowCommand__9CSealUnitFP10CZSealBody10FT_COMMANDPv  # OVL2; s1:vtable by hand (CSealUnit's vtable slot +0xC, the demo's AllowCommand in the same slot of its two-slot table; 0x5BC bytes against 0x6C8)
 0x005EEDB0 0x1C4 func_005EEDB0  # OVL2
 0x005EEF80 0x248 func_005EEF80  # OVL2
 0x005EF1D0 0x44 func_005EF1D0  # OVL2
 0x005EF220 0xC8 func_005EF220  # OVL2
-0x005EF2F0 0x50 func_005EF2F0  # OVL2
+0x005EF2F0 0x50 GetUnitByTeam__9CSealUnitFUi  # OVL2; s1:calls by hand (the seal lane's lead, verified: SOCOM 1's GetUnitByTeam walks m_list__9CSealUnit for the unit whose number (0x38 there, 0x58 here) is the argument -- the same walk over the same static, 0x44D5B0 here; CSealCtrl::OnMissionStart calls it with 24)
 0x005EF340 0x40 func_005EF340  # OVL2
 0x005EF380 0xEC func_005EF380  # OVL2
 0x005EF470 0x198 func_005EF470  # OVL2

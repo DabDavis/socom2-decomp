@@ -10,7 +10,17 @@
 #define KIT_H
 
 class CZSealBody;
-class CZFTSWeapon;
+
+/* the kit's items (SOCOM 1's EQUIP_ITEM, a byte; the values are not needed yet) */
+enum EQUIP_ITEM { EQUIP_NONE = 0, EQUIP_LAST = 255 };
+
+/* an item of the kit (SOCOM 1's CZFTSWeapon : CZWeapon; only the byte its kind is read from --
+ * SOCOM 1's at 0x60) */
+class CZFTSWeapon {
+public:
+    unsigned char _0[0x7c];
+    EQUIP_ITEM m_equip;   // 0x7c
+};
 
 /* the body's controller as the kit reads it (CSealCtrl; only the float the sniper's kick starts
  * from -- zseal.h does not name it) */
@@ -43,6 +53,7 @@ public:
     int GetSelectedItemNum();
     CZFTSWeapon *GetCurItem() const;
     CZFTSWeapon *GetItemByIndex(int index) const;
+    bool HasItem(EQUIP_ITEM item) const;
 
     unsigned int m_first : 1;   // 0x0 (SOCOM 1's bits; SOCOM II inserted one before bit 14)
     unsigned int m_reticuletypeChanged : 1;
@@ -67,7 +78,9 @@ public:
     unsigned char _40[0x58 - 0x40];
     float m_screenoffset_x;   // 0x58 (SOCOM 1's 0x44)
     float m_screenoffset_y;   // 0x5c (SOCOM 1's 0x48)
-    unsigned char _60[0x824 - 0x60];
+    unsigned char _60[0xe4 - 0x60];
+    CZFTSWeapon *m_item[30];   // 0xe4 (SOCOM 1's 0xd0)
+    unsigned char _15c[0x824 - 0x15c];
     int m_selected_item;   // 0x824 (SOCOM 1's 0x808)
     int m_last_selected;   // 0x828
     int m_num_items;   // 0x82c (SOCOM 1's 0x810)
