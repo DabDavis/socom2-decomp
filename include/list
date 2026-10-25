@@ -66,6 +66,8 @@ public:
     /* the sentinel by reference (CZHudMissionCams::Init keeps the end node in a register outside
      * its loop only so; the name is ours) */
     node_base &end_node() { return end_; }
+    /* the sentinel's address (SOCOM 1's tail(), this + 4: 0x173510 in the demo) */
+    node_base *tail() { return &end_; }
 
 protected:
     unsigned int size_;
@@ -176,6 +178,45 @@ public:
      * deleter over an incomplete type) */
     T *&back() { return (T *&)((typename base::node *)this->end_.prev_)->data_; }
     void pop_back() { this->erase(typename base::iterator(this->end_.prev_)); }
+
+    /* the pointer list's own iterator: SOCOM 1's DWARF gives list<T *>::generic_iterator the
+     * base's as its one member (i_), built from it by value (0x210C90 in the demo) and turned
+     * back into it (0x200B90). Its assignment stays implicit -- a bitwise copy (lwc1/swc1),
+     * after which MW keeps the iterator in memory: an iterator assigned from begin() is
+     * re-read and re-stored at every step, as CZNewHudMap's finders do (one initialised from it
+     * lives in a register). The const one is not here yet (CEntityItr::Advance compares with the
+     * const end(), SOCOM 1's list<T *>::generic_iterator<1>) */
+    template <bool IsConst>
+    class generic_iterator {
+    public:
+        generic_iterator() {}
+        generic_iterator(typename base::iterator i) : i_(i) {}
+        operator typename base::iterator() const { return i_; }
+        T *&operator*() const { return (T *&)*i_; }
+        generic_iterator &operator++()
+        {
+            ++i_;
+            return *this;
+        }
+        bool operator==(const generic_iterator &x) const { return i_ == x.i_; }
+        bool operator!=(const generic_iterator &x) const { return i_ != x.i_; }
+
+        typename base::iterator i_;
+    };
+    typedef generic_iterator<false> iterator;
+
+    /* the first node read through tail() held in a local: the sentinel's address is then
+     * computed first and shared with end()'s (CZNewHudMap::FindMPBombItem loads the first node
+     * into the register `this` leaves -- straight from end_.next_ it took another), and a walk
+     * that assigns begin() to its iterator, a level deeper, still inlines all of it (through the
+     * base's begin(), or with tail() as an argument, the innermost constructor is a call) */
+    iterator begin()
+    {
+        typename base::node_base *t = this->tail();
+
+        return iterator(typename base::iterator(t->next_));
+    }
+    iterator end() { return iterator(typename base::iterator(&this->end_)); }
 };
 
 }

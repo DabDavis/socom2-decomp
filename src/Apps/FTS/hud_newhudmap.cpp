@@ -1,67 +1,49 @@
 /* hud_newhudmap.cpp -- the HUD's map (OVL1 0x208FD0-0x20CFxx): SOCOM 1's unit (its DWARF names it,
- * Z:\dev\Apps\FTS\hud_newhudmap.cpp). Only five small functions so far, in SOCOM 1's order.
+ * Z:\dev\Apps\FTS\hud_newhudmap.cpp). The explosives' items and a few small functions so far.
  * CZNewHudMap's members to its matrix are SOCOM 1's, 4 lower (C2D's); after it SOCOM II
  * reordered them -- the circle clipper, the centre and the full-screen flag right after the matrix,
  * where SOCOM 1 kept its two background bitmaps -- and only those are placed. Defined in reverse
  * of their image order (-inline deferred). */
 
-#include "../../gamez/ztwod/ztwod.h"
+#include "hud_newhudmap.h"
+#include "hud_claymoremapitem.h"
+#include "hud_bombmapitem.h"
 
-class CZSealBody;
+#include <vector>
 
-class CCircleClip {
+namespace zdb {
+class CNode;
+}
+
+/* the multiplayer bomb's node, while there is one (SOCOM 1's static) */
+class CPickup {
 public:
-    /* the circle placed at once: its centre and radius computed before any is stored (the name
-     * is ours) */
-    void Set(float cx, float cy, float radius)
-    {
-        m_Cx = cx;
-        m_Cy = cy;
-        m_Radius = radius;
-    }
-
-    float m_Cx;   // 0x0
-    float m_Cy;   // 0x4
-    float m_rCx;   // 0x8
-    float m_rCy;   // 0xc
-    float m_Radius;   // 0x10
+    static zdb::CNode *m_mpbombnode;
 };
 
-class CZNewHudMap : public C2D {
+/* what UpdateExplosives reads of the weapons' projectiles: the explosives out (SOCOM 1's DWARF) */
+class CZProjectileList {
 public:
-    float CalcDrawPos(float y) const;
-    void SetWorldWidth(float width);
-    void SetMapScreenPos(float x1, float y1, float x2, float y2);
-    void ReInit();
-    float GetZoomOut() const;
-    void SwitchToCompassMap();
-    /* the world window, its width (no narrower than the minimum) and centre at once: the width's
-     * setter passes the centre back in, read before the clamp (the name is ours) */
-    void SetWorldView(float width, float cx, float cy);
-
-    unsigned char m_itemlist[0xc];   // 0x18: SOCOM 1's `list m_itemlist`
-    CZSealBody *m_viewer;   // 0x24
-    float m_screenx1;   // 0x28
-    float m_screeny1;   // 0x2c
-    float m_screenx2;   // 0x30
-    float m_screeny2;   // 0x34
-    CPnt3D m_world1;   // 0x38
-    CPnt3D m_world2;   // 0x44
-    CPnt3D m_world3;   // 0x50
-    CPnt3D m_world4;   // 0x5c
-    float m_screencenterx;   // 0x68
-    float m_screencentery;   // 0x6c
-    float m_width;   // 0x70
-    float m_worldcenterx;   // 0x74
-    float m_worldcentery;   // 0x78
-    float m_scale;   // 0x7c
-    float m_radar_distance;   // 0x80
-    CMatrix m_matrix;   // 0x90
-    CCircleClip *m_circleclipper;   // 0xd0
-    float m_centerx;   // 0xd4
-    float m_centerz;   // 0xd8
-    bool m_isFullScreen;   // 0xdc
+    CZProjectile *m_projectiles;   // 0x0
+    std::vector<CZProjectile *> m_explosives;   // 0x4
 };
+
+class CZWeapon {
+public:
+    static CZProjectileList *m_pProjectilelist;
+};
+
+/* a thing in the world: only its type (2, a SEAL) at 0x10 (SOCOM 1's DWARF) */
+class CEntity {
+public:
+    unsigned char _0[0x10];
+    unsigned char m_type;   // 0x10
+
+    static std::list<CEntity *> m_list;
+};
+
+/* the entity with an id, if any (SOCOM 1's CEntityList::GetEntityById, on CEntity::m_list) */
+extern "C" CEntity *func_0029E4E0(std::list<CEntity *> *list, unsigned int id);
 
 /* the narrowest world window (a variable: read with lwc1, where MW builds a constant) */
 static float s_minWorldWidth = 1300.0f;
@@ -103,6 +85,88 @@ void CZNewHudMap::SetMapScreenPos(float x1, float y1, float x2, float y2)
 void CZNewHudMap::SetWorldWidth(float width)
 {
     SetWorldView(width, m_worldcenterx, m_worldcentery);
+}
+
+/* a claymore item for every explosive out that has none yet, its owner the SEAL that set it (if
+ * a SEAL did); then the bomb's (SOCOM 1's; the searches functions of their own in SOCOM II).
+ * The end of the weapons' explosives is taken once, with the start */
+void CZNewHudMap::UpdateExplosives()
+{
+    std::vector<CZProjectile *> &v = CZWeapon::m_pProjectilelist->m_explosives;
+
+    for (std::vector<CZProjectile *>::iterator i = v.begin(), end = v.end(); i != end; ++i) {
+        CZProjectile *projectile = *i;
+
+        if (!FindClaymoreItem(projectile)) {
+            CEntity *e = func_0029E4E0(&CEntity::m_list, projectile->m_shooterID);
+            CZSealBody *owner = e && e->m_type == 2 ? (CZSealBody *)e : 0;
+
+            m_itemlist.push_back(new CZClaymoreMapItem(owner, projectile));
+        }
+    }
+    UpdateMPBomb();
+}
+
+/* the multiplayer bomb given an item once it is on the map (SOCOM 1's UpdateExplosives' second
+ * half, a function of its own in SOCOM II; the name is ours). Out of line too: it holds a call
+ * MW would not inline (FindMPBombItem's, below), and MW refuses such a function -- which the
+ * pragma on the callee does not reproduce */
+#pragma auto_inline off
+void CZNewHudMap::UpdateMPBomb()
+{
+    if (CPickup::m_mpbombnode && !FindMPBombItem())
+        m_itemlist.push_back(new CZMPBombMapItem(CPickup::m_mpbombnode));
+}
+
+#pragma auto_inline reset
+
+/* the bomb's item, if the map has one (SOCOM 1's). The iterator is assigned from begin(), so it
+ * stays in memory (the copy is bitwise). Out of line: nine statements by MW's count, which
+ * UpdateMPBomb would inline where the target calls it -- the original's had more, or a taller
+ * tree */
+#pragma auto_inline off
+CZMPBombMapItem *CZNewHudMap::FindMPBombItem()
+{
+    std::list<CZMapItem *>::iterator i;
+
+    for (i = m_itemlist.begin(); i != m_itemlist.end(); ++i) {
+        CZMPBombMapItem *item = dynamic_cast<CZMPBombMapItem *>(*i);
+
+        if (item)
+            return item;
+    }
+    return 0;
+}
+
+#pragma auto_inline reset
+
+/* the claymore item a projectile has, if any (SOCOM 1's UpdateExplosives searched inline; the
+ * name is ours). Out of line as FindMPBombItem (UpdateExplosives calls it) */
+#pragma auto_inline off
+CZClaymoreMapItem *CZNewHudMap::FindClaymoreItem(CZProjectile *projectile)
+{
+    std::list<CZMapItem *>::iterator i;
+
+    for (i = m_itemlist.begin(); i != m_itemlist.end(); ++i) {
+        CZClaymoreMapItem *item = dynamic_cast<CZClaymoreMapItem *>(*i);
+
+        if (item && item->m_projectile == projectile)
+            return item;
+    }
+    return 0;
+}
+
+#pragma auto_inline reset
+
+/* a world point taken onto the map: through its matrix, the height drawn at the map's scale (the
+ * name is ours) */
+CPnt3D CZNewHudMap::MapPoint(const CPnt3D *p) const
+{
+    CPnt3D r;
+
+    m_matrix.Transform(p, &r, 1);
+    r.y = CalcDrawPos(r.y);
+    return r;
 }
 
 float CZNewHudMap::CalcDrawPos(float y) const

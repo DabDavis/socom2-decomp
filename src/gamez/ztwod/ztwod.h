@@ -32,6 +32,8 @@ struct _zanim_cmd_hdr;
 
 class C2D;
 
+int GetUICommandType(const char *name);
+
 /* SOCOM 1's DWARF: `class C2Dlist : public list` (0xC bytes) -- a pointer list (CZHudMissionCams::
  * Init pushes its strings through __list_deleter<PCv>'s insert, 0x1FEAE0) */
 class C2Dlist : public std::list<C2D *> {
@@ -44,30 +46,34 @@ public:
     C2D();
     virtual ~C2D();
     virtual void Draw(zdb::CCamera *cam);
-    virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
+    /* the small virtuals are inline (SOCOM 1's DWARF files them under ztwod.h): their out-of-line
+     * copies come out wherever a 2D class's vtable does -- hud_main.cpp's are linked,
+     * 0x1FDE10-0x1FE330 */
+    virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr) {}
     virtual void Enable(bool on);
     virtual void Off();
     virtual void On();
-    virtual void SetHasTexture(bool on);
-    virtual void SetAA(bool on);
-    virtual void SetIsTrans(bool on);
-    virtual void SetGouraud(bool on);
-    virtual void Slot10();
-    virtual void SetTrans(float trans);
-    virtual void Tick(float dT);
-    virtual void Parse(_zrdr *rdr, zdb::CAssetLib *lib, zdb::CTextureRelocMgr *mgr);
-    virtual void Reset();
-    virtual bool HandlePad(const CPad *pad, int port);
-    virtual bool CanHandleInput();
-    virtual void SetCanHandleInput(bool val);
-    virtual void SetActive();
-    virtual void SetNormal();
-    virtual void SetUseFrameBufferAlpha(bool isFrameAlpha);
+    virtual void SetHasTexture(bool on) { m_hasTexture = on; }
+    virtual void SetAA(bool on) { m_isAA = on; }
+    virtual void SetIsTrans(bool on) { m_isTrans = on; }
+    virtual void SetGouraud(bool on) { m_socom2_bit5 = on; }
+    virtual void Slot10() {}
+    virtual void SetTrans(float trans) {}
+    virtual void Tick(float dT) {}
+    virtual void Parse(_zrdr *rdr, zdb::CAssetLib *lib, zdb::CTextureRelocMgr *mgr) {}
+    virtual void Reset() {}
+    virtual bool HandlePad(const CPad *pad, int port) { return false; }
+    virtual bool CanHandleInput() { return m_active_and_handling_input; }
+    virtual void SetCanHandleInput(bool val) { m_active_and_handling_input = val; }
+    virtual void SetActive() {}
+    virtual void SetNormal() {}
+    virtual void SetUseFrameBufferAlpha(bool isFrameAlpha) { m_isFrameAlpha = isFrameAlpha; }
     virtual void GetAssetLibs(CLibList &liblist);
-    virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
-    virtual bool TickZAnimCmd(_zanim_cmd_hdr *cmd, float *t, bool *done);
-    virtual int GetZAnimCmdType(const char *name);
-    virtual void SetMapOffset(int x, int y);
+    virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr) { return 0; }
+    virtual bool TickZAnimCmd(_zanim_cmd_hdr *cmd, float *t, bool *done) { return false; }
+    /* the UI's command types (it passes no name: SOCOM II's copy loads a0 with zero) */
+    virtual int GetZAnimCmdType(const char *name) { return GetUICommandType(0); }
+    virtual void SetMapOffset(int x, int y) {}
 
     bool IsOn() const;
 
@@ -145,6 +151,7 @@ public:
     virtual void GetAssetLibs(CLibList &liblist);
     void Load(float x, float y, float w, float h, zdb::CTexHandle *tex);
     void SetColor(float r, float g, float b);
+    void TickFade();
 
     int m_x;   // 0x24
     int m_y;   // 0x28
@@ -189,6 +196,7 @@ public:
     void Load(float x1, float y1, float x2, float y2, float x3, float y3, float x4, float y4,
               zdb::CTexture *tex);
     void SetColor(float r, float g, float b);
+    void SetUV(float u0, float v0, float u1, float v1);
 
     int x1;   // 0x24
     int x2;   // 0x28

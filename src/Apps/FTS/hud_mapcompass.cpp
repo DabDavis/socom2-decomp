@@ -5,8 +5,11 @@
  * a static vector of nav packages), the constructor and InitHUD_Compass. Defined in reverse of
  * their image order (-inline deferred). */
 
+#include <vector>
+
 #include "hud_mapcompass.h"
 #include "../../gamez/znode/znode.h"
+#include "../../gamez/zsys/zsys.h"
 
 class CHUD {
 public:
@@ -30,6 +33,30 @@ extern float data_0049E9F0[2];
 
 /* the seal the camera follows (no name yet) */
 extern "C" CZSealBody *func_002B3580();
+
+/* the frame's anchors, nearest first (SOCOM 1's global; the unit's initialiser builds it) */
+std::vector<nav_package> navpoint_vec;
+
+/* the anchor tables built 38 to a table, everything placed at zero, room for 48 anchors */
+MapCompass::MapCompass()
+{
+    m_newcompasstex = 0;
+    m_compasstopx = 0.0f;
+    m_compasstopy = 0.0f;
+    m_compassbotx = 0.0f;
+    m_compassboty = 0.0f;
+    m_compasscenterx = 0.0f;
+    m_compasscentery = 0.0f;
+    m_scale = 0.0f;
+    m_tex_width = 0.0f;
+    m_tex_height = 0.0f;
+    navpoint_vec.reserve(48);
+}
+
+MapCompass::~MapCompass()
+{
+    FreeVector(navpoint_vec);
+}
 
 void MapCompass::SetScale(float scale)
 {
