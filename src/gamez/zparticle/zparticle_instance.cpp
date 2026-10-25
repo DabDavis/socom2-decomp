@@ -11,6 +11,29 @@ extern "C" void sceVu0InterVector(float *v0, float *v1, float *v2, float t);
 
 namespace Particle {
 
+/* SOCOM II's: a dying source's instances unlinked and recycled, the head's run first */
+void Instance::List::RemoveSource(Source *source)
+{
+    while (!Empty() && m_head->m_source == source) {
+        Instance *p = m_head;
+
+        m_head = p->m_listNext;
+        p->Recycle();
+    }
+    for (Instance *prev = m_head; prev; ) {
+        Instance *p = prev->m_listNext;
+
+        while (!End(p) && p->m_source == source) {
+            Instance *d = p;
+
+            p = p->m_listNext;
+            prev->m_listNext = p;
+            d->Recycle();
+        }
+        prev = p;
+    }
+}
+
 /* SOCOM 1's: every live instance ticked -- at the LOD's age rate when its source asks -- and the
  * dead ones recycled (SOCOM II's list: linked through the instances, not a std::list) */
 void Instance::List::Tick(float dT)

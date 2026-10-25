@@ -380,6 +380,7 @@ public:
 
     ~Source();
     static void RenderBBox();
+    void CheckExtents(CPnt4D p, float r);
     void GetBBox(CBBox *box);
     void Tick(float dT);
     void ScaleSequenceAdd(float fraction, float scale);
@@ -394,9 +395,12 @@ public:
     unsigned char _1a[0xdc - 0x1a];   // 0x1a: SOCOM 1's m_doSpawnLOD .. m_initialAgeRange
     std::vector<zdb::CTexHandle *> m_textures;   // 0xdc
     Props *m_props;   // 0xe8
-    unsigned char _ec[0x18];   // 0xec: SOCOM 1's m_bbox
+    CPnt3D m_bboxMin;   // 0xec: SOCOM 1's m_bbox (a CBBox of two points there)
+    CPnt3D m_bboxMax;   // 0xf8
     zdb::CNode *m_diNode;   // 0x104
-    unsigned char _108[0x20];   // 0x108: SOCOM 1's m_diPolies .. m_filled_volume
+    unsigned char _108[0x18];   // 0x108: SOCOM 1's m_diPolies
+    unsigned char m_hasbbox;   // 0x120
+    float m_filled_volume;   // 0x124
     CParticleEx *m_particleEx;   // 0x128
 
     static float distanceFactor;   // 0x4884C0
