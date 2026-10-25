@@ -54,6 +54,8 @@ public:
     void clear() { tree_.clear(); }
     iterator find(const key_type &x) { return tree_.find(x); }
     pair<iterator, bool> insert(const value_type &x) { return tree_.insert_one(x); }
+    void erase(iterator position) { tree_.erase(position); }
+    size_type erase(const key_type &x) { return tree_.erase_one(x); }
     mapped_type &operator[](const key_type &x) { return tree_.template find_or_insert<key_type, mapped_type>(x).second; }
 
 private:
