@@ -1642,6 +1642,24 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the HUD, round 14** (the weapon selectors' Inits, the team names, InitHUD_Compass):
+  - a guarded function-local static that stores a constant had a non-constant initialiser: MW 3.0
+    initialises `= 48.0f` or a `const float` statically, with no guard; an inline call returning 48
+    reproduces the guard;
+  - a float immediate that is not the nearest float to its decimal is a folded product: 0x3F5AE147
+    is `0.9f * 0.95f`, where `0.855f` gives ...148;
+  - several loops in one function: a shared function-scope counter against separate `for` counters
+    re-colours the later loops; a counter declared ahead of an initialised local takes the higher
+    saved register;
+  - a reference local whose address is pushed lives in a stack slot and is reloaded before every
+    store through it; storing through an inline that takes the pointer keeps it in a register;
+  - MW forwards a constant just stored to a member into a later expression only if that expression
+    comes before the register is reused (CInGameWeaponSel's backdrop: its top computed before its
+    left);
+  - hud_mapcompass.cpp starts at 0x2113D0 (the three anchor accessors before Tick in the image, so
+    defined last); hud_teamnames.cpp runs 0x220D00-0x221BF0; RefreshStatics follows
+    ~CZObjectiveList (defined last in hud_objectives.cpp); st_mpexit.cpp (CMPExitState,
+    0x223290-0x2265F7) sits inside the HUD's range.
 - **Tells from the zdb world, round 6** (CDI(), the grid's traversal boundary, znode.h's stand-ins):
   - znode.h's list stand-ins (PtrListFirst, ListBegin, ListEnd, ListClear) are gone: include/list's
     begin()/clear()/insert() give the same code in all six of their users;

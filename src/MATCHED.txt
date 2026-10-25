@@ -293,6 +293,7 @@
 0x002057A0 func_002057A0
 0x00205800 __ct__11CZPauseTestFv
 0x00205C40 __dt__15CZObjectiveListFv
+0x00205E00 RefreshStatics__15CZObjectiveListFv
 0x00206790 IsPlayingAnimation__15CZObjectiveListFv
 0x002067B0 MissionEndCleanup__15CZObjectiveListFv
 0x002068D0 GetCurrentObjectiveRetainer__15CZObjectiveListCFv
@@ -389,6 +390,9 @@
 0x002113A0 node_alloc__Q23std185__tree<Q23std19pair<Ci,9LINE_DATA>,Q33std79map<i,9LINE_DATA,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>Fv
 0x002113B0 destroy__Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>FPQ23std19pair<Ci,9LINE_DATA>
 0x002113C0 alloc__Q23std185__tree<Q23std19pair<Ci,9LINE_DATA>,Q33std79map<i,9LINE_DATA,Q23std7less<i>,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>13value_compare,Q23std38allocator<Q23std19pair<Ci,9LINE_DATA>>>Fv
+0x002113D0 GetAnchorImg__10MapCompassFUi
+0x002113F0 GetAnchorColor__10MapCompassFP14CCompassAnchor
+0x002114C0 GetAnchorColor__10MapCompassFUi
 0x00212130 Draw__10MapCompassFPQ23zdb7CCamera
 0x00212140 SetTrans__10MapCompassFf
 0x00212160 SetTexture__10MapCompassFPQ23zdb8CTexture
@@ -404,6 +408,7 @@
 0x002125D0 __ct__Q23std54vector<11nav_package,Q23std24allocator<11nav_package>>Fv
 0x002125F0 __ct__10MapCompassFv
 0x002126B0 __ct__17CHudCompassAnchorFv
+0x002126F0 InitHUD_Compass__10MapCompassFPQ23zdb6CWorld
 0x002133E0 reserve__Q23std62__vector_imp<11nav_package,Q23std24allocator<11nav_package>,0>FUi
 0x00213590 clear__Q23std64__vector_deleter<11nav_package,Q23std24allocator<11nav_package>>Fv
 0x002135A0 __dt__Q23std64__vector_deleter<11nav_package,Q23std24allocator<11nav_package>>Fv
@@ -419,15 +424,19 @@
 0x0021B0A0 AfterCloseFirst__10CWeaponSelFv
 0x0021B3E0 OnClose__10CWeaponSelFv
 0x0021CBA0 UnInit__10CWeaponSelFv
+0x0021CD40 Init__10CWeaponSelFPQ23zdb6CWorldP7C2DFont
 0x0021DE50 UnInit__14CZActionBitmapFv
 0x0021F120 func_0021F120
 0x00220870 func_00220870
 0x00220B50 func_00220B50
 0x00220C10 func_00220C10
 0x00220C30 func_00220C30
+0x00220D00 Tick__10CTeamNamesFf
 0x00220F90 func_00220F90
 0x00220FA0 func_00220FA0
 0x00220FB0 Clear__10CTeamNamesFv
+0x00221070 Init__10CTeamNamesFv
+0x00221970 SetOpacity__10CTeamNamesFf
 0x00221B10 __ct__10CTeamNamesFv
 0x00221BF0 __ct__14CHudBrightTextFv
 0x00221C40 Tick__10PoseBitmapFf
@@ -470,6 +479,7 @@
 0x00227730 AfterClose__16CInGameWeaponSelFv
 0x00227880 Clear__16CInGameWeaponSelFv
 0x00227960 UnInit__16CInGameWeaponSelFv
+0x00227AD0 Init__16CInGameWeaponSelFPQ23zdb6CWorldP7C2DFont
 0x002284C0 __ct__16CInGameWeaponSelFv
 0x00228660 __dt__8CFlashFXFv
 0x002286E0 Reset__14CFlashFXVectorFv
@@ -622,6 +632,7 @@
 0x00240580 SetTrans__8SlotListFf
 0x002405F0 SetTrans__11CWeaponSlotFf
 0x00240D50 UnInit__12CMPWeaponSelFv
+0x00240E60 Init__12CMPWeaponSelFv
 0x00241BE0 func_00241BE0
 0x00241C30 SetTrans__10CHealthBarFf
 0x00241CA0 SetPos__10CHealthBarFff
