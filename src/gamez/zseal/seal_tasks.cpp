@@ -35,6 +35,8 @@ void func_00574830(bool enabled, bool alarm);
 void func_00598840(bool enabled);
 /* a tag's values as a team mask (OVL2 0x5B8190, before seal_kit.cpp: the kit range's helpers) */
 unsigned int func_005B8190(_zrdr *tag);
+/* an AI state by name, 0 for none (OVL2 0x5D8CC0, this unit's: a generated draft) */
+AI_STATE func_005D8CC0(const char *name);
 /* the AI's stance set, and set for a time (OVL2 0x5631A0, 0x5631B0: the SEAL lane's rows, where
  * SOCOM 1's CTStance::Begin called CSealCtrlAi::SetStance) */
 void func_005631A0(CSealCtrlAi *ai, SEAL_STANCE stance);
@@ -248,6 +250,28 @@ struct CTRange : TASK_HDR {
         CTRange *cmd = NewTask<CTRange>();
 
         cmd->m_range2 = range * range;
+        cmd->m_ent.m_name = 0;
+        cmd->m_ent.m_id = CEntity::invalidId;
+        cmd->m_ent.m_type = 0;
+        cmd->m_ent.SetName(name);
+        return cmd;
+    }
+};
+
+/* ai::INSTATE (SOCOM 1's CTInState): an entity's AI in a state, or with it on its stack */
+struct CTInState : TASK_HDR {
+    unsigned int m_state : 31;   // 0x8: an AI_STATE
+    unsigned char m_stack : 1;   // 0xb bit 7: anywhere on the state stack (the tag "stack")
+    TASK_ENT m_ent;   // 0xc
+
+    static _zanim_cmd_hdr *Parse(_zrdr *rdr);
+    /* a block made (inline: its arguments read before the allocation) */
+    static CTInState *Create(AI_STATE state, bool stack, const char *name)
+    {
+        CTInState *cmd = NewTask<CTInState>();
+
+        cmd->m_state = state;
+        cmd->m_stack = stack;
         cmd->m_ent.m_name = 0;
         cmd->m_ent.m_id = CEntity::invalidId;
         cmd->m_ent.m_type = 0;
@@ -584,6 +608,22 @@ bool CTHold::Tick(_zanim_cmd_hdr *hdr, float *dT)
         cmd->m_timer -= *dT;
     *dT = 0.0f;
     return done;
+}
+
+/* the entity, the state by name and whether the whole stack counts (OVL2 0x5D8B80) */
+_zanim_cmd_hdr *CTInState::Parse(_zrdr *rdr)
+{
+    char *name = zrdr_findstring(rdr, "entity");
+    char *statename = zrdr_findstring(rdr, "state");
+    /* declared ahead of the flag (its saved register), compared with 0 (the andi before the
+     * test) */
+    AI_STATE state;
+    bool stack = zrdr_findtag(rdr, "stack") != 0;
+
+    state = func_005D8CC0(statename);
+    if (state != 0)
+        return &Create(state, stack, name)->hdr;
+    return 0;
 }
 
 /* the wait as a tagged range, the reader's own range, or its bool (true holds for good: -1)
