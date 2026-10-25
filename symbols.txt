@@ -3933,7 +3933,7 @@
 0x002B2190 0x38 Clear__9CSpawnersFv  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:exact
 0x002B21D0 0x13C Tick__9CSpawnersFf  # OVL1; s1:align
 0x002B2310 0x90 RecycleEntity__8CMissionFP7CEntity  # OVL1; s1:order by hand (the states lane: after CSpawners::Tick as in SOCOM 1; both restart the spawners' timer at 2.0, count one more spawn and call CEntity::RecycleEntity(e); SOCOM II's first stops a flagged entity's anims)
-0x002B23A0 0x4A0 func_002B23A0  # OVL1
+0x002B23A0 0x4A0 RefreshTeamValves__8CMissionFv  # OVL1; s1:calls (called where SOCOM 1's calls CMission::RefreshTeamValves) -- the SEAL lane
 0x002B2840 0x88 InitalizeTeamValves__8CMissionFv  # OVL1; s1:calls
 0x002B28D0 0x450 LoadVehicle__8CMissionFP16CVehicleRdrEntryb  # OVL1; s1:calls by hand (the states lane: CSpawners::Tick calls it on &theMission with the spawn's entry and false from the same instruction as SOCOM 1's calls LoadVehicle)
 0x002B2D20 0x124 func_002B2D20  # OVL1
@@ -9840,8 +9840,8 @@
 0x0053C940 0x68 func_0053C940  # OVL2
 0x0053C9B0 0x90 CreateInstance__14CCharacterTypeFPCc  # OVL2; s1:calls by hand (CZSealBody::PreCreateSeal calls it as SOCOM 1's calls CreateInstance__14CCharacterTypeFPCc; the same body: CNode::CreateInstance(m_model, 0, 0), a flag byte of the model set, SetName)
 0x0053CA40 0xD4 func_0053CA40  # OVL2
-0x0053CB20 0x17C func_0053CB20  # OVL2
-0x0053CCA0 0x160 func_0053CCA0  # OVL2
+0x0053CB20 0x17C CreateLODs__14CCharacterTypeFPQ23zdb5CNode  # OVL2; s1:calls (called where SOCOM 1's calls CCharacterType::CreateLODs, with the model's node) -- the SEAL lane
+0x0053CCA0 0x160 Acquire__14CCharacterTypeCFv  # OVL2; s1:calls (the SEAL's creation calls it where SOCOM 1's calls CCharacterType::Acquire) -- the SEAL lane
 0x0053CE00 0x7EC Parse__14CCharacterTypeFP5_zrdr  # OVL2; s1:calls (calls HEALTH_PARAMS::Parse and AI_PARAMS::Parse, as SOCOM 1's Parse__14CCharacterTypeFP5_zrdr does)
 0x0053D5F0 0x1C8 __dt__14CCharacterTypeFv  # OVL2; s1:calls (DeleteTemporaryCharType calls it with 1, as SOCOM 1's calls __dt__14CCharacterTypeFv)
 0x0053D7C0 0x5EC __ct__14CCharacterTypeFPCcPC14CCharacterType  # OVL2; s1:callee by hand (CCharacterType::Create calls it on operator new(940)'s block and again in place after the explicit destructor, with the name and the base type, as SOCOM 1's Create calls __ct__14CCharacterTypeFPCcPC14CCharacterType; SOCOM II's type is 0x3AC bytes)
