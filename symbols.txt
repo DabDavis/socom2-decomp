@@ -7807,7 +7807,7 @@
 0x003B05E0 0x80 func_003B05E0  # OVL1
 0x003B0660 0xA0 func_003B0660  # OVL1
 0x003B0700 0x60 zVid_Sync0__Fv  # OVL1; s1:align
-0x003B0760 0x4C func_003B0760  # OVL1
+0x003B0760 0x4C zVid_ClearColor__FPUi  # OVL1; s1:order by hand (the wep lane: SOCOM 1's zVid_ClearColor -- the three words of the colour packed with alpha 0x80 and Q 1.0 into the RGBAQ word its packet pointer names -- through the uncached mirror here)
 0x003B07B0 0x224 func_003B07B0  # OVL1
 0x003B09E0 0x90 func_003B09E0  # OVL1
 0x003B0A70 0xA0 func_003B0A70  # OVL1

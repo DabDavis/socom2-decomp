@@ -202,8 +202,13 @@
 0x003E0388 0x4 g_fTtySpeedFactor__20@unnamed@zui_2d_cpp@  # OVL1 data; SOCOM 1's static (its symbol table: zui_2d.cpp's unnamed namespace, 1.0); 2 references in 2 functions: UiSetTtySpeedFactor sets it, CTeleType::Tick reads it
 0x003E0980 0xC0 framecode  # OVL1; s1:data-seq (size SOCOM 1's; via zVid_FrameRestore__Fv)
 0x003E0A80 0x80 brightnesscode  # OVL1; s1:data by hand (the wep lane: SOCOM 1's brightnesscode, a GIF packet -- TEST, ALPHA, PRIM, RGBAQ and the quad -- with a ZBUF pair added after TEST; CVideo::Brightness writes its ALPHA value at +0x30 and its RGBAQ at +0x50, SOCOM 1's at +0x20 and +0x40; 3 references in 1 function)
+0x003E0B00 0x140 finalcode  # OVL1; s1:data by hand (the wep lane: SOCOM 1's finalcode, the GIF packet that copies the frame to the display -- the same registers with 0x40 more; func_003B09E0 writes its sprite's two XYZ2 words at +0xE0 and +0x100, which hold 0x72006C00 and 0x8E009400 as SOCOM 1's +0xC0 and +0xE0 do; 2 references in 1 function)
 0x003E11C0 0x10 zon_writeoff_dmaref  # OVL1; by hand (the wep lane: zVid_ZTestOnWriteSet loads it when its flag is false, zon_writeon_dmaref when true -- a DMA ref tag to the z-writes-off GS packet at 0x3E1140, as zon_writeon_dmaref is to 0x3E1180; SOCOM 1 loaded zon_writeon_dmaref on both arms; 1 reference)
 0x003E1200 0x10 zon_writeon_dmaref  # OVL1; s1:data-exact (size SOCOM 1's; via zVid_ZTestOnWriteSet__Fb)
+0x003E1380 0x14 frameRateLimits  # OVL1; s1:data by hand (the wep lane: SetDynamicLOD tests the frame rate against its first four words, as SOCOM 1's against frameRateLimits; 4 references in 1 function)
+0x003E13A0 0x14 lodLevelLimits  # OVL1; s1:data by hand (the wep lane: SetDynamicLOD sets lodLevel's value from it, indexed by the level, as SOCOM 1's; 1 reference)
+0x003E13C0 0x14 spawnRateLimits  # OVL1; s1:data by hand (the wep lane: SetDynamicLOD copies its word to Particle::Instance::spawnFactor, as SOCOM 1's; 1 reference)
+0x003E13E0 0x14 ageRateLimits  # OVL1; s1:data by hand (the wep lane: SetDynamicLOD copies its float to Particle::Instance::ageFactor, as SOCOM 1's; 1 reference)
 0x003E13F8 0x4 m_defaultFrameRate__6CVideo  # OVL1; SOCOM 1's (CCoreState::Init gives it back to MaxFrameRate, as SOCOM 1's): 2 references in 2 functions take 0x3E13F8
 0x003E1400 0x4 m_maxFrameRate__6CVideo  # OVL1; s1:data by hand (the wep lane: CVideo::MaxFrameRate swaps it, as SOCOM 1's swaps m_maxFrameRate; 8 bytes after m_defaultFrameRate, both 30; 2 references in 1 function)
 0x003E1408 0x4 m_brightness__6CVideo  # OVL1; s1:data by hand (the wep lane: CVideo::Brightness stores 128 there for 0.5, as SOCOM 1's m_brightness; 7 references in 1 function)
@@ -740,6 +745,7 @@
 0x0045C3F0 0x4 m_ripplefreepool__Q23zdb7CRipple  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Uninit__Q23zdb7CRippleFv)
 0x0045C460 0x18 m_dyntexlist__8Particle  # OVL1 bss; s1:data-seq (size SOCOM 1's; via DestructionManager__8ParticleFPQ23zdb5CNodePcP6CPnt4DfP6CPnt3DP6CPnt3DP6CPnt3DP6CPnt3Dif)
 0x00488448 0x4 ageFactor__Q28Particle8Instance  # OVL1 bss; s1:data-seq (size SOCOM 1's; via SetDynamicLOD__Fi)
+0x00488450 0x4 spawnFactor__Q28Particle8Instance  # OVL1 bss; s1:data by hand (the wep lane: SetDynamicLOD stores spawnRateLimits[level] there, as SOCOM 1's stores spawnFactor next to ageFactor; 1 reference in SetDynamicLOD)
 0x00488510 0xC m_list__11CRdrArchive  # OVL1 bss; SOCOM 1's static (its symbol, 12 bytes: CRdrArchiveList): __sinit_zrdr_archive.cpp (0x402D70) builds it and registers its destructor 0x32C5F0; the archive walks read its sentinel 0x488514 and first node 0x488518 -- 7 functions (the six CRdrArchive statics and the initialiser)
 0x00488520 0x100 _buffer$711  # OVL1 bss; s1:data-seq (size SOCOM 1's; via zrdr_findfile__FPCcPCc)
 0x004887C0 0x720 thePipe  # OVL1 bss; SOCOM 1's (0x694 bytes; SOCOM II's runs to VifHandlerID at 0x720: the camera at 0x628, the UI node at 0x630, its flags at 0x711 and 0x714 as the states use them): 115 references in 32 functions take 0x4887C0-0x488ED8
@@ -827,8 +833,10 @@
 0x0049EC58 0x4 s_headsetTuner  # OVL1 bss; zui_tuners.cpp's static (name ours): the CHeadsetTuner (HEADSET_CONTROLLER); 1 reference in 1 function (InitSystemTuners; neither Uninit nor Refresh touches it)
 0x0049EC60 0x4 s_rebootCallbackId  # OVL1 bss; zui_tuners.cpp's static (name ours): the id RegisterRebootCallback returns; 2 references in 2 functions (InitSystemTuners stores it, UninitSystemTuners unregisters it)
 0x004A1798 0x1 m_streamingSndActive__7CFileCD  # OVL1 bss; s1:data-seq (size SOCOM 1's; via UISysPostInit__FP13C2DAnimCmdHdrPf)
+0x004A43C4 0x4 zvid_clearColor  # OVL1 bss; by hand (the wep lane: zVid_ClearColor stores the packed RGBAQ word through this pointer, uncached, where SOCOM 1's stored through zvid + 0x244 -- the private video state, whose start is not placed; the name ours; 1 reference in 1 function)
 0x004A43D8 0x4 zvid_fade  # OVL1 bss; by hand (the wep lane: CVideo::Fade stores r, g, b and the alpha in these four bytes, where SOCOM 1's stored zvid + 0x260 -- the private video state, whose start is not placed; the name ours; 4 references in 1 function)
 0x004A4480 0x94 zVid  # OVL1 bss; s1:data-seq (via Update__Q23zdb6CWorldFv); SOCOM 1's _zvid_public is 0x80, SOCOM II's runs to at least 0x92 (the game states set the byte at 0x91), so 0x94 to the word
+0x004A4530 0x4 lodLevel  # OVL1 bss; s1:data by hand (the wep lane: the CValve * SetDynamicLOD sets to lodLevelLimits[level], as SOCOM 1's sets lodLevel; 1 reference in SetDynamicLOD)
 0x004B4810 0x4 m_camera__Q23zdb7CVisual  # OVL1 bss; SOCOM 1's (CCoreState::Init sets it with the world's camera beside the pipe's, as SOCOM 1's): 10 references in 6 functions take 0x4B4810
 0x004B4C68 0x4 m_local_light_cnt__Q23zdb7CVisual  # OVL1 bss; s1:data-seq (size SOCOM 1's; via AddLocalLight__Q23zdb7CVisualFPQ23zdb6CLightP6CPnt3D)
 0x004B4D80 0xC m_addColor__Q23zdb7CVisual  # OVL1 bss; s1:data-seq (size SOCOM 1's; via SaveDelayedNode__5CPipeFP7CMatrixPQ23zdb5CNodeQ23zdb12tag_ZVIS_FOV)
