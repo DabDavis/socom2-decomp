@@ -1972,7 +1972,7 @@
 0x00220C10 0x1C func_00220C10  # OVL1
 0x00220C30 0x68 func_00220C30  # OVL1
 0x00220CA0 0x54 func_00220CA0  # OVL1
-0x00220D00 0x288 func_00220D00  # OVL1
+0x00220D00 0x288 Tick__10CTeamNamesFf  # OVL1; s1:vtable by hand (the HUD lane: slot 12 of CTeamNames' vtable 0x405680, as SOCOM 1's CTeamNames::Tick; the unit's first function, before Clear, as SOCOM 1's order)
 0x00220F90 0x8 func_00220F90  # OVL1; s1~ GetSealCtrlAi__9CSealCtrlFv (one of 2 out-of-line copies of an inline, by s1:vtable)
 0x00220FA0 0x8 func_00220FA0  # OVL1; s1~ IsAi__9CSealCtrlCFv (one of 2 out-of-line copies of an inline, by s1:vtable)
 0x00220FB0 0xB4 Clear__10CTeamNamesFv  # OVL1; by hand (CHUD::ReInit_Uninit calls it on CHUD+0x165A0, the member 0x221B10 constructs with CTeamNames' vtable 0x405680, under the single-player test with UninitMap)

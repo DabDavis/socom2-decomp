@@ -12,12 +12,56 @@
 #include "hud_mpinfobox.h"
 #include "../../gamez/zvid/zvid.h"
 
-/* a SEAL as the names read it: its name (CEntity's, at 0x14) */
+/* the seal's controller as the names read it: two virtuals (slot 10, whether it has an order; slot
+ * 12, the order) -- the vtable pointer first, as CSealCtrl's is */
+class CSealCtrl {
+public:
+    virtual void v0();
+    virtual void v1();
+    virtual void v2();
+    virtual void v3();
+    virtual void v4();
+    virtual void v5();
+    virtual void v6();
+    virtual void v7();
+    virtual void v8();
+    virtual void v9();
+    virtual bool HasOrder();
+    virtual void v11();
+    virtual int GetOrder();
+};
+
+/* the kit (OVL2) */
+class CZKit {
+public:
+    bool HasItemWithAmmo(EQUIP_ITEM item);
+};
+
+/* a SEAL as the names read it: its name (CEntity's, at 0x14), controller, the flag the compass tests
+ * too, its kit and whether its order changed (cleared through an inline setter) */
 class CZSealBody {
 public:
+    bool GetHudHitFlag();
+    void SetOrderChanged(bool b) { m_orderchanged = b; }
+
     unsigned char _0[0x14];
     char *m_name;   // 0x14
+    unsigned char _18[0xc0 - 0x18];
+    CSealCtrl *m_ctrl;   // 0xc0
+    unsigned char _c4[0xe1 - 0xc4];
+    unsigned char _e1_0 : 4;
+    unsigned char m_socom2_e1_4 : 1;   // 0xe1 bit 4
+    unsigned char _e1_5 : 3;
+    unsigned char _e2[0x5e0 - 0xe2];
+    CZKit m_kit;   // 0x5e0
+    unsigned char _5e1[0x105d - 0x5e1];
+    unsigned char _105d_0 : 1;
+    unsigned char m_orderchanged : 1;   // 0x105d bit 1
+    unsigned char _105d_2 : 6;
 };
+
+/* an order's name (OVL2; no row named yet) */
+extern "C" const char *func_005743C0(int order);
 
 /* the HUD's layout (hud_main.cpp's data: the bottom block's top, the screen's last line) and the
  * corner boxes' texture (SOCOM 1's c_szCornerBoxesTx, a static of each unit there) */
@@ -71,6 +115,7 @@ public:
      * that lists the bar's bitmaps too; 0x2216D0) */
     void SetupTeamNameEntry(int index, CZSealBody *seal, bool add);
     void SetOpacity(float fOpacity);
+    virtual void Tick(float dT);
 
     /* a row's height on the screen from the first row's: 15 apart, the second fire team 9
      * lower */
@@ -261,4 +306,50 @@ void CTeamNames::Clear()
     data_0040D7A0.SetString(0, true);
     data_0040D850.SetString(0, true);
     clear();
+}
+
+/* each teammate's bar updated and ticked, its dot shown while it has the satchel's ammo, its order
+ * hidden when hit or not marked, or reloaded from its controller when it changed (SOCOM 1's,
+ * the unit's first function in the image) */
+void CTeamNames::Tick(float dT)
+{
+    for (int i = 0; i < 4; i++) {
+        CZSealBody *seal = m_ally[i];
+
+        if (!seal)
+            continue;
+        if (seal->GetHudHitFlag() && !seal->m_socom2_e1_4) {
+            m_order[i].Off();
+            m_bitmaps[i].Off();
+        }
+        m_healthbar[i].Update(seal, true);
+        m_healthbar[i].Tick(dT);
+        if (seal->m_kit.HasItemWithAmmo((EQUIP_ITEM)152))
+            m_bitmaps[i].On();
+        else
+            m_bitmaps[i].Off();
+        if (!seal->m_socom2_e1_4) {
+            m_order[i].Off();
+            continue;
+        }
+
+        bool changed = seal->m_orderchanged;
+
+        seal->SetOrderChanged(false);
+        if (!changed)
+            continue;
+
+        bool hasorder = seal->m_ctrl ? seal->m_ctrl->HasOrder() : false;
+
+        if (!hasorder)
+            continue;
+
+        const char *order = func_005743C0(seal->m_ctrl->GetOrder());
+
+        if (!order)
+            continue;
+        m_order[i].Load(0.9f * 0.95f, order, m_myfont, 545.0f, RowY(i), true);
+        m_order[i].On();
+        m_order[i].SetTrans(80.0f);
+    }
 }
