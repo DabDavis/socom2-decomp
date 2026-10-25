@@ -4494,14 +4494,14 @@
 0x002D4F70 0x60 func_002D4F70  # OVL1
 0x002D4FD0 0xC func_002D4FD0  # OVL1
 0x002D4FE0 0x74 __dt__6CStackFv  # OVL1; CStack's destructor, out of line (BuildMatrixPalette's static registers it): pops what an owner pushed
-0x002D5060 0x3BC func_002D5060  # OVL1
+0x002D5060 0x3BC ReadClutter__Q23zdb5CGridFPCcPCc  # OVL1; s1:order by hand (the world lane: grid_main.cpp's first function, as SOCOM 1's ReadClutter is: DeleteClutter, a new CClutterAnimManager, the clutter ZAR's path built with strcat, each CClutter newed, read and handed to AddClutter; Read follows it as there)
 0x002D5420 0xC4 Read__Q23zdb5CGridFRQ23zdb9CSaveLoad  # OVL1; s1:calls
 0x002D54F0 0x28 GetCell__Q23zdb9CGridAtomFv  # OVL1; s1:align
 0x002D5520 0xA0 DeleteClutter__Q23zdb5CGridFv  # OVL1; s1:align
-0x002D55C0 0x2E8 func_002D55C0  # OVL1
-0x002D58B0 0x2A0 func_002D58B0  # OVL1
+0x002D55C0 0x2E8 AddClutter__Q23zdb5CGridFPQ23zdb8CClutter  # OVL1; s1:order by hand (the world lane: SOCOM 1's AddClutter after DeleteClutter: ReadClutter hands it each clutter; it walks the cells the clutter's box covers and calls each cell's AddClutter, 0x2D7B00)
+0x002D58B0 0x2A0 Destroy__Q23zdb5CGridFv  # OVL1; s1:order by hand (the world lane: SOCOM 1's Destroy after AddClutter: Segregate_CCells, each cell taken out of the grid (gridRemoveNodeFromGrids inlined) and FreeAtom'd, the others deleted through the world, then m_Atoms and m_AtomBuf freed; ~CGrid calls it first as SOCOM 1's does)
 0x002D5B50 0x130 func_002D5B50  # OVL1
-0x002D5C80 0x380 func_002D5C80  # OVL1
+0x002D5C80 0x380 Create__Q23zdb5CGridFPQ23zdb6CWorldPCQ23zdb15tag_GRID_PARAMS  # OVL1; s1:order by hand (the world lane: SOCOM 1's Create before Update, same stores: the world, the posts, the origin from the world's box, the extents, 1/m_CellDim, the atom buffer, a 0x120-byte CCell per square named and added to the world; Read calls it with the world and the read parameters as SOCOM 1's does)
 0x002D6000 0xD8 Update__Q23zdb5CGridFPQ23zdb5CNode  # OVL1; s1:align
 0x002D60E0 0xBC Remove__Q23zdb5CGridFPQ23zdb5CNode  # OVL1; s1:calls
 0x002D61A0 0x8 Insert__Q23zdb5CGridFPQ23zdb5CNode  # OVL1; s1:exact by hand (SOCOM 1's Insert, the same 8 bytes: j to gridAddNodeToGrids; CWorld::AddChild calls it where SOCOM 1's does)
@@ -4511,14 +4511,14 @@
 0x002D6430 0x1D8 gridGetNextIndex__Q23zdb5CGridFv  # OVL1; s1:align
 0x002D6610 0x30 StartTraversalOrdered__Q23zdb5CGridFv  # OVL1; s1:align
 0x002D6640 0x6C StartTraversal__Q23zdb5CGridFv  # OVL1; s1:align
-0x002D66B0 0x148 func_002D66B0  # OVL1
+0x002D66B0 0x148 gridCellOut__Q23zdb5CGridFii  # OVL1; s1:order by hand (the world lane: SOCOM 1's gridCellOut after StartTraversal, the same tests of the cell's centre against each edge; GetNextAtom calls it with (m_xx, m_zz) as SOCOM 1's does)
 0x002D6800 0x11C SetTraversalBoundary__Q23zdb5CGridFPC6CPnt3Dib  # OVL1; s1:callee by hand (GenerateLightList calls it with (&m_grid, the two corners, 2, false) where SOCOM 1's calls SetTraversalBoundary; after StartTraversal and 0x2D66B0 as SOCOM 1's after gridCellOut)
 0x002D6920 0x18C func_002D6920  # OVL1
 0x002D6AB0 0x184 func_002D6AB0  # OVL1
-0x002D6C40 0x1FC func_002D6C40  # OVL1
-0x002D6E40 0x1E8 func_002D6E40  # OVL1
+0x002D6C40 0x1FC SetTraversalExtents__Q23zdb5CGridFPC6CPnt3Dib  # OVL1; s1:order by hand (the world lane: SetTraversalBoundary calls it first with its own three arguments, as SOCOM 1's SetTraversalBoundary calls SetTraversalExtents)
+0x002D6E40 0x1E8 buildOrderedCellAtomList__Q23zdb5CGridFPC6CPnt3D  # OVL1; s1:order by hand (the world lane: SOCOM 1's buildOrderedCellAtomList before addOrderedCellAtom, the same body: the counts cleared, the view cell from the point (0.0001 bias) clamped into the grid, addOrderedCellAtom(view, true), then each ring's cells' four neighbours added until a ring adds none or 1600 are listed)
 0x002D7030 0x188 addOrderedCellAtom__Q23zdb5CGridFiib  # OVL1; s1:align
-0x002D71C0 0x1B0 func_002D71C0  # OVL1
+0x002D71C0 0x1B0 GetNextCell__Q23zdb5CGridFv  # OVL1; s1:order by hand (the world lane: SOCOM 1's GetNextCell after addOrderedCellAtom, the same walk: xCurCell stepped, past xMaxCell back to xMinCell and the next z, the cell at (xCurCell, zCurCell) given back through gridGetAtomBasePtr and GetCell, none past zMaxCell)
 0x002D7370 0x150 SetCellBoundary__Q23zdb5CGridF6CPnt3D6CPnt3D  # OVL1; s1:align
 0x002D74C0 0xB4 gridRemoveNodeFromGrids__Q23zdb5CGridFPQ23zdb5CNode  # OVL1; s1:align
 0x002D7580 0x314 gridAddNodeToGrids__Q23zdb5CGridFPQ23zdb5CNode  # OVL1; s1:callee by hand (Insert's tail call, as SOCOM 1's Insert's; between gridRemoveNodeFromGrids and gridGetAtomBasePtr as there)
@@ -4528,13 +4528,13 @@
 0x002D79D0 0x8 Copy__Q23zdb5CCellCFPQ23zdb5CNode  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002D79E0 0x8 IsCell__Q23zdb5CCellFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002D79F0 0xB8 GetMidPoint__Q23zdb5CCellFP6CPnt3D  # OVL1; s1:align
-0x002D7AB0 0x40 func_002D7AB0  # OVL1
-0x002D7AF0 0xC func_002D7AF0  # OVL1
-0x002D7B00 0x84 func_002D7B00  # OVL1
-0x002D7B90 0x30 func_002D7B90  # OVL1
+0x002D7AB0 0x40 RenderClutter__Q23zdb5CCellFPQ23zdb5CCell  # OVL1; s1:order by hand (the world lane: SOCOM 1's RenderClutter, first of the three clutter stubs after GetMidPoint: each of SOCOM II's two lists' Render (0x2D97B0) called with the argument)
+0x002D7AF0 0xC SetClutterFlag__Q23zdb5CCellFb  # OVL1; new in SOCOM II, the name ours (the world lane: between RenderClutter and AddClutter, it stores its bool argument into both clutter lists' byte at 0x19)
+0x002D7B00 0x84 AddClutter__Q23zdb5CCellFPQ23zdb8CClutter  # OVL1; s1:order by hand (the world lane: CCell::AddClutter, SOCOM 1's empty stub filled in: the clutter's node gets its DI set up and goes into the second list (0xE8) when it has DI, else the first (0xCC); CGrid::AddClutter calls it per cell)
+0x002D7B90 0x30 DeleteClutter__Q23zdb5CCellFv  # OVL1; s1:order by hand (the world lane: SOCOM 1's DeleteClutter, last of the three stubs: each list's Free (0x2D96B0); CGrid::DeleteClutter calls it per cell, ~CCell inlines it)
 0x002D7BC0 0x180 __dt__Q23zdb5CCellFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002D7D40 0x30 UpdateBBox__Q23zdb5CCellFb  # OVL1; s1:vtable by hand (slot 13 of CCell's table, CNode's UpdateBBox overridden; same shape as CNode's at 0x318200)
-0x002D7D70 0x12C func_002D7D70  # OVL1
+0x002D7D70 0x12C __ct__Q23zdb5CCellFPC6CPnt3Df  # OVL1; s1:order by hand (the world lane: SOCOM 1's CCell(const CPnt3D *, float) after UpdateBBox, the same body: CNode's constructor, the vtable 0x406600, the lists, the box from the point and the size less 0.001, type 10; CGrid::Create news 0x120 bytes and calls it)
 0x002D7EA0 0x84 UnRegisterEffector__Q23zdb19CClutterAnimManagerFPCv  # OVL1; s1:align
 0x002D7F30 0xD8 RegisterEffector__Q23zdb19CClutterAnimManagerFPCvPC6CPnt3DfPC6CPnt3D  # OVL1; s1:align
 0x002D8010 0x2C Tick__Q23zdb19CClutterAnimManagerFfPv  # OVL1; s1:align
@@ -4543,17 +4543,17 @@
 0x002D8770 0x148 func_002D8770  # OVL1
 0x002D88C0 0x8C ClearEffectors__Q23zdb19CClutterAnimManagerFv  # OVL1; s1:align
 0x002D8950 0x114 ClearAnimations__Q23zdb19CClutterAnimManagerFb  # OVL1; s1:align
-0x002D8A70 0x14C func_002D8A70  # OVL1
+0x002D8A70 0x14C __dt__Q23zdb19CClutterAnimManagerFv  # OVL1; s1:order by hand (the world lane: SOCOM 1's ~CClutterAnimManager after ClearAnimations: the clutter task removed from the scheduler, ClearAnimations(false), the effector list's elements deleted and the lists cleared; ~CGrid deletes m_ClutterAnimManager through it as SOCOM 1's does)
 0x002D8BC0 0x9C __ct__Q23zdb19CClutterAnimManagerFv  # OVL1; s1:calls
 0x002D8C60 0x374 TickForce__Q23zdb12CClutterAnimFP6CPnt3DP6CPnt3Dff  # OVL1; s1:align
 0x002D8FE0 0x3B8 Render__Q23zdb8CClutterFP6CPnt3D  # OVL1; s1:align
-0x002D93A0 0xE4 func_002D93A0  # OVL1
+0x002D93A0 0xE4 GetMatrix__Q23zdb8CClutterFv  # OVL1; s1:order by hand (the world lane: SOCOM 1's CClutter::GetMatrix before GetTranslate as there; CGrid::AddClutter calls it)
 0x002D9490 0x20 GetTranslate__Q23zdb8CClutterFv  # OVL1; s1:exact
 0x002D94B0 0xB0 Read__Q23zdb8CClutterFPQ23zar4CZAR  # OVL1; s1:calls
-0x002D9560 0x14C func_002D9560  # OVL1
-0x002D96B0 0xF8 func_002D96B0  # OVL1
-0x002D97B0 0x2E4 func_002D97B0  # OVL1
-0x002D9AA0 0x220 func_002D9AA0  # OVL1
+0x002D9560 0x14C __ct__Q23zdb8CClutterFPQ23zdb5CNode  # OVL1; s1:order by hand (the world lane: SOCOM 1's CClutter(CNode *) after Read, the same body -- the unit matrix, the flag bits cleared, 0x5C set to -1, the node stored at 0x64; ReadClutter news it with the clutter's model node)
+0x002D96B0 0xF8 Free__Q23zdb12CClutterListFv  # OVL1; s1:order by hand (the world lane: SOCOM 1's CClutterList::Free after the CClutter constructor: each clutter's reference count dropped, the clutter deleted at zero, the list emptied; CCell::DeleteClutter calls it on both lists)
+0x002D97B0 0x2E4 Render__Q23zdb12CClutterListFPQ23zdb5CCell  # OVL1; s1:order by hand (the world lane: SOCOM 1's CClutterList::Render after Free; CCell::RenderClutter calls it on both lists with its cell argument)
+0x002D9AA0 0x220 Add__Q23zdb12CClutterListFPQ23zdb8CClutter  # OVL1; s1:order by hand (the world lane: SOCOM 1's CClutterList::Add, the unit's last function before CInput's as there; CCell::AddClutter calls it with the clutter)
 0x002D9CC0 0x3C DeletePad__6CInputFUi  # OVL1; s1:align
 0x002D9D00 0xF8 CreatePad__6CInputFUi  # OVL1; s1:align
 0x002D9E00 0x34 Flush__6CInputFv  # OVL1; s1:align; s1:order by hand (the world lane: SOCOM 1's CInput::Flush after CreatePad -- each pad's Flush, SOCOM II's one pad with Flush(false); the s1:align name Uninit was one row early: Uninit is 0x2D9EA0, which deletes the keyboard and closes the pad IO as SOCOM 1's does)
@@ -4581,7 +4581,7 @@
 0x002DBCE0 0x2C ClosePadIO__6CInputFv  # OVL1; s1:order by hand (SOCOM 1's ClosePadIO after the CPad constructor: DeletePad(0), then libpad2's end and the module's)
 0x002DBD10 0x30 OpenPadIO__6CInputFv  # OVL1; s1:order by hand (SOCOM 1's OpenPadIO after ClosePadIO: the modules started, libpad2 initialised, CreatePad(0), 0 given back)
 0x002DBD40 0x44 KeyboardAttached__Fv  # OVL1; new in SOCOM II, the name ours (the world lane): the USB keyboard library's information read into a zeroed 136-byte block and synchronised, its byte at 8 tested; 0x38D8F0 calls it
-0x002DBD90 0x158 func_002DBD90  # OVL1
+0x002DBD90 0x158 GetKeyReadThisFrame__FP8KeyInput  # OVL1; s1:order by hand (the world lane: SOCOM 1's GetKeyReadThisFrame(KeyInput *) before InitKeyreadStuff as there: the KeyInput cleared (32 bytes), the keyboard library read again when its last read is used up, the next key's code and modifier flags stored, the code given back)
 0x002DBEF0 0x8 UninitKeyreadStuff__Fv  # OVL1; new in SOCOM II, the name ours (after SOCOM 1's InitKeyreadStuff): a tail call into the USB keyboard library's teardown (0x1BE898); CInput::Uninit and the reboot handler's close path call it
 0x002DBF00 0x40 InitKeyreadStuff__Fv  # OVL1; s1:order by hand (SOCOM 1's InitKeyreadStuff before CKeyboard::Tick: the USB keyboard library set up; CInput::Init and the reboot handler call it)
 0x002DBF40 0x8 Tick__9CKeyboardFf  # OVL1; s1:order by hand (SOCOM 1's CKeyboard::Tick, empty in both, before ~CKeyboard; CInput::Tick calls it)
@@ -5577,7 +5577,7 @@
 0x0031D260 0x330 AddTextureAssetCharacter__Q23zdb6CWorldFPQ23zdb9CAssetLibPQ23zdb5CNode  # OVL1; s1:order by hand (SOCOM 1's library overload after AddTextureAssetCharacterAll: news a 0x18-byte CTextureAssetCharacters, pushes the node onto a matching set or a new one; both wrappers after it call it with FindLib's result)
 0x0031D590 0x48 AddTextureAssetCharacter__Q23zdb6CWorldFPcPQ23zdb5CNode  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:order by hand (SOCOM 1's name overload at the same place, the same 0x48: FindLib(name) then the library overload)
 0x0031D5E0 0x48 AddTextureAssetCharacter__Q23zdb6CWorldFQ23zdb12_RenderPhasePQ23zdb5CNode  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:order by hand (SOCOM 1's phase overload at the same place, the same 0x48: FindLib(phase) then the library overload)
-0x0031D630 0xB8 func_0031D630  # OVL1
+0x0031D630 0xB8 TexListHolds__3zdbFPQ23zdb8CTexListPQ23zdb8CTexList  # OVL1; new in SOCOM II, the name ours (the world lane): whether the first texture list is non-empty, no shorter than the second and holds a handle for each of its textures (GetHandle(CTexture *) per element); AddTextureAssetCharacter(lib) calls it
 0x0031D6F0 0x12C DismemberWorldModel__Q23zdb6CWorldFv  # OVL1; s1:align
 0x0031D820 0x114 Segregate_CCells__Q23zdb6CWorldFPQ23zdb5CNodeRQ23zdb11CNodeVectorRQ23zdb11CNodeVector  # OVL1; s1:align
 0x0031D940 0x34C func_0031D940  # OVL1

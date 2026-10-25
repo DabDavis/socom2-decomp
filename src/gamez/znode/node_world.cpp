@@ -681,6 +681,21 @@ bool CWorld::DismemberWorldModel()
     return true;
 }
 
+/* whether a texture list holds every texture of another, and is no shorter (new in SOCOM II:
+ * AddTextureAssetCharacter asks it of each set's list; the name is ours). Pinned: its one caller
+ * calls it out of line */
+#pragma auto_inline off
+bool TexListHolds(CTexList *have, CTexList *want)
+{
+    bool ok = have->size() != 0 && want->size() <= have->size();
+
+    for (CTexList::iterator it = want->begin(); it != want->end() && ok; ++it)
+        if (!have->GetHandle((*it)->m_texture))
+            ok = false;
+    return ok;
+}
+#pragma auto_inline reset
+
 /* a textured character's texture added for every character (SOCOM 1's) */
 void CWorld::AddTextureAssetCharacterAll(CTexHandle *tex)
 {

@@ -13,8 +13,6 @@ namespace zdb {
 
 class CTexPalette;
 
-class CDynTexList;
-
 /* the libraries loaded, a list of them (SOCOM 1's DWARF: CAssetList : list, the model last found
  * cached at 0xc). node_assetlib.cpp's */
 class CAssetList : public std::list<CAssetLib *> {
@@ -194,14 +192,7 @@ public:
     static CMeshDecalPool m_tempPool;
 };
 
-/* a texture buffer's dynamic textures (SOCOM 1's DWARF: CDynTexList, two vectors) */
-class CDynTexList {
-public:
-    void Add(CTexHandle *tex, bool b);
-
-    CTexList m_tex_list;   // 0x0
-    CTexPalList m_pal_list;   // 0xc
-};   // 0x18 bytes
+/* CDynTexList is znode.h's (a cell holds one) */
 
 /* a GS texture buffer: only what the world touches (its dynamic list at 0x28) */
 class CGSTexBuffer {

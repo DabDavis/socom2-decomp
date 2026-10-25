@@ -586,6 +586,8 @@ public:
     CTexHandle *Append(CTexture *tex, bool b);
     /* the handle of a texture of that name, or none */
     CTexHandle *GetHandle(const char *name);
+    /* the handle of that texture, or none (SOCOM 1's, right after the name overload) */
+    CTexHandle *GetHandle(CTexture *tex);
 };   // 0xc bytes
 
 /* a library's palettes (SOCOM 1's DWARF: CTexPalList : vector) */
@@ -665,36 +667,163 @@ public:
     }
 };
 
-/* a rectangle in x/z (SOCOM 1's DWARF) */
+}
+
+/* a rectangle in x/z (SOCOM 1's DWARF; a global class, as SOCOM 1's __ct__6CFRectFv says). Its
+ * constructor zeroes it, out of line (0x306650, the same 0x18 bytes as SOCOM 1's) */
 class CFRect {
 public:
+    CFRect();
+
     float top;   // 0x0
     float bottom;   // 0x4
     float left;   // 0x8
     float right;   // 0xc
 };   // 0x10 bytes
 
-/* the world's grid of cells: SOCOM 1's DWARF has CGrid : tag_GRID_PARAMS, 0x651C bytes, its
- * extents at 0x14. SOCOM II's extents sit 0x14 later in CWorld and its landmark list 0xC later,
- * so 8 bytes went from the grid or from what follows it; only the head is placed yet */
-class CGrid {
+namespace zdb {
+
+/* a count in two dimensions (SOCOM 1's DWARF) */
+class tag_SIZE {
+public:
+    int cx;   // 0x0
+    int cy;   // 0x4
+};   // 8 bytes
+
+/* the grid's parameters, as the world's file stores them (SOCOM 1's DWARF) */
+class tag_GRID_PARAMS {
+public:
+    int m_AtomCnt;   // 0x0
+    int m_posts;   // 0x4
+    float m_CellDim;   // 0x8
+    tag_SIZE m_CellCount;   // 0xc
+};   // 0x14 bytes
+
+/* a cell in the ring-ordered walk (SOCOM 1's DWARF) */
+class GRIDCELLATOM {
+public:
+    CGridAtom *cellAtom;   // 0x0
+    int ring;   // 0x4
+    int x;   // 0x8
+    int z;   // 0xc
+};   // 0x10 bytes
+
+/* the cells nearest a point first, ring by ring (SOCOM 1's DWARF); the counts and the view cell
+ * cleared by its constructor (CGrid's, both builds) */
+class COrderedCell {
+public:
+    COrderedCell()
+    {
+        m_gridCellAtomCnt = 0;
+        m_rt_gridCellAtomCnt = 0;
+        m_viewX = 0;
+        m_viewZ = 0;
+    }
+
+    int m_gridCellAtomCnt;   // 0x0
+    int m_rt_gridCellAtomCnt;   // 0x4
+    int m_viewX;   // 0x8
+    int m_viewZ;   // 0xc
+    GRIDCELLATOM m_Atoms[1600];   // 0x10
+};   // 0x6410 bytes
+
+class CWorld;
+class CClutter;
+class CClutterAnimManager;
+class CSaveLoad;
+
+/* the world's grid of cells (SOCOM 1's DWARF: CGrid : tag_GRID_PARAMS, 0x651C bytes). SOCOM II's
+ * is 8 bytes shorter: its spare atoms are a free list threaded through their Next pointers (Create
+ * links m_AtomBuf's atoms, gridRemoveNodeFromGrids pushes an atom back on m_FreeAtoms, Destroy
+ * frees only m_Atoms and m_AtomBuf), so SOCOM 1's free-pointer array's count and index
+ * (m_AtomFreeCnt and m_AtomFreePtr, 0x3c and 0x40) are gone, and every member from m_InvCellDim on
+ * sits 8 bytes earlier: StartTraversal's m_RowCellIn at 0x4d (SOCOM 1: 0x55), Create's
+ * m_InvCellDim, m_GridCellTol, m_ClutterTol and m_TickNum at 0x3c-0x48 (0x44-0x50), m_origin at
+ * 0xf4 (0xfc), the ordered cells at 0x104 (0x10c) -- 0x6514 bytes, CWorld's landmarks right after
+ * it at 0x6b98 */
+class CGrid : public tag_GRID_PARAMS {
 public:
     CGrid();
+    ~CGrid();
+    /* the grid read from the world's file and built (SOCOM 1's) */
+    bool Read(CSaveLoad &io);
+    bool ReadClutter(const char *path, const char *name);
+    /* the cells' clutter let go of (SOCOM 1's) */
+    void DeleteClutter();
+    bool AddClutter(CClutter *clutter);
+    /* the cells taken out of the world and the atoms freed (SOCOM 1's) */
+    void Destroy();
+    /* the cells made, one per grid square, each a child of the world (SOCOM 1's) */
+    bool Create(CWorld *world, const tag_GRID_PARAMS *params);
     /* a node's place in the grid brought up to date (SOCOM 1's) */
     void Update(CNode *node);
     /* a walk over the cells a polygon in x/z covers: the boundary set, the first atom and the
      * next (SOCOM 1's) */
-    void SetTraversalBoundary(const CPnt3D *pnts, int n, bool b);
+    /* the new walk's tick given back: both paths end on ++m_TickNum, its value left in v0 (a void
+     * function allocates the loop's temporaries from v1) */
+    int SetTraversalBoundary(const CPnt3D *pnts, int n, bool b);
     CGridAtom *StartTraversal();
     CGridAtom *GetNextAtom();
+    /* the same walk in ring order from a view point (SOCOM 1's) */
+    CGridAtom *StartTraversalOrdered();
+    CGridAtom *GetNextAtomOrdered();
     /* a node put in the grid, and taken out (SOCOM 1's; Insert tail-calls gridAddNodeToGrids) */
     void Insert(CNode *node);
     void Remove(CNode *node);
+    /* a point's cell, held inside the grid (SOCOM 1's) */
+    void gridGetGridXandZIndex(int *ix, int *iz, float x, float z);
+    /* the walk stepped to its next cell, false at its end (SOCOM 1's) */
+    bool gridGetNextIndex();
+    /* whether a cell lies outside the boundary (SOCOM 1's) */
+    bool gridCellOut(int x, int z);
+    void SetTraversalExtents(const CPnt3D *pnts, int n, bool b);
+    void addOrderedCellAtom(int x, int z, bool force);
+    void buildOrderedCellAtomList(const CPnt3D *view);
+    /* the cells of a box: its first, then each next (SOCOM 1's) */
+    CCell *SetCellBoundary(CPnt3D min, CPnt3D max);
+    CCell *GetNextCell();
+    void gridRemoveNodeFromGrids(CNode *node);
+    void gridAddNodeToGrids(CNode *node);
+    /* a cell's atom list head, the cell held inside the grid (SOCOM 1's) */
+    CGridAtom **gridGetAtomBasePtr(int x, int z);
+    /* the world's queries, cell by cell (SOCOM 1's) */
+    void InitDescendantsVisuals();
+    void InitDescendantsDI();
 
-    unsigned char _0[0x14];   // tag_GRID_PARAMS
+    /* the atoms a grid makes (SOCOM 1's static; Read takes the parameters' count from it) */
+    static int N_ATOMS;
+
     CFRect m_extents;   // 0x14
-    unsigned char _24[0x6514 - 0x24];
-};
+    CWorld *m_world;   // 0x24
+    CClutterAnimManager *m_ClutterAnimManager;   // 0x28
+    unsigned char m_ClutterCreated;   // 0x2c
+    CGridAtom **m_Atoms;   // 0x30: each cell's atom list
+    CGridAtom *m_AtomBuf;   // 0x34
+    CGridAtom *m_FreeAtoms;   // 0x38: SOCOM II's free list (SOCOM 1's an array of pointers)
+    float m_InvCellDim;   // 0x3c
+    float m_GridCellTol;   // 0x40
+    float m_ClutterTol;   // 0x44
+    int m_TickNum;   // 0x48
+    unsigned char m_LineWalk;   // 0x4c
+    unsigned char m_RowCellIn;   // 0x4d
+    unsigned char m_CurCellOut;   // 0x4e
+    CPnt3D m_Pnts[5];   // 0x50
+    CPnt3D m_Edge[5];   // 0x8c
+    int m_PntCnt;   // 0xc8
+    int m_ix;   // 0xcc
+    int m_ixb;   // 0xd0
+    int m_xx;   // 0xd4
+    int m_iz;   // 0xd8
+    int m_izb;   // 0xdc
+    int m_zz;   // 0xe0
+    int m_iz_start;   // 0xe4
+    int m_iz_next_row;   // 0xe8
+    int m_iz_dir;   // 0xec
+    CGridAtom *m_NextAtom;   // 0xf0
+    CPnt3D m_origin;   // 0xf4
+    int m_ring;   // 0x100
+    COrderedCell m_orderedCells;   // 0x104
+};   // 0x6514 bytes
 
 }
 
@@ -787,10 +916,104 @@ public:
 
 /* a cell of the world's grid: SOCOM 1's DWARF has its lights, its clutter list (0xcc) and its
  * dynamic textures (0xe0) after the node; only the lights placed yet */
+class CCell;
+
+/* a prop scattered on the cells (SOCOM 1's grid_clutter.cpp class; 0x70 bytes, the size ReadClutter
+ * news). Its placement is a matrix (the constructor makes it the unit one), or -- with m_quat set --
+ * a rotation, a translation in the third row and a scale (GetMatrix builds the matrix from them,
+ * GetTranslate picks the row); the names past SOCOM 1's are ours */
+class CClutter {
+public:
+    CClutter(CNode *node);
+    CMatrix *GetMatrix();
+    CPnt3D *GetTranslate();
+
+    CMatrix m_matrix;   // 0x0
+    unsigned char _40[0x4c - 0x40];
+    unsigned int m_bit0 : 1;   // 0x4c
+    unsigned int m_quat : 1;   // 0x4c
+    unsigned int m_flags : 30;   // 0x4c (more bits the constructor clears, a count at 14)
+    unsigned char _50[0x64 - 0x50];
+    CNode *m_node;   // 0x64
+    unsigned char _68[0x70 - 0x68];
+};   // 0x70 bytes
+
+class CClutterAnim;
+/* a body pushing the clutter about (SOCOM 1's list element; the name ours) */
+struct CClutterEffector;
+
+/* the clutter's animation: the props pushed about by effectors (SOCOM 1's grid_clutter.cpp class,
+ * 0x70 bytes, its DWARF) */
+class CClutterAnimManager {
+public:
+    CClutterAnimManager();
+    ~CClutterAnimManager();
+    /* every effector deleted, the list emptied (SOCOM 1's) */
+    void ClearEffectors();
+
+    unsigned char m_CellAnimate;   // 0x0
+    CMatrix m_matrix;   // 0x10
+    std::list<CClutterAnim *> m_ClutterAnims;   // 0x50
+    std::list<CClutterEffector *> m_ClutterEffectors;   // 0x5c
+};   // 0x70 bytes
+
+/* a cell's clutter: the props scattered on it (SOCOM 1's DWARF: CClutterList : vector, 0x14
+ * bytes). SOCOM II's is 0x1C bytes, a cell holds two (CCell::AddClutter puts a prop with
+ * collision in the second), and their constructor clears the three members past SOCOM 1's (the
+ * names ours) */
+class CClutterList : public std::vector<CClutter *> {
+public:
+    CClutterList()
+    {
+        m_socom2_14 = 0;
+        m_socom2_19 = 0;
+        m_socom2_18 = 0;
+    }
+    /* every prop let go of, the list emptied (SOCOM 1's) */
+    void Free();
+    void Render(CCell *cell);
+    bool Add(CClutter *clutter);
+
+    unsigned char m_ContainsRepelClutter;   // 0xc
+    float m_max_farFadeSq;   // 0x10
+    int m_socom2_14;   // 0x14 (Free clears it)
+    unsigned char m_socom2_18;   // 0x18
+    unsigned char m_socom2_19;   // 0x19 (CCell's setter at 0x2D7AF0 writes it in both lists)
+};   // 0x1c bytes
+
+/* a texture buffer's dynamic textures (SOCOM 1's DWARF: CDynTexList, two vectors) */
+class CDynTexList {
+public:
+    void Add(CTexHandle *tex, bool b);
+
+    CTexList m_tex_list;   // 0x0
+    CTexPalList m_pal_list;   // 0xc
+};   // 0x18 bytes
+
+/* a cell of the world's grid: SOCOM 1's DWARF has its lights, its clutter list (0xcc) and its
+ * dynamic textures (0xe0) after the node, 0x100 bytes; SOCOM II's has two clutter lists, so its
+ * dynamic textures sit at 0x104 -- 0x120 bytes, the size CGrid::Create news. Its own virtual,
+ * new after CNode's (__vt__Q23zdb5CCell, slot 0x44), is SOCOM 1's Copy */
 class CCell : public CNode {
 public:
+    CCell(const CPnt3D *pos, float size);
+    virtual ~CCell();
+    virtual bool IsCell();
+    virtual CBBox *UpdateBBox(bool up);
+    virtual CNode *Copy(CNode *to) const;
+    /* the cell's centre (SOCOM 1's) */
+    void GetMidPoint(CPnt3D *out);
+    void RenderClutter(CCell *cell);
+    /* both lists' flag at 0x19 set (new in SOCOM II; the name ours) */
+    void SetClutterFlag(bool on);
+    bool AddClutter(CClutter *clutter);
+    void DeleteClutter();
+
     CLightList m_lightList;   // 0xc0 (GenerateLightList lists each light in the cells it reaches)
-};
+    CClutterList m_clutterList;   // 0xcc
+    CClutterList m_clutterListDI;   // 0xe8: the props with collision (the name ours)
+    CDynTexList m_dyntexlist;   // 0x104
+};   // 0x120 bytes
 
 /* a node's link into the grid's cells (SOCOM 1's DWARF) */
 class CGridAtom {
