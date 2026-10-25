@@ -4,15 +4,16 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK Uninit__Q38Particle6Source4ListFv();        /* extern */
 M2C_UNK __dl__FPv(s32);                             /* extern */
 M2C_UNK func_001EA250(s32, M2C_UNK);                /* extern */
-M2C_UNK func_0032B180();                            /* extern */
 
 s32 func_0032BFD0(s32 arg0, s64 arg1) {
     if (arg0 != 0) {
-        func_0032B180();
+        Uninit__Q38Particle6Source4ListFv();
         if (arg0 != 0) {
             func_001EA250(arg0, 0);
         }

@@ -22,20 +22,7 @@ struct ANIMSET_PARAMS {
     float m_ladder_updn;   // 0x30
 };
 
-/* a piece of gear a character wears (SOCOM 1's DWARF: CCharacterGear, 0x34 bytes) -- only where it
- * sits on its part */
-class CCharacterGear {
-public:
-    int m_ref_count;   // 0x0
-    int m_partid;   // 0x4
-    unsigned int m_gearid;   // 0x8
-    char *m_name;   // 0xc
-    char *m_model_file;   // 0x10
-    char *m_model_name;   // 0x14
-    void *m_model;   // 0x18
-    CPnt3D m_offset;   // 0x1c
-    CPnt3D m_rotation;   // 0x28
-};
+/* a piece of gear a character wears, CCharacterGear, is zseal.h's */
 
 /* a body part made a gear's: placed and turned as the gear says, oriented on its node, and taken
  * off the body's table of parts (OVL2 0x58B040; SOCOM 1's with the null tests, and CBody::SetBodyPart

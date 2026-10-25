@@ -313,6 +313,23 @@ void __deque_imp<T, Allocator>::push_back(const T &x)
     ++this->size_;
 }
 
+/* OPEN (the MSL headers' round 3, not modelled): the copy constructor, as the rdr editor's stack
+ * uses it (CRdrEditor() 0x333AE0 builds a default deque, 0x3340F0, copies it into its std::stack
+ * member and destroys the temporary). The image's chain, every level an out-of-line call:
+ *   - deque<PCv>'s copy 0x333B30: 0x3340E0(x) (an accessor returning x, `jr ra; move v0,a0`),
+ *     __deque_buf's constructor from it 0x333D90, the allocator base 0x2CEE30 at +0x18, x's begin
+ *     and end as 24-byte iterators on the stack (0x333D30, 0x333CD0, both through 0x334AA0) and the
+ *     range init 0x333BB0 (the tag by value, a byte off the stack) -> 0x334440, a 0x3D4-byte append
+ *     loop (the buffer's reserve/resize/push_back, the block allocated inline);
+ *   - 0x333D90: a rebound allocator temporary (0x3340D0, empty), an empty cdeque<PPCv> built on the
+ *     stack (0x3340B0: four words zeroed), copied into buf_ through 0x333E00 -> cdeque<PCv>'s copy
+ *     0x333E40, the temporary destroyed with -1 (0x2CEE90), start_ and size_ zeroed after;
+ *   - cdeque<PCv>'s copy 0x333E40: 0x285CD0(x) and 0x2E0D20 (copies linked from earlier units:
+ *     an accessor and __cdeque_buf's constructor from it), the allocator at +0x10, x's begin and
+ *     end (0x334030, 0x333F90) and the range init 0x333EC0 -> 0x3341C0 (0x27C: the storage
+ *     allocated, 0x285CE0 per element).
+ * The accessors and constructors from an allocator are all out-of-line copies, so it needs MSL
+ * 3.0's exact layering (allocator accessors, compressed pairs) to match; CRdrEditor() waits. */
 template <class T, class Allocator = allocator<T> >
 class deque;
 

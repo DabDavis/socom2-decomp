@@ -1,0 +1,32 @@
+/* <utility>: std::pair, as MSL's (a reconstruction). The map's value_type is pair<const Key, T>;
+ * its operator[] builds `value_type(key, T())` on the stack and hands it to the tree's
+ * insert_node_at, which copies it into the new node in place. */
+
+#ifndef _MSL_UTILITY_PAIR
+#define _MSL_UTILITY_PAIR
+
+namespace std {
+
+template <class T1, class T2>
+struct pair {
+    typedef T1 first_type;
+    typedef T2 second_type;
+
+    pair() : first(T1()), second(T2()) {}
+    pair(const T1 &x, const T2 &y) : first(x), second(y) {}
+    template <class U, class V>
+    pair(const pair<U, V> &p) : first(p.first), second(p.second) {}
+
+    T1 first;
+    T2 second;
+};
+
+template <class T1, class T2>
+inline pair<T1, T2> make_pair(const T1 &x, const T2 &y)
+{
+    return pair<T1, T2>(x, y);
+}
+
+}
+
+#endif

@@ -299,6 +299,10 @@ public:
 
     /* every type made, by name (SOCOM 1's; OVL1 bss in SOCOM II, 0x44CD48) */
     static CCharTypeVec m_char_list;
+    /* every gear made (SOCOM 1's m_gear_list, a list 0x20 after m_char_list; SOCOM II's is a
+     * vector of pointers, OVL1 bss 0x44CD68, the same 0x20 on: CZSealBody::FindGear walks its data
+     * and size) -- added by the SEAL lane */
+    static std::vector<class CCharacterGear *> m_gear_list;
 };
 
 /* the types (SOCOM 1's DWARF: a vector of pointers and nothing more) */

@@ -406,7 +406,7 @@ class SymbolTable:
             return a
         if not hasattr(self, "_copies"):
             self._copies = {}
-            for s in self.symbols:
+            for s in self.symbols + self.data:     # data rows too: an RTTI's overlay copy
                 m = self._OVL_COPY.search(s.note or "")
                 if m:
                     self._copies[(self.overlay_of(s.addr), m.group(1))] = s.addr
