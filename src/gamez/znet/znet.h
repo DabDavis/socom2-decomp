@@ -51,6 +51,7 @@ public:
     };   // 0x18
 
     int zNetLookupHost(const char *host, char *ip, int len);
+    int zNetGetMyGameClientIndex();
     int zNetUpdate();
     void zNetFlushMessages();
     void AddToFixList(TypeRTimeFixStruct *fix);
