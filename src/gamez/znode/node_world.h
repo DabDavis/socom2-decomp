@@ -145,6 +145,8 @@ public:
     void SetMask(unsigned int mask);
     IntersectStruct *GetHighestAltitude(const CPnt3D *p, float alt);
     IntersectStruct *GetNearestIntersect();
+    /* the hits' indices sorted by their squared distance from the tail (SOCOM 1's) */
+    void SortNearToFar(int *idx, float *dist);
     /* whether characters are hit, the old setting given back (inline: the queries save and
      * restore it -- read old, store new, store old; the name is ours) */
     bool SetIntersectCharacters(bool on)

@@ -4493,9 +4493,9 @@
 0x002D49C0 0x254 GetAltitude__Q23zdb5CGridFPQ23zdb11DiIntersect  # OVL1; s1:calls by hand (the zdb-world lane: CWorld::GetAltitude calls it where SOCOM 1's does)
 0x002D4C20 0xA0 GetHighestAltitude__Q23zdb11DiIntersectFPC6CPnt3Df  # OVL1; s1:calls by hand (the zdb-world lane: at SOCOM 1's call site in GetAltitude)
 0x002D4CC0 0x150 GetNearestIntersect__Q23zdb11DiIntersectFv  # OVL1; s1:calls by hand (the zdb-world lane: at SOCOM 1's call site in GetIntersect)
-0x002D4E10 0x158 func_002D4E10  # OVL1
-0x002D4F70 0x60 func_002D4F70  # OVL1
-0x002D4FD0 0xC func_002D4FD0  # OVL1
+0x002D4E10 0x158 SortNearToFar__Q23zdb11DiIntersectFPiPf  # OVL1; s1:order by hand (the zdb-world lane: SOCOM 1's SortNearToFar after GetNearestIntersect as there -- each hit's index and squared distance from the tail, then qsort with _cmpdi when two or more, the comparator's statics _cmpdi_rs/_cmpdi_di set around it)
+0x002D4F70 0x60 _cmpdi__FPCvPCv  # OVL1; s1:order by hand (the zdb-world lane: SOCOM 1's grid_di.cpp static comparator after SortNearToFar, which passes its address to qsort; compares _cmpdi_rs[*a] with _cmpdi_rs[*b])
+0x002D4FD0 0xC SetCameraCollideFlagRequired__3zdbFb  # OVL1; s1:order by hand (the zdb-world lane: SOCOM 1's, 8 bytes there, after _cmpdi as there: the byte cameraCollideFlagRequired, 0x44D758, stored)
 0x002D4FE0 0x74 __dt__6CStackFv  # OVL1; CStack's destructor, out of line (BuildMatrixPalette's static registers it): pops what an owner pushed
 0x002D5060 0x3BC ReadClutter__Q23zdb5CGridFPCcPCc  # OVL1; s1:order by hand (the world lane: grid_main.cpp's first function, as SOCOM 1's ReadClutter is: DeleteClutter, a new CClutterAnimManager, the clutter ZAR's path built with strcat, each CClutter newed, read and handed to AddClutter; Read follows it as there)
 0x002D5420 0xC4 Read__Q23zdb5CGridFRQ23zdb9CSaveLoad  # OVL1; s1:calls
