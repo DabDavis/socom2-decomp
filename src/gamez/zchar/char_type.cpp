@@ -70,7 +70,7 @@ bool DeleteTemporaryCharType(CCharacterType *t)
 }
 
 /* every temporary type deleted and dropped from the list (SOCOM 1's).
- * OPEN (0x84 against 0x80): CWorld::DeleteLightMap's and DeleteChild's include/vector question --
+ * OPEN (0x84 against 0x80; unchanged at -inline level=5): CWorld::DeleteLightMap's and DeleteChild's include/vector question --
  * the target builds end() once (44(sp)), passes it to remove_if and copies it for erase's last
  * after the call (to 28(sp)), where this builds it twice and copies before; an end iterator in a
  * local passed to both is 0x70 (no copy for erase at all), an explicit copy of it 0x88 */
@@ -358,9 +358,11 @@ const char *CCharacterType::match_name_to_chartype(CRdrFile *rdr, const char *gr
 }
 
 /* the type a character name is, out of chartype.rdr's three groups (SOCOM 1's); GetByNameMod
- * inlines whole in the target, the group names held in saved registers from the start.
- * OPEN (0x150 against 0x140): Create's include/vector height -- the inlined GetByNameMod's loop
- * test calls the pointer vector's base end() and __iter out of line here */
+ * inlines whole in the target, the group names held in saved registers from the start, each
+ * match tested on v0 with the copy in the delay slot (assignments inside the && conditions).
+ * OPEN, right size at -inline level=5 (was 0x150 against 0x140 at 4), 2 instructions: the first
+ * call's arguments -- the target sets "navyseals" in a1 before rdr in a0, this build the other
+ * way round; the string locals' and the result's declaration orders and a negated test tried */
 CCharacterType *CCharacterType::RdrFetch_CharacterType(const char *name)
 {
     CRdrFile *rdr = func_0032C040("chartype.rdr", 0);
@@ -369,11 +371,10 @@ CCharacterType *CCharacterType::RdrFetch_CharacterType(const char *name)
         return 0;
     const char *tangos = "terrorists";
     const char *escortees = "escortees";
-    const char *type = match_name_to_chartype(rdr, "navyseals", name);
+    const char *type;
 
-    if (!type)
-        type = match_name_to_chartype(rdr, tangos, name);
-    if (!type)
+    if ((type = match_name_to_chartype(rdr, "navyseals", name)) == 0 &&
+        (type = match_name_to_chartype(rdr, tangos, name)) == 0)
         type = match_name_to_chartype(rdr, escortees, name);
     CCharacterType *t = GetByNameMod(type);
 
