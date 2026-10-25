@@ -430,10 +430,110 @@ enum SEAL_TASK { TASK_0 = 0, TASK_LAST = 255 };
  * the two a reset ends) */
 enum AI_ROUTE { ROUTE_NONE = 0, ROUTE_1 = 1, ROUTE_2 = 2 };
 
-class CSealCtrlAi : public CSealCtrl {
+/* the destructors the AI's data runs by hand (its members' own, out of line: a route's (OVL2
+ * 0x573F20, the implicit destructor of a CAiPath plus a byte), CAiEvent's (0x573F80) and
+ * CAiEventQ's (0x573FF0) -- seal_ai.cpp's copies, after ~CSealCtrlAi -- and CAiPath's (0x5281B0,
+ * which ai.h does not declare: its implicit one would be inlined) */
+extern "C" {
+void *func_00573FF0(void *queue, int flags);
+void *func_00573F80(void *event, int flags);
+void *func_00573F20(void *route, int flags);
+void *func_005281B0(void *path, int flags);
+}
+
+/* a CAiPath's bytes (ai.h's class, 0xA8: built and destroyed by hand here, as ai.h does not
+ * declare SOCOM II's ~CAiPath) and the fields the controller reads: the plan's state, the search's
+ * status, the smoothed points' end (an empty vector's is 0) */
+struct CAiPathBytes {
+    unsigned char _0[0x80];
+    unsigned char m_state;   // 0x80: CAiPath::PATH_STATE (1-3 planning, 4 complete)
+    signed char m_status;   // 0x81: CAiPath::ASTAR_STATUS
+    unsigned char _82[0x9c - 0x82];
+    void *m_9c;   // 0x9c: the points vector's second word
+    unsigned char _a0[0xa8 - 0xa0];
+};
+
+/* a route: a path and its state (a byte enum: copied with lb, compared with lbu; the class and its
+ * names ours -- SEAL_AI_PARAMS's constructor builds the path and zeroes the byte, its implicit
+ * destructor's copy is OVL2 0x573F20) */
+struct CAiRouteBytes {
+    CAiPathBytes m_path;   // 0x0
+    AI_ROUTE m_state;   // 0xa8
+};
+
+/* the AI's data, CSealCtrlAi's second base (new in SOCOM II: CSealCtrlAi's RTTI, OVL2 0x65C6D0,
+ * lists SEAL_AI_PARAMS at 0x250 -- after CEntityCtrl and CSealCtrl at 0 -- and SEAL_AI_PARAMS's own,
+ * 0x65C660, no bases). It holds what SOCOM 1's CSealCtrlAi held, in the same order: its
+ * constructor (OVL2 0x60BF40, out of line, in the AI states' range) runs before CSealCtrlAi's table
+ * is stored and builds the state stack (+0x1CC), two CAiPaths (+0x21C, the route's +0x2C4), the
+ * event (+0x3D8), the event queue (+0x400), the target (+0x42C, as CTurret's constructor does) and
+ * the trigger (+0x4E4); ~CSealCtrlAi inlines its destructor behind the base conversion's null
+ * test of `this + 0x250`, the members destroyed out of line in reverse order. Offsets below are
+ * the controller's (the base's plus 0x250). Its end is not proven: everything past CSealCtrl is
+ * here (CSealCtrlAi itself has no member with a destructor, none being destroyed outside the
+ * null test). */
+class SEAL_AI_PARAMS {
+public:
+    SEAL_AI_PARAMS();
+    /* written out, its members' destructors called by hand where the implicit one would run them
+     * (CAiPath's is undeclared), the state stack last as a real member */
+    ~SEAL_AI_PARAMS()
+    {
+        func_00573FF0(m_eventQueue, -1);
+        func_00573F80(m_event, -1);
+        func_00573F20(&m_route, -1);
+        func_005281B0(&m_path, -1);
+    }
+
+    unsigned char _250[0x254 - 0x250];
+    float m_throttle_goal[3];   // 0x254 (as SOCOM 1's 0x274: the throttles the AI asks for)
+    unsigned int m_260;   // 0x260
+    unsigned int m_debug : 1;   // 0x264 (SOCOM 1's 0x280, the same bits as far as they are read)
+    unsigned int m_navyseal : 1;
+    unsigned int m_bits264 : 30;
+    unsigned char _268[0x26c - 0x268];
+    unsigned char m_26c;   // 0x26c: a mode byte (4: any target taken; the name ours)
+    unsigned char _26d[0x270 - 0x26d];
+    int m_270;   // 0x270: a count 0x56D450 sets with the cell it finds (the names ours)
+    void *m_274;   // 0x274: that cell
+    SEAL_STANCE m_stance;   // 0x278 (SOCOM 1's 0x285)
+    float m_stance_delay;   // 0x27c (SOCOM 1's 0x288)
+    unsigned char _280[0x3f4 - 0x280];
+    unsigned char m_3f4;   // 0x3f4: a mode (7 keeps the AI-map collision off; the name ours)
+    unsigned char _3f5[0x41c - 0x3f5];
+    /* the state on top of the stack (SOCOM 1's; OVL2 0x5F5FD0, 0x5F6010, the AI-states lane's
+     * seal_aistate.cpp defines them -- which is const by SOCOM 1's order) */
+    CAiStateStack m_stateStack;   // 0x41c (SOCOM 1's 0x324; 0x20 bytes in SOCOM II)
+    unsigned char _43c[0x450 - 0x43c];
+    /* the anims the tasks play (SOCOM 1's m_task_anim[6], 0x33c there, its m_task_handle[6] 0x18
+     * after: SetupAnimations binds [0] to <node>_start and [2] to <node>_ambient) -- so the
+     * m_task_anim below, at 0x468, is SOCOM 1's m_task_handle[0] */
+    CZAnim *m_anims[6];   // 0x450
+    CZAnim *m_task_anim;   // 0x468: an anim the AI plays, stopped at the mission's end
+    CAiPathBytes m_path;   // 0x46c: a CAiPath (SOCOM 1's m_path, 0x36c)
+    CAiRouteBytes m_route;   // 0x514: a route (its path reset at 0x527310, its state read after
+                             // the update at 0x555420)
+    unsigned char _5c0[0x628 - 0x5c0];
+    unsigned char m_event[0x28];   // 0x628: a CAiEvent (SOCOM 1's m_event, 0x480)
+    unsigned char m_eventQueue[0x10];   // 0x650: a CAiEventQ (SOCOM 1's m_eventQueue, 0x4a8)
+    unsigned char m_660;   // 0x660: set at the mission's start in mode 1 (the names ours)
+    unsigned char _661[0x664 - 0x661];
+    CZSealBody *m_664;   // 0x664: the player, in mode 1
+    unsigned char _668[0x674 - 0x668];
+    float m_674;   // 0x674: a range, and its square
+    float m_678;   // 0x678
+    unsigned char m_67c[4];   // 0x67c: an object the state CAiSPursue tests (0x60A850)
+    unsigned char _680[0x750 - 0x680];
+    CValve *m_valve[3];   // 0x750 (SOCOM 1's 0x5bc, four there)
+    unsigned char _75c[0x76c - 0x75c];
+    unsigned char m_weapon_kind;   // 0x76c: the kind 0x560540 reads off the body's weapon (the name ours)
+    unsigned char _76d[0x7c0 - 0x76d];
+};
+
+class CSealCtrlAi : public CSealCtrl, public SEAL_AI_PARAMS {
 public:
     CSealCtrlAi();
-    /* (0x573E60, not written yet: declared so no unit emits an implicit one) */
+    /* (0x573E60: the stack emptied, then the bases' destructors) */
     virtual ~CSealCtrlAi();
     virtual void SetThrottle(unsigned int axis, float value);
     virtual bool SlideTick(float dT);
@@ -476,55 +576,10 @@ public:
     bool IsNavySeal() const { return m_navyseal ? true : false; }
     /* the body's task argument (an inline: expanded ahead of the call it is passed with) */
     inline void *GetSelect();
-
-    unsigned char _250[0x254 - 0x250];
-    float m_throttle_goal[3];   // 0x254 (as SOCOM 1's 0x274: the throttles the AI asks for)
-    unsigned int m_260;   // 0x260
-    unsigned int m_debug : 1;   // 0x264 (SOCOM 1's 0x280, the same bits as far as they are read)
-    unsigned int m_navyseal : 1;
-    unsigned int m_bits264 : 30;
-    unsigned char _268[0x26c - 0x268];
-    unsigned char m_26c;   // 0x26c: a mode byte (4: any target taken; the name ours)
-    unsigned char _26d[0x270 - 0x26d];
-    int m_270;   // 0x270: a count 0x56D450 sets with the cell it finds (the names ours)
-    void *m_274;   // 0x274: that cell
-    SEAL_STANCE m_stance;   // 0x278 (SOCOM 1's 0x285)
-    float m_stance_delay;   // 0x27c (SOCOM 1's 0x288)
-    unsigned char _280[0x3f4 - 0x280];
-    unsigned char m_3f4;   // 0x3f4: a mode (7 keeps the AI-map collision off; the name ours)
-    unsigned char _3f5[0x41c - 0x3f5];
-    /* the state on top of the stack at 0x41C (SOCOM 1's; OVL2 0x5F5FD0, 0x5F6010, the AI-states
-     * lane's seal_aistate.cpp defines them -- which is const by SOCOM 1's order) */
+    /* the state on top of SEAL_AI_PARAMS's stack (SOCOM 1's; OVL2 0x5F5FD0, 0x5F6010, the
+     * AI-states lane's seal_aistate.cpp defines them -- which is const by SOCOM 1's order) */
     CAiState *GetAiState();
     const CAiState *GetAiState() const;
-    unsigned int m_41c;   // 0x41c: a state stack's size word (SOCOM 1's m_stateStack, a CAiStateStack)
-    unsigned char _420[0x450 - 0x420];
-    /* the anims the tasks play (SOCOM 1's m_task_anim[6], 0x33c there, its m_task_handle[6] 0x18
-     * after: SetupAnimations binds [0] to <node>_start and [2] to <node>_ambient) -- so the
-     * m_task_anim below, at 0x468, is SOCOM 1's m_task_handle[0] */
-    CZAnim *m_anims[6];   // 0x450
-    CZAnim *m_task_anim;   // 0x468: an anim the AI plays, stopped at the mission's end
-    unsigned char _46c[0x4ec - 0x46c];
-    unsigned char m_4ec;   // 0x4ec: a state (1-3 and, with 0x508 set, 4 hold the next byte back; the name ours)
-    signed char m_4ed;   // 0x4ed
-    unsigned char _4ee[0x508 - 0x4ee];
-    void *m_508;   // 0x508
-    unsigned char _50c[0x514 - 0x50c];
-    unsigned char m_path[0x5bc - 0x514];   // 0x514: a CAiPath (SOCOM 1's m_path, 0x36c), reset at 0x527310
-    AI_ROUTE m_route;   // 0x5bc: the route's state (read after the update at 0x555420)
-    unsigned char _5bd[0x660 - 0x5bd];
-    unsigned char m_660;   // 0x660: set at the mission's start in mode 1 (the names ours)
-    unsigned char _661[0x664 - 0x661];
-    CZSealBody *m_664;   // 0x664: the player, in mode 1
-    unsigned char _668[0x674 - 0x668];
-    float m_674;   // 0x674: a range, and its square
-    float m_678;   // 0x678
-    unsigned char m_67c[4];   // 0x67c: an object the state CAiSPursue tests (0x60A850)
-    unsigned char _680[0x750 - 0x680];
-    CValve *m_valve[3];   // 0x750 (SOCOM 1's 0x5bc, four there)
-    unsigned char _75c[0x76c - 0x75c];
-    unsigned char m_weapon_kind;   // 0x76c: the kind 0x560540 reads off the body's weapon (the name ours)
-    unsigned char _76d[0x7c0 - 0x76d];
 };
 
 /* the network's controller: a SEAL another console drives (SOCOM 1's CRemoteCtrl : CSealCtrl;

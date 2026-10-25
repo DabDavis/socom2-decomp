@@ -10310,8 +10310,8 @@
 0x00573D20 0x134 Initalize__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00573E60 0xB8 __dt__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00573F20 0x58 func_00573F20  # OVL2
-0x00573F80 0x70 func_00573F80  # OVL2
-0x00573FF0 0x88 func_00573FF0  # OVL2
+0x00573F80 0x70 __dt__8CAiEventFv  # OVL2; the implicit destructor of CAiEvent (ai.h): ~CSealCtrlAi (0x573E60) calls it on SEAL_AI_PARAMS's +0x3D8, where SEAL_AI_PARAMS's constructor (0x60BF40) runs __ct__8CAiEventFv; its body is CBits' inline destructor on m_bits at +0x20 (_free(m_vec, 0, 0), m_vec zeroed, behind the member's this-test); the second of the three copies after ~CSealCtrlAi, in reverse first use (the SEAL lane, round 7)
+0x00573FF0 0x88 __dt__9CAiEventQFv  # OVL2; the implicit destructor of CAiEventQ (ai.h, : list<CAiEventHandle>): ~CSealCtrlAi calls it first, on SEAL_AI_PARAMS's +0x400 (SOCOM 1's m_eventQueue follows m_event as here), which 0x60C170 builds; four this-tests (CAiEventQ, list, __list_imp, __list_deleter) then the CAiEventHandle deleter's erase (0x50FBD0) over the whole list (the SEAL lane, round 7)
 0x00574080 0x340 __ct__11CSealCtrlAiFv  # OVL2; s1:calls (ftsCreateSeal's AI branch, where SOCOM 1's calls __ct__11CSealCtrlAiFv; ftsCreateSeal byte-exact with it) -- the states lane
 0x005743C0 0x364 func_005743C0  # OVL2
 0x00574730 0xC4 get_valve__11CSealCtrlAiFPCc  # OVL2; s1:order (after the constructor, as SOCOM 1's get_valve__11CSealCtrlAiFPCc: each valve's name, the inlined get_valve(SEAL_VALVE), compared with strcmp, its index returned; 4 for none) -- the SEAL lane, round 4

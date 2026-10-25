@@ -167,6 +167,15 @@ SEAL_VALVE CSealCtrlAi::get_valve(const char *name)
     return SEAL_VALVE_NONE;
 }
 
+/* the controller unmade: its stack's states deleted (CAiStateStack::Clear, out of line), then the
+ * bases -- SEAL_AI_PARAMS's destructor inlined behind the conversion's null test of `this + 0x250`,
+ * its members destroyed in reverse order, then CSealCtrl's called with 0 (OVL2 0x573E60; SOCOM 1's
+ * popped and deleted the states in place) */
+CSealCtrlAi::~CSealCtrlAi()
+{
+    m_stateStack.Clear();
+}
+
 /* a valve set, its callbacks told whether it went on or off (CValve::SetValue, inlined in both
  * builds; the name zanim_menu.h's) */
 static inline void SetValveValue(CValve *valve, int value)
@@ -277,10 +286,10 @@ extern "C" bool func_00559000(CSealCtrlAi *ai)
 {
     CAiState *s;
 
-    if (ai->m_41c == 0)
+    if (ai->m_stateStack.size() == 0)
         s = 0;
     else
-        s = func_005F8330(&ai->m_41c);
+        s = func_005F8330(&ai->m_stateStack);
 
     if (s)
         return IsKind2Flag80(s);
@@ -291,14 +300,14 @@ extern "C" bool func_00559000(CSealCtrlAi *ai)
  * as MW's `!(x == 0)`) */
 static inline bool IsState4Held(CSealCtrlAi *ai)
 {
-    return !(ai->m_508 == 0) && ai->m_4ec == 4;
+    return !(ai->m_path.m_9c == 0) && ai->m_path.m_state == 4;
 }
 
 /* free: in none of states 1-3 nor a held 4 (OVL2 0x5629B0). States 1-3 are one unsigned range
  * test written out, as the target's `(t - 1) < 3`: three `==` joined by `||` fold only two */
 extern "C" bool func_005629B0(CSealCtrlAi *ai)
 {
-    if (IsState4Held(ai) || (unsigned int)(ai->m_4ec - 1) < 3)
+    if (IsState4Held(ai) || (unsigned int)(ai->m_path.m_state - 1) < 3)
         return false;
     return true;
 }
@@ -307,11 +316,11 @@ extern "C" bool func_005629B0(CSealCtrlAi *ai)
  * as 0x5629B0's) */
 extern "C" signed char func_00562960(CSealCtrlAi *ai)
 {
-    if ((unsigned int)(ai->m_4ec - 1) < 3)
+    if ((unsigned int)(ai->m_path.m_state - 1) < 3)
         return 0;
     if (IsState4Held(ai))
         return 0;
-    return ai->m_4ed;
+    return ai->m_path.m_status;
 }
 
 /* the five bands of an alertness (OVL2 data 0x65C700: 0.05, 0.4, 0.6, 0.8, 1) */
@@ -372,8 +381,8 @@ CValve *CSealCtrlAi::GetValve(SEAL_VALVE v) const
  * OnSignal call it) */
 extern "C" AI_ROUTE func_005558A0(CSealCtrlAi *ai)
 {
-    func_00555420(ai, (char *)ai + 0x46c, ai->m_path);
-    return ai->m_route;
+    func_00555420(ai, &ai->m_path, &ai->m_route.m_path);
+    return ai->m_route.m_state;
 }
 
 /* (OVL2 0x527310, the AI-core lane's: a CAiPath's plan aborted and its lists cleared) */
@@ -383,25 +392,25 @@ extern "C" bool func_00527310(void *path);
  * path-recovery state calls it) */
 extern "C" void func_005557B0(CSealCtrlAi *ai, AI_ROUTE route)
 {
-    func_00527310(ai->m_path);
-    switch (ai->m_route) {
+    func_00527310(&ai->m_route.m_path);
+    switch (ai->m_route.m_state) {
     case ROUTE_1:
     case ROUTE_2:
-        ai->m_route = ROUTE_NONE;
+        ai->m_route.m_state = ROUTE_NONE;
         break;
     }
-    ai->m_route = route;
+    ai->m_route.m_state = route;
 }
 
 /* the route reset; a running one ends as 2 or none (OVL2 0x555820; the script and goto states'
  * signals call it) */
 extern "C" void func_00555820(CSealCtrlAi *ai, bool keep)
 {
-    func_00527310(ai->m_path);
-    switch (ai->m_route) {
+    func_00527310(&ai->m_route.m_path);
+    switch (ai->m_route.m_state) {
     case ROUTE_1:
     case ROUTE_2:
-        ai->m_route = keep ? ROUTE_2 : ROUTE_NONE;
+        ai->m_route.m_state = keep ? ROUTE_2 : ROUTE_NONE;
         break;
     }
 }
