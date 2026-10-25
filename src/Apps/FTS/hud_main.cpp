@@ -79,7 +79,9 @@ public:
     signed char m_socom2_200;   // 0x200: the seal's state (2-3 none, 4 the binoculars' 9x, 5-12 the kit's zoom)
     unsigned char _201[0x5e0 - 0x201];
     CZKit m_kit;   // 0x5e0
-    unsigned char _5e4[0xfc4 - 0x5e4];
+    unsigned char _5e4[0xfb4 - 0x5e4];
+    float m_socom2_fb4;   // 0xfb4: when the seal died, against the mission's clock at 0xE0
+    unsigned char _fb8[0xfc4 - 0xfb8];
     int m_socom2_fc4;   // 0xfc4: the id of the entity a spectator watches
 };
 
@@ -391,7 +393,9 @@ public:
 /* the mission: its four message queues (the HUD re-inits the fourth) and the online game */
 class CMission {
 public:
-    unsigned char _0[0x1c0];
+    unsigned char _0[0xe0];
+    float m_socom2_e0;   // 0xe0: the mission's clock (the respawn wait is measured on it)
+    unsigned char _e4[0x1c0 - 0xe4];
     C2DMessage_Q m_messages;   // 0x1c0
     C2DMessage_Q m_messages2;   // 0x6a0
     C2DMessage_Q m_messages3;   // 0xb80
@@ -421,6 +425,7 @@ public:
     void SetupSpectatorText(MENU_STATE menustate);
     void SetupGhostText(MENU_STATE menustate);
     void SetupSpectatingText(MENU_STATE menustate);
+    void SetupRespawnText(MENU_STATE menustate);
     void SetupZoomText();
     void Add2D(C2D *p2d, int phase, bool add_to_back);
     void SwitchToCompassMap();
@@ -803,6 +808,8 @@ class CNetGameState {
 public:
     unsigned char _0[0xd2];
     unsigned char m_ghost;   // 0xd2
+    unsigned char _d3[0xdc - 0xd3];
+    unsigned char m_respawns;   // 0xdc: the game respawns the dead (the name ours)
 };
 
 extern CNetGameState *data_00437CE8;
@@ -850,6 +857,111 @@ void CHUD::SetupGhostText(MENU_STATE menustate)
         data_00408EF0 = 1;
     }
 
+    for (unsigned int i = 0; i < 6; i++) {
+        m_piggyback_text[i].m_socom2_69 = 1;
+        m_piggyback_text[i].SetPos((int)s_piggyback_x,
+                                   (int)(s_piggyback_y + i * s_piggyback_spacing));
+        func_00362B70(&m_piggyback_text[i]);
+        if (menustate != statePauseTestMenu)
+            m_piggyback_text[i].On();
+        else
+            m_piggyback_text[i].Off();
+    }
+}
+
+/* the seal's node as the respawn text reads it (SOCOM 1's CEntity::GetNode, 0x29ED20; a float
+ * at 0x9C zero once the seal lies dead) and the pad's type (0x2C6430: 11 for one layout of the
+ * buttons; no rows named yet) */
+class CRespawnNode {
+public:
+    unsigned char _0[0x9c];
+    float m_9c;   // 0x9c
+};
+
+extern "C" CRespawnNode *func_0029ED20(CZSealBody *seal);
+extern "C" unsigned char func_002C6430(int pad);
+
+/* the dead player's respawn lines: a ghost's (it plays the next round, may select new weapons
+ * and respawn) or the dead's, the button glyphs by the pad's layout, the respawn offered five
+ * seconds after death while the seal's node lies still; the HUD on (the queues and compass off)
+ * unless under the pause menu, and the six lines placed and shown (SOCOM II's: CHUD::Tick calls
+ * it; the name ours) */
+void CHUD::SetupRespawnText(MENU_STATE menustate)
+{
+    CZSealBody *player = ftsGetPlayer();
+
+    if (data_00437CE8->m_ghost) {
+        m_piggyback_text[0].SetString("You are a ghost.  You will play the next", true);
+        bool layout = func_002C6430(4) == 11;
+        char line1[64];
+
+        sprintf(line1, "round as a real player.  %c Select new", layout ? '\xbe' : '\xbd');
+        m_piggyback_text[1].SetString(line1, true);
+        if (data_00437CE8->m_respawns) {
+            float waited = theMission.m_socom2_e0 - player->m_socom2_fb4;
+            CRespawnNode *node = player ? func_0029ED20(player) : 0;
+            bool still = node ? node->m_9c == 0.0f : false;
+
+            if (!func_002C2FA0() && still && !(waited <= 5.0f)) {
+                char glyph = layout ? '\xa6' : '\xb7';
+                char line2[128];
+
+                if (m_piggyback_text[2].m_color[3] < 100.0f) {
+                    sprintf(line2, "Press the %c button to respawn.", glyph);
+                    m_piggyback_text[2].SetString(line2, true);
+                    m_piggyback_text[2].SetTrans(100.0f);
+                } else if (layout) {
+                    sprintf(line2, "weapons. Press the %c button to respawn.", glyph);
+                    m_piggyback_text[2].SetString(line2, true);
+                }
+            } else {
+                m_piggyback_text[2].SetString("weapons.", true);
+            }
+            m_piggyback_text[3].SetString(" ", true);
+        } else {
+            m_piggyback_text[2].SetString("weapons. Use the \xa3 and \xaf directional", true);
+            m_piggyback_text[3].SetString("buttons to cycle through living teammates.", true);
+        }
+        for (unsigned int i = 4; i < 6; i++)
+            m_piggyback_text[i].SetString(" ", true);
+    } else {
+        bool layout = func_002C6430(4) == 11;
+        char line0[64];
+
+        sprintf(line0, "You have died.  %c Select new weapons.", layout ? '\xbe' : '\xbd');
+        m_piggyback_text[0].SetString(line0, true);
+        if (data_00437CE8->m_respawns) {
+            float waited = theMission.m_socom2_e0 - player->m_socom2_fb4;
+            CRespawnNode *node = player ? func_0029ED20(player) : 0;
+            bool still = node ? node->m_9c == 0.0f : false;
+
+            if (!func_002C2FA0() && still && !(waited <= 5.0f)) {
+                if (layout)
+                    m_piggyback_text[1].SetString("Press the \xa6 button to respawn.", true);
+                else
+                    m_piggyback_text[1].SetString("Press the \xb7 button to respawn.", true);
+                m_piggyback_text[1].SetTrans(100.0f);
+            } else {
+                m_piggyback_text[1].SetString(" ", true);
+            }
+            m_piggyback_text[2].SetString(" ", true);
+        } else {
+            m_piggyback_text[1].SetString("Use the \xa3 and \xaf directional buttons", true);
+            m_piggyback_text[2].SetString("to cycle through living teammates", true);
+        }
+        for (unsigned int i = 3; i < 6; i++)
+            m_piggyback_text[i].SetString(" ", true);
+    }
+    if (menustate != statePauseTestMenu) {
+        theHUD->On();
+        theMission.m_messages3.Off();
+        theMission.m_messages2.Off();
+        m_mapcompass.Off();
+        if (theNetwork.m_bNetwork && !func_002C2FA0())
+            m_spectatorinfo.Off();
+    } else {
+        theHUD->Off();
+    }
     for (unsigned int i = 0; i < 6; i++) {
         m_piggyback_text[i].m_socom2_69 = 1;
         m_piggyback_text[i].SetPos((int)s_piggyback_x,
