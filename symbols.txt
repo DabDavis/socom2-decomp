@@ -7613,8 +7613,8 @@
 0x003A1650 0xE0 IsInserted__8CMemCardFv  # OVL1; s1:align
 0x003A1730 0xA4 LoadGame__8CMemCardFPCc  # OVL1; s1:order (after the reserve-file deletes as SOCOM 1's saves follow IsInserted; the game save manager at 0x1C loads with flags 0xE, then LOADED_FROM_MEMCARD)
 0x003A17E0 0xA0 SaveGame__8CMemCardFPCcPc  # OVL1; s1:order (the game save manager at 0x1C saves with flags 0xE; SOCOM II passes a second string)
-0x003A1880 0xF8 func_003A1880  # OVL1
-0x003A1980 0x244 func_003A1980  # OVL1
+0x003A1880 0xF8 CreateReserveFiles__8CMemCardFv  # OVL1; ours (PATCHFILE.DAT of 2000 KB unless a *.zdb exists, then SCRATCHPAD.DAT of 2999 KB less the save directory's use)
+0x003A1980 0x244 CreateReserveFile__8CMemCardFPCci  # OVL1; ours (unless the named file exists: opened with create, seeked to the last kilobyte of the size given and 1 KB of 0xEE written)
 0x003A1BD0 0x90 DeletePatchFile__8CMemCardFv  # OVL1; ours (sceMcDelete of PATCHFILE.DAT on the chosen port and slot unless a file is open)
 0x003A1C60 0x90 DeleteScratchpad__8CMemCardFv  # OVL1; ours (sceMcDelete of SCRATCHPAD.DAT on the chosen port and slot unless a file is open)
 0x003A1CF0 0x118 GetCardStatus__8CMemCardFv  # OVL1; ours (polls sceMcGetInfo twice at most: 0 ready, 2 no card, 1 unformatted, 6 when the result is -5)

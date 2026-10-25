@@ -172,6 +172,8 @@ public:
     void DeleteScratchpad();
     int GetCardStatus();
     int GetUsedSpace();
+    bool CreateReserveFile(const char *name, int kb);
+    bool CreateReserveFiles();
     void Uninit();
     void Reset();
     void Init();

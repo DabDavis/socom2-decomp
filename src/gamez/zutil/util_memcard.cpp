@@ -19,7 +19,7 @@ int sceMcWrite(int fd, const void *buf, int size);
 int sceMcMkdir(int port, int slot, const char *name);
 int sceMcGetInfo(int port, int slot, int *type, int *free, int *format);
 int sceMcGetDir(int port, int slot, const char *name, unsigned int mode, int maxent, void *table);
-/* a directory entry (Sony's sceMcTblGetDir, 64-aligned) */
+/* a directory entry (Sony's sceMcTblGetDir, 64-aligned as libmc.h has it: the out-of-line Exists' 192-byte frame) */
 struct sceMcTblGetDir {
     unsigned char _Create[8];
     unsigned char _Modify[8];
@@ -206,6 +206,64 @@ void CMemCard::LoadConfig(const char *name)
     SelectPortSlot();
     if (!func_0033D6D0(m_configSave, name, 0xC))
         MemCardError();
+}
+
+/* a file of the given kilobytes made on the card unless it exists, its last kilobyte written
+ * with 0xEE (ours).
+ * OPEN (with CreateReserveFiles and GetUsedSpace below): only their frames differ. Where Exists
+ * is inlined the target lays its table out 16-aligned (sp+0x50 here, 0x30 in CreateReserveFiles,
+ * frames of 1200 and 128), while the out-of-line Exists' frame is 192 with the table at 0x40 --
+ * what aligned(64) gives. With aligned(16) this function and its caller's table match and
+ * Exists does not; no one spelling of the table serves both yet (an inlined copy that drops the
+ * alignment, or an out-of-line Exists with a second local?) */
+bool CMemCard::CreateReserveFile(const char *name, int kb)
+{
+    int cmd, result, fd;
+    char buf[0x400];
+
+    if (!Exists(name)) {
+        memset(buf, 0xEE, sizeof(buf));
+        sceMcSync(0, &data_004A37C0, &data_004A37C8);
+        if ((bool)sceMcOpen(m_selPort, m_selSlot, name, 0x202) < 0) {
+            MemCardError();
+            return false;
+        }
+        sceMcSync(0, &cmd, &fd);
+        if (fd < 0) {
+            MemCardError();
+            return false;
+        }
+        if ((bool)sceMcSeek(fd, (kb - 1) << 10, 0) < 0) {
+            MemCardError();
+            return false;
+        }
+        sceMcSync(0, &cmd, &result);
+        if ((bool)sceMcWrite(fd, buf, 0x400) < 0) {
+            MemCardError();
+            return false;
+        }
+        sceMcSync(0, &cmd, &result);
+        if ((bool)sceMcClose(fd) < 0) {
+            MemCardError();
+            return false;
+        }
+        sceMcSync(0, &cmd, &result);
+    }
+    return true;
+}
+
+/* the patch file and the scratchpad reserved, the scratchpad taking what the save directory
+ * leaves of 2999 KB (ours) */
+bool CMemCard::CreateReserveFiles()
+{
+    int kb;
+
+    if (!Exists("*.zdb"))
+        CreateReserveFile("PATCHFILE.DAT", 2000);
+    kb = 2999 - GetUsedSpace();
+    if (kb > 0)
+        CreateReserveFile("SCRATCHPAD.DAT", kb);
+    return true;
 }
 
 /* the card's state: 0 ready, 2 none, 1 unformatted, 6 full (ours) */
