@@ -6021,7 +6021,7 @@
 0x0033BD90 0xD4 FIFO_Flush__5CPipeFv  # OVL1; the rdr lane: SOCOM II's, the name ours (a texture command queued with bit 0 of its first byte set and no buffers, and a FIFO packet kicked with the marker word 0x66666666 -- FIFO_Signal's 0x44444444/0x55555555 packets' form -- and fourteen zero quadwords; 0x33CD50 calls it)
 0x0033BE70 0xB4 FIFO_Signal__5CPipeFPQ23zdb12CGSTexBuffer  # OVL1; s1:align
 0x0033BF30 0xD4 FIFO_Signal__5CPipeFPQ23zdb12CGSTexBufferPUi  # OVL1; s1:calls
-0x0033C010 0x104 func_0033C010  # OVL1
+0x0033C010 0x104 InterruptFromVIF1__Fi  # OVL1; the rdr lane: s1:order (SOCOM 1's InterruptFromVIF1, after FIFO_Insert: cause 5, thePipe's texture command at m_texIntIdx taken -- SOCOM II's flush bit wakes the thread at 0x3E1418 --, a load's chain sent through D2 after sceDmaSync of the GIF channel, a signal's buffer updated, VIF1_FBRST 8, sync, ei)
 0x0033C120 0xA0 func_0033C120  # OVL1
 0x0033C1C0 0xD4 func_0033C1C0  # OVL1
 0x0033C2A0 0xAC func_0033C2A0  # OVL1

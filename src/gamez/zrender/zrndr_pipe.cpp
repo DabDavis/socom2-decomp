@@ -8,9 +8,17 @@
 #include <eetypes.h>
 #include <vector>
 #include <list>
+#include "../zsys/zsys_public.h"
 
 namespace zdb {
-class CGSTexBuffer;
+/* a texture buffer the GS loads (SOCOM 1's DWARF, 0x40 bytes): its DMA chain at 0x18, the word
+ * after it tested before the chain is sent */
+class CGSTexBuffer {
+public:
+    unsigned char _0[0x18];   // 0x0
+    void *m_chainp;   // 0x18
+    unsigned int m_1c;   // 0x1c (SOCOM 1 tested its packet vector's size, at 0x20)
+};
 
 /* the dynamic textures a visual or a pass uses (znode.h's class; SOCOM II's Add of another
  * list, 0x357A00, which znode.h does not declare) */
@@ -133,6 +141,46 @@ public:
  * the pipe passes one) */
 extern "C" void func_003B0D50(unsigned int v);
 extern "C" void func_003B0CC0(unsigned int v);
+
+extern CPipe thePipe;   // 0x4887C0
+/* the thread a flushed FIFO wakes (SOCOM II's; not named) */
+extern int data_003E1418;
+/* zdb::CGSTexBuffer's, not named yet (SOCOM 1's handler calls UpdateTextureSelects here) */
+extern "C" void func_00355DE0(zdb::CGSTexBuffer *buf);
+
+/* SOCOM 1's: VIF1's interrupt -- the next texture command taken: a flush wakes its thread, a load
+ * sends the buffer's chain through DMA channel 2 once the GIF channel is idle, a signal updates its
+ * buffer; VIF1 restarted */
+int InterruptFromVIF1(int cause)
+{
+    if (cause == 5) {
+        /* the index a local of its own (the target's registers); the command read through a
+         * volatile pointer (the signal reloaded for the call after its test) */
+        unsigned int i = thePipe.m_texIntIdx++;
+        volatile tag_TexLoadCmds *c = &thePipe.m_texLoadChain[i];
+
+        if (c->m_bits.m_flush)
+            iWakeupThread(data_003E1418);
+        else {
+            if (c->m_load) {
+                sceDmaSync(zSys.DmaToGif, 0, 0);
+                if (c->m_load->m_1c) {
+                    *(volatile unsigned int *)0x1000A020 = 0;
+                    *(volatile unsigned int *)0x1000A030 = (unsigned int)c->m_load->m_chainp & 0x0FFFFFFF;
+                    *(volatile unsigned int *)0x1000A000 = 325;
+                    asm volatile { sync }
+                }
+            }
+            if (c->m_signal)
+                func_00355DE0(c->m_signal);
+            *(volatile unsigned int *)0x10003C10 = 8;
+            asm volatile { sync }
+        }
+    }
+    asm volatile { sync }
+    asm volatile { ei }
+    return 0;
+}
 
 /* SOCOM II's: a command queued with its flush bit and an empty FIFO packet kicked that interrupts
  * when the GS reaches it (its marker word 0x66666666, fourteen zero quadwords after the tags) */
