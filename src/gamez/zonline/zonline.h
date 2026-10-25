@@ -446,6 +446,7 @@ public:
                 return *i;
         return 0;
     }
+    FriendItem *Find(const char *name);
     void Add(MediusGetBuddyList_ExtraInfoResponse *resp);
     void DeleteAll();
 };
@@ -616,6 +617,7 @@ public:
     void AddToIgnore(const char *name);
     void RemoveFromIgnore(int id);
     void AddFriend(const char *name);
+    bool IsIgnored(const char *name);
 
     /* open and in the lobby proper (the name ours: GetFriendInvitations materialises the && before
      * it branches, an inline bool's shape) */

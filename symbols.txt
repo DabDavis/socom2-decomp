@@ -5094,7 +5094,7 @@
 0x00300800 0x3C func_00300800  # OVL1
 0x00300840 0x58 MediusInit__Fv  # OVL1; ours (the UI command table's 'MediusInit' handler 0x276C60 calls it with no arguments: the Medius library set up with three callbacks -- cbErrorMessage the third -- and a 30000 timeout through OVL2 0x647318; true on success)
 0x003008A0 0x34 cbErrorMessage__FiiiP18MediusErrorMessage  # OVL1; s1:calls
-0x003008E0 0xDC func_003008E0  # OVL1
+0x003008E0 0xDC IsIgnored__13CZOnlineLobbyFPCc  # OVL1; ours (0x2BA9D0 and CZPersona's RemotePersonaCreationCallback call it on theLobby: whether a non-empty name is in the ignore list 0x44FDE0, as a bool returned through a local; byte-exact)
 0x003009C0 0xA4 func_003009C0  # OVL1
 0x00300A70 0x78 ConfirmFriend__13CZOnlineLobbyFi  # OVL1; ours (the UI command table's 'ConfirmFriend' handler 0x279EB0 calls it on theLobby; a buddy request answered 2, accepted, and dropped from the invitations list 0x44FE00)
 0x00300AF0 0x78 RejectFriend__13CZOnlineLobbyFi  # OVL1; ours ('RejectFriend' 0x279E10 calls it on theLobby; the same answer with -985, refused)
@@ -5110,9 +5110,9 @@
 0x003010C0 0x74 cbRemoveFromIgnoreList__FiiiP20MediusStatusResponse  # OVL1; ours (RemoveFromIgnore's callback: reports 'RemoveFromIgnoreList', then GetIgnoreList inlined; byte-exact)
 0x00301140 0x1A8 func_00301140  # OVL1
 0x003012F0 0x5C GetFriendInvitations__13CZOnlineLobbyFv  # OVL1; ours ('GetFriendInvitations' 0x27A2B0 calls it on theLobby, in the active lobby only)
-0x00301350 0x70 func_00301350  # OVL1
-0x003013C0 0x204 func_003013C0  # OVL1
-0x003015D0 0xD0 func_003015D0  # OVL1
+0x00301350 0x70 cbGetFriendInvitations__FiiiP33MediusGetBuddyInvitationsResponse  # OVL1; ours (GetFriendInvitations' callback: the response's id, account, name and add type copied into a 0x40-byte item and kept through 0x301DB0 on 0x44FE00; byte-exact)
+0x003013C0 0x204 AddFriend__13CZOnlineLobbyFPCc  # OVL1; ours ('AddFriend' 0x27A050 calls it on theLobby: a name neither a friend, invited nor our own is looked for (0x648F10, search type 1, with 0x3015D0), else 'MP_PLAYER_IS_FRIEND')
+0x003015D0 0xD0 cbFindBuddyListPlayerID__FiiiP24MediusFindPlayerResponse  # OVL1; ours (AddFriend's MediusFindPlayer callback: reports 'FindBuddyListPlayerID', asks 0x6492D8 to confirm the account at +0x48 with 0x300BE0 and tells 'MP_FRIEND_CONFIRMATION_REQUESTED', else 'MP_PLAYER_NOT_FOUND'; byte-exact)
 0x003016A0 0x64 RemoveFriend__13CZOnlineLobbyFi  # OVL1; ours ('RemoveFriend' 0x279980 calls it on theLobby; an account id)
 0x00301710 0x34 func_00301710  # OVL1
 0x00301750 0x48 GetFriendsList__13CZOnlineLobbyFv  # OVL1; ours ('GetFriendsList' 0x27A2E0 calls it on theLobby; the friends list 0x44FDC0 emptied and asked for)
@@ -5120,7 +5120,7 @@
 0x00301810 0x108 func_00301810  # OVL1
 0x00301920 0x150 func_00301920  # OVL1
 0x00301A70 0x1CC func_00301A70  # OVL1
-0x00301C40 0xB0 func_00301C40  # OVL1
+0x00301C40 0xB0 Find__12FriendVectorFPCc  # OVL1; ours (the friend by name, strcasecmp on +0x20, the null test inside: the state handler 0x2F0020 calls it on 0x44FDC0; byte-exact)
 0x00301CF0 0xBC func_00301CF0  # OVL1
 0x00301DB0 0x120 func_00301DB0  # OVL1
 0x00301ED0 0x1D0 func_00301ED0  # OVL1
