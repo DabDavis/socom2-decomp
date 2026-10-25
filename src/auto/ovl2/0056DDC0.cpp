@@ -5,6 +5,7 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
 typedef unsigned int u_long128 __attribute__((mode(TI)));
@@ -34,15 +35,15 @@ struct VC_0 {
     virtual M2C_UNK v_60(void);
 };
 extern "C" {
-M2C_UNK func_005EDF90(s32);                         /* extern */
+M2C_UNK SealLeaveUnit__9CSealUnitFP10CZSealBody(s32); /* extern */
 
 void OnRecycleEntity__11CSealCtrlAiFP7CEntity(char *arg0, s32 arg1) {
     s32 temp_a0;
 
-    temp_a0 = M2C_FIELD(arg0, s32 *, 4);
+    temp_a0 = SC_MEMBER(arg0, s32 *, 4);
     if (temp_a0 == arg1) {
-        if (M2C_FIELD(arg0, s32 *, 0x10C) != 0) {
-            func_005EDF90(temp_a0);
+        if (SC_MEMBER(arg0, s32 *, 0x10C) != 0) {
+            SealLeaveUnit__9CSealUnitFP10CZSealBody(temp_a0);
         }
         ((VC_0 *)(arg0))->v_60();
     }

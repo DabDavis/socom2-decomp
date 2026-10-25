@@ -7,8 +7,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_005F8270(s32);                         /* extern */
+M2C_UNK Find__13CAiStateStackCF8AI_STATE(s32);      /* extern */
 
 void FindAiState__11CSealCtrlAiCF8AI_STATE(s32 arg0) {
-    func_005F8270(arg0 + 0x41C);
+    Find__13CAiStateStackCF8AI_STATE(arg0 + 0x41C);
 }

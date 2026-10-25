@@ -131,8 +131,10 @@ public:
     void push_front(CAiState *const &s) { insert_front(s); }
     void insert_front(CAiState *const &s)
     {
-        insert(std::__list_deleter<const void *, std::allocator<const void *> >::begin(),
-               (const void *const &)s);
+        /* the base's insert, named: list<T *>'s own insert(iterator, T *const &) hides it */
+        std::__list_deleter<const void *, std::allocator<const void *> >::insert(
+            std::__list_deleter<const void *, std::allocator<const void *> >::begin(),
+            (const void *const &)s);
     }
     /* a new state of a kind created and put at the front, and returned (inlined in Push and Set:
      * the returned copy is what they read after the insert -- one load, kept in a register; the

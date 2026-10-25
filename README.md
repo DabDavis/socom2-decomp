@@ -1534,6 +1534,19 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     value;
   - ai_astar.cpp ends at 0x51557F (its tail the three statics' destructors), ai_map.cpp runs
     0x515580-0x51A48F; the map layer's own code sits after vehicle_rdr.cpp (0x53A730-0x53A9C0).
+- **Tells from the AI states, round 5** (slot 0x34, CAiStateStack's operations):
+  - a frame's temporaries are laid out by inline depth first, then in order of appearance (Set
+    matched only once push_front sat two inline levels deep);
+  - a value passed by reference to insert and read again after should come back as an inline's
+    return value: one load after the call, kept in a register (Push);
+  - inside an inline bool, `bool r = a || b; if (r) r = c && d; return r;` gives the target's
+    layout (EscorteeJoinUnit); `return r && c && d` and the ternary do not;
+  - an `unsigned char` call result stored into an `int` field with no second zero-extension wants
+    an `int` local, which takes the one `andi` at the call;
+  - SOCOM 1's PushAiState bool is a flags word in SOCOM II, and the states' Tick returns `int`;
+    CAiState's slot 0x34 takes (CSealCtrlAi *, CAiEvent *, CZSealBody *, bool);
+  - a lane's call to a base class's member that a newer header overload hides fails to build at
+    merge -- name the base (`std::__list_deleter<const void *, ...>::insert(...)`).
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
