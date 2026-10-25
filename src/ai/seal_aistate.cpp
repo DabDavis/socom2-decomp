@@ -7,6 +7,50 @@
 
 #include "ai_states.h"
 
+/* the "action" state's answers (OVL2 0x5F07E0 back to 0x5F07A0): no attacking, scanning or
+ * pushing a state of kind 3 while its object is held; kind 25 never */
+bool CAiSAction::CanPushAiState(AI_STATE state, CSealCtrlAi *ai)
+{
+    bool ok = true;
+
+    switch (state) {
+    case 3:
+        ok = m_84 == 0;
+        break;
+    case 25:
+        ok = false;
+        break;
+    }
+    return ok;
+}
+
+bool CAiSAction::CanScan() const
+{
+    return m_84 == 0;
+}
+
+bool CAiSAction::CanPursue(CSealCtrlAi *ai) const
+{
+    return false;
+}
+
+bool CAiSAction::CanAttack() const
+{
+    return m_84 == 0;
+}
+
+/* +0x38: the state's phase word below 6 (the name ours) */
+bool CAiSAction::Virtual38()
+{
+    return m_34 < 6;
+}
+
+/* (OVL2 0x5F4080) */
+bool CAiSScript::CanAttack() const
+{
+    return true;
+}
+
 /* the stack's destructor: its states deleted, then the list's own (OVL2 0x5F8490) */
 CAiStateStack::~CAiStateStack()
 {
@@ -55,5 +99,10 @@ CAiSUnknown::~CAiSUnknown()
 }
 
 CAiSCQBAttack::~CAiSCQBAttack()
+{
+}
+
+/* (OVL2 0x5EF9D0, the unit's first function) */
+CAiSAction::~CAiSAction()
 {
 }

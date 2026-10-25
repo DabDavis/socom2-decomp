@@ -11467,7 +11467,7 @@
 0x005F0470 0x240 OnSignal__10CAiSActionFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand: CAiSAction's vtable slot +0x8 (OnSignal)
 0x005F06B0 0x90 func_005F06B0  # OVL2
 0x005F0740 0x60 func_005F0740  # OVL2
-0x005F07A0 0xC func_005F07A0  # OVL2
+0x005F07A0 0xC Virtual38__10CAiSActionFv  # OVL2; by hand: CAiSAction's vtable slot +0x38, one of SOCOM II's six new CAiState slots (the name ours, by its slot): the word at +0x34 below 6
 0x005F07B0 0x10 CanAttack__10CAiSActionCFv  # OVL2; by hand: CAiSAction's vtable slot +0x24 (CanAttack)
 0x005F07C0 0x8 CanPursue__10CAiSActionCFP11CSealCtrlAi  # OVL2; by hand: CAiSAction's vtable slot +0x2C (CanPursue)
 0x005F07D0 0x10 CanScan__10CAiSActionCFv  # OVL2; by hand: CAiSAction's vtable slot +0x28 (CanScan)
@@ -11572,11 +11572,11 @@
 0x005F8900 0x8 CanAttack__13CAiSSuspendedCFv  # OVL2; by hand: CAiSSuspended's vtable slot +0x24 (CanAttack; SOCOM 1's in the same tail position)
 0x005F8910 0x8 CanPursue__13CAiSSuspendedCFP11CSealCtrlAi  # OVL2; by hand: CAiSSuspended's vtable slot +0x2C (CanPursue; SOCOM 1's in the same tail position)
 0x005F8920 0x8 CanPursue__10CAiSBreachCFP11CSealCtrlAi  # OVL2; by hand: CAiSBreach's vtable slot +0x2C (CanPursue, jr ra; move v0,zero as SOCOM 1's)
-0x005F8930 0x8 func_005F8930  # OVL2
+0x005F8930 0x8 Virtual3C__10CAiSBreachFv  # OVL2; by hand: CAiSBreach's vtable slot +0x3C, one of SOCOM II's six new CAiState slots (the name ours, by its slot): false (the base's is true)
 0x005F8940 0x78 __dt__10CAiSScriptFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F89C0 0x78 __dt__8CAiSGotoFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x005F8A40 0x8 func_005F8A40  # OVL2
-0x005F8A50 0x14 func_005F8A50  # OVL2
+0x005F8A40 0x8 Virtual40__8CAiSGotoFv  # OVL2; by hand: CAiSGoto's vtable slot +0x40, one of SOCOM II's six new CAiState slots (the name ours, by its slot): true (the base's is false)
+0x005F8A50 0x14 Virtual3C__8CAiSGotoFv  # OVL2; by hand: CAiSGoto's vtable slot +0x3C, one of SOCOM II's six new CAiState slots (the name ours, by its slot): true while the flag word (+0x2C) lacks bit 2
 0x005F8A70 0x78 __dt__10CAiSPickupFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F8AF0 0x110 func_005F8AF0  # OVL2
 0x005F8C00 0x18 func_005F8C00  # OVL2
@@ -11609,7 +11609,7 @@
 0x005FD6F0 0x94 func_005FD6F0  # OVL2
 0x005FD790 0x33C func_005FD790  # OVL2
 0x005FDAD0 0x224 func_005FDAD0  # OVL2
-0x005FDD00 0x38 func_005FDD00  # OVL2
+0x005FDD00 0x38 Virtual3C__10CAiSFollowFv  # OVL2; by hand: CAiSFollow's vtable slot +0x3C, one of SOCOM II's six new CAiState slots (the name ours, by its slot): a float at +0xF4 under the variable at 0x650C38 and flag bit 3 of +0x6C
 0x005FDD40 0x180 func_005FDD40  # OVL2
 0x005FDEC0 0xB8 GetStatus__10CAiSFollowCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005FDF80 0x270 OnSignal__10CAiSFollowFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand: CAiSFollow's vtable slot +0x8 (OnSignal)

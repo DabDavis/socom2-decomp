@@ -67,7 +67,9 @@ public:
     unsigned char _14[0x2c - 0x14];
     unsigned int m_flags;   // 0x2c (zeroed by the constructor; the overrides test single bits)
     AI_STATE m_state;   // 0x30
-    unsigned char _31[0x58 - 0x31];
+    unsigned char _31[0x34 - 0x31];
+    unsigned int m_34;   // 0x34 (zeroed by the constructor; CAiSAction's phase)
+    unsigned char _38[0x58 - 0x38];
 };
 
 /* the states whose code is this lane's (each class only what a written function needs) */
@@ -92,16 +94,22 @@ public:
 class CAiSBreach : public CAiState {
 public:
     virtual bool CanPursue(CSealCtrlAi *ai) const { return false; }
-    virtual ~CAiSBreach() {}
+    /* +0x3C (the name ours, by slot) */
+    virtual bool Virtual3C() { return false; }
+    virtual ~CAiSBreach();
 };
 
 class CAiSScript : public CAiState {
 public:
+    virtual bool CanAttack() const;
     virtual ~CAiSScript();
 };
 
 class CAiSGoto : public CAiState {
 public:
+    /* +0x3C and +0x40 (the names ours, by slot) */
+    virtual bool Virtual3C() { return !(m_flags & 4); }
+    virtual bool Virtual40() { return true; }
     virtual ~CAiSGoto();
 };
 
@@ -118,9 +126,11 @@ public:
 /* the "action" state (new in SOCOM II, the name its RTTI's): an object at +0x84 it waits on */
 class CAiSAction : public CAiState {
 public:
-    virtual bool CanAttack() const { return m_84 == 0; }
-    virtual bool CanScan() const { return m_84 == 0; }
-    virtual bool CanPursue(CSealCtrlAi *ai) const { return false; }
+    virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
+    virtual bool CanAttack() const;
+    virtual bool CanScan() const;
+    virtual bool CanPursue(CSealCtrlAi *ai) const;
+    virtual bool Virtual38();
     virtual ~CAiSAction();
 
     unsigned char _58[0x84 - 0x58];
@@ -129,7 +139,15 @@ public:
 
 class CAiSFollow : public CAiState {
 public:
+    /* +0x3C (the name ours, by slot): close behind -- its distance under the follow range, and
+     * its flag bit 3 set */
+    virtual bool Virtual3C();
     virtual ~CAiSFollow();
+
+    unsigned char _58[0x6c - 0x58];
+    unsigned int m_6c;   // 0x6c: flags
+    unsigned char _70[0xf4 - 0x70];
+    float m_f4;   // 0xf4
 };
 
 class CAiSUseVehicle : public CAiState {
