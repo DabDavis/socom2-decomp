@@ -140,17 +140,31 @@ public:
     CPlainBmp m_check;   // 0x480
 } __attribute__((aligned(16)));   // 0x520 bytes
 
-/* a horizontal progress bar (SOCOM 1's CHProgressBar, a C2D: its layout not in SOCOM 1's DWARF;
- * only what Tick reads placed, the names ours) */
-class CHProgressBar : public C2D {
+/* a horizontal progress bar: a plain bitmap filled to its variable's value (SOCOM 1's
+ * CHProgressBar; SOCOM II's 0xC0 bytes, a string at 0xAC -- its destructor destroys one --
+ * zui_2d.h's layout; the names ours) */
+class CHProgressBar : public CPlainBmp {
 public:
+    virtual ~CHProgressBar();
     virtual void Tick(float dT);
 
-    unsigned char _18[0xa0 - 0x18];
     float m_fill;   // 0xa0: 0 to 1
     float _a4;
     float m_time;   // 0xa8: the seconds a full bar takes
-};
+    CSaferStr m_str;   // 0xac
+} __attribute__((aligned(16)));   // 0xc0 bytes
+
+/* a slider: a button with a knob (SOCOM 1's CSliderBar; SOCOM II's 0x510 bytes, the knob a plain
+ * bitmap at 0x460 -- zui_2d.h's layout) */
+class CSliderBar : public C2DButton {
+public:
+    virtual ~CSliderBar();
+
+    float m_value;   // 0x440
+    unsigned char _444[0x460 - 0x444];
+    CPlainBmp m_knob;   // 0x460
+    int m_intervals;   // 0x500
+} __attribute__((aligned(16)));   // 0x510 bytes
 
 /* the pop-up dialog as its command-type lookup sees it (slot 24 of its vtable, 0x36D970; the
  * renderable string's (0x36FC10) and the button's (0x3767C0) are declared with their classes
@@ -312,14 +326,26 @@ bool ListItem::IsEnabled()
     return true;
 }
 
-/* the check box's destructor (its implicit one: the check, the two actions, then the button's;
- * reached only through the thunk 0x37D0D0, the UIVarMixin's table's) */
-CCheckBox::~CCheckBox()
-{
-}
-
 /* the teletype's destructor (implicit: the cursor, the text, then the renderable string's;
  * reached only through the thunk 0x37D030) */
 CTeleType::~CTeleType()
+{
+}
+
+/* the slider's destructor (implicit: the knob, then the button's; reached through the thunk
+ * 0x37D090) */
+CSliderBar::~CSliderBar()
+{
+}
+
+/* the progress bar's destructor (implicit: the string, then the plain bitmap's, inline; reached
+ * through the thunk 0x37D0B0) */
+CHProgressBar::~CHProgressBar()
+{
+}
+
+/* the check box's destructor (its implicit one: the check, the two actions, then the button's;
+ * reached only through the thunk 0x37D0D0, the UIVarMixin's table's) */
+CCheckBox::~CCheckBox()
 {
 }
