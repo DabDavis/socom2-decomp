@@ -1298,6 +1298,22 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - libvu0-style GCC asm (`mfc1 $8, %n` with an "f" operand and a $8 clobber) reproduces
     mfc1/nop/qmtc2; the buffers held in pointer locals give register-based stores;
   - `new T[n]` calls MSL's __construct_new_array (MAIN 0x182070); CScriptArchive is 0x108 bytes.
+- **Tells from the sound and the valves, round 4** (zsnd_csndinstance, zsnd_csndgroup, valve_list.cpp ...):
+  - `iterator e = end(); i = remove_if(begin(), e, p); erase(i, e);` gives the target's single
+    end in s0; written as one expression, MW builds end() twice;
+  - a vector walk whose iterators live in stack slots (copied with lwc1/swc1) is `std::for_each`
+    with a functor (CValvePool::Free);
+  - an unsigned counter compared `(int)i < n` stops MW strength-reducing `_zrdr::Item()`'s address
+    (Parse, LoadCSndGroup); `len <= size - (int)(next - names)` branches on `slt at` with the
+    target's registers;
+  - a byte enum given real non-negative enumerators becomes unsigned and compares with `andi
+    0xff` (VALVE_TYPE: ANY 0, PERM 1, TEMP 2, PERSIST 3);
+  - bit-fields set in a constructor's initialiser list compile to one word read-mask-write each
+    (CValve's constructor);
+  - SOCOM II's CSndInstance::Tick adds a Doppler shift: the word at 0xC is the listener distance
+    (a float), CalcVolPan returns the new one;
+  - `989snd.c`'s name starts with a digit: sccheck counts its matches but lists them only with
+    `-v`.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has

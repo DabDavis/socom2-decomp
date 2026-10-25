@@ -17,9 +17,9 @@ M2C_UNK UninitSystemTuners__Fv();                   /* extern */
 M2C_UNK Uninit__4CSndFv();                          /* extern */
 M2C_UNK Uninit__5CPipeFv();                         /* extern */
 M2C_UNK Uninit__6CInputFv();                        /* extern */
+M2C_UNK Uninit__6CValveFv();                        /* extern */
 M2C_UNK Uninit__Q23zdb6CWorldFv();                  /* extern */
 M2C_UNK Uninit__Q23zdb7CRippleFv();                 /* extern */
-M2C_UNK func_00351E60();                            /* extern */
 M2C_UNK func_0039C6F0();                            /* extern */
 M2C_UNK func_003B11F0();                            /* extern */
 M2C_UNK func_003C0620(M2C_UNK *);                   /* extern */
@@ -41,7 +41,7 @@ void StopEngine__5CGameFv(void) {
     Close__10CZAnimMainFv(&ZAnim);
     func_005E5070();
     func_00576120();
-    func_00351E60();
+    Uninit__6CValveFv();
     Uninit__4CSndFv();
     Reset__7HeadsetFv();
     Clear__14CSched_ManagerFv(&zTaskScheduler);
