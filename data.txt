@@ -524,7 +524,9 @@
 0x004066B0 0xC __vt__8RoomGame  # vtable of RoomGame: found by its RTTI's name
 0x004066C0 0xC __vt__7LANGame  # vtable of LANGame: found by its RTTI's name
 0x004066D0 0xC __vt__13TransientGame  # vtable of TransientGame: found by its RTTI's name
+0x004066E0 0x50 __vt__Q226CZUniversInformationServer7CAcctDB  # OVL1 data; ours (CZUniversInformationServer::CAcctDB's vtable, by its RTTI at 0x3F5CA8: the empty primary table at 0x4066E0, CSaveModule's at 0x4066E8 (-0xC: the thunks 0x300630/20/10, CSaveModule's UnSerialize(CZAR *) and TestFlags), CLobbySaveModule's at 0x406704 (-0x24: the thunks 0x300660/50/40), then the primary's slots after the tables -- Serialize, UnSerialize, Save, Load, SetChecksum, the destructor); stored by the initialiser 0x4022D0 and the destructors 0x2FAFC0/0x300570; 3 references in 2 hand-written functions
 0x00406730 0x10 __vt__16CSMGetServerList  # vtable of CSMGetServerList: found by its RTTI's name
+0x00406740 0x14 __vt__16CLobbySaveModule  # OVL1 data; ours (CLobbySaveModule's vtable, by its RTTI at 0x3F5C88: three pure slots, 0; its constructor 0x33EFA0 and the destructors 0x2FAFC0/0x2FD000 store it); 1 reference in 1 hand-written function
 0x00406760 0x44 __vt__12CLobbyFileIO  # vtable of CLobbyFileIO: found by its RTTI's name
 0x004067B0 0x44 __vt__Q23zdb5CNode  # vtable of zdb::CNode: found by its RTTI's name
 0x00406800 0x44 __vt__Q23zdb9CLightMap  # vtable of zdb::CLightMap: found by its RTTI's name

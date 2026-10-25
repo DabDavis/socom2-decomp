@@ -5027,7 +5027,7 @@
 0x002FAB70 0x10 func_002FAB70  # OVL1
 0x002FAB80 0x3CC func_002FAB80  # OVL1
 0x002FAF50 0x64 PasswordSecurity__13CZOnlineLobbyFv  # OVL1; s1:calls
-0x002FAFC0 0xC0 func_002FAFC0  # OVL1
+0x002FAFC0 0xC0 __dt__Q226CZUniversInformationServer7CAcctDBFv  # OVL1; ours (CAcctDB's implicit virtual destructor, the inline virtual opening the unit: its three tables stored, CLobbySaveModule's string member destroyed inline, ~CSaveModule, the accounts vector's deleter destructor 0x2FFF20; the thunk 0x300630 (-0xC) jumps here)
 0x002FB080 0x134 UIGetServerList__FP13C2DAnimCmdHdrPf  # OVL1; ours (the UI command table's 'GetServerList' handler, record 0x3DDE30: the machine 0x44FD98 newed with the argument's valve and its thread started, then ticked until done and deleted) -- byte-exact, zNetMediusUniverse.cpp
 0x002FB1C0 0x174 Connect__16CSMGetServerListFUc  # OVL1; ours (CSMGetServerList's first state, the member pointer 0x3DF2F8 Start passes: ConnectToUniverse on entry, then GetInfo once connected, or the MP_MEDIUS_ERROR event, the valve off and Finish) -- byte-exact, zNetMediusUniverse.cpp
 0x002FB340 0x130 GetInfo__16CSMGetServerListFUc  # OVL1; ours (CSMGetServerList's second state, the member pointer 0x3DF2E8 Connect passes: the universe list cleared, the universe information asked for through 0x64AD98 with the news and status-list callbacks 0x2FDED0/0x2FDAF0, the valve set once both are in) -- byte-exact, zNetMediusUniverse.cpp
@@ -5073,12 +5073,12 @@
 0x002FECB0 0x19C func_002FECB0  # OVL1
 0x002FEE50 0xB0C insert__Q23std68__vector_imp<14UniverseStatus,Q23std27allocator<14UniverseStatus>,0>FP14UniverseStatusUiRC14UniverseStatus  # OVL1; ours (the universe list's insert: cbGetUniverseStatusList 0x2FDAF0 pushes each 0x3D8-byte universe through it)
 0x002FF960 0x5BC insert__Q23std98__vector_imp<29MediusGetUniverseNewsResponse,Q23std42allocator<29MediusGetUniverseNewsResponse>,0>FP29MediusGetUniverseNewsResponseUiRC29MediusGetUniverseNewsResponse  # OVL1; ours (the news list's insert, include/vector's class insert: cbGetUniverseNews 0x2FDED0 pushes each 0x120-byte line through it)
-0x002FFF20 0x68 func_002FFF20  # OVL1
+0x002FFF20 0x68 __dt__Q23std62__vector_deleter<10AcctRecord,Q23std23allocator<10AcctRecord>>Fv  # OVL1; ours (the accounts vector's deleter destructor, out of class in include/vector: its clear 0x2FFFA0, then the storage deleted; ~CAcctDB calls it)
 0x002FFF90 0x8 clear__Q23std70__vector_deleter<14UniverseStatus,Q23std27allocator<14UniverseStatus>>Fv  # OVL1; ours (the universe list's clear, out of class in include/vector: the count zeroed, the element trivially destroyed; CSMGetServerList::GetInfo 0x2FB340 calls it on the list 0x44FD50)
-0x002FFFA0 0x8 func_002FFFA0  # OVL1
-0x002FFFB0 0x68 func_002FFFB0  # OVL1
-0x00300020 0x68 func_00300020  # OVL1
-0x00300090 0x8 func_00300090  # OVL1
+0x002FFFA0 0x8 clear__Q23std62__vector_deleter<10AcctRecord,Q23std23allocator<10AcctRecord>>Fv  # OVL1; ours (the accounts vector's clear: the count zeroed, the records trivially destroyed)
+0x002FFFB0 0x68 __dt__Q23std70__vector_deleter<14UniverseStatus,Q23std27allocator<14UniverseStatus>>Fv  # OVL1; ours (the universe list's deleter destructor, its clear inlined: the count zeroed, the storage deleted)
+0x00300020 0x68 __dt__Q23std100__vector_deleter<29MediusGetUniverseNewsResponse,Q23std42allocator<29MediusGetUniverseNewsResponse>>Fv  # OVL1; ours (the news list's deleter destructor: its clear 0x300090, then the storage deleted)
+0x00300090 0x8 clear__Q23std100__vector_deleter<29MediusGetUniverseNewsResponse,Q23std42allocator<29MediusGetUniverseNewsResponse>>Fv  # OVL1; ours (the news list's clear: the count zeroed)
 0x003000A0 0x1A8 func_003000A0  # OVL1
 0x00300250 0x218 func_00300250  # OVL1
 0x00300470 0x80 func_00300470  # OVL1
