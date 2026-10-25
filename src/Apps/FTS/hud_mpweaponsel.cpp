@@ -20,6 +20,10 @@ void CMPWeaponSel::UnInit()
     func_00240B90(this, 0);
 }
 
+void CWeaponSlot::SetTrans(float trans)
+{
+}
+
 void SlotList::SetTrans(float trans)
 {
     for (unsigned int i = 0; i < 5; i++)

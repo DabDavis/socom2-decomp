@@ -144,6 +144,9 @@ public:
  * CategorySlot 0x405D80, SelectedSlot 0x405D00, SlotList 0x405E80) */
 class CWeaponSlot : public C2D {
 public:
+    /* slot 11: nothing to fade (0x2405F0, after SlotList::SetTrans) */
+    virtual void SetTrans(float trans);
+
     unsigned char _18[0x20 - 0x18];
 };   // 0x20 bytes
 

@@ -2324,7 +2324,7 @@
 0x0023ECA0 0x1250 func_0023ECA0  # OVL1
 0x0023FEF0 0x690 func_0023FEF0  # OVL1
 0x00240580 0x68 SetTrans__8SlotListFf  # OVL1; by hand (the HUD lane: slot 11 of SlotList's vtable 0x405E80 -- each slot faded)
-0x002405F0 0x8 func_002405F0  # OVL1
+0x002405F0 0x8 SetTrans__11CWeaponSlotFf  # OVL1; by hand (the HUD lane: slot 11 of CWeaponSlot's vtable 0x405E00 -- empty, right after SlotList::SetTrans)
 0x00240600 0x584 func_00240600  # OVL1
 0x00240B90 0x1BC func_00240B90  # OVL1
 0x00240D50 0x104 UnInit__12CMPWeaponSelFv  # OVL1; s1:calls (CHUD::ReInit_Uninit's next, as SOCOM 1's); by hand (CHUD::ReInit_Uninit calls it on CHUD+0x38E0 only in a network game, the member 0x241A90 constructs -- a SOCOM II selector honouring the server's Enable_203FRAG.. valves; the class name ours; s1:calls had shifted SOCOM 1's names one member along)
