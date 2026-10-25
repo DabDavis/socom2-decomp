@@ -7059,7 +7059,7 @@
 0x0037DE60 0x198 CreateDisplayObj__13CCheckBoxSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037E000 0x188 func_0037E000  # OVL1
 0x0037E190 0x4C func_0037E190  # OVL1
-0x0037E1E0 0x28 func_0037E1E0  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
+0x0037E1E0 0x28 __ct__9CSaferStrFRC9CSaferStr  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); by hand (the string's copy constructor 0x22E560 called on this and returned: CSaferStr's implicit copy out of line, which zui_cleanup.cpp's Copies call for their string members) -- zui_spec.cpp
 0x0037E210 0x84 func_0037E210  # OVL1
 0x0037E2A0 0x1D0 func_0037E2A0  # OVL1
 0x0037E470 0x184 CreateDisplayObj__17CHProgressBarSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -7086,7 +7086,7 @@
 0x00382C70 0x374 func_00382C70  # OVL1
 0x00382FF0 0x164 CreateDisplayObj__10CImageSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:calls
 0x00383160 0x174 func_00383160  # OVL1
-0x003832E0 0x80 func_003832E0  # OVL1
+0x003832E0 0x80 __ct__11CDlgObjSpecFP5_zrdr  # OVL1; s1:order by hand (SOCOM 1 inlines CDlgObjSpec(_zrdr *) into each spec's constructor; SOCOM II's copy stores the vtable and makes the UIVAR tag's CUIVariableSpec through 0x386FF0, as the inlined copies in CTextSpec's and CImageSpec's constructors do) -- zui_spec.cpp
 0x00383360 0x2B8 func_00383360  # OVL1
 0x00383620 0xB0 __dt__12CCounterSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003836D0 0xC GetType__12CCounterSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -7152,8 +7152,8 @@
 0x00386E10 0x8 func_00386E10  # OVL1
 0x00386E20 0x114 func_00386E20  # OVL1
 0x00386F40 0xC GetType__14CUIMapCtrlSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00386F50 0x98 func_00386F50  # OVL1
-0x00386FF0 0x258 func_00386FF0  # OVL1
+0x00386F50 0x98 __dt__15CUIVariableSpecFv  # OVL1; s1:order by hand (SOCOM 1's __dt__15CUIVariableSpecFv after GetType__14CUIMapCtrlSpecFv: the name freed, the value's children deleted and the value, the CSTable member) -- zui_cleanup.cpp
+0x00386FF0 0x258 __ct__15CUIVariableSpecFP5_zrdr  # OVL1; s1:order by hand (SOCOM 1's __ct__15CUIVariableSpecFP5_zrdr after ~CUIVariableSpec in zui_cleanup.cpp: NAME strdup'd, VALUE cloned into its CSTable(0, 1024), LONGEVITY parsed) -- zui_cleanup.cpp
 0x00387250 0x90 func_00387250  # OVL1
 0x003872E0 0x54 func_003872E0  # OVL1
 0x00387340 0x19C __dt__15CRadioStripSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -7188,7 +7188,7 @@
 0x00388B80 0x1EC func_00388B80  # OVL1
 0x00388D70 0xE0 func_00388D70  # OVL1
 0x00388E50 0xCC __dt__11CDlgObjSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00388F20 0x198 func_00388F20  # OVL1
+0x00388F20 0x198 __ct__11CDlgObjSpecFR11CDlgObjSpec  # OVL1; s1:order by hand (SOCOM 1's __ct__11CDlgObjSpecFR11CDlgObjSpec after ~CDlgObjSpec in zui_cleanup.cpp; stores CDlgObjSpec's vtable, copies the variable spec through new(0x2C) -- zui_cleanup.cpp
 0x003890C0 0x78 func_003890C0  # OVL1
 0x00389140 0xC HasChildren__15CRadioStripSpecCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00389150 0x8 NumChildren__15CRadioStripSpecCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)

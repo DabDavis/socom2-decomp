@@ -11,12 +11,17 @@
 #include <string.h>
 #include <vector>
 
-/* a ZRDR value (SOCOM 1's DWARF): a typed word -- 1 an integer, 2 a real, 3 a string, 4 an array */
+class CSTable;
+
+/* a ZRDR value (SOCOM 1's DWARF): a typed word -- 1 an integer, 2 a real, 3 a string, 4 an array.
+ * SOCOM II's has the rdr lane's nofree flag after packed (the clone constructor clears five
+ * fields, zrdr.h's layout) */
 struct _zrdr {
     unsigned int type : 8;   // 0x0
     unsigned int isclone : 1;   // 0x0
     unsigned int packed : 1;   // 0x0
-    unsigned int unused : 6;   // 0x0
+    unsigned int nofree : 1;   // 0x0: SOCOM II's (zrdr.h's name)
+    unsigned int unused : 5;   // 0x0
     unsigned int length : 16;   // 0x0
     union {
         float real;
@@ -25,12 +30,26 @@ struct _zrdr {
         _zrdr *array;
     };   // 0x4
 
+    /* a copy of src, its strings made in the table (SOCOM 1's out of line, 0x23E140 there;
+     * inlined in each of SOCOM II's callers). The fields are cleared in the mem-initializer
+     * list: each is then read, masked and written back as a whole word, `(0 & mask) << shift`
+     * (CDlgObjSpec's copy); assigned in the body, MW narrows the stores to bytes and halfwords */
+    _zrdr(_zrdr *src, CSTable *strings)
+        : type(0), isclone(false), packed(false), nofree(false), unused(0), length(0)
+    {
+        Clone(src, strings);
+    }
     ~_zrdr();
     void DeleteChildren();
+    void Clone(_zrdr *src, CSTable *strings);
     bool IsArray() const;
 
     /* (ours) */
     bool IsReal() { return type == 2; }
+    /* the value's type, an array's count and its items (ours, as zrdr.h's) */
+    unsigned int Type() const { return type; }
+    unsigned int Count() const { return type == 4 ? length : 0; }
+    _zrdr *Item(unsigned int i) const { return i < Count() ? &array[i] : 0; }
     /* a number: a real as it is, an integer converted, anything else 0 (ours, as zanim.h's) */
     float Real()
     {
@@ -43,11 +62,13 @@ struct _zrdr {
     }
 };   // 0x8 bytes
 
-/* how long a variable lives (SOCOM 1's enum; the values' names ours, as zanim_menu.h's) */
+/* how long a variable lives (SOCOM 1's DWARF, names and values; a dormant variable is a free
+ * slot of the manager's) */
 enum UIVAR_LONGEVITY {
-    UIVAR_TEMPORARY = 0,
-    UIVAR_SESSION = 1,
-    UIVAR_PERMANENT = 2
+    UIVL_DORMANT = 0,
+    UIVL_TEMPORARY = 1,
+    UIVL_PERMANENT = 2,
+    UIVL_PERSISTENT = 3
 };
 
 class UIVarMixin;
