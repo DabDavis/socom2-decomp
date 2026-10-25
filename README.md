@@ -452,6 +452,23 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     test's delay slot;
   - an inline virtual's out-of-line copy is linked once per overlay (CEntityCtrl::SetThrottle
     at 0x2A26E0 and 0x567340).
+- **Tells from the network glue** (round 5, fts_remote.cpp):
+  - plain global or member arguments load in parameter order; one that needs a conversion (an
+    unsigned global to an int parameter, a uchar field to a ushort one) is evaluated earlier,
+    and an inline accessor among the arguments is expanded before an out-of-line call in the
+    same list (that is how the connection index lands in a saved register);
+  - MW doesn't trust an unsigned short or unsigned char PARAMETER's extension: storing one into
+    a wider field adds an `andi` -- which recovers SOCOM II's changed signatures;
+  - `beqz a -> L; bnez b -> body; nop; nop; L: b epilogue` is `if (!(a && b)) return;`;
+  - a byte loop zeroing a stack struct behind a null test of its address is MW's `= {0}`; a
+    struct with constructors can't take it, so packets hold PNT3D, not CPnt3D;
+  - a bool argument computed before the body's test was a local in the source; an inline bool
+    compared `!= false` keeps its sltu before the branch, a plain truth test drops it;
+  - a struct copy of eight unsigned shorts is a four-pass lh/sh loop; a constant eight-pass
+    element loop unrolls into eight lhu/sh pairs;
+  - CValve's inline setter, as both builds inline it: `state = VALVE_SAME; if (m_value != value)
+    state = value == 0 ? VALVE_OFF : VALVE_ON;`, an int parameter, the enum compared against an
+    enumerator.
 - **Tool notes**: scdiff accepts the image's one non-zero pad word (0xFFFFFFFF at 0x1E70F4,
   after main); `automatch --stale` can drop a renamed destructor's draft when its re-draft
   misses (SlotList's and CWeaponSlot's were restored by hand, the old drafts renamed).
