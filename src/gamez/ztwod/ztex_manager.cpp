@@ -27,20 +27,26 @@ public:
     /* the GS memory textures start at (SOCOM 1's) */
     static unsigned int m_baseAddress;
 
-    unsigned char _0[0x10];
+    unsigned char _0[0x8];
+    unsigned int m_addr;   // 0x8: its place in GS memory
+    unsigned char _c[0x10 - 0xc];
     char **m_name;   // 0x10: the name first
     unsigned char _14[0x1c - 0x14];
     CTexPalette *m_palette;   // 0x1c
     unsigned char _20[0x2a - 0x20];
     unsigned short m_palid;   // 0x2a
-    unsigned char _2c[0x5c - 0x2c];
+    unsigned char _2c[0x2e - 0x2c];
+    unsigned short m_size;   // 0x2e: its GS memory, in blocks
+    unsigned char _30[0x5c - 0x30];
     std::vector<CTexture *> m_mips;   // 0x5c: its mip levels (SOCOM II's)
 };
 
 /* a palette as the texture matches it: its name record and id (the names ours) */
 class CTexPalette {
 public:
-    unsigned char _0[0x8];
+    unsigned int m_addr;   // 0x0: its place in GS memory
+    unsigned short m_size;   // 0x4: its GS memory, 256 to a block
+    unsigned char _6[0x8 - 0x6];
     char **m_name;   // 0x8
     unsigned char _c[0x10 - 0xc];
     unsigned int m_id;   // 0x10
@@ -83,6 +89,7 @@ class CGSTexBuffer {
 public:
     void Add(CTexList *list, bool b);
     unsigned int Setup(float start, float end);
+    void RelocateAll();
 
     char *m_name;   // 0x0
     unsigned char m_checkForOverflow;   // 0x4
@@ -112,6 +119,30 @@ bool CTexture::HasMipLevel(CTexture *tex)
     for (int i = 0; i < m_mips.size() && !found; i++)
         found = m_mips[i] == tex;
     return found;
+}
+
+/* every dynamic palette and texture placed one after another from the buffer's start, a place
+ * rewritten only where it changes (SOCOM 1's RelocateAll, palettes first) */
+void CGSTexBuffer::RelocateAll()
+{
+    m_nextAddress = m_startAddress;
+    for (CTexPalList::iterator i = m_dyntex_list.m_pal_list.begin(); i != m_dyntex_list.m_pal_list.end(); ++i) {
+        CTexPalette *pal = *i;
+
+        unsigned int addr = m_nextAddress;
+
+        if (addr != pal->m_addr)
+            pal->m_addr = addr;
+        m_nextAddress = addr + ((unsigned int)pal->m_size >> 8);
+    }
+    for (CTexList::iterator i = m_dyntex_list.m_tex_list.begin(); i != m_dyntex_list.m_tex_list.end(); ++i) {
+        unsigned int addr = m_nextAddress;
+        CTexture *tex = (*i)->m_texture;
+
+        if (addr != tex->m_addr)
+            tex->m_addr = addr;
+        m_nextAddress = addr + tex->m_size;
+    }
 }
 
 /* the texture's palette looked for in a list, by id and name, and hooked up when found (called three

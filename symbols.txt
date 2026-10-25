@@ -6506,7 +6506,7 @@
 0x00356BE0 0x140 func_00356BE0  # OVL1
 0x00356D20 0x168 func_00356D20  # OVL1
 0x00356E90 0x228 MakeChain__Q23zdb12CGSTexBufferFP1i  # OVL1; s1:align
-0x003570C0 0x108 func_003570C0  # OVL1
+0x003570C0 0x108 RelocateAll__Q23zdb12CGSTexBufferFv  # OVL1; s1:order by hand (the HUD lane: ztex_manager.cpp -- SOCOM 1's CGSTexBuffer::RelocateAll at its place after MakeChain: the dynamic palettes, then the textures, placed one after another from m_startAddress, each place rewritten only where it changes)
 0x003571D0 0x29C func_003571D0  # OVL1
 0x00357470 0x50 HasMipLevel__Q23zdb8CTextureFPQ23zdb8CTexture  # OVL1; ours by hand (the HUD lane: ztex_manager.cpp -- whether a texture is in this texture's vector of mip levels at 0x5C; zdb::CAssetList::FindMipLevel's test (0x321300); byte-exact)
 0x003574C0 0xD4 FindPalette__Q23zdb8CTextureFPQ23zdb11CTexPalList  # OVL1; ours by hand (the HUD lane: ztex_manager.cpp -- the texture's palette looked for in a palette list by id (0x2a against the palette's 0x10) and name, stored at 0x1c when found; called three times by 0x3571D0; byte-exact)
