@@ -98,6 +98,22 @@ CAiStateStack::~CAiStateStack()
     Clear();
 }
 
+/* the current state: the front, or 0 when the stack is empty (OVL2 0x5F8360, 0x5F8330 -- the
+ * same code twice, the non-const and the const one) */
+CAiState *CAiStateStack::GetState()
+{
+    if (size() == 0)
+        return 0;
+    return front();
+}
+
+CAiState *CAiStateStack::GetState() const
+{
+    if (size() == 0)
+        return 0;
+    return ((CAiStateStack *)this)->front();
+}
+
 /* every state deleted, the stack emptied (OVL2 0x5F8390; ~CSealCtrlAi calls it too).
  * OPEN, 13 instructions, stack slots only: the target walks two const_iterators assigned from
  * the const begin()/end() (the four copies each -- store, bitwise, word, bitwise -- and the walk

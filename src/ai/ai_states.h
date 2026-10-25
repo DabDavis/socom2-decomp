@@ -36,6 +36,10 @@ public:
     ~CAiStateStack();
     /* every state deleted, the stack emptied (the name ours; 0x5F8390) */
     void Clear();
+    /* the current state, the front, or 0 (seal_aistate.cpp's, out of line: the SEAL units call
+     * them; CSealCtrlAi::GetAiState inlines one; the names ours -- 0x5F8330, 0x5F8360) */
+    CAiState *GetState() const;
+    CAiState *GetState();
 };
 
 class CAiState {

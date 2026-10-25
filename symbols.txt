@@ -11505,8 +11505,8 @@
 0x005F5CD0 0x250 func_005F5CD0  # OVL2
 0x005F5F20 0x98 ClearAiState__11CSealCtrlAiFb  # OVL2; s1:calls by hand (the SEAL lane's lead, verified: SOCOM II's CSealCtrlAi::OnDeath and ResetToInitialState call it where SOCOM 1's call ClearAiState(bool), and the CSealCtrlAi OnMissionEnd at 0x555900 where SOCOM 1's calls ClearAiState(1); SOCOM II's hands the stack at +0x41C to 0x5F7920/0x5F7470 and returns whether it cleared)
 0x005F5FC0 0x8 func_005F5FC0  # OVL2
-0x005F5FD0 0x38 func_005F5FD0  # OVL2
-0x005F6010 0x38 func_005F6010  # OVL2
+0x005F5FD0 0x38 GetAiState__11CSealCtrlAiCFv  # OVL2; s1:order by hand (SOCOM 1's GetAiState() const, after ClearAiState as there: the state stack at 0x41C (SOCOM 1's 0x324), empty -> the static unknown state at 0x66B990 (SOCOM 1's at 0x509870), else its front)
+0x005F6010 0x38 GetAiState__11CSealCtrlAiFv  # OVL2; s1:order by hand (SOCOM 1's GetAiState(), next: the same code, non-const)
 0x005F6050 0xA8 func_005F6050  # OVL2
 0x005F6100 0x8C func_005F6100  # OVL2
 0x005F6190 0x48 func_005F6190  # OVL2
@@ -11537,8 +11537,8 @@
 0x005F81D0 0x8 Tick__8CAiStateFfP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F81E0 0x8C func_005F81E0  # OVL2
 0x005F8270 0xC0 func_005F8270  # OVL2
-0x005F8330 0x24 func_005F8330  # OVL2
-0x005F8360 0x24 func_005F8360  # OVL2
+0x005F8330 0x24 GetState__13CAiStateStackCFv  # OVL2; by hand: a CAiStateStack's front state, 0 when its size (at 0) is 0 -- the SEAL units call it on a controller's stack (the SEAL lane's lead), CSealCtrlAi::GetAiState (0x5F5FD0/0x5F6010) inlines the same test; the first of two identical copies, taken as the const one by GetAiState's order (the name ours)
+0x005F8360 0x24 GetState__13CAiStateStackFv  # OVL2; by hand: 0x5F8330's code again, the non-const copy (the name ours)
 0x005F8390 0xF4 Clear__13CAiStateStackFv  # OVL2; by hand: every state in the stack deleted through its virtual destructor (slot +0x4C of CAiState's table) and the nodes erased (the OVL2 pointer list's erase 0x50F990); SOCOM 1's CAiStateStack : list (DWARF, 0xC bytes, CSealCtrlAi::m_stateStack) -- the name ours; ~CSealCtrlAi and ~CAiStateStack call it
 0x005F8490 0x90 __dt__13CAiStateStackFv  # OVL2; by hand: CAiStateStack's destructor (Clear, then the pointer list's three this-tested levels and erase); the member at +8 of every CAiState (new in SOCOM II: sub-states) and CSealCtrlAi's m_stateStack -- every CAiS* destructor calls it with -1
 0x005F8520 0x38 func_005F8520  # OVL2
