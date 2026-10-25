@@ -157,6 +157,8 @@ public:
      * own only so; the name is ours) */
     EQUIP_ITEM GetId() const { return m_ID; }
 
+    /* the decal sets read from the decals rdr's DECAL_SETS list (SOCOM 1's) */
+    static void OpenDecals();
     /* the name, packed with the ammo into a word for the network (SOCOM 1's statics) */
     static unsigned short PackItemAndAmmoEnums(EQUIP_ITEM item, EQUIP_AMMO ammo);
     static void UnpackItemAndAmmoEnums(unsigned short packed, EQUIP_ITEM *item, EQUIP_AMMO *ammo);
@@ -217,12 +219,65 @@ public:
     static CZProjectileList *m_pProjectilelist;
 };   // 0xf8 bytes (CZFTSWeapon's targetmods start there)
 
-class CZDecalDef;
+/* the materials' table (int_material.cpp's, SOCOM 1's class): only the extension list, whose size
+ * the weapons' per-material animations are bounded by (SOCOM 1's static; 0x44F350 here) */
+class CMaterialExArray {
+public:
+    static std::vector<void *> m_materialex_list;
+};
 
-/* a named set of decals (SOCOM 1's DWARF: 0xc bytes -- the decal definitions, the name, a byte;
- * zwep_weapon.cpp's). The sets are SOCOM 1's static vector m_decalsets (0x4B5290 here) */
+namespace zdb {
+class CTexHandle;
+}
+struct _zrdr;
+void *_malloc(unsigned int size, const char *file, int line);
+void _free(void *p, const char *file, int line);
+char *_strdup(const char *s, const char *file, int line);
+
+/* one material's decal: its size range and texture (SOCOM 1's DWARF: 0xc bytes) */
+class CZDecalDef {
+public:
+    float m_decalminsize;   // 0x0
+    float m_decalmaxsize;   // 0x4
+    zdb::CTexHandle *m_texture;   // 0x8
+};
+
+/* a named set of decals, one per material (SOCOM 1's DWARF: 0xc bytes -- the decal definitions, the
+ * name, a byte; zwep_weapon.cpp's). The sets are SOCOM 1's static vector m_decalsets (0x4B5290
+ * here) */
 class CZDecalSet {
 public:
+    /* a definition for every material, cleared, and the sets' room reserved (inline: ReadDecalSet's
+     * new builds it in place -- SOCOM 1's alike) */
+    CZDecalSet()
+    {
+        int n = CMaterialExArray::m_materialex_list.size();
+
+        m_decals = (CZDecalDef *)_malloc(n * sizeof(CZDecalDef), 0, 0);
+        m_name = 0;
+        for (int i = 0; i < n; i++) {
+            CZDecalDef *d = &m_decals[i];
+
+            d->m_decalminsize = 0.0f;
+            d->m_decalmaxsize = 0.0f;
+            d->m_texture = 0;
+        }
+        m_decalsets.reserve(128);
+        m_permenant = 0;
+    }
+    /* the name copied in (inline: the by-value name is loaded ahead of the old one's free, kept in a
+     * saved register; the name ours) */
+    void SetName(const char *name)
+    {
+        if (m_name)
+            _free(m_name, 0, 0);
+        m_name = 0;
+        m_name = _strdup(name, 0, 0);
+    }
+    /* an entry of a set's rdr: its name, its permanence or a material's decal (SOCOM 1's) */
+    void ReadDecalEntry(_zrdr *entry);
+    /* a set read from its rdr and listed (SOCOM 1's) */
+    static void ReadDecalSet(_zrdr *rdr);
     static CZDecalSet *GetDecalSetByName(const char *name);
     /* every set freed and the vector's storage given up; false when there were none */
     static bool DestroyDecalSet();
@@ -233,13 +288,6 @@ public:
 
     static std::vector<CZDecalSet *> m_decalsets;
 };   // 0xc bytes
-
-/* the materials' table (int_material.cpp's, SOCOM 1's class): only the extension list, whose size
- * the weapons' per-material animations are bounded by (SOCOM 1's static; 0x44F350 here) */
-class CMaterialExArray {
-public:
-    static std::vector<void *> m_materialex_list;
-};
 
 /* a weapon's per-stance reticle and recoil tuning (SOCOM 1's DWARF: 0x4c bytes; SOCOM II's is 0x74,
  * a float inserted at 0x28 and more members after SOCOM 1's -- only what the matched code reads is

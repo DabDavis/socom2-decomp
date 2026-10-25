@@ -8300,8 +8300,8 @@
 0x003D03C0 0xC func_003D03C0  # OVL1
 0x003D03D0 0x44 Open__8CZWeaponFv  # OVL1; s1:calls
 0x003D0420 0x4C func_003D0420  # OVL1
-0x003D0470 0x1C0 func_003D0470  # OVL1
-0x003D0630 0x238 func_003D0630  # OVL1
+0x003D0470 0x1C0 ReadDecalEntry__10CZDecalSetFP5_zrdr  # OVL1; s1:calls by hand (the wep lane: ReadDecalSet calls it per entry as SOCOM 1's calls ReadDecalEntry__10CZDecalSetFP5_zrdr -- SETNAME, PERMENANT, MATERIALNAME/TEXTURENAME/MIN_SIZE/MAX_SIZE); zwep_weapon.cpp
+0x003D0630 0x238 ReadDecalSet__10CZDecalSetFP5_zrdr  # OVL1; s1:calls by hand (the wep lane: OpenDecals calls it on each DECAL_SETS item as SOCOM 1's calls ReadDecalSet__10CZDecalSetFP5_zrdr -- the new set built inline, ReadDecalEntry per entry, pushed onto m_decalsets); zwep_weapon.cpp
 0x003D0870 0xB8 OpenDecals__8CZWeaponFv  # OVL1; s1:calls
 0x003D0930 0xA0 GetDecalSetByName__10CZDecalSetFPCc  # OVL1; s1:align
 0x003D09D0 0xF0 DestroyDecalSet__10CZDecalSetFv  # OVL1; s1:align
