@@ -919,23 +919,43 @@ public:
 class CCell;
 
 /* a prop scattered on the cells (SOCOM 1's grid_clutter.cpp class; 0x70 bytes, the size ReadClutter
- * news): only its node placed yet (CCell::AddClutter reads it at 0x64) */
+ * news). Its placement is a matrix (the constructor makes it the unit one), or -- with m_quat set --
+ * a rotation, a translation in the third row and a scale (GetMatrix builds the matrix from them,
+ * GetTranslate picks the row); the names past SOCOM 1's are ours */
 class CClutter {
 public:
     CClutter(CNode *node);
+    CMatrix *GetMatrix();
+    CPnt3D *GetTranslate();
 
-    unsigned char _0[0x64];
+    CMatrix m_matrix;   // 0x0
+    unsigned char _40[0x4c - 0x40];
+    unsigned int m_bit0 : 1;   // 0x4c
+    unsigned int m_quat : 1;   // 0x4c
+    unsigned int m_flags : 30;   // 0x4c (more bits the constructor clears, a count at 14)
+    unsigned char _50[0x64 - 0x50];
     CNode *m_node;   // 0x64
     unsigned char _68[0x70 - 0x68];
 };   // 0x70 bytes
 
+class CClutterAnim;
+/* a body pushing the clutter about (SOCOM 1's list element; the name ours) */
+struct CClutterEffector;
+
 /* the clutter's animation: the props pushed about by effectors (SOCOM 1's grid_clutter.cpp class,
- * 0x70 bytes): only its destructor declared yet */
+ * 0x70 bytes, its DWARF) */
 class CClutterAnimManager {
 public:
     CClutterAnimManager();
     ~CClutterAnimManager();
-};
+    /* every effector deleted, the list emptied (SOCOM 1's) */
+    void ClearEffectors();
+
+    unsigned char m_CellAnimate;   // 0x0
+    CMatrix m_matrix;   // 0x10
+    std::list<CClutterAnim *> m_ClutterAnims;   // 0x50
+    std::list<CClutterEffector *> m_ClutterEffectors;   // 0x5c
+};   // 0x70 bytes
 
 /* a cell's clutter: the props scattered on it (SOCOM 1's DWARF: CClutterList : vector, 0x14
  * bytes). SOCOM II's is 0x1C bytes, a cell holds two (CCell::AddClutter puts a prop with
