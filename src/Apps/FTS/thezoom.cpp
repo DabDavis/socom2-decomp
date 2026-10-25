@@ -76,6 +76,7 @@ public:
     static void Reset();
     static void ClearLensFx();
     static void LoadLensFx();
+    static void ResetLensColors();
     static void SetLensFx(unsigned char fx);
     static unsigned char LensFxOn();
     static void SetLensFxAnim(CZAnim *anim);
@@ -387,4 +388,35 @@ unsigned char CameraZoom::LensFxOn()
 void CameraZoom::SetLensFxAnim(CZAnim *anim)
 {
     data_00408CD0 = anim;
+}
+
+/* the lens effects' colours put back to white with no alpha, the screen's tint handed white
+ * (0x3B78D0, unnamed), two words cleared and the blindplayer anims stopped (SOCOM II's; the name
+ * ours) */
+extern "C" {
+void func_003B78D0(CPnt4D *color, float t);
+void func_00270960(CZAnim *anim, bool now);
+extern int data_00488E90;                       /* thePipe + 0x6D0 */
+extern int data_00488EA0;                       /* thePipe + 0x6E0 */
+}
+
+void CameraZoom::ResetLensColors()
+{
+    for (int i = 0; i < 4; i++) {
+        data_004B4D40.m_c[i].x = 1.0f;
+        data_004B4D40.m_c[i].y = 1.0f;
+        data_004B4D40.m_c[i].z = 1.0f;
+        data_004B4D40.m_c[i].w = 0.0f;
+    }
+    CPnt4D white(1.0f, 1.0f, 1.0f, 0.0f);
+
+    func_003B78D0(&white, 0.0f);
+    data_00488EA0 = 0;
+    data_00488E90 = 0;
+    if (data_00408C88[0])
+        func_00270960(data_00408C88[0], false);
+    if (data_00408C88[1])
+        func_00270960(data_00408C88[1], false);
+    if (data_00408C88[2])
+        func_00270960(data_00408C88[2], false);
 }
