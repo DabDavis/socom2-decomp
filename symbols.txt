@@ -7112,7 +7112,7 @@
 0x00385610 0x58 func_00385610  # OVL1
 0x00385670 0x14C Serialize__13CUIVarManagerFi  # OVL1; s1:calls
 0x003857C0 0x140 Add__13CUIVarManagerFPCcP5_zrdr15UIVAR_LONGEVITY  # OVL1; s1:calls (the UI handlers register their vars through it where SOCOM 1's do) -- the UI-commands lane
-0x00385900 0xC8 func_00385900  # OVL1
+0x00385900 0xC8 Find__13CUIVarManagerFPCc  # OVL1; s1:align by hand (SOCOM 1's Find(const char *) at the same place after Add: the 48-byte variables walked, a live one (longevity byte at 0x24) whose name at 0x14 matches strcasecmp returned)
 0x003859D0 0x88 func_003859D0  # OVL1
 0x00385A60 0x1CC func_00385A60  # OVL1
 0x00385C30 0xA4 func_00385C30  # OVL1
@@ -7143,7 +7143,7 @@
 0x00386B80 0x70 func_00386B80  # OVL1
 0x00386BF0 0x15C func_00386BF0  # OVL1
 0x00386D50 0x84 func_00386D50  # OVL1
-0x00386DE0 0x8 func_00386DE0  # OVL1
+0x00386DE0 0x8 OnCreateString__7CSTableFPc  # OVL1; ours (slot 0x14 of CSTable's 0x4081D0 and CUIVarSTable's 0x407D20 vtables, empty; CreateString calls it with each string it adds; the inline virtual's copy emitted with zui_var.cpp's CUIVarSTable)
 0x00386DF0 0x8 func_00386DF0  # OVL1
 0x00386E00 0x8 func_00386E00  # OVL1
 0x00386E10 0x8 func_00386E10  # OVL1
@@ -7519,11 +7519,11 @@
 0x0039C250 0x14 Release__9CBufferIOFv  # OVL1; s1:order (after Open(const char *, unsigned) as SOCOM 1's Release; zeroes the four buffer members and calls CFileIO's Release as SOCOM 1's does)
 0x0039C270 0x70 Open__9CBufferIOFPvUi  # OVL1; s1:vtable by hand (CBufferIO's slot 0x44, SOCOM 1's Open__9CBufferIOFPvUi at 0x38 before SOCOM II's three new CIO slots; takes the buffer and size as SOCOM 1's)
 0x0039C2E0 0x44 __ct__9CBufferIOFv  # OVL1; s1:align
-0x0039C330 0x94 func_0039C330  # OVL1
-0x0039C3D0 0xC func_0039C3D0  # OVL1
-0x0039C3E0 0xC func_0039C3E0  # OVL1
-0x0039C3F0 0x4C func_0039C3F0  # OVL1
-0x0039C440 0xBC func_0039C440  # OVL1
+0x0039C330 0x94 Find__8CPackageFPCc  # OVL1; ours (SOCOM II's package, the class name ours: the header's entries from 0xA0, 92 bytes each, up to the count at 0x98, compared with strcasecmp at +4; CFileIO::Open calls it with &0x4A15F8 and the upper-cased name)
+0x0039C3D0 0xC Seek__8CPackageFii  # OVL1; ours (the package's static file 0x4A1630 seeked, a tail call of CFileIO::fseek; CFileIO::Open seeks to the entry's offset with it)
+0x0039C3E0 0xC GetFile__8CPackageFv  # OVL1; ours (the package's static file 0x4A1630; CFileIO::Open shares its descriptor and flags)
+0x0039C3F0 0x4C Close__8CPackageFv  # OVL1; ours (the static file closed, the header freed and both fields cleared, false; fts_mission's UpdateMissionArchive calls it; the destructor at 0x39C500 inlines it)
+0x0039C440 0xBC Open__8CPackageFPCc  # OVL1; ours (the static file opened for reading, the 252-byte header read, the header and its count - 1 further entries allocated and read; UpdateMissionArchive calls it)
 0x0039C500 0x78 __dt__7COutputFv  # OVL1; s1:align
 0x0039C580 0xC func_0039C580  # OVL1
 0x0039C590 0x80 UnRegisterRebootCallback__11CIOPManagerFi  # OVL1; s1:calls (UninitSystemTuners passes it theIOPManager and the id InitSystemTuners' RegisterRebootCallback returned)
@@ -7548,10 +7548,10 @@
 0x0039D960 0x334 Read__7CFileCDFPci  # OVL1; s1:calls
 0x0039DCA0 0x110 XferSectorsToCaller__7CFileCDFPci  # OVL1; s1:calls
 0x0039DDB0 0x8 func_0039DDB0  # OVL1
-0x0039DDC0 0x78 func_0039DDC0  # OVL1
-0x0039DE40 0x60 func_0039DE40  # OVL1
-0x0039DEA0 0x50 func_0039DEA0  # OVL1
-0x0039DEF0 0xD0 func_0039DEF0  # OVL1
+0x0039DDC0 0x78 OpenSector__7CFileCDFUi  # OVL1; ours (SOCOM II's: a TOC entry made at m_TOC[m_TOCNum++] for the sector given, named "", sizes zero, the head sector set; returns true; the DNAS client 0x2CC9D0 calls it between CFileCD's constructor and destructor)
+0x0039DE40 0x60 __dt__7CFileCDFv  # OVL1; s1 by hand (SOCOM 1's ~CFileCD body, out of line in SOCOM II: the sector buffer freed and cleared, deleting when asked; the DNAS client calls it, Open and Close inline it)
+0x0039DEA0 0x50 __ct__7CFileCDFv  # OVL1; s1 by hand (SOCOM 1's CFileCD() body, out of line in SOCOM II: the head sector -1, the rest zero, a 2 KB sector buffer 64-aligned; the DNAS client calls it, Open inlines it)
+0x0039DEF0 0xD0 Find__7CFileCDFPCc  # OVL1; s1 by hand (SOCOM 1's Find(const char *): the TOC walked 16 bytes at a time with strcmp until found; SOCOM II prefixes the root's directory 0x4A1650; Open inlines it)
 0x0039DFC0 0xC func_0039DFC0  # OVL1
 0x0039DFD0 0x520 func_0039DFD0  # OVL1
 0x0039E4F0 0x110 CreatePath__7CFileCDFPcPc  # OVL1; s1:calls
@@ -7569,23 +7569,23 @@
 0x0039EFD0 0x34 __ct__7CFileIOFv  # OVL1; s1:align
 0x0039F010 0xA0 SetRootPath__7CFileIOFPCc  # OVL1; s1:align
 0x0039F0B0 0xC fread__7CFileIOFiPPv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0039F0C0 0x98 func_0039F0C0  # OVL1
-0x0039F160 0x50 func_0039F160  # OVL1
-0x0039F1B0 0x8 func_0039F1B0  # OVL1
+0x0039F0C0 0x98 UTF8GetChar__FRPCc  # OVL1; ours (SOCOM II's: the UTF-8 character at the pointer decoded to UTF-16, one to three bytes by the lead byte, a three-byte lead with a zero second byte returned as itself; the C2D strings and the soft keyboard pass a pointer's address)
+0x0039F160 0x50 UTF8CharLen__FRPCc  # OVL1; ours (SOCOM II's: the UTF-8 character's length, 1 under 0xC0, 2 under 0xE0, else 3 unless the second byte is zero; called with a pointer's address beside UTF8GetChar)
+0x0039F1B0 0x8 OnTableFull__7CSTableFPCc  # OVL1; ours (slot 0x18 of CSTable's vtable 0x4081D0, returning 0; CreateString calls the slot when the buffer has no room or the vector is at capacity; CUIVarSTable's 0x386D50 overrides it)
 0x0039F1C0 0x1A0 CreateString__7CSTableFPCc  # OVL1; s1:calls (_zrdr::Clone calls it where SOCOM 1's does) -- the rdr lane
-0x0039F360 0xE0 func_0039F360  # OVL1
-0x0039F440 0xFC func_0039F440  # OVL1
-0x0039F540 0x140 func_0039F540  # OVL1
-0x0039F680 0x40 func_0039F680  # OVL1
-0x0039F6C0 0x8 func_0039F6C0  # OVL1
-0x0039F6D0 0x14 func_0039F6D0  # OVL1
+0x0039F360 0xE0 FindString__7CSTableFPCc  # OVL1; s1:calls by hand (round 1's held proposal, checked: CreateString calls it first through slot 0x10, where SOCOM 1's CreateString inlines FindString; the walk with strlen and strcmp as SOCOM 1's; not const in SOCOM II: with the const name its walk through a cast this hoists &size_ and &data_ into saved registers, the non-const one is byte-exact)
+0x0039F440 0xFC Clear__7CSTableFv  # OVL1; s1 by hand (slot 0x08 of CSTable's vtable: the buffer zeroed with memset, or each string freed and its slot cleared, then the size zeroed, as SOCOM 1's Clear)
+0x0039F540 0x140 Destroy__7CSTableFv  # OVL1; s1 by hand (slot 0x0C of CSTable's vtable, which ~CSTable calls: the owned buffer freed, or the strings, then the vector given up, as SOCOM 1's Destroy)
+0x0039F680 0x40 swap__Q23std32vector<Pc,Q23std13allocator<Pc>>FRQ23std32vector<Pc,Q23std13allocator<Pc>>  # OVL1; by hand (Destroy's FreeVector piece: vector<char *>::swap out of line, capacity, data and size swapped)
+0x0039F6C0 0x8 clear__Q23std32vector<Pc,Q23std13allocator<Pc>>Fv  # OVL1; by hand (Destroy's FreeVector piece: vector<char *>::clear out of line, the size zeroed)
+0x0039F6D0 0x14 __ct__Q23std32vector<Pc,Q23std13allocator<Pc>>Fv  # OVL1; by hand (Destroy's FreeVector piece: vector<char *>'s implicit constructor out of line, three words zeroed)
 0x0039F6F0 0x240 Pack__7CSTableFPFP7CSTablePv_vPv  # OVL1; s1:align
-0x0039F930 0x110 func_0039F930  # OVL1
+0x0039F930 0x110 Relocate__7CSTableFPvUib  # OVL1; s1:align by hand (SOCOM 1's Relocate(void *) -- the buffer copied there, the empty walk over the strings, the distance returned -- taking SOCOM II's new size and owner, ReleaseBuffer inlined; CRdrFile::Pack calls it)
 0x0039FA40 0xF0 LoadTable__7CSTableFPvUib  # OVL1; s1:align
 0x0039FB30 0x98 __dt__7CSTableFv  # OVL1; s1:calls (~CRdrFile destroys its table member with it, as SOCOM 1's) -- the rdr lane
 0x0039FBD0 0x88 __ct__7CSTableFUiUi  # OVL1; s1:calls (CRdrFile's constructor builds its table at this+8 with (0, 1024), as SOCOM 1's) -- the rdr lane
-0x0039FC60 0x120 func_0039FC60  # OVL1
-0x0039FD80 0x128 func_0039FD80  # OVL1
+0x0039FC60 0x120 UTF8Strncpy__FPcPCci  # OVL1; ours (SOCOM II's: at most n - 1 bytes copied and terminated, a cut copy cut back to the last whole UTF-8 character)
+0x0039FD80 0x128 UTF8Append__FRQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>Us  # OVL1; ours (SOCOM II's: a UTF-16 character pushed onto a string as one to three UTF-8 bytes through basic_string::push_back, 0x284B40; the soft keyboard calls it)
 0x0039FEB0 0x8 GetMode__10CMemCardIOCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0039FEC0 0x80 fsyncAsync__10CMemCardIOFiPi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike); corrected (the s1:vtable name was slot 0x38's by position, but SOCOM II's CIO grew three slots before fwrite(const char *): this is sceMcSync(1, ...) -- whether the asynchronous command finished, its result stored; the name ours)
 0x0039FF40 0xE0 fwriteAsync__10CMemCardIOFPCvi  # OVL1; ours (CMemCardIO's slot 0x34, SOCOM II's: MEMCARD_STATUS 3, then sceMcWrite without waiting, 6 on success)
