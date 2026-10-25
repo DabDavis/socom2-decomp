@@ -82,11 +82,9 @@ CAssetLib::CAssetLib(const char *name)
 
 /* the models let go of and deleted, the buffers freed, the textures and palettes freed, the names
  * freed (SOCOM 1's).
- * OPEN, 4 instructions short (0x2D8 of 0x2E8): the target computes the models' end from the same
- * load of data_ as their begin (begin() reads through data()'s reference, end() would have to as
- * well), and keeps &m_models.data_ and &m_palettes.data_ in s1/s0 for the vectors' destructors;
- * include/vector's pod end() reads data_ directly -- made data() + size_, 44 matched functions
- * elsewhere fall (end() a level deeper), so it stays */
+ * OPEN, 6 instructions short (0x2D0 of 0x2E8, re-measured after the MSL headers' round 4 made the
+ * pod vector's end() read through data(), which closed AddPalette below): the target keeps
+ * &m_models.data_ and &m_palettes.data_ in s1/s0 for the vectors' destructors */
 CAssetLib::~CAssetLib()
 {
     std::transform(m_models.begin(), m_models.end(), m_models.begin(), DeleteModel());
@@ -201,13 +199,9 @@ CModel *CAssetLib::AddModel(CModel *model)
     return model;
 }
 
-/* a palette added, unless it is listed already when asked to check (SOCOM 1's).
- * OPEN, 2 instructions short (0xC8 of 0xD0): the target re-reads m_palettes.data_ at every test of
- * the walk while keeping size_ * 4 hoisted; every loop form tried (!(==), postfix, const_iterator,
- * raw pointers, the end built from data() by hand) hoists the whole end. byte-exact with include/vector's __vector_pod::end() as `return data() + size_;` (the end
- * read through data()'s reference) -- measured over every hand-written unit (2026-10-25, the world
- * lane): CGrid::Destroy, CWorld::GenerateLandmarkList, CWorld::DeleteChildren and
- * CAssetLib::AddPalette match, CCharacterType::Create (one level taller) is lost; waits on include/ */
+/* a palette added, unless it is listed already when asked to check (SOCOM 1's). The target re-reads
+ * m_palettes.data_ at every test of the walk while keeping size_ * 4 hoisted: the pod vector's end()
+ * read through data()'s reference (include/vector since the MSL headers' round 4) */
 CTexPalette *CAssetLib::AddPalette(CTexPalette *pal, bool check)
 {
     bool add = true;
