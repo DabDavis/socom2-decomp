@@ -220,6 +220,10 @@ extern int data_00440EC0[];
 void func_005B1130(unsigned char a, unsigned short b);
 void func_005B1350(CZSealBody *body, unsigned char a, unsigned short b);
 bool func_002C2FD0(CZSealBody *body);
+int func_002C3920();
+void func_002C3A20(int who, bool vote);
+void func_002C3550();
+int sprintf(char *buf, const char *fmt, ...);
    /* (SOCOM II's: a word per client, cleared when one joins) */
 
 /* the application packets' type ids (SOCOM 1's PacketType<name>) */
@@ -238,6 +242,8 @@ extern unsigned int data_00440E58;   /* PacketTypePUMayI */
 extern unsigned int data_00440E68;   /* (SOCOM II's) */
 extern unsigned int data_00440E50;   /* PacketTypeAmmoPU */
 extern unsigned int data_00440E18;   /* PacketTypePushBlendAnim */
+extern unsigned int data_00440EB8;   /* (SOCOM II's: the vote's tally) */
+extern unsigned int data_00440E28;   /* PacketTypeAiOrders */
 }
 
 #define theNetwork data_0045A0C0
@@ -346,6 +352,40 @@ int PushBlendAnimPacketHandler(int, int, int, void *data)
             func_005880E0(body, p->anim, p->slot, on, p->time);
     }
     return 8;
+}
+
+/* an order for a SEAL the network plays, sent to the session master -- a move order with its
+ * place, to the metre (SOCOM 1's NetSendAiOrders; OVL1 0x2BB970) */
+struct AiOrdersPacket {
+    short obj;   // 0x0
+    short target;   // 0x2
+    unsigned char order;   // 0x4
+    char x;   // 0x5
+    char z;   // 0x6
+};
+
+extern "C" void func_002BB970(unsigned int obj, unsigned int target, unsigned int order,
+                              const CPnt3D *pos)
+{
+    CZSealBody *body = CZSealState::GetBodyFromObjectIndex(obj);
+
+    if (!(theNetwork.m_bNetwork && !func_002C2FD0(body)))
+        return;
+    AiOrdersPacket p;
+
+    p.obj = obj;
+    p.target = target;
+    p.order = order;
+    switch ((unsigned char)order) {
+    case 4:
+        if (pos) {
+            p.x = pos->x;
+            p.z = pos->z;
+        }
+        break;
+    }
+    func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), func_0030D560(&theNetwork),
+                  data_00440E28, 8, &p, false);
 }
 
 /* (SOCOM II's: one SEAL acting on another, in a running game; OVL1 0x2BB8E0) */
@@ -601,6 +641,35 @@ void SendVoteMessage(int who, int voter, bool vote)
     if (body)
         func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), body->m_fc8,
                       data_00440E80, 4, &p, true);
+}
+
+/* (SOCOM II's: a vote counted -- the tally told to the player and everyone; OVL1 0x2BA040) */
+struct VoteTally {
+    int kind;   // 0x0
+    int before;   // 0x4
+    int after;   // 0x8
+};
+
+extern "C" int func_002BA040(int, int, int who, void *data)
+{
+    VotePacket *p = (VotePacket *)data;
+    int before = func_002C3920();
+
+    func_002C3A20(who, p->vote);
+    int after = func_002C3920();
+    char text[128];
+
+    sprintf(text, "Voting: You have %d votes against you.", after);
+    func_002B6530(theMission.m_messenger, text, 2, 0, 0, 0.0f);
+    func_002C3550();
+    VoteTally m = {0};
+
+    m.kind = 1;
+    m.before = before;
+    m.after = after;
+    func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), -1, data_00440EB8, 12, &m,
+                  false);
+    return 4;
 }
 
 /* (SOCOM II's: a SEAL's byte and short sent to the session master -- handled here when we are it;
