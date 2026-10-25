@@ -120,6 +120,17 @@ def try_draft(tmp: Path, out: str, sym, real: str, addr: int, img, st) -> tuple[
                     src = f"/* sc: as={sym.name} {real} */\n" + src
                 return "hit", src
             worst = hit if worst == "build" else worst
+    # MW refused every form of it: repaired from its diagnostics (see repair), and again
+    if worst == "build" and _on("REPAIR"):
+        fixed = repair(tmp, forms[0])
+        for variant in variants(fixed) if fixed is not None else ():
+            src = PRELUDE + variant
+            hit = try_one(tmp, src, sym, real, addr, img, st)
+            if hit == "hit":
+                if real != sym.name:
+                    src = f"/* sc: as={sym.name} {real} */\n" + src
+                return "hit", src
+            worst = hit if worst == "build" else worst
     trues = any(w >> 26 == 0x19 and (w >> 21) & 31 == 0 and w & 0xFFFF == 1
                 for w in E.words(img.read(addr, sym.size)))
     for body in forms:
@@ -520,6 +531,174 @@ def try_one(tmp: Path, src: str, sym, real: str, addr: int, img, st, suffix: str
     except Exception:
         return "build"
     return "hit" if res.match else "miss"
+
+
+# --- a draft MW will compile ---------------------------------------------------------------
+#
+# m2c writes GNU C, where an int passed or assigned as a pointer (and back), a pointer of another
+# type, a call that disagrees with the prototype m2c inferred from another call, or a load through
+# an int are warnings at worst -- and errors in MW's C. A draft that will not build is repaired
+# from MW's own diagnostics and compiled again, each repair a conversion the code makes anyway:
+# an explicit cast to the type the implicit conversion names, an extern (or a function pointer)
+# declared without parameter types when every parameter is an int or a pointer (the call
+# compiles the same: same registers, no promotion), MW's relaxed pointer rules (`mpwc_relax`),
+# a word load through an int made through an int pointer. The byte compare decides, as ever.
+
+RELAX = "#pragma mpwc_relax on\n"
+_DIAG = re.compile(r"^.*?\bf\.c(?:pp)?:(\d+): (.*)$", re.M)
+_WIDE = re.compile(r"\b(f32|f64|s64|u64|float|double|long|s128|u128)\b|\.\.\.")
+
+
+def diagnostics(msg: str) -> dict[int, str]:
+    """MW's errors by line, a message's continuation lines joined."""
+    out: dict[int, str] = {}
+    for m in _DIAG.finditer(msg):
+        n = int(m.group(1))
+        out[n] = (out.get(n, "") + " " + m.group(2).strip()).strip()
+    return out
+
+
+def build_errors(tmp: Path, src: str, suffix: str = ".c") -> dict[int, str] | None:
+    (tmp / f"f{suffix}").write_text(src)
+    try:
+        D.compile_obj(tmp / f"f{suffix}", tmp / "f.o")
+    except RuntimeError as e:
+        return diagnostics(str(e)) or {0: str(e)}
+    return None
+
+
+def repair(tmp: Path, body: str, rounds: int = 4) -> str | None:
+    """The draft made to compile (MW's diagnostics fixed a round at a time), or None."""
+    text = RELAX + body
+    base = PRELUDE.count("\n")
+    for _ in range(rounds):
+        errs = build_errors(tmp, PRELUDE + text)
+        if errs is None:
+            return text
+        new = _fix(text, {n - base: m for n, m in errs.items()})
+        if new == text:
+            return None
+        text = new
+    return None
+
+
+def _assignment(line: str) -> tuple[str, str] | None:
+    """`lhs = rhs;` at the top level -> (lhs, rhs)."""
+    s = line.rstrip()
+    if not s.endswith(";"):
+        return None
+    depth = 0
+    for i, c in enumerate(s):
+        if c in "([":
+            depth += 1
+        elif c in ")]":
+            depth -= 1
+        elif c == "=" and depth == 0 and s[i + 1:i + 2] != "=" and s[i - 1:i] not in tuple("=!<>+-*/%&|^"):
+            return s[:i].rstrip(), s[i + 1:-1].strip()
+    return None
+
+
+def _pointerish(term: str, decl: dict[str, str]) -> bool | None:
+    """Whether an expression's leading term is a pointer, by the draft's own declarations."""
+    t = term.strip()
+    while t.startswith("(") and _group(t, 0) == len(t):
+        t = t[1:-1].strip()
+    if t.startswith("&"):
+        return True
+    m = re.match(r"^\(([^()]*\*)\)", t)
+    if m:
+        return True                                   # a cast to a pointer
+    if t.startswith("M2C_FIELD("):
+        a = _args(t, len("M2C_FIELD"))
+        return None if a is None or len(a[0]) != 3 else a[0][1].count("*") > 1
+    if t.startswith("("):                              # (a + b) ...: its first term
+        end = _group(t, 0)
+        return _pointerish(t[:end], decl) if end > 0 else None
+    m = re.match(r"^([A-Za-z_]\w*)\s*(.*)$", t)
+    if m and not m.group(2).startswith("("):
+        ty = decl.get(m.group(1))
+        return None if ty is None else "*" in ty
+    if re.match(r"^-?(0x[0-9A-Fa-f]+|\d+)\b", t):
+        return False
+    return None
+
+
+def _deref_ints(line: str, decl: dict[str, str]) -> str:
+    """`*x` / `*(x + ...)` whose operand leads with an int: a word load through an int pointer."""
+    out, i = [], 0
+    while i < len(line):
+        c = line[i]
+        prev = line[:i].rstrip()[-1:] if line[:i].strip() else "("
+        if c == "*" and (prev in "(,=!&|?:*" or line[:i].rstrip().endswith("return")) and line[i + 1:i + 2] not in "=":
+            j = i + 1
+            if line[j:j + 1] == "(":
+                end = _group(line, j)
+                operand = line[j:end] if end > 0 else ""
+            else:
+                m = re.match(r"[A-Za-z_]\w*", line[j:])
+                operand = m.group(0) if m and line[j + len(m.group(0)):j + len(m.group(0)) + 1] != "(" else ""
+            if operand and _pointerish(operand, decl) is False:
+                out.append("*(s32 *)" + operand)
+                i = j + len(operand)
+                continue
+        out.append(c)
+        i += 1
+    return "".join(out)
+
+
+def _unprototype(text: str, names: set[str]) -> str:
+    """Declare these functions without parameter types, when each is an int or a pointer."""
+    for name in names:
+        m = re.search(rf"^(?P<ret>[^\n(;{{}}]*?\b){re.escape(name)}\((?P<params>[^()\n]*)\);", text, re.M)
+        if m and m.group("params").strip() not in ("", "void") and not _WIDE.search(m.group("params")):
+            text = text[:m.start("params")] + text[m.end("params"):]
+    return text
+
+
+def _fix(text: str, errs: dict[int, str]) -> str:
+    lines = text.split("\n")
+    decl = _declared(text)
+    funcs = {m.group("name") for m in re.finditer(r"^[^\n(;{}]*?\b(?P<name>[A-Za-z_]\w*)\([^()\n]*\);", text, re.M)}
+    unproto: set[str] = set()
+    for n, msg in sorted(errs.items()):
+        if not 1 <= n <= len(lines):
+            continue
+        line = lines[n - 1]
+        called = {m.group(1) for m in re.finditer(r"\b([A-Za-z_]\w*)\(", line)} & funcs
+        if "undefined identifier 's128'" in msg or "undefined identifier 'u128'" in msg:
+            lines.insert(0, "typedef int s128 __attribute__((mode(TI))); "
+                            "typedef unsigned int u128 __attribute__((mode(TI)));")
+            return "\n".join(lines)
+        if "illegal implicit conversion" in msg or "does not match" in msg:
+            unproto |= called
+            # a function pointer's parameter types, likewise
+            line = re.sub(r"(\(\*\*?\))\(([^()]*)\)",
+                          lambda m: m.group(1) + "()" if not _WIDE.search(m.group(2)) else m.group(0), line)
+        if "illegal implicit conversion" in msg:
+            m = re.search(r"from '[^']*' to '([^'()]*)'", msg)
+            to = m.group(1).strip() if m else None
+            if to:
+                r = re.match(r"^(\s*)return (.+);$", line)
+                a = _assignment(line)
+                if r:
+                    line = f"{r.group(1)}return ({to})({r.group(2)});"
+                elif a and not a[1].startswith(f"({to})("):
+                    line = f"{a[0]} = ({to})({a[1]});"
+        if "pointer/array required" in msg:
+            line = _deref_ints(line, decl)
+        if "illegal operand" in msg:
+            # an int compared with a pointer: the pointer as an int
+            def cmp(m):
+                l, op, r = m.group(1), m.group(2), m.group(3)
+                pl, pr = _pointerish(l, decl), _pointerish(r, decl)
+                if pl is False and pr:
+                    return f"{l} {op} (s32){r}"
+                if pr is False and pl:
+                    return f"(s32){l} {op} {r}"
+                return m.group(0)
+            line = re.sub(r"(&?[A-Za-z_]\w*) (==|!=|<|>|<=|>=) (&?[A-Za-z_]\w*)", cmp, line)
+        lines[n - 1] = line
+    return _unprototype("\n".join(lines), unproto)
 
 
 def main(argv=None) -> int:
