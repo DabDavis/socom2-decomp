@@ -3430,7 +3430,7 @@
 0x0028ADA0 0x98 func_0028ADA0  # OVL1
 0x0028AE40 0x1A0 func_0028AE40  # OVL1
 0x0028AFE0 0x100 func_0028AFE0  # OVL1
-0x0028B0E0 0x6C func_0028B0E0  # OVL1
+0x0028B0E0 0x6C func_0028B0E0  # OVL1; OVL1's copy of the pod vector's resize (MAIN's 0x18B050 carries the name, the same 0x6C bytes: OVL1 links apart from MAIN); CVisual::Init calls it three times where SOCOM 1's calls resize -- the weapons lane; ovl-copy: resize__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FUiRCUi
 0x0028B150 0x120 erase__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPUiPUi  # OVL1; s1:exact by hand (SOCOM 1's erase__ of __vector_pod<Ui> line for line, the copy unrolled 8x); CNodeVector::Remove's erase calls it
 0x0028B270 0x1D8 AddCallback__22CZBodyAnimCallbackListFPCcf  # OVL1; s1:align by hand (0.70 to SOCOM 1's AddCallback, the first function of body.cpp as there: a "null" callback first when empty, the index of an equal (time, name) one, else a new 24-byte callback pushed)
 0x0028B450 0x68 func_0028B450  # OVL1
@@ -5923,7 +5923,7 @@
 0x003348E0 0x58 func_003348E0  # OVL1
 0x00334940 0x68 func_00334940  # OVL1
 0x003349B0 0x8 func_003349B0  # OVL1
-0x003349C0 0xD4 func_003349C0  # OVL1
+0x003349C0 0xD4 pop_back__Q23std39__deque_imp<PCv,Q23std14allocator<PCv>>Fv  # OVL1; s1:calls (CVisual::Init calls it after the pointer deque's push_back where SOCOM 1's calls deque<Ui>'s pop_back; SOCOM II's pointer deques run on __deque_imp<const void *>; the rdr editor's deque pieces) -- the weapons lane
 0x00334AA0 0x13C func_00334AA0  # OVL1
 0x00334BE0 0x134 func_00334BE0  # OVL1
 0x00334D20 0x88 zrdr_IsComplex__FP5_zrdr  # OVL1; s1:calls by hand (SOCOM 1's zrdr_IsComplex: true when any item of the array is an array, the walk over Count()/Item(i) as SOCOM 1's, its items from 0)
