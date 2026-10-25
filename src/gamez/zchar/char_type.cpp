@@ -291,6 +291,19 @@ const char *GetCharacterSoundTypeString(CHARACTER_SOUND s)
     return "CHRSND_NONE";
 }
 
+/* the type's model instanced and named; none without a model (SOCOM 1's). The model's byte at
+ * 0xC0 is set first (new in SOCOM II: zdb's CModel is not laid out here) */
+zdb::CNode *CCharacterType::CreateInstance(const char *name)
+{
+    zdb::CNode *node = m_model ? zdb::CNode::CreateInstance((zdb::CModel *)m_model, 0, 0) : 0;
+
+    if (!node || !m_model)
+        return 0;
+    ((unsigned char *)m_model)[0xc0] = 1;
+    node->SetName(name);
+    return node;
+}
+
 /* a message deleted, for std::for_each (the name ours) */
 struct DeleteMultiplayerMsg {
     DeleteMultiplayerMsg() {}
