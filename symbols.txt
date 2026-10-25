@@ -2243,7 +2243,7 @@
 0x00238490 0x64 On__10CMPInfoBoxFv  # OVL1; by hand (slot 5 of CMPInfoBox's vtable 0x405B40: C2D's On, then its parts')
 0x00238500 0x160 Tick__10CMPInfoBoxFf  # OVL1; by hand (slot 12 of CMPInfoBox's vtable 0x405B40)
 0x00238660 0xA4 UnInit__10CMPInfoBoxFv  # OVL1; by hand (CHUD::ReInit_Uninit's call on CHUD+0x17B70, beside CMPTeammateNames::UnInit: off, the strings emptied; the name ours)
-0x00238710 0x18C func_00238710  # OVL1
+0x00238710 0x18C ReInit__10CMPInfoBoxFv  # OVL1; by hand (the info box's re-placing: CHUD::ReInit_Init's call on CMPInfoBox, after UnInit in the image; bitmaps, the health bar's SetSize/SetPos, the name string in the HUD text colour, then 0x238D00 on the radio part; the name ours)
 0x002388A0 0x220 func_002388A0  # OVL1
 0x00238AC0 0x234 Tick__12CWhosTalkingFf  # OVL1; by hand (slot 12 of CWhosTalking's vtable 0x405BB0)
 0x00238D00 0x248 func_00238D00  # OVL1

@@ -88,6 +88,8 @@ public:
     virtual void On();
     virtual void Tick(float dT);
     void UnInit();
+    /* the parts placed again (CHUD::ReInit_Init's; 0x238710, the name ours) */
+    void ReInit();
 
     unsigned char _18[0x20 - 0x18];
     CHealthBar m_healthbar;   // 0x20

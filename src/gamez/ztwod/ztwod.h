@@ -270,6 +270,7 @@ public:
     void MakePacket(zdb::CCamera *cam, zdb::CTextureRelocMgr *mgr, const CMatrix *m);
     void SetColor(float r, float g, float b);
     void SetColor(const CPnt3D &color);
+    void SetUV(float u1, float v1, float u2, float v2);
     float *GetColor();
     float GetTrans();
     void SetPos(int x, int y);

@@ -44,6 +44,8 @@ public:
 class CHUD {
 public:
     static CZSealBody *GetHUDOwner();
+
+    static PNT4D m_hud_textcolor;   /* the HUD's text colour */
 };
 
 /* the health bar's update from its owner (its own unit's; no name yet) */
@@ -104,6 +106,44 @@ void CRadioIcon_Static::Tick(float dT)
     } else {
         Off();
     }
+}
+
+/* the box's corners and the health bar's place (the bss ones set by Init; no rows yet) */
+extern float data_00414640;
+extern float data_00414650;
+extern float data_00414658;
+static float s_box_y1 = 418.0f;
+static float s_bar_h = 18.0f;
+static float s_bar_x = 488.0f;
+static float s_bar_y = 396.0f;
+static float s_name_scale = 0.8f;
+static float s_name_x = 555.0f;
+static float s_name_y = 409.0f;
+
+/* the radio's parts placed again (0x238D00; no name yet) */
+extern "C" void func_00238D00(CWhosTalking *talking);
+
+/* the parts placed again for a new game: the first bitmap off, the second a faded backing, the
+ * health bar, the name in the HUD's text colour, who is talking */
+void CMPInfoBox::ReInit()
+{
+    m_bitmap1.Off();
+    m_bitmap2.SetUV(1.0f, 1.0f, 0.0f, 0.0f);
+    m_bitmap2.SetColor(128.0f, 128.0f, 128.0f);
+    m_bitmap2.SetTrans(68.0f);
+    m_bitmap2.SetPos((int)data_00414640, (int)s_box_y1, (int)data_00414650, (int)data_00414658);
+    m_healthbar.SetSize(s_namewidth, s_bar_h);
+    m_healthbar.SetPos(s_bar_x, s_bar_y);
+    m_text.m_scale = s_name_scale;
+    m_text.m_isCentered = 1;
+    m_text.m_color[0] = CHUD::m_hud_textcolor.x;
+    m_text.m_color[1] = CHUD::m_hud_textcolor.y;
+    m_text.m_color[2] = CHUD::m_hud_textcolor.z;
+    m_text.m_color[3] = CHUD::m_hud_textcolor.w;
+    m_text.SetString("  ", true);
+    m_text.SetPos((int)s_name_x, (int)s_name_y);
+    func_00362B70(&m_text);
+    func_00238D00(&m_whostalking);
 }
 
 /* the strings emptied and the radio's parts hidden */
