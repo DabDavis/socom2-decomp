@@ -769,10 +769,93 @@ void CZWeapon::SetSoundDistance(unsigned char i, float d)
     m_sounddistance[i] = d * d;
 }
 
-/* NOT WRITTEN, CZItemStash (0x3CFB00-0x3CFFAF, its rows named): a 0x28-byte object of three
- * parallel 4-byte vectors (0, 0xC, 0x18) and a word (0x24) -- Add pushes through the pod insert
- * 0x1FE340, Compact erases through the pod erase(T *) 0x28F220, Count/Get/Set/Clear walk the third
- * list with a class iterator (the `!=` materialised, the end in a preheader after the loop). Written
- * over std::vector<int> it does not build: include/vector's scalar vectors have no iterator,
- * begin(), end() or erase -- which the MSL lane's scalar macro would need first (or the lists are
- * pointer vectors in the original) */
+/* CZItemStash (0x3CFB20-0x3CFF7F, its rows named): a 0x28-byte object of three parallel lists of
+ * words (0, 0xC, 0x18) and a word (0x24) -- an entry is its three words at one index, live while its
+ * third is non-zero. The kit and the pickups use it (the class and its names ours) */
+class CZItemStash {
+public:
+    int Count();
+    void Add(int a, int b, int c);
+    void Set(int i, int a, int b, int c);
+    bool Get(int i, int *a, int *b, int *c);
+    void Clear(int i);
+    void Compact();
+
+    std::vector<int> m_a;   // 0x0
+    std::vector<int> m_b;   // 0xc
+    std::vector<int> m_c;   // 0x18
+    int m_24;   // 0x24
+};
+
+/* an entry's three words appended */
+void CZItemStash::Add(int a, int b, int c)
+{
+    m_a.push_back(a);
+    m_b.push_back(b);
+    m_c.push_back(c);
+}
+
+/* the live entries: the third list's non-zero words. The postfix step is the target's: with it MW
+ * hoists the whole end into a preheader after the loop (entered with a `b`, the entry test repeated
+ * there, the data's load shared with begin's); `++i` re-reads the data every pass, 0x18 short */
+int CZItemStash::Count()
+{
+    int n = 0;
+
+    for (std::vector<int>::iterator i = m_c.begin(); i != m_c.end(); i++)
+        if (*i)
+            n++;
+    return n;
+}
+
+/* entry i's three words set when enough entries are live (`if (i > Count()) return;` branches
+ * straight to the epilogue on `slt at`, as the target; the if-block form keeps a join) */
+void CZItemStash::Set(int i, int a, int b, int c)
+{
+    if (i > Count())
+        return;
+    m_a[i] = a;
+    m_b[i] = b;
+    m_c[i] = c;
+}
+
+/* entry i's three words out; false when fewer entries are live */
+bool CZItemStash::Get(int i, int *a, int *b, int *c)
+{
+    if (Count() < i)
+        return false;
+    *a = m_a[i];
+    *b = m_b[i];
+    *c = m_c[i];
+    return true;
+}
+
+/* entry i's three words cleared when enough entries are live */
+void CZItemStash::Clear(int i)
+{
+    if (i > Count())
+        return;
+    m_c[i] = 0;
+    m_b[i] = 0;
+    m_a[i] = 0;
+}
+
+/* every entry whose third word is zero erased from all three lists */
+void CZItemStash::Compact()
+{
+    std::vector<int>::iterator a = m_a.begin();
+    std::vector<int>::iterator b = m_b.begin();
+    std::vector<int>::iterator c = m_c.begin();
+
+    while (a != m_a.end()) {
+        if (*c == 0) {
+            a = m_a.erase(a);
+            b = m_b.erase(b);
+            c = m_c.erase(c);
+        } else {
+            ++c;
+            ++a;
+            ++b;
+        }
+    }
+}

@@ -90,17 +90,12 @@ void CMesh::AddLOD(CMesh *mesh, float dist)
 
     lod.m_mesh = (CMesh *)copy;
     lod.m_buffer = buffer;
-    unsigned int prev = m_lods.size() - 2;
-
-    m_lods.begin().m_p[prev].m_dist = dist * dist;
+    m_lods[m_lods.size() - 2].m_dist = dist * dist;
 }
 
 /* a view's level of detail by distance, when it has more than one: the first that reaches past
- * the distance (SOCOM 1's; SOCOM II's walk recomputes the end through the class iterator).
- * OPEN, 2 instructions: every instruction but the end -- the target keeps size*12 and re-reads the
- * data pointer each pass (a pointer store in the loop blocking only the pointer load, by type?),
- * this hoists the whole end; `break` or `return`, a const_iterator, postfix ++, an assigned
- * iterator and raw pointers do not change it */
+ * the distance (SOCOM 1's; SOCOM II's walk re-reads the data pointer each pass: include/vector's
+ * class end() takes `data() + size` into a const local) */
 void CMesh::SetLOD(unsigned int view, float dist)
 {
     if (m_lods.size() > 1) {
