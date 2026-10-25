@@ -346,6 +346,20 @@ public:
 };
 extern CMission theMission;
 
+/* the clock as libcdvd reads it (BCD bytes) */
+struct sceCdCLOCK {
+    unsigned char stat;
+    unsigned char second;
+    unsigned char minute;
+    unsigned char hour;
+    unsigned char pad;
+    unsigned char day;
+    unsigned char month;
+    unsigned char year;
+};
+extern "C" int sceCdReadClock(sceCdCLOCK *clock);
+extern "C" void sceScfGetLocalTimefromRTC(sceCdCLOCK *clock);
+
 /* a memory card file's information as the saved-game handlers read it (their 272-byte local; the
  * text from 12, "This game is a dummy game." in SaveConfig's dummies; ours) */
 struct MemCardFileInfo {
@@ -818,6 +832,9 @@ void func_003339B0(NetCnfRdr *rdr, int arg);
 void func_00333770(NetCnfRdr *rdr);
 void func_00333610(NetCnfRdr *rdr, const char *text);
 void func_00386460(CUIVariable *var, NetCnfRdr *rdr);
+void func_00333700(NetCnfRdr *rdr, int value);
+int func_002FB920(void *svc, const char *host, int port);                   /* (the persona count) */
+const char *func_002FD510(void *svc, const char *host, int port, int i);    /* (a persona's name) */
 const char *func_002FDA50(void *svc, int server);   /* (a server's message) */
 const char *func_002FDAA0(void *svc, int server);   /* (a server's name) */
 int func_002FDEC0(void *svc);                       /* (the news' line count) */

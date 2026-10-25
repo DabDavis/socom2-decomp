@@ -182,6 +182,41 @@ bool UISetControllerConfig(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+/* a two-digit BCD byte of the clock as a number (ours) */
+#define FROM_BCD(x) ((((x) >> 4) & 0xf) * 10 + ((x) & 0xf))
+
+/* a saved game written to the slot the argument numbers: its title the mission, the difficulty and
+ * the local date and time; the saving valve cleared.
+ * OPEN, 47 instructions, all in the six BCD conversions feeding sprintf (the frame, the calls, the
+ * loads' order -- the arguments right to left -- and the rest match): the target's temporaries
+ * take other registers and the products are added first. The conversion as a macro either way
+ * round or as an inline taking an int or a byte measured the same */
+bool _SaveSavedGame(C2DAnimCmdHdr *hdr, float *dT)
+{
+    sceCdCLOCK clock;
+    char title[264];
+    int slot = atoi(ArgText(ArgName(hdr)));
+
+    func_003A1C60(&theMemCard);
+    sceCdReadClock(&clock);
+    sceScfGetLocalTimefromRTC(&clock);
+    int difficulty = CValve::Create("ai_difficulty", (VALVE_TYPE)1)->m_value;
+
+    if (difficulty > 9)
+        difficulty = 9;
+    sprintf(title, "%-3s%d%d/%d/20%.2d %.2d:%.2d:%.2d", database, difficulty, FROM_BCD(clock.month),
+            FROM_BCD(clock.day), FROM_BCD(clock.year), FROM_BCD(clock.hour), FROM_BCD(clock.minute),
+            FROM_BCD(clock.second));
+    sprintf(s_savename, "SaveGame%d", slot);
+    func_003A1EA0(&theMemCard, s_savename, title);
+    func_003A1880(&theMemCard);
+    CValve *valve = CValve::GetByName("SavingSavedGame");
+
+    if (valve)
+        SetValveValue(valve, 0);
+    return true;
+}
+
 /* a saved game loaded from the slot the argument numbers, the loading valve cleared */
 bool _LoadSavedGame(C2DAnimCmdHdr *hdr, float *dT)
 {
@@ -2093,6 +2128,37 @@ bool CSMInitNetwork::Start()
 /* the machine InitNetwork runs (a function-local static in the original, likely: held to its
  * address by its placeholder) */
 extern "C" CSMInitNetwork *data_00414EB8;
+
+/* the personas on the lobby server listed into PLAYERPERSONALIST: each one's index and name, then
+ * "<New Persona>" up to three (SOCOM II's; the name ours: UpdateAcctInfo, DeleteMUISPersona and
+ * LobbyConnect call it) */
+void UpdatePersonaList(const char *host, int port)
+{
+    NetCnfRdr rdr;
+
+    func_00333AE0(&rdr);
+    int n = func_002FB920(data_0044FC60, host, port);
+    int i = 0;
+
+    func_003339B0(&rdr, 0);
+    for (; i < n; i++) {
+        const char *name = func_002FD510(data_0044FC60, host, port, i);
+
+        func_003339B0(&rdr, 0);
+        func_00333700(&rdr, i);
+        func_00333610(&rdr, name);
+        func_00333770(&rdr);
+    }
+    for (; i < 3; i++) {
+        func_003339B0(&rdr, 0);
+        func_00333700(&rdr, -1);
+        func_00333610(&rdr, "<New Persona>");
+        func_00333770(&rdr);
+    }
+    func_00333770(&rdr);
+    func_00386460(func_003857C0(&theUIVarManager, "PLAYERPERSONALIST", 0, UIVAR_SESSION), &rdr);
+    func_00333A20(&rdr, -1);
+}
 
 /* the network started: the lobby's events handed to the menu, the machine made and run until it
  * is done, the valve the argument names told how it went (SOCOM 1's built no machine).
