@@ -9440,7 +9440,7 @@
 0x00517780 0x8 __ct__18MAP_FOREACH_STRUCTFv  # OVL2; ours (the walk struct's empty constructor, out of line after ResetCells where the walk is inlined one level)
 0x00517790 0xBC __ct__Q26CAiMap6regionFv  # OVL2; ours (new in SOCOM II: the region's fields but its cell zeroed, word by word, its name emptied; the cell walk's local -- out of line after ResetCells 0x517470, its first caller, where the walk is inlined one level)
 0x00517850 0x654 ValidateCells__6CAiMapFv  # OVL2; s1:callee by hand (FlushPlannerQueue calls it on every map in AiMaps where SOCOM 1's calls ValidateCells__6CAiMapFv; 0x654 bytes against the demo's 0x600; CAiMap::Read 0x51AFE0 calls it too)
-0x00517EB0 0x1F8 func_00517EB0  # OVL2
+0x00517EB0 0x1F8 _validate_cell__6CAiMapFRC18MAP_FOREACH_STRUCTPv  # OVL2; s1:order by hand (the demo's 0x186A30, right after ValidateCells in both builds: a cell walk's callback that clears the cell's A* fields, resets it as _reset_rtflag and _reset_cell do (both inlined) and drops its name, action and link bits where GetCellName, GetCellAction and GetCellLink find none)
 0x005180B0 0xD0 _reset_cell__6CAiMapFRC18MAP_FOREACH_STRUCTPv  # OVL2; ours (new in SOCOM II, next to _reset_rtflag and of its shape: a cell walk's callback that revalidates the cell's action, puts a collision cell back to the default soil and clears its occupied bit)
 0x00518180 0x28 _reset_rtflag__6CAiMapFRC18MAP_FOREACH_STRUCTPv  # OVL2; s1:exact
 0x005181B0 0x38 SetModified__6CAiMapFb  # OVL2; ours (new in SOCOM II: bit 1 of AIMAP_PARAMS::m_flags set or cleared, the old value returned; SetCellLink 0x5307A0 and the layers' removal 0x53A730 call it with true after a change)

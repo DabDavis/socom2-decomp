@@ -301,6 +301,29 @@ bool CAiMap::_reset_cell(const MAP_FOREACH_STRUCT &s, void *)
     return true;
 }
 
+/* a walk's callback: the cell's search fields cleared, then the two resets above (inlined), then
+ * each of its name, action and link bits kept only where the map's table has an entry for it
+ * (SOCOM 1's, the resets new) */
+bool CAiMap::_validate_cell(const MAP_FOREACH_STRUCT &s, void *data)
+{
+    CAiCell *c = s.m_cell;
+
+    c->m_astar_dir = 8;
+    c->m_astar_f = -1;
+    c->m_astar_g = -1;
+    _reset_rtflag(s, data);
+    _reset_cell(s, data);
+    CAiCell *cell = s.m_cell;
+
+    if (cell->m_name && !s.m_map->GetCellName(s.m_loc))
+        cell->SetName(false);
+    if (cell->m_action && !s.m_map->GetCellAction(s.m_loc))
+        cell->SetAction(false);
+    if (cell->m_link && !s.m_map->GetCellLink(s.m_loc))
+        cell->SetLink(false);
+    return true;
+}
+
 /* every cell of the first layer reset through _reset_cell (SOCOM 1's ResetCells, a loop of its own
  * there): the walk inlined one level, its pieces called out of line in reverse of their first use
  * after it (0x5176D0-0x51784F, all byte-exact from here); false whatever the walk did.

@@ -545,6 +545,7 @@ public:
     static float GetDirCos(DIR a, DIR b);
     static bool _reset_rtflag(const MAP_FOREACH_STRUCT &s, void *data);
     static bool _reset_cell(const MAP_FOREACH_STRUCT &s, void *data);
+    static bool _validate_cell(const MAP_FOREACH_STRUCT &s, void *data);
     /* bit 1 of the flags: the map changed since it was read (the names ours) */
     bool IsModified() const { return (m_flags & 2) != 0; }
     bool SetModified(bool modified);
