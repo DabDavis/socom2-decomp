@@ -7771,7 +7771,7 @@
 0x003AC460 0x264 func_003AC460  # OVL1
 0x003AC6D0 0x288 func_003AC6D0  # OVL1
 0x003AC960 0x78 __dt__11CTurretListFv  # OVL1; by hand (the wep lane: the turret list's destructor, registered for 0x4A4058 by the initialiser 0x404240; four this-tests); veh_turret.cpp
-0x003AC9E0 0x80 __dt__16CTurretDefVectorFv  # OVL1; s1:unit by hand (the wep lane: registered for m_turret_def by 0x404240, as SOCOM 1's __sinit_veh_turret.cpp registers __dt__16CTurretDefVectorFv; the definition is trivially destructible here, so only the size is zeroed); veh_turret.cpp
+0x003AC9E0 0x80 func_003AC9E0  # OVL1; s1:unit by hand (the wep lane: registered for m_turret_def by 0x404240, as SOCOM 1's __sinit_veh_turret.cpp registers __dt__16CTurretDefVectorFv; the definition is trivially destructible here, so only the size is zeroed); veh_turret.cpp; back to the placeholder (the wep lane): it is __dt__16CTurretDefVectorFv (0x404240 registers it for m_turret_def, as SOCOM 1's registers CTurretDefVector's), but its four destructor levels inline whole only once the unit's own code instantiates the deleter -- the class vector's resize/insert tail (0x3AB8C0-0x3AC6DF), which include/vector does not model; veh_turret.cpp's copy misses (one level, 0x60 B), the draft stands
 0x003ACA60 0x98 func_003ACA60  # OVL1
 0x003ACB00 0x50 func_003ACB00  # OVL1
 0x003ACB50 0xAC func_003ACB50  # OVL1

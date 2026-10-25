@@ -34,7 +34,8 @@ CZSealBody *ftsGetPlayer();
 CTurretDefVector CTurret::m_turret_def;
 CTurretList CTurret::m_turrets;
 
-/* the definition whose name starts the node's (SOCOM 1's) */
+/* the definition whose name starts the node's (SOCOM 1's; called, never inlined) */
+#pragma auto_inline off
 const CTurretDef *CTurretDefVector::PrefixMatch(const char *name)
 {
     if (name) {
@@ -53,14 +54,22 @@ const CTurretDef *CTurretDefVector::PrefixMatch(const char *name)
     }
     return 0;
 }
+#pragma auto_inline reset
 
+/* OPEN, 12 instructions: everything but where `i = 0` lands -- the target fills the resize
+ * call's delay slot with it (`move a0,this` before the jal), MW here puts the this-move there and
+ * sinks the zero to the loop's first test. Tried: the zero before the call (14), in the for's
+ * init through a comma (12), declared after the call (12), a member call instead of the C
+ * placeholder (12, the same schedule), an int counter (97: Item(i) is then not strength-reduced,
+ * so the counter is unsigned). The resize is MSL's class-vector resize (0x3AB8C0), which
+ * include/vector does not declare, called through its placeholder. */
 int CTurretDefVector::Init(const char *name, const char *path)
 {
     _zrdr *rdr = zrdr_read(name, path, 0);
 
     if (rdr) {
         _zrdr *list = zrdr_findtag(rdr, "TURRET");
-        int i;
+        unsigned int i;
 
         func_003AB8C0(this, (list ? list->Count() : 0) / 2);
         i = 0;
@@ -109,14 +118,14 @@ static inline CTurret *NewTurret(CNode *node, const CTurretDef *def)
 {
     CTurret *t = 0;
 
-    if (node) {
-        if (data_003E0800 < 0 || data_004A4020 < data_003E0800) {
-            data_004A4020++;
-            t = new CTurret(node, *def);
-            CEntity::CreateEntity(t, true);
-            t->UpdateAiMapLoc();
-        }
-    }
+    if (!node)
+        return 0;
+    if (data_003E0800 > -1 && data_004A4020 >= data_003E0800)
+        return 0;
+    data_004A4020++;
+    t = new CTurret(node, *def);
+    CEntity::CreateEntity(t, true);
+    t->UpdateAiMapLoc();
     return t;
 }
 
@@ -195,7 +204,9 @@ int CTurret::ScanForTurretDefinitionHookups(CNode *node, bool recurse)
         NewTurret(node, def);
         n++;
     } else if (recurse) {
-        for (CNodeVector::iterator it = node->m_child.begin(); it != node->m_child.end(); ++it)
+        CNodeVector &children = node->GetChildren();
+
+        for (CNodeVector::iterator it = children.begin(); it != children.end(); ++it)
             n += ScanForTurretDefinitionHookups(*it, recurse);
     }
     return n;
@@ -270,6 +281,12 @@ static inline void ResetTimer(CAiTimer &t)
     t.m_timer = RandomPeriod(t);
 }
 
+/* OPEN, 2 instructions: the network test loads the player's controller into v0 and this one's
+ * into v1, then `beq v1,v0` (this one's first); every spelling here gives either the two
+ * registers the other way (the call's side first: `ftsGetPlayer()->m_control != m_control`,
+ * `!(... == ...)`) or this one's hoisted above the call into a saved register (`m_control !=
+ * ftsGetPlayer()->m_control`, through an inline accessor too, or a cast). PrePostTick's test
+ * matched only with the player in a local, which loads this one's first: the opposite. */
 void CTurret::Tick(float dT)
 {
     if (!GetFlag(1))
