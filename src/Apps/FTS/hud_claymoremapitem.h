@@ -18,10 +18,19 @@ public:
     int m_shooterID;   // 0xac (SOCOM 1: 0x90)
 };
 
-/* CEntity's team (SOCOM 1's m_team at 0xC4, 4 later in SOCOM II) */
+/* the node as the map reads it: its matrix (zdb's CNode, the matrix first) */
+class CZMapNode {
+public:
+    CMatrix m_matrix;   // 0x0
+};
+
+/* CEntity's position, node and team (SOCOM 1's m_team at 0xC4, 4 later in SOCOM II) */
 class CZSealBody {
 public:
-    unsigned char _0[0xc8];
+    unsigned char _0[0x1c];
+    CPnt3D m_posW;   // 0x1c
+    CZMapNode *m_node;   // 0x28
+    unsigned char _2c[0xc8 - 0x2c];
     unsigned int m_team;   // 0xc8
 };
 

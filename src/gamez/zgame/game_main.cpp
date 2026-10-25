@@ -125,10 +125,9 @@ void NetTickThreadEntry(void *arg)
 
 /* the network and the console ticked, then the first queued change carried out -- the new state
  * told and set up, the old one torn down -- or the current state ticked (OVL1 0x2CE9E0).
- * OPEN, 0x324 against 0x32C: registers and the queue's inlined front() are right (cmd declared
- * ahead of online gives the target's s2/s1); the target leaves a nop after each clamp's
- * `m_CurrentState = 15` store (PUSH and SWITCH) and schedules SWITCH's `cur->Init()` call
- * differently -- the clamp's shape, not its value (SOCOM 1's debug build shows no nop) */
+ * cmd declared ahead of online gives the target's s2/s1; Init's bool is tested `!= false` (the
+ * target's `andi 0xff` after each call, which also moves the clamps' label pads into place),
+ * and the wait for the thread is `while (!flag)` on the volatile bool (sltu, xori, bnez). */
 int CGame::Tick(float dT)
 {
     CGameStateChangeCmd *cmd;
@@ -149,7 +148,7 @@ int CGame::Tick(float dT)
                 if (cmd->m_state) {
                     func_003B05E0();
                     m_Stack[m_CurrentState]->OnPush(cmd->m_arg);
-                    if (cmd->m_state->Init()) {
+                    if (cmd->m_state->Init() != false) {
                         m_CurrentState++;
                         if (m_CurrentState >= MAX_STATES)
                             m_CurrentState = MAX_STATES - 1;
@@ -171,7 +170,7 @@ int CGame::Tick(float dT)
                     func_003B05E0();
                     if (m_CurrentState >= MAX_STATES)
                         m_CurrentState = MAX_STATES - 1;
-                    if (cmd->m_state->Init())
+                    if (cmd->m_state->Init() != false)
                         m_Stack[m_CurrentState] = cmd->m_state;
                     else if (cur)
                         cur->Init();
@@ -183,7 +182,7 @@ int CGame::Tick(float dT)
             if (online) {
                 if (data_003DF1F0) {
                     data_003DF1F0 = false;
-                    while (data_003DF1F0 == false)
+                    while (!data_003DF1F0)
                         ;
                     data_003DF1F0 = false;
                 }

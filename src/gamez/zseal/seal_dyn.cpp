@@ -28,18 +28,13 @@ static inline float WorldScale(float v)
     return v;
 }
 
-/* a camera pushed: the vector's end read through a reference to its data pointer, as MSL's
- * deleter's data() gives it (SOCOM 1's DWARF: data() inside the deleter, <vector> line 923) --
- * MW then keeps &data_ in a saved register across the pushes, as the target does */
-static inline CharacterDynamics::CCameraParams *&CamData(std::vector<CharacterDynamics::CCameraParams> &v)
-{
-    return v.data_;
-}
-
+/* a camera pushed: include/vector's push_back reads the end through the deleter's data()
+ * reference (SOCOM 1's DWARF: data() inside the deleter, <vector> line 923) -- MW then keeps
+ * &data_ in a saved register across the pushes, as the target does */
 static inline void PushCamera(std::vector<CharacterDynamics::CCameraParams> &v,
                               const CharacterDynamics::CCameraParams &p)
 {
-    v.insert(CamData(v) + v.size_, 1, p);
+    v.push_back(p);
 }
 
 /* the dynamics read, once: each value under its tag, the angles in degrees made radians and their

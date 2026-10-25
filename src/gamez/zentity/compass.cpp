@@ -79,13 +79,9 @@ void CCompass::Close()
     FreeVector<std::vector<CCompassAnchor *> >(*this);
 }
 
-/* an anchor at a position, named, on the compass (SOCOM 1's).
- * OPEN, 4 bytes short: the target inlines the anchor's constructor whole -- its vector<CPnt3D>
- * member's three stores, the bits, the position -- where include/vector's class vector (four
- * constructor levels) makes the constructor five high, so MW inlines only its body and calls the
- * vector's constructor, CPnt3D's and the copy. A three-high class vector matches it (and CEntity's
- * constructor) but loses CZAnimSet::SaveNodeStates, which needs `new CZAnimSetSave` five high
- * with plain vector members (the probes: build/scratch/ent/zss.cpp, h5.cpp) */
+/* an anchor at a position, named, on the compass (SOCOM 1's). The anchor's constructor inlines
+ * whole -- its vector<CPnt3D> member's three stores, the bits, the position: five levels with
+ * include/vector's four-high class vector, as -inline level=5 allows */
 CCompassAnchor *CCompass::CreateAnchor(const CPnt3D &pos, const char *name)
 {
     CCompassAnchor *anchor = new CCompassAnchor;

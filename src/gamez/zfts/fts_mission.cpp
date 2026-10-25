@@ -170,9 +170,69 @@ void ResetDeathCam__10CAppCameraFv(void *camera);
 void Push__5CGameFP10CGameStateUi(void *game, void *state, unsigned int arg);
 void func_003AFD50(int a0, int a1, int a2, int a3, int a4);   /* (the screen cleared: SOCOM 1's CVideo::Clear) */
 extern void *appCamera;
-extern unsigned char theGame[];
 extern unsigned char data_004086A0[];                    /* (a state in theGame, at 0x1E0) */
 }
+
+/* the game and the two states a network error reaches (SOCOM 1's CGame and COurGame, only what this
+ * unit touches; Apps/FTS/fts_state.h has the whole of them): the stack's top, PopTo and Switch, the
+ * front end's menu state at 0x78 and the load state at 0xEC */
+class CGameState {
+public:
+    virtual ~CGameState();
+
+    char *m_name;   // 0x4
+};
+
+class CMenuState : public CGameState {
+public:
+    void SetDefaultMenu(const char *name) { strncpy(m_DefaultMenu, name, 64); }
+
+    unsigned char _8[0x30 - 0x8];
+    char m_DefaultMenu[64];   // 0x30
+    int m_iopregh;   // 0x70
+};
+
+class CLoadState : public CGameState {
+public:
+    void AbortLoad(const char *dlgname);
+
+    unsigned char _8[0x24 - 0x8];
+};
+
+class CGame {
+public:
+    enum { MAX_STATES = 16 };
+
+    virtual ~CGame();
+
+    CGameState *PopTo(CGameState *state, unsigned int arg);
+    CGameState *Switch(CGameState *state, unsigned int arg);
+    CGameState *GetCurrentState() { return m_CurrentState >= MAX_STATES ? 0 : m_Stack[m_CurrentState]; }
+
+    unsigned char m_Active;   // 0x4
+    CGameState *m_InitialState;   // 0x8
+    unsigned int m_CurrentState;   // 0xc
+    CGameState *m_TestVariable;   // 0x10
+    CGameState *m_Stack[MAX_STATES];   // 0x14
+    int m_MinIdlePeriod;   // 0x54
+    unsigned char m_StateChangeQueue[0x18];   // 0x58
+    unsigned int m_pad;   // 0x70
+    float m_maxtick;   // 0x74
+};
+
+class COurGame : public CGame {
+public:
+    CMenuState m_menuState;   // 0x78
+    CLoadState m_loadState;   // 0xec
+};
+
+extern COurGame theGame;
+
+/* the network game's end (fts_remote.cpp's units: SOCOM 1's names) and the net-error handler
+ * st_load.cpp installs */
+void ftsNetworkGameUninit();
+void DMEDisconnectFromGameServer();
+extern void (*data_0044F3CC)(int);
 
 /* the fade's steps: two flashes, then the mission completed and the exit state pushed (SOCOM 1's,
  * the same steps; OVL1 0x2A98B0) */
@@ -200,7 +260,7 @@ bool CMission::FadeToEndMissionTick(float dT)
                     theMission.SetDelayEndMission(false);
                     SetFadingToEndMission(false);
                     ResetDeathCam__10CAppCameraFv(appCamera);
-                    Push__5CGameFP10CGameStateUi(theGame, data_004086A0, 0);
+                    Push__5CGameFP10CGameStateUi(&theGame, data_004086A0, 0);
                 }
                 return true;
             }
@@ -210,8 +270,54 @@ bool CMission::FadeToEndMissionTick(float dT)
     return false;
 }
 
+/* a network error handled by the online game's state: in play, the front end's error dialog; at a
+ * round's or the game's end, the network game torn down and the stack popped first; loading, the
+ * load aborted to the dialog (SOCOM II's test) or the same teardown (OVL1 0x2A4600; SOCOM 1's
+ * chain, the cases in reverse of its tests) */
+bool CMission::_RecoverFromNetError(int error)
+{
+    bool handled = false;
+
+    if (error && m_pNetGame) {
+        switch (m_pNetGame->m_my_major_game_state) {
+        case CZNetGame::MP_MAJOR_PLAY:
+        case CZNetGame::MP_MAJOR_UNKNOWN:
+        case CZNetGame::MP_MAJOR_MENUS:
+            break;
+        case CZNetGame::MP_MAJOR_LOADING:
+            if (theGame.GetCurrentState() == &theGame.m_loadState) {
+                theGame.m_loadState.AbortLoad("dlgNetError.rdr");
+                data_0044F3CC = 0;
+                handled = true;
+                break;
+            }
+            ftsNetworkGameUninit();
+            DMEDisconnectFromGameServer();
+            theGame.PopTo(0, 0);
+            data_0044F3CC = 0;
+            theGame.m_menuState.SetDefaultMenu("dlgNetError.rdr");
+            theGame.Switch(&theGame.m_menuState, 0);
+            handled = true;
+            break;
+        case CZNetGame::MP_MAJOR_ROUNDOVER:
+        case CZNetGame::MP_MAJOR_GAMEOVER:
+        case CZNetGame::MP_MAJOR_NEWROUND:
+            ftsNetworkGameUninit();
+            DMEDisconnectFromGameServer();
+            theGame.PopTo(0, 0);
+        case CZNetGame::MP_MAJOR_INPLAY:
+            data_0044F3CC = 0;
+            theGame.m_menuState.SetDefaultMenu("dlgNetError.rdr");
+            theGame.Switch(&theGame.m_menuState, 0);
+            handled = true;
+            break;
+        }
+    }
+    return handled;
+}
+
 /* the net-error callback: theMission's own handler, a tail call (SOCOM 1's static
- * RecoverFromNetError; OVL1 0x2A45F0 -- the member, 0x2A4600, is not written) */
+ * RecoverFromNetError; OVL1 0x2A45F0) */
 void CMission::RecoverFromNetError(int error)
 {
     theMission._RecoverFromNetError(error);

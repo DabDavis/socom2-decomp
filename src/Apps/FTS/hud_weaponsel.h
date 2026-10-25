@@ -84,6 +84,9 @@ public:
     unsigned char _ca4[0xce0 - 0xca4];
 } __attribute__((aligned(16)));   // 0xce0 bytes
 
+/* an item (zweapon.h's EQUIP_ITEM, a byte enum: copied with lb, compared with lbu; 255 none) */
+enum EQUIP_ITEM { EQUIP_NONE = 255 };
+
 /* the in-game selector: SOCOM 1's DWARF moved by SOCOM II's sizes (C2D 4 bytes less, C2DString
  * 0x98, one selected name fewer). OnClose is inline (SOCOM 1 links none) and reads the HUD's owner:
  * hud_ingame_weaponsel.cpp defines it, after its CHUD */
@@ -132,7 +135,9 @@ public:
     float m_menustartx;   // 0x1168
     float m_curheight;   // 0x116c
     float m_goalheight;   // 0x1170
-    unsigned char _1174[0x11b0 - 0x1174];
+    unsigned char _1174[0x11a4 - 0x1174];
+    EQUIP_ITEM m_selected_item_index[5];   // 0x11a4 (SOCOM 1: six)
+    unsigned char _11a9[0x11b0 - 0x11a9];
 } __attribute__((aligned(16)));   // 0x11b0 bytes
 
 /* the network selector's slots (their vtables found by their RTTI names: CWeaponSlot 0x405E00,

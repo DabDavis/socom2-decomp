@@ -56,6 +56,28 @@ void CSndJukebox::LoadPlaylists(const char *name)
         zrdr_free((CRdrFile *)rdr);
 }
 
+/* SOCOM 1's: an intensity's list of sequences made, each weighted alike.
+ * OPEN, 8 instructions, registers only: in both push_backs the target holds &size_ in the lower
+ * saved register and &data_ in the higher (s0/s2, s1/s2), here the other way round -- include/
+ * vector's pod push_back (insert(data_ + size_, ...)) creates them in the other order. One
+ * counter for both loops, unsigned and compared as (int)i in the first, gives everything else
+ * (an int counter in the first and an unsigned one in the second take an extra register) */
+void CSndJukebox::LoadMusicLists(_zrdr *rdr, int mode)
+{
+    if (!(rdr && mode < 4))
+        return;
+    unsigned int i;
+
+    for (i = 0; (int)i < (int)rdr->Count(); i++) {
+        CSndSequence *seq = new CSndSequence;
+
+        seq->CreateSequence(rdr->Item(i));
+        m_playlists[mode].push_back(seq);
+    }
+    for (i = 0; i < m_playlists[mode].size(); i++)
+        m_weights[mode].push_back(1.0f / m_playlists[mode].size());
+}
+
 void CSndJukebox::FadeOut()
 {
     if (m_sequence) {
@@ -91,6 +113,30 @@ void CSndJukebox::SetIntensity(float level)
     else if (level >= 5.0f)
         m_mode = MUSIC_MODE_3;
     m_modeChanged = m_mode != old;
+}
+
+/* SOCOM 1's: an intensity's weights scaled to sum to one, or made equal when they sum to 0.
+ * OPEN, registers only (75 instructions differ, the same blocks and size): the target keeps the
+ * mode in a2, its offset in v1 and builds each address in a0, here a1, a2 and v1 -- CSndGroup::
+ * NormalizeWeights' open register question over m_weights[mode]. Tried: a reference to the
+ * mode's vector (0x208), the mode copied to an int (0x210) */
+void CSndJukebox::NormalizeWeights(MUSIC_MODE mode)
+{
+    float total = 0.0f;
+
+    for (int i = 0; i < m_weights[mode].size(); i++)
+        total += m_weights[mode][i];
+    if (total == 0.0f) {
+        float w = 1.0f / m_weights[mode].size();
+
+        for (int i = 0; i < m_weights[mode].size(); i++)
+            m_weights[mode][i] = w;
+    } else {
+        float scale = 1.0f / total;
+
+        for (int i = 0; i < m_weights[mode].size(); i++)
+            m_weights[mode][i] *= scale;
+    }
 }
 
 void CSndJukebox::Start()
