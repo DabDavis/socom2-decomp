@@ -6374,18 +6374,18 @@
 0x0034F000 0x60 func_0034F000  # OVL1
 0x0034F060 0x78 func_0034F060  # OVL1
 0x0034F0E0 0x40 zSysSleep__Fi  # OVL1; s1:exact
-0x0034F120 0x8 func_0034F120  # OVL1
-0x0034F130 0xAC func_0034F130  # OVL1
-0x0034F1E0 0x48 func_0034F1E0  # OVL1
-0x0034F230 0x188 func_0034F230  # OVL1
+0x0034F120 0x8 SleepAlarmCB__FiUsPv  # OVL1; s1:order+ref (SOCOM 1's static SleepAlarmCB(int, unsigned short, void *) after zSysSleep, which passes its address to SetAlarm in both builds; it wakes the thread its argument names) -- the sound/system lane
+0x0034F130 0xAC zSysTimerInit__Fv  # OVL1; SOCOM II's, name ours (zSys.timerTicksPerSecond from zVid's H-blank rate, timerScale its reciprocal: SOCOM 1's zSysReset did this inline, SOCOM II's inlines this function) -- the sound/system lane
+0x0034F1E0 0x48 zSysHddUnmount__FPCc  # OVL1; SOCOM II's, name ours (sceUmount of the name it is passed when the disk is mounted, the mount flag and the devctl status reset; returns sceUmount's answer as a bool) -- the sound/system lane
+0x0034F230 0x188 zSysHddInit__Fv  # OVL1; SOCOM II's, name ours (the three HDD modules ATAD/HDD/PFS loaded and started once from the table at 0x3E0250, then sceDevctl("hdd0:", 0x4807); true when that answered 0) -- the sound/system lane
 0x0034F3C0 0x374 zSysReset__Fv  # OVL1; s1:align
-0x0034F740 0x84 func_0034F740  # OVL1
-0x0034F7D0 0xE0 func_0034F7D0  # OVL1
+0x0034F740 0x84 zSysUnloadMcIRX__Fv  # OVL1; SOCOM II's, name ours (MCMAN/MCSERV stopped and unloaded, last first, through SOCOM 1's zSysUnloadIRX inlined; the loaded flag cleared) -- the sound/system lane
+0x0034F7D0 0xE0 zSysLoadMcIRX__Fv  # OVL1; SOCOM II's, name ours (the memory card's two modules loaded through zSysLoadIRX inlined, the loaded flag set) -- the sound/system lane
 0x0034F8B0 0x68 zSysLoadIRX__FPciPcb  # OVL1; s1:align
-0x0034F920 0x2C func_0034F920  # OVL1
-0x0034F950 0x8 func_0034F950  # OVL1
-0x0034F960 0x48 func_0034F960  # OVL1
-0x0034F9B0 0x940 func_0034F9B0  # OVL1
+0x0034F920 0x2C zSysShutdown__Fv  # OVL1; SOCOM II's, name ours (the IOP rebooted in mode 6, then a sound flag cleared; the machine resets that zVid_Assert calls end with it) -- the sound/system lane
+0x0034F950 0x8 zSysPostInit__Fv  # OVL1; s1:order (SOCOM 1's zSysPostInit, between zSysLoadIRX and zSysInit, emptied; UISysPostInit calls it as SOCOM 1's does) -- the sound/system lane
+0x0034F960 0x48 zSysInit__Fv  # OVL1; s1:order+calls (SOCOM 1's zSysInit, after zSysPostInit: zsys_FullAllocAndFree, zSys.isCdBoot cleared, RebootIOP; main calls it) -- the sound/system lane
+0x0034F9B0 0x940 RebootIOP__11CIOPManagerFQ211CIOPManager10RebootMode  # OVL1; s1:order+calls (SOCOM 1s CIOPManager::RebootIOP(RebootMode) after zSysInit, which calls it on theIOPManager with the mode, as SOCOM 1s; SOCOM II adds modes past 3) -- the sound/system lane
 0x003502F0 0x8 func_003502F0  # OVL1
 0x00350300 0xE4 func_00350300  # OVL1
 0x003503F0 0x1F0 func_003503F0  # OVL1

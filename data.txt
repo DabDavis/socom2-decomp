@@ -187,6 +187,11 @@
 0x003DFFD0 0x4 m_bnkoffset__4CSnd  # OVL1 data; SOCOM 1's CSnd static (its symbol): CSnd::Init stores the bank archive's disc offset (CFileCD's entry for BNKSTORE.ZAR, word 1) in it as SOCOM 1's Init stores m_bnkoffset; 2 references in 2 functions
 0x003E0070 0x4 m_mastervol__12CSndInstance  # OVL1; s1:data-seq (size SOCOM 1's; via SetVol__12CSndInstanceFf)
 0x003E0080 0x1 m_jukebox_stopped__11CSndJukebox  # OVL1 data; SOCOM 1's CSndJukebox static (its symbol, 0x4755B0 there): Start clears it and Cleanup sets it in both builds (was m_inFight, ours); 4 references in 4 functions
+0x003E01B4 0x4 s_hddDisabled  # OVL1 data; SOCOM II's, name ours (zSysHddInit skips the disk when it is 1; 0 in the image); 1 reference -- the sound/system lane
+0x003E0218 0x9 s_hddArgs  # OVL1 data; SOCOM II's, name ours (HDD.IRX's arguments "-o 1 -n 3", the table's argv); 0 code references -- the sound/system lane
+0x003E0230 0x10 s_pfsArgs  # OVL1 data; SOCOM II's, name ours (PFS.IRX's arguments "-m 1 -o 1 -n 10"); 0 code references -- the sound/system lane
+0x003E0250 0x48 s_hddModules  # OVL1 data; SOCOM II's, name ours (three 0x18-byte module rows: ATAD, HDD, PFS, each loaded and started); 1 reference (zSysHddInit) -- the sound/system lane
+0x003E02A0 0x30 s_mcModules  # OVL1 data; SOCOM II's, name ours (MCMAN and MCSERV, loaded only); 3 references in 3 functions -- the sound/system lane
 0x003E0980 0xC0 framecode  # OVL1; s1:data-seq (size SOCOM 1's; via zVid_FrameRestore__Fv)
 0x003E1200 0x10 zon_writeon_dmaref  # OVL1; s1:data-exact (size SOCOM 1's; via zVid_ZTestOnWriteSet__Fb)
 0x003E13F8 0x4 m_defaultFrameRate__6CVideo  # OVL1; SOCOM 1's (CCoreState::Init gives it back to MaxFrameRate, as SOCOM 1's): 2 references in 2 functions take 0x3E13F8
@@ -735,6 +740,8 @@
 0x0049E280 0x4 __HeapSize  # OVL1 bss; s1:data-seq (size SOCOM 1's; via zsys_FullAllocAndFree__Fv)
 0x0049E2A0 0xC theIOPManager  # OVL1 bss; SOCOM 1's (CMenuState registers its reboot callback on it in Init and removes it in UnInit, as SOCOM 1's): 28 references in 21 functions take 0x49E2A0-0x49E2A8
 0x0049E2B0 0x2C zSys  # OVL1 bss; s1:data-exact (via WriteGsMemory__6CVideoFUiP1Ui); SOCOM 1's _zsys_public is 0x28 with timerScale at 0x24, SOCOM II's has it at 0x28 (CAppCamera::Tick's peek easing reads it where SOCOM 1's read 0x24), so 0x2C
+0x0049E2DC 0x4 s_hddStatus  # OVL1 bss; SOCOM II's, name ours (sceDevctl("hdd0:")'s answer, -1 before; zSysInit and zSysHddUnmount reset it); 6 references in 4 functions -- the sound/system lane
+0x0049E2E0 0x1 s_hddMounted  # OVL1 bss; SOCOM II's, name ours (zSysHddUnmount unmounts only when set); 5 references in 4 functions -- the sound/system lane
 0x0049E2F0 0x4 m_last_id__Q211CIOPManager11CRegistrant  # OVL1 bss; s1:data-seq (size SOCOM 1's; via RegisterRebootCallback__11CIOPManagerFPFQ211CIOPManager11RebootPhaseQ211CIOPManager10RebootModePv_bPv)
 0x0049E2F8 0x4 mfifoDrainTADR  # OVL1 bss; SOCOM 1's (zSysFifoEnable stores the draining channel's TADR address, zSysFifoKick polls it, as SOCOM 1's gp-26308); 4 references in 2 functions -- the sound/system lane
 0x0049E300 0x1 s_fifoSync  # OVL1 bss; SOCOM II's, name ours (zSysFifoSetSync stores it, zSysFifoKick tests it); 2 references -- the sound/system lane

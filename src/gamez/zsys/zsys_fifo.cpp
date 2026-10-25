@@ -14,19 +14,7 @@ extern "C" int sceGsSyncPath(int mode, unsigned short timeout);
 /* the MFIFO ring's base (SOCOM 1's mfifoBase, 0x100000) */
 extern u_long128 mfifoBase[];
 
-/* Sony's register bit-fields */
-typedef struct {
-    unsigned int DIR : 1;
-    unsigned int p0 : 1;
-    unsigned int MOD : 2;
-    unsigned int ASP : 2;
-    unsigned int TTE : 1;
-    unsigned int TIE : 1;
-    unsigned int STR : 1;
-    unsigned int p1 : 7;
-    unsigned int TAG : 16;
-} tD_CHCR;
-
+/* Sony's register bit-fields (tD_CHCR is zsys_public.h's) */
 typedef struct {
     unsigned int DMAE : 1;
     unsigned int RELE : 1;

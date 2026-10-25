@@ -6,7 +6,37 @@
 
 #include "zsys.h"
 
-struct sceDmaChan;
+/* Sony's DMA channel registers (SOCOM 1's DWARF) */
+typedef struct {
+    unsigned int DIR : 1;
+    unsigned int p0 : 1;
+    unsigned int MOD : 2;
+    unsigned int ASP : 2;
+    unsigned int TTE : 1;
+    unsigned int TIE : 1;
+    unsigned int STR : 1;
+    unsigned int p1 : 7;
+    unsigned int TAG : 16;
+} tD_CHCR;
+
+struct sceDmaChan {
+    tD_CHCR chcr;               /* 0x00 */
+    unsigned int p0[3];
+    void *madr;                 /* 0x10 */
+    unsigned int p1[3];
+    unsigned int qwc;           /* 0x20 */
+    unsigned int p2[3];
+    void *tadr;                 /* 0x30 */
+    unsigned int p3[3];
+    void *as0;                  /* 0x40 */
+    unsigned int p4[3];
+    void *as1;                  /* 0x50 */
+    unsigned int p5[3];
+    unsigned int p6[4];         /* 0x60 */
+    unsigned int p7[4];         /* 0x70 */
+    void *sadr;                 /* 0x80 */
+    unsigned int p8[3];
+};   /* 0x90 bytes */
 
 extern "C" {
 int DIntr(void);
@@ -33,7 +63,8 @@ struct _zsys_public {
     unsigned char isCdBoot;             /* 0x1D */
     unsigned char cdSounds;             /* 0x1E */
     unsigned char memIrxLoaded;         /* 0x1F */
-    unsigned int _20;                   /* 0x20: SOCOM II's */
+    unsigned char mcIrxLoaded;          /* 0x20: SOCOM II's, the memory card's modules (name ours) */
+    unsigned char hddIrxLoaded;         /* 0x21: SOCOM II's, the hard disk's (name ours) */
     unsigned int timerTicksPerSecond;   /* 0x24 (SOCOM 1: 0x20) */
     float timerScale;                   /* 0x28 (SOCOM 1: 0x24) */
 };   /* 0x2C bytes */
@@ -59,6 +90,22 @@ public:
     static _word128 *m_sprPacket;       /* 0x49E330 */
     static _word128 *m_sprPacketEnd;    /* 0x49E338 */
 };
+
+/* the allocators (zsys_memory.cpp) */
+int zsys_FullAllocAndFree();
+
+/* the system's start (zsys_init.cpp) */
+void zSysInit();
+void zSysPostInit();
+void zSysReset();
+void zSysTimerInit();
+void zSysSleep(int ticks);
+int zSysLoadIRX(char *name, int argc, char *argv, bool retry);
+void zSysLoadMcIRX();
+void zSysUnloadMcIRX();
+bool zSysHddInit();
+bool zSysHddUnmount(const char *name);
+void zSysShutdown();
 
 /* the DMA FIFO (zsys_fifo.cpp) */
 void zSysFifoKick(u_long128 *packet, unsigned int qwc);
