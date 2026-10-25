@@ -1977,7 +1977,7 @@
 0x00220FA0 0x8 func_00220FA0  # OVL1; s1~ IsAi__9CSealCtrlCFv (one of 2 out-of-line copies of an inline, by s1:vtable)
 0x00220FB0 0xB4 Clear__10CTeamNamesFv  # OVL1; by hand (CHUD::ReInit_Uninit calls it on CHUD+0x165A0, the member 0x221B10 constructs with CTeamNames' vtable 0x405680, under the single-player test with UninitMap)
 0x00221070 0x658 Init__10CTeamNamesFv  # OVL1; s1:calls by hand (CHUD::ReInit_Init's call on CHUD+0x165A0 after ZoomOut, single player only, where SOCOM 1 calls CTeamNames::Init; after Clear in the unit, as SOCOM 1's)
-0x002216D0 0x29C func_002216D0  # OVL1
+0x002216D0 0x29C SetupTeamNameEntry__10CTeamNamesFiP10CZSealBodyb  # OVL1; s1:calls by hand (the HUD lane: CTeamNames::Init calls it four times, after GetUnitByTeam(2)/(3) and GetSealByIndex, with the index 0-3 and the SEAL, where SOCOM 1's Init calls SetupTeamNameEntry; SOCOM II passes a flag in a3 that lists the entry's bitmaps)
 0x00221970 0x1A0 func_00221970  # OVL1
 0x00221B10 0xD4 __ct__10CTeamNamesFv  # OVL1; by hand (stores CTeamNames' vtable 0x405680; CHUD's constructor builds CHUD+0x165A0 with it; hud_teamnames.cpp's last function before hud_posebitmap.cpp, as SOCOM 1's)
 0x00221BF0 0x4C __ct__14CHudBrightTextFv  # OVL1; by hand (the HUD lane: stores CHudBrightText's vtable 0x4050C0 after C2DString's constructor, then SetTrans(80): the inline constructor's copy, its address handed to __construct_array by CTeamNames' constructor just before it)
