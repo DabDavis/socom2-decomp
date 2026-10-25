@@ -739,6 +739,7 @@
 0x0049E310 0x4 sprBeingWritten  # OVL1 bss; s1:data-seq (size SOCOM 1's; via zSysFifoEnd__Fv)
 0x0049E370 0x4 m_refCount__3CVU  # OVL1 bss; s1:data-seq (size SOCOM 1's; via __dt__3CVUFv)
 0x0049E378 0x4 m_VifHandlerID__3CVU  # OVL1 bss; s1:data-seq (size SOCOM 1's; via __dt__3CVUFv)
+0x0049E7E0 0x4 m_running  # OVL1 bss; SOCOM 1's file static of the VU unit (InterruptFromVIF0 clears it, as SOCOM 1's clears m_running at gp-26268, after m_VifHandlerID there); 1 reference (InterruptFromVIF0) -- the sound/system lane
 0x0049E840 0x4 m_baseAddress__Q23zdb8CTexture  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Init__Q23zdb8CTextureFv +1)
 0x0049E860 0x4 m_palId__Q23zdb11CTexPalette  # OVL1 bss; s1:data-seq (size SOCOM 1's; via __ct__Q23zdb11CTexPaletteFPCc)
 0x0049E880 0x1C m_texmanager__Q23zdb11CTexManager  # OVL1 bss; SOCOM 1's (the texture buffers' vector first: the states index its data at 8 and pass it to DestroyBuffers): 114 references in 30 functions take 0x49E880-0x49E888
