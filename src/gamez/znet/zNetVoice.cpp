@@ -66,7 +66,8 @@ struct VoiceRadio {
     int m_team;   // 0x2c
     unsigned char _30[0x4a - 0x30];
     unsigned char m_quiet;   // 0x4a
-    unsigned char _4b[0x64 - 0x4b];
+    unsigned char _4b[0x60 - 0x4b];
+    int m_radio_msg;   // 0x60: the "Radio" message
     int m_msg;   // 0x64: the radio's application message
     unsigned char _68[0x70 - 0x68];
     VoiceSlot m_slots[12];   // 0x70
@@ -108,7 +109,124 @@ int func_00623BA0(int conn, int client, VoiceChannelInfo *info);   /* (the DME: 
 int func_00623998(int conn, int channel);   /* (the DME: our channel set) */
 }
 
+/* the headset's processing switches and the canceller's handle (only what is read here) */
+struct VoiceHeadset {
+    unsigned char _0[0x4e];
+    unsigned char m_bypass;   // 0x4e: the processing off
+    unsigned char m_noagc;   // 0x4f
+    unsigned char m_nonoise;   // 0x50
+    unsigned char _51[0x107c - 0x51];
+    void *m_echo;   // 0x107c
+    unsigned char _1080[4];
+    unsigned char m_settings[4];   // 0x1084
+};
+
 extern "C" {
+/* the echo canceller's switches (OVL1 0x3104F0-0x310630, byte-exact drafts) */
+void func_003105D0(void *h);
+void func_00310600(void *h);
+void func_00310630(void *h, void *settings);
+void func_003104F0(void *h);
+void func_00310520(void *h, void *settings);
+void func_00310560(void *h);
+void func_00310590(void *h, void *settings);
+
+/* an application message type: its fields described, then registered by name with a handler
+ * (the DME's; func_0030CFF0 is zNetDme.cpp's wrapper, a draft) */
+void func_00620BD8();
+void func_00620C60(void *msg, void *field, int size, int count);
+int func_0030CFF0(CZNetwork *net, int *id, int (*handler)(int, int, int, void *), const char *name);
+int func_0030E8E0(int, int, int, void *);   /* the "Radio" message's handler */
+int func_0030EB70(int, int, int, short *);
+}
+
+/* the speech decoder: its handle, the samples it hands out and the packed bytes it takes */
+struct VoiceDecoder {
+    int m_0;
+    void *m_handle;   // 0x4
+    unsigned char _8[0x20 - 0x8];
+    short *m_samples;   // 0x20
+    unsigned short m_count;   // 0x24
+    unsigned char _26[2];
+    void *m_in;   // 0x28
+    short m_inlen;   // 0x2c
+};
+
+extern "C" {
+void func_00255B68(void *h, void *frame);   /* (the decoder: a frame decoded) */
+void func_00255CF8(void *h, unsigned char *done);   /* (and whether the packet is used up) */
+}
+
+extern "C" {
+
+/* a packet of 8 bytes decoded frame by frame into the caller's samples (OVL1 0x3106A0). The
+ * count returned is the original's slip: it doubles itself (`addu s0,s0,s0`) where the frames'
+ * counts were surely meant, so it stays 0 */
+int func_003106A0(VoiceDecoder *d, const void *packet, short *out)
+{
+    int n = 0;
+    unsigned char done;
+
+    memcpy(d->m_in, packet, 8);
+    d->m_inlen = 8;
+    do {
+        func_00255B68(d->m_handle, &d->m_samples);
+        if (d->m_count > 0) {
+            memcpy(out, d->m_samples, d->m_count * 2);
+            n += n;
+            out += d->m_count;
+        }
+        func_00255CF8(d->m_handle, &done);
+    } while (!(bool)done);
+    return n * 2;
+}
+
+/* the radio's two messages registered: "Radio", three bytes, and "Channel Status", the twelve
+ * slots' clients as halfwords (OVL1 0x310210) */
+void func_00310210(VoiceRadio *r)
+{
+    unsigned char radio[3];
+
+    func_00620BD8();
+    func_00620C60(radio, &radio[0], 1, 1);
+    func_00620C60(radio, &radio[1], 1, 1);
+    func_00620C60(radio, &radio[2], 1, 1);
+    func_0030CFF0(&theNetwork, &r->m_radio_msg, func_0030E8E0, "Radio");
+    short status[12];
+
+    func_00620BD8();
+    func_00620C60(status, status, 2, 12);
+    func_0030CFF0(&theNetwork, &r->m_msg, (int (*)(int, int, int, void *))func_0030EB70,
+                  "Channel Status");
+    r->m_state = 1;
+}
+
+/* the headset's processing switched on or off: when it changes, the echo canceller's, gain's and
+ * noise stages follow, each kept on where its own flag says (OVL1 0x30E5A0) */
+void func_0030E5A0(VoiceHeadset *h, bool bypass)
+{
+    if (bypass == h->m_bypass) {
+        if (bypass)
+            func_003105D0(h->m_echo);
+        else {
+            func_00310600(h->m_echo);
+            func_00310630(h->m_echo, h->m_settings);
+        }
+        bool agc = bypass || h->m_noagc;
+
+        if (agc)
+            func_003104F0(h->m_echo);
+        else
+            func_00310520(h->m_echo, h->m_settings);
+        bool noise = bypass || h->m_nonoise;
+
+        if (noise)
+            func_00310560(h->m_echo);
+        else
+            func_00310590(h->m_echo, h->m_settings);
+        h->m_bypass = !bypass;
+    }
+}
 
 /* our channel set to a team's (the team and the squad ORed), unless the DME has us on it already
  * (OVL1 0x30FD90's twin; OVL1 0x30FCD0) */
