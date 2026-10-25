@@ -673,7 +673,7 @@
 0x00451090 0x404 exptbl  # OVL1 bss; s1:data-seq (size SOCOM 1's; via exp_tl__Ff +1)
 0x004514A0 0x404 sintbl  # OVL1 bss; s1:data-order by hand (init_trig_table stores sinf's results here and cosf's at 0x4518B0, as SOCOM 1's sintbl and costbl)
 0x004518B0 0x404 costbl  # OVL1 bss; s1:data-order by hand (the cosf table, after sintbl)
-0x0045A0B8 0x1264 theNetwork  # OVL1 bss; s1:data-seq (size SOCOM 1's; via HandleBombStateRequest__11CZBombStateFiUcP6CPnt3D)
+0x0045A0C0 0x125C theNetwork  # OVL1 bss; s1:data-seq (via HandleBombStateRequest__11CZBombStateFiUcP6CPnt3D), moved by hand from 0x45A0B8: every network sender passes 0x45A0C0 as CZNetwork::zNetSendApplicationMessage's this where SOCOM 1 passes theNetwork, and the session-master and network flags SOCOM 1 keeps at 8 and 9 sit at 0x45A0C0/0x45A0C1 -- SOCOM II dropped the two team indices ahead of them (the states lane, round 5); size SOCOM 1's less those 8 bytes
 0x0045C298 0x4 NodeUniverse__3zdb  # OVL1 bss; s1:by hand (GetDatabaseNode tests and searches it where SOCOM 1's reads NodeUniverse__3zdb)
 0x0045C2A0 0x4 numNodes  # OVL1 bss; SOCOM 1 name (the node count, after NodeUniverse as in SOCOM 1; ~CNode counts it down)
 0x0045C2B8 0xC m_tick_list__Q23zdb6CLight  # OVL1 bss; s1:unit (node_main.cpp's first static, as SOCOM 1's CLight::m_tick_list: __sinit_node_main.cpp zeroes it and registers its destructor; its record at 0x45C2A8)

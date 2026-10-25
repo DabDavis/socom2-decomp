@@ -79,8 +79,8 @@ void ThirdToFirstPersonTransition(CAppCamera *cam);
 /* the network (only its online flag) */
 class CNetwork {
 public:
-    unsigned char _0[9];
-    unsigned char m_9;   // 0x9: an online game
+    unsigned char _0[1];
+    unsigned char m_9;   // 0x1: an online game (SOCOM 1's at 0x9)
 };
 
 extern CNetwork theNetwork;

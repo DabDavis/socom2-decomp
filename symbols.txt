@@ -1913,7 +1913,8 @@
 0x00213840 0x220 func_00213840  # OVL1
 0x00213A60 0x3C0 func_00213A60  # OVL1
 0x00213E20 0x1354 func_00213E20  # OVL1
-0x00215180 0x70 func_00215180  # OVL1
+0x00215180 0x14 func_00215180  # OVL1; split by hand (the HUD lane: a tail call through a member's vtable, padded to 0x2151A0)
+0x002151A0 0x50 func_002151A0  # OVL1; split from 0x215180 (three virtual calls on members at 0x1c, 0x34 and 0x4c)
 0x002151F0 0x54 func_002151F0  # OVL1
 0x00215250 0x9B8 func_00215250  # OVL1
 0x00215C10 0xB50 func_00215C10  # OVL1
@@ -11013,10 +11014,10 @@
 0x005BE2F0 0x8 func_005BE2F0  # OVL2
 0x005BE300 0x258 func_005BE300  # OVL2
 0x005BE560 0x8 func_005BE560  # OVL2
-0x005BE570 0x74 func_005BE570  # OVL2
+0x005BE570 0x74 SetCurReticule__5CZKitFb  # OVL2; s1:calls by hand (the HUD lane: CHUD::ZoomIn/ZoomOut call it where SOCOM 1's call SetCurReticule; SOCOM II added a bool parameter, hence Fb)
 0x005BE5F0 0x5C func_005BE5F0  # OVL2
 0x005BE650 0x8 func_005BE650  # OVL2
-0x005BE660 0x5C func_005BE660  # OVL2
+0x005BE660 0x5C GetCurZoom__5CZKitFv  # OVL2; s1:calls by hand (the HUD lane: at SOCOM 1's call site in ZoomIn/ZoomOut; 0x5C bytes against SOCOM 1's 0x58)
 0x005BE6C0 0x30 func_005BE6C0  # OVL2
 0x005BE6F0 0x298 func_005BE6F0  # OVL2
 0x005BE990 0x8 func_005BE990  # OVL2
@@ -11044,7 +11045,7 @@
 0x005C32B0 0xB0 func_005C32B0  # OVL2
 0x005C3360 0x3E0 func_005C3360  # OVL2
 0x005C3740 0x34 func_005C3740  # OVL2
-0x005C3780 0x8 func_005C3780  # OVL2
+0x005C3780 0x8 GetCurItem__5CZKitCFv  # OVL2; s1:calls by hand (the HUD lane: at SOCOM 1's call site in ZoomIn/ZoomOut; its result's type byte is compared with 11)
 0x005C3790 0x14 func_005C3790  # OVL2
 0x005C37B0 0xD4 func_005C37B0  # OVL2
 0x005C3890 0x8 func_005C3890  # OVL2

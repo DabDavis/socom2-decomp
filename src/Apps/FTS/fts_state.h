@@ -582,9 +582,8 @@ class CNetGame;
 /* the network (only its flags: 9 set in an online game) */
 class CNetwork {
 public:
-    unsigned char _0[8];
-    unsigned char m_8;   // 0x8
-    unsigned char m_9;   // 0x9: an online game
+    unsigned char m_8;   // 0x0: the session master (SOCOM 1's at 0x8: SOCOM II dropped the two team indices)
+    unsigned char m_9;   // 0x1: an online game
 };
 
 extern CNetwork theNetwork;

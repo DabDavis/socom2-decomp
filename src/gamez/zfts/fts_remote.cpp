@@ -7,8 +7,8 @@
  * The network object: SOCOM II's theNetwork is at 0x45A0C0, not data.txt's 0x45A0B8 -- every
  * sender passes 0x45A0C0 as CZNetwork::zNetSendApplicationMessage's `this` (SOCOM 1's pass
  * theNetwork itself), and the session-master and network flags SOCOM 1 keeps at 8 and 9 are at
- * 0x45A0C0 and 0x45A0C1, so SOCOM II dropped the two team indices ahead of them. Until the map
- * row moves, this unit reaches it by its address. */
+ * 0x45A0C0 and 0x45A0C1, so SOCOM II dropped the two team indices ahead of them (the map row
+ * has moved). */
 
 #include "../zmath/zmath.h"
 
@@ -178,7 +178,7 @@ struct NetObject {
 
 /* unnamed yet (SOCOM 1's names in the comments) */
 extern "C" {
-extern CZNetwork data_0045A0C0;   /* theNetwork (see the head of the file) */
+extern CZNetwork theNetwork;   /* see the head of the file */
 extern unsigned char data_004412D8;
 extern char theLobby[];
 
@@ -254,7 +254,6 @@ extern unsigned int data_00440EB8;   /* (SOCOM II's: the vote's tally) */
 extern unsigned int data_00440E28;   /* PacketTypeAiOrders */
 }
 
-#define theNetwork data_0045A0C0
 
 /* an int clamped into [lo, hi], saying whether it moved (a template instance closing the unit,
  * its name unknown; OVL1 0x2BD220) */

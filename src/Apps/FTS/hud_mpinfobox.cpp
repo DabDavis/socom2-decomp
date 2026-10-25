@@ -9,10 +9,8 @@
 
 class CZNetwork {
 public:
-    int m_SealIndex;   // 0x0
-    int m_TerrIndex;   // 0x4
-    unsigned char m_bSessionMaster;   // 0x8
-    unsigned char m_bNetwork;   // 0x9
+    unsigned char m_bSessionMaster;   // 0x0 (SOCOM 1's at 0x8: SOCOM II dropped the two team indices)
+    unsigned char m_bNetwork;   // 0x1
 };
 
 extern CZNetwork theNetwork;
