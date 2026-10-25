@@ -5,12 +5,19 @@
  * asserts name grid_main.cpp), in SOCOM 1's order: ReadClutter first, the CCell constructor last.
  * grid_di.cpp's queries come before it (its static initialiser registers CStack's destructor, whose
  * linked copy, 0x2D4FE0, closes that unit), grid_clutter.cpp's clutter animation after it. Defined
- * in reverse of their image order (-inline deferred). */
+ * in reverse of their image order (-inline deferred).
+ * Unwritten: ReadClutter (0x2D5060), AddClutter (0x2D55C0), Destroy (0x2D58B0), 0x2D5B50 (new),
+ * Create (0x2D5C80), SetTraversalBoundaryOrdered (0x2D6920), 0x2D6AB0 (new), SetTraversalExtents
+ * (0x2D6C40), gridAddNodeToGrids (0x2D7580). CGrid() is written and byte-exact once its CFRect
+ * constructor's row is named (below). */
 
 #include "node_world.h"
 
 /* the node's atom count set (node_main.cpp's SOCOM 1 CNode::SetAtomCnt(int), not named yet) */
 extern "C" void func_003149D0(zdb::CNode *node, int n);
+/* MSL's abs (MAIN, 0x191428, named): called by its address, since MW expands a call spelled abs
+ * through <stdlib.h> inline (its builtin) where addOrderedCellAtom's target calls it twice */
+extern "C" int func_00191428(int x);
 
 /* the cell box SetCellBoundary set and GetNextCell walks (SOCOM 1's file statics) */
 static int xMinCell;
@@ -24,7 +31,11 @@ namespace zdb {
 
 int CGrid::N_ATOMS = 8192;
 
-/* the cell's lists cleared, its box the point and the size less a thousandth (SOCOM 1's) */
+/* the cell's lists cleared, its box the point and the size less a thousandth (SOCOM 1's).
+ * OPEN (0x130 of 0x12C): the target inlines CDynTexList's construction whole (six zero stores at
+ * 0x104-0x118), where include/vector's pointer vector puts CTexList's and CTexPalList's
+ * constructors a level too deep and calls them -- CHUD's unresolved case (hud_main.cpp): the same
+ * class's destructor wants the extra level (0x1FC520, 0x1FC5A0 are called with four this-tests) */
 CCell::CCell(const CPnt3D *pos, float size)
 {
     size -= 0.001f;
@@ -45,7 +56,13 @@ CBBox *CCell::UpdateBBox(bool up)
     return (CBBox *)GetBBox();
 }
 
-/* the lights and the clutter let go of (SOCOM 1's) */
+/* the lights and the clutter let go of (SOCOM 1's).
+ * OPEN (0x148 of 0x180): the target inlines the light list's destructor four levels (four
+ * this-tests, then the range erase) and CDynTexList's one level (the two class vectors'
+ * destructors called with -1, 0x1FC5A0 and 0x1FC520 -- placeholders, named here as the classes'
+ * destructors they are once renamed); here ~CLightList is one call and the texture lists' calls
+ * resolve to unnamed rows. Turns on the list destructors' inlining in tail-less code and on the
+ * two rows' names */
 CCell::~CCell()
 {
     m_lightList.clear();
@@ -91,7 +108,14 @@ void CCell::RenderClutter(CCell *cell)
     m_clutterListDI.Render(cell);
 }
 
-/* the box's centre (SOCOM 1's) */
+/* the box's centre (SOCOM 1's).
+ * OPEN, 16 instructions (right size): the target inlines all three operators whole, the inner
+ * ones' results stacked below the outer (Sub's at 48, Scale's 64, Add's 80, their copies 96-128);
+ * with zmath.h's free operators the nested argument sits too deep and operator- is inlined one
+ * level (CPnt3D's default and copy constructors called out of line). Split into named statements
+ * every operator inlines and only the stack slots differ (9 instructions: the first statement's
+ * objects at the top of the frame) -- the original's operators were likely members (a temporary's
+ * member call is no nested argument); zmath.h is not this lane's */
 void CCell::GetMidPoint(CPnt3D *out)
 {
     *out = m_bbox.m_min + (m_bbox.m_max - m_bbox.m_min) * 0.5f;
@@ -144,8 +168,81 @@ CGridAtom **CGrid::gridGetAtomBasePtr(int x, int z)
     return &m_Atoms[x + z * m_CellCount.cx];
 }
 
+/* the ordered list built from the view point: its cell first, then ring after ring of the
+ * neighbours of the last ring's cells, until a ring adds none or the list is full (SOCOM 1's).
+ * OPEN (0x1F4 of 0x1E8): the target recomputes &m_Atoms[i] from the index at every step of the
+ * inner loop (sll, addu) and tests the loop's bool twice (sltu, xori before the branch); MW
+ * strength-reduces the element pointer here (a register stepped by 16) -- not an unsigned or short
+ * index, pointer arithmetic, nor an accessor taking another index type */
+void CGrid::buildOrderedCellAtomList(const CPnt3D *view)
+{
+    m_orderedCells.m_gridCellAtomCnt = 0;
+    m_orderedCells.m_rt_gridCellAtomCnt = 0;
+    int vx = (int)(m_InvCellDim * (0.0001f + (view->x - m_origin.x)));
+
+    vx = MAX(0, vx);
+    vx = MIN(m_CellCount.cx - 1, vx);
+    m_orderedCells.m_viewX = vx;
+    int vz = (int)(m_InvCellDim * (0.0001f + (view->z - m_origin.z)));
+
+    vz = MAX(0, vz);
+    vz = MIN(m_CellCount.cy - 1, vz);
+    m_orderedCells.m_viewZ = vz;
+    addOrderedCellAtom(vx, vz, true);
+    int ring = 0;
+    int i = 0;
+    GRIDCELLATOM *a = &m_orderedCells.m_Atoms[0];
+    bool more = true;
+    int n;
+
+    while (more && (n = m_orderedCells.m_gridCellAtomCnt) < 1600) {
+        GRIDCELLATOM *last = &m_orderedCells.m_Atoms[n];
+
+        while (a->ring == ring) {
+            int x = a->x;
+            int z = a->z;
+
+            addOrderedCellAtom(x - 1, z, false);
+            addOrderedCellAtom(x + 1, z, false);
+            addOrderedCellAtom(x, z - 1, false);
+            addOrderedCellAtom(x, z + 1, false);
+            i++;
+            a = &m_orderedCells.m_Atoms[i];
+        }
+        a = last;
+        i = n;
+        ring++;
+        more = n != m_orderedCells.m_gridCellAtomCnt;
+    }
+}
+
+/* a cell of the walk's box added to the ordered list, with its ring (its distance in cells from
+ * the view cell), once per walk and only inside the boundary unless forced (SOCOM 1's) */
+void CGrid::addOrderedCellAtom(int x, int z, bool force)
+{
+    if (x >= m_ix && x < m_ixb && z >= m_iz && z < m_izb) {
+        CGridAtom *atom = *gridGetAtomBasePtr(x, z);
+
+        if (atom && atom->Ent->m_TickNum < m_TickNum) {
+            if (force || !gridCellOut(x, z)) {
+                atom->Ent->m_TickNum = m_TickNum;
+                GRIDCELLATOM *g = &m_orderedCells.m_Atoms[m_orderedCells.m_gridCellAtomCnt];
+
+                g->cellAtom = atom;
+                g->ring = func_00191428(x - m_orderedCells.m_viewX) + func_00191428(z - m_orderedCells.m_viewZ);
+                g->x = x;
+                g->z = z;
+                m_orderedCells.m_gridCellAtomCnt++;
+            }
+        }
+    }
+}
+
 /* the cell box a pair of corners spans, its first cell given back (SOCOM 1's; the corners by
- * value, the box's cells kept in the unit's statics for GetNextCell) */
+ * value, the box's cells kept in the unit's statics for GetNextCell).
+ * OPEN, 9 instructions (right size): registers in the inlined gridGetAtomBasePtr -- the target
+ * keeps z in a1 and the clamped x in a2 (SOCOM 1's in a0/a1), here z takes a2 and x a1; not the
+ * result local, its place, nor a helper taking the grid */
 CCell *CGrid::SetCellBoundary(CPnt3D min, CPnt3D max)
 {
     gridGetGridXandZIndex(&xMinCell, &zMinCell, min.x, min.z);
@@ -160,7 +257,8 @@ CCell *CGrid::SetCellBoundary(CPnt3D min, CPnt3D max)
     return cell;
 }
 
-/* the box's next cell, row by row, or none past its last (SOCOM 1's) */
+/* the box's next cell, row by row, or none past its last (SOCOM 1's).
+ * OPEN, 9 instructions (right size): SetCellBoundary's register pair, in both lookups */
 CCell *CGrid::GetNextCell()
 {
     xCurCell++;
@@ -363,7 +461,11 @@ void CGrid::gridGetGridXandZIndex(int *ix, int *iz, float x, float z)
 }
 
 /* the walk's next atom: the next in the cell, else the next cell's first, skipping inactive nodes
- * and those this walk already gave (SOCOM 1's) */
+ * and those this walk already gave (SOCOM 1's).
+ * OPEN, 7 instructions (right size): the target takes the atom's node in an argument register (a0
+ * here, a1 in GetNextAtomOrdered where a0 holds the grid) and &node->m_TickNum in v1; this puts the
+ * node in v1 and the address in a0 -- SOCOM 1's own registers. Not the test's shape, the reference
+ * or pointer, nor an inline taking the node */
 CGridAtom *CGrid::GetNextAtom()
 {
     for (;;) {
@@ -391,7 +493,8 @@ CGridAtom *CGrid::GetNextAtom()
     }
 }
 
-/* the ordered walk's next atom: the cells' atoms in ring order (SOCOM 1's) */
+/* the ordered walk's next atom: the cells' atoms in ring order (SOCOM 1's).
+ * OPEN, 7 instructions (right size): GetNextAtom's registers (the node in a1 in the target) */
 CGridAtom *CGrid::GetNextAtomOrdered()
 {
     for (;;) {

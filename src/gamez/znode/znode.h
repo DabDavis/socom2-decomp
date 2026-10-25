@@ -777,6 +777,8 @@ public:
     /* whether a cell lies outside the boundary (SOCOM 1's) */
     bool gridCellOut(int x, int z);
     void SetTraversalExtents(const CPnt3D *pnts, int n, bool b);
+    void addOrderedCellAtom(int x, int z, bool force);
+    void buildOrderedCellAtomList(const CPnt3D *view);
     /* the cells of a box: its first, then each next (SOCOM 1's) */
     CCell *SetCellBoundary(CPnt3D min, CPnt3D max);
     CCell *GetNextCell();
