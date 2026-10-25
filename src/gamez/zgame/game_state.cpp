@@ -50,6 +50,15 @@ void CGameStateChangeCmd::Release(CGameStateChangeCmd *cmd)
     }
 }
 
+/* the pool made: n commands, each marked as the pool's (OVL1 0x2CF5E0, SOCOM 1's; its resize the
+ * header's, out of line in the tail) */
+void CGameStateChangeCmd::CreatePool(unsigned int n)
+{
+    m_pool.resize(n);
+    for (CGameStateChangeCmdVector::iterator i = m_pool.begin(); i != m_pool.end(); ++i)
+        (*i).SetPooled(true);
+}
+
 /* the pool emptied and its storage freed (OVL1 0x2CF4C0): FreeVector on the base vector, its four
  * pieces called out of line (the temporary's constructor 0x2CF5C0, clear 0x2CF5B0, swap 0x2CF570,
  * the temporary's destructor 0x2CF510) */

@@ -4398,7 +4398,7 @@
 0x002CF8F0 0x8 clear__Q23std80__vector_deleter<19CGameStateChangeCmd,Q23std32allocator<19CGameStateChangeCmd>>Fv  # OVL1; by hand (the states lane: game_state.cpp -- the deleter's out-of-class clear, SOCOM 1's clear__Q23std80__vector_deleter<19CGameStateChangeCmd...> at 0x20C360: no destructor loop for this class in SOCOM II's MSL, the size cleared)
 0x002CF900 0x68 __dt__Q23std80__vector_deleter<19CGameStateChangeCmd,Q23std32allocator<19CGameStateChangeCmd>>Fv  # OVL1; s1:align
 0x002CF970 0x290 push_back__Q23std39__deque_imp<PCv,Q23std14allocator<PCv>>FRCPCv  # OVL1; by hand (the states lane: include/deque -- SOCOM 1's deque<PCv>::push_back in role, its grow_buf_back inlined; "deque::push_back length error"; CGame's Pop/Push/Switch and five other units' pointer deques call it)
-0x002CFC00 0x1D8 func_002CFC00  # OVL1
+0x002CFC00 0x1D8 erase__Q23std78__vector_imp<19CGameStateChangeCmd,Q23std32allocator<19CGameStateChangeCmd>,0>FP19CGameStateChangeCmdP19CGameStateChangeCmd  # OVL1; by hand (the states lane, round 13: game_state.cpp's template tail -- the pool vector's erase, resize's shrinking arm, between the deque's push_back and the vector's insert; byte-exact from include/vector once m_cmd is an int-unit bitfield)
 0x002CFDE0 0x4C4 insert__Q23std78__vector_imp<19CGameStateChangeCmd,Q23std32allocator<19CGameStateChangeCmd>,0>FP19CGameStateChangeCmdUiRC19CGameStateChangeCmd  # OVL1; s1:align
 0x002D02B0 0x80 __dt__5CPoolFv  # OVL1; s1:align
 0x002D0330 0xD4 StopEngine__5CGameFv  # OVL1; s1:calls

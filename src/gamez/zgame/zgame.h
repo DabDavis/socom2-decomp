@@ -49,6 +49,9 @@ public:
         m_arg = arg;
         m_inuse = inuse;
     }
+    /* (the name ours: CreatePool's `true` arrives as a bool, `daddiu 1` hoisted out of its loop
+     * and or'd in, where a literal store folds into an ori) */
+    void SetPooled(bool pooled) { m_pooled = pooled; }
 
     static void DestroyPool();
     static void CreatePool(unsigned int n);
@@ -57,7 +60,10 @@ public:
 
     CGameState *m_state;   // 0x0
     unsigned int m_arg;   // 0x4
-    unsigned char m_cmd;   // 0x8
+    /* a bitfield of an int unit with the two flags (round 13): the vector's insert and erase copy
+     * the word at 8 whole (lw/sw) -- an unsigned char member copies two bytes there -- and every
+     * access still narrows to the byte (sb, lbu) */
+    unsigned int m_cmd : 8;   // 0x8
     bool m_pooled : 1;   // 0x9, bit 0: one of the pool's
     bool m_inuse : 1;   // 0x9, bit 1: handed out
 };   // 0xc bytes
