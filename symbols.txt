@@ -4977,15 +4977,15 @@
 0x002F6A70 0x144 func_002F6A70  # OVL1
 0x002F6BC0 0x138 func_002F6BC0  # OVL1
 0x002F6D00 0x6C func_002F6D00  # OVL1
-0x002F6D70 0xBC func_002F6D70  # OVL1
-0x002F6E30 0x90 func_002F6E30  # OVL1
+0x002F6D70 0xBC CountGamePlayers__Fv  # OVL1; ours (a lobby state handler 0x2EF3C0 calls it: with 'late_joiner' on and the net game in progress, MediusGetGamePlayers asked once at a time, 0x44FA88 the flag)
+0x002F6E30 0x90 cbCountGamePlayers__FiiiP28MediusGetGamePlayersResponse  # OVL1; ours (CountGamePlayers' MediusGetGamePlayers callback: 'MediusGetGamePlayers' checked, flagged players counted into 0x66A990, the total to 0x66A9A0 at the list's end)
 0x002F6EC0 0x15C RefreshGamePlayerList__13CZOnlineLobbyFP3C2D  # OVL1; s1:ui ('RefreshGamePlayerList' 0x27D820, as SOCOM 1's UIRefreshGamePlayerList calls RefreshGamePlayerList)
 0x002F7020 0x668 func_002F7020  # OVL1
 0x002F7690 0x74 func_002F7690  # OVL1
 0x002F7710 0x8C GetAnnouncements__13CZOnlineLobbyFv  # OVL1; s1:ui ('GetMediusAnnouncements' = UIGetMediusAnnouncements, as SOCOM 1's calls GetAnnouncements)
 0x002F77A0 0x244 cbGetAnnouncements__FiiiP30MediusGetAnnouncementsResponse  # OVL1; s1 by hand (GetAnnouncements' callback, as SOCOM 1's GetAnnouncements passes cbGetAnnouncements)
-0x002F79F0 0xC4 func_002F79F0  # OVL1
-0x002F7AC0 0x180 func_002F7AC0  # OVL1
+0x002F79F0 0xC4 GetUsagePolicy__13CZOnlineLobbyFv  # OVL1; ours (the UI command table's 'GetUsagePolicy' handler UIGetUsagePolicy 0x2797CC calls it on theLobby: the policy UI variables set, MediusGetPolicy (0x6495E0) asked with 0x2F7AC0)
+0x002F7AC0 0x180 cbGetPolicy__FiiiP23MediusGetPolicyResponse  # OVL1; ours (GetUsagePolicy's MediusGetPolicy callback: 'GetPolicyRequest' checked, the policy text built into 'UsagePolicy' through a CRdrEditor)
 0x002F7C40 0x144 func_002F7C40  # OVL1
 0x002F7D90 0x210 func_002F7D90  # OVL1
 0x002F7FA0 0x114 func_002F7FA0  # OVL1
@@ -5001,8 +5001,8 @@
 0x002F8CE0 0x6C func_002F8CE0  # OVL1
 0x002F8D50 0x80 func_002F8D50  # OVL1
 0x002F8DD0 0x80 GameIsPasswordProtected__13CZOnlineLobbyFPCc  # OVL1; s1:ui ('GameHasPassword' 0x27D390, as SOCOM 1's UIGameHasPassword calls GameIsPasswordProtected)
-0x002F8E50 0x78 func_002F8E50  # OVL1
-0x002F8ED0 0xF4 func_002F8ED0  # OVL1
+0x002F8E50 0x78 cbClearGameListFilter__FiiiP33MediusClearGameListFilterResponse  # OVL1; ours (JoinGame("RANDOM") passes it to MediusClearGameListFilter: 'GetRandomGame::ClearGameListFilter' checked, then a filter set through 0x649960 with 0x2F8ED0)
+0x002F8ED0 0xF4 cbSetGameListFilter__FiiiP31MediusSetGameListFilterResponse  # OVL1; ours (cbClearGameListFilter's filter callback: the five filter valves read, then a 999-game page asked through 0x64B008 with 0x2F8FD0)
 0x002F8FD0 0x234 func_002F8FD0  # OVL1
 0x002F9210 0x8 func_002F9210  # OVL1
 0x002F9220 0x1F0 func_002F9220  # OVL1
