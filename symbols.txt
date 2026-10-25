@@ -5577,7 +5577,7 @@
 0x0031D260 0x330 AddTextureAssetCharacter__Q23zdb6CWorldFPQ23zdb9CAssetLibPQ23zdb5CNode  # OVL1; s1:order by hand (SOCOM 1's library overload after AddTextureAssetCharacterAll: news a 0x18-byte CTextureAssetCharacters, pushes the node onto a matching set or a new one; both wrappers after it call it with FindLib's result)
 0x0031D590 0x48 AddTextureAssetCharacter__Q23zdb6CWorldFPcPQ23zdb5CNode  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:order by hand (SOCOM 1's name overload at the same place, the same 0x48: FindLib(name) then the library overload)
 0x0031D5E0 0x48 AddTextureAssetCharacter__Q23zdb6CWorldFQ23zdb12_RenderPhasePQ23zdb5CNode  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:order by hand (SOCOM 1's phase overload at the same place, the same 0x48: FindLib(phase) then the library overload)
-0x0031D630 0xB8 func_0031D630  # OVL1
+0x0031D630 0xB8 TexListHolds__3zdbFPQ23zdb8CTexListPQ23zdb8CTexList  # OVL1; new in SOCOM II, the name ours (the world lane): whether the first texture list is non-empty, no shorter than the second and holds a handle for each of its textures (GetHandle(CTexture *) per element); AddTextureAssetCharacter(lib) calls it
 0x0031D6F0 0x12C DismemberWorldModel__Q23zdb6CWorldFv  # OVL1; s1:align
 0x0031D820 0x114 Segregate_CCells__Q23zdb6CWorldFPQ23zdb5CNodeRQ23zdb11CNodeVectorRQ23zdb11CNodeVector  # OVL1; s1:align
 0x0031D940 0x34C func_0031D940  # OVL1

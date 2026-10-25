@@ -586,6 +586,8 @@ public:
     CTexHandle *Append(CTexture *tex, bool b);
     /* the handle of a texture of that name, or none */
     CTexHandle *GetHandle(const char *name);
+    /* the handle of that texture, or none (SOCOM 1's, right after the name overload) */
+    CTexHandle *GetHandle(CTexture *tex);
 };   // 0xc bytes
 
 /* a library's palettes (SOCOM 1's DWARF: CTexPalList : vector) */
