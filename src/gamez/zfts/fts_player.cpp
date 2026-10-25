@@ -18,6 +18,8 @@ public:
     unsigned char _4[0x171 - 0x4];
     unsigned char _171_0 : 3;
     unsigned char m_input_enabled : 1;   // 0x171, bit 3 (SOCOM 1's at 0x169)
+    unsigned char _171_4 : 3;
+    unsigned char m_171_7 : 1;   // 0x171, bit 7
     unsigned char _172[0x250 - 0x172];
 };
 
@@ -149,6 +151,13 @@ static bool doSquirm;
 
 int sprintf(char *buf, const char *fmt, ...);
 void *operator new(unsigned int size);
+
+/* a controller's flag at 0x171, bit 7, set (SOCOM II's; OVL1 0x2B3C70, after the copy
+ * controller's destructor) */
+extern "C" void func_002B3C70(CSealCtrl *ctrl, bool on)
+{
+    ctrl->m_171_7 = on;
+}
 
 /* (OVL1 0x2B3B70: the copy controller's, linked after the unit's functions as SOCOM 1's is) */
 CSealCtrlCopy::~CSealCtrlCopy()
