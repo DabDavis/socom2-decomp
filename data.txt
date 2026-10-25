@@ -277,6 +277,8 @@
 0x003F5E48 0x8 __RTTI__16CSMGetServerList  # RTTI of CSMGetServerList: found by its RTTI's name
 0x003F6358 0x8 __RTTI__12CLobbyFileIO  # RTTI of CLobbyFileIO: found by its RTTI's name
 0x003F6450 0x10 zero__5CQuat  # OVL1; s1:data-exact (size SOCOM 1's; via __sinit_zmath_main.cpp)
+0x003EFFB0 0x4 invalidId__7CEntity  # OVL1 rodata; SOCOM 1's invalidId__7CEntity (0x44CD70, -1), read where SOCOM 1 reads it (CEntityList::GetEntityById); 10 references
+0x003EFFB8 0x4 deletedId__7CEntity  # OVL1 rodata; SOCOM 1's deletedId__7CEntity (0x44CD78, -2), the next word; CZSealBody's destructor reads it
 0x003F6460 0x10 identity__5CQuat  # OVL1; s1:data-exact (size SOCOM 1's; via __sinit_zmath_main.cpp)
 0x003F6470 0x40 identity__7CMatrix  # OVL1; s1:data-seq (size SOCOM 1's; via ToEuler__7CMatrixCFP6CPnt3D)
 0x003F64B0 0xC next$563  # OVL1; s1:data-seq (size SOCOM 1's; via ToQuat__7CMatrixCFP5CQuat)

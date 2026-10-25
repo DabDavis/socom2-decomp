@@ -134,18 +134,21 @@ public:
     void SetUpdateTargetList(bool on);
     CEntityPath *CreatePath(int type, const char *name);
 
-    /* inline, its out-of-line copy camera.cpp's (0x299140, SOCOM 1's 0x1EA1C0 likewise) */
-    static CEntityList &GetEntityList() { return m_list; }
+    /* the entities, const: their walks use the const list's begin() and end() (CEntityItr::
+     * Advance, the ticks). Inline, its out-of-line copy camera.cpp's (0x299140; SOCOM 1's
+     * 0x1EA1C0 likewise) */
+    static const CEntityList &GetEntityList() { return m_list; }
     static int GetEntityIndex(const CEntity *e);
     static bool PreTickAll(float dT, void *data);
     static bool TickAll(float dT, void *data);
     static bool PrePostTickAll(float dT, void *data);
     static bool PostTickAll(float dT, void *data);
     static void RemoveAll();
-    static bool DoRecycleEntity(CEntity *e);
-    static void CreateRecycler();
+    static void DoRecycleEntity(CEntity *e);
+    static CEntity *CreateRecycler();
     static bool RecycleEntity(CEntity *e);
-    static bool CreateEntity(CEntity *e, bool b);
+    static void CreateEntity(CEntity *e, bool include);
+    static void UpdateTargetList(bool b);
     static bool EntityIsValid(CEntity *e);
     static void CloseRecycler();
     static void OpenRecycler(unsigned int index);
@@ -189,6 +192,10 @@ public:
     CAiMapLoc m_mapLoc;   // 0xe4
     CAiMapLoc m_mapLocValid;   // 0xe8
     CSaferStr m_SOPList[10];   // 0xec
+
+    /* the ids no entity has (SOCOM 1's; read from data, so defined out of the class) */
+    static const unsigned int invalidId;
+    static const unsigned int deletedId;
 
     static CEntityList m_list;
     static CEntityList m_recycle;

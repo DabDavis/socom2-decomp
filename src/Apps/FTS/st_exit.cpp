@@ -64,26 +64,25 @@ public:
     bool IsLiveSeal() const;
     void Advance();
 
-    std::list<CEntity *>::iterator _it;   // 0x0
+    /* the world's entities, const (CEntity::GetEntityList() returning a const reference -- SOCOM 1
+     * links its out-of-line copy, GetEntityList__7CEntityFv, 0x1EA1C0; SOCOM II's is 0x299140 --
+     * here until this unit's CEntity stub gives way to zentity.h's; the name is ours) */
+    static const std::list<CEntity *> &GetEntityList() { return CEntity::m_list; }
+
+    std::list<CEntity *>::const_iterator _it;   // 0x0
     int _iIdx;   // 0x4
 };
 
-/* on to the next SEAL, counting every entity passed.
- * OPEN (0x68 of 0x78): the target builds the list's end in a temporary and copies it bitwise
- * (lwc1/swc1) into a second before comparing -- SOCOM 1 called the const end(), then
- * list<CEntity *>'s const_iterator built from the base's by value (0x321240 in the demo);
- * include/list has no such wrapper iterator yet. Probed (build/scratch/states/adv_T2.cpp): a
- * wrapper DERIVED from the base's const_iterator, built from it by value, the base's end() const
- * making a named local and returning it, the test `&GetSeal() == 0` -- gives the target's 0x78
- * with the store inside the loop, every instruction but the sentinel and the node trading t1/t0
- * (a wrapper holding the base's, or comparisons of its own, inlines a level less: SOCOM 1's
- * out-of-line calls come back) */
+/* on to the next SEAL, counting every entity passed. The walk is a const_iterator and the end the
+ * const list's (SOCOM 1's called list<CEntity *>::end() const, whose const_iterator is built from
+ * the base's by value): a temporary copied bitwise into a second, rebuilt at every step; through
+ * the accessor, not a cast of the list (that builds it once, before the loop) */
 void CEntityItr::Advance()
 {
     do {
         ++_it;
         _iIdx++;
-    } while (_it != CEntity::m_list.end() && !&GetSeal());
+    } while (_it != GetEntityList().end() && &GetSeal() == 0);
 }
 
 /* whether the walk is on a SEAL (the name ours) */

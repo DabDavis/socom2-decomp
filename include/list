@@ -35,8 +35,10 @@ public:
     public:
         generic_iterator() {}
         generic_iterator(node_base *n) : node_(n) {}
+        generic_iterator(const node_base *n) : node_((node_base *)n) {}
         /* iterator's copy constructor, so iterators are passed by address (erase's are); the
-         * copy assignment stays implicit, a bitwise copy (lwc1/swc1) */
+         * copy assignment stays implicit, a bitwise copy (lwc1/swc1). For const_iterator it is a
+         * conversion, and its copy constructor implicit: passed by value, bitwise */
         generic_iterator(const generic_iterator<false> &x) : node_(x.node_) {}
         T &operator*() const { return ((node *)node_)->data_; }
         generic_iterator &operator++()
@@ -56,6 +58,8 @@ public:
     ~__list_deleter() { erase(iterator(end_.next_), iterator(&end_)); }
     iterator begin() { return iterator(end_.next_); }
     iterator end() { return iterator(&end_); }
+    const_iterator begin() const { return const_iterator(end_.next_); }
+    const_iterator end() const { return const_iterator(&end_); }
     void clear() { erase(begin(), end()); }
     iterator erase(iterator first, iterator last);
     iterator erase(iterator position);
@@ -68,6 +72,7 @@ public:
     node_base &end_node() { return end_; }
     /* the sentinel's address (SOCOM 1's tail(), this + 4: 0x173510 in the demo) */
     node_base *tail() { return &end_; }
+    const node_base *tail() const { return &end_; }
 
 protected:
     unsigned int size_;
@@ -177,6 +182,8 @@ public:
      * the pointer list only, where the node is always complete -- ai_events.cpp instantiates a
      * deleter over an incomplete type) */
     T *&back() { return (T *&)((typename base::node *)this->end_.prev_)->data_; }
+    /* the first (CEntity::PreTickAll hands the recycler the first entity queued) */
+    T *&front() { return (T *&)((typename base::node *)this->end_.next_)->data_; }
     void pop_back() { this->erase(typename base::iterator(this->end_.prev_)); }
 
     /* the pointer list's own iterator: SOCOM 1's DWARF gives list<T *>::generic_iterator the
@@ -186,13 +193,28 @@ public:
      * re-read and re-stored at every step, as CZNewHudMap's finders do (one initialised from it
      * lives in a register). The const one is not here yet (CEntityItr::Advance compares with the
      * const end(), SOCOM 1's list<T *>::generic_iterator<1>) */
+    template <bool IsConst, class A, class B>
+    struct select {
+        typedef A type;
+    };
+    template <class A, class B>
+    struct select<false, A, B> {
+        typedef B type;
+    };
+
     template <bool IsConst>
     class generic_iterator {
+        typedef typename select<IsConst, typename base::const_iterator,
+                                typename base::iterator>::type base_iterator;
+
     public:
         generic_iterator() {}
-        generic_iterator(typename base::iterator i) : i_(i) {}
-        operator typename base::iterator() const { return i_; }
-        T *&operator*() const { return (T *&)*i_; }
+        generic_iterator(base_iterator i) : i_(i) {}
+        operator base_iterator() const { return i_; }
+        /* the element by reference, but a const_iterator's by value: GetEntity reloads it after
+         * strcasecmp, where a reference kept the element's address in a saved register */
+        typedef typename select<IsConst, T *, T *&>::type reference;
+        reference operator*() const { return (reference)*i_; }
         generic_iterator &operator++()
         {
             ++i_;
@@ -201,9 +223,10 @@ public:
         bool operator==(const generic_iterator &x) const { return i_ == x.i_; }
         bool operator!=(const generic_iterator &x) const { return i_ != x.i_; }
 
-        typename base::iterator i_;
+        base_iterator i_;
     };
     typedef generic_iterator<false> iterator;
+    typedef generic_iterator<true> const_iterator;
 
     /* the first node read through tail() held in a local: the sentinel's address is then
      * computed first and shared with end()'s (CZNewHudMap::FindMPBombItem loads the first node
@@ -217,6 +240,16 @@ public:
         return iterator(typename base::iterator(t->next_));
     }
     iterator end() { return iterator(typename base::iterator(&this->end_)); }
+    /* the const walks' begin(), written as begin(): the sentinel through tail() in a local, the
+     * base's const_iterator built here (through the base's begin() const, a level deeper, the
+     * innermost constructor is a call where a walk assigns it -- CEntity::TickAll) */
+    const_iterator begin() const
+    {
+        const typename base::node_base *t = this->tail();
+
+        return const_iterator(typename base::const_iterator(t->next_));
+    }
+    const_iterator end() const { return const_iterator(typename base::const_iterator(this->tail())); }
 };
 
 }

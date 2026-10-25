@@ -3669,13 +3669,13 @@
 0x0029E280 0xA4 FindPacket__8CAckListFP7CPacket  # OVL1; s1:align
 0x0029E330 0xAC func_0029E330  # OVL1
 0x0029E3E0 0x90 func_0029E3E0  # OVL1
-0x0029E470 0x70 func_0029E470  # OVL1
-0x0029E4E0 0xB0 func_0029E4E0  # OVL1
-0x0029E590 0xE0 func_0029E590  # OVL1
-0x0029E670 0x8 func_0029E670  # OVL1
-0x0029E680 0x8 func_0029E680  # OVL1
-0x0029E690 0x8 func_0029E690  # OVL1
-0x0029E6A0 0x8 func_0029E6A0  # OVL1
+0x0029E470 0x70 GetEntityByIndex__11CEntityListCFUi  # OVL1; s1:order (CEntityList's first, as SOCOM 1's 0x1EE0F0: past the end gives none, else the walk index steps along a const_iterator); ent_main.cpp
+0x0029E4E0 0xB0 GetEntityById__11CEntityListCFUi  # OVL1; s1:order (CEntityList's second, as SOCOM 1's 0x1EE190: none for CEntity::invalidId (0x3EFFB0, SOCOM 1's invalidId__7CEntity), else the entity whose m_id matches); ent_main.cpp
+0x0029E590 0xE0 GetEntity__11CEntityListCFPCc  # OVL1; s1:order (CEntityList's third, as SOCOM 1's 0x1EE290: strcasecmp of the name against each entity's node's name); ent_main.cpp
+0x0029E670 0x8 Virtual5C__7CEntityFv  # OVL1; slot 0x5C of __vt__7CEntity, new in SOCOM II (returns 0) -- the name is ours; ent_main.cpp
+0x0029E680 0x8 Virtual60__7CEntityFv  # OVL1; slot 0x60 of __vt__7CEntity, new in SOCOM II (returns 0) -- the name is ours; ent_main.cpp
+0x0029E690 0x8 Virtual64__7CEntityFv  # OVL1; slot 0x64 of __vt__7CEntity, new in SOCOM II (returns 0) -- the name is ours; ent_main.cpp
+0x0029E6A0 0x8 Virtual68__7CEntityFv  # OVL1; slot 0x68 of __vt__7CEntity, new in SOCOM II (returns 0) -- the name is ours; ent_main.cpp
 0x0029E6B0 0x80 func_0029E6B0  # OVL1
 0x0029E730 0x174 func_0029E730  # OVL1
 0x0029E8B0 0x30 OnDeath__7CEntityFv  # OVL1; s1:align; split from 0x38: the last 8 bytes are CEntityCtrl::OnDeath
@@ -3698,9 +3698,9 @@
 0x0029ED30 0xD8 __dt__7CEntityFv  # OVL1; s1:align
 0x0029EE10 0x370 func_0029EE10  # OVL1
 0x0029F180 0x14 GetEntityIndex__7CEntityFPC7CEntity  # OVL1; s1:order (after the constructor as in SOCOM 1, 0x1EEC50: the index, or -1 for none); ent_main.cpp
-0x0029F1A0 0x1A8 func_0029F1A0  # OVL1
-0x0029F350 0xE0 func_0029F350  # OVL1
-0x0029F430 0xE0 func_0029F430  # OVL1
+0x0029F1A0 0x1A8 PostTickAll__7CEntityFfPv  # OVL1; s1:name by hand (CCoreState::Init schedules it as "entity_post_tick", where SOCOM 1's schedules PostTickAll; it calls PrePostTick then PostTick on every entity as SOCOM 1's); ent_main.cpp
+0x0029F350 0xE0 PrePostTickAll__7CEntityFfPv  # OVL1; scheduled by CCoreState::Init as "entity_preposttick" (new in SOCOM II, between entity_tick and entity_post_tick): PostPreTick (slot 0x1C) on every entity -- the name after the task's; ent_main.cpp
+0x0029F430 0xE0 TickAll__7CEntityFfPv  # OVL1; s1:name by hand (CCoreState::Init schedules it as "entity_tick", where SOCOM 1's schedules TickAll; Tick, slot 0x18, on every entity); ent_main.cpp
 0x0029F510 0xF8 PreTickAll__7CEntityFfPv  # OVL1; s1:align
 0x0029F610 0x238 RemoveAll__7CEntityFv  # OVL1; s1:align
 0x0029F850 0x1A0 DoRecycleEntity__7CEntityFP7CEntity  # OVL1; s1:align
@@ -3711,8 +3711,8 @@
 0x0029FCB0 0xCC func_0029FCB0  # OVL1
 0x0029FD80 0x44 func_0029FD80  # OVL1
 0x0029FDD0 0x78 EntityIsValid__7CEntityFP7CEntity  # OVL1; s1:callee (CZPlayerMapItem::Tick's first call, as SOCOM 1's; it walks CEntity::m_list)
-0x0029FE50 0x10 func_0029FE50  # OVL1
-0x0029FE60 0xC func_0029FE60  # OVL1
+0x0029FE50 0x10 CloseRecycler__7CEntityFv  # OVL1; s1:order (after EntityIsValid as in SOCOM 1, 0x1EF7A0: recycler_index = -1); ent_main.cpp
+0x0029FE60 0xC OpenRecycler__7CEntityFUi  # OVL1; s1:order (after CloseRecycler as in SOCOM 1, 0x1EF7B0: recycler_index = the argument); ent_main.cpp
 0x0029FE70 0xE4 func_0029FE70  # OVL1
 0x0029FF60 0x68 __dt__Q23std54__vector_deleter<7CTarget,Q23std19allocator<7CTarget>>Fv  # OVL1; s1:align
 0x0029FFD0 0xB8 func_0029FFD0  # OVL1
@@ -3725,7 +3725,7 @@
 0x002A0190 0x70 func_002A0190  # OVL1
 0x002A0200 0x108 func_002A0200  # OVL1
 0x002A0310 0x140 func_002A0310  # OVL1
-0x002A0450 0x468 func_002A0450  # OVL1
+0x002A0450 0x468 UpdateTargetList__7CEntityFb  # OVL1; s1:callee (CEntity::PreTickAll calls it with false and func_0029FB10, SOCOM 1's RecycleEntity(Ui,CEntity*,b), with true, at the places SOCOM 1's call UpdateTargetList__7CEntityFb, 0x1EFBF0); ent_target.cpp
 0x002A08C0 0x148 func_002A08C0  # OVL1
 0x002A0A10 0x3C8 func_002A0A10  # OVL1
 0x002A0DE0 0x18C func_002A0DE0  # OVL1
