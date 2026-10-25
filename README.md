@@ -817,6 +817,22 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     `while (a != b)` gets rotated;
   - std::allocator's constructor is defined after its class (`throw()`): the deque's
     constructors call it out of line (0x2CEE30).
+- **include/string and the UI commands, round 2**: SOCOM II's MSL 3.0 basic_string read from the
+  image -- 12 bytes, a long form {capacity|1, size, text} and a short form with the size in the
+  first byte's upper 7 bits and the text in place (SOCOM 1's DWARF describes the older
+  reference-counted string, so it could not supply the layout); the default constructor zeroes the
+  three words through a register (`addiu v1,sp,N; sw zero,0(v1)` x3); the destructor is out of
+  line (0x1E7EF0); assign/append/erase go by placeholders until MSL 3.0's names are known.
+  - a CSaferStr local's destructor passes 0 (a base subobject), a plain std::string local -1;
+  - a value returned through an inline function gets its saved register after the named locals;
+    writing the out-of-line call directly gives declaration order;
+  - a ternary between a byte enum's two enumerators passed to an enum parameter compiles to
+    `li 1; movz`, as an int to `sltu`;
+  - a member pointer handed on from a const reference parameter must be copied into a local for
+    the target's 12-byte copy, or MW passes the reference straight through as a tail call;
+  - reading a loop-invariant record field into a local before the loop frees the record's saved
+    register for the iterator;
+  - member-pointer constants are pooled per unit as `{0, -1, f}`.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
