@@ -86,18 +86,35 @@ protected:
     node_base end_;
 };
 
+/* The constructors are template members defined outside the class, so MW treats them as it treats
+ * the vector deleter's destructor: never inlined into the unit's own functions (CAssetList's,
+ * CSaveManager's and CZAnimArgList's constructors call 0x1EABB0), but inlined into code compiled
+ * in the unit's template tail -- an initialiser counts -- once one of the unit's own functions has
+ * instantiated it: __sinit_node_assetlib.cpp inlines it (CAssetList's constructor instantiated it),
+ * __sinit_ent_main.cpp and __sinit_ent_target.cpp call it (no function of theirs builds a list).
+ * The body takes the sentinel's address into a local first and stores through it, next_ then
+ * prev_ -- SOCOM 1's line table has the three statements (219-221) -- so the inlined copy keeps
+ * &end_ in v0 (sw v0,4(v0); sw v0,0(v0)); `end_.prev_ = end_.next_ = &end_` stores through
+ * absolute addresses there, and the sentinel through tail() or a reference accessor makes the
+ * constructor too tall to inline (the out-of-line copies are alike either way) */
 template <class T, class Allocator>
 __list_deleter<T, Allocator>::__list_deleter()
     : size_(0)
 {
-    end_.prev_ = end_.next_ = &end_;
+    node_base *t = &end_;
+
+    t->next_ = t;
+    t->prev_ = t;
 }
 
 template <class T, class Allocator>
 __list_deleter<T, Allocator>::__list_deleter(const Allocator &)
     : size_(0)
 {
-    end_.prev_ = end_.next_ = &end_;
+    node_base *t = &end_;
+
+    t->next_ = t;
+    t->prev_ = t;
 }
 
 template <class T, class Allocator>

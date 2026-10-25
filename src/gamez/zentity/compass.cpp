@@ -97,12 +97,14 @@ CCompassAnchor *CCompass::CreateAnchor(const CPnt3D &pos, const char *name)
 }
 
 /* an anchor off the compass -- swapped with the last and popped -- and deleted: whether it was
- * there (SOCOM 1's; the compass through a local, its address kept in t1 as both builds do).
- * OPEN, 0x20 short: the target inlines the anchor's destructor whole (SetName(0)'s free and two
- * stores, then the point list's ~vector and ~__vector_imp this-tests and a call to
- * ~__vector_deleter<CPnt3D>), where include/vector's class-vector destructor is six high and MW
- * inlines the anchor's destructor one level (SetName and ~vector called); the loop's registers
- * also differ (n in a1, not t0) */
+ * there (SOCOM 1's, whose code has the same shape; the compass through a local, its address kept in
+ * t1 as both builds do). `n > 1` branches on `sltiu at` with n - 1 in the delay slot (`n >= 2`
+ * materialises the test in v0 and leaves a nop); the delete under its own `if (anchor)` keeps the
+ * target's second null test ahead of the inlined destructor's this-test (a bare delete merges them).
+ * OPEN, 24 instructions, register fields only: the target gives n t0, i a3, the offset a2, the
+ * element a1, n - 1 a0 and the data pointer v0; MW here n a1, i t0, the offset a3, the element a2,
+ * the data pointer a0, n - 1 v0. Not the declaration order (the permuter over n, i and t, 1,120
+ * steps), not `int i`, a `last` local, size() read in place or a do-while (all longer or alike) */
 bool CCompass::DeleteAnchor(CCompassAnchor *anchor)
 {
     CCompass &compass = theCompass;
@@ -114,7 +116,7 @@ bool CCompass::DeleteAnchor(CCompassAnchor *anchor)
         if (n) {
             for (unsigned int i = 0; i < n; i++) {
                 if (compass[i] == anchor) {
-                    if (n >= 2 && i != n - 1) {
+                    if (n > 1 && i != n - 1) {
                         CCompassAnchor *t = compass[i];
 
                         compass[i] = compass[n - 1];
@@ -127,6 +129,7 @@ bool CCompass::DeleteAnchor(CCompassAnchor *anchor)
             }
         }
     }
-    delete anchor;
+    if (anchor)
+        delete anchor;
     return found;
 }
