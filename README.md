@@ -1642,6 +1642,28 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the kit and AI states, round 7** (the kit's item vector, the event state, the callouts):
+  - a state destructor with byte-array members matches with the member destructors called by hand in
+    reverse order; a vector's goes behind three nested `if (v)`, and MW keeps all three tests;
+  - in `if (A && B) ... else if (C && D)` where B is a materialised `&&`, write B as an inline bool:
+    the `&&` stays materialised and a failing B still falls through to C;
+  - a field the target loads again for a third test, after one shared load for the first two, is
+    tested through an inline accessor;
+  - the remainder pass of an unrolled loop over a struct array folds the field offset into the
+    relocation unless each element goes through a pointer local (`T *c = &a[i]; c->f = 0;`);
+  - `*p = c ? enumLocal : K` reuses the enum local's register for K; an if/else does not;
+  - a byte-enum call result passed on unmasked and tested with andi: the callee's return and the
+    receiving parameter the same unsigned byte enum, compared `== ENUM_0`;
+  - SOCOM 1's CAiTrigger() inlines one level, as the target needs, only when Rfloat's range
+    constructor is inline (out of line, the default limit inlines it whole);
+  - MW lowers a switch over {2, 4, 5, 12} to a compare chain; the target's bit test (`(unsigned)(k-2)
+    < 11 && (1 << (k-2)) & 0x40D`) has to be written out;
+  - reading Rfloat-shaped members through a cast keeps their address in a saved register; declare them
+    with the right type;
+  - units: ai_target.cpp (0x609DF0-0x60BF3F: CheckLineOfFire and CAiTarget, where SOCOM 1 has them),
+    seal_weapon.cpp (~0x5DF370-0x5E0023, CZSealBody's weapon functions before AnimSet's), the
+    callout table's functions in seal_airesponse.cpp; 0x5EA550 (CAiTimer(float)) and 0x5EA5D0 are
+    copies CSealUnit::IssueCommand emits.
 - **Tells from the rdr lane, round 4** (the save manager, CPipe's overlay and FIFO, the flare system):
   - `buf[i] ^= key` on an unsigned char key sign-extends it, `c ^ key` zero-extends it; `key ^= key +
     c` masks the sum before the xor, `key = key ^ (key + c)` does not (SaveDecrypt; SaveEncrypt is
