@@ -1613,7 +1613,7 @@
 0x001F7FF0 0x1158 Tick__4CHUDFf  # OVL1; s1:calls (CCoreState::Tick calls it on m_hud with dT under gopt's first byte, before the HUD's three DrawPhases, where SOCOM 1's calls CHUD::Tick; much grown)
 0x001F9150 0x8 SetTrans__9C2DStringFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F9160 0x260 SetupSpectatorText__4CHUDF10MENU_STATE  # OVL1; by hand (hud_main.cpp: CHUD::Tick's call with the menu state; puts 'You are a spectator.  Use the directional' and three more lines on the piggyback strings (CHUD+0x19D58), turns theHUD off and places the six lines, SOCOM II's own; the name ours)
-0x001F93C0 0x3E4 func_001F93C0  # OVL1
+0x001F93C0 0x3E4 SetupSpectatingText__4CHUDF10MENU_STATE  # OVL1; by hand (hud_main.cpp: CHUD::Tick's call with the menu state; in no menu, the string table's 0xEC4F and the watched entity's name upper-cased on the first two piggyback strings, the rest blank, theHUD off and its letterbox in, SOCOM II's own; the name ours)
 0x001F97B0 0x764 func_001F97B0  # OVL1
 0x001F9F20 0x3D8 SetupGhostText__4CHUDF10MENU_STATE  # OVL1; by hand (hud_main.cpp: CHUD::Tick's two calls with the menu state; puts 'You are a ghost.  You will play the next' (a ghost) or 'You have died.  Use the ...' on the piggyback strings, turns theHUD off and places the six lines, SOCOM II's own; the name ours)
 0x001FA300 0x5C PauseGame__4CHUDFv  # OVL1; s1:order by hand (hud_main.cpp: between Tick and Init as SOCOM 1's PauseGame; returns the bool CCoreState::Tick tests before ticking the world, as SOCOM 1's -- the menu state among pause/map/orders and not networked)

@@ -79,6 +79,8 @@ public:
     signed char m_socom2_200;   // 0x200: the seal's state (2-3 none, 4 the binoculars' 9x, 5-12 the kit's zoom)
     unsigned char _201[0x5e0 - 0x201];
     CZKit m_kit;   // 0x5e0
+    unsigned char _5e4[0xfc4 - 0x5e4];
+    int m_socom2_fc4;   // 0xfc4: the id of the entity a spectator watches
 };
 
 /* a weapon of the kit's: its type byte (11 for the one ZoomIn turns the ammo counts off for) */
@@ -418,6 +420,7 @@ public:
     void SetupTimerText();
     void SetupSpectatorText(MENU_STATE menustate);
     void SetupGhostText(MENU_STATE menustate);
+    void SetupSpectatingText(MENU_STATE menustate);
     void SetupZoomText();
     void Add2D(C2D *p2d, int phase, bool add_to_back);
     void SwitchToCompassMap();
@@ -775,6 +778,25 @@ static float s_piggyback_spacing = 18.0f;
 /* a C2DString's own (0x362B70, ztwod's; no row named yet) */
 extern "C" void func_00362B70(C2DString *s);
 
+/* an entity as the spectator's line reads it: its type (2 a seal) and its name (SOCOM II's
+ * layout; the static list is SOCOM 1's CEntity::m_list) */
+class CEntity {
+public:
+    static unsigned char m_list[0xc];
+
+    unsigned char _0[0x10];
+    unsigned char m_type;   // 0x10
+    unsigned char _11[0x14 - 0x11];
+    const char *m_name;   // 0x14
+};
+
+/* the entity list's find by id (0x29E4E0), the string table's text by id (0x361B40) and the
+ * screen's width (OVL1 bss 0x4A44C4); no rows named yet */
+extern "C" CEntity *func_0029E4E0(unsigned char *list, int id);
+extern "C" const char *func_00361B40(unsigned int id);
+extern unsigned int data_004A44C4;
+extern "C" int toupper(int c);
+
 /* the network game's state as the ghost's text reads it (OVL1 bss 0x437CE8, the pointer the radio
  * icons test too: a byte at 0xD2 set for a ghost; no row named yet) */
 class CNetGameState {
@@ -838,6 +860,54 @@ void CHUD::SetupGhostText(MENU_STATE menustate)
         else
             m_piggyback_text[i].Off();
     }
+}
+
+/* the spectator's top lines: "spectating" (the string table's 0xEC4F) and the watched seal's name
+ * in capitals, centred, or blanks; blanks for a ghost; the rest blank, all shown unless under the
+ * pause menu, the HUD off and the letterbox in (SOCOM II's: CHUD::Tick calls it, in no menu
+ * only; the name ours) */
+void CHUD::SetupSpectatingText(MENU_STATE menustate)
+{
+    if (menustate != stateNone)
+        return;
+    CEntity *entity = func_0029E4E0(CEntity::m_list, ftsGetPlayer()->m_socom2_fc4);
+
+    if (entity) {
+        CEntity *seal = entity && entity->m_type == 2 ? entity : 0;
+        const char *text = func_00361B40(0xec4f);
+        char name[256];
+
+        m_piggyback_text[0].SetString(text, false);
+        m_piggyback_text[0].m_socom2_69 = 1;
+        m_piggyback_text[0].SetPos((int)(0.5f * data_004A44C4), 25);
+        m_piggyback_text[0].On();
+        strcpy(name, seal->m_name ? seal->m_name : "???");
+        unsigned int len = strlen(name);
+
+        for (unsigned int i = 0; i < len; i++)
+            name[i] = toupper(name[i]);
+        m_piggyback_text[1].SetString(name, true);
+        m_piggyback_text[1].m_socom2_69 = 1;
+        m_piggyback_text[1].SetPos((int)(0.5f * data_004A44C4), (int)(25.0f + s_piggyback_spacing));
+        m_piggyback_text[1].On();
+    } else {
+        m_piggyback_text[0].SetString(" ", true);
+        m_piggyback_text[1].SetString(" ", true);
+    }
+    if (data_00437CE8->m_ghost) {
+        m_piggyback_text[0].SetString(" ", true);
+        m_piggyback_text[1].SetString(" ", true);
+    }
+    for (unsigned int i = 2; i < 6; i++)
+        m_piggyback_text[i].SetString(" ", true);
+    for (unsigned int i = 0; i < 6; i++) {
+        if (menustate != statePauseTestMenu)
+            m_piggyback_text[i].On();
+        else
+            m_piggyback_text[i].Off();
+    }
+    theHUD->Off();
+    theHUD->m_letterbox.AddLetterbox();
 }
 
 /* the spectator's four lines on the piggyback strings, the HUD off, the network boxes and message
