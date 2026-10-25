@@ -29,6 +29,9 @@ public:
                                           void (*deletion)(int, int));
     int zNetGetMyGameClientIndex();
     NetObject *zNetGetObject(int index);
+
+    unsigned char m_bSessionMaster;   // 0x0
+    unsigned char m_1;   // 0x1: an online game
 };
 
 extern CZNetwork theNetwork;
@@ -42,9 +45,18 @@ public:
         MP_MINOR_READY = 2
     };
 
+    /* (SOCOM 1's DWARF: only the values this unit names) */
+    enum MP_MAJOR_GAME_STATE {
+        MP_MAJOR_UNKNOWN = 0,
+        MP_MAJOR_GHOST = 14
+    };
+
     MP_MINOR_GAME_STATE MyMinorGameState(MP_MINOR_GAME_STATE state);
 
-    unsigned char _0[0x115];
+    unsigned char _0[0xac];
+    int m_persona_object;   // 0xac: this client's persona object (the name ours)
+    unsigned char _b0[0x114 - 0xb0];
+    MP_MAJOR_GAME_STATE m_my_major_game_state;   // 0x114 (SOCOM 1's at 0xdc)
     MP_MINOR_GAME_STATE m_my_minor_game_state;   // 0x115 (SOCOM 1's at 0xdd)
 };
 
@@ -81,8 +93,8 @@ struct PersonaData {
     char m_clan[16];   // 0x2e
     signed char m_3e;   // 0x3e
     unsigned char m_3f;   // 0x3f
-    unsigned char m_40;   // 0x40
-    unsigned char m_41;   // 0x41
+    CZNetGame::MP_MAJOR_GAME_STATE m_40;   // 0x40: the client's major and minor game states
+    CZNetGame::MP_MINOR_GAME_STATE m_41;   // 0x41
     unsigned char m_42;   // 0x42
     signed char m_43;   // 0x43
     unsigned char _44[4];   // (the fields from here on are not sent)
@@ -166,7 +178,19 @@ void *func_002BD0E0();
 void func_002C4500();                       /* (the teams counted) */
 bool func_002C2FA0();
 bool func_002C3300(unsigned int team);      /* (whether a team is the SEALs') */
+int strcmp(const char *a, const char *b);
+unsigned char func_002EAEE0(CZOnlineLobby *lobby, int a);   /* (the lobby's: the persona's byte at 0x42) */
 }
+
+/* the lobby's account of this player (0xF0 bytes, filled by 0x2F98F0: only the word at 4 read
+ * here; the names ours) */
+struct LobbyPlayerInfo {
+    int m_0;
+    int m_4;
+    unsigned char _8[0xf0 - 0x8];
+};
+
+extern "C" void func_002F98F0(LobbyPlayerInfo *info);
 
 /* whether a team is the terrorists' (the name ours: inlined only, its value read ahead of the swap
  * flag as func_002C31A0 reads it) */
@@ -238,6 +262,44 @@ void CZPersonaState::RemotePersonaDeletionCallback(int client, int index)
 
 extern "C" int data_00441480[8];
 extern "C" int data_004414A0[8];
+
+/* this client's persona brought up to date: the state switch checked, the game's states, the
+ * lobby's byte (4 for one name), the team, the slot and the lobby's word copied in, and the lists
+ * rebuilt (OVL1 0x2C5360; pinned: the post-update callback calls it, where -inline auto would take
+ * it whole) */
+#pragma auto_inline off
+void CZPersonaState::UpdateLocalPersona()
+{
+    if (!theNetwork.m_1)
+        return;
+    CZNetGame *game = theMission.m_pNetGame;
+
+    if (!game)
+        return;
+    NetObject *obj = theNetwork.zNetGetObject(game->m_persona_object);
+
+    if (!obj)
+        return;
+    PersonaData *data = (PersonaData *)obj->m_data;
+
+    if (!data)
+        return;
+    CheckStateSwitch();
+    data->m_40 = game->m_my_major_game_state;
+    data->m_41 = game->m_my_minor_game_state;
+    data->m_42 = func_002EAEE0(&theLobby, -1);
+    if (!strcmp(data->m_name, "oop9"))
+        data->m_42 = 4;
+    data->m_team = data_00441470;
+    data->m_3e = data_00441468;
+
+    LobbyPlayerInfo info;
+
+    func_002F98F0(&info);
+    data->m_8 = info.m_4;
+    UpdatePersonaLists();
+}
+#pragma auto_inline reset
 
 /* a client's slot taken ahead of its persona (24 of them at 0x441580: the slot, the side -- 1 the
  * terrorists, 2 the SEALs -- and whether it is held; the names ours) */
