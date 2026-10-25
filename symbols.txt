@@ -6074,7 +6074,7 @@
 0x0033F260 0x40 func_0033F260  # OVL1
 0x0033F2A0 0x34 snd_SetReverbType  # OVL1; s1:exact
 0x0033F2E0 0x34 snd_StreamSafeCdGetError  # OVL1; s1:align
-0x0033F320 0xF4 func_0033F320  # OVL1
+0x0033F320 0xF4 snd_StreamSafeCdSync  # OVL1; s1:order by hand (SOCOM 1's snd_StreamSafeCdSync: between snd_StreamSafeCdGetError and snd_StreamSafeCdRead in both builds, the same body -- sceCdSync unless streaming, else the status block polled with snd_FlushSoundCommands; SOCOM II invalidates the block where SOCOM 1 flushed the cache) -- the sound lane
 0x0033F420 0x128 snd_StreamSafeCdRead  # OVL1; s1:align
 0x0033F550 0x28 snd_StreamSafeCheckCDIdle  # OVL1; s1:exact
 0x0033F580 0x6C snd_PlayVAGStreamByLoc_CB  # OVL1; s1:gap

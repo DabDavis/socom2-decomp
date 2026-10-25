@@ -689,6 +689,11 @@
 0x004887C0 0x720 thePipe  # OVL1 bss; SOCOM 1's (0x694 bytes; SOCOM II's runs to VifHandlerID at 0x720: the camera at 0x628, the UI node at 0x630, its flags at 0x711 and 0x714 as the states use them): 115 references in 32 functions take 0x4887C0-0x488ED8
 0x00488EE0 0x4 VifHandlerID  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Uninit__5CPipeFv)
 0x00488FB0 0x4 gStreamingInited  # OVL1 bss; s1:data-seq (size SOCOM 1's; via snd_StopSoundSystem +1)
+0x00488FC0 0x4 gSSRead  # OVL1 bss; SOCOM 1's global (its symbol): snd_StreamSafeCdRead sets it as SOCOM 1's does (gp 0x476414 there); 3 references in 2 functions
+0x00488FC8 0x4 gSSReadDone  # OVL1 bss; SOCOM 1's global (its symbol): snd_StreamSafeCdSync stores the status block's !busy in it as SOCOM 1's does (0x476418 there); 13 references in 6 functions
+0x0048DA00 0x40 gStats  # OVL1 bss; SOCOM 1's global (its symbol, 32 bytes there): the status block the IOP writes (word 0 busy, word 4 the read's error), invalidated by snd_StreamSafeCdSync, registered by snd_StartSoundSystem; 22 references in 7 functions
+0x0048DA48 0x4 gCaching  # OVL1 bss; SOCOM 1's global (its symbol, 0x476424): snd_StartCaching sets it, snd_SendCache clears it, the senders test it; 8 references in 5 functions
+0x0048DA78 0x4 gLoadBusy  # OVL1 bss; SOCOM 1's global (its symbol, 0x476428): tested before streaming starts or stops as SOCOM 1's is; 8 references in 6 functions
 0x0048DD28 0x1 m_isDisabled__4CSnd  # OVL1 bss; s1:data-seq (size SOCOM 1's; via LoadCSndGroup__9CSndGroupFP5_zrdr +8)
 0x0048DD80 0x4 m_numStreams__4CSnd  # OVL1 bss; SOCOM II's CSnd static (name ours): the streamed voices playing, ReleaseSoundInstance takes one off; 7 references in 5 functions
 0x0048DD88 0x4 m_numActive__4CSnd  # OVL1 bss; SOCOM II's CSnd static (name ours): the voices acquired, AcquireSoundInstance counts up and ReleaseSoundInstance down; 4 references in 2 functions

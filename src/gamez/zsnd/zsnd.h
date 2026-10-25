@@ -53,6 +53,23 @@ void snd_StopAllStreams(void);
 int snd_StreamSafeCheckCDIdle(int block);
 void snd_DoExternCall(unsigned int id, int func, int a, int b, int c, int d, int e);
 void snd_DoExternCall_A(unsigned int id, int func, int a, int b, int c, int d, int e);
+void snd_DoExternCall_CB(unsigned int id, int func, int a, int b, int c, int d, int e,
+                         SndCompleteProc callback, unsigned long user_data);
+int func_0033F050(int x);
+int snd_GetTransStatus(void);
+void snd_StartMovieSound(void *buf, int size, int end, int freq, int channels);
+void snd_CloseMovieSound(void);
+void snd_ResetMovieSound(void);
+int snd_InitMovieSound(int bytes, int a, int vol, int b, int c, int mode);
+void func_0033F260(int core, int type, int depth, int delay, int feedback);
+void snd_SetReverbType(int core, int type);
+int snd_StreamSafeCdGetError(void);
+int snd_StreamSafeCdSync(int mode);
+int snd_StreamSafeCdRead(unsigned int lbn, unsigned int sectors, void *buf, void *mode);
+void snd_PlayVAGStreamByLoc_CB(int loc1, int loc2, int offset1, int offset2, int vol, int pan,
+                               int group, int parent, int priority, int flags,
+                               SndCompleteProc callback, unsigned long user_data);
+void snd_CloseVAGStreaming(void);
 }
 
 /* --- the game's classes --- */
