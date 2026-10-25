@@ -8,21 +8,21 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK ClearAnimations__12CZWeaponListFv(M2C_UNK *); /* extern */
+M2C_UNK Clear__20CPlacedExplosiveListFv(M2C_UNK *); /* extern */
 M2C_UNK ReleaseAllActive__14CFlyoutMachineFv(M2C_UNK *); /* extern */
 M2C_UNK func_003CD150(s32);                         /* extern */
-M2C_UNK func_003D4940(M2C_UNK *);                   /* extern */
 extern M2C_UNK data_004B5238;
-extern M2C_UNK data_004B5260;
+extern M2C_UNK m_flyout_machine__8CZWeapon;
 extern M2C_UNK m_listWeapons__8CZWeapon;
 extern s32 m_pProjectilelist__8CZWeapon;
 extern s32 personMaterialId__4zwep;
 
 s32 Close__8CZWeaponFv(void) {
-    ReleaseAllActive__14CFlyoutMachineFv(&data_004B5260);
+    ReleaseAllActive__14CFlyoutMachineFv(&m_flyout_machine__8CZWeapon);
     if (m_pProjectilelist__8CZWeapon != 0) {
         func_003CD150(m_pProjectilelist__8CZWeapon);
     }
-    func_003D4940(&data_004B5238);
+    Clear__20CPlacedExplosiveListFv(&data_004B5238);
     ClearAnimations__12CZWeaponListFv(&m_listWeapons__8CZWeapon);
     personMaterialId__4zwep = -1;
     return 1;

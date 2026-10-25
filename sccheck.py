@@ -136,7 +136,10 @@ def main(argv=None) -> int:
         units = [p for p in sources() if not frx or frx.search(str(p.relative_to(SRC)))]
         built = list(ex.map(lambda p: build_one(p, a.build_dir.resolve()), units))
 
-    rows, matched, failed_builds = [], [], 0
+    rows, matched, failed_builds = [], [], 0      # matched: (name, address) pairs
+    scored_at: set[int] = set()                  # the addresses scored (match or WRONG)
+    auto_at: set[int] = set()                    # matched by a generated draft
+    hand_at: set[int] = set()                    # matched by hand-written source
     auto_names: set[str] = set()
     hand_names: set[str] = set()     # what hand-written source defines as its own (not inline copies)
     for src, obj, err in built:
@@ -159,6 +162,10 @@ def main(argv=None) -> int:
             continue
         is_auto = is_auto_src(src)
         span = unit_span(obj, st)
+        # each overlay links its own template copies: an instance the unit emits is the copy in
+        # the unit's own overlay when the map lists one there (`ovl-copy:`), not the named row
+        # (fts_remote.cpp's _saturate<int> is OVL1's 0x2BD220, the name OVL2's 0x519290)
+        home = span[0] if span else None
         for fs in E.Elf.read(obj).functions():
             if rx and not rx.search(fs.name):
                 continue
@@ -172,12 +179,18 @@ def main(argv=None) -> int:
             except KeyError:
                 rows.append(("no-target", src.name, fs.name, ""))
                 continue
+            if home is not None and st.overlay_of(sym.addr) != st.overlay_of(home):
+                copy = st.address_in(fs.name, home)
+                if copy is not None and copy != sym.addr and st.at_addr(copy) is not None:
+                    sym = st.at_addr(copy)
             res = D.compare(obj, fs.name, sym, img, st)
             if not res.match and fs.bind == MULTIDEF and span and not span[0] <= sym.addr < span[1]:
                 rows.append(("elsewhere", src.name, fs.name, f"inline copy; linked at {sym.addr:#x}"))
                 continue
+            scored_at.add(sym.addr)
             if res.match:
-                matched.append(fs.name)
+                matched.append((fs.name, sym.addr))
+                (auto_at if is_auto else hand_at).add(sym.addr)
                 if not is_auto and fs.bind == MULTIDEF:
                     hand_copies.add(fs.name)
                 note = f"{len(res.relocs)} relocs" + (f", {len(res.reloc_unchecked)} unchecked"
@@ -203,31 +216,22 @@ def main(argv=None) -> int:
             if l.strip() and not l.startswith("#"):
                 addr, name = l.split()
                 baseline[int(addr, 16)] = name
-    now = {st.get(n).addr for n in matched}
+    now = {a for _, a in matched}
     # a partial build (--files) can only lose what it scored: the addresses its units define
-    scored_addrs = None
-    if frx:
-        scored_addrs = set()
-        for r in rows:
-            if r[0] in ("match", "WRONG"):
-                try:
-                    scored_addrs.add(st.get(r[2]).addr)
-                except KeyError:
-                    pass
+    scored_addrs = scored_at if frx else None
     regressions = sorted(f"{a:#x} {baseline[a]}" + (f" (now {st.at_addr(a).name})" if st.at_addr(a)
                          and st.at_addr(a).name != baseline[a] else "")
                          for a in set(baseline) - now if (not rx or rx.search(baseline[a]))
                          and (scored_addrs is None or a in scored_addrs))
     total_code = sum(s.size for s in st.symbols)
-    # a template instance two units emit (an MSL vector's reserve) is one function: count names
-    matched = sorted(set(matched))
-    scored = {r[2] for r in rows if r[0] in ('match', 'WRONG')}
-    matched_bytes = sum(st.get(n).size for n in matched)
+    # count addresses: a template instance two units emit (an MSL vector's reserve) is one
+    # function, and one name can be matched once per overlay (its copies)
+    matched_bytes = sum(st.at_addr(a).size for a in now)
     superseded = sorted(auto_names & (hand_names | hand_copies))
-    n_auto = sum(1 for n in matched if n in auto_names and n not in hand_names | hand_copies)
-    print(f"\n{len(matched)} byte-exact of {len(scored)} scored"
+    n_auto = len(auto_at - hand_at)
+    print(f"\n{len(now)} byte-exact of {len(scored_at)} scored"
           f" ({matched_bytes:,} of {total_code:,} bytes in the map, {100 * matched_bytes / max(total_code, 1):.2f} %)")
-    print(f"  {len(matched) - n_auto} hand-written, {n_auto} generated (src/auto, m2c drafts byte-exact as they stand)")
+    print(f"  {len(now) - n_auto} hand-written, {n_auto} generated (src/auto, m2c drafts byte-exact as they stand)")
     if superseded:
         print(f"  {len(superseded)} generated function(s) superseded by hand-written source -- "
               f"run tools/automatch.py --emit to drop them: {', '.join(superseded[:5])}")
@@ -238,7 +242,7 @@ def main(argv=None) -> int:
     if a.baseline:
         MATCHED.write_text("# byte-exact functions, address and name; rewritten by ./sccheck.py --baseline\n"
                            + "".join(f"0x{a:08X} {st.at_addr(a).name}\n" for a in sorted(now)))
-        print(f"wrote {MATCHED} ({len(set(matched))} functions)")
+        print(f"wrote {MATCHED} ({len(now)} functions)")
     return 1 if regressions or failed_builds else 0
 
 

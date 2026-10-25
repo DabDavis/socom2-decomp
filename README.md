@@ -741,7 +741,21 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   a template instance or an inline's out-of-line copy exists once per overlay (the pointer list's
   erase: OVL1 0x1EAAF0, OVL2 0x50F990). The map keeps one name per function; the other overlay's
   copy stays a placeholder whose note says `ovl-copy: <name>`, and scdiff resolves a call from
-  that overlay to it (`SymbolTable.address_in`).
+  that overlay to it (`SymbolTable.address_in`). sccheck scores an instance a unit emits against
+  the copy in the unit's own overlay (the overlay of the unit's own functions) and counts matches
+  by address, so one name can match once per overlay: fts_remote.cpp's `_saturate<int>` is OVL1's
+  0x2BD220 while the name stays on OVL2's 0x519290, and five OVL2 copies hand units already
+  emitted (0x50F990, 0x50FAD0, 0x51BED0, 0x539B70, 0x53AAC0) matched the day this went in.
+  automatch's superseded test follows the same rule. To diff one copy by hand: `./scdiff.py SRC
+  NAME --target 0xADDR`. `tools/ovlcopies.py` finds unmarked copies (a placeholder's words equal to
+  a named row's in another overlay, the link's address fields masked, every call to the same callee
+  or its overlay's copy, one twin per overlay) and `--apply ADDRS` notes the ones vetted. THE WORDS
+  DO NOT PROVE THE INSTANCE: template instances for different types share one body, and look-alike
+  accessors coincide (CAiMaps::GetMapByIndex has CEntityList::GetEntityByIndex's 0x70 bytes; the
+  CAiEventCallback list's destructor has ~CWepCallbackList's) -- of a first 32 marks, 24 were taken
+  back to plain "the same words as" hints. Mark an instance that exists once in the program
+  (basic_string<char>'s members, the pointer lists' list_deleter<const void *> base) or a class's
+  own inline members found together (CAiMap's GetCell family in OVL1's map code, 0x20F480-0x2106A0).
 - **Tells from the AI core** (ai_events.cpp, ai_astar.cpp, zchar/):
   - testing a field through an inline bool accessor makes MW load it again for the next
     statement; written out, the first load is reused;
@@ -1647,6 +1661,120 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     CFRect(const CPnt3D *, const CPnt3D *), top and bottom from the corners' z;
   - try.py substitutes files under src/ only: to probe a header under include/, compile against a
     shadow copy of include/ placed first (build/scratch/world/incprobe.py).
+- **Tells from the body animation, round 4** (ReadMotionRdr, the blend stack, BodyAddAnim):
+  - an inline accessor returning a member's address makes MW hoist that address out of a loop,
+    into a preheader placed after the loop's bottom test, the loop entered with a `b`; written as
+    `p->member`, the address is recomputed every pass;
+  - an inline wrapping an out-of-line call gives its result the lowest saved register, below
+    another inline's `this` temporary (PushBlend); ReadMotionRdr (0xE98 bytes) closed on one such
+    inline, `CZSIScriptCommon::LoopTime()`, whose `this` copy takes s0;
+  - `mul.s $f1,$f1,$f0` with the first operand loaded after a call is a by-value inline parameter
+    multiplied in place (`t *= s; return t;`, called as `f(member, call())`);
+  - two vectors walked in step: both cursors class iterators, the walked vector's initialised
+    first (BodyAddAnim);
+  - a bool set true/false in an if/else puts `daddiu` in the branch's delay slot; a float
+    comparison returned as `if (c) return true; return false;` gives the target's label pads where
+    `return c;` does not;
+  - MW puts a division's dividend in $f1 and its divisor in $f0 whatever the spelling (ThisFoot and
+    CBlendOverlay::Tick want them the other way round: open);
+  - inline costs measured by `#pragma inline_max_size` bisection: CPnt3D's implicit assignment ~49
+    units, CQuat's ~30, a user destructor 17, an empty transform over a pointer vector 80 --
+    CBody::Destroy fits only at 299 units, so the original's copies or MSL pieces were leaner;
+  - OVL1's copy of the pod vector's resize (0x28B0E0) is scored from source only once its row
+    carries `ovl-copy:` naming MAIN's copy (0x18B050): an instance is credited to the copy in the
+    unit's own overlay (see "Each overlay links its own template copies").
+- **Tells from the states, round 13** (fts_net_platform.cpp, the seal unit's tail, the pool vector):
+  - an 8-byte two-int element is copied through the FPRs in a class vector's insert; any
+    user-declared constructor, even an empty one, gives the target's lw/sw (both 8-byte-element
+    inserts of the round);
+  - a vector that reserves at construction is a derived class whose inline constructor calls
+    `reserve(n)`: the initialiser inlines it, and the implicit destructor tests `this` four times
+    (CZSealState::CRemoteGuyList, CZPlatformState::CPendingList);
+  - an element copied by insert/erase moves a byte member bytewise; an 8-bit field of an int unit
+    (`unsigned int m_cmd : 8`) moves the whole word, while accesses still narrow to bytes;
+  - a value read through an inline accessor takes its saved register after the named locals
+    (RemoteGameCreationCallback's s0/s1);
+  - an element reference taken through an inline `operator[]` lands after a named local initialised
+    from it; through the raw data pointer it keeps declaration order (CreateCompassNavPoints);
+  - `f()->m = 1` loads the constant ahead of the call into a saved register; taking the result into
+    a local first keeps it after the call;
+  - `_zrdr::Item(int)` lets MW walk an int-counter loop's element address; an unsigned index gives
+    the target's per-pass recompute;
+  - SOCOM 1's FilterNavPointString layout comes only from `if (i < 0 || i > 23) r = 0; else r = i +
+    14; return r;`;
+  - fts_net_platform.cpp (0x2C7910-0x2C875F, the turrets' network objects, CZPlatformState after its
+    "PlatformState" registration -- the names ours) sits between fts_missioncam.cpp and a unit from
+    0x2C8760.
+- **Tells from the weapons, round 6** (the def vectors, the flyout machine, the decal sets, CZMarkList):
+  - giving an element class its real layout and an inline constructor made include/vector's resize
+    and erase byte-exact for it (CVehicleDef: 0x3AE750, 0x3AE800 at 0x840 bytes); the class
+    inserts stay open everywhere (0x3AF040 8 bytes short, 0x3D3D90 16), and they call the
+    temporary's destructor where the target inlines it -- the template tail's generation order;
+  - computing a count into a local before zeroing the counter puts the zero in the next call's
+    delay slot (both def-vector Inits);
+  - a loop with its own loop variable gets a preheader, and MW hoists a stored constant into it
+    (PlacedExplosive::PostTick);
+  - an inline bool `return !p;` used as a loop test is sltu/xori; an inline returning a bitfield
+    compared `== false` gives andi/sltu;
+  - an assignment inside the second operand of `||` delays that load until after the first test;
+  - `r = 1 + rand() % 990; r /= 10;` builds the sum in the result's register;
+  - two loops sharing one counter declared after the count reproduce the second loop's registers;
+  - clearing each array element through a pointer local reloads the array base for every element
+    (the target's unrolled shape);
+  - assigning through an inline accessor returning a reference keeps the add base-first on every
+    statement; an inline setter with a by-value argument loads it before the free;
+  - matrix diagonal stores keep source order only when written one matrix at a time; CMatrix's
+    default constructor is the target's unit-matrix call (no SetIdentity);
+  - a global's address taken between two tests lands in those tests' delay slots;
+  - seal_env.cpp defines its own CZDecalDef and sees zweapon.h through zseal.h, so CZDecalDef,
+    CZDecalSet and CZMarkList live in zwep_weapon.cpp (0x3D0470-0x3D17CF), not the header;
+    zwep_weapon.cpp's template tail runs through 0x3D4260 and zwep_ammo.cpp starts at 0x3D4380;
+    the placed-explosive pointer vector (0x3D4810-0x3D4B7F) opens the flyout unit.
+- **Tells from the kit and AI states, round 6** (CAiStateStack::Tick, SEAL_AI_PARAMS(), the wrappers):
+  - a virtual call whose caller never sets $f12 proves the slot takes no float, even when the same
+    function sets $f12 for other calls: SOCOM II's state Tick (slot 0x10) is `int Tick(CSealCtrlAi
+    *)` (the states read the m_dT static) and slot 0x14 `int Virtual14(CSealCtrlAi *, CAiState
+    *sub)` -- 31 rows re-mangled;
+  - reading a list's front through `*begin()` lets a later front reuse the `&end_.next_` an erase's
+    begin() kept in a saved register (Pop);
+  - an auto-inline candidate (15 statements or fewer) too big to inline whole stops every caller
+    from being auto-inlined; pinning it (`#pragma auto_inline off`) frees them (PushAiState inlines
+    into 0x5F51A0 once the stack's Push is pinned);
+  - a unit can declare its own layout-compatible class so members a shared header keeps as byte
+    stand-ins get real constructors, built in declaration order (seal_aiparams.cpp);
+  - declaring a member class's destructor, even undefined, changes the enclosing constructor (with
+    ~CAiPath() declared the route's address stays in s1 across its path's construction);
+  - an array of 8 CAiMapLoc (an empty inline constructor) compiles to an empty counted loop; a byte
+    enum copied into a local loads with lb;
+  - `if (ok && cond) { ... } return ok;` around the rest of a function gives two branches straight
+    to the shared return;
+  - still open: the `Is()` built whole in a register with an explicit false arm (Pop(ai, AI_STATE),
+    PopTo, 0x5F43B0) -- when the second operand is an out-of-line call MW drops the first operand's
+    andi; 0x5B818C-0x5B901F is SOCOM 1's seal_ex.cpp and seal_ik.cpp (CSealEx::OnWeaponHit at
+    0x5B8260).
+- **Tells from the AI core, round 7** (ai_maps.cpp, the map walkers, CAiMapLayer, CAiMap::GetCell):
+  - one-level inlining can be a size cut, not a height: CAiMaps::GetCell inlines CAiMap::GetCell one
+    level only once GetCell's expanded body passes inline_max_size -- measured by prepending
+    `#pragma inline_max_size(N)`: 244-248 units with the index in an expression, past 256 with the
+    scanline and column in locals;
+  - `if (r != 0)` on a pointer local branches; a bare `if (r)` was materialised (sltu, xori) inside a
+    list walk;
+  - walking a list through a const view of `this` builds the const begin()/end() iterators in stack
+    slots, as the target does; the non-const walk folds them away; taking end() into a local before
+    the walk keeps the sentinel in a saved register;
+  - a separate inline `operator!=` for CAiMapLoc gives the target's sltu; `!(a == b)` gives sltiu
+    with the branches inverted;
+  - reading a zeroed struct field after the call through a const accessor stops MW holding that
+    field's address in a saved register;
+  - a vector subclass with an out-of-line destructor adds one this-test, and the owner's destructor
+    calls it with -1 (~CAiMap for the layers);
+  - ~CAiPath (0x5281B0) matches only with the stats' visited cells as CAiMapLocVec, which makes
+    CAiPath() one inline level too tall at 5: one more level-6 candidate;
+  - units: ai_path.cpp's tail runs to 0x5291EF; ai_maps.cpp 0x5291F0-0x52EE9F (template tail from
+    0x52EB40), ai_maptable.cpp follows; the walker unit ai_mapwalk.cpp ~0x5350C0-0x539BBF (tail
+    from 0x539B70); the look and cover searches 0x539EB0-0x53A72F; the layer code (ai_maplayer.cpp)
+    0x53A730-0x53AA4F; initialisers 0x668680 (ai_path.cpp), 0x668710 (ai_maps.cpp, AiMaps at
+    0x66A1B0), 0x6687D0 (empty, probably ai_vismap.cpp's).
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has

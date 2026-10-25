@@ -7,8 +7,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK __dt__6CAiMapFv(s32, M2C_UNK);              /* extern */
 M2C_UNK func_0050FA50(M2C_UNK *, char *, char **);  /* extern */
-M2C_UNK func_005181F0(s32, M2C_UNK);                /* extern */
 M2C_UNK func_0052E7C0(char *);                      /* extern */
 
 void func_0052E990(char *arg0) {
@@ -23,7 +23,7 @@ void func_0052E990(char *arg0) {
             temp_s0 = SC_MEMBER(temp_v0, s32 *, 8);
             sp38 = temp_v0;
             func_0050FA50(&sp3C, arg0, &sp38);
-            func_005181F0(temp_s0, 1);
+            __dt__6CAiMapFv(temp_s0, 1);
         } while (SC_MEMBER(arg0, s32 *, 0) != 0);
     }
     func_0052E7C0(arg0);

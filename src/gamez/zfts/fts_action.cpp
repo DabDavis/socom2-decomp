@@ -66,6 +66,34 @@ void func_002BB5B0(int to, unsigned int id, unsigned char value, int arg, int wh
 _zanim_cmd_hdr *func_002B4230(_zrdr *rdr);
 }
 
+/* an AI map's action (SOCOM 1's CAiMap::action: only its state, three bits of byte 6) */
+struct AiMapAction {
+    unsigned char _0[6];
+    unsigned char m_6_0 : 4;
+    unsigned char m_state : 3;   // 0x6, bits 4-6
+};
+
+extern "C" {
+extern unsigned char data_0066A1B0[];   /* (OVL2: the AI maps, SOCOM 1's theAiMaps) */
+bool func_0052DAA0(void *maps, unsigned int id, CAiMapLoc *loc,
+                   AiMapAction **action);   /* CAiMaps::GetActionById (OVL2, a placeholder) */
+}
+
+/* an action's valve changed: the AI map's action of the same id takes the valve's value (SOCOM 1's,
+ * the id at SOCOM II's offset; OVL1 0x2B5760) */
+void _actionValveCallback(CValve *valve, void *data)
+{
+    CNodeAction *action = (CNodeAction *)data;
+
+    if (action) {
+        AiMapAction *a = 0;
+        CAiMapLoc loc;
+
+        if (func_0052DAA0(data_0066A1B0, action->m_id, &loc, &a))
+            a->m_state = valve->m_value;
+    }
+}
+
 /* every action back to its start: its valve off, no anim, no user (OVL1 0x2B5510) */
 void CNodeAction::Reset()
 {

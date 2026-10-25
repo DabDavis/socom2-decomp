@@ -207,6 +207,11 @@ public:
     /* the soil (the name ours: read through it, the field is loaded again for a following
      * store -- _reset_cell) */
     unsigned int GetSoil() const { return m_soil; }
+    /* three fields read through accessors (the names ours: the tile callbacks test a field so
+     * and load it again for the setter's read-modify-write) */
+    bool IsOccupied() const { return m_occupied; }
+    unsigned char GetBoundary() const { return m_boundary; }
+    unsigned int GetShadow() const { return m_shadow; }
     /* the fields' setters: their arguments masked at run time, `(0 & 1) << n` for a constant
      * (the names ours) */
     void SetOccupied(unsigned int b) { m_occupied = b; }
@@ -251,12 +256,22 @@ public:
     ~CAiMapLayer();
     /* the cells freed, the layer kept (0x53A920; the name ours) */
     void FreeCells();
+    /* n cells allocated, zeroed (the map readers' 0x53A8F0; the name ours) */
+    CAiCell *AllocCells(unsigned int n);
 
     char m_name[16];   // 0x0
     unsigned int m_flags;   // 0x10
     unsigned int m_unk14;   // 0x14
     unsigned char m_unk18[16];   // 0x18
     CAiCell *m_cells;   // 0x28: CAiCell::Alloc's
+};
+
+/* the map's layers (new in SOCOM II, the name ours, after SOCOM 1's CAiMapVec): its destructor
+ * is declared and defined out of line in ai_maplayer.cpp (0x53A870: four this-tests, the derived
+ * level over the pointer vector's three), so ~CAiMap calls it with -1 as it calls ~readers */
+class CAiMapLayerVec : public std::vector<CAiMapLayer *> {
+public:
+    ~CAiMapLayerVec();
 };
 int zrdr_free(CRdrFile *file);
 /* MAIN's strncasecmp (0x1993C0, a placeholder still: SOCOM 1's CAiMap::GetLocation calls
@@ -284,6 +299,8 @@ class CAiMap;
 
 /* a cell handed to a walk's callback (below CAiMap: it points at a CAiMap::region) */
 struct MAP_FOREACH_STRUCT;
+/* a cell handed to a line walk's callback (SOCOM 1's; not laid out yet) */
+struct MAP_LINEWALK_STRUCT;
 
 /* two cells are the same cell when x and y agree, the map aside: an inline bool, which the
  * walks materialise (x's test, then y's into the same register) before they branch -- SOCOM 1's
@@ -291,6 +308,12 @@ struct MAP_FOREACH_STRUCT;
 inline bool operator==(const CAiMapLoc &a, const CAiMapLoc &b)
 {
     return a.x == b.x && a.y == b.y;
+}
+/* and different when either differs: materialised as `!=` (sltu) where `!(a == b)` gives the
+ * `==` (sltiu) and the other branches (CAiMaps::GetDistanceSq) */
+inline bool operator!=(const CAiMapLoc &a, const CAiMapLoc &b)
+{
+    return a.x != b.x || a.y != b.y;
 }
 
 /* a run of cells (SOCOM 1's DWARF: a vector of CAiMapLoc and nothing more) */
@@ -444,6 +467,10 @@ public:
          * ours) */
         class range {
         public:
+            /* the run's length (the name ours: read through it, after GetRange, MW does not reuse
+             * the address of the field it zeroed -- GetSporeCount) */
+            int GetCount() const { return m_count; }
+
             unsigned int m_id;   // 0x0
             int m_first;   // 0x4
             int m_last;   // 0x8
@@ -513,6 +540,71 @@ public:
 
     /* whether the row is in the map (the name ours; materialised, then the column's test) */
     bool IsRow(unsigned short y) const { return y >= 0 && y < m_ny; }
+    /* whether the cell is on its row's run (new in SOCOM II, the name ours: GetCell's first test,
+     * out of line at 0x512140 where GetCell is inlined one level -- the row as IsRow takes it, the
+     * run's test into a bool assigned true) */
+    bool IsMapCell(const CAiMapLoc &loc) const
+    {
+        unsigned short y = loc.y;
+
+        if (y >= 0 && y < m_ny) {
+            const scanline &sl = GetScanline(y);
+            bool in = false;
+
+            unsigned int x = loc.x;
+
+            if (x >= sl.m_start && x < sl.m_end)
+                in = true;
+            return in;
+        }
+        return false;
+    }
+    /* a cell's altitude (new in SOCOM II, the names ours: ai_map.cpp's 0x516940 from the cell; by
+     * its location too big to inline whole -- GetCell is past inline_max_size -- so a caller
+     * inlines it one level and calls GetCell and the first out of line, CAiMaps::GetAltitude) */
+    bool GetAltitude(const CAiCell *cell, float &alt) const;
+    bool GetAltitude(const CAiMapLoc &loc, float &alt) const
+    {
+        CAiCell *cell = GetCell(loc, 0);
+
+        return cell ? GetAltitude(cell, alt) : false;
+    }
+    /* a line of cells walked from a cell, along a direction or to another cell, each handed to a
+     * callback until one returns false (SOCOM 1's WalkLine pair, 0x537400 and 0x537E50 in the map
+     * walkers' unit; SOCOM II adds the step, 0.2 from every caller written) */
+    bool WalkLine(const CAiMapLoc &from, const CPnt3D *dir, bool (*f)(const MAP_LINEWALK_STRUCT &s, void *data),
+                  void *data, float step);
+    bool WalkLine(const CAiMapLoc &from, const CAiMapLoc &to, bool (*f)(const MAP_LINEWALK_STRUCT &s, void *data),
+                  void *data, float step);
+    /* whether the line is clear to the eye and to the feet, the blocking cell given (SOCOM 1's) */
+    bool CanSeeLine(const CAiMapLoc &from, const CPnt3D *dir, CAiMapLoc *out);
+    bool CanSeeLine(const CAiMapLoc &from, const CAiMapLoc &to, CAiMapLoc *out);
+    bool CanTravelLine(const CAiMapLoc &from, const CAiMapLoc &to, CAiMapLoc *out);
+    /* whether a step may end on the cell (new in SOCOM II, the name ours: ai_maps.cpp's 0x52A090,
+     * GetCell inlined one level) */
+    bool IsTraversable(const CAiMapLoc &loc) const;
+    /* a layer index the map has (the name ours; 0x512120) */
+    bool IsLayer(int layer) const { return layer >= 0 && layer < GetLayerCount(); }
+    /* the layers' count (the name ours) */
+    unsigned int GetLayerCount() const { return m_layers.size(); }
+    /* a row's run (the name ours) */
+    const scanline &GetScanline(unsigned int y) const { return m_scanlines[y]; }
+    /* a layer's cell, none off the map (new in SOCOM II, the name ours: SOCOM 1 read the cell off
+     * the scanline. Out of line at 0x511F80; inlined one level its pieces are the calls 0x512140,
+     * 0x512120, 0x512100 (the scanlines' const []), 0x5120C0 (GetIndex), 0x5120B0 (the layers' []),
+     * the run's index taken before the layer) */
+    CAiCell *GetCell(const CAiMapLoc &loc, int layer) const
+    {
+        CAiCell *cell = 0;
+
+        if (IsMapCell(loc) && IsLayer(layer)) {
+            const scanline &sl = m_scanlines[loc.y];
+            int i = sl.GetIndex(loc.x);
+
+            cell = &m_layers[layer]->m_cells[i];
+        }
+        return cell;
+    }
     bool IsCell(const CAiMapLoc &loc) const { return IsRow(loc.y) && loc.x < m_nx; }
     /* the entry of a name (the name ours: GetLocation's inline walk, which tests the name again) */
     name *FindName(const char *s)
@@ -561,6 +653,10 @@ public:
     bool SetModified(bool modified);
     /* the map with its first layer and nothing read (SOCOM 1's took no id) */
     CAiMap(int mapid);
+    ~CAiMap();
+    /* every layer but the first deleted and dropped, the map marked changed (new in SOCOM II, the
+     * name ours: ai_maplayer.cpp's 0x53A730, ~CAiMap's) */
+    void DeleteLayers();
     int GetRouteIndex(const route *r);
     route *GetRoute(unsigned int i);
     link *GetCellLink(const CAiMapLoc &loc);
@@ -617,7 +713,7 @@ public:
      * altitude scale after it, then SOCOM 1's nine tables) */
     unsigned int m_version;   // 0xa4
     CAiMapLayer m_layer0;   // 0xa8
-    std::vector<CAiMapLayer *> m_layers;   // 0xd4: the layers, m_layer0 first
+    CAiMapLayerVec m_layers;   // 0xd4: the layers, m_layer0 first
     char *m_mapex;   // 0xe0: SOCOM 1's 0xac
     int m_mapid;   // 0xe4: SOCOM 1's 0xb0 (ValidateCells gives every name this map's id)
     float m_alt_quant;   // 0xe8: SOCOM 1's 0xb4
@@ -766,6 +862,9 @@ public:
     };
 
     CAiPath();
+    /* the planner let go and the path emptied, its plan aborted first (SOCOM 1's; out of line at
+     * 0x5281B0, the members' destructors after the body) */
+    ~CAiPath();
 
     /* queued, planning or aborting (SOCOM 1 tested the three states one by one; SOCOM II's code,
      * inlined everywhere, is one unsigned range test -- the name ours) */

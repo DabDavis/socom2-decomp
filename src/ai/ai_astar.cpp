@@ -8,15 +8,7 @@
  * bitfields: x read from the word (unsigned compares), y from the halfword at 2 (promoted to int:
  * signed compares) -- the same source spelling for both. */
 
-#include "ai.h"
-
-/* the AI maps (SOCOM 1's CAiMaps : list<CAiMap *>, AIMAPS_PARAMS; the global AiMaps, OVL2 bss):
- * only the list here -- zseal.h has its own CAiMaps, so this view stays in the unit until the two
- * are one class in ai.h */
-class CAiMaps : public std::list<CAiMap *> {
-};
-
-extern CAiMaps AiMaps;
+#include "ai_maps.h"
 
 /* what the queue's functions call that is not written yet, ai_path.cpp's (OVL2 0x524950-0x5281AF) */
 extern "C" void func_00524950(CAiPath *path, const char *name);   /* the path drawn ("dbg_path") */
