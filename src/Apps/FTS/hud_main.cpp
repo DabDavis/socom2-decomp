@@ -34,6 +34,7 @@
 #include "hud_mpinfobox.h"
 #include "hud_newhudmap.h"
 #include "hud_teammatenames.h"
+#include "hud_weaponsel.h"
 
 namespace zdb {
 class CWorld;
@@ -246,12 +247,6 @@ public:
     float m_curtrans;   // 0x90
 };   // 0xa0 bytes
 
-/* the HUD's brighter text: a string with its own vtable and nothing else */
-class CHudBrightText : public C2DString {
-public:
-    CHudBrightText() { SetTrans(80.0f); }
-};   // 0x98 bytes
-
 /* the action icon (SOCOM 1's DWARF; its constructor inline there too) */
 class CHUD;
 
@@ -283,112 +278,6 @@ public:
 };   // 0xb0 bytes
 
 
-
-/* the 2D classes as SOCOM 1's DWARF derives them (C2D's vtable at 0xC: CHUD's Off and On call
- * slots 4 and 5 there), laid out from their constructors and the implicit destructors this unit
- * links (0x1FC700-0x1FC98F, 0x1FD730-0x1FDBDF): only the members with destructors are placed */
-class CWeaponSel : public C2D {
-public:
-    CWeaponSel();
-    void UnInit();
-
-    unsigned char _18[0x20 - 0x18];
-    C2DBitmap m_slots[4];   // 0x20
-    int m_socom2_220[4];   // 0x220
-    C2DBitmap m_bitmap1;   // 0x230
-    C2DBitmap m_bitmap2;   // 0x2b0
-    C2DBitmap m_bitmap3;   // 0x330
-    C2DBitmap m_bitmap4;   // 0x3b0
-    C2DBitmapPoly m_polys[2];   // 0x430
-    CHudBrightText m_text1;   // 0x810
-    CHudBrightText m_text2;   // 0x8a8
-    CHudBrightText m_text3;   // 0x940
-    C2DString m_text4;   // 0x9d8
-    C2DString m_text5;   // 0xa70
-    CHudBrightText m_text6;   // 0xb08
-    CHudBrightText m_text7;   // 0xba0
-    unsigned char _c38[0xce0 - 0xc38];
-} __attribute__((aligned(16)));   // 0xce0 bytes
-
-class CInGameWeaponSel : public C2D {
-public:
-    CInGameWeaponSel();
-    void UnInit();
-
-    unsigned char _18[0x20 - 0x18];
-    C2DBitmap m_slots[4];   // 0x20
-    C2DString m_texts[3];   // 0x220
-    unsigned char _3e8[0x410 - 0x3e8];
-    C2DBitmap m_bitmap;   // 0x410
-    C2DBitmap m_bitmaps[4];   // 0x490
-    C2DBitmapPoly m_polys[2];   // 0x690
-    C2DString m_text1;   // 0xa70
-    C2DString m_text2;   // 0xb08
-    C2DString m_text3;   // 0xba0
-    C2DString m_text4;   // 0xc38
-    C2DString m_text5;   // 0xcd0
-    C2DString m_lines[5];   // 0xd68
-    C2DString m_text6;   // 0x1060
-    unsigned char _10f8[0x11b0 - 0x10f8];
-} __attribute__((aligned(16)));   // 0x11b0 bytes
-
-/* the network selector's slots (their vtables found by their RTTI names: CWeaponSlot 0x405E00,
- * CategorySlot 0x405D80, SelectedSlot 0x405D00, SlotList 0x405E80) */
-class CWeaponSlot : public C2D {
-public:
-    unsigned char _18[0x20 - 0x18];
-};   // 0x20 bytes
-
-class CategorySlot : public CWeaponSlot {
-public:
-    C2DBitmap m_bitmap;   // 0x20
-    C2DString m_name;   // 0xa0
-} __attribute__((aligned(16)));   // 0x140 bytes
-
-class SelectedSlot : public CWeaponSlot {
-public:
-    C2DString m_name;   // 0x20
-};   // 0xb8 bytes
-
-class SlotList : public C2D {
-public:
-    unsigned char _18[0x38 - 0x18];
-};   // 0x38 bytes
-
-/* the selector's category page (no vtable, so no RTTI name: the name is ours) */
-class CMPWeaponCategories {
-public:
-    C2DString m_title;   // 0x0
-    C2DBitmap m_bitmap1;   // 0xa0
-    C2DBitmap m_bitmap2;   // 0x120
-    C2DBitmapPoly m_polys[4];   // 0x1a0
-    SlotList m_list;   // 0x960
-    CategorySlot m_categories[4];   // 0x9a0
-    C2DBitmap m_bitmap3;   // 0xea0
-    unsigned char _f20[0xf40 - 0xf20];
-} __attribute__((aligned(16)));   // 0xf40 bytes
-
-/* the network game's weapon selector: slot lists honouring the server's weapon valves
- * (Enable_203FRAG and the rest), UnInit only in a network game (SOCOM II's; no vtable, so no
- * RTTI name: the name is ours). Off and On are its own, not C2D's: they turn its lists and
- * bitmaps off and on (0x23E700, 0x23E800) */
-class CMPWeaponSel {
-public:
-    CMPWeaponSel();
-    void UnInit();
-    void Off();
-    void On();
-
-    int m_socom2_0;   // 0x0
-    C2DString m_title;   // 0x4
-    C2DBitmap m_bitmap1;   // 0xa0
-    C2DBitmap m_bitmap2;   // 0x120
-    C2DBitmap m_bitmap3;   // 0x1a0
-    CMPWeaponCategories m_categories;   // 0x220
-    SlotList m_list;   // 0x1160
-    SelectedSlot m_selected[5];   // 0x1198
-    unsigned char _1530[0x1540 - 0x1530];
-} __attribute__((aligned(16)));   // 0x1540 bytes
 
 /* the stance icon (hud_posebitmap.cpp's layout) */
 class PoseBitmap : public C2DBitmap {
