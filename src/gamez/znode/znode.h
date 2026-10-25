@@ -911,10 +911,12 @@ public:
 }
 
 /* a rectangle in x/z (SOCOM 1's DWARF; a global class, as SOCOM 1's __ct__6CFRectFv says). Its
- * constructor zeroes it, out of line (0x306650, the same 0x18 bytes as SOCOM 1's) */
+ * constructor zeroes it, out of line (0x306650, the same 0x18 bytes as SOCOM 1's); the second, from
+ * two corners, takes top and bottom from their z and left and right from their x (0x306620) */
 class CFRect {
 public:
     CFRect();
+    CFRect(const CPnt3D *a, const CPnt3D *b);
 
     float top;   // 0x0
     float bottom;   // 0x4

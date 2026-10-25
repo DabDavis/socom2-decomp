@@ -16,9 +16,6 @@
 
 /* the node's atom count set (node_main.cpp's SOCOM 1 CNode::SetAtomCnt(int), not named yet) */
 extern "C" void func_003149D0(zdb::CNode *node, int n);
-/* a CFRect from two corners: top and bottom their z, left and right their x (zmath's, out of
- * line before CMatrix's unit; not named yet -- SOCOM 1's CFRect(const CPnt3D *, const CPnt3D *)) */
-extern "C" void func_00306620(void *rect, const CPnt3D *a, const CPnt3D *b);
 /* MSL's abs (MAIN, 0x191428, named): called by its address, since MW expands a call spelled abs
  * through <stdlib.h> inline (its builtin) where addOrderedCellAtom's target calls it twice */
 extern "C" int func_00191428(int x);
@@ -826,7 +823,6 @@ bool CGrid::AddClutter(CClutter *clutter)
         return false;
     const CBBox *bb = clutter->m_node->GetBBox();
     CPnt3D box[2];
-    float rect[4];
 
     box[0] = PntScale(bb->m_min, 1.0f / clutter->m_scale_inverse);
     box[1] = PntScale(bb->m_max, 1.0f / clutter->m_scale_inverse);
@@ -834,8 +830,8 @@ bool CGrid::AddClutter(CClutter *clutter)
 
     box[0] = PntPlus(box[0], *(CPnt3D *)m->m_matrix[3]);
     box[1] = PntPlus(box[1], *(CPnt3D *)m->m_matrix[3]);
-    func_00306620(rect, &box[0], &box[1]);
-    SetTraversalBoundary((CFRect *)rect);
+    CFRect rect(&box[0], &box[1]);
+    SetTraversalBoundary(&rect);
     for (CGridAtom *atom = StartTraversal(); atom; atom = GetNextAtom()) {
         CCell *cell = atom->GetCell();
 

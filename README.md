@@ -1628,6 +1628,25 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the zdb world, round 6** (CDI(), the grid's traversal boundary, znode.h's stand-ins):
+  - znode.h's list stand-ins (PtrListFirst, ListBegin, ListEnd, ListClear) are gone: include/list's
+    begin()/clear()/insert() give the same code in all six of their users;
+  - CDI() inlines SOCOM 1's DI_PARAMS constructor (tag_DI_HEAD's, with eleven flag setters);
+  - the &size_/&data_ register order of a local vector walked after a call turns on whether the
+    pod vector's end() reads through data(): `return data() + size_;` gains CGrid::Destroy,
+    GenerateLandmarkList, DeleteChildren and AddPalette but makes CCharacterType::Create one
+    inline level too tall (measured over every hand-written unit; the pointer vector's end() through
+    __base::data() gains the same four and loses find_node, whose target calls the pod's end() out
+    of line) -- not applied, an MSL round's to settle;
+  - a swap reloads the element just tested only if it reads it through a different type (a
+    `CClutter *` swap reuses the tested value);
+  - "the inner loop entered through a block placed after the function's end" is not reproduced by
+    any for, while, counter or test form tried (SortNearToFar, CGrid::Create);
+  - grid_di.cpp's static stack is `CStack(false)` (zmath.h's CStack(bool): the initialiser clears
+    the owner byte and pushes nothing), which makes __sinit_grid_di.cpp byte-exact; 0x306620 is
+    CFRect(const CPnt3D *, const CPnt3D *), top and bottom from the corners' z;
+  - try.py substitutes files under src/ only: to probe a header under include/, compile against a
+    shadow copy of include/ placed first (build/scratch/world/incprobe.py).
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
@@ -1940,7 +1959,8 @@ What is open across lanes, and what comes next:
   constructor's allocator temporary (the image passes an unconstructed stack slot: `__sinit` and
   the out-of-line map() copies) (include/tree), the class vector's destroy for elements with a virtual
   destructor (C2DPoly's deleter), __vector_imp::resize out of line (CPool), and the pod vector's
-  end() reusing begin()'s load (AddPalette, ~CAssetLib, DeleteChildren).
+  end() reusing begin()'s load (AddPalette, ~CAssetLib, DeleteChildren; the zdb world's round 6
+  measured `return data() + size_;`: +4, but CCharacterType::Create one level too tall).
 - **zMath** (0x306670-0x30954C, 47 of 54): CMatrix::SetRotate, CQuat::Align, CBits::Resize,
   CPnt3D::Reflect, CBBox::GetIntersect and the two DistToVectors. **zcamera**: CCamera::Update
   (13 instructions, the near plane's VU0 temporaries' stack offsets). **ZAnim**: the big handlers

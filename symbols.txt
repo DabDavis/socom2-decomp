@@ -5189,7 +5189,7 @@
 0x00305F80 0xA8 func_00305F80  # OVL1
 0x00306030 0x56C func_00306030  # OVL1
 0x003065A0 0x78 func_003065A0  # OVL1
-0x00306620 0x28 func_00306620  # OVL1
+0x00306620 0x28 __ct__6CFRectFPC6CPnt3DPC6CPnt3D  # OVL1; ours (the zdb world lane, vetted by the integrator: a CFRect from two corners -- top and bottom their z, left and right their x, this returned in v0 as MW's constructors do; CGrid::AddClutter calls it with two CPnt3D pointers; out of line next to CFRect() 0x306650)
 0x00306650 0x18 __ct__6CFRectFv  # OVL1; s1:calls (CGrid's constructor calls it on m_extents at +0x14 as SOCOM 1's does; the same 0x18 bytes; CFRect is global, not zdb's) -- the zdb-world lane
 0x00306670 0x54 zMath_Init__Fv  # OVL1; s1:calls
 0x003066D0 0xD4 Exp__5CQuatFPC6CPnt3Df  # OVL1; s1:order (same position in the same TU, signature fits the code)

@@ -2008,6 +2008,7 @@
 0x002D5420 Read__Q23zdb5CGridFRQ23zdb9CSaveLoad
 0x002D54F0 GetCell__Q23zdb9CGridAtomFv
 0x002D5520 DeleteClutter__Q23zdb5CGridFv
+0x002D55C0 AddClutter__Q23zdb5CGridFPQ23zdb8CClutter
 0x002D6000 Update__Q23zdb5CGridFPQ23zdb5CNode
 0x002D60E0 Remove__Q23zdb5CGridFPQ23zdb5CNode
 0x002D61A0 Insert__Q23zdb5CGridFPQ23zdb5CNode
@@ -2017,6 +2018,8 @@
 0x002D6640 StartTraversal__Q23zdb5CGridFv
 0x002D66B0 gridCellOut__Q23zdb5CGridFii
 0x002D6800 SetTraversalBoundary__Q23zdb5CGridFPC6CPnt3Dib
+0x002D6920 SetTraversalBoundaryOrdered__Q23zdb5CGridFPC6CPnt3DPC6CPnt3Dib
+0x002D6AB0 SetTraversalBoundary__Q23zdb5CGridFPC6CFRect
 0x002D7030 addOrderedCellAtom__Q23zdb5CGridFiib
 0x002D74C0 gridRemoveNodeFromGrids__Q23zdb5CGridFPQ23zdb5CNode
 0x002D78A0 gridGetAtomBasePtr__Q23zdb5CGridFii
@@ -2086,6 +2089,7 @@
 0x002DC3E0 Release__Q23zdb3CDIFv
 0x002DC400 Allocate__Q23zdb3CDIFi
 0x002DC450 __dt__Q23zdb3CDIFv
+0x002DC4C0 __ct__Q23zdb3CDIFv
 0x002DC620 func_002DC620
 0x002DC660 SetMask__Q23zdb11DiIntersectFUi
 0x002DC680 __dt__Q23zdb11DiIntersectFv
@@ -2388,7 +2392,7 @@
 0x00305BA0 func_00305BA0
 0x00305DC0 func_00305DC0
 0x00305F80 func_00305F80
-0x00306620 func_00306620
+0x00306620 __ct__6CFRectFPC6CPnt3DPC6CPnt3D
 0x00306650 __ct__6CFRectFv
 0x00306670 zMath_Init__Fv
 0x003066D0 Exp__5CQuatFPC6CPnt3Df
@@ -2728,7 +2732,7 @@
 0x0031DE70 InitDescendantsVisuals__Q23zdb6CWorldFv
 0x0031DE80 InitDescendantsDI__Q23zdb6CWorldFv
 0x0031DE90 GetIntersectBatch__Q23zdb6CWorldFPPQ23zdb11DiIntersecti
-0x0031DEA0 GetAltitudes__Q23zdb6CWorldFPC6CPnt3Df
+0x0031DEA0 GetAltitudes__Q23zdb6CWorldFPC6CPnt3D
 0x0031DF50 GetAltitude__Q23zdb6CWorldFPC6CPnt3Df
 0x0031DFD0 GetAltitude__Q23zdb6CWorldFPC6CPnt3Dfb
 0x0031E0A0 GetIntersects__Q23zdb6CWorldFPC6CPnt3DPC6CPnt3Db
@@ -4539,6 +4543,7 @@
 0x00400030 __sinit_ent_target.cpp
 0x004000C0 __sinit_compass.cpp
 0x00401BD0 __sinit_game_state.cpp
+0x00401CC0 __sinit_grid_di.cpp
 0x004025E0 __sinit_zmath_main.cpp
 0x00402630 __sinit_zmath_matrix.cpp
 0x004026C0 __sinit_zmath_pnt3d.cpp

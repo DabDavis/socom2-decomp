@@ -25,12 +25,10 @@ extern "C" bool func_003084F0(const CMatrix *m);
 
 /* the node the walk is in (SOCOM 1's file static m_node) and the matrix stack the props' matrices
  * are pushed on (SOCOM 1's file static stack; SOCOM II's initialiser, 0x401CC0, clears its owner
- * byte where zmath.h's CStack() pushes the unit matrix -- not that constructor). Measured
- * (2026-10-25, the world lane): with zmath.h's CStack given `CStack(bool own) : m_own(own) {}` and
- * this static written `stack(false)`, __sinit_grid_di.cpp is byte-exact (SOCOM 1's initialiser has
- * the same `sb zero` and registration) -- waits on zmath.h */
+ * byte and pushes nothing -- CStack(bool), not CStack(), which pushes the unit matrix; SOCOM 1's
+ * initialiser has the same `sb zero` and registration) */
 static zdb::CNode *m_node;
-static CStack stack;
+static CStack stack(false);
 
 /* whether the camera wants the collision flag (SOCOM 1's grid_di.cpp keeps it in an unnamed
  * namespace: cameraCollideFlagRequired__21@unnamed@grid_di_cpp@) */
