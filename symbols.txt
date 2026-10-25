@@ -6803,7 +6803,8 @@
 0x0036AFC0 0x24 SetMapOffset__17CRenderableStringFii  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0036AFF0 0xAC func_0036AFF0  # OVL1
 0x0036B0A0 0x128 func_0036B0A0  # OVL1
-0x0036B1D0 0x28 func_0036B1D0  # OVL1
+0x0036B1D0 0x14 AddToRdr__8ListItemFP10CRdrEditor  # OVL1; split by hand (the HUD lane, round 16): the row ran 0x28 over two functions -- this one, ListItem's vtable slot 0 (0x407248), its look's slot 14 (lw t9,64) tail-called with the argument passed on, five words, then MW's pad and a separate `jr ra` at 0x36B1F0; the slot is SOCOM II's (SOCOM 1's ListItem has no vtable): the string look's copy (0x37BF40) writes the item's text into the CRdrEditor it is given as an int, real or string node -- the name ours
+0x0036B1F0 0x8 AddToRdr__17CListItemTypeImplFP10CRdrEditor  # OVL1; split by hand (the HUD lane, round 16) from 0x36B1D0's row: an empty function of its own, CListItemTypeImpl's vtable (0x4070F0) slot 14 (0x407130 holds it), the slot ListItem::AddToRdr calls; SOCOM II's (SOCOM 1's 13-slot table has none) -- the name ours, after the string look's override (0x37BF40)
 0x0036B200 0x8 func_0036B200  # OVL1
 0x0036B210 0x78 func_0036B210  # OVL1
 0x0036B290 0x78 func_0036B290  # OVL1
@@ -6990,7 +6991,8 @@
 0x0037BE50 0x14 func_0037BE50  # OVL1
 0x0037BE70 0x14 func_0037BE70  # OVL1
 0x0037BE90 0x8C func_0037BE90  # OVL1
-0x0037BF20 0xFC func_0037BF20  # OVL1
+0x0037BF20 0x14 Tick__Q220@unnamed@zui_2d_cpp@23CListItemStringTypeImplFf  # OVL1; split by hand (the HUD lane, round 16): the row ran 0xFC over two functions; this one is slot 11 of both string looks' vtables (CListItemStringTypeImpl 0x407B40, CListItemWrappedTextTypeImpl 0x407140: the wrapped one inherits it), the string's Tick tail-called (lw a0,4; slot 12), as SOCOM 1's CListItemStringTypeImpl::Tick (0x394180) ticks its string -- a pointer member here, an embedded one there
+0x0037BF40 0xDC AddToRdr__Q220@unnamed@zui_2d_cpp@23CListItemStringTypeImplFP10CRdrEditor  # OVL1; split by hand (the HUD lane, round 16) from 0x37BF20's row: slot 14 of both string looks' vtables (0x407180, 0x407B80) -- the item's text (its string's m_string + m_firstCharPos) added to the CRdrEditor as an int node when strtol takes all of it, a real node when strtod does, else a string node; SOCOM II's, the name ours
 0x0037C020 0x70 __dt__8C2DClockFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037C090 0x8 func_0037C090  # OVL1
 0x0037C0A0 0x60 __dt__9C2DVisualFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
