@@ -3829,7 +3829,7 @@
 0x002A9680 0x30 __dt__Q23std62__vector_imp<11CLadderData,Q23std24allocator<11CLadderData>,0>Fv  # OVL1; s1:align
 0x002A96B0 0x108 func_002A96B0  # OVL1
 0x002A97C0 0xD4 FadeToEndMission__8CMissionFfi  # OVL1; s1:calls
-0x002A98A0 0x8 func_002A98A0  # OVL1
+0x002A98A0 0x8 fadeToEndMissionTick__8CMissionFfPv  # OVL1; s1:exact by hand (the states lane: SOCOM 1's fadeToEndMissionTick__8CMissionFfPv is the same 8-byte jump to FadeToEndMissionTick, and FadeToEndMission hands this to AddTask as SOCOM 1's hands that) -- fts_mission.cpp
 0x002A98B0 0x1B8 FadeToEndMissionTick__8CMissionFf  # OVL1; s1:align
 0x002A9A70 0xC0 func_002A9A70  # OVL1
 0x002A9B30 0x3AC func_002A9B30  # OVL1

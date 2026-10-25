@@ -112,6 +112,7 @@ public:
     int zNetGetTime();
 
     unsigned char m_bSessionMaster;   // 0x0
+    unsigned char m_1;   // 0x1: no fade to the mission's end while set (the name ours)
 };
 
 extern CZNetwork theNetwork;
@@ -120,13 +121,84 @@ extern CZNetwork theNetwork;
 class CMission {
 public:
     CZNetGame *CreateNetGame();
+    bool ReOpen_Unload2();
+    void FadeToEndMission(float time, int counter);
+    bool FadeToEndMissionTick(float dT);
+    static bool fadeToEndMissionTick(float dT, void *data);
 
-    unsigned char _0[0x1808];
+    unsigned char _0[0xe0];
+    int m_e0;   // 0xe0: cleared before the second unload (SOCOM II's; the name ours)
+    unsigned char _e4[0xfc - 0xe4];
+    unsigned char m_DelayEndMission : 1;   // 0xfc (SOCOM 1's bytes at 0x70, 0x71)
+    unsigned char m_FadingToEndMission : 1;
+    int m_fade_counter;   // 0x100 (SOCOM 1's at 0x74)
+    float m_next_fade_time;   // 0x104 (SOCOM 1's at 0x78)
+    unsigned char _108[0x1808 - 0x108];
     CZNetGame *m_pNetGame;   // 0x1808 (SOCOM 1's at 0x584)
 };
 
 extern CMission theMission;
 extern "C" char *strncpy(char *dst, const char *src, unsigned int n);
+
+/* the world, the entities, the AI events, the scheduler and the sound (their units'; called by their
+ * map names) */
+class CEntity {
+public:
+    static void RemoveAll();
+};
+class CAiEvent {
+public:
+    static void Close();
+};
+extern CSched_Manager zTaskScheduler;
+extern "C" void ClearFreeList__14CSched_ManagerFb(CSched_Manager *sched, bool all);
+extern "C" bool AddTask__14CSched_ManagerFPCcPFfPv_bfPv(CSched_Manager *sched, const char *name,
+                                                         bool (*func)(float dT, void *data), float priority, void *data);
+
+/* the task's callback (SOCOM 1's fadeToEndMissionTick, the same jump; OVL1 0x2A98A0) */
+bool CMission::fadeToEndMissionTick(float dT, void *data)
+{
+    return ((CMission *)data)->FadeToEndMissionTick(dT);
+}
+
+/* the fade to the mission's end begun, or brought nearer (SOCOM 1's, its two flags bits now;
+ * OVL1 0x2A97C0) */
+void CMission::FadeToEndMission(float time, int counter)
+{
+    if (theNetwork.m_1)
+        return;
+    if (!m_FadingToEndMission) {
+        m_FadingToEndMission = 1;
+        theMission.m_DelayEndMission = 1;
+        m_fade_counter = counter;
+        m_next_fade_time = time;
+        AddTask__14CSched_ManagerFPCcPFfPv_bfPv(&zTaskScheduler, "MissionFadeToEnd", fadeToEndMissionTick, 0.98f, this);
+    } else {
+        if (time < m_next_fade_time)
+            m_next_fade_time = time;
+        if (counter < m_fade_counter)
+            m_fade_counter = counter;
+    }
+}
+
+/* the second half of a reload's unload: the entities and AI events gone, the world's lists and
+ * garbage cleared (SOCOM 1's), then -- SOCOM II's -- the scheduler's free list, the headset and
+ * the sounds (OVL1 0x2AC060) */
+bool CMission::ReOpen_Unload2()
+{
+    zdb::CWorld *world = zdb::CWorld::m_world;
+
+    m_e0 = 0;
+    CEntity::RemoveAll();
+    CAiEvent::Close();
+    world->ClearLightMapList();
+    world->ClearShadowList();
+    world->GarbageCollect();
+    ClearFreeList__14CSched_ManagerFb(&zTaskScheduler, true);
+    Headset::Reset();
+    CSndInstance::PostTick(0.0f, 0);
+    return true;
+}
 
 /* the online game started (OVL1 0x2A9F00) */
 CZNetGame *CMission::CreateNetGame()
