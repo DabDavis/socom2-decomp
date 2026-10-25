@@ -65,6 +65,7 @@ public:
     };
 
     void Initialize();
+    void UnInitialize();
     bool TenSecondLaunch(bool launch);
     void SetE3RoundCount(int count);
     MP_MAJOR_GAME_STATE MPMajorGameState(MP_MAJOR_GAME_STATE state);
@@ -75,28 +76,54 @@ public:
 
     unsigned char _0[0xc];
     CValve *m_pE3RoundValve;   // 0xc
-    unsigned char _10[0x20 - 0x10];
+    int m_10;   // 0x10 (SOCOM 1's at 0xc)
+    int m_14;   // 0x14 (SOCOM 1's at 0x10)
+    int m_18;   // 0x18 (SOCOM 1's at 0x14)
+    int m_1c;   // 0x1c (SOCOM 1's at 0x18)
     CValve *m_pMyMajorGameStateValve;   // 0x20 (SOCOM 1's at 0x1c)
     CValve *m_pMyMinorGameStateValve;   // 0x24 (SOCOM 1's at 0x20)
-    unsigned char _28[0x2c - 0x28];
+    int m_28;   // 0x28 (SOCOM 1's at 0x24)
     CValve *m_pLateJoinerValve;   // 0x2c (SOCOM 1's at 0x28)
     unsigned char _30[0x34 - 0x30];
     CValve *m_pLaunchSecondsValve;   // 0x34 (SOCOM 1's at 0x30)
-    unsigned char _38[0xcc - 0x38];
+    unsigned char _38[0x40 - 0x38];
+    int m_40;   // 0x40 (SOCOM 1's at 0x3c)
+    unsigned char _44[0x4c - 0x44];
+    int m_4c;   // 0x4c (SOCOM 1's at 0x48)
+    unsigned char _50[0x84 - 0x50];
+    int m_84[5];   // 0x84 (SOCOM 1's at 0x50)
+    unsigned char _98[0xbc - 0x98];
+    int m_bc;   // 0xbc (SOCOM 1's at 0x80)
+    int m_c0;   // 0xc0 (SOCOM 1's at 0x84)
+    unsigned char _c4[0xc8 - 0xc4];
+    int m_c8;   // 0xc8 (SOCOM 1's at 0x8c)
     bool m_late_joiner;   // 0xcc (SOCOM 1's at 0x94)
-    unsigned char _cd[0xd4 - 0xcd];
+    unsigned char _cd;
+    unsigned char m_ce;   // 0xce (SOCOM 1's at 0x96)
+    unsigned char m_cf;   // 0xcf (SOCOM 1's at 0x97)
+    unsigned char _d0[0xd4 - 0xd0];
     unsigned char m_d4;   // 0xd4 (SOCOM 1's at 0x9b)
-    unsigned char _d5[0xd8 - 0xd5];
+    unsigned char m_d5;   // 0xd5 (SOCOM 1's at 0x9c)
+    unsigned char m_d6;   // 0xd6 (SOCOM 1's at 0x9d)
+    unsigned char _d7;
     bool m_ten_second_launch;   // 0xd8 (SOCOM 1's at 0x9f)
-    unsigned char _d9[0xdc - 0xd9];
+    unsigned char m_d9;   // 0xd9: SOCOM II's
+    unsigned char _da[0xdc - 0xda];
     bool m_respawn;   // 0xdc: respawning on (with the valve "Respawn")
     unsigned char _dd[0xe4 - 0xdd];
     int m_launch_time;   // 0xe4 (SOCOM 1's at 0xa8)
-    unsigned char _e8[0xf4 - 0xe8];
+    unsigned char _e8[0xec - 0xe8];
+    unsigned int m_round_clock;   // 0xec: the round's time left, in milliseconds (the name ours)
+    unsigned char _f0[0xf4 - 0xf0];
     unsigned char m_launch_f4;   // 0xf4 (SOCOM 1's at 0xbc)
-    unsigned char _f5[0x111 - 0xf5];
+    unsigned char _f5[0xf8 - 0xf5];
+    int m_f8;   // 0xf8 (SOCOM 1's at 0xc0)
+    unsigned char _fc[0x100 - 0xfc];
+    int m_100;   // 0x100 (SOCOM 1's at 0xc8)
+    unsigned char _104[0x110 - 0x104];
+    unsigned char m_110;   // 0x110 (SOCOM 1's at 0xd8)
     unsigned char m_game_type;   // 0x111 (SOCOM 1's m_game_type at 0xd9)
-    unsigned char _112;
+    unsigned char m_112;   // 0x112 (SOCOM 1's at 0xda)
     MP_MAJOR_GAME_STATE m_mp_major_game_state;   // 0x113 (SOCOM 1's at 0xdb)
     MP_MAJOR_GAME_STATE m_my_major_game_state;   // 0x114 (SOCOM 1's at 0xdc)
     MP_MINOR_GAME_STATE m_my_minor_game_state;   // 0x115 (SOCOM 1's at 0xdd)
@@ -177,10 +204,14 @@ public:
     bool _RecoverFromNetError(int error);
     void SetDelayEndMission(bool b) { m_DelayEndMission = b; }
     void SetFadingToEndMission(bool b) { m_FadingToEndMission = b; }
+    unsigned int GetTimeLeft();
+    void EndMission();
 
     unsigned char _0[0xe0];
     int m_e0;   // 0xe0: cleared before the second unload (SOCOM II's; the name ours)
-    unsigned char _e4[0xfc - 0xe4];
+    unsigned char _e4[0xe8 - 0xe4];
+    float m_e8;   // 0xe8: the mission's own clock, in seconds (the name ours)
+    unsigned char _ec[0xfc - 0xec];
     unsigned char m_DelayEndMission : 1;   // 0xfc (SOCOM 1's bytes at 0x70, 0x71)
     unsigned char m_FadingToEndMission : 1;
     int m_fade_counter;   // 0x100 (SOCOM 1's at 0x74)
@@ -285,6 +316,22 @@ void ftsNetworkGameUninit();
 void DMEDisconnectFromGameServer();
 extern void (*data_0044F3CC)(int);
 
+/* the mission ended, unless held: completed, the screen and the flashes cleared, the camera's death
+ * view reset and the exit state pushed (SOCOM II's, the name ours: SOCOM 1's fade tick did this in
+ * place; CCoreState::Tick calls it, the fade tick below inlines it; OVL1 0x2A9A70) */
+void CMission::EndMission()
+{
+    if (!m_DelayEndMission) {
+        _OnMissionComplete();
+        func_003AFD50(1, 0, 0, 0, 0);
+        Reset__14CFlashFXVectorFv(theHUD->m_flashes);
+        theMission.SetDelayEndMission(false);
+        SetFadingToEndMission(false);
+        ResetDeathCam__10CAppCameraFv(appCamera);
+        Push__5CGameFP10CGameStateUi(&theGame, data_004086A0, 0);
+    }
+}
+
 /* the fade's steps: two flashes, then the mission completed and the exit state pushed (SOCOM 1's,
  * the same steps; OVL1 0x2A98B0) */
 bool CMission::FadeToEndMissionTick(float dT)
@@ -304,15 +351,7 @@ bool CMission::FadeToEndMissionTick(float dT)
                 m_next_fade_time = 1.1f;
             } else {
                 SetDelayEndMission(false);
-                if (!m_DelayEndMission) {
-                    _OnMissionComplete();
-                    func_003AFD50(1, 0, 0, 0, 0);
-                    Reset__14CFlashFXVectorFv(theHUD->m_flashes);
-                    theMission.SetDelayEndMission(false);
-                    SetFadingToEndMission(false);
-                    ResetDeathCam__10CAppCameraFv(appCamera);
-                    Push__5CGameFP10CGameStateUi(&theGame, data_004086A0, 0);
-                }
+                EndMission();
                 return true;
             }
             m_fade_counter--;
@@ -633,6 +672,57 @@ extern "C" bool func_002A7560(CZNetGame *game, bool on)
     return game->m_respawn;
 }
 
+/* the round's time left in whole seconds: the online game's clock in a network game, else the
+ * mission's own (SOCOM II's, the name ours: the HUD's timer text, the bomb and CanPlaceBomb read it;
+ * OVL1 0x2A6AD0) */
+unsigned int CMission::GetTimeLeft()
+{
+    if (theNetwork.m_1 && m_pNetGame)
+        return 0.001f * m_pNetGame->m_round_clock;
+    return (int)m_e8;
+}
+
+/* the online game let go of: its state and clocks cleared, the rounds back to none (OVL1 0x2A75F0,
+ * SOCOM 1's UnInitialize ahead of Initialize, the fields moved; DestroyNetGame ends calling it).
+ * OPEN, 6 instructions, registers only: the round valve's value, its state test and the constant 1
+ * for 0x112 take v0 in the target, v1 here. Tried: the valve set through zanim.h's SetValue and
+ * through the helper with the count stored apart */
+void CZNetGame::UnInitialize()
+{
+    m_f8 = 0;
+    m_100 = 0;
+    m_mp_major_game_state = MP_MAJOR_UNKNOWN;
+    m_my_minor_game_state = MP_MINOR_UNKNOWN;
+    m_my_major_game_state = MP_MAJOR_UNKNOWN;
+    SetE3RoundCount(0);
+    m_bc = 0;
+    m_c8 = 0;
+    m_c0 = 0;
+    m_112 = 1;
+    m_d5 = 0;
+    m_cf = 0;
+    m_d6 = 0;
+    m_late_joiner = false;
+    m_ce = 0;
+    m_ten_second_launch = false;
+    m_110 = 0;
+    m_18 = 0;
+    m_10 = 0;
+    m_1c = 0;
+    m_d9 = 0;
+    m_84[0] = 0;
+    m_84[1] = 0;
+    m_84[2] = 0;
+    m_84[3] = 0;
+    m_84[4] = 0;
+    m_pMyMajorGameStateValve = 0;
+    m_pMyMinorGameStateValve = 0;
+    m_28 = 0;
+    m_14 = 0;
+    m_40 = 0;
+    m_4c = 0;
+}
+
 /* the rounds played so far, and their valve (OVL1 0x2A7510) */
 void CZNetGame::SetE3RoundCount(int count)
 {
@@ -872,6 +962,72 @@ const char *GetCustomCharTypeName(int i)
 const char *GetDefCharTypeName(int i)
 {
     return g_arrDefCharTypeNames[i];
+}
+
+/* the mission's extra string tables: their count, then their names, ten characters each (the
+ * names ours) */
+struct MissionBankList {
+    /* the i'th table's name (the index unsigned: the target recomputes the address every pass) */
+    const char *GetBank(unsigned int i) const { return m_banks[i]; }
+    char *GetBank(unsigned int i) { return m_banks[i]; }
+
+    /* the count changed: a fixed array's resize, its element loops empty for names -- the target
+     * keeps both empty arms of the test (the names ours) */
+    static void Destroy(int first, int last) {}
+    static void Construct(int first, int last) {}
+    void Resize(int n)
+    {
+        if (n < m_count)
+            Destroy(n, m_count);
+        else
+            Construct(m_count, n);
+        m_count = n;
+    }
+
+    int m_count;
+    char m_banks[1][10];
+};
+
+extern "C" {
+extern MissionBankList data_00440B80;
+void *func_00361BC0();                                  /* (the sound system) */
+void func_003A3900(void *snd, const char *bank, void *arg);   /* (a bank loaded) */
+void *func_003A4460();
+}
+
+extern "C" char *strcpy(char *dst, const char *src);
+
+/* the extra string tables the mission's rdr lists, by name (SOCOM II's; PreOpen calls it; OVL1
+ * 0x2AF410).
+ * OPEN, 0x10C against 0x140: the target keeps two empty if/else tests on the count -- `0 < count`
+ * before it is cleared, `count + 1 < count` before each increment -- both arms empty, the else arm
+ * a jump placed after the epilogue: a fixed array's resize(n) whose element loops vanish for char
+ * names. MW folds every empty arm tried away: empty inline helpers (plain or template), empty for
+ * loops. The rest (the list's Count/Item/String, the name's address recomputed each pass) is
+ * written as the target reads */
+extern "C" void func_002AF410(const _zrdr *rdr)
+{
+    data_00440B80.Resize(0);
+    _zrdr *list = zrdr_findtag(rdr, "ExtraStringTables");
+    unsigned short n = 0;
+
+    if (list)
+        n = list->Count();
+    for (int i = 0; i < n; i++) {
+        data_00440B80.Resize(data_00440B80.m_count + 1);
+        strcpy(data_00440B80.GetBank(i), list->Item(i)->String());
+    }
+}
+
+/* a string table loaded, then every extra one the mission lists (SOCOM II's; CLoadState::Init calls
+ * it with the load screen's; OVL1 0x2AF360) */
+extern "C" void func_002AF360(const char *bank)
+{
+    func_003A3900(func_00361BC0(), bank, func_003A4460());
+    int n = data_00440B80.m_count;
+
+    for (int i = 0; i < n; i++)
+        func_003A3900(func_00361BC0(), data_00440B80.GetBank(i), func_003A4460());
 }
 
 /* the player's SEAL and its controller (only the controller's state byte) */
