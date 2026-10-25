@@ -129,16 +129,159 @@ void CWorld::AddShadow(CNode *node)
     m_shadows.push_back(new CRenderMap(node, RENDER_MAP_SHADOW, tex));
 }
 
-/* a shadow caster made for the node and listed */
+/* a vector's storage cut to its size: a copy of it swapped in. Inlined one level, as zsys.h's
+ * FreeVector is -- its copy constructor, swap and destructor called out of line (the name ours) */
+template <class V>
+inline void TrimVector(V &v)
+{
+    V tmp(v);
+
+    v.swap(tmp);
+}
+
+/* the children's storage cut to their count, and each child but the cells its atom pointers'
+ * (SOCOM 1's; the vector's copy constructor's out-of-line copy follows it) */
+void CWorld::GarbageCollect()
+{
+    TrimVector<std::vector<CNode *> >(GetChildren());
+    for (CNodeVector::iterator it = GetChildren().begin(); it != GetChildren().end(); ++it)
+        if (!dynamic_cast<CCell *>(*it))
+            (*it)->ShrinkAtomBasePtrs();
+}
+
+/* a shadow caster made for the node and listed (pinned: AddChild calls it, where AddShadow, its
+ * neighbour, is inlined) */
+#pragma auto_inline off
 void CWorld::AddShadowCaster(CNode *node)
 {
     m_shadow_casters.push_back(new CShadowCaster(node));
 }
+#pragma auto_inline reset
 
 /* room for n more children (SOCOM 1's) */
 void CWorld::ReserveChildren(int n)
 {
     m_child.reserve(m_child.size() + n);
+}
+
+/* a child added: taken from its old parent, put in the grid and listed (room made a hundred at a
+ * time); a model that casts shadows given one, a shadow caster made for a node that wants one, and
+ * a common character set member made dynamic and given its textures (SOCOM 1's; SOCOM II's shadow
+ * flag is 0xA1's bit 5, and the caster and the character set are its own) */
+void CWorld::AddChild(CNode *child)
+{
+    if (child->m_parent && child->m_parent != this)
+        child->m_parent->DeleteChild(child);
+    m_grid.Insert(child);
+    child->m_parent = this;
+    if (m_child.size() == m_child.capacity())
+        m_child.reserve(m_child.size() + 100);
+    m_child.push_back(child);
+    CNode *model = child->m_type == 2 ? child : 0;
+
+    if (model && model->m_socom2_a1_bits.bit5 == 1)
+        AddShadow(model);
+    if (child->m_shadow == 1)
+        AddShadowCaster(child);
+    if (child->m_char_common) {
+        child->SetDynamic(true, true);
+        CNode *n = child;
+
+        n->m_socom2_a1_bits.bit2 = 1;
+        n->m_bumpmap = 1;
+        CNode *node = child;
+        CAssetLib *lib = CAssetMgr::m_assets.FindLib(CHARSETCOMMON);
+
+        AddTextureAssetCharacter(lib, node);
+    }
+}
+
+}
+
+/* a shadow deleted when it is the node's (SOCOM 1's functor, by the name its remove_if instance
+ * carries) */
+struct delshadow {
+    delshadow(zdb::CNode *node) : m_node(node) {}
+    bool operator()(zdb::CRenderMap *shadow) const
+    {
+        if (shadow->m_node == m_node) {
+            delete shadow;
+            return true;
+        }
+        return false;
+    }
+
+    zdb::CNode *m_node;
+};
+
+namespace zdb {
+
+/* a child taken off: its shadows deleted, out of the grid unless a cell, off the list and its
+ * parent forgotten, its holders counted down (SOCOM 1's; the light maps' half is gone). A child
+ * of another node gives back its count.
+ * OPEN, 2 instructions (0x11C of 0x114): DeleteLightMap's -- the target builds end() once (76(sp)),
+ * passes it to remove_if and copies it for erase's last after the call, where this stores it twice
+ * and copies before; the remove_if instance (0x320800) misses on its predicate, which the inlined
+ * find_if copies where the target reads it in place (include/algorithm's) */
+int CWorld::DeleteChild(CNode *child)
+{
+    if (!child)
+        return 0;
+    if (child->m_socom2_a1_bits.bit5 == 1)
+        m_shadows.erase(std::remove_if(m_shadows.begin(), m_shadows.end(), delshadow(child)),
+                        m_shadows.end());
+    if (child->m_parent != this)
+        return child->m_count;
+    if (!dynamic_cast<CCell *>(child))
+        m_grid.Remove(child);
+    m_child.Remove(child);
+    child->m_parent = 0;
+    return child->Release();
+}
+
+/* a child that is not a cell let go of: out of the grid, its parent forgotten, deleted when no one
+ * holds it; its slot cleared (DeleteChildren's first pass; the name is ours) */
+struct ReleaseNonCell {
+    ReleaseNonCell(CWorld *world) : m_world(world) {}
+    CNode *operator()(CNode *node) const
+    {
+        if (dynamic_cast<CCell *>(node))
+            return node;
+        m_world->m_grid.Remove(node);
+        node->m_parent = 0;
+        if (!node->Release())
+            delete node;
+        return 0;
+    }
+
+    CWorld *m_world;
+};
+
+/* a cell deleted, its slot cleared (the second pass; the name is ours) */
+struct DeleteCell {
+    DeleteCell() {}
+    CNode *operator()(CNode *node) const
+    {
+        CCell *cell = dynamic_cast<CCell *>(node);
+
+        if (cell) {
+            cell->m_parent = 0;
+            delete cell;
+            return 0;
+        }
+        return node;
+    }
+};
+
+/* every child taken off: the others first, then the cells, the list emptied (SOCOM 1's).
+ * OPEN, 2 instructions (0x27C of 0x274): each end() reloads data_ where the target computes it from
+ * the load begin() made (the pod vector's end() lever, as ~CAssetLib's); the functors and the
+ * transforms' copies are the target's */
+void CWorld::DeleteChildren()
+{
+    std::transform(m_child.begin(), m_child.end(), m_child.begin(), ReleaseNonCell(this));
+    std::transform(m_child.begin(), m_child.end(), m_child.begin(), DeleteCell());
+    m_child.clear();
 }
 
 /* the wind ticked; the global lights' matrices rebuilt into the camera's VU block when they

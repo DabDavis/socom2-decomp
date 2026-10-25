@@ -4503,7 +4503,7 @@
 0x002D5C80 0x380 func_002D5C80  # OVL1
 0x002D6000 0xD8 Update__Q23zdb5CGridFPQ23zdb5CNode  # OVL1; s1:align
 0x002D60E0 0xBC Remove__Q23zdb5CGridFPQ23zdb5CNode  # OVL1; s1:calls
-0x002D61A0 0x8 func_002D61A0  # OVL1
+0x002D61A0 0x8 Insert__Q23zdb5CGridFPQ23zdb5CNode  # OVL1; s1:exact by hand (SOCOM 1's Insert, the same 8 bytes: j to gridAddNodeToGrids; CWorld::AddChild calls it where SOCOM 1's does)
 0x002D61B0 0xA8 GetNextAtomOrdered__Q23zdb5CGridFv  # OVL1; s1:align
 0x002D6260 0x118 GetNextAtom__Q23zdb5CGridFv  # OVL1; s1:align
 0x002D6380 0xB0 gridGetGridXandZIndex__Q23zdb5CGridFPiPiff  # OVL1; s1:align
@@ -4520,7 +4520,7 @@
 0x002D71C0 0x1B0 func_002D71C0  # OVL1
 0x002D7370 0x150 SetCellBoundary__Q23zdb5CGridF6CPnt3D6CPnt3D  # OVL1; s1:align
 0x002D74C0 0xB4 gridRemoveNodeFromGrids__Q23zdb5CGridFPQ23zdb5CNode  # OVL1; s1:align
-0x002D7580 0x314 func_002D7580  # OVL1
+0x002D7580 0x314 gridAddNodeToGrids__Q23zdb5CGridFPQ23zdb5CNode  # OVL1; s1:callee by hand (Insert's tail call, as SOCOM 1's Insert's; between gridRemoveNodeFromGrids and gridGetAtomBasePtr as there)
 0x002D78A0 0x58 gridGetAtomBasePtr__Q23zdb5CGridFii  # OVL1; s1:exact
 0x002D7900 0x70 __dt__Q23zdb5CGridFv  # OVL1; s1:align
 0x002D7970 0x60 __ct__Q23zdb5CGridFv  # OVL1; s1:align
@@ -5616,7 +5616,7 @@
 0x0031F570 0x204 func_0031F570  # OVL1
 0x0031F780 0x228 __ct__Q23zdb13CShadowCasterFPQ23zdb5CNode  # OVL1; new in SOCOM II, the names ours: AddShadowCaster news 0x70 bytes and calls it with the node
 0x0031F9B0 0xD8 GarbageCollect__Q23zdb6CWorldFv  # OVL1; s1:align
-0x0031FA90 0x28 func_0031FA90  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
+0x0031FA90 0x28 __ct__Q23std54vector<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>>FRCQ23std54vector<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>>  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); the vector's implicit copy constructor, out of line after GarbageCollect (its first caller, through the inline TrimVector): __vector_imp's copy inlined, __vector_pod's (0x259B40) called
 0x0031FAC0 0x8C AddShadow__Q23zdb6CWorldFPQ23zdb5CNode  # OVL1; s1:align
 0x0031FB50 0x138 DeleteLightMap__Q23zdb6CWorldFPQ23zdb9CLightMap  # OVL1; s1:callee by hand (CZAnim::StopLights calls it on m_world with a light node on the world's list, where SOCOM 1's calls CWorld::DeleteLightMap)
 0x0031FC90 0x80 AddLightMap__Q23zdb6CWorldFPQ23zdb9CLightMap  # OVL1; s1:align
@@ -5630,8 +5630,8 @@
 0x00320770 0x8 Init__Q23zdb6CWorldFv  # OVL1; s1:order by hand (SOCOM 1's Init, between Uninit and GetVersion)
 0x00320780 0xC GetVersion__Q23zdb6CWorldFv  # OVL1; s1:exact by hand (SOCOM 1's GetVersion, the same three words returning 0x10001, after Uninit and Init as there; Load and LoadAssetLib_PS2 pass it to the archive's Open)
 0x00320790 0x6C remove_copy<Q33std70__vector_imp<PQ23zdb9CLightMap,Q23std28allocator<PQ23zdb9CLightMap>,1>8iterator,Q33std70__vector_imp<PQ23zdb9CLightMap,Q23std28allocator<PQ23zdb9CLightMap>,1>8iterator,PQ23zdb9CLightMap>__3stdFQ33std70__vector_imp<PQ23zdb9CLightMap,Q23std28allocator<PQ23zdb9CLightMap>,1>8iteratorQ33std70__vector_imp<PQ23zdb9CLightMap,Q23std28allocator<PQ23zdb9CLightMap>,1>8iteratorQ33std70__vector_imp<PQ23zdb9CLightMap,Q23std28allocator<PQ23zdb9CLightMap>,1>8iteratorRCPQ23zdb9CLightMap_Q33std70__vector_imp<PQ23zdb9CLightMap,Q23std28allocator<PQ23zdb9CLightMap>,1>8iterator  # OVL1; the std::remove_copy instance DeleteLightMap calls (SOCOM 1's remove_copy<CLightMap **> at the same place, after GetVersion; SOCOM II's iterators are classes, by value on the stack)
-0x00320800 0x110 func_00320800  # OVL1
-0x00320910 0xE4 func_00320910  # OVL1
+0x00320800 0x110 remove_if<Q33std74__vector_imp<PQ23zdb10CRenderMap,Q23std30allocator<PQ23zdb10CRenderMap>,1>8iterator,9delshadow>__3stdFQ33std74__vector_imp<PQ23zdb10CRenderMap,Q23std30allocator<PQ23zdb10CRenderMap>,1>8iteratorQ33std74__vector_imp<PQ23zdb10CRenderMap,Q23std30allocator<PQ23zdb10CRenderMap>,1>8iterator9delshadow_Q33std74__vector_imp<PQ23zdb10CRenderMap,Q23std30allocator<PQ23zdb10CRenderMap>,1>8iterator  # OVL1; the template instance CWorld::DeleteChild calls on m_shadows (SOCOM 1's remove_if<PPQ23zdb10CRenderMap,9delshadow>, over SOCOM II's class iterator): find_if inlined with the functor (a node at 0x180 deleted), then remove_copy_if
+0x00320910 0xE4 remove_copy_if<Q33std74__vector_imp<PQ23zdb10CRenderMap,Q23std30allocator<PQ23zdb10CRenderMap>,1>8iterator,Q33std74__vector_imp<PQ23zdb10CRenderMap,Q23std30allocator<PQ23zdb10CRenderMap>,1>8iterator,9delshadow>__3stdFQ33std74__vector_imp<PQ23zdb10CRenderMap,Q23std30allocator<PQ23zdb10CRenderMap>,1>8iteratorQ33std74__vector_imp<PQ23zdb10CRenderMap,Q23std30allocator<PQ23zdb10CRenderMap>,1>8iteratorQ33std74__vector_imp<PQ23zdb10CRenderMap,Q23std30allocator<PQ23zdb10CRenderMap>,1>8iterator9delshadow_Q33std74__vector_imp<PQ23zdb10CRenderMap,Q23std30allocator<PQ23zdb10CRenderMap>,1>8iterator  # OVL1; the template instance the remove_if above calls (SOCOM 1's remove_copy_if<...,9delshadow>, over SOCOM II's class iterator)
 0x00320A00 0xB4 AddMipLevels__Q23zdb9CAssetMgrFPQ23zdb11CDynTexListQ23zdb12_RenderPhase  # OVL1; new in SOCOM II, the names ours (the world lane, node_assetlib.cpp's last-defined function): each texture of a dynamic list followed through its mip levels (texture+0x54) with FindMipLevel on m_assets, each level found Add-ed to the list; CTextureAssetCharacters' adder calls it with the library's render phase
 0x00320AC0 0x94 ReleaseLibRef__Q23zdb9CAssetMgrFPQ23zdb9CAssetLib  # OVL1; s1:align
 0x00320B60 0x208 GetLoadedLibRefs__Q23zdb9CAssetMgrFPPCciPQ23zdb10CAssetList  # OVL1; new in SOCOM II, the name ours (after SOCOM 1's GetLoadedLibRef): GetLoadedLibRef's three cases over a name array -- held from m_assets or the recycle bin into the caller's list, the bin emptied, the missing ones loaded with a CSaveLoad

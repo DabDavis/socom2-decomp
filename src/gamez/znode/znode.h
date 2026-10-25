@@ -677,6 +677,9 @@ public:
     void SetTraversalBoundary(const CPnt3D *pnts, int n, bool b);
     CGridAtom *StartTraversal();
     CGridAtom *GetNextAtom();
+    /* a node put in the grid, and taken out (SOCOM 1's; Insert tail-calls gridAddNodeToGrids) */
+    void Insert(CNode *node);
+    void Remove(CNode *node);
 
     unsigned char _0[0x14];   // tag_GRID_PARAMS
     CFRect m_extents;   // 0x14
@@ -839,6 +842,9 @@ public:
     virtual ~CWorld();
     virtual bool Read(CSaveLoad &io);
     virtual void ReserveChildren(int n);
+    virtual void AddChild(CNode *child);
+    virtual int DeleteChild(CNode *child);
+    virtual void DeleteChildren();
     void DeleteLightMap(CLightMap *light);
     void AddLightMap(CLightMap *light);
     void AddShadow(CNode *node);
@@ -891,6 +897,8 @@ public:
     /* the world model's children made the world's (SOCOM 1's) */
     bool DismemberWorldModel();
     void Segregate_CCells(CNode *node, CNodeVector &cells, CNodeVector &others);
+    /* the children's storage and their atom pointers cut down (SOCOM 1's) */
+    void GarbageCollect();
     void WipeoutTextureAssetCharacters();
     void ReleaseTextureAssetCharacters();
     void RemoveEmptyTextureAssetCharacters();
