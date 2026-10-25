@@ -11,6 +11,10 @@ struct NetObject {
 
 class CZNetwork {
 public:
+    void zNetRegisterRemoteObjectCallback(int index, void (*creation)(int, int),
+                                          void (*update)(int, int, int),
+                                          void (*postupdate)(int, int, int),
+                                          void (*deletion)(int, int));
     NetObject *zNetGetObject(int index);
 };
 
@@ -20,13 +24,10 @@ extern "C" {
 extern int data_00441598;            /* the structure's index */
 extern unsigned char data_004415A0[];   /* (its one field) */
 
-void func_00620D28();                /* (the DME's: SOCOM 1's NetRegisterObjectStart) */
-void func_00620DB0(void *field, int offset, int a, int b, int size, int type);   /* (NetObjectField) */
-void func_00620E98(int *index, const char *name, int size);   /* (NetRegisterStructure) */
+void NetRegisterObjectStart();   /* (the DME's) */
+void NetObjectField(void *field, int offset, int a, int b, int size, int type);
+void NetRegisterStructure(int *index, const char *name, int size);
 int func_002BD0E0();
-void func_0030CE80(CZNetwork *net, int index, void (*creation)(int, int),
-                   void (*update)(int, int, int), void (*postupdate)(int, int, int),
-                   void (*deletion)(int, int));   /* (CZNetwork::zNetRegisterRemoteObjectCallback) */
 
 void func_002C2AF0(int client, int index);
 void func_002C2AC0(int client, int index, int size);
@@ -37,11 +38,14 @@ void func_002C2A60(int client, int index);
 /* the kind registered: one 460-byte field, and its callbacks (OVL1 0x2C2B20) */
 extern "C" void func_002C2B20()
 {
-    func_00620D28();
-    func_00620DB0(data_004415A0, 0, 1, 1, 460, func_002BD0E0());
-    func_00620E98(&data_00441598, "BlatherState", 460);
-    func_0030CE80(&theNetwork, data_00441598, func_002C2AF0, func_002C2AC0, func_002C2A90,
-                  func_002C2A60);
+    NetRegisterObjectStart();
+    NetObjectField(data_004415A0, 0, 1, 1, 460, func_002BD0E0());
+    NetRegisterStructure(&data_00441598, "BlatherState", 460);
+    theNetwork.zNetRegisterRemoteObjectCallback(data_00441598,
+                                                func_002C2AF0,
+                                                func_002C2AC0,
+                                                func_002C2A90,
+                                                func_002C2A60);
 }
 
 /* the remote callbacks: creation, update, post-update and deletion, each looking its object up

@@ -11,8 +11,19 @@ struct NetObject {
     void *m_data;   // 0x1c
 };
 
+/* the DME's ownership and lifespan of an object (their values are not in SOCOM 1's DWARF, only
+ * their names in zNetCreateObject's) */
+enum NetOwnershipStatus {};
+enum NetObjectLifespan {};
+
 class CZNetwork {
 public:
+    void zNetRegisterRemoteObjectCallback(int index, void (*creation)(int, int),
+                                          void (*update)(int, int, int),
+                                          void (*postupdate)(int, int, int),
+                                          void (*deletion)(int, int));
+    int zNetCreateObject(int *index, NetOwnershipStatus own, NetObjectLifespan life, unsigned int a,
+                         int b, unsigned int c, int d, void *e, char *name, int structure);
     NetObject *zNetGetObject(int index);
 };
 
@@ -87,13 +98,7 @@ struct TypeBombObject {
     unsigned char state;   // 0x10
 };
 
-/* a valve's change of state, its callbacks told (zanim.h's CValve has neither the enum nor the
- * setter, so they are spelled here as fts_mission.cpp spells them) */
-/* VALVE_STATE and CValve::MakeCallbacks are zanim.h's now; the call still goes by its
- * placeholder */
-extern "C" void func_003519F0(CValve *valve, VALVE_STATE state);   /* CValve::MakeCallbacks */
-
-/* CValve::SetValue, inlined in both builds */
+/* CValve::SetValue, inlined in both builds (CValve, VALVE_STATE and MakeCallbacks are zanim.h's) */
 inline void SetValveValue(CValve *valve, int value)
 {
     VALVE_STATE state = VALVE_SAME;
@@ -102,7 +107,7 @@ inline void SetValveValue(CValve *valve, int value)
         state = value == 0 ? VALVE_OFF : VALVE_ON;
     valve->m_value = value;
     if (state != VALVE_SAME)
-        func_003519F0(valve, state);
+        valve->MakeCallbacks(state);
 }
 
 void SendBombStateRequest(int who, unsigned char state, const CPnt3D *pos);
@@ -114,18 +119,13 @@ extern int data_00441388;
 extern int data_00441390;
 extern int data_00441398;
 
-void func_00620D28();   /* (the DME's: SOCOM 1's NetRegisterObjectStart) */
-void func_00620DB0(int *field, int offset, int a, int b, int c, void *type);   /* (NetObjectField) */
-void func_00620E98(int *index, const char *name, int size);   /* (NetRegisterStructure) */
-void func_0030CE80(CZNetwork *net, int index, void (*creation)(int, int),
-                   void (*update)(int, int, int), void (*postupdate)(int, int, int),
-                   void (*deletion)(int, int));   /* (CZNetwork::zNetRegisterRemoteObjectCallback) */
+void NetRegisterObjectStart();   /* (the DME's) */
+void NetObjectField(int *field, int offset, int a, int b, int c, void *type);
+void NetRegisterStructure(int *index, const char *name, int size);
 void *func_002BD060();   /* (fts_remote.cpp's broadcast schedules) */
 void *func_002BD0A0();
 bool func_002A72A0(CZNetGame *game);   /* (SOCOM II's: a game type 1 or 2) */
 void func_0059DCE0(int state);
-int func_0030D670(CZNetwork *net, int *index, int own, int life, unsigned int a, int b,
-                  unsigned int c, int d, void *e, const char *name, int structure);   /* (CZNetwork::zNetCreateObject) */
 void *memset(void *dst, int c, unsigned int n);
 extern int data_004413A0;   /* (the bomb's time) */
 }
@@ -137,15 +137,17 @@ void CZBombState::zNetRegisterBomb()
     TypeBombObject b;
     TypeBombObject *p = &b;
 
-    func_00620D28();
-    func_00620DB0(&data_00441380, (int)&p->pos - (int)p, 12, 13, 1, func_002BD060());
-    func_00620DB0(&data_00441388, (int)&p->state - (int)p, 1, 1, 1, func_002BD0A0());
-    func_00620DB0(&data_00441390, (int)&p->holder - (int)p, 2, 3, 1, func_002BD0A0());
-    func_00620DB0(&data_00441398, (int)&p->defuser - (int)p, 2, 3, 1, func_002BD0A0());
-    func_00620E98(&m_NetStructIndexBombObject, "BombState", sizeof(TypeBombObject));
-    func_0030CE80(&theNetwork, m_NetStructIndexBombObject, RemoteBombCreationCallback,
-                  RemoteBombUpdateCallback, RemoteBombPostUpdateCallback,
-                  RemoteBombDeletionCallback);
+    NetRegisterObjectStart();
+    NetObjectField(&data_00441380, (int)&p->pos - (int)p, 12, 13, 1, func_002BD060());
+    NetObjectField(&data_00441388, (int)&p->state - (int)p, 1, 1, 1, func_002BD0A0());
+    NetObjectField(&data_00441390, (int)&p->holder - (int)p, 2, 3, 1, func_002BD0A0());
+    NetObjectField(&data_00441398, (int)&p->defuser - (int)p, 2, 3, 1, func_002BD0A0());
+    NetRegisterStructure(&m_NetStructIndexBombObject, "BombState", sizeof(TypeBombObject));
+    theNetwork.zNetRegisterRemoteObjectCallback(m_NetStructIndexBombObject,
+                                                RemoteBombCreationCallback,
+                                                RemoteBombUpdateCallback,
+                                                RemoteBombPostUpdateCallback,
+                                                RemoteBombDeletionCallback);
 }
 
 /* the bomb's object appears: the two bomb valves made and cleared, the status reset, the
@@ -238,8 +240,8 @@ int CZBombState::CreateLocalBomb()
 {
     int index;
 
-    if (func_0030D670(&theNetwork, &index, 1, 2, 0, 0, 0, 0, 0, "BombObject",
-                      m_NetStructIndexBombObject))
+    if (theNetwork.zNetCreateObject(&index, (NetOwnershipStatus)1, (NetObjectLifespan)2, 0, 0, 0,
+                                    0, 0, "BombObject", m_NetStructIndexBombObject))
         return -1;
     NetObject *obj = theNetwork.zNetGetObject(index);
 

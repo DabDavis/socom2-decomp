@@ -44,13 +44,7 @@ public:
     static Container m_actions;
 };
 
-/* a valve's change of state, its callbacks told (SOCOM 1's CValve::MakeCallbacks; zanim.h's CValve
- * has neither the enum nor the setter, so they are spelled here as fts_remote.cpp spells them) */
-/* VALVE_STATE and CValve::MakeCallbacks are zanim.h's now; the call still goes by its
- * placeholder */
-extern "C" void func_003519F0(CValve *valve, VALVE_STATE state);   /* CValve::MakeCallbacks */
-
-/* CValve::SetValue, inlined in both builds */
+/* CValve::SetValue, inlined in both builds (CValve, VALVE_STATE and MakeCallbacks are zanim.h's) */
 inline void SetValveValue(CValve *valve, int value)
 {
     VALVE_STATE state = VALVE_SAME;
@@ -59,7 +53,7 @@ inline void SetValveValue(CValve *valve, int value)
         state = value == 0 ? VALVE_OFF : VALVE_ON;
     valve->m_value = value;
     if (state != VALVE_SAME)
-        func_003519F0(valve, state);
+        valve->MakeCallbacks(state);
 }
 
 CZSealBody *ftsGetPlayer();

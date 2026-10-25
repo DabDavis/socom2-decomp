@@ -20,8 +20,19 @@ struct NetObject {
     void *m_data;   // 0x1c
 };
 
+/* the DME's ownership and lifespan of an object (their values are not in SOCOM 1's DWARF, only
+ * their names in zNetCreateObject's) */
+enum NetOwnershipStatus {};
+enum NetObjectLifespan {};
+
 class CZNetwork {
 public:
+    void zNetRegisterRemoteObjectCallback(int index, void (*creation)(int, int),
+                                          void (*update)(int, int, int),
+                                          void (*postupdate)(int, int, int),
+                                          void (*deletion)(int, int));
+    int zNetCreateObject(int *index, NetOwnershipStatus own, NetObjectLifespan life, unsigned int a,
+                         int b, unsigned int c, int d, void *e, char *name, int structure);
     int zNetGetMyGameClientIndex();
     NetObject *zNetGetObject(int index);
 
@@ -45,21 +56,24 @@ public:
     int m_object_index;   // 0xb0 (SOCOM 1's at 0x94)
 };
 
-class CZProjectileList;
+class CZProjectileList {
+public:
+    void NetRemoveProjectile(CZProjectile *proj);
+};
 
 extern "C" {
 extern CZProjectileList *m_pProjectilelist__8CZWeapon;   /* CZWeapon::m_pProjectilelist */
 
-void func_003CC500(CZProjectileList *list, CZProjectile *proj);   /* CZProjectileList::NetRemoveProjectile */
 void func_003C70E0(CZProjectile *proj, const CPnt3D *pos);   /* (SOCOM II's: the position) */
 void func_003C7060(CZProjectile *proj, const CPnt3D *vel);   /* (the velocity) */
 void func_003C6F60(CZProjectile *proj, int state);   /* (the grenade's state: an int, its byte loaded after the projectile) */
 }
 
 /* the kit and the SEAL (only the kit's grenade) */
-class CZKit;
-
-extern "C" CZProjectile *func_005BD030(CZKit *kit, const CPnt3D *pos, const CPnt3D *vel);   /* CZKit::FireGrenade */
+class CZKit {
+public:
+    CZProjectile *FireGrenade(const CPnt3D *pos, const CPnt3D *vel);
+};
 
 class CZSealBody {
 public:
@@ -102,19 +116,14 @@ extern int data_00441360;
 extern int data_00441368;
 extern int data_00441370;
 
-void func_00620D28();   /* (the DME's: SOCOM 1's NetRegisterObjectStart) */
-void func_00620DB0(int *field, int offset, int a, int b, int c, void *type);   /* (NetObjectField) */
-void func_00620E98(int *index, const char *name, int size);   /* (NetRegisterStructure) */
-void func_0030CE80(CZNetwork *net, int index, void (*creation)(int, int),
-                   void (*update)(int, int, int), void (*postupdate)(int, int, int),
-                   void (*deletion)(int, int));   /* (CZNetwork::zNetRegisterRemoteObjectCallback) */
+void NetRegisterObjectStart();   /* (the DME's) */
+void NetObjectField(int *field, int offset, int a, int b, int c, void *type);
+void NetRegisterStructure(int *index, const char *name, int size);
 void *func_002BD060();   /* (fts_remote.cpp's broadcast schedules) */
 void *func_002BD020();
 void *func_002BD0A0();
 void *func_002BD120();
-int func_0030D670(CZNetwork *net, int *index, int own, int life, unsigned int a, int b,
-                  unsigned int c, int d, void *e, const char *name, int structure);   /* (CZNetwork::zNetCreateObject) */
-void func_00623470(int index);   /* (the DME's: SOCOM 1's NetFreeObject) */
+void NetFreeObject(int index);   /* (the DME's) */
 }
 
 /* the kind registered: its four fields, their offsets taken off a local (OVL1 0x2C1850) */
@@ -123,15 +132,17 @@ void CZGrenadeState::zNetRegisterGrenade()
     TypeGrenadeObject g;
     TypeGrenadeObject *p = &g;
 
-    func_00620D28();
-    func_00620DB0(&data_00441358, (int)&p->pos - (int)p, 12, 13, 1, func_002BD060());
-    func_00620DB0(&data_00441360, (int)&p->vel - (int)p, 12, 13, 1, func_002BD020());
-    func_00620DB0(&data_00441368, (int)&p->state - (int)p, 1, 1, 1, func_002BD0A0());
-    func_00620DB0(&data_00441370, (int)&p->shooter - (int)p, 2, 3, 1, func_002BD120());
-    func_00620E98(&m_NetStructIndexGrenadeObject, "GrenadeState", sizeof(TypeGrenadeObject));
-    func_0030CE80(&theNetwork, m_NetStructIndexGrenadeObject, RemoteGrenadeCreationCallback,
-                  RemoteGrenadeUpdateCallback, RemoteGrenadePostUpdateCallback,
-                  RemoteGrenadeDeletionCallback);
+    NetRegisterObjectStart();
+    NetObjectField(&data_00441358, (int)&p->pos - (int)p, 12, 13, 1, func_002BD060());
+    NetObjectField(&data_00441360, (int)&p->vel - (int)p, 12, 13, 1, func_002BD020());
+    NetObjectField(&data_00441368, (int)&p->state - (int)p, 1, 1, 1, func_002BD0A0());
+    NetObjectField(&data_00441370, (int)&p->shooter - (int)p, 2, 3, 1, func_002BD120());
+    NetRegisterStructure(&m_NetStructIndexGrenadeObject, "GrenadeState", sizeof(TypeGrenadeObject));
+    theNetwork.zNetRegisterRemoteObjectCallback(m_NetStructIndexGrenadeObject,
+                                                RemoteGrenadeCreationCallback,
+                                                RemoteGrenadeUpdateCallback,
+                                                RemoteGrenadePostUpdateCallback,
+                                                RemoteGrenadeDeletionCallback);
 }
 
 /* a remote grenade appears: the thrower's kit throws one here (OVL1 0x2C17B0) */
@@ -152,7 +163,7 @@ void CZGrenadeState::RemoteGrenadeCreationCallback(int client, int index)
                 CPnt3D vel(data->vel.x, data->vel.y, data->vel.z);
 
                 data->body = body;
-                data->proj = func_005BD030((CZKit *)body->m_kit, &pos, &vel);
+                data->proj = ((CZKit *)body->m_kit)->FireGrenade(&pos, &vel);
             }
         }
     }
@@ -202,7 +213,7 @@ void CZGrenadeState::RemoteGrenadeDeletionCallback(int client, int index)
 
         if (data && client != theNetwork.zNetGetMyGameClientIndex() && data->proj &&
             m_pProjectilelist__8CZWeapon)
-            func_003CC500(m_pProjectilelist__8CZWeapon, data->proj);
+            m_pProjectilelist__8CZWeapon->NetRemoveProjectile(data->proj);
     }
 }
 
@@ -211,8 +222,8 @@ int CZGrenadeState::CreateLocalGrenade(CZProjectile *proj)
 {
     int index;
 
-    if (func_0030D670(&theNetwork, &index, 1, 2, 0, 0, 0, 0, 0, "KProjectileObject",
-                      m_NetStructIndexGrenadeObject))
+    if (theNetwork.zNetCreateObject(&index, (NetOwnershipStatus)1, (NetObjectLifespan)2, 0, 0, 0,
+                                    0, 0, "KProjectileObject", m_NetStructIndexGrenadeObject))
         return -1;
     NetObject *obj = theNetwork.zNetGetObject(index);
 
@@ -241,7 +252,7 @@ void CZGrenadeState::UpdateLocalGrenade(CZProjectile *proj)
             g.state = proj->m_grenadestate > data->state ? proj->m_grenadestate : data->state;
             g.shooter = proj->m_shooterID;
             if (proj->m_grenadestate == 3)
-                func_00623470(index);
+                NetFreeObject(index);
             else {
                 g.proj = data->proj;
                 g.body = data->body;

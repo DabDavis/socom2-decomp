@@ -141,9 +141,6 @@ extern bool data_003DF188;   /* (SOCOM II's: the spawners wait while it is clear
 void func_005EC9F0(CZSealBody *seal, int arg);   /* CSealUnit::InitalizeSealUnit (SOCOM II's second
                                                     argument) */
 void func_0026ADA0(CZAnimMain *zanim, zdb::CNode *node);
-
-CValve *func_003520D0(const char *name, unsigned int value, VALVE_TYPE type);   /* CValve::Create,
-                                     SOCOM 1's with a value: zanim.h's CValve lacks the overload */
 }
 
 /* the squirm switch (SOCOM 1's file static) */
@@ -401,9 +398,9 @@ void CMission::InitalizeTeamValves()
 
     for (int i = 0; i < 32; i++) {
         sprintf(name, "aiteam_%02d", i);
-        m_team_valves[i] = func_003520D0(name, 0, (VALVE_TYPE)2);
+        m_team_valves[i] = CValve::Create(name, 0, (VALVE_TYPE)2);
     }
-    m_player_valve_alive = func_003520D0("player_valve_alive", 0, (VALVE_TYPE)2);
+    m_player_valve_alive = CValve::Create("player_valve_alive", 0, (VALVE_TYPE)2);
 }
 
 /* the next vehicle waiting brought back when the timer runs out, its SEAL given a unit
