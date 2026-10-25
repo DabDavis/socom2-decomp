@@ -5884,19 +5884,19 @@
 0x00333260 0xC4 func_00333260  # OVL1
 0x00333330 0x58 func_00333330  # OVL1
 0x00333390 0x60 func_00333390  # OVL1
-0x003333F0 0x48 func_003333F0  # OVL1
-0x00333440 0x48 func_00333440  # OVL1
-0x00333490 0x60 func_00333490  # OVL1
-0x003334F0 0x48 func_003334F0  # OVL1
-0x00333540 0x80 func_00333540  # OVL1
+0x003333F0 0x48 addSTRING__10CRdrEditorFPCcPCc  # OVL1; s1:order by hand (SOCOM 1's addSTRING, first of CRdrEditor's members in both demos' order: push(tag) 0x3339B0, addstringnode 0x333610, pop 0x333770, true) -- the rdr lane
+0x00333440 0x48 addbool__10CRdrEditorFPCcb  # OVL1; the rdr lane: SOCOM II's, between addSTRING and addPNT3D: push(tag), addintnode (0x333700) of the bool re-extended (andi 0xff), pop -- the name ours
+0x00333490 0x60 addPNT3D__10CRdrEditorFPCcRC5PNT3D  # OVL1; s1:order by hand (SOCOM 1's addPNT3D: push, three reals added (0x333690) from the point's x, y, z, pop) -- the rdr lane
+0x003334F0 0x48 addint__10CRdrEditorFPCci  # OVL1; s1:order by hand (SOCOM 1's addint: push, addintnode (0x333700), pop) -- the rdr lane
+0x00333540 0x80 addrdrnode__10CRdrEditorFP5_zrdr  # OVL1; s1:order by hand (SOCOM 1's addrdrnode: a value _calloc'ed, cloned into the file's string table at this+8, pushed on the stack top's vector) -- the rdr lane
 0x003335C0 0x4C func_003335C0  # OVL1
-0x00333610 0x7C func_00333610  # OVL1
-0x00333690 0x70 func_00333690  # OVL1
-0x00333700 0x70 func_00333700  # OVL1
-0x00333770 0x238 func_00333770  # OVL1
-0x003339B0 0x6C func_003339B0  # OVL1
-0x00333A20 0xB8 func_00333A20  # OVL1
-0x00333AE0 0x48 func_00333AE0  # OVL1
+0x00333610 0x7C addstringnode__10CRdrEditorFPCc  # OVL1; s1:order by hand (SOCOM 1's addstringnode: a string value (0x335BC0 with 3), its text through CSTable::CreateString, pushed on the stack top's vector; push calls it with the tag) -- the rdr lane
+0x00333690 0x70 addrealnode__10CRdrEditorFf  # OVL1; the rdr lane: SOCOM II's, addPNT3D's helper: a real value (0x335BC0 with 2) pushed on the stack top's vector -- the name ours (zrdr's word for a float)
+0x00333700 0x70 addintnode__10CRdrEditorFi  # OVL1; s1:order by hand (SOCOM 1's addintnode: an integer value (0x335BC0 with 1) pushed on the stack top's vector; addint and addbool call it) -- the rdr lane
+0x00333770 0x238 pop__10CRdrEditorFv  # OVL1; s1:order by hand (SOCOM 1's pop: the top vector's values copied into a new array and freed, the vector deleted, the stack popped (0x3349C0), the array pushed on the next vector or made the editor's own value) -- the rdr lane
+0x003339B0 0x6C push__10CRdrEditorFPCc  # OVL1; s1:order by hand (SOCOM 1's push: the tag added when non-empty, a new CRDRNodeVec (0xC bytes) pushed on the stack's deque (0x2CF970), false) -- the rdr lane
+0x00333A20 0xB8 __dt__10CRdrEditorFv  # OVL1; s1:order by hand (SOCOM 1's ~CRdrEditor: pop until the stack (this+0x34, its size at 0x48) is empty, the stack's four this-tested levels and __deque_buf's destructor, then ~CRdrFile) -- the rdr lane
+0x00333AE0 0x48 __ct__10CRdrEditorFv  # OVL1; s1:order by hand (SOCOM 1's CRdrEditor(): CRdrFile's constructor, then the stack built from a temporary deque by copy, as MSL's stack(const Container & = Container())); zanim_menu.cpp's NetCnf readers construct it -- the rdr lane
 0x00333B30 0x78 func_00333B30  # OVL1
 0x00333BB0 0x118 func_00333BB0  # OVL1
 0x00333CD0 0x5C func_00333CD0  # OVL1
@@ -5914,7 +5914,7 @@
 0x003340F0 0x28 func_003340F0  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
 0x00334120 0x30 func_00334120  # OVL1
 0x00334150 0x18 func_00334150  # OVL1
-0x00334170 0x44 func_00334170  # OVL1
+0x00334170 0x44 zrdr_newarray__FP5_zrdri  # OVL1; the rdr lane: a value made an array of n zeroed values (0x335BC0 with 1), its count and type set; _zrdr::Clone calls it out of line and CRdrEditor::pop inlines it (a2 copy of the array pointer), so it is zrdr_edit.cpp's own function, defined first (it follows the deque copy constructor's pieces) -- the name ours
 0x003341C0 0x27C func_003341C0  # OVL1
 0x00334440 0x3D4 func_00334440  # OVL1
 0x00334820 0x38 func_00334820  # OVL1
