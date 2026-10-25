@@ -450,7 +450,7 @@ public:
 
     /* the animations bound (SOCOM 1's; OVL2 0x562AD0) and a task begun: its kind, a flag, then the
      * task's own arguments (SOCOM 1's; OVL2 0x561F00) */
-    void SetupAnimations();
+    bool SetupAnimations();
     bool ActivateEx(SEAL_TASK task, bool b, ...);
     virtual void OnMissionStart();
     /* the valves: a name for each (inline everywhere in SOCOM II: its three callers expand it),
@@ -496,7 +496,11 @@ public:
     CAiState *GetAiState();
     const CAiState *GetAiState() const;
     unsigned int m_41c;   // 0x41c: a state stack's size word (SOCOM 1's m_stateStack, a CAiStateStack)
-    unsigned char _420[0x468 - 0x420];
+    unsigned char _420[0x450 - 0x420];
+    /* the anims the tasks play (SOCOM 1's m_task_anim[6], 0x33c there, its m_task_handle[6] 0x18
+     * after: SetupAnimations binds [0] to <node>_start and [2] to <node>_ambient) -- so the
+     * m_task_anim below, at 0x468, is SOCOM 1's m_task_handle[0] */
+    CZAnim *m_anims[6];   // 0x450
     CZAnim *m_task_anim;   // 0x468: an anim the AI plays, stopped at the mission's end
     unsigned char _46c[0x4ec - 0x46c];
     unsigned char m_4ec;   // 0x4ec: a state (1-3 and, with 0x508 set, 4 hold the next byte back; the name ours)

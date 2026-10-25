@@ -121,6 +121,20 @@ static inline CEntity *AsKind4(CEntity *e)
     return e && e->m_type == (CEntity::TYPE)4 ? e : 0;
 }
 
+/* the node's own anims bound: <node>_start and <node>_ambient (OVL2 0x562AD0; SOCOM 1's bound
+ * more of them) */
+bool CSealCtrlAi::SetupAnimations()
+{
+    char name[1024];
+    CEntity *e = m_entity;
+
+    sprintf(name, "%s_%s", e->m_node->m_name, "start");
+    m_anims[0] = ZAnim.GetAnim(name, 0);
+    sprintf(name, "%s_%s", e->m_node->m_name, "ambient");
+    m_anims[2] = ZAnim.GetAnim(name, 0);
+    return true;
+}
+
 /* the mission begun: the animations bound, the two standing tasks begun (the first unless a Navy
  * SEAL), and in mode 1 the player taken as the one to follow, with the entities of kind 4
  * counted (OVL2 0x573BD0; SOCOM 1's had the two tasks only) */
