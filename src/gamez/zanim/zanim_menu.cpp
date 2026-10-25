@@ -54,10 +54,36 @@ void DMEDisconnectFromGameServer();
 char database[64];
 zdb::CNode *g_menuRootNode;
 
+namespace {
+
+bool OnSetCounterSpeedFactor(C2DAnimCmdHdr *hdr, float *dT)
+{
+    func_0037B990(func_00191478(ArgText(ArgName(hdr))));
+    return true;
+}
+
+bool OnSetTtySpeedFactor(C2DAnimCmdHdr *hdr, float *dT)
+{
+    func_0037B980(func_00191478(ArgText(ArgName(hdr))));
+    return true;
+}
+
+}
+
 bool UIUpdateMpFinalStatsUiVars(C2DAnimCmdHdr *hdr, float *dT)
 {
     func_002241C0();
     return true;
+}
+
+namespace {
+
+bool UISetControllerConfig(C2DAnimCmdHdr *hdr, float *dT)
+{
+    func_002C5D60(ArgText(ArgName(hdr)));
+    return true;
+}
+
 }
 
 void SetDatabase(const char *name)
@@ -155,18 +181,21 @@ bool UIHostLANGame(C2DAnimCmdHdr *hdr, float *dT)
     return ok;
 }
 
-bool UIJoinGameServer(C2DAnimCmdHdr *hdr, float *dT)
+bool UIConnectToGameServer(C2DAnimCmdHdr *hdr, float *dT)
 {
-    if (!theMission.m_pNetGame->m_late_joiner) {
-        if (!func_002B83E0())
-            return false;
-        if (!theNetwork.m_bSessionMaster && !data_00441470)
-            return false;
-        ftsNetworkGameInit();
+    bool ok;
+
+    theMission.CreateNetGame();
+    if (func_002B85C0()) {
+        if (func_003045B0(&data_0044FE10))
+            func_002DF8E0(&theLobby);
+        ok = true;
+    } else {
+        func_002E3730(&theLobby);
+        func_002A9EF0(&theMission);
+        ok = false;
     }
-    if (theNetwork.m_bSessionMaster)
-        CZGameState::UpdateLocalGame(theMission.m_pNetGame);
-    return true;
+    return ok;
 }
 
 bool UIDisconnectFromGameServer(C2DAnimCmdHdr *hdr, float *dT)
@@ -183,6 +212,20 @@ bool UIDisconnectFromGameServer(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+bool UIJoinGameServer(C2DAnimCmdHdr *hdr, float *dT)
+{
+    if (!theMission.m_pNetGame->m_late_joiner) {
+        if (!func_002B83E0())
+            return false;
+        if (!theNetwork.m_bSessionMaster && !data_00441470)
+            return false;
+        ftsNetworkGameInit();
+    }
+    if (theNetwork.m_bSessionMaster)
+        CZGameState::UpdateLocalGame(theMission.m_pNetGame);
+    return true;
+}
+
 bool UIIsMemCardInserted(C2DAnimCmdHdr *hdr, float *dT)
 {
     return theMemCard.IsInserted();
@@ -191,6 +234,14 @@ bool UIIsMemCardInserted(C2DAnimCmdHdr *hdr, float *dT)
 bool UIIsMemCardFormatted(C2DAnimCmdHdr *hdr, float *dT)
 {
     return theMemCard.IsFormatted();
+}
+
+bool UIIsMemcardSaveOK(C2DAnimCmdHdr *hdr, float *dT)
+{
+    int error = func_003A1CF0(&theMemCard);
+
+    SetValveValue(CValve::Create("memcard_error_code", (VALVE_TYPE)2), error);
+    return error == 0;
 }
 
 bool UIFormatMemCard(C2DAnimCmdHdr *hdr, float *dT)
@@ -236,6 +287,21 @@ bool UICreateMPGame(C2DAnimCmdHdr *hdr, float *dT)
         return true;
     }
     return func_002F9410(&theLobby);
+}
+
+bool UIClanGameClosed(C2DAnimCmdHdr *hdr, float *dT)
+{
+    return func_002F8C60(&theLobby, ArgText(ArgName(hdr)));
+}
+
+bool UIGameRejectsRank(C2DAnimCmdHdr *hdr, float *dT)
+{
+    return func_002F8BC0(&theLobby, ArgText(ArgName(hdr)));
+}
+
+bool UIGameHasSpectatorPassword(C2DAnimCmdHdr *hdr, float *dT)
+{
+    return func_002F8D50(&theLobby, ArgText(ArgName(hdr)));
 }
 
 bool UIJoinMPRoom(C2DAnimCmdHdr *hdr, float *dT)
@@ -292,6 +358,25 @@ bool UISwitchSides(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+bool UIForceMPLaunch(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CZNetGame *game = theMission.m_pNetGame;
+
+    if (!game->m_ten_second_launch) {
+        game->TenSecondLaunch(true);
+        CZGameState::UpdateLocalGame(game);
+    } else if (game->m_ten_second_launch) {
+        unsigned int launch = game->m_launch_time;
+        unsigned int now = theNetwork.zNetGetTime();
+
+        if (now < launch - 5000) {
+            game->TenSecondLaunch(false);
+            CZGameState::UpdateLocalGame(game);
+        }
+    }
+    return true;
+}
+
 /* SendChatText's text: to one player through the lobby, or to the game (SOCOM II's; the name ours) */
 static void SendChatTextCallback(const char *text, const char *to)
 {
@@ -304,6 +389,27 @@ static void SendChatTextCallback(const char *text, const char *to)
 bool UISendChatText(C2DAnimCmdHdr *hdr, float *dT)
 {
     func_00281D40(hdr, SendChatTextCallback, 0);
+    return true;
+}
+
+unsigned int g_can_use_ready;
+
+bool UIReadyToLoad(C2DAnimCmdHdr *hdr, float *dT)
+{
+    if (func_0030D540(&theNetwork) > g_can_use_ready) {
+        if (theMission.m_pNetGame->m_late_joiner) {
+            theMission.m_pNetGame->MyMajorGameState(CZNetGame::MP_MAJOR_LOADING);
+            theMission.m_pNetGame->MyMinorGameState(CZNetGame::MP_MINOR_NOTREADY);
+        } else {
+            CZPersonaState::ToggleReady();
+        }
+        g_can_use_ready = func_0030D540(&theNetwork) + 5000;
+    }
+    return true;
+}
+
+bool UIClearGameState(C2DAnimCmdHdr *hdr, float *dT)
+{
     return true;
 }
 
@@ -321,8 +427,15 @@ bool UIToggleAutoMessages(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
-bool UIClearGameState(C2DAnimCmdHdr *hdr, float *dT)
+bool UISetScreenOrigin(C2DAnimCmdHdr *hdr, float *dT)
 {
+    int y = CValve::Create("ScreenOriginY", (VALVE_TYPE)1)->m_value;
+    int x = CValve::Create("ScreenOriginX", (VALVE_TYPE)1)->m_value;
+
+    if (zVid.videoMode == 2)
+        y += 18;
+    zVid.pcrtcOffsetX = x - 128;
+    zVid.pcrtcOffsetY = y - 128;
     return true;
 }
 
@@ -333,6 +446,15 @@ bool UIIsSpaceForSaveGameFile(C2DAnimCmdHdr *hdr, float *dT)
     if (space <= 3000)
         space += func_003A1060(&theMemCard, 0);
     return space >= 3000;
+}
+
+bool UIMC_Changed(C2DAnimCmdHdr *hdr, float *dT)
+{
+    int slot;
+    bool changed = func_003A1370(&theMemCard, 1, &slot);
+
+    SetValveValue(CValve::Create("mc_changed_slot", (VALVE_TYPE)1), slot);
+    return changed;
 }
 
 bool UIMC_ChDir(C2DAnimCmdHdr *hdr, float *dT)
@@ -442,6 +564,11 @@ bool UIIsMemberOfClan(C2DAnimCmdHdr *hdr, float *dT)
     return func_002E6830(&theLobby);
 }
 
+bool UIIsLeaderOfClan(C2DAnimCmdHdr *hdr, float *dT)
+{
+    return func_002E67D0(&theLobby, ArgText(ArgName(hdr)));
+}
+
 bool UIRemovePlayerFromClan(C2DAnimCmdHdr *hdr, float *dT)
 {
     theLobby.RemovePlayerFromClan(ZAnim.m_CurAnim->GetArgCharP(0));
@@ -451,6 +578,11 @@ bool UIRemovePlayerFromClan(C2DAnimCmdHdr *hdr, float *dT)
 bool UICanInviteMorePlayersToClan(C2DAnimCmdHdr *hdr, float *dT)
 {
     return func_002E5FE0(&theLobby);
+}
+
+bool UIInvitePlayerToClanWithArg(C2DAnimCmdHdr *hdr, float *dT)
+{
+    return func_002E7600(&theLobby, ArgText(ArgName(hdr)));
 }
 
 bool UIGetInvitedPlayers(C2DAnimCmdHdr *hdr, float *dT)
@@ -473,10 +605,7 @@ bool UIGetClanRoster(C2DAnimCmdHdr *hdr, float *dT)
 
 bool UIRevokeInvite(C2DAnimCmdHdr *hdr, float *dT)
 {
-    const char *name = ArgName(hdr);
-
-    return func_002E72A0(&theLobby, name && !strcmp(name, "INPUT_STRING")
-                                        ? ZAnim.m_CurAnim->m_arg_list->GetCharP(0) : name);
+    return func_002E72A0(&theLobby, ArgText(ArgName(hdr)));
 }
 
 bool UIGetFriendsList(C2DAnimCmdHdr *hdr, float *dT)
@@ -503,6 +632,12 @@ bool UIGetClanRanking(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+bool UIDeleteClanMessage(C2DAnimCmdHdr *hdr, float *dT)
+{
+    func_002E6010(&theLobby, atoi(ArgText(ArgName(hdr))));
+    return true;
+}
+
 bool UIGetLeaderMessages(C2DAnimCmdHdr *hdr, float *dT)
 {
     func_002E6310(&theLobby);
@@ -517,11 +652,74 @@ bool UIAddFriend(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+bool UIAddFriendDirectly(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *text = ArgText(ArgName(hdr));
+
+    if (text)
+        func_00300B70(&theLobby, atoi(text));
+    return true;
+}
+
 bool UIAddToIgnore(C2DAnimCmdHdr *hdr, float *dT)
 {
     CUIVariable *var = func_003857C0(&theUIVarManager, "PLAYER_IGNORE_NAME", 0, UIVAR_SESSION);
 
     func_00300C50(&theLobby, var->String());
+    return true;
+}
+
+bool UIConfirmFriend(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *text = ArgText(ArgName(hdr));
+
+    if (text)
+        func_00300A70(&theLobby, atoi(text));
+    return true;
+}
+
+bool UIRejectFriend(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *text = ArgText(ArgName(hdr));
+
+    if (text)
+        func_00300AF0(&theLobby, atoi(text));
+    return true;
+}
+
+bool UIGetFriendInfo(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *text = ArgText(ArgName(hdr));
+
+    if (text)
+        func_00301140(&theLobby, atoi(text));
+    return true;
+}
+
+bool UIGetClanMemberInfo(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *text = ArgText(ArgName(hdr));
+
+    if (text)
+        func_002E6000(&theLobby, text);
+    return true;
+}
+
+bool UIRemoveFriend(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *text = ArgText(ArgName(hdr));
+
+    if (text)
+        func_003016A0(&theLobby, atoi(text));
+    return true;
+}
+
+bool UIRemoveFromIgnore(C2DAnimCmdHdr *hdr, float *dT)
+{
+    const char *text = ArgText(ArgName(hdr));
+
+    if (text)
+        func_00300FE0(&theLobby, atoi(text));
     return true;
 }
 
@@ -542,9 +740,21 @@ bool UIIsClanChallengeGame(C2DAnimCmdHdr *hdr, float *dT)
     return false;
 }
 
+bool UISelectLocale(C2DAnimCmdHdr *hdr, float *dT)
+{
+    func_003A44B0(func_003A40E0(ArgText(ArgName(hdr))));
+    return true;
+}
+
 bool UIHaveBeenBannedFromGame(C2DAnimCmdHdr *hdr, float *dT)
 {
     return func_002C3550();
+}
+
+bool UISetDefaultMenuScreen(C2DAnimCmdHdr *hdr, float *dT)
+{
+    theGame.m_menuState.SetDefaultMenu(ArgText(ArgName(hdr)));
+    return true;
 }
 
 bool UIBanSelfFromGame(C2DAnimCmdHdr *hdr, float *dT)
@@ -631,6 +841,24 @@ bool UINotOnCorrectClanTeam(C2DAnimCmdHdr *hdr, float *dT)
     return !theLobby.OnCorrectClanTeam();
 }
 
+bool UIAcceptInvitation(C2DAnimCmdHdr *hdr, float *dT)
+{
+    func_002E89F0(&theLobby, atoi(ArgText(ArgName(hdr))));
+    return true;
+}
+
+bool UIDeclineInvitation(C2DAnimCmdHdr *hdr, float *dT)
+{
+    func_002E8980(&theLobby, atoi(ArgText(ArgName(hdr))));
+    return true;
+}
+
+bool UITransferLeadership(C2DAnimCmdHdr *hdr, float *dT)
+{
+    func_002E81B0(&theLobby, ArgText(ArgName(hdr)));
+    return true;
+}
+
 bool UIIsSwitchTeamsOK(C2DAnimCmdHdr *hdr, float *dT)
 {
     return func_002F8CE0(&theLobby);
@@ -642,6 +870,30 @@ bool UIPasswordSecurity(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+bool UISysPostInit(C2DAnimCmdHdr *hdr, float *dT)
+{
+    bool reopen;
+
+    if (CFileCD::m_streamingSndActive) {
+        reopen = true;
+        CSnd::Close();
+    } else {
+        reopen = false;
+    }
+    func_0034F950();
+    if (reopen)
+        CSnd::UIOpen();
+    return true;
+}
+
+bool UISysLoadIRX(C2DAnimCmdHdr *hdr, float *dT)
+{
+    char name[256];
+
+    strncpy(name, ArgText(ArgName(hdr)), 256);
+    return true;
+}
+
 bool UICheckTeamStatus(C2DAnimCmdHdr *hdr, float *dT)
 {
     bool ok = true;
@@ -649,6 +901,12 @@ bool UICheckTeamStatus(C2DAnimCmdHdr *hdr, float *dT)
     if (!theMission.m_pNetGame || !theNetwork.m_bSessionMaster && !data_00441470)
         ok = false;
     return ok;
+}
+
+bool UISuspendMenuInput(C2DAnimCmdHdr *hdr, float *dT)
+{
+    func_001F3BB0(&theGame.m_menuState, func_00191478(ArgText(ArgName(hdr))));
+    return true;
 }
 
 bool UILobbyDisconnect(C2DAnimCmdHdr *hdr, float *dT)
