@@ -33,6 +33,9 @@ int func_003D2810(CZWeapon *w);
 int func_003D2800(CZWeapon *w);
 void *func_003D1F00(CZWeapon *w);
 CZWeapon *func_003C4B40(CZWeaponList *list, EQUIP_ITEM item);
+/* the current weapon in its grenade launcher's mode (OVL2 0x5BD7E0, this unit's, a byte-exact
+ * draft: the index version 0x5BD7F0 on the selected item) */
+bool func_005BD7E0(CZKit *kit);
 /* a controller's word at 0x11C cleared (OVL2 0x592D40, the SEAL lane's row) */
 void func_00592D40(CKitCtrl *ctrl);
 }
@@ -200,6 +203,19 @@ int CZKit::unwrap(int index, FIREMODE mode) const
     return result;
 }
 
+/* the current item's loaded magazines -- under its grenade launcher's mode, the launcher's
+ * ammunition item's (OVL2 0x5C49B0; SOCOM 1's) */
+int CZKit::GetCurNumMags()
+{
+    int index = m_selected_item;
+
+    if (func_005BD7E0(this))
+        index = FindItemWithAmmo((EQUIP_ITEM)GetCurFireMode());
+    if (index != -1)
+        return GetNumMags(index);
+    return 0;
+}
+
 /* an item's ammunition, and the current item's (OVL2 0x5C6970, 0x5C6920; new in SOCOM II, where
  * SOCOM 1's callers used GetWeapon -- the names ours) */
 void *CZKit::GetCurAmmo()
@@ -230,6 +246,18 @@ int CZKit::GetNumMags(int index)
 FIREMODE CZKit::GetCurFireMode()
 {
     return (FIREMODE)m_firemode[m_selected_item];
+}
+
+/* the rounds in all an item's magazines (OVL2 0x5C3C10, where SOCOM 1's EmptyAmmoCountTotal
+ * sat -- that one emptied them; the name ours) */
+int CZKit::GetAmmoTotal(int index)
+{
+    index = wrap(index, m_num_items);
+    int total = 0;
+
+    for (int i = 0; i < 10; i++)
+        total += m_reloads[index][i];
+    return total;
 }
 
 /* the current item's fire mode set, when the item has it and the ammunition for it -- a grenade

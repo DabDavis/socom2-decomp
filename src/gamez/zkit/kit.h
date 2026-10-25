@@ -126,6 +126,8 @@ public:
     bool IsFireDelayed();
     FIREMODE GetCurFireMode();
     int GetNumMags(int index);
+    int GetCurNumMags();
+    int GetAmmoTotal(int index);
     int unwrap(int index, FIREMODE mode) const;
     EQUIP_IDTYPE GetCurItemIDType();
     bool HasSniperRifle();

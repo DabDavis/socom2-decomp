@@ -11030,7 +11030,7 @@
 0x005C37B0 0xD4 SetCurFireMode__5CZKitF8FIREMODE  # OVL2; s1:calls by hand (CSealCtrlSquirm::Initalize calls it on the kit with 3 right after SetCurItemByIndex, as SOCOM 1's Initalize calls SetCurFireMode)
 0x005C3890 0x8 func_005C3890  # OVL2
 0x005C38A0 0x36C func_005C38A0  # OVL2
-0x005C3C10 0xD0 func_005C3C10  # OVL2
+0x005C3C10 0xD0 GetAmmoTotal__5CZKitFi  # OVL2; by hand: the index wrapped on m_num_items, its ten magazines (0x1D4) summed -- where SOCOM 1's EmptyAmmoCountTotal sat, which zeroed them (the name ours)
 0x005C3CE0 0x8 func_005C3CE0  # OVL2
 0x005C3CF0 0x1E4 func_005C3CF0  # OVL2
 0x005C3EE0 0x59C func_005C3EE0  # OVL2
@@ -11042,7 +11042,7 @@
 0x005C48B0 0xA8 func_005C48B0  # OVL2
 0x005C4960 0x8 func_005C4960  # OVL2
 0x005C4970 0x40 GetNumMags__5CZKitFi  # OVL2; s1:order by hand (SOCOM 1's GetNumMags: counts the item's ten magazines (0x1D4 + 40*index, SOCOM 1's 0x1C0) holding rounds)
-0x005C49B0 0x154 func_005C49B0  # OVL2
+0x005C49B0 0x154 GetCurNumMags__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's GetCurNumMags, after GetNumMags as there: the selected item -- or, in its grenade launcher's mode (0x5BD7E0), the first item of its fire mode's kind with ammunition -- and GetNumMags inlined; 0 for none)
 0x005C4B10 0x4B8 SetCurItemByIndex__5CZKitFi  # OVL2; s1:calls by hand (CSealCtrlSquirm::Initalize calls it on the SEAL's kit (+0x5E0) with 0, where SOCOM 1's Initalize calls SetCurItemByIndex(0), right before SetCurFireMode)
 0x005C4FD0 0x60 func_005C4FD0  # OVL2
 0x005C5030 0x80 func_005C5030  # OVL2
