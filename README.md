@@ -1642,6 +1642,26 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the online lobby, round 6** (the account save module, the universe list, the LAN lobby):
+  - a temporary is laid out below the named locals: the target's struct sitting below an inner
+    block's object was `push_back(T(args))`;
+  - walking `Item(unsigned)` with an int counter recomputes each address, and dropping the
+    strength-reduction register moved Add's whole register allocation;
+  - a class vector's one-element erase is an out-of-class `T *erase(T *)` behind an inline iterator
+    wrapper (a class return would pass a hidden return slot) -- include/vector has it now, beside the
+    pod vector's;
+  - copy construction of a record whose members have constructors goes member by member while its
+    implicit assignment stays a block copy (AcctMission: no constructor of its own, its name member a
+    class with one);
+  - `&r->m_missions[i]` keeps an advancing base and adds the member offset each pass; a pointer
+    cursor advances the member's address instead;
+  - `!x` passed to an int parameter gives sltu/xori/andi, `x == 0` sltiu;
+  - units: the save module zNetMediusUniverse.cpp 0x2FAFC0-0x30066F (CZUniversInformationServer::
+    CAcctDB, a CSaveModule and a CLobbySaveModule by its RTTI; PasswordSecurity 0x2FAF50 ends the
+    lobby unit); the friends unit ends at 0x30372F (its tail: reserve 0x3030B0, resize 0x303250, the
+    72-byte erase 0x303490); zNetLANLobby.cpp 0x303730-0x30460F (initialiser 0x4024F0); the Medius
+    file API 0x304610-0x30661F (CLobbyFileIO, vtable 0x406760, initialiser 0x402570) waits on the
+    string-keyed map's compare 0x2DEE30.
 - **Tells from the kit and AI states, round 7** (the kit's item vector, the event state, the callouts):
   - a state destructor with byte-array members matches with the member destructors called by hand in
     reverse order; a vector's goes behind three nested `if (v)`, and MW keeps all three tests;

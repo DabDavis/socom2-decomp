@@ -6066,7 +6066,7 @@
 0x0033ED70 0xB0 func_0033ED70  # OVL1
 0x0033EE20 0x80 func_0033EE20  # OVL1
 0x0033EEA0 0x100 func_0033EEA0  # OVL1
-0x0033EFA0 0xA8 func_0033EFA0  # OVL1
+0x0033EFA0 0xA8 __ct__16CLobbySaveModuleFPCcP12CSaveManager  # OVL1; ours (the online lane's lead, vetted by the integrator: stores CLobbySaveModule's vtable 0x406740, zeroes the name string and assigns it through assign(const char *) when given, keeps the CSaveManager; the initialiser 0x4022D0 calls it on theAcctDB + 0x24)
 0x0033F050 0x3C func_0033F050  # OVL1
 0x0033F090 0x48 snd_DoExternCall_CB  # OVL1; s1:exact
 0x0033F0E0 0x48 snd_DoExternCall_A  # OVL1; s1:exact
