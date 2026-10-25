@@ -9740,7 +9740,7 @@
 0x00533000 0x38 GetStartPos__16CVehicleRdrEntryCFv  # OVL2; s1:calls (CMission::LoadVehicle calls it before CAiMaps::GetLocation, as SOCOM 1's calls GetStartPos)
 0x00533040 0x150 Randomize__16CVehicleRdrEntryFb  # OVL2; s1:calls (CMission::LoadVehicle's first call, as SOCOM 1's calls Randomize__16CVehicleRdrEntryFb; rand)
 0x00533190 0x34 SetCharacterName__16CVehicleRdrEntryFPCc  # OVL2; s1:calls (CreateCustomCharTypes(CVehicleRdr *, _zrdr *) calls it after Create, as SOCOM 1's calls SetCharacterName; strncpy)
-0x005331D0 0x19C func_005331D0  # OVL2
+0x005331D0 0x19C __ct__16CVehicleRdrEntryFv  # OVL2; by hand (the entry built: both start sets' counts, names and directions zeroed, the team mask zeroed, AI_PARAMS defaulted -- accuracy 0.8 -- for SOCOM II's 0x160-byte entry; the resize 0x534320 builds its fill value with it on the stack)
 0x00533370 0x3A8 Load__16CVehicleRdrEntryFP5_zrdr  # OVL2; s1:calls (CVehicleRdr::Open calls it between zrdr_read and zrdr_free, as SOCOM 1's Open calls Load__11CVehicleRdrFP5_zrdr; "name", "display", "team", "ai_params", "setup", "respawn_setup"); by hand: CVehicleRdrEntry's, not CVehicleRdr's -- CVehicleRdr::Open calls it once per entry with the entry (data_ + i*0x160) as this and the file's i-th item, reading name, display, team, ai_params, setup and respawn_setup into it; SOCOM 1's CVehicleRdr::Load (0x8A0) held the per-entry loop inline, SOCOM II moved it into Open (the name ours)
 0x00533720 0xD0 GetEntryByName__11CVehicleRdrCFPCc  # OVL2; s1:calls (CreateCustomCharTypes(CVehicleRdr *, _zrdr *) calls it where SOCOM 1's calls GetEntryByName__11CVehicleRdrCFPCc; strcasecmp over the entries)
 0x005337F0 0x12C Open__11CVehicleRdrFPCc  # OVL2; s1:calls (OpenVehicleRdr, as SOCOM 1's) -- the states lane
@@ -9755,14 +9755,11 @@
 0x00533CF0 0xB8 func_00533CF0  # OVL2
 0x00533DB0 0x28C func_00533DB0  # OVL2
 0x00534040 0x2E0 Parse__9AI_PARAMSFP5_zrdr  # OVL2; s1:calls (CVehicleRdr::Load calls it after "ai_params" and CCharacterType::Parse at its end, as SOCOM 1's call Parse__9AI_PARAMSFP5_zrdr)
-0x00534320 0xD4 func_00534320  # OVL2
+0x00534320 0xD4 resize__Q23std72__vector_imp<16CVehicleRdrEntry,Q23std29allocator<16CVehicleRdrEntry>,0>FUi  # OVL2; by hand (CVehicleRdr::Open sizes the entries with it, as SOCOM 1's Load called resize__Q23std72__vector_imp<16CVehicleRdrEntry,...,0>FUi: growing, a default entry inserted n - size times at the end (0x534630); shrinking, the tail erased (0x534450))
 0x00534400 0x50 func_00534400  # OVL2
-0x00534450 0x1E0 func_00534450  # OVL2
-0x00534630 0x200 func_00534630  # OVL2
-0x00534830 0x18 func_00534830  # OVL2
-0x00534848 0x4F0 func_00534848  # OVL2 unaligned
-0x00534D40 0x2D8 func_00534D40  # OVL2
-0x00535018 0x20 func_00535018  # OVL2 unaligned
+0x00534450 0x1E0 erase__Q23std72__vector_imp<16CVehicleRdrEntry,Q23std29allocator<16CVehicleRdrEntry>,0>FP16CVehicleRdrEntryP16CVehicleRdrEntry  # OVL2; by hand (the resize's shrinking arm: called with data + n and data + size, as MSL's resize erases the tail; SOCOM 1's erase of the same vector)
+0x00534630 0x708 insert__Q23std72__vector_imp<16CVehicleRdrEntry,Q23std29allocator<16CVehicleRdrEntry>,0>FP16CVehicleRdrEntryUiRC16CVehicleRdrEntry  # OVL2; one function 0x534630-0x534D37 (merged: the seed cut it at 0x534830 and 0x534848, jal targets of the DNAS clients in MAIN 0x1C5AA0/0x1C5C20 and OVL1 0x2CA890, which call DNAS.BIN in the OVL2 slot; one frame of 176 with s0-s8, the code after each cut on the same saved registers, one epilogue at 0x534D08); by hand (the resize's growing arm: called with the end, the count and the default entry; new, the allocation-failure message and the entry assignment 0x534D40 inside, as SOCOM 1's insert of the same vector)
+0x00534D40 0x2F8 __as__16CVehicleRdrEntryFRC16CVehicleRdrEntry  # OVL2; one function 0x534D40-0x535037 (merged: the seed cut it at 0x535018, a jal target of MAIN's DNAS client 0x1C5E38/0x1C6120; a leaf copying an entry field by field, 0x160 bytes, straight through to its one jr ra); by hand (an entry assigned field by field, 0x160 bytes -- the names bytewise, then the words; the insert 0x534630 calls it six times, as SOCOM 1's insert calls __as__16CVehicleRdrEntryFRC16CVehicleRdrEntry)
 0x00535040 0x8 clear__Q23std74__vector_deleter<16CVehicleRdrEntry,Q23std29allocator<16CVehicleRdrEntry>>Fv  # OVL2; by hand (the entry vector's deleter clear, out of class: the entry has no destructor, so only the size is zeroed; Close calls it first, as SOCOM 1's Close calls clear__Q23std74__vector_deleter<16CVehicleRdrEntry,...>)
 0x00535050 0x68 __dt__Q23std74__vector_deleter<16CVehicleRdrEntry,Q23std29allocator<16CVehicleRdrEntry>>Fv  # OVL2; by hand (the entry vector's deleter destructor, out of class: size zeroed, data deleted, this deleted if asked; the vector destructor 0x533970 calls it)
 0x005350C0 0x210 func_005350C0  # OVL2
@@ -9795,8 +9792,7 @@
 0x00539B70 0x50 func_00539B70  # OVL2
 0x00539BC0 0xBC func_00539BC0  # OVL2
 0x00539C80 0x74 func_00539C80  # OVL2
-0x00539D00 0x50 func_00539D00  # OVL2
-0x00539D50 0x120 func_00539D50  # OVL2
+0x00539D00 0x170 func_00539D00  # OVL2; one function 0x539D00-0x539E6F (merged: the seed cut it at 0x539D50, a jal target of the DNAS clients in MAIN 0x1C5E08 and OVL1 0x2CB56C; one frame of 128, the allocation-failure path after the cut on the first piece's at and saved registers, one epilogue at 0x539E54)
 0x00539E70 0x18 func_00539E70  # OVL2
 0x00539E90 0x20 func_00539E90  # OVL2
 0x00539EB0 0x2B0 func_00539EB0  # OVL2

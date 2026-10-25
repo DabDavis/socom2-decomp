@@ -14,8 +14,8 @@ class CRdrFile;
 
 _zrdr *zrdr_read(const char *name, const char *file, int line);
 void zrdr_free(CRdrFile *file);
-/* the entry vector's resize, out of line (SOCOM 1's resize__Q23std72__vector_imp<16CVehicleRdrEntry,
- * ...,0>FUi); include/vector has no resize yet, so it is called by its address */
+/* the entry vector's resize, out of line (0x534320, the map's resize__Q23std72__vector_imp<16CVehicleRdrEntry,
+ * ...,0>FUi); include/vector has no resize yet, so it is called through its placeholder */
 extern "C" void func_00534320(std::vector<CVehicleRdrEntry> *v, unsigned int n);
 
 extern "C" int strcasecmp(const char *, const char *);
