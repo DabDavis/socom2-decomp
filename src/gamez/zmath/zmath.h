@@ -33,6 +33,10 @@ extern "C" double exp(double);
 #endif
 
 /* The C structs the classes extend (SOCOM 1's DWARF). */
+struct PNT2D {
+    float x, y;
+};
+
 struct PNT3D {
     float x, y, z;
 };
@@ -268,6 +272,67 @@ public:
     static const CQuat zero;
     static const CQuat identity;
 };
+
+/* SOCOM 1's zmath_matrix.h VU0 helpers, inline: a matrix's rows into vf4-vf7, then a point
+ * through them (w = 1) or a vector through the rotation alone, as often as wanted. SOCOM 1's
+ * line table puts each helper's code on its caller's one line. GCC-style (operands bound left
+ * to right: Transform loads &input before &output; an asm block takes them in the arguments'
+ * right-to-left order) */
+inline void _LoadMatrix(const CMatrix *m)
+{
+    asm __volatile__(
+        "lqc2 $vf4, 0x0(%0)\n"
+        "lqc2 $vf5, 0x10(%0)\n"
+        "lqc2 $vf6, 0x20(%0)\n"
+        "lqc2 $vf7, 0x30(%0)\n"
+        : : "r"(m) : "memory");
+}
+
+inline void _TransformPointXYZ(const CPnt4D *in, CPnt4D *out)
+{
+    asm __volatile__(
+        "lqc2 $vf8, 0(%0)\n"
+        "vmulax.xyz $ACC, $vf4, $vf8\n"
+        "vmadday.xyz $ACC, $vf5, $vf8\n"
+        "vmaddaz.xyz $ACC, $vf6, $vf8\n"
+        "vmaddw.xyz $vf9, $vf7, $vf0\n"
+        "sqc2 $vf9, 0(%1)\n"
+        : : "r"(in), "r"(out) : "memory");
+}
+
+inline void _TransformVectorXYZ(const CPnt4D *in, CPnt4D *out)
+{
+    asm __volatile__(
+        "lqc2 $vf8, 0(%0)\n"
+        "vmulax.xyz $ACC, $vf4, $vf8\n"
+        "vmadday.xyz $ACC, $vf5, $vf8\n"
+        "vmaddz.xyz $vf9, $vf6, $vf8\n"
+        "sqc2 $vf9, 0(%1)\n"
+        : : "r"(in), "r"(out) : "memory");
+}
+
+/* vectors through the matrix's rotation (no translation), each copied into an aligned vector and
+ * back: inline (ZAnim's SCROLL_MOTION tick; the name is ours) */
+inline void TransformVectors(const CMatrix *m, const CPnt3D *in, CPnt3D *out, int count)
+{
+    CPnt4D input;
+    CPnt4D output;
+
+    _LoadMatrix(m);
+    do {
+        input.x = in->x;
+        input.y = in->y;
+        input.z = in->z;
+
+        _TransformVectorXYZ(&input, &output);
+
+        out->x = output.x;
+        out->y = output.y;
+        out->z = output.z;
+        in++;
+        out++;
+    } while (--count);
+}
 
 /* the allocator's entry points; a release build passes no file and line (SOCOM 1's passed them) */
 void *_malloc(unsigned int size, const char *file, int line);

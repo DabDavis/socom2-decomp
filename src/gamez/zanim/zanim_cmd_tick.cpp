@@ -1811,6 +1811,115 @@ extern "C" void func_00261300(_zanim_cmd_hdr *hdr)
     }
 }
 
+/* a texture scrolled by the texture effects (not named yet) */
+extern "C" void func_003C0280(char *fx, int handle, bool a, bool b, float du, float dv);
+
+/* SCROLL_MOTION: scroll a texture by how far a node has moved -- the point a node carries,
+ * reflected about its up axis through the centre a second node gives, in x/z since the last
+ * tick (flag 8); else the second node's own travel, signed by its heading against the point it
+ * carries. Flags 2 and 4 pass on to the scroll; 1 makes it timed. */
+struct zanim_cmd_scroll_motion {
+    _zanim_cmd_hdr hdr;
+    unsigned char timed : 1;        /* 0x4 */
+    unsigned char a : 1;
+    unsigned char b : 1;
+    unsigned char reflect : 1;
+    unsigned char has_up : 1;
+    unsigned char _bits : 3;
+    unsigned char _5;
+    unsigned char node;             /* 0x6 */
+    unsigned char center;           /* 0x7 */
+    CPnt3D last;                    /* 0x8 */
+    CPnt3D local;                   /* 0x14: the centre node's point */
+    CPnt3D point;                   /* 0x20: the moving node's point */
+    CPnt3D up;                      /* 0x2C */
+    float su;                       /* 0x38 */
+    float sv;                       /* 0x3C */
+    int handle;                     /* 0x40 */
+    float time;                     /* 0x44 */
+};
+
+/* OPEN, right size (0x468), registers and frame offsets: the target's frame is 16 bytes larger
+ * (8-byte temporaries at 0xC0 and 0x120 this source does not make) and it stores each 2D value
+ * and reads it straight back, as if the PNT2Ds lived behind references or by-value 2D operators;
+ * its first GetNode takes the anim through v0 */
+extern "C" bool func_00260B40(_zanim_cmd_hdr *hdr, float *dT)
+{
+    zanim_cmd_scroll_motion *cmd = (zanim_cmd_scroll_motion *)hdr;
+    bool done = false;
+    CNode *node = ZAnim.m_CurAnim->GetNode(cmd->node, false);
+
+    if (!node)
+        return true;
+    CNode *center = ZAnim.m_CurAnim->GetNode(cmd->center, false);
+    if (!center)
+        return true;
+    CPnt3D c(0.0f, 0.0f, 0.0f);
+
+    center->TransformToWorld(c);
+    if (cmd->reflect) {
+        CMatrix mtw;
+
+        node->BuildMTW(mtw);
+        CPnt3D p(cmd->point.x, cmd->point.y, cmd->point.z);
+
+        mtw.Transform(&p, 1);
+        CPnt3D up(0.0f, 1.0f, 0.0f);
+
+        if (cmd->has_up)
+            up = cmd->up;
+        TransformVectors(&mtw, &up, &up, 1);
+        CPnt3D d;
+
+        p.Sub(&c, &d);
+        CPnt3D r = d.Reflect(&up);
+
+        r += p;
+        PNT2D pos;
+        pos.x = r.x;
+        pos.y = r.z;
+        PNT2D delta;
+        delta.x = pos.x - cmd->last.x;
+        delta.y = pos.y - cmd->last.y;
+        PNT2D s;
+        s.x = cmd->su * delta.x;
+        s.y = cmd->sv * delta.y;
+        if (fabsf(s.x) > 0.001f || fabsf(s.y) > 0.001f)
+            func_003C0280(data_004B50D0, cmd->handle, cmd->a, cmd->b, s.x, s.y);
+        cmd->last.x = pos.x;
+        cmd->last.y = pos.y;
+    } else {
+        CPnt3D q(cmd->local.x, cmd->local.y, cmd->local.z);
+
+        center->TransformToWorld(q);
+        CPnt3D dq(q.x - c.x, q.y - c.y, q.z - c.z);
+        CPnt3D dc = c - cmd->last;
+
+        cmd->last = c;
+        float len = dc.Length();
+
+        if (dq.x * dc.x + dq.z * dc.z < 0.0f)
+            len = -len;
+        PNT2D s;
+        s.x = cmd->su * len;
+        s.y = cmd->sv * len;
+        func_003C0280(data_004B50D0, cmd->handle, cmd->a, cmd->b, s.x, s.y);
+    }
+    if (cmd->timed) {
+        float step = *dT;
+        float t = ZAnim.m_CurSeq->cmd_timer;
+
+        if (!(step + t <= cmd->time)) {
+            done = true;
+            *dT = step - (cmd->time - t);
+        } else {
+            *dT = 0.0f;
+            done = false;
+        }
+    }
+    return done;
+}
+
 /* OBJECT_MOTION_FROM_TO's speed profile (SOCOM 1's CZAnimFromToAcc): speed up from v0 to v1 at a1,
  * hold v1, slow to v2 at a2, along a direction -- phase 1, 2, 3 for t1, t2, t3 seconds */
 class CZAnimFromToAcc {

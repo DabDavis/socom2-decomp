@@ -46,32 +46,6 @@ CMatrix::CMatrix(float m00, float m01, float m02, float m03, float m10, float m1
     m_matrix[3][3] = m33;
 }
 
-/* SOCOM 1's zmath_matrix.h VU0 helpers, inline: a matrix's rows into vf4-vf7, then a point
- * through them (w = 1), as often as wanted. SOCOM 1's line table puts each helper's code on its
- * caller's one line. The point's is GCC-style (its operands bound left to right: Transform loads
- * &input before &output; an asm block takes them in the arguments' right-to-left order) */
-inline void _LoadMatrix(const CMatrix *m)
-{
-    asm __volatile__(
-        "lqc2 $vf4, 0x0(%0)\n"
-        "lqc2 $vf5, 0x10(%0)\n"
-        "lqc2 $vf6, 0x20(%0)\n"
-        "lqc2 $vf7, 0x30(%0)\n"
-        : : "r"(m) : "memory");
-}
-
-inline void _TransformPointXYZ(const CPnt4D *in, CPnt4D *out)
-{
-    asm __volatile__(
-        "lqc2 $vf8, 0(%0)\n"
-        "vmulax.xyz $ACC, $vf4, $vf8\n"
-        "vmadday.xyz $ACC, $vf5, $vf8\n"
-        "vmaddaz.xyz $ACC, $vf6, $vf8\n"
-        "vmaddw.xyz $vf9, $vf7, $vf0\n"
-        "sqc2 $vf9, 0(%1)\n"
-        : : "r"(in), "r"(out) : "memory");
-}
-
 /* points through the matrix in place, each copied into an aligned vector and back. SOCOM 1's
  * zmath_matrix.h has it inline (these locals, these lines); SOCOM II calls one copy */
 void CMatrix::Transform(CPnt3D *inout, int count) const
