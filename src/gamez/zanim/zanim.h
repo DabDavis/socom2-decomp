@@ -691,7 +691,11 @@ public:
     CNode* node_ptr;   // 0x4
 };   // 0x8 bytes
 
-enum VALVE_TYPE {};   // its values are not in SOCOM 1's DWARF, only its name in CValve::Create's
+/* its values are not in SOCOM 1's DWARF, only its name in CValve::Create's; the valve lane's
+ * enumerators (names ours) make it unsigned, as the code compares it (andi 0xff in CValve::Create
+ * and CValvePool::Acquire): 0 any (the delete predicate's), 2 a plain valve (the pool's, Destroy's,
+ * ParseValveName's; only its names go to the pool's buffer), 1 and 3 kinds Create raises a valve to */
+enum VALVE_TYPE { VALVE_TYPE_0 = 0, VALVE_TYPE_1 = 1, VALVE_TYPE_2 = 2, VALVE_TYPE_3 = 3 };
 
 /* a valve's change of state, its callbacks told with it (SOCOM 1's MakeCallbacks takes one; the
  * names are the states lane's) */

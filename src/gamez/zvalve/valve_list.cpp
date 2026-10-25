@@ -29,6 +29,60 @@ bool CValvePool::FlushNames(bool force)
 }
 #pragma auto_inline reset
 
+/* a valve from the pool, or a new one: a type-2 valve's name copied into the name buffer while it
+ * has room, the value cleared through the setter (SOCOM 1's) */
+CValve *CValvePool::Acquire(const char *name, VALVE_TYPE type)
+{
+    CValve *valve;
+    char *pooled = 0;
+
+    if (m_initialized && name && type == (VALVE_TYPE)2) {
+        int len = strlen(name) + 1;
+
+        if (len <= m_namesSize - (int)(m_namesNext - m_names)) {
+            pooled = m_namesNext;
+            m_namesNext += len;
+            strcpy(pooled, name);
+        }
+    }
+    if (m_free.size() == 0) {
+        valve = new CValve(pooled ? 0 : name, 0, type);
+        if (pooled)
+            valve->AssignName(pooled);
+    } else {
+        valve = m_free.back();
+        m_free.pop_back();
+        if (pooled)
+            valve->AssignName(pooled);
+        else
+            valve->SetName(name);
+        valve->m_type = type;
+    }
+    if (valve)
+        valve->SetValue(0);
+    return valve;
+}
+
+/* a valve by name with its value set, made and listed if new; an existing one's type raised to 1
+ * (unless it is 3) or to 3 (SOCOM 1's) */
+CValve *CValve::Create(const char *name, unsigned int value, VALVE_TYPE type)
+{
+    CValve *valve = name ? GetByName(name) : 0;
+
+    if (!valve) {
+        valve = data_0049E820.Acquire(name, type);
+        valve->SetValue(value);
+        m_list.push_back(valve);
+    } else {
+        valve->SetValue(value);
+        if (type == (VALVE_TYPE)1 && valve->m_type != 3)
+            valve->m_type = 1;
+        if (type == (VALVE_TYPE)3)
+            valve->m_type = 3;
+    }
+    return valve;
+}
+
 /* a valve made dead: its type 2 and its callbacks gone (SOCOM 1's) */
 void CValve::Destroy(CValve *valve)
 {
@@ -39,6 +93,8 @@ void CValve::Destroy(CValve *valve)
     }
 }
 
+/* pinned: both Creates call it, and MW would inline it there */
+#pragma auto_inline off
 CValve *CValve::GetByName(const char *name)
 {
     if (!name)
@@ -54,6 +110,7 @@ CValve *CValve::GetByName(const char *name)
     }
     return 0;
 }
+#pragma auto_inline reset
 
 /* SOCOM 1's Init, which has nothing to do */
 bool CValve::Init()
