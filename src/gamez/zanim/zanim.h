@@ -362,6 +362,7 @@ public:
     bool RemoveTask(const char *name, bool all);    /* the system lane's */
     void Clear();
     void ClearFreeList(bool all);
+    bool Tick(float dT);                /* 0x34E070 */
 
     unsigned char m_inTick;             // 0xc (the system lane's)
     float m_priority;                   // 0x10

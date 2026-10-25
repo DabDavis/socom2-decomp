@@ -6360,7 +6360,7 @@
 0x0034D940 0xB8 func_0034D940  # OVL1
 0x0034DA00 0x4CC func_0034DA00  # OVL1
 0x0034DED0 0x1A0 func_0034DED0  # OVL1
-0x0034E070 0x160 func_0034E070  # OVL1
+0x0034E070 0x160 Tick__14CSched_ManagerFf  # OVL1; SOCOM 1's CSched_Manager::Tick by its body (the same walk: T0_COUNT start/stop stamps, the callback or the remove flag, erase into the free list) and its caller (CCoreState's tick passes zTaskScheduler and dT)
 0x0034E1D0 0x240 ClearFreeList__14CSched_ManagerFb  # OVL1; s1:callee
 0x0034E410 0x68 _task_cleanup__FP11CSched_Task  # OVL1; s1:ref (taken by address where SOCOM 1 takes _task_cleanup__FP11CSched_Task's)
 0x0034E480 0xD4 Clear__14CSched_ManagerFv  # OVL1; s1:callee
