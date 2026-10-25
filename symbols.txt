@@ -3970,8 +3970,8 @@
 0x002B41C0 0x64 func_002B41C0  # OVL1
 0x002B4230 0x144 func_002B4230  # OVL1
 0x002B4380 0xBC func_002B4380  # OVL1
-0x002B4440 0x98 func_002B4440  # OVL1
-0x002B44E0 0x1F0 func_002B44E0  # OVL1
+0x002B4440 0x98 SyncActionsMP__11CNodeActionFi  # OVL1; s1:order by hand (the states lane: SOCOM 1's fts_action.cpp opens with SyncActionsMP and ExecuteAction; both walk m_actions sending each networked action's valve value to the joining client through NetSendActionAnim(-1, id, value, ...), SOCOM II's with one argument more)
+0x002B44E0 0x1F0 ExecuteAction__11CNodeActionFP10CZSealBodyUi  # OVL1; s1:order by hand (the states lane: after SyncActionsMP as in SOCOM 1; both open with the anim's Running test and index the action's anims with an unsigned index, sltu)
 0x002B46D0 0x14 func_002B46D0  # OVL1
 0x002B46F0 0x5C func_002B46F0  # OVL1
 0x002B4750 0xC OnAction__11CNodeActionFPQ23zdb5CNodePv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -3984,7 +3984,7 @@
 0x002B4B40 0x184 func_002B4B40  # OVL1
 0x002B4CD0 0xB0 func_002B4CD0  # OVL1
 0x002B4D80 0x80 GetActionById__11CNodeActionFUi  # OVL1; s1:calls by hand: SOCOM 1's ActionAnimPacketHandler calls GetActionById(the packet's action id, lhu) where SOCOM II's (0x2BB770) calls 0x2B4D80, on the action's own halfword; 0x2B4D80 walks the list at 0x440C5C that fts_action.cpp's static initialiser builds (CNodeAction's container)
-0x002B4E00 0x80 func_002B4E00  # OVL1
+0x002B4E00 0x80 FindActionByValve__11CNodeActionFPC6CValve  # OVL1; s1:order by hand (the states lane: after GetActionById as in SOCOM 1; walks m_actions for the action whose valve, +0x18, is its argument)
 0x002B4E80 0xC0 func_002B4E80  # OVL1
 0x002B4F40 0x5CC func_002B4F40  # OVL1
 0x002B5510 0xC8 func_002B5510  # OVL1
