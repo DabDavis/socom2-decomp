@@ -1521,7 +1521,7 @@
 0x001EF700 0x1C0 func_001EF700  # OVL1
 0x001EF8C0 0x80 func_001EF8C0  # OVL1
 0x001EF940 0x10C ResetLensColors__10CameraZoomFv  # OVL1; the name ours (SOCOM II's: the four lens colours LoadLensFx keeps from 0x4B4D40 put back to white with alpha 0, func_003B78D0 handed white, thePipe+0x6E0 and +0x6D0 cleared, the three blindplayer anims stopped)
-0x001EFA50 0x1E0 func_001EFA50  # OVL1
+0x001EFA50 0x1E0 HoldLensFx__10CameraZoomFUc  # OVL1; the name ours (SOCOM II's: the lens effects' hold, 0x408CF0, or-ed with its byte; held, the kit's lens effects off through 0x5C1800 and the playing effect stopped, the effect then 9; SeeFarther(false, 0); on 1 the first person's effect activated unless running; ResetLensColors' colours inlined and the blindplayer anims restarted)
 0x001EFC30 0x250 func_001EFC30  # OVL1
 0x001EFE80 0xC SetLensFxAnim__10CameraZoomFP6CZAnim  # OVL1; the name ours (SOCOM II's: the playing lens effect's activation set; CMPExitState::UnInit clears it)
 0x001EFE90 0xC LensFxOn__10CameraZoomFv  # OVL1; the name ours (SOCOM II's: the lens effects' switch at 0x3DC360, 1; the loader reads it before asking for the anims)

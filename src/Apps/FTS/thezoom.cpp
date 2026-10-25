@@ -77,6 +77,7 @@ public:
     static void ClearLensFx();
     static void LoadLensFx();
     static void ResetLensColors();
+    static void HoldLensFx(unsigned char hold);
     static void SetLensFx(unsigned char fx);
     static unsigned char LensFxOn();
     static void SetLensFxAnim(CZAnim *anim);
@@ -391,16 +392,17 @@ void CameraZoom::SetLensFxAnim(CZAnim *anim)
 }
 
 /* the lens effects' colours put back to white with no alpha, the screen's tint handed white
- * (0x3B78D0, unnamed), two words cleared and the blindplayer anims stopped (SOCOM II's; the name
+ * (0x3B78D0, unnamed) and two words of thePipe cleared (an inline both callers share; the names
  * ours) */
 extern "C" {
 void func_003B78D0(CPnt4D *color, float t);
 void func_00270960(CZAnim *anim, bool now);
+void func_005C1800(void *kit, int a, int b);
 extern int data_00488E90;                       /* thePipe + 0x6D0 */
 extern int data_00488EA0;                       /* thePipe + 0x6E0 */
 }
 
-void CameraZoom::ResetLensColors()
+static inline void ResetLensColorsOnly()
 {
     for (int i = 0; i < 4; i++) {
         data_004B4D40.m_c[i].x = 1.0f;
@@ -413,6 +415,41 @@ void CameraZoom::ResetLensColors()
     func_003B78D0(&white, 0.0f);
     data_00488EA0 = 0;
     data_00488E90 = 0;
+}
+
+/* the lens effects held (or not): held, the kit's own lens effects off and the playing effect
+ * stopped (the effect then 9); the camera's sight put back; on 1 the first person's effect started
+ * unless running; the colours reset and the blindplayer anims restarted (SOCOM II's; the name ours) */
+void CameraZoom::HoldLensFx(unsigned char hold)
+{
+    data_00408CF0 |= hold;
+    if (data_00408CF0) {
+        func_005C1800(data_00408C58->m_kit, 0, 0);
+        data_00408CD0 = 0;
+        if (data_00408CC8) {
+            func_002707C0(data_00408CC8, false);
+            data_00408CC8 = 0;
+            data_003DC350 = data_003DC358;
+            data_003DC358 = lens_fx_9;
+        }
+    }
+    SeeFarther(false, 0.0f);
+    if (hold == 1 && data_00408CA0[lens_fx_first_person] &&
+        !data_00408CA0[lens_fx_first_person]->Running())
+        data_00408CA0[lens_fx_first_person]->Activate(0);
+    ResetLensColorsOnly();
+    if (data_00408C88[0])
+        func_00270BE0(data_00408C88[0], 1);
+    if (data_00408C88[1])
+        func_00270BE0(data_00408C88[1], 1);
+    if (data_00408C88[2])
+        func_00270BE0(data_00408C88[2], 1);
+}
+
+/* the colours reset and the blindplayer anims stopped (SOCOM II's; the name ours) */
+void CameraZoom::ResetLensColors()
+{
+    ResetLensColorsOnly();
     if (data_00408C88[0])
         func_00270960(data_00408C88[0], false);
     if (data_00408C88[1])
