@@ -6,8 +6,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_00208FD0(s32, s32);                    /* extern */
+M2C_UNK MapPoint__11CZNewHudMapCFPC6CPnt3D(s32, s32); /* extern */
 
 void func_0020F210(s32 arg0, char *arg1) {
-    func_00208FD0(arg0, M2C_FIELD(arg1, s32 *, 0x20));
+    MapPoint__11CZNewHudMapCFPC6CPnt3D(arg0, M2C_FIELD(arg1, s32 *, 0x20));
 }

@@ -16,31 +16,31 @@ extern "C" {
 M2C_UNK ReleaseLandmarkList__Q23zdb6CWorldFv(char * arg0);
 M2C_UNK ReleaseLightList__Q23zdb6CWorldFv(char * arg0);
 M2C_UNK __dl__FPv(char * arg0);
+M2C_UNK __dt__10CAppCameraFv(char * arg0, s16 arg1);
 M2C_UNK func_001E9120(s32 arg0);
 M2C_UNK func_00288940(void);
-M2C_UNK func_0029B570(s32 arg0, s32 arg1);
 M2C_UNK func_00321400(s32 arg0);
 M2C_UNK func_00321D30(void);
 M2C_UNK func_0033B720(s32 arg0);
+extern char *NodeUniverse__3zdb;
+extern char *appCamera;
 extern char *data_00408B78;
-extern s32 data_00415FF0;
-extern char *data_0045C298;
-extern M2C_UNK data_0045C2B8;
-extern M2C_UNK data_004887C0;
 extern s32 data_004B4D90;
 extern s32 data_004B4E48;
 extern s32 data_004B4E50;
 extern M2C_UNK m_assets__Q23zdb9CAssetMgr;
 extern s32 m_lightMapTexture__Q23zdb7CVisual;
+extern M2C_UNK m_tick_list__Q23zdb6CLight;
+extern M2C_UNK thePipe;
 
 void func_001E8FE0(void) {
     char *temp_a0;
     char *temp_s0;
 
     if (data_00408B78 != NULL) {
-        if (data_00415FF0 != 0) {
-            func_0029B570(data_00415FF0, 1);
-            data_00415FF0 = 0;
+        if (appCamera != NULL) {
+            __dt__10CAppCameraFv(appCamera, 1);
+            appCamera = NULL;
         }
         ReleaseLandmarkList__Q23zdb6CWorldFv(data_00408B78);
         ReleaseLightList__Q23zdb6CWorldFv(data_00408B78);
@@ -55,8 +55,8 @@ void func_001E8FE0(void) {
         data_004B4D90 = 0;
         data_004B4E48 = 0;
         data_004B4E50 = 0;
-        func_001E9120((s32) &data_0045C2B8);
-        temp_s0 = data_0045C298;
+        func_001E9120((s32) &m_tick_list__Q23zdb6CLight);
+        temp_s0 = NodeUniverse__3zdb;
         if (temp_s0 != NULL) {
             if (temp_s0 != NULL) {
                 if ((temp_s0 != NULL) && (temp_s0 != NULL) && (temp_s0 != NULL) && (temp_s0 != NULL)) {
@@ -67,9 +67,9 @@ void func_001E8FE0(void) {
                 }
                 __dl__FPv(temp_s0);
             }
-            data_0045C298 = NULL;
+            NodeUniverse__3zdb = NULL;
         }
-        func_0033B720((s32) &data_004887C0);
+        func_0033B720((s32) &thePipe);
     }
 }
 }

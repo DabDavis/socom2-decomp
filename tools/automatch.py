@@ -475,12 +475,21 @@ def stale(st: E.SymbolTable) -> set[int]:
     """Drafts that define a name other than their row's, or call/reference a placeholder
     the map renamed since."""
     names = {s.name for s in st.symbols}
+    ident = re.compile(r"[A-Za-z_]\w*$")
+
+    def renamed(r: str) -> bool:
+        # a placeholder the map renamed -- unless to a name no C draft can spell (a template's
+        # `<,>`), which the draft must go on calling by address
+        s = st.at_addr(int(r[5:], 16))
+        return s is None or bool(ident.match(s.name))
+
     out = set()
     for f in auto_files():
         a, txt = int(f.stem, 16), f.read_text()
         s = st.at_addr(a)
         own = f"func_{a:08X}"
-        gone = any(r not in names and r != own for r in re.findall(r"\b(func_[0-9A-F]{8})\b", txt))
+        gone = any(r not in names and r != own and renamed(r)
+                   for r in re.findall(r"\b(func_[0-9A-F]{8})\b", txt))
         if s is None or not (f"{s.name}(" in txt or f" {s.name} */" in txt) or gone:
             out.add(a)
     return out
