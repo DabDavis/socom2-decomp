@@ -109,6 +109,47 @@ extern int RemovePlayerFromClanID;   /* the member being put out */
 void func_002E6AF0();   /* the roster's UI variable rebuilt */
 }
 
+/* A clan game's team: the clan's id in the low 28 bits, the side (1-4) as 0xA-0xD in the top four
+ * (0x2E99F0 builds it back). The helpers sit after the lists' members in the image, 0x2E9820-0x2E9B3F;
+ * the names ours. */
+extern "C" {
+extern unsigned int data_0044F778;   /* the clan whose team we are on */
+extern unsigned char data_0044F780;   /* our side, 0 none */
+}
+
+/* a team's side (an int: a byte would make each case's constant a daddiu) */
+inline int ClanTeamSide(unsigned int team)
+{
+    switch (team & 0xF0000000) {
+    case 0xA0000000:
+        return 1;
+    case 0xB0000000:
+        return 2;
+    case 0xC0000000:
+        return 3;
+    case 0xD0000000:
+        return 4;
+    }
+    return 0;
+}
+
+/* the team kept (JoinGame and 0x2F9220; OVL1 0x2E9AB0) */
+void SetClanTeam(unsigned int team)
+{
+    data_0044F778 = team & 0x0FFFFFFF;
+    data_0044F780 = ClanTeamSide(team);
+}
+
+/* a team we may join: any but side 3 of another clan (0x2F8C60, 0x2F8FD0; OVL1 0x2E9940) */
+bool IsClanTeamAllowed(unsigned int team)
+{
+    unsigned int id = team & 0x0FFFFFFF;
+
+    if ((unsigned char)ClanTeamSide(team) == 3 && id != StoredClanInfo.ClanID)
+        return false;
+    return true;
+}
+
 /* The lists' members, defined first: they close the unit's own code in the image (0x2E9030-0x2E981F),
  * ahead of the clan-team helpers and the member sort. Never inlined in the target -- their callers
  * call them, the destructors too: pinned. */

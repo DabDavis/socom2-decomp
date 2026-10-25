@@ -4823,10 +4823,10 @@
 0x002E9820 0x1C func_002E9820  # OVL1
 0x002E9840 0xD8 func_002E9840  # OVL1
 0x002E9920 0x14 func_002E9920  # OVL1
-0x002E9940 0xA0 func_002E9940  # OVL1
+0x002E9940 0xA0 IsClanTeamAllowed__FUi  # OVL1; ours (0x2F8C60 and 0x2F8FD0 ask it of a team: false only for side 3 of a clan not ours, StoredClanInfo+0x1c; byte-exact)
 0x002E99E0 0xC func_002E99E0  # OVL1
 0x002E99F0 0xB8 func_002E99F0  # OVL1
-0x002E9AB0 0x7C func_002E9AB0  # OVL1
+0x002E9AB0 0x7C SetClanTeam__FUi  # OVL1; ours (JoinGame and 0x2F9220 call it with a clan game's team: the low 28 bits kept at 0x44F778 as the clan, the top nibble 0xA-0xD as side 1-4 at 0x44F780; byte-exact)
 0x002E9B30 0x10 func_002E9B30  # OVL1
 0x002E9B40 0x574 func_002E9B40  # OVL1
 0x002EA0C0 0x180 func_002EA0C0  # OVL1
