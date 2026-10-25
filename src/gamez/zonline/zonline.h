@@ -622,6 +622,7 @@ public:
     void DeleteClanMessage(int id);
 
     void *DMEInit();
+    void RecoverFromNetError(int err);
     void RunStateHandler(LOBBY_STATE state, LOBBY_STATE_FLAG flag);
     bool RefreshRoomList(C2D *page);
     bool RejoinRoom();

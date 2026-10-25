@@ -5305,7 +5305,7 @@
 0x0030CD90 0x40 func_0030CD90  # OVL1
 0x0030CDD0 0x10 func_0030CDD0  # OVL1
 0x0030CDE0 0x8 func_0030CDE0  # OVL1
-0x0030CDF0 0x88 func_0030CDF0  # OVL1
+0x0030CDF0 0x88 zNetRemoteObjectUpdateCallback__9CZNetworkFiii  # OVL1; s1 by hand (SOCOM 1's zNetRemoteObjectUpdateCallback, the first function of zNetDme.cpp in both builds: NetGetObject, the type's update callback from the list at +0x1114, the field-update flag at +0x10B set; zNetRegisterRemoteObjectCallback registers it with the DME as SOCOM 1's does)
 0x0030CE80 0x6C zNetRegisterRemoteObjectCallback__9CZNetworkFiPFii_vPFiii_vPFiii_vPFii_v  # OVL1; s1:calls (every zNetRegister* calls it last with the index and four callbacks, as SOCOM 1's; the same 0x6C) -- the states lane
 0x0030CEF0 0x100 zNetSendApplicationMessage__9CZNetworkFciiiiPUcb  # OVL1; s1:calls by hand (the states lane: every network sender calls it at SOCOM 1's call site, 39 of them, with the same register handling and calls; zNetDme.cpp's)
 0x0030CFF0 0xC func_0030CFF0  # OVL1
@@ -5326,11 +5326,11 @@
 0x0030D630 0x34 zNetGetObject__9CZNetworkFi  # OVL1; s1:calls (RemoteSealDeletionCallback, as SOCOM 1's) -- the states lane
 0x0030D670 0xF8 zNetCreateObject__9CZNetworkFPi18NetOwnershipStatus17NetObjectLifespanUiiUiiPvPci  # OVL1; s1:calls (CreateLocalGame/Grenade/Bomb pass SOCOM 1's ten arguments, the stack layout included) -- the states lane
 0x0030D770 0x58 func_0030D770  # OVL1
-0x0030D7D0 0x98 func_0030D7D0  # OVL1
-0x0030D870 0x90 func_0030D870  # OVL1
-0x0030D900 0xB0 func_0030D900  # OVL1
+0x0030D7D0 0x98 zNetPlayFixList__9CZNetworkFv  # OVL1; ours (zNetUpdate calls it when the fix list at +0x1254 is not empty: each entry played through zRemoteDelayedAction and freed, the list cleared -- SOCOM 1's zNetUpdate did this in place)
+0x0030D870 0x90 AddToFixList__9CZNetworkFPQ29CZNetwork18TypeRTimeFixStruct  # OVL1; s1 by hand (SOCOM 1's AddToFixList: a 28-byte copy new'd and pushed onto the fix list, the list at +0x1254)
+0x0030D900 0xB0 zNetFlushMessages__9CZNetworkFv  # OVL1; ours (zNetUpdate calls it when the message list at +0x1248 is not empty: each queued message sent through NetSendApplicationMessage 0x621458 and freed, the list cleared -- SOCOM 1's zNetUpdate did this in place)
 0x0030D9B0 0x48 func_0030D9B0  # OVL1
-0x0030DA00 0x1B0 func_0030DA00  # OVL1
+0x0030DA00 0x1B0 zNetUpdate__9CZNetworkFv  # OVL1; s1 by hand (SOCOM 1's zNetUpdate: game_main.cpp calls it at SOCOM 1's call site; the messages flushed, the Medius or DME update and the lobby's Tick, the delayed actions, the post-update callbacks over the 4096 field flags, NetGetLocalTime and NetGetTime into +0x104/+0x100)
 0x0030DBB0 0x130 func_0030DBB0  # OVL1
 0x0030DCE0 0x148 func_0030DCE0  # OVL1
 0x0030DE30 0xAC func_0030DE30  # OVL1
