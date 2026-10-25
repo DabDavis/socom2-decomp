@@ -771,3 +771,43 @@ extern "C" void func_005A0BB0(CZSealBody *seal)
     func_005A5250(seal, 122, 0, 0);
     seal->SetInSmoke(true);
 }
+
+/* the hits under a point handled (SOCOM 1's SealProcessAltitude; OVL2 0x5B5D40, not written yet) */
+extern "C" void func_005B5D40(CZSealBody *seal, zdb::DiIntersect *di, CPnt3D *pos, float f);
+/* zdb::CWorld::GetAltitudes (OVL1 0x31DEA0): SOCOM II's takes no height -- none of its five callers
+ * sets $f12 -- where znode.h declares SOCOM 1's (p, alt); called by its address until the zdb lane
+ * drops the float */
+extern "C" zdb::DiIntersect *func_0031DEA0(zdb::CWorld *world, const CPnt3D *p);
+
+/* the inline setter of the altitude query's character flag (the stores `(b & 1) << 1`) */
+static inline void SetAltitudeCharacters(zdb::DiIntersect *di, bool on)
+{
+    di->m_AltitudeCharacters = on;
+}
+
+/* the ground under a point: the SEAL's node switched off for the query, characters hit when the
+ * SEAL asks, both restored after, the hits handled (OVL2 0x5B4F30; SOCOM 1's, which asked for
+ * 10000 units down -- SOCOM II's GetAltitudes takes no height). The declarations' order is
+ * tools/perm.py's: every local declared first, uninitialised, the hits apart from the world */
+void CZSealBody::SealGetAltitude(CPnt3D *pos, float f)
+{
+    zdb::CNode *node;
+    zdb::CWorld *world;
+    zdb::DiIntersect *hits;
+    bool active;
+    zdb::DiIntersect *di;
+    bool chars;
+
+    world = zdb::CWorld::m_world;
+    node = GetNode();
+    active = node->m_active;
+    node->SetActive(false);
+    di = world->m_diInt;
+    chars = di->m_AltitudeCharacters;
+    if (m_altitude_characters)
+        SetAltitudeCharacters(di, true);
+    hits = func_0031DEA0(world, pos);
+    SetAltitudeCharacters(di, chars);
+    node->SetActive(active);
+    func_005B5D40(this, hits, pos, f);
+}

@@ -10898,7 +10898,7 @@
 0x005B3CE0 0x660 CanTraverse__10CZSealBodyF7CDIType  # OVL2; s1:callee
 0x005B4340 0x7FC func_005B4340  # OVL2
 0x005B4B40 0x3F0 func_005B4B40  # OVL2
-0x005B4F30 0x120 func_005B4F30  # OVL2
+0x005B4F30 0x120 SealGetAltitude__10CZSealBodyFP6CPnt3Df  # OVL2; s1:calls (SOCOM 1's SealGetAltitude__10CZSealBodyFP6CPnt3Df: the world's altitude query with the SEAL's node deactivated (CNode slot 0x38 here, 0x34 there) and the query's character flag set from the SEAL's bit, both restored, then SealProcessAltitude (0x5B5D40) with the point and the float; SOCOM II passes no height to GetAltitudes) -- the SEAL lane, round 7
 0x005B5050 0x260 func_005B5050  # OVL2
 0x005B52B0 0x404 func_005B52B0  # OVL2
 0x005B56C0 0x674 func_005B56C0  # OVL2

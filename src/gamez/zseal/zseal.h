@@ -771,6 +771,9 @@ public:
     void HandlePickupMPBomb(CPickup *pickup);
     /* the regions entered: each new one's OnEnterRegion anim run (SOCOM 1's; OVL2 0x5A2F90) */
     void CheckForRegionTrigger(unsigned int regions);
+    /* the ground under a point found, the SEAL's own node off for it (SOCOM 1's; OVL2 0x5B4F30,
+     * seal_env.cpp), and the hits handled (SOCOM 1's SealProcessAltitude; OVL2 0x5B5D40) */
+    void SealGetAltitude(CPnt3D *pos, float f);
     /* the SEAL's own AI event made where it stands (SOCOM 1's; OVL2 0x550E50, seal.cpp) */
     void CreateAiEvent();
     /* the SEAL's adrenaline, its level first (SOCOM 1's; OVL2 0x5781B0, seal_anim.cpp's last) */
@@ -785,7 +788,12 @@ public:
 
     unsigned char _200[0x214 - 0x200];
     float m_blooddriptimer;   // 0x214 (SOCOM 1's 0x170)
-    unsigned char _218[0x22c - 0x218];
+    unsigned char _218[0x21c - 0x218];
+    unsigned char m_21c_bit0 : 1;   // 0x21c
+    unsigned char m_altitude_characters : 1;   // bit 1: SealGetAltitude hits characters too (SOCOM 1's
+                                               // flag at 0xde8 bit 0; the name ours)
+    unsigned char _21c_bits : 6;
+    unsigned char _21d[0x22c - 0x21d];
     int m_22c;   // 0x22c: a time on the network's clock 0x5A8850 waits for (the names ours)
     unsigned char _230[0x240 - 0x230];
     float m_240;   // 0x240: PostCheckDILadder checks the ladder only from 0.03 up (the name ours)
