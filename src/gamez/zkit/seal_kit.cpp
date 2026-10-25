@@ -347,13 +347,13 @@ void *CZKit::GetIcon(int index)
         return 0;
     CZFTSWeapon *w = m_item[i];
 
-    return w ? w->m_icon : 0;
+    /* an if, not a ternary: the two compile alike out of line, but only this one gives
+     * GetCurIcon's inlined copy its two padded labels */
+    if (w)
+        return w->m_icon;
+    return 0;
 }
 
-/* OPEN, 0xB8 against 0xC0: GetIcon inlined is the target's code but for two pad nops -- the
- * target aligns the inlined body's last two labels (after b end; lw v0,188(v0)) to 8 bytes,
- * where GetIcon's own copy (byte-exact) and every written-out form tried (early returns, a
- * ternary, a result local, GetSelectedItemNum()) leave them unaligned */
 void *CZKit::GetCurIcon()
 {
     return GetIcon(m_selected_item);
