@@ -52,6 +52,8 @@ public:
 
     int zNetLookupHost(const char *host, char *ip, int len);
     int zNetGetMyGameClientIndex();
+    /* the clients in the game (0x30D510; the LAN lobby counts its players with it) */
+    int zNetGetValidGameClientCount();
     int zNetGetTime();
     /* the local clock, in milliseconds (unsigned: the active lobby's refresh compares it with
      * sltu, 0x2EE540) */

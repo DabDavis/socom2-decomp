@@ -361,8 +361,11 @@ class __vector_imp : public __vector_deleter<T, Allocator> {
      * RemoveTarget) */
     T *erase(T *first, T *last);
     iterator erase(iterator first, iterator last) { return iterator(erase(first.m_p, last.m_p)); }
-    /* one element erased: the elements after it copied down, the size counted down (SOCOM II's,
-     * out of class -- the AI map links' 0x532000 -- and its iterator wrapper, 0x530AA0) */
+    /* one element erased, the tail moved down by assignment: out of line over a raw pointer, the
+     * iterator's copy handed to it by an inline wrapper, as the range's (the online lane's
+     * CAcctDB::Delete: the iterator copied bitwise into the wrapper's parameter, its word passed
+     * to the instance 0x2FE230, which hands the position back in v0; the AI lane's map links:
+     * 0x532000 and its wrapper 0x530AA0, CAiMap::SetCellLink's) */
     T *erase(T *position);
     iterator erase(iterator position) { return iterator(erase(position.m_p)); }
     /* grown by default-built elements or cut (out of class; declared after insert and erase) */
@@ -625,16 +628,20 @@ T *__vector_imp<T, Allocator, IsPOD>::erase(T *first, T *last)
     return first;
 }
 
+/* one element erased: the elements after it assigned down one place, the count cut, the position
+ * handed back (the 4888-byte accounts' 0x2FE230: the count after it tested first, the source
+ * pointer one past the position) */
 template <class T, class Allocator, bool IsPOD>
 T *__vector_imp<T, Allocator, IsPOD>::erase(T *position)
 {
     T *e = this->data_ + this->size_;
-    int n = e - position - 1;
 
-    if (n)
-        std::copy(position + 1, e, position);
-    for (T *p = position + n; p < e; ++p)
-        p->~T();
+    if (e - position - 1) {
+        T *s, *d = position;
+
+        for (s = position + 1; s < e; ++s, ++d)
+            *d = *s;
+    }
     --this->size_;
     return position;
 }

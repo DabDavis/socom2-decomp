@@ -14,14 +14,14 @@ struct VC_0 {
     virtual M2C_UNK v_C(s32);
 };
 extern "C" {
+M2C_UNK CreateMarkList__8CZWeaponFv();              /* extern */
+M2C_UNK CreateProjectileList__8CZWeaponFi(M2C_UNK); /* extern */
+M2C_UNK CreateWeaponList__8CZWeaponFv();            /* extern */
 s32 GetDatabase__Fv();                              /* extern */
 M2C_UNK Open__8CMissionFPCci(M2C_UNK *, s32);       /* extern */
 M2C_UNK RemoveArchive__11CRdrArchiveFPCcPCc(M2C_UNK *, M2C_UNK *); /* extern */
 s32 ftsGetPlayer__Fv();                             /* extern */
 s32 func_001E91C0(s32);                             /* extern */
-M2C_UNK func_003D37D0();                            /* extern */
-M2C_UNK func_003D38B0();                            /* extern */
-M2C_UNK func_003D3980(M2C_UNK);                     /* extern */
 extern char *appCamera;
 extern M2C_UNK data_003E1DA8;
 extern M2C_UNK data_003E1DB8;
@@ -36,9 +36,9 @@ s32 func_001EA720(void) {
     if (func_001E91C0(temp_s0) == 0) {
         return 0;
     }
-    func_003D3980(0x64);
-    func_003D38B0();
-    func_003D37D0();
+    CreateProjectileList__8CZWeaponFi(0x64);
+    CreateMarkList__8CZWeaponFv();
+    CreateWeaponList__8CZWeaponFv();
     Open__8CMissionFPCci(&theMission, temp_s0);
     ((VC_0 *)(appCamera))->v_C(ftsGetPlayer__Fv());
     data_0048DB48 = SC_MEMBER(appCamera, s32 *, 0xB4);

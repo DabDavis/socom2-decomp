@@ -4,10 +4,11 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_002FAFC0(s32);                         /* extern */
+M2C_UNK __dt__Q226CZUniversInformationServer7CAcctDBFv(s32); /* extern */
 
 void func_00300630(s32 arg0) {
-    func_002FAFC0(arg0 - 0xC);
+    __dt__Q226CZUniversInformationServer7CAcctDBFv(arg0 - 0xC);
 }

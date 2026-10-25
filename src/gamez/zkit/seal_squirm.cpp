@@ -14,6 +14,13 @@ void func_005C4B10(CZKit *kit, int index);
 void func_005C37B0(CZKit *kit, int mode);
 }
 
+/* (OVL2 0x5FF0F0): the trigger built with its default times (its constructor inlined one level:
+ * Rfloat(float) twice, the two range temporaries and SetTimes out of line), the timer with none
+ * (CAiTimer(float) inlined whole) */
+CSealCtrlSquirm::CSealCtrlSquirm() : m_250(0), m_254(0), m_timer(0.0f)
+{
+}
+
 /* (OVL2 0x5FF090) */
 CSealCtrlSquirm::~CSealCtrlSquirm()
 {
@@ -24,17 +31,18 @@ CSealCtrlSquirm::~CSealCtrlSquirm()
 void CSealCtrlSquirm::Initalize()
 {
     m_254 = 1;
-    m_timer = 8.0f;
+    m_timer.m_min = 8.0f;
+    m_timer.m_range = 0.0f;
     CZKit *kit = &((CZSealBody *)m_entity)->m_kit;
 
     if (kit) {
         func_005C4B10(kit, 0);
         func_005C37B0(kit, 3);
     }
-    m_squirm = 5.0f;
-    m_rest = 1.0f;
-    m_rest_until = m_rest;
-    m_next = m_rest_until + m_squirm;
+    m_trigger.m_dn_time = 5.0f;
+    m_trigger.m_up_time = 1.0f;
+    m_trigger.m_marker = m_trigger.m_up_time;
+    m_trigger.m_timer = m_trigger.m_marker + m_trigger.m_dn_time;
 }
 
 /* the controller's empty reactions (OVL2 0x5FEF50 back to 0x5FEF10) */

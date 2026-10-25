@@ -4,41 +4,44 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK __dl__FPv(char * arg0);
-M2C_UNK func_002C93E0(s32 arg0);
-s32 func_002C9720(s32 arg0, s64 arg1) {
+#pragma mpwc_relax on
+M2C_UNK Clear__17CMultiMissionListFv();             /* extern */
+M2C_UNK __dl__FPv(char *);                          /* extern */
+
+char *func_002C9720(char *arg0, s64 arg1) {
     s32 temp_v0;
-    s32 temp_v0_2;
     char *temp_a0;
     char *temp_a0_2;
     char *temp_a0_3;
+    char *temp_v0_2;
 
-    if (arg0 != 0) {
-        func_002C93E0(arg0);
-        temp_v0 = arg0 + 0x18;
+    if (arg0 != NULL) {
+        Clear__17CMultiMissionListFv();
+        temp_v0 = (int)(arg0 + 0x18);
         if ((temp_v0 != 0) && (temp_v0 != 0) && (temp_v0 != 0)) {
-            temp_a0 = M2C_FIELD(arg0, char **, 0x20);
+            temp_a0 = SC_MEMBER(arg0, char **, 0x20);
             if (temp_a0 != NULL) {
                 __dl__FPv(temp_a0);
             }
         }
         temp_v0_2 = arg0 + 0xC;
-        if ((temp_v0_2 != 0) && (temp_v0_2 != 0) && (temp_v0_2 != 0)) {
-            temp_a0_2 = M2C_FIELD(arg0, char **, 0x14);
+        if ((temp_v0_2 != NULL) && (temp_v0_2 != NULL) && (temp_v0_2 != NULL)) {
+            temp_a0_2 = SC_MEMBER(arg0, char **, 0x14);
             if (temp_a0_2 != NULL) {
                 __dl__FPv(temp_a0_2);
             }
         }
-        if ((arg0 != 0) && (arg0 != 0) && (arg0 != 0)) {
-            temp_a0_3 = M2C_FIELD(arg0, char **, 8);
+        if ((arg0 != NULL) && (arg0 != NULL) && (arg0 != NULL)) {
+            temp_a0_3 = SC_MEMBER(arg0, char **, 8);
             if (temp_a0_3 != NULL) {
                 __dl__FPv(temp_a0_3);
             }
         }
         if (((s64) (arg1 << 0x30) >> 0x30) > 0) {
-            __dl__FPv((char *) arg0);
+            __dl__FPv(arg0);
         }
     }
     return arg0;
