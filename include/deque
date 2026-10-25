@@ -187,7 +187,9 @@ __deque_buf<T, Allocator>::~__deque_buf()
 template <class T, class Allocator>
 class __deque_imp : public __deque_buf<T, Allocator>, public Allocator {
 public:
-    enum { buf_size = 128 };
+    /* 512-byte blocks: 128 pointers, 42 of CSimpleStateMachine's 12-byte member pointers (its
+     * pop_front 0x3A6C40 and clear 0x3A6FA0 keep 84 and 21) */
+    enum { buf_size = sizeof(T) < 512 ? 512 / sizeof(T) : 1 };
 
     __deque_imp();
     unsigned int size() const { return this->size_; }
@@ -338,6 +340,21 @@ void __deque_imp<T, Allocator>::push_back(const T &x)
  * 3.0's exact layering (allocator accessors, compressed pairs) to match; CRdrEditor() waits. */
 template <class T, class Allocator = allocator<T> >
 class deque;
+
+/* a deque of anything but pointers (CSimpleStateMachine's queue of member pointers, OVL1 0x3A5CC0's
+ * unit): its constructors out of class, so called out of line (0x3A6410, the copy 0x3A5E50 -- the
+ * copy declared only: its chain is the rdr lane's open one, below) */
+template <class T, class Allocator>
+class deque : public __deque_imp<T, Allocator> {
+public:
+    deque();
+    deque(const deque &x);
+};
+
+template <class T, class Allocator>
+deque<T, Allocator>::deque()
+{
+}
 
 template <class Allocator>
 class deque<const void *, Allocator> : public __deque_imp<const void *, Allocator> {

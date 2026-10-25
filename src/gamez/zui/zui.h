@@ -41,6 +41,9 @@ struct _zrdr {
     {
         Clone(src, strings);
     }
+    /* an empty value, cleared the same way (util_options.cpp's local the command line's words are
+     * read into: the target's word-wide read-mask-write of each field) */
+    _zrdr() : type(0), isclone(false), packed(false), nofree(false), unused(0), length(0) {}
     ~_zrdr();
     void DeleteChildren();
     void Clone(_zrdr *src, CSTable *strings);

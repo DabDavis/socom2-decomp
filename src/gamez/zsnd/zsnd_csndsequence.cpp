@@ -1,7 +1,10 @@
-/* zsnd_csndsequence.cpp -- CSndSequence and its entries: sounds and pauses played one after
- * another (OVL1 0x349A70-0x34A61F). The unit name is SOCOM 1's (its asserts' file name); the
- * sequence's vector of entries closes the unit (insert, the deleter's destructor and clear).
- * Defined in reverse of their image order (-inline deferred). */
+/* zsnd_csndsequence.cpp -- CSndSequence: sounds and pauses played one after another (OVL1
+ * 0x349C70-0x34A61F). The unit name is SOCOM 1's: the press beta's asserts naming it sit in
+ * CreateSequence and the destructor. The sequence's vector of entries closes the unit (insert, the
+ * deleter's destructor and clear). Its entries, CSndSequenceEntry, are the unit before it,
+ * zsnd_csndsequenceentry.cpp (0x349A70-0x349C6F): every entry function this unit uses is called out
+ * of line, as -inline auto does only across units (README "The inlining mode, measured"; one unit
+ * needed all six pinned). Defined in reverse of their image order (-inline deferred). */
 
 #include "zsnd.h"
 #include "../zanim/zanim.h"
@@ -117,66 +120,3 @@ void CSndSequence::FadeOut()
     } else
         Stop();
 }
-
-/* the entries' functions are pinned: the sequence's call every one of them */
-#pragma auto_inline off
-
-CSndSequenceEntry::CSndSequenceEntry(CSnd *sound, float pause)
-{
-    m_sound = sound;
-    m_pause = pause;
-    m_timer = 0.0f;
-}
-
-bool CSndSequenceEntry::Tick(float dT)
-{
-    if (m_sound) {
-        if (!m_instance || !m_instance->IsPlaying()) {
-            if (m_instance)
-                CSndInstance::ReleaseSoundInstance(m_instance);
-            if (m_instance)
-                CSndInstance::ReleaseSoundInstance(m_instance);
-            m_instance = 0;
-            return true;
-        }
-        return false;
-    }
-    m_timer += dT;
-    if (m_timer > m_pause) {
-        m_timer = 0.0f;
-        return true;
-    }
-    return false;
-}
-
-void CSndSequenceEntry::Play()
-{
-    if (m_sound)
-        m_instance = m_sound->PlaySound(false, 0, 255);
-}
-
-void CSndSequenceEntry::Stop()
-{
-    if (m_instance) {
-        m_instance->Stop();
-        CSndInstance::ReleaseSoundInstance(m_instance);
-    }
-    m_instance = 0;
-}
-
-void CSndSequenceEntry::FadeOut()
-{
-    if (m_instance)
-        m_instance->FadeOut(2.0f);
-    else
-        m_timer = m_pause;
-}
-
-bool CSndSequenceEntry::IsFading()
-{
-    if (m_instance)
-        return m_instance->IsFading();
-    return false;
-}
-
-#pragma auto_inline reset
