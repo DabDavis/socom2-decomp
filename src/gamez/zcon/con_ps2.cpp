@@ -51,6 +51,11 @@ public:
         return 0;
     }
     void *GetArg(unsigned int index) const;
+    /* the message itself (CPacket's answers 0: slot 0xC of both tables) */
+    virtual CPacketMsg *GetPacketMsg();
+    /* written, not implicit (0x29D910, 0xA0: not yet here) -- declared so this unit, which defines
+     * a virtual of the class, emits no implicit copy */
+    virtual ~CPacketMsg();
 
     void **m_args;   // 0xc
 };
@@ -180,6 +185,12 @@ void *CPacketMsg::GetArg(unsigned int index) const
     if (index >= m_data->argc)
         return 0;
     return m_args[index];
+}
+
+/* (OVL1 0x29D890, CPacketMsg's table slot 0xC) */
+CPacketMsg *CPacketMsg::GetPacketMsg()
+{
+    return this;
 }
 
 CPacketMsg *CPacket::GetPacketMsg()

@@ -3648,7 +3648,7 @@
 0x0029D860 0x8 func_0029D860  # OVL1
 0x0029D870 0x8 func_0029D870  # OVL1
 0x0029D880 0x10 func_0029D880  # OVL1; a virtual tail call (vtable slot 0xC of a0's class: lw t9,0(a0); lw t9,12(t9); jr t9) -- split from the 0x18 row, which ran over the next function
-0x0029D890 0x8 func_0029D890  # OVL1; split from func_0029D880's 0x18 row: `return this` (jr ra; move v0,a0), on its own 16-byte boundary
+0x0029D890 0x8 GetPacketMsg__10CPacketMsgFv  # OVL1; split from func_0029D880's 0x18 row: `return this` (jr ra; move v0,a0), on its own 16-byte boundary; by hand (slot 0xC of __vt__10CPacketMsg, 0x4061A0, where CPacket's table has GetPacketMsg__7CPacketFv: the override returning this)
 0x0029D8A0 0x44 GetArg__10CPacketMsgCFUi  # OVL1; s1:exact
 0x0029D8F0 0x20 GetArgCount__10CPacketMsgCFv  # OVL1; s1:exact
 0x0029D910 0xA0 __dt__10CPacketMsgFv  # OVL1; s1:gap
