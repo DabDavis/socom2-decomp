@@ -7548,10 +7548,10 @@
 0x0039D960 0x334 Read__7CFileCDFPci  # OVL1; s1:calls
 0x0039DCA0 0x110 XferSectorsToCaller__7CFileCDFPci  # OVL1; s1:calls
 0x0039DDB0 0x8 func_0039DDB0  # OVL1
-0x0039DDC0 0x78 func_0039DDC0  # OVL1
-0x0039DE40 0x60 func_0039DE40  # OVL1
-0x0039DEA0 0x50 func_0039DEA0  # OVL1
-0x0039DEF0 0xD0 func_0039DEF0  # OVL1
+0x0039DDC0 0x78 OpenSector__7CFileCDFUi  # OVL1; ours (SOCOM II's: a TOC entry made at m_TOC[m_TOCNum++] for the sector given, named "", sizes zero, the head sector set; returns true; the DNAS client 0x2CC9D0 calls it between CFileCD's constructor and destructor)
+0x0039DE40 0x60 __dt__7CFileCDFv  # OVL1; s1 by hand (SOCOM 1's ~CFileCD body, out of line in SOCOM II: the sector buffer freed and cleared, deleting when asked; the DNAS client calls it, Open and Close inline it)
+0x0039DEA0 0x50 __ct__7CFileCDFv  # OVL1; s1 by hand (SOCOM 1's CFileCD() body, out of line in SOCOM II: the head sector -1, the rest zero, a 2 KB sector buffer 64-aligned; the DNAS client calls it, Open inlines it)
+0x0039DEF0 0xD0 Find__7CFileCDFPCc  # OVL1; s1 by hand (SOCOM 1's Find(const char *): the TOC walked 16 bytes at a time with strcmp until found; SOCOM II prefixes the root's directory 0x4A1650; Open inlines it)
 0x0039DFC0 0xC func_0039DFC0  # OVL1
 0x0039DFD0 0x520 func_0039DFD0  # OVL1
 0x0039E4F0 0x110 CreatePath__7CFileCDFPcPc  # OVL1; s1:calls

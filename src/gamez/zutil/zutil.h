@@ -74,7 +74,7 @@ public:
     void fflush();
     void Release();
 
-    static bool PS2FileName(const char *name, char *out, bool cd);
+    static void PS2FileName(const char *name, char *out, bool cd);
     static void SetRootPath(const char *path);
     static void SetErrorHandler(void (*handler)(int error));
 
