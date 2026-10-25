@@ -344,7 +344,7 @@ _FIELD = re.compile(r"\b(M2C_FIELD|SC_MEMBER)\(")
 
 
 def _vtable_load(txt: str) -> tuple[str, int] | None:
-    """`M2C_FIELD(obj, T **, VPTR)` (or SC_MEMBER) -> (obj, VPTR)."""
+    """`M2C_FIELD(obj, T **, VPTR)` (or SC_MEMBER) -> (obj, VPTR); `*obj` -> (obj, 0)."""
     t = txt.strip()
     m = _FIELD.match(t)
     if m:
@@ -355,12 +355,17 @@ def _vtable_load(txt: str) -> tuple[str, int] | None:
             return a[0][0], int(a[0][2], 0)
         except ValueError:
             return None
+    if t.startswith("*") and not t.startswith("**") and _on("VIRT"):
+        return t[1:].strip(), 0
     return None
 
 
 def _virtualize(body: str):
     """m2c's `M2C_FIELD(M2C_FIELD(obj, T **, VPTR), R (**)(P...), SLOT)(obj, ...)` -> a call
-    of slot SLOT on a class whose vtable pointer is at VPTR: (struct text, body) or None."""
+    of slot SLOT on a class whose vtable pointer is at VPTR: (struct text, body) or None.
+    The vtable pointer at 0 reads `*obj`; a member object's virtual is called on `obj + K`
+    (its vtable pointer VPTR - K into it); and a call m2c gives no arguments passes the
+    object on in a0, which m2c cannot see."""
     classes, out, i, n = {}, [], 0, 0
     for fm in _FIELD.finditer(body):
         k = fm.start()
@@ -382,8 +387,14 @@ def _virtualize(body: str):
             first = args[0].strip() if args else None
             while first and first.startswith("(") and _group(first, 0) == len(first):
                 first = first[1:-1].strip()
+            sub = re.fullmatch(rf"{re.escape(obj)} \+ (0x[0-9A-Fa-f]+|\d+)", first or "")
             if first == obj:
                 this, rest = obj, args[1:]
+            elif sub and int(sub.group(1), 0) <= vptr_off and _on("VIRT"):
+                this, rest = args[0], args[1:]
+                vptr_off -= int(sub.group(1), 0)
+            elif not args and _on("VIRT"):
+                this, rest = obj, []
             else:
                 ok = False
         if ok:
