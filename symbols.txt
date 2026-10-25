@@ -4944,7 +4944,7 @@
 0x002F4BA0 0x1B8 func_002F4BA0  # OVL1
 0x002F4D60 0x90 func_002F4D60  # OVL1
 0x002F4DF0 0xA8 Censor__13CZOnlineLobbyFPCcPFPCcPv_vPv  # OVL1; s1:ui (UINetCensorText and SendChatMsg call it, as SOCOM 1's call Censor)
-0x002F4EA0 0x44 func_002F4EA0  # OVL1
+0x002F4EA0 0x44 cbCensor__FiiiP24MediusTextFilterResponse  # OVL1; s1:calls by hand (CZOnlineLobby::Censor hands it to MediusTextFilter as SOCOM 1's Censor hands cbCensor: the filtered text at +0x15 to the waiting callback, then the callback and its data cleared)
 0x002F4EF0 0xCC func_002F4EF0  # OVL1
 0x002F4FC0 0x60 func_002F4FC0  # OVL1
 0x002F5020 0x1B8 func_002F5020  # OVL1
@@ -5243,45 +5243,45 @@
 0x00309370 0x8C exp_tl__Ff  # OVL1; s1:order (the same clamp to [0, 10] and table lerp)
 0x00309400 0x20 uninit_trig_table__Fv  # OVL1; s1:order (clears the same flag)
 0x00309420 0x12C init_trig_table__Fv  # OVL1; s1:calls
-0x00309550 0xC func_00309550  # OVL1
-0x00309560 0x158 func_00309560  # OVL1
-0x003096C0 0x24 func_003096C0  # OVL1
-0x003096F0 0x84 func_003096F0  # OVL1
-0x00309780 0xC4 func_00309780  # OVL1
-0x00309850 0x84 func_00309850  # OVL1
-0x003098E0 0x128 func_003098E0  # OVL1
-0x00309A10 0x12C func_00309A10  # OVL1
-0x00309B40 0x418 func_00309B40  # OVL1
+0x00309550 0xC SetMaxHeight__5CMPEGFi  # OVL1; s1:order by hand (zmpeg.cpp's CMPEG in SOCOM 1's order: SetMaxHeight's store is the height Loop and Init size the buffers by, as SOCOM 1's -30600(gp); SetDisplayHeight is gone)
+0x00309560 0x158 Loop__5CMPEGFv  # OVL1; s1:order by hand (SOCOM 1's Loop: stopPss, strFileRewind, the buffers zeroed, startPss again unless the film plays in the background)
+0x003096C0 0x24 Done__5CMPEGFv  # OVL1; s1:order by hand (SOCOM 1's Done: testdonePss on the film, the result a bool)
+0x003096F0 0x84 End__5CMPEGFv  # OVL1; s1:order by hand (SOCOM 1's End: stopPss and the film freed, strFileClose, the buffers freed when Run made them -- through Uninit in SOCOM II)
+0x00309780 0xC4 IdleTick__5CMPEGFv  # OVL1; s1:order by hand (SOCOM 1's IdleTick: fillBuff until the beam reaches line 480 of 525; SOCOM II's line counts per video mode)
+0x00309850 0x84 Tick__5CMPEGFi  # OVL1; s1:order by hand (SOCOM 1's Tick: tickPss on the film; SOCOM II plays a background film whole there)
+0x003098E0 0x128 Run__5CMPEGFPCcbbi  # OVL1; s1:order by hand (SOCOM 1's Run__5CMPEGFPCcbb: strFileOpen, Init when no buffers, the 72-byte film allocated, startPss; SOCOM II adds the int it hands startPss, a3)
+0x00309A10 0x12C Uninit__5CMPEGFv  # OVL1; s1:order by hand (SOCOM 1's Uninit: the five owned buffers freed, uninitPssAudio; CCinematicState::UnInit calls it)
+0x00309B40 0x418 Init__5CMPEGFPvi  # OVL1; s1:order by hand (SOCOM 1's Init: the five buffers carved from the block or memalign'd, initPssAudio)
 0x00309F60 0x370 sendToIOP2area__FiiiiPUciPUci  # OVL1; s1:calls
-0x0030A2D0 0xD8 func_0030A2D0  # OVL1
-0x0030A3B0 0x1B4 func_0030A3B0  # OVL1
+0x0030A2D0 0xD8 iopGetArea__FPiPiPiPiP8AudioDeci  # OVL1; ours (Sony's ezmpeg audiodec.c iopGetArea, out of line in SOCOM II -- SOCOM 1's audioDecSendToIOP inlined it: the IOP buffer's free areas behind the play position in 1024-byte units, called once from audioDecSendToIOP's playing case with the play position)
+0x0030A3B0 0x1B4 audioDecSendToIOP__FP8AudioDec  # OVL1; s1:order by hand (SOCOM 1's audioDecSendToIOP, after sendToIOP2area as there: the state switch, sendToIOP2area when both sides hold a unit; tickPss calls it)
 0x0030A570 0x14 audioDecIsPreset__FP8AudioDec  # OVL1; s1:exact
-0x0030A590 0x8C func_0030A590  # OVL1
-0x0030A620 0xC0 func_0030A620  # OVL1
+0x0030A590 0x8C audioDecEndPut__FP8AudioDeci  # OVL1; s1:order by hand (SOCOM 1's audioDecEndPut, after IsPreset as there: the header's 0x28 bytes counted first, the ring's put/count/total; the audio callback calls it after its copies)
+0x0030A620 0xC0 audioDecBeginPut__FP8AudioDecPPUcPiPPUcPi  # OVL1; s1:order by hand (SOCOM 1's audioDecBeginPut: the header area while the state is 0, else the ring's two free areas; the audio callback calls it first)
 0x0030A6E0 0x44 audioDecReset__FP8AudioDec  # OVL1; s1:exact
-0x0030A730 0x58 func_0030A730  # OVL1
-0x0030A790 0x30 func_0030A790  # OVL1
-0x0030A7C0 0xA0 func_0030A7C0  # OVL1
-0x0030A860 0xD4 func_0030A860  # OVL1
-0x0030A940 0x28 func_0030A940  # OVL1
-0x0030A970 0x128 func_0030A970  # OVL1
-0x0030AAA0 0x200 func_0030AAA0  # OVL1
-0x0030ACA0 0x124 func_0030ACA0  # OVL1
-0x0030ADD0 0x164 func_0030ADD0  # OVL1
-0x0030AF40 0x1DC func_0030AF40  # OVL1
-0x0030B120 0x58 func_0030B120  # OVL1
-0x0030B180 0x44 func_0030B180  # OVL1
-0x0030B1D0 0x2F4 func_0030B1D0  # OVL1
-0x0030B4D0 0x21C func_0030B4D0  # OVL1
-0x0030B6F0 0xC func_0030B6F0  # OVL1
-0x0030B700 0x38 func_0030B700  # OVL1
+0x0030A730 0x58 audioDecStart__FP8AudioDec  # OVL1; s1:calls by hand (tickPss starts the audio through it once the IOP buffer is preset, as SOCOM 1's tickPss calls audioDecStart: snd_StartMovieSound, state 2)
+0x0030A790 0x30 audioDecDelete__FP8AudioDec  # OVL1; s1:calls by hand (uninitPssAudio's only call, as SOCOM 1's uninitPssAudio calls audioDecDelete: snd_CloseMovieSound, returns 1)
+0x0030A7C0 0xA0 audioDecCreate__FP8AudioDecPUcii  # OVL1; s1:calls by hand (initPssAudio's call with the audio buffer, its size and the IOP size, as SOCOM 1's: the fields zeroed, snd_InitMovieSound's buffer kept)
+0x0030A860 0xD4 fillBuff__FP7sceMpegi  # OVL1; s1:calls by hand (CMPEG::IdleTick feeds the film through it until the beam's line, as SOCOM 1's IdleTick calls fillBuff)
+0x0030A940 0x28 errorCallback__FP7sceMpegP13sceMpegCbDataPv  # OVL1; s1:order by hand (SOCOM 1's errorCallback, after fillBuff as there; startPss registers it as callback type 0 (error), as Sony's playpss does; SOCOM II raises a flag tickPss tests)
+0x0030A970 0x128 backgroundCallback__FP7sceMpegP13sceMpegCbDataPv  # OVL1; s1:order by hand (SOCOM 1's backgroundCallback: BlockingPSSPlayback tested, fillBuff until the timer's mark, else OKtoFillBuff set; startPss registers it as type 4)
+0x0030AAA0 0x200 nodataCallback__FP7sceMpegP13sceMpegCbDataPv  # OVL1; s1:order by hand (SOCOM 1's nodataCallback: the demux ring refilled through fillBuff and handed to the IPU's DMA (0x1000B400); startPss registers it as type 1)
+0x0030ACA0 0x124 audioCallback__FP7sceMpegP16sceMpegCbDataStrPv  # OVL1; s1:order by hand (SOCOM 1's audioCallback: audioDecBeginPut, the packet copied in, audioDecEndPut; startPss registers it for stream type 2)
+0x0030ADD0 0x164 videoCallback__FP7sceMpegP16sceMpegCbDataStrPv  # OVL1; s1:order by hand (SOCOM 1's videoCallback: the packet copied into the demux ring, uncached; startPss registers it for stream type 0)
+0x0030AF40 0x1DC playPss__FP7sceMpegP12playPssRsrcsUi  # OVL1; s1:order by hand (between videoCallback and stopPss where SOCOM 1's playPss sits; the whole film played, CMPEG::IdleTick feeding it -- CMPEG::Tick's background path; SOCOM II's signature)
+0x0030B120 0x58 stopPss__FP7sceMpeg  # OVL1; s1:calls by hand (CMPEG::Loop and End call it on the film, as SOCOM 1's)
+0x0030B180 0x44 testdonePss__FP7sceMpeg  # OVL1; s1:calls by hand (CMPEG::Done returns it, as SOCOM 1's Done)
+0x0030B1D0 0x2F4 tickPss__FP7sceMpegP12playPssRsrcsUi  # OVL1; s1:calls by hand (CMPEG::Tick calls it on the film and the buffers, as SOCOM 1's Tick calls tickPss)
+0x0030B4D0 0x21C startPss__FP7sceMpegPFPvi_iP12playPssRsrcsUiUii  # OVL1; s1:calls by hand (CMPEG::Run and Loop start the film through it, as SOCOM 1's call startPss; SOCOM II adds Run's int, t1)
+0x0030B6F0 0xC uninitPssAudio__Fv  # OVL1; s1:calls by hand (CMPEG::Uninit's last call, as SOCOM 1's End calls uninitPssAudio)
+0x0030B700 0x38 initPssAudio__FP12playPssRsrcs  # OVL1; s1:calls by hand (CMPEG::Init's last call, on the buffers, as SOCOM 1's Init)
 0x0030B740 0x28 loadImage__FPUi  # OVL1; s1:exact
-0x0030B770 0x23C func_0030B770  # OVL1
+0x0030B770 0x23C setLoadImageTagsYX__FPUiPviiiUi  # OVL1; s1:calls by hand (setLoadImageTags' only call, as SOCOM 1's setLoadImageTags calls setLoadImageTagsYX: a GIF image transfer per macroblock, the chain ended; socom-unzipped's table agrees)
 0x0030B9B0 0x18 setLoadImageTags__FPUiPviiUi  # OVL1; s1:exact
-0x0030B9D0 0xB8 func_0030B9D0  # OVL1
-0x0030BA90 0x58 func_0030BA90  # OVL1
-0x0030BAF0 0x6C func_0030BAF0  # OVL1
-0x0030BB60 0x1D4 func_0030BB60  # OVL1
+0x0030B9D0 0xB8 strFileRead__FPvi  # OVL1; s1:calls by hand (the reader CMPEG::Run and Loop hand startPss, as SOCOM 1's pass strFileRead)
+0x0030BA90 0x58 strFileClose__Fv  # OVL1; s1:calls by hand (CMPEG::End calls it, as SOCOM 1's End)
+0x0030BAF0 0x6C strFileRewind__Fv  # OVL1; s1:calls by hand (CMPEG::Loop calls it after stopPss, as SOCOM 1's Loop)
+0x0030BB60 0x1D4 strFileOpen__FPCc  # OVL1; s1:calls by hand (CMPEG::Run opens the film through it, as SOCOM 1's Run calls strFileOpen first)
 0x0030BD40 0x134 func_0030BD40  # OVL1
 0x0030BE80 0x9C func_0030BE80  # OVL1
 0x0030BF20 0x10C func_0030BF20  # OVL1
@@ -5292,11 +5292,11 @@
 0x0030C630 0x6C func_0030C630  # OVL1
 0x0030C6A0 0x34 func_0030C6A0  # OVL1
 0x0030C6E0 0x7C func_0030C6E0  # OVL1
-0x0030C760 0xE4 func_0030C760  # OVL1
+0x0030C760 0xE4 TRC_PreparePowerOff  # OVL1; s1:order by hand (SOCOM 1's TRC_PreparePowerOff, before _UnPreparePowerOff as there: the thread exists test, CreateSema, the 0x2000-stack thread on TRC_PowerOffThread, sceCdPOffCallback, RegisterRebootCallback(_UnPreparePowerOff); CIOPManager::RebootIOP calls it)
 0x0030C850 0x88 _UnPreparePowerOff__FQ211CIOPManager11RebootPhaseQ211CIOPManager10RebootModePv  # OVL1; s1:calls
-0x0030C8E0 0x28 func_0030C8E0  # OVL1
-0x0030C910 0x130 func_0030C910  # OVL1
-0x0030CA40 0x8 func_0030CA40  # OVL1
+0x0030C8E0 0x28 TRC_PowerOffThread__FPv  # OVL1; s1:order by hand (SOCOM 1's TRC_PowerOffThread: WaitSema on its argument, TRC_PowerOffThread_Aux, forever; TRC_PreparePowerOff starts the thread on it)
+0x0030C910 0x130 TRC_PowerOffThread_Aux__Fv  # OVL1; s1:order by hand (SOCOM 1's TRC_PowerOffThread_Aux: hdd/pfs/dev9x devctls, sceCdPowerOff until done; socom-unzipped's table agrees)
+0x0030CA40 0x8 TRC_PowerOffHandler__FPv  # OVL1; s1:order by hand (SOCOM 1's TRC_PowerOffHandler: iSignalSema on its argument; TRC_PreparePowerOff hands it to sceCdPOffCallback)
 0x0030CA50 0x28 func_0030CA50  # OVL1
 0x0030CA80 0x9C func_0030CA80  # OVL1
 0x0030CB20 0x6C func_0030CB20  # OVL1

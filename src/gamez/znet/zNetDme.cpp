@@ -1,7 +1,9 @@
 /* zNetDme.cpp -- the network: CZNetwork over Sony's DME library -- the remote objects and their
  * callbacks, the application messages, the per-frame update (SOCOM 1's zNetDme.cpp, the press
- * beta's file references name it: OVL1 from 0x30CDF0, zNetRemoteObjectUpdateCallback, SOCOM 1's
- * first function too; its static initialiser 0x402800 builds theNetwork and registers its
+ * beta's file references name it: OVL1 from 0x30CA50 -- SOCOM II's additions, defined after
+ * SOCOM 1's last function and so ahead of it, read theNetwork's 0x1198-0x11A0 (after trc.cpp's
+ * TRC_PowerOffHandler) -- then zNetRemoteObjectUpdateCallback at 0x30CDF0, SOCOM 1's first
+ * function; its static initialiser 0x402800 builds theNetwork and registers its
  * destructor 0x30E410, the unit's last function, as SOCOM 1's). The DME calls are OVL2 address
  * placeholders, their shapes the call sites'. Only some of it so far. Defined in reverse of their
  * image order (-inline deferred). */
@@ -312,4 +314,143 @@ void CZNetwork::zNetRemoteObjectUpdateCallback(int client, int index, int field)
     if (obj && theNetwork.m_ObjectUpdateCallbackList[obj->m_type])
         theNetwork.m_ObjectUpdateCallbackList[obj->m_type]((int)obj->m_data, index, field);
     theNetwork.m_ObjectFieldUpdate[index] = 1;
+}
+
+/* --- SOCOM II's additions, defined after SOCOM 1's last function (so ahead of it in the image,
+ * OVL1 0x30CA50-0x30CDEF): the LAN game-info exchange over two DME message types, and three
+ * wrappers. The DME calls are OVL2 placeholders; the names of the functions are still the map's. */
+
+/* the game's description a LAN host sends (400 bytes, the DME message type m_infoType; the fields
+ * as 0x30CB90 registers them, the names ours) */
+struct LanGameInfo {
+    char m_name[21];   // 0x0
+    int m_18;   // 0x18
+    int m_1c;   // 0x1c: the request's first word
+    short m_20;   // 0x20
+    short m_22;   // 0x22
+    short m_24;   // 0x24
+    int m_28[8];   // 0x28
+    int m_48;   // 0x48
+    char m_desc[64];   // 0x4c
+    char m_text[256];   // 0x8c
+    unsigned char m_18c;   // 0x18c
+};   // 0x190
+
+/* the request: two words */
+struct LanInfoRequest {
+    int m_0;
+    int m_4;
+};
+
+extern "C" {
+void func_00620BD8(void);   /* a message type's description begun */
+void func_00620C60(void *base, void *field, int size, int count);   /* a field described */
+void func_006210D0(int *type, int (*cb)(int, int, int, void *));   /* the type registered */
+int func_00621178(int flags, void *to, int a, int type, int size, void *data);   /* a message sent */
+int func_00622C28(int *client);   /* (the DME's: our client) */
+int func_00622A20(void **client, int conn, int index);   /* a client of the connection */
+void func_00623138(int a, int conn);
+void func_006233D8(int a);
+void func_00303780(CLanRoom *room, LanGameInfo *info);   /* the room's game described */
+int func_0030BE80(void);   /* (the network start-up's: the time since the link changed) */
+}
+
+/* (OVL1 0x30CDE0) */
+extern "C" void func_0030CDE0(CZNetwork *net, int a)
+{
+    func_006233D8(a);
+}
+
+/* (OVL1 0x30CDD0) */
+extern "C" void func_0030CDD0(CZNetwork *net, int a)
+{
+    func_00623138(a, net->m_GameConnectionIndex);
+}
+
+/* a client's halfword at +4 of the game connection, -1 when there is none (OVL1 0x30CD90) */
+extern "C" int func_0030CD90(CZNetwork *net, int index)
+{
+    unsigned char *client = 0;
+
+    func_00622A20((void **)&client, net->m_GameConnectionIndex, index);
+    if (client)
+        return *(unsigned short *)(client + 4);
+    return -1;
+}
+
+/* (OVL1 0x30CD80) */
+extern "C" void func_0030CD80(CZNetwork *net)
+{
+    func_0030BE80();
+}
+
+extern "C" int func_0030CA80(int a, int b, int c, void *data);
+extern "C" int func_0030CA50(int a, int b, int c, void *data);
+
+/* the two message types described and registered, the info's callback kept (OVL1 0x30CB90) */
+extern "C" void func_0030CB90(CZNetwork *net, void (*cb)(void *info))
+{
+    LanInfoRequest req;
+    LanGameInfo info;
+
+    func_00620BD8();
+    func_00620C60(&req, &req.m_0, 4, 1);
+    func_00620C60(&req, &req.m_4, 4, 1);
+    func_006210D0(&net->m_infoRequestType, func_0030CA80);
+    func_00620BD8();
+    func_00620C60(&info, &info.m_name, 21, 21);
+    func_00620C60(&info, &info.m_18, 4, 1);
+    func_00620C60(&info, &info.m_1c, 4, 1);
+    func_00620C60(&info, &info.m_20, 2, 1);
+    func_00620C60(&info, &info.m_22, 2, 1);
+    func_00620C60(&info, &info.m_24, 2, 1);
+    func_00620C60(&info, &info.m_28[0], 4, 1);
+    func_00620C60(&info, &info.m_28[1], 4, 1);
+    func_00620C60(&info, &info.m_28[2], 4, 1);
+    func_00620C60(&info, &info.m_28[3], 4, 1);
+    func_00620C60(&info, &info.m_28[4], 4, 1);
+    func_00620C60(&info, &info.m_28[5], 4, 1);
+    func_00620C60(&info, &info.m_28[6], 4, 1);
+    func_00620C60(&info, &info.m_28[7], 4, 1);
+    func_00620C60(&info, &info.m_48, 4, 1);
+    func_00620C60(&info, &info.m_desc, 64, 64);
+    func_00620C60(&info, &info.m_text, 256, 256);
+    func_00620C60(&info, &info.m_18c, 1, 1);
+    func_006210D0(&net->m_infoType, func_0030CA50);
+    net->m_infoCallback = cb;
+}
+
+/* the info asked of a client (OVL1 0x30CB20) */
+extern "C" void func_0030CB20(CZNetwork *net, void *to, int value)
+{
+    int id;
+    LanInfoRequest req;
+
+    memcpy(&id, to, 4);
+    req.m_4 = value;
+    req.m_0 = id;
+    func_00621178(0x40, to, 2, net->m_infoRequestType, sizeof(req), &req);
+}
+
+/* a request answered with the room's game info (OVL1 0x30CA80) */
+extern "C" int func_0030CA80(int a, int b, int c, void *data)
+{
+    int me;
+
+    if (!func_00622C28(&me)) {
+        LanGameInfo info = {0};
+
+        func_00303780(&data_0044FE10, &info);
+        info.m_1c = ((int *)data)[0];
+        info.m_28[3] = ((int *)data)[1];
+        func_00621178(0x40, &me, 2, theNetwork.m_infoType, sizeof(info), &info);
+    }
+    return 8;
+}
+
+/* the info handed to the callback (OVL1 0x30CA50) */
+extern "C" int func_0030CA50(int a, int b, int c, void *data)
+{
+    theNetwork.m_infoCallback(data);
+    return 400;
 }
