@@ -1,8 +1,13 @@
 /* zNetMediusRoom.cpp -- the lobby's rooms and games: the room and game lists, joining a room,
  * the games' details (SOCOM 1's zNetMedius.cpp's BriefingRoom and RoomGame code; the unit and its
  * name are ours: OVL1 0x2E1CE0-0x2E5FDF, after the lobby's own unit, its static initialiser
- * 0x401E70 building the room list 0x44F568, whose destructor 0x2E5F60 closes it). Only some of it
- * so far. Defined in reverse of their image order (-inline deferred). */
+ * 0x401E70 building the room list 0x44F568, whose destructor 0x2E5F60 closes it). Still unwritten:
+ * the game-info pages 0x2E1F20/0x2E24D0 (UIGetGameInfo's), and the template tail's two std::sort
+ * instances -- the games' 0x2E4A90 (comparator by value) and the rooms' 0x2E5150 (RoomLess by
+ * address), with their median-of-three and short-range sorts (0x2E5760, 0x2E5980, 0x2E5BF0,
+ * 0x2E5D90): SOCOM 1's MSL sort/__sort132/__selection_sort (CW 3.0.1's, its DWARF gives the lines
+ * and the static shuffle), not yet in include/algorithm, so SortGames and UpdateRoomListDisplay call
+ * them by their placeholders. Defined in reverse of their image order (-inline deferred). */
 
 #include <stdio.h>
 #include <stdlib.h>
