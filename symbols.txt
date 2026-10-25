@@ -9485,37 +9485,37 @@
 0x0051A6D0 0x238 func_0051A6D0  # OVL2
 0x0051A910 0x238 func_0051A910  # OVL2
 0x0051AB50 0x238 func_0051AB50  # OVL2
-0x0051AD90 0x160 func_0051AD90  # OVL2
+0x0051AD90 0x160 read_v19__6CAiMapFR7CFileIO  # OVL2; ours (CAiMap::Read, 0x51AFE0, calls it for version 19, the oldest it reads: SOCOM 1's Read body -- the 0xA4-byte header, the cells into the layer, the scanlines, the seven tables, the lines, readers and routes, the extra data)
 0x0051AEF0 0xE4 func_0051AEF0  # OVL2
 0x0051AFE0 0x170 func_0051AFE0  # OVL2
 0x0051B150 0xFC func_0051B150  # OVL2
 0x0051B250 0x54 func_0051B250  # OVL2
 0x0051B2B0 0xE0 func_0051B2B0  # OVL2
 0x0051B390 0x100 read_readers__6CAiMapFR7CFileIO  # OVL2; s1:calls
-0x0051B490 0x11C func_0051B490  # OVL2
-0x0051B5B0 0x104 func_0051B5B0  # OVL2
-0x0051B6C0 0xAC func_0051B6C0  # OVL2
-0x0051B770 0xAC func_0051B770  # OVL2
-0x0051B820 0xB4 func_0051B820  # OVL2
-0x0051B8E0 0xB4 func_0051B8E0  # OVL2
-0x0051B9A0 0xB4 func_0051B9A0  # OVL2
-0x0051BA60 0xB4 func_0051BA60  # OVL2
-0x0051BB20 0xB4 func_0051BB20  # OVL2
+0x0051B490 0x11C read_routes__6CAiMapFR7CFileIO  # OVL2; s1:calls by hand (the demo's 0x18A2D0: the count, the routes resized, each route's two regions, flags and two cell tables read; every SOCOM II version reader 0x51A490-0x51AD90 calls it after read_readers)
+0x0051B5B0 0x104 read_lines__6CAiMapFR7CFileIO  # OVL2; s1:calls by hand (the demo's 0x18A3C0: the count, the lines resized, each line's cell table and, from version 10, its four bytes of data through the line_data base at +0xC)
+0x0051B6C0 0xAC ReadCellTable<12CAiMapLocVec,9CAiMapLoc>__FR7CFileIOR12CAiMapLocVec_b  # OVL2; s1:callee by hand (read_routes and read_lines call it where the demo's call ReadCellTable<CAiMapLocVec, CAiMapLoc>: 4-byte elements; MW 3.0 mangles the bool)
+0x0051B770 0xAC ReadCellTable<Q26CAiMap7readers,Q26CAiMap6reader>__FR7CFileIORQ26CAiMap7readers_b  # OVL2; s1:callee by hand (read_readers' first call, as the demo's; 16-byte elements)
+0x0051B820 0xB4 ReadCellTable<Q26CAiMap7actions,Q26CAiMap6action>__FR7CFileIORQ26CAiMap7actions_b  # OVL2; by hand (the ReadCellTable shape with 40-byte elements -- CAiMap::action; every version reader calls it, as SOCOM 1's Read calls ReadCellTable<actions, action>)
+0x0051B8E0 0xB4 ReadCellTable<Q26CAiMap7regions,Q26CAiMap6region>__FR7CFileIORQ26CAiMap7regions_b  # OVL2; by hand (the ReadCellTable shape with 28-byte elements -- CAiMap::region)
+0x0051B9A0 0xB4 ReadCellTable<Q26CAiMap6spores,Q26CAiMap5spore>__FR7CFileIORQ26CAiMap6spores_b  # OVL2; by hand (the ReadCellTable shape with 12-byte elements whose resize (0x51CA40) is not the link's -- the spores; SOCOM 1's spore is 12 bytes)
+0x0051BA60 0xB4 ReadCellTable<Q26CAiMap5names,Q26CAiMap4name>__FR7CFileIORQ26CAiMap5names_b  # OVL2; by hand (the ReadCellTable shape with 24-byte elements -- CAiMap::name)
+0x0051BB20 0xB4 ReadCellTable<Q26CAiMap5links,Q26CAiMap4link>__FR7CFileIORQ26CAiMap5links_b  # OVL2; by hand (the ReadCellTable shape with 12-byte elements whose resize (0x51C840) builds each new element with the link's constructor (0x5309D0's store of 8 at +8))
 0x0051BBE0 0x160 func_0051BBE0  # OVL2
 0x0051BD40 0x188 func_0051BD40  # OVL2
 0x0051BED0 0x198 func_0051BED0  # OVL2
-0x0051C070 0x144 func_0051C070  # OVL2
+0x0051C070 0x144 resize__Q23std64__vector_imp<Q26CAiMap4line,Q23std25allocator<Q26CAiMap4line>,0>FUi  # OVL2; s1:callee by hand (read_lines calls it on the lines at 0x128 with the count, as the demo's calls this resize)
 0x0051C1C0 0x68 func_0051C1C0  # OVL2
-0x0051C230 0x11C func_0051C230  # OVL2
+0x0051C230 0x11C resize__Q23std66__vector_imp<Q26CAiMap5route,Q23std26allocator<Q26CAiMap5route>,0>FUi  # OVL2; s1:callee by hand (read_routes calls it on the routes at 0x140 with the count, as the demo's calls this resize)
 0x0051C350 0x98 func_0051C350  # OVL2
-0x0051C3F0 0xA4 func_0051C3F0  # OVL2
-0x0051C4A0 0x6C func_0051C4A0  # OVL2
+0x0051C3F0 0xA4 resize__Q23std68__vector_imp<Q26CAiMap6reader,Q23std27allocator<Q26CAiMap6reader>,0>FUi  # OVL2; s1:callee by hand (ReadCellTable<readers, reader> calls it with the count where the demo's calls this resize)
+0x0051C4A0 0x6C resize__Q23std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>FUi  # OVL2; s1:callee by hand (ReadCellTable<CAiMapLocVec, CAiMapLoc> calls it with the count where the demo's calls this resize)
 0x0051C510 0x120 func_0051C510  # OVL2
-0x0051C630 0x9C func_0051C630  # OVL2
-0x0051C6D0 0x170 func_0051C6D0  # OVL2
-0x0051C840 0xA4 func_0051C840  # OVL2
-0x0051C8F0 0x150 func_0051C8F0  # OVL2
-0x0051CA40 0xF4 func_0051CA40  # OVL2
+0x0051C630 0x9C resize__Q23std64__vector_imp<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>,0>FUi  # OVL2; by hand (ReadCellTable<names, name> 0x51BA60 calls it with the count)
+0x0051C6D0 0x170 resize__Q23std68__vector_imp<Q26CAiMap6action,Q23std27allocator<Q26CAiMap6action>,0>FUi  # OVL2; by hand (ReadCellTable<actions, action> 0x51B820 calls it with the count)
+0x0051C840 0xA4 resize__Q23std64__vector_imp<Q26CAiMap4link,Q23std25allocator<Q26CAiMap4link>,0>FUi  # OVL2; by hand (ReadCellTable<links, link> 0x51BB20 calls it with the count; it builds the new elements with the link's constructor and inserts through the links' insert 0x520A90, push_back's callee)
+0x0051C8F0 0x150 resize__Q23std68__vector_imp<Q26CAiMap6region,Q23std27allocator<Q26CAiMap6region>,0>FUi  # OVL2; by hand (ReadCellTable<regions, region> 0x51B8E0 calls it with the count)
+0x0051CA40 0xF4 resize__Q23std66__vector_imp<Q26CAiMap5spore,Q23std26allocator<Q26CAiMap5spore>,0>FUi  # OVL2; by hand (ReadCellTable<spores, spore> 0x51B9A0 calls it with the count)
 0x0051CB40 0x188 func_0051CB40  # OVL2
 0x0051CCD0 0x8 func_0051CCD0  # OVL2
 0x0051CCE0 0x8 func_0051CCE0  # OVL2

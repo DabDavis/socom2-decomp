@@ -207,6 +207,7 @@ public:
 };
 
 class CRdrFile;
+class CFileIO;
 int zrdr_free(CRdrFile *file);
 /* MAIN's strncasecmp (0x1993C0, a placeholder still: SOCOM 1's CAiMap::GetLocation calls
  * strncasecmp where SOCOM II's calls it) */
@@ -327,6 +328,28 @@ public:
     class routes : public std::vector<route> {
     };
 
+    /* where a SEAL can appear (SOCOM 1's DWARF, 0xC bytes) */
+    class spore {
+    public:
+        CAiMapLoc m_loc;   // 0x0
+        unsigned int m_dir : 4;   // 0x4
+        unsigned int m_id : 12;
+        unsigned int m_unused : 16;
+        float m_altitude;   // 0x8
+    };
+    class spores : public std::vector<spore> {
+    };
+
+    /* a line drawn on the map: its cells and four bytes of data (SOCOM 1's DWARF, 0x10 bytes) */
+    class line_data {
+    public:
+        unsigned int m_data;   // 0x0
+    };
+    class line : public CAiMapLocVec, public line_data {
+    };
+    class lines : public std::vector<line> {
+    };
+
     /* one row's run of cells (SOCOM 1's DWARF, 0xC bytes; SOCOM II keeps the run's first cell as
      * an index where SOCOM 1 kept pointers to the cells and the extra data) */
     class scanline {
@@ -386,6 +409,10 @@ public:
         return 0;
     }
 
+    bool read_v19(CFileIO &f);
+    bool read_lines(CFileIO &f);
+    bool read_routes(CFileIO &f);
+    bool read_readers(CFileIO &f);
     void DestroyGraph();
     bool FindActionLocation(unsigned int id, CAiMapLoc &loc, action **pa);
     action *GetCellAction(const CAiMapLoc &loc) const;
@@ -432,8 +459,8 @@ public:
     actions m_actionTable;   // 0xf8
     links m_linksTable;   // 0x104
     regions m_regionTable;   // 0x110
-    unsigned char m_sporeTable[0xc];   // 0x11c: spores, not laid out yet
-    unsigned char m_lineTable[0xc];   // 0x128: lines, not laid out yet
+    spores m_sporeTable;   // 0x11c
+    lines m_lineTable;   // 0x128
     readers m_readerTable;   // 0x134
     routes m_routeTable;   // 0x140
     scanlines m_scanlines;   // 0x14c
