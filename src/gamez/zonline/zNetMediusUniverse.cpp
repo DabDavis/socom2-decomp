@@ -11,7 +11,8 @@
  * thunks of CAcctDB's secondary tables close it (0x2FE230-0x30066F). Its static initialiser 0x4022D0
  * builds theAcctDB (0x44FC60) and the two universe vectors (0x44FD50, 0x44FD70) and registers their
  * destructors; the statics are declared here, not defined, as the other lobby units do.
- * Defined in reverse of their image order (-inline deferred). */
+ * Grouped by role, not yet in reverse of their image order (-inline deferred): every function
+ * scores alone, but the unit wants reordering before its inline copies are placed. */
 
 #include <string.h>
 #include <stdlib.h>
