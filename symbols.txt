@@ -9401,7 +9401,7 @@
 0x00514890 0x754 func_00514890  # OVL2
 0x00514FF0 0x200 func_00514FF0  # OVL2
 0x005151F0 0x8 clear__Q23std58__vector_deleter<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>>Fv  # OVL2; s1:callee by hand (SetSnakeLength clears the path's locations with it, a0 = path + 52, where SOCOM 1's calls clear__Q23std58__vector_deleter<9CAiMapLoc,...> on path + 44; the size zeroed)
-0x00515200 0x68 func_00515200  # OVL2
+0x00515200 0x68 __dt__Q23std58__vector_deleter<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>>Fv  # OVL2; s1:order by hand (SOCOM 1's __dt__Q23std58__vector_deleter<9CAiMapLoc,...>Fv, the same 0x68: size zeroed, data deleted, this deleted on a positive flag; ai_astar.cpp's tail copy, which the lines' and routes' clears 0x51A310/0x51A3C0 call for each element's cell vectors)
 0x00515270 0xD0 func_00515270  # OVL2
 0x00515340 0x68 func_00515340  # OVL2
 0x005153B0 0x8 clear__Q23std70__vector_deleter<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>>Fv  # OVL2; s1:callee by hand (SetSnakeLength clears the path's points with it, a0 = path + 152, where SOCOM 1's calls clear__Q23std70__vector_deleter<Q27CAiPath5point,...> on path + 140; the deleter's clear of a trivially destructible element: the size zeroed)
