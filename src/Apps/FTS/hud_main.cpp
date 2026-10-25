@@ -129,24 +129,11 @@ public:
 
 extern CZNetwork theNetwork;
 
-/* the dynamic texture lists (SOCOM 1's DWARF: two vectors, of texture handles and palettes).
- * UNRESOLVED: SOCOM 1 makes them classes, zdb::CTexList : vector and CTexPalList : vector, and
- * so does SOCOM II's destructor -- ~CHUD inlines CDynTexList's destructor one level and calls two
- * out-of-line ones with four this tests each (0x1FC520, 0x1FC5A0: the class's level over the
- * pointer vector's three), five levels in all. But CHUD's constructor inlines CDynTexList's
- * constructor whole (six stores), which needs at most four: with the classes it calls their
- * constructors instead. The pointer vector's constructor would have to be a level shorter than
- * its destructor, which __vector_pod's user-declared copy constructor (0x259B40, so a user
- * default constructor too) rules out in include/vector's model. Typedefs here, which the
- * constructor needs and the destructor will not take */
-typedef std::vector<zdb::CTexHandle *> CTexList;
-typedef std::vector<zdb::CTexPal *> CTexPalList;
-
-class CDynTexList {
-public:
-    CTexList m_tex_list;   // 0x0
-    CTexPalList m_pal_list;   // 0xc
-};   // 0x18 bytes
+/* the dynamic texture lists are znode.h's zdb::CDynTexList, SOCOM 1's classes over the pointer
+ * vectors (zdb::CTexList, CTexPalList): at -inline level=5 CHUD's constructor inlines its
+ * constructor whole (six stores) while ~CHUD inlines its destructor one level and calls the two
+ * class destructors (0x1FC520, 0x1FC5A0, four this tests each) -- the typedefs level 4 needed
+ * here are gone (round 12) */
 
 /* MSL's basic_string, only as CSaferStr's base: its destructor is never inlined (called with 0
  * for a base, as the states' model has it) */
@@ -429,7 +416,7 @@ public:
     static bool ReleaseHUD(CHUD **ppHud);
 
     C2DString m_socom2_0;   // 0x0
-    CDynTexList m_dyntexlist;   // 0x98
+    zdb::CDynTexList m_dyntexlist;   // 0x98 (znode.h's: the classes over the pointer vectors)
     signed char m_hudrettype;   // 0xb0
     bool m_usehudret;   // 0xb1
     bool m_hudretchanged;   // 0xb2
@@ -606,23 +593,11 @@ extern "C" void func_00363E50(float f);
  * two statics zeroed, the flag at 0x3DC3E0 set and the score popup off; then every member's
  * destructor, inlined -- whole, but the weapon selectors' (CWeaponSel, CMPWeaponSel), the info
  * box's and the texture lists', each one level (their trees too tall), calling their members'.
- * OPEN, 6 instructions long (0xA58 against 0xA40), in two places -- the rest lines up:
- * (1) the lens flare manager: the target inlines its destructor whole (four this tests, the
- * vtable store, the range erase), which needs the pointer list's destructor three high; include/
- * list's is taller (probe build/scratch/hud/p/c6.cpp: a class over list<T *> calls ~list), as
- * ~CEntityList (0x2A00C0, the entity lane's: ~list inlined one level) needs it -- the two targets
- * disagree under the level-4 rule, so the list's shape is the entity lane's to settle;
- * (2) the texture lists. The target's CDynTexList destructor goes one level
- * and calls two class destructors of four this tests each (0x1FC5A0, 0x1FC520: SOCOM 1's
- * zdb::CTexList and CTexPalList, classes over the pointer vectors), and its out-of-line copy
- * (0x1FDCE0) is linked unreferenced -- a probe reproduces all three with the classes
- * (build/scratch/hud/p/c1.cpp). But the classes make CHUD's constructor call their constructors
- * where the target inlines CDynTexList's whole (six stores; CVisual's constructor, 0x3C4390,
- * too): with include/vector's pointer vector (constructor three high, as __vector_pod's user
- * copy constructor 0x259B40 forces) the class makes it five. Only a chain where one destructor
- * level has no constructor level gives both (p/c4.cpp: the pod trivially constructible, the
- * zeroing one level up), which that copy constructor rules out. Typedefs here, so the
- * constructor holds; this destructor inlines the vectors whole instead */
+ * Byte-exact at -inline level=5 (round 12): the lens flare manager's destructor inlines whole
+ * (four this tests, the vtable store, the range erase), and with znode.h's zdb::CDynTexList the
+ * texture lists' destructor goes one level and calls zdb::CTexList's and CTexPalList's
+ * (0x1FC520, 0x1FC5A0) while CHUD's constructor still inlines CDynTexList's constructor whole --
+ * the typedefs level 4 forced had inlined both vectors whole here, 18 instructions long (0xA88) */
 CHUD::~CHUD()
 {
     m_actionbitmap.UnInit();
