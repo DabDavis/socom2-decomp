@@ -6,10 +6,13 @@
  * grid_di.cpp's queries come before it (its static initialiser registers CStack's destructor, whose
  * linked copy, 0x2D4FE0, closes that unit), grid_clutter.cpp's clutter animation after it. Defined
  * in reverse of their image order (-inline deferred).
- * Unwritten: ReadClutter (0x2D5060), Create (0x2D5C80), gridAddNodeToGrids (0x2D7580). CGrid() is written and byte-exact once its CFRect
+ * Unwritten: ReadClutter (0x2D5060), gridAddNodeToGrids (0x2D7580). CGrid() is written and byte-exact once its CFRect
  * constructor's row is named (below). */
 
+#include <stdio.h>
+
 #include "node_world.h"
+#include "../zsys/zsys.h"
 
 /* the node's atom count set (node_main.cpp's SOCOM 1 CNode::SetAtomCnt(int), not named yet) */
 extern "C" void func_003149D0(zdb::CNode *node, int n);
@@ -650,6 +653,79 @@ void CGrid::Update(CNode *node)
         gridRemoveNodeFromGrids(node);
         gridAddNodeToGrids(node);
     }
+}
+
+/* a cell's index, the cell held inside the grid (gridGetAtomBasePtr's clamp, the index given
+ * back; the name is ours) */
+inline int GridAtomIndex(const tag_SIZE &n, int x, int z)
+{
+    x = MAX(0, x);
+    x = MIN(n.cx - 1, x);
+    z = MAX(0, z);
+    z = MIN(n.cy - 1, z);
+    return x + z * n.cx;
+}
+
+/* the grid built over the world's box: the parameters and the origin kept, the extents and the
+ * tolerances derived, the atoms allocated and threaded on the free list, then one cell per square
+ * -- named for its index, made the world's child, given an atom of its own (SOCOM 1's; SOCOM II
+ * fixes the atom count and threads its spare atoms).
+ * OPEN (0x36C of 0x380): everything to the cell loop is the target's, and the index's clamp (as
+ * gridGetAtomBasePtr's); the target enters the inner loop through a preheader laid out after the
+ * function's last block -- `b` to it, its `0 < cx` test, then `b` back to the loop's own bottom
+ * test -- where MW rotates the loop here (the test inline before the body): SortNearToFar's
+ * open shape. Not a while loop, the counter declared outside, the test reversed; the order of the
+ * atom's three stores (Prev, the table, Next in the target) waits on it */
+bool CGrid::Create(CWorld *world, const tag_GRID_PARAMS *params)
+{
+    m_world = world;
+    m_posts = params->m_posts;
+    m_origin = m_world->GetBBox()->m_min;
+    m_CellCount = params->m_CellCount;
+    m_CellDim = params->m_CellDim;
+    m_extents.top = 0.0f;
+    m_extents.left = 0.0f;
+    m_extents.right = m_CellDim * (float)m_CellCount.cx;
+    m_extents.bottom = m_CellDim * (float)m_CellCount.cy;
+    m_GridCellTol = 0.5f * sqrtf(2.0f * (m_CellDim * m_CellDim));
+    m_ClutterTol = 0.0f;
+    m_InvCellDim = 1.0f / m_CellDim;
+    m_TickNum = -1;
+    m_AtomCnt = 8192;
+    m_AtomBuf = (CGridAtom *)_calloc(sizeof(CGridAtom), m_AtomCnt, 0, 0);
+    m_FreeAtoms = m_AtomBuf;
+    for (int i = 1; i < m_AtomCnt; i++)
+        m_AtomBuf[i - 1].Next = &m_AtomBuf[i];
+    m_Atoms = (CGridAtom **)_calloc(sizeof(CGridAtom *), m_CellCount.cx * m_CellCount.cy, 0, 0);
+    world->ReserveChildren(m_CellCount.cy * m_CellCount.cx);
+    for (int z = 0; z < m_CellCount.cy; z++) {
+        for (int x = 0; x < m_CellCount.cx; x++) {
+            CPnt3D pos;
+            char name[64];
+
+            pos.x = (float)x * m_CellDim;
+            pos.y = 0.0f;
+            pos.z = (float)z * m_CellDim;
+            int idx = GridAtomIndex(m_CellCount, x, z);
+            CCell *cell = new CCell(&pos, m_CellDim);
+
+            sprintf(name, "cell%06d", idx);
+            cell->SetName(name);
+            world->AddChild(cell);
+            cell->AllocateAtomBasePtrs(1, 1);
+            CGridAtom *atom = m_FreeAtoms;
+
+            m_FreeAtoms = atom->Next;
+            if (!m_FreeAtoms)
+                atom = 0;
+            atom->Ent = cell;
+            atom->Ent->InsertAtom(atom);
+            m_Atoms[idx] = atom;
+            atom->Prev = 0;
+            atom->Next = 0;
+        }
+    }
+    return true;
 }
 
 /* the cell under a point in x/z, or none: its indices from the origin, a ten-thousandth in, held
