@@ -88,6 +88,24 @@ enum STICK_DIR {
     STICK_CENTERED = 5
 };
 
+/* a sound (zsnd.h's CSnd: only its lookup by name) */
+class CSnd {
+public:
+    static CSnd *GetSoundByName(const char *name);
+};
+
+/* the game, as far as the menus' sounds read it (fts_state.h's COurGame: the menu state at 0x78,
+ * its teletype sound's name at 0x14 there) */
+class COurGame {
+public:
+    unsigned char _0[0x8c];
+    CSaferStr m_ttySoundString;   // 0x8c: m_menuState.TtySoundString
+};
+extern COurGame theGame;
+
+/* the sound PlayCountSound plays (SOCOM 1's gp static; the name ours) */
+static CSnd *s_countSound;
+
 /* the left stick as the menu last read it, -1 to 1 (SOCOM 1's gp statics; the names ours), and
  * whether it has come back to the centre since it last moved */
 static float s_fStickX;
@@ -206,6 +224,16 @@ void ActionItem::operator=(const ActionItem &a)
     Argument = a.Argument ? _strdup(a.Argument, 0, 0) : 0;
     PadButton = a.PadButton;
     State = a.State;
+}
+
+/* the count sound looked up again by the menu state's teletype sound name (SOCOM II's: CMenuState::
+ * Init calls it; the name ours). Through a reference: the string's address built once, its words
+ * read off it (written out, MW addresses each absolutely) */
+void UiLoadCountSound()
+{
+    CSaferStr &name = theGame.m_ttySoundString;
+
+    s_countSound = CSnd::GetSoundByName(name.c_str());
 }
 
 /* slot 0x10: the menu's rdr (SOCOM 1's) */

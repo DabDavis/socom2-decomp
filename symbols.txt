@@ -6767,7 +6767,7 @@
 0x003691C0 0x44 Draw2dOnly__9CGameMenuFv  # OVL1; s1:exact
 0x00369210 0x4BC Clear__9CGameMenuFv  # OVL1; s1:calls by hand (called at LoadFromDesign+0x34 and ~CGameMenu+0x24, the offsets of SOCOM 1's calls to CGameMenu::Clear in both; 0x4BC against 0x51C)
 0x003696D0 0x1A4 func_003696D0  # OVL1
-0x00369880 0x40 func_00369880  # OVL1
+0x00369880 0x40 UiLoadCountSound__Fv  # OVL1; ours (SOCOM II's: CMenuState::Init and 0x1F53D0 call it; the count sound PlayCountSound plays, 0x49EA88, looked up by name from theGame's menu state's TtySoundString, +0x8C) -- zui.cpp
 0x003698C0 0x2A0 __dt__9CGameMenuFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00369B60 0x348 __ct__9CGameMenuFv  # OVL1; s1:calls
 0x00369EB0 0xC0 func_00369EB0  # OVL1
@@ -6777,8 +6777,8 @@
 0x0036A200 0xC func_0036A200  # OVL1
 0x0036A210 0x20 func_0036A210  # OVL1
 0x0036A230 0x84 PrepTexture__FPCcPQ23zdb16CTextureRelocMgr  # OVL1; s1:exact
-0x0036A2C0 0x3C func_0036A2C0  # OVL1
-0x0036A300 0x3C func_0036A300  # OVL1
+0x0036A2C0 0x3C PlaySelectionSound__Fv  # OVL1; s1:order by hand (SOCOM 1's PlaySelectionSound__Fv at the same place before PlayCountSound, the same 0x3C: theGame's menu state's SelectionSound, +0xA4, played through its slot 0x1C with (1, 0, 255) if loaded) -- zui.cpp
+0x0036A300 0x3C PlayCountSound__Fv  # OVL1; s1:order by hand (SOCOM 1's PlayCountSound__Fv after PlaySelectionSound, the same code: the count sound static 0x49EA88, which UiLoadCountSound sets, played through slot 0x1C with (1, 0, 255)) -- zui.cpp
 0x0036A340 0x70 IsStickNearCenter__Ff  # OVL1; s1:order by hand (between PlayCountSound and InitButton as SOCOM 1's; both axes against a float, as SOCOM 1's) -- the UI-widgets lane
 0x0036A3B0 0x78 InitButton__FP9C2DButtonPQ23zdb10CTexHandlePQ23zdb10CTexHandlePQ23zdb10CTexHandlePQ23zdb10CTexHandlePCc  # OVL1; s1:calls by hand (CButtonSpec::InitializeButton calls it with the button, the normal, active, pressed and disabled textures and the caption where SOCOM 1's calls InitButton__FP9C2DButtonPQ23zdb10CTexHandle...PCc; it stores the four handles and the caption, setting the caption string when there is one) -- zui.cpp
 0x0036A430 0x140 HookupLib__FPQ23zdb9CAssetLib  # OVL1; s1:calls

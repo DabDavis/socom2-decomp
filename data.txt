@@ -1135,3 +1135,4 @@
 0x003E0368 0x1 s_bStickCentered  # OVL1 data (initialised 1); zui.cpp's static, ours: whether the menu's stick came back to the centre -- UiGetDirStickMoved and its inlined copies in DidStickMovePrev/Next read it (3 references in 3 functions) -- the UI-widgets lane
 0x0049EA78 0x4 s_fStickX  # OVL1 bss; zui.cpp's static, ours (SOCOM 1's gp-25364): the menu's stick x, read by IsStickNearCenter, GetStickDir, UiGetDirStickMoved and DidStickMovePrev/Next -- the UI-widgets lane
 0x0049EA80 0x4 s_fStickY  # OVL1 bss; zui.cpp's static, ours (SOCOM 1's gp-25360): the menu's stick y, read by the same five -- the UI-widgets lane
+0x0049EA88 0x4 s_countSound  # OVL1 bss; zui.cpp's static, ours (SOCOM 1's gp-25356 static PlayCountSound plays): the count sound -- UiLoadCountSound sets it, LoadFromDesign and Clear store it, PlayCountSound reads it: 4 references in 4 functions -- the UI-widgets lane
