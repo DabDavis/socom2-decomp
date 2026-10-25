@@ -3599,16 +3599,16 @@
 0x00297A30 0x69C func_00297A30  # OVL1
 0x002980D0 0x1068 func_002980D0  # OVL1
 0x00299140 0xC func_00299140  # OVL1
-0x00299150 0x68 func_00299150  # OVL1
+0x00299150 0x68 ResetDeathCam__10CAppCameraFv  # OVL1; s1:calls (SOCOM 1's ResetDeathCam: no death state, the automatic death camera on, save_short_tether_length 10000, DeltaRot and DeltaAim 0; SOCOM II puts back a few more; CMPExitState::UnInit and the mission's fades call it)
 0x002991C0 0x160 func_002991C0  # OVL1
-0x00299320 0x1B4 func_00299320  # OVL1
-0x002994E0 0x21C func_002994E0  # OVL1
-0x00299700 0xE4 func_00299700  # OVL1
+0x00299320 0x1B4 Shake__10CAppCameraFUc  # OVL1; the name ours (one of the camera's three shake presets at 0x50 begun, else the shake stopped; CmdBeginShake inlines it, OVL2 calls it)
+0x002994E0 0x21C BeginShake__10CAppCameraFffffffff  # OVL1; the name ours (SOCOM II's shake begun: the larger rates and decays kept, the amplitudes rolled with rand()%100; Shake and an OVL2 caller pass eight floats)
+0x00299700 0xE4 StopShake__10CAppCameraFv  # OVL1; the name ours (SOCOM II's shake stopped: its eight parameters -1, the echo off, the angles to a random quarter, the amplitudes 0; inlined in Shake and TickCameraWiggle)
 0x002997F0 0xFC func_002997F0  # OVL1
 0x002998F0 0x310 Tick__10CAppCameraFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00299C00 0xC func_00299C00  # OVL1
 0x00299C10 0x30 TickTask__10CAppCameraFfPv  # OVL1; the name ours (CCoreState::Init's appCamera_tick task: the app camera's virtual Tick)
-0x00299C40 0x288 func_00299C40  # OVL1
+0x00299C40 0x288 TickCameraWiggle__10CAppCameraFfPQ23zdb7CCamera  # OVL1; s1:order (SOCOM 1's TickCameraWiggle's place: after Tick and GetDynamicsControl, called by Tick with the camera; SOCOM II's shake: two ripples on the screen offset, decayed, then StopShake)
 0x00299ED0 0x2B0 func_00299ED0  # OVL1
 0x0029A180 0x270 func_0029A180  # OVL1
 0x0029A3F0 0x268 func_0029A3F0  # OVL1

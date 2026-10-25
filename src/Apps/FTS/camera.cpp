@@ -1,6 +1,7 @@
 /* camera.cpp -- the player's camera (SOCOM 1's Apps/FTS/camera.cpp; OVL1 to 0x29CEBF). Defined
  * in reverse of their image order (-inline deferred). */
 
+#include <stdlib.h>
 #include "camera.h"
 #include "../../gamez/zsys/zsys.h"
 
@@ -11,6 +12,28 @@ extern bool camera_tether_intersects_something;
 extern "C" bool func_002C2FD0(CZSealBody *seal);
 extern "C" CCameraPreset *data_0044C408;          /* the views' presets */
 extern "C" void func_002956E0(CAppCamera *cam, CZSealBody *prey, int arg);
+
+/* the file's statics, unnamed yet in data.txt (SOCOM 1's names where it had them; the shake's are
+ * SOCOM II's: -1 is no shake) */
+extern "C" {
+extern float data_003DE218;   /* degrees to radians */
+extern float data_003DE220;   /* the shake's x angle (90) */
+extern float data_003DE228;   /* its x rate */
+extern float data_003DE230;   /* its y rate */
+extern float data_003DE238;   /* its x base amplitude */
+extern float data_003DE240;   /* its x random amplitude */
+extern float data_003DE248;   /* its x decay */
+extern float data_003DE250;   /* its y base amplitude */
+extern float data_003DE258;   /* its y random amplitude */
+extern float data_003DE260;   /* its y decay */
+extern float data_003DE268;   /* save_short_tether_length */
+extern float data_00416018;   /* the shake's y angle */
+extern float data_00416020;   /* its x amplitude */
+extern float data_00416028;   /* its y amplitude */
+extern float data_00416208;   /* DeltaRot */
+extern float data_00416210;   /* DeltaAim */
+extern float data_00416218;   /* (SOCOM II's) */
+}
 
 /* the network (only its online flag) */
 class CNetwork {
@@ -50,6 +73,28 @@ zdb::IntersectStruct *GetNearestIntersectCamPoint(zdb::DiIntersect *diSet, CPnt3
         }
     }
     return Di;
+}
+
+/* the view's preset taken up: the goal position and aim, the tether's length, and -- with a SEAL
+ * attached -- the camera put there, looking at the aim, both carried into the SEAL's space (the
+ * name ours) */
+void CAppCamera::ResetView()
+{
+    m_camGoalPos = data_0044C408[m_ctrl_view].m_tie;
+    m_cameraAim = data_0044C408[m_ctrl_view].m_aim;
+    m_goal_t_len = m_camGoalPos.Length();
+    m_cameraTie = m_cameraAim;
+    if (m_entity) {
+        CMatrix cTw;
+        CPnt3D tie = m_camGoalPos;
+
+        m_entity->GetMatrix()->Transform(&tie, 1);
+        CPnt3D aim = m_cameraAim;
+
+        m_entity->GetMatrix()->Transform(&aim, 1);
+        LookAt(&tie, &aim, cTw);
+        m_camera->SetMatrix(&cTw);
+    }
 }
 
 /* the camera's matrix to look from one point at another: level (its x axis in the ground plane),
@@ -128,26 +173,24 @@ _zanim_cmd_hdr *CAppCamera::CmdParseShake(_zrdr *rdr)
     return (_zanim_cmd_hdr *)cmd;
 }
 
-/* the view's preset taken up: the goal position and aim, the tether's length, and -- with a SEAL
- * attached -- the camera put there, looking at the aim, both carried into the SEAL's space (the
- * name ours) */
-void CAppCamera::ResetView()
+/* SHAKE: the app camera shaken at the command's level.
+ * OPEN (36 of 113 instructions, registers only): the target keeps appCamera in v1 and the level in
+ * a0 (the command's register, dead after the load); MW gives the level v1 and appCamera a1 -- the
+ * same with a local camera, an early return, the level read first or as an int, Shake declared
+ * inline, and with the switch written out here */
+void CAppCamera::CmdBeginShake(_zanim_cmd_hdr *hdr)
 {
-    m_camGoalPos = data_0044C408[m_ctrl_view].m_tie;
-    m_cameraAim = data_0044C408[m_ctrl_view].m_aim;
-    m_goal_t_len = m_camGoalPos.Length();
-    m_cameraTie = m_cameraAim;
-    if (m_entity) {
-        CMatrix cTw;
-        CPnt3D tie = m_camGoalPos;
+    if (appCamera)
+        appCamera->Shake(((_camera_shake_cmd *)hdr)->level);
+}
 
-        m_entity->GetMatrix()->Transform(&tie, 1);
-        CPnt3D aim = m_cameraAim;
-
-        m_entity->GetMatrix()->Transform(&aim, 1);
-        LookAt(&tie, &aim, cTw);
-        m_camera->SetMatrix(&cTw);
-    }
+CAppCamera::~CAppCamera()
+{
+    m_track = 0;
+    m_skel_root = 0;
+    m_entity = 0;
+    m_camera_effects = 0;
+    m_camera = 0;
 }
 
 /* the camera put on a SEAL: the first view's preset, the SEAL taken up, the camera placed behind
@@ -192,15 +235,6 @@ void CAppCamera::SetCameraMode(unsigned char mode)
         m_camera_mode = mode;
 }
 
-CAppCamera::~CAppCamera()
-{
-    m_track = 0;
-    m_skel_root = 0;
-    m_entity = 0;
-    m_camera_effects = 0;
-    m_camera = 0;
-}
-
 /* the zoom: the screen's aspect scaled by it, the range scale divided by it */
 void CAppCamera::SetZoom(float zoom)
 {
@@ -213,9 +247,144 @@ void CAppCamera::SetZoom(float zoom)
     m_camera->m_ZoomedRangeScale = m_camera->m_RangeScale / zoom;
 }
 
+/* a frame of the shake (SOCOM 1's wiggle, rewritten): each axis's angle stepped by its rate and
+ * wrapped, the screen offset rippled by its amplitude (x by the cosine, y by the sine), the
+ * amplitudes decayed to nothing -- and with both gone, the shake stopped */
+void CAppCamera::TickCameraWiggle(float dT, zdb::CCamera *cam)
+{
+    if (!m_wiggle_echo)
+        return;
+    data_003DE220 += dT * data_003DE228;
+    if (data_003DE220 > 360.0f)
+        data_003DE220 -= 360.0f;
+    float cosval = cosf(data_003DE220 * data_003DE218);
+    float ScaledAmplitude = data_00416020 * cosval;
+
+    cam->SetScreenOffsetX(ScaledAmplitude + cam->m_screenOffset[0]);
+    data_00416018 += dT * data_003DE230;
+    if (data_00416018 > 360.0f)
+        data_00416018 -= 360.0f;
+    float sinval = sinf(data_00416018 * data_003DE218);
+
+    ScaledAmplitude = data_00416028 * sinval;
+    cam->SetScreenOffsetY(ScaledAmplitude + cam->m_screenOffset[1]);
+    data_00416020 -= data_003DE248;
+    if (data_00416020 < 0.0f)
+        data_00416020 = 0.0f;
+    data_00416028 -= data_003DE260;
+    if (data_00416028 < 0.0f)
+        data_00416028 = 0.0f;
+    if (data_00416020 == 0.0f && data_00416028 == 0.0f)
+        StopShake();
+}
+
 /* the scheduler's task for the app camera: its tick (SOCOM II's, the name ours) */
 bool CAppCamera::TickTask(float dT, void *data)
 {
     appCamera->Tick(dT);
     return false;
+}
+
+/* SOCOM 1's: the wiggle's echo, its clock restarted when set */
+inline void CAppCamera::WiggleEcho(bool flag)
+{
+    m_wiggle_echo = flag;
+    if (flag)
+        m_wiggle_cur_time = 0.0f;
+}
+
+/* the shake stopped: its parameters forgotten, its angles put back to a random quarter (x at 90 or
+ * 270 degrees, y at 0 or 180), its amplitudes nothing (the name ours) */
+void CAppCamera::StopShake()
+{
+    data_003DE228 = -1.0f;
+    data_003DE230 = -1.0f;
+    data_003DE238 = -1.0f;
+    data_003DE240 = -1.0f;
+    data_003DE248 = -1.0f;
+    data_003DE250 = -1.0f;
+    data_003DE258 = -1.0f;
+    data_003DE260 = -1.0f;
+    WiggleEcho(false);
+    data_003DE220 = rand() % 2 ? 90.0f : 270.0f;
+    data_00416018 = rand() % 2 ? 0.0f : 180.0f;
+    data_00416020 = 0.0f;
+    data_00416028 = 0.0f;
+}
+
+/* a shake begun or strengthened: each rate and decay the larger of old and new, each base
+ * amplitude the new one if it beats the running amplitude; when both do, the amplitudes rolled
+ * afresh (base plus up to 99% of the random part, kept if larger) and the shake set going (the name
+ * ours) */
+void CAppCamera::BeginShake(float xAmp, float xAmpRand, float xDecay, float xRate, float yAmp,
+                            float yAmpRand, float yDecay, float yRate)
+{
+    data_003DE228 = xRate > data_003DE228 ? xRate : data_003DE228;
+    data_003DE230 = yRate > data_003DE230 ? yRate : data_003DE230;
+    bool restart = xAmp > data_00416020 && yAmp > data_00416028;
+
+    data_003DE238 = xAmp > data_00416020 ? xAmp : data_003DE238;
+    data_003DE240 = xAmpRand;
+    data_003DE248 = xDecay > data_003DE248 ? xDecay : data_003DE248;
+    data_003DE250 = yAmp > data_00416028 ? yAmp : data_003DE250;
+    data_003DE258 = yAmpRand;
+    data_003DE260 = yDecay > data_003DE260 ? yDecay : data_003DE260;
+    if (restart) {
+        float amp = data_003DE238;
+
+        amp += data_003DE240 * (0.01f * (rand() % 100));
+        if (amp > data_00416020)
+            data_00416020 = amp;
+        amp = data_003DE250;
+        amp += data_003DE258 * (0.01f * (rand() % 100));
+        if (amp > data_00416028)
+            data_00416028 = amp;
+        WiggleEcho(true);
+    }
+}
+
+/* the camera shaken with one of its presets: SMALL, MEDIUM or LARGE; anything else stops it (the
+ * name ours) */
+void CAppCamera::Shake(unsigned char level)
+{
+    switch (level) {
+    case 0:
+        BeginShake(m_shake[0].m_xAmp, m_shake[0].m_xAmpRand, m_shake[0].m_xDecay, m_shake[0].m_xRate,
+                   m_shake[0].m_yAmp, m_shake[0].m_yAmpRand, m_shake[0].m_yDecay, m_shake[0].m_yRate);
+        break;
+    case 1:
+        BeginShake(m_shake[1].m_xAmp, m_shake[1].m_xAmpRand, m_shake[1].m_xDecay, m_shake[1].m_xRate,
+                   m_shake[1].m_yAmp, m_shake[1].m_yAmpRand, m_shake[1].m_yDecay, m_shake[1].m_yRate);
+        break;
+    case 2:
+        BeginShake(m_shake[2].m_xAmp, m_shake[2].m_xAmpRand, m_shake[2].m_xDecay, m_shake[2].m_xRate,
+                   m_shake[2].m_yAmp, m_shake[2].m_yAmpRand, m_shake[2].m_yDecay, m_shake[2].m_yRate);
+        break;
+    case 4:
+    case 5:
+    default:
+        StopShake();
+        break;
+    }
+}
+
+/* the death camera put back: no death state, the automatic death camera on, the short tether's
+ * saved length long, the rotation and aim deltas nothing (SOCOM 1's; SOCOM II puts back a few more) */
+void CAppCamera::ResetDeathCam()
+{
+    m_cam_death_state = 0;
+    m_auto_death_cam = 1;
+    data_003DE268 = 10000.0f;
+    data_00416208 = 0.0f;
+    data_00416210 = 0.0f;
+    data_00416218 = 0.0f;
+    m_death_state_timer = 0.0f;
+    m_f4 = 0;
+    m_f5 = m_f4;
+    m_110 = -1;
+    m_114 = 0.0f;
+    m_104 = 0.0f;
+    m_108 = 0.0f;
+    m_10c = 0.0f;
+    m_118 = 1.0f;
 }
