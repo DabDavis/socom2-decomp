@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <list>
 #include <stdarg.h>
+#include <stdlib.h>
 #include <string.h>
 
 extern "C" int sceDeci2Close(int s);
@@ -35,9 +36,21 @@ struct _con_packet_hdr {
     unsigned int argc;   // 0x14
 };
 
+/* the id of the last packet read (SOCOM 1's, 0x416220) */
+static unsigned int _counter;
+
 /* a packet: its data and size (SOCOM 1's names; the members' names are ours) */
 class CPacket {
 public:
+    /* the bytes read copied, as many as their header says, and their id noted (inline: only
+     * OnRecvPacket builds packets so) */
+    CPacket(const void *data) : m_data(0), m_size(0)
+    {
+        m_size = ((const _con_packet_hdr *)data)->size;
+        m_data = (_con_packet_hdr *)calloc(m_size + 1, 1);
+        memcpy(m_data, data, m_size);
+        _counter = ((const _con_packet_hdr *)data)->id;
+    }
     virtual ~CPacket();
     virtual CPacketMsg *GetPacketMsg();
 
@@ -46,7 +59,10 @@ public:
     static bool Compare(CPacket *a, CPacket *b);
     unsigned int GetPacketType() const;
     int CopyTo(void *dst, int size);
-    /* a packet made from the bytes read: a message when it has arguments (SOCOM 1's) */
+    /* a packet made from the bytes read: a message when it has arguments (SOCOM 1's). A ternary: each
+ * new's null test branches on v0 with the copy in its delay slot (an if/else assigning a local
+ * tests the copy in the second arm). The message's argument walk takes each length into a local
+ * and adds `(len + 1)`, so the element's address is recomputed after strlen as the target does */
     static CPacket *OnRecvPacket(const void *data);
 
     _con_packet_hdr *m_data;   // 0x4
@@ -56,6 +72,21 @@ public:
 /* a message packet: its arguments (SOCOM 1's) */
 class CPacketMsg : public CPacket {
 public:
+    /* the packet, then its arguments: the strings after the header, one after another */
+    CPacketMsg(const void *data) : CPacket(data), m_args(0)
+    {
+        _con_packet_hdr *hdr = m_data;
+
+        if (hdr->argc) {
+            m_args = (char **)calloc(hdr->argc, 4);
+            m_args[0] = (char *)m_data + sizeof(_con_packet_hdr);
+            for (unsigned int i = 1; i < hdr->argc; i++) {
+                unsigned int len = strlen(m_args[i - 1]);
+
+                m_args[i] = m_args[i - 1] + (len + 1);
+            }
+        }
+    }
     unsigned int GetArgCount() const
     {
         if (m_data)
@@ -69,7 +100,7 @@ public:
      * a virtual of the class, emits no implicit copy */
     virtual ~CPacketMsg();
 
-    void **m_args;   // 0xc
+    char **m_args;   // 0xc
 };
 
 /* what a handler is called with (SOCOM 1's CHandler constructor's signature) */
@@ -236,6 +267,12 @@ int CConsole::Disconnect()
         m_socket = -1;
     }
     return 0;
+}
+
+/* a packet made from the bytes read: a message when it has arguments (SOCOM 1's) */
+CPacket *CPacket::OnRecvPacket(const void *data)
+{
+    return ((const _con_packet_hdr *)data)->argc ? new CPacketMsg(data) : new CPacket(data);
 }
 
 /* a packet read, if one came in: made, the read buffer reset, handled, and deleted unless the
