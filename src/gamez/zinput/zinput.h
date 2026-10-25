@@ -88,7 +88,20 @@ public:
     unsigned char m_socketC8;   // 0xc8
     unsigned char _c9[0xd8 - 0xc9];
     int m_port;   // 0xd8: the libpad2 port, -1 when closed (the name ours)
-    unsigned char _dc[0x284 - 0xdc];
+    int m_dc;   // 0xdc (Flush clears these and the block after them; the names ours)
+    int m_e0;   // 0xe0
+    unsigned char m_e4[256];   // 0xe4
+    unsigned char _1e4[0x20c - 0x1e4];
+    unsigned char m_20c;   // 0x20c (the constructor clears it)
+    unsigned char _20d[3];
+    int m_210[4];   // 0x210
+    float m_220[4];   // 0x220 (Flush copies the last into the other three)
+    int m_230[4];   // 0x230: SOCOM II's
+    unsigned char m_lastStickRaw[4];   // 0x240 (SOCOM 1's DWARF, 0x130 on from there)
+    float m_lastStickVal[4];   // 0x244
+    float m_maxStick[4];   // 0x254
+    float m_minStick[4];   // 0x264
+    float m_deadTime[4];   // 0x274
     CStickType m_stickType[2];   // 0x284
 };   // 0x2d4 bytes
 
