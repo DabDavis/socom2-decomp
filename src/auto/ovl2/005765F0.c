@@ -4,29 +4,30 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_0028E370(char *, s32);                 /* extern */
+M2C_UNK SavePart__5CBodyFP10CZBodyPart(char *, s32); /* extern */
 
 void func_005765F0(char *arg0) {
-    func_0028E370(arg0 + 0x170, M2C_FIELD(arg0, s32 *, 0x2E8));
-    func_0028E370(arg0 + 0x170, M2C_FIELD(arg0, s32 *, 0x2EC));
-    func_0028E370(arg0 + 0x170, M2C_FIELD(arg0, s32 *, 0x2F8));
-    func_0028E370(arg0 + 0x170, M2C_FIELD(arg0, s32 *, 0x300));
-    func_0028E370(arg0 + 0x170, M2C_FIELD(arg0, s32 *, 0x304));
-    func_0028E370(arg0 + 0x170, M2C_FIELD(arg0, s32 *, 0x308));
-    func_0028E370(arg0 + 0x170, M2C_FIELD(arg0, s32 *, 0x30C));
-    func_0028E370(arg0 + 0x170, M2C_FIELD(arg0, s32 *, 0x310));
-    func_0028E370(arg0 + 0x170, M2C_FIELD(arg0, s32 *, 0x2FC));
-    func_0028E370(arg0 + 0x170, M2C_FIELD(arg0, s32 *, 0x320));
-    func_0028E370(arg0 + 0x170, M2C_FIELD(arg0, s32 *, 0x324));
-    func_0028E370(arg0 + 0x170, M2C_FIELD(arg0, s32 *, 0x328));
-    func_0028E370(arg0 + 0x170, M2C_FIELD(arg0, s32 *, 0x32C));
-    func_0028E370(arg0 + 0x170, M2C_FIELD(arg0, s32 *, 0x330));
-    func_0028E370(arg0 + 0x170, M2C_FIELD(arg0, s32 *, 0x334));
-    func_0028E370(arg0 + 0x170, M2C_FIELD(arg0, s32 *, 0x338));
-    func_0028E370(arg0 + 0x170, M2C_FIELD(arg0, s32 *, 0x33C));
-    func_0028E370(arg0 + 0x170, M2C_FIELD(arg0, s32 *, 0x350));
-    func_0028E370(arg0 + 0x170, M2C_FIELD(arg0, s32 *, 0x354));
-    func_0028E370(arg0 + 0x170, M2C_FIELD(arg0, s32 *, 0x34C));
+    SavePart__5CBodyFP10CZBodyPart(arg0 + 0x170, SC_MEMBER(arg0, s32 *, 0x2E8));
+    SavePart__5CBodyFP10CZBodyPart(arg0 + 0x170, SC_MEMBER(arg0, s32 *, 0x2EC));
+    SavePart__5CBodyFP10CZBodyPart(arg0 + 0x170, SC_MEMBER(arg0, s32 *, 0x2F8));
+    SavePart__5CBodyFP10CZBodyPart(arg0 + 0x170, SC_MEMBER(arg0, s32 *, 0x300));
+    SavePart__5CBodyFP10CZBodyPart(arg0 + 0x170, SC_MEMBER(arg0, s32 *, 0x304));
+    SavePart__5CBodyFP10CZBodyPart(arg0 + 0x170, SC_MEMBER(arg0, s32 *, 0x308));
+    SavePart__5CBodyFP10CZBodyPart(arg0 + 0x170, SC_MEMBER(arg0, s32 *, 0x30C));
+    SavePart__5CBodyFP10CZBodyPart(arg0 + 0x170, SC_MEMBER(arg0, s32 *, 0x310));
+    SavePart__5CBodyFP10CZBodyPart(arg0 + 0x170, SC_MEMBER(arg0, s32 *, 0x2FC));
+    SavePart__5CBodyFP10CZBodyPart(arg0 + 0x170, SC_MEMBER(arg0, s32 *, 0x320));
+    SavePart__5CBodyFP10CZBodyPart(arg0 + 0x170, SC_MEMBER(arg0, s32 *, 0x324));
+    SavePart__5CBodyFP10CZBodyPart(arg0 + 0x170, SC_MEMBER(arg0, s32 *, 0x328));
+    SavePart__5CBodyFP10CZBodyPart(arg0 + 0x170, SC_MEMBER(arg0, s32 *, 0x32C));
+    SavePart__5CBodyFP10CZBodyPart(arg0 + 0x170, SC_MEMBER(arg0, s32 *, 0x330));
+    SavePart__5CBodyFP10CZBodyPart(arg0 + 0x170, SC_MEMBER(arg0, s32 *, 0x334));
+    SavePart__5CBodyFP10CZBodyPart(arg0 + 0x170, SC_MEMBER(arg0, s32 *, 0x338));
+    SavePart__5CBodyFP10CZBodyPart(arg0 + 0x170, SC_MEMBER(arg0, s32 *, 0x33C));
+    SavePart__5CBodyFP10CZBodyPart(arg0 + 0x170, SC_MEMBER(arg0, s32 *, 0x350));
+    SavePart__5CBodyFP10CZBodyPart(arg0 + 0x170, SC_MEMBER(arg0, s32 *, 0x354));
+    SavePart__5CBodyFP10CZBodyPart(arg0 + 0x170, SC_MEMBER(arg0, s32 *, 0x34C));
 }

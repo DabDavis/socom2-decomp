@@ -119,6 +119,8 @@ public:
     CZFTSWeapon *GetItemByIndex(int index) const;
     bool HasItem(EQUIP_ITEM item) const;
     bool WeaponInfoChanged();
+    /* const, where SOCOM 1's were not (ItemHasAmmo__5CZKitFi): SOCOM II's const GetCurItem
+     * (SOCOM 1's const too) tail-calls GetItemByIndex, which calls unwrap, which calls this */
     bool ItemHasAmmo(int index) const;
     bool ItemHasAmmo(int index, FIREMODE mode) const;
     bool CurItemHasAmmo();

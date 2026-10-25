@@ -7,6 +7,7 @@
 #ifndef ZNODE_H
 #define ZNODE_H
 
+#include <deque>
 #include <eetypes.h>
 #include <list>
 #include <vector>
@@ -172,20 +173,39 @@ struct tag_VISUAL_HEAD {
     union {
         unsigned int m_flags;   // 0x0: tested by mask, the whole word loaded (AddVisual)
         struct {
-            unsigned int _b0 : 10;
+            /* CVisual's constructor clears the word, then sets bits 1, 19, 3-7, 14-16 and clears 9,
+             * 17 and 18, in that order (the wep lane; the names ours) */
+            unsigned int _b0 : 1;
+            unsigned int m_b1 : 1;
+            unsigned int _b2 : 1;
+            unsigned int m_b3 : 1;
+            unsigned int m_b4 : 1;
+            unsigned int m_b5 : 1;
+            unsigned int m_b6 : 1;
+            unsigned int m_b7 : 1;
+            unsigned int _b8 : 1;
+            unsigned int m_b9 : 1;
             unsigned int m_b10 : 1;   /* bit 10: CVisual::Read gives the word at 0x1c -2 for it, 3 without */
             unsigned int _b11 : 3;
             unsigned int m_multipass : 1;   /* bit 14: SetApplyMultipassEffects sets it by byte */
-            unsigned int _b15 : 1;
+            unsigned int m_b15 : 1;
             unsigned int m_decals : 1;   /* bit 16: SetApplyDecals' */
-            unsigned int _b17 : 15;
+            unsigned int m_b17 : 1;
+            unsigned int m_b18 : 1;
+            unsigned int m_b19 : 1;
+            unsigned int _b20 : 12;
         } m_bits;
     };
     signed char m_type;   // 0x4
-    unsigned char _5[0x18 - 5];
-    int m_refs;   // 0x18
-    int m_1c;   // 0x1c: -2 or 3 by bit 10 (CVisual::Read; the name ours)
-};
+    /* the constructor zeroes the three bytes and two halfwords, and the centroid from CPnt3D::zero
+     * (UpdateCentroid zeroes it); the vparams fetch reads these 0x18 bytes (the names ours) */
+    unsigned char m_5;   // 0x5
+    unsigned char m_6;   // 0x6
+    unsigned char m_7;   // 0x7
+    unsigned short m_8;   // 0x8
+    unsigned short m_a;   // 0xa
+    CPnt3D m_centroid;   // 0xc
+};   // 0x18 bytes
 
 class CTexHandle;
 class BLENDMODE;
@@ -224,8 +244,73 @@ public:
 
 class CMesh;
 
+}
+
+/* the pod storage's sized construction: MSL's __vector_pod::init(n, value), out of line in
+ * vis_main.cpp's template tail (0x3C45B0, SOCOM 1's init__Q23std38__vector_pod<Ui,...>FUiRCUi in
+ * shape) -- include/vector does not model it yet, so it is called by its placeholder */
+extern "C" void func_003C45B0(void *v, unsigned int n, const unsigned int &value);
+
+namespace std {
+
+/* the visual's per-view vector, the one pointer vector built with a size (MSL's vector(n, value),
+ * the value a constant temporary; SOCOM 1's CVisual() calls init(0, ...) there too): the wep lane's
+ * stand-in until include/vector has the constructor -- the same bases, so the same three-level
+ * destructor and accessors as every pointer vector */
+template <class Allocator>
+class vector<zdb::CMesh *, Allocator> : public __vector_imp<zdb::CMesh *, Allocator, true> {
+public:
+    vector() {}
+    explicit vector(unsigned int n, const unsigned int &value = 0) { func_003C45B0(this, n, value); }
+    void clear() { __vector_imp<zdb::CMesh *, Allocator, true>::clear(); }
+    void swap(vector &x) { __vector_imp<zdb::CMesh *, Allocator, true>::swap(x); }
+};
+
+}
+
+void _free(void *p, const char *file, int line);
+
+/* the owner of a visual's VU buffer, shared by the buffers of each view (SOCOM 1's CVisBase, no
+ * DWARF; its constructor and destructor inline in SOCOM II -- CopyBuffer and 0x3B2CB0 build one,
+ * ~CVisual deletes one). The block, its holders, its size and a flag that the block is not its own
+ * to free (the names ours but the count's) */
+class CVisBase {
+public:
+    ~CVisBase()
+    {
+        if (!m_static) {
+            if (m_data)
+                _free(m_data, 0, 0);
+            m_data = 0;
+        }
+        m_instance_count--;
+    }
+    /* one holder fewer, the count left given back (re-read: as CVisual::Release) */
+    int Release()
+    {
+        m_refs--;
+        return m_refs;
+    }
+
+    void *m_data;   // 0x0
+    int m_refs;   // 0x4
+    unsigned int m_size;   // 0x8
+    unsigned int m_c;   // 0xc
+    unsigned char m_static;   // 0x10
+
+    /* the owners alive (SOCOM 1's static) */
+    static int m_instance_count;
+};
+
+namespace zdb {
+
 class CVisual : public tag_VISUAL_HEAD {
 public:
+    /* the holders and a word set by bit 10, CVisual's own ahead of its table: its constructor
+     * zeroes the count first of its members, after the vtable pointer (SOCOM 1's too) */
+    int m_refs;   // 0x18
+    int m_1c;   // 0x1c: -2 or 3 by bit 10 (CVisual::Read; the name ours)
+
     /* SOCOM II's table (__vt__Q23zdb7CVisual, 0x408380; the wep lane's): CMesh overrides the
      * bounding box, the centroid and Read, and adds InitMatrices after Get2DVisual */
     virtual ~CVisual();                                 /* +0x08 */
@@ -264,13 +349,24 @@ public:
     /* the specular maps let go of (SOCOM 1's static; the wep lane's) */
     static void Flush();
     static std::vector<CLightMap *> m_specMapList;
+    /* the view ids' stack primed, the map lists sized, the meshes' statics set (SOCOM 1's static;
+     * the wep lane's) */
+    static void Init();
+    /* the free view ids (SOCOM 1's stack<unsigned int>; SOCOM II's calls the pointer deque's
+     * push_back and pop_back, so it is spelled as that deque here), and the light, shadow and
+     * projected maps' lists (SOCOM 1's statics: vis's initialiser 0x404570 builds them) */
+    static std::deque<const void *> m_stack_vid;
+    static std::vector<CLightMap *> m_lightMapList;
+    static std::vector<CLightMap *> m_shadowMapList;
+    static std::vector<void *> m_projectedMapList;
     static _word128 *GetTextureSelectBlock_ver2(unsigned int n, _word128 **cursor, _word128 *ref,
                                            _word128 *tag);
 
     /* the wep lane's, from the constructor (0x3C4390): two vectors before the blend words, and the
      * dynamic textures and two words after them -- CSubMesh's own members start at 0x68 */
     std::vector<void *> m_24;   // 0x24 (not read yet)
-    /* per view, the mesh of the level of detail in use (CMesh::SetLOD; the name ours) */
+    /* per view, the mesh of the level of detail in use (CMesh::SetLOD; the name ours) -- a plain
+     * visual's VU buffer per view (SOCOM 1's SetBuffer stores it there; ~CVisual frees them) */
     std::vector<CMesh *> m_lodMesh;   // 0x30
     /* the blend words its packets use, each written by CNode::SetBlendMode (the name ours) */
     std::vector<BLENDMODE *> m_blendmodes;   // 0x3c
@@ -304,6 +400,8 @@ public:
      * overrides these and adds InitMatrices (+0x20) */
     CMesh();   // 0x3B9760
     virtual ~CMesh();
+    /* the meshes' statics set (SOCOM 1's static, 0x3B9820; CVisual::Init calls it) */
+    static void Init();
     virtual void ComputeBBox(CBBox *box);
     virtual void UpdateCentroid();
     virtual bool Read(zar::CZAR &zar);

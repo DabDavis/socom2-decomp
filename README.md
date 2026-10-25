@@ -1139,6 +1139,57 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     1 KB text buffer;
   - after 0x306670 come zMath, then a movie/IOP stretch (0x309550-0x30CE80: audioDec*,
     loadImage, CIOPManager); CZNetwork starts around 0x30CE80.
+- **Tells from the body animation, round 2** (body.cpp):
+  - a field saved around a VU0 write wants `*(float *)&p->m_node`; spelled
+    `((float *)&p->m_pos)[3]` it keeps the address in a register;
+  - a bool bitfield accessor tested with `!= false` gives the target's `sltu`; tested plainly it
+    folds (SmoothAnims);
+  - a vector walked through a saved `&member` register wants a reference local (`T &parts =
+    m_body_parts;`); the plain member walk reads `this` each pass (OrientParts against
+    OrientAuxParts); a non-const member keeps `this` in a saved register, the const one with a
+    cast keeps the member's address (FindPart is non-const in SOCOM II);
+  - fields loaded into float locals before a call keep the element pointer out of a saved
+    register (Propagate); a pointer local to a stack vector (`CPnt3D *p = (CPnt3D *)&v`) keeps
+    the address in a saved register for the calls that take it (GetVelocity);
+  - two-case dispatch written `if / else if / else return` gives the target's test-body-test-body
+    layout, a switch puts the tests first; two arms each ending in a call, then one shared
+    `return false`, gives the shared `move v0,zero` tail (Tick);
+  - named locals for two pushed `new` pointers take frame slots in declaration order
+    (AddCallback); CBody's vector at 0x68 is the auxiliary parts, not the anims.
+- **Tells from the zdb render classes, round 3** (zvid_init.cpp, vis_main.cpp, zwep_explosive.cpp):
+  - a bool or unsigned char parameter compared `== false` gets an `andi 0xff` before the branch;
+    written `!x` it does not;
+  - a field zeroed right after the vtable store, before the member objects, is a derived-class
+    member in the initializer list; a base-class constructor's store lands before the vtable
+    store (CVisual's reference count);
+  - storing through an unsigned view of a signed byte gives `li 255` where `li -1` would be the
+    signed store;
+  - MW pools identical constant temporaries bound to `const T &`, default arguments included,
+    into one static per unit;
+  - `f(r->x, r->y, r->w, r->h)` with f inlined loads all four fields before the first store;
+    written out, the stores pin the loads; `w = global; r = call(); w->g(r)` keeps the global's
+    load ahead of the call, `global->g(call())` puts the call first;
+  - a same-unit stand-in for an out-of-class template member needs `#pragma auto_inline off`;
+  - CVisual's constructor is byte-exact at -inline level=5 and not at 4 (CDynTexList's
+    constructor five inline levels deep) -- one more for the corrected level;
+  - CTurret's unit (veh_turret.cpp) runs 0x3A71A0-~0x3ACA5F, opening with its inline virtual
+    overrides' copies; CVehicle's 0x3ACA60-~0x3AFB2F; zvid_init.cpp from 0x3AFBA0.
+- **Tells from the AI states, round 3** (the states' Ticks and signals):
+  - every state's Tick returns a byte enum, ending `return (AI_RESULT)(m_done = m_active ?
+    AI_RUNNING : AI_DONE);` (`li 1; movz; andi; sw`);
+  - one inline does all the `dsll32`/`dsrl32` pairs on m_flags (`|= 0x80000000; &= ~clear; |=
+    set`, called with constants); `&= ~0` stays as a bare zero extension;
+  - Rfloat's random factor taken into its own local gives the target's float-register order
+    (CSealCtrlSquirm::Initalize); odds passed by value and read through a `const float &` local
+    stay in the frame across rand();
+  - spelling an argument `(char *)ai + K` stops MW sharing that address with a later field load;
+  - a member added to a header class hides a free function of the same name in another unit;
+  - `bool b = !(x == 0) && y == 4;` gives the target's `xor/sltiu/xori`;
+  - CAiState::Create (0x5F6550) inlines all 30 state constructors, their out-of-line copies after
+    it in reverse first-use order; CAiStateStack is 0x20 bytes in SOCOM II (SOCOM 1's
+    controller state timer folded in at +0x18); CAiMapLoc's default constructor is empty in
+    SOCOM II (0x516120) -- zentity.h's stand-in, which reads `invalid`, is not it (open, with
+    the entity header).
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has

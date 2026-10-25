@@ -8,8 +8,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 char *GetNode__6CZAnimFib(s32, u8, M2C_UNK);        /* extern */
+M2C_UNK OrientAuxParts__5CBodyFv(s32);              /* extern */
 char *__dynamic_cast(s32, M2C_UNK, M2C_UNK *, M2C_UNK *, M2C_UNK); /* extern */
-M2C_UNK func_0028E1B0(s32);                         /* extern */
 extern M2C_UNK __RTTI__7CSealEx;
 extern s32 data_00414BE8;
 extern M2C_UNK data_0065C220;
@@ -27,7 +27,7 @@ s32 func_0059AB30(char *arg0) {
             var_v0 = 0;
         }
         if (var_v0 != 0) {
-            func_0028E1B0(var_v0 + 0x170);
+            OrientAuxParts__5CBodyFv(var_v0 + 0x170);
         }
     }
     return 1;

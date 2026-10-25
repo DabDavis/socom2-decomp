@@ -4,11 +4,12 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK ResetAnims__22CZBodyAnimCallbackListFv(s32); /* extern */
 s32 func_002892A0();                                /* extern */
 s32 func_002892B0();                                /* extern */
-M2C_UNK func_0028B450(s32);                         /* extern */
 
 void func_002875D0(void) {
     s32 temp_v0;
@@ -16,10 +17,10 @@ void func_002875D0(void) {
 
     temp_v0 = func_002892B0();
     if (temp_v0 != 0) {
-        func_0028B450(temp_v0 + 0xD4);
+        ResetAnims__22CZBodyAnimCallbackListFv(temp_v0 + 0xD4);
     }
     temp_v0_2 = func_002892A0();
     if (temp_v0_2 != 0) {
-        func_0028B450(temp_v0_2 + 0xD4);
+        ResetAnims__22CZBodyAnimCallbackListFv(temp_v0_2 + 0xD4);
     }
 }

@@ -56,9 +56,9 @@ void CAiSUseVehicle::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
         }
         break;
     case SIGNAL_3:
-        if (m_34) {
-            m_38 = 0;
-            m_34 = 0;
+        if (m_phase) {
+            m_phaseTime = 0;
+            m_phase = 0;
         }
         break;
     }
