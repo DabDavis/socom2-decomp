@@ -800,10 +800,59 @@ misses -- drafts that compile at the right size and miss by an instruction or th
   with the vtable pointer at that offset (MW puts it after the class's own data) and a slot
   per offset. The draft's functions stay `extern "C"` under the map's names, in `<VA>.cpp`.
 
-Not yet: a `bool` (MW's C has none -- `daddiu v0,zero,1` against `li`); the C++ drafts could
-declare one now.
 The differ also stopped refusing the last function of a unit that an 8-aligned GCC object
 follows without MW's 16-byte padding (131 drafts had every byte right).
+
+**Measuring it** (`tools/amsurvey.py`, 2026-10-25): a fixed sample -- every unmatched 16-aligned
+overlay candidate up to 0x100 bytes, 3,624 functions -- run through automatch's own `attempt()`,
+every draft's verdict kept, the closest miss and its diff saved, the near misses classified by
+cause (`near`, `classify`, `show`, `cmp`). The generator as it stood matched **4** of them; 1,032
+(28 %) had no draft MW would build, 173 no draft at all. Each correction below was measured
+there, one at a time, in this order (`SC_AM_<NAME>=0` switches one off):
+
+- **a field off a `char *` base, uncast** (`SC_MEMBER`; 4 -> **201**): m2c's
+  `M2C_FIELD(p, T *, off)` casts its base to `char *` even when `p` already is one (every
+  `void *` is, here), and **any cast on the base makes MW keep the field's address in a
+  register** -- `addiu v1,a0,0x73C; swc1 $f12,0(v1)` where the original's member access stores
+  `swc1 $f12,0x73C(a0)` -- and moves registers besides (probes: an int base, an `int *` base, a
+  redundant `(char *)` and a cast to a struct pointer all do it; only uncast `char *`
+  arithmetic and a real struct pointer do not). A field whose base the draft's declarations
+  make a `char *` (a declared one, a `char **` field, a `char *` plus an int, a call returning
+  one) is spelled `SC_MEMBER`, which adds the offset as it is; m2c's spelling stays the
+  fallback form, and the bool and C++ stages run on each form;
+- **repairing what MW refuses** (201 -> **273**): m2c writes GNU C, where an int passed or
+  assigned as a pointer, a pointer of another type, a call disagreeing with the prototype m2c
+  took from another call, or a load through an int are warnings -- errors to MW. A draft that
+  will not build is repaired from MW's own diagnostics, a round at a time, each repair a
+  conversion the code makes anyway: a cast to the type the message names, an extern or
+  function pointer declared without parameter types when every parameter is an int or a
+  pointer (probed: the call compiles the same), `#pragma mpwc_relax`, a word load through an
+  int made through an `int *`, the 128-bit typedefs (build failures 1,032 -> 445);
+- **three more spellings of a virtual call** (273 -> **329**): the vtable pointer at 0
+  (`*obj`); a member object's virtual, called on `obj + K` with the vtable read from obj at
+  VPTR (its vtable pointer VPTR - K into the member); and a call m2c gives no arguments, which
+  passes the object on in a0 untouched -- m2c cannot see it (a destructor's `Release()`);
+- **arguments five to eight** (`tools/m2c.py`; 329 -> **395**, m2c refusals 173 -> 65, none lost): objdump spells registers 8-11 `t0`-`t3`,
+  O32's names; the EE passes arguments five to eight in them, and m2c's EE ABI calls them
+  `a4`-`a7` (its `t0`-`t3` are registers 12-15, not even temporaries). Spelled `t0`, m2c read a
+  fifth parameter as an unset register and refused the function, or dropped a fifth argument;
+- **tail calls through a register**, **bool** and three variants (`tools/m2c.py`, automatch;
+  measured together: 395 -> **456**): m2c takes any `jr` but ra's for a jump table, so a virtual tail call (`lw t9,8(t9);
+  jr t9`) is exported as `jalr; jr ra` like the `j` tail call; a bool flag is tested as itself
+  (`flag != 0` narrows it again with `andi 0xff`), a function returning only 0 and 1 is drafted
+  as bool, and one whose `true` the target materialises with `daddiu` returns through an
+  assigned bool (`return true` is `li`, an assigned true `daddiu`); `x == 0` as `!x` (`sltu,
+  xori` against `xor, sltiu`), an int plus an offset past 16 bits as a pointer sum (MW builds
+  the offset in `$at` for a pointer, v0 for an int), and m2c's byte offsets from an `M2C_UNK`'s
+  address summed as bytes (C scales them by 4: `sll 4` for the target's `sll 2`).
+
+Remaining near misses (of the 309 within four words before the virtual-call and later fixes: 145 register-only, 40 of them virtual calls since fixed; 31 operand order; 20 stack slots; 18 `!x`; 13 `M2C_UNK` sums; 12 `$at`; 10 FPR registers; 8 movn/movz; 8 bool), ranked: register allocation with the same instructions
+(argument registers, v0/v1 and mixed), operand order and scheduling (a struct copy m2c writes
+field by field, `c + a*b`), a local's stack slot (m2c declares a 4-byte `M2C_UNK` for a
+12-16-byte object, which MW then places at the top of the frame), `sltiu $at` range checks (a
+`switch` m2c wrote as ifs), movn/movz. 12 % of the sample saves its s-registers with `sd` and
+never `sq` -- GCC's prologue, not MW's: none of the 3,641 byte-exact functions does, and none of
+those 428 has ever matched (a filter the generator could apply).
 
 ## Open, and next
 
