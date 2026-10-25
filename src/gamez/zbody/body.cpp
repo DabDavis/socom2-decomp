@@ -912,7 +912,10 @@ void CZBodyAnimBlend::GetVelocity(CPnt3D *vel)
 /* the frame of the step: the blend's time fraction in sixtieths (SOCOM 1's called fptosi).
  * OPEN, 3 instructions (right size): the target loads m_tfrac into $f1 and 60 into $f0 and
  * multiplies $f0 * $f1 -- SOCOM 1's registers too; every spelling tried (either operand order, a
- * float local for either, the product in a local) loads m_tfrac into $f0. */
+ * float local for either, the product in a local) loads m_tfrac into $f0. The 60 through an inline
+ * returning it (`(int)(FootRate() * m_tfrac)`) gives the target's operand order, 2 instructions off:
+ * the two registers still trade places, with either order, a (float) cast or a local. */
+
 int CZBodyAnimBlend::ThisFoot()
 {
     return (int)(m_tfrac * 60.0f);
