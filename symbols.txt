@@ -479,7 +479,7 @@
 0x0019D978 0xDC func_0019D978  # MAIN unaligned
 0x0019DA58 0xC8C func_0019DA58  # MAIN unaligned
 0x0019E6E8 0x100 func_0019E6E8  # MAIN unaligned
-0x0019E7E8 0x54 func_0019E7E8  # MAIN unaligned
+0x0019E7E8 0x54 vsprintf  # MAIN unaligned; s1:calls (SOCOM 1's identical CConsole::Debug calls vsprintf at the same instruction; 0x54 bytes in both) -- the entity lane
 0x0019E840 0x54 func_0019E840  # MAIN
 0x0019E898 0x110 func_0019E898  # MAIN unaligned
 0x0019E9A8 0x60 func_0019E9A8  # MAIN unaligned

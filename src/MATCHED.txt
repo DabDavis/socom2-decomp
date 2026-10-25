@@ -80,6 +80,7 @@
 0x001EA8C0 begin__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>Fv
 0x001EAA70 func_001EAA70
 0x001EAA80 func_001EAA80
+0x001EAAF0 erase__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>FQ33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<0>Q33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<0>
 0x001EABB0 __ct__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>Fv
 0x001EABD0 func_001EABD0
 0x001EAC80 func_001EAC80
@@ -1259,13 +1260,17 @@
 0x0029CEC0 Dispatch__8CHandlerFP7CPacketP8CConsole
 0x0029CF10 __dt__8CHandlerFv
 0x0029CF70 __ct__8CHandlerFPCcUiPFP7CPacketP8CConsolePv_vPv
+0x0029D270 Debug__8CConsoleFiP7CPacketPCc
+0x0029D340 Debug__8CConsoleFiPCce
 0x0029D680 GetPacketMsg__7CPacketFv
 0x0029D690 __dt__8CConsoleFv
 0x0029D7B0 func_0029D7B0
 0x0029D860 func_0029D860
 0x0029D870 func_0029D870
+0x0029D890 GetPacketMsg__10CPacketMsgFv
 0x0029D8F0 GetArgCount__10CPacketMsgCFv
 0x0029D910 __dt__10CPacketMsgFv
+0x0029D9B0 Compare__7CPacketFP7CPacketP7CPacket
 0x0029DA20 GetPacketID__7CPacketCFv
 0x0029DA40 GetFlags__7CPacketCFv
 0x0029DA60 GetPacketType__7CPacketCFv
@@ -1468,6 +1473,7 @@
 0x002B3C40 func_002B3C40
 0x002B3C60 func_002B3C60
 0x002B3C70 func_002B3C70
+0x002B3C90 erase__Q23std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>FQ33std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>19generic_iterator<0>Q33std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>19generic_iterator<0>
 0x002B3D50 erase__Q23std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>FQ33std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>19generic_iterator<0>
 0x002B3EE0 func_002B3EE0
 0x002B3F00 func_002B3F00
@@ -4051,6 +4057,7 @@
 0x0050FA50 func_0050FA50
 0x0050FE80 push_back__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>FRCPCv
 0x0050FED0 func_0050FED0
+0x0050FEE0 erase__Q23std72__list_deleter<16CAiEventCallback,Q23std29allocator<16CAiEventCallback>>FQ33std72__list_deleter<16CAiEventCallback,Q23std29allocator<16CAiEventCallback>>19generic_iterator<0>Q33std72__list_deleter<16CAiEventCallback,Q23std29allocator<16CAiEventCallback>>19generic_iterator<0>
 0x0050FFA0 func_0050FFA0
 0x0050FFC0 __ct__Q23std72__list_deleter<16CAiEventCallback,Q23std29allocator<16CAiEventCallback>>Fv
 0x0050FFE0 func_0050FFE0
