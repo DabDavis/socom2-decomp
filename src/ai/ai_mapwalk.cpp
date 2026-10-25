@@ -7,6 +7,91 @@
 
 #include "ai.h"
 
+/* what Tile hands its callbacks: the value to set, the soils a soil tile spares, and whether any
+ * cell changed (SOCOM 1's Tile's data; the names ours) */
+struct TILE_DATA {
+    unsigned int m_value;   // 0x0: read as a byte by the boundary's
+    unsigned int m_flags;   // 0x4
+    bool m_changed;   // 0x8
+};
+
+/* a cell's shadow, boundary and occupied bits set from the tile's value, the change noted (SOCOM
+ * 1's _tile_boundary; the shadow's and the occupied bit's new in SOCOM II) */
+/* a cell's soil set from the tile's value where it may be: anywhere (flag 1) or over the default
+ * soil, and over steep ground with flag 2 (SOCOM 1's _tile_soil, the steep case new). The two
+ * bools assigned true and cleared, the steep test materialised into a bool of its own, the flags
+ * declared after the bools: each measured.
+ * OPEN, right size, 7 instructions: registers only -- the target keeps the old soil in a2 and the
+ * flags in a0, here the other way round (declaration orders of soil/old, cell/t, set/any and the
+ * comparison's operand order tried) */
+static bool _tile_soil(const MAP_FOREACH_STRUCT &s, void *data)
+{
+    TILE_DATA *t = (TILE_DATA *)data;
+    CAiCell *cell = s.m_cell;
+    unsigned char soil = t->m_value;
+    unsigned int old = cell->GetSoil();
+
+    if (old != soil) {
+        bool set = true;
+        bool any = true;
+        unsigned int flags = t->m_flags;
+
+        if (!(flags & 1) && old != CAiMap::SOIL_DEFAULT)
+            any = false;
+        if (!any) {
+            bool steep = (flags & 2) != 0 && old == CAiMap::SOIL_STEEP;
+
+            if (!steep)
+                set = false;
+        }
+
+        if (set) {
+            cell->m_soil = soil;
+            t->m_changed = true;
+        }
+    }
+    return true;
+}
+
+static bool _tile_shadow(const MAP_FOREACH_STRUCT &s, void *data)
+{
+    TILE_DATA *t = (TILE_DATA *)data;
+    CAiCell *cell = s.m_cell;
+    unsigned int shadow = t->m_value;
+
+    if (shadow != cell->GetShadow()) {
+        cell->SetShadow(shadow & 3);
+        t->m_changed = true;
+    }
+    return true;
+}
+
+static bool _tile_boundary(const MAP_FOREACH_STRUCT &s, void *data)
+{
+    TILE_DATA *t = (TILE_DATA *)data;
+    CAiCell *cell = s.m_cell;
+    unsigned char boundary = t->m_value;
+
+    if (boundary != cell->GetBoundary()) {
+        cell->SetBoundary(boundary);
+        t->m_changed = true;
+    }
+    return true;
+}
+
+static bool _tile_occupied(const MAP_FOREACH_STRUCT &s, void *data)
+{
+    TILE_DATA *t = (TILE_DATA *)data;
+    CAiCell *cell = s.m_cell;
+    bool occupied = t->m_value != 0;
+
+    if (occupied != cell->IsOccupied()) {
+        cell->SetOccupied(occupied);
+        t->m_changed = true;
+    }
+    return true;
+}
+
 /* the line walks' callbacks (SOCOM 1's _SeeLineCallback and _TravelLineCallback, static here:
  * placeholders until written) */
 extern "C" bool func_00539400(const MAP_LINEWALK_STRUCT &s, void *data);

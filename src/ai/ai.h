@@ -207,6 +207,11 @@ public:
     /* the soil (the name ours: read through it, the field is loaded again for a following
      * store -- _reset_cell) */
     unsigned int GetSoil() const { return m_soil; }
+    /* three fields read through accessors (the names ours: the tile callbacks test a field so
+     * and load it again for the setter's read-modify-write) */
+    bool IsOccupied() const { return m_occupied; }
+    unsigned char GetBoundary() const { return m_boundary; }
+    unsigned int GetShadow() const { return m_shadow; }
     /* the fields' setters: their arguments masked at run time, `(0 & 1) << n` for a constant
      * (the names ours) */
     void SetOccupied(unsigned int b) { m_occupied = b; }

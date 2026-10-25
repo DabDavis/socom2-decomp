@@ -9765,10 +9765,10 @@
 0x00535A40 0x3B0 func_00535A40  # OVL2
 0x00535DF0 0x438 func_00535DF0  # OVL2
 0x00536230 0x8B4 func_00536230  # OVL2
-0x00536AF0 0x50 func_00536AF0  # OVL2
-0x00536B40 0x50 func_00536B40  # OVL2
-0x00536B90 0x50 func_00536B90  # OVL2
-0x00536BE0 0x98 func_00536BE0  # OVL2
+0x00536AF0 0x50 _tile_occupied__FRC18MAP_FOREACH_STRUCTPv  # OVL2; ours (new in SOCOM II: the first of Tile 0x536230's four callbacks, before _tile_boundary as SOCOM 1's order puts its pair: the cell's occupied bit set from the tile's value, the change noted at +8)
+0x00536B40 0x50 _tile_boundary__FRC18MAP_FOREACH_STRUCTPv  # OVL2; s1:order by hand (the demo's 0x1A6100, 0x4C bytes and the same code: the boundary byte against the cell's two bits, set and the change noted)
+0x00536B90 0x50 _tile_shadow__FRC18MAP_FOREACH_STRUCTPv  # OVL2; ours (new in SOCOM II, after _tile_boundary: the cell's two shadow bits from the tile's value)
+0x00536BE0 0x98 _tile_soil__FRC18MAP_FOREACH_STRUCTPv  # OVL2; s1:order by hand (the demo's _tile_soil 0x1A6150, after _tile_boundary as here: the soil set where the tile's flags allow, the change noted)
 0x00536C80 0x780 func_00536C80  # OVL2
 0x00537400 0xA48 WalkLine__6CAiMapFRC9CAiMapLocPC6CPnt3DPFRC19MAP_LINEWALK_STRUCTPv_bPvf  # OVL2; s1:order by hand (the demo's WalkLine(loc, CPnt3D *) 0x1A6B00, 0xA64 bytes, before the two-cell one as here; CanSeeLine(loc, dir) 0x539070 tail-calls it with _SeeLineCallback as SOCOM 1's does -- SOCOM II adds the step, 0.2f in $f12)
 0x00537E50 0xB28 WalkLine__6CAiMapFRC9CAiMapLocRC9CAiMapLocPFRC19MAP_LINEWALK_STRUCTPv_bPvf  # OVL2; s1:order by hand (the demo's WalkLine(loc, loc) 0x1A7570, 0xD04 bytes; CanSeeLine and CanTravelLine 0x539090/0x5390B0 tail-call it with their callbacks as SOCOM 1's do, the step 0.2f added)
