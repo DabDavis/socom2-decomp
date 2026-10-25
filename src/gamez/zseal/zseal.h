@@ -139,6 +139,8 @@ class CNetGameState {
 public:
     unsigned char _0[0xd2];
     unsigned char m_ghost;   // 0xd2
+    unsigned char _d3[0x111 - 0xd3];
+    unsigned char m_mode;   // 0x111: the game's kind (the stats test 1 and 3; the name ours)
 };
 
 /* a pickup: a weapon, ammunition, a grenade or the MP bomb lying in the world (SOCOM 1's DWARF:

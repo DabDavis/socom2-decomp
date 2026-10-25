@@ -5,6 +5,7 @@
  * reverse of their image order (-inline deferred). */
 
 #include "zseal.h"
+#include <string.h>
 
 class CValve;
 
@@ -47,8 +48,148 @@ extern "C" void *func_00555170(CIndexedArray *a)
  * unsigned shorts) -- only the counters the incrementers touch, by halfword */
 class CSealStats {
 public:
-    unsigned short m_count[0x34 / 2];
+    unsigned short m_count[0x3c / 2];   // 0x0
+    short m_score;   // 0x3c: the MVP score (SOCOM 1's m_sMvpScore, a short there too)
+    unsigned short m_count2[3];   // 0x3e
+    float m_hit_percent;   // 0x44 (SOCOM 1's 0x28)
 };
+
+CZSealBody *ftsGetPlayer();
+
+extern "C" {
+/* (OVL2 0x544D60, not written yet: the SEAL's score passed on -- the stats' events end on it) */
+void func_00544D60(const CZSealBody *seal, int a);
+}
+
+/* whether an event counts: always offline, online only for the local player (the inline both
+ * builds' stats test first) */
+static inline bool StatCounts(const CZSealBody *seal)
+{
+    return !theNetwork.m_9 || seal == ftsGetPlayer();
+}
+
+/* the stats packed for the network: ten bytes, the counters as bytes, the hit percentage made a
+ * whole number; in game type 1 only two (OVL2 0x545A30) */
+struct SEAL_STATS_PACKET {
+    unsigned char m_0, m_1, m_2, m_3, m_4, m_5, m_6;
+    unsigned char _7;
+    short m_score;   // 0x8
+};
+
+extern "C" {
+extern unsigned char data_004364F8;   /* (OVL1 bss: a game type, 1 sending only two counters) */
+extern CNetGameState *data_00437CE8;
+/* (OVL1, unowned: two tests of a SEAL against the game, both builds' net code) */
+int func_002C31D0(const CZSealBody *seal);
+int func_002C30B0(const CZSealBody *seal);
+}
+
+extern "C" void func_00545A30(CSealStats *s, SEAL_STATS_PACKET *p)
+{
+    memset(p, 0, 10);
+    p->m_0 = s->m_count[0xc / 2];
+    p->m_3 = s->m_count[0x12 / 2];
+    if (data_004364F8 != 1) {
+        p->m_1 = s->m_count[0];
+        p->m_2 = s->m_count[0x10 / 2];
+        p->m_4 = s->m_count[0x1a / 2];
+        p->m_5 = (unsigned int)(100.0f * s->m_hit_percent);
+        p->m_6 = s->m_count[0x1c / 2];
+        p->m_score = s->m_score;
+    }
+}
+
+/* a death: the score down two, or in game type 3 online moved by the two tests; the counter's new
+ * value returned (OVL2 0x545390) */
+extern "C" unsigned short func_00545390(CSealStats *s, const CZSealBody *seal)
+{
+    if (StatCounts(seal)) {
+        if (theNetwork.m_9 && data_00437CE8->m_mode == 3) {
+            if (func_002C31D0(seal))
+                s->m_score -= 2;
+            else if (func_002C30B0(seal))
+                s->m_score += 3;
+        } else
+            s->m_score -= 2;
+    }
+    func_00544D60(seal, 0);
+    s->m_count[0x18 / 2]++;
+    return s->m_count[0x18 / 2];
+}
+
+/* the stats' events: a counter stepped and the score moved when it counts, the score passed on
+ * (OVL2 0x545D10, 0x545C90, 0x545C10, 0x545B90, 0x545B10, 0x5459C0, 0x5455D0, 0x545530,
+ * 0x544CF0; SOCOM 1's Kill, Hit, Death and the rest by their shape, not yet named) */
+extern "C" void func_00545D10(CSealStats *s, const CZSealBody *seal)
+{
+    if (StatCounts(seal))
+        s->m_count[0x12 / 2]++;
+}
+
+extern "C" void func_00545C90(CSealStats *s, const CZSealBody *seal)
+{
+    if (StatCounts(seal)) {
+        s->m_count[0x14 / 2]++;
+        s->m_score -= 2;
+    }
+    func_00544D60(seal, 0);
+}
+
+extern "C" void func_00545C10(CSealStats *s, const CZSealBody *seal)
+{
+    if (StatCounts(seal)) {
+        s->m_count[0x16 / 2]++;
+        s->m_score -= 2;
+    }
+    func_00544D60(seal, 0);
+}
+
+extern "C" void func_00545B90(CSealStats *s, const CZSealBody *seal)
+{
+    if (StatCounts(seal)) {
+        s->m_count2[2]++;
+        s->m_score += 1;
+    }
+    func_00544D60(seal, 0);
+}
+
+extern "C" void func_00545B10(CSealStats *s, const CZSealBody *seal)
+{
+    s->m_count2[0]++;
+    if (StatCounts(seal))
+        s->m_score += 5;
+    func_00544D60(seal, 0);
+}
+
+extern "C" void func_005459C0(CSealStats *s, const CZSealBody *seal)
+{
+    if (StatCounts(seal))
+        s->m_count[0]++;
+}
+
+extern "C" void func_005455D0(CSealStats *s, const CZSealBody *seal)
+{
+    if (StatCounts(seal)) {
+        s->m_count[0x38 / 2]++;
+        s->m_score += 2;
+    }
+    func_00544D60(seal, 1);
+}
+
+extern "C" void func_00545530(CSealStats *s, const CZSealBody *seal, int points)
+{
+    if (StatCounts(seal) && points > 0) {
+        s->m_count[0x3a / 2]++;
+        s->m_score += points;
+    }
+    func_00544D60(seal, 1);
+}
+
+extern "C" void func_00544CF0(CSealStats *s, const CZSealBody *seal)
+{
+    if (StatCounts(seal))
+        s->m_count[0x10 / 2]++;
+}
 
 /* eight counters each added to (OVL2 0x5451E0, 0x5451C0, 0x5451A0, 0x545180, 0x545160, 0x545140,
  * 0x545120, 0x545100; SOCOM 1's Incr* took ints) */
