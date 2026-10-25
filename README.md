@@ -534,13 +534,16 @@ follows without MW's 16-byte padding (131 drafts had every byte right).
   `CBits::Resize` (the 8x-unrolled clear loop saves one register fewer), `CPnt3D::Reflect`
   (a by-value operator chain MW keeps four copies of), `CBBox::GetIntersect` (above), and the
   two `DistToVector`s (written; far).
-- **zcamera (`zcam_main.cpp`, `zcam_update.cpp`, `fov.cpp`): CCamera written byte-exact but one;
-  two left.** Open: `CCamera::Update` (13 instructions, the stack offsets of the near plane
-  point's VU0 temporaries; diagnosed in its source). Unwritten: `CmdTickParams` and
-  `CmdParseParams` (the keyed parameter tracks, 0x9E8 and 0x1120). The pins: `theta_x_z`,
-  `SetHorizontalFOV`, `SetVerticalFOV` (each a few statements, each called in the target).
-  CAppCamera (`camera.cpp`) is next door, much changed since SOCOM 1 (its camera pointer 0x80
-  further on).
+- **zcamera (`zcam_main.cpp`, `zcam_update.cpp`, `fov.cpp`): CCamera written byte-exact but one.**
+  Open: `CCamera::Update` (13 instructions, the stack offsets of the near plane point's VU0
+  temporaries; diagnosed in its source). CmdParseParams and CmdTickParams, the keyed parameter
+  tracks (0x1120 and 0x9E8), are byte-exact: SOCOM II adds a fog colour track (a component past 1
+  read as a byte), makes the LOD value optional, and the command grows to 0x28 bytes. Their
+  registers settled on the source's locals -- one tag pointer for every track in the parser,
+  per-track locals and key pointers in the tick (MW spills three of its fifteen floats, as the
+  target does). The pins: `theta_x_z`, `SetHorizontalFOV`, `SetVerticalFOV` (each a few
+  statements, each called in the target). CAppCamera (`camera.cpp`) is next door, much changed
+  since SOCOM 1 (its camera pointer 0x80 further on).
 - **ZAnim's command handlers (`zanim_cmd_tick.cpp`): 51 of 56 written are byte-exact.** Open:
   `zAnimIfTick`, `zAnimLODTestTick`, `zAnimObjectOpacityFromToTick`, TRUE_COLOR_SCALE and
   UPDATE_SHADOW_MAP_LIGHTING, each diagnosed in its source. Unwritten: SCROLL_MOTION's tick (an
