@@ -113,6 +113,35 @@ CZSealBody *CZSealBody::CreateRemoteSeal(int index, int id, const char *name, in
  * 1's by position only) */
 extern "C" int func_0059A450(zdb::CNode *node);
 
+/* an iterator's `==` (the copy at 0x59A630 is a draft's) */
+static inline bool IterEqual(void *const *a, void *const *b)
+{
+    return *a == *b;
+}
+
+/* an iterator's `!=` as `!(==)`, materialised (OVL2 0x59A680: one of the small iterator copies
+ * after 0x59A450, which calls it twice -- a stand-in under the placeholder until that walk is
+ * written) */
+extern "C" bool func_0059A680(void *const *a, void *const *b)
+{
+    return !IterEqual(a, b);
+}
+
+/* a gear by name, or none: the made gears walked (OVL2 0x59A730; SOCOM 1's FindGear walked a list,
+ * SOCOM II's walks a vector -- zchar.h's CCharacterType::m_gear_list) */
+CCharacterGear *CZSealBody::FindGear(const char *name)
+{
+    std::vector<CCharacterGear *> &gears = CCharacterType::m_gear_list;
+
+    for (std::vector<CCharacterGear *>::iterator i = gears.begin(); i != gears.end(); ++i) {
+        const char *n = (*i)->m_name;
+
+        if (name && !strcmp(name, n))
+            return *i;
+    }
+    return 0;
+}
+
 /* a node's two visual flags set together (an inline: one `(b & 1)` serves both stores) */
 static inline void SetHasVisuals(zdb::CNode *node, bool on)
 {

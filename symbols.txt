@@ -10690,7 +10690,7 @@
 0x0059A700 0x8 func_0059A700  # OVL2
 0x0059A710 0x8 func_0059A710  # OVL2
 0x0059A720 0xC func_0059A720  # OVL2
-0x0059A730 0xB8 func_0059A730  # OVL2
+0x0059A730 0xB8 FindGear__10CZSealBodyFPCc  # OVL2; s1:order by hand (SOCOM 1's FindGear__10CZSealBodyFPCc: this unread, the gear whose name at +0xC strcmps equal, else 0 -- SOCOM 1's walked m_gear_list__14CCharacterType, a list 0x20 after m_char_list; SOCOM II's walks the pointer vector at the same 0x20 on, 0x44CD68; after the iterator copies, before PreCreateSeal, as SOCOM 1's sits right before PreCreateSeal; seal_cfg.cpp's 0x58B0F0 calls it three times with this and a name) -- the SEAL lane, round 7
 0x0059A7F0 0xF0 PreCreateSeal__10CZSealBodyFPC14CCharacterTypePCcPPQ23zdb5CNode  # OVL2; s1:order (after FindGear's tail); Create calls it first, as SOCOM 1's (the character's Acquire, CreateInstance, SetDynamic, CreateLODs); SOCOM 1's signature, unproven
 0x0059A8E0 0x178 func_0059A8E0  # OVL2
 0x0059AA60 0xC8 func_0059AA60  # OVL2

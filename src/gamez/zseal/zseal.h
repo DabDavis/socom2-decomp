@@ -616,6 +616,21 @@ public:
  * lane's) */
 #include "../zbody/zbody.h"
 
+/* a piece of gear a character wears (SOCOM 1's DWARF: CCharacterGear, 0x34 bytes; the made ones in
+ * zchar.h's CCharacterType::m_gear_list) */
+class CCharacterGear {
+public:
+    int m_ref_count;   // 0x0
+    int m_partid;   // 0x4
+    unsigned int m_gearid;   // 0x8
+    char *m_name;   // 0xc
+    char *m_model_file;   // 0x10
+    char *m_model_name;   // 0x14
+    void *m_model;   // 0x18
+    CPnt3D m_offset;   // 0x1c
+    CPnt3D m_rotation;   // 0x28
+};
+
 /* how far a SEAL's aim strays, sideways and up, and the random part's scale (SOCOM 1's DWARF,
  * 0xc bytes) */
 class CAccuracy {
@@ -655,6 +670,8 @@ public:
     static SEAL_STANCE GetStanceFromState(SEAL_STATE state, SEAL_STANCE fallback);
     /* a body part made a gear's (SOCOM 1's; OVL2 0x58B040, seal_cfg.cpp) */
     void SetPartAsGear(CZBodyPart *part, class CCharacterGear *gear);
+    /* a gear by name, or none (SOCOM 1's; OVL2 0x59A730, seal_create.cpp: `this` unread) */
+    CCharacterGear *FindGear(const char *name);
     /* the animation set's limits on the sideways and forward motion (seal_cfg.cpp) */
     void GetMaxXMotion(float &a, float &b);
     void GetMaxZMotion(float &a, float &b);
