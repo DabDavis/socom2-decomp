@@ -176,6 +176,64 @@ bool CAiSScript::CanAttack() const
     return true;
 }
 
+/* the plan's route handed to the controller (OVL2 0x573110, the SEAL lane's row) and given back
+ * to the AI maps (0x52C310, the AI core's) */
+extern "C" void func_00573110(CSealCtrlAi *ai, void *path);
+extern "C" void func_0052C310(CAiMaps *maps, void *path);
+
+/* a plan's events: reset; its route handed over on entry; on leaving for a sub-state the result
+ * (4 when the route failed, or did not arrive while one was wanted) and its block freed (OVL2
+ * 0x5F1800) */
+void CAiSPlan::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
+{
+    int result = 3;
+
+    switch (sig) {
+    case SIGNAL_4:
+        m_10c = 0;
+        m_110 = 0;
+        m_114 = 0;
+        m_128 = -1;
+        m_124 = -1;
+        m_12c = 1.0f;
+        m_130 = -1;
+        m_11c = 0;
+        m_120 = 0;
+        break;
+    case SIGNAL_0:
+        func_00573110(ai, m_path);
+        break;
+    case SIGNAL_1: {
+        unsigned char st = m_pathState;
+
+        if ((unsigned int)(st - 1) < 3) {
+            func_0052C310(&AiMaps, m_path);
+            result = 4;
+        } else {
+            bool arrived = !(m_100 == 0) && st == 4;
+
+            if (!arrived)
+                result = 4;
+        }
+        if (m_10c) {
+            delete m_10c;
+            m_10c = 0;
+        }
+        m_done = result;
+        break;
+    }
+    case SIGNAL_2:
+        break;
+    case SIGNAL_3:
+        if (m_10c) {
+            delete m_10c;
+            m_10c = 0;
+            m_110 = 0;
+        }
+        break;
+    }
+}
+
 /* (OVL2 0x5605A0, the SEAL lane's row: the controller told a byte) */
 extern "C" void func_005605A0(CSealCtrlAi *ai, unsigned char x);
 

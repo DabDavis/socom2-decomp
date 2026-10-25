@@ -269,7 +269,26 @@ public:
 
 class CAiSPlan : public CAiState {
 public:
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual ~CAiSPlan();
+
+    unsigned char _58[0x64 - 0x58];   // 0x58: a three-word triple (Create zeroes it)
+    unsigned char m_path[0x80];   // 0x64: a route (Create's 0x528340, 0xA8 bytes)
+    unsigned char m_pathState;   // 0xe4: its state (1-3 failed, 4 arrived)
+    unsigned char _e5[0x100 - 0xe5];
+    unsigned int m_100;   // 0x100
+    unsigned char _104[0x10c - 0x104];
+    char *m_10c;   // 0x10c: a block of its own, freed
+    unsigned char m_110;   // 0x110
+    unsigned char _111[0x114 - 0x111];
+    unsigned int m_114;   // 0x114
+    unsigned int m_cell;   // 0x118: a CAiMapLoc
+    unsigned int m_11c;   // 0x11c
+    unsigned int m_120;   // 0x120
+    int m_124;   // 0x124
+    int m_128;   // 0x128
+    float m_12c;   // 0x12c
+    int m_130;   // 0x130
 };
 
 /* the "action" state (new in SOCOM II, the name its RTTI's): an object at +0x84 it waits on */
