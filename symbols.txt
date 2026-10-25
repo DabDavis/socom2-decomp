@@ -8075,24 +8075,24 @@
 0x003C42D0 0xB4 func_003C42D0  # OVL1
 0x003C4390 0x218 __ct__Q23zdb7CVisualFv  # OVL1; s1:callee
 0x003C45B0 0xE8 func_003C45B0  # OVL1
-0x003C46A0 0x54 func_003C46A0  # OVL1
-0x003C4700 0x3AC func_003C4700  # OVL1
-0x003C4AB0 0x48 func_003C4AB0  # OVL1
-0x003C4B00 0x40 func_003C4B00  # OVL1
-0x003C4B40 0x48 func_003C4B40  # OVL1
-0x003C4B90 0x74 func_003C4B90  # OVL1
-0x003C4C10 0x30 func_003C4C10  # OVL1
-0x003C4C40 0xA4 func_003C4C40  # OVL1
-0x003C4CF0 0x44 func_003C4CF0  # OVL1
-0x003C4D40 0x10C func_003C4D40  # OVL1
-0x003C4E50 0x28 func_003C4E50  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
-0x003C4E80 0x30 func_003C4E80  # OVL1
-0x003C4EB0 0x78 func_003C4EB0  # OVL1
-0x003C4F30 0x40 func_003C4F30  # OVL1
-0x003C4F70 0xAC func_003C4F70  # OVL1
-0x003C5020 0x44 func_003C5020  # OVL1
-0x003C5070 0xFC func_003C5070  # OVL1
-0x003C5170 0x28 func_003C5170  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
+0x003C46A0 0x54 ClearAnimations__12CZWeaponListFv  # OVL1; s1:order by hand (SOCOM 1's CZWeaponList unit, first in the image: each weapon's ClearAnims, 0x3D21C0)
+0x003C4700 0x3AC InitializeWeapons__12CZWeaponListFv  # OVL1; s1:order by hand (second in the unit; the bullet-pass sounds .BUL_PASSING/.ROCKET_BY, the decal sets, the %s_zoom anims, as SOCOM 1's)
+0x003C4AB0 0x48 GetWeaponIndex__12CZWeaponListFP8CZWeapon  # OVL1; by hand (new in SOCOM II, between InitializeWeapons and GetWeaponByIndex: the list walked for the pointer, its index or -1; the name is ours)
+0x003C4B00 0x40 GetWeaponByIndex__12CZWeaponListFi  # OVL1; s1:order by hand (the list walked to the index'th weapon, 0 past the end)
+0x003C4B40 0x48 GetWeapon__12CZWeaponListF10EQUIP_ITEM  # OVL1; s1:order by hand (the weapon whose id byte, 0x7C, equals the argument's low byte)
+0x003C4B90 0x74 GetWeaponName__12CZWeaponListF10EQUIP_ITEM  # OVL1; s1:order by hand (GetWeapon(EQUIP_ITEM) inlined, then the weapon's string or "Unknown Weapon")
+0x003C4C10 0x30 GetWeaponId__12CZWeaponListFPCc  # OVL1; s1:order by hand (GetWeapon(name)'s id byte, or 255 -- SOCOM 1's li 255)
+0x003C4C40 0xA4 GetWeapon__12CZWeaponListFPCc  # OVL1; s1:order by hand (strcmp against each weapon's GetName); a const member (its walk reads the element by value, through the const iterator); back to non-const (a const walk copies its iterator four times; the target twice)
+0x003C4CF0 0x44 AddWeapon__12CZWeaponListFP8CZWeapon  # OVL1; by hand (new in SOCOM II: a non-null weapon pushed on the list, as CZAmmoList::AddAmmo; the name is ours)
+0x003C4D40 0x10C __dt__12CZWeaponListFv  # OVL1; s1:order by hand (each weapon deleted through its virtual destructor, then the list cleared)
+0x003C4E50 0x28 __ct__12CZWeaponListFv  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); s1:order by hand (the list deleter's constructor only)
+0x003C4E80 0x30 GetAmmoId__10CZAmmoListFPCc  # OVL1; s1:order by hand (GetAmmo(name)'s id byte, 0x30, or 255)
+0x003C4EB0 0x78 GetAmmo__10CZAmmoListF10EQUIP_AMMO  # OVL1; s1:order by hand (the ammo whose id byte, 0x30, equals the argument's low byte)
+0x003C4F30 0x40 GetAmmo__10CZAmmoListFi  # OVL1; s1:order by hand (the index'th ammo)
+0x003C4F70 0xAC GetAmmo__10CZAmmoListFPCc  # OVL1; s1:order by hand (strcmp against each ammo's GetName, 0x3D4540)
+0x003C5020 0x44 AddAmmo__10CZAmmoListFP6CZAmmo  # OVL1; s1:order by hand (a non-null ammo pushed on the list)
+0x003C5070 0xFC __dt__10CZAmmoListFv  # OVL1; s1:order by hand (each ammo deleted through CZAmmo's destructor, 0x3D4710, then the list cleared)
+0x003C5170 0x28 __ct__10CZAmmoListFv  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); s1:order by hand (the list deleter's constructor only; CZWeapon's constructor builds m_LegalAmmoList at 0xC4 through it)
 0x003C51A0 0x8 func_003C51A0  # OVL1
 0x003C51B0 0x8 func_003C51B0  # OVL1
 0x003C51C0 0x8 func_003C51C0  # OVL1
@@ -8343,7 +8343,7 @@
 0x003D20E0 0x64 func_003D20E0  # OVL1
 0x003D2150 0x60 func_003D2150  # OVL1
 0x003D21B0 0x8 func_003D21B0  # OVL1
-0x003D21C0 0x60 func_003D21C0  # OVL1
+0x003D21C0 0x60 ClearAnims__8CZWeaponFv  # OVL1; s1:order by hand (SOCOM 1's shape: m_hitanim freed, three anims cleared -- one more in SOCOM II -- m_specialmaterialanim freed)
 0x003D2220 0x50 func_003D2220  # OVL1
 0x003D2270 0x10 func_003D2270  # OVL1
 0x003D2280 0x8 func_003D2280  # OVL1
@@ -8380,8 +8380,8 @@
 0x003D2800 0x8 func_003D2800  # OVL1
 0x003D2810 0x8 func_003D2810  # OVL1
 0x003D2820 0x8 func_003D2820  # OVL1
-0x003D2830 0x8 func_003D2830  # OVL1
-0x003D2840 0x8 func_003D2840  # OVL1
+0x003D2830 0x8 GetDescription__8CZWeaponCFv  # OVL1; s1:order by hand (returns the word at 8, SOCOM 1's m_description; next to GetName as in SOCOM 1's zwep_weapon.cpp)
+0x003D2840 0x8 GetName__8CZWeaponCFv  # OVL1; s1:order by hand (returns the word at 4, m_name; CZWeaponList::GetWeapon(name) compares it)
 0x003D2850 0x6C func_003D2850  # OVL1
 0x003D28C0 0x6C func_003D28C0  # OVL1
 0x003D2930 0x6C func_003D2930  # OVL1
@@ -8418,7 +8418,7 @@
 0x003D3930 0x44 func_003D3930  # OVL1
 0x003D3980 0x58 func_003D3980  # OVL1
 0x003D39E0 0x240 __dt__8CZWeaponFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x003D3C20 0x170 func_003D3C20  # OVL1
+0x003D3C20 0x170 __ct__8CZWeaponFv  # OVL1; by hand (stores __vt__8CZWeapon, builds m_LegalAmmoList at 0xC4; CZFTSWeapon's constructor calls it first)
 0x003D3D90 0x4CC func_003D3D90  # OVL1
 0x003D4260 0x120 func_003D4260  # OVL1
 0x003D4380 0x10 func_003D4380  # OVL1
@@ -8439,7 +8439,7 @@
 0x003D4510 0x8 func_003D4510  # OVL1
 0x003D4520 0x8 func_003D4520  # OVL1
 0x003D4530 0x8 func_003D4530  # OVL1
-0x003D4540 0x8 func_003D4540  # OVL1
+0x003D4540 0x8 GetName__6CZAmmoFv  # OVL1; s1:order by hand (returns the word at 0, m_name; CZAmmoList::GetAmmo(name) compares it)
 0x003D4550 0x8 func_003D4550  # OVL1
 0x003D4560 0x8 func_003D4560  # OVL1
 0x003D4570 0x8 func_003D4570  # OVL1
@@ -8450,7 +8450,7 @@
 0x003D45F0 0x58 func_003D45F0  # OVL1
 0x003D4650 0x5C func_003D4650  # OVL1
 0x003D46B0 0x5C func_003D46B0  # OVL1
-0x003D4710 0x90 func_003D4710  # OVL1
+0x003D4710 0x90 __dt__6CZAmmoFv  # OVL1; s1:order by hand (SOCOM 1's: the name, the description and a third string freed, deleted when asked; CZAmmoList's destructor calls it)
 0x003D47A0 0x6C func_003D47A0  # OVL1
 0x003D4810 0x14 func_003D4810  # OVL1; tu: zui_cleanup.cpp~ (1.0 beta)
 0x003D4830 0x8 func_003D4830  # OVL1
