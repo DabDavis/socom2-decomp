@@ -15,13 +15,22 @@ class CZSealBody;
 class CZSealState {
 public:
     /* a remote SEAL whose object came before the mission was ready: its client and object (SOCOM
-     * 1's list held them newed; SOCOM II's is a vector of them, 8 bytes each -- the name ours) */
+     * 1's list held them newed; SOCOM II's is a vector of them, 8 bytes each -- the name ours).
+     * The empty constructor makes MW copy it word by word in the vector's insert (lw/sw, as the
+     * target's 0x2BF980; without it the copies go through the FPRs) */
     struct TypeRemoteGuy {
+        TypeRemoteGuy() {}
+
         int client;   // 0x0
         int index;   // 0x4
     };
 
+    /* the list reserves 30 when it is built (the static initialiser 0x400650 inlines this: three
+     * words zeroed, then reserve(30) out of line); its implicit destructor (0x2BFFC0) tests `this`
+     * four times, the class's own and the vector's three levels */
     class CRemoteGuyList : public std::vector<TypeRemoteGuy> {
+    public:
+        CRemoteGuyList() { reserve(30); }
     };
 
     /* the SEAL's network data, 0x90 bytes (SOCOM 1's 0x98): only the packed weapons, the unit's id
@@ -56,6 +65,8 @@ public:
 };
 
 typedef CZSealState::TypeSealState NetObjectData;
+
+CZSealState::CRemoteGuyList CZSealState::m_RemoteGuyList;
 
 /* a network object as the DME hands it out: its kind's name, and its data (only what this unit
  * touches) */
@@ -254,9 +265,15 @@ bool func_002A72A0(CZNetGame *game);   /* (SOCOM II's: a game type 1 or 2) */
 }
 
 /* after a remote SEAL's update: the lobby told once, in play, when its time comes due, and the SEAL
- * put in its unit once its controller is ready (OVL1 0x2BE020; SOCOM 1's had only the unit) */
+ * put in its unit once its controller is ready (OVL1 0x2BE020; SOCOM 1's had only the unit).
+ * OPEN, 10 instructions, registers only: the client and the hit time trade s2 and s3 (the target's
+ * client s2, time s3). The time declared first, uninitialised, fixed the data's and the body's
+ * registers (21 -> 10). `!(t - time < 8000)` gives the target's registers exactly but a subu/slti
+ * where it has addiu/slt; tried the comparison's operands swapped and reversed, the time
+ * unsigned, a local copy of the client (round 13) */
 void CZSealState::RemoteSealPostUpdateCallback(int client, int index, int field)
 {
+    int t;
     NetObject *obj = theNetwork.zNetGetObject(index);
 
     if (!obj)
@@ -266,7 +283,7 @@ void CZSealState::RemoteSealPostUpdateCallback(int client, int index, int field)
 
     if (!(data && (body = data->m_body)))
         return;
-    int t = body->m_fd4;
+    t = body->m_fd4;
 
     if (t && theMission.m_pNetGame->m_mp_major_game_state == 3 && !(t < theNetwork.zNetGetTime() + 8000) &&
         body->m_fd8 > 0.0f && !(body->m_1044 < body->m_fd8)) {

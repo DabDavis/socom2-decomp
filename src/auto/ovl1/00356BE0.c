@@ -8,9 +8,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 s32 MakeChain__Q23zdb12CGSTexBufferFP1i(char *, s32); /* extern */
+M2C_UNK RelocateAll__Q23zdb12CGSTexBufferFv(char *); /* extern */
 M2C_UNK func_0033C350(char *);                      /* extern */
 M2C_UNK func_00355DE0(char *);                      /* extern */
-M2C_UNK func_003570C0(char *);                      /* extern */
 M2C_UNK func_003571D0(char *, s32);                 /* extern */
 M2C_UNK func_00357C90(char *, u32);                 /* extern */
 M2C_UNK sceDmaSend(s32, s32);                       /* extern */
@@ -40,7 +40,7 @@ s32 func_00356BE0(char *arg0, s32 arg1) {
         }
         SC_MEMBER(arg0, s32 *, 0x18) = MakeChain__Q23zdb12CGSTexBufferFP1i(arg0, SC_MEMBER(arg0, s32 *, 0x24));
     } else {
-        func_003570C0(arg0);
+        RelocateAll__Q23zdb12CGSTexBufferFv(arg0);
     }
     if (arg1 != 0) {
         func_00355DE0(arg0);

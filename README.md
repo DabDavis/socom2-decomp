@@ -1414,7 +1414,8 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - declaring a defined virtual first among a derived class's non-inline virtuals makes the
     unit emit its table and implicit destructor; slot order still follows the base;
   - zui.cpp is 0x365200-0x36AF9F (CDblBufTextureRelocator's inline virtuals open it); the soft
-    keyboard and the rdr-table code after 0x3A2510 wait on an MSL map/tree (not in include/).
+    keyboard and the rdr-table code after 0x3A2510 use MSL's map (include/map since round 3 of
+    the MSL headers).
 - **Tells from the HUD, round 12** (hud_healthbar.cpp complete, hud_scorepopup.cpp, ~CHUD):
   - 8-byte-spaced float pools are function-local statics (a float literal is lui/ori/mtc1; a
     target loading constants with lwc1 there wants statics) -- write them as file statics, which
@@ -1567,6 +1568,106 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - zparticle.cpp 0x3223D0-0x324C6F, zparticle_buf.cpp from 0x324C70, the instance unit from
     0x326F50, zrndr_init.cpp 0x335FD0-0x33622F; 0x321E00-0x3223CF is a vis unit's CLensFlare/
     CRipple code.
+- **Tells from the SEALs, round 7** (~CSealCtrlAi, SEAL_AI_PARAMS):
+  - an RTTI's base list gives a second base's offset: that base is constructed before the vtable
+    store, and its inlined destructor sits behind a null test of `this + offset`
+    (CSealCtrlAi : CSealCtrl, SEAL_AI_PARAMS at 0x250 -- its state stack at 0x41C, a CAiPath at
+    0x46C, a route at 0x514, a CAiEvent at 0x628, a CAiEventQ at 0x650);
+  - a caller that never sets $f12 shows the callee has no float parameter;
+  - a product's member factor read through an inline accessor is loaded first (SetViewRange);
+  - a signed square `if (r < 0) r = -(r*r); else r = r*r;` gives the target's two arms; a ternary
+    or a separate result local if-converts;
+  - a load the target puts in a null test's delay slot needs a local taken before the test;
+  - a CPnt3D copied field by field gives load/store pairs through one register; copy
+    construction loads all three fields first;
+  - tools/perm.py fixed a locals-only register miss in one run (SealGetAltitude);
+  - `ovl-copy:` notes are read from data rows too (scdecomp's address_in): an RTTI's overlay copy
+    (0x65C220 for zdb::CNodeEx's) resolves a `dynamic_cast` in OVL2.
+- **Tells from completing the MSL headers, round 3** (include/tree, include/map, include/vector):
+  - SOCOM II's red-black tree is SOCOM 1's MSL tree (CW 3.0.1's `tree`, its DWARF and symbol
+    table): __red_black_tree<1> holds the links (left_ 0, right_ 4, parent_ 8 with the colour in
+    bit 0, set = red; the value at 0xC) and the static rotate_left/rotate_right/balance_insert --
+    one copy per overlay (OVL1 0x211030/0x210FA0/0x210D80, OVL2 0x58DB20/0x58DA90/0x58D870); the
+    tree is size 0, anchor 4 (left_ the root), comparator byte 8, leftmost 0xC; the map is its
+    tree alone. insert_node_at's message is "tree::insert length error\n";
+  - hud_linemap.cpp's maps (SOCOM 1's g_mapLineProps, g_mapPolyProps: std::map<int, LINE_DATA>)
+    make its tail byte-exact from source, 12 rows; the soft keyboard's nine and find<int> are
+    byte-exact as probes (build/tree/); the shapes that settled them are in include/tree's comment
+    (the grandparent local in balance_insert, prev/p/n's declaration order, `size() > max_size() -
+    1`, destroy's self-inlining against the tree's own accessors);
+  - MW 3.0 folds `x >= 0xFFFFFFFF`, `x == 0xFFFFFFFF` and `!(x < 0xFFFFFFFF)` into one `bne -1`;
+    only `x > max - 1` keeps the target's `sltiu -1`;
+  - a member template's mangled name carries its return type (`find_or_insert<i,9LINE_DATA>
+    __...FRCi_RQ23std19pair<Ci,9LINE_DATA>`): SOCOM 1's compiler left it out;
+  - `true`/`false` bound to pair's const references are pooled constants loaded with lbu
+    (insert_one 0x38EC10: `lbu v1,1160(at)`);
+  - a by-value empty comparator copied into a member is a byte copy (`lbu; sb`); the map's
+    value_compare(Compare) leaves its member unset, as the image's constructors copy nothing;
+  - the class vector's copy constructor zeroes the deleter's words and calls the out-of-class range
+    init<const T *>(first, last, forward_iterator_tag) (the particle sequences' 0x328FC0,
+    0x3290D0, 0x329220, byte-exact); MSL checks the length on the size there, not the distance;
+  - still open: the map constructor's allocator temporary (the image builds none, include/memory's
+    allocator() is out of line for the deque), the tree's erase (0x306030), the CSaferStr trees
+    (the string's out-of-line compare 0x2DEE30), the deque's copy constructor chain (mapped in
+    include/deque), pop_back's 8 bytes, remove_if's swapped registers.
+- **Tells from the HUD, round 13** (hud_scorepopup.cpp's spectators, ztex_manager.cpp's tail):
+  - a walk's end test through an inline member (`CEntityItr::More`) gives the constructor's
+    `begin()` temporaries the higher stack slots; written straight into the loop test, `end()`'s
+    get them (GetTeamMembers);
+  - a struct returned by value goes straight into the return slot only through a constructor
+    (`return IPNT2D(x, y)`); a named local is built on the stack and copied (GetTagIPNT2D);
+  - a member updated across a store through another field of the same type is reloaded; the
+    target's single load is a local, and its declaration order against the element pointer picks
+    their registers;
+  - `int i` indexing a pointer vector's `operator[](unsigned)` keeps the `sll` on every pass;
+    `unsigned i` strength-reduces it;
+  - MW 3.0 gives the first-declared float local the highest saved register (SOCOM 1's compiler
+    gave it the lowest), and reusing one set of locals across blocks re-colours the later blocks;
+  - 8-byte-spaced statics that read zero in the image (0x3E5718, 0x3E5720) are set by the unit's
+    initialiser;
+  - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
+    Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
+    file once the rest is written.
+- **Tells from the zdb world, round 6** (CDI(), the grid's traversal boundary, znode.h's stand-ins):
+  - znode.h's list stand-ins (PtrListFirst, ListBegin, ListEnd, ListClear) are gone: include/list's
+    begin()/clear()/insert() give the same code in all six of their users;
+  - CDI() inlines SOCOM 1's DI_PARAMS constructor (tag_DI_HEAD's, with eleven flag setters);
+  - the &size_/&data_ register order of a local vector walked after a call turns on whether the
+    pod vector's end() reads through data(): `return data() + size_;` gains CGrid::Destroy,
+    GenerateLandmarkList, DeleteChildren and AddPalette but makes CCharacterType::Create one
+    inline level too tall (measured over every hand-written unit; the pointer vector's end() through
+    __base::data() gains the same four and loses find_node, whose target calls the pod's end() out
+    of line) -- not applied, an MSL round's to settle;
+  - a swap reloads the element just tested only if it reads it through a different type (a
+    `CClutter *` swap reuses the tested value);
+  - "the inner loop entered through a block placed after the function's end" is not reproduced by
+    any for, while, counter or test form tried (SortNearToFar, CGrid::Create);
+  - grid_di.cpp's static stack is `CStack(false)` (zmath.h's CStack(bool): the initialiser clears
+    the owner byte and pushes nothing), which makes __sinit_grid_di.cpp byte-exact; 0x306620 is
+    CFRect(const CPnt3D *, const CPnt3D *), top and bottom from the corners' z;
+  - try.py substitutes files under src/ only: to probe a header under include/, compile against a
+    shadow copy of include/ placed first (build/scratch/world/incprobe.py).
+- **Tells from the body animation, round 4** (ReadMotionRdr, the blend stack, BodyAddAnim):
+  - an inline accessor returning a member's address makes MW hoist that address out of a loop,
+    into a preheader placed after the loop's bottom test, the loop entered with a `b`; written as
+    `p->member`, the address is recomputed every pass;
+  - an inline wrapping an out-of-line call gives its result the lowest saved register, below
+    another inline's `this` temporary (PushBlend); ReadMotionRdr (0xE98 bytes) closed on one such
+    inline, `CZSIScriptCommon::LoopTime()`, whose `this` copy takes s0;
+  - `mul.s $f1,$f1,$f0` with the first operand loaded after a call is a by-value inline parameter
+    multiplied in place (`t *= s; return t;`, called as `f(member, call())`);
+  - two vectors walked in step: both cursors class iterators, the walked vector's initialised
+    first (BodyAddAnim);
+  - a bool set true/false in an if/else puts `daddiu` in the branch's delay slot; a float
+    comparison returned as `if (c) return true; return false;` gives the target's label pads where
+    `return c;` does not;
+  - MW puts a division's dividend in $f1 and its divisor in $f0 whatever the spelling (ThisFoot and
+    CBlendOverlay::Tick want them the other way round: open);
+  - inline costs measured by `#pragma inline_max_size` bisection: CPnt3D's implicit assignment ~49
+    units, CQuat's ~30, a user destructor 17, an empty transform over a pointer vector 80 --
+    CBody::Destroy fits only at 299 units, so the original's copies or MSL pieces were leaner;
+  - OVL1's copy of the pod vector's resize (0x28B0E0) cannot be scored from source: a template
+    instance is credited by name, and the name resolves to MAIN's copy (0x18B050).
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
@@ -1873,9 +1974,14 @@ What is open across lanes, and what comes next:
   pairs in the pod, the list's size and end node, alloc() accessors), so a level of 6 or more with
   the real depths is likely; 5 is what these headers fit.
 - **MSL pieces not modelled yet**: the deque's copy constructor (the rdr lane's 0x333B30 and its
-  pieces; back() and pop_back() are in), the class vector's destroy for elements with a virtual
+  pieces, mapped in include/deque; back() is in, pop_back() 8 bytes short), the tree's erase
+  (0x306030), the CSaferStr trees (0x3A2D60-0x3A2F60 and OVL2's string-keyed map, through the
+  string's out-of-line compare 0x2DEE30), zrdr_file.cpp's pointer-keyed map (0x32D780) and the map
+  constructor's allocator temporary (the image passes an unconstructed stack slot: `__sinit` and
+  the out-of-line map() copies) (include/tree), the class vector's destroy for elements with a virtual
   destructor (C2DPoly's deleter), __vector_imp::resize out of line (CPool), and the pod vector's
-  end() reusing begin()'s load (AddPalette, ~CAssetLib, DeleteChildren).
+  end() reusing begin()'s load (AddPalette, ~CAssetLib, DeleteChildren; the zdb world's round 6
+  measured `return data() + size_;`: +4, but CCharacterType::Create one level too tall).
 - **zMath** (0x306670-0x30954C, 47 of 54): CMatrix::SetRotate, CQuat::Align, CBits::Resize,
   CPnt3D::Reflect, CBBox::GetIntersect and the two DistToVectors. **zcamera**: CCamera::Update
   (13 instructions, the near plane's VU0 temporaries' stack offsets). **ZAnim**: the big handlers

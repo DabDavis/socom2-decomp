@@ -188,3 +188,48 @@ int CPopUpDialog::GetZAnimCmdType(const char *name)
         return C2D::GetZAnimCmdType(name) + 2;
     return C2D::GetZAnimCmdType(name);
 }
+
+/* a list box's item's look (SOCOM 1's CListItemTypeImpl, zui_2d.cpp's: its own Tick, IsEnabled,
+ * Finish and the like, empty virtuals there; only the slots ListItem forwards to placed, the rest
+ * stand-ins) */
+class CListItemTypeImpl {
+public:
+    virtual void _v0();
+    virtual void _v1();
+    virtual void _v2();
+    virtual void _v3();
+    virtual void _v4();
+    virtual void _v5();
+    virtual void _v6();
+    virtual void _v7();
+    virtual void _v8();
+    virtual void _v9();
+    virtual void _v10();
+    virtual void _v11();
+    virtual void _v12();
+    virtual void _v13();
+    virtual void Tick(float dT);
+    virtual bool IsEnabled();
+};
+
+/* a list box's item (SOCOM 1's ListItem: its look at 0x28; SOCOM II's vtable 0x407240 has four
+ * slots, each forwarding to the look -- slot 0, 0x36B1D0, still open: a tail call followed by a
+ * dead `jr ra` that no form tried gives (a plain call, `return` of it, do/while(0), switch, an
+ * always-true if); slots 2 and 3 are m2c's drafts) */
+class ListItem {
+public:
+    virtual void Tick(float dT);
+    virtual bool IsEnabled();
+
+    unsigned char _4[0x28 - 0x4];
+    CListItemTypeImpl *m_impl;   // 0x28
+};
+
+/* whether the item is enabled: its look's say, or yes without one (SOCOM 1's
+ * CListItemTypeImpl::IsEnabled returns true; the name ours by it) */
+bool ListItem::IsEnabled()
+{
+    if (m_impl)
+        return m_impl->IsEnabled();
+    return true;
+}

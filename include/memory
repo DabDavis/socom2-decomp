@@ -1,19 +1,57 @@
-/* <memory>: the part of MSL's std::allocator the matched functions need (its name, and the default
- * constructor <deque> builds its empty allocator bases with). */
+/* <memory>: the part of MSL's std::allocator the matched functions need (its name, the default
+ * constructor <deque> builds its empty allocator bases with, and the members <tree> allocates its
+ * nodes and builds its values through). */
 
 #ifndef _MSL_MEMORY
 #define _MSL_MEMORY
+
+#include <new>
+#include <stdio.h>
+#include <stdlib.h>
+
+#ifndef __msl_error
+#define __msl_error(str) \
+    {                    \
+        fprintf(stderr, str); \
+        abort();         \
+    }
+#endif
 
 namespace std {
 
 template <class T>
 class allocator {
 public:
+    typedef unsigned int size_type;
+    typedef T *pointer;
+    typedef T value_type;
+
+    template <class U>
+    struct rebind {
+        typedef allocator<U> other;
+    };
+
     /* defined after the class, so -- a template member out of its class -- never inlined into a
      * unit's own functions: the deque's constructor calls SOCOM II's 0x2CEE30 (`jr ra; move v0,a0`)
      * for its allocator base, as do the deque and cdeque copy constructors of four other units.
      * No-throw: the deque's constructor references no cleanup of the base built before it */
     allocator() throw();
+
+    /* the tree's nodes come from here (<tree>: operator new, a null result fatal), and its values
+     * are built and torn down in place. In class: SOCOM II's trees inline them, and call out-of-
+     * line copies only in destroy's innermost self-inlined level (0x211390 deallocate, 0x2113B0
+     * destroy for the line map) */
+    pointer allocate(size_type n)
+    {
+        pointer p = (pointer)operator new(n * sizeof(T));
+
+        if (!p)
+            __msl_error("Memory allocation failure");
+        return p;
+    }
+    void deallocate(pointer p, size_type) { operator delete(p); }
+    void construct(pointer p, const T &x) { new (p) T(x); }
+    void destroy(pointer p) { p->~T(); }
 };
 
 template <class T>

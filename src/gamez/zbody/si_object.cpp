@@ -20,19 +20,13 @@ extern "C" void func_00257EE0(zar::CZAR *zar, char **str);
         (p) = 0;                \
     }
 
-/* OPEN, 0x28 bytes short: the target sets the four bit fields with word-wide read-modify-writes
- * (lw/sw at 8, the part id under a 64-bit mask 0xFFFFFFFF00FFFFFF), one (0 & 1) shared by the three
- * bits and a (0 & 0xff) for the id -- inline setters called with constants -- where MW gives these
- * lbu/sb and a byte store of the id, as it does (and the target does) in Initalize and Read; SOCOM 1's
- * constructor is word-wide and its Initalize byte-wide too, so it is the constructor context, not
- * the class. Inline setters taking bool or unsigned int change nothing; unchanged at level 5. */
-CZSIObject::CZSIObject() : m_positionData(0), m_rotations(0)
+/* the bit fields in the initialiser list: each a word-wide read-mask-write (lw/sw at 8, the part id
+ * under a 64-bit mask 0xFFFFFFFF00FFFFFF, one (0 & 1) shared by the three bits); assigned in the
+ * body, MW narrows them to lbu/sb and a byte store, 0x28 bytes short */
+CZSIObject::CZSIObject()
+    : m_positionData(0), m_rotations(0), m_inUse(false), m_constPos(false), m_constRot(false),
+      m_body_part_id(0), m_pName(0)
 {
-    m_inUse = false;
-    m_constPos = false;
-    m_constRot = false;
-    m_body_part_id = 0;
-    m_pName = 0;
     numSiObject++;
 }
 
@@ -251,7 +245,12 @@ CQuat *CZSIObject::GetRotFast(int f0, int f1, float t, CQuat *rot)
  * target's flags register is allocated later, t5 against t2); SOCOM 1's Read schedules exactly as
  * the target does. Tried: inline bool setters, the flags word read twice (reloaded after the store,
  * longer), `? true : false`, the locals' declaration order; unchanged at level 5. (Read from an
- * archive, the same two tests on a stack word, matches.) */
+ * archive, the same two tests on a stack word, matches.) Round 4: it is the flags' register alone
+ * -- the target colours the flags word last (t5, after the five masks, the old byte and the 0x20
+ * test), which then pins the schedule; read before the name's store it does take t5, but the
+ * store and both right-hand sides move ahead of the stores (25 off). Also tried: an inline taking
+ * the flags by value, a const local, bool locals for both tests, a nested block, `== bit`, `!!`,
+ * `> 0`, shifts -- all 13 */
 int CZSIObject::Read(unsigned char *data, unsigned int nFrames, const char *name)
 {
     int size = 0;
