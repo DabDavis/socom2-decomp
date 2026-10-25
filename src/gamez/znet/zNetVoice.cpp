@@ -157,7 +157,81 @@ void func_00255B68(void *h, void *frame);   /* (the decoder: a frame decoded) */
 void func_00255CF8(void *h, unsigned char *done);   /* (and whether the packet is used up) */
 }
 
+/* the headset's playback: the device's handle and whether it is playing */
+struct VoicePlayer {
+    unsigned char _0[0x38];
+    int m_handle;   // 0x38: -1, none
+    unsigned char _3c[0x49 - 0x3c];
+    unsigned char m_playing;   // 0x49
+};
+
 extern "C" {
+int func_00244AB8(int handle);   /* (lgAud: the playback started) */
+int func_00244200(int handle, int mode, const void *buf, int *len);   /* (lgAud: written) */
+}
+
+/* the playback started once (the name ours) */
+inline void StartPlayback(VoicePlayer *p)
+{
+    if (p->m_handle != -1 && !p->m_playing && !func_00244AB8(p->m_handle))
+        p->m_playing = 1;
+}
+
+extern "C" {
+
+/* samples written to the headset 1 KB at a time, the bytes taken returned (OVL1 0x30F6E0) */
+int func_0030F6E0(VoicePlayer *p, const unsigned char *buf, int len)
+{
+    int total = 0;
+    int n = 0;
+
+    if (p->m_handle == -1)
+        return 0;
+    if (!p->m_playing)
+        StartPlayback(p);
+    if (p->m_playing) {
+        while (len > 0) {
+            n = len;
+            if (len > 1024)
+                n = 1024;
+            func_00244200(p->m_handle, 1, buf, &n);
+            if (n <= 0)
+                break;
+            len -= n;
+            buf += n;
+            total += n;
+        }
+    }
+    return total;
+}
+
+/* mono samples written as stereo, 256 at a time (OVL1 0x30F5F0).
+ * OPEN, 2 instructions: the target copies the sample pointer (`move s1,a1`) after the loop's guard
+ * (`blez s3`), this before it; declared after `done`, or set in a for's init, it moves registers
+ * instead (8 differ) or stays put. The samples are unsigned (lhu), the halfword pair a chained
+ * assignment (the second stored first) */
+int func_0030F5F0(VoicePlayer *p, const short *in, int len)
+{
+    unsigned char buf[1024] = {0};
+    int total = 0;
+    const unsigned short *s = (const unsigned short *)in;
+    int done = 0;
+
+    while (len - done > 0) {
+        int i = 0;
+        unsigned short *q = (unsigned short *)buf;
+
+        while (i < 256 && len - done > 0) {
+            q[0] = q[1] = *s;
+            i++;
+            done += 2;
+            s++;
+            q += 2;
+        }
+        total += func_0030F6E0(p, buf, i * 4);
+    }
+    return total;
+}
 
 /* a packet of 8 bytes decoded frame by frame into the caller's samples (OVL1 0x3106A0). The
  * count returned is the original's slip: it doubles itself (`addu s0,s0,s0`) where the frames'
