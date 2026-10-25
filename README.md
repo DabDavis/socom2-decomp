@@ -1021,6 +1021,25 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - kit.h's EQUIP_ITEM/FIREMODE/CZWeaponList/CZWeapon/CZFTSWeapon are size-only stand-ins whose
     offsets agree with zweapon.h's (m_maxfiremode 0x24, m_ID 0x7c, the zoom vector's size 0x284):
     a unit including kit.h and zweapon.h together waits on folding them into zweapon.h.
+- **Tells from the DNAS client and the mission, round 10** (fts_patch.cpp, fts_dnas.cpp):
+  - the OVL1 DNAS client is two units: the patch downloader (CSMDownloadPatch, 0x2CA330-0x2CC66F,
+    its HTTP client DNAS.BIN's) and the authentication (CSMDNASAuthenticate, 0x2CC670-0x2CD66F);
+    a member-pointer pool that starts over with the base's constants (Finish, Idle) marks the
+    boundary; the DNAS.BIN calls are address placeholders with the argument shapes in the source;
+  - a helper taking `const int &error` keeps a struct field's address in a saved register and
+    reloads it after a call; bound to a register local it costs nothing, to a literal 0 it adds
+    a stack temporary -- the target used a zeroed local;
+  - `if ((err = f() < 0))` is the original's precedence slip: the error passed is the comparison
+    (`slt a3,v0,zero`);
+  - as a case's last statement, `if (c) { f(); return; } break;` keeps the target's jump to the
+    epilogue, `if (c) f(); break;` drops it;
+  - calling the base's inline virtual explicitly makes the second copy of the member pointer with
+    `ld`/`sd`; a value compared against a global loaded with `ld` and passed to an int parameter
+    through `dsll32/dsra32` is a 64-bit `long`;
+  - inline bool setters called with `false` produce one `(0 & 1)` shared by both 1-bit stores;
+  - include/string: `operator[]` (0x2CA6E0) and size() casting the short form back to its byte
+    (0x2CA700 masks it), measured over every hand-written unit; zanim.h's CValve has
+    SetValue(int) (0x2CA740), which several units still spell as helpers of their own.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has

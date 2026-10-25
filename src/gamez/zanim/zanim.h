@@ -725,6 +725,22 @@ public:
     void FreeName();
     void SetName(const char *name);
     void AssignName(char *name);
+    /* the value set, the callbacks told when it turns on or off; whether it changed (SOCOM II's,
+     * inline -- fts_patch.cpp's tail keeps a copy, 0x2CA740; several units still spell it as a
+     * helper of their own) */
+    bool SetValue(int value)
+    {
+        VALVE_STATE state = VALVE_SAME;
+
+        if (m_value != value)
+            state = value == 0 ? VALVE_OFF : VALVE_ON;
+        m_value = value;
+        if (state != VALVE_SAME) {
+            MakeCallbacks(state);
+            return true;
+        }
+        return false;
+    }
 
     char* m_name;   // 0x0
     unsigned int m_value : 16;   // 0x4

@@ -3899,8 +3899,8 @@
 0x002AFBA0 0xC func_002AFBA0  # OVL1
 0x002AFBB0 0x8 func_002AFBB0  # OVL1
 0x002AFBC0 0x78 func_002AFBC0  # OVL1
-0x002AFC40 0x18 func_002AFC40  # OVL1
-0x002AFC60 0x2C _min<f>__2aiFRCfRCf  # OVL1; s1:align
+0x002AFC40 0x18 _max<Uc>__2aiFRCUcRCUc_RCUc  # OVL1; by its body (ai::_max over unsigned char: lbu, lbu, slt, movn -- MW 3.0's mangling with the return type), the template tail before _min<f>'s OVL1 copy; no OVL2 copy named -- the states lane
+0x002AFC60 0x2C func_002AFC60  # OVL1; s1:align; OVL1's copy of ai::_min<float> (byte-identical to OVL2's 0x575C80, which carries the name; the states lane); ovl-copy: _min<f>__2aiFRCfRCf_RCf
 0x002AFC90 0x444 insert__Q23std80__vector_imp<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>,0>FP20SObjectiveCam_AnchorUiRC20SObjectiveCam_Anchor  # OVL1; s1:align
 0x002B00E0 0x180 reserve__Q23std80__vector_imp<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>,0>FUi  # OVL1; s1:align
 0x002B0260 0x684 func_002B0260  # OVL1
@@ -4293,7 +4293,7 @@
 0x002CA6E0 0x1C __vc__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FUi  # OVL1; ours: std::string's operator[], out of line (the long form's text or the short form's, plus the index): called by UIDownloadPatch's inlined constructor -- fts_patch.cpp
 0x002CA700 0x30 size__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFv  # OVL1; ours: std::string's size(), out of line (the long form's word 1 or the short form's 7-bit field): called by UIDownloadPatch's inlined constructor -- fts_patch.cpp
 0x002CA730 0x8 __as__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FPCc  # OVL1; ours: std::string's operator=(const char *), out of line (a tail call to assign, 0x1EEB40): called by UIDownloadPatch's inlined constructor -- fts_patch.cpp
-0x002CA740 0x54 SetValue__16CSMDownloadPatchFP6CValvei  # OVL1; ours: a valve set, returning whether it changed (CValve::SetValue's shape, out of line; a static of the machine's here since zanim.h's CValve does not declare it): called by UIDownloadPatch's inlined constructor -- fts_patch.cpp
+0x002CA740 0x54 SetValue__6CValveFi  # OVL1; ours: a valve set, returning whether it changed (CValve::SetValue's shape, out of line; a static of the machine's here since zanim.h's CValve does not declare it): called by UIDownloadPatch's inlined constructor -- fts_patch.cpp; zanim.h's inline CValve::SetValue (SOCOM II's: the value set, the callbacks told on a change; whether it changed), the copy closing fts_patch.cpp -- the states lane
 0x002CA7A0 0x14 __ct__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>Fv  # OVL1; ours: std::string's default constructor, out of line (the three words zeroed): called by UIDownloadPatch's inlined constructor -- fts_patch.cpp
 0x002CA7C0 0x38 __ct__12CLobbyFileIOFv  # OVL1; ours: CLobbyFileIO's constructor, out of line (CIO's table stored, then CLobbyFileIO's 0x406760): called by UIDownloadPatch's inlined constructor -- fts_patch.cpp
 0x002CA800 0x34 __ct__10CMemCardIOFv  # OVL1; ours: CMemCardIO's constructor (zutil.h's inline), out of line (CIO's table, then CMemCardIO's): called by UIDownloadPatch's inlined constructor -- fts_patch.cpp

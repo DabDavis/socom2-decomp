@@ -131,17 +131,9 @@ public:
         m_archive = 0;
         m_length = 0;
         m_valve = valve;
-        SetValue(m_stateValve, 0);
+        m_stateValve->SetValue(0);
         m_url = url;
-#ifdef _MSL_STRING_SUBSCRIPT
         if (m_url[m_url.size() - 1] != '/')
-#else
-        /* OPEN (UIDownloadPatch, operator[]): include/string has no operator[]; with it --
-         * `charT &operator[](size_type pos) { return (is_long() ? (charT *)w_[2] : s_.data_)[pos]; }`,
-         * which the copy at 0x2CA6E0 is -- this subscript, and UIDownloadPatch with the copy, are
-         * byte-exact (measured with a shadow include/string defining _MSL_STRING_SUBSCRIPT). */
-        if (m_url.c_str()[m_url.size() - 1] != '/')
-#endif
             m_url += "/";
     }
     virtual ~CSMDownloadPatch() {}
@@ -158,7 +150,7 @@ public:
         SSMState s = state;
 
         if (m_stateValve)
-            SetValue(m_stateValve, GetValue(m_stateValve) + 1);
+            m_stateValve->SetValue(GetValue(m_stateValve) + 1);
         CSimpleStateMachine::SetState(s);
     }
     virtual void ParseURI(unsigned char event);
@@ -178,20 +170,6 @@ public:
 
     /* a valve's value (ours: CValve::GetValue's shape) */
     static int GetValue(CValve *valve) { return valve->m_value; }
-    /* a valve set, whether it changed (SOCOM II's, out of line here) */
-    static bool SetValue(CValve *valve, int value)
-    {
-        VALVE_STATE state = VALVE_SAME;
-
-        if (valve->m_value != value)
-            state = value == 0 ? VALVE_OFF : VALVE_ON;
-        valve->m_value = value;
-        if (state != VALVE_SAME) {
-            valve->MakeCallbacks(state);
-            return true;
-        }
-        return false;
-    }
     /* the path's last component, for DownloadState */
     const char *FileName()
     {
