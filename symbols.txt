@@ -9344,9 +9344,9 @@
 0x005101C0 0x60 __dt__20CAiEventCallbackListFv  # OVL2; s1:ref (taken by address where SOCOM 1 takes __dt__20CAiEventCallbackListFv's)
 0x00510220 0x60 __dt__12CAiEventListFv  # OVL2; s1:ref (taken by address where SOCOM 1 takes __dt__12CAiEventListFv's)
 0x00510280 0x8 reset__10CAiPlannerFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00510290 0x50 func_00510290  # OVL2
+0x00510290 0x50 is_goal__10CAiPlannerFR6CAiMapRC9CAiMapLocRC9CAiMapLoc  # OVL2; ours (SOCOM II's new slot after reset in all four planner vtables, 0x669120-0x669198: true when two locations' x and y agree; called through the vtable)
 0x005102E0 0x6C dist__10CAiPlannerFR6CAiMapRC9CAiMapLocRC9CAiMapLoc  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00510350 0x3C func_00510350  # OVL2
+0x00510350 0x3C is_traversable__10CAiPlannerFP6CAiMapP7CAiPathRC9CAiMapLocQ26CAiMap3DIRR9CAiMapLocRP7CAiCell  # OVL2; s1:vtable by hand (slot +0x14 of CAiPlanner's, CStealthPlanner's and CBasicPlanner's vtables, SOCOM 1's is_traversable slot one on; the same test of the cell's soil against 0, 10, 8, 9, folded into a range test)
 0x00510390 0x14C func_00510390  # OVL2
 0x005104E0 0x44 func_005104E0  # OVL2
 0x00510530 0x3C func_00510530  # OVL2

@@ -9,6 +9,7 @@
 #include <list>
 
 #include "../gamez/zmath/zmath.h"
+#include "../gamez/zentity/zentity.h"
 
 class CAiEvent;
 
@@ -146,6 +147,36 @@ public:
     static CAiEventList m_inuse;
     static CAiEventList m_persist;
     static CAiEventCallbackList m_callbacks;
+};
+
+class CAiPath;
+
+/* a cell of an AI map: its soil first (SOCOM 1's DWARF, 8 bytes; only what the planners read) */
+class CAiCell {
+public:
+    unsigned int m_soil : 5;   // 0x0
+    unsigned int m_rest : 27;
+    unsigned int m_word4;   // 0x4
+};
+
+/* an AI map, so far only its directions (SOCOM 1's DWARF: CAiMap : AIMAP_PARAMS, 0x12C bytes) */
+class CAiMap {
+public:
+    enum DIR { N = 0, NE = 1, E = 2, SE = 3, S = 4, SW = 5, W = 6, NW = 7, DIR_COUNT = 8 };
+};
+
+/* how the A* search weighs a step (SOCOM 1's; SOCOM II's vtable has a slot more after reset, and
+ * its subclasses are CBasicPlanner, CStealthPlanner and CRestrainedPlanner where SOCOM 1's were
+ * the *Travel classes) */
+class CAiPlanner {
+public:
+    virtual void reset();
+    /* whether two cells are the same cell, the map aside (new in SOCOM II; the name is ours) */
+    virtual bool is_goal(CAiMap &map, const CAiMapLoc &a, const CAiMapLoc &b);
+    virtual int dist(CAiMap &map, const CAiMapLoc &a, const CAiMapLoc &b);
+    virtual bool is_traversable(CAiMap *map, CAiPath *path, const CAiMapLoc &from, CAiMap::DIR dir,
+                                CAiMapLoc &to, CAiCell *&cell);
+    virtual int fcost(CAiMap &map, const CAiMapLoc &from, CAiMap::DIR dir, const CAiMapLoc &to);
 };
 
 #endif
