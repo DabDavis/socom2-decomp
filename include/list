@@ -283,21 +283,25 @@ public:
     void remove(const T &value) { remove_if(binder2nd<equal_to<T>, T>(equal_to<T>(), value)); }
 };
 
-/* the runs that satisfy the predicate erased, one after another (SOCOM 1's shape; SOCOM II's
- * inlines the erase, not reproduced yet) */
+/* the runs that satisfy the predicate erased, one after another, the range erase inlined: SOCOM II's
+ * pointer lists' 0x20CB50 and the graph queue's 0x2D2540, byte-exact (the MSL headers round 5) with
+ * begin() taken before end() (the other order swaps the two saved registers) and the run's end found
+ * by a for loop that breaks on the first element the predicate refuses (the target's inner loop is
+ * tested at its top; `j != e && pred(*j)` as the for's test rotates it) */
 template <class T, class Allocator>
 template <class Predicate>
 void __list_imp<T, Allocator>::remove_if(Predicate pred)
 {
-    typename __list_deleter<T, Allocator>::iterator e = this->end();
     typename __list_deleter<T, Allocator>::iterator i = this->begin();
+    typename __list_deleter<T, Allocator>::iterator e = this->end();
 
     while (i != e) {
         if (pred(*i)) {
             typename __list_deleter<T, Allocator>::iterator j = i;
 
-            for (++j; j != e && pred(*j); ++j)
-                ;
+            for (++j; j != e; ++j)
+                if (!pred(*j))
+                    break;
             i = this->erase(i, j);
             if (i == e)
                 break;
