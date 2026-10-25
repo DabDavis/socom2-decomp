@@ -4223,7 +4223,7 @@
 0x002C6C70 0x254 func_002C6C70  # OVL1
 0x002C6ED0 0x70 func_002C6ED0  # OVL1
 0x002C6F40 0xB4 func_002C6F40  # OVL1
-0x002C7000 0x68 func_002C7000  # OVL1
+0x002C7000 0x68 ClearValves__24CMissionObjectiveCamListFv  # OVL1; s1:order by hand (the states lane: after the list's Reset and before IsInvalid as in SOCOM 1; it walks the list storing zero into each objective's three valve pointers (0x2C/0x30/0x34), as SOCOM 1's ClearValves does)
 0x002C7070 0x24 IsInvalid__20CMissionObjectiveCamCFv  # OVL1; s1:exact
 0x002C70A0 0x24 IsDisplayOn__20CMissionObjectiveCamCFv  # OVL1; s1:gap
 0x002C70D0 0x24 IsComplete__20CMissionObjectiveCamCFv  # OVL1; s1:exact
