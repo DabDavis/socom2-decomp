@@ -5806,7 +5806,7 @@
 0x0032DC40 0x34 func_0032DC40  # OVL1
 0x0032DC80 0xFC func_0032DC80  # OVL1
 0x0032DD80 0xF4 func_0032DD80  # OVL1
-0x0032DE80 0xF4 func_0032DE80  # OVL1
+0x0032DE80 0xF4 zrdr_findPNT3D__FPC5_zrdrPCcP5PNT3D  # OVL1; s1:calls (called with "Color" and a PNT3D * where SOCOM 1's is) -- the HUD lane
 0x0032DF80 0x11C func_0032DF80  # OVL1
 0x0032E0A0 0xD0 func_0032E0A0  # OVL1
 0x0032E170 0xD8 func_0032E170  # OVL1
@@ -5815,7 +5815,7 @@
 0x0032E600 0x218 func_0032E600  # OVL1
 0x0032E820 0x108 func_0032E820  # OVL1
 0x0032E930 0x34 zrdr_finduint__FPC5_zrdrPCcPUii  # OVL1; s1:align
-0x0032E970 0x108 func_0032E970  # OVL1
+0x0032E970 0x108 zrdr_findint__FPC5_zrdrPCcPii  # OVL1; s1:calls (the line map's type readers call it with ("Type", &int, 1) as SOCOM 1's do; the same 0x108) -- the HUD lane
 0x0032EA80 0x100 zrdr_findreal__FPC5_zrdrPCcPfi  # OVL1; s1:calls by hand (an array of n reals into a float*, as SOCOM 1's 0x23D9D0; CreateSequence calls it where SOCOM 1's does) -- the sound lane
 0x0032EB80 0xA0 func_0032EB80  # OVL1
 0x0032EC20 0x1E8 func_0032EC20  # OVL1
