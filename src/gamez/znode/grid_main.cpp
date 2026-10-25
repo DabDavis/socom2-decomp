@@ -12,6 +12,14 @@
 /* the node's atom count set (node_main.cpp's SOCOM 1 CNode::SetAtomCnt(int), not named yet) */
 extern "C" void func_003149D0(zdb::CNode *node, int n);
 
+/* the cell box SetCellBoundary set and GetNextCell walks (SOCOM 1's file statics) */
+static int xMinCell;
+static int zMinCell;
+static int xMaxCell;
+static int zMaxCell;
+static int xCurCell;
+static int zCurCell;
+
 namespace zdb {
 
 int CGrid::N_ATOMS = 8192;
@@ -101,7 +109,10 @@ CNode *CCell::Copy(CNode *to) const
 }
 
 /* the cells' list heads, the free atoms and the ordered walk's counts cleared (SOCOM 1's; its
- * atom buffer pointer is left alone in SOCOM II's) */
+ * atom buffer pointer is left alone in SOCOM II's). Byte-exact once 0x306650 is named
+ * __ct__6CFRectFv (measured): until then its row is a placeholder outside this lane's ranges, the
+ * constructor's call cannot resolve, and the generated draft (src/auto/ovl1/002D7970.c) stands */
+#ifdef SC_CFRECT_NAMED
 CGrid::CGrid() : m_Atoms(0), m_FreeAtoms(0)
 {
     m_CellCount.cx = 0;
@@ -112,6 +123,7 @@ CGrid::CGrid() : m_Atoms(0), m_FreeAtoms(0)
     m_ClutterAnimManager = 0;
     m_ClutterCreated = 0;
 }
+#endif
 
 /* the grid torn down and its clutter animation deleted (SOCOM 1's) */
 CGrid::~CGrid()
@@ -132,6 +144,47 @@ CGridAtom **CGrid::gridGetAtomBasePtr(int x, int z)
     return &m_Atoms[x + z * m_CellCount.cx];
 }
 
+/* the cell box a pair of corners spans, its first cell given back (SOCOM 1's; the corners by
+ * value, the box's cells kept in the unit's statics for GetNextCell) */
+CCell *CGrid::SetCellBoundary(CPnt3D min, CPnt3D max)
+{
+    gridGetGridXandZIndex(&xMinCell, &zMinCell, min.x, min.z);
+    gridGetGridXandZIndex(&xMaxCell, &zMaxCell, max.x, max.z);
+    xCurCell = xMinCell;
+    zCurCell = zMinCell;
+    CCell *cell = 0;
+    CGridAtom **p = gridGetAtomBasePtr(xCurCell, zCurCell);
+
+    if (p && *p)
+        cell = (*p)->GetCell();
+    return cell;
+}
+
+/* the box's next cell, row by row, or none past its last (SOCOM 1's) */
+CCell *CGrid::GetNextCell()
+{
+    xCurCell++;
+    if (xCurCell <= xMaxCell) {
+        CCell *cell = 0;
+        CGridAtom **p = gridGetAtomBasePtr(xCurCell, zCurCell);
+
+        if (p && *p)
+            cell = (*p)->GetCell();
+        return cell;
+    }
+    xCurCell = xMinCell;
+    zCurCell++;
+    if (zCurCell <= zMaxCell) {
+        CCell *cell = 0;
+        CGridAtom **p = gridGetAtomBasePtr(xCurCell, zCurCell);
+
+        if (p && *p)
+            cell = (*p)->GetCell();
+        return cell;
+    }
+    return 0;
+}
+
 /* the node's atoms unlinked from their cells and put back on the free list, the node left with
  * none (SOCOM 1's; SOCOM II's free atoms a list) */
 void CGrid::gridRemoveNodeFromGrids(CNode *node)
@@ -149,6 +202,29 @@ void CGrid::gridRemoveNodeFromGrids(CNode *node)
         m_FreeAtoms = atom;
     }
     func_003149D0(node, 0);
+}
+
+/* the walk's boundary: its points and extents set, each edge's inward normal in x/z made unit
+ * length (none for a single point), and a new walk's tick (SOCOM 1's) */
+int CGrid::SetTraversalBoundary(const CPnt3D *pnts, int n, bool b)
+{
+    SetTraversalExtents(pnts, n, b);
+    if (n == 1)
+        return ++m_TickNum;
+    for (int i = 0; i < m_PntCnt; i++) {
+        int j = (i + 1) % m_PntCnt;
+
+        m_Edge[i].z = m_Pnts[i].x - m_Pnts[j].x;
+        m_Edge[i].x = m_Pnts[j].z - m_Pnts[i].z;
+        float len = sqrtf(m_Edge[i].x * m_Edge[i].x + m_Edge[i].z * m_Edge[i].z);
+
+        if (len != 0.0f) {
+            len = 1.0f / len;
+            m_Edge[i].z *= len;
+            m_Edge[i].x *= len;
+        }
+    }
+    return ++m_TickNum;
 }
 
 /* whether the cell (x, z) lies outside the boundary: a single point never is, a segment only for a

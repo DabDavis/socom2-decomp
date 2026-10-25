@@ -665,14 +665,21 @@ public:
     }
 };
 
-/* a rectangle in x/z (SOCOM 1's DWARF) */
+}
+
+/* a rectangle in x/z (SOCOM 1's DWARF; a global class, as SOCOM 1's __ct__6CFRectFv says). Its
+ * constructor zeroes it, out of line (0x306650, the same 0x18 bytes as SOCOM 1's) */
 class CFRect {
 public:
+    CFRect();
+
     float top;   // 0x0
     float bottom;   // 0x4
     float left;   // 0x8
     float right;   // 0xc
 };   // 0x10 bytes
+
+namespace zdb {
 
 /* a count in two dimensions (SOCOM 1's DWARF) */
 class tag_SIZE {
@@ -750,7 +757,9 @@ public:
     void Update(CNode *node);
     /* a walk over the cells a polygon in x/z covers: the boundary set, the first atom and the
      * next (SOCOM 1's) */
-    void SetTraversalBoundary(const CPnt3D *pnts, int n, bool b);
+    /* the new walk's tick given back: both paths end on ++m_TickNum, its value left in v0 (a void
+     * function allocates the loop's temporaries from v1) */
+    int SetTraversalBoundary(const CPnt3D *pnts, int n, bool b);
     CGridAtom *StartTraversal();
     CGridAtom *GetNextAtom();
     /* the same walk in ring order from a view point (SOCOM 1's) */
@@ -766,7 +775,9 @@ public:
     /* whether a cell lies outside the boundary (SOCOM 1's) */
     bool gridCellOut(int x, int z);
     void SetTraversalExtents(const CPnt3D *pnts, int n, bool b);
-    void SetCellBoundary(CPnt3D min, CPnt3D max);
+    /* the cells of a box: its first, then each next (SOCOM 1's) */
+    CCell *SetCellBoundary(CPnt3D min, CPnt3D max);
+    CCell *GetNextCell();
     void gridRemoveNodeFromGrids(CNode *node);
     void gridAddNodeToGrids(CNode *node);
     /* a cell's atom list head, the cell held inside the grid (SOCOM 1's) */

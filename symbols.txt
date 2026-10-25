@@ -4515,10 +4515,10 @@
 0x002D6800 0x11C SetTraversalBoundary__Q23zdb5CGridFPC6CPnt3Dib  # OVL1; s1:callee by hand (GenerateLightList calls it with (&m_grid, the two corners, 2, false) where SOCOM 1's calls SetTraversalBoundary; after StartTraversal and 0x2D66B0 as SOCOM 1's after gridCellOut)
 0x002D6920 0x18C func_002D6920  # OVL1
 0x002D6AB0 0x184 func_002D6AB0  # OVL1
-0x002D6C40 0x1FC func_002D6C40  # OVL1
+0x002D6C40 0x1FC SetTraversalExtents__Q23zdb5CGridFPC6CPnt3Dib  # OVL1; s1:order by hand (the world lane: SetTraversalBoundary calls it first with its own three arguments, as SOCOM 1's SetTraversalBoundary calls SetTraversalExtents)
 0x002D6E40 0x1E8 func_002D6E40  # OVL1
 0x002D7030 0x188 addOrderedCellAtom__Q23zdb5CGridFiib  # OVL1; s1:align
-0x002D71C0 0x1B0 func_002D71C0  # OVL1
+0x002D71C0 0x1B0 GetNextCell__Q23zdb5CGridFv  # OVL1; s1:order by hand (the world lane: SOCOM 1's GetNextCell after addOrderedCellAtom, the same walk: xCurCell stepped, past xMaxCell back to xMinCell and the next z, the cell at (xCurCell, zCurCell) given back through gridGetAtomBasePtr and GetCell, none past zMaxCell)
 0x002D7370 0x150 SetCellBoundary__Q23zdb5CGridF6CPnt3D6CPnt3D  # OVL1; s1:align
 0x002D74C0 0xB4 gridRemoveNodeFromGrids__Q23zdb5CGridFPQ23zdb5CNode  # OVL1; s1:align
 0x002D7580 0x314 gridAddNodeToGrids__Q23zdb5CGridFPQ23zdb5CNode  # OVL1; s1:callee by hand (Insert's tail call, as SOCOM 1's Insert's; between gridRemoveNodeFromGrids and gridGetAtomBasePtr as there)
