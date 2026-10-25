@@ -75,6 +75,15 @@ public:
         Add(&b, this);
         return *this;
     }
+    /* by value through a temporary, const members as SOCOM II's own copies are named
+     * (__pl__6CPnt3DCFRC6CPnt3D 0x557DC0, __ml__6CPnt3DCFf 0x557E10, the minus 0x557E90): CQuat::
+     * ToMatrix keeps exactly this copy (ld/sd + lwc1/swc1 from the add's result slot into a second
+     * one), which a plain assignment would let the optimiser forward away */
+    CPnt3D operator+(const CPnt3D &b) const;
+    CPnt3D operator-(const CPnt3D &b) const;
+    CPnt3D operator*(float s) const;
+    /* the cross product (0x592400, OVL2: SOCOM II's, not defined here) */
+    void Cross(const CPnt3D *b, CPnt3D *out, bool normalize) const;
 
     static const CPnt3D zero;
     static const CPnt3D unit_x;
@@ -400,27 +409,24 @@ bool _close_enough(const T &a, const T &b, const T &eps)
     return d >= -eps && d <= eps;
 }
 
-/* By value through a temporary: CQuat::ToMatrix keeps exactly this copy (ld/sd + lwc1/swc1
- * from the add's result slot into a second one), which a plain assignment would let the
- * optimiser forward away. */
-inline CPnt3D operator+(const CPnt3D &a, const CPnt3D &b)
+inline CPnt3D CPnt3D::operator+(const CPnt3D &b) const
 {
     CPnt3D r;
-    a.Add(&b, &r);
+    Add(&b, &r);
     return r;
 }
 
-inline CPnt3D operator-(const CPnt3D &a, const CPnt3D &b)
+inline CPnt3D CPnt3D::operator-(const CPnt3D &b) const
 {
     CPnt3D r;
-    a.Sub(&b, &r);
+    Sub(&b, &r);
     return r;
 }
 
-inline CPnt3D operator*(const CPnt3D &v, float s)
+inline CPnt3D CPnt3D::operator*(float s) const
 {
     CPnt3D r;
-    v.Scale(s, &r);
+    Scale(s, &r);
     return r;
 }
 
