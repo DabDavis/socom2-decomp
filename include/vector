@@ -247,7 +247,11 @@ public:
     /* grown by copies of c through insert, or cut through erase (out of class: CVisual::Init calls
      * OVL1's copy, 0x28B0E0; MAIN's is 0x18B050) */
     void resize(unsigned int sz, const T &c);
-    void push_back(const T &x) { insert(data_ + size_, 1, x); }
+    /* the end read through data()'s reference: across two pushes the target keeps &size_ in the
+     * lower saved register and &data_ in the higher (CSndJukebox::LoadMusicLists 0x349490,
+     * byte-exact so; nothing else moved over the hand-written units, 2026-10-25, but valve_list.cpp
+     * now emits four list-iterator copies out of line from a function that does not match yet) */
+    void push_back(const T &x) { insert(data() + size_, 1, x); }
 public:
     unsigned int capacity_;
     unsigned int size_;

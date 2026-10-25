@@ -93,6 +93,10 @@ public:
 };
 
 /* A VU0 vector, 16-byte aligned for lqc2. */
+/* SOCOM II's CPnt4D has a written copy constructor through PNT4D's (its copy 0x328D60;
+ * zparticle.h's stand-in declares it), but not here: declared, it loses SeeFarther (thezoom.cpp,
+ * whose 128-bit copies need the implicit one) and gains nothing in any hand-written unit
+ * (re-measured by the MSL lane, 2026-10-25: 3005 -> 3004) */
 class CPnt4D : public PNT4D {
 public:
     CPnt4D() {}
