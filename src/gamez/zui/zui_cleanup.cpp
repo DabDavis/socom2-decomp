@@ -153,3 +153,29 @@ CUIVariableSpec::~CUIVariableSpec()
         delete m_value;
     }
 }
+
+/* a radio strip (SOCOM 1's) *
+ * OPEN until a row outside the lane is named: byte-exact with 0x377800 (zui_2d.cpp's) as
+ * __ct__9C2DButtonFv -- C2DButton's constructor, out of line (measured with the row renamed) */
+C2D *CRadioStripSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
+{
+    CRadioStrip *strip = new CRadioStrip;
+
+    strip->_strCaption.SetFont(font);
+    func_003710C0(strip, this, 0);
+    InitializeButton(strip, mgr);
+    return strip;
+}
+
+/* a handler button (SOCOM 1's) *
+ * OPEN until a row outside the lane is named: byte-exact with 0x377800 (zui_2d.cpp's) as
+ * __ct__9C2DButtonFv -- C2DButton's constructor, out of line (measured with the row renamed) */
+C2D *CHandlerButtonSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
+{
+    CHandlerButton *button = new CHandlerButton;
+
+    button->_strCaption.SetFont(font);
+    func_00376690(button, this);
+    InitializeButton(button, mgr);
+    return button;
+}

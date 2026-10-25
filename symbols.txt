@@ -7051,17 +7051,17 @@
 0x0037D360 0x90 __dt__9CTextSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037D3F0 0x190 __ct__10CClockSpecFP5_zrdr  # OVL1; by hand (GetObjectSpec's CLOCK: new(0x34) then this; CTextSpec's constructor inlined one level, CClockSpec's vtable) -- zui_spec.cpp
 0x0037D580 0x80 CreateDisplayObj__14CUIMapCtrlSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0037D600 0x310 func_0037D600  # OVL1
+0x0037D600 0x310 __ct__14CUIMapCtrlSpecFP5_zrdr  # OVL1; s1:calls by hand (GetControlSpec's MAPCONTROL branch, as SOCOM 1's) -- the UI-widgets lane
 0x0037D910 0x94 func_0037D910  # OVL1
 0x0037D9B0 0x98 func_0037D9B0  # OVL1
-0x0037DA50 0x2D8 func_0037DA50  # OVL1
+0x0037DA50 0x2D8 __ct__15CRadioStripSpecFP5_zrdr  # OVL1; s1:calls by hand (GetControlSpec's RADIOSTRIP branch, as SOCOM 1's) -- the UI-widgets lane
 0x0037DD30 0x130 __dt__11CButtonSpecFv  # OVL1; by its vtable (slot 0x08 of __vt__11CButtonSpec 0x407FB0) -- the UI-widgets lane
 0x0037DE60 0x198 CreateDisplayObj__13CCheckBoxSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037E000 0x188 func_0037E000  # OVL1
 0x0037E190 0x4C func_0037E190  # OVL1
 0x0037E1E0 0x28 __ct__9CSaferStrFRC9CSaferStr  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); by hand (the string's copy constructor 0x22E560 called on this and returned: CSaferStr's implicit copy out of line, which zui_cleanup.cpp's Copies call for their string members) -- zui_spec.cpp
 0x0037E210 0x84 func_0037E210  # OVL1
-0x0037E2A0 0x1D0 func_0037E2A0  # OVL1
+0x0037E2A0 0x1D0 __ct__13CCheckBoxSpecFP5_zrdr  # OVL1; s1:calls by hand (GetControlSpec's CHECKBOX branch, as SOCOM 1's) -- the UI-widgets lane
 0x0037E470 0x184 CreateDisplayObj__17CHProgressBarSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037E600 0xB0 __ct__17CHProgressBarSpecFP5_zrdr  # OVL1; by hand (CImageSpec's constructor called, CHProgressBarSpec's vtable stored, FILENAME_IS_UIVAR and LEADING_EDGE_NODE parsed; GetObjectSpec's PROGRESSBAR) -- zui_spec.cpp
 0x0037E6B0 0x78 __dt__10CImageSpecFv  # OVL1; s1:vtable (slot 0x08 of CImageSpec's table 0x407F80; SOCOM 1's __dt__10CImageSpecFv; the implicit destructor zui_spec.cpp emits with CImageSpec's constructor) -- zui_spec.cpp
@@ -7069,11 +7069,11 @@
 0x0037E8B0 0x1AC CreateDisplayObj__14CUIListBoxSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037EA60 0x14 func_0037EA60  # OVL1
 0x0037EA80 0x28 func_0037EA80  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
-0x0037EAB0 0x17D0 func_0037EAB0  # OVL1
-0x00380280 0x1E4 func_00380280  # OVL1
+0x0037EAB0 0x17D0 __ct__14CUIListBoxSpecFP5_zrdr  # OVL1; s1:calls by hand (GetControlSpec's LISTBOX branch, as SOCOM 1's) -- the UI-widgets lane
+0x00380280 0x1E4 __ct__18CHandlerButtonSpecFP5_zrdr  # OVL1; s1:calls by hand (GetControlSpec's HANDLERBUTTON branch, as SOCOM 1's) -- the UI-widgets lane
 0x00380470 0x90 CreateDisplayObj__11CButtonSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; by its vtable (slot 0x10 of __vt__11CButtonSpec 0x407FB0) -- the UI-widgets lane
-0x00380500 0x118 func_00380500  # OVL1
-0x00380620 0xC8C func_00380620  # OVL1
+0x00380500 0x118 InitializeButton__11CButtonSpecCFP9C2DButtonPQ23zdb16CTextureRelocMgr  # OVL1; s1:calls by hand (each button spec's CreateDisplayObj calls it last with the spec, the new button and the relocator, as SOCOM 1's CRadioStripSpec::CreateDisplayObj calls InitializeButton) -- the UI-widgets lane
+0x00380620 0xC8C __ct__11CButtonSpecFP5_zrdr  # OVL1; s1:calls by hand (GetControlSpec's BUTTON branch news 0x118 bytes and calls it, as SOCOM 1's; the slider's inline constructor calls it first) -- the UI-widgets lane
 0x003812B0 0x2A0 func_003812B0  # OVL1
 0x00381550 0x688 func_00381550  # OVL1
 0x00381BE0 0x144 CreateDisplayObj__12CCounterSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -7081,7 +7081,7 @@
 0x00381E10 0x254 __ct__12CCounterSpecFP5_zrdr  # OVL1; by hand (CTextSpec's constructor inlined one level, CCounterSpec's vtable, StartTime/ValVar/EndTime/Duration; GetObjectSpec's COUNTER) -- zui_spec.cpp
 0x00382070 0x5F8 GetObjectSpec__FP5_zrdrPCc  # OVL1; s1:order by hand (SOCOM 1's GetObjectSpec__FP5_zrdrPCc after Copy__12CCounterSpecFv in zui_spec.cpp: TEXT, IMAGE, TELETYPE, WRAPPEDTEXT, PROGRESSBAR, COUNTER, CLOCK and SOCOM II's SECURETEXT) -- zui_spec.cpp
 0x00382670 0x21C __ct__9CTextSpecFP5_zrdr  # OVL1; s1:order by hand (SOCOM 1's __ct__9CTextSpecFP5_zrdr between GetObjectSpec and GetControlSpec, as here: CDlgObjSpec's constructor inlined, CTextSpec's vtable, CAPTION/SCALE/FONT/HCENTERED/RIGHT_JUSTIFIED/COLOR) -- zui_spec.cpp
-0x00382890 0x304 func_00382890  # OVL1
+0x00382890 0x304 GetControlSpec__FP5_zrdrPCc  # OVL1; s1:calls by hand (the type strings BUTTON..MAPCONTROL compared in SOCOM 1's order, each branch newing that spec, GetObjectSpec the fallback, as SOCOM 1's GetControlSpec) -- the UI-widgets lane
 0x00382BA0 0xC8 __dt__9CWrapSpecFv  # OVL1; s1:vtable (slot 0x08 of CWrapSpec's table 0x407EC0; SOCOM 1's __dt__9CWrapSpecFv; the implicit destructor emitted with CWrapSpec's constructor) -- zui_spec.cpp
 0x00382C70 0x374 __ct__9CWrapSpecFP5_zrdr  # OVL1; by hand (CTextSpec's constructor inlined one level, CWrapSpec's vtable; WIDTH/SPACING/HEIGHT, the arrows, AUTOSCROLL, DISPLAY_ONE_LINE; SOCOM 1's CWrapSpec, GetControlSpec's WRAPPEDTEXT) -- zui_spec.cpp
 0x00382FF0 0x164 CreateDisplayObj__10CImageSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:calls

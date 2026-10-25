@@ -163,4 +163,109 @@ public:
 /* the teletype set up from its spec (SOCOM 1's CTeleType::LoadSpec; by address) */
 extern "C" void func_00378B00(CTeleType *tty, const CTtySpec *spec);
 
+/* a button's caption and states (SOCOM 1's DWARF: : C2D; SOCOM II's 0xC0 bytes, its vtable 29 slots:
+ * SetActive and SetNormal pure, three new, DrawBackground the last) */
+class C3StateButton : public C2D {
+public:
+    virtual ~C3StateButton();
+    virtual void SetActive() = 0;
+    virtual void SetNormal() = 0;
+    virtual void Slot26() = 0;
+    virtual void Slot27() = 0;
+    virtual void DrawBackground(const CMatrix &m, zdb::CTextureRelocMgr *mgr) = 0;
+
+    char *_szCaption;           // 0x18
+    C2DString _strCaption;      // 0x1c
+    int _iTextX;                // 0xb4
+    int _iTextY;                // 0xb8
+    bool _bCaptionCentered;     // 0xbc
+};   // 0xc0 bytes
+
+/* a button (SOCOM 1's DWARF: : C3StateButton, 0x410 bytes there; SOCOM II's 0x440 with a UIVarMixin
+ * at 0xC0, its constructor 0x377800 out of line) */
+class C2DButton : public C3StateButton, public UIVarMixin {
+public:
+    C2DButton();
+    virtual ~C2DButton();
+    virtual void SetActive();
+    virtual void SetNormal();
+    virtual void Slot26();
+    virtual void Slot27();
+    virtual void DrawBackground(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
+    virtual void UpdateUIVar(CUIVariable *var);
+
+    unsigned char _c8[0x440 - 0xc8];
+} __attribute__((aligned(16)));   // 0x440 bytes
+
+/* the button set up from its spec (SOCOM 1's C2DButton::LoadSpec; by address) */
+extern "C" void func_00376BD0(C2DButton *button, const CButtonSpec *spec);
+
+/* a strip of choices (SOCOM 1's CRadioStrip; SOCOM II's 0x450 bytes) */
+class CRadioStrip : public C2DButton {
+public:
+    CRadioStrip() : m_choice(0) {}
+    virtual ~CRadioStrip();
+
+    int m_choice;               // 0x440
+};   // 0x450 bytes
+
+/* the strip set up from its spec (SOCOM 1's CRadioStrip::LoadSpec, with a texture; by address) */
+extern "C" void func_003710C0(CRadioStrip *strip, const CRadioStripSpec *spec, zdb::CTexHandle *tex);
+
+/* a button showing a spec of its own (SOCOM 1's CHandlerButton; SOCOM II's 0x440 bytes) */
+class CHandlerButton : public C2DButton {
+public:
+    CHandlerButton() {}
+    virtual ~CHandlerButton();
+};   // 0x440 bytes
+
+/* the handler button set up from its spec (by address) */
+extern "C" void func_00376690(CHandlerButton *button, const CHandlerButtonSpec *spec);
+
+/* two words between flags a check box keeps twice (the names ours) */
+struct CCheckState {
+    CCheckState() : m_on(false), m_4(0), m_8(0), m_c(true), m_d(16) {}
+
+    bool m_on;                  // 0x0
+    int m_4;                    // 0x4
+    int m_8;                    // 0x8
+    bool m_c;                   // 0xc: true
+    unsigned char m_d;          // 0xd: 16
+};   // 0x10 bytes
+
+/* a check box: a button with a check mark (SOCOM 1's CCheckBox; SOCOM II's 0x520 bytes) */
+class CCheckBox : public C2DButton {
+public:
+    CCheckBox() : m_checked(false) {}
+    virtual ~CCheckBox();
+
+    bool m_checked;             // 0x440
+    unsigned char _441[0x454 - 0x441];
+    CCheckState m_state0;       // 0x454 (two members: an array is built in a loop)
+    CCheckState m_state1;       // 0x464
+    unsigned char _474[0x480 - 0x474];
+    CPlainBmp m_check;          // 0x480
+};   // 0x520 bytes
+
+/* the check box set up from its spec and its check's texture (by address) */
+extern "C" void func_00371550(CCheckBox *box, const CCheckBoxSpec *spec, zdb::CTexHandle *tex);
+
+/* a slider: a button with a knob (SOCOM 1's CSliderBar; SOCOM II's 0x510 bytes) */
+class CSliderBar : public C2DButton {
+public:
+    CSliderBar() : m_value(0.5f), m_444(0), m_center(0.5f), m_intervals(10) {}
+    virtual ~CSliderBar();
+
+    float m_value;              // 0x440: 0.5
+    int m_444;                  // 0x444
+    unsigned char _448[0x450 - 0x448];
+    float m_center;             // 0x450: 0.5
+    unsigned char _454[0x460 - 0x454];
+    CPlainBmp m_knob;           // 0x460
+    int m_intervals;            // 0x500: 10
+};   // 0x510 bytes
+
+/* the slider set up from its spec and its knob's texture (by address) */
+extern "C" void func_003724F0(CSliderBar *slider, const CSliderBarSpec *spec, zdb::CTexHandle *tex);
+
 #endif

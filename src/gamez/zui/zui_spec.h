@@ -212,7 +212,8 @@ public:
 /* wrapped text that scrolls by itself (SOCOM 1's CScrollSpec) */
 class CScrollSpec : public CWrapSpec {
 public:
-    CScrollSpec(_zrdr *rdr);
+    /* its DISPLAYABLELINES (inline: GetControlSpec's, calling the wrapped text's out of line) */
+    CScrollSpec(_zrdr *rdr) : CWrapSpec(rdr), m_80(0) { zrdr_findint(rdr, "DISPLAYABLELINES", &m_80, 1); }
     CDlgObjSpec *Copy();
     C2D *CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const;
     const char *GetType() { return "SCROLLINGTEXT"; }
@@ -290,6 +291,146 @@ public:
     bool m_filenameIsUivar;       // 0x24: FILENAME_IS_UIVAR
     CSaferStr m_leadingEdgeNode;  // 0x28: LEADING_EDGE_NODE
 };   // 0x34 bytes
+
+class C2DButton;
+
+/* what a button does on an event (SOCOM 1's DWARF: 0x10 bytes; its constructor is zui.cpp's,
+ * 0x369F70, out of line) */
+class ActionItem {
+public:
+    ActionItem();
+
+    int Type;                  // 0x0: ACTION_TYPE
+    char *Animation;           // 0x4
+    char *Argument;            // 0x8
+    unsigned char State;       // 0xc: KEY_STATE
+    unsigned char PadButton;   // 0xd: PAD_BUTTON, or EVENT
+};   // 0x10 bytes
+
+/* one state's look, as a button spec reads it (SOCOM 1's ButtonState, 0x2C bytes there; SOCOM II's
+ * 0x34 with the 12-byte string): IMAGE, the TEXT_GLOW's RANGE and TIME, PULSE, TEXT_COLOR, SCALE */
+struct ButtonState {
+    CSaferStr _TexName;           // 0x0: IMAGE
+    zdb::CTexHandle *_Texture;    // 0xc
+    float _iGlowStart;            // 0x10: TEXT_GLOW's RANGE
+    float _iGlowEnd;              // 0x14
+    bool _bGlowy;                 // 0x18: a TEXT_GLOW given
+    float _fPulseTime;            // 0x1c: PULSE
+    float _fGlowTime;             // 0x20: TEXT_GLOW's TIME
+    CPnt3D _pntTextColor;         // 0x24: TEXT_COLOR
+    float _fScale;                // 0x30: SCALE
+};   // 0x34 bytes
+
+/* a button (SOCOM 1's CButtonSpec): its size and offset, its four states, caption, font and the
+ * ANIMATIONS it runs (layout read off SOCOM II's constructor and destructor) */
+class CButtonSpec : public CDlgObjSpec {
+public:
+    CButtonSpec(_zrdr *rdr);
+    CButtonSpec(CButtonSpec &spec);
+    CDlgObjSpec *Copy();
+    C2D *CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const;
+    const char *GetType() { return "BUTTON"; }
+    /* the states' textures prepared and the button set up from them (SOCOM 1's) */
+    void InitializeButton(C2DButton *button, zdb::CTextureRelocMgr *mgr) const;
+
+    IPNT2D m_size;                       // 0x8: XSIZE, YSIZE or SIZE
+    IPNT2D m_offset;                     // 0x10: XOFFSET, YOFFSET or OFFSET
+    float m_scale;                       // 0x18: SCALE
+    ButtonState m_pressed;               // 0x1c: PRESSED
+    ButtonState m_active;                // 0x50: ACTIVE
+    ButtonState m_normal;                // 0x84: NORMAL
+    ButtonState m_disabled;              // 0xb8: DISABLED
+    CSaferStr m_caption;                 // 0xec: CAPTION
+    bool m_hcentered;                    // 0xf8: HCENTERED
+    std::vector<ActionItem> m_commands;  // 0xfc: ANIMATIONS
+    int m_108;                           // 0x108
+    CSaferStr m_font;                    // 0x10c: FONT
+};   // 0x118 bytes
+
+/* a button with a spec of its own to show (SOCOM 1's CHandlerButtonSpec) */
+class CHandlerButtonSpec : public CButtonSpec {
+public:
+    CHandlerButtonSpec(_zrdr *rdr);
+    CDlgObjSpec *Copy();
+    C2D *CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const;
+    const char *GetType() { return "HANDLERBUTTON"; }
+    CDlgObjSpec *GetChild(int i) const;
+    bool HasChildren() const;
+    int NumChildren() const;
+
+    CDlgObjSpec *m_child;                // 0x118
+};   // 0x11c bytes
+
+/* a strip of buttons, one of them chosen (SOCOM 1's CRadioStripSpec) */
+class CRadioStripSpec : public CButtonSpec {
+public:
+    CRadioStripSpec(_zrdr *rdr);
+    CDlgObjSpec *Copy();
+    C2D *CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const;
+    const char *GetType() { return "RADIOSTRIP"; }
+    CDlgObjSpec *GetChild(int i) const;
+    bool HasChildren() const;
+    int NumChildren() const;
+
+    std::vector<CDlgObjSpec *> m_items;  // 0x118
+};   // 0x124 bytes
+
+/* a check box (SOCOM 1's CCheckBoxSpec; SOCOM II's 0x13C bytes, its check's texture at 0x130) */
+class CCheckBoxSpec : public CButtonSpec {
+public:
+    CCheckBoxSpec(_zrdr *rdr);
+    CCheckBoxSpec(CCheckBoxSpec &spec);
+    CDlgObjSpec *Copy();
+    C2D *CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const;
+    const char *GetType() { return "CHECKBOX"; }
+
+    unsigned char _118[0x130 - 0x118];
+    CSaferStr m_checkTexture;            // 0x130
+};   // 0x13c bytes
+
+/* a slider: a button with a knob (SOCOM 1's CSliderBarSpec; its constructor inline, in
+ * GetControlSpec): NUM_INTERVALS (10), KNOB_TEXTURE, KNOB_SIZE and CENTER_VALUE (0.5) */
+class CSliderBarSpec : public CButtonSpec {
+public:
+    CSliderBarSpec(_zrdr *rdr) : CButtonSpec(rdr), m_centerValue(0.5f), m_numIntervals(10)
+    {
+        zrdr_findint(rdr, "NUM_INTERVALS", &m_numIntervals, 1);
+        m_knobTexture = zrdr_findstring(rdr, "KNOB_TEXTURE");
+        m_knobSize.x = m_knobSize.y = 0;
+        zrdr_findIPNT2D(rdr, "KNOB_SIZE", &m_knobSize);
+        zrdr_findreal(rdr, "CENTER_VALUE", &m_centerValue, 1);
+    }
+    CDlgObjSpec *Copy();
+    C2D *CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const;
+    const char *GetType() { return "SLIDERBAR"; }
+
+    CSaferStr m_knobTexture;             // 0x118: KNOB_TEXTURE
+    IPNT2D m_knobSize;                   // 0x124: KNOB_SIZE
+    float m_centerValue;                 // 0x12c: CENTER_VALUE
+    int m_numIntervals;                  // 0x130: NUM_INTERVALS
+};   // 0x134 bytes
+
+/* a list box: an image with columns and items (SOCOM 1's CUIListBoxSpec; SOCOM II's 0x120 bytes) */
+class CUIListBoxSpec : public CImageSpec {
+public:
+    CUIListBoxSpec(_zrdr *rdr);
+    CDlgObjSpec *Copy();
+    C2D *CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const;
+    const char *GetType() { return "LISTBOX"; }
+
+    unsigned char _24[0x120 - 0x24];
+};   // 0x120 bytes
+
+/* the map control (SOCOM 1's CUIMapCtrlSpec; SOCOM II's 0x30 bytes) */
+class CUIMapCtrlSpec : public CDlgObjSpec {
+public:
+    CUIMapCtrlSpec(_zrdr *rdr);
+    CDlgObjSpec *Copy();
+    C2D *CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const;
+    const char *GetType() { return "MAPCONTROL"; }
+
+    unsigned char _8[0x30 - 0x8];
+};   // 0x30 bytes
 
 /* one object of a dialog's design: its spec, where it sits and under which parent (SOCOM 1's
  * CDesignDlgObj; the assignment copies the spec through its Copy) */

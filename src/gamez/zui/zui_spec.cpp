@@ -85,6 +85,47 @@ C2D *CImageSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) con
     return bmp;
 }
 
+/* the control spec an object's TYPE names, from its rdr, else the plain object's (SOCOM 1's; SOCOM II
+ * dropped the cycle button) */
+CDlgObjSpec *GetControlSpec(_zrdr *rdr, const char *type)
+{
+    if (!type)
+        return 0;
+    if (!strcmp("BUTTON", type))
+        return new CButtonSpec(rdr);
+    if (!strcmp("SCROLLINGTEXT", type))
+        return new CScrollSpec(rdr);
+    if (!strcmp("HANDLERBUTTON", type))
+        return new CHandlerButtonSpec(rdr);
+    if (!strcmp("LISTBOX", type))
+        return new CUIListBoxSpec(rdr);
+    if (!strcmp("SLIDERBAR", type))
+        return new CSliderBarSpec(rdr);
+    if (!strcmp("CHECKBOX", type))
+        return new CCheckBoxSpec(rdr);
+    if (!strcmp("RADIOSTRIP", type))
+        return new CRadioStripSpec(rdr);
+    if (!strcmp("MAPCONTROL", type))
+        return new CUIMapCtrlSpec(rdr);
+    return GetObjectSpec(rdr, type);
+}
+
+/* a button (SOCOM 1's) -- held out of the build until 0x377800 is named: the generated draft
+ * (src/auto/ovl1/00380470.c) matches through the placeholder, and this one, measured byte-exact
+ * with the row renamed, would supersede it with a wrong reference until then */
+#if 0
+/* a button (SOCOM 1's) */
+C2D *CButtonSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
+{
+    C2DButton *button = new C2DButton;
+
+    button->_strCaption.SetFont(font);
+    func_00376BD0(button, this);
+    InitializeButton(button, mgr);
+    return button;
+}
+#endif
+
 /* the wrapped text's WIDTH, line SPACING (10) and HEIGHT (-1: unbounded), its arrows' TEXTURE,
  * SIZE and OFFSET, AUTOSCROLL and DISPLAY_ONE_LINE (SOCOM 1's). Declared inline: GetObjectSpec
  * inlines it one level, and GetControlSpec's inlined CScrollSpec calls this copy */
@@ -187,6 +228,20 @@ C2D *CHProgressBarSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *m
     return bar;
 }
 
+/* a slider of the spec's knob (SOCOM 1's) *
+ * OPEN until a row outside the lane is named: byte-exact with 0x377800 (zui_2d.cpp's) as
+ * __ct__9C2DButtonFv -- C2DButton's constructor, out of line (measured with the row renamed) */
+C2D *CSliderBarSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
+{
+    CSliderBar *slider = new CSliderBar;
+    zdb::CTexHandle *knob = PrepTexture(m_knobTexture.c_str(), mgr);
+
+    slider->_strCaption.SetFont(font);
+    func_003724F0(slider, this, knob);
+    InitializeButton(slider, mgr);
+    return slider;
+}
+
 /* the bar's FILENAME_IS_UIVAR flag and the node its LEADING_EDGE follows (SOCOM 1's; GetObjectSpec
  * calls it out of line: pinned) */
 #pragma auto_inline off
@@ -229,4 +284,18 @@ C2D *CClockSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) con
     clock->SetFont(font);
     clock->LoadSpec(*this);
     return clock;
+}
+
+/* a check box of the spec's check (SOCOM 1's) *
+ * OPEN until a row outside the lane is named: byte-exact with 0x377800 (zui_2d.cpp's) as
+ * __ct__9C2DButtonFv -- C2DButton's constructor, out of line (measured with the row renamed) */
+C2D *CCheckBoxSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
+{
+    CCheckBox *box = new CCheckBox;
+    zdb::CTexHandle *check = PrepTexture(m_checkTexture.c_str(), mgr);
+
+    box->_strCaption.SetFont(font);
+    func_00371550(box, this, check);
+    InitializeButton(box, mgr);
+    return box;
 }
