@@ -7853,7 +7853,7 @@
 0x003B2EA0 0x144 func_003B2EA0  # OVL1
 0x003B2FF0 0x700 func_003B2FF0  # OVL1
 0x003B36F0 0xB0 DereferenceDecals__Q23zdb7CVisualFUi  # OVL1; s1:align
-0x003B37A0 0x60 func_003B37A0  # OVL1
+0x003B37A0 0x60 RemoveDecal__Q23zdb7CVisualFPQ23zdb6CDecal  # OVL1; by hand (the wep lane: SOCOM 1's CVisual::RemoveDecal, between DereferenceDecals and AttachDecal as in SOCOM 1 -- the decal unlinked from its view's list; CDecalPool::RecycleTick calls it)
 0x003B3800 0x14C AttachDecal__Q23zdb7CVisualFUifUiPPQ23zdb10AddonPointPQ23zdb10CTexHandle  # OVL1; s1:align
 0x003B3950 0x160 ApplyDecalRender__Q23zdb7CVisualFP7CMatrixPQ23zdb5CNodefP6CPnt3DP6CPnt3DPQ23zdb10CTexHandleP7CMatrix  # OVL1; s1:calls
 0x003B3AB0 0x714 func_003B3AB0  # OVL1
@@ -7905,15 +7905,15 @@
 0x003B83B0 0x14 func_003B83B0  # OVL1
 0x003B83D0 0x58 func_003B83D0  # OVL1
 0x003B8430 0x8 func_003B8430  # OVL1
-0x003B8440 0xB0 func_003B8440  # OVL1
-0x003B84F0 0x58 func_003B84F0  # OVL1
+0x003B8440 0xB0 DereferenceDecals__Q23zdb5CMeshFUi  # OVL1; by hand (the wep lane: SOCOM 1's CMesh::DereferenceDecals, the mesh decals at 0x6C freed, cleared and given back -- SOCOM II's to the permanent pool when the life is negative)
+0x003B84F0 0x58 RemoveMeshDecal__Q23zdb5CMeshFPQ23zdb10CMeshDecal  # OVL1; by hand (the wep lane: SOCOM 1's CMesh::RemoveMeshDecal, the same unlink from the list at 0x6C, right after DereferenceDecals as in SOCOM 1)
 0x003B8550 0x124 func_003B8550  # OVL1
 0x003B8680 0x5A0 func_003B8680  # OVL1
 0x003B8C20 0x4C Read__Q23zdb8CSubMeshFRQ23zar4CZAR  # OVL1; s1:exact
 0x003B8C70 0x60 __dt__Q23zdb8CSubMeshFv  # OVL1; s1:gap
 0x003B8CD0 0x5C __ct__Q23zdb8CSubMeshFPQ23zdb5CMesh  # OVL1; s1:exact
 0x003B8D30 0xA8 SetMeshTextureSelects__Q23zdb5CMeshFP8_word128P8_word128  # OVL1; s1:align
-0x003B8DE0 0x150 func_003B8DE0  # OVL1
+0x003B8DE0 0x150 SetMeshBuffer__Q23zdb5CMeshFP8_word128P8_word128P8_word128  # OVL1; by hand (the wep lane: SOCOM 1's CMesh::SetMeshBuffer -- the same select switch over the same jump table, types 9 and 7/10-12 -- with the palette grown to reach a matrix index; AddLOD calls it)
 0x003B8F30 0x8 Read__Q23zdb5CMeshFRQ23zar4CZAR  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003B8F40 0x208 __dt__Q23zdb5CMeshFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003B9150 0x8 UpdateCentroid__Q23zdb5CMeshFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -7925,13 +7925,13 @@
 0x003B93A0 0xD4 func_003B93A0  # OVL1
 0x003B9480 0x1C func_003B9480  # OVL1
 0x003B94A0 0x44 SetLOD__Q23zdb5CMeshFUiUi  # OVL1; s1:align
-0x003B94F0 0xA0 func_003B94F0  # OVL1
+0x003B94F0 0xA0 SetLOD__Q23zdb5CMeshFUif  # OVL1; by hand (the wep lane: SOCOM 1's CMesh::SetLOD by distance -- with more than one level, the first whose distance is past it gives the view's buffer)
 0x003B9590 0x130 AddLOD__Q23zdb5CMeshFPQ23zdb5CMeshf  # OVL1; s1:align
 0x003B96C0 0x98 InitMatrices__Q23zdb5CMeshFv  # OVL1; s1:align
 0x003B9760 0xB4 __ct__Q23zdb5CMeshFv  # OVL1; s1:calls by hand (the wep lane: CVisual::Create news 0x94 bytes and calls it for type 1, as SOCOM 1's Create calls CMesh's constructor; it runs CVisual's constructor first and stores __vt__Q23zdb5CMesh)
 0x003B9820 0x2C Init__Q23zdb5CMeshFv  # OVL1; s1:align
 0x003B9850 0x378 func_003B9850  # OVL1
-0x003B9BD0 0x4FC func_003B9BD0  # OVL1
+0x003B9BD0 0x4FC insert__Q23std78__vector_imp<Q33zdb5CMesh8CMeshLOD,Q23std32allocator<Q33zdb5CMesh8CMeshLOD>,0>FPQ33zdb5CMesh8CMeshLODUiRCQ33zdb5CMesh8CMeshLOD  # OVL1; by hand (the wep lane: CMesh::AddLOD and CMesh() call it with (end, 1, &lod) at the instructions where SOCOM 1's call this insert)
 0x003BA0D0 0x1A8 reserve__Q23std78__vector_imp<Q33zdb5CMesh8CMeshLOD,Q23std32allocator<Q33zdb5CMesh8CMeshLOD>,0>FUi  # OVL1; s1:align
 0x003BA280 0x68 __dt__Q23std80__vector_deleter<Q33zdb5CMesh8CMeshLOD,Q23std32allocator<Q33zdb5CMesh8CMeshLOD>>Fv  # OVL1; s1:align
 0x003BA2F0 0x8 func_003BA2F0  # OVL1
@@ -7991,7 +7991,7 @@
 0x003BE5F0 0x1B8 func_003BE5F0  # OVL1
 0x003BE7B0 0x4C FreeMem__Q23zdb10CMeshDecalFv  # OVL1; s1:align
 0x003BE800 0xBC RecycleTick__Q23zdb14CMeshDecalPoolFv  # OVL1; s1:align
-0x003BE8C0 0x24 func_003BE8C0  # OVL1
+0x003BE8C0 0x24 PutPermDecal__Q23zdb10CMeshDecalFPQ23zdb10CMeshDecal  # OVL1; by hand (the wep lane: CDecal::PutPermDecal's twin, the same 0x24 bytes, over m_permPool__Q23zdb10CMeshDecal 0x4B50A0 -- the pool CMesh::DereferenceDecals gives a decal of negative life back to)
 0x003BE8F0 0x40 PutTempDecal__Q23zdb10CMeshDecalFPQ23zdb10CMeshDecal  # OVL1; s1:align
 0x003BE930 0x80 Get__Q23zdb14CMeshDecalPoolFb  # OVL1; by hand (the wep lane: CDecalPool::Get's twin over RTArray<CMeshDecal> -- the same 0x80 bytes, GetNext of the mesh decals' array; SOCOM 1 had none out of line)
 0x003BE9B0 0x6C Init__Q23zdb14CMeshDecalPoolFUiUi  # OVL1; s1:align
@@ -8010,13 +8010,13 @@
 0x003BF1A0 0x80 Get__Q23zdb10CDecalPoolFb  # OVL1; s1:align
 0x003BF220 0x6C Init__Q23zdb10CDecalPoolFUiUi  # OVL1; s1:align
 0x003BF290 0x140 func_003BF290  # OVL1
-0x003BF3D0 0x64 func_003BF3D0  # OVL1
+0x003BF3D0 0x64 GetOldestUsed__22RTArray<Q23zdb6CDecal>Fv  # OVL1; by hand (the wep lane: SOCOM 1's RTArray<CDecal>::GetOldestUsed -- CDecalPool::RecycleTick calls it where SOCOM 1's does; the first in-use item removed and returned)
 0x003BF440 0x7C PutBack__22RTArray<Q23zdb6CDecal>FPQ23zdb6CDecal  # OVL1; s1:callee by hand (the wep lane: CDecal::PutTempDecal and PutPermDecal call it where SOCOM 1's call PutBack__22RTArray<Q23zdb6CDecal>; zbody.h's PutBack shape)
 0x003BF4C0 0x8C GetNext__22RTArray<Q23zdb6CDecal>Fb  # OVL1; s1:callee by hand (the wep lane: CDecalPool::Get calls it where SOCOM 1's calls GetNext__22RTArray<Q23zdb6CDecal>Fb; zbody.h's RTArray<T>::GetNext shape -- m_available at 0x18, m_supportRecycle at 0x1C)
 0x003BF550 0x13C func_003BF550  # OVL1
 0x003BF690 0x44 __dt__Q23zdb6CDecalFv  # OVL1; by hand (the wep lane: RTArray<CDecal>'s destructor hands it to __destroy_new_array for the items -- CDecal's empty inline destructor's out-of-line copy, vis_decal.cpp's place; zwep_weapon.cpp's copy is byte-exact)
 0x003BF6E0 0x8 func_003BF6E0  # OVL1
-0x003BF6F0 0x64 func_003BF6F0  # OVL1
+0x003BF6F0 0x64 GetOldestUsed__27RTArray<Q23zdb10CMeshDecal>Fv  # OVL1; by hand (the wep lane: SOCOM 1's RTArray<CMeshDecal>::GetOldestUsed -- CMeshDecalPool::RecycleTick calls it where SOCOM 1's does)
 0x003BF760 0x7C PutBack__27RTArray<Q23zdb10CMeshDecal>FPQ23zdb10CMeshDecal  # OVL1; s1:callee by hand (the wep lane: CMeshDecal::PutTempDecal calls it where SOCOM 1's calls PutBack__27RTArray<Q23zdb10CMeshDecal>)
 0x003BF7E0 0x8C GetNext__27RTArray<Q23zdb10CMeshDecal>Fb  # OVL1; by hand (the wep lane: CMeshDecalPool::Get calls it as CDecalPool::Get calls RTArray<CDecal>'s; the same 0x8C bytes)
 0x003BF870 0x140 __dt__27RTArray<Q23zdb10CMeshDecal>Fv  # OVL1; s1:callee
@@ -8215,7 +8215,7 @@
 0x003C71D0 0xB0 IsInRange__12CZProjectileFPC6CPnt3Df  # OVL1; s1:order by hand (the wep lane: SOCOM 1's IsInRange -- the point less m_framestartpos (0x48) through Sub, its squared length against the range's)
 0x003C7280 0x17C IsInCone__12CZProjectileFPC6CPnt3DPC6CPnt3DPC6CPnt3Df  # OVL1; by hand (the wep lane: the point less the apex, its projection on the direction between 0 and the ammo's explosion radius, its distance off the axis within the radius tan(angle) widens to; GetDamage(const CPnt3D *, float) calls it twice -- new in SOCOM II, the name and the float's place ours)
 0x003C7400 0x90 ResolveDamage__12CZProjectileFPfPfff  # OVL1; s1:order by hand (the wep lane: SOCOM 1's static ResolveDamage, the piercing's factor (10 - p)/10 where SOCOM 1's had p/10)
-0x003C7490 0x170 func_003C7490  # OVL1
+0x003C7490 0x170 GetDamage__12CZProjectileFPC6CPnt3DPfPff  # OVL1; by hand (the wep lane: SOCOM 1's CZProjectile::GetDamage(pos, health, armor, f), between IsInCone and the two-argument GetDamage as in SOCOM 1; SOCOM II's adds the weapon's damage bonus)
 0x003C7600 0x4D0 GetDamage__12CZProjectileFPC6CPnt3Df  # OVL1; s1:order by hand (the wep lane: SOCOM 1's GetDamage(const CPnt3D *, float), 0x498 there, after ResolveDamage and the four-argument GetDamage; OnWeaponHit calls it on the other projectile with (&m_frameendpos, 1.0f))
 0x003C7AD0 0x8 SetInstance__12CZProjectileFPQ23zdb5CNode  # OVL1; s1:order by hand (the wep lane: SOCOM 1's SetInstance right before GetInstance -- the node at 0x20)
 0x003C7AE0 0x8 GetInstance__12CZProjectileFv  # OVL1; s1:calls by hand (SOCOM 1's GetNumRemoteExplosives calls GetInstance at the same place SOCOM II's calls this; it returns the word at 0x20, SOCOM 1's m_instance 0x18 moved 8 on)
@@ -8252,17 +8252,17 @@
 0x003CC0B0 0x38 ReleaseDirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi  # OVL1; s1:exact
 0x003CC0F0 0xF8 GetNextDirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi  # OVL1; s1:order by hand (the same over the 60 direct-fire intersections, before ReleaseDirectFireDI)
 0x003CC1F0 0xD4 GetNumRemoteExplosives__16CZProjectileListFi  # OVL1; s1:align
-0x003CC2D0 0xE4 func_003CC2D0  # OVL1
-0x003CC3C0 0x134 func_003CC3C0  # OVL1
+0x003CC2D0 0xE4 RemoveExplosive__16CZProjectileListFP15PlacedExplosive  # OVL1; by hand (the wep lane: SOCOM 1's CZProjectileList::RemoveExplosive, right after GetNumRemoteExplosives as in SOCOM 1 -- the pickup destroyed, the charge deleted and erased; SOCOM II's also unlists it from CZWeapon's placed charges)
+0x003CC3C0 0x134 RemoveProjectile__16CZProjectileListFP12CZProjectile  # OVL1; by hand (the wep lane: SOCOM 1's CZProjectileList::RemoveProjectile, between RemoveExplosive and NetRemoveProjectile as in SOCOM 1 -- the slot cleaned up and freed with FreeIdx and FindLastUsed inlined, then RemoveExplosive)
 0x003CC500 0x17C NetRemoveProjectile__16CZProjectileListFP12CZProjectile  # OVL1; s1:calls (called on CZWeapon::m_pProjectilelist where SOCOM 1's calls it) -- the states lane
-0x003CC680 0xF0 func_003CC680  # OVL1
-0x003CC770 0x218 func_003CC770  # OVL1
+0x003CC680 0xF0 IsListed__16CZProjectileListFP12CZProjectile  # OVL1; by hand (the wep lane: SOCOM II's -- whether a projectile is a slot in use or one of the charges; NetRemoveProjectile asks it first; the name ours)
+0x003CC770 0x218 PostTick__16CZProjectileListFf  # OVL1; by hand (the wep lane: SOCOM 1's CZProjectileList::PostTick, right before PreTick as in SOCOM 1; CZWeapon's PostTick calls it)
 0x003CC990 0x100 PreTick__16CZProjectileListFf  # OVL1; s1:align
 0x003CCA90 0x124 GetNextFreeProjectile__16CZProjectileListFv  # OVL1; s1:align
 0x003CCBC0 0xCC UnInit__16CZProjectileListFv  # OVL1; s1:align
-0x003CCC90 0xF8 func_003CCC90  # OVL1
-0x003CCD90 0x118 func_003CCD90  # OVL1
-0x003CCEB0 0x2A0 func_003CCEB0  # OVL1
+0x003CCC90 0xF8 SetAllFlag18__16CZProjectileListFv  # OVL1; by hand (the wep lane: SOCOM II's -- flag 18 set on every charge and every projectile in use; _OnMissionComplete calls it; the name ours)
+0x003CCD90 0x118 ForgetHitNode__16CZProjectileListFPQ23zdb5CNode  # OVL1; by hand (the wep lane: SOCOM II's -- CZProjectile::ForgetHitNode on every charge and every projectile in use; ~CZSealBody calls it; the name ours)
+0x003CCEB0 0x2A0 Clear__16CZProjectileListFi10EQUIP_ITEM  # OVL1; by hand (the wep lane: SOCOM 1's CZProjectileList::Clear(int) with a weapon id added -- a shooter's charges (of that weapon) and, with none given, his projectiles made to explode and taken out; CZSealBody::Destroy and _OnMissionComplete call it)
 0x003CD150 0x24C func_003CD150  # OVL1
 0x003CD3A0 0x70 func_003CD3A0  # OVL1
 0x003CD410 0x40 func_003CD410  # OVL1
@@ -8345,7 +8345,7 @@
 0x003D2020 0x8 func_003D2020  # OVL1
 0x003D2030 0x8 func_003D2030  # OVL1
 0x003D2040 0x8 func_003D2040  # OVL1
-0x003D2050 0x8 func_003D2050  # OVL1
+0x003D2050 0x8 GetDamageBonus__8CZWeaponFv  # OVL1; by hand (the wep lane: returns the float at 0x64, which CZProjectile::GetDamage adds to the ammunition's impact or explosion damage; the name ours)
 0x003D2060 0x8 func_003D2060  # OVL1
 0x003D2070 0x64 func_003D2070  # OVL1
 0x003D20E0 0x64 func_003D20E0  # OVL1

@@ -283,6 +283,8 @@ public:
     void Add(CTexHandle *tex, bool b);
     /* a palette listed (SOCOM 1's overload, 0x357860 here) */
     void Add(CTexPalette *pal, bool b);
+    /* another list's textures and palettes listed (SOCOM 1's third overload, 0x357A00) */
+    void Add(CDynTexList *list);
 
     CTexList m_tex_list;   // 0x0
     CTexPalList m_pal_list;   // 0xc
@@ -384,6 +386,8 @@ public:
     static CCamera *m_camera;
     /* the decals of one view let go of (SOCOM 1's, by name) */
     void DereferenceDecals(unsigned int vid);
+    /* a decal unlinked from its view's list (SOCOM 1's, 0x3B37A0) */
+    void RemoveDecal(class CDecal *decal);
     /* a decal projected onto the visual (SOCOM 1's, by name) */
     void ApplyDecalRender(CMatrix *mtw, CNode *node, float size, CPnt3D *pos, CPnt3D *normal,
                           CTexHandle *tex, CMatrix *uv);
@@ -438,10 +442,17 @@ public:
     CVisual *m_mesh;   // 0x6c
 };
 
+class CMeshDecal;
+
 class CMesh : public CVisual {
 public:
     /* a copy of the mesh, its own data, for a node (SOCOM 1's took no node) */
     CMesh *Clone(CNode *owner);
+    /* its decals let go of, each to the pool it came from (SOCOM 1's gave every one back as
+     * temporary; the view unused) */
+    void DereferenceDecals(unsigned int vid);
+    /* a decal unlinked from its list (SOCOM 1's) */
+    void RemoveMeshDecal(CMeshDecal *decal);
     /* the wep lane's (vis_mesh.cpp, SOCOM 1's names): its table (__vt__Q23zdb5CMesh, 0x408350)
      * overrides these and adds InitMatrices (+0x20) */
     CMesh();   // 0x3B9760
@@ -453,17 +464,29 @@ public:
     virtual bool Read(zar::CZAR &zar);
     virtual void InitMatrices();
     void SetMeshTextureSelects(_word128 *head, _word128 *names);
+    void SetMeshBuffer(_word128 *head, _word128 *base, _word128 *names);
     void SetLOD(unsigned int view, unsigned int lod);
+    /* a view's level of detail by distance: the first whose distance is past it (SOCOM 1's) */
+    void SetLOD(unsigned int view, float dist);
+    /* another mesh's first level of detail added as this one's next, its selects copied and
+     * pointed at its buffer, its textures listed; the level before it used within the distance
+     * (SOCOM 1's; squared in SOCOM II) */
+    void AddLOD(CMesh *mesh, float dist);
 
     /* a level of detail (SOCOM 1's CMesh::CMeshLOD, 0xc bytes: the mesh last) */
     class CMeshLOD {
     public:
-        unsigned int m_0;   // 0x0
-        float m_4;   // 0x4
+        float m_dist;   // 0x0: the distance it is used within (SetLOD by distance)
+        _word128 *m_buffer;   // 0x4: its VU buffer (AddLOD hands it to SetMeshBuffer)
+        /* its select block, which SetLOD makes the view's (AddLOD copies it; the name kept) */
         CMesh *m_mesh;   // 0x8
     };
 
-    unsigned char _68[0x78 - 0x68];
+    unsigned int m_68;   // 0x68 (not read yet)
+    /* its decals, linked through each decal's next pointer (SOCOM 1's at the same offset) */
+    CMeshDecal *m_decals;   // 0x6c
+    unsigned int m_70;   // 0x70 (zeroed by the constructor; not read yet)
+    unsigned int m_74;   // 0x74 (likewise)
     std::vector<CMeshLOD> m_lods;   // 0x78
     unsigned int m_numMatrices;   // 0x84
     /* its sub-meshes' matrices, by index: InitMatrices pushes one new CMatrix per sub-mesh (the
