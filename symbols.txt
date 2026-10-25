@@ -9648,7 +9648,7 @@
 0x0052D270 0x10 func_0052D270  # OVL2
 0x0052D280 0x10 func_0052D280  # OVL2
 0x0052D290 0x1F0 func_0052D290  # OVL2
-0x0052D480 0x21C func_0052D480  # OVL2
+0x0052D480 0x21C GetCellCenter__7CAiMapsFRC9CAiMapLocP6CPnt3D  # OVL2; s1:calls (CMission::LoadVehicle and GetStartMatrix call it on AiMaps after GetLocation, as SOCOM 1's call GetCellCenter__7CAiMapsFRC9CAiMapLocP6CPnt3D)
 0x0052D6A0 0x12C func_0052D6A0  # OVL2
 0x0052D7D0 0x3C func_0052D7D0  # OVL2
 0x0052D810 0x94 func_0052D810  # OVL2
@@ -9656,7 +9656,7 @@
 0x0052D950 0x94 func_0052D950  # OVL2
 0x0052D9F0 0xB0 func_0052D9F0  # OVL2
 0x0052DAA0 0xC4 func_0052DAA0  # OVL2
-0x0052DB70 0xF8 func_0052DB70  # OVL2
+0x0052DB70 0xF8 GetLocation__7CAiMapsFPCcR9CAiMapLoc  # OVL2; s1:calls (CMission::LoadVehicle and GetStartMatrix call it on AiMaps where SOCOM 1's call GetLocation__7CAiMapsFPCcR9CAiMapLoc)
 0x0052DC70 0xA34 func_0052DC70  # OVL2
 0x0052E6B0 0x70 func_0052E6B0  # OVL2
 0x0052E720 0x5C func_0052E720  # OVL2
@@ -9732,16 +9732,16 @@
 0x005321B0 0x72C func_005321B0  # OVL2
 0x005328E0 0x10C func_005328E0  # OVL2
 0x005329F0 0x31C func_005329F0  # OVL2
-0x00532D10 0x22C func_00532D10  # OVL2
-0x00532F40 0x38 func_00532F40  # OVL2
-0x00532F80 0x38 func_00532F80  # OVL2
-0x00532FC0 0x38 func_00532FC0  # OVL2
-0x00533000 0x38 func_00533000  # OVL2
-0x00533040 0x150 func_00533040  # OVL2
-0x00533190 0x34 func_00533190  # OVL2
+0x00532D10 0x22C GetStartMatrix__16CVehicleRdrEntryFR7CMatrixUi  # OVL2; s1:calls (rand, CAiMaps::GetLocation, CAiMaps::GetCellCenter, CAiMap::GetDirQuat, CQuat::ToMatrix: SOCOM 1's GetStartMatrix's calls in order)
+0x00532F40 0x38 GetRespawnDir__16CVehicleRdrEntryCFv  # OVL2; ours (GetStartDir's twin over the second start set at 0xC8 -- SOCOM II's "respawn_setup" -- indexed by the 4 bits after the start index)
+0x00532F80 0x38 GetRespawnPos__16CVehicleRdrEntryCFv  # OVL2; ours (GetStartPos's twin over the second start set at 0xC8, the same index bits)
+0x00532FC0 0x38 GetStartDir__16CVehicleRdrEntryCFv  # OVL2; s1:calls (CMission::LoadVehicle calls it after CAiMaps::GetCellCenter and before GetDirQuat, as SOCOM 1's calls GetStartDir)
+0x00533000 0x38 GetStartPos__16CVehicleRdrEntryCFv  # OVL2; s1:calls (CMission::LoadVehicle calls it before CAiMaps::GetLocation, as SOCOM 1's calls GetStartPos)
+0x00533040 0x150 Randomize__16CVehicleRdrEntryFb  # OVL2; s1:calls (CMission::LoadVehicle's first call, as SOCOM 1's calls Randomize__16CVehicleRdrEntryFb; rand)
+0x00533190 0x34 SetCharacterName__16CVehicleRdrEntryFPCc  # OVL2; s1:calls (CreateCustomCharTypes(CVehicleRdr *, _zrdr *) calls it after Create, as SOCOM 1's calls SetCharacterName; strncpy)
 0x005331D0 0x19C func_005331D0  # OVL2
-0x00533370 0x3A8 func_00533370  # OVL2
-0x00533720 0xD0 func_00533720  # OVL2
+0x00533370 0x3A8 Load__11CVehicleRdrFP5_zrdr  # OVL2; s1:calls (CVehicleRdr::Open calls it between zrdr_read and zrdr_free, as SOCOM 1's Open calls Load__11CVehicleRdrFP5_zrdr; "name", "display", "team", "ai_params", "setup", "respawn_setup")
+0x00533720 0xD0 GetEntryByName__11CVehicleRdrCFPCc  # OVL2; s1:calls (CreateCustomCharTypes(CVehicleRdr *, _zrdr *) calls it where SOCOM 1's calls GetEntryByName__11CVehicleRdrCFPCc; strcasecmp over the entries)
 0x005337F0 0x12C Open__11CVehicleRdrFPCc  # OVL2; s1:calls (OpenVehicleRdr, as SOCOM 1's) -- the states lane
 0x00533920 0x4C Close__11CVehicleRdrFv  # OVL2; s1:calls (CloseVehicleRdr, as SOCOM 1's; the same 0x4C) -- the states lane
 0x00533970 0x60 func_00533970  # OVL2
@@ -9753,7 +9753,7 @@
 0x00533C10 0xE0 func_00533C10  # OVL2
 0x00533CF0 0xB8 func_00533CF0  # OVL2
 0x00533DB0 0x28C func_00533DB0  # OVL2
-0x00534040 0x2E0 func_00534040  # OVL2
+0x00534040 0x2E0 Parse__9AI_PARAMSFP5_zrdr  # OVL2; s1:calls (CVehicleRdr::Load calls it after "ai_params" and CCharacterType::Parse at its end, as SOCOM 1's call Parse__9AI_PARAMSFP5_zrdr)
 0x00534320 0xD4 func_00534320  # OVL2
 0x00534400 0x50 func_00534400  # OVL2
 0x00534450 0x1E0 func_00534450  # OVL2
@@ -9828,7 +9828,7 @@
 0x0053B3A0 0x4C func_0053B3A0  # OVL2
 0x0053B3F0 0x30 func_0053B3F0  # OVL2
 0x0053B420 0x88 func_0053B420  # OVL2
-0x0053B4B0 0x140 func_0053B4B0  # OVL2
+0x0053B4B0 0x140 RdrFetch_CharacterType__14CCharacterTypeFPCc  # OVL2; s1:calls (CreateCustomCharTypes(_zrdr *) calls it, then GetByNameMod and Create, where SOCOM 1's calls RdrFetch_CharacterType; SOCOM II reads chartype.rdr's navyseals/terrorists/escortees through match_name_to_chartype)
 0x0053B5F0 0x11C match_name_to_chartype__14CCharacterTypeFP8CRdrFilePCcPCc  # OVL2; s1:calls
 0x0053B710 0x1D8 func_0053B710  # OVL2
 0x0053B8F0 0x40 func_0053B8F0  # OVL2
@@ -9842,21 +9842,21 @@
 0x0053BEF0 0x214 func_0053BEF0  # OVL2
 0x0053C110 0xF0 func_0053C110  # OVL2
 0x0053C200 0x19C AcquireSoundHandles__14CCharacterTypeFv  # OVL2; s1:calls
-0x0053C3A0 0x5A0 func_0053C3A0  # OVL2
+0x0053C3A0 0x5A0 GetCharacterSoundTypeString__F15CHARACTER_SOUND  # OVL2; s1:order (SOCOM 1's switch of "CHRSND_*" names over a signed byte enum, CHRSND_NONE = -1; 85 sounds where SOCOM 1 had 66)
 0x0053C940 0x68 func_0053C940  # OVL2
 0x0053C9B0 0x90 func_0053C9B0  # OVL2
 0x0053CA40 0xD4 func_0053CA40  # OVL2
 0x0053CB20 0x17C func_0053CB20  # OVL2
 0x0053CCA0 0x160 func_0053CCA0  # OVL2
-0x0053CE00 0x7EC func_0053CE00  # OVL2
-0x0053D5F0 0x1C8 func_0053D5F0  # OVL2
+0x0053CE00 0x7EC Parse__14CCharacterTypeFP5_zrdr  # OVL2; s1:calls (calls HEALTH_PARAMS::Parse and AI_PARAMS::Parse, as SOCOM 1's Parse__14CCharacterTypeFP5_zrdr does)
+0x0053D5F0 0x1C8 __dt__14CCharacterTypeFv  # OVL2; s1:calls (DeleteTemporaryCharType calls it with 1, as SOCOM 1's calls __dt__14CCharacterTypeFv)
 0x0053D7C0 0x5EC func_0053D7C0  # OVL2
-0x0053DDB0 0x198 func_0053DDB0  # OVL2
+0x0053DDB0 0x198 Parse__13HEALTH_PARAMSFP5_zrdr  # OVL2; s1:calls (CCharacterType::Parse calls it as SOCOM 1's calls Parse__13HEALTH_PARAMSFP5_zrdr; reads "health", "head", "body", "larm", "rarm" ...)
 0x0053DF50 0x80 CleanupTemporary__14CCharacterTypeFv  # OVL2; s1:calls (CloseVehicleRdr calls it where SOCOM 1's does) -- the states lane
-0x0053DFD0 0x3C func_0053DFD0  # OVL2
-0x0053E010 0x158 func_0053E010  # OVL2
-0x0053E170 0xA8 func_0053E170  # OVL2
-0x0053E220 0xA3C func_0053E220  # OVL2
+0x0053DFD0 0x3C DeleteTemporaryCharType__FP14CCharacterType  # OVL2; s1:ref (CleanupTemporary takes its address for remove_if, as SOCOM 1's; the same code: a temporary type is deleted through the deleting destructor and true returned)
+0x0053E010 0x158 Create__14CCharacterTypeFPCcPC14CCharacterTypeb  # OVL2; s1:calls (both CreateCustomCharTypes call it right after GetByNameMod, as SOCOM 1's call Create__14CCharacterTypeFPCcPC14CCharacterTypeb)
+0x0053E170 0xA8 GetByNameMod__14CCharacterTypeFPCc  # OVL2; s1:calls (the UI-commands lane's lead, vetted: CreateCustomCharTypes, both overloads, and CMission::LoadVehicle call it where SOCOM 1's call GetByNameMod__14CCharacterTypeFPCc; static, one const char * -- the same walk of the character-type vector with strcmp on each type's name, SOCOM II adding a null-name test)
+0x0053E220 0xA3C Open__14CCharacterTypeFPCc  # OVL2; s1:calls (CMission::Init calls it where SOCOM 1's calls Open__14CCharacterTypeFPCc)
 0x0053EC60 0xEC func_0053EC60  # OVL2
 0x0053ED50 0xB4 func_0053ED50  # OVL2
 0x0053EE10 0xC8 func_0053EE10  # OVL2
