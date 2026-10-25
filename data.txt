@@ -949,6 +949,7 @@
 0x004B5030 0x14 m_tempPool__Q23zdb6CDecal  # OVL1 bss; s1:data-seq (size SOCOM 1's; via PutTempDecal__Q23zdb6CDecalFPQ23zdb6CDecal +2)
 0x004B5050 0x14 m_permPool__Q23zdb6CDecal  # OVL1 bss; s1:data-seq (size SOCOM 1's; via PutPermDecal__Q23zdb6CDecalFPQ23zdb6CDecal +1)
 0x004B5080 0x14 m_tempPool__Q23zdb10CMeshDecal  # OVL1 bss; s1:data-seq (size SOCOM 1's; via PutTempDecal__Q23zdb10CMeshDecalFPQ23zdb10CMeshDecal +1)
+0x004B50A0 0x14 m_permPool__Q23zdb10CMeshDecal  # OVL1 bss; SOCOM 1's static (20 bytes, m_permPool__Q23zdb10CMeshDecal at 0x511C00 in the demo, after m_tempPool): CZMarkList::UnInit empties it with CMeshDecalPool::Uninit as SOCOM 1's does, after the temporary pool at 0x4B5080 -- the wep lane; 9 references in 5 functions
 0x004B51A0 0x4 m_instance_count__8CVisBase  # OVL1 bss; s1:data by hand (the wep lane: SOCOM 1's CVisBase::m_instance_count -- ~CVisual's inlined ~CVisBase decrements it, as SOCOM 1's ~CVisBase; CopyBuffer (0x3C36D0) and 0x3B2CB0 increment it in the inlined constructor; 6 references in 3 functions)
 0x004B51B8 0xC m_callbacks  # OVL1 bss; s1:data-exact (size SOCOM 1's; via AddWeaponEventCallback__8CZWeaponFPFP12CZProjectileUiPv_vUiPv)
 0x004B5210 0xC m_listWeapons__8CZWeapon  # OVL1 bss; SOCOM 1's static (12 bytes, its GetWeaponId passes it to CZWeaponList::GetWeaponId as SOCOM II's does, 0x3D19E0; CZKit::SetItem passes it to the list's GetWeapon, 0x3C4B40, as SOCOM 1's -- the kit lane); 60 references in 36 functions

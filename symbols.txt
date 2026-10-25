@@ -8009,7 +8009,7 @@
 0x003BF440 0x7C PutBack__22RTArray<Q23zdb6CDecal>FPQ23zdb6CDecal  # OVL1; s1:callee by hand (the wep lane: CDecal::PutTempDecal and PutPermDecal call it where SOCOM 1's call PutBack__22RTArray<Q23zdb6CDecal>; zbody.h's PutBack shape)
 0x003BF4C0 0x8C GetNext__22RTArray<Q23zdb6CDecal>Fb  # OVL1; s1:callee by hand (the wep lane: CDecalPool::Get calls it where SOCOM 1's calls GetNext__22RTArray<Q23zdb6CDecal>Fb; zbody.h's RTArray<T>::GetNext shape -- m_available at 0x18, m_supportRecycle at 0x1C)
 0x003BF550 0x13C func_003BF550  # OVL1
-0x003BF690 0x44 func_003BF690  # OVL1
+0x003BF690 0x44 __dt__Q23zdb6CDecalFv  # OVL1; by hand (the wep lane: RTArray<CDecal>'s destructor hands it to __destroy_new_array for the items -- CDecal's empty inline destructor's out-of-line copy, vis_decal.cpp's place; zwep_weapon.cpp's copy is byte-exact)
 0x003BF6E0 0x8 func_003BF6E0  # OVL1
 0x003BF6F0 0x64 func_003BF6F0  # OVL1
 0x003BF760 0x7C PutBack__27RTArray<Q23zdb10CMeshDecal>FPQ23zdb10CMeshDecal  # OVL1; s1:callee by hand (the wep lane: CMeshDecal::PutTempDecal calls it where SOCOM 1's calls PutBack__27RTArray<Q23zdb10CMeshDecal>)
@@ -8423,7 +8423,7 @@
 0x003D39E0 0x240 __dt__8CZWeaponFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003D3C20 0x170 __ct__8CZWeaponFv  # OVL1; by hand (stores __vt__8CZWeapon, builds m_LegalAmmoList at 0xC4; CZFTSWeapon's constructor calls it first)
 0x003D3D90 0x4CC func_003D3D90  # OVL1
-0x003D4260 0x120 func_003D4260  # OVL1
+0x003D4260 0x120 __dt__22RTArray<Q23zdb6CDecal>Fv  # OVL1; by hand (the wep lane: CZMarkList::UnInit deletes both CDecal pools' arrays through it (flag 1), as SOCOM 1's UnInit calls __dt__22RTArray<Q23zdb6CDecal>Fv; zbody.h's RTArray destructor, the items destroyed through ~CDecal 0x3BF690 -- this unit's template tail); zwep_weapon.cpp
 0x003D4380 0x10 GetAmmoId__6CZAmmoFPCc  # OVL1; s1:order by hand (the wep lane: zwep_ammo.cpp's first, SOCOM 1's 0x10-byte static -- m_ammolist (0x4B5310) handed to CZAmmoList::GetAmmoId, tail-called)
 0x003D4390 0x10 GetAmmo__6CZAmmoF10EQUIP_AMMO  # OVL1; s1:order by hand (the wep lane: SOCOM 1's second static -- m_ammolist handed to CZAmmoList::GetAmmo(EQUIP_AMMO), tail-called)
 0x003D43A0 0x20 SetIgnoreExplosionDI__6CZAmmoFb  # OVL1; by hand (the wep lane: bit 1 of the byte at 0x28 from a bool; the ammo reader 0x3CEDB0 calls it (with 1) when the rdr has the tag "IgnoreExplosionDI" -- the name ours)

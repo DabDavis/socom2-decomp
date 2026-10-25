@@ -9,8 +9,51 @@
 #include "../znode/znode.h"
 #include "../zrdr/zrdr.h"
 #include "../zsys/zsys.h"
+#include "../zbody/zbody.h"
 
 using namespace zdb;
+
+namespace zdb {
+class CDecal;
+class CMeshDecal;
+
+/* vis_decal.cpp's decal pools, as that unit lays them out (stand-ins: only what UnInit touches) */
+class CDecalPool {
+public:
+    unsigned int m_count;   // 0x0
+    unsigned int m_max;   // 0x4
+    unsigned int m_extra;   // 0x8
+    unsigned int m_overflow;   // 0xc
+    RTArray<CDecal> *m_pool;   // 0x10
+};
+
+class CMeshDecalPool {
+public:
+    void Uninit();
+
+    unsigned int m_count;   // 0x0
+    unsigned int m_max;   // 0x4
+    unsigned int m_extra;   // 0x8
+    unsigned int m_overflow;   // 0xc
+    RTArray<CMeshDecal> *m_pool;   // 0x10
+};
+
+/* a decal: its destructor empty and inline (its out-of-line copy 0x3BF690 is what the pool's
+ * array destroys its items with), its two pools SOCOM 1's statics */
+class CDecal {
+public:
+    ~CDecal() {}
+
+    static CDecalPool m_tempPool;
+    static CDecalPool m_permPool;
+};
+
+class CMeshDecal {
+public:
+    static CMeshDecalPool m_tempPool;
+    static CMeshDecalPool m_permPool;
+};
+}
 
 extern "C" int strcasecmp(const char *a, const char *b);
 void _free(void *p, const char *file, int line);
@@ -269,4 +312,46 @@ void CZDecalSet::ReadDecalEntry(_zrdr *entry)
         CWorld::m_world->AddTextureAssetCharacterAll(tex);
     else
         CWorld::m_world->AddTextureAssetDecals(tex);
+}
+
+/* the marks let go of, the decal tables freed, both decal pools' arrays deleted and the mesh decal
+ * pools emptied (SOCOM 1's, the file and line dropped) */
+void CZMarkList::UnInit()
+{
+    m_marklist.clear();
+    if (m_decalTexture)
+        _free(m_decalTexture, 0, 0);
+    m_decalTexture = 0;
+    if (m_decalminsize)
+        _free(m_decalminsize, 0, 0);
+    m_decalminsize = 0;
+    if (m_decalmaxsize)
+        _free(m_decalmaxsize, 0, 0);
+    m_decalmaxsize = 0;
+    m_decal_list_size = 0;
+    delete CDecal::m_tempPool.m_pool;
+    CDecal::m_tempPool.m_count = 0;
+    CDecal::m_tempPool.m_overflow = 0;
+    delete CDecal::m_permPool.m_pool;
+    CDecal::m_permPool.m_count = 0;
+    CDecal::m_permPool.m_overflow = 0;
+    CMeshDecal::m_tempPool.Uninit();
+    CMeshDecal::m_permPool.Uninit();
+}
+
+void CZMarkList::Init()
+{
+    CModel *model = (CModel *)CWorld::GetModel("bullet_mark");
+
+    if (model) {
+        for (int i = 0; i < 40; i++) {
+            CPnt3D pos = CPnt3D::zero;
+            CQuat rot = CQuat::identity;
+            CNode *node = CNode::CreateInstance(model, &pos, &rot);
+
+            CWorld::m_world->AddChild(node);
+            m_marklist.push_back(node);
+        }
+    }
+    ReadDecalNames("decals.rdr");
 }

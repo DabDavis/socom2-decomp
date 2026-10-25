@@ -219,6 +219,30 @@ public:
     static CZProjectileList *m_pProjectilelist;
 };   // 0xf8 bytes (CZFTSWeapon's targetmods start there)
 
+namespace zdb {
+class CNode;
+class CTexHandle;
+}
+
+/* the bullet marks and the decals they are drawn from (SOCOM 1's DWARF: 0x34 bytes, as SOCOM II's:
+ * the free marks' nodes, the decal textures and their size ranges by index, the blood decals near and
+ * far; CZWeapon's static m_pMarklist points at one; zwep_weapon.cpp's) */
+class CZMarkList {
+public:
+    /* forty "bullet_mark" instances made and added to the world, then the decal names read */
+    void Init();
+    void UnInit();
+    void ReadDecalNames(char *file);
+
+    std::list<zdb::CNode *> m_marklist;   // 0x0
+    zdb::CTexHandle **m_decalTexture;   // 0xc
+    std::vector<void *> m_bloodDecals;   // 0x10
+    std::vector<void *> m_farBloodDecals;   // 0x1c
+    float *m_decalminsize;   // 0x28
+    float *m_decalmaxsize;   // 0x2c
+    int m_decal_list_size;   // 0x30
+};   // 0x34 bytes
+
 /* the materials' table (int_material.cpp's, SOCOM 1's class): only the extension list, whose size
  * the weapons' per-material animations are bounded by (SOCOM 1's static; 0x44F350 here) */
 class CMaterialExArray {
