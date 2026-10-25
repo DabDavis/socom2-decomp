@@ -5710,7 +5710,7 @@
 0x00327770 0x90 func_00327770  # OVL1
 0x00327800 0x10C func_00327800  # OVL1
 0x00327910 0x35C Render__Q28Particle8InstanceFRC7CMatrix  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00327C70 0x58 func_00327C70  # OVL1
+0x00327C70 0x58 Expire__Q28Particle8InstanceFv  # OVL1; s1:align (slot 0x08 of Particle::Instance's table 0x406A00; SOCOM 1's Expire calls DecRefCount as this does, and ReleaseInstance, which SOCOM II's leaves to the pool)
 0x00327CD0 0x16C func_00327CD0  # OVL1
 0x00327E40 0xCC func_00327E40  # OVL1
 0x00327F10 0x58 func_00327F10  # OVL1
@@ -5725,8 +5725,8 @@
 0x00328750 0x108 func_00328750  # OVL1
 0x00328860 0x1EC func_00328860  # OVL1
 0x00328A50 0xB8 func_00328A50  # OVL1
-0x00328B10 0xB8 func_00328B10  # OVL1
-0x00328BD0 0x184 func_00328BD0  # OVL1
+0x00328B10 0xB8 DecRefCount__Q28Particle5PropsFi  # OVL1; s1:align, checked (SOCOM 1's DecRefCount: the props deleted with its three sequences' vectors (0x329330/0x3293A0/0x329410) when the count runs out; Instance::Expire and ~Source call it)
+0x00328BD0 0x184 Branch__Q28Particle5PropsFv  # OVL1; s1:callee (the six sequence adds and clears call it first and store its result as the source's props, where SOCOM 1's call Props::Branch: a props shared by several sources copied before it changes)
 0x00328D60 0x28 __ct__6CPnt4DFRC6CPnt4D  # OVL1; s1:exact
 0x00328D90 0x4C func_00328D90  # OVL1
 0x00328DE0 0x54 func_00328DE0  # OVL1
@@ -5747,7 +5747,7 @@
 0x003294A0 0x8 func_003294A0  # OVL1
 0x003294B0 0x5C func_003294B0  # OVL1
 0x00329510 0x404 func_00329510  # OVL1
-0x00329920 0x118 func_00329920  # OVL1
+0x00329920 0x118 CheckExtents__Q28Particle6SourceF6CPnt4Df  # OVL1; s1:align (0.81 on instruction skeleton, 0x118 against SOCOM 1's 0x12C; Instance::Render calls it, as SOCOM 1's does)
 0x00329A40 0x54 func_00329A40  # OVL1
 0x00329AA0 0x10 func_00329AA0  # OVL1
 0x00329AB0 0xC func_00329AB0  # OVL1
@@ -5755,17 +5755,17 @@
 0x00329B40 0xB68 func_00329B40  # OVL1
 0x0032A6B0 0x150 __dt__Q28Particle6SourceFv  # OVL1; s1:callee by hand (CZAnim::DeleteParticleSources calls it with the delete flag on each source where SOCOM 1's calls Particle::Source's destructor)
 0x0032A800 0x58 func_0032A800  # OVL1
-0x0032A860 0x70 func_0032A860  # OVL1
-0x0032A8D0 0x38 func_0032A8D0  # OVL1
-0x0032A910 0xD0 func_0032A910  # OVL1
-0x0032A9E0 0x38 func_0032A9E0  # OVL1
-0x0032AA20 0x78 func_0032AA20  # OVL1
-0x0032AAA0 0x38 func_0032AAA0  # OVL1
+0x0032A860 0x70 ScaleSequenceAdd__Q28Particle6SourceFff  # OVL1; s1:align, checked (SOCOM 1's ScaleSequenceAdd, the same 0x70: the props branched (0x328BD0) and the float sequence's insert (0x32BB90); zAnimParticleSourceTick calls it)
+0x0032A8D0 0x38 ScaleSequenceClear__Q28Particle6SourceFv  # OVL1; s1:order, checked (SOCOM 1's ScaleSequenceClear, the same 0x38: the props at 0xE8 branched, the sequence at +0x1C cleared through 0x3294A0)
+0x0032A910 0xD0 ColorSequenceAdd__Q28Particle6SourceFfffff  # OVL1; s1:align, checked (SOCOM 1's ColorSequenceAdd, the same 0xD0: Branch and the CPnt4D sequence's insert, 0x32B650)
+0x0032A9E0 0x38 ColorSequenceClear__Q28Particle6SourceFv  # OVL1; s1:order, checked (SOCOM 1's ColorSequenceClear, the same 0x38: Branch, the colour sequence cleared through 0x329490)
+0x0032AA20 0x78 TextureSequenceAdd__Q28Particle6SourceFfPQ23zdb10CTexHandle  # OVL1; s1:align, checked (SOCOM 1's TextureSequenceAdd, the same 0x78: Branch, the texture sequence's insert (0x32B210), AddDynTexture)
+0x0032AAA0 0x38 TextureSequenceClear__Q28Particle6SourceFv  # OVL1; s1:order, checked (SOCOM 1's TextureSequenceClear, the same 0x38: Branch, the texture sequence cleared through 0x329480)
 0x0032AAE0 0x40 func_0032AAE0  # OVL1
 0x0032AB20 0x1FC func_0032AB20  # OVL1
 0x0032AD20 0x3F0 func_0032AD20  # OVL1
 0x0032B110 0x8 func_0032B110  # OVL1
-0x0032B120 0x58 func_0032B120  # OVL1
+0x0032B120 0x58 Create__Q28Particle6SourceFv  # OVL1; s1:align, checked (SOCOM 1's Create: a new source built (0x32A800) and pushed on the source list at 0x4884F0; CZAnim::GetParticleSource calls it)
 0x0032B180 0x90 func_0032B180  # OVL1
 0x0032B210 0x43C func_0032B210  # OVL1
 0x0032B650 0x53C func_0032B650  # OVL1
