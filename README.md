@@ -1518,6 +1518,22 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - zmpeg.cpp 0x309550, audiodec.cpp 0x309F60, playpss.cpp 0x30A860, ldimage.cpp 0x30B740,
     strfile.cpp 0x30B9D0, zNetCnf.cpp 0x30BD40, trc.cpp 0x30C760, zNetDme.cpp from 0x30CA50
     (SOCOM II's new CZNetwork functions sit ahead of SOCOM 1's first).
+- **Tells from the AI core, round 6** (ai_map.cpp, PathPlanExecute):
+  - bitfields set in a mem-initializer list give word read-mask-writes, body assignments byte
+    stores; a layout-identical stand-in struct with such a constructor reproduces a missing
+    constructor's temporary (GetMapRegion);
+  - a static read twice across stores is reloaded after the first store; passed as arguments to
+    an inline setter it is loaded once (GetDirVec);
+  - an unsigned loop test `i <= 10` branches on `sltiu at`, `i < 11` puts the test in v0
+    (GetClosestDir);
+  - a walk inline too big to inline whole is inlined one level, its callees called out of line --
+    even an empty constructor -- and a function-pointer argument becomes a direct `jal`
+    (ResetCells);
+  - fifteen statements plus the return exceed -inline auto's limit (CAiCell() calls Reset out of
+    line); PathPlanExecute's queue insert is an inline CAiPathQueue::Insert taking the path by
+    value;
+  - ai_astar.cpp ends at 0x51557F (its tail the three statics' destructors), ai_map.cpp runs
+    0x515580-0x51A48F; the map layer's own code sits after vehicle_rdr.cpp (0x53A730-0x53A9C0).
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has

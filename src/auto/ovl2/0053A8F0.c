@@ -7,9 +7,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_00516FC0(s32);                             /* extern */
+s32 Alloc__7CAiCellFUi(s32);                        /* extern */
 
 s32 func_0053A8F0(char *arg0, s32 arg1) {
-    SC_MEMBER(arg0, s32 *, 0x28) = func_00516FC0(arg1);
+    SC_MEMBER(arg0, s32 *, 0x28) = Alloc__7CAiCellFUi(arg1);
     return SC_MEMBER(arg0, s32 *, 0x28);
 }
