@@ -112,4 +112,79 @@ public:
     char *m_ptr;        // 0x20
 };   // 0x24 bytes
 
+/* a file on the memory card, through Sony's libmc (SOCOM 1's CMemCardIO, no DWARF; the members'
+ * names ours). SOCOM II reports each transfer through MEMCARD_STATUS_VALVE and the menu's
+ * MEMCARD_STATUS/MEMCARD_ERROR events, and added the asynchronous slots */
+class CMemCardIO : public CIO {
+public:
+    CMemCardIO()
+    {
+        m_fd = -1;
+        m_port = 0;
+        m_slot = 0;
+        m_size = 0;
+    }
+    bool Open(const char *name, unsigned int mode);
+    void Close();
+    bool IsOpen() const;
+    int GetSize() const;
+    unsigned int GetMode() const;
+    int ftell() const;
+    int fseek(int offset, int whence);
+    int fread(void *buf, int size);
+    int fread(int size, void **buf);
+    int fwrite(const void *buf, int size);
+    int freadAsync(void *buf, int size);
+    int fwriteAsync(const void *buf, int size);
+    bool fsyncAsync(int mode, int *result);
+    void fflush();
+
+    int m_fd;               // 0x4: libmc's descriptor, -1 when closed
+    int m_port;             // 0x8: the file's port and slot
+    int m_slot;             // 0xc
+    int m_size;             // 0x10
+    unsigned int m_mode;    // 0x14
+};   // 0x18 bytes
+
+class CSaveManager;
+
+/* the memory card: its file (a member, not a base: the destructor stores no vtable, and IsOpen
+ * is called through the member's), the save files' managers and the port and slot the player
+ * chose (SOCOM 1's CMemCard, 0x28 bytes; zanim_menu.h names 0x8-0x24 alike) */
+class CMemCard {
+public:
+    CMemCard();
+    ~CMemCard();
+    bool chdir(const char *dir);
+    bool mkdir(const char *dir);
+    bool Exists(const char *name);
+    int GetFreeSpace();
+    bool Format();
+    bool IsFormatted();
+    bool IsInserted();
+    void LoadConfig(const char *name);
+    void SaveConfig(const char *name, const char *desc);
+    void LoadGame(const char *name);
+    void SaveGame(const char *name, char *desc);
+    void DeletePatchFile();
+    void DeleteScratchpad();
+    void Uninit();
+    void Reset();
+    void Init();
+    /* the chosen port and slot made the file's (as zanim_menu.h's SelectPortSlot) */
+    void SelectPortSlot()
+    {
+        int slot = m_selSlot;
+
+        m_io.m_port = m_selPort;
+        m_io.m_slot = slot;
+    }
+
+    CMemCardIO m_io;              // 0x0
+    CSaveManager *m_configSave;   // 0x18
+    CSaveManager *m_gameSave;     // 0x1c
+    int m_selPort;                // 0x20
+    int m_selSlot;                // 0x24
+};   // 0x28 bytes
+
 #endif

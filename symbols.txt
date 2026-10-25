@@ -7587,18 +7587,18 @@
 0x0039FC60 0x120 func_0039FC60  # OVL1
 0x0039FD80 0x128 func_0039FD80  # OVL1
 0x0039FEB0 0x8 GetMode__10CMemCardIOCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0039FEC0 0x80 fwrite__10CMemCardIOFPCvi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0039FF40 0xE0 func_0039FF40  # OVL1
-0x003A0020 0xE0 func_003A0020  # OVL1
+0x0039FEC0 0x80 fsyncAsync__10CMemCardIOFiPi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike); corrected (the s1:vtable name was slot 0x38's by position, but SOCOM II's CIO grew three slots before fwrite(const char *): this is sceMcSync(1, ...) -- whether the asynchronous command finished, its result stored; the name ours)
+0x0039FF40 0xE0 fwriteAsync__10CMemCardIOFPCvi  # OVL1; ours (CMemCardIO's slot 0x34, SOCOM II's: MEMCARD_STATUS 3, then sceMcWrite without waiting, 6 on success)
+0x003A0020 0xE0 freadAsync__10CMemCardIOFPvi  # OVL1; ours (CMemCardIO's slot 0x30, SOCOM II's: MEMCARD_STATUS 2, then sceMcRead without waiting)
 0x003A0100 0x54 fflush__10CMemCardIOFv  # OVL1; s1:align
-0x003A0160 0x10C func_003A0160  # OVL1
-0x003A0270 0x10C func_003A0270  # OVL1
+0x003A0160 0x10C fwrite__10CMemCardIOFPCvi  # OVL1; s1:vtable by hand (CMemCardIO's slot 0x2C, the slot CIO::fwrite(const char *) calls with (&len, 4); sceMcWrite then sceMcSync, as SOCOM 1's)
+0x003A0270 0x10C fread__10CMemCardIOFPvi  # OVL1; s1:vtable by hand (CMemCardIO's slot 0x24, as SOCOM 1's; sceMcRead then sceMcSync)
 0x003A0380 0xC fread__10CMemCardIOFiPPv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003A0390 0xA0 fseek__10CMemCardIOFii  # OVL1; s1:align
 0x003A0430 0x80 ftell__10CMemCardIOCFv  # OVL1; s1:align
 0x003A04B0 0x8 GetSize__10CMemCardIOCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003A04C0 0x10 IsOpen__10CMemCardIOCFv  # OVL1; s1:exact
-0x003A04D0 0xD0 func_003A04D0  # OVL1
+0x003A04D0 0xD0 Close__10CMemCardIOFv  # OVL1; s1:vtable by hand (CMemCardIO's slot 0x0C, as SOCOM 1's: sceMcClose, then the descriptor -1)
 0x003A05A0 0x224 Open__10CMemCardIOFPCcUi  # OVL1; s1:align
 0x003A07D0 0xB4 chdir__8CMemCardFPCc  # OVL1; s1:calls+order (UI handlers call it where SOCOM 1's do; chdir, mkdir, Exists in SOCOM 1's order) -- the UI-commands lane
 0x003A0890 0xBC mkdir__8CMemCardFPCc  # OVL1; s1:calls+order (after chdir as SOCOM 1's; called where SOCOM 1's UI handlers call it) -- the UI-commands lane
@@ -7611,18 +7611,18 @@
 0x003A1370 0x208 func_003A1370  # OVL1
 0x003A1580 0xC8 IsFormatted__8CMemCardFv  # OVL1; s1:align
 0x003A1650 0xE0 IsInserted__8CMemCardFv  # OVL1; s1:align
-0x003A1730 0xA4 func_003A1730  # OVL1
-0x003A17E0 0xA0 func_003A17E0  # OVL1
+0x003A1730 0xA4 LoadGame__8CMemCardFPCc  # OVL1; s1:order (after the reserve-file deletes as SOCOM 1's saves follow IsInserted; the game save manager at 0x1C loads with flags 0xE, then LOADED_FROM_MEMCARD)
+0x003A17E0 0xA0 SaveGame__8CMemCardFPCcPc  # OVL1; s1:order (the game save manager at 0x1C saves with flags 0xE; SOCOM II passes a second string)
 0x003A1880 0xF8 func_003A1880  # OVL1
 0x003A1980 0x244 func_003A1980  # OVL1
-0x003A1BD0 0x90 func_003A1BD0  # OVL1
-0x003A1C60 0x90 func_003A1C60  # OVL1
+0x003A1BD0 0x90 DeletePatchFile__8CMemCardFv  # OVL1; ours (sceMcDelete of PATCHFILE.DAT on the chosen port and slot unless a file is open)
+0x003A1C60 0x90 DeleteScratchpad__8CMemCardFv  # OVL1; ours (sceMcDelete of SCRATCHPAD.DAT on the chosen port and slot unless a file is open)
 0x003A1CF0 0x118 func_003A1CF0  # OVL1
-0x003A1E10 0x84 func_003A1E10  # OVL1
-0x003A1EA0 0x98 func_003A1EA0  # OVL1
-0x003A1F40 0xA4 func_003A1F40  # OVL1
-0x003A1FF0 0x13C func_003A1FF0  # OVL1
-0x003A2130 0x134 func_003A2130  # OVL1
+0x003A1E10 0x84 LoadConfig__8CMemCardFPCc  # OVL1; s1:order (the config save manager at 0x18 loads with flags 0xC, after SaveConfig in memory as SOCOM 1's LoadConfig before SaveConfig in source)
+0x003A1EA0 0x98 SaveConfig__8CMemCardFPCcPCc  # OVL1; s1:order (the config save manager at 0x18 saves with flags 0xC; SOCOM II passes a description)
+0x003A1F40 0xA4 Uninit__8CMemCardFv  # OVL1; s1:order (before Init as SOCOM 1's Uninit: sceMcEnd and the module unloaded when libmc is up, then MEMCARD_STATUS 0)
+0x003A1FF0 0x13C Reset__8CMemCardFv  # OVL1; ours (when libmc is up: sceMcInit again, both ports probed, MEMCARD_STATUS 0; between Uninit and Init)
+0x003A2130 0x134 Init__8CMemCardFv  # OVL1; s1:order (before ~CMemCard as SOCOM 1's Init: the module loaded, sceMcInit, both ports probed)
 0x003A2270 0x68 __dt__8CMemCardFv  # OVL1; s1:align
 0x003A22E0 0x90 __ct__8CMemCardFv  # OVL1; s1:calls
 0x003A2370 0x94 func_003A2370  # OVL1
