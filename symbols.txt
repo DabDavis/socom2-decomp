@@ -1633,11 +1633,11 @@
 0x001FC620 0x60 __dt__7C2DPolyFv  # OVL1; s1:ref (taken by address where SOCOM 1 takes __dt__7C2DPolyFv's)
 0x001FC680 0x80 __dt__13C2DBitmapPolyFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FC700 0x108 func_001FC700  # OVL1
-0x001FC810 0xA0 func_001FC810  # OVL1
-0x001FC8B0 0x60 func_001FC8B0  # OVL1
-0x001FC910 0x80 func_001FC910  # OVL1
+0x001FC810 0xA0 __dt__12CategorySlotFv  # OVL1; by hand (slot 0 of CategorySlot's vtable 0x405D80: the implicit destructor, CWeaponSlot's vtable 0x405E00 stored before the base's)
+0x001FC8B0 0x60 __dt__8SlotListFv  # OVL1; by hand (slot 0 of SlotList's vtable 0x405E80: the implicit destructor)
+0x001FC910 0x80 __dt__12SelectedSlotFv  # OVL1; by hand (slot 0 of SelectedSlot's vtable 0x405D00: the implicit destructor)
 0x001FC990 0x60 __dt__14CHudBrightTextFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x001FC9F0 0x120 func_001FC9F0  # OVL1
+0x001FC9F0 0x120 __dt__12CWhosTalkingFv  # OVL1; by hand (slot 0 of CWhosTalking's vtable 0x405BB0: the implicit destructor)
 0x001FCB10 0x60 __dt__9C2DBitmapFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FCB70 0x190 ReleaseHUD__4CHUDFPP4CHUD  # OVL1; s1:order (hud_main.cpp: after the destructor, as SOCOM 1's; the states' call)
 0x001FCD00 0x6C HudText_to_upper__4CHUDFPc  # OVL1; s1:exact shape (strlen, then toupper on each byte, 0x6C as SOCOM 1's)
@@ -1645,10 +1645,10 @@
 0x001FCD80 0x514 __ct__4CHUDFv  # OVL1; s1:callee (CCoreState::Init news 0x1ACD0 bytes and constructs them with it, then calls Init and CameraZoom::AttachHud, as SOCOM 1's; hud_main.cpp's last but hudInit in both builds)
 0x001FD2A0 0x70 __dt__Q23std48vector<P8CFlashFX,Q23std21allocator<P8CFlashFX>>Fv  # OVL1; by hand (the linked copy CFlashFXVector::Reset calls; three this tests, the pointer vector's destructor chain)
 0x001FD310 0x80 __dt__10CLetterBoxFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x001FD390 0x190 func_001FD390  # OVL1
+0x001FD390 0x190 __dt__10CMPInfoBoxFv  # OVL1; by hand (slot 0 of CMPInfoBox's vtable 0x405B40, found by its RTTI name: the implicit destructor)
 0x001FD520 0x70 __dt__18CRadioIcon_DynamicFv  # OVL1; s1:vtable (CRadioIcon_Dynamic's slot 0, the implicit destructor)
 0x001FD590 0x70 __dt__17CRadioIcon_StaticFv  # OVL1; by hand (the implicit destructor, CRadioIcon_Static's vtable slot 0)
-0x001FD600 0xC0 func_001FD600  # OVL1
+0x001FD600 0xC0 __dt__16CMPTeammateNamesFv  # OVL1; by hand (slot 0 of CMPTeammateNames' vtable 0x4057D0: the implicit destructor)
 0x001FD6C0 0x70 __dt__14CZActionBitmapFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FD730 0x108 __dt__10CTeamNamesFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FD840 0x80 __dt__10PoseBitmapFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -1700,18 +1700,18 @@
 0x001FECC0 0x1D0 Tick__10CLetterBoxFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FEE90 0x7C Draw__10CLetterBoxFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FEF10 0x144 __ct__10CLetterBoxFv  # OVL1; s1:order by hand (hud_letterbox.cpp's last, as SOCOM 1's; its bars set up through C2D's new slots)
-0x001FF060 0x94 func_001FF060  # OVL1
+0x001FF060 0x94 Tick__17CLensFlareManagerFf  # OVL1; by hand (the only slot of CLensFlareManager's vtable 0x4052A0, which is three words: while active and not empty, every entry's C2D Tick given the float; the name ours)
 0x001FF100 0x154 func_001FF100  # OVL1
-0x001FF260 0xC4 func_001FF260  # OVL1
-0x001FF330 0x40 func_001FF330  # OVL1
+0x001FF260 0xC4 Clear__17CLensFlareManagerFv  # OVL1; by hand (CHUD::ReleaseHUD's call on the manager: every flare deleted through its virtual destructor, the list emptied, inactive; the name ours)
+0x001FF330 0x40 Init__17CLensFlareManagerFv  # OVL1; by hand (inactive, LoadRdr of lensflare.rdr, active if that gave any flare; the name ours)
 0x001FF370 0xE4 func_001FF370  # OVL1
-0x001FF460 0x8C func_001FF460  # OVL1
-0x001FF4F0 0x140 func_001FF4F0  # OVL1
+0x001FF460 0x8C Reset__17CLensFlareManagerFv  # OVL1; by hand (CHUD::ReInit_Uninit's call on the manager: each flare's handle at 0x8C given back to the system at 0x488F10 and set to -1; the name ours)
+0x001FF4F0 0x140 LoadRdr__17CLensFlareManagerFPCc  # OVL1; by hand (Init's call with lensflare.rdr's name, as SOCOM 1's CLensFlareSaturate::LoadRdr took one)
 0x001FF630 0x270 func_001FF630  # OVL1
 0x001FF8A0 0x69C func_001FF8A0  # OVL1
 0x001FFF40 0x920 func_001FFF40  # OVL1
 0x00200860 0x110 func_00200860  # OVL1
-0x00200970 0x150 func_00200970  # OVL1
+0x00200970 0x150 __dt__15CLensFlareEntryFv  # OVL1; by hand (slot 0 of CLensFlareEntry's vtable 0x4052B0: the destructor)
 0x00200AC0 0x150 func_00200AC0  # OVL1
 0x00200C10 0x144 func_00200C10  # OVL1
 0x00200D60 0x1C8 func_00200D60  # OVL1
@@ -1722,22 +1722,22 @@
 0x00201590 0x8 Off__11CZPauseTestFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002015A0 0xF0 Draw__11CZPauseTestFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00201690 0xB78 func_00201690  # OVL1
-0x00202210 0x154 func_00202210  # OVL1
+0x00202210 0x154 Clear__11CZPauseTestFv  # OVL1; s1:calls by hand (CHUD::ReInit_Uninit's second call on CHUD+0x18900, after ClosePauseMenu, as SOCOM 1's; right after HudTick in hud_pausemenu.cpp, as SOCOM 1's)
 0x00202370 0x1B0 func_00202370  # OVL1
 0x00202520 0x1C20 func_00202520  # OVL1
 0x00204140 0x50 func_00204140  # OVL1
 0x00204190 0x50 func_00204190  # OVL1
 0x002041E0 0x854 func_002041E0  # OVL1
 0x00204A40 0x7B4 func_00204A40  # OVL1
-0x00205200 0x278 func_00205200  # OVL1
+0x00205200 0x278 ClosePauseMenu__11CZPauseTestFv  # OVL1; s1:calls by hand (CHUD::ReInit_Uninit's first call on CHUD+0x18900, as SOCOM 1's; the last function before the pause menu's destructor and constructor, as SOCOM 1's before its constructor)
 0x00205480 0x318 __dt__11CZPauseTestFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002057A0 0x58 func_002057A0  # OVL1
-0x00205800 0x170 func_00205800  # OVL1
+0x00205800 0x170 __ct__11CZPauseTestFv  # OVL1; by hand (stores CZPauseTest's vtable 0x405320; CHUD's constructor builds CHUD+0x18900 with it)
 0x00205970 0xF8 func_00205970  # OVL1
 0x00205A70 0x1D0 func_00205A70  # OVL1
 0x00205C40 0x1C0 __dt__15CZObjectiveListFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00205E00 0x990 func_00205E00  # OVL1
-0x00206790 0x18 func_00206790  # OVL1
+0x00206790 0x18 IsPlayingAnimation__15CZObjectiveListFv  # OVL1; s1:exact shape (theHUD's mission cameras' IsPlaying, tail-called, as SOCOM 1's 0x14 bytes)
 0x002067B0 0x118 func_002067B0  # OVL1
 0x002068D0 0x8 func_002068D0  # OVL1
 0x002068E0 0xC8 func_002068E0  # OVL1
@@ -1804,11 +1804,11 @@
 0x0020B0D0 0x120 UninitMap__11CZNewHudMapFv  # OVL1; s1:calls (CHUD::ReInit_Uninit's first map call, as SOCOM 1's)
 0x0020B1F0 0x2C ReInit__11CZNewHudMapFv  # OVL1; s1:exact by hand (hud_newhudmap.cpp)
 0x0020B220 0x9C func_0020B220  # OVL1
-0x0020B2C0 0x520 func_0020B2C0  # OVL1
+0x0020B2C0 0x520 InitMap__11CZNewHudMapFPQ23zdb6CWorld  # OVL1; s1:calls by hand (CHUD::ReInit_Init passes the new'ed map and zdb::CWorld::m_world, single player only, where SOCOM 1 calls InitMap(world))
 0x0020B7E0 0x18 GetZoomOut__11CZNewHudMapCFv  # OVL1; s1:exact by hand (hud_newhudmap.cpp)
 0x0020B800 0x1FC func_0020B800  # OVL1
 0x0020BA00 0x218 __dt__11CZNewHudMapFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0020BC20 0x1D4 func_0020BC20  # OVL1
+0x0020BC20 0x1D4 __ct__11CZNewHudMapFv  # OVL1; by hand (stores CZNewHudMap's vtable 0x405440; CHUD's constructor news 0x830 bytes and builds them with it, after ~CZNewHudMap as SOCOM 1's)
 0x0020BE00 0x274 func_0020BE00  # OVL1
 0x0020C080 0xAC4 func_0020C080  # OVL1
 0x0020CB50 0xF8 remove_if<Q23std36binder2nd<Q23std13equal_to<PCv>,PCv>>__Q23std38__list_imp<PCv,Q23std14allocator<PCv>>FQ23std36binder2nd<Q23std13equal_to<PCv>,PCv>_v  # OVL1; s1:name (SOCOM 1's remove_if of the pointer lists with an equal_to binder; CNode::Delete's list remove calls it; SOCOM II's inlines the erase)
@@ -1924,7 +1924,7 @@
 0x002178C0 0x1488 Init__14BitmapReticuleFPQ23zdb6CWorldP7C2DFont  # OVL1; s1:order (hud_bitmapreticule.cpp: before UnInit, as SOCOM 1's; 0xDB4 then, 0x1488 now)
 0x00218D50 0x50 UnInit__14BitmapReticuleFv  # OVL1; s1:exact by hand (hud_bitmapreticule.cpp: the three strings wiped, as SOCOM 1's)
 0x00218DA0 0x34 Draw__14BitmapReticuleFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00218DE0 0x2B0 func_00218DE0  # OVL1
+0x00218DE0 0x2B0 __ct__14BitmapReticuleFv  # OVL1; by hand (stores BitmapReticule's vtable 0x4055A0; CHUD's constructor builds CHUD+0x11DF0 with it)
 0x00219090 0x2A0 __dt__14BitmapReticuleFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00219330 0x54 func_00219330  # OVL1
 0x00219390 0x28 func_00219390  # OVL1
@@ -1952,9 +1952,9 @@
 0x0021BDA0 0x734 func_0021BDA0  # OVL1
 0x0021C4E0 0x210 func_0021C4E0  # OVL1
 0x0021C6F0 0x4A4 func_0021C6F0  # OVL1
-0x0021CBA0 0x194 Clear__10CTeamNamesFv  # OVL1; s1:calls (CHUD::ReInit_Uninit's next, as SOCOM 1's)
+0x0021CBA0 0x194 UnInit__10CWeaponSelFv  # OVL1; s1:calls (CHUD::ReInit_Uninit's next, as SOCOM 1's); by hand (CHUD::ReInit_Uninit calls it on CHUD+0x1A50, the member 0x21D760 constructs with CWeaponSel's vtable 0x405610; hud_weaponsel.cpp's UnInit, Init, ctor at its end as SOCOM 1's)
 0x0021CD40 0xA1C func_0021CD40  # OVL1
-0x0021D760 0x270 func_0021D760  # OVL1
+0x0021D760 0x270 __ct__10CWeaponSelFv  # OVL1; by hand (stores CWeaponSel's vtable 0x405610; CHUD's constructor builds CHUD+0x1A50 with it; hud_weaponsel.cpp's last function, as SOCOM 1's)
 0x0021D9D0 0x478 func_0021D9D0  # OVL1
 0x0021DE50 0x80 UnInit__14CZActionBitmapFv  # OVL1; s1:calls (CHUD::ReInit_Uninit's call between the mission cameras' and the reticle's, as SOCOM 1's)
 0x0021DED0 0x1248 func_0021DED0  # OVL1
@@ -1972,11 +1972,11 @@
 0x00220D00 0x288 func_00220D00  # OVL1
 0x00220F90 0x8 func_00220F90  # OVL1; s1~ GetSealCtrlAi__9CSealCtrlFv (one of 2 out-of-line copies of an inline, by s1:vtable)
 0x00220FA0 0x8 func_00220FA0  # OVL1; s1~ IsAi__9CSealCtrlCFv (one of 2 out-of-line copies of an inline, by s1:vtable)
-0x00220FB0 0xB4 func_00220FB0  # OVL1
-0x00221070 0x658 func_00221070  # OVL1
+0x00220FB0 0xB4 Clear__10CTeamNamesFv  # OVL1; by hand (CHUD::ReInit_Uninit calls it on CHUD+0x165A0, the member 0x221B10 constructs with CTeamNames' vtable 0x405680, under the single-player test with UninitMap)
+0x00221070 0x658 Init__10CTeamNamesFv  # OVL1; s1:calls by hand (CHUD::ReInit_Init's call on CHUD+0x165A0 after ZoomOut, single player only, where SOCOM 1 calls CTeamNames::Init; after Clear in the unit, as SOCOM 1's)
 0x002216D0 0x29C func_002216D0  # OVL1
 0x00221970 0x1A0 func_00221970  # OVL1
-0x00221B10 0xD4 func_00221B10  # OVL1
+0x00221B10 0xD4 __ct__10CTeamNamesFv  # OVL1; by hand (stores CTeamNames' vtable 0x405680; CHUD's constructor builds CHUD+0x165A0 with it; hud_teamnames.cpp's last function before hud_posebitmap.cpp, as SOCOM 1's)
 0x00221BF0 0x4C func_00221BF0  # OVL1
 0x00221C40 0xF0 Tick__10PoseBitmapFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00221D30 0x8 func_00221D30  # OVL1; s1~ IsRemote__9CSealCtrlCFv (one of 2 out-of-line copies of an inline, by s1:vtable)
@@ -2029,19 +2029,19 @@
 0x00226060 0x598 func_00226060  # OVL1
 0x00226600 0x1B4 func_00226600  # OVL1
 0x002267C0 0x1A0 func_002267C0  # OVL1
-0x00226960 0x3C func_00226960  # OVL1
-0x002269A0 0x784 func_002269A0  # OVL1
-0x00227130 0xA0 func_00227130  # OVL1
-0x002271D0 0x64 func_002271D0  # OVL1
-0x00227240 0xF8 func_00227240  # OVL1
+0x00226960 0x3C On__16CMPTeammateNamesFv  # OVL1; by hand (slot 5 of CMPTeammateNames' vtable 0x4057D0: C2D's On or Off by a flag at 0x5E4)
+0x002269A0 0x784 Tick__16CMPTeammateNamesFf  # OVL1; by hand (slot 12 of CMPTeammateNames' vtable 0x4057D0, as SOCOM 1's CTeamMateNames::Tick; the unit's first function after On)
+0x00227130 0xA0 WordIntersectionTest__FiiiiP9C2DString  # OVL1; s1:order by hand (hud_teammatenames.cpp: between Tick and UnInit, as SOCOM 1's; four ints and a C2DString in t0, the same signature, true when the rectangles overlap)
+0x002271D0 0x64 UnInit__16CMPTeammateNamesFv  # OVL1; s1:calls by hand (CHUD::ReInit_Uninit's call on CHUD+0x17580 after CFlashFXVector::Reset, where SOCOM 1 calls CTeamMateNames::UnInit; SOCOM II's class: each of its eight strings off and emptied)
+0x00227240 0xF8 Init__16CMPTeammateNamesFv  # OVL1; s1:calls by hand (CHUD::ReInit_Init's call on CHUD+0x17580 in a network game, where SOCOM 1 calls CTeamMateNames::Init; after UnInit in the unit, as SOCOM 1's; no argument set up: SOCOM 1's took the font)
 0x00227340 0x220 func_00227340  # OVL1
 0x00227560 0xE8 func_00227560  # OVL1
 0x00227650 0xE0 func_00227650  # OVL1
 0x00227730 0x150 func_00227730  # OVL1
 0x00227880 0xE0 func_00227880  # OVL1
-0x00227960 0x170 UnInit__10CWeaponSelFv  # OVL1; s1:calls (CHUD::ReInit_Uninit's next, as SOCOM 1's)
+0x00227960 0x170 UnInit__16CInGameWeaponSelFv  # OVL1; s1:calls (CHUD::ReInit_Uninit's next, as SOCOM 1's); by hand (CHUD::ReInit_Uninit calls it on CHUD+0x2730, the member 0x2284C0 constructs with CInGameWeaponSel's vtable 0x405150; hud_ingame_weaponsel.cpp's Clear, UnInit, Init, ctor sizes 0xE0/0x170/0x9E4/0x194 against SOCOM 1's 0xE8/0x170/0xA64/0x2F8)
 0x00227AD0 0x9E4 func_00227AD0  # OVL1
-0x002284C0 0x194 func_002284C0  # OVL1
+0x002284C0 0x194 __ct__16CInGameWeaponSelFv  # OVL1; by hand (stores CInGameWeaponSel's vtable 0x405150; CHUD's constructor builds CHUD+0x2730 with it; hud_ingame_weaponsel.cpp's last function before hud_fader.cpp, as SOCOM 1's)
 0x00228660 0x80 __dt__8CFlashFXFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002286E0 0xA0 Reset__14CFlashFXVectorFv  # OVL1; s1:order (hud_fader.cpp's order, SOCOM 1's code: the elements deleted through slot 0, then a temporary vector, clear, swap)
 0x00228780 0x40 swap__Q23std48vector<P8CFlashFX,Q23std21allocator<P8CFlashFX>>FRQ23std48vector<P8CFlashFX,Q23std21allocator<P8CFlashFX>>  # OVL1; by hand (CFlashFXVector::Reset's out-of-line swap, hud_fader.cpp's copy: include/vector's four-level swap)
@@ -2076,7 +2076,7 @@
 0x0022B360 0x140 func_0022B360  # OVL1
 0x0022B4A0 0x628 func_0022B4A0  # OVL1
 0x0022BAD0 0x60 func_0022BAD0  # OVL1
-0x0022BB30 0x10C func_0022BB30  # OVL1
+0x0022BB30 0x10C hudTurnOffScorePopup__Fv  # OVL1; s1:calls by hand (CHUD::ReInit_Uninit's call right after CZPlayerMapItem::MissionEndCleanup, as SOCOM 1's; the same shape: a flag byte cleared, then two loops wiping string arrays, 45 entries where SOCOM 1 had 27)
 0x0022BC40 0x110 func_0022BC40  # OVL1
 0x0022BD50 0xC8 func_0022BD50  # OVL1
 0x0022BE20 0xDC4 func_0022BE20  # OVL1
@@ -2234,17 +2234,17 @@
 0x00237D00 0xD8 func_00237D00  # OVL1
 0x00237DE0 0x6C func_00237DE0  # OVL1
 0x00237E50 0x10C func_00237E50  # OVL1
-0x00237F60 0x54 func_00237F60  # OVL1
+0x00237F60 0x54 Reset__12CAmmoDisplayFv  # OVL1; by hand (CHUD's ReInit_Init and ReInit_Uninit call it on CHUD+0x1A700: both count strings wiped, the cached counts reset; the name ours)
 0x00237FC0 0x2FC func_00237FC0  # OVL1
-0x002382C0 0xF0 func_002382C0  # OVL1
-0x002383B0 0x6C func_002383B0  # OVL1
-0x00238420 0x64 func_00238420  # OVL1
-0x00238490 0x64 func_00238490  # OVL1
-0x00238500 0x160 func_00238500  # OVL1
-0x00238660 0xA4 func_00238660  # OVL1
+0x002382C0 0xF0 __dt__12CAmmoDisplayFv  # OVL1; by hand (CHUD's destructor calls it on CHUD+0x1A700, the member CAmmoDisplay's constructor builds: its arrays, strings, plain C2D, bitmap and poly destroyed in reverse; the implicit destructor)
+0x002383B0 0x6C __ct__12CAmmoDisplayFv  # OVL1; by hand (CHUD's constructor builds CHUD+0x1A700 with it; no vtable: the class name ours, from its functions' AMMO, MAGS, %d/%d and %d MAG%c)
+0x00238420 0x64 Off__10CMPInfoBoxFv  # OVL1; by hand (slot 4 of CMPInfoBox's vtable 0x405B40: C2D's Off, then its parts')
+0x00238490 0x64 On__10CMPInfoBoxFv  # OVL1; by hand (slot 5 of CMPInfoBox's vtable 0x405B40: C2D's On, then its parts')
+0x00238500 0x160 Tick__10CMPInfoBoxFf  # OVL1; by hand (slot 12 of CMPInfoBox's vtable 0x405B40)
+0x00238660 0xA4 UnInit__10CMPInfoBoxFv  # OVL1; by hand (CHUD::ReInit_Uninit's call on CHUD+0x17B70, beside CMPTeammateNames::UnInit: off, the strings emptied; the name ours)
 0x00238710 0x18C func_00238710  # OVL1
 0x002388A0 0x220 func_002388A0  # OVL1
-0x00238AC0 0x234 func_00238AC0  # OVL1
+0x00238AC0 0x234 Tick__12CWhosTalkingFf  # OVL1; by hand (slot 12 of CWhosTalking's vtable 0x405BB0)
 0x00238D00 0x248 func_00238D00  # OVL1
 0x00238F50 0x2FC func_00238F50  # OVL1
 0x00239250 0x19C Tick__18CRadioIcon_DynamicFf  # OVL1; s1:vtable (CRadioIcon_Dynamic's slot 12: SOCOM 1's CZDynamicRadioBitmap::HudTick)
@@ -2309,7 +2309,7 @@
 0x0023D810 0x50 func_0023D810  # OVL1
 0x0023D860 0x714 func_0023D860  # OVL1
 0x0023DF80 0x50 func_0023DF80  # OVL1
-0x0023DFD0 0x60 func_0023DFD0  # OVL1
+0x0023DFD0 0x60 __dt__11CWeaponSlotFv  # OVL1; by hand (slot 0 of CWeaponSlot's vtable 0x405E00: the implicit destructor)
 0x0023E030 0x340 func_0023E030  # OVL1
 0x0023E370 0x268 func_0023E370  # OVL1
 0x0023E5E0 0x11C func_0023E5E0  # OVL1
@@ -2324,9 +2324,9 @@
 0x002405F0 0x8 func_002405F0  # OVL1
 0x00240600 0x584 func_00240600  # OVL1
 0x00240B90 0x1BC func_00240B90  # OVL1
-0x00240D50 0x104 UnInit__16CInGameWeaponSelFv  # OVL1; s1:calls (CHUD::ReInit_Uninit's next, as SOCOM 1's)
+0x00240D50 0x104 UnInit__12CMPWeaponSelFv  # OVL1; s1:calls (CHUD::ReInit_Uninit's next, as SOCOM 1's); by hand (CHUD::ReInit_Uninit calls it on CHUD+0x38E0 only in a network game, the member 0x241A90 constructs -- a SOCOM II selector honouring the server's Enable_203FRAG.. valves; the class name ours; s1:calls had shifted SOCOM 1's names one member along)
 0x00240E60 0xC2C func_00240E60  # OVL1
-0x00241A90 0x150 func_00241A90  # OVL1
+0x00241A90 0x150 __ct__12CMPWeaponSelFv  # OVL1; by hand (CHUD's constructor builds CHUD+0x38E0 with it, after UnInit and Init at 0x240D50/0x240E60; no vtable, so no RTTI name: the class name ours)
 0x00241BE0 0x48 func_00241BE0  # OVL1
 0x00241C30 0x64 func_00241C30  # OVL1
 0x00241CA0 0xC func_00241CA0  # OVL1
