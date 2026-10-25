@@ -6,6 +6,7 @@
 #ifndef AI_H
 #define AI_H
 
+#include <algorithm>
 #include <list>
 #include <vector>
 
@@ -432,6 +433,7 @@ public:
     bool read_routes(CFileIO &f);
     bool read_readers(CFileIO &f);
     void DestroyGraph();
+    void ValidateCells();
     bool FindActionLocation(unsigned int id, CAiMapLoc &loc, action **pa);
     action *GetCellAction(const CAiMapLoc &loc) const;
     bool GetLocation(const char *name, CAiMapLoc &loc);
@@ -486,17 +488,190 @@ public:
     CGraph *m_graph;   // 0x15c
 };
 
-/* a planned path (SOCOM 1's DWARF, 0x9C bytes; SOCOM II's members from the search limit on sit
- * 8 further). Only what the code written so far reads; the rest is a hole */
+class CAiStar;
+class CAiOverlay;
+class CAiPlanner;
+
+/* the maps a path crosses (SOCOM 1's DWARF: a vector of CAiMap pointers and nothing more) */
+class CAiMapVec : public std::vector<CAiMap *> {
+};
+
+/* a search's tallies (SOCOM 1's DWARF, 0x34 bytes; the same in SOCOM II) */
+class CAiPathStats {
+public:
+    /* every count zeroed and the visited cells dropped (SOCOM 1's reset, out of line there
+     * (0x1968E0); SOCOM II's plan_setup and Clear zero the nine words in place) */
+    void reset()
+    {
+        nodes_searched = 0;
+        nodes_added = 0;
+        nodes_removed = 0;
+        nodes_visited = 0;
+        nodes_left = 0;
+        path_length = 0;
+        path_cost = 0;
+        m_ticks = 0;
+        m_time = 0.0f;
+        m_visited.clear();
+    }
+
+    int nodes_searched;   // 0x0
+    int nodes_added;   // 0x4
+    int nodes_removed;   // 0x8
+    int nodes_visited;   // 0xc
+    int nodes_left;   // 0x10
+    int path_length;   // 0x14
+    int path_cost;   // 0x18
+    int m_ticks;   // 0x1c
+    float m_time;   // 0x20
+    CAiMapLoc m_current;   // 0x24
+    CAiMapLocVec m_visited;   // 0x28
+};
+
+/* a planned path (SOCOM 1's DWARF, 0x9C bytes; SOCOM II's is 0xA8: a float at 0x18 -- the
+ * planner queue's priority -- and words at 0x24 and 0x90 are new, so the flags sit 4 further on,
+ * the legs and everything to the search limit 8, the snake and the points 0xC -- SetTemplatePath
+ * (0x527300) still stores 0x10, Clear and SetSnakeLength put the rest where said) */
 class CAiPath {
 public:
-    unsigned char m_unk0[0x8c];   // 0x0: not laid out yet
+    /* the planner a path takes (SOCOM 1's DWARF, a byte) */
+    enum PATH_TYPE { PATH_DEFAULT = 0, PATH_BASIC = 1, PATH_STEALTH = 2, PATH_RESTRAINED = 3 };
+    /* where its plan stands (SOCOM 1's DWARF, a byte) */
+    enum PATH_STATE { UNKNOWN = 0, INQUEUE = 1, PLANNING = 2, ABORT = 3, COMPLETE = 4, FAILED = 5 };
+    /* how the search ended (SOCOM 1's DWARF, a signed byte) */
+    enum ASTAR_STATUS {
+        ASTAR_STATUS_UNKNOWN = -1,
+        ASTAR_SUCCESS = 0,
+        ASTAR_FAILURE_NOPATH = 1,
+        ASTAR_FAILURE_MANYTICKS = 2,
+        ASTAR_FAILURE_TOOLONG = 3,
+        ASTAR_FAILURE_NONEOPEN = 4,
+        ASTAR_FAILURE_OUTOFTIME = 5,
+        ASTAR_FAILURE_UNKNOWN = 6
+    };
+
+    /* a cell of the smoothed path (SOCOM 1's DWARF, 0xC bytes) */
+    class point {
+    public:
+        CAiMapLoc m_loc;   // 0x0
+        unsigned int m_width : 8;   // 0x4
+        unsigned int m_flags : 8;
+        unsigned int m_unused : 16;
+        float m_angle;   // 0x8
+    };
+    class points : public std::vector<point> {
+    };
+
+    /* queued, planning or aborting (SOCOM 1 tested the three states one by one; SOCOM II's code,
+     * inlined everywhere, is one unsigned range test -- the name ours) */
+    bool IsPlanning() const { return (unsigned int)(m_state - 1) < 3; }
+    /* the queue's order (new in SOCOM II, the name ours; out of line at 0x510C20) */
+    float GetPriority() const { return m_priority; }
+
+    /* the planner object let go: its search always, the planner itself only when the path owns
+     * it and `all` (SOCOM 1's took no flag) */
+    void DeletePlanner(bool all);
+    CAiStar *CreatePlanner();
+    /* a planner of the caller's own, which the path then owns (new in SOCOM II, the name ours;
+     * an AI state hands it a CAiHidePlanner) */
+    void SetPlanner(CAiPlanner *planner);
+    bool Clear();
+    void plan_setup();
+    bool plan_addleg(CAiMap *map, const CAiMapLoc &start, const CAiMapLoc &goal);
+    bool plan_legcomplete(PATH_STATE state);
+    void plan_complete(PATH_STATE state);
+    CAiMap *GetLegMap(int leg);
+    void GetLegPoints(CAiMapLoc &start, CAiMapLoc &goal, int leg) const;
+
+    CAiStar *m_astar;   // 0x0
+    CAiPlanner *m_planner;   // 0x4
+    unsigned char m_custom;   // 0x8: the planner is the path's own
+    PATH_TYPE m_type;   // 0x9
+    float m_type_bias;   // 0xc
+    CAiPath *m_template;   // 0x10
+    CAiOverlay *m_overlay;   // 0x14
+    float m_priority;   // 0x18: new in SOCOM II
+    unsigned int m_flags;   // 0x1c: SOCOM 1's 0x18
+    unsigned int m_app_flags;   // 0x20
+    unsigned int m_unk24;   // 0x24: new in SOCOM II
+    unsigned int m_legcount;   // 0x28: SOCOM 1's 0x20
+    unsigned int m_planleg;   // 0x2c
+    unsigned int m_curleg;   // 0x30
+    CAiMapLocVec m_waypts;   // 0x34
+    CAiMapVec m_maps;   // 0x40
+    CAiPathStats m_stats;   // 0x4c
+    PATH_STATE m_state;   // 0x80: SOCOM 1's 0x78
+    ASTAR_STATUS m_status;   // 0x81
+    float m_length;   // 0x84
+    unsigned int m_tolerance;   // 0x88
     unsigned int m_search_limit;   // 0x8c: SOCOM 1's 0x84
+    unsigned int m_unk90;   // 0x90: new in SOCOM II
+    unsigned int m_snake_len;   // 0x94: SOCOM 1's 0x88
+    points m_points;   // 0x98: SOCOM 1's 0x8c
+    unsigned int m_pathId;   // 0xa4
 };
+
+/* CAiMapLoc's storage without its constructor. SOCOM II's CAiMapLoc() is empty (0x516120), where
+ * zentity.h's stand-in copies `invalid`: a member the original left unbuilt holds this until the
+ * entity header's constructor is SOCOM II's (then it is CAiMapLoc again) */
+struct CAiMapLocBits {
+    unsigned int m_mapid : 6;
+    unsigned int x : 13;
+    unsigned int y : 13;
+};
+
+/* the A* search of one leg (SOCOM 1's was 0x2C bytes, its open and closed lists two vectors of
+ * nodes; SOCOM II's is 0x14 -- the lists became the unit's statics -- and CreatePlanner inlines
+ * its constructor: the planner, the leg's map, its two ends, the path's tallies. The ends are
+ * CAiMapLocs left unbuilt: CreatePlanner is byte-exact only so) */
+class CAiStar {
+public:
+    CAiStar(CAiPath *path) : m_planner(path->m_planner)
+    {
+        m_map = path->GetLegMap(-1);
+        m_stats = &path->m_stats;
+        path->GetLegPoints((CAiMapLoc &)m_start, (CAiMapLoc &)m_goal, -1);
+    }
+    ~CAiStar();
+    void find_path(CAiPath *path);
+
+    CAiPlanner *m_planner;   // 0x0
+    CAiMap *m_map;   // 0x4
+    CAiMapLocBits m_start;   // 0x8: a CAiMapLoc
+    CAiMapLocBits m_goal;   // 0xc: a CAiMapLoc
+    CAiPathStats *m_stats;   // 0x10
+};
+
+/* the planner queue (SOCOM 1's ai::path_queue, 24 bytes: a list of paths and three counters; the
+ * names ours) */
+namespace ai {
+class CAiPathQueue : public std::list<CAiPath *> {
+public:
+    /* whether the path is queued (the name ours: AbortPathPlan's third arm, which calls begin(),
+     * end(), std::find and != out of line -- an inline too tall to inline whole) */
+    bool Contains(CAiPath *path) { return std::find(begin(), end(), path) != end(); }
+
+    unsigned int m_maxSize;   // 0xc: the longest the queue has been
+    unsigned int m_completed;   // 0x10: paths planned to their end
+    unsigned int m_ticks;   // 0x14: searches run
+};
+
+extern CAiPathQueue path_queue;
+
+bool PathPlanImmediate(CAiMap *map, const CAiMapLoc &start, const CAiMapLoc &goal, CAiPath *path);
+bool TickPathPlanner(float dT, void *data);
+void ResetPathPlan();
+bool AbortPathPlan(CAiPath *path);
+void PathPlanExecute();
+void PathPlanAbort();
+bool PathPlanAddLeg(CAiMap *map, const CAiMapLoc &start, const CAiMapLoc &goal);
+bool PathPlanBegin(CAiPath *path);
+void FlushPlannerQueue();
+}
 
 /* how the A* search weighs a step (SOCOM 1's; SOCOM II's vtable has a slot more after reset, and
  * its subclasses are CBasicPlanner, CStealthPlanner and CRestrainedPlanner where SOCOM 1's were
- * the *Travel classes) */
+ * the *Travel classes). No data: CreatePlanner's statics are built by their vtable store alone */
 class CAiPlanner {
 public:
     virtual void reset();
@@ -513,6 +688,18 @@ class CRestrainedPlanner : public CAiPlanner {
 public:
     virtual bool is_traversable(CAiMap *map, CAiPath *path, const CAiMapLoc &from, CAiMap::DIR dir,
                                 CAiMapLoc &to, CAiCell *&cell);
+};
+
+/* a planner that keeps to the shadows (SOCOM 1's CStealthTravel) */
+class CStealthPlanner : public CAiPlanner {
+public:
+    virtual int fcost(CAiMap &map, const CAiMapLoc &from, CAiMap::DIR dir, const CAiMapLoc &to);
+};
+
+/* a planner that keeps to paths (SOCOM 1's CBasicTravel) */
+class CBasicPlanner : public CAiPlanner {
+public:
+    virtual int fcost(CAiMap &map, const CAiMapLoc &from, CAiMap::DIR dir, const CAiMapLoc &to);
 };
 
 #endif

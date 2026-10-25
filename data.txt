@@ -876,6 +876,7 @@
 0x0064F8B0 0x4 s_eventRangeDefault  # OVL2 data; ours (ai_events.cpp's static, 200.0: GetEventRange's default; 1 reference in 1 function)
 0x0064F8B8 0x4 s_eventRangeGeneric  # OVL2 data; ours (ai_events.cpp's static, 250.0: GetEventRange for AIE_GENERIC; 1 reference in 1 function)
 0x0064F8C0 0x4 s_eventRangeEntity  # OVL2 data; ours (ai_events.cpp's static, 80.0: GetEventRange for AIE_ENTITY; 1 reference in 1 function)
+0x0064F8D8 0x4 timerlimit  # OVL2 data; SOCOM 1's (timerlimit, gp-relative there): ai_astar.cpp's T0 budget for one planner tick, 33; PathPlanImmediate saves it, sets -1 and restores it, TickPathPlanner compares the elapsed count with it; 4 references in 2 functions
 0x00655600 0x4 gpKeyMaster  # OVL2; s1:data-seq (size SOCOM 1's; via GetKeyMaster)
 0x00655604 0x1 bHasInitialized.0  # OVL2; s1:data-seq (size SOCOM 1's; via InitializePRNG)
 0x00655608 0x4 gpfMallocCallback  # OVL2; s1:data-exact (size SOCOM 1's; via rt_memory_allocate +1)
@@ -1001,6 +1002,8 @@
 0x0066A088 0xC m_callbacks__8CAiEvent  # OVL2 bss; s1:data-exact (size SOCOM 1's; via __sinit_ai_events.cpp)
 0x0066A098 0x4 s_eventTickTime  # OVL2 bss; ours (ai_events.cpp's static: the time CAiEvent::Tick(float, void*) gathers before it ticks the events; 3 references in 1 function)
 0x0066A0A0 0x1 s_eventFlag  # OVL2 bss; ours (ai_events.cpp's static byte: CAiEvent::Open and Close clear it, nothing in the image reads it; 2 references in 2 functions)
+0x0066A0C8 0x4 s_plannerStart  # OVL2 bss; ours (ai_astar.cpp's static, SOCOM 1's unnamed gp word at -29944: the T0 count TickPathPlanner starts from; 2 references in 1 function)
+0x0066A168 0x4 _plan_path__2ai  # OVL2 bss; SOCOM 1's (_plan_path__2ai): the path PathPlanBegin starts, PathPlanAddLeg extends, PathPlanExecute queues and PathPlanAbort clears; 7 references in 4 functions
 0x0066A180 0x18 path_queue__2ai  # OVL2 bss; SOCOM 1's (path_queue__2ai, 24 bytes at 0x49B160: the planner queue, a list of CAiPath * and three words): __sinit_ai_astar.cpp builds it and registers ~CAiPathQueue, AbortPathPlan removes a path from it as SOCOM 1's does; 19 references in 7 functions
 0x0066A1B0 0xE0 AiMaps  # OVL2 bss; s1:data-seq (size SOCOM 1's; via CreateCompassNavPoints__8CMissionFv +1)
 0x0066B990 0x58 _unknown  # OVL2 bss; SOCOM 1's _unknown (0x509870, 40 bytes there: a static CAiSUnknown seal_aistate.cpp's initialiser builds); CSealCtrlAi::GetAiState returns it when the stack is empty (0x5F5FD0, 0x5F6010) -- 2 references in 2 functions (the kit lane, round 3)
