@@ -56,6 +56,9 @@ public:
 
 /* a persona's network data (only what this unit touches) */
 struct PersonaData {
+    /* the flag 0x10000 of the team word (the name ours; a bool inline: the test materialises) */
+    bool IsFlagged() const { return (m_team & 0x10000) != 0; }
+
     unsigned int m_team;   // 0x0: its team's mask
     int m_4;   // 0x4
     int m_8;   // 0x8
@@ -206,6 +209,19 @@ void CZPersonaState::RemotePersonaDeletionCallback(int client, int index)
             CheckStateSwitch();
         }
     }
+}
+
+/* whether no persona without the flag 0x10000 waits in state 2 at 0x40 with 0x41 not yet 2
+ * (OVL1 0x2C4020; after ToggleReady, where SOCOM 1 has AllReadyToPlay) */
+extern "C" bool func_002C4020()
+{
+    for (int i = 0; i < 24; i++) {
+        PersonaData *p = CZPersonaState::GetPersona(i);
+
+        if (p && p->IsFlagged() == false && p->m_40 == 2 && p->m_41 != 2)
+            return false;
+    }
+    return true;
 }
 
 /* this client ready, or not (OVL1 0x2C3FC0; SOCOM 1's ToggleReady, the same code) */
