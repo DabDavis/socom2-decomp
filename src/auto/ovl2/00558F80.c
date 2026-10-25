@@ -4,10 +4,11 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_005C85D0(s32);                             /* extern */
+s32 HasSniperRifle__5CZKitFv(s32);                  /* extern */
 
-s32 func_00558F80(void *arg0) {
-    return func_005C85D0(M2C_FIELD(arg0, s32 *, 4) + 0x5E0) & 0xFF;
+s32 func_00558F80(char *arg0) {
+    return HasSniperRifle__5CZKitFv(SC_MEMBER(arg0, s32 *, 4) + 0x5E0) & 0xFF;
 }

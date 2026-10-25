@@ -7,12 +7,12 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-char *func_005F5FD0();                              /* extern */
+char *GetAiState__11CSealCtrlAiCFv();               /* extern */
 
 s8 GetJumpFlag__11CSealCtrlAiCFv(void) {
     char *temp_v0;
 
-    temp_v0 = func_005F5FD0();
+    temp_v0 = GetAiState__11CSealCtrlAiCFv();
     if (temp_v0 != NULL) {
         return SC_MEMBER(temp_v0, s8 *, 0x30);
     }

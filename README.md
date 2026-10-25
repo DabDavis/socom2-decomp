@@ -1004,6 +1004,23 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - CPickup is SOCOM 1's pickup_main.cpp (0x541650-0x542FD7: 0x542E50 is CPickup::Close), and
     seal.cpp starts at 0x542FE0; 0x540910-0x5414EF are string and vector instances closing the
     unit before it; zseal.h includes zchar.h for CHARACTER_SOUND.
+- **Tells from the kit and the AI states, round 2** (seal_kit.cpp 56 of 57, the states' signals,
+  seal_aivehicle.cpp):
+  - `x > 0.0f` compiles to `c.le.s x,0; bc1f`; writing `!(x <= 0)` adds an xori;
+  - after an early return a `while` jumps straight to its bottom test; the target's top test
+    needs `if (c) do ... while (c)`;
+  - a signed byte enum local assigned from a call is narrowed only where it is compared; a
+    `signed char` local is narrowed at the assignment;
+  - a local copy of a parameter takes the lowest saved register;
+  - an inlined copy that misses only by label pads wants the inline written another way: `if
+    (w) return ...; return 0;` and the ternary compile alike out of line but pad differently once
+    inlined (GetIcon in GetCurIcon);
+  - a switch whose cases share one body ends its chain with a `b`; an if-chain inverts its last
+    test; the states' OnSignal switches list case 4 first (their chains test 3, 2, 1, 0, 4);
+  - `return i != -1 ? f(...) : 0` gives SOCOM 1's beq/move shape; the if-return form inverts it;
+  - kit.h's EQUIP_ITEM/FIREMODE/CZWeaponList/CZWeapon/CZFTSWeapon are size-only stand-ins whose
+    offsets agree with zweapon.h's (m_maxfiremode 0x24, m_ID 0x7c, the zoom vector's size 0x284):
+    a unit including kit.h and zweapon.h together waits on folding them into zweapon.h.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
