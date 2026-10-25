@@ -36,15 +36,42 @@ public:
     /* the SEAL's network data, 0x90 bytes (SOCOM 1's 0x98): only the packed weapons, the unit's id
      * (SOCOM 1's byte at 0x78) and the body */
     struct TypeSealState {
-        unsigned char _0[0xc];
+        int m_0;   // 0x0
+        int m_4;   // 0x4
+        int m_8;   // 0x8
         unsigned int m_c;   // 0xc: flags handed to CreateRemoteSeal (SOCOM 1's byte at 0x78)
-        unsigned char _10[0x14 - 0x10];
+        int m_10;   // 0x10
         char m_14[0x34 - 0x14];   // 0x14
-        unsigned char m_weapons[0x74 - 0x34];   // 0x34: the packed weapon data
+        unsigned char m_weapons[0x64 - 0x34];   // 0x34: the packed weapon data
+        unsigned short m_64;   // 0x64
+        unsigned short m_66;   // 0x66
+        unsigned short m_68;   // 0x68
+        unsigned short m_6a;   // 0x6a
+        unsigned short m_6c;   // 0x6c
+        unsigned short m_6e;   // 0x6e
+        unsigned short m_70;   // 0x70
+        unsigned short m_72;   // 0x72
         unsigned short m_unit_id;   // 0x74
-        unsigned char _76[0x78 - 0x76];
+        unsigned short m_76;   // 0x76
         unsigned short m_chartype;   // 0x78: a custom character type's index, 0 a persona's SEAL (SOCOM 1's byte at 0x7a)
-        unsigned char _7a[0x8c - 0x7a];
+        unsigned char m_7a;   // 0x7a
+        unsigned char m_7b;   // 0x7b
+        unsigned char m_7c;   // 0x7c
+        unsigned char m_7d;   // 0x7d
+        unsigned char m_7e;   // 0x7e
+        unsigned char m_7f;   // 0x7f
+        unsigned char m_80;   // 0x80
+        unsigned char m_81;   // 0x81
+        unsigned char m_82;   // 0x82
+        unsigned char m_83;   // 0x83
+        unsigned char m_84;   // 0x84
+        unsigned char m_85;   // 0x85
+        unsigned char m_86;   // 0x86
+        unsigned char m_87;   // 0x87
+        unsigned char m_88;   // 0x88
+        unsigned char m_89;   // 0x89
+        unsigned char m_8a;   // 0x8a
+        unsigned char m_8b;   // 0x8b
         CZSealBody *m_body;   // 0x8c (SOCOM 1's at 0x94)
     };
 
@@ -59,6 +86,7 @@ public:
     static void *GetPackedWeaponData(CZSealBody *body);
     static CZSealBody *GetBodyFromObjectIndex(int index);
     static void RemoteSealDeletionCallback(int client, int index);
+    static void zNetRegisterSeal();
 
     static int m_NetStructIndexSealObject;
     static CRemoteGuyList m_RemoteGuyList;
@@ -229,6 +257,10 @@ public:
     int zNetCreateObject(int *index, NetOwnershipStatus own, NetObjectLifespan life, unsigned int a,
                          int b, unsigned int c, int d, void *e, char *name, int structure);
     NetObject *zNetGetObject(int index);
+    void zNetRegisterRemoteObjectCallback(int index, void (*creation)(int, int),
+                                          void (*update)(int, int, int),
+                                          void (*postupdate)(int, int, int),
+                                          void (*deletion)(int, int));
 };
 
 /* a game client as the network keeps it (only its object: 0x1000 until its SEAL's is known) */
@@ -262,6 +294,109 @@ const char *func_002C3A70(int client);   /* (fts_net_persona.cpp's: a client's p
 int sprintf(char *buf, const char *fmt, ...);
 void func_002F9690(CZOnlineLobby *lobby, int a, int mode);
 bool func_002A72A0(CZNetGame *game);   /* (SOCOM II's: a game type 1 or 2) */
+}
+
+extern "C" {
+/* the fields' ids */
+extern int data_00441018;
+extern int data_00441020;
+extern int data_00441028;
+extern int data_00441030;
+extern int data_00441038;
+extern int data_00441040;
+extern int data_00441048;
+extern int data_00441050;
+extern int data_00441058;
+extern int data_00441060;
+extern int data_00441068;
+extern int data_00441070;
+extern int data_00441078;
+extern int data_00441080;
+extern int data_00441088;
+extern int data_00441090;
+extern int data_00441098;
+extern int data_004410A0;
+extern int data_004410A8;
+extern int data_004410B0;
+extern int data_004410B8;
+extern int data_004410C0;
+extern int data_004410C8;
+extern int data_004410D0;
+extern int data_004410D8;
+extern int data_004410E0;
+extern int data_004410E8;
+extern int data_004410F0;
+extern int data_004410F8;
+extern int data_00441100;
+extern int data_00441108;
+extern int data_00441110;
+extern int data_00441118;
+extern int data_00441120;
+extern int data_00441128;
+extern int data_00441130;
+
+void NetRegisterObjectStart();   /* (the DME's) */
+void NetObjectField(int *field, int offset, int a, int b, int c, void *type);
+void NetRegisterStructure(int *index, const char *name, int size);
+void *func_002BD0A0();   /* (fts_remote.cpp's broadcast schedules) */
+void *func_002BD0E0();
+void *func_002BD120();
+void *func_002BD160();
+void *func_002BD1E0();
+}
+
+/* the kind registered: its fields, their offsets taken off a pointer to a local as
+ * fts_net_game.cpp's; the weapons twice (the target computes their offset once for both calls)
+ * (OVL1 0x2BF2C0) */
+void CZSealState::zNetRegisterSeal()
+{
+    TypeSealState s;
+    TypeSealState *p = &s;
+
+    NetRegisterObjectStart();
+    NetObjectField(&data_00441018, (int)&p->m_0 - (int)p, 4, 6, 1, func_002BD1E0());
+    NetObjectField(&data_00441020, (int)&p->m_4 - (int)p, 4, 6, 1, func_002BD1E0());
+    NetObjectField(&data_00441028, (int)&p->m_8 - (int)p, 4, 6, 1, func_002BD1E0());
+    NetObjectField(&data_00441030, (int)&p->m_64 - (int)p, 2, 2, 1, func_002BD160());
+    NetObjectField(&data_00441108, (int)&p->m_68 - (int)p, 2, 2, 1, func_002BD0E0());
+    NetObjectField(&data_00441110, (int)&p->m_6a - (int)p, 2, 2, 1, func_002BD0E0());
+    NetObjectField(&data_00441118, (int)&p->m_6c - (int)p, 2, 2, 1, func_002BD0E0());
+    NetObjectField(&data_00441120, (int)&p->m_6e - (int)p, 2, 2, 1, func_002BD0E0());
+    NetObjectField(&data_00441128, (int)&p->m_70 - (int)p, 2, 2, 1, func_002BD0E0());
+    NetObjectField(&data_00441130, (int)&p->m_72 - (int)p, 2, 2, 1, func_002BD0E0());
+    NetObjectField(&data_00441038, (int)&p->m_7a - (int)p, 1, 0, 1, func_002BD160());
+    NetObjectField(&data_00441040, (int)&p->m_7b - (int)p, 1, 0, 1, func_002BD160());
+    NetObjectField(&data_00441048, (int)&p->m_7c - (int)p, 1, 0, 1, func_002BD160());
+    NetObjectField(&data_00441050, (int)&p->m_7e - (int)p, 1, 1, 1, func_002BD160());
+    NetObjectField(&data_00441058, (int)&p->m_7f - (int)p, 1, 1, 1, func_002BD160());
+    NetObjectField(&data_00441060, (int)&p->m_80 - (int)p, 1, 1, 1, func_002BD160());
+    NetObjectField(&data_00441068, (int)&p->m_81 - (int)p, 1, 1, 1, func_002BD160());
+    NetObjectField(&data_00441070, (int)&p->m_82 - (int)p, 1, 1, 1, func_002BD120());
+    NetObjectField(&data_00441078, (int)&p->m_83 - (int)p, 1, 1, 1, func_002BD120());
+    NetObjectField(&data_00441080, (int)&p->m_84 - (int)p, 1, 1, 1, func_002BD120());
+    NetObjectField(&data_00441088, (int)&p->m_85 - (int)p, 1, 1, 1, func_002BD120());
+    NetObjectField(&data_00441090, (int)&p->m_86 - (int)p, 1, 1, 1, func_002BD120());
+    NetObjectField(&data_00441098, (int)&p->m_87 - (int)p, 1, 1, 1, func_002BD120());
+    NetObjectField(&data_004410A0, (int)&p->m_88 - (int)p, 1, 1, 1, func_002BD0A0());
+    NetObjectField(&data_004410A8, (int)&p->m_76 - (int)p, 2, 3, 1, func_002BD0E0());
+    NetObjectField(&data_004410B0, (int)&p->m_89 - (int)p, 1, 1, 1, func_002BD0E0());
+    NetObjectField(&data_004410B8, (int)&p->m_8a - (int)p, 1, 1, 1, func_002BD160());
+    NetObjectField(&data_004410C0, (int)&p->m_66 - (int)p, 2, 3, 1, func_002BD120());
+    NetObjectField(&data_004410D8, (int)&p->m_unit_id - (int)p, 2, 3, 1, func_002BD120());
+    NetObjectField(&data_004410C8, (int)&p->m_c - (int)p, 4, 5, 1, func_002BD120());
+    NetObjectField(&data_004410D0, (int)&p->m_10 - (int)p, 4, 5, 1, func_002BD120());
+    NetObjectField(&data_004410E0, (int)&p->m_7d - (int)p, 1, 0, 1, func_002BD160());
+    NetObjectField(&data_004410E8, (int)&p->m_8b - (int)p, 1, 1, 1, func_002BD0A0());
+    NetObjectField(&data_004410F0, (int)&p->m_chartype - (int)p, 2, 3, 1, func_002BD120());
+    NetObjectField(&data_004410F8, (int)&p->m_14 - (int)p, 1, 1, 32, func_002BD120());
+    NetObjectField(&data_00441100, (int)&p->m_weapons - (int)p, 1, 1, 48, func_002BD0A0());
+    NetObjectField(&data_00441100, (int)&p->m_weapons - (int)p, 1, 1, 48, func_002BD0A0());
+    NetRegisterStructure(&m_NetStructIndexSealObject, "SealState", sizeof(TypeSealState));
+    theNetwork.zNetRegisterRemoteObjectCallback(m_NetStructIndexSealObject,
+                                                RemoteSealCreationCallback,
+                                                RemoteSealUpdateCallback,
+                                                RemoteSealPostUpdateCallback,
+                                                RemoteSealDeletionCallback);
 }
 
 /* after a remote SEAL's update: the lobby told once, in play, when its time comes due, and the SEAL
