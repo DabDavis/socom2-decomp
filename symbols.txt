@@ -4650,13 +4650,13 @@
 0x002DF650 0x4C UnInit__13CZOnlineLobbyFv  # OVL1; s1:callee
 0x002DF6A0 0x23C func_002DF6A0  # OVL1
 0x002DF8E0 0x170 ReleaseUIResources__13CZOnlineLobbyFv  # OVL1; s1 by hand (called by UnInit, Close and the destructor, as SOCOM 1's UnInit, Close and destructor call ReleaseUIResources; frees the lobby's lists)
-0x002DFA50 0x7C func_002DFA50  # OVL1
-0x002DFAD0 0x7C func_002DFAD0  # OVL1
-0x002DFB50 0x7C func_002DFB50  # OVL1
-0x002DFBD0 0x7C func_002DFBD0  # OVL1
-0x002DFC50 0x7C func_002DFC50  # OVL1
-0x002DFCD0 0x7C func_002DFCD0  # OVL1
-0x002DFD50 0x7C func_002DFD50  # OVL1
+0x002DFA50 0x7C ReleaseVector<36MediusGetBuddyList_ExtraInfoResponse>__FRQ23std106vector<P36MediusGetBuddyList_ExtraInfoResponse,Q23std50allocator<P36MediusGetBuddyList_ExtraInfoResponse>>_v  # OVL1; ours (ReleaseVector on the friends 0x44FDC0, from ReleaseUIResources; byte-exact)
+0x002DFAD0 0x7C ReleaseVector<8RoomGame>__FRQ23std48vector<P8RoomGame,Q23std21allocator<P8RoomGame>>_v  # OVL1; ours (ReleaseVector on a room's games, 0x44FAB0's and *0x44FE10's, from ReleaseUIResources; byte-exact)
+0x002DFB50 0x7C ReleaseVector<31MediusGetClanMemberListResponse>__FRQ23std96vector<P31MediusGetClanMemberListResponse,Q23std45allocator<P31MediusGetClanMemberListResponse>>_v  # OVL1; ours (ReleaseVector on ClanMemberVec, from ReleaseUIResources; byte-exact)
+0x002DFBD0 0x7C ReleaseVector<18ClanInvitationItem>__FRQ23std70vector<P18ClanInvitationItem,Q23std32allocator<P18ClanInvitationItem>>_v  # OVL1; ours (ReleaseVector on ClanInvitationVec, from ReleaseUIResources; byte-exact)
+0x002DFC50 0x7C ReleaseVector<14InvitationItem>__FRQ23std62vector<P14InvitationItem,Q23std28allocator<P14InvitationItem>>_v  # OVL1; ours (ReleaseVector on InvitationVec, from ReleaseUIResources; byte-exact)
+0x002DFCD0 0x7C ReleaseVector<31MediusGetClanLadderListResponse>__FRQ23std96vector<P31MediusGetClanLadderListResponse,Q23std45allocator<P31MediusGetClanLadderListResponse>>_v  # OVL1; ours (ReleaseVector on the two clan ladders, from ReleaseUIResources; byte-exact)
+0x002DFD50 0x7C ReleaseVector<10LadderItem>__FRQ23std54vector<P10LadderItem,Q23std24allocator<P10LadderItem>>_v  # OVL1; ours (a vector cleared and swapped with an empty one, the temporary's storage freed -- a non-inline template's instance: ReleaseUIResources on the two player ladders; byte-exact)
 0x002DFDD0 0x38 Close__13CZOnlineLobbyFv  # OVL1; s1:ui (the UI command table's 'UnInitNetwork' handler 0x27E5C0 calls it on theLobby where SOCOM 1's UIUnInitNetwork calls Close)
 0x002DFE10 0x34 RunStateHandler__13CZOnlineLobbyF11LOBBY_STATE16LOBBY_STATE_FLAG  # OVL1; ours (the state's handler, m_state_handler[state] at +0, called with the flag when there is one; the state an int narrowed inside, andi 0xff; the state machine 0x2ED460 calls it on theLobby)
 0x002DFE50 0x1D4 func_002DFE50  # OVL1
@@ -4745,7 +4745,7 @@
 0x002E46C0 0x34 func_002E46C0  # OVL1
 0x002E4700 0x84 func_002E4700  # OVL1
 0x002E4790 0x3C func_002E4790  # OVL1
-0x002E47D0 0xD4 func_002E47D0  # OVL1
+0x002E47D0 0xD4 DeleteAll__14RoomGameVectorFv  # OVL1; ours (a room's games deleted and the list emptied -- std::transform with a deleter, then clear: ReleaseUIResources on the room 0x44FAB0 and on *0x44FE10, JoinGame, 0x2F9220, the room's destructor 0x2E48C0; byte-exact)
 0x002E48B0 0x8 func_002E48B0  # OVL1
 0x002E48C0 0xD8 func_002E48C0  # OVL1
 0x002E49A0 0xEC func_002E49A0  # OVL1
@@ -4768,8 +4768,8 @@
 0x002E6310 0x74 GetLeaderMessages__13CZOnlineLobbyFv  # OVL1; ours ('GetLeaderMessages' 0x27A0B0 calls it on theLobby; the leader's messages list emptied and asked for, its callback 0x2E6390 reports 'GetLeaderMessages')
 0x002E6390 0x68 cbGetLeaderMessages__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP32MediusGetAllClanMessagesResponse  # OVL1; ours (GetLeaderMessages' callback; reports 'GetLeaderMessages'); the mangled length corrected (32)
 0x002E6400 0x1AC func_002E6400  # OVL1
-0x002E65B0 0x13C func_002E65B0  # OVL1
-0x002E66F0 0xD4 func_002E66F0  # OVL1
+0x002E65B0 0x13C Add__17ClanMessageVectorFP32MediusGetAllClanMessagesResponse  # OVL1; ours (cbGetLeaderMessages keeps a message through it on 0x44F760: the response copied whole, 0xF0 bytes, unless its id is there; byte-exact)
+0x002E66F0 0xD4 DeleteAll__17ClanMessageVectorFv  # OVL1; ours (the leader's messages 0x44F760 deleted: GetLeaderMessages and the list's destructor 0x2EA3C0; byte-exact)
 0x002E67D0 0x54 IsLeaderOfClan__13CZOnlineLobbyFPCc  # OVL1; s1:ui ('IsLeaderOfClan' = UIIsLeaderOfClan, as SOCOM 1's calls IsLeaderOfClan; the name passed on to the member search)
 0x002E6830 0x14 IsMemberOfClan__13CZOnlineLobbyFv  # OVL1; s1:ui ('IsMemberOfClan' 0x27A910, as SOCOM 1's UIIsMemberOfClan; the clan id against -1)
 0x002E6850 0x84 DisbandClan__13CZOnlineLobbyFv  # OVL1; s1:ui ('DisbandClan' = UIDisbandClan; the code SOCOM 1's DisbandClan's but for MediusCreateMessageID and the status test)
@@ -4816,20 +4816,20 @@
 0x002E8BD0 0x314 cbGetMyClans__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP24MediusGetMyClansResponse  # OVL1; s1 by hand (GetClan's callback; reports 'GetMyClans')
 0x002E8EF0 0x7C QuitClan__13CZOnlineLobbyFv  # OVL1; s1:ui ('QuitClan' 0x278D00, as SOCOM 1's UIQuitClan)
 0x002E8F70 0xBC cbQuitClan__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP34MediusRemovePlayerFromClanResponse  # OVL1; s1 by hand (QuitClan's callback; reports 'QuitClan')
-0x002E9030 0x128 func_002E9030  # OVL1
-0x002E9160 0xD4 func_002E9160  # OVL1
-0x002E9240 0x138 func_002E9240  # OVL1
-0x002E9380 0xD4 func_002E9380  # OVL1
-0x002E9460 0x130 func_002E9460  # OVL1
-0x002E9590 0x1AC func_002E9590  # OVL1
-0x002E9740 0xD4 func_002E9740  # OVL1
+0x002E9030 0x128 Add__20ClanInvitationVectorFP36MediusGetClanInvitationsSentResponse  # OVL1; ours (cbGetClanInvitationsSent's: SOCOM 1's ClanInvitationItem constructor inlined, 0xF0 bytes, unless the account is there; byte-exact)
+0x002E9160 0xD4 DeleteAll__20ClanInvitationVectorFv  # OVL1; ours (ClanInvitationVec's items deleted: GetInvitedPlayers, ReleaseUIResources and its destructor 0x2EA4C0; byte-exact)
+0x002E9240 0x138 Add__16InvitationVectorFP36MediusCheckMyClanInvitationsResponse  # OVL1; ours (cbCheckMyClanInvitations keeps an invitation through it: SOCOM 1's InvitationItem constructor inlined, 0xF8 bytes, unless the invitation id is there; byte-exact)
+0x002E9380 0xD4 DeleteAll__16InvitationVectorFv  # OVL1; ours (InvitationVec's items deleted, the list emptied: CheckClanInvitations, ReleaseUIResources and its destructor 0x2EA540; byte-exact)
+0x002E9460 0x130 Find__16ClanMemberVectorFPCc  # OVL1; ours (the member by name -- strcasecmp on +0x20 -- or by atoi(name) as an account id: IsLeaderOfClan, RemovePlayerFromClan, TransferLeadership, InvitePlayerToClan call it on ClanMemberVec; byte-exact)
+0x002E9590 0x1AC Add__16ClanMemberVectorFP31MediusGetClanMemberListResponse  # OVL1; ours (cbGetClanMemberList's only call, on ClanMemberVec: a member not found by account id is kept as a whole copy of the response, 0x1DC bytes; byte-exact)
+0x002E9740 0xD4 DeleteAll__16ClanMemberVectorFv  # OVL1; ours (ClanMemberVec's items deleted and the list emptied -- std::transform with a deleter, then clear: GetClanRoster, cbDisbandClan, cbQuitClan, ReleaseUIResources and the list's destructor 0x2EA440 call it on 0x44F740; byte-exact)
 0x002E9820 0x1C func_002E9820  # OVL1
 0x002E9840 0xD8 func_002E9840  # OVL1
 0x002E9920 0x14 func_002E9920  # OVL1
-0x002E9940 0xA0 func_002E9940  # OVL1
+0x002E9940 0xA0 IsClanTeamAllowed__FUi  # OVL1; ours (0x2F8C60 and 0x2F8FD0 ask it of a team: false only for side 3 of a clan not ours, StoredClanInfo+0x1c; byte-exact)
 0x002E99E0 0xC func_002E99E0  # OVL1
 0x002E99F0 0xB8 func_002E99F0  # OVL1
-0x002E9AB0 0x7C func_002E9AB0  # OVL1
+0x002E9AB0 0x7C SetClanTeam__FUi  # OVL1; ours (JoinGame and 0x2F9220 call it with a clan game's team: the low 28 bits kept at 0x44F778 as the clan, the top nibble 0xA-0xD as side 1-4 at 0x44F780; byte-exact)
 0x002E9B30 0x10 func_002E9B30  # OVL1
 0x002E9B40 0x574 func_002E9B40  # OVL1
 0x002EA0C0 0x180 func_002EA0C0  # OVL1
@@ -4863,10 +4863,10 @@
 0x002EB7A0 0x15C func_002EB7A0  # OVL1
 0x002EB900 0x318 func_002EB900  # OVL1
 0x002EBC20 0xC8 func_002EBC20  # OVL1
-0x002EBCF0 0x154 func_002EBCF0  # OVL1
+0x002EBCF0 0x154 Add__14ClanLadderListFP31MediusGetClanLadderListResponse  # OVL1; ours (cbGetClanLadderList keeps a clan through it: the 0x48-byte response copied whole unless its position (+0x3c) is there, the highest position kept at +0xc; byte-exact)
 0x002EBE50 0x188 func_002EBE50  # OVL1
 0x002EBFE0 0x80 func_002EBFE0  # OVL1
-0x002EC060 0xD4 func_002EC060  # OVL1
+0x002EC060 0xD4 DeleteAll__14ClanLadderListFv  # OVL1; ours (a clan ladder list, 0x44F820 or 0x44F850, deleted and emptied: GetClanLadderLeaders, 0x2EA5C0, ReleaseUIResources, the lists' destructor 0x2ED360; byte-exact)
 0x002EC140 0x118 func_002EC140  # OVL1
 0x002EC260 0x574 func_002EC260  # OVL1
 0x002EC7E0 0x574 func_002EC7E0  # OVL1
@@ -5097,25 +5097,25 @@
 0x00300800 0x3C func_00300800  # OVL1
 0x00300840 0x58 MediusInit__Fv  # OVL1; ours (the UI command table's 'MediusInit' handler 0x276C60 calls it with no arguments: the Medius library set up with three callbacks -- cbErrorMessage the third -- and a 30000 timeout through OVL2 0x647318; true on success)
 0x003008A0 0x34 cbErrorMessage__FiiiP18MediusErrorMessage  # OVL1; s1:calls
-0x003008E0 0xDC func_003008E0  # OVL1
+0x003008E0 0xDC IsIgnored__13CZOnlineLobbyFPCc  # OVL1; ours (0x2BA9D0 and CZPersona's RemotePersonaCreationCallback call it on theLobby: whether a non-empty name is in the ignore list 0x44FDE0, as a bool returned through a local; byte-exact)
 0x003009C0 0xA4 func_003009C0  # OVL1
 0x00300A70 0x78 ConfirmFriend__13CZOnlineLobbyFi  # OVL1; ours (the UI command table's 'ConfirmFriend' handler 0x279EB0 calls it on theLobby; a buddy request answered 2, accepted, and dropped from the invitations list 0x44FE00)
 0x00300AF0 0x78 RejectFriend__13CZOnlineLobbyFi  # OVL1; ours ('RejectFriend' 0x279E10 calls it on theLobby; the same answer with -985, refused)
 0x00300B70 0x64 AddFriendDirectly__13CZOnlineLobbyFi  # OVL1; ours ('AddFriendDirectly' 0x279FB0 calls it on theLobby; an account id into a 44-byte request)
 0x00300BE0 0x2C func_00300BE0  # OVL1
 0x00300C10 0x34 func_00300C10  # OVL1
-0x00300C50 0x154 func_00300C50  # OVL1
-0x00300DB0 0xA8 func_00300DB0  # OVL1
-0x00300E60 0x9C func_00300E60  # OVL1
+0x00300C50 0x154 AddToIgnore__13CZOnlineLobbyFPCc  # OVL1; ours ('AddToIgnore' 0x279F50 calls it on theLobby: a name not yet in the ignore list has its account id asked for (MediusAccountGetID with 0x300DB0), else 'PLAYER_IS_IGNORED'; byte-exact)
+0x00300DB0 0xA8 cbFindIgnoreListPlayerID__FiiiP26MediusAccountGetIDResponse  # OVL1; ours (AddToIgnore's account-id callback: reports 'FindIgnoreListPlayerID' (the status at +0x1c, the id at +0x18), then asks 0x6494A0 to ignore the id, else 'MP_PLAYER_NOT_FOUND'; byte-exact)
+0x00300E60 0x9C cbAddToIgnoreList__FiiiP20MediusStatusResponse  # OVL1; ours (the ignore request's callback: reports 'AddToIgnoreList', GetIgnoreList inlined, else 'MP_IGNORE_LIST_FULL'; byte-exact)
 0x00300F00 0x64 GetIgnoreList__13CZOnlineLobbyFv  # OVL1; ours ('GetIgnoreList' 0x27A280 calls it on theLobby; the ignore list 0x44FDE0 emptied and asked for)
 0x00300F70 0x70 func_00300F70  # OVL1
-0x00300FE0 0xE0 func_00300FE0  # OVL1
-0x003010C0 0x74 func_003010C0  # OVL1
+0x00300FE0 0xE0 RemoveFromIgnore__13CZOnlineLobbyFi  # OVL1; ours ('RemoveFromIgnore' 0x2798E0 calls it on theLobby with atoi of its argument: an account found in the ignore list 0x44FDE0 by id is let go of through 0x649540 with 0x3010C0; byte-exact)
+0x003010C0 0x74 cbRemoveFromIgnoreList__FiiiP20MediusStatusResponse  # OVL1; ours (RemoveFromIgnore's callback: reports 'RemoveFromIgnoreList', then GetIgnoreList inlined; byte-exact)
 0x00301140 0x1A8 func_00301140  # OVL1
 0x003012F0 0x5C GetFriendInvitations__13CZOnlineLobbyFv  # OVL1; ours ('GetFriendInvitations' 0x27A2B0 calls it on theLobby, in the active lobby only)
-0x00301350 0x70 func_00301350  # OVL1
-0x003013C0 0x204 func_003013C0  # OVL1
-0x003015D0 0xD0 func_003015D0  # OVL1
+0x00301350 0x70 cbGetFriendInvitations__FiiiP33MediusGetBuddyInvitationsResponse  # OVL1; ours (GetFriendInvitations' callback: the response's id, account, name and add type copied into a 0x40-byte item and kept through 0x301DB0 on 0x44FE00; byte-exact)
+0x003013C0 0x204 AddFriend__13CZOnlineLobbyFPCc  # OVL1; ours ('AddFriend' 0x27A050 calls it on theLobby: a name neither a friend, invited nor our own is looked for (0x648F10, search type 1, with 0x3015D0), else 'MP_PLAYER_IS_FRIEND')
+0x003015D0 0xD0 cbFindBuddyListPlayerID__FiiiP24MediusFindPlayerResponse  # OVL1; ours (AddFriend's MediusFindPlayer callback: reports 'FindBuddyListPlayerID', asks 0x6492D8 to confirm the account at +0x48 with 0x300BE0 and tells 'MP_FRIEND_CONFIRMATION_REQUESTED', else 'MP_PLAYER_NOT_FOUND'; byte-exact)
 0x003016A0 0x64 RemoveFriend__13CZOnlineLobbyFi  # OVL1; ours ('RemoveFriend' 0x279980 calls it on theLobby; an account id)
 0x00301710 0x34 func_00301710  # OVL1
 0x00301750 0x48 GetFriendsList__13CZOnlineLobbyFv  # OVL1; ours ('GetFriendsList' 0x27A2E0 calls it on theLobby; the friends list 0x44FDC0 emptied and asked for)
@@ -5123,12 +5123,12 @@
 0x00301810 0x108 func_00301810  # OVL1
 0x00301920 0x150 func_00301920  # OVL1
 0x00301A70 0x1CC func_00301A70  # OVL1
-0x00301C40 0xB0 func_00301C40  # OVL1
+0x00301C40 0xB0 Find__12FriendVectorFPCc  # OVL1; ours (the friend by name, strcasecmp on +0x20, the null test inside: the state handler 0x2F0020 calls it on 0x44FDC0; byte-exact)
 0x00301CF0 0xBC func_00301CF0  # OVL1
 0x00301DB0 0x120 func_00301DB0  # OVL1
 0x00301ED0 0x1D0 func_00301ED0  # OVL1
-0x003020A0 0x164 func_003020A0  # OVL1
-0x00302210 0xD4 func_00302210  # OVL1
+0x003020A0 0x164 Add__12FriendVectorFP36MediusGetBuddyList_ExtraInfoResponse  # OVL1; ours (GetFriendsList's callback 0x3017A0 keeps a friend through it: the 0xD0-byte buddy response copied whole unless its account is there; byte-exact)
+0x00302210 0xD4 DeleteAll__12FriendVectorFv  # OVL1; ours (the friends 0x44FDC0 deleted and the list emptied -- std::transform with a deleter, then clear, as the clan lists' DeleteAll: GetFriendsList, ReleaseUIResources and the list's destructor 0x303410; byte-exact)
 0x003022F0 0x554 func_003022F0  # OVL1
 0x00302850 0x24C func_00302850  # OVL1
 0x00302AA0 0x514 func_00302AA0  # OVL1

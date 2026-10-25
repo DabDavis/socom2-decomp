@@ -13,6 +13,16 @@ void func_002E2920(CZOnlineLobby *lobby, C2D *page);   /* the game list asked fo
 void func_002E3AA0(CZOnlineLobby *lobby, C2D *page);   /* the room list asked for */
 }
 
+/* a room's games deleted and the list emptied (OVL1 0x2E47D0, among the unit's room-list
+ * members): the current room's too, from ReleaseUIResources. Pinned: never inlined */
+#pragma auto_inline off
+void RoomGameVector::DeleteAll()
+{
+    std::transform(begin(), end(), begin(), DeleteItem<RoomGame>());
+    clear();
+}
+#pragma auto_inline reset
+
 /* the room list asked for again, in the active lobby (SOCOM 1's; OVL1 0x2E3A30). The page is
  * taken into a local zeroed before the first test (the target's zero in that test's delay slot) */
 bool CZOnlineLobby::RefreshRoomList(C2D *page)
