@@ -11,6 +11,8 @@
 #include <string.h>
 #include <vector>
 
+#include "../zutil/util_stable.h"
+
 class CSTable;
 
 /* a ZRDR value (SOCOM 1's DWARF): a typed word -- 1 an integer, 2 a real, 3 a string, 4 an array.
@@ -84,6 +86,9 @@ public:
     void Destroy();
     CUIVariable &operator=(const char *str);
     void Attach(UIVarMixin *mixin);
+    /* the value replaced by a copy of value, its strings in the manager's current table, and the
+     * watchers told (SOCOM 1's) */
+    void Set(_zrdr *value);
     /* (ours: the tuners set their defaults so, inlined) */
     CUIVariable &operator=(float f)
     {
@@ -117,13 +122,51 @@ public:
     CUIVariable *m_uivar;   // 0x4
 };   // 0x8 bytes
 
-/* the variables (SOCOM 1's DWARF: CUIVarManager : vector, CSaveModule, 0x8064 bytes) */
-class CUIVarManager : public std::vector<CUIVariable> {
+class CRdrFile;
+namespace zar {
+class CZAR;
+}
+
+/* a part of a save (the zsav lane's zsave.h has the whole class; SOCOM 1's DWARF: 0x1C bytes,
+ * the vtable at 0) */
+class CSaveModule {
 public:
+    virtual ~CSaveModule();
+    virtual void Serialize(int flags) = 0;
+    virtual void UnSerialize(const char *name, CRdrFile *file, int flags);
+    virtual void UnSerialize(const char *name, zar::CZAR *zar, int flags);
+    virtual bool TestFlags(int flags) const;
+    bool SaveRdr(const char *name, CRdrFile *file);
+
+    unsigned char _4[0x1C - 0x4];
+};   // 0x1C bytes
+
+/* a string table of the manager's: when it is full, the variables' strings are collected into
+ * the other table and the string made there (SOCOM 1's, no DWARF members of its own) */
+class CUIVarSTable : public CSTable {
+public:
+    CUIVarSTable();
+    char *OnTableFull(const char *str);
+};   // 0x20 bytes
+
+/* the variables (SOCOM 1's DWARF: CUIVarManager : vector, CSaveModule, 0x8064 bytes; SOCOM II's
+ * tables are 0x20 bytes, so its pack buffers start at 0x6C) */
+class CUIVarManager : public std::vector<CUIVariable>, public CSaveModule {
+public:
+    /* the members ahead of the virtuals: declared after them, MW gives the class a vtable pointer
+     * of its own at 0x28 (its first base has none) and the tables move to 0x30 */
+    int m_currtab;                       // 0x28: the table strings are made in
+    CUIVarSTable m_stab[2];              // 0x2C
+    char m_packbuf[2][0x4000];           // 0x6C: the arrays packed, a buffer per table
+
+    ~CUIVarManager();
+    void Serialize(int flags);
+    void UnSerialize(const char *name, CRdrFile *file, int flags);
     CUIVariable *Add(const char *name, _zrdr *value, UIVAR_LONGEVITY longevity);
     CUIVariable *Find(const char *name);
-
-    unsigned char _c[0x8064 - 0xc];
+    CUIVariable *FindDormantVar(const char *name, _zrdr *value, UIVAR_LONGEVITY longevity);
+    void CollectGarbage();
+    void Reset();
 };
 extern CUIVarManager theUIVarManager;
 

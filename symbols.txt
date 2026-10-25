@@ -7112,13 +7112,13 @@
 0x00385370 0xA0 func_00385370  # OVL1
 0x00385410 0xA4 func_00385410  # OVL1
 0x003854C0 0x148 func_003854C0  # OVL1
-0x00385610 0x58 func_00385610  # OVL1
+0x00385610 0x58 UnSerialize__13CUIVarManagerFPCcP8CRdrFilei  # OVL1; by hand (the thunk 0x386DF0 adjusts this by -12, CSaveModule's place in CUIVarManager, and jumps here: the UnSerialize(const char *, CRdrFile *, int) slot SOCOM 1's UnSerialize__13CUIVarManagerFPCcP8CRdrFilei fills; Add(name, value, persistent)->Set(value) with the file's first item) -- zui_var.cpp
 0x00385670 0x14C Serialize__13CUIVarManagerFi  # OVL1; s1:calls
 0x003857C0 0x140 Add__13CUIVarManagerFPCcP5_zrdr15UIVAR_LONGEVITY  # OVL1; s1:calls (the UI handlers register their vars through it where SOCOM 1's do) -- the UI-commands lane
 0x00385900 0xC8 Find__13CUIVarManagerFPCc  # OVL1; s1:align by hand (SOCOM 1's Find(const char *) at the same place after Add: the 48-byte variables walked, a live one (longevity byte at 0x24) whose name at 0x14 matches strcasecmp returned)
-0x003859D0 0x88 func_003859D0  # OVL1
-0x00385A60 0x1CC func_00385A60  # OVL1
-0x00385C30 0xA4 func_00385C30  # OVL1
+0x003859D0 0x88 FindDormantVar__13CUIVarManagerFPCcP5_zrdr15UIVAR_LONGEVITY  # OVL1; s1:order by hand (SOCOM 1's FindDormantVar after Find: the first variable whose longevity is dormant made the new one; Add calls it with its own arguments) -- zui_var.cpp
+0x00385A60 0x1CC CollectGarbage__13CUIVarManagerFv  # OVL1; s1:order by hand (SOCOM 1's CollectGarbage after FindDormantVar: the current table toggled, every name made again there, the old table's Clear called, arrays packed into the 0x4000-byte buffers) -- zui_var.cpp
+0x00385C30 0xA4 Reset__13CUIVarManagerFv  # OVL1; s1:order by hand (SOCOM 1's Reset before ~CUIVarManager: the temporary variables destroyed, then CollectGarbage) -- zui_var.cpp
 0x00385CE0 0xA8 __dt__13CUIVarManagerFv  # OVL1; s1:calls
 0x00385D90 0x5C DetachUIVar__10UIVarMixinFP11CUIVariable  # OVL1; s1:calls by hand (the HUD lane: UIVarMixin's destructor makes this call where SOCOM 1's calls DetachUIVar)
 0x00385DF0 0x5C AttachUIVar__10UIVarMixinFP11CUIVariable  # OVL1; s1:calls (SystemTuner's constructor calls it with the new variable where SOCOM 1's calls AttachUIVar; detaches the old variable first, as SOCOM 1's)
@@ -7127,7 +7127,7 @@
 0x003860F0 0x1B0 func_003860F0  # OVL1
 0x003862A0 0x124 __as__11CUIVariableFPCc  # OVL1; s1:calls (the lobby callbacks' (variable, string) setter, as SOCOM 1's) -- the online lane
 0x003863D0 0x8C UpdateDependents__11CUIVariableFv  # OVL1; s1:calls (SyncGameClock calls it third, as SOCOM 1's) -- the online lane
-0x00386460 0x1F8 func_00386460  # OVL1
+0x00386460 0x1F8 Set__11CUIVariableFP5_zrdr  # OVL1; s1:order by hand (SOCOM 1's Set__11CUIVariableFP5_zrdr after UpdateDependents: the value cloned into the manager's current table, copied in, the watchers told) -- zui_var.cpp
 0x00386660 0x90 DetachAll__11CUIVariableFv  # OVL1; s1:calls by hand (detaches each watcher through UIVarMixin::DetachUIVar until none is left, as SOCOM 1's DetachAll; Destroy calls it first)
 0x003866F0 0x220 func_003866F0  # OVL1
 0x00386910 0xC func_00386910  # OVL1
@@ -7145,7 +7145,7 @@
 0x00386B00 0x80 Destroy__11CUIVariableFv  # OVL1; s1:calls by hand (DetachAll, then DeleteChildren and the fields cleared, as SOCOM 1's Destroy)
 0x00386B80 0x70 func_00386B80  # OVL1
 0x00386BF0 0x15C func_00386BF0  # OVL1
-0x00386D50 0x84 func_00386D50  # OVL1
+0x00386D50 0x84 OnTableFull__12CUIVarSTableFPCc  # OVL1; by hand (slot 0x18 of CUIVarSTable's table 0x407D20, CSTable's OnTableFull overridden: CollectGarbage, then the string made in the new current table, guarded against recursion) -- zui_var.cpp
 0x00386DE0 0x8 OnCreateString__7CSTableFPc  # OVL1; ours (slot 0x14 of CSTable's 0x4081D0 and CUIVarSTable's 0x407D20 vtables, empty; CreateString calls it with each string it adds; the inline virtual's copy emitted with zui_var.cpp's CUIVarSTable)
 0x00386DF0 0x8 func_00386DF0  # OVL1
 0x00386E00 0x8 func_00386E00  # OVL1

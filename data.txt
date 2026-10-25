@@ -821,6 +821,7 @@
 0x0049EA04 0x4 m_topy__3C2D  # OVL1 bss; SOCOM 1's static (the circle's y; 8 after m_topx in SOCOM 1, 4 now): 12 references in 8 functions take 0x49EA04
 0x0049EA08 0x4 m_botx__3C2D  # OVL1 bss; SOCOM 1's static (gp-26212): C2D::Init stores 2048 plus half the screen's width, as SOCOM 1's Init stored 2048 + 320: 1 reference (Init)
 0x0049EA0C 0x4 m_boty__3C2D  # OVL1 bss; SOCOM 1's static (gp-26204): C2D::Init stores 2048 plus half the screen's height, as SOCOM 1's Init stored 2048 + 224: 1 reference (Init)
+0x0049EC00 0x4 s_collecting  # OVL1 bss; zui_var.cpp's static (name ours): CUIVarSTable::OnTableFull's guard, counted up around the garbage collection it starts (the only string made is the first full table's); 2 references in 1 function (0x386D50 reads, increments and decrements it)
 0x0049EC08 0x4 s_soundTuner  # OVL1 bss; zui_tuners.cpp's static (name ours): the CSoundTuner (SOUND_VOLUME) InitSystemTuners news; 3 references in 3 functions (InitSystemTuners stores it, UninitSystemTuners deletes and zeroes it, RefreshSystemTuners reads it)
 0x0049EC10 0x4 s_musicTuner  # OVL1 bss; zui_tuners.cpp's static (name ours): the CMusicTuner (MUSIC_VOLUME); 3 references in 3 functions (InitSystemTuners, UninitSystemTuners, RefreshSystemTuners)
 0x0049EC18 0x4 s_brightnessTuner  # OVL1 bss; zui_tuners.cpp's static (name ours): the CBrightnessTuner (BRIGHTNESS); 3 references in 3 functions (InitSystemTuners, UninitSystemTuners, RefreshSystemTuners)
