@@ -4555,37 +4555,37 @@
 0x002D9AA0 0x220 func_002D9AA0  # OVL1
 0x002D9CC0 0x3C DeletePad__6CInputFUi  # OVL1; s1:align
 0x002D9D00 0xF8 CreatePad__6CInputFUi  # OVL1; s1:align
-0x002D9E00 0x34 Uninit__6CInputFv  # OVL1; s1:align
-0x002D9E40 0x58 func_002D9E40  # OVL1
-0x002D9EA0 0x7C func_002D9EA0  # OVL1
+0x002D9E00 0x34 Flush__6CInputFv  # OVL1; s1:align; s1:order by hand (the world lane: SOCOM 1's CInput::Flush after CreatePad -- each pad's Flush, SOCOM II's one pad with Flush(false); the s1:align name Uninit was one row early: Uninit is 0x2D9EA0, which deletes the keyboard and closes the pad IO as SOCOM 1's does)
+0x002D9E40 0x58 Tick__6CInputFf  # OVL1; s1:order by hand (SOCOM 1's CInput::Tick after Flush: the keyboard's Tick, then each pad's Tick with the frame time)
+0x002D9EA0 0x7C Uninit__6CInputFv  # OVL1; s1:order by hand (SOCOM 1's CInput::Uninit before Init: the keyboard deleted and cleared, the pad IO closed, m_init cleared; SOCOM II also tears down the keyboard reader (0x2DBEF0) and deletes the pad)
 0x002D9F20 0x7C Init__6CInputFv  # OVL1; s1:calls
-0x002D9FA0 0x48 func_002D9FA0  # OVL1
-0x002D9FF0 0x168 func_002D9FF0  # OVL1
+0x002D9FA0 0x48 IOPRebootHandler__6CInputFQ211CIOPManager11RebootPhaseQ211CIOPManager10RebootModePv  # OVL1; s1:order by hand (SOCOM 1's IOPRebootHandler after Init: phase 0 closes the pad IO, else it reopens it; Init registers this address with theIOPManager as SOCOM 1's registers its handler)
+0x002D9FF0 0x168 UpdateButton__4CPadF10PAD_BUTTONUif  # OVL1; s1:order by hand (SOCOM 1's CPad::UpdateButton after the reboot handler: the button's KEY_STATE byte stepped by whether it is down, its click timer; SOCOM II adds a float -- the pressure, scaled by 1/255 into the float per button at 0x14 -- so the name carries it)
 0x002DA160 0x20 SetButtonState__4CPadF10PAD_BUTTON9KEY_STATE  # OVL1; s1:align
 0x002DA180 0x38 GetTwoButtons__4CPadF10PAD_BUTTON10PAD_BUTTON  # OVL1; s1:align
-0x002DA1C0 0x40 func_002DA1C0  # OVL1
+0x002DA1C0 0x40 GetDoubleClick__4CPadF10PAD_BUTTON  # OVL1; s1:order by hand (SOCOM 1's GetDoubleClick, the same 0x40-odd bytes: the click timer compared with -2, set to -3 and true given back; GetSingleClick (-1) is gone from SOCOM II)
 0x002DA200 0x19C Dilate__4CPadFRfRfi  # OVL1; s1:align
-0x002DA3A0 0x240 func_002DA3A0  # OVL1
+0x002DA3A0 0x240 CheckStickVelocity__4CPadFRfRfi  # OVL1; s1:order by hand (SOCOM 1's CheckStickVelocity after Dilate, 0x24C there and 0x240 here)
 0x002DA5E0 0xE0 ReadControlFile__10CStickTypeFi  # OVL1; s1:align
-0x002DA6C0 0xD8 func_002DA6C0  # OVL1
-0x002DA7A0 0x24 func_002DA7A0  # OVL1
+0x002DA6C0 0xD8 SetPreset__4CPadFii  # OVL1; s1:order by hand (SOCOM 1's SetPreset after ReadControlFile: three presets (0, 1, 2) of a stick's dead zone, velocity and constants, the stick types now 0x28 bytes from 0x284)
+0x002DA7A0 0x24 GetDeadZone__4CPadFi  # OVL1; s1:order by hand (SOCOM 1's GetDeadZone: the stick type's absolute dead zone times deadZoneScaleFactor, before SetDeadZone as there)
 0x002DA7D0 0x2C SetDeadZone__4CPadFif  # OVL1; s1:align
-0x002DA800 0xA0 func_002DA800  # OVL1
-0x002DA8A0 0x8C func_002DA8A0  # OVL1
-0x002DA930 0x10B4 func_002DA930  # OVL1
+0x002DA800 0xA0 GetAcceleration__4CPadFi  # OVL1; s1:order by hand (SOCOM 1's GetAcceleration after SetDeadZone: the stick's value-for-constant mapped back through the two-piece curve SetAcceleration applies)
+0x002DA8A0 0x8C SetAcceleration__4CPadFif  # OVL1; s1:order by hand (SOCOM 1's SetAcceleration after GetAcceleration: the two-piece curve (below 0.5 times 0.6, above it 0.3 + 1.4 * (x - 0.5)) into the stick type's 0x10; Get/SetSensitivity are gone from SOCOM II)
+0x002DA930 0x10B4 Tick__4CPadFf  # OVL1; s1:order by hand (SOCOM 1's CPad::Tick, 0xFB0 there and 0x10B4 here, after SetAcceleration where SOCOM 1 had it after GetSingleClick: CInput::Tick and CPad::Flush call it with the frame time)
 0x002DB9F0 0x68 __dt__4CPadFv  # OVL1; s1:align
-0x002DBA60 0x11C Flush__4CPadFv  # OVL1; s1:align
-0x002DBB80 0x10 func_002DBB80  # OVL1
-0x002DBB90 0x148 func_002DBB90  # OVL1
-0x002DBCE0 0x2C func_002DBCE0  # OVL1
-0x002DBD10 0x30 func_002DBD10  # OVL1
-0x002DBD40 0x44 func_002DBD40  # OVL1
+0x002DBA60 0x11C Flush__4CPadFb  # OVL1; s1:align; SOCOM 1's Flush with a bool added (the world lane): the state cleared (two memsets as SOCOM 1's, a third of 256 bytes), and when the bool is set the pad ticked three frames with sceGsSyncV between; CInput::Flush passes false, the constructor true
+0x002DBB80 0x10 IsOpen__4CPadCFv  # OVL1; s1:order by hand (SOCOM 1's IsOpen after Flush: the port handle at 0xd8 not negative)
+0x002DBB90 0x148 __ct__4CPadFii  # OVL1; s1:order by hand (SOCOM 1's CPad(int, int) after IsOpen: the port opened through libpad2 for ports 0 and 1, the sticks' types read, Flush(true); CreatePad news 724 bytes and calls it)
+0x002DBCE0 0x2C ClosePadIO__6CInputFv  # OVL1; s1:order by hand (SOCOM 1's ClosePadIO after the CPad constructor: DeletePad(0), then libpad2's end and the module's)
+0x002DBD10 0x30 OpenPadIO__6CInputFv  # OVL1; s1:order by hand (SOCOM 1's OpenPadIO after ClosePadIO: the modules started, libpad2 initialised, CreatePad(0), 0 given back)
+0x002DBD40 0x44 KeyboardAttached__Fv  # OVL1; new in SOCOM II, the name ours (the world lane): the USB keyboard library's information read into a zeroed 136-byte block and synchronised, its byte at 8 tested; 0x38D8F0 calls it
 0x002DBD90 0x158 func_002DBD90  # OVL1
-0x002DBEF0 0x8 func_002DBEF0  # OVL1
-0x002DBF00 0x40 func_002DBF00  # OVL1
-0x002DBF40 0x8 func_002DBF40  # OVL1
+0x002DBEF0 0x8 UninitKeyreadStuff__Fv  # OVL1; new in SOCOM II, the name ours (after SOCOM 1's InitKeyreadStuff): a tail call into the USB keyboard library's teardown (0x1BE898); CInput::Uninit and the reboot handler's close path call it
+0x002DBF00 0x40 InitKeyreadStuff__Fv  # OVL1; s1:order by hand (SOCOM 1's InitKeyreadStuff before CKeyboard::Tick: the USB keyboard library set up; CInput::Init and the reboot handler call it)
+0x002DBF40 0x8 Tick__9CKeyboardFf  # OVL1; s1:order by hand (SOCOM 1's CKeyboard::Tick, empty in both, before ~CKeyboard; CInput::Tick calls it)
 0x002DBF50 0x44 __dt__9CKeyboardFv  # OVL1; s1:align
-0x002DBFA0 0xC func_002DBFA0  # OVL1
+0x002DBFA0 0xC __ct__9CKeyboardFv  # OVL1; s1:order by hand (SOCOM 1's CKeyboard(), three words in both, after ~CKeyboard; CInput::Init news one byte and calls it)
 0x002DBFB0 0xD8 func_002DBFB0  # OVL1
 0x002DC090 0xBC func_002DC090  # OVL1
 0x002DC150 0x30 func_002DC150  # OVL1
