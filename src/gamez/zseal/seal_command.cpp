@@ -6,11 +6,6 @@
 #include "zseal.h"
 
 extern "C" {
-/* CZKit::GetItemIndex and ItemHasAmmo(int) (SOCOM 1's GetItemIndex__5CZKitCF10EQUIP_ITEM and
- * ItemHasAmmo__5CZKitFi, called here where SOCOM 1's CanDeploy calls them; OVL2 0x5C8870,
- * 0x5BDA10 -- the kit lane's) */
-int func_005C8870(const CZKit *kit, EQUIP_ITEM item);
-bool func_005BDA10(CZKit *kit, int index);
 /* a switch that lets a charge be set anywhere (OVL2 bss 0x66B030; the name ours) */
 extern unsigned char data_0066B030;
 }
@@ -22,7 +17,7 @@ bool CanDeploy(CZKit *kit, EQUIP_ITEM item, CNodeAction *action)
     NODEACTION_TYPE type = action ? action->m_type : NODEACTION_NONE;
     bool ok = false;
 
-    if (kit->HasItem(item) && func_005BDA10(kit, func_005C8870(kit, item))) {
+    if (kit->HasItem(item) && kit->ItemHasAmmo(kit->GetItemIndex(item))) {
         if (item != 152 || data_0066B030 || type == NODEACTION_BREACH)
             ok = true;
     }

@@ -44,9 +44,14 @@ static inline void SetPhase(CAiState *s, unsigned int phase)
 class CAiSPursue : public CAiState {
 public:
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ctrl);
+    /* slots 0x14, 0x44 and 0x48 (new in SOCOM II; the signatures ai_states.h's) */
+    virtual AI_RESULT Virtual14(CSealCtrlAi *ai, int x);
+    virtual bool Virtual44(AI_STATE state) { return state == m_state; }
+    virtual bool Virtual48(int x, CAiState *other);
     virtual ~CAiSPursue();
 
     float m_timer;   // 0x58 (SOCOM 1's 0x28)
+    signed char m_5c;   // 0x5c (the name ours)
 };
 
 class CAiSAnimate : public CAiState {
@@ -403,52 +408,32 @@ extern "C" void *func_00558AA0(CAiRowTable *t, unsigned char i)
     return t->m_rows[t->IsEmpty()][i];
 }
 
-/* CAiSPursue's state bits and the pursuit copied from another of its kind (the base's area; the
- * names ours) */
-struct CAiSPursueData {
-    unsigned char _0[0x28];
-    int m_status;   // 0x28
-    unsigned char _2c[0x30 - 0x2c];
-    AI_STATE m_state;   // 0x30
-    unsigned char _31[0x4a - 0x31];
-    unsigned char m_bit0 : 1;   // 0x4a
-    unsigned char m_have_target : 1;
-    unsigned char _4b[0x58 - 0x4b];
-    float m_timer;   // 0x58
-    signed char m_5c;   // 0x5c
-
-    void SetHaveTarget(bool on) { m_have_target = on; }
-    bool HaveTarget() { return m_have_target; }
-};
-
 /* (OVL2 0x60A850, unowned: a test of the AI's object at 0x67C) */
 extern "C" bool func_0060A850(void *p);
 
-/* CAiSPursue's slot 0x14 (new in SOCOM II): the target dropped once the AI's object says so, the
- * status whether none is held (OVL2 0x55A760).
- * OPEN, 0x6C against 0x70: the target builds the status with `movz` (0, then 1 if the bit is
- * clear) and its temporaries in v0/v1/a0; MW here uses sltu/xori and a1/v1/a0. Tried: a ternary,
- * `== false`, a bool local, the bit read directly, the status returned. */
-extern "C" void func_0055A760(CAiSPursueData *s, CSealCtrlAi *ai)
+/* CAiSPursue's slot 0x14 (new in SOCOM II): the pursuit stops unless the AI's object says so,
+ * and the Tick's result (OVL2 0x55A760). ai_states.h's Result() gives the target's `movz` and the
+ * byte enum's `andi` -- the earlier spelling as a status computed here was the miss */
+AI_RESULT CAiSPursue::Virtual14(CSealCtrlAi *ai, int x)
 {
     if (!func_0060A850(ai->m_67c))
-        s->SetHaveTarget(false);
-    s->m_status = !s->HaveTarget();
+        m_active = false;
+    return Result();
 }
 
-/* CAiSPursue's slot 0x48 (new in SOCOM II): the timer and the byte taken from another pursuit
- * (OVL2 0x55A7D0) */
-static inline CAiSPursueData *AsPursue(CAiSPursueData *s)
+/* CAiSPursue's slot 0x48 (new in SOCOM II): the timer and the byte taken over from another
+ * pursuit (OVL2 0x55A7D0) */
+static inline CAiSPursue *AsPursue(CAiState *s)
 {
-    return s && s->m_state == (AI_STATE)12 ? s : 0;
+    return s && s->m_state == (AI_STATE)12 ? (CAiSPursue *)s : 0;
 }
 
-extern "C" bool func_0055A7D0(CAiSPursueData *s, int a, CAiSPursueData *other)
+bool CAiSPursue::Virtual48(int x, CAiState *other)
 {
-    CAiSPursueData *o = AsPursue(other);
+    CAiSPursue *o = AsPursue(other);
 
-    s->m_timer = o->m_timer;
-    s->m_5c = o->m_5c;
+    m_timer = o->m_timer;
+    m_5c = o->m_5c;
     return true;
 }
 

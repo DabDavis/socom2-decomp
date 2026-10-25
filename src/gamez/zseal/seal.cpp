@@ -534,10 +534,8 @@ void ftsSetPlayer(CZSealBody *seal);
 
 /* the local player made for a network game: named by the UI's variable or by the client index,
  * of the game's character, a hostage's squirming controller if so set, then made the player
- * (OVL2 0x5442C0; SOCOM 1's with the character read from the game state).
- * OPEN, 1 instruction: `new CSealCtrlSquirm` allocates 640 in the target, 636 here -- zkit.h's
- * CSealCtrlSquirm (the kit lane's) ends at 0x27C; with four bytes more after m_timer_value it is
- * byte-exact (try.py). */
+ * (OVL2 0x5442C0; SOCOM 1's with the character read from the game state). Byte-exact since the
+ * kit lane's zkit.h made CSealCtrlSquirm 0x280 bytes (`new` allocates 640). */
 void CZSealBody::NetworkPlayerCreate()
 {
     char name[31];

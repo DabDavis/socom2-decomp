@@ -85,6 +85,10 @@ public:
      * 0x5C86F0, 0x5BDB20, the kit lane's) */
     bool HasItem(EQUIP_ITEM item) const;
     bool ItemHasAmmo(EQUIP_ITEM item);
+    /* an item's index in the kit, and whether the item at an index has ammunition (SOCOM 1's;
+     * OVL2 0x5C8870, 0x5BDA10 -- both const in SOCOM II, kit.h's) */
+    int GetItemIndex(EQUIP_ITEM item) const;
+    bool ItemHasAmmo(int index) const;
 
     unsigned int m_0;
 };
@@ -148,8 +152,14 @@ extern CAiMaps AiMaps;
 
 /* a squad (SOCOM 1's CSealUnit; SOCOM II's vtable at 0x669650 has IssueCommand first, its
  * pointer at 4) -- only what the controller calls */
+/* what a squad is told (SOCOM 1's UNIT_MESSAGE; 1 a member's death -- only the name matters here) */
+enum UNIT_MESSAGE { UNIT_MESSAGE_0 = 0, UNIT_MESSAGE_DEATH = 1, UNIT_MESSAGE_LAST = 255 };
+
 class CSealUnit {
 public:
+    /* a member's news handed to the squad (SOCOM 1's; OVL2 0x5ED7B0, the kit lane's) */
+    void Notify(CZSealBody *seal, UNIT_MESSAGE msg, void *data);
+
     unsigned int m_0;   // 0x0
     virtual void IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);
     virtual bool AllowCommand(CZSealBody *seal, FT_COMMAND cmd, void *data);   /* +0xC (SOCOM 1's) */
