@@ -25,7 +25,15 @@
  *     iterator's category, an empty class passed by value -- loaded as a byte off the stack and
  *     never stored (0x1EE780; 0x1EF400 is assign(first, last) through it);
  *   - erase() is that template replace over (0, npos) with an empty range of const char *, inline
- *     (SetString__16C2DMessageStringFPCc, the menu's string handlers).
+ *     (SetString__16C2DMessageStringFPCc, the menu's string handlers);
+ *   - the copies, out of class (the MSL lane, 2026-10-25; each byte-exact): the copy constructor
+ *     (0x22E560) copies a short form's three words whole (lwc1/swc1, a struct of a word array) and
+ *     builds a long one through reserve and the template replace; the copy assignment (0x22E4D0)
+ *     copies when both are short -- its first test `is_long() == false`, which keeps the bool's
+ *     sltu for size() to reuse -- else replace(0, size(), str) (0x22E690: one is_long test picks
+ *     the text and the size, short form first); push_back(char) (0x284B40) replaces the empty range
+ *     at the end with the character itself, its address taken. zrdr_parse.cpp's CRdrIO::Open
+ *     assigns through the operator, and its tail emits 0x22E4D0 and 0x22E690.
  * The pieces the map has not named yet are called through their placeholders, C functions under
  * the address's name (they resolve by address whatever the row is later named); reserve and the
  * destructor are the map's names. */
@@ -57,9 +65,11 @@ public:
 
     basic_string() { init(); }
     basic_string(const charT *s);
+    basic_string(const basic_string &str);
     ~basic_string();
 
     basic_string &operator=(const charT *s) { return assign(s); }
+    basic_string &operator=(const basic_string &str);
     basic_string &assign(const charT *s) { return *(basic_string *)func_001EEB40(this, s); }
     basic_string &append(const charT *s) { return *(basic_string *)func_001EEB70(this, s); }
     basic_string &operator+=(const charT *s) { return append(s); }
@@ -71,6 +81,8 @@ public:
     }
 
     void reserve(size_type n);
+    basic_string &replace(size_type pos, size_type n1, const basic_string &str);
+    void push_back(charT c);
 
     bool is_long() const { return w_[0] & 1; }
     /* the short form's size cast back to its byte (0x2CA700, the copy closing fts_patch.cpp,
@@ -82,6 +94,13 @@ public:
     const charT *data() const { return c_str(); }
 
 private:
+    /* the three words as one aggregate: the short form copied whole (lwc1/swc1, as MW copies a
+     * struct holding a word array) */
+    struct rep_words {
+        unsigned int w[3];
+    };
+    void copy_rep(const basic_string &str) { *(rep_words *)w_ = *(const rep_words *)str.w_; }
+
     void init()
     {
         unsigned int (&a)[3] = w_;
@@ -115,6 +134,62 @@ basic_string<charT, traits, Allocator>::basic_string(const charT *s)
 
     reserve(n);
     func_001EE780(this, 0, 0, s, s + n, category);
+}
+
+/* a copy (0x22E560): the short form's words copied whole, the long form's text reserved and
+ * replaced into an emptied string */
+template <class charT, class traits, class Allocator>
+basic_string<charT, traits, Allocator>::basic_string(const basic_string &str)
+{
+    if (!str.is_long())
+        copy_rep(str);
+    else {
+        init();
+        reserve(str.w_[1]);
+        forward_iterator_tag category;
+
+        func_001EE780(this, 0, 0, (const charT *)str.w_[2], (const charT *)str.w_[2] + str.w_[1], category);
+    }
+}
+
+/* assigned from another (0x22E4D0): two short forms copied whole, else the whole text replaced */
+template <class charT, class traits, class Allocator>
+basic_string<charT, traits, Allocator> &basic_string<charT, traits, Allocator>::operator=(const basic_string &str)
+{
+    if (is_long() == false && !str.is_long()) {
+        copy_rep(str);
+        return *this;
+    }
+    return replace(0, size(), str);
+}
+
+/* a range replaced by another string's text (0x22E690) */
+template <class charT, class traits, class Allocator>
+basic_string<charT, traits, Allocator> &basic_string<charT, traits, Allocator>::replace(size_type pos, size_type n1,
+                                                                                        const basic_string &str)
+{
+    forward_iterator_tag category;
+
+    const charT *p;
+    size_type n;
+
+    if (!str.is_long()) {
+        p = str.s_.data_;
+        n = (unsigned char)str.s_.size_;
+    } else {
+        p = (const charT *)str.w_[2];
+        n = str.w_[1];
+    }
+    return *(basic_string *)func_001EE780(this, pos, n1, p, p + n, category);
+}
+
+/* a character appended (0x284B40): the template replace at the end, over the character itself */
+template <class charT, class traits, class Allocator>
+void basic_string<charT, traits, Allocator>::push_back(charT c)
+{
+    forward_iterator_tag category;
+
+    func_001EE780(this, size(), 0, &c, &c + 1, category);
 }
 
 #pragma auto_inline off

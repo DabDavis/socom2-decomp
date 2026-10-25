@@ -194,7 +194,7 @@ bool CRdrIO::Open(const char *name, unsigned int mode)
     unsigned int pos = func_00331F30(&m_name, "\\/", (unsigned int)std::string::npos);
 
     if (pos != (unsigned int)std::string::npos) {
-        func_0022E4D0(&m_path, func_0032FC40(&m_name, 0, pos));
+        m_path = func_0032FC40(&m_name, 0, pos);
         string_erase(m_name, 0, pos + 1);
         unsigned int i;
         while ((i = func_00331ED0(&m_path, "\\", 0)) != (unsigned int)std::string::npos)

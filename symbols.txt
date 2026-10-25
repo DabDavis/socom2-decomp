@@ -2106,10 +2106,10 @@
 0x0022DE60 0x194 func_0022DE60  # OVL1
 0x0022E000 0x460 func_0022E000  # OVL1
 0x0022E460 0x68 func_0022E460  # OVL1
-0x0022E4D0 0x84 func_0022E4D0  # OVL1
-0x0022E560 0x90 func_0022E560  # OVL1
+0x0022E4D0 0x84 __as__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>  # OVL1; by hand (the MSL lane: include/string's copy assignment compiles to its 0x84 bytes -- two short forms copied whole, else replace(0, size(), str))
+0x0022E560 0x90 __ct__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>  # OVL1; by hand (the MSL lane: include/string's copy constructor compiles to its 0x90 bytes -- the short form's words copied whole, the long form reserved and replaced in)
 0x0022E5F0 0x9C func_0022E5F0  # OVL1
-0x0022E690 0x54 func_0022E690  # OVL1
+0x0022E690 0x54 replace__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FUiUiRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>  # OVL1; by hand (the MSL lane: replace(pos, n1, const basic_string &), the template replace over the other's text; the copy assignment 0x22E4D0 calls it)
 0x0022E6F0 0x70 func_0022E6F0  # OVL1
 0x0022E760 0x70 func_0022E760  # OVL1
 0x0022E7D0 0x70 func_0022E7D0  # OVL1
