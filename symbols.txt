@@ -1702,11 +1702,11 @@
 0x001FEF10 0x144 __ct__10CLetterBoxFv  # OVL1; s1:order by hand (hud_letterbox.cpp's last, as SOCOM 1's; its bars set up through C2D's new slots)
 0x001FF060 0x94 Tick__17CLensFlareManagerFf  # OVL1; by hand (the only slot of CLensFlareManager's vtable 0x4052A0, which is three words: while active and not empty, every entry's C2D Tick given the float; the name ours)
 0x001FF100 0x154 func_001FF100  # OVL1
-0x001FF260 0xC4 func_001FF260  # OVL1
-0x001FF330 0x40 func_001FF330  # OVL1
+0x001FF260 0xC4 Clear__17CLensFlareManagerFv  # OVL1; by hand (CHUD::ReleaseHUD's call on the manager: every flare deleted through its virtual destructor, the list emptied, inactive; the name ours)
+0x001FF330 0x40 Init__17CLensFlareManagerFv  # OVL1; by hand (inactive, LoadRdr of lensflare.rdr, active if that gave any flare; the name ours)
 0x001FF370 0xE4 func_001FF370  # OVL1
-0x001FF460 0x8C func_001FF460  # OVL1
-0x001FF4F0 0x140 func_001FF4F0  # OVL1
+0x001FF460 0x8C Reset__17CLensFlareManagerFv  # OVL1; by hand (CHUD::ReInit_Uninit's call on the manager: each flare's handle at 0x8C given back to the system at 0x488F10 and set to -1; the name ours)
+0x001FF4F0 0x140 LoadRdr__17CLensFlareManagerFPCc  # OVL1; by hand (Init's call with lensflare.rdr's name, as SOCOM 1's CLensFlareSaturate::LoadRdr took one)
 0x001FF630 0x270 func_001FF630  # OVL1
 0x001FF8A0 0x69C func_001FF8A0  # OVL1
 0x001FFF40 0x920 func_001FFF40  # OVL1

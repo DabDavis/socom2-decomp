@@ -415,7 +415,6 @@ extern "C" void func_00237310(CHudNetState *state);
 extern "C" void func_00238660(CMPInfoBox *box);
 extern "C" void func_00242AB0(CSpectatorInfo *info);
 extern "C" void func_00237F60(CAmmoDisplay *ammo);
-extern "C" void func_001FF460(CLensFlareManager *flares);
 
 /* everything a mission set up taken down for the next: the map and the selectors, the cameras,
  * icons and reticle, every string wiped, the pause menu closed and cleared, the flashes, the
@@ -461,7 +460,7 @@ void CHUD::ReInit_Uninit()
     hudTurnOffScorePopup();
     func_00235300(&data_00413120, 0);
     data_00413120.m_dcd = 1;
-    func_001FF460(&m_lensflares);
+    m_lensflares.Reset();
     func_00237310(&data_00413120);
 }
 
