@@ -12,6 +12,17 @@
 /* MSL's qsort (MAIN 0x196D38, not named in the map: SOCOM 1's SortNearToFar calls qsort) */
 extern "C" void func_00196D38(void *base, unsigned int n, unsigned int size,
                               int (*cmp)(const void *, const void *));
+/* a node's tree searched for the hit set (CGrid's: GetIntersect and GetAltitude both call it where
+ * SOCOM 1's called NodeGetIntersect and NodeGetAltitude -- SOCOM II's one walk, not named yet) */
+extern "C" void func_002D2890(zdb::CGrid *grid, zdb::CNode *node, zdb::DiIntersect *di);
+/* whether a matrix is the unit one (zmath_matrix.cpp's, new in SOCOM II, not named yet) */
+extern "C" bool func_003084F0(const CMatrix *m);
+
+/* the node the walk is in (SOCOM 1's file static m_node) and the matrix stack the props' matrices
+ * are pushed on (SOCOM 1's file static stack; SOCOM II's initialiser, 0x401CC0, clears its owner
+ * byte where include's CStack() pushes the unit matrix -- not that constructor) */
+static zdb::CNode *m_node;
+static CStack stack;
 
 /* whether the camera wants the collision flag (SOCOM 1's grid_di.cpp keeps it in an unnamed
  * namespace: cameraCollideFlagRequired__21@unnamed@grid_di_cpp@) */
@@ -153,6 +164,88 @@ void CGrid::InitDescendantsVisuals()
         }
         atom->Ent->SetDescendantVisuals(true);
     }
+}
+
+/* a point set from three values, by value: z and x loaded before the stores (the name is ours) */
+inline void DiPntSet(CPnt3D &p, float x, float y, float z)
+{
+    p.x = x;
+    p.y = y;
+    p.z = z;
+}
+
+/* a point's altitude hits: the ray made vertical through it, 50000 up and down, back faces
+ * masked, then the cell walk of GetIntersect (SOCOM 1's; its ray was 500000 long) */
+bool CGrid::GetAltitude(DiIntersect *di)
+{
+    di->m_Cnt = 0;
+    DiPntSet(di->m_Tail, di->m_Tail.x, 50000.0f, di->m_Tail.z);
+    DiPntSet(di->m_Tip, di->m_Tail.x, -50000.0f, di->m_Tail.z);
+    CDI::m_backface_mask = 32;
+    stack.Push(&CMatrix::identity);
+    SetTraversalBoundary(&di->m_Tail, 1, false);
+    for (CGridAtom *atom = StartTraversal(); atom; atom = GetNextAtom()) {
+        CCell *cell = atom->GetCell();
+
+        if (cell) {
+            CClutterList &list = cell->m_clutterListDI;
+
+            if (list.size()) {
+                for (CClutterList::iterator it = list.begin(); it != list.end(); ++it) {
+                    m_node = (*it)->m_node;
+                    if (func_003084F0((*it)->GetMatrix()) == false) {
+                        stack.Multiply((*it)->GetMatrix(), true);
+                        func_002D2890(this, m_node, di);
+                        stack.Pop();
+                    } else
+                        func_002D2890(this, m_node, di);
+                }
+            }
+        }
+        m_node = atom->Ent;
+        func_002D2890(this, atom->Ent, di);
+    }
+    stack.Pop();
+    return true;
+}
+
+/* a ray's hits gathered from the cells it crosses: each prop with collision searched under its
+ * matrix (pushed unless the unit one), then the cell's node (SOCOM 1's; SOCOM II skips the push
+ * for a unit matrix) */
+bool CGrid::GetIntersect(DiIntersect *di)
+{
+    CPnt3D ray[2];
+
+    di->m_Cnt = 0;
+    ray[0] = di->m_Tail;
+    ray[1] = di->m_Tip;
+    SetTraversalBoundary(ray, 2, true);
+    CGridAtom *atom = StartTraversal();
+
+    stack.Push(&CMatrix::identity);
+    for (; atom; atom = GetNextAtom()) {
+        CCell *cell = atom->GetCell();
+
+        if (cell) {
+            CClutterList &list = cell->m_clutterListDI;
+
+            if (list.size()) {
+                for (CClutterList::iterator it = list.begin(); it != list.end(); ++it) {
+                    m_node = (*it)->m_node;
+                    if (func_003084F0((*it)->GetMatrix()) == false) {
+                        stack.Multiply((*it)->GetMatrix(), true);
+                        func_002D2890(this, m_node, di);
+                        stack.Pop();
+                    } else
+                        func_002D2890(this, m_node, di);
+                }
+            }
+        }
+        m_node = atom->Ent;
+        func_002D2890(this, atom->Ent, di);
+    }
+    stack.Pop();
+    return true;
 }
 
 /* the highest hit no more than alt above the point, or none (SOCOM 1's) */

@@ -143,6 +143,8 @@ public:
     int Release();
     /* a polygon read from the archive's open key (SOCOM 1's static) */
     static CDI *Create(CSaveLoad &io);
+    /* the faces a query skips (SOCOM 1's static: CGrid::GetAltitude sets 32) */
+    static int m_backface_mask;
 
     CPnt4D *m_pnts;   // 0x10: its points, 16 bytes each (Allocate mallocs them; the name ours)
 };
@@ -979,6 +981,9 @@ public:
     /* the world's queries, cell by cell (SOCOM 1's) */
     void InitDescendantsVisuals();
     void InitDescendantsDI();
+    /* a ray's hits gathered, and a point's altitude hits (grid_di.cpp's, SOCOM 1's) */
+    bool GetIntersect(DiIntersect *di);
+    bool GetAltitude(DiIntersect *di);
 
     /* the atoms a grid makes (SOCOM 1's static; Read takes the parameters' count from it) */
     static int N_ATOMS;
