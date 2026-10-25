@@ -644,10 +644,13 @@ T &__vector_imp<T, Allocator, IsPOD>::at(unsigned int n)
  * constructor runs after them (CVehicleRdrEntry's 0x5331D0 in 0x534320: the end kept in s3, the
  * test's size reused for the count) and an inline one too tall to inline before them (CTurretDef's
  * 0x3AB5F0 in 0x3AB8C0: size and data read after it). The shape is the targets' (0x534320 to its
- * last eight bytes), but no instance matches yet: each waits on its element's constructor in
- * another lane's header -- CTurretDef's out-of-line one (zveh.h; CVehicleDef's alike), CVehicleRdrEntry's
- * (zchar), CAiMapLoc's empty one (0x516120, zentity.h), CGameStateChangeCmd's pool (CreatePool
- * unwritten); their call sites keep their placeholders until then */
+ * last eight bytes). Byte-exact as vector<CAiMapLoc>'s (0x51C4A0, ai_mapio.cpp's template tail,
+ * with its erase 0x51C510: the element's empty constructor builds nothing, the MSL lane's round 2).
+ * The others wait on their element's constructor in another lane's header -- CTurretDef's
+ * out-of-line one (zveh.h; CVehicleDef's alike), CVehicleRdrEntry's (zchar), the AI map tables'
+ * (ai.h: with ai_mapio.cpp's resizes all switched to the member, readers, actions, regions,
+ * spores, names, links, routes, lines and scanlines all miss on the element's construction),
+ * CGameStateChangeCmd's pool (CreatePool unwritten); their call sites keep their placeholders */
 template <class T, class Allocator, bool IsPOD>
 void __vector_imp<T, Allocator, IsPOD>::resize(unsigned int n)
 {

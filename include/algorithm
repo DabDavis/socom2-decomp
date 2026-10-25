@@ -81,7 +81,15 @@ OutputIterator remove_copy_if(InputIterator first, InputIterator last, OutputIte
  * MW builds remove_copy_if's straight into it).
  * OPEN (0x29FE70, 6 instructions): the inlined find_if's two iterators take s5/s4 the other way
  * round -- `!(last == first)` in find_if gets five, a for/break ten; find_if is node_vector.cpp's
- * and zanim_anim.cpp's too, so it stays */
+ * and zanim_anim.cpp's too, so it stays. Measured again (the MSL lane, round 2): SOCOM 1's own
+ * remove_if over list<CSched_Task *> (0x2F41F0 in the demo) gives first s4 and last s5 as ours
+ * does, SOCOM II's the other way -- find_if's two copies are made in parameter order there and in
+ * argument order (right to left) here. Tried: an early return, a new local for the result, `last ==
+ * first`, the result declared first, explicit template arguments, the loop written in remove_if
+ * (no copies: 0xCC), copies of first and last made in either order before the call, find_if as a
+ * for/break, a body return, a local walker; the base iterator copied trivially (its conversion to
+ * const_iterator a template: +9, PurgeEntities far off) and the wrapper's copy left implicit
+ * (no change). Every form keeps the swap or adds to it */
 template <class ForwardIterator, class Predicate>
 ForwardIterator remove_if(ForwardIterator first, ForwardIterator last, Predicate pred)
 {

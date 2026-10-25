@@ -9395,7 +9395,7 @@
 0x005132A0 0x8 func_005132A0  # OVL2
 0x005132B0 0x1A8 func_005132B0  # OVL2
 0x00513460 0x24C func_00513460  # OVL2
-0x005136B0 0x6E4 func_005136B0  # OVL2
+0x005136B0 0x6E4 insert__Q23std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>FP9CAiMapLocUiRC9CAiMapLoc  # OVL2; by hand, the MSL lane (vector<CAiMapLoc>'s class insert: the byte-exact resize 0x51C4A0 calls it with (end, n - size, T()); include/vector's copy is 8 bytes short -- the in-place branch's end pointer in other registers, as the 8-byte-element inserts')
 0x00513DA0 0x1F0 func_00513DA0  # OVL2
 0x00513F90 0x8F4 func_00513F90  # OVL2
 0x00514890 0x754 func_00514890  # OVL2
@@ -9513,7 +9513,7 @@
 0x0051C350 0x98 func_0051C350  # OVL2
 0x0051C3F0 0xA4 resize__Q23std68__vector_imp<Q26CAiMap6reader,Q23std27allocator<Q26CAiMap6reader>,0>FUi  # OVL2; s1:callee by hand (ReadCellTable<readers, reader> calls it with the count where the demo's calls this resize)
 0x0051C4A0 0x6C resize__Q23std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>FUi  # OVL2; s1:callee by hand (ReadCellTable<CAiMapLocVec, CAiMapLoc> calls it with the count where the demo's calls this resize)
-0x0051C510 0x120 func_0051C510  # OVL2
+0x0051C510 0x120 erase__Q23std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>FP9CAiMapLocP9CAiMapLoc  # OVL2; by hand, the MSL lane (include/vector's class erase over CAiMapLoc, byte-exact from ai_mapio.cpp's template tail: vector<CAiMapLoc>::resize, 0x51C4A0, calls it for a cut)
 0x0051C630 0x9C resize__Q23std64__vector_imp<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>,0>FUi  # OVL2; by hand (ReadCellTable<names, name> 0x51BA60 calls it with the count)
 0x0051C6D0 0x170 resize__Q23std68__vector_imp<Q26CAiMap6action,Q23std27allocator<Q26CAiMap6action>,0>FUi  # OVL2; by hand (ReadCellTable<actions, action> 0x51B820 calls it with the count)
 0x0051C840 0xA4 resize__Q23std64__vector_imp<Q26CAiMap4link,Q23std25allocator<Q26CAiMap4link>,0>FUi  # OVL2; by hand (ReadCellTable<links, link> 0x51BB20 calls it with the count; it builds the new elements with the link's constructor and inserts through the links' insert 0x520A90, push_back's callee)
