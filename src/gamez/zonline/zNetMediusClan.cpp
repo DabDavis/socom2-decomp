@@ -431,7 +431,7 @@ void cbUpdateClanStats(MediusErrorCode, MediusErrorCode, MediusErrorCode,
 
     if (CheckMediusCallbackStatus("MediusUpdateClanStats", resp->StatusCode)) {
         char *tag = VarText(theLobby.uiv_ClanDescription);
-        CUIVariable *var = theUIVarManager.Add("PLAYER_NAME_AND_TAG", 0, UIVAR_PERMANENT);
+        CUIVariable *var = theUIVarManager.Add("PLAYER_NAME_AND_TAG", 0, UIVL_PERMANENT);
 
         if (tag && tag[0])
             sprintf(text, "#C\x80@ [%s] #C\x80\x80\x80%s", tag, AccountInfo.AccountName);
@@ -446,7 +446,7 @@ void cbUpdateClanStats(MediusErrorCode, MediusErrorCode, MediusErrorCode,
 void CZOnlineLobby::UpdateClanStats()
 {
     char stats[256];
-    char *desc = VarText(theUIVarManager.Add("Clan_Description", 0, UIVAR_SESSION));
+    char *desc = VarText(theUIVarManager.Add("Clan_Description", 0, UIVL_TEMPORARY));
     MediusUpdateClanStatsRequest req;
 
     sprintf(stats, "clan_icon_%.2d.tif", 0);

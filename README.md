@@ -1190,6 +1190,24 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     controller state timer folded in at +0x18); CAiMapLoc's default constructor is empty in
     SOCOM II (0x516120) -- zentity.h's stand-in, which reads `invalid`, is not it (open, with
     the entity header).
+- **Tells from the UI widgets, round 3** (zui_spec.cpp, zui_cleanup.cpp, zui_var.cpp, util_crc.cpp):
+  - bitfields cleared in the mem-initializer list are each read, masked and written back as a
+    whole word; assigned in the body, MW narrows the stores to bytes and halfwords (_zrdr's clone
+    constructor);
+  - a class whose first base has no vtable gets a vtable pointer of its own where its virtuals
+    are declared: CUIVarManager declares its members before its virtuals;
+  - `new T(spec.GetVarSpec())` swaps the new object's saved register with the argument's,
+    against reading `spec.m_var` directly;
+  - member initialisers that call (`m_valVar(zrdr_findstring(..))`, a float through an inline)
+    run before the string member's zeroing, the target's order;
+  - a pin does not carry through: MW still auto-inlines a function that calls a pinned one (each
+    caller needed its own `#pragma auto_inline off`);
+  - `!(bool)x` materialises sltu/xori/andi into a bool local; `x == 0` keeps the raw value and
+    tests it later;
+  - zui.h's UIVAR_LONGEVITY has SOCOM 1's DWARF names and values (UIVL_DORMANT 0, TEMPORARY 1,
+    PERMANENT 2, PERSISTENT 3); zanim_menu.h still carries the old spellings (TEMPORARY 0,
+    SESSION 1, PERMANENT 2) -- mapped by value where a unit moved over;
+  - util_crc.cpp's CRC32String (0x3A2370) is the CRC-32 the sound system hashes cue names with.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has

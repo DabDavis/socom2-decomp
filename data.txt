@@ -830,6 +830,7 @@
 0x0049EA04 0x4 m_topy__3C2D  # OVL1 bss; SOCOM 1's static (the circle's y; 8 after m_topx in SOCOM 1, 4 now): 12 references in 8 functions take 0x49EA04
 0x0049EA08 0x4 m_botx__3C2D  # OVL1 bss; SOCOM 1's static (gp-26212): C2D::Init stores 2048 plus half the screen's width, as SOCOM 1's Init stored 2048 + 320: 1 reference (Init)
 0x0049EA0C 0x4 m_boty__3C2D  # OVL1 bss; SOCOM 1's static (gp-26204): C2D::Init stores 2048 plus half the screen's height, as SOCOM 1's Init stored 2048 + 224: 1 reference (Init)
+0x0049EC00 0x4 s_collecting  # OVL1 bss; zui_var.cpp's static (name ours): CUIVarSTable::OnTableFull's guard, counted up around the garbage collection it starts (the only string made is the first full table's); 2 references in 1 function (0x386D50 reads, increments and decrements it)
 0x0049EC08 0x4 s_soundTuner  # OVL1 bss; zui_tuners.cpp's static (name ours): the CSoundTuner (SOUND_VOLUME) InitSystemTuners news; 3 references in 3 functions (InitSystemTuners stores it, UninitSystemTuners deletes and zeroes it, RefreshSystemTuners reads it)
 0x0049EC10 0x4 s_musicTuner  # OVL1 bss; zui_tuners.cpp's static (name ours): the CMusicTuner (MUSIC_VOLUME); 3 references in 3 functions (InitSystemTuners, UninitSystemTuners, RefreshSystemTuners)
 0x0049EC18 0x4 s_brightnessTuner  # OVL1 bss; zui_tuners.cpp's static (name ours): the CBrightnessTuner (BRIGHTNESS); 3 references in 3 functions (InitSystemTuners, UninitSystemTuners, RefreshSystemTuners)
@@ -848,6 +849,8 @@
 0x004A1788 0x4 m_TOCNum__7CFileCD  # OVL1 bss; SOCOM 1's static (the table's entry count): 8 references in Find, Open, OpenSector and BuildTOC -- the UI/file lane
 0x004A1798 0x1 m_streamingSndActive__7CFileCD  # OVL1 bss; s1:data-seq (size SOCOM 1's; via UISysPostInit__FP13C2DAnimCmdHdrPf)
 0x004A17B0 0x2000 alignedBuffer  # OVL1 bss; SOCOM 1's file static of util_sonyio.cpp, the same 8 KB (XferSectorsToCaller's bounce for a destination not 16-byte aligned; the next static is 0x4A37B8): 2 references -- the UI/file lane
+0x004A3BF0 0x400 s_crcTable  # OVL1 bss; util_crc.cpp's static (name ours): the CRC-32 table, 256 words built on first use; 2 references in 2 functions (0x3A2410 builds it, 0x3A2370 reads it)
+0x004A3FF0 0x1 s_crcTableBuilt  # OVL1 bss; util_crc.cpp's static (name ours): the table is built (a byte: lbu); 2 references in 1 function (0x3A2410 tests and sets it)
 0x004A43C4 0x4 zvid_clearColor  # OVL1 bss; by hand (the wep lane: zVid_ClearColor stores the packed RGBAQ word through this pointer, uncached, where SOCOM 1's stored through zvid + 0x244 -- the private video state, whose start is not placed; the name ours; 1 reference in 1 function)
 0x004A43D8 0x4 zvid_fade  # OVL1 bss; by hand (the wep lane: CVideo::Fade stores r, g, b and the alpha in these four bytes, where SOCOM 1's stored zvid + 0x260 -- the private video state, whose start is not placed; the name ours; 4 references in 1 function)
 0x004A4480 0x94 zVid  # OVL1 bss; s1:data-seq (via Update__Q23zdb6CWorldFv); SOCOM 1's _zvid_public is 0x80, SOCOM II's runs to at least 0x92 (the game states set the byte at 0x91), so 0x94 to the word

@@ -5,16 +5,16 @@
  * (PendingPickupHandled). Only what a written function touches is named.
  *
  * zseal.h (the SEAL lane's) still declares a one-word CZKit of its own for CZSealBody::m_kit, so
- * this header stands alone -- it does not include zseal.h -- and only seal_kit.cpp includes it. */
+ * this header does not include zseal.h, and only seal_kit.cpp includes it; the weapon classes are
+ * zweapon.h's. */
 #ifndef KIT_H
 #define KIT_H
 
 #include "../znode/znode.h"
+#include "../zweapon/zweapon.h"
 
 class CZSealBody;
 
-/* the kit's items (SOCOM 1's EQUIP_ITEM, a byte; the values are not needed yet) */
-enum EQUIP_ITEM { EQUIP_NONE = 0, EQUIP_BINOCULARS = 190, EQUIP_NVG = 191, EQUIP_LAST = 255 };
 
 /* an item's class as CZWeapon::GetIDType gives it (a byte; SOCOM II's sniper rifles are 101, 254
  * is no item -- the names ours) */
@@ -29,38 +29,9 @@ enum EQUIP_IDTYPE {
  * compare it; the names ours) */
 enum RETICULE_TYPE { RETICULE_NONE = -1, RETICULE_LAST = 127 };
 
-/* a weapon's fire modes (SOCOM 1's DWARF, a byte; SOCOM II's item lookups take 255 for the item's
- * current mode -- that name ours) */
-enum FIREMODE {
-    SAFETY = 0, SINGLE = 1, BURST = 2, AUTOFIRE = 3, SPECIAL_MODE = 4, NUM_FIREMODES = 5,
-    FIREMODE_CURRENT = 255
-};
-
-/* the weapons the game knows (SOCOM 1's CZWeaponList, 12 bytes) */
-class CZWeaponList {
-public:
-    unsigned char _0[0xc];
-};
-
-/* a weapon (SOCOM 1's CZWeapon; empty here, so CZFTSWeapon's members keep their offsets) */
-class CZWeapon {
-public:
-    static CZWeaponList m_listWeapons;   // OVL1 bss 0x4B5210 (SOCOM 1's)
-};
-
-/* an item of the kit (SOCOM 1's CZFTSWeapon : CZWeapon; only the byte its kind is read from --
- * SOCOM 1's at 0x60) */
-class CZFTSWeapon : public CZWeapon {
-public:
-    unsigned char _0[0x24];
-    unsigned char m_maxfiremode;   // 0x24: the highest fire mode it has (the name ours)
-    unsigned char _25[0x7c - 0x25];
-    EQUIP_ITEM m_equip;   // 0x7c
-    unsigned char _7d[0xbc - 0x7d];
-    void *m_icon;   // 0xbc (SOCOM 1's CZWeapon icon at 0x94; a CTexture *)
-    unsigned char _c0[0x284 - 0xc0];
-    unsigned int m_num_zoommodes;   // 0x284: the zoom-mode vector's size (SOCOM 1's m_zoommode at 0x1c0)
-};
+/* the weapons' classes and enums (EQUIP_ITEM, FIREMODE, CZWeaponList, CZWeapon, CZFTSWeapon) are
+ * zweapon.h's: the stand-ins this header carried had zweapon.h's offsets (m_maxfiremode 0x24, m_ID
+ * 0x7c, m_icon 0xbc, the zoom vector's size 0x284) */
 
 /* the body's controller as the kit reads it (CSealCtrl; only the float the sniper's kick starts
  * from -- zseal.h does not name it) */
@@ -165,7 +136,7 @@ public:
         int found = -1;
 
         for (int i = 0; i < m_num_items; i++) {
-            if (m_item[i] && item == m_item[i]->m_equip) {
+            if (m_item[i] && item == m_item[i]->m_ID) {
                 if (ItemHasAmmo(i))
                     return i;
                 found = i;
