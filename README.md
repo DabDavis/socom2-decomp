@@ -1414,7 +1414,8 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - declaring a defined virtual first among a derived class's non-inline virtuals makes the
     unit emit its table and implicit destructor; slot order still follows the base;
   - zui.cpp is 0x365200-0x36AF9F (CDblBufTextureRelocator's inline virtuals open it); the soft
-    keyboard and the rdr-table code after 0x3A2510 wait on an MSL map/tree (not in include/).
+    keyboard and the rdr-table code after 0x3A2510 use MSL's map (include/map since round 3 of
+    the MSL headers).
 - **Tells from the HUD, round 12** (hud_healthbar.cpp complete, hud_scorepopup.cpp, ~CHUD):
   - 8-byte-spaced float pools are function-local statics (a float literal is lui/ori/mtc1; a
     target loading constants with lwc1 there wants statics) -- write them as file statics, which
@@ -1582,6 +1583,33 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - tools/perm.py fixed a locals-only register miss in one run (SealGetAltitude);
   - `ovl-copy:` notes are read from data rows too (scdecomp's address_in): an RTTI's overlay copy
     (0x65C220 for zdb::CNodeEx's) resolves a `dynamic_cast` in OVL2.
+- **Tells from completing the MSL headers, round 3** (include/tree, include/map, include/vector):
+  - SOCOM II's red-black tree is SOCOM 1's MSL tree (CW 3.0.1's `tree`, its DWARF and symbol
+    table): __red_black_tree<1> holds the links (left_ 0, right_ 4, parent_ 8 with the colour in
+    bit 0, set = red; the value at 0xC) and the static rotate_left/rotate_right/balance_insert --
+    one copy per overlay (OVL1 0x211030/0x210FA0/0x210D80, OVL2 0x58DB20/0x58DA90/0x58D870); the
+    tree is size 0, anchor 4 (left_ the root), comparator byte 8, leftmost 0xC; the map is its
+    tree alone. insert_node_at's message is "tree::insert length error\n";
+  - hud_linemap.cpp's maps (SOCOM 1's g_mapLineProps, g_mapPolyProps: std::map<int, LINE_DATA>)
+    make its tail byte-exact from source, 12 rows; the soft keyboard's nine and find<int> are
+    byte-exact as probes (build/tree/); the shapes that settled them are in include/tree's comment
+    (the grandparent local in balance_insert, prev/p/n's declaration order, `size() > max_size() -
+    1`, destroy's self-inlining against the tree's own accessors);
+  - MW 3.0 folds `x >= 0xFFFFFFFF`, `x == 0xFFFFFFFF` and `!(x < 0xFFFFFFFF)` into one `bne -1`;
+    only `x > max - 1` keeps the target's `sltiu -1`;
+  - a member template's mangled name carries its return type (`find_or_insert<i,9LINE_DATA>
+    __...FRCi_RQ23std19pair<Ci,9LINE_DATA>`): SOCOM 1's compiler left it out;
+  - `true`/`false` bound to pair's const references are pooled constants loaded with lbu
+    (insert_one 0x38EC10: `lbu v1,1160(at)`);
+  - a by-value empty comparator copied into a member is a byte copy (`lbu; sb`); the map's
+    value_compare(Compare) leaves its member unset, as the image's constructors copy nothing;
+  - the class vector's copy constructor zeroes the deleter's words and calls the out-of-class range
+    init<const T *>(first, last, forward_iterator_tag) (the particle sequences' 0x328FC0,
+    0x3290D0, 0x329220, byte-exact); MSL checks the length on the size there, not the distance;
+  - still open: the map constructor's allocator temporary (the image builds none, include/memory's
+    allocator() is out of line for the deque), the tree's erase (0x306030), the CSaferStr trees
+    (the string's out-of-line compare 0x2DEE30), the deque's copy constructor chain (mapped in
+    include/deque), pop_back's 8 bytes, remove_if's swapped registers.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has
@@ -1888,7 +1916,8 @@ What is open across lanes, and what comes next:
   pairs in the pod, the list's size and end node, alloc() accessors), so a level of 6 or more with
   the real depths is likely; 5 is what these headers fit.
 - **MSL pieces not modelled yet**: the deque's copy constructor (the rdr lane's 0x333B30 and its
-  pieces; back() and pop_back() are in), the class vector's destroy for elements with a virtual
+  pieces, mapped in include/deque; back() and pop_back() are in), the tree's erase and the CSaferStr
+  trees (include/tree), the class vector's destroy for elements with a virtual
   destructor (C2DPoly's deleter), __vector_imp::resize out of line (CPool), and the pod vector's
   end() reusing begin()'s load (AddPalette, ~CAssetLib, DeleteChildren).
 - **zMath** (0x306670-0x30954C, 47 of 54): CMatrix::SetRotate, CQuat::Align, CBits::Resize,

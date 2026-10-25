@@ -1,0 +1,21 @@
+/* <limits>: the part of MSL's std::numeric_limits the matched functions use, a reconstruction.
+ * max() is an inline static; the particle Props' constructor calls its out-of-line copy for
+ * float (0x328F40: FLT_MAX through lui/ori). */
+
+#ifndef _MSL_LIMITS
+#define _MSL_LIMITS
+
+namespace std {
+
+template <class T>
+class numeric_limits;
+
+template <>
+class numeric_limits<float> {
+public:
+    static float max() { return 3.40282347e+38f; }
+};
+
+}
+
+#endif

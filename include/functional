@@ -22,6 +22,12 @@ struct equal_to : public binary_function<T, T, bool> {
     bool operator()(const T &x, const T &y) const { return x == y; }
 };
 
+/* the map's default order (SOCOM 1's less<i>, less<9CSaferStr>: one byte, a value_compare's member) */
+template <class T>
+struct less : public binary_function<T, T, bool> {
+    bool operator()(const T &x, const T &y) const { return x < y; }
+};
+
 template <class Operation, class T>
 class binder2nd : public unary_function<T, bool> {
 public:
