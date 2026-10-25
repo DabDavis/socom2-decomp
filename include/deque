@@ -1,0 +1,298 @@
+/* <deque>: just enough of Metrowerks' MSL C++ std::deque (CodeWarrior PS2 3.0) to give the matched
+ * functions their code. A reconstruction, not MSL: SOCOM II's deque is not SOCOM 1's (CW 3.0.1's,
+ * whose DWARF puts the allocator and a run-time block size in front: alloc_, buf_, start_, size_ at
+ * 0, 4, 0x14, 0x18). SOCOM II's, read off CGame's queue (OVL1 0x2CE9E0-0x2CF1C7):
+ *   - the buffer of block pointers at 0 -- Metrowerks::cdeque, a circular buffer as SOCOM 1's:
+ *     capacity, size, start, data at 0, 4, 8, 0xC (cdeque<PCv>::swap, 0x2F56B0, word for word
+ *     SOCOM 1's) -- then start_ at 0x10 and size_ at 0x14 (CGame::Tick's front());
+ *   - the block size a constant 128 (start_ >> 7, & 0x7F: 512-byte blocks of pointers);
+ *   - an empty base after the 0x18 bytes, built at this + 0x18 by an out-of-line empty constructor
+ *     (0x2CEE30) -- MW lays an empty base that follows a non-empty one at the end, sizeless (CGame's
+ *     m_pad sits at 0x70), so the allocator is a base, as it is of the cdeque (+0x10, the same
+ *     constructor in the cdeque copy constructors of four other units).
+ * A deque of pointers runs on deque<const void *> (SOCOM 1's names: deque<PCv>::pop_front,
+ * push_back; deque<T *> : deque<PCv> in its DWARF) and its buffer, cdeque<const void **>, on
+ * cdeque<const void *> -- each through a partial specialization on const void *, which a T *
+ * specialization deriving from it cannot itself match (MW would recurse into an incomplete base).
+ *
+ * The levels are load-bearing (-inline level=4), counted on the destructors: CGame's destructor
+ * inlines four this-tested levels of its queue (CStateCmdQueue, deque<T *>, deque<PCv>,
+ * __deque_imp) and calls __deque_buf's out-of-class destructor (0x2CEFB0) with 0, as a std::stack
+ * member's destructor does (0x333A20); the buffer's destructor is three levels (cdeque<PPCv>,
+ * cdeque<PCv>, __cdeque_buf: 0x2CEE90). Out-of-class template members are never inlined into a
+ * unit's own functions and are inlined into its tail only once generated there (README): the
+ * constructors' chain (0x2CEE00 -> the allocator's 0x2CEE30, __deque_buf's 0x2CEE40 -> __cdeque_buf's
+ * 0x2CEE70) is all calls, and pop_front calls clear and cdeque::pop_front, while clear, generated
+ * after cdeque::pop_front, inlines it. The names below the deque and the cdeque are ours. */
+
+#ifndef _MSL_DEQUE
+#define _MSL_DEQUE
+
+#include <memory>
+#include <new>
+#include <stdio.h>
+#include <stdlib.h>
+
+#ifndef __msl_error
+#define __msl_error(str) \
+    {                    \
+        fprintf(stderr, str); \
+        abort();         \
+    }
+#endif
+
+namespace Metrowerks {
+
+template <class T, class Allocator = std::allocator<T> >
+class cdeque;
+
+/* the circular buffer's storage: capacity, size, start, data (SOCOM 1's cdeque members; the name
+ * ours). Its constructor out of class (0x2CEE70, called from __deque_buf's), its destructor in it */
+template <class T, class Allocator>
+class __cdeque_buf {
+public:
+    __cdeque_buf();
+    ~__cdeque_buf()
+    {
+        if (data_)
+            operator delete(data_);
+    }
+
+    unsigned int capacity_;
+    unsigned int size_;
+    unsigned int start_;
+    T *data_;
+};
+
+template <class T, class Allocator>
+__cdeque_buf<T, Allocator>::__cdeque_buf()
+{
+    capacity_ = 0;
+    size_ = 0;
+    start_ = 0;
+    data_ = 0;
+}
+
+/* the circular buffer of pointers every pointer cdeque runs on */
+template <class Allocator>
+class cdeque<const void *, Allocator> : public __cdeque_buf<const void *, Allocator>, public Allocator {
+public:
+    typedef const void *value_type;
+
+    /* an element pointer with the storage's bounds, wrapping at its end (SOCOM 1's kept an index
+     * and the container; SOCOM II's teardown walks pointers, the bounds in registers) */
+    class iterator {
+    public:
+        iterator(value_type *p, value_type *first, value_type *last) : p_(p), first_(first), last_(last) {}
+        value_type &operator*() const { return *p_; }
+        iterator &operator++()
+        {
+            if (++p_ == last_)
+                p_ = first_;
+            return *this;
+        }
+        bool operator==(const iterator &x) const { return p_ == x.p_; }
+        bool operator!=(const iterator &x) const { return p_ != x.p_; }
+
+        value_type *p_;
+        value_type *first_;
+        value_type *last_;
+    };
+    iterator begin() { return iterator(this->data_ + this->start_, this->data_, this->data_ + this->capacity_); }
+    iterator end()
+    {
+        return iterator(this->data_ + (this->capacity_ ? (this->start_ + this->size_) % this->capacity_ : 0),
+                        this->data_, this->data_ + this->capacity_);
+    }
+
+    unsigned int size() const { return this->size_; }
+    unsigned int capacity() const { return this->capacity_; }
+    value_type &front() { return this->data_[this->start_]; }
+    value_type &back() { return this->data_[(this->start_ + this->size_ - 1) % this->capacity_]; }
+    value_type &operator[](unsigned int n) { return this->data_[(this->start_ + n) % this->capacity_]; }
+    void pop_front();
+    /* out of line in an earlier unit (0x2858B0, 0x285A50, 0x285660) */
+    void push_back(const value_type &x);
+    void reserve(unsigned int n);
+    void resize(unsigned int n);
+};
+
+/* the front dropped, the start wrapping at the capacity (0x2CF0F0) */
+template <class Allocator>
+void cdeque<const void *, Allocator>::pop_front()
+{
+    --this->size_;
+    if (++this->start_ == this->capacity_)
+        this->start_ = 0;
+}
+
+template <class T, class Allocator>
+class cdeque<T *, Allocator> : public cdeque<const void *, std::allocator<const void *> > {
+    typedef cdeque<const void *, std::allocator<const void *> > base;
+
+public:
+    T *&front() { return (T *&)base::front(); }
+    T *&back() { return (T *&)base::back(); }
+    T *&operator[](unsigned int n) { return (T *&)base::operator[](n); }
+};
+
+}
+
+namespace std {
+
+/* the blocks' owner: the buffer of block pointers, the first element's index and the count, built
+ * (0x2CEE40) and torn down (0x2CEFB0) out of class. OPEN: the teardown's tail inlines five
+ * this-tested levels after its loop in the target, the buffer's three (cdeque<PPCv>, cdeque<PCv>,
+ * __cdeque_buf: 0x2CEE90) and two more -- past -inline level=4 for any class shape tried (two
+ * implicit bases over the members inline one level and call the next; see game_main.cpp) */
+template <class T, class Allocator>
+class __deque_buf {
+public:
+    typedef Metrowerks::cdeque<T *, allocator<T *> > buf_type;
+
+    __deque_buf();
+    ~__deque_buf();
+
+    buf_type buf_;   // 0x0
+    unsigned int start_;   // 0x10
+    unsigned int size_;   // 0x14
+};
+
+template <class T, class Allocator>
+__deque_buf<T, Allocator>::__deque_buf()
+{
+    this->start_ = 0;
+    this->size_ = 0;
+}
+
+template <class T, class Allocator>
+__deque_buf<T, Allocator>::~__deque_buf()
+{
+    if (this->buf_.size() != 0) {
+        typedef Metrowerks::cdeque<const void *, allocator<const void *> > B;
+        typename B::iterator e = this->buf_.end();
+
+        for (typename B::iterator i = this->buf_.begin(); i != e; ++i)
+            if (*i)
+                operator delete((void *)*i);
+    }
+}
+
+/* the deque proper, the allocator its empty second base (its constructor out of class: 0x2CEE00) */
+template <class T, class Allocator>
+class __deque_imp : public __deque_buf<T, Allocator>, public Allocator {
+public:
+    enum { buf_size = 128 };
+
+    __deque_imp();
+    unsigned int size() const { return this->size_; }
+    bool empty() const { return this->size_ == 0; }
+    T &front() { return this->buf_[this->start_ / buf_size][this->start_ % buf_size]; }
+    void pop_front();
+    void clear();
+    void push_back(const T &x);
+    static unsigned int max_size() { return ((unsigned int)-1 / sizeof(T *) - 1) * buf_size; }
+};
+
+template <class T, class Allocator>
+__deque_imp<T, Allocator>::__deque_imp()
+{
+}
+
+/* the elements forgotten: two blocks kept, the start mid-block (0x2CF120) */
+template <class T, class Allocator>
+void __deque_imp<T, Allocator>::clear()
+{
+    this->size_ = 0;
+    if (this->buf_.size() > 1) {
+        while (this->buf_.size() > 2) {
+            operator delete(this->buf_.front());
+            this->buf_.pop_front();
+        }
+        this->start_ = buf_size / 2;
+    } else
+        this->start_ = 0;
+}
+
+/* the front dropped; blocks wholly in front of the start freed (0x2CEF00) */
+template <class T, class Allocator>
+void __deque_imp<T, Allocator>::pop_front()
+{
+    if (this->size_ == 1) {
+        clear();
+        return;
+    }
+    --this->size_;
+    ++this->start_;
+    while (this->start_ >= 2 * buf_size) {
+        operator delete(this->buf_.front());
+        this->buf_.pop_front();
+        this->start_ -= buf_size;
+    }
+}
+
+/* the element appended, a block added at the back first when the last is full (0x2CF970).
+ * OPEN, 0x260 against 0x290: the target's inlined growth holds the new block in a guard on the stack
+ * -- {this, 128, block} at sp+104, released (cleared) after cdeque::push_back and its destructor's
+ * `if (p) operator delete(p)` run on the way out (MSL's alloc_ptr: SOCOM 1 links one for its list
+ * nodes) -- and the function-local max_size static is guarded (0x44D6C8, the value at 0x3F3490);
+ * the rest of the shape (the length check, the reserve(2)/resize(1) start, both block paths) is
+ * the target's */
+template <class T, class Allocator>
+void __deque_imp<T, Allocator>::push_back(const T &x)
+{
+    unsigned int n = this->start_ + this->size_;
+
+    if (n == (this->buf_.size() ? (this->buf_.size() - 1) * buf_size : 0)) {
+        static const unsigned int max = max_size();
+
+        if (this->size_ == max)
+            __msl_error("deque::push_back length error");
+        if (this->buf_.size() == (this->buf_.capacity() ? this->buf_.capacity() - 1 : 0)) {
+            if (this->buf_.size() == 0) {
+                this->buf_.reserve(2);
+                this->buf_.resize(1);
+            }
+            T *b = (T *)operator new(buf_size * sizeof(T));
+
+            if (!b)
+                __msl_error("Memory allocation failure");
+            this->buf_.reserve(this->buf_.size() * 2);
+            this->buf_.back() = b;
+            *b = x;
+            this->buf_.push_back(0);
+            ++this->size_;
+            return;
+        }
+        T *&last = this->buf_.back();
+        T *b = (T *)operator new(buf_size * sizeof(T));
+
+        if (!b)
+            __msl_error("Memory allocation failure");
+        last = b;
+        this->buf_.push_back(0);
+    }
+    this->buf_[n / buf_size][n % buf_size] = x;
+    ++this->size_;
+}
+
+template <class T, class Allocator = allocator<T> >
+class deque;
+
+template <class Allocator>
+class deque<const void *, Allocator> : public __deque_imp<const void *, Allocator> {
+};
+
+template <class T, class Allocator>
+class deque<T *, Allocator> : public deque<const void *, allocator<const void *> > {
+    typedef deque<const void *, allocator<const void *> > base;
+
+public:
+    T *&front() { return (T *&)base::front(); }
+    void push_back(T *const &x) { base::push_back((const void *const &)x); }
+    void pop_front() { base::pop_front(); }
+};
+
+}
+
+#endif
