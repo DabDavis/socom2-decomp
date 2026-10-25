@@ -4,9 +4,16 @@
  * and clears, 0x5197A0-0x51A48F). SOCOM 1's functions in the demo's order (CAiCell(), the repel
  * parameters, TransformTo, GetMapRegion, ResetCells, ValidateCells and its callbacks, ~CAiMap,
  * CAiMap(), GetSoilByName, the GetClosestDirs, GetDirDelta, GetDirByName, GetDirQuat, GetDirVec);
- * SOCOM II adds the cell layers. Its initialiser (0x668630) builds the dummy cell (0x66A198) and
- * the cosine of 45 degrees (0x65AB38). Defined here in reverse of the image's order (-inline
- * deferred). */
+ * SOCOM II adds the cell layers (CAiMapLayer, whose own code sits after vehicle_rdr.cpp, from
+ * ~0x53A730). Its initialiser (0x668630) builds the dummy cell (0x66A198) and the cosine of 45
+ * degrees (0x65AB38). Defined here in reverse of the image's order (-inline deferred).
+ * Not written yet: 0x515750 (the cell's altitude?, called from the fcosts), the vehicle's cell
+ * marking 0x515880 and its helpers 0x515900-0x5168DF (copies 0x515DE0, 0x515F80, 0x516180), the
+ * repel parameters 0x5169B0/0x516F10, 0x517050, ValidateCells 0x517850 (the walk with
+ * _validate_cell plus GetCell inlined one level -- IsCell 0x512140, IsLayer 0x512120 and the
+ * pieces after them -- and out of line, 0x511F80), ~CAiMap 0x5181F0, GetClosestDir(cell, point)
+ * 0x518900, GetDirByName 0x518D80 (its draft matches), the scanlines' resize/insert/erase
+ * (0x519700, 0x519DB0, 0x519B90) and the pod insert copy 0x5192E0. */
 
 #include <string.h>
 
@@ -259,6 +266,57 @@ CAiMap::SOIL CAiMap::GetSoilByName(const char *name)
         }
     }
     return SOIL_DEFAULT;
+}
+
+/* the version a map file is written in (23, OVL2 data: CAiMap() starts each map at it; the name
+ * ours, SOCOM 1's an unnamed word) */
+extern unsigned int s_aimap_version;
+
+/* a box with both corners at one point (CBBox has no constructor in zmath.h: this stand-in of the
+ * same layout builds the same temporary -- the point copied by value, the first corner
+ * copy-constructed from it, the second assigned -- for a CBBox to be assigned from) */
+struct CBBoxInit {
+    CBBoxInit(CPnt3D p) : m_min(p) { m_max = p; }
+
+    CPnt3D m_min;
+    CPnt3D m_max;
+};
+
+/* the map with its first layer pushed onto the layers and nothing read: an empty box, no size,
+ * floor -1, resolution 0.5 and slope pi/4 (SOCOM 1's, the id and the layers new); the dummy
+ * cell's soil set to noalt again.
+ * OPEN (0x1D8 against 0x1DC): the box's temporaries. Every store and call is the target's, in its
+ * order; the target addresses the point's copy (sp+80) and the second corner (sp+60) through
+ * registers for the field-by-field copy between them, as an inlined assignment taking references
+ * would (SOCOM 1's PNT3D had a written operator=, 0x17FC00), where MW folds this stand-in's to
+ * sp offsets -- one register and one instruction fewer. A setter taking `const CPnt3D &` and one
+ * copying the fields through a `const PNT3D &` fold the same; the real spelling likely needs
+ * zmath.h's CBBox constructor (and CPnt3D's assignment) as SOCOM II wrote them. ~CAiMap (0x5181F0)
+ * opens with the same box */
+CAiMap::CAiMap(int mapid) : m_layer0(0)
+{
+    s_dummy_cell.m_soil = SOIL_NOALT;
+    m_bbox = (const CBBox &)CBBoxInit(CPnt3D::zero);
+    m_ny = 0;
+    m_nx = 0;
+    m_dy = 0.0f;
+    m_dx = 0.0f;
+    m_mapid = mapid;
+    m_floor = -1;
+    m_name[0] = 0;
+    m_resolution = 0.5f;
+    m_slope_threshold = 0.785398185f;
+    m_flags = 0;
+    m_version = s_aimap_version;
+    m_mapex = 0;
+    m_mapex_bytes = 0;
+    m_compressed = 0;
+    m_cellcount = 0;
+    m_light[1] = 0.0f;
+    m_light[0] = 0.0f;
+    m_graph = 0;
+    m_overlay = 0;
+    m_layers.push_back(&m_layer0);
 }
 
 /* bit 1 of the map's flags set or cleared, the old value returned (new in SOCOM II, the name ours:

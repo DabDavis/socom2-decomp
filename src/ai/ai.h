@@ -245,7 +245,17 @@ class CFileIO;
  * and the rest by pointer; 0x2C bytes, built by 0x53A9C0). Only the cells are laid out */
 class CAiMapLayer {
 public:
-    unsigned char _0[0x28];
+    /* named (none: an empty name), flag 1 set (0x53A9C0) */
+    CAiMapLayer(const char *name);
+    /* the cells freed (0x53A960) */
+    ~CAiMapLayer();
+    /* the cells freed, the layer kept (0x53A920; the name ours) */
+    void FreeCells();
+
+    char m_name[16];   // 0x0
+    unsigned int m_flags;   // 0x10
+    unsigned int m_unk14;   // 0x14
+    unsigned char m_unk18[16];   // 0x18
     CAiCell *m_cells;   // 0x28: CAiCell::Alloc's
 };
 int zrdr_free(CRdrFile *file);
@@ -549,6 +559,8 @@ public:
     /* bit 1 of the flags: the map changed since it was read (the names ours) */
     bool IsModified() const { return (m_flags & 2) != 0; }
     bool SetModified(bool modified);
+    /* the map with its first layer and nothing read (SOCOM 1's took no id) */
+    CAiMap(int mapid);
     int GetRouteIndex(const route *r);
     route *GetRoute(unsigned int i);
     link *GetCellLink(const CAiMapLoc &loc);
@@ -604,7 +616,7 @@ public:
      * the pointer vector at 0xD4, the cells in the layers; the extra data, the owner and the
      * altitude scale after it, then SOCOM 1's nine tables) */
     unsigned int m_version;   // 0xa4
-    unsigned char m_layer0[0x2c];   // 0xa8: not laid out yet (built by 0x53A9C0)
+    CAiMapLayer m_layer0;   // 0xa8
     std::vector<CAiMapLayer *> m_layers;   // 0xd4: the layers, m_layer0 first
     char *m_mapex;   // 0xe0: SOCOM 1's 0xac
     int m_mapid;   // 0xe4: SOCOM 1's 0xb0 (ValidateCells gives every name this map's id)

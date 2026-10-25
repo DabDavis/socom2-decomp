@@ -35,7 +35,7 @@ inline void table_resize(CAiMap::links &t, unsigned int n) { func_0051C840(&t, n
 
 /* what the version readers call that is not written yet: the cell layer's allocation (0x53A8F0,
  * the layer object at 0xA8), the scanlines' reader and the two converting table readers */
-extern "C" CAiCell *func_0053A8F0(void *layer, unsigned int count);
+extern "C" CAiCell *func_0053A8F0(CAiMapLayer *layer, unsigned int count);
 /* the scanlines' resize (MSL's vector::resize, ai_map.cpp's template tail: SOCOM 1's
  * resize__Q23std72__vector_imp<Q26CAiMap8scanline,...,0>FUi) */
 extern "C" void func_00519700(CAiMap::scanlines *v, unsigned int n);
@@ -100,7 +100,7 @@ bool CAiMap::read_v19(CFileIO &f)
     count = ((const CAiMap *)this)->m_cellcount;
 
     if (count) {
-        CAiCell *cells = func_0053A8F0(m_layer0, count);
+        CAiCell *cells = func_0053A8F0(&m_layer0, count);
 
         if (bytes == count * sizeof(CAiCell))
             f.fread(cells, bytes);
@@ -156,7 +156,7 @@ bool CAiMap::read_v20(CFileIO &f)
 
     count = ((const CAiMap *)this)->m_cellcount;
     if (count) {
-        CAiCell *cells = func_0053A8F0(m_layer0, count);
+        CAiCell *cells = func_0053A8F0(&m_layer0, count);
 
         if (bytes == count * sizeof(CAiCell))
             f.fread(cells, bytes);
@@ -191,7 +191,7 @@ bool CAiMap::read_v21(CFileIO &f)
 
     count = ((const CAiMap *)this)->m_cellcount;
     if (count) {
-        CAiCell *cells = func_0053A8F0(m_layer0, count);
+        CAiCell *cells = func_0053A8F0(&m_layer0, count);
 
         if (bytes == count * sizeof(CAiCell))
             f.fread(cells, bytes);
@@ -226,7 +226,7 @@ bool CAiMap::read_v22(CFileIO &f)
 
     count = ((const CAiMap *)this)->m_cellcount;
     if (count) {
-        CAiCell *cells = func_0053A8F0(m_layer0, count);
+        CAiCell *cells = func_0053A8F0(&m_layer0, count);
 
         if (bytes == count * sizeof(CAiCell))
             f.fread(cells, bytes);
@@ -261,7 +261,7 @@ bool CAiMap::read_v23(CFileIO &f)
 
     count = ((const CAiMap *)this)->m_cellcount;
     if (count) {
-        CAiCell *cells = func_0053A8F0(m_layer0, count);
+        CAiCell *cells = func_0053A8F0(&m_layer0, count);
 
         if (bytes == count * sizeof(CAiCell))
             f.fread(cells, bytes);

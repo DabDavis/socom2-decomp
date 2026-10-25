@@ -9445,7 +9445,7 @@
 0x00518180 0x28 _reset_rtflag__6CAiMapFRC18MAP_FOREACH_STRUCTPv  # OVL2; s1:exact
 0x005181B0 0x38 SetModified__6CAiMapFb  # OVL2; ours (new in SOCOM II: bit 1 of AIMAP_PARAMS::m_flags set or cleared, the old value returned; SetCellLink 0x5307A0 and the layers' removal 0x53A730 call it with true after a change)
 0x005181F0 0x258 func_005181F0  # OVL2
-0x00518450 0x1DC func_00518450  # OVL2
+0x00518450 0x1DC __ct__6CAiMapFi  # OVL2; s1:order by hand (the demo's 0x186E40, after ~CAiMap in both builds: the nine tables built, the dummy cell's soil 10, an empty box, the sizes zeroed, floor -1, resolution 0.5, slope pi/4, version 23; SOCOM II takes the map id (0xE4) and pushes its first layer (0xA8, built by 0x53A9C0) onto m_layers; CAiMaps' 0x52B0D0 calls it)
 0x00518630 0x60 func_00518630  # OVL2
 0x00518690 0x68 func_00518690  # OVL2
 0x00518700 0x60 func_00518700  # OVL2
@@ -9802,7 +9802,7 @@
 0x0053A8F0 0x30 func_0053A8F0  # OVL2
 0x0053A920 0x3C func_0053A920  # OVL2
 0x0053A960 0x60 func_0053A960  # OVL2
-0x0053A9C0 0x8C func_0053A9C0  # OVL2
+0x0053A9C0 0x8C __ct__11CAiMapLayerFPCc  # OVL2; ours (new in SOCOM II: a map layer's constructor -- its name copied in (16 bytes, the last kept zero) or emptied, its words cleared, flag 1 set; CAiMap(int) builds its first layer with it, a name of 0)
 0x0053AA50 0x6C func_0053AA50  # OVL2
 0x0053AAC0 0x120 func_0053AAC0  # OVL2; OVL2's copy of the pod vector's erase (OVL1 0x28B150, the same 0x120 bytes; CCharacterType::CleanupTemporary's erase calls it, as SOCOM 1's calls erase__Q23std38__vector_pod<Ui,...>FPUiPUi); ovl-copy: erase__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPUiPUi
 0x0053ABE0 0x238 func_0053ABE0  # OVL2
