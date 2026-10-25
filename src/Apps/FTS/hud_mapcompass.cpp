@@ -14,7 +14,22 @@
 class CHUD {
 public:
     static CZSealBody *GetHUDOwner();
+    void Add2D(C2D *p2d, int phase, bool add_to_back);
 };
+
+extern CHUD *theHUD;
+
+namespace zdb {
+class CAssetList {
+public:
+    CTexHandle *GetTexHandle(const char *name);
+};
+
+class CAssetMgr {
+public:
+    static CAssetList m_assets;
+};
+}
 
 /* only what On reads (names ours) */
 class CZSealBody {
@@ -36,6 +51,100 @@ extern "C" CZSealBody *func_002B3580();
 
 /* the frame's anchors, nearest first (SOCOM 1's global; the unit's initialiser builds it) */
 std::vector<nav_package> navpoint_vec;
+
+/* an anchor's icon textured from a handle (none without one), sized to the texture (one line in
+ * SOCOM 1's InitHUD_Compass: inline) */
+static inline void SetAnchorTexture(CHudCompassAnchor &anchor, zdb::CTexHandle *htex)
+{
+    anchor.m_texture = htex ? htex->m_texture : 0;
+    if (anchor.m_texture) {
+        anchor.m_width = (int)anchor.m_texture->m_width;
+        anchor.m_height = (int)anchor.m_texture->m_height;
+    }
+}
+
+/* the anchors' textures and colours, then every anchor and arrow loaded with the first texture
+ * and listed under the anchor head, the head under the strip, the strip in the HUD's phases */
+void MapCompass::InitHUD_Compass(zdb::CWorld *world)
+{
+    m_anchor_img[0] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_triangle.tif");
+    m_anchor_img[1] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_bomb.tif");
+    m_anchor_img[2] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_base.tif");
+    m_anchor_img[3] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_base.tif");
+    m_anchor_img[4] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_hostage.tif");
+    m_anchor_img[5] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_friendly.tif");
+    m_anchor_img[6] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_extraction.tif");
+    m_anchor_img[7] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_objective.tif");
+    m_anchor_img[8] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_objective.tif");
+    m_anchor_img[9] = zdb::CAssetMgr::m_assets.GetTexHandle("hud_talk.tif");
+    m_anchor_img[10] = zdb::CAssetMgr::m_assets.GetTexHandle("small_compass.tif");
+    m_anchor_img[12] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_able.tif");
+    m_anchor_img[13] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_bravo.tif");
+    m_anchor_img[11] = zdb::CAssetMgr::m_assets.GetTexHandle("small_compass.tif");
+    if (!m_anchor_img[10])
+        m_anchor_img[10] = m_anchor_img[1];
+    m_anchor_img[14] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_nav_01.tif");
+    m_anchor_img[15] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_nav_02.tif");
+    m_anchor_img[16] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_nav_03.tif");
+    m_anchor_img[17] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_nav_04.tif");
+    m_anchor_img[18] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_nav_05.tif");
+    m_anchor_img[19] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_nav_06.tif");
+    m_anchor_img[20] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_nav_07.tif");
+    m_anchor_img[21] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_nav_08.tif");
+    m_anchor_img[22] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_nav_09.tif");
+    m_anchor_img[23] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_nav_10.tif");
+    m_anchor_img[24] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_nav_11.tif");
+    m_anchor_img[25] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_nav_12.tif");
+    m_anchor_img[26] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_nav_13.tif");
+    m_anchor_img[27] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_nav_14.tif");
+    m_anchor_img[28] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_nav_15.tif");
+    m_anchor_img[29] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_nav_16.tif");
+    m_anchor_img[30] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_nav_17.tif");
+    m_anchor_img[31] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_nav_18.tif");
+    m_anchor_img[32] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_nav_19.tif");
+    m_anchor_img[33] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_nav_20.tif");
+    m_anchor_img[34] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_nav_21.tif");
+    m_anchor_img[35] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_nav_22.tif");
+    m_anchor_img[36] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_nav_23.tif");
+    m_anchor_img[37] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_nav_24.tif");
+
+    m_anchor_clr[0] = CPnt3D(86.0f, 63.0f, 27.0f);
+    m_anchor_clr[1] = CPnt3D(62.0f, 62.0f, 32.0f);
+    m_anchor_clr[3] = CPnt3D(62.0f, 37.0f, 36.0f);
+    m_anchor_clr[2] = CPnt3D(40.0f, 62.0f, 36.0f);
+    m_anchor_clr[4] = CPnt3D(62.0f, 49.0f, 36.0f);
+    m_anchor_clr[5] = CPnt3D(32.0f, 49.0f, 128.0f);
+    m_anchor_clr[6] = CPnt3D(36.0f, 40.0f, 62.0f);
+    m_anchor_clr[7] = CPnt3D(76.0f, 70.0f, 32.0f);
+    m_anchor_clr[8] = CPnt3D(70.0f, 76.0f, 76.0f);
+    m_anchor_clr[9] = CPnt3D(32.0f, 62.0f, 62.0f);
+    m_anchor_clr[10] = CPnt3D(64.0f, 12.0f, 12.0f);
+    m_anchor_clr[12] = CPnt3D(32.0f, 62.0f, 62.0f);
+    m_anchor_clr[13] = CPnt3D(32.0f, 62.0f, 62.0f);
+    m_anchor_clr[11] = CPnt3D(100.0f, 64.0f, 32.0f);
+    for (unsigned int jj = 14; jj < 38; jj++)
+        m_anchor_clr[jj] = CPnt3D(32.0f, 62.0f, 32.0f);
+
+    for (unsigned int ii = 0; ii < 38; ii++) {
+        SetAnchorTexture(m_compass_anchors[ii], m_anchor_img[0]);
+        SetAnchorTexture(m_compass_arrows[ii], m_anchor_img[0]);
+        m_compass_anchors[ii].m_icon.SetUV(-0.01f, -0.01f, 1.02f, 1.02f);
+        m_compass_arrows[ii].m_icon.SetUV(-0.01f, -0.01f, 1.02f, 1.02f);
+
+        zdb::CTexture *tex = m_compass_anchors[ii].m_texture;
+
+        if (tex) {
+            m_compass_anchors[ii].m_icon.Load(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, tex);
+            m_anchor_head.push_back(&m_compass_anchors[ii].m_icon);
+            m_compass_arrows[ii].m_icon.Load(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, tex);
+            m_compass_arrows[ii].m_icon.SetColor(m_anchor_clr[0].x, m_anchor_clr[0].y,
+                                                 m_anchor_clr[0].z);
+            m_anchor_head.push_back(&m_compass_arrows[ii].m_icon);
+        }
+    }
+    m_poly.push_back(&m_anchor_head);
+    theHUD->Add2D(&m_poly, -1, true);
+}
 
 /* the anchor tables built 38 to a table, everything placed at zero, room for 48 anchors */
 MapCompass::MapCompass()
