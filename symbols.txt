@@ -1725,8 +1725,8 @@
 0x00202210 0x154 Clear__11CZPauseTestFv  # OVL1; s1:calls by hand (CHUD::ReInit_Uninit's second call on CHUD+0x18900, after ClosePauseMenu, as SOCOM 1's; right after HudTick in hud_pausemenu.cpp, as SOCOM 1's)
 0x00202370 0x1B0 func_00202370  # OVL1
 0x00202520 0x1C20 func_00202520  # OVL1
-0x00204140 0x50 func_00204140  # OVL1
-0x00204190 0x50 func_00204190  # OVL1
+0x00204140 0x50 SetIsTrans__13C2DBitmapPolyFb  # OVL1; by hand (slot 8 of C2DBitmapPoly's vtable 0x406C30: both triangles' slot 8; an inline's out-of-line copy, the CZPauseTest unit's, linked first; the name ours, as C2DBitmap's)
+0x00204190 0x50 SetHasTexture__13C2DBitmapPolyFb  # OVL1; by hand (slot 6 of C2DBitmapPoly's vtable 0x406C30: both triangles' slot 6; an inline's out-of-line copy, this one the CZPauseTest unit's, linked first; the name ours, as C2DBitmap's)
 0x002041E0 0x854 func_002041E0  # OVL1
 0x00204A40 0x7B4 func_00204A40  # OVL1
 0x00205200 0x278 ClosePauseMenu__11CZPauseTestFv  # OVL1; s1:calls by hand (CHUD::ReInit_Uninit's first call on CHUD+0x18900, as SOCOM 1's; the last function before the pause menu's destructor and constructor, as SOCOM 1's before its constructor)
@@ -6519,8 +6519,8 @@
 0x00357C20 0x6C func_00357C20  # OVL1
 0x00357C90 0x178 func_00357C90  # OVL1
 0x00357E10 0x78 func_00357E10  # OVL1
-0x00357E90 0x50 func_00357E90  # OVL1
-0x00357EE0 0x50 func_00357EE0  # OVL1
+0x00357E90 0x50 SetAA__13C2DBitmapPolyFb  # OVL1; by hand (slot 7 of C2DBitmapPoly's vtable 0x406C30: both triangles' slot 7; the inline's copy c2dbitmap_poly.cpp emits with the vtable; the name ours, as C2DBitmap's)
+0x00357EE0 0x50 SetGouraud__13C2DBitmapPolyFb  # OVL1; by hand (slot 9 of C2DBitmapPoly's vtable 0x406C30: both triangles' slot 9; the inline's copy c2dbitmap_poly.cpp emits with the vtable; the name ours, as C2DBitmap's)
 0x00357F30 0x670 func_00357F30  # OVL1
 0x003585A0 0xC8 GetAssetLibs__13C2DBitmapPolyFRQ23C2D8CLibList  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00358670 0x1C func_00358670  # OVL1
@@ -6528,20 +6528,20 @@
 0x003586B0 0x44 func_003586B0  # OVL1
 0x00358700 0x18 func_00358700  # OVL1
 0x00358720 0xC func_00358720  # OVL1
-0x00358730 0x298 func_00358730  # OVL1
-0x003589D0 0x2EC func_003589D0  # OVL1
-0x00358CC0 0x84 func_00358CC0  # OVL1
-0x00358D50 0xC4 func_00358D50  # OVL1
-0x00358E20 0xC4 func_00358E20  # OVL1
+0x00358730 0x298 Rotate_Zaxis__13C2DBitmapPolyFff  # OVL1; s1:calls by hand (MapCompass::Tick calls it right after SetCenterPos, as SOCOM 1's Tick calls Rotate_Zaxis(float, float); 0x298 against SOCOM 1's 0x294, the same centre-and-rotate code)
+0x003589D0 0x2EC Rotate_Zaxis__13C2DBitmapPolyFf  # OVL1; s1:order by hand (after Rotate_Zaxis(float, float) as in SOCOM 1's unit, 0x2EC against 0x2E4; the reticle's 0x215250 calls it after SetCenterPos)
+0x00358CC0 0x84 FlipImage_XYaxis__13C2DBitmapPolyFv  # OVL1; s1:order by hand (c2dbitmap_poly.cpp: the first of SOCOM 1's three flips, 0x84 in both, after the two Rotate_Zaxis)
+0x00358D50 0xC4 FlipImage_Yaxis__13C2DBitmapPolyFv  # OVL1; s1:order by hand (c2dbitmap_poly.cpp: SOCOM 1's second flip, 0xC4 in both)
+0x00358E20 0xC4 FlipImage_Xaxis__13C2DBitmapPolyFv  # OVL1; s1:order by hand (c2dbitmap_poly.cpp: SOCOM 1's third flip, 0xC4 in both, before SetUseFrameBufferAlpha)
 0x00358EF0 0x6C SetUseFrameBufferAlpha__13C2DBitmapPolyFb  # OVL1; s1:align
-0x00358F60 0x8 func_00358F60  # OVL1
-0x00358F70 0xFC func_00358F70  # OVL1
+0x00358F60 0x8 GetTrans__13C2DBitmapPolyFv  # OVL1; s1:order by hand (c2dbitmap_poly.cpp: after SetUseFrameBufferAlpha as SOCOM 1's GetTrans, 0x8 in both: the first triangle's)
+0x00358F70 0xFC SetTrans__13C2DBitmapPolyFif  # OVL1; by hand (c2dbitmap_poly.cpp: SOCOM II's, between GetTrans and SetTrans; one corner's alpha through C2DPoly's per-vertex SetTrans, the shared corners in both triangles, then the blend and Gouraud bits; the name ours)
 0x00359070 0x68 SetTrans__13C2DBitmapPolyFf  # OVL1; s1:align
 0x003590E0 0x60 SetColor__13C2DBitmapPolyFfff  # OVL1; s1:exact
 0x00359140 0x90 SetUV__13C2DBitmapPolyFffffffff  # OVL1; s1:exact
 0x003591D0 0x84 SetUV__13C2DBitmapPolyFffff  # OVL1; s1:exact
 0x00359260 0xAC SetCenterPos__13C2DBitmapPolyF5PNT2Dff  # OVL1; s1:align
-0x00359310 0x180 func_00359310  # OVL1
+0x00359310 0x180 SetPos__13C2DBitmapPolyFffff  # OVL1; by hand (c2dbitmap_poly.cpp: SOCOM II's, before SetPos by the corners; a rectangle's four corners as PNT2Ds handed by value to an inline that sets both triangles; the name ours)
 0x00359490 0x90 SetPos__13C2DBitmapPolyFffffffff  # OVL1; s1:exact
 0x00359520 0x6C Draw__13C2DBitmapPolyFPQ23zdb7CCamera  # OVL1; s1:gap
 0x00359590 0xA4 Load__13C2DBitmapPolyFffffffffPQ23zdb8CTexture  # OVL1; s1:exact
@@ -6625,42 +6625,42 @@
 0x0035FAC0 0x21C func_0035FAC0  # OVL1
 0x0035FCE0 0x344 Draw2DLine__FP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4D  # OVL1; s1:calls
 0x00360030 0x22C func_00360030  # OVL1
-0x00360260 0x8C func_00360260  # OVL1
-0x003602F0 0x8C func_003602F0  # OVL1
+0x00360260 0x8C SetClipInfo__7C2DLineFPA4_fPA4_fPA4_f  # OVL1; s1:order by hand (c2dline.cpp: SOCOM 1's SetClipInfo before FillClipInfo, the two rows of vertex, colour and UV copied in; SOCOM II dropped its int parameter)
+0x003602F0 0x8C FillClipInfo__7C2DLineFPA4_fPA4_fPA4_f  # OVL1; s1:order by hand (c2dline.cpp: SOCOM 1's FillClipInfo, 0x9C there: the rows copied out)
 0x00360380 0x118 MakePacket__7C2DLineFPQ23zdb7CCamera  # OVL1; s1:callee
 0x003604A0 0x5C Draw__7C2DLineFPQ23zdb7CCamera  # OVL1; s1:exact
 0x00360500 0x1C SetUV__7C2DLineFffff  # OVL1; s1:exact
 0x00360520 0xBC SetPos__7C2DLineFiiii  # OVL1; s1:align
-0x003605E0 0xF8 func_003605E0  # OVL1
-0x003606E0 0xA0 func_003606E0  # OVL1
+0x003605E0 0xF8 Load__7C2DLineFffffPQ23zdb8CTexture  # OVL1; s1:order by hand (c2dline.cpp: SOCOM 1's Load between SetPos and SetTrans; the texture stored, then SetPos(int x4) inlined)
+0x003606E0 0xA0 SetTrans__7C2DLineFf  # OVL1; s1:vtable by hand (slot 11 of C2DLine's vtable 0x406CA0, SOCOM 1's SetTrans: both ends' alpha, the blend flag re-derived)
 0x00360780 0x1C SetColor__7C2DLineFfff  # OVL1; s1:exact
-0x003607A0 0x50 func_003607A0  # OVL1
-0x003607F0 0x50 func_003607F0  # OVL1
-0x00360840 0x50 func_00360840  # OVL1
-0x00360890 0x60 func_00360890  # OVL1
-0x003608F0 0x128 func_003608F0  # OVL1
+0x003607A0 0x50 SetGouraud__7C2DLineFb  # OVL1; by hand (slot 9 of C2DLine's vtable 0x406CA0: bit 5 and IIP in the PRIM word at 0x20; the name ours, as C2DBitmap's)
+0x003607F0 0x50 SetIsTrans__7C2DLineFb  # OVL1; by hand (slot 8 of C2DLine's vtable 0x406CA0: bit 2 and ABE)
+0x00360840 0x50 SetAA__7C2DLineFb  # OVL1; by hand (slot 7 of C2DLine's vtable 0x406CA0: bit 1 and AA1)
+0x00360890 0x60 SetHasTexture__7C2DLineFb  # OVL1; by hand (slot 6 of C2DLine's vtable 0x406CA0: bit 3, and TME while it has a texture)
+0x003608F0 0x128 __ct__7C2DLineFv  # OVL1; s1:order by hand (c2dline.cpp: the unit's last, as SOCOM 1's C2DLine constructor; stores C2DLine's vtable 0x406CA0, the UVs memcpy'd from a local's initialiser as SOCOM 1's)
 0x00360A20 0xC8 GetAssetLibs__9C2DTriFanFRQ23C2D8CLibList  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00360AF0 0xC8 Draw__9C2DTriFanFPQ23zdb7CCamera  # OVL1; s1:align
 0x00360BC0 0x90 __dt__9C2DTriFanFv  # OVL1; s1:align
 0x00360C50 0x4C __ct__9C2DTriFanFv  # OVL1; s1:callee (CZPlayerMapItem's constructor builds its tri-fan arrays with it and __dt__9C2DTriFanFv)
-0x00360CA0 0x2B8 func_00360CA0  # OVL1
+0x00360CA0 0x2B8 MakePacket__7C2DPolyFPQ23zdb7CCamera  # OVL1; s1:calls by hand (C2DPoly::Draw calls it between IsOn and C2D::Draw, as SOCOM 1's Draw calls MakePacket(CCamera *); 0x2B8 against 0x2A8)
 0x00360F60 0x54 Draw__7C2DPolyFPQ23zdb7CCamera  # OVL1; s1:align
 0x00360FC0 0x38 SetPos__7C2DPolyFffffff  # OVL1; s1:callee
 0x00361000 0x28 SetUV__7C2DPolyFffffff  # OVL1; s1:exact
 0x00361030 0x48 Load__7C2DPolyFffffffPQ23zdb8CTexture  # OVL1; s1:callee
-0x00361080 0x8 func_00361080  # OVL1
-0x00361090 0x90 func_00361090  # OVL1
-0x00361120 0x98 func_00361120  # OVL1
+0x00361080 0x8 GetTrans__7C2DPolyFv  # OVL1; s1:order by hand (between Load and SetTrans as SOCOM 1's GetTrans, 0x8 in both: the first vertex's alpha)
+0x00361090 0x90 SetTrans__7C2DPolyFUif  # OVL1; by hand (C2DBitmapPoly::SetTrans(int, float) calls it per corner; one vertex's alpha, the index clamped to 2 unsigned, then the blend and Gouraud bits with their PRIM bits; SOCOM II's, the name ours)
+0x00361120 0x98 SetTrans__7C2DPolyFf  # OVL1; s1:vtable by hand (slot 11 of C2DPoly's vtable 0x406D80, SOCOM 1's SetTrans, the three rows' alpha and the blending flag re-derived as C2DBitmap's)
 0x003611C0 0x40 GetColor__7C2DPolyFv  # OVL1; s1:exact
 0x00361200 0x28 SetColor__7C2DPolyFfff  # OVL1; s1:exact
-0x00361230 0x50 func_00361230  # OVL1
-0x00361280 0x50 func_00361280  # OVL1
-0x003612D0 0x50 func_003612D0  # OVL1
-0x00361320 0x60 func_00361320  # OVL1
-0x00361380 0x174 func_00361380  # OVL1
+0x00361230 0x50 SetGouraud__7C2DPolyFb  # OVL1; by hand (slot 9 of C2DPoly's vtable 0x406D80: bit 5 and IIP in the PRIM word at 0x20; the name ours, as C2DBitmap's)
+0x00361280 0x50 SetIsTrans__7C2DPolyFb  # OVL1; by hand (slot 8 of C2DPoly's vtable 0x406D80: bit 2 and ABE)
+0x003612D0 0x50 SetAA__7C2DPolyFb  # OVL1; by hand (slot 7 of C2DPoly's vtable 0x406D80: bit 1 and AA1)
+0x00361320 0x60 SetHasTexture__7C2DPolyFb  # OVL1; by hand (slot 6 of C2DPoly's vtable 0x406D80: bit 3, and TME while it has a texture)
+0x00361380 0x174 __ct__7C2DPolyFv  # OVL1; s1:calls by hand (C2DBitmapPoly's constructor builds its two triangles with it through __construct_array, with C2DPoly's implicit destructor, as SOCOM 1's builds them with __ct__7C2DPolyFv)
 0x00361500 0xC8 GetAssetLibs__7C2DPolyFRQ23C2D8CLibList  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x003615D0 0x1BC func_003615D0  # OVL1
-0x00361790 0x20C func_00361790  # OVL1
+0x003615D0 0x1BC __ct__7C2DPolyFRC7C2DPoly  # OVL1; by hand (C2DPoly's implicit copy constructor: the list copied, C2D's vtable, then C2DPoly's and the members; emitted for the triangle vector's reserve, which follows it)
+0x00361790 0x20C reserve__Q23std52__vector_imp<7C2DPoly,Q23std19allocator<7C2DPoly>,0>FUi  # OVL1; s1:calls by hand (C2DTriFan's constructor reserves its triangle vector with it, 5, as SOCOM 1's template instance; c2dpoly.cpp's instance, after the triangle's copy constructor it calls)
 0x003619A0 0x8C clear__Q23std54__vector_deleter<7C2DPoly,Q23std19allocator<7C2DPoly>>Fv  # OVL1; s1:align
 0x00361A30 0xC8 __dt__Q23std54__vector_deleter<7C2DPoly,Q23std19allocator<7C2DPoly>>Fv  # OVL1; s1:align
 0x00361B00 0x18 func_00361B00  # OVL1
@@ -6674,19 +6674,19 @@
 0x00362900 0x220 func_00362900  # OVL1
 0x00362B20 0x4C SetFont__9C2DStringFP7C2DFont  # OVL1; s1:align
 0x00362B70 0x250 func_00362B70  # OVL1
-0x00362DC0 0x30 func_00362DC0  # OVL1
-0x00362DF0 0x8 func_00362DF0  # OVL1
-0x00362E00 0x228 func_00362E00  # OVL1
-0x00363030 0xB0 Load__9C2DStringFPCcP7C2DFontiiii  # OVL1; s1:align
-0x003630E0 0xB4 Load__9C2DStringFPCcP7C2DFontii  # OVL1; s1:align
+0x00362DC0 0x30 DeleteCharacter__9C2DStringFv  # OVL1; by hand (c2dstring.cpp: SOCOM II's, before NewLine: the last character dropped while more than one remains; the name ours)
+0x00362DF0 0x8 NewLine__9C2DStringFv  # OVL1; s1:order by hand (c2dstring.cpp: SOCOM 1's NewLine, before AddCharacter as there; it tail-calls AddCharacter with '\n')
+0x00362E00 0x228 AddCharacter__9C2DStringFc  # OVL1; s1:callee by hand (NewLine tail-calls it with '\n', as SOCOM 1's NewLine calls AddCharacter)
+0x00363030 0xB0 Load__9C2DStringFPCcP7C2DFontiiiib  # OVL1; s1:align; s1:align by hand (slot 31: SOCOM 1's Load(text, font, x, y, w, h) with SetString's flag added)
+0x003630E0 0xB4 Load__9C2DStringFPCcP7C2DFontiib  # OVL1; s1:align; s1:align by hand (slot 30: SOCOM 1's Load(text, font, x, y) with SetString's flag added, passed on to slot 26)
 0x003631A0 0x20 SetPos__9C2DStringFii  # OVL1; s1:align (the string's position as two floats at 0x90; PoseBitmap sets it from its own)
-0x003631C0 0x2C func_003631C0  # OVL1; size 0x2c (a tail call through t9; the seed ran on into the padding)
+0x003631C0 0x2C Load__9C2DStringFfPCcP7C2DFontffb  # OVL1; size 0x2c (a tail call through t9; the seed ran on into the padding); by hand (slot 29 of C2DString's vtable 0x406DF0: the scale stored, then slot 30 with the position as ints and the flag passed on; SOCOM 1's scaled Load reshaped, the parameter list ours)
 0x003631F0 0x26C SetString__9C2DStringFPCcb  # OVL1; s1:vtable by hand (C2DString's slot 26, SOCOM 1's SetString with a flag that sends the string through a lookup; UnInitStaticItems calls it)
-0x00363460 0x154 func_00363460  # OVL1
-0x003635C0 0x26C func_003635C0  # OVL1
+0x00363460 0x154 SetStringId__9C2DStringFi  # OVL1; by hand (slot 27 of C2DString's vtable 0x406DF0: the id looked up in the string table at 0x49E9D0, SetString'd, kept at 0x84 with the table's revision at 0x88; SOCOM II's, the name ours)
+0x003635C0 0x26C MakePacket__9C2DStringFPQ23zdb16CTextureRelocMgri  # OVL1; s1:calls by hand (both Draws call it with the relocator and an int between the string-table check and C2D::Draw, as SOCOM 1's Draws call MakePacket(CTextureRelocMgr *, int))
 0x00363830 0x184 Format__9C2DStringFPCce  # OVL1; s1:align
 0x003639C0 0xB0 Draw__9C2DStringFPQ23zdb7CCamera  # OVL1; s1:callee
-0x00363A70 0xBC func_00363A70  # OVL1
+0x00363A70 0xBC Draw__9C2DStringFPQ23zdb16CTextureRelocMgrPQ23zdb7CCamerai  # OVL1; s1:order by hand (c2dstring.cpp: SOCOM 1's Draw(relocator, camera, float) after Draw(camera) as there; SOCOM II's third an int, passed to MakePacket)
 0x00363B30 0xC8 Tick__9C2DStringFf  # OVL1; s1:align
 0x00363C00 0x8 On__9C2DStringFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00363C10 0x8 Off__9C2DStringFv  # OVL1; s1:callee
@@ -6701,11 +6701,11 @@
 0x003641F0 0xD8 GetAssetLibs__9C2DBitmapFRQ23C2D8CLibList  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003642D0 0xB4 TickFade__9C2DBitmapFv  # OVL1; s1:align
 0x00364390 0x18 Reset__9C2DBitmapFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x003643B0 0x2AC func_003643B0  # OVL1
+0x003643B0 0x2AC MakePacket__9C2DBitmapFPQ23zdb7CCameraPQ23zdb16CTextureRelocMgrPC7CMatrix  # OVL1; s1:calls by hand (c2dbitmap.cpp: both Draws call it where SOCOM 1's call MakePacket, with (camera, relocator, matrix or 0); its first act is the relocator's PreGetSprPacket on the handle)
 0x00364660 0x1C SetPos__9C2DBitmapFiiii  # OVL1; s1:order by hand (c2dbitmap.cpp: SOCOM 1's SetPos(int,int,int,int), 0x1C in both, before SetPos(int,int) as there)
 0x00364680 0x50 SetPos__9C2DBitmapFii  # OVL1; s1:align
 0x003646D0 0x98 Load__9C2DBitmapFffffPQ23zdb10CTexHandle  # OVL1; s1:callee (CFader's constructor's second call, as SOCOM 1's)
-0x00364770 0xB8 func_00364770  # OVL1
+0x00364770 0xB8 Load__9C2DBitmapFffPQ23zdb10CTexHandle  # OVL1; s1:order by hand (c2dbitmap.cpp: SOCOM 1's Load(x, y, handle) right after Load by the corners as there; the handle stored, the missing-texture test, then SetPos(int, int) inlined)
 0x00364830 0x1C SetUV__9C2DBitmapFffff  # OVL1; s1:exact
 0x00364850 0x8 GetTrans__9C2DBitmapFv  # OVL1; s1:order by hand (c2dbitmap.cpp: SOCOM 1's GetTrans, 0x8 in both, after SetUV as there; the first row's alpha)
 0x00364860 0x90 SetTrans__9C2DBitmapFf  # OVL1; by hand (c2dbitmap.cpp: slot 11 of C2DBitmap's vtable 0x406E80, SOCOM 1's SetTrans in SOCOM 1's order after GetTrans; both rows' alpha, the blending flag re-derived)

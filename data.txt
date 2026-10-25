@@ -743,8 +743,13 @@
 0x0049E860 0x4 m_palId__Q23zdb11CTexPalette  # OVL1 bss; s1:data-seq (size SOCOM 1's; via __ct__Q23zdb11CTexPaletteFPCc)
 0x0049E880 0x1C m_texmanager__Q23zdb11CTexManager  # OVL1 bss; SOCOM 1's (the texture buffers' vector first: the states index its data at 8 and pass it to DestroyBuffers): 114 references in 30 functions take 0x49E880-0x49E888
 0x0049E8B0 0xDC TexPhase__Q23zdb11CTexManager  # OVL1 bss; SOCOM 1's (0xCC bytes; SOCOM II's states read entries to 0xD8 as buffer indices): 82 references in 12 functions take 0x49E8B0-0x49E988
+0x0049E9E0 0x4 m_p2dcamera__3C2D  # OVL1 bss; SOCOM 1's static (gp-26200 there): C2D::Open news the camera into it when null, as SOCOM 1's Open does, and C2DBitmap::Draw(matrix) draws with it as SOCOM 1's: 3 references in 2 functions take 0x49E9E0
+0x0049E9F0 0x4 m_fXPixel__3C2D  # OVL1 bss; SOCOM 1's static (gp-26224): C2DLine::SetPos scales x by it before adding m_topx, as SOCOM 1's scales by m_fXPixel (SOCOM II's Init sets it to the screen's width over 640, SOCOM 1's to 1.0): 11 references in 7 functions take 0x49E9F0
+0x0049E9F4 0x4 m_fYPixel__3C2D  # OVL1 bss; SOCOM 1's static (gp-26220): C2DLine::SetPos scales y by it before adding m_topy, as SOCOM 1's scales by m_fYPixel (SOCOM II's Init copies the video's float at 0x4A44AC): 11 references in 7 functions take 0x49E9F4
 0x0049EA00 0x4 m_topx__3C2D  # OVL1 bss; SOCOM 1's static (CZNewHudMap::SetMapScreenPos adds it to the clipping circle's x, as SOCOM 1's did from gp-26216): 13 references in 9 functions take 0x49EA00, C2DLine::SetPos among them
 0x0049EA04 0x4 m_topy__3C2D  # OVL1 bss; SOCOM 1's static (the circle's y; 8 after m_topx in SOCOM 1, 4 now): 12 references in 8 functions take 0x49EA04
+0x0049EA08 0x4 m_botx__3C2D  # OVL1 bss; SOCOM 1's static (gp-26212): C2D::Init stores 2048 plus half the screen's width, as SOCOM 1's Init stored 2048 + 320: 1 reference (Init)
+0x0049EA0C 0x4 m_boty__3C2D  # OVL1 bss; SOCOM 1's static (gp-26204): C2D::Init stores 2048 plus half the screen's height, as SOCOM 1's Init stored 2048 + 224: 1 reference (Init)
 0x004A1798 0x1 m_streamingSndActive__7CFileCD  # OVL1 bss; s1:data-seq (size SOCOM 1's; via UISysPostInit__FP13C2DAnimCmdHdrPf)
 0x004A4480 0x94 zVid  # OVL1 bss; s1:data-seq (via Update__Q23zdb6CWorldFv); SOCOM 1's _zvid_public is 0x80, SOCOM II's runs to at least 0x92 (the game states set the byte at 0x91), so 0x94 to the word
 0x004B4810 0x4 m_camera__Q23zdb7CVisual  # OVL1 bss; SOCOM 1's (CCoreState::Init sets it with the world's camera beside the pipe's, as SOCOM 1's): 10 references in 6 functions take 0x4B4810

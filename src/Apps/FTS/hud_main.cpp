@@ -1009,7 +1009,7 @@ void CHUD::SetupGhostText(MENU_STATE menustate)
     }
 
     for (unsigned int i = 0; i < 6; i++) {
-        m_piggyback_text[i].m_socom2_69 = 1;
+        m_piggyback_text[i].m_isCentered = 1;
         m_piggyback_text[i].SetPos((int)s_piggyback_x,
                                    (int)(s_piggyback_y + i * s_piggyback_spacing));
         func_00362B70(&m_piggyback_text[i]);
@@ -1114,7 +1114,7 @@ void CHUD::SetupRespawnText(MENU_STATE menustate)
         theHUD->Off();
     }
     for (unsigned int i = 0; i < 6; i++) {
-        m_piggyback_text[i].m_socom2_69 = 1;
+        m_piggyback_text[i].m_isCentered = 1;
         m_piggyback_text[i].SetPos((int)s_piggyback_x,
                                    (int)(s_piggyback_y + i * s_piggyback_spacing));
         func_00362B70(&m_piggyback_text[i]);
@@ -1141,7 +1141,7 @@ void CHUD::SetupSpectatingText(MENU_STATE menustate)
         char name[256];
 
         m_piggyback_text[0].SetString(text, false);
-        m_piggyback_text[0].m_socom2_69 = 1;
+        m_piggyback_text[0].m_isCentered = 1;
         m_piggyback_text[0].SetPos((int)(0.5f * data_004A44C4), 25);
         m_piggyback_text[0].On();
         strcpy(name, seal->m_name ? seal->m_name : "???");
@@ -1150,7 +1150,7 @@ void CHUD::SetupSpectatingText(MENU_STATE menustate)
         for (unsigned int i = 0; i < len; i++)
             name[i] = toupper(name[i]);
         m_piggyback_text[1].SetString(name, true);
-        m_piggyback_text[1].m_socom2_69 = 1;
+        m_piggyback_text[1].m_isCentered = 1;
         m_piggyback_text[1].SetPos((int)(0.5f * data_004A44C4), (int)(25.0f + s_piggyback_spacing));
         m_piggyback_text[1].On();
     } else {
@@ -1193,7 +1193,7 @@ void CHUD::SetupSpectatorText(MENU_STATE menustate)
         theMission.m_messages4.On();
     }
     for (unsigned int i = 0; i < 6; i++) {
-        m_piggyback_text[i].m_socom2_69 = 1;
+        m_piggyback_text[i].m_isCentered = 1;
         m_piggyback_text[i].SetPos((int)s_piggyback_x,
                                    (int)(s_piggyback_y + i * s_piggyback_spacing));
         func_00362B70(&m_piggyback_text[i]);

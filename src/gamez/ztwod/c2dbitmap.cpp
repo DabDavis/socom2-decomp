@@ -2,8 +2,12 @@
  * (GetAssetLibs, TickFade, Reset, MakePacket, the two SetPos, the two Load, SetUV, GetTrans,
  * SetTrans, SetColor, the two Draw, the constructor), with SOCOM II's own among them: a colour
  * from a point and its getter, and the four flag setters that keep the GS PRIM bits (vtable slots
- * 6-9). The unit's name is ours; it ends where C2D's begins (ztwod.cpp). Written so far: the
- * small ones; defined in reverse of their image order (-inline deferred). */
+ * 6-9). The unit's name is ours (SOCOM 1's symbol table groups C2DBitmap's RTTI with C2D::Open and
+ * Init, which SOCOM II moved to ztwod.cpp); it ends where C2D's begins. Written, all byte-exact:
+ * everything but GetAssetLibs, Reset and SetUV (m2c's drafts match) and MakePacket. Defined in
+ * reverse of their image order (-inline deferred). */
+
+#include <eetypes.h>
 
 #include "ztwod.h"
 
@@ -20,6 +24,41 @@ public:
     unsigned char _0[0xc];
     CTexture *m_texture;   // 0xc
 };
+
+}
+
+/* a texture asked for and not there: the first-draw flag dropped instead of drawing (SOCOM 1's test,
+ * in both Loads and both Draws, written out each time: an inline bool would materialise) */
+#define TEXTURE_MISSING(h) (m_hasTexture && !((h) ? (h)->m_texture : 0))
+
+/* untextured until loaded, the UVs a hundredth in from the edges, white then grey, opaque, and a
+ * sprite's PRIM word (6) with the flags' bits */
+C2DBitmap::C2DBitmap()
+{
+    m_pTexHandle = 0;
+    m_iWidth = 0;
+    m_iHeight = 0;
+    m_x = 0;
+    m_y = 0;
+    m_NewUV[0][0] = 0.01f;
+    m_NewUV[0][1] = -0.01f;
+    m_NewUV[0][2] = 0.0f;
+    m_NewUV[0][3] = 0.0f;
+    m_NewUV[1][0] = 0.99f;
+    m_NewUV[1][1] = -0.99f;
+    m_NewUV[1][2] = 1.0f;
+    m_NewUV[1][3] = 0.0f;
+    m_RGB[0][0] = 255.0f;
+    m_RGB[0][1] = 255.0f;
+    m_RGB[0][2] = 255.0f;
+    m_RGB[0][3] = 100.0f;
+    m_RGB[1][0] = m_RGB[0][0];
+    m_RGB[1][1] = m_RGB[0][1];
+    m_RGB[1][2] = m_RGB[0][2];
+    m_RGB[1][3] = m_RGB[0][3];
+    SetColor(128.0f, 128.0f, 128.0f);
+    SetTrans(128.0f);
+    MakePrim(m_prim, 6);
 }
 
 /* slot 6: with a texture to draw, TME */
@@ -60,6 +99,37 @@ void C2DBitmap::SetGouraud(bool on)
         m_prim |= 0x8;
     else if (m_prim & 0x8)
         m_prim ^= 0x8;
+}
+
+/* slot 1: on, packeted (unless its texture is missing) through a batch relocator of its own, then
+ * the children */
+void C2DBitmap::Draw(zdb::CCamera *cam)
+{
+    zdb::CBatchRelocator reloc;
+
+    if (IsOn() != false) {
+        if (TEXTURE_MISSING(m_pTexHandle)) {
+            if (first)
+                first = false;
+        } else
+            MakePacket(cam, &reloc, 0);
+        C2D::Draw(cam);
+    }
+}
+
+/* slot 2: the same through the caller's matrix and relocator, with the 2D camera */
+void C2DBitmap::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
+{
+    zdb::CCamera *cam = m_p2dcamera;
+
+    if (IsOn() != false) {
+        if (TEXTURE_MISSING(m_pTexHandle)) {
+            if (first)
+                first = false;
+        } else
+            MakePacket(cam, mgr, &m);
+        C2D::Draw(cam);
+    }
 }
 
 /* both rows' colour (SOCOM 1's) */
@@ -105,6 +175,33 @@ void C2DBitmap::SetTrans(float trans)
 float C2DBitmap::GetTrans()
 {
     return m_RGB[0][3];
+}
+
+/* SOCOM 1's Load at a point: the handle, then placed as big as its texture (SetPos's, inlined) */
+void C2DBitmap::Load(float x, float y, zdb::CTexHandle *tex)
+{
+    m_pTexHandle = tex;
+    if (TEXTURE_MISSING(tex)) {
+        if (first)
+            first = false;
+        return;
+    }
+    SetPos((int)x, (int)y);
+}
+
+/* SOCOM 1's Load by the corners */
+void C2DBitmap::Load(float x1, float y1, float x2, float y2, zdb::CTexHandle *tex)
+{
+    m_pTexHandle = tex;
+    m_x = (int)x1;
+    m_y = (int)y1;
+    m_iWidth = (int)x2 - (int)x1;
+    m_iHeight = (int)y2 - (int)y1;
+    if (TEXTURE_MISSING(tex)) {
+        if (first)
+            first = false;
+        return;
+    }
 }
 
 /* placed at the point, as big as its texture (none: not moved) */
