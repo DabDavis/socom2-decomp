@@ -32,6 +32,12 @@ public:
 };   // 0x10 bytes
 
 class CMatrix;
+/* a box (zmath.h's CBBox, 0x20 bytes: nothing built for a local) */
+class CBBox {
+public:
+    float m_min[4];   // 0x0
+    float m_max[4];   // 0x10
+};
 
 /* a point (zmath.h's CPnt3D has no written copy either: a copy is the compiler's) */
 class CPnt3D {
@@ -364,6 +370,9 @@ public:
         void Uninit();
     };
 
+    ~Source();
+    static void RenderBBox();
+    void GetBBox(CBBox *box);
     void Tick(float dT);
     void ScaleSequenceAdd(float fraction, float scale);
     void ScaleSequenceClear();

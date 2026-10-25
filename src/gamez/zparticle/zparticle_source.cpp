@@ -6,7 +6,38 @@
 
 #include "zparticle.h"
 
+/* SOCOM II's pointer-list begin() builds its first node from a reference to the sentinel's link,
+ * so `&end_.next_` is a temporary computed once and kept for the clear after a walk: znode.h's
+ * stand-ins, the same shapes (include/list's begin() takes the link by value; the names ours) */
+typedef std::__list_deleter<const void *, std::allocator<const void *> > PtrListBase;
+struct PtrListFirst : public PtrListBase::iterator {
+    PtrListFirst(PtrListBase::node_base *const &link) : PtrListBase::iterator(link) {}
+};
+inline PtrListBase::iterator ListBegin(PtrListBase &l) { return PtrListFirst(l.end_node().next_); }
+inline PtrListBase::iterator ListEnd(PtrListBase &l) { return PtrListBase::iterator(&l.end_node()); }
+inline void ListClear(PtrListBase &l) { l.erase(ListBegin(l), ListEnd(l)); }
+
 namespace Particle {
+
+/* SOCOM 1's: every source's box worked out (the drawing compiled out) */
+void Source::RenderBBox()
+{
+    CBBox box;
+    List::iterator e = list.end();
+
+    for (List::iterator i = list.begin(); i != e; ++i)
+        (*i)->GetBBox(&box);
+}
+
+/* SOCOM 1's: every source deleted, the list emptied */
+void Source::List::Uninit()
+{
+    PtrListBase::iterator it = ListBegin(*this), e = ListEnd(*this);
+
+    for (; it != e; ++it)
+        delete (Source *)*it;
+    ListClear(*this);
+}
 
 /* SOCOM 1's: the texture sequence emptied */
 void Source::TextureSequenceClear()
