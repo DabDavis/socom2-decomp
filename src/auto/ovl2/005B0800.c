@@ -6,14 +6,14 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_0031DE90(s32, s32, s32);               /* extern */
+M2C_UNK GetIntersectBatch__Q23zdb6CWorldFPPQ23zdb11DiIntersecti(s32, s32, s32); /* extern */
 extern s32 data_0044D588;
 extern s32 data_0044D598;
-extern s32 data_0045C380;
+extern s32 m_world__Q23zdb6CWorld;
 
 void func_005B0800(void) {
     if (data_0044D598 > 0) {
-        func_0031DE90(data_0045C380, data_0044D588, data_0044D598);
+        GetIntersectBatch__Q23zdb6CWorldFPPQ23zdb11DiIntersecti(m_world__Q23zdb6CWorld, data_0044D588, data_0044D598);
         data_0044D598 = 0;
     }
 }

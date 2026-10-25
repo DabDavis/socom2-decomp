@@ -12,9 +12,9 @@ M2C_UNK DeletePad__6CInputFUi(M2C_UNK);             /* extern */
 M2C_UNK DestroyPool__19CGameStateChangeCmdFv();     /* extern */
 M2C_UNK Uninit__4CSndFv();                          /* extern */
 M2C_UNK Uninit__5CPipeFv();                         /* extern */
+M2C_UNK Uninit__Q23zdb6CWorldFv();                  /* extern */
 M2C_UNK Uninit__Q23zdb7CRippleFv();                 /* extern */
 M2C_UNK func_002D9EA0();                            /* extern */
-M2C_UNK func_00320760();                            /* extern */
 M2C_UNK func_0032C4F0();                            /* extern */
 M2C_UNK func_0034B8C0();                            /* extern */
 M2C_UNK func_00351E60();                            /* extern */
@@ -31,7 +31,7 @@ extern M2C_UNK data_004B50D0;
 extern M2C_UNK zTaskScheduler;
 
 void StopEngine__5CGameFv(void) {
-    func_00320760();
+    Uninit__Q23zdb6CWorldFv();
     Close__10CZAnimMainFv(&ZAnim);
     func_0038A210();
     func_003C0620(&data_004B50D0);

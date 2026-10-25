@@ -11,8 +11,8 @@ M2C_UNK CreatePad__6CInputFUi(M2C_UNK);             /* extern */
 M2C_UNK CreatePool__19CGameStateChangeCmdFUi(M2C_UNK); /* extern */
 M2C_UNK Init__5CPipeFv();                           /* extern */
 M2C_UNK Init__6CInputFv();                          /* extern */
+M2C_UNK Init__Q23zdb6CWorldFv();                    /* extern */
 M2C_UNK Init__Q23zdb8CTextureFv();                  /* extern */
-M2C_UNK func_00320770();                            /* extern */
 M2C_UNK func_003221F0();                            /* extern */
 M2C_UNK func_00346380(M2C_UNK);                     /* extern */
 M2C_UNK func_00351EE0();                            /* extern */
@@ -33,7 +33,7 @@ s32 StartEngine__5CGameFv(void) {
     func_00351EE0();
     Init__Q23zdb8CTextureFv();
     func_00364F30();
-    func_00320770();
+    Init__Q23zdb6CWorldFv();
     func_00364EE0();
     Init__6CInputFv();
     zRndrInit__Fv();
