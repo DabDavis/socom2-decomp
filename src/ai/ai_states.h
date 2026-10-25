@@ -60,6 +60,10 @@ void *func_005F6F10(void *p, int x);
 void *func_005F6F00(void *p, int a, int b);
 void *func_005F6F70(void *list);
 void *func_005F6F40(void *list);
+/* and the destructors of those members, called by hand from the states' destructors: ~CAiPath
+ * (0x5281B0) and std::vector<CAiMapLoc>'s deleter's (0x515200, ai_astar.cpp's copy) */
+void *func_005281B0(void *path, int flags);
+void func_00515200(void *vec, int flags);
 }
 
 class CAiState;
@@ -677,6 +681,8 @@ class CAiSTarget : public CAiState {
 public:
     CAiSTarget() : CAiState(AI_STATE_TARGET) {}
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    /* +0x14 (0x604BF0): over once the AI's target no longer holds */
+    virtual int Virtual14(CSealCtrlAi *ai, CAiState *sub);
     virtual ~CAiSTarget();
 };
 
@@ -689,6 +695,8 @@ public:
         func_00516120(&m_cell);
     }
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    /* +0x14 (0x605800): an event interrupted by a held target or the AI's alarm */
+    virtual int Virtual14(CSealCtrlAi *ai, CAiState *sub);
     virtual bool CanAttack() const { return !(m_flags & 0xc); }
     virtual bool CanPursue(CSealCtrlAi *ai) const { return false; }
     virtual ~CAiSEvent();
@@ -773,6 +781,8 @@ class CAiSReload : public CAiState {
 public:
     CAiSReload() : CAiState(AI_STATE_RELOAD) {}
     virtual int Tick(CSealCtrlAi *ai);
+    /* +0x14 (0x608840): the reload itself -- a shout, the kit's reload, the stance, a wait */
+    virtual int Virtual14(CSealCtrlAi *ai, CAiState *sub);
     virtual bool CanAttack() const { return false; }
     virtual ~CAiSReload();
 
@@ -785,6 +795,9 @@ class CAiSShotAt : public CAiState {
 public:
     CAiSShotAt() : CAiState(AI_STATE_SHOTAT) {}
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    /* +0x14 (0x609340): over after 15 seconds; earlier, when the AI's byte at 0x32C is set, the
+     * sub-state ended and step 3 taken */
+    virtual int Virtual14(CSealCtrlAi *ai, CAiState *sub);
     virtual bool CanPursue(CSealCtrlAi *ai) const { return false; }
     virtual ~CAiSShotAt();
 

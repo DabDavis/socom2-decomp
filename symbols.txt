@@ -10933,9 +10933,9 @@
 0x005B8820 0xA0 func_005B8820  # OVL2
 0x005B88C0 0x5C func_005B88C0  # OVL2
 0x005B8920 0x5F4 func_005B8920  # OVL2
-0x005B8F20 0xA0 func_005B8F20  # OVL2
-0x005B8FC0 0x30 func_005B8FC0  # OVL2
-0x005B8FF0 0x2C func_005B8FF0  # OVL2
+0x005B8F20 0xA0 SetItemPtr__5CZKitFiPv  # OVL2; by hand (the kit lane, round 7): called on the SEAL's kit (body+0x5E0) by 0x59F0C0; pushes nulls through the pod insert until slot index+1 exists, then stores -- the name ours
+0x005B8FC0 0x30 ClearItemPtr__5CZKitFi  # OVL2; by hand (the kit lane, round 7): called on the SEAL's kit (body+0x5E0) by 0x59F0C0/0x59F730; zeroes the vector at kit+0x834's slot index+1 -- the name ours
+0x005B8FF0 0x2C GetItemPtr__5CZKitFi  # OVL2; by hand (the kit lane, round 7): called on the SEAL's kit (body+0x5E0) by 0x59F0C0/0x59F730; reads the pointer vector at kit+0x834 one place on -- the name ours
 0x005B9020 0xC func_005B9020  # OVL2
 0x005B9030 0x8C ResetScreenOffsetXY__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's ResetScreenOffsetXY, the unit's first as there: both screen offsets zeroed; SOCOM II then hands the camera (CWorld::m_world->m_camera) the sniper position (0x28/0x2C, SOCOM 1's 0x14/0x18) under a scope's zoom class, else zero)
 0x005B90C0 0x10 IncrScreenOffsetY__5CZKitFf  # OVL2; s1:order by hand (SOCOM 1's IncrScreenOffsetY: the same add to the screen offset's y, at 0x5C here where SOCOM 1's is 0x48 -- the reticle block 0x14 on; the kit's first accessors in SOCOM 1's order)
@@ -11673,12 +11673,12 @@
 0x00604820 0x8 CanAttack__8CAiSFleeCFv  # OVL2; by hand: CAiSFlee's vtable slot +0x24 (CanAttack; SOCOM 1's 0x10 bytes, this 8)
 0x00604830 0x48 OnSignal__8CAiSFleeFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00604880 0x364 Tick__10CAiSTargetFP11CSealCtrlAi  # OVL2; by hand: CAiSTarget's vtable slot +0x10 (Tick); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
-0x00604BF0 0x70 func_00604BF0  # OVL2
+0x00604BF0 0x70 Virtual14__10CAiSTargetFP11CSealCtrlAiP8CAiState  # OVL2; by hand (the kit lane, round 7): CAiSTarget's vtable (0x669C40) slot +0x14, the slot round 6 settled as int Virtual14(CSealCtrlAi *, CAiState *)
 0x00604C60 0x74 OnSignal__10CAiSTargetFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00604CE0 0x8C8 Tick__9CAiSEventFP11CSealCtrlAi  # OVL2; by hand: CAiSEvent's vtable slot +0x10 (Tick); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x006055B0 0x1C0 func_006055B0  # OVL2
 0x00605770 0x88 func_00605770  # OVL2
-0x00605800 0x14C func_00605800  # OVL2
+0x00605800 0x14C Virtual14__9CAiSEventFP11CSealCtrlAiP8CAiState  # OVL2; by hand (the kit lane, round 7): CAiSEvent's vtable (0x669C90) slot +0x14
 0x00605950 0xAC func_00605950  # OVL2
 0x00605A00 0x8 GetStatus__9CAiSEventCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00605A10 0x34 SetName__9CAiSEventFPCc  # OVL2; by hand (the kit lane, round 4): strncpy of up to 16 characters into the event state's 0x8E, or its first byte cleared for none -- the byte CAiSEvent::OnSignal's reset clears; 0x558AE0 calls it on a state after setting its flags' bit 0 (the name ours)
@@ -11704,11 +11704,11 @@
 0x006082E0 0x1CC func_006082E0  # OVL2
 0x006084B0 0x10C func_006084B0  # OVL2
 0x006085C0 0x27C Tick__10CAiSReloadFP11CSealCtrlAi  # OVL2; by hand: CAiSReload's vtable slot +0x10 (Tick); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
-0x00608840 0x198 func_00608840  # OVL2
+0x00608840 0x198 Virtual14__10CAiSReloadFP11CSealCtrlAiP8CAiState  # OVL2; by hand (the kit lane, round 7): CAiSReload's vtable (0x669E20) slot +0x14; its Tick (0x6085C0) calls it with 0
 0x006089E0 0x8 OnSignal__10CAiSReloadFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x006089F0 0x798 Tick__10CAiSShotAtFP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x00609190 0x1A4 func_00609190  # OVL2
-0x00609340 0xA4 func_00609340  # OVL2
+0x00609340 0xA4 Virtual14__10CAiSShotAtFP11CSealCtrlAiP8CAiState  # OVL2; by hand (the kit lane, round 7): CAiSShotAt's vtable (0x669E70) slot +0x14
 0x006093F0 0x13C OnSignal__10CAiSShotAtFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00609530 0x1DC func_00609530  # OVL2
 0x00609710 0x78 __dt__9CAiSAvoidFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
