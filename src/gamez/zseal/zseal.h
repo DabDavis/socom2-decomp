@@ -14,6 +14,7 @@
 #include "../znode/node_world.h"
 #include "../zcamera/zcamera.h"
 #include "../../ai/ai_states.h"
+#include "../zchar/zchar.h"
 
 class CZSealBody;
 class CZProjectile;
@@ -57,8 +58,8 @@ enum SEAL_DEATH_TYPE {
 /* the orders (SOCOM 1's DWARF, a byte: only the size matters here) */
 enum FT_COMMAND { CMD_UNKNOWN = 0, CMD_ACTION = 1, CMD_LAST = 255 };
 
-/* a character's sounds and the kinds of stun (SOCOM 1's DWARF; only the sizes matter here) */
-enum CHARACTER_SOUND { CHARACTER_SOUND_NONE = 0, CHARACTER_SOUND_LAST = 255 };
+/* a character's sounds are zchar.h's CHARACTER_SOUND (a signed byte, -1 to 84); the kinds of stun
+ * (SOCOM 1's DWARF; only the size matters here) */
 enum STUN_TYPE { STUN_NONE = 0, STUN_LAST = 6 };
 
 /* the AI's small templates (SOCOM 1's namespace ai; never inlined -- MW auto-inlines no template
