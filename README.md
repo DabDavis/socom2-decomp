@@ -573,6 +573,35 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - a one-pass loop over a static array (`NUM_PADS = 1`) keeps the array's lui/addiu form;
   - `x = a - b; x /= c - b;` computes the divisor first, `(a - b) / (c - b)` the dividend;
   - an explicit `p->~T()` passes -1; 0x3C866666 is 1.05/64, not 0.0164.
+- **Tells from the sound system, round 2** (989snd.c's stream calls, CSndInstance's pool, the
+  headset):
+  - 3.0b52 reuses a value just stored to a global only when it comes from a ternary
+    (`g = c ? 0 : 1`) or an assignment used as an expression; `g = !c; if (g == 1)` reloads it
+    (SOCOM 1's `movz` there is the same ternary);
+  - a function that stores new's result to a global keeps it in v0 only if it also returns it
+    (Headset::Create); an inline setter's arguments load before its stores (ftsGetHeadset);
+  - to keep a pushed pointer in a register, push a copy (`T *kept = p; v.push_back(kept);`):
+    only the copy goes to memory;
+  - a walk whose arms each step the iterator on emits three copies of the step (PostTick);
+  - std::find compares `*first == value`: a target comparing `value == *first`, with first and
+    last in the other registers, is a hand-written loop;
+  - a constructor whose disabled test is an early return branches over its stores when
+    inlined; written as an if-block it branches past them the other way;
+  - operand order in a comparison carries through to `bne`: `mode == x` puts the parameter
+    first;
+  - SOCOM 1's symbol table names every 989snd.c global, and they are defined in that unit.
+- **The class vector's deleter destructor is out of class** (include/vector): MSL 3.0.1 defines
+  it after the class body, not inline, so MW emits it in each unit's template tail and inlines it
+  only where the unit has already instantiated it -- an implicit destructor chain over a class
+  vector stops at it (~vector and ~__vector_imp inline, the deleter's destructor is a call:
+  ~CSndSequence, ~CEntity, CCompass::DeleteAnchor, SOCOM 1's ~CEntity alike), while
+  zanim_set.cpp's Unload counts it and the class reserves inline it into their temporary's
+  destruction. Probes in build/scratch/vec/ (ip.py, vscore.py; the c*.cpp variants record the
+  rules measured on the way: non-template code never inlines an out-of-class template member,
+  explicit instantiation makes one an ordinary auto-inline function) -- but measure such changes
+  on the real units, which the probes did not predict. SOCOM 1's DWARF names two MSL installs:
+  `C:\apps\cw301` (the game's headers) and CodeWarrior 2.4's (the prebuilt MSL library: locale,
+  iostreams).
 - **Tool notes**: scdiff accepts the image's one non-zero pad word (0xFFFFFFFF at 0x1E70F4,
   after main); `automatch --stale` can drop a renamed destructor's draft when its re-draft
   misses (SlotList's and CWeaponSlot's were restored by hand, the old drafts renamed). A

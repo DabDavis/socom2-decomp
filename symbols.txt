@@ -4229,10 +4229,10 @@
 0x002C70D0 0x24 IsComplete__20CMissionObjectiveCamCFv  # OVL1; s1:exact
 0x002C7100 0xDC Set__20CMissionObjectiveCamFPCcPCcPCcPCcPCcPCcPCcPCcPCcPCcPC5PNT2D  # OVL1; s1:align
 0x002C71E0 0xAC func_002C71E0  # OVL1
-0x002C7290 0x70 func_002C7290  # OVL1
-0x002C7300 0x40 func_002C7300  # OVL1
-0x002C7340 0x8 func_002C7340  # OVL1
-0x002C7350 0x14 func_002C7350  # OVL1
+0x002C7290 0x70 __dt__Q23std30vector<i,Q23std12allocator<i>>Fv  # OVL1; by hand (the same FreeVector's temporary's destructor, three this-tests) -- the sound lane
+0x002C7300 0x40 swap__Q23std30vector<i,Q23std12allocator<i>>FRQ23std30vector<i,Q23std12allocator<i>>  # OVL1; by hand (the same FreeVector's swap) -- the sound lane
+0x002C7340 0x8 clear__Q23std30vector<i,Q23std12allocator<i>>Fv  # OVL1; by hand (the same FreeVector's clear, the size zeroed) -- the sound lane
+0x002C7350 0x14 __ct__Q23std30vector<i,Q23std12allocator<i>>Fv  # OVL1; by hand (Headset::Flush's FreeVector of a vector<int> calls it, the linked copy CMissionObjectiveCam's unit emitted; three words zeroed) -- the sound lane
 0x002C7370 0xA0 IsAvailable__20CMissionObjectiveCamCFv  # OVL1; s1:align
 0x002C7410 0x78 func_002C7410  # OVL1
 0x002C7490 0x98 func_002C7490  # OVL1

@@ -15,13 +15,12 @@ CSndSequence::CSndSequence()
 {
 }
 
-/* OPEN, 0x98 bytes against 0x80: the entries' vector. The target inlines two levels of its
- * destructor (vector's and __vector_imp's this tests) and calls the deleter's (0x34A5A0), which
- * calls clear (0x34A610) out of line -- where nav_package's deleter inlines its clear: SOCOM 1's
- * clear walks the entries backwards, so CSndSequenceEntry has a user-declared (empty) destructor
- * and MSL takes its non-trivial destroy path, which include/vector does not model (an element
- * destructor loop alone, tried, changes nothing here). The name is freed and cleared twice, as
- * the target does */
+/* the name freed and cleared twice, as the target does; the entries' vector inlines two levels
+ * of its destructor (vector's and __vector_imp's this tests) and calls the deleter's (0x34A5A0),
+ * which include/vector defines out of class. The deleter's own copy still differs: it calls clear
+ * (0x34A610) out of line where nav_package's inlines its clear -- SOCOM 1's clear walks the
+ * entries backwards, so CSndSequenceEntry has a user-declared (empty) destructor, and MSL's
+ * non-trivial destroy path is not modelled yet (the draft of 0x34A5A0 keeps its match) */
 CSndSequence::~CSndSequence()
 {
     if (m_name)

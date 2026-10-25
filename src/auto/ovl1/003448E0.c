@@ -6,11 +6,11 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_00348130();                            /* extern */
-extern u8 data_0048DD28;
+M2C_UNK LoadSoundGroups__9CSndGroupFPCc();          /* extern */
+extern u8 m_isDisabled__4CSnd;
 
 void func_003448E0(void) {
-    if (data_0048DD28 == 0) {
-        func_00348130();
+    if (m_isDisabled__4CSnd == 0) {
+        LoadSoundGroups__9CSndGroupFPCc();
     }
 }

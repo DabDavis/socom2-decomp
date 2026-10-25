@@ -40,13 +40,18 @@
  *   vector of pointers  constructor 3 (vector, __vector_imp, __vector_pod)
  *                       destructor  3 (each with its this test), clear() 3
  *   vector of a class   constructor 4 (the capacity member's own constructor)
- *                       destructor  6 (__vector_deleter's clear, and its two destroy levels)
+ *                       destructor  2 inline (~vector, ~__vector_imp), then __vector_deleter's
+ *                                   destructor -- out of class, see there: a call where the unit
+ *                                   had not instantiated it yet, four levels where it had
  *                       clear()     5
  * So `new CZAnimExVector` and its delete inline whole (CZAnimSet::AddAnimEx and Unload), while
  * CZAnimSetSave's implicit constructor and destructor, four high or more under its vector of
  * CPnt3D, inline only themselves and call all four vectors' (SaveNodeStates, Unload); the
  * out-of-line ~vector<CPnt3D> calls the deleter's destructor, and CZAnimSetSave::Free inlines the
- * pointer vectors' clear() but calls __vector_imp<CPnt3D>::clear(). */
+ * pointer vectors' clear() but calls __vector_imp<CPnt3D>::clear().
+ * OPEN: CCompass::CreateAnchor inlines CCompassAnchor's constructor whole, its vector<CPnt3D>
+ * three stores included -- a class-vector constructor three high -- where SaveNodeStates needs
+ * four (the capacity's constructor); the constructor side has no out-of-class piece found yet. */
 
 #ifndef _MSL_VECTOR
 #define _MSL_VECTOR
@@ -82,15 +87,8 @@ template <class T, class Allocator>
 class __vector_deleter {
 public:
     __vector_deleter() { size_ = 0; data_ = 0; }
-    /* the elements destroyed and the count cleared in place, not through clear(): a level
-     * shorter, which the class reserves' temporary needs (zanim_set.cpp's CPnt3D one) */
-    ~__vector_deleter()
-    {
-        destroy(data_, data_ + size_);
-        size_ = 0;
-        if (data_)
-            operator delete(data_);
-    }
+    /* the destructor is defined after the class, not inline (see there) */
+    ~__vector_deleter();
     void clear()
     {
         destroy(data_, data_ + size_);
@@ -130,6 +128,24 @@ public:
     unsigned int size_;
     T *data_;
 };
+
+/* the deleter's destructor, out of class and not inline, as MSL 3.0.1 has it after the class body
+ * (SOCOM 1's DWARF: the constructor at <vector> line 916 and data() at 923 inside the class, the
+ * destructor at 939, clear at 949 and swap at 973 after it). Such a template member is emitted in
+ * each unit's template tail (zanim_set.cpp's at 0x26D300, after reserve and insert), and MW inlines
+ * it only where the unit had already instantiated it: an implicit destructor chain over a class
+ * vector inlines ~vector and ~__vector_imp and calls this (~CSndSequence 0x34A020, ~CEntity,
+ * CCompass::DeleteAnchor -- SOCOM 1's ~CEntity too), while zanim_set.cpp's Unload counts it (its
+ * ~CZAnimSetSave inlines one level) and the class reserves inline it whole into their temporary's
+ * destruction. The elements destroyed and the count cleared in place, not through clear(). */
+template <class T, class Allocator>
+__vector_deleter<T, Allocator>::~__vector_deleter()
+{
+    destroy(data_, data_ + size_);
+    size_ = 0;
+    if (data_)
+        operator delete(data_);
+}
 
 template <class T, class Allocator>
 class __vector_pod {
