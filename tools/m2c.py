@@ -45,6 +45,7 @@ _REG = re.compile(r"(?<![\w$.])(" + "|".join(REGS) + r")(?![\w])")
 # and refused the function, or dropped the argument from a call
 _EABI = {"s8": "fp"} if os.environ.get("SC_AM_EABI", "1") == "0" else \
     {"s8": "fp", "t0": "a4", "t1": "a5", "t2": "a6", "t3": "a7"}
+REG_TAIL = os.environ.get("SC_AM_REGTAIL", "1") != "0"
 BRANCHES = {"b", "beq", "bne", "beqz", "bnez", "blez", "bgtz", "bltz", "bgez", "beql", "bnel",
             "beqzl", "bnezl",       # objdump's names for beql/bnel against $zero: left out, their
                                     # targets stayed raw addresses and m2c refused 74 functions
@@ -152,6 +153,7 @@ def export(img: E.Image, st: E.SymbolTable, sym: E.Symbol) -> str:
     # check's (`sltiu _, _, N`) or the run of entries that land in the function
     jtbl: dict[int, str] = {}                  # instruction address -> table symbol
     tables: dict[str, list[int]] = {}
+    table_jumps: set[int] = set()              # the jr of each
 
     def writer(i0: int, reg: int, back: int, pred) -> int | None:
         return next((i for i in range(i0 - 1, max(i0 - back, -1), -1)
@@ -197,6 +199,7 @@ def export(img: E.Image, st: E.SymbolTable, sym: E.Symbol) -> str:
             continue
         name = f"jtbl_{table:08X}"
         tables[name] = entries
+        table_jumps.add(addr)
         targets.update(entries)
         for a in (lui_at, rows[lo_i][0]):
             pair.pop(a, None)
@@ -210,6 +213,11 @@ def export(img: E.Image, st: E.SymbolTable, sym: E.Symbol) -> str:
             t = int(text.split()[1], 16)
             if st.at_addr(t) is not None and t != sym.addr and rows[i + 1][0] not in targets:
                 tail[addr] = rows[i + 1]
+        # and a tail call through a register (`lw t9,8(t9); jr t9`, a virtual): m2c takes any
+        # jr but ra's for a jump table, and refused all 20 such functions in the sample
+        elif (w >> 26 == 0 and w & 0x3F == 8 and (w >> 21) & 31 != 31 and addr not in table_jumps
+              and i + 1 < len(rows) and rows[i + 1][0] not in targets and REG_TAIL):
+            tail[addr] = rows[i + 1]
     skip = {d[0] for d in tail.values()}
     out = []
     for name, entries in tables.items():
@@ -224,7 +232,10 @@ def export(img: E.Image, st: E.SymbolTable, sym: E.Symbol) -> str:
             continue
         if addr in tail:
             d_addr, d_w, d_text = tail[addr]
-            t = int(text.split()[1], 16)
+            if w >> 26 == 2:
+                call = f"  {'jal':<10} {symname(st, int(text.split()[1], 16), True)}"
+            else:
+                call = f"  {'jalr':<10} {_REG.sub(_dollar, text.split()[1])}"
             d_op, _, d_args = d_text.partition(" ")
             d_args = _REG.sub(_dollar, d_args)
             if d_addr in pair:
@@ -238,7 +249,7 @@ def export(img: E.Image, st: E.SymbolTable, sym: E.Symbol) -> str:
             if written is not None and 5 <= written <= 7:
                 for r in range(4, written):
                     out.append(f"  {'move':<10} ${REGS[r]}, ${REGS[r]}")
-            out += [f"  {'jal':<10} {symname(st, t, True)}", "  nop", f"  {'jr':<10} $ra", "  nop"]
+            out += [call, "  nop", f"  {'jr':<10} $ra", "  nop"]
             continue
         op, _, args = text.partition(" ")
         args = _REG.sub(_dollar, args)

@@ -137,7 +137,8 @@ def try_draft(tmp: Path, out: str, sym, real: str, addr: int, img, st) -> tuple[
         # as C++ with real bools, when the target materialises a `true` (daddiu r,zero,1)
         if trues:
             bsrc = bool_draft(body, sym.name)
-            if bsrc is not None:
+            bret = bool_returns(bsrc, sym.name) if bsrc is not None and _on("BOOL") else None
+            for bsrc in [x for x in (bsrc, bret) if x is not None]:
                 hit = try_one(tmp, bsrc, sym, real, addr, img, st, suffix=".cpp")
                 if hit == "hit":
                     bsrc = "/* sc: c++ */\n" + bsrc
@@ -502,10 +503,95 @@ def variants(body: str):
     sw = _ADDR_SUM2.sub(lambda m: f"(({m.group(2)} * {m.group(3)}) + {m.group(1)})", sw) if sw == body else sw
     if sw != body:
         yield sw
+    if _on("NOT"):
+        nz = not_zero(body)
+        if nz != body:
+            yield nz
+    if _on("AT"):
+        bo = big_offsets(body)
+        if bo != body:
+            yield bo
+    if _on("UNKPTR"):
+        ub = unk_bytes(body)
+        if ub != body:
+            yield ub
 
 
 _ADDR_SUM = re.compile(r"\(\((\w+) \* (\d+|0x[0-9A-Fa-f]+)\) \+ (\w+)\)")
 _ADDR_SUM2 = re.compile(r"\((\w+) \+ \((\w+) \* (\d+|0x[0-9A-Fa-f]+)\)\)")
+_EQ0 = re.compile(r" == (?:0|NULL)(?=\s*(?:[),;?:]|&&|\|\|))")
+
+
+def not_zero(body: str) -> str:
+    """Every `x == 0` (or NULL) whose x is a whole operand as `!x`. MW materialises `!x` as
+    `sltu r,zero,x; xori r,r,1` and `x == 0` as `xor r,x,zero; sltiu r,r,1`; m2c reads both as
+    `== 0`. As a branch's condition they compile alike."""
+    out, last = [], 0
+    for m in _EQ0.finditer(body):
+        j = m.start()
+        # the left operand: an identifier, or a bracketed group with the name it calls
+        k = j
+        if body[k - 1:k] == ")":
+            depth = 0
+            while k > 0:
+                k -= 1
+                if body[k] == ")":
+                    depth += 1
+                elif body[k] == "(":
+                    depth -= 1
+                    if depth == 0:
+                        break
+            while k > 0 and (body[k - 1].isalnum() or body[k - 1] == "_"):
+                k -= 1
+        else:
+            while k > 0 and (body[k - 1].isalnum() or body[k - 1] == "_"):
+                k -= 1
+        if k == j or k < last:
+            continue
+        before = body[:k].rstrip()
+        if not (before.endswith(("(", ",", "!", "&&", "||", "?", ":", "return"))
+                or (before.endswith("=") and not before.endswith(("==", "!=", "<=", ">=")))):
+            continue                             # part of a wider operand: `a + b == 0`
+        out.append(body[last:k])
+        out.append(f"!{body[k:j]}")
+        last = m.end()
+    out.append(body[last:])
+    return "".join(out)
+
+
+_BIG = re.compile(r"(?<![\w.>])([A-Za-z_]\w*) \+ (0x[0-9A-Fa-f]{4,})\b")
+
+
+def big_offsets(body: str) -> str:
+    """`x + 0x1A698` on an int x as a pointer sum: MW builds an offset past 16 bits in $at
+    for a pointer, in v0 (the next free temporary) for an int -- a member's address taken
+    (`&theHUD->m_letterbox`) where m2c, seeing only the add, typed the base an int."""
+    decl = _declared(body)
+
+    def sub(m):
+        t = decl.get(m.group(1), "")
+        if int(m.group(2), 16) < 0x8000 or not t or "*" in t or t in ("f32", "f64", "s64", "u64"):
+            return m.group(0)
+        return f"(s32)((char *){m.group(1)} + {m.group(2)})"
+    return _BIG.sub(sub, body)
+
+
+def unk_bytes(body: str) -> str:
+    """m2c's offsets from an M2C_UNK's address (`*(&data_X + (i * 4))`) count bytes, where C
+    scales them by the int M2C_UNK is to MW (`sll 4` for the target's `sll 2`): summed as bytes."""
+    unk = {n for n, t in _declared(body).items() if t.replace(" ", "") == "M2C_UNK"}
+    out, i = [], 0
+    for m in re.finditer(r"\(&([A-Za-z_]\w*) ([+-]) ", body):
+        if m.start() < i or m.group(1) not in unk:
+            continue
+        end = _group(body, m.start())
+        if end < 0:
+            continue
+        out.append(body[i:m.start()])
+        out.append(f"((M2C_UNK *)((char *)&{m.group(1)} {m.group(2)} {body[m.end():end - 1]}))")
+        i = end
+    out.append(body[i:])
+    return "".join(out)
 
 
 def bool_draft(body: str, name: str) -> str | None:
@@ -518,17 +604,39 @@ def bool_draft(body: str, name: str) -> str | None:
              and not re.search(rf"\b{v} = (?![01];)", body)
              and not re.search(rf"\b{v} (\+|-|\*|/|&|\||\^|<<|>>)=", body)
              and not re.search(rf"\b{v}(\+\+|--)", body)]
-    if not flags:
+    rets = re.findall(r"\breturn ([^;]+);", body)
+    # a function that only returns 0 and 1 is a bool one too: MW merges the returns into a
+    # value it assigns, and an assigned true is daddiu (func_0027E4C0)
+    if not flags and not (_on("BOOL") and rets and all(r.strip() in ("0", "1") for r in rets)):
         return None
     for v in flags:
         body = re.sub(rf"^    s32 {v};$", f"    bool {v};", body, flags=re.M)
         body = re.sub(rf"\b{v} = 1;", f"{v} = true;", body)
         body = re.sub(rf"\b{v} = 0;", f"{v} = false;", body)
-    rets = re.findall(r"\breturn ([^;]+);", body)
+        if _on("BOOL"):
+            # tested as the bool it is: `flag != 0` narrows it again (andi 0xff) before the branch
+            body = re.sub(rf"\b{v} != 0\b", v, body)
+            body = re.sub(rf"\b{v} == 0\b", f"!{v}", body)
     if rets and all(r.strip() in flags or r.strip() in ("0", "1") for r in rets):
         body = re.sub(rf"^s32 ({re.escape(name)}\()", r"bool \1", body, flags=re.M)
         body = body.replace("return 1;", "return true;").replace("return 0;", "return false;")
     return PRELUDE + 'extern "C" {\n' + body + "}\n"
+
+
+def bool_returns(src: str, name: str) -> str | None:
+    """A bool draft whose returns become assignments to one bool, returned at the end: MW
+    materialises `return true` as `li` but an assigned true as `daddiu` -- the original
+    assigned it (or inlined a bool function), as func_0027E4C0 shows."""
+    m = re.search(rf"^bool {re.escape(name)}\([^)]*\)\s*\{{\n", src, re.M)
+    end = src.rfind("\n}\n}")
+    if not m or end < m.end():
+        return None
+    head, body, tail = src[:m.end()], src[m.end():end], src[end:]
+    rets = re.findall(r"\breturn ([^;]+);", body)
+    if not rets or not all(r.strip() in ("true", "false") or re.fullmatch(r"\w+", r.strip()) for r in rets):
+        return None
+    body = re.sub(r"\breturn ([^;]+);", r"{ sc_ret = \1; goto sc_return; }", body)
+    return head + "    bool sc_ret;\n" + body + "\nsc_return:\n    return sc_ret;" + tail
 
 
 def try_one(tmp: Path, src: str, sym, real: str, addr: int, img, st, suffix: str = ".c") -> str:
