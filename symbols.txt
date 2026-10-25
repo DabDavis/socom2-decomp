@@ -4335,7 +4335,7 @@
 0x002CD8A0 0x148 func_002CD8A0  # OVL1
 0x002CD9F0 0xA4 func_002CD9F0  # OVL1
 0x002CDAA0 0x88 func_002CDAA0  # OVL1
-0x002CDB30 0x78 func_002CDB30  # OVL1
+0x002CDB30 0x78 __dt__Q23std52vector<10CZDecalDef,Q23std23allocator<10CZDecalDef>>Fv  # OVL1; by hand (the weapons lane's round 7, vetted by the integrator: DestroyMarkList calls it on CZMarkList's two vector<CZDecalDef> members at +0x10 and +0x1C; three this-tests, clear 0x2CE770, the data deleted; the initialiser 0x400870 registers it -- an earlier unit's copy, deduplicated by name)
 0x002CDBB0 0x88 func_002CDBB0  # OVL1
 0x002CDC40 0x78 func_002CDC40  # OVL1
 0x002CDCC0 0x78 func_002CDCC0  # OVL1
@@ -4365,7 +4365,7 @@
 0x002CE570 0x24 func_002CE570  # OVL1
 0x002CE5A0 0x8 func_002CE5A0  # OVL1
 0x002CE5B0 0x1B8 func_002CE5B0  # OVL1
-0x002CE770 0x8 func_002CE770  # OVL1
+0x002CE770 0x8 clear__Q23std62__vector_deleter<10CZDecalDef,Q23std23allocator<10CZDecalDef>>Fv  # OVL1; by hand (the weapons lane's round 7, vetted by the integrator: 0x2CDB30 and the insert<CZDecalDef> 0x3D3D90 both call it)
 0x002CE780 0x68 func_002CE780  # OVL1
 0x002CE7F0 0x8 func_002CE7F0  # OVL1
 0x002CE800 0xDC func_002CE800  # OVL1
@@ -5500,7 +5500,7 @@
 0x003164E0 0x114 AddVisual__Q23zdb5CNodeFPQ23zdb7CVisual  # OVL1; s1:align
 0x00316600 0x10 ReserveVisuals__Q23zdb5CNodeFi  # OVL1; s1:exact
 0x00316610 0x154 SetParentHasVisuals__Q23zdb5CNodeFv  # OVL1; s1:align
-0x00316770 0x80 func_00316770  # OVL1
+0x00316770 0x80 __dt__Q23std52list<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>>Fv  # OVL1; by hand (the weapons lane's round 7, vetted by the integrator: DestroyMarkList calls it on CZMarkList's list of nodes)
 0x003167F0 0x28 Release__Q23zdb5CNodeFv  # OVL1; s1:align
 0x00316820 0x5E4 _Copy__Q23zdb5CNodeCFPQ23zdb5CNode  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00316E10 0x14 Copy__Q23zdb5CNodeCFv  # OVL1; size 0x14 (a tail call through t9; the seed ran on into the padding); s1:exact by hand (SOCOM 1's Copy, word for word: _Copy(0) through the vtable)
@@ -8420,7 +8420,7 @@
 0x003D37B0 0xC func_003D37B0  # OVL1
 0x003D37C0 0xC func_003D37C0  # OVL1
 0x003D37D0 0x8 CreateWeaponList__8CZWeaponFv  # OVL1; s1:order by hand (the wep lane: `return true`, 8 bytes, as SOCOM 1's CreateWeaponList__8CZWeaponFv, first of the five list statics in SOCOM 1's order; 0x1EA720 calls it after CreateProjectileList and CreateMarkList); zwep_weapon.cpp
-0x003D37E0 0xC8 func_003D37E0  # OVL1; the wep lane: SOCOM 1's DestroyMarkList__8CZWeaponFv (m_pMarklist's three tables freed, its two vector<CZDecalDef> destroyed through 0x2CDB30 and the list<CNode *> through 0x316770, deleted, zeroed, true) -- zwep_weapon.cpp defines it, byte-exact once 0x2CDB30 and 0x316770 carry the vector's and the list's destructor names (an earlier unit's copies, which the linker kept); the row keeps its placeholder until then, so the draft's match stands
+0x003D37E0 0xC8 DestroyMarkList__8CZWeaponFv  # OVL1; the wep lane: SOCOM 1's DestroyMarkList__8CZWeaponFv (m_pMarklist's three tables freed, its two vector<CZDecalDef> destroyed through 0x2CDB30 and the list<CNode *> through 0x316770, deleted, zeroed, true) -- zwep_weapon.cpp defines it, byte-exact once 0x2CDB30 and 0x316770 carry the vector's and the list's destructor names (an earlier unit's copies, which the linker kept); the row keeps its placeholder until then, so the draft's match stands; s1:order (the weapons lane's round 7: SOCOM 1's DestroyMarkList static, before CreateMarkList 0x3D38B0 as in SOCOM 1; byte-exact from zwep_weapon.cpp with its three callees named)
 0x003D38B0 0x78 CreateMarkList__8CZWeaponFv  # OVL1; s1:order by hand (the wep lane: SOCOM 1's CreateMarkList__8CZWeaponFv -- news 52 bytes, the list's constructor 0x1EABB0, the vectors' words and the three tables zeroed, stored at m_pMarklist 0x4B5248; 0x1EA720 calls it); zwep_weapon.cpp
 0x003D3930 0x44 DestroyProjectileList__8CZWeaponFv  # OVL1; s1:align confirmed by hand (the wep lane: SOCOM 1's DestroyProjectileList__8CZWeaponFv -- ~CZProjectileList (0x3CD6B0) with the delete flag on m_pProjectilelist, zeroed, true); zwep_weapon.cpp
 0x003D3980 0x58 CreateProjectileList__8CZWeaponFi  # OVL1; s1:align confirmed by hand (the wep lane: SOCOM 1's CreateProjectileList__8CZWeaponFi -- news 0x208 bytes and calls CZProjectileList(int) 0x3CD740 with the count; 0x1EA720 passes 100); zwep_weapon.cpp

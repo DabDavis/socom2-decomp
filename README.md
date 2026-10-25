@@ -1642,6 +1642,27 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the weapons, round 7** (the turret's template tail, CZWeapon's sounds/timers/AI params):
+  - a class temporary in an argument list whose type has a user destructor (even an empty inline
+    one) is built before the inline end()/size() are expanded; without a destructor MW expands
+    those first;
+  - a user-declared copy assignment on a member's member makes the enclosing class's implicit
+    assignment a real function, called out of line once the outer assignment passes
+    inline_max_size; left implicit it is a block copy;
+  - a class with a user-declared constructor gets a member-by-member implicit copy constructor while
+    its implicit assignment stays a block copy -- the copy constructor and the assignment can copy the
+    same member differently (CTurretAiParams); an empty user constructor on a vector element makes
+    insert copy it member by member (CZDecalDef);
+  - a tail instance an earlier unit already emitted is deduplicated by name, so a unit's own use of a
+    vector destructor can be invisible in the image (zwep_weapon.cpp's DestroyMarkList calls
+    0x2CDB30, an earlier unit's copy);
+  - DEAD-STRIPPED STAND-INS: an insert inlines the element destructor and clear only if the unit's
+    own code generated them first; where no such caller is left in the image, a minimal stand-in for
+    the dead-stripped original (no row: it scores as no-target) restores the order --
+    DeadTurretDefinitionsKill made the turret's insert byte-exact (veh_turret.cpp), and
+    DeadVehicleDefinitionsKill gives 0x3AF040 the target's size (its end-pointer register still open);
+  - veh_turret.cpp's tail starts at resize 0x3AB8C0; CTurretDef() (0x3AB5F0) is an ordinary function
+    right after Parse, as in SOCOM 1.
 - **Tells from the HUD, round 15** (the weapon selector's states and scrolling, zui_2d.cpp complete):
   - an inline's side-effect-free argument used once on each path is substituted into each arm, so
     SOCOM 1's `Increment(2*(475*dT), ...)` computes the product in both arms, as the target; the
