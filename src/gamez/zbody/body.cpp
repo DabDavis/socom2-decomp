@@ -170,13 +170,10 @@ void CBody::SetBodyPart(int id, CZBodyPart *part)
 /* an archive's anim of a motion.rdr index readied for the body, once: each part's object found by
  * its node's name and filed by the part's id, then the other objects whose bone ids lie past the
  * body's parts filed from the top slot down (SOCOM 1's BodyAddAnim, which took a name; SOCOM II's
- * returns its stack anim, gone by then).
- * OPEN, 16 instructions (right size): the first walk's registers -- the target keeps the iterator
- * in s3, the part in s4 and the slot pointer in s2 (this's, loaded in the walk's entry delay slot),
- * where this source gives the iterator s2, the slot s4 (loaded ahead of the test) and the part s3.
- * Tried: the slot declared before the reference, the iterator declared before the slot, an index
- * instead of the slot pointer (int or unsigned: 8 bytes longer). The stack anim through a pointer
- * and the decrement as the index's pre-decrement each took off a block of differences. */
+ * returns its stack anim, gone by then). The first walk's iterators are both the vectors' class
+ * iterators, the parts' initialised before the slots' (the slot then takes this's register, loaded
+ * in the walk's entry delay slot); a raw slot pointer, or the slots' iterator first, trade three
+ * saved registers */
 CZBodyAnim *CBody::BodyAddAnim(CScriptArchive *archive, int index)
 {
     if (index <= 0)
@@ -191,9 +188,10 @@ CZBodyAnim *CBody::BodyAddAnim(CScriptArchive *archive, int index)
     a->m_pCommon = common;
     if (!common->m_objects_ready) {
         std::vector<CZBodyPart *> &parts = m_body_parts;
-        CZSIObject **slot = &common->m_objects_for_body[0];
+        std::vector<CZBodyPart *>::iterator i = parts.begin();
+        std::vector<CZSIObject *>::iterator slot = common->m_objects_for_body.begin();
 
-        for (std::vector<CZBodyPart *>::iterator i = parts.begin(); i != parts.end(); ++i, slot++) {
+        for (; i != parts.end(); ++i, ++slot) {
             CZBodyPart *part = *i;
 
             if (part && !*slot) {
@@ -360,26 +358,28 @@ void CBody::BodySetState(int state)
 }
 
 /* a blend started on a script: the top blend's homing reset, a blend and an anim taken from the
- * pools, the blend reset on the anim and pushed (SOCOM 1's took the anim by id).
- * OPEN, 69 instructions (right size, every call in place): registers and scheduling -- the
- * target keeps the top blend's fraction in $f20 and its homing's address in s1 from the start,
- * the looped bool in s3; not yet permuted */
+ * pools, the blend reset on the anim and pushed (SOCOM 1's took the anim by id). The registers
+ * follow the source: the top through TopBlend() (s0) and the homing through Homing() (s1), the
+ * loop flag and the two pointers declared first, uninitialised (s3, s2, s1), the fraction read
+ * after the flag */
 CZBodyAnimBlend *CBody::PushBlend(CZSIScriptCommon *anim, short id, char state)
 {
+    bool looped;
+    CZBodyAnimBlend *blend;
+    ACTIVE_ANIM *a;
     float tfrac = 0.0f;
-    CZBodyAnimBlend *top = func_00219390(&m_blends);
-    bool looped = false;
+    CZBodyAnimBlend *top = TopBlend();
 
+    looped = false;
     if (top) {
-        tfrac = top->m_tfrac;
         looped = func_0028F190(top->m_flags, 0x40);
-        top->m_homing.Reset();
+        tfrac = top->m_tfrac;
+        top->Homing()->Reset();
     }
-    CZBodyAnimBlend *blend = m_blend_pool.GetNext();
-
+    blend = m_blend_pool.GetNext();
     if (!blend)
         return top;
-    ACTIVE_ANIM *a = m_active_anim_pool.GetActiveAnim(anim, id);
+    a = m_active_anim_pool.GetActiveAnim(anim, id);
 
     if (!a) {
         m_blend_pool.PutBack(blend);
@@ -416,18 +416,16 @@ CZBodyAnimBlend *CBody::PushBlend(CZSIScriptCommon *anim, short id, char state)
 }
 
 /* the top blend popped: its anims and their overlays put back, the blend too; the new top's
- * state set and its fraction carried over when both loop (SOCOM 1's).
- * OPEN, 0x38 bytes short: the walks are the target's `b`-to-a-bottom-preheader loops (the pool's
- * address hoisted into a saved register in a block after the loop's test), which every loop
- * spelling tried compiles as a guarded do-while -- see ClearOverlays, the same loop alone */
+ * state set and its fraction carried over when both loop (SOCOM 1's). Both walks reach the pool
+ * through ActiveAnimPool(), the target's hoisted address in a preheader after each loop's test */
 CZBodyAnimBlend *CBody::PopBlend()
 {
     CZBodyAnimBlend *blend = func_00219390(&m_blends);
 
     if (m_interp1 > 0.0f)
         SaveParts();
-    float tfrac = blend->m_tfrac;
     bool looped = func_0028F190(blend->m_flags, 0x40);
+    float tfrac = blend->m_tfrac;
     ACTIVE_ANIM *a = blend->m_anims.Begin();
 
     while (a) {
@@ -435,7 +433,7 @@ CZBodyAnimBlend *CBody::PopBlend()
 
         a = blend->m_anims.Next();
         cur->ClearOverlays(this);
-        m_active_anim_pool.PutBack(cur);
+        ActiveAnimPool()->PutBack(cur);
     }
     m_blend_pool.PutBack(blend);
     m_blends.Pop();
@@ -527,21 +525,17 @@ void ACTIVE_ANIM::SetFrac(float t)
     }
 }
 
-/* every overlay put back in the body's pool (SOCOM 1's).
- * OPEN, 5 instructions short: the target enters the loop with a `b` to a preheader placed after
- * the loop's bottom test, which hoists &body->m_active_anim_pool into s0 (body itself dropped);
- * MW gives a guarded do-while with the address recomputed from body each pass. Tried: the walk
- * with the next link read first or last, for(;;) with a break, a for with the next pointer
- * declared outside, the pool through a pointer local, a null test inside */
+/* every overlay put back in the body's pool (SOCOM 1's): the pool through the body's accessor, so
+ * its address is hoisted into a preheader after the loop's test (the target's `b` into the walk) */
 void ACTIVE_ANIM::ClearOverlays(CBody *body)
 {
     ACTIVE_ANIM *o = m_overlay;
 
     while (o) {
-        ACTIVE_ANIM *next = o->m_overlay;
+        ACTIVE_ANIM *cur = o;
 
-        body->m_active_anim_pool.PutBack(o);
-        o = next;
+        o = o->m_overlay;
+        body->ActiveAnimPool()->PutBack(cur);
     }
     m_overlay = 0;
 }
@@ -604,8 +598,11 @@ bool CBlendOverlay::Trigger(bool reverse)
 
 /* the overlay run on: its time moved by dT, the anim placed, put back once played out (SOCOM 1's).
  * OPEN, 3 instructions: the first division's operands trade float registers (the target loads
- * m_ovlyT into $f0, the script's time into $f1), as in IsTriggerTime(float, float); tried a
- * (float) cast, the time through a local, a compound division */
+ * m_ovlyT into $f0, the script's time into $f1; the second division, through the loop share, is
+ * the target's). Tried: a (float) cast, the time through a local, a compound division, the time
+ * or the fraction through an inline (an accessor, a divide taking either order), the overlay's
+ * time read into a local first, the done fraction declared first, m_anim->m_anim spelled out --
+ * all leave the pair as it is (ScaleTime, which fixed IsTriggerTime's pair, is a multiply) */
 bool CBlendOverlay::Tick(CBody *body, float dT)
 {
     if (m_state == 1)
@@ -643,21 +640,34 @@ bool CBlendOverlay::Tick(CBody *body, float dT)
 }
 
 /* within dT of its anim's fraction, ahead or behind as it runs (SOCOM 1's; pinned: CallbackTick
- * calls it). OPEN, 2 instructions short: the target's two float registers trade places (the
- * length and the step in $f1, the fraction in $f0) and it pads its first arm's `b` with a nop
- * more; tried the step through one reused local and the fraction declared first */
+ * calls it): the step through ScaleTime (its registers), each arm's test written as `if (c)
+ * return true; return false;` (the label pads the target has after the first arm) */
+/* a time scaled, in place (ours: the overlay's trigger window is the only caller that multiplies
+ * the script's time into its own register -- `mul.s $f1,$f1,$f0`, the time loaded after the loop
+ * share's call, as a by-value parameter of an inline is; written out, the product lands in $f0) */
+static inline float ScaleTime(float time, float scale)
+{
+    time *= scale;
+    return time;
+}
+
 #pragma auto_inline off
 bool CBlendOverlay::IsTriggerTime(float t, float dT)
 {
     if (!m_anim)
         return false;
     CZSIScriptCommon *anim = m_anim->m_anim;
-    float d = dT / (anim->m_10 * anim->TrueLoopTime());
+    float d = dT / ScaleTime(anim->m_10, anim->TrueLoopTime());
     float tf = m_anim->m_tfrac;
 
-    if (m_state == -1)
-        return tf - d <= t;
-    return tf + d >= t;
+    if (m_state == -1) {
+        if (tf - d <= t)
+            return true;
+        return false;
+    }
+    if (tf + d >= t)
+        return true;
+    return false;
 }
 #pragma auto_inline reset
 
@@ -803,18 +813,23 @@ void CZBodyAnimBlend::CallbackTick(CBody *body, float t0, float t1)
     }
 }
 
-/* a time inside the step from t0 to t1, around the wrap when the blend loops (SOCOM 1's).
- * OPEN, 80 instructions: the window tests' block layout and returns -- first draft, not worked */
+/* a time inside the step from t0 to t1, around the wrap when the blend loops (SOCOM 1's): the
+ * direction assigned `true`/`false` in an if/else (daddiu in the branch's delay slot), and the
+ * unlooped window's misses falling to the one closing `return false` */
 bool CZBodyAnimBlend::IsTriggerTime(float t, float t0, float t1)
 {
     bool reverse;
 
     if (t0 == t1)
         return false;
-    if (func_0028F190(m_flags, 0x40))
-        reverse = Representative()->m_playback < 0.0f;
-    else
+    if (func_0028F190(m_flags, 0x40)) {
+        if (Representative()->m_playback < 0.0f)
+            reverse = true;
+        else
+            reverse = false;
+    } else {
         reverse = func_0028F190(m_flags, 0x20);
+    }
     if (func_0028F190(m_flags, 0x40)) {
         if (reverse) {
             if (t1 <= t0) {
@@ -841,9 +856,7 @@ bool CZBodyAnimBlend::IsTriggerTime(float t, float t0, float t1)
                 return true;
             return false;
         }
-        return false;
-    }
-    if (!(t1 < t0)) {
+    } else if (!(t1 < t0)) {
         if (t0 <= t && t <= t1)
             return true;
         return false;
@@ -869,10 +882,8 @@ bool CZBodyAnimBlend::IsDone(float dT)
 }
 
 /* the fraction run on by dT through every anim's weighted rate, wrapped when looping, else held
- * between zero and the end; stored when asked (SOCOM 1's).
- * OPEN, 2 instructions short: the target materialises flag 8's test (andi, sltu, beqz) and reloads
- * the flags for the clear; an inline bool accessor folds (as written, `!= false`, a bool local, a
- * ternary), `== true` materialises but compares with 1 and keeps the load */
+ * between zero and the end; stored when asked (SOCOM 1's). Flag 8's test through the const
+ * Holding(): materialised (andi, sltu, beqz), the flags loaded again for the clear */
 float CZBodyAnimBlend::Propagate(float dT, bool set)
 {
     if (!m_anims.m_size)
@@ -970,7 +981,11 @@ void CZBodyAnimBlend::GetVelocity(CPnt3D *vel)
  * multiplies $f0 * $f1 -- SOCOM 1's registers too; every spelling tried (either operand order, a
  * float local for either, the product in a local) loads m_tfrac into $f0. The 60 through an inline
  * returning it (`(int)(FootRate() * m_tfrac)`) gives the target's operand order, 2 instructions off:
- * the two registers still trade places, with either order, a (float) cast or a local. */
+ * the two registers still trade places, with either order, a (float) cast or a local. Round 4: the
+ * fraction through an inline accessor, a conversion helper taking it by value (either operand
+ * order), and an in-place scaling inline (ScaleTime's shape: the product lands in the first
+ * parameter's register, the second gets $f0 -- the registers right only with the product in m_tfrac's)
+ * -- none gives 60 in $f0 with the product there too */
 
 int CZBodyAnimBlend::ThisFoot()
 {
@@ -1000,9 +1015,9 @@ void CZBodyAnimBlend::ReverseDir()
         m_tfrac = m_quitT;
 }
 
-/* the anims replaced by a list's: the old ones and their overlays put back, the weights
- * normalised, the callback flag set when an anim has callbacks (SOCOM 1's).
- * OPEN, 0x8C bytes long: the walks are ClearOverlays' bottom-preheader loops (open there) */
+/* the anims replaced by a list's: the old ones and their overlays put back (through
+ * ActiveAnimPool(), as PopBlend), the weights normalised (out of line), the callback flag set when
+ * an anim has callbacks (SOCOM 1's) */
 void CZBodyAnimBlend::SetBlendAnims(CBody *body, CActiveAnimList *list)
 {
     ACTIVE_ANIM *a = m_anims.Begin();
@@ -1013,7 +1028,7 @@ void CZBodyAnimBlend::SetBlendAnims(CBody *body, CActiveAnimList *list)
         a = m_anims.Next();
         m_anims.Remove(cur);
         cur->ClearOverlays(body);
-        body->m_active_anim_pool.PutBack(cur);
+        body->ActiveAnimPool()->PutBack(cur);
     }
     for (a = list->Begin(); a; a = list->Next())
         m_anims.Add(a);
@@ -1027,7 +1042,9 @@ void CZBodyAnimBlend::SetBlendAnims(CBody *body, CActiveAnimList *list)
     }
 }
 
-/* the weights scaled to sum to one, unless they nearly do or sum to nothing (SOCOM 1's) */
+/* the weights scaled to sum to one, unless they nearly do or sum to nothing (SOCOM 1's; pinned:
+ * SetBlendAnims calls it) */
+#pragma auto_inline off
 void CZBodyAnimBlend::Normalize()
 {
     if (m_anims.m_size) {
@@ -1039,6 +1056,7 @@ void CZBodyAnimBlend::Normalize()
             RenormAnims(&m_anims, 1.0f / sum);
     }
 }
+#pragma auto_inline reset
 
 /* an overlay hung on an anim, at a weight, playing as it does (SOCOM 1's) */
 void CZBodyAnimBlend::AddOverlay(ACTIVE_ANIM *anim, ACTIVE_ANIM *overlay, float wt)
@@ -1098,9 +1116,17 @@ CBody::~CBody()
 }
 
 /* the overlay cleared, every blend popped, the parts deleted (SOCOM 1's).
- * OPEN, 0x1A8 bytes short: the target inlines each part's destructor whole (Clear's stores, then
- * operator delete) inside the transform; here the delete calls CZBodyPart::Clear out of line, as
- * NewBodyPart's constructor does in both builds -- an inline height: may resolve at level 5 */
+ * OPEN, 0x1A8 bytes short: the target inlines each transform whole -- the iterators, the functor,
+ * the part's destructor and Clear's stores, then operator delete -- where MW inlines it one level
+ * and calls the iterator operators and the functor out of line. Measured (probes p_tf2.cpp,
+ * ims.py): with `~CZBodyPart() { Clear(); }` the transform's tree is SIX high (transform, the
+ * functor, the destructor, Clear, CQuat's implicit assignment, CPnt3D's), cut at level 5 at any
+ * inline_max_size; with Clear's stores written into the destructor it is five high but 299 units
+ * (a CPnt3D copy costs ~49, a CQuat copy ~30, the empty transform 80, a user destructor 17), and
+ * `#pragma inline_max_size(300)` then inlines it: 0x434 against 0x42C, only end() reloading data_
+ * where the target reuses begin()'s load. Clear inside the functor (`if (p) { p->Clear(); delete
+ * p; }`, no destructor) is five high and still over 256. The original fits both limits: its copies
+ * (zmath.h) or the MSL pieces were a level shorter and ~45 units leaner -- not in this lane's files */
 
 void CBody::Destroy()
 {
