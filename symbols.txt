@@ -1671,7 +1671,7 @@
 0x001FE1D0 0x20 SetAA__3C2DFb  # OVL1; by hand (C2D's slot 7, inline: bit 1, SOCOM 1's m_isAA; the name ours)
 0x001FE1F0 0x20 SetIsTrans__3C2DFb  # OVL1; by hand (C2D's slot 8, inline: bit 2, SOCOM 1's m_isTrans; the name ours)
 0x001FE210 0x20 SetGouraud__3C2DFb  # OVL1; s1~ Enable__3C2DFb (one of 2 out-of-line copies of an inline, by s1:vtable); by hand (C2D's slot 9, inline: bit 5, SOCOM II's; the name ours)
-0x001FE230 0x8 Slot10__3C2DFv  # OVL1; by hand (C2D's slot 10, inline and empty; the name ours)
+0x001FE230 0x8 Slot10__3C2DFPQ23zdb5CNode  # OVL1; by hand (C2D's slot 10, inline and empty; the name ours); the HUD lane, round 16, at the integrator's request: the slot takes a pointer -- CBmpWithNode's override (0x38BAB0) stores its argument at 0xA0, the bitmap's node -- so C2D's empty copy is Slot10(zdb::CNode *)
 0x001FE240 0x8 Parse__3C2DFP5_zrdrPQ23zdb9CAssetLibPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable by hand (C2D's slot 13, inline and empty)
 0x001FE250 0x8 Reset__3C2DFv  # OVL1; s1:vtable by hand (C2D's slot 14, inline and empty)
 0x001FE260 0x8 HandlePad__3C2DFPC4CPadi  # OVL1; s1:vtable by hand (C2D's slot 15, inline: false)
@@ -1915,9 +1915,9 @@
 0x00213840 0x220 func_00213840  # OVL1
 0x00213A60 0x3C0 func_00213A60  # OVL1
 0x00213E20 0x1354 func_00213E20  # OVL1
-0x00215180 0x14 func_00215180  # OVL1; split by hand (the HUD lane: a tail call through a member's vtable, padded to 0x2151A0)
-0x002151A0 0x50 func_002151A0  # OVL1; split from 0x215180 (three virtual calls on members at 0x1c, 0x34 and 0x4c)
-0x002151F0 0x54 func_002151F0  # OVL1
+0x00215180 0x14 OnPauseTest__14BitmapReticuleFv  # OVL1; split by hand (the HUD lane: a tail call through a member's vtable, padded to 0x2151A0); by hand (the HUD lane, round 16): BitmapReticule's (this+0x34, the second of the three plain C2D groups its constructor builds at 0x1C/0x34/0x4C, turned on through its vtable); CHUD::Off calls it on its reticle (+0x...) only in the pause test menu state -- SOCOM II's, the name ours
+0x002151A0 0x50 Off__14BitmapReticuleFv  # OVL1; split from 0x215180 (three virtual calls on members at 0x1c, 0x34 and 0x4c); s1:vtable by hand (the HUD lane, round 16): slot 4 of BitmapReticule's vtable (0x4055B8), C2D's Off slot, as SOCOM 1's BitmapReticule::Off; SOCOM II's turns off the three groups
+0x002151F0 0x54 On__14BitmapReticuleFv  # OVL1; s1:vtable by hand (the HUD lane, round 16): slot 5 of BitmapReticule's vtable (0x4055BC), C2D's On slot, as SOCOM 1's BitmapReticule::On; SOCOM II's calls C2D::On, then the three groups' On
 0x00215250 0x9B8 func_00215250  # OVL1
 0x00215C10 0xB50 func_00215C10  # OVL1
 0x00216760 0x8 Slot10__Q23zdb7CNodeExFf  # OVL1; by vtable (CNodeEx's third slot, inline, returns false; CZAnimEx overrides it with 0x2739B0 -- the name ours, the float CZAnimEx's)
@@ -1938,7 +1938,7 @@
 0x00219A80 0x200 SetItemPos__10CWeaponSelFi  # OVL1; s1:order by hand (the HUD lane: SOCOM 1's SetItemPos(int), which HandleScrollDownState/UpState end on with 5 as there; SOCOM II's is shorter, its pieces in neighbouring functions)
 0x00219C80 0x324 HudTick__10CWeaponSelFP4CPadf  # OVL1; s1:order by hand (the HUD lane: SOCOM 1's HudTick -- CHUD::Tick calls it; the switch on m_openstate through the table 0x3E4B10, OnOpen on the weapon-select button (GetButtonState(4)), the backdrops' half-second fade after)
 0x00219FB0 0x240 TickHotSwap__10CWeaponSelFf  # OVL1; ours (the HUD lane: SOCOM II's, HudTick's last call: the hot-swap highlight (the third backing) pulsed in to 64 and out while the menu is shut, the lit hot-swap label following)
-0x0021A1F0 0x314 func_0021A1F0  # OVL1
+0x0021A1F0 0x314 CheckHotSwap__10CWeaponSelFv  # OVL1; by hand (the HUD lane, round 16): CWeaponSel's member (this in s1, its selection backing/icon/hot-swap labels at 0x3B0/0xA0/0x810/0x8A8), called by HudTick after the state's update; SOCOM II's, between TickHotSwap and ResetHotSwap -- the name ours
 0x0021A510 0xAC ResetHotSwap__10CWeaponSelFb  # OVL1; ours (the HUD lane: SOCOM II's, no SOCOM 1 counterpart; CHUD::Tick calls it with true right after OnClose/AfterCloseFirst/AfterClose: the hot-swap highlight (the third backing) faded and off, the middle icon off when forced or closed, the hot-swap labels to 80)
 0x0021A5C0 0x134 AfterOpenSecond__10CWeaponSelFv  # OVL1; s1:order by hand (the HUD lane: SOCOM 1's AfterOpenSecond, before AfterScrollUp as there: the arrows loaded from the arrow texture's size, PlaceHotSwapLabels then PlaceWeaponText, state 3; SOCOM II adds the select sound)
 0x0021A700 0x1C8 AfterScrollUp__10CWeaponSelFv  # OVL1; s1:order by hand (the HUD lane: SOCOM 1's AfterScrollUp, the same shape -- the rows shifted up a slot from the fourth, the icons reloaded, PlaceWeaponText and PlaceHotSwapLabels called last; SOCOM II dropped the selection backings' loads)
@@ -6803,7 +6803,8 @@
 0x0036AFC0 0x24 SetMapOffset__17CRenderableStringFii  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0036AFF0 0xAC func_0036AFF0  # OVL1
 0x0036B0A0 0x128 func_0036B0A0  # OVL1
-0x0036B1D0 0x28 func_0036B1D0  # OVL1
+0x0036B1D0 0x14 AddToRdr__8ListItemFP10CRdrEditor  # OVL1; split by hand (the HUD lane, round 16): the row ran 0x28 over two functions -- this one, ListItem's vtable slot 0 (0x407248), its look's slot 14 (lw t9,64) tail-called with the argument passed on, five words, then MW's pad and a separate `jr ra` at 0x36B1F0; the slot is SOCOM II's (SOCOM 1's ListItem has no vtable): the string look's copy (0x37BF40) writes the item's text into the CRdrEditor it is given as an int, real or string node -- the name ours
+0x0036B1F0 0x8 AddToRdr__17CListItemTypeImplFP10CRdrEditor  # OVL1; split by hand (the HUD lane, round 16) from 0x36B1D0's row: an empty function of its own, CListItemTypeImpl's vtable (0x4070F0) slot 14 (0x407130 holds it), the slot ListItem::AddToRdr calls; SOCOM II's (SOCOM 1's 13-slot table has none) -- the name ours, after the string look's override (0x37BF40)
 0x0036B200 0x8 func_0036B200  # OVL1
 0x0036B210 0x78 func_0036B210  # OVL1
 0x0036B290 0x78 func_0036B290  # OVL1
@@ -6904,7 +6905,7 @@
 0x00374B50 0x15C func_00374B50  # OVL1
 0x00374CB0 0x388 func_00374CB0  # OVL1
 0x00375040 0x488 Tick__10CUIListBoxFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x003754D0 0x238 func_003754D0  # OVL1
+0x003754D0 0x238 UpdateUIVar__10CUIListBoxFP11CUIVariable  # OVL1; by hand (the HUD lane, round 16): CUIListBox's secondary table (0x4076E0: RTTI, -128, @128@__dt__10CUIListBoxFv, the thunk 0x37D060, then this) holds it where CSliderBar's holds UpdateUIVar__10CSliderBarFP11CUIVariable; it reads the variable's type byte (4, a list) as the other UpdateUIVars do
 0x00375710 0x554 __dt__10CUIListBoxFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00375C70 0x1A8 func_00375C70  # OVL1
 0x00375E20 0x5F8 func_00375E20  # OVL1
@@ -6990,7 +6991,8 @@
 0x0037BE50 0x14 func_0037BE50  # OVL1
 0x0037BE70 0x14 func_0037BE70  # OVL1
 0x0037BE90 0x8C func_0037BE90  # OVL1
-0x0037BF20 0xFC func_0037BF20  # OVL1
+0x0037BF20 0x14 Tick__Q220@unnamed@zui_2d_cpp@23CListItemStringTypeImplFf  # OVL1; split by hand (the HUD lane, round 16): the row ran 0xFC over two functions; this one is slot 11 of both string looks' vtables (CListItemStringTypeImpl 0x407B40, CListItemWrappedTextTypeImpl 0x407140: the wrapped one inherits it), the string's Tick tail-called (lw a0,4; slot 12), as SOCOM 1's CListItemStringTypeImpl::Tick (0x394180) ticks its string -- a pointer member here, an embedded one there
+0x0037BF40 0xDC AddToRdr__Q220@unnamed@zui_2d_cpp@23CListItemStringTypeImplFP10CRdrEditor  # OVL1; split by hand (the HUD lane, round 16) from 0x37BF20's row: slot 14 of both string looks' vtables (0x407180, 0x407B80) -- the item's text (its string's m_string + m_firstCharPos) added to the CRdrEditor as an int node when strtol takes all of it, a real node when strtod does, else a string node; SOCOM II's, the name ours
 0x0037C020 0x70 __dt__8C2DClockFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037C090 0x8 func_0037C090  # OVL1
 0x0037C0A0 0x60 __dt__9C2DVisualFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -7002,7 +7004,7 @@
 0x0037C220 0xA0 DrawBackground__9C2DButtonFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037C2C0 0x24 SetBackgroundAlpha__9C2DButtonFf  # OVL1; split by the integrator: a 0x24-byte virtual call (slot 0x34 through the object at +0x1A0, the float scaled by 128), padded to 0x37C2F0; s1:vtable (the HUD lane: s1vtables' pairing; the background at 0x1A0 given 128 times the alpha)
 0x0037C2F0 0xE8 __dt__9CCheckBoxFv  # OVL1; split from 0x37C2C0 by the integrator: a destructor (two vtable stores, the members' tests) reached only by the this-adjusting thunk 0x37D0D0's `j`, so the seed never cut it (the UI lane's find); s1:vtable (the HUD lane: slot 0 of CCheckBox's table 0x4074C0 -- s1vtables' pairing -- and the thunk 0x37D0D0's target: the check's CPlainBmp, two ActionItems, then ~C2DButton)
-0x0037C3E0 0x8 func_0037C3E0  # OVL1
+0x0037C3E0 0x8 UpdateUIVar__9CCheckBoxFP11CUIVariable  # OVL1; by hand (the HUD lane, round 16): CCheckBox's vtable slot for UIVarMixin::UpdateUIVar -- its secondary table (0x40753C: RTTI, -192, @192@__dt__9CCheckBoxFv, the thunk 0x37D0C0, then this) as CSliderBar's and C2DButton's hold their UpdateUIVar; an empty body (jr ra): CCheckBox ignores its variable
 0x0037C3F0 0xD0 __dt__13CHProgressBarFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037C4C0 0xD0 __dt__10CSliderBarFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037C590 0x70 __dt__14CHandlerButtonFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -7032,13 +7034,13 @@
 0x0037D030 0x8 @152@__dt__9CTeleTypeFv  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j __dt__9CTeleTypeFv` with `addiu a0,a0,-152`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
 0x0037D040 0x8 @192@__dt__9C2DButtonFv  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j __dt__9C2DButtonFv` with `addiu a0,a0,-192`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
 0x0037D050 0x8 @192@__dt__14CHandlerButtonFv  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j __dt__14CHandlerButtonFv` with `addiu a0,a0,-192`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
-0x0037D060 0x8 func_0037D060  # OVL1
+0x0037D060 0x8 @128@UpdateUIVar__10CUIListBoxFP11CUIVariable  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j UpdateUIVar__10CUIListBoxFP11CUIVariable` with `addiu a0,a0,-128`, CUIListBox's UIVarMixin table's second slot; the HUD lane, round 16)
 0x0037D070 0x8 @128@__dt__10CUIListBoxFv  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j __dt__10CUIListBoxFv` with `addiu a0,a0,-128`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
 0x0037D080 0x8 @192@UpdateUIVar__10CSliderBarFP11CUIVariable  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j UpdateUIVar__10CSliderBarFP11CUIVariable` with `addiu a0,a0,-192`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
 0x0037D090 0x8 @192@__dt__10CSliderBarFv  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j __dt__10CSliderBarFv` with `addiu a0,a0,-192`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
 0x0037D0A0 0x8 @128@UpdateUIVar__13CHProgressBarFP11CUIVariable  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j UpdateUIVar__13CHProgressBarFP11CUIVariable` with `addiu a0,a0,-128`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
 0x0037D0B0 0x8 @128@__dt__13CHProgressBarFv  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j __dt__13CHProgressBarFv` with `addiu a0,a0,-128`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
-0x0037D0C0 0x8 func_0037D0C0  # OVL1
+0x0037D0C0 0x8 @192@UpdateUIVar__9CCheckBoxFP11CUIVariable  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j UpdateUIVar__9CCheckBoxFP11CUIVariable` with `addiu a0,a0,-192`, CCheckBox's UIVarMixin table's second slot; the HUD lane, round 16)
 0x0037D0D0 0x8 @192@__dt__9CCheckBoxFv  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j __dt__9CCheckBoxFv` with `addiu a0,a0,-192`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
 0x0037D0E0 0x8 @192@UpdateUIVar__9C2DButtonFP11CUIVariable  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j UpdateUIVar__9C2DButtonFP11CUIVariable` with `addiu a0,a0,-192`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
 0x0037D0F0 0x8 func_0037D0F0  # OVL1
@@ -8496,12 +8498,12 @@
 0x003FE190 0x2B4 func_003FE190  # OVL1 data area; a static initialiser
 0x003FE450 0x34 __sinit_hud_mapcompass.cpp  # OVL1 data area; a static initialiser; hud_mapcompass.cpp by hand (it builds navpoint_vec, this unit's global, and registers its destructor)
 0x003FE490 0x64 func_003FE490  # OVL1 data area; a static initialiser
-0x003FE500 0x48 func_003FE500  # OVL1 data area; a static initialiser
+0x003FE500 0x48 __sinit_hud_weaponsel.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 16): hud_weaponsel.cpp's static initialiser (between hud_linemap.cpp's 0x3FE190 and hud_actionbitmap.cpp's 0x3FE550, the units' link order) -- it sets the selector's three layout floats (0x3E4A90/98/A0) from the HUD's bottom block, which CWeaponSel's Init, AfterOpenSecond, OnOpen and CheckHotSwap read
 0x003FE550 0x1B0 func_003FE550  # OVL1 data area; a static initialiser
-0x003FE700 0xEC func_003FE700  # OVL1 data area; a static initialiser
+0x003FE700 0xEC __sinit_hud_teamnames.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 16): hud_teamnames.cpp's static initialiser -- it builds and registers the unit's two bracket strings and two dividers (0x40D7A0, 0x40D850, 0x40D900, 0x40D990) and sets the dividers' line (0x3E4F60), which the unit's Init and SetOpacity read
 0x003FE7F0 0x64 __sinit_hud_playermapitem.cpp  # OVL1 data area; a static initialiser; s1~ zanim_anim.cpp (shape 0.46, a hint); hud_playermapitem.cpp by hand (it constructs CZPlayerMapItem::m_ablestring and m_bravostring, this unit's statics, and registers their destructors)
 0x003FE860 0xD4 func_003FE860  # OVL1 data area; a static initialiser
-0x003FE940 0x34 func_003FE940  # OVL1 data area; a static initialiser
+0x003FE940 0x34 __sinit_hud_teammatenames.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 16): hud_teammatenames.cpp's static initialiser (between hud_playermapitem.cpp's 0x3FE7F0 and hud_scorepopup.cpp's 0x3FE980) -- it halves the unit's two bitmap sizes (0x3DC868, 0x3DC870, 32 each) into 0x40DBD0 and 0x40DBD8, which CMPTeammateNames::Tick reads
 0x003FE980 0x9D0 func_003FE980  # OVL1 data area; a static initialiser
 0x003FF350 0x64 func_003FF350  # OVL1 data area; a static initialiser
 0x003FF3C0 0x64 func_003FF3C0  # OVL1 data area; a static initialiser
@@ -10826,7 +10828,7 @@
 0x005A8850 0x70 func_005A8850  # OVL2
 0x005A88C0 0xF8 func_005A88C0  # OVL2
 0x005A89C0 0x2E4 func_005A89C0  # OVL2
-0x005A8CB0 0xF0 func_005A8CB0  # OVL2
+0x005A8CB0 0xF0 CanChangeItem__10CZSealBodyFv  # OVL2; s1:calls (the HUD lane's round 16, vetted by the integrator: CWeaponSel::OnOpen/HandleOpenState call it where SOCOM 1's call CanChangeItem__10CZSealBodyFv; 0xF0 here against SOCOM 1's 0x78)
 0x005A8DA0 0x310 func_005A8DA0  # OVL2
 0x005A90B0 0x370 func_005A90B0  # OVL2
 0x005A9420 0xD8 func_005A9420  # OVL2
@@ -11052,8 +11054,8 @@
 0x005C4970 0x40 GetNumMags__5CZKitFi  # OVL2; s1:order by hand (SOCOM 1's GetNumMags: counts the item's ten magazines (0x1D4 + 40*index, SOCOM 1's 0x1C0) holding rounds)
 0x005C49B0 0x154 GetCurNumMags__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's GetCurNumMags, after GetNumMags as there: the selected item -- or, in its grenade launcher's mode (0x5BD7E0), the first item of its fire mode's kind with ammunition -- and GetNumMags inlined; 0 for none)
 0x005C4B10 0x4B8 SetCurItemByIndex__5CZKitFi  # OVL2; s1:calls by hand (CSealCtrlSquirm::Initalize calls it on the SEAL's kit (+0x5E0) with 0, where SOCOM 1's Initalize calls SetCurItemByIndex(0), right before SetCurFireMode)
-0x005C4FD0 0x60 func_005C4FD0  # OVL2
-0x005C5030 0x80 func_005C5030  # OVL2
+0x005C4FD0 0x60 CanChangeItem__5CZKitFv  # OVL2; s1:calls (the HUD lane's round 16, vetted by the integrator: the weapon selector calls it where SOCOM 1's calls CanChangeItem__5CZKitFv; 0x60 against SOCOM 1's 0x64)
+0x005C5030 0x80 unwrap__5CZKitFii  # OVL2; s1:calls (the HUD lane's round 16, vetted by the integrator: the weapon selector calls it where SOCOM 1's calls unwrap__5CZKitFii; 0x80 against SOCOM 1's 0x7C)
 0x005C50B0 0x290 func_005C50B0  # OVL2
 0x005C5340 0x11D0 func_005C5340  # OVL2
 0x005C6510 0x18 func_005C6510  # OVL2

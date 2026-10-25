@@ -1642,6 +1642,37 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the HUD, round 16** (the weapon selector's constructor and OnOpen, three initialisers):
+  - the seed reads a virtual tail call (`jr t9`) as a jump table and merges the next function when only
+    a vtable references it: a "dead `jr ra`" after a tail call is a function of its own (0x36B1F0 and
+    0x37BF40 split, the AddToRdr writers; a map-wide scan found no others);
+  - a copy into a saved register that dies early means the variable is reused at a later call (MW
+    folds that use into the same register: PlaceWeaponText's seal read again at the third call);
+  - `return;` closing the last block inside an `if` gives `b epilogue; nop` over the pad; an error block
+    that must sit ahead of the body wants `if (a && b) { ...; if (!c) { err; return; } } else { err;
+    return; }` then the body (OnOpen);
+  - defining a unit's dynamically initialised statics in order makes MW emit its `__sinit_<file>`
+    byte-exact, reusing a just-stored value for the next initialiser (hud_weaponsel, hud_teamnames,
+    hud_teammatenames);
+  - `int len; const char *s = ...; len = strlen(s);` gives `s` the lower saved register;
+  - A THUNK IS EMITTED WITH A VTABLE THAT USES IT: when CCheckBox overrode UpdateUIVar, zui_2d.cpp
+    stopped emitting C2DButton's thunk 0x37D0E0 (C2DButton's own table goes with ~C2DButton's
+    unit); defining CHandlerButton's destructor in zui_2d.cpp (its table 0x407700 keeps the
+    button's slot, as CRadioStrip's does) brought it back, with @192@~CHandlerButton. A partial
+    `--files` check cannot see a function that stops being emitted -- only the full check does.
+- **Tells from the weapons, round 8** (CMesh's decals and LODs, CZProjectileList, the decal pools):
+  - MW 3.0 pads a short loop's head with nops when the found block ends in `break`; with `return`
+    inside it gets no padding (RemoveMeshDecal, RemoveDecal);
+  - a local initialised from a member after the tests that read it takes the register those tests
+    loaded it into; declared before them it lands elsewhere (GetNextFreeProjectile);
+  - SOCOM II's class-vector operator[] reads the data pointer through begin() and keeps the index as
+    its own value (AddLOD's `m_lods[size()-2]`); a class-vector walk re-reads the data pointer each
+    pass (CMesh::SetLOD, 2 off: include/vector's class end() lets MW hoist the whole end) -- both
+    requests to the MSL lane, with the class iterator's missing operator->;
+  - `d = a(); d += b();` keeps a two-call float sum in the result's own register (GetDamage);
+  - SOCOM II inlines CZProjectileList's FreeIdx and FindLastUsed and keeps no copy; 0x3BF9B0-0x3C356F
+    (where vis_texfx.cpp should be) is ~0x3BC0 bytes against SOCOM 1's 0xAD0 -- mostly new code with
+    no vtables, CTextureFX's Tick/ScrollTexture/engine init among it.
 - **Tells from the UI, round 6** (the soft keyboard, CSaferStr : std::string):
   - zui_spec.h's CSaferStr is include/string's basic_string now (its copies and destructor implicit,
     +3); its operator=(const char *) returns nothing -- the out-of-line copy 0x22DCC0 keeps no `this`
