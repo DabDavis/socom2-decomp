@@ -29,6 +29,7 @@ public:
     int zNetGetValidGameClientCount();
     int zNetGetGameSessionMasterClientIndex();
     int zNetGetMyGameClientIndex();
+    int zNetGetTime();
     struct NetObject *zNetGetObject(int index);
 
     /* an action the network put off to its next update (only what zRemoteDelayedAction reads:
@@ -89,6 +90,12 @@ public:
     virtual bool IsRemote();   // 0x34 (the name ours: a remote SEAL's fire is not counted)
 };
 
+/* a SEAL's hit location (SOCOM 1's DAMAGE_LOCATION; its enumerators' names not needed here) */
+enum DAMAGE_LOCATION {
+    DAMAGE_LOCATION_0 = 0,
+    DAMAGE_LOCATION_15 = 15
+};
+
 /* a node: only its name (znode.h's CNode, m_name at 0x90) */
 struct CNodeName {
     unsigned char _0[0x90];
@@ -109,6 +116,14 @@ public:
     float m_fire_y;   // 0x228 (SOCOM 1's at 0x184)
     unsigned char _22c[0xfc8 - 0x22c];
     int m_fc8;   // 0xfc8: the client it belongs to (SOCOM 1's at 0xeb8)
+    unsigned char _fcc[0xfd4 - 0xfcc];
+    int m_fd4;   // 0xfd4: when it was last hit (the network's time)
+    float m_fd8;   // 0xfd8: a copy of 0x1044 at the hit
+    unsigned char _fdc[0x1044 - 0xfdc];
+    float m_1044;   // 0x1044
+
+    void RemoteWeaponDamageNonVictim(DAMAGE_LOCATION where, CZSealBody *victim, CZSealBody *shooter,
+                                     unsigned char c, bool flag);
 };
 
 class CZVehicle {
@@ -137,7 +152,9 @@ public:
     unsigned char m_persona_created;   // 0xcf (SOCOM 1's at 0x97)
     unsigned char _d0[0xda - 0xd0];
     unsigned char m_da;   // 0xda: set while held actions are handled at once (SOCOM II's)
-    unsigned char _db[0x111 - 0xdb];
+    unsigned char _db[0xde - 0xdb];
+    unsigned char m_de;   // 0xde: no hits sent while set (SOCOM II's)
+    unsigned char _df[0x111 - 0xdf];
     char m_111;   // 0x111 (SOCOM 1's at 0xd9: m_game_type)
     unsigned char _112;
     unsigned char m_mp_major_game_state;   // 0x113 (SOCOM 1's at 0xdb)
@@ -147,7 +164,9 @@ public:
 
 class CMission {
 public:
-    unsigned char _0[0x1c0];
+    unsigned char _0[0x1ac];
+    struct CMissionInfo *m_info;   // 0x1ac: the mission's info (its halfword at 4 the game mode)
+    unsigned char _1b0[0x1c0 - 0x1b0];
     unsigned char m_messenger[0x1808 - 0x1c0];   // 0x1c0: the mission's message queue (SOCOM 1's at 0x100)
     CZNetGame *m_pNetGame;   // 0x1808 (SOCOM 1's at 0x584)
 };
@@ -350,8 +369,11 @@ extern "C" bool func_002BD270(NetFieldCompare *cmp)
     return false;
 }
 
-/* an int clamped into [lo, hi], saying whether it moved (a template instance closing the unit,
- * its name unknown; OVL1 0x2BD220) */
+/* an int clamped into [lo, hi], saying whether it moved (a template instance closing the unit:
+ * SOCOM 1's _saturate<int>, which SendHitMessage calls on each of its bytes -- out of line, so
+ * pinned, MW auto-inlining no template function;
+ * OVL1 0x2BD220) */
+#pragma auto_inline off
 extern "C" bool func_002BD220(int &v, const int &lo, const int &hi)
 {
     if (hi < v) {
@@ -364,6 +386,7 @@ extern "C" bool func_002BD220(int &v, const int &lo, const int &hi)
     }
     return false;
 }
+#pragma auto_inline reset
 
 /* a client disconnected: its word and its pending slot cleared; in a game already under way,
  * fewer than three clients left with no word set abandons it, and otherwise the game's object
@@ -452,6 +475,109 @@ void SaveFireMessage(CZSealBody *body, const CPnt3D *pos)
             body->m_fire_count = 0;
         body->m_fire_y = pos->y;
     }
+}
+
+/* a hit told to everyone: the shooter, the victim, a byte, the damage and the second value (times
+ * 20) as bytes, the body part in four bits and the flag beside it, each number saturated (SOCOM
+ * 1's, the packet two bytes longer); the victim's hit time and value kept (OVL1 0x2BBDA0) */
+struct HitPacket {
+    unsigned short shooter;   // 0x0
+    unsigned short victim;   // 0x2
+    unsigned char c;   // 0x4
+    unsigned char damage;   // 0x5
+    unsigned char m_6;   // 0x6
+    unsigned char part : 4;   // 0x7
+    unsigned char flag : 1;   // 0x7
+};
+
+extern "C" {
+extern unsigned int data_00440E00;   /* PacketTypeHit */
+}
+
+void SendHitMessage(int shooter, int victim, int part, float damage, float f, bool flag,
+                    unsigned char c)
+{
+    if (theMission.m_pNetGame->m_de)
+        return;
+    int d;
+    int g;
+    HitPacket p;
+
+    p.shooter = shooter;
+    p.victim = victim;
+    p.c = c;
+    d = (int)damage;
+    func_002BD220(d, 0, 255);
+    p.damage = d;
+    g = (int)(20.0f * f);
+    func_002BD220(g, 0, 255);
+    p.m_6 = g;
+    func_002BD220(part, 0, 15);
+    p.part = part;
+    p.flag = flag;
+    theNetwork.zNetSendApplicationMessage(64, theNetwork.GetGameConnectionIndex(), -1,
+        data_00440E00, 8, (unsigned char *)&p, false);
+    CZSealBody *body = CZSealState::GetBodyFromObjectIndex(victim);
+
+    if (body) {
+        body->m_fd8 = body->m_1044;
+        body->m_fd4 = theNetwork.zNetGetTime();
+    }
+}
+
+/* the mission's info: its game mode (1 and 2 take no hits from the network) */
+struct CMissionInfo {
+    unsigned int _0;
+    unsigned short m_mode;   // 0x4
+};
+
+extern "C" void func_005A1B80(CZSealBody *body, DAMAGE_LOCATION where, CZSealBody *victim,
+                              CZSealBody *shooter, float damage, float f, unsigned char c,
+                              bool flag);   /* (the victim's own damage, OVL2) */
+
+/* a hit: in a game under way, outside game modes 1 and 2, the victim takes it -- its own client's
+ * damage for a local victim, the remote one's for a remote victim (SOCOM 1's; OVL1 0x2BBBD0).
+ * OPEN, 18 instructions, registers only: the mode test's shape is the target's (`true` hoisted into
+ * the first beq's delay slot, a `move zero` fall-through), but the target keeps the constant 1 in
+ * v0 and the bool in a0 where this has a0 and a1; the bitfield byte's v0/v1 trade places; and the
+ * OVL2 damage call (0x5A1B80, still a placeholder, so called as a C function) sets a0 before a3
+ * and t1 where the target -- a member call, `this` loaded last -- sets it after them. Tried: the
+ * test as a switch inline (cases 2, 1 and 1, 2), `if (m == 1 || m == 2) return true;`, two early
+ * returns, bool locals for each compare (`one || two` folds into the range test, `sltiu`), and
+ * the plain `||` (folds too). The member call waits on 0x5A1B80's name (OVL2, the SEAL lane's) */
+/* whether the mission's mode takes no hits (the name ours: the handler's test materialised) */
+inline bool NoHitMode()
+{
+    bool b = true;
+
+    if (theMission.m_info->m_mode != 1 && theMission.m_info->m_mode != 2)
+        b = false;
+    return b;
+}
+
+int HitPacketHandler(int, int, int, void *data)
+{
+    if (!NoHitMode()) {
+        CZNetGame *game = theMission.m_pNetGame;
+
+        if (game && game->m_mp_major_game_state == 3) {
+            HitPacket *p = (HitPacket *)data;
+            CZSealBody *victim = CZSealState::GetBodyFromObjectIndex(p->victim);
+            CZSealBody *shooter = CZSealState::GetBodyFromObjectIndex(p->shooter);
+            float damage = p->damage;
+            float f = 0.05f * p->m_6;
+            DAMAGE_LOCATION where = (DAMAGE_LOCATION)p->part;
+            bool flag = p->flag;
+
+            if (victim && shooter) {
+                if (!(victim->m_ctrl ? victim->m_ctrl->IsRemote() : false))
+                    func_005A1B80(victim, where, victim, shooter, damage, f, p->c, flag);
+                else
+                    victim->RemoteWeaponDamageNonVictim(where, victim, shooter, p->c, flag);
+            }
+        }
+    }
+    return 8;
 }
 
 /* a blended anim pushed to everyone, for a SEAL the network plays (SOCOM 1's NetSendPushBlend,
