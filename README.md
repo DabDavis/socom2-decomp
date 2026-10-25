@@ -1314,6 +1314,23 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     (a float), CalcVolPan returns the new one;
   - `989snd.c`'s name starts with a digit: sccheck counts its matches but lists them only with
     `-v`.
+- **Tells from the states, round 11** (CGame::Tick, the bomb, the remote SEALs, the persona):
+  - a byte enum copied into an enum-typed field loads with `lb`, into an `unsigned char` with
+    `lbu`;
+  - an `unsigned char` bitfield compared through a byte-enum cast gets `andi 0xff`; MW extracts
+    any byte bitfield with dsll32/dsrl32, so those shifts do not mean a 64-bit field;
+  - a ternary of enum constants cast as a whole (to an enum with no enumerators) sign-extends;
+    casting each arm does not;
+  - a switch returning through a result local (`bool r = false; ... r = true; break;`) puts
+    `move v0,zero` ahead of its first test; `bool r = c ? f() : false;` gives `move` then
+    `andi`, `if (c) r = f();` gives `andi` straight from v0;
+  - in `id == f()->x` MW keeps `id` in a saved register across the call; taking `f()` into a
+    block-local first makes it re-read the field;
+  - `if (A && B) ... else if (C && D)` sends a failing B to C's test; nested ifs do not;
+  - a caller that leaves an argument register unset shows the callee's last parameter does not
+    exist (NetSendE3Index takes three in SOCOM II);
+  - CGame::Tick: testing Init's bool `!= false` gives the target's `andi`, and the nops were
+    label padding; the thread wait is `while (!flag)`.
 - **The class vector's deleter destructor and clear are out of class** (include/vector): MSL
   3.0.1 defines both after the class body, not inline (SOCOM 1's DWARF lines 939 and 949), so MW
   emits them in each unit's template tail and inlines them only in tail code the unit has

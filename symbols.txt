@@ -4060,7 +4060,7 @@
 0x002BADC0 0x8 func_002BADC0  # OVL1
 0x002BADD0 0x98 NetSendRequestTeamSwitch__Fi  # OVL1; s1:align
 0x002BAE70 0x30 TeamSwitchPacketHandler__FiiiPv  # OVL1; s1:align
-0x002BAEA0 0x90 NetSendE3Index__FiUiib  # OVL1; s1:align
+0x002BAEA0 0x90 NetSendE3Index__FiUii  # OVL1; s1:align; s1:align, signature by its callers (SOCOM 1's NetSendE3Index took a fourth, bool, argument; SOCOM II's never reads one and the team switch leaves a3 unset -- three arguments) -- the states lane
 0x002BAF30 0x184 func_002BAF30  # OVL1
 0x002BB0C0 0x104 func_002BB0C0  # OVL1
 0x002BB1D0 0x140 func_002BB1D0  # OVL1
@@ -5321,7 +5321,7 @@
 0x0030D550 0x8 zNetGetTime__9CZNetworkFv  # OVL1; s1:calls (CZNetGame::TenSecondLaunch, as SOCOM 1's; the same 8 bytes) -- the states lane
 0x0030D560 0x40 zNetGetGameSessionMasterClientIndex__9CZNetworkFv  # OVL1; tu: zNetDme.cpp~ (1.0 beta); s1:calls by hand (the states lane: at SOCOM 1's call sites; tu: zNetDme.cpp~)
 0x0030D5A0 0x40 zNetGetMyGameClientIndex__9CZNetworkFv  # OVL1; tu: zNetDme.cpp~ (1.0 beta); s1:calls by hand (the states lane: at SOCOM 1's call sites in the senders; 0x40 bytes in both; tu: zNetDme.cpp~)
-0x0030D5E0 0x40 func_0030D5E0  # OVL1
+0x0030D5E0 0x40 zNetGetGameClient__9CZNetworkFi  # OVL1; s1:calls (the remote-SEAL creation callback calls it where SOCOM 1's calls CZNetwork::zNetGetGameClient) -- the states lane
 0x0030D620 0x8 func_0030D620  # OVL1
 0x0030D630 0x34 zNetGetObject__9CZNetworkFi  # OVL1; s1:calls (RemoteSealDeletionCallback, as SOCOM 1's) -- the states lane
 0x0030D670 0xF8 zNetCreateObject__9CZNetworkFPi18NetOwnershipStatus17NetObjectLifespanUiiUiiPvPci  # OVL1; s1:calls (CreateLocalGame/Grenade/Bomb pass SOCOM 1's ten arguments, the stack layout included) -- the states lane

@@ -473,7 +473,7 @@ struct E3IndexPacket {
     unsigned char flag;   // 0x4
 };
 
-void NetSendE3Index(int who, unsigned int index, int flag, bool)
+void NetSendE3Index(int who, unsigned int index, int flag)
 {
     E3IndexPacket p;
 

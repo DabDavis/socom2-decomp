@@ -185,7 +185,7 @@ unsigned int func_002C32E0();               /* (the terrorists' team mask) */
 unsigned int func_002C32C0();               /* (the SEALs' team mask) */
 /* fts_remote.cpp's NetSendE3Index under the map's name: SOCOM II's takes three arguments (its fourth,
  * SOCOM 1's bool, is never read, and the team switch below leaves a3 as it is) */
-void NetSendE3Index__FiUiib(int who, unsigned int index, int flag);
+void NetSendE3Index__FiUii(int who, unsigned int index, int flag);
 void func_002C4440();
 int func_002C4810();
 int func_002C4A20();
@@ -344,7 +344,7 @@ extern "C" void func_002C4290(int client)
 
         p->m_3e = slot;
         p->m_team = func_002C32C0();
-        NetSendE3Index__FiUiib(client, func_002C32C0(), slot);
+        NetSendE3Index__FiUii(client, func_002C32C0(), slot);
         data_00441450++;
         data_00441448--;
     } else if (func_002C3300(p->m_team) && data_00441448 < 8) {
@@ -352,7 +352,7 @@ extern "C" void func_002C4290(int client)
 
         p->m_3e = slot;
         p->m_team = func_002C32E0();
-        NetSendE3Index__FiUiib(client, func_002C32E0(), slot);
+        NetSendE3Index__FiUii(client, func_002C32E0(), slot);
         data_00441450--;
         data_00441448++;
     }
