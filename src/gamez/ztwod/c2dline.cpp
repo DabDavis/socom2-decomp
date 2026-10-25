@@ -184,7 +184,9 @@ void C2DLine::Draw(zdb::CCamera *cam)
  * OPEN, 3 instructions short (0x10C against 0x118): MW folds the packet pointer's steps into
  * constant offsets from one register (a0 = s0 + 48, + 64, ...); the target advances s0 by 32 after
  * each pair of quadwords, as C2DBitmap::MakePacket does (0x3643B0) -- some form of the steps MW
- * cannot fold (&p[n], p = p + 2, a pair struct, a by-reference inline all fold or grow) */
+ * cannot fold (&p[n], p = p + 2, a pair struct, a by-reference inline all fold or grow). A p++
+ * statement after each call gets the stepping by 32, but paired one call off (the tag's step
+ * merged into the first pair's) and the last step folded into the kick's size */
 void C2DLine::MakePacket(zdb::CCamera *cam)
 {
     u_long128 *packet = zSysSprGetPacket(0);
