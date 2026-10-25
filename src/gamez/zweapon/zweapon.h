@@ -21,6 +21,19 @@ enum EQUIP_ITEM {
     EQUIP_NONE = 255
 };
 
+/* a weapon's fire modes (SOCOM 1's DWARF: a byte enum) */
+enum FIREMODE {
+    SAFETY = 0,
+    SINGLE = 1,
+    BURST = 2,
+    AUTOFIRE = 3,
+    SPECIAL_MODE = 4,
+    NUM_FIREMODES = 5
+};
+
+class CZAnim;
+class CZWeaponList;
+
 /* a cartridge type (SOCOM 1's DWARF: a byte enum, AMMO_NONE 255 and AMMO_END 254) */
 enum EQUIP_AMMO {
     A_9X19 = 1,
@@ -79,14 +92,44 @@ public:
      * own only so; the name is ours) */
     EQUIP_ITEM GetId() const { return m_ID; }
 
+    /* the name, packed with the ammo into a word for the network (SOCOM 1's statics) */
+    static unsigned short PackItemAndAmmoEnums(EQUIP_ITEM item, EQUIP_AMMO ammo);
+    static void UnpackItemAndAmmoEnums(unsigned short packed, EQUIP_ITEM *item, EQUIP_AMMO *ammo);
+    /* an item's id by name: the two goggles first, then the weapon list (SOCOM 1's static) */
+    static EQUIP_ITEM GetWeaponId(const char *name);
+    /* a material's hit and special animations, none past the materials' count (SOCOM 1's) */
+    CZAnim *GetHitAnim(int material);
+    CZAnim *GetSpecialMaterialAnim(int material);
+    void SetHasFireMode(FIREMODE mode);
+
     char *m_name;   // 0x4
     char *m_description;   // 0x8
-    unsigned char _c[0x7c - 0xc];
+    unsigned char _c[0x24 - 0xc];
+    FIREMODE m_maxfiremode;   // 0x24 (SOCOM 1: 0x20)
+    unsigned char _25[0x7c - 0x25];
     EQUIP_ITEM m_ID;   // 0x7c (SOCOM 1: 0x60)
-    unsigned char _7d[0xc4 - 0x7d];
+    unsigned char _7d[0x80 - 0x7d];
+    CZAnim **m_hitanim;   // 0x80 (SOCOM 1: 0x64; ClearAnims frees it)
+    CZAnim *m_fireanim;   // 0x84
+    CZAnim *m_zoomedfireanim;   // 0x88
+    CZAnim *m_defaultspecialanim;   // 0x8c
+    CZAnim *m_socom2_90;   // 0x90 (SOCOM II's: ClearAnims clears it with the others)
+    CZAnim **m_specialmaterialanim;   // 0x94 (SOCOM 1: 0x74)
+    unsigned char _98[0xc4 - 0x98];
     CZAmmoList m_LegalAmmoList;   // 0xc4 (SOCOM 1: 0x9c)
-    unsigned char _d0[0xf8 - 0xd0];
+    unsigned char m_hasFireModes[5];   // 0xd0 (SOCOM 1: 0xa8)
+    unsigned char m_socom2_d5;   // 0xd5
+    unsigned char _d6[0xf8 - 0xd6];
+    /* the weapons (SOCOM 1's static, 12 bytes: 0x4B5210) */
+    static CZWeaponList m_listWeapons;
 };   // 0xf8 bytes (CZFTSWeapon's targetmods start there)
+
+/* the materials' table (int_material.cpp's, SOCOM 1's class): only the extension list, whose size
+ * the weapons' per-material animations are bounded by (SOCOM 1's static; 0x44F350 here) */
+class CMaterialExArray {
+public:
+    static std::vector<void *> m_materialex_list;
+};
 
 /* a weapon's per-stance reticle and recoil tuning (SOCOM 1's DWARF: 0x4c bytes; SOCOM II's is 0x74,
  * a float inserted at 0x28 and more members after SOCOM 1's -- only what the matched code reads is

@@ -705,6 +705,7 @@
 0x0044F250 0x88 kbdData  # OVL1 bss; zin_keyboard.cpp's static, new in SOCOM II (the name ours): the keyboard library's last read (lights, modifier keys, count, key codes): GetKeyReadThisFrame (0x2DBD90) reads into it and takes its keys; 1 function
 0x0044F2D8 0x4 kbdIndex  # OVL1 bss; zin_keyboard.cpp's static, new in SOCOM II (the name ours): the next key of kbdData to hand out: GetKeyReadThisFrame (0x2DBD90) steps it and resets it after each read; 1 function
 0x0044F310 0x4 m_defaultMaterial__16CMaterialExArray  # OVL1 bss; new in SOCOM II (SOCOM 1's GetMaterial returned 0 without a polygon), the name ours: int_material.cpp's SetDefaultMaterial (0x2DDC30, SOCOM 1's first function there) stores its index first, IntersectStruct::GetMaterial reports it for a polygon without a material; 2 references in 2 functions
+0x0044F350 0xC m_materialex_list__16CMaterialExArray  # OVL1 bss; SOCOM 1's static (a vector: GetHitAnim and GetSpecialMaterialAnim bound their index by its size at +4, 0x44F354, as SOCOM 1's read 0x4D7954 = this list + 4); 62 references in 47 functions take its size
 0x0044F370 0xF8 theLobby  # OVL1 bss; s1 by hand (SOCOM 1's COurGame::StartEngine and StopEngine pass theLobby to CZOnlineLobby's Init and UnInit; SOCOM II's pass 0x44F370 at the same two places, UnInit__13CZOnlineLobbyFv named); 0xF8 in SOCOM II, not SOCOM 1's 0x98: Init and 0x2DF6A0 store CUIVariable pointers at +0xB0 to +0xF4, SOCOM 1's uiv_* statics made members (0x44F45C, data-seq's uiv_GameClock, is +0xEC, which SyncGameClock reads); 400 references in 228 functions
 0x0044F580 0x170 StoredClanInfo  # OVL1 bss; s1 by hand (SOCOM 1's StoredClanInfo, the field offsets alike: DisbandClan sends +0x1c as the clan id, IsLeaderOfClan compares +0x44, Init clears the name at +0x24); size SOCOM 1's; 44 references in 19 functions
 0x0044F700 0xC InvitationVec  # OVL1 bss; s1 by hand (SOCOM 1's InvitationVec, the invitations received: HasClanInvitations tests its size, CheckClanInvitations empties it); built by the clan unit's initialiser 0x401EB0, destroyed by 0x2EA540; 15 references in 6 functions
@@ -810,6 +811,7 @@
 0x004B5050 0x14 m_permPool__Q23zdb6CDecal  # OVL1 bss; s1:data-seq (size SOCOM 1's; via PutPermDecal__Q23zdb6CDecalFPQ23zdb6CDecal +1)
 0x004B5080 0x14 m_tempPool__Q23zdb10CMeshDecal  # OVL1 bss; s1:data-seq (size SOCOM 1's; via PutTempDecal__Q23zdb10CMeshDecalFPQ23zdb10CMeshDecal +1)
 0x004B51B8 0xC m_callbacks  # OVL1 bss; s1:data-exact (size SOCOM 1's; via AddWeaponEventCallback__8CZWeaponFPFP12CZProjectileUiPv_vUiPv)
+0x004B5210 0xC m_listWeapons__8CZWeapon  # OVL1 bss; SOCOM 1's static (12 bytes, its GetWeaponId passes it to CZWeaponList::GetWeaponId as SOCOM II's does, 0x3D19E0); 60 references in 36 functions
 0x004B5220 0x4 m_pProjectilelist__8CZWeapon  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Close__8CZWeaponFv +1)
 0x004B5248 0x4 m_pMarklist__8CZWeapon  # OVL1 bss; SOCOM 1's (CCoreState::auxUnload reads it beside m_pProjectilelist, as SOCOM 1's): 7 references in 6 functions take 0x4B5248
 0x004B52B8 0x4 m_timer_maxval__8CZWeapon  # OVL1 bss; s1:data-seq (size SOCOM 1's; via RetrieveTimerRegistration__8CZWeaponFPPfPfPb)
