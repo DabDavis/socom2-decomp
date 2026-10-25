@@ -65,6 +65,33 @@ const T &_min(const T &a, const T &b)
 }
 }
 
+/* the goals a controller pursues (SOCOM 1's DWARF, a byte) */
+enum GOAL_TYPE { GOAL_NONE = 0, GOAL_SCAN = 1, GOAL_LOOK = 2, GOAL_MOVE = 3, GOAL_SHOOT = 4, GOAL_AVOID = 5, GOAL_RECOVER = 6 };
+
+/* a squad (SOCOM 1's CSealUnit; SOCOM II's vtable at 0x669650 has IssueCommand first, its
+ * pointer at 4) -- only what the controller calls */
+class CSealUnit {
+public:
+    unsigned int m_0;   // 0x0
+    virtual void IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);
+};
+
+/* the network (SOCOM II's theNetwork at 0x45A0C0: SOCOM 1's flags at 8 and 9, the states lane's
+ * reading) and the net game's state (OVL1 bss 0x437CE8, the HUD lane's reading) */
+class CZNetwork {
+public:
+    unsigned char m_8;   // 0x0: the session master
+    unsigned char m_9;   // 0x1: an online game
+};
+
+extern CZNetwork theNetwork;
+
+class CNetGameState {
+public:
+    unsigned char _0[0xd2];
+    unsigned char m_ghost;   // 0xd2
+};
+
 /* a thrown grenade's flight, solved (SOCOM 1's; only the statics) */
 class CDynGrenade {
 public:
@@ -129,6 +156,7 @@ public:
     /* +0xB4, new in SOCOM II: the AI-map collision bit (the name ours) */
     virtual void SetDoAiMapCollide(bool on) { m_do_aimap_collide = on; }
 
+    void ClearGoal(GOAL_TYPE type);
     /* the pad's rumble motors (SOCOM 1's) */
     void TickRumbler(float dT);
     void SetHighRumbleTime(float t);
@@ -193,7 +221,9 @@ public:
     /* every heartbeat loop stopped (SOCOM 1's; StopRumbler calls it with no body) */
     static void StopAllHeartbeatSounds();
 
-    unsigned char _170[0xee0 - 0x170];
+    unsigned char _170[0x374 - 0x170];
+    SEAL_STATE m_desiredState;   // 0x374 (SOCOM 1's 0x304; the HUD's pose bitmap reads it)
+    unsigned char _375[0xee0 - 0x375];
     float m_wep_upT;   // 0xee0 (SOCOM 1's 0xdd0)
 };
 

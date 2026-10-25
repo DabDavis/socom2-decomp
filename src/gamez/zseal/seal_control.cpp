@@ -12,6 +12,9 @@ extern float data_006505E8;  /* (the weapon's raise time a closed menu restarts)
 /* ai::quadratic (SOCOM 1's quadratic__2aiFfffRfRf, an earlier unit's): the roots of a x^2 + b x
  * + c, false when there are none */
 bool func_0050DE20(float a, float b, float c, float &r0, float &r1);
+/* a team's squad (SOCOM 1's CSealUnit::GetUnitByTeam, by its use; OVL2 0x5EF2F0) */
+CSealUnit *func_005EF2F0(unsigned int team);
+extern CNetGameState *data_00437CE8;
 }
 
 /* a grenade's flight time and launch speed; SOCOM 1's function-local statics, which MW 3.0 lays
@@ -57,6 +60,33 @@ float CDynGrenade::ComputeTimeToImpact(float scale, float b, float c)
 /* (OVL2 0x598220) */
 CSealCtrl::~CSealCtrl()
 {
+}
+
+/* (OnMissionStart and OnMissionEnd are byte-exact by scdiff --target 0x597F50 / 0x597EB0; the map
+ * still gives their names to CRemoteCtrl's overrides at 0x5E6270/0x5E6280 -- the lane's report) */
+
+/* the mission begun: online, the squad told to take up its places (unless the player is a
+ * ghost); the body crouched and the controls given (OVL2 0x597F50; SOCOM 1's did nothing) */
+void CSealCtrl::OnMissionStart()
+{
+    if (theNetwork.m_9) {
+        ClearGoal(GOAL_NONE);
+        CSealUnit *unit = func_005EF2F0(24);
+
+        if (unit && !data_00437CE8->m_ghost)
+            unit->IssueCommand((CZSealBody *)m_entity, (FT_COMMAND)35, 0, false);
+    }
+    ((CZSealBody *)m_entity)->m_desiredState = stateCrouch;
+    m_input_enabled = true;
+}
+
+/* the mission over: no goal, no controls, the motors stopped (OVL2 0x597EB0; SOCOM 1's did
+ * nothing) */
+void CSealCtrl::OnMissionEnd()
+{
+    ClearGoal(GOAL_NONE);
+    m_input_enabled = false;
+    StopRumbler();
 }
 
 /* the trigger stepped with its pressure (OVL2 0x597810) */
