@@ -28,7 +28,57 @@ struct MediusGetClanLadderListRequest {
     int PageSize;   // 0x24
 };   // 0x28
 
-struct MediusLadderPositionResponse { MEDIUS_RESPONSE_HEAD };
+struct MediusLadderPositionResponse {
+    MEDIUS_RESPONSE_HEAD
+    int LadderPosition;   // 0x1c
+    int TotalRankings;   // 0x20
+};
+
+/* a page of the player ladder (no session key; the message id names the list: TheBest, TheRest) */
+struct MediusLadderListRequest {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    int LadderStatIndex;   // 0x18
+    int SortOrder;   // 0x1c
+    int StartPosition;   // 0x20
+    int PageSize;   // 0x24
+};   // 0x28
+
+struct MediusLadderListResponse;
+
+/* a valve (zanim.h's CValve, as the other lobby units declare it again) */
+enum VALVE_TYPE {
+    VALVE_TYPE_0,
+    VALVE_TYPE_1
+};
+
+enum VALVE_STATE {
+    VALVE_SAME,
+    VALVE_ON,
+    VALVE_OFF
+};
+
+class CValve {
+public:
+    static CValve *Create(const char *name, VALVE_TYPE type);
+    void MakeCallbacks(VALVE_STATE state);
+    bool SetValue(int value)
+    {
+        VALVE_STATE state = VALVE_SAME;
+
+        if (m_value != value)
+            state = value == 0 ? VALVE_OFF : VALVE_ON;
+        m_value = value;
+        if (state != VALVE_SAME) {
+            MakeCallbacks(state);
+            return true;
+        }
+        return false;
+    }
+
+    char *m_name;   // 0x0
+    unsigned short m_value;   // 0x4
+    unsigned short m_flags;   // 0x6
+};
 
 /* the account logged in (OVL2 bss; SOCOM 1's AccountInfo) */
 struct AccountInfoType {
@@ -53,6 +103,8 @@ MediusErrorCode func_006467A8(MediusGetClanLadderListRequest *req,
 }
 
 extern "C" {
+extern int data_0044F7F8;   /* our position on the ladder (cbGetLadderPosition's) */
+extern int data_0044F800;   /* the ladder's positions */
 extern unsigned char data_0044F880;   /* a clan ladder list asked for and not yet shown */
 extern int data_0044F868;   /* our clan's position */
 extern int data_0044F870;   /* the clan ladder's positions */
@@ -337,10 +389,6 @@ void ClanLadderList::Add(MediusGetClanLadderListResponse *resp)
 
 #pragma auto_inline reset
 
-extern "C" {
-extern int data_0044F7F8;   /* our position on the ladder (cbGetLadderPosition's) */
-extern int data_0044F800;   /* the ladder's positions */
-}
 
 /* a ladder position's tier, ours for -1: 4 the top 5 %, 3 to 30 %, 2 to 85 %, 1 the rest (of the
  * positions past the first ten); on a ladder of fewer than 12, 4 for anyone (SOCOM II's; OVL1
@@ -365,6 +413,118 @@ int CZOnlineLobby::GetRankTier(int rank)
     } else if (data_0044F800 > 0)
         tier = 4;
     return tier;
+}
+
+extern "C" {
+extern unsigned char data_0044F878;   /* a player ladder page asked for and not yet come */
+void func_002EC140(LadderList *list);   /* a player ladder's items deleted (LadderList::DeleteAll) */
+void func_002EB6A0(int, int, int, MediusLadderListResponse *);   /* the pages' callback */
+MediusErrorCode func_0064B128(MediusLadderListRequest *req,
+                              void (*cb)(int, int, int, MediusLadderListResponse *));   /* MediusLadderList */
+}
+
+/* the player ladder's best n asked for (SOCOM II's; OVL1 0x2EB610; the name ours) */
+void CZOnlineLobby::GetLadderBest(int n)
+{
+    func_002EC140(&LadderRanking);
+    MediusLadderListRequest req;
+
+    memset(&req, 0, sizeof(req));
+    memcpy(req.MessageID, "TheBest", MEDIUS_MESSAGEID_MAXLEN);
+    req.SortOrder = 1;
+    req.StartPosition = 1;
+    req.PageSize = n;
+    req.LadderStatIndex = 0;
+    func_002F4080(&req, 131);
+    CheckMediusError(func_0064B128(&req, func_002EB6A0));
+}
+
+/* the player ladder around a position asked for, twice n players from it, unless a page is on its
+ * way or the list already reaches it (SOCOM II's; OVL1 0x2EB510; the name ours) */
+void CZOnlineLobby::GetLadderList(int start, int n)
+{
+    if (data_0044F878)
+        return;
+    if (!((start < LadderLeaders.m_10 || !LadderLeaders.size()) && start > 0))
+        return;
+    int first = start;
+
+    if (start <= 0)
+        first = 1;
+
+    func_002EC140(&LadderLeaders);
+    LadderLeaders.m_c = first;
+    MediusLadderListRequest req;
+
+    memset(&req, 0, sizeof(req));
+    memcpy(req.MessageID, "TheRest", MEDIUS_MESSAGEID_MAXLEN);
+    req.PageSize = n * 2;
+    req.StartPosition = first;
+    req.SortOrder = 1;
+    req.LadderStatIndex = 0;
+    func_002F4080(&req, 131);
+    MediusErrorCode err = func_0064B128(&req, func_002EB6A0);
+
+    data_0044F878 = 1;
+    CheckMediusError(err);
+}
+
+/* our position on the ladder come: kept, shown, the list around it asked for, the medal and the
+ * rank restriction's valves set (SOCOM 1's; OVL1 0x2EB340) */
+void cbGetLadderPosition(int, int, int, MediusLadderPositionResponse *resp)
+{
+    if (CheckMediusCallbackStatus("GetLadderPosition", resp->StatusCode)) {
+        data_0044F7F8 = resp->LadderPosition;
+        data_0044F800 = resp->TotalRankings;
+        LadderLeaders.m_10 = data_0044F800;
+        SetVarInt(theUIVarManager.Add("LadderRanking", 0, UIVL_TEMPORARY), data_0044F7F8);
+        data_0044F878 = 0;
+        theLobby.GetLadderList(data_0044F7F8 - 2 <= 0 ? 1 : data_0044F7F8 - 2, 7);
+        CValve::Create("LadderMedalOfMerit", VALVE_TYPE_1)->SetValue(theLobby.GetRankLevel(-1));
+        CValve::Create("LadderRankRestriction", VALVE_TYPE_1)->SetValue(theLobby.GetRankTier(-1));
+    } else
+        theLobby.GetLadderList(1, 7);
+}
+
+/* our ranking come: kept and shown, the medal and the rank restriction's valves set, the menus
+ * told (SOCOM 1's; OVL1 0x2EB010) */
+void cbGetLadderRanking(int, int, int, MediusLadderPositionResponse *resp)
+{
+    if (CheckMediusCallbackStatus("GetLadderRanking", resp->StatusCode)) {
+        data_0044F7F8 = resp->LadderPosition;
+        data_0044F800 = resp->TotalRankings;
+        LadderLeaders.m_10 = data_0044F800;
+        SetVarInt(theUIVarManager.Add("LadderRanking", 0, UIVL_TEMPORARY), data_0044F7F8);
+        CValve::Create("LadderMedalOfMerit", VALVE_TYPE_1)->SetValue(theLobby.GetRankLevel(-1));
+        CValve::Create("LadderRankRestriction", VALVE_TYPE_1)->SetValue(theLobby.GetRankTier(-1));
+        LobbyEvent("ON_LADDER_REFRESH", 0);
+    }
+}
+
+/* a ladder position's rank, ours for -1: 5 the first ten, then GetRankTier's tiers; on a ladder of
+ * fewer than 12, 5 for anyone (SOCOM II's; OVL1 0x2EAEE0; the name ours) */
+int CZOnlineLobby::GetRankLevel(int rank)
+{
+    int level = 0;
+
+    if (rank == -1)
+        rank = data_0044F7F8;
+    if (data_0044F800 > 11) {
+        int permille = rank * 1000 / (data_0044F800 - 10);
+
+        if (rank < 11)
+            level = 5;
+        else if (permille < 51)
+            level = 4;
+        else if (permille < 301)
+            level = 3;
+        else if (permille < 851)
+            level = 2;
+        else
+            level = 1;
+    } else if (data_0044F800 > 0)
+        level = 5;
+    return level;
 }
 
 /* our position on the ladder, in the active lobby (SOCOM 1's; OVL1 0x2EB2C0) */

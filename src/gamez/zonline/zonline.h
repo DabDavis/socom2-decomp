@@ -820,6 +820,9 @@ public:
     void GetLadderInfo();
     void GetLadderRanking();
     int GetRankTier(int rank);
+    int GetRankLevel(int rank);
+    void GetLadderBest(int n);
+    void GetLadderList(int start, int n);
     int GetClanRankTier(int rank);
     void GetClanLadderList(int start, int n);
     void GetClanRanking(int n);
