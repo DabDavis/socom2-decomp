@@ -26,11 +26,68 @@ public:
 };
 
 
+/* a valve: a named 16-bit value whose changes call back (SOCOM 1's CValve) */
+enum VALVE_STATE {
+    VALVE_SAME,
+    VALVE_ON,
+    VALVE_OFF
+};
+
+class CValve;
+extern "C" void func_003519F0(CValve *valve, VALVE_STATE state);   /* CValve::MakeCallbacks */
+
+class CValve {
+public:
+    static CValve *GetByName(const char *name);
+
+    /* the value set, its callbacks told whether it went on or off (inlined everywhere: SOCOM 1's
+     * zRemoteClientJoinsCallback has the same code; the name ours) */
+    void SetValue(int value)
+    {
+        VALVE_STATE state = VALVE_SAME;
+
+        if (m_value != value)
+            state = value == 0 ? VALVE_OFF : VALVE_ON;
+        m_value = value;
+        if (state != VALVE_SAME)
+            func_003519F0(this, state);
+    }
+
+    char *m_name;   // 0x0
+    unsigned int m_value : 16;   // 0x4
+    unsigned int m_type : 8;   // 0x4
+    unsigned int m_name_pooled : 1;   // 0x4
+    unsigned int m_pooled : 1;   // 0x4
+    unsigned int m_unused : 6;   // 0x4
+};
+
+class CEntityCtrl {
+public:
+    virtual void _slot0();
+    virtual void _slot1();
+    virtual void _slot2();
+    virtual void _slot3();
+    virtual void _slot4();
+    virtual void _slot5();
+    virtual void _slot6();
+    virtual void _slot7();
+    virtual void _slot8();
+    virtual void _slot9();
+    virtual bool IsPlayer();   // 0x30
+    virtual bool IsRemote();   // 0x34 (the name ours: a remote SEAL's fire is not counted)
+};
+
 class CZSealBody {
 public:
     unsigned char _0[4];
     int m_4;   // 0x4: the body's network object (SOCOM 1's m_NetObjectIndex)
-    unsigned char _8[0xfc8 - 0x8];
+    unsigned char _8[0xc0 - 0x8];
+    CEntityCtrl *m_ctrl;   // 0xc0
+    unsigned char _c4[0x220 - 0xc4];
+    unsigned char m_fire_count;   // 0x220 (SOCOM 1's at 0x17c)
+    unsigned char _221[0x228 - 0x221];
+    float m_fire_y;   // 0x228 (SOCOM 1's at 0x184)
+    unsigned char _22c[0xfc8 - 0x22c];
     int m_fc8;   // 0xfc8: the client it belongs to (SOCOM 1's at 0xeb8)
 };
 
@@ -43,7 +100,9 @@ public:
 /* the online game (SOCOM 1's CZNetGame: only what this unit touches, at SOCOM II's offsets) */
 class CZNetGame {
 public:
-    unsigned char _0[0xac];
+    unsigned char _0[0x44];
+    CValve *m_pPlayerJoinCountValve;   // 0x44 (SOCOM 1's at 0x40)
+    unsigned char _48[0xac - 0x48];
     int m_persona_object_index;   // 0xac (SOCOM 1's at 0x70)
     int m_game_object_index;   // 0xb0 (SOCOM 1's at 0x74)
     unsigned char _b4[0xcf - 0xb4];
@@ -56,7 +115,8 @@ public:
 
 class CMission {
 public:
-    unsigned char _0[0x1808];
+    unsigned char _0[0x1c0];
+    unsigned char m_messenger[0x1808 - 0x1c0];   // 0x1c0: the mission's message queue (SOCOM 1's at 0x100)
     CZNetGame *m_pNetGame;   // 0x1808 (SOCOM 1's at 0x584)
 };
 
@@ -89,6 +149,9 @@ class CZAnimMain;
 extern CZAnimMain ZAnim;
 
 const char *GetDatabase();
+void *_malloc(unsigned int size, const char *file, int line);
+void _free(void *p, const char *file, int line);
+extern "C" void *memcpy(void *dst, const void *src, unsigned int n);
 extern "C" char *strcpy(char *dst, const char *src);
 
 class CZBombState {
@@ -135,6 +198,14 @@ void func_00273780(CZAnimMain *zanim, void *data, int who);
 void func_00545530(void *list, CZSealBody *body, int arg);
 void func_005880E0(CZSealBody *body, short a, unsigned char b, bool c, unsigned short d);
 void func_0059E9E0(CZSealBody *body, unsigned char a, void *b, void *c, int d, CPnt3D *pos);
+int func_002DF640(void *lobby);   /* CZOnlineLobby::MediusConnectionIndex */
+void func_0030D870(CZNetwork *net, void *msg);
+int func_0030D510(CZNetwork *net);   /* CZNetwork::zNetGetValidGameClientCount */
+void func_00590AC0(CZSealBody *a, CZSealBody *b, unsigned char c, int d, int e);
+void func_002B6530(void *queue, const char *text, int a, int b, int c, float d);   /* C2DMessage_Q::Add_Message */
+bool func_002C2FA0();
+void func_002A47B0(CMission *mission, const char *dialog);
+extern int data_00440EC0[];   /* (SOCOM II's: a word per client, cleared when one joins) */
 
 /* the application packets' type ids (SOCOM 1's PacketType<name>) */
 extern unsigned int data_00440E20;   /* PacketTypeZAnim */
@@ -145,9 +216,49 @@ extern unsigned int data_00440E30;   /* PacketTypeE3Index */
 extern unsigned int data_00440E88;   /* (SOCOM II's) */
 extern unsigned int data_00440E98;   /* PacketTypeTeamSwitch */
 extern unsigned int data_00440EB0;   /* PacketTypeGameSignal */
+extern unsigned int data_00440E78;   /* (SOCOM II's: a variable-length packet) */
+extern unsigned int data_00440EA8;   /* PacketTypeNewBombState */
 }
 
 #define theNetwork data_0045A0C0
+
+/* a client joined: its word cleared and the join count's valve set (OVL1 0x2BC490) */
+void zRemoteClientJoinsCallback(int index, int client)
+{
+    if (index != func_002DF640(theLobby)) {
+        data_00440EC0[client] = 0;
+        theMission.m_pNetGame->m_pPlayerJoinCountValve->SetValue(func_0030D510(&theNetwork));
+    }
+}
+
+/* a client left: a leave message queued for the network (OVL1 0x2BC400) */
+struct NetMessage {
+    int kind;   // 0x0
+    int client;   // 0x4
+    unsigned char _8[0x1c - 0x8];
+};
+
+void zRemoteClientLeavesCallback(int index, int client)
+{
+    if (index != func_002DF640(theLobby)) {
+        NetMessage m = {0};
+
+        m.kind = 2;
+        m.client = client;
+        func_0030D870(&theNetwork, &m);
+    }
+}
+
+/* a local SEAL's shot counted, its height kept (OVL1 0x2BBF10) */
+void SaveFireMessage(CZSealBody *body, const CPnt3D *pos)
+{
+    if (!(body->m_ctrl ? body->m_ctrl->IsRemote() : false)) {
+        body->m_fire_count++;
+        if (body->m_fire_count > 200)
+            body->m_fire_count = 0;
+        body->m_fire_y = pos->y;
+    }
+}
 
 /* a blended anim pushed on a remote SEAL, in a running game (OVL1 0x2BBA80) */
 struct PushBlendPacket {
@@ -169,6 +280,28 @@ int PushBlendAnimPacketHandler(int, int, int, void *data)
 
         if (body)
             func_005880E0(body, p->anim, p->slot, on, p->time);
+    }
+    return 8;
+}
+
+/* (SOCOM II's: one SEAL acting on another, in a running game; OVL1 0x2BB8E0) */
+struct SealPairPacket {
+    unsigned short a;   // 0x0
+    unsigned short b;   // 0x2
+    unsigned char arg;   // 0x4
+};
+
+extern "C" int func_002BB8E0(int, int, int, void *data)
+{
+    CZNetGame *game = theMission.m_pNetGame;
+
+    if (game && game->m_mp_major_game_state == 3) {
+        SealPairPacket *p = (SealPairPacket *)data;
+        CZSealBody *a = CZSealState::GetBodyFromObjectIndex(p->a);
+        CZSealBody *b = CZSealState::GetBodyFromObjectIndex(p->b);
+
+        if (a && b)
+            func_00590AC0(b, a, p->arg, 0, 0);
     }
     return 8;
 }
@@ -356,6 +489,20 @@ void SendVoteMessage(int who, int voter, bool vote)
                       data_00440E80, 4, &p, true);
 }
 
+/* (SOCOM II's: the spectators thrown out -- a message, the spectator valve cleared, and a banned
+ * client sent to its dialog; OVL1 0x2B9D80) */
+extern "C" int func_002B9D80(int, int, int, void *)
+{
+    func_002B6530(theMission.m_messenger, "Spectators EJECTED from this game.", 2, 0, 0, 0.0f);
+    CValve *valve = CValve::GetByName("MaxSpectatorsValve");
+
+    if (valve)
+        valve->SetValue(0);
+    if (func_002C2FA0())
+        func_002A47B0(&theMission, "dlgNetBanned.rdr");
+    return 4;
+}
+
 /* (SOCOM II's: a vote-like packet to everyone, and handled here too; OVL1 0x2B9B60) */
 extern "C" void func_002B9B60(int who, int vote)
 {
@@ -367,9 +514,27 @@ extern "C" void func_002B9B60(int who, int vote)
     func_002B9BD0(0, 0, func_0030D5A0(&theNetwork), &p);
 }
 
+/* (SOCOM II's: a variable-length packet -- its length, three bytes, then the caller's data --
+ * built on the heap; OVL1 0x2B9A40) */
+extern "C" void func_002B9A40(int to, unsigned char a, unsigned char b, unsigned char c, int size,
+                              void *data)
+{
+    int total = size + 6;
+    char *buf = (char *)_malloc(total, 0, 0);
+
+    *(short *)buf = total;
+    buf[2] = a;
+    buf[3] = b;
+    buf[4] = c;
+    memcpy(buf + 5, data, size);
+    func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), to, data_00440E78, total, buf,
+                  true);
+    _free(buf, 0, 0);
+}
+
 /* the bomb's new state asked for (OVL1 0x2B9A00) */
 struct BombStatePacket {
-    CPnt3D pos;   // 0x0
+    PNT3D pos;   // 0x0
     unsigned short who;   // 0xc
     unsigned char state;   // 0xe
 };
@@ -381,6 +546,22 @@ int BombStatePacketHandler(int, int, int, void *data)
 
     CZBombState::HandleBombStateRequest(p->who, p->state, &pos);
     return 16;
+}
+
+/* the bomb's new state asked of the session master -- handled at once when we are it
+ * (OVL1 0x2B9910) */
+void SendBombStateRequest(int who, unsigned char state, const CPnt3D *pos)
+{
+    BombStatePacket p = {0};
+
+    p.pos = *pos;
+    p.who = who;
+    p.state = state;
+    if (theNetwork.m_bSessionMaster)
+        BombStatePacketHandler(0, 0, func_0030D5A0(&theNetwork), &p);
+    else
+        func_0030CEF0(&theNetwork, 64, theNetwork.GetGameConnectionIndex(), func_0030D560(&theNetwork),
+                      data_00440EA8, 16, &p, false);
 }
 
 /* (SOCOM II's: a lobby notice when both halves of a packet agree; OVL1 0x2B98B0) */
