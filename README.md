@@ -1647,6 +1647,20 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the SEALs, round 11** (RTList<ACTIVE_ANIM>'s copies, seal_env.cpp's weapon parenting, DoSetStance):
+  - in an inline helper `r = 0; if (c) r = (unsigned)f;` leaves the float-to-unsigned conversion's join
+    a block of its own (+1 nop); the ternary, if/else and early-return forms merge it (0x543B90);
+  - an `unsigned int` bitfield read through a byte-enum accessor gives the target's `andi 0xff`
+    (0x57F150); a callback's `void *` data cast through an inline is numbered after a reference
+    local, cast inline in the body the two swap saved registers (the pistol callbacks);
+  - from a `bool` function `return p ? (a || b) : false;` adds `andi 0xff`, `if (p) return a || b;
+    return false;` does not (0x5A77E0); `s = r != 0 ? s / r : 0` keeps nops around the `div.s`, the
+    if/else form drops them (0x5A56D0);
+  - in a switch case `if (!c) x = A; else {...}` puts the single assignment on the fall-through, `x =
+    A; if (c) {...}` falls into the body (DoSetStance);
+  - template members called as such (`Begin()`/`Next()`) make the first OVL2 unit in link order that
+    needs them emit the instances (seal_anim.cpp, 0x5780E0/0x578110, ovl-copy notes);
+  - zseal.h's body parts sit at SOCOM 1's offsets +0x7C (m_spinelo 0x2FC ... m_pistol 0x354).
 - **Tells from the weapons, round 10** (the weapon event callbacks, the decal arrays, vis_vu.cpp's helpers):
   - an MW `asm` function loads a global's address with `la reg, sym` (an `la` in a branch delay slot
     puts its `lui` there); `%hi()`, `@ha`, `@l` and `lo()` are all refused;
