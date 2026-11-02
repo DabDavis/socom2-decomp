@@ -544,10 +544,8 @@ void CSealCtrlAi::SetAiBit2(bool on)
 }
 
 extern "C" {
-/* the state a SEAL's body is in, by a flag (OVL2 0x58A720, seal_body.cpp's, not written yet) and
- * the flag this asks with (OVL2 data, a byte) */
-SEAL_STATE func_0058A720(CEntity *seal, unsigned char flag);
-extern unsigned char data_006502D0;
+/* the flag the stance is asked with (OVL2 data, a byte passed as it is: a bool) */
+extern bool data_006502D0;
 }
 
 /* (OVL2 0x562FC0) */
@@ -559,7 +557,7 @@ bool CSealCtrlAi::InStance(SEAL_STANCE stance, bool fromState)
         r = m_stance == stance;
         return r;
     } else
-        r = stance == CZSealBody::GetStanceFromState(func_0058A720(m_entity, data_006502D0), m_stance);
+        r = stance == CZSealBody::GetStanceFromState(SealOf(this)->GetStance(data_006502D0), m_stance);
     return r;
 }
 

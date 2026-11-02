@@ -73,26 +73,26 @@ extern "C" bool func_005551A0(unsigned short flags, unsigned short bits);
 
 /* the state the SEAL is in; asked with a flag, the top blend's anims say it first (17 stand or
  * crouch, 19 crouch or prone, 25 stand or prone, by the blend's flag 0x20) unless its flag 0x40 is
- * set, and a crouch with bit 2 of 0x21C counts as a stand (OVL2 0x58A720, new in SOCOM II; seal_ai.cpp's
- * InStance asks it) */
-extern "C" SEAL_STATE func_0058A720(CZSealBody *seal, unsigned char flag)
+ * set, and a crouch with bit 2 of 0x21C counts as a stand (OVL2 0x58A720: SOCOM 1's GetStance, the
+ * crouch bit new; seal_ai.cpp's InStance and the kit's kick ask it) */
+SEAL_STATE CZSealBody::GetStance(bool flag) const
 {
-    SEAL_STATE state = (SEAL_STATE)seal->m_state;
+    SEAL_STATE state = (SEAL_STATE)m_state;
 
     if (flag) {
-        CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+        CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
 
         if (!func_005551A0(top->m_flags, 0x40)) {
             bool b = func_005551A0(top->m_flags, 0x20);
 
-            if (seal->IsCurrentBlend((AnimType)17))
+            if (IsCurrentBlend((AnimType)17))
                 return b ? stateCrouch : stateStand;
-            if (seal->IsCurrentBlend((AnimType)19))
+            if (IsCurrentBlend((AnimType)19))
                 return b ? stateProne : stateCrouch;
-            if (seal->IsCurrentBlend((AnimType)25))
+            if (IsCurrentBlend((AnimType)25))
                 return b ? stateProne : stateStand;
         }
-        if (state == stateCrouch && seal->m_21c_bit2)
+        if (state == stateCrouch && m_21c_bit2)
             state = stateStand;
     }
     return state;
@@ -131,10 +131,6 @@ extern "C" void func_00588B40(CZSealBody *seal, int time)
         func_002BBAF0(seal->m_id, 34, 4, false, time);
 }
 
-/* the first anim from the top blend (RTList<ACTIVE_ANIM>::Begin's copy in seal_anim.cpp's tail, OVL2
- * 0x5780E0) */
-extern "C" ACTIVE_ANIM *func_005780E0(CActiveAnimList *list);
-
 /* whether the SEAL may look about: always without a blend; never dead (8, the top blend's state too),
  * nor in states 9 and 10; else as the last overlay of the top blend's first anim says (OVL2
  * 0x587B40, new in SOCOM II) */
@@ -150,7 +146,7 @@ extern "C" bool func_00587B40(CZSealBody *seal)
         return false;
     bool r = false;
 
-    for (ACTIVE_ANIM *a = func_005780E0(&top->m_anims); a; a = a->m_overlay) {
+    for (ACTIVE_ANIM *a = top->m_anims.Begin(); a; a = a->m_overlay) {
         if (a->m_anim->m_4a_5)
             r = true;
         else
@@ -166,7 +162,7 @@ extern "C" bool func_00587E00(CZSealBody *seal)
     CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
     bool r = false;
 
-    for (ACTIVE_ANIM *a = func_005780E0(&top->m_anims); a; a = a->m_overlay) {
+    for (ACTIVE_ANIM *a = top->m_anims.Begin(); a; a = a->m_overlay) {
         if (a->m_anim->m_4a_7)
             r = true;
         else

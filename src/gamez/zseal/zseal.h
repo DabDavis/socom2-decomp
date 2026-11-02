@@ -866,6 +866,9 @@ public:
     static void OpenHeartbeatSounds();
     /* the stance a state stands for, or the fallback (SOCOM 1's; the AI-states lane's 0x5FC910) */
     static SEAL_STANCE GetStanceFromState(SEAL_STATE state, SEAL_STANCE fallback);
+    /* the state the body stands in; asked with the flag, the top blend's anims say it first (SOCOM
+     * 1's GetStance, which returns CBody's state byte; OVL2 0x58A720, seal_body.cpp) */
+    SEAL_STATE GetStance(bool flag) const;
     /* a body part made a gear's (SOCOM 1's; OVL2 0x58B040, seal_cfg.cpp) */
     void SetPartAsGear(CZBodyPart *part, class CCharacterGear *gear);
     /* a gear by name, or none (SOCOM 1's; OVL2 0x59A730, seal_create.cpp: `this` unread) */
