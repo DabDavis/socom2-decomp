@@ -68,6 +68,54 @@ void *func_00555170(void *v);
 unsigned short func_0058A920(unsigned short flags, unsigned short bits, bool on);
 }
 
+/* a halfword's bits tested (seal.cpp's tail copy, OVL2 0x5551A0) */
+extern "C" bool func_005551A0(unsigned short flags, unsigned short bits);
+
+/* the state the SEAL is in; asked with a flag, the top blend's anims say it first (17 stand or
+ * crouch, 19 crouch or prone, 25 stand or prone, by the blend's flag 0x20) unless its flag 0x40 is
+ * set, and a crouch with bit 2 of 0x21C counts as a stand (OVL2 0x58A720, new in SOCOM II; seal_ai.cpp's
+ * InStance asks it) */
+extern "C" SEAL_STATE func_0058A720(CZSealBody *seal, unsigned char flag)
+{
+    SEAL_STATE state = (SEAL_STATE)seal->m_state;
+
+    if (flag) {
+        CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+
+        if (!func_005551A0(top->m_flags, 0x40)) {
+            bool b = func_005551A0(top->m_flags, 0x20);
+
+            if (seal->IsCurrentBlend((AnimType)17))
+                return b ? stateCrouch : stateStand;
+            if (seal->IsCurrentBlend((AnimType)19))
+                return b ? stateProne : stateCrouch;
+            if (seal->IsCurrentBlend((AnimType)25))
+                return b ? stateProne : stateStand;
+        }
+        if (state == stateCrouch && seal->m_21c_bit2)
+            state = stateStand;
+    }
+    return state;
+}
+
+/* how fast the SEAL moves, standing, crouched or prone: 1 still, 2 under 20 units a second, 3 faster
+ * (1 in any other state; OVL2 0x58A820, new in SOCOM II -- Tick asks it) */
+extern "C" int func_0058A820(CZSealBody *seal)
+{
+    float v = seal->m_velM.x * seal->m_velM.x + seal->m_velM.y * seal->m_velM.y +
+              seal->m_velM.z * seal->m_velM.z;
+
+    switch (seal->m_state) {
+    case 0:
+    case 1:
+    case 2:
+        if (v < 0.25f)
+            return 1;
+        return v < 400.0f ? 2 : 3;
+    }
+    return 1;
+}
+
 /* an anim's push told to the network, for a SEAL this console plays: any anim, and anim 34 (OVL2
  * 0x588AB0, 0x588B40, new in SOCOM II; the unit's own functions inline them, no one calls the
  * copies) */
@@ -86,6 +134,30 @@ extern "C" void func_00588B40(CZSealBody *seal, int time)
 /* the first anim from the top blend (RTList<ACTIVE_ANIM>::Begin's copy in seal_anim.cpp's tail, OVL2
  * 0x5780E0) */
 extern "C" ACTIVE_ANIM *func_005780E0(CActiveAnimList *list);
+
+/* whether the SEAL may look about: always without a blend; never dead (8, the top blend's state too),
+ * nor in states 9 and 10; else as the last overlay of the top blend's first anim says (OVL2
+ * 0x587B40, new in SOCOM II) */
+extern "C" bool func_00587B40(CZSealBody *seal)
+{
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+
+    if (!top)
+        return true;
+    if (seal->m_state == 8 || top->m_state == 8)
+        return false;
+    if (seal->m_state == 9 || seal->m_state == 10)
+        return false;
+    bool r = false;
+
+    for (ACTIVE_ANIM *a = func_005780E0(&top->m_anims); a; a = a->m_overlay) {
+        if (a->m_anim->m_4a_5)
+            r = true;
+        else
+            r = false;
+    }
+    return r;
+}
 
 /* whether the last overlay of the top blend's first anim turns (OVL2 0x587E00, new in SOCOM II;
  * PreTick asks it -- each pass overwrites the answer) */
@@ -268,6 +340,76 @@ extern "C" bool func_0057F9C0(CZSealBody *seal)
     if (seal->m_state == 5 || top->m_state == 5)
         return false;
     return func_00589900(seal);
+}
+
+extern "C" {
+/* another anim type read as a variable (OVL1 data, -1 in the image) */
+extern short data_003DECA0;
+}
+
+/* a point and two values kept for a SEAL this console plays, cleared for a remote one; whether they
+ * were kept (OVL2 0x57ED10, new in SOCOM II: RemoteWeaponDamageVictim and three others call it) */
+extern "C" bool func_0057ED10(CZSealBody *seal, const CPnt3D *p, float a, float b)
+{
+    if (seal->IsRemote()) {
+        seal->m_1314 = CPnt3D::zero;
+        seal->m_1320 = 0.0f;
+        seal->m_1324 = 0.0f;
+        return false;
+    }
+    CPnt3D t = *p;
+
+    seal->m_1314 = t;
+    seal->m_1320 = a;
+    seal->m_1324 = b;
+    return true;
+}
+
+/* out of the anim of 0x3DECA0: the blends popped down to one, twelve at most, as 0x57F310 does, and
+ * that anim pushed; in it, only the top blend fetched (OVL2 0x580A80, new in SOCOM II) */
+extern "C" void func_00580A80(CZSealBody *seal)
+{
+    if (!seal->IsCurrentBlend((AnimType)data_003DECA0)) {
+        CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+        int n = 12;
+        CBodyAnimBlendStack *stack = &seal->m_blends;
+
+        while (BlendCount(stack) > 1 && n > 0) {
+            b = func_00589AA0(seal);
+            n--;
+        }
+        if (n <= 0)
+            b = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+        else {
+            if (b)
+                b->m_ctrl = 0;
+            seal->m_desiredStance = STANCE_PRONE;
+        }
+        func_00588BC0(seal, (AnimType)data_003DECA0, 0, 0, 0);
+    } else
+        func_00555170((char *)seal + 0x1c0);
+}
+
+/* the blends popped down to a count, twelve at most; when that worked and when asked, the top
+ * blend's control cleared and the SEAL asked to go prone (OVL2 0x58A5E0, new in SOCOM II: 0x57F310
+ * with the count and the flag its arguments) */
+extern "C" void func_0058A5E0(CZSealBody *seal, unsigned int count, bool prone)
+{
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+    int n = 12;
+    CBodyAnimBlendStack *stack = &seal->m_blends;
+
+    while (BlendCount(stack) > count && n > 0) {
+        b = func_00589AA0(seal);
+        n--;
+    }
+    if (n <= 0)
+        b = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+    else if (prone) {
+        if (b)
+            b->m_ctrl = 0;
+        seal->m_desiredStance = STANCE_PRONE;
+    }
 }
 
 /* whether a SEAL this console plays, out of the anim of 0x3DEAE0 and neither its state nor its top

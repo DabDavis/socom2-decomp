@@ -994,7 +994,8 @@ public:
     unsigned char m_21c_bit0 : 1;   // 0x21c
     unsigned char m_altitude_characters : 1;   // bit 1: SealGetAltitude hits characters too (SOCOM 1's
                                                // flag at 0xde8 bit 0; the name ours)
-    unsigned char _21c_bits : 6;
+    unsigned char m_21c_bit2 : 1;   // bit 2: a crouch 0x58A720 reports as a stand (the name ours)
+    unsigned char _21c_bits : 5;
     unsigned char _21d[0x22c - 0x21d];
     int m_22c;   // 0x22c: a time on the network's clock 0x5A8850 waits for (the names ours)
     unsigned char _230[0x240 - 0x230];
@@ -1123,7 +1124,12 @@ public:
     unsigned int m_ladder : 16;   // 0x1062
     unsigned char _1064[0x10d0 - 0x1064];
     float m_10d0;   // 0x10d0: set to 0.4 when the overlay plays out (0x579EF0)
-    unsigned char _10d4[0x1328 - 0x10d4];
+    unsigned char _10d4[0x1314 - 0x10d4];
+    /* a point and two values 0x57ED10 sets for a SEAL this console plays, clears for a remote one
+     * (the names ours) */
+    CPnt3D m_1314;   // 0x1314
+    float m_1320;   // 0x1320
+    float m_1324;   // 0x1324
     /* the SEAL's hold on a ladder: a flag, the ladder's index, a state (1 and 3 hold it) -- new in
      * SOCOM II (0x5B14E0 lets go of it; the names ours) */
     struct CSealClimb {
