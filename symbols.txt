@@ -7506,7 +7506,7 @@
 0x0039AD20 0x30 SkbUsbDigit__FPC9SKBUSBKEYi  # OVL1; ours (zui_skbkeys.cpp: the USB keyboard's digit row, HID usages 30-39 through the tables at 0x3FBA50 and, shifted, 0x3FBA80, typed through 0x399040; 0x38C630 calls it)
 0x0039AD50 0x30 SkbUsbPunct__FPC9SKBUSBKEYi  # OVL1; ours (zui_skbkeys.cpp: the USB keyboard's punctuation, HID usages 49-56 through the tables at 0x3FBA20 and, shifted, 0x3FB9F0, typed through 0x399040; 0x38C630 calls it)
 0x0039AD80 0x1C SkbUsbDash__FPC9SKBUSBKEYi  # OVL1; ours (zui_skbkeys.cpp: the USB keyboard's dash key -- '_' shifted (the key's word at 4), else '-' -- typed through 0x399040 with the second argument passed on; zui_skb.cpp's USB loop 0x38C630 calls it)
-0x0039ADA0 0xB0 func_0039ADA0  # OVL1
+0x0039ADA0 0xB0 SkbUsbLetter__FPC9SKBUSBKEYib  # OVL1; ours (zui_skbkeys.cpp: the USB keyboard's letters, HID usages 4-29 as 'a' + usage - 4: in Korean input (the third argument) the jamo of the letter, toupper'd when shifted, typed through 0x399200; else the letter cased by shift against caps lock (the word at 0x14) through 0x39A8D0 and typed through 0x399040; 0x38C630 calls it)
 0x0039AE50 0x378 func_0039AE50  # OVL1
 0x0039B1D0 0x17C func_0039B1D0  # OVL1
 0x0039B350 0x260 func_0039B350  # OVL1
