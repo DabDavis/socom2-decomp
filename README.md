@@ -1643,6 +1643,73 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the HUD, round 17** (st_mpexit.cpp's stat machinery, four static initialisers):
+  - a pointer-to-member constant passed by value to an inline is copied into a local (ld/lwc1 then
+    sd/swc1); `(p->*pfn)()` calls __ptmf_scall with t9 = &pfn; `pfn1 == pfn2` compiles to
+    `!__ptmf_cmpr(&pfn1, &pfn2)` (MAIN 0x1828E0, named);
+  - an array of pointer-to-members, even a const one, is initialised at run time by the unit's
+    initialiser (c_arrStatFuncs); the accessors it points at are emitted where their address is first
+    taken, in reverse of the array order;
+  - two short fields compared: load them into int locals first (`int a = s1.x, b = s2.x; if (a != b)
+    return a < b;`) -- compared straight, MW loads the right operand first;
+  - computed file statics defined in address order reproduce an initialiser exactly (scdiff compares
+    .data variables by content; the bss statics' order is the computation order);
+  - a walk starting on an element already examined is `for (;;) { it.Advance(); if (!it.More()) break;
+    ... }`;
+  - include/iostream holds the `__nInit`/`__wInit` objects ~40 initialisers build first; 0x219090
+    (~BitmapReticule) is a third draft-only false regression under `--files '^(?!auto/)'` (the unit's
+    span now reaches its initialiser); initialisers found: st_mpexit 0x3FE860, hud_bitmapreticule
+    0x3FE490, hud_ammo 0x3FF610, hud_mpinfobox 0x3FF680, hud_mpweaponsel 0x3FF7F0, hud_linemap 0x3FE190,
+    hud_actionbitmap 0x3FE550; 0x22EDB0-0x237xxx is SOCOM II's radio command menu (TCM, VOTE, MUTE).
+- **Tells from the weapons, round 9** (CZItemStash, CVehicle(), the vehicle initialisers, vis_vu.cpp):
+  - a class-iterator walk with a postfix `i++` gets its end hoisted into a preheader after the loop
+    (entered with a `b`, the entry test repeated there); `++i` re-reads the vector's data every pass
+    (CZItemStash::Count and Clear match with the postfix step);
+  - `if (i > Count()) return;` branches straight to the epilogue on `slt at`; `if (Count() >= i)
+    {...}` materialises the test and keeps a join;
+  - 1-bit fields set in a mem-initializer list are word read-mask-writes (`true` folded to `daddiu
+    1<<n`, `false` left as `(0 & 1) << n`); set in the body or through inline setters, MW narrows a
+    global's accesses to lbu/sb -- what fixed both vehicle initialisers (the debug masks);
+  - a pointer-vector slot read and cleared through the pod's data() reference keeps `&data_` in a
+    saved register across calls; operator[] reads data_ straight and keeps `this` (DereferenceDecals);
+  - a square taken into a local before a run of stores keeps its loads ahead of those stores;
+    `if (a == -1 || !b || !c) return;` gives the `bnez -> body; b exit` layout;
+  - ~CVehicle wants the cells as a vector subclass (a third this-test), which makes the region's
+    constructor six levels high and costs CVehicle's constructor -- the constructor kept;
+  - vis_vu.cpp (ours: 0x3B36F0?-0x3B7FDF, CVisual's decal and VU half, SOCOM 1's vis_main.cpp's first
+    half -- its stack destructor 0x3B7DB0 and initialiser 0x404570 suggest it may be the real
+    vis_main.cpp).
+- **Tells from the UI, round 7** (util_options.cpp, util_ssm.cpp, the HDD icon writers):
+  - a local bitfield struct cleared in the mem-initializer list gives the word-wide read-mask-write;
+    clearing it in the body narrows the stores to sb/sh;
+  - std::map's no-argument constructor passes a bare stack slot for the allocator: the allocator's
+    constructor has to be inline (0x3A2BE0 through an explicit inline specialisation for now);
+  - the reverse switch-test order holds for grouped cases: tests 4, 2, 3, 1 come from `case 1: case 3:
+    case 2: ... case 4:`;
+  - a type byte read again after a whole-word mask test reloads only through a byte member in a union;
+    `(unsigned char)word` reuses the word load with andi;
+  - `T *p; bool ok = false; p = argv[++i];` gives the target's scheduling where an initialised
+    declaration does not; `while ((bool)f() && ...)` gives the sltu/xori pair before the branch;
+  - a stack header can be larger than what is written (the PS2ICON3D header: 0x220 bytes, 0x200 written);
+  - a class's vtable is emitted where its only non-inline virtual is (CSimpleStateMachine::Start);
+    ~CSimpleStateMachine needed its queue in a class of its own for the fourth this-tested level;
+  - include/queue (std::queue: its default constructor copies a default container) and a general
+    deque<T> (buf_size 512 / sizeof(T)) are in; units: util_options.cpp 0x3A2510-0x3A30FF (the
+    start-up options, a map<string, OPTION_INFO>), util_ssm.cpp from 0x3A59D0, util_loc.cpp
+    (CLocTable).
+- **MW's saved-register order is a NUMBERING** (the task-handler lane's round 9, seal_tasks.cpp): not
+  interference degree or use counts -- adding 20 temporaries or 16 uses of a variable never moves
+  it. Variables are numbered parameters first, then the function's named locals in declaration
+  order, then inlined functions' named variables in expansion order, then temporaries; the highest
+  number gets s0; the first non-parameter variable read (a null test) moves to the end. A plain
+  pointer cast of a parameter (`T *cmd = (T *)hdr;`) makes a variable of its own, numbered just after
+  the parameters; the same cast through an inline (`template <class T> T *TaskCmd(...)`) makes it the
+  parameter's register. The 13 open task handlers want the block numbered where a variable declared
+  between the inlined find's counter and its list would be -- no C++ shape tried does that (the
+  variants are in taskFindParam's comment); tools/perm.py's best was 8 of 14. An inline Create()
+  whose member inline stores then calls keeps that member's `this` (cmd plus an offset) in a saved
+  register across the call; a byte-enum call result tested `!= 0`, declared uninitialised ahead of a
+  later flag, gives the andi before the branch (CTInState::Parse).
 - **Tells from the online lobby, round 7** (the room and ladder units, zNetMediusFile.cpp):
   - a function handed to std::transform by address becomes a direct, never-inlined `jal` with the
     element in a0 (DeleteRoom); a functor's operator() would have `this` in a0;
@@ -2424,7 +2491,7 @@ every hand-written unit (`--files '^(?!auto/)'`) before it is committed. A workt
 `extracted/` and `decomp/toolchains/` linked in from the main tree.
 
 `--files '^(?!auto/)'` leaves out the drafts, so a hand-written inline copy that only its draft
-matches reports as a regression there (0x32C5F0, ~CRdrArchiveList's copy, and 0x510080, OVL2's
+matches reports as a regression there (0x32C5F0, ~CRdrArchiveList's copy, 0x219090, ~BitmapReticule's, and 0x510080, OVL2's
 __list_imp destructor that seal_aistate.cpp's missing copy now reports "elsewhere" -- 0x29FF60 and
 0x2D02B0 match from hand source since the MSL headers' completion): rerun with that draft's file
 included before believing one.

@@ -55,7 +55,7 @@
 0x00182810 0x24 __register_global_object  # MAIN; s1:exact
 0x00182840 0x54 __initialize_cpp_rts  # MAIN; s1:align
 0x001828A0 0x40 __ptmf_scall  # MAIN; s1:callee
-0x001828E0 0x4C func_001828E0  # MAIN
+0x001828E0 0x4C __ptmf_cmpr  # MAIN; MW's C++ runtime (the HUD lane's round 17, vetted by the integrator: a pointer-to-member == compiles to !__ptmf_cmpr(&a, &b); the body compares the two PTMFs' three words and returns nonzero when they differ -- st_mpexit.cpp's SetFinalTeamTotalsUiVar calls it)
 0x00182930 0xA8 __DecodeUnsignedNumber__FPcPUi  # MAIN; s1:align
 0x001829E0 0xA8 __DecodeSignedNumber__FPcPi  # MAIN; s1:align
 0x00182A90 0x3C __end__catch  # MAIN; s1:callee
@@ -2002,13 +2002,13 @@
 0x002230B0 0x12C __ct__15CZPlayerMapItemFP7CEntity  # OVL1; s1:calls
 0x002231E0 0x3C UnInitStaticItems__15CZPlayerMapItemFv  # OVL1; s1:exact by hand (hud_playermapitem.cpp)
 0x00223220 0x6C InitStaticItems__15CZPlayerMapItemFv  # OVL1; s1:exact
-0x00223290 0x8 func_00223290  # OVL1
+0x00223290 0x8 LoadLibs__12CMPExitStateFv  # OVL1; by hand (the HUD lane, round 17): SOCOM 1's LoadLibs, 8 bytes and first in st_mpexit.cpp there too (0x3DCA80, before UnInit)
 0x002232A0 0x374 UnInit__12CMPExitStateFv  # OVL1; s1:vtable (CMPExitState's UnInit slot)
 0x00223620 0x60 __dt__11CMPExitMenuFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00223680 0x2EC Tick__12CMPExitStateFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00223970 0x79C Init__12CMPExitStateFv  # OVL1; s1:vtable (CMPExitState's Init slot)
 0x00224110 0xA4 __ct__12CMPExitStateFv  # OVL1; s1:calls (CGameState's then CMPExitState's vtable, "MPExitState", the splash library's name assigned; COurGame's constructor calls it)
-0x002241C0 0x48 func_002241C0  # OVL1
+0x002241C0 0x48 SetFinalStatsUiVars__Fv  # OVL1; by hand (the HUD lane, round 17): the name ours -- st_mpexit.cpp's MVP name/list and both sides' totals into UI variables ("MvpName", "GameSealsTotLbContents", "GameTerrsTotLbContents"); the network game calls it (0x27FF08)
 0x00224210 0x460 func_00224210  # OVL1
 0x00224670 0x578 func_00224670  # OVL1
 0x00224BF0 0x88 func_00224BF0  # OVL1
@@ -2016,19 +2016,19 @@
 0x00224D10 0x358 func_00224D10  # OVL1
 0x00225070 0x34C func_00225070  # OVL1
 0x002253C0 0x330 func_002253C0  # OVL1
-0x002256F0 0x304 func_002256F0  # OVL1
-0x00225A00 0x1C0 func_00225A00  # OVL1
-0x00225BC0 0x280 func_00225BC0  # OVL1
-0x00225E40 0x30 func_00225E40  # OVL1
-0x00225E70 0xA8 func_00225E70  # OVL1
-0x00225F20 0x8 func_00225F20  # OVL1
-0x00225F30 0xA8 func_00225F30  # OVL1
-0x00225FE0 0x8 func_00225FE0  # OVL1
-0x00225FF0 0x8 func_00225FF0  # OVL1
-0x00226000 0x8 func_00226000  # OVL1
-0x00226010 0x8 func_00226010  # OVL1
+0x002256F0 0x304 SetMvpUiVars__23@unnamed@st_mpexit_cpp@FPCcPCc  # OVL1; by hand (the HUD lane, round 17): the name ours -- the MVP (the living, counted SEAL first by CompareSeals over the game stats, SOCOM 1's TickMpStats' search) named with its clan tag ('[%s] %s') into one UI variable and its three c_arrStatFuncs totals into another; SetFinalStatsUiVars and Tick call it
+0x00225A00 0x1C0 SetPlayerStatsUiVar__23@unnamed@st_mpexit_cpp@FPCc  # OVL1; by hand (the HUD lane, round 17): the name ours -- the player's game stats (ftsGetPlayer's GetGameStats: the three totals, the hit percentage, five more counters) as a list of decimal strings in a temporary UI variable; Init calls it (SOCOM 1's SetMpStatUiVars built it with the rest)
+0x00225BC0 0x280 SetFinalTeamTotalsUiVar__23@unnamed@st_mpexit_cpp@FbPCc  # OVL1; by hand (the HUD lane, round 17): SOCOM 1's SetFinalTeamTotalsUiVar(bool, const char *) -- a CRdrEditor list of each c_arrStatFuncs total summed over a side's SEALs' game stats, added as a temporary UI variable; SOCOM II's three totals and the hit-percentage average
+0x00225E40 0x30 GetHitPct__10CSealStatsCFv  # OVL1; by hand (the HUD lane, round 17): SOCOM 1's GetHitPct (0.5 + 100 * the hit percentage, made an int); its copy follows SetFinalTeamTotalsUiVar, whose function-local static PTMF takes its address (0x3DC7A0)
+0x00225E70 0xA8 CompareGameSeals__23@unnamed@st_mpexit_cpp@FP10CZSealBodyP10CZSealBody  # OVL1; by hand (the HUD lane, round 17): SOCOM 1's CompareSeals (MVP score, then the name) over the game stats (PTMF 0x3DC790 = GetGameStats); the name ours; std::sort's comparator (0x224210)
+0x00225F20 0x8 GetGameStats__10CZSealBodyFv  # OVL1; by hand (the HUD lane, round 17): SOCOM 1's GetGameStats (this + its first CSealStats, m_mp_stats there); emitted for the PTMF constants 0x3DC790 and four more
+0x00225F30 0xA8 CompareRoundSeals__23@unnamed@st_mpexit_cpp@FP10CZSealBodyP10CZSealBody  # OVL1; by hand (the HUD lane, round 17): CompareGameSeals over the round stats (PTMF 0x3DC780 = GetRoundStats); the name ours
+0x00225FE0 0x8 GetRoundStats__10CZSealBodyFv  # OVL1; by hand (the HUD lane, round 17): SOCOM 1's GetRoundStats (this + its second CSealStats, m_stats there); emitted for the PTMF constants 0x3DC780 and four more
+0x00225FF0 0x8 GetDeaths__10CSealStatsCFv  # OVL1; by hand (the HUD lane, round 17): c_arrStatFuncs[2] (the initialiser's PTMF 0x3DC770); the unsigned short at 0x12 -- name after SOCOM 1's accessors, the field's meaning unproven
+0x00226000 0x8 GetKills__10CSealStatsCFv  # OVL1; by hand (the HUD lane, round 17): c_arrStatFuncs[1] (PTMF 0x3DC760); the unsigned short at 0xC -- name after SOCOM 1's GetKills (c_arrStatFuncs[0] there), the field's meaning unproven
+0x00226010 0x8 GetMvpScore__10CSealStatsCFv  # OVL1; by hand (the HUD lane, round 17): c_arrStatFuncs[0] (PTMF 0x3DC750); the short at 0x3C, SOCOM 1's m_sMvpScore -- the name ours
 0x00226020 0x24 GetReaderFileName__11CMPExitMenuFv  # OVL1; s1:calls
-0x00226050 0x8 func_00226050  # OVL1
+0x00226050 0x8 Slot14__11CMPExitMenuFv  # OVL1; by hand (the HUD lane, round 17): slot 5 of CMPExitMenu's vtable 0x4057B0, CGameMenu's SOCOM II slot (fts_state.h's Slot14) returning 0
 0x00226060 0x598 func_00226060  # OVL1
 0x00226600 0x1B4 func_00226600  # OVL1
 0x002267C0 0x1A0 func_002267C0  # OVL1
@@ -7548,11 +7548,11 @@
 0x0039CDC0 0x8 GetSize__7CFileIOCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0039CDD0 0x94 fwrite__7CFileIOFPCc  # OVL1; s1:align
 0x0039CE70 0xC SetErrorHandler__7CFileIOFPFi_v  # OVL1; ours (stores its argument to the handler fread, fwrite and fseek call with 2 on a failure when the file's flags have 2)
-0x0039CE80 0x194 func_0039CE80  # OVL1
+0x0039CE80 0x194 HddFindFiles__FPCcPviUi  # OVL1; ours (util_sonyio.cpp: the installed game's pfs0:RUN entries whose names hold the pattern, counted; the index-th one's header bytes from offset 20 copied out -- UIHardDriveOperation calls it twice)
 0x0039D020 0x24 func_0039D020  # OVL1
 0x0039D050 0x430 func_0039D050  # OVL1
-0x0039D480 0x1D0 func_0039D480  # OVL1
-0x0039D650 0x268 func_0039D650  # OVL1
+0x0039D480 0x1D0 WriteHddIcon__FPCc  # OVL1; ours (util_sonyio.cpp: the installed game's icon file -- a PS2ICON3D header of four offsets and sizes, then system.cnf and RUN/ICONS/HDD/'s icon.sys, list.ico and deleting.ico, each read by 0x39D650; the HDD install 0x39D050 calls it)
+0x0039D650 0x268 LoadHddIconFile__FPCcPCcP11HDDICONFILE  # OVL1; ours (util_sonyio.cpp: a file read whole through a local CFileIO into a 64-aligned buffer rounded up to 512 bytes, the buffer and size handed back, the size returned; WriteHddIcon reads its four files so)
 0x0039D8C0 0x44 func_0039D8C0  # OVL1
 0x0039D910 0x48 func_0039D910  # OVL1
 0x0039D960 0x334 Read__7CFileCDFPci  # OVL1; s1:calls
@@ -7637,17 +7637,17 @@
 0x003A22E0 0x90 __ct__8CMemCardFv  # OVL1; s1:calls
 0x003A2370 0x94 CRC32String__FPCc  # OVL1; ours (the string's CRC-32 over a table built on first use: 0xFFFFFFFF in, (crc >> 8) ^ table[(crc & 0xFF) ^ c], complemented out; 0 for no string -- docs/audio.md's crc32_string, the r0004 0x3C2BC0; no SOCOM 1 counterpart) -- util_crc.cpp
 0x003A2410 0x100 BuildCRCTable__Fv  # OVL1; ours (the CRC-32 table built once, the classic reflecting generator, polynomial 0x04C11DB7; static, called by CRC32String) -- util_crc.cpp
-0x003A2510 0x3A8 func_003A2510  # OVL1
-0x003A28C0 0x23C func_003A28C0  # OVL1
-0x003A2B00 0x7C func_003A2B00  # OVL1
-0x003A2B80 0x58 func_003A2B80  # OVL1
-0x003A2BE0 0x30 func_003A2BE0  # OVL1
-0x003A2C10 0x114 func_003A2C10  # OVL1
-0x003A2D30 0x24 func_003A2D30  # OVL1
-0x003A2D60 0x120 func_003A2D60  # OVL1; the IOP module table's map's find_or_insert (the MSL headers round 5: include/tree's, byte-exact as a probe over std::map<std::string, T> with T an 8-byte struct whose constructor zeroes both words, build/p/iop2.cpp in the MSL lane's worktree; T's name unknown, so the row waits for the unit)
-0x003A2E80 0xC0 func_003A2E80  # OVL1; the IOP module table's map's find<string> (the MSL headers round 5: byte-exact as a probe, build/p/iop2.cpp; std::string-keyed, the value type unnamed)
-0x003A2F40 0x20 func_003A2F40  # OVL1; the IOP module table's map's tree constructor (the MSL headers round 5: byte-exact as a probe, build/p/iop2.cpp)
-0x003A2F60 0x19C func_003A2F60  # OVL1; the IOP module table's map's insert_node_at (the MSL headers round 5: byte-exact as a probe, build/p/iop2.cpp -- the key std::string: a CSaferStr key cuts its construct to calls)
+0x003A2510 0x3A8 ParseCommandLine__FP10COptionMapiPPcUi  # OVL1; ours (util_options.cpp: the command line's words, dashes dropped, looked up in the option map -- an option's value the next word read by its type into a local _zrdr, "help" walks the map, else an rdr file of options; RebootIOP's ParseOptions calls it)
+0x003A28C0 0x23C ParseOptionList__FP10COptionMapP5_zrdr  # OVL1; ours (util_options.cpp: an rdr list of option names, each typed option's value the next item -- zrdr_isitemtype on its first element, or the whole list for type 4)
+0x003A2B00 0x7C AddOption__FP10COptionMapPCcPFRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>P5_zrdr_vUi  # OVL1; ours (util_options.cpp: main registers "menu_state" with its handler 0x1EACE0 and type 3; the flags get 0x200 unless 0x100 is set; the map's operator[] through a temporary name)
+0x003A2B80 0x58 ListOptions__FP10COptionMap  # OVL1; ours (util_options.cpp: the "help" word: an empty walk over the option map, its printing compiled out)
+0x003A2BE0 0x30 __ct__10COptionMapFv  # OVL1; ours (util_options.cpp: main news 16 bytes and calls it; std::map's no-argument constructor inlined, the tree built from two bare stack slots)
+0x003A2C10 0x114 ParseOptions__FUi  # OVL1; ours (util_options.cpp: CIOPManager::RebootIOP calls it twice; with 0x100 the command line alone, else it or the rdr file named by main, the source then cleared)
+0x003A2D30 0x24 SetOptionSource__FP10COptionMapiPPcPCc  # OVL1; ours (util_options.cpp: main hands over the map, argc, argv and "ftsxp.rdr")
+0x003A2D60 0x120 find_or_insert<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>__Q23std531__tree<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>,Q33std285map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>13value_compare,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>_RQ23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>  # OVL1; the IOP module table's map's find_or_insert (the MSL headers round 5: include/tree's, byte-exact as a probe over std::map<std::string, T> with T an 8-byte struct whose constructor zeroes both words, build/p/iop2.cpp in the MSL lane's worktree; T's name unknown, so the row waits for the unit); (include/tree: util_options.cpp's map<std::string, OPTION_INFO>, the MSL headers round 5's probe iop2.cpp; the value type named by the unit)
+0x003A2E80 0xC0 find<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>__Q23std531__tree<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>,Q33std285map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>13value_compare,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>_Q33std531__tree<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>,Q33std285map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>13value_compare,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>8iterator  # OVL1; the IOP module table's map's find<string> (the MSL headers round 5: byte-exact as a probe, build/p/iop2.cpp; std::string-keyed, the value type unnamed); (include/tree: util_options.cpp's map<std::string, OPTION_INFO>)
+0x003A2F40 0x20 __ct__Q23std531__tree<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>,Q33std285map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>13value_compare,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>FRCQ33std285map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>13value_compareRCQ23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>  # OVL1; the IOP module table's map's tree constructor (the MSL headers round 5: byte-exact as a probe, build/p/iop2.cpp); (include/tree: util_options.cpp's map<std::string, OPTION_INFO>, the tree built)
+0x003A2F60 0x19C insert_node_at__Q23std531__tree<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>,Q33std285map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>13value_compare,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>FPQ33std19__red_black_tree<1>9node_basebbRCQ23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>  # OVL1; the IOP module table's map's insert_node_at (the MSL headers round 5: byte-exact as a probe, build/p/iop2.cpp -- the key std::string: a CSaferStr key cuts its construct to calls); (include/tree: util_options.cpp's map<std::string, OPTION_INFO>)
 0x003A3100 0x1E4 func_003A3100  # OVL1
 0x003A32F0 0x194 func_003A32F0  # OVL1
 0x003A3490 0x230 func_003A3490  # OVL1
@@ -7660,7 +7660,7 @@
 0x003A3BE0 0x4F8 func_003A3BE0  # OVL1
 0x003A40E0 0x108 func_003A40E0  # OVL1
 0x003A41F0 0x1A4 func_003A41F0  # OVL1
-0x003A43A0 0xB8 func_003A43A0  # OVL1
+0x003A43A0 0xB8 Find__9CLocTableFi  # OVL1; ours (util_loc.cpp: a localised table's entry by id -- 0 out of 1..max (0x0), the last found (0x70), the first when the id is not past it, else the 12-byte entries walked; the manager's lookup 0x3A32F0 calls it)
 0x003A4460 0x44 func_003A4460  # OVL1
 0x003A44B0 0xA8 func_003A44B0  # OVL1
 0x003A4560 0x7B0 func_003A4560  # OVL1
@@ -7671,17 +7671,17 @@
 0x003A5500 0x2D8 func_003A5500  # OVL1
 0x003A57E0 0x1D8 func_003A57E0  # OVL1
 0x003A59C0 0x8 func_003A59C0  # OVL1
-0x003A59D0 0xA0 func_003A59D0  # OVL1
-0x003A5A70 0x70 func_003A5A70  # OVL1
-0x003A5AE0 0x3C func_003A5AE0  # OVL1
-0x003A5B20 0xF0 func_003A5B20  # OVL1
-0x003A5C10 0x20 func_003A5C10  # OVL1
-0x003A5C30 0x3C func_003A5C30  # OVL1
-0x003A5C70 0x40 func_003A5C70  # OVL1
-0x003A5CB0 0x8 func_003A5CB0  # OVL1
+0x003A59D0 0xA0 StartThread__19CSimpleStateMachineFii  # OVL1; ours (util_ssm.cpp: the machine run on a thread of its own -- the priority kept, the stack allocated once, the entry 0x3A5A70 and $gp handed to CreateThread, StartThread with the machine; returns true. The Medius server list and the DNAS machines call it)
+0x003A5A70 0x70 ThreadEntry__19CSimpleStateMachineFPv  # OVL1; ours (util_ssm.cpp: the thread's body -- Start through the vtable, then Step and RotateThreadReadyQueue until the done flag, the thread id cleared, ExitDeleteThread)
+0x003A5AE0 0x3C Start__19CSimpleStateMachineFv  # OVL1; ours (util_ssm.cpp: slot 0x8 of __vt__19CSimpleStateMachine 0x408240, the class's one non-inline virtual -- the idle state queued through SetState, the done flag cleared, false)
+0x003A5B20 0xF0 Step__19CSimpleStateMachineFv  # OVL1; ours (util_ssm.cpp: a queued state changed to -- the old one called with 2, the queue's front taken and popped, the new one called with 0 -- else the state called with 1; Tick and ThreadEntry call it)
+0x003A5C10 0x20 IsDone__19CSimpleStateMachineFv  # OVL1; ours (util_ssm.cpp: no thread and the done flag; the destructor inlines it)
+0x003A5C30 0x3C Tick__19CSimpleStateMachineFv  # OVL1; ours (util_ssm.cpp: a threaded machine's thread given the processor, else a Step)
+0x003A5C70 0x40 Finish__19CSimpleStateMachineFUc  # OVL1; ours (util_ssm.cpp: the finishing state, done once entered or ticked; its member pointer pooled at 0x3E07B8 for the destructor)
+0x003A5CB0 0x8 Idle__19CSimpleStateMachineFUc  # OVL1; ours (util_ssm.cpp: the idle state, empty; its member pointer pooled at 0x3E07C8 and 0x3E07D8)
 0x003A5CC0 0x108 __dt__19CSimpleStateMachineFv  # OVL1; by hand, the UI-commands lane's lead vetted (stores the same vtable first, drains the queue, frees 0x30, destroys the queue at 0x14 and deletes itself when its flag is positive: MW's destructor shape; the inlined ~CSMInitNetwork calls it with 0)
 0x003A5DD0 0x78 __ct__19CSimpleStateMachineFv  # OVL1; by hand, the UI-commands lane's lead vetted (stores __vt__19CSimpleStateMachine, 0x408240, before anything else and copy-builds the state queue at 0x14 from a temporary; UIInitNetwork calls it right after operator new(60))
-0x003A5E50 0x78 func_003A5E50  # OVL1
+0x003A5E50 0x78 __ct__Q23std91deque<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>FRCQ23std91deque<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>  # OVL1; (include/deque, util_ssm.cpp's queue: the deque<SSMState> copy constructor std::queue's default constructor runs on a default temporary; its chain mirrors the rdr lane's 0x333B30, open)
 0x003A5ED0 0xB0 func_003A5ED0  # OVL1
 0x003A5F80 0x5C func_003A5F80  # OVL1
 0x003A5FE0 0x5C func_003A5FE0  # OVL1
@@ -7696,7 +7696,7 @@
 0x003A63D0 0x18 func_003A63D0  # OVL1
 0x003A63F0 0x8 func_003A63F0  # OVL1
 0x003A6400 0x8 func_003A6400  # OVL1
-0x003A6410 0x28 func_003A6410  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
+0x003A6410 0x28 __ct__Q23std91deque<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>Fv  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); (include/deque, util_ssm.cpp's queue: deque<SSMState>'s default constructor, the temporary CSimpleStateMachine() builds)
 0x003A6440 0x30 func_003A6440  # OVL1
 0x003A6470 0x18 func_003A6470  # OVL1
 0x003A6490 0x27C func_003A6490  # OVL1
@@ -7707,15 +7707,15 @@
 0x003A6BC0 0x58 func_003A6BC0  # OVL1
 0x003A6C20 0x8 func_003A6C20  # OVL1
 0x003A6C30 0x8 func_003A6C30  # OVL1
-0x003A6C40 0xA8 func_003A6C40  # OVL1
+0x003A6C40 0xA8 pop_front__Q23std97__deque_imp<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>Fv  # OVL1; (include/deque, util_ssm.cpp's queue: __deque_imp::pop_front over 42-element blocks of member pointers -- 84 and 42 its constants; Step calls it)
 0x003A6CF0 0x16C func_003A6CF0  # OVL1
-0x003A6E60 0x138 func_003A6E60  # OVL1
-0x003A6FA0 0x88 func_003A6FA0  # OVL1
+0x003A6E60 0x138 __dt__Q23std97__deque_buf<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>Fv  # OVL1; (include/deque, util_ssm.cpp's queue: the block buffer's out-of-class destructor, called with 0 by ~CSimpleStateMachine and for CSimpleStateMachine()'s temporary)
+0x003A6FA0 0x88 clear__Q23std97__deque_imp<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>Fv  # OVL1; (include/deque, util_ssm.cpp's queue: __deque_imp::clear, two blocks kept and the start at 21)
 0x003A7030 0x164 func_003A7030  # OVL1
 0x003A71A0 0x20 Virtual60__7CTurretFP6CPnt3D  # OVL1; by hand (the wep lane: CTurret's vtable slot +0x60, an inline override's copy opening the unit -- the point at 0x380 copied out, true; CEntity's slot takes no parameter in zentity.h, the name follows its Virtual60); veh_turret.cpp; (zentity.h's slot +0x60 takes a CPnt3D * and returns bool since the entity lane's round 8)
 0x003A71C0 0x8 Virtual64__7CTurretFv  # OVL1; by hand (the wep lane: CTurret's vtable slot +0x64, an inline override's copy -- the node at 0x288); veh_turret.cpp
 0x003A71D0 0x20 Virtual68__7CTurretFP6CPnt3D  # OVL1; by hand (the wep lane: CTurret's vtable slot +0x68, an inline override's copy -- the point at 0x38C copied out, true); veh_turret.cpp
-0x003A71F0 0x138 func_003A71F0  # OVL1
+0x003A71F0 0x138 Remove__11CTurretListFP7CTurret  # OVL1; by hand (the wep lane: the turret list's remove -- std::remove over the pointer vector, its find inlined and remove_copy called (0x3AB9A0), then the pod erase of the tail 0x28B150; ~CTurret calls it with this; the name ours)
 0x003A7330 0x14 func_003A7330  # OVL1
 0x003A7350 0x134 func_003A7350  # OVL1
 0x003A7490 0x23C func_003A7490  # OVL1
@@ -7769,7 +7769,7 @@
 0x003AB5F0 0x2C4 __ct__10CTurretDefFv  # OVL1; by hand (the wep lane: the resize's temporary's constructor -- the bytes 0xE0/0xE1 255, the flags zeroed, the CAiTrigger at 0x13C built through 0x3AA920 and 0x3AA810, SOCOM 1's AI_PARAMS defaults at 0x154, the strings emptied; SOCOM 1's __ct__10CTurretDefFv also follows Parse); veh_turret.cpp
 0x003AB8C0 0xA4 resize__Q23std60__vector_imp<10CTurretDef,Q23std23allocator<10CTurretDef>,0>FUi  # OVL1; by hand (the wep lane: CTurretDefVector::Init's resize -- builds a CTurretDef temporary, then insert or erase, as SOCOM 1's resize__Q23std60__vector_imp<10CTurretDef,...>FUi); veh_turret.cpp
 0x003AB970 0x2C func_003AB970  # OVL1; the same words as _max<f>__2aiFRCfRCf_RCf (0x575c50) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
-0x003AB9A0 0x6C func_003AB9A0  # OVL1
+0x003AB9A0 0x6C remove_copy<Q33std54__vector_imp<P7CTurret,Q23std20allocator<P7CTurret>,1>8iterator,Q33std54__vector_imp<P7CTurret,Q23std20allocator<P7CTurret>,1>8iterator,P7CTurret>__3stdFQ33std54__vector_imp<P7CTurret,Q23std20allocator<P7CTurret>,1>8iteratorQ33std54__vector_imp<P7CTurret,Q23std20allocator<P7CTurret>,1>8iteratorQ33std54__vector_imp<P7CTurret,Q23std20allocator<P7CTurret>,1>8iteratorRCP7CTurret_Q33std54__vector_imp<P7CTurret,Q23std20allocator<P7CTurret>,1>8iterator  # OVL1; by hand (the wep lane: std::remove_copy over the turret list's iterators, by value with a hidden return slot -- CTurretList::Remove's std::remove calls it; veh_turret.cpp's tail instance)
 0x003ABA10 0xC8 erase__Q23std60__vector_imp<10CTurretDef,Q23std23allocator<10CTurretDef>,0>FP10CTurretDefP10CTurretDef  # OVL1; by hand (the wep lane: the resize's erase, copying down through 0x3ABAE0); veh_turret.cpp
 0x003ABAE0 0x264 __copy<P10CTurretDef,P10CTurretDef>__3stdFP10CTurretDefP10CTurretDefP10CTurretDef_P10CTurretDef  # OVL1; by hand (the wep lane: include/algorithm's copy helper, the definition's assignment inlined but for the trigger's, 0x3ABD50); veh_turret.cpp
 0x003ABD50 0x38 __as__10CAiTriggerFRC10CAiTrigger  # OVL1; by hand (the wep lane: CAiTrigger's implicit assignment, six floats -- the copy, fill_n and copy_backward helpers call it out of line); veh_turret.cpp
@@ -7804,8 +7804,8 @@
 0x003AE750 0xA4 resize__Q23std62__vector_imp<11CVehicleDef,Q23std24allocator<11CVehicleDef>,0>FUi  # OVL1; by hand (the wep lane: CVehicleDefVector::Init calls it with half the VEHICLE list; include/vector's resize(n) over CVehicleDef's inline constructor is byte-exact -- the temporary's four string bytes and word zeroed at sp+16, then insert 0x3AF040, else erase 0x3AE800); veh_vehicle.cpp
 0x003AE800 0x840 erase__Q23std62__vector_imp<11CVehicleDef,Q23std24allocator<11CVehicleDef>,0>FP11CVehicleDefP11CVehicleDef  # OVL1; by hand (the wep lane: the resize's cut; include/vector's erase over CVehicleDef's implicit assignment -- four 32-byte strings copied bytewise, a byte, a word -- unrolled 8x, byte-exact); veh_vehicle.cpp
 0x003AF040 0xA54 insert__Q23std62__vector_imp<11CVehicleDef,Q23std24allocator<11CVehicleDef>,0>FP11CVehicleDefUiRC11CVehicleDef  # OVL1; by hand (the wep lane: the resize's growth -- n default-built definitions inserted at the end; include/vector's class insert, 8 bytes short: the in-place branch's end pointer register, as the header's other open inserts, and the temporary's destructor inlined where the unit's copy calls it); veh_vehicle.cpp
-0x003AFAA0 0x68 func_003AFAA0  # OVL1
-0x003AFB10 0x8 func_003AFB10  # OVL1
+0x003AFAA0 0x68 func_003AFAA0  # OVL1; veh_vehicle.cpp's tail copy of the CAiMapLoc deleter's destructor (OVL2 0x515200): ~CVehicle (0x3ACA60) calls it for its region's cells at 0x18C, three tests of the vector inlined ahead -- a vector subclass, as CAiMapLocVec (the wep lane); ovl-copy: __dt__Q23std58__vector_deleter<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>>Fv
+0x003AFB10 0x8 func_003AFB10  # OVL1; veh_vehicle.cpp's tail copy of the CAiMapLoc deleter's clear (OVL2 0x5151F0), which 0x3AFAA0 calls (the wep lane); ovl-copy: clear__Q23std58__vector_deleter<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>>Fv
 0x003AFB20 0x80 __dt__17CVehicleDefVectorFv  # OVL1; by hand (the wep lane: the initialiser 0x4043A0 registers it for m_vehicle_def at 0x4A4138; the implicit destructor, its four levels inlined -- veh_vehicle.cpp's copy is byte-exact); veh_vehicle.cpp
 0x003AFBA0 0x3C func_003AFBA0  # OVL1
 0x003AFBE0 0x164 Brightness__6CVideoFf  # OVL1; s1:calls (the brightness tuner tail-calls it; SOCOM 1's head word for word: 0.5 compared with the argument, 128 stored) -- the UI-widgets lane
@@ -8245,9 +8245,9 @@
 0x003CB600 0x1E0 Init__12CZProjectileFv  # OVL1; by hand (the wep lane: CZProjectile's constructor calls it between the owner's store and the extension's SetProjectile -- SOCOM 1's constructor's inline stores (rotation 0, time 9999999, the flags, handles -1, flyout index 1), with SOCOM II's members; the name ours)
 0x003CB7E0 0xC0 __dt__12CZProjectileFv  # OVL1; s1:align, checked by hand (stores __vt__12CZProjectile, cleans up; PlacedExplosive's destructor calls it as its base's)
 0x003CB8A0 0x50 __ct__12CZProjectileFv  # OVL1; s1:calls by hand (the wep lane: stores __vt__12CZProjectile first; PlacedExplosive's constructor calls it before storing its own table, as SOCOM 1's calls CZProjectile's constructor)
-0x003CB8F0 0x240 func_003CB8F0  # OVL1
-0x003CBB30 0x12C func_003CBB30  # OVL1
-0x003CBC60 0x188 func_003CBC60  # OVL1
+0x003CB8F0 0x240 GetNumExplosives__16CZProjectileListFi  # OVL1; by hand (the wep lane: CZProjectileList's -- counts a shooter's charges and used slots whose weapon's GetIDType is 121, 151, 171 or 185, -1 without slots or with none used; OVL2's kit 0x5C0AE0 calls it; the name ours)
+0x003CBB30 0x12C Dump__16CZProjectileListFv  # OVL1; by hand (the wep lane: CZProjectileList's -- every charge's and every used slot's weapon GetName called and dropped, a debug dump with its output compiled out; 0x2AB3F0 calls it; the name ours)
+0x003CBC60 0x188 RemoveExplosivesInRange__16CZProjectileListFPC6CPnt3Df  # OVL1; by hand (the wep lane: CZProjectileList's -- walks m_explosives at +4 with an iterator in memory, erases through the pod erase 0x28F220 every charge of item 152 within the range, squared, of the point, after setting grenade state 3, reporting it, destroying its pickup and unlisting it from CZWeapon::m_placedExplosives, as Clear does; CZWeapon's wrapper 0x3CFFB0 tail-calls it; the name ours)
 0x003CBDF0 0x188 AcquireProjectile__16CZProjectileListFR8CZWeaponR6CZAmmo  # OVL1; s1:align, checked by hand (directly before ReleaseIndirectFireDI, CZProjectileList's first function as in SOCOM 1)
 0x003CBF80 0x38 ReleaseIndirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi  # OVL1; s1:exact
 0x003CBFC0 0xE8 GetNextIndirectFireDI__16CZProjectileListFPPQ23zdb11DiIntersectPi  # OVL1; s1:order by hand (SOCOM 1's, before ReleaseIndirectFireDI: the first free indirect-fire intersection handed out and marked used, the next free found; SOCOM II also clears its bit 19 and its mask)
@@ -8497,20 +8497,20 @@
 0x003FDE80 0x308 func_003FDE80  # OVL1 data area; a static initialiser
 0x003FE190 0x2B4 func_003FE190  # OVL1 data area; a static initialiser
 0x003FE450 0x34 __sinit_hud_mapcompass.cpp  # OVL1 data area; a static initialiser; hud_mapcompass.cpp by hand (it builds navpoint_vec, this unit's global, and registers its destructor)
-0x003FE490 0x64 func_003FE490  # OVL1 data area; a static initialiser
+0x003FE490 0x64 __sinit_hud_bitmapreticule.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 17): hud_bitmapreticule.cpp's initialiser (between hud_mapcompass.cpp's and hud_weaponsel.cpp's, as the code): SOCOM 1's color_base (86, 63, 27), then two CPnt3D colours of SOCOM II's that 0x215C10 reads (24, 200, 44 and 24, 24, 24)
 0x003FE500 0x48 __sinit_hud_weaponsel.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 16): hud_weaponsel.cpp's static initialiser (between hud_linemap.cpp's 0x3FE190 and hud_actionbitmap.cpp's 0x3FE550, the units' link order) -- it sets the selector's three layout floats (0x3E4A90/98/A0) from the HUD's bottom block, which CWeaponSel's Init, AfterOpenSecond, OnOpen and CheckHotSwap read
 0x003FE550 0x1B0 func_003FE550  # OVL1 data area; a static initialiser
 0x003FE700 0xEC __sinit_hud_teamnames.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 16): hud_teamnames.cpp's static initialiser -- it builds and registers the unit's two bracket strings and two dividers (0x40D7A0, 0x40D850, 0x40D900, 0x40D990) and sets the dividers' line (0x3E4F60), which the unit's Init and SetOpacity read
 0x003FE7F0 0x64 __sinit_hud_playermapitem.cpp  # OVL1 data area; a static initialiser; s1~ zanim_anim.cpp (shape 0.46, a hint); hud_playermapitem.cpp by hand (it constructs CZPlayerMapItem::m_ablestring and m_bravostring, this unit's statics, and registers their destructors)
-0x003FE860 0xD4 func_003FE860  # OVL1 data area; a static initialiser
+0x003FE860 0xD4 __sinit_st_mpexit.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 17): st_mpexit.cpp's initialiser (between hud_playermapitem.cpp's and hud_teammatenames.cpp's, as the code): <iostream>'s two init objects, then c_arrStatFuncs' three PTMFs copied in -- SOCOM 1's __sinit_st_mpexit.cpp alike (six PTMFs and a CSTable there)
 0x003FE940 0x34 __sinit_hud_teammatenames.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 16): hud_teammatenames.cpp's static initialiser (between hud_playermapitem.cpp's 0x3FE7F0 and hud_scorepopup.cpp's 0x3FE980) -- it halves the unit's two bitmap sizes (0x3DC868, 0x3DC870, 32 each) into 0x40DBD0 and 0x40DBD8, which CMPTeammateNames::Tick reads
 0x003FE980 0x9D0 func_003FE980  # OVL1 data area; a static initialiser
 0x003FF350 0x64 func_003FF350  # OVL1 data area; a static initialiser
 0x003FF3C0 0x64 func_003FF3C0  # OVL1 data area; a static initialiser
 0x003FF430 0x70 func_003FF430  # OVL1 data area; a static initialiser
 0x003FF4A0 0x168 func_003FF4A0  # OVL1 data area; a static initialiser
-0x003FF610 0x64 func_003FF610  # OVL1 data area; a static initialiser
-0x003FF680 0x124 func_003FF680  # OVL1 data area; a static initialiser
+0x003FF610 0x64 __sinit_hud_ammo.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 17): hud_ammo.cpp's initialiser (between the radio menu's 0x3FF4A0 and hud_mpinfobox.cpp's 0x3FF680, as the code): its four bss floats computed off s_polyy and s_ammox (s_texty, s_magx, s_magy, s_bitmapy)
+0x003FF680 0x124 __sinit_hud_mpinfobox.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 17): hud_mpinfobox.cpp's initialiser (between hud_ammo.cpp's and 0x3FF7B0, as the code): thirteen bss floats of the box's places computed off its data variables, in their order
 0x003FF7B0 0x3C func_003FF7B0  # OVL1 data area; a static initialiser; s1~ si_object.cpp (shape 0.45, a hint)
 0x003FF7F0 0x1D0 func_003FF7F0  # OVL1 data area; a static initialiser
 0x003FF9C0 0x88 __sinit_hud_healthbar.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane: hud_healthbar.cpp's initialiser -- it builds the bar's five colours, 0x4148B0-0x4148F0, which only CHealthBar's functions read)

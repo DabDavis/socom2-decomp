@@ -4,12 +4,13 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK SetOptionSource__FP10COptionMapiPPcPCc(s32, s32, s32, M2C_UNK *); /* extern */
+s32 __ct__10COptionMapFv(s32);                      /* extern */
 s32 __nw__FUi(M2C_UNK);                             /* extern */
 M2C_UNK func_003A2B00(s32, M2C_UNK *, M2C_UNK *, M2C_UNK); /* extern */
-s32 func_003A2BE0(s32);                             /* extern */
-M2C_UNK func_003A2D30(s32, s32, s32, M2C_UNK *);    /* extern */
 extern M2C_UNK data_003E1E00;
 extern M2C_UNK data_003E1E10;
 extern s32 data_00408B80;
@@ -26,9 +27,9 @@ void func_001EABD0(s32 arg0, s32 arg1) {
     data_0045A1C8 = 1;
     var_v0 = __nw__FUi(0x10);
     if (var_v0 != 0) {
-        var_v0 = func_003A2BE0(var_v0);
+        var_v0 = __ct__10COptionMapFv(var_v0);
     }
     data_00408B80 = var_v0;
     func_003A2B00(var_v0, &data_003E1E00, &func_001EACE0, 3);
-    func_003A2D30(data_00408B80, arg0, arg1, &data_003E1E10);
+    SetOptionSource__FP10COptionMapiPPcPCc(data_00408B80, arg0, arg1, &data_003E1E10);
 }

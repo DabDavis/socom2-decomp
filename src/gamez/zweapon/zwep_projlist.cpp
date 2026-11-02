@@ -1,7 +1,8 @@
 /* zwep_projlist.cpp -- CZProjectileList, the projectiles in flight: OVL1 0x3CB8F0?-0x3CDA2F, after
  * zwep_projectile.cpp's CZProjectile and before ZWepReader, as SOCOM 1's (0x31A4E0-0x31B91F in the
  * demo). SOCOM 1 gives the unit no static initialiser and no assert, so the file name is ours.
- * Only the intersection tables so far. Defined in reverse of their image order. */
+ * SOCOM II adds three functions after AcquireProjectile (0x3CB8F0-0x3CBDEF: GetNumExplosives, Dump,
+ * RemoveExplosivesInRange), the unit's last-defined. Defined in reverse of their image order. */
 
 #include "../znode/node_world.h"
 #include "zweapon.h"
@@ -350,4 +351,95 @@ CZProjectile *CZProjectileList::AcquireProjectile(CZWeapon &weapon, CZAmmo &ammo
         p->SetAmmo(&ammo);
     }
     return p;
+}
+
+/* item 152's charges within the range of the point: each set to explode, reported, its pickup
+ * destroyed, unlisted, deleted and erased (SOCOM II's; the name ours) */
+void CZProjectileList::RemoveExplosivesInRange(const CPnt3D *pos, float range)
+{
+    float range2 = range * range;
+    std::vector<PlacedExplosive *>::iterator it;
+
+    for (it = m_explosives.begin(); it != m_explosives.end();) {
+        PlacedExplosive *e = *it;
+        CZWeapon *w = e->m_weapon;
+        CPnt3D d;
+
+        pos->Sub(&e->m_framestartpos, &d);
+        float dist2 = d.x * d.x + d.y * d.y + d.z * d.z;
+
+        if (w && w->GetId() == (EQUIP_ITEM)152 && dist2 < range2) {
+            (*it)->m_grenadestate = (GRENADE_STATE)3;
+            (*it)->ReportGrenadeStatus();
+            CPickup::Destroy(e->m_pickup);
+            e->m_weapon->GetName();
+            CZWeapon::m_placedExplosives.Remove(e);
+            delete e;
+            it = m_explosives.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
+
+/* every charge's weapon name, then every used slot's up to the last, fetched and dropped (SOCOM
+ * II's dump, its output compiled out; the name ours) */
+void CZProjectileList::Dump()
+{
+    for (std::vector<PlacedExplosive *>::iterator it = m_explosives.begin(); it != m_explosives.end(); ++it) {
+        CZWeapon *w = *it ? (*it)->m_weapon : 0;
+
+        if (w)
+            w->GetName();
+    }
+
+    int i;
+    int last = m_lastused;
+
+    if (last == -1 || !m_projectiles || !m_used)
+        return;
+    for (i = 0; i <= last; i++) {
+        if (m_used[i] == 1 && m_projectiles[i].m_weapon)
+            m_projectiles[i].m_weapon->GetName();
+    }
+}
+
+/* the shooter's grenades and charges, among the charges and the used slots up to the last (SOCOM
+ * II's; the name ours) */
+int CZProjectileList::GetNumExplosives(int shooter)
+{
+    if (!m_used)
+        return -1;
+    if (!m_projectiles)
+        return -1;
+
+    int n = 0;
+
+    for (std::vector<PlacedExplosive *>::iterator it = m_explosives.begin(); it != m_explosives.end(); ++it) {
+        PlacedExplosive *e = *it;
+
+        if (e && shooter == e->m_shooterID) {
+            CZWeapon *w = e->m_weapon;
+
+            if (w && (w->GetIDType() == (EQUIP_ITEM)121 || w->GetIDType() == (EQUIP_ITEM)151 ||
+                      w->GetIDType() == (EQUIP_ITEM)171 || w->GetIDType() == (EQUIP_ITEM)185))
+                n++;
+        }
+    }
+
+    int i;
+    int last = m_lastused;
+
+    if (last == -1)
+        return -1;
+    for (i = 0; i <= last; i++) {
+        if (m_used[i] == 1 && shooter == m_projectiles[i].m_shooterID) {
+            CZWeapon *w = m_projectiles[i].m_weapon;
+
+            if (w && (w->GetIDType() == (EQUIP_ITEM)121 || w->GetIDType() == (EQUIP_ITEM)151 ||
+                      w->GetIDType() == (EQUIP_ITEM)171 || w->GetIDType() == (EQUIP_ITEM)185))
+                n++;
+        }
+    }
+    return n;
 }

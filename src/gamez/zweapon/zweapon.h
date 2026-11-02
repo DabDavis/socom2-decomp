@@ -762,6 +762,15 @@ public:
     /* the first free slot's projectile handed out: marked used, the next free found, its node
      * activated and the projectile initialised (SOCOM 1's, without the Init) */
     CZProjectile *GetNextFreeProjectile();
+    /* item 152's charges within a range of a point set to explode, reported and taken out (SOCOM
+     * II's: CZWeapon's wrapper 0x3CFFB0 hands it on; the name ours) */
+    void RemoveExplosivesInRange(const CPnt3D *pos, float range);
+    /* every charge's and every used slot's weapon name fetched and dropped -- a dump with its
+     * output compiled out (SOCOM II's; the name ours) */
+    void Dump();
+    /* a shooter's grenades and charges (item classes 121, 151, 171, 185) among the charges and the
+     * used slots; -1 without slots or with none used (SOCOM II's: the kit asks it; the name ours) */
+    int GetNumExplosives(int shooter);
     /* the first free slot after the first free, or -1 (inline: the name ours) */
     int NextFree()
     {
