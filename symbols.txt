@@ -10812,9 +10812,9 @@
 0x005A73C0 0xBC func_005A73C0  # OVL2
 0x005A7480 0xA0 func_005A7480  # OVL2
 0x005A7520 0xAC func_005A7520  # OVL2
-0x005A75D0 0xBC func_005A75D0  # OVL2
+0x005A75D0 0xBC ParentPistolToRThighAsGearCallback__FPvPv  # OVL2; s1:calls by hand (SOCOM 1's ParentPistolToRThighAsGearCallback__FPvPv 0x2986E0, after its RHand twin as here: m_pistol reparented to m_rthigh (0x318, SOCOM 1's 0x29c), then the pistol's gear part made through SetPartAsGear; stored by address by 0x588BC0 beside 0x5A7730)
 0x005A7690 0xA0 func_005A7690  # OVL2
-0x005A7730 0xAC func_005A7730  # OVL2
+0x005A7730 0xAC ParentPistolToRHandCallback__FPvPv  # OVL2; s1:calls by hand (SOCOM 1's ParentPistolToRHandCallback__FPvPv 0x2987B0, the same body: m_pistol (0x2d8 there, 0x354 here) reparented from its parent's node to m_rhand's (0x284/0x300), its address kept in s1 in both; SOCOM II makes it the body's pistol through CBody::SetBodyPart and clears its live bit -- an anim callback 0x588BC0 stores by address at +0x64 of an anim record, as SOCOM 1 hands its own to the anims)
 0x005A77E0 0xD8 func_005A77E0  # OVL2
 0x005A78C0 0x8 func_005A78C0  # OVL2
 0x005A78D0 0xA8 func_005A78D0  # OVL2

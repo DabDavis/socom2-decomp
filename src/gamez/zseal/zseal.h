@@ -1007,12 +1007,29 @@ public:
     float m_2e0;   // 0x2e0: the time step the overlay ticks by (0x579EF0; the names ours)
     float m_alt;   // 0x2e4 (SOCOM 1's 0xe98)
     CZBodyPart *m_root;   // 0x2e8 (SOCOM 1's 0x26c)
-    unsigned char _2ec[0x308 - 0x2ec];
+    /* the body's parts in SOCOM 1's order, 0x7c on (SOCOM 1's ParentPistolToRHandCallback reparents
+     * m_pistol, 0x2d8 there, to m_rhand, 0x284; OVL2 0x5A7730 does the same with 0x354 and 0x300) */
+    unsigned char _2ec[0x2fc - 0x2ec];
+    CZBodyPart *m_spinelo;   // 0x2fc (SOCOM 1's 0x280: the rifle's place on the back)
+    CZBodyPart *m_rhand;   // 0x300 (SOCOM 1's 0x284)
+    unsigned char _304[0x308 - 0x304];
     CZBodyPart *m_head;   // 0x308 (SOCOM 1's 0x28c, m_root + 0x20 in both: 0x57F150's ray starts above it)
-    unsigned char _30c[0x374 - 0x30c];
+    unsigned char _30c[0x318 - 0x30c];
+    CZBodyPart *m_rthigh;   // 0x318 (SOCOM 1's 0x29c: the pistol's holster)
+    unsigned char _31c[0x350 - 0x31c];
+    CZBodyPart *m_rifle;   // 0x350 (SOCOM 1's 0x2d4)
+    CZBodyPart *m_pistol;   // 0x354 (SOCOM 1's 0x2d8)
+    unsigned char _358[0x374 - 0x358];
     SEAL_STATE m_desiredState;   // 0x374 (SOCOM 1's 0x304; the HUD's pose bitmap reads it)
     SEAL_STANCE m_desiredStance;   // 0x375: the stance the AI asks for (0x5631B0; the name ours)
-    unsigned char _376[0x3b0 - 0x376];
+    unsigned char _376[0x390 - 0x376];
+    /* the rifle and the pistol worn as gear: the part SetPartAsGear makes of each and the gear (SOCOM
+     * 1's m_rifle_as_gear and m_pistol_as_gear were the gear alone; the part names ours) */
+    CZBodyPart *m_rifle_as_gear_part;   // 0x390
+    class CCharacterGear *m_rifle_as_gear;   // 0x394
+    CZBodyPart *m_pistol_as_gear_part;   // 0x398
+    class CCharacterGear *m_pistol_as_gear;   // 0x39c
+    unsigned char _3a0[0x3b0 - 0x3a0];
     void *m_select;   // 0x3b0: a TASK_SELECT (SOCOM 1's 0x318), the AI's tasks' argument
     unsigned char _3b4[0x400 - 0x3b4];
     zdb::IntersectStruct m_last_altitude;   // 0x400 (SOCOM 1's 0x320)
