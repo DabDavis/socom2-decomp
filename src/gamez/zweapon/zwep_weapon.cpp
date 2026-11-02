@@ -553,6 +553,59 @@ void CZDecalSet::ReadDecalEntry(_zrdr *entry)
         CWorld::m_world->AddTextureAssetDecals(tex);
 }
 
+/* an item's name: the weapon list's, or "falling damage" for the fall's id 253 (SOCOM 1's, which
+ * had no fall) */
+char *CZWeapon::GetWeaponName(EQUIP_ITEM id)
+{
+    if (id == 253)
+        return "falling damage";
+    return m_listWeapons.GetWeaponName(id);
+}
+
+/* a class's display name, "UNKNOWN" for none (new in SOCOM II; the name ours). The case tests run
+ * in reverse source order, 254 and 255 first */
+const char *CZWeapon::GetIDTypeName(EQUIP_ITEM type)
+{
+    switch (type) {
+    case 4:
+        return "PISTOLS";
+    case 31:
+        return "SMGS";
+    case 51:
+        return "ASSAULT RIFLES";
+    case 81:
+        return "SHOTGUNS";
+    case 91:
+        return "MACHINE GUNS";
+    case 101:
+        return "SNIPER RIFLES";
+    case 121:
+        return "GRENADES";
+    case 141:
+        return "HEAVY WEAPONS";
+    case 145:
+        return "LAUNCHERS";
+    case 151:
+        return "EXPLOSIVES";
+    case 171:
+        return "LAUNCHED";
+    case 185:
+        return "MISSILE";
+    case 190:
+        return "MISC EQUIP";
+    case 201:
+        return "ARMOR";
+    case 205:
+        return "TURRETED WEAPONS";
+    case 230:
+        return "TURRETED LAUNCHERS";
+    case 255:
+    case 254:
+    default:
+        return "UNKNOWN";
+    }
+}
+
 /* the marks let go of, the decal tables freed, both decal pools' arrays deleted and the mesh decal
  * pools emptied (SOCOM 1's, the file and line dropped) */
 void CZMarkList::UnInit()

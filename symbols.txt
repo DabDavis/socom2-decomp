@@ -8324,8 +8324,8 @@
 0x003D13A0 0x220 ReadDecalNames__10CZMarkListFPc  # OVL1; s1:align
 0x003D15C0 0xE8 UnInit__10CZMarkListFv  # OVL1; s1:align
 0x003D16B0 0x120 Init__10CZMarkListFv  # OVL1; s1:align
-0x003D17D0 0x1D0 func_003D17D0  # OVL1
-0x003D19A0 0x3C func_003D19A0  # OVL1; tu: zwep_weapon.cpp~ (1.0 beta)
+0x003D17D0 0x1D0 GetIDTypeName__8CZWeaponF10EQUIP_ITEM  # OVL1; by hand (the wep lane: a switch over GetIDType's classes 4..230 returning PISTOLS, SMGS, ASSAULT RIFLES .. TURRETED LAUNCHERS, UNKNOWN otherwise -- new in SOCOM II before GetWeaponName, called by 0x23D860; the name ours)
+0x003D19A0 0x3C GetWeaponName__8CZWeaponF10EQUIP_ITEM  # OVL1; tu: zwep_weapon.cpp~ (1.0 beta); s1:order (SOCOM 1's CZWeapon::GetWeaponName 0x31E140, right before GetWeaponId(const char *) in both builds: the weapon list's name, SOCOM II answering "falling damage" for the fall's id 253 first; byte-exact from zwep_weapon.cpp, the wep lane)
 0x003D19E0 0x78 GetWeaponId__8CZWeaponFPCc  # OVL1; s1:calls
 0x003D1A60 0x210 GetIDType__8CZWeaponF10EQUIP_ITEM  # OVL1; s1:order by hand (SOCOM 1's: the item's class from its range of ids)
 0x003D1C70 0x1C PackItemAndAmmoEnums__8CZWeaponF10EQUIP_ITEM10EQUIP_AMMO  # OVL1; s1:order by hand (SOCOM 1's: the item byte shifted over the ammo byte, a halfword; right before UnpackItemAndAmmoEnums as in SOCOM 1)

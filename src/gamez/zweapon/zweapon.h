@@ -180,6 +180,11 @@ public:
     /* the first class, the sidearms (SOCOM 1's, right before IsPrimary in both builds: its class 0,
      * SOCOM II's 4 -- 0x3D1CE0) */
     static bool IsSecondary(EQUIP_ITEM id);
+    /* an item's name, the fall's (253) "falling damage" (SOCOM 1's static, 0x3D19A0) */
+    static char *GetWeaponName(EQUIP_ITEM id);
+    /* a class's display name, "PISTOLS" .. "TURRETED LAUNCHERS" or "UNKNOWN" (new in SOCOM II,
+     * 0x3D17D0; the name ours) */
+    static const char *GetIDTypeName(EQUIP_ITEM type);
     bool IsDirectFire();
     EQUIP_AMMO GetDefaultAmmoId();
     CZAmmo *GetDefaultAmmo();
