@@ -2837,7 +2837,8 @@ flag set, every function it defines scored; the probes are `build/scratch/gcc/p*
 | MAIN 0x18DB90-0x191410, 0x1A13D0-0x1AD088, 0x1B3970-0x1C4CC0, 0x1CCD78-0x1CE2A4 | Sony's SDK 2.7: libcdvd, libdma, libgraph, libipu, libkernl, libmc, libmpeg, libmrpc, libpad2, libscf, libvu0 ... | `ee-gcc2.9-991111-01-dtls13010` `-O2 -G0` (991111 compiles their C the same) | libvu0's inline asm: 32 of 32 only under the dtls13010 build, whose GNU as fills the delay slots 991111's leaves empty and encodes vsqrt as 2.96's does not (below); `memclr` is byte-exact only under 2.9-ee-991111 and its -01, a and dtls rebuilds: 990721 lacks the short loop's nops (8s), every 2.95.x fills the delay slot (2), 2.96 misses by 4, 3.2 by 7; `sceDmaGetChan` is 12s under 2.96, `sceCdSearchFile` 6s |
 | MAIN 0x191410-0x1A13D0, 0x1AD088-0x1B3970 | newlib's libc, libgcc's fp-bit, libm: the toolchain's own runtime | `ee-gcc2.96` `-O2 -G0` | `atof`, `atol`: a sibling call under a frame it no longer needs (`sd ra; ...; ld ra; j strtol`) -- 2.96's; no 2.9x or 2.95.x makes a sibling call at all (6s, 5s) |
 | OVL1 0x1E7F58-0x1E8FD4 | the microphone input (`openmic`, `getsamples`, `Sid*`, over lgAud) and Sony's libezcnf/libezctl (1.0 beta) | `ee-gcc2.96` `-O2 -G0 -fno-strict-aliasing` | found 2026-11-02, the only run outside the first ranges that saves s-registers with `sd` and never `sq`; `closemic`, `SidClose` byte-exact under 2.96 only (every other toolchain 9-13 words off); `SidGetSamples` reloads its read position after storing through `out` -- byte-exact only without strict aliasing |
-| OVL1 0x2430F0-0x248350 | the recogniser's heap (`heap_*`), lgAud (the USB headset, liblgaud 1.08.002), SCEA's libnetb/inet | `ee-gcc2.96` `-O2 -G0` | `lgAudASync`, `sceBInetControl`, func_00246CE0: 2.96 only (2.9-991111 15s/10s/6s, 2.95.3-136 15s/6/6s, 3.2 11s/9s/=) |
+| OVL1 0x2430F0-0x243840 | the recogniser's heap (`heap_*`, ScanSoft's) | `ee-gcc2.96` `-O2 -G0` **`-funroll-loops`** (the unit carries the recogniser's `-fno-strict-aliasing` too, untold) | SearchFor's loop unrolled by four: byte-exact only with the flag (without: 50s) -- round 3a |
+| OVL1 0x243840-0x248350 | lgAud (the USB headset, liblgaud 1.08.002), SCEA's libnetb/inet | `ee-gcc2.96` `-O2 -G0` | `lgAudASync`, `sceBInetControl`, func_00246CE0: 2.96 only (2.9-991111 15s/10s/6s, 2.95.3-136 15s/6/6s, 3.2 11s/9s/=) |
 | OVL1 0x248350-0x256FD0 | Nellymoser's speech codec (SaseEncVad, SaseDec) | `ee-gcc2.96` **`-O2 -G8`** | five functions byte-exact only so: their scalars and float literals are `$gp`-relative (small data in MAIN's 0x1D5300-0x1D55C0, `.lit4`); at -G0 every one misses |
 | OVL2 0x4C5400-0x50DC50 | ScanSoft's speech recogniser (asrspi\*, casr\*, mtx\*) | `ee-gcc2.96` `-O2 -G0 -fno-strict-aliasing -funroll-loops` | the loop unrolling: ContextActivateParams (below, round 2b); `casrStoreSegmentation` keeps its `short` store above the load of the next node: byte-exact only without strict aliasing, and none of the library's drafts is lost by the flag; the sibling calls -- func_004CCC50, ConstructMel, func_004F7038 -- 2.96 only (every 2.9x and 2.95.x 5s-15s); its leaf functions do not tell 2.9x, 2.95.x and 2.96 apart. `mtxConstruct` makes no sibling call because 2.96 declines one where the return types differ |
 | OVL2 0x60FB50-0x64F720 | Medius, DME and the rt_\* libraries (SCEA) | `ee-gcc2.96` `-O2 -G0` | rt_comm_get_channel, rt_memory_register_callbacks, rt_msg_client_change_state, rt_msg_set_byte: all four only under 2.96 -O2 (2.9x 5/=/9s/6, 2.95.x 4/=/10s/5, 3.2 =/5/3/=); strict aliasing stays on -- two sibling drafts of one shape (0x61E7F0, 0x61E858) match only with it: thin, one shape |
@@ -2953,16 +2954,59 @@ newlib's libm objects `libm/s_copysign.c`, `s_isinf.c`, `s_isnan.c`, `sf_copysig
 its return's slot empty after the copy into v0). With the assembler units: 222 byte-exact of the 229
 functions written (154 of them assembler), four superseding drafts that matched (GetRomName, IsT10K, iSyncDCache, iInvalidDCache: `automatch.py --emit` drops them).
 
+**Round 3a** (2026-11-02, by hand): libkernl's last five C objects -- `sdk/tlbfunc.c` (18 of 19),
+`initsys.c` (9), `libosd.c` (6, the ExecPS2 patch), `exit.c` (9), `alarm.c` (5); OVL1's
+`ovl1/lgaud.c` (16: the RPC wrappers, PrepareForReboot, the async end callbacks), `ovl1/heap.c`
+(heap_GetVersion, SearchFor); newlib from newlib's own text -- `libc/strrchr.c`, `strstr.c`,
+`strcasecmp.c`, `strncasecmp.c`, `strtok_r.c`, `rand.c` (srand, rand), `abort.c`, `assert.c`, the
+eight reentrant syscall wrappers (`closer.c` ... `writer.c`) and `strtod.c` (strtod; strtof OPEN):
+86 functions byte-exact of 88 written. What they showed:
+
+- **A static several objects define is `NAME@UNIT` in the map** (`Copy@tlbfunc`, `kCopy@exit`):
+  libkernl links five objects with static `Copy`/`kCopy`/`setup`/`GetEntryAddress` syscall
+  wrappers. A GNU object's local function `NAME` scores as the row `NAME@UNIT` (UNIT the source's
+  stem) when the map has one (`scdiff.qualify_statics`; sccheck, ccsweep and scdiff apply it); a
+  static the map names once stays bare. Drafts spell such a row `func_<VA>` (`as=` renames them).
+  Proved: master's tree scores the same rows with master's tools and these, 5,108 hand-written and
+  843 GCC-draft rows.
+- **991111's sibling call is the void-context call's only**: `InitTLB() { if (...) InitTLB32MB();
+  else _InitTLB(); }` compiles to two `j`s, the target's `return InitTLB32MB(); return _InitTLB();`
+  to jals under the frame -- the opposite of 2.96, which tail-calls a returned call.
+- **A register variable lives across calls unsaved**: InitTLB32MB keeps its index in t9 across
+  every `_SetTLBEntry` (`register int i asm ("$25")`; GCC gives a pseudo a saved register), and
+  returns it shifted. The syscall wrappers are C: `asm volatile ("li $3, N\n\tsyscall")` in a body
+  with no return statement gives the stub's four words.
+- **An inline-asm function can end without its own delay slot**: libsif's sceSifWriteBackDCache
+  ends in its asm's `jr ra; nop` and then GCC's `jr ra`, whose slot is the next object's first word;
+  the seed had cut both words into 4-byte rows (merged back: the function is 0xB0, sceSifInitRpc
+  starts at 0x1A6368, both as the demo's).
+- **OVL1's heap is ScanSoft's** (the demo links it inside the recogniser): SearchFor's search is
+  unrolled by four, byte-exact only with `-funroll-loops` (-O2 -G0: 50s). automatch's GCC_RANGES give
+  it the recogniser's flags, and the recogniser's own range gains `-funroll-loops`.
+- **newlib compiles as written**: every newlib function written from newlib's source matched as it
+  stands, its R5900 short-loop nops GNU as's; `_read_r`'s `(_ssize_t)read(...)` cast (a long from an
+  int) is newlib's own and the target's extra move. The reent wrappers use the system layer's global
+  `errno` (0x1E6640), newlib undefining the macro there. `abort` ends at a noreturn `_exit` (crt0's,
+  `Exit(0)`), where the demo's older newlib loops back.
+- **Statement shapes the vendors used**: lgAud folds the reply's device bits in two statements
+  (`devicechanged &= ~2; devicechanged |= ...`; one expression swaps the registers) and assigns
+  through a test (`if ((*hint = devicechanged) == 1)`); libkernl's kFindAddress walks its parameter
+  itself (a local copy moves the early exit), supplement_crt0 sets its semaphores in field order.
+- **Open, diagnosed in place**: InitTLB32MB (5 words: the last loop's first EntryHi is computed after
+  the exit test in the target -- a giv's preheader -- and before it here), strtof (its delay slots are
+  empty in the target; -fno-delayed-branch, -O1 and -fno-schedule-insns2 do not reproduce it).
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
-FUNCTION` tries every order of a marked block). The rest of libkernl's C objects (the thread,
-TLB-setup, initsys/ExecPS2 and alarm objects, their static `Copy`/`setup`/`GetEntryAddress`
-syscall wrappers the map leaves as `s1~` placeholders), libgraph, libipu/libmpeg, libmc, the
-newlib stdio wrappers and libgcc's fp-bit are open. Still open: the strict-aliasing setting of the
-SDK, newlib, OVL1's heap/lgAud/libnetb and the codec (no function yet tells), the 991111 rebuilds
--01 and a (no probe separates them from 991111), and the generated tier's GCC near misses, not yet
-classified as amsurvey classified MW's.
+FUNCTION` tries every order of a marked block). libkernl's thread, tty/printf and SIF objects
+(sifcmd, sifrpc, the libmrpc copy), libgraph, libipu/libmpeg, libmc, libcdvd, the rest of libscf,
+newlib's stdio wrappers and libgcc's fp-bit are open, and in OVL1 lgAud's big calls (Init, Open,
+Read/Write, the mixer, the async reads), libnetb and the codec. automatch over OVL1's three library
+ranges (round 3a, `--max-size 0x400`) found nothing new: 298 tried, 0 hits. Still open: the
+strict-aliasing setting of the SDK, newlib, lgAud/libnetb and the codec (no function yet tells), the
+991111 rebuilds -01 and a (no probe separates them from 991111), and the generated tier's GCC near
+misses, not yet classified as amsurvey classified MW's.
 
 ### The recogniser and Medius by hand (round 2b)
 
