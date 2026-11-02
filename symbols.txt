@@ -9942,7 +9942,7 @@
 0x005434B0 0x1D0 func_005434B0  # OVL2
 0x00543680 0x150 func_00543680  # OVL2
 0x005437D0 0x160 TickHeartbeat__10CZSealBodyFv  # OVL2; s1:calls (SOCOM 1's TickHeartbeat__10CZSealBodyFv: Adrenaline's level into three bands at 0.33 and 0.66, the playing loop stopped and released and the band's loop played (CSnd slot 0xC with 0, 255) when the band changes, or one started when none plays -- SOCOM II tests the loop for null; first of the heartbeat stretch as SOCOM 1's) -- the SEAL lane, round 7
-0x00543930 0x150 func_00543930  # OVL2
+0x00543930 0x150 CheckProximityExplosives__10CZSealBodyFv  # OVL2; ours (new in SOCOM II; seal.cpp, after TickHeartbeat's predecessors): CZSealBody::Tick calls it; walks CZWeapon::m_placedExplosives by index (Count/Get), and a charge whose m_time is out (<= 0) within its CZAmmo's GetProximityDistance of the SEAL (the squared distance) gets RemoteDetonate and Remove -- the SEAL lane, round 9
 0x00543A80 0x4C StopAllHeartbeatSounds__10CZSealBodyFv  # OVL2; s1:calls (StopRumbler calls it where SOCOM 1's does; two Stop/ReleaseSoundInstance pairs as SOCOM 1's)
 0x00543AD0 0x64 CloseHeartbeatSounds__10CZSealBodyFv  # OVL2; s1:order by hand (SOCOM 1's CloseHeartbeatSounds__10CZSealBodyFv: StopAllHeartbeatSounds' body inlined, then the three loops at 0x44CE00 zeroed; between StopAllHeartbeatSounds and OpenHeartbeatSounds in both builds) -- the SEAL lane, round 7
 0x00543B40 0x50 OpenHeartbeatSounds__10CZSealBodyFv  # OVL2; tu: seal.cpp~ (1.0 beta); s1:exact
@@ -9982,7 +9982,7 @@
 0x005455D0 0x80 func_005455D0  # OVL2
 0x00545650 0xF8 func_00545650  # OVL2
 0x00545750 0x13C func_00545750  # OVL2; size 0x13C (the seed split it at 0x545800, the delay slot of its jal to 0x544D60: the rest runs on its saved s0-s3 and pops its 80-byte frame); the seed's cut (0x545800): jal target of OVL1's DNAS client, which calls DNAS.BIN loaded in the OVL2 slot (README)
-0x00545890 0x8 func_00545890  # OVL2
+0x00545890 0x8 GetStats__10CZSealBodyFv  # OVL2; ours (seal.cpp's stats stretch): the SEAL's address plus 0x58C, CZSealBody::m_stats (SOCOM 1's m_stats, right before m_accuracy); 0x545D80 calls it through the member pointer at 0x64FD38/0x64FD58 -- the SEAL lane, round 9
 0x005458A0 0x114 func_005458A0  # OVL2
 0x005459C0 0x64 func_005459C0  # OVL2
 0x00545A30 0xDC func_00545A30  # OVL2

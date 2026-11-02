@@ -9,6 +9,7 @@
 #include "../zanim/zanim.h"
 #include "../../ai/ai.h"
 #include "../zsnd/zsnd.h"
+#include "../zweapon/zweapon.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -49,15 +50,7 @@ extern "C" void *func_00555170(CIndexedArray *a)
     return a->m_data[a->m_index];
 }
 
-/* the SEAL's stats (SOCOM 1's DWARF: CSealStats, 0x54 bytes of ints; SOCOM II's counters are
- * unsigned shorts) -- only the counters the incrementers touch, by halfword */
-class CSealStats {
-public:
-    unsigned short m_count[0x3c / 2];   // 0x0
-    short m_score;   // 0x3c: the MVP score (SOCOM 1's m_sMvpScore, a short there too)
-    unsigned short m_count2[3];   // 0x3e
-    float m_hit_percent;   // 0x44 (SOCOM 1's 0x28)
-};
+/* the SEAL's stats, CSealStats, are zseal.h's (CZSealBody::m_stats) */
 
 CZSealBody *ftsGetPlayer();
 
@@ -196,19 +189,47 @@ extern "C" void func_00544CF0(CSealStats *s, const CZSealBody *seal)
         s->m_count[0x10 / 2]++;
 }
 
+/* the hit percentage made again from the hits and the shots (the counters converted as unsigned
+ * ints, the shots through a local) */
+static inline void UpdateHitPercent(CSealStats *s)
+{
+    unsigned int shots = s->m_count[8 / 2];
+
+    s->m_hit_percent = shots ? (float)(unsigned int)s->m_count[4 / 2] / (float)shots : 0.0f;
+}
+
 /* a hit: counted (a second count when the two share a team) and, when it counts, the hit
- * percentage made again from the hits and the shots (OVL2 0x5458A0; SOCOM 1's Hit by its shape --
- * the counters converted as unsigned ints) */
+ * percentage made again (OVL2 0x5458A0; SOCOM 1's Hit by its shape) */
 extern "C" void func_005458A0(CSealStats *s, const CZSealBody *seal, const CZSealBody *other)
 {
     s->m_count[4 / 2]++;
     if (other->m_team & seal->m_team)
         s->m_count[6 / 2]++;
-    if (StatCounts(seal)) {
-        unsigned int shots = s->m_count[8 / 2];
+    if (StatCounts(seal))
+        UpdateHitPercent(s);
+}
 
-        s->m_hit_percent = shots ? (float)(unsigned int)s->m_count[4 / 2] / (float)shots : 0.0f;
+/* a shot: counted, and offline a shot by someone off the player's team counted in the player's
+ * stats; when it counts, the hit percentage made again (OVL2 0x544FC0; SOCOM 1's Shot by its shape:
+ * a weapon's fire, 0x5BE9A0, calls it) */
+extern "C" void func_00544FC0(CSealStats *s, const CZSealBody *seal)
+{
+    s->m_count[8 / 2]++;
+    if (!theNetwork.m_9) {
+        /* (the player's team taken first: a local keeps its load ahead of the shooter's) */
+        unsigned int team = ftsGetPlayer()->m_team;
+
+        if (!(team & seal->m_team))
+            ftsGetPlayer()->m_stats.m_count[0xa / 2]++;
     }
+    if (StatCounts(seal))
+        UpdateHitPercent(s);
+}
+
+/* the SEAL's stats (OVL2 0x545890; the stats events' member pointer) */
+CSealStats *CZSealBody::GetStats()
+{
+    return &m_stats;
 }
 
 /* a kill: counted, the score up two and, for the local player in a squad whose order is 19, a
@@ -589,8 +610,8 @@ bool CZSealBody::ExecuteAction_CQBAttack(CZSealBody *victim)
 
         if (act) {
             if (m_animset != data_0044D400) {
-                m_5b8++;
-                m_5b0 += 2;
+                m_stats.m_count[0x2c / 2]++;
+                m_stats.m_count[0x24 / 2] += 2;
             }
             done = true;
         }
@@ -810,6 +831,34 @@ void CZSealBody::TickHeartbeat()
 
             m_heartbeat_curindex = index;
             m_heartbeat_sndisnt = inst;
+        }
+    }
+}
+
+/* the charges set down that the SEAL comes near set off: each one whose time has run out, within
+ * its ammunition's proximity distance of the SEAL, detonated and taken off the list (OVL2 0x543930,
+ * new in SOCOM II: Tick calls it; the name ours) */
+void CZSealBody::CheckProximityExplosives()
+{
+    /* (the charge declared first: MW's numbering gives it the register after this's) */
+    PlacedExplosive *pe;
+    CPlacedExplosiveList &list = CZWeapon::m_placedExplosives;
+    int n = list.Count();
+
+    for (int i = 0; i < n; i++) {
+        pe = list.Get(i);
+
+        if (pe->m_time <= 0.0f) {
+            CZAmmo *ammo = pe->m_ammo;
+            CPnt3D pos = pe->m_framestartpos;
+            CPnt3D d = pos - m_posW;
+
+            if (d.x * d.x + d.y * d.y + d.z * d.z < ammo->GetProximityDistance()) {
+                pe->RemoteDetonate();
+                list.Remove(pe);
+                i--;
+                n--;
+            }
         }
     }
 }

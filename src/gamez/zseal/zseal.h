@@ -755,6 +755,17 @@ public:
     float m_factor;   // 0x8 (Factor)
 };
 
+/* the SEAL's stats (SOCOM 1's DWARF: CSealStats, 0x54 bytes of ints; SOCOM II's counters are
+ * unsigned shorts, 0x48 bytes: CZSealBody's m_stats at 0x58C ends where m_accuracy starts) -- the
+ * counters by halfword offset, as the events step them (seal.cpp) */
+class CSealStats {
+public:
+    unsigned short m_count[0x3c / 2];   // 0x0
+    short m_score;   // 0x3c: the MVP score (SOCOM 1's m_sMvpScore, a short there too)
+    unsigned short m_count2[3];   // 0x3e
+    float m_hit_percent;   // 0x44 (SOCOM 1's 0x28)
+};
+
 /* the SEAL (SOCOM 1's DWARF: CZSealBody : CEntity, CBody, 0x1140 bytes; SOCOM II's CBody base at
  * 0x170, after its 0x170-byte CEntity, the SEAL's own members from 0x200 -- the constructor at
  * 0x553EA0 builds the CBody at 0x170 and stores the second table there) -- only what the written
@@ -775,6 +786,12 @@ public:
     /* a player's targets forgotten as seen (OVL2 0x544B60, new in SOCOM II: SetCurZoomState calls
      * it; the name ours) */
     void ResetTargetsSeen();
+    /* the SEAL's stats (OVL2 0x545890: the stats events reach a teammate's through it, by member
+     * pointer; the name ours) */
+    class CSealStats *GetStats();
+    /* the charges set down that the SEAL comes near set off (OVL2 0x543930, new in SOCOM II: Tick
+     * calls it; the name ours) */
+    void CheckProximityExplosives();
     /* thermal vision: the turret the SEAL works (the entity given, or its own at 0xEB8) if it is
      * one; whether the SEAL sees thermally -- the goggles (item 195) when it works nothing, the
      * turret's thermal scope when it works one; whether it works a turret with that scope; the
@@ -950,11 +967,10 @@ public:
     class AnimSet *m_animset;   // 0x528 (SOCOM 1's 0x45c)
     unsigned char _52c[0x534 - 0x52c];
     AnimType m_curblend;   // 0x534: the anim type on top of the blends (SOCOM 1's short at 0x464)
-    unsigned char _536[0x5b0 - 0x536];
-    unsigned short m_5b0;   // 0x5b0: two of the stats' counters (the CQB attack adds 2 and 1; the
-    unsigned char _5b2[0x5b8 - 0x5b2];   //  names ours)
-    unsigned short m_5b8;   // 0x5b8
-    unsigned char _5ba[0x5d4 - 0x5ba];
+    unsigned char _536[0x58c - 0x536];
+    /* (SOCOM 1's m_stats, 0x4c0, right before m_accuracy as here: the stats' events step its
+     * counters -- the CQB attack two of them -- and 0x545890 returns its address) */
+    CSealStats m_stats;   // 0x58c
     CAccuracy m_accuracy;   // 0x5d4 (SOCOM 1's 0x514: PerturbAimVector reads it)
     CZKit m_kit;   // 0x5e0 (SOCOM 1's 0x520)
     unsigned char _5e4[0xeb0 - 0x5e4];
