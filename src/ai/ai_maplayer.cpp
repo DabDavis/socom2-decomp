@@ -153,13 +153,45 @@ static bool _find_look(MAP_FLOODFILL_STRUCT &s, void *data)
     return r;
 }
 
+/* the cell with cover from the point, flooded out from the start toward it (SOCOM 1's; FindLookLoc's
+ * twin, the cover search's callback) */
+bool CAiMap::FindCoverLoc(const CAiMapLoc &loc, const CPnt3D *pos, CAiMapLoc &out, DIR &dir, int radius)
+{
+    CPnt3D d;
+    CPnt3D center;
+
+    if (!GetCellCenter(loc, &center))
+        return false;
+
+    pos->SubXZ(&center, &d);
+    d.y = 0.0f;
+    const CPnt3D &cd = d;
+    float len = sqrtf(cd.x * cd.x + cd.z * cd.z);
+
+    if (len != 0.0f) {
+        float inv = 1.0f / len;
+
+        d.x *= inv;
+        d.z *= inv;
+    }
+    dir = GetClosestDir(&d);
+    LOOK_DATA data;
+
+    data.m_loc = loc;
+    data.m_pos = *pos;
+    data.m_dist = len;
+    if (FloodFill(loc, dir, radius, _find_cover, &data)) {
+        out = data.m_loc;
+        return true;
+    }
+    return false;
+}
+
 /* the cell from which the point is seen, flooded out from the start toward it (SOCOM 1's; the
  * direction handed back is the start's toward the point). The direction declared ahead of the
- * centre: only so do their slots fall as the target's (sp+224, sp+208).
- * OPEN, right size, 17 instructions: the normalisation -- the target reads d.z again inside the
- * test (an inline length, not shared with the sum's load?) and computes both products before
- * either store, keeping d.x from the sum; this build keeps &d.z in v1 from the sum on. Compound
- * assignments, products into locals, z first and an inline normalize_xz(CPnt3D &) were tried */
+ * centre: only so do their slots fall as the target's (sp+224, sp+208). The length is summed
+ * through a const view of the difference: so MW does not share the sum's load of z with the
+ * scaling's (the target reads d.z again inside the test, d.x not), and the scaling compound */
 bool CAiMap::FindLookLoc(const CAiMapLoc &loc, const CPnt3D *pos, CAiMapLoc &out, DIR &dir, int radius)
 {
     CPnt3D d;
@@ -170,15 +202,14 @@ bool CAiMap::FindLookLoc(const CAiMapLoc &loc, const CPnt3D *pos, CAiMapLoc &out
 
     pos->SubXZ(&center, &d);
     d.y = 0.0f;
-    float len = sqrtf(d.x * d.x + d.z * d.z);
+    const CPnt3D &cd = d;
+    float len = sqrtf(cd.x * cd.x + cd.z * cd.z);
 
     if (len != 0.0f) {
         float inv = 1.0f / len;
-        float x = d.x * inv;
-        float z = d.z * inv;
 
-        d.x = x;
-        d.z = z;
+        d.x *= inv;
+        d.z *= inv;
     }
     dir = GetClosestDir(&d);
     LOOK_DATA data;
