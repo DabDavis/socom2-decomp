@@ -196,6 +196,10 @@ int ContextActivateParams(CONTEXT *dst, CONTEXT *c)
     return asrspi_SetParamList(dst->engine, list, n);
 }
 
+/* OPEN: the error translator (new since SOCOM 1: a 0x80CCxxxx code to the host's, through the
+ * {code, value} table at 0x656400 that ends at code 127). The target re-tests err == 0 after
+ * substituting 0x80CC007F for a foreign code (a jump back to the top) and walks the table from
+ * its second entry; this first shape is 26 words off and the size differs (0x84 against 0x80). */
 int func_004C6078(unsigned int err)
 {
     ERRMAP *m = data_00656400;
