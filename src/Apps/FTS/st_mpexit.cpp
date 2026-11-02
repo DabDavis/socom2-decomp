@@ -5,10 +5,14 @@
  * GetTimeInGameSec/GetTimeInRoundSec, GetGameStats/GetRoundStats, GetHitPct and the team totals'
  * three), the seal comparators, GetReaderFileName and std::sort's instance, which closes the unit.
  * Written: the initialiser, the comparators, the player's and the MVP's stat writers, the team
- * totals (open), SetFinalStatsUiVars, the accessors, LoadLibs and the constructor; still to write:
- * UnInit, Tick, Init, the stat lists 0x224210/0x224670 (std::sort's callers) and 0x224D10,
- * 0x225070, 0x2253C0, and std::sort<CZSealBody **, bool (*)(CZSealBody *, CZSealBody *)>
- * (0x226060). Defined in reverse of their image order (-inline deferred). */
+ * totals (open), SetFinalStatsUiVars, the accessors, LoadLibs and the constructor; SetStatLbUiVar
+ * (0x224210) with std::sort's instance over the vector's iterator (0x226060, __sort132 0x226600,
+ * __selection_sort 0x2267C0: the raw-pointer sort SOCOM 1 had would be 0x3B4 bytes, not 0x598),
+ * SetMpStatUiVars (0x224670, open) and CNetClock's two time accessors (0x224BF0/0x224C80). Still to
+ * write: UnInit, Tick (four more SetStatLbUiVar calls, PTMFs 0x3DC7B0-0x3DC7E0), Init, 0x224D10 (a
+ * SEAL's round result by the game's type, 1-5: the side tests, counts of each side's living SEALs),
+ * 0x225070 (the player's career record read (0x2F98F0), summed into and written back (0x2F96F0))
+ * and 0x2253C0. Defined in reverse of their image order (-inline deferred). */
 
 #include "fts_state.h"
 #include "../../gamez/zrdr/zrdr.h"
