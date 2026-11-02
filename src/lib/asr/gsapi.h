@@ -29,9 +29,16 @@ struct GSENGINE {
     int f100;                           /* +100 */
 };
 
+typedef struct SAFEH {                  /* a safe handle, passed by value */
+    int id;
+    int check;
+} SAFEH;
+
 typedef struct GSAPI {
     void *heap;                         /* +0 */
-    char pad4[20];
+    int heap_user;                      /* +4 */
+    SAFEH handle;                       /* +8: g_lhNullHandle until the engine is open */
+    char pad16[8];
     GSCALLBACK result;                  /* +24 */
     GSCALLBACK notify;                  /* +28 */
     int (*read_audio)(void *src, void *buf, int *count);   /* +32 */

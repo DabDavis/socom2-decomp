@@ -8641,8 +8641,8 @@
 0x004C64C8 0x104 func_004C64C8  # OVL2 unaligned
 0x004C65D0 0x144 gsapi_ContextActivate  # OVL2; s1:calls
 0x004C6718 0x120 gsapi_ContextDeActivate  # OVL2 unaligned; s1:calls
-0x004C6838 0x108 func_004C6838  # OVL2 unaligned
-0x004C6940 0x108 func_004C6940  # OVL2
+0x004C6838 0x108 gsapi_ContextDisableWords  # OVL2 unaligned; s1:callee (gsapi_ContextDisableAllWords calls it, as SOCOM 1's calls gsapi_ContextDisableWords)
+0x004C6940 0x108 gsapi_ContextEnableWords  # OVL2; s1:callee (gsapi_ContextEnableAllWords calls it with every word, as SOCOM 1's calls gsapi_ContextEnableWords)
 0x004C6A48 0x108 gsapi_ContextUnLoad  # OVL2 unaligned; s1:calls
 0x004C6B50 0x184 func_004C6B50  # OVL2; size 0x184 (the seed cut it at 0x4C6C28, a DNAS.BIN call target -- MAIN's and OVL1's DNAS clients call DNAS.BIN loaded in the OVL2 slot: one prologue, the rest running on its frame to the one epilogue; README)
 0x004C6CD8 0x1C0 func_004C6CD8  # OVL2 unaligned; size 0x1C0 (the seed cut it at 0x4C6DF0, a DNAS.BIN call target -- MAIN's and OVL1's DNAS clients call DNAS.BIN loaded in the OVL2 slot: one prologue, the rest running on its frame to the one epilogue; README)
@@ -8657,12 +8657,12 @@
 0x004C7948 0xFC gsapi_ContextLoadBuffer  # OVL2 unaligned; s1:calls
 0x004C7A48 0x8C func_004C7A48  # OVL2 unaligned
 0x004C7AD8 0x8C func_004C7AD8  # OVL2 unaligned
-0x004C7B68 0x28 func_004C7B68  # OVL2 unaligned
-0x004C7B90 0x28 func_004C7B90  # OVL2
-0x004C7BB8 0x104 func_004C7BB8  # OVL2 unaligned
-0x004C7CC0 0x104 func_004C7CC0  # OVL2
-0x004C7DC8 0x28 func_004C7DC8  # OVL2 unaligned
-0x004C7DF0 0x28 func_004C7DF0  # OVL2
+0x004C7B68 0x28 gsapi_ContextEnableAllWords  # OVL2 unaligned; s1:order (SOCOM 1's object at 0x337BC8, same position; enables every word through gsapi_ContextEnableWords as there)
+0x004C7B90 0x28 gsapi_ContextDisableAllWords  # OVL2; s1:order (SOCOM 1's object at 0x337BC8, same position; through gsapi_ContextDisableWords as there)
+0x004C7BB8 0x104 gsapi_EngineEnableWords  # OVL2 unaligned; s1:callee (gsapi_EngineEnableAllWords calls it, as SOCOM 1's calls gsapi_EngineEnableWords)
+0x004C7CC0 0x104 gsapi_EngineDisableWords  # OVL2; s1:callee (gsapi_EngineDisableAllWords calls it, as SOCOM 1's calls gsapi_EngineDisableWords)
+0x004C7DC8 0x28 gsapi_EngineEnableAllWords  # OVL2 unaligned; s1:order (SOCOM 1's object at 0x337BC8, same position; through gsapi_EngineEnableWords as there)
+0x004C7DF0 0x28 gsapi_EngineDisableAllWords  # OVL2; s1:order (SOCOM 1's object at 0x337BC8, same position; through gsapi_EngineDisableWords as there)
 0x004C7E18 0x118 func_004C7E18  # OVL2 unaligned
 0x004C7F30 0xC0 func_004C7F30  # OVL2
 0x004C7FF0 0x134 func_004C7FF0  # OVL2
@@ -8812,14 +8812,14 @@
 0x004DE2C0 0x34 casrGetActivatedContext  # OVL2; s1:align
 0x004DE2F8 0xC4 casrGetActivatedData  # OVL2 unaligned; s1:align
 0x004DE3C0 0xCC casrGetUserWordNbrRecsNeeded  # OVL2; s1:align
-0x004DE490 0x40 func_004DE490  # OVL2
-0x004DE4D0 0x40 func_004DE4D0  # OVL2
+0x004DE490 0x40 casrGetLastError  # OVL2; s1:order (SOCOM 1's casr object at 0x348248, same position; returns and clears the error at +52 behind the CASR_MAGIC check, as there)
+0x004DE4D0 0x40 casrGetLastWarning  # OVL2; s1:order (SOCOM 1's casr object at 0x348248, same position; returns and clears the warning at +56, as there)
 0x004DE510 0x60 casrGetSignalLevel  # OVL2; s1:align
 0x004DE570 0x80 casrGetSNR  # OVL2; s1:align
 0x004DE5F0 0x8 func_004DE5F0  # OVL2
 0x004DE5F8 0x5C casrGetState  # OVL2 unaligned; s1:align
-0x004DE658 0x60 func_004DE658  # OVL2 unaligned
-0x004DE6B8 0x54 func_004DE6B8  # OVL2 unaligned
+0x004DE658 0x60 casrImportContext  # OVL2 unaligned; s1:order (SOCOM 1's casr object at 0x348248, same position; wraps a type-6 context in an 8-byte heap_Alloc'd record, as there)
+0x004DE6B8 0x54 casrImportData  # OVL2 unaligned; s1:order (SOCOM 1's casr object at 0x348248, same position; the same record for data, as there)
 0x004DE710 0x1C0 func_004DE710  # OVL2
 0x004DE8D0 0x40 casrGetCallbackErr  # OVL2; s1:align
 0x004DE910 0x20 func_004DE910  # OVL2
@@ -9262,8 +9262,8 @@
 0x0050CBA0 0x40 func_0050CBA0  # OVL2
 0x0050CBE0 0x1BC func_0050CBE0  # OVL2
 0x0050CDA0 0x44 func_0050CDA0  # OVL2
-0x0050CDE8 0x58 func_0050CDE8  # OVL2 unaligned
-0x0050CE40 0x58 func_0050CE40  # OVL2
+0x0050CDE8 0x58 _tosErrorLog  # OVL2 unaligned; s1:order (SOCOM 1's tos object at 0x3759E8, after tosDestruct; the same body: keeps the first block<<16|code at +52, calls the callback at +32, returns the code as a byte; casrGetState calls it with 18 from the same instruction as SOCOM 1's)
+0x0050CE40 0x58 _tosWarningLog  # OVL2; s1:order (SOCOM 1's tos object at 0x3759E8, after _tosErrorLog; the same body over +56 and +36)
 0x0050CE98 0x118 func_0050CE98  # OVL2 unaligned
 0x0050CFB0 0x1CC func_0050CFB0  # OVL2
 0x0050D180 0x8 func_0050D180  # OVL2
@@ -9282,7 +9282,7 @@
 0x0050D8C0 0x8 func_0050D8C0  # OVL2
 0x0050D8C8 0x8 func_0050D8C8  # OVL2 unaligned
 0x0050D8D0 0x60 func_0050D8D0  # OVL2
-0x0050D930 0x34 func_0050D930  # OVL2
+0x0050D930 0x34 safeh_HandlesEqual  # OVL2; s1:exact-by-hand (SOCOM 1's safeh_HandlesEqual at 0x378040, the same 13 instructions; the gsapi guards compare g_lhNullHandle with it)
 0x0050D968 0x20 func_0050D968  # OVL2 unaligned
 0x0050D988 0x10 func_0050D988  # OVL2 unaligned
 0x0050D998 0x10 func_0050D998  # OVL2 unaligned
