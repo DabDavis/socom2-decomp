@@ -770,11 +770,90 @@ void CZWeapon::SetSoundDistance(unsigned char i, float d)
     m_sounddistance[i] = d * d;
 }
 
-/* CZItemStash (0x3CFB20-0x3CFF7F, its rows named): a 0x28-byte object of three parallel lists of
+/* the second timer (new in SOCOM II; its statics 0x4B52D8-0x4B52E8 and 0x3E1558) */
+float CZWeapon::m_timer2_maxval;
+float *CZWeapon::m_timer2_pCurval;
+bool CZWeapon::m_timer2_bTimerRegistered;
+bool CZWeapon::m_timer2_bIncrTimer = true;
+
+void CZWeapon::RegisterTimer2(float *pCurval, float maxval, bool bIncr)
+{
+    m_timer2_bIncrTimer = bIncr;
+    m_timer2_maxval = maxval;
+    m_timer2_pCurval = pCurval;
+    m_timer2_bTimerRegistered = true;
+}
+
+void CZWeapon::RetrieveTimer2Registration(float **pCurval, float *maxval, bool *bIncr)
+{
+    *bIncr = m_timer2_bIncrTimer;
+    *maxval = m_timer2_maxval;
+    *pCurval = m_timer2_pCurval;
+    m_timer2_bTimerRegistered = false;
+}
+
+bool CZWeapon::Timer2Registered()
+{
+    return m_timer2_bTimerRegistered;
+}
+
+/* the HUD's timer (SOCOM 1's statics, 0x4B52B8-0x4B52D0 and 0x3E1550) */
+float CZWeapon::m_timer_maxval;
+float *CZWeapon::m_timer_pCurval;
+bool CZWeapon::m_timer_bTimerRegistered;
+bool CZWeapon::m_timer_bTimerCleared;
+bool CZWeapon::m_timer_bIncrTimer = true;
+
+void CZWeapon::RegisterTimer(float *pCurval, float maxval, bool bIncr)
+{
+    m_timer_maxval = maxval;
+    m_timer_pCurval = pCurval;
+    m_timer_bTimerRegistered = true;
+    m_timer_bIncrTimer = bIncr;
+    m_timer_bTimerCleared = false;
+}
+
+void CZWeapon::RetrieveTimerRegistration(float **pCurval, float *maxval, bool *bIncr)
+{
+    *maxval = m_timer_maxval;
+    *bIncr = m_timer_bIncrTimer;
+    *pCurval = m_timer_pCurval;
+    m_timer_bTimerRegistered = false;
+}
+
+bool CZWeapon::TimerRegistered()
+{
+    return m_timer_bTimerRegistered;
+}
+
+/* the timer let go of when it counts that value, or whatever it counts (SOCOM 1's took no value) */
+void CZWeapon::ClearTimer(float *pCurval)
+{
+    if (!pCurval || pCurval == m_timer_pCurval) {
+        m_timer_pCurval = 0;
+        m_timer_bTimerRegistered = false;
+        m_timer_bTimerCleared = true;
+        m_timer_maxval = -1.0f;
+        m_timer_bIncrTimer = true;
+    }
+}
+
+bool CZWeapon::TimerCleared()
+{
+    return m_timer_bTimerCleared;
+}
+
+void CZWeapon::RemoveExplosivesInRange(const CPnt3D *pos, float range)
+{
+    m_pProjectilelist->RemoveExplosivesInRange(pos, range);
+}
+
+/* CZItemStash (0x3CFB20-0x3CFFAF, its rows named): a 0x28-byte object of three parallel lists of
  * words (0, 0xC, 0x18) and a word (0x24) -- an entry is its three words at one index, live while its
  * third is non-zero. The kit and the pickups use it (the class and its names ours) */
 class CZItemStash {
 public:
+    CZItemStash();
     int Count();
     void Add(int a, int b, int c);
     void Set(int i, int a, int b, int c);
@@ -787,6 +866,12 @@ public:
     std::vector<int> m_c;   // 0x18
     int m_24;   // 0x24
 };
+
+/* the three lists empty (0x3CFF80: the kit and the pickups build theirs with it) */
+CZItemStash::CZItemStash()
+{
+    m_24 = 0;
+}
 
 /* an entry's three words appended */
 void CZItemStash::Add(int a, int b, int c)

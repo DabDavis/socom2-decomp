@@ -284,6 +284,30 @@ public:
     static CZProjectileList *m_pProjectilelist;
     /* the timer registered for the HUD, by the value it counts (SOCOM 1's static: 0x4B52C0) */
     static float *m_timer_pCurval;
+    /* the HUD's timer: registered with the value it counts, its full value and its direction, taken
+     * back by the HUD, cleared by the value's owner (SOCOM 1's statics, 0x3CFFC0-0x3D008F; SOCOM
+     * II's ClearTimer takes the value, any when 0) */
+    static void RegisterTimer(float *pCurval, float maxval, bool bIncr);
+    static void RetrieveTimerRegistration(float **pCurval, float *maxval, bool *bIncr);
+    static bool TimerRegistered();
+    static void ClearTimer(float *pCurval);
+    static bool TimerCleared();
+    static float m_timer_maxval;
+    static bool m_timer_bTimerRegistered;
+    static bool m_timer_bTimerCleared;
+    static bool m_timer_bIncrTimer;
+    /* a second timer of the same kind, never cleared (new in SOCOM II, 0x3D0090-0x3D00FF: the kit
+     * registers an item's use time with it, the HUD's timer tick takes it -- the names ours) */
+    static void RegisterTimer2(float *pCurval, float maxval, bool bIncr);
+    static void RetrieveTimer2Registration(float **pCurval, float *maxval, bool *bIncr);
+    static bool Timer2Registered();
+    static float m_timer2_maxval;
+    static float *m_timer2_pCurval;
+    static bool m_timer2_bTimerRegistered;
+    static bool m_timer2_bIncrTimer;
+    /* the charges within a range of a point taken out (new in SOCOM II, 0x3CFFB0: the projectile
+     * list's, through the static; the name ours) */
+    static void RemoveExplosivesInRange(const CPnt3D *pos, float range);
     /* the tracers (SOCOM 1's static, 0x1c bytes: 0x4B5260) */
     static class CFlyoutMachine m_flyout_machine;
     /* the charges set down (SOCOM II's static, 0xc bytes: 0x4B5238, between the projectile list

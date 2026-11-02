@@ -8287,16 +8287,16 @@
 0x003CFD70 0xC8 Get__11CZItemStashFiPiPiPi  # OVL1; by hand (the wep lane: entry i's three words out, false when fewer are live; the name ours); zwep_weapon.cpp
 0x003CFE40 0xA8 Set__11CZItemStashFiiii  # OVL1; by hand (the wep lane: entry i's three words set when enough are live; the kit calls it; the name ours); zwep_weapon.cpp
 0x003CFEF0 0x88 Add__11CZItemStashFiii  # OVL1; by hand (the wep lane: the three words pushed through the pod insert 0x1FE340; the pickups call it; the name ours); zwep_weapon.cpp
-0x003CFF80 0x30 func_003CFF80  # OVL1
-0x003CFFB0 0x10 func_003CFFB0  # OVL1
-0x003CFFC0 0xC func_003CFFC0  # OVL1
-0x003CFFD0 0x50 func_003CFFD0  # OVL1
-0x003D0020 0xC func_003D0020  # OVL1
+0x003CFF80 0x30 __ct__11CZItemStashFv  # OVL1; by hand (the wep lane: zeroes the 0x28-byte CZItemStash -- its three word vectors and the word at 0x24 -- right after CZItemStash::Add; the kit (0x59E9E0, 0x59FAC0, 0x59FD50) and 0x2A8140 build theirs with it; the name ours)
+0x003CFFB0 0x10 RemoveExplosivesInRange__8CZWeaponFPC6CPnt3Df  # OVL1; by hand (the wep lane: tail-calls CZProjectileList::RemoveExplosivesInRange on m_pProjectilelist with its point and range; 0x25CC80 calls it; the name ours)
+0x003CFFC0 0xC TimerCleared__8CZWeaponFv  # OVL1; s1:order (SOCOM 1's CZWeapon::TimerCleared 0x31C9A0, first of its timer statics as here: returns m_timer_bTimerCleared, 0x4B52D0)
+0x003CFFD0 0x50 ClearTimer__8CZWeaponFPf  # OVL1; s1:order (SOCOM 1's CZWeapon::ClearTimer 0x31C9B0 -- the same stores to m_timer_pCurval, the registered and cleared flags, m_timer_maxval -1 and the increment flag -- with a value added: only when 0 or the registered one; CZProjectile::Cleanup passes its m_time when it is the registered one)
+0x003D0020 0xC TimerRegistered__8CZWeaponFv  # OVL1; s1:order (SOCOM 1's CZWeapon::TimerRegistered 0x31C9D0, between ClearTimer and RetrieveTimerRegistration as here: returns m_timer_bTimerRegistered, 0x4B52C8)
 0x003D0030 0x30 RetrieveTimerRegistration__8CZWeaponFPPfPfPb  # OVL1; s1:align
 0x003D0060 0x30 RegisterTimer__8CZWeaponFPffb  # OVL1; s1:order by hand (the HUD lane's round 18, vetted by the integrator: the same five stores as SOCOM 1's CZWeapon::RegisterTimer 0x31CA00)
-0x003D0090 0xC func_003D0090  # OVL1
-0x003D00A0 0x30 func_003D00A0  # OVL1
-0x003D00D0 0x28 func_003D00D0  # OVL1
+0x003D0090 0xC Timer2Registered__8CZWeaponFv  # OVL1; by hand (the wep lane: TimerRegistered's copy over a second set of timer statics, 0x4B52E8, new in SOCOM II after RegisterTimer; 0x216770, the HUD's timer tick, reads it after the first's; the name ours)
+0x003D00A0 0x30 RetrieveTimer2Registration__8CZWeaponFPPfPfPb  # OVL1; by hand (the wep lane: RetrieveTimerRegistration's copy over the second timer's statics 0x4B52D8/0x4B52E0/0x3E1558, clearing 0x4B52E8; 0x216770 calls it; the name ours)
+0x003D00D0 0x28 RegisterTimer2__8CZWeaponFPffb  # OVL1; by hand (the wep lane: RegisterTimer's copy over the second timer's statics, never cleared; the kit's 0x5C32B0 registers an item's time at kit+0x820 with it; the name ours)
 0x003D0100 0x20 SetSoundDistance__8CZWeaponFUcf  # OVL1; by hand (the wep lane: the zweapon.rdr reader 0x3CD810 passes WEAPON_GLOBAL's SoundDistanceClose/Med/Far times 10 with the index 0, 1, 2; stored squared at 0x4B52F0; the name ours); zwep_weapon.cpp
 0x003D0120 0x14 GetFireSoundName__8CZWeaponFUc  # OVL1; by hand (the wep lane: InitializeWeapons reads 0xEC + 4i for i 0..2; the name ours); zwep_weapon.cpp
 0x003D0140 0x74 SetFireSoundName__8CZWeaponFUcPCc  # OVL1; by hand (the wep lane: the reader's FireSoundClose/Med/Far strdup'ed into 0xEC + 4i, the old one freed; the name ours); zwep_weapon.cpp
