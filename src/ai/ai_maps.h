@@ -73,6 +73,12 @@ public:
     float GetDistance(const CAiMapLoc &a, const CAiMapLoc &b);
     /* how many spores an id has (new in SOCOM II, the name ours) */
     int GetSporeCount(unsigned int id);
+    /* the region of a type whose centre is nearest the cell, one holding the cell passed over
+     * unless asked for (SOCOM 1's; CAiSFlee::Tick calls it) */
+    CAiMap::region *GetClosestRegion(const CAiMapLoc &loc, CAiMap::region::TYPE type, bool inside);
+    /* the region of a type holding the cell: each listed region of the type asked in turn
+     * (SOCOM 1's; the SEALs' code calls it) */
+    CAiMap::region *GetRegionTypeContainer(CAiMap::region::TYPE type, const CAiMapLoc &loc);
     /* a random cell of the region, drawn up to eight times until one is traversable (SOCOM 1's) */
     bool GetRandomLoc(const CAiMap::region *r, CAiMapLoc &loc);
     /* a region of its map's first layer tiled, the planner's queue reset after (SOCOM 1's) */

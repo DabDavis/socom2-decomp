@@ -473,6 +473,14 @@ public:
         enum TYPE { ANY = 7 };
 
         CAiMapLoc &GetCenter(CAiMapLoc &loc) const;
+        /* the centre cell by value (the name ours: GetClosestRegion's copy of it) */
+        CAiMapLoc GetCenter() const
+        {
+            CAiMapLoc loc;
+
+            GetCenter(loc);
+            return loc;
+        }
         void Union(const CAiMapLoc &loc);
         void InflateRegion(int left, int top, int right, int bottom, const CAiMap *map);
         /* SOCOM 1's Contains, out of line there (0x19E020) and inlined here: the same map, and

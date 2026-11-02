@@ -204,6 +204,55 @@ CAiMap::link *CAiMaps::GetCellLink(const CAiMapLoc &loc)
     return map ? map->GetCellLink(loc) : 0;
 }
 
+/* the region of the type whose centre cell lies nearest the cell, level distance squared; one
+ * holding the cell is passed over unless `inside` (SOCOM 1's). The type's list indexed in the walk
+ * itself (the target keeps the size's and the data's addresses for each pass's end(), where a
+ * reference local keeps the vector's), the centre by value (copied out of its temporary) */
+CAiMap::region *CAiMaps::GetClosestRegion(const CAiMapLoc &loc, CAiMap::region::TYPE type, bool inside)
+{
+    CAiMap::region *best = 0;
+    float bestd = 0.0f;
+    CPnt3D c;
+
+    if (GetCellCenter(loc, &c)) {
+        for (CAiMapLocVec::iterator it = m_regions[type].begin(); it != m_regions[type].end(); ++it) {
+            CAiMap *map = GetMapByIndex(it->m_mapid);
+            CAiMap::region *r = map ? map->GetRegion(*it) : 0;
+
+            if (inside || !r->Contains(loc)) {
+                CPnt3D p;
+
+                if (GetCellCenter(r->GetCenter(), &p)) {
+                    p.Sub(&c, &p);
+                    float d = p.x * p.x + p.z * p.z;
+
+                    if (!best || d < bestd) {
+                        best = r;
+                        bestd = d;
+                    }
+                }
+            }
+        }
+    }
+    return best;
+}
+
+/* the first region of the type that holds the cell, through the cells listed for the type --
+ * each one's map found by index (inlined) and its region asked (SOCOM 1's) */
+CAiMap::region *CAiMaps::GetRegionTypeContainer(CAiMap::region::TYPE type, const CAiMapLoc &loc)
+{
+    CAiMapLocVec &v = m_regions[type];
+
+    for (CAiMapLocVec::iterator it = v.begin(); it != v.end(); ++it) {
+        CAiMap *map = GetMapByIndex(it->m_mapid);
+        CAiMap::region *r = map ? map->GetRegion(*it) : 0;
+
+        if (r->Contains(loc))
+            return r;
+    }
+    return 0;
+}
+
 /* whether a step may end on the cell: on the map, and not a no-go soil (new in SOCOM II) */
 bool CAiMap::IsTraversable(const CAiMapLoc &loc) const
 {
