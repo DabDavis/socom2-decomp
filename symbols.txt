@@ -4465,15 +4465,15 @@
 0x002D2050 0xC begin__Q23std42list<P6CGNode,Q23std19allocator<P6CGNode>>Fv  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
 0x002D2060 0x8 __ct__Q33std42list<P6CGNode,Q23std19allocator<P6CGNode>>19generic_iterator<0>Fv  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
 0x002D2070 0x1AC FindNode__6CGTreeFP6CGNode  # OVL1; s1:calls (the states lane's lead, vetted by the integrator: CGraph::BuildRoute calls it where SOCOM 1's BuildRoute calls FindNode__6CGTreeFP6CGNode, after BuildTree and the leaf list's begin())
-0x002D2220 0x14 func_002D2220  # OVL1
-0x002D2240 0x14 func_002D2240  # OVL1
-0x002D2260 0x10 func_002D2260  # OVL1; tu: char_type.cpp~ (1.0 beta)
-0x002D2270 0x14 func_002D2270  # OVL1
-0x002D2290 0xC func_002D2290  # OVL1
-0x002D22A0 0x14 func_002D22A0  # OVL1
-0x002D22C0 0xC func_002D22C0  # OVL1
-0x002D22D0 0xC func_002D22D0  # OVL1
-0x002D22E0 0x10 func_002D22E0  # OVL1; tu: char_type.cpp~ (1.0 beta)
+0x002D2220 0x14 __ne__Q33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<0>CFRCQ33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<0>  # OVL1; by hand (the states lane, round 16): the pointer lists' base iterator !=, called where CGTree::FindNode's first self-inlined copy (0x2D2070) inlines the tree list's != one level; graph_tree.cpp emits it after FindNode, the first OVL1 unit to need it out of line
+0x002D2240 0x14 __pp__Q33std42list<P6CGTree,Q23std19allocator<P6CGTree>>19generic_iterator<0>Fv  # OVL1; by hand (the states lane, round 16): the tree list iterator's prefix ++, called by the postfix ++ CGTree::FindNode's first self-inlined copy inlines one level (0x2D2070); Destroy's walk calls it too
+0x002D2260 0x10 __ct__Q33std42list<P6CGTree,Q23std19allocator<P6CGTree>>19generic_iterator<0>FRCQ33std42list<P6CGTree,Q23std19allocator<P6CGTree>>19generic_iterator<0>  # OVL1; tu: char_type.cpp~ (1.0 beta); by hand (the states lane, round 16): the tree list iterator's copy constructor, called by the postfix ++ CGTree::FindNode's first self-inlined copy inlines one level (0x2D2070)
+0x002D2270 0x14 __ne__Q33std42list<P6CGTree,Q23std19allocator<P6CGTree>>19generic_iterator<0>CFRCQ33std42list<P6CGTree,Q23std19allocator<P6CGTree>>19generic_iterator<0>  # OVL1; by hand (the states lane, round 16): the tree list iterator's !=, out of line in CGTree::FindNode's innermost copy (0x2D2070); graph_tree.cpp emits it after FindNode
+0x002D2290 0xC end__Q23std42list<P6CGTree,Q23std19allocator<P6CGTree>>Fv  # OVL1; by hand (the states lane, round 16): the tree list's end(), out of line in both of CGTree::FindNode's self-inlined copies (0x2D2070); graph_tree.cpp emits it after FindNode
+0x002D22A0 0x14 __pp__Q33std42list<P6CGTree,Q23std19allocator<P6CGTree>>19generic_iterator<0>Fi  # OVL1; by hand (the states lane, round 16): the tree list iterator's postfix ++, out of line in CGTree::FindNode's innermost copy (0x2D2070); graph_tree.cpp emits it after FindNode
+0x002D22C0 0xC __ml__Q33std42list<P6CGTree,Q23std19allocator<P6CGTree>>19generic_iterator<0>CFv  # OVL1; by hand (the states lane, round 16): the tree list iterator's *, out of line in CGTree::FindNode's innermost copy (0x2D2070); graph_tree.cpp emits it after FindNode
+0x002D22D0 0xC First__6CGTreeFv  # OVL1; by hand (the states lane, round 16; the name ours): CGTree's first child as the base's begin() wrapped, out of line in CGTree::FindNode's innermost copy (0x2D2070); graph_tree.cpp emits it after FindNode
+0x002D22E0 0x10 __ct__Q33std42list<P6CGTree,Q23std19allocator<P6CGTree>>19generic_iterator<0>FQ33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<0>  # OVL1; tu: char_type.cpp~ (1.0 beta); by hand (the states lane, round 16): the tree list's iterator made from the base's, out of line where CGTree::FindNode's self-inlined copy (0x2D2070) inlines First() one level; graph_tree.cpp emits it after FindNode
 0x002D22F0 0x1F8 Destroy__6CGTreeFP6CGTree  # OVL1; s1:calls (the states lane's lead, vetted by the integrator: CGraph::BuildRoute calls it where SOCOM 1's BuildRoute calls Destroy__6CGTreeFP6CGTree, at the end)
 0x002D24F0 0x10 func_002D24F0  # OVL1; tu: char_type.cpp~ (1.0 beta)
 0x002D2500 0xC func_002D2500  # OVL1
