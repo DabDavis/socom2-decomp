@@ -2,7 +2,9 @@
  * kept it beside zui.h, in gamez/zui -- here with the 2D family until the UI has a directory of its
  * own). Written so far: CHProgressBar::Tick (0x3719E0), CPlainBmp's Tick, Draw and
  * SetMapOffset (OVL1 0x378FC0-0x37925B, 0x37C180) and the two speed setters (0x37B980, 0x37B990),
- * in SOCOM 1's order; in the unit's tail, C2DButton::SetBackgroundAlpha (0x37C2C0) and
+ * in SOCOM 1's order; the command lookups (GetZAnimCmdType) of the button, the renderable string,
+ * the pop-up, the slider, the radio strip, the counter and the teletype, and the slider's and the
+ * radio strip's parsers (ParseZAnimCmd); in the unit's tail, C2DButton::SetBackgroundAlpha (0x37C2C0) and
  * C3StateButton::Tick (0x37C600), inline virtuals' copies, and the check box's and the teletype's
  * implicit destructors (0x37C2F0, 0x37C620), each reached only through this unit's this-adjusting
  * thunks (0x37D0D0, 0x37D030: MW names them @192@__dt__9CCheckBoxFv and @152@__dt__9CTeleTypeFv).

@@ -1,9 +1,10 @@
 /* hud_bitmapreticule.cpp -- the reticle (OVL1 ...-0x21938F): SOCOM 1's unit (its DWARF names it,
- * Z:\dev\Apps\FTS\hud_bitmapreticule.cpp). Only UnInit, Draw, On, Off and the pause test's
- * OnPauseTest (0x215180-0x215243) so far, in SOCOM 1's order;
- * BitmapReticule is 0x1000 bytes longer in SOCOM II, and only the members those two touch are
- * placed (SOCOM 1's names, SOCOM II's offsets; the reticle type is a byte now). Defined in reverse
- * of their image order (-inline deferred). */
+ * Z:\dev\Apps\FTS\hud_bitmapreticule.cpp). Written: UnInit, Draw, the constructor and destructor
+ * (0x218D50-0x21932F), hudStartDefuseTimer (0x219330, the unit's last), On, Off and the pause test's
+ * OnPauseTest (0x215180-0x215243), in SOCOM 1's order; still to write: Init (0x2178C0) and the five
+ * functions 0x215250-0x2178BF. BitmapReticule is 0x12F0 bytes longer in SOCOM II, laid out whole
+ * (SOCOM 1's names, SOCOM II's offsets; the reticle type is a byte now). Defined in reverse of their
+ * image order (-inline deferred). */
 
 #include <string.h>
 
