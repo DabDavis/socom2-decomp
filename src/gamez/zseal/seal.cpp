@@ -1042,3 +1042,64 @@ void CZSealBody::UpdateTurretScope(float f)
         t->SetThermal(0, HasThermal(m_eb8));
     }
 }
+
+/* the AI's target (ai_target.cpp's CAiTarget: only its entity and the sighting clock here) and the
+ * test the AI's code makes of it (OVL2 0x60A850, unowned: an entity, alive, and an AI's unless it
+ * holds bit 8 or 9) */
+class CAiTarget {
+public:
+    float GetTimeSinceLastSighting() const;
+
+    CEntity *m_entity;   // 0x0
+};
+
+extern "C" bool func_0060A850(void *target);
+
+/* the AI's target held, with its bit 9 (an inline bool, as seal_ai.cpp's: the `&&` materialised) */
+static inline bool TargetHeld(CSealCtrlAi *ai)
+{
+    return func_0060A850(ai->m_67c) && (ai->m_6a8 & 0x200);
+}
+
+/* (OVL2 0x543030) */
+void CZSealBody::UpdateHostileAnchor()
+{
+    if (!(m_team & 2))
+        return;
+    if (IsPlayer())
+        return;
+
+    bool shown;
+    CSealCtrlAi *ai = ((CSealCtrl *)m_control)->GetSealCtrlAi();
+
+    shown = false;
+    if (ai) {
+        bool lost = true;
+
+        /* (an if/else on the negated test: the held arm last, the `&&` materialised) */
+        if (func_0060A850(ai->m_67c)) {
+            if (!TargetHeld(ai))
+                lost = ((CAiTarget *)ai->m_67c)->GetTimeSinceLastSighting() > 3.0f;
+            else
+                lost = false;
+        }
+        if (!lost) {
+            CEntity *e = ((CAiTarget *)ai->m_67c)->m_entity;
+
+            if (e && !(e->m_team & 2)) {
+                const CPnt3D &pos = e->m_posW;
+
+                if (!m_hostile_anchor) {
+                    m_hostile_anchor = CCompass::CreateAnchor(pos, "HOSTILE ACQUIRED");
+                    m_hostile_anchor->m_type = 10;
+                } else
+                    m_hostile_anchor->m_posW = pos;
+                shown = true;
+            }
+        }
+    }
+    if (!shown && m_hostile_anchor) {
+        CCompass::DeleteAnchor(m_hostile_anchor);
+        m_hostile_anchor = 0;
+    }
+}

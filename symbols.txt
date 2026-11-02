@@ -9931,7 +9931,7 @@
 0x00543000 0x8 Virtual5C__10CZSealBodyFv  # OVL2; slot 0x5C of __vt__10CZSealBody (CEntity's Virtual5C, the name the entity lane's); returns 0
 0x00543010 0x8 Virtual60__10CZSealBodyFP6CPnt3D  # OVL2; slot 0x60 of __vt__10CZSealBody (CEntity's Virtual60); returns 0; CEntity's Virtual60(CPnt3D *) overridden (the entity lane, measured)
 0x00543020 0x8 Virtual68__10CZSealBodyFP6CPnt3D  # OVL2; slot 0x68 of __vt__10CZSealBody (CEntity's Virtual68); returns 0; CEntity's Virtual68(CPnt3D *) overridden (the entity lane, measured)
-0x00543030 0x1AC func_00543030  # OVL2
+0x00543030 0x1AC UpdateHostileAnchor__10CZSealBodyFv  # OVL2; ours (new in SOCOM II; seal.cpp, before the CSealCtrl copies its virtual calls bring): Tick calls it; an AI SEAL of team bit 1 shows its held or recently seen target as the compass's 'HOSTILE ACQUIRED' anchor at 0xECC
 0x005431E0 0x8 func_005431E0  # OVL2; s1~ GetSealCtrlAi__9CSealCtrlFv (one of 2 out-of-line copies of an inline, by s1:vtable)
 0x005431F0 0x8 IsPlayer__9CSealCtrlCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00543200 0xF0 UpdateTurretScope__10CZSealBodyFf  # OVL2; ours (new in SOCOM II): HandleNewZoom calls it with 1.0 after TurretHasThermal; the SEAL's turret (0xEB8, type 3) gets 0x3A9FB0(f) and CTurret::SetThermal(0, HasThermal(0xEB8)) -- the SEAL lane, round 9

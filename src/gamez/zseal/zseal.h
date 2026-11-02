@@ -834,6 +834,10 @@ public:
      * AI's 0x573130 call the first; the names ours) */
     CCompassAnchor *CreateCompassAnchor(int type, const char *name);
     void AddFriendAnchorPoints(CCompassAnchor *anchor);
+    /* an AI SEAL of the team with bit 1 shows its target on the compass while it holds it or saw it
+     * within three seconds, and drops the marker otherwise (OVL2 0x543030, new in SOCOM II: Tick
+     * calls it; the name ours) */
+    void UpdateHostileAnchor();
     /* thermal vision: the turret the SEAL works (the entity given, or its own at 0xEB8) if it is
      * one; whether the SEAL sees thermally -- the goggles (item 195) when it works nothing, the
      * turret's thermal scope when it works one; whether it works a turret with that scope; the
@@ -937,6 +941,10 @@ public:
     /* the gas and smoke flags set (inlines: a constant true is `daddiu 1 << n`) */
     void SetInGas(bool on) { m_isingas = on; }
     void SetInSmoke(bool on) { m_isinsmoke = on; }
+    /* bits 9 and 10 of 0x1060 set (inlines: a constant true is `daddiu 1 << n`, a false `(0 & 1) <<
+     * n`; the names ours) */
+    void SetBit9(bool on) { m_bit9 = on; }
+    void SetBit10(bool on) { m_bit10 = on; }
     /* the stance's change taken, once (seal_body.cpp) */
     bool StanceChanged();
     /* the weapon's state without its bit 4 (SOCOM 1's; OVL2 0x5E0010, seal_weapon.cpp) */
@@ -1028,7 +1036,9 @@ public:
     /* the SEAL's own marker on the compass ("FRIENDLY", "ABLE", "BRAVO"; 0x5434B0 makes it once --
      * new in SOCOM II, the name ours) */
     CCompassAnchor *m_compass_anchor;   // 0xec8
-    unsigned char _ecc[0xed0 - 0xecc];
+    /* the AI's hostile on the compass ("HOSTILE ACQUIRED": 0x543030 makes, moves and deletes it --
+     * new in SOCOM II, the name ours) */
+    CCompassAnchor *m_hostile_anchor;   // 0xecc
     unsigned int m_action_available;   // 0xed0: a bit per action (SOCOM 1's ActionAvailableMask word, 0xdc0)
     unsigned char _ed4[0xee0 - 0xed4];
     float m_wep_upT;   // 0xee0 (SOCOM 1's 0xdd0)
@@ -1106,7 +1116,8 @@ public:
     unsigned int m_iszooming : 1;   // bit 5 (camera.h's reading)
     unsigned int m_unused_bits : 3;
     unsigned int m_bit9 : 1;   // bit 9: a remote SEAL with it set is skipped by 0x57DFE0 (the name ours)
-    unsigned int m_unused_bits2 : 6;
+    unsigned int m_bit10 : 1;   // bit 10: cleared with bit 9 set by 0x57DF20/0x57E050 (the name ours)
+    unsigned int m_unused_bits2 : 5;
     /* the ladder the SEAL is on, an index into the mission's list (new in SOCOM II: read with lhu
      * and re-masked for an int argument, as a 16-bit field is; the name ours) */
     unsigned int m_ladder : 16;   // 0x1062
@@ -1122,7 +1133,9 @@ public:
     } m_climb;   // 0x1328
     unsigned char _1334[0x1336 - 0x1334];
     short m_weapon_id;   // 0x1336: the weapon in hand, looked up in the AI's kind table (the name ours)
-    unsigned char _1338[0x14e0 - 0x1338];   // (0x14E0 bytes: Create news 5344)
+    unsigned char _1338[0x1350 - 0x1338];
+    CPnt3D m_1350;   // 0x1350: the velocity kept as 0x57DF20/0x57E050 set bit 9 (the name ours)
+    unsigned char _135c[0x14e0 - 0x135c];   // (0x14E0 bytes: Create news 5344)
 };
 
 inline void *CSealCtrlAi::GetSelect()

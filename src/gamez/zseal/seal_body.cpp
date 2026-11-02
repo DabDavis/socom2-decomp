@@ -7,11 +7,12 @@
 
 /* whether an anim type is anywhere on the blend stack, the top first (OVL2 0x58A470; new in
  * SOCOM II, its name unknown -- seal_env.cpp's 0x5A7AB0 asks it).
- * OPEN, 8 instructions: the target indexes the stack afresh each pass (`sll; addu` off the array
- * loaded once before the loop, through the stack's address); MW here strength-reduces it to a
- * pointer stepped by -4. Tried: the members straight off the SEAL, the stack through a pointer and
- * a reference, the counter declared apart, the compare reversed, an inline element accessor. */
-static inline CZBodyAnimBlend *BlendAt(CBodyAnimBlendStack *stack, int i)
+ * OPEN, 5 instructions: the accessor's index unsigned against the int counter stops MW
+ * strength-reducing the walk (the target's `sll; addu` each pass -- 0x57DBB0 matches so); left, the
+ * registers: the target narrows the type into a0 first and loads the array into v1, MW the other
+ * way round. Tried: the compare reversed, a short parameter, the type cast or copied first, the
+ * stack through a reference, the members straight off the SEAL, the body as a CBody. */
+static inline CZBodyAnimBlend *BlendAt(CBodyAnimBlendStack *stack, unsigned int i)
 {
     return stack->m_stack[i];
 }
@@ -24,6 +25,161 @@ extern "C" bool func_0058A470(CZSealBody *seal, AnimType type)
         if (type == BlendAt(stack, i)->m_animType)
             return true;
     return false;
+}
+
+/* the state of the topmost blend in state 0, 1 or 2, else 0 (OVL2 0x57DBB0; new in SOCOM II, its
+ * name unknown) */
+extern "C" unsigned char func_0057DBB0(CZSealBody *seal)
+{
+    CBodyAnimBlendStack *stack = &seal->m_blends;
+
+    for (int i = stack->m_top; i >= 0; i--) {
+        unsigned char s = BlendAt(stack, i)->m_state;
+
+        if (s == 0 || s == 1 || s == 2)
+            return s;
+    }
+    return 0;
+}
+
+/* the state of the topmost blend not in state 3, else 0 (OVL2 0x57DC20; new in SOCOM II, its name
+ * unknown -- seal_env.cpp's 0x5A82E0 and the weapon unit ask it) */
+extern "C" unsigned char func_0057DC20(CZSealBody *seal)
+{
+    CBodyAnimBlendStack *stack = &seal->m_blends;
+
+    for (int i = stack->m_top; i >= 0; i--) {
+        unsigned char s = BlendAt(stack, i)->m_state;
+
+        if (s != 3)
+            return s;
+    }
+    return 0;
+}
+
+/* a blended anim pushed to everyone, for a SEAL the network plays (OVL1 0x2BBAF0: SOCOM 1's
+ * NetSendPushBlend with a time, fts_remote.cpp's) and an anim pushed on the body (OVL2 0x588BC0,
+ * not written yet: an anim type, the state, a flag and a kind) */
+extern "C" {
+void func_002BBAF0(unsigned int obj, unsigned int anim, int slot, bool on, int time);
+void *func_00588BC0(CZSealBody *seal, int type, int state, int flag, int kind);
+bool func_00589900(CZSealBody *seal);
+void *func_00555170(void *v);
+}
+
+/* the jump begun, as the SEAL's own: bit 9 set and 10 cleared, the velocity kept, the push told to
+ * the network for a SEAL this console plays (OVL2 0x57E050, new in SOCOM II; 0x5AF930 calls it after
+ * 0x57DF20 and 0x57E130 -- the names ours) */
+extern "C" void *func_0057E050(CZSealBody *seal)
+{
+    void *r = func_00588BC0(seal, 9, seal->m_state, 0, 13);
+
+    seal->SetBit9(true);
+    seal->SetBit10(false);
+    seal->m_1350 = seal->m_velW;
+    if (theNetwork.m_9 && !seal->IsRemote())
+        func_002BBAF0(seal->m_id, 34, 4, false, 3);
+    return r;
+}
+
+/* whether the jump can be taken: never by a remote SEAL already in anim 9, else as 0x589900 says
+ * (OVL2 0x57E130, new in SOCOM II) */
+extern "C" bool func_0057E130(CZSealBody *seal)
+{
+    if (seal->IsRemote() && seal->IsCurrentBlend((AnimType)9))
+        return false;
+    if (!func_00589900(seal))
+        return false;
+    return true;
+}
+
+/* the jump's start: bit 9 set and 10 cleared, the velocity kept, the push told to the network for a
+ * SEAL this console plays, the top blend after (OVL2 0x57DF20, new in SOCOM II) */
+extern "C" void *func_0057DF20(CZSealBody *seal)
+{
+    seal->SetBit9(true);
+    seal->SetBit10(false);
+    seal->m_1350 = seal->m_velW;
+    if (theNetwork.m_9 && !seal->IsRemote())
+        func_002BBAF0(seal->m_id, 34, 4, false, 9);
+    return func_00555170((char *)seal + 0x1c0);
+}
+
+/* whether the SEAL may act: an AI's controller unless its bit 17 is set, anyone else's unless its
+ * action bit is (OVL2 0x57F2A0, new in SOCOM II; the name ours -- the controller read once, its null
+ * test only the IsAi call's) */
+extern "C" bool func_0057F2A0(CZSealBody *seal)
+{
+    CSealCtrl *ctrl = (CSealCtrl *)seal->m_control;
+
+    /* (one exit: early returns pad each block with a nop) */
+    return (ctrl ? ctrl->IsAi() : false) ? !ctrl->m_bit17 : !ctrl->m_action;
+}
+
+extern "C" {
+/* two anim types the code reads as variables (OVL1 data, -1 in the image) and the top blend popped,
+ * the new top returned (OVL2 0x589AA0, not written yet) */
+extern short data_003DEAE0;
+extern short data_003DEF60;
+CZBodyAnimBlend *func_00589AA0(CZSealBody *seal);
+}
+
+/* the blends' count (an inline: unsigned, as the target's `sltiu` compares it) */
+static inline unsigned int BlendCount(CBodyAnimBlendStack *stack)
+{
+    return stack->m_top + 1;
+}
+
+/* the blends popped down to one, twelve at most; when that worked the top blend's control cleared
+ * and the SEAL asked to go prone; then the anim of 0x3DEF60 pushed (OVL2 0x57F310, new in SOCOM II) */
+extern "C" void func_0057F310(CZSealBody *seal)
+{
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+    int n = 12;
+    CBodyAnimBlendStack *stack = &seal->m_blends;
+
+    while (BlendCount(stack) > 1 && n > 0) {
+        b = func_00589AA0(seal);
+        n--;
+    }
+    if (n <= 0)
+        b = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+    else {
+        if (b)
+            b->m_ctrl = 0;
+        seal->m_desiredStance = STANCE_PRONE;
+    }
+    func_00588BC0(seal, data_003DEF60, 0, 0, 0);
+}
+
+/* whether a SEAL this console plays, out of the anim of 0x3DEAE0 and neither its state nor its top
+ * blend's 5, can go on as 0x589900 says (OVL2 0x57F7D0, new in SOCOM II) */
+extern "C" bool func_0057F7D0(CZSealBody *seal)
+{
+    if (seal->IsRemote())
+        return false;
+    if (seal->IsCurrentBlend((AnimType)data_003DEAE0))
+        return false;
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+
+    if (seal->m_state == 5 || top->m_state == 5)
+        return false;
+    return func_00589900(seal);
+}
+
+/* whether a SEAL this console plays, in anim 45, can go on as 0x589900 says (OVL2 0x57F530, new in
+ * SOCOM II).
+ * OPEN, 7 instructions: the target lays the anim test's false return right after it (`bnez v0` to
+ * the call's block, which follows); MW puts the call first and the false block last. Tried: the
+ * test positive with the call inside, an else, a ternary, `== false`, `||` and `&&` joins of both
+ * tests, a result local. */
+extern "C" bool func_0057F530(CZSealBody *seal)
+{
+    if (seal->IsRemote())
+        return false;
+    if (!seal->IsCurrentBlend((AnimType)45))
+        return false;
+    return func_00589900(seal);
 }
 
 /* whether one of three anim types is the blend on top (OVL2 0x588080; new in SOCOM II, its name
