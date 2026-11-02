@@ -18,6 +18,8 @@ class CMeshDecal;
  * m_permPool; the member names ours) */
 class CDecalPool {
 public:
+    /* the most and the extra kept, the pool's array made for both, recycling (SOCOM 1's) */
+    void Init(unsigned int count, unsigned int extra);
     CDecal *Get(bool b);
     /* the overflow worked off: the oldest temporary decals taken back and off their visuals
      * (SOCOM 1's) */
@@ -33,6 +35,9 @@ public:
 /* the same over the mesh decals (SOCOM 1's) */
 class CMeshDecalPool {
 public:
+    void Init(unsigned int count, unsigned int extra);
+    /* the array deleted and the counts zeroed (SOCOM 1's) */
+    void Uninit();
     CMeshDecal *Get(bool b);
     /* the same over the mesh decals, each freed besides (SOCOM 1's) */
     void RecycleTick();
@@ -50,6 +55,10 @@ class CMesh;
 
 class CDecal {
 public:
+    /* empty (the pool's array builds and destroys its items with their out-of-line copies,
+     * 0x3BF6E0 and 0x3BF690) */
+    CDecal() {}
+    ~CDecal() {}
     static void PutPermDecal(CDecal *d);
     static void PutTempDecal(CDecal *d);
 
@@ -57,6 +66,7 @@ public:
     CVisual *m_visual;   // 0x4
     unsigned char _8[0xc - 0x8];
     unsigned short m_view;   // 0xc
+    unsigned char _e[0x120 - 0xe];   // (0x120 bytes: RTArray<CDecal>()'s array stride)
 
     static CDecalPool m_tempPool;
     static CDecalPool m_permPool;
@@ -65,6 +75,18 @@ public:
 /* a decal on a mesh: its own vertex block (SOCOM 1's class: no DWARF; the names ours) */
 class CMeshDecal {
 public:
+    /* the links and the vertex block cleared (the pool's array builds its items with it, 0x3BFB40;
+     * the destructor empty, 0x3BF9B0) */
+    CMeshDecal()
+    {
+        m_life = 0;
+        m_next = 0;
+        m_mesh = 0;
+        m_verts = 0;
+        m_34 = 0;
+        m_30 = 0;
+    }
+    ~CMeshDecal() {}
     void FreeMem();
     static void PutTempDecal(CMeshDecal *d);
     static void PutPermDecal(CMeshDecal *d);
@@ -77,6 +99,7 @@ public:
     unsigned char _14[0x30 - 0x14];
     unsigned int m_30;   // 0x30
     unsigned int m_34;   // 0x34
+    unsigned char _38[0x40 - 0x38];   // (0x40 bytes: RTArray<CMeshDecal>()'s array stride)
 
     static CMeshDecalPool m_tempPool;
     static CMeshDecalPool m_permPool;
@@ -88,6 +111,13 @@ using namespace zdb;
 
 /* a cached pointer from its uncached or accelerated mirror */
 #define CACHED(p) ((void *)((unsigned int)(p) & 0x0FFFFFFF))
+
+void CDecalPool::Init(unsigned int count, unsigned int extra)
+{
+    m_max = count;
+    m_extra = extra;
+    m_pool = new RTArray<CDecal>(count + extra, true, true);
+}
 
 /* a temporary decal given back: the overflow first, then the count (SOCOM 1's) */
 void CDecal::PutTempDecal(CDecal *d)
@@ -133,6 +163,13 @@ CDecal *CDecalPool::Get(bool b)
         }
     }
     return d;
+}
+
+void CMeshDecalPool::Init(unsigned int count, unsigned int extra)
+{
+    m_max = count;
+    m_extra = extra;
+    m_pool = new RTArray<CMeshDecal>(count + extra, true, true);
 }
 
 CMeshDecal *CMeshDecalPool::Get(bool b)
@@ -189,4 +226,12 @@ void CMeshDecal::FreeMem()
     m_verts = 0;
     m_34 = 0;
     m_30 = 0;
+}
+
+void CMeshDecalPool::Uninit()
+{
+    delete m_pool;
+    m_pool = 0;
+    m_count = 0;
+    m_overflow = 0;
 }

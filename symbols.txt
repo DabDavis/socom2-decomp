@@ -8015,16 +8015,16 @@
 0x003BF3D0 0x64 GetOldestUsed__22RTArray<Q23zdb6CDecal>Fv  # OVL1; by hand (the wep lane: SOCOM 1's RTArray<CDecal>::GetOldestUsed -- CDecalPool::RecycleTick calls it where SOCOM 1's does; the first in-use item removed and returned)
 0x003BF440 0x7C PutBack__22RTArray<Q23zdb6CDecal>FPQ23zdb6CDecal  # OVL1; s1:callee by hand (the wep lane: CDecal::PutTempDecal and PutPermDecal call it where SOCOM 1's call PutBack__22RTArray<Q23zdb6CDecal>; zbody.h's PutBack shape)
 0x003BF4C0 0x8C GetNext__22RTArray<Q23zdb6CDecal>Fb  # OVL1; s1:callee by hand (the wep lane: CDecalPool::Get calls it where SOCOM 1's calls GetNext__22RTArray<Q23zdb6CDecal>Fb; zbody.h's RTArray<T>::GetNext shape -- m_available at 0x18, m_supportRecycle at 0x1C)
-0x003BF550 0x13C func_003BF550  # OVL1
+0x003BF550 0x13C __ct__22RTArray<Q23zdb6CDecal>FUibb  # OVL1; s1:callee (SOCOM 1's RTArray<CMeshDecal>(unsigned int, bool, bool) 0x313AA0's twin over the decals: CDecalPool::Init news a 0x20-byte RTArray and calls it with the count plus the extra, true, true; it builds the list member and new[]s the pointers and the items with CDecal's constructor and destructor 0x3BF6E0/0x3BF690 -- the wep lane)
 0x003BF690 0x44 __dt__Q23zdb6CDecalFv  # OVL1; by hand (the wep lane: RTArray<CDecal>'s destructor hands it to __destroy_new_array for the items -- CDecal's empty inline destructor's out-of-line copy, vis_decal.cpp's place; zwep_weapon.cpp's copy is byte-exact)
-0x003BF6E0 0x8 func_003BF6E0  # OVL1
+0x003BF6E0 0x8 __ct__Q23zdb6CDecalFv  # OVL1; by hand (the wep lane: the 8-byte `return this` RTArray<CDecal>'s constructor hands __construct_new_array with CDecal's destructor 0x3BF690; vis_decal.cpp's empty inline constructor's copy)
 0x003BF6F0 0x64 GetOldestUsed__27RTArray<Q23zdb10CMeshDecal>Fv  # OVL1; by hand (the wep lane: SOCOM 1's RTArray<CMeshDecal>::GetOldestUsed -- CMeshDecalPool::RecycleTick calls it where SOCOM 1's does)
 0x003BF760 0x7C PutBack__27RTArray<Q23zdb10CMeshDecal>FPQ23zdb10CMeshDecal  # OVL1; s1:callee by hand (the wep lane: CMeshDecal::PutTempDecal calls it where SOCOM 1's calls PutBack__27RTArray<Q23zdb10CMeshDecal>)
 0x003BF7E0 0x8C GetNext__27RTArray<Q23zdb10CMeshDecal>Fb  # OVL1; by hand (the wep lane: CMeshDecalPool::Get calls it as CDecalPool::Get calls RTArray<CDecal>'s; the same 0x8C bytes)
 0x003BF870 0x140 __dt__27RTArray<Q23zdb10CMeshDecal>Fv  # OVL1; s1:callee
-0x003BF9B0 0x44 func_003BF9B0  # OVL1
-0x003BFA00 0x134 func_003BFA00  # OVL1
-0x003BFB40 0x20 func_003BFB40  # OVL1
+0x003BF9B0 0x44 __dt__Q23zdb10CMeshDecalFv  # OVL1; by hand (the wep lane: the empty destructor's deleting copy (0x44 bytes, as CDecal's 0x3BF690) that ~RTArray<CMeshDecal> 0x3BF870 and RTArray<CMeshDecal>() 0x3BFA00 hand the array helpers)
+0x003BFA00 0x134 __ct__27RTArray<Q23zdb10CMeshDecal>FUibb  # OVL1; s1:order (SOCOM 1's RTArray<CMeshDecal>(unsigned int, bool, bool) 0x313AA0, in vis_decal.cpp's tail as here: CMeshDecalPool::Init news a 0x20-byte RTArray and calls it with the count plus the extra, true, true -- the wep lane)
+0x003BFB40 0x20 __ct__Q23zdb10CMeshDecalFv  # OVL1; by hand (the wep lane: zeroes 0, 4, 8, 0x10, 0x34, 0x30 -- the life, link, mesh, vertex block and its two words that FreeMem clears; RTArray<CMeshDecal>'s constructor hands it to __construct_new_array)
 0x003BFB60 0x378 func_003BFB60  # OVL1
 0x003BFEE0 0x23C func_003BFEE0  # OVL1
 0x003C0120 0xD4 func_003C0120  # OVL1
