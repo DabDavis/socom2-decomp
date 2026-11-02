@@ -18,6 +18,12 @@ class CRdrFile;
 class AI_PARAMS {
 public:
     void Parse(_zrdr *rdr);
+    /* each field the first set has (its mask bit), else the second's, else the first's; the masks
+     * joined (SOCOM 1's Merge, 0x533DB0) */
+    void Merge(const AI_PARAMS &a, const AI_PARAMS &b);
+    /* the cosine of the aiming cone: 10 degrees wide at no discipline, 2 at full (new in SOCOM II,
+     * the name ours: the turrets' AI asks it, OVL1 0x3A8030 -- 0x533CF0) */
+    float GetAimConeCos() const;
 
     unsigned int mask;   // 0x0
     float accuracy;   // 0x4
@@ -48,6 +54,10 @@ class startvec {
 public:
     unsigned int m_count;   // 0x0
     start m_start[4];   // 0x4
+
+    /* the starts out of an rdr array: each item a name and a direction (new in SOCOM II, the name
+     * ours: CVehicleRdrEntry::Load reads both sets through it, 0x533A60) */
+    void Load(_zrdr *rdr);
 
     /* a start's name and direction by index, or none (the names are ours: the four getters
      * inline them; the result through a local, or the index and count take other registers) */
