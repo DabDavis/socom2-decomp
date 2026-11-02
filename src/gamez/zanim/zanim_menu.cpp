@@ -1868,7 +1868,7 @@ bool UINetCnfCurrCombo(C2DAnimCmdHdr *hdr, float *dT)
 {
     CValve *valve = CValve::Create(ArgText(ArgName(hdr)), (VALVE_TYPE)2);
     int count = data_00457C40.m_count;
-    NetCnfEntry *cur = func_001E8890(&data_00457C40);
+    NetCnfEntry *cur = ezNetCnfGetDefault(&data_00457C40);
     int index = 0;
 
     for (int i = 0; i < count; i++) {

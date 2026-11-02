@@ -9,12 +9,12 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 #define sp0 (*(s32 *)((char *)sp + 0x0))
+s32 ContextActivateParams(char *, s32 *);           /* extern */
+s32 ContextSetActiveWords(char *, s32 *);           /* extern */
 s32 asrspi_ActivateCtx(s32, s32, M2C_UNK);          /* extern */
 s32 asrspi_ActivateSessionData(s32, s32);           /* extern */
 s32 asrspi_ExportSessionData(s32, M2C_UNK, s32, char *); /* extern */
 s32 func_00243298(s32, s32);                        /* extern */
-s32 func_004C5D68(char *, s32 *);                   /* extern */
-s32 func_004C5F28(char *, s32 *);                   /* extern */
 s32 func_004C88A0(char *);                          /* extern */
 M2C_UNK heap_Free(s32, s32);                        /* extern */
 extern s32 gGSAPI;
@@ -48,11 +48,11 @@ block_5:
         if (var_s0 >= 0) {
             M2C_FIELD(arg0, s32 **, 0x30) = arg1;
             M2C_FIELD(arg0, s32 **, 0x48) = arg1;
-            var_s0 = func_004C5D68(arg0, arg1);
+            var_s0 = ContextSetActiveWords(arg0, arg1);
             if (var_s0 >= 0) {
                 var_s0 = func_004C88A0(arg0);
                 if (var_s0 >= 0) {
-                    var_s0 = func_004C5F28(arg0, arg1);
+                    var_s0 = ContextActivateParams(arg0, arg1);
                 }
             }
             if ((M2C_FIELD(arg0, s32 *, 0x68) != 0) && (var_s0 >= 0)) {

@@ -797,7 +797,7 @@ struct NetCnfList {
 };
 extern NetCnfList data_00457C40;
 extern char data_004567C0[];
-NetCnfEntry *func_001E8890(NetCnfList *list);                       /* (the configuration in use) */
+NetCnfEntry *ezNetCnfGetDefault(NetCnfList *list);                       /* (the configuration in use) */
 int func_001E8910(const char *device, const char *name, void *out); /* (a configuration selected) */
 unsigned char func_002E99E0();                                      /* (the lobby's game state) */
 void func_002BADA0();                                               /* (the side swap finished) */

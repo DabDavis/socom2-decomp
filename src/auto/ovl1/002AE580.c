@@ -4,11 +4,12 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_00219330(s32, f32);                    /* extern */
+M2C_UNK hudStartDefuseTimer__Fbf(s32, f32);         /* extern */
 
-s32 func_002AE580(void *arg0) {
-    func_00219330((M2C_FIELD(arg0, u8 *, 4) & 1) != 0, M2C_FIELD(arg0, f32 *, 8));
+s32 func_002AE580(char *arg0) {
+    hudStartDefuseTimer__Fbf((SC_MEMBER(arg0, u8 *, 4) & 1) != 0, SC_MEMBER(arg0, f32 *, 8));
     return 1;
 }

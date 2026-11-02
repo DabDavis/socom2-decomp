@@ -5,6 +5,111 @@
 
 #include "zseal.h"
 
+/* a blend's anims (anim.cpp's CBlendable, the kit lane's: only the test here) */
+class CBlendable {
+public:
+    bool Contains(AnimType type);
+};
+
+extern "C" {
+/* a list's first and next anims (RTList<ACTIVE_ANIM>'s Begin and Next, seal_anim.cpp's tail copies:
+ * OVL2 0x5780E0, 0x578110) */
+ACTIVE_ANIM *func_005780E0(CActiveAnimList *list);
+ACTIVE_ANIM *func_00578110(CActiveAnimList *list);
+}
+
+/* the animation set's per-weapon tables (anim.cpp's CAnimsByFP, the kit lane's: only the pistol's
+ * lookup) and the set's pointer to them at 0x5C (a view of AnimSet; the name ours) */
+class CAnimsByFP {
+public:
+    AnimType PistolAnim(AnimType type) const;
+};
+
+struct AnimSetByFP {
+    unsigned char _0[0x5c];
+    CAnimsByFP *m_byfp;   // 0x5c
+};
+
+/* an anim type for a kind of hold: 1 as it is, 2 the pistol's own (the type itself when the set has
+ * none), any other kind as it is (OVL2 0x58C9E0, new in SOCOM II; the names ours) */
+extern "C" AnimType func_0058C9E0(CZSealBody *seal, AnimType type, unsigned char kind)
+{
+    AnimType r;
+
+    switch (kind) {
+    case 1:
+        r = type;
+        break;
+    case 2:
+        r = ((AnimSetByFP *)seal->m_animset)->m_byfp->PistolAnim(type);
+        break;
+    default:
+        return type;
+    }
+    if (r < 0)
+        return type;
+    return r;
+}
+
+/* every anim of a list that a blendable holds played at a rate scaled (OVL2 0x58BAB0, new in SOCOM
+ * II; its first argument unread, the names ours -- the rate read ahead of the test) */
+extern "C" void func_0058BAB0(CZSealBody *seal, CActiveAnimList *list, CBlendable *blendable, float scale)
+{
+    for (ACTIVE_ANIM *a = func_005780E0(list); a; a = func_00578110(list)) {
+        float rate = a->m_playback;
+
+        if (blendable->Contains((AnimType)a->m_id))
+            a->m_playback = scale * rate;
+    }
+}
+
+/* two lookups over one byte kind (OVL2 0x58DEB0, 0x58DF20, new in SOCOM II: the HUD's radio menu
+ * at 0x2329F0/0x232BC0 asks both in turn; the names ours): 2, 16 and the group 9-13 each give their
+ * own value, any other kind 0. Each case's compare runs in reverse source order */
+extern "C" int func_0058DF20(unsigned char k)
+{
+    int r = 0;
+
+    switch (k) {
+    case 2:
+        r = 3;
+        break;
+    case 16:
+        r = 17;
+        break;
+    case 10:
+    case 11:
+    case 9:
+    case 13:
+    case 12:
+        r = 21;
+        break;
+    }
+    return r;
+}
+
+extern "C" int func_0058DEB0(unsigned char k)
+{
+    int r = 0;
+
+    switch (k) {
+    case 2:
+        r = 16;
+        break;
+    case 16:
+        r = 20;
+        break;
+    case 10:
+    case 11:
+    case 9:
+    case 13:
+    case 12:
+        r = 32;
+        break;
+    }
+    return r;
+}
+
 /* an animation set's speeds (SOCOM 1's DWARF: ANIMSET_PARAMS, 0x34 bytes) */
 struct ANIMSET_PARAMS {
     float m_stand_max_fwd;   // 0x0

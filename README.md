@@ -1647,6 +1647,36 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the SEALs, round 10** (seal_body.cpp's blend and jump families, the hostile anchor, seal_cfg.cpp):
+  - an inline accessor with an UNSIGNED index called with an int counter keeps the target's per-pass
+    `sll; addu` on an RTStack walk (0x57DBB0, 0x57DC20);
+  - two identical address expressions either side of a call are shared through a saved register;
+    spelling the first differently (`&s->m` against `(char *)s + K`) makes MW recompute it, as the
+    target does (0x57F310 and the other pops);
+  - `if (!InlineBoolWithAnd()) x = ...; else x = false;` keeps the `&&` materialised (sltu) with the
+    held arm last; a ternary or `!= false` does not (UpdateHostileAnchor 0x543030);
+  - a call's result taken into a block-local before a float-zero store gives `sw zero`; stored through
+    the call's result directly, MW hoists 0.0f into $f20 (0x57F690);
+  - a short argument read through an inline accessor loads ahead of the call's other arguments
+    (0x5802B0);
+  - an unnamed unit function nothing calls can be a helper the unit inlines everywhere: write it and
+    have its siblings call it (0x588B40);
+  - `if (a || b) return false; return f();` leaves the false block right after the test (0x57F7D0);
+    a single negated test lets MW move it to the end (0x57F530, open).
+- **Tells from the HUD, round 18** (st_mpexit.cpp's stat leaderboard, hud_bitmapreticule.cpp, zui_2d.cpp's command pieces):
+  - a side test written `if (b) { if (!A()) continue; } else if (!B()) continue;` gives the target's
+    `bnez v0,ok; b skip`; the goto form inverts it;
+  - a parser returning its new record or its base parser's result through one local
+    (`cmd = Base::Parse(rdr); return cmd;`) matches; returning each directly is 4 bytes short;
+  - a derived GetZAnimCmdType takes its base's count as `Base::GetZAnimCmdType(0) + n` (the null
+    name folds the inlined base chain to its count); its fallthrough `Base::GetZAnimCmdType(name)`
+    inlines the whole chain;
+  - tools/perm.py compiles its copy as cand.cpp: an unnamed-namespace function is
+    `...__18@unnamed@cand_cpp@...` with `--target`, and its `-I` paths must be absolute;
+  - SOCOM II's BitmapReticule texture tables hold 11 entries (SOCOM 1's 10); hud_bitmapreticule.cpp
+    ends with hudStartDefuseTimer at 0x21932F as in SOCOM 1 (~BitmapReticule now matches from the unit,
+    no longer a draft-only false regression); the unwritten unit between hud_mpinfobox and
+    hud_mpweaponsel spans ~0x239770-0x23B98F (its global a 0x40-byte object storing 0xDEADBEEF at 0x34).
 - **Tells from the online lobby, round 8** (zNetMediusFile.cpp complete, the ladder list, the friend invitations):
   - MW never inlines `std::make_pair` here, by reference or by value; `std::pair<K, V>(key, v)`
     inlines and reproduces the target's two string copies;
@@ -2643,7 +2673,7 @@ every hand-written unit (`--files '^(?!auto/)'`) before it is committed. A workt
 `extracted/` and `decomp/toolchains/` linked in from the main tree.
 
 `--files '^(?!auto/)'` leaves out the drafts, so a hand-written inline copy that only its draft
-matches reports as a regression there (0x32C5F0, ~CRdrArchiveList's copy, 0x219090, ~BitmapReticule's, and 0x510080, OVL2's
+matches reports as a regression there (0x32C5F0, ~CRdrArchiveList's copy, and 0x510080, OVL2's
 __list_imp destructor that seal_aistate.cpp's missing copy now reports "elsewhere" -- 0x29FF60 and
 0x2D02B0 match from hand source since the MSL headers' completion): rerun with that draft's file
 included before believing one.
@@ -2779,7 +2809,7 @@ flag set, every function it defines scored; the probes are `build/scratch/gcc/p*
 | OVL1 0x1E7F58-0x1E8FD4 | the microphone input (`openmic`, `getsamples`, `Sid*`, over lgAud) and Sony's libezcnf/libezctl (1.0 beta) | `ee-gcc2.96` `-O2 -G0 -fno-strict-aliasing` | found 2026-11-02, the only run outside the first ranges that saves s-registers with `sd` and never `sq`; `closemic`, `SidClose` byte-exact under 2.96 only (every other toolchain 9-13 words off); `SidGetSamples` reloads its read position after storing through `out` -- byte-exact only without strict aliasing |
 | OVL1 0x2430F0-0x248350 | the recogniser's heap (`heap_*`), lgAud (the USB headset, liblgaud 1.08.002), SCEA's libnetb/inet | `ee-gcc2.96` `-O2 -G0` | `lgAudASync`, `sceBInetControl`, func_00246CE0: 2.96 only (2.9-991111 15s/10s/6s, 2.95.3-136 15s/6/6s, 3.2 11s/9s/=) |
 | OVL1 0x248350-0x256FD0 | Nellymoser's speech codec (SaseEncVad, SaseDec) | `ee-gcc2.96` **`-O2 -G8`** | five functions byte-exact only so: their scalars and float literals are `$gp`-relative (small data in MAIN's 0x1D5300-0x1D55C0, `.lit4`); at -G0 every one misses |
-| OVL2 0x4C5400-0x50DC50 | ScanSoft's speech recogniser (asrspi\*, casr\*, mtx\*) | `ee-gcc2.96` `-O2 -G0 -fno-strict-aliasing` | `casrStoreSegmentation` keeps its `short` store above the load of the next node: byte-exact only without strict aliasing, and none of the library's drafts is lost by the flag; the sibling calls -- func_004CCC50, ConstructMel, func_004F7038 -- 2.96 only (every 2.9x and 2.95.x 5s-15s); its leaf functions do not tell 2.9x, 2.95.x and 2.96 apart. `mtxConstruct` makes no sibling call because 2.96 declines one where the return types differ |
+| OVL2 0x4C5400-0x50DC50 | ScanSoft's speech recogniser (asrspi\*, casr\*, mtx\*) | `ee-gcc2.96` `-O2 -G0 -fno-strict-aliasing -funroll-loops` | the loop unrolling: ContextActivateParams (below, round 2b); `casrStoreSegmentation` keeps its `short` store above the load of the next node: byte-exact only without strict aliasing, and none of the library's drafts is lost by the flag; the sibling calls -- func_004CCC50, ConstructMel, func_004F7038 -- 2.96 only (every 2.9x and 2.95.x 5s-15s); its leaf functions do not tell 2.9x, 2.95.x and 2.96 apart. `mtxConstruct` makes no sibling call because 2.96 declines one where the return types differ |
 | OVL2 0x60FB50-0x64F720 | Medius, DME and the rt_\* libraries (SCEA) | `ee-gcc2.96` `-O2 -G0` | rt_comm_get_channel, rt_memory_register_callbacks, rt_msg_client_change_state, rt_msg_set_byte: all four only under 2.96 -O2 (2.9x 5/=/9s/6, 2.95.x 4/=/10s/5, 3.2 =/5/3/=); strict aliasing stays on -- two sibling drafts of one shape (0x61E7F0, 0x61E858) match only with it: thin, one shape |
 
 -O1 misses wherever it was tried and -O3 compiles these as -O2 does; everything is C (no mangled
@@ -2903,6 +2933,46 @@ newlib stdio wrappers and libgcc's fp-bit are open. Still open: the strict-alias
 SDK, newlib, OVL1's heap/lgAud/libnetb and the codec (no function yet tells), the 991111 rebuilds
 -01 and a (no probe separates them from 991111), and the generated tier's GCC near misses, not yet
 classified as amsurvey classified MW's.
+
+### The recogniser and Medius by hand (round 2b)
+
+**SOCOM 1's demo lists every GCC object.** Its symtab keeps GCC's `gcc2_compiled.` marker at
+the start of each object file, and the objects' static functions as LOCAL symbols: a library's
+units -- their spans, order and the names of their statics -- read straight off it (62 objects
+in the recogniser, 0x336EF0-0x378890; 112 across Medius/DME/RT). SOCOM II keeps the order
+within an object (GCC emits in source order), so a placeholder at the same position, with a
+body that does what SOCOM 1's does, takes the name (`s1:order`). SOCOM 1's Medius objects
+interleave with MW code, so a whole-range alignment wanders there; pair object by object.
+
+- **ScanSoft built the recogniser with `-funroll-loops` too**: ContextActivateParams' 18-step
+  loop is unrolled by 3 (2.96 picks 3 when 4 does not divide a constant count) -- 81s without the
+  flag, byte-exact with it; all 165 recogniser drafts keep matching with it (ccflags) and every
+  `src/lib/asr` unit carries it. SOCOM 1's copy is unrolled the same way.
+- **What a call returns moves registers around it.** The host's notify callback returns
+  nothing: declared `int`, the call sets v0 and the constant stored before it moves from v1 to
+  v0. `_tosErrorLog` returns its code as an `unsigned char`, so every `return _tosErrorLog(...)`
+  is a jal, not a sibling call (2.96 declines one when the modes differ; `unsigned int` against
+  `int` does not stop it, `long` adds a `move v0,v0`).
+- **The RT library is built per file**: rt_time is byte-exact only with
+  `-fno-optimize-sibling-calls` (rt_time_get_base_diff's return of a call is a jal, even through
+  a variable). The flag loses 42 of 112 drafts in 0x62C000-0x645000 and 31 of 104 in DME, but
+  1 of 232 in the Medius client: a unit's directive says it, not the library's.
+- **Shapes 2.96 decides**: a guard clause puts the return value in the branch's delay slot
+  (the callbacks); a struct passed by value goes through the stack (`ldl`/`ldr` pairs: the 8-byte
+  word selection and safe handles, the 24-byte NetAddress EABI passes by reference); `strcpy` of
+  a literal is a block move; the vendor writes `c->params->x` where a local would hoist loads
+  (ContextGetAction, ContextSetParam), and `list[n]` where strength reduction makes the pointer.
+- **Open, diagnosed in place**: asrspi_cbResult (two identical null-result blocks the target
+  keeps and 2.96 merges), casrGetLastError/Warning (2.96's if-conversion of SOCOM 1's plain
+  magic-number guard into `li 11; movz` -- no shape tried reproduces it), casrImportContext, the
+  error translator at 0x4C6078; round 1's casrDoSecondPass and cbGenderDisable.
+
+Hand-written this round: `asr/asrspi_cb.c` (6 of 7), `asr/context.c` (8 of 9), `asr/gsapi.c`
+(8), `asr/cb.c` (+3), `asr/tos.c` (2), `medius/rt_msg.c` (+12: the unsigned accessors and eight
+network-order twins SOCOM 1 did not have), `medius/rt_time.c` (6), `medius/mediusutil.c` (2),
+`medius/mediusapi.c` (4) -- 51 functions, 47 of them new to the map's byte-exact rows (four
+supersede matching drafts: asrspi_cbAgc, ContextSetCtxData, rt_msg_get_u2byte,
+iCreateAndAllocateMessageID).
 
 ## Open, and next
 
