@@ -11285,9 +11285,9 @@
 0x005E1A10 0x40 RifleFPAnim__10CAnimsByFPCF8AnimType  # OVL2; s1:order by hand (the kit lane, round 10): after PistolFPAnim as in SOCOM 1's anim.cpp; the group's short at 4
 0x005E1A50 0x40 PistolAnim__10CAnimsByFPCF8AnimType  # OVL2; s1:order by hand (the kit lane, round 10): after RifleFPAnim as in SOCOM 1's anim.cpp; the group's short at 2
 0x005E1A90 0x60 BaseAnim__7AnimSetF8AnimType  # OVL2; s1:calls (SOCOM 1's IsCurrentBlend calls AnimSet::BaseAnim where SOCOM II's, 0x577E40, calls this; 0x60 bytes against SOCOM 1's 0x40) -- the SEAL lane
-0x005E1AF0 0x100 func_005E1AF0  # OVL2
-0x005E1BF0 0x100 func_005E1BF0  # OVL2
-0x005E1CF0 0x100 func_005E1CF0  # OVL2
+0x005E1AF0 0x100 SetPistolFPAnim__7AnimSetF8AnimType8AnimType  # OVL2; by hand (the kit lane, round 10): both types' anims checked (AnimId inlined twice), then the pistol first-person type stored in the rifle type's CAnimsByFP group (+6, the group's rifle type at +0 too) and the rifle type made the variant's base in its record; DefineFPAnims (0x5E0690) calls it -- new in SOCOM II, the name ours
+0x005E1BF0 0x100 SetRifleFPAnim__7AnimSetF8AnimType8AnimType  # OVL2; by hand (the kit lane, round 10): as SetPistolFPAnim (0x5E1AF0), the group's +4 (the rifle first-person type) -- the name ours
+0x005E1CF0 0x100 SetPistolAnim__7AnimSetF8AnimType8AnimType  # OVL2; by hand (the kit lane, round 10): as SetPistolFPAnim (0x5E1AF0), the group's +2 (the pistol type, CAnimsByFP::SetPistolAnim's store) -- the name ours
 0x005E1DF0 0x12FC func_005E1DF0  # OVL2
 0x005E30F0 0x624 func_005E30F0  # OVL2
 0x005E3720 0x18 Get__12CAnimAuxDataFUi  # OVL2; s1:exact

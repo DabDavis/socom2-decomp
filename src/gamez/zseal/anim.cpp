@@ -25,6 +25,17 @@ public:
     enum { MAX_TYPES = 312 };
 
     void SetPistolAnim(AnimType rifle, AnimType pistol);
+    /* a rifle anim type's first-person variants set (inline: AnimSet's setters expand them) */
+    void SetRifleFPAnim(AnimType rifle, AnimType fp)
+    {
+        m_animgroups[rifle].m_rifle_type = rifle;
+        m_animgroups[rifle].m_rifle_fp_type = fp;
+    }
+    void SetPistolFPAnim(AnimType rifle, AnimType fp)
+    {
+        m_animgroups[rifle].m_rifle_type = rifle;
+        m_animgroups[rifle].m_pistol_fp_type = fp;
+    }
     AnimType PistolFPAnim(AnimType type) const;
     AnimType RifleFPAnim(AnimType type) const;
     AnimType PistolAnim(AnimType type) const;
@@ -132,7 +143,13 @@ public:
     bool TypeBit1(AnimType type);
     int GetVariantIndex(AnimType type, int kind, int anim);
     int PickVariant(AnimType type, int kind);
-    short AnimId(AnimType type) const;
+    int AnimId(AnimType type) const;
+    /* a rifle anim type's variant set, both types' anims there: the group's (CAnimsByFP's) and the
+     * variant's base type (OVL2 0x5E1CF0, 0x5E1BF0, 0x5E1AF0; DefineFPAnims calls them -- new in
+     * SOCOM II, the names ours) */
+    void SetPistolAnim(AnimType rifle, AnimType pistol);
+    void SetRifleFPAnim(AnimType rifle, AnimType fp);
+    void SetPistolFPAnim(AnimType rifle, AnimType fp);
     /* a set closed (SOCOM 1's Close freed its anims; SOCOM II's CloseAll inlines it to nothing --
      * the walk is all that is left) and every set closed (SOCOM 1's; CGame::StopEngine calls it) */
     void Close() {}
@@ -143,6 +160,8 @@ public:
 
     unsigned char _0[0x44];
     std::vector<CAnimTypeRec *> m_types;   // 0x44: a record per anim type, or 0
+    unsigned char _50[0x5c - 0x50];
+    CAnimsByFP *m_animsbyfp;   // 0x5c (SOCOM 1's m_animgps at 0x60)
 };
 
 /* every record in use cleared of a state (OVL2 0x5E5BF0; the count kept but not returned) */
@@ -395,12 +414,14 @@ CAnimTypeRec::~CAnimTypeRec()
 }
 
 /* a type's anim, or -1 (SOCOM 1's AnimId, read from the type's record; OVL2 0x5E3E80) */
-short AnimSet::AnimId(AnimType type) const
+int AnimSet::AnimId(AnimType type) const
 {
     if (type >= 0 && type < m_types.size()) {
         CAnimTypeRec *rec = m_types[type];
 
-        return rec ? rec->m_id : (short)-1;
+        if (rec)
+            return rec->m_id;
+        return -1;
     }
     return -1;
 }
@@ -438,6 +459,47 @@ bool AnimSet::TypeBit1(AnimType type)
             return rec->m_bit1 ? true : false;
     }
     return false;
+}
+
+/* a rifle anim type's pistol variant (OVL2 0x5E1CF0), first-person rifle variant (0x5E1BF0) and
+ * first-person pistol variant (0x5E1AF0) set, when both have anims: the group's types and the
+ * variant's base.
+ * OPEN, all three, 0xF8 against 0x100: the target extends each type once inside each inlined
+ * AnimId (the extension dies in the index) and again from the parameter for the stores; MW keeps
+ * the first extension here and reuses it. Two locals for the AnimIds (computed before both `> -1`
+ * tests, slti as the target's) and AnimId's if-returns (each arm its own `b`) give the rest; tried
+ * int parameters with casts (20 off), `(int)` arguments, the stores written out */
+void AnimSet::SetPistolAnim(AnimType rifle, AnimType pistol)
+{
+    int a = AnimId(rifle);
+    int b = AnimId(pistol);
+
+    if (a > -1 && b > -1) {
+        m_animsbyfp->SetPistolAnim(rifle, pistol);
+        m_types[pistol]->m_base = rifle;
+    }
+}
+
+void AnimSet::SetRifleFPAnim(AnimType rifle, AnimType fp)
+{
+    int a = AnimId(rifle);
+    int b = AnimId(fp);
+
+    if (a > -1 && b > -1) {
+        m_animsbyfp->SetRifleFPAnim(rifle, fp);
+        m_types[fp]->m_base = rifle;
+    }
+}
+
+void AnimSet::SetPistolFPAnim(AnimType rifle, AnimType fp)
+{
+    int a = AnimId(rifle);
+    int b = AnimId(fp);
+
+    if (a > -1 && b > -1) {
+        m_animsbyfp->SetPistolFPAnim(rifle, fp);
+        m_types[fp]->m_base = rifle;
+    }
 }
 
 /* a type's base anim type, or -1 (SOCOM 1's BaseAnim, read from the type's record; OVL2 0x5E1A90) */
