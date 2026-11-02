@@ -7,6 +7,8 @@ against the map -- compiler identification for the GCC front (EQOA's eqsweep.py)
     ./tools/ccsweep.py SRC.c -t ee-gcc2.96 -t ee-gcc2.9-991111 \\
                        -F "-O2 -G0" -F "-O1 -G0" -F "-O2 -G8"
     ./tools/ccsweep.py SRC.c -f '^sceDma' --diff      # a regex over the functions, with diffs
+    ./tools/ccsweep.py src/lib/sdk/intr.c --unit      # the unit as it stands (its directive's
+                                                      # toolchain and flags), one function a line
     ./tools/ccsweep.py VARIANTS.c --variants          # source shapes: each `//== name` line
                                                       # starts a variant, the text above the
                                                       # first one is every variant's prelude
@@ -46,8 +48,16 @@ def main(argv=None) -> int:
     ap.add_argument("-I", dest="includes", action="append", type=Path, default=[])
     ap.add_argument("--diff", action="store_true", help="print the diff of each function's best miss")
     ap.add_argument("--variants", action="store_true", help="SRC holds `//== name` variants")
+    ap.add_argument("--unit", action="store_true",
+                    help="one unit as it stands: its own directive's toolchain and flags (unless -t/-F), "
+                         "one function per line")
     ap.add_argument("-j", "--jobs", type=int, default=2)
     a = ap.parse_args(argv)
+    if a.unit:
+        from sccheck import tu_options
+        opts = tu_options(a.src)
+        a.toolchain = a.toolchain or [opts.get("compiler", D.COMPILER)]
+        a.flags = a.flags or [opts.get("flags", " ".join(D.GCC_FLAGS if D.is_gcc(a.toolchain[0]) else D.FLAGS))]
     tcs = a.toolchain or toolchains()
     flagsets = a.flags or ["-O2 -G0"]
     img, st = E.image(), E.symbols()
@@ -92,6 +102,22 @@ def main(argv=None) -> int:
         results = list(ex.map(one, jobs))
     names = sorted({n for _, out, _ in results if out for n in out},
                    key=lambda n: st.get(n).addr if n in st._by_name else 0)
+    if a.unit and len(results) == 1:
+        label, out, err = results[0]
+        if out is None:
+            print(f"{label}: BUILD FAILED: {err}")
+            return 1
+        print(label)
+        for n in names:
+            v, res = out[n]
+            print(f"  {str(v):>9}  {n}")
+        print(f"{sum(1 for n in names if out[n][0] == '=')}/{len(names)} byte-exact")
+        if a.diff:
+            for n in names:
+                res = out[n][1]
+                if res is not None and not res.match:
+                    print(f"\n{D.report(res)}")
+        return 0
     w = max([len(label) for label, _, _ in results] + [10])
     print(" " * w + "  " + "  ".join(f"{n[:14]:>14}" for n in names))
     best: dict[str, tuple] = {}

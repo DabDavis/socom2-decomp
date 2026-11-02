@@ -2868,7 +2868,7 @@ directive carries its library's toolchain and flags; a draft it supersedes is de
 **Which library objects were assembly -- the demo says.** The demo's symbol table keeps every
 input object's `.text` SECTION symbol, and GCC marks each object it compiled with a local
 `gcc2_compiled.` (and `__gnu_compiled_c`) at that same address: an SDK or newlib object without
-the marker was assembled (`build/scratch/gcc/demo_objs.py` lists them all). In MAIN's libraries
+the marker was assembled (`./scd.py s1 --units LO HI` lists them, statics marked; `--callers NAME` finds a demo function's callers; `tools/ccsweep.py UNIT --unit` scores a unit under its own directive, one function a line -- the three the 2b lane asked for). In MAIN's libraries
 there are exactly three kinds: libkernl's syscall-stub object (138 stubs), libkernl's TLB/debug
 exception handlers (one object, three functions), and newlib's 13 EE string routines (memchr,
 memcmp, memcpy, memmove, memset, strcat, strchr, strcmp, strcpy, strlen, strncat, strncmp,
