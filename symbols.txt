@@ -2256,18 +2256,18 @@
 0x002393F0 0x17C Tick__17CRadioIcon_StaticFf  # OVL1; s1:calls; by hand (CRadioIcon_Static's vtable slot 12, C2D's Tick: SOCOM 1's CZStaticRadioBitmap::HudTick, renamed in SOCOM II's RTTI)
 0x00239570 0x178 Init__17CRadioIcon_StaticFP3C2D  # OVL1; by hand (the HUD lane: the static radio icon's six textures, listed under its parent; after the icons' Ticks in hud_mpinfobox.cpp, the dynamic icon's own inlined into CWhosTalking::Init; the name ours)
 0x002396F0 0x78 __ct__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FPCc  # OVL1; include/string's basic_string(const char *), byte-exact (build/scratch/str/ctor_probe.cpp): the words zeroed, strlen, reserve, the template replace with its category byte; the copy closing the HUD's info box unit -- the integrator
-0x00239770 0x80 func_00239770  # OVL1
-0x002397F0 0x188 func_002397F0  # OVL1
-0x00239980 0xF0 func_00239980  # OVL1
-0x00239A70 0xB0 func_00239A70  # OVL1
-0x00239B20 0x68 func_00239B20  # OVL1
-0x00239B90 0x110 func_00239B90  # OVL1
-0x00239CA0 0x9C func_00239CA0  # OVL1
-0x00239D40 0x2E4 func_00239D40  # OVL1
-0x0023A030 0x140 func_0023A030  # OVL1
-0x0023A170 0xD0 func_0023A170  # OVL1
-0x0023A240 0x78 func_0023A240  # OVL1
-0x0023A2C0 0x18 func_0023A2C0  # OVL1
+0x00239770 0x80 GetNewRating__11CRatingTeamFiPf  # OVL1; ours (the HUD lane, round 19: mp_rating.cpp, SOCOM II's Elo ratings -- a team's walk for the player whose id is at 0 of each 0x18-byte record, the new rating at 0x14 out; CRatingMatch::GetNewRating's call per team)
+0x002397F0 0x188 Update__11CRatingTeamFbiff  # OVL1; ours (the HUD lane, round 19: mp_rating.cpp -- the Elo step: 1/(1+10^((opponent - rating)/400)) through pow, each player's rating plus K times share minus expectation, floored at 200; the team's own for one player a side)
+0x00239980 0xF0 SetShares__11CRatingTeamFf  # OVL1; ours (the HUD lane, round 19: mp_rating.cpp -- each player's share of the team's result by its score over the team's summed score, returning their sum)
+0x00239A70 0xB0 SetAverage__11CRatingTeamFv  # OVL1; ours (the HUD lane, round 19: mp_rating.cpp -- the team's rating at 0x10, its players' ratings averaged over the list's size)
+0x00239B20 0x68 SumScores__11CRatingTeamFv  # OVL1; ours (the HUD lane, round 19: mp_rating.cpp -- the players' scores summed into 0x1C)
+0x00239B90 0x110 __dt__11CRatingTeamFv  # OVL1; ours (the HUD lane, round 19: mp_rating.cpp -- deletes each player, clears the list, the list's three this-tested destructor levels; ~CRatingMatch's call)
+0x00239CA0 0x9C GetNewRating__12CRatingMatchFiPf  # OVL1; ours (the HUD lane, round 19: mp_rating.cpp -- each of the two teams asked in turn until one has the player; CMPExitState's 0x2253C0 calls it)
+0x00239D40 0x2E4 Compute__12CRatingMatchFv  # OVL1; ours (the HUD lane, round 19: mp_rating.cpp -- sums, averages, the draw's weight by the game's length 3/5/7/9/11, the shares, K = 3 x players or 50, both teams' Update)
+0x0023A030 0x140 AddPlayer__12CRatingMatchFiiif  # OVL1; ours (the HUD lane, round 19: mp_rating.cpp -- finds the team by its id at 0xC, news a 0x18-byte player and push_backs it)
+0x0023A170 0xD0 AddTeam__12CRatingMatchFiibf  # OVL1; ours (the HUD lane, round 19: mp_rating.cpp -- news a 0x24-byte team into the first free of two slots)
+0x0023A240 0x78 __dt__12CRatingMatchFv  # OVL1; ours (the HUD lane, round 19: mp_rating.cpp -- deletes both teams)
+0x0023A2C0 0x18 __ct__12CRatingMatchFv  # OVL1; ours (the HUD lane, round 19: mp_rating.cpp -- the two team slots and two flags zeroed; CMPExitState's 0x2253C0 builds one on its stack)
 0x0023A2E0 0x8 func_0023A2E0  # OVL1
 0x0023A2F0 0x74 func_0023A2F0  # OVL1
 0x0023A370 0x8 func_0023A370  # OVL1
