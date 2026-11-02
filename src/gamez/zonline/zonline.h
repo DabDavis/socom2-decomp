@@ -874,6 +874,7 @@ public:
 
     bool IsMemberOfClan();
     bool IsLeaderOfClan(const char *name);
+    bool OnCorrectClanTeam();
     void DisbandClan();
     bool GetClanRoster();
     bool GetInvitedPlayers();
@@ -933,6 +934,7 @@ public:
     void AddFriend(const char *name);
     bool RevokeInvite(const char *name);
     void UpdateClanStats();
+    void UpdateClanRanking();
     bool GetClan();
     bool IsIgnored(const char *name);
     void Censor(const char *text, void (*cb)(const char *text, void *data), void *data);

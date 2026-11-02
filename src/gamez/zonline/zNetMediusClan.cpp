@@ -110,7 +110,7 @@ inline char *VarText(_zrdr *z)
 }
 
 extern "C" {
-extern int data_0044F770;   /* the clan's icon */
+extern int data_0044F770;   /* the clan's ranking stat (UpdateClanRanking sets it) */
 extern int data_0044F798;   /* the invitation's progress: 2 sent, 3 no such player */
 void func_002F4D60(CZOnlineLobby *lobby, int account, int n, const char *text);   /* told the player */
 MediusErrorCode MediusInvitePlayerToClan(MediusInvitePlayerToClanRequest *req,
@@ -118,7 +118,6 @@ MediusErrorCode MediusInvitePlayerToClan(MediusInvitePlayerToClanRequest *req,
 extern int data_0044F788;   /* the clan asked for: 0 not yet, 1 waiting, 2 answered */
 extern bool data_0044F790;   /* in a clan, or about to be */
 extern char data_0066A790;   /* (OVL2) */
-void func_002E7F50(CZOnlineLobby *lobby);   /* the members' stats asked for */
 MediusErrorCode MediusRevokeClanInvitation(MediusRevokeClanInvitationRequest *req,
     void (*cb)(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusRevokeClanInvitationResponse *));
 MediusErrorCode MediusUpdateClanStats(MediusUpdateClanStatsRequest *req,
@@ -422,6 +421,94 @@ void CZOnlineLobby::TransferLeadership(const char *name)
     CheckMediusError(MediusTransferClanLeadership(&req, cbTransferClanLeadership));
 }
 
+extern "C" {
+unsigned char func_002C2FA0();   /* we watch the game (the states lane's: theLobby's spectator test) */
+bool func_002C31A0();   /* we play on the game's first side (the states lane's) */
+}
+
+/* on the side of a clan game our clan may take: any side in a game of no clan or of side 4, and
+ * when watching; else side 1 is the game's clan's and the others its challengers' (SOCOM 1's, which
+ * read the side off the game's flags; OVL1 0x2E80C0: UINotOnCorrectClanTeam's) */
+bool CZOnlineLobby::OnCorrectClanTeam()
+{
+    int ours = StoredClanInfo.ClanID;
+    unsigned int team = data_0044F778;
+
+    if (!team)
+        return true;
+    unsigned char side = data_0044F780;
+
+    if (side == 4)
+        return true;
+    bool challenger = side != 1;
+    bool own = ours == team;
+
+    if (func_002C2FA0())
+        return true;
+    bool first = func_002C31A0();
+
+    if (own && challenger != first)
+        return false;
+    if (!own && challenger == first)
+        return false;
+    return true;
+}
+
+/* the clan's ranking stat (the request and its answer named after the status its callback checks,
+ * 'MediusUpdateClanRanking'; OVL2 0x64B248, a request SOCOM II added to the SDK; the layout as far
+ * as the lobby fills it) */
+struct MediusUpdateClanRankingRequest {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    int StatIndex;   // 0x18: 1
+    int Stat;   // 0x1c
+    unsigned char _20[0x58 - 0x20];
+};   // 0x58
+
+struct MediusUpdateClanRankingResponse { MEDIUS_RESPONSE_HEAD };
+
+extern "C" MediusErrorCode func_0064B248(MediusUpdateClanRankingRequest *req,
+    void (*cb)(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusUpdateClanRankingResponse *));
+
+/* the clan's ranking stat sent: the answer only looked at (SOCOM II's; OVL1 0x2E80B0) */
+void cbUpdateClanRanking(MediusErrorCode, MediusErrorCode, MediusErrorCode,
+                         MediusUpdateClanRankingResponse *resp)
+{
+    CheckMediusCallbackStatus("MediusUpdateClanRanking", resp->StatusCode);
+}
+
+/* the clan's members ranked, the highest ladder stat first (its std::sort instance closes the
+ * unit's own code, 0x2E9B40) */
+struct ClanMemberOrder {
+    ClanMemberOrder() {}
+    bool operator()(ClanMemberItem *a, ClanMemberItem *b) const { return a->LadderStat > b->LadderStat; }
+};
+
+/* the clan's ranking stat: with eight members or more, the eight best's ladder stats averaged, else
+ * 0 -- kept for UpdateClanStats' text and sent (SOCOM II's, the name ours after the status its
+ * callback checks; OVL1 0x2E7F50: UpdateClanStats and cbCreateClan call it on theLobby) */
+void CZOnlineLobby::UpdateClanRanking()
+{
+    data_0044F770 = 0;
+    if (ClanMemberVec.size() >= 8) {
+        int n = 8;
+
+        std::sort(ClanMemberVec.begin(), ClanMemberVec.end(), ClanMemberOrder());
+        /* the postfix step makes MW hoist the end into a preheader after the loop, the entry test
+         * repeated there (the weapons' tell); the stat added as unsigned puts *i in v1, the sum's
+         * load in v0 (an int addend swaps them) */
+        for (ClanMemberVector::iterator i = ClanMemberVec.begin(); i != ClanMemberVec.end(); i++)
+            if (n-- > 0)
+                data_0044F770 += (unsigned int)(*i)->LadderStat;
+        data_0044F770 /= 8;
+    }
+    MediusUpdateClanRankingRequest req;
+
+    memset(&req, 0, sizeof(req));
+    req.StatIndex = 1;
+    req.Stat = data_0044F770;
+    CheckMediusError(func_0064B248(&req, cbUpdateClanRanking));
+}
+
 /* the clan's stats kept: our name shown with the clan's tag (SOCOM 1's, which did nothing; OVL1
  * 0x2E7E70) */
 void cbUpdateClanStats(MediusErrorCode, MediusErrorCode, MediusErrorCode,
@@ -456,7 +543,7 @@ void CZOnlineLobby::UpdateClanStats()
     memcpy(req.Stats, stats, sizeof(req.Stats));
     req.ClanID = StoredClanInfo.ClanID;
     CheckMediusError(MediusUpdateClanStats(&req, cbUpdateClanStats));
-    func_002E7F50(this);
+    UpdateClanRanking();
 }
 
 /* the player to invite found: invited, with a message he is also told (SOCOM 1's; OVL1 0x2E7850) */

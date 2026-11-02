@@ -4799,8 +4799,8 @@
 0x002E7B80 0x1E8 cbCreateClan__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP24MediusCreateClanResponse  # OVL1; s1 by hand (passed by cbFilterClanName, as SOCOM 1's; reports 'MediusCreateClan')
 0x002E7D70 0xF8 UpdateClanStats__13CZOnlineLobbyFv  # OVL1; s1:ui (UIUpdateClanStats, as SOCOM 1's calls UpdateClanStats)
 0x002E7E70 0xD4 cbUpdateClanStats__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP29MediusUpdateClanStatsResponse  # OVL1; s1 by hand (UpdateClanStats' callback; reports 'MediusUpdateClanStats')
-0x002E7F50 0x158 func_002E7F50  # OVL1
-0x002E80B0 0x10 func_002E80B0  # OVL1
+0x002E7F50 0x158 UpdateClanRanking__13CZOnlineLobbyFv  # OVL1; ours, the online lane round 9 (UpdateClanStats 0x2E7D70 and cbCreateClan 0x2E7B80 call it on theLobby: with eight members or more the best eight's LadderStat (+0x1CC) averaged after the std::sort 0x2E9B40, kept in 0x44F770 and sent through OVL2 0x64B248 with cbUpdateClanRanking, whose status string names it) -- byte-exact, zNetMediusClan.cpp
+0x002E80B0 0x10 cbUpdateClanRanking__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP31MediusUpdateClanRankingResponse  # OVL1; ours, the online lane round 9 (func_002E7F50 hands it to OVL2 0x64B248 with the clan's ranking stat; it checks the status as 'MediusUpdateClanRanking', 0x3F43C0) -- byte-exact, zNetMediusClan.cpp
 0x002E80C0 0xDC OnCorrectClanTeam__13CZOnlineLobbyFv  # OVL1; s1:callee
 0x002E81A0 0xC func_002E81A0  # OVL1
 0x002E81B0 0xF0 TransferLeadership__13CZOnlineLobbyFPCc  # OVL1; s1:ui (UITransferLeadership, as SOCOM 1's calls TransferLeadership)
