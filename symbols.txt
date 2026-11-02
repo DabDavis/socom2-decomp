@@ -11258,8 +11258,8 @@
 0x005DE250 0xCC Parse__6CTCommFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::COMM's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTComm's parse for ai::COMM
 0x005DE320 0x7EC RegisterCommands__11CSealCtrlAiFv  # OVL2; by hand (the kit lane, round 8): 34 CZAnimMain::AddCmd calls registering the ai:: task commands (ai::COMM .. ai::WAIT), each id stored to one static (0x66B7E0) -- SOCOM 1's RegisterCommands, the same calls and the same store pattern
 0x005DEB10 0x198 func_005DEB10  # OVL2
-0x005DECB0 0xB8 func_005DECB0  # OVL2
-0x005DED70 0x100 func_005DED70  # OVL2
+0x005DECB0 0xB8 test<i>__2aiFRCiQ22ai7TEST_OPRCi_b  # OVL2; by hand (the kit lane, round 11): a value tested against another by a byte operator (1 !=, 2 ==, 3 >, 4 <, 5 >=, 6 <=, else true: a 7-entry jump table) -- SOCOM 1's MW 2.4 inlined the same switch into CTParam::Tick; SOCOM II's 0x5D4770 calls this int instance (the template's names ours)
+0x005DED70 0x100 test<f>__2aiFRCfQ22ai7TEST_OPRCf_b  # OVL2; by hand (the kit lane, round 11): the float instance of ai::test (0x5DECB0's int one), called from the same 0x5D4770
 0x005DEE70 0x18 func_005DEE70  # OVL2; the same words as _max<Uc>__2aiFRCUcRCUc_RCUc (0x2afc40) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x005DEE90 0x2C func_005DEE90  # OVL2
 0x005DEEC0 0x4A8 func_005DEEC0  # OVL2
