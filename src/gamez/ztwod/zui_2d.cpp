@@ -109,6 +109,7 @@ public:
 class CTeleType : public CRenderableString {
 public:
     virtual ~CTeleType();
+    virtual int GetZAnimCmdType(const char *name);
 
     CSaferStr m_text;   // 0xc0
     unsigned char _cc[0x100 - 0xcc];
@@ -195,6 +196,7 @@ class CSliderBar : public C2DButton {
 public:
     virtual ~CSliderBar();
     virtual void UpdateUIVar(CUIVariable *var);
+    virtual int GetZAnimCmdType(const char *name);
 
     float m_value;   // 0x440
     unsigned char _444[0x450 - 0x444];
@@ -203,6 +205,32 @@ public:
     CPlainBmp m_knob;   // 0x460
     int m_intervals;   // 0x500
 } __attribute__((aligned(16)));   // 0x510 bytes
+
+/* a row of radio buttons (SOCOM 1's CRadioStrip; zui_2d.h's layout: 0x450 bytes, the choice at 0x440).
+ * Its destructor is declared first so that this unit, which defines only the command lookup, does
+ * not take its table */
+class CRadioStrip : public C2DButton {
+public:
+    virtual ~CRadioStrip();
+    virtual int GetZAnimCmdType(const char *name);
+
+    int m_choice;   // 0x440
+} __attribute__((aligned(16)));   // 0x450 bytes
+
+/* a counting string (SOCOM 1's C2DCounter; zui_2d.h's layout: 0xD8 bytes), its destructor declared
+ * first for the same reason */
+class C2DCounter : public CRenderableString {
+public:
+    virtual ~C2DCounter();
+    virtual int GetZAnimCmdType(const char *name);
+
+    float m_start;   // 0xc0
+    bool m_counting;   // 0xc4
+    float m_end;   // 0xc8
+    int m_value;   // 0xcc
+    int m_elapsed;   // 0xd0
+    int m_last;   // 0xd4
+};   // 0xd8 bytes
 
 /* a button showing a spec of its own (SOCOM 1's CHandlerButton; SOCOM II's 0x440 bytes, zui_2d.h's
  * layout). It keeps C2DButton's UpdateUIVar, so its vtable (0x407700) is one of the three that take
@@ -331,6 +359,63 @@ void CPlainBmp::Tick(float dT)
 void CPlainBmp::SetMapOffset(int x, int y)
 {
     SetPos(x, y, x + m_iWidth, y + m_iHeight);
+}
+
+/* the counter's commands after the renderable string's two: Start and Finish */
+int C2DCounter::GetZAnimCmdType(const char *name)
+{
+    if (!name)
+        return CRenderableString::GetZAnimCmdType(0) + 3;
+    if (!*name)
+        return 0;
+    if (!strcasecmp("Start", name))
+        return CRenderableString::GetZAnimCmdType(0) + 1;
+    if (!strcasecmp("Finish", name))
+        return CRenderableString::GetZAnimCmdType(0) + 2;
+    return CRenderableString::GetZAnimCmdType(name);
+}
+
+/* the teletype's commands after the renderable string's two: Continue, scroll_up, scroll_down and
+ * finish (SOCOM 1's slot; each base's count taken with a null name, the base's lookup inlined) */
+int CTeleType::GetZAnimCmdType(const char *name)
+{
+    if (!name)
+        return CRenderableString::GetZAnimCmdType(0) + 5;
+    if (!*name)
+        return 0;
+    if (!strcasecmp("Continue", name))
+        return CRenderableString::GetZAnimCmdType(0) + 1;
+    if (!strcasecmp("scroll_up", name))
+        return CRenderableString::GetZAnimCmdType(0) + 2;
+    if (!strcasecmp("scroll_down", name))
+        return CRenderableString::GetZAnimCmdType(0) + 3;
+    if (!strcasecmp("finish", name))
+        return CRenderableString::GetZAnimCmdType(0) + 4;
+    return CRenderableString::GetZAnimCmdType(name);
+}
+
+/* the slider's command after the button's two: SetValue (its count, as SOCOM 1's, two) */
+int CSliderBar::GetZAnimCmdType(const char *name)
+{
+    if (!name)
+        return C2DButton::GetZAnimCmdType(0) + 2;
+    if (!*name)
+        return 0;
+    if (!strcasecmp("SetValue", name))
+        return C2DButton::GetZAnimCmdType(0) + 1;
+    return C2DButton::GetZAnimCmdType(name);
+}
+
+/* the radio strip's command after the button's two: Selection (its count two) */
+int CRadioStrip::GetZAnimCmdType(const char *name)
+{
+    if (!name)
+        return C2DButton::GetZAnimCmdType(0) + 2;
+    if (!*name)
+        return 0;
+    if (!strcasecmp("Selection", name))
+        return C2DButton::GetZAnimCmdType(0) + 1;
+    return C2DButton::GetZAnimCmdType(name);
 }
 
 /* the button's commands: Caption and Valve (SOCOM II added Valve: SOCOM 1's answered Caption only) */
