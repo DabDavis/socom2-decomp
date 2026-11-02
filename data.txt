@@ -459,6 +459,9 @@
 0x003FAB68 0x8 __RTTI__19CStickDeadzoneTuner  # RTTI of CStickDeadzoneTuner: found by its RTTI's name
 0x003FAB98 0x8 __RTTI__12CDialogTuner  # RTTI of CDialogTuner: found by its RTTI's name
 0x003FAF00 0x8 __RTTI__12CBmpWithNode  # RTTI of CBmpWithNode: found by its RTTI's name
+0x003FB000 0x1A s_keyJamo  # OVL1 data; zui_hangul.cpp's static (name ours): the 2-set keyboard's jamo for the keys a-z (Mieum, Yu, Chieuch ...); 1 reference in 1 function (KeyToJamo, addressed as the table minus 'a')
+0x003FB020 0x1A s_shiftKeyJamo  # OVL1 data; zui_hangul.cpp's static (name ours): the jamo for the shifted keys A-Z (the doubled consonants and Yae, Ye); 1 reference in 1 function (KeyToJamo, addressed as the table minus 'A')
+0x003FB170 0x84 s_jamoNames  # OVL1 data; zui_hangul.cpp's static (name ours): the 33 jamo's names, alphabetical (A_Hang .. Yu); 2 references in 2 functions (FindJamo, 0x390C40)
 0x003FBC40 0x8 __RTTI__10CMemCardIO  # RTTI of CMemCardIO: found by its RTTI's name
 0x003FBFC0 0x8 __RTTI__7CTurret  # RTTI of CTurret: found by its RTTI's name
 0x003FC140 0x8 __RTTI__8CVehicle  # RTTI of CVehicle: found by its RTTI's name

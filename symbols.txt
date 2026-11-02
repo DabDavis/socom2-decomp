@@ -7343,12 +7343,12 @@
 0x00390860 0x40 func_00390860  # OVL1
 0x003908A0 0x100 func_003908A0  # OVL1
 0x003909A0 0x18 func_003909A0  # OVL1
-0x003909C0 0x2C func_003909C0  # OVL1
+0x003909C0 0x2C More__11CSkbRdrIterCFv  # OVL1; ours (zui_hangul.cpp: an rdr array walked by index, {rdr, index}: the index still under the count; the look parser 0x3963F0 calls it four times)
 0x003909F0 0x3C func_003909F0  # OVL1
 0x00390A30 0x174 func_00390A30  # OVL1
-0x00390BB0 0x90 func_00390BB0  # OVL1
+0x00390BB0 0x90 FindJamo__FPCc  # OVL1; ours (zui_hangul.cpp: a jamo by name against the 33 names at 0x3FB170 (A_Hang .. Yu, alphabetical), 33 for none; zui_skb.cpp's 0x38DA70 calls it)
 0x00390C40 0x464 func_00390C40  # OVL1
-0x003910B0 0x24 func_003910B0  # OVL1
+0x003910B0 0x24 SkbRdrCount__FP5_zrdr  # OVL1; ours (zui_hangul.cpp: an rdr array's count -- type 4's halfword length -- 0 for anything else or none; zui_skb.cpp's ZuiInit, CreateSoftKeyboard and 0x38DCB0 call it out of line)
 0x003910E0 0x190 func_003910E0  # OVL1
 0x00391270 0x8 func_00391270  # OVL1
 0x00391280 0x14 func_00391280  # OVL1
@@ -7356,7 +7356,7 @@
 0x00391320 0x18 func_00391320  # OVL1
 0x00391340 0x8 func_00391340  # OVL1
 0x00391350 0xF8 func_00391350  # OVL1
-0x00391450 0x48 func_00391450  # OVL1
+0x00391450 0x48 KeyToJamo__Fc  # OVL1; ours (zui_hangul.cpp: a letter key's jamo, a-z through the table at 0x3FB000, else the shifted table at 0x3FB020 indexed from 'A'; 0x39ADA0 calls it)
 0x003914A0 0x1C4 func_003914A0  # OVL1
 0x00391670 0x358 func_00391670  # OVL1
 0x003919D0 0x360 func_003919D0  # OVL1
