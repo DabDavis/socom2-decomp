@@ -7428,7 +7428,7 @@
 0x00395120 0x14 func_00395120  # OVL1
 0x00395140 0x1B0 func_00395140  # OVL1
 0x003952F0 0xC func_003952F0  # OVL1
-0x00395300 0x140 func_00395300  # OVL1
+0x00395300 0x140 ReadIntPair__FP5_zrdrPCc  # OVL1; SOCOM 1's name by its body (zui_skbview.cpp: SOCOM 1's zui_skb.cpp ReadIntPair -- the tag's array items 0 and 1 as ints through GetRdrArrayInt's shape, a CIntPair returned; the look parser 0x3963F0 calls it seven times, zui_skb.cpp's 0x38DCB0 twice)
 0x00395440 0xF8 func_00395440  # OVL1
 0x00395540 0x390 func_00395540  # OVL1
 0x003958D0 0x47C func_003958D0  # OVL1
@@ -7439,7 +7439,7 @@
 0x00396300 0xE4 func_00396300  # OVL1
 0x003963F0 0x7D8 func_003963F0  # OVL1
 0x00396BD0 0x30 func_00396BD0  # OVL1
-0x00396C00 0x70 func_00396C00  # OVL1
+0x00396C00 0x70 ReadSkbRect__FP8CSkbRectP5_zrdr  # OVL1; ours (zui_skbview.cpp: a look rectangle from its block's Pos and Size pairs through ReadIntPair; the look parser 0x3963F0 calls it)
 0x00396C70 0x8 func_00396C70  # OVL1
 0x00396C80 0x28 func_00396C80  # OVL1
 0x00396CB0 0x88 func_00396CB0  # OVL1
