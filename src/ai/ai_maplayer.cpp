@@ -86,16 +86,15 @@ struct LOOK_DATA {
 
 /* a cell a search may settle on: walkable, no action on it, no overlay over it (the name ours:
  * inlined one level into both callbacks in the target, so the cell's two tests and the overlays'
- * walk are called out of line -- 0x511F40, 0x516920, 0x53A500).
- * OPEN with both callbacks (0x204 against 0xEC, _find_cover likewise): MW here inlines it, the
- * cell's tests and the overlays' walk, cutting only the walk's deepest list pieces (tail() and
- * the generic_iterator constructors, `warn_notinlined`) -- a depth budget spent from the call
- * site down, where the target stops at the helper's own body. The target's 0x53A500 inlines the
- * whole const walk with its iterators in stack slots, as ai_astar.cpp's fcost does. Not tried:
- * the helper as a member of the floodfill struct or the cell, the test spelled with `== false` */
+ * walk are called out of line -- 0x511F40, 0x516920, 0x53A500). One level because it is six high:
+ * the walk's postfix step is the level that cuts it (ai.h); with `++i` MW inlined all but the
+ * walk's deepest list pieces. The cell in a local: the target loads it once, into the register
+ * the callback's data pointer had */
 inline bool _open_cell(const MAP_FLOODFILL_STRUCT &s)
 {
-    return s.m_cell->IsTraversable() && !s.m_cell->HasAction() && !ai::overlays.Contains(s.m_cell, s.m_start);
+    const CAiCell *cell = s.m_cell;
+
+    return cell->IsTraversable() && !cell->HasAction() && !ai::overlays.Contains(cell, s.m_start);
 }
 
 /* the cover search's callback: an open cell is taken for testing; else an opaque cell squarely
@@ -111,7 +110,7 @@ static bool _find_cover(MAP_FLOODFILL_STRUCT &s, void *data)
         if (_open_cell(s)) {
             r = true;
         } else if (s.m_cell->IsOpaque()) {
-            if (CAiMap::GetDirDelta(s.m_map->GetClosestDir(s.m_start, &d->m_pos), (CAiMap::DIR)s.m_dir) == 0) {
+            if (CAiMap::GetDirDelta(s.m_map->GetClosestDir(s.m_start, &d->m_pos), s.m_dir) == 0) {
                 s.m_mode = 2;
                 r = true;
                 d->m_loc = s.m_loc;
@@ -154,13 +153,45 @@ static bool _find_look(MAP_FLOODFILL_STRUCT &s, void *data)
     return r;
 }
 
+/* the cell with cover from the point, flooded out from the start toward it (SOCOM 1's; FindLookLoc's
+ * twin, the cover search's callback) */
+bool CAiMap::FindCoverLoc(const CAiMapLoc &loc, const CPnt3D *pos, CAiMapLoc &out, DIR &dir, int radius)
+{
+    CPnt3D d;
+    CPnt3D center;
+
+    if (!GetCellCenter(loc, &center))
+        return false;
+
+    pos->SubXZ(&center, &d);
+    d.y = 0.0f;
+    const CPnt3D &cd = d;
+    float len = sqrtf(cd.x * cd.x + cd.z * cd.z);
+
+    if (len != 0.0f) {
+        float inv = 1.0f / len;
+
+        d.x *= inv;
+        d.z *= inv;
+    }
+    dir = GetClosestDir(&d);
+    LOOK_DATA data;
+
+    data.m_loc = loc;
+    data.m_pos = *pos;
+    data.m_dist = len;
+    if (FloodFill(loc, dir, radius, _find_cover, &data)) {
+        out = data.m_loc;
+        return true;
+    }
+    return false;
+}
+
 /* the cell from which the point is seen, flooded out from the start toward it (SOCOM 1's; the
  * direction handed back is the start's toward the point). The direction declared ahead of the
- * centre: only so do their slots fall as the target's (sp+224, sp+208).
- * OPEN, right size, 17 instructions: the normalisation -- the target reads d.z again inside the
- * test (an inline length, not shared with the sum's load?) and computes both products before
- * either store, keeping d.x from the sum; this build keeps &d.z in v1 from the sum on. Compound
- * assignments, products into locals, z first and an inline normalize_xz(CPnt3D &) were tried */
+ * centre: only so do their slots fall as the target's (sp+224, sp+208). The length is summed
+ * through a const view of the difference: so MW does not share the sum's load of z with the
+ * scaling's (the target reads d.z again inside the test, d.x not), and the scaling compound */
 bool CAiMap::FindLookLoc(const CAiMapLoc &loc, const CPnt3D *pos, CAiMapLoc &out, DIR &dir, int radius)
 {
     CPnt3D d;
@@ -171,15 +202,14 @@ bool CAiMap::FindLookLoc(const CAiMapLoc &loc, const CPnt3D *pos, CAiMapLoc &out
 
     pos->SubXZ(&center, &d);
     d.y = 0.0f;
-    float len = sqrtf(d.x * d.x + d.z * d.z);
+    const CPnt3D &cd = d;
+    float len = sqrtf(cd.x * cd.x + cd.z * cd.z);
 
     if (len != 0.0f) {
         float inv = 1.0f / len;
-        float x = d.x * inv;
-        float z = d.z * inv;
 
-        d.x = x;
-        d.z = z;
+        d.x *= inv;
+        d.z *= inv;
     }
     dir = GetClosestDir(&d);
     LOOK_DATA data;

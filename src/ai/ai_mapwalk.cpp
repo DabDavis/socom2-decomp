@@ -19,11 +19,10 @@ struct TILE_DATA {
  * 1's _tile_boundary; the shadow's and the occupied bit's new in SOCOM II) */
 /* a cell's soil set from the tile's value where it may be: anywhere (flag 1) or over the default
  * soil, and over steep ground with flag 2 (SOCOM 1's _tile_soil, the steep case new). The two
- * bools assigned true and cleared, the steep test materialised into a bool of its own, the flags
- * declared after the bools: each measured.
- * OPEN, right size, 7 instructions: registers only -- the target keeps the old soil in a2 and the
- * flags in a0, here the other way round (declaration orders of soil/old, cell/t, set/any and the
- * comparison's operand order tried) */
+ * bools assigned true and cleared, the steep test materialised into a bool of its own: each
+ * measured. The flags are read twice, unnamed: MW merges the loads into a temporary, numbered after
+ * every named local (the old soil, first read in a test, moved to their end), which gives the
+ * target's a0 for the flags and a2 for the old soil -- a named `flags` swapped the two */
 static bool _tile_soil(const MAP_FOREACH_STRUCT &s, void *data)
 {
     TILE_DATA *t = (TILE_DATA *)data;
@@ -34,12 +33,11 @@ static bool _tile_soil(const MAP_FOREACH_STRUCT &s, void *data)
     if (old != soil) {
         bool set = true;
         bool any = true;
-        unsigned int flags = t->m_flags;
 
-        if (!(flags & 1) && old != CAiMap::SOIL_DEFAULT)
+        if (!(t->m_flags & 1) && old != CAiMap::SOIL_DEFAULT)
             any = false;
         if (!any) {
-            bool steep = (flags & 2) != 0 && old == CAiMap::SOIL_STEEP;
+            bool steep = (t->m_flags & 2) != 0 && old == CAiMap::SOIL_STEEP;
 
             if (!steep)
                 set = false;

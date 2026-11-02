@@ -218,6 +218,22 @@ CAiMap::DIR CAiMap::GetClosestDir(const CAiMapLoc &from, const CAiMapLoc &to)
     return GetClosestDir(&v);
 }
 
+/* the direction from a cell's centre toward a point, level (SOCOM 1's; the centre inlined one
+ * level, as CAiMaps::GetCellCenter has it), none off the map */
+CAiMap::DIR CAiMap::GetClosestDir(const CAiMapLoc &from, const CPnt3D *to)
+{
+    DIR dir = DIR_COUNT;
+    CPnt3D c;
+
+    if (GetCellCenter(from, &c)) {
+        to->Sub(&c, &c);
+        c.y = 0.0f;
+        c.Normalize();
+        dir = GetClosestDir(&c);
+    }
+    return dir;
+}
+
 /* a soil's name (new in SOCOM II, the name ours: SOCOM 1's GetSoilByName had the switch inline) */
 const char *CAiMap::GetSoilString(SOIL soil)
 {
@@ -452,6 +468,27 @@ bool CAiMap::GetAltitude(const CAiCell *cell, float &alt) const
         return true;
     }
     return false;
+}
+
+/* whether the cell is under the overlay: inside its region (the region's Contains, materialised),
+ * then on its row's run, the row and column taken again from the region's corner (new in SOCOM II,
+ * the name ours: the base planner's cost and FindTraversable call it) */
+bool CAiOverlay::Contains(const CAiMapLoc &loc) const
+{
+    bool r = false;
+
+    if (m_region.Contains(loc)) {
+        int y = loc.y - m_region.m_loc.y;
+        int x = loc.x - m_region.m_loc.x;
+
+        if (y >= 0 && y < m_scanlines.size()) {
+            const CAiMap::scanline &sl = m_scanlines[y];
+
+            if (x >= sl.m_start && x < sl.m_end)
+                r = true;
+        }
+    }
+    return r;
 }
 
 CAiCell::CAiCell()

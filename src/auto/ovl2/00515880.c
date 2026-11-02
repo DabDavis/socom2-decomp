@@ -8,10 +8,10 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK func_00515900(s32 arg0, s32 arg1, s32 arg2);
-M2C_UNK func_00536230(s32 arg0, s32 arg1, s32 arg2, s32 arg3, s32 arg4);
+M2C_UNK Tile__6CAiMapFPCQ26CAiMap6regionUiUii(s32 arg0, s32 arg1, s32 arg2, s32 arg3, s32 arg4);
 s32 func_00515880(s32 arg0, s32 arg1, s32 arg2) {
-    func_00536230(arg0, arg2, 0, 0x20, 0);
+    Tile__6CAiMapFPCQ26CAiMap6regionUiUii(arg0, arg2, 0, 0x20, 0);
     func_00515900(arg0, arg1, arg2);
-    func_00536230(arg0, arg2, 1, 0x20, 0);
+    Tile__6CAiMapFPCQ26CAiMap6regionUiUii(arg0, arg2, 1, 0x20, 0);
     return 1;
 }
