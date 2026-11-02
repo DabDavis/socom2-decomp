@@ -1647,6 +1647,18 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the AI core, round 11** (FreeTables, AI_PARAMS::Merge, the character type's packing):
+  - an int counter indexing a member array (`m_start[i]`) is strength-reduced; `m_start[(unsigned
+    int)i]` keeps the target's per-pass recompute (startvec::Load);
+  - indexing `packed[n]` makes a cursor variable numbered last (s0); stepping the parameter itself
+    keeps the parameter's register (PackWeapons); pinning an inlined callee fixed its caller's
+    registers too (KorusGetPackedWeapons once PackWeapons was pinned);
+  - one counter shared by two loops gives the target's swapped counter/cursor registers in the second
+    (FreeTables) -- the opposite of the "two loops want their own counters" tell;
+  - `(a & m) || !(b & m) ? x : y` gives two loads, a nested ternary three (Merge);
+  - open: CAiMap::lines::Find 0x52FD90 (begin() before the end, registers), ResetGears 0x53F0B0 (an
+    inner loop entered through a block after the outer loop, the SortNearToFar pattern), the pod resize
+    copy 0x53AA50 (the tail's resize inlines DeleteLayers' erase whatever the declaration order).
 - **Tells from the SEALs, round 11** (RTList<ACTIVE_ANIM>'s copies, seal_env.cpp's weapon parenting, DoSetStance):
   - in an inline helper `r = 0; if (c) r = (unsigned)f;` leaves the float-to-unsigned conversion's join
     a block of its own (+1 nop); the ternary, if/else and early-return forms merge it (0x543B90);
