@@ -4275,7 +4275,7 @@
 0x002C94F0 0x4C func_002C94F0  # OVL1
 0x002C9540 0x1D8 func_002C9540  # OVL1
 0x002C9720 0xE8 func_002C9720  # OVL1
-0x002C9810 0x150 func_002C9810  # OVL1
+0x002C9810 0x150 SendWhisper__FPcPc  # OVL1; by hand (the states lane, round 16; the name ours): a whisper sent by player name -- CEntity::m_list.GetEntity(name); another player on the same team (0xC8), alive or dead alike (CEntity's m_isAlive) and of the same persona byte (0x2C2FD0) gets theLobby.SendChat(msg, name) and the message echoed to theMission's first queue (C2DMessage_Q::Add_Message 0x2B6530), anyone else ":: Player \"%s\" is unavailable"; called only by ParseWhisper (0x2C9990); fts_missionlist.cpp
 0x002C9960 0x30 SetMaxLength__10CMsgEditorFi  # OVL1; by hand (the states lane, round 15; the method name ours, the class CMsgEditor's RTTI): the word at 0x140 (5 at construction, 0x2CA2D0) set from n, kept within 5 to 100
 0x002C9990 0x1F0 ParseWhisper__FPc  # OVL1; by hand (the states lane, round 16; the name ours): the "/w" command's arguments -- ` name message` or ` "a name" message` -- split in a _strdup copy, the whisper sent through 0x2C9810 (name, message), the copy freed; whether it was sent (a bool: daddiu). Called only by CMsgEditor::Submit (0x2C9B80); fts_missionlist.cpp
 0x002C9B80 0x140 Submit__10CMsgEditorFv  # OVL1; by hand (the states lane, round 16; the names ours): the message editor's line entered -- a leading "/" command copied (up to 7 characters, an 8-byte buffer initialised "xxxx") and, when it is "w" (strcasecmp), the rest handed to the whisper parser 0x2C9990; the text then emptied (SetString(0) through slot 0x70, UpdatePos); fts_missionlist.cpp
