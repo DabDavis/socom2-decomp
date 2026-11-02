@@ -19,6 +19,18 @@ public:
  * map, each lookup by name every map in turn, giving the cell the index of the one that knew it */
 class CAiMaps : public std::list<CAiMap *>, public AIMAPS_PARAMS {
 public:
+    /* every map's cells reset and the overlays dropped (SOCOM 1's Reset: CMission::ReOpen_Load
+     * calls it; the overlays new) */
+    void Reset();
+    /* the planner flushed, the maps and their tables freed, the overlays dropped, the cookie bumped
+     * (SOCOM 1's Close, its middle moved out to FreeMaps) */
+    void Close();
+    /* every map deleted, then the tables freed (new in SOCOM II, the name ours: the body of SOCOM
+     * 1's Close between the flush and the cookie, out of line -- Close is its only caller) */
+    void FreeMaps();
+    /* the spores, the name tables and the regions emptied and their storage given back, the graph
+     * destroyed (SOCOM 1's FreeTables, 0x52E7C0; not written yet) */
+    void FreeTables();
     CAiMap *GetMapByIndex(unsigned int i) const;
     /* the cell's map (new in SOCOM II, the name ours) */
     CAiMap *GetMap(const CAiMapLoc &loc) const;
@@ -64,9 +76,9 @@ public:
     /* a region of its map's first layer tiled, the planner's queue reset after (SOCOM 1's) */
     bool Tile(const CAiMap::region *r, unsigned int value, unsigned int flags);
     /* an entity moved from one cell to another: the old cell no longer occupied unless an overlay
-     * covers it, the new one occupied (new in SOCOM II, the name ours: the SEALs' UpdateAiMapLoc
+     * covers it, the new one occupied (SOCOM 1's, the overlay test new: the SEALs' UpdateAiMapLoc
      * and OnDeath, which pass the entity's id, unread) */
-    void MoveOccupant(const CAiMapLoc &from, const CAiMapLoc &to, unsigned int id);
+    void SetOccupied(const CAiMapLoc &from, const CAiMapLoc &to, unsigned int id);
 
     CAiMap::spores m_spores;   // 0x30
     CAiMap::names m_names[6];   // 0x3c

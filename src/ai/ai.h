@@ -974,9 +974,9 @@ public:
 class CAiOverlayList : public std::list<CAiOverlay *> {
 public:
     /* whether an occupied cell lies under any of them (the name ours: the base planner's cost
-     * and CAiMaps::MoveOccupant inline it, the searches' callbacks call its out-of-line copy
+     * and CAiMaps::SetOccupied inline it, the searches' callbacks call its out-of-line copy
      * 0x53A500) -- a const walk, its iterators in stack slots. Through a const pointer local, so
-     * that called on the global (MoveOccupant) the sentinel stays a variable in a saved register,
+     * that called on the global (SetOccupied) the sentinel stays a variable in a saved register,
      * stored for each pass's end() as with a `this` (straight on `this` MW folds the constant and
      * drops the loop's store); the postfix step is the level that cuts the searches' open-cell
      * helper (_find_look, _find_cover) one level, as the target does */
@@ -995,6 +995,10 @@ public:
 
 namespace ai {
 extern CAiOverlayList overlays;
+/* an overlay laid over the maps, and every overlay taken off (new in SOCOM II, the names ours:
+ * OVL1's vehicle code 0x3ADAB0 adds one, CAiMaps' 0x52E720 and 0x52E780 clear them) */
+void AddOverlay(CAiOverlay *overlay);
+void ClearOverlays();
 }
 
 /* the maps a path crosses (SOCOM 1's DWARF: a vector of CAiMap pointers and nothing more) */

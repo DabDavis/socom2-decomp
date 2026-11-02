@@ -21,6 +21,40 @@ int CAiMaps::GetSporeCount(unsigned int id)
     return r.GetCount();
 }
 
+/* every map deleted, front first, then the tables (SOCOM 1's Close inlined this). Pinned: Close
+ * calls it, where -inline auto takes it whole (its erase called out of line does not stop it) */
+#pragma auto_inline off
+void CAiMaps::FreeMaps()
+{
+    while (size()) {
+        CAiMap *map = front();
+
+        erase(begin());
+        delete map;
+    }
+    FreeTables();
+}
+#pragma auto_inline reset
+
+/* the maps closed: the planner's queue flushed first, the cookie bumped last (SOCOM 1's) */
+void CAiMaps::Close()
+{
+    ai::FlushPlannerQueue();
+    FreeMaps();
+    ai::ClearOverlays();
+    m_cookie++;
+}
+
+/* every map's cells back to their loaded state, the overlays dropped (SOCOM 1's) */
+void CAiMaps::Reset()
+{
+    iterator last = end();
+
+    for (iterator it = begin(); it != last; ++it)
+        (*it)->ResetCells();
+    ai::ClearOverlays();
+}
+
 /* the map with that index, none past the last (SOCOM 1's; inlined into every lookup by cell) */
 CAiMap *CAiMaps::GetMapByIndex(unsigned int i) const
 {
@@ -219,7 +253,7 @@ bool CAiMaps::Tile(const CAiMap::region *r, unsigned int value, unsigned int fla
 
 /* the old cell freed unless an overlay lies over it (the overlays' walk inlined), the new one
  * taken */
-void CAiMaps::MoveOccupant(const CAiMapLoc &from, const CAiMapLoc &to, unsigned int)
+void CAiMaps::SetOccupied(const CAiMapLoc &from, const CAiMapLoc &to, unsigned int)
 {
     CAiCell *cell = GetCell(from);
 
