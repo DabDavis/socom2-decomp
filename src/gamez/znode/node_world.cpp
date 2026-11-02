@@ -98,12 +98,15 @@ bool CWorld::Initalize()
 }
 
 /* a light map taken off the list (SOCOM 1's: std::remove inlined, its remove_copy out of line).
- * OPEN, 1 instruction (0x13C of 0x138): the target computes end() once, at 76(sp), and copies it
- * for remove's last and again for erase's; written this way end() is made twice, and a local end
- * iterator passed to both makes the walk shorter still (0x124) */
+ * The end built once into a local (76(sp)) and handed to remove and to erase, the new end a local
+ * (72): include/algorithm's remove joins its two results through one copy (the MSL headers
+ * round 8) */
 void CWorld::DeleteLightMap(CLightMap *light)
 {
-    m_lightMaps.erase(std::remove(m_lightMaps.begin(), m_lightMaps.end(), light), m_lightMaps.end());
+    CLightMapVector::iterator e = m_lightMaps.end();
+    CLightMapVector::iterator i = std::remove(m_lightMaps.begin(), e, light);
+
+    m_lightMaps.erase(i, e);
 }
 
 /* a model of the loaded libraries' (SOCOM 1's) */

@@ -36,14 +36,19 @@ OutputIterator remove_copy(InputIterator first, InputIterator last, OutputIterat
     return result;
 }
 
+/* remove_if's shape (the MSL headers round 8): the walker copied before the test and the two
+ * results joined through one copy into the caller's iterator, as a ternary of class objects does
+ * it -- the target's first parameter is copied from begin()'s temporary even though find's result
+ * overwrites it, `i = first` is scheduled ahead of the test, and the join selects an address
+ * (CWorld::DeleteLightMap 0x31FB50, CTurretList::Remove 0x3A71F0, CTargetList::RemoveTarget
+ * 0x2A0310, CNodeVector::Remove 0x311CC0 and the AI core's out-of-line remove<CAiMapLoc> 0x529D70
+ * byte-exact so; the early `if (first == last) return first;` was 0x18 off in each) */
 template <class ForwardIterator, class T>
 inline ForwardIterator remove(ForwardIterator first, ForwardIterator last, const T &value)
 {
     first = find(first, last, value);
-    if (first == last)
-        return first;
     ForwardIterator i = first;
-    return remove_copy(++i, last, first, value);
+    return first == last ? first : remove_copy(++i, last, first, value);
 }
 
 /* the iterators and the operation by value, as for_each's (CWorld::ClearShadowList and
