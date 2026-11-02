@@ -3101,7 +3101,11 @@ whole objects at once; every function is still compiled and compared as any hand
 
 Hand-written in round 3b: `medius/mediusclan.c` (30 of 30, new), `medius/mediusapi.c` (+74, 78
 of 78), `medius/mediusfile.c` (13 of 13, new), `medius/dme.c` (78 of 78, new),
-`medius/rt_msg_client.c` (24 of 24, new) -- 219 functions, none with a matching draft.
+`medius/rt_msg_client.c` (24 of 24, new), `asr/gsapi.c` (+3, 11 of 11) -- 222 functions, none
+with a matching draft. Open, diagnosed in place: gsapi's engine accessors (SOCOM 1's
+CheckEngineHandle inlined comes within 11 words; the target zeroes the result before the tests).
+Next in the same vein: rt_msg_client's internal functions, DME's internals behind each wrapper
+(SOCOM 1's same-named bodies), and gsapi's remaining wrappers (handle test, a context loop).
 
 ## Open, and next
 
