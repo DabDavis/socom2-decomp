@@ -9392,10 +9392,10 @@
 0x005121C0 0x1DC func_005121C0  # OVL2
 0x005123A0 0x1B8 func_005123A0  # OVL2
 0x00512560 0x2B4 __dt__7CAiStarFv  # OVL2; s1:callee by hand (AbortPathPlan deletes the path's planner with it, a1 = 1, at the same instruction as SOCOM 1's calls __dt__7CAiStarFv)
-0x00512820 0x60 func_00512820  # OVL2
-0x00512880 0x40 func_00512880  # OVL2
-0x005128C0 0x8 func_005128C0  # OVL2
-0x005128D0 0x14 func_005128D0  # OVL2
+0x00512820 0x60 __dt__Q23std48vector<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>>Fv  # OVL2; by hand, the AI core round 11 (CAiMaps::FreeTables 0x52E7C0, byte-exact from source, destroys its std::vector<CAiMapLoc> temporary with it, -1: two this-tests, the deleter's destructor 0x515200)
+0x00512880 0x40 swap__Q23std58__vector_deleter<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>>FRQ23std58__vector_deleter<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>>  # OVL2; by hand, the AI core round 11 (CAiMaps::FreeTables 0x52E7C0, byte-exact from source, swaps each region list with the temporary through it)
+0x005128C0 0x8 clear__Q23std48vector<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>>Fv  # OVL2; by hand, the AI core round 11 (CAiMaps::FreeTables 0x52E7C0, byte-exact from source, clears each of m_regions[7] with it: a tail call of the deleter's clear 0x5151F0)
+0x005128D0 0x14 __ct__Q23std48vector<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>>Fv  # OVL2; by hand, the AI core round 11 (CAiMaps::FreeTables 0x52E7C0, byte-exact from source, builds each region list's FreeVector<std::vector<CAiMapLoc> > temporary with it; ai_astar.cpp's copy, emitted there first)
 0x005128F0 0x34 func_005128F0  # OVL2
 0x00512930 0x378 fcost__10CAiPlannerFR6CAiMapRC9CAiMapLocQ26CAiMap3DIRRC9CAiMapLoc  # OVL2; s1:vtable by hand (slot +0x18 of __vt__10CAiPlanner 0x669120, after reset/is_goal/dist/is_traversable; CRestrainedPlanner's and CAiHidePlanner's tables inherit it -- SOCOM 1's slot of the same name, its fcost__10CAiPlanner at 0x182500)
 0x00512CB0 0x10C is_traversable__18CRestrainedPlannerFP6CAiMapP7CAiPathRC9CAiMapLocQ26CAiMap3DIRR9CAiMapLocRP7CAiCell  # OVL2; s1:vtable by hand (slot +0x14 of __vt__18CRestrainedPlanner 0x669140, where the other planners keep CAiPlanner's; SOCOM 1's CRestrainedTravel::is_traversable 0x182DB0 instruction for instruction: the search limit clamped to 5000, soil 6 refused, an action cell of type 1 and state 0 refused)
@@ -9455,9 +9455,9 @@
 0x005181B0 0x38 SetModified__6CAiMapFb  # OVL2; ours (new in SOCOM II: bit 1 of AIMAP_PARAMS::m_flags set or cleared, the old value returned; SetCellLink 0x5307A0 and the layers' removal 0x53A730 call it with true after a change)
 0x005181F0 0x258 __dt__6CAiMapFv  # OVL2; s1:order by hand (the demo's ~CAiMap, between ValidateCells' callbacks and CAiMap(): the box and the size cleared, the cells, the extra data and the graph given up -- SOCOM II's first layer's FreeCells and DeleteLayers among them -- then the tables' destructors, ~readers and the layers' with -1)
 0x00518450 0x1DC __ct__6CAiMapFi  # OVL2; s1:order by hand (the demo's 0x186E40, after ~CAiMap in both builds: the nine tables built, the dummy cell's soil 10, an empty box, the sizes zeroed, floor -1, resolution 0.5, slope pi/4, version 23; SOCOM II takes the map id (0xE4) and pushes its first layer (0xA8, built by 0x53A9C0) onto m_layers; CAiMaps' 0x52B0D0 calls it)
-0x00518630 0x60 func_00518630  # OVL2
+0x00518630 0x60 __dt__Q23std58vector<Q26CAiMap5spore,Q23std26allocator<Q26CAiMap5spore>>Fv  # OVL2; by hand, the AI core round 11 (CAiMaps::FreeTables 0x52E7C0, byte-exact from source, destroys its std::vector<spore> temporary with it, -1: two this-tests, the deleter's destructor 0x519960; ai_map.cpp's tail emits it first)
 0x00518690 0x68 func_00518690  # OVL2
-0x00518700 0x60 func_00518700  # OVL2
+0x00518700 0x60 __dt__Q23std56vector<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>>Fv  # OVL2; by hand, the AI core round 11 (CAiMaps::FreeTables 0x52E7C0, byte-exact from source, destroys its std::vector<name> temporary with it, -1: two this-tests, the deleter's destructor 0x5197A0 -- ~names, 0x518690, has three; ai_map.cpp's tail emits it first)
 0x00518760 0x78 GetSoilByName__6CAiMapFPCc  # OVL2; s1:order by hand (the demo's 0x1871D0: strcasecmp against each soil's name, 1 when none or no name; after CAiMap's construction in both builds)
 0x005187E0 0x118 GetSoilString__6CAiMapFQ26CAiMap4SOIL  # OVL2; ours (new in SOCOM II: the 14-case switch of soil names "nogo" .. "collision", default "default", that SOCOM 1's GetSoilByName had inline; GetSoilByName 0x518760 calls it)
 0x00518900 0x1E0 GetClosestDir__6CAiMapFRC9CAiMapLocPC6CPnt3D  # OVL2; s1:order by hand (the demo's GetClosestDir(loc, CPnt3D *) 0x187330, before GetClosestDir(loc, loc) and GetClosestDir(CPnt3D *) in both builds; a member: _find_cover calls it on the map with the fill's start and the point)
@@ -9669,12 +9669,12 @@
 0x0052E720 0x5C Reset__7CAiMapsFv  # OVL2; s1:calls by hand (CMission::ReOpen_Load calls it where SOCOM 1's calls Reset__7CAiMapsFv; the same walk calling each map's ResetCells, the overlays' clear new)
 0x0052E780 0x40 Close__7CAiMapsFv  # OVL2; s1:order by hand (SOCOM 1's Close 0x19D4E0, after Reset in both builds: FlushPlannerQueue first, the byte at 0xDC bumped last; its middle moved to FreeMaps, the overlays' clear new; CMission's 0x2AB3F0 and ReadMapSet's 0x52B0D0 call it)
 0x0052E7C0 0xE4 FreeTables__7CAiMapsFv  # OVL2; s1:calls by hand (SOCOM 1's Close calls FreeTables__7CAiMapsFv right after deleting the maps, SOCOM II's FreeMaps 0x52E990 calls 0x52E7C0 at that point; the same body: the spores, six name tables and seven location vectors each emptied and swapped with an empty one, then CGraph::Destroy(m_graph) and m_graph zeroed)
-0x0052E8B0 0x40 func_0052E8B0  # OVL2
-0x0052E8F0 0x8 func_0052E8F0  # OVL2
-0x0052E900 0x14 func_0052E900  # OVL2
-0x0052E920 0x40 func_0052E920  # OVL2
-0x0052E960 0x8 func_0052E960  # OVL2
-0x0052E970 0x14 func_0052E970  # OVL2
+0x0052E8B0 0x40 swap__Q23std66__vector_deleter<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>>FRQ23std66__vector_deleter<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>>  # OVL2; by hand, the AI core round 11 (CAiMaps::FreeTables 0x52E7C0, byte-exact from source, swaps each name table with the temporary through it)
+0x0052E8F0 0x8 clear__Q23std56vector<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>>Fv  # OVL2; by hand, the AI core round 11 (CAiMaps::FreeTables 0x52E7C0, byte-exact from source, clears each of m_names[6] with it: a tail call of the deleter's clear 0x51A2C0)
+0x0052E900 0x14 __ct__Q23std56vector<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>>Fv  # OVL2; by hand, the AI core round 11 (CAiMaps::FreeTables 0x52E7C0, byte-exact from source, builds each name table's FreeVector<std::vector<name> > temporary with it)
+0x0052E920 0x40 swap__Q23std68__vector_deleter<Q26CAiMap5spore,Q23std26allocator<Q26CAiMap5spore>>FRQ23std68__vector_deleter<Q26CAiMap5spore,Q23std26allocator<Q26CAiMap5spore>>  # OVL2; by hand, the AI core round 11 (CAiMaps::FreeTables 0x52E7C0, byte-exact from source, swaps m_spores with the temporary through it: words 0, 8, 4)
+0x0052E960 0x8 clear__Q23std58vector<Q26CAiMap5spore,Q23std26allocator<Q26CAiMap5spore>>Fv  # OVL2; by hand, the AI core round 11 (CAiMaps::FreeTables 0x52E7C0, byte-exact from source, clears m_spores with it: a tail call of the deleter's clear 0x51A300)
+0x0052E970 0x14 __ct__Q23std58vector<Q26CAiMap5spore,Q23std26allocator<Q26CAiMap5spore>>Fv  # OVL2; by hand, the AI core round 11 (CAiMaps::FreeTables 0x52E7C0, byte-exact from source, builds its FreeVector<std::vector<spore> > temporary with it: three zero words; ai_maps.cpp's copy after FreeTables)
 0x0052E990 0x74 FreeMaps__7CAiMapsFv  # OVL2; ours (new in SOCOM II: Close's only callee between FlushPlannerQueue and the overlays' clear -- SOCOM 1's Close's middle: every map erased from the front and deleted, then FreeTables)
 0x0052EA10 0xE8 func_0052EA10  # OVL2
 0x0052EB00 0x14 func_0052EB00  # OVL2
