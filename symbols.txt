@@ -3,7 +3,7 @@
 # func_<VA> to the mangled name its source defines. SIZE excludes MW's zero padding.
 
 0x00180008 0x1C0 func_00180008  # MAIN unaligned
-0x001801C8 0x8 func_001801C8  # MAIN unaligned
+0x001801C8 0x8 _exit  # MAIN unaligned; by body (crt0's _exit: Exit(0) whatever the status; newlib's abort calls _exit(1) through it, as the demo's abort calls its crt0 stub 0x1401D0, unnamed there)
 0x001801D0 0x10 func_001801D0  # MAIN; s1~ ExitThread (one of 2)
 0x001801E0 0x9C _strdup__FPCcPCci  # MAIN; s1:calls (SOCOM 1's CNode::SetName and SetModelname call _strdup where SOCOM II's call this)
 0x00180280 0x314 _free__FPvPCci  # MAIN; s1:calls (SOCOM 1's CNode::SetName and SetModelname call _free where SOCOM II's call this; file and line passed as 0 here)
@@ -406,7 +406,7 @@
 0x00196C90 0x84 func_00196C90  # MAIN
 0x00196D18 0x20 puts  # MAIN unaligned; by hand (newlib's: _puts_r on _impure_ptr; the FIFO kick passes it "D9 Busy"/"D8 Busy") -- the sound lane
 0x00196D38 0x9EC qsort  # MAIN unaligned; s1:calls (DiIntersect::SortNearToFar calls it with (idx, n, 4, _cmpdi) where SOCOM 1's calls qsort; newlib's, 0x9EC bytes against SOCOM 1's 0xA24) -- the zdb-world lane
-0x00197728 0x18 func_00197728  # MAIN unaligned
+0x00197728 0x18 srand  # MAIN unaligned; s1:order (the demo's rand object 0x3E48E0: srand, before rand; stores the seed, zero-extended, in the reentrancy block's _rand_next that rand reads)
 0x00197740 0x64 rand  # MAIN; s1:callee by hand (zAnimRandomWeightTick calls it where SOCOM 1 calls rand; newlib's 64-bit LCG)
 0x001977A8 0x60 func_001977A8  # MAIN unaligned
 0x00197808 0x64 realloc  # MAIN unaligned; s1:calls (_realloc calls it where SOCOM 1's calls realloc) -- the sound lane
@@ -425,9 +425,9 @@
 0x00198420 0xC8 scalbnf  # MAIN; s1:exact
 0x001984E8 0x70 func_001984E8  # MAIN unaligned
 0x00198558 0x80 func_00198558  # MAIN unaligned
-0x001985D8 0xD8 func_001985D8  # MAIN unaligned
+0x001985D8 0xD8 _raise_r  # MAIN unaligned; s1:callee by hand (raise's one callee, as the demo's raise calls _raise_r)
 0x001986B0 0x98 func_001986B0  # MAIN
-0x00198748 0x20 func_00198748  # MAIN unaligned
+0x00198748 0x20 raise  # MAIN unaligned; s1:callee by hand (abort's first call, raise(6), where the demo's abort calls raise; _raise_r(_impure_ptr, sig) as the demo's raise)
 0x00198768 0x24 func_00198768  # MAIN unaligned
 0x00198790 0x1C func_00198790  # MAIN
 0x001987B0 0x20 func_001987B0  # MAIN
