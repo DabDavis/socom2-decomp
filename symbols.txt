@@ -11066,7 +11066,7 @@
 0x005C67D0 0x144 func_005C67D0  # OVL2
 0x005C6920 0x48 GetAmmoByIndex__5CZKitFi  # OVL2; by hand: new in SOCOM II -- m_ammo (0x15C, SOCOM 1's 0x148) at unwrap(index, 255), after a GetCurItem whose result is dropped; CAiSNoAmmo::Tick calls it after GetItemByIndex where SOCOM 1's called GetWeapon (the name ours)
 0x005C6970 0x8 GetCurAmmo__5CZKitFv  # OVL2; by hand: GetAmmoByIndex(m_selected_item), tail-called (the name ours)
-0x005C6980 0xC0 func_005C6980  # OVL2
+0x005C6980 0xC0 AttachItemNode__5CZKitFUcPCc  # OVL2; by hand (the kit lane, round 12): a kit member -- the body's attachment record of a kind (8-byte entries at body+0x388), the item in hand's node (the item pointers' vector at 0x834, one place on), the body's part of a name (CBody::FindPart on body+0x170: 0x5C50B0 passes "aimnodes") -- the node hidden (CNode slot 0x38, SetActive(false)), made the part's child (slot 0x18, AddChild) and kept at the record's +0xC; new in SOCOM II, the name ours; seal_kit.cpp byte-exact
 0x005C6A40 0x358 func_005C6A40  # OVL2
 0x005C6DA0 0x368 func_005C6DA0  # OVL2
 0x005C7110 0x90 GetClass145Index__5CZKitFv  # OVL2; by hand (the kit lane, round 11): GetPrimaryIndex's loop with 0x3D1CB0 (an item kind of class 145) -- new in SOCOM II, the name ours

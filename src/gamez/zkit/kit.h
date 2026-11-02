@@ -62,8 +62,19 @@ struct CKitBody {
     unsigned char _e1 : 4;   // 0xe1
     unsigned char m_alive : 1;   // bit 4: CEntity's alive bit
     unsigned char _e1_5 : 3;
-    unsigned char _e2[0x200 - 0xe2];
+    unsigned char _e2[0x170 - 0xe2];
+    unsigned char m_cbody[0x90];   // 0x170: the CBody base (0x90 bytes: the parts FindPart searches)
     signed char m_200;   // 0x200: the current item's zoom class (binoculars 4, scopes 5 and up)
+    unsigned char _201[0x388 - 0x201];
+    /* 0x388: attachments by kind, 8 bytes each -- the first word a record whose +0xC keeps the node
+     * hung on it (0x5C6980; the names ours) */
+    struct Attach {
+        struct Record {
+            unsigned char _0[0xc];
+            void *m_node;   // 0xc
+        } *m_rec;
+        unsigned int m_4;
+    } m_attach[4];
 };
 
 /* a weapon as the kit reads it (CZWeapon; only the wait between shots, SOCOM 1's m_firewait --
@@ -136,6 +147,16 @@ public:
      * alive -- the slot's item kind noted (OVL2 0x5C48B0, new in SOCOM II: CZSealBody::ReCreate
      * calls it; the name ours) */
     void SetHandFireMode(int mode);
+    /* the item in hand's node hung under a part of the body -- hidden, made the part's child, kept in
+     * the body's attachment of a kind (OVL2 0x5C6980, new in SOCOM II: 0x5C50B0 hangs it on
+     * "aimnodes"; the name ours) */
+    void AttachItemNode(unsigned char kind, const char *part);
+    /* the item pointer of an index, as GetItemPtr but the bound compared signed (inline: 0x5C6980
+     * expands it -- its slt where GetItemPtr's own copy has sltu; the name ours) */
+    void *ItemPtr(int index) const
+    {
+        return index + 1 < (int)m_itemptr.size() ? m_itemptr[index + 1] : 0;
+    }
     /* the hand's slot (inline; the names ours): a signed byte enum assigned in an if/else -- the
      * target's `li 1; movz` and sign extension; `bit ? 1 : 0` (any type) folds to an sltu, and the
      * enum's ternary branches */

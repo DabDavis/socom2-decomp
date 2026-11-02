@@ -49,6 +49,12 @@ void func_00592D40(CKitCtrl *ctrl);
  * the weapons' shared record of a running delay: its address, value and a byte, marked set (OVL1
  * 0x3D00D0, unclaimed) */
 float func_003D2C20(CZFTSWeapon *w);
+/* a body's part by name (CBody::FindPart, OVL1 0x28E7B0): its node at +0xC */
+struct CKitBodyPart {
+    unsigned char _0[0xc];
+    void *m_node;   // 0xc
+};
+CKitBodyPart *FindPart__5CBodyFPCc(void *body, const char *name);
 float func_003D2C40(CZFTSWeapon *w);
 void func_003D00D0(float *delay, float value, unsigned char flag);
 /* CSealCtrl::SetCameraZoom (OVL2 0x592C70, the SEAL lane's), CZWeapon::GetAssociatedGearName (SOCOM
@@ -606,6 +612,24 @@ CZFTSWeapon *CZKit::GetCurItem() const
 CZFTSWeapon *CZKit::GetItemByIndex(int index) const
 {
     return m_item[unwrap(index, FIREMODE_CURRENT)];
+}
+
+/* (OVL2 0x5C6980) */
+void CZKit::AttachItemNode(unsigned char kind, const char *part)
+{
+    CKitBody *body = (CKitBody *)m_body;
+    CKitBody::Attach::Record *a = body->m_attach[kind].m_rec;
+
+    if (a) {
+        zdb::CNode *node = (zdb::CNode *)ItemPtr(m_selected_item);
+        zdb::CNode *parent = (zdb::CNode *)FindPart__5CBodyFPCc(body->m_cbody, part)->m_node;
+
+        if (parent && node) {
+            node->SetActive(false);
+            parent->AddChild(node);
+            a->m_node = node;
+        }
+    }
 }
 
 /* (OVL2 0x5C48B0) */
