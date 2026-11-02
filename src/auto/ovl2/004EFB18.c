@@ -8,8 +8,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK _tosErrorLog(char *, M2C_UNK);              /* extern */
 s32 *func_00243298(s32, s32);                       /* extern */
-M2C_UNK func_0050CDE8(char *, M2C_UNK);             /* extern */
 M2C_UNK heap_Free(s32, s32 *);                      /* extern */
 M2C_UNK memcpy(s32 *, s32 *, s32);                  /* extern */
 
@@ -20,12 +20,12 @@ void func_004EFB18(char *arg0) {
 
     temp_v0 = func_00243298(M2C_FIELD(M2C_FIELD(arg0, char **, 0), s32 *, 0x50), (M2C_FIELD(arg0, s32 *, 0x60) * 4) + 0x25C);
     if (temp_v0 == NULL) {
-        func_0050CDE8(arg0, 0x71);
+        _tosErrorLog(arg0, 0x71);
         return;
     }
     temp_v0_2 = func_00243298(M2C_FIELD(M2C_FIELD(arg0, char **, 0), s32 *, 0x50), (M2C_FIELD(arg0, s32 *, 0x60) * 4) + 0x25C);
     if (temp_v0_2 == NULL) {
-        func_0050CDE8(arg0, 0x71);
+        _tosErrorLog(arg0, 0x71);
         heap_Free(M2C_FIELD(M2C_FIELD(arg0, char **, 0), s32 *, 0x50), temp_v0);
         return;
     }

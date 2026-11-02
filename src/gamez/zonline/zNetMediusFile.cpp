@@ -166,7 +166,7 @@ struct AccountInfoType {
 };
 extern AccountInfoType AccountInfo;
 
-MediusErrorCode func_00649B40(char *sessionKey, int type, char *messageID);   /* a message's id made */
+MediusErrorCode MediusCreateMessageID(char *sessionKey, int type, char *messageID);   /* a message's id made */
 MediusErrorCode MediusFileListFiles(MediusFileListRequest *req,
     void (*cb)(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusFileListResponse *));
 MediusErrorCode MediusFileCreate(MediusFileCreateRequest *req,
@@ -272,7 +272,7 @@ inline void UploadFile(CLobbyFileIO *file)
     req.iFileSize = file->m_size;
     MediusErrorCode err;
     char *id = req.MessageID;
-    err = func_00649B40(SessionKey, 109, id);
+    err = MediusCreateMessageID(SessionKey, 109, id);
     if (CheckMediusError(err))
         AddTransfer(id, file);
     if (CheckMediusError(err))
@@ -294,7 +294,7 @@ inline void CreateFile(CLobbyFileIO *file)
     req.MediusFileCreateAttributes.StreamingDataRate = 0;
     MediusErrorCode err;
     char *id = req.MessageID;
-    err = func_00649B40(SessionKey, 108, id);
+    err = MediusCreateMessageID(SessionKey, 108, id);
     if (CheckMediusError(err))
         AddTransfer(id, file);
     if (CheckMediusError(err))
@@ -408,7 +408,7 @@ bool CLobbyFileIO::Open(const char *name, unsigned int mode)
         memcpy(req.FileNameBeginsWith, name, sizeof(req.FileNameBeginsWith));
     MediusErrorCode err;
     char *id = req.MessageID;
-    err = func_00649B40(SessionKey, 114, id);
+    err = MediusCreateMessageID(SessionKey, 114, id);
     if (CheckMediusError(err))
         AddTransfer(id, this);
     if (CheckMediusError(err)) {
@@ -444,7 +444,7 @@ void CLobbyFileIO::Close()
                 memcpy(&req.MediusFileInfo, m_handle, sizeof(MediusFile));
             MediusErrorCode err;
             char *id = req.MessageID;
-            err = func_00649B40(SessionKey, 110, id);
+            err = MediusCreateMessageID(SessionKey, 110, id);
             if (CheckMediusError(err))
                 AddTransfer(id, this);
             if (CheckMediusError(err))
@@ -553,7 +553,7 @@ int CLobbyFileIO::freadAsync(void *buf, int size)
             memcpy(&req.MediusFileInfo, m_handle, sizeof(MediusFile));
         MediusErrorCode err;
         char *id = req.MessageID;
-        err = func_00649B40(SessionKey, 111, id);
+        err = MediusCreateMessageID(SessionKey, 111, id);
         if (CheckMediusError(err))
             AddTransfer(id, this);
         if (CheckMediusError(err))

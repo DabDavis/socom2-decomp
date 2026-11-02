@@ -8,8 +8,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK _tosErrorLog(s32 arg0, s32 arg1);
 s32 func_00243398(s32 arg0, s32 arg1, s32 arg2);
-M2C_UNK func_0050CDE8(s32 arg0, s32 arg1);
 s32 func_0050D360(s32 arg0, s32 arg1, s32 arg2);
 s32 InitMedian(char *arg0) {
     s32 temp_v0;
@@ -30,7 +30,7 @@ s32 InitMedian(char *arg0) {
     M2C_FIELD(arg0, s32 *, 0x28) = temp_v0;
     if (!(temp_v0 & 1)) {
         var_s1 = 1;
-        func_0050CDE8((s32) arg0, 0xC8);
+        _tosErrorLog((s32) arg0, 0xC8);
     } else {
         temp_v0_2 = func_00243398(M2C_FIELD(M2C_FIELD(arg0, char **, 0), s32 *, 0x50), temp_v0, 0xC);
         M2C_FIELD(arg0, s32 *, 0x40) = 0;
