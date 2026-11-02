@@ -23,8 +23,9 @@ extern BriefingRoom data_0044FAB0;   /* a room (the lobby unit's) */
 extern BriefingRoom *data_0044FE10;   /* the room we are in, if any */
 void func_002EC140(LadderList *list);   /* a player ladder deleted (LadderList::DeleteAll) */
 void func_002E81A0();   /* the clan team forgotten (the clan unit's) */
-void func_00305640();   /* (the unit after the friends') */
 }
+
+void ReleaseFileTransfers();   /* the Medius file API's transfers forgotten (zNetMediusFile.cpp) */
 
 /* the DME set up, once (SOCOM II's; OVL1 0x2E05D0) */
 void *CZOnlineLobby::DMEInit()
@@ -63,7 +64,7 @@ void CZOnlineLobby::ReleaseUIResources()
     FriendVec.DeleteAll();
     ReleaseVector(FriendVec);
     func_002E81A0();
-    func_00305640();
+    ReleaseFileTransfers();
     uiv_GameList = 0;
     uiv_RoomList = 0;
     uiv_RoomPlayerList = 0;

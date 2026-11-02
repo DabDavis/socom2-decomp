@@ -58,6 +58,7 @@ public:
     size_type size() const { return tree_.size(); }
     bool empty() const { return tree_.empty(); }
     void clear() { tree_.clear(); }
+    void swap(map &x) { tree_.swap(x.tree_); }
     iterator find(const key_type &x) { return tree_.find(x); }
     pair<iterator, bool> insert(const value_type &x) { return tree_.insert_one(x); }
     void erase(iterator position) { tree_.erase(position); }
