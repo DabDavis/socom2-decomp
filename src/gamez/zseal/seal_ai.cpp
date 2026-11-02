@@ -544,10 +544,8 @@ void CSealCtrlAi::SetAiBit2(bool on)
 }
 
 extern "C" {
-/* the state a SEAL's body is in, by a flag (OVL2 0x58A720, seal_body.cpp's, not written yet) and
- * the flag this asks with (OVL2 data, a byte) */
-SEAL_STATE func_0058A720(CEntity *seal, unsigned char flag);
-extern unsigned char data_006502D0;
+/* the flag the stance is asked with (OVL2 data, a byte passed as it is: a bool) */
+extern bool data_006502D0;
 }
 
 /* (OVL2 0x562FC0) */
@@ -559,7 +557,7 @@ bool CSealCtrlAi::InStance(SEAL_STANCE stance, bool fromState)
         r = m_stance == stance;
         return r;
     } else
-        r = stance == CZSealBody::GetStanceFromState(func_0058A720(m_entity, data_006502D0), m_stance);
+        r = stance == CZSealBody::GetStanceFromState(SealOf(this)->GetStance(data_006502D0), m_stance);
     return r;
 }
 
@@ -606,6 +604,67 @@ bool CSealCtrlAi::ChangeStanceDelayed(SEAL_STANCE from, SEAL_STANCE to, float de
         m_280 = delay;
     }
     return true;
+}
+
+/* the mission (theMission, OVL1 bss 0x4364E0) -- only its clock (remote_control.cpp's reading) */
+class CMission {
+public:
+    unsigned char _0[0xe0];
+    float m_time;   // 0xe0
+};
+
+extern CMission theMission;
+
+extern "C" {
+/* whether the SEAL can take a stance where it stands (OVL2 0x562C80, not written yet: an int the
+ * caller makes a bool) */
+int func_00562C80(CSealCtrlAi *ai, SEAL_STANCE stance);
+}
+
+/* a stance taken: nothing to do when it is the stance already; else the body's state for it -- prone
+ * falling back to a crouch where the SEAL cannot lie down -- then the stance kept, the asked one
+ * dropped and the time stamped, and the body sent to the state (OVL2 0x562B70; SOCOM 1's
+ * DoSetStance by its call, the body new) */
+bool CSealCtrlAi::DoSetStance(SEAL_STANCE stance)
+{
+    bool r = false;
+    int state = -1;
+    CZSealBody *seal = (CZSealBody *)m_entity;
+
+    m_280 = 0;
+    if (m_stance == stance)
+        r = true;
+    if (!r) {
+        bool blocked = !func_00562C80(this, stance);
+
+        r = true;
+        switch (stance) {
+        case STANCE_STAND:
+            state = stateStand;
+            break;
+        case STANCE_CROUCH:
+            state = stateCrouch;
+            break;
+        case STANCE_PRONE:
+            /* (an if/else: the target's not-blocked arm falls through, the crouch laid after it) */
+            if (!blocked)
+                state = stateProne;
+            else {
+                stance = STANCE_CROUCH;
+                state = stateCrouch;
+            }
+            break;
+        }
+    }
+    if (r) {
+        m_stance = stance;
+        m_stance_asked = STANCE_NONE;
+        m_280 = 0;
+        m_stance_delay = theMission.m_time;
+        if (state != -1 && state != seal->m_desiredState)
+            seal->m_desiredState = (SEAL_STATE)state;
+    }
+    return r;
 }
 
 /* (OVL2 0x5631A0) */

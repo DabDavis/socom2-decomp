@@ -2,9 +2,8 @@
  * values added to the open list, a list opened under a tag and closed into an array. The unit
  * name is SOCOM 1's (its demo holds CRdrEditor's members in this order, addSTRING to the
  * constructor, with the deque instances after them); SOCOM II adds addbool and addrealnode.
- * Defined in reverse of their image order (-inline deferred). Not written yet: the deque's copy
- * constructor and the rest of its instances in the template tail (0x333B30-0x334BE0), which
- * include/deque does not declare. */
+ * Defined in reverse of their image order (-inline deferred). The deque's copy constructor and its
+ * pieces follow in the template tail (0x333B30-0x334BE0, include/deque). */
 
 #include "zrdr.h"
 
@@ -23,7 +22,7 @@ static inline CRdrEditor::CRDRNodeVec *&top_of(std::deque<CRdrEditor::CRDRNodeVe
 {
     unsigned int n = d.start_ + d.size_ - 1;
 
-    return (CRdrEditor::CRDRNodeVec *&)d.buf_[n / 128][n % 128];
+    return (CRdrEditor::CRDRNodeVec *&)d.buf_.second_[n / 128][n % 128];
 }
 
 /* a value made an array of `n` zeroed values (SOCOM II's; the name ours): defined first, so its
@@ -36,11 +35,9 @@ void zrdr_newarray(_zrdr *rdr, int n)
     rdr->type = ZRDR_ARRAY;
 }
 
-/* SOCOM 1's: the file's value cleared, an empty stack.
- * OPEN, 0x48 bytes: the target builds the stack as MSL's `stack(const Container &x = Container())
- * : c(x)` -- a temporary deque (0x3340F0), the member copy-constructed from it (0x333B30), the
- * temporary's buffer destroyed (0x2CEFB0 with 0) -- and include/deque declares no copy
- * constructor, so the stack here is default-constructed */
+/* SOCOM 1's: the file's value cleared, an empty stack -- built as MSL's `stack(const Container &x
+ * = Container()) : c(x)`: a temporary deque (0x3340F0), the member copy-constructed from it
+ * (0x333B30), the temporary's buffer destroyed (0x2CEFB0 with 0) */
 CRdrEditor::CRdrEditor()
 {
 }

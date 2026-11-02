@@ -7,6 +7,7 @@
  * (0x52EC60). Defined here in reverse of the image's order (-inline deferred). */
 
 #include "ai_maps.h"
+#include "../gamez/zsys/zsys.h"
 
 /* the run of an id's spores, counted (new in SOCOM II) */
 int CAiMaps::GetSporeCount(unsigned int id)
@@ -35,6 +36,24 @@ void CAiMaps::FreeMaps()
     FreeTables();
 }
 #pragma auto_inline reset
+
+/* the spores, the six name tables and the seven region lists emptied and their storage given back,
+ * then the graph destroyed (SOCOM 1's FreeTables, the same body). Each a FreeVector over the plain
+ * std::vector (two this-tests in the temporaries' destructors, 0x518630, 0x518700, 0x512820), its
+ * four pieces called out of line: the spores' and names' copies follow this function in reverse of
+ * their first use (0x52E8B0-0x52E97F), the regions' are ai_astar.cpp's (0x512820-0x5128DF) */
+void CAiMaps::FreeTables()
+{
+    int i;
+
+    FreeVector<std::vector<CAiMap::spore> >(m_spores);
+    for (i = 0; i < 6; i++)
+        FreeVector<std::vector<CAiMap::name> >(m_names[i]);
+    for (i = 0; i < 7; i++)
+        FreeVector<std::vector<CAiMapLoc> >(m_regions[i]);
+    CGraph::Destroy(m_graph);
+    m_graph = 0;
+}
 
 /* the maps closed: the planner's queue flushed first, the cookie bumped last (SOCOM 1's) */
 void CAiMaps::Close()

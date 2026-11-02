@@ -58,9 +58,9 @@
  *     calls it (declared before balance_erase); is_black() is `get_bit() == false` (sltu then bnez in a
  *     branch, xor/sltiu into rebalance), the colour copies `if (!z->is_black())`, and the fix-up tests
  *     w->left_ before w->right_ on both sides.
- * OPEN: the map's constructor passes a bare stack slot for its allocator (0x1FB3F0, 0x38E740,
- * 0x3A2BE0, the line map's initialiser 0x3FE190) where include/memory's out-of-line allocator()
- * (kept for the deque's 0x2CEE30) is called; OVL2's string-keyed map (0x58CEF0 has find_or_insert
+ * The map's constructor passes a bare stack slot for its allocator (0x1FB3F0, 0x38E740, 0x3A2BE0,
+ * the line map's initialiser 0x3FE190): include/memory's allocator() is inline since the MSL
+ * headers' round 7. OPEN: OVL2's string-keyed map (0x58CEF0 has find_or_insert
  * <string, int>'s words, 0x58D2B0 its insert_node_at's) is not identified; zrdr_file.cpp's packer
  * uses a map keyed by a pointer (find_or_insert 0x32D780, insert_node_at 0x32DAD0) whose types SOCOM 1
  * does not name. */
