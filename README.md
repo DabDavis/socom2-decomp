@@ -53,6 +53,7 @@ and data reference resolved to the address the shipped code uses.
 | `tools/ccsweep.py` | compiler identification for the GCC front: one source over every ee-gcc toolchain and flag set (and `//==` source variants), every function it defines scored |
 | `tools/ccperm.py` | every order of a marked block of statements, for GCC's scheduled stores: which source order gives the target's |
 | `tools/ccflags.py` | a GCC range's drafts recompiled with a flag added: a flag the vendor used loses none (how strict aliasing was told apart) |
+| `tools/asmunit.py` | an assembler unit (`.s`) for a library object that was assembly: the rows transcribed (canonical instructions, labels, map names, %hi/%lo of the symbols the code addresses, the unit's own `.bss` labels), assembled by the toolchain named and scored until every function matches |
 | `symbols.txt` | **the map** — `0xADDR SIZE name  # note`, kept by hand from here on |
 | `data.txt` | the map of global data, the same format and namespace |
 | `src/` | the reconstructed source; `MATCHED.txt` (the baseline), `ABSENT.txt` (dead-stripped) |
@@ -2773,7 +2774,7 @@ flag set, every function it defines scored; the probes are `build/scratch/gcc/p*
 
 | range | library | toolchain, flags | evidence |
 |---|---|---|---|
-| MAIN 0x18DB90-0x191410, 0x1A13D0-0x1AD088, 0x1B3970-0x1C4CC0, 0x1CCD78-0x1CE2A4 | Sony's SDK 2.7: libcdvd, libdma, libgraph, libipu, libkernl, libmc, libmpeg, libmrpc, libpad2, libscf, libvu0 ... | `ee-gcc2.9-991111` `-O2 -G0` | `memclr` is byte-exact only under 2.9-ee-991111 (its -01, a and dtls rebuilds compile it the same): 990721 lacks the short loop's nops (8s), every 2.95.x fills the delay slot (2), 2.96 misses by 4, 3.2 by 7; `sceDmaGetChan` is 12s under 2.96, `sceCdSearchFile` 6s |
+| MAIN 0x18DB90-0x191410, 0x1A13D0-0x1AD088, 0x1B3970-0x1C4CC0, 0x1CCD78-0x1CE2A4 | Sony's SDK 2.7: libcdvd, libdma, libgraph, libipu, libkernl, libmc, libmpeg, libmrpc, libpad2, libscf, libvu0 ... | `ee-gcc2.9-991111-01-dtls13010` `-O2 -G0` (991111 compiles their C the same) | libvu0's inline asm: 32 of 32 only under the dtls13010 build, whose GNU as fills the delay slots 991111's leaves empty and encodes vsqrt as 2.96's does not (below); `memclr` is byte-exact only under 2.9-ee-991111 and its -01, a and dtls rebuilds: 990721 lacks the short loop's nops (8s), every 2.95.x fills the delay slot (2), 2.96 misses by 4, 3.2 by 7; `sceDmaGetChan` is 12s under 2.96, `sceCdSearchFile` 6s |
 | MAIN 0x191410-0x1A13D0, 0x1AD088-0x1B3970 | newlib's libc, libgcc's fp-bit, libm: the toolchain's own runtime | `ee-gcc2.96` `-O2 -G0` | `atof`, `atol`: a sibling call under a frame it no longer needs (`sd ra; ...; ld ra; j strtol`) -- 2.96's; no 2.9x or 2.95.x makes a sibling call at all (6s, 5s) |
 | OVL1 0x1E7F58-0x1E8FD4 | the microphone input (`openmic`, `getsamples`, `Sid*`, over lgAud) and Sony's libezcnf/libezctl (1.0 beta) | `ee-gcc2.96` `-O2 -G0 -fno-strict-aliasing` | found 2026-11-02, the only run outside the first ranges that saves s-registers with `sd` and never `sq`; `closemic`, `SidClose` byte-exact under 2.96 only (every other toolchain 9-13 words off); `SidGetSamples` reloads its read position after storing through `out` -- byte-exact only without strict aliasing |
 | OVL1 0x2430F0-0x248350 | the recogniser's heap (`heap_*`), lgAud (the USB headset, liblgaud 1.08.002), SCEA's libnetb/inet | `ee-gcc2.96` `-O2 -G0` | `lgAudASync`, `sceBInetControl`, func_00246CE0: 2.96 only (2.9-991111 15s/10s/6s, 2.95.3-136 15s/6/6s, 3.2 11s/9s/=) |
@@ -2834,17 +2835,74 @@ own messages; libezcnf is 2.96 too: 991111 30s/24s, 2.95.3-136 30s/22s, 3.2 26s/
 `asr/extaudio.c` (2), `asr/ctxutil.c` (3), `medius/rt_msg.c` (all 8 byte accessors). Each unit's
 directive carries its library's toolchain and flags; a draft it supersedes is deleted, as for MW.
 
+**Which library objects were assembly -- the demo says.** The demo's symbol table keeps every
+input object's `.text` SECTION symbol, and GCC marks each object it compiled with a local
+`gcc2_compiled.` (and `__gnu_compiled_c`) at that same address: an SDK or newlib object without
+the marker was assembled (`build/scratch/gcc/demo_objs.py` lists them all). In MAIN's libraries
+there are exactly three kinds: libkernl's syscall-stub object (138 stubs), libkernl's TLB/debug
+exception handlers (one object, three functions), and newlib's 13 EE string routines (memchr,
+memcmp, memcpy, memmove, memset, strcat, strchr, strcmp, strcpy, strlen, strncat, strncmp,
+strncpy, one object each). **Everything else is C** -- libvu0 too: its object carries the marker,
+so its functions are inline `asm` in C, as Sony shipped libvu0.c, not assembly. Of MAIN's 288 open
+rows holding a syscall/sync/COP0/COP2/MMI/lq/sq instruction, 154 are those assembler objects; the
+rest are C with inline asm or C whose 128-bit moves GCC made itself (qsort, __kernel_rem_pio2).
+The same boundaries give each C unit's grouping: a `src/lib` unit is one demo object, its
+functions in the demo's order.
+
+**The assembler path** (2026-11-02): `sccheck` and `scdiff` take `src/**/*.s`. An assembler unit
+names its toolchain on one of its first three lines (`# sc: compiler=ee-gcc2.9-991111`), and is
+built by that toolchain's driver, which hands a `.s` straight to its own GNU as (`as -G0 -EL -O2
+-mabi=eabi`: 2.9-ee-991111b under 991111, 2.10-ee-001003-1 under 2.96, 2.9-ee-991111 under the
+dtls13010 build); its object (`<name>.s.o`) is scored like any unit's, each `.type x,@function`
+symbol against its row, every relocation resolved. Metrowerks has no such path (a `.s` without an
+ee-gcc toolchain is a build failure). `tools/asmunit.py` writes one from the image: canonical
+instructions (`objdump -M no-aliases`, numeric registers) under `noreorder`/`noat`/`nomacro`,
+branches to labels, j/jal to map names, each lui and its %lo uses as %hi/%lo of the symbol there,
+the object's own zeroed data as local `.bss` labels; then it assembles the unit and scores it
+until every function matches (an instruction the assembler spells differently becomes a `.word`
+-- none has needed to). scdiff resolves a GNU object's `.bss+N` reference by the local label at N
+when the data map names it (zeroed data has no content to compare). Proved on 2026-11-02: every MW
+hand-written unit gives the same 6,237 rows with master's tools and these, every GCC unit (src/lib
+and the 849 GCC drafts) the same rows. The assembler objects: `sdk/syscall.s` (138 of 138,
+byte-identical to the demo's slot for slot -- eight slots named from it, `s1:slot`),
+`sdk/tlbhandler.s` (_kTLBException, _kExitTLBHandler, _kDebugException: the map's one 0x360 row
+split at the demo's offsets; its save area and saved hi/lo/sa/epc words named from the demo's
+locals, all 27 relocations ok), `libc/*.s` (the 13 string routines, under 2.96's as; five differ
+from the demo's own copies only in one short loop's tail -- `sb; addiu; bne; nop` here, `sb; nop;
+bne; addiu` there: one source, two assemblies).
+
+**Sony's SDK: ee-gcc 2.9-ee-991111-01, the dtls13010 build.** libvu0 tells the 991111 builds
+apart, which no C probe did: inline asm leaves delay-slot filling to GNU as (reorder mode), and
+991111's as (2.9-ee-991111b) leaves the return's slot empty after an `sq` (sceVu0CopyVector) and a
+loop branch's after an `addi` (sceVu0MulMatrix) -- 9 of 32 functions 3s-5s -- where the target has
+them filled; 2.96's as (2.10) fills them but encodes `vsqrt Q,vf5x` with its fsf field set
+(0x4A2503BD, the target 0x4A0503BD: 2 functions 1 word); 3.2 misses the three Clip functions;
+`ee-gcc2.9-991111-01-dtls13010` (its as reports 2.9-ee-991111) gives all 32. libdma, libkernl's
+deci2/intr/cache objects compile the same under 991111 and dtls13010, so the new SDK units name
+dtls13010. And 2.9-991111 does make sibling calls: libkernl's iSyncDCache (`j _sceSDC`, the mask
+in the slot) and SyncDCache (`j EIntr` under a torn-down frame) compile so under both builds (2.96
+misses); what is 2.96's alone is atof's kind, the sibling call under a frame it keeps.
+
+**Round 2a** (2026-11-02, by hand, under the toolchains above): libvu0's 32 leaf functions
+(`sdk/libvu0.c`; RotMatrix, CopyVectorXYZ, LightColorMatrix stand as drafts, Camera/
+NormalLight/ViewScreen/DropShadow, C around calls, open); libkernl's `deci2.c` (10), `intr.c`
+(9), `cache.c` (6), `dintr.c` (EIntr; DIntr OPEN: the target reloads the EIE mask inside its
+loop); `sdk/libscf.c` (5 of 10, the T10K/OSD getters; five OPEN on a v0/v1 choice and a movz);
+newlib's libm objects `libm/s_copysign.c`, `s_isinf.c`, `s_isnan.c`, `sf_copysign.c`,
+`sf_fabs.c` (2.96 only; every 2.9x and 2.95.x 10-15 words off; `s_fabs.c` OPEN: the target leaves
+its return's slot empty after the copy into v0). With the assembler units: 277 hand-written GCC
+functions byte-exact of 286 in `src/lib` (55 of 57 before: +222).
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
-FUNCTION` tries every order of a marked block). libkernl's syscall stubs (`li v1,N;
-syscall`, about a hundred 16-byte rows in MAIN) and the VU0 macros (`sceVu0CopyVector` ...) were
-written in assembly -- 275 of MAIN's 1,062 GCC rows up to 0x400 bytes hold a syscall, sync,
-COP0, COP2, MMI or `lq`/`sq` instruction, which is MAIN's 282 m2c refusals: they want an assembler unit built by the toolchain's own `ee-as`, which
-sccheck has no path for yet. Still open: the strict-aliasing setting of the SDK, newlib, OVL1's
-heap/lgAud/libnetb and the codec (no function yet tells), the 991111 rebuilds (-01, a,
-dtls13010: every probe compiles the same under each), and the generated tier's GCC near misses,
-not yet classified as amsurvey classified MW's.
+FUNCTION` tries every order of a marked block). The rest of libkernl's C objects (the thread,
+TLB-setup, initsys/ExecPS2 and alarm objects, their static `Copy`/`setup`/`GetEntryAddress`
+syscall wrappers the map leaves as `s1~` placeholders), libgraph, libipu/libmpeg, libmc, the
+newlib stdio wrappers and libgcc's fp-bit are open. Still open: the strict-aliasing setting of the
+SDK, newlib, OVL1's heap/lgAud/libnetb and the codec (no function yet tells), the 991111 rebuilds
+-01 and a (no probe separates them from 991111), and the generated tier's GCC near misses, not yet
+classified as amsurvey classified MW's.
 
 ## Open, and next
 
