@@ -86,16 +86,15 @@ struct LOOK_DATA {
 
 /* a cell a search may settle on: walkable, no action on it, no overlay over it (the name ours:
  * inlined one level into both callbacks in the target, so the cell's two tests and the overlays'
- * walk are called out of line -- 0x511F40, 0x516920, 0x53A500).
- * OPEN with both callbacks (0x204 against 0xEC, _find_cover likewise): MW here inlines it, the
- * cell's tests and the overlays' walk, cutting only the walk's deepest list pieces (tail() and
- * the generic_iterator constructors, `warn_notinlined`) -- a depth budget spent from the call
- * site down, where the target stops at the helper's own body. The target's 0x53A500 inlines the
- * whole const walk with its iterators in stack slots, as ai_astar.cpp's fcost does. Not tried:
- * the helper as a member of the floodfill struct or the cell, the test spelled with `== false` */
+ * walk are called out of line -- 0x511F40, 0x516920, 0x53A500). One level because it is six high:
+ * the walk's postfix step is the level that cuts it (ai.h); with `++i` MW inlined all but the
+ * walk's deepest list pieces. The cell in a local: the target loads it once, into the register
+ * the callback's data pointer had */
 inline bool _open_cell(const MAP_FLOODFILL_STRUCT &s)
 {
-    return s.m_cell->IsTraversable() && !s.m_cell->HasAction() && !ai::overlays.Contains(s.m_cell, s.m_start);
+    const CAiCell *cell = s.m_cell;
+
+    return cell->IsTraversable() && !cell->HasAction() && !ai::overlays.Contains(cell, s.m_start);
 }
 
 /* the cover search's callback: an open cell is taken for testing; else an opaque cell squarely
@@ -111,7 +110,7 @@ static bool _find_cover(MAP_FLOODFILL_STRUCT &s, void *data)
         if (_open_cell(s)) {
             r = true;
         } else if (s.m_cell->IsOpaque()) {
-            if (CAiMap::GetDirDelta(s.m_map->GetClosestDir(s.m_start, &d->m_pos), (CAiMap::DIR)s.m_dir) == 0) {
+            if (CAiMap::GetDirDelta(s.m_map->GetClosestDir(s.m_start, &d->m_pos), s.m_dir) == 0) {
                 s.m_mode = 2;
                 r = true;
                 d->m_loc = s.m_loc;

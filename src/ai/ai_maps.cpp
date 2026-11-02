@@ -201,6 +201,35 @@ const char *CAiMaps::GetCellNameString(const CAiMapLoc &loc) const
     return n ? n->m_name : "";
 }
 
+/* the region tiled on its map's first layer, the planner's queue reset after a tile (SOCOM 1's;
+ * the map's lookup inlined whole, the arguments handed on in their registers) */
+bool CAiMaps::Tile(const CAiMap::region *r, unsigned int value, unsigned int flags)
+{
+    if (!r)
+        return false;
+    CAiMap *map = GetMapByIndex(r->m_loc.m_mapid);
+    bool ok = false;
+
+    if (map) {
+        ok = map->Tile(r, value, flags, 0);
+        ai::ResetPathPlan();
+    }
+    return ok;
+}
+
+/* the old cell freed unless an overlay lies over it (the overlays' walk inlined), the new one
+ * taken */
+void CAiMaps::MoveOccupant(const CAiMapLoc &from, const CAiMapLoc &to, unsigned int)
+{
+    CAiCell *cell = GetCell(from);
+
+    if (cell && !ai::overlays.Contains(cell, from))
+        cell->SetOccupied(false);
+    cell = GetCell(to);
+    if (cell)
+        cell->SetOccupied(true);
+}
+
 /* the point's cell, then a traversable one near it */
 bool CAiMaps::GetTraversableLocation(const CPnt3D *pos, CAiMapLoc &out)
 {

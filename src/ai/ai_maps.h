@@ -61,6 +61,12 @@ public:
     float GetDistance(const CAiMapLoc &a, const CAiMapLoc &b);
     /* how many spores an id has (new in SOCOM II, the name ours) */
     int GetSporeCount(unsigned int id);
+    /* a region of its map's first layer tiled, the planner's queue reset after (SOCOM 1's) */
+    bool Tile(const CAiMap::region *r, unsigned int value, unsigned int flags);
+    /* an entity moved from one cell to another: the old cell no longer occupied unless an overlay
+     * covers it, the new one occupied (new in SOCOM II, the name ours: the SEALs' UpdateAiMapLoc
+     * and OnDeath, which pass the entity's id, unread) */
+    void MoveOccupant(const CAiMapLoc &from, const CAiMapLoc &to, unsigned int id);
 
     CAiMap::spores m_spores;   // 0x30
     CAiMap::names m_names[6];   // 0x3c
