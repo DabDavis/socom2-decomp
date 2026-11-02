@@ -303,6 +303,50 @@ void CZOnlineLobby::DeclineClanInvitation(int id)
         cbRespondToClanInvitation));
 }
 
+/* the invitations received handed to the menus: each one's number, its clan's leader and our
+ * answer, or a line saying there are none (SOCOM 1's; OVL1 0x2E8780) */
+void UpdateInvitations()
+{
+    CRdrEditor ed;
+    char text[128];
+
+    if (InvitationVec.size()) {
+        ed.push(0);
+        for (InvitationVector::iterator i = InvitationVec.begin(); i != InvitationVec.end(); ++i) {
+            ed.push(0);
+            sprintf(text, "%d", (*i)->ClanInvitationID);
+            ed.addstringnode(text);
+            ed.addstringnode((*i)->Message);
+            switch ((*i)->ResponseStatus) {
+            case 0:
+                sprintf(text, "Undecided");
+                break;
+            case 1:
+                sprintf(text, "Accepted");
+                break;
+            case 2:
+                sprintf(text, "Declined");
+                break;
+            default:
+                sprintf(text, "Unknown");
+                break;
+            }
+            ed.addstringnode(text);
+            ed.pop();
+        }
+        ed.pop();
+    } else {
+        ed.push(0);
+        ed.push(0);
+        ed.addstringnode(" ");
+        ed.addstringnode("No Invitations");
+        ed.addstringnode(" ");
+        ed.pop();
+        ed.pop();
+    }
+    theLobby.uiv_MediusMyInvites->Set(&ed);
+}
+
 /* any invitations received (SOCOM 1's; OVL1 0x2E8770) */
 bool CZOnlineLobby::HasClanInvitations()
 {
@@ -338,6 +382,31 @@ void CZOnlineLobby::CheckClanInvitations()
     req.PageSize = 999;
     CheckMediusError(MediusCheckMyClanInvitations(&req,
         cbCheckMyClanInvitations));
+}
+
+/* a message of our clan's: added to the lines the menu shows, after a blank one; on a failure the
+ * menu told there are none (SOCOM 1's; OVL1 0x2E84E0) */
+void cbGetMyClanMessages(MediusErrorCode, MediusErrorCode, MediusErrorCode,
+                         MediusGetMyClanMessagesResponse *resp)
+{
+    if (CheckMediusCallbackStatus("GetMyClanMessages", resp->StatusCode)) {
+        CRdrEditor ed;
+
+        ed.push(0);
+        if (theLobby.uiv_ClanMessages->Type() == 4) {
+            for (int i = 0; i < theLobby.uiv_ClanMessages->Count(); i++) {
+                _zrdr *line = theLobby.uiv_ClanMessages->Item(i);
+
+                if (line->type == 3)
+                    ed.addstringnode(ZString(line));
+            }
+        }
+        ed.addstringnode("\n");
+        ed.addstringnode(resp->Message);
+        ed.pop();
+        theLobby.uiv_ClanMessages->Set(&ed);
+    } else
+        func_003862A0(theLobby.uiv_ClanMessages, "No clan messages.");
 }
 
 /* the clan's messages asked for, the menu told meanwhile (SOCOM II's; OVL1 0x2E8460) */
@@ -657,6 +726,105 @@ bool CZOnlineLobby::RemovePlayerFromClan(const char *name)
 bool CZOnlineLobby::ClanHasInvitations()
 {
     return ClanInvitationVec.size() != 0;
+}
+
+struct MediusAddPlayerToClanResponse { MEDIUS_RESPONSE_HEAD };
+
+/* an accepted invitation's player added: the answer only looked at (SOCOM 1's; OVL1 0x2E7280) */
+void cbAddPlayerToClan(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusAddPlayerToClanResponse *resp)
+{
+    CheckMediusCallbackStatus("MediusAddPlayerToClan", resp->StatusCode);
+}
+
+/* an accepted invitation taken back, so it is not answered twice: the answer only looked at (SOCOM
+ * 1's; OVL1 0x2E7270) */
+void cbClanInviteRevokeHack(MediusErrorCode, MediusErrorCode, MediusErrorCode,
+                            MediusRevokeClanInvitationResponse *resp)
+{
+    CheckMediusCallbackStatus("ClanInviteRevokeHack", resp->StatusCode);
+}
+
+/* the invitations sent handed to the menus: each one's player and answer, or a line saying there
+ * are none (SOCOM 1's; OVL1 0x2E70B0) */
+void ClanUpdateInvitations()
+{
+    CRdrEditor ed;
+
+    if (ClanInvitationVec.size()) {
+        ed.push(0);
+        for (ClanInvitationVector::iterator i = ClanInvitationVec.begin(); i != ClanInvitationVec.end(); ++i) {
+            ed.push(0);
+            ed.addstringnode((*i)->AccountName);
+            switch ((*i)->ResponseStatus) {
+            case 0:
+                ed.addstringnode("Undecided");
+                break;
+            case 2:
+                ed.addstringnode("Declined");
+                break;
+            case 1:
+                ed.addstringnode("Accepted");
+                break;
+            default:
+                ed.addstringnode("Unknown");
+                break;
+            }
+            ed.pop();
+        }
+        ed.pop();
+    } else {
+        ed.push(0);
+        ed.push(0);
+        ed.addstringnode("No Invitations Sent");
+        ed.addstringnode(" ");
+        ed.pop();
+        ed.pop();
+    }
+    theLobby.uiv_ClanInvitations->Set(&ed);
+}
+
+/* the clan's request to add a player who accepted (SOCOM 1's MediusAddPlayerToClanRequest) */
+struct MediusAddPlayerToClanRequest {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];   // 0x15
+    int PlayerAccountID;   // 0x28
+    char Message[200];   // 0x2c
+};   // 0xf4
+
+extern "C" MediusErrorCode MediusAddPlayerToClan(MediusAddPlayerToClanRequest *req,
+    void (*cb)(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusAddPlayerToClanResponse *));
+
+/* an invitation sent, as the server has it: an accepted one's player added to the clan (welcomed in
+ * the clan's message) and the invitation taken back; any but a revoked one kept, and the menu told
+ * at the list's end, or on a failure (SOCOM 1's; OVL1 0x2E6F50) */
+void cbGetClanInvitationsSent(MediusErrorCode, MediusErrorCode, MediusErrorCode,
+                              MediusGetClanInvitationsSentResponse *resp)
+{
+    if (CheckMediusCallbackStatus("MediusGetClanInvitationsSent", resp->StatusCode)) {
+        if (resp->ResponseStatus == 1) {
+            /* (the requests' and the text's slots are the target's in this order of declaration) */
+            MediusRevokeClanInvitationRequest rev;
+            char text[200];
+            MediusAddPlayerToClanRequest add;
+            int id = resp->AccountID;
+
+            memset(&add, 0, sizeof(add));
+            SetSessionKey(add.SessionKey);
+            add.PlayerAccountID = id;
+            sprintf(text, "Everyon Welcome %s to the clan", resp->AccountName);
+            memcpy(add.Message, text, sizeof(add.Message));
+            CheckMediusError(MediusAddPlayerToClan(&add, cbAddPlayerToClan));
+            memset(&rev, 0, sizeof(rev));
+            SetSessionKey(rev.SessionKey);
+            rev.PlayerAccountID = resp->AccountID;
+            CheckMediusError(MediusRevokeClanInvitation(&rev, cbClanInviteRevokeHack));
+        }
+        if (resp->ResponseStatus == 0 || resp->ResponseStatus == 2 || resp->ResponseStatus == 1)
+            ClanInvitationVec.Add(resp);
+        if (resp->EndOfList)
+            ClanUpdateInvitations();
+    } else
+        ClanUpdateInvitations();
 }
 
 /* the invitations sent asked for again (SOCOM 1's; OVL1 0x2E6EA0) */

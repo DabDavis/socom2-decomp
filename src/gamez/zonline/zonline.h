@@ -206,11 +206,18 @@ struct MediusGetClanInvitationsSentResponse {
     char AccountName[32];   // 0x20
     char Message[200];   // 0x40
     int ResponseStatus;   // 0x108
-    char EndOfList;   // 0x10c
+    int ResponseTime;   // 0x10c (the SDK's; cbGetClanInvitationsSent reads the list's end after it)
+    char EndOfList;   // 0x110
 };
 struct MediusRespondToClanInvitationResponse { MEDIUS_RESPONSE_HEAD };
 struct MediusDeleteClanMessageResponse { MEDIUS_RESPONSE_HEAD };
-struct MediusGetMyClanMessagesResponse { MEDIUS_RESPONSE_HEAD };
+/* a message of our clan's (the SDK's: the clan, the text, the list's end) */
+struct MediusGetMyClanMessagesResponse {
+    MEDIUS_RESPONSE_HEAD
+    int ClanID;   // 0x1c
+    char Message[200];   // 0x20
+    char EndOfList;   // 0xe8
+};
 struct MediusSendClanMessageResponse { MEDIUS_RESPONSE_HEAD };
 /* the filter's answer: the text handed back, its status after it */
 struct MediusTextFilterResponse {
