@@ -11098,8 +11098,8 @@
 0x005C91A0 0xC func_005C91A0  # OVL2
 0x005C91B0 0x7C sealSaveFireModes__Fv  # OVL2; s1:order by hand (the kit lane, round 11): SOCOM 1's sealSaveFireModes -- the local player's kit's item count into g_iNumSavedFireModes (0x66B670), each item's id and fire mode into g_arrSavedFireModeInfo (0x66B580) -- right before CSavedFireModeInfo's constructor as there; CMPExitState::Init calls it
 0x005C9230 0x14 __ct__Q222@unnamed@seal_kit_cpp@18CSavedFireModeInfoFv  # OVL2; s1:exact
-0x005C9250 0x18 func_005C9250  # OVL2
-0x005C9270 0xCC func_005C9270  # OVL2
+0x005C9250 0x18 PerturbAimVector__11CSealCtrlAiFP6CPnt3D  # OVL2; by hand (the kit lane, round 12): slot +0x74 of CSealCtrlAi's table (0x669464 holds it; CSealCtrl's PerturbAimVector at 0x592260 is the same slot of its own), SOCOM 1's position (after CSavedFireModeInfo(), before CAiWepHint's statics) and its tail: m_target.ModifyAimDir(v, accuracy, aiAccuracyAngle) as SOCOM 1's ends; seal_kit.cpp byte-exact
+0x005C9270 0xCC GetAccuracyFactor__11CSealCtrlAiFv  # OVL2; by hand (the kit lane, round 12): the stance/pace factor SOCOM 1's PerturbAimVector computed inline (GetStance(false): crouched 1.25, prone 1.5; ai::is_moving(velW, 625) 0.7), times the controller's floats at 0xD4 and 0x70C -- 0x55F0A0 calls it; the name ours; seal_kit.cpp byte-exact
 0x005C9340 0x74 GetWeaponAccuracy__10CAiWepHintFP8CZWeaponfb  # OVL2; s1:order by hand (the kit lane, round 11): SOCOM 1's CAiWepHint::GetWeaponAccuracy -- AI_PARAMS::GetAccuracy of the weapon (0 without one), now doubled when the bool is set and _saturate'd to [0, 1] -- before GetWeaponEffectiveRange as there
 0x005C93C0 0x38 GetWeaponEffectiveRange__10CAiWepHintFP8CZWeapon  # OVL2; s1:order by hand (the kit lane, round 11): SOCOM 1's CAiWepHint::GetWeaponEffectiveRange -- the same 0.5 * (max + min) of the weapon's AI_PARAMS (SOCOM II's at 0x70), 0 without a weapon -- the kit unit's last as there, after GetWeaponAccuracy
 0x005C9400 0x118 UpdateViewCone__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -11740,7 +11740,7 @@
 0x00609D60 0x78 __dt__10CAiSShotAtFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00609DE0 0x8 CanPursue__10CAiSShotAtCFP11CSealCtrlAi  # OVL2; by hand: CAiSShotAt's vtable slot +0x2C (CanPursue, as SOCOM 1's)
 0x00609DF0 0x20C CheckLineOfFire__2aiFPC7CEntityPC7CTargetf  # OVL2; s1:calls
-0x0060A000 0x2C8 func_0060A000  # OVL2
+0x0060A000 0x2C8 ModifyAimDir__9CAiTargetFP6CPnt3Dff  # OVL2; s1:calls by hand (the kit lane, round 12): CSealCtrlAi::PerturbAimVector (0x5C9250) tail-calls it on its target (+0x67C) with (v, accuracy, aiAccuracyAngle) where SOCOM 1's PerturbAimVector calls ModifyAimDir__9CAiTargetFP6CPnt3Dff (0x2E9900 there) with the same three; first of CAiTarget's stretch after CheckLineOfFire, as SOCOM 1's; OVL1's 0x3A8D20 calls it too (SOCOM 1's CTurret::Fire does)
 0x0060A2D0 0x18 func_0060A2D0  # OVL2
 0x0060A2F0 0x16C func_0060A2F0  # OVL2
 0x0060A460 0x12C func_0060A460  # OVL2

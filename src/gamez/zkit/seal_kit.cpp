@@ -52,6 +52,57 @@ extern "C" {
 CZSealBody *ftsGetPlayer__Fv();
 }
 
+/* a SEAL's stance (zseal.h's SEAL_STANCE, a byte enum; not included here) */
+enum SEAL_STANCE {
+    STANCE_NONE = -1, STANCE_STAND = 0, STANCE_CROUCH = 1, STANCE_PRONE = 2, STANCE_IDLE = 3,
+    STANCE_MAX = 4
+};
+
+extern "C" {
+/* the SEAL's stance, by its body (SOCOM 1's CZSealBody::GetStance(bool), called from the same places
+ * in SOCOM 1's CZKit::Fire and CSealCtrlAi::PerturbAimVector; OVL2 0x58A720, the SEAL lane's row) */
+unsigned char func_0058A720(CZSealBody *seal, unsigned char flag);
+}
+
+namespace ai {
+/* faster than a squared speed (ai_util.cpp's) */
+bool is_moving(const CPnt3D *v, float speedSq);
+}
+
+/* the AI's target as the controller hands it the aim (SOCOM 1's CAiTarget::ModifyAimDir; OVL2
+ * 0x60A000, ai_target.cpp's -- a view, 0x78 bytes as ai_target.cpp's) */
+class CAiTarget {
+public:
+    void ModifyAimDir(CPnt3D *dir, float accuracy, float angle);
+
+    unsigned char _0[0x78];
+};
+
+/* the AI controller as the unit's two members of it read it (CSealCtrlAi; zseal.h, which declares a
+ * CZKit of its own, is not included here): its body (CEntityCtrl's entity), a base accuracy, the
+ * accuracy the aim is perturbed by, the target (+0x67C, SEAL_AI_PARAMS's) and a scale -- the names
+ * of the three floats ours */
+class CSealCtrlAi {
+public:
+    float GetAccuracyFactor();
+    void PerturbAimVector(CPnt3D *v);
+    CZSealBody *GetBody() { return m_entity; }
+
+    /* the aim's error cone (SOCOM 1's aiAccuracyAngle, 15 degrees: OVL1 0x3DF180) */
+    static float aiAccuracyAngle;
+
+    void *_vptr;   // 0x0
+    CZSealBody *m_entity;   // 0x4
+    unsigned char _8[0xd4 - 0x8];
+    float m_d4;   // 0xd4
+    unsigned char _d8[0x3d0 - 0xd8];
+    float m_3d0;   // 0x3d0
+    unsigned char _3d4[0x67c - 0x3d4];
+    CAiTarget m_target;   // 0x67c
+    unsigned char _6f4[0x70c - 0x6f4];
+    float m_70c;   // 0x70c
+};
+
 /* the unit's statics, in the order its initialiser (__sinit_seal_kit.cpp, OVL2 0x668DB0) builds them
  * after <iostream>'s two objects: SOCOM 1's saved fire modes and their count (OVL2 bss 0x66B580,
  * 0x66B670), then the hit the explosives' placing keeps (0x66B680: 0x5BE9A0 copies a 32-byte hit
@@ -65,11 +116,7 @@ namespace {
  * then the item; its constructor, 0x5C9230, zeroes the one and 255s the other) */
 class CSavedFireModeInfo {
 public:
-    CSavedFireModeInfo()
-    {
-        m_firemode = 0;
-        m_item = EQUIP_NONE;
-    }
+    CSavedFireModeInfo();
 
     int m_firemode;   // 0x0
     EQUIP_ITEM m_item;   // 0x4
@@ -89,24 +136,6 @@ CSavedFireModeInfo g_arrSavedFireModeInfo[30];
 int g_iNumSavedFireModes;
 CKitHit g_placeHit;
 
-}
-
-/* the local player's items' fire modes saved (OVL2 0x5C91B0; SOCOM 1's, the items now read straight,
- * not unwrapped: CMPExitState::Init calls it). Each entry through a pointer, which might alias the
- * count, so the count is read again each pass (indexed, MW unrolls the loop 8x); the counter declared
- * ahead of the kit takes the higher argument register */
-void sealSaveFireModes()
-{
-    int i;
-    CZKit *kit = (CZKit *)((char *)ftsGetPlayer__Fv() + 0x5e0);
-
-    g_iNumSavedFireModes = kit->m_num_items;
-    for (i = 0; i < g_iNumSavedFireModes; i++) {
-        CSavedFireModeInfo *info = &g_arrSavedFireModeInfo[i];
-
-        info->m_item = kit->m_item[i]->m_ID;
-        info->m_firemode = kit->m_firemode[i];
-    }
 }
 
 /* the middle of a weapon's AI range, none without a weapon (OVL2 0x5C93C0; SOCOM 1's, at SOCOM II's
@@ -139,6 +168,66 @@ float CAiWepHint::GetWeaponAccuracy(CZWeapon *w, float d, bool b)
     _saturate(&acc, lo, hi);
     return acc;
 }
+
+/* the AI's accuracy at its stance and pace: a base (0xD4) scaled by 1.25 crouched and 1.5 prone,
+ * by 0.7 while the body moves (faster than 25 a second), and by the word at 0x70C (OVL2 0x5C9270;
+ * SOCOM 1's PerturbAimVector computed the same factors inline -- 0.9 standing there -- and 0x55F0A0
+ * now asks this; the name ours). The cases listed backwards: the compare chain tests them in
+ * reverse source order (0, 1, 2 here), standing's an empty case of its own */
+float CSealCtrlAi::GetAccuracyFactor()
+{
+    CZSealBody *body = GetBody();
+    float f = m_d4;
+
+    switch (func_0058A720(body, false)) {
+    case STANCE_PRONE:
+        f *= 1.5f;
+        break;
+    case STANCE_CROUCH:
+        f *= 1.25f;
+        break;
+    case STANCE_STAND:
+        break;
+    }
+    if (ai::is_moving(&((CKitBody *)body)->m_velW, 625.0f))
+        f *= 0.7f;
+    f *= m_70c;
+    return f;
+}
+
+/* the aim turned off its line by the target's error (SOCOM 1's PerturbAimVector: its slot, +0x74 of
+ * CSealCtrlAi's table; OVL2 0x5C9250) -- SOCOM 1's computed the accuracy here, SOCOM II's keeps it
+ * at 0x3D0 */
+void CSealCtrlAi::PerturbAimVector(CPnt3D *v)
+{
+    m_target.ModifyAimDir(v, m_3d0, aiAccuracyAngle);
+}
+
+/* (OVL2 0x5C9230: out of line between them, as SOCOM 1's) */
+CSavedFireModeInfo::CSavedFireModeInfo()
+{
+    m_firemode = 0;
+    m_item = EQUIP_NONE;
+}
+
+/* the local player's items' fire modes saved (OVL2 0x5C91B0; SOCOM 1's, the items now read straight,
+ * not unwrapped: CMPExitState::Init calls it). Each entry through a pointer, which might alias the
+ * count, so the count is read again each pass (indexed, MW unrolls the loop 8x); the counter declared
+ * ahead of the kit takes the higher argument register */
+void sealSaveFireModes()
+{
+    int i;
+    CZKit *kit = (CZKit *)((char *)ftsGetPlayer__Fv() + 0x5e0);
+
+    g_iNumSavedFireModes = kit->m_num_items;
+    for (i = 0; i < g_iNumSavedFireModes; i++) {
+        CSavedFireModeInfo *info = &g_arrSavedFireModeInfo[i];
+
+        info->m_item = kit->m_item[i]->m_ID;
+        info->m_firemode = kit->m_firemode[i];
+    }
+}
+
 
 /* the item kinds of the first two items and the current one, 255 without one (OVL2 0x5C89D0,
  * 0x5C8980, 0x5C8930; the current one SOCOM 1's GetCurItemEnum, the first two new -- their names
@@ -933,11 +1022,8 @@ bool CZKit::IsUsingScope()
 }
 
 extern "C" {
-/* the SEAL's stance, by its body (SOCOM 1's CZSealBody::GetStance(bool), called from the same place
- * in SOCOM 1's CZKit::Fire; OVL2 0x58A720, the SEAL lane's row) and the target mods' kick distances
- * (SOCOM 1's CTargetMods::GetFireRifle_KickRandomDist and GetFireRifle_KickBaseDist, const: OVL1
- * 0x3C5F60 and 0x3C5F70 read 0x48 and 0x44, unclaimed) */
-unsigned char func_0058A720(CZSealBody *seal, unsigned char flag);
+/* the target mods' kick distances (SOCOM 1's CTargetMods::GetFireRifle_KickRandomDist and
+ * GetFireRifle_KickBaseDist, const: OVL1 0x3C5F60 and 0x3C5F70 read 0x48 and 0x44, unclaimed) */
 float func_003C5F60(const CTargetMods *mods);
 float func_003C5F70(const CTargetMods *mods);
 int rand(void);

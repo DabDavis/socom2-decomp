@@ -50,7 +50,9 @@ struct CKitCtrl {
 /* the body as the kit reads it (CZSealBody; only its controller, CEntity's m_control, and the byte
  * the scope tests read -- SOCOM 1's at 0x160) */
 struct CKitBody {
-    unsigned char _0[0xc0];
+    unsigned char _0[0x38];
+    CPnt3D m_velW;   // 0x38: CEntity's world velocity (the AI's accuracy asks whether it moves)
+    unsigned char _44[0xc0 - 0x44];
     CKitCtrl *m_control;   // 0xc0
     unsigned char _c4[0x200 - 0xc4];
     signed char m_200;   // 0x200: the current item's zoom class (binoculars 4, scopes 5 and up)
