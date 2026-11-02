@@ -8144,8 +8144,8 @@
 0x003C5F20 0x8 func_003C5F20  # OVL1
 0x003C5F30 0x8 func_003C5F30  # OVL1
 0x003C5F40 0x20 func_003C5F40  # OVL1
-0x003C5F60 0x8 func_003C5F60  # OVL1
-0x003C5F70 0x8 func_003C5F70  # OVL1
+0x003C5F60 0x8 GetFireRifle_KickRandomDist__11CTargetModsCFv  # OVL1; s1:order (the integrator's lead from the kit lane, vetted by the wep lane: SOCOM 1's CTargetMods getter 0x315AA0 reads +0x44, SOCOM II's +0x48 -- the float SOCOM II inserts at 0x28 moves every later member 4 on; first of the pair in both builds, and SOCOM 1's CZKit::Fire calls them at the same point of the kick)
+0x003C5F70 0x8 GetFireRifle_KickBaseDist__11CTargetModsCFv  # OVL1; s1:order (the integrator's lead, vetted by the wep lane: SOCOM 1's 0x315AB0 reads +0x40, SOCOM II's +0x44, right after KickRandomDist in both builds)
 0x003C5F80 0x8 func_003C5F80  # OVL1
 0x003C5F90 0x8 func_003C5F90  # OVL1
 0x003C5FA0 0x8 func_003C5FA0  # OVL1
@@ -8331,7 +8331,7 @@
 0x003D1C70 0x1C PackItemAndAmmoEnums__8CZWeaponF10EQUIP_ITEM10EQUIP_AMMO  # OVL1; s1:order by hand (SOCOM 1's: the item byte shifted over the ammo byte, a halfword; right before UnpackItemAndAmmoEnums as in SOCOM 1)
 0x003D1C90 0x1C UnpackItemAndAmmoEnums__8CZWeaponFUsP10EQUIP_ITEMP10EQUIP_AMMO  # OVL1; tu: zwep_weapon.cpp~ (1.0 beta); s1:exact
 0x003D1CB0 0x28 func_003D1CB0  # OVL1
-0x003D1CE0 0x28 func_003D1CE0  # OVL1
+0x003D1CE0 0x28 IsSecondary__8CZWeaponF10EQUIP_ITEM  # OVL1; s1:order (the integrator's lead, vetted by the wep lane: SOCOM 1's 0x31E370 is the same 0x28-byte GetIDType(id) test right before IsPrimary; SOCOM 1 tests its first class 0, SOCOM II 4 -- the first class of SOCOM II's GetIDType, ids 4-30, as IsPrimary's 30/50/80.. became 31/51/81..)
 0x003D1D10 0x74 IsPrimary__8CZWeaponF10EQUIP_ITEM  # OVL1; s1:order by hand (SOCOM 1's: the item's class against the primary classes, 30/50/80/90/140/100 then, 31/51/81/91/141/101 now)
 0x003D1D90 0x10 func_003D1D90  # OVL1
 0x003D1DA0 0x10 func_003D1DA0  # OVL1

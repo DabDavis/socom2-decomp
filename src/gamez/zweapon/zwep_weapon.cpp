@@ -401,6 +401,11 @@ bool CZWeapon::IsPrimary(EQUIP_ITEM id)
     return is_primary_type(GetIDType(id));
 }
 
+bool CZWeapon::IsSecondary(EQUIP_ITEM id)
+{
+    return GetIDType(id) == 4;
+}
+
 /* OPEN, 2 instructions short (SOCOM 1's is byte-identical): the target zero-extends the halfword's
  * 32 bits to 64 (dsll32, dsrl32) before storing the ammo byte, and shifts the item out with srl;
  * masks, a modulo and casts through unsigned long all fold it away, an unsigned int copy gives the

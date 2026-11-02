@@ -177,6 +177,9 @@ public:
     bool SetHitAnim(int material, CZAnim *anim);
     bool SetSpecialMaterialAnim(int material, CZAnim *anim);
     static bool IsPrimary(EQUIP_ITEM id);
+    /* the first class, the sidearms (SOCOM 1's, right before IsPrimary in both builds: its class 0,
+     * SOCOM II's 4 -- 0x3D1CE0) */
+    static bool IsSecondary(EQUIP_ITEM id);
     bool IsDirectFire();
     EQUIP_AMMO GetDefaultAmmoId();
     CZAmmo *GetDefaultAmmo();
@@ -332,6 +335,10 @@ public:
     void SetWiggleReport(float r);
     float GetWiggleReport();
     void SetTarget_DilateUponMovement(float d);
+    /* the rifle kick's random and base distances (SOCOM 1's getters, in its order: 0x3C5F60,
+     * 0x3C5F70 -- the kit's fire code reads them) */
+    float GetFireRifle_KickRandomDist() const;
+    float GetFireRifle_KickBaseDist() const;
 
     float m_reticuleknock;   // 0x0
     float m_reticuleknock_return;   // 0x4
