@@ -11306,18 +11306,18 @@
 0x005E4F20 0x6C func_005E4F20  # OVL2
 0x005E4F90 0x6C func_005E4F90  # OVL2
 0x005E5000 0x6C func_005E5000  # OVL2
-0x005E5070 0x70 func_005E5070  # OVL2
+0x005E5070 0x70 CloseAll__7AnimSetFv  # OVL2; s1:order by hand (the kit lane, round 10): SOCOM 1's CloseAll walks AnimSet::list (0x509710 there, 0x44D430 here) calling Close; CGame::StopEngine calls this as SOCOM 1's calls CloseAll -- SOCOM II's walk is left empty
 0x005E50E0 0x264 func_005E50E0  # OVL2
 0x005E5350 0x1B0 func_005E5350  # OVL2
-0x005E5500 0x100 func_005E5500  # OVL2
-0x005E5600 0xC8 func_005E5600  # OVL2
-0x005E56D0 0xC0 func_005E56D0  # OVL2
+0x005E5500 0x100 MarkState__12CAnimTypeRecFii  # OVL2; by hand (the kit lane, round 10): the per-type record's variant group holding an anim (as GetVariantIndex walks them) gets its 2-bit field at +2 set from a1, the record's own bits at +5 when it has no groups; true when marked -- the name ours
+0x005E5600 0xC8 ClearState__12CAnimTypeRecFi  # OVL2; by hand (the kit lane, round 10): every variant group (and the record's own 2-bit field) equal to a1 zeroed, the count returned -- the name ours
+0x005E56D0 0xC0 GetGroup__12CAnimTypeRecFi  # OVL2; by hand (the kit lane, round 10): the per-type record's variant group holding an anim, of any kind, or 0 -- the name ours
 0x005E5790 0xF0 GetVariantIndex__12CAnimTypeRecFii  # OVL2; by hand (the kit lane, round 10): the record's variant groups (m_count of them at +8, a 4-byte header {kind, count, anim:14} and count {anim, weight} pairs when count >= 2) searched for an anim of a kind: its index, -1; the name ours
-0x005E5880 0xF0 func_005E5880  # OVL2
+0x005E5880 0xF0 GetVariant__12CAnimTypeRecFii  # OVL2; by hand (the kit lane, round 10): the anim at an index of the variant group of a kind (the record's own id at index 0 without groups), -1 past its end -- the name ours
 0x005E5970 0x138 PickVariant__12CAnimTypeRecFi  # OVL2; by hand (the kit lane, round 10): the record's variant group of a kind: its one anim, or one drawn by weight with rand(); the record's own id when it has no groups; the name ours
 0x005E5AB0 0x58 Contains__10CBlendableF8AnimType  # OVL2; s1:order by hand (the kit lane, round 10): SOCOM 1's CBlendable::Contains, the same walk over the four 12-byte slots (the type at 8, -1 ends them) with MW 3.0's scheduling; after AnimSet's code as in SOCOM 1's anim.cpp
-0x005E5B10 0xDC func_005E5B10  # OVL2
-0x005E5BF0 0xC4 func_005E5BF0  # OVL2
+0x005E5B10 0xDC MarkStateAll__12CAnimTypeRecFii  # OVL2; by hand (the kit lane, round 10): the record pool (0x44C790, 600 new'd with the record's constructor 0x5E3F80 and destructor 0x5E3EE0 when null) walked to its used count (0x44C798), MarkState (0x5E5500) summed; CScriptArchive::Register calls it -- the name ours
+0x005E5BF0 0xC4 ClearStateAll__12CAnimTypeRecFi  # OVL2; by hand (the kit lane, round 10): the record pool walked as MarkStateAll does, ClearState (0x5E5600) on each, the count kept in s0 and never returned; CScriptArchive::Unregister calls it -- the name ours
 0x005E5CC0 0x460 func_005E5CC0  # OVL2
 0x005E6120 0x68 func_005E6120  # OVL2
 0x005E6190 0x94 func_005E6190  # OVL2

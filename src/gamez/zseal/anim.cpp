@@ -54,9 +54,11 @@ struct ANIM_VARIANT {
 };
 
 struct ANIM_VARIANT_GROUP {
+    void SetState(unsigned int s) { m_state = s; }
+
     unsigned char m_kind;   // 0x0
     unsigned char m_count;   // 0x1
-    unsigned short m_2 : 2;   // 0x2
+    unsigned short m_state : 2;   // 0x2: a state the record's SetState/ClearState mark it with
     unsigned short m_anim : 14;
 };
 
@@ -81,17 +83,29 @@ public:
         SetBit0(false);
         SetBit1(false);
         m_count = 0;
-        SetBits2(0);
+        SetState(0);
         m_8 = 0;
     }
     void SetBit0(bool b) { m_bit0 = b; }
     void SetBit1(bool b) { m_bit1 = b; }
-    void SetBits2(unsigned int n) { m_bits2 = n; }
-    /* the variant groups' count (inline: the walks' loop test re-reads it through it) */
+    void SetState(unsigned int s) { m_state = s; }
+    /* (tested through it, the byte is loaded again for the store after) */
+    unsigned int GetState() const { return m_state; }
+    /* the variant groups' count (inline: some walks' loop test re-reads it through it) */
     unsigned int Count() const { return m_count; }
-    /* a variant group's index of an anim, and an anim picked from a group by weight (OVL2
-     * 0x5E5790, 0x5E5970: not written yet) */
+    /* the groups holding an anim marked with a state, whether one was (OVL2 0x5E5500); every
+     * group of a state cleared, how many were (0x5E5600); the group holding an anim, or 0
+     * (0x5E56D0); an anim's index in the group of a kind (0x5E5790); the anim at an index of a
+     * kind's group (0x5E5880); an anim of a kind drawn by weight (0x5E5970) */
+    int MarkState(int state, int anim);
+    int ClearState(int state);
+    /* the same over every record in use, the pool made first (OVL2 0x5E5B10, 0x5E5BF0:
+     * CScriptArchive::Register and Unregister call them) */
+    static int MarkStateAll(int state, int anim);
+    static void ClearStateAll(int state);
+    ANIM_VARIANT_GROUP *GetGroup(int anim);
     int GetVariantIndex(int kind, int anim);
+    int GetVariant(int kind, int index);
     int PickVariant(int kind);
 
     short m_id;   // 0x0: the anim (AnimId)
@@ -99,10 +113,15 @@ public:
     unsigned char m_count;   // 0x4: variant groups at m_8
     unsigned char m_bit0 : 1;   // 0x5
     unsigned char m_bit1 : 1;
-    unsigned char m_bits2 : 2;
+    unsigned char m_state : 2;   // the state for a record without groups
     unsigned char m_5_4 : 4;
     unsigned char _6[2];
     void *m_8;   // 0x8: the variant groups
+
+    /* the records, 600 made at once (OVL1 bss 0x44C790), and how many are in use (0x44C798) --
+     * the loader hands them out; the names ours */
+    static CAnimTypeRec *m_pool;
+    static unsigned int m_used;
 };
 
 /* a SEAL's animations (SOCOM 1's DWARF: AnimSet, 0x84 bytes there) -- only what is written here:
@@ -114,10 +133,44 @@ public:
     int GetVariantIndex(AnimType type, int kind, int anim);
     int PickVariant(AnimType type, int kind);
     short AnimId(AnimType type) const;
+    /* a set closed (SOCOM 1's Close freed its anims; SOCOM II's CloseAll inlines it to nothing --
+     * the walk is all that is left) and every set closed (SOCOM 1's; CGame::StopEngine calls it) */
+    void Close() {}
+    static void CloseAll();
+
+    /* every set (SOCOM 1's AnimSet::List, a pointer vector; OVL1 bss 0x44D430) */
+    static std::vector<AnimSet *> list;
 
     unsigned char _0[0x44];
     std::vector<CAnimTypeRec *> m_types;   // 0x44: a record per anim type, or 0
 };
+
+/* every record in use cleared of a state (OVL2 0x5E5BF0; the count kept but not returned) */
+void CAnimTypeRec::ClearStateAll(int state)
+{
+    int count = 0;
+
+    if (!m_pool)
+        m_pool = new CAnimTypeRec[600];
+    CAnimTypeRec *rec = m_pool;
+
+    for (unsigned int i = 0; i < m_used; i++, rec++)
+        count += rec->ClearState(state);
+}
+
+/* the records in use holding an anim marked with a state, how many were (OVL2 0x5E5B10) */
+int CAnimTypeRec::MarkStateAll(int state, int anim)
+{
+    int count = 0;
+
+    if (!m_pool)
+        m_pool = new CAnimTypeRec[600];
+    CAnimTypeRec *rec = m_pool;
+
+    for (unsigned int i = 0; i < m_used; i++, rec++)
+        count += rec->MarkState(state, anim);
+    return count;
+}
 
 /* whether a blend holds an anim type: its slots up to the first unused (SOCOM 1's; OVL2 0x5E5AB0) */
 bool CBlendable::Contains(AnimType type)
@@ -170,6 +223,34 @@ int CAnimTypeRec::PickVariant(int kind)
     return -1;
 }
 
+/* the anim at an index of a kind's group, -1 past its end; without groups the record's own anim
+ * at index 0 (OVL2 0x5E5880) */
+int CAnimTypeRec::GetVariant(int kind, int index)
+{
+    ANIM_VARIANT_GROUP *g = (ANIM_VARIANT_GROUP *)m_8;
+
+    if (!g)
+        return index == 0 ? m_id : -1;
+    for (unsigned int i = 0; i < Count(); i++) {
+        int n = g->m_count;
+
+        if (g->m_kind == kind) {
+            if (n < 2)
+                return index == 0 ? g->m_anim : -1;
+            g++;
+            for (unsigned int j = 0; j < n; j++, g = Next(g))
+                if (j == index)
+                    return Pair(g)->m_anim;
+            return -1;
+        }
+        if (n < 2)
+            g = (ANIM_VARIANT_GROUP *)((int *)g + 1);
+        else
+            g = (ANIM_VARIANT_GROUP *)((int *)g + (n * 2 + 1));
+    }
+    return -1;
+}
+
 /* an anim's place in the group of a kind (0 for a group of one), -1 when it is not there (OVL2
  * 0x5E5790) */
 int CAnimTypeRec::GetVariantIndex(int kind, int anim)
@@ -198,6 +279,107 @@ int CAnimTypeRec::GetVariantIndex(int kind, int anim)
             g = (ANIM_VARIANT_GROUP *)((int *)g + (n * 2 + 1));
     }
     return -1;
+}
+
+/* the group holding an anim, of any kind, or 0 (OVL2 0x5E56D0).
+ * OPEN, 18 instructions, registers only: the target walks the cursor in t1 and copies it into v0
+ * (the group returned) at each pass's top, the early `return 0` a `move v0,zero` in the null test's
+ * delay slot; here MW returns the null cursor itself for that 0 and so walks the cursor in v0
+ * (the group in t0). Tried: `if (!m_8)` before the cursor, a result local zeroed first and
+ * returned, the copy assigned after the count, the group's own pointer for the single test, the
+ * pairs' walk after a `continue` -- 16 to 21 instructions off */
+ANIM_VARIANT_GROUP *CAnimTypeRec::GetGroup(int anim)
+{
+    ANIM_VARIANT_GROUP *g = (ANIM_VARIANT_GROUP *)m_8;
+
+    if (!g)
+        return 0;
+    for (unsigned int i = 0; i < Count(); i++) {
+        ANIM_VARIANT_GROUP *group = g;
+        int n = g->m_count;
+
+        if (n < 2) {
+            if (group->m_anim == anim)
+                return group;
+            g++;
+        } else {
+            g++;
+            for (unsigned int j = 0; j < n; j++, g = Next(g))
+                if (Pair(g)->m_anim == anim)
+                    return group;
+        }
+    }
+    return 0;
+}
+
+/* every group of a state cleared (the record's own state when it has none), how many were (OVL2
+ * 0x5E5600) */
+int CAnimTypeRec::ClearState(int state)
+{
+    ANIM_VARIANT_GROUP *g = (ANIM_VARIANT_GROUP *)m_8;
+    int count = 0;
+
+    if (!g) {
+        if (state == GetState()) {
+            SetState(0);
+            count++;
+        }
+        return count;
+    }
+    for (unsigned int i = 0; i < Count(); i++) {
+        int n = g->m_count;
+
+        if (g->m_state == state) {
+            g->SetState(0);
+            count++;
+        }
+        if (n < 2)
+            g = (ANIM_VARIANT_GROUP *)((int *)g + 1);
+        else
+            g = (ANIM_VARIANT_GROUP *)((int *)g + (n * 2 + 1));
+    }
+    return count;
+}
+
+/* the group holding an anim marked with a state (the record's own state for its own anim when it
+ * has no groups -- true either way then), whether one was (OVL2 0x5E5500) */
+int CAnimTypeRec::MarkState(int state, int anim)
+{
+    ANIM_VARIANT_GROUP *g = (ANIM_VARIANT_GROUP *)m_8;
+
+    if (!g) {
+        if (anim == m_id)
+            SetState(state);
+        return true;
+    }
+    for (unsigned int i = 0; i < m_count; i++) {
+        ANIM_VARIANT_GROUP *group = g;
+        int n = g->m_count;
+
+        if (n < 2) {
+            if (g->m_anim == anim) {
+                g->SetState(state);
+                return true;
+            }
+            g++;
+        } else {
+            g++;
+            for (unsigned int j = 0; j < n; j++, g = Next(g))
+                if (Pair(g)->m_anim == anim) {
+                    group->SetState(state);
+                    return true;
+                }
+        }
+    }
+    return false;
+}
+
+/* every set closed (SOCOM 1's CloseAll; OVL2 0x5E5070) */
+void AnimSet::CloseAll()
+{
+    /* postfix: the class iterator's temporary gives the target's rotated loop (++i does not) */
+    for (std::vector<AnimSet *>::iterator i = list.begin(); i != list.end(); i++)
+        (*i)->Close();
 }
 
 /* (OVL2 0x5E3F80, after the destructor: the pool's element constructor) */
