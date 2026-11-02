@@ -1646,6 +1646,22 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the SEALs, round 10** (seal_body.cpp's blend and jump families, the hostile anchor, seal_cfg.cpp):
+  - an inline accessor with an UNSIGNED index called with an int counter keeps the target's per-pass
+    `sll; addu` on an RTStack walk (0x57DBB0, 0x57DC20);
+  - two identical address expressions either side of a call are shared through a saved register;
+    spelling the first differently (`&s->m` against `(char *)s + K`) makes MW recompute it, as the
+    target does (0x57F310 and the other pops);
+  - `if (!InlineBoolWithAnd()) x = ...; else x = false;` keeps the `&&` materialised (sltu) with the
+    held arm last; a ternary or `!= false` does not (UpdateHostileAnchor 0x543030);
+  - a call's result taken into a block-local before a float-zero store gives `sw zero`; stored through
+    the call's result directly, MW hoists 0.0f into $f20 (0x57F690);
+  - a short argument read through an inline accessor loads ahead of the call's other arguments
+    (0x5802B0);
+  - an unnamed unit function nothing calls can be a helper the unit inlines everywhere: write it and
+    have its siblings call it (0x588B40);
+  - `if (a || b) return false; return f();` leaves the false block right after the test (0x57F7D0);
+    a single negated test lets MW move it to the end (0x57F530, open).
 - **Tells from the HUD, round 18** (st_mpexit.cpp's stat leaderboard, hud_bitmapreticule.cpp, zui_2d.cpp's command pieces):
   - a side test written `if (b) { if (!A()) continue; } else if (!B()) continue;` gives the target's
     `bnez v0,ok; b skip`; the goto form inverts it;
