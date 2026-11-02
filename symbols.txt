@@ -1415,8 +1415,8 @@
 0x001E85F8 0x88 func_001E85F8  # OVL1 unaligned
 0x001E8680 0xBC func_001E8680  # OVL1
 0x001E8740 0xCC func_001E8740  # OVL1
-0x001E8810 0x7C func_001E8810  # OVL1; tu: libezcnf.c~ (1.0 beta)
-0x001E8890 0x7C func_001E8890  # OVL1
+0x001E8810 0x7C ezNetCnfGetCombination  # OVL1; tu: libezcnf.c~ (1.0 beta); its own messages ('ezNetCnfGetCombination: pList is empty', '... invalid Combination number (%d)'), libezcnf.c 1.0 beta (the gcc lane)
+0x001E8890 0x7C ezNetCnfGetDefault  # OVL1; its own messages ('ezNetCnfGetDefault: pList is empty', '... defaultNumber exceeds listLength (%d)'), libezcnf.c 1.0 beta (the gcc lane)
 0x001E8910 0xD4 func_001E8910  # OVL1
 0x001E89E8 0xC8 func_001E89E8  # OVL1 unaligned
 0x001E8AB0 0x88 func_001E8AB0  # OVL1

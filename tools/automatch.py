@@ -147,6 +147,8 @@ def attempt_gcc(addr: int, tmp: Path, sym, real: str, ccs: list[tuple[str, str]]
     def tries(draft: str):
         nonlocal worst
         body = fill_params(re.sub(r"\bvoid(\s*\*)", r"char\1", draft), sym.name)
+        if _on("GCC_REPAIR"):
+            body = gcc_repair(tmp, body, ccs[0]) or body
         for variant in gcc_variants(body, sym.name, below):
             src = PRELUDE + variant
             for cc in ccs:
@@ -167,6 +169,51 @@ def attempt_gcc(addr: int, tmp: Path, sym, real: str, ccs: list[tuple[str, str]]
             if out2 is not None:
                 src = tries(decls + out2)
     return (addr, "hit", src) if src is not None else (addr, worst, None)
+
+
+# GCC refuses less of m2c's GNU C than MW does, but not nothing: a load through an int
+# (`*(i * 4 + M2C_FIELD(p, s32 *, 4))`: "invalid type argument of `unary *'") and a call that
+# disagrees with the prototype m2c took from another call ("too many/few arguments") were ~420 of
+# the ~520 GCC drafts that would not build on 2026-11-02. Each is repaired as MW's are (`_deref_ints`,
+# `_unprototype`), from GCC's errors -- never its warnings -- a round at a time.
+_GDIAG = re.compile(r"^.*?\bf\.c:(\d+): (?!warning)(.*)$", re.M)
+
+
+def gcc_build_errors(tmp: Path, src: str, cc: tuple[str, str]) -> dict[int, str] | None:
+    (tmp / "f.c").write_text(src)
+    try:
+        D.compile_obj(tmp / "f.c", tmp / "f.o", cc[0], cc[1].split())
+    except RuntimeError as e:
+        out: dict[int, str] = {}
+        for m in _GDIAG.finditer(str(e)):
+            n = int(m.group(1))
+            out[n] = (out.get(n, "") + " " + m.group(2).strip()).strip()
+        return out or {0: str(e)}
+    return None
+
+
+def gcc_repair(tmp: Path, body: str, cc: tuple[str, str], rounds: int = 3) -> str | None:
+    """The draft made to build with GCC, or None (the body unchanged when it already builds)."""
+    base = PRELUDE.count("\n")
+    text = body
+    for _ in range(rounds):
+        errs = gcc_build_errors(tmp, PRELUDE + text, cc)
+        if errs is None:
+            return text
+        lines = text.split("\n")
+        decl = _declared(text)
+        unproto: set[str] = set()
+        for n, msg in sorted((k - base, v) for k, v in errs.items()):
+            if not 1 <= n <= len(lines):
+                continue
+            if "invalid type argument of `unary *'" in msg:
+                lines[n - 1] = _deref_ints(lines[n - 1], decl)
+            unproto |= set(re.findall(r"too (?:many|few) arguments to function `([A-Za-z_]\w*)'", msg))
+        new = _unprototype("\n".join(lines), unproto)
+        if new == text:
+            return None
+        text = new
+    return None
 
 
 def stack_below_saves(img, addr: int, size: int) -> int:

@@ -48,3 +48,8 @@ void mtxAssociateAll(MTX *m, int rows, int cols, float *data)
     m->data = data;
     m->end = data + m->n;
 }
+
+long imtxConstruct(ASRENGINE *eng)              /* the integer matrix: as mtxConstruct */
+{
+    return (long)func_00243398(eng->heap, 1, 24);
+}
