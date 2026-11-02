@@ -3075,6 +3075,52 @@ network-order twins SOCOM 1 did not have), `medius/rt_time.c` (6), `medius/mediu
 supersede matching drafts: asrspi_cbAgc, ContextSetCtxData, rt_msg_get_u2byte,
 iCreateAndAllocateMessageID).
 
+**Round 3b: whole objects, by template.** Most of SCEA's open rows are a few shapes repeated --
+a request wrapper, a locked wrapper -- so a shape written once and a generator reading each
+function's parameters off its disassembly (`build/scratch/gcc/genapi.py`, `genlock.py`) wrote
+whole objects at once; every function is still compiled and compared as any hand-written one.
+
+- **The Medius request**: strings terminated (`iTerminateString`, in order, before the guards or
+  after them -- SessionBegin/End), `GlobalInitFlag == 1` (else -15) and `MyConnectionIndex >= 0`
+  (else -16), the callback kept in the request's own slot, `NetSendMessage(64, index, 0xFFFF,
+  1 or 4, PacketType..., sizeof *request, request)`, -5 if the send fails. The values are the
+  library's own names: `MediusGetErrorCodeString` (0x64A5D8) switches over every MediusErrorCode.
+- **SOCOM 1's callback slots name the requests.** Each request stores its callback in its own
+  global, and SOCOM 1's symtab names them (`CreateClanCallbackFunctionPtr` ..., data 0x5B1A3C and
+  0x43B958): SOCOM II's slots are SOCOM 1's in the same order with SOCOM II's new requests
+  inserted, so a function's position in the object and the slot it stores give its name twice
+  over (44 names). Two names the online lane gave by call site sit on requests new in SOCOM II
+  where SOCOM 1's function is another row: `MediusGetClanMemberList` (0x6468C8; SOCOM 1's is
+  0x646708, by slot) and `MediusLadderPosition` (0x64B1B8; SOCOM 1's is 0x64A018). The game's
+  source calls both by those names, so the map keeps them.
+- **Each object declares `GlobalInitFlag` as it reads it**: the API object, which defines it,
+  reads a halfword (SOCOM 1's symbol is 2 bytes); the clan and file objects read a word. That
+  and the file API's callback slots (after the clan's in .bss, apart from the API's in .data)
+  cut the file API out as its own object.
+- **The RT library's object order is alphabetical by source file** (case-insensitive): the
+  CVS `$Header:` strings in .data run audio.c, codec.c, DmeLocal.c, DmeMessage.c, Dme.c, grid.c,
+  LargeInt.c, md5_platform.c, RSA.c, rt_audio.c, rt_comm, rt_crypt.c, rt_msg_client.c, rt_p2p.c,
+  rt_udp.c, rt_upnp.c, SHA1.c, SHA1_platform.c, StreamMedia.c, and the code follows (rt_circ_buf,
+  rt_comm, ..., rt_msg_client, rt_msg, rt_mutex, rt_time ...).
+- **SOCOM II's DME and RT APIs are locked wrappers**: the public function tests that the
+  library is up, locks its mutex, calls the internal function (the body SOCOM 1's same-named
+  function has) and unlocks; SOCOM 1's DME has no such layer. In rt_msg_client the started test
+  compares the flag with the result variable's first value (`int result = 1; if (started !=
+  result)`): the target keeps the 1 in the result's register (ccsweep, 1 of 7 shapes).
+- **Store order by permutation**: the universe-information requests keep five globals; one
+  order of 120 schedules as the target does (`tools/ccperm.py`).
+- **Names corrected**: 0x6473F0 is `MediusGetBuildTimeStamp` (it formats the Medius library's
+  own date, beside "Medius Client Library Version 1.50.0013"); the s1:exact `NetGetBuildTimeStamp`
+  it carried is SOCOM 1's byte-identical DME twin, 0x620518 here (Dme.c's date).
+
+Hand-written in round 3b: `medius/mediusclan.c` (30 of 30, new), `medius/mediusapi.c` (+74, 78
+of 78), `medius/mediusfile.c` (13 of 13, new), `medius/dme.c` (78 of 78, new),
+`medius/rt_msg_client.c` (24 of 24, new), `asr/gsapi.c` (+3, 11 of 11) -- 222 functions, none
+with a matching draft. Open, diagnosed in place: gsapi's engine accessors (SOCOM 1's
+CheckEngineHandle inlined comes within 11 words; the target zeroes the result before the tests).
+Next in the same vein: rt_msg_client's internal functions, DME's internals behind each wrapper
+(SOCOM 1's same-named bodies), and gsapi's remaining wrappers (handle test, a context loop).
+
 ## Open, and next
 
 The work runs in lanes (see "Working in parallel"), each an address range with its own units;
