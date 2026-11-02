@@ -2794,7 +2794,7 @@
 0x0025BB20 0x24 func_0025BB20  # OVL1
 0x0025BB50 0x88 __dt__Q23zar4CKeyFv  # OVL1; by hand: Insert(const char *, const void *, int) 0x25A2F0 deletes the key it could not write through it, (key, 1), where SOCOM 1's inlines ~CKey (its list's destructor, then delete)
 0x0025BBE0 0x20 func_0025BBE0  # OVL1
-0x0025BC00 0x20 func_0025BC00  # OVL1
+0x0025BC00 0x20 __ct__Q23zar4CKeyFPCc  # OVL1; s1:order by hand (SOCOM 1's CKey(const char *) 0x1DC4E0, last of its zar_search.cpp: the list (here the vector) built, the name stored, size and offset zeroed; CZAR's constructor calls it with "" for the root)
 0x0025BC20 0x9D0 InitCommands__10CZAnimMainFv  # OVL1; s1:calls by hand (registers the core ZAnim commands through AddCmd, as SOCOM 1's InitCommands does; SOCOM II adds 11 to its 49)
 0x0025C5F0 0xE8 func_0025C5F0  # OVL1
 0x0025C6E0 0x198 func_0025C6E0  # OVL1
