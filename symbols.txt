@@ -7454,7 +7454,7 @@
 0x00397590 0xA8 func_00397590  # OVL1
 0x00397640 0x1FC func_00397640  # OVL1
 0x00397840 0xC func_00397840  # OVL1
-0x00397850 0x3C func_00397850  # OVL1
+0x00397850 0x3C SkbGetText__Fb  # OVL1; ours (zui_skbview.cpp: the edited text's buffer 0x4A0A30, or the c_str() of the string the keyboard opened with, 0x4A1300; 0x3998A0 and 0x399D20 call it)
 0x00397890 0x2C func_00397890  # OVL1
 0x003978C0 0xC func_003978C0  # OVL1
 0x003978D0 0x74 func_003978D0  # OVL1
