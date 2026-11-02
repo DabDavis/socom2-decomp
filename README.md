@@ -1647,6 +1647,23 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the weapons, round 10** (the weapon event callbacks, the decal arrays, vis_vu.cpp's helpers):
+  - an MW `asm` function loads a global's address with `la reg, sym` (an `la` in a branch delay slot
+    puts its `lui` there); `%hi()`, `@ha`, `@l` and `lo()` are all refused;
+  - a list element with an empty user constructor is copied member by member by the insert; with an
+    implicit one it is a block copy through the FPRs (WEAPON_CALLBACK_STRUCT);
+  - `erase(remove_if(begin(), e, p), e)` matches written `iterator e = end(); iterator i =
+    std::remove_if(begin(), e, p); erase(i, e);` -- both erase copies made after the call (a lead for
+    the erase(remove(...), end()) family);
+  - `CPnt4D t(...); return t;` builds on the stack and copies out; `return CPnt4D(...)` builds
+    straight into the return slot;
+  - an element whose copy constructor resets a member shows a constant store at the start of every
+    reserve/insert move (CMeshLOD's copy stores 1e12, SOCOM 1's FLT_MAX);
+  - units: vis_decal.cpp's tail ends at 0x3BFB5F (vis_texfx from 0x3BFB60); an unwritten unit starts at
+    0x3BA300 (ColConvTo3D, CVisData, the *_Object readers; SOCOM 1's 0x310460); vis_vu.cpp is probably
+    SOCOM 1's vis_main.cpp -- its tail holds CVisual::m_stack_vid's deque copy-constructor chain
+    (0x3B7DB0-0x3B83D0; the 0x3B7DB0 row, named ~stack, is the deque copy constructor) and its
+    initialiser 0x404570 sits between zvid_init.cpp's and the decal pools'.
 - **Tells from the kit and AI states, round 11** (seal_kit.cpp's weapon modes and indices, seal_sensors.cpp, ai::test):
   - `x > 3` compiles to `slti at,x,4; bnez at`, `x >= 4` puts the test in v0; an `||` arm written
     `return delay;` keeps its own `b end` block, an else-if chain assigning a result merges it;
@@ -2742,7 +2759,8 @@ every hand-written unit (`--files '^(?!auto/)'`) before it is committed. A workt
 `extracted/` and `decomp/toolchains/` linked in from the main tree.
 
 `--files '^(?!auto/)'` leaves out the drafts, so a hand-written inline copy that only its draft
-matches reports as a regression there (0x32C5F0, ~CRdrArchiveList's copy, and 0x510080, OVL2's
+matches reports as a regression there (0x32C5F0, ~CRdrArchiveList's copy, 0x3340F0, the rdr editor's deque
+constructor -- zrdr_edit.cpp's copy is 0x30 against 0x28 since the MSL headers' round 7 -- and 0x510080, OVL2's
 __list_imp destructor that seal_aistate.cpp's missing copy now reports "elsewhere" -- 0x29FF60 and
 0x2D02B0 match from hand source since the MSL headers' completion): rerun with that draft's file
 included before believing one.
