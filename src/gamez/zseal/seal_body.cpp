@@ -62,9 +62,45 @@ extern "C" unsigned char func_0057DC20(CZSealBody *seal)
  * not written yet: an anim type, the state, a flag and a kind) */
 extern "C" {
 void func_002BBAF0(unsigned int obj, unsigned int anim, int slot, bool on, int time);
-void *func_00588BC0(CZSealBody *seal, int type, int state, int flag, int kind);
+void *func_00588BC0(CZSealBody *seal, AnimType type, int state, int flag, int kind);
 bool func_00589900(CZSealBody *seal);
 void *func_00555170(void *v);
+unsigned short func_0058A920(unsigned short flags, unsigned short bits, bool on);
+}
+
+/* an anim's push told to the network, for a SEAL this console plays: any anim, and anim 34 (OVL2
+ * 0x588AB0, 0x588B40, new in SOCOM II; the unit's own functions inline them, no one calls the
+ * copies) */
+extern "C" void func_00588AB0(CZSealBody *seal, int time, unsigned int anim)
+{
+    if (theNetwork.m_9 && !seal->IsRemote())
+        func_002BBAF0(seal->m_id, anim, 4, false, time);
+}
+
+extern "C" void func_00588B40(CZSealBody *seal, int time)
+{
+    if (theNetwork.m_9 && !seal->IsRemote())
+        func_002BBAF0(seal->m_id, 34, 4, false, time);
+}
+
+/* the first anim from the top blend (RTList<ACTIVE_ANIM>::Begin's copy in seal_anim.cpp's tail, OVL2
+ * 0x5780E0) */
+extern "C" ACTIVE_ANIM *func_005780E0(CActiveAnimList *list);
+
+/* whether the last overlay of the top blend's first anim turns (OVL2 0x587E00, new in SOCOM II;
+ * PreTick asks it -- each pass overwrites the answer) */
+extern "C" bool func_00587E00(CZSealBody *seal)
+{
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+    bool r = false;
+
+    for (ACTIVE_ANIM *a = func_005780E0(&top->m_anims); a; a = a->m_overlay) {
+        if (a->m_anim->m_4a_7)
+            r = true;
+        else
+            r = false;
+    }
+    return r;
 }
 
 /* the jump begun, as the SEAL's own: bit 9 set and 10 cleared, the velocity kept, the push told to
@@ -72,13 +108,12 @@ void *func_00555170(void *v);
  * 0x57DF20 and 0x57E130 -- the names ours) */
 extern "C" void *func_0057E050(CZSealBody *seal)
 {
-    void *r = func_00588BC0(seal, 9, seal->m_state, 0, 13);
+    void *r = func_00588BC0(seal, (AnimType)9, seal->m_state, 0, 13);
 
     seal->SetBit9(true);
     seal->SetBit10(false);
     seal->m_1350 = seal->m_velW;
-    if (theNetwork.m_9 && !seal->IsRemote())
-        func_002BBAF0(seal->m_id, 34, 4, false, 3);
+    func_00588B40(seal, 3);
     return r;
 }
 
@@ -100,8 +135,7 @@ extern "C" void *func_0057DF20(CZSealBody *seal)
     seal->SetBit9(true);
     seal->SetBit10(false);
     seal->m_1350 = seal->m_velW;
-    if (theNetwork.m_9 && !seal->IsRemote())
-        func_002BBAF0(seal->m_id, 34, 4, false, 9);
+    func_00588B40(seal, 9);
     return func_00555170((char *)seal + 0x1c0);
 }
 
@@ -149,7 +183,91 @@ extern "C" void func_0057F310(CZSealBody *seal)
             b->m_ctrl = 0;
         seal->m_desiredStance = STANCE_PRONE;
     }
-    func_00588BC0(seal, data_003DEF60, 0, 0, 0);
+    func_00588BC0(seal, (AnimType)data_003DEF60, 0, 0, 0);
+}
+
+extern "C" {
+/* an anim the SEAL could take, its type, a fraction and a base time, a point (OVL2 0x57FCE0, not
+ * written yet), a move begun one way or the other (OVL2 0x5805B0, not written yet) and two anim types
+ * read as variables (OVL1 data, -1 in the image) */
+bool func_0057FCE0(CZSealBody *seal, AnimType *type, float *frac, float *base, float *p);
+void func_005805B0(CZSealBody *seal, bool other, int a);
+extern short data_003DEED0;
+extern short data_003DEED8;
+}
+
+/* the body's state (an inline: expanded ahead of the call it is passed to, so it loads first) */
+static inline int StateOf(CZSealBody *seal)
+{
+    return seal->m_state;
+}
+
+/* the anim 0x57FCE0 picks pushed, and the time into it its fraction makes, past its base (OVL2
+ * 0x5802B0, new in SOCOM II) */
+extern "C" bool func_005802B0(CZSealBody *seal, float *out)
+{
+    AnimType type;
+    float frac = 0.0f;
+    float base = 0.0f;
+    float p[3];
+    bool ok = false;
+
+    if (func_0057FCE0(seal, &type, &frac, &base, p)) {
+        CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00588BC0(seal, type, StateOf(seal), 0, 0);
+
+        *out = base + frac * b->Representative()->m_anim->LoopTime();
+        ok = true;
+    }
+    return ok;
+}
+
+/* a SEAL this console plays, on the ground and in the anim of 0x3DEED0 or of 0x3DEED8, set on its
+ * way by 0x5805B0, the second anim the other way (OVL2 0x5804E0, new in SOCOM II) */
+extern "C" bool func_005804E0(CZSealBody *seal)
+{
+    bool other;
+
+    if (seal->IsRemote())
+        return false;
+    if (seal->m_airborne)
+        return false;
+    if (seal->IsCurrentBlend((AnimType)data_003DEED0))
+        other = false;
+    else if (seal->IsCurrentBlend((AnimType)data_003DEED8))
+        other = true;
+    else
+        return false;
+    func_005805B0(seal, other, -1);
+    return true;
+}
+
+/* the top blend, in anim 46, made to play backwards from state 5 with its flag 0x20 set, and the push
+ * told to the network for a SEAL this console plays (OVL2 0x57F5B0, new in SOCOM II) */
+extern "C" CZBodyAnimBlend *func_0057F5B0(CZSealBody *seal)
+{
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+
+    if (seal->IsCurrentBlend((AnimType)46)) {
+        b->m_flags = func_0058A920(b->m_flags, 0x20, true);
+        b->m_state = 5;
+        b->Representative()->SetPlayback(-1.0f);
+    }
+    func_00588B40(seal, 20);
+    return b;
+}
+
+/* 0x57F7D0's twin, word for word (OVL2 0x57F9C0, new in SOCOM II: 0x5B2620 asks both in turn) */
+extern "C" bool func_0057F9C0(CZSealBody *seal)
+{
+    if (seal->IsRemote())
+        return false;
+    if (seal->IsCurrentBlend((AnimType)data_003DEAE0))
+        return false;
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+
+    if (seal->m_state == 5 || top->m_state == 5)
+        return false;
+    return func_00589900(seal);
 }
 
 /* whether a SEAL this console plays, out of the anim of 0x3DEAE0 and neither its state nor its top
@@ -196,7 +314,9 @@ void *func_0058A4D0(CZSealBody *seal, int a);
 void *func_00555170(void *v);
 }
 
-/* bits of a halfword set or cleared (OVL2 0x58A920; seal_body.cpp's and seal_env.cpp's callers) */
+/* bits of a halfword set or cleared (OVL2 0x58A920; seal_body.cpp's and seal_env.cpp's callers --
+ * pinned: 0x57F5B0 calls it out of line) */
+#pragma auto_inline off
 extern "C" unsigned short func_0058A920(unsigned short flags, unsigned short bits, bool on)
 {
     flags &= ~bits;
@@ -204,6 +324,7 @@ extern "C" unsigned short func_0058A920(unsigned short flags, unsigned short bit
         flags |= bits;
     return flags;
 }
+#pragma auto_inline reset
 
 extern "C" {
 /* an animation set the SEALs share (OVL1 bss 0x44D408) and a set's anim of a type, negative for none
