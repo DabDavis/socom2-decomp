@@ -59,6 +59,7 @@
 0x001CD0F0 0x4 _kExecArg  # MAIN; s1:data-exact (size SOCOM 1's; via ExecOSD +4)
 0x001CD3A8 0x1C TLBInfo  # MAIN; s1:data-exact (size SOCOM 1's; via InitTLB32MB)
 0x001CD3C8 0x4 _SyscallEntry  # MAIN; s1:data-exact (size SOCOM 1's; via GetSystemCallEntry +1)
+0x001CD3E0 0x4 __sce_sema_id  # MAIN; s1:data by hand (the demo's global OBJECT __sce_sema_id, 4 bytes, before __sce_eh_sema_id in the initsys object's .data; supplement_crt0 stores the first CreateSema's id here, the second's at +4) -- the GCC lane
 0x001CD3E4 0x4 __sce_eh_sema_id  # MAIN; s1:data-exact (size SOCOM 1's; via supplement_crt0)
 0x001CD3E8 0x7A8 osdsrc  # MAIN; s1:data-exact (size SOCOM 1's; via InitExecPS2)
 0x001CDB90 0x18 SysExecPS2Entry  # MAIN; s1:data-exact (size SOCOM 1's; via InitExecPS2)

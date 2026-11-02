@@ -100,6 +100,7 @@ def build_one(src: Path, build: Path = BUILD) -> tuple[Path, Path | None, str]:
     try:
         D.compile_obj(src, obj, opts.get("compiler", D.COMPILER),
                       opts["flags"].split() if "flags" in opts else None, [INCLUDE, SRC])
+        D.qualify_statics(obj, src.stem, E.symbols())     # a GCC unit's statics: `Copy@tlbfunc`
         if "as" in opts:
             old_name, new_name = opts["as"].split(None, 1)
             rename_symbol(obj, old_name, new_name)

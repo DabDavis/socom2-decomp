@@ -253,6 +253,27 @@ def is_gnu(elf: E.Elf) -> bool:
     return any(s.name == ".reginfo" for s in elf.sections)
 
 
+def qualify_statics(obj: Path, stem: str, st: E.SymbolTable) -> list[tuple[str, str]]:
+    """A GCC unit's static functions are its own, and several objects of one library can define a
+    static of the same name -- libkernl's syscall wrappers `Copy`, `kCopy`, `setup` and
+    `GetEntryAddress` sit in five objects. The map holds such a row as `NAME@UNIT` (UNIT the source
+    file's stem: `Copy@tlbfunc`), and a GNU object's LOCAL function `NAME` is renamed so before it
+    is scored, when the map has that row; a static the map names bare scores bare. Metrowerks
+    objects are left alone. Returns the renames made."""
+    elf = E.Elf.read(obj)
+    if not is_gnu(elf):
+        return []
+    pairs = []
+    for f in elf.functions():
+        q = f"{f.name}@{stem}"
+        if f.bind == 0 and f.name and q in st._by_name and (f.name, q) not in pairs:
+            pairs.append((f.name, q))
+    if pairs:
+        subprocess.run([E.tool("objcopy")] + [f"--redefine-sym={a}={b}" for a, b in pairs] + [str(obj)],
+                       check=True, capture_output=True)
+    return pairs
+
+
 def bss_local(elf: E.Elf, sec_index: int, off: int, st: E.SymbolTable) -> tuple[str, int] | None:
     """A GNU object's reference into its own .bss (`.bss`+N: GNU as relocates a local label
     against its section) as (label, address), when the label at or before N is one the data map
@@ -558,6 +579,7 @@ def main(argv=None) -> int:
     obj = HERE / "build" / "scdiff" / f"{tag}.{os.getpid()}.o"
     compile_obj(a.src, obj, a.compiler, a.flags.split() if a.flags else None,
                 [HERE / "include"] + a.includes)
+    qualify_statics(obj, a.src.stem, st)
     try:
         res = compare(obj, a.symbol, sym, img, st)
     finally:

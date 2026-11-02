@@ -854,21 +854,21 @@
 0x001ABEC8 0x110 sceSifRebootIop  # MAIN unaligned; s1:exact
 0x001ABFD8 0x60 SetTLBHandler  # MAIN unaligned; s1:exact
 0x001AC038 0x84 SetDebugHandler  # MAIN unaligned; s1:exact
-0x001AC0C0 0x10 func_001AC0C0  # MAIN; s1~ Copy (one of 5)
-0x001AC0D0 0x38 func_001AC0D0  # MAIN; s1~ kCopy (one of 5)
-0x001AC108 0x10 func_001AC108  # MAIN unaligned; s1~ GetEntryAddress (one of 3)
-0x001AC118 0x10 func_001AC118  # MAIN unaligned; s1~ setup (one of 5)
+0x001AC0C0 0x10 Copy@tlbfunc  # MAIN; s1~ Copy (one of 5); s1:order (the demo's TLB object 0x1638D0: its static Copy, the third function, syscall 0x5A here and there; `NAME@UNIT` is a static several objects define, README "The GCC front")
+0x001AC0D0 0x38 kCopy@tlbfunc  # MAIN; s1~ kCopy (one of 5); s1:order (the demo's TLB object 0x1638D0: its static kCopy, the fourth function, a word copy here and there)
+0x001AC108 0x10 GetEntryAddress@tlbfunc  # MAIN unaligned; s1~ GetEntryAddress (one of 3); s1:order (the demo's TLB object 0x1638D0: its static GetEntryAddress, the fifth function, syscall 0x5B)
+0x001AC118 0x10 setup@tlbfunc  # MAIN unaligned; s1~ setup (one of 5); s1:order (the demo's TLB object 0x1638D0: its static setup, the sixth function, syscall 0x74)
 0x001AC128 0xC4 InitTLBFunctions  # MAIN unaligned; s1:exact
 0x001AC1F0 0x10 PutTLBEntry  # MAIN; s1:exact
-0x001AC200 0x10 func_001AC200  # MAIN
+0x001AC200 0x10 iPutTLBEntry  # MAIN; s1:order (the demo's TLB object 0x1638D0: iPutTLBEntry between PutTLBEntry and _SetTLBEntry, syscall -0x55 here and there)
 0x001AC210 0x10 _SetTLBEntry  # MAIN; s1:callee
 0x001AC220 0x30 SetTLBEntry  # MAIN; s1:exact
 0x001AC250 0x10 iSetTLBEntry  # MAIN; s1:exact
-0x001AC260 0x10 func_001AC260  # MAIN
+0x001AC260 0x10 GetTLBEntry  # MAIN; s1:order (the demo's TLB object 0x1638D0: GetTLBEntry between iSetTLBEntry and iGetTLBEntry, syscall 0x57)
 0x001AC270 0x10 iGetTLBEntry  # MAIN; s1:exact
 0x001AC280 0x10 ProbeTLBEntry  # MAIN; s1:exact
-0x001AC290 0x10 func_001AC290  # MAIN
-0x001AC2A0 0x10 func_001AC2A0  # MAIN
+0x001AC290 0x10 iProbeTLBEntry  # MAIN; s1:order (the demo's TLB object 0x1638D0: iProbeTLBEntry between ProbeTLBEntry and ExpandScratchPad, syscall -0x58)
+0x001AC2A0 0x10 ExpandScratchPad  # MAIN; s1:order (the demo's TLB object 0x1638D0: ExpandScratchPad before InitTLB, syscall 0x59)
 0x001AC2B0 0x40 InitTLB  # MAIN; s1:exact
 0x001AC2F0 0x1F4 InitTLB32MB  # MAIN; s1:exact
 0x001AC500 0x11C _kTLBException  # MAIN; s1:ref (taken by address where SOCOM 1 takes _kTLBException's); split: the row held the demo's whole assembler object 0x163E00-0x164160, its three functions at the same offsets (+0, +0x140, +0x240), the gaps zero
@@ -877,33 +877,33 @@
 0x001AC860 0x48 DIntr  # MAIN; s1:exact
 0x001AC8A8 0x18 EIntr  # MAIN unaligned; s1:exact
 0x001AC8C0 0x48 supplement_crt0  # MAIN; s1:exact
-0x001AC908 0x10 func_001AC908  # MAIN unaligned; s1~ Copy (one of 5)
-0x001AC918 0x38 func_001AC918  # MAIN unaligned; s1~ kCopy (one of 3)
+0x001AC908 0x10 Copy@initsys  # MAIN unaligned; s1~ Copy (one of 5); s1:order (the demo's initsys object 0x1641C0: its static Copy, after supplement_crt0, syscall 0x5A)
+0x001AC918 0x38 kCopy@initsys  # MAIN unaligned; s1~ kCopy (one of 3); s1:order (the demo's initsys object 0x1641C0: its static kCopy, a word copy, after Copy)
 0x001AC950 0x40 kFindAddress  # MAIN; s1:exact
 0x001AC990 0x10 FindAddress  # MAIN; s1:exact
 0x001AC9A0 0x34 GetSystemCallEntry  # MAIN; s1:exact
 0x001AC9D8 0xFC InitSystemCallTableAddress  # MAIN unaligned; s1:exact
-0x001ACAD8 0x10 func_001ACAD8  # MAIN unaligned; s1~ setup (one of 5)
+0x001ACAD8 0x10 setup@initsys  # MAIN unaligned; s1~ setup (one of 5); s1:order (the demo's initsys object 0x1641C0: its static setup, before _InitSys, syscall 0x74)
 0x001ACAE8 0x3C _InitSys  # MAIN unaligned; s1:exact
-0x001ACB28 0x10 func_001ACB28  # MAIN unaligned; s1~ setup (one of 5)
-0x001ACB38 0x10 func_001ACB38  # MAIN unaligned; s1~ Copy (one of 5)
-0x001ACB48 0x38 func_001ACB48  # MAIN unaligned; s1~ kCopy (one of 3)
-0x001ACB80 0x10 func_001ACB80  # MAIN; s1~ GetEntryAddress (one of 3)
+0x001ACB28 0x10 setup@libosd  # MAIN unaligned; s1~ setup (one of 5); s1:order (the demo's InitExecPS2 object 0x164428: its static setup, the first function, syscall 0x74)
+0x001ACB38 0x10 Copy@libosd  # MAIN unaligned; s1~ Copy (one of 5); s1:order (the demo's InitExecPS2 object 0x164428: its static Copy, the second, syscall 0x5A)
+0x001ACB48 0x38 kCopy@libosd  # MAIN unaligned; s1~ kCopy (one of 3); s1:order (the demo's InitExecPS2 object 0x164428: its static kCopy, the third, a word copy)
+0x001ACB80 0x10 GetEntryAddress@libosd  # MAIN; s1~ GetEntryAddress (one of 3); s1:order (the demo's InitExecPS2 object 0x164428: its static GetEntryAddress, the fourth, syscall 0x5B)
 0x001ACB90 0x68 PatchIsNeeded  # MAIN; s1:exact
 0x001ACBF8 0xAC InitExecPS2  # MAIN unaligned; s1:exact
-0x001ACCA8 0x10 func_001ACCA8  # MAIN unaligned; s1~ Copy (one of 5)
-0x001ACCB8 0x30 kCopy  # MAIN unaligned; s1:exact
-0x001ACCE8 0x10 func_001ACCE8  # MAIN unaligned; s1~ setup (one of 5)
+0x001ACCA8 0x10 Copy@exit  # MAIN unaligned; s1~ Copy (one of 5); s1:order (the demo's ExecPS2 object 0x1645A8: its static Copy, the first function, syscall 0x5A)
+0x001ACCB8 0x30 kCopy@exit  # MAIN unaligned; s1:exact; s1:order (the demo's ExecPS2 object 0x1645A8: its static kCopy, the byte copy; qualified as the other four objects' are)
+0x001ACCE8 0x10 setup@exit  # MAIN unaligned; s1~ setup (one of 5); s1:order (the demo's ExecPS2 object 0x1645A8: its static setup, the third, syscall 0x74)
 0x001ACCF8 0x118 SetArg  # MAIN unaligned; s1:exact
 0x001ACE10 0x8 TerminateLibrary  # MAIN; s1:callee
 0x001ACE18 0x70 ExecPS2  # MAIN unaligned; s1:exact
 0x001ACE88 0x48 LoadExecPS2  # MAIN unaligned; s1:exact
 0x001ACED0 0x28 Exit  # MAIN; s1:exact
 0x001ACEF8 0x4C ExecOSD  # MAIN unaligned; s1:exact
-0x001ACF48 0x10 func_001ACF48  # MAIN unaligned; s1~ setup (one of 5)
-0x001ACF58 0x10 func_001ACF58  # MAIN unaligned; s1~ Copy (one of 5)
-0x001ACF68 0x38 func_001ACF68  # MAIN unaligned; s1~ kCopy (one of 5)
-0x001ACFA0 0x10 func_001ACFA0  # MAIN; s1~ GetEntryAddress (one of 3)
+0x001ACF48 0x10 setup@alarm  # MAIN unaligned; s1~ setup (one of 5); s1:order (the demo's InitAlarm object 0x164848: its static setup, the first function, syscall 0x74)
+0x001ACF58 0x10 Copy@alarm  # MAIN unaligned; s1~ Copy (one of 5); s1:order (the demo's InitAlarm object 0x164848: its static Copy, the second, syscall 0x5A)
+0x001ACF68 0x38 kCopy@alarm  # MAIN unaligned; s1~ kCopy (one of 5); s1:order (the demo's InitAlarm object 0x164848: its static kCopy, the third, a word copy)
+0x001ACFA0 0x10 GetEntryAddress@alarm  # MAIN; s1~ GetEntryAddress (one of 3); s1:order (the demo's InitAlarm object 0x164848: its static GetEntryAddress, the fourth, syscall 0x5B)
 0x001ACFB0 0xD4 InitAlarm  # MAIN; s1:exact
 0x001AD088 0x49C __ieee754_exp  # MAIN unaligned; s1:exact
 0x001AD528 0xF4C __ieee754_pow  # MAIN unaligned; s1:exact
