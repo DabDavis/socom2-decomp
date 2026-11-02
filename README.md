@@ -2892,8 +2892,8 @@ the object's own zeroed data as local `.bss` labels; then it assembles the unit 
 until every function matches (an instruction the assembler spells differently becomes a `.word`
 -- none has needed to). scdiff resolves a GNU object's `.bss+N` reference by the local label at N
 when the data map names it (zeroed data has no content to compare). Proved on 2026-11-02: every MW
-hand-written unit gives the same 6,237 rows with master's tools and these, every GCC unit (src/lib
-and the 849 GCC drafts) the same rows. The assembler objects: `sdk/syscall.s` (138 of 138,
+hand-written unit gives the same 6,335 rows with master's (97eb839) tools and these, every GCC unit (src/lib
+and the GCC drafts: 1,031 rows) the same rows but one, which the `.bss` resolution now checks (rt_time_get_time_string_ptr's `szTime.0`: unchecked before, ok now). The assembler objects: `sdk/syscall.s` (138 of 138,
 byte-identical to the demo's slot for slot -- eight slots named from it, `s1:slot`),
 `sdk/tlbhandler.s` (_kTLBException, _kExitTLBHandler, _kDebugException: the map's one 0x360 row
 split at the demo's offsets; its save area and saved hi/lo/sa/epc words named from the demo's
@@ -2920,8 +2920,8 @@ NormalLight/ViewScreen/DropShadow, C around calls, open); libkernl's `deci2.c` (
 loop); `sdk/libscf.c` (5 of 10, the T10K/OSD getters; five OPEN on a v0/v1 choice and a movz);
 newlib's libm objects `libm/s_copysign.c`, `s_isinf.c`, `s_isnan.c`, `sf_copysign.c`,
 `sf_fabs.c` (2.96 only; every 2.9x and 2.95.x 10-15 words off; `s_fabs.c` OPEN: the target leaves
-its return's slot empty after the copy into v0). With the assembler units: 277 hand-written GCC
-functions byte-exact of 286 in `src/lib` (55 of 57 before: +222).
+its return's slot empty after the copy into v0). With the assembler units: 222 byte-exact of the 229
+functions written (154 of them assembler), four superseding drafts that matched (GetRomName, IsT10K, iSyncDCache, iInvalidDCache: `automatch.py --emit` drops them).
 
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
