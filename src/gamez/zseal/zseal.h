@@ -811,6 +811,8 @@ public:
     /* a SEAL made from a character type with a controller (SOCOM 1's; OVL2 0x5999E0), and the local
      * player's made for a network game (SOCOM 1's; OVL2 0x5442C0) */
     static CZSealBody *Create(const CCharacterType *type, const char *name, CSealCtrl *ctrl);
+    /* the SEAL a node belongs to (OVL2 0x59ACD0, seal_create.cpp's) */
+    static CZSealBody *GetSeal(zdb::CNode *node);
     /* (OVL2 0x553EA0, not written yet) and the controller fitted after (OVL2 0x599F00) */
     CZSealBody(zdb::CNode *node, CCharacterType *type);
     static void PostCreateSeal(CZSealBody *seal, CSealCtrl *ctrl);
@@ -993,7 +995,9 @@ public:
 
     unsigned char _200[0x214 - 0x200];
     float m_blooddriptimer;   // 0x214 (SOCOM 1's 0x170)
-    unsigned char _218[0x21c - 0x218];
+    /* the SEAL whose node 0x3DC holds, kept while bit 0 of 0x21C is set (0x5AA620, the radio menu's
+     * toggle; the names ours) */
+    CZSealBody *m_218;   // 0x218
     unsigned char m_21c_bit0 : 1;   // 0x21c
     unsigned char m_altitude_characters : 1;   // bit 1: SealGetAltitude hits characters too (SOCOM 1's
                                                // flag at 0xde8 bit 0; the name ours)
@@ -1031,7 +1035,9 @@ public:
     class CCharacterGear *m_pistol_as_gear;   // 0x39c
     unsigned char _3a0[0x3b0 - 0x3a0];
     void *m_select;   // 0x3b0: a TASK_SELECT (SOCOM 1's 0x318), the AI's tasks' argument
-    unsigned char _3b4[0x400 - 0x3b4];
+    unsigned char _3b4[0x3dc - 0x3b4];
+    zdb::CNode *m_3dc;   // 0x3dc: a node 0x5AA620 takes the SEAL of (the name ours)
+    unsigned char _3e0[0x400 - 0x3e0];
     zdb::IntersectStruct m_last_altitude;   // 0x400 (SOCOM 1's 0x320)
     unsigned char _420[0x428 - 0x420];
     CAiEvent *m_aiEvent;   // 0x428: the SEAL's own AI event (SOCOM 1's 0x380)
@@ -1144,7 +1150,9 @@ public:
     /* the ladder the SEAL is on, an index into the mission's list (new in SOCOM II: read with lhu
      * and re-masked for an int argument, as a 16-bit field is; the name ours) */
     unsigned int m_ladder : 16;   // 0x1062
-    unsigned char _1064[0x10d0 - 0x1064];
+    unsigned char _1064[0x1070 - 0x1064];
+    CQuat m_1070;   // 0x1070: a turn about x the app camera's transitions set (0x5AF470; the name ours)
+    unsigned char _1080[0x10d0 - 0x1080];
     float m_10d0;   // 0x10d0: set to 0.4 when the overlay plays out (0x579EF0)
     unsigned char _10d4[0x1314 - 0x10d4];
     /* a point and two values 0x57ED10 sets for a SEAL this console plays, clears for a remote one
