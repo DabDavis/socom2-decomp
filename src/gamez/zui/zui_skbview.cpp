@@ -15,9 +15,9 @@
 
 #include <string>
 
-/* the text typed so far (0x4A0A30, its size the editors' limit) and the text the keyboard was
+/* the text typed so far (0x4A0A30; a mode byte follows at 0x4A0A60) and the text the keyboard was
  * opened with (0x4A1300) */
-static char s_editText[0x50];
+static char s_editText[0x30];
 static std::string s_openText;
 
 /* the text: the edited buffer, or the one the keyboard opened with (0x3998A0 and 0x399D20 ask) */
