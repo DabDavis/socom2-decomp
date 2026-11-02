@@ -5126,14 +5126,14 @@
 0x00301920 0x150 func_00301920  # OVL1
 0x00301A70 0x1CC func_00301A70  # OVL1
 0x00301C40 0xB0 Find__12FriendVectorFPCc  # OVL1; ours (the friend by name, strcasecmp on +0x20, the null test inside: the state handler 0x2F0020 calls it on 0x44FDC0; byte-exact)
-0x00301CF0 0xBC func_00301CF0  # OVL1
-0x00301DB0 0x120 func_00301DB0  # OVL1
+0x00301CF0 0xBC Remove__22FriendInvitationVectorFi  # OVL1; ours, the online lane round 8 (FriendInvitationVector::Remove: every invitation from an account erased, the list shown again; ConfirmFriend and RejectFriend call it; open, 35 instructions)
+0x00301DB0 0x120 Add__22FriendInvitationVectorFP20FriendInvitationItem  # OVL1; ours, the online lane round 8 (FriendInvitationVector::Add: an invitation kept unless empty or its account is there, assigned to a local first -- member by member -- and pushed, the list shown again; cbGetFriendInvitations and the invitation callback 0x3009C0 call it; byte-exact)
 0x00301ED0 0x1D0 func_00301ED0  # OVL1
 0x003020A0 0x164 Add__12FriendVectorFP36MediusGetBuddyList_ExtraInfoResponse  # OVL1; ours (GetFriendsList's callback 0x3017A0 keeps a friend through it: the 0xD0-byte buddy response copied whole unless its account is there; byte-exact)
 0x00302210 0xD4 DeleteAll__12FriendVectorFv  # OVL1; ours (the friends 0x44FDC0 deleted and the list emptied -- std::transform with a deleter, then clear, as the clan lists' DeleteAll: GetFriendsList, ReleaseUIResources and the list's destructor 0x303410; byte-exact)
 0x003022F0 0x554 func_003022F0  # OVL1
-0x00302850 0x24C func_00302850  # OVL1
-0x00302AA0 0x514 func_00302AA0  # OVL1
+0x00302850 0x24C erase__Q23std80__vector_imp<20FriendInvitationItem,Q23std33allocator<20FriendInvitationItem>,0>FP20FriendInvitationItem  # OVL1; ours, the online lane round 8 (the invitations vector<FriendInvitationItem> one-element erase: FriendInvitationVector::Remove calls it; open, the class erase shape -- the MSL headers)
+0x00302AA0 0x514 insert__Q23std80__vector_imp<20FriendInvitationItem,Q23std33allocator<20FriendInvitationItem>,0>FP20FriendInvitationItemUiRC20FriendInvitationItem  # OVL1; ours, the online lane round 8 (the invitations vector<FriendInvitationItem> insert: FriendInvitationVector::Add pushes through it; open, the class insert shape -- the MSL headers)
 0x00302FC0 0x8 func_00302FC0  # OVL1
 0x00302FD0 0x68 func_00302FD0  # OVL1
 0x00303040 0x68 func_00303040  # OVL1
