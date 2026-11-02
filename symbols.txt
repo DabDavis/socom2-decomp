@@ -4866,8 +4866,8 @@
 0x002EB900 0x318 func_002EB900  # OVL1
 0x002EBC20 0xC8 func_002EBC20  # OVL1
 0x002EBCF0 0x154 Add__14ClanLadderListFP31MediusGetClanLadderListResponse  # OVL1; ours (cbGetClanLadderList keeps a clan through it: the 0x48-byte response copied whole unless its position (+0x3c) is there, the highest position kept at +0xc; byte-exact)
-0x002EBE50 0x188 func_002EBE50  # OVL1
-0x002EBFE0 0x80 func_002EBFE0  # OVL1
+0x002EBE50 0x188 Add__10LadderListFP24MediusLadderListResponse  # OVL1; ours, the online lane round 8 (the player ladder's Add: the ladder pages' callback 0x2EB6A0 adds each TheRest/TheBest record to LadderLeaders/LadderRanking; a position already there skipped, the item made by an inline constructor cut to one level, its pointer pushed and the highest position kept, as ClanLadderList::Add; byte-exact)
+0x002EBFE0 0x80 __as__16LadderPlayerInfoFRC16LadderPlayerInfo  # OVL1; ours, the online lane round 8 (the ladder record's implicit assignment, member by member -- three words, two 64-byte arrays two bytes a pass -- out of line after LadderList::Add, its first caller; byte-exact)
 0x002EC060 0xD4 DeleteAll__14ClanLadderListFv  # OVL1; ours (a clan ladder list, 0x44F820 or 0x44F850, deleted and emptied: GetClanLadderLeaders, 0x2EA5C0, ReleaseUIResources, the lists' destructor 0x2ED360; byte-exact)
 0x002EC140 0x118 DeleteAll__10LadderListFv  # OVL1; ours, the online lane round 8 (the player ladder's DeleteAll: m_c zeroed, std::transform with DeleteItem<LadderItem> -- the items' two CSaferStr names destroyed as bases, 0 -- then clear(); GetLadderList, GetLadderBest, ReleaseUIResources and ~LadderList 0x2ED3E0 call it; byte-exact)
 0x002EC260 0x574 func_002EC260  # OVL1

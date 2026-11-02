@@ -530,10 +530,74 @@ extern ClanLadderList ClanLadderRanking;   /* 0x44F850 */
  * the names as MSL strings (c_str() short form first) and the position. The names are CSaferStrs
  * (each unit declares the class again: a std::string, its destructor called as a base's) */
 class CSaferStr : public std::string {
+public:
+    CSaferStr() {}
+    /* nothing returned: the out-of-line copy (0x22DCC0) keeps no `this` for a result */
+    void operator=(const char *sz)
+    {
+        if (sz)
+            assign(sz);
+        else
+            erase();
+    }
 };
 
+/* a ladder page's player record, kept whole at the item's head (0x8C bytes; no constructor -- the
+ * item's, cut to one level, would call it -- yet its assignment copies member by member, the
+ * arrays two bytes a pass: the out-of-line copy 0x2EBFE0 after LadderList::Add, its first caller;
+ * the names ours) */
+struct LadderPlayerInfo {
+    int m_0;   // 0x0
+    int m_4;   // 0x4
+    int m_8;   // 0x8
+    char m_c[64];   // 0xc
+    char m_4c[64];   // 0x4c
+};   // 0x8c
+
+/* a player's stats unpacked (the stats parser 0x2F9AC0's output, the layout ours: the lobby unit
+ * reads the flag, the ladder's items the clan tag; 0xEC bytes by LadderList::Add's frame -- the
+ * parser copies 228 of them whole from a packed form) */
+struct GamePlayerStats {
+    unsigned int _0 : 15;
+    unsigned int m_late : 1;   // byte 1, bit 7: counted
+    unsigned char _2[0x34 - 2];   // (the two bit-fields take two bytes)
+    char m_clan[0xb8];   // 0x34
+};   // 0xec
+
+/* a page of the player ladder (no session key: the message id names the list, TheBest or
+ * TheRest) */
+struct MediusLadderListResponse {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    MediusCallbackStatus StatusCode;   // 0x18
+    int LadderPosition;   // 0x1c
+    int LadderStat;   // 0x20
+    char AccountName[32];   // 0x24
+    char AccountStats[256];   // 0x44
+    LadderPlayerInfo Info;   // 0x144
+    char EndOfList;   // 0x1d0
+};
+
+extern "C" void func_002F9AC0(GamePlayerStats *stats, const char *text);   /* a player's stats unpacked */
+
 struct LadderItem {
-    unsigned char _0[0x8c];   // the page's response (unread here)
+    /* the page's player made an item: too tall to inline whole, so the names' constructors and
+     * assignments are calls (0x1E7B60, 0x22DCC0) and the record's assignment too (0x2EBFE0) */
+    LadderItem(MediusLadderListResponse *resp)
+    {
+        GamePlayerStats stats;
+
+        func_002F9AC0(&stats, resp->AccountStats);
+        m_position = resp->LadderPosition;
+        m_name = resp->AccountName;
+        m_a4 = resp->LadderStat;
+        char clan[32] = {0};
+        if (stats.m_clan[0])
+            sprintf(clan, "[%s]", stats.m_clan);
+        m_clan = clan;
+        m_info = resp->Info;
+    }
+
+    LadderPlayerInfo m_info;   // 0x0: the page's record
     CSaferStr m_name;   // 0x8c (a base's destructor: 0x2EC140 passes 0)
     CSaferStr m_clan;   // 0x98
     int m_a4;   // 0xa4
@@ -542,6 +606,14 @@ struct LadderItem {
 
 class LadderList : public std::vector<LadderItem *> {
 public:
+    LadderItem *Find(int pos)
+    {
+        for (iterator i = begin(), e = end(); i != e; ++i)
+            if (pos == (*i)->m_position)
+                return *i;
+        return 0;
+    }
+    void Add(MediusLadderListResponse *resp);
     void DeleteAll();
 
     int m_c;   // 0xc: 2

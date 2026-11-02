@@ -43,7 +43,6 @@ struct MediusLadderListRequest {
     int PageSize;   // 0x24
 };   // 0x28
 
-struct MediusLadderListResponse;
 
 /* a valve (zanim.h's CValve, as the other lobby units declare it again) */
 enum VALVE_TYPE {
@@ -381,6 +380,19 @@ void ClanLadderList::DeleteAll()
 {
     std::transform(begin(), end(), begin(), DeleteItem<ClanLadderItem>());
     clear();
+}
+
+/* a player kept, unless his position is there, and the highest position kept (OVL1 0x2EBE50: the
+ * ladder pages' callback 0x2EB6A0 adds each to its list), as the clans' Add */
+void LadderList::Add(MediusLadderListResponse *resp)
+{
+    if (!Find(resp->LadderPosition)) {
+        LadderItem *item = new LadderItem(resp);
+
+        push_back(item);
+        if (m_10 < item->m_position)
+            m_10 = item->m_position;
+    }
 }
 
 /* a clan kept, unless its position is there, and the lowest position kept (OVL1 0x2EBCF0): the
