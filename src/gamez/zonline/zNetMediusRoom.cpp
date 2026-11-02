@@ -2,15 +2,15 @@
  * the games' details (SOCOM 1's zNetMedius.cpp's BriefingRoom and RoomGame code; the unit and its
  * name are ours: OVL1 0x2E1CE0-0x2E5FDF, after the lobby's own unit, its static initialiser
  * 0x401E70 building the room list 0x44F568, whose destructor 0x2E5F60 closes it). Still unwritten:
- * the game-info pages 0x2E1F20/0x2E24D0 (UIGetGameInfo's), and the template tail's two std::sort
- * instances -- the games' 0x2E4A90 (comparator by value) and the rooms' 0x2E5150 (RoomLess by
- * address), with their median-of-three and short-range sorts (0x2E5760, 0x2E5980, 0x2E5BF0,
- * 0x2E5D90): SOCOM 1's MSL sort/__sort132/__selection_sort (CW 3.0.1's, its DWARF gives the lines
- * and the static shuffle), not yet in include/algorithm, so SortGames and UpdateRoomListDisplay call
- * them by their placeholders. Defined in reverse of their image order (-inline deferred). */
+ * the game-info pages 0x2E1F20/0x2E24D0 (UIGetGameInfo's). The template tail holds the two
+ * std::sort instances (include/algorithm, SOCOM 1's MSL sort) -- the games' 0x2E4A90 (GameLess by
+ * value, inlined) and the rooms' 0x2E5150 (RoomLess by address), with their median-of-three
+ * (0x2E5760, 0x2E5980) and short-range sorts (0x2E5D90, 0x2E5BF0). Defined in reverse of their
+ * image order (-inline deferred). */
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <algorithm>
 #include "zonline.h"
 #include "../zsys/zsys.h"
 #include "../znet/znet.h"
@@ -305,20 +305,27 @@ void cbGameList(int, int, int, MediusGameListResponse *resp)
     }
 }
 
-/* the game list's order (std::sort's comparator, empty, passed by value) */
+/* two games in the list's order: by the byte at 0x1A0, then by name, case-blind (the name ours) */
+inline bool GameSortsBefore(RoomGame *a, RoomGame *b)
+{
+    if (a->m_19f[1] == b->m_19f[1])
+        return strcasecmp(a->m_info.m_name, b->m_info.m_name) < 0;
+    return a->m_19f[1] < b->m_19f[1];
+}
+
+/* the game list's order (std::sort's comparator, empty, passed by value and inlined into the
+ * instance 0x2E4A90 and its pieces). Through a function of its own: written in operator() itself,
+ * the inlined test loads `*--m` before `*first` (0x2E4A90 5 instructions off) */
 struct GameLess {
     GameLess() {}
+    bool operator()(RoomGame *a, RoomGame *b) const { return GameSortsBefore(a, b); }
 };
 
-extern "C" void func_002E4A90(BriefingRoom::iterator first, BriefingRoom::iterator last,
-                              GameLess less);   /* std::sort's instance */
-
-/* the room's games sorted (OVL1 0x2E4530: the sort still called by its placeholder;
- * UpdateGameListDisplay calls it out of line, pinned) */
+/* the room's games sorted (OVL1 0x2E4530; UpdateGameListDisplay calls it out of line, pinned) */
 #pragma auto_inline off
 void BriefingRoom::SortGames()
 {
-    func_002E4A90(begin(), end(), GameLess());
+    std::sort(begin(), end(), GameLess());
 }
 #pragma auto_inline reset
 
@@ -482,14 +489,11 @@ struct RoomClanInfo {
 };
 extern "C" RoomClanInfo StoredClanInfo;
 
-extern "C" void func_002E5150(BriefingRoomDB::iterator first, BriefingRoomDB::iterator last,
-                              bool (*less)(BriefingRoom *, BriefingRoom *));   /* std::sort's instance */
-
 /* the room list sorted and handed to the menus: each room's name, its players and the game types it
  * allows -- the clan rooms only our clan's, the Medius ones never (SOCOM 1's; OVL1 0x2E3CC0) */
 void UpdateRoomListDisplay()
 {
-    func_002E5150(data_0044F568.begin(), data_0044F568.end(), RoomLess);
+    std::sort(data_0044F568.begin(), data_0044F568.end(), RoomLess);
     CRdrEditor ed;
 
     ed.push(0);

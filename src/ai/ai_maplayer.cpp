@@ -59,11 +59,9 @@ struct CAiMapLayerDelete {
 /* the layers after the first deleted through an MSL for_each (its class iterators in stack slots,
  * the first stepped past m_layer0 as the argument), then dropped from the vector, and the map
  * marked changed. `last` declared first: only so do the slots fall as the target's (end at sp+76).
- * OPEN (0x12C against 0x134), two include/vector questions: the target loads data_ once for both
- * end() and begin() (size first) where end()'s store here makes begin() load it again -- the pod
- * vector's end() reusing begin()'s load, README "Open, and next"; and the target's erase copies
- * both iterators (sp+60, sp+56) where the inlined erase here copies only `first`. Declaring both in
- * one statement, assigning them, or passing explicit copies to erase all miss further */
+ * Byte-exact since the MSL headers round 6: include/vector's range erase reads its iterators
+ * through pointer references, so both are copied into its parameters (sp+60, sp+56) as the
+ * target's are -- with a plain read MW passed the unchanged `last` straight through */
 void CAiMap::DeleteLayers()
 {
     if (m_layers.size() > 1) {
