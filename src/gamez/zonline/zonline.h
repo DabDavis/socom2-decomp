@@ -597,6 +597,12 @@ struct LadderItem {
         m_info = resp->Info;
     }
 
+    /* the names' texts (the names ours): read through an accessor, the inlined c_str() folds the
+     * string's offset into the item's (0x8C/0x8D/0x94); `(*i)->m_name.c_str()` keeps the string's
+     * own address in a register (UpdateLadderBestDisplay 8 bytes long -- the MSL headers round 6) */
+    const char *GetName() { return m_name.c_str(); }
+    const char *GetClan() { return m_clan.c_str(); }
+
     LadderPlayerInfo m_info;   // 0x0: the page's record
     CSaferStr m_name;   // 0x8c (a base's destructor: 0x2EC140 passes 0)
     CSaferStr m_clan;   // 0x98
@@ -613,6 +619,7 @@ public:
                 return *i;
         return 0;
     }
+    LadderItem *Find(const char *name);
     void Add(MediusLadderListResponse *resp);
     void DeleteAll();
 

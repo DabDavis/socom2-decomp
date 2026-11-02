@@ -7,6 +7,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <algorithm>
 #include "zonline.h"
 #include "../zmath/zmath.h"
 
@@ -222,12 +223,12 @@ void CZOnlineLobby::GetClanRanking(int n)
     CheckMediusError(func_0064AEE8(&total, cbGetTotalRankings));
 }
 
-/* the clan ladder's order (std::sort's comparator, empty, by value) */
+/* the clan ladder's order, by position (std::sort's comparator, empty, by value and inlined into the
+ * instance 0x2EC7E0 and its pieces) */
 struct ClanLadderLess {
     ClanLadderLess() {}
+    bool operator()(ClanLadderItem *a, ClanLadderItem *b) const { return a->LadderPosition < b->LadderPosition; }
 };
-extern "C" void func_002EC7E0(ClanLadderList::iterator first, ClanLadderList::iterator last,
-                              ClanLadderLess less);   /* std::sort's instance */
 
 void UpdateClanLadderLeaders();
 void UpdateClanLadderList();
@@ -259,7 +260,7 @@ void UpdateClanLadderLeaders()
 {
     CRdrEditor ed;
 
-    func_002EC7E0(ClanLadderLeaders.begin(), ClanLadderLeaders.end(), ClanLadderLess());
+    std::sort(ClanLadderLeaders.begin(), ClanLadderLeaders.end(), ClanLadderLess());
     ed.push(0);
     for (ClanLadderList::iterator i = ClanLadderLeaders.begin(); i != ClanLadderLeaders.end(); ++i) {
         char pos[32];
@@ -280,7 +281,7 @@ void UpdateClanLadderList()
 {
     CRdrEditor ed;
 
-    func_002EC7E0(ClanLadderRanking.begin(), ClanLadderRanking.end(), ClanLadderLess());
+    std::sort(ClanLadderRanking.begin(), ClanLadderRanking.end(), ClanLadderLess());
     ed.push(0);
     for (ClanLadderList::iterator i = ClanLadderRanking.begin(); i != ClanLadderRanking.end(); ++i) {
         char pos[32];
@@ -408,6 +409,17 @@ void ClanLadderList::Add(MediusGetClanLadderListResponse *resp)
     }
 }
 
+/* a player by name, case-blind, or none -- none for no name (OVL1 0x2EBC20, the name ours; the chat
+ * unit's player-info callback 0x2F0020 asks it) */
+LadderItem *LadderList::Find(const char *name)
+{
+    if (name && *name)
+        for (iterator i = begin(); i != end(); ++i)
+            if (!strcasecmp((*i)->GetName(), name))
+                return *i;
+    return 0;
+}
+
 #pragma auto_inline reset
 
 
@@ -443,23 +455,20 @@ MediusErrorCode func_0064B128(MediusLadderListRequest *req,
                               void (*cb)(int, int, int, MediusLadderListResponse *));   /* MediusLadderList */
 }
 
-/* the player ladder's order (std::sort's comparator, empty, by value) */
-struct LadderLess {
-    LadderLess() {}
+/* the player ladder's order, by position (SOCOM 1's compare_ladder: std::sort's comparator, empty,
+ * by value and inlined into the instance 0x2EC260 and its pieces) */
+struct compare_ladder {
+    compare_ladder() {}
+    bool operator()(LadderItem *a, LadderItem *b) const { return a->m_position < b->m_position; }
 };
-extern "C" void func_002EC260(LadderList::iterator first, LadderList::iterator last,
-                              LadderLess less);   /* std::sort's instance */
 
 /* the player ladder's best sorted and handed to the menus: each one's position, name and clan
- * (SOCOM II's; OVL1 0x2EB7A0; the name ours).
- * OPEN, 0x164 against 0x15C: the target reads each name's words off the item (0x8C/0x8D/0x94,
- * 0x98/0x99/0xA0) where include/string's inline c_str() keeps the string's own address in a
- * register (item + 0x98, then +1, +8) -- the MSL string's c_str(), or a different member type */
+ * (SOCOM II's; OVL1 0x2EB7A0; the name ours). The names through the item's accessors (zonline.h) */
 void UpdateLadderBestDisplay()
 {
     CRdrEditor ed;
 
-    func_002EC260(LadderRanking.begin(), LadderRanking.end(), LadderLess());
+    std::sort(LadderRanking.begin(), LadderRanking.end(), compare_ladder());
     ed.push(0);
     for (LadderList::iterator i = LadderRanking.begin(); i != LadderRanking.end(); ++i) {
         char pos[32];
@@ -467,8 +476,8 @@ void UpdateLadderBestDisplay()
         sprintf(pos, "%d", (*i)->m_position);
         ed.push(0);
         ed.addstringnode(pos);
-        ed.addstringnode((*i)->m_name.c_str());
-        ed.addstringnode((*i)->m_clan.c_str());
+        ed.addstringnode((*i)->GetName());
+        ed.addstringnode((*i)->GetClan());
         ed.pop();
     }
     ed.pop();

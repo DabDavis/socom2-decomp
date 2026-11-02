@@ -1847,6 +1847,43 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     value), `== true` li 1/bne;
   - git merged two identical RTArray::GetOldestUsed definitions silently (two lanes added it): a
     merge can duplicate an additive member -- the build catches it.
+- **Tells from completing the MSL headers, round 6** (include/algorithm's sort, include/vector's
+  iterator arithmetic and range erase, the ladder's names):
+  - std::sort is SOCOM 1's MSL sort (CW 3.0.1's `sort`/`__sort132`/`__selection_sort`, with
+    `min_element`, `iter_swap` and the static `shuffle`, -4 in data, stepped -4..4 twice a pass) over
+    SOCOM II's class iterators: each instance is three functions in its unit's template tail, a
+    comparator object by value inlined into all three, a function pointer called. Each instance has its
+    own `@LOCAL@sort<...>@shuffle` in .data -- data.txt names them, or the instance's relocations
+    cannot resolve. Twelve instances in the image, all byte-exact as written or as probes: the room
+    unit's games and rooms (0x2E4A90, 0x2E5150), the ladder's two (0x2EC260, 0x2EC7E0) and
+    ai_maptable.cpp's names (0x5312D0) as their units emit them; st_mpexit.cpp's seals (0x226060),
+    st_core.cpp's film cues (0x1EE000), the chat unit's room players (0x2F1980), the clan unit's members
+    (0x2E9B40, by LadderStat highest first) and ent_target.cpp's targets (0x2A12E0, with swap<CTarget>
+    0x2A1880 and the iterator's operator* 0x2A19B0 out of line) as probes (build/p6/), their rows named
+    (the comparators of the unwritten callers' named ours in the rows' notes); util_loc.cpp's 0x3A4560
+    (12-byte entries by their halfword id) is the twelfth, unprobed;
+  - the shapes the sweeps settled: `if (len <= 1) return;` (`< 2`: 2 instructions), `len *= 3;` before
+    the second pick (`3 * len / 4`: 16 bytes more), and the iterator's `last - 1` a copy stepped by `-=`
+    (MSL's own arithmetic: built as `iterator(m_p - n)`, every short-range sort is 6 instructions off).
+    That operator- folds the step into a load, so the class vector's back() steps the end pointer itself
+    (`*(end().m_p - 1)`: CAiPath::PopPoint and CTargetList::AddTarget compute the address first);
+  - SOCOM 1's sorts took raw pointers (`sort<CZSealBody **, ...>`): over a raw pointer st_mpexit.cpp's is
+    0x3B4 bytes, the target's 0x598 is the vector iterator's -- an s1 template name is a prediction;
+  - a comparator's test written in operator() itself loads `*--m` before `*first`; through an inline
+    function of its own the target's order (the room's GameLess over GameSortsBefore);
+  - CAiMap::name's four bytes after the name are two (the names' sort copies them lbu/sb);
+  - c_str() on a member: `(*i)->m_name.c_str()` keeps the string's own address in a register (item +
+    0x8C, then +1, +8) and no form of c_str() itself moves it (eight tried); read through an inline
+    accessor on the item (LadderItem::GetName), the inlined c_str() folds the offset into the item's as
+    the target does (UpdateLadderBestDisplay, LadderList::Find 0x2EBC20);
+  - the pointer vector's range erase reads its iterators through pointer references (their addresses
+    taken: MW copies a named iterator into the parameter instead of passing it straight, DeleteLayers
+    byte-exact). Still open: erase(remove(...), end()) -- the target builds end() once and copies it
+    into erase's parameter after remove's call (include/vector's erase comment: a const-reference level
+    forwarding to it gets the order, 4 instructions off, but loses CGrid::Destroy);
+  - still open: the deque's copy constructor chain and pop_back, the map constructor's allocator
+    temporary (an inline allocator() costs the deque's out-of-line 0x2CEE30), the class vector insert's
+    end register, remove_if's find_if copies (0x5F8AF0).
 - **Tells from the HUD, round 16** (the weapon selector's constructor and OnOpen, three initialisers):
   - the seed reads a virtual tail call (`jr t9`) as a jump table and merges the next function when only
     a vtable references it: a "dead `jr ra`" after a tail call is a function of its own (0x36B1F0 and
@@ -2722,7 +2759,9 @@ What is open across lanes, and what comes next:
   (0x306030), the CSaferStr trees (0x3A2D60-0x3A2F60 and OVL2's string-keyed map, through the
   string's out-of-line compare 0x2DEE30), zrdr_file.cpp's pointer-keyed map (0x32D780) and the map
   constructor's allocator temporary (the image passes an unconstructed stack slot: `__sinit` and
-  the out-of-line map() copies) (include/tree), the class vector's destroy for elements with a virtual
+  the out-of-line map() copies) (include/tree), the erase(remove(...), end()) family (eight open
+  functions: the target builds end() once and copies it into erase's parameter after remove's
+  call -- include/vector's range erase), the class vector's destroy for elements with a virtual
   destructor (C2DPoly's deleter), __vector_imp::resize out of line (CPool), and the pod vector's
   end() reusing begin()'s load (AddPalette, ~CAssetLib, DeleteChildren; the zdb world's round 6
   measured `return data() + size_;`: +4, but CCharacterType::Create one level too tall).
