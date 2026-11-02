@@ -16,6 +16,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <list>
+#include <vector>
+#include <algorithm>
 #include <iostream>
 
 /* unnamed yet */
@@ -114,8 +116,21 @@ enum UIVAR_LONGEVITY {
 
 class CUIVariable : public _zrdr {
 public:
+    void UpdateDependents();
     CUIVariable &operator=(const char *str);
     void Set(_zrdr *value);
+    /* an integer, the watchers told only when it changes (ours: zui.h's float assignment's twin;
+     * SOCOM 1 set the value unconditionally) */
+    CUIVariable &operator=(int i)
+    {
+        if (type != ZRDR_INTEGER || integer != i) {
+            DeleteChildren();
+            type = ZRDR_INTEGER;
+            integer = i;
+            UpdateDependents();
+        }
+        return *this;
+    }
 };
 
 class CUIVarManager {
@@ -126,9 +141,43 @@ extern CUIVarManager theUIVarManager;
 
 CZSealBody *ftsGetPlayer();
 
-namespace std {
-template <class RandomAccessIterator, class Compare>
-void sort(RandomAccessIterator first, RandomAccessIterator last, Compare comp);
+/* the game's clock (SOCOM 1's CNetClock, 0x20 bytes there; SOCOM II has a word less ahead of the
+ * round's time: its two time accessors read 8 and 16 where SOCOM 1's read 0xC and 0x14) */
+class CNetClock {
+public:
+    /* the game's and the round's time in seconds (SOCOM 1's; SOCOM II inlines the conversion
+     * SOCOM 1 called fptoui for). Emitted here, where SetMpStatUiVars takes their addresses:
+     * 0x224BF0 and 0x224C80, in reverse of their first use */
+    unsigned int GetTimeInGameSec() { return (unsigned int)(0.001f * m_total_time); }
+    unsigned int GetTimeInRoundSec() { return (unsigned int)(0.001f * m_time_in_round); }
+
+    unsigned int m_max_game_time;   // 0x0
+    unsigned int m_4;   // 0x4
+    unsigned int m_time_in_round;   // 0x8
+    unsigned int m_game_time;   // 0xc
+    unsigned int m_total_time;   // 0x10
+};
+
+/* the network game's state (OVL1 bss 0x437CE8; hud_main.cpp's stand-in): its clock (SOCOM 1's
+ * at 0xA0), the game's type and each side's rounds won (SOCOM 1's at 0xEC/0xF0) */
+class CNetGameState {
+public:
+    unsigned char _0[0xe0];
+    CNetClock m_clock;   // 0xe0
+    unsigned char _f4[0x111 - 0xf4];
+    unsigned char m_type;   // 0x111: the game's type (1-5)
+    unsigned char _112[0x120 - 0x112];
+    int m_seals_won;   // 0x120
+    int m_terrs_won;   // 0x124
+};
+
+extern CNetGameState *data_00437CE8;
+
+/* whether the player is on each side (unnamed yet: the network game's team word against the
+ * SEALs' and the terrorists' masks) */
+extern "C" {
+bool func_002C31A0();
+bool func_002C3080();
 }
 
 /* the final screen once the game is over, else the round's */
@@ -178,15 +227,15 @@ bool CompareGameSeals(CZSealBody *p1, CZSealBody *p2)
 /* a side's totals of the three stats, as a list of strings in a UI variable: only the living
  * SEALs the stats count, the hit percentage averaged (SOCOM 1's SetFinalTeamTotalsUiVar, six
  * totals of every SEAL's game stats there).
- * OPEN, 2 instructions and a register swap (the size is right; scdiff's count, 27, is the branch
- * offsets): (1) the walk's begin() is `lw a2,4(s6)` off the &CEntity::m_list hoisted out of the
+ * OPEN, 1 instruction and a register swap (25 differing, the branch offsets with them): the walk's
+ * begin() is `lw a2,4(s6)` off the &CEntity::m_list hoisted out of the
  * outer loop, where the target reloads it absolutely (`lui at,0x43; lw a2,0x62E8(at)`) and keeps
  * &m_list in s7 for end() only, the UI variable's name in s6 (here swapped) -- include/list's
  * const begin() reads the sentinel through tail() into a pointer local, which shares the address
- * with end()'s; SetMvpUiVars' walk, outside any loop, cannot tell; (2) the round side's test is
- * `bnez v0,count; b skip` in the target, `beqz v0,skip; b count` here. Tried: the ternary (a join
- * and one test; `andi` with bool callees), `&&`/`||` (bSeals re-tested), `continue` and empty-then
- * forms, begin/end through CEntity::m_list (no conversion to const_iterator) or an end local.
+ * with end()'s; SetMvpUiVars' and SetStatLbUiVar's walks, outside any loop, cannot tell. Tried:
+ * begin/end through CEntity::m_list (no conversion to const_iterator) or an end local. The side
+ * test's `bnez v0,count; b skip` is the `if (bSeals) { if (!A) continue; } else if (!B) continue;`
+ * form SetStatLbUiVar matched with (round 18: the goto form inverted it; the ternary joins).
  * __ptmf_cmpr (0x1828E0, func_001828E0 in the map) is the PTMF comparison MW calls by name: the
  * row needs that name for the call to resolve */
 void SetFinalTeamTotalsUiVar(bool bSeals, const char *szUiVar)
@@ -206,13 +255,12 @@ void SetFinalTeamTotalsUiVar(bool bSeals, const char *szUiVar)
                 CZSealBody &seal = it.GetSeal();
 
                 if (bSeals) {
-                    if (func_002C31D0(&seal))
-                        goto count;
-                } else if (func_002C30B0(&seal)) {
-                count:
-                    iTot += (seal.GetGameStats().*c_arrStatFuncs[i])();
-                    iNum++;
-                }
+                    if (!func_002C31D0(&seal))
+                        continue;
+                } else if (!func_002C30B0(&seal))
+                    continue;
+                iTot += (seal.GetGameStats().*c_arrStatFuncs[i])();
+                iNum++;
             }
         }
         if (pfnHitPct == c_arrStatFuncs[i] && iNum != 0)
@@ -297,6 +345,139 @@ void SetMvpUiVars(const char *szNameVar, const char *szUiVar)
         edStats.pop();
         theUIVarManager.Add(szUiVar, 0, UIVL_TEMPORARY)->Set(&edStats);
     }
+}
+
+void SetStatLbUiVar(bool bSeals, const char *szUiVar, CSealStats &(CZSealBody::*pAccessor)(),
+                    bool bGame);
+
+/* a time in seconds as "hh:mm:ss" into a UI variable (ours: SOCOM 1's SetMpStatUiVars wrote it
+ * out twice on one line each, an inline taking the clock's accessor by value) */
+inline void SetTimeUiVar(const char *szUiVar, unsigned int (CNetClock::*pfnTime)())
+{
+    char szTime[] = "00:00:00";
+    int iSec = (data_00437CE8->m_clock.*pfnTime)();
+
+    szTime[0] = '0' + iSec / 36000;
+    iSec %= 36000;
+    szTime[1] = '0' + iSec / 3600;
+    iSec %= 3600;
+    szTime[3] = '0' + iSec / 600;
+    iSec %= 600;
+    szTime[4] = '0' + iSec / 60;
+    iSec %= 60;
+    szTime[6] = '0' + iSec / 10;
+    iSec %= 10;
+    szTime[7] = '0' + iSec;
+    *theUIVarManager.Add(szUiVar, 0, UIVL_TEMPORARY) = szTime;
+}
+
+/* an integer into a UI variable, the watchers told only when it changes (ours) */
+inline void SetIntUiVar(const char *szUiVar, int iVal)
+{
+    CUIVariable *pVar = theUIVarManager.Add(szUiVar, 0, UIVL_TEMPORARY);
+
+    if (pVar->type != ZRDR_INTEGER || pVar->integer != iVal) {
+        pVar->DeleteChildren();
+        pVar->type = ZRDR_INTEGER;
+        pVar->integer = iVal;
+        pVar->UpdateDependents();
+    }
+}
+
+/* the round's and the game's stats lists for each side, the player's points, the rounds won and
+ * the times (SOCOM 1's SetMpStatUiVars; SOCOM II's lists sort each by its own stats and leave the
+ * ladder alone, the team totals to SetFinalStatsUiVars) */
+void SetMpStatUiVars()
+{
+    int iPts;
+    bool bSeals = func_002C31A0();
+    bool bTerrs = func_002C3080();
+
+    SetStatLbUiVar(true, "RoundStatLbContentsSeals", &CZSealBody::GetRoundStats, false);
+    SetStatLbUiVar(false, "RoundStatLbContentsTerrs", &CZSealBody::GetRoundStats, false);
+    SetStatLbUiVar(true, "GameStatLbContentsSeals", &CZSealBody::GetGameStats, true);
+    SetStatLbUiVar(false, "GameStatLbContentsTerrs", &CZSealBody::GetGameStats, true);
+
+    iPts = ftsGetPlayer()->GetRoundStats().GetMvpScore();
+    SetIntUiVar("PointsEarned", iPts);
+
+    int iSealsWon = data_00437CE8->m_seals_won;
+    int iTerrsWon = data_00437CE8->m_terrs_won;
+    int iWon = 0;
+    if (bSeals)
+        iWon = iSealsWon;
+    else if (bTerrs)
+        iWon = iTerrsWon;
+    SetIntUiVar("RoundsWonSeals", iSealsWon);
+    SetIntUiVar("RoundsWonTerrs", iTerrsWon);
+    SetIntUiVar("RoundsWon", iWon);
+
+    SetTimeUiVar("TimeInRound", &CNetClock::GetTimeInRoundSec);
+    SetTimeUiVar("TimeInGame", &CNetClock::GetTimeInGameSec);
+}
+
+/* a side's SEALs, the living and counted, sorted by one set of their stats (the round's or the
+ * game's comparator) and listed best first -- each a row of its name, its clan's tag and its three
+ * stats, the player's name and tag coloured -- into a UI variable (SOCOM 1's SetStatLbUiVar, which
+ * took the stats accessor alone and sorted by the round's stats) */
+void SetStatLbUiVar(bool bSeals, const char *szUiVar, CSealStats &(CZSealBody::*pAccessor)(),
+                    bool bGame)
+{
+    CRdrEditor edStats;
+
+    edStats.push(0);
+    std::vector<CZSealBody *> vecSeals;
+    for (CEntityItr it; it.More(); it.Advance()) {
+        if (it.IsLiveSeal()) {
+            if (bSeals) {
+                if (!func_002C31D0(&it.GetSeal()))
+                    continue;
+            } else if (!func_002C30B0(&it.GetSeal()))
+                continue;
+            if (!it.GetSeal().m_fd2)
+                vecSeals.push_back(&it.GetSeal());
+        }
+    }
+    if (vecSeals.size() > 1) {
+        if (bGame)
+            std::sort(vecSeals.begin(), vecSeals.end(), CompareGameSeals);
+        else
+            std::sort(vecSeals.begin(), vecSeals.end(), CompareRoundSeals);
+    }
+    for (int iSeal = vecSeals.size() - 1; iSeal >= 0; iSeal--) {
+        char szTag[8];
+
+        edStats.push(0);
+        const char *szClan = func_002C3AC0(vecSeals[iSeal]->m_fc8);
+        if (szClan && *szClan)
+            sprintf(szTag, "[%s]", szClan);
+        else
+            sprintf(szTag, "");
+        if (vecSeals[iSeal] != ftsGetPlayer()) {
+            edStats.addstringnode(vecSeals[iSeal]->m_name);
+            edStats.addstringnode(szTag);
+        } else {
+            PNT3D color;
+
+            color.x = 91.0f;
+            color.y = 72.0f;
+            color.z = 36.0f;
+            edStats.push(0);
+            edStats.addSTRING("VALUE", vecSeals[iSeal]->m_name);
+            edStats.addPNT3D("COLOR", color);
+            edStats.pop();
+            edStats.push(0);
+            edStats.addSTRING("VALUE", szTag);
+            edStats.addPNT3D("COLOR", color);
+            edStats.pop();
+        }
+        CSealStats &stats = (vecSeals[iSeal]->*pAccessor)();
+        for (unsigned int i = 0; i < 3; i++)
+            AddIntNode(edStats, (stats.*c_arrStatFuncs[i])());
+        edStats.pop();
+    }
+    edStats.pop();
+    theUIVarManager.Add(szUiVar, 0, UIVL_TEMPORARY)->Set(&edStats);
 }
 
 }
