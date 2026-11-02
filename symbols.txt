@@ -4006,14 +4006,14 @@
 0x002B6430 0xF4 func_002B6430  # OVL1
 0x002B6530 0x7CC func_002B6530  # OVL1
 0x002B6D00 0x60 SetBkgColor__12C2DMessage_QFfff  # OVL1; s1:align
-0x002B6D60 0x78 func_002B6D60  # OVL1
+0x002B6D60 0x78 LastMessage__12C2DMessage_QFv  # OVL1; s1:order by hand (the states lane, round 17): SOCOM 1's LastMessage (0x200890) sits between SetBkgColor and Clear_Messages as this does, and does the same -- the list's last line's text, "" with none; fts_message.cpp (open)
 0x002B6DE0 0xF4 Clear_Messages__12C2DMessage_QFv  # OVL1; s1:calls by hand (the HUD lane: CHUD::ReleaseHUD's three calls on its message queues, as SOCOM 1's)
 0x002B6EE0 0xE0 __dt__12C2DMessage_QFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002B6FC0 0x558 func_002B6FC0  # OVL1
 0x002B7520 0xC func_002B7520  # OVL1
 0x002B7530 0xD8 func_002B7530  # OVL1
 0x002B7610 0x110 func_002B7610  # OVL1
-0x002B7720 0x74 SetString__16C2DMessageStringFPCc  # OVL1; s1:align
+0x002B7720 0x74 SetString__16C2DMessageStringFPCcb  # OVL1; s1:align; by hand (the states lane, round 17): SOCOM II's override of C2DString's slot 26, SetString(const char *, bool) -- the target passes its own a2 on to C2DString::SetString untouched (SOCOM 1's took the string only); fts_message.cpp
 0x002B77A0 0x1A8 Tick__16C2DMessageStringFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002B7950 0x98 func_002B7950  # OVL1
 0x002B79F0 0x28 ftsNetworkGameUninit__Fv  # OVL1; s1:align
