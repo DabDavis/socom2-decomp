@@ -136,9 +136,9 @@ static inline int HashName(const char *name)
     return h < 0 ? -h % 17 : h % 17;
 }
 
-/* a table's entries (a vector of its own: its destructor tests the table's member three times before
- * the deleter's, where a plain vector member's tests twice) */
-class CLocEntries : public std::vector<LOCENTRY> {};
+/* a table's entries (a plain vector: Load inlines the table's constructor whole, which a vector
+ * subclass -- Unload's three this-tests -- makes six levels high; see Unload) */
+typedef std::vector<LOCENTRY> CLocEntries;
 
 /* one table of localised strings: the largest id, the strings, the entries sorted by id, the
  * table's name, the entry found last and the entries hashed by name */
@@ -157,7 +157,11 @@ public:
     void Add(int id, const char *msgid, const char *text)
     {
         if (m_entries.size() < m_entries.capacity()) {
-            m_maxId = m_maxId < id ? id : m_maxId;
+            int max = m_maxId;
+
+            if (max < id)
+                max = id;
+            m_maxId = max;
             m_entries.push_back(LOCENTRY(id, m_strings.CreateString(msgid), m_strings.CreateString(text)));
         }
     }
@@ -252,7 +256,13 @@ LOCENTRY *CLocTable::Find(int id)
     return &m_entries[0];
 }
 
-/* the entry with this name: the one found last, else its bucket walked */
+/* the entry with this name: the one found last, else its bucket walked.
+ * OPEN, 2 instructions long: the target tests the '_' on the byte the empty test loaded (`xori
+ * v0,v1,0x5f`), where IsMsgId re-extends it (dsll32/dsra32) -- as the target's own
+ * CStringTables::Find(name) does. No change from the test written out, a bool local, name[0],
+ * `*name == 0` or the two tests joined. The bucket walk is `m_hash[h].end()` re-read each pass (the
+ * size's and the data's addresses in two saved registers) and the hash's modulo in each arm of the
+ * sign test (two divs), both as the target */
 LOCENTRY *CLocTable::Find(const char *name)
 {
     if (!name || !*name)
@@ -309,6 +319,12 @@ LANGUAGE LanguageFromName(const char *name)
 /* the table read from its rdr: the null entry, then each entry (ID, MSG_ID, LOCALIZED, SCALE,
  * OFFSET), sorted by id and hashed by name, the table named, and the strings moved into a buffer
  * of their own */
+/* OPEN, 2 instructions short: the null entry's `max < 0` folds to bgez here where the target keeps
+ * `slt at,v0,zero; beqz at` -- the second Add's shape with the id's register as $zero, as if the 0
+ * were a variable when the compare was lowered (the max through a local, a reference- or value-
+ * returning helper, a `const int &` parameter: no change or worse); and the target hoists the
+ * temporary's msgid address (sp+164) into s8 for the loop. Item(j) with an int j, the MSG_ID found
+ * twice and the OFFSET pair's byte-wise `= {0}` are the target's */
 void CLocTable::Read(const char *name, _zrdr *rdr)
 {
     Add(0, "", "");
@@ -320,7 +336,7 @@ void CLocTable::Read(const char *name, _zrdr *rdr)
         for (int i = 0; i < 17; i++)
             m_hash[i].reserve(n + 1);
         m_strings.reserve(n * 2 + 1);
-        for (unsigned int j = 0; (int)j < n; j++) {
+        for (int j = 0; j < n; j++) {
             _zrdr *item = list->Item(j);
             int id = 0;
 
@@ -357,45 +373,70 @@ void CLocTable::Read(const char *name, _zrdr *rdr)
     }
 }
 
+/* a table's file read: <name>LOC.rdr from <name>LOC.zar under RUN\LOCALE\<language>, or under the
+ * LOCRDR path */
+static inline CRdrFile *ReadLocFile(const char *name, LANGUAGE lang)
+{
+    char path[256];
+    char zar[256];
+    char dir[256];
+    CRdrFile *file;
+
+    if (s_useZar) {
+        sprintf(path, "%sLOC.rdr", name);
+        sprintf(zar, "%sLOC.zar", name);
+        sprintf(dir, "RUN\\LOCALE\\%s", s_languageNames[lang]);
+        CRdrArchive::AddArchive(zar, dir)->ReOpen(data_003F7020, 1);
+        file = zrdr_read(path, 0, 4);
+    } else {
+        sprintf(path, "DATA\\COMMON\\ZRDR\\LOCRDR\\%s\\%sLOC.rdr", s_languageNames[lang], name);
+        file = zrdr_read(path, 0, 0);
+    }
+    return file;
+}
+
+/* a table's ZAR let go of again */
+static inline void CloseLocZar(const char *name, LANGUAGE lang)
+{
+    if (s_useZar) {
+        char zar[256];
+        char dir[256];
+
+        sprintf(zar, "%sLOC.zar", name);
+        sprintf(dir, "RUN\\LOCALE\\%s", s_languageNames[lang]);
+        CRdrArchive::RemoveArchive(zar, dir);
+    }
+}
+
 /* a table loaded (unless it is already): read from its language's ZAR or file, and added */
 void CStringTables::Load(const char *name, LANGUAGE lang)
 {
-    if (name && !FindTable(name)) {
-        char path[256];
-        char zar[256];
-        char dir[256];
-        CRdrFile *file;
-
-        if (s_useZar) {
-            sprintf(path, "%sLOC.rdr", name);
-            sprintf(zar, "%sLOC.zar", name);
-            sprintf(dir, "RUN\\LOCALE\\%s", s_languageNames[lang]);
-            CRdrArchive::AddArchive(zar, dir)->ReOpen(data_003F7020, 1);
-            file = zrdr_read(path, 0, 4);
-        } else {
-            sprintf(path, "DATA\\COMMON\\ZRDR\\LOCRDR\\%s\\%sLOC.rdr", s_languageNames[lang], name);
-            file = zrdr_read(path, 0, 0);
+    if (name) {
+        for (iterator i = begin(); i != end(); ++i) {
+            if (!strcmp(name, (*i)->m_name))
+                return;
         }
+        CRdrFile *file = ReadLocFile(name, lang);
+
         if (file) {
             CLocTable *t = new CLocTable(file);
 
             t->Read(name, file);
             push_back(t);
         }
-        if (s_useZar) {
-            char zar2[256];
-            char dir2[256];
-
-            sprintf(zar2, "%sLOC.zar", name);
-            sprintf(dir2, "RUN\\LOCALE\\%s", s_languageNames[lang]);
-            CRdrArchive::RemoveArchive(zar2, dir2);
-        }
+        CloseLocZar(name, lang);
         if (file)
             zrdr_free(file);
     }
 }
 
-/* a table unloaded by name */
+/* a table unloaded by name.
+ * OPEN, 2 instructions short: the target's inlined ~CLocTable tests the entries' address three times
+ * before the deleter's destructor (a vector subclass's implicit destructor -- matched so), but a
+ * subclass makes CLocTable() six levels high and Load (0x2C0 bytes, byte-exact with a plain vector)
+ * then calls the members' constructors out of line; include/vector's class-vector constructor (4
+ * levels) leaves no room for both at -inline level=5. The walk -- `next` its own variable, stepped
+ * before the compare and set from erase -- is the target's */
 void CStringTables::Unload(const char *name)
 {
     if (name) {
@@ -449,32 +490,11 @@ void CStringTables::Reload(LANGUAGE lang)
         for (int j = 0; j < 17; j++)
             t->m_hash[j].clear();
         t->m_last = 0;
-        const char *name = (*i)->m_name;
-        char path[256];
-        char zar[256];
-        char dir[256];
-        CRdrFile *file;
+        CRdrFile *file = ReadLocFile((*i)->m_name, lang);
 
-        if (s_useZar) {
-            sprintf(path, "%sLOC.rdr", name);
-            sprintf(zar, "%sLOC.zar", name);
-            sprintf(dir, "RUN\\LOCALE\\%s", s_languageNames[lang]);
-            CRdrArchive::AddArchive(zar, dir)->ReOpen(data_003F7020, 1);
-            file = zrdr_read(path, 0, 4);
-        } else {
-            sprintf(path, "DATA\\COMMON\\ZRDR\\LOCRDR\\%s\\%sLOC.rdr", s_languageNames[lang], name);
-            file = zrdr_read(path, 0, 0);
-        }
         if (file)
             (*i)->Read((*i)->m_name, file);
-        if (s_useZar) {
-            char zar2[256];
-            char dir2[256];
-
-            sprintf(zar2, "%sLOC.zar", (*i)->m_name);
-            sprintf(dir2, "RUN\\LOCALE\\%s", s_languageNames[lang]);
-            CRdrArchive::RemoveArchive(zar2, dir2);
-        }
+        CloseLocZar((*i)->m_name, lang);
         if (file)
             zrdr_free(file);
     }
@@ -509,7 +529,10 @@ LOCENTRY *CStringTables::Find(int id, const char *table)
     return e;
 }
 
-/* the entry with this name: the one found last, else in the named table or in each */
+/* the entry with this name: the one found last, else in the named table or in each.
+ * OPEN, 3 instructions long: one saved register more -- the target shares e's (s0) with the table
+ * walk's iterator and the parameter table's (s1) with the last walk's, where MW gives e a register
+ * of its own here; Find(id, table), the same code without the name tests, is byte-exact */
 LOCENTRY *CStringTables::Find(const char *name, const char *table)
 {
     LOCENTRY *e = 0;
