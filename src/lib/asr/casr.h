@@ -15,8 +15,17 @@ typedef struct CBSLOT {
     int data;
 } CBSLOT;
 
+#define CASR_MAGIC      0x218DF4F5      /* +552 of a live handle */
+#define CASR_ERR_NULL   6
+#define CASR_ERR_HANDLE 11
+#define CASR_ERR_ARG    18
+
 typedef struct CASR {
-    char pad0[364];
+    char pad0[50];
+    unsigned short state;               /* +50 */
+    int last_error;                     /* +52 */
+    int last_warning;                   /* +56 */
+    char pad60[304];
     char event[8];                      /* +364: the engine's event (func_0050CDE8) */
     int queue;                          /* +372 */
     unsigned short queue_id;            /* +376 */
@@ -27,7 +36,8 @@ typedef struct CASR {
     char pad484[36];
     int (*state_cb)(int state, int ms, void *info);    /* +520 */
     char pad524[24];
-    unsigned char gender_on[8];         /* +548 */
+    unsigned char gender_on[4];         /* +548 */
+    unsigned int magic;                 /* +552: CASR_MAGIC */
     char info[20];                      /* +556 */
     unsigned char use_dp;               /* +576 */
     unsigned char iso_word;             /* +577 */
@@ -44,7 +54,8 @@ typedef struct CASR {
     int sp_arg2;                        /* +684 */
     char pad688[218];
     unsigned short f906;
-    char pad908[160];
+    unsigned short *signal;             /* +908: the input level */
+    char pad912[156];
     short **segtab;                     /* +1068 */
     int pad1072;
     int last_state;                     /* +1076 */

@@ -53,6 +53,7 @@ and data reference resolved to the address the shipped code uses.
 | `tools/ccsweep.py` | compiler identification for the GCC front: one source over every ee-gcc toolchain and flag set (and `//==` source variants), every function it defines scored |
 | `tools/ccperm.py` | every order of a marked block of statements, for GCC's scheduled stores: which source order gives the target's |
 | `tools/ccflags.py` | a GCC range's drafts recompiled with a flag added: a flag the vendor used loses none (how strict aliasing was told apart) |
+| `tools/asmunit.py` | an assembler unit (`.s`) for a library object that was assembly: the rows transcribed (canonical instructions, labels, map names, %hi/%lo of the symbols the code addresses, the unit's own `.bss` labels), assembled by the toolchain named and scored until every function matches |
 | `symbols.txt` | **the map** — `0xADDR SIZE name  # note`, kept by hand from here on |
 | `data.txt` | the map of global data, the same format and namespace |
 | `src/` | the reconstructed source; `MATCHED.txt` (the baseline), `ABSENT.txt` (dead-stripped) |
@@ -1646,6 +1647,66 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the kit and AI states, round 11** (seal_kit.cpp's weapon modes and indices, seal_sensors.cpp, ai::test):
+  - `x > 3` compiles to `slti at,x,4; bnez at`, `x >= 4` puts the test in v0; an `||` arm written
+    `return delay;` keeps its own `b end` block, an else-if chain assigning a result merges it;
+  - `r = 0.5f; r *= a + b;` in an if/else gives the false arm's trailing nop and the half-first
+    operand order (GetFireDelay); function-local `static float` constants match 8-byte-spaced data by
+    content;
+  - an inline that modifies its parameter copies it at entry: the copy taken into a local after the
+    first test lands where the target has it (kit.h's wrap, GetAmmoIndex);
+  - stores through `T *p = &arr[i]` re-read a global loop bound each pass (no unrolling); indexed
+    stores into a separate global unroll 8x;
+  - MW 2.4 inlined template functions MW 3.0 calls out of line: an explicit instantiation emits the
+    instance until its caller is written (ai::test<int>/<float> 0x5DECB0/0x5DED70 for ai::PARAM's
+    Tick 0x5D4770);
+  - seal_kit.cpp ends in SOCOM 1's order (sealSaveFireModes, CSavedFireModeInfo(), the CAiWepHint
+    statics), seal_sensors.cpp starts at 0x5C9400; __sinit_seal_kit.cpp is 0x668DB0 (named).
+- **Tells from the UI, round 8** (util_loc.cpp, zui_hangul.cpp, zui_skbkeys.cpp, zui_skbview.cpp):
+  - a null-safe string compare `a ? (b ? strcasecmp(a, b) : 1) : -1` gives the target's branches;
+    the if/return form is 8 bytes longer; `h < 0 ? -h % 17 : h % 17` gives two divides, `abs(h) % 17`
+    a movz and one;
+  - a find returning `*i` from inside the loop keeps its result in a0, a result local set before the
+    loop costs a saved register; `if ((e = f()) != 0)` gives `beqz v0; move a0,v0`;
+  - an inline helper's by-value argument is loaded before the helper's own test (Load/Reload's
+    `(*i)->m_name` ahead of `s_useZar`); a vector-subclass member adds one this-test to the
+    destructor but one level to the constructor (Unload against Load: the bigger one kept);
+  - an int table element passed to an `unsigned short` parameter loads with `lhu`; a char passed to
+    an `int` parameter is sign-extended again; `(a != 0) ^ (b != 0)` puts the xor in v0;
+  - MW names an unnamed namespace after the COMPILED file, not the header declaring it: zui_skb.cpp's
+    classes used by the keyboard units 0x3903A0-0x39BBB0 (three units by their initialisers 0x403770,
+    0x403800, 0x404110) must come from a shared header -- the next UI round moves them out;
+  - util_loc.cpp runs 0x3A3100-0x3A59BF (its template tail from 0x3A4560, the twelfth std::sort).
+- **Tells from the SEALs, round 10** (seal_body.cpp's blend and jump families, the hostile anchor, seal_cfg.cpp):
+  - an inline accessor with an UNSIGNED index called with an int counter keeps the target's per-pass
+    `sll; addu` on an RTStack walk (0x57DBB0, 0x57DC20);
+  - two identical address expressions either side of a call are shared through a saved register;
+    spelling the first differently (`&s->m` against `(char *)s + K`) makes MW recompute it, as the
+    target does (0x57F310 and the other pops);
+  - `if (!InlineBoolWithAnd()) x = ...; else x = false;` keeps the `&&` materialised (sltu) with the
+    held arm last; a ternary or `!= false` does not (UpdateHostileAnchor 0x543030);
+  - a call's result taken into a block-local before a float-zero store gives `sw zero`; stored through
+    the call's result directly, MW hoists 0.0f into $f20 (0x57F690);
+  - a short argument read through an inline accessor loads ahead of the call's other arguments
+    (0x5802B0);
+  - an unnamed unit function nothing calls can be a helper the unit inlines everywhere: write it and
+    have its siblings call it (0x588B40);
+  - `if (a || b) return false; return f();` leaves the false block right after the test (0x57F7D0);
+    a single negated test lets MW move it to the end (0x57F530, open).
+- **Tells from the HUD, round 18** (st_mpexit.cpp's stat leaderboard, hud_bitmapreticule.cpp, zui_2d.cpp's command pieces):
+  - a side test written `if (b) { if (!A()) continue; } else if (!B()) continue;` gives the target's
+    `bnez v0,ok; b skip`; the goto form inverts it;
+  - a parser returning its new record or its base parser's result through one local
+    (`cmd = Base::Parse(rdr); return cmd;`) matches; returning each directly is 4 bytes short;
+  - a derived GetZAnimCmdType takes its base's count as `Base::GetZAnimCmdType(0) + n` (the null
+    name folds the inlined base chain to its count); its fallthrough `Base::GetZAnimCmdType(name)`
+    inlines the whole chain;
+  - tools/perm.py compiles its copy as cand.cpp: an unnamed-namespace function is
+    `...__18@unnamed@cand_cpp@...` with `--target`, and its `-I` paths must be absolute;
+  - SOCOM II's BitmapReticule texture tables hold 11 entries (SOCOM 1's 10); hud_bitmapreticule.cpp
+    ends with hudStartDefuseTimer at 0x21932F as in SOCOM 1 (~BitmapReticule now matches from the unit,
+    no longer a draft-only false regression); the unwritten unit between hud_mpinfobox and
+    hud_mpweaponsel spans ~0x239770-0x23B98F (its global a 0x40-byte object storing 0xDEADBEEF at 0x34).
 - **Tells from the online lobby, round 8** (zNetMediusFile.cpp complete, the ladder list, the friend invitations):
   - MW never inlines `std::make_pair` here, by reference or by value; `std::pair<K, V>(key, v)`
     inlines and reproduces the target's two string copies;
@@ -2681,7 +2742,7 @@ every hand-written unit (`--files '^(?!auto/)'`) before it is committed. A workt
 `extracted/` and `decomp/toolchains/` linked in from the main tree.
 
 `--files '^(?!auto/)'` leaves out the drafts, so a hand-written inline copy that only its draft
-matches reports as a regression there (0x32C5F0, ~CRdrArchiveList's copy, 0x219090, ~BitmapReticule's, and 0x510080, OVL2's
+matches reports as a regression there (0x32C5F0, ~CRdrArchiveList's copy, and 0x510080, OVL2's
 __list_imp destructor that seal_aistate.cpp's missing copy now reports "elsewhere" -- 0x29FF60 and
 0x2D02B0 match from hand source since the MSL headers' completion): rerun with that draft's file
 included before believing one.
@@ -2812,12 +2873,12 @@ flag set, every function it defines scored; the probes are `build/scratch/gcc/p*
 
 | range | library | toolchain, flags | evidence |
 |---|---|---|---|
-| MAIN 0x18DB90-0x191410, 0x1A13D0-0x1AD088, 0x1B3970-0x1C4CC0, 0x1CCD78-0x1CE2A4 | Sony's SDK 2.7: libcdvd, libdma, libgraph, libipu, libkernl, libmc, libmpeg, libmrpc, libpad2, libscf, libvu0 ... | `ee-gcc2.9-991111` `-O2 -G0` | `memclr` is byte-exact only under 2.9-ee-991111 (its -01, a and dtls rebuilds compile it the same): 990721 lacks the short loop's nops (8s), every 2.95.x fills the delay slot (2), 2.96 misses by 4, 3.2 by 7; `sceDmaGetChan` is 12s under 2.96, `sceCdSearchFile` 6s |
+| MAIN 0x18DB90-0x191410, 0x1A13D0-0x1AD088, 0x1B3970-0x1C4CC0, 0x1CCD78-0x1CE2A4 | Sony's SDK 2.7: libcdvd, libdma, libgraph, libipu, libkernl, libmc, libmpeg, libmrpc, libpad2, libscf, libvu0 ... | `ee-gcc2.9-991111-01-dtls13010` `-O2 -G0` (991111 compiles their C the same) | libvu0's inline asm: 32 of 32 only under the dtls13010 build, whose GNU as fills the delay slots 991111's leaves empty and encodes vsqrt as 2.96's does not (below); `memclr` is byte-exact only under 2.9-ee-991111 and its -01, a and dtls rebuilds: 990721 lacks the short loop's nops (8s), every 2.95.x fills the delay slot (2), 2.96 misses by 4, 3.2 by 7; `sceDmaGetChan` is 12s under 2.96, `sceCdSearchFile` 6s |
 | MAIN 0x191410-0x1A13D0, 0x1AD088-0x1B3970 | newlib's libc, libgcc's fp-bit, libm: the toolchain's own runtime | `ee-gcc2.96` `-O2 -G0` | `atof`, `atol`: a sibling call under a frame it no longer needs (`sd ra; ...; ld ra; j strtol`) -- 2.96's; no 2.9x or 2.95.x makes a sibling call at all (6s, 5s) |
 | OVL1 0x1E7F58-0x1E8FD4 | the microphone input (`openmic`, `getsamples`, `Sid*`, over lgAud) and Sony's libezcnf/libezctl (1.0 beta) | `ee-gcc2.96` `-O2 -G0 -fno-strict-aliasing` | found 2026-11-02, the only run outside the first ranges that saves s-registers with `sd` and never `sq`; `closemic`, `SidClose` byte-exact under 2.96 only (every other toolchain 9-13 words off); `SidGetSamples` reloads its read position after storing through `out` -- byte-exact only without strict aliasing |
 | OVL1 0x2430F0-0x248350 | the recogniser's heap (`heap_*`), lgAud (the USB headset, liblgaud 1.08.002), SCEA's libnetb/inet | `ee-gcc2.96` `-O2 -G0` | `lgAudASync`, `sceBInetControl`, func_00246CE0: 2.96 only (2.9-991111 15s/10s/6s, 2.95.3-136 15s/6/6s, 3.2 11s/9s/=) |
 | OVL1 0x248350-0x256FD0 | Nellymoser's speech codec (SaseEncVad, SaseDec) | `ee-gcc2.96` **`-O2 -G8`** | five functions byte-exact only so: their scalars and float literals are `$gp`-relative (small data in MAIN's 0x1D5300-0x1D55C0, `.lit4`); at -G0 every one misses |
-| OVL2 0x4C5400-0x50DC50 | ScanSoft's speech recogniser (asrspi\*, casr\*, mtx\*) | `ee-gcc2.96` `-O2 -G0 -fno-strict-aliasing` | `casrStoreSegmentation` keeps its `short` store above the load of the next node: byte-exact only without strict aliasing, and none of the library's drafts is lost by the flag; the sibling calls -- func_004CCC50, ConstructMel, func_004F7038 -- 2.96 only (every 2.9x and 2.95.x 5s-15s); its leaf functions do not tell 2.9x, 2.95.x and 2.96 apart. `mtxConstruct` makes no sibling call because 2.96 declines one where the return types differ |
+| OVL2 0x4C5400-0x50DC50 | ScanSoft's speech recogniser (asrspi\*, casr\*, mtx\*) | `ee-gcc2.96` `-O2 -G0 -fno-strict-aliasing -funroll-loops` | the loop unrolling: ContextActivateParams (below, round 2b); `casrStoreSegmentation` keeps its `short` store above the load of the next node: byte-exact only without strict aliasing, and none of the library's drafts is lost by the flag; the sibling calls -- func_004CCC50, ConstructMel, func_004F7038 -- 2.96 only (every 2.9x and 2.95.x 5s-15s); its leaf functions do not tell 2.9x, 2.95.x and 2.96 apart. `mtxConstruct` makes no sibling call because 2.96 declines one where the return types differ |
 | OVL2 0x60FB50-0x64F720 | Medius, DME and the rt_\* libraries (SCEA) | `ee-gcc2.96` `-O2 -G0` | rt_comm_get_channel, rt_memory_register_callbacks, rt_msg_client_change_state, rt_msg_set_byte: all four only under 2.96 -O2 (2.9x 5/=/9s/6, 2.95.x 4/=/10s/5, 3.2 =/5/3/=); strict aliasing stays on -- two sibling drafts of one shape (0x61E7F0, 0x61E858) match only with it: thin, one shape |
 
 -O1 misses wherever it was tried and -O3 compiles these as -O2 does; everything is C (no mangled
@@ -2873,17 +2934,114 @@ own messages; libezcnf is 2.96 too: 991111 30s/24s, 2.95.3-136 30s/22s, 3.2 26s/
 `asr/extaudio.c` (2), `asr/ctxutil.c` (3), `medius/rt_msg.c` (all 8 byte accessors). Each unit's
 directive carries its library's toolchain and flags; a draft it supersedes is deleted, as for MW.
 
+**Which library objects were assembly -- the demo says.** The demo's symbol table keeps every
+input object's `.text` SECTION symbol, and GCC marks each object it compiled with a local
+`gcc2_compiled.` (and `__gnu_compiled_c`) at that same address: an SDK or newlib object without
+the marker was assembled (`./scd.py s1 --units LO HI` lists them, statics marked; `--callers NAME` finds a demo function's callers; `tools/ccsweep.py UNIT --unit` scores a unit under its own directive, one function a line -- the three the 2b lane asked for). In MAIN's libraries
+there are exactly three kinds: libkernl's syscall-stub object (138 stubs), libkernl's TLB/debug
+exception handlers (one object, three functions), and newlib's 13 EE string routines (memchr,
+memcmp, memcpy, memmove, memset, strcat, strchr, strcmp, strcpy, strlen, strncat, strncmp,
+strncpy, one object each). **Everything else is C** -- libvu0 too: its object carries the marker,
+so its functions are inline `asm` in C, as Sony shipped libvu0.c, not assembly. Of MAIN's 288 open
+rows holding a syscall/sync/COP0/COP2/MMI/lq/sq instruction, 154 are those assembler objects; the
+rest are C with inline asm or C whose 128-bit moves GCC made itself (qsort, __kernel_rem_pio2).
+The same boundaries give each C unit's grouping: a `src/lib` unit is one demo object, its
+functions in the demo's order.
+
+**The assembler path** (2026-11-02): `sccheck` and `scdiff` take `src/**/*.s`. An assembler unit
+names its toolchain on one of its first three lines (`# sc: compiler=ee-gcc2.9-991111`), and is
+built by that toolchain's driver, which hands a `.s` straight to its own GNU as (`as -G0 -EL -O2
+-mabi=eabi`: 2.9-ee-991111b under 991111, 2.10-ee-001003-1 under 2.96, 2.9-ee-991111 under the
+dtls13010 build); its object (`<name>.s.o`) is scored like any unit's, each `.type x,@function`
+symbol against its row, every relocation resolved. Metrowerks has no such path (a `.s` without an
+ee-gcc toolchain is a build failure). `tools/asmunit.py` writes one from the image: canonical
+instructions (`objdump -M no-aliases`, numeric registers) under `noreorder`/`noat`/`nomacro`,
+branches to labels, j/jal to map names, each lui and its %lo uses as %hi/%lo of the symbol there,
+the object's own zeroed data as local `.bss` labels; then it assembles the unit and scores it
+until every function matches (an instruction the assembler spells differently becomes a `.word`
+-- none has needed to). scdiff resolves a GNU object's `.bss+N` reference by the local label at N
+when the data map names it (zeroed data has no content to compare). Proved on 2026-11-02: every MW
+hand-written unit gives the same 6,335 rows with master's (97eb839) tools and these, every GCC unit (src/lib
+and the GCC drafts: 1,031 rows) the same rows but one, which the `.bss` resolution now checks (rt_time_get_time_string_ptr's `szTime.0`: unchecked before, ok now). The assembler objects: `sdk/syscall.s` (138 of 138,
+byte-identical to the demo's slot for slot -- eight slots named from it, `s1:slot`),
+`sdk/tlbhandler.s` (_kTLBException, _kExitTLBHandler, _kDebugException: the map's one 0x360 row
+split at the demo's offsets; its save area and saved hi/lo/sa/epc words named from the demo's
+locals, all 27 relocations ok), `libc/*.s` (the 13 string routines, under 2.96's as; five differ
+from the demo's own copies only in one short loop's tail -- `sb; addiu; bne; nop` here, `sb; nop;
+bne; addiu` there: one source, two assemblies).
+
+**Sony's SDK: ee-gcc 2.9-ee-991111-01, the dtls13010 build.** libvu0 tells the 991111 builds
+apart, which no C probe did: inline asm leaves delay-slot filling to GNU as (reorder mode), and
+991111's as (2.9-ee-991111b) leaves the return's slot empty after an `sq` (sceVu0CopyVector) and a
+loop branch's after an `addi` (sceVu0MulMatrix) -- 9 of 32 functions 3s-5s -- where the target has
+them filled; 2.96's as (2.10) fills them but encodes `vsqrt Q,vf5x` with its fsf field set
+(0x4A2503BD, the target 0x4A0503BD: 2 functions 1 word); 3.2 misses the three Clip functions;
+`ee-gcc2.9-991111-01-dtls13010` (its as reports 2.9-ee-991111) gives all 32. libdma, libkernl's
+deci2/intr/cache objects compile the same under 991111 and dtls13010, so the new SDK units name
+dtls13010. And 2.9-991111 does make sibling calls: libkernl's iSyncDCache (`j _sceSDC`, the mask
+in the slot) and SyncDCache (`j EIntr` under a torn-down frame) compile so under both builds (2.96
+misses); what is 2.96's alone is atof's kind, the sibling call under a frame it keeps.
+
+**Round 2a** (2026-11-02, by hand, under the toolchains above): libvu0's 32 leaf functions
+(`sdk/libvu0.c`; RotMatrix, CopyVectorXYZ, LightColorMatrix stand as drafts, Camera/
+NormalLight/ViewScreen/DropShadow, C around calls, open); libkernl's `deci2.c` (10), `intr.c`
+(9), `cache.c` (6), `dintr.c` (EIntr; DIntr OPEN: the target reloads the EIE mask inside its
+loop); `sdk/libscf.c` (5 of 10, the T10K/OSD getters; five OPEN on a v0/v1 choice and a movz);
+newlib's libm objects `libm/s_copysign.c`, `s_isinf.c`, `s_isnan.c`, `sf_copysign.c`,
+`sf_fabs.c` (2.96 only; every 2.9x and 2.95.x 10-15 words off; `s_fabs.c` OPEN: the target leaves
+its return's slot empty after the copy into v0). With the assembler units: 222 byte-exact of the 229
+functions written (154 of them assembler), four superseding drafts that matched (GetRomName, IsT10K, iSyncDCache, iInvalidDCache: `automatch.py --emit` drops them).
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
-FUNCTION` tries every order of a marked block). libkernl's syscall stubs (`li v1,N;
-syscall`, about a hundred 16-byte rows in MAIN) and the VU0 macros (`sceVu0CopyVector` ...) were
-written in assembly -- 275 of MAIN's 1,062 GCC rows up to 0x400 bytes hold a syscall, sync,
-COP0, COP2, MMI or `lq`/`sq` instruction, which is MAIN's 282 m2c refusals: they want an assembler unit built by the toolchain's own `ee-as`, which
-sccheck has no path for yet. Still open: the strict-aliasing setting of the SDK, newlib, OVL1's
-heap/lgAud/libnetb and the codec (no function yet tells), the 991111 rebuilds (-01, a,
-dtls13010: every probe compiles the same under each), and the generated tier's GCC near misses,
-not yet classified as amsurvey classified MW's.
+FUNCTION` tries every order of a marked block). The rest of libkernl's C objects (the thread,
+TLB-setup, initsys/ExecPS2 and alarm objects, their static `Copy`/`setup`/`GetEntryAddress`
+syscall wrappers the map leaves as `s1~` placeholders), libgraph, libipu/libmpeg, libmc, the
+newlib stdio wrappers and libgcc's fp-bit are open. Still open: the strict-aliasing setting of the
+SDK, newlib, OVL1's heap/lgAud/libnetb and the codec (no function yet tells), the 991111 rebuilds
+-01 and a (no probe separates them from 991111), and the generated tier's GCC near misses, not yet
+classified as amsurvey classified MW's.
+
+### The recogniser and Medius by hand (round 2b)
+
+**SOCOM 1's demo lists every GCC object.** Its symtab keeps GCC's `gcc2_compiled.` marker at
+the start of each object file, and the objects' static functions as LOCAL symbols: a library's
+units -- their spans, order and the names of their statics -- read straight off it (62 objects
+in the recogniser, 0x336EF0-0x378890; 112 across Medius/DME/RT). SOCOM II keeps the order
+within an object (GCC emits in source order), so a placeholder at the same position, with a
+body that does what SOCOM 1's does, takes the name (`s1:order`). SOCOM 1's Medius objects
+interleave with MW code, so a whole-range alignment wanders there; pair object by object.
+
+- **ScanSoft built the recogniser with `-funroll-loops` too**: ContextActivateParams' 18-step
+  loop is unrolled by 3 (2.96 picks 3 when 4 does not divide a constant count) -- 81s without the
+  flag, byte-exact with it; all 165 recogniser drafts keep matching with it (ccflags) and every
+  `src/lib/asr` unit carries it. SOCOM 1's copy is unrolled the same way.
+- **What a call returns moves registers around it.** The host's notify callback returns
+  nothing: declared `int`, the call sets v0 and the constant stored before it moves from v1 to
+  v0. `_tosErrorLog` returns its code as an `unsigned char`, so every `return _tosErrorLog(...)`
+  is a jal, not a sibling call (2.96 declines one when the modes differ; `unsigned int` against
+  `int` does not stop it, `long` adds a `move v0,v0`).
+- **The RT library is built per file**: rt_time is byte-exact only with
+  `-fno-optimize-sibling-calls` (rt_time_get_base_diff's return of a call is a jal, even through
+  a variable). The flag loses 42 of 112 drafts in 0x62C000-0x645000 and 31 of 104 in DME, but
+  1 of 232 in the Medius client: a unit's directive says it, not the library's.
+- **Shapes 2.96 decides**: a guard clause puts the return value in the branch's delay slot
+  (the callbacks); a struct passed by value goes through the stack (`ldl`/`ldr` pairs: the 8-byte
+  word selection and safe handles, the 24-byte NetAddress EABI passes by reference); `strcpy` of
+  a literal is a block move; the vendor writes `c->params->x` where a local would hoist loads
+  (ContextGetAction, ContextSetParam), and `list[n]` where strength reduction makes the pointer.
+- **Open, diagnosed in place**: asrspi_cbResult (two identical null-result blocks the target
+  keeps and 2.96 merges), casrGetLastError/Warning (2.96's if-conversion of SOCOM 1's plain
+  magic-number guard into `li 11; movz` -- no shape tried reproduces it), casrImportContext, the
+  error translator at 0x4C6078; round 1's casrDoSecondPass and cbGenderDisable.
+
+Hand-written this round: `asr/asrspi_cb.c` (6 of 7), `asr/context.c` (8 of 9), `asr/gsapi.c`
+(8), `asr/cb.c` (+3), `asr/tos.c` (2), `medius/rt_msg.c` (+12: the unsigned accessors and eight
+network-order twins SOCOM 1 did not have), `medius/rt_time.c` (6), `medius/mediusutil.c` (2),
+`medius/mediusapi.c` (4) -- 51 functions, 47 of them new to the map's byte-exact rows (four
+supersede matching drafts: asrspi_cbAgc, ContextSetCtxData, rt_msg_get_u2byte,
+iCreateAndAllocateMessageID).
 
 ## Open, and next
 

@@ -1,0 +1,39 @@
+/* sc: compiler=ee-gcc2.9-991111-01-dtls13010; flags=-O2 -G0 */
+/* libkernl's interrupt mask (MAIN 0x1AC860-0x1AC8C0): Sony's SDK 2.7, the demo's object 0x164160
+ * (C), DIntr then EIntr. DIntr clears Status.EIE and loops until the write has taken (di is not
+ * guaranteed to before an interrupt is taken: the R5900's errata loop, its head aligned by GCC);
+ * both return whether interrupts were enabled. Names are SOCOM 1's (s1:exact). */
+
+/* OPEN: 14s here (and under every 2.9x build). The target reloads the 0x10000 mask inside the
+ * loop (`mfc0 v0; lui v1,1; and v0,v0,v1; bnez v0`) and returns through one register on both
+ * paths (`beqz v1,out; sltu a0,zero,v1` ... `out: move a0,zero; jr ra; move v0,a0`), where GCC
+ * hoists the mask out of this loop and returns early: the mask is not a loop invariant GCC could
+ * see -- the original's test must sit inside the asm (or behind a volatile), with the loop head
+ * aligned by an `.p2align 3` (the nop before `di`). ps2sdk's spelling (the mask in C, an
+ * asm(".p2align 3")) gives 16s, a single exit 14s. */
+int DIntr(void)
+{
+	int eie, res;
+
+	asm volatile ("mfc0 %0, $12" : "=r" (eie));
+	eie &= 0x10000;
+	res = eie != 0;
+	if (!eie)
+		return 0;
+	do {
+		asm volatile ("di");
+		asm volatile ("sync.p");
+		asm volatile ("mfc0 %0, $12" : "=r" (eie));
+	} while (eie & 0x10000);
+	return res;
+}
+
+int EIntr(void)
+{
+	int eie;
+
+	asm volatile ("mfc0 %0, $12" : "=r" (eie));
+	eie &= 0x10000;
+	asm volatile ("ei");
+	return eie != 0;
+}

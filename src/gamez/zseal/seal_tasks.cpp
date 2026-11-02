@@ -12,6 +12,42 @@
 #include "../zanim/zanim.h"
 #include "../zsys/zsys.h"
 
+namespace ai {
+/* a parameter's test, as ai::PARAM's tick makes it: not equal, equal, greater, less, at least, at most
+ * -- 0 and anything past 6 true (the names ours: SOCOM 1's DWARF has no such enum) */
+enum TEST_OP {
+    TEST_NONE = 0, TEST_NE = 1, TEST_EQ = 2, TEST_GT = 3, TEST_LT = 4, TEST_GE = 5, TEST_LE = 6,
+    TEST_LAST = 255
+};
+
+/* a value tested against another (SOCOM 1's MW 2.4 inlined it into CTParam::Tick, a 7-way table
+ * each time; MW 3.0 inlines no template, so SOCOM II calls the int and float instances, OVL2
+ * 0x5DECB0 and 0x5DED70, from 0x5D4770 -- the unit's template tail; the name ours) */
+template <class T>
+bool test(const T &a, TEST_OP op, const T &b)
+{
+    switch (op) {
+    case TEST_NE:
+        return a != b;
+    case TEST_EQ:
+        return a == b;
+    case TEST_GT:
+        return a > b;
+    case TEST_LT:
+        return a < b;
+    case TEST_GE:
+        return a >= b;
+    case TEST_LE:
+        return a <= b;
+    }
+    return true;
+}
+}
+
+/* the two instances, explicit until their caller (0x5D4770, ai::PARAM's tick) is written */
+template bool ai::test<int>(const int &, ai::TEST_OP, const int &);
+template bool ai::test<float>(const float &, ai::TEST_OP, const float &);
+
 /* the reader's queries (zrdr.h's, which declares a _zrdr of its own: zanim.h's here) */
 _zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
 bool zrdr_findRfloat(const _zrdr *rdr, const char *tag, Rfloat *out);
