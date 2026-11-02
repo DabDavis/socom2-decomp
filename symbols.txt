@@ -3845,7 +3845,7 @@
 0x002AA910 0x1F0 _OnMissionComplete__Fv  # OVL1; s1:calls by hand (the states lane: FadeToEndMissionTick, byte-exact, calls it with no arguments exactly where SOCOM 1's calls _OnMissionComplete__Fv, between clearing m_DelayEndMission and the screen clear; its body opens differently -- the common anim set fetched first -- so the name is the call site's)
 0x002AAB00 0x20 tick__8CMissionFfPv  # OVL1; s1:align
 0x002AAB20 0x734 func_002AAB20  # OVL1
-0x002AB260 0xFC func_002AB260  # OVL1
+0x002AB260 0xFC GetPoint__8CCamPathFiiP6CPnt3DP6CPnt3DPPCc  # OVL1; by hand (the states lane, round 16; the names ours): a camera path's point `step` on from an index, wrapping both ways (an unsigned modulo forward), its position, direction and name read out through at() -- the path is the vector at 0x437DF0 (0x98-byte points), stepped by 0x295260 with +1, 0 and -1; fts_mission.cpp
 0x002AB360 0x84 func_002AB360  # OVL1
 0x002AB3F0 0x604 func_002AB3F0  # OVL1
 0x002ABA00 0x60 swap<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>>__3stdFRQ23std82__vector_deleter<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>>RQ23std82__vector_deleter<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>>  # OVL1; s1:align
@@ -3901,7 +3901,7 @@
 0x002AFA10 0x18C CreateCustomCharTypes__25@unnamed@fts_mission_cpp@FP11CVehicleRdrP5_zrdr  # OVL1; s1:align
 0x002AFBA0 0xC func_002AFBA0  # OVL1
 0x002AFBB0 0x8 func_002AFBB0  # OVL1
-0x002AFBC0 0x78 func_002AFBC0  # OVL1
+0x002AFBC0 0x78 at__Q23std66__vector_imp<13SCamPathPoint,Q23std26allocator<13SCamPathPoint>,0>FUi  # OVL1; by hand (the states lane, round 16; the element's name ours): include/vector's at() for the camera path's 0x98-byte points ("vector::at index out of range"), out of line in fts_mission.cpp's tail for GetPoint (0x2AB260)
 0x002AFC40 0x18 _max<Uc>__2aiFRCUcRCUc_RCUc  # OVL1; by its body (ai::_max over unsigned char: lbu, lbu, slt, movn -- MW 3.0's mangling with the return type), the template tail before _min<f>'s OVL1 copy; no OVL2 copy named -- the states lane
 0x002AFC60 0x2C func_002AFC60  # OVL1; s1:align; OVL1's copy of ai::_min<float> (byte-identical to OVL2's 0x575C80, which carries the name; the states lane); ovl-copy: _min<f>__2aiFRCfRCf_RCf
 0x002AFC90 0x444 insert__Q23std80__vector_imp<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>,0>FP20SObjectiveCam_AnchorUiRC20SObjectiveCam_Anchor  # OVL1; s1:align
