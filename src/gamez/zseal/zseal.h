@@ -678,6 +678,10 @@ public:
      * SetStanceDelayed; OVL2 0x563100); the same when the SEAL stands, or was asked to stand, in a
      * given stance (OVL2 0x563050, new in SOCOM II; the name ours) */
     bool SetStanceDelayed(SEAL_STANCE stance, float delay);
+    /* the throttles let go: each set to zero through SetThrottle and, unless kept, zeroed where they
+     * are stored (OVL2 0x567840, new in SOCOM II: CSealCtrlAi::OnCommand and CAiSSuspended::OnSignal
+     * call it; the name ours) */
+    void StopThrottles(bool keep);
     /* whether the SEAL is in a stance: the AI's own, or the one its body's state stands for (OVL2
      * 0x562FC0, new in SOCOM II: CAiSFollow::OnSignal asks it; the name ours) */
     bool InStance(SEAL_STANCE stance, bool fromState);

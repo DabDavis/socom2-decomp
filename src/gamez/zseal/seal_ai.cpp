@@ -563,6 +563,21 @@ bool CSealCtrlAi::InStance(SEAL_STANCE stance, bool fromState)
     return r;
 }
 
+/* (OVL2 0x567840) */
+void CSealCtrlAi::StopThrottles(bool keep)
+{
+    SetThrottle(1, 0.0f);
+    SetThrottle(2, 0.0f);
+    SetThrottle(0, 0.0f);
+    SetThrottle(3, 0.0f);
+    if (!keep) {
+        m_throttle[1] = 0.0f;
+        m_throttle[2] = 0.0f;
+        m_throttle[0] = 0.0f;
+        m_throttle[3] = 0.0f;
+    }
+}
+
 /* (OVL2 0x563100) */
 bool CSealCtrlAi::SetStanceDelayed(SEAL_STANCE stance, float delay)
 {

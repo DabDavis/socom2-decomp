@@ -10236,7 +10236,7 @@
 0x00567340 0x10 func_00567340  # OVL2; s1~ SetThrottle__11CEntityCtrlFUif (one of 2 out-of-line copies of an inline, by s1:vtable); ovl-copy: SetThrottle__11CEntityCtrlFUif (OVL2's copy of the inline; slot 0x20 of the OVL2 controllers' tables)
 0x00567350 0x33C CreepTick__11CSealCtrlAiFf  # OVL2; slot 0x88 of __vt__11CSealCtrlAi (CSealCtrl's CreepTick slot, 0x566DC0 in the base)
 0x00567690 0x1AC func_00567690  # OVL2
-0x00567840 0xA4 func_00567840  # OVL2
+0x00567840 0xA4 StopThrottles__11CSealCtrlAiFb  # OVL2; ours (new in SOCOM II): CSealCtrlAi::OnCommand and CAiSSuspended::OnSignal call it; SetThrottle (slot 0x20) with 0 for axes 1, 2, 0, 3, then unless the flag is set the four throttles at 8-0x14 zeroed in the same order -- the SEAL lane, round 9
 0x005678F0 0x10 SetThrottle__11CSealCtrlAiFUif  # OVL2; slot 0x20 of __vt__11CSealCtrlAi (CEntityCtrl's SetThrottle slot); a float array at 0x254 indexed
 0x00567900 0x1C24 func_00567900  # OVL2
 0x00569530 0x14 func_00569530  # OVL2
