@@ -146,15 +146,17 @@ CTeamNames::CTeamNames()
     memset(m_ally, 0, sizeof(m_ally));
 }
 
-/* two strings of the unit's own (OVL1 bss 0x40D7A0 and 0x40D850; no rows yet: SOCOM 1's Clear
- * empties two globals the same way) */
-extern C2DString data_0040D7A0;
-extern C2DString data_0040D850;
-/* the dividers (SOCOM 1's g_lnDivider; SOCOM II has two) */
-extern C2DBitmap data_0040D900;
-extern C2DBitmap data_0040D990;
-/* the dividers' line (the unit's initialiser computes it) */
-extern float data_003E4F60;
+/* the unit's statics, built and registered by its initialiser (0x3FE700) in this order: the two
+ * brackets (SOCOM 1's g_strAlphaBracket and g_strBravoBracket, the anonymous namespace's), the
+ * dividers (SOCOM 1's g_lnDivider; SOCOM II has two), and the dividers' line below the HUD's
+ * bottom block (ours) */
+namespace {
+C2DString g_strAlphaBracket;
+C2DString g_strBravoBracket;
+C2DBitmap g_lnDivider;
+C2DBitmap g_lnDivider2;
+float s_fDividerY = 3.0f + (15.0f + (17.0f + data_003E2FF8));
+}
 
 /* SetOpacity's local static (SOCOM 1's c_fBracketTrans) and its guard, held to their addresses
  * (scdiff leaves a true function-local static unchecked). A `static float c_fBracketTrans =
@@ -173,15 +175,15 @@ void CTeamNames::SetOpacity(float fOpacity)
     }
     m_bitmap1.SetTrans(fOpacity * data_003E3000);
     m_bitmap2.SetTrans(fOpacity * data_003E3000);
-    data_0040D900.SetTrans(fOpacity * data_003E3000);
-    data_0040D990.SetTrans(fOpacity * data_003E3000);
+    g_lnDivider.SetTrans(fOpacity * data_003E3000);
+    g_lnDivider2.SetTrans(fOpacity * data_003E3000);
     for (unsigned int i = 0; i < 4; i++) {
         m_teamname[i].SetTrans(fOpacity * CHUD::m_hud_textcolor.w);
         m_order[i].SetTrans(fOpacity * CHUD::m_hud_textcolor.w);
         m_healthbar[i].SetTrans(fOpacity * data_003E3000);
         m_bitmaps[i].SetTrans(128.0f * fOpacity);
     }
-    data_0040D850.m_color[3] = data_0040D7A0.m_color[3] = 0.3f * fOpacity * data_003E4F68;
+    g_strBravoBracket.m_color[3] = g_strAlphaBracket.m_color[3] = 0.3f * fOpacity * data_003E4F68;
 }
 
 
@@ -248,18 +250,18 @@ void CTeamNames::Init()
     m_increment = 500.0f;
     zdb::CTexHandle *tex = zdb::CAssetMgr::m_assets.GetTexHandle(data_003E3048);
 
-    m_bitmap1.Load(435.0f, data_003E2FF8, zVid.renderWidth, data_003E4F60 - 2.0f, tex);
-    m_bitmap2.Load(435.0f, 6.0f + data_003E4F60, zVid.renderWidth, data_003E2FE8, tex);
+    m_bitmap1.Load(435.0f, data_003E2FF8, zVid.renderWidth, s_fDividerY - 2.0f, tex);
+    m_bitmap2.Load(435.0f, 6.0f + s_fDividerY, zVid.renderWidth, data_003E2FE8, tex);
     m_bitmap1.SetUV(1.0f, 0.0f, 0.0f, 0.5f);
     m_bitmap2.SetUV(1.0f, 0.5f, 0.0f, 1.0f);
     push_back(&m_bitmap1);
     push_back(&m_bitmap2);
-    data_0040D900.Load(435.0f, data_003E4F60 - 2.0f, zVid.renderWidth, data_003E4F60, tex);
-    data_0040D900.SetUV(0.8f, 0.0f, 0.0f, 0.01f);
-    data_0040D990.Load(435.0f, 4.0f + data_003E4F60, zVid.renderWidth, 6.0f + data_003E4F60, tex);
-    data_0040D990.SetUV(0.8f, 0.0f, 0.0f, 0.01f);
-    push_back(&data_0040D900);
-    push_back(&data_0040D990);
+    g_lnDivider.Load(435.0f, s_fDividerY - 2.0f, zVid.renderWidth, s_fDividerY, tex);
+    g_lnDivider.SetUV(0.8f, 0.0f, 0.0f, 0.01f);
+    g_lnDivider2.Load(435.0f, 4.0f + s_fDividerY, zVid.renderWidth, 6.0f + s_fDividerY, tex);
+    g_lnDivider2.SetUV(0.8f, 0.0f, 0.0f, 0.01f);
+    push_back(&g_lnDivider);
+    push_back(&g_lnDivider2);
     for (int i = 0; i < 4; i++) {
         float top = RowY(i) - 13.0f;
         float bottom = 14.0f + top;
@@ -284,16 +286,16 @@ void CTeamNames::Init()
     }
     float base = 15.0f + data_003E2FF8;
 
-    data_0040D7A0.Load(1.2f, "[", m_myfont, 435.0f, 10.0f + RowY(base, 0), true);
-    data_0040D850.Load(1.2f, "[", m_myfont, 435.0f, 10.0f + RowY(base, 2), true);
-    data_0040D7A0.m_color[0] = CHUD::m_hud_textcolor.x;
-    data_0040D7A0.m_color[1] = CHUD::m_hud_textcolor.y;
-    data_0040D7A0.m_color[2] = CHUD::m_hud_textcolor.z;
-    data_0040D7A0.m_color[3] = CHUD::m_hud_textcolor.w;
-    data_0040D850.m_color[0] = CHUD::m_hud_textcolor.x;
-    data_0040D850.m_color[1] = CHUD::m_hud_textcolor.y;
-    data_0040D850.m_color[2] = CHUD::m_hud_textcolor.z;
-    data_0040D850.m_color[3] = CHUD::m_hud_textcolor.w;
+    g_strAlphaBracket.Load(1.2f, "[", m_myfont, 435.0f, 10.0f + RowY(base, 0), true);
+    g_strBravoBracket.Load(1.2f, "[", m_myfont, 435.0f, 10.0f + RowY(base, 2), true);
+    g_strAlphaBracket.m_color[0] = CHUD::m_hud_textcolor.x;
+    g_strAlphaBracket.m_color[1] = CHUD::m_hud_textcolor.y;
+    g_strAlphaBracket.m_color[2] = CHUD::m_hud_textcolor.z;
+    g_strAlphaBracket.m_color[3] = CHUD::m_hud_textcolor.w;
+    g_strBravoBracket.m_color[0] = CHUD::m_hud_textcolor.x;
+    g_strBravoBracket.m_color[1] = CHUD::m_hud_textcolor.y;
+    g_strBravoBracket.m_color[2] = CHUD::m_hud_textcolor.z;
+    g_strBravoBracket.m_color[3] = CHUD::m_hud_textcolor.w;
 }
 
 /* every name and order wiped, the two shared strings emptied, the children let go */
@@ -303,8 +305,8 @@ void CTeamNames::Clear()
         m_teamname[index].ClearAndWipe();
         m_order[index].ClearAndWipe();
     }
-    data_0040D7A0.SetString(0, true);
-    data_0040D850.SetString(0, true);
+    g_strAlphaBracket.SetString(0, true);
+    g_strBravoBracket.SetString(0, true);
     clear();
 }
 

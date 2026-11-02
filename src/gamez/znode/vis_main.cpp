@@ -10,6 +10,20 @@
 #include "../zar/zar.h"
 #include "../zsys/zsys_public.h"
 
+namespace zdb {
+
+/* a decal on a visual: what its view's list walk reads (vis_decal.cpp's class; SOCOM 1's, no DWARF
+ * -- the names ours) */
+class CDecal {
+public:
+    CDecal *m_next;   // 0x0
+    CVisual *m_visual;   // 0x4
+    unsigned char _8[0xc - 0x8];
+    unsigned short m_view;   // 0xc
+};
+
+}
+
 using namespace zdb;
 
 /* MSL's __vector_pod<unsigned int>::init(n, value): n copies of the value in a new block -- the
@@ -266,4 +280,28 @@ bool CVisual::Read(zar::CZAR &zar)
         }
     }
     return true;
+}
+
+/* a decal unlinked from its view's list, its link cleared (SOCOM 1's; the image keeps it with the
+ * other decal members at 0x3B37A0, ahead of the VU code -- which unit that stretch is, is not
+ * settled, so it is written here with CVisual's) */
+void CVisual::RemoveDecal(CDecal *decal)
+{
+    CDecal *d = (CDecal *)m_24[decal->m_view];
+    CDecal *prev = 0;
+
+    while (d) {
+        if (d == decal) {
+            CDecal *next = d->m_next;
+
+            if (prev)
+                prev->m_next = next;
+            else
+                m_24[decal->m_view] = next;
+            d->m_next = 0;
+            break;
+        }
+        prev = d;
+        d = d->m_next;
+    }
 }

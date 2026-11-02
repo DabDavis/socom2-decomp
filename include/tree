@@ -29,13 +29,40 @@
  *     node_alloc() and allocator::deallocate() out of line, the middle one only the two accessors
  *     -- the accessors are the tree's own (this, this + 4), one level deeper than SOCOM 1's, whose
  *     destroy calls the pairs' first() on this + 4 itself.
+ * The string-keyed trees (the MSL headers round 5), every one byte-exact as a probe through
+ * include/string's out-of-line compare (build/p/ in the MSL lane's worktree):
+ *   - the Medius file API's std::map<std::string, CLobbyFileIO *> (0x450070): its whole tail, OVL1
+ *     0x305710-0x3065A0 -- erase_one (find inlined), find, insert_one, the constructor, insert_node_at,
+ *     erase(iterator), balance_erase (0x56C bytes) and increment (fio1.cpp);
+ *   - the material unit's std::map<std::string, int> (SOCOM 1's int_material.cpp type): find_or_insert
+ *     0x2DEC00, find 0x2DED30, insert_node_at 0x2DEE90, and the earlier unit's destroy 0x2CE280 with its
+ *     five out-of-line pieces (mat0.cpp, mat1.cpp);
+ *   - the IOP module table's map (0x3A2D60 find_or_insert, 0x3A2E80 find, 0x3A2F40 the constructor,
+ *     0x3A2F60 insert_node_at; iop2.cpp): KEYED BY std::string, not CSaferStr -- a CSaferStr key's
+ *     implicit copy constructor is one inline level more, which cuts insert_node_at's construct to
+ *     calls (placement new, the pair's copy) where the target inlines all of it, though the callers
+ *     index it with a CSaferStr local (its destructor passed 0); the value an 8-byte struct whose
+ *     constructor zeroes both words (find_or_insert stores the zeros straight into the pair, and the
+ *     pair's copy moves them with lw/sw) -- its name unknown, so the rows keep their placeholders.
+ * The shapes they settled:
+ *   - the tree iterator's copy constructor is user-declared: MW then passes erase's position by
+ *     address (0x305F80's a1) and inlines find whole into erase_one (implicit, find was cut to one
+ *     level: root(), comp() and value_compare called out of line);
+ *   - generation order in the tail follows the declaration REVERSED within a round: erase(iterator),
+ *     erase_one, find in that order make erase_one inline find but call erase (erase_one declared after
+ *     find left find a call; erase declared after erase_one inlined it);
+ *   - erase keeps the leftmost link's address through a reference local taken before its test (`node_base
+ *     *&lm = leftmost();`), the target's `addiu s2,s1,12` in the branch's delay slot;
+ *   - increment descends the right subtree in a local and stores the reference once (SOCOM 1's shape;
+ *     walking the reference itself stores it each step); balance_erase inlines it, erase(iterator)
+ *     calls it (declared before balance_erase); is_black() is `get_bit() == false` (sltu then bnez in a
+ *     branch, xor/sltiu into rebalance), the colour copies `if (!z->is_black())`, and the fix-up tests
+ *     w->left_ before w->right_ on both sides.
  * OPEN: the map's constructor passes a bare stack slot for its allocator (0x1FB3F0, 0x38E740,
  * 0x3A2BE0, the line map's initialiser 0x3FE190) where include/memory's out-of-line allocator()
- * (kept for the deque's 0x2CEE30) is called; the erase (OVL1's 0x306030, in the unit of
- * insert_node_at 0x305DE0, calls both rotations: balance_erase) is not written; the CSaferStr
- * trees (the rdr tables 0x3A2D60-0x3A2F60, OVL2's 0x58D2B0 with memcmp) compare through the
- * string's out-of-line compare (0x2DEE30) and inline its destructor; zrdr_file.cpp's packer uses
- * a map keyed by a pointer (find_or_insert 0x32D780, insert_node_at 0x32DAD0) whose types SOCOM 1
+ * (kept for the deque's 0x2CEE30) is called; OVL2's string-keyed map (0x58CEF0 has find_or_insert
+ * <string, int>'s words, 0x58D2B0 its insert_node_at's) is not identified; zrdr_file.cpp's packer
+ * uses a map keyed by a pointer (find_or_insert 0x32D780, insert_node_at 0x32DAD0) whose types SOCOM 1
  * does not name. */
 
 #ifndef _MSL_TREE
@@ -91,6 +118,7 @@ public:
         node_base *parent() const { return parent_; }
         void set_parent(node_base *p) { parent_ = p; }
         bool is_red() const { return parent_.get_bit() == true; }
+        bool is_black() const { return parent_.get_bit() == false; }
         void set_red() { parent_.set_bit(); }
         void set_black() { parent_.clear_bit(); }
 
@@ -98,10 +126,30 @@ public:
         __pointer_plus_bit parent_;
     };
 
+    static void increment(const node_base *&x);
     static void rotate_left(node_base *x, node_base *&root);
     static void rotate_right(node_base *x, node_base *&root);
     static void balance_insert(node_base *x, node_base *root);
+    static void balance_erase(node_base *z, node_base *root);
 };
+
+/* the next node in order (SOCOM 1's increment__Q23std19__red_black_tree<1>FRPCQ33std19__red_black_tree
+ * <1>9node_base; SOCOM II's OVL1 0x3065A0, which the iterators' ++ calls) */
+template <bool b>
+void __red_black_tree<b>::increment(const node_base *&x)
+{
+    if (x->right_ != 0) {
+        const node_base *y = x->right_;
+
+        while (y->left_ != 0)
+            y = y->left_;
+        x = y;
+    } else {
+        while (x != x->parent()->left_)
+            x = x->parent();
+        x = x->parent();
+    }
+}
 
 template <bool b>
 void __red_black_tree<b>::rotate_left(node_base *x, node_base *&root)
@@ -187,6 +235,124 @@ void __red_black_tree<b>::balance_insert(node_base *x, node_base *root)
     root->set_black();
 }
 
+/* a node unlinked and the tree rebalanced (OVL1 0x306030): z's successor y takes its place when z
+ * has two children; x, y's one child, may be null, so its side is tracked in x_is_left */
+template <bool b>
+void __red_black_tree<b>::balance_erase(node_base *z, node_base *root)
+{
+    node_base *y = z;
+
+    if (z->left_ != 0 && z->right_ != 0)
+        increment((const node_base *&)y);
+    node_base *x = y->left_ != 0 ? y->left_ : y->right_;
+    node_base *x_parent = y->parent();
+
+    if (x != 0)
+        x->set_parent(y->parent());
+    bool x_is_left;
+
+    if (y == y->parent()->left_) {
+        y->parent()->left_ = x;
+        x_is_left = true;
+    } else {
+        y->parent()->right_ = x;
+        x_is_left = false;
+    }
+    bool rebalance = y->is_black();
+
+    if (y != z) {
+        y->set_parent(z->parent());
+        if (z == y->parent()->left_)
+            y->parent()->left_ = y;
+        else
+            y->parent()->right_ = y;
+        y->left_ = z->left_;
+        if (y->left_ != 0)
+            y->left_->set_parent(y);
+        else
+            x_parent = y;
+        y->right_ = z->right_;
+        if (y->right_ != 0)
+            y->right_->set_parent(y);
+        else
+            x_parent = y;
+        if (!z->is_black())
+            y->set_red();
+        else
+            y->set_black();
+        if (root == z)
+            root = y;
+    } else if (x == 0 && z == root)
+        rebalance = false;
+    if (rebalance) {
+        while (x != root && (x == 0 || x->is_black())) {
+            if (x_is_left) {
+                node_base *w = x_parent->right_;
+
+                if (w->is_red()) {
+                    w->set_black();
+                    x_parent->set_red();
+                    rotate_left(x_parent, root);
+                    w = x_parent->right_;
+                }
+                if ((w->left_ == 0 || w->left_->is_black()) && (w->right_ == 0 || w->right_->is_black())) {
+                    w->set_red();
+                    x = x_parent;
+                    x_parent = x_parent->parent();
+                    x_is_left = x == x_parent->left_;
+                } else {
+                    if (w->right_ == 0 || w->right_->is_black()) {
+                        w->left_->set_black();
+                        w->set_red();
+                        rotate_right(w, root);
+                        w = x_parent->right_;
+                    }
+                    if (!x_parent->is_black())
+                        w->set_red();
+                    else
+                        w->set_black();
+                    x_parent->set_black();
+                    w->right_->set_black();
+                    rotate_left(x_parent, root);
+                    x = root;
+                }
+            } else {
+                node_base *w = x_parent->left_;
+
+                if (w->is_red()) {
+                    w->set_black();
+                    x_parent->set_red();
+                    rotate_right(x_parent, root);
+                    w = x_parent->left_;
+                }
+                if ((w->left_ == 0 || w->left_->is_black()) && (w->right_ == 0 || w->right_->is_black())) {
+                    w->set_red();
+                    x = x_parent;
+                    x_parent = x_parent->parent();
+                    x_is_left = x == x_parent->left_;
+                } else {
+                    if (w->left_ == 0 || w->left_->is_black()) {
+                        w->right_->set_black();
+                        w->set_red();
+                        rotate_left(w, root);
+                        w = x_parent->left_;
+                    }
+                    if (!x_parent->is_black())
+                        w->set_red();
+                    else
+                        w->set_black();
+                    x_parent->set_black();
+                    w->left_->set_black();
+                    rotate_right(x_parent, root);
+                    x = root;
+                }
+            }
+        }
+        if (x != 0)
+            x->set_black();
+    }
+}
+
 template <class T, class Compare, class Allocator>
 class __tree : public __red_black_tree<true> {
     typedef __red_black_tree<true> base;
@@ -211,8 +377,15 @@ public:
     public:
         iterator() {}
         iterator(node *p) : ptr_(p) {}
+        /* user-declared: MW then passes the iterator by address (erase's position, OVL1 0x305F80) */
+        iterator(const iterator &i) : ptr_(i.ptr_) {}
         value_type &operator*() const { return ptr_->data_; }
         value_type *operator->() const { return &ptr_->data_; }
+        iterator &operator++()
+        {
+            base::increment((const node_base *&)ptr_);
+            return *this;
+        }
         bool operator==(const iterator &x) const { return ptr_ == x.ptr_; }
         bool operator!=(const iterator &x) const { return ptr_ != x.ptr_; }
 
@@ -232,22 +405,21 @@ public:
     iterator begin() { return iterator((node *)leftmost_); }
     iterator end() { return iterator((node *)&tail()); }
 
+    void erase(iterator position);
+    template <class Key>
+    size_type erase_one(const Key &x);
     template <class Key>
     iterator find(const Key &x);
     template <class Key, class V>
     value_type &find_or_insert(const Key &key);
     pair<iterator, bool> insert_one(const value_type &x);
-    void clear()
-    {
-        if (root() != 0) {
-            destroy((node *)root());
-            size_ = 0;
-            root() = 0;
-            leftmost_ = (node_base *)&tail();
-        }
-    }
+    /* out of class (SOCOM 1's clear__ of map<string, int>, 0x40 bytes, and SOCOM II's 0x2DEDF0,
+     * which the material unit's own code calls) */
+    void clear();
 
     node_base *&root() { return tail_.left_; }
+    /* through a reference (MSL's comp_ pair's second()): erase keeps its address in a register */
+    node_base *&leftmost() { return leftmost_; }
     anchor &tail() { return tail_; }
     /* the allocators, as the empty bases of the size's and the anchor's pairs: accessors of the
      * tree's own (SOCOM II's 0x2113C0 returns this, 0x2113A0 this + 4 -- not the pairs' first(),
@@ -370,6 +542,49 @@ __tree<T, Compare, Allocator>::insert_node_at(node_base *p, bool leftchild, bool
     if (is_leftmost)
         leftmost_ = n;
     return n;
+}
+
+/* a node taken out (OVL1 0x305F80): the leftmost moved on first, then unlinked and rebalanced, its
+ * value destroyed in place and the node freed */
+template <class T, class Compare, class Allocator>
+void __tree<T, Compare, Allocator>::erase(iterator position)
+{
+    node *p = position.ptr_;
+    node_base *&lm = leftmost();
+
+    if (p == lm) {
+        ++position;
+        lm = position.ptr_;
+    }
+    balance_erase(p, root());
+    alloc().destroy(&p->data_);
+    node_alloc().deallocate(p, 1);
+    --size_;
+}
+
+/* the node with this key taken out, if there is one (the map's erase(key), OVL1 0x305710): 1 or 0 */
+template <class T, class Compare, class Allocator>
+template <class Key>
+typename __tree<T, Compare, Allocator>::size_type
+__tree<T, Compare, Allocator>::erase_one(const Key &x)
+{
+    iterator i = find(x);
+
+    if (i == end())
+        return 0;
+    erase(i);
+    return 1;
+}
+
+template <class T, class Compare, class Allocator>
+void __tree<T, Compare, Allocator>::clear()
+{
+    if (root() != 0) {
+        destroy((node *)root());
+        size_ = 0;
+        root() = 0;
+        leftmost_ = (node_base *)&tail();
+    }
 }
 
 template <class T, class Compare, class Allocator>

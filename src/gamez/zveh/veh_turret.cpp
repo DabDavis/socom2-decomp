@@ -5,6 +5,7 @@
  * destructors; CVehicle's unit follows. Defined in reverse of their image order (-inline
  * deferred). */
 
+#include <algorithm>
 #include <string.h>
 
 #include "zveh.h"
@@ -14,7 +15,6 @@ using namespace zdb;
 /* not yet written here (placeholders): the turret list's remove, the turret's halves of the
  * tick, the network turret's send (fts_*'s, 0x2C7A60) and the AI maps' cell lookup */
 extern "C" {
-void func_003A71F0(CTurretList *list, CTurret *turret);
 void func_003A7350(CTurret *turret, float dT);
 void func_003A78E0(CTurret *turret, float dT);
 void func_003A82C0(CTurret *turret);
@@ -30,13 +30,28 @@ extern int data_003E0800;
 
 CZSealBody *ftsGetPlayer();
 
-/* OPEN, the initialiser (__sinit_veh_turret.cpp, 0x404240: 0x7C against 0x160): the target
- * zeroes both vectors' three words in place (their constructors inlined whole -- the class
- * vector's constructor height, open in include/vector) and then sets turret_debug_mask's seven
- * bits (0x4A4068: 1, 0, 1, 1, 0, 0, 0, the false ones as `(0 & 1) << n`, a constructor's bool
- * stores), which is not defined here yet */
+/* SOCOM 1's file-static turret_debug_mask (0x4A4068: seven 1-bit flags, SOCOM II's 1, 0, 1, 1, 0,
+ * 0, 0 where SOCOM 1's were 0, 0, 1, 1, 0, 0, 0; the class and the bits' names ours). Set in the
+ * mem-initializer list, each is a word read-mask-write, `true` folded and `false` left `(0 & 1) << n`,
+ * as both builds' initialisers have it */
+class CTurretDebugMask {
+public:
+    CTurretDebugMask() : m_0(true), m_1(false), m_2(true), m_3(true), m_4(false), m_5(false), m_6(false) {}
+
+    unsigned int m_0 : 1;
+    unsigned int m_1 : 1;
+    unsigned int m_2 : 1;
+    unsigned int m_3 : 1;
+    unsigned int m_4 : 1;
+    unsigned int m_5 : 1;
+    unsigned int m_6 : 1;
+};
+
+/* the initialiser (__sinit_veh_turret.cpp, 0x404240) builds these in order: the definitions and the
+ * turret list (each vector's words zeroed in place, its destructor registered), then the switches */
 CTurretDefVector CTurret::m_turret_def;
 CTurretList CTurret::m_turrets;
+static CTurretDebugMask turret_debug_mask;
 
 /* the limits' defaults, in degrees (the unit's statics, 60 and 30; not named) */
 extern "C" float data_003E0808;
@@ -148,7 +163,7 @@ void CTurret::LoadTurrets()
 
 CTurret::~CTurret()
 {
-    func_003A71F0(&m_turrets, this);
+    m_turrets.Remove(this);
     if (m_turrets.size() == 0)
         FreeVector<std::vector<CTurret *> >(m_turrets);
 }
@@ -381,6 +396,19 @@ void CTurret::UpdatePosW()
 void CTurret::ComputeNextPosition(float dT)
 {
 }
+
+/* (called, never inlined: ~CTurret calls it). Its remove_copy instance (0x3AB9A0) is byte-exact.
+ * OPEN, 12 bytes short: the same calls and loop, but the target builds one end() temporary first
+ * (sp+76) and serves both std::remove's last and erase's last from it, std::remove's result in a
+ * slot of its own (sp+72) copied into erase's parameters; here end() is built twice (and with `e`
+ * a named local the temporaries' copies fold away: 0x11C/0x100). Tried: the end in a local, the
+ * result in a local, begin() in a local, this->end(), a copy of the pointer */
+#pragma auto_inline off
+void CTurretList::Remove(CTurret *turret)
+{
+    erase(std::remove(begin(), end(), turret), end());
+}
+#pragma auto_inline reset
 
 /* STAND-IN for a dead-stripped original (no row in the map: it scores as no-target). The insert
  * (0x3ABD90) inlines its temporary's destruction -- the deleter's destructor, with clear inside --

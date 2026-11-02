@@ -83,7 +83,9 @@ public:
         m_pulsing = false;
         m_period = 1.0f;
     }
-    virtual ~CPlainBmp();
+    /* inline: the soft keyboard's ~CBmpWithNode (0x38E490) inlines it; its out-of-line copy is
+     * 0x1FDBE0 (zui_2d.cpp's stand-in defines it) */
+    virtual ~CPlainBmp() {}
     virtual void UpdateUIVar(CUIVariable *var);
 
     bool m_pulsing;     // 0x88

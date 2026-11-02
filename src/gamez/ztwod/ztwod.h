@@ -24,6 +24,7 @@
 namespace zdb {
 class CAssetLib;
 class CCamera;
+class CNode;
 class CTexHandle;
 class CTexture;
 
@@ -90,7 +91,9 @@ public:
     virtual void SetAA(bool on) { m_isAA = on; }
     virtual void SetIsTrans(bool on) { m_isTrans = on; }
     virtual void SetGouraud(bool on) { m_socom2_bit5 = on; }
-    virtual void Slot10() {}
+    /* slot 0x30: a node handed over, ignored here (CBmpWithNode's override, 0x38BAB0, stores it at
+     * 0xA0; the name ours) */
+    virtual void Slot10(zdb::CNode *node) {}
     virtual void SetTrans(float trans) {}
     virtual void Tick(float dT) {}
     virtual void Parse(_zrdr *rdr, zdb::CAssetLib *lib, zdb::CTextureRelocMgr *mgr) {}

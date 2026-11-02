@@ -278,6 +278,9 @@ class RTArray {
 public:
     RTArray(unsigned int size, bool alloc, bool recycle);
     ~RTArray();
+    /* the oldest item in use taken back out of the in-use list, none when none is (SOCOM 1's; the
+     * decal pools' RecycleTick, the wep lane's) */
+    T *GetOldestUsed();
     void PutBack(T *item);
     T *GetNext(bool b);
 
@@ -288,6 +291,18 @@ public:
     unsigned int m_available;   // 0x18
     bool m_supportRecycle;   // 0x1c
 };
+
+template <class T>
+T *RTArray<T>::GetOldestUsed()
+{
+    if (m_inuse.size()) {
+        T *item = m_inuse.front();
+
+        m_inuse.remove(item);
+        return item;
+    }
+    return 0;
+}
 
 template <class T>
 void RTArray<T>::PutBack(T *item)

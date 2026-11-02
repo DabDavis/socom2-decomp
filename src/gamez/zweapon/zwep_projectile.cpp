@@ -328,6 +328,27 @@ struct CONE {
     }
 };
 
+/* the damage a hit does at a point: the ammunition's impact damage (its explosion's once the
+ * projectile has gone off) and the weapon's bonus, nothing when that is below the minimum, else
+ * the damage at the point, resolved through the health and armour (SOCOM 1's, without the bonus) */
+float CZProjectile::GetDamage(const CPnt3D *pos, float *health, float *armor, float minimum)
+{
+    float damage = m_ammo->GetImpactDamage();
+
+    damage += m_weapon->GetDamageBonus();
+    if (WasDetonated()) {
+        damage = m_ammo->GetExplosionDamage();
+        damage += m_weapon->GetDamageBonus();
+    }
+    float d = 0.0f;
+
+    if (!(damage < minimum)) {
+        d = GetDamage(pos, minimum);
+        ResolveDamage(health, armor, d, m_ammo->GetArmorPierce());
+    }
+    return d;
+}
+
 /* OPEN, 0x168 against 0x17C: the target keeps the cone in its frame (sp+112..124, each field
  * stored where it is computed and reloaded by the test) and the projection at sp+96, with &d and
  * its y and z addresses in registers; MW scalarises this CONE whole. Tried: the projection by

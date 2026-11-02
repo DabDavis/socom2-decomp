@@ -8,9 +8,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK DereferenceDecals__Q23zdb7CVisualFUi(char * arg0, u32 arg1);
-M2C_UNK func_003B37A0(s32 arg0, s32 arg1);
-char * func_003BF3D0(s32 arg0);
-M2C_UNK func_003BF440(s32 arg0, s32 arg1);
+M2C_UNK RemoveDecal__Q23zdb7CVisualFPQ23zdb6CDecal(char * arg0, char * arg1);
+char *func_003BF3D0(s32);                           /* extern */
+M2C_UNK func_003BF440(s32, char *);                 /* extern */
 extern s32 data_004B5040;
 extern s32 m_tempPool__Q23zdb6CDecal;
 
@@ -24,8 +24,8 @@ void func_003BF050(char *arg0) {
             temp_s1 = func_003BF3D0(data_004B5040);
             temp_a1 = temp_s1;
             m_tempPool__Q23zdb6CDecal -= 1;
-            func_003BF440(data_004B5040, (s32) temp_a1);
-            func_003B37A0(SC_MEMBER(temp_s1, s32 *, 4), (s32) temp_s1);
+            func_003BF440(data_004B5040, temp_a1);
+            RemoveDecal__Q23zdb7CVisualFPQ23zdb6CDecal(SC_MEMBER(temp_s1, char **, 4), temp_s1);
             SC_MEMBER(arg0, s32 *, 0xC) = (s32) (SC_MEMBER(arg0, s32 *, 0xC) - 1);
         } while (SC_MEMBER(arg0, s32 *, 0xC) != 0);
     }

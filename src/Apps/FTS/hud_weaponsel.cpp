@@ -6,10 +6,11 @@
  * 6 functions of their own, HandleOpenFirstState and HandleCloseFirstState -- ours), TickHotSwap
  * (ours), ResetHotSwap (ours), AfterOpenSecond, AfterScrollUp, AfterScrollDown, AfterClose,
  * OnScrollUp, OnScrollDown, AfterCloseFirst, OnClose, HandleScrollDownState, HandleScrollUpState,
- * PulseSelectionArrows, UnInit (which inlines OnClose as SOCOM 1's called it) and Init; written
- * and OPEN: PlaceWeaponText. Not yet: the hot-swap check (0x21A1F0), HandleOpenState, OnOpen and
- * the constructor. SOCOM 1's static Increment is an inline here (no copy linked). The layout is
- * hud_weaponsel.h's. Defined in reverse of their image order (-inline deferred). */
+ * PulseSelectionArrows, UnInit (which inlines OnClose as SOCOM 1's called it), Init and
+ * PlaceWeaponText, the hot-swap check (CheckHotSwap, 0x21A1F0: ours), OnOpen, the constructor and
+ * the unit's initialiser (0x3FE500; round 16); written and OPEN: HandleOpenState. SOCOM 1's static
+ * Increment is an inline here (no copy linked). The layout is hud_weaponsel.h's. Defined in reverse
+ * of their image order (-inline deferred). */
 
 #include <stdio.h>
 #include <string.h>
@@ -26,6 +27,11 @@ public:
     int GetNumItems() const;
     zdb::CTexHandle *GetIcon(int index);
     int GetNumMags(int index);
+    int GetAmmoCount(int index);      // OVL2 0x5C38A0
+    int GetMaxAmmoCount(int index);   // OVL2 0x5C3CF0
+    int isSelectableItem(int index);  // OVL2 0x5BDC30
+    int GetSelectedItemNum();         // OVL2 0x5BE040
+    void SetCurItemByIndex(int index);   // OVL2 0x5C4B10
     const char *GetItemName(int index);
     class CZFTSWeapon *GetItemByIndex(int index) const;
 };
@@ -37,23 +43,39 @@ public:
     unsigned char m_type;   // 0x7c
 };
 
-/* SOCOM 1's CZKit::GetAmmoCount and GetMaxAmmoCount (OVL2 0x5C38A0, 0x5C3CF0: the rows unnamed,
+/* the kit's hot-swap flag (the byte at kit+4): read and set (OVL2 0x5BC2B0, 0x5BC2A0, SOCOM II's,
+ * the rows unnamed: called as C) */
+extern "C" bool func_005BC2B0(CZKit *kit);
+extern "C" void func_005BC2A0(CZKit *kit, bool on);
+
+/* SOCOM 1's CZSealBody::CanChangeItem and CZKit::CanChangeItem (OVL2 0x5A8CB0, 0x5C4FD0: the rows
+ * unnamed, called as C) */
+extern "C" int func_005A8CB0(class CZSealBody *seal);
+extern "C" int func_005C4FD0(CZKit *kit);
+
+/* SOCOM 1's CZKit::unwrap(int, int): an index wrapped on a count (OVL2 0x5C5030, the row unnamed:
  * called as C) */
-extern "C" int func_005C38A0(CZKit *kit, int index);
-extern "C" int func_005C3CF0(CZKit *kit, int index);
+extern "C" int func_005C5030(CZKit *kit, int index, int count);
+
+/* the hot-swap label's clock (bss: OnOpen zeroes it, HandleOpenState runs it; no row yet) */
+extern float data_0040C100;
 
 /* a string-table string formatted with a number (hud_main.cpp's tail, 0x1FE120; no row named) */
 extern "C" void func_001FE120(char *buf, int size, int id, int n);
 
-/* SOCOM 1's CZKit::isSelectableItem (OVL2 0x5BDC30, the row unnamed: called as C) */
-extern "C" int func_005BDC30(CZKit *kit, int index);
 
 /* the seal's controller as the selector reads it: the pad it reads (SOCOM 1's at 0xE8) */
 class CSealCtrl {
 public:
     unsigned char _0[0x114];
     unsigned int m_padindex;   // 0x114
-    unsigned char _118[0x224 - 0x118];
+    unsigned char _118[0x11c - 0x118];
+    int m_socom2_11c;   // 0x11c: zeroed when the selector takes an item (SOCOM 1's at 0xF0)
+    unsigned char _120[0x170 - 0x120];
+    unsigned char _170_0 : 4;
+    unsigned char m_socom2_170_4 : 1;   // 0x170 bit 4: set when the selector takes an item (SOCOM 1's at 0x168)
+    unsigned char _170_5 : 3;
+    unsigned char _171[0x224 - 0x171];
     float m_hotswap1;   // 0x224: the item the first hot-swap button selects (a float, read as an int)
     float m_hotswap2;   // 0x228: the second's
 };
@@ -73,8 +95,12 @@ public:
     unsigned char _e1_0 : 4;
     unsigned char m_socom2_e1_4 : 1;   // 0xe1 bit 4: the selector opens only with it (hud_main.cpp's)
     unsigned char _e1_5 : 3;
-    unsigned char _e2[0x5e0 - 0xe2];
+    unsigned char _e2[0x174 - 0xe2];
+    short m_state;   // 0x174: 9 keeps the weapons (SOCOM 1's byte at 0x11D)
+    unsigned char _176[0x5e0 - 0x176];
     CZKit m_kit;   // 0x5e0
+    unsigned char _kit_end[0xeb8 - 0x5e0 - sizeof(CZKit)];
+    int m_socom2_eb8;   // 0xeb8: set, the weapons are kept (SOCOM II's)
 
     CZKit *GetKit() { return &m_kit; }
 };
@@ -86,6 +112,7 @@ public:
     virtual void *PlaySound(void *inst, unsigned int flags);
 
     static CSnd *GetSoundByName(const char *name);
+    static void PlayErrorSound();
 };
 
 /* a pad by its index, none past the last (SOCOM 1's inline over CInput's table) */
@@ -141,12 +168,8 @@ zdb::CTexture *GetTextureByName(zdb::CWorld *world, const char *name);
 extern const char *data_003E3048;
 extern const char *data_003E3068;
 
-/* the selector's width, and its rows' tops (the unit's statics: its initialiser sets them from
- * the HUD's layout) */
-extern int data_0040C108;
-extern float data_003E4A90;
-extern float data_003E4A98;
-extern float data_003E4AA0;
+/* the HUD's bottom block (hud_main.cpp's layout) */
+extern float data_003E2FF8;
 
 /* the HUD's backdrop alpha (hud_main.cpp's layout float, 76.8) */
 extern float data_003E3000;
@@ -155,6 +178,14 @@ extern float data_003E3000;
  * g_fFadeInTime, the unit's anonymous namespace: its symbol table names it at gp-30408) */
 namespace {
 float g_fFadeInTime = -1.0f;
+/* the backdrops' right edge (SOCOM 1's g_iBgRightX, the same anonymous namespace: bss, set by
+ * Init) */
+int g_iBgRightX;
+/* the backdrop's bottom, the middle row's top and the backdrop's top, from the HUD's bottom block
+ * (SOCOM II's: the unit's initialiser, 0x3FE500, sets them; the names ours) */
+float s_fBgBottom = data_003E2FF8 - 10.0f;
+float s_fRowY = s_fBgBottom - 124.0f;
+float s_fBgTop = s_fBgBottom - 186.0f;
 }
 
 /* SOCOM 1's CCtrlrConfigs::GetButtonState(PadBtnFunc, const CPad &) (0x2C64E0, no row named) and
@@ -162,14 +193,40 @@ float g_fFadeInTime = -1.0f;
 extern "C" unsigned char func_002C64E0(int func, CPad *pad);
 extern "C" bool func_005A7980(CZSealBody *seal, int flag);
 
-/* SOCOM II's two per-tick updates after the state's (no rows named yet) */
-extern "C" void func_0021A1F0(CWeaponSel *sel);
+
+/* the members built (the bright texts' inline constructors at 80 alpha), the state cleared, the
+ * backdrop's and the end backings' texture coordinates set (SOCOM 1's, the unit's last function;
+ * SOCOM 1's list member and its fourth backing gone) */
+CWeaponSel::CWeaponSel()
+{
+    m_cursound = -1;
+    m_openstate = 0;
+    for (int i = 0; i < 4; i++) {
+        m_menuposx[i] = 0.0f;
+        m_menuposy[i] = 0.0f;
+    }
+    m_nameoffsetx = 0.0f;
+    m_nameoffsety = 0.0f;
+    m_iconoffsetx = 4.0f;
+    m_iconoffsety = 4.0f;
+    m_current_item = 0;
+    m_curheight = 0.0f;
+    m_goalheight = 0.0f;
+    m_incCurcolor = 0;
+    m_curcolor = 1.0f;
+    m_weaponnum[0] = m_weaponnum[1] = m_weaponnum[2] = m_weaponnum[3] = 0;
+    m_arrowcolor = 50.0f;
+    m_arrowincrement = 1;
+    m_weaponselbkrnd.SetUV(0.0f, 0.5f, 1.0f, 0.5f);
+    m_selectionback0.SetUV(0.0f, 0.0f, 1.0f, 0.078125f);
+    m_selectionback1.SetUV(0.0f, 0.921875f, 1.0f, 1.0f);
+}
 
 /* the textures fetched, the backdrops and backings loaded, the texts coloured and loaded off, the
  * pieces listed (SOCOM 1's, the backings three members now) */
 void CWeaponSel::Init(zdb::CWorld *world, C2DFont *font)
 {
-    data_0040C108 = 160;
+    g_iBgRightX = 160;
     m_openstate = 0;
     m_weapontex[0] = zdb::CAssetMgr::m_assets.GetTexHandle("reticuletex.tif");
     m_weapontex[1] = zdb::CAssetMgr::m_assets.GetTexHandle("reticuletex.tif");
@@ -179,7 +236,7 @@ void CWeaponSel::Init(zdb::CWorld *world, C2DFont *font)
     m_arrowtex = GetTextureByName(0, data_003E3068);
     m_myfont = font;
     m_selectionback2.SetHasTexture(false);
-    m_selectionback2.Load(0.0f, data_003E4A98, data_0040C108, 2.0f + (64.0f + data_003E4A98), 0);
+    m_selectionback2.Load(0.0f, s_fRowY, g_iBgRightX, 2.0f + (64.0f + s_fRowY), 0);
     m_selectionback2.SetColor(80.0f, 80.0f, 80.0f);
     m_selectionback2.SetIsTrans(true);
     m_selectionback2.SetTrans(0.0f);
@@ -252,11 +309,11 @@ void CWeaponSel::Init(zdb::CWorld *world, C2DFont *font)
     m_hotswapL1text.Off();
     m_hotswapL2text.Off();
     m_menuposx[1] = 30.0f;
-    m_menuposy[1] = data_003E4A98;
-    m_weaponselbkrnd.Load(0.0f, 5.0f + data_003E4AA0, data_0040C108, data_003E4A90 - 5.0f,
+    m_menuposy[1] = s_fRowY;
+    m_weaponselbkrnd.Load(0.0f, 5.0f + s_fBgTop, g_iBgRightX, s_fBgBottom - 5.0f,
                           m_weaponselbkrndtex);
-    m_selectionback0.Load(0.0f, data_003E4AA0, data_0040C108, 5.0f + data_003E4AA0, m_weaponselbkrndtex);
-    m_selectionback1.Load(0.0f, data_003E4A90 - 5.0f, data_0040C108, data_003E4A90, m_weaponselbkrndtex);
+    m_selectionback0.Load(0.0f, s_fBgTop, g_iBgRightX, 5.0f + s_fBgTop, m_weaponselbkrndtex);
+    m_selectionback1.Load(0.0f, s_fBgBottom - 5.0f, g_iBgRightX, s_fBgBottom, m_weaponselbkrndtex);
     m_weaponicon[1].Load(m_menuposx[1] + m_iconoffsetx, m_menuposy[1] + m_iconoffsety, m_weapontex[1]);
     m_weaponname.Load(0.9f, "3", m_myfont, m_menuposx[1] + m_nameoffsetx, m_menuposy[1] + m_nameoffsety,
                       true);
@@ -308,6 +365,132 @@ void CWeaponSel::UnInit()
     TextClearAndWipe();
 }
 
+/* the item after `item` the HUD owner's kit can select, wrapping round (none without an owner) */
+static inline int NextItem(int cur)
+{
+    CZSealBody *seal = CHUD::GetHUDOwner();
+
+    if (!seal)
+        return 0;
+
+    int next = cur + 1;
+
+    if (next >= seal->m_kit.GetNumItems())
+        next = 0;
+    while (!(bool)seal->GetKit()->isSelectableItem(next)) {
+        next++;
+        if (next >= seal->m_kit.GetNumItems())
+            next = 0;
+    }
+    return next;
+}
+
+/* the item before `cur` the HUD owner's kit can select, wrapping round (none without an owner) */
+static inline int PrevItem(int cur)
+{
+    CZSealBody *seal = CHUD::GetHUDOwner();
+
+    if (!seal)
+        return 0;
+
+    int prev = cur - 1;
+
+    if (prev < 0)
+        prev = seal->m_kit.GetNumItems() - 1;
+    while (!(bool)seal->GetKit()->isSelectableItem(prev)) {
+        prev--;
+        if (prev < 0)
+            prev = seal->m_kit.GetNumItems() - 1;
+    }
+    return prev;
+}
+
+/* opening: with a seal that can change weapons (a kit, not in state 9, nothing at 0xEB8) whose
+ * body and kit allow it, the menu state set, the height grown from nothing, the selected item
+ * and its neighbours' icons fetched, the backdrop and end backings on, the middle icon placed,
+ * the texts off and the hot-swap labels loaded, the icons faded to 40 (the middle one 128), the
+ * fade-in clock started; else the error sound and closed (SOCOM 1's; the 0xEB8 test, the
+ * hot-swap labels and the second clock SOCOM II's) */
+void CWeaponSel::OnOpen()
+{
+    CZSealBody *seal = CHUD::GetHUDOwner();
+    int selected_item_num = seal->m_kit.GetSelectedItemNum();
+
+    if (!seal)
+        return;
+
+    bool can_change_weapons;
+
+    can_change_weapons = true;
+    if (!seal)
+        can_change_weapons = false;
+    else if (!seal->GetKit())
+        can_change_weapons = false;
+    else if (seal->m_state == 9)
+        can_change_weapons = false;
+    else if (seal->m_socom2_eb8)
+        can_change_weapons = false;
+    if (!can_change_weapons) {
+        CSnd::PlayErrorSound();
+        AfterClose();
+        return;
+    }
+    if (seal && func_005A8CB0(seal)) {
+        func_00597740(seal->m_ctrl, 1, 0);
+        if (!func_005C4FD0(&seal->m_kit)) {
+            CSnd::PlayErrorSound();
+            AfterClose();
+            return;
+        }
+    } else {
+        CSnd::PlayErrorSound();
+        AfterClose();
+        return;
+    }
+    m_curheight = 0.0f;
+    m_goalheight = 35.0f;
+    m_menucentery = m_goalheight / 2.0f;
+    m_menugoaly = s_fRowY;
+    m_menugoalx = 10.0f;
+    m_openstate = 1;
+    m_current_item = selected_item_num;
+
+    int prev = PrevItem(m_current_item);
+    int next = NextItem(m_current_item);
+
+    m_weapontex[0] = seal->m_kit.GetIcon(prev);
+    m_weapontex[1] = seal->m_kit.GetIcon(m_current_item);
+    m_weapontex[2] = seal->m_kit.GetIcon(next);
+    m_weaponnum[0] = prev;
+    m_weaponnum[1] = m_current_item;
+    m_weaponnum[2] = next;
+    m_menuposx[1] = 0.0f;
+    m_menuposy[1] = s_fRowY;
+    m_menustartx = m_menuposx[1];
+    m_weaponselbkrnd.On();
+    m_selectionback0.On();
+    m_selectionback1.On();
+    m_weaponicon[1].Load(m_menuposx[1] + m_iconoffsetx, m_menuposy[1] + m_iconoffsety, m_weapontex[1]);
+    PlaceMiddleIcon();
+    m_weaponicon[1].On();
+    m_weaponname.Off();
+    m_weapondescription.Off();
+    m_ammotype.Off();
+    m_ammocount.Off();
+    m_magcount.Off();
+    m_hotswapL1text.Load(0.9f, "l1", m_myfont, m_menuposx[1] + m_nameoffsetx,
+                         42.0f + (m_menuposy[1] + m_nameoffsety), true);
+    m_hotswapL2text.Load(0.9f, "l2", m_myfont, m_menuposx[1] + m_nameoffsetx,
+                         50.0f + (m_menuposy[1] + m_nameoffsety), true);
+    m_incCurcolor = 0;
+    m_curcolor = 1.0f;
+    for (int ii = 0; ii < 4; ii++)
+        m_weaponicon[ii].SetTrans(40.0f);
+    m_weaponicon[1].SetTrans(128.0f);
+    g_fFadeInTime = 0.0f;
+    data_0040C100 = 0.0f;
+}
+
 /* a value moved toward its goal by an increment, not past it (SOCOM 1's static
  * CWeaponSel::Increment, inline here: SOCOM II links no copy, and the increment's product is
  * substituted into both arms) */
@@ -336,6 +519,105 @@ void CWeaponSel::HandleOpenFirstState(float dT)
     SetItemPos(1);
     if (m_menuposx[1] == m_menugoalx && m_menuposy[1] == m_menugoaly)
         AfterOpenFirst();
+}
+
+/* open: without the seal's selector bit it closes; the middle row's colour pulses between 0.1 and
+ * 0.7; up and down scroll, L1 and L2 put the item in a hot-swap slot (the other slot's item an
+ * error), triangle closes; else the label clock runs, and a select (either button, the body
+ * allowing it) takes the item, the sound played and the controller told -- the menu closes on a
+ * select or after five seconds; the clock restarts on any other press; the arrows pulse (SOCOM
+ * 1's; the clock and its five seconds SOCOM II's).
+ * OPEN, 12 instructions, one cause: the select's `true` (the target's `daddiu s0,zero,1` in the
+ * delay slot after the first GetButtonState) is taken here from the pad tests' `li v1,1` (`andi
+ * s0,v1,0xff`, scheduled before the call), which moves the `== 1` tests' materialisation by a
+ * slot. Everything else is the target's. Tried: the test as `!= 1 &&` (branched, 0x72C), `(f() ==
+ * 1) != false ||` (0x720), an initialised `bool select = true`, the assignment first in the block,
+ * select declared before the pad chain (161 off), a KEY_STATE cast on the pad tests, inline bool
+ * helpers (`return f() == 1`, its `||` in a second inline, an if/return form: 0x730). */
+void CWeaponSel::HandleOpenState(CPad *pad, float dT)
+{
+    CZSealBody *seal = CHUD::GetHUDOwner();
+
+    if (!seal)
+        return;
+    if ((bool)seal->m_socom2_e1_4 == false)
+        OnClose();
+    if (m_incCurcolor) {
+        m_curcolor = Increment(0.3f * dT, m_curcolor, 0.7f);
+        if (m_curcolor == 0.7f)
+            m_incCurcolor = 0;
+    } else {
+        m_curcolor = Increment(0.3f * dT, m_curcolor, 0.1f);
+        if (m_curcolor == 0.1f)
+            m_incCurcolor = 1;
+    }
+
+    bool restart = true;
+
+    if (pad->m_state[PAD_UP] == KEY_FALLING) {
+        OnScrollUp();
+    } else if (pad->m_state[PAD_DOWN] == KEY_FALLING) {
+        OnScrollDown();
+    } else if (pad->m_state[PAD_TRIGGER_L1] == KEY_FALLING) {
+        CZSealBody *seal = CHUD::GetHUDOwner();
+        CZKit *kit = &seal->m_kit;
+
+        if (seal) {
+            int item = func_005C5030(kit, m_current_item, kit->GetNumItems());
+            CSealCtrl *ctrl = seal->m_ctrl;
+
+            if ((int)ctrl->m_hotswap2 == item) {
+                CSnd::PlayErrorSound();
+            } else {
+                ctrl->m_hotswap1 = item;
+                PlaceHotSwapLabels();
+            }
+        }
+    } else if (pad->m_state[PAD_TRIGGER_L2] == KEY_FALLING) {
+        CZSealBody *seal = CHUD::GetHUDOwner();
+        CZKit *kit = &seal->m_kit;
+
+        if (seal) {
+            int item = func_005C5030(kit, m_current_item, kit->GetNumItems());
+            CSealCtrl *ctrl = seal->m_ctrl;
+
+            if ((int)ctrl->m_hotswap1 == item) {
+                CSnd::PlayErrorSound();
+            } else {
+                ctrl->m_hotswap2 = item;
+                PlaceHotSwapLabels();
+            }
+        }
+    } else if (pad->m_state[PAD_TRIANGLE] == KEY_FALLING) {
+        OnClose();
+    } else {
+        restart = false;
+        data_0040C100 += dT;
+
+        bool select;
+
+        select = true;
+        if ((func_002C64E0(0, pad) == 1) == false && (func_002C64E0(4, pad) == 1) == false)
+            select = false;
+
+        select = select && func_005A8CB0(seal);
+        if (select) {
+            CZSealBody *seal = CHUD::GetHUDOwner();
+
+            if (seal) {
+                if (m_selectsound)
+                    m_selectsound->PlaySound(0, 255);
+                seal->m_kit.SetCurItemByIndex(m_current_item);
+                seal->m_ctrl->m_socom2_11c = 0;
+                seal->m_ctrl->m_socom2_170_4 = true;
+            }
+        }
+        if (select || data_0040C100 > 5.0f)
+            OnClose();
+    }
+    if (restart)
+        data_0040C100 = 0.0f;
+    PulseSelectionArrows(dT);
 }
 
 /* the arrows' colours: the brighter one fades down to the other's (lit at 100 and the pulse
@@ -477,46 +759,6 @@ void CWeaponSel::AfterCloseFirst()
     m_openstate = 7;
     m_weaponicon[0].Off();
     m_weaponicon[2].Off();
-}
-
-/* the item after `item` the HUD owner's kit can select, wrapping round (none without an owner) */
-static inline int NextItem(int cur)
-{
-    CZSealBody *seal = CHUD::GetHUDOwner();
-
-    if (!seal)
-        return 0;
-
-    int next = cur + 1;
-
-    if (next >= seal->m_kit.GetNumItems())
-        next = 0;
-    while (!(bool)func_005BDC30(seal->GetKit(), next)) {
-        next++;
-        if (next >= seal->m_kit.GetNumItems())
-            next = 0;
-    }
-    return next;
-}
-
-/* the item before `cur` the HUD owner's kit can select, wrapping round (none without an owner) */
-static inline int PrevItem(int cur)
-{
-    CZSealBody *seal = CHUD::GetHUDOwner();
-
-    if (!seal)
-        return 0;
-
-    int prev = cur - 1;
-
-    if (prev < 0)
-        prev = seal->m_kit.GetNumItems() - 1;
-    while (!(bool)func_005BDC30(seal->GetKit(), prev)) {
-        prev--;
-        if (prev < 0)
-            prev = seal->m_kit.GetNumItems() - 1;
-    }
-    return prev;
 }
 
 /* scrolling down: the fourth row brought in at the first's place with the item before it, the
@@ -703,20 +945,70 @@ void CWeaponSel::AfterOpenSecond()
         m_arrow[0].On();
 
         /* the upper arrow's lower edge taken first: it is loaded ahead of the centring */
-        float y = data_003E4AA0 + h;
-        float right = (w + data_0040C108) / 2.0f;
+        float y = s_fBgTop + h;
+        float right = (w + g_iBgRightX) / 2.0f;
         float left = right - w;
 
-        m_arrow[0].Load(left, data_003E4AA0, left, y, right, y, right, data_003E4AA0, m_arrowtex);
+        m_arrow[0].Load(left, s_fBgTop, left, y, right, y, right, s_fBgTop, m_arrowtex);
         m_arrow[1].On();
-        m_arrow[1].Load(right, data_003E4A90, right, data_003E4A90 - h, left, data_003E4A90 - h, left,
-                        data_003E4A90, m_arrowtex);
+        m_arrow[1].Load(right, s_fBgBottom, right, s_fBgBottom - h, left, s_fBgBottom - h, left,
+                        s_fBgBottom, m_arrowtex);
     }
     PlaceHotSwapLabels();
     PlaceWeaponText();
     m_openstate = 3;
     if (m_selectsound)
         m_selectsound->PlaySound(0, 255);
+}
+
+/* a hot-swap shown: without the seal's selector bit the highlight, the middle icon and the labels
+ * go off; else, with the highlight off and the kit's hot-swap flag up, the selected item's icon
+ * becomes the middle one, the highlight comes on, and (the icon not yet shown) the icon is loaded
+ * and the label of the hot-swap slot holding the item placed and lit; the flag is cleared (SOCOM
+ * II's: HudTick calls it after the state's update, the name ours) */
+void CWeaponSel::CheckHotSwap()
+{
+    CZSealBody *seal = CHUD::GetHUDOwner();
+
+    if (!seal->m_socom2_e1_4) {
+        m_selectionback2.Off();
+        m_weaponicon[1].Off();
+        m_hotswapL1text.Off();
+        m_hotswapL2text.Off();
+    } else if (!m_selectionback2.IsOn() && seal && func_005BC2B0(&seal->m_kit)) {
+        int item = seal->m_kit.GetSelectedItemNum();
+
+        m_weapontex[1] = seal->m_kit.GetIcon(item);
+        m_selectionback2.On();
+        if (!m_weaponicon[1].IsOn()) {
+            m_weaponicon[1].Load(10.0f + m_iconoffsetx, s_fRowY + m_iconoffsety, m_weapontex[1]);
+            m_weaponicon[1].On();
+            CSealCtrl *ctrl = seal->m_ctrl;
+
+            if (item == (int)ctrl->m_hotswap1) {
+                C2DFont *font = m_myfont;
+                const char *str = func_00361B40(0xEC6D);
+
+                m_hotswapL1text.Load(0.9f, str, font, 90, (int)(62.0f + s_fRowY), true);
+                m_hotswapL1text.UpdatePos();
+                m_hotswapL1text.SetPos((int)(148.0f - m_hotswapL1text.m_charheight), (int)(62.0f + s_fRowY));
+                m_hotswapL1text.UpdatePos();
+                m_hotswapL1text.On();
+                m_hotswapL1text.SetTrans(0.0f);
+            } else if (item == (int)ctrl->m_hotswap2) {
+                C2DFont *font = m_myfont;
+                const char *str = func_00361B40(0xEC6E);
+
+                m_hotswapL2text.Load(0.9f, str, font, 90, (int)(62.0f + s_fRowY), true);
+                m_hotswapL2text.UpdatePos();
+                m_hotswapL2text.SetPos((int)(148.0f - m_hotswapL2text.m_charheight), (int)(62.0f + s_fRowY));
+                m_hotswapL2text.UpdatePos();
+                m_hotswapL2text.On();
+                m_hotswapL2text.SetTrans(0.0f);
+            }
+        }
+    }
+    func_005BC2A0(&seal->m_kit, false);
 }
 
 /* the hot-swap highlight faded out and off, the middle icon off when asked or closed, the hot-swap
@@ -829,7 +1121,7 @@ void CWeaponSel::HudTick(CPad *pad, float dT)
             AfterClose();
         break;
     }
-    func_0021A1F0(this);
+    CheckHotSwap();
     if (!(g_fFadeInTime < 0.0f)) {
         float t;
 
@@ -911,13 +1203,11 @@ void CWeaponSel::PlaceMiddleIcon()
  * (right-aligned at 148) and its spare magazines a line lower ("1 MAGAZINE" or n of them), the
  * last two off for an item of type 11 (SOCOM 1's, its locals' names from its DWARF; the strings
  * SOCOM II's string table's).
- * OPEN, 8 bytes short: the target, like SOCOM 1's, copies the seal into a saved register
- * (`move s1,v0; beqz s1`), forms the kit's address once in s0, and gives the seal's s1 to ammomax
- * (the seal dead after the kit). A kit local makes MW test v0 and drop the seal's copy (16 bytes
- * short); the seal read again at the end (pItem, as here) keeps the copy but holds it in s3, the
- * locals one register up and a load short; the calls written `seal->m_kit.X()` (SOCOM 1's DWARF
- * has no kit local) re-form the kit for every call. Tried also: early return, the declaration in
- * the condition, `(seal = f()) != 0`, GetKit() at each call. */
+ * The target, like SOCOM 1's, copies the seal into a saved register (`move s1,v0; beqz s1`),
+ * forms the kit's address once in s0, and gives the seal's s1 to ammomax: the seal is read again
+ * for the third call only (`seal->m_kit.GetMaxAmmoCount`, MW sharing the kit's s0 for it), which
+ * keeps it live across the first two and dead after; pItem comes through the kit. The trailing
+ * `b; nop` over the pad is the `return` closing the last block. */
 void CWeaponSel::PlaceWeaponText()
 {
     static char tempstr[80];
@@ -935,8 +1225,8 @@ void CWeaponSel::PlaceWeaponText()
     if (seal) {
         CZKit *kit = seal->GetKit();
         int mags = kit->GetNumMags(m_current_item);
-        int ammo = func_005C38A0(kit, m_current_item);
-        int ammomax = func_005C3CF0(kit, m_current_item);
+        int ammo = kit->GetAmmoCount(m_current_item);
+        int ammomax = seal->m_kit.GetMaxAmmoCount(m_current_item);
         const char *itemname = kit->GetItemName(m_current_item);
 
         strlen(itemname);
@@ -969,12 +1259,13 @@ void CWeaponSel::PlaceWeaponText()
             m_magcount.Off();
         }
 
-        CZFTSWeapon *pItem = seal->m_kit.GetItemByIndex(m_current_item);
+        CZFTSWeapon *pItem = kit->GetItemByIndex(m_current_item);
 
         if (pItem->m_type == 11) {
             m_ammotype.Off();
             m_ammocount.Off();
             m_magcount.Off();
+            return;
         }
     }
 }

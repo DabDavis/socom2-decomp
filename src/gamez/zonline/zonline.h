@@ -9,6 +9,7 @@
 
 #include <string.h>
 #include <vector>
+#include <string>
 #include <algorithm>
 #include "../zui/zui.h"
 
@@ -287,6 +288,24 @@ MediusErrorCode MediusGetClanMemberList(MediusGetClanMemberListRequest *req,
                                         MediusGetClanMemberListCallback cb);
 }
 
+/* the rdr editor the menus' lists are built in (zrdr.h's CRdrEditor, 0x4C bytes, a value at its
+ * start; zui.h's _zrdr and zrdr.h's cannot meet in one unit, so the lobby declares it again) */
+struct PNT3D;
+
+class CRdrEditor : public _zrdr {
+public:
+    CRdrEditor();
+    ~CRdrEditor();
+    bool push(const char *tag);
+    bool pop();
+    bool addintnode(int i);
+    bool addstringnode(const char *s);
+    bool addPNT3D(const char *tag, const PNT3D &p);
+    bool addSTRING(const char *tag, const char *s);
+
+    unsigned char _8[0x4c - 0x8];
+};
+
 /* --- the lobby's lists -------------------------------------------------------------------- */
 
 /* the lobby keeps its lists in vectors of pointers that own their items (SOCOM 1's were plain
@@ -476,10 +495,10 @@ struct MediusGetClanLadderListResponse {
     MediusGetClanLadderListResponse() {}
 
     char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
-    MediusCallbackStatus StatusCode;   // 0x18
+    int ClanID;   // 0x18: our clan's shown in colour
     char ClanName[32];   // 0x1c
     int LadderPosition;   // 0x3c: the list's key, the highest kept
-    int LadderStat;   // 0x40
+    MediusCallbackStatus StatusCode;   // 0x40 (the callback checks it)
     char EndOfList;   // 0x44
 };   // 0x48
 typedef MediusGetClanLadderListResponse ClanLadderItem;
@@ -507,8 +526,15 @@ extern ClanLadderList ClanLadderLeaders;   /* 0x44F820 */
 extern ClanLadderList ClanLadderRanking;   /* 0x44F850 */
 
 /* a player on the ladder (SOCOM 1's LadderItem; its two strings make its delete inline their
- * destructors, 0x2EC140) and the player ladders (0x44F7B0, 0x44F7E0) */
-struct LadderItem;
+ * destructors, 0x2EC140) and the player ladders (0x44F7B0, 0x44F7E0). Only what the displays read:
+ * the names as MSL strings (c_str() short form first) and the position */
+struct LadderItem {
+    unsigned char _0[0x8c];   // the page's response (unread here)
+    std::string m_name;   // 0x8c
+    std::string m_clan;   // 0x98
+    int m_a4;   // 0xa4
+    int m_position;   // 0xa8
+};
 
 class LadderList : public std::vector<LadderItem *> {
 public:
@@ -519,41 +545,193 @@ public:
 extern LadderList LadderLeaders;   /* 0x44F7B0 */
 extern LadderList LadderRanking;   /* 0x44F7E0 */
 
+/* a game's info as the game list reports it, and as a LAN host hosts and announces it (the SDK's
+ * MediusGameListResponse, 0x190 bytes: the head of every RoomGame; a class with a constructor of its
+ * own, copied member by member -- the id bytewise, the strings two bytes a pass. Its assignment is
+ * too big to inline: the copy at 0x2E1E10 follows the game's constructor, its first caller. The
+ * struct's name is SOCOM 1's -- cbGameList and RoomGame::UpdateInfo take a MediusGameListResponse *
+ * in its symbols -- the field names the LAN unit's, which calls it LANGameInfo) */
+struct MediusGameListResponse {
+    MediusGameListResponse() {}
+
+    char m_id[21];   // 0x0
+    int m_18;   // 0x18: the response's status
+    int m_ip;   // 0x1c: the game's world (Medius), the host's address (LAN)
+    unsigned short m_players;   // 0x20
+    unsigned short m_22;   // 0x22
+    unsigned short m_maxPlayers;   // 0x24
+    int m_mission;   // 0x28
+    int m_2c;   // 0x2c
+    int m_30;   // 0x30
+    int m_port;   // 0x34
+    int m_38;   // 0x38
+    int m_3c;   // 0x3c
+    int m_flags;   // 0x40: 1 a player password, 4 a spectators' one
+    int m_lock;   // 0x44: 3 locked, else 1 or 2
+    int m_48;   // 0x48
+    char m_name[64];   // 0x4c
+    unsigned char m_rules[256];   // 0x8c
+    char m_18c;   // 0x18c: the list's last
+};   // 0x190
+typedef MediusGameListResponse LANGameInfo;
+
+extern "C" void func_002F7D90(void *dst, void *rules);   /* a game's mission sequence read from its rules (the lobby unit's) */
+
 /* a game in a room (SOCOM 1's RoomGame: a table, but not a virtual destructor -- its delete calls
  * operator delete straight). SOCOM II's keeps the game's 0x190-byte info first and its table after
  * it (the constructor 0x2E1D50 stores the vtable at 0x190 and clears the 400 bytes before it); its
  * one virtual, SOCOM 1's IsPersistent slot, hands back the mission sequence at 0x1A2 (0x2E24C0) */
 class RoomGame {
 public:
-    unsigned char m_info[0x190];   // 0x0: the game's info (the LAN unit's LANGameInfo)
+    RoomGame(LANGameInfo *info);
+    /* the game's info taken from the list (SOCOM 1's UpdateInfo): too big to inline whole, so the
+     * constructor and the game list's callback expand it one level, calling the info's assignment
+     * and SetMission out of line */
+    void UpdateInfo(LANGameInfo *info)
+    {
+        if (info) {
+            m_info = *info;
+            func_002F7D90(m_19a, info->m_rules);
+            if (!m_info.m_mission)
+                SetMission(m_missionSeq[0]);
+        } else
+            m_info.m_ip = -1;
+    }
+    void SetMission(int mission) { m_info.m_mission = mission; }
+
+    LANGameInfo m_info;   // 0x0
 
     virtual unsigned char *GetMissionSequence();
+    bool AllowsType(int type);
+    bool HasMissions();
 
     int m_194;   // 0x194
-    unsigned char m_unchecked;   // 0x198: set for every game as the game list is asked for again
+    bool m_unchecked;   // 0x198: set for every game as the game list is asked for again
     unsigned char m_199;   // 0x199
-    unsigned char m_19a[8];   // 0x19a
+    unsigned char m_19a[3];   // 0x19a: what the game's rules hand func_002F7D90
+    unsigned char m_spectators;   // 0x19d: of the players, those watching
+    unsigned char m_maxSpectators;   // 0x19e
+    unsigned char m_19f[2];   // 0x19f
+    unsigned char m_types;   // 0x1a1: the game types it allows, a bit each (none: any)
     unsigned char m_missionSeq[0x22];   // 0x1a2
 };   // 0x1c4
 
-class RoomGameVector : public std::vector<RoomGame *> {
+/* a game the game list reported (SOCOM II's, by its RTTI at 0x4066D0: no virtual of its own) */
+class TransientGame : public RoomGame {
 public:
-    void DeleteAll();
+    TransientGame(LANGameInfo *info) : RoomGame(info) {}
 };
 
-/* a room (SOCOM 1's BriefingRoom, 0x98 bytes in SOCOM II): its games first */
-class BriefingRoom {
+/* a room as the channel list reports it (the Medius SDK's MediusChannelListResponse, 0x70 bytes:
+ * copied member by member into the room -- the id bytewise, the name two bytes a pass) */
+struct MediusChannelListResponse {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    MediusCallbackStatus StatusCode;   // 0x18
+    int MediusWorldID;   // 0x1c
+    unsigned short PlayerCount;   // 0x20
+    unsigned short MaxPlayers;   // 0x22
+    int GameWorldCount;   // 0x24
+    unsigned int GenericField;   // 0x28: the game types the room allows (a bit each, the low four),
+                                 // the room list's sort key (the top sixteen)
+    char LobbyName[64];   // 0x2c
+    char EndOfList;   // 0x6c
+};   // 0x70
+
+/* a player in a room (the SDK's MediusLobbyWorldPlayerListResponse, 0xD0 bytes) */
+struct RoomPlayer {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    MediusCallbackStatus StatusCode;   // 0x18
+    int AccountID;   // 0x1c
+    char AccountName[32];   // 0x20
+    MediusPlayerOnlineState OnlineState;   // 0x40
+    char EndOfList;   // 0xcc
+};   // 0xd0
+
+/* a chat message forwarded (SOCOM 1's MediusChatFwdMessage, 0x80 bytes: a room keeps its chat in
+ * a vector of them, as SOCOM 1's BriefingRoom did -- the menu state's 0x1F5020 builds one and
+ * inserts it, through the insert 0x1F5640 whose deleter's destructor 0x1F5C30 ~BriefingRoom calls) */
+struct MediusChatFwdMessage {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    int OriginatorAccountID;   // 0x18
+    char OriginatorAccountName[32];   // 0x1c
+    int MessageType;   // 0x3c: 1 private, 2 clan
+    char Message[64];   // 0x40
+};   // 0x80
+
+/* a room (SOCOM 1's BriefingRoom, 0x98 bytes in SOCOM II): its games (the base vector itself --
+ * ~BriefingRoom tests `this` three times for it, a derived list would be four), then the channel
+ * list's record of it (a base at 0xc: the copy converts the room with a null test), its players,
+ * the other list and the password. The constructor is inline, too big to inline whole: it calls
+ * its bases' and members' constructors out of line (0x2E43F0, 0x2E43D0, 0x2E43B0), the record's
+ * copy (0x2E4300) and the password's setter */
+class BriefingRoom : public std::vector<RoomGame *>, public MediusChannelListResponse {
 public:
-    RoomGameVector m_games;   // 0x0
-    unsigned char _c[0x38 - 0xc];
-    char m_name[64];   // 0x38 (SOCOM 1's at 0x48)
-    unsigned char _78[0x98 - 0x78];
+    BriefingRoom(MediusChannelListResponse *resp)
+    {
+        m_password = 0;
+        MaxPlayers = 256;
+        PlayerCount = 0;
+        if (resp)
+            Set(resp);
+        SetPassword("");
+    }
+    ~BriefingRoom();
+    void Set(MediusChannelListResponse *resp) { *(MediusChannelListResponse *)this = *resp; }
+    void SetPassword(const char *password);
+    RoomPlayer *FindPlayer(const char *name);
+    /* the game types the room allows include this one, or it names none (CanJoinRoom inlines it;
+     * RoomGame::AllowsType is the same test of a game's byte) */
+    bool AllowsType(int type)
+    {
+        bool r = true;
+        unsigned int types = GenericField & 0xF;
+
+        if (types) {
+            if ((1 << (type - 1)) & types)
+                r = true;
+            else
+                r = false;
+        }
+        return r;
+    }
+    void DeleteGames();
+    RoomGame *FindGame(int mission);
+    RoomGame *FindGame(const char *name);
+    void RemoveEmptyGames();
+    void RemoveUncheckedGames();
+    void SortGames();
+
+    std::vector<RoomPlayer> m_players;   // 0x7c
+    std::vector<MediusChatFwdMessage> m_chat;   // 0x88
+    char *m_password;   // 0x94
 };   // 0x98
+
+/* the room's games sorted and handed to the menus (SOCOM 1's; the rooms' unit's, 0x2E2CE0) */
+void UpdateGameListDisplay(BriefingRoom *room);
 
 /* the room list (SOCOM 1's BriefingRoomDB: 0x44F568, the rooms' unit's) */
 class BriefingRoomDB : public std::vector<BriefingRoom *> {
 public:
     BriefingRoom *FindRoom(const char *name);
+    /* FindRoom again, as an inline (CanJoinRoom expands it where the game list's request calls
+     * FindRoom out of line) */
+    BriefingRoom *Find(const char *name)
+    {
+        BriefingRoom *room = 0;
+
+        if (name) {
+            for (iterator i = begin(); i != end(); ++i) {
+                if (!strcmp((*i)->LobbyName, name)) {
+                    room = *i;
+                    break;
+                }
+            }
+        }
+        return room;
+    }
+    void Add(MediusChannelListResponse *resp);
+    void DeleteAll();
+    void Release();
 };
 
 /* --- the lobby --------------------------------------------------------------------------- */
@@ -645,9 +823,18 @@ public:
     void RunStateHandler(LOBBY_STATE state, LOBBY_STATE_FLAG flag);
     bool RefreshRoomList(C2D *page);
     bool RejoinRoom();
+    bool JoinRoom(const char *name);
     bool RefreshGameList(C2D *page);
     void GetLadderInfo();
     void GetLadderRanking();
+    int GetRankTier(int rank);
+    int GetRankLevel(int rank);
+    void GetLadderBest(int n);
+    void GetLadderList(int start, int n);
+    int GetClanRankTier(int rank);
+    void GetClanLadderList(int start, int n);
+    void GetClanRanking(int n);
+    bool CanJoinRoom(const char *name);
     void GetClanLadderLeaders(int n);
     void GetFriendsList();
     void RemoveFriend(int id);

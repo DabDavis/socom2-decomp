@@ -440,9 +440,13 @@ public:
                     return i;
             return e;
         }
+        /* the end taken first, as Find takes it (include/vector's class end() through a const local
+         * since the MSL headers round 5: with end() in the test the two registers swap) */
         link *FindLink(const CAiMapLoc &loc)
         {
-            for (iterator i = begin(); i != end(); ++i)
+            iterator e = end();
+
+            for (iterator i = begin(); i != e; ++i)
                 if ((*i).m_loc == loc)
                     return &*i;
             return 0;
