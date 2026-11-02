@@ -24,9 +24,17 @@ public:
     void push(CKey *key);
 };   // 0xc bytes
 
+class CZAR;
+
 class CKey : public CKeyRing {
 public:
+    /* out of line (0x25BB50): Insert(const char *, ...) deletes a key it could not write through it */
+    ~CKey();
     CKey *FindKey(const char *name);
+    /* the key and its children off the directory: a 16-byte record each, the name an offset
+     * into the string table at base (SOCOM 1's) */
+    bool Read(CZAR *zar, CIO *io, int base);
+    CKey *InsertKey(CKey *key);
 
     char* m_name;   // 0xc
     int m_size;   // 0x10
@@ -37,9 +45,24 @@ class CZAR {
 public:
     CZAR(const char *name, CIO *io);
     virtual ~CZAR();
+    /* a key's data, when the key holds at least size bytes (SOCOM 1's flags argument unused) */
+    /* a key's data written at the archive's end (0x25A120), and a new key under the open one
+     * holding it -- the key, or 0 when the write failed */
+    bool Insert(CKey *key, const void *data, int size);
+    CKey *Insert(const char *name, const void *data, int size);
+    /* a key's data in place, a pointer into the CBufferIO's buffer */
+    bool FetchLIP(CKey *key, void **buf);
+    bool Fetch(CKey *key, void *buf, int size, unsigned int flags);
     bool Fetch(const char *name, void *buf, int size);
-    /* a key's size by name (0x25AB70; CVisual::Create's) */
-    bool Fetch(const char *name, int *size);
+    bool Fetch(const char *name, char **str);
+    bool Fetch(const char *name, float *value);
+    bool Fetch(const char *name, unsigned int *value);
+    bool Fetch(const char *name, int *value);
+    bool Fetch(const char *name, bool *value);
+    /* a fresh key, named so (SOCOM 1's) */
+    CKey *NewKey(const char *name);
+    /* a key's size by name in the open key, -1 when it has none */
+    int GetSize(const char *name);
     CKey *GetOpenKey();
     CKey *OpenKey(CKey *key);
     CKey *OpenKey(const char *name);
@@ -51,7 +74,9 @@ public:
     CKeyRing m_keys;   // 0x4: the open keys, innermost last
     CIO* m_pFileAlloc;   // 0x10
     CIO* m_pFile;   // 0x14
-    unsigned char _18[0x9C - 0x18];   // 0x18: SOCOM 1's m_databuffer .. m_tail, grown by 0x14
+    unsigned char _18[0x30 - 0x18];   // 0x18: SOCOM 1's m_databuffer .. m_data_padded, and new fields
+    int m_data_start;   // 0x30 (new in SOCOM II, the name ours): the file offset the keys' offsets count from
+    unsigned char _34[0x9C - 0x34];   // 0x34: a new field, then SOCOM 1's m_tail (grown by 4)
     CKey* m_root;   // 0x9c (SOCOM 1: 0x88)
     CSTable* m_stable;   // 0xa0 (SOCOM 1: 0x8c)
     char* m_filename;   // 0xa4 (SOCOM 1: 0x90): CRdrArchive's walks compare their names with it
