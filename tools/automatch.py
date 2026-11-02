@@ -62,9 +62,12 @@ GCC_RANGES = [
     (0x1AD088, 0x1B3970, [LIBC, SDK], "MAIN: newlib's libm"),
     (0x1B3970, 0x1C4CC0, [SDK, LIBC], "MAIN: libmc, libmpeg, libmrpc, libpad2, libscf, libvu0 ..."),
     (0x1CCD78, 0x1CE2A4, [SDK, LIBC], "MAIN: the code after zlib's"),
+    (0x1E7F58, 0x1E8FD4, [("ee-gcc2.96", "-O2 -G0 -fno-strict-aliasing")],
+     "OVL1: the microphone input (Sid*), libezcnf/libezctl"),
     (0x2430F0, 0x248350, [("ee-gcc2.96", "-O2 -G0")], "OVL1: the heap, lgAud, libnetb/inet"),
     (0x248350, 0x256FD0, [("ee-gcc2.96", "-O2 -G8")], "OVL1: Nellymoser's speech codec (SaseEncVad, SaseDec)"),
-    (0x4C5400, 0x50DC50, [("ee-gcc2.96", "-O2 -G0")], "OVL2: ScanSoft's recogniser (asrspi, casr)"),
+    (0x4C5400, 0x50DC50, [("ee-gcc2.96", "-O2 -G0 -fno-strict-aliasing")],
+     "OVL2: ScanSoft's recogniser (asrspi, casr)"),
     (0x60FB50, 0x64F720, [("ee-gcc2.96", "-O2 -G0")], "OVL2: Medius, DME and the rt_* libraries"),
 ]
 
@@ -1142,6 +1145,8 @@ def main(argv=None) -> int:
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--jobs", type=int, default=7)
     ap.add_argument("--emit", action="store_true", help="write hits into src/auto/")
+    ap.add_argument("--no-prune", action="store_true",
+                    help="with --emit, write the hits and leave every other draft alone (a lane's run over its own range)")
     ap.add_argument("--redo", action="store_true", help="retry functions src/auto already holds")
     ap.add_argument("--addrs", type=Path, help="only these addresses (one hex VA per line)")
     ap.add_argument("--stale", action="store_true",
@@ -1183,7 +1188,7 @@ def main(argv=None) -> int:
     print(f"{total} tried: " + ", ".join(f"{k} {v}" for k, v in sorted(tally.items())))
     print(f"hit rate {100 * tally.get('hit', 0) / max(total, 1):.1f} %  (hits in {OUT})")
     if a.emit:
-        emit(hits, img, st)
+        emit(hits, img, st, prune=not a.no_prune)
     return 0
 
 
@@ -1283,7 +1288,7 @@ def hand_defined() -> set[str]:
     return names
 
 
-def emit(hits: dict[int, str], img: E.Image, st: E.SymbolTable) -> None:
+def emit(hits: dict[int, str], img: E.Image, st: E.SymbolTable, prune: bool = True) -> None:
     written = 0
     if not hits:
         print("no new hits")
@@ -1297,6 +1302,9 @@ def emit(hits: dict[int, str], img: E.Image, st: E.SymbolTable) -> None:
             old.unlink()
         (d / f"{addr:08X}{ext}").write_text(HEADER.format(name=name) + src)
         written += 1
+    if not prune:
+        print(f"emitted {written} into {AUTO} (no pruning)")
+        return
     stale = renamed = 0
     hand = hand_defined()
     for f in auto_files():

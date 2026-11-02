@@ -67,10 +67,11 @@ def main(argv=None) -> int:
     def one(job):
         k, (tc, fl, v) = job
         obj = work / f"{k}.o"
+        label = f"{v} " * bool(v) + f"{tc} {fl}"
         try:
             D.compile_obj(srcs[v], obj, tc, fl.split(), includes)
         except Exception as e:                      # a failed build is not evidence
-            return tc, fl, None, str(e).strip().splitlines()[-1][:120]
+            return label, None, (str(e).strip().splitlines() or ["?"])[-1][:120]
         out = {}
         for f in E.Elf.read(obj).functions():
             if rx and not rx.search(f.name):
@@ -84,7 +85,7 @@ def main(argv=None) -> int:
             out[f.name] = ("=" if res.match else
                            ("R" if res.masked_equal else (res.differing if res.cand_size == res.target_size
                                                           else f"{res.differing}s")), res)
-        return f"{v} " * bool(v) + f"{tc} {fl}", out, ""
+        return label, out, ""
 
     jobs = list(enumerate((tc, fl, v) for v in srcs for tc in tcs for fl in flagsets))
     with ThreadPoolExecutor(a.jobs) as ex:
