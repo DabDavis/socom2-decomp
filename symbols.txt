@@ -12126,7 +12126,7 @@
 0x00621018 0xB8 func_00621018  # OVL2 unaligned
 0x006210D0 0xA4 func_006210D0  # OVL2
 0x00621178 0xEC func_00621178  # OVL2 unaligned
-0x00621268 0xF8 func_00621268  # OVL2 unaligned
+0x00621268 0xF8 NetSendMessage  # OVL2 unaligned; s1:callee (SOCOM 1's MediusCreateClan and every clan request call NetSendMessage at the same instruction; the gcc lane, round 3b)
 0x00621360 0xF8 func_00621360  # OVL2
 0x00621458 0xEC func_00621458  # OVL2 unaligned
 0x00621548 0xC4 func_00621548  # OVL2 unaligned
@@ -12901,8 +12901,8 @@
 0x00645708 0x8 func_00645708  # OVL2 unaligned
 0x00645710 0xA8 MediusCreateClan  # OVL2; s1 by call site (cbFilterClanName 0x2E7AA0 calls it with cbCreateClan, as SOCOM 1's cbFilterClanName calls MediusCreateClan; the online lane)
 0x006457B8 0x9C MediusDisbandClan  # OVL2 unaligned; s1 by call site (DisbandClan 0x2E6850, as SOCOM 1's DisbandClan; the online lane)
-0x00645858 0xA8 func_00645858  # OVL2 unaligned
-0x00645900 0x9C func_00645900  # OVL2
+0x00645858 0xA8 MediusGetClanByName  # OVL2 unaligned; s1:order (third of SOCOM 1's clan object 0x3B0EE8; stores the third callback slot, SOCOM 1's GetClanByNameCallbackFunctionPtr; the gcc lane, round 3b)
+0x00645900 0x9C MediusGetClanByID  # OVL2; s1:order (fourth of the clan object; the fourth slot, SOCOM 1's GetClanByIDCallbackFunctionPtr; the gcc lane, round 3b)
 0x006459A0 0xA8 MediusTransferClanLeadership  # OVL2; s1 by call site (TransferLeadership 0x2E81B0, as SOCOM 1's; the online lane)
 0x00645A48 0xA8 MediusAddPlayerToClan  # OVL2 unaligned; s1 by call site (cbGetClanInvitationsSent 0x2E6F50 with cbAddPlayerToClan, as SOCOM 1's; the online lane)
 0x00645AF0 0x9C MediusRemovePlayerFromClan  # OVL2; s1 by call site (RemovePlayerFromClan 0x2E7450 and QuitClan 0x2E8EF0, as SOCOM 1's both; the online lane)
@@ -12913,16 +12913,16 @@
 0x00645E20 0x9C MediusRevokeClanInvitation  # OVL2; s1 by call site (RevokeInvite 0x2E72A0 and cbGetClanInvitationsSent, as SOCOM 1's; the online lane)
 0x00645EC0 0x9C MediusGetMyClanMessages  # OVL2; s1 by call site (called with cbGetMyClanMessages 0x2E84E0 by 0x2E8460 and cbGetMyClans, as SOCOM 1's cbGetMyClans calls MediusGetMyClanMessages with it; the online lane)
 0x00645F60 0xA8 MediusSendClanMessage  # OVL2; s1 by call site (SendClanMessage 0x2E8310 passes cbSendClanMessage 0x2E83F0, the callback SOCOM 1 hands MediusSendClanMessage; the online lane)
-0x00646008 0xA8 func_00646008  # OVL2 unaligned
-0x006460B0 0x9C func_006460B0  # OVL2
-0x00646150 0xA8 func_00646150  # OVL2
-0x006461F8 0xA8 func_006461F8  # OVL2 unaligned
-0x006462A0 0x9C func_006462A0  # OVL2
-0x00646340 0x9C func_00646340  # OVL2
+0x00646008 0xA8 MediusModifyClanMessage  # OVL2 unaligned; s1:order (15th of the clan object; the 15th slot, SOCOM 1's ModifyClanMessageCallbackFunctionPtr; CZOnlineLobby::ModifyClanMessage calls it; the gcc lane, round 3b)
+0x006460B0 0x9C MediusDeleteClanMessage  # OVL2; s1:order (16th of the clan object; the 16th slot, SOCOM 1's DeleteClanMessageCallbackFunctionPtr; CZOnlineLobby::DeleteClanMessage calls it; the gcc lane, round 3b)
+0x00646150 0xA8 MediusRequestClanTeamChallenge  # OVL2; s1:order (17th of the clan object; the 17th slot, SOCOM 1's RequestClanTeamChallengeCallbackFunctionPtr; the gcc lane, round 3b)
+0x006461F8 0xA8 MediusRespondToClanTeamChallenge  # OVL2 unaligned; s1:order (18th of the clan object; the 18th slot, SOCOM 1's RespondToClanTeamChallengeCallbackFunctionPtr; the gcc lane, round 3b)
+0x006462A0 0x9C MediusRevokeClanTeamChallenge  # OVL2; s1:order (19th of the clan object; the 19th slot, SOCOM 1's RevokeClanTeamChallengeCallbackFunctionPtr; the gcc lane, round 3b)
+0x00646340 0x9C MediusGetClanTeamChallenges  # OVL2; s1:order (20th of the clan object; the 20th slot, SOCOM 1's GetClanTeamChallengesCallbackFunctionPtr; the gcc lane, round 3b)
 0x006463E0 0x9C MediusGetMyClans  # OVL2; s1 by call site (GetClan 0x2E8A90 with cbGetMyClans, as SOCOM 1's; the online lane)
-0x00646480 0x9C func_00646480  # OVL2
-0x00646520 0x9C func_00646520  # OVL2
-0x006465C0 0x9C func_006465C0  # OVL2
+0x00646480 0x9C MediusConfirmClanTeamChallenge  # OVL2; s1:order (22nd of the clan object; the 22nd slot, SOCOM 1's ConfirmClanTeamChallengeCallbackFunctionPtr; the gcc lane, round 3b)
+0x00646520 0x9C MediusGetAllClanMessages  # OVL2; s1:order (23rd of the clan object; the 23rd slot, SOCOM 1's GetAllClanMessagesCallbackFunctionPtr; CZOnlineLobby::GetLeaderMessages calls it; the gcc lane, round 3b)
+0x006465C0 0x9C MediusGetClanTeamChallengeHistory  # OVL2; s1:order (24th of the clan object; the 24th slot, SOCOM 1's GetClanTeamChallengeHistoryCallbackFunctionPtr; the gcc lane, round 3b)
 0x00646660 0xA8 MediusUpdateClanStats  # OVL2; s1 by call site (UpdateClanStats 0x2E7D70 with cbUpdateClanStats, as SOCOM 1's; the online lane)
 0x00646708 0x9C func_00646708  # OVL2 unaligned
 0x006467A8 0x90 func_006467A8  # OVL2 unaligned
