@@ -1646,6 +1646,28 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the online lobby, round 8** (zNetMediusFile.cpp complete, the ladder list, the friend invitations):
+  - MW never inlines `std::make_pair` here, by reference or by value; `std::pair<K, V>(key, v)`
+    inlines and reproduces the target's two string copies;
+  - an iterator declared first, `iterator e = end();` taken next and then `i = find(k);` assigned,
+    lives in memory, so the dereference re-reads it as the target does; initialised from find, MW
+    reuses the compared value; `i != end()` inside an inline helper cuts end() to an out-of-line
+    `tail()` -- end() taken into a local first stays inline;
+  - a buffer address kept in a saved register across calls needs a local (`char *id =
+    req.MessageID;`, declared after `err`); a request declared inside an inline helper takes a lower
+    stack slot than one in an earlier-expanded inline;
+  - a function returning a bool call's result while it has an address-taken local is no tail call
+    (return type `bool` matches, `int` adds `andi 0xff`); an out-parameter's stack slot shows its
+    type's size (a two-word result moved the local from sp+60 to sp+56);
+  - an inline constructor cut to one level calls even its members' empty user-declared
+    constructors: dropping the member's constructor fixed it, its implicit assignment staying out of
+    line member by member;
+  - two `unsigned int` bit-fields totalling 16 bits take two bytes (a following char array starts at
+    2); a struct with an odd-length char array is copied member by member only when assigned (`T c;
+    c = *p;`), `T c = *p;` block-copies;
+  - include/tree has `swap(__tree &)` out of class like clear, include/map `swap(map &)`; open on the
+    MSL side: the inline allocator() (ReleaseFileTransfers, and the out-of-line ~__tree and
+    ~pair<std::string, CLobbyFileIO *> the image lacks), the compressed-pair tree swap 0x305BE0.
 - **Tells from the game states, round 16** (fts_action.cpp, CGTree::FindNode, the graph destructors, CMsgEditor):
   - a member list whose destructor tests `this` four times before the erase is a class of its own
     over `list<T *>` (CGNodeList, CGEdgeList: ~CGNode, ~CGRoute, ~CGraph);
