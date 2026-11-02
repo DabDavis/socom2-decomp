@@ -308,6 +308,7 @@
 0x003E6DD0 0x8 __RTTI__8SlotList  # RTTI of SlotList: found by its RTTI's name
 0x003E6E10 0x8 __RTTI__10CHealthBar  # RTTI of CHealthBar: found by its RTTI's name
 0x003E6E70 0x8 __RTTI__14CSpectatorInfo  # RTTI of CSpectatorInfo: found by its RTTI's name
+0x003ECBA0 0x8 __RTTI__3CIO  # RTTI of CIO: its name string "CIO" at 0x3ECB98, no bases; zar_search.cpp's FetchLIP passes it to __dynamic_cast as the source type
 0x003ECBC0 0x8 __RTTI__7CFileIO  # RTTI of CFileIO: found by its RTTI's name
 0x003ECBE8 0x8 __RTTI__9CBufferIO  # RTTI of CBufferIO: found by its RTTI's name
 0x003ECC00 0x8 __RTTI__Q23zar4CZAR  # RTTI of zar::CZAR: found by its RTTI's name
