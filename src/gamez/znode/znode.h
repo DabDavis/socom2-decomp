@@ -496,6 +496,12 @@ public:
     /* a level of detail (SOCOM 1's CMesh::CMeshLOD, 0xc bytes: the mesh last) */
     class CMeshLOD {
     public:
+        CMeshLOD() {}
+        /* a copy takes the buffer and the mesh and starts "never" far (the vector's moves store 1e12
+         * where the distance was, then copy the two words; SOCOM 1's stored FLT_MAX) -- the
+         * vector's reserve and insert (0x3BA0D0, 0x3B9BD0) build their copies so */
+        CMeshLOD(const CMeshLOD &l) : m_dist(1e12f), m_buffer(l.m_buffer), m_mesh(l.m_mesh) {}
+
         float m_dist;   // 0x0: the distance it is used within (SetLOD by distance)
         _word128 *m_buffer;   // 0x4: its VU buffer (AddLOD hands it to SetMeshBuffer)
         /* its select block, which SetLOD makes the view's (AddLOD copies it; the name kept) */
