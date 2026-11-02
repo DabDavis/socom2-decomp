@@ -74,7 +74,63 @@ void CMsgEditor::Init(C2DFont *font)
     push_back(&m_text);
 }
 
-extern "C" int func_002C9990(char *args);   /* the whisper command's parser */
+char *_strdup(const char *s, const char *file, int line);
+void _free(void *p, const char *file, int line);
+extern "C" void func_002C9810(char *name, char *msg);   /* the whisper sent */
+
+/* a "/w" command's arguments -- ` name message` or ` "a name" message` -- split in a copy and the
+ * whisper sent; whether it was (OVL1 0x2C9990; the name ours) */
+bool ParseWhisper(char *args)
+{
+    unsigned int len = args ? strlen(args) : 0;
+    bool sent = false;
+
+    if (len > 1 && *args == ' ') {
+        char *buf = _strdup(args + 1, 0, 0);
+        unsigned int n = strlen(buf);
+        unsigned int i = 0;
+        char *name = 0;
+        char *msg = 0;
+
+        if (*buf == '"') {
+            i++;
+            while (i < n && !name) {
+                if (buf[i] == '"') {
+                    buf[i] = 0;
+                    i++;
+                    if (strlen(buf))
+                        name = buf + 1;
+                } else
+                    i++;
+            }
+        } else {
+            while (i < n && !name) {
+                if (buf[i] == ' ') {
+                    buf[i] = 0;
+                    i++;
+                    if (strlen(buf))
+                        name = buf;
+                } else
+                    i++;
+            }
+        }
+        if (name) {
+            while (i < n && !msg) {
+                if (buf[i] != ' ')
+                    msg = &buf[i];
+                else
+                    i++;
+            }
+        }
+        if (name && msg) {
+            sent = true;
+            func_002C9810(name, msg);
+        }
+        if (buf)
+            _free(buf, 0, 0);
+    }
+    return sent;
+}
 
 /* the line entered: a "/w" command's arguments handed to the whisper's parser, then the text
  * emptied (OVL1 0x2C9B80) */
@@ -108,7 +164,7 @@ void CMsgEditor::Submit()
                 }
             }
             if (strlen(cmd) && !strcasecmp(cmd, "w"))
-                func_002C9990(text + i);
+                ParseWhisper(text + i);
         }
     }
     m_text.SetString(0, true);
