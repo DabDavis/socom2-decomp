@@ -3349,7 +3349,7 @@
 0x002858B0 0x19C push_back__Q210Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>FRCPCv  # OVL1; s1:calls (the deque's push_back calls it where SOCOM 1's calls cdeque<PCv>::push_back) -- the states lane
 0x00285A50 0x160 reserve__Q210Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>FUi  # OVL1; s1:calls (the deque's push_back starts it with reserve(2) where SOCOM 1's does) -- the states lane
 0x00285BB0 0x120 func_00285BB0  # OVL1
-0x00285CD0 0x8 func_00285CD0  # OVL1
+0x00285CD0 0x8 alloc__Q210Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>CFv  # OVL1; the MSL headers round 7: include/deque -- the circular buffer's allocator at 0 (the buffers' copy constructors 0x333E40/0x3A6160/0x2E0AC0 pass it to 0x2E0D20; 0x285BB0 reads its max_size); byte-exact copies in zrdr_edit.cpp and util_ssm.cpp
 0x00285CE0 0x50 func_00285CE0  # OVL1
 0x00285D30 0x428 func_00285D30  # OVL1
 0x00286160 0x868 func_00286160  # OVL1
@@ -4374,7 +4374,7 @@
 0x002CE9E0 0x32C Tick__5CGameFf  # OVL1; s1:align
 0x002CED10 0x80 __dt__5CGameFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002CED90 0x68 __ct__5CGameFv  # OVL1; s1:vtable by hand (the states lane: stores CGame's vtable 0x4065C0, RTTI-named; COurGame's constructor calls it for its base)
-0x002CEE00 0x30 __ct__Q23std39__deque_imp<PCv,Q23std14allocator<PCv>>Fv  # OVL1; by hand (the states lane: game_main.cpp's tail, include/deque -- the queue's deque<PCv> built: its blocks' owner 0x2CEE40, then the allocator base at +0x18 0x2CEE30; CGame's constructor calls it on m_StateChangeQueue; byte-exact; the class name ours)
+0x002CEE00 0x30 __ct__Q23std71deque<P19CGameStateChangeCmd,Q23std33allocator<P19CGameStateChangeCmd>>Fv  # OVL1; by hand (the states lane: game_main.cpp's tail, include/deque -- the queue's deque<PCv> built: its blocks' owner 0x2CEE40, then the allocator base at +0x18 0x2CEE30; CGame's constructor calls it on m_StateChangeQueue; byte-exact; the class name ours); the MSL headers round 7: include/deque -- the pointer deque's default constructor is out of class (CRdrEditor() calls the rdr stack's, 0x3340F0); CGame() calls this one for its queue, which inlines deque<PCv>() and __deque_imp() and calls __deque_buf's and the allocator base's constructors; byte-exact from game_main.cpp
 0x002CEE30 0x8 __ct__Q23std14allocator<PCv>Fv  # OVL1; by hand (the states lane: include/memory -- the allocator's empty constructor, out of class, called for the deque's allocator base at +0x18 and by the deque and cdeque copy constructors of four other units at +0x18/+0x10; byte-exact)
 0x002CEE40 0x30 __ct__Q23std39__deque_buf<PCv,Q23std14allocator<PCv>>Fv  # OVL1; by hand (the states lane: include/deque -- the blocks' owner built: the buffer's storage 0x2CEE70 called, start_ and size_ at 0x10/0x14 cleared; byte-exact; the class name ours)
 0x002CEE70 0x18 __ct__Q210Metrowerks40__cdeque_buf<PCv,Q23std14allocator<PCv>>Fv  # OVL1; by hand (the states lane: include/deque -- the circular buffer's capacity, size, start and data cleared, SOCOM 1's cdeque layout; byte-exact; the class name ours)
@@ -4679,7 +4679,7 @@
 0x002E0B40 0xC8 func_002E0B40  # OVL1
 0x002E0C10 0xA0 func_002E0C10  # OVL1
 0x002E0CB0 0x70 func_002E0CB0  # OVL1
-0x002E0D20 0x18 func_002E0D20  # OVL1
+0x002E0D20 0x18 __ct__Q210Metrowerks40__cdeque_buf<PCv,Q23std14allocator<PCv>>FRCQ23std14allocator<PCv>  # OVL1; the MSL headers round 7: include/deque -- the circular buffer's storage built from an allocator (four words cleared), the buffers' copy constructors' base; byte-exact copies in zrdr_edit.cpp and util_ssm.cpp
 0x002E0D40 0x8 func_002E0D40  # OVL1
 0x002E0D50 0x18 func_002E0D50  # OVL1
 0x002E0D70 0x8 func_002E0D70  # OVL1
@@ -5902,21 +5902,21 @@
 0x003339B0 0x6C push__10CRdrEditorFPCc  # OVL1; s1:order by hand (SOCOM 1's push: the tag added when non-empty, a new CRDRNodeVec (0xC bytes) pushed on the stack's deque (0x2CF970), false) -- the rdr lane
 0x00333A20 0xB8 __dt__10CRdrEditorFv  # OVL1; s1:order by hand (SOCOM 1's ~CRdrEditor: pop until the stack (this+0x34, its size at 0x48) is empty, the stack's four this-tested levels and __deque_buf's destructor, then ~CRdrFile) -- the rdr lane
 0x00333AE0 0x48 __ct__10CRdrEditorFv  # OVL1; s1:order by hand (SOCOM 1's CRdrEditor(): CRdrFile's constructor, then the stack built from a temporary deque by copy, as MSL's stack(const Container & = Container())); zanim_menu.cpp's NetCnf readers construct it -- the rdr lane
-0x00333B30 0x78 func_00333B30  # OVL1
-0x00333BB0 0x118 func_00333BB0  # OVL1
-0x00333CD0 0x5C func_00333CD0  # OVL1
-0x00333D30 0x5C func_00333D30  # OVL1
-0x00333D90 0x68 func_00333D90  # OVL1
-0x00333E00 0x40 func_00333E00  # OVL1
-0x00333E40 0x78 func_00333E40  # OVL1
+0x00333B30 0x78 __ct__Q23std83deque<PQ210CRdrEditor11CRDRNodeVec,Q23std39allocator<PQ210CRdrEditor11CRDRNodeVec>>FRCQ23std83deque<PQ210CRdrEditor11CRDRNodeVec,Q23std39allocator<PQ210CRdrEditor11CRDRNodeVec>>  # OVL1; the MSL headers round 7: include/deque -- the pointer deque's copy constructor: base(x.alloc()) (the pair at 0, 0x3340E0), __deque_buf's constructor from it (0x333D90), the allocator base (0x2CEE30), x.begin(), x.end() and init; byte-exact
+0x00333BB0 0x118 init<Q33std39__deque_imp<PCv,Q23std14allocator<PCv>>8iterator>__Q23std83deque<PQ210CRdrEditor11CRDRNodeVec,Q23std39allocator<PQ210CRdrEditor11CRDRNodeVec>>FQ33std39__deque_imp<PCv,Q23std14allocator<PCv>>8iteratorQ33std39__deque_imp<PCv,Q23std14allocator<PCv>>8iteratorQ23std20forward_iterator_tag_v  # OVL1; the MSL headers round 7: include/deque -- the copy's range init, converted iterators to the base's do_assign (0x334440), called by the byte-exact 0x333B30; OPEN (its parameters copied twice around two empty temporaries in the target)
+0x00333CD0 0x5C end__Q23std83deque<PQ210CRdrEditor11CRDRNodeVec,Q23std39allocator<PQ210CRdrEditor11CRDRNodeVec>>CFv  # OVL1; the MSL headers round 7: include/deque -- make_iterator(size_) (0x334AA0) copied out; byte-exact
+0x00333D30 0x5C begin__Q23std83deque<PQ210CRdrEditor11CRDRNodeVec,Q23std39allocator<PQ210CRdrEditor11CRDRNodeVec>>CFv  # OVL1; the MSL headers round 7: include/deque -- make_iterator(0) (0x334AA0) copied out; byte-exact
+0x00333D90 0x68 __ct__Q23std39__deque_buf<PCv,Q23std14allocator<PCv>>FRCQ23std14allocator<PCv>  # OVL1; the MSL headers round 7: include/deque -- the blocks' owner built from an allocator: a rebound allocator temporary (0x3340D0), an empty buffer from it (0x3340B0), the pair copy-constructed (0x333E00), start_ and size_ cleared; called by the byte-exact copies 0x333B30 and 0x3B7DB0; OPEN (the target calls the temporary's destructor 0x2CEE90 where this inlines it)
+0x00333E00 0x40 __ct__Q210Metrowerks98__compressed_pair_imp<Q23std14allocator<PCv>,Q210Metrowerks36cdeque<PPCv,Q23std15allocator<PPCv>>>FRCQ23std14allocator<PCv>RCQ210Metrowerks36cdeque<PPCv,Q23std15allocator<PPCv>>  # OVL1; the MSL headers round 7: include/deque -- the blocks' pair (the allocator, empty, at 0, and the buffer): the allocator's copy (0x3340A0) and the buffer's (0x333E40); byte-exact
+0x00333E40 0x78 __ct__Q210Metrowerks36cdeque<PPCv,Q23std15allocator<PPCv>>FRCQ210Metrowerks36cdeque<PPCv,Q23std15allocator<PPCv>>  # OVL1; the MSL headers round 7: include/deque -- the block buffer's copy constructor (base(x.alloc()) 0x285CD0/0x2E0D20, the allocator base 0x2CEE30, begin, end, init), called by the byte-exact 0x333E00; OPEN (the target calls the buffer's begin() and the allocator base where this inlines them)
 0x00333EC0 0xC8 func_00333EC0  # OVL1
 0x00333F90 0xA0 func_00333F90  # OVL1
 0x00334030 0x70 func_00334030  # OVL1
-0x003340A0 0x8 func_003340A0  # OVL1
+0x003340A0 0x8 __ct__Q23std14allocator<PCv>FRCQ23std14allocator<PCv>  # OVL1; the MSL headers round 7: include/deque and include/memory -- the allocator's copy constructor, out of class as SOCOM 1's (its same-named 0x1DABD0); byte-exact
 0x003340B0 0x18 func_003340B0  # OVL1
-0x003340D0 0x8 func_003340D0  # OVL1
-0x003340E0 0x8 func_003340E0  # OVL1
-0x003340F0 0x28 func_003340F0  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
+0x003340D0 0x8 __ct<PCv>__Q23std15allocator<PPCv>FRCQ23std14allocator<PCv>_Pv  # OVL1; the MSL headers round 7: include/deque and include/memory -- the allocator's converting (rebind) constructor, out of class; byte-exact
+0x003340E0 0x8 alloc__Q23std39__deque_buf<PCv,Q23std14allocator<PCv>>CFv  # OVL1; the MSL headers round 7: include/deque -- the allocator, the blocks' pair at 0; byte-exact
+0x003340F0 0x28 __ct__Q23std83deque<PQ210CRdrEditor11CRDRNodeVec,Q23std39allocator<PQ210CRdrEditor11CRDRNodeVec>>Fv  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); the MSL headers round 7: include/deque -- CRdrEditor()'s temporary stack deque, built out of line (the call byte-exact in CRdrEditor()); OPEN: the target calls a level (0x334120) game_main.cpp's 0x2CEE00 inlines
 0x00334120 0x30 func_00334120  # OVL1
 0x00334150 0x18 func_00334150  # OVL1
 0x00334170 0x44 zrdr_newarray__FP5_zrdri  # OVL1; the rdr lane: a value made an array of n zeroed values (0x335BC0 with 1), its count and type set; _zrdr::Clone calls it out of line and CRdrEditor::pop inlines it (a2 copy of the array pointer), so it is zrdr_edit.cpp's own function, defined first (it follows the deque copy constructor's pieces) -- the name ours
@@ -5929,8 +5929,8 @@
 0x00334940 0x68 func_00334940  # OVL1
 0x003349B0 0x8 func_003349B0  # OVL1
 0x003349C0 0xD4 pop_back__Q23std39__deque_imp<PCv,Q23std14allocator<PCv>>Fv  # OVL1; s1:calls (CVisual::Init calls it after the pointer deque's push_back where SOCOM 1's calls deque<Ui>'s pop_back; SOCOM II's pointer deques run on __deque_imp<const void *>; the rdr editor's deque pieces) -- the weapons lane
-0x00334AA0 0x13C func_00334AA0  # OVL1
-0x00334BE0 0x134 func_00334BE0  # OVL1
+0x00334AA0 0x13C make_iterator__Q23std39__deque_imp<PCv,Q23std14allocator<PCv>>CFUi  # OVL1; the MSL headers round 7: include/deque -- the iterator to element n: n plus start_, the block buffer's begin() stepped by n / 128 (wrapping), the block or 0 when the buffer is empty; begin()/end() of every pointer deque call it (0x333D30, 0x333CD0, the vis unit's 0x3B7F40/0x3B7EE0); OPEN (the target inlines the buffer's begin() into a local, its fields addressed through registers)
+0x00334BE0 0x134 make_iterator__Q23std39__deque_imp<PCv,Q23std14allocator<PCv>>FUi  # OVL1; the MSL headers round 7: include/deque -- the same, non-const: the range inits' destination (0x334440, the vis unit's 0x3B8000); OPEN as 0x334AA0
 0x00334D20 0x88 zrdr_IsComplex__FP5_zrdr  # OVL1; s1:calls by hand (SOCOM 1's zrdr_IsComplex: true when any item of the array is an array, the walk over Count()/Item(i) as SOCOM 1's, its items from 0)
 0x00334DB0 0xBC func_00334DB0  # OVL1
 0x00334E70 0x30 func_00334E70  # OVL1
@@ -7682,20 +7682,20 @@
 0x003A5CC0 0x108 __dt__19CSimpleStateMachineFv  # OVL1; by hand, the UI-commands lane's lead vetted (stores the same vtable first, drains the queue, frees 0x30, destroys the queue at 0x14 and deletes itself when its flag is positive: MW's destructor shape; the inlined ~CSMInitNetwork calls it with 0)
 0x003A5DD0 0x78 __ct__19CSimpleStateMachineFv  # OVL1; by hand, the UI-commands lane's lead vetted (stores __vt__19CSimpleStateMachine, 0x408240, before anything else and copy-builds the state queue at 0x14 from a temporary; UIInitNetwork calls it right after operator new(60))
 0x003A5E50 0x78 __ct__Q23std91deque<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>FRCQ23std91deque<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>  # OVL1; (include/deque, util_ssm.cpp's queue: the deque<SSMState> copy constructor std::queue's default constructor runs on a default temporary; its chain mirrors the rdr lane's 0x333B30, open)
-0x003A5ED0 0xB0 func_003A5ED0  # OVL1
-0x003A5F80 0x5C func_003A5F80  # OVL1
-0x003A5FE0 0x5C func_003A5FE0  # OVL1
-0x003A6040 0x68 func_003A6040  # OVL1
+0x003A5ED0 0xB0 init<Q33std97__deque_imp<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>8iterator>__Q23std91deque<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>FQ33std97__deque_imp<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>8iteratorQ33std97__deque_imp<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>8iteratorQ23std20forward_iterator_tag_v  # OVL1; the MSL headers round 7: include/deque -- the copy's range init (the iterators to do_assign 0x3A6710), called by the byte-exact 0x3A5E50; OPEN (its parameters copied twice around two empty temporaries in the target)
+0x003A5F80 0x5C end__Q23std91deque<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>CFv  # OVL1; the MSL headers round 7: include/deque -- make_iterator(size_) copied out; byte-exact
+0x003A5FE0 0x5C begin__Q23std91deque<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>CFv  # OVL1; the MSL headers round 7: include/deque -- make_iterator(0) copied out; byte-exact
+0x003A6040 0x68 __ct__Q23std97__deque_buf<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>FRCQ23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>  # OVL1; the MSL headers round 7: include/deque -- the blocks' owner built from an allocator (0x3A63F0, 0x3A63D0, the pair 0x3A6120, the temporary's destructor 0x3A60B0), called by the byte-exact 0x3A5E50; OPEN as 0x333D90
 0x003A60B0 0x70 func_003A60B0  # OVL1
-0x003A6120 0x40 func_003A6120  # OVL1
-0x003A6160 0x78 func_003A6160  # OVL1
+0x003A6120 0x40 __ct__Q210Metrowerks185__compressed_pair_imp<Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>,Q210Metrowerks94cdeque<PM19CSimpleStateMachineFPCvPvUc_v,Q23std44allocator<PM19CSimpleStateMachineFPCvPvUc_v>>>FRCQ23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>RCQ210Metrowerks94cdeque<PM19CSimpleStateMachineFPCvPvUc_v,Q23std44allocator<PM19CSimpleStateMachineFPCvPvUc_v>>  # OVL1; the MSL headers round 7: include/deque -- the blocks' pair: the allocator's copy (0x3A63C0) and the buffer's (0x3A6160); byte-exact
+0x003A6160 0x78 __ct__Q210Metrowerks94cdeque<PM19CSimpleStateMachineFPCvPvUc_v,Q23std44allocator<PM19CSimpleStateMachineFPCvPvUc_v>>FRCQ210Metrowerks94cdeque<PM19CSimpleStateMachineFPCvPvUc_v,Q23std44allocator<PM19CSimpleStateMachineFPCvPvUc_v>>  # OVL1; the MSL headers round 7: include/deque -- the block buffer's copy constructor, called by the byte-exact 0x3A6120; OPEN as 0x333E40
 0x003A61E0 0xC8 func_003A61E0  # OVL1
 0x003A62B0 0xA0 func_003A62B0  # OVL1
 0x003A6350 0x70 func_003A6350  # OVL1
-0x003A63C0 0x8 func_003A63C0  # OVL1
+0x003A63C0 0x8 __ct__Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>FRCQ23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>  # OVL1; the MSL headers round 7: include/deque and include/memory -- the allocator's copy constructor, out of class; byte-exact
 0x003A63D0 0x18 func_003A63D0  # OVL1
-0x003A63F0 0x8 func_003A63F0  # OVL1
-0x003A6400 0x8 func_003A6400  # OVL1
+0x003A63F0 0x8 __ct<M19CSimpleStateMachineFPCvPvUc_v>__Q23std44allocator<PM19CSimpleStateMachineFPCvPvUc_v>FRCQ23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>_Pv  # OVL1; the MSL headers round 7: include/deque and include/memory -- the allocator's converting (rebind) constructor; byte-exact
+0x003A6400 0x8 alloc__Q23std97__deque_buf<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>CFv  # OVL1; the MSL headers round 7: include/deque -- the allocator, the blocks' pair at 0; byte-exact
 0x003A6410 0x28 __ct__Q23std91deque<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>Fv  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); (include/deque, util_ssm.cpp's queue: deque<SSMState>'s default constructor, the temporary CSimpleStateMachine() builds)
 0x003A6440 0x30 func_003A6440  # OVL1
 0x003A6470 0x18 func_003A6470  # OVL1
@@ -7708,10 +7708,10 @@
 0x003A6C20 0x8 func_003A6C20  # OVL1
 0x003A6C30 0x8 func_003A6C30  # OVL1
 0x003A6C40 0xA8 pop_front__Q23std97__deque_imp<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>Fv  # OVL1; (include/deque, util_ssm.cpp's queue: __deque_imp::pop_front over 42-element blocks of member pointers -- 84 and 42 its constants; Step calls it)
-0x003A6CF0 0x16C func_003A6CF0  # OVL1
+0x003A6CF0 0x16C make_iterator__Q23std97__deque_imp<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>CFUi  # OVL1; the MSL headers round 7: include/deque -- util_ssm.cpp's queue: the iterator to element n (42-element blocks), begin()/end() call it (0x3A5FE0, 0x3A5F80); OPEN as 0x334AA0
 0x003A6E60 0x138 __dt__Q23std97__deque_buf<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>Fv  # OVL1; (include/deque, util_ssm.cpp's queue: the block buffer's out-of-class destructor, called with 0 by ~CSimpleStateMachine and for CSimpleStateMachine()'s temporary)
 0x003A6FA0 0x88 clear__Q23std97__deque_imp<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>Fv  # OVL1; (include/deque, util_ssm.cpp's queue: __deque_imp::clear, two blocks kept and the start at 21)
-0x003A7030 0x164 func_003A7030  # OVL1
+0x003A7030 0x164 make_iterator__Q23std97__deque_imp<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>FUi  # OVL1; the MSL headers round 7: include/deque -- the same, non-const: the range init's destination (0x3A6710); OPEN as 0x334AA0
 0x003A71A0 0x20 Virtual60__7CTurretFP6CPnt3D  # OVL1; by hand (the wep lane: CTurret's vtable slot +0x60, an inline override's copy opening the unit -- the point at 0x380 copied out, true; CEntity's slot takes no parameter in zentity.h, the name follows its Virtual60); veh_turret.cpp; (zentity.h's slot +0x60 takes a CPnt3D * and returns bool since the entity lane's round 8)
 0x003A71C0 0x8 Virtual64__7CTurretFv  # OVL1; by hand (the wep lane: CTurret's vtable slot +0x64, an inline override's copy -- the node at 0x288); veh_turret.cpp
 0x003A71D0 0x20 Virtual68__7CTurretFP6CPnt3D  # OVL1; by hand (the wep lane: CTurret's vtable slot +0x68, an inline override's copy -- the point at 0x38C copied out, true); veh_turret.cpp

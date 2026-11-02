@@ -36,6 +36,12 @@ public:
      * for its allocator base, as do the deque and cdeque copy constructors of four other units.
      * No-throw: the deque's constructor references no cleanup of the base built before it */
     allocator() throw();
+    /* the copy and the converting (rebind) constructor out of class as well, as SOCOM 1's
+     * (__ct__Q23std14allocator<PCv>FRCQ23std14allocator<PCv>): the deques' copy constructors call
+     * both out of line (0x3340A0 the pair's allocator copied, 0x3340D0 the buffer's rebound one) */
+    allocator(const allocator &) throw();
+    template <class U>
+    allocator(const allocator<U> &) throw();
 
     /* the tree's nodes come from here (<tree>: operator new, a null result fatal), and its values
      * are built and torn down in place. In class: SOCOM II's trees inline them, and call out-of-
@@ -56,6 +62,17 @@ public:
 
 template <class T>
 allocator<T>::allocator() throw()
+{
+}
+
+template <class T>
+allocator<T>::allocator(const allocator &) throw()
+{
+}
+
+template <class T>
+template <class U>
+allocator<T>::allocator(const allocator<U> &) throw()
 {
 }
 
