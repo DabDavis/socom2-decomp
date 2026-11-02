@@ -1643,6 +1643,23 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the kit and AI states, round 10** (anim.cpp, seal_ex.cpp, seal_ailines.cpp, ai_group.cpp):
+  - a const inline accessor reached through a non-const parameter reloads the field the caller just
+    tested; the parameter copied into a `const T *` local reuses the load (ftmask_create);
+  - a postfix `i++` on a class iterator gives the rotated loop (its setup block at the bottom),
+    prefix `++i` does not (CloseAll); an inline accessor as a loop bound is re-read every pass
+    (CAnimTypeRec::Count());
+  - an `int` callee result summed into an int needs an `int` return type -- a `bool` adds `andi 0xff`
+    at the call (MarkState);
+  - a walk stepping the group pointer itself through the pairs keeps one cursor register, a separate
+    pairs pointer takes another; in `if (a == b)`, the element read into a local first decides the
+    `bne`'s operand order (Contains);
+  - a state whose constructor is inlined one level calls a real CAiTimer member's constructor out of
+    line, so the unit emits the copy (CAiTimer(float) 0x5EA550);
+  - units: seal_ex.cpp starts at 0x5B8190; anim.cpp (0x5E0030-0x5E622F) holds CAnimTypeRec and its
+    600-record pool; seal_ailines.cpp runs from ~0x5FF2F0 to seal_look.cpp (SOCOM 1's ai::MoveTo at
+    0x600070); CAiState(AI_STATE)'s copy 0x5EA5D0 and CAiMapLoc's copy constructor 0x5EA7E0 come only
+    with CSealUnit::IssueCommand (its static CAiSBreach built where CAiStateStack() is not defined).
 - **Tells from the SEALs, round 9** (seal.cpp's small rows, seal_ai.cpp's stance setters):
   - the prologue copies parameters into their saved registers in reverse declaration order, floats
     included: the order of the moves places a float among the int parameters where no call site
