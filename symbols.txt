@@ -379,7 +379,7 @@
 0x00195688 0xE0 memchr  # MAIN unaligned; s1:exact
 0x00195768 0x94 memcmp  # MAIN unaligned; s1:exact
 0x00195800 0xB0 memcpy  # MAIN
-0x001958B0 0x104 func_001958B0  # MAIN
+0x001958B0 0x104 memmove  # MAIN; s1:asm (the demo's memmove object, same size, identical but for the short-loop slot as memcpy/memset/strcpy/strncpy are, between memcpy and memset as there)
 0x001959B8 0xC0 memset  # MAIN unaligned; s1:callee
 0x00195A78 0x7C func_00195A78  # MAIN unaligned
 0x00195AF8 0x4C func_00195AF8  # MAIN unaligned
@@ -871,7 +871,9 @@
 0x001AC2A0 0x10 func_001AC2A0  # MAIN
 0x001AC2B0 0x40 InitTLB  # MAIN; s1:exact
 0x001AC2F0 0x1F4 InitTLB32MB  # MAIN; s1:exact
-0x001AC500 0x360 _kTLBException  # MAIN; s1:ref (taken by address where SOCOM 1 takes _kTLBException's)
+0x001AC500 0x11C _kTLBException  # MAIN; s1:ref (taken by address where SOCOM 1 takes _kTLBException's); split: the row held the demo's whole assembler object 0x163E00-0x164160, its three functions at the same offsets (+0, +0x140, +0x240), the gaps zero
+0x001AC640 0xF4 _kExitTLBHandler  # MAIN; s1:split (the demo's same object, +0x140, 0xF4 bytes, identical but for the relocated fields)
+0x001AC740 0x11C _kDebugException  # MAIN; s1:split (the demo's same object, +0x240, 0x11C bytes, identical but for the relocated fields)
 0x001AC860 0x48 DIntr  # MAIN; s1:exact
 0x001AC8A8 0x18 EIntr  # MAIN unaligned; s1:exact
 0x001AC8C0 0x48 supplement_crt0  # MAIN; s1:exact

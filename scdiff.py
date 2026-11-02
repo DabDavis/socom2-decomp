@@ -253,6 +253,23 @@ def is_gnu(elf: E.Elf) -> bool:
     return any(s.name == ".reginfo" for s in elf.sections)
 
 
+def bss_local(elf: E.Elf, sec_index: int, off: int, st: E.SymbolTable) -> tuple[str, int] | None:
+    """A GNU object's reference into its own .bss (`.bss`+N: GNU as relocates a local label
+    against its section) as (label, address), when the label at or before N is one the data map
+    names: zeroed data has no content to compare, so only the map can check it. None otherwise
+    (and for any other section, whose content local_object_ok compares)."""
+    if not is_gnu(elf) or not 0 < sec_index < len(elf.sections) or elf.sections[sec_index].type != 8:
+        return None
+    best = None
+    for s in elf.symbols:
+        if s.shndx == sec_index and s.bind == 0 and s.type != "SECTION" and s.name and s.value <= off:
+            if best is None or s.value > best.value:
+                best = s
+    if best is None or best.name not in st.data_by_name:
+        return None
+    return best.name, st.data_by_name[best.name].addr + off - best.value
+
+
 def gnu_hi_partners(elf: E.Elf, fsym: E.ElfSymbol, cand: bytes) -> dict[int, int]:
     """In a GNU object, each R_MIPS_LO16's R_MIPS_HI16 (offsets from the function's start).
 
@@ -394,6 +411,11 @@ def reloc_check(elf: E.Elf, fsym: E.ElfSymbol, relocs: list[E.Reloc], target: by
                 out.append(RelocFinding(r.offset, r.type, name, want, got, "ok" if got == want else "MISMATCH"))
             elif r.sym.bind != 0 and r.sym.name and not r.sym.name.startswith("@STRING@"):
                 out.append(RelocFinding(r.offset, r.type, name, want, None, "UNKNOWN"))   # see R_MIPS_26
+            elif local_sec is not None and (named := bss_local(elf, local_sec, local_base + add, st)) is not None:
+                # a GNU object's own zeroed data (.bss+N), which has no content to compare: by the
+                # local label there when the data map names it (an assembler unit's save areas)
+                got = named[1]
+                out.append(RelocFinding(r.offset, r.type, named[0], want, got, "ok" if got == want else "MISMATCH"))
             elif local_sec is not None:
                 size = r.sym.size if (r.sym.type == "OBJECT" and add == 0) else 0
                 ok = local_object_ok(elf, local_sec, local_base + add, want, fsym, taddr, st, img, size)

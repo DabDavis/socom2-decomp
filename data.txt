@@ -4,6 +4,7 @@
 # A placeholder `data_<VA>` needs no row -- the differ reads its address out of the name --
 # but a row may carry what is known about it.
 0x00100000 0x0 mfifoBase  # MAIN; SOCOM 1's local symbol at 0x100000 (the MFIFO ring's base: zSysFifoInit and zSysFifoEnable store it in D_RBOR, D8_MADR and the drain's TADR, as SOCOM 1's relocations name mfifoBase); 4 references in 2 functions -- the sound/system lane
+0x001AC600 0x0 _xlaunch  # MAIN; s1:asm (a global label inside _kTLBException, +0x100: the demo's OBJECT symbol at the same offset of the same assembler object; _kTLBException puts it in EPC and erets into it)
 0x001B6E90 0x0 _maxval  # MAIN; s1:data-exact (size SOCOM 1's; via _copyAddRefImage +1)
 0x001CA850 0x4 SCE_CD_debug  # MAIN; s1:data-exact (size SOCOM 1's; via _Cdvd_cbLoop +9)
 0x001CA858 0x4 scmd_sema_keep_cmd  # MAIN; s1:data-exact (size SOCOM 1's; via _sceCd_scmd_prechk)
@@ -135,6 +136,13 @@
 0x001DD840 0x0 _lih_data  # MAIN bss; s1:data-exact (size SOCOM 1's; via sceSifLoadIopHeap)
 0x001DD940 0x0 _senddata  # MAIN bss; s1:data-exact (size SOCOM 1's; via _lf_bind +7)
 0x001DDB68 0x0 _lfversion  # MAIN bss; s1:data-exact (size SOCOM 1's; via _lf_bind +2)
+0x001DEC00 0x200 hstack  # MAIN bss; s1:asm (the TLB handlers' own save area: a local label of the demo's assembler object 0x163E00, addressed by the same instructions of _kTLBException, _kExitTLBHandler, _kDebugException)
+0x001DEE00 0x8 EERH0  # MAIN bss; s1:asm (the same object's local label: hi, saved by _kTLBException +0x84)
+0x001DEE08 0x8 EERH1  # MAIN bss; s1:asm (the same object's local label: hi1, +0x90)
+0x001DEE10 0x8 EERL0  # MAIN bss; s1:asm (the same object's local label: lo, +0x9C)
+0x001DEE18 0x8 EERL1  # MAIN bss; s1:asm (the same object's local label: lo1, +0xA8)
+0x001DEE20 0x8 EERSA  # MAIN bss; s1:asm (the same object's local label: sa, +0xB4)
+0x001DEE28 0x8 EEEPC  # MAIN bss; s1:asm (the same object's local label: epc, +0xD4)
 0x001DEE40 0x0 mcClientID  # MAIN bss; s1:data-exact (size SOCOM 1's; via _lmcGetClientPtr +2)
 0x001DEE68 0x0 typeAddr  # MAIN bss; s1:data-exact (size SOCOM 1's; via mceGetInfoApdx)
 0x001DEE6C 0x0 freeAddr  # MAIN bss; s1:data-exact (size SOCOM 1's; via mceGetInfoApdx)
