@@ -11805,7 +11805,7 @@
 0x0060E3D0 0x8 func_0060E3D0  # OVL2
 0x0060E3E0 0x30 func_0060E3E0  # OVL2
 0x0060E410 0x48 func_0060E410  # OVL2
-0x0060E460 0x78 func_0060E460  # OVL2
+0x0060E460 0x78 Find__8CAiGroupFi  # OVL2; by hand (the kit lane, round 10): the scripted AI group of an id (the word at +4), walking the group list at 0x44D668 with an assigned iterator; CTGroup::Tick calls it, 0x60E7A0 jumps to it -- the name ours
 0x0060E4E0 0x94 func_0060E4E0  # OVL2
 0x0060E580 0x10 func_0060E580  # OVL2
 0x0060E590 0x78 func_0060E590  # OVL2
