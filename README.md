@@ -1950,6 +1950,36 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     value), `== true` li 1/bne;
   - git merged two identical RTArray::GetOldestUsed definitions silently (two lanes added it): a
     merge can duplicate an additive member -- the build catches it.
+- **Tells from completing the MSL headers, round 8** (the erase/remove family, include/algorithm's
+  remove and remove_if, the class insert's end register):
+  - THE erase(remove(...), end()) FAMILY IS THE CALLERS' FORM, not a header's: MW builds an argument
+    list's temporaries LEFT TO RIGHT but evaluates it RIGHT TO LEFT, so in the one-line idiom erase's
+    end() always lands in a slot below remove's temporaries and is copied into its parameter before
+    the call (const-reference forwarding in erase moves the copies but not the slot, and loses
+    CGrid::Destroy). The target's slots read `iterator e = end(); iterator i = std::remove(begin(), e,
+    x); erase(i, e);` -- the end declared first takes the highest slot, the new end the next, both of
+    erase's copies follow the call (DeleteLightMap, CTurretList::Remove, CTargetList::RemoveTarget,
+    CWorld::DeleteChild, CNodeVector::Remove; CleanupTemporary and RemoveInvalidPoints as probes) --
+    or with a separate `end()` for remove_if's last (RemoveEmptyGames, RemoveUncheckedGames: six
+    slots, two of them ends);
+  - std::remove has remove_if's ternary shape (`first = find(...); ForwardIterator i = first; return
+    first == last ? first : remove_copy(++i, ...);`): the dead copy of begin() into remove's own first,
+    `i = first` scheduled ahead of the test, the two results joined through an address -- the early
+    return was 0x18 off in every instance (the AI core's remove<CAiMapLoc> 0x529D70 byte-exact so);
+  - remove_if searches with `find_if<ForwardIterator, Predicate &>(first, last, pred)` (libc++'s
+    form, MSL C++'s sibling): the predicate is read in place where a by-value find_if copied it
+    (delshadow's 0x320800). The list instances stay 6 instructions off: MW numbers inlined copies in
+    creation order, a by-value find_if creates last's copy first, and the target made the list
+    iterator's copies in parameter order but the vector iterator's right to left -- a const-reference
+    search copying into locals serves the lists and loses the vectors (build/p8/rif1.cpp);
+  - the class vector's range erase reads its iterators through pointer references, as the pointer
+    vector's does (RemoveTarget: MW copies a named iterator into the parameter only when its address
+    is taken); resize is declared AHEAD of erase (a unit whose own code instantiates erase otherwise
+    has resize<CAiPath::point> inline it: RemoveInvalidPoints and 0x528430 byte-exact together);
+  - MW's DWARF 1 lists a function's locals in plain declaration order, nested scopes flattened in
+    source order (3.0b52 and 3.0b22 alike): SOCOM 1's class insert declares i, j, newcap, newsize,
+    tmp, j, i, k, j, xp, t1 -- no end local. The in-place end's register is per ELEMENT across the
+    image's 29 class inserts (include/vector's insert comment): still open.
 - **Tells from completing the MSL headers, round 7** (include/deque's copy constructor chain, include/memory):
   - THE TAIL'S GENERATION ORDER, measured (probes build/p7/ord*.cpp): the unit's own functions are
     taken in reverse definition order (their emission order), each one's template requests generated
@@ -3094,9 +3124,9 @@ What is open across lanes, and what comes next:
   structure is in since round 7: include/deque's comment; back() is in, pop_back() 8 bytes short), the tree's erase
   (0x306030), the CSaferStr trees (0x3A2D60-0x3A2F60 and OVL2's string-keyed map, through the
   string's out-of-line compare 0x2DEE30), zrdr_file.cpp's pointer-keyed map (0x32D780)
-  (include/tree), the erase(remove(...), end()) family (eight open
-  functions: the target builds end() once and copies it into erase's parameter after remove's
-  call -- include/vector's range erase), the class vector's destroy for elements with a virtual
+  (include/tree), the list instances of std::remove_if (0x29FE70, 0x3C6560, 0x352500, 0x50F670,
+  0x5F8AF0: find_if's two iterator copies in parameter order -- include/algorithm), the class
+  vector's destroy for elements with a virtual
   destructor (C2DPoly's deleter), __vector_imp::resize out of line (CPool), and the pod vector's
   end() reusing begin()'s load (AddPalette, ~CAssetLib, DeleteChildren; the zdb world's round 6
   measured `return data() + size_;`: +4, but CCharacterType::Create one level too tall).

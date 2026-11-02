@@ -770,7 +770,18 @@ T *__vector_imp<T, Allocator, IsPOD>::erase(T *position)
  * eight matches keep theirs. No change from: i, m or e declared first, `T *i, *e`, the end through
  * end(), data() or &data_[size_], m cast, a size_ local, xp declared late, i declared per branch or
  * initialised at the top, a separate cursor for the second loop; i and j both declared at the top
- * lose all eight matches */
+ * lose all eight matches.
+ * The MSL headers round 8 surveyed all 29 class inserts in the image (build/p8/esurvey2.py): the end
+ * shares data_'s register or takes a fresh one PER ELEMENT, not per size or copy kind -- 16-byte
+ * CSndSequenceEntry (ours too) and CRegistrant share it, 8-byte TypeRemoteGuy shares it while the
+ * 8-byte float and CTexHandle * sequence entries and CAiPath::point take a fresh one, 12-byte CPnt3D
+ * and CMeshLOD a fresh one where 136-byte CVehicleDef shares; this build gets it right for the eleven
+ * that match and the other way round for CVehicleDef, CMeshLOD (0x3B9BD0: the size's register at the
+ * capacity test already differs, a2 against a1), the float and CTexHandle * entries and CAiMapLoc.
+ * CRegistrant's 99 lines are mostly its copy: the target copies member by member (three words and a
+ * byte), this a block through the FPRs -- its element wants an empty user constructor (the weapons
+ * lane's round 10 tell). SOCOM 1's DWARF names the insert's locals in declaration order (MW lists
+ * them so, 2.4-era builds too): i, j, newcap, newsize, tmp, j, i, k, j, xp, t1 -- no end local */
 template <class T, class Allocator, bool IsPOD>
 void __vector_imp<T, Allocator, IsPOD>::insert(T *position, unsigned int n, const T &x)
 {
