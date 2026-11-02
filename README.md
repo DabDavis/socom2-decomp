@@ -1647,6 +1647,21 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the UI, round 8** (util_loc.cpp, zui_hangul.cpp, zui_skbkeys.cpp, zui_skbview.cpp):
+  - a null-safe string compare `a ? (b ? strcasecmp(a, b) : 1) : -1` gives the target's branches;
+    the if/return form is 8 bytes longer; `h < 0 ? -h % 17 : h % 17` gives two divides, `abs(h) % 17`
+    a movz and one;
+  - a find returning `*i` from inside the loop keeps its result in a0, a result local set before the
+    loop costs a saved register; `if ((e = f()) != 0)` gives `beqz v0; move a0,v0`;
+  - an inline helper's by-value argument is loaded before the helper's own test (Load/Reload's
+    `(*i)->m_name` ahead of `s_useZar`); a vector-subclass member adds one this-test to the
+    destructor but one level to the constructor (Unload against Load: the bigger one kept);
+  - an int table element passed to an `unsigned short` parameter loads with `lhu`; a char passed to
+    an `int` parameter is sign-extended again; `(a != 0) ^ (b != 0)` puts the xor in v0;
+  - MW names an unnamed namespace after the COMPILED file, not the header declaring it: zui_skb.cpp's
+    classes used by the keyboard units 0x3903A0-0x39BBB0 (three units by their initialisers 0x403770,
+    0x403800, 0x404110) must come from a shared header -- the next UI round moves them out;
+  - util_loc.cpp runs 0x3A3100-0x3A59BF (its template tail from 0x3A4560, the twelfth std::sort).
 - **Tells from the SEALs, round 10** (seal_body.cpp's blend and jump families, the hostile anchor, seal_cfg.cpp):
   - an inline accessor with an UNSIGNED index called with an int counter keeps the target's per-pass
     `sll; addu` on an RTStack walk (0x57DBB0, 0x57DC20);
