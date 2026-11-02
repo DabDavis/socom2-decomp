@@ -12,6 +12,8 @@
 #include <vector>
 #include <algorithm>
 
+#include "../ztwod/ztwod.h"
+
 /* a string that is never null (zutil.h's, SOCOM 1's: MSL's basic_string and its assignment) */
 class CSaferStr : public std::string {
 public:
@@ -26,15 +28,73 @@ public:
     }
 };
 
-/* the message editor (C2D's: its cursor bitmap at 0x20, its text at 0xA4; only what is written
- * here so far). Its code follows the list's in the image, so it is defined first */
-class CMsgEditor {
+/* the message editor: a C2D with a cursor bitmap and the text typed (the chat line: CHUD's Init and
+ * teardown and the mission's destructor reach it at theMission+0x1060, hud_main.cpp's m_messages4).
+ * Its code follows the list's in the image, so it is defined first; the names are ours */
+class CMsgEditor : public C2D {
 public:
     void SetMaxLength(int n);
+    void DeleteCharacter();
+    void AddCharacter(char c);
+    void Clear();
 
-    unsigned char _0[0x140];
+    C2DBitmap m_cursor;   // 0x20
+    float m_cursorTrans;   // 0xa0: the cursor's alpha, faded in while there is text
+    C2DString m_text;   // 0xa4
+    float m_textTrans;   // 0x13c: the text's alpha
     int m_maxlen;   // 0x140: the text's limit, 5 to 100 (5 at construction)
 };
+
+/* the line's bounds (OVL1 .data floats: its right edge, left edge and a character's width) */
+extern float data_003DE7A8;   /* 25 */
+extern float data_003DE7B8;   /* 615 */
+extern float data_003DE7E0;   /* 3 */
+
+/* the text wiped, both alphas zero, the cursor told (OVL1 0x2CA0B0: CHUD::Init's) */
+void CMsgEditor::Clear()
+{
+    m_text.ClearAndWipe();
+    m_cursorTrans = 0.0f;
+    m_textTrans = 0.0f;
+    m_cursor.SetTrans(m_cursorTrans);
+}
+
+/* a character typed at the end while the line has room and the limit allows (OVL1 0x2C9D90) */
+void CMsgEditor::AddCharacter(char c)
+{
+    int len;
+    char *s = m_text.m_string + m_text.m_firstCharPos;
+    char buf[100];
+
+    len = s ? strlen(s) : 0;
+
+    if (m_text.m_charheight < (data_003DE7B8 - data_003DE7A8) - 4.0f * data_003DE7E0 &&
+        len < m_maxlen - 2) {
+        if (len > 0)
+            strcpy(buf, s);
+        buf[len] = c;
+        buf[++len] = 0;
+        m_text.SetString(buf, true);
+        m_text.UpdatePos();
+    }
+}
+
+/* the last character taken off (OVL1 0x2C9D00) */
+void CMsgEditor::DeleteCharacter()
+{
+    int len;
+    char *s = m_text.m_string + m_text.m_firstCharPos;
+    char buf[100];
+
+    len = s ? strlen(s) : 0;
+
+    if (len > 0) {
+        strcpy(buf, s);
+        buf[len - 1] = 0;
+        m_text.SetString(buf, true);
+        m_text.UpdatePos();
+    }
+}
 
 /* the text's limit set, kept within 5 to 100 (OVL1 0x2C9960; the name ours) */
 void CMsgEditor::SetMaxLength(int n)

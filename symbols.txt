@@ -4280,11 +4280,11 @@
 0x002C9990 0x1F0 func_002C9990  # OVL1
 0x002C9B80 0x140 func_002C9B80  # OVL1
 0x002C9CC0 0x40 func_002C9CC0  # OVL1
-0x002C9D00 0x90 func_002C9D00  # OVL1
-0x002C9D90 0xF4 func_002C9D90  # OVL1
+0x002C9D00 0x90 DeleteCharacter__10CMsgEditorFv  # OVL1; by hand (the states lane, round 16; the names ours): the editor's last character dropped (strcpy, the end moved back one, SetString through slot 0x70, UpdatePos); fts_missionlist.cpp
+0x002C9D90 0xF4 AddCharacter__10CMsgEditorFc  # OVL1; by hand (the states lane, round 16; the names ours): a character appended to the editor's text (strcpy into a 100-byte buffer, SetString through slot 0x70, UpdatePos) while the line's width and the length limit at 0x140 allow; fts_missionlist.cpp
 0x002C9E90 0x1BC func_002C9E90  # OVL1
 0x002CA050 0x54 func_002CA050  # OVL1
-0x002CA0B0 0x4C func_002CA0B0  # OVL1
+0x002CA0B0 0x4C Clear__10CMsgEditorFv  # OVL1; by hand (the states lane, round 16; the names ours): the message editor's text wiped through C2DString's slot 0x8C (ClearAndWipe), its cursor's and text's alphas zeroed and the cursor's SetTrans (slot 0x34) told -- CHUD::Init calls it on theMission+0x1060 (hud_main.cpp's m_messages4); fts_missionlist.cpp
 0x002CA100 0x138 func_002CA100  # OVL1
 0x002CA240 0x90 func_002CA240  # OVL1
 0x002CA2D0 0x54 func_002CA2D0  # OVL1
