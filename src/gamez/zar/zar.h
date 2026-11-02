@@ -28,6 +28,7 @@ class CZAR;
 
 class CKey : public CKeyRing {
 public:
+    CKey(const char *name);
     /* out of line (0x25BB50): Insert(const char *, ...) deletes a key it could not write through it */
     ~CKey();
     CKey *FindKey(const char *name);

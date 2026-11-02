@@ -13,6 +13,11 @@ namespace zar {
 /* the children's teardown (0x25B580, SOCOM II's; its flag 0 here), not yet written */
 extern "C" void func_0025B580(CKey *key, int flag);
 
+/* a key named so, empty (SOCOM 1's; CZAR's constructor makes the root with "") */
+CKey::CKey(const char *name) : m_name((char *)name), m_size(0), m_offset(0)
+{
+}
+
 /* SOCOM 1's destroyed only its list; SOCOM II's first hands itself to 0x25B580 */
 CKey::~CKey()
 {

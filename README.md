@@ -1646,6 +1646,20 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the HUD, round 18** (st_mpexit.cpp's stat leaderboard, hud_bitmapreticule.cpp, zui_2d.cpp's command pieces):
+  - a side test written `if (b) { if (!A()) continue; } else if (!B()) continue;` gives the target's
+    `bnez v0,ok; b skip`; the goto form inverts it;
+  - a parser returning its new record or its base parser's result through one local
+    (`cmd = Base::Parse(rdr); return cmd;`) matches; returning each directly is 4 bytes short;
+  - a derived GetZAnimCmdType takes its base's count as `Base::GetZAnimCmdType(0) + n` (the null
+    name folds the inlined base chain to its count); its fallthrough `Base::GetZAnimCmdType(name)`
+    inlines the whole chain;
+  - tools/perm.py compiles its copy as cand.cpp: an unnamed-namespace function is
+    `...__18@unnamed@cand_cpp@...` with `--target`, and its `-I` paths must be absolute;
+  - SOCOM II's BitmapReticule texture tables hold 11 entries (SOCOM 1's 10); hud_bitmapreticule.cpp
+    ends with hudStartDefuseTimer at 0x21932F as in SOCOM 1 (~BitmapReticule now matches from the unit,
+    no longer a draft-only false regression); the unwritten unit between hud_mpinfobox and
+    hud_mpweaponsel spans ~0x239770-0x23B98F (its global a 0x40-byte object storing 0xDEADBEEF at 0x34).
 - **Tells from the online lobby, round 8** (zNetMediusFile.cpp complete, the ladder list, the friend invitations):
   - MW never inlines `std::make_pair` here, by reference or by value; `std::pair<K, V>(key, v)`
     inlines and reproduces the target's two string copies;
@@ -2642,7 +2656,7 @@ every hand-written unit (`--files '^(?!auto/)'`) before it is committed. A workt
 `extracted/` and `decomp/toolchains/` linked in from the main tree.
 
 `--files '^(?!auto/)'` leaves out the drafts, so a hand-written inline copy that only its draft
-matches reports as a regression there (0x32C5F0, ~CRdrArchiveList's copy, 0x219090, ~BitmapReticule's, and 0x510080, OVL2's
+matches reports as a regression there (0x32C5F0, ~CRdrArchiveList's copy, and 0x510080, OVL2's
 __list_imp destructor that seal_aistate.cpp's missing copy now reports "elsewhere" -- 0x29FF60 and
 0x2D02B0 match from hand source since the MSL headers' completion): rerun with that draft's file
 included before believing one.
