@@ -197,6 +197,8 @@ namespace std {
 template <class T, class Container = deque<T> >
 class stack {
 public:
+    /* MSL's: the container copied from a default one (CRdrEditor(), the MSL headers' round 7) */
+    explicit stack(const Container &x = Container()) : c(x) {}
     bool empty() const { return c.empty(); }
     unsigned int size() const { return c.size(); }
     T &top() { return (T &)*func_003335C0(&c); }

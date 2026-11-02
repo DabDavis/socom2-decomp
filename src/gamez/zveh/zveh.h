@@ -279,7 +279,13 @@ public:
     void SetThermal(zdb::CNode *node, bool thermal);
 
     CAiTimer m_fireTimer;   // 0x170
-    unsigned char _17c[0x220 - 0x17c];
+    unsigned char _17c[0x194 - 0x17c];
+    /* the AI's target (ai_target.cpp's CAiTarget, 0x2c bytes here as in the SEALs' controller --
+     * its validity test 0x60A850 takes it) and the word after it, whose bit 9 holds the target
+     * (the names ours) */
+    unsigned char m_target[0x2c];   // 0x194
+    unsigned int m_targetFlags;   // 0x1c0
+    unsigned char _1c4[0x220 - 0x1c4];
     float m_220;   // 0x220
     unsigned char _224[0x240 - 0x224];
     int m_240;   // 0x240: cleared at the mission's start

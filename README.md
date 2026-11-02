@@ -1647,6 +1647,37 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the SEALs, round 11** (RTList<ACTIVE_ANIM>'s copies, seal_env.cpp's weapon parenting, DoSetStance):
+  - in an inline helper `r = 0; if (c) r = (unsigned)f;` leaves the float-to-unsigned conversion's join
+    a block of its own (+1 nop); the ternary, if/else and early-return forms merge it (0x543B90);
+  - an `unsigned int` bitfield read through a byte-enum accessor gives the target's `andi 0xff`
+    (0x57F150); a callback's `void *` data cast through an inline is numbered after a reference
+    local, cast inline in the body the two swap saved registers (the pistol callbacks);
+  - from a `bool` function `return p ? (a || b) : false;` adds `andi 0xff`, `if (p) return a || b;
+    return false;` does not (0x5A77E0); `s = r != 0 ? s / r : 0` keeps nops around the `div.s`, the
+    if/else form drops them (0x5A56D0);
+  - in a switch case `if (!c) x = A; else {...}` puts the single assignment on the fall-through, `x =
+    A; if (c) {...}` falls into the body (DoSetStance);
+  - template members called as such (`Begin()`/`Next()`) make the first OVL2 unit in link order that
+    needs them emit the instances (seal_anim.cpp, 0x5780E0/0x578110, ovl-copy notes);
+  - zseal.h's body parts sit at SOCOM 1's offsets +0x7C (m_spinelo 0x2FC ... m_pistol 0x354).
+- **Tells from the weapons, round 10** (the weapon event callbacks, the decal arrays, vis_vu.cpp's helpers):
+  - an MW `asm` function loads a global's address with `la reg, sym` (an `la` in a branch delay slot
+    puts its `lui` there); `%hi()`, `@ha`, `@l` and `lo()` are all refused;
+  - a list element with an empty user constructor is copied member by member by the insert; with an
+    implicit one it is a block copy through the FPRs (WEAPON_CALLBACK_STRUCT);
+  - `erase(remove_if(begin(), e, p), e)` matches written `iterator e = end(); iterator i =
+    std::remove_if(begin(), e, p); erase(i, e);` -- both erase copies made after the call (a lead for
+    the erase(remove(...), end()) family);
+  - `CPnt4D t(...); return t;` builds on the stack and copies out; `return CPnt4D(...)` builds
+    straight into the return slot;
+  - an element whose copy constructor resets a member shows a constant store at the start of every
+    reserve/insert move (CMeshLOD's copy stores 1e12, SOCOM 1's FLT_MAX);
+  - units: vis_decal.cpp's tail ends at 0x3BFB5F (vis_texfx from 0x3BFB60); an unwritten unit starts at
+    0x3BA300 (ColConvTo3D, CVisData, the *_Object readers; SOCOM 1's 0x310460); vis_vu.cpp is probably
+    SOCOM 1's vis_main.cpp -- its tail holds CVisual::m_stack_vid's deque copy-constructor chain
+    (0x3B7DB0-0x3B83D0; the 0x3B7DB0 row, named ~stack, is the deque copy constructor) and its
+    initialiser 0x404570 sits between zvid_init.cpp's and the decal pools'.
 - **Tells from the kit and AI states, round 11** (seal_kit.cpp's weapon modes and indices, seal_sensors.cpp, ai::test):
   - `x > 3` compiles to `slti at,x,4; bnez at`, `x >= 4` puts the test in v0; an `||` arm written
     `return delay;` keeps its own `b end` block, an else-if chain assigning a result merges it;
@@ -1933,6 +1964,45 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     value), `== true` li 1/bne;
   - git merged two identical RTArray::GetOldestUsed definitions silently (two lanes added it): a
     merge can duplicate an additive member -- the build catches it.
+- **Tells from completing the MSL headers, round 7** (include/deque's copy constructor chain, include/memory):
+  - THE TAIL'S GENERATION ORDER, measured (probes build/p7/ord*.cpp): the unit's own functions are
+    taken in reverse definition order (their emission order), each one's template requests generated
+    before the next one's; within that, out-of-class members are generated class by class, later-
+    declared class templates first, each class's members in DECLARATION order, in passes until no
+    request is left; a member inlines another only if that one was generated before it. So `c` inlines
+    `b` when b is declared ahead of c, whatever order a caller calls them in (ord7), and two members
+    requested by the same caller in the same pass never inline each other the other way (ord4);
+  - MW lays an empty base listed first at offset 0 and a later one at the object's end (build/p7/lay.cpp);
+  - the deque's blocks are a compressed pair (SOCOM 1's compressed_pair over compressed_pair_imp) of
+    the allocator and the block buffer: ~__deque_buf tests `this` five times after its loop as the
+    image's does; the copy constructors (rdr 0x333B30, util_ssm 0x3A5E50, the lobby's 0x2E07B0, the vis
+    unit's 0x3B7DB0) are `base(x.alloc())` (the pair at 0), the base's constructor from an allocator
+    (a rebound allocator temporary, an empty buffer from it, the pair copy-constructed from both), the
+    allocator base, x.begin(), x.end() and init; begin()/end() return a named make_iterator() result
+    (`return make_iterator(0);` of the same type is a tail call); the pointer deque's default and copy
+    constructors are out of class -- CGame()'s queue calls deque<CGameStateChangeCmd *>() (0x2CEE00,
+    renamed from __deque_imp<PCv>()), CRdrEditor() the stack's temporary (0x3340F0);
+  - the allocator's copy and converting (rebind) constructors are out of class, as SOCOM 1's; its
+    default constructor is inline except for the const-pointer allocators (a partial specialisation):
+    allocator<const void *> is the empty base the deques and buffers call out of line (0x2CEE30), and
+    std::map's no-argument constructor builds its allocator temporary as a bare stack slot
+    (ReleaseFileTransfers 0x305640, the soft keyboard's map() 0x38E740 byte-exact);
+  - a user-declared copy constructor on the buffer's iterator makes MW pass the by-value iterators by
+    address (not the target's);
+  - OVL2's 0x58D090 is std::map<std::string, int>::find (ovl-copy of 0x2DED30); the kit lane's name
+    lookups are `if (name) { i = m.find(name); if (i != m.end()) return (*i).second; } return -1;` (an
+    early `if (!name) return -1;` lays the -1 out first) -- 0x5E4F20 byte-exact as a probe
+    (build/p7/kitfind.cpp);
+  - still open (include/deque's comment): the generation order the image's copy chain implies (its
+    base constructor calls the temporary's destructor 0x2CEE90, the buffer's copy constructor calls
+    its begin() and the allocator base while its constructor from an allocator inlines both -- no
+    declaration order tried gives both), the default constructors' middle level 0x334120 (rdr, vis,
+    lobby) that game_main.cpp's 0x2CEE00 inlines, init's parameters copied twice around two empty
+    temporaries (0x333BB0, 0x3A5ED0), the buffer's begin()/end() built in memory (0x334030,
+    0x333F90), ~__deque_buf's loop set-up (0x140 against 0x138); the tree swap's anchor address
+    (0x305BE0: MW hoists `&tail()` into the test's delay slot where the target computes it in each
+    arm, after the parent word's load); the class vector's insert/erase, std::remove and remove_if
+    (requests 3 and 4) not reached.
 - **Tells from completing the MSL headers, round 6** (include/algorithm's sort, include/vector's
   iterator arithmetic and range erase, the ladder's names):
   - std::sort is SOCOM 1's MSL sort (CW 3.0.1's `sort`/`__sort132`/`__selection_sort`, with
@@ -2703,7 +2773,8 @@ every hand-written unit (`--files '^(?!auto/)'`) before it is committed. A workt
 `extracted/` and `decomp/toolchains/` linked in from the main tree.
 
 `--files '^(?!auto/)'` leaves out the drafts, so a hand-written inline copy that only its draft
-matches reports as a regression there (0x32C5F0, ~CRdrArchiveList's copy, and 0x510080, OVL2's
+matches reports as a regression there (0x32C5F0, ~CRdrArchiveList's copy, 0x3340F0, the rdr editor's deque
+constructor -- zrdr_edit.cpp's copy is 0x30 against 0x28 since the MSL headers' round 7 -- and 0x510080, OVL2's
 __list_imp destructor that seal_aistate.cpp's missing copy now reports "elsewhere" -- 0x29FF60 and
 0x2D02B0 match from hand source since the MSL headers' completion): rerun with that draft's file
 included before believing one.
@@ -3033,12 +3104,11 @@ What is open across lanes, and what comes next:
   original's MSL is deeper than these headers everywhere SOCOM 1's DWARF shows it (compressed
   pairs in the pod, the list's size and end node, alloc() accessors), so a level of 6 or more with
   the real depths is likely; 5 is what these headers fit.
-- **MSL pieces not modelled yet**: the deque's copy constructor (the rdr lane's 0x333B30 and its
-  pieces, mapped in include/deque; back() is in, pop_back() 8 bytes short), the tree's erase
+- **MSL pieces not modelled yet**: the deque's copy constructor chain's generation order (its
+  structure is in since round 7: include/deque's comment; back() is in, pop_back() 8 bytes short), the tree's erase
   (0x306030), the CSaferStr trees (0x3A2D60-0x3A2F60 and OVL2's string-keyed map, through the
-  string's out-of-line compare 0x2DEE30), zrdr_file.cpp's pointer-keyed map (0x32D780) and the map
-  constructor's allocator temporary (the image passes an unconstructed stack slot: `__sinit` and
-  the out-of-line map() copies) (include/tree), the erase(remove(...), end()) family (eight open
+  string's out-of-line compare 0x2DEE30), zrdr_file.cpp's pointer-keyed map (0x32D780)
+  (include/tree), the erase(remove(...), end()) family (eight open
   functions: the target builds end() once and copies it into erase's parameter after remove's
   call -- include/vector's range erase), the class vector's destroy for elements with a virtual
   destructor (C2DPoly's deleter), __vector_imp::resize out of line (CPool), and the pod vector's
