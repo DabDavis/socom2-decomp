@@ -2353,10 +2353,10 @@
 0x00243398 0x118 func_00243398  # OVL1 unaligned
 0x002434B0 0xEC heap_Free  # OVL1; s1:callee
 0x002435A0 0x78 func_002435A0  # OVL1
-0x00243618 0x24 func_00243618  # OVL1 unaligned
+0x00243618 0x24 heap_GetVersion  # OVL1 unaligned; s1:order (the demo heap object 0x378348: heap_GetVersion before heap_Open, 0x20 bytes there; stores the version 0x01000001, 0x800B0183 for a null pointer, as the demo's)
 0x00243640 0xC8 heap_Open  # OVL1; s1:calls
 0x00243708 0x58 func_00243708  # OVL1 unaligned
-0x00243760 0xDC func_00243760  # OVL1
+0x00243760 0xDC SearchFor  # OVL1; s1:order (the demo heap object 0x378348: its last function, SearchFor -- the same search of a counted list, unrolled by four here (-funroll-loops))
 0x00243840 0x3A4 func_00243840  # OVL1
 0x00243BE8 0x7C lgAudEnumHint  # OVL1 unaligned; s1:exact
 0x00243C68 0x1D8 lgAudEnumerate  # OVL1 unaligned; s1:callee
@@ -2367,23 +2367,23 @@
 0x00244378 0x178 func_00244378  # OVL1 unaligned
 0x002444F0 0x128 func_002444F0  # OVL1
 0x00244618 0x120 func_00244618  # OVL1 unaligned
-0x00244738 0xE8 func_00244738  # OVL1 unaligned
-0x00244820 0xE8 func_00244820  # OVL1
+0x00244738 0xE8 lgAudGetRemainingPlaybackBytes  # OVL1 unaligned; s1:order (the demo's lgAud object 0x3B5980: after lgAudSetMixer as there; RPC 0x13 and the message 'lgAudGetRemainingPlaybackBytes: rpc call failed')
+0x00244820 0xE8 lgAudGetAvailableRecordingBytes  # OVL1; s1:order (the demo's lgAud object: after GetRemainingPlaybackBytes; RPC 0x12 and its own message)
 0x00244908 0xD4 lgAudStartRecording  # OVL1 unaligned; s1:callee
 0x002449E0 0xD4 lgAudStopRecording  # OVL1; s1:callee
-0x00244AB8 0xD4 func_00244AB8  # OVL1 unaligned
-0x00244B90 0xD4 func_00244B90  # OVL1
-0x00244C68 0xD4 func_00244C68  # OVL1 unaligned
-0x00244D40 0xFC func_00244D40  # OVL1
+0x00244AB8 0xD4 lgAudStartPlayback  # OVL1 unaligned; s1:order (the demo's lgAud object: after lgAudStopRecording; RPC 6 and the message 'lgAudStartPlayback: rpc call failed')
+0x00244B90 0xD4 lgAudStopPlayback  # OVL1; s1:order (the demo's lgAud object: after lgAudStartPlayback; RPC 7 and its own message)
+0x00244C68 0xD4 lgAudResumePlayback  # OVL1 unaligned; s1:order (the demo's lgAud object: after lgAudStopPlayback; RPC 0x11 and its own message)
+0x00244D40 0xFC lgAudSetPlaybackVolume  # OVL1; s1:order (the demo's lgAud object: after lgAudResumePlayback, before lgAudSetRecordingVolume (RPC 0xE); RPC 0xD, the two volume bytes as SetRecordingVolume's)
 0x00244E40 0xFC lgAudSetRecordingVolume  # OVL1; s1:callee
-0x00244F40 0xF0 func_00244F40  # OVL1
+0x00244F40 0xF0 lgAudPrepareForReboot  # OVL1; by hand (its messages 'lgAudPrepareForReboot: rpc call failed' and '...: error: an async call is in progress'; new in liblgaud 1.08, not in the demo)
 0x00245030 0x50 lgAudASync  # OVL1; s1:exact
-0x00245080 0x80 func_00245080  # OVL1
+0x00245080 0x80 fnReadEndFunc  # OVL1; s1:order (the demo's lgAud object: the static after lgAudASync, before lgAudARead; copies the reply's data out, the read's end callback)
 0x00245100 0x13C lgAudARead  # OVL1; s1:callee
-0x00245240 0x58 func_00245240  # OVL1
+0x00245240 0x58 fnWriteEndFunc  # OVL1; s1:order (the demo's lgAud object: the static after lgAudARead, before lgAudAWrite)
 0x00245298 0x164 func_00245298  # OVL1 unaligned
 0x00245400 0x164 func_00245400  # OVL1
-0x00245568 0x58 func_00245568  # OVL1 unaligned
+0x00245568 0x58 fnCheckDeviceChangeEndFunc  # OVL1 unaligned; s1:order (the demo's lgAud object: the static before lgAudAEnumHint; stores the device-change hint)
 0x002455C0 0xCC lgAudAEnumHint  # OVL1; s1:callee
 0x00245690 0xB8 libnetb_is_data_waiting  # OVL1; s1:callee
 0x00245748 0x40 libnetb_udp_init_buffer  # OVL1 unaligned; s1:exact
