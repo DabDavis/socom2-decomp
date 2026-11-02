@@ -83,8 +83,20 @@ OutputIterator remove_copy_if(InputIterator first, InputIterator last, OutputIte
 }
 
 /* the two returns through one copy into the result, as a ternary does it (with an early return
- * MW builds remove_copy_if's straight into it).
- * OPEN (0x29FE70, 6 instructions): the inlined find_if's two iterators take s5/s4 the other way
+ * MW builds remove_copy_if's straight into it). find_if is instantiated with the predicate BY
+ * REFERENCE, `find_if<ForwardIterator, Predicate &>` (as libc++'s remove_if, MSL C++'s sibling, still
+ * writes it): the inlined search reads remove_if's own predicate parameter in place where a by-value
+ * find_if copied it -- delshadow's remove_if 0x320800 byte-exact so, the callback list's 0x3C6560
+ * from 0x10 long to 6 instructions (the MSL headers round 8; nothing lost over every hand-written
+ * unit). remove_copy_if still takes it by value (the target loads the functor's word into t0).
+ * OPEN, the list instances (0x29FE70, 0x3C6560, 0x352500, 0x50F670, 0x5F8AF0: 6 instructions each):
+ * the target makes find_if's two iterator copies in PARAMETER order for the list's iterator (user
+ * copy constructor, passed by address) but right to left for the vector's (bitwise) -- MW numbers
+ * the inlined copies in creation order, and a by-value find_if creates last's first. A search taking
+ * the iterators by const reference and copying them into locals in order (build/p8/rif1.cpp's C)
+ * matches both list instances on the board but loses the three vector ones (0x2E49A0, 0x53F1A0,
+ * 0x320800), which want the right-to-left copies; no single shape tried serves both.
+ * Earlier (0x29FE70, 6 instructions): the inlined find_if's two iterators take s5/s4 the other way
  * round -- `!(last == first)` in find_if gets five, a for/break ten; find_if is node_vector.cpp's
  * and zanim_anim.cpp's too, so it stays. Measured again (the MSL lane, round 2): SOCOM 1's own
  * remove_if over list<CSched_Task *> (0x2F41F0 in the demo) gives first s4 and last s5 as ours
@@ -98,7 +110,7 @@ OutputIterator remove_copy_if(InputIterator first, InputIterator last, OutputIte
 template <class ForwardIterator, class Predicate>
 ForwardIterator remove_if(ForwardIterator first, ForwardIterator last, Predicate pred)
 {
-    first = find_if(first, last, pred);
+    first = find_if<ForwardIterator, Predicate &>(first, last, pred);
     ForwardIterator i = first;
     return first == last ? first : remove_copy_if(++i, last, first, pred);
 }

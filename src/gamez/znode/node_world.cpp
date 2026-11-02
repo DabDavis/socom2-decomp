@@ -236,18 +236,19 @@ namespace zdb {
 
 /* a child taken off: its shadows deleted, out of the grid unless a cell, off the list and its
  * parent forgotten, its holders counted down (SOCOM 1's; the light maps' half is gone). A child
- * of another node gives back its count.
- * OPEN, 2 instructions (0x11C of 0x114): DeleteLightMap's -- the target builds end() once (76(sp)),
- * passes it to remove_if and copies it for erase's last after the call, where this stores it twice
- * and copies before; the remove_if instance (0x320800) misses on its predicate, which the inlined
- * find_if copies where the target reads it in place (include/algorithm's) */
+ * of another node gives back its count. The shadows' end built once into a local and handed to
+ * remove_if and to erase, as DeleteLightMap's; the remove_if instance (0x320800) reads its
+ * predicate in place (the MSL headers round 8: both byte-exact) */
 int CWorld::DeleteChild(CNode *child)
 {
     if (!child)
         return 0;
-    if (child->m_socom2_a1_bits.bit5 == 1)
-        m_shadows.erase(std::remove_if(m_shadows.begin(), m_shadows.end(), delshadow(child)),
-                        m_shadows.end());
+    if (child->m_socom2_a1_bits.bit5 == 1) {
+        CRenderMapVector::iterator e = m_shadows.end();
+        CRenderMapVector::iterator i = std::remove_if(m_shadows.begin(), e, delshadow(child));
+
+        m_shadows.erase(i, e);
+    }
     if (child->m_parent != this)
         return child->m_count;
     if (!dynamic_cast<CCell *>(child))
