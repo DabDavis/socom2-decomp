@@ -1643,6 +1643,21 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the AI core, round 10** (CAiMaps::Tile/SetOccupied, the overlay walks, the look/cover finders):
+  - a const-walk inline called on a global object (`ai::overlays.Contains`) lets MW fold the constant
+    `this` and drop each pass's store of end(); walking through `const T *l = this;` keeps the
+    target's per-pass store (SetOccupied, 0x53A500);
+  - a postfix `i++` adds one inline level: it made the open-cell helper six high, so it was cut to
+    one level (_find_look, _find_cover);
+  - a field read twice without a name merges into a temporary numbered after every named local
+    (_tile_soil's flags); summing through a const reference to a local keeps MW from sharing that
+    load with a later read (FindLookLoc's d.z);
+  - an inline cut to one level makes the caller call even iterator default constructors and
+    assignments out of line, and their copies sit right after it (SetRegionType, 0x529D30-0x529ED7);
+  - `m_regions[type].end()` in a loop test keeps the size's and the data's addresses in two saved
+    registers, a reference local only the vector's;
+  - open: GetRandomLoc 0x529EE0 (the target pads a nop after each random draw), SetRegionType
+    (s1/s2), std::remove 0x529D70 (include/algorithm's shape, 0x1C short).
 - **Tells from the kit and AI states, round 10** (anim.cpp, seal_ex.cpp, seal_ailines.cpp, ai_group.cpp):
   - a const inline accessor reached through a non-const parameter reloads the field the caller just
     tested; the parameter copied into a `const T *` local reuses the load (ftmask_create);

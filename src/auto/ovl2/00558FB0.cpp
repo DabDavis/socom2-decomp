@@ -5,17 +5,18 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
 extern "C" {
-s32 func_0052A200(M2C_UNK *, M2C_UNK, s32);         /* extern */
+s32 GetRegionTypeContainer__7CAiMapsFQ36CAiMap6region4TYPERC9CAiMapLoc(M2C_UNK *, M2C_UNK, s32); /* extern */
 extern M2C_UNK AiMaps;
 
 bool func_00558FB0(char *arg0) {
     bool var_s0;
 
     var_s0 = false;
-    if (func_0052A200(&AiMaps, 6, M2C_FIELD(arg0, s32 *, 4) + 0xE8) != 0) {
+    if (GetRegionTypeContainer__7CAiMapsFQ36CAiMap6region4TYPERC9CAiMapLoc(&AiMaps, 6, SC_MEMBER(arg0, s32 *, 4) + 0xE8) != 0) {
         var_s0 = true;
     }
     return var_s0;
