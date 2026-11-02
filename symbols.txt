@@ -556,7 +556,7 @@
 0x001A37E0 0x10 SetVCommonHandler  # MAIN; s1:exact
 0x001A37F0 0x10 SetVInterruptHandler  # MAIN; s1:exact
 0x001A3800 0x10 AddIntcHandler  # MAIN; s1:order (syscall 16, called from CVU::CVU's same instruction)
-0x001A3810 0x10 func_001A3810  # MAIN
+0x001A3810 0x10 AddIntcHandler2  # MAIN; s1:slot (libkernl's syscall-stub object, 138 stubs byte-identical to the demo's 0x15B100-0x15B9A0 slot for slot; this slot's)
 0x001A3820 0x10 RemoveIntcHandler  # MAIN; s1:exact
 0x001A3830 0x10 AddDmacHandler  # MAIN; s1:callee
 0x001A3840 0x10 AddDmacHandler2  # MAIN; s1:callee
@@ -626,13 +626,13 @@
 0x001A3C40 0x10 RFU082_SetEventFlag  # MAIN; s1:exact
 0x001A3C50 0x10 RFU083_iSetEventFlag  # MAIN; s1:exact
 0x001A3C60 0x10 RFU084_ClearEventFlag  # MAIN; s1:exact
-0x001A3C70 0x10 func_001A3C70  # MAIN
-0x001A3C80 0x10 func_001A3C80  # MAIN
-0x001A3C90 0x10 func_001A3C90  # MAIN
-0x001A3CA0 0x10 func_001A3CA0  # MAIN
-0x001A3CB0 0x10 func_001A3CB0  # MAIN
+0x001A3C70 0x10 RFU085_iClearEventFlag  # MAIN; s1:slot (libkernl's syscall-stub object, 138 stubs byte-identical to the demo's 0x15B100-0x15B9A0 slot for slot; this slot's)
+0x001A3C80 0x10 RFU086_WaitEvnetFlag  # MAIN; s1:slot (libkernl's syscall-stub object, 138 stubs byte-identical to the demo's 0x15B100-0x15B9A0 slot for slot; this slot's)
+0x001A3C90 0x10 RFU087_PollEvnetFlag  # MAIN; s1:slot (libkernl's syscall-stub object, 138 stubs byte-identical to the demo's 0x15B100-0x15B9A0 slot for slot; this slot's)
+0x001A3CA0 0x10 RFU088_iPollEvnetFlag  # MAIN; s1:slot (libkernl's syscall-stub object, 138 stubs byte-identical to the demo's 0x15B100-0x15B9A0 slot for slot; this slot's)
+0x001A3CB0 0x10 RFU089_ReferEventFlagStatus  # MAIN; s1:slot (libkernl's syscall-stub object, 138 stubs byte-identical to the demo's 0x15B100-0x15B9A0 slot for slot; this slot's)
 0x001A3CC0 0x10 RFU090_iReferEventFlagStatus  # MAIN; s1:exact
-0x001A3CD0 0x10 func_001A3CD0  # MAIN
+0x001A3CD0 0x10 RFU091  # MAIN; s1:slot (libkernl's syscall-stub object, 138 stubs byte-identical to the demo's 0x15B100-0x15B9A0 slot for slot; this slot's)
 0x001A3CE0 0x10 EnableIntcHandler  # MAIN; s1:exact
 0x001A3CF0 0x10 iEnableIntcHandler  # MAIN; s1:exact
 0x001A3D00 0x10 DisableIntcHandler  # MAIN; s1:exact
@@ -661,7 +661,7 @@
 0x001A3E70 0x10 iGsPutIMR  # MAIN; s1:exact
 0x001A3E80 0x10 SetPgifHandler  # MAIN; s1:exact
 0x001A3E90 0x10 SetVSyncFlag  # MAIN; s1:exact
-0x001A3EA0 0x10 func_001A3EA0  # MAIN
+0x001A3EA0 0x10 RFU116  # MAIN; s1:slot (libkernl's syscall-stub object, 138 stubs byte-identical to the demo's 0x15B100-0x15B9A0 slot for slot; this slot's)
 0x001A3EB0 0x10 _print  # MAIN; s1:exact
 0x001A3EC0 0x10 sceSifDmaStat  # MAIN; s1:exact
 0x001A3ED0 0x10 isceSifDmaStat  # MAIN; s1:exact

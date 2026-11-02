@@ -110,6 +110,13 @@ def gcc_driver(name: str) -> list[str]:
 
 def compile_cmd(src: Path, obj: Path, compiler: str = COMPILER, flags: list[str] | None = None,
                 includes: list[Path] | None = None) -> list[str]:
+    # An assembler unit (`.s`) goes through the same ee-gcc driver, which hands it straight to its
+    # own GNU as (`as -G0 -EL -O2 -mabi=eabi`: 2.9-ee-991111b under 2.9-991111, 2.10-ee-001003-1
+    # under 2.96) -- no other tool and no other flag. The demo's symbols say which library objects
+    # were assembly (README "The GCC front"); Metrowerks' code has none, so MW has no such path.
+    if Path(src).suffix == ".s" and not is_gcc(compiler):
+        raise RuntimeError(f"{src}: an assembler unit names its ee-gcc toolchain "
+                           "(`# sc: compiler=ee-gcc2.9-991111`); Metrowerks has no assembler path here")
     if is_gcc(compiler):
         cmd = gcc_driver(compiler) + ["-c"] + (GCC_FLAGS if flags is None else flags)
         for inc in includes or []:
