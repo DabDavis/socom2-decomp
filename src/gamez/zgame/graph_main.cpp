@@ -10,6 +10,8 @@
  * _main, as game_main.cpp or grid_main.cpp). Defined in reverse of their image order
  * (-inline deferred). */
 
+#include <algorithm>
+
 #include "graph_tree.h"
 
 CGRoute::CGRoute()
@@ -81,6 +83,30 @@ CGraph::CGraph(const char *name)
     : m_name(0)
 {
     SetName(name);
+}
+
+/* an object deleted, its slot left null (std::transform's operation; SOCOM 1 links no function
+ * for it, so it was inlined there too; the name ours). An inline function passed by pointer: a
+ * functor passed by value leaves its empty temporary's `sb zero` store, and MW 3.0 takes a
+ * function template instance's address only through an explicit cast */
+template <class T>
+inline T *DeleteObject(T *p)
+{
+    delete p;
+    return 0;
+}
+
+/* the name freed, every node and edge deleted and the lists emptied (OVL1 0x2D0990: SOCOM 1's,
+ * the free's file and line gone) */
+CGraph::~CGraph()
+{
+    if (m_name)
+        _free(m_name, 0, 0);
+    m_name = 0;
+    std::transform(m_nodes.begin(), m_nodes.end(), m_nodes.begin(), (CGNode *(*)(CGNode *))DeleteObject<CGNode>);
+    std::transform(m_edges.begin(), m_edges.end(), m_edges.begin(), (CGEdge *(*)(CGEdge *))DeleteObject<CGEdge>);
+    m_nodes.clear();
+    m_edges.clear();
 }
 
 /* a node deleted: each of its edges taken out of the other end's list and the graph's and
