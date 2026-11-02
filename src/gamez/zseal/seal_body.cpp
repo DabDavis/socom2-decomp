@@ -390,6 +390,109 @@ extern "C" void func_00580A80(CZSealBody *seal)
         func_00555170((char *)seal + 0x1c0);
 }
 
+/* the blends popped down to one, as 0x57F310 does, then anim 45 pushed from its start and anim 46 on
+ * top of it, told to the network with the ladder's index for a SEAL this console plays; the second
+ * blend returned (OVL2 0x57F690, new in SOCOM II) */
+extern "C" CZBodyAnimBlend *func_0057F690(CZSealBody *seal)
+{
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+    int n = 12;
+    CBodyAnimBlendStack *stack = &seal->m_blends;
+
+    while (BlendCount(stack) > 1 && n > 0) {
+        b = func_00589AA0(seal);
+        n--;
+    }
+    if (n <= 0)
+        b = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+    else {
+        if (b)
+            b->m_ctrl = 0;
+        seal->m_desiredStance = STANCE_PRONE;
+    }
+    {
+        /* (the blend in a block-local: written into the call's result, MW keeps 0.0f in $f20) */
+        CZBodyAnimBlend *start = (CZBodyAnimBlend *)func_00588BC0(seal, (AnimType)45, 5, 0, 13);
+
+        start->m_tfrac = 0.0f;
+    }
+    /* (the ladder declared first: it takes the higher register) */
+    unsigned int ladder;
+    CZBodyAnimBlend *r = (CZBodyAnimBlend *)func_00588BC0(seal, (AnimType)46, 5, 1, 13);
+
+    ladder = seal->m_ladder;
+    if (theNetwork.m_9 && !seal->IsRemote())
+        func_002BBAF0(seal->m_id, 34, ladder, false, 6);
+    return r;
+}
+
+extern "C" {
+/* two more anim types read as variables (OVL1 data, -1 in the image) */
+extern short data_003DEF40;
+extern short data_003DEF50;
+}
+
+/* the blends popped down to one, as 0x57F310 does, the anims of 0x3DEF50 and 0x3DEF40 pushed, the
+ * body put in state 5 and the push told to the network; the second blend returned (OVL2 0x57F3E0,
+ * new in SOCOM II) */
+extern "C" CZBodyAnimBlend *func_0057F3E0(CZSealBody *seal)
+{
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+    int n = 12;
+    CBodyAnimBlendStack *stack = &seal->m_blends;
+
+    while (BlendCount(stack) > 1 && n > 0) {
+        b = func_00589AA0(seal);
+        n--;
+    }
+    if (n <= 0)
+        b = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+    else {
+        if (b)
+            b->m_ctrl = 0;
+        seal->m_desiredStance = STANCE_PRONE;
+    }
+    func_00588BC0(seal, (AnimType)data_003DEF50, 5, 0, 13);
+    CZBodyAnimBlend *r = (CZBodyAnimBlend *)func_00588BC0(seal, (AnimType)data_003DEF40, 5, 0, 13);
+
+    seal->BodySetState(5);
+    func_00588B40(seal, 7);
+    return r;
+}
+
+/* 0x57F690 with anim 44 alone on top and the time 5 (OVL2 0x57F880, new in SOCOM II) */
+extern "C" CZBodyAnimBlend *func_0057F880(CZSealBody *seal)
+{
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+    int n = 12;
+    CBodyAnimBlendStack *stack = &seal->m_blends;
+
+    while (BlendCount(stack) > 1 && n > 0) {
+        b = func_00589AA0(seal);
+        n--;
+    }
+    if (n <= 0)
+        b = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+    else {
+        if (b)
+            b->m_ctrl = 0;
+        seal->m_desiredStance = STANCE_PRONE;
+    }
+    {
+        /* (the blend in a block-local: written into the call's result, MW keeps 0.0f in $f20) */
+        CZBodyAnimBlend *start = (CZBodyAnimBlend *)func_00588BC0(seal, (AnimType)45, 5, 0, 13);
+
+        start->m_tfrac = 0.0f;
+    }
+    unsigned int ladder;
+    CZBodyAnimBlend *r = (CZBodyAnimBlend *)func_00588BC0(seal, (AnimType)44, 5, 0, 13);
+
+    ladder = seal->m_ladder;
+    if (theNetwork.m_9 && !seal->IsRemote())
+        func_002BBAF0(seal->m_id, 34, ladder, false, 5);
+    return r;
+}
+
 /* the blends popped down to a count, twelve at most; when that worked and when asked, the top
  * blend's control cleared and the SEAL asked to go prone (OVL2 0x58A5E0, new in SOCOM II: 0x57F310
  * with the count and the flag its arguments) */
