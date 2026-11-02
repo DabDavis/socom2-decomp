@@ -416,6 +416,16 @@ public:
     /* out of class (SOCOM 1's clear__ of map<string, int>, 0x40 bytes, and SOCOM II's 0x2DEDF0,
      * which the material unit's own code calls) */
     void clear();
+    /* out of class too (the online lane's round 8: the Medius file API's map, OVL1 0x305BE0, which
+     * FreeVector's inlined map::swap calls): the members traded in order, the comparator's byte
+     * through a stack temporary, then each root's parent pointed at its own anchor (or, empty, the
+     * leftmost link). OPEN, 12 instructions: MW hoists this tree's anchor address into the root
+     * test's delay slot (a3, which then pushes the swaps' temporary to t0) where the target computes
+     * it in each arm, as it does for x's; member/accessor/helper/ordering forms all hoist. MSL's own
+     * swap trades its compressed pairs (alloc_ = the size, node_alloc_ = the anchor, comp_ = the
+     * comparator and the leftmost link, which is why the byte and the leftmost word are swapped
+     * together) -- the shape this header does not model */
+    void swap(__tree &x);
 
     node_base *&root() { return tail_.left_; }
     /* through a reference (MSL's comp_ pair's second()): erase keeps its address in a register */
@@ -584,6 +594,25 @@ void __tree<T, Compare, Allocator>::clear()
         size_ = 0;
         root() = 0;
         leftmost_ = (node_base *)&tail();
+    }
+}
+
+template <class T, class Compare, class Allocator>
+void __tree<T, Compare, Allocator>::swap(__tree &x)
+{
+    if (this != &x) {
+        std::swap(size_, x.size_);
+        std::swap(root(), x.root());
+        std::swap(comp_, x.comp_);
+        std::swap(leftmost_, x.leftmost_);
+        if (root() != 0)
+            root()->set_parent((node_base *)&tail());
+        else
+            leftmost_ = (node_base *)&tail();
+        if (x.root() != 0)
+            x.root()->set_parent((node_base *)&x.tail());
+        else
+            x.leftmost_ = (node_base *)&x.tail();
     }
 }
 

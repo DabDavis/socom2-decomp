@@ -44,7 +44,6 @@ struct MediusLadderListRequest {
     int PageSize;   // 0x24
 };   // 0x28
 
-struct MediusLadderListResponse;
 
 /* a valve (zanim.h's CValve, as the other lobby units declare it again) */
 enum VALVE_TYPE {
@@ -368,11 +367,33 @@ int CZOnlineLobby::GetClanRankTier(int rank)
  * (0x2EBCF0, 0x2EC060), among the ladders' other members. Pinned: never inlined. */
 #pragma auto_inline off
 
+/* the players deleted and the list emptied, the lowest position forgotten first (OVL1 0x2EC140:
+ * GetLadderList, GetLadderBest, ReleaseUIResources and the lists' destructor 0x2ED3E0 call it) */
+void LadderList::DeleteAll()
+{
+    m_c = 0;
+    std::transform(begin(), end(), begin(), DeleteItem<LadderItem>());
+    clear();
+}
+
 /* the clans deleted and the list emptied (OVL1 0x2EC060) */
 void ClanLadderList::DeleteAll()
 {
     std::transform(begin(), end(), begin(), DeleteItem<ClanLadderItem>());
     clear();
+}
+
+/* a player kept, unless his position is there, and the highest position kept (OVL1 0x2EBE50: the
+ * ladder pages' callback 0x2EB6A0 adds each to its list), as the clans' Add */
+void LadderList::Add(MediusLadderListResponse *resp)
+{
+    if (!Find(resp->LadderPosition)) {
+        LadderItem *item = new LadderItem(resp);
+
+        push_back(item);
+        if (m_10 < item->m_position)
+            m_10 = item->m_position;
+    }
 }
 
 /* a clan kept, unless its position is there, and the lowest position kept (OVL1 0x2EBCF0): the
@@ -429,7 +450,6 @@ int CZOnlineLobby::GetRankTier(int rank)
 
 extern "C" {
 extern unsigned char data_0044F878;   /* a player ladder page asked for and not yet come */
-void func_002EC140(LadderList *list);   /* a player ladder's items deleted (LadderList::DeleteAll) */
 void func_002EB6A0(int, int, int, MediusLadderListResponse *);   /* the pages' callback */
 MediusErrorCode func_0064B128(MediusLadderListRequest *req,
                               void (*cb)(int, int, int, MediusLadderListResponse *));   /* MediusLadderList */
@@ -467,7 +487,7 @@ void UpdateLadderBestDisplay()
 /* the player ladder's best n asked for (SOCOM II's; OVL1 0x2EB610; the name ours) */
 void CZOnlineLobby::GetLadderBest(int n)
 {
-    func_002EC140(&LadderRanking);
+    LadderRanking.DeleteAll();
     MediusLadderListRequest req;
 
     memset(&req, 0, sizeof(req));
@@ -493,7 +513,7 @@ void CZOnlineLobby::GetLadderList(int start, int n)
     if (start <= 0)
         first = 1;
 
-    func_002EC140(&LadderLeaders);
+    LadderLeaders.DeleteAll();
     LadderLeaders.m_c = first;
     MediusLadderListRequest req;
 

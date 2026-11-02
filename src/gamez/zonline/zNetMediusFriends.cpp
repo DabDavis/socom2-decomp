@@ -112,6 +112,15 @@ public:
                     return &*i;
         return 0;
     }
+    FriendInvitationItem *Find(int id)
+    {
+        for (iterator i = begin(), e = end(); i != e; ++i)
+            if (id == (*i).AccountID)
+                return &*i;
+        return 0;
+    }
+    void Add(FriendInvitationItem *item);
+    void Remove(int id);
 };
 
 /* an invitation as it comes: its status ahead of the account */
@@ -167,7 +176,6 @@ extern "C" {
 extern AccountInfoType AccountInfo;
 extern IgnoreVector data_0044FDE0;   /* the ignored */
 extern FriendInvitationVector data_0044FE00;   /* the friend invitations */
-void func_00301DB0(FriendInvitationVector *list, FriendInvitationItem *item);   /* one kept, shown */
 void func_00300BE0(int, int, int, MediusStatusResponse *);   /* the confirmation's callback */
 MediusErrorCode func_00648F10(MediusFindPlayerRequest *req,
                               void (*cb)(int, int, int, MediusFindPlayerResponse *));   /* MediusFindPlayer? */
@@ -175,7 +183,6 @@ MediusErrorCode func_006492D8(MediusAddToBuddyListConfirmationRequest *req,
                               void (*cb)(int, int, int, MediusStatusResponse *));
 
 void func_00302FC0(IgnoreVector *list);   /* the ignored cleared (the class vector's clear) */
-void func_00301CF0(FriendInvitationVector *list, int id);   /* an invitation dropped */
 MediusErrorCode MediusAccountGetID(MediusAccountGetIDRequest *req,
                                    void (*cb)(int, int, int, MediusAccountGetIDResponse *));
 MediusErrorCode func_006494A0(MediusAccountRequest *req,
@@ -348,7 +355,7 @@ void cbGetFriendInvitations(int, int, int, MediusGetBuddyInvitationsResponse *re
     if (resp->AccountName)
         memcpy(item.AccountName, resp->AccountName, sizeof(item.AccountName));
     item.AddType = resp->AddType;
-    func_00301DB0(&data_0044FE00, &item);
+    data_0044FE00.Add(&item);
 }
 
 /* a friend dropped (OVL1 0x3016A0) */
@@ -471,7 +478,7 @@ void CZOnlineLobby::RejectFriend(int id)
     req.TargetAccountID = id;
     req.AddType = 0;
     CheckMediusError(func_00649378(&req));
-    func_00301CF0(&data_0044FE00, id);
+    data_0044FE00.Remove(id);
 }
 
 /* a friend's request accepted, and its invitation dropped (OVL1 0x300A70) */
@@ -485,5 +492,134 @@ void CZOnlineLobby::ConfirmFriend(int id)
     req.TargetAccountID = id;
     req.AddType = 0;
     CheckMediusError(func_00649378(&req));
-    func_00301CF0(&data_0044FE00, id);
+    data_0044FE00.Remove(id);
+}
+
+extern "C" void func_00301810(FriendInvitationVector *list);   /* the invitations shown again */
+
+/* The invitations' members its callers call out of line. Pinned: never inlined */
+#pragma auto_inline off
+
+/* an invitation kept, unless it is empty or its account's is there, and the list shown again
+ * (OVL1 0x301DB0): copied by assignment first -- the odd-length id makes it member by member,
+ * as the target's copy is (initialised from *item it would be a block copy) */
+void FriendInvitationVector::Add(FriendInvitationItem *item)
+{
+    if (item && item->AccountName[0] && !Find(item->AccountID)) {
+        FriendInvitationItem copy;
+
+        copy = *item;
+
+        push_back(copy);
+        func_00301810(this);
+    }
+}
+
+/* every invitation from the account dropped, and the list shown again (OVL1 0x301CF0).
+ * OPEN, 35 instructions (0xC4 against 0xBC): the target keeps the assigned iterator's value in v0
+ * across the loop -- the guard tests the value it just stored, the step is `addiu v0,v0,64` in the
+ * found test's delay slot -- while re-reading the stored iterator for the dereference; MW here
+ * reloads it for the guard and steps the reloaded copy behind a `b`. Assigned or initialised,
+ * prefix or postfix ++, (*i). or i->, while or for: all the same 35 */
+void FriendInvitationVector::Remove(int id)
+{
+    iterator i;
+
+    i = begin();
+    while (i != end()) {
+        if (id == (*i).AccountID)
+            i = erase(i);
+        else
+            ++i;
+    }
+    func_00301810(this);
+}
+
+#pragma auto_inline reset
+
+/* a state of the game's stack, as far as the player is told things (Apps/FTS/fts_state.h's
+ * CGameState: its first ten slots, DisplayMessage at 0x2C) */
+class CMessageState {
+public:
+    virtual ~CMessageState();
+    virtual void PreInit();
+    virtual bool Init();
+    virtual bool Tick(float dT);
+    virtual void PreUnInit();
+    virtual void UnInit();
+    virtual void OnPush(int userdata);
+    virtual void OnPop(int userdata);
+    virtual void SetSkipSwap(int swap);
+    virtual void DisplayMessage(const char *text, const char *who, int a, int b, int c,
+                                unsigned char d, unsigned char e, char type);
+};
+
+/* the game's stack of states (zgame.h's CGame: the current state's index at 0xC, the stack 0x14) */
+struct CMessageGame {
+    CMessageState *GetCurrentState() { return m_CurrentState >= 16 ? 0 : m_Stack[m_CurrentState]; }
+
+    unsigned char _0[0xc];
+    unsigned int m_CurrentState;   // 0xc
+    CMessageState *m_TestVariable;   // 0x10
+    CMessageState *m_Stack[16];   // 0x14
+};
+
+extern CMessageGame theGame;   /* 0x4084C0 */
+
+/* an invitation to be a friend received: kept, and the player told (OVL1 0x3009C0: MediusInit's
+ * second callback; its response is the invitation's record) */
+void func_003009C0(int, int, int, void *data)
+{
+    FriendInvitationItem *resp = (FriendInvitationItem *)data;
+    char text[512];
+
+    data_0044FE00.Add(resp);
+    sprintf(text, "%s has invited you to join their friends list.", resp->AccountName);
+    theGame.GetCurrentState()->DisplayMessage(text, "", 0, 0, 0, 1, 0, 1);
+}
+
+/* --- the Medius connection (the unit's first functions, 0x300670-0x3007FF) ------------------ */
+
+/* a connection's parameters (the chat unit's MediusConnectParams: only the callback read here) */
+struct FriendsConnectParams {
+    unsigned char _0[0xf4];
+    void (*Callback)(int index);   // 0xf4
+    int _f8;   // 0xf8
+    int _fc;   // 0xfc
+};   // 0x100
+
+/* what opening a connection hands back: its index, or -1 and the error */
+struct FriendsConnectResult {
+    int index;   // 0x0
+    int err;   // 0x4
+};
+
+extern "C" {
+extern int myConnectionIndex;   /* the Medius connection, -1 none (SOCOM 1's) */
+extern unsigned char data_0044FDA0;   /* the kind of server it is to: 1 the lobby, 2 the universes' */
+extern void (*data_0044FDA8)(int index);   /* the caller's callback, called once connected */
+MediusErrorCode func_006479B8();   /* (OVL2: the connection closed) */
+MediusErrorCode func_006476E0(FriendsConnectParams *params, FriendsConnectResult *result);   /* (OVL2: one opened) */
+void func_002F3FF0(void *params);   /* (the chat unit's) */
+void func_00300800(int index);   /* the connection made: the caller's callback called */
+
+/* a connection asked for: the one open closed first (a lobby's through Medius), the caller's
+ * callback kept and ours put in its place (OVL1 0x300740: the lobby's and the universes'
+ * connect handlers call it) */
+bool func_00300740(int kind, FriendsConnectParams *params)
+{
+    FriendsConnectResult result;
+
+    if (myConnectionIndex != -1) {
+        if (data_0044FDA0 == 1)
+            CheckMediusError(func_006479B8());
+        myConnectionIndex = -1;
+    }
+    data_0044FDA0 = kind;
+    func_002F3FF0(params);
+    data_0044FDA8 = params->Callback;
+    params->Callback = func_00300800;
+    myConnectionIndex = -1;
+    return CheckMediusError(func_006476E0(params, &result));
+}
 }

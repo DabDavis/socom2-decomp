@@ -123,13 +123,6 @@ struct MediusGetGamePlayersResponse {
     char EndOfList;   // 0x144
 };
 
-/* a player's stats unpacked (the stats parser 0x2F9AC0's output: only the flag read here, the
- * layout ours) */
-struct GamePlayerStats {
-    unsigned int _0 : 15;
-    unsigned int m_late : 1;   // byte 1, bit 7: counted
-    unsigned char _4[0xf0 - 4];
-};
 
 void cbGetPolicy(int, int, int, MediusGetPolicyResponse *);
 void cbSetGameListFilter(int, int, int, MediusSetGameListFilterResponse *);
@@ -140,7 +133,6 @@ extern "C" {
  * (0x2F4080), and the response's converter (0x2F4030) only fixes the type-129 ones */
 void func_002F4030(void *msg, int type);
 void func_002F4080(void *msg, int type);
-void func_002F9AC0(GamePlayerStats *stats, const char *text);   /* a player's stats unpacked */
 
 MediusErrorCode func_006495E0(MediusGetPolicyRequest *req,
                               void (*cb)(int, int, int, MediusGetPolicyResponse *));
