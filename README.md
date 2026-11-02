@@ -1647,6 +1647,21 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the game states, round 17** (SetMovie and its cue sort, fts_message.cpp):
+  - a function calling trivial accessors -- even leaves -- out of line holds a big EXPLICIT-inline helper
+    MW inlines one level: the helper's callees become calls, their copies following the caller in
+    reverse order of first use (SetMovie's ReadSubtitles, 0x1EDE70-0x1EDF3C);
+  - zsys.h's inline FreeVector reached through a one-level helper is emitted with the unit's own code
+    right after its caller, and requests the deleter's clear and destructor in the tail's first round
+    (the class vector's reserve and insert then inline their temporary's teardown);
+  - a sort comparator with no store and no constructor call is a default-initialised POD local; its
+    slot below the iterators' says they were named locals built in place and declared before it;
+  - `name = f(); if (!name) name = K;` puts the copy in the branch's delay slot, a ternary branches
+    twice; an override passing its own bool argument on leaves a2 untouched at the call -- an unset
+    argument register can be a pass-through, not a missing parameter (C2DMessageString::SetString);
+  - include/vector's class vector has `reserve(n)` forwarding to __vector_imp's (0x1EDF10, a `j` to
+    0x1EF190, as clear()'s copy 0x1ED000); fts_message.cpp (ours) runs 0x2B5830-0x2B794F after
+    fts_action.cpp, as in SOCOM 1's symtab.
 - **Tells from the AI core, round 11** (FreeTables, AI_PARAMS::Merge, the character type's packing):
   - an int counter indexing a member array (`m_start[i]`) is strength-reduced; `m_start[(unsigned
     int)i]` keeps the target's per-pass recompute (startvec::Load);
