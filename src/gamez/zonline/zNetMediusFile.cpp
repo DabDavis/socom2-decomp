@@ -167,15 +167,15 @@ struct AccountInfoType {
 extern AccountInfoType AccountInfo;
 
 MediusErrorCode func_00649B40(char *sessionKey, int type, char *messageID);   /* a message's id made */
-MediusErrorCode func_0064B7C8(MediusFileListRequest *req,
+MediusErrorCode MediusFileListFiles(MediusFileListRequest *req,
     void (*cb)(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusFileListResponse *));
-MediusErrorCode func_0064B3F8(MediusFileCreateRequest *req,
+MediusErrorCode MediusFileCreate(MediusFileCreateRequest *req,
     void (*cb)(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusFileCreateResponse *));
-MediusErrorCode func_0064B490(MediusFileUploadRequest *req,
+MediusErrorCode MediusFileUpload(MediusFileUploadRequest *req,
     void (*cb)(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusFileUploadResponse *));
-MediusErrorCode func_0064B5D8(MediusFileDownloadRequest *req,
+MediusErrorCode MediusFileDownload(MediusFileDownloadRequest *req,
     void (*cb)(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusFileDownloadResponse *));
-MediusErrorCode func_0064B540(MediusFileCloseRequest *req,
+MediusErrorCode MediusFileClose(MediusFileCloseRequest *req,
     void (*cb)(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusFileCloseResponse *));
 }
 
@@ -276,7 +276,7 @@ inline void UploadFile(CLobbyFileIO *file)
     if (CheckMediusError(err))
         AddTransfer(id, file);
     if (CheckMediusError(err))
-        CheckMediusError(func_0064B490(&req, cbUploadFile));
+        CheckMediusError(MediusFileUpload(&req, cbUploadFile));
 }
 
 /* a missing file made on the server, for a write that asked for it */
@@ -298,7 +298,7 @@ inline void CreateFile(CLobbyFileIO *file)
     if (CheckMediusError(err))
         AddTransfer(id, file);
     if (CheckMediusError(err))
-        CheckMediusError(func_0064B3F8(&req, cbCreateFile));
+        CheckMediusError(MediusFileCreate(&req, cbCreateFile));
 }
 
 /* every transfer forgotten (OVL1 0x305640: the lobby's ReleaseUIResources calls it).
@@ -416,7 +416,7 @@ bool CLobbyFileIO::Open(const char *name, unsigned int mode)
             strcpy(m_path, name);
         else
             m_path[0] = 0;
-        ok = CheckMediusError(func_0064B7C8(&req, cbFileListFiles));
+        ok = CheckMediusError(MediusFileListFiles(&req, cbFileListFiles));
     }
     return ok;
 }
@@ -448,7 +448,7 @@ void CLobbyFileIO::Close()
             if (CheckMediusError(err))
                 AddTransfer(id, this);
             if (CheckMediusError(err))
-                CheckMediusError(func_0064B540(&req, cbFileClose));
+                CheckMediusError(MediusFileClose(&req, cbFileClose));
         }
         _free(m_handle, 0, 0);
     }
@@ -557,7 +557,7 @@ int CLobbyFileIO::freadAsync(void *buf, int size)
         if (CheckMediusError(err))
             AddTransfer(id, this);
         if (CheckMediusError(err))
-            CheckMediusError(func_0064B5D8(&req, cbFileDownload));
+            CheckMediusError(MediusFileDownload(&req, cbFileDownload));
     }
     return -1;
 }
