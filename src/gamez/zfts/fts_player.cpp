@@ -82,10 +82,13 @@ public:
     static bool CmdTickIndoorsTest(_zanim_cmd_hdr *hdr, float *dT);
     static _zanim_cmd_hdr *CmdParseIndoorsTest(_zrdr *rdr);
 
+    /* no SEAL yet, the word after it set (the unit's initialiser 0x400330) */
+    CftsPlayer() : m_body(0), m_4(1) {}
+
     CZSealBody *m_body;   // 0x0
+    int m_4;   // 0x4
 };
 
-extern CftsPlayer ftsPlayer;
 
 /* the spawners: the vehicles waiting to come back, one every two seconds (SOCOM 1's CSpawners and
  * its global, 32 bytes at 0x440C10) */
@@ -98,6 +101,16 @@ public:
         CVehicleRdrEntry *entry;   // 0x4
     };
 
+    /* the lists built out of line, no vehicle counted (the unit's initialiser 0x400330); the
+     * destructor inline, its copy in the template tail (0x2B4030) where the initialiser registers it.
+     * OPEN, 0x10C of 0xA0 bytes (the states lane, round 16; 0x2B4030 stays its draft's): the target
+     * calls the vehicle list's destructor (0x2B3F20, 0x60), which inlines ~__list_imp and calls
+     * ~__list_deleter (0x2B3F80, byte-exact here); this copy inlines all of it -- the spawn list's
+     * range erase (instantiated by Clear) a level too short in tail code. The initialiser's code is
+     * byte-exact once 0x2B4030 carries this destructor's name */
+    CSpawners() : m_count(0) {}
+    ~CSpawners() { Clear(); }
+
     void Clear();
     void Tick(float dT);
 
@@ -107,7 +120,8 @@ public:
     float m_timer;   // 0x1c
 };
 
-extern CSpawners spawners;
+CSpawners spawners;
+CftsPlayer ftsPlayer;
 
 /* the vehicles' rdr (only its opening and closing) */
 class CVehicleRdr {
