@@ -45,6 +45,14 @@ CZWeapon *func_003C4B40(CZWeaponList *list, EQUIP_ITEM item);
 bool func_005BD7E0(CZKit *kit);
 /* a controller's word at 0x11C cleared (OVL2 0x592D40, the SEAL lane's row) */
 void func_00592D40(CKitCtrl *ctrl);
+/* CSealCtrl::SetCameraZoom (OVL2 0x592C70, the SEAL lane's), CZWeapon::GetAssociatedGearName (SOCOM
+ * 1's, called from the same SetItemByIndex; OVL1 0x3D2760, unclaimed) and the gear list's FindGear
+ * (SOCOM 1's CCharacterGearList::FindGear, the same call; OVL2 0x53EFF0, unclaimed) on
+ * CCharacterType's gear list (OVL1 bss 0x44CD68) */
+void SetCameraZoom__9CSealCtrlFff(CKitCtrl *ctrl, float level, float increment);
+const char *func_003D2760(CZWeapon *w);
+void *func_0053EFF0(void *list, const char *name);
+extern unsigned char m_gear_list__14CCharacterType[12];
 }
 
 extern "C" {
@@ -709,10 +717,9 @@ void *CZKit::GetCurIcon()
     return GetIcon(m_selected_item);
 }
 
-/* an item of a kind, from the weapon list, put in a slot (OVL2 0x5BDFB0; SOCOM 1's) */
-/* (SetupBinocular calls it out of line: pinned -- likely the unwritten SetItemByIndex's doing, an
- * auto-inline candidate too big to inline whole stopping its callers) */
-#pragma auto_inline off
+/* an item of a kind, from the weapon list, put in a slot (OVL2 0x5BDFB0; SOCOM 1's). SetupBinocular
+ * calls it out of line: SetItemByIndex is an auto-inline candidate too big to inline whole, which
+ * stops its callers (no pin) */
 bool CZKit::SetItem(unsigned int index, EQUIP_ITEM item)
 {
     CZWeapon *w = func_003C4B40(&CZWeapon::m_listWeapons, item);
@@ -723,7 +730,6 @@ bool CZKit::SetItem(unsigned int index, EQUIP_ITEM item)
     }
     return false;
 }
-#pragma auto_inline reset
 
 /* an item's ammunition set, and its first magazines filled -- with the weapon's default
  * ammunition when none is given (OVL2 0x5BDEC0, 0x5BDE20; SOCOM 1's) */
@@ -900,6 +906,43 @@ bool CZKit::SetItem(unsigned int index, CZWeapon *w, void *ammo, int rounds)
     return true;
 }
 
+/* the item in hand changed: the throw let go, the trigger cleared, a scope's zoom undone (inline:
+ * SetItemByIndex expands it; the name ours) */
+inline void CZKit::ResetZoom(CKitCtrl *ctrl)
+{
+    ctrl->SetThrowing(false);
+    func_00592D40(ctrl);
+    if (GetCurZoom() > 1.01f)
+        SetCameraZoom__9CSealCtrlFff(ctrl, 1.0f, 0.5f);
+    m_cur_zoom = 0;
+}
+
+/* an item put in a slot (index 30 at most, the count raised past it): its fire mode and magazine
+ * reset, its gear found, the HUD told, the reticle taken again; when it is the item in hand, the
+ * throw let go, the trigger cleared and a zoomed-in scope's zoom undone (OVL2 0x5BC410; SOCOM 1's,
+ * which cleared the trigger at the end and asked the reticle nothing). Fifteen statements by MW's
+ * count, the growth and the zoom's reset two inlines: an auto-inline candidate too big to inline
+ * whole, so SetItem and SetupBinocular stay calls without a pin -- written out (20) it is no
+ * candidate, and SetupBinocular inlines SetItem (0xBC against 0x84) */
+void CZKit::SetItemByIndex(int index, CZWeapon *w)
+{
+    if (w && index < 31) {
+        GrowTo(index);
+        m_item[index] = (CZFTSWeapon *)w;
+        m_firemode[index] = 0;
+        m_currentmag[index] = 0;
+        m_associatedgear[index] = func_0053EFF0(&m_gear_list__14CCharacterType, func_003D2760(w));
+        bool cur = m_selected_item == index;
+        CKitCtrl *ctrl = ((CKitBody *)m_body)->m_control;
+
+        ctrl->SetBombPlaced(true);
+        SetCurReticule(false);
+        m_weaponinfoChanged = true;
+        if (cur)
+            ResetZoom(ctrl);
+    }
+}
+
 /* whether an item's fire mode has a graphic: not for explosives, grenades, binoculars and two
  * new classes -- the current item's class, whatever the index (OVL2 0x5BC310, 0x5BC300; SOCOM 1's
  * CurItemHasFiremodeGraphic, the first's name ours) */
@@ -951,25 +994,43 @@ void CZKit::SetHotSwap(bool b)
 }
 
 extern "C" {
-/* an item at an index let go with its ammunition (OVL2 0x5B9BB0, unwritten: by its place SOCOM 1's
- * RemoveItemAndAmmo(int), which it opens alike -- the index wrapped on m_num_items) */
-void func_005B9BB0(CZKit *kit, int index);
+/* the items closed up over the empty slots, each slot's state, ammunition, magazines, fire mode
+ * and pointer moved with it (OVL2 0x5B9A00, new in SOCOM II: unwritten, the name to come) and
+ * CZSealBody::WepWaitOn (OVL2 0x5DFFC0, seal_weapon.cpp's) */
+void func_005B9A00(CZKit *kit);
+void WepWaitOn__10CZSealBodyFv(CZSealBody *body);
 }
 
 /* the first item of a kind with ammunition, else the last of the kind, let go (OVL2 0x5B9E10, new
  * in SOCOM II: HandlePlaceMPBomb drops the bomb, item 154, through it, where SOCOM 1's dropped it
- * inline; the name ours). Four statements, yet HandlePlaceMPBomb calls it: pinned -- likely the
- * unwritten 0x5B9BB0's doing, an auto-inline candidate too big to inline whole stopping its callers
- * (README "Tells from the kit and AI states, round 6") */
-#pragma auto_inline off
+ * inline; the name ours). Four statements, yet HandlePlaceMPBomb calls it: RemoveItemAndAmmo is an
+ * auto-inline candidate (eleven statements) too big to inline whole, which stops its callers
+ * (README "Tells from the kit and AI states, round 6") -- the pin it needed went with it */
 void CZKit::RemoveItem(EQUIP_ITEM item)
 {
     int i = FindItemWithAmmo(item);
 
     if (i != -1)
-        func_005B9BB0(this, i);
+        RemoveItemAndAmmo(i);
 }
-#pragma auto_inline reset
+
+/* an item at an index let go with its ammunition (OVL2 0x5B9BB0; SOCOM 1's RemoveItemAndAmmo, the
+ * closing up and the wait new): the index wrapped on the count three times over, as SOCOM 1's
+ * (one inline wrap, two calls to its unwrap) -- the item, the ammunition, the magazines */
+void CZKit::RemoveItemAndAmmo(int index)
+{
+    int i = wrap(index, m_num_items);
+
+    m_item[i] = 0;
+    ClearAmmo(i);
+    func_005B9A00(this);
+    UpdateNumItems();
+    if (m_selected_item > m_num_items || !m_item[m_selected_item]) {
+        m_selected_item = 0;
+        WepWaitOn__10CZSealBodyFv(m_body);
+        m_weaponinfoChanged = true;
+    }
+}
 
 /* a pickup's request answered: the flag down, the wait cleared (OVL2 0x5B99D0) */
 void CZKit::PendingPickupHandled()

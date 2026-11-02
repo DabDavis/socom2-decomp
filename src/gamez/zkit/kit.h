@@ -39,12 +39,16 @@ struct CKitCtrl {
     /* the bit the MP bomb's placing sets (inlined with true: `daddiu ...,0x10`; SOCOM 1's at 0x168
      * -- the name ours) */
     void SetBombPlaced(bool b) { m_bomb_placed = b; }
+    /* (inlined with false: the target keeps `andi v0,zero,1`, the mask unfolded) */
+    void SetThrowing(bool b) { m_throwing = b; }
 
     unsigned char _0[0x130];
     float m_130;   // 0x130
     unsigned char _134[0x170 - 0x134];
     unsigned char m_170 : 4;   // 0x170
     unsigned char m_bomb_placed : 1;   // bit 4
+    unsigned char m_bit5 : 1;
+    unsigned char m_throwing : 1;   // bit 6 (SOCOM 1's m_throwing, the same bit)
 };
 
 /* the body as the kit reads it (CZSealBody; only its controller, CEntity's m_control, and the byte
@@ -105,7 +109,7 @@ public:
     bool WeaponIsLauncherMode(int index);
     bool WeaponIsM203Mode(int index);
     bool SetItem(unsigned int index, CZWeapon *w, void *ammo, int rounds);
-    bool SetItemByIndex(int index, CZWeapon *w);
+    void SetItemByIndex(int index, CZWeapon *w);
     bool ItemHasFiremodeGraphic(int index);
     bool CurItemHasFiremodeGraphic();
     bool IsUsingItem(int index);
@@ -186,6 +190,10 @@ public:
     void *GetItemPtr(int index);
     void ClearItemPtr(int index);
     void SetItemPtr(int index, void *p);
+    /* an item let go with its ammunition: the slots closed up (0x5B9A00), the count made the last
+     * item's place plus one, the selection reset when it fell off (OVL2 0x5B9BB0; SOCOM 1's
+     * RemoveItemAndAmmo(int), which SOCOM II's closing up and WepWaitOn join) */
+    void RemoveItemAndAmmo(int index);
 
     /* an index wrapped into [0, n), or -1 (SOCOM 1's unwrap__5CZKitFii, out of line there; SOCOM
      * II inlines it everywhere) */
@@ -206,6 +214,39 @@ public:
                 i += n;
             while (i < 0);
         return i;
+    }
+    /* an item's magazines emptied, its ammunition let go, the count made the last item's place
+     * plus one (inline: RemoveItemAndAmmo expands them -- each wraps its index again, as the
+     * target's three wraps do; the names ours) */
+    void ClearReloads(int index)
+    {
+        int i = wrap(index, m_num_items);
+
+        for (int k = 0; k < 10; k++)
+            m_reloads[i][k] = 0;
+    }
+    void ClearAmmo(int index)
+    {
+        int i = wrap(index, m_num_items);
+
+        ClearReloads(i);
+        m_ammo[i] = 0;
+    }
+    /* the count raised past an index (inline: SetItemByIndex expands it; the name ours) */
+    void GrowTo(int index)
+    {
+        if (index >= m_num_items)
+            m_num_items = index + 1;
+    }
+    void ResetZoom(CKitCtrl *ctrl);
+    void UpdateNumItems()
+    {
+        int last = -1;
+
+        for (int i = 0; i < 30; i++)
+            if (m_item[i])
+                last = i;
+        m_num_items = last + 1;
     }
     /* the first item of that kind with ammunition, else the last of that kind, else -1 (inlined
      * in each caller; the name ours) */
@@ -261,7 +302,10 @@ public:
     int m_reloads[30][10];   // 0x1d4 (SOCOM 1's 0x1c0): each item's magazines, the rounds in each
     int m_currentmag[30];   // 0x684 (SOCOM 1's 0x670)
     int m_firemode[30];   // 0x6fc (SOCOM 1's 0x6e8): read as a FIREMODE, its low byte
-    unsigned char _774[0x820 - 0x774];
+    void *m_associatedgear[30];   // 0x774 (SOCOM 1's CCharacterGear *, 0x760): the item's gear
+    unsigned char _7ec[0x810 - 0x7ec];
+    int m_cur_zoom;   // 0x810 (SOCOM 1's 0x7f8)
+    unsigned char _814[0x820 - 0x814];
     float m_fire_delay;   // 0x820 (SOCOM 1's 0x804)
     int m_selected_item;   // 0x824 (SOCOM 1's 0x808)
     int m_last_selected;   // 0x828
