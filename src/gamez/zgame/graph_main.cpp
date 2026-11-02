@@ -16,8 +16,11 @@ CGRoute::CGRoute()
 {
 }
 
-/* ~CGRoute (OVL1 0x2D1210) is Clear() and the list's implicit destructor -- left to its draft
- * (src/auto, byte-exact): written here it comes out 0x14 short for the reason ~CGNode does */
+/* every node forgotten, then the list's own destructor (OVL1 0x2D1210: Clear inlined) */
+CGRoute::~CGRoute()
+{
+    Clear();
+}
 
 /* a node added at the end (OVL1 0x2D11D0) */
 void CGRoute::Append(CGNode *node)
@@ -41,10 +44,8 @@ CGNode::CGNode()
 {
 }
 
-/* the edges forgotten (OVL1 0x2D1060).
- * OPEN, 0xBC against 0xD0: the list's implicit destructor after the clear tests `this` four times
- * in the target (and in ~CGRoute's), three here -- the pointer list's destructor chain is a level
- * taller in SOCOM II's MSL than include/list's (list<T *>, __list_imp, __list_deleter) */
+/* the edges forgotten (OVL1 0x2D1060: the list's implicit destructor after the clear tests `this`
+ * four times, CGEdgeList being a class of its own) */
 CGNode::~CGNode()
 {
     m_edges.clear();

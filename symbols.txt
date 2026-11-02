@@ -4424,7 +4424,7 @@
 0x002D1180 0x8 PostProcess__7CGRouteFv  # OVL1; s1:order by hand (the states lane: first of CGRoute's as SOCOM 1's PostProcess, empty in both; BuildRoute calls it; byte-exact in graph_tree.cpp)
 0x002D1190 0x38 Clear__7CGRouteFv  # OVL1; s1:exact shape by hand (the states lane: SOCOM 1's Clear instruction for instruction, the list's range erase; BuildRoute calls it first; byte-exact in graph_tree.cpp)
 0x002D11D0 0x34 Append__7CGRouteFP6CGNode  # OVL1; s1:order by hand (the states lane: after Clear as SOCOM 1's Append; the list's insert at its end; BuildRoute calls it; byte-exact in graph_tree.cpp)
-0x002D1210 0xBC func_002D1210  # OVL1
+0x002D1210 0xBC __dt__7CGRouteFv  # OVL1; by hand (the states lane, round 16): CGRoute's destructor -- Clear() inlined, then the node list's implicit destructor with four this-tests (CGNodeList a class of its own), the delete flag tested; the README's ~CGRoute (graph_main.cpp's cut is above it), byte-exact from graph_main.cpp
 0x002D12D0 0x28 __ct__7CGRouteFv  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); s1:order by hand (the states lane: after ~CGRoute as SOCOM 1's constructor: the list's constructor; byte-exact in graph_tree.cpp)
 0x002D1300 0x4C __dt__6CGEdgeFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002D1350 0xB4 Delete__6CGEdgeFP6CGEdge  # OVL1; s1:order by hand (the states lane: after ~CGEdge as SOCOM 1's Delete: the edge removed from both its nodes' lists, its ends cleared, deleted through its virtual destructor, 0 returned)
