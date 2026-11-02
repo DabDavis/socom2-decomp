@@ -40,10 +40,6 @@ extern "C" double tan(double x);
 /* an animation stopped (0x2707C0, not named) */
 extern "C" void func_002707C0(CZAnim *anim, int b);
 
-/* the HUD's timer cleared when it is the one given, or when given none (0x3CFFD0, CZWeapon's; not
- * named) */
-extern "C" void func_003CFFD0(float *timer);
-
 /* the tracers' speed (0x3E1570, initialised data; not named) */
 extern "C" float data_003E1570;
 
@@ -245,7 +241,7 @@ void CZProjectile::ForgetHitNode(zdb::CNode *node)
 void CZProjectile::Cleanup()
 {
     if (&m_time == CZWeapon::m_timer_pCurval)
-        func_003CFFD0(0);
+        CZWeapon::ClearTimer(0);
     if (m_di) {
         if (m_shottype == ONE_FRAME)
             CZWeapon::m_pProjectilelist->ReleaseDirectFireDI(&m_di, &m_di_handle);

@@ -7938,7 +7938,7 @@
 0x003B9BD0 0x4FC insert__Q23std78__vector_imp<Q33zdb5CMesh8CMeshLOD,Q23std32allocator<Q33zdb5CMesh8CMeshLOD>,0>FPQ33zdb5CMesh8CMeshLODUiRCQ33zdb5CMesh8CMeshLOD  # OVL1; by hand (the wep lane: CMesh::AddLOD and CMesh() call it with (end, 1, &lod) at the instructions where SOCOM 1's call this insert)
 0x003BA0D0 0x1A8 reserve__Q23std78__vector_imp<Q33zdb5CMesh8CMeshLOD,Q23std32allocator<Q33zdb5CMesh8CMeshLOD>,0>FUi  # OVL1; s1:align
 0x003BA280 0x68 __dt__Q23std80__vector_deleter<Q33zdb5CMesh8CMeshLOD,Q23std32allocator<Q33zdb5CMesh8CMeshLOD>>Fv  # OVL1; s1:align
-0x003BA2F0 0x8 func_003BA2F0  # OVL1
+0x003BA2F0 0x8 clear__Q23std80__vector_deleter<Q33zdb5CMesh8CMeshLOD,Q23std32allocator<Q33zdb5CMesh8CMeshLOD>>Fv  # OVL1; s1:order (SOCOM 1's clear of the CMeshLOD vector's deleter, 0x310410, closes vis_mesh.cpp's tail as here; SOCOM II's is the 8-byte size store -- the trivially destroyed elements' loop deleted -- that the deleter's destructor 0x3BA280 and reserve 0x3BA0D0 call; byte-exact from vis_mesh.cpp, the wep lane)
 0x003BA300 0xE4 ColConvTo3D__FUi  # OVL1; s1:align
 0x003BA3F0 0xE4 func_003BA3F0  # OVL1
 0x003BA4E0 0xB4 func_003BA4E0  # OVL1
@@ -8017,16 +8017,16 @@
 0x003BF3D0 0x64 GetOldestUsed__22RTArray<Q23zdb6CDecal>Fv  # OVL1; by hand (the wep lane: SOCOM 1's RTArray<CDecal>::GetOldestUsed -- CDecalPool::RecycleTick calls it where SOCOM 1's does; the first in-use item removed and returned)
 0x003BF440 0x7C PutBack__22RTArray<Q23zdb6CDecal>FPQ23zdb6CDecal  # OVL1; s1:callee by hand (the wep lane: CDecal::PutTempDecal and PutPermDecal call it where SOCOM 1's call PutBack__22RTArray<Q23zdb6CDecal>; zbody.h's PutBack shape)
 0x003BF4C0 0x8C GetNext__22RTArray<Q23zdb6CDecal>Fb  # OVL1; s1:callee by hand (the wep lane: CDecalPool::Get calls it where SOCOM 1's calls GetNext__22RTArray<Q23zdb6CDecal>Fb; zbody.h's RTArray<T>::GetNext shape -- m_available at 0x18, m_supportRecycle at 0x1C)
-0x003BF550 0x13C func_003BF550  # OVL1
+0x003BF550 0x13C __ct__22RTArray<Q23zdb6CDecal>FUibb  # OVL1; s1:callee (SOCOM 1's RTArray<CMeshDecal>(unsigned int, bool, bool) 0x313AA0's twin over the decals: CDecalPool::Init news a 0x20-byte RTArray and calls it with the count plus the extra, true, true; it builds the list member and new[]s the pointers and the items with CDecal's constructor and destructor 0x3BF6E0/0x3BF690 -- the wep lane)
 0x003BF690 0x44 __dt__Q23zdb6CDecalFv  # OVL1; by hand (the wep lane: RTArray<CDecal>'s destructor hands it to __destroy_new_array for the items -- CDecal's empty inline destructor's out-of-line copy, vis_decal.cpp's place; zwep_weapon.cpp's copy is byte-exact)
-0x003BF6E0 0x8 func_003BF6E0  # OVL1
+0x003BF6E0 0x8 __ct__Q23zdb6CDecalFv  # OVL1; by hand (the wep lane: the 8-byte `return this` RTArray<CDecal>'s constructor hands __construct_new_array with CDecal's destructor 0x3BF690; vis_decal.cpp's empty inline constructor's copy)
 0x003BF6F0 0x64 GetOldestUsed__27RTArray<Q23zdb10CMeshDecal>Fv  # OVL1; by hand (the wep lane: SOCOM 1's RTArray<CMeshDecal>::GetOldestUsed -- CMeshDecalPool::RecycleTick calls it where SOCOM 1's does)
 0x003BF760 0x7C PutBack__27RTArray<Q23zdb10CMeshDecal>FPQ23zdb10CMeshDecal  # OVL1; s1:callee by hand (the wep lane: CMeshDecal::PutTempDecal calls it where SOCOM 1's calls PutBack__27RTArray<Q23zdb10CMeshDecal>)
 0x003BF7E0 0x8C GetNext__27RTArray<Q23zdb10CMeshDecal>Fb  # OVL1; by hand (the wep lane: CMeshDecalPool::Get calls it as CDecalPool::Get calls RTArray<CDecal>'s; the same 0x8C bytes)
 0x003BF870 0x140 __dt__27RTArray<Q23zdb10CMeshDecal>Fv  # OVL1; s1:callee
-0x003BF9B0 0x44 func_003BF9B0  # OVL1
-0x003BFA00 0x134 func_003BFA00  # OVL1
-0x003BFB40 0x20 func_003BFB40  # OVL1
+0x003BF9B0 0x44 __dt__Q23zdb10CMeshDecalFv  # OVL1; by hand (the wep lane: the empty destructor's deleting copy (0x44 bytes, as CDecal's 0x3BF690) that ~RTArray<CMeshDecal> 0x3BF870 and RTArray<CMeshDecal>() 0x3BFA00 hand the array helpers)
+0x003BFA00 0x134 __ct__27RTArray<Q23zdb10CMeshDecal>FUibb  # OVL1; s1:order (SOCOM 1's RTArray<CMeshDecal>(unsigned int, bool, bool) 0x313AA0, in vis_decal.cpp's tail as here: CMeshDecalPool::Init news a 0x20-byte RTArray and calls it with the count plus the extra, true, true -- the wep lane)
+0x003BFB40 0x20 __ct__Q23zdb10CMeshDecalFv  # OVL1; by hand (the wep lane: zeroes 0, 4, 8, 0x10, 0x34, 0x30 -- the life, link, mesh, vertex block and its two words that FreeMem clears; RTArray<CMeshDecal>'s constructor hands it to __construct_new_array)
 0x003BFB60 0x378 func_003BFB60  # OVL1
 0x003BFEE0 0x23C func_003BFEE0  # OVL1
 0x003C0120 0xD4 func_003C0120  # OVL1
@@ -8146,8 +8146,8 @@
 0x003C5F20 0x8 func_003C5F20  # OVL1
 0x003C5F30 0x8 func_003C5F30  # OVL1
 0x003C5F40 0x20 func_003C5F40  # OVL1
-0x003C5F60 0x8 func_003C5F60  # OVL1
-0x003C5F70 0x8 func_003C5F70  # OVL1
+0x003C5F60 0x8 GetFireRifle_KickRandomDist__11CTargetModsCFv  # OVL1; s1:order (the integrator's lead from the kit lane, vetted by the wep lane: SOCOM 1's CTargetMods getter 0x315AA0 reads +0x44, SOCOM II's +0x48 -- the float SOCOM II inserts at 0x28 moves every later member 4 on; first of the pair in both builds, and SOCOM 1's CZKit::Fire calls them at the same point of the kick)
+0x003C5F70 0x8 GetFireRifle_KickBaseDist__11CTargetModsCFv  # OVL1; s1:order (the integrator's lead, vetted by the wep lane: SOCOM 1's 0x315AB0 reads +0x40, SOCOM II's +0x44, right after KickRandomDist in both builds)
 0x003C5F80 0x8 func_003C5F80  # OVL1
 0x003C5F90 0x8 func_003C5F90  # OVL1
 0x003C5FA0 0x8 func_003C5FA0  # OVL1
@@ -8193,10 +8193,10 @@
 0x003C63D0 0x8C MakeWeaponEventCallbacks__8CZWeaponFUiP12CZProjectile  # OVL1; s1:order by hand (SOCOM 1's first zwep_global.cpp function: each callback in m_callbacks whose event mask has the event called with the projectile, the event and its data)
 0x003C6460 0xB0 RemoveWeaponEventCallback__8CZWeaponFPFP12CZProjectileUiPv_v  # OVL1; s1:align
 0x003C6510 0x44 AddWeaponEventCallback__8CZWeaponFPFP12CZProjectileUiPv_vUiPv  # OVL1; s1:exact
-0x003C6560 0xB0 remove_if<Q33std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>19generic_iterator<0>,17_compare_callback>__3stdFQ33std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>19generic_iterator<0>Q33std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>19generic_iterator<0>17_compare_callback  # OVL1; s1:align
+0x003C6560 0xB0 remove_if<Q33std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>19generic_iterator<0>,17_compare_callback>__3stdFQ33std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>19generic_iterator<0>Q33std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>19generic_iterator<0>17_compare_callback_Q33std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>19generic_iterator<0>  # OVL1; s1:align; by hand (the wep lane: SOCOM 1's remove_if row with MW 3.0s mangled return type -- the instance zwep_global.cpp emits for RemoveWeaponEventCallback)
 0x003C6610 0xBC erase__Q23std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>FQ33std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>19generic_iterator<0>Q33std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>19generic_iterator<0>  # OVL1; s1:align
 0x003C66D0 0x110 insert__Q23std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>FQ33std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>19generic_iterator<0>RC22WEAPON_CALLBACK_STRUCT  # OVL1; s1:callee
-0x003C67E0 0x80 func_003C67E0  # OVL1
+0x003C67E0 0x80 remove_copy_if<Q33std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>19generic_iterator<0>,Q33std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>19generic_iterator<0>,17_compare_callback>__3stdFQ33std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>19generic_iterator<0>Q33std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>19generic_iterator<0>Q33std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>19generic_iterator<0>17_compare_callback_Q33std84__list_deleter<22WEAPON_CALLBACK_STRUCT,Q23std35allocator<22WEAPON_CALLBACK_STRUCT>>19generic_iterator<0>  # OVL1; s1:order (SOCOM 1's remove_copy_if over the callback list, 0x3163E0, closes its zwep_global.cpp as here; MW 3.0 mangles the return type; byte-exact from zwep_global.cpp)
 0x003C6860 0x18 func_003C6860  # OVL1
 0x003C6880 0x80 __dt__16CWepCallbackListFv  # OVL1; s1:align, checked by hand (erases WEAPON_CALLBACK_STRUCT nodes through that list's erase, 0x3C6610 -- the one list of that type)
 0x003C6900 0xC func_003C6900  # OVL1
@@ -8289,16 +8289,16 @@
 0x003CFD70 0xC8 Get__11CZItemStashFiPiPiPi  # OVL1; by hand (the wep lane: entry i's three words out, false when fewer are live; the name ours); zwep_weapon.cpp
 0x003CFE40 0xA8 Set__11CZItemStashFiiii  # OVL1; by hand (the wep lane: entry i's three words set when enough are live; the kit calls it; the name ours); zwep_weapon.cpp
 0x003CFEF0 0x88 Add__11CZItemStashFiii  # OVL1; by hand (the wep lane: the three words pushed through the pod insert 0x1FE340; the pickups call it; the name ours); zwep_weapon.cpp
-0x003CFF80 0x30 func_003CFF80  # OVL1
-0x003CFFB0 0x10 func_003CFFB0  # OVL1
-0x003CFFC0 0xC func_003CFFC0  # OVL1
-0x003CFFD0 0x50 func_003CFFD0  # OVL1
-0x003D0020 0xC func_003D0020  # OVL1
+0x003CFF80 0x30 __ct__11CZItemStashFv  # OVL1; by hand (the wep lane: zeroes the 0x28-byte CZItemStash -- its three word vectors and the word at 0x24 -- right after CZItemStash::Add; the kit (0x59E9E0, 0x59FAC0, 0x59FD50) and 0x2A8140 build theirs with it; the name ours)
+0x003CFFB0 0x10 RemoveExplosivesInRange__8CZWeaponFPC6CPnt3Df  # OVL1; by hand (the wep lane: tail-calls CZProjectileList::RemoveExplosivesInRange on m_pProjectilelist with its point and range; 0x25CC80 calls it; the name ours)
+0x003CFFC0 0xC TimerCleared__8CZWeaponFv  # OVL1; s1:order (SOCOM 1's CZWeapon::TimerCleared 0x31C9A0, first of its timer statics as here: returns m_timer_bTimerCleared, 0x4B52D0)
+0x003CFFD0 0x50 ClearTimer__8CZWeaponFPf  # OVL1; s1:order (SOCOM 1's CZWeapon::ClearTimer 0x31C9B0 -- the same stores to m_timer_pCurval, the registered and cleared flags, m_timer_maxval -1 and the increment flag -- with a value added: only when 0 or the registered one; CZProjectile::Cleanup passes its m_time when it is the registered one)
+0x003D0020 0xC TimerRegistered__8CZWeaponFv  # OVL1; s1:order (SOCOM 1's CZWeapon::TimerRegistered 0x31C9D0, between ClearTimer and RetrieveTimerRegistration as here: returns m_timer_bTimerRegistered, 0x4B52C8)
 0x003D0030 0x30 RetrieveTimerRegistration__8CZWeaponFPPfPfPb  # OVL1; s1:align
 0x003D0060 0x30 RegisterTimer__8CZWeaponFPffb  # OVL1; s1:order by hand (the HUD lane's round 18, vetted by the integrator: the same five stores as SOCOM 1's CZWeapon::RegisterTimer 0x31CA00)
-0x003D0090 0xC func_003D0090  # OVL1
-0x003D00A0 0x30 func_003D00A0  # OVL1
-0x003D00D0 0x28 func_003D00D0  # OVL1
+0x003D0090 0xC Timer2Registered__8CZWeaponFv  # OVL1; by hand (the wep lane: TimerRegistered's copy over a second set of timer statics, 0x4B52E8, new in SOCOM II after RegisterTimer; 0x216770, the HUD's timer tick, reads it after the first's; the name ours)
+0x003D00A0 0x30 RetrieveTimer2Registration__8CZWeaponFPPfPfPb  # OVL1; by hand (the wep lane: RetrieveTimerRegistration's copy over the second timer's statics 0x4B52D8/0x4B52E0/0x3E1558, clearing 0x4B52E8; 0x216770 calls it; the name ours)
+0x003D00D0 0x28 RegisterTimer2__8CZWeaponFPffb  # OVL1; by hand (the wep lane: RegisterTimer's copy over the second timer's statics, never cleared; the kit's 0x5C32B0 registers an item's time at kit+0x820 with it; the name ours)
 0x003D0100 0x20 SetSoundDistance__8CZWeaponFUcf  # OVL1; by hand (the wep lane: the zweapon.rdr reader 0x3CD810 passes WEAPON_GLOBAL's SoundDistanceClose/Med/Far times 10 with the index 0, 1, 2; stored squared at 0x4B52F0; the name ours); zwep_weapon.cpp
 0x003D0120 0x14 GetFireSoundName__8CZWeaponFUc  # OVL1; by hand (the wep lane: InitializeWeapons reads 0xEC + 4i for i 0..2; the name ours); zwep_weapon.cpp
 0x003D0140 0x74 SetFireSoundName__8CZWeaponFUcPCc  # OVL1; by hand (the wep lane: the reader's FireSoundClose/Med/Far strdup'ed into 0xEC + 4i, the old one freed; the name ours); zwep_weapon.cpp
@@ -8326,14 +8326,14 @@
 0x003D13A0 0x220 ReadDecalNames__10CZMarkListFPc  # OVL1; s1:align
 0x003D15C0 0xE8 UnInit__10CZMarkListFv  # OVL1; s1:align
 0x003D16B0 0x120 Init__10CZMarkListFv  # OVL1; s1:align
-0x003D17D0 0x1D0 func_003D17D0  # OVL1
-0x003D19A0 0x3C func_003D19A0  # OVL1; tu: zwep_weapon.cpp~ (1.0 beta)
+0x003D17D0 0x1D0 GetIDTypeName__8CZWeaponF10EQUIP_ITEM  # OVL1; by hand (the wep lane: a switch over GetIDType's classes 4..230 returning PISTOLS, SMGS, ASSAULT RIFLES .. TURRETED LAUNCHERS, UNKNOWN otherwise -- new in SOCOM II before GetWeaponName, called by 0x23D860; the name ours)
+0x003D19A0 0x3C GetWeaponName__8CZWeaponF10EQUIP_ITEM  # OVL1; tu: zwep_weapon.cpp~ (1.0 beta); s1:order (SOCOM 1's CZWeapon::GetWeaponName 0x31E140, right before GetWeaponId(const char *) in both builds: the weapon list's name, SOCOM II answering "falling damage" for the fall's id 253 first; byte-exact from zwep_weapon.cpp, the wep lane)
 0x003D19E0 0x78 GetWeaponId__8CZWeaponFPCc  # OVL1; s1:calls
 0x003D1A60 0x210 GetIDType__8CZWeaponF10EQUIP_ITEM  # OVL1; s1:order by hand (SOCOM 1's: the item's class from its range of ids)
 0x003D1C70 0x1C PackItemAndAmmoEnums__8CZWeaponF10EQUIP_ITEM10EQUIP_AMMO  # OVL1; s1:order by hand (SOCOM 1's: the item byte shifted over the ammo byte, a halfword; right before UnpackItemAndAmmoEnums as in SOCOM 1)
 0x003D1C90 0x1C UnpackItemAndAmmoEnums__8CZWeaponFUsP10EQUIP_ITEMP10EQUIP_AMMO  # OVL1; tu: zwep_weapon.cpp~ (1.0 beta); s1:exact
 0x003D1CB0 0x28 func_003D1CB0  # OVL1
-0x003D1CE0 0x28 func_003D1CE0  # OVL1
+0x003D1CE0 0x28 IsSecondary__8CZWeaponF10EQUIP_ITEM  # OVL1; s1:order (the integrator's lead, vetted by the wep lane: SOCOM 1's 0x31E370 is the same 0x28-byte GetIDType(id) test right before IsPrimary; SOCOM 1 tests its first class 0, SOCOM II 4 -- the first class of SOCOM II's GetIDType, ids 4-30, as IsPrimary's 30/50/80.. became 31/51/81..)
 0x003D1D10 0x74 IsPrimary__8CZWeaponF10EQUIP_ITEM  # OVL1; s1:order by hand (SOCOM 1's: the item's class against the primary classes, 30/50/80/90/140/100 then, 31/51/81/91/141/101 now)
 0x003D1D90 0x10 func_003D1D90  # OVL1
 0x003D1DA0 0x10 func_003D1DA0  # OVL1
