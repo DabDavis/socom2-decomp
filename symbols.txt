@@ -7301,7 +7301,7 @@
 0x0038E620 0xD0 __ct__Q221@unnamed@zui_skb_cpp@12CBmpWithNodeFv  # OVL1; by hand (CPlainBmp's inline constructor, then CBmpWithNode's tables and the node zeroed: CreateSoftKeyboard calls it six times, 0x1C0 on) -- zui_skb.cpp
 0x0038E6F0 0x40 func_0038E6F0  # OVL1
 0x0038E730 0xC __ct__Q221@unnamed@zui_skb_cpp@10CInit<b,0>Fv  # OVL1; s1:order by hand (SOCOM 1's CInit<b,0> template, its constructor a zero byte: CreateSoftKeyboard calls it for 0x174 and 0x175) -- zui_skb.cpp
-0x0038E740 0x30 func_0038E740  # OVL1
+0x0038E740 0x30 __ct__Q23std237map<Q221@unnamed@zui_skb_cpp@7CSkbKey,PQ221@unnamed@zui_skb_cpp@12CSkbKeyProps,Q23std39less<Q221@unnamed@zui_skb_cpp@7CSkbKey>,Q23std100allocator<Q23std81pair<CQ221@unnamed@zui_skb_cpp@7CSkbKey,PQ221@unnamed@zui_skb_cpp@12CSkbKeyProps>>>Fv  # OVL1; the MSL headers round 7: include/memory's inline allocator() -- the soft keyboard's std::map<CSkbKey, CSkbKeyProps *> no-argument constructor, the tree built with a bare stack slot for the allocator temporary; byte-exact from zui_skb.cpp
 0x0038E770 0x14 __ct__Q221@unnamed@zui_skb_cpp@8CSkbGridFv  # OVL1; by hand (CSkbGrid's implicit constructor out of line, the grid's vector zeroed: CreateSoftKeyboard calls it for this + 0x158, the keyboard's constructor inlined one level) -- zui_skb.cpp
 0x0038E790 0xF4 func_0038E790  # OVL1
 0x0038E890 0x34 __ct__Q221@unnamed@zui_skb_cpp@11CSkbCapLookFv  # OVL1; by hand (a 0x24-byte element: two words, a string, 1.0f and three 128s; CSkbLook's constructor builds three through __construct_array with 0x38D1A0) -- zui_skb.cpp

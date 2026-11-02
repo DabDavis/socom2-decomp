@@ -31,11 +31,11 @@ public:
         typedef allocator<U> other;
     };
 
-    /* defined after the class, so -- a template member out of its class -- never inlined into a
-     * unit's own functions: the deque's constructor calls SOCOM II's 0x2CEE30 (`jr ra; move v0,a0`)
-     * for its allocator base, as do the deque and cdeque copy constructors of four other units.
-     * No-throw: the deque's constructor references no cleanup of the base built before it */
-    allocator() throw();
+    /* in class: an allocator built from nothing costs no code -- std::map's no-argument
+     * constructor passes a bare stack slot for its allocator temporary (0x3A2BE0, 0x38E740, the
+     * line map's initialiser 0x3FE190). The const-pointer allocators keep theirs out of class
+     * (the partial specialisation below) */
+    allocator() throw() {}
     /* the copy and the converting (rebind) constructor out of class as well, as SOCOM 1's
      * (__ct__Q23std14allocator<PCv>FRCQ23std14allocator<PCv>): the deques' copy constructors call
      * both out of line (0x3340A0 the pair's allocator copied, 0x3340D0 the buffer's rebound one) */
@@ -61,11 +61,6 @@ public:
 };
 
 template <class T>
-allocator<T>::allocator() throw()
-{
-}
-
-template <class T>
 allocator<T>::allocator(const allocator &) throw()
 {
 }
@@ -73,6 +68,59 @@ allocator<T>::allocator(const allocator &) throw()
 template <class T>
 template <class U>
 allocator<T>::allocator(const allocator<U> &) throw()
+{
+}
+
+/* an allocator of const pointers -- allocator<const void *> is the empty base the deques and their
+ * block buffers default-construct after their storage (__deque_imp at +0x18, cdeque<PCv> at +0x10)
+ * -- has its default constructor defined after the class, so -- a template member out of its
+ * class -- never inlined into a unit's own functions: CGame's queue (0x2CEE00) and every deque and
+ * buffer copy constructor call SOCOM II's 0x2CEE30 (`jr ra; move v0,a0`) for it. No-throw: the
+ * deque's constructor references no cleanup of the base built before it. Otherwise the primary
+ * template's (the MSL headers' round 7: an inline allocator() everywhere cost these calls) */
+template <class T>
+class allocator<const T *> {
+public:
+    typedef unsigned int size_type;
+    typedef const T **pointer;
+    typedef const T *value_type;
+
+    template <class U>
+    struct rebind {
+        typedef allocator<U> other;
+    };
+
+    allocator() throw();
+    allocator(const allocator &) throw();
+    template <class U>
+    allocator(const allocator<U> &) throw();
+
+    pointer allocate(size_type n)
+    {
+        pointer p = (pointer)operator new(n * sizeof(value_type));
+
+        if (!p)
+            __msl_error("Memory allocation failure");
+        return p;
+    }
+    void deallocate(pointer p, size_type) { operator delete(p); }
+    void construct(pointer p, const value_type &x) { new (p) value_type(x); }
+    void destroy(pointer) {}
+};
+
+template <class T>
+allocator<const T *>::allocator() throw()
+{
+}
+
+template <class T>
+allocator<const T *>::allocator(const allocator &) throw()
+{
+}
+
+template <class T>
+template <class U>
+allocator<const T *>::allocator(const allocator<U> &) throw()
 {
 }
 
