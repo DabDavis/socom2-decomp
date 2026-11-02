@@ -49,6 +49,8 @@ void func_00592D40(CKitCtrl *ctrl);
  * the weapons' shared record of a running delay: its address, value and a byte, marked set (OVL1
  * 0x3D00D0, unclaimed) */
 float func_003D2C20(CZFTSWeapon *w);
+/* a launcher's grenades of class 145's launcher (OVL1 0x3C5C20, unclaimed: GetFiringItem's test) */
+bool func_003C5C20(CZFTSWeapon *w);
 /* a body's part by name (CBody::FindPart, OVL1 0x28E7B0): its node at +0xC */
 struct CKitBodyPart {
     unsigned char _0[0xc];
@@ -614,6 +616,20 @@ CZFTSWeapon *CZKit::GetItemByIndex(int index) const
     return m_item[unwrap(index, FIREMODE_CURRENT)];
 }
 
+/* (OVL2 0x5C67D0) */
+CZFTSWeapon *CZKit::GetFiringItem(int index)
+{
+    int i = unwrap(index, (FIREMODE)255);
+
+    if (m_item[i] && func_003C5D20(m_item[i])) {
+        if (func_003C5C20(m_item[i]))
+            i = GetClass145Index();
+        else
+            i = GetPrimaryIndex();
+    }
+    return m_item[i];
+}
+
 /* (OVL2 0x5C6980) */
 void CZKit::AttachItemNode(unsigned char kind, const char *part)
 {
@@ -860,9 +876,7 @@ bool CZKit::ItemHasAmmo(int index) const
 }
 
 extern "C" {
-/* the item an index's ammunition is fired from -- the launcher when the item is its grenades (OVL2
- * 0x5C67D0, unwritten) -- and a weapon of class 145 (OVL1 0x3C5CA0, unclaimed) */
-CZFTSWeapon *func_005C67D0(CZKit *kit, int index);
+/* a weapon of class 145 (OVL1 0x3C5CA0, unclaimed) */
 bool func_003C5CA0(CZFTSWeapon *w);
 }
 
@@ -883,7 +897,7 @@ bool CZKit::WeaponIsM203Mode(int index)
 bool CZKit::WeaponIsLauncherMode(int index)
 {
     index = wrap(index, m_num_items);
-    CZFTSWeapon *w = func_005C67D0(this, index);
+    CZFTSWeapon *w = GetFiringItem(index);
 
     if (w && w->IsLauncherWeapon() && m_firemode[index] > AUTOFIRE)
         return true;
@@ -895,7 +909,7 @@ bool CZKit::WeaponIsLauncherMode(int index)
 bool CZKit::WeaponIsGrenadeLauncherMode(int index)
 {
     index = wrap(index, m_num_items);
-    CZFTSWeapon *w = func_005C67D0(this, index);
+    CZFTSWeapon *w = GetFiringItem(index);
 
     if (w && w->IsGrenadeLauncherWeapon() && m_firemode[index] > AUTOFIRE)
         return true;

@@ -151,6 +151,11 @@ public:
      * the body's attachment of a kind (OVL2 0x5C6980, new in SOCOM II: 0x5C50B0 hangs it on
      * "aimnodes"; the name ours) */
     void AttachItemNode(unsigned char kind, const char *part);
+    /* the item an index's ammunition is fired from: the item itself, or -- when it is a launcher's
+     * grenades -- the first class-145 item (for that class's ammunition) or the first primary
+     * weapon (OVL2 0x5C67D0, new in SOCOM II: the launcher-mode tests, GetReticuleByIndex and four
+     * more call it; the name ours) */
+    CZFTSWeapon *GetFiringItem(int index);
     /* the item pointer of an index, as GetItemPtr but the bound compared signed (inline: 0x5C6980
      * expands it -- its slt where GetItemPtr's own copy has sltu; the name ours) */
     void *ItemPtr(int index) const
