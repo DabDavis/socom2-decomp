@@ -10206,9 +10206,9 @@
 0x00562AD0 0xA0 SetupAnimations__11CSealCtrlAiFv  # OVL2; s1:calls (CSealCtrlAi::OnMissionStart calls it first, where SOCOM 1's calls SetupAnimations__11CSealCtrlAiFv) -- the SEAL lane, round 4
 0x00562B70 0x110 DoSetStance__11CSealCtrlAiF11SEAL_STANCE  # OVL2; s1:callee by hand (SetStance's tail call, as SOCOM 1's SetStance calls DoSetStance; compares the stance at 0x278 first, returns a bool) -- the SEAL lane, round 9
 0x00562C80 0x33C func_00562C80  # OVL2
-0x00562FC0 0x84 func_00562FC0  # OVL2
-0x00563050 0xB0 func_00563050  # OVL2
-0x00563100 0xA0 func_00563100  # OVL2
+0x00562FC0 0x84 InStance__11CSealCtrlAiF11SEAL_STANCEb  # OVL2; ours (new in SOCOM II): CAiSFollow::OnSignal and 0x591520 ask it; without the flag the stance at 0x278 compared, with it CZSealBody::GetStanceFromState of 0x58A720(body, the byte at 0x6502D0) -- the SEAL lane, round 9
+0x00563050 0xB0 ChangeStanceDelayed__11CSealCtrlAiF11SEAL_STANCE11SEAL_STANCEf  # OVL2; ours (new in SOCOM II, SetStanceDelayed's twin before it): when the stance (0x278) or the asked one (0x279) is the first, the second asked with the delay; CAiSHold::Tick, CAiSPathRecover::OnSignal call it -- the SEAL lane, round 9
+0x00563100 0xA0 SetStanceDelayed__11CSealCtrlAiF11SEAL_STANCEf  # OVL2; s1:calls by hand (SOCOM 1's SetStanceDelayed__11CSealCtrlAiF11SEAL_STANCEf: a -1 delay drawn at random, the asked stance and its delay stored; SOCOM II's at 0x279/0x280, 0.25 + (1.2 - 0.25) * r) -- CSealCtrlAi::OnCommand calls it three times -- the SEAL lane, round 9
 0x005631A0 0xC SetStance__11CSealCtrlAiF11SEAL_STANCE  # OVL2; s1:calls by hand (CTStance::Begin calls it where SOCOM 1's calls SetStance; it tail-calls 0x562B70 as SOCOM 1's SetStance calls DoSetStance), after storing the stance at 0x279 and clearing 0x280 -- the SEAL lane, round 9
 0x005631B0 0xE4 SetDesiredStance__11CSealCtrlAiF11SEAL_STANCEfb  # OVL2; ours (new in SOCOM II; seal_ai.cpp): CTStance::Begin calls it with the command's stance, true and CAiTimer::infinite, End with (prone, true, 0); sets the body's byte at 0x375 and restarts the AI's CAiTimer at 0x364 when the stance is prone, the target at 0x67C is held with bit 9 of 0x6A8, or forced -- the SEAL lane, round 9; (the float second: the prologue copies the parameters in reverse declaration order, mov.s first)
 0x005632A0 0x1C8 func_005632A0  # OVL2
@@ -10269,7 +10269,7 @@
 0x0056D450 0xD4 func_0056D450  # OVL2
 0x0056D530 0x170 func_0056D530  # OVL2
 0x0056D6A0 0x1EC func_0056D6A0  # OVL2
-0x0056D890 0x88 func_0056D890  # OVL2
+0x0056D890 0x88 SetAiBit2__11CSealCtrlAiFb  # OVL2; ours: bit 2 of 0x264 (zseal.h's m_aibit2, the kit lane's reading) set from the argument, cleared when the SEAL's team word has bit 17 or 26 or its kit has no current item -- the SEAL lane, round 9
 0x0056D920 0x178 SetGoalDir__9CSealCtrlF9GOAL_TYPEPC6CPnt3Db  # OVL2; s1:calls by hand (SetGoalPos and ClearGoal call it with (type, 0, false) where SOCOM 1's call SetGoalDir__9CSealCtrlF9GOAL_TYPEPC6CPnt3Db; the row before SetGoalPos as SOCOM 1's)
 0x0056DAA0 0xF4 SetGoalPos__9CSealCtrlF9GOAL_TYPEPC6CPnt3Df  # OVL2; s1:order by hand (between SetGoalDir and ClearGoal as SOCOM 1's SetGoalPos at 0x267380; its code SOCOM 1's word for word with the goal fields 8 bytes on)
 0x0056DBA0 0xF8 SetGoalPos__9CSealCtrlF9GOAL_TYPERC9CAiMapLocf  # OVL2; new in SOCOM II: a map cell's centre (AiMaps.GetCellCenter) handed to the point's SetGoalPos, which it inlines -- the overload's name ours

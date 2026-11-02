@@ -525,6 +525,74 @@ void CSealCtrlAi::RestoreAiMode()
     m_3f5 = (AI_MODE)1;
 }
 
+/* the controller's SEAL (an inline: the kit's test reads m_entity again through it) */
+static inline CZSealBody *SealOf(CSealCtrlAi *ai)
+{
+    return (CZSealBody *)ai->m_entity;
+}
+
+/* (OVL2 0x56D890).
+ * OPEN, 9 instructions: the target loads the team straight into a0 (`lw a0,4(a0); lw a0,0xC8(a0)`)
+ * and reads m_entity again for the kit's test after the two team tests; MW here keeps the entity in
+ * a1 across both (and moves `on` to s0 first). Tried: the kit through this inline, the team in a
+ * local, every test through the inline, the tests unparenthesised. */
+void CSealCtrlAi::SetAiBit2(bool on)
+{
+    if ((m_entity->m_team & 0x20000) || (m_entity->m_team & 0x4000000) || !SealOf(this)->m_kit.GetCurItem())
+        on = false;
+    m_aibit2 = on;
+}
+
+extern "C" {
+/* the state a SEAL's body is in, by a flag (OVL2 0x58A720, seal_body.cpp's, not written yet) and
+ * the flag this asks with (OVL2 data, a byte) */
+SEAL_STATE func_0058A720(CEntity *seal, unsigned char flag);
+extern unsigned char data_006502D0;
+}
+
+/* (OVL2 0x562FC0) */
+bool CSealCtrlAi::InStance(SEAL_STANCE stance, bool fromState)
+{
+    bool r;
+
+    if (!fromState) {
+        r = m_stance == stance;
+        return r;
+    } else
+        r = stance == CZSealBody::GetStanceFromState(func_0058A720(m_entity, data_006502D0), m_stance);
+    return r;
+}
+
+/* (OVL2 0x563100) */
+bool CSealCtrlAi::SetStanceDelayed(SEAL_STANCE stance, float delay)
+{
+    if (stance != m_stance_asked) {
+        if (delay == -1.0f) {
+            float r = 4.656612873e-10f * (float)rand();
+
+            delay = 0.25f + (1.2f - 0.25f) * r;
+        }
+        m_stance_asked = stance;
+        m_280 = delay;
+    }
+    return true;
+}
+
+/* (OVL2 0x563050) */
+bool CSealCtrlAi::ChangeStanceDelayed(SEAL_STANCE from, SEAL_STANCE to, float delay)
+{
+    if (m_stance == from || m_stance_asked == from) {
+        if (delay == -1.0f) {
+            float r = 4.656612873e-10f * (float)rand();
+
+            delay = 0.25f + (1.2f - 0.25f) * r;
+        }
+        m_stance_asked = to;
+        m_280 = delay;
+    }
+    return true;
+}
+
 /* (OVL2 0x5631A0) */
 bool CSealCtrlAi::SetStance(SEAL_STANCE stance)
 {

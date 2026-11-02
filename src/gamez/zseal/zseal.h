@@ -94,6 +94,8 @@ public:
      * OVL2 0x5C8870, 0x5BDA10 -- both const in SOCOM II, kit.h's) */
     int GetItemIndex(EQUIP_ITEM item) const;
     bool ItemHasAmmo(int index) const;
+    /* the item in hand (kit.h's: const in SOCOM II; OVL2 0x5C3780) */
+    class CZFTSWeapon *GetCurItem() const;
 
     unsigned int m_0;
 };
@@ -584,7 +586,7 @@ public:
     SEAL_STANCE m_stance;   // 0x278 (SOCOM 1's 0x285)
     SEAL_STANCE m_stance_asked;   // 0x279: the stance SetStance was last asked for (the names ours)
     float m_stance_delay;   // 0x27c (SOCOM 1's 0x288)
-    int m_280;   // 0x280: cleared by SetStance (and DoSetStance)
+    float m_280;   // 0x280: the delay before the asked stance is taken (cleared by SetStance)
     unsigned char _284[0x364 - 0x284];
     CAiTimer m_stance_timer;   // 0x364: restarted with each desired stance (0x5631B0; the name ours)
     unsigned char _370[0x3f4 - 0x370];
@@ -672,6 +674,17 @@ public:
     /* the mode saved at 0x3F5 set again, the saved one made 1 (OVL2 0x56D090, new in SOCOM II:
      * CTHold::End calls it where SOCOM 1's called SetAiMode; the name ours) */
     void RestoreAiMode();
+    /* a stance asked for after a delay, -1 for a random one of 0.25 to 1.2 seconds (SOCOM 1's
+     * SetStanceDelayed; OVL2 0x563100); the same when the SEAL stands, or was asked to stand, in a
+     * given stance (OVL2 0x563050, new in SOCOM II; the name ours) */
+    bool SetStanceDelayed(SEAL_STANCE stance, float delay);
+    /* whether the SEAL is in a stance: the AI's own, or the one its body's state stands for (OVL2
+     * 0x562FC0, new in SOCOM II: CAiSFollow::OnSignal asks it; the name ours) */
+    bool InStance(SEAL_STANCE stance, bool fromState);
+    /* the bit 2 at 0x264 set, never for a SEAL whose team has bit 17 or 26 or that holds no item
+     * (OVL2 0x56D890: CAiSPlan::Tick and CAiState::Signal call it; the name ours) */
+    void SetAiBit2(bool on);
+    bool ChangeStanceDelayed(SEAL_STANCE from, SEAL_STANCE to, float delay);
     virtual void OnMissionStart();
     /* the valves: a name for each (inline everywhere in SOCOM II: its three callers expand it),
      * the valve of a name, the valve (SOCOM 1's; OVL2 0x574730, 0x5621C0) */
