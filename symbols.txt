@@ -329,7 +329,7 @@
 0x001914F8 0xCC func_001914F8  # MAIN unaligned
 0x001915C8 0x64 calloc  # MAIN unaligned
 0x00191630 0xB4 func_00191630  # MAIN
-0x001916E8 0x58 func_001916E8  # MAIN unaligned
+0x001916E8 0x58 _close_r  # MAIN unaligned; by body (newlib's reent/closer.c: errno zeroed, close(fd), errno copied into ptr->_errno on -1; the demo's _close_r is 0x58 too)
 0x00191740 0x22C func_00191740  # MAIN
 0x00191970 0x1264 func_00191970  # MAIN
 0x00192BD8 0x8 func_00192BD8  # MAIN unaligned
@@ -354,7 +354,7 @@
 0x00193628 0x2F4 func_00193628  # MAIN unaligned
 0x00193920 0x16C func_00193920  # MAIN
 0x00193A90 0x4AC func_00193A90  # MAIN
-0x00193F40 0x5C func_00193F40  # MAIN
+0x00193F40 0x5C _fstat_r  # MAIN; by body (newlib's reent/fstatr.c: the same around fstat(fd, buf); the demo's _fstat_r is 0x5C too)
 0x00193FA0 0x104 func_00193FA0  # MAIN
 0x001940A8 0x3E0 func_001940A8  # MAIN unaligned
 0x00194488 0x94 func_00194488  # MAIN unaligned
@@ -367,7 +367,7 @@
 0x001947F0 0xC func_001947F0  # MAIN
 0x00194800 0x24 func_00194800  # MAIN
 0x00194828 0x1C func_00194828  # MAIN unaligned
-0x00194848 0x60 func_00194848  # MAIN unaligned
+0x00194848 0x60 _lseek_r  # MAIN unaligned; by body (newlib's reent/lseekr.c: the same around lseek(fd, pos, whence); the demo's _lseek_r is 0x60 too)
 0x001948A8 0x154 func_001948A8  # MAIN unaligned
 0x00194A00 0x64 func_00194A00  # MAIN
 0x00194A68 0x1C8 func_00194A68  # MAIN unaligned
@@ -400,7 +400,7 @@
 0x00196898 0x184 func_00196898  # MAIN unaligned
 0x00196A20 0xCC func_00196A20  # MAIN
 0x00196AF0 0x70 func_00196AF0  # MAIN
-0x00196B60 0x60 func_00196B60  # MAIN
+0x00196B60 0x60 _open_r  # MAIN; by body (newlib's reent/openr.c: the same around open(file, flags, mode))
 0x00196BC0 0x5C func_00196BC0  # MAIN
 0x00196C20 0x70 printf  # MAIN; s1:callee
 0x00196C90 0x84 func_00196C90  # MAIN
@@ -408,7 +408,7 @@
 0x00196D38 0x9EC qsort  # MAIN unaligned; s1:calls (DiIntersect::SortNearToFar calls it with (idx, n, 4, _cmpdi) where SOCOM 1's calls qsort; newlib's, 0x9EC bytes against SOCOM 1's 0xA24) -- the zdb-world lane
 0x00197728 0x18 srand  # MAIN unaligned; s1:order (the demo's rand object 0x3E48E0: srand, before rand; stores the seed, zero-extended, in the reentrancy block's _rand_next that rand reads)
 0x00197740 0x64 rand  # MAIN; s1:callee by hand (zAnimRandomWeightTick calls it where SOCOM 1 calls rand; newlib's 64-bit LCG)
-0x001977A8 0x60 func_001977A8  # MAIN unaligned
+0x001977A8 0x60 _read_r  # MAIN unaligned; by body (newlib's reent/readr.c: the same around read(fd, buf, cnt); the demo's _read_r is 0x60 too)
 0x00197808 0x64 realloc  # MAIN unaligned; s1:calls (_realloc calls it where SOCOM 1's calls realloc) -- the sound lane
 0x00197870 0x5A0 func_00197870  # MAIN
 0x00197E10 0x34 func_00197E10  # MAIN
@@ -418,7 +418,7 @@
 0x00198058 0x48 isinf  # MAIN unaligned; s1:exact
 0x001980A0 0x3C isnan  # MAIN; s1:exact
 0x001980E0 0x1E4 scalbn  # MAIN; s1:exact
-0x001982C8 0x58 func_001982C8  # MAIN unaligned
+0x001982C8 0x58 _sbrk_r  # MAIN unaligned; by body (newlib's reent/sbrkr.c: the same around sbrk(incr), failing on (void *)-1; the demo's _sbrk_r is 0x5C)
 0x00198320 0x58 func_00198320  # MAIN
 0x00198378 0x64 func_00198378  # MAIN unaligned
 0x001983E0 0x3C copysignf  # MAIN; s1:exact
@@ -431,7 +431,7 @@
 0x00198768 0x24 func_00198768  # MAIN unaligned
 0x00198790 0x1C func_00198790  # MAIN
 0x001987B0 0x20 func_001987B0  # MAIN
-0x001987D0 0x5C func_001987D0  # MAIN
+0x001987D0 0x5C _kill_r  # MAIN; by body (newlib's reent/signalr.c: the same around kill(pid, sig); the demo's _kill_r is 0x5C too)
 0x00198830 0x14 func_00198830  # MAIN
 0x00198848 0x88 func_00198848  # MAIN unaligned
 0x001988D0 0x90 sprintf  # MAIN; s1:callee
@@ -484,7 +484,7 @@
 0x0019E7E8 0x54 vsprintf  # MAIN unaligned; s1:calls (SOCOM 1's identical CConsole::Debug calls vsprintf at the same instruction; 0x54 bytes in both) -- the entity lane
 0x0019E840 0x54 func_0019E840  # MAIN
 0x0019E898 0x110 func_0019E898  # MAIN unaligned
-0x0019E9A8 0x60 func_0019E9A8  # MAIN unaligned
+0x0019E9A8 0x60 _write_r  # MAIN unaligned; by body (newlib's reent/writer.c: the same around write(fd, buf, cnt); the demo's _write_r is 0x60 too)
 0x0019EA08 0x10C func_0019EA08  # MAIN unaligned
 0x0019EB18 0x74 __muldi3  # MAIN unaligned; s1:exact
 0x0019EB90 0x694 __divdi3  # MAIN; s1:exact
@@ -683,13 +683,13 @@
 0x001A40E8 0x7C write  # MAIN unaligned; s1:exact
 0x001A4168 0x74 read  # MAIN unaligned; s1:exact
 0x001A41E0 0x28 open  # MAIN; s1:gap
-0x001A4208 0x8 func_001A4208  # MAIN unaligned
-0x001A4210 0x8 func_001A4210  # MAIN
-0x001A4218 0x8 func_001A4218  # MAIN unaligned
+0x001A4208 0x8 close  # MAIN unaligned; s1:order (libkernl's glue object, the demo's 0x15B9A0, in the demo's order: close after open, before ioctl; _close_r calls it)
+0x001A4210 0x8 ioctl  # MAIN; s1:order (libkernl's glue object in the demo's order: ioctl after close, before lseek)
+0x001A4218 0x8 lseek  # MAIN unaligned; s1:order (libkernl's glue object in the demo's order: lseek after ioctl, before sbrk; _lseek_r calls it)
 0x001A4220 0xAC sbrk  # MAIN; s1:exact
-0x001A42D0 0x8 func_001A42D0  # MAIN
+0x001A42D0 0x8 isatty  # MAIN; s1:order (libkernl's glue object in the demo's order: isatty after sbrk, before fstat)
 0x001A42D8 0x14 fstat  # MAIN unaligned; s1:exact
-0x001A42F0 0x8 func_001A42F0  # MAIN
+0x001A42F0 0x8 getpid  # MAIN; s1:order (libkernl's glue object in the demo's order: getpid after fstat, before kill)
 0x001A42F8 0x28 kill  # MAIN unaligned; s1:exact
 0x001A4320 0x28 stat  # MAIN; s1:gap
 0x001A4348 0x28 unlink  # MAIN unaligned; s1:gap
@@ -753,10 +753,8 @@
 0x001A6110 0x3C sceSifSendCmd  # MAIN; s1:exact
 0x001A6150 0x3C isceSifSendCmd  # MAIN; s1:exact
 0x001A6190 0x128 _sceSifCmdIntrHdlr  # MAIN; s1:exact
-0x001A62B8 0xAC sceSifWriteBackDCache  # MAIN unaligned; s1:gap
-0x001A6364 0x4 func_001A6364  # MAIN unaligned
-0x001A6368 0x4 func_001A6368  # MAIN unaligned; s1~ sceSifInitRpc (one of 2)
-0x001A636C 0x198 sceSifInitRpc  # MAIN unaligned; s1:gap
+0x001A62B8 0xB0 sceSifWriteBackDCache  # MAIN unaligned; s1:gap; 0xB0 as the demo's (the GCC lane: its asm ends in its own `jr ra; nop`, then GCC's `jr ra` whose delay slot is the next object's first word -- the seed cut that last `jr ra` off as func_001A6364, merged back)
+0x001A6368 0x19C sceSifInitRpc  # MAIN unaligned; s1:gap; starts at 0x1A6368, 0x19C as the demo's (the GCC lane: its prologue's first word, the delay slot of sceSifWriteBackDCache's last `jr ra`, was cut off as func_001A6368 -- merged back)
 0x001A6508 0x24 sceSifExitRpc  # MAIN unaligned; s1:exact
 0x001A6530 0xA8 _sceRpcGetPacket  # MAIN; s1:gap
 0x001A65D8 0x1C func_001A65D8  # MAIN unaligned; s1~ _sceRpcFreePacket (one of 2)

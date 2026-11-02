@@ -64,9 +64,13 @@ GCC_RANGES = [
     (0x1CCD78, 0x1CE2A4, [SDK, LIBC], "MAIN: the code after zlib's"),
     (0x1E7F58, 0x1E8FD4, [("ee-gcc2.96", "-O2 -G0 -fno-strict-aliasing")],
      "OVL1: the microphone input (Sid*), libezcnf/libezctl"),
-    (0x2430F0, 0x248350, [("ee-gcc2.96", "-O2 -G0")], "OVL1: the heap, lgAud, libnetb/inet"),
+    # the heap is ScanSoft's (the demo links it inside the recogniser): SearchFor's loop is unrolled
+    # by four, byte-exact only with the recogniser's -funroll-loops (src/lib/ovl1/heap.c)
+    (0x2430F0, 0x243840, [("ee-gcc2.96", "-O2 -G0 -fno-strict-aliasing -funroll-loops")],
+     "OVL1: the recogniser's heap (heap_*)"),
+    (0x243840, 0x248350, [("ee-gcc2.96", "-O2 -G0")], "OVL1: lgAud, libnetb/inet"),
     (0x248350, 0x256FD0, [("ee-gcc2.96", "-O2 -G8")], "OVL1: Nellymoser's speech codec (SaseEncVad, SaseDec)"),
-    (0x4C5400, 0x50DC50, [("ee-gcc2.96", "-O2 -G0 -fno-strict-aliasing")],
+    (0x4C5400, 0x50DC50, [("ee-gcc2.96", "-O2 -G0 -fno-strict-aliasing -funroll-loops")],
      "OVL2: ScanSoft's recogniser (asrspi, casr)"),
     (0x60FB50, 0x64F720, [("ee-gcc2.96", "-O2 -G0")], "OVL2: Medius, DME and the rt_* libraries"),
 ]
