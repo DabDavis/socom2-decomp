@@ -1211,6 +1211,7 @@
 0x0066A5F0 0x4 MediusWorldID  # OVL2 bss; s1 by hand (SOCOM 1's MediusWorldID: BanSelfFromGame and SendEndGameReport send it as the game's world, as SOCOM 1's send theirs); size SOCOM 1's; 14 references in 12 functions
 0x0066B540 0xC projDirDown  # OVL2 bss; s1:data-seq (size SOCOM 1's; via HandleBloodDrip__10CZSealBodyFf)
 0x0066BAC8 0xC ai_line_pos__2ai  # OVL2 bss; s1:data-exact (size SOCOM 1's; via MoveTo__2aiFRC6CPnt3D)
+0x0066BB10 0x4 ai_line_mask__2ai  # OVL2 bss; SOCOM 1's ai_line_mask__2ai (0x4763A4 there, a word after ai_line_stack): the line kinds drawn -- ai::LineOn (0x5FFF10), DrawLine (0x5FFDF0) and 0x5FF2F0 test it, 3 references (the kit lane, round 10)
 0x0066BCF0 0x0 NetClientPointerList  # OVL2 bss; s1:data-exact (size SOCOM 1's; via NetFreeClientPointers)
 0x00672120 0x0 gMetricData  # OVL2 bss; s1:data-exact (size SOCOM 1's; via rt_comm_get_metrics +4)
 0x00672158 0x0 gLastMetricPrintTime  # OVL2 bss; s1:data-exact (size SOCOM 1's; via rt_comm_metric_init +1)

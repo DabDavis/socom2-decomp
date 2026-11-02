@@ -11624,7 +11624,7 @@
 0x005FFDC0 0x8 func_005FFDC0  # OVL2
 0x005FFDD0 0x18 __ct__6CPnt4DFffff  # OVL2; s1:exact
 0x005FFDF0 0x118 func_005FFDF0  # OVL2
-0x005FFF10 0x24 func_005FFF10  # OVL2
+0x005FFF10 0x24 LineOn__2aiFQ22ai9LINE_TYPE  # OVL2; by hand (the kit lane, round 10): whether a kind of AI line is drawn -- none asked, or its bits in SOCOM 1's ai_line_mask (0x66BB10); DrawLine (0x5FFDF0) inlines the same test where SOCOM 1's did, CAiSFollow::Tick calls this copy with 512; the name ours
 0x005FFF40 0x124 func_005FFF40  # OVL2
 0x00600070 0x28 MoveTo__2aiFRC6CPnt3D  # OVL2; s1:exact
 0x006000A0 0x48 func_006000A0  # OVL2
