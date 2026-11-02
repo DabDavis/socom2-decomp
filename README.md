@@ -1646,6 +1646,36 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the SEALs, round 10** (seal_body.cpp's blend and jump families, the hostile anchor, seal_cfg.cpp):
+  - an inline accessor with an UNSIGNED index called with an int counter keeps the target's per-pass
+    `sll; addu` on an RTStack walk (0x57DBB0, 0x57DC20);
+  - two identical address expressions either side of a call are shared through a saved register;
+    spelling the first differently (`&s->m` against `(char *)s + K`) makes MW recompute it, as the
+    target does (0x57F310 and the other pops);
+  - `if (!InlineBoolWithAnd()) x = ...; else x = false;` keeps the `&&` materialised (sltu) with the
+    held arm last; a ternary or `!= false` does not (UpdateHostileAnchor 0x543030);
+  - a call's result taken into a block-local before a float-zero store gives `sw zero`; stored through
+    the call's result directly, MW hoists 0.0f into $f20 (0x57F690);
+  - a short argument read through an inline accessor loads ahead of the call's other arguments
+    (0x5802B0);
+  - an unnamed unit function nothing calls can be a helper the unit inlines everywhere: write it and
+    have its siblings call it (0x588B40);
+  - `if (a || b) return false; return f();` leaves the false block right after the test (0x57F7D0);
+    a single negated test lets MW move it to the end (0x57F530, open).
+- **Tells from the HUD, round 18** (st_mpexit.cpp's stat leaderboard, hud_bitmapreticule.cpp, zui_2d.cpp's command pieces):
+  - a side test written `if (b) { if (!A()) continue; } else if (!B()) continue;` gives the target's
+    `bnez v0,ok; b skip`; the goto form inverts it;
+  - a parser returning its new record or its base parser's result through one local
+    (`cmd = Base::Parse(rdr); return cmd;`) matches; returning each directly is 4 bytes short;
+  - a derived GetZAnimCmdType takes its base's count as `Base::GetZAnimCmdType(0) + n` (the null
+    name folds the inlined base chain to its count); its fallthrough `Base::GetZAnimCmdType(name)`
+    inlines the whole chain;
+  - tools/perm.py compiles its copy as cand.cpp: an unnamed-namespace function is
+    `...__18@unnamed@cand_cpp@...` with `--target`, and its `-I` paths must be absolute;
+  - SOCOM II's BitmapReticule texture tables hold 11 entries (SOCOM 1's 10); hud_bitmapreticule.cpp
+    ends with hudStartDefuseTimer at 0x21932F as in SOCOM 1 (~BitmapReticule now matches from the unit,
+    no longer a draft-only false regression); the unwritten unit between hud_mpinfobox and
+    hud_mpweaponsel spans ~0x239770-0x23B98F (its global a 0x40-byte object storing 0xDEADBEEF at 0x34).
 - **Tells from the online lobby, round 8** (zNetMediusFile.cpp complete, the ladder list, the friend invitations):
   - MW never inlines `std::make_pair` here, by reference or by value; `std::pair<K, V>(key, v)`
     inlines and reproduces the target's two string copies;
@@ -2642,7 +2672,7 @@ every hand-written unit (`--files '^(?!auto/)'`) before it is committed. A workt
 `extracted/` and `decomp/toolchains/` linked in from the main tree.
 
 `--files '^(?!auto/)'` leaves out the drafts, so a hand-written inline copy that only its draft
-matches reports as a regression there (0x32C5F0, ~CRdrArchiveList's copy, 0x219090, ~BitmapReticule's, and 0x510080, OVL2's
+matches reports as a regression there (0x32C5F0, ~CRdrArchiveList's copy, and 0x510080, OVL2's
 __list_imp destructor that seal_aistate.cpp's missing copy now reports "elsewhere" -- 0x29FF60 and
 0x2D02B0 match from hand source since the MSL headers' completion): rerun with that draft's file
 included before believing one.
