@@ -85,6 +85,15 @@ def symname(st: E.SymbolTable, addr: int, func: bool) -> str:
     return f"func_{addr:08X}" if func else f"data_{addr:08X}"
 
 
+def is_func(img: E.Image, st: E.SymbolTable, addr: int) -> bool:
+    """Whether an address an instruction pair forms is code. An overlay's text range says; MAIN
+    is one segment of code and data together, so there a map row must hold the address (the
+    SDK's tables -- libdma's `dch` -- are data, not functions)."""
+    if not img.is_code(addr):
+        return False
+    return img.segment(addr).name != "MAIN" or st.containing(addr) is not None
+
+
 def export(img: E.Image, st: E.SymbolTable, sym: E.Symbol) -> str:
     rows = E.disasm(img.read(sym.addr, sym.size), sym.addr)
     targets = set()
@@ -110,7 +119,7 @@ def export(img: E.Image, st: E.SymbolTable, sym: E.Symbol) -> str:
             lo = w & 0xFFFF
             full = ((hi << 16) + (lo - 0x10000 if lo & 0x8000 else lo)) & 0xFFFFFFFF
             if img.in_memory(full):
-                name = symname(st, full, img.is_code(full))
+                name = symname(st, full, is_func(img, st, full))
                 pair[lui_at] = pair[addr] = name
                 pair_value[addr] = (lui_at, full)
         written = gpr_written(w)
@@ -139,7 +148,7 @@ def export(img: E.Image, st: E.SymbolTable, sym: E.Symbol) -> str:
                 lo = w2 & 0xFFFF
                 full = (((w & 0xFFFF) << 16) + (lo - 0x10000 if lo & 0x8000 else lo)) & 0xFFFFFFFF
                 if img.in_memory(full):
-                    name = symname(st, full, img.is_code(full))
+                    name = symname(st, full, is_func(img, st, full))
                     if rows[k][0] not in pair or pair[rows[k][0]] == name:
                         pair[addr] = pair[rows[k][0]] = name
                 break
@@ -273,6 +282,14 @@ def export(img: E.Image, st: E.SymbolTable, sym: E.Symbol) -> str:
             else:
                 args = re.sub(r"(-?0x[0-9a-f]+|-?\d+)(\(\$\w+\))", f"%lo({pair[addr]})\\2", args, count=1) \
                     if "(" in args else re.sub(r",\s*-?(0x[0-9a-f]+|\d+)$", f", %lo({pair[addr]})", args)
+        elif (w >> 21) & 31 == 28 and (w >> 26 == 0x09 or 0x20 <= w >> 26 <= 0x3F):
+            # $gp-relative small data and literals: only GCC's -G 8 code has them (the Nellymoser
+            # codec in OVL1; MW's code never touches $gp): spelt %gp_rel of the symbol there
+            off = w & 0xFFFF
+            target = (E.GP + (off - 0x10000 if off & 0x8000 else off)) & 0xFFFFFFFF
+            name = symname(st, target, False)       # small data is never code
+            args = re.sub(r"(-?0x[0-9a-f]+|-?\d+)(\(\$gp\))", f"%gp_rel({name})\\2", args, count=1) \
+                if "(" in args else re.sub(r",\s*-?(0x[0-9a-f]+|\d+)$", f", %gp_rel({name})", args)
         out.append(f"  {op:<10} {args}".rstrip())
     return "\n".join(out) + "\n"
 

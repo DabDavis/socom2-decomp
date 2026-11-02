@@ -82,8 +82,39 @@ def compiler_exe(name: str = COMPILER) -> Path:
 WIBO = TOOLCHAINS / "bin" / "wibo"
 
 
+# --- the GCC front -----------------------------------------------------------------
+# About a quarter of the image is prebuilt library code built with Sony's EE-GCC, not MW:
+# the SDK in MAIN, libnetb/inet and lgAud in OVL1, the speech recogniser and the Medius/DME
+# libraries in OVL2 (README "The GCC front"). A unit whose directive names an `ee-gcc*`
+# toolchain -- `/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */` -- is built by that toolchain's
+# own driver and its own GNU assembler: natively for the Linux i386 builds, through wibo for
+# the Windows PE32 ones (byte-identical to wine's objects, 0.02 s a compile against 4.6 s).
+# The toolchains are EQOA's (toolchains/ee-gcc*, linked in; README "Inputs").
+GCC_FLAGS = ["-O2", "-G0"]      # a GCC unit's flags when its directive gives none
+
+
+def is_gcc(compiler: str) -> bool:
+    return compiler.startswith("ee-gcc")
+
+
+def gcc_driver(name: str) -> list[str]:
+    d = TOOLCHAINS / name
+    for exe in ("bin/ee-gcc", "bin/ee-gcc.exe"):
+        p = d / exe
+        if p.is_file():
+            if p.suffix != ".exe":
+                return [str(p)]
+            return ([str(WIBO)] if WIBO.is_file() and not os.environ.get("SC_WINE") else ["wine"]) + [str(p)]
+    raise FileNotFoundError(f"no ee-gcc driver in {d}; link EQOA's toolchains/{name} there (README)")
+
+
 def compile_cmd(src: Path, obj: Path, compiler: str = COMPILER, flags: list[str] | None = None,
                 includes: list[Path] | None = None) -> list[str]:
+    if is_gcc(compiler):
+        cmd = gcc_driver(compiler) + ["-c"] + (GCC_FLAGS if flags is None else flags)
+        for inc in includes or []:
+            cmd += ["-I" + str(inc)]
+        return cmd + [str(src), "-o", str(obj)]
     runner = [str(WIBO)] if WIBO.is_file() and not os.environ.get("SC_WINE") else ["wine"]
     cmd = runner + [str(compiler_exe(compiler))] + BASE_FLAGS + (FLAGS if flags is None else flags)
     for inc in includes or []:
@@ -97,6 +128,11 @@ def compile_obj(src: Path, obj: Path, compiler: str = COMPILER, flags: list[str]
     if obj.exists():
         obj.unlink()
     env = dict(os.environ, WINEDEBUG="-all")
+    if is_gcc(compiler):
+        # the driver's temporaries (the .i and .s it hands on) go where $TMPDIR says: never /tmp
+        tmp = HERE / "build" / "tmp"
+        tmp.mkdir(parents=True, exist_ok=True)
+        env.update(TMPDIR=str(tmp), TMP=str(tmp), TEMP=str(tmp))
     try:
         # a build that wants a licence (mwcps2-2.3.3-000906 does) waits forever under wine
         r = subprocess.run(compile_cmd(src, obj, compiler, flags, includes), capture_output=True,
@@ -168,6 +204,8 @@ def local_object_ok(elf: E.Elf, sec_index: int, start: int, want: int, fsym: E.E
     data = sec.data
     if sec.type == 8:                           # SHT_NOBITS (.bss): a zeroed static's bytes
         data = bytes(sec.size)
+    if not 0 <= start < len(data):
+        return None
     rels = {r.offset: r for r in elf.relocs_for(sec_index)}
     if not size:
         if start in rels:
@@ -203,10 +241,80 @@ def local_object_ok(elf: E.Elf, sec_index: int, start: int, want: int, fsym: E.E
     return True
 
 
+def is_gnu(elf: E.Elf) -> bool:
+    """A GCC object (GNU as writes .reginfo; Metrowerks never does)."""
+    return any(s.name == ".reginfo" for s in elf.sections)
+
+
+def gnu_hi_partners(elf: E.Elf, fsym: E.ElfSymbol, cand: bytes) -> dict[int, int]:
+    """In a GNU object, each R_MIPS_LO16's R_MIPS_HI16 (offsets from the function's start).
+
+    GNU as relocates every TU-local reference against its SECTION symbol -- each string
+    literal is `.rodata`+N -- so two %hi/%lo pairs of one section interleave under one name
+    (`lui a0,%hi(.rodata); lui a1,%hi(.rodata+8); addiu a0,a0,%lo(.rodata)`), and pairing by
+    name in offset order mismatches them. The linker pairs them by the table's order, which
+    GNU as writes with each %hi immediately before its first %lo; a later %lo sharing a %hi
+    takes the latest one before it whose lui writes its base register (else the latest)."""
+    out: dict[int, int] = {}
+    lo, hi = fsym.value, fsym.value + fsym.size
+    for sec in elf.sections:
+        if sec.type not in (E.SHT_REL, E.SHT_RELA) or sec.info != fsym.shndx:
+            continue
+        step = 8 if sec.type == E.SHT_REL else 12
+        seen: dict[int, list[int]] = {}        # symbol index -> its HI16 offsets so far
+        prev = None
+        for j in range(sec.size // step):
+            off, info = struct.unpack_from("<II", sec.data, j * step)
+            typ, si = info & 0xFF, info >> 8
+            if not lo <= off < hi:
+                prev = None
+                continue
+            off -= lo
+            if typ == 5:                       # R_MIPS_HI16
+                seen.setdefault(si, []).append(off)
+                prev = (si, off)
+                continue
+            if typ == 6 and si in seen:        # R_MIPS_LO16
+                if prev is not None and prev[0] == si:
+                    out[off] = prev[1]
+                else:
+                    base = (struct.unpack_from("<I", cand, off)[0] >> 21) & 31 if off + 4 <= len(cand) else -1
+                    regs = [h for h in seen[si]
+                            if h + 4 <= len(cand) and (struct.unpack_from("<I", cand, h)[0] >> 16) & 31 == base]
+                    out[off] = (regs or seen[si])[-1]
+            prev = None
+    return out
+
+
 def reloc_check(elf: E.Elf, fsym: E.ElfSymbol, relocs: list[E.Reloc], target: bytes,
                 taddr: int, cand: bytes, st: E.SymbolTable, img: E.Image) -> list[RelocFinding]:
     out: list[RelocFinding] = []
     hi_pending: dict[str, tuple[int, int]] = {}   # symbol -> (target hi, cand hi field)
+    gnu = is_gnu(elf)
+    partner = gnu_hi_partners(elf, fsym, cand) if gnu else {}
+    gp0 = next((struct.unpack_from("<i", s.data, 20)[0] for s in elf.sections
+                if s.name == ".reginfo" and len(s.data) >= 24), 0) if gnu else 0
+
+    def code_symbol(sec_index: int, value: int) -> str | None:
+        """A GNU object's local reference into its own code (`.text`+N): the function there."""
+        for s in elf.functions():
+            if s.shndx == sec_index and s.value == value:
+                return s.name
+        return None
+
+    def local_code(r: E.Reloc, name: str, sec_index: int, value: int, want: int) -> RelocFinding | None:
+        # a static callee (or a function's address) relocated against the section: resolved by
+        # the function at that offset -- through the map when it names it (a placeholder by
+        # the address in its name), else by the same distance from this function as in the target
+        if not gnu or sec_index != fsym.shndx:
+            return None
+        callee = code_symbol(sec_index, value)
+        a = _sym_address(st, callee, taddr) if callee else None
+        if a is not None:
+            return RelocFinding(r.offset, r.type, callee, want, a, "ok" if a == want else "MISMATCH")
+        if want - taddr == value - fsym.value:
+            return RelocFinding(r.offset, r.type, callee or name, want, want, "ok")
+        return RelocFinding(r.offset, r.type, callee or name, want, None, "unchecked")
 
     def symbol_addr(r: E.Reloc) -> tuple[str, int | None, int | None, int]:
         """(display name, map address or None, the local object's section index or None,
@@ -244,22 +352,37 @@ def reloc_check(elf: E.Elf, fsym: E.ElfSymbol, relocs: list[E.Reloc], target: by
                 # must not pass as a match
                 out.append(RelocFinding(r.offset, r.type, name, want, None, "UNKNOWN"))
             else:
-                # an unnamed static callee: its address is only knowable once the map names it
-                out.append(RelocFinding(r.offset, r.type, name, want, None, "unchecked"))
+                # an unnamed static callee: its address is only knowable once the map names it --
+                # unless a GCC unit calls it through its section (`.text`+N): then by the function there
+                found = local_code(r, name, local_sec, local_base + add, want) if local_sec is not None else None
+                out.append(found or RelocFinding(r.offset, r.type, name, want, None, "unchecked"))
         elif r.type == "R_MIPS_HI16":
             hi_pending[name] = (tw & 0xFFFF, cw & 0xFFFF)
-        elif r.type in ("R_MIPS_LO16", "R_MIPS_GPREL16"):
+        elif r.type in ("R_MIPS_LO16", "R_MIPS_GPREL16") or (gnu and r.type == "R_MIPS_LITERAL"):
             if r.type == "R_MIPS_LO16":
-                if name not in hi_pending:
+                if r.offset in partner and partner[r.offset] + 4 <= min(len(target), len(cand)):
+                    h = partner[r.offset]          # a GCC unit's pair, by the table (gnu_hi_partners)
+                    thi = struct.unpack_from("<I", target, h)[0] & 0xFFFF
+                    chi = struct.unpack_from("<I", cand, h)[0] & 0xFFFF
+                elif name not in hi_pending:
                     out.append(RelocFinding(r.offset, r.type, name, None, None, "unchecked"))
                     continue
-                thi, chi = hi_pending[name]
+                else:
+                    thi, chi = hi_pending[name]
                 want = ((thi << 16) + _s16(tw & 0xFFFF)) & 0xFFFFFFFF
                 add = ((chi << 16) + _s16(cw & 0xFFFF)) if r.addend is None else r.addend
             else:
+                # $gp-relative: GPREL16, and a GCC unit's literal pool (.lit4/.lit8, -G 8 and up).
+                # GNU as writes a TU-local symbol's field less the object's own gp (.reginfo's
+                # ri_gp_value, 0x4000 from ee-gcc), which the linker adds back
                 want = (E.GP + _s16(tw & 0xFFFF)) & 0xFFFFFFFF
                 add = _s16(cw & 0xFFFF) if r.addend is None else r.addend
-            if addr is not None:
+                if gnu and r.sym.bind == 0 and r.addend is None:
+                    add += gp0
+            found = local_code(r, name, local_sec, local_base + add, want) if local_sec is not None else None
+            if found is not None:
+                out.append(found)
+            elif addr is not None:
                 got = (addr + add) & 0xFFFFFFFF
                 out.append(RelocFinding(r.offset, r.type, name, want, got, "ok" if got == want else "MISMATCH"))
             elif r.sym.bind != 0 and r.sym.name and not r.sym.name.startswith("@STRING@"):
@@ -384,11 +507,15 @@ def main(argv=None) -> int:
     ap.add_argument("src", type=Path)
     ap.add_argument("symbol", help="the function's name in the object (mangled for C++)")
     ap.add_argument("--target", help="map name or address to diff against (default: the symbol itself)")
-    ap.add_argument("--compiler", default=COMPILER)
-    ap.add_argument("--flags", help=f"compiler flags (default {' '.join(FLAGS)})")
+    ap.add_argument("--compiler", help=f"toolchain (default: the unit's `sc: compiler=`, else {COMPILER})")
+    ap.add_argument("--flags", help=f"compiler flags (default: the unit's `sc: flags=`, else {' '.join(FLAGS)})")
     ap.add_argument("-I", dest="includes", action="append", type=Path, default=[])
     ap.add_argument("-v", "--verbose", action="store_true", help="list every relocation")
     a = ap.parse_args(argv)
+    from sccheck import tu_options             # (sccheck imports this module)
+    opts = tu_options(a.src)
+    a.compiler = a.compiler or opts.get("compiler", COMPILER)
+    a.flags = a.flags or opts.get("flags")
     img, st = E.image(), E.symbols()
     key = a.target or a.symbol
     try:

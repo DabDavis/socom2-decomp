@@ -50,6 +50,9 @@ and data reference resolved to the address the shipped code uses.
 | `tools/s1vtables.py` | virtual functions named slot by slot: SOCOM II's vtables found by their RTTI's class-name string, aligned with the demo's `__vt__` tables; `--holdout` measures it on names the map already has |
 | `tools/try.py` | compile one unit with one textual substitution at a time and score one symbol, in a scratch copy of `src/` |
 | `tools/scperm.py` | the permuter: EQOA's tree-sitter mutations of one function, MW-compiled and alignment-scored (needs `.venv`) |
+| `tools/ccsweep.py` | compiler identification for the GCC front: one source over every ee-gcc toolchain and flag set (and `//==` source variants), every function it defines scored |
+| `tools/ccperm.py` | every order of a marked block of statements, for GCC's scheduled stores: which source order gives the target's |
+| `tools/ccflags.py` | a GCC range's drafts recompiled with a flag added: a flag the vendor used loses none (how strict aliasing was told apart) |
 | `symbols.txt` | **the map** — `0xADDR SIZE name  # note`, kept by hand from here on |
 | `data.txt` | the map of global data, the same format and namespace |
 | `src/` | the reconstructed source; `MATCHED.txt` (the baseline), `ABSENT.txt` (dead-stripped) |
@@ -2588,6 +2591,7 @@ The July 9 2002 press beta (`SCUS_971.34`) is stripped but kept its asserts:
 | `ftscore.bin`, `zsealetc.bin` | `$SOCOM_ROOT/extracted/overlays/` | `.venv/bin/python tools/decrypt_overlays.py "<iso>" reference/socom-unzipped/tools_py` (needs `unicorn==2.1.4`: `python3 -m venv .venv && .venv/bin/pip install unicorn==2.1.4`) |
 | the compilers | `toolchains/mwcps2-*/` | decompme/compilers releases (`gh release download compilers -R decompme/compilers -p 'mwcps2-*'`) |
 | wibo | `toolchains/bin/wibo` | github.com/decompals/wibo releases (1.2.0) |
+| the EE-GCC compilers | `toolchains/ee-gcc*/` | EQOA's (`~/claude-eqoa/decomp/toolchains/`, decompme/compilers' `ee-gcc*`): a symlink per directory; only `ee-gcc2.9-991111` and `ee-gcc2.96` are used (README "The GCC front") |
 | objdump/readelf | `$PS2DEV/ee/bin/` | ps2dev (default `~/ps2dev/ps2dev`) |
 
 `$SOCOM_ROOT` defaults to this directory's parent — set it when working from a clone
@@ -2725,6 +2729,101 @@ field by field, `c + a*b`), a local's stack slot (m2c declares a 4-byte `M2C_UNK
 never `sq` -- GCC's prologue, not MW's: none of the 3,641 byte-exact functions does, and none of
 those 428 has ever matched (a filter the generator could apply).
 
+## The GCC front: the prebuilt libraries
+
+About 868 KB of the image -- 3,672 rows, 22.1 % of the map's bytes -- is not Metrowerks code: libraries linked in
+prebuilt, built by their vendors with Sony's EE-GCC. The code says which: GCC aligns a function
+to 8 (MW to 16 -- the map's `unaligned` notes), saves s-registers with `sd` (MW with `sq`), uses
+branch-likely and, from 2.96, sibling calls. A unit names its toolchain in its directive (its
+first three lines are read; the first to give a key wins):
+
+    /* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+
+and scdiff builds it with that toolchain's own driver and GNU assembler -- EQOA's ee-gcc builds,
+linked into `toolchains/` ("Inputs"): natively for the Linux i386 ones, through wibo for the
+PE32 ones (byte-identical to wine's objects, 0.02 s a compile against 4.6 s; only
+`ee-gcc3.2-030210-beta2` will not run there, importing `cygwin_internal`). MW stays the default
+and no MW unit changed: `--files '^(?!auto/|lib/)'` gives the same rows, line for line, with the
+tools before and after (4,068 byte-exact on 2026-10-25, 4,249 on 2026-11-02 after master's merge).
+
+**The compilers, library by library** (`tools/ccsweep.py`: one source over every toolchain and
+flag set, every function it defines scored; the probes are `build/scratch/gcc/p*.c`):
+
+| range | library | toolchain, flags | evidence |
+|---|---|---|---|
+| MAIN 0x18DB90-0x191410, 0x1A13D0-0x1AD088, 0x1B3970-0x1C4CC0, 0x1CCD78-0x1CE2A4 | Sony's SDK 2.7: libcdvd, libdma, libgraph, libipu, libkernl, libmc, libmpeg, libmrpc, libpad2, libscf, libvu0 ... | `ee-gcc2.9-991111` `-O2 -G0` | `memclr` is byte-exact only under 2.9-ee-991111 (its -01, a and dtls rebuilds compile it the same): 990721 lacks the short loop's nops (8s), every 2.95.x fills the delay slot (2), 2.96 misses by 4, 3.2 by 7; `sceDmaGetChan` is 12s under 2.96, `sceCdSearchFile` 6s |
+| MAIN 0x191410-0x1A13D0, 0x1AD088-0x1B3970 | newlib's libc, libgcc's fp-bit, libm: the toolchain's own runtime | `ee-gcc2.96` `-O2 -G0` | `atof`, `atol`: a sibling call under a frame it no longer needs (`sd ra; ...; ld ra; j strtol`) -- 2.96's; no 2.9x or 2.95.x makes a sibling call at all (6s, 5s) |
+| OVL1 0x1E7F58-0x1E8FD4 | the microphone input (`openmic`, `getsamples`, `Sid*`, over lgAud) and Sony's libezcnf/libezctl (1.0 beta) | `ee-gcc2.96` `-O2 -G0 -fno-strict-aliasing` | found 2026-11-02, the only run outside the first ranges that saves s-registers with `sd` and never `sq`; `closemic`, `SidClose` byte-exact under 2.96 only (every other toolchain 9-13 words off); `SidGetSamples` reloads its read position after storing through `out` -- byte-exact only without strict aliasing |
+| OVL1 0x2430F0-0x248350 | the recogniser's heap (`heap_*`), lgAud (the USB headset, liblgaud 1.08.002), SCEA's libnetb/inet | `ee-gcc2.96` `-O2 -G0` | `lgAudASync`, `sceBInetControl`, func_00246CE0: 2.96 only (2.9-991111 15s/10s/6s, 2.95.3-136 15s/6/6s, 3.2 11s/9s/=) |
+| OVL1 0x248350-0x256FD0 | Nellymoser's speech codec (SaseEncVad, SaseDec) | `ee-gcc2.96` **`-O2 -G8`** | five functions byte-exact only so: their scalars and float literals are `$gp`-relative (small data in MAIN's 0x1D5300-0x1D55C0, `.lit4`); at -G0 every one misses |
+| OVL2 0x4C5400-0x50DC50 | ScanSoft's speech recogniser (asrspi\*, casr\*, mtx\*) | `ee-gcc2.96` `-O2 -G0 -fno-strict-aliasing` | `casrStoreSegmentation` keeps its `short` store above the load of the next node: byte-exact only without strict aliasing, and none of the library's drafts is lost by the flag; the sibling calls -- func_004CCC50, ConstructMel, func_004F7038 -- 2.96 only (every 2.9x and 2.95.x 5s-15s); its leaf functions do not tell 2.9x, 2.95.x and 2.96 apart. `mtxConstruct` makes no sibling call because 2.96 declines one where the return types differ |
+| OVL2 0x60FB50-0x64F720 | Medius, DME and the rt_\* libraries (SCEA) | `ee-gcc2.96` `-O2 -G0` | rt_comm_get_channel, rt_memory_register_callbacks, rt_msg_client_change_state, rt_msg_set_byte: all four only under 2.96 -O2 (2.9x 5/=/9s/6, 2.95.x 4/=/10s/5, 3.2 =/5/3/=); strict aliasing stays on -- two sibling drafts of one shape (0x61E7F0, 0x61E858) match only with it: thin, one shape |
+
+-O1 misses wherever it was tried and -O3 compiles these as -O2 does; everything is C (no mangled
+name in any range). Sony's SDK libraries were built with 2.9-ee-991111 (November 1999), the
+rest -- and the runtime the game linked -- with 2.96. **Strict aliasing is per vendor**: this
+2.96 enables it at -O2, ScanSoft's and the mic library's builds turned it off, SCEA's Medius kept
+it, and the other libraries show no function either way (`tools/ccflags.py LO HI
+FLAGS` recompiles a range's drafts with a flag added: a flag the vendor used loses none).
+Outside these ranges no row saves its s-registers with `sd` and never `sq`: amsurvey's 428 such
+functions (above) were theirs.
+
+**What scdiff learned about GNU objects** (gated on `.reginfo`, which MW never writes):
+TU-local references go against SECTION symbols (`.rodata`+N for each string), so a `%lo` is
+paired with its `%hi` by the relocation table's order -- GNU as writes each `%hi` just before
+its first `%lo` -- not by name (two pairs of one section interleave under one name); a static
+callee is `R_MIPS_26` against `.text`+N, resolved by the function at that offset (through the
+map, else by the same distance as in the target); a local symbol's GPREL16 and LITERAL fields
+are less the object's gp0 (`.reginfo`'s, 0x4000 from ee-gcc), which the linker adds back, and
+`R_MIPS_LITERAL` (the -G8 literal pool) is checked as GPREL16 is. sccheck counts GCC's weak
+`.gnu.linkonce` copies as inline copies (binding 13 is MW's alone).
+
+**The generated tier** (`tools/automatch.py`'s `GCC_RANGES`): a row in a GCC range -- any
+alignment, MAIN included -- gets m2c's GNU C draft (`mipsee-gcc-c`) compiled with its range's
+toolchains (MAIN's interleaved SDK and newlib: both, the range's own first), as it stands and in
+GCC's own variants -- m2c's single exit as the vendors' guard clauses (2.96 returns straight into
+v0: a third of the Medius near misses), a void draft ending in a call as returning its result,
+byte steps on `M2C_UNK` and typed pointers, a frame buffer m2c left undeclared -- then redrafted
+told its callees' and its own parameters by dataflow (`sigs.prototype`). MW's own corrections
+(the member spelling, the repair from MW's diagnostics, bool, C++) answer MW's quirks and are not
+tried. `tools/m2c.py` spells `$gp`-relative accesses `%gp_rel(sym)`. A draft carries its
+toolchain's directive. A draft GCC refuses is repaired as MW's are, from GCC's errors (never its
+warnings): a load through an int (`*(i * 4 + M2C_FIELD(p, s32 *, 4))`) becomes an `s32` load, a
+call disagreeing with the prototype m2c took from another call unprototypes the callee -- the
+two were ~420 of the ~520 GCC drafts that would not build. The runs (`--max-size 0x400 --emit
+--no-prune`, at most 2 jobs; the repair's column is a second run over the first's misses):
+
+| library | rows tried | byte-exact, first run | build failures | m2c refuses | + after the GCC repair | drafts kept |
+|---|---|---|---|---|---|---|
+| MAIN: Sony's SDK, newlib | 1,062 | 199 (18.7 %) | 108 | 282 | +1 (build failures 84) | 194 |
+| OVL1: heap, lgAud, libnetb, the codec | 346 | 41 (11.8 %) | 58 | 14 | +3 (28) | 38 |
+| OVL1: the microphone input, libezcnf/libezctl | 30 | 8 (26.7 %) | 8 | 0 | 0 | 5 |
+| OVL2: ScanSoft's recogniser | 581 | 159 (27.4 %), +4 under `-fno-strict-aliasing` | 129 | 52 | +6 (57) | 165 |
+| OVL2: Medius, DME, rt_* | 1,386 | 447 (32.3 %) | 90 | 102 | +4 (re-run stopped at 0x62AF40) | 447 |
+
+849 GCC drafts, 39,284 bytes, stand.
+
+**Hand-written** (`src/lib/<group>/`, C as the vendors wrote it, SOCOM 1's names): 55 functions
+byte-exact of 57 -- `sdk/libdma.c` (5), `libc/stdlib.c` (abs, atof, atoi, atol), `ovl1/sid.c`
+(the microphone, 7), `ovl1/ezcnf.c` (ezNetCnfGetCombination, ezNetCnfGetDefault, named by their
+own messages; libezcnf is 2.96 too: 991111 30s/24s, 2.95.3-136 30s/22s, 3.2 26s/29s),
+`ovl1/lgaud.c` (3), `ovl1/libnetb.c` (2), `ovl1/nelly.c` (the codec at -G8, 5), `asr/mtx.c` (5),
+`asr/cb.c` (9 of 11: casrDoSecondPass and cbGenderDisable are OPEN, diagnosed in place),
+`asr/extaudio.c` (2), `asr/ctxutil.c` (3), `medius/rt_msg.c` (all 8 byte accessors). Each unit's
+directive carries its library's toolchain and flags; a draft it supersedes is deleted, as for MW.
+
+**Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
+unit's header says what it covers); GCC's scheduler moves independent stores, and which source
+order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
+FUNCTION` tries every order of a marked block). libkernl's syscall stubs (`li v1,N;
+syscall`, about a hundred 16-byte rows in MAIN) and the VU0 macros (`sceVu0CopyVector` ...) were
+written in assembly -- 275 of MAIN's 1,062 GCC rows up to 0x400 bytes hold a syscall, sync,
+COP0, COP2, MMI or `lq`/`sq` instruction, which is MAIN's 282 m2c refusals: they want an assembler unit built by the toolchain's own `ee-as`, which
+sccheck has no path for yet. Still open: the strict-aliasing setting of the SDK, newlib, OVL1's
+heap/lgAud/libnetb and the codec (no function yet tells), the 991111 rebuilds (-01, a,
+dtls13010: every probe compiles the same under each), and the generated tier's GCC near misses,
+not yet classified as amsurvey classified MW's.
+
 ## Open, and next
 
 The work runs in lanes (see "Working in parallel"), each an address range with its own units;
@@ -2774,10 +2873,8 @@ What is open across lanes, and what comes next:
   CZSIScript, CZBodyAnim -- SOCOM 1 names them, no DWARF), 0x322000-0x33F000 (Particle, CPipe,
   zrdr, CSaveModule/CSaveManager), 0x37D000-0x408480 (CBufferIO/CFileIO/CMemCardIO, CZWeapon,
   CZProjectileList, the UI specs, CTurret); OVL2 0x5B8000-0x610000 (CZKit, CRemoteCtrl, the AI
-  state family CAiS*, CSealCtrlSquirm). The prebuilt GCC libraries (Sony's libnetb/inet and the
-  USB-audio lgAud in OVL1 0x243000-0x258000, the speech recogniser at OVL2's start, the Medius/DME
-  network libraries from 0x610000) are not MW code: EQOA's EE-GCC toolchains could match them, a
-  separate effort.
+  state family CAiS*, CSealCtrlSquirm). The prebuilt GCC libraries are opened: see "The GCC
+  front" for the compilers, the generated tier's GCC drafts and what is next there.
 - **Unit boundaries behind pins**: the inlining-mode question is answered (no such mode; "The
   inlining mode, measured") -- of the pinned units' candidate cuts (build/scratch/inlmode/
   split_best.txt) the split lane adopted zsnd_csndsequence.cpp, graph_tree.cpp, int_main.cpp and

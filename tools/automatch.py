@@ -31,6 +31,7 @@ sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE / "tools"))
 import scdecomp as E
 import scdiff as D
+import sccheck
 import m2c as M
 
 OUT = HERE / "build" / "automatch"
@@ -45,6 +46,43 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 
 
 TRIPLES = ("mipsee-gcc-c", "mipsee-mwcc-c")   # the second converts about 1 % more of the misses
+
+# The GCC front (README "The GCC front"): the prebuilt libraries, each built with its vendor's
+# EE-GCC, identified on its own functions with tools/ccsweep.py. A row in one of these ranges
+# -- 8-aligned or not, MAIN included -- is drafted for GCC and compiled with that range's
+# toolchains in order (MAIN interleaves Sony's own libraries, built with 2.9-ee-991111, and the
+# toolchain's newlib and libm, built with 2.96: the first is the range's own, the second for the
+# other's pieces); its draft carries the directive of the one that matched.
+# (lo, hi, [(toolchain, flags), ...], what)
+SDK, LIBC = ("ee-gcc2.9-991111", "-O2 -G0"), ("ee-gcc2.96", "-O2 -G0")
+GCC_RANGES = [
+    (0x18DB90, 0x191410, [SDK, LIBC], "MAIN: libcdvd, libdma (Sony's SDK 2.7)"),
+    (0x191410, 0x1A13D0, [LIBC, SDK], "MAIN: newlib's libc, libgcc and fp-bit"),
+    (0x1A13D0, 0x1AD088, [SDK, LIBC], "MAIN: libgraph, libipu, libkernl"),
+    (0x1AD088, 0x1B3970, [LIBC, SDK], "MAIN: newlib's libm"),
+    (0x1B3970, 0x1C4CC0, [SDK, LIBC], "MAIN: libmc, libmpeg, libmrpc, libpad2, libscf, libvu0 ..."),
+    (0x1CCD78, 0x1CE2A4, [SDK, LIBC], "MAIN: the code after zlib's"),
+    (0x1E7F58, 0x1E8FD4, [("ee-gcc2.96", "-O2 -G0 -fno-strict-aliasing")],
+     "OVL1: the microphone input (Sid*), libezcnf/libezctl"),
+    (0x2430F0, 0x248350, [("ee-gcc2.96", "-O2 -G0")], "OVL1: the heap, lgAud, libnetb/inet"),
+    (0x248350, 0x256FD0, [("ee-gcc2.96", "-O2 -G8")], "OVL1: Nellymoser's speech codec (SaseEncVad, SaseDec)"),
+    (0x4C5400, 0x50DC50, [("ee-gcc2.96", "-O2 -G0 -fno-strict-aliasing")],
+     "OVL2: ScanSoft's recogniser (asrspi, casr)"),
+    (0x60FB50, 0x64F720, [("ee-gcc2.96", "-O2 -G0")], "OVL2: Medius, DME and the rt_* libraries"),
+]
+
+
+def gcc_range(addr: int) -> list[tuple[str, str]] | None:
+    """The (toolchain, flags) a GCC-built library row is tried with, in order, or None (MW)."""
+    for lo, hi, ccs, _ in GCC_RANGES:
+        if lo <= addr < hi:
+            return ccs
+    return None
+
+
+def gcc_directive(cc: tuple[str, str], rename: str | None = None) -> str:
+    """The draft's directive line: its toolchain and flags (and its rename, `as=OLD NEW`)."""
+    return f"/* sc: compiler={cc[0]}; flags={cc[1]}" + (f"; as={rename}" if rename else "") + " */\n"
 
 
 def _on(correction: str) -> bool:
@@ -62,6 +100,9 @@ def attempt(addr: int):
     tmp = OUT / "work" / f"{addr:08X}"
     tmp.mkdir(parents=True, exist_ok=True)
     (tmp / "f.s").write_text(asm)
+    ccs = gcc_range(addr)
+    if ccs is not None:
+        return attempt_gcc(addr, tmp, sym, real, ccs, img, st)
     worst = "m2c"
     first = {}
     for triple in TRIPLES:
@@ -88,6 +129,309 @@ def attempt(addr: int):
             return addr, "hit", src
         worst = hit if worst in ("m2c", "build") else worst
     return addr, worst, None
+
+
+def attempt_gcc(addr: int, tmp: Path, sym, real: str, ccs: list[tuple[str, str]], img, st):
+    """A GCC-built library row: m2c's GNU C draft compiled with its range's toolchains (in order)
+    as it stands and in the variants near misses want (`gcc_variants`), then redrafted told its
+    callees' prototypes and its own parameters. MW's own corrections -- the member spelling,
+    the repair from MW's diagnostics, the bool and C++ stages -- answer MW's quirks and are not
+    tried."""
+    rename = f"{sym.name} {real}" if real != sym.name else None
+    out = run_m2c("mipsee-gcc-c", tmp / "f.s")
+    if out is None:
+        return addr, "m2c", None
+    worst = "build"
+    below = stack_below_saves(img, addr, sym.size)
+
+    def tries(draft: str):
+        nonlocal worst
+        body = fill_params(re.sub(r"\bvoid(\s*\*)", r"char\1", draft), sym.name)
+        if _on("GCC_REPAIR"):
+            body = gcc_repair(tmp, body, ccs[0]) or body
+        for variant in gcc_variants(body, sym.name, below):
+            src = PRELUDE + variant
+            for cc in ccs:
+                hit = try_one(tmp, src, sym, real, addr, img, st, cc=cc)
+                if hit == "hit":
+                    return gcc_directive(cc, rename) + src
+                worst = hit if worst == "build" else worst
+        return None
+
+    src = tries(out)
+    if src is None:
+        # told the callees' prototypes and its own parameters (by dataflow: a C library name
+        # lists none), m2c sees arguments passed straight through (strncpy(arg0 + 0x10, arg1, 64))
+        decls = prototypes(out, img, st, st.at_addr(addr), own_dataflow=True)
+        if decls:
+            (tmp / "ctx.h").write_text(TYPES + decls)
+            out2 = run_m2c("mipsee-gcc-c", tmp / "f.s", tmp / "ctx.h")
+            if out2 is not None:
+                src = tries(decls + out2)
+    return (addr, "hit", src) if src is not None else (addr, worst, None)
+
+
+# GCC refuses less of m2c's GNU C than MW does, but not nothing: a load through an int
+# (`*(i * 4 + M2C_FIELD(p, s32 *, 4))`: "invalid type argument of `unary *'") and a call that
+# disagrees with the prototype m2c took from another call ("too many/few arguments") were ~420 of
+# the ~520 GCC drafts that would not build on 2026-11-02. Each is repaired as MW's are (`_deref_ints`,
+# `_unprototype`), from GCC's errors -- never its warnings -- a round at a time.
+_GDIAG = re.compile(r"^.*?\bf\.c:(\d+): (?!warning)(.*)$", re.M)
+
+
+def gcc_build_errors(tmp: Path, src: str, cc: tuple[str, str]) -> dict[int, str] | None:
+    (tmp / "f.c").write_text(src)
+    try:
+        D.compile_obj(tmp / "f.c", tmp / "f.o", cc[0], cc[1].split())
+    except RuntimeError as e:
+        out: dict[int, str] = {}
+        for m in _GDIAG.finditer(str(e)):
+            n = int(m.group(1))
+            out[n] = (out.get(n, "") + " " + m.group(2).strip()).strip()
+        return out or {0: str(e)}
+    return None
+
+
+def gcc_repair(tmp: Path, body: str, cc: tuple[str, str], rounds: int = 3) -> str | None:
+    """The draft made to build with GCC, or None (the body unchanged when it already builds)."""
+    base = PRELUDE.count("\n")
+    text = body
+    for _ in range(rounds):
+        errs = gcc_build_errors(tmp, PRELUDE + text, cc)
+        if errs is None:
+            return text
+        lines = text.split("\n")
+        decl = _declared(text)
+        unproto: set[str] = set()
+        for n, msg in sorted((k - base, v) for k, v in errs.items()):
+            if not 1 <= n <= len(lines):
+                continue
+            if "invalid type argument of `unary *'" in msg:
+                lines[n - 1] = _deref_ints(lines[n - 1], decl)
+            unproto |= set(re.findall(r"too (?:many|few) arguments to function `([A-Za-z_]\w*)'", msg))
+        new = _unprototype("\n".join(lines), unproto)
+        if new == text:
+            return None
+        text = new
+    return None
+
+
+def stack_below_saves(img, addr: int, size: int) -> int:
+    """The bytes of a GCC frame below its register saves (`addiu sp,sp,-F` then `sd/sq/sw r,
+    off(sp)`): where its locals live, from sp+0 (the EABI passes no arguments on the stack)."""
+    frame, low = 0, None
+    for w in E.words(img.read(addr, min(size, 0x40))):
+        op, rs, rt = w >> 26, (w >> 21) & 31, (w >> 16) & 31
+        if op == 0x09 and rs == 29 and rt == 29 and w & 0x8000:
+            frame = 0x10000 - (w & 0xFFFF)
+        elif op in (0x2B, 0x3F, 0x1F) and rs == 29 and (16 <= rt <= 23 or rt in (30, 31)):
+            low = (w & 0xFFFF) if low is None else min(low, w & 0xFFFF)
+    return low if low is not None else frame
+
+
+def stack_locals(body: str, name: str, below: int) -> str | None:
+    """A draft that takes the frame's own address (`f((s32) sp)`, a callee filling a local
+    buffer m2c never saw declared) with the buffer declared: `sp` as an array the size of the
+    frame below the saves, and each undeclared `spXX` slot as its word."""
+    if not re.search(r"\bsp\b", body) or re.search(r"^\s+\S+\s+\**sp(\[[^\]]*\])?;", body, re.M) or below <= 0:
+        return None
+    m = re.search(rf"^[^\n]*\b{re.escape(name)}\([^)]*\)\s*\{{\n", body, re.M)
+    if m is None:
+        return None
+    decl = _declared(body)
+    slots = sorted({s for s in re.findall(r"\bsp([0-9A-F]+)\b", body) if f"sp{s}" not in decl})
+    defs = "".join(f"#define sp{s} (*(s32 *)((char *)sp + 0x{s}))\n" for s in slots)
+    return defs + body[:m.end()] + f"    s32 sp[{(below + 3) // 4}];\n" + body[m.end():]
+
+
+def gcc_variants(body: str, name: str, below: int = 0):
+    """GCC's own retries, after `variants`: m2c's single exit as the vendors' guard clauses,
+    m2c's byte offsets on pointers summed as bytes, a frame buffer m2c left undeclared."""
+    for b in variants(body):
+        yield b
+    seen = set()
+    sl = stack_locals(body, name, below) if _on("STACK_LOCALS") else None
+    if sl is not None:
+        seen.add(sl)
+        yield sl
+        body = sl
+    for f in (guard_returns, return_call, unk_char_ptrs, byte_steps, unk_sums):
+        if not _on(f.__name__.upper()):
+            continue
+        v = f(body, name)
+        if v is not None and v != body and v not in seen:
+            seen.add(v)
+            yield v
+            g = guard_returns(v, name) if f is not guard_returns else None
+            if g is not None and g not in seen:
+                seen.add(g)
+                yield g
+
+
+def return_call(body: str, name: str) -> str | None:
+    """A void draft ending in a call as returning the call's value: m2c types a function void
+    when nothing reads v0 after its last call, but the original handed the value back
+    (`return sceCdLayerSearchFile(fp, name, 0);`), and 2.9's tail jump of a void call
+    (`j f`, no frame) is not the jal-and-return a value makes."""
+    m = re.search(rf"^void ({re.escape(name)}\([^)]*\)\s*\{{\n)", body, re.M)
+    if m is None:
+        return None
+    end = body.find("\n}", m.end())
+    if end < 0:
+        return None
+    lines = body[m.end():end].split("\n")
+    k = len(lines) - 1
+    while k >= 0 and not lines[k].strip():
+        k -= 1
+    if k < 0 or not re.fullmatch(r"    [A-Za-z_]\w*\(.*\);", lines[k]):
+        return None
+    callee = re.match(r"    ([A-Za-z_]\w*)\(", lines[k]).group(1)
+    if re.search(rf"^void {re.escape(callee)}\(", body, re.M):
+        return None                                   # declared void itself
+    lines[k] = "    return " + lines[k][4:]
+    out = body[:m.start()] + "s32 " + m.group(1) + "\n".join(lines) + body[end:]
+    return re.sub(rf"^void ({re.escape(name)}\([^)]*\);)", r"s32 \1", out, flags=re.M)   # its prototype
+
+
+def unk_char_ptrs(body: str, name: str) -> str:
+    """`M2C_UNK *` as `char *`: m2c steps an unknown pointer in bytes (`var_a0 += 0x334`), which
+    C scales by the int M2C_UNK is (func_001BD588)."""
+    return re.sub(r"\bM2C_UNK \*", "char *", body)
+
+
+def byte_steps(body: str, name: str) -> str:
+    """`p += N` on a typed pointer local (not char) as a byte step: m2c writes a pointer's
+    increment in bytes whatever its type (`s32 *var_s0; ... var_s0 += 4;`, func_0061C5A0)."""
+    decl = _declared(body)
+
+    def sub(m):
+        t = decl.get(m.group(2), "").replace(" ", "")
+        if not t.endswith("*") or t in ("char*", "u8*", "s8*"):
+            return m.group(0)
+        return f"{m.group(1)}{m.group(2)} = ({t[:-1]} *)((char *){m.group(2)} {m.group(3)} {m.group(4)});"
+    return re.sub(r"^(\s+)([A-Za-z_]\w*) ([+-])= (0x[0-9A-Fa-f]+|\d+);$", sub, body, flags=re.M)
+
+
+def unk_sums(body: str, name: str) -> str:
+    """`(i * 4) + &x` on an M2C_UNK x summed as bytes (the other order of `unk_bytes`'s form)."""
+    unk = {n for n, t in _declared(body).items() if t.replace(" ", "") == "M2C_UNK"}
+    return re.sub(r"\(\(([^()]+)\) \+ &([A-Za-z_]\w*)\)",
+                  lambda m: f"((M2C_UNK *)((char *)&{m.group(2)} + ({m.group(1)})))" if m.group(2) in unk
+                  else m.group(0), body)
+
+
+def _blocks(lines: list[str]) -> dict[int, int]:
+    """The line that opens the block each `}`-led line closes (brace matching), or -1."""
+    stack, opener = [], {}
+    for i, l in enumerate(lines):
+        s = l.strip()
+        for c in s:
+            if c == "}":
+                opener.setdefault(i, stack.pop() if stack else -1)
+            elif c == "{":
+                stack.append(i)
+    return opener
+
+
+def guard_returns(body: str, name: str) -> str | None:
+    """m2c's single exit -- `v = 2; if (a && b) { ...; v = 0; } return v;` -- as guard clauses:
+    `if (!(a)) return 2; if (!(b)) return 2; ...; return 0;`. GCC expands each return straight
+    into v0, where a returned local is a pseudo the allocator may put elsewhere (`move v0,v1`
+    at the end): the vendors (the rt_* libraries, Nellymoser) wrote guards. None when the
+    function is not of that shape."""
+    lines = body.split("\n")
+    m = re.search(rf"^[^\n]*\b{re.escape(name)}\([^)]*\)\s*\{{$", body, re.M)
+    if m is None or "goto " in body:
+        return None
+    start = body[:m.end()].count("\n") + 1
+    end = next((i for i in range(len(lines) - 1, start, -1) if lines[i] == "}"), None)
+    if end is None:
+        return None
+    k = end - 1
+    while k > start and not lines[k].strip():
+        k -= 1
+    rm = re.fullmatch(r"    return ([A-Za-z_]\w*);", lines[k])
+    if rm is None:
+        return None
+    var = rm.group(1)
+    # m2c writes a constant result where the scheduler put it (`var = 0; *out = *in;`): moved
+    # past the plain statements that follow it in its block, where the source had it
+    for i in range(start, k):
+        am = re.fullmatch(rf"(\s+){var} = (-?(?:0x[0-9A-Fa-f]+|\d+)U?);", lines[i])
+        if not am:
+            continue
+        ind, j = am.group(1), i + 1
+        while j < k and lines[j].startswith(ind) and not lines[j][len(ind):].startswith((" ", "}")) \
+                and lines[j].endswith(";") and not re.search(rf"\b{var}\b|[{{}}]|\b(return|goto|break|continue)\b",
+                                                             lines[j]):
+            j += 1
+        if j > i + 1 and lines[j] == ind[:-4] + "}":
+            lines = lines[:i] + lines[i + 1:j] + [lines[i]] + lines[j:]
+    opener = _blocks(lines)
+
+    def flows_to_end(i: int) -> bool:
+        j = i + 1
+        while j < k:
+            s = lines[j].strip()
+            if not s:
+                j += 1
+                continue
+            if s.startswith("}"):
+                o = opener.get(j, -1)
+                head = lines[o].strip() if o >= 0 else ""
+                if not head.startswith(("if ", "if(", "} else", "else")):
+                    return False                     # a loop's or a switch's end goes elsewhere
+                if s == "}":
+                    j += 1
+                    continue
+                if s.startswith("} else"):           # the branch is done: past the whole chain
+                    depth = 1
+                    j += 1
+                    while j < k and depth:
+                        t = lines[j].strip()
+                        depth += t.count("{") - t.count("}")
+                        j += 1
+                    continue
+                return False
+            return False
+        return j == k
+
+    out = list(lines)
+    for i in range(start, k):
+        am = re.fullmatch(rf"(\s+){var} = (.+);", lines[i])
+        if am and flows_to_end(i):
+            out[i] = f"{am.group(1)}return {am.group(2)};"
+    rest = [i for i in range(start, k) if re.match(rf"\s+{var} = ", out[i])]
+    # the guard shape: one remaining `var = C;` at the top level, then statements, then a final if
+    if len(rest) != 1 or not out[rest[0]].startswith(f"    {var} = "):
+        return "\n".join(out) if out != lines else None
+    a = rest[0]
+    c = re.fullmatch(rf"    {var} = (.+);", out[a]).group(1)
+    j = k - 1
+    while j > a and not out[j].strip():
+        j -= 1
+    o = opener.get(j, -1)
+    if out[j] != "    }" or o <= a or not re.fullmatch(r"    if \((.*)\) \{", out[o]):
+        return "\n".join(out) if out != lines else None
+    cond = re.fullmatch(r"    if \((.*)\) \{", out[o]).group(1)
+    terms, depth, last = [], 0, 0
+    for p, ch in enumerate(cond):
+        depth += ch == "("
+        depth -= ch == ")"
+        if depth == 0 and cond[p:p + 4] == " && ":
+            terms.append(cond[last:p])
+            last = p + 4
+    terms.append(cond[last:])
+    guards = [f"    if (!({t.strip()})) {{\n        return {c};\n    }}" for t in terms]
+    inner = [l[4:] if l.startswith("    ") else l for l in out[o + 1:j]]
+    new = out[:a] + out[a + 1:o] + guards + inner
+    tail = next((l for l in reversed(inner) if l.strip()), "")
+    if not tail.strip().startswith("return "):
+        new.append(f"    return {c};")
+    used = [l for l in new[start:] if re.search(rf"\b{var}\b", l)]
+    if any(not re.fullmatch(rf"\s+(?!return\b)[A-Za-z_]\w*(?: [A-Za-z_]\w*)*\s*\**\s*{var};", l) for l in used):
+        return "\n".join(out) if out != lines else None     # still read somewhere: not guards
+    return "\n".join(new + out[end:])
 
 
 def run_m2c(triple: str, asm: Path, ctx: Path | None = None) -> str | None:
@@ -432,18 +776,33 @@ EXTERN = re.compile(r"^(?P<ret>[^(\n]*?)\s*\b(?P<name>[A-Za-z_]\w*)\((?P<args>[^
 _live = None
 
 
-def prototypes(draft: str, img, st, own=None) -> str:
+def prototypes(draft: str, img, st, own=None, own_dataflow: bool = False) -> str:
     """Declarations of the draft's callees whose parameters tools/sigs.py can tell, each with
     the return type m2c's draft gave it (what the caller does with the result) -- and, given
-    `own` (the drafted symbol), the function itself when its mangled name lists its parameters:
-    m2c then types them as declared (a bool, a short) instead of by their use."""
+    `own` (the drafted symbol), the function itself when its mangled name lists its parameters
+    (or, `own_dataflow`, by the argument registers live at its entry -- a GCC library's C names
+    list none): m2c then types them as declared (a bool, a short) instead of by their use."""
     global _live
     import sigs
     if _live is None:
         _live = sigs.Live(img, st)
     out = []
     if own is not None and os.environ.get("SC_OWN_PROTO", "1") == "1":
-        params = sigs.prototype(own.addr, own.name, _live) if sigs.demangle(own.name) else None
+        params = (sigs.prototype(own.addr, own.name, _live, c_names=own_dataflow)
+                  if sigs.demangle(own.name) or own_dataflow else None)
+        if params is not None and own_dataflow and not sigs.demangle(own.name):
+            # dataflow knows how many parameters, m2c their types: m2c's own list (its gaps
+            # filled), extended with the integer parameters passed straight through unseen
+            own_name = own.name if C_IDENT.match(own.name) else f"func_{own.addr:08X}"
+            dm = re.search(rf"\b{re.escape(own_name)}\(([^)]*)\)\s*\{{", fill_params(draft, own_name))
+            have = [p.strip() for p in dm.group(1).split(",")] if dm and dm.group(1).strip() not in ("", "void") else []
+            if any(not re.search(r"\barg\d$", p) for p in have):
+                params = None                          # float or stack parameters: left alone
+            else:
+                ni = sum(1 for p in params if p != "f32")
+                params = [re.sub(r"\s*\barg\d$", "", p) for p in have] + ["s32"] * max(0, ni - len(have))
+                if len(params) == len(have):
+                    params = None                      # nothing m2c did not already see
         d = re.search(rf"^(?P<ret>[^\n(]*?)\s*\b{re.escape(own.name if C_IDENT.match(own.name) else f'func_{own.addr:08X}')}\(", draft, re.M)
         if params is not None and d:
             name = own.name if C_IDENT.match(own.name) else f"func_{own.addr:08X}"
@@ -460,7 +819,7 @@ def prototypes(draft: str, img, st, own=None) -> str:
             s = st.at_addr(int(mm.group(1), 16)) if mm else None
         if s is None:
             continue
-        params = sigs.prototype(s.addr, s.name, _live)
+        params = sigs.prototype(s.addr, s.name, _live, c_names=own_dataflow)
         if params is None:
             continue
         ret = m.group("ret").strip() or "s32"
@@ -639,10 +998,14 @@ def bool_returns(src: str, name: str) -> str | None:
     return head + "    bool sc_ret;\n" + body + "\nsc_return:\n    return sc_ret;" + tail
 
 
-def try_one(tmp: Path, src: str, sym, real: str, addr: int, img, st, suffix: str = ".c") -> str:
+def try_one(tmp: Path, src: str, sym, real: str, addr: int, img, st, suffix: str = ".c",
+            cc: tuple[str, str] | None = None) -> str:
     (tmp / f"f{suffix}").write_text(src)
     try:
-        D.compile_obj(tmp / f"f{suffix}", tmp / "f.o")
+        if cc is None:
+            D.compile_obj(tmp / f"f{suffix}", tmp / "f.o")
+        else:                                   # a GCC-built library row (GCC_RANGES)
+            D.compile_obj(tmp / f"f{suffix}", tmp / "f.o", cc[0], cc[1].split())
         if real != sym.name:
             import sccheck
             sccheck.rename_symbol(tmp / "f.o", sym.name, real)
@@ -829,6 +1192,8 @@ def main(argv=None) -> int:
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--jobs", type=int, default=7)
     ap.add_argument("--emit", action="store_true", help="write hits into src/auto/")
+    ap.add_argument("--no-prune", action="store_true",
+                    help="with --emit, write the hits and leave every other draft alone (a lane's run over its own range)")
     ap.add_argument("--redo", action="store_true", help="retry functions src/auto already holds")
     ap.add_argument("--addrs", type=Path, help="only these addresses (one hex VA per line)")
     ap.add_argument("--stale", action="store_true",
@@ -839,9 +1204,12 @@ def main(argv=None) -> int:
         a.redo, a.emit, a.max_size = True, True, 0x100000
         want_stale = stale(st)
         print(f"{len(want_stale)} drafts spell a name the map no longer has")
+    # MW's functions are 16-aligned overlay code; a GCC-built library row (GCC_RANGES) is any
+    # row in its range, 8-aligned or not, MAIN's SDK included
     cands = [s.addr for s in st.symbols
              if img.is_code(s.addr) and a.min_size < s.size <= a.max_size
-             and img.segment(s.addr).name != "MAIN" and s.addr % 16 == 0]
+             and (gcc_range(s.addr) is not None
+                  or (img.segment(s.addr).name != "MAIN" and s.addr % 16 == 0))]
     if a.range:
         cands = [x for x in cands if a.range[0] <= x < a.range[1]]
     if a.addrs:
@@ -867,7 +1235,7 @@ def main(argv=None) -> int:
     print(f"{total} tried: " + ", ".join(f"{k} {v}" for k, v in sorted(tally.items())))
     print(f"hit rate {100 * tally.get('hit', 0) / max(total, 1):.1f} %  (hits in {OUT})")
     if a.emit:
-        emit(hits, img, st)
+        emit(hits, img, st, prune=not a.no_prune)
     return 0
 
 
@@ -905,15 +1273,13 @@ def stale(st: E.SymbolTable) -> set[int]:
         gone = any(r not in names and r != own and renamed(r)
                    for r in re.findall(r"\b(func_[0-9A-F]{8})\b", txt))
         # a template-named row's draft defines its placeholder and renames it in the object
-        # (`/* sc: as=OLD NEW */`): stale when NEW is no longer the map's name
-        m = re.search(r"/\* sc: as=(\S+) (\S+) \*/", txt)
+        # (`/* sc: as=OLD NEW */`, last in a GCC draft's directive): stale when NEW is no longer
+        # the map's name
+        m = re.search(r"/\* sc: (?:[^*\n]*?; )?as=(\S+) (\S+) \*/", txt)
         renamed_away = m is not None and s is not None and m.group(2) != s.name
         if s is None or not (f"{s.name}(" in txt or f" {s.name} */" in txt) or gone or renamed_away:
             out.add(a)
     return out
-
-
-MULTIDEF = 13   # MW's binding for an inline function's (or a template's) out-of-line copy
 
 
 def hand_defined() -> set[str]:
@@ -927,8 +1293,9 @@ def hand_defined() -> set[str]:
         if "auto" in o.relative_to(obj_root).parts:
             continue
         try:
-            for f in E.Elf.read(o).functions():
-                if f.bind == MULTIDEF:
+            elf = E.Elf.read(o)
+            for f in elf.functions():
+                if sccheck.is_copy(elf, f):
                     copies.setdefault(f.name, []).append(o)
                 else:
                     names.add(f.name)
@@ -968,7 +1335,7 @@ def hand_defined() -> set[str]:
     return names
 
 
-def emit(hits: dict[int, str], img: E.Image, st: E.SymbolTable) -> None:
+def emit(hits: dict[int, str], img: E.Image, st: E.SymbolTable, prune: bool = True) -> None:
     written = 0
     if not hits:
         print("no new hits")
@@ -982,6 +1349,9 @@ def emit(hits: dict[int, str], img: E.Image, st: E.SymbolTable) -> None:
             old.unlink()
         (d / f"{addr:08X}{ext}").write_text(HEADER.format(name=name) + src)
         written += 1
+    if not prune:
+        print(f"emitted {written} into {AUTO} (no pruning)")
+        return
     stale = renamed = 0
     hand = hand_defined()
     for f in auto_files():
@@ -996,6 +1366,9 @@ def emit(hits: dict[int, str], img: E.Image, st: E.SymbolTable) -> None:
             # times: SlotList's and CWeaponSlot's destructors, HEALTH_PARAMS::Parse)
             if C_IDENT.match(s.name):
                 txt = re.sub(rf"\b{own}\b", s.name, txt)
+            elif re.search(r"/\* sc: compiler=[^\n]*\*/", txt) and "as=" not in txt:
+                # a GCC draft's rename joins its directive line (sccheck reads three lines)
+                txt = re.sub(r"(/\* sc: compiler=[^\n]*?) \*/", rf"\1; as={own} {s.name} */", txt, count=1)
             elif "/* sc: as=" not in txt:
                 txt = txt.replace("*/\n", f"*/\n/* sc: as={own} {s.name} */\n", 1)
             else:
