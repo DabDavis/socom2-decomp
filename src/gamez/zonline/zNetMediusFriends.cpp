@@ -487,3 +487,49 @@ void CZOnlineLobby::ConfirmFriend(int id)
     CheckMediusError(func_00649378(&req));
     func_00301CF0(&data_0044FE00, id);
 }
+
+/* --- the Medius connection (the unit's first functions, 0x300670-0x3007FF) ------------------ */
+
+/* a connection's parameters (the chat unit's MediusConnectParams: only the callback read here) */
+struct FriendsConnectParams {
+    unsigned char _0[0xf4];
+    void (*Callback)(int index);   // 0xf4
+    int _f8;   // 0xf8
+    int _fc;   // 0xfc
+};   // 0x100
+
+/* what opening a connection hands back: its index, or -1 and the error */
+struct FriendsConnectResult {
+    int index;   // 0x0
+    int err;   // 0x4
+};
+
+extern "C" {
+extern int myConnectionIndex;   /* the Medius connection, -1 none (SOCOM 1's) */
+extern unsigned char data_0044FDA0;   /* the kind of server it is to: 1 the lobby, 2 the universes' */
+extern void (*data_0044FDA8)(int index);   /* the caller's callback, called once connected */
+MediusErrorCode func_006479B8();   /* (OVL2: the connection closed) */
+MediusErrorCode func_006476E0(FriendsConnectParams *params, FriendsConnectResult *result);   /* (OVL2: one opened) */
+void func_002F3FF0(void *params);   /* (the chat unit's) */
+void func_00300800(int index);   /* the connection made: the caller's callback called */
+
+/* a connection asked for: the one open closed first (a lobby's through Medius), the caller's
+ * callback kept and ours put in its place (OVL1 0x300740: the lobby's and the universes'
+ * connect handlers call it) */
+bool func_00300740(int kind, FriendsConnectParams *params)
+{
+    FriendsConnectResult result;
+
+    if (myConnectionIndex != -1) {
+        if (data_0044FDA0 == 1)
+            CheckMediusError(func_006479B8());
+        myConnectionIndex = -1;
+    }
+    data_0044FDA0 = kind;
+    func_002F3FF0(params);
+    data_0044FDA8 = params->Callback;
+    params->Callback = func_00300800;
+    myConnectionIndex = -1;
+    return CheckMediusError(func_006476E0(params, &result));
+}
+}
