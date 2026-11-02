@@ -642,8 +642,9 @@
 0x00216760 Slot10__Q23zdb7CNodeExFf
 0x00218D50 UnInit__14BitmapReticuleFv
 0x00218DA0 Draw__14BitmapReticuleFPQ23zdb7CCamera
+0x00218DE0 __ct__14BitmapReticuleFv
 0x00219090 __dt__14BitmapReticuleFv
-0x00219330 func_00219330
+0x00219330 hudStartDefuseTimer__Fbf
 0x002193C0 func_002193C0
 0x002193D0 PlaceWeaponText__10CWeaponSelFv
 0x002196F0 PlaceHotSwapLabels__10CWeaponSelFv
@@ -706,6 +707,9 @@
 0x00223620 __dt__11CMPExitMenuFv
 0x00224110 __ct__12CMPExitStateFv
 0x002241C0 SetFinalStatsUiVars__Fv
+0x00224210 SetStatLbUiVar__23@unnamed@st_mpexit_cpp@FbPCcM10CZSealBodyFPCvPv_R10CSealStatsb
+0x00224BF0 GetTimeInGameSec__9CNetClockFv
+0x00224C80 GetTimeInRoundSec__9CNetClockFv
 0x002256F0 SetMvpUiVars__23@unnamed@st_mpexit_cpp@FPCcPCc
 0x00225A00 SetPlayerStatsUiVar__23@unnamed@st_mpexit_cpp@FPCc
 0x00225E40 GetHitPct__10CSealStatsCFv
@@ -718,6 +722,9 @@
 0x00226010 GetMvpScore__10CSealStatsCFv
 0x00226020 GetReaderFileName__11CMPExitMenuFv
 0x00226050 Slot14__11CMPExitMenuFv
+0x00226060 sort<Q33std62__vector_imp<P10CZSealBody,Q23std24allocator<P10CZSealBody>,1>8iterator,PFP10CZSealBodyP10CZSealBody_b>__3stdFQ33std62__vector_imp<P10CZSealBody,Q23std24allocator<P10CZSealBody>,1>8iteratorQ33std62__vector_imp<P10CZSealBody,Q23std24allocator<P10CZSealBody>,1>8iteratorPFP10CZSealBodyP10CZSealBody_b_v
+0x00226600 __sort132<Q33std62__vector_imp<P10CZSealBody,Q23std24allocator<P10CZSealBody>,1>8iterator,PFP10CZSealBodyP10CZSealBody_b>__3stdFQ33std62__vector_imp<P10CZSealBody,Q23std24allocator<P10CZSealBody>,1>8iteratorQ33std62__vector_imp<P10CZSealBody,Q23std24allocator<P10CZSealBody>,1>8iteratorQ33std62__vector_imp<P10CZSealBody,Q23std24allocator<P10CZSealBody>,1>8iteratorPFP10CZSealBodyP10CZSealBody_b_v
+0x002267C0 __selection_sort<Q33std62__vector_imp<P10CZSealBody,Q23std24allocator<P10CZSealBody>,1>8iterator,PFP10CZSealBodyP10CZSealBody_b>__3stdFQ33std62__vector_imp<P10CZSealBody,Q23std24allocator<P10CZSealBody>,1>8iteratorQ33std62__vector_imp<P10CZSealBody,Q23std24allocator<P10CZSealBody>,1>8iteratorPFP10CZSealBodyP10CZSealBody_b_v
 0x00226960 On__16CMPTeammateNamesFv
 0x00227130 WordIntersectionTest__FiiiiP9C2DString
 0x002271D0 UnInit__16CMPTeammateNamesFv
@@ -1013,7 +1020,7 @@
 0x0025BB20 func_0025BB20
 0x0025BB50 __dt__Q23zar4CKeyFv
 0x0025BBE0 func_0025BBE0
-0x0025BC00 func_0025BC00
+0x0025BC00 __ct__Q23zar4CKeyFPCc
 0x0025CC70 zAnimDebugTick__FP14_zanim_cmd_hdrPf
 0x0025CC80 func_0025CC80
 0x0025D230 zAnimStopSequenceTick__FP14_zanim_cmd_hdrPf
@@ -4164,10 +4171,14 @@
 0x00370C20 func_00370C20
 0x00370CB0 func_00370CB0
 0x003710C0 func_003710C0
+0x003711A0 ParseZAnimCmd__11CRadioStripFP5_zrdr
+0x00371290 GetZAnimCmdType__11CRadioStripFPCc
 0x003719E0 Tick__13CHProgressBarFf
 0x00371BA0 UpdateUIVar__13CHProgressBarFP11CUIVariable
 0x00371C50 UpdateUIVar__10CSliderBarFP11CUIVariable
 0x003721E0 func_003721E0
+0x00372780 ParseZAnimCmd__10CSliderBarFP5_zrdr
+0x00372870 GetZAnimCmdType__10CSliderBarFPCc
 0x00374A50 func_00374A50
 0x00376420 SetNormal__10CUIListBoxFv
 0x00376530 func_00376530
@@ -4175,6 +4186,7 @@
 0x003767C0 GetZAnimCmdType__9C2DButtonFPCc
 0x00376B40 UpdateUIVar__9C2DButtonFP11CUIVariable
 0x00377A30 __dt__13C3StateButtonFv
+0x00378460 GetZAnimCmdType__9CTeleTypeFPCc
 0x00378FC0 Tick__9CPlainBmpFf
 0x00379160 Draw__9CPlainBmpFRC7CMatrixPQ23zdb16CTextureRelocMgr
 0x00379AB0 func_00379AB0
@@ -4183,6 +4195,7 @@
 0x0037A770 __ct__17CRenderableStringFv
 0x0037ADF0 func_0037ADF0
 0x0037AE00 func_0037AE00
+0x0037B840 GetZAnimCmdType__10C2DCounterFPCc
 0x0037B980 UiSetTtySpeedFactor__Ff
 0x0037B990 UiSetCounterSpeedFactor__Ff
 0x0037BA70 func_0037BA70
@@ -5075,7 +5088,7 @@
 0x003CFFD0 func_003CFFD0
 0x003D0020 func_003D0020
 0x003D0030 RetrieveTimerRegistration__8CZWeaponFPPfPfPb
-0x003D0060 func_003D0060
+0x003D0060 RegisterTimer__8CZWeaponFPffb
 0x003D0090 func_003D0090
 0x003D00A0 func_003D00A0
 0x003D00D0 func_003D00D0
@@ -7020,6 +7033,7 @@
 0x0062C728 func_0062C728
 0x0062C7A8 func_0062C7A8
 0x0062C958 func_0062C958
+0x0062CB68 func_0062CB68
 0x0062D2F8 func_0062D2F8
 0x0062D310 func_0062D310
 0x0062D328 rt_comm_get_host_by_name
