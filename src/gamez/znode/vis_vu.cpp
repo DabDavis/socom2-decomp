@@ -120,6 +120,41 @@ extern "C" asm void func_003B5A10(_word128 *in, _word128 *out)
     sqc2 vf7, 0(a1)
 }
 
+/* a point through a matrix's rotation first when the flag (0x4B4A68) is up, then scaled and offset
+ * as 0x3B5A10 does (new in SOCOM II, not named). The address's `la` sits in the branch's delay
+ * slot, so its lui lands there as the target's does */
+extern "C" unsigned char data_004B4A68;
+
+extern "C" asm void func_003B59A0(_word128 *in, _word128 *m, _word128 *out)
+{
+    .set noreorder
+    lbu v1, data_004B4A68
+    beqz v1, plain
+    la v1, data_004B4D30
+    lqc2 vf7, 0(a0)
+    lqc2 vf4, 0(a1)
+    lqc2 vf5, 0(v1)
+    vmulax.xyz ACC, vf4, vf7x
+    vmadday.xyz ACC, vf4, vf7y
+    vmaddaz.xyz ACC, vf4, vf7z
+    vmaddz.xyz vf7, vf4, vf4z
+    vmul.xyz vf7, vf7, vf5
+    vaddw.xyz vf7, vf7, vf5w
+    b done
+    sqc2 vf7, 0(a2)
+plain:
+    la v1, data_004B4D30
+    lqc2 vf7, 0(a0)
+    lqc2 vf4, 0(v1)
+    vmul.xyz vf7, vf7, vf4
+    vaddw.xyz vf7, vf7, vf4w
+    sqc2 vf7, 0(a2)
+    nop
+done:
+    jr ra
+    nop
+}
+
 /* the quadwords left in the scratchpad's packet past a cursor (0x3B4580's; not named) */
 extern "C" int func_003B5270(_word128 *p)
 {
