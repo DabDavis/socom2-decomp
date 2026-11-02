@@ -1643,6 +1643,28 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the integrator's zar units** (zar_search.cpp, zar_key.cpp):
+  - SOCOM 1's debug allocator calls name units: its `_calloc(n, s, "zar_search.cpp", line)` (SOCOM II
+    passes 0, 0) put the fetches in a unit of their own -- a SOCOM 1 function that allocates gives
+    its file's name;
+  - `size <= key->m_size` branches straight on `slt at`; `key->m_size >= size` materialises the
+    test (`slt v0`, `bnez v0`) -- the weapons round 9 tell with the operands the other way;
+  - `return open ? f(...) : 0;` from a bool function, an int ternary, gives `andi 0xff` on the
+    call's path, `move v0,zero` on the other and `sltu` after the join (SOCOM 1's typed fetches too);
+  - `if ((size = f()) > 0)` branches on the call's result (`blez v0`, the copy in the delay slot);
+    `int size = f(); if (size > 0)` branches on the copy;
+  - a parameter copied to a local (`CIO *file = io;`) is numbered after the parameters: it takes the
+    saved register a later parameter would (CKey::Read: s1, where io takes s2);
+  - an inline whose by-value parameter it passes by reference (InsertKey(key) -> push_back(key))
+    keeps the caller's variable in a saved register and copies it to the frame; push_back(key)
+    written directly keeps the variable itself in the frame;
+  - an auto-inline function inlined by one caller (CKey::Read inlines InsertKey) and called out of
+    line by an equally small other (Insert(const char *, ...)) is a unit boundary: zar_key.cpp
+    (CKey's) splits off zar_search.cpp at 0x25AE00, the fetches calling FindKey out of line too;
+  - zar_main.cpp starts below the GCC libraries' nominal 0x258000: their 8-aligned rows end at
+    0x256FB8, and from 0x256FD0 on it is MW code (CZAR's buffer writer, NewKey 0x2571D0,
+    WriteDirectory ~0x257590); CZAR grew four words at 0x20 and 0x2C-0x34 and its TAIL one, so
+    m_tail sits at 0x38 and m_root at 0x9C.
 - **Tells from the HUD, round 17** (st_mpexit.cpp's stat machinery, four static initialisers):
   - a pointer-to-member constant passed by value to an inline is copied into a local (ld/lwc1 then
     sd/swc1); `(p->*pfn)()` calls __ptmf_scall with t9 = &pfn; `pfn1 == pfn2` compiles to
