@@ -792,6 +792,12 @@ public:
     /* the charges set down that the SEAL comes near set off (OVL2 0x543930, new in SOCOM II: Tick
      * calls it; the name ours) */
     void CheckProximityExplosives();
+    /* the SEAL's own compass marker made, once, of a kind (4 and 5 a friend's, for the player's
+     * team; 12 "ABLE", 13 "BRAVO"), named when a name is given; and a friend's marker's four points,
+     * locked offline (OVL2 0x5434B0, 0x543680, new in SOCOM II: CRemoteCtrl::SetAiNetState and the
+     * AI's 0x573130 call the first; the names ours) */
+    CCompassAnchor *CreateCompassAnchor(int type, const char *name);
+    void AddFriendAnchorPoints(CCompassAnchor *anchor);
     /* thermal vision: the turret the SEAL works (the entity given, or its own at 0xEB8) if it is
      * one; whether the SEAL sees thermally -- the goggles (item 195) when it works nothing, the
      * turret's thermal scope when it works one; whether it works a turret with that scope; the
@@ -982,7 +988,10 @@ public:
     unsigned char _ebc[0xec0 - 0xebc];
     CCompassAnchor *m_mpbomb_anchor;   // 0xec0 (SOCOM 1's 0xdb4)
     CCompassAnchor *m_mpbase_anchor;   // 0xec4 (SOCOM 1's 0xdb8)
-    unsigned char _ec8[0xed0 - 0xec8];
+    /* the SEAL's own marker on the compass ("FRIENDLY", "ABLE", "BRAVO"; 0x5434B0 makes it once --
+     * new in SOCOM II, the name ours) */
+    CCompassAnchor *m_compass_anchor;   // 0xec8
+    unsigned char _ecc[0xed0 - 0xecc];
     unsigned int m_action_available;   // 0xed0: a bit per action (SOCOM 1's ActionAvailableMask word, 0xdc0)
     unsigned char _ed4[0xee0 - 0xed4];
     float m_wep_upT;   // 0xee0 (SOCOM 1's 0xdd0)

@@ -835,6 +835,79 @@ void CZSealBody::TickHeartbeat()
     }
 }
 
+/* a friend's marker given its four points, and offline turned off and locked (OVL2 0x543680) */
+void CZSealBody::AddFriendAnchorPoints(CCompassAnchor *anchor)
+{
+    CPnt3D p;
+
+    p.x = 62.0f;
+    p.y = 49.0f;
+    p.z = 36.0f;
+    anchor->AddPoint(&p);
+    p.x = 80.0f;
+    p.y = 42.0f;
+    p.z = 30.0f;
+    anchor->AddPoint(&p);
+    p.x = 30.0f;
+    p.y = 42.0f;
+    p.z = 80.0f;
+    anchor->AddPoint(&p);
+    p.x = 30.0f;
+    p.y = 76.0f;
+    p.z = 80.0f;
+    anchor->AddPoint(&p);
+    if (!theNetwork.m_9) {
+        anchor->SetEnabled(false);
+        anchor->SetArrowEnabled(false);
+        anchor->m_locked = 1;
+    }
+}
+
+/* the SEAL's own compass marker made, once: a friend's (kinds 4 and 5) where the SEAL is on the
+ * player's team, at the SEAL, with its points; "ABLE" (12) or "BRAVO" (13) at the origin with one
+ * point; named when given a name, and given its kind (OVL2 0x5434B0) */
+CCompassAnchor *CZSealBody::CreateCompassAnchor(int type, const char *name)
+{
+    static CPnt3D point(56.0f, 56.0f, 56.0f);
+    CCompassAnchor *anchor = 0;
+
+    if (m_compass_anchor)
+        return 0;
+    switch (type) {
+    case 4:
+    case 5: {
+        bool friendly = true;
+        /* (the player's team taken first, as in 0x544FC0) */
+        unsigned int team = ftsGetPlayer()->m_team;
+
+        if (!(team & m_team))
+            friendly = false;
+        if (friendly) {
+            anchor = CCompass::CreateAnchor(m_posW, "FRIENDLY");
+            AddFriendAnchorPoints(anchor);
+        }
+        break;
+    }
+    case 12:
+        anchor = CCompass::CreateAnchor(CPnt3D::zero, "ABLE");
+        anchor->AddPoint(&point);
+        anchor->SetPoint(-1);
+        break;
+    case 13:
+        anchor = CCompass::CreateAnchor(CPnt3D::zero, "BRAVO");
+        anchor->AddPoint(&point);
+        anchor->SetPoint(-1);
+        break;
+    }
+    if (anchor) {
+        if (name)
+            anchor->SetName(name);
+        anchor->m_type = type;
+    }
+    m_compass_anchor = anchor;
+    return anchor;
+}
+
 /* the charges set down that the SEAL comes near set off: each one whose time has run out, within
  * its ammunition's proximity distance of the SEAL, detonated and taken off the list (OVL2 0x543930,
  * new in SOCOM II: Tick calls it; the name ours) */
