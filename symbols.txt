@@ -10968,8 +10968,8 @@
 0x005BB990 0x578 func_005BB990  # OVL2
 0x005BBF10 0x2E4 PickupMPBomb__5CZKitFv  # OVL2; s1:calls by hand (the kit lane, round 5, from another lane's lead): SOCOM 1's PickupMPBomb's callee sequence -- CPickup::GetMPBomb, CZWeaponList::GetWeapon, CZAmmoList::GetAmmo, SetItemByIndex, the add-ammo call, CPickup::Destroy, EnableMPBombGear, the compass anchors -- in the same order
 0x005BC200 0xA0 HandlePlaceMPBomb__5CZKitFPC6CPnt3D  # OVL2; s1:calls by hand (the kit lane, round 5, from another lane's lead): SOCOM 1's HandlePlaceMPBomb -- CreateMPBombPickup(pos, 1), the item 154 dropped, the controller's bit 4 at 0x170, EnableMPBombGear(false); SOCOM II adds the reticule's update
-0x005BC2A0 0x8 func_005BC2A0  # OVL2
-0x005BC2B0 0x8 func_005BC2B0  # OVL2
+0x005BC2A0 0x8 SetHotSwap__5CZKitFb  # OVL2; by hand (the kit lane, round 10): the kit's byte at +4 stored -- new in SOCOM II, CWeaponSel::CheckHotSwap (0x21A1F0) sets it; the name ours
+0x005BC2B0 0x8 GetHotSwap__5CZKitFv  # OVL2; by hand (the kit lane, round 10): the kit's byte at +4 read -- CWeaponSel::CheckHotSwap tests it; the name ours
 0x005BC2C0 0x40 WeaponInfoChanged__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's WeaponInfoChanged: the same test-and-clear of bit 2, m_weaponinfoChanged; SOCOM 1's order puts it after HandlePlaceMPBomb)
 0x005BC300 0x8 CurItemHasFiremodeGraphic__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's CurItemHasFiremodeGraphic, after WeaponInfoChanged as there: ItemHasFiremodeGraphic(m_selected_item), tail-called)
 0x005BC310 0x100 ItemHasFiremodeGraphic__5CZKitFi  # OVL2; by hand: SOCOM 1's CurItemHasFiremodeGraphic's test on an index -- wraps it (the result dead), then the current item's class (OVL1 0x3D1A60) none of 151, 121, 230, 190, 201 (the name ours)
