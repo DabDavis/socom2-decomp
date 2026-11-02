@@ -21,6 +21,15 @@ public:
         m_timer = Period();
     }
 
+    /* a fixed period set and the countdown started (no zeroing first, unlike the constructor:
+     * 0x5631B0) */
+    void Set(float t)
+    {
+        m_min = t;
+        m_range = 0.0f;
+        m_timer = Period();
+    }
+
     /* a period: the minimum, plus a random part of the range when there is one (SOCOM 1's Rfloat's
      * operator float, through a result local and the random factor's own) */
     float Period() const

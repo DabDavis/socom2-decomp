@@ -9916,7 +9916,7 @@
 0x00542180 0x70 DeleteMPBombNode__7CPickupFv  # OVL2; ours (new in SOCOM II): only m_mpbombnode__7CPickup touched -- taken from its parent, its texture character dropped, deleted, zeroed; Close inlines it (the SEAL lane, round 8)
 0x005421F0 0x94 DestroyNetPickups__7CPickupFUi  # OVL2; s1:calls (CZSealBody::OnMissionEnd calls it with m_id where SOCOM 1's does): CPickup's list walked, each pickup whose owner word at 0x10 matches destroyed -- SOCOM 1's compared a byte (Uc), SOCOM II's a word
 0x00542290 0x14C TickTimers__7CPickupFPC6CPnt3Df  # OVL2; ours (new in SOCOM II, after DestroyNetPickups): every pickup's time (the float at 0) run down by the second argument unless it is -1 (0x3F3440); one run out is destroyed when farther than 300 from the point (90000 squared, 0x64FC50), else given 60 again (0x64FC58) (the SEAL lane, round 3)
-0x005423E0 0x88 func_005423E0  # OVL2
+0x005423E0 0x88 NetTick__7CPickupFPC6CPnt3Df  # OVL2; ours (new in SOCOM II; pickup_main.cpp, between TickTimers and Destroy): CMission::Tick calls it with the player's place and dT where an offline game calls TickTimers (theNetwork's online byte picks), ftsNetworkGameUninit with (0, 0); it ignores both, deleting the MP bomb's node (DeleteMPBombNode inlined) when the byte at 0x44D4A8 is set -- the SEAL lane, round 9
 0x00542470 0x36C Destroy__7CPickupFP7CPickup  # OVL2; s1:calls (DestroyNetPickups calls it where SOCOM 1's does)
 0x005427E0 0x70 func_005427E0  # OVL2
 0x00542850 0x70 func_00542850  # OVL2
@@ -9934,15 +9934,15 @@
 0x00543030 0x1AC func_00543030  # OVL2
 0x005431E0 0x8 func_005431E0  # OVL2; s1~ GetSealCtrlAi__9CSealCtrlFv (one of 2 out-of-line copies of an inline, by s1:vtable)
 0x005431F0 0x8 IsPlayer__9CSealCtrlCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00543200 0xF0 func_00543200  # OVL2
-0x005432F0 0xC8 func_005432F0  # OVL2
-0x005433C0 0xA4 func_005433C0  # OVL2
+0x00543200 0xF0 UpdateTurretScope__10CZSealBodyFf  # OVL2; ours (new in SOCOM II): HandleNewZoom calls it with 1.0 after TurretHasThermal; the SEAL's turret (0xEB8, type 3) gets 0x3A9FB0(f) and CTurret::SetThermal(0, HasThermal(0xEB8)) -- the SEAL lane, round 9
+0x005432F0 0xC8 TurretHasThermal__10CZSealBodyFv  # OVL2; ours (new in SOCOM II): HandleNewZoom asks it; the entity at 0xEB8 set and HasThermal of it, inlined -- the SEAL lane, round 9
+0x005433C0 0xA4 HasThermal__10CZSealBodyFP7CEntity  # OVL2; ours (new in SOCOM II; seal.cpp, before TickHeartbeat): HandleNewZoom asks it with no entity; none -- the kit's item 195 (the goggles); else the entity (or the SEAL's own at 0xEB8) if a turret (type 3), its byte at 0x298 (CTurret::m_thermal) -- the SEAL lane, round 9
 0x00543470 0x8 func_00543470  # OVL2; s1~ GetRemoteControl__11CEntityCtrlFv (one of 2 out-of-line copies of an inline, by s1:vtable); ovl-copy: GetRemoteControl__11CEntityCtrlFv (OVL2's copy of the inline; slot 0x1C of CSealCtrl's, CSealCtrlAi's and CSealCtrlSquirm's tables)
 0x00543480 0x2C func_00543480  # OVL2
-0x005434B0 0x1D0 func_005434B0  # OVL2
-0x00543680 0x150 func_00543680  # OVL2
+0x005434B0 0x1D0 CreateCompassAnchor__10CZSealBodyFiPCc  # OVL2; ours (new in SOCOM II; seal.cpp, before TickHeartbeat): CRemoteCtrl::SetAiNetState and the AI's 0x573130 call it; once per SEAL (0xEC8), kinds 4/5 a "FRIENDLY" anchor at the SEAL for the player's team (0x543680 adds its points), 12 "ABLE" and 13 "BRAVO" at the origin with a guarded local static point (56, 56, 56); named, its kind set -- the SEAL lane, round 9
+0x00543680 0x150 AddFriendAnchorPoints__10CZSealBodyFP14CCompassAnchor  # OVL2; ours (new in SOCOM II): CreateCompassAnchor's call for a friend's anchor; four constant points added, and offline the anchor disabled, its arrow off and locked -- the SEAL lane, round 9
 0x005437D0 0x160 TickHeartbeat__10CZSealBodyFv  # OVL2; s1:calls (SOCOM 1's TickHeartbeat__10CZSealBodyFv: Adrenaline's level into three bands at 0.33 and 0.66, the playing loop stopped and released and the band's loop played (CSnd slot 0xC with 0, 255) when the band changes, or one started when none plays -- SOCOM II tests the loop for null; first of the heartbeat stretch as SOCOM 1's) -- the SEAL lane, round 7
-0x00543930 0x150 func_00543930  # OVL2
+0x00543930 0x150 CheckProximityExplosives__10CZSealBodyFv  # OVL2; ours (new in SOCOM II; seal.cpp, after TickHeartbeat's predecessors): CZSealBody::Tick calls it; walks CZWeapon::m_placedExplosives by index (Count/Get), and a charge whose m_time is out (<= 0) within its CZAmmo's GetProximityDistance of the SEAL (the squared distance) gets RemoteDetonate and Remove -- the SEAL lane, round 9
 0x00543A80 0x4C StopAllHeartbeatSounds__10CZSealBodyFv  # OVL2; s1:calls (StopRumbler calls it where SOCOM 1's does; two Stop/ReleaseSoundInstance pairs as SOCOM 1's)
 0x00543AD0 0x64 CloseHeartbeatSounds__10CZSealBodyFv  # OVL2; s1:order by hand (SOCOM 1's CloseHeartbeatSounds__10CZSealBodyFv: StopAllHeartbeatSounds' body inlined, then the three loops at 0x44CE00 zeroed; between StopAllHeartbeatSounds and OpenHeartbeatSounds in both builds) -- the SEAL lane, round 7
 0x00543B40 0x50 OpenHeartbeatSounds__10CZSealBodyFv  # OVL2; tu: seal.cpp~ (1.0 beta); s1:exact
@@ -9951,12 +9951,12 @@
 0x00543D50 0x21C func_00543D50  # OVL2
 0x00543F70 0x288 func_00543F70  # OVL2
 0x00544200 0x8 func_00544200  # OVL2; s1~ IsRemote__9CSealCtrlCFv (one of 2 out-of-line copies of an inline, by s1:vtable)
-0x00544210 0xAC func_00544210  # OVL2
+0x00544210 0xAC SetNetLife__10CZSealBodyFUc  # OVL2; ours (new in SOCOM II; seal.cpp, before NetworkPlayerCreate): IncrementalUpdateRemoteSeal passes the network object's byte at 0x88; the byte at 0xF7A set, and a remote SEAL coming back to 1 from 2 or 3 gets 0xFCF (SOCOM 1's m_needs_respawn) set -- the SEAL lane, round 9
 0x005442C0 0x138 NetworkPlayerCreate__10CZSealBodyFv  # OVL2; s1:calls
 0x00544400 0x1A8 DecrZoomState__10CZSealBodyFv  # OVL2; size 0x1A8 (the seed split it at 0x544550, a branch target after its last call: 0x544550's code runs on s3/s4 and pops this function's 96-byte frame); s1:order (seal.cpp: before IncrZoomState and SetCurZoomState, as SOCOM 1's DecrZoomState at 0x24DCC0; CSealCtrl::PreTick calls both); the zoom state at 0x200 stepped down through the kit's current item and handed to SetCurZoomState, the new state returned; the seed's cut (0x544550): jal target of OVL1's DNAS client, which calls DNAS.BIN loaded in the OVL2 slot (README)
 0x005445B0 0x2E4 IncrZoomState__10CZSealBodyFv  # OVL2; size 0x2E4 (the seed split it at 0x544708, 0x544788, 0x5447D8 -- unaligned -- and at 0x544860, after a nop before the epilogue: all run on its saved registers and pop its 112-byte frame); s1:order (between DecrZoomState and SetCurZoomState, as SOCOM 1's IncrZoomState at 0x24DDB0); ends calling SetCurZoomState with the new state, as SOCOM 1's; the seed's cuts (0x544708, 0x544788, 0x5447d8, 0x544860): jal targets of OVL1's DNAS client, which calls DNAS.BIN loaded in the OVL2 slot (README)
 0x005448A0 0x2B8 SetCurZoomState__10CZSealBodyF9ZOOMSTATE  # OVL2; size 0x2B8 (the seed split it at 0x5448F8, unaligned: the rest of its code to the epilogue at 0x544B48); s1:order (after IncrZoomState, as SOCOM 1's at 0x24DF40); its head is SOCOM 1's word for word, offsets moved: the byte enum at 0x200 compared, the old one stored at 0x201, the new at 0x200, 1 at 0x202 (SOCOM 1's m_zoomstate, m_zoomstate_prev, m_zoomstate_echo at 0x160-0x162); the seed's cut (0x5448f8): jal target of OVL1's DNAS client, which calls DNAS.BIN loaded in the OVL2 slot (README)
-0x00544B60 0xC0 func_00544B60  # OVL2
+0x00544B60 0xC0 ResetTargetsSeen__10CZSealBodyFv  # OVL2; ours (new in SOCOM II; seal.cpp, after SetCurZoomState): SetCurZoomState calls it twice; for a player (m_control's IsPlayer) every CTarget of m_targets (0xD0, 48-byte elements) has bit 9 of its flags cleared and m_visibility (0x18) zeroed -- the SEAL lane, round 9
 0x00544C20 0xC CurrentPickupSecondary__10CZSealBodyFv  # OVL2; s1:order (seal.cpp: after the zoom states, before CurrentPickup, as SOCOM 1's); FindPickup of m_control's secondary pickup id (SOCOM 1's 0x14C, now 0x150), tail-called without SOCOM 1's null test
 0x00544C30 0xC CurrentPickup__10CZSealBodyFv  # OVL2; s1:order (after CurrentPickupSecondary); FindPickup of m_control's pickup id (SOCOM 1's 0x148, now 0x14C)
 0x00544C40 0x18 CompassAnchor_MPBase__10CZSealBodyFP14CCompassAnchor  # OVL2; s1:order (SOCOM 1's CompassAnchor_Hostage, the one before it, is gone); the anchor at 0xEC4 (SOCOM 1's 0xDB8) swapped in, whether there was none returned
@@ -9982,7 +9982,7 @@
 0x005455D0 0x80 func_005455D0  # OVL2
 0x00545650 0xF8 func_00545650  # OVL2
 0x00545750 0x13C func_00545750  # OVL2; size 0x13C (the seed split it at 0x545800, the delay slot of its jal to 0x544D60: the rest runs on its saved s0-s3 and pops its 80-byte frame); the seed's cut (0x545800): jal target of OVL1's DNAS client, which calls DNAS.BIN loaded in the OVL2 slot (README)
-0x00545890 0x8 func_00545890  # OVL2
+0x00545890 0x8 GetStats__10CZSealBodyFv  # OVL2; ours (seal.cpp's stats stretch): the SEAL's address plus 0x58C, CZSealBody::m_stats (SOCOM 1's m_stats, right before m_accuracy); 0x545D80 calls it through the member pointer at 0x64FD38/0x64FD58 -- the SEAL lane, round 9
 0x005458A0 0x114 func_005458A0  # OVL2
 0x005459C0 0x64 func_005459C0  # OVL2
 0x00545A30 0xDC func_00545A30  # OVL2
@@ -10204,13 +10204,13 @@
 0x005629B0 0x58 func_005629B0  # OVL2
 0x00562A10 0xB4 func_00562A10  # OVL2
 0x00562AD0 0xA0 SetupAnimations__11CSealCtrlAiFv  # OVL2; s1:calls (CSealCtrlAi::OnMissionStart calls it first, where SOCOM 1's calls SetupAnimations__11CSealCtrlAiFv) -- the SEAL lane, round 4
-0x00562B70 0x110 func_00562B70  # OVL2
+0x00562B70 0x110 DoSetStance__11CSealCtrlAiF11SEAL_STANCE  # OVL2; s1:callee by hand (SetStance's tail call, as SOCOM 1's SetStance calls DoSetStance; compares the stance at 0x278 first, returns a bool) -- the SEAL lane, round 9
 0x00562C80 0x33C func_00562C80  # OVL2
-0x00562FC0 0x84 func_00562FC0  # OVL2
-0x00563050 0xB0 func_00563050  # OVL2
-0x00563100 0xA0 func_00563100  # OVL2
-0x005631A0 0xC func_005631A0  # OVL2
-0x005631B0 0xE4 func_005631B0  # OVL2
+0x00562FC0 0x84 InStance__11CSealCtrlAiF11SEAL_STANCEb  # OVL2; ours (new in SOCOM II): CAiSFollow::OnSignal and 0x591520 ask it; without the flag the stance at 0x278 compared, with it CZSealBody::GetStanceFromState of 0x58A720(body, the byte at 0x6502D0) -- the SEAL lane, round 9
+0x00563050 0xB0 ChangeStanceDelayed__11CSealCtrlAiF11SEAL_STANCE11SEAL_STANCEf  # OVL2; ours (new in SOCOM II, SetStanceDelayed's twin before it): when the stance (0x278) or the asked one (0x279) is the first, the second asked with the delay; CAiSHold::Tick, CAiSPathRecover::OnSignal call it -- the SEAL lane, round 9
+0x00563100 0xA0 SetStanceDelayed__11CSealCtrlAiF11SEAL_STANCEf  # OVL2; s1:calls by hand (SOCOM 1's SetStanceDelayed__11CSealCtrlAiF11SEAL_STANCEf: a -1 delay drawn at random, the asked stance and its delay stored; SOCOM II's at 0x279/0x280, 0.25 + (1.2 - 0.25) * r) -- CSealCtrlAi::OnCommand calls it three times -- the SEAL lane, round 9
+0x005631A0 0xC SetStance__11CSealCtrlAiF11SEAL_STANCE  # OVL2; s1:calls by hand (CTStance::Begin calls it where SOCOM 1's calls SetStance; it tail-calls 0x562B70 as SOCOM 1's SetStance calls DoSetStance), after storing the stance at 0x279 and clearing 0x280 -- the SEAL lane, round 9
+0x005631B0 0xE4 SetDesiredStance__11CSealCtrlAiF11SEAL_STANCEfb  # OVL2; ours (new in SOCOM II; seal_ai.cpp): CTStance::Begin calls it with the command's stance, true and CAiTimer::infinite, End with (prone, true, 0); sets the body's byte at 0x375 and restarts the AI's CAiTimer at 0x364 when the stance is prone, the target at 0x67C is held with bit 9 of 0x6A8, or forced -- the SEAL lane, round 9; (the float second: the prologue copies the parameters in reverse declaration order, mov.s first)
 0x005632A0 0x1C8 func_005632A0  # OVL2
 0x00563470 0x734 func_00563470  # OVL2
 0x00563BB0 0x8 func_00563BB0  # OVL2
@@ -10236,7 +10236,7 @@
 0x00567340 0x10 func_00567340  # OVL2; s1~ SetThrottle__11CEntityCtrlFUif (one of 2 out-of-line copies of an inline, by s1:vtable); ovl-copy: SetThrottle__11CEntityCtrlFUif (OVL2's copy of the inline; slot 0x20 of the OVL2 controllers' tables)
 0x00567350 0x33C CreepTick__11CSealCtrlAiFf  # OVL2; slot 0x88 of __vt__11CSealCtrlAi (CSealCtrl's CreepTick slot, 0x566DC0 in the base)
 0x00567690 0x1AC func_00567690  # OVL2
-0x00567840 0xA4 func_00567840  # OVL2
+0x00567840 0xA4 StopThrottles__11CSealCtrlAiFb  # OVL2; ours (new in SOCOM II): CSealCtrlAi::OnCommand and CAiSSuspended::OnSignal call it; SetThrottle (slot 0x20) with 0 for axes 1, 2, 0, 3, then unless the flag is set the four throttles at 8-0x14 zeroed in the same order -- the SEAL lane, round 9
 0x005678F0 0x10 SetThrottle__11CSealCtrlAiFUif  # OVL2; slot 0x20 of __vt__11CSealCtrlAi (CEntityCtrl's SetThrottle slot); a float array at 0x254 indexed
 0x00567900 0x1C24 func_00567900  # OVL2
 0x00569530 0x14 func_00569530  # OVL2
@@ -10263,13 +10263,13 @@
 0x0056C340 0x208 func_0056C340  # OVL2
 0x0056C550 0x698 func_0056C550  # OVL2
 0x0056CBF0 0x49C SetAiMode__11CSealCtrlAiF7AI_MODE  # OVL2; s1:calls by hand (CSealCtrlAi::OnMissionEnd calls it with 2 at the place SOCOM 1's calls SetAiMode__11CSealCtrlAiF7AI_MODE, last, after ClearAiState and the anim's Stop; OnMissionEnd byte-exact against it)
-0x0056D090 0x30 func_0056D090  # OVL2
+0x0056D090 0x30 RestoreAiMode__11CSealCtrlAiFv  # OVL2; ours (new in SOCOM II): CTHold::End calls it where SOCOM 1's called SetAiMode; SetAiMode with the signed byte at 0x3F5, then 1 stored there -- the SEAL lane, round 9
 0x0056D0C0 0x1E8 func_0056D0C0  # OVL2
 0x0056D2B0 0x1A0 func_0056D2B0  # OVL2
 0x0056D450 0xD4 func_0056D450  # OVL2
 0x0056D530 0x170 func_0056D530  # OVL2
 0x0056D6A0 0x1EC func_0056D6A0  # OVL2
-0x0056D890 0x88 func_0056D890  # OVL2
+0x0056D890 0x88 SetAiBit2__11CSealCtrlAiFb  # OVL2; ours: bit 2 of 0x264 (zseal.h's m_aibit2, the kit lane's reading) set from the argument, cleared when the SEAL's team word has bit 17 or 26 or its kit has no current item -- the SEAL lane, round 9
 0x0056D920 0x178 SetGoalDir__9CSealCtrlF9GOAL_TYPEPC6CPnt3Db  # OVL2; s1:calls by hand (SetGoalPos and ClearGoal call it with (type, 0, false) where SOCOM 1's call SetGoalDir__9CSealCtrlF9GOAL_TYPEPC6CPnt3Db; the row before SetGoalPos as SOCOM 1's)
 0x0056DAA0 0xF4 SetGoalPos__9CSealCtrlF9GOAL_TYPEPC6CPnt3Df  # OVL2; s1:order by hand (between SetGoalDir and ClearGoal as SOCOM 1's SetGoalPos at 0x267380; its code SOCOM 1's word for word with the goal fields 8 bytes on)
 0x0056DBA0 0xF8 SetGoalPos__9CSealCtrlF9GOAL_TYPERC9CAiMapLocf  # OVL2; new in SOCOM II: a map cell's centre (AiMaps.GetCellCenter) handed to the point's SetGoalPos, which it inlines -- the overload's name ours

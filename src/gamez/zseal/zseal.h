@@ -94,6 +94,8 @@ public:
      * OVL2 0x5C8870, 0x5BDA10 -- both const in SOCOM II, kit.h's) */
     int GetItemIndex(EQUIP_ITEM item) const;
     bool ItemHasAmmo(int index) const;
+    /* the item in hand (kit.h's: const in SOCOM II; OVL2 0x5C3780) */
+    class CZFTSWeapon *GetCurItem() const;
 
     unsigned int m_0;
 };
@@ -163,6 +165,14 @@ public:
     unsigned int m_0;   // 0x0
     virtual void IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);
     virtual bool AllowCommand(CZSealBody *seal, FT_COMMAND cmd, void *data);   /* +0xC (SOCOM 1's) */
+
+    unsigned char _8[0x9c - 0x8];
+    /* the squad's current order: its kind a byte at 8 (a kill by the local player under order 19
+     * counts twice: 0x545290; the names ours) */
+    struct CSealUnitOrder {
+        unsigned char _0[8];
+        unsigned char m_8;
+    } *m_9c;   // 0x9c
 };
 
 /* the network (SOCOM II's theNetwork at 0x45A0C0: SOCOM 1's flags at 8 and 9, the states lane's
@@ -182,7 +192,9 @@ extern CZNetwork theNetwork;
 
 class CNetGameState {
 public:
-    unsigned char _0[0xd2];
+    unsigned char _0[0x70];
+    CValve *m_70;   // 0x70: a valve each kill steps (0x545290; the name ours)
+    unsigned char _74[0xd2 - 0x74];
     unsigned char m_ghost;   // 0xd2
     unsigned char _d3[0xdc - 0xd3];
     unsigned char m_dc;   // 0xdc: a SEAL's death sends no squad order unless set (the name ours)
@@ -269,6 +281,12 @@ public:
     /* the MP bomb's node taken out of the world and deleted (new in SOCOM II, the name ours:
      * OVL2 0x542180 touches only m_mpbombnode; Close inlines it) */
     static void DeleteMPBombNode();
+    /* the pickups' tick in an online game, TickTimers' counterpart (CMission::Tick calls one or the
+     * other with the player's place, ftsNetworkGameUninit this one with none): no time runs out,
+     * only the MP bomb's node is deleted when flagged (OVL2 0x5423E0, new in SOCOM II; the names
+     * ours) */
+    static void NetTick(const CPnt3D *pos, float dT);
+    static bool m_deletempbomb;   // OVL1 bss 0x44D4A8 (between m_mpbombnode and m_isOpen)
     unsigned int GetPickupNetEntityID();
     const CPnt3D *GetPosW() const;
     void SetVisibleByUnit(unsigned int unit);
@@ -566,10 +584,15 @@ public:
     int m_270;   // 0x270: a count 0x56D450 sets with the cell it finds (the names ours)
     void *m_274;   // 0x274: that cell
     SEAL_STANCE m_stance;   // 0x278 (SOCOM 1's 0x285)
+    SEAL_STANCE m_stance_asked;   // 0x279: the stance SetStance was last asked for (the names ours)
     float m_stance_delay;   // 0x27c (SOCOM 1's 0x288)
-    unsigned char _280[0x3f4 - 0x280];
+    float m_280;   // 0x280: the delay before the asked stance is taken (cleared by SetStance)
+    unsigned char _284[0x364 - 0x284];
+    CAiTimer m_stance_timer;   // 0x364: restarted with each desired stance (0x5631B0; the name ours)
+    unsigned char _370[0x3f4 - 0x370];
     unsigned char m_3f4;   // 0x3f4: a mode (7 keeps the AI-map collision off; the name ours)
-    unsigned char _3f5[0x41c - 0x3f5];
+    AI_MODE m_3f5;   // 0x3f5: the mode RestoreAiMode returns to, then 1 (a byte enum, copied with lb; the name ours)
+    unsigned char _3f6[0x41c - 0x3f6];
     /* the state on top of the stack (SOCOM 1's; OVL2 0x5F5FD0, 0x5F6010, the AI-states lane's
      * seal_aistate.cpp defines them -- which is const by SOCOM 1's order) */
     CAiStateStack m_stateStack;   // 0x41c (SOCOM 1's 0x324; 0x20 bytes in SOCOM II)
@@ -592,7 +615,9 @@ public:
     float m_674;   // 0x674: a range, and its square
     float m_678;   // 0x678
     unsigned char m_67c[4];   // 0x67c: an object the state CAiSPursue tests (0x60A850)
-    unsigned char _680[0x6f4 - 0x680];
+    unsigned char _680[0x6a8 - 0x680];
+    unsigned int m_6a8;   // 0x6a8: the target's flags (bit 9 lets a held target interrupt: the kit lane)
+    unsigned char _6ac[0x6f4 - 0x6ac];
     /* a range and its goal, set together unless the range stands at 42 (0x570D90; the names ours) */
     float m_6f4;   // 0x6f4
     float m_6f8;   // 0x6f8
@@ -637,6 +662,33 @@ public:
      * task's own arguments (SOCOM 1's; OVL2 0x561F00) */
     bool SetupAnimations();
     bool ActivateEx(SEAL_TASK task, bool b, ...);
+    /* the stance the body is to take, set when prone, when a target is held with its bit 9, or
+     * when forced, its timer restarted with the delay (OVL2 0x5631B0, new in SOCOM II: CTStance's
+     * Begin and End call it; the name ours) */
+    void SetDesiredStance(SEAL_STANCE stance, float delay, bool force);
+    /* a stance taken: remembered, the word at 0x280 cleared, then DoSetStance (SOCOM 1's SetStance
+     * and DoSetStance: CTStance::Begin calls the first, which tail-calls the second; OVL2 0x5631A0,
+     * 0x562B70) */
+    bool SetStance(SEAL_STANCE stance);
+    bool DoSetStance(SEAL_STANCE stance);
+    /* the mode saved at 0x3F5 set again, the saved one made 1 (OVL2 0x56D090, new in SOCOM II:
+     * CTHold::End calls it where SOCOM 1's called SetAiMode; the name ours) */
+    void RestoreAiMode();
+    /* a stance asked for after a delay, -1 for a random one of 0.25 to 1.2 seconds (SOCOM 1's
+     * SetStanceDelayed; OVL2 0x563100); the same when the SEAL stands, or was asked to stand, in a
+     * given stance (OVL2 0x563050, new in SOCOM II; the name ours) */
+    bool SetStanceDelayed(SEAL_STANCE stance, float delay);
+    /* the throttles let go: each set to zero through SetThrottle and, unless kept, zeroed where they
+     * are stored (OVL2 0x567840, new in SOCOM II: CSealCtrlAi::OnCommand and CAiSSuspended::OnSignal
+     * call it; the name ours) */
+    void StopThrottles(bool keep);
+    /* whether the SEAL is in a stance: the AI's own, or the one its body's state stands for (OVL2
+     * 0x562FC0, new in SOCOM II: CAiSFollow::OnSignal asks it; the name ours) */
+    bool InStance(SEAL_STANCE stance, bool fromState);
+    /* the bit 2 at 0x264 set, never for a SEAL whose team has bit 17 or 26 or that holds no item
+     * (OVL2 0x56D890: CAiSPlan::Tick and CAiState::Signal call it; the name ours) */
+    void SetAiBit2(bool on);
+    bool ChangeStanceDelayed(SEAL_STANCE from, SEAL_STANCE to, float delay);
     virtual void OnMissionStart();
     /* the valves: a name for each (inline everywhere in SOCOM II: its three callers expand it),
      * the valve of a name, the valve (SOCOM 1's; OVL2 0x574730, 0x5621C0) */
@@ -739,6 +791,17 @@ public:
     float m_factor;   // 0x8 (Factor)
 };
 
+/* the SEAL's stats (SOCOM 1's DWARF: CSealStats, 0x54 bytes of ints; SOCOM II's counters are
+ * unsigned shorts, 0x48 bytes: CZSealBody's m_stats at 0x58C ends where m_accuracy starts) -- the
+ * counters by halfword offset, as the events step them (seal.cpp) */
+class CSealStats {
+public:
+    unsigned short m_count[0x3c / 2];   // 0x0
+    short m_score;   // 0x3c: the MVP score (SOCOM 1's m_sMvpScore, a short there too)
+    unsigned short m_count2[3];   // 0x3e
+    float m_hit_percent;   // 0x44 (SOCOM 1's 0x28)
+};
+
 /* the SEAL (SOCOM 1's DWARF: CZSealBody : CEntity, CBody, 0x1140 bytes; SOCOM II's CBody base at
  * 0x170, after its 0x170-byte CEntity, the SEAL's own members from 0x200 -- the constructor at
  * 0x553EA0 builds the CBody at 0x170 and stores the second table there) -- only what the written
@@ -752,6 +815,35 @@ public:
     CZSealBody(zdb::CNode *node, CCharacterType *type);
     static void PostCreateSeal(CZSealBody *seal, CSealCtrl *ctrl);
     static void NetworkPlayerCreate();
+    /* the life the network reports set: a remote SEAL coming back up from 2 or 3 is marked for
+     * its respawn (OVL2 0x544210, new in SOCOM II: IncrementalUpdateRemoteSeal calls it; the name
+     * ours) */
+    void SetNetLife(unsigned char life);
+    /* a player's targets forgotten as seen (OVL2 0x544B60, new in SOCOM II: SetCurZoomState calls
+     * it; the name ours) */
+    void ResetTargetsSeen();
+    /* the SEAL's stats (OVL2 0x545890: the stats events reach a teammate's through it, by member
+     * pointer; the name ours) */
+    class CSealStats *GetStats();
+    /* the charges set down that the SEAL comes near set off (OVL2 0x543930, new in SOCOM II: Tick
+     * calls it; the name ours) */
+    void CheckProximityExplosives();
+    /* the SEAL's own compass marker made, once, of a kind (4 and 5 a friend's, for the player's
+     * team; 12 "ABLE", 13 "BRAVO"), named when a name is given; and a friend's marker's four points,
+     * locked offline (OVL2 0x5434B0, 0x543680, new in SOCOM II: CRemoteCtrl::SetAiNetState and the
+     * AI's 0x573130 call the first; the names ours) */
+    CCompassAnchor *CreateCompassAnchor(int type, const char *name);
+    void AddFriendAnchorPoints(CCompassAnchor *anchor);
+    /* thermal vision: the turret the SEAL works (the entity given, or its own at 0xEB8) if it is
+     * one; whether the SEAL sees thermally -- the goggles (item 195) when it works nothing, the
+     * turret's thermal scope when it works one; whether it works a turret with that scope; the
+     * turret's nodes given the value and its scope's look set (OVL2 0x5433C0, 0x5432F0, 0x543200,
+     * new in SOCOM II: CameraZoom::HandleNewZoom asks them; the names ours) */
+    inline class CTurret *GetTurret(CEntity *e);
+    inline class CTurret *GetTurret();
+    bool HasThermal(CEntity *e);
+    bool TurretHasThermal();
+    void UpdateTurretScope(float f);
     /* another console's SEAL made: its client index, entity id, name, vehicle, character type, a
      * word of flags (SOCOM 1's took a byte, the type's number: SOCOM II tests the bits 17 and 28) and
      * its packed weapons (SOCOM 1's; OVL2 0x599690) */
@@ -905,7 +997,8 @@ public:
     CZBodyPart *m_root;   // 0x2e8 (SOCOM 1's 0x26c)
     unsigned char _2ec[0x374 - 0x2ec];
     SEAL_STATE m_desiredState;   // 0x374 (SOCOM 1's 0x304; the HUD's pose bitmap reads it)
-    unsigned char _375[0x3b0 - 0x375];
+    SEAL_STANCE m_desiredStance;   // 0x375: the stance the AI asks for (0x5631B0; the name ours)
+    unsigned char _376[0x3b0 - 0x376];
     void *m_select;   // 0x3b0: a TASK_SELECT (SOCOM 1's 0x318), the AI's tasks' argument
     unsigned char _3b4[0x400 - 0x3b4];
     zdb::IntersectStruct m_last_altitude;   // 0x400 (SOCOM 1's 0x320)
@@ -917,28 +1010,36 @@ public:
     class AnimSet *m_animset;   // 0x528 (SOCOM 1's 0x45c)
     unsigned char _52c[0x534 - 0x52c];
     AnimType m_curblend;   // 0x534: the anim type on top of the blends (SOCOM 1's short at 0x464)
-    unsigned char _536[0x5b0 - 0x536];
-    unsigned short m_5b0;   // 0x5b0: two of the stats' counters (the CQB attack adds 2 and 1; the
-    unsigned char _5b2[0x5b8 - 0x5b2];   //  names ours)
-    unsigned short m_5b8;   // 0x5b8
-    unsigned char _5ba[0x5d4 - 0x5ba];
+    unsigned char _536[0x58c - 0x536];
+    /* (SOCOM 1's m_stats, 0x4c0, right before m_accuracy as here: the stats' events step its
+     * counters -- the CQB attack two of them -- and 0x545890 returns its address) */
+    CSealStats m_stats;   // 0x58c
     CAccuracy m_accuracy;   // 0x5d4 (SOCOM 1's 0x514: PerturbAimVector reads it)
     CZKit m_kit;   // 0x5e0 (SOCOM 1's 0x520)
     unsigned char _5e4[0xeb0 - 0x5e4];
     struct CAdrenaline *m_adrenaline;   // 0xeb0 (SOCOM 1's 0xdac: Adrenaline returns it)
     unsigned char _eb4[0xeb8 - 0xeb4];
-    int m_eb8;   // 0xeb8: 0x5A8850 tests it first (the name ours)
+    /* the entity the SEAL works -- a turret when its type is 3 (0x543200-0x5433C0); 0x5A8850 tests
+     * it first (the name ours) */
+    CEntity *m_eb8;   // 0xeb8
     unsigned char _ebc[0xec0 - 0xebc];
     CCompassAnchor *m_mpbomb_anchor;   // 0xec0 (SOCOM 1's 0xdb4)
     CCompassAnchor *m_mpbase_anchor;   // 0xec4 (SOCOM 1's 0xdb8)
-    unsigned char _ec8[0xed0 - 0xec8];
+    /* the SEAL's own marker on the compass ("FRIENDLY", "ABLE", "BRAVO"; 0x5434B0 makes it once --
+     * new in SOCOM II, the name ours) */
+    CCompassAnchor *m_compass_anchor;   // 0xec8
+    unsigned char _ecc[0xed0 - 0xecc];
     unsigned int m_action_available;   // 0xed0: a bit per action (SOCOM 1's ActionAvailableMask word, 0xdc0)
     unsigned char _ed4[0xee0 - 0xed4];
     float m_wep_upT;   // 0xee0 (SOCOM 1's 0xdd0)
     unsigned char _ee4[0xf74 - 0xee4];
     /* the weapon's state, bit 4 a flag GetWeaponState masks off (SOCOM 1's m_weapon_state, 0xe54) */
     unsigned int m_weapon_state;   // 0xf74
-    unsigned char _f78[0xf88 - 0xf78];
+    unsigned char _f78[0xf7a - 0xf78];
+    /* the SEAL's life as the network reports it: 2 and 3 down, 1 up again (0x544210 sets it;
+     * the names ours) */
+    unsigned char m_netlife;   // 0xf7a
+    unsigned char _f7b[0xf88 - 0xf7b];
     float m_f88;   // 0xf88: a speed (0x5857E0 refuses a SEAL in water above 8.5; the name ours)
     unsigned char _f8c[0xfb0 - 0xf8c];
     SEAL_DEATH_TYPE m_deathType;   // 0xfb0 (SOCOM 1's 0xea4)
@@ -948,7 +1049,8 @@ public:
     unsigned int m_lastkiller_id;   // 0xfbc: the killer's entity id (SOCOM 1's 0xeb4)
     unsigned char _fc0[0xfc8 - 0xfc0];
     int m_ClientIndex;   // 0xfc8 (SOCOM 1's 0xeb8: CreateRemoteSeal stores its first argument in both)
-    unsigned char _fcc[0xfd0 - 0xfcc];
+    unsigned char _fcc[0xfcf - 0xfcc];
+    unsigned char m_needs_respawn;   // 0xfcf (SOCOM 1's 0xec5, the byte before m_stunned)
     /* SOCOM 1's m_stunned, m_full_update_time and m_movespeedmod (0xec6, 0xec8, 0xecc there) in the
      * same order: HandleStunDamage sets the byte, CreateRemoteSeal zeroes the time and sets the
      * modifier to 1 */
