@@ -58,7 +58,11 @@ struct CKitBody {
     CPnt3D m_velW;   // 0x38: CEntity's world velocity (the AI's accuracy asks whether it moves)
     unsigned char _44[0xc0 - 0x44];
     CKitCtrl *m_control;   // 0xc0
-    unsigned char _c4[0x200 - 0xc4];
+    unsigned char _c4[0xe1 - 0xc4];
+    unsigned char _e1 : 4;   // 0xe1
+    unsigned char m_alive : 1;   // bit 4: CEntity's alive bit
+    unsigned char _e1_5 : 3;
+    unsigned char _e2[0x200 - 0xe2];
     signed char m_200;   // 0x200: the current item's zoom class (binoculars 4, scopes 5 and up)
 };
 
@@ -124,6 +128,28 @@ public:
      * SOCOM 1's WillFireWeapon did it inline: the name ours -- and 0x5C09F0, SOCOM 1's) */
     int GetShotCount();
     float GetFireDelay();
+    /* the wait before the next shot set, -1 for the item in hand's own: its second wait when asked,
+     * else its first -- the weapons' shared record told (OVL2 0x5C32B0, new in SOCOM II: CSealCtrl's
+     * PreTick and 0x5C5340 call it; the name ours) */
+    void SetFireDelay(float delay, bool alt);
+    /* the hand's fire mode slot (0 or 1, by bit 18) set to a mode, the mode kept, and -- the body
+     * alive -- the slot's item kind noted (OVL2 0x5C48B0, new in SOCOM II: CZSealBody::ReCreate
+     * calls it; the name ours) */
+    void SetHandFireMode(int mode);
+    /* the hand's slot (inline; the names ours): a signed byte enum assigned in an if/else -- the
+     * target's `li 1; movz` and sign extension; `bit ? 1 : 0` (any type) folds to an sltu, and the
+     * enum's ternary branches */
+    enum HAND_SLOT { HAND_NONE = -1, HAND_FIRST = 0, HAND_SECOND = 1 };
+    HAND_SLOT HandSlot() const
+    {
+        HAND_SLOT h;
+
+        if (m_second_hand)
+            h = HAND_SECOND;
+        else
+            h = HAND_FIRST;
+        return h;
+    }
     /* the sniper's kick begun: the baseline taken, its distance drawn (OVL2 0x5B91C0, new in SOCOM
      * II: the name ours) */
     void StartSniperKick();
@@ -280,7 +306,10 @@ public:
     unsigned int m_bit13 : 1;   // new in SOCOM II
     unsigned int m_current_requested_ammo : 1;   // bit 14 (SOCOM 1's bit 13)
     unsigned int m_heartbeat_enabled : 1;
-    unsigned int m_unused : 16;
+    unsigned int m_bit16 : 1;   // new in SOCOM II (the names ours)
+    unsigned int m_alt_firedelay : 1;   // bit 17: the fire delay the item's second wait (0x5C32B0)
+    unsigned int m_second_hand : 1;   // bit 18: the hand's fire mode slot 1, not 0 (0x5C48B0)
+    unsigned int m_unused : 13;
     bool m_hotswap;   // 0x4: new in SOCOM II, CWeaponSel::CheckHotSwap's (the name ours)
     unsigned char _5[0x28 - 0x5];
     float m_sniper_posx;   // 0x28 (SOCOM 1's 0x14)
@@ -303,7 +332,9 @@ public:
     int m_currentmag[30];   // 0x684 (SOCOM 1's 0x670)
     int m_firemode[30];   // 0x6fc (SOCOM 1's 0x6e8): read as a FIREMODE, its low byte
     void *m_associatedgear[30];   // 0x774 (SOCOM 1's CCharacterGear *, 0x760): the item's gear
-    unsigned char _7ec[0x810 - 0x7ec];
+    int m_hand_firemode;   // 0x7ec: the mode SetHandFireMode was last given (new; the names ours)
+    EQUIP_ITEM m_hand_item;   // 0x7f0: the hand slot's item kind
+    unsigned char m_iteminuse[30];   // 0x7f1 (SOCOM 1's 0x7d8: 0x5B9A00 closes it up with the items)
     int m_cur_zoom;   // 0x810 (SOCOM 1's 0x7f8)
     unsigned char _814[0x820 - 0x814];
     float m_fire_delay;   // 0x820 (SOCOM 1's 0x804)

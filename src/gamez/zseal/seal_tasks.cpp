@@ -47,6 +47,9 @@ bool test(const T &a, TEST_OP op, const T &b)
 /* the two instances, explicit until their caller (0x5D4770, ai::PARAM's tick) is written */
 template bool ai::test<int>(const int &, ai::TEST_OP, const int &);
 template bool ai::test<float>(const float &, ai::TEST_OP, const float &);
+/* and ai::_max over bytes (OVL2 0x5DEE70: 0x5D4770 calls it on a byte it computed and the controller's
+ * byte at 0x5D0, its result read with lbu -- the copy after the two tests, as their tail) */
+template const unsigned char &ai::_max<unsigned char>(const unsigned char &, const unsigned char &);
 
 /* the reader's queries (zrdr.h's, which declares a _zrdr of its own: zanim.h's here) */
 _zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);

@@ -45,6 +45,12 @@ CZWeapon *func_003C4B40(CZWeaponList *list, EQUIP_ITEM item);
 bool func_005BD7E0(CZKit *kit);
 /* a controller's word at 0x11C cleared (OVL2 0x592D40, the SEAL lane's row) */
 void func_00592D40(CKitCtrl *ctrl);
+/* a weapon's two shot waits (its floats at 0x60 and 0x5C; OVL1 0x3D2C20, 0x3D2C40, unclaimed) and
+ * the weapons' shared record of a running delay: its address, value and a byte, marked set (OVL1
+ * 0x3D00D0, unclaimed) */
+float func_003D2C20(CZFTSWeapon *w);
+float func_003D2C40(CZFTSWeapon *w);
+void func_003D00D0(float *delay, float value, unsigned char flag);
 /* CSealCtrl::SetCameraZoom (OVL2 0x592C70, the SEAL lane's), CZWeapon::GetAssociatedGearName (SOCOM
  * 1's, called from the same SetItemByIndex; OVL1 0x3D2760, unclaimed) and the gear list's FindGear
  * (SOCOM 1's CCharacterGearList::FindGear, the same call; OVL2 0x53EFF0, unclaimed) on
@@ -600,6 +606,31 @@ CZFTSWeapon *CZKit::GetCurItem() const
 CZFTSWeapon *CZKit::GetItemByIndex(int index) const
 {
     return m_item[unwrap(index, FIREMODE_CURRENT)];
+}
+
+/* (OVL2 0x5C48B0) */
+void CZKit::SetHandFireMode(int mode)
+{
+    m_firemode[HandSlot()] = mode;
+    m_hand_firemode = mode;
+    if (((CKitBody *)m_body)->m_alive)
+        m_hand_item = m_item[HandSlot()] ? m_item[HandSlot()]->m_ID : m_hand_item;
+}
+
+/* (OVL2 0x5C32B0) */
+void CZKit::SetFireDelay(float delay, bool alt)
+{
+    if (delay == -1.0f) {
+        CZFTSWeapon *w = GetCurItem();
+
+        if (alt && w)
+            m_fire_delay = func_003D2C20(w);
+        else if (w)
+            m_fire_delay = func_003D2C40(w);
+    } else
+        m_fire_delay = delay;
+    func_003D00D0(&m_fire_delay, m_fire_delay, 0);
+    m_alt_firedelay = alt;
 }
 
 /* the fire delay still running (OVL2 0x5C2400, new in SOCOM II; the name ours) */

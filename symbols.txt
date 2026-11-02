@@ -11034,7 +11034,7 @@
 0x005C2670 0x414 func_005C2670  # OVL2
 0x005C2A90 0x568 func_005C2A90  # OVL2
 0x005C3000 0x2B0 func_005C3000  # OVL2
-0x005C32B0 0xB0 func_005C32B0  # OVL2
+0x005C32B0 0xB0 SetFireDelay__5CZKitFfb  # OVL2; by hand (the kit lane, round 12): a kit member (this the kit: m_fire_delay at 0x820) -- -1 takes the item in hand's own wait (its float at 0x60 when the bool is set, else at 0x5C), then hands the weapons' shared record the delay (0x3D00D0) and keeps the bool in bit 17; CSealCtrl::PreTick and 0x5C5340 call it; new in SOCOM II, the name ours; seal_kit.cpp byte-exact
 0x005C3360 0x3E0 func_005C3360  # OVL2
 0x005C3740 0x34 GetItemByIndex__5CZKitCFi  # OVL2; by hand: an item by index -- the index through 0x5C6600 (with 255), then the item array at 0xE4 (SOCOM 1's m_item at 0xD0, 0x14 on); GetCurItem (const) tail-calls it with the selected item, so it is const here
 0x005C3780 0x8 GetCurItem__5CZKitCFv  # OVL2; s1:calls by hand (the HUD lane: at SOCOM 1's call site in ZoomIn/ZoomOut; its result's type byte is compared with 11)
@@ -11051,7 +11051,7 @@
 0x005C4600 0x288 func_005C4600  # OVL2
 0x005C4890 0x8 func_005C4890  # OVL2
 0x005C48A0 0x8 func_005C48A0  # OVL2
-0x005C48B0 0xA8 func_005C48B0  # OVL2
+0x005C48B0 0xA8 SetHandFireMode__5CZKitFi  # OVL2; by hand (the kit lane, round 12): a kit member storing the mode in m_firemode[bit 18 ? 1 : 0] and at 0x7EC, then -- the body alive (0xE1 bit 4) -- that slot's item kind at 0x7F0; CZSealBody::ReCreate calls it; new in SOCOM II, the name ours; seal_kit.cpp byte-exact
 0x005C4960 0x8 func_005C4960  # OVL2
 0x005C4970 0x40 GetNumMags__5CZKitFi  # OVL2; s1:order by hand (SOCOM 1's GetNumMags: counts the item's ten magazines (0x1D4 + 40*index, SOCOM 1's 0x1C0) holding rounds)
 0x005C49B0 0x154 GetCurNumMags__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's GetCurNumMags, after GetNumMags as there: the selected item -- or, in its grenade launcher's mode (0x5BD7E0), the first item of its fire mode's kind with ammunition -- and GetNumMags inlined; 0 for none)
@@ -11262,7 +11262,7 @@
 0x005DEB10 0x198 func_005DEB10  # OVL2
 0x005DECB0 0xB8 test<i>__2aiFRCiQ22ai7TEST_OPRCi_b  # OVL2; by hand (the kit lane, round 11): a value tested against another by a byte operator (1 !=, 2 ==, 3 >, 4 <, 5 >=, 6 <=, else true: a 7-entry jump table) -- SOCOM 1's MW 2.4 inlined the same switch into CTParam::Tick; SOCOM II's 0x5D4770 calls this int instance (the template's names ours)
 0x005DED70 0x100 test<f>__2aiFRCfQ22ai7TEST_OPRCf_b  # OVL2; by hand (the kit lane, round 11): the float instance of ai::test (0x5DECB0's int one), called from the same 0x5D4770
-0x005DEE70 0x18 func_005DEE70  # OVL2; the same words as _max<Uc>__2aiFRCUcRCUc_RCUc (0x2afc40) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
+0x005DEE70 0x18 func_005DEE70  # OVL2; the same words as _max<Uc>__2aiFRCUcRCUc_RCUc (0x2afc40) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies); proven by its caller (the kit lane, round 12): ai::PARAM's tick (0x5D4770) passes it a byte it computed and the controller's byte at 0x5D0 and reads the result with lbu -- seal_tasks.cpp's explicit instance byte-exact; ovl-copy: _max<Uc>__2aiFRCUcRCUc_RCUc
 0x005DEE90 0x2C func_005DEE90  # OVL2
 0x005DEEC0 0x4A8 func_005DEEC0  # OVL2
 0x005DF370 0x64 GetFP__10CZSealBodyFR6CPnt3D  # OVL2; s1:calls
