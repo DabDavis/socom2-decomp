@@ -26,10 +26,43 @@ static inline int GetRdrArrayInt(_zrdr *rdr, int i)
     return item ? item->Integer() : 0;
 }
 
-/* the text typed so far (0x4A0A30; a mode byte follows at 0x4A0A60) and the text the keyboard was
- * opened with (0x4A1300) */
+/* ten bitmaps with their nodes: a row of the keyboards' shared keys (the name ours: its implicit
+ * constructor and destructor, 0x398AA0 and 0x398A40, build and destroy the ten through zui_skb.cpp's
+ * CBmpWithNode copies) */
+struct CSkbBmpRow {
+    CBmpWithNode m_bmps[10];
+};   // 0x6e0 bytes
+
+/* the four rows (the name ours: the initialiser inlines the implicit constructor, __construct_array
+ * over the rows, and registers the implicit destructor 0x3989E0) */
+struct CSkbBmpRows {
+    CSkbBmpRow m_rows[4];
+};   // 0x1b80 bytes
+
+/* the keyboards' shared display (0x49ED70 on; the names ours) */
+static CSkbBmpRows s_keyRows;
+/* the text typed so far (0x4A0A30; a mode byte follows at 0x4A0A60) */
 static char s_editText[0x30];
-static std::string s_openText;
+static CBmpWithNode s_bmp0;
+static CBmpWithNode s_bmp1;
+static CBmpWithNode s_bmp2;
+static CBmpWithNode s_bmp3;
+static CBmpWithNode s_bmp4;
+static CBmpWithNode s_bmp5;
+static CBmpWithNode s_bmp6;
+static CBmpWithNode s_bmp7;
+static CSkbRect s_rect;
+static CRenderableString s_caption;
+static CSaferStr s_str0;
+static CSaferStr s_str1;
+static CSaferStr s_str2;
+static CSaferStr s_str3;
+static CSaferStr s_str4;
+static CSaferStr s_str5;
+static CSaferStr s_str6;
+/* the text the keyboard was opened with (0x4A1300) */
+static CSaferStr s_openText;
+static CSaferStr s_str8;
 
 /* the text: the edited buffer, or the one the keyboard opened with (0x3998A0 and 0x399D20 ask) */
 const char *SkbGetText(bool edited)

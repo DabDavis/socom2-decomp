@@ -7467,9 +7467,9 @@
 0x003980D0 0x220 func_003980D0  # OVL1
 0x003982F0 0x618 func_003982F0  # OVL1
 0x00398910 0xD0 func_00398910  # OVL1
-0x003989E0 0x60 func_003989E0  # OVL1
-0x00398A40 0x60 func_00398A40  # OVL1
-0x00398AA0 0x40 func_00398AA0  # OVL1
+0x003989E0 0x60 __dt__11CSkbBmpRowsFv  # OVL1; the UI lane round 9: the four rows' implicit destructor (__destroy_arr over four 0x6E0-byte rows with 0x398A40), registered by zui_skbview.cpp's initialiser for 0x49ED70; the class name ours -- byte-exact from source
+0x00398A40 0x60 __dt__10CSkbBmpRowFv  # OVL1; the UI lane round 9: a row's implicit destructor (__destroy_arr over ten CBmpWithNode with zui_skb.cpp's 0x38E490); the class name ours -- byte-exact from source
+0x00398AA0 0x40 __ct__10CSkbBmpRowFv  # OVL1; the UI lane round 9: a row's implicit constructor (__construct_array over ten CBmpWithNode with zui_skb.cpp's 0x38E620/0x38E490), the initialiser's __construct_array element constructor; the class name ours -- byte-exact from source
 0x00398AE0 0x70 func_00398AE0  # OVL1
 0x00398B50 0x5C func_00398B50  # OVL1
 0x00398BB0 0x44 func_00398BB0  # OVL1
@@ -8594,7 +8594,7 @@
 0x004036C0 0x64 func_004036C0  # OVL1 data area; a static initialiser; s1~ seal_aimoves.cpp (shape 0.50, a hint)
 0x00403730 0x34 __sinit_zui_skb.cpp  # OVL1 data area; a static initialiser; by hand (g_arrSkbs zeroed and its destructor 0x38D5C0 registered: SOCOM 1's .p__sinit_zui_skb.cpp does the same) -- zui_skb.cpp's static initialiser
 0x00403770 0x84 func_00403770  # OVL1 data area; a static initialiser
-0x00403800 0x90C func_00403800  # OVL1 data area; a static initialiser
+0x00403800 0x90C __sinit_zui_skbview.cpp  # OVL1 data area; a static initialiser; the UI lane round 9: zui_skbview.cpp's static initialiser (the file name ours): the four rows, eight CBmpWithNode, a CSkbRect, a CRenderableString and nine CSaferStr, in declaration order -- byte-exact from source
 0x00404110 0x8C func_00404110  # OVL1 data area; a static initialiser; s1~ zsnd_csndinstance.cpp (shape 0.54, a hint)
 0x004041A0 0x94 func_004041A0  # OVL1 data area; a static initialiser
 0x00404240 0x160 __sinit_veh_turret.cpp  # OVL1 data area; a static initialiser; s1:unit by hand (the wep lane: builds m_turret_def and the turret list, registers their destructors 0x3AC9E0/0x3AC960 and sets turret_debug_mask's seven bits, as SOCOM 1's __sinit_veh_turret.cpp; veh_turret.cpp's initialiser)
