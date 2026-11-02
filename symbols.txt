@@ -2701,7 +2701,7 @@
 0x00256FB8 0xC func_00256FB8  # OVL1 unaligned
 0x00256FD0 0x78 func_00256FD0  # OVL1
 0x00257050 0x178 func_00257050  # OVL1
-0x002571D0 0x144 func_002571D0  # OVL1
+0x002571D0 0x144 NewKey__Q23zar4CZARFPCc  # OVL1; s1:calls by hand (CKey::Read 0x25AF10 calls it with a null name where SOCOM 1's Read calls zar::CZAR::NewKey(const char *); zar_main.cpp's, MW code below the GCC libraries' 0x258000)
 0x00257320 0xC0 func_00257320  # OVL1
 0x002573E0 0x70 func_002573E0  # OVL1
 0x00257450 0x40 func_00257450  # OVL1
@@ -2758,7 +2758,7 @@
 0x00259B40 0x4C __ct__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FRCQ23std38__vector_pod<Ui,Q23std13allocator<Ui>>  # OVL1 ; SOCOM 1 name (its copy of the pointer vectors' implementation, the same 0x4C: zeroed, then init over the other's elements)
 0x00259B90 0x190 init<PCUi>__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPCUiPCUiQ23std20forward_iterator_tag_v  # OVL1 ; SOCOM 1 name with MW 3.0's return type (_v); the copy calls it as SOCOM 1's does
 0x00259D20 0x1C0 func_00259D20  # OVL1
-0x00259EE0 0x11C func_00259EE0  # OVL1
+0x00259EE0 0x11C FetchLIP__Q23zar4CZARFPQ23zar4CKeyPPv  # OVL1; s1:order by hand (SOCOM 1's FetchLIP 0x1DAF80, first of zar_search.cpp there as here before Fetch(CKey *, ...): dynamic_cast of the file to CBufferIO, its fread(size, void **); CRdrFile and CVisual's readers call it as SOCOM 1's do)
 0x0025A000 0x11C Fetch__Q23zar4CZARFPQ23zar4CKeyPviUi  # OVL1; s1:calls (CRdrFile::Load calls it with SOCOM 1's (key, buf, size, 0)) -- the rdr lane
 0x0025A120 0x1C4 Insert__Q23zar4CZARFPQ23zar4CKeyPCvi  # OVL1; s1:calls (CRdrFile::Insert calls it where SOCOM 1's calls zar::CZAR::Insert) -- the rdr lane
 0x0025A2F0 0x98 func_0025A2F0  # OVL1
@@ -2770,14 +2770,14 @@
 0x0025AB70 0x138 Fetch__Q23zar4CZARFPCcPi  # OVL1; s1:calls by hand (the zdb-world lane: the int fetch, at SOCOM 1's call sites in the loaders)
 0x0025ACB0 0x144 Fetch__Q23zar4CZARFPCcPb  # OVL1; s1:calls by hand (the zdb-world lane: the bool fetch, at SOCOM 1's call sites)
 0x0025AE00 0x108 FindKey__Q23zar4CKeyFPCc  # OVL1; s1:callee by hand (OpenKey(const char *) calls it on the open key where SOCOM 1's calls zar::CKey::FindKey; the same search by name)
-0x0025AF10 0x114 func_0025AF10  # OVL1
+0x0025AF10 0x114 Read__Q23zar4CKeyFPQ23zar4CZARP3CIOi  # OVL1; s1:calls by hand (SOCOM 1's CKey::Read 0x1DC1D0: called by ReadDirectory 0x258000 and by itself for each child, as SOCOM 1's; the 16-byte record, NewKey(0), the child pushed -- SOCOM II reserves first and clamps a negative count)
 0x0025B030 0x280 func_0025B030  # OVL1
 0x0025B2B0 0x8 func_0025B2B0  # OVL1
 0x0025B2C0 0x14 func_0025B2C0  # OVL1; size 0x14 (a tail call through t9; the seed ran on into the padding)
 0x0025B2E0 0x8 func_0025B2E0  # OVL1
 0x0025B2F0 0x8 func_0025B2F0  # OVL1
 0x0025B300 0x240 func_0025B300  # OVL1
-0x0025B540 0x38 func_0025B540  # OVL1
+0x0025B540 0x38 InsertKey__Q23zar4CKeyFPQ23zar4CKey  # OVL1; s1:order by hand (SOCOM 1's CKey::InsertKey 0x1DC450 after CKey::Write, as here: push_back and return the key; CreateKey 0x258740 and 0x25A2F0 call it)
 0x0025B580 0x398 func_0025B580  # OVL1
 0x0025B920 0x8 func_0025B920  # OVL1
 0x0025B930 0x8 func_0025B930  # OVL1

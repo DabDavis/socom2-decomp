@@ -22,6 +22,50 @@ struct CKeyNamed {
     const char *m_name;
 };
 
+/* a child key added at the end (SOCOM 1's inserted into a list) */
+CKey *CKey::InsertKey(CKey *key)
+{
+    push_back(key);
+    return key;
+}
+
+/* the directory record: the name's offset, the data's offset, its size, the child count */
+struct KEY_RECORD {
+    int name;
+    int offset;
+    int size;
+    int count;
+};
+
+bool CKey::Read(CZAR *zar, CIO *io, int base)
+{
+    /* the file through a copy: numbered after the parameters, it takes s1 where io would take s2
+     * (README "MW's saved-register order is a NUMBERING") */
+    CIO *file = io;
+    KEY_RECORD rec;
+
+    file->fread(&rec, sizeof(rec));
+    if (zar->m_root != this) {
+        m_name = (char *)(rec.name + base);
+        m_offset = rec.offset;
+        m_size = rec.size;
+    }
+
+    int count = rec.count;
+
+    if (count < 0)
+        count = 0;
+    if (count)
+        reserve(count);
+    while (count--) {
+        CKey *key = zar->NewKey(0);
+
+        key->Read(zar, file, base);
+        InsertKey(key);
+    }
+    return true;
+}
+
 /* a child key by name (SOCOM 1's walked a std::list) */
 CKey *CKey::FindKey(const char *name)
 {
@@ -105,6 +149,26 @@ bool CZAR::Fetch(CKey *key, void *buf, int size, unsigned int flags)
             ok = m_pFile->fseek(m_data_start + offset, 0) == m_data_start + offset;
             if (ok && size <= key->m_size)
                 ok = m_pFile->fread(buf, size) == size;
+        }
+        CloseKey(key);
+    }
+    return ok;
+}
+
+/* a key's data in place: the archive's file must be a CBufferIO, whose fread(size, &p) hands out
+ * a pointer into its buffer (SOCOM 1's; SOCOM II's seeks without the data start) */
+bool CZAR::FetchLIP(CKey *key, void **buf)
+{
+    CBufferIO *io = dynamic_cast<CBufferIO *>(m_pFile);
+    bool ok = false;
+
+    if (IsOpen() && OpenKey(key)) {
+        if (key->m_size) {
+            int offset = key->m_offset;
+
+            ok = m_pFile->fseek(offset, 0) == offset;
+            if (ok)
+                ok = io->fread(key->m_size, buf);
         }
         CloseKey(key);
     }

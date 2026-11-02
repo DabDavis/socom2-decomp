@@ -24,9 +24,15 @@ public:
     void push(CKey *key);
 };   // 0xc bytes
 
+class CZAR;
+
 class CKey : public CKeyRing {
 public:
     CKey *FindKey(const char *name);
+    /* the key and its children off the directory: a 16-byte record each, the name an offset
+     * into the string table at base (SOCOM 1's) */
+    bool Read(CZAR *zar, CIO *io, int base);
+    CKey *InsertKey(CKey *key);
 
     char* m_name;   // 0xc
     int m_size;   // 0x10
@@ -38,6 +44,8 @@ public:
     CZAR(const char *name, CIO *io);
     virtual ~CZAR();
     /* a key's data, when the key holds at least size bytes (SOCOM 1's flags argument unused) */
+    /* a key's data in place, a pointer into the CBufferIO's buffer */
+    bool FetchLIP(CKey *key, void **buf);
     bool Fetch(CKey *key, void *buf, int size, unsigned int flags);
     bool Fetch(const char *name, void *buf, int size);
     bool Fetch(const char *name, char **str);
@@ -45,6 +53,8 @@ public:
     bool Fetch(const char *name, unsigned int *value);
     bool Fetch(const char *name, int *value);
     bool Fetch(const char *name, bool *value);
+    /* a fresh key, named so (SOCOM 1's) */
+    CKey *NewKey(const char *name);
     /* a key's size by name in the open key, -1 when it has none */
     int GetSize(const char *name);
     CKey *GetOpenKey();
