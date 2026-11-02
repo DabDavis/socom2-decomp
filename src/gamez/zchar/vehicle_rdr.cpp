@@ -15,11 +15,7 @@ class CRdrFile;
 
 _zrdr *zrdr_read(const char *name, const char *file, int line);
 void zrdr_free(CRdrFile *file);
-/* the entry vector's resize, out of line (0x534320, the map's resize__Q23std72__vector_imp<16CVehicleRdrEntry,
- * ...,0>FUi); include/vector has no resize yet, so it is called through its placeholder */
-extern "C" void func_00534320(std::vector<CVehicleRdrEntry> *v, unsigned int n);
-
-extern "C" int strcasecmp(const char *, const char *);
+extern "C" float cosf(float);
 
 /* an array's item, or none: an unsigned index (zanim.h's Item takes an int, which lets MW
  * strength-reduce Open's loop -- the target recomputes &array[i] each pass; the name is ours) */
@@ -27,6 +23,99 @@ static inline _zrdr *item(_zrdr *r, unsigned int i)
 {
     return i < r->Count() ? &r->array[i] : 0;
 }
+
+/* the starts: the array's count kept to four (a `_saturate<unsigned int>` with its two literals in
+ * the function's constant pool, 0x64F9A8/0x64F9B0), though every item of the array is read -- each
+ * a direction (item 1, a number) and a location's name (item 0, a string), the name copied or
+ * emptied (new in SOCOM II: SOCOM 1's CVehicleRdr::Load read its one set in place) */
+void startvec::Load(_zrdr *rdr)
+{
+    if (rdr) {
+        int n = rdr->Count();
+
+        m_count = n;
+        _saturate(&m_count, 0u, 4u);
+        for (int i = 0; i < n; i++) {
+            _zrdr *e = item(rdr, i);
+            int dir = item(e, 1)->Int();
+            const char *name = item(e, 0)->String();
+            start &s = m_start[(unsigned int)i];
+
+            if (name)
+                strncpy(s.m_name, name, sizeof(s.m_name));
+            else
+                s.m_name[0] = 0;
+            s.m_dir = dir;
+        }
+    }
+}
+
+/* a team block: its numbers as a mask, or the first number out of range (new in SOCOM II, the name
+ * ours: the same code as fts_player.cpp's ParseTeamBlock (OVL1 0x2B34A0), a second global function
+ * -- the turret and vehicle definitions' parsers, CTRegion::Parse and OVL1's 0x2B4F40 call this one,
+ * only CTInView::Parse the other) */
+unsigned int ParseTeams(_zrdr *rdr)
+{
+    unsigned int mask = 0;
+
+    if (!rdr || rdr->type != 4)
+        return 0;
+    for (unsigned int i = 0; i < rdr->Count(); i++) {
+        _zrdr *item = rdr->Item(i);
+        int team;
+
+        if (item->type == 1)
+            team = item->integer;
+        else if (item->type == 2)
+            team = (int)item->real;
+        else
+            team = 0;
+        if (team < 0 || team > 31) {
+            mask = team;
+            break;
+        }
+        mask |= 1 << team;
+    }
+    return mask;
+}
+
+/* SOCOM 1's Merge (its demo's 0x1A3930, before Parse as here: 0x533DB0): a field set in the first
+ * set's mask comes from it, else from the second when its mask has it, else from the first -- each
+ * an `||` (two loads: the first set's arm shared), the respawn count, an int, a nested ternary (its
+ * three loads) */
+void AI_PARAMS::Merge(const AI_PARAMS &a, const AI_PARAMS &b)
+{
+    accuracy = (a.mask & 0x1) || !(b.mask & 0x1) ? a.accuracy : b.accuracy;
+    courage = (a.mask & 0x2) || !(b.mask & 0x2) ? a.courage : b.courage;
+    surrender = (a.mask & 0x4) || !(b.mask & 0x4) ? a.surrender : b.surrender;
+    stealth = (a.mask & 0x8) || !(b.mask & 0x8) ? a.stealth : b.stealth;
+    visual_range = (a.mask & 0x20) || !(b.mask & 0x20) ? a.visual_range : b.visual_range;
+    visual_fov = (a.mask & 0x40) || !(b.mask & 0x40) ? a.visual_fov : b.visual_fov;
+    visual_sens = (a.mask & 0x10) || !(b.mask & 0x10) ? a.visual_sens : b.visual_sens;
+    aware_decay = (a.mask & 0x80) || !(b.mask & 0x80) ? a.aware_decay : b.aware_decay;
+    training = (a.mask & 0x100) || !(b.mask & 0x100) ? a.training : b.training;
+    thip_range = (a.mask & 0x200) || !(b.mask & 0x200) ? a.thip_range : b.thip_range;
+    respawn = (a.mask & 0x400) ? a.respawn : (b.mask & 0x400) ? b.respawn : a.respawn;
+    target_delay = (a.mask & 0x800) || !(b.mask & 0x800) ? a.target_delay : b.target_delay;
+    target_discipline = (a.mask & 0x1000) || !(b.mask & 0x1000) ? a.target_discipline : b.target_discipline;
+    mask = a.mask | b.mask;
+}
+
+/* the aiming cone's cosine, blended from 10 degrees to 2 by the discipline (the cosines guarded
+ * function-local statics: cosf is no constant) */
+float AI_PARAMS::GetAimConeCos() const
+{
+    static float wide = cosf(0.17453292f);
+    static float narrow = cosf(0.034906585f);
+
+    return wide * (1.0f - target_discipline) + narrow * target_discipline;
+}
+
+/* the entry vector's resize, out of line (0x534320, the map's resize__Q23std72__vector_imp<16CVehicleRdrEntry,
+ * ...,0>FUi); include/vector has no resize yet, so it is called through its placeholder */
+extern "C" void func_00534320(std::vector<CVehicleRdrEntry> *v, unsigned int n);
+
+extern "C" int strcasecmp(const char *, const char *);
 
 /* the vehicle file read: one entry per item of its first array, true if it had one (SOCOM 1's
  * Open handed the file to CVehicleRdr::Load; SOCOM II sizes the vector and loads each entry here).

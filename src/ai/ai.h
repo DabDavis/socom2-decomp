@@ -601,6 +601,10 @@ public:
     class line : public CAiMapLocVec, public line_data {
     };
     class lines : public std::vector<line> {
+    public:
+        /* the line that starts on a cell, none for none (new in SOCOM II, the name ours: CTMap's
+         * Tick asks the cell's map, 0x52FD90) */
+        line *Find(const CAiMapLoc &loc);
     };
 
     /* one row's run of cells (SOCOM 1's DWARF, 0xC bytes; SOCOM II keeps the run's first cell as

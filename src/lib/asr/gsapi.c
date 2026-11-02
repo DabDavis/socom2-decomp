@@ -22,11 +22,34 @@ extern void *data_0064F89C;
 extern int data_006568F8;
 
 extern int safeh_HandlesEqual(SAFEH a, SAFEH b);
+extern int ContextSetGcdData(void *ctx, void *data);
+extern int ContextSetWrdData(void *ctx, void *data);
 extern int gsapi_ContextEnableWords(void *ctx, WORDSEL w);
 extern int gsapi_ContextDisableWords(void *ctx, WORDSEL w);
 extern int gsapi_EngineEnableWords(void *eng, WORDSEL w);
 extern int gsapi_EngineDisableWords(void *eng, WORDSEL w);
 extern void *memset(void *p, int c, unsigned int n);
+
+#define GSAPI_ERR_NULL_CTX  0x80CC0089
+
+/* a context's grammar and word data handed on (2.96 makes the call a sibling call) */
+int gsapi_ContextSetGcdData(void *ctx, void *data)
+{
+    if (safeh_HandlesEqual(gGSAPI.handle, g_lhNullHandle))
+        return GSAPI_ERR_NOT_OPEN;
+    if (ctx == 0)
+        return GSAPI_ERR_NULL_CTX;
+    return ContextSetGcdData(ctx, data);
+}
+
+int gsapi_ContextSetWrdData(void *ctx, void *data)
+{
+    if (safeh_HandlesEqual(gGSAPI.handle, g_lhNullHandle))
+        return GSAPI_ERR_NOT_OPEN;
+    if (ctx == 0)
+        return GSAPI_ERR_NULL_CTX;
+    return ContextSetWrdData(ctx, data);
+}
 
 int gsapi_ContextEnableAllWords(void *ctx)
 {
@@ -69,6 +92,19 @@ int gsapi_NotifySetCallback(GSCALLBACK cb)
     if (safeh_HandlesEqual(gGSAPI.handle, g_lhNullHandle))
         return GSAPI_ERR_NOT_OPEN;
     gGSAPI.notify = cb;
+    return 0;
+}
+
+/* the 0 returned is the handle test's own (2.96 keeps it in v0). The engine accessors between
+ * (NotifySetEnergyInterval, EngineSet/GetUserData, 0x4C8490-0x4C8758) are OPEN: SOCOM 1's
+ * CheckEngineHandle inlined (an engine in gGSAPI's array, 108 bytes apart, live) comes within 11
+ * words -- the target zeroes the result before the tests and swaps the divisor's register; six
+ * shapes of the test (a result variable, one condition, early returns, a local base) do not. */
+int gsapi_GetHeapHandle(void **heap)
+{
+    if (safeh_HandlesEqual(gGSAPI.handle, g_lhNullHandle))
+        return GSAPI_ERR_NOT_OPEN;
+    *heap = gGSAPI.heap;
     return 0;
 }
 

@@ -1647,6 +1647,47 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the game states, round 17** (SetMovie and its cue sort, fts_message.cpp):
+  - a function calling trivial accessors -- even leaves -- out of line holds a big EXPLICIT-inline helper
+    MW inlines one level: the helper's callees become calls, their copies following the caller in
+    reverse order of first use (SetMovie's ReadSubtitles, 0x1EDE70-0x1EDF3C);
+  - zsys.h's inline FreeVector reached through a one-level helper is emitted with the unit's own code
+    right after its caller, and requests the deleter's clear and destructor in the tail's first round
+    (the class vector's reserve and insert then inline their temporary's teardown);
+  - a sort comparator with no store and no constructor call is a default-initialised POD local; its
+    slot below the iterators' says they were named locals built in place and declared before it;
+  - `name = f(); if (!name) name = K;` puts the copy in the branch's delay slot, a ternary branches
+    twice; an override passing its own bool argument on leaves a2 untouched at the call -- an unset
+    argument register can be a pass-through, not a missing parameter (C2DMessageString::SetString);
+  - include/vector's class vector has `reserve(n)` forwarding to __vector_imp's (0x1EDF10, a `j` to
+    0x1EF190, as clear()'s copy 0x1ED000); fts_message.cpp (ours) runs 0x2B5830-0x2B794F after
+    fts_action.cpp, as in SOCOM 1's symtab.
+- **Tells from the AI core, round 11** (FreeTables, AI_PARAMS::Merge, the character type's packing):
+  - an int counter indexing a member array (`m_start[i]`) is strength-reduced; `m_start[(unsigned
+    int)i]` keeps the target's per-pass recompute (startvec::Load);
+  - indexing `packed[n]` makes a cursor variable numbered last (s0); stepping the parameter itself
+    keeps the parameter's register (PackWeapons); pinning an inlined callee fixed its caller's
+    registers too (KorusGetPackedWeapons once PackWeapons was pinned);
+  - one counter shared by two loops gives the target's swapped counter/cursor registers in the second
+    (FreeTables) -- the opposite of the "two loops want their own counters" tell;
+  - `(a & m) || !(b & m) ? x : y` gives two loads, a nested ternary three (Merge);
+  - open: CAiMap::lines::Find 0x52FD90 (begin() before the end, registers), ResetGears 0x53F0B0 (an
+    inner loop entered through a block after the outer loop, the SortNearToFar pattern), the pod resize
+    copy 0x53AA50 (the tail's resize inlines DeleteLayers' erase whatever the declaration order).
+- **Tells from the SEALs, round 11** (RTList<ACTIVE_ANIM>'s copies, seal_env.cpp's weapon parenting, DoSetStance):
+  - in an inline helper `r = 0; if (c) r = (unsigned)f;` leaves the float-to-unsigned conversion's join
+    a block of its own (+1 nop); the ternary, if/else and early-return forms merge it (0x543B90);
+  - an `unsigned int` bitfield read through a byte-enum accessor gives the target's `andi 0xff`
+    (0x57F150); a callback's `void *` data cast through an inline is numbered after a reference
+    local, cast inline in the body the two swap saved registers (the pistol callbacks);
+  - from a `bool` function `return p ? (a || b) : false;` adds `andi 0xff`, `if (p) return a || b;
+    return false;` does not (0x5A77E0); `s = r != 0 ? s / r : 0` keeps nops around the `div.s`, the
+    if/else form drops them (0x5A56D0);
+  - in a switch case `if (!c) x = A; else {...}` puts the single assignment on the fall-through, `x =
+    A; if (c) {...}` falls into the body (DoSetStance);
+  - template members called as such (`Begin()`/`Next()`) make the first OVL2 unit in link order that
+    needs them emit the instances (seal_anim.cpp, 0x5780E0/0x578110, ovl-copy notes);
+  - zseal.h's body parts sit at SOCOM 1's offsets +0x7C (m_spinelo 0x2FC ... m_pistol 0x354).
 - **Tells from the weapons, round 10** (the weapon event callbacks, the decal arrays, vis_vu.cpp's helpers):
   - an MW `asm` function loads a global's address with `la reg, sym` (an `la` in a branch delay slot
     puts its `lui` there); `%hi()`, `@ha`, `@l` and `lo()` are all refused;
@@ -2924,7 +2965,8 @@ flag set, every function it defines scored; the probes are `build/scratch/gcc/p*
 | MAIN 0x18DB90-0x191410, 0x1A13D0-0x1AD088, 0x1B3970-0x1C4CC0, 0x1CCD78-0x1CE2A4 | Sony's SDK 2.7: libcdvd, libdma, libgraph, libipu, libkernl, libmc, libmpeg, libmrpc, libpad2, libscf, libvu0 ... | `ee-gcc2.9-991111-01-dtls13010` `-O2 -G0` (991111 compiles their C the same) | libvu0's inline asm: 32 of 32 only under the dtls13010 build, whose GNU as fills the delay slots 991111's leaves empty and encodes vsqrt as 2.96's does not (below); `memclr` is byte-exact only under 2.9-ee-991111 and its -01, a and dtls rebuilds: 990721 lacks the short loop's nops (8s), every 2.95.x fills the delay slot (2), 2.96 misses by 4, 3.2 by 7; `sceDmaGetChan` is 12s under 2.96, `sceCdSearchFile` 6s |
 | MAIN 0x191410-0x1A13D0, 0x1AD088-0x1B3970 | newlib's libc, libgcc's fp-bit, libm: the toolchain's own runtime | `ee-gcc2.96` `-O2 -G0` | `atof`, `atol`: a sibling call under a frame it no longer needs (`sd ra; ...; ld ra; j strtol`) -- 2.96's; no 2.9x or 2.95.x makes a sibling call at all (6s, 5s) |
 | OVL1 0x1E7F58-0x1E8FD4 | the microphone input (`openmic`, `getsamples`, `Sid*`, over lgAud) and Sony's libezcnf/libezctl (1.0 beta) | `ee-gcc2.96` `-O2 -G0 -fno-strict-aliasing` | found 2026-11-02, the only run outside the first ranges that saves s-registers with `sd` and never `sq`; `closemic`, `SidClose` byte-exact under 2.96 only (every other toolchain 9-13 words off); `SidGetSamples` reloads its read position after storing through `out` -- byte-exact only without strict aliasing |
-| OVL1 0x2430F0-0x248350 | the recogniser's heap (`heap_*`), lgAud (the USB headset, liblgaud 1.08.002), SCEA's libnetb/inet | `ee-gcc2.96` `-O2 -G0` | `lgAudASync`, `sceBInetControl`, func_00246CE0: 2.96 only (2.9-991111 15s/10s/6s, 2.95.3-136 15s/6/6s, 3.2 11s/9s/=) |
+| OVL1 0x2430F0-0x243840 | the recogniser's heap (`heap_*`, ScanSoft's) | `ee-gcc2.96` `-O2 -G0` **`-funroll-loops`** (the unit carries the recogniser's `-fno-strict-aliasing` too, untold) | SearchFor's loop unrolled by four: byte-exact only with the flag (without: 50s) -- round 3a |
+| OVL1 0x243840-0x248350 | lgAud (the USB headset, liblgaud 1.08.002), SCEA's libnetb/inet | `ee-gcc2.96` `-O2 -G0` | `lgAudASync`, `sceBInetControl`, func_00246CE0: 2.96 only (2.9-991111 15s/10s/6s, 2.95.3-136 15s/6/6s, 3.2 11s/9s/=) |
 | OVL1 0x248350-0x256FD0 | Nellymoser's speech codec (SaseEncVad, SaseDec) | `ee-gcc2.96` **`-O2 -G8`** | five functions byte-exact only so: their scalars and float literals are `$gp`-relative (small data in MAIN's 0x1D5300-0x1D55C0, `.lit4`); at -G0 every one misses |
 | OVL2 0x4C5400-0x50DC50 | ScanSoft's speech recogniser (asrspi\*, casr\*, mtx\*) | `ee-gcc2.96` `-O2 -G0 -fno-strict-aliasing -funroll-loops` | the loop unrolling: ContextActivateParams (below, round 2b); `casrStoreSegmentation` keeps its `short` store above the load of the next node: byte-exact only without strict aliasing, and none of the library's drafts is lost by the flag; the sibling calls -- func_004CCC50, ConstructMel, func_004F7038 -- 2.96 only (every 2.9x and 2.95.x 5s-15s); its leaf functions do not tell 2.9x, 2.95.x and 2.96 apart. `mtxConstruct` makes no sibling call because 2.96 declines one where the return types differ |
 | OVL2 0x60FB50-0x64F720 | Medius, DME and the rt_\* libraries (SCEA) | `ee-gcc2.96` `-O2 -G0` | rt_comm_get_channel, rt_memory_register_callbacks, rt_msg_client_change_state, rt_msg_set_byte: all four only under 2.96 -O2 (2.9x 5/=/9s/6, 2.95.x 4/=/10s/5, 3.2 =/5/3/=); strict aliasing stays on -- two sibling drafts of one shape (0x61E7F0, 0x61E858) match only with it: thin, one shape |
@@ -3040,16 +3082,59 @@ newlib's libm objects `libm/s_copysign.c`, `s_isinf.c`, `s_isnan.c`, `sf_copysig
 its return's slot empty after the copy into v0). With the assembler units: 222 byte-exact of the 229
 functions written (154 of them assembler), four superseding drafts that matched (GetRomName, IsT10K, iSyncDCache, iInvalidDCache: `automatch.py --emit` drops them).
 
+**Round 3a** (2026-11-02, by hand): libkernl's last five C objects -- `sdk/tlbfunc.c` (18 of 19),
+`initsys.c` (9), `libosd.c` (6, the ExecPS2 patch), `exit.c` (9), `alarm.c` (5); OVL1's
+`ovl1/lgaud.c` (16: the RPC wrappers, PrepareForReboot, the async end callbacks), `ovl1/heap.c`
+(heap_GetVersion, SearchFor); newlib from newlib's own text -- `libc/strrchr.c`, `strstr.c`,
+`strcasecmp.c`, `strncasecmp.c`, `strtok_r.c`, `rand.c` (srand, rand), `abort.c`, `assert.c`, the
+eight reentrant syscall wrappers (`closer.c` ... `writer.c`) and `strtod.c` (strtod; strtof OPEN):
+86 functions byte-exact of 88 written. What they showed:
+
+- **A static several objects define is `NAME@UNIT` in the map** (`Copy@tlbfunc`, `kCopy@exit`):
+  libkernl links five objects with static `Copy`/`kCopy`/`setup`/`GetEntryAddress` syscall
+  wrappers. A GNU object's local function `NAME` scores as the row `NAME@UNIT` (UNIT the source's
+  stem) when the map has one (`scdiff.qualify_statics`; sccheck, ccsweep and scdiff apply it); a
+  static the map names once stays bare. Drafts spell such a row `func_<VA>` (`as=` renames them).
+  Proved: master's tree scores the same rows with master's tools and these, 5,108 hand-written and
+  843 GCC-draft rows.
+- **991111's sibling call is the void-context call's only**: `InitTLB() { if (...) InitTLB32MB();
+  else _InitTLB(); }` compiles to two `j`s, the target's `return InitTLB32MB(); return _InitTLB();`
+  to jals under the frame -- the opposite of 2.96, which tail-calls a returned call.
+- **A register variable lives across calls unsaved**: InitTLB32MB keeps its index in t9 across
+  every `_SetTLBEntry` (`register int i asm ("$25")`; GCC gives a pseudo a saved register), and
+  returns it shifted. The syscall wrappers are C: `asm volatile ("li $3, N\n\tsyscall")` in a body
+  with no return statement gives the stub's four words.
+- **An inline-asm function can end without its own delay slot**: libsif's sceSifWriteBackDCache
+  ends in its asm's `jr ra; nop` and then GCC's `jr ra`, whose slot is the next object's first word;
+  the seed had cut both words into 4-byte rows (merged back: the function is 0xB0, sceSifInitRpc
+  starts at 0x1A6368, both as the demo's).
+- **OVL1's heap is ScanSoft's** (the demo links it inside the recogniser): SearchFor's search is
+  unrolled by four, byte-exact only with `-funroll-loops` (-O2 -G0: 50s). automatch's GCC_RANGES give
+  it the recogniser's flags, and the recogniser's own range gains `-funroll-loops`.
+- **newlib compiles as written**: every newlib function written from newlib's source matched as it
+  stands, its R5900 short-loop nops GNU as's; `_read_r`'s `(_ssize_t)read(...)` cast (a long from an
+  int) is newlib's own and the target's extra move. The reent wrappers use the system layer's global
+  `errno` (0x1E6640), newlib undefining the macro there. `abort` ends at a noreturn `_exit` (crt0's,
+  `Exit(0)`), where the demo's older newlib loops back.
+- **Statement shapes the vendors used**: lgAud folds the reply's device bits in two statements
+  (`devicechanged &= ~2; devicechanged |= ...`; one expression swaps the registers) and assigns
+  through a test (`if ((*hint = devicechanged) == 1)`); libkernl's kFindAddress walks its parameter
+  itself (a local copy moves the early exit), supplement_crt0 sets its semaphores in field order.
+- **Open, diagnosed in place**: InitTLB32MB (5 words: the last loop's first EntryHi is computed after
+  the exit test in the target -- a giv's preheader -- and before it here), strtof (its delay slots are
+  empty in the target; -fno-delayed-branch, -O1 and -fno-schedule-insns2 do not reproduce it).
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
-FUNCTION` tries every order of a marked block). The rest of libkernl's C objects (the thread,
-TLB-setup, initsys/ExecPS2 and alarm objects, their static `Copy`/`setup`/`GetEntryAddress`
-syscall wrappers the map leaves as `s1~` placeholders), libgraph, libipu/libmpeg, libmc, the
-newlib stdio wrappers and libgcc's fp-bit are open. Still open: the strict-aliasing setting of the
-SDK, newlib, OVL1's heap/lgAud/libnetb and the codec (no function yet tells), the 991111 rebuilds
--01 and a (no probe separates them from 991111), and the generated tier's GCC near misses, not yet
-classified as amsurvey classified MW's.
+FUNCTION` tries every order of a marked block). libkernl's thread, tty/printf and SIF objects
+(sifcmd, sifrpc, the libmrpc copy), libgraph, libipu/libmpeg, libmc, libcdvd, the rest of libscf,
+newlib's stdio wrappers and libgcc's fp-bit are open, and in OVL1 lgAud's big calls (Init, Open,
+Read/Write, the mixer, the async reads), libnetb and the codec. automatch over OVL1's three library
+ranges (round 3a, `--max-size 0x400`) found nothing new: 298 tried, 0 hits. Still open: the
+strict-aliasing setting of the SDK, newlib, lgAud/libnetb and the codec (no function yet tells), the
+991111 rebuilds -01 and a (no probe separates them from 991111), and the generated tier's GCC near
+misses, not yet classified as amsurvey classified MW's.
 
 ### The recogniser and Medius by hand (round 2b)
 
@@ -3090,6 +3175,52 @@ network-order twins SOCOM 1 did not have), `medius/rt_time.c` (6), `medius/mediu
 `medius/mediusapi.c` (4) -- 51 functions, 47 of them new to the map's byte-exact rows (four
 supersede matching drafts: asrspi_cbAgc, ContextSetCtxData, rt_msg_get_u2byte,
 iCreateAndAllocateMessageID).
+
+**Round 3b: whole objects, by template.** Most of SCEA's open rows are a few shapes repeated --
+a request wrapper, a locked wrapper -- so a shape written once and a generator reading each
+function's parameters off its disassembly (`build/scratch/gcc/genapi.py`, `genlock.py`) wrote
+whole objects at once; every function is still compiled and compared as any hand-written one.
+
+- **The Medius request**: strings terminated (`iTerminateString`, in order, before the guards or
+  after them -- SessionBegin/End), `GlobalInitFlag == 1` (else -15) and `MyConnectionIndex >= 0`
+  (else -16), the callback kept in the request's own slot, `NetSendMessage(64, index, 0xFFFF,
+  1 or 4, PacketType..., sizeof *request, request)`, -5 if the send fails. The values are the
+  library's own names: `MediusGetErrorCodeString` (0x64A5D8) switches over every MediusErrorCode.
+- **SOCOM 1's callback slots name the requests.** Each request stores its callback in its own
+  global, and SOCOM 1's symtab names them (`CreateClanCallbackFunctionPtr` ..., data 0x5B1A3C and
+  0x43B958): SOCOM II's slots are SOCOM 1's in the same order with SOCOM II's new requests
+  inserted, so a function's position in the object and the slot it stores give its name twice
+  over (44 names). Two names the online lane gave by call site sit on requests new in SOCOM II
+  where SOCOM 1's function is another row: `MediusGetClanMemberList` (0x6468C8; SOCOM 1's is
+  0x646708, by slot) and `MediusLadderPosition` (0x64B1B8; SOCOM 1's is 0x64A018). The game's
+  source calls both by those names, so the map keeps them.
+- **Each object declares `GlobalInitFlag` as it reads it**: the API object, which defines it,
+  reads a halfword (SOCOM 1's symbol is 2 bytes); the clan and file objects read a word. That
+  and the file API's callback slots (after the clan's in .bss, apart from the API's in .data)
+  cut the file API out as its own object.
+- **The RT library's object order is alphabetical by source file** (case-insensitive): the
+  CVS `$Header:` strings in .data run audio.c, codec.c, DmeLocal.c, DmeMessage.c, Dme.c, grid.c,
+  LargeInt.c, md5_platform.c, RSA.c, rt_audio.c, rt_comm, rt_crypt.c, rt_msg_client.c, rt_p2p.c,
+  rt_udp.c, rt_upnp.c, SHA1.c, SHA1_platform.c, StreamMedia.c, and the code follows (rt_circ_buf,
+  rt_comm, ..., rt_msg_client, rt_msg, rt_mutex, rt_time ...).
+- **SOCOM II's DME and RT APIs are locked wrappers**: the public function tests that the
+  library is up, locks its mutex, calls the internal function (the body SOCOM 1's same-named
+  function has) and unlocks; SOCOM 1's DME has no such layer. In rt_msg_client the started test
+  compares the flag with the result variable's first value (`int result = 1; if (started !=
+  result)`): the target keeps the 1 in the result's register (ccsweep, 1 of 7 shapes).
+- **Store order by permutation**: the universe-information requests keep five globals; one
+  order of 120 schedules as the target does (`tools/ccperm.py`).
+- **Names corrected**: 0x6473F0 is `MediusGetBuildTimeStamp` (it formats the Medius library's
+  own date, beside "Medius Client Library Version 1.50.0013"); the s1:exact `NetGetBuildTimeStamp`
+  it carried is SOCOM 1's byte-identical DME twin, 0x620518 here (Dme.c's date).
+
+Hand-written in round 3b: `medius/mediusclan.c` (30 of 30, new), `medius/mediusapi.c` (+74, 78
+of 78), `medius/mediusfile.c` (13 of 13, new), `medius/dme.c` (78 of 78, new),
+`medius/rt_msg_client.c` (24 of 24, new), `asr/gsapi.c` (+3, 11 of 11) -- 222 functions, none
+with a matching draft. Open, diagnosed in place: gsapi's engine accessors (SOCOM 1's
+CheckEngineHandle inlined comes within 11 words; the target zeroes the result before the tests).
+Next in the same vein: rt_msg_client's internal functions, DME's internals behind each wrapper
+(SOCOM 1's same-named bodies), and gsapi's remaining wrappers (handle test, a context loop).
 
 ## Open, and next
 
