@@ -37,6 +37,8 @@ public:
     void DeleteCharacter();
     void AddCharacter(char c);
     void Clear();
+    void Init(C2DFont *font);
+    void Submit();
 
     C2DBitmap m_cursor;   // 0x20
     float m_cursorTrans;   // 0xa0: the cursor's alpha, faded in while there is text
@@ -45,10 +47,73 @@ public:
     int m_maxlen;   // 0x140: the text's limit, 5 to 100 (5 at construction)
 };
 
-/* the line's bounds (OVL1 .data floats: its right edge, left edge and a character's width) */
+/* the line's bounds (OVL1 .data floats: its left, top, right and bottom edges and a character's
+ * width) and the text's position */
 extern float data_003DE7A8;   /* 25 */
+extern float data_003DE7B0;   /* 338 */
 extern float data_003DE7B8;   /* 615 */
+extern float data_003DE7C0;   /* 360 */
 extern float data_003DE7E0;   /* 3 */
+extern float data_00441678;
+extern float data_00441680;
+
+/* the text loaded in the font given and the cursor's black box over the line, both faded out and
+ * made children (OVL1 0x2CA100: CHUD::Init's) */
+void CMsgEditor::Init(C2DFont *font)
+{
+    m_cursorTrans = 0.0f;
+    m_textTrans = 0.0f;
+    m_text.Load(0.8f, 0, font, data_00441678, data_00441680, true);
+    m_text.SetTrans(m_textTrans);
+    m_text.SetColor(100.0f, 100.0f, 20.0f);
+    m_cursor.Load(data_003DE7A8, data_003DE7B0, data_003DE7B8, data_003DE7C0, 0);
+    m_cursor.SetHasTexture(false);
+    m_cursor.SetTrans(m_cursorTrans);
+    m_cursor.SetColor(0.0f, 0.0f, 0.0f);
+    push_back(&m_cursor);
+    push_back(&m_text);
+}
+
+extern "C" int func_002C9990(char *args);   /* the whisper command's parser */
+
+/* the line entered: a "/w" command's arguments handed to the whisper's parser, then the text
+ * emptied (OVL1 0x2C9B80) */
+void CMsgEditor::Submit()
+{
+    char *s = m_text.m_string + m_text.m_firstCharPos;
+    int len = s ? strlen(s) : 0;
+
+    if (len > 0) {
+        char *text = m_text.m_string + m_text.m_firstCharPos;
+        char cmd[8] = "xxxx";
+        int i = 0;
+
+        if (*text == '/') {
+            i++;
+            bool done = false;
+            char *p = cmd;
+            int n = 0;
+
+            while (i < len && !done) {
+                char c = text[i];
+
+                if (c == ' ' || c == 0 || n >= 7) {
+                    *p = 0;
+                    done = true;
+                } else {
+                    *p = c;
+                    i++;
+                    p++;
+                    n++;
+                }
+            }
+            if (strlen(cmd) && !strcasecmp(cmd, "w"))
+                func_002C9990(text + i);
+        }
+    }
+    m_text.SetString(0, true);
+    m_text.UpdatePos();
+}
 
 /* the text wiped, both alphas zero, the cursor told (OVL1 0x2CA0B0: CHUD::Init's) */
 void CMsgEditor::Clear()
