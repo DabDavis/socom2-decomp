@@ -8,6 +8,8 @@
  * "The inlining mode, measured"). CGNode::SetName gone: SOCOM II's nodes have no name. Only some
  * of it so far. Defined in reverse of their image order (-inline deferred). */
 
+#include <algorithm>
+
 #include "graph_tree.h"
 
 /* a tree over the graph: a node, its parent and its children (SOCOM 1's CGTree, 0x14 bytes) */
@@ -15,6 +17,12 @@ class CGTree : public std::list<CGTree *> {
 public:
     CGTree() : m_parent(0), m_node(0) {}
     CGNode *GetNode() const { return m_node; }
+    CGTree *FindNode(CGNode *node);
+    static void Destroy(CGTree *tree);
+
+    /* the first child: the base's begin() wrapped (FindNode's self-inlined copy calls the base's
+     * begin(), 0x2A00B0, then the wrapper's constructor, 0x2D22E0; the name ours) */
+    iterator First() { return iterator(list_base::begin()); }
 
     /* a child let go of (SOCOM 1's RemoveChild, out of line there) */
     void RemoveChild(CGTree *child)
@@ -37,11 +45,6 @@ public:
     CGTree *m_parent;   // 0xc
     CGNode *m_node;   // 0x10
 };
-
-extern "C" {
-CGTree *func_002D2070(CGTree *tree, CGNode *node);   /* CGTree::FindNode */
-void func_002D22F0(CGTree *tree);                     /* CGTree::Destroy */
-}
 
 /* a node waiting in BuildTree's queue and its cost (SOCOM 1's CGQueueAtom, 8 bytes: SOCOM 1 links
  * its copy constructor) */
@@ -124,6 +127,49 @@ public:
 CGEdge *CGraph::m_treeEdge;
 CGNode *CGraph::m_treeNode;
 CGTree *CGraph::m_leafTree;
+
+/* a child destroyed, its slot left null (SOCOM 1's _release_tree, std::transform's operation;
+ * absent from SOCOM II's image, inlined wherever it is used) */
+static CGTree *_release_tree(CGTree *tree)
+{
+    CGTree::Destroy(tree);
+    return 0;
+}
+
+/* a tree and every tree under it deleted (OVL1 0x2D22F0: SOCOM 1's Destroy, inlining itself once).
+ * OPEN, 0x1EC of 0x1F8 bytes (the states lane, round 16): the outer copy is right (transform, the
+ * op, clear() and the four-test delete all inlined), the self-inlined inner copy is one level too
+ * shallow everywhere. The target's inner copy calls the BASE list's pieces -- its != 0x2D2220, a
+ * prefix ++ 0x2D2240 (FindNode's postfix ++ calls it too, so the base's, not the wrapper's), its *
+ * 0x2D2500 and copy constructor 0x2D24F0 (FindNode's wrapper * and copy are 0x2D22C0, 0x2D2260) --
+ * builds begin()/end() as SOCOM 1's MSL does, tail() (0x2D2530, `this + 4`) then the iterator's
+ * constructor from a node (0x2D2520, begin's; SOCOM 1's FPQ..4node) or from the sentinel (0x2D2510,
+ * end's; FPQ..9node_base), inlines the op (Destroy called, `*result = 0`), reads clear()'s
+ * sentinel through 0x207560 twice (SOCOM 1's compressed_pair_imp<allocator<node>, node_base, 1>::
+ * second(), the first OVL1 copy: CZObjectiveList::FreeList's, outside this lane's range) and inlines
+ * ~CGTree and ~list (two tests) before calling ~__list_imp (0x1EA250). Ours calls the wrapper's
+ * !=, *, copy and _release_tree itself, and ~CGTree's chain one level higher. A functor op (SOCOM
+ * 1's transform takes a function pointer) gives 0x13C: Destroy not inlined at all. Needs the end
+ * node as SOCOM 1's compressed pair (include/list, the MSL lane's) or a local model of it */
+void CGTree::Destroy(CGTree *tree)
+{
+    std::transform(tree->begin(), tree->end(), tree->begin(), _release_tree);
+    tree->clear();
+    delete tree;
+}
+
+/* the tree node of a graph node, this or one under it, none (OVL1 0x2D2070: SOCOM 1's FindNode,
+ * inlining itself twice) */
+CGTree *CGTree::FindNode(CGNode *node)
+{
+    if (m_node == node)
+        return this;
+    CGTree *found = 0;
+
+    for (iterator it = First(); !found && it != end(); it++)
+        found = (*it)->FindNode(node);
+    return found;
+}
 
 /* the tree of cheapest routes from a node over the edges a mask lets through (none: all): every
  * node's cost reset, then a queue in cost order drained -- each node taken off it marks its
@@ -223,12 +269,12 @@ bool CGraph::BuildRoute(CGNode *start, CGNode *end, unsigned int mask, CGRoute *
         CGTree *tree = BuildTree(start, mask);
 
         if (tree) {
-            CGTree *leaf = m_leafTree ? m_leafTree : func_002D2070(tree, end);
+            CGTree *leaf = m_leafTree ? m_leafTree : tree->FindNode(end);
             CGNodeList::iterator it = route->m_nodes.end();
 
             for (; leaf; leaf = leaf->m_parent)
                 it = route->m_nodes.insert(it, leaf->GetNode());
-            func_002D22F0(tree);
+            CGTree::Destroy(tree);
         } else
             ok = false;
     }

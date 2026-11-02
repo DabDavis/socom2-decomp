@@ -3845,7 +3845,7 @@
 0x002AA910 0x1F0 _OnMissionComplete__Fv  # OVL1; s1:calls by hand (the states lane: FadeToEndMissionTick, byte-exact, calls it with no arguments exactly where SOCOM 1's calls _OnMissionComplete__Fv, between clearing m_DelayEndMission and the screen clear; its body opens differently -- the common anim set fetched first -- so the name is the call site's)
 0x002AAB00 0x20 tick__8CMissionFfPv  # OVL1; s1:align
 0x002AAB20 0x734 func_002AAB20  # OVL1
-0x002AB260 0xFC func_002AB260  # OVL1
+0x002AB260 0xFC GetPoint__8CCamPathFiiP6CPnt3DP6CPnt3DPPCc  # OVL1; by hand (the states lane, round 16; the names ours): a camera path's point `step` on from an index, wrapping both ways (an unsigned modulo forward), its position, direction and name read out through at() -- the path is the vector at 0x437DF0 (0x98-byte points), stepped by 0x295260 with +1, 0 and -1; fts_mission.cpp
 0x002AB360 0x84 func_002AB360  # OVL1
 0x002AB3F0 0x604 func_002AB3F0  # OVL1
 0x002ABA00 0x60 swap<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>>__3stdFRQ23std82__vector_deleter<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>>RQ23std82__vector_deleter<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>>  # OVL1; s1:align
@@ -3901,7 +3901,7 @@
 0x002AFA10 0x18C CreateCustomCharTypes__25@unnamed@fts_mission_cpp@FP11CVehicleRdrP5_zrdr  # OVL1; s1:align
 0x002AFBA0 0xC func_002AFBA0  # OVL1
 0x002AFBB0 0x8 func_002AFBB0  # OVL1
-0x002AFBC0 0x78 func_002AFBC0  # OVL1
+0x002AFBC0 0x78 at__Q23std66__vector_imp<13SCamPathPoint,Q23std26allocator<13SCamPathPoint>,0>FUi  # OVL1; by hand (the states lane, round 16; the element's name ours): include/vector's at() for the camera path's 0x98-byte points ("vector::at index out of range"), out of line in fts_mission.cpp's tail for GetPoint (0x2AB260)
 0x002AFC40 0x18 _max<Uc>__2aiFRCUcRCUc_RCUc  # OVL1; by its body (ai::_max over unsigned char: lbu, lbu, slt, movn -- MW 3.0's mangling with the return type), the template tail before _min<f>'s OVL1 copy; no OVL2 copy named -- the states lane
 0x002AFC60 0x2C func_002AFC60  # OVL1; s1:align; OVL1's copy of ai::_min<float> (byte-identical to OVL2's 0x575C80, which carries the name; the states lane); ovl-copy: _min<f>__2aiFRCfRCf_RCf
 0x002AFC90 0x444 insert__Q23std80__vector_imp<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>,0>FP20SObjectiveCam_AnchorUiRC20SObjectiveCam_Anchor  # OVL1; s1:align
@@ -3965,8 +3965,8 @@
 0x002B3C90 0xBC erase__Q23std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>FQ33std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>19generic_iterator<0>Q33std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>19generic_iterator<0>  # OVL1; s1:callee
 0x002B3D50 0x74 erase__Q23std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>FQ33std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>19generic_iterator<0>  # OVL1; s1:align
 0x002B3DD0 0x108 func_002B3DD0  # OVL1
-0x002B3EE0 0x18 func_002B3EE0  # OVL1
-0x002B3F00 0x18 func_002B3F00  # OVL1
+0x002B3EE0 0x18 __ct__Q23std40__list_deleter<Ui,Q23std13allocator<Ui>>Fv  # OVL1; by hand (the states lane, round 16): the spawners' id list built (include/list's out-of-class constructor), called by fts_player.cpp's initialiser (0x400330) for spawners.m_ids; byte-exact from fts_player.cpp, which now defines spawners and ftsPlayer
+0x002B3F00 0x18 __ct__Q23std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>Fv  # OVL1; by hand (the states lane, round 16): the spawners' vehicle list built, called by fts_player.cpp's initialiser (0x400330) for spawners.m_spawns; byte-exact from fts_player.cpp
 0x002B3F20 0x60 func_002B3F20  # OVL1
 0x002B3F80 0xB0 __dt__Q23std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>Fv  # OVL1; s1:align
 0x002B4030 0xA0 func_002B4030  # OVL1
@@ -3985,7 +3985,7 @@
 0x002B48E0 0xB8 func_002B48E0  # OVL1
 0x002B49A0 0x30 func_002B49A0  # OVL1
 0x002B49D0 0x20 func_002B49D0  # OVL1
-0x002B49F0 0x148 func_002B49F0  # OVL1
+0x002B49F0 0x148 __ct__11CNodeActionFPQ23zdb5CNodeP6CZAnimP6CValvePQ23zdb10CTexHandle  # OVL1; by hand (the states lane, round 16: SOCOM 1s constructor by its stores -- the zdb::CNodeEx table then CNodeActions, the anim vector at 4, node 0x14, valve 0x18, the texture 0x28, the anim pushed when given; byte-exact from fts_action.cpp)
 0x002B4B40 0x184 func_002B4B40  # OVL1
 0x002B4CD0 0xB0 func_002B4CD0  # OVL1
 0x002B4D80 0x80 GetActionById__11CNodeActionFUi  # OVL1; s1:calls by hand: SOCOM 1's ActionAnimPacketHandler calls GetActionById(the packet's action id, lhu) where SOCOM II's (0x2BB770) calls 0x2B4D80, on the action's own halfword; 0x2B4D80 walks the list at 0x440C5C that fts_action.cpp's static initialiser builds (CNodeAction's container)
@@ -4275,17 +4275,17 @@
 0x002C94F0 0x4C func_002C94F0  # OVL1
 0x002C9540 0x1D8 func_002C9540  # OVL1
 0x002C9720 0xE8 func_002C9720  # OVL1
-0x002C9810 0x150 func_002C9810  # OVL1
+0x002C9810 0x150 SendWhisper__FPcPc  # OVL1; by hand (the states lane, round 16; the name ours): a whisper sent by player name -- CEntity::m_list.GetEntity(name); another player on the same team (0xC8), alive or dead alike (CEntity's m_isAlive) and of the same persona byte (0x2C2FD0) gets theLobby.SendChat(msg, name) and the message echoed to theMission's first queue (C2DMessage_Q::Add_Message 0x2B6530), anyone else ":: Player \"%s\" is unavailable"; called only by ParseWhisper (0x2C9990); fts_missionlist.cpp
 0x002C9960 0x30 SetMaxLength__10CMsgEditorFi  # OVL1; by hand (the states lane, round 15; the method name ours, the class CMsgEditor's RTTI): the word at 0x140 (5 at construction, 0x2CA2D0) set from n, kept within 5 to 100
-0x002C9990 0x1F0 func_002C9990  # OVL1
-0x002C9B80 0x140 func_002C9B80  # OVL1
+0x002C9990 0x1F0 ParseWhisper__FPc  # OVL1; by hand (the states lane, round 16; the name ours): the "/w" command's arguments -- ` name message` or ` "a name" message` -- split in a _strdup copy, the whisper sent through 0x2C9810 (name, message), the copy freed; whether it was sent (a bool: daddiu). Called only by CMsgEditor::Submit (0x2C9B80); fts_missionlist.cpp
+0x002C9B80 0x140 Submit__10CMsgEditorFv  # OVL1; by hand (the states lane, round 16; the names ours): the message editor's line entered -- a leading "/" command copied (up to 7 characters, an 8-byte buffer initialised "xxxx") and, when it is "w" (strcasecmp), the rest handed to the whisper parser 0x2C9990; the text then emptied (SetString(0) through slot 0x70, UpdatePos); fts_missionlist.cpp
 0x002C9CC0 0x40 func_002C9CC0  # OVL1
-0x002C9D00 0x90 func_002C9D00  # OVL1
-0x002C9D90 0xF4 func_002C9D90  # OVL1
+0x002C9D00 0x90 DeleteCharacter__10CMsgEditorFv  # OVL1; by hand (the states lane, round 16; the names ours): the editor's last character dropped (strcpy, the end moved back one, SetString through slot 0x70, UpdatePos); fts_missionlist.cpp
+0x002C9D90 0xF4 AddCharacter__10CMsgEditorFc  # OVL1; by hand (the states lane, round 16; the names ours): a character appended to the editor's text (strcpy into a 100-byte buffer, SetString through slot 0x70, UpdatePos) while the line's width and the length limit at 0x140 allow; fts_missionlist.cpp
 0x002C9E90 0x1BC func_002C9E90  # OVL1
 0x002CA050 0x54 func_002CA050  # OVL1
-0x002CA0B0 0x4C func_002CA0B0  # OVL1
-0x002CA100 0x138 func_002CA100  # OVL1
+0x002CA0B0 0x4C Clear__10CMsgEditorFv  # OVL1; by hand (the states lane, round 16; the names ours): the message editor's text wiped through C2DString's slot 0x8C (ClearAndWipe), its cursor's and text's alphas zeroed and the cursor's SetTrans (slot 0x34) told -- CHUD::Init calls it on theMission+0x1060 (hud_main.cpp's m_messages4); fts_missionlist.cpp
+0x002CA100 0x138 Init__10CMsgEditorFP7C2DFont  # OVL1; by hand (the states lane, round 16; the names ours): the message editor set up -- both alphas zeroed, the text loaded through C2DString's slot 0x7C (scale 0.8, the font CHUD::Init passes) and coloured, the cursor bitmap loaded over the line (C2DBitmap::Load, the bounds at 0x3DE7A8-0x3DE7C0), untextured, black, both pushed onto the C2D's child list; fts_missionlist.cpp
 0x002CA240 0x90 func_002CA240  # OVL1
 0x002CA2D0 0x54 func_002CA2D0  # OVL1
 0x002CA330 0x8 UIDeletePatch__FP13C2DAnimCmdHdrPf  # OVL1; ours: the handler registered as "DeletePatch" (id 196, the UI command table's record at 0x3DE0F0): `return true` -- fts_patch.cpp
@@ -4424,7 +4424,7 @@
 0x002D1180 0x8 PostProcess__7CGRouteFv  # OVL1; s1:order by hand (the states lane: first of CGRoute's as SOCOM 1's PostProcess, empty in both; BuildRoute calls it; byte-exact in graph_tree.cpp)
 0x002D1190 0x38 Clear__7CGRouteFv  # OVL1; s1:exact shape by hand (the states lane: SOCOM 1's Clear instruction for instruction, the list's range erase; BuildRoute calls it first; byte-exact in graph_tree.cpp)
 0x002D11D0 0x34 Append__7CGRouteFP6CGNode  # OVL1; s1:order by hand (the states lane: after Clear as SOCOM 1's Append; the list's insert at its end; BuildRoute calls it; byte-exact in graph_tree.cpp)
-0x002D1210 0xBC func_002D1210  # OVL1
+0x002D1210 0xBC __dt__7CGRouteFv  # OVL1; by hand (the states lane, round 16): CGRoute's destructor -- Clear() inlined, then the node list's implicit destructor with four this-tests (CGNodeList a class of its own), the delete flag tested; the README's ~CGRoute (graph_main.cpp's cut is above it), byte-exact from graph_main.cpp
 0x002D12D0 0x28 __ct__7CGRouteFv  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); s1:order by hand (the states lane: after ~CGRoute as SOCOM 1's constructor: the list's constructor; byte-exact in graph_tree.cpp)
 0x002D1300 0x4C __dt__6CGEdgeFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002D1350 0xB4 Delete__6CGEdgeFP6CGEdge  # OVL1; s1:order by hand (the states lane: after ~CGEdge as SOCOM 1's Delete: the edge removed from both its nodes' lists, its ends cleared, deleted through its virtual destructor, 0 returned)
@@ -4465,15 +4465,15 @@
 0x002D2050 0xC begin__Q23std42list<P6CGNode,Q23std19allocator<P6CGNode>>Fv  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
 0x002D2060 0x8 __ct__Q33std42list<P6CGNode,Q23std19allocator<P6CGNode>>19generic_iterator<0>Fv  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
 0x002D2070 0x1AC FindNode__6CGTreeFP6CGNode  # OVL1; s1:calls (the states lane's lead, vetted by the integrator: CGraph::BuildRoute calls it where SOCOM 1's BuildRoute calls FindNode__6CGTreeFP6CGNode, after BuildTree and the leaf list's begin())
-0x002D2220 0x14 func_002D2220  # OVL1
-0x002D2240 0x14 func_002D2240  # OVL1
-0x002D2260 0x10 func_002D2260  # OVL1; tu: char_type.cpp~ (1.0 beta)
-0x002D2270 0x14 func_002D2270  # OVL1
-0x002D2290 0xC func_002D2290  # OVL1
-0x002D22A0 0x14 func_002D22A0  # OVL1
-0x002D22C0 0xC func_002D22C0  # OVL1
-0x002D22D0 0xC func_002D22D0  # OVL1
-0x002D22E0 0x10 func_002D22E0  # OVL1; tu: char_type.cpp~ (1.0 beta)
+0x002D2220 0x14 __ne__Q33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<0>CFRCQ33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<0>  # OVL1; by hand (the states lane, round 16): the pointer lists' base iterator !=, called where CGTree::FindNode's first self-inlined copy (0x2D2070) inlines the tree list's != one level; graph_tree.cpp emits it after FindNode, the first OVL1 unit to need it out of line
+0x002D2240 0x14 __pp__Q33std42list<P6CGTree,Q23std19allocator<P6CGTree>>19generic_iterator<0>Fv  # OVL1; by hand (the states lane, round 16): the tree list iterator's prefix ++, called by the postfix ++ CGTree::FindNode's first self-inlined copy inlines one level (0x2D2070); Destroy's walk calls it too
+0x002D2260 0x10 __ct__Q33std42list<P6CGTree,Q23std19allocator<P6CGTree>>19generic_iterator<0>FRCQ33std42list<P6CGTree,Q23std19allocator<P6CGTree>>19generic_iterator<0>  # OVL1; tu: char_type.cpp~ (1.0 beta); by hand (the states lane, round 16): the tree list iterator's copy constructor, called by the postfix ++ CGTree::FindNode's first self-inlined copy inlines one level (0x2D2070)
+0x002D2270 0x14 __ne__Q33std42list<P6CGTree,Q23std19allocator<P6CGTree>>19generic_iterator<0>CFRCQ33std42list<P6CGTree,Q23std19allocator<P6CGTree>>19generic_iterator<0>  # OVL1; by hand (the states lane, round 16): the tree list iterator's !=, out of line in CGTree::FindNode's innermost copy (0x2D2070); graph_tree.cpp emits it after FindNode
+0x002D2290 0xC end__Q23std42list<P6CGTree,Q23std19allocator<P6CGTree>>Fv  # OVL1; by hand (the states lane, round 16): the tree list's end(), out of line in both of CGTree::FindNode's self-inlined copies (0x2D2070); graph_tree.cpp emits it after FindNode
+0x002D22A0 0x14 __pp__Q33std42list<P6CGTree,Q23std19allocator<P6CGTree>>19generic_iterator<0>Fi  # OVL1; by hand (the states lane, round 16): the tree list iterator's postfix ++, out of line in CGTree::FindNode's innermost copy (0x2D2070); graph_tree.cpp emits it after FindNode
+0x002D22C0 0xC __ml__Q33std42list<P6CGTree,Q23std19allocator<P6CGTree>>19generic_iterator<0>CFv  # OVL1; by hand (the states lane, round 16): the tree list iterator's *, out of line in CGTree::FindNode's innermost copy (0x2D2070); graph_tree.cpp emits it after FindNode
+0x002D22D0 0xC First__6CGTreeFv  # OVL1; by hand (the states lane, round 16; the name ours): CGTree's first child as the base's begin() wrapped, out of line in CGTree::FindNode's innermost copy (0x2D2070); graph_tree.cpp emits it after FindNode
+0x002D22E0 0x10 __ct__Q33std42list<P6CGTree,Q23std19allocator<P6CGTree>>19generic_iterator<0>FQ33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<0>  # OVL1; tu: char_type.cpp~ (1.0 beta); by hand (the states lane, round 16): the tree list's iterator made from the base's, out of line where CGTree::FindNode's self-inlined copy (0x2D2070) inlines First() one level; graph_tree.cpp emits it after FindNode
 0x002D22F0 0x1F8 Destroy__6CGTreeFP6CGTree  # OVL1; s1:calls (the states lane's lead, vetted by the integrator: CGraph::BuildRoute calls it where SOCOM 1's BuildRoute calls Destroy__6CGTreeFP6CGTree, at the end)
 0x002D24F0 0x10 func_002D24F0  # OVL1; tu: char_type.cpp~ (1.0 beta)
 0x002D2500 0xC func_002D2500  # OVL1
