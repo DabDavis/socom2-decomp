@@ -1643,6 +1643,25 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the SEALs, round 9** (seal.cpp's small rows, seal_ai.cpp's stance setters):
+  - the prologue copies parameters into their saved registers in reverse declaration order, floats
+    included: the order of the moves places a float among the int parameters where no call site
+    shows it (SetDesiredStance: (stance, float, bool));
+  - two chained member-pointer calls are two `__ptmf_scall`s through frame copies of the pointers;
+    typed `extern const` placeholders for the constants pass their addresses as the target does;
+    a static list walked through a const view keeps the iterator temporaries in the frame (0x545D80);
+  - a member vector walked through a local pointer keeps the member's address in a register across
+    the loop -- passed to a static inline helper the offset folds back (0x544B60); a reference local
+    to a global list keeps its address in a saved register across a loop of calls (0x543930);
+  - a call's result ANDed with a member loads the call's side first only through a local; written
+    inline MW loads the other side first in either operand order (0x544FC0, 0x5434B0);
+  - a byte-enum member is copied with `lb`, a signed-char member cast to the enum with `lbu`
+    (RestoreAiMode); an unsigned short count converted to float through unsigned int needs an
+    unsigned int local, or MW masks it again after the test (0x5458A0);
+  - a result assigned and returned inside the then-block keeps that block first; `if (!b) return A;
+    return B;` puts it last (InStance);
+  - CSealStats lives in zseal.h now (m_stats at 0x58C, before m_accuracy as in SOCOM 1); st_mpexit.cpp
+    still keeps a copy of its own.
 - **Tells from the integrator's zar units** (zar_search.cpp, zar_key.cpp):
   - SOCOM 1's debug allocator calls name units: its `_calloc(n, s, "zar_search.cpp", line)` (SOCOM II
     passes 0, 0) put the fetches in a unit of their own -- a SOCOM 1 function that allocates gives
