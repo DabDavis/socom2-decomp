@@ -8293,7 +8293,7 @@
 0x003CFFD0 0x50 func_003CFFD0  # OVL1
 0x003D0020 0xC func_003D0020  # OVL1
 0x003D0030 0x30 RetrieveTimerRegistration__8CZWeaponFPPfPfPb  # OVL1; s1:align
-0x003D0060 0x30 func_003D0060  # OVL1
+0x003D0060 0x30 RegisterTimer__8CZWeaponFPffb  # OVL1; s1:order by hand (the HUD lane's round 18, vetted by the integrator: the same five stores as SOCOM 1's CZWeapon::RegisterTimer 0x31CA00)
 0x003D0090 0xC func_003D0090  # OVL1
 0x003D00A0 0x30 func_003D00A0  # OVL1
 0x003D00D0 0x28 func_003D00D0  # OVL1
