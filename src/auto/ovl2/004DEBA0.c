@@ -8,7 +8,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_0050CDE8(char *, M2C_UNK);             /* extern */
+M2C_UNK _tosErrorLog(char *, M2C_UNK);              /* extern */
 
 s32 func_004DEBA0(char *arg0, s32 arg1, s32 arg2, s32 arg3) {
     s32 (*temp_v0)(s32, char *);
@@ -19,7 +19,7 @@ s32 func_004DEBA0(char *arg0, s32 arg1, s32 arg2, s32 arg3) {
         temp_v1 = temp_v0(arg3 & 0xFFFF, arg0 + 0x22C);
         if ((M2C_FIELD(arg0, s32 *, 0x434) == 0) && (temp_v1 != 0)) {
             M2C_FIELD(arg0, s32 *, 0x434) = temp_v1;
-            func_0050CDE8(arg0 + 0x16C, 0x1B);
+            _tosErrorLog(arg0 + 0x16C, 0x1B);
         }
     }
     return 0;
