@@ -7345,12 +7345,12 @@
 0x00390860 0x40 func_00390860  # OVL1
 0x003908A0 0x100 func_003908A0  # OVL1
 0x003909A0 0x18 func_003909A0  # OVL1
-0x003909C0 0x2C func_003909C0  # OVL1
+0x003909C0 0x2C More__11CSkbRdrIterCFv  # OVL1; ours (zui_hangul.cpp: an rdr array walked by index, {rdr, index}: the index still under the count; the look parser 0x3963F0 calls it four times)
 0x003909F0 0x3C func_003909F0  # OVL1
 0x00390A30 0x174 func_00390A30  # OVL1
-0x00390BB0 0x90 func_00390BB0  # OVL1
+0x00390BB0 0x90 FindJamo__FPCc  # OVL1; ours (zui_hangul.cpp: a jamo by name against the 33 names at 0x3FB170 (A_Hang .. Yu, alphabetical), 33 for none; zui_skb.cpp's 0x38DA70 calls it)
 0x00390C40 0x464 func_00390C40  # OVL1
-0x003910B0 0x24 func_003910B0  # OVL1
+0x003910B0 0x24 SkbRdrCount__FP5_zrdr  # OVL1; ours (zui_hangul.cpp: an rdr array's count -- type 4's halfword length -- 0 for anything else or none; zui_skb.cpp's ZuiInit, CreateSoftKeyboard and 0x38DCB0 call it out of line)
 0x003910E0 0x190 func_003910E0  # OVL1
 0x00391270 0x8 func_00391270  # OVL1
 0x00391280 0x14 func_00391280  # OVL1
@@ -7358,7 +7358,7 @@
 0x00391320 0x18 func_00391320  # OVL1
 0x00391340 0x8 func_00391340  # OVL1
 0x00391350 0xF8 func_00391350  # OVL1
-0x00391450 0x48 func_00391450  # OVL1
+0x00391450 0x48 KeyToJamo__Fc  # OVL1; ours (zui_hangul.cpp: a letter key's jamo, a-z through the table at 0x3FB000, else the shifted table at 0x3FB020 indexed from 'A'; 0x39ADA0 calls it)
 0x003914A0 0x1C4 func_003914A0  # OVL1
 0x00391670 0x358 func_00391670  # OVL1
 0x003919D0 0x360 func_003919D0  # OVL1
@@ -7416,7 +7416,7 @@
 0x00394290 0x88 func_00394290  # OVL1
 0x00394320 0x44 func_00394320  # OVL1
 0x00394370 0x68 func_00394370  # OVL1
-0x003943E0 0x40 func_003943E0  # OVL1
+0x003943E0 0x40 SkbLoadUiParams__Fv  # OVL1; ours (zui_hangul.cpp: UiParams.rdr from data/common held for the call to the display unit's 0x397070 and freed, ZuiInit's holder; CMission::Init calls it)
 0x00394420 0xFC func_00394420  # OVL1
 0x00394520 0x2A4 func_00394520  # OVL1
 0x003947D0 0x64 func_003947D0  # OVL1
@@ -7430,7 +7430,7 @@
 0x00395120 0x14 func_00395120  # OVL1
 0x00395140 0x1B0 func_00395140  # OVL1
 0x003952F0 0xC func_003952F0  # OVL1
-0x00395300 0x140 func_00395300  # OVL1
+0x00395300 0x140 ReadIntPair__FP5_zrdrPCc  # OVL1; SOCOM 1's name by its body (zui_skbview.cpp: SOCOM 1's zui_skb.cpp ReadIntPair -- the tag's array items 0 and 1 as ints through GetRdrArrayInt's shape, a CIntPair returned; the look parser 0x3963F0 calls it seven times, zui_skb.cpp's 0x38DCB0 twice)
 0x00395440 0xF8 func_00395440  # OVL1
 0x00395540 0x390 func_00395540  # OVL1
 0x003958D0 0x47C func_003958D0  # OVL1
@@ -7441,7 +7441,7 @@
 0x00396300 0xE4 func_00396300  # OVL1
 0x003963F0 0x7D8 func_003963F0  # OVL1
 0x00396BD0 0x30 func_00396BD0  # OVL1
-0x00396C00 0x70 func_00396C00  # OVL1
+0x00396C00 0x70 ReadSkbRect__FP8CSkbRectP5_zrdr  # OVL1; ours (zui_skbview.cpp: a look rectangle from its block's Pos and Size pairs through ReadIntPair; the look parser 0x3963F0 calls it)
 0x00396C70 0x8 func_00396C70  # OVL1
 0x00396C80 0x28 func_00396C80  # OVL1
 0x00396CB0 0x88 func_00396CB0  # OVL1
@@ -7456,7 +7456,7 @@
 0x00397590 0xA8 func_00397590  # OVL1
 0x00397640 0x1FC func_00397640  # OVL1
 0x00397840 0xC func_00397840  # OVL1
-0x00397850 0x3C func_00397850  # OVL1
+0x00397850 0x3C SkbGetText__Fb  # OVL1; ours (zui_skbview.cpp: the edited text's buffer 0x4A0A30, or the c_str() of the string the keyboard opened with, 0x4A1300; 0x3998A0 and 0x399D20 call it)
 0x00397890 0x2C func_00397890  # OVL1
 0x003978C0 0xC func_003978C0  # OVL1
 0x003978D0 0x74 func_003978D0  # OVL1
@@ -7505,10 +7505,10 @@
 0x0039A8D0 0x424 func_0039A8D0  # OVL1
 0x0039AD00 0xC func_0039AD00  # OVL1
 0x0039AD10 0x8 func_0039AD10  # OVL1
-0x0039AD20 0x30 func_0039AD20  # OVL1
-0x0039AD50 0x30 func_0039AD50  # OVL1
-0x0039AD80 0x1C func_0039AD80  # OVL1
-0x0039ADA0 0xB0 func_0039ADA0  # OVL1
+0x0039AD20 0x30 SkbUsbDigit__FPC9SKBUSBKEYi  # OVL1; ours (zui_skbkeys.cpp: the USB keyboard's digit row, HID usages 30-39 through the tables at 0x3FBA50 and, shifted, 0x3FBA80, typed through 0x399040; 0x38C630 calls it)
+0x0039AD50 0x30 SkbUsbPunct__FPC9SKBUSBKEYi  # OVL1; ours (zui_skbkeys.cpp: the USB keyboard's punctuation, HID usages 49-56 through the tables at 0x3FBA20 and, shifted, 0x3FB9F0, typed through 0x399040; 0x38C630 calls it)
+0x0039AD80 0x1C SkbUsbDash__FPC9SKBUSBKEYi  # OVL1; ours (zui_skbkeys.cpp: the USB keyboard's dash key -- '_' shifted (the key's word at 4), else '-' -- typed through 0x399040 with the second argument passed on; zui_skb.cpp's USB loop 0x38C630 calls it)
+0x0039ADA0 0xB0 SkbUsbLetter__FPC9SKBUSBKEYib  # OVL1; ours (zui_skbkeys.cpp: the USB keyboard's letters, HID usages 4-29 as 'a' + usage - 4: in Korean input (the third argument) the jamo of the letter, toupper'd when shifted, typed through 0x399200; else the letter cased by shift against caps lock (the word at 0x14) through 0x39A8D0 and typed through 0x399040; 0x38C630 calls it)
 0x0039AE50 0x378 func_0039AE50  # OVL1
 0x0039B1D0 0x17C func_0039B1D0  # OVL1
 0x0039B350 0x260 func_0039B350  # OVL1
@@ -7650,28 +7650,28 @@
 0x003A2E80 0xC0 find<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>__Q23std531__tree<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>,Q33std285map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>13value_compare,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>_Q33std531__tree<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>,Q33std285map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>13value_compare,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>8iterator  # OVL1; the IOP module table's map's find<string> (the MSL headers round 5: byte-exact as a probe, build/p/iop2.cpp; std::string-keyed, the value type unnamed); (include/tree: util_options.cpp's map<std::string, OPTION_INFO>)
 0x003A2F40 0x20 __ct__Q23std531__tree<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>,Q33std285map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>13value_compare,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>FRCQ33std285map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>13value_compareRCQ23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>  # OVL1; the IOP module table's map's tree constructor (the MSL headers round 5: byte-exact as a probe, build/p/iop2.cpp); (include/tree: util_options.cpp's map<std::string, OPTION_INFO>, the tree built)
 0x003A2F60 0x19C insert_node_at__Q23std531__tree<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>,Q33std285map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>13value_compare,Q23std107allocator<Q23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>>>FPQ33std19__red_black_tree<1>9node_basebbRCQ23std88pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,11OPTION_INFO>  # OVL1; the IOP module table's map's insert_node_at (the MSL headers round 5: byte-exact as a probe, build/p/iop2.cpp -- the key std::string: a CSaferStr key cuts its construct to calls); (include/tree: util_options.cpp's map<std::string, OPTION_INFO>)
-0x003A3100 0x1E4 func_003A3100  # OVL1
-0x003A32F0 0x194 func_003A32F0  # OVL1
-0x003A3490 0x230 func_003A3490  # OVL1
-0x003A36C0 0x3C func_003A36C0  # OVL1
-0x003A3700 0x34 func_003A3700  # OVL1
-0x003A3740 0x144 func_003A3740  # OVL1
-0x003A3890 0x70 func_003A3890  # OVL1
-0x003A3900 0x2C0 func_003A3900  # OVL1
-0x003A3BC0 0x14 func_003A3BC0  # OVL1
-0x003A3BE0 0x4F8 func_003A3BE0  # OVL1
-0x003A40E0 0x108 func_003A40E0  # OVL1
-0x003A41F0 0x1A4 func_003A41F0  # OVL1
+0x003A3100 0x1E4 Find__13CStringTablesFPCcPCc  # OVL1; ours (util_loc.cpp: an entry by MSG_ID name -- the one found last, the named table's (its inlined walk comparing the name at table+0x30) or each table's CLocTable::Find(name) 0x3A41F0; 0x3A3700 calls it)
+0x003A32F0 0x194 Find__13CStringTablesFiPCc  # OVL1; ours (util_loc.cpp: an entry by id -- the one found last, the named table's or each table's CLocTable::Find(int) 0x3A43A0; C2DString::SetString/SetStringId and 0x3A36C0 call it)
+0x003A3490 0x230 Reload__13CStringTablesF8LANGUAGE  # OVL1; ours (util_loc.cpp: every table cleared -- the entries' clear 0x3A5400, the strings' Clear through the vtable, the 17 buckets -- and read again for the language from RUN\LOCALE\<language>'s ZAR or the LOCRDR path; SetLanguage 0x3A44B0 calls it)
+0x003A36C0 0x3C GetString__13CStringTablesFiPCc  # OVL1; ours (util_loc.cpp: Find(id, 0) on the manager 0x361BC0, the entry's text at +8 or "(UNLOCALIZED)"); ours (util_loc.cpp: the manager's Find(id, table), the entry's text at +8 or "(UNLOCALIZED)"; the font unit's 0x361B40 calls it on 0x49E9D0 with no table)
+0x003A3700 0x34 GetId__13CStringTablesFPCcPCc  # OVL1; ours (util_loc.cpp: Find(name, 0) on the manager 0x361BC0, the entry's halfword id or 0); ours (util_loc.cpp: the manager's Find(name, table), the entry's halfword id or 0; the font unit's 0x361B20 calls it on 0x49E9D0 with no table)
+0x003A3740 0x144 Unload__13CStringTablesFPCc  # OVL1; ours (util_loc.cpp: the tables of that name erased and deleted -- ~CLocTable inlined: __destroy_arr of the 17 buckets with 0x3A3890, the entries' deleter destructor 0x3A5450, ~CSTable; CMenuState/CExitState/CLoadState::UnInit and ~CHUD call it with their table names)
+0x003A3890 0x70 __dt__Q23std48vector<P8LOCENTRY,Q23std21allocator<P8LOCENTRY>>Fv  # OVL1; ours (util_loc.cpp: the name buckets' pointer-vector destructor, three this-tests -- Unload's inlined ~CLocTable hands it to __destroy_arr for the 17 buckets; follows Unload, its first caller)
+0x003A3900 0x2C0 Load__13CStringTablesFPCc8LANGUAGE  # OVL1; ours (util_loc.cpp: a table not yet loaded read from <name>LOC.rdr -- in <name>LOC.zar under RUN\LOCALE\<language> or under DATA\COMMON\ZRDR\LOCRDR\<language> -- newed (0x140 bytes), read 0x3A3BE0 and pushed; the states' Inits and CHUD() call it with GetLanguage 0x3A4460)
+0x003A3BC0 0x14 __ct__Q23std48vector<P8LOCENTRY,Q23std21allocator<P8LOCENTRY>>Fv  # OVL1; ours (util_loc.cpp: the name buckets' pointer-vector constructor, three words zeroed -- Load's inlined CLocTable() hands it to __construct_array for the 17 buckets; follows Load, its first caller)
+0x003A3BE0 0x4F8 Read__9CLocTableFPCcP5_zrdr  # OVL1; ours (util_loc.cpp: the null entry, then each entry's ID, MSG_ID, LOCALIZED, SCALE, OFFSET added, the entries sorted 0x3A4560 and hashed by name into 17 buckets, the name printed at +0x30, the strings relocated into a buffer of their own)
+0x003A40E0 0x108 LanguageFromName__FPCc  # OVL1; ours (util_loc.cpp: a language by name against the nine names at 0x3E0780 (STATES .. TEST), sceScfGetLanguage's mapped for none or "SYSTEM"; UISelectLocale and GetLanguage call it)
+0x003A41F0 0x1A4 Find__9CLocTableFPCc  # OVL1; ours (util_loc.cpp: an entry by MSG_ID name -- '_'-prefixed -- the one found last at +0x70 or its bucket, the first and middle characters' sum mod 17, walked)
 0x003A43A0 0xB8 Find__9CLocTableFi  # OVL1; ours (util_loc.cpp: a localised table's entry by id -- 0 out of 1..max (0x0), the last found (0x70), the first when the id is not past it, else the 12-byte entries walked; the manager's lookup 0x3A32F0 calls it)
-0x003A4460 0x44 func_003A4460  # OVL1
-0x003A44B0 0xA8 func_003A44B0  # OVL1
-0x003A4560 0x7B0 func_003A4560  # OVL1
-0x003A4D10 0x50C func_003A4D10  # OVL1
-0x003A5220 0x1E0 func_003A5220  # OVL1
-0x003A5400 0x50 func_003A5400  # OVL1
-0x003A5450 0xA8 func_003A5450  # OVL1
-0x003A5500 0x2D8 func_003A5500  # OVL1
-0x003A57E0 0x1D8 func_003A57E0  # OVL1
+0x003A4460 0x44 GetLanguage__Fv  # OVL1; ours (util_loc.cpp: the language byte 0x4A4018, set from "SYSTEM" through 0x3A40E0/0x3A44B0 while it is 99)
+0x003A44B0 0xA8 SetLanguage__F8LANGUAGE  # OVL1; ours (util_loc.cpp: a changed language stored, the tables reloaded 0x3A3490, 0x361B00 counted, the sound's 0x34D190 told; the LanguageChoice valve set)
+0x003A4560 0x7B0 sort<Q33std54__vector_imp<8LOCENTRY,Q23std20allocator<8LOCENTRY>,0>8iterator,12LocEntryLess>__3stdFQ33std54__vector_imp<8LOCENTRY,Q23std20allocator<8LOCENTRY>,0>8iteratorQ33std54__vector_imp<8LOCENTRY,Q23std20allocator<8LOCENTRY>,0>8iterator12LocEntryLess_v  # OVL1; ours (util_loc.cpp's template tail: std::sort over the 12-byte entries by their halfword id, include/algorithm -- CLocTable::Read 0x3A3BE0 calls it; its static shuffle 0x3E07B0)
+0x003A4D10 0x50C insert__Q23std54__vector_imp<8LOCENTRY,Q23std20allocator<8LOCENTRY>,0>FP8LOCENTRYUiRC8LOCENTRY  # OVL1; ours (util_loc.cpp's template tail: the entries' class-vector insert(pos, n, x), include/vector -- CLocTable::Read's inlined Add pushes through it)
+0x003A5220 0x1E0 reserve__Q23std54__vector_imp<8LOCENTRY,Q23std20allocator<8LOCENTRY>,0>FUi  # OVL1; ours (util_loc.cpp's template tail: the entries' class-vector reserve -- the table's constructor (1) and CLocTable::Read (n + 1) call it)
+0x003A5400 0x50 clear__Q23std56__vector_deleter<8LOCENTRY,Q23std20allocator<8LOCENTRY>>Fv  # OVL1; ours (util_loc.cpp's template tail: the entries' deleter clear, each entry's destructor storing a zero id -- Reload calls it)
+0x003A5450 0xA8 __dt__Q23std56__vector_deleter<8LOCENTRY,Q23std20allocator<8LOCENTRY>>Fv  # OVL1; ours (util_loc.cpp's template tail: the entries' deleter destructor, clear inlined -- Unload's inlined ~CLocTable calls it with 0)
+0x003A5500 0x2D8 __sort132<Q33std54__vector_imp<8LOCENTRY,Q23std20allocator<8LOCENTRY>,0>8iterator,12LocEntryLess>__3stdFQ33std54__vector_imp<8LOCENTRY,Q23std20allocator<8LOCENTRY>,0>8iteratorQ33std54__vector_imp<8LOCENTRY,Q23std20allocator<8LOCENTRY>,0>8iteratorQ33std54__vector_imp<8LOCENTRY,Q23std20allocator<8LOCENTRY>,0>8iterator12LocEntryLess_v  # OVL1; ours (util_loc.cpp's template tail: std::sort's median of three for the entries -- the sort 0x3A4560 calls it)
+0x003A57E0 0x1D8 __selection_sort<Q33std54__vector_imp<8LOCENTRY,Q23std20allocator<8LOCENTRY>,0>8iterator,12LocEntryLess>__3stdFQ33std54__vector_imp<8LOCENTRY,Q23std20allocator<8LOCENTRY>,0>8iteratorQ33std54__vector_imp<8LOCENTRY,Q23std20allocator<8LOCENTRY>,0>8iterator12LocEntryLess_v  # OVL1; ours (util_loc.cpp's template tail: std::sort's short-range selection sort for the entries -- the sort 0x3A4560 calls it)
 0x003A59C0 0x8 func_003A59C0  # OVL1
 0x003A59D0 0xA0 StartThread__19CSimpleStateMachineFii  # OVL1; ours (util_ssm.cpp: the machine run on a thread of its own -- the priority kept, the stack allocated once, the entry 0x3A5A70 and $gp handed to CreateThread, StartThread with the machine; returns true. The Medius server list and the DNAS machines call it)
 0x003A5A70 0x70 ThreadEntry__19CSimpleStateMachineFPv  # OVL1; ours (util_ssm.cpp: the thread's body -- Start through the vtable, then Step and RotateThreadReadyQueue until the done flag, the thread id cleared, ExitDeleteThread)
