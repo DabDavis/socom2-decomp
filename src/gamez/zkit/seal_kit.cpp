@@ -1,7 +1,11 @@
 /* seal_kit.cpp -- the SEAL's kit, CZKit (SOCOM 1's unit, __sinit_seal_kit.cpp, with its
  * unnamed-namespace CSavedFireModeInfo). OVL2 0x5B9020-0x5C93FF, in SOCOM 1's order (the screen
- * offsets and the sniper's kick first, the constructor and the item lookups last). So far only the
- * small accessors. Defined in reverse of their image order (-inline deferred). */
+ * offsets and the sniper's kick first, the constructor and the item lookups last, then
+ * sealSaveFireModes and CAiWepHint's statics). So far the small accessors and lookups, the fire
+ * delay and shot count, the launcher-mode tests, FireGrenade. Its initialiser is 0x668DB0 (the
+ * iostream objects, the saved fire modes' array, two more statics zeroed): not defined here yet,
+ * so the array is spelled by placeholder. Defined in reverse of their image order (-inline
+ * deferred). */
 
 #include "kit.h"
 #include "../zcamera/zcamera.h"
