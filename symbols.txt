@@ -11373,7 +11373,7 @@
 0x005EA450 0x68 __dt__8CAiStateFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005EA4C0 0x8 OnSignal__8CAiStateFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005EA4D0 0x78 __dt__10CAiSBreachFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x005EA550 0x80 func_005EA550  # OVL2
+0x005EA550 0x80 __ct__8CAiTimerFf  # OVL2; by hand (the kit lane, round 10): CAiTimer(float)'s out-of-line copy (aitimer.h's inline constructor: the range t - t, the countdown zeroed, the period drawn) -- CAiState::Create calls it for the breach, rush, stun-response and vehicle states' timers, IssueCommand for its static breach state; seal_aistate.cpp emits it
 0x005EA5D0 0x1AC __ct__8CAiStateF8AI_STATE  # OVL2; by hand (the kit lane, round 4): CAiState's constructor -- its table (0x669950) stored, the stack built (0x5F8520), Reset inlined with the kind in a1; Create calls it for the base of every state but the plain one (seal_unit.cpp's copy, after the CAiTimer constructor it also uses)
 0x005EA780 0x38 GetBreachState__FP11CSealCtrlAi  # OVL2; by hand: CSealCtrlAi::GetAiState (0x5F6010), returned when its kind (the byte at 0x30) is 17, the breach, else 0 -- after CAiState's constructor in seal_unit.cpp, whose breach code (SOCOM 1's AddBreachMember) works on CAiSBreach (the name ours)
 0x005EA7C0 0x14 func_005EA7C0  # OVL2; size 0x14 (a tail call through t9; the seed ran on into the padding)
