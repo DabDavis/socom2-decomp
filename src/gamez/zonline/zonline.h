@@ -529,6 +529,12 @@ extern ClanLadderList ClanLadderRanking;   /* 0x44F850 */
  * destructors, 0x2EC140) and the player ladders (0x44F7B0, 0x44F7E0). Only what the displays read:
  * the names as MSL strings (c_str() short form first) and the position */
 struct LadderItem {
+    /* the names' texts (the names ours): read through an accessor, the inlined c_str() folds the
+     * string's offset into the item's (0x8C/0x8D/0x94); `(*i)->m_name.c_str()` keeps the string's
+     * own address in a register (UpdateLadderBestDisplay 8 bytes long -- the MSL headers round 6) */
+    const char *GetName() { return m_name.c_str(); }
+    const char *GetClan() { return m_clan.c_str(); }
+
     unsigned char _0[0x8c];   // the page's response (unread here)
     std::string m_name;   // 0x8c
     std::string m_clan;   // 0x98
@@ -538,6 +544,8 @@ struct LadderItem {
 
 class LadderList : public std::vector<LadderItem *> {
 public:
+    LadderItem *Find(const char *name);
+
     int m_c;   // 0xc: 2
     int m_10;   // 0x10
 };   // 0x14

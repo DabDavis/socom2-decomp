@@ -4864,7 +4864,7 @@
 0x002EB790 0xC func_002EB790  # OVL1
 0x002EB7A0 0x15C UpdateLadderBestDisplay__Fv  # OVL1; ours (the player ladder's best, LadderRanking 0x44F7E0, sorted -- std::sort's instance 0x2EC260 -- and built into uiv_MediusLadderTop10: '%d', the name and clan strings at +0x8C/+0x98)
 0x002EB900 0x318 func_002EB900  # OVL1
-0x002EBC20 0xC8 func_002EBC20  # OVL1
+0x002EBC20 0xC8 Find__10LadderListFPCc  # OVL1; ours (the MSL headers round 6, written in zNetMediusLadder.cpp: a player ladder's item by name, case-blind, none for no name -- the name read through LadderItem::GetName, the inlined c_str() folding the string's offset into the item's; the chat unit's player-info callback 0x2F0020 calls it); byte-exact
 0x002EBCF0 0x154 Add__14ClanLadderListFP31MediusGetClanLadderListResponse  # OVL1; ours (cbGetClanLadderList keeps a clan through it: the 0x48-byte response copied whole unless its position (+0x3c) is there, the highest position kept at +0xc; byte-exact)
 0x002EBE50 0x188 func_002EBE50  # OVL1
 0x002EBFE0 0x80 func_002EBFE0  # OVL1

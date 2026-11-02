@@ -388,6 +388,17 @@ void ClanLadderList::Add(MediusGetClanLadderListResponse *resp)
     }
 }
 
+/* a player by name, case-blind, or none -- none for no name (OVL1 0x2EBC20, the name ours; the chat
+ * unit's player-info callback 0x2F0020 asks it) */
+LadderItem *LadderList::Find(const char *name)
+{
+    if (name && *name)
+        for (iterator i = begin(); i != end(); ++i)
+            if (!strcasecmp((*i)->GetName(), name))
+                return *i;
+    return 0;
+}
+
 #pragma auto_inline reset
 
 
@@ -432,10 +443,7 @@ struct compare_ladder {
 };
 
 /* the player ladder's best sorted and handed to the menus: each one's position, name and clan
- * (SOCOM II's; OVL1 0x2EB7A0; the name ours).
- * OPEN, 0x164 against 0x15C: the target reads each name's words off the item (0x8C/0x8D/0x94,
- * 0x98/0x99/0xA0) where include/string's inline c_str() keeps the string's own address in a
- * register (item + 0x98, then +1, +8) -- the MSL string's c_str(), or a different member type */
+ * (SOCOM II's; OVL1 0x2EB7A0; the name ours). The names through the item's accessors (zonline.h) */
 void UpdateLadderBestDisplay()
 {
     CRdrEditor ed;
@@ -448,8 +456,8 @@ void UpdateLadderBestDisplay()
         sprintf(pos, "%d", (*i)->m_position);
         ed.push(0);
         ed.addstringnode(pos);
-        ed.addstringnode((*i)->m_name.c_str());
-        ed.addstringnode((*i)->m_clan.c_str());
+        ed.addstringnode((*i)->GetName());
+        ed.addstringnode((*i)->GetClan());
         ed.pop();
     }
     ed.pop();
