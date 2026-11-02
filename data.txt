@@ -658,7 +658,7 @@
 0x00408070 0x10 __vt__19CStickDeadzoneTuner  # vtable of CStickDeadzoneTuner: found by its RTTI's name
 0x00408080 0x10 __vt__11SystemTuner  # vtable of SystemTuner: found by its RTTI's name
 0x00408090 0x10 __vt__12CDialogTuner  # vtable of CDialogTuner: found by its RTTI's name
-0x004080A0 0x70 __vt__Q221@unnamed@zui_skb_cpp@12CBmpWithNode  # vtable of CBmpWithNode: found by its RTTI's name; the unnamed namespace's name (zui_skb.cpp defines the class, SOCOM 1's __vt__Q221@unnamed@zui_skb_cpp@12CBmpWithNode); 2 references in 2 functions (its constructor 0x38E620 and destructor 0x38E490)
+0x004080A0 0x70 __vt__12CBmpWithNode  # vtable of CBmpWithNode: found by its RTTI's name; SOCOM 1's __vt__Q221@unnamed@zui_skb_cpp@12CBmpWithNode, out of the unnamed namespace in SOCOM II (the UI lane round 9: its RTTI string 0x3FAEA8 is plain "CBmpWithNode", SOCOM 1's "@unnamed@zui_skb_cpp@::CBmpWithNode"; the class is zui_skb.h's, shared by the keyboard's units); 2 references in 2 functions (its constructor 0x38E620 and destructor 0x38E490)
 0x00408130 0x40 __vt__9CBufferIO  # OVL1; s1:data-seq (size SOCOM 1's; via __ct__9CBufferIOFv)
 0x00408180 0x44 __vt__7CFileIO  # vtable of CFileIO: found by its RTTI's name
 0x004081D0 0x1C __vt__7CSTable  # vtable of CSTable: found by its RTTI's name
@@ -1038,7 +1038,7 @@
 0x0049EC50 0x4 s_dialogTuner  # OVL1 bss; zui_tuners.cpp's static (name ours): the CDialogTuner (DIALOG_VOLUME); 3 references in 3 functions (InitSystemTuners, UninitSystemTuners, RefreshSystemTuners)
 0x0049EC58 0x4 s_headsetTuner  # OVL1 bss; zui_tuners.cpp's static (name ours): the CHeadsetTuner (HEADSET_CONTROLLER); 1 reference in 1 function (InitSystemTuners; neither Uninit nor Refresh touches it)
 0x0049EC60 0x4 s_rebootCallbackId  # OVL1 bss; zui_tuners.cpp's static (name ours): the id RegisterRebootCallback returns; 2 references in 2 functions (InitSystemTuners stores it, UninitSystemTuners unregisters it)
-0x0049ECB0 0x1 @GUARD@GetSkbKey__Q221@unnamed@zui_skb_cpp@8CSkbGridCFii@s_nullKey  # OVL1 bss; zui_skb.cpp's: the guard of CSkbGrid::GetSkbKey's function-local null key (SOCOM 1's shares one guard between GetSkbKey and GetKeyAtGridPos); 4 references in each of GetCurKey 0x38CB90 and GetCurKeyProps 0x38B2A0
+0x0049ECB0 0x1 @GUARD@GetSkbKey__8CSkbGridCFii@s_nullKey  # OVL1 bss; zui_skb.cpp's (CSkbGrid is zui_skb.h's since the UI lane's round 9, out of the unnamed namespace): the guard of CSkbGrid::GetSkbKey's function-local null key (SOCOM 1's shares one guard between GetSkbKey and GetKeyAtGridPos); 4 references in each of GetCurKey 0x38CB90 and GetCurKeyProps 0x38B2A0
 0x0049ECB8 0x1 g_bIgnoreUnchanged__21@unnamed@zui_skb_cpp@  # OVL1 bss; zui_skb.cpp's static (name ours): the showing keyboard's IgnoreUnchangedString byte (0x175), copied by 0x38B440 when it shows; read by OnEnterKey 0x38C040
 0x0049ECC0 0x4 g_iSkbGridPosX__21@unnamed@zui_skb_cpp@  # OVL1 bss; zui_skb.cpp's static, SOCOM 1's name: the cursor's column; read by GetCurKey and GetCurKeyProps (the inner index)
 0x0049ECC8 0x4 g_iSkbGridPosY__21@unnamed@zui_skb_cpp@  # OVL1 bss; zui_skb.cpp's static, SOCOM 1's name: the cursor's row; read by GetCurKey and GetCurKeyProps (the grid's row)

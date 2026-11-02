@@ -7,42 +7,15 @@
  *
  * The unit calls zui_skb.cpp's CBmpWithNode constructor and destructor (0x38E620, 0x38E490): SOCOM
  * II's CBmpWithNode is a shared class, not SOCOM 1's file-local one (the linker kept zui_skb.cpp's
- * copies of its inline members for both units) -- writing this unit's row constructor needs the
- * keyboard's classes moved out of zui_skb.cpp's unnamed namespace into a header and their rows
- * renamed.
+ * copies of its inline members for both units) -- the keyboard's classes are zui_skb.h's.
  *
  * OPEN, not written yet: everything but the text getter, ReadIntPair and the rectangle reader below. */
 
 #include <string>
 #include "zui.h"
+#include "zui_skb.h"
 
 _zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
-
-/* two ints read from an rdr pair (SOCOM 1's CIntPair: zui_skb.cpp's there, its Get1st and Get2nd) */
-struct CIntPair {
-    CIntPair(int a, int b) : m_1st(a), m_2nd(b) {}
-    int Get1st() const { return m_1st; }
-    int Get2nd() const { return m_2nd; }
-
-    int m_1st;   // 0x0
-    int m_2nd;   // 0x4
-};
-
-CIntPair ReadIntPair(_zrdr *rdr, const char *tag);
-
-/* four words: a place and a size (zui_skb.cpp's CSkbRect, the look's rectangles) */
-struct CSkbRect {
-    /* (ours) */
-    void Set(const CIntPair &pos, const CIntPair &size)
-    {
-        m_x = pos.Get1st();
-        m_y = pos.Get2nd();
-        m_w = size.Get1st();
-        m_h = size.Get2nd();
-    }
-
-    int m_x, m_y, m_w, m_h;
-};   // 0x10 bytes
 
 /* an rdr array's item as an int, 0 for none (SOCOM 1's GetRdrArrayInt, zui_skb.cpp's there; inline
  * here) */

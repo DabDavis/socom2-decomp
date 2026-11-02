@@ -12,22 +12,7 @@
 
 #include <string.h>
 #include "zui.h"
-
-/* an rdr file and its reader (zrdr.h's) */
-class CRdrFile : public _zrdr {};
-CRdrFile *zrdr_read(const char *name, const char *dir, int flags);
-void zrdr_free(CRdrFile *file);
-
-/* a file read for a block and freed with it (zui_skb.cpp's ZuiInit holds UiParams.rdr so too: the
- * file kept in a stack slot, read back for the call and the free) */
-class CRdrFileHolder {
-public:
-    CRdrFileHolder(const char *name, const char *dir) : m_file(zrdr_read(name, dir, 0)) {}
-    ~CRdrFileHolder() { zrdr_free(m_file); }
-    operator CRdrFile *() const { return m_file; }
-
-    CRdrFile *m_file;
-};
+#include "zui_skb.h"
 
 /* the keyboard display unit's reader of UiParams.rdr (0x397070) */
 extern "C" void func_00397070(CRdrFile *file);
