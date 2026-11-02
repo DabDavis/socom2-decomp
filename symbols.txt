@@ -1929,7 +1929,7 @@
 0x00218DA0 0x34 Draw__14BitmapReticuleFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00218DE0 0x2B0 __ct__14BitmapReticuleFv  # OVL1; by hand (stores BitmapReticule's vtable 0x4055A0; CHUD's constructor builds CHUD+0x11DF0 with it)
 0x00219090 0x2A0 __dt__14BitmapReticuleFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00219330 0x54 func_00219330  # OVL1
+0x00219330 0x54 hudStartDefuseTimer__Fbf  # OVL1; by hand (the HUD lane, round 18): SOCOM 1's hudStartDefuseTimer(float) (stores g_fDefuseTime, creates the c_szDefusingValve valve, VALVE_TEMP) with a bool added: SOCOM II registers the time with the weapons' timer (0x3D0060, SOCOM 1's CZWeapon::RegisterTimer) unless m_timer_pCurval already points at it; the last of hud_bitmapreticule.cpp in the image, as SOCOM 1's
 0x00219390 0x28 Top__26RTStack<15CZBodyAnimBlend>Fv  # OVL1; s1:calls (CBody's Destroy, PopBlend, PushBlend and Tick call it on CBody+0x50, the blend stack, where SOCOM 1's call RTStack<CZBodyAnimBlend>::Top; its body: the index at 8, none when negative; the only copy, in an earlier unit's tail) -- the body lane
 0x002193C0 0x8 func_002193C0  # OVL1
 0x002193D0 0x31C PlaceWeaponText__10CWeaponSelFv  # OVL1; s1:order by hand (the HUD lane: the unit's first function as SOCOM 1's; AfterScrollUp/Down call it, then PlaceHotSwapLabels, as SOCOM 1's do)
@@ -2009,10 +2009,10 @@
 0x00223970 0x79C Init__12CMPExitStateFv  # OVL1; s1:vtable (CMPExitState's Init slot)
 0x00224110 0xA4 __ct__12CMPExitStateFv  # OVL1; s1:calls (CGameState's then CMPExitState's vtable, "MPExitState", the splash library's name assigned; COurGame's constructor calls it)
 0x002241C0 0x48 SetFinalStatsUiVars__Fv  # OVL1; by hand (the HUD lane, round 17): the name ours -- st_mpexit.cpp's MVP name/list and both sides' totals into UI variables ("MvpName", "GameSealsTotLbContents", "GameTerrsTotLbContents"); the network game calls it (0x27FF08)
-0x00224210 0x460 func_00224210  # OVL1
-0x00224670 0x578 func_00224670  # OVL1
-0x00224BF0 0x88 func_00224BF0  # OVL1
-0x00224C80 0x88 func_00224C80  # OVL1
+0x00224210 0x460 SetStatLbUiVar__23@unnamed@st_mpexit_cpp@FbPCcM10CZSealBodyFPCvPv_R10CSealStatsb  # OVL1; by hand (the HUD lane, round 18): SOCOM 1's SetStatLbUiVar(bool, const char *, CSealStats &(CZSealBody::*)()) -- the walk, the vector of SEALs, the CRdrEditor rows and the ptmf calls line up -- with a bool added (a3) choosing std::sort's comparator (CompareGameSeals 0x225E70 or CompareRoundSeals 0x225F30)
+0x00224670 0x578 SetMpStatUiVars__23@unnamed@st_mpexit_cpp@Fv  # OVL1; by hand (the HUD lane, round 18): SOCOM 1's SetMpStatUiVars -- four SetStatLbUiVar calls, PointsEarned, the rounds won and the two 'hh:mm:ss' times through CNetClock PTMFs, as SOCOM 1's (no ladder calls, no team totals in SOCOM II)
+0x00224BF0 0x88 GetTimeInGameSec__9CNetClockFv  # OVL1; by hand (the HUD lane, round 18): SOCOM 1's GetTimeInGameSec (0.001 * the total time, made unsigned; SOCOM 1's read 0x14, SOCOM II's 0x10) -- SetMpStatUiVars' second time ('TimeInGame', PTMF 0x3DC840)
+0x00224C80 0x88 GetTimeInRoundSec__9CNetClockFv  # OVL1; by hand (the HUD lane, round 18): SOCOM 1's GetTimeInRoundSec (0.001 * the round's time; SOCOM 1's read 0xC, SOCOM II's 8) -- SetMpStatUiVars' first time ('TimeInRound', PTMF 0x3DC830)
 0x00224D10 0x358 func_00224D10  # OVL1
 0x00225070 0x34C func_00225070  # OVL1
 0x002253C0 0x330 func_002253C0  # OVL1
