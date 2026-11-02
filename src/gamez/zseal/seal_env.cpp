@@ -368,6 +368,164 @@ extern "C" void func_0059F610(CZSealBody *seal, CPickup *pickup)
         func_0059F0C0(seal, pickup);
 }
 
+extern "C" {
+/* the body-part ids of the rifle and the pistol (OVL1 data, read as variables) */
+extern int data_003DF148;
+extern int data_003DF150;
+}
+
+/* The weapons moved between the hand and where they are worn: the part's node taken from its parent's
+ * node and given to the new parent's, the part made the body's rifle or pistol (none when worn), its
+ * live bit cleared, and a worn weapon's gear part made (SOCOM 1's ParentPistolTo*Callback pair, anim
+ * callbacks taking (data, arg) -- 0x588BC0 hands them to the anims by address -- keep the part's
+ * member through a reference; the direct forms 0x5A7480 and 0x5A7690, which 0x5807D0 calls, reload it
+ * through the SEAL). OVL2 0x5A73C0-0x5A77DF, the rifle's first. */
+
+/* a callback's data as the SEAL (an inline: cast straight in the body, the SEAL is numbered after the
+ * part's reference and takes the other saved register) */
+static inline CZSealBody *SealOfData(void *data)
+{
+    return (CZSealBody *)data;
+}
+
+/* the rifle slung on the back, as gear (OVL2 0x5A73C0, new in SOCOM II: a callback; the name unknown) */
+extern "C" void func_005A73C0(void *data, void *arg)
+{
+    CZSealBody *seal = SealOfData(data);
+    CZBodyPart *&rifle = seal->m_rifle;
+
+    if (rifle->m_node) {
+        rifle->m_parent->m_node->DeleteChild(rifle->m_node);
+        rifle->m_parent = seal->m_spinelo;
+        rifle->m_parent->m_node->AddChild(rifle->m_node);
+        seal->SetBodyPart(data_003DF148, 0);
+        rifle->SetActive(false);
+    }
+    seal->SetPartAsGear(seal->m_rifle_as_gear_part, seal->m_rifle_as_gear);
+}
+
+/* the rifle taken into the right hand (OVL2 0x5A7480, new in SOCOM II: 0x5807D0 calls it) */
+extern "C" void func_005A7480(CZSealBody *seal)
+{
+    if (seal->m_rifle->m_node) {
+        seal->m_rifle->m_parent->m_node->DeleteChild(seal->m_rifle->m_node);
+        seal->m_rifle->m_parent = seal->m_rhand;
+        seal->m_rifle->m_parent->m_node->AddChild(seal->m_rifle->m_node);
+        seal->SetBodyPart(data_003DF148, seal->m_rifle);
+        seal->m_rifle->SetActive(false);
+    }
+}
+
+/* the rifle taken into the right hand, as a callback (OVL2 0x5A7520, new in SOCOM II) */
+extern "C" void func_005A7520(void *data, void *arg)
+{
+    CZSealBody *seal = SealOfData(data);
+    CZBodyPart *&rifle = seal->m_rifle;
+
+    if (rifle->m_node) {
+        rifle->m_parent->m_node->DeleteChild(rifle->m_node);
+        rifle->m_parent = seal->m_rhand;
+        rifle->m_parent->m_node->AddChild(rifle->m_node);
+        seal->SetBodyPart(data_003DF148, rifle);
+        rifle->SetActive(false);
+    }
+}
+
+/* the pistol holstered on the right thigh, as gear (OVL2 0x5A75D0; SOCOM 1's) */
+void ParentPistolToRThighAsGearCallback(void *data, void *arg)
+{
+    CZSealBody *seal = SealOfData(data);
+    CZBodyPart *&pistol = seal->m_pistol;
+
+    if (pistol->m_node) {
+        pistol->m_parent->m_node->DeleteChild(pistol->m_node);
+        pistol->m_parent = seal->m_rthigh;
+        pistol->m_parent->m_node->AddChild(pistol->m_node);
+        seal->SetBodyPart(data_003DF150, 0);
+        pistol->SetActive(false);
+    }
+    seal->SetPartAsGear(seal->m_pistol_as_gear_part, seal->m_pistol_as_gear);
+}
+
+/* the pistol taken into the right hand (OVL2 0x5A7690, new in SOCOM II: 0x5807D0 calls it) */
+extern "C" void func_005A7690(CZSealBody *seal)
+{
+    if (seal->m_pistol->m_node) {
+        seal->m_pistol->m_parent->m_node->DeleteChild(seal->m_pistol->m_node);
+        seal->m_pistol->m_parent = seal->m_rhand;
+        seal->m_pistol->m_parent->m_node->AddChild(seal->m_pistol->m_node);
+        seal->SetBodyPart(data_003DF150, seal->m_pistol);
+        seal->m_pistol->SetActive(false);
+    }
+}
+
+/* the pistol taken into the right hand, as a callback (OVL2 0x5A7730; SOCOM 1's) */
+void ParentPistolToRHandCallback(void *data, void *arg)
+{
+    CZSealBody *seal = SealOfData(data);
+    CZBodyPart *&pistol = seal->m_pistol;
+
+    if (pistol->m_node) {
+        pistol->m_parent->m_node->DeleteChild(pistol->m_node);
+        pistol->m_parent = seal->m_rhand;
+        pistol->m_parent->m_node->AddChild(pistol->m_node);
+        seal->SetBodyPart(data_003DF150, pistol);
+        pistol->SetActive(false);
+    }
+}
+
+extern "C" {
+/* the blend on top of the body's stack (seal.cpp's tail copy, OVL2 0x555170) */
+void *func_00555170(void *stack);
+}
+
+/* whether the first-person camera stays off: never without a blend; hanging, or (each when asked)
+ * the top blend in state 33 or the anims 36 or 35 playing (OVL2 0x5A77E0, new in SOCOM II: OVL1's
+ * GetFirstPersonCamPos asks it with 1, 1, 1; the names ours) */
+extern "C" bool func_005A77E0(CZSealBody *seal, int state33, int anim36, int anim35)
+{
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+
+    /* (an if and two returns: the ternary, a bool local or an int return add the andi 0xff) */
+    if (top)
+        return seal->m_state == stateHang || (state33 && top->m_state == 33) ||
+               (anim36 && seal->IsCurrentBlend((AnimType)36)) ||
+               (anim35 && seal->IsCurrentBlend((AnimType)35));
+    return false;
+}
+
+/* bit 0 of 0x21C set (a setter: a constant true is `daddiu 1`, a false `(0 & 1)`) */
+static inline void SetBit21c0(CZSealBody *seal, bool on)
+{
+    seal->m_21c_bit0 = on;
+}
+
+/* the toggle the radio menu flips (0x235300, 0x235440): on, bit 0 of 0x21C set and the SEAL of the
+ * node at 0x3DC kept; off, both cleared (OVL2 0x5AA620, new in SOCOM II; the names ours) */
+extern "C" void func_005AA620(CZSealBody *seal, bool on)
+{
+    if (on) {
+        SetBit21c0(seal, true);
+        seal->m_218 = CZSealBody::GetSeal(seal->m_3dc);
+    } else {
+        SetBit21c0(seal, false);
+        seal->m_218 = 0;
+    }
+}
+
+/* the turn at 0x1070 set to an angle about x, or none (OVL2 0x5AF470, new in SOCOM II: the app
+ * camera's first- and third-person transitions call it; the names ours) */
+extern "C" void func_005AF470(CZSealBody *seal, float angle)
+{
+    if (angle != 0.0f) {
+        CQuat q;
+
+        q.MakeXRot(angle);
+        seal->m_1070 = q;
+    } else
+        seal->m_1070 = CQuat::identity;
+}
+
 /* whether the SEAL's timed action is due: set at all, and offline at once, online once the network's
  * clock reaches its time (OVL2 0x5A8850, new in SOCOM II; CSealCtrl::PerformProximityActions asks it) */
 extern "C" bool func_005A8850(CZSealBody *seal)
@@ -453,6 +611,63 @@ void CZSealBody::UninitDatabaseHandles()
         _free(data_0044D548, 0, 0);
     data_0044D548 = 0;
     CZWeapon::RemoveWeaponEventCallback(HandleWeaponEvent);
+}
+
+extern "C" {
+/* one of the six values started, with a kind (OVL2 0x5A54D0, not written yet) */
+void func_005A54D0(CZSealBody *seal, unsigned char i, int kind);
+}
+
+/* the six values' average weighted by their rates, the first counted three times, for a living SEAL
+ * (OVL2 0x5A56D0, new in SOCOM II; the names ours) */
+extern "C" float func_005A56D0(CZSealBody *seal)
+{
+    float sum = 0.0f;
+    float rate = 0.0f;
+
+    if (seal->m_isAlive) {
+        sum += 3.0f * seal->m_ffc[0];
+        rate += 3.0f * seal->m_1014[0];
+        sum += seal->m_ffc[3];
+        rate += seal->m_1014[3];
+        sum += seal->m_ffc[1];
+        rate += seal->m_1014[1];
+        sum += seal->m_ffc[2];
+        rate += seal->m_1014[2];
+        sum += seal->m_ffc[4];
+        rate += seal->m_1014[4];
+        sum += seal->m_ffc[5];
+        rate += seal->m_1014[5];
+        /* (a ternary: the target's division padded with nops either side; an if/else is not) */
+        sum = rate != 0.0f ? sum / rate : 0.0f;
+    }
+    return sum;
+}
+
+/* one of the six values set to its rate times a factor, none below zero, and when it changed started
+ * -- value 3 with kind 5, value 0 with 3, any other with 0 (OVL2 0x5A5790, new in SOCOM II; the names
+ * ours. The case tests run in reverse source order) */
+extern "C" void func_005A5790(CZSealBody *seal, unsigned char i, float f)
+{
+    float v = seal->m_1014[i] * f;
+    float *p = &seal->m_ffc[i];
+
+    if (v != *p) {
+        *p = v;
+        if (v < 0.0f)
+            *p = 0.0f;
+        switch (i) {
+        case 3:
+            func_005A54D0(seal, i, 5);
+            break;
+        case 0:
+            func_005A54D0(seal, i, 3);
+            break;
+        default:
+            func_005A54D0(seal, i, 0);
+            break;
+        }
+    }
 }
 
 /* six values run down at their rates, none below zero (OVL2 0x5AC620, new in SOCOM II: the arrays at

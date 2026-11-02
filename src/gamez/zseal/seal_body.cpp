@@ -73,26 +73,26 @@ extern "C" bool func_005551A0(unsigned short flags, unsigned short bits);
 
 /* the state the SEAL is in; asked with a flag, the top blend's anims say it first (17 stand or
  * crouch, 19 crouch or prone, 25 stand or prone, by the blend's flag 0x20) unless its flag 0x40 is
- * set, and a crouch with bit 2 of 0x21C counts as a stand (OVL2 0x58A720, new in SOCOM II; seal_ai.cpp's
- * InStance asks it) */
-extern "C" SEAL_STATE func_0058A720(CZSealBody *seal, unsigned char flag)
+ * set, and a crouch with bit 2 of 0x21C counts as a stand (OVL2 0x58A720: SOCOM 1's GetStance, the
+ * crouch bit new; seal_ai.cpp's InStance and the kit's kick ask it) */
+SEAL_STATE CZSealBody::GetStance(bool flag) const
 {
-    SEAL_STATE state = (SEAL_STATE)seal->m_state;
+    SEAL_STATE state = (SEAL_STATE)m_state;
 
     if (flag) {
-        CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+        CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
 
         if (!func_005551A0(top->m_flags, 0x40)) {
             bool b = func_005551A0(top->m_flags, 0x20);
 
-            if (seal->IsCurrentBlend((AnimType)17))
+            if (IsCurrentBlend((AnimType)17))
                 return b ? stateCrouch : stateStand;
-            if (seal->IsCurrentBlend((AnimType)19))
+            if (IsCurrentBlend((AnimType)19))
                 return b ? stateProne : stateCrouch;
-            if (seal->IsCurrentBlend((AnimType)25))
+            if (IsCurrentBlend((AnimType)25))
                 return b ? stateProne : stateStand;
         }
-        if (state == stateCrouch && seal->m_21c_bit2)
+        if (state == stateCrouch && m_21c_bit2)
             state = stateStand;
     }
     return state;
@@ -131,10 +131,6 @@ extern "C" void func_00588B40(CZSealBody *seal, int time)
         func_002BBAF0(seal->m_id, 34, 4, false, time);
 }
 
-/* the first anim from the top blend (RTList<ACTIVE_ANIM>::Begin's copy in seal_anim.cpp's tail, OVL2
- * 0x5780E0) */
-extern "C" ACTIVE_ANIM *func_005780E0(CActiveAnimList *list);
-
 /* whether the SEAL may look about: always without a blend; never dead (8, the top blend's state too),
  * nor in states 9 and 10; else as the last overlay of the top blend's first anim says (OVL2
  * 0x587B40, new in SOCOM II) */
@@ -150,7 +146,7 @@ extern "C" bool func_00587B40(CZSealBody *seal)
         return false;
     bool r = false;
 
-    for (ACTIVE_ANIM *a = func_005780E0(&top->m_anims); a; a = a->m_overlay) {
+    for (ACTIVE_ANIM *a = top->m_anims.Begin(); a; a = a->m_overlay) {
         if (a->m_anim->m_4a_5)
             r = true;
         else
@@ -166,7 +162,7 @@ extern "C" bool func_00587E00(CZSealBody *seal)
     CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
     bool r = false;
 
-    for (ACTIVE_ANIM *a = func_005780E0(&top->m_anims); a; a = a->m_overlay) {
+    for (ACTIVE_ANIM *a = top->m_anims.Begin(); a; a = a->m_overlay) {
         if (a->m_anim->m_4a_7)
             r = true;
         else
@@ -209,6 +205,52 @@ extern "C" void *func_0057DF20(CZSealBody *seal)
     seal->m_1350 = seal->m_velW;
     func_00588B40(seal, 9);
     return func_00555170((char *)seal + 0x1c0);
+}
+
+namespace zdb {
+/* the camera's collision bit demanded of the polygons a test hits (SOCOM 1's; grid_di.cpp's) */
+void SetCameraCollideFlagRequired(bool on);
+}
+
+/* a polygon's camera type (DI_PARAMS's two bits at 18, as a byte enum: the target's `andi 0xff`
+ * after the extraction; the names ours) */
+enum CAMERA_TYPE { CAMERA_TYPE_0, CAMERA_TYPE_1, CAMERA_TYPE_2, CAMERA_TYPE_3 };
+
+static inline CAMERA_TYPE CameraType(zdb::IntersectStruct *hit)
+{
+    return (CAMERA_TYPE)hit->m_poly->m_flags.m_cameratype;
+}
+
+/* whether there is room over the SEAL's head: a ray 20 units up from a point 1 above it, on the
+ * SEAL's own axis, with the SEAL's node switched off and camera-collision polygons asked for -- clear
+ * unless it hits a polygon of a camera type other than 1 (OVL2 0x57F150, new in SOCOM II: 0x57E1B0
+ * asks it of the SEAL's controller) */
+extern "C" bool func_0057F150(CSealCtrl *ctrl)
+{
+    /* (hit and the old setting declared ahead of the SEAL: declared first, the SEAL is numbered
+     * last and takes s0 -- through an inline accessor it matches too) */
+    zdb::IntersectStruct *hit;
+    bool was;
+    CZSealBody *seal = (CZSealBody *)ctrl->m_entity;
+    CPnt3D pos;
+
+    seal->PartInSpace(seal->m_head, 0, &pos, 0);
+    pos.y += 1.0f;
+    CPnt3D from(0.0f, pos.y, 0.0f);
+
+    seal->m_node->m_matrix.Transform(&from, 1);
+    CPnt3D to(from.x, 20.0f + from.y, from.z);
+
+    was = seal->GetNode()->SetActive(false);
+    zdb::SetCameraCollideFlagRequired(true);
+    hit = zdb::CWorld::m_world->GetIntersect(&from, &to);
+    seal->GetNode()->SetActive(was);
+    if (hit && CameraType(hit) != CAMERA_TYPE_1) {
+        zdb::SetCameraCollideFlagRequired(false);
+        return false;
+    }
+    zdb::SetCameraCollideFlagRequired(false);
+    return true;
 }
 
 /* whether the SEAL may act: an AI's controller unless its bit 17 is set, anyone else's unless its

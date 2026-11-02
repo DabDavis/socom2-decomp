@@ -18,6 +18,12 @@ class CRdrFile;
 class AI_PARAMS {
 public:
     void Parse(_zrdr *rdr);
+    /* each field the first set has (its mask bit), else the second's, else the first's; the masks
+     * joined (SOCOM 1's Merge, 0x533DB0) */
+    void Merge(const AI_PARAMS &a, const AI_PARAMS &b);
+    /* the cosine of the aiming cone: 10 degrees wide at no discipline, 2 at full (new in SOCOM II,
+     * the name ours: the turrets' AI asks it, OVL1 0x3A8030 -- 0x533CF0) */
+    float GetAimConeCos() const;
 
     unsigned int mask;   // 0x0
     float accuracy;   // 0x4
@@ -48,6 +54,10 @@ class startvec {
 public:
     unsigned int m_count;   // 0x0
     start m_start[4];   // 0x4
+
+    /* the starts out of an rdr array: each item a name and a direction (new in SOCOM II, the name
+     * ours: CVehicleRdrEntry::Load reads both sets through it, 0x533A60) */
+    void Load(_zrdr *rdr);
 
     /* a start's name and direction by index, or none (the names are ours: the four getters
      * inline them; the result through a local, or the index and count take other registers) */
@@ -239,14 +249,30 @@ class CModel;
 /* a weapon a type carries, with its ammunition (SOCOM 1's DWARF, 0xC bytes) */
 class CCharacterWeap {
 public:
+    /* none, no ammunition (AddWeapon's temporary, 0x53B3A0: 255 in both bytes, the counts zeroed) */
+    CCharacterWeap() : m_wepId(EQUIP_NONE), m_ammoId(AMMO_NONE), m_ammoCount(0), m_magCount(0) {}
+
     EQUIP_ITEM m_wepId;   // 0x0
     EQUIP_AMMO m_ammoId;   // 0x1
     int m_ammoCount;   // 0x4
     int m_magCount;   // 0x8
 };
 
+/* a weapon as the network carries it (SOCOM 1's CCharacterWeapPacked, 6 bytes: the item and
+ * ammunition packed into one halfword, then the counts) */
+class CCharacterWeapPacked {
+public:
+    unsigned short m_packed;   // 0x0
+    unsigned short m_ammoCount;   // 0x2
+    unsigned short m_magCount;   // 0x4
+};
+
 /* a type's weapons (SOCOM 1's DWARF: a vector and nothing more) */
 class CCharacterWeapList : public std::vector<CCharacterWeap> {
+public:
+    /* an empty weapon pushed (SOCOM 1's AddWeapon; the item unread -- the callers set it up after,
+     * through SetupCharacterWeapon 0x53EEE0) */
+    void AddWeapon(EQUIP_ITEM item);
 };
 
 /* a multiplayer message a type can say (SOCOM 1's MultiplayerMsg; only the sound laid out) */
@@ -282,6 +308,17 @@ public:
      * name ours: 0x53B930) */
     void DeleteMultiplayerMessages();
     static CCharacterType *RdrFetch_CharacterType(const char *name);
+    /* a type's weapons replaced by the eight a packed loadout holds, up to its first empty one
+     * (SOCOM 1's UnPack, 0x53EC60: CZSealBody's remote respawn and creation call it) */
+    static void UnPack(const CCharacterWeapPacked *packed, CCharacterType *type);
+    /* a type's weapons packed, up to eight (new in SOCOM II, the name ours: SOCOM 1's
+     * KorusGetPackedWeapons did it in place; 0x53ED50) */
+    static void PackWeapons(CCharacterWeapPacked *packed, CCharacterType *type);
+    /* the weapons of the type named at +300 of OVL1's 0x437CE8 packed (SOCOM 1's took a fixed name;
+     * 0x53EE10) */
+    static void KorusGetPackedWeapons(CCharacterWeapPacked *packed);
+    /* every gear let go (new in SOCOM II, the name ours: 0x53F0B0) */
+    static void ResetGears();
     static const char *match_name_to_chartype(CRdrFile *rdr, const char *group, const char *name);
     EQUIP_ITEM GetWeaponByIndex(unsigned int i) const;
     char *GetBaseName();
@@ -322,6 +359,15 @@ public:
      * vector of pointers, OVL1 bss 0x44CD68, the same 0x20 on: CZSealBody::FindGear walks its data
      * and size) -- added by the SEAL lane */
     static std::vector<class CCharacterGear *> m_gear_list;
+};
+
+/* the gears (SOCOM 1's CCharacterGearList; SOCOM II's a vector of pointers -- CCharacterType::
+ * m_gear_list stays declared as the plain vector, which its users bind; zseal.h has CCharacterGear) */
+class CCharacterGearList : public std::vector<class CCharacterGear *> {
+public:
+    /* the gear of that name, none for no name (SOCOM 1's FindGear, const there; SOCOM II's is not -- the
+     * walk reads the size and data off `this` each pass: 0x53EFF0, called on m_gear_list) */
+    CCharacterGear *FindGear(const char *name);
 };
 
 /* the types (SOCOM 1's DWARF: a vector of pointers and nothing more) */

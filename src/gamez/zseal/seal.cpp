@@ -965,6 +965,69 @@ void CZSealBody::OpenHeartbeatSounds()
     m_heartbeat_sound[2] = CSnd::GetSoundByName("~HEART_MED_FAST");
 }
 
+/* the state a SEAL's controller sends over the network, packed into a word through memcpy (SOCOM
+ * II's 4 bytes: remote_control.cpp reads the jump first; CRemoteCtrl::SetAiNetState reads the fourth
+ * byte -- the node's fade in fifteenths, 15 hidden, and bit 5 a friend's compass marker; the names
+ * ours) */
+struct SEAL_NET_STATE {
+    bool m_jump;   // 0x0
+    unsigned char _1[2];
+    unsigned char m_fade : 4;   // 0x3
+    unsigned char m_bit4 : 1;
+    unsigned char m_friend : 1;
+    unsigned char m_bit6 : 1;
+    unsigned char m_bit7 : 1;
+
+    void SetBit6(bool on) { m_bit6 = on; }
+};
+
+extern "C" float floorf(float);
+
+/* a node's fade in fifteenths: 15 times the faded part when it is shown, else none (a helper: the
+ * target tests the shown flag again inside it. A ternary, an if/else or an early return all match;
+ * `level = 0; if (active) level = ...` leaves the conversion's join a block of its own, +1 nop) */
+static inline unsigned int FadeLevel(bool active, float opacity)
+{
+    return active ? (unsigned int)floorf(15.0f * (1.0f - opacity)) : 0;
+}
+
+extern "C" {
+/* a team's squad (SOCOM 1's CSealUnit::GetUnitByTeam, by its use; OVL2 0x5EF2F0) */
+CSealUnit *func_005EF2F0(unsigned int team);
+}
+
+/* the SEAL shown again, whole: its node opaque and active, the state sent with it, and order 31 given
+ * to team 24's squad (OVL2 0x543B90, new in SOCOM II: CMPExitState::UnInit calls it for the player
+ * once the ghost flag is cleared; the name unknown) */
+extern "C" void func_00543B90(CZSealBody *seal)
+{
+    zdb::CNode *node = seal->GetNode();
+
+    node->m_Opacity = 1.0f;
+    node->SetActive(true);
+
+    SEAL_NET_STATE st;
+    unsigned int zero = 0;
+    unsigned int state;
+
+    memcpy(&st, &zero, sizeof(st));
+    bool active = node->m_active;
+    float opacity = node->m_Opacity;
+
+    if (active && opacity > 0.0f)
+        st.m_fade = FadeLevel(active, opacity);
+    else
+        st.m_fade = 15;
+    st.SetBit6(false);
+    memcpy(&state, &st, sizeof(st));
+    ((CSealCtrl *)seal->m_control)->SetAiNetState(state);
+
+    CSealUnit *unit = func_005EF2F0(24);
+
+    if (unit)
+        unit->IssueCommand(seal, (FT_COMMAND)31, 0, false);
+}
+
 /* a turret (zveh.h's CTurret, whose header clashes with zseal.h's stand-ins: only its thermal look
  * here, at zveh.h's offset) */
 class CTurret : public CEntity {

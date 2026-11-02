@@ -23,13 +23,42 @@
  * unit's own functions and are inlined into its tail only once generated there (README): the
  * constructors' chain (0x2CEE00 -> the allocator's 0x2CEE30, __deque_buf's 0x2CEE40 -> __cdeque_buf's
  * 0x2CEE70) is all calls, and pop_front calls clear and cdeque::pop_front, while clear, generated
- * after cdeque::pop_front, inlines it. The names below the deque and the cdeque are ours. */
+ * after cdeque::pop_front, inlines it. The names below the deque and the cdeque are ours.
+ *
+ * The MSL headers' round 7 (the copy constructor chain, probes in build/p7/): a deque's blocks are a
+ * compressed pair (SOCOM 1's compressed_pair over compressed_pair_imp) of the allocator, empty, at 0
+ * and the block buffer -- ~__deque_buf's teardown tests `this` five times after its loop (the pair,
+ * its imp, cdeque<PPCv>, cdeque<PCv>, __cdeque_buf), and the copy constructors build the pair from
+ * the allocator and a temporary buffer (0x333E00). The pointer deque's default and copy
+ * constructors are out of class: the rdr editor's stack (`stack(const Container & = Container())`)
+ * calls both (0x3340F0, 0x333B30), and CGame()'s queue member calls deque<CGameStateChangeCmd *>()
+ * (0x2CEE00, which inlines deque<PCv>() and __deque_imp(), in class, and calls __deque_buf's
+ * constructor and the allocator base's). The copy constructor of every deque (the rdr's, util_ssm's
+ * 0x3A5E50, the lobby's 0x2E07B0) is `base(x.alloc())` -- an out-of-line accessor returning the pair
+ * at 0, the base's constructor from an allocator (0x333D90: a rebound allocator temporary, an empty
+ * buffer built from it, the pair copy-constructed from both, the temporary destroyed out of line, then
+ * start_ and size_ cleared), the allocator base default-constructed (0x2CEE30) -- then x.begin(),
+ * x.end() (each a make_iterator() result copied out) and init(first, last, forward_iterator_tag);
+ * a pointer deque's init hands __convert_iterators (28 bytes: the 24-byte iterator and its empty
+ * converter) to the const void * base's do_assign, a deque of anything else its own iterators. The
+ * buffer's copy constructor (0x333E40) is the same shape one level down (16-byte iterators, 20-byte
+ * converted ones). The allocator's copy constructor and its converting (rebind) constructor are out
+ * of class, as SOCOM 1's (0x3340A0, 0x3340D0). OPEN, the tail's generation order (README "The
+ * inlining mode, measured" and "Tells from completing the MSL headers, round 7"): the image's base
+ * constructor calls the temporary's destructor (0x2CEE90) where this inlines it, the buffer's copy
+ * constructor calls its begin() and the allocator base (0x2CEE30) while its constructor from an
+ * allocator (0x3340B0) inlines both, make_iterator inlines the buffer's begin(); the default
+ * constructors of the rdr editor, the vis unit and the lobby call a level (0x334120: the buffer and
+ * start_/size_, no allocator base) that game_main.cpp's 0x2CEE00 inlines; init's parameters are
+ * copied twice around two value-initialised empty temporaries (0x333BB0, 0x3A5ED0); begin()/end()
+ * of the buffer build their iterator in memory, its fields addressed through registers. */
 
 #ifndef _MSL_DEQUE
 #define _MSL_DEQUE
 
 #include <memory>
 #include <new>
+#include <iterator>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -46,12 +75,56 @@ namespace Metrowerks {
 template <class T, class Allocator = std::allocator<T> >
 class cdeque;
 
-/* the circular buffer's storage: capacity, size, start, data (SOCOM 1's cdeque members; the name
- * ours). Its constructor out of class (0x2CEE70, called from __deque_buf's), its destructor in it */
+/* a pair whose first is empty (SOCOM 1's compressed_pair over compressed_pair_imp<T1, T2, 1>) */
+template <class T1, class T2>
+class __compressed_pair_imp : public T1 {
+public:
+    __compressed_pair_imp() {}
+    __compressed_pair_imp(const T1 &x, const T2 &y);
+
+    T2 second_;
+};
+
+template <class T1, class T2>
+__compressed_pair_imp<T1, T2>::__compressed_pair_imp(const T1 &x, const T2 &y) : T1(x), second_(y)
+{
+}
+
+template <class T1, class T2>
+class compressed_pair : public __compressed_pair_imp<T1, T2> {
+public:
+    compressed_pair() {}
+    compressed_pair(const T1 &x, const T2 &y) : __compressed_pair_imp<T1, T2>(x, y) {}
+};
+
+/* an iterator read through a conversion (MSL's __convert_iterator: the pointer containers hand
+ * their own iterators to the const void * base this way) */
+template <class Iterator, class T>
+class __convert_iterator {
+public:
+    struct convert {
+        T operator()(Iterator i) const { return (T)*i; }
+    };
+    __convert_iterator(Iterator i, convert = convert()) : i_(i) {}
+    T operator*() const { return convert()(i_); }
+    __convert_iterator &operator++()
+    {
+        ++i_;
+        return *this;
+    }
+    friend bool operator==(const __convert_iterator &x, const __convert_iterator &y) { return x.i_ == y.i_; }
+    friend bool operator!=(const __convert_iterator &x, const __convert_iterator &y) { return !(x == y); }
+    friend int operator-(const __convert_iterator &x, const __convert_iterator &y) { return x.i_ - y.i_; }
+
+    Iterator i_;
+    convert c_;
+};
+
 template <class T, class Allocator>
 class __cdeque_buf {
 public:
     __cdeque_buf();
+    explicit __cdeque_buf(const Allocator &a);
     ~__cdeque_buf()
     {
         if (data_)
@@ -73,14 +146,20 @@ __cdeque_buf<T, Allocator>::__cdeque_buf()
     data_ = 0;
 }
 
-/* the circular buffer of pointers every pointer cdeque runs on */
+template <class T, class Allocator>
+__cdeque_buf<T, Allocator>::__cdeque_buf(const Allocator &)
+{
+    capacity_ = 0;
+    size_ = 0;
+    start_ = 0;
+    data_ = 0;
+}
+
 template <class Allocator>
 class cdeque<const void *, Allocator> : public __cdeque_buf<const void *, Allocator>, public Allocator {
 public:
     typedef const void *value_type;
 
-    /* an element pointer with the storage's bounds, wrapping at its end (SOCOM 1's kept an index
-     * and the container; SOCOM II's teardown walks pointers, the bounds in registers) */
     class iterator {
     public:
         iterator(value_type *p, value_type *first, value_type *last) : p_(p), first_(first), last_(last) {}
@@ -105,6 +184,10 @@ public:
                         this->data_, this->data_ + this->capacity_);
     }
 
+    cdeque() {}
+    explicit cdeque(const Allocator &a) : __cdeque_buf<const void *, Allocator>(a) {}
+    const Allocator &alloc() const;
+
     unsigned int size() const { return this->size_; }
     unsigned int capacity() const { return this->capacity_; }
     value_type &front() { return this->data_[this->start_]; }
@@ -117,9 +200,11 @@ public:
     void push_back(const value_type &x);
     void reserve(unsigned int n);
     void resize(unsigned int n);
+    unsigned int max_size() const;
+    template <class InputIterator>
+    void do_assign(InputIterator first, InputIterator last);
 };
 
-/* the front dropped, the start wrapping at the capacity (0x2CF0F0) */
 template <class Allocator>
 void cdeque<const void *, Allocator>::pop_front()
 {
@@ -128,37 +213,155 @@ void cdeque<const void *, Allocator>::pop_front()
         this->start_ = 0;
 }
 
+template <class Allocator>
+const Allocator &cdeque<const void *, Allocator>::alloc() const
+{
+    return *(const Allocator *)(const __cdeque_buf<const void *, Allocator> *)this;
+}
+
+template <class Allocator>
+template <class InputIterator>
+void cdeque<const void *, Allocator>::do_assign(InputIterator first, InputIterator last)
+{
+    this->size_ = last - first;
+    if (this->size_) {
+        if (this->size_ > max_size())
+            __msl_error("cdeque::construction length error");
+        this->capacity_ = this->size_ + 1;
+        this->data_ = (value_type *)operator new(this->capacity_ * sizeof(value_type));
+        if (!this->data_)
+            __msl_error("Memory allocation failure");
+        value_type *p = this->data_;
+        for (; first != last; ++first, ++p)
+            *p = *first;
+    }
+}
+
+/* the circular buffer of T * over the const void * one */
 template <class T, class Allocator>
 class cdeque<T *, Allocator> : public cdeque<const void *, std::allocator<const void *> > {
     typedef cdeque<const void *, std::allocator<const void *> > base;
 
 public:
+    class iterator {
+    public:
+        iterator(T **p, T **data, unsigned int start, unsigned int cap)
+        {
+            p_ = p;
+            data_ = data;
+            first_ = data_ + start;
+            last_ = data_ + cap;
+        }
+        T *&operator*() const { return *p_; }
+        iterator &operator++()
+        {
+            if (++p_ == last_)
+                p_ = data_;
+            return *this;
+        }
+        iterator &operator+=(int n)
+        {
+            int cap = last_ - data_;
+            int i = (p_ - data_) + n;
+
+            if (i < 0)
+                i += cap;
+            else if (i >= cap)
+                i -= cap;
+            p_ = data_ + i;
+            return *this;
+        }
+        iterator operator+(int n) const
+        {
+            iterator t(*this);
+
+            t += n;
+            return t;
+        }
+        friend bool operator==(const iterator &x, const iterator &y) { return x.p_ == y.p_; }
+        friend bool operator!=(const iterator &x, const iterator &y) { return !(x == y); }
+        friend int operator-(const iterator &x, const iterator &y)
+        {
+            int n = x.p_ - y.p_;
+
+            if (x.p_ >= x.first_) {
+                if (y.p_ < x.first_)
+                    n -= x.last_ - x.data_;
+            } else if (y.p_ >= x.first_)
+                n += x.last_ - x.data_;
+            return n;
+        }
+
+        T **p_;
+        T **data_;
+        T **first_;
+        T **last_;
+    };
+
+    cdeque() {}
+    explicit cdeque(const Allocator &a);
+    cdeque(const cdeque &x);
+    iterator begin() const;
+    iterator end() const;
+    template <class InputIterator>
+    void init(InputIterator first, InputIterator last, std::forward_iterator_tag);
+
     T *&front() { return (T *&)base::front(); }
     T *&back() { return (T *&)base::back(); }
     T *&operator[](unsigned int n) { return (T *&)base::operator[](n); }
     void pop_back() { base::pop_back(); }
 };
 
+template <class T, class Allocator>
+cdeque<T *, Allocator>::cdeque(const Allocator &) : base(std::allocator<const void *>())
+{
+}
+
+template <class T, class Allocator>
+cdeque<T *, Allocator>::cdeque(const cdeque &x) : base(x.alloc())
+{
+    init(x.begin(), x.end(), std::forward_iterator_tag());
+}
+
+template <class T, class Allocator>
+typename cdeque<T *, Allocator>::iterator cdeque<T *, Allocator>::begin() const
+{
+    iterator i((T **)this->data_ + this->start_, (T **)this->data_, this->start_, this->capacity_);
+
+    return i;
+}
+
+template <class T, class Allocator>
+typename cdeque<T *, Allocator>::iterator cdeque<T *, Allocator>::end() const
+{
+    iterator i((T **)this->data_ + (this->capacity_ ? (this->start_ + this->size_) % this->capacity_ : 0), (T **)this->data_, this->start_, this->capacity_);
+
+    return i;
+}
+
+template <class T, class Allocator>
+template <class InputIterator>
+void cdeque<T *, Allocator>::init(InputIterator first, InputIterator last, std::forward_iterator_tag)
+{
+    base::do_assign(__convert_iterator<InputIterator, const void *>(first),
+                    __convert_iterator<InputIterator, const void *>(last));
+}
+
 }
 
 namespace std {
 
-/* the blocks' owner: the buffer of block pointers, the first element's index and the count, built
- * (0x2CEE40) and torn down (0x2CEFB0) out of class. OPEN: the teardown's tail inlines five
- * this-tested levels after its loop in the target, the buffer's three (cdeque<PPCv>, cdeque<PCv>,
- * __cdeque_buf: 0x2CEE90) and two more -- past -inline level=4 for any class shape tried (two
- * implicit bases over the members inline one level and call the next; see game_main.cpp): the
- * evidence that the level is 5. At level 5 (the default since 2026-10-25) the shapes tried at 4
- * are still to be re-run: the copy is "elsewhere" (still unmatched) in both units that emit it */
 template <class T, class Allocator>
 class __deque_buf {
 public:
     typedef Metrowerks::cdeque<T *, allocator<T *> > buf_type;
 
     __deque_buf();
+    explicit __deque_buf(const Allocator &a);
     ~__deque_buf();
+    const Allocator &alloc() const;
 
-    buf_type buf_;   // 0x0
+    Metrowerks::compressed_pair<Allocator, buf_type> buf_;   // 0x0
     unsigned int start_;   // 0x10
     unsigned int size_;   // 0x14
 };
@@ -171,48 +374,144 @@ __deque_buf<T, Allocator>::__deque_buf()
 }
 
 template <class T, class Allocator>
+__deque_buf<T, Allocator>::__deque_buf(const Allocator &a) : buf_(a, buf_type(allocator<T *>(a))), start_(0), size_(0)
+{
+}
+
+template <class T, class Allocator>
+const Allocator &__deque_buf<T, Allocator>::alloc() const
+{
+    return buf_;
+}
+
+/* the blocks freed walking the buffer, then the buffer (0x2CEFB0, out of class). OPEN: the
+ * teardown's tail now tests `this` five times as the target's (the pair's two levels and the
+ * buffer's three), 0x140 bytes against 0x138: the target sets up the walk's end pointer (the
+ * buffer's modulo) before its data pointer and the bounds */
+template <class T, class Allocator>
 __deque_buf<T, Allocator>::~__deque_buf()
 {
-    if (this->buf_.size() != 0) {
+    if (this->buf_.second_.size() != 0) {
         typedef Metrowerks::cdeque<const void *, allocator<const void *> > B;
-        typename B::iterator e = this->buf_.end();
+        typename B::iterator e = this->buf_.second_.B::end();
 
-        for (typename B::iterator i = this->buf_.begin(); i != e; ++i)
+        for (typename B::iterator i = this->buf_.second_.B::begin(); i != e; ++i)
             if (*i)
                 operator delete((void *)*i);
     }
 }
 
-/* the deque proper, the allocator its empty second base (its constructor out of class: 0x2CEE00) */
 template <class T, class Allocator>
-class __deque_imp : public __deque_buf<T, Allocator>, public Allocator {
+class __deque_imp : public __deque_buf<T, Allocator>, public allocator<const void *> {
 public:
     /* 512-byte blocks: 128 pointers, 42 of CSimpleStateMachine's 12-byte member pointers (its
      * pop_front 0x3A6C40 and clear 0x3A6FA0 keep 84 and 21) */
     enum { buf_size = sizeof(T) < 512 ? 512 / sizeof(T) : 1 };
 
-    __deque_imp();
+    /* the iterator: the block buffer's position, the element, the block's end */
+    class iterator {
+    public:
+        typedef typename __deque_buf<T, Allocator>::buf_type::iterator buf_iterator;
+
+        iterator(const buf_iterator &i, T *cur, T *last) : i_(i), cur_(cur), last_(last) {}
+        T &operator*() const { return *cur_; }
+        iterator &operator++()
+        {
+            if (++cur_ == last_) {
+                ++i_;
+                cur_ = *i_;
+                last_ = cur_ + buf_size;
+            }
+            return *this;
+        }
+        friend bool operator==(const iterator &x, const iterator &y) { return x.cur_ == y.cur_; }
+        friend bool operator!=(const iterator &x, const iterator &y) { return !(x == y); }
+        friend int operator-(const iterator &x, const iterator &y)
+        {
+            return (x.i_ - y.i_) * buf_size - (x.last_ - x.cur_) + (y.last_ - y.cur_);
+        }
+
+        buf_iterator i_;
+        T *cur_;
+        T *last_;
+    };
+    typedef iterator const_iterator;
+
+    __deque_imp() {}
+    explicit __deque_imp(const Allocator &a) : __deque_buf<T, Allocator>(a) {}
     unsigned int size() const { return this->size_; }
     bool empty() const { return this->size_ == 0; }
-    T &front() { return this->buf_[this->start_ / buf_size][this->start_ % buf_size]; }
+    T &front() { return this->buf_.second_[this->start_ / buf_size][this->start_ % buf_size]; }
     /* the last element (the rdr lane's 0x3335C0, out of line: start + size - 1 split by the block
      * size, the block found through the buffer's modulo) */
     T &back()
     {
         unsigned int n = this->start_ + this->size_ - 1;
 
-        return this->buf_[n / buf_size][n % buf_size];
+        return this->buf_.second_[n / buf_size][n % buf_size];
     }
     void pop_front();
     void pop_back();
     void clear();
     void push_back(const T &x);
     static unsigned int max_size() { return ((unsigned int)-1 / sizeof(T *) - 1) * buf_size; }
+    const_iterator make_iterator(unsigned int n) const;
+    iterator make_iterator(unsigned int n);
+    template <class InputIterator>
+    void do_assign(InputIterator first, InputIterator last);
 };
 
 template <class T, class Allocator>
-__deque_imp<T, Allocator>::__deque_imp()
+typename __deque_imp<T, Allocator>::const_iterator __deque_imp<T, Allocator>::make_iterator(unsigned int n) const
 {
+    n += this->start_;
+    typename iterator::buf_iterator i = this->buf_.second_.begin() + n / buf_size;
+    T *b = this->buf_.second_.size() ? *i : 0;
+
+    return const_iterator(i, b + n % buf_size, b + buf_size);
+}
+
+template <class T, class Allocator>
+typename __deque_imp<T, Allocator>::iterator __deque_imp<T, Allocator>::make_iterator(unsigned int n)
+{
+    n += this->start_;
+    typename iterator::buf_iterator i = this->buf_.second_.begin() + n / buf_size;
+    T *b = this->buf_.second_.size() ? *i : 0;
+
+    return iterator(i, b + n % buf_size, b + buf_size);
+}
+
+template <class T, class Allocator>
+template <class InputIterator>
+void __deque_imp<T, Allocator>::do_assign(InputIterator first, InputIterator last)
+{
+    unsigned int n = last - first;
+
+    if (n == 0)
+        return;
+    static const unsigned int max = max_size();
+
+    if (n > max)
+        __msl_error("deque::construction length error");
+    this->buf_.second_.reserve(2);
+    this->buf_.second_.resize(1);
+    do {
+        if (this->buf_.second_.size() == (this->buf_.second_.capacity() ? this->buf_.second_.capacity() - 1 : 0))
+            this->buf_.second_.reserve(this->buf_.second_.size() * 2);
+        T *&last_block = this->buf_.second_.back();
+        T *b = (T *)operator new(buf_size * sizeof(T));
+
+        if (!b)
+            __msl_error("Memory allocation failure");
+        last_block = b;
+        this->buf_.second_.push_back(0);
+    } while ((this->buf_.second_.size() ? (this->buf_.second_.size() - 1) * buf_size : 0) < n);
+    this->start_ = ((this->buf_.second_.size() ? (this->buf_.second_.size() - 1) * buf_size : 0) - n) / 2;
+    this->size_ = n;
+    iterator i = make_iterator(0);
+
+    for (; first != last; ++first, ++i)
+        *i = *first;
 }
 
 /* the elements forgotten: two blocks kept, the start mid-block (0x2CF120) */
@@ -220,10 +519,10 @@ template <class T, class Allocator>
 void __deque_imp<T, Allocator>::clear()
 {
     this->size_ = 0;
-    if (this->buf_.size() > 1) {
-        while (this->buf_.size() > 2) {
-            operator delete(this->buf_.front());
-            this->buf_.pop_front();
+    if (this->buf_.second_.size() > 1) {
+        while (this->buf_.second_.size() > 2) {
+            operator delete(this->buf_.second_.front());
+            this->buf_.second_.pop_front();
         }
         this->start_ = buf_size / 2;
     } else
@@ -241,8 +540,8 @@ void __deque_imp<T, Allocator>::pop_front()
     --this->size_;
     ++this->start_;
     while (this->start_ >= 2 * buf_size) {
-        operator delete(this->buf_.front());
-        this->buf_.pop_front();
+        operator delete(this->buf_.second_.front());
+        this->buf_.second_.pop_front();
         this->start_ -= buf_size;
     }
 }
@@ -266,10 +565,10 @@ void __deque_imp<T, Allocator>::pop_back()
         return;
     }
     --this->size_;
-    while ((this->buf_.size() ? (this->buf_.size() - 1) * buf_size : 0) - (this->start_ + this->size_) >=
+    while ((this->buf_.second_.size() ? (this->buf_.second_.size() - 1) * buf_size : 0) - (this->start_ + this->size_) >=
            2 * buf_size) {
-        this->buf_.pop_back();
-        T *&b = this->buf_.back();
+        this->buf_.second_.pop_back();
+        T *&b = this->buf_.second_.back();
 
         operator delete(b);
         b = 0;
@@ -288,67 +587,55 @@ void __deque_imp<T, Allocator>::push_back(const T &x)
 {
     unsigned int n = this->start_ + this->size_;
 
-    if (n == (this->buf_.size() ? (this->buf_.size() - 1) * buf_size : 0)) {
+    if (n == (this->buf_.second_.size() ? (this->buf_.second_.size() - 1) * buf_size : 0)) {
         static const unsigned int max = max_size();
 
         if (this->size_ == max)
             __msl_error("deque::push_back length error");
-        if (this->buf_.size() == (this->buf_.capacity() ? this->buf_.capacity() - 1 : 0)) {
-            if (this->buf_.size() == 0) {
-                this->buf_.reserve(2);
-                this->buf_.resize(1);
+        if (this->buf_.second_.size() == (this->buf_.second_.capacity() ? this->buf_.second_.capacity() - 1 : 0)) {
+            if (this->buf_.second_.size() == 0) {
+                this->buf_.second_.reserve(2);
+                this->buf_.second_.resize(1);
             }
             T *b = (T *)operator new(buf_size * sizeof(T));
 
             if (!b)
                 __msl_error("Memory allocation failure");
-            this->buf_.reserve(this->buf_.size() * 2);
-            this->buf_.back() = b;
+            this->buf_.second_.reserve(this->buf_.second_.size() * 2);
+            this->buf_.second_.back() = b;
             *b = x;
-            this->buf_.push_back(0);
+            this->buf_.second_.push_back(0);
             ++this->size_;
             return;
         }
-        T *&last = this->buf_.back();
+        T *&last = this->buf_.second_.back();
         T *b = (T *)operator new(buf_size * sizeof(T));
 
         if (!b)
             __msl_error("Memory allocation failure");
         last = b;
-        this->buf_.push_back(0);
+        this->buf_.second_.push_back(0);
     }
-    this->buf_[n / buf_size][n % buf_size] = x;
+    this->buf_.second_[n / buf_size][n % buf_size] = x;
     ++this->size_;
 }
 
-/* OPEN (the MSL headers' round 3, not modelled): the copy constructor, as the rdr editor's stack
- * uses it (CRdrEditor() 0x333AE0 builds a default deque, 0x3340F0, copies it into its std::stack
- * member and destroys the temporary). The image's chain, every level an out-of-line call:
- *   - deque<PCv>'s copy 0x333B30: 0x3340E0(x) (an accessor returning x, `jr ra; move v0,a0`),
- *     __deque_buf's constructor from it 0x333D90, the allocator base 0x2CEE30 at +0x18, x's begin
- *     and end as 24-byte iterators on the stack (0x333D30, 0x333CD0, both through 0x334AA0) and the
- *     range init 0x333BB0 (the tag by value, a byte off the stack) -> 0x334440, a 0x3D4-byte append
- *     loop (the buffer's reserve/resize/push_back, the block allocated inline);
- *   - 0x333D90: a rebound allocator temporary (0x3340D0, empty), an empty cdeque<PPCv> built on the
- *     stack (0x3340B0: four words zeroed), copied into buf_ through 0x333E00 -> cdeque<PCv>'s copy
- *     0x333E40, the temporary destroyed with -1 (0x2CEE90), start_ and size_ zeroed after;
- *   - cdeque<PCv>'s copy 0x333E40: 0x285CD0(x) and 0x2E0D20 (copies linked from earlier units:
- *     an accessor and __cdeque_buf's constructor from it), the allocator at +0x10, x's begin and
- *     end (0x334030, 0x333F90) and the range init 0x333EC0 -> 0x3341C0 (0x27C: the storage
- *     allocated, 0x285CE0 per element).
- * The accessors and constructors from an allocator are all out-of-line copies, so it needs MSL
- * 3.0's exact layering (allocator accessors, compressed pairs) to match; CRdrEditor() waits. */
 template <class T, class Allocator = allocator<T> >
 class deque;
 
-/* a deque of anything but pointers (CSimpleStateMachine's queue of member pointers, OVL1 0x3A5CC0's
- * unit): its constructors out of class, so called out of line (0x3A6410, the copy 0x3A5E50 -- the
- * copy declared only: its chain is the rdr lane's open one, below) */
 template <class T, class Allocator>
 class deque : public __deque_imp<T, Allocator> {
+    typedef __deque_imp<T, Allocator> base;
+
 public:
+    typedef typename base::const_iterator const_iterator;
+
     deque();
     deque(const deque &x);
+    const_iterator begin() const;
+    const_iterator end() const;
+    template <class InputIterator>
+    void init(InputIterator first, InputIterator last, forward_iterator_tag);
 };
 
 template <class T, class Allocator>
@@ -356,8 +643,42 @@ deque<T, Allocator>::deque()
 {
 }
 
+template <class T, class Allocator>
+deque<T, Allocator>::deque(const deque &x) : base(x.alloc())
+{
+    init(x.begin(), x.end(), forward_iterator_tag());
+}
+
+template <class T, class Allocator>
+typename deque<T, Allocator>::const_iterator deque<T, Allocator>::begin() const
+{
+    const_iterator i = this->make_iterator(0);
+
+    return i;
+}
+
+template <class T, class Allocator>
+typename deque<T, Allocator>::const_iterator deque<T, Allocator>::end() const
+{
+    const_iterator i = this->make_iterator(this->size_);
+
+    return i;
+}
+
+template <class T, class Allocator>
+template <class InputIterator>
+void deque<T, Allocator>::init(InputIterator first, InputIterator last, forward_iterator_tag)
+{
+    this->do_assign(first, last);
+}
+
 template <class Allocator>
 class deque<const void *, Allocator> : public __deque_imp<const void *, Allocator> {
+    typedef __deque_imp<const void *, Allocator> base;
+
+public:
+    deque() {}
+    explicit deque(const Allocator &a) : base(a) {}
 };
 
 template <class T, class Allocator>
@@ -365,12 +686,56 @@ class deque<T *, Allocator> : public deque<const void *, allocator<const void *>
     typedef deque<const void *, allocator<const void *> > base;
 
 public:
+    typedef typename base::const_iterator const_iterator;
+
+    deque();
+    deque(const deque &x);
+    const_iterator begin() const;
+    const_iterator end() const;
+    template <class InputIterator>
+    void init(InputIterator first, InputIterator last, forward_iterator_tag);
+
     T *&front() { return (T *&)base::front(); }
     T *&back() { return (T *&)base::back(); }
     void push_back(T *const &x) { base::push_back((const void *const &)x); }
     void pop_front() { base::pop_front(); }
     void pop_back() { base::pop_back(); }
 };
+
+template <class T, class Allocator>
+deque<T *, Allocator>::deque()
+{
+}
+
+template <class T, class Allocator>
+deque<T *, Allocator>::deque(const deque &x) : base(x.alloc())
+{
+    init(x.begin(), x.end(), forward_iterator_tag());
+}
+
+template <class T, class Allocator>
+typename deque<T *, Allocator>::const_iterator deque<T *, Allocator>::begin() const
+{
+    const_iterator i = this->make_iterator(0);
+
+    return i;
+}
+
+template <class T, class Allocator>
+typename deque<T *, Allocator>::const_iterator deque<T *, Allocator>::end() const
+{
+    const_iterator i = this->make_iterator(this->size_);
+
+    return i;
+}
+
+template <class T, class Allocator>
+template <class InputIterator>
+void deque<T *, Allocator>::init(InputIterator first, InputIterator last, forward_iterator_tag)
+{
+    this->do_assign(Metrowerks::__convert_iterator<InputIterator, const void *>(first),
+                    Metrowerks::__convert_iterator<InputIterator, const void *>(last));
+}
 
 }
 

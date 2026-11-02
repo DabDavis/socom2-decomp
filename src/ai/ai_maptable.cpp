@@ -342,6 +342,46 @@ void CAiMap::spores::GetRange(unsigned int id, range &r)
     r.m_count = r.m_last - r.m_first + 1;
 }
 
+/* two cells in order, by map, then x, then y (the name ours) -- as the target computes it: the y
+ * difference is taken when the x's DIFFER and the x difference (none) when they agree, the map's
+ * difference last in the code (an `==` where `!=` was meant, it seems; its one caller tests for 0) */
+inline int loc_compare(const CAiMapLoc &a, const CAiMapLoc &b)
+{
+    int r;
+
+    if (a.m_mapid == b.m_mapid) {
+        if (a.x == b.x)
+            r = a.x - b.x;
+        else
+            r = a.y - b.y;
+    } else
+        r = a.m_mapid - b.m_mapid;
+    return r;
+}
+
+/* the first line with cells whose first cell is the one asked for (new in SOCOM II, the name ours:
+ * CTMap's Tick on the cell's map, 0x52FD90). The compare as one result local over nested if/else
+ * (only that order lays the x-equal arm first and the map's arm last, with the target's delay
+ * slots); the found line through a result local (the target's zero in the first test's slot).
+ * OPEN, right size, 23 instructions: registers only -- the target loads begin() first (the
+ * iterator in v1, the end in a3, the first cell in t0), this build the end first (the end in v1,
+ * the iterator in a2, the cell in t0). With end() in the loop test (a hoisted temporary) the target's
+ * begin-first order and v1 come, but the end takes t0 and the cell a3, and the compare's y arm loses
+ * its delay slot (0xD8); i and e declared apart, either first, before or after the result, a
+ * while loop, a reference to the line, the cell in a local, empty() for size() were tried */
+CAiMap::line *CAiMap::lines::Find(const CAiMapLoc &loc)
+{
+    line *r = 0;
+
+    for (iterator i = begin(), e = end(); i != e; ++i) {
+        if ((*i).size() && !loc_compare(*(*i).begin(), loc)) {
+            r = &*i;
+            break;
+        }
+    }
+    return r;
+}
+
 /* the rectangle's middle cell (SOCOM 1's) */
 CAiMapLoc &CAiMap::region::GetCenter(CAiMapLoc &loc) const
 {

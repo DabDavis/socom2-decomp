@@ -78,6 +78,16 @@ void CTargetMods::SetTarget_DilateUponMovement(float d)
     m_target_dilateuponmovementSqrt = sqrtf(d);
 }
 
+float CTargetMods::GetFireRifle_KickBaseDist() const
+{
+    return m_firerifle_kickbasedist;
+}
+
+float CTargetMods::GetFireRifle_KickRandomDist() const
+{
+    return m_firerifle_kickrandomdist;
+}
+
 void CZFTSWeapon::AddZoommode(float zoom)
 {
     m_zoommode.push_back(zoom);
