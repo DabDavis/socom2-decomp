@@ -451,9 +451,19 @@ class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, all
     }
     /* the base's, cast: through end() it would be a level taller (CZAR::GetOpenKey inlines it) */
     T *&back() { return (T *&)__base::back(); }
+    /* the range erased, the iterators read through pointer references: their addresses taken, MW
+     * copies each into its parameter where a plain read lets it pass a local straight through
+     * (DeleteLayers 0x53A730 copies both its named iterators, byte-exact so: the MSL headers round
+     * 6). The erase(remove(...), end()) family (RemoveEmptyGames, CleanupTemporary, DeleteLightMap,
+     * CTurretList::Remove, CWorld::DeleteChild) stays open: the target builds end() once and copies
+     * it into erase's parameter only after remove's call. Taken by const reference and forwarded to
+     * this by-value level, the copies move after the call and end() is built once (RemoveEmptyGames
+     * 4 instructions off: the end's temporary in the lower slot, the target's in the highest) but
+     * CGrid::Destroy (0x2D58B0) is lost; three levels, explicit copies, a void level change nothing
+     * more (build/p6/v_erase*.py, er/gen.py) */
     iterator erase(iterator first, iterator last)
     {
-        return __iter(__base::erase((unsigned int *)first.m_p, (unsigned int *)last.m_p));
+        return __iter(__base::erase((unsigned int *&)first, (unsigned int *&)last));
     }
     /* one element erased: the iterator taken by value, the pod's single erase called (the UI lane:
      * ~CRadioStripSpec's walk) */
