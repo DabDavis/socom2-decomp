@@ -511,6 +511,120 @@ extern "C" void *func_00558AA0(CAiRowTable *t, unsigned char i)
 /* (OVL2 0x60A850, unowned: a test of the AI's object at 0x67C) */
 extern "C" bool func_0060A850(void *p);
 
+/* the AI's target held, with its bit 9 (an inline bool, the kit lane's TargetHeld: the target
+ * materialises the `&&`) */
+static inline bool TargetHeld(CSealCtrlAi *ai)
+{
+    return func_0060A850(ai->m_67c) && (ai->m_6a8 & 0x200);
+}
+
+/* (OVL2 0x56D090) */
+void CSealCtrlAi::RestoreAiMode()
+{
+    SetAiMode(m_3f5);
+    m_3f5 = (AI_MODE)1;
+}
+
+/* the controller's SEAL (an inline: the kit's test reads m_entity again through it) */
+static inline CZSealBody *SealOf(CSealCtrlAi *ai)
+{
+    return (CZSealBody *)ai->m_entity;
+}
+
+/* (OVL2 0x56D890).
+ * OPEN, 9 instructions: the target loads the team straight into a0 (`lw a0,4(a0); lw a0,0xC8(a0)`)
+ * and reads m_entity again for the kit's test after the two team tests; MW here keeps the entity in
+ * a1 across both (and moves `on` to s0 first). Tried: the kit through this inline, the team in a
+ * local, every test through the inline, the tests unparenthesised. */
+void CSealCtrlAi::SetAiBit2(bool on)
+{
+    if ((m_entity->m_team & 0x20000) || (m_entity->m_team & 0x4000000) || !SealOf(this)->m_kit.GetCurItem())
+        on = false;
+    m_aibit2 = on;
+}
+
+extern "C" {
+/* the state a SEAL's body is in, by a flag (OVL2 0x58A720, seal_body.cpp's, not written yet) and
+ * the flag this asks with (OVL2 data, a byte) */
+SEAL_STATE func_0058A720(CEntity *seal, unsigned char flag);
+extern unsigned char data_006502D0;
+}
+
+/* (OVL2 0x562FC0) */
+bool CSealCtrlAi::InStance(SEAL_STANCE stance, bool fromState)
+{
+    bool r;
+
+    if (!fromState) {
+        r = m_stance == stance;
+        return r;
+    } else
+        r = stance == CZSealBody::GetStanceFromState(func_0058A720(m_entity, data_006502D0), m_stance);
+    return r;
+}
+
+/* (OVL2 0x567840) */
+void CSealCtrlAi::StopThrottles(bool keep)
+{
+    SetThrottle(1, 0.0f);
+    SetThrottle(2, 0.0f);
+    SetThrottle(0, 0.0f);
+    SetThrottle(3, 0.0f);
+    if (!keep) {
+        m_throttle[1] = 0.0f;
+        m_throttle[2] = 0.0f;
+        m_throttle[0] = 0.0f;
+        m_throttle[3] = 0.0f;
+    }
+}
+
+/* (OVL2 0x563100) */
+bool CSealCtrlAi::SetStanceDelayed(SEAL_STANCE stance, float delay)
+{
+    if (stance != m_stance_asked) {
+        if (delay == -1.0f) {
+            float r = 4.656612873e-10f * (float)rand();
+
+            delay = 0.25f + (1.2f - 0.25f) * r;
+        }
+        m_stance_asked = stance;
+        m_280 = delay;
+    }
+    return true;
+}
+
+/* (OVL2 0x563050) */
+bool CSealCtrlAi::ChangeStanceDelayed(SEAL_STANCE from, SEAL_STANCE to, float delay)
+{
+    if (m_stance == from || m_stance_asked == from) {
+        if (delay == -1.0f) {
+            float r = 4.656612873e-10f * (float)rand();
+
+            delay = 0.25f + (1.2f - 0.25f) * r;
+        }
+        m_stance_asked = to;
+        m_280 = delay;
+    }
+    return true;
+}
+
+/* (OVL2 0x5631A0) */
+bool CSealCtrlAi::SetStance(SEAL_STANCE stance)
+{
+    m_stance_asked = stance;
+    m_280 = 0;
+    return DoSetStance(stance);
+}
+
+/* (OVL2 0x5631B0) */
+void CSealCtrlAi::SetDesiredStance(SEAL_STANCE stance, float delay, bool force)
+{
+    if (stance == STANCE_PRONE || TargetHeld(this) || force) {
+        ((CZSealBody *)m_entity)->m_desiredStance = stance;
+        m_stance_timer.Set(delay);
+    }
+}
+
 /* CAiSPursue's slot 0x14 (new in SOCOM II): the pursuit stops unless the AI's object says so,
  * and the Tick's result (OVL2 0x55A760; an int, handed the sub-stack's state, as ai_states.h's slot
  * 0x14 -- the kit lane, round 6). ai_states.h's Result() gives the target's `movz` and the

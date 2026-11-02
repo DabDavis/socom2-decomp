@@ -1643,6 +1643,94 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the game states, round 16** (fts_action.cpp, CGTree::FindNode, the graph destructors, CMsgEditor):
+  - a member list whose destructor tests `this` four times before the erase is a class of its own
+    over `list<T *>` (CGNodeList, CGEdgeList: ~CGNode, ~CGRoute, ~CGraph);
+  - a `std::transform` op written as an inline function and passed by pointer inlines fully, with
+    no out-of-line copy; a functor passed by value leaves an `sb zero` temporary; MW 3.0 takes a
+    function template's address only through an explicit cast;
+  - for an unsigned length `len > 1 &&` branches on `sltiu at`, `len >= 2 &&` materialises the test;
+  - `T *a; bool b; U *c = f(); a = ...; b = true;` gives `c` the highest number while `a` and `b`
+    are still computed after the call;
+  - `buf[len] = c; buf[++len] = 0;` keeps a separate `len + 1`, where `buf[len + 1]` folds into the
+    previous store's address; virtual calls on member objects stay virtual;
+  - hud_main.cpp's `theMission.m_messages4` (+0x1060) is a CMsgEditor, not a C2DMessage_Q;
+    __sinit_fts_player.cpp (0x400330) is emitted byte-exact but for ~CSpawners (0x2B4030, open);
+    CGTree::Destroy's inner self-inlined copy is one inline level too shallow (it wants SOCOM 1's
+    list shape: tail() 0x2D2530, the node/sentinel constructors 0x2D2520/0x2D2510).
+- **Tells from the AI core, round 10** (CAiMaps::Tile/SetOccupied, the overlay walks, the look/cover finders):
+  - a const-walk inline called on a global object (`ai::overlays.Contains`) lets MW fold the constant
+    `this` and drop each pass's store of end(); walking through `const T *l = this;` keeps the
+    target's per-pass store (SetOccupied, 0x53A500);
+  - a postfix `i++` adds one inline level: it made the open-cell helper six high, so it was cut to
+    one level (_find_look, _find_cover);
+  - a field read twice without a name merges into a temporary numbered after every named local
+    (_tile_soil's flags); summing through a const reference to a local keeps MW from sharing that
+    load with a later read (FindLookLoc's d.z);
+  - an inline cut to one level makes the caller call even iterator default constructors and
+    assignments out of line, and their copies sit right after it (SetRegionType, 0x529D30-0x529ED7);
+  - `m_regions[type].end()` in a loop test keeps the size's and the data's addresses in two saved
+    registers, a reference local only the vector's;
+  - open: GetRandomLoc 0x529EE0 (the target pads a nop after each random draw), SetRegionType
+    (s1/s2), std::remove 0x529D70 (include/algorithm's shape, 0x1C short).
+- **Tells from the kit and AI states, round 10** (anim.cpp, seal_ex.cpp, seal_ailines.cpp, ai_group.cpp):
+  - a const inline accessor reached through a non-const parameter reloads the field the caller just
+    tested; the parameter copied into a `const T *` local reuses the load (ftmask_create);
+  - a postfix `i++` on a class iterator gives the rotated loop (its setup block at the bottom),
+    prefix `++i` does not (CloseAll); an inline accessor as a loop bound is re-read every pass
+    (CAnimTypeRec::Count());
+  - an `int` callee result summed into an int needs an `int` return type -- a `bool` adds `andi 0xff`
+    at the call (MarkState);
+  - a walk stepping the group pointer itself through the pairs keeps one cursor register, a separate
+    pairs pointer takes another; in `if (a == b)`, the element read into a local first decides the
+    `bne`'s operand order (Contains);
+  - a state whose constructor is inlined one level calls a real CAiTimer member's constructor out of
+    line, so the unit emits the copy (CAiTimer(float) 0x5EA550);
+  - units: seal_ex.cpp starts at 0x5B8190; anim.cpp (0x5E0030-0x5E622F) holds CAnimTypeRec and its
+    600-record pool; seal_ailines.cpp runs from ~0x5FF2F0 to seal_look.cpp (SOCOM 1's ai::MoveTo at
+    0x600070); CAiState(AI_STATE)'s copy 0x5EA5D0 and CAiMapLoc's copy constructor 0x5EA7E0 come only
+    with CSealUnit::IssueCommand (its static CAiSBreach built where CAiStateStack() is not defined).
+- **Tells from the SEALs, round 9** (seal.cpp's small rows, seal_ai.cpp's stance setters):
+  - the prologue copies parameters into their saved registers in reverse declaration order, floats
+    included: the order of the moves places a float among the int parameters where no call site
+    shows it (SetDesiredStance: (stance, float, bool));
+  - two chained member-pointer calls are two `__ptmf_scall`s through frame copies of the pointers;
+    typed `extern const` placeholders for the constants pass their addresses as the target does;
+    a static list walked through a const view keeps the iterator temporaries in the frame (0x545D80);
+  - a member vector walked through a local pointer keeps the member's address in a register across
+    the loop -- passed to a static inline helper the offset folds back (0x544B60); a reference local
+    to a global list keeps its address in a saved register across a loop of calls (0x543930);
+  - a call's result ANDed with a member loads the call's side first only through a local; written
+    inline MW loads the other side first in either operand order (0x544FC0, 0x5434B0);
+  - a byte-enum member is copied with `lb`, a signed-char member cast to the enum with `lbu`
+    (RestoreAiMode); an unsigned short count converted to float through unsigned int needs an
+    unsigned int local, or MW masks it again after the test (0x5458A0);
+  - a result assigned and returned inside the then-block keeps that block first; `if (!b) return A;
+    return B;` puts it last (InStance);
+  - CSealStats lives in zseal.h now (m_stats at 0x58C, before m_accuracy as in SOCOM 1); st_mpexit.cpp
+    still keeps a copy of its own.
+- **Tells from the integrator's zar units** (zar_search.cpp, zar_key.cpp):
+  - SOCOM 1's debug allocator calls name units: its `_calloc(n, s, "zar_search.cpp", line)` (SOCOM II
+    passes 0, 0) put the fetches in a unit of their own -- a SOCOM 1 function that allocates gives
+    its file's name;
+  - `size <= key->m_size` branches straight on `slt at`; `key->m_size >= size` materialises the
+    test (`slt v0`, `bnez v0`) -- the weapons round 9 tell with the operands the other way;
+  - `return open ? f(...) : 0;` from a bool function, an int ternary, gives `andi 0xff` on the
+    call's path, `move v0,zero` on the other and `sltu` after the join (SOCOM 1's typed fetches too);
+  - `if ((size = f()) > 0)` branches on the call's result (`blez v0`, the copy in the delay slot);
+    `int size = f(); if (size > 0)` branches on the copy;
+  - a parameter copied to a local (`CIO *file = io;`) is numbered after the parameters: it takes the
+    saved register a later parameter would (CKey::Read: s1, where io takes s2);
+  - an inline whose by-value parameter it passes by reference (InsertKey(key) -> push_back(key))
+    keeps the caller's variable in a saved register and copies it to the frame; push_back(key)
+    written directly keeps the variable itself in the frame;
+  - an auto-inline function inlined by one caller (CKey::Read inlines InsertKey) and called out of
+    line by an equally small other (Insert(const char *, ...)) is a unit boundary: zar_key.cpp
+    (CKey's) splits off zar_search.cpp at 0x25AE00, the fetches calling FindKey out of line too;
+  - zar_main.cpp starts below the GCC libraries' nominal 0x258000: their 8-aligned rows end at
+    0x256FB8, and from 0x256FD0 on it is MW code (CZAR's buffer writer, NewKey 0x2571D0,
+    WriteDirectory ~0x257590); CZAR grew four words at 0x20 and 0x2C-0x34 and its TAIL one, so
+    m_tail sits at 0x38 and m_root at 0x9C.
 - **Tells from the HUD, round 17** (st_mpexit.cpp's stat machinery, four static initialisers):
   - a pointer-to-member constant passed by value to an inline is copied into a local (ld/lwc1 then
     sd/swc1); `(p->*pfn)()` calls __ptmf_scall with t9 = &pfn; `pfn1 == pfn2` compiles to

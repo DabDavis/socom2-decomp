@@ -655,6 +655,42 @@ bool CMission::ReOpen_Unload2()
     return true;
 }
 
+/* a point of a camera path (the names ours): where, which way, and its name -- 0x98 bytes, the
+ * stride of the list at 0x437DF0 (whose only user, 0x295260, steps through it) */
+struct SCamPathPoint {
+    CPnt3D m_pos;   // 0x0
+    CPnt3D m_dir;   // 0xc
+    char m_name[0x80];   // 0x18
+};
+
+class CCamPath : public std::vector<SCamPathPoint> {
+public:
+    int GetPoint(int index, int step, CPnt3D *pos, CPnt3D *dir, const char **name);
+};
+
+/* the point `step` on from `index`, wrapping both ways, read out through at(); the index it lands
+ * on (OVL1 0x2AB260; the names ours) */
+int CCamPath::GetPoint(int index, int step, CPnt3D *pos, CPnt3D *dir, const char **name)
+{
+    unsigned int n = size();
+
+    if (n) {
+        if (step > 0)
+            index = (index + step) % n;
+        else {
+            if (index < 0)
+                index = 0;
+            index += step;
+            if (index < 0)
+                index += n;
+        }
+        *pos = at(index).m_pos;
+        *dir = at(index).m_dir;
+        *name = at(index).m_name;
+    }
+    return index;
+}
+
 /* the online game started (OVL1 0x2A9F00) */
 CZNetGame *CMission::CreateNetGame()
 {

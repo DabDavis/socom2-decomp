@@ -20,6 +20,8 @@ bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
 bool zrdr_tobool(const _zrdr *rdr, bool *out);
 char *zrdr_findstring(const _zrdr *rdr, const char *tag);
 bool zrdr_finduint(const _zrdr *rdr, const char *tag, unsigned int *out, int n);
+/* a tag's values as a team mask (SOCOM 1's ftmask_create; OVL2 0x5B8190, seal_ex.cpp's) */
+unsigned int ftmask_create(_zrdr *rdr);
 
 extern "C" {
 /* the anim's index'th command argument (SOCOM 1's CZAnimArgList::GetCmd(int); OVL1 0x2720E0) */
@@ -33,8 +35,6 @@ void func_0056D090(CSealCtrlAi *ai);
  * SOCOM II added after it (OVL2 0x598840) */
 void func_00574830(bool enabled, bool alarm);
 void func_00598840(bool enabled);
-/* a tag's values as a team mask (OVL2 0x5B8190, before seal_kit.cpp: the kit range's helpers) */
-unsigned int func_005B8190(_zrdr *tag);
 /* an AI state by name, 0 for none (OVL2 0x5D8CC0, this unit's: a generated draft) */
 AI_STATE func_005D8CC0(const char *name);
 /* the AI's stance set, and set for a time (OVL2 0x5631A0, 0x5631B0: the SEAL lane's rows, where
@@ -294,7 +294,7 @@ struct CTTeam : TASK_HDR {
         cmd->m_op = -1;
         cmd->m_mask = 0;
         cmd->m_op = op;
-        cmd->m_mask = func_005B8190(tag);
+        cmd->m_mask = ftmask_create(tag);
         return cmd;
     }
 };

@@ -9,6 +9,7 @@
 #include "../zanim/zanim.h"
 #include "../../ai/ai.h"
 #include "../zsnd/zsnd.h"
+#include "../zweapon/zweapon.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -49,15 +50,7 @@ extern "C" void *func_00555170(CIndexedArray *a)
     return a->m_data[a->m_index];
 }
 
-/* the SEAL's stats (SOCOM 1's DWARF: CSealStats, 0x54 bytes of ints; SOCOM II's counters are
- * unsigned shorts) -- only the counters the incrementers touch, by halfword */
-class CSealStats {
-public:
-    unsigned short m_count[0x3c / 2];   // 0x0
-    short m_score;   // 0x3c: the MVP score (SOCOM 1's m_sMvpScore, a short there too)
-    unsigned short m_count2[3];   // 0x3e
-    float m_hit_percent;   // 0x44 (SOCOM 1's 0x28)
-};
+/* the SEAL's stats, CSealStats, are zseal.h's (CZSealBody::m_stats) */
 
 CZSealBody *ftsGetPlayer();
 
@@ -194,6 +187,160 @@ extern "C" void func_00544CF0(CSealStats *s, const CZSealBody *seal)
 {
     if (StatCounts(seal))
         s->m_count[0x10 / 2]++;
+}
+
+/* the hit percentage made again from the hits and the shots (the counters converted as unsigned
+ * ints, the shots through a local) */
+static inline void UpdateHitPercent(CSealStats *s)
+{
+    unsigned int shots = s->m_count[8 / 2];
+
+    s->m_hit_percent = shots ? (float)(unsigned int)s->m_count[4 / 2] / (float)shots : 0.0f;
+}
+
+/* a hit: counted (a second count when the two share a team) and, when it counts, the hit
+ * percentage made again (OVL2 0x5458A0; SOCOM 1's Hit by its shape) */
+extern "C" void func_005458A0(CSealStats *s, const CZSealBody *seal, const CZSealBody *other)
+{
+    s->m_count[4 / 2]++;
+    if (other->m_team & seal->m_team)
+        s->m_count[6 / 2]++;
+    if (StatCounts(seal))
+        UpdateHitPercent(s);
+}
+
+/* a shot: counted, and offline a shot by someone off the player's team counted in the player's
+ * stats; when it counts, the hit percentage made again (OVL2 0x544FC0; SOCOM 1's Shot by its shape:
+ * a weapon's fire, 0x5BE9A0, calls it) */
+extern "C" void func_00544FC0(CSealStats *s, const CZSealBody *seal)
+{
+    s->m_count[8 / 2]++;
+    if (!theNetwork.m_9) {
+        /* (the player's team taken first: a local keeps its load ahead of the shooter's) */
+        unsigned int team = ftsGetPlayer()->m_team;
+
+        if (!(team & seal->m_team))
+            ftsGetPlayer()->m_stats.m_count[0xa / 2]++;
+    }
+    if (StatCounts(seal))
+        UpdateHitPercent(s);
+}
+
+/* the SEAL's stats (OVL2 0x545890; the stats events' member pointer) */
+CSealStats *CZSealBody::GetStats()
+{
+    return &m_stats;
+}
+
+/* a kill: counted, the score up two and, for the local player in a squad whose order is 19, a
+ * second counter; the game's kill valve stepped (OVL2 0x545290; the killer's credit, 0x59EE20, calls
+ * it) */
+extern "C" void func_00545290(CSealStats *s, const CZSealBody *seal)
+{
+    if (StatCounts(seal)) {
+        s->m_count[0xc / 2]++;
+        s->m_score += 2;
+        if (seal == ftsGetPlayer()) {
+            CSealUnit *unit = ((CSealCtrl *)seal->m_control)->m_unit;
+
+            if (unit && unit->m_9c->m_8 == 19)
+                s->m_count[0xe / 2]++;
+        }
+        data_00437CE8->m_70->SetValue(data_00437CE8->m_70->m_value + 1);
+    }
+    func_00544D60(seal, 0);
+}
+
+/* a SEAL's stats, and a stats event told to a SEAL (member pointers: 12 bytes, {0, -1, function}
+ * for these) */
+typedef CSealStats *(CZSealBody::*SEAL_STATS_GETTER)();
+typedef void (CSealStats::*SEAL_STATS_EVENT)(const CZSealBody *seal, bool teammate);
+
+/* the entity as a SEAL, if it is one */
+static inline CZSealBody *AsSeal(CEntity *e)
+{
+    return e && e->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)e : 0;
+}
+
+/* the stats' event handed to the SEAL's teammates: each living SEAL of its team but itself has its
+ * stats (the first member pointer) given the event (the second, called with true) -- OVL2 0x545D80,
+ * new in SOCOM II (the stats themselves unused). Out of line: both callers call it. The list walked
+ * through a const view, which keeps the target's iterator temporaries in the frame */
+#pragma auto_inline off
+extern "C" void func_00545D80(CSealStats *s, const CZSealBody *seal, SEAL_STATS_GETTER stats,
+                              SEAL_STATS_EVENT event)
+{
+    const CEntityList &list = CEntity::m_list;
+
+    for (CEntityList::const_iterator i = list.begin(); i != list.end(); ++i) {
+        CZSealBody *other = AsSeal(*i);
+
+        if (other && seal != other && other->m_isAlive && (other->m_team & seal->m_team))
+            ((other->*stats)()->*event)(other, true);
+    }
+}
+#pragma auto_inline reset
+
+extern "C" {
+/* the two member-pointer constants (OVL2 data): CZSealBody's stats (0x545890) and this event
+ * (0x545650) */
+extern const SEAL_STATS_GETTER data_0064FD58;
+extern const SEAL_STATS_EVENT data_0064FD68;
+}
+
+/* a bomb's event (CZBombState::ChangeBombState calls it): for the SEAL itself, the score up two when
+ * it counts, the score passed on, a counter, and online in game mode 1 the teammates told; for a
+ * teammate told, only their counter (OVL2 0x545650) */
+extern "C" void func_00545650(CSealStats *s, const CZSealBody *seal, bool teammate)
+{
+    if (!teammate) {
+        bool mode1 = data_00437CE8->m_mode == 1;
+
+        if (StatCounts(seal))
+            s->m_score += 2;
+        func_00544D60(seal, 1);
+        s->m_count[0x36 / 2]++;
+        if (theNetwork.m_9 && mode1) {
+            s->m_count[0x32 / 2]++;
+            func_00545D80(s, seal, data_0064FD58, data_0064FD68);
+        }
+    } else
+        s->m_count[0x32 / 2]++;
+}
+
+extern "C" {
+/* this event's member-pointer constants (OVL2 data): CZSealBody's stats (0x545890) and 0x545750 */
+extern const SEAL_STATS_GETTER data_0064FD38;
+extern const SEAL_STATS_EVENT data_0064FD48;
+}
+
+/* the other bomb event (ChangeBombState calls it): the score up four in game mode 1, else two, when
+ * it counts; the score passed on, a counter, and online in modes 1 and 2 the teammates told; for a
+ * teammate told, only their counter (OVL2 0x545750) */
+extern "C" void func_00545750(CSealStats *s, const CZSealBody *seal, bool teammate)
+{
+    if (!teammate) {
+        bool mode1 = false;
+        bool mode2 = false;
+
+        if (data_00437CE8) {
+            mode1 = data_00437CE8->m_mode == 1;
+            mode2 = data_00437CE8->m_mode == 2;
+        }
+        if (StatCounts(seal)) {
+            if (mode1)
+                s->m_score += 4;
+            else
+                s->m_score += 2;
+        }
+        func_00544D60(seal, 1);
+        s->m_count[0x1a / 2]++;
+        if (theNetwork.m_9 && (mode1 || mode2)) {
+            s->m_count[0x32 / 2]++;
+            func_00545D80(s, seal, data_0064FD38, data_0064FD48);
+        }
+    } else
+        s->m_count[0x32 / 2]++;
 }
 
 /* eight counters each added to (OVL2 0x5451E0, 0x5451C0, 0x5451A0, 0x545180, 0x545160, 0x545140,
@@ -463,8 +610,8 @@ bool CZSealBody::ExecuteAction_CQBAttack(CZSealBody *victim)
 
         if (act) {
             if (m_animset != data_0044D400) {
-                m_5b8++;
-                m_5b0 += 2;
+                m_stats.m_count[0x2c / 2]++;
+                m_stats.m_count[0x24 / 2] += 2;
             }
             done = true;
         }
@@ -559,6 +706,37 @@ void CZSealBody::NetworkPlayerCreate()
     seal->SetTeamMask(data_00441470);
     seal->m_vehicle_index = 0;
     seal->SetDisplayName(name);
+}
+
+/* a player's targets forgotten as seen: each one's bit 9 cleared and its visibility zeroed (OVL2
+ * 0x544B60, new in SOCOM II: SetCurZoomState calls it twice) */
+void CZSealBody::ResetTargetsSeen()
+{
+    if (IsPlayer()) {
+        /* (the list through a local: the loop re-reads its end through it, as the target's does) */
+        CTargetList *list = &m_targets;
+
+        for (CTargetList::iterator i = list->begin(); i != list->end(); ++i) {
+            i->m_flags &= ~0x200;
+            i->m_visibility = 0.0f;
+        }
+    }
+}
+
+/* the life the network reports set: a remote SEAL coming back up (1) from down (2 or 3) is marked
+ * for its respawn (OVL2 0x544210, new in SOCOM II) */
+void CZSealBody::SetNetLife(unsigned char life)
+{
+    if (life != m_netlife) {
+        unsigned char respawn = 0;
+        bool down = m_netlife == 2 || m_netlife == 3;
+
+        if (down && life == 1)
+            respawn = 1;
+        m_netlife = life;
+        if (IsRemote() && respawn)
+            m_needs_respawn = 1;
+    }
 }
 
 /* the compass anchors the SEAL carries: swapped in, whether there was none returned (OVL2
@@ -657,6 +835,107 @@ void CZSealBody::TickHeartbeat()
     }
 }
 
+/* a friend's marker given its four points, and offline turned off and locked (OVL2 0x543680) */
+void CZSealBody::AddFriendAnchorPoints(CCompassAnchor *anchor)
+{
+    CPnt3D p;
+
+    p.x = 62.0f;
+    p.y = 49.0f;
+    p.z = 36.0f;
+    anchor->AddPoint(&p);
+    p.x = 80.0f;
+    p.y = 42.0f;
+    p.z = 30.0f;
+    anchor->AddPoint(&p);
+    p.x = 30.0f;
+    p.y = 42.0f;
+    p.z = 80.0f;
+    anchor->AddPoint(&p);
+    p.x = 30.0f;
+    p.y = 76.0f;
+    p.z = 80.0f;
+    anchor->AddPoint(&p);
+    if (!theNetwork.m_9) {
+        anchor->SetEnabled(false);
+        anchor->SetArrowEnabled(false);
+        anchor->m_locked = 1;
+    }
+}
+
+/* the SEAL's own compass marker made, once: a friend's (kinds 4 and 5) where the SEAL is on the
+ * player's team, at the SEAL, with its points; "ABLE" (12) or "BRAVO" (13) at the origin with one
+ * point; named when given a name, and given its kind (OVL2 0x5434B0) */
+CCompassAnchor *CZSealBody::CreateCompassAnchor(int type, const char *name)
+{
+    static CPnt3D point(56.0f, 56.0f, 56.0f);
+    CCompassAnchor *anchor = 0;
+
+    if (m_compass_anchor)
+        return 0;
+    switch (type) {
+    case 4:
+    case 5: {
+        bool friendly = true;
+        /* (the player's team taken first, as in 0x544FC0) */
+        unsigned int team = ftsGetPlayer()->m_team;
+
+        if (!(team & m_team))
+            friendly = false;
+        if (friendly) {
+            anchor = CCompass::CreateAnchor(m_posW, "FRIENDLY");
+            AddFriendAnchorPoints(anchor);
+        }
+        break;
+    }
+    case 12:
+        anchor = CCompass::CreateAnchor(CPnt3D::zero, "ABLE");
+        anchor->AddPoint(&point);
+        anchor->SetPoint(-1);
+        break;
+    case 13:
+        anchor = CCompass::CreateAnchor(CPnt3D::zero, "BRAVO");
+        anchor->AddPoint(&point);
+        anchor->SetPoint(-1);
+        break;
+    }
+    if (anchor) {
+        if (name)
+            anchor->SetName(name);
+        anchor->m_type = type;
+    }
+    m_compass_anchor = anchor;
+    return anchor;
+}
+
+/* the charges set down that the SEAL comes near set off: each one whose time has run out, within
+ * its ammunition's proximity distance of the SEAL, detonated and taken off the list (OVL2 0x543930,
+ * new in SOCOM II: Tick calls it; the name ours) */
+void CZSealBody::CheckProximityExplosives()
+{
+    /* (the charge declared first: MW's numbering gives it the register after this's) */
+    PlacedExplosive *pe;
+    CPlacedExplosiveList &list = CZWeapon::m_placedExplosives;
+    int n = list.Count();
+
+    for (int i = 0; i < n; i++) {
+        pe = list.Get(i);
+
+        if (pe->m_time <= 0.0f) {
+            CZAmmo *ammo = pe->m_ammo;
+            CPnt3D pos = pe->m_framestartpos;
+            CPnt3D d = pos - m_posW;
+
+            if (d.x * d.x + d.y * d.y + d.z * d.z < ammo->GetProximityDistance()) {
+                pe->RemoteDetonate();
+                list.Remove(pe);
+                i--;
+                n--;
+            }
+        }
+    }
+}
+
 /* every heartbeat loop stopped: the playing one released, none current (OVL2 0x543A80; SOCOM 1's;
  * StopRumbler calls it) */
 void CZSealBody::StopAllHeartbeatSounds()
@@ -684,4 +963,82 @@ void CZSealBody::OpenHeartbeatSounds()
     m_heartbeat_sound[0] = CSnd::GetSoundByName("~HEART_SLOW");
     m_heartbeat_sound[1] = CSnd::GetSoundByName("~HEART_MED");
     m_heartbeat_sound[2] = CSnd::GetSoundByName("~HEART_MED_FAST");
+}
+
+/* a turret (zveh.h's CTurret, whose header clashes with zseal.h's stand-ins: only its thermal look
+ * here, at zveh.h's offset) */
+class CTurret : public CEntity {
+public:
+    virtual ~CTurret();
+    void SetThermal(zdb::CNode *node, bool thermal);
+
+    unsigned char _170[0x298 - 0x170];
+    bool m_thermal;   // 0x298
+};
+
+/* the entity the SEAL works as a turret, if it is one */
+static inline CTurret *AsTurret(CEntity *e)
+{
+    return e && e->m_type == CEntity::ENT_TYPE_TURRET ? (CTurret *)e : 0;
+}
+
+inline CTurret *CZSealBody::GetTurret(CEntity *e)
+{
+    CEntity *v = e ? e : m_eb8;
+
+    return v ? AsTurret(v) : 0;
+}
+
+inline CTurret *CZSealBody::GetTurret()
+{
+    return m_eb8 ? AsTurret(m_eb8) : 0;
+}
+
+/* whether the SEAL sees thermally: with nothing worked, by the goggles (item 195); with a turret, by
+ * its thermal scope (OVL2 0x5433C0) */
+bool CZSealBody::HasThermal(CEntity *e)
+{
+    bool r = false;
+
+    if (!e) {
+        if (m_kit.HasItem((EQUIP_ITEM)195))
+            r = true;
+    } else {
+        CTurret *t = GetTurret(e);
+
+        if (t && t->m_thermal)
+            r = true;
+    }
+    return r;
+}
+
+/* whether the SEAL works a turret with a thermal scope (OVL2 0x5432F0).
+ * OPEN, 6 instructions (0xB0 against 0xC8): the target's inlined HasThermal keeps GetTurret's
+ * fallback (`beqz a1; b; lw a1,0xEB8(a0)`) though its entity is the 0xEB8 it just loaded; MW here
+ * sees the two loads equal and collapses `e ? e : m_eb8` to e (out of line, HasThermal keeps it, as
+ * the target's does). Tried: nested ifs, the entity in a local, `r = HasThermal(...)`. */
+bool CZSealBody::TurretHasThermal()
+{
+    bool r = false;
+
+    if (m_eb8 && HasThermal(m_eb8))
+        r = true;
+    return r;
+}
+
+extern "C" {
+/* the turret's six nodes given a value at +0x9C (OVL1 0x3A9FB0, unowned) */
+void func_003A9FB0(CTurret *t, float f);
+}
+
+/* the turret the SEAL works given the value, its scope's look set by the SEAL's thermal vision
+ * (OVL2 0x543200; HandleNewZoom passes 1) */
+void CZSealBody::UpdateTurretScope(float f)
+{
+    CTurret *t = GetTurret();
+
+    if (t) {
+        func_003A9FB0(t, f);
+        t->SetThermal(0, HasThermal(m_eb8));
+    }
 }

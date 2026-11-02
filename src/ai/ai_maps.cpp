@@ -21,6 +21,40 @@ int CAiMaps::GetSporeCount(unsigned int id)
     return r.GetCount();
 }
 
+/* every map deleted, front first, then the tables (SOCOM 1's Close inlined this). Pinned: Close
+ * calls it, where -inline auto takes it whole (its erase called out of line does not stop it) */
+#pragma auto_inline off
+void CAiMaps::FreeMaps()
+{
+    while (size()) {
+        CAiMap *map = front();
+
+        erase(begin());
+        delete map;
+    }
+    FreeTables();
+}
+#pragma auto_inline reset
+
+/* the maps closed: the planner's queue flushed first, the cookie bumped last (SOCOM 1's) */
+void CAiMaps::Close()
+{
+    ai::FlushPlannerQueue();
+    FreeMaps();
+    ai::ClearOverlays();
+    m_cookie++;
+}
+
+/* every map's cells back to their loaded state, the overlays dropped (SOCOM 1's) */
+void CAiMaps::Reset()
+{
+    iterator last = end();
+
+    for (iterator it = begin(); it != last; ++it)
+        (*it)->ResetCells();
+    ai::ClearOverlays();
+}
+
 /* the map with that index, none past the last (SOCOM 1's; inlined into every lookup by cell) */
 CAiMap *CAiMaps::GetMapByIndex(unsigned int i) const
 {
@@ -170,6 +204,55 @@ CAiMap::link *CAiMaps::GetCellLink(const CAiMapLoc &loc)
     return map ? map->GetCellLink(loc) : 0;
 }
 
+/* the region of the type whose centre cell lies nearest the cell, level distance squared; one
+ * holding the cell is passed over unless `inside` (SOCOM 1's). The type's list indexed in the walk
+ * itself (the target keeps the size's and the data's addresses for each pass's end(), where a
+ * reference local keeps the vector's), the centre by value (copied out of its temporary) */
+CAiMap::region *CAiMaps::GetClosestRegion(const CAiMapLoc &loc, CAiMap::region::TYPE type, bool inside)
+{
+    CAiMap::region *best = 0;
+    float bestd = 0.0f;
+    CPnt3D c;
+
+    if (GetCellCenter(loc, &c)) {
+        for (CAiMapLocVec::iterator it = m_regions[type].begin(); it != m_regions[type].end(); ++it) {
+            CAiMap *map = GetMapByIndex(it->m_mapid);
+            CAiMap::region *r = map ? map->GetRegion(*it) : 0;
+
+            if (inside || !r->Contains(loc)) {
+                CPnt3D p;
+
+                if (GetCellCenter(r->GetCenter(), &p)) {
+                    p.Sub(&c, &p);
+                    float d = p.x * p.x + p.z * p.z;
+
+                    if (!best || d < bestd) {
+                        best = r;
+                        bestd = d;
+                    }
+                }
+            }
+        }
+    }
+    return best;
+}
+
+/* the first region of the type that holds the cell, through the cells listed for the type --
+ * each one's map found by index (inlined) and its region asked (SOCOM 1's) */
+CAiMap::region *CAiMaps::GetRegionTypeContainer(CAiMap::region::TYPE type, const CAiMapLoc &loc)
+{
+    CAiMapLocVec &v = m_regions[type];
+
+    for (CAiMapLocVec::iterator it = v.begin(); it != v.end(); ++it) {
+        CAiMap *map = GetMapByIndex(it->m_mapid);
+        CAiMap::region *r = map ? map->GetRegion(*it) : 0;
+
+        if (r->Contains(loc))
+            return r;
+    }
+    return 0;
+}
+
 /* whether a step may end on the cell: on the map, and not a no-go soil (new in SOCOM II) */
 bool CAiMap::IsTraversable(const CAiMapLoc &loc) const
 {
@@ -178,10 +261,13 @@ bool CAiMap::IsTraversable(const CAiMapLoc &loc) const
     return cell ? cell->IsTraversable() : false;
 }
 
+/* pinned: GetRandomLoc calls it out of line in the target */
+#pragma auto_inline off
 CAiMap *CAiMaps::GetMap(const CAiMapLoc &loc) const
 {
     return GetMapByIndex(loc.m_mapid);
 }
+#pragma auto_inline reset
 
 /* the cell's name, its map's; as a string, empty when it has none (SOCOM 1's) */
 CAiMap::name *CAiMaps::GetCellName(const CAiMapLoc &loc) const
@@ -199,6 +285,90 @@ const char *CAiMaps::GetCellNameString(const CAiMapLoc &loc) const
     CAiMap::name *n = GetCellName(loc);
 
     return n ? n->m_name : "";
+}
+
+/* the region tiled on its map's first layer, the planner's queue reset after a tile (SOCOM 1's;
+ * the map's lookup inlined whole, the arguments handed on in their registers) */
+bool CAiMaps::Tile(const CAiMap::region *r, unsigned int value, unsigned int flags)
+{
+    if (!r)
+        return false;
+    CAiMap *map = GetMapByIndex(r->m_loc.m_mapid);
+    bool ok = false;
+
+    if (map) {
+        ok = map->Tile(r, value, flags, 0);
+        ai::ResetPathPlan();
+    }
+    return ok;
+}
+
+/* the region's type changed: its cell removed from the old type's list and added to the new
+ * one's, true when it had the type already (SOCOM 1's). The removal is an inline cut to one level
+ * (CAiMapLocVec::Remove): the target calls even its iterators' constructors and assignment, and
+ * std::remove, out of line (0x529D30-0x529ED7, after it), where push_back is inlined.
+ * OPEN, right size, 10 instructions: registers only -- the target keeps the region in s1 and the
+ * type in s2, here the other way round. Tried: `old == type`, `old` unsigned, the test on the
+ * field, the cell as a reference local, the region cast into a non-const local (57 off) */
+bool CAiMaps::SetRegionType(const CAiMap::region *r, CAiMap::region::TYPE type)
+{
+    CAiMap::region::TYPE old = (CAiMap::region::TYPE)r->m_type;
+
+    if (type == old)
+        return true;
+    ((CAiMap::region *)r)->m_type = type;
+    m_regions[old].Remove(r->m_loc);
+    m_regions[type].push_back(r->m_loc);
+    return false;
+}
+
+/* 0 to n, n not drawn for (the name ours: GetRandomLoc's two draws) */
+inline int _random(int n)
+{
+    return n == 0 ? 0 : rand() % (n + 1);
+}
+
+/* a random cell of the region on the region's map, drawn up to eight times until one is
+ * traversable (SOCOM 1's; the cell's test through the map's IsTraversable, new in SOCOM II).
+ * OPEN, 2 instructions short (0x1A4 against 0x1AC): the target pads each draw's join with a nop
+ * after the `mfhi` (and so leaves the y draw's `b` delay slot empty, where this build fills it
+ * with the next load) -- registers, branches and order otherwise as the target's. Tried: the
+ * draw as a ternary either way round, if/else, early returns, through a local, and written out
+ * in the body; GetMap pinned (the target calls it: inlined, the map's walk adds 0x58 bytes) */
+bool CAiMaps::GetRandomLoc(const CAiMap::region *r, CAiMapLoc &loc)
+{
+    bool found = false;
+    int tries = 8;
+
+    while (tries--) {
+        int dx = _random(r->GetDx() - 1);
+        int dy = _random(r->GetDy() - 1);
+
+        loc.x = r->m_loc.x + dx;
+        loc.y = r->m_loc.y + dy;
+        loc.m_mapid = r->m_loc.m_mapid;
+        CAiMap *map = GetMap(loc);
+        bool ok = map ? map->IsTraversable(loc) : false;
+
+        if (ok) {
+            found = true;
+            break;
+        }
+    }
+    return found;
+}
+
+/* the old cell freed unless an overlay lies over it (the overlays' walk inlined), the new one
+ * taken */
+void CAiMaps::SetOccupied(const CAiMapLoc &from, const CAiMapLoc &to, unsigned int)
+{
+    CAiCell *cell = GetCell(from);
+
+    if (cell && !ai::overlays.Contains(cell, from))
+        cell->SetOccupied(false);
+    cell = GetCell(to);
+    if (cell)
+        cell->SetOccupied(true);
 }
 
 /* the point's cell, then a traversable one near it */

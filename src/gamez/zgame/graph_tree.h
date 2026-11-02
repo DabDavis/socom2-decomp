@@ -16,8 +16,13 @@ class CGNode;
 class CGEdge;
 class CGTree;
 
-typedef std::list<CGNode *> CGNodeList;
-typedef std::list<CGEdge *> CGEdgeList;
+/* the node and edge lists, each a class of its own over the pointer list (the names ours): ~CGRoute
+ * (0x2D1210) and ~CGNode (0x2D1060) test their member list's `this` four times before the erase, one
+ * level more than a plain list<T *> gives (the states lane, round 16) */
+class CGNodeList : public std::list<CGNode *> {
+};
+class CGEdgeList : public std::list<CGEdge *> {
+};
 
 /* the pointer lists' own base: a walk on its iterator reads each element by value, afresh after
  * every call (DeleteNode), where the wrapper's reference keeps the element's address */

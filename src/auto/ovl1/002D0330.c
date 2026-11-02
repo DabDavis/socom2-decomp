@@ -9,6 +9,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define NULL 0
 M2C_UNK Clear__14CSched_ManagerFv(M2C_UNK *);       /* extern */
 M2C_UNK CloseAll__11CRdrArchiveFv();                /* extern */
+M2C_UNK CloseAll__7AnimSetFv();                     /* extern */
 M2C_UNK Close__10CZAnimMainFv(M2C_UNK *);           /* extern */
 M2C_UNK DeletePad__6CInputFUi(M2C_UNK);             /* extern */
 M2C_UNK DestroyPool__19CGameStateChangeCmdFv();     /* extern */
@@ -24,7 +25,6 @@ M2C_UNK func_0039C6F0();                            /* extern */
 M2C_UNK func_003B11F0();                            /* extern */
 M2C_UNK func_003C0620(M2C_UNK *);                   /* extern */
 M2C_UNK func_00576120();                            /* extern */
-M2C_UNK func_005E5070();                            /* extern */
 M2C_UNK uninit_trig_table__Fv();                    /* extern */
 M2C_UNK zUISchedulerClear__Fv();                    /* extern */
 extern M2C_UNK ZAnim;
@@ -39,7 +39,7 @@ void StopEngine__5CGameFv(void) {
     Uninit__Q23zdb7CRippleFv();
     Uninit__5CPipeFv();
     Close__10CZAnimMainFv(&ZAnim);
-    func_005E5070();
+    CloseAll__7AnimSetFv();
     func_00576120();
     Uninit__6CValveFv();
     Uninit__4CSndFv();

@@ -4,10 +4,11 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK StopThrottles__11CSealCtrlAiFb(char * arg0, u8 arg1);
 M2C_UNK func_00558590(s32 arg0);
-M2C_UNK func_00567840(s32 arg0, s32 arg1);
 M2C_UNK func_005F7470(s32 arg0, s32 arg1, s32 arg2);
 extern f32 data_003F64C4;
 extern f32 data_003F64C8;
@@ -15,20 +16,20 @@ extern f32 zero__6CPnt3D;
 
 void func_0060E6F0(char *arg0, char *arg1) {
     if (arg1 != NULL) {
-        M2C_FIELD(arg0, s32 *, 0x43C) = (s32) M2C_FIELD(arg1, s32 *, 4);
-        func_00567840((s32) arg0, 0);
+        SC_MEMBER(arg0, s32 *, 0x43C) = (s32) SC_MEMBER(arg1, s32 *, 4);
+        StopThrottles__11CSealCtrlAiFb(arg0, 0U);
         func_00558590((s32) (arg0 + 0x324));
-        M2C_FIELD(arg0, f32 *, 0x798) = (f32) zero__6CPnt3D;
-        M2C_FIELD(arg0, f32 *, 0x79C) = (f32) data_003F64C4;
-        M2C_FIELD(arg0, f32 *, 0x7A0) = (f32) data_003F64C8;
-        M2C_FIELD(arg0, f32 *, 0x78C) = (f32) M2C_FIELD(arg0, f32 *, 0x798);
-        M2C_FIELD(arg0, f32 *, 0x790) = (f32) M2C_FIELD(arg0, f32 *, 0x79C);
-        M2C_FIELD(arg0, f32 *, 0x794) = (f32) M2C_FIELD(arg0, f32 *, 0x7A0);
-        M2C_FIELD(arg0, f32 *, 0x780) = (f32) M2C_FIELD(arg0, f32 *, 0x78C);
-        M2C_FIELD(arg0, f32 *, 0x784) = (f32) M2C_FIELD(arg0, f32 *, 0x790);
-        M2C_FIELD(arg0, f32 *, 0x788) = (f32) M2C_FIELD(arg0, f32 *, 0x794);
+        SC_MEMBER(arg0, f32 *, 0x798) = (f32) zero__6CPnt3D;
+        SC_MEMBER(arg0, f32 *, 0x79C) = (f32) data_003F64C4;
+        SC_MEMBER(arg0, f32 *, 0x7A0) = (f32) data_003F64C8;
+        SC_MEMBER(arg0, f32 *, 0x78C) = (f32) SC_MEMBER(arg0, f32 *, 0x798);
+        SC_MEMBER(arg0, f32 *, 0x790) = (f32) SC_MEMBER(arg0, f32 *, 0x79C);
+        SC_MEMBER(arg0, f32 *, 0x794) = (f32) SC_MEMBER(arg0, f32 *, 0x7A0);
+        SC_MEMBER(arg0, f32 *, 0x780) = (f32) SC_MEMBER(arg0, f32 *, 0x78C);
+        SC_MEMBER(arg0, f32 *, 0x784) = (f32) SC_MEMBER(arg0, f32 *, 0x790);
+        SC_MEMBER(arg0, f32 *, 0x788) = (f32) SC_MEMBER(arg0, f32 *, 0x794);
         return;
     }
     func_005F7470((s32) (arg0 + 0x41C), (s32) arg0, 1);
-    M2C_FIELD(arg0, s32 *, 0x43C) = 0;
+    SC_MEMBER(arg0, s32 *, 0x43C) = 0;
 }

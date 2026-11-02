@@ -7,7 +7,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_0025BB50(u32, M2C_UNK);                /* extern */
+M2C_UNK __dt__Q23zar4CKeyFv(u32, M2C_UNK);          /* extern */
 
 void func_002599B0(char *arg0) {
     u32 temp_s1;
@@ -18,7 +18,7 @@ void func_002599B0(char *arg0) {
     if (temp_s1 < var_s0) {
         do {
             var_s0 -= 0x18;
-            func_0025BB50(var_s0, -1);
+            __dt__Q23zar4CKeyFv(var_s0, -1);
         } while (temp_s1 < var_s0);
     }
     SC_MEMBER(arg0, s32 *, 4) = 0;

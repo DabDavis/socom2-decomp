@@ -235,6 +235,18 @@ bool ai::TickPathPlanner(float, void *)
     return false;
 }
 
+/* an overlay pushed onto the list (new in SOCOM II, the name ours) */
+void ai::AddOverlay(CAiOverlay *overlay)
+{
+    overlays.push_back(overlay);
+}
+
+/* the overlays dropped, not deleted (new in SOCOM II, the name ours) */
+void ai::ClearOverlays()
+{
+    overlays.clear();
+}
+
 /* a path planned at once, the queue bypassed and the tick's time limit lifted (SOCOM 1's) */
 bool ai::PathPlanImmediate(CAiMap *map, const CAiMapLoc &start, const CAiMapLoc &goal, CAiPath *path)
 {

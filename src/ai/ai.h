@@ -319,17 +319,8 @@ class CAiMap;
 /* a cell handed to a walk's callback (below CAiMap: it points at a CAiMap::region) */
 struct MAP_FOREACH_STRUCT;
 /* a cell handed to a line walk's callback (SOCOM 1's; not laid out yet) */
-/* a cell handed to a flood fill's callback (SOCOM 1's; not laid out yet) */
-struct MAP_FLOODFILL_STRUCT {
-    CAiMap *m_map;   // 0x0
-    unsigned int m_unk4[2];   // 0x4
-    CAiMapLoc m_loc;   // 0xc: the cell reached
-    CAiMapLoc m_start;   // 0x10: the cell the fill started from
-    CAiCell *m_cell;   // 0x14
-    signed char m_dir;   // 0x18: the direction the fill was sent (a CAiMap::DIR, read with lb)
-    unsigned char m_mode;   // 0x19: what a search's callback is doing -- 0 looking for a cell, 1 testing
-                            // it, 2 done (the look and cover searches'; the names ours)
-};
+/* a cell handed to a flood fill's callback (below CAiMap: its direction is a CAiMap::DIR) */
+struct MAP_FLOODFILL_STRUCT;
 struct MAP_LINEWALK_STRUCT {
     CAiMap *m_map;   // 0x0
     unsigned int m_unk4[2];   // 0x4
@@ -361,6 +352,16 @@ inline bool operator!=(const CAiMapLoc &a, const CAiMapLoc &b)
 
 /* a run of cells (SOCOM 1's DWARF: a vector of CAiMapLoc and nothing more) */
 class CAiMapLocVec : public std::vector<CAiMapLoc> {
+public:
+    /* every copy of a cell taken out (the name ours: CAiMaps::SetRegionType inlines it one level) */
+    void Remove(const CAiMapLoc &loc)
+    {
+        iterator first, last;
+
+        last = end();
+        first = std::remove(begin(), last, loc);
+        erase(first, last);
+    }
 };
 
 /* an AI map (SOCOM 1's DWARF: CAiMap : AIMAP_PARAMS, 0x12C bytes; SOCOM II's tables sit 0x34
@@ -482,6 +483,14 @@ public:
         enum TYPE { ANY = 7 };
 
         CAiMapLoc &GetCenter(CAiMapLoc &loc) const;
+        /* the centre cell by value (the name ours: GetClosestRegion's copy of it) */
+        CAiMapLoc GetCenter() const
+        {
+            CAiMapLoc loc;
+
+            GetCenter(loc);
+            return loc;
+        }
         void Union(const CAiMapLoc &loc);
         void InflateRegion(int left, int top, int right, int bottom, const CAiMap *map);
         /* SOCOM 1's Contains, out of line there (0x19E020) and inlined here: the same map, and
@@ -756,6 +765,10 @@ public:
      * calls its pieces out of line -- the region's constructor and size, the walk struct's
      * constructor, the scanlines' size and [], the layer's cells, _saturate, _max, _min */
     bool ForEachCell(bool (*f)(const MAP_FOREACH_STRUCT &s, void *data), void *data, int layer);
+    /* a region of a layer's cells (the whole map for none) set to a value -- a soil, a shadow, a
+     * boundary, the occupied bit, as the flags choose -- whether any cell changed (SOCOM 1's
+     * Tile(region, value, flags); the layer new: the walker unit's 0x536230) */
+    bool Tile(const region *r, unsigned int value, unsigned int flags, int layer);
     bool ResetCells();
     static CPnt3D &GetDirVec(DIR dir, CPnt3D &v);
     /* the cells around one flooded out to a radius from a direction, each handed to a callback
@@ -888,6 +901,22 @@ public:
     CGraph *m_graph;   // 0x15c
 };
 
+/* a cell handed to a flood fill's callback (SOCOM 1's, which its DWARF does not lay out: the
+ * fields as the callbacks read them) */
+struct MAP_FLOODFILL_STRUCT {
+    CAiMap *m_map;   // 0x0
+    unsigned int m_unk4[2];   // 0x4
+    CAiMapLoc m_loc;   // 0xc: the cell reached
+    CAiMapLoc m_start;   // 0x10: the cell the fill started from
+    CAiCell *m_cell;   // 0x14
+    /* the direction the fill was sent: a DIR, which MW loads with lb (a one-byte enum, its values
+     * unsigned) and hands on unconverted -- a `signed char` cast to DIR is narrowed to an lbu
+     * (_find_cover, as SOCOM 1's) */
+    CAiMap::DIR m_dir;   // 0x18
+    unsigned char m_mode;   // 0x19: what a search's callback is doing -- 0 looking for a cell, 1 testing
+                            // it, 2 done (the look and cover searches'; the names ours)
+};
+
 /* a cell handed to a walk's callback (SOCOM 1's MAP_FOREACH_STRUCT, which its DWARF does not lay
  * out: the map, the cell and its location as the callbacks read them) */
 struct MAP_FOREACH_STRUCT {
@@ -963,12 +992,18 @@ public:
 class CAiOverlayList : public std::list<CAiOverlay *> {
 public:
     /* whether an occupied cell lies under any of them (the name ours: the base planner's cost
-     * inlines it, the searches' callbacks call its out-of-line copy 0x53A500) -- a const walk, its
-     * iterators in stack slots */
+     * and CAiMaps::SetOccupied inline it, the searches' callbacks call its out-of-line copy
+     * 0x53A500) -- a const walk, its iterators in stack slots. Through a const pointer local, so
+     * that called on the global (SetOccupied) the sentinel stays a variable in a saved register,
+     * stored for each pass's end() as with a `this` (straight on `this` MW folds the constant and
+     * drops the loop's store); the postfix step is the level that cuts the searches' open-cell
+     * helper (_find_look, _find_cover) one level, as the target does */
     bool Contains(const CAiCell *cell, const CAiMapLoc &loc) const
     {
         if (cell->IsOccupied()) {
-            for (const_iterator i = begin(); i != end(); ++i)
+            const CAiOverlayList *l = this;
+
+            for (const_iterator i = l->begin(); i != l->end(); i++)
                 if ((*i)->Contains(loc))
                     return true;
         }
@@ -978,6 +1013,10 @@ public:
 
 namespace ai {
 extern CAiOverlayList overlays;
+/* an overlay laid over the maps, and every overlay taken off (new in SOCOM II, the names ours:
+ * OVL1's vehicle code 0x3ADAB0 adds one, CAiMaps' 0x52E720 and 0x52E780 clear them) */
+void AddOverlay(CAiOverlay *overlay);
+void ClearOverlays();
 }
 
 /* the maps a path crosses (SOCOM 1's DWARF: a vector of CAiMap pointers and nothing more) */

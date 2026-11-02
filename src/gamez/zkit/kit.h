@@ -98,6 +98,10 @@ public:
     CZFTSWeapon *GetItemByIndex(int index) const;
     bool HasItem(EQUIP_ITEM item) const;
     bool WeaponInfoChanged();
+    /* the hot-swap flag, set and read by CWeaponSel::CheckHotSwap (OVL2 0x5BC2A0, 0x5BC2B0: new in
+     * SOCOM II, the names ours) */
+    void SetHotSwap(bool b);
+    bool GetHotSwap();
     /* const, where SOCOM 1's were not (ItemHasAmmo__5CZKitFi): SOCOM II's const GetCurItem
      * (SOCOM 1's const too) tail-calls GetItemByIndex, which calls unwrap, which calls this */
     bool ItemHasAmmo(int index) const;
@@ -175,7 +179,8 @@ public:
     unsigned int m_current_requested_ammo : 1;   // bit 14 (SOCOM 1's bit 13)
     unsigned int m_heartbeat_enabled : 1;
     unsigned int m_unused : 16;
-    unsigned char _4[0x28 - 0x4];
+    bool m_hotswap;   // 0x4: new in SOCOM II, CWeaponSel::CheckHotSwap's (the name ours)
+    unsigned char _5[0x28 - 0x5];
     float m_sniper_posx;   // 0x28 (SOCOM 1's 0x14)
     float m_sniper_posy;   // 0x2c (SOCOM 1's 0x18)
     unsigned char _30[0x38 - 0x30];
