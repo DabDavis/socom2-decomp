@@ -8655,8 +8655,8 @@
 0x004C7718 0xDC func_004C7718  # OVL2 unaligned; size 0xDC (the seed cut it at 0x4C77B8, a DNAS.BIN call target -- MAIN's and OVL1's DNAS clients call DNAS.BIN loaded in the OVL2 slot: one prologue, the rest running on its frame to the one epilogue; README)
 0x004C77F8 0x14C gsapi_EngineSetImmediateContext  # OVL2 unaligned; s1:calls
 0x004C7948 0xFC gsapi_ContextLoadBuffer  # OVL2 unaligned; s1:calls
-0x004C7A48 0x8C func_004C7A48  # OVL2 unaligned
-0x004C7AD8 0x8C func_004C7AD8  # OVL2 unaligned
+0x004C7A48 0x8C gsapi_ContextSetGcdData  # OVL2 unaligned; s1:order (SOCOM 1's gsapi object 0x337BC8: after gsapi_ContextLoadBuffer, before gsapi_ContextSetWrdData; hands on to ContextSetGcdData as SOCOM 1's does; the gcc lane, round 3b)
+0x004C7AD8 0x8C gsapi_ContextSetWrdData  # OVL2 unaligned; s1:order (after gsapi_ContextSetGcdData, before gsapi_ContextEnableAllWords as SOCOM 1's; hands on to ContextSetWrdData; the gcc lane, round 3b)
 0x004C7B68 0x28 gsapi_ContextEnableAllWords  # OVL2 unaligned; s1:order (SOCOM 1's object at 0x337BC8, same position; enables every word through gsapi_ContextEnableWords as there)
 0x004C7B90 0x28 gsapi_ContextDisableAllWords  # OVL2; s1:order (SOCOM 1's object at 0x337BC8, same position; through gsapi_ContextDisableWords as there)
 0x004C7BB8 0x104 gsapi_EngineEnableWords  # OVL2 unaligned; s1:callee (gsapi_EngineEnableAllWords calls it, as SOCOM 1's calls gsapi_EngineEnableWords)
