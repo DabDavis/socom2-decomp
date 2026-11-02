@@ -9622,7 +9622,7 @@
 0x00529EA0 0x10 func_00529EA0  # OVL2; tu: char_type.cpp~ (1.0 beta)
 0x00529EB0 0x18 func_00529EB0  # OVL2
 0x00529ED0 0x8 func_00529ED0  # OVL2
-0x00529EE0 0x1AC func_00529EE0  # OVL2
+0x00529EE0 0x1AC GetRandomLoc__7CAiMapsFPCQ26CAiMap6regionR9CAiMapLoc  # OVL2; s1:order by hand (the demo's GetRandomLoc 0x197340, after SetOccupied's stretch in both builds and the same body: eight tries, each axis rand() % span unless the span is one, the cell set field by field and tested -- SOCOM II through GetMap and CAiMap::IsTraversable; CAiSFlee::Tick and 0x5DB8F0 call it)
 0x0052A090 0xF0 IsTraversable__6CAiMapCFRC9CAiMapLoc  # OVL2; ours (new in SOCOM II, between GetRandomLoc and GetMap: the cell by GetCell inlined one level, then CAiCell::IsTraversable -- not soils 0, 8, 9, 10 -- false off the map)
 0x0052A180 0x78 GetMap__7CAiMapsCFRC9CAiMapLoc  # OVL2; ours (new in SOCOM II, after GetRandomLoc's helper: GetMapByIndex of the cell's map index, inlined -- called by the AI states, the SEAL body and the controller)
 0x0052A200 0x1BC func_0052A200  # OVL2

@@ -73,6 +73,8 @@ public:
     float GetDistance(const CAiMapLoc &a, const CAiMapLoc &b);
     /* how many spores an id has (new in SOCOM II, the name ours) */
     int GetSporeCount(unsigned int id);
+    /* a random cell of the region, drawn up to eight times until one is traversable (SOCOM 1's) */
+    bool GetRandomLoc(const CAiMap::region *r, CAiMapLoc &loc);
     /* a region of its map's first layer tiled, the planner's queue reset after (SOCOM 1's) */
     bool Tile(const CAiMap::region *r, unsigned int value, unsigned int flags);
     /* an entity moved from one cell to another: the old cell no longer occupied unless an overlay

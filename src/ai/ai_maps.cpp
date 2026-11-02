@@ -212,10 +212,13 @@ bool CAiMap::IsTraversable(const CAiMapLoc &loc) const
     return cell ? cell->IsTraversable() : false;
 }
 
+/* pinned: GetRandomLoc calls it out of line in the target */
+#pragma auto_inline off
 CAiMap *CAiMaps::GetMap(const CAiMapLoc &loc) const
 {
     return GetMapByIndex(loc.m_mapid);
 }
+#pragma auto_inline reset
 
 /* the cell's name, its map's; as a string, empty when it has none (SOCOM 1's) */
 CAiMap::name *CAiMaps::GetCellName(const CAiMapLoc &loc) const
@@ -249,6 +252,42 @@ bool CAiMaps::Tile(const CAiMap::region *r, unsigned int value, unsigned int fla
         ai::ResetPathPlan();
     }
     return ok;
+}
+
+/* 0 to n, n not drawn for (the name ours: GetRandomLoc's two draws) */
+inline int _random(int n)
+{
+    return n == 0 ? 0 : rand() % (n + 1);
+}
+
+/* a random cell of the region on the region's map, drawn up to eight times until one is
+ * traversable (SOCOM 1's; the cell's test through the map's IsTraversable, new in SOCOM II).
+ * OPEN, 2 instructions short (0x1A4 against 0x1AC): the target pads each draw's join with a nop
+ * after the `mfhi` (and so leaves the y draw's `b` delay slot empty, where this build fills it
+ * with the next load) -- registers, branches and order otherwise as the target's. Tried: the
+ * draw as a ternary either way round, if/else, early returns, through a local, and written out
+ * in the body; GetMap pinned (the target calls it: inlined, the map's walk adds 0x58 bytes) */
+bool CAiMaps::GetRandomLoc(const CAiMap::region *r, CAiMapLoc &loc)
+{
+    bool found = false;
+    int tries = 8;
+
+    while (tries--) {
+        int dx = _random(r->GetDx() - 1);
+        int dy = _random(r->GetDy() - 1);
+
+        loc.x = r->m_loc.x + dx;
+        loc.y = r->m_loc.y + dy;
+        loc.m_mapid = r->m_loc.m_mapid;
+        CAiMap *map = GetMap(loc);
+        bool ok = map ? map->IsTraversable(loc) : false;
+
+        if (ok) {
+            found = true;
+            break;
+        }
+    }
+    return found;
 }
 
 /* the old cell freed unless an overlay lies over it (the overlays' walk inlined), the new one
