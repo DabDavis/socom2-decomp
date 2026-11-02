@@ -4,78 +4,10 @@
  * line, where zar_main.cpp's OpenKey(const char *) inlines OpenKey(CKey *). Defined in reverse of
  * their image order (-inline deferred). */
 
-#include <algorithm>
-#include <string.h>
 #include "zar.h"
 #include "../zsys/zsys.h"
 
 namespace zar {
-
-/* a key named so, skipping the deleted (a size of -1): SOCOM 1's predicate, the struct's name ours */
-struct CKeyNamed {
-    CKeyNamed(const char *name) : m_name(name) {}
-    bool operator()(const CKey *key) const
-    {
-        return key->m_size != -1 && !strcasecmp(m_name, key->m_name);
-    }
-
-    const char *m_name;
-};
-
-/* a child key added at the end (SOCOM 1's inserted into a list) */
-CKey *CKey::InsertKey(CKey *key)
-{
-    push_back(key);
-    return key;
-}
-
-/* the directory record: the name's offset, the data's offset, its size, the child count */
-struct KEY_RECORD {
-    int name;
-    int offset;
-    int size;
-    int count;
-};
-
-bool CKey::Read(CZAR *zar, CIO *io, int base)
-{
-    /* the file through a copy: numbered after the parameters, it takes s1 where io would take s2
-     * (README "MW's saved-register order is a NUMBERING") */
-    CIO *file = io;
-    KEY_RECORD rec;
-
-    file->fread(&rec, sizeof(rec));
-    if (zar->m_root != this) {
-        m_name = (char *)(rec.name + base);
-        m_offset = rec.offset;
-        m_size = rec.size;
-    }
-
-    int count = rec.count;
-
-    if (count < 0)
-        count = 0;
-    if (count)
-        reserve(count);
-    while (count--) {
-        CKey *key = zar->NewKey(0);
-
-        key->Read(zar, file, base);
-        InsertKey(key);
-    }
-    return true;
-}
-
-/* a child key by name (SOCOM 1's walked a std::list) */
-CKey *CKey::FindKey(const char *name)
-{
-    if (empty())
-        return 0;
-
-    iterator it = std::find_if(begin(), end(), CKeyNamed(name));
-
-    return it == end() ? 0 : *it;
-}
 
 /* the typed fetches: SOCOM 1's call Fetch(CKey *, ...), which SOCOM II's, without the
  * decryption, inline */
@@ -128,6 +60,21 @@ bool CZAR::Fetch(const char *name, char **str)
         ok = open ? Fetch(open->FindKey(name), buf, size, 0) : 0;
     }
     return ok;
+}
+
+/* a new key under the open one, if its data could be written (SOCOM 1's) */
+CKey *CZAR::Insert(const char *name, const void *data, int size)
+{
+    CKey *key = NewKey(name);
+    CKey *open = GetOpenKey();
+
+    if (Insert(key, data, size))
+        open->InsertKey(key);
+    else {
+        delete key;
+        key = 0;
+    }
+    return key;
 }
 
 bool CZAR::Fetch(const char *name, void *buf, int size)

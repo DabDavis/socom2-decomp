@@ -2761,7 +2761,7 @@
 0x00259EE0 0x11C FetchLIP__Q23zar4CZARFPQ23zar4CKeyPPv  # OVL1; s1:order by hand (SOCOM 1's FetchLIP 0x1DAF80, first of zar_search.cpp there as here before Fetch(CKey *, ...): dynamic_cast of the file to CBufferIO, its fread(size, void **); CRdrFile and CVisual's readers call it as SOCOM 1's do)
 0x0025A000 0x11C Fetch__Q23zar4CZARFPQ23zar4CKeyPviUi  # OVL1; s1:calls (CRdrFile::Load calls it with SOCOM 1's (key, buf, size, 0)) -- the rdr lane
 0x0025A120 0x1C4 Insert__Q23zar4CZARFPQ23zar4CKeyPCvi  # OVL1; s1:calls (CRdrFile::Insert calls it where SOCOM 1's calls zar::CZAR::Insert) -- the rdr lane
-0x0025A2F0 0x98 func_0025A2F0  # OVL1
+0x0025A2F0 0x98 Insert__Q23zar4CZARFPCcPCvi  # OVL1; s1:order by hand (SOCOM 1's Insert(const char *, const void *, int) 0x1DB680 step for step: NewKey, the open key, Insert(CKey *, ...), then InsertKey or the key deleted -- SOCOM II's through the out-of-line ~CKey 0x25BB50)
 0x0025A390 0x23C func_0025A390  # OVL1
 0x0025A5D0 0x144 Fetch__Q23zar4CZARFPCcPvi  # OVL1; s1:callee
 0x0025A720 0x1C4 Fetch__Q23zar4CZARFPCcPPc  # OVL1; s1:calls by hand (the zdb-world lane: the string fetch, at SOCOM 1's call sites)
@@ -2792,7 +2792,7 @@
 0x0025BAD0 0x8 func_0025BAD0  # OVL1
 0x0025BAE0 0x40 func_0025BAE0  # OVL1
 0x0025BB20 0x24 func_0025BB20  # OVL1
-0x0025BB50 0x88 func_0025BB50  # OVL1
+0x0025BB50 0x88 __dt__Q23zar4CKeyFv  # OVL1; by hand: Insert(const char *, const void *, int) 0x25A2F0 deletes the key it could not write through it, (key, 1), where SOCOM 1's inlines ~CKey (its list's destructor, then delete)
 0x0025BBE0 0x20 func_0025BBE0  # OVL1
 0x0025BC00 0x20 func_0025BC00  # OVL1
 0x0025BC20 0x9D0 InitCommands__10CZAnimMainFv  # OVL1; s1:calls by hand (registers the core ZAnim commands through AddCmd, as SOCOM 1's InitCommands does; SOCOM II adds 11 to its 49)

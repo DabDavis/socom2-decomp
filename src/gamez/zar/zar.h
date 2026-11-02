@@ -28,6 +28,8 @@ class CZAR;
 
 class CKey : public CKeyRing {
 public:
+    /* out of line (0x25BB50): Insert(const char *, ...) deletes a key it could not write through it */
+    ~CKey();
     CKey *FindKey(const char *name);
     /* the key and its children off the directory: a 16-byte record each, the name an offset
      * into the string table at base (SOCOM 1's) */
@@ -44,6 +46,10 @@ public:
     CZAR(const char *name, CIO *io);
     virtual ~CZAR();
     /* a key's data, when the key holds at least size bytes (SOCOM 1's flags argument unused) */
+    /* a key's data written at the archive's end (0x25A120), and a new key under the open one
+     * holding it -- the key, or 0 when the write failed */
+    bool Insert(CKey *key, const void *data, int size);
+    CKey *Insert(const char *name, const void *data, int size);
     /* a key's data in place, a pointer into the CBufferIO's buffer */
     bool FetchLIP(CKey *key, void **buf);
     bool Fetch(CKey *key, void *buf, int size, unsigned int flags);
