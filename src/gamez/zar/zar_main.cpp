@@ -50,4 +50,12 @@ CKey *CZAR::GetOpenKey()
         return m_keys.back();
 }
 
+/* SOCOM 1's (0x1D8CD0) */
+int CZAR::GetSize(const char *name)
+{
+    CKey *key = GetOpenKey()->FindKey(name);
+
+    return key ? key->m_size : -1;
+}
+
 }

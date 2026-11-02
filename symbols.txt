@@ -2732,7 +2732,7 @@
 0x00257EE0 0xAC func_00257EE0  # OVL1
 0x00257F90 0x70 ReleaseDataBuffer__Q23zar4CZARFv  # OVL1; s1:calls by hand (the zdb-world lane: at SOCOM 1's call site)
 0x00258000 0x510 func_00258000  # OVL1
-0x00258510 0x58 func_00258510  # OVL1
+0x00258510 0x58 GetSize__Q23zar4CZARFPCc  # OVL1; s1:order by hand (SOCOM 1's GetSize 0x1D8CD0, between ReadDirectory and GetOpenKey there as here: the open key's FindKey, its size or -1; Fetch(const char *, char **) calls it where SOCOM 1's does)
 0x00258570 0x30 GetOpenKey__Q23zar4CZARFv  # OVL1; s1:callee by hand (LoadZAR, CZAnimSet::Load and the name tables call it where SOCOM 1's call GetOpenKey; the open-key stack's top or the root -- a vector here, SOCOM 1's a list)
 0x002585A0 0x54 OpenKey__Q23zar4CZARFPQ23zar4CKey  # OVL1; s1:callee by hand (LoadZAR opens each set's key with it where SOCOM 1's calls OpenKey(CKey *); pushes a non-null key)
 0x00258600 0x4C FindKey__Q23zar4CZARFPCc  # OVL1; s1:order (SOCOM 1's GetOpenKey, OpenKey(CKey *), FindKey(const char *), OpenKey(const char *), CloseKey; FindKey on the open key, as SOCOM 1's)
