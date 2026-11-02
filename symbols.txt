@@ -12109,7 +12109,7 @@
 0x006203C8 0xEC func_006203C8  # OVL2 unaligned
 0x006204B8 0x2C func_006204B8  # OVL2 unaligned
 0x006204E8 0x2C func_006204E8  # OVL2 unaligned
-0x00620518 0x12C func_00620518  # OVL2 unaligned
+0x00620518 0x12C NetGetBuildTimeStamp  # OVL2 unaligned; s1:calls (the DME's build stamp: 'Time of build: %.2d.%.2d.%.4s...' and Dme.c's date 'Oct 9 2003' right after Dme.c's $Header; SOCOM 1's NetGetBuildTimeStamp, byte-identical there to MediusGetBuildTimeStamp; the gcc lane, round 3b)
 0x00620648 0x60 func_00620648  # OVL2 unaligned
 0x006206A8 0x164 func_006206A8  # OVL2 unaligned
 0x00620810 0xF8 func_00620810  # OVL2
@@ -12949,7 +12949,7 @@
 0x006471D8 0xC func_006471D8  # OVL2 unaligned
 0x006471E8 0x12C func_006471E8  # OVL2 unaligned
 0x00647318 0xD8 func_00647318  # OVL2 unaligned
-0x006473F0 0x124 NetGetBuildTimeStamp  # OVL2; s1:exact
+0x006473F0 0x124 MediusGetBuildTimeStamp  # OVL2; s1:exact; s1:order (between MediusInitializeBare and MediusVersionClient as SOCOM 1's; it formats the Medius library's own build date, 0x667D20 'Sep 18 2003' beside 'Medius Client Library Version 1.50.0013' -- the s1:exact NetGetBuildTimeStamp was SOCOM 1's byte-identical DME twin, which is 0x620518 here; the gcc lane, round 3b)
 0x00647518 0x2C func_00647518  # OVL2 unaligned
 0x00647548 0x74 MediusVersionServer  # OVL2 unaligned; s1:calls (the online lane, round 5, vetted by the integrator: the lobby's connect handlers calls it where SOCOM 1's counterpart calls MediusVersionServer; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
 0x006475C0 0x5C func_006475C0  # OVL2
@@ -12966,67 +12966,67 @@
 0x00647E38 0x88 func_00647E38  # OVL2 unaligned
 0x00647EC0 0x88 func_00647EC0  # OVL2
 0x00647F48 0xB4 MediusAccountLogin  # OVL2 unaligned; s1:calls (the online lane, round 5, vetted by the integrator: AccountLoginStateHandler calls it where SOCOM 1's counterpart calls MediusAccountLogin; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
-0x00648000 0x9C func_00648000  # OVL2
-0x006480A0 0x9C func_006480A0  # OVL2
+0x00648000 0x9C MediusAccountLogout  # OVL2; s1:order (after MediusAccountLogin as SOCOM 1's; stores SOCOM 1's AccountLogoutCallbackFunctionPtr slot, 0x6561D0; the gcc lane, round 3b)
+0x006480A0 0x9C MediusAccountGetProfile  # OVL2; s1:order (third account request as SOCOM 1's; the AccountGetProfileCallbackFunctionPtr slot 0x6561E4; the gcc lane, round 3b)
 0x00648140 0xB4 MediusAccountRegistration  # OVL2; s1:calls (the online lane, round 5, vetted by the integrator: AccountRegistrationStateHandler calls it where SOCOM 1's counterpart calls MediusAccountRegistration; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
-0x006481F8 0xB4 func_006481F8  # OVL2 unaligned
-0x006482B0 0xA8 func_006482B0  # OVL2
-0x00648358 0x12C func_00648358  # OVL2 unaligned
-0x00648488 0x74 func_00648488  # OVL2 unaligned
-0x00648500 0xB4 func_00648500  # OVL2
+0x006481F8 0xB4 MediusAccountUpdatePassword  # OVL2 unaligned; s1:order (after MediusAccountRegistration as SOCOM 1's; the AccountUpdatePasswordCallbackFunctionPtr slot 0x6561DC; the gcc lane, round 3b)
+0x006482B0 0xA8 MediusAccountUpdateStats  # OVL2; s1:order (the AccountUpdateStatsCallbackFunctionPtr slot 0x6561E0; a 256-byte stats string; the gcc lane, round 3b)
+0x00648358 0x12C MediusAccountUpdateProfile  # OVL2 unaligned; s1:order (the AccountUpdateProfileCallbackFunctionPtr slot 0x6561D8; the gcc lane, round 3b)
+0x00648488 0x74 MediusAccountDelete  # OVL2 unaligned; s1:order (0x74 bytes as SOCOM 1's; the AccountDeleteCallbackFunctionPtr slot 0x6561E8; the gcc lane, round 3b)
+0x00648500 0xB4 MediusAnonymousLogin  # OVL2; s1:order (the AnonymousLoginCallbackFunctionPtr slot 0x6561EC; the gcc lane, round 3b)
 0x006485B8 0xC0 MediusCreateGame  # OVL2 unaligned; s1:calls (the online lane, round 5, vetted by the integrator: CreateNewGameStateHandler calls it where SOCOM 1's counterpart calls MediusCreateGame; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
 0x00648678 0xA8 MediusTextFilter  # OVL2 unaligned; s1 by call site (Censor 0x2F4DF0 and CreateClan 0x2E7A10, as SOCOM 1's both; the online lane)
 0x00648720 0x11C func_00648720  # OVL2
 0x00648840 0xB4 MediusCreateChannel  # OVL2; s1:calls (the online lane, round 5, vetted by the integrator: CreateRoomStateHandler calls it where SOCOM 1's counterpart calls MediusCreateChannel; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
 0x006488F8 0x10C MediusJoinGame  # OVL2 unaligned; s1:calls (the online lane, round 5, vetted by the integrator: JoinGameStateHandler calls it where SOCOM 1's counterpart calls MediusJoinGame; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
 0x00648A08 0xA8 MediusJoinChannel  # OVL2 unaligned; s1:calls (the online lane, round 5, vetted by the integrator: JoinRoomStateHandler calls it where SOCOM 1's counterpart calls MediusJoinChannel; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
-0x00648AB0 0x9C func_00648AB0  # OVL2
-0x00648B50 0x9C func_00648B50  # OVL2
-0x00648BF0 0x9C func_00648BF0  # OVL2
+0x00648AB0 0x9C MediusGetGames  # OVL2; s1:order (after MediusJoinChannel as SOCOM 1's; the GameListCallbackFunctionPtr slot 0x65620C; the gcc lane, round 3b)
+0x00648B50 0x9C MediusGetChannels  # OVL2; s1:order (the ChannelListCallbackFunctionPtr slot 0x656210; the gcc lane, round 3b)
+0x00648BF0 0x9C MediusGetLobbyPlayers  # OVL2; s1:order (the LobbyWorldPlayerListCallbackFunctionPtr slot 0x6561F0; the gcc lane, round 3b)
 0x00648C90 0x9C MediusGetGamePlayers  # OVL2; s1 by call site (RefreshGamePlayerList 0x2F6EC0, as SOCOM 1's; the online lane)
 0x00648D30 0x9C MediusGetPlayerInfo  # OVL2; s1:calls (the online lane, round 5, vetted by the integrator: the player-info request 0x2EFE50 calls it where SOCOM 1's counterpart calls MediusGetPlayerInfo; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
-0x00648DD0 0x9C func_00648DD0  # OVL2
-0x00648E70 0x9C func_00648E70  # OVL2
+0x00648DD0 0x9C MediusGetGameInfo  # OVL2; s1:order (after MediusGetPlayerInfo as SOCOM 1's; the GameInfoCallbackFunctionPtr slot 0x656218; the gcc lane, round 3b)
+0x00648E70 0x9C MediusGetChannelInfo  # OVL2; s1:order (the ChannelInfoCallbackFunctionPtr slot 0x65621C; the gcc lane, round 3b)
 0x00648F10 0xA8 MediusFindPlayer  # OVL2; s1:calls (the online lane, round 5, vetted by the integrator: the chat unit's direct message calls it where SOCOM 1's counterpart calls MediusFindPlayer; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
 0x00648FB8 0xA8 MediusFindWorldByName  # OVL2 unaligned; s1:calls (the online lane, round 5, vetted by the integrator: the room unit's requests calls it where SOCOM 1's counterpart calls MediusFindWorldByName; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
-0x00649060 0x94 func_00649060  # OVL2
-0x006490F8 0x9C func_006490F8  # OVL2 unaligned
-0x00649198 0x9C func_00649198  # OVL2 unaligned
-0x00649238 0x9C func_00649238  # OVL2 unaligned
-0x006492D8 0x9C func_006492D8  # OVL2 unaligned
-0x00649378 0x88 func_00649378  # OVL2 unaligned
-0x00649400 0x9C func_00649400  # OVL2
+0x00649060 0x94 MediusSendChatMessage  # OVL2; s1:order (after MediusFindWorldByName as SOCOM 1's, no callback: the chat's slot is the forwarded message's; the gcc lane, round 3b)
+0x006490F8 0x9C MediusGetBuddyList  # OVL2 unaligned; s1:order (the GetBuddyListCallbackFunctionPtr slot 0x65622C; the gcc lane, round 3b)
+0x00649198 0x9C MediusAddToBuddyList  # OVL2 unaligned; s1:order (the AddToBuddyListCallbackFunctionPtr slot 0x656230; the gcc lane, round 3b)
+0x00649238 0x9C MediusRemoveFromBuddyList  # OVL2 unaligned; s1:order (the RemoveFromBuddyListCallbackFunctionPtr slot 0x656234; the gcc lane, round 3b)
+0x006492D8 0x9C MediusBuddyGetPermission  # OVL2 unaligned; s1:order (the BuddyGetPermissionCallbackFunctionPtr slot 0x65623C; the gcc lane, round 3b)
+0x00649378 0x88 MediusBuddyAddConfirmation  # OVL2 unaligned; s1:order (after MediusBuddyGetPermission as SOCOM 1's, no callback; the gcc lane, round 3b)
+0x00649400 0x9C MediusGetPolicy  # OVL2; s1:order (the GetPolicyCallbackFunctionPtr slot 0x656240; the gcc lane, round 3b)
 0x006494A0 0x9C func_006494A0  # OVL2
 0x00649540 0x9C func_00649540  # OVL2
 0x006495E0 0x9C func_006495E0  # OVL2
-0x00649680 0x7C func_00649680  # OVL2
-0x00649700 0x88 func_00649700  # OVL2
+0x00649680 0x7C MediusSendPlayerReport  # OVL2; s1:order (before MediusSendWorldReport and MediusSendEndGameReport as SOCOM 1's, no callback; the gcc lane, round 3b)
+0x00649700 0x88 MediusSendWorldReport  # OVL2; s1:order (between the player and end-game reports as SOCOM 1's; the gcc lane, round 3b)
 0x00649788 0x94 MediusSendEndGameReport  # OVL2 unaligned; s1 by call site (SendEndGameReport 0x2F80C0, as SOCOM 1's; the online lane)
 0x00649820 0x9C MediusGetAnnouncements  # OVL2; s1 by call site (GetAnnouncements 0x2F7710, as SOCOM 1's; the online lane)
-0x006498C0 0x9C func_006498C0  # OVL2
+0x006498C0 0x9C MediusGetAllAnnouncements  # OVL2; s1:order (after MediusGetAnnouncements, sharing its GetAnnouncementsCallbackFunctionPtr slot; the gcc lane, round 3b)
 0x00649960 0x9C MediusSetGameListFilter  # OVL2; s1:calls (the online lane, round 5, vetted by the integrator: the game-rule flags helper 0x2EF9F0 calls it where SOCOM 1's counterpart calls MediusSetGameListFilter; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
 0x00649A00 0x9C MediusClearGameListFilter  # OVL2; s1 by call site (JoinGame 0x2F83B0, as SOCOM 1's; the online lane)
-0x00649AA0 0x9C func_00649AA0  # OVL2
+0x00649AA0 0x9C MediusGetGameListFilter  # OVL2; s1:order (after the set and clear filters as SOCOM 1's; the GetGameListFilterCallbackFunctionPtr slot 0x65625C; the gcc lane, round 3b)
 0x00649B40 0x90 MediusCreateMessageID  # OVL2; s1:calls (SOCOM 1's MediusCreateMessageID at 0x3B4CB0, the only caller of iCreateAndAllocateMessageID there: iTerminateString of the key at 17 and the output at 21, the id maker, a counter that wraps -- at 512 there, 999 here; after MediusClearGameListFilter and its neighbour as there)
 0x00649BD0 0x28 func_00649BD0  # OVL2
 0x00649BF8 0x28 func_00649BF8  # OVL2 unaligned
 0x00649C20 0x28 func_00649C20  # OVL2
-0x00649C48 0x9C func_00649C48  # OVL2 unaligned
-0x00649CE8 0x9C func_00649CE8  # OVL2 unaligned
+0x00649C48 0x9C MediusGetMyIP  # OVL2 unaligned; s1:order (after the three callback reassignments as SOCOM 1's; the GetMyIPCallbackFunctionPtr slot 0x656264; the gcc lane, round 3b)
+0x00649CE8 0x9C MediusGetWorldSecurityLevel  # OVL2 unaligned; s1:order (the GetWorldSecurityLevelCallbackFunctionPtr slot 0x656268; the gcc lane, round 3b)
 0x00649D88 0x9C MediusBanPlayer  # OVL2 unaligned; s1 by call site (BanSelfFromGame 0x2F95F0, as SOCOM 1's; the online lane)
 0x00649E28 0x9C MediusAccountGetID  # OVL2 unaligned; s1 by call site (InvitePlayerToClan 0x2E7600 with cbInvitePlayerToClanGetID, as SOCOM 1's; the online lane)
-0x00649EC8 0x9C func_00649EC8  # OVL2 unaligned
-0x00649F68 0x9C func_00649F68  # OVL2 unaligned
+0x00649EC8 0x9C MediusGetLocations  # OVL2 unaligned; s1:order (after MediusAccountGetID as SOCOM 1's; the GetLocationsCallbackFunctionPtr slot 0x656270; the gcc lane, round 3b)
+0x00649F68 0x9C MediusPickLocation  # OVL2 unaligned; s1:order (the PickLocationCallbackFunctionPtr slot 0x656274; the gcc lane, round 3b)
 0x0064A008 0xC func_0064A008  # OVL2 unaligned
 0x0064A018 0x9C func_0064A018  # OVL2 unaligned
-0x0064A0B8 0x9C func_0064A0B8  # OVL2 unaligned
-0x0064A158 0x9C func_0064A158  # OVL2 unaligned
+0x0064A0B8 0x9C MediusLadderList  # OVL2 unaligned; s1:order (after SOCOM 1's MediusLadderPosition's place; the MediusLadderListCallbackFunctionPtr slot 0x65627C; the gcc lane, round 3b)
+0x0064A158 0x9C MediusChatToggleFilter  # OVL2 unaligned; s1:order (the MediusChatToggleCallbackFunctionPtr slot 0x656280; the gcc lane, round 3b)
 0x0064A1F8 0x9C func_0064A1F8  # OVL2 unaligned
-0x0064A298 0x33C func_0064A298  # OVL2 unaligned
-0x0064A5D8 0x174 func_0064A5D8  # OVL2 unaligned
+0x0064A298 0x33C MediusGetCallbackStatusString  # OVL2 unaligned; s1:order (names every MediusCallbackStatus, 'MediusSuccess' .. 'UNKNOWN MEDIUSCALLBACKSTATUS'; the gcc lane, round 3b)
+0x0064A5D8 0x174 MediusGetErrorCodeString  # OVL2 unaligned; s1:order (names every MediusErrorCode, 'MediusErrorNone' .. 'UNKNOWN MEDIUSERRORCODE'; the gcc lane, round 3b)
 0x0064A750 0x1C4 func_0064A750  # OVL2
-0x0064A918 0x9C func_0064A918  # OVL2 unaligned
-0x0064A9B8 0x9C func_0064A9B8  # OVL2 unaligned
+0x0064A918 0x9C MediusGetTotalGames  # OVL2 unaligned; s1:order (after the two string functions as SOCOM 1's; the MediusGetTotalGamesCallbackFunctionPtr slot 0x656290; the gcc lane, round 3b)
+0x0064A9B8 0x9C MediusGetTotalChannels  # OVL2 unaligned; s1:order (the MediusGetTotalChannelsCallbackFunctionPtr slot 0x656294; the gcc lane, round 3b)
 0x0064AA58 0x9C func_0064AA58  # OVL2 unaligned
 0x0064AAF8 0x9C func_0064AAF8  # OVL2 unaligned
 0x0064AB98 0x9C func_0064AB98  # OVL2 unaligned

@@ -17,6 +17,8 @@
 
 #include "medius.h"
 
+extern int GlobalInitFlag;              /* read as a word here (the API object's is a halfword) */
+
 typedef struct MediusCreateClanRequest {
     char MessageID[MEDIUS_MESSAGEID_MAXLEN];
     char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];

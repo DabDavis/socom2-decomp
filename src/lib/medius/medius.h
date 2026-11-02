@@ -13,6 +13,8 @@
 #define MEDIUS_ACCOUNTNAME_MAXLEN   32
 #define MEDIUS_CLANMSG_MAXLEN       200
 #define MEDIUS_CLANSTATS_MAXLEN     256
+#define MEDIUS_PASSWORD_MAXLEN      32
+#define MEDIUS_ACCOUNTSTATS_MAXLEN  256
 
 typedef enum MediusErrorCode {
     MediusErrorCallMediusCloseBareBeforeReinitializing = -19,
@@ -39,11 +41,36 @@ typedef enum MediusErrorCode {
 /* a response's handler: the request's own callback type in the vendor's headers; one here */
 typedef void (*MediusCallback)(void);
 
-/* the connection: GlobalInitFlag is 1 once MediusInitialize has run, MyConnectionIndex the
- * DME connection to the lobby server (negative before MediusConnect) */
-extern int data_00656188;
-extern int data_0065618C;
+/* the file API's records (field names as the online lane's zNetMediusFile.cpp has them) */
+typedef struct MediusFile {
+    char Filename[128];
+    unsigned char ServerChecksum[16];
+    int FileID;
+    int FileSize;
+    int CreationTimeStamp;
+    int OwnerID;
+    int GroupID;
+    unsigned short OwnerPermissionRWX;
+    unsigned short GroupPermissionRWX;
+    unsigned short GlobalPermissionRWX;
+    unsigned short ServerOperationID;
+} MediusFile;                           /* 0xAC */
+
+typedef struct MediusFileAttributes {
+    char Description[256];
+    unsigned int LastChangedTimeStamp;
+    unsigned int LastChangedByUserID;
+    unsigned int NumberAccesses;
+    unsigned int StreamableFlag;
+    unsigned int StreamingDataRate;
+} MediusFileAttributes;                 /* 0x114 */
+
+/* the connection: GlobalInitFlag is 1 once MediusInitialize has run (each unit declares it as
+ * its own object reads it: the API object, which defines it, a halfword -- SOCOM 1's symbol is 2
+ * bytes -- the clan object a word), MyConnectionIndex the DME connection to the lobby server
+ * (negative before MediusConnect) */
 #define GlobalInitFlag      data_00656188
+extern int data_0065618C;
 #define MyConnectionIndex   data_0065618C
 
 /* NetSendMessage's message class for every Medius request, and its broadcast target */
