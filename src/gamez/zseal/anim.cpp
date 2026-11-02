@@ -8,6 +8,8 @@
 
 #include "zseal.h"
 
+#include <map>
+#include <string>
 #include <vector>
 
 /* an anim type's variants by the item in hand (SOCOM 1's DWARF: ANIMTYPE_GROUP, 8 bytes) */
@@ -399,6 +401,52 @@ void AnimSet::CloseAll()
     /* postfix: the class iterator's temporary gives the target's rotated loop (++i does not) */
     for (std::vector<AnimSet *>::iterator i = list.begin(); i != list.end(); i++)
         (*i)->Close();
+}
+
+/* the anim names' maps (OVL1 bss; an OVL1 initialiser, 0x400870, builds them): a name's anim type
+ * (FindAnimType's, as SOCOM 1's newNamesMap) and a name's variant kind (0x5E4F20's) */
+extern std::map<std::string, int> data_0044C420;
+extern std::map<std::string, int> data_0044C460;
+
+/* an anim type by name, -1 for none or an unknown one (SOCOM 1's FindAnimType: CTPlay::Parse
+ * calls it; OVL2 0x5E5000). The test around the lookup, not an early return: `if (!name) return
+ * -1;` lays the -1 block out first */
+AnimType FindAnimType(const char *name)
+{
+    if (name) {
+        std::map<std::string, int>::iterator i = data_0044C420.find(name);
+
+        if (i != data_0044C420.end())
+            return (AnimType)(*i).second;
+    }
+    return animTypeUndefined;
+}
+
+/* the same lookup, word for word (OVL2 0x5E4F90): InitializeAnimNames (0x5E1DF0) calls it for each
+ * of its ~240 anim type globals, where SOCOM 1's inlined FindAnimType's find 157 times (the name
+ * ours) */
+AnimType LookupAnimType(const char *name)
+{
+    if (name) {
+        std::map<std::string, int>::iterator i = data_0044C420.find(name);
+
+        if (i != data_0044C420.end())
+            return (AnimType)(*i).second;
+    }
+    return animTypeUndefined;
+}
+
+/* a variant kind by name ("ready", "suspicious", "conversation", ...), -1 for none (OVL2 0x5E4F20;
+ * seal_anim.cpp's 0x574C30 keeps five; new in SOCOM II, the name ours) */
+int FindAnimKind(const char *name)
+{
+    if (name) {
+        std::map<std::string, int>::iterator i = data_0044C460.find(name);
+
+        if (i != data_0044C460.end())
+            return (*i).second;
+    }
+    return -1;
 }
 
 /* (OVL2 0x5E3F80, after the destructor: the pool's element constructor) */

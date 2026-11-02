@@ -11305,9 +11305,9 @@
 0x005E3EE0 0x9C __dt__12CAnimTypeRecFv  # OVL2; by hand (the kit lane, round 10): the destructor the 600-record pool's new[] (0x5E5B10, 0x5E5BF0) passes to __construct_new_array; the record cleared as the constructor clears it, deleted when asked -- class name ours
 0x005E3F80 0x68 __ct__12CAnimTypeRecFv  # OVL2; by hand (the kit lane, round 10): the constructor the 600-record pool's new[] passes to __construct_new_array: both shorts -1, the bits and the count zeroed, the pointer at 8 zeroed -- class name ours
 0x005E3FF0 0xF28 func_005E3FF0  # OVL2
-0x005E4F20 0x6C func_005E4F20  # OVL2
-0x005E4F90 0x6C func_005E4F90  # OVL2
-0x005E5000 0x6C func_005E5000  # OVL2
+0x005E4F20 0x6C FindAnimKind__FPCc  # OVL2; by hand (the kit lane, round 12): FindAnimType's shape over the other int map 0x44C460, the int returned whole (lw); 0x574C30 keeps five of them ("ready", "suspicious", "conversation"...: the variant kinds CAnimTypeRec's groups are keyed by, likely); new in SOCOM II, the name ours; anim.cpp byte-exact
+0x005E4F90 0x6C LookupAnimType__FPCc  # OVL2; by hand (the kit lane, round 12): FindAnimType's words exactly, the same map 0x44C420 -- only InitializeAnimNames (0x5E1DF0) calls it, once per anim type global (SOCOM 1's InitializeAnimNames inlined FindAnimType's find instead); the name ours; anim.cpp byte-exact
+0x005E5000 0x6C FindAnimType__FPCc  # OVL2; s1:calls by hand (the kit lane, round 12): CTPlay::Parse calls it where SOCOM 1's calls FindAnimType (0x2CD240 there), the same body (the name map's find, -1 when absent or for a null name, the type read with lh); its map 0x44C420 (SOCOM 1's newNamesMap); anim.cpp byte-exact
 0x005E5070 0x70 CloseAll__7AnimSetFv  # OVL2; s1:order by hand (the kit lane, round 10): SOCOM 1's CloseAll walks AnimSet::list (0x509710 there, 0x44D430 here) calling Close; CGame::StopEngine calls this as SOCOM 1's calls CloseAll -- SOCOM II's walk is left empty
 0x005E50E0 0x264 func_005E50E0  # OVL2
 0x005E5350 0x1B0 func_005E5350  # OVL2

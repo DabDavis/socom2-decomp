@@ -3,12 +3,15 @@
  * offsets and the sniper's kick first, the constructor and the item lookups last, then
  * sealSaveFireModes and CAiWepHint's statics). So far the small accessors and lookups, the fire
  * delay and shot count, the launcher-mode tests, FireGrenade. Its initialiser is 0x668DB0 (the
- * iostream objects, the saved fire modes' array, two more statics zeroed): not defined here yet,
- * so the array is spelled by placeholder. Defined in reverse of their image order (-inline
+ * iostream objects, the saved fire modes' array, the placing hit's two pointers zeroed), byte-exact
+ * from the statics below, defined in its order. Defined in reverse of their image order (-inline
  * deferred). */
 
 #include "kit.h"
 #include "../zcamera/zcamera.h"
+#include "../znode/node_world.h"
+
+#include <iostream>
 
 extern "C" {
 /* CZSealBody::AdrenalineIncr (SOCOM 1's AdrenalineIncr__10CZSealBodyFf, tail-called from the same
@@ -44,21 +47,48 @@ bool func_005BD7E0(CZKit *kit);
 void func_00592D40(CKitCtrl *ctrl);
 }
 
-/* a weapon's fire mode as the saved table holds it (SOCOM 1's unnamed-namespace CSavedFireModeInfo,
- * 8 bytes: the mode, then the item; its constructor, 0x5C9230, zeroes the one and 255s the other) */
-struct CSavedFireMode {
+extern "C" {
+/* the local player (OVL1's ftsGetPlayer) */
+CZSealBody *ftsGetPlayer__Fv();
+}
+
+/* the unit's statics, in the order its initialiser (__sinit_seal_kit.cpp, OVL2 0x668DB0) builds them
+ * after <iostream>'s two objects: SOCOM 1's saved fire modes and their count (OVL2 bss 0x66B580,
+ * 0x66B670), then the hit the explosives' placing keeps (0x66B680: 0x5BE9A0 copies a 32-byte hit
+ * into it, 0x5C1970 asks its material and aligns to its normal) -- whose constructor zeroes its
+ * polygon and node (the initialiser's two `sw zero`, 0x66B68C and 0x66B69C): SOCOM II's
+ * IntersectStruct has a constructor node_world.h does not declare, so the unit spells it on a
+ * class of its own */
+namespace {
+
+/* a weapon's fire mode as the saved table holds it (SOCOM 1's CSavedFireModeInfo, 8 bytes: the mode,
+ * then the item; its constructor, 0x5C9230, zeroes the one and 255s the other) */
+class CSavedFireModeInfo {
+public:
+    CSavedFireModeInfo()
+    {
+        m_firemode = 0;
+        m_item = EQUIP_NONE;
+    }
+
     int m_firemode;   // 0x0
     EQUIP_ITEM m_item;   // 0x4
 };
 
-extern "C" {
-/* the local player (OVL1's ftsGetPlayer) and the saved table and its count (SOCOM 1's
- * g_arrSavedFireModeInfo[30] and g_iNumSavedFireModes in seal_kit.cpp's unnamed namespace; OVL2 bss
- * 0x66B580 and 0x66B670 -- placeholders: defining the array here would emit __sinit_seal_kit.cpp,
- * 0x668DB0, whose iostream objects and two more statics this unit does not hold yet) */
-CZSealBody *ftsGetPlayer__Fv();
-extern CSavedFireMode data_0066B580[30];
-extern int data_0066B670;
+/* a hit kept from one tick to the next (zdb::IntersectStruct and SOCOM II's constructor; the name
+ * ours) */
+struct CKitHit : public zdb::IntersectStruct {
+    CKitHit()
+    {
+        m_poly = 0;
+        m_node = 0;
+    }
+};
+
+CSavedFireModeInfo g_arrSavedFireModeInfo[30];
+int g_iNumSavedFireModes;
+CKitHit g_placeHit;
+
 }
 
 /* the local player's items' fire modes saved (OVL2 0x5C91B0; SOCOM 1's, the items now read straight,
@@ -70,9 +100,9 @@ void sealSaveFireModes()
     int i;
     CZKit *kit = (CZKit *)((char *)ftsGetPlayer__Fv() + 0x5e0);
 
-    data_0066B670 = kit->m_num_items;
-    for (i = 0; i < data_0066B670; i++) {
-        CSavedFireMode *info = &data_0066B580[i];
+    g_iNumSavedFireModes = kit->m_num_items;
+    for (i = 0; i < g_iNumSavedFireModes; i++) {
+        CSavedFireModeInfo *info = &g_arrSavedFireModeInfo[i];
 
         info->m_item = kit->m_item[i]->m_ID;
         info->m_firemode = kit->m_firemode[i];
