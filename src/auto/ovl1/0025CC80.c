@@ -4,11 +4,12 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_003CFFB0(char *, f32);                 /* extern */
+M2C_UNK RemoveExplosivesInRange__8CZWeaponFPC6CPnt3Df(char *, f32); /* extern */
 
 s32 func_0025CC80(char *arg0) {
-    func_003CFFB0(arg0 + 4, M2C_FIELD(arg0, f32 *, 0x10));
+    RemoveExplosivesInRange__8CZWeaponFPC6CPnt3Df(arg0 + 4, SC_MEMBER(arg0, f32 *, 0x10));
     return 1;
 }

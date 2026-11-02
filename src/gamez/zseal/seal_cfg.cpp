@@ -11,13 +11,6 @@ public:
     bool Contains(AnimType type);
 };
 
-extern "C" {
-/* a list's first and next anims (RTList<ACTIVE_ANIM>'s Begin and Next, seal_anim.cpp's tail copies:
- * OVL2 0x5780E0, 0x578110) */
-ACTIVE_ANIM *func_005780E0(CActiveAnimList *list);
-ACTIVE_ANIM *func_00578110(CActiveAnimList *list);
-}
-
 /* the animation set's per-weapon tables (anim.cpp's CAnimsByFP, the kit lane's: only the pistol's
  * lookup) and the set's pointer to them at 0x5C (a view of AnimSet; the name ours) */
 class CAnimsByFP {
@@ -55,7 +48,9 @@ extern "C" AnimType func_0058C9E0(CZSealBody *seal, AnimType type, unsigned char
  * II; its first argument unread, the names ours -- the rate read ahead of the test) */
 extern "C" void func_0058BAB0(CZSealBody *seal, CActiveAnimList *list, CBlendable *blendable, float scale)
 {
-    for (ACTIVE_ANIM *a = func_005780E0(list); a; a = func_00578110(list)) {
+    /* (RTList<ACTIVE_ANIM>'s Begin and Next: this unit emits the instances, OVL2's copies 0x5780E0
+     * and 0x578110 in seal_anim.cpp's span) */
+    for (ACTIVE_ANIM *a = list->Begin(); a; a = list->Next()) {
         float rate = a->m_playback;
 
         if (blendable->Contains((AnimType)a->m_id))

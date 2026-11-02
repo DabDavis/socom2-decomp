@@ -77,7 +77,7 @@ def _rename(pairs: list[tuple[int, str, str]]) -> int:
     E.SYMBOLS.write_text("\n".join(lines) + "\n")
     users = {}
     for f in (HERE / "src").rglob("*"):
-        if f.suffix in (".c", ".cpp", ".h") or f.name in ("list", "memory"):
+        if f.suffix in (".c", ".cpp", ".h", ".s") or f.name in ("list", "memory"):
             text = f.read_text(errors="replace")
             for n in old_names:
                 if re.search(rf"\b{re.escape(n)}\b", text):

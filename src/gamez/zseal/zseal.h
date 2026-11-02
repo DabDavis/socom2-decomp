@@ -640,6 +640,8 @@ public:
     virtual void OnSetHealth(float health, float old);
     virtual void OnMissionEnd();
     virtual void OnStateChange(SEAL_STATE from, SEAL_STATE to);
+    /* a target seen to fall called out (SOCOM 1's; OVL2 0x5C9B10, the kit lane's seal_sensors.cpp) */
+    virtual void NotifyTargetDown(CZSealBody *seal);
 
     /* the AI's mode set (SOCOM 1's; OVL2 0x56CBF0) and its states dropped (SOCOM 1's
      * ClearAiState, the AI-states lane's 0x5F5F20) */
@@ -811,6 +813,8 @@ public:
     /* a SEAL made from a character type with a controller (SOCOM 1's; OVL2 0x5999E0), and the local
      * player's made for a network game (SOCOM 1's; OVL2 0x5442C0) */
     static CZSealBody *Create(const CCharacterType *type, const char *name, CSealCtrl *ctrl);
+    /* the SEAL a node belongs to (OVL2 0x59ACD0, seal_create.cpp's) */
+    static CZSealBody *GetSeal(zdb::CNode *node);
     /* (OVL2 0x553EA0, not written yet) and the controller fitted after (OVL2 0x599F00) */
     CZSealBody(zdb::CNode *node, CCharacterType *type);
     static void PostCreateSeal(CZSealBody *seal, CSealCtrl *ctrl);
@@ -866,6 +870,9 @@ public:
     static void OpenHeartbeatSounds();
     /* the stance a state stands for, or the fallback (SOCOM 1's; the AI-states lane's 0x5FC910) */
     static SEAL_STANCE GetStanceFromState(SEAL_STATE state, SEAL_STANCE fallback);
+    /* the state the body stands in; asked with the flag, the top blend's anims say it first (SOCOM
+     * 1's GetStance, which returns CBody's state byte; OVL2 0x58A720, seal_body.cpp) */
+    SEAL_STATE GetStance(bool flag) const;
     /* a body part made a gear's (SOCOM 1's; OVL2 0x58B040, seal_cfg.cpp) */
     void SetPartAsGear(CZBodyPart *part, class CCharacterGear *gear);
     /* a gear by name, or none (SOCOM 1's; OVL2 0x59A730, seal_create.cpp: `this` unread) */
@@ -990,7 +997,9 @@ public:
 
     unsigned char _200[0x214 - 0x200];
     float m_blooddriptimer;   // 0x214 (SOCOM 1's 0x170)
-    unsigned char _218[0x21c - 0x218];
+    /* the SEAL whose node 0x3DC holds, kept while bit 0 of 0x21C is set (0x5AA620, the radio menu's
+     * toggle; the names ours) */
+    CZSealBody *m_218;   // 0x218
     unsigned char m_21c_bit0 : 1;   // 0x21c
     unsigned char m_altitude_characters : 1;   // bit 1: SealGetAltitude hits characters too (SOCOM 1's
                                                // flag at 0xde8 bit 0; the name ours)
@@ -1004,12 +1013,33 @@ public:
     float m_2e0;   // 0x2e0: the time step the overlay ticks by (0x579EF0; the names ours)
     float m_alt;   // 0x2e4 (SOCOM 1's 0xe98)
     CZBodyPart *m_root;   // 0x2e8 (SOCOM 1's 0x26c)
-    unsigned char _2ec[0x374 - 0x2ec];
+    /* the body's parts in SOCOM 1's order, 0x7c on (SOCOM 1's ParentPistolToRHandCallback reparents
+     * m_pistol, 0x2d8 there, to m_rhand, 0x284; OVL2 0x5A7730 does the same with 0x354 and 0x300) */
+    unsigned char _2ec[0x2fc - 0x2ec];
+    CZBodyPart *m_spinelo;   // 0x2fc (SOCOM 1's 0x280: the rifle's place on the back)
+    CZBodyPart *m_rhand;   // 0x300 (SOCOM 1's 0x284)
+    unsigned char _304[0x308 - 0x304];
+    CZBodyPart *m_head;   // 0x308 (SOCOM 1's 0x28c, m_root + 0x20 in both: 0x57F150's ray starts above it)
+    unsigned char _30c[0x318 - 0x30c];
+    CZBodyPart *m_rthigh;   // 0x318 (SOCOM 1's 0x29c: the pistol's holster)
+    unsigned char _31c[0x350 - 0x31c];
+    CZBodyPart *m_rifle;   // 0x350 (SOCOM 1's 0x2d4)
+    CZBodyPart *m_pistol;   // 0x354 (SOCOM 1's 0x2d8)
+    unsigned char _358[0x374 - 0x358];
     SEAL_STATE m_desiredState;   // 0x374 (SOCOM 1's 0x304; the HUD's pose bitmap reads it)
     SEAL_STANCE m_desiredStance;   // 0x375: the stance the AI asks for (0x5631B0; the name ours)
-    unsigned char _376[0x3b0 - 0x376];
+    unsigned char _376[0x390 - 0x376];
+    /* the rifle and the pistol worn as gear: the part SetPartAsGear makes of each and the gear (SOCOM
+     * 1's m_rifle_as_gear and m_pistol_as_gear were the gear alone; the part names ours) */
+    CZBodyPart *m_rifle_as_gear_part;   // 0x390
+    class CCharacterGear *m_rifle_as_gear;   // 0x394
+    CZBodyPart *m_pistol_as_gear_part;   // 0x398
+    class CCharacterGear *m_pistol_as_gear;   // 0x39c
+    unsigned char _3a0[0x3b0 - 0x3a0];
     void *m_select;   // 0x3b0: a TASK_SELECT (SOCOM 1's 0x318), the AI's tasks' argument
-    unsigned char _3b4[0x400 - 0x3b4];
+    unsigned char _3b4[0x3dc - 0x3b4];
+    zdb::CNode *m_3dc;   // 0x3dc: a node 0x5AA620 takes the SEAL of (the name ours)
+    unsigned char _3e0[0x400 - 0x3e0];
     zdb::IntersectStruct m_last_altitude;   // 0x400 (SOCOM 1's 0x320)
     unsigned char _420[0x428 - 0x420];
     CAiEvent *m_aiEvent;   // 0x428: the SEAL's own AI event (SOCOM 1's 0x380)
@@ -1122,7 +1152,9 @@ public:
     /* the ladder the SEAL is on, an index into the mission's list (new in SOCOM II: read with lhu
      * and re-masked for an int argument, as a 16-bit field is; the name ours) */
     unsigned int m_ladder : 16;   // 0x1062
-    unsigned char _1064[0x10d0 - 0x1064];
+    unsigned char _1064[0x1070 - 0x1064];
+    CQuat m_1070;   // 0x1070: a turn about x the app camera's transitions set (0x5AF470; the name ours)
+    unsigned char _1080[0x10d0 - 0x1080];
     float m_10d0;   // 0x10d0: set to 0.4 when the overlay plays out (0x579EF0)
     unsigned char _10d4[0x1314 - 0x10d4];
     /* a point and two values 0x57ED10 sets for a SEAL this console plays, clears for a remote one
