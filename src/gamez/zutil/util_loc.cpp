@@ -1,43 +1,225 @@
-/* util_loc.cpp -- the localised string tables (OVL1 0x3A3100-0x3A54FF): LOC.rdr's tables per language
+/* util_loc.cpp -- the localised string tables (OVL1 0x3A3100-0x3A59BF): LOC.rdr's tables per language
  * (RUN\LOCALE\<language>, DATA\COMMON\ZRDR\LOCRDR\<language>\<table>LOC.rdr), the language choice
  * (LanguageChoice, from the system's when it is unset) and the lookups by id and by name. SOCOM 1
  * has none of it: the file's name and every name here are ours. Defined in reverse of their image
- * order (-inline deferred).
+ * order (-inline deferred); the template tail follows the unit's own code: the entries' sort
+ * (std::sort, include/algorithm: 0x3A4560, its __sort132 0x3A5500 and __selection_sort 0x3A57E0),
+ * the entries' vector (insert 0x3A4D10, reserve 0x3A5220, the deleter's clear 0x3A5400 and
+ * destructor 0x3A5450).
  *
- * OPEN, not written yet: everything but the table's lookup by id -- the manager's lookups
- * (0x3A3100, 0x3A32F0), the loaders (0x3A3490, 0x3A3900, 0x3A3BE0), the teardown 0x3A3740, the
- * language's (0x3A40E0, 0x3A44B0), the by-name lookup 0x3A41F0, the sort 0x3A4560 and the template
- * tail (the 12-byte entries' vector: insert 0x3A4D10, reserve 0x3A5220, clear 0x3A5400, the
- * destructor 0x3A5450, the sort's helpers 0x3A5500, 0x3A57E0). */
+ * The manager of the tables (CStringTables, hud_main.cpp's name for it) is the font unit's global
+ * at 0x49E9D0, reached through 0x361BC0; it is a vector of the tables with the entry found last. */
 
-/* a localised string: its id, then its text and how it is shown (ours: 12 bytes, the id a halfword
- * at 0) */
+#include <vector>
+#include <algorithm>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "../zui/zui.h"
+
+class CRdrFile : public _zrdr {};
+CRdrFile *zrdr_read(const char *name, const char *path, int flags);
+void zrdr_free(CRdrFile *file);
+bool zrdr_findint(const _zrdr *rdr, const char *tag, int *out, int n);
+bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
+char *zrdr_findstring(const _zrdr *rdr, const char *tag);
+
+namespace zar {
+class CZAR {
+public:
+    void ReOpen(int mode, unsigned int flags);
+};
+}
+
+/* the archives (zrdr.h's CRdrArchive, only what the tables use) */
+class CRdrArchive : public zar::CZAR {
+public:
+    static CRdrArchive *AddArchive(const char *name, const char *path);
+    static bool RemoveArchive(const char *name, const char *path);
+};
+
+/* the valves, as zanim.h declares them (only what the language uses) */
+enum VALVE_TYPE {};
+enum VALVE_STATE {
+    VALVE_SAME,
+    VALVE_ON,
+    VALVE_OFF
+};
+
+class CValve {
+public:
+    static CValve *Create(const char *name, VALVE_TYPE type);
+    void MakeCallbacks(VALVE_STATE state);
+
+    char *m_name;   // 0x0
+    unsigned int m_value : 16;   // 0x4
+};
+
+/* CValve::SetValue, inlined in both builds (as zanim_menu.h's SetValveValue) */
+inline void SetValveValue(CValve *valve, int value)
+{
+    VALVE_STATE state = VALVE_SAME;
+
+    if (valve->m_value != value)
+        state = value == 0 ? VALVE_OFF : VALVE_ON;
+    valve->m_value = value;
+    if (state != VALVE_SAME)
+        valve->MakeCallbacks(state);
+}
+
+extern "C" {
+/* the font unit's: the manager of the tables (0x49E9D0), and a count of the strings' changes */
+class CStringTables *func_00361BC0();
+void func_00361B00();
+int sceScfGetLanguage();
+}
+extern char data_0048DC30[];
+/* the archives' open mode (zrdr_archive.cpp's?) */
+extern int data_003F7020;
+
+/* the languages, as the table of their names lists them (the names ours) */
+enum LANGUAGE {
+    LANG_STATES,
+    LANG_UK,
+    LANG_FRANCE,
+    LANG_GERMANY,
+    LANG_SPAIN,
+    LANG_ITALY,
+    LANG_JAPAN,
+    LANG_KOREA,
+    LANG_TEST,
+    LANG_COUNT,
+    LANG_UNSET = 99
+};
+
+/* the languages' directory names, and whether the tables come from a ZAR per language */
+static const char *s_languageNames[LANG_COUNT] = {
+    "STATES", "UK", "FRANCE", "GERMANY", "SPAIN", "ITALY", "JAPAN", "KOREA", "TEST"
+};
+static bool s_useZar = true;
+
+/* the sound system's language (CSnd's global 0x48DC30) */
+extern "C" void func_0034D190(void *snd, LANGUAGE lang);
+
+/* the language chosen (LANG_UNSET until the system's is taken) */
+static LANGUAGE s_language;
+
+/* a localised string: its id, its name (MSG_ID) and its text (LOCALIZED) -- 12 bytes; the
+ * destructor clears the id (the deleter's destroy loop and every temporary's end store a zero
+ * halfword) */
 struct LOCENTRY {
+    LOCENTRY(unsigned short id, char *msgid, char *text) : m_id(id), m_msgid(msgid), m_text(text) {}
+    ~LOCENTRY() { m_id = 0; }
+
     unsigned short m_id;   // 0x0
-    unsigned char _2[0xa];
+    char *m_msgid;   // 0x4: MSG_ID
+    char *m_text;   // 0x8: LOCALIZED
 };   // 0xc bytes
 
-/* the entries of one table (ours; the vector's words at 0x24) */
-struct LOCENTRIES {
-    unsigned int m_capacity;   // 0x24
-    unsigned int m_size;   // 0x28
-    LOCENTRY *m_data;   // 0x2c
-
-    unsigned int size() const { return m_size; }
-    LOCENTRY &operator[](unsigned int i) { return m_data[i]; }
+/* the entries' order, by id (std::sort's comparator, empty, by value) */
+struct LocEntryLess {
+    LocEntryLess() {}
+    bool operator()(const LOCENTRY &a, const LOCENTRY &b) const { return a.m_id < b.m_id; }
 };
 
-/* one table of localised strings (ours) */
+/* a name is a message id: it starts with an underscore */
+static inline bool IsMsgId(const char *name)
+{
+    return name && *name == '_';
+}
+
+/* a name's bucket: its first and middle characters summed */
+static inline int HashName(const char *name)
+{
+    int h = name[0] + name[strlen(name) / 2];
+
+    return h < 0 ? -h % 17 : h % 17;
+}
+
+/* a table's entries (a vector of its own: its destructor tests the table's member three times before
+ * the deleter's, where a plain vector member's tests twice) */
+class CLocEntries : public std::vector<LOCENTRY> {};
+
+/* one table of localised strings: the largest id, the strings, the entries sorted by id, the
+ * table's name, the entry found last and the entries hashed by name */
 class CLocTable {
 public:
+    CLocTable(_zrdr *rdr) : m_strings(128000, rdr->Item(0)->Count() * 2 + 1)
+    {
+        m_entries.reserve(1);
+        m_maxId = -1;
+        m_last = 0;
+    }
     LOCENTRY *Find(int id);
+    LOCENTRY *Find(const char *name);
+    void Read(const char *name, _zrdr *rdr);
+    /* an entry added while there is room (the strings made in the table) */
+    void Add(int id, const char *msgid, const char *text)
+    {
+        if (m_entries.size() < m_entries.capacity()) {
+            m_maxId = m_maxId < id ? id : m_maxId;
+            m_entries.push_back(LOCENTRY(id, m_strings.CreateString(msgid), m_strings.CreateString(text)));
+        }
+    }
 
     int m_maxId;   // 0x0
-    unsigned char _4[0x24 - 0x4];
-    LOCENTRIES m_entries;   // 0x24
-    unsigned char _30[0x70 - 0x30];
+    CSTable m_strings;   // 0x4
+    CLocEntries m_entries;   // 0x24
+    char m_name[0x40];   // 0x30
     LOCENTRY *m_last;   // 0x70: the entry found last
+    std::vector<LOCENTRY *> m_hash[17];   // 0x74: the entries by name
+};   // 0x140 bytes
+
+/* the tables (the font unit's global): a vector of them and the entry found last */
+class CStringTables : public std::vector<CLocTable *> {
+public:
+    LOCENTRY *Find(const char *name, const char *table);
+    LOCENTRY *Find(int id, const char *table);
+    void Reload(LANGUAGE lang);
+    void Unload(const char *name);
+    void Load(const char *name, LANGUAGE lang);
+    unsigned short GetId(const char *name, const char *table);
+    const char *GetString(int id, const char *table);
+    /* a table by name, or 0 */
+    CLocTable *FindTable(const char *name)
+    {
+        if (name) {
+            for (iterator i = begin(); i != end(); ++i) {
+                if (!strcmp(name, (*i)->m_name))
+                    return *i;
+            }
+        }
+        return 0;
+    }
+
+    LOCENTRY *m_last;   // 0xc: the entry found last
 };
+
+void SetLanguage(LANGUAGE lang);
+LANGUAGE LanguageFromName(const char *name);
+
+/* the language chosen, from the system's when it is unset */
+LANGUAGE GetLanguage()
+{
+    if (s_language == LANG_UNSET)
+        SetLanguage(LanguageFromName("SYSTEM"));
+    return s_language;
+}
+
+/* the language changed: the tables reloaded, the strings' change counted, the sound told, and
+ * LanguageChoice set (GetLanguage calls it out of line: pinned) */
+#pragma auto_inline off
+void SetLanguage(LANGUAGE lang)
+{
+    if (lang != s_language) {
+        s_language = lang;
+        func_00361BC0()->Reload(lang);
+        func_00361B00();
+        func_0034D190(data_0048DC30, lang);
+    }
+    SetValveValue(CValve::Create("LanguageChoice", (VALVE_TYPE)2), lang);
+}
+#pragma auto_inline reset
 
 /* the entry with this id: the one found last, the first when the id is not past it, else the
  * entries walked (the walk's find kept).
@@ -68,4 +250,293 @@ LOCENTRY *CLocTable::Find(int id)
         return 0;
     }
     return &m_entries[0];
+}
+
+/* the entry with this name: the one found last, else its bucket walked */
+LOCENTRY *CLocTable::Find(const char *name)
+{
+    if (!name || !*name)
+        return 0;
+    if (!IsMsgId(name))
+        return 0;
+    if (m_last && !strcmp(name, m_last->m_msgid))
+        return m_last;
+    int h = HashName(name);
+
+    for (std::vector<LOCENTRY *>::iterator i = m_hash[h].begin(); i != m_hash[h].end(); ++i) {
+        LOCENTRY *e = *i;
+
+        if (!strcmp(name, e->m_msgid)) {
+            m_last = e;
+            return e;
+        }
+    }
+    return 0;
+}
+
+/* a language by its name, the system's for none or SYSTEM, else the United States */
+LANGUAGE LanguageFromName(const char *name)
+{
+    if (!name || !strcasecmp(name, "SYSTEM")) {
+        switch (sceScfGetLanguage()) {
+        case 0:
+            return LANG_UK;
+        case 1:
+            return LANG_UK;
+        case 2:
+            return LANG_FRANCE;
+        case 3:
+            return LANG_SPAIN;
+        case 4:
+            return LANG_GERMANY;
+        case 5:
+            return LANG_ITALY;
+        case 6:
+            return LANG_UK;
+        case 7:
+            return LANG_UK;
+        default:
+            return LANG_UK;
+        }
+    }
+    for (int i = 0; i < LANG_COUNT; i++) {
+        if (!strcasecmp(name, s_languageNames[i]))
+            return (LANGUAGE)i;
+    }
+    return LANG_UK;
+}
+
+/* the table read from its rdr: the null entry, then each entry (ID, MSG_ID, LOCALIZED, SCALE,
+ * OFFSET), sorted by id and hashed by name, the table named, and the strings moved into a buffer
+ * of their own */
+void CLocTable::Read(const char *name, _zrdr *rdr)
+{
+    Add(0, "", "");
+    if (rdr) {
+        _zrdr *list = rdr->Item(0);
+        int n = list->Count();
+
+        m_entries.reserve(n + 1);
+        for (int i = 0; i < 17; i++)
+            m_hash[i].reserve(n + 1);
+        m_strings.reserve(n * 2 + 1);
+        for (unsigned int j = 0; (int)j < n; j++) {
+            _zrdr *item = list->Item(j);
+            int id = 0;
+
+            zrdr_findint(item, "ID", &id, 1);
+            const char *msgid = 0;
+
+            if (zrdr_findstring(item, "MSG_ID"))
+                msgid = zrdr_findstring(item, "MSG_ID");
+            const char *text = zrdr_findstring(item, "LOCALIZED");
+            float scale = 1.0f;
+
+            zrdr_findreal(item, "SCALE", &scale, 1);
+            int offset[2] = {0};
+
+            zrdr_findint(item, "OFFSET", offset, 2);
+            Add(id, msgid, text);
+        }
+    }
+    std::sort(m_entries.begin(), m_entries.end(), LocEntryLess());
+    for (std::vector<LOCENTRY>::iterator e = m_entries.begin(); e != m_entries.end(); ++e) {
+        LOCENTRY *p = &*e;
+
+        m_hash[HashName(p->m_msgid)].push_back(p);
+    }
+    sprintf(m_name, "%s", name);
+    if (m_strings.m_reserve < 0x5c00) {
+        unsigned int size = m_strings.m_reserve < 0x800 ? 0x800 : 0x5c00;
+        int delta = m_strings.Relocate(_malloc(size, 0, 0), size, true);
+
+        for (std::vector<LOCENTRY>::iterator e = m_entries.begin(); e != m_entries.end(); ++e) {
+            e->m_msgid += delta;
+            e->m_text += delta;
+        }
+    }
+}
+
+/* a table loaded (unless it is already): read from its language's ZAR or file, and added */
+void CStringTables::Load(const char *name, LANGUAGE lang)
+{
+    if (name && !FindTable(name)) {
+        char path[256];
+        char zar[256];
+        char dir[256];
+        CRdrFile *file;
+
+        if (s_useZar) {
+            sprintf(path, "%sLOC.rdr", name);
+            sprintf(zar, "%sLOC.zar", name);
+            sprintf(dir, "RUN\\LOCALE\\%s", s_languageNames[lang]);
+            CRdrArchive::AddArchive(zar, dir)->ReOpen(data_003F7020, 1);
+            file = zrdr_read(path, 0, 4);
+        } else {
+            sprintf(path, "DATA\\COMMON\\ZRDR\\LOCRDR\\%s\\%sLOC.rdr", s_languageNames[lang], name);
+            file = zrdr_read(path, 0, 0);
+        }
+        if (file) {
+            CLocTable *t = new CLocTable(file);
+
+            t->Read(name, file);
+            push_back(t);
+        }
+        if (s_useZar) {
+            char zar2[256];
+            char dir2[256];
+
+            sprintf(zar2, "%sLOC.zar", name);
+            sprintf(dir2, "RUN\\LOCALE\\%s", s_languageNames[lang]);
+            CRdrArchive::RemoveArchive(zar2, dir2);
+        }
+        if (file)
+            zrdr_free(file);
+    }
+}
+
+/* a table unloaded by name */
+void CStringTables::Unload(const char *name)
+{
+    if (name) {
+        iterator next = begin(), i = next;
+
+        while (i != end()) {
+            ++next;
+            if (!strcmp((*i)->m_name, name)) {
+                CLocTable *t = *i;
+
+                next = erase(i);
+                delete t;
+            }
+            i = next;
+        }
+        m_last = 0;
+    }
+}
+
+/* the id of the string with this name, or 0 (the font unit's 0x361B20 asks the manager, no table) */
+unsigned short CStringTables::GetId(const char *name, const char *table)
+{
+    unsigned short id = 0;
+    LOCENTRY *e = Find(name, table);
+
+    if (e)
+        id = e->m_id;
+    return id;
+}
+
+/* the text of the string with this id, or "(UNLOCALIZED)" (the font unit's 0x361B40 asks the
+ * manager, no table) */
+const char *CStringTables::GetString(int id, const char *table)
+{
+    const char *s = "(UNLOCALIZED)";
+    LOCENTRY *e = Find(id, table);
+
+    if (e)
+        s = e->m_text;
+    return s;
+}
+
+/* every table read again in a language */
+void CStringTables::Reload(LANGUAGE lang)
+{
+    for (iterator i = begin(); i != end(); ++i) {
+        CLocTable *t = *i;
+
+        t->m_entries.clear();
+        t->m_strings.Clear();
+        for (int j = 0; j < 17; j++)
+            t->m_hash[j].clear();
+        t->m_last = 0;
+        const char *name = (*i)->m_name;
+        char path[256];
+        char zar[256];
+        char dir[256];
+        CRdrFile *file;
+
+        if (s_useZar) {
+            sprintf(path, "%sLOC.rdr", name);
+            sprintf(zar, "%sLOC.zar", name);
+            sprintf(dir, "RUN\\LOCALE\\%s", s_languageNames[lang]);
+            CRdrArchive::AddArchive(zar, dir)->ReOpen(data_003F7020, 1);
+            file = zrdr_read(path, 0, 4);
+        } else {
+            sprintf(path, "DATA\\COMMON\\ZRDR\\LOCRDR\\%s\\%sLOC.rdr", s_languageNames[lang], name);
+            file = zrdr_read(path, 0, 0);
+        }
+        if (file)
+            (*i)->Read((*i)->m_name, file);
+        if (s_useZar) {
+            char zar2[256];
+            char dir2[256];
+
+            sprintf(zar2, "%sLOC.zar", (*i)->m_name);
+            sprintf(dir2, "RUN\\LOCALE\\%s", s_languageNames[lang]);
+            CRdrArchive::RemoveArchive(zar2, dir2);
+        }
+        if (file)
+            zrdr_free(file);
+    }
+    m_last = 0;
+}
+
+/* the entry with this id: the one found last, else in the named table or in each */
+LOCENTRY *CStringTables::Find(int id, const char *table)
+{
+    LOCENTRY *e = 0;
+
+    if (m_last && id == m_last->m_id)
+        return m_last;
+    if (table) {
+        CLocTable *t = FindTable(table);
+
+        if (t) {
+            LOCENTRY *f = t->Find(id);
+
+            if (f)
+                m_last = f;
+            return f;
+        }
+        return 0;
+    }
+    for (iterator i = begin(); i != end(); ++i) {
+        if ((e = (*i)->Find(id)) != 0) {
+            m_last = e;
+            return e;
+        }
+    }
+    return e;
+}
+
+/* the entry with this name: the one found last, else in the named table or in each */
+LOCENTRY *CStringTables::Find(const char *name, const char *table)
+{
+    LOCENTRY *e = 0;
+
+    if (!name || !*name)
+        return 0;
+    if (!IsMsgId(name))
+        return 0;
+    if (m_last && !strcmp(name, m_last->m_msgid))
+        return m_last;
+    if (table) {
+        CLocTable *t = FindTable(table);
+
+        if (t) {
+            LOCENTRY *f = t->Find(name);
+
+            if (f)
+                m_last = f;
+            return f;
+        }
+        return 0;
+    }
+    for (iterator i = begin(); i != end(); ++i) {
+        if ((e = (*i)->Find(name)) != 0) {
+            m_last = e;
+            return e;
+        }
+    }
+    return e;
 }
