@@ -303,6 +303,25 @@ bool CAiMaps::Tile(const CAiMap::region *r, unsigned int value, unsigned int fla
     return ok;
 }
 
+/* the region's type changed: its cell removed from the old type's list and added to the new
+ * one's, true when it had the type already (SOCOM 1's). The removal is an inline cut to one level
+ * (CAiMapLocVec::Remove): the target calls even its iterators' constructors and assignment, and
+ * std::remove, out of line (0x529D30-0x529ED7, after it), where push_back is inlined.
+ * OPEN, right size, 10 instructions: registers only -- the target keeps the region in s1 and the
+ * type in s2, here the other way round. Tried: `old == type`, `old` unsigned, the test on the
+ * field, the cell as a reference local, the region cast into a non-const local (57 off) */
+bool CAiMaps::SetRegionType(const CAiMap::region *r, CAiMap::region::TYPE type)
+{
+    CAiMap::region::TYPE old = (CAiMap::region::TYPE)r->m_type;
+
+    if (type == old)
+        return true;
+    ((CAiMap::region *)r)->m_type = type;
+    m_regions[old].Remove(r->m_loc);
+    m_regions[type].push_back(r->m_loc);
+    return false;
+}
+
 /* 0 to n, n not drawn for (the name ours: GetRandomLoc's two draws) */
 inline int _random(int n)
 {

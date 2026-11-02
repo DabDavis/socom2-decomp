@@ -352,6 +352,16 @@ inline bool operator!=(const CAiMapLoc &a, const CAiMapLoc &b)
 
 /* a run of cells (SOCOM 1's DWARF: a vector of CAiMapLoc and nothing more) */
 class CAiMapLocVec : public std::vector<CAiMapLoc> {
+public:
+    /* every copy of a cell taken out (the name ours: CAiMaps::SetRegionType inlines it one level) */
+    void Remove(const CAiMapLoc &loc)
+    {
+        iterator first, last;
+
+        last = end();
+        first = std::remove(begin(), last, loc);
+        erase(first, last);
+    }
 };
 
 /* an AI map (SOCOM 1's DWARF: CAiMap : AIMAP_PARAMS, 0x12C bytes; SOCOM II's tables sit 0x34
