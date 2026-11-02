@@ -9916,7 +9916,7 @@
 0x00542180 0x70 DeleteMPBombNode__7CPickupFv  # OVL2; ours (new in SOCOM II): only m_mpbombnode__7CPickup touched -- taken from its parent, its texture character dropped, deleted, zeroed; Close inlines it (the SEAL lane, round 8)
 0x005421F0 0x94 DestroyNetPickups__7CPickupFUi  # OVL2; s1:calls (CZSealBody::OnMissionEnd calls it with m_id where SOCOM 1's does): CPickup's list walked, each pickup whose owner word at 0x10 matches destroyed -- SOCOM 1's compared a byte (Uc), SOCOM II's a word
 0x00542290 0x14C TickTimers__7CPickupFPC6CPnt3Df  # OVL2; ours (new in SOCOM II, after DestroyNetPickups): every pickup's time (the float at 0) run down by the second argument unless it is -1 (0x3F3440); one run out is destroyed when farther than 300 from the point (90000 squared, 0x64FC50), else given 60 again (0x64FC58) (the SEAL lane, round 3)
-0x005423E0 0x88 func_005423E0  # OVL2
+0x005423E0 0x88 NetTick__7CPickupFPC6CPnt3Df  # OVL2; ours (new in SOCOM II; pickup_main.cpp, between TickTimers and Destroy): CMission::Tick calls it with the player's place and dT where an offline game calls TickTimers (theNetwork's online byte picks), ftsNetworkGameUninit with (0, 0); it ignores both, deleting the MP bomb's node (DeleteMPBombNode inlined) when the byte at 0x44D4A8 is set -- the SEAL lane, round 9
 0x00542470 0x36C Destroy__7CPickupFP7CPickup  # OVL2; s1:calls (DestroyNetPickups calls it where SOCOM 1's does)
 0x005427E0 0x70 func_005427E0  # OVL2
 0x00542850 0x70 func_00542850  # OVL2
@@ -9934,9 +9934,9 @@
 0x00543030 0x1AC func_00543030  # OVL2
 0x005431E0 0x8 func_005431E0  # OVL2; s1~ GetSealCtrlAi__9CSealCtrlFv (one of 2 out-of-line copies of an inline, by s1:vtable)
 0x005431F0 0x8 IsPlayer__9CSealCtrlCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00543200 0xF0 func_00543200  # OVL2
-0x005432F0 0xC8 func_005432F0  # OVL2
-0x005433C0 0xA4 func_005433C0  # OVL2
+0x00543200 0xF0 UpdateTurretScope__10CZSealBodyFf  # OVL2; ours (new in SOCOM II): HandleNewZoom calls it with 1.0 after TurretHasThermal; the SEAL's turret (0xEB8, type 3) gets 0x3A9FB0(f) and CTurret::SetThermal(0, HasThermal(0xEB8)) -- the SEAL lane, round 9
+0x005432F0 0xC8 TurretHasThermal__10CZSealBodyFv  # OVL2; ours (new in SOCOM II): HandleNewZoom asks it; the entity at 0xEB8 set and HasThermal of it, inlined -- the SEAL lane, round 9
+0x005433C0 0xA4 HasThermal__10CZSealBodyFP7CEntity  # OVL2; ours (new in SOCOM II; seal.cpp, before TickHeartbeat): HandleNewZoom asks it with no entity; none -- the kit's item 195 (the goggles); else the entity (or the SEAL's own at 0xEB8) if a turret (type 3), its byte at 0x298 (CTurret::m_thermal) -- the SEAL lane, round 9
 0x00543470 0x8 func_00543470  # OVL2; s1~ GetRemoteControl__11CEntityCtrlFv (one of 2 out-of-line copies of an inline, by s1:vtable); ovl-copy: GetRemoteControl__11CEntityCtrlFv (OVL2's copy of the inline; slot 0x1C of CSealCtrl's, CSealCtrlAi's and CSealCtrlSquirm's tables)
 0x00543480 0x2C func_00543480  # OVL2
 0x005434B0 0x1D0 func_005434B0  # OVL2
@@ -9951,7 +9951,7 @@
 0x00543D50 0x21C func_00543D50  # OVL2
 0x00543F70 0x288 func_00543F70  # OVL2
 0x00544200 0x8 func_00544200  # OVL2; s1~ IsRemote__9CSealCtrlCFv (one of 2 out-of-line copies of an inline, by s1:vtable)
-0x00544210 0xAC func_00544210  # OVL2
+0x00544210 0xAC SetNetLife__10CZSealBodyFUc  # OVL2; ours (new in SOCOM II; seal.cpp, before NetworkPlayerCreate): IncrementalUpdateRemoteSeal passes the network object's byte at 0x88; the byte at 0xF7A set, and a remote SEAL coming back to 1 from 2 or 3 gets 0xFCF (SOCOM 1's m_needs_respawn) set -- the SEAL lane, round 9
 0x005442C0 0x138 NetworkPlayerCreate__10CZSealBodyFv  # OVL2; s1:calls
 0x00544400 0x1A8 DecrZoomState__10CZSealBodyFv  # OVL2; size 0x1A8 (the seed split it at 0x544550, a branch target after its last call: 0x544550's code runs on s3/s4 and pops this function's 96-byte frame); s1:order (seal.cpp: before IncrZoomState and SetCurZoomState, as SOCOM 1's DecrZoomState at 0x24DCC0; CSealCtrl::PreTick calls both); the zoom state at 0x200 stepped down through the kit's current item and handed to SetCurZoomState, the new state returned; the seed's cut (0x544550): jal target of OVL1's DNAS client, which calls DNAS.BIN loaded in the OVL2 slot (README)
 0x005445B0 0x2E4 IncrZoomState__10CZSealBodyFv  # OVL2; size 0x2E4 (the seed split it at 0x544708, 0x544788, 0x5447D8 -- unaligned -- and at 0x544860, after a nop before the epilogue: all run on its saved registers and pop its 112-byte frame); s1:order (between DecrZoomState and SetCurZoomState, as SOCOM 1's IncrZoomState at 0x24DDB0); ends calling SetCurZoomState with the new state, as SOCOM 1's; the seed's cuts (0x544708, 0x544788, 0x5447d8, 0x544860): jal targets of OVL1's DNAS client, which calls DNAS.BIN loaded in the OVL2 slot (README)

@@ -163,6 +163,14 @@ public:
     unsigned int m_0;   // 0x0
     virtual void IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);
     virtual bool AllowCommand(CZSealBody *seal, FT_COMMAND cmd, void *data);   /* +0xC (SOCOM 1's) */
+
+    unsigned char _8[0x9c - 0x8];
+    /* the squad's current order: its kind a byte at 8 (a kill by the local player under order 19
+     * counts twice: 0x545290; the names ours) */
+    struct CSealUnitOrder {
+        unsigned char _0[8];
+        unsigned char m_8;
+    } *m_9c;   // 0x9c
 };
 
 /* the network (SOCOM II's theNetwork at 0x45A0C0: SOCOM 1's flags at 8 and 9, the states lane's
@@ -182,7 +190,9 @@ extern CZNetwork theNetwork;
 
 class CNetGameState {
 public:
-    unsigned char _0[0xd2];
+    unsigned char _0[0x70];
+    CValve *m_70;   // 0x70: a valve each kill steps (0x545290; the name ours)
+    unsigned char _74[0xd2 - 0x74];
     unsigned char m_ghost;   // 0xd2
     unsigned char _d3[0xdc - 0xd3];
     unsigned char m_dc;   // 0xdc: a SEAL's death sends no squad order unless set (the name ours)
@@ -269,6 +279,12 @@ public:
     /* the MP bomb's node taken out of the world and deleted (new in SOCOM II, the name ours:
      * OVL2 0x542180 touches only m_mpbombnode; Close inlines it) */
     static void DeleteMPBombNode();
+    /* the pickups' tick in an online game, TickTimers' counterpart (CMission::Tick calls one or the
+     * other with the player's place, ftsNetworkGameUninit this one with none): no time runs out,
+     * only the MP bomb's node is deleted when flagged (OVL2 0x5423E0, new in SOCOM II; the names
+     * ours) */
+    static void NetTick(const CPnt3D *pos, float dT);
+    static bool m_deletempbomb;   // OVL1 bss 0x44D4A8 (between m_mpbombnode and m_isOpen)
     unsigned int GetPickupNetEntityID();
     const CPnt3D *GetPosW() const;
     void SetVisibleByUnit(unsigned int unit);
@@ -752,6 +768,20 @@ public:
     CZSealBody(zdb::CNode *node, CCharacterType *type);
     static void PostCreateSeal(CZSealBody *seal, CSealCtrl *ctrl);
     static void NetworkPlayerCreate();
+    /* the life the network reports set: a remote SEAL coming back up from 2 or 3 is marked for
+     * its respawn (OVL2 0x544210, new in SOCOM II: IncrementalUpdateRemoteSeal calls it; the name
+     * ours) */
+    void SetNetLife(unsigned char life);
+    /* thermal vision: the turret the SEAL works (the entity given, or its own at 0xEB8) if it is
+     * one; whether the SEAL sees thermally -- the goggles (item 195) when it works nothing, the
+     * turret's thermal scope when it works one; whether it works a turret with that scope; the
+     * turret's nodes given the value and its scope's look set (OVL2 0x5433C0, 0x5432F0, 0x543200,
+     * new in SOCOM II: CameraZoom::HandleNewZoom asks them; the names ours) */
+    inline class CTurret *GetTurret(CEntity *e);
+    inline class CTurret *GetTurret();
+    bool HasThermal(CEntity *e);
+    bool TurretHasThermal();
+    void UpdateTurretScope(float f);
     /* another console's SEAL made: its client index, entity id, name, vehicle, character type, a
      * word of flags (SOCOM 1's took a byte, the type's number: SOCOM II tests the bits 17 and 28) and
      * its packed weapons (SOCOM 1's; OVL2 0x599690) */
@@ -927,7 +957,9 @@ public:
     unsigned char _5e4[0xeb0 - 0x5e4];
     struct CAdrenaline *m_adrenaline;   // 0xeb0 (SOCOM 1's 0xdac: Adrenaline returns it)
     unsigned char _eb4[0xeb8 - 0xeb4];
-    int m_eb8;   // 0xeb8: 0x5A8850 tests it first (the name ours)
+    /* the entity the SEAL works -- a turret when its type is 3 (0x543200-0x5433C0); 0x5A8850 tests
+     * it first (the name ours) */
+    CEntity *m_eb8;   // 0xeb8
     unsigned char _ebc[0xec0 - 0xebc];
     CCompassAnchor *m_mpbomb_anchor;   // 0xec0 (SOCOM 1's 0xdb4)
     CCompassAnchor *m_mpbase_anchor;   // 0xec4 (SOCOM 1's 0xdb8)
@@ -938,7 +970,11 @@ public:
     unsigned char _ee4[0xf74 - 0xee4];
     /* the weapon's state, bit 4 a flag GetWeaponState masks off (SOCOM 1's m_weapon_state, 0xe54) */
     unsigned int m_weapon_state;   // 0xf74
-    unsigned char _f78[0xf88 - 0xf78];
+    unsigned char _f78[0xf7a - 0xf78];
+    /* the SEAL's life as the network reports it: 2 and 3 down, 1 up again (0x544210 sets it;
+     * the names ours) */
+    unsigned char m_netlife;   // 0xf7a
+    unsigned char _f7b[0xf88 - 0xf7b];
     float m_f88;   // 0xf88: a speed (0x5857E0 refuses a SEAL in water above 8.5; the name ours)
     unsigned char _f8c[0xfb0 - 0xf8c];
     SEAL_DEATH_TYPE m_deathType;   // 0xfb0 (SOCOM 1's 0xea4)
@@ -948,7 +984,8 @@ public:
     unsigned int m_lastkiller_id;   // 0xfbc: the killer's entity id (SOCOM 1's 0xeb4)
     unsigned char _fc0[0xfc8 - 0xfc0];
     int m_ClientIndex;   // 0xfc8 (SOCOM 1's 0xeb8: CreateRemoteSeal stores its first argument in both)
-    unsigned char _fcc[0xfd0 - 0xfcc];
+    unsigned char _fcc[0xfcf - 0xfcc];
+    unsigned char m_needs_respawn;   // 0xfcf (SOCOM 1's 0xec5, the byte before m_stunned)
     /* SOCOM 1's m_stunned, m_full_update_time and m_movespeedmod (0xec6, 0xec8, 0xecc there) in the
      * same order: HandleStunDamage sets the byte, CreateRemoteSeal zeroes the time and sets the
      * modifier to 1 */

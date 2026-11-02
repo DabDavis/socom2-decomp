@@ -196,6 +196,56 @@ extern "C" void func_00544CF0(CSealStats *s, const CZSealBody *seal)
         s->m_count[0x10 / 2]++;
 }
 
+/* a kill: counted, the score up two and, for the local player in a squad whose order is 19, a
+ * second counter; the game's kill valve stepped (OVL2 0x545290; the killer's credit, 0x59EE20, calls
+ * it) */
+extern "C" void func_00545290(CSealStats *s, const CZSealBody *seal)
+{
+    if (StatCounts(seal)) {
+        s->m_count[0xc / 2]++;
+        s->m_score += 2;
+        if (seal == ftsGetPlayer()) {
+            CSealUnit *unit = ((CSealCtrl *)seal->m_control)->m_unit;
+
+            if (unit && unit->m_9c->m_8 == 19)
+                s->m_count[0xe / 2]++;
+        }
+        data_00437CE8->m_70->SetValue(data_00437CE8->m_70->m_value + 1);
+    }
+    func_00544D60(seal, 0);
+}
+
+extern "C" {
+/* the stats' event handed to the SEAL's teammates: each SEAL of its team but itself, with the bit
+ * at 0xE1 set, has its stats (the first member pointer) given the event (the second, called with
+ * true) -- OVL2 0x545D80, not written yet */
+void func_00545D80(CSealStats *s, const CZSealBody *seal, const void *stats, const void *event);
+/* the two member-pointer constants (OVL2 data, {0, -1, function}): CZSealBody's stats (0x545890)
+ * and this event (0x545650) */
+extern const unsigned char data_0064FD58[12];
+extern const unsigned char data_0064FD68[12];
+}
+
+/* a bomb's event (CZBombState::ChangeBombState calls it): for the SEAL itself, the score up two when
+ * it counts, the score passed on, a counter, and online in game mode 1 the teammates told; for a
+ * teammate told, only their counter (OVL2 0x545650) */
+extern "C" void func_00545650(CSealStats *s, const CZSealBody *seal, bool teammate)
+{
+    if (!teammate) {
+        bool mode1 = data_00437CE8->m_mode == 1;
+
+        if (StatCounts(seal))
+            s->m_score += 2;
+        func_00544D60(seal, 1);
+        s->m_count[0x36 / 2]++;
+        if (theNetwork.m_9 && mode1) {
+            s->m_count[0x32 / 2]++;
+            func_00545D80(s, seal, data_0064FD58, data_0064FD68);
+        }
+    } else
+        s->m_count[0x32 / 2]++;
+}
+
 /* eight counters each added to (OVL2 0x5451E0, 0x5451C0, 0x5451A0, 0x545180, 0x545160, 0x545140,
  * 0x545120, 0x545100; SOCOM 1's Incr* took ints) */
 extern "C" void func_005451E0(CSealStats *s, int n)
@@ -561,6 +611,22 @@ void CZSealBody::NetworkPlayerCreate()
     seal->SetDisplayName(name);
 }
 
+/* the life the network reports set: a remote SEAL coming back up (1) from down (2 or 3) is marked
+ * for its respawn (OVL2 0x544210, new in SOCOM II) */
+void CZSealBody::SetNetLife(unsigned char life)
+{
+    if (life != m_netlife) {
+        unsigned char respawn = 0;
+        bool down = m_netlife == 2 || m_netlife == 3;
+
+        if (down && life == 1)
+            respawn = 1;
+        m_netlife = life;
+        if (IsRemote() && respawn)
+            m_needs_respawn = 1;
+    }
+}
+
 /* the compass anchors the SEAL carries: swapped in, whether there was none returned (OVL2
  * 0x544C60, 0x544C40) */
 bool CZSealBody::CompassAnchor_MPBomb(CCompassAnchor *anchor)
@@ -684,4 +750,82 @@ void CZSealBody::OpenHeartbeatSounds()
     m_heartbeat_sound[0] = CSnd::GetSoundByName("~HEART_SLOW");
     m_heartbeat_sound[1] = CSnd::GetSoundByName("~HEART_MED");
     m_heartbeat_sound[2] = CSnd::GetSoundByName("~HEART_MED_FAST");
+}
+
+/* a turret (zveh.h's CTurret, whose header clashes with zseal.h's stand-ins: only its thermal look
+ * here, at zveh.h's offset) */
+class CTurret : public CEntity {
+public:
+    virtual ~CTurret();
+    void SetThermal(zdb::CNode *node, bool thermal);
+
+    unsigned char _170[0x298 - 0x170];
+    bool m_thermal;   // 0x298
+};
+
+/* the entity the SEAL works as a turret, if it is one */
+static inline CTurret *AsTurret(CEntity *e)
+{
+    return e && e->m_type == CEntity::ENT_TYPE_TURRET ? (CTurret *)e : 0;
+}
+
+inline CTurret *CZSealBody::GetTurret(CEntity *e)
+{
+    CEntity *v = e ? e : m_eb8;
+
+    return v ? AsTurret(v) : 0;
+}
+
+inline CTurret *CZSealBody::GetTurret()
+{
+    return m_eb8 ? AsTurret(m_eb8) : 0;
+}
+
+/* whether the SEAL sees thermally: with nothing worked, by the goggles (item 195); with a turret, by
+ * its thermal scope (OVL2 0x5433C0) */
+bool CZSealBody::HasThermal(CEntity *e)
+{
+    bool r = false;
+
+    if (!e) {
+        if (m_kit.HasItem((EQUIP_ITEM)195))
+            r = true;
+    } else {
+        CTurret *t = GetTurret(e);
+
+        if (t && t->m_thermal)
+            r = true;
+    }
+    return r;
+}
+
+/* whether the SEAL works a turret with a thermal scope (OVL2 0x5432F0).
+ * OPEN, 6 instructions (0xB0 against 0xC8): the target's inlined HasThermal keeps GetTurret's
+ * fallback (`beqz a1; b; lw a1,0xEB8(a0)`) though its entity is the 0xEB8 it just loaded; MW here
+ * sees the two loads equal and collapses `e ? e : m_eb8` to e (out of line, HasThermal keeps it, as
+ * the target's does). Tried: nested ifs, the entity in a local, `r = HasThermal(...)`. */
+bool CZSealBody::TurretHasThermal()
+{
+    bool r = false;
+
+    if (m_eb8 && HasThermal(m_eb8))
+        r = true;
+    return r;
+}
+
+extern "C" {
+/* the turret's six nodes given a value at +0x9C (OVL1 0x3A9FB0, unowned) */
+void func_003A9FB0(CTurret *t, float f);
+}
+
+/* the turret the SEAL works given the value, its scope's look set by the SEAL's thermal vision
+ * (OVL2 0x543200; HandleNewZoom passes 1) */
+void CZSealBody::UpdateTurretScope(float f)
+{
+    CTurret *t = GetTurret();
+
+    if (t) {
+        func_003A9FB0(t, f);
+        t->SetThermal(0, HasThermal(m_eb8));
+    }
 }

@@ -137,6 +137,16 @@ void CPickup::DebugPickups()
         ;
 }
 
+/* the online tick: no pickup's time runs out, only the MP bomb's node goes when it is flagged
+ * (OVL2 0x5423E0; new in SOCOM II, DeleteMPBombNode inlined) */
+void CPickup::NetTick(const CPnt3D *pos, float dT)
+{
+    if (m_deletempbomb) {
+        DeleteMPBombNode();
+        m_deletempbomb = false;
+    }
+}
+
 /* every pickup the owner dropped destroyed (OVL2 0x5421F0; SOCOM 1's compared a byte of the id,
  * SOCOM II's the owner word). The iterator is assigned, so it stays in memory; the end taken
  * once. */
