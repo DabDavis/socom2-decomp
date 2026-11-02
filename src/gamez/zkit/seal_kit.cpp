@@ -40,6 +40,37 @@ bool func_005BD7E0(CZKit *kit);
 void func_00592D40(CKitCtrl *ctrl);
 }
 
+/* the middle of a weapon's AI range, none without a weapon (OVL2 0x5C93C0; SOCOM 1's, at SOCOM II's
+ * AI_PARAMS offsets). The half set first and scaled in place: the ternary, the if-returns and a
+ * product assigned whole all lose the false arm's trailing nop or swap the product's registers */
+float CAiWepHint::GetWeaponEffectiveRange(CZWeapon *w)
+{
+    float r;
+
+    if (w) {
+        r = 0.5f;
+        r *= w->m_ai_params.m_max_range + w->m_ai_params.m_min_range;
+    } else
+        r = 0.0f;
+    return r;
+}
+
+/* a weapon's accuracy at a distance (none without a weapon), doubled when asked, held within [0, 1]
+ * (OVL2 0x5C9340, byte-exact as a draft; SOCOM 1's had neither the factor nor the clamp): the three
+ * constants function-local statics, as the data's 8-byte spacing shows */
+float CAiWepHint::GetWeaponAccuracy(CZWeapon *w, float d, bool b)
+{
+    static float factor = 2.0f;
+    static float lo = 0.0f;
+    static float hi = 1.0f;
+    float acc = w ? w->m_ai_params.GetAccuracy(d) : 0.0f;
+
+    if (b)
+        acc *= factor;
+    _saturate(&acc, lo, hi);
+    return acc;
+}
+
 /* the item kinds of the first two items and the current one, 255 without one (OVL2 0x5C89D0,
  * 0x5C8980, 0x5C8930; the current one SOCOM 1's GetCurItemEnum, the first two new -- their names
  * ours) */
@@ -234,6 +265,68 @@ int CZKit::GetCurNumMags()
     return 0;
 }
 
+/* the first explosive's (151) ammunition's damage kept, none without one (OVL2 0x5C77B0, new in
+ * SOCOM II: PostSetupItems calls it; the name ours) */
+void CZKit::SetupExplosiveDamage()
+{
+    m_explosiveDamage = 0.0f;
+    for (int i = 0; i < m_num_items; i++) {
+        if (m_item[i] && m_item[i]->m_ID == 151) {
+            m_explosiveDamage = ((CZAmmo *)GetAmmoByIndex(i))->GetExplosionDamage();
+            break;
+        }
+    }
+}
+
+/* the binoculars (190; SOCOM 1's 182) given unless already held (OVL2 0x5C7450; SOCOM 1's, through
+ * SetItem where SOCOM 1's fetched the weapon itself) */
+void CZKit::SetupBinocular()
+{
+    if (!HasItem(EQUIP_BINOCULARS))
+        SetItem(m_num_items, EQUIP_BINOCULARS);
+}
+
+extern "C" {
+/* an item kind of class 145, and a pistol's (4: SOCOM 1's CZWeapon::IsSecondary) -- CZWeapon's
+ * statics before IsPrimary (OVL1 0x3D1CB0, 0x3D1CE0, unclaimed) */
+bool func_003D1CB0(EQUIP_ITEM id);
+bool func_003D1CE0(EQUIP_ITEM id);
+}
+
+/* the first primary weapon, pistol and class-145 item, or -1 (OVL2 0x5C7230, 0x5C71A0, 0x5C7110:
+ * new in SOCOM II, where SOCOM 1's GetItemIndex(SEAL_ITEM) read each item's slot; the names ours) */
+int CZKit::GetPrimaryIndex()
+{
+    for (int i = 0; i < m_num_items; i++)
+        if (m_item[i] && CZWeapon::IsPrimary(m_item[i]->m_ID))
+            return i;
+    return -1;
+}
+
+int CZKit::GetSecondaryIndex()
+{
+    for (int i = 0; i < m_num_items; i++)
+        if (m_item[i] && func_003D1CE0(m_item[i]->m_ID))
+            return i;
+    return -1;
+}
+
+int CZKit::GetClass145Index()
+{
+    for (int i = 0; i < m_num_items; i++)
+        if (m_item[i] && func_003D1CB0(m_item[i]->m_ID))
+            return i;
+    return -1;
+}
+
+/* the item a fire mode's ammunition is: under a launcher's mode, the mode is the ammunition's item
+ * kind (OVL2 0x5C6530, new in SOCOM II: CAmmoDisplay::Update asks it for the firemode graphic; the
+ * name ours) */
+int CZKit::GetAmmoItemIndex(FIREMODE mode)
+{
+    return FindItemWithAmmo((EQUIP_ITEM)mode);
+}
+
 /* an item's ammunition, and the current item's (OVL2 0x5C6970, 0x5C6920; new in SOCOM II, where
  * SOCOM 1's callers used GetWeapon -- the names ours) */
 void *CZKit::GetCurAmmo()
@@ -311,6 +404,49 @@ bool CZKit::IsFireDelayed()
     return m_fire_delay > 0.0f;
 }
 
+/* the wait after a shot: the current item's (0.1 without one), none on safety, 0.8 of it in burst
+ * and automatic, 0.2 of it otherwise (OVL2 0x5C09F0; SOCOM 1's, the item through GetCurItem). Every
+ * arm a return: an `else if` chain assigning the delay merges the single-shot arm's jump */
+float CZKit::GetFireDelay()
+{
+    CZFTSWeapon *w = GetCurItem();
+    float delay = 0.1f;
+
+    if (w)
+        delay = ((CKitWeapon *)w)->m_firewait;
+    int fm = m_firemode[m_selected_item];
+
+    if (fm == SAFETY)
+        return 1.0f;
+    if (fm == SINGLE || fm > AUTOFIRE)
+        return delay;
+    if (fm == BURST)
+        return 0.8f * delay;
+    if (fm == AUTOFIRE)
+        return 0.8f * delay;
+    return 0.2f * delay;
+}
+
+/* the rounds a pull of the trigger fires: one without ammunition, none on safety, three in burst,
+ * all of them in automatic (OVL2 0x5C0940, new in SOCOM II: SOCOM 1's WillFireWeapon did it inline;
+ * the name ours) */
+int CZKit::GetShotCount()
+{
+    if (!CurItemHasAmmo())
+        return 1;
+    int fm = m_firemode[m_selected_item];
+
+    if (fm == SAFETY)
+        return 0;
+    if (fm == SINGLE || fm > AUTOFIRE)
+        return 1;
+    if (fm == BURST)
+        return 3;
+    if (fm == AUTOFIRE)
+        return 10000;
+    return 0;
+}
+
 /* (OVL2 0x5BE040, 0x5BE030, 0x5BE020) */
 int CZKit::GetSelectedItemNum()
 {
@@ -378,6 +514,9 @@ void *CZKit::GetCurIcon()
 }
 
 /* an item of a kind, from the weapon list, put in a slot (OVL2 0x5BDFB0; SOCOM 1's) */
+/* (SetupBinocular calls it out of line: pinned -- likely the unwritten SetItemByIndex's doing, an
+ * auto-inline candidate too big to inline whole stopping its callers) */
+#pragma auto_inline off
 bool CZKit::SetItem(unsigned int index, EQUIP_ITEM item)
 {
     CZWeapon *w = func_003C4B40(&CZWeapon::m_listWeapons, item);
@@ -388,6 +527,7 @@ bool CZKit::SetItem(unsigned int index, EQUIP_ITEM item)
     }
     return false;
 }
+#pragma auto_inline reset
 
 /* an item's ammunition set, and its first magazines filled -- with the weapon's default
  * ammunition when none is given (OVL2 0x5BDEC0, 0x5BDE20; SOCOM 1's) */

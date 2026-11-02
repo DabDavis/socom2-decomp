@@ -11019,8 +11019,8 @@
 0x005C0020 0x108 func_005C0020  # OVL2
 0x005C0130 0x11C func_005C0130  # OVL2
 0x005C0250 0x6E4 func_005C0250  # OVL2
-0x005C0940 0xA8 func_005C0940  # OVL2
-0x005C09F0 0xD8 func_005C09F0  # OVL2
+0x005C0940 0xA8 GetShotCount__5CZKitFv  # OVL2; by hand (the kit lane, round 11): the rounds a trigger pull fires -- 1 without ammunition, 0 on safety, 3 in burst, 10000 in auto -- SOCOM 1's WillFireWeapon's inline switch moved out (new in SOCOM II, the name ours); called beside GetFireDelay by 0x5C0AE0 and 0x5C0FD0
+0x005C09F0 0xD8 GetFireDelay__5CZKitFv  # OVL2; s1:calls by hand (the kit lane, round 11): SOCOM 1's GetFireDelay -- the item's wait (0.1 without one), 1.0 on safety, 0.8x in burst and auto, 0.2x otherwise -- the item through GetCurItem; the shot functions 0x5C0AE0 and 0x5C0FD0 call it where SOCOM 1's WillFireWeapon and Tick do
 0x005C0AD0 0x8 func_005C0AD0  # OVL2
 0x005C0AE0 0x4EC func_005C0AE0  # OVL2
 0x005C0FD0 0x690 func_005C0FD0  # OVL2
@@ -11059,7 +11059,7 @@
 0x005C50B0 0x290 func_005C50B0  # OVL2
 0x005C5340 0x11D0 func_005C5340  # OVL2
 0x005C6510 0x18 func_005C6510  # OVL2
-0x005C6530 0xC8 func_005C6530  # OVL2
+0x005C6530 0xC8 GetAmmoItemIndex__5CZKitF8FIREMODE  # OVL2; by hand (the kit lane, round 11): kit.h's FindItemWithAmmo on the fire mode as an item kind (a launcher's mode is its ammunition's item) -- CAmmoDisplay::Update asks it for the firemode graphic; new in SOCOM II, the name ours
 0x005C6600 0x1C4 unwrap__5CZKitCFi8FIREMODE  # OVL2; by hand: SOCOM 1's unwrap(int, int) inlined on m_num_items, then the item's fire mode (255: its own, m_firemode at 0x6FC) and, for a grenade launcher (0x3C5D80) in a mode of 4 and up, the first item of that kind with ammunition (the name ours, after the unwrap it inlines; GetItemByIndex passes 255)
 0x005C67D0 0x144 func_005C67D0  # OVL2
 0x005C6920 0x48 GetAmmoByIndex__5CZKitFi  # OVL2; by hand: new in SOCOM II -- m_ammo (0x15C, SOCOM 1's 0x148) at unwrap(index, 255), after a GetCurItem whose result is dropped; CAiSNoAmmo::Tick calls it after GetItemByIndex where SOCOM 1's called GetWeapon (the name ours)
@@ -11067,14 +11067,14 @@
 0x005C6980 0xC0 func_005C6980  # OVL2
 0x005C6A40 0x358 func_005C6A40  # OVL2
 0x005C6DA0 0x368 func_005C6DA0  # OVL2
-0x005C7110 0x90 func_005C7110  # OVL2
-0x005C71A0 0x90 func_005C71A0  # OVL2
-0x005C7230 0x90 func_005C7230  # OVL2
+0x005C7110 0x90 GetClass145Index__5CZKitFv  # OVL2; by hand (the kit lane, round 11): GetPrimaryIndex's loop with 0x3D1CB0 (an item kind of class 145) -- new in SOCOM II, the name ours
+0x005C71A0 0x90 GetSecondaryIndex__5CZKitFv  # OVL2; by hand (the kit lane, round 11): GetPrimaryIndex's loop with 0x3D1CE0 (an item kind of class 4, SOCOM 1's CZWeapon::IsSecondary) -- new in SOCOM II, the name ours
+0x005C7230 0x90 GetPrimaryIndex__5CZKitFv  # OVL2; by hand (the kit lane, round 11): the first item CZWeapon::IsPrimary takes, or -1 (new in SOCOM II, where SOCOM 1's GetItemIndex(SEAL_ITEM) read the item's slot kind; the name ours); 0x5A0040 calls the three
 0x005C72C0 0x18C func_005C72C0  # OVL2
-0x005C7450 0x84 func_005C7450  # OVL2
+0x005C7450 0x84 SetupBinocular__5CZKitFv  # OVL2; s1:calls by hand (the kit lane, round 11): SOCOM 1's SetupBinocular -- HasItem inlined on the binoculars (190, SOCOM 1's 182), else the item added at m_num_items through SetItem(unsigned, EQUIP_ITEM)
 0x005C74E0 0x110 func_005C74E0  # OVL2
 0x005C75F0 0x1B4 func_005C75F0  # OVL2
-0x005C77B0 0x80 func_005C77B0  # OVL2
+0x005C77B0 0x80 SetupExplosiveDamage__5CZKitFv  # OVL2; by hand (the kit lane, round 11): the kit's float at 0x8A0 zeroed, then set to the first explosive's (151) ammunition's GetExplosionDamage -- PostSetupItems calls it, 0x5C7830 jumps to it; new in SOCOM II, the name ours
 0x005C7830 0x8 func_005C7830  # OVL2
 0x005C7840 0x498 PostSetupItems__5CZKitFv  # OVL2; s1:calls (called where SOCOM 1's calls CZKit::PostSetupItems) -- the SEAL lane
 0x005C7CE0 0x120 func_005C7CE0  # OVL2
@@ -11098,8 +11098,8 @@
 0x005C9230 0x14 __ct__Q222@unnamed@seal_kit_cpp@18CSavedFireModeInfoFv  # OVL2; s1:exact
 0x005C9250 0x18 func_005C9250  # OVL2
 0x005C9270 0xCC func_005C9270  # OVL2
-0x005C9340 0x74 func_005C9340  # OVL2
-0x005C93C0 0x38 func_005C93C0  # OVL2
+0x005C9340 0x74 GetWeaponAccuracy__10CAiWepHintFP8CZWeaponfb  # OVL2; s1:order by hand (the kit lane, round 11): SOCOM 1's CAiWepHint::GetWeaponAccuracy -- AI_PARAMS::GetAccuracy of the weapon (0 without one), now doubled when the bool is set and _saturate'd to [0, 1] -- before GetWeaponEffectiveRange as there
+0x005C93C0 0x38 GetWeaponEffectiveRange__10CAiWepHintFP8CZWeapon  # OVL2; s1:order by hand (the kit lane, round 11): SOCOM 1's CAiWepHint::GetWeaponEffectiveRange -- the same 0.5 * (max + min) of the weapon's AI_PARAMS (SOCOM II's at 0x70), 0 without a weapon -- the kit unit's last as there, after GetWeaponAccuracy
 0x005C9400 0x118 UpdateViewCone__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005C9520 0x200 func_005C9520  # OVL2
 0x005C9720 0x78 SetViewFOV__9CSealCtrlFf  # OVL2; s1:calls

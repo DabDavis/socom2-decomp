@@ -56,6 +56,24 @@ struct CKitBody {
     signed char m_200;   // 0x200: the current item's zoom class (binoculars 4, scopes 5 and up)
 };
 
+/* a weapon as the kit reads it (CZWeapon; only the wait between shots, SOCOM 1's m_firewait --
+ * 0x48 there; zweapon.h does not name it) */
+struct CKitWeapon {
+    unsigned char _0[0x50];
+    float m_firewait;   // 0x50
+};
+
+/* the AI's weapon hints (SOCOM 1's CAiWepHint: statics in seal_kit.cpp, after the saved fire modes;
+ * no DWARF) */
+class CAiWepHint {
+public:
+    /* a weapon's accuracy at a distance, doubled when asked, held within [0, 1] (OVL2 0x5C9340;
+     * SOCOM 1's took the bool too, unclamped) and the middle of its AI range (OVL2 0x5C93C0;
+     * SOCOM 1's) */
+    static float GetWeaponAccuracy(CZWeapon *w, float d, bool b);
+    static float GetWeaponEffectiveRange(CZWeapon *w);
+};
+
 class CZKit {
 public:
     void ResetScreenOffsetXY();
@@ -96,6 +114,10 @@ public:
     void IncrScreenOffsetY(float dy);
     bool IsUsingBinocs();
     void InitializeSniperKick();
+    /* the rounds a pull of the trigger fires, and the wait after (OVL2 0x5C0940 -- new in SOCOM II,
+     * SOCOM 1's WillFireWeapon did it inline: the name ours -- and 0x5C09F0, SOCOM 1's) */
+    int GetShotCount();
+    float GetFireDelay();
     /* the sniper's kick begun: the baseline taken, its distance drawn (OVL2 0x5B91C0, new in SOCOM
      * II: the name ours) */
     void StartSniperKick();
@@ -135,6 +157,19 @@ public:
     EQUIP_ITEM GetPrimaryEnum() const;
     EQUIP_ITEM GetCurItemEnum() const;
     void *GetAmmoByIndex(int index);
+    /* the first item of a fire mode's ammunition kind with rounds, else the last (OVL2 0x5C6530, new
+     * in SOCOM II: the HUD's ammunition display asks it; the name ours) */
+    int GetAmmoItemIndex(FIREMODE mode);
+    /* the first primary weapon, pistol and class-145 item, or -1 (OVL2 0x5C7230, 0x5C71A0, 0x5C7110:
+     * new in SOCOM II, the names ours) */
+    int GetPrimaryIndex();
+    int GetSecondaryIndex();
+    int GetClass145Index();
+    /* the binoculars added unless held (OVL2 0x5C7450; SOCOM 1's) */
+    void SetupBinocular();
+    /* the explosive's damage taken from the first explosive's ammunition (OVL2 0x5C77B0, new in
+     * SOCOM II: PostSetupItems calls it; the name ours) */
+    void SetupExplosiveDamage();
     void *GetCurAmmo();
     void NVG_Enabled(bool on);
     bool NVG_Enabled() const;
@@ -224,7 +259,9 @@ public:
      * environment's pickup code (OVL2 0x59F0C0, 0x59F730) sets, reads and clears it through the
      * three accessors below 0x5B9020 (the names ours) */
     std::vector<void *> m_itemptr;
-    unsigned char _840[0x8b8 - 0x840];
+    unsigned char _840[0x8a0 - 0x840];
+    float m_explosiveDamage;   // 0x8a0: the first explosive's ammunition's damage (new; the name ours)
+    unsigned char _8a4[0x8b8 - 0x8a4];
     float m_pickupRequestWait;   // 0x8b8 (SOCOM 1's 0x878)
 };
 
