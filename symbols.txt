@@ -7414,7 +7414,7 @@
 0x00394290 0x88 func_00394290  # OVL1
 0x00394320 0x44 func_00394320  # OVL1
 0x00394370 0x68 func_00394370  # OVL1
-0x003943E0 0x40 func_003943E0  # OVL1
+0x003943E0 0x40 SkbLoadUiParams__Fv  # OVL1; ours (zui_hangul.cpp: UiParams.rdr from data/common held for the call to the display unit's 0x397070 and freed, ZuiInit's holder; CMission::Init calls it)
 0x00394420 0xFC func_00394420  # OVL1
 0x00394520 0x2A4 func_00394520  # OVL1
 0x003947D0 0x64 func_003947D0  # OVL1
@@ -7503,9 +7503,9 @@
 0x0039A8D0 0x424 func_0039A8D0  # OVL1
 0x0039AD00 0xC func_0039AD00  # OVL1
 0x0039AD10 0x8 func_0039AD10  # OVL1
-0x0039AD20 0x30 func_0039AD20  # OVL1
-0x0039AD50 0x30 func_0039AD50  # OVL1
-0x0039AD80 0x1C func_0039AD80  # OVL1
+0x0039AD20 0x30 SkbUsbDigit__FPC9SKBUSBKEYi  # OVL1; ours (zui_skbkeys.cpp: the USB keyboard's digit row, HID usages 30-39 through the tables at 0x3FBA50 and, shifted, 0x3FBA80, typed through 0x399040; 0x38C630 calls it)
+0x0039AD50 0x30 SkbUsbPunct__FPC9SKBUSBKEYi  # OVL1; ours (zui_skbkeys.cpp: the USB keyboard's punctuation, HID usages 49-56 through the tables at 0x3FBA20 and, shifted, 0x3FB9F0, typed through 0x399040; 0x38C630 calls it)
+0x0039AD80 0x1C SkbUsbDash__FPC9SKBUSBKEYi  # OVL1; ours (zui_skbkeys.cpp: the USB keyboard's dash key -- '_' shifted (the key's word at 4), else '-' -- typed through 0x399040 with the second argument passed on; zui_skb.cpp's USB loop 0x38C630 calls it)
 0x0039ADA0 0xB0 func_0039ADA0  # OVL1
 0x0039AE50 0x378 func_0039AE50  # OVL1
 0x0039B1D0 0x17C func_0039B1D0  # OVL1

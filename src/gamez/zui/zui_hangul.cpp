@@ -13,6 +13,25 @@
 #include <string.h>
 #include "zui.h"
 
+/* an rdr file and its reader (zrdr.h's) */
+class CRdrFile : public _zrdr {};
+CRdrFile *zrdr_read(const char *name, const char *dir, int flags);
+void zrdr_free(CRdrFile *file);
+
+/* a file read for a block and freed with it (zui_skb.cpp's ZuiInit holds UiParams.rdr so too: the
+ * file kept in a stack slot, read back for the call and the free) */
+class CRdrFileHolder {
+public:
+    CRdrFileHolder(const char *name, const char *dir) : m_file(zrdr_read(name, dir, 0)) {}
+    ~CRdrFileHolder() { zrdr_free(m_file); }
+    operator CRdrFile *() const { return m_file; }
+
+    CRdrFile *m_file;
+};
+
+/* the keyboard display unit's reader of UiParams.rdr (0x397070) */
+extern "C" void func_00397070(CRdrFile *file);
+
 /* the Korean letters (jamo), by name in alphabetical order, as the table of their names lists them
  * (the names ours: the table's own, e.g. Kiyeok, SsangKiyeok, A_Hang) */
 enum JAMO {
@@ -80,11 +99,38 @@ static inline int SafeStrcasecmp(const char *a, const char *b)
     return a ? (b ? strcasecmp(a, b) : 1) : -1;
 }
 
+/* the keyboards' display read again from UiParams.rdr (CMission::Init calls it; the image puts it
+ * just before the display unit's first function, so it may be that unit's) */
+void SkbLoadUiParams()
+{
+    CRdrFileHolder file("UiParams.rdr", "data/common");
+
+    func_00397070(file);
+}
+
+/* the jamo a key types: a lowercase letter's, or a shifted one's */
+signed char KeyToJamo(char c)
+{
+    if (c >= 'a' && c <= 'z')
+        return s_keyJamo[c - 'a'];
+    return s_shiftKeyJamo[c - 'A'];
+}
+
 /* an rdr array's count, 0 for anything else or none (zui_skb.cpp's ZuiInit and CreateSoftKeyboard
  * call it) */
 unsigned int SkbRdrCount(_zrdr *rdr)
 {
     return rdr ? rdr->Count() : 0;
+}
+
+/* a jamo by its name, JAMO_COUNT for none (zui_skb.cpp's key parser 0x38DA70 calls it) */
+JAMO FindJamo(const char *name)
+{
+    for (unsigned int i = 0; i < JAMO_COUNT; i++) {
+        if (!SafeStrcasecmp(name, s_jamoNames[i]))
+            return (JAMO)i;
+    }
+    return JAMO_COUNT;
 }
 
 /* an rdr array walked by index (the look parser's) */
@@ -99,22 +145,4 @@ struct CSkbRdrIter {
 bool CSkbRdrIter::More() const
 {
     return m_index < (int)SkbRdrCount(m_rdr);
-}
-
-/* the jamo a key types: a lowercase letter's, or a shifted one's */
-signed char KeyToJamo(char c)
-{
-    if (c >= 'a' && c <= 'z')
-        return s_keyJamo[c - 'a'];
-    return s_shiftKeyJamo[c - 'A'];
-}
-
-/* a jamo by its name, JAMO_COUNT for none (zui_skb.cpp's key parser 0x38DA70 calls it) */
-JAMO FindJamo(const char *name)
-{
-    for (unsigned int i = 0; i < JAMO_COUNT; i++) {
-        if (!SafeStrcasecmp(name, s_jamoNames[i]))
-            return (JAMO)i;
-    }
-    return JAMO_COUNT;
 }
