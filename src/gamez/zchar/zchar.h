@@ -317,6 +317,8 @@ public:
     /* the weapons of the type named at +300 of OVL1's 0x437CE8 packed (SOCOM 1's took a fixed name;
      * 0x53EE10) */
     static void KorusGetPackedWeapons(CCharacterWeapPacked *packed);
+    /* every gear let go (new in SOCOM II, the name ours: 0x53F0B0) */
+    static void ResetGears();
     static const char *match_name_to_chartype(CRdrFile *rdr, const char *group, const char *name);
     EQUIP_ITEM GetWeaponByIndex(unsigned int i) const;
     char *GetBaseName();

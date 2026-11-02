@@ -9868,7 +9868,7 @@
 0x0053EFA0 0x28 func_0053EFA0  # OVL2
 0x0053EFD0 0x1C func_0053EFD0  # OVL2
 0x0053EFF0 0xB8 FindGear__18CCharacterGearListFPCc  # OVL2; s1:order by hand, the AI core round 11 (SOCOM 1's FindGear__18CCharacterGearListCFPCc 0x24B0C0, after AddWeapon and SetupCharacterWeapon as here after 0x53EEE0: the gear whose name (+0xC) strcmp's equal, none without a name; CZKit::SetItemByIndex calls it on CCharacterType::m_gear_list; SOCOM II's walks the pointer vector, non-const -- byte-exact from source)
-0x0053F0B0 0xF0 func_0053F0B0  # OVL2
+0x0053F0B0 0xF0 ResetGears__14CCharacterTypeFv  # OVL2; ours, the AI core round 11 (new in SOCOM II, after FindGear: every made gear's model (+0x18) and count (+0) zeroed, with an empty walk of m_char_list the first time a held one is met -- a compiled-out report; OVL1's 0x2AB3F0 calls it before CleanupTemporary; written, open)
 0x0053F1A0 0xEC remove_if<Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,PFP14CCharacterType_b>__3stdFQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorPFP14CCharacterType_b_Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator  # OVL2; s1:callee by hand (CCharacterType::CleanupTemporary calls it with the list's begin, end and DeleteTemporaryCharType, as SOCOM 1's calls remove_if<PP14CCharacterType,PFP14CCharacterType_b>; SOCOM II's vector iterators are classes, by value, the result through a hidden pointer)
 0x0053F290 0xE0 func_0053F290  # OVL2
 0x0053F370 0x3C0 func_0053F370  # OVL2
