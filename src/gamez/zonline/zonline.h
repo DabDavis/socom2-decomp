@@ -233,7 +233,10 @@ struct MediusCreateClanRequest {
     char ClanName[32];   // 0x2c
 };   // 0x4c
 
-struct MediusCreateClanResponse { MEDIUS_RESPONSE_HEAD };
+struct MediusCreateClanResponse {
+    MEDIUS_RESPONSE_HEAD
+    int ClanID;   // 0x1c: the new clan's
+};
 
 typedef void (*MediusCreateClanCallback)(MediusErrorCode, MediusErrorCode, MediusErrorCode,
                                          MediusCreateClanResponse *);
@@ -415,6 +418,15 @@ public:
     {
         for (iterator i = begin(), e = end(); i != e; ++i)
             if (id == (*i)->AccountID)
+                return *i;
+        return 0;
+    }
+    /* the invitation sent to the named player, 0 none (InvitePlayerToClan's; the end re-read
+     * every pass, as the call in the loop makes MW do) */
+    ClanInvitationItem *Find(const char *name)
+    {
+        for (iterator i = begin(); i != end(); ++i)
+            if (!strcasecmp((*i)->AccountName, name))
                 return *i;
         return 0;
     }
@@ -881,6 +893,7 @@ public:
 
     bool IsMemberOfClan();
     bool IsLeaderOfClan(const char *name);
+    bool InvitePlayerToClan(const char *name);
     bool OnCorrectClanTeam();
     void DisbandClan();
     bool GetClanRoster();

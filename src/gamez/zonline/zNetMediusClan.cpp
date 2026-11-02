@@ -615,6 +615,37 @@ void CZOnlineLobby::UpdateClanStats()
     UpdateClanRanking();
 }
 
+/* the clan created: its id kept, we its leader, the menu told, its name taken from the menu's and
+ * its stats sent as UpdateClanStats sends them; on a failure the menu told and the names put back
+ * (SOCOM 1's; OVL1 0x2E7B80) */
+void cbCreateClan(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusCreateClanResponse *resp)
+{
+    if (CheckMediusCallbackStatus("MediusCreateClan", resp->StatusCode)) {
+        PlayerClanID = resp->ClanID;
+        StoredClanInfo.LeaderAccountID = AccountInfo.AccountID;
+        StoredClanInfo.ClanID = PlayerClanID;
+        LobbyEvent("MP_CREATE_CLAN_SUCCESS", 0);
+        strncpy(StoredClanInfo.ClanName, ZString(theLobby.uiv_ClanNameVar), sizeof(StoredClanInfo.ClanName));
+        func_003862A0(theLobby.uiv_ClanDescription, "");
+        char stats[256];
+        char *desc = VarText(theUIVarManager.Add("Clan_Description", 0, UIVL_TEMPORARY));
+        MediusUpdateClanStatsRequest req;
+
+        sprintf(stats, "clan_icon_%.2d.tif", 0);
+        sprintf(stats, "%.3d%.12d%s", 0, data_0044F770, desc);
+        memset(&req, 0, sizeof(req));
+        SetSessionKey(req.SessionKey);
+        memcpy(req.Stats, stats, sizeof(req.Stats));
+        req.ClanID = StoredClanInfo.ClanID;
+        CheckMediusError(MediusUpdateClanStats(&req, cbUpdateClanStats));
+        theLobby.UpdateClanRanking();
+    } else {
+        LobbyEvent("MP_CREATE_CLAN_FAILURE", 0);
+        func_003862A0(theLobby.uiv_ClanNameVar, "Unaffiliated");
+        func_003862A0(theLobby.uiv_ClanDescription, "");
+    }
+}
+
 /* the player to invite found: invited, with a message he is also told (SOCOM 1's; OVL1 0x2E7850) */
 void cbInvitePlayerToClanGetID(int, int, int, MediusAccountGetIDResponse *resp)
 {
@@ -634,6 +665,57 @@ void cbInvitePlayerToClanGetID(int, int, int, MediusAccountGetIDResponse *resp)
     }
     LobbyEvent("MP_PLAYER_NOT_FOUND", 0);
     data_0044F798 = 3;
+}
+
+/* an account's number asked for by name (as the friends unit's) */
+struct MediusAccountGetIDRequest {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];   // 0x15
+    char AccountName[32];   // 0x26
+};   // 0x46
+
+extern "C" MediusErrorCode MediusAccountGetID(MediusAccountGetIDRequest *req,
+                                              void (*cb)(int, int, int, MediusAccountGetIDResponse *));
+
+/* the named player invited to the clan: his account asked for first, cbInvitePlayerToClanGetID
+ * inviting him; a member, ourselves or one invited already is refused with the menu told. False
+ * outside the lobby and once a failed search is told (data_0044F798 3, forgotten then); true while
+ * one is under way (SOCOM 1's; OVL1 0x2E7600: UIInvitePlayerToClan's) */
+bool CZOnlineLobby::InvitePlayerToClan(const char *name)
+{
+    if (!m_isopen)
+        return false;
+    if (m_current_state != LOBBY_ACTIVE)
+        return false;
+    if (data_0044F798 == 3) {
+        data_0044F798 = 0;
+        return false;
+    }
+    if (data_0044F798 == 0) {
+        if (!name || !name[0]) {
+            LobbyEvent("MP_PLAYER_NOT_FOUND", 0);
+            return true;
+        }
+        if (ClanMemberVec.Find(name)) {
+            if (!strcasecmp(name, AccountInfo.AccountName))
+                LobbyEvent("MP_PLAYER_IS_LEADER", 0);
+            else
+                LobbyEvent("MP_PLAYER_ALREADY_MEMBER", 0);
+            return true;
+        }
+        if (ClanInvitationVec.Find(name)) {
+            LobbyEvent("MP_PLAYER_ALREADY_INVITED", 0);
+            return true;
+        }
+        MediusAccountGetIDRequest req;
+
+        memset(&req, 0, sizeof(req));
+        SetSessionKey(req.SessionKey);
+        strncpy(req.AccountName, name, sizeof(req.AccountName));
+        CheckMediusError(MediusAccountGetID(&req, cbInvitePlayerToClanGetID));
+        data_0044F798 = 1;
+    }
+    return true;
 }
 
 /* the clan's name back from the filter: the clan created under it, or the menu told and the
