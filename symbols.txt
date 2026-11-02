@@ -4869,7 +4869,7 @@
 0x002EBE50 0x188 func_002EBE50  # OVL1
 0x002EBFE0 0x80 func_002EBFE0  # OVL1
 0x002EC060 0xD4 DeleteAll__14ClanLadderListFv  # OVL1; ours (a clan ladder list, 0x44F820 or 0x44F850, deleted and emptied: GetClanLadderLeaders, 0x2EA5C0, ReleaseUIResources, the lists' destructor 0x2ED360; byte-exact)
-0x002EC140 0x118 func_002EC140  # OVL1
+0x002EC140 0x118 DeleteAll__10LadderListFv  # OVL1; ours, the online lane round 8 (the player ladder's DeleteAll: m_c zeroed, std::transform with DeleteItem<LadderItem> -- the items' two CSaferStr names destroyed as bases, 0 -- then clear(); GetLadderList, GetLadderBest, ReleaseUIResources and ~LadderList 0x2ED3E0 call it; byte-exact)
 0x002EC260 0x574 func_002EC260  # OVL1
 0x002EC7E0 0x574 func_002EC7E0  # OVL1
 0x002ECD60 0x180 func_002ECD60  # OVL1

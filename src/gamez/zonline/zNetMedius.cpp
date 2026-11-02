@@ -21,7 +21,6 @@ void func_006305C8(void *a, void *b);   /* (OVL2: the DME's set up) */
 extern BriefingRoomDB data_0044F568;   /* the room list (the rooms' unit's) */
 extern BriefingRoom data_0044FAB0;   /* a room (the lobby unit's) */
 extern BriefingRoom *data_0044FE10;   /* the room we are in, if any */
-void func_002EC140(LadderList *list);   /* a player ladder deleted (LadderList::DeleteAll) */
 void func_002E81A0();   /* the clan team forgotten (the clan unit's) */
 }
 
@@ -45,9 +44,9 @@ void *CZOnlineLobby::DMEInit()
 void CZOnlineLobby::ReleaseUIResources()
 {
     data_0044F568.Release();
-    func_002EC140(&LadderLeaders);
+    LadderLeaders.DeleteAll();
     ReleaseVector(LadderLeaders);
-    func_002EC140(&LadderRanking);
+    LadderRanking.DeleteAll();
     ReleaseVector(LadderRanking);
     ClanLadderRanking.DeleteAll();
     ReleaseVector(ClanLadderRanking);

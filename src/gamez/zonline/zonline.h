@@ -527,17 +527,23 @@ extern ClanLadderList ClanLadderRanking;   /* 0x44F850 */
 
 /* a player on the ladder (SOCOM 1's LadderItem; its two strings make its delete inline their
  * destructors, 0x2EC140) and the player ladders (0x44F7B0, 0x44F7E0). Only what the displays read:
- * the names as MSL strings (c_str() short form first) and the position */
+ * the names as MSL strings (c_str() short form first) and the position. The names are CSaferStrs
+ * (each unit declares the class again: a std::string, its destructor called as a base's) */
+class CSaferStr : public std::string {
+};
+
 struct LadderItem {
     unsigned char _0[0x8c];   // the page's response (unread here)
-    std::string m_name;   // 0x8c
-    std::string m_clan;   // 0x98
+    CSaferStr m_name;   // 0x8c (a base's destructor: 0x2EC140 passes 0)
+    CSaferStr m_clan;   // 0x98
     int m_a4;   // 0xa4
     int m_position;   // 0xa8
 };
 
 class LadderList : public std::vector<LadderItem *> {
 public:
+    void DeleteAll();
+
     int m_c;   // 0xc: 2
     int m_10;   // 0x10
 };   // 0x14
