@@ -1007,7 +1007,9 @@ public:
     float m_2e0;   // 0x2e0: the time step the overlay ticks by (0x579EF0; the names ours)
     float m_alt;   // 0x2e4 (SOCOM 1's 0xe98)
     CZBodyPart *m_root;   // 0x2e8 (SOCOM 1's 0x26c)
-    unsigned char _2ec[0x374 - 0x2ec];
+    unsigned char _2ec[0x308 - 0x2ec];
+    CZBodyPart *m_head;   // 0x308 (SOCOM 1's 0x28c, m_root + 0x20 in both: 0x57F150's ray starts above it)
+    unsigned char _30c[0x374 - 0x30c];
     SEAL_STATE m_desiredState;   // 0x374 (SOCOM 1's 0x304; the HUD's pose bitmap reads it)
     SEAL_STANCE m_desiredStance;   // 0x375: the stance the AI asks for (0x5631B0; the name ours)
     unsigned char _376[0x3b0 - 0x376];

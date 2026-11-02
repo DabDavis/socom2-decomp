@@ -207,6 +207,52 @@ extern "C" void *func_0057DF20(CZSealBody *seal)
     return func_00555170((char *)seal + 0x1c0);
 }
 
+namespace zdb {
+/* the camera's collision bit demanded of the polygons a test hits (SOCOM 1's; grid_di.cpp's) */
+void SetCameraCollideFlagRequired(bool on);
+}
+
+/* a polygon's camera type (DI_PARAMS's two bits at 18, as a byte enum: the target's `andi 0xff`
+ * after the extraction; the names ours) */
+enum CAMERA_TYPE { CAMERA_TYPE_0, CAMERA_TYPE_1, CAMERA_TYPE_2, CAMERA_TYPE_3 };
+
+static inline CAMERA_TYPE CameraType(zdb::IntersectStruct *hit)
+{
+    return (CAMERA_TYPE)hit->m_poly->m_flags.m_cameratype;
+}
+
+/* whether there is room over the SEAL's head: a ray 20 units up from a point 1 above it, on the
+ * SEAL's own axis, with the SEAL's node switched off and camera-collision polygons asked for -- clear
+ * unless it hits a polygon of a camera type other than 1 (OVL2 0x57F150, new in SOCOM II: 0x57E1B0
+ * asks it of the SEAL's controller) */
+extern "C" bool func_0057F150(CSealCtrl *ctrl)
+{
+    /* (hit and the old setting declared ahead of the SEAL: declared first, the SEAL is numbered
+     * last and takes s0 -- through an inline accessor it matches too) */
+    zdb::IntersectStruct *hit;
+    bool was;
+    CZSealBody *seal = (CZSealBody *)ctrl->m_entity;
+    CPnt3D pos;
+
+    seal->PartInSpace(seal->m_head, 0, &pos, 0);
+    pos.y += 1.0f;
+    CPnt3D from(0.0f, pos.y, 0.0f);
+
+    seal->m_node->m_matrix.Transform(&from, 1);
+    CPnt3D to(from.x, 20.0f + from.y, from.z);
+
+    was = seal->GetNode()->SetActive(false);
+    zdb::SetCameraCollideFlagRequired(true);
+    hit = zdb::CWorld::m_world->GetIntersect(&from, &to);
+    seal->GetNode()->SetActive(was);
+    if (hit && CameraType(hit) != CAMERA_TYPE_1) {
+        zdb::SetCameraCollideFlagRequired(false);
+        return false;
+    }
+    zdb::SetCameraCollideFlagRequired(false);
+    return true;
+}
+
 /* whether the SEAL may act: an AI's controller unless its bit 17 is set, anyone else's unless its
  * action bit is (OVL2 0x57F2A0, new in SOCOM II; the name ours -- the controller read once, its null
  * test only the IsAi call's) */
