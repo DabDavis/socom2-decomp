@@ -8,10 +8,10 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK _tosErrorLog(s32 arg0, s32 arg1);
 s32 func_004E6000(s32 arg0, s32 arg1);
 s32 func_0050A900(s32 arg0);
 s32 func_0050C720(s32 arg0, s32 arg1, s32 arg2, s32 arg3);
-M2C_UNK func_0050CDE8(s32 arg0, s32 arg1);
 extern M2C_UNK IdleDpScoreUwProcess;
 
 void DpScoreUwProcess(char *arg0, s32 *arg1) {
@@ -35,7 +35,7 @@ void DpScoreUwProcess(char *arg0, s32 *arg1) {
             goto block_8;
         }
         if (func_004E6000((s32) arg0, temp_a1) != 0) {
-            func_0050CDE8((s32) arg0, 0x77);
+            _tosErrorLog((s32) arg0, 0x77);
             M2C_FIELD(arg0, M2C_UNK **, 0x18) = &IdleDpScoreUwProcess;
             if (func_0050C720((s32) arg0, 0xB, 0, 0) != 0) {
                 M2C_FIELD(arg0, M2C_UNK **, 0x18) = &IdleDpScoreUwProcess;
@@ -51,7 +51,7 @@ block_8:
             if (temp_v0_4 < temp_a2) {
                 M2C_FIELD(arg0, M2C_UNK **, 0x18) = &IdleDpScoreUwProcess;
                 if (func_0050C720((s32) arg0, 8, (s32) temp_a2, 0) != 0) {
-                    func_0050CDE8((s32) arg0, 1);
+                    _tosErrorLog((s32) arg0, 1);
                 }
             }
         }

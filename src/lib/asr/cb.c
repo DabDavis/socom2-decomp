@@ -1,16 +1,104 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-strict-aliasing */
-/* The recogniser's engine callbacks and second pass (OVL2 0x4DE910-0x4DF2C8): ScanSoft's
- * speech recogniser, prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing (README "The GCC
- * front": casrStoreSegmentation's store stays above the load of the next node). Names are
- * SOCOM 1's (s1:exact/align); the engine context's fields are named by their use here. */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-strict-aliasing -funroll-loops */
+/* The recogniser's engine API and callbacks (OVL2 0x4DE490-0x4DF2C8, the tail of SOCOM 1's
+ * casr object at 0x348248): ScanSoft's speech recogniser, prebuilt with ee-gcc 2.96 at -O2 -G0
+ * -fno-strict-aliasing -funroll-loops (README "The GCC front": casrStoreSegmentation's store
+ * stays above the load of the next node). Names are SOCOM 1's (s1:exact/align/order); the engine
+ * context's fields are named by their use here. A handle is checked against CASR_MAGIC; 2.96's
+ * if-conversion turns SOCOM 1's plain guard into a movz. */
 
 #include "casr.h"
+
+typedef struct IMPORT {
+    void *data;
+    void *heap;
+} IMPORT;
 
 extern int func_00509730(int queue, int what, int id, int arg);
 extern int func_004DC178(CASR *c);
 extern int casrDoIsoWordSecondPass(CASR *c);
 extern int casrDoNormalSecondPass(CASR *c);
-extern void func_0050CDE8(void *event, int what);
+extern unsigned char _tosErrorLog(void *log, unsigned short code);
+extern void *func_00243298(void *heap, int size);                  /* the heap's malloc */
+
+/* OPEN (and casrGetLastWarning): the target if-converts the magic test into a flag (li 11,
+ * movz 0) and branches on it, after testing the null handle by itself; SOCOM 1's build has this
+ * plain guard. The guard, a ?: macro, an inline checker, a single-exit flag: all compile to
+ * branches (12 words of 16). */
+int casrGetLastError(CASR *c)
+{
+    int err;
+
+    if (c == 0 || c->magic != CASR_MAGIC)
+        return CASR_ERR_HANDLE;
+    err = c->last_error;
+    c->last_error = 0;
+    return err;
+}
+
+int casrGetLastWarning(CASR *c)
+{
+    int err;
+
+    if (c == 0 || c->magic != CASR_MAGIC)
+        return CASR_ERR_HANDLE;
+    err = c->last_warning;
+    c->last_warning = 0;
+    return err;
+}
+
+int casrGetSignalLevel(CASR *c, unsigned short *level)
+{
+    if (c == 0)
+        return CASR_ERR_NULL;
+    if (c->magic != CASR_MAGIC)
+        return CASR_ERR_HANDLE;
+    if (level == 0)
+        return _tosErrorLog(c->event, CASR_ERR_ARG);
+    *level = *c->signal;
+    return 0;
+}
+
+int casrGetState(CASR *c, int *state)
+{
+    if (c == 0)
+        return CASR_ERR_NULL;
+    if (c->magic != CASR_MAGIC)
+        return CASR_ERR_HANDLE;
+    if (state == 0)
+        return _tosErrorLog(c->event, CASR_ERR_ARG);
+    *state = c->state;
+    return 0;
+}
+
+/* OPEN: the target sets the result 0 before testing ctx, keeps the type it loads in a1 and
+ * stores data before heap; the guard and single-exit shapes tried miss by 18-25 words. */
+IMPORT *casrImportContext(void *heap, int *ctx)
+{
+    IMPORT *p = 0;
+
+    if (ctx != 0 && *ctx == 6) {
+        p = func_00243298(heap, sizeof(IMPORT));
+        if (p != 0) {
+            p->heap = heap;
+            p->data = ctx;
+        }
+    }
+    return p;
+}
+
+IMPORT *casrImportData(void *heap, void *data)
+{
+    IMPORT *p;
+
+    if (data == 0)
+        return 0;
+    p = func_00243298(heap, sizeof(IMPORT));
+    if (p == 0)
+        return 0;
+    p->data = data;
+    p->heap = heap;
+    return p;
+}
 
 short *func_004DE910(CASR *c, int i, int j)
 {
@@ -60,7 +148,7 @@ int cbStateHandler(CASR *c, unsigned short state)
         r = c->state_cb(state, c->frames * 110, c->info);
         if (c->last_state == 0 && r != 0) {
             c->last_state = r;
-            func_0050CDE8(c->event, 27);
+            _tosErrorLog(c->event, 27);
         }
     }
     return 0;

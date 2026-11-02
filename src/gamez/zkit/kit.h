@@ -56,6 +56,24 @@ struct CKitBody {
     signed char m_200;   // 0x200: the current item's zoom class (binoculars 4, scopes 5 and up)
 };
 
+/* a weapon as the kit reads it (CZWeapon; only the wait between shots, SOCOM 1's m_firewait --
+ * 0x48 there; zweapon.h does not name it) */
+struct CKitWeapon {
+    unsigned char _0[0x50];
+    float m_firewait;   // 0x50
+};
+
+/* the AI's weapon hints (SOCOM 1's CAiWepHint: statics in seal_kit.cpp, after the saved fire modes;
+ * no DWARF) */
+class CAiWepHint {
+public:
+    /* a weapon's accuracy at a distance, doubled when asked, held within [0, 1] (OVL2 0x5C9340;
+     * SOCOM 1's took the bool too, unclamped) and the middle of its AI range (OVL2 0x5C93C0;
+     * SOCOM 1's) */
+    static float GetWeaponAccuracy(CZWeapon *w, float d, bool b);
+    static float GetWeaponEffectiveRange(CZWeapon *w);
+};
+
 class CZKit {
 public:
     void ResetScreenOffsetXY();
@@ -75,6 +93,15 @@ public:
     bool SetItemAmmo(unsigned int index, void *ammo, int rounds, int count);
     bool SetItem(unsigned int index, EQUIP_ITEM item);
     void FillWeaponEnum(int index, CZFTSWeapon **out);
+    /* a grenade thrown from a point at a velocity, an explosive placed instead (OVL2 0x5BD030;
+     * SOCOM 1's) */
+    CZProjectile *FireGrenade(const CPnt3D *pos, const CPnt3D *vel);
+    /* whether an item is in its launcher's fire mode, by the launcher's kind (OVL2 0x5BD6E0,
+     * 0x5BD7F0, 0x5BD8F0: SOCOM 1's WeaponIsGrenadeLauncherMode and, on an index, its
+     * CurWeaponIsM203Mode; the middle one new -- its name ours) */
+    bool WeaponIsGrenadeLauncherMode(int index);
+    bool WeaponIsLauncherMode(int index);
+    bool WeaponIsM203Mode(int index);
     bool SetItem(unsigned int index, CZWeapon *w, void *ammo, int rounds);
     bool SetItemByIndex(int index, CZWeapon *w);
     bool ItemHasFiremodeGraphic(int index);
@@ -87,6 +114,13 @@ public:
     void IncrScreenOffsetY(float dy);
     bool IsUsingBinocs();
     void InitializeSniperKick();
+    /* the rounds a pull of the trigger fires, and the wait after (OVL2 0x5C0940 -- new in SOCOM II,
+     * SOCOM 1's WillFireWeapon did it inline: the name ours -- and 0x5C09F0, SOCOM 1's) */
+    int GetShotCount();
+    float GetFireDelay();
+    /* the sniper's kick begun: the baseline taken, its distance drawn (OVL2 0x5B91C0, new in SOCOM
+     * II: the name ours) */
+    void StartSniperKick();
     void HandlePlaceMPBomb(const CPnt3D *pos);
     bool IsUsingScope();
     void SetWeaponInfoChanged();
@@ -97,10 +131,18 @@ public:
     CZFTSWeapon *GetCurItem() const;
     CZFTSWeapon *GetItemByIndex(int index) const;
     bool HasItem(EQUIP_ITEM item) const;
+    /* the first item of a kind with ammunition, else the last of the kind, or -1 (OVL2 0x5C8870;
+     * SOCOM 1's took the first of the kind) */
+    int GetItemIndex(EQUIP_ITEM item) const;
+    /* the first item loaded with a kind of ammunition, a count of rounds in all (OVL2 0x5C8750;
+     * SOCOM 1's) */
+    int GetAmmoIndex(EQUIP_AMMO ammo, int count);
     bool WeaponInfoChanged();
     /* the hot-swap flag, set and read by CWeaponSel::CheckHotSwap (OVL2 0x5BC2A0, 0x5BC2B0: new in
      * SOCOM II, the names ours) */
     void SetHotSwap(bool b);
+    /* an item of a kind dropped with its ammunition (OVL2 0x5B9E10, new in SOCOM II: the name ours) */
+    void RemoveItem(EQUIP_ITEM item);
     bool GetHotSwap();
     /* const, where SOCOM 1's were not (ItemHasAmmo__5CZKitFi): SOCOM II's const GetCurItem
      * (SOCOM 1's const too) tail-calls GetItemByIndex, which calls unwrap, which calls this */
@@ -121,6 +163,19 @@ public:
     EQUIP_ITEM GetPrimaryEnum() const;
     EQUIP_ITEM GetCurItemEnum() const;
     void *GetAmmoByIndex(int index);
+    /* the first item of a fire mode's ammunition kind with rounds, else the last (OVL2 0x5C6530, new
+     * in SOCOM II: the HUD's ammunition display asks it; the name ours) */
+    int GetAmmoItemIndex(FIREMODE mode);
+    /* the first primary weapon, pistol and class-145 item, or -1 (OVL2 0x5C7230, 0x5C71A0, 0x5C7110:
+     * new in SOCOM II, the names ours) */
+    int GetPrimaryIndex();
+    int GetSecondaryIndex();
+    int GetClass145Index();
+    /* the binoculars added unless held (OVL2 0x5C7450; SOCOM 1's) */
+    void SetupBinocular();
+    /* the explosive's damage taken from the first explosive's ammunition (OVL2 0x5C77B0, new in
+     * SOCOM II: PostSetupItems calls it; the name ours) */
+    void SetupExplosiveDamage();
     void *GetCurAmmo();
     void NVG_Enabled(bool on);
     bool NVG_Enabled() const;
@@ -132,10 +187,14 @@ public:
 
     /* an index wrapped into [0, n), or -1 (SOCOM 1's unwrap__5CZKitFii, out of line there; SOCOM
      * II inlines it everywhere) */
-    static int wrap(int i, int n)
+    static int wrap(int index, int n)
     {
-        if (i == n || n == 0)
+        /* the index copied only past the first test: a parameter wrapped in place is copied at the
+         * inline's entry, ahead of the test (GetAmmoIndex, where the index lives on) */
+        if (index == n || n == 0)
             return -1;
+        int i = index;
+
         if (i >= n)
             do
                 i -= n;
@@ -210,7 +269,9 @@ public:
      * environment's pickup code (OVL2 0x59F0C0, 0x59F730) sets, reads and clears it through the
      * three accessors below 0x5B9020 (the names ours) */
     std::vector<void *> m_itemptr;
-    unsigned char _840[0x8b8 - 0x840];
+    unsigned char _840[0x8a0 - 0x840];
+    float m_explosiveDamage;   // 0x8a0: the first explosive's ammunition's damage (new; the name ours)
+    unsigned char _8a4[0x8b8 - 0x8a4];
     float m_pickupRequestWait;   // 0x8b8 (SOCOM 1's 0x878)
 };
 

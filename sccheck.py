@@ -24,6 +24,10 @@ non-zero exit, so a source change made for function N cannot quietly break N-1.
 A TU may carry its own flags on its first line:   /* sc: flags=-O4,s */
 and its own toolchain -- a GCC-built library unit names its ee-gcc (README "The GCC front"):
                                                    /* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+An assembler unit (`src/**/*.s`: Sony's syscall stubs, newlib's EE string routines -- objects
+the demo's symbols show were never compiled) names the toolchain whose GNU as builds it:
+                                                   # sc: compiler=ee-gcc2.9-991111
+and is scored like any unit: each `.type x,@function` symbol against its map row.
 
 An inline function's out-of-line copy (MW's binding 13: every unit that needs one emits one,
 and the linker keeps the first) is scored like any function, but when it misses and its map
@@ -55,8 +59,18 @@ ABSENT = SRC / "ABSENT.txt"
 _DIRECTIVE = re.compile(r"sc:\s*(.*?)\s*(?:\*/|$)")
 
 
+SUFFIXES = (".c", ".cpp", ".s")   # .s: an assembler unit (scdiff.compile_cmd; README "The GCC front")
+
+
 def sources() -> list[Path]:
-    return sorted(p for p in SRC.rglob("*") if p.suffix in (".c", ".cpp") and p.is_file())
+    return sorted(p for p in SRC.rglob("*") if p.suffix in SUFFIXES and p.is_file())
+
+
+def object_path(src: Path, build: Path = BUILD) -> Path:
+    """Where a unit's object goes: an assembler unit's as `<name>.s.o`, so that it can never
+    overwrite a C unit of the same stem."""
+    rel = src.relative_to(SRC)
+    return build / (rel.with_suffix(".s.o") if rel.suffix == ".s" else rel.with_suffix(".o"))
 
 
 def tu_options(src: Path) -> dict[str, str]:
@@ -81,8 +95,7 @@ def rename_symbol(obj: Path, old: str, new: str) -> None:
 
 
 def build_one(src: Path, build: Path = BUILD) -> tuple[Path, Path | None, str]:
-    rel = src.relative_to(SRC)
-    obj = build / rel.with_suffix(".o")
+    obj = object_path(src, build)
     opts = tu_options(src)
     try:
         D.compile_obj(src, obj, opts.get("compiler", D.COMPILER),

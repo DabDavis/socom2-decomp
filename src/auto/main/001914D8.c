@@ -8,8 +8,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_001958B0(s32, s32);                    /* extern */
+M2C_UNK memmove(s32, s32);                    /* extern */
 
 void func_001914D8(s32 arg0, s32 arg1) {
-    func_001958B0(arg1, arg0);
+    memmove(arg1, arg0);
 }

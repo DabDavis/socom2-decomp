@@ -10,6 +10,9 @@ scd -- look at the r0001 target, one function at a time.
   ./scd.py census                    # the map's shape per segment
   ./scd.py s1    'Tick__10CHUDFf'    # a SOCOM 1 demo function (regex on its names, or an
                                      # address), with the demo's relocations and callees
+  ./scd.py s1 --units 0x15B000 0x165000   # the demo's input objects there (C: gcc2_compiled.;
+                                     # else assembled), each with its functions, statics marked
+  ./scd.py s1 --callers _sceSDC      # the demo functions that j/jal it
 """
 
 from __future__ import annotations
@@ -70,12 +73,56 @@ def cmd_census(a) -> int:
     return 0
 
 
+def s1_units(demo, lo: int, hi: int) -> int:
+    """The demo's input objects in [lo, hi): its symbol table keeps each object's `.text` SECTION
+    symbol, and GCC marks every object it compiled with a local `gcc2_compiled.` at that address --
+    an SDK or library object without one was assembled (README "The GCC front"). Each object with
+    its functions in address order, a static one marked `L`."""
+    starts = sorted({s.value for s in demo.elf.symbols if s.type == "SECTION" and s.bind == 0
+                     and s.shndx == demo.sec and lo <= s.value < hi})
+    gcc = {s.value for s in demo.elf.symbols if s.name == "gcc2_compiled."}
+    funcs = sorted((s.value, s.size, s.bind, s.name) for s in demo.elf.symbols
+                   if s.type == "FUNC" and s.shndx == demo.sec and lo <= s.value < hi)
+    for i, t in enumerate(starts):
+        end = starts[i + 1] if i + 1 < len(starts) else hi
+        fs = [f for f in funcs if t <= f[0] < end]
+        print(f"---- object 0x{t:08X}-0x{end:08X} {'C (gcc2_compiled.)' if t in gcc else 'assembler (no marker)'}"
+              f", {len(fs)} function(s)")
+        for v, size, bind, name in fs:
+            print(f"  0x{v:08X} 0x{size:05X} {'L' if bind == 0 else ' '} {name}")
+    return 0
+
+
+def s1_callers(demo, name: str) -> int:
+    """Every demo function holding a j/jal to the demo function `name`."""
+    tgt = [f.value for f in demo.funcs if f.name == name]
+    if not tgt:
+        print(f"no demo function {name!r}")
+        return 1
+    for f in demo.funcs:
+        data = demo.read(f.value, f.size)
+        for i in range(0, len(data) - 3, 4):
+            w = int.from_bytes(data[i:i + 4], "little")
+            if w >> 26 in (2, 3):
+                at = f.value + i
+                if ((at + 4) & 0xF0000000) | ((w & 0x03FFFFFF) << 2) in tgt:
+                    print(f"0x{f.value:08X} 0x{f.size:X} {f.name} ({'jal' if w >> 26 == 3 else 'j'} at 0x{at:08X})")
+    return 0
+
+
 def cmd_s1(a) -> int:
     """SOCOM 1's May 2002 demo, unstripped: its functions by name or address."""
     import re
     sys.path.insert(0, str(HERE / "tools"))
     import s1names as N
     demo = N.Demo()
+    if a.units:
+        return s1_units(demo, int(a.units[0], 16), int(a.units[1], 16))
+    if a.callers:
+        return s1_callers(demo, a.callers)
+    if not a.symbol:
+        print("name a demo function (regex or address), or give --units LO HI / --callers NAME")
+        return 1
     fname = {}
     for s in demo.elf.symbols:
         if s.value and s.name and s.type in ("FUNC", "OBJECT"):
@@ -122,8 +169,11 @@ def main(argv=None) -> int:
     p = sub.add_parser("census")
     p.set_defaults(fn=cmd_census)
     p = sub.add_parser("s1")
-    p.add_argument("symbol")
+    p.add_argument("symbol", nargs="?")
     p.add_argument("--max", type=int, default=3)
+    p.add_argument("--units", nargs=2, metavar=("LO", "HI"),
+                   help="the demo's input objects in [LO, HI) (demo addresses), each with its functions")
+    p.add_argument("--callers", metavar="NAME", help="the demo functions that j/jal the demo function NAME")
     p.set_defaults(fn=cmd_s1)
     p = sub.add_parser("diff")
     p.add_argument("rest", nargs=argparse.REMAINDER)

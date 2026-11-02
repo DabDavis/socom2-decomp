@@ -14,6 +14,9 @@ class stack {
 public:
     typedef T value_type;
 
+    /* MSL's: the container copied from a default one (the rdr editor's CRdrEditor(), 0x333AE0: a
+     * temporary deque built, copied in and torn down) */
+    explicit stack(const Container &x = Container()) : c(x) {}
     bool empty() const { return c.empty(); }
     unsigned int size() const { return c.size(); }
     value_type &top() { return c.back(); }

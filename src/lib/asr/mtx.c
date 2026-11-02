@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-strict-aliasing */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-strict-aliasing -funroll-loops */
 /* mtx: the ScanSoft recogniser's float matrices (OVL2 0x4F7010-0x4F7300), prebuilt with
  * ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing (README "The GCC front"). The engine allocates from its own heap
  * (OVL1's heap_*, 0x2430F0). mtxConstruct hands back the allocator's result but is no sibling

@@ -4,18 +4,19 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_003A36C0(M2C_UNK *, s32, M2C_UNK);         /* extern */
-s32 func_003A3700(M2C_UNK *, s32, M2C_UNK);         /* extern */
+s32 GetId__13CStringTablesFPCcPCc(M2C_UNK *, s32, M2C_UNK); /* extern */
+s32 GetString__13CStringTablesFiPCc(M2C_UNK *, s32, M2C_UNK); /* extern */
 extern M2C_UNK data_0049E9D0;
 
 s32 func_00361B60(s32 arg0) {
     s32 temp_v0;
 
-    temp_v0 = func_003A3700(&data_0049E9D0, arg0, 0);
+    temp_v0 = GetId__13CStringTablesFPCcPCc(&data_0049E9D0, arg0, 0);
     if (temp_v0 > 0) {
-        return func_003A36C0(&data_0049E9D0, temp_v0, 0);
+        return GetString__13CStringTablesFiPCc(&data_0049E9D0, temp_v0, 0);
     }
     return arg0;
 }
