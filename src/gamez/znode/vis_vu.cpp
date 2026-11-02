@@ -67,6 +67,27 @@ bool CVisual::DrawLOD(CLOD_band *band, float d, float *opacity)
     return true;
 }
 
+/* an entry of two static tables of four floats, by value (new in SOCOM II, not named: the particles'
+ * Draw functions read the first, 0x4B4C70, CameraZoom::LoadLensFx the second, 0x4B4CB0). The named
+ * local is the target's: built on the stack and copied out, where a returned temporary is built in
+ * the return slot */
+extern "C" CPnt4D data_004B4C70[];
+extern "C" CPnt4D data_004B4CB0[];
+
+extern "C" CPnt4D func_003B7620(int i)
+{
+    CPnt4D t(data_004B4CB0[i].x, data_004B4CB0[i].y, data_004B4CB0[i].z, data_004B4CB0[i].w);
+
+    return t;
+}
+
+extern "C" CPnt4D func_003B7590(int i)
+{
+    CPnt4D t(data_004B4C70[i].x, data_004B4C70[i].y, data_004B4C70[i].z, data_004B4C70[i].w);
+
+    return t;
+}
+
 /* a light added to the local lights: its position, its squared range, its colour and the inverse
  * of its falloff, the light listed and counted (SOCOM 1's, the same code: the minimum range's square
  * is taken ahead of the colour's copy, the maximum's reloaded after it) */
