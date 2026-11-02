@@ -131,6 +131,12 @@ public:
     CZFTSWeapon *GetCurItem() const;
     CZFTSWeapon *GetItemByIndex(int index) const;
     bool HasItem(EQUIP_ITEM item) const;
+    /* the first item of a kind with ammunition, else the last of the kind, or -1 (OVL2 0x5C8870;
+     * SOCOM 1's took the first of the kind) */
+    int GetItemIndex(EQUIP_ITEM item) const;
+    /* the first item loaded with a kind of ammunition, a count of rounds in all (OVL2 0x5C8750;
+     * SOCOM 1's) */
+    int GetAmmoIndex(EQUIP_AMMO ammo, int count);
     bool WeaponInfoChanged();
     /* the hot-swap flag, set and read by CWeaponSel::CheckHotSwap (OVL2 0x5BC2A0, 0x5BC2B0: new in
      * SOCOM II, the names ours) */
@@ -181,10 +187,14 @@ public:
 
     /* an index wrapped into [0, n), or -1 (SOCOM 1's unwrap__5CZKitFii, out of line there; SOCOM
      * II inlines it everywhere) */
-    static int wrap(int i, int n)
+    static int wrap(int index, int n)
     {
-        if (i == n || n == 0)
+        /* the index copied only past the first test: a parameter wrapped in place is copied at the
+         * inline's entry, ahead of the test (GetAmmoIndex, where the index lives on) */
+        if (index == n || n == 0)
             return -1;
+        int i = index;
+
         if (i >= n)
             do
                 i -= n;

@@ -40,6 +40,41 @@ bool func_005BD7E0(CZKit *kit);
 void func_00592D40(CKitCtrl *ctrl);
 }
 
+/* a weapon's fire mode as the saved table holds it (SOCOM 1's unnamed-namespace CSavedFireModeInfo,
+ * 8 bytes: the mode, then the item; its constructor, 0x5C9230, zeroes the one and 255s the other) */
+struct CSavedFireMode {
+    int m_firemode;   // 0x0
+    EQUIP_ITEM m_item;   // 0x4
+};
+
+extern "C" {
+/* the local player (OVL1's ftsGetPlayer) and the saved table and its count (SOCOM 1's
+ * g_arrSavedFireModeInfo[30] and g_iNumSavedFireModes in seal_kit.cpp's unnamed namespace; OVL2 bss
+ * 0x66B580 and 0x66B670 -- placeholders: defining the array here would emit __sinit_seal_kit.cpp,
+ * 0x668DB0, whose iostream objects and two more statics this unit does not hold yet) */
+CZSealBody *ftsGetPlayer__Fv();
+extern CSavedFireMode data_0066B580[30];
+extern int data_0066B670;
+}
+
+/* the local player's items' fire modes saved (OVL2 0x5C91B0; SOCOM 1's, the items now read straight,
+ * not unwrapped: CMPExitState::Init calls it). Each entry through a pointer, which might alias the
+ * count, so the count is read again each pass (indexed, MW unrolls the loop 8x); the counter declared
+ * ahead of the kit takes the higher argument register */
+void sealSaveFireModes()
+{
+    int i;
+    CZKit *kit = (CZKit *)((char *)ftsGetPlayer__Fv() + 0x5e0);
+
+    data_0066B670 = kit->m_num_items;
+    for (i = 0; i < data_0066B670; i++) {
+        CSavedFireMode *info = &data_0066B580[i];
+
+        info->m_item = kit->m_item[i]->m_ID;
+        info->m_firemode = kit->m_firemode[i];
+    }
+}
+
 /* the middle of a weapon's AI range, none without a weapon (OVL2 0x5C93C0; SOCOM 1's, at SOCOM II's
  * AI_PARAMS offsets). The half set first and scaled in place: the ternary, the if-returns and a
  * product assigned whole all lose the false arm's trailing nop or swap the product's registers */
@@ -93,6 +128,44 @@ EQUIP_ITEM CZKit::GetSecondaryEnum() const
     CZFTSWeapon *w = m_item[unwrap(1, FIREMODE_CURRENT)];
 
     return w ? w->m_ID : EQUIP_NONE;
+}
+
+/* the first item of a kind with ammunition, else the last of the kind, or -1 (OVL2 0x5C8870; SOCOM
+ * 1's took the first of the kind). The ammunition's test written out: MW then steps the magazines'
+ * row with the item, where FindItemWithAmmo's inlined ItemHasAmmo works it out each pass (as
+ * GetAmmoItemIndex has it, 16 bytes longer) */
+int CZKit::GetItemIndex(EQUIP_ITEM item) const
+{
+    int found = -1;
+
+    for (int i = 0; i < m_num_items; i++) {
+        if (m_item[i] && item == m_item[i]->m_ID) {
+            bool r = false;
+
+            if (i < m_num_items) {
+                for (int j = 0; j < 10; j++) {
+                    if (m_reloads[i][j] > 0) {
+                        r = true;
+                        break;
+                    }
+                }
+            }
+            if (r)
+                return i;
+            found = i;
+        }
+    }
+    return found;
+}
+
+/* the first item loaded with a kind of ammunition, a count of rounds in all its magazines, or -1
+ * (OVL2 0x5C8750; SOCOM 1's, GetAmmoTotal inlined where SOCOM 1's summed after unwrap) */
+int CZKit::GetAmmoIndex(EQUIP_AMMO ammo, int count)
+{
+    for (int i = 0; i < m_num_items; i++)
+        if (m_ammo[i] && ammo == ((CZAmmo *)m_ammo[i])->m_ID && count == GetAmmoTotal(i))
+            return i;
+    return -1;
 }
 
 /* whether the kit holds an item of that kind (OVL2 0x5C86F0; SOCOM 1's) */
