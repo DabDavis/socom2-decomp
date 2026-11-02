@@ -2,8 +2,14 @@
  * stretch and before vis_mesh.cpp, holding what SOCOM 1's vis_main.cpp held ahead of CVisual's
  * reading (DereferenceDecals .. Init, 0x3092B0-0x30E2FF in the demo) -- SOCOM II links this half
  * apart from the reading and texture selects (vis_main.cpp here, 0x3C3570-), and which half kept
- * the name is not settled: the file name is ours. Only some of its functions so far; the rest stay
- * placeholders. Defined in reverse of their image order (-inline deferred). */
+ * the name is not settled: the file name is ours. Evidence that this half is SOCOM 1's vis_main.cpp
+ * (round 10, not acted on): its tail holds CVisual::m_stack_vid's deque copy-constructor chain
+ * (0x3B7DB0 and its pieces 0x3B7E30-0x3B83D0 -- SOCOM 1's deque<unsigned int> copy constructor
+ * 0x30E4B0 closes its vis_main.cpp the same way), and the initialiser that builds that static
+ * (0x404570, its call to 0x3B7DB0) sits between zvid_init.cpp's (0x404500) and the decal pools' in
+ * the ctors table, as this unit sits between zvid_init.cpp and vis_mesh.cpp. Only some of its
+ * functions so far; the rest stay placeholders. Defined in reverse of their image order (-inline
+ * deferred). */
 
 #include "znode.h"
 #include "../zsys/zsys_public.h"

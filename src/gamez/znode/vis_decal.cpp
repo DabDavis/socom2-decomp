@@ -1,6 +1,7 @@
 /* vis_decal.cpp -- the decals: zdb::CDecal and CMeshDecal, their pools, and the RTArray instances
  * that hold them (SOCOM 1's vis_decal.cpp, by its static initialiser, which builds the four
- * pools): OVL1 0x3BD9A0?-0x3BF9AF?, as SOCOM 1's 0x312DE0-0x313BBF. Only some of its functions so
+ * pools): OVL1 0x3BD9A0?-0x3BFB5F (its tail ends with RTArray<CMeshDecal>()'s pieces), as SOCOM
+ * 1's 0x312DE0-0x313BBF. Only some of its functions so
  * far; the rest stay generated drafts or placeholders. Defined in reverse of their image order
  * (-inline deferred). */
 
