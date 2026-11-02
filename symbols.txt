@@ -10947,7 +10947,7 @@
 0x005B90F0 0x14 IsUsingBinocs__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's IsUsingBinocs, next: the body's byte (0x200, SOCOM 1's 0x160) compared with 4 where SOCOM 1's compares 3)
 0x005B9110 0x70 Binocs_Enabled__5CZKitFb  # OVL2; s1:order by hand (SOCOM 1's Binocs_Enabled, after IsUsingBinocs as there: bit 5 set from the flag; SOCOM II first calls 0x592D40 on the body's controller when the binoculars go away)
 0x005B9180 0x34 InitializeSniperKick__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's InitializeSniperKick: the kick's distance zeroed, its baseline from the controller's +0x130 when there is one, AdrenalineIncr(0.5) tail-called -- the same code with the fields 0x14 on)
-0x005B91C0 0xB4 func_005B91C0  # OVL2
+0x005B91C0 0xB4 StartSniperKick__5CZKitFv  # OVL2; by hand (the kit lane, round 11): new in SOCOM II between InitializeSniperKick and SniperTick (0x5B9280) -- SOCOM 1's CZKit::Fire's kick start moved out (the same TargetMods(GetStance(..)), baseline from the controller's 0x130, KickBaseDist + KickRandomDist * rand fraction, state 1, accum 0); func_005C5340 (Fire) calls it; the name ours
 0x005B9280 0x518 func_005B9280  # OVL2
 0x005B97A0 0x120 IsUsingItem__5CZKitFi  # OVL2; s1:order by hand (SOCOM 1's IsUsingItem(int), after the sniper's kick as there: the item's GetIDType (OVL1 0x3D1E10) -- binoculars (190, SOCOM 1's 182) a binocular or scope zoom class, night vision (191, SOCOM 1's 184) zoom class 3, the weapon classes (4, 31, 51 ... 151; SOCOM 1's 0, 30, 50 ... 160) the selected index, else bit 3 of m_itemstate (0x6C, SOCOM 1's 0x58))
 0x005B98C0 0xC4 IsUsingItem__5CZKitF10EQUIP_ITEM  # OVL2; s1:order by hand (SOCOM 1's IsUsingItem(EQUIP_ITEM), next as there: the same two special kinds, then the first item of the kind through IsUsingItem(int))
@@ -10956,7 +10956,7 @@
 0x005B99D0 0x24 PendingPickupHandled__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's PendingPickupHandled, after SetWeaponInfoChanged as there: a flag bit cleared (bit 14, SOCOM 1's 13) and the pickup wait zeroed, 0x8B8 here, SOCOM 1's 0x878)
 0x005B9A00 0x1A8 func_005B9A00  # OVL2
 0x005B9BB0 0x258 func_005B9BB0  # OVL2
-0x005B9E10 0xEC func_005B9E10  # OVL2
+0x005B9E10 0xEC RemoveItem__5CZKitF10EQUIP_ITEM  # OVL2; by hand (the kit lane, round 11): HandlePlaceMPBomb (0x5BC200) drops the MP bomb, item 154, through it where SOCOM 1's HandlePlaceMPBomb dropped it inline; FindItemWithAmmo inlined, then 0x5B9BB0 (by its place and its opening wrap SOCOM 1's RemoveItemAndAmmo(int)) on the index -- new in SOCOM II, the name ours
 0x005B9F00 0x134 func_005B9F00  # OVL2
 0x005BA040 0x390 func_005BA040  # OVL2
 0x005BA3D0 0x1E0 func_005BA3D0  # OVL2
@@ -10981,10 +10981,10 @@
 0x005BD100 0x424 func_005BD100  # OVL2
 0x005BD530 0x198 func_005BD530  # OVL2
 0x005BD6D0 0x8 func_005BD6D0  # OVL2
-0x005BD6E0 0xF4 func_005BD6E0  # OVL2
+0x005BD6E0 0xF4 WeaponIsGrenadeLauncherMode__5CZKitFi  # OVL2; s1:calls by hand (the kit lane, round 11): SOCOM 1's WeaponIsGrenadeLauncherMode(int) -- the index wrapped, the item's IsGrenadeLauncherWeapon, its fire mode past 3 -- the item now through 0x5C67D0; 0x5BD6D0 is its selected-item wrapper
 0x005BD7E0 0x8 func_005BD7E0  # OVL2
-0x005BD7F0 0xF4 func_005BD7F0  # OVL2
-0x005BD8F0 0x108 func_005BD8F0  # OVL2
+0x005BD7F0 0xF4 WeaponIsLauncherMode__5CZKitFi  # OVL2; by hand (the kit lane, round 11): WeaponIsGrenadeLauncherMode's code with IsLauncherWeapon (new in SOCOM II, the name ours); 0x5BD7E0 is its selected-item wrapper
+0x005BD8F0 0x108 WeaponIsM203Mode__5CZKitFi  # OVL2; s1:calls by hand (the kit lane, round 11): SOCOM 1's CurWeaponIsM203Mode on an index -- IsM203Weapon (or class 145, 0x3C5CA0), the fire mode past 3; 0x5BDA00 is its selected-item wrapper (the name ours, after SOCOM 1's)
 0x005BDA00 0x8 func_005BDA00  # OVL2
 0x005BDA10 0x58 ItemHasAmmo__5CZKitCFi  # OVL2; s1:order by hand (SOCOM 1's ItemHasAmmo(int): the index under m_num_items (0x82C), then any of its ten magazines at 0x1D4 + 40*index above 0, SOCOM 1's 0x1C0; first of the three ItemHasAmmo as there; const in SOCOM II, as unwrap (const, through GetItemByIndex) inlines it); constness by SOCOM 1's symbol (ItemHasAmmo__5CZKitFi, non-const; the SEAL lane's seal_command.cpp calls it so) -- the kit lane, round 3; kept const after all: SOCOM II's const GetCurItem (const in SOCOM 1 too) tail-calls GetItemByIndex, which calls unwrap, which calls this -- const throughout unless the original cast it away; SOCOM 1's non-const name predates the chain (the kit lane, round 3)
 0x005BDA70 0x90 ItemHasAmmo__5CZKitCFi8FIREMODE  # OVL2; s1:order by hand (SOCOM 1's ItemHasAmmo(int, FIREMODE), next: the index tested, through 0x5C6600 with the mode, then ItemHasAmmo(int) inlined); constness by SOCOM 1's symbol (ItemHasAmmo__5CZKitFi8FIREMODE, non-const) -- the kit lane, round 3; kept const with ItemHasAmmo(int) (the kit lane, round 3)

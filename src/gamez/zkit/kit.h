@@ -75,6 +75,15 @@ public:
     bool SetItemAmmo(unsigned int index, void *ammo, int rounds, int count);
     bool SetItem(unsigned int index, EQUIP_ITEM item);
     void FillWeaponEnum(int index, CZFTSWeapon **out);
+    /* a grenade thrown from a point at a velocity, an explosive placed instead (OVL2 0x5BD030;
+     * SOCOM 1's) */
+    CZProjectile *FireGrenade(const CPnt3D *pos, const CPnt3D *vel);
+    /* whether an item is in its launcher's fire mode, by the launcher's kind (OVL2 0x5BD6E0,
+     * 0x5BD7F0, 0x5BD8F0: SOCOM 1's WeaponIsGrenadeLauncherMode and, on an index, its
+     * CurWeaponIsM203Mode; the middle one new -- its name ours) */
+    bool WeaponIsGrenadeLauncherMode(int index);
+    bool WeaponIsLauncherMode(int index);
+    bool WeaponIsM203Mode(int index);
     bool SetItem(unsigned int index, CZWeapon *w, void *ammo, int rounds);
     bool SetItemByIndex(int index, CZWeapon *w);
     bool ItemHasFiremodeGraphic(int index);
@@ -87,6 +96,9 @@ public:
     void IncrScreenOffsetY(float dy);
     bool IsUsingBinocs();
     void InitializeSniperKick();
+    /* the sniper's kick begun: the baseline taken, its distance drawn (OVL2 0x5B91C0, new in SOCOM
+     * II: the name ours) */
+    void StartSniperKick();
     void HandlePlaceMPBomb(const CPnt3D *pos);
     bool IsUsingScope();
     void SetWeaponInfoChanged();
@@ -101,6 +113,8 @@ public:
     /* the hot-swap flag, set and read by CWeaponSel::CheckHotSwap (OVL2 0x5BC2A0, 0x5BC2B0: new in
      * SOCOM II, the names ours) */
     void SetHotSwap(bool b);
+    /* an item of a kind dropped with its ammunition (OVL2 0x5B9E10, new in SOCOM II: the name ours) */
+    void RemoveItem(EQUIP_ITEM item);
     bool GetHotSwap();
     /* const, where SOCOM 1's were not (ItemHasAmmo__5CZKitFi): SOCOM II's const GetCurItem
      * (SOCOM 1's const too) tail-calls GetItemByIndex, which calls unwrap, which calls this */

@@ -161,12 +161,9 @@ RETICULE_TYPE CZKit::GetCurReticule()
  * took no flag and always flagged it) */
 extern "C" {
 /* CZSealBody's (named: the bomb pickup made where it is placed -- static, the point and a flag --
- * and the bomb's gear shown or not; zseal.h is not included here) and the kit's call dropping an
- * item (OVL2 0x5B9E10, unwritten: SOCOM 1's HandlePlaceMPBomb did it inline -- GetItemIndex,
- * unwrap, the slot cleared, EmptyAmmoCountTotal, UpdateNumItems) */
+ * and the bomb's gear shown or not; zseal.h is not included here) */
 void CreateMPBombPickup__10CZSealBodyFPC6CPnt3Db(const CPnt3D *pos, bool b);
 void EnableMPBombGear__10CZSealBodyFb(CZSealBody *body, bool on);
-void func_005B9E10(CZKit *kit, int item);
 }
 
 /* the MP bomb placed: its pickup made at the point, the bomb item (154) dropped, its gear hidden,
@@ -174,7 +171,7 @@ void func_005B9E10(CZKit *kit, int item);
 void CZKit::HandlePlaceMPBomb(const CPnt3D *pos)
 {
     CreateMPBombPickup__10CZSealBodyFPC6CPnt3Db(pos, true);
-    func_005B9E10(this, 154);
+    RemoveItem((EQUIP_ITEM)154);
     EnableMPBombGear__10CZSealBodyFb(m_body, false);
     ((CKitBody *)m_body)->m_control->SetBombPlaced(true);
     SetCurReticule(false);
@@ -465,6 +462,71 @@ bool CZKit::ItemHasAmmo(int index) const
     return r;
 }
 
+extern "C" {
+/* the item an index's ammunition is fired from -- the launcher when the item is its grenades (OVL2
+ * 0x5C67D0, unwritten) -- and a weapon of class 145 (OVL1 0x3C5CA0, unclaimed) */
+CZFTSWeapon *func_005C67D0(CZKit *kit, int index);
+bool func_003C5CA0(CZFTSWeapon *w);
+}
+
+/* an M203 (or class 145) in its launcher's fire mode (OVL2 0x5BD8F0, its selected item's 0x5BDA00:
+ * SOCOM 1's CurWeaponIsM203Mode on an index) */
+bool CZKit::WeaponIsM203Mode(int index)
+{
+    index = wrap(index, m_num_items);
+    CZFTSWeapon *w = GetItemByIndex(index);
+
+    if (w && (w->IsM203Weapon() || func_003C5CA0(w)) && m_firemode[index] > AUTOFIRE)
+        return true;
+    return false;
+}
+
+/* a launcher in its launcher's fire mode (OVL2 0x5BD7F0, its selected item's 0x5BD7E0: new in
+ * SOCOM II, the name ours) */
+bool CZKit::WeaponIsLauncherMode(int index)
+{
+    index = wrap(index, m_num_items);
+    CZFTSWeapon *w = func_005C67D0(this, index);
+
+    if (w && w->IsLauncherWeapon() && m_firemode[index] > AUTOFIRE)
+        return true;
+    return false;
+}
+
+/* a grenade launcher in its launcher's fire mode (OVL2 0x5BD6E0, its selected item's 0x5BD6D0:
+ * SOCOM 1's WeaponIsGrenadeLauncherMode, the item through 0x5C67D0 where SOCOM 1's unwrapped it) */
+bool CZKit::WeaponIsGrenadeLauncherMode(int index)
+{
+    index = wrap(index, m_num_items);
+    CZFTSWeapon *w = func_005C67D0(this, index);
+
+    if (w && w->IsGrenadeLauncherWeapon() && m_firemode[index] > AUTOFIRE)
+        return true;
+    return false;
+}
+
+extern "C" {
+/* the kit's fire (SOCOM 1's CZKit::Fire(int, const CPnt3D *, const CPnt3D *, const CPnt3D *); OVL2
+ * 0x5C5340, unwritten) and an explosive placed (SOCOM 1's HandleRemotePlaceExplosive, which took the
+ * point and the SEAL's rotation: SOCOM II's takes two more, here 0; OVL2 0x5BC730, unwritten) */
+CZProjectile *func_005C5340(CZKit *kit, int index, const CPnt3D *pos, const CPnt3D *vel, const CPnt3D *v);
+CZProjectile *func_005BC730(CZKit *kit, const CPnt3D *pos, const void *rot, int a, int b);
+}
+
+/* a grenade thrown from a point at a velocity -- the current item fired with no spin, or, an
+ * explosive (151; SOCOM 1's 150), placed with the SEAL's rotation (OVL2 0x5BD030; SOCOM 1's) */
+CZProjectile *CZKit::FireGrenade(const CPnt3D *pos, const CPnt3D *vel)
+{
+    CPnt3D v = CPnt3D::zero;
+    CZFTSWeapon *w = m_item[m_selected_item];
+
+    if (!w)
+        return 0;
+    if (func_003D1E10(w) == IDTYPE_EXPLOSIVE)
+        return func_005BC730(this, pos, (char *)m_body + 0x50, 0, 0);
+    return func_005C5340(this, m_selected_item, pos, vel, &v);
+}
+
 /* an item by index, wrapped, handed back through a pointer (OVL2 0x5BC6A0; SOCOM 1's) */
 void CZKit::FillWeaponEnum(int index, CZFTSWeapon **out)
 {
@@ -552,6 +614,27 @@ void CZKit::SetHotSwap(bool b)
     m_hotswap = b;
 }
 
+extern "C" {
+/* an item at an index let go with its ammunition (OVL2 0x5B9BB0, unwritten: by its place SOCOM 1's
+ * RemoveItemAndAmmo(int), which it opens alike -- the index wrapped on m_num_items) */
+void func_005B9BB0(CZKit *kit, int index);
+}
+
+/* the first item of a kind with ammunition, else the last of the kind, let go (OVL2 0x5B9E10, new
+ * in SOCOM II: HandlePlaceMPBomb drops the bomb, item 154, through it, where SOCOM 1's dropped it
+ * inline; the name ours). Four statements, yet HandlePlaceMPBomb calls it: pinned -- likely the
+ * unwritten 0x5B9BB0's doing, an auto-inline candidate too big to inline whole stopping its callers
+ * (README "Tells from the kit and AI states, round 6") */
+#pragma auto_inline off
+void CZKit::RemoveItem(EQUIP_ITEM item)
+{
+    int i = FindItemWithAmmo(item);
+
+    if (i != -1)
+        func_005B9BB0(this, i);
+}
+#pragma auto_inline reset
+
 /* a pickup's request answered: the flag down, the wait cleared (OVL2 0x5B99D0) */
 void CZKit::PendingPickupHandled()
 {
@@ -600,6 +683,33 @@ bool CZKit::IsUsingItem(int index)
 bool CZKit::IsUsingScope()
 {
     return ((CKitBody *)m_body)->m_200 >= 5;
+}
+
+extern "C" {
+/* the SEAL's stance, by its body (SOCOM 1's CZSealBody::GetStance(bool), called from the same place
+ * in SOCOM 1's CZKit::Fire; OVL2 0x58A720, the SEAL lane's row) and the target mods' kick distances
+ * (SOCOM 1's CTargetMods::GetFireRifle_KickRandomDist and GetFireRifle_KickBaseDist, const: OVL1
+ * 0x3C5F60 and 0x3C5F70 read 0x48 and 0x44, unclaimed) */
+unsigned char func_0058A720(CZSealBody *seal, unsigned char flag);
+float func_003C5F60(const CTargetMods *mods);
+float func_003C5F70(const CTargetMods *mods);
+int rand(void);
+}
+
+/* the sniper's kick begun: the controller's float at 0x130 the baseline, the distance the stance's
+ * base plus a random part of its random distance (OVL2 0x5B91C0, new in SOCOM II: SOCOM 1's
+ * CZKit::Fire did this inline, after testing the distance for zero; the name ours) */
+void CZKit::StartSniperKick()
+{
+    CZFTSWeapon *w = GetCurItem();
+    CTargetMods *mods = w->TargetMods(func_0058A720(m_body, true));
+    CKitCtrl *ctrl = ((CKitBody *)m_body)->m_control;
+
+    if (ctrl)
+        m_firerifle_kick_baseline = ctrl->m_130;
+    m_firerifle_kick_movedist = func_003C5F70(mods) + func_003C5F60(mods) * (4.656613e-10f * rand());
+    m_firerifle_kick_state = 1;
+    m_firerifle_kick_accum = 0.0f;
 }
 
 /* the sniper rifle's kick restarted from the controller's aim, and a little adrenaline (OVL2
