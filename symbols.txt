@@ -13043,14 +13043,14 @@
 0x0064B248 0x90 func_0064B248  # OVL2 unaligned
 0x0064B2D8 0x90 func_0064B2D8  # OVL2 unaligned
 0x0064B368 0x90 func_0064B368  # OVL2 unaligned
-0x0064B3F8 0x94 func_0064B3F8  # OVL2 unaligned
-0x0064B490 0xAC func_0064B490  # OVL2
-0x0064B540 0x94 func_0064B540  # OVL2
-0x0064B5D8 0x94 func_0064B5D8  # OVL2 unaligned
+0x0064B3F8 0x94 MediusFileCreate  # OVL2 unaligned; the online lane's round 8: zNetMediusFile.cpp calls it with the callback that checks this call's own status string (Medius SDK name; GCC 2.96 code)
+0x0064B490 0xAC MediusFileUpload  # OVL2; the online lane's round 8: zNetMediusFile.cpp calls it with the callback that checks this call's own status string (Medius SDK name; GCC 2.96 code)
+0x0064B540 0x94 MediusFileClose  # OVL2; the online lane's round 8: zNetMediusFile.cpp calls it with the callback that checks this call's own status string (Medius SDK name; GCC 2.96 code)
+0x0064B5D8 0x94 MediusFileDownload  # OVL2 unaligned; the online lane's round 8: zNetMediusFile.cpp calls it with the callback that checks this call's own status string (Medius SDK name; GCC 2.96 code)
 0x0064B670 0x94 func_0064B670  # OVL2
 0x0064B708 0x94 func_0064B708  # OVL2 unaligned
 0x0064B7A0 0x24 func_0064B7A0  # OVL2
-0x0064B7C8 0x94 func_0064B7C8  # OVL2 unaligned
+0x0064B7C8 0x94 MediusFileListFiles  # OVL2 unaligned; the online lane's round 8: zNetMediusFile.cpp calls it with the callback that checks this call's own status string (Medius SDK name; GCC 2.96 code)
 0x0064B860 0x24 func_0064B860  # OVL2
 0x0064B888 0x94 func_0064B888  # OVL2 unaligned
 0x0064B920 0x94 func_0064B920  # OVL2
