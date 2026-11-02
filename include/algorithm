@@ -98,6 +98,150 @@ ForwardIterator remove_if(ForwardIterator first, ForwardIterator last, Predicate
     return first == last ? first : remove_copy_if(++i, last, first, pred);
 }
 
+/* the two elements traded through their iterators, taken by value (SOCOM II's sorts copy both into
+ * stack slots first, the right one into the lower); min_element as MSL writes it (the short-range
+ * sort's inner walk) */
+template <class ForwardIterator1, class ForwardIterator2>
+inline void iter_swap(ForwardIterator1 a, ForwardIterator2 b)
+{
+    swap(*a, *b);
+}
+
+template <class ForwardIterator, class Compare>
+inline ForwardIterator min_element(ForwardIterator first, ForwardIterator last, Compare comp)
+{
+    ForwardIterator i = first;
+    if (first != last)
+        for (++first; first != last; ++first)
+            if (comp(*first, *i))
+                i = first;
+    return i;
+}
+
+/* MSL's sort: SOCOM 1's (CW 3.0.1's <algorithm>; the demo's DWARF gives __sort132 lines 2370-2386,
+ * __selection_sort 2409-2420 with its local `stop`, sort 2529-2620 with j, i1, m, len and the static
+ * shuffle). Each instance is three functions in its unit's template tail: sort (the partition loop,
+ * recursing into the shorter side), __sort132 (the median of three, out of line) and
+ * __selection_sort (20 or fewer, out of line); a comparator object passed by value is inlined into
+ * all three, a function pointer called. Byte-exact (the MSL headers round 6) for every SOCOM II
+ * instance tried -- the room unit's games and rooms (0x2E4A90, 0x2E5150), the ladder unit's two
+ * (0x2EC260, 0x2EC7E0), ai_maptable.cpp's names (0x5312D0) as their units emit them, st_mpexit.cpp's
+ * seals (0x226060), st_core.cpp's film cues (0x1EE000) and the chat unit's room players (0x2F1980)
+ * as probes -- each with its own static shuffle in data (-4; data.txt names them). The shapes the
+ * sweeps settled (build/p6/v_sort*.py): `len <= 1` (not `len < 2`: 2 instructions), `len *= 3` before
+ * the second pick (not `3 * len /4`: 16 bytes more), the second pick into m, the scans walking i1 up
+ * and m down against the pivot *j, and the iterator's arithmetic MSL's own (include/vector: `last -
+ * 1` a copy stepped by -=, which the short-range sort's `stop` needs). SOCOM II's sorts take the
+ * vector's class iterators where SOCOM 1's took raw pointers: st_mpexit.cpp's over CZSealBody ** is
+ * 0x3B4 bytes, the target's 0x598 is the iterator's */
+template <class RandomAccessIterator, class Compare>
+void __sort132(RandomAccessIterator a1, RandomAccessIterator a2, RandomAccessIterator a3, Compare comp)
+{
+    bool b1 = !comp(*a3, *a1);
+    bool b2 = !comp(*a2, *a3);
+    if (b1 && b2)
+        return;
+    if (!b1 && !b2) {
+        iter_swap(a1, a2);
+        return;
+    }
+    if (comp(*a2, *a1))
+        iter_swap(a1, a2);
+    if (b1)
+        iter_swap(a2, a3);
+    else
+        iter_swap(a1, a3);
+}
+
+template <class RandomAccessIterator, class Compare>
+void __selection_sort(RandomAccessIterator first, RandomAccessIterator last, Compare comp)
+{
+    if (first != last) {
+        RandomAccessIterator stop = last - 1;
+        for (; first < stop; ++first) {
+            RandomAccessIterator i = min_element(first, last, comp);
+            if (i != first)
+                iter_swap(i, first);
+        }
+    }
+}
+
+template <class RandomAccessIterator, class Compare>
+void sort(RandomAccessIterator first, RandomAccessIterator last, Compare comp)
+{
+    while (true) {
+        int len = last - first;
+        if (len <= 1)
+            return;
+        if (len <= 20) {
+            __selection_sort(first, last, comp);
+            return;
+        }
+        static int shuffle = -4;
+        RandomAccessIterator i1 = first + (len / 4 + shuffle % 5);
+        if (++shuffle >= 5)
+            shuffle = -4;
+        len *= 3;
+        RandomAccessIterator m = first + (len / 4 + shuffle % 5);
+        if (++shuffle >= 5)
+            shuffle = -4;
+        RandomAccessIterator j = last - 1;
+        __sort132(i1, m, j, comp);
+        i1 = first;
+        m = j;
+        while (comp(*i1, *j))
+            ++i1;
+        while (i1 != --m && !comp(*m, *j))
+            ;
+        if (i1 < m) {
+            iter_swap(i1, m);
+            ++i1;
+            while (true) {
+                while (comp(*i1, *j))
+                    ++i1;
+                while (!comp(*--m, *j))
+                    ;
+                if (i1 >= m)
+                    break;
+                iter_swap(i1, m);
+                ++i1;
+            }
+        }
+        if (i1 == first) {
+            iter_swap(i1, j);
+            ++i1;
+            m = last;
+            if (!comp(*first, *--m)) {
+                while (i1 != last && !comp(*first, *i1))
+                    ++i1;
+                if (i1 < m)
+                    iter_swap(i1, m);
+            }
+            if (i1 < m) {
+                while (true) {
+                    while (!comp(*first, *i1))
+                        ++i1;
+                    while (comp(*first, *--m))
+                        ;
+                    if (i1 >= m)
+                        break;
+                    iter_swap(i1, m);
+                    ++i1;
+                }
+            }
+            first = i1;
+            continue;
+        }
+        if (i1 - first < last - i1) {
+            sort(first, i1, comp);
+            first = i1;
+        } else {
+            sort(i1, last, comp);
+            last = i1;
+        }
+    }
+}
+
 /* The element moves a class vector makes (include/vector: the erase's copy down, the insert's
  * copy up and fill), MSL 3.0's as SOCOM II's instances show them: each algorithm an inline wrapper
  * over an inline helper doing the loop. An element whose assignment expands past inline_max_size

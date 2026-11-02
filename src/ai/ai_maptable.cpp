@@ -19,11 +19,8 @@ const T &_min(const T &a, const T &b)
 }
 }
 
-/* MSL's sort, declared only: its instance for the names closes the unit (0x5312D0) */
-namespace std {
-template <class RandomAccessIterator, class Compare>
-void sort(RandomAccessIterator first, RandomAccessIterator last, Compare comp);
-}
+/* (MSL's sort is include/algorithm's: its instance for the names, with its median-of-three 0x5321B0
+ * and short-range sort 0x5329F0, closes the unit -- 0x5312D0) */
 
 /* two names in order: case-blind over their fifteen characters (the names' sort's comparator,
  * 0x531190; the name ours) */

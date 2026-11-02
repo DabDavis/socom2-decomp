@@ -7,6 +7,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <algorithm>
 #include "zonline.h"
 #include "../zmath/zmath.h"
 
@@ -223,12 +224,12 @@ void CZOnlineLobby::GetClanRanking(int n)
     CheckMediusError(func_0064AEE8(&total, cbGetTotalRankings));
 }
 
-/* the clan ladder's order (std::sort's comparator, empty, by value) */
+/* the clan ladder's order, by position (std::sort's comparator, empty, by value and inlined into the
+ * instance 0x2EC7E0 and its pieces) */
 struct ClanLadderLess {
     ClanLadderLess() {}
+    bool operator()(ClanLadderItem *a, ClanLadderItem *b) const { return a->LadderPosition < b->LadderPosition; }
 };
-extern "C" void func_002EC7E0(ClanLadderList::iterator first, ClanLadderList::iterator last,
-                              ClanLadderLess less);   /* std::sort's instance */
 
 void UpdateClanLadderLeaders();
 void UpdateClanLadderList();
@@ -260,7 +261,7 @@ void UpdateClanLadderLeaders()
 {
     CRdrEditor ed;
 
-    func_002EC7E0(ClanLadderLeaders.begin(), ClanLadderLeaders.end(), ClanLadderLess());
+    std::sort(ClanLadderLeaders.begin(), ClanLadderLeaders.end(), ClanLadderLess());
     ed.push(0);
     for (ClanLadderList::iterator i = ClanLadderLeaders.begin(); i != ClanLadderLeaders.end(); ++i) {
         char pos[32];
@@ -281,7 +282,7 @@ void UpdateClanLadderList()
 {
     CRdrEditor ed;
 
-    func_002EC7E0(ClanLadderRanking.begin(), ClanLadderRanking.end(), ClanLadderLess());
+    std::sort(ClanLadderRanking.begin(), ClanLadderRanking.end(), ClanLadderLess());
     ed.push(0);
     for (ClanLadderList::iterator i = ClanLadderRanking.begin(); i != ClanLadderRanking.end(); ++i) {
         char pos[32];
@@ -423,12 +424,12 @@ MediusErrorCode func_0064B128(MediusLadderListRequest *req,
                               void (*cb)(int, int, int, MediusLadderListResponse *));   /* MediusLadderList */
 }
 
-/* the player ladder's order (std::sort's comparator, empty, by value) */
-struct LadderLess {
-    LadderLess() {}
+/* the player ladder's order, by position (SOCOM 1's compare_ladder: std::sort's comparator, empty,
+ * by value and inlined into the instance 0x2EC260 and its pieces) */
+struct compare_ladder {
+    compare_ladder() {}
+    bool operator()(LadderItem *a, LadderItem *b) const { return a->m_position < b->m_position; }
 };
-extern "C" void func_002EC260(LadderList::iterator first, LadderList::iterator last,
-                              LadderLess less);   /* std::sort's instance */
 
 /* the player ladder's best sorted and handed to the menus: each one's position, name and clan
  * (SOCOM II's; OVL1 0x2EB7A0; the name ours).
@@ -439,7 +440,7 @@ void UpdateLadderBestDisplay()
 {
     CRdrEditor ed;
 
-    func_002EC260(LadderRanking.begin(), LadderRanking.end(), LadderLess());
+    std::sort(LadderRanking.begin(), LadderRanking.end(), compare_ladder());
     ed.push(0);
     for (LadderList::iterator i = LadderRanking.begin(); i != LadderRanking.end(); ++i) {
         char pos[32];

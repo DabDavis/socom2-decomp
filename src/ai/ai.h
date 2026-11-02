@@ -389,7 +389,8 @@ public:
     };
 
     /* a named cell (SOCOM 1's DWARF, 0x18 bytes; SOCOM II's name follows the cell, sixteen bytes
-     * with the last kept zero, and the four after it are not read yet) */
+     * with the last kept zero; then two bytes not read yet -- the names' sort 0x5312D0 and its pieces
+     * copy them one by one, lbu/sb, where a word would be one lw/sw) */
     class name {
     public:
         /* the name copied in, cut to fifteen characters (new in SOCOM II, the name ours) */
@@ -399,7 +400,8 @@ public:
 
         CAiMapLoc m_loc;   // 0x0
         char m_name[16];   // 0x4
-        unsigned int m_unk14;   // 0x14
+        unsigned char m_14;   // 0x14
+        unsigned char m_15;   // 0x15
     };
     class names : public std::vector<name> {
     public:

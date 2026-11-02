@@ -314,7 +314,18 @@ inline void swap(__vector_pod<T, Allocator> &x, __vector_pod<T, Allocator> &y)
         bool operator!=(const iterator &o) const { return !(*this == o); }                      \
         iterator &operator++() { ++m_p; return *this; }                                         \
         iterator operator++(int) { iterator t(*this); ++*this; return t; }                      \
-        iterator operator-(int n) const { return iterator(m_p - n); }                           \
+        /* the arithmetic MSL's way, a copy stepped by += or -= (std::sort's stop = last - 1    \
+         * reloads last for its copy: the short-range sorts, 0x2E5BF0 and every other; built    \
+         * as iterator(m_p - n), 6 instructions off each) -- class back() steps the pointer */  \
+        iterator &operator+=(int n) { m_p += n; return *this; }                                 \
+        iterator &operator-=(int n) { m_p -= n; return *this; }                                 \
+        iterator operator+(int n) const { iterator t(*this); return t += n; }                   \
+        iterator operator-(int n) const { iterator t(*this); return t -= n; }                   \
+        /* (std::sort's, include/algorithm) */                                                  \
+        iterator &operator--() { --m_p; return *this; }                                         \
+        int operator-(const iterator &o) const { return m_p - o.m_p; }                          \
+        bool operator<(const iterator &o) const { return m_p < o.m_p; }                         \
+        bool operator>=(const iterator &o) const { return !(*this < o); }                       \
         elem_t &operator*() const { return *m_p; }                                              \
         /* (the weapons lane's round 8: a class element's member read through the iterator) */   \
         elem_t *operator->() const { return m_p; }                                              \
@@ -374,7 +385,10 @@ class __vector_imp : public __vector_deleter<T, Allocator> {
 
         return iterator(p);
     }
-    T &back() { return *(end() - 1); }
+    /* the end's pointer stepped back: through the iterator's operator- (a copy stepped by -=,
+     * std::sort's) MW folds the step into the load, where CAiPath::PopPoint (0x524D00) and
+     * CTargetList::AddTarget (0x2A0200) compute the element's address first */
+    T &back() { return *(end().m_p - 1); }
     void clear() { __vector_deleter<T, Allocator>::clear(); }
     static unsigned int max_size() { return (unsigned int)-1 / sizeof(T); }
     T &at(unsigned int n);
