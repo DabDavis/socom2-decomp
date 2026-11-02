@@ -371,46 +371,42 @@ inline void SetTimeUiVar(const char *szUiVar, unsigned int (CNetClock::*pfnTime)
     *theUIVarManager.Add(szUiVar, 0, UIVL_TEMPORARY) = szTime;
 }
 
-/* an integer into a UI variable, the watchers told only when it changes (ours) */
-inline void SetIntUiVar(const char *szUiVar, int iVal)
-{
-    CUIVariable *pVar = theUIVarManager.Add(szUiVar, 0, UIVL_TEMPORARY);
-
-    if (pVar->type != ZRDR_INTEGER || pVar->integer != iVal) {
-        pVar->DeleteChildren();
-        pVar->type = ZRDR_INTEGER;
-        pVar->integer = iVal;
-        pVar->UpdateDependents();
-    }
-}
-
 /* the round's and the game's stats lists for each side, the player's points, the rounds won and
  * the times (SOCOM 1's SetMpStatUiVars; SOCOM II's lists sort each by its own stats and leave the
- * ladder alone, the team totals to SetFinalStatsUiVars) */
+ * ladder alone, the team totals to SetFinalStatsUiVars).
+ * OPEN, 8 instructions, one register pair: the points (the round's MVP score, loaded before Add)
+ * take s0 and PointsEarned's variable s3, where the target has them the other way round; every
+ * other register is the target's. Tried (round 18): the score in a named local declared first,
+ * after the bools or last; the setter as this inline assignment, as a free inline with a named
+ * variable, or written out with a function-scope variable; tools/perm.py over the declaration
+ * order of all seven locals (best: this one's 8, from 34) */
 void SetMpStatUiVars()
 {
-    int iPts;
-    bool bSeals = func_002C31A0();
-    bool bTerrs = func_002C3080();
+    bool bSeals;
+    bool bTerrs;
+    int iWon;
+    int iSealsWon;
+    int iTerrsWon;
 
+    bSeals = func_002C31A0();
+    bTerrs = func_002C3080();
     SetStatLbUiVar(true, "RoundStatLbContentsSeals", &CZSealBody::GetRoundStats, false);
     SetStatLbUiVar(false, "RoundStatLbContentsTerrs", &CZSealBody::GetRoundStats, false);
     SetStatLbUiVar(true, "GameStatLbContentsSeals", &CZSealBody::GetGameStats, true);
     SetStatLbUiVar(false, "GameStatLbContentsTerrs", &CZSealBody::GetGameStats, true);
 
-    iPts = ftsGetPlayer()->GetRoundStats().GetMvpScore();
-    SetIntUiVar("PointsEarned", iPts);
+    *theUIVarManager.Add("PointsEarned", 0, UIVL_TEMPORARY) = ftsGetPlayer()->GetRoundStats().GetMvpScore();
 
-    int iSealsWon = data_00437CE8->m_seals_won;
-    int iTerrsWon = data_00437CE8->m_terrs_won;
-    int iWon = 0;
+    iSealsWon = data_00437CE8->m_seals_won;
+    iTerrsWon = data_00437CE8->m_terrs_won;
+    iWon = 0;
     if (bSeals)
         iWon = iSealsWon;
     else if (bTerrs)
         iWon = iTerrsWon;
-    SetIntUiVar("RoundsWonSeals", iSealsWon);
-    SetIntUiVar("RoundsWonTerrs", iTerrsWon);
-    SetIntUiVar("RoundsWon", iWon);
+    *theUIVarManager.Add("RoundsWonSeals", 0, UIVL_TEMPORARY) = iSealsWon;
+    *theUIVarManager.Add("RoundsWonTerrs", 0, UIVL_TEMPORARY) = iTerrsWon;
+    *theUIVarManager.Add("RoundsWon", 0, UIVL_TEMPORARY) = iWon;
 
     SetTimeUiVar("TimeInRound", &CNetClock::GetTimeInRoundSec);
     SetTimeUiVar("TimeInGame", &CNetClock::GetTimeInGameSec);

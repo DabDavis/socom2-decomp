@@ -15,6 +15,29 @@
 
 #include "ztwod.h"
 
+/* a ZAnim command's header (zanim.h's _zanim_cmd_hdr, SOCOM 1's DWARF) */
+struct _zanim_cmd_hdr {
+    unsigned int data_type : 16;   // 0x0
+    unsigned int quad_align : 1;   // 0x0
+    unsigned int timeless : 1;   // 0x0
+    unsigned int data_size : 14;   // 0x0
+};   // 0x4 bytes
+
+/* a 2D object's command (zanim_menu.h's C2DAnimCmdHdr: SOCOM II's 16 bytes, the type the object's
+ * GetZAnimCmdType gave at 6, an argument at 8) */
+class C2DAnimCmdHdr {
+public:
+    _zanim_cmd_hdr header;   // 0x0
+    unsigned short node_ref_index;   // 0x4
+    unsigned char m_type;   // 0x6
+    unsigned short m_arg;   // 0x8
+    unsigned char _a[0x10 - 0xa];
+};   // 0x10 bytes
+
+_zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
+bool zrdr_findint(const _zrdr *rdr, const char *tag, int *out, int n);
+void *_calloc(unsigned int n, unsigned int size, const char *file, int line);
+
 /* a UI variable as the plain bitmap reads it: its type (3 a string) and the string */
 class CUIVariable {
 public:
@@ -142,6 +165,7 @@ public:
     virtual ~C2DButton();
     /* slot 26: the background's alpha, a fraction of 128 (0x37C2C0) */
     virtual void SetBackgroundAlpha(float a) { m_background.SetTrans(128.0f * a); }
+    virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
     virtual int GetZAnimCmdType(const char *name);
     virtual void UpdateUIVar(CUIVariable *var);
 
@@ -196,6 +220,7 @@ class CSliderBar : public C2DButton {
 public:
     virtual ~CSliderBar();
     virtual void UpdateUIVar(CUIVariable *var);
+    virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
     virtual int GetZAnimCmdType(const char *name);
 
     float m_value;   // 0x440
@@ -212,6 +237,7 @@ public:
 class CRadioStrip : public C2DButton {
 public:
     virtual ~CRadioStrip();
+    virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
     virtual int GetZAnimCmdType(const char *name);
 
     int m_choice;   // 0x440
@@ -361,6 +387,26 @@ void CPlainBmp::SetMapOffset(int x, int y)
     SetPos(x, y, x + m_iWidth, y + m_iHeight);
 }
 
+/* SETVALUE's value as a command (SOCOM 1's; SOCOM II's record is 16 bytes and keeps the value as a
+ * halfword), anything else the button's */
+C2DAnimCmdHdr *CSliderBar::ParseZAnimCmd(_zrdr *rdr)
+{
+    C2DAnimCmdHdr *cmd;
+
+    if (zrdr_findtag(rdr, "SETVALUE")) {
+        int value = 0;
+
+        zrdr_findint(rdr, "SETVALUE", &value, 1);
+        cmd = (C2DAnimCmdHdr *)_calloc(1, sizeof(C2DAnimCmdHdr), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(C2DAnimCmdHdr);
+        cmd->m_type = GetZAnimCmdType("SETVALUE");
+        cmd->m_arg = value;
+    } else
+        cmd = C2DButton::ParseZAnimCmd(rdr);
+    return cmd;
+}
+
 /* the counter's commands after the renderable string's two: Start and Finish */
 int C2DCounter::GetZAnimCmdType(const char *name)
 {
@@ -404,6 +450,26 @@ int CSliderBar::GetZAnimCmdType(const char *name)
     if (!strcasecmp("SetValue", name))
         return C2DButton::GetZAnimCmdType(0) + 1;
     return C2DButton::GetZAnimCmdType(name);
+}
+
+/* SELECTION's INDEX as a command (the slider's twin, INDEX read inside the SELECTION tag),
+ * anything else the button's */
+C2DAnimCmdHdr *CRadioStrip::ParseZAnimCmd(_zrdr *rdr)
+{
+    C2DAnimCmdHdr *cmd;
+    int index = 0;
+    _zrdr *sel = zrdr_findtag(rdr, "SELECTION");
+
+    if (sel) {
+        zrdr_findint(sel, "INDEX", &index, 1);
+        cmd = (C2DAnimCmdHdr *)_calloc(1, sizeof(C2DAnimCmdHdr), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(C2DAnimCmdHdr);
+        cmd->m_type = GetZAnimCmdType("SELECTION");
+        cmd->m_arg = index;
+    } else
+        cmd = C2DButton::ParseZAnimCmd(rdr);
+    return cmd;
 }
 
 /* the radio strip's command after the button's two: Selection (its count two) */
