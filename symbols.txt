@@ -10204,13 +10204,13 @@
 0x005629B0 0x58 func_005629B0  # OVL2
 0x00562A10 0xB4 func_00562A10  # OVL2
 0x00562AD0 0xA0 SetupAnimations__11CSealCtrlAiFv  # OVL2; s1:calls (CSealCtrlAi::OnMissionStart calls it first, where SOCOM 1's calls SetupAnimations__11CSealCtrlAiFv) -- the SEAL lane, round 4
-0x00562B70 0x110 func_00562B70  # OVL2
+0x00562B70 0x110 DoSetStance__11CSealCtrlAiF11SEAL_STANCE  # OVL2; s1:callee by hand (SetStance's tail call, as SOCOM 1's SetStance calls DoSetStance; compares the stance at 0x278 first, returns a bool) -- the SEAL lane, round 9
 0x00562C80 0x33C func_00562C80  # OVL2
 0x00562FC0 0x84 func_00562FC0  # OVL2
 0x00563050 0xB0 func_00563050  # OVL2
 0x00563100 0xA0 func_00563100  # OVL2
-0x005631A0 0xC func_005631A0  # OVL2
-0x005631B0 0xE4 func_005631B0  # OVL2
+0x005631A0 0xC SetStance__11CSealCtrlAiF11SEAL_STANCE  # OVL2; s1:calls by hand (CTStance::Begin calls it where SOCOM 1's calls SetStance; it tail-calls 0x562B70 as SOCOM 1's SetStance calls DoSetStance), after storing the stance at 0x279 and clearing 0x280 -- the SEAL lane, round 9
+0x005631B0 0xE4 SetDesiredStance__11CSealCtrlAiF11SEAL_STANCEfb  # OVL2; ours (new in SOCOM II; seal_ai.cpp): CTStance::Begin calls it with the command's stance, true and CAiTimer::infinite, End with (prone, true, 0); sets the body's byte at 0x375 and restarts the AI's CAiTimer at 0x364 when the stance is prone, the target at 0x67C is held with bit 9 of 0x6A8, or forced -- the SEAL lane, round 9; (the float second: the prologue copies the parameters in reverse declaration order, mov.s first)
 0x005632A0 0x1C8 func_005632A0  # OVL2
 0x00563470 0x734 func_00563470  # OVL2
 0x00563BB0 0x8 func_00563BB0  # OVL2
@@ -10263,7 +10263,7 @@
 0x0056C340 0x208 func_0056C340  # OVL2
 0x0056C550 0x698 func_0056C550  # OVL2
 0x0056CBF0 0x49C SetAiMode__11CSealCtrlAiF7AI_MODE  # OVL2; s1:calls by hand (CSealCtrlAi::OnMissionEnd calls it with 2 at the place SOCOM 1's calls SetAiMode__11CSealCtrlAiF7AI_MODE, last, after ClearAiState and the anim's Stop; OnMissionEnd byte-exact against it)
-0x0056D090 0x30 func_0056D090  # OVL2
+0x0056D090 0x30 RestoreAiMode__11CSealCtrlAiFv  # OVL2; ours (new in SOCOM II): CTHold::End calls it where SOCOM 1's called SetAiMode; SetAiMode with the signed byte at 0x3F5, then 1 stored there -- the SEAL lane, round 9
 0x0056D0C0 0x1E8 func_0056D0C0  # OVL2
 0x0056D2B0 0x1A0 func_0056D2B0  # OVL2
 0x0056D450 0xD4 func_0056D450  # OVL2

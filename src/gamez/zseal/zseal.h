@@ -582,10 +582,15 @@ public:
     int m_270;   // 0x270: a count 0x56D450 sets with the cell it finds (the names ours)
     void *m_274;   // 0x274: that cell
     SEAL_STANCE m_stance;   // 0x278 (SOCOM 1's 0x285)
+    SEAL_STANCE m_stance_asked;   // 0x279: the stance SetStance was last asked for (the names ours)
     float m_stance_delay;   // 0x27c (SOCOM 1's 0x288)
-    unsigned char _280[0x3f4 - 0x280];
+    int m_280;   // 0x280: cleared by SetStance (and DoSetStance)
+    unsigned char _284[0x364 - 0x284];
+    CAiTimer m_stance_timer;   // 0x364: restarted with each desired stance (0x5631B0; the name ours)
+    unsigned char _370[0x3f4 - 0x370];
     unsigned char m_3f4;   // 0x3f4: a mode (7 keeps the AI-map collision off; the name ours)
-    unsigned char _3f5[0x41c - 0x3f5];
+    AI_MODE m_3f5;   // 0x3f5: the mode RestoreAiMode returns to, then 1 (a byte enum, copied with lb; the name ours)
+    unsigned char _3f6[0x41c - 0x3f6];
     /* the state on top of the stack (SOCOM 1's; OVL2 0x5F5FD0, 0x5F6010, the AI-states lane's
      * seal_aistate.cpp defines them -- which is const by SOCOM 1's order) */
     CAiStateStack m_stateStack;   // 0x41c (SOCOM 1's 0x324; 0x20 bytes in SOCOM II)
@@ -608,7 +613,9 @@ public:
     float m_674;   // 0x674: a range, and its square
     float m_678;   // 0x678
     unsigned char m_67c[4];   // 0x67c: an object the state CAiSPursue tests (0x60A850)
-    unsigned char _680[0x6f4 - 0x680];
+    unsigned char _680[0x6a8 - 0x680];
+    unsigned int m_6a8;   // 0x6a8: the target's flags (bit 9 lets a held target interrupt: the kit lane)
+    unsigned char _6ac[0x6f4 - 0x6ac];
     /* a range and its goal, set together unless the range stands at 42 (0x570D90; the names ours) */
     float m_6f4;   // 0x6f4
     float m_6f8;   // 0x6f8
@@ -653,6 +660,18 @@ public:
      * task's own arguments (SOCOM 1's; OVL2 0x561F00) */
     bool SetupAnimations();
     bool ActivateEx(SEAL_TASK task, bool b, ...);
+    /* the stance the body is to take, set when prone, when a target is held with its bit 9, or
+     * when forced, its timer restarted with the delay (OVL2 0x5631B0, new in SOCOM II: CTStance's
+     * Begin and End call it; the name ours) */
+    void SetDesiredStance(SEAL_STANCE stance, float delay, bool force);
+    /* a stance taken: remembered, the word at 0x280 cleared, then DoSetStance (SOCOM 1's SetStance
+     * and DoSetStance: CTStance::Begin calls the first, which tail-calls the second; OVL2 0x5631A0,
+     * 0x562B70) */
+    bool SetStance(SEAL_STANCE stance);
+    bool DoSetStance(SEAL_STANCE stance);
+    /* the mode saved at 0x3F5 set again, the saved one made 1 (OVL2 0x56D090, new in SOCOM II:
+     * CTHold::End calls it where SOCOM 1's called SetAiMode; the name ours) */
+    void RestoreAiMode();
     virtual void OnMissionStart();
     /* the valves: a name for each (inline everywhere in SOCOM II: its three callers expand it),
      * the valve of a name, the valve (SOCOM 1's; OVL2 0x574730, 0x5621C0) */
@@ -961,7 +980,8 @@ public:
     CZBodyPart *m_root;   // 0x2e8 (SOCOM 1's 0x26c)
     unsigned char _2ec[0x374 - 0x2ec];
     SEAL_STATE m_desiredState;   // 0x374 (SOCOM 1's 0x304; the HUD's pose bitmap reads it)
-    unsigned char _375[0x3b0 - 0x375];
+    SEAL_STANCE m_desiredStance;   // 0x375: the stance the AI asks for (0x5631B0; the name ours)
+    unsigned char _376[0x3b0 - 0x376];
     void *m_select;   // 0x3b0: a TASK_SELECT (SOCOM 1's 0x318), the AI's tasks' argument
     unsigned char _3b4[0x400 - 0x3b4];
     zdb::IntersectStruct m_last_altitude;   // 0x400 (SOCOM 1's 0x320)

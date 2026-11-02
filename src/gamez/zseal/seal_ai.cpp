@@ -511,6 +511,37 @@ extern "C" void *func_00558AA0(CAiRowTable *t, unsigned char i)
 /* (OVL2 0x60A850, unowned: a test of the AI's object at 0x67C) */
 extern "C" bool func_0060A850(void *p);
 
+/* the AI's target held, with its bit 9 (an inline bool, the kit lane's TargetHeld: the target
+ * materialises the `&&`) */
+static inline bool TargetHeld(CSealCtrlAi *ai)
+{
+    return func_0060A850(ai->m_67c) && (ai->m_6a8 & 0x200);
+}
+
+/* (OVL2 0x56D090) */
+void CSealCtrlAi::RestoreAiMode()
+{
+    SetAiMode(m_3f5);
+    m_3f5 = (AI_MODE)1;
+}
+
+/* (OVL2 0x5631A0) */
+bool CSealCtrlAi::SetStance(SEAL_STANCE stance)
+{
+    m_stance_asked = stance;
+    m_280 = 0;
+    return DoSetStance(stance);
+}
+
+/* (OVL2 0x5631B0) */
+void CSealCtrlAi::SetDesiredStance(SEAL_STANCE stance, float delay, bool force)
+{
+    if (stance == STANCE_PRONE || TargetHeld(this) || force) {
+        ((CZSealBody *)m_entity)->m_desiredStance = stance;
+        m_stance_timer.Set(delay);
+    }
+}
+
 /* CAiSPursue's slot 0x14 (new in SOCOM II): the pursuit stops unless the AI's object says so,
  * and the Tick's result (OVL2 0x55A760; an int, handed the sub-stack's state, as ai_states.h's slot
  * 0x14 -- the kit lane, round 6). ai_states.h's Result() gives the target's `movz` and the
