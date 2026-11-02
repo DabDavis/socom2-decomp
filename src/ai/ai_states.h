@@ -18,6 +18,7 @@
 
 #include "../gamez/zmath/zmath.h"
 #include "../gamez/zentity/zentity.h"
+#include "../gamez/zseal/aitimer.h"
 
 class CSealCtrlAi;
 class CAiEvent;
@@ -382,8 +383,9 @@ public:
 
 class CAiSBreach : public CAiState {
 public:
-    /* its timer, the last member, built by hand where the member's constructor would run */
-    CAiSBreach() : CAiState(AI_STATE_BREACH) { func_005EA550(m_timer, 0.0f); }
+    /* its timer a CAiTimer member: Create, inlining this one level, calls its constructor out of
+     * line (0x5EA550) as the target does, and seal_aistate.cpp emits that copy */
+    CAiSBreach() : CAiState(AI_STATE_BREACH), m_timer(0.0f) {}
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual bool CanPursue(CSealCtrlAi *ai) const { return false; }
@@ -401,7 +403,7 @@ public:
     unsigned int m_78;   // 0x78
     class CValve *m_valve;   // 0x7c: set to 3 when the breach begins (unless the SEAL is dead)
     CAiMapLoc m_80;   // 0x80
-    unsigned char m_timer[0xc];   // 0x84: a CAiTimer (Create builds it with 0.0)
+    CAiTimer m_timer;   // 0x84 (Create builds it with 0.0, its constructor out of line: 0x5EA550)
     unsigned int m_90;   // 0x90 (0x94 bytes, Create's new)
 };
 
@@ -655,13 +657,13 @@ public:
 
 class CAiSRush : public CAiState {
 public:
-    /* its timer, the last member, built by hand where the member's constructor would run */
-    CAiSRush() : CAiState(AI_STATE_RUSH) { func_005EA550(m_timer, 0.0f); }
+    /* its timer a CAiTimer member (see CAiSBreach) */
+    CAiSRush() : CAiState(AI_STATE_RUSH), m_timer(0.0f) {}
     virtual ~CAiSRush();
 
     unsigned char _58[0x60 - 0x58];
     CAiMapLoc m_60;   // 0x60
-    unsigned char m_timer[0xc];   // 0x64: a CAiTimer (Create builds it with 0.0; 0x70 bytes)
+    CAiTimer m_timer;   // 0x64 (Create builds it with 0.0; 0x70 bytes)
 };
 
 class CAiSFlee : public CAiState {
@@ -728,8 +730,8 @@ public:
 
 class CAiSStunResponse : public CAiState {
 public:
-    /* its timer, the last member, built by hand where the member's constructor would run */
-    CAiSStunResponse() : CAiState(AI_STATE_STUNRESPONSE) { func_005EA550(m_timer, 0.0f); }
+    /* its timer a CAiTimer member (see CAiSBreach) */
+    CAiSStunResponse() : CAiState(AI_STATE_STUNRESPONSE), m_timer(0.0f) {}
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual bool CanAttack() const { return false; }
     virtual ~CAiSStunResponse();
@@ -738,7 +740,7 @@ public:
     int m_5c;   // 0x5c (-1 on a reset)
     float m_wait;   // 0x60: a random wait (under 0.75) on entry (SOCOM 1's at 0x30)
     unsigned int m_64;   // 0x64
-    unsigned char m_timer[0xc];   // 0x68: a CAiTimer (Create builds it with 0.0)
+    CAiTimer m_timer;   // 0x68 (Create builds it with 0.0)
 };
 
 class CAiSHold : public CAiState {

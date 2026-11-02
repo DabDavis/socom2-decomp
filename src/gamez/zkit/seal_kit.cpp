@@ -541,6 +541,17 @@ bool CZKit::WeaponInfoChanged()
     return false;
 }
 
+/* the hot-swap flag (OVL2 0x5BC2B0, then its setter 0x5BC2A0) */
+bool CZKit::GetHotSwap()
+{
+    return m_hotswap;
+}
+
+void CZKit::SetHotSwap(bool b)
+{
+    m_hotswap = b;
+}
+
 /* a pickup's request answered: the flag down, the wait cleared (OVL2 0x5B99D0) */
 void CZKit::PendingPickupHandled()
 {
