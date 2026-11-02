@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-strict-aliasing */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-strict-aliasing -funroll-loops */
 /* Small recogniser accessors (OVL2 0x4D52F8, 0x4E5950, 0x509700): ScanSoft's recogniser, prebuilt
  * with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing (README "The GCC front"). Names are SOCOM 1's
  * (s1:exact). CreateCtxTree makes no sibling call: 2.96 declines one where the return types

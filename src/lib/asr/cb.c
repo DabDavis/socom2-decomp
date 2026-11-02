@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-strict-aliasing */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-strict-aliasing -funroll-loops */
 /* The recogniser's engine callbacks and second pass (OVL2 0x4DE910-0x4DF2C8): ScanSoft's
  * speech recogniser, prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing (README "The GCC
  * front": casrStoreSegmentation's store stays above the load of the next node). Names are

@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-strict-aliasing */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-strict-aliasing -funroll-loops */
 /* The recogniser's external audio source (OVL2 0x4C6118-0x4C619C): ScanSoft's recogniser,
  * prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing (README "The GCC front"). Names are
  * SOCOM 1's (s1:align). The samples come from a callback the host registers. */
