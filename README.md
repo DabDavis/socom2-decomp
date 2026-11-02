@@ -1647,6 +1647,21 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the kit and AI states, round 11** (seal_kit.cpp's weapon modes and indices, seal_sensors.cpp, ai::test):
+  - `x > 3` compiles to `slti at,x,4; bnez at`, `x >= 4` puts the test in v0; an `||` arm written
+    `return delay;` keeps its own `b end` block, an else-if chain assigning a result merges it;
+  - `r = 0.5f; r *= a + b;` in an if/else gives the false arm's trailing nop and the half-first
+    operand order (GetFireDelay); function-local `static float` constants match 8-byte-spaced data by
+    content;
+  - an inline that modifies its parameter copies it at entry: the copy taken into a local after the
+    first test lands where the target has it (kit.h's wrap, GetAmmoIndex);
+  - stores through `T *p = &arr[i]` re-read a global loop bound each pass (no unrolling); indexed
+    stores into a separate global unroll 8x;
+  - MW 2.4 inlined template functions MW 3.0 calls out of line: an explicit instantiation emits the
+    instance until its caller is written (ai::test<int>/<float> 0x5DECB0/0x5DED70 for ai::PARAM's
+    Tick 0x5D4770);
+  - seal_kit.cpp ends in SOCOM 1's order (sealSaveFireModes, CSavedFireModeInfo(), the CAiWepHint
+    statics), seal_sensors.cpp starts at 0x5C9400; __sinit_seal_kit.cpp is 0x668DB0 (named).
 - **Tells from the UI, round 8** (util_loc.cpp, zui_hangul.cpp, zui_skbkeys.cpp, zui_skbview.cpp):
   - a null-safe string compare `a ? (b ? strcasecmp(a, b) : 1) : -1` gives the target's branches;
     the if/return form is 8 bytes longer; `h < 0 ? -h % 17 : h % 17` gives two divides, `abs(h) % 17`

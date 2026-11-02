@@ -13365,7 +13365,7 @@
 0x00668940 0x29C func_00668940  # OVL2 data area; a static initialiser
 0x00668BE0 0x30 func_00668BE0  # OVL2 data area; a static initialiser; s1~ node_util.cpp (names 0.53); the same words as __sinit_node_util.cpp (0x402960) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x00668C10 0x194 func_00668C10  # OVL2 data area; a static initialiser; s1~ seal_control.cpp (shape 0.20, a hint)
-0x00668DB0 0x94 func_00668DB0  # OVL2 data area; a static initialiser; s1~ zsnd_csndinstance.cpp (shape 0.49, a hint)
+0x00668DB0 0x94 __sinit_seal_kit.cpp  # OVL2 data area; a static initialiser; s1~ zsnd_csndinstance.cpp (shape 0.49, a hint); a static initialiser: seal_kit.cpp's (the kit lane's round 11: the same construct-array call as SOCOM 1's initialiser -- the iostream init objects, the 30 saved fire modes at 0x66B580 through their constructor 0x5C9230, then two zeroed words)
 0x00668E50 0xE0 func_00668E50  # OVL2 data area; a static initialiser
 0x00668F30 0x24 func_00668F30  # OVL2 data area; a static initialiser
 0x00668F60 0x50 func_00668F60  # OVL2 data area; a static initialiser; s1~ zwep_global.cpp (shape 0.48, a hint)
