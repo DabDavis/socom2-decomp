@@ -196,6 +196,21 @@ extern "C" void func_00544CF0(CSealStats *s, const CZSealBody *seal)
         s->m_count[0x10 / 2]++;
 }
 
+/* a hit: counted (a second count when the two share a team) and, when it counts, the hit
+ * percentage made again from the hits and the shots (OVL2 0x5458A0; SOCOM 1's Hit by its shape --
+ * the counters converted as unsigned ints) */
+extern "C" void func_005458A0(CSealStats *s, const CZSealBody *seal, const CZSealBody *other)
+{
+    s->m_count[4 / 2]++;
+    if (other->m_team & seal->m_team)
+        s->m_count[6 / 2]++;
+    if (StatCounts(seal)) {
+        unsigned int shots = s->m_count[8 / 2];
+
+        s->m_hit_percent = shots ? (float)(unsigned int)s->m_count[4 / 2] / (float)shots : 0.0f;
+    }
+}
+
 /* a kill: counted, the score up two and, for the local player in a squad whose order is 19, a
  * second counter; the game's kill valve stepped (OVL2 0x545290; the killer's credit, 0x59EE20, calls
  * it) */
@@ -215,15 +230,41 @@ extern "C" void func_00545290(CSealStats *s, const CZSealBody *seal)
     func_00544D60(seal, 0);
 }
 
+/* a SEAL's stats, and a stats event told to a SEAL (member pointers: 12 bytes, {0, -1, function}
+ * for these) */
+typedef CSealStats *(CZSealBody::*SEAL_STATS_GETTER)();
+typedef void (CSealStats::*SEAL_STATS_EVENT)(const CZSealBody *seal, bool teammate);
+
+/* the entity as a SEAL, if it is one */
+static inline CZSealBody *AsSeal(CEntity *e)
+{
+    return e && e->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)e : 0;
+}
+
+/* the stats' event handed to the SEAL's teammates: each living SEAL of its team but itself has its
+ * stats (the first member pointer) given the event (the second, called with true) -- OVL2 0x545D80,
+ * new in SOCOM II (the stats themselves unused). Out of line: both callers call it. The list walked
+ * through a const view, which keeps the target's iterator temporaries in the frame */
+#pragma auto_inline off
+extern "C" void func_00545D80(CSealStats *s, const CZSealBody *seal, SEAL_STATS_GETTER stats,
+                              SEAL_STATS_EVENT event)
+{
+    const CEntityList &list = CEntity::m_list;
+
+    for (CEntityList::const_iterator i = list.begin(); i != list.end(); ++i) {
+        CZSealBody *other = AsSeal(*i);
+
+        if (other && seal != other && other->m_isAlive && (other->m_team & seal->m_team))
+            ((other->*stats)()->*event)(other, true);
+    }
+}
+#pragma auto_inline reset
+
 extern "C" {
-/* the stats' event handed to the SEAL's teammates: each SEAL of its team but itself, with the bit
- * at 0xE1 set, has its stats (the first member pointer) given the event (the second, called with
- * true) -- OVL2 0x545D80, not written yet */
-void func_00545D80(CSealStats *s, const CZSealBody *seal, const void *stats, const void *event);
-/* the two member-pointer constants (OVL2 data, {0, -1, function}): CZSealBody's stats (0x545890)
- * and this event (0x545650) */
-extern const unsigned char data_0064FD58[12];
-extern const unsigned char data_0064FD68[12];
+/* the two member-pointer constants (OVL2 data): CZSealBody's stats (0x545890) and this event
+ * (0x545650) */
+extern const SEAL_STATS_GETTER data_0064FD58;
+extern const SEAL_STATS_EVENT data_0064FD68;
 }
 
 /* a bomb's event (CZBombState::ChangeBombState calls it): for the SEAL itself, the score up two when
@@ -241,6 +282,41 @@ extern "C" void func_00545650(CSealStats *s, const CZSealBody *seal, bool teamma
         if (theNetwork.m_9 && mode1) {
             s->m_count[0x32 / 2]++;
             func_00545D80(s, seal, data_0064FD58, data_0064FD68);
+        }
+    } else
+        s->m_count[0x32 / 2]++;
+}
+
+extern "C" {
+/* this event's member-pointer constants (OVL2 data): CZSealBody's stats (0x545890) and 0x545750 */
+extern const SEAL_STATS_GETTER data_0064FD38;
+extern const SEAL_STATS_EVENT data_0064FD48;
+}
+
+/* the other bomb event (ChangeBombState calls it): the score up four in game mode 1, else two, when
+ * it counts; the score passed on, a counter, and online in modes 1 and 2 the teammates told; for a
+ * teammate told, only their counter (OVL2 0x545750) */
+extern "C" void func_00545750(CSealStats *s, const CZSealBody *seal, bool teammate)
+{
+    if (!teammate) {
+        bool mode1 = false;
+        bool mode2 = false;
+
+        if (data_00437CE8) {
+            mode1 = data_00437CE8->m_mode == 1;
+            mode2 = data_00437CE8->m_mode == 2;
+        }
+        if (StatCounts(seal)) {
+            if (mode1)
+                s->m_score += 4;
+            else
+                s->m_score += 2;
+        }
+        func_00544D60(seal, 1);
+        s->m_count[0x1a / 2]++;
+        if (theNetwork.m_9 && (mode1 || mode2)) {
+            s->m_count[0x32 / 2]++;
+            func_00545D80(s, seal, data_0064FD38, data_0064FD48);
         }
     } else
         s->m_count[0x32 / 2]++;
@@ -609,6 +685,21 @@ void CZSealBody::NetworkPlayerCreate()
     seal->SetTeamMask(data_00441470);
     seal->m_vehicle_index = 0;
     seal->SetDisplayName(name);
+}
+
+/* a player's targets forgotten as seen: each one's bit 9 cleared and its visibility zeroed (OVL2
+ * 0x544B60, new in SOCOM II: SetCurZoomState calls it twice) */
+void CZSealBody::ResetTargetsSeen()
+{
+    if (IsPlayer()) {
+        /* (the list through a local: the loop re-reads its end through it, as the target's does) */
+        CTargetList *list = &m_targets;
+
+        for (CTargetList::iterator i = list->begin(); i != list->end(); ++i) {
+            i->m_flags &= ~0x200;
+            i->m_visibility = 0.0f;
+        }
+    }
 }
 
 /* the life the network reports set: a remote SEAL coming back up (1) from down (2 or 3) is marked

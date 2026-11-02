@@ -772,6 +772,9 @@ public:
      * its respawn (OVL2 0x544210, new in SOCOM II: IncrementalUpdateRemoteSeal calls it; the name
      * ours) */
     void SetNetLife(unsigned char life);
+    /* a player's targets forgotten as seen (OVL2 0x544B60, new in SOCOM II: SetCurZoomState calls
+     * it; the name ours) */
+    void ResetTargetsSeen();
     /* thermal vision: the turret the SEAL works (the entity given, or its own at 0xEB8) if it is
      * one; whether the SEAL sees thermally -- the goggles (item 195) when it works nothing, the
      * turret's thermal scope when it works one; whether it works a turret with that scope; the
