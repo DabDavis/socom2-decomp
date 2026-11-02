@@ -1643,6 +1643,21 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the game states, round 16** (fts_action.cpp, CGTree::FindNode, the graph destructors, CMsgEditor):
+  - a member list whose destructor tests `this` four times before the erase is a class of its own
+    over `list<T *>` (CGNodeList, CGEdgeList: ~CGNode, ~CGRoute, ~CGraph);
+  - a `std::transform` op written as an inline function and passed by pointer inlines fully, with
+    no out-of-line copy; a functor passed by value leaves an `sb zero` temporary; MW 3.0 takes a
+    function template's address only through an explicit cast;
+  - for an unsigned length `len > 1 &&` branches on `sltiu at`, `len >= 2 &&` materialises the test;
+  - `T *a; bool b; U *c = f(); a = ...; b = true;` gives `c` the highest number while `a` and `b`
+    are still computed after the call;
+  - `buf[len] = c; buf[++len] = 0;` keeps a separate `len + 1`, where `buf[len + 1]` folds into the
+    previous store's address; virtual calls on member objects stay virtual;
+  - hud_main.cpp's `theMission.m_messages4` (+0x1060) is a CMsgEditor, not a C2DMessage_Q;
+    __sinit_fts_player.cpp (0x400330) is emitted byte-exact but for ~CSpawners (0x2B4030, open);
+    CGTree::Destroy's inner self-inlined copy is one inline level too shallow (it wants SOCOM 1's
+    list shape: tail() 0x2D2530, the node/sentinel constructors 0x2D2520/0x2D2510).
 - **Tells from the AI core, round 10** (CAiMaps::Tile/SetOccupied, the overlay walks, the look/cover finders):
   - a const-walk inline called on a global object (`ai::overlays.Contains`) lets MW fold the constant
     `this` and drop each pass's store of end(); walking through `const T *l = this;` keeps the

@@ -8528,7 +8528,7 @@
 0x004000C0 0x34 __sinit_compass.cpp  # OVL1 data area; a static initialiser; the compass unit's initialiser (the entity lane): theCompass's three words zeroed, ~CCompass registered with __register_global_object; the file name is ours
 0x00400100 0x5C func_00400100  # OVL1 data area; a static initialiser; s1~ fts_main.cpp (shape 0.47, a hint)
 0x00400160 0x1D0 func_00400160  # OVL1 data area; a static initialiser
-0x00400330 0x68 func_00400330  # OVL1 data area; a static initialiser
+0x00400330 0x68 __sinit_fts_player.cpp  # OVL1 data area; a static initialiser; a static initialiser: fts_player.cpp's (the states lane's round 16: the unit emits it byte-exact but for its reference to ~CSpawners 0x2B4030, still open)
 0x004003A0 0x3C func_004003A0  # OVL1 data area; a static initialiser; s1~ fts_missioncam.cpp (shape 0.45, a hint)
 0x004003E0 0x20 func_004003E0  # OVL1 data area; a static initialiser
 0x00400400 0x244 func_00400400  # OVL1 data area; a static initialiser
