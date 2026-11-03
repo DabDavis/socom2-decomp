@@ -1285,6 +1285,46 @@ extern "C" bool func_005857E0(CZSealBody *seal)
     return true;
 }
 
+extern "C" {
+/* an AnimTypes static (OVL1 data 0x3DEF08, 0x2C0 past Stand2Prone: SOCOM 1's list does not reach it) */
+extern short data_003DEF08;
+}
+
+/* not in water deeper than a depth (an inline: the target builds the answer in v0 -- the false arm
+ * first, the true one a `daddiu` at the branches' target -- and then tests it) */
+static inline bool ShallowWater(CZSealBody *seal, float depth)
+{
+    bool r;
+
+    if (seal->m_inwater && !(seal->m_waterdepth <= depth))
+        r = false;
+    else
+        r = true;
+    return r;
+}
+
+/* whether the SEAL may break into its run: not in that anim's blend, carrying nobody, in no water
+ * deeper than 2, not changing weapons, moving at 30 or more, and as 0x589900 allows (OVL2 0x584B00, new
+ * in SOCOM II: CSealCtrl::PreTick, 0x552D60 and 0x609190 ask it; the name unknown). 0x589900 tested
+ * and true returned, as 0x57E130 does: returning its answer puts the call's argument in the speed test's
+ * delay slot */
+extern "C" bool func_00584B00(CZSealBody *seal)
+{
+    if (seal->IsCurrentBlend((AnimType)data_003DEF08))
+        return false;
+    if (seal->m_carry)
+        return false;
+    if (!ShallowWater(seal, 2.0f))
+        return false;
+    if (seal->IsChangingWeapons(true))
+        return false;
+    if (seal->m_velM.x * seal->m_velM.x + seal->m_velM.y * seal->m_velM.y + seal->m_velM.z * seal->m_velM.z < 900.0f)
+        return false;
+    if (!func_00589900(seal))
+        return false;
+    return true;
+}
+
 /* whether the SEAL counts: not a remote SEAL with bit 9 of 0x1060 set (OVL2 0x57DFE0, new in SOCOM
  * II; 0x5AF930 asks it) */
 extern "C" bool func_0057DFE0(CZSealBody *seal)
