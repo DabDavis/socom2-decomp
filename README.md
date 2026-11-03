@@ -1675,6 +1675,36 @@ builds, adapting flags the older builds reject) is build/scratch/rt-r1/mwsweep.p
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the AI core, round 14** (CCharacterType's Open, Parse, constructor, InitMultiplayerMessages):
+  - an inline setter taking a class BY VALUE builds the parameter on the stack (four floats, then two) and
+    assigns member by member; a plain assignment or a returned copy is scalarised (the constructor's
+    SetVoiceFont);
+  - a float array copied into a CPnt3D member as `*(CPnt3D *)arr` loads the owner once and reads elements
+    1-2 through computed addresses; field-by-field stores reload the owner before each store (Open's gear
+    offset and rotation);
+  - `return t == 3 ? strcmp(a, b) == 0 : false;` in an inline bool gives `xor v0,v0,zero; sltiu; andi
+    0xff` before the branch, the if/else and `&&` forms do not (Open's ':' test); `state = p ? 1 :
+    -state;` leaves the join unpadded where the if/else pads it;
+  - a count read through a reference-taking min is reloaded; min's result taken into a reference before
+    `T *p = data_` keeps the copy loop unrolled 8x, `p` declared first does not (the class assign);
+  - -inline auto inlined the 12-statement AddAnimSetName into Parse although its push_back calls an
+    out-of-line insert: it needs `#pragma auto_inline off` (round 13's "the insert keeps it out" was
+    never measured);
+  - SOCOM II's HEALTH_PARAMS is three float[6] arrays (health, armour, maxima; the implicit assignment
+    copies each four then two); zchar.h's MultiplayerMsg is SOCOM 1's DWARF layout; include/vector gains,
+    additively, the class `__vector_imp`'s operator=, its out-of-class range assign and a
+    reference-taking `__vector_min`;
+  - OVL2 copies marked by words and calls: 0x540D00 of the template replace 0x1EE780 (the SEALs' string
+    constructor copy 0x58CE70 calls it at +0x54 where OVL1's 0x2396F0 calls 0x1EE780 -- 0x58CE70 matches
+    with the mark), 0x541240 of 0x1EF400, 0x528C30/0x529030 of the 4-byte pod's operator=/assign;
+  - NAMING, open: the class and pod range assigns are spelled `assign` (include/vector, row 0x259D20,
+    0x53F370, 0x53F730), but SOCOM 1's symtab calls every one of them `do_assign` (`do_assign<PC3LOD>`
+    0x24B2E0, `do_assign<PC14CCharacterWeap>` 0x1D7700, the pod's `do_assign<PCUi>` 0x1FC880) -- the MSL
+    headers' next round renames them;
+  - open: the LODs' class insert 0x540410 (0x590 against 0x500: the target calls the reallocation
+    temporary's destructor 0x540A50 out of line, ours inlines it -- the class inserts' generation-order
+    question); the LOD deleter's clear 0x540990 and destructor 0x540A50 are emitted but miss (our clear
+    calls the string destructor out of line where the target inlines it; both rows stay matched as drafts).
 - **Tells from the SEALs, round 14** (CEntity's slots 0x5C/0x64, seal_ai.cpp's small rows, seal_cfg.cpp's lookups):
   - A RECURSIVE INLINE'S OUT-OF-LINE COPY INLINES ITSELF EXACTLY AS MANY TIMES AS THE INLINE DEPTH (7, 8
     and 9 give that many copies): CSealUnit::GetTop's copy (0x561D20) shows eight, so seal_ai.cpp carries
