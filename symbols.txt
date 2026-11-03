@@ -1159,7 +1159,7 @@
 0x001BE3F8 0x30 addhour  # MAIN unaligned; s1:exact
 0x001BE428 0x24 subhour  # MAIN unaligned; s1:exact
 0x001BE450 0x8C AdjustTime  # MAIN; s1:exact
-0x001BE4E0 0x8 func_001BE4E0  # MAIN
+0x001BE4E0 0x8 sceScfGetGMTfromRTC  # MAIN; s1:order (the demo's libscf object 0x3AA6F8: between AdjustTime and sceScfGetLocalTimefromRTC, 8 bytes in both; AdjustTime(rtc, -540), JST to GMT)
 0x001BE4E8 0x48 sceScfGetLocalTimefromRTC  # MAIN unaligned; s1:exact
 0x001BE530 0x80 func_001BE530  # MAIN
 0x001BE5B0 0xEC func_001BE5B0  # MAIN
