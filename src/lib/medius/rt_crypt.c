@@ -73,7 +73,7 @@ extern void *memset(void *p, int c, unsigned int n);
 extern int rt_memory_allocate(void **ppMemory, unsigned long nSize);
 extern int rt_memory_free(void **ppMemory);
 extern unsigned int randomMT(void);
-extern void func_0062A5A8(RCState *pState, RCKey *pKey);
+extern void RCInitialize(RCState *pState, RCKey *pKey);
 extern void func_0062BC10(RSAKey *pPub, RSAKey *pPriv, void *pIn, void *pOut, int nLength);
 extern void func_0062BBE0(RSAKey *pKey, void *pIn, void *pOut, int nLength);
 
@@ -350,8 +350,8 @@ int KM_SetGameSessionKey(int nKMID, int nGameSessionID, RCKey *pKey)
         rt_memory_allocate((void **)&pKM->pSessionDecrypt, sizeof(RCState));
     pKM->nGameSessionID = nGameSessionID;
     *pKM->pGameSessionKey = *pKey;
-    func_0062A5A8(pKM->pSessionEncrypt, pKey);
-    func_0062A5A8(pKM->pSessionDecrypt, pKey);
+    RCInitialize(pKM->pSessionEncrypt, pKey);
+    RCInitialize(pKM->pSessionDecrypt, pKey);
     return 0;
 }
 
@@ -391,8 +391,8 @@ int KM_AddSymmetricKey(int nKMID, int nClientID, RCKey *pKey)
     if (pKC->pDecrypt == 0)
         rt_memory_allocate((void **)&pKC->pDecrypt, sizeof(RCState));
     *pKC->pSymmetricKey = *pKey;
-    func_0062A5A8(pKC->pEncrypt, pKey);
-    func_0062A5A8(pKC->pDecrypt, pKey);
+    RCInitialize(pKC->pEncrypt, pKey);
+    RCInitialize(pKC->pDecrypt, pKey);
     return 0;
 }
 
