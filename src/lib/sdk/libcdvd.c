@@ -55,7 +55,6 @@ extern void sceSifAddCmdHandler(u_int cid, void (*handler)(void *), void *data);
 extern int sceSifCallRpc(void *cd, u_int fno, u_int mode, void *send, int ssize, void *recv, int rsize,
                          void (*end)(void *), void *end_param);
 extern int sceSifCheckStatRpc(void *cd);
-extern int _sceCd_ncmd_prechk(int cmd);
 
 extern volatile int sceCdCbfunc_num;            /* the demo's globals (data.txt) */
 extern volatile int sceCdCbfunc_number;
@@ -77,8 +76,26 @@ extern int Init_seq;
 extern void (*data_001D5F88)(void *);           /* the power-off callback, its $gp and argument */
 extern int data_001D5F8C;
 extern void *data_001D5F90;
-extern char _sceCd_cd_ncmd[0x28];               /* the N- and S-command RPC clients */
-extern char _sceCd_cd_scmd[0x28];
+typedef struct {
+	int rpcd[4];
+	u_int command;
+	void *buff;
+	void *cbuff;
+	void (*func)(void *);
+	void *para;
+	void *serve;
+} sceSifClientData;
+
+extern sceSifClientData _sceCd_cd_ncmd;         /* the N- and S-command RPC clients */
+extern sceSifClientData _sceCd_cd_scmd;
+extern int ncmd_sema_keep_cmd;
+extern int scmd_sema_keep_cmd;
+extern int _ncmd_bind;
+extern int _scmd_bind;
+extern int PollSema(int sema_id);
+extern void sceSifInitRpc(u_int mode);
+extern int sceSifBindRpc(sceSifClientData *cd, u_int num, u_int mode);
+extern int sceCdSyncS(int mode);
 extern int data_001CA8C0[];                     /* the N commands' receive buffer */
 
 static void CB_DelayTh(int id, u_short time, void *arg)
@@ -289,13 +306,51 @@ static int PowerOffCB(void)
 	return 1;
 }
 
+int _sceCd_ncmd_prechk(int cmd)
+{
+	int i;
+
+	cmd_sem_init();
+	if (_sceCd_ncmd_semid != PollSema(_sceCd_ncmd_semid)) {
+		if (SCE_CD_debug > 0)
+			scePrintf("Ncmd fail sema cur_cmd:%d keep_cmd:%d\n", cmd, ncmd_sema_keep_cmd);
+		return 0;
+	}
+	ncmd_sema_keep_cmd = cmd;
+	ReferThreadStatus(my_thid, &data_001D5FA0);
+	if (sceCdSync(1)) {
+		SignalSema(_sceCd_ncmd_semid);
+		return 0;
+	}
+	sceSifInitRpc(0);
+	if (_ncmd_bind >= 0)
+		return 1;
+	while (1) {
+		if (sceSifBindRpc(&_sceCd_cd_ncmd, 0x80000595, 0) < 0) {
+			if (SCE_CD_debug > 0)
+				scePrintf("Libcdvd bind err N CMD\n");
+			i = 0x100000;
+			while (i--)
+				;
+			continue;
+		}
+		if (_sceCd_cd_ncmd.serve != 0)
+			break;
+		i = 0x100000;
+		while (i--)
+			;
+	}
+	_ncmd_bind = 0;
+	return 1;
+}
+
 int sceCdNcmdDiskReady(void)
 {
 	int ret;
 
 	if (_sceCd_ncmd_prechk(2) == 0)
 		return 0;
-	if (sceSifCallRpc(_sceCd_cd_ncmd, 14, 0, 0, 0, data_001CA8C0, 4, 0, 0) < 0) {
+	if (sceSifCallRpc(&_sceCd_cd_ncmd, 14, 0, 0, 0, data_001CA8C0, 4, 0, 0) < 0) {
 		SignalSema(_sceCd_ncmd_semid);
 		return 0;
 	}
@@ -309,11 +364,11 @@ int sceCdSync(int mode)
 	if (mode == 0) {
 		if (SCE_CD_debug > 0)
 			scePrintf("N cmd wait\n");
-		while (_sceCd_c_cb_sem || sceSifCheckStatRpc(_sceCd_cd_ncmd))
+		while (_sceCd_c_cb_sem || sceSifCheckStatRpc(&_sceCd_cd_ncmd))
 			sceCdDelayThread(60);
 		return 0;
 	}
-	if (_sceCd_c_cb_sem || sceSifCheckStatRpc(_sceCd_cd_ncmd))
+	if (_sceCd_c_cb_sem || sceSifCheckStatRpc(&_sceCd_cd_ncmd))
 		return 1;
 	return 0;
 }
@@ -323,9 +378,47 @@ int sceCdSyncS(int mode)
 	if (mode == 0) {
 		if (SCE_CD_debug > 0)
 			scePrintf("S cmd wait\n");
-		while (sceSifCheckStatRpc(_sceCd_cd_scmd))
+		while (sceSifCheckStatRpc(&_sceCd_cd_scmd))
 			sceCdDelayThread(60);
 		return 0;
 	}
-	return sceSifCheckStatRpc(_sceCd_cd_scmd);
+	return sceSifCheckStatRpc(&_sceCd_cd_scmd);
+}
+
+int _sceCd_scmd_prechk(int cmd)
+{
+	int i;
+
+	cmd_sem_init();
+	if (_sceCd_scmd_semid != PollSema(_sceCd_scmd_semid)) {
+		if (SCE_CD_debug > 0)
+			scePrintf("Scmd fail sema cur_cmd:%d keep_cmd:%d\n", cmd, scmd_sema_keep_cmd);
+		return 0;
+	}
+	scmd_sema_keep_cmd = cmd;
+	ReferThreadStatus(my_thid, &data_001D5FA0);
+	if (sceCdSyncS(1)) {
+		SignalSema(_sceCd_scmd_semid);
+		return 0;
+	}
+	sceSifInitRpc(0);
+	if (_scmd_bind >= 0)
+		return 1;
+	while (1) {
+		if (sceSifBindRpc(&_sceCd_cd_scmd, 0x80000593, 0) < 0) {
+			if (SCE_CD_debug > 0)
+				scePrintf("Libcdvd bind err S cmd\n");
+			i = 0x100000;
+			while (i--)
+				;
+			continue;
+		}
+		if (_sceCd_cd_scmd.serve != 0)
+			break;
+		i = 0x100000;
+		while (i--)
+			;
+	}
+	_scmd_bind = 0;
+	return 1;
 }
