@@ -19,6 +19,9 @@ extern "C" zdb::CNode *func_00311EA0(zdb::CNodeVector *v, int i);
 
 namespace zdb {
 
+/* the dot product in XZ */
+inline float DotXZ(const CPnt3D *a, const CPnt3D *b) { return a->x * b->x + a->z * b->z; }
+
 /* a strip vertex's position: the strip's origin (floats) plus the vertex's offset from it, shorts
  * in sixteenths */
 inline void GetVertexPos(CVisData *v, CPnt3D *p)
@@ -26,6 +29,22 @@ inline void GetVertexPos(CVisData *v, CPnt3D *p)
     p->x = ((float *)v->m_14)[0] + ((short *)v->m_vertex)[0] / 16.0f;
     p->y = ((float *)v->m_14)[1] + ((short *)v->m_vertex)[1] / 16.0f;
     p->z = ((float *)v->m_14)[2] + ((short *)v->m_vertex)[2] / 16.0f;
+}
+
+/* the same through a float pointer: the point's components written and read through it (SetLevel,
+ * Flatten and Ripple keep the pointer in a register, computed before the strip is selected) */
+inline void GetVertexPos(CVisData *v, float *p)
+{
+    p[0] = ((float *)v->m_14)[0] + ((short *)v->m_vertex)[0] / 16.0f;
+    p[1] = ((float *)v->m_14)[1] + ((short *)v->m_vertex)[1] / 16.0f;
+    p[2] = ((float *)v->m_14)[2] + ((short *)v->m_vertex)[2] / 16.0f;
+}
+
+inline void SetVertexPos(CVisData *v, const float *p)
+{
+    ((short *)v->m_vertex)[0] = (short)(16.0f * (p[0] - ((float *)v->m_14)[0]));
+    ((short *)v->m_vertex)[1] = (short)(16.0f * (p[1] - ((float *)v->m_14)[1]));
+    ((short *)v->m_vertex)[2] = (short)(16.0f * (p[2] - ((float *)v->m_14)[2]));
 }
 
 inline void SetVertexPos(CVisData *v, const CPnt3D *p)
@@ -128,7 +147,7 @@ public:
     /* the position in a surface's frame */
     void Place(const CMatrix *toLocal) { toLocal->Transform(&GetPos(), &m_local, 1); }
     /* the square the ripple reaches, in the surface's frame, overlapping the surface's bounds */
-    bool Reaches(CNode *node)
+    void SetBox()
     {
         m_box.m_min.x = m_local.x - m_radius;
         m_box.m_min.y = m_local.y;
@@ -136,11 +155,12 @@ public:
         m_box.m_max.x = m_local.x + m_radius;
         m_box.m_max.y = m_local.y;
         m_box.m_max.z = m_local.z + m_radius;
-
-        const CBBox *b = node->GetBBox();
-
-        return b->m_max.x >= m_box.m_min.x && b->m_min.x <= m_box.m_max.x &&
-               b->m_max.z >= m_box.m_min.z && b->m_min.z <= m_box.m_max.z;
+    }
+    /* the square overlapping a box in XZ */
+    bool Overlaps(const CBBox *b)
+    {
+        return (b->m_max.x >= m_box.m_min.x && b->m_min.x <= m_box.m_max.x) &&
+               (b->m_max.z >= m_box.m_min.z && b->m_min.z <= m_box.m_max.z);
     }
     bool IsActive() { return m_timed || m_visible; }
     bool Lifts() { return m_level; }
@@ -677,14 +697,15 @@ void CWaterRipple::SetLevel(float height)
         CVisualVector::iterator it = n->m_visual.begin();
 
         if (it != n->m_visual.end()) {
+            CVisual *vis = *it;
             CVisData d;
-            CVisData *v = d.SelectVertexStrips(*it, 0, 0);
+            CPnt3D p;
+            float *f = &p.x;
+            CVisData *v = d.SelectVertexStrips(vis, 0, 0);
 
             if (v) {
-                CPnt3D p;
-
-                GetVertexPos(v, &p);
-                m_restY = p.y;
+                GetVertexPos(v, f);
+                m_restY = f[1];
             }
         }
     }
@@ -794,19 +815,28 @@ bool CWaterRipple::Affects(CNode *node, const CMatrix *toLocal)
         Place(toLocal);
         place = false;
         if (m_node) {
-            if (m_node == node && Reaches(node))
-                hit = true;
+            if (m_node == node) {
+                SetBox();
+                if (Overlaps(node->GetBBox()))
+                    hit = true;
+            }
         } else if (m_group) {
             int i = 0;
             CNode *n;
 
             while (!hit && (n = m_group->GetNode(i)) != 0) {
                 i++;
-                if (n == node && Reaches(node))
-                    hit = true;
+                if (n == node) {
+                    SetBox();
+                    if (Overlaps(node->GetBBox()))
+                        hit = true;
+                }
             }
-        } else if (Reaches(node))
-            hit = true;
+        } else {
+            SetBox();
+            if (Overlaps(node->GetBBox()))
+                hit = true;
+        }
     } else {
         if (m_node) {
             if (m_node == node)
@@ -832,11 +862,13 @@ bool CWaterRipple::Affects(CNode *node, const CMatrix *toLocal)
 bool CWaterRipple::GetOffset(const CPnt3D *p, CPnt3D *out)
 {
     bool ok = false;
-    CPnt3D d = *p - m_local;
+    CPnt3D d;
     float dist;
 
+    d = *p - m_local;
+
     if (m_directional) {
-        dist = fabsf(m_dir.x * d.x + m_dir.z * d.z);
+        dist = fabsf(DotXZ(&m_dir, &d));
         d.Normalize();
     } else
         dist = d.Normalize();
@@ -855,7 +887,10 @@ bool CWaterRipple::GetOffset(const CPnt3D *p, CPnt3D *out)
         in = true;
     }
     if (in) {
-        float c = k * cosf(dist * m_freq + m_phase);
+        dist *= m_freq;
+        dist += m_phase;
+
+        float c = k * cosf(dist);
         float a = c * m_amp;
 
         out->x = a * d.x;
@@ -873,15 +908,16 @@ bool CWaterRipple::GetOffset(const CPnt3D *p, CPnt3D *out)
 void CWaterRipple::Flatten(CNode *node)
 {
     for (CVisualVector::iterator it = node->m_visual.begin(); it != node->m_visual.end(); ++it) {
+        CVisual *vis = *it;
         CVisData d;
+        CPnt3D p;
+        float *f = &p.x;
 
-        for (CVisData *v = d.SelectVertexStrips(*it, 0, 0); v; v = v->NextVertex()) {
+        for (CVisData *v = d.SelectVertexStrips(vis, 0, 0); v; v = v->NextVertex()) {
             if (m_level) {
-                CPnt3D p;
-
-                GetVertexPos(v, &p);
-                p.y = m_restY;
-                SetVertexPos(v, &p);
+                GetVertexPos(v, f);
+                f[1] = m_restY;
+                SetVertexPos(v, f);
             }
 
             CPnt3D up(0.0f, 1.0f, 0.0f);
