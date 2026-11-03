@@ -5,8 +5,11 @@
  * 8 KB receive and send buffer each mirrored to the IOP (rt_memory_align_alloc_init_zero gives the
  * EE's copy and the second word). Results are RT_RESULTs (2: invalid parameter) or the inet
  * library's (-512: an invalid argument, -501: no memory). Names are SOCOM 1's (s1:exact/callee);
- * the fields are named by their use here. Not yet written: Open, Recv, RecvFrom, Send, SendTo,
- * GetAvailBytesToRead, recv_from, send_to and the three unnamed helpers. */
+ * the fields are named by their use here. A socket's two rings are 80-byte headers shared with the
+ * IOP (LIBNETB_RING: the async receive and send calls, RPC 100/101, fill them); a datagram ring holds
+ * 64-byte datagram headers (libnetb_udp.c). The newer release adds a 2-byte receive and send
+ * (func_002476D0/func_00247F58, func_00247920/func_002481F8) and a connection-state check
+ * (func_00247BD8). Not yet written: Open, Recv, recv_from, send_to. */
 
 typedef unsigned int u_int;
 
@@ -35,6 +38,35 @@ struct binet_ctl {
     int arg;
 };
 
+typedef struct LIBNETB_RING {           /* a buffer's 80-byte header, shared with the IOP */
+    int pending;                        /* 0x00: a stream's bytes waiting (or an error) */
+    int avail;                          /* 0x04 */
+    u_int hdrsize;                      /* 0x08 */
+    int state;                          /* 0x0C: 3 once the peer is gone */
+    int pad10[2];
+    int size;                           /* 0x18: the data's bytes */
+    char *buf;                          /* 0x1C: the EE's copy */
+    struct LIBNETB_RING *self;          /* 0x20: this header's IOP address */
+    int f24;                            /* 0x24 */
+    int pad28;
+    char *iop_buf;                      /* 0x2C: the IOP's copy of the data */
+    int pad30;
+    int type;                           /* 0x34: 0 or 3 a datagram ring */
+    int pad38;
+    int off;                            /* 0x3C: the read position */
+    int pad40[4];
+} LIBNETB_RING;
+
+typedef struct LIBNETB_DGRAM {          /* a datagram's 64-byte header in a ring */
+    int used;                           /* 0x00 */
+    int valid;                          /* 0x04 */
+    int size;                           /* 0x08 */
+    int capacity;                       /* 0x0C */
+    int pad10[5];
+    int avail;                          /* 0x24 */
+    int pad28[6];
+} LIBNETB_DGRAM;
+
 typedef struct LIBNETB {
     int type;                           /* +0: the inet socket's type */
     int proto;                          /* +4 */
@@ -44,8 +76,8 @@ typedef struct LIBNETB {
     void *recv_raw;                     /* +20 */
     void *send_buf;                     /* +24 */
     void *send_raw;                     /* +28 */
-    void *recv_mirror;                  /* +32 */
-    void *send_mirror;                  /* +36 */
+    LIBNETB_RING *recv_mirror;          /* +32 */
+    LIBNETB_RING *send_mirror;          /* +36 */
 } LIBNETB;
 
 typedef struct sceBInetParam {
@@ -71,6 +103,17 @@ struct sif_dma {
 
 int libnetb_free_bufs(LIBNETB *n);
 static int libnetb_alloc_bufs(LIBNETB *n);
+int libnetb_recv_from(LIBNETB *s, void *ptr, int count, int *pflags, sceBInetAddress *addr, int *port,
+                      int *plen, int *perr);
+int libnetb_send_to(LIBNETB *s, void *ptr, int count, int flags, sceBInetAddress *addr, int port,
+                    int *plen, int *perr);
+int libnetb_get_valid_data_header_ptr(LIBNETB_RING *r, LIBNETB_DGRAM **phdr, unsigned char *valid);
+int libnetb_udp_init_buffer(char *buf, u_int size);
+int func_00247F58(LIBNETB *s, void *ptr, sceBInetAddress *addr, int *pdone, int *perr);
+int func_002481F8(LIBNETB *s, unsigned short val, sceBInetAddress *addr, int *pdone, int *perr);
+int func_00247BD8(LIBNETB *s, int *pchk);
+extern int printf(const char *fmt, ...);
+extern void *memcpy(void *d, const void *s, unsigned int n);
 
 char *sceBInetGetVersionStringPtr(void)
 {
@@ -147,11 +190,155 @@ int sceBInetClose(void *cd, u_int *net_buf, LIBNETB *s, int ms)
     return (ret < 0) ? -501 : 0;
 }
 
+int sceBInetRecvFrom(void *cd, u_int *net_buf, LIBNETB *s, void *ptr, int count, int *pflags,
+                     sceBInetAddress *addr, int *port, int ms)
+{
+    int len;
+    int err = -501;
+
+    if (cd == 0 || ms < -1 || net_buf == 0)
+        return -501;
+    if (count == 0)
+        return 0;
+    if (libnetb_recv_from(s, ptr, count, pflags, addr, port, &len, &err) == 0)
+        return len;
+    return err ? err : -501;
+}
+
+int func_002476D0(void *cd, u_int *net_buf, LIBNETB *s, void *ptr, sceBInetAddress *addr)
+{
+    int done = 0;
+    int err = -501;
+
+    if (cd == 0)
+        return -501;
+    if (func_00247F58(s, ptr, addr, &done, &err) == 0)
+        return done;
+    return err ? err : -501;
+}
+
+/* OPEN (8 words, all registers): both DMA descriptors take their two loaded words in the other
+ * registers (the target loads src into v0 and dst into v1, then dst into v0 and the size into v1).
+ * Every order of the four field stores leaves the same 8 (tools/ccperm.py); an __inline__ helper
+ * per transfer gives each its own descriptor (frame 80, the target's 64), so the vendor wrote both
+ * out. The ring's size is an int here (slt), its header size unsigned (the prepare calls' sltu). */
+int sceBInetSend(void *cd, u_int *net_buf, LIBNETB *s, void *ptr, int count)
+{
+    LIBNETB_RING *r;
+    struct sif_dma dma;
+    u_int id;
+    int n;
+
+    if (s == 0)
+        return -512;
+    r = s->send_mirror;
+    FlushCache(0);
+    if (r->state != 0)
+        return r->state == 3 ? -501 : 0;
+    if (r->pending > 0)
+        return 0;
+    if (r->pending < 0)
+        return r->pending;
+    n = count;
+    if (r->size < n)
+        n = r->size;
+    memcpy(r->buf, ptr, n);
+    FlushCache(0);
+    dma.src = r->buf;
+    dma.dst = r->iop_buf;
+    dma.size = n;
+    dma.attr = 0;
+    id = sceSifSetDma(&dma, 1);
+    if (id == 0)
+        printf("Error DMAing data to IOP memory!!!\n");
+    while (sceSifDmaStat(id) >= 0)
+        ;
+    r->pending = n;
+    FlushCache(0);
+    dma.src = r;
+    dma.dst = r->self;
+    dma.size = 4;
+    dma.attr = 0;
+    id = sceSifSetDma(&dma, 1);
+    if (id == 0)
+        printf("Error DMAing data to IOP memory!!!\n");
+    while (sceSifDmaStat(id) >= 0)
+        ;
+    return n;
+}
+
+int sceBInetSendTo(void *cd, u_int *net_buf, LIBNETB *s, void *ptr, int count, int *pflags,
+                   sceBInetAddress *addr, int port, int ms)
+{
+    int len = 0;
+    int err = -501;
+
+    if (cd == 0 || ms < -1 || net_buf == 0)
+        return -501;
+    if (count == 0)
+        return 0;
+    if (libnetb_send_to(s, ptr, count, *pflags, addr, port, &len, &err) == 0)
+        return len;
+    return err ? err : -501;
+}
+
+int func_00247920(void *cd, u_int *net_buf, LIBNETB *s, unsigned short val, sceBInetAddress *addr)
+{
+    int done = 0;
+    int err = -501;
+
+    if (cd == 0)
+        return -501;
+    if (func_002481F8(s, val, addr, &done, &err) == 0)
+        return done;
+    return err ? err : -501;
+}
+
 int sceBInetControl(int s, int cmd, struct binet_ctl *p, int len)
 {
     if (p == 0)
         return -512;
     return sceInetControl(s, cmd, p->arg, len);
+}
+
+int sceBInetGetAvailBytesToRead(LIBNETB *s, int *avail)
+{
+    LIBNETB_RING *r;
+    unsigned char valid;
+    LIBNETB_DGRAM *hdr;
+    int chk;
+    int ret;
+
+    if (s == 0 || avail == 0)
+        return -512;
+    r = s->recv_mirror;
+    FlushCache(0);
+    if (r->type == 0 || r->type == 3) {
+        valid = 0;
+        hdr = 0;
+        ret = libnetb_get_valid_data_header_ptr(r, &hdr, &valid);
+        if (ret != 0)
+            return ret;
+        if (valid == 1) {
+            *avail = hdr->avail;
+            return hdr->capacity;
+        }
+        *avail = 0;
+        return 0;
+    }
+    chk = 0;
+    if (r->state != 0) {
+        ret = func_00247BD8(s, &chk);
+        if (ret != 0)
+            return ret;
+        if (chk == 0)
+            return 0;
+    }
+    if (r->pending == 0) {
+        *avail = r->avail;
+        return 0;
+    }
+    return r->pending;
 }
 
 int sceBInetIP2Address(sceBInetAddress *a, char *ip)
@@ -185,6 +372,29 @@ void sceBInetDisplayLibnetbState(void *cd)
     sceSifMCallRpc(cd, 103, 0, 0, 0, 0, 0, 0, 0);
 }
 
+int func_00247BD8(LIBNETB *s, int *pchk)
+{
+    LIBNETB_RING *r;
+
+    if (s == 0 || pchk == 0)
+        return -512;
+    r = s->send_mirror;
+    *pchk = 0;
+    FlushCache(0);
+    if (r->state == 0)
+        *pchk = 1;
+    else if (r->state != 3)
+        ;
+    else
+        return r->pending ? r->pending : -501;
+    if (s->send_mirror->state != s->recv_mirror->state) {
+        s->recv_mirror->state = s->send_mirror->state;
+        if (libnetb_trans_data(s->recv_mirror, s->recv_mirror->self, 16) != 0)
+            return -501;
+    }
+    return 0;
+}
+
 int libnetb_trans_data(void *src, void *dst, int size)
 {
     struct sif_dma dma;
@@ -209,6 +419,51 @@ int libnetb_trans_data(void *src, void *dst, int size)
     return 0;
 }
 
+int func_00247F58(LIBNETB *s, void *ptr, sceBInetAddress *addr, int *pdone, int *perr)
+{
+    int len = 0;
+    int port;
+    int flags = 0;
+    int ret;
+
+    if (pdone == 0)
+        return 2;
+    *pdone = 0;
+    if (ptr == 0)
+        return 2;
+    if (addr == 0)
+        return 2;
+    if (perr == 0)
+        return 2;
+    *perr = 0;
+    if (s == 0)
+        return 2;
+    ret = libnetb_recv_from(s, ptr, 2, &flags, addr, &port, &len, perr);
+    if (len == 2)
+        *pdone = 1;
+    return ret;
+}
+
+int func_002481F8(LIBNETB *s, unsigned short val, sceBInetAddress *addr, int *pdone, int *perr)
+{
+    int len = 0;
+    int ret;
+
+    if (pdone == 0)
+        return 2;
+    *pdone = 0;
+    if (addr == 0)
+        return 2;
+    if (perr == 0)
+        return 2;
+    if (s == 0)
+        return 2;
+    ret = libnetb_send_to(s, &val, 2, 0, addr, 0, &len, perr);
+    if (len == 2)
+        *pdone = 1;
+    return ret;
+}
+
 static int libnetb_alloc_bufs(LIBNETB *n)
 {
     if (n == 0)
@@ -231,4 +486,45 @@ int libnetb_free_bufs(LIBNETB *n)
     if (rt_memory_align_free(&n->recv_buf) != 0)
         return 1;
     return rt_memory_align_free(&n->send_buf) != 0;
+}
+
+
+static int libnetb_prepare_async_receive(void *cd, LIBNETB_RING *r)
+{
+    int ret;
+
+    r->pending = 0;
+    r->self = r;
+    r->f24 = 0;
+    r->avail = 0;
+    if (sceSifMCallRpc(cd, 100, 0, r, 80, r, 80, 0, 0) < 0)
+        return 1;
+    if (r->type == 0 || r->type == 3) {
+        if (r->size < r->hdrsize + 64)
+            return 1;
+        ret = libnetb_udp_init_buffer(r->buf, r->size);
+        if (ret != 0)
+            return ret;
+    }
+    return 0;
+}
+
+static int libnetb_prepare_async_send(void *cd, LIBNETB_RING *r)
+{
+    int ret;
+
+    r->pending = 0;
+    r->self = r;
+    r->f24 = 0;
+    r->avail = 0;
+    if (sceSifMCallRpc(cd, 101, 0, r, 80, r, 80, 0, 0) < 0)
+        return 1;
+    if (r->type == 0 || r->type == 3) {
+        if (r->size < r->hdrsize + 64)
+            return 1;
+        ret = libnetb_udp_init_buffer(r->buf, r->size);
+        if (ret != 0)
+            return ret;
+    }
+    return 0;
 }

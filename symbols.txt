@@ -2456,8 +2456,8 @@
 0x002481F8 0x80 func_002481F8  # OVL1 unaligned
 0x00248278 0x7C libnetb_alloc_bufs  # OVL1 unaligned; s1:callee (sceBInetCreate calls it where the demo's calls libnetb_alloc_bufs; before libnetb_free_bufs as there)
 0x002482F8 0x54 libnetb_free_bufs  # OVL1 unaligned; s1:callee
-0x00248350 0xA8 func_00248350  # OVL1
-0x002483F8 0xA8 func_002483F8  # OVL1 unaligned
+0x00248350 0xA8 libnetb_prepare_async_receive  # OVL1; s1:order (the demo's libnetb object 0x423D38: after libnetb_free_bufs; RPC 100, then libnetb_udp_init_buffer, as the demo's)
+0x002483F8 0xA8 libnetb_prepare_async_send  # OVL1 unaligned; s1:order (the demo's libnetb object: after libnetb_prepare_async_receive; RPC 101, then libnetb_udp_init_buffer, as the demo's)
 0x002484A0 0x12C func_002484A0  # OVL1
 0x002485D0 0x144 func_002485D0  # OVL1
 0x00248718 0x20 func_00248718  # OVL1 unaligned
