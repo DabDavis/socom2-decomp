@@ -173,7 +173,11 @@ public:
 
             for (unsigned int n = 0; n < m_base; n++, i++)
                 ;
-            erase(i, end());
+            /* both bound to references: a temporary a reference binds takes its slot ahead of
+             * the loop's postfix ++ temporary (zrdr_read's 0x140/0x144/0x148, as the target);
+             * written `erase(i, end())` the three slots come out in the reverse order */
+            const iterator &e = end();
+            const iterator &r = erase(i, e);
         }
         last = end();
         first = std::remove_if(begin(), last, IsUndefined);
@@ -673,11 +677,9 @@ bool _preproc_filter(CRdrIO *io)
  * (its text dumped beside it as "<name>pp" when the flags ask, 2) and parsed; the symbols the file
  * defined are dropped after. CRdrIO's GetSize and Close are called through the vtable on the local
  * (MW devirtualises a member only when the object's own class declares it: CFileIO's are direct).
- * OPEN, 3 instructions: inside the inlined Pop the postfix ++'s result takes sp+0x140 and end()'s
- * sp+0x148 where the target has them the other way round (the target's block allocates end()'s
- * and erase's temporaries before the loop's) -- the counter loop written with the step in the
- * body, in the for's third clause, as a while, in a block, the iterator built by direct
- * initialisation, its counter declared first: none moves them */
+ * Byte-exact once Pop binds end() and erase's result to const references (its comment): every
+ * plain form -- the step in the body or the for's third clause, a while, a block, the counter
+ * declared first, end() alone bound -- left the inlined Pop's temporaries in another order */
 _zrdr *zrdr_read(const char *name, const char *path, int flags)
 {
     CRdrFile *file = 0;
