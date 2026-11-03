@@ -1367,7 +1367,7 @@ typedef struct DmePendingPeer {
     unsigned short nPort;               /* 0x12 */
     unsigned int tStart[2];             /* 0x14 */
     unsigned int nElapsed;              /* 0x1C */
-    int field_20;
+    void (*pfnCallback)(int nEvent, char *szIp, int nValue);   /* 0x20 */
 } DmePendingPeer;                       /* 0x24 */
 
 extern DmePendingPeer data_0066CF78[DME_MAX_CLIENTS];
@@ -1391,6 +1391,63 @@ void func_0061CBB8(char *szIp, unsigned short nPort)
         }
     }
 }
+/* a free pending-peer slot and the next port past the address's (0x61CEF0) */
+int func_0061CEF0(char *szIp, unsigned int *pnSlot, unsigned short *pnPort)
+{
+    unsigned int i;
+    int bFound = 0;
+
+    if (szIp == 0)
+        return DME_ERR_ARGUMENT;
+    if (pnSlot == 0)
+        return DME_ERR_ARGUMENT;
+    if (pnPort == 0)
+        return DME_ERR_ARGUMENT;
+    if (*(unsigned char *)szIp == 0)
+        return DME_ERR_ARGUMENT;
+    *pnSlot = 0;
+    *pnPort = 0;
+    for (i = 0; i < DME_MAX_CLIENTS; i++) {
+        if (data_0066CF78[i].nState == 0) {
+            *pnSlot = i;
+            bFound = 1;
+        }
+        if (strncmp(szIp, data_0066CF78[i].szIp, 16) == 0 && data_0066CF78[i].nPort >= *pnPort)
+            *pnPort = data_0066CF78[i].nPort + 1;
+    }
+    return bFound ? DME_OK : DME_ERR_RANGE;
+}
+
+extern unsigned char data_006511CC;
+extern int func_006328E0(void);
+
+/* the pending peers dropped (0x61CFF0): each waiting one's callback told 14, the UDP layer shut */
+int func_0061CFF0(void)
+{
+    unsigned int i;
+    int result;
+
+    for (i = 0; i < DME_MAX_CLIENTS; i++) {
+        if ((unsigned char)(data_0066CF78[i].nState - 1) < 2)
+            data_0066CF78[i].nState = 4;
+        if (data_0066CF78[i].nState == 4) {
+            if (data_0066CF78[i].pfnCallback != 0) {
+                data_0066CF78[i].pfnCallback(14, data_0066CF78[i].szIp, 0);
+                data_0066CF78[i].pfnCallback = 0;
+            }
+            data_0066CF78[i].nState = 0;
+        }
+    }
+    if (data_006511CC == 1) {
+        result = NetMapMsgClientError(func_006328E0(), 24);
+        if (result != 0)
+            return result;
+        data_006511CC = 0;
+    }
+    memset(data_0066CF78, 0, sizeof(data_0066CF78));
+    return DME_OK;
+}
+
 
 
 
@@ -1713,6 +1770,35 @@ int func_0061C998(unsigned int nWorld, int nValue)
         pWorld->nSessionMaster = nValue;
     return result;
 }
+extern int rt_time_get_local(unsigned int *pTime);
+
+/* the pings unanswered for 30 seconds (0x61C9E8): each slot's callback told 14 and freed (six
+ * arguments for a slot whose field_08 is 1, four otherwise). OPEN (16 bytes long): the target
+ * reaches the port and field_14 off its walking pointer to the callback (`lhu t0,-8(s1)`, `lw
+ * t0,8(s1)`) and field_08/field_18 by index; first shape only. */
+int func_0061C9E8(void)
+{
+    char szIp[16];
+    unsigned int nNow;
+    unsigned int i;
+
+    rt_time_get_local(&nNow);
+    for (i = 0; i < DME_MAX_PING_SLOTS; i++) {
+        if (data_0067B7B8[i].bInUse != 0 && (int)(nNow - data_0067B7B8[i].field_10) - 30000 > 0) {
+            NetIpBinaryToString(szIp, (unsigned char *)&data_0067B7B8[i]);
+            NetIpBinaryToString(data_006766D0, (unsigned char *)&data_0067B7B8[i]);
+            data_0067B7A8 = data_0067B7B8[i].field_04;
+            if (data_0067B7B8[i].field_08 == 1)
+                ((void (*)())data_0067B7B8[i].bInUse)(14, szIp, 0, 0, data_0067B7B8[i].field_14,
+                                                     data_0067B7B8[i].field_18);
+            else
+                ((void (*)())data_0067B7B8[i].bInUse)(14, szIp, 0, 0);
+            data_0067B7B8[i].bInUse = 0;
+        }
+    }
+    return DME_OK;
+}
+
 
 int func_0061CB18(unsigned char *pbValue)
 {
