@@ -1411,40 +1411,35 @@ void func_002F3FF0(ChatSlot *slots)
 
 /* a game's rules written out as a list of numbers -- the 32 bytes after an 'A' block's five-byte
  * head or a 'B' block's six -- into a buffer nothing reads (a debug print gone; OVL1 0x2F3EF0:
- * the converter below and the LAN unit's JoinGame and CreateGame call it).
- * OPEN, 12 instructions (0xFC both): the target's stack puts 'A''s number buffer highest (sp+240),
- * 'B''s next (224) and the text lowest (48) -- this order gives text 80, the numbers 64 and 48 --
- * and case 'A' swaps s0/s1 (the target keeps the bytes' base in s1 and the counter in s0 in both
- * cases). Measured on the way: the base must be copied per case (a local pointer in each case:
- * the parameter used directly is copied to s0 at the entry) and indexed `p[i + 5]` with the counter
- * outside the loop (a `bytes[i]` pointer or `rules + 5` folds the offset and strength-reduces the
- * walk: 0x104); per-case text buffers do not share a slot (a 432-byte frame) */
+ * the converter below and the LAN unit's JoinGame and CreateGame call it). Open since round 9 (12
+ * instructions): the stack wants a number buffer per case, both declared ahead of the text (the
+ * first-declared takes the top slot: 'A''s 240, 'B''s 224, the text 48), and each case its own base
+ * copy and counter, the counter declared last (base s1, counter s0 in both) */
 void func_002F3EF0(char *rules)
 {
+    char numA[16];
+    char numB[16];
     char text[176];
-    int i;
 
     switch (rules[0]) {
     case 'A': {
         const unsigned char *p = (const unsigned char *)rules;
-        char num[16];
 
         sprintf(text, "[");
-        for (i = 0; i < 32; i++) {
-            sprintf(num, "%d, ", p[i + 5]);
-            strcat(text, num);
+        for (int i = 0; i < 32; i++) {
+            sprintf(numA, "%d, ", p[i + 5]);
+            strcat(text, numA);
         }
         strcat(text, "]");
         break;
     }
     case 'B': {
         const unsigned char *p = (const unsigned char *)rules;
-        char num[16];
 
         sprintf(text, "[");
-        for (i = 0; i < 32; i++) {
-            sprintf(num, "%d, ", p[i + 6]);
-            strcat(text, num);
+        for (int i = 0; i < 32; i++) {
+            sprintf(numB, "%d, ", p[i + 6]);
+            strcat(text, numB);
         }
         strcat(text, "]");
         break;
