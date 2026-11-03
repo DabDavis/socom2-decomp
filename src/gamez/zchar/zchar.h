@@ -283,6 +283,9 @@ class CCharacterWeap {
 public:
     /* none, no ammunition (AddWeapon's temporary, 0x53B3A0: 255 in both bytes, the counts zeroed) */
     CCharacterWeap() : m_wepId(EQUIP_NONE), m_ammoId(AMMO_NONE), m_ammoCount(0), m_magCount(0) {}
+    /* the item set, and its magazine size, magazines and default ammunition when the weapon
+     * list knows it (SOCOM 1's; 0x53EEE0 -- the weapon selector calls it after AddWeapon) */
+    void SetupCharacterWeapon(EQUIP_ITEM item);
 
     EQUIP_ITEM m_wepId;   // 0x0
     EQUIP_AMMO m_ammoId;   // 0x1
@@ -305,6 +308,9 @@ public:
     /* an empty weapon pushed (SOCOM 1's AddWeapon; the item unread -- the callers set it up after,
      * through SetupCharacterWeapon 0x53EEE0) */
     void AddWeapon(EQUIP_ITEM item);
+    /* every weapon of the item dropped, true if there was one (SOCOM 1's RemoveWeapon, char_type.cpp's
+     * last function in both builds: 0x53B300) */
+    bool RemoveWeapon(EQUIP_ITEM item);
 };
 
 /* a multiplayer message a type can say (SOCOM 1's MultiplayerMsg; only the sound laid out) */

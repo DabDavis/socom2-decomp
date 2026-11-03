@@ -57,6 +57,21 @@ void CCharacterType::ResetGears()
     }
 }
 
+/* SOCOM 1's SetupCharacterWeapon (its demo's 0x24AFF0, between KorusGetPackedWeapons and AddWeapon
+ * there, after KorusGetPackedWeapons here): the item stored first, the weapon looked up in the
+ * weapons' list, its counts and ammunition copied when it is known */
+void CCharacterWeap::SetupCharacterWeapon(EQUIP_ITEM item)
+{
+    m_wepId = item;
+    CZWeapon *w = CZWeapon::m_listWeapons.GetWeapon(item);
+
+    if (w) {
+        m_ammoCount = w->GetAmmoCapacity();
+        m_magCount = w->GetNumMags();
+        m_ammoId = w->GetDefaultAmmoId();
+    }
+}
+
 /* SOCOM 1's FindGear (its demo's 0x24B0C0, after AddWeapon), over SOCOM II's vector of pointers:
  * the name tested first, the end re-read every pass (CZKit::SetItemByIndex calls it on
  * CCharacterType::m_gear_list) */
@@ -477,6 +492,30 @@ char *CCharacterType::GetBaseName()
 EQUIP_ITEM CCharacterType::GetWeaponByIndex(unsigned int i) const
 {
     return i < m_weapons.size() ? ((CCharacterWeapList &)m_weapons)[i].m_wepId : EQUIP_NONE;
+}
+
+/* a weapon of the item (SOCOM 1's compare_item, the predicate of its remove_if over the weapons:
+ * a byte passed by value). The weapon's item is read as a char and converted back: remove_copy_if
+ * (0x540C70, SOCOM 1's 0x24C210 alike) shares that lb with the copy's and masks it for the compare
+ * (andi 0xff) where a plain EQUIP_ITEM read is a separate lbu; find_if inside remove_if folds it to
+ * the lbu either way */
+struct compare_item {
+    compare_item(EQUIP_ITEM item) : m_item(item) {}
+    bool operator()(const CCharacterWeap &w) const { return m_item == (EQUIP_ITEM)*(const char *)&w.m_wepId; }
+
+    EQUIP_ITEM m_item;
+};
+
+/* SOCOM 1's (its demo's 0x247720, char_type.cpp's first function there and its last here): the end
+ * taken first, remove_if's new end next, both copied into erase's parameters, the result whether
+ * anything went */
+bool CCharacterWeapList::RemoveWeapon(EQUIP_ITEM item)
+{
+    iterator e = end();
+    iterator i = std::remove_if(begin(), e, compare_item(item));
+
+    erase(i, e);
+    return i != e;
 }
 
 /* SOCOM 1's (its demo's 0x24B060, with Open's stretch there; SOCOM II's sits by GetWeaponByIndex):
