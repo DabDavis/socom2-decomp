@@ -9,16 +9,24 @@
 #ifndef MAIN_MSL_H
 #define MAIN_MSL_H
 
+
+
 extern "C" void *memcpy(void *, const void *, unsigned int);
+extern "C" void free(void *);
+extern "C" unsigned int strlen(const char *);
+extern "C" char *strcpy(char *, const char *);
 
 namespace std {
 
+typedef unsigned int size_t;
 typedef long streamsize;
 typedef long streamoff;
 
-template <class T> inline const T &min(const T &a, const T &b) { return b < a ? b : a; }
-
+template <class T> class allocator {};
 template <class charT> struct char_traits;
+
+/* <algorithm>'s min, defined after codecvt<char>'s do_length (iostream.cpp) */
+template <class T> inline const T &min(const T &a, const T &b);
 
 template <>
 struct char_traits<char> {
@@ -54,13 +62,15 @@ private:
     stateT st_;
 };
 
-template <class T> struct _Single {};
-template <class T> struct _Array {};
+/* the destructor policies of RefCountedPtrArray.h */
+template <class T> struct _Single { static void release(T *p) { delete p; } };
+template <class T> struct _Array { static void release(T *p) { delete [] p; } };
 
 /* RefCountedPtrArray.h */
 template <class T, class Destructor>
 class _RefCountedPtr {
 public:
+    explicit _RefCountedPtr(T *ptr = 0);
     _RefCountedPtr(const _RefCountedPtr &other);
     ~_RefCountedPtr();
     _RefCountedPtr &operator=(const _RefCountedPtr &other);
@@ -78,35 +88,193 @@ _RefCountedPtr<T, Destructor>::_RefCountedPtr(const _RefCountedPtr &other)
         ++*refCount_;
 }
 
+template <class T, class Destructor>
+_RefCountedPtr<T, Destructor>::_RefCountedPtr(T *ptr)
+    : ptr_(ptr), refCount_(0)
+{
+    try {
+        if (ptr_ != 0)
+            refCount_ = new int(1);
+    } catch (...) {
+        Destructor::release(ptr_);
+        throw;
+    }
+}
+
+template <class T, class Destructor>
+_RefCountedPtr<T, Destructor>::~_RefCountedPtr()
+{
+    if (refCount_ != 0 && --*refCount_ == 0) {
+        Destructor::release(ptr_);
+        delete refCount_;
+    }
+}
+
+/* the library's string for the exceptions' messages: one counted array */
+class _MSLstring {
+public:
+    explicit _MSLstring(const char *value);
+    const char *c_str() const { return data_.get(); }
+private:
+    _RefCountedPtr<char, _Array<char> > data_;
+};
+
+inline _MSLstring::_MSLstring(const char *value)
+    : data_(new char[strlen(value) + 1])
+{
+    strcpy(data_.get(), value);
+}
+
+/* the game's (CodeWarrior 3.0's) basic_string<char>, as far as the locale's name needs it: three
+ * words, bit 0 of the first the long form's mark, the text the third (include/string's shape; MAIN's
+ * copy of its destructor is 0x184C10, OVL1's 0x1E7EF0) */
+template <class charT, class traits = char_traits<charT>, class Allocator = allocator<charT> >
+class basic_string {
+public:
+    ~basic_string();
+    const charT *c_str() const { return !(w_[0] & 1) ? (const charT *)w_ + 1 : (const charT *)w_[2]; }
+private:
+    unsigned int w_[3];
+};
+
+template <class charT, class traits, class Allocator>
+basic_string<charT, traits, Allocator>::~basic_string()
+{
+    if (w_[0] & 1)
+        operator delete((void *)w_[2]);
+}
+
+typedef basic_string<char> string;
+
+/* the facets' table: a pointer vector over the pod vector (capacity, size, data), its destructor
+ * three this-tested levels */
+template <class T>
+class __vector_pod {
+public:
+    ~__vector_pod()
+    {
+        if (data_)
+            operator delete(data_);
+    }
+    size_t size() const { return size_; }
+    T &operator[](size_t i) { return data_[i]; }
+protected:
+    size_t capacity_;
+    size_t size_;
+    T *data_;
+};
+
+template <class T>
+class __vector_imp : public __vector_pod<T> {
+public:
+    ~__vector_imp() {}
+};
+
+template <class T>
+class vector : public __vector_imp<T> {
+public:
+    ~vector() {}
+};
+
+class exception {
+public:
+    exception() {}
+    virtual ~exception() {}
+    virtual const char *what() const;
+};
+
 template <int N> class __locale_imp;
 
 class locale {
 public:
     class facet {
+        friend class __locale_imp<1>;
     protected:
-        virtual ~facet();
+        virtual ~facet() {}
         unsigned int ref_;
     };
+    locale();
     locale &operator=(const locale &rhs) { imp_ = rhs.imp_; return *this; }
+    static locale &global();
 private:
     _RefCountedPtr<__locale_imp<1>, _Single<__locale_imp<1> > > imp_;
 };
 
+inline locale::locale() : imp_(global().imp_) {}
+
+/* localeimp */
+template <int N>
+class __locale_imp {
+public:
+    ~__locale_imp() throw();
+private:
+    vector<locale::facet *> facets_;    /* 0x00 */
+    string name_;                       /* 0x0C */
+};
+
+template <int N>
+__locale_imp<N>::~__locale_imp() throw()
+{
+    size_t n = facets_.size();
+    for (size_t i = 0; i < n; ++i) {
+        locale::facet *p = facets_[i];
+        if (p != 0)
+            delete (--p->ref_ == 0 ? p : 0);
+    }
+}
+
 class ios_base {
 public:
-    enum seekdir {};
-    enum openmode {};
+    class failure : public exception {
+    public:
+        explicit failure(const string &msg);
+        virtual ~failure() {}
+        virtual const char *what() const;
+    private:
+        _MSLstring what_;
+    };
+    enum fmtflags { boolalpha = 0x0001, dec = 0x0002, fixed = 0x0004, hex = 0x0008, internal = 0x0010,
+                    left = 0x0020, oct = 0x0040, right = 0x0080, scientific = 0x0100,
+                    showbase = 0x0200, showpoint = 0x0400, showpos = 0x0800, skipws = 0x1000,
+                    unitbuf = 0x2000, uppercase = 0x4000 };
+    enum iostate { goodbit = 0, badbit = 1, eofbit = 2, failbit = 4 };
+    enum openmode { app = 0x01, ate = 0x02, binary = 0x04, in = 0x08, out = 0x10, trunc = 0x20 };
+    enum seekdir { beg, cur, end };
+    enum event { erase_event, imbue_event, copyfmt_event };
+    typedef void (*event_callback)(event, ios_base &, int index);
+
     virtual ~ios_base();
+    locale imbue(const locale &loc);
     locale getloc() const;
+protected:
+    ios_base() {}
+    void init(void *sb);
 private:
-    void *cb_vec_;              /* 0x04 */
-    unsigned int cb_siz_;
-    unsigned int cb_cap_;
+    struct callback_pair { event_callback first; int second; };
+
+    void do_callbacks(event e)
+    {
+        size_t n = cb_siz_;
+        while (n > 0) {
+            --n;
+            cb_vec_[n].first(e, *this, cb_vec_[n].second);
+        }
+    }
+
+    callback_pair *cb_vec_;     /* 0x04 */
+    size_t cb_siz_;
+    size_t cb_cap_;
     long *iarray_;              /* 0x10 */
-    unsigned int isize_;
+    size_t isize_;
     void **parray_;
-    unsigned int psize_;
+    size_t psize_;
     locale *loc_;               /* 0x20 */
+    void *rdbuf_;               /* 0x24 */
+    long precision_;            /* 0x28 */
+    long width_;                /* 0x30 */
+    fmtflags fmtflags_;         /* 0x38 */
+    unsigned char iostate_;     /* 0x3A */
+    unsigned char exceptions_;  /* 0x3B */
 };
 
 /* streambuf */
@@ -119,7 +287,7 @@ public:
     typedef streamoff off_type;
 
     virtual ~basic_streambuf();
-    locale getloc() const { return loc_; }
+    locale getloc() const;
     int_type sbumpc()
     {
         if (gnext_ < gend_)
@@ -188,6 +356,7 @@ protected:
     virtual result do_unshift(int &state, char *to, char *to_end, char *&to_next) const;
     virtual int do_encoding() const;
     virtual bool do_always_noconv() const;
+    virtual int do_length(int &state, const char *from, const char *from_end, size_t max) const;
     virtual int do_max_length() const;
 };
 
@@ -197,6 +366,7 @@ protected:
     virtual result do_unshift(int &state, char *to, char *to_end, char *&to_next) const;
     virtual int do_encoding() const;
     virtual bool do_always_noconv() const;
+    virtual int do_length(int &state, const char *from, const char *from_end, size_t max) const;
     virtual int do_max_length() const;
 };
 
@@ -209,6 +379,8 @@ template <class charT> class ctype;
 
 template <>
 class ctype<char> : public locale::facet, public ctype_base {
+public:
+    char widen(char c) const { return do_widen(c); }
 protected:
     virtual char do_toupper(char c) const;
     virtual const char *do_toupper(char *low, const char *high) const;
@@ -227,6 +399,8 @@ protected:
 
 template <>
 class ctype<wchar_t> : public locale::facet, public ctype_base {
+public:
+    wchar_t widen(char c) const { return do_widen(c); }
 protected:
     virtual bool do_is(mask m, wchar_t c) const;
     virtual const wchar_t *do_is(const wchar_t *low, const wchar_t *high, mask *vec) const;
@@ -241,6 +415,69 @@ protected:
     virtual char do_narrow(wchar_t c, char dfault) const;
     virtual const wchar_t *do_narrow(const wchar_t *low, const wchar_t *high, char dfault, char *to) const;
 };
+
+/* localeimp: the facet a locale holds, made and installed on first use */
+template <bool b> struct __chooser {};
+template <class Facet> const Facet &__use_facet(const locale &loc, __chooser<true>);
+template <class Facet>
+inline const Facet &use_facet(const locale &loc)
+{
+    return __use_facet<Facet>(loc, __chooser<true>());
+}
+
+/* ios, istream, ostream: the stream classes over a virtual basic_ios */
+template <class charT, class traits> class basic_ostream;
+
+template <class charT, class traits>
+class basic_ios : public ios_base {
+public:
+    typedef charT char_type;
+    char_type widen(char c) const { return use_facet<ctype<char_type> >(getloc()).widen(c); }
+    basic_ostream<charT, traits> *tie(basic_ostream<charT, traits> *tiestr)
+    {
+        basic_ostream<charT, traits> *old = tiestr_;
+        tiestr_ = tiestr;
+        return old;
+    }
+protected:
+    basic_ios() {}
+    void init(basic_streambuf<charT, traits> *sb)
+    {
+        ios_base::init(sb);
+        tiestr_ = 0;
+        fill_ = widen(' ');
+    }
+private:
+    basic_ostream<charT, traits> *tiestr_;  /* 0x40 */
+    char_type fill_;                        /* 0x44 */
+};
+
+template <class charT, class traits>
+class basic_istream : virtual public basic_ios<charT, traits> {
+public:
+    explicit basic_istream(basic_streambuf<charT, traits> *sb);
+private:
+    streamsize gcount_;                     /* 0x08 */
+};
+
+template <class charT, class traits>
+basic_istream<charT, traits>::basic_istream(basic_streambuf<charT, traits> *sb)
+    : gcount_(0)
+{
+    this->init(sb);
+}
+
+template <class charT, class traits>
+class basic_ostream : virtual public basic_ios<charT, traits> {
+public:
+    explicit basic_ostream(basic_streambuf<charT, traits> *sb);
+};
+
+template <class charT, class traits>
+basic_ostream<charT, traits>::basic_ostream(basic_streambuf<charT, traits> *sb)
+{
+    this->init(sb);
+}
 
 }
 

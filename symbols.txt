@@ -2,9 +2,9 @@
 # Seeded by tools/seed_symbols.py; from here on it is kept BY HAND: rename a
 # func_<VA> to the mangled name its source defines. SIZE excludes MW's zero padding.
 
-0x00180008 0x1C0 func_00180008  # MAIN unaligned
+0x00180008 0x1C0 _start  # MAIN unaligned; by hand (MAIN runtime lane round 2): the ELF's entry point (SCUS_972.75's e_entry 0x180008), Sony's crt0.s start-up (the registers zeroed with padduw, .bss cleared, the main thread set up, main called) -- SOCOM 1's crt0.s unit (C:\usr\local\sce_2.5.1\EE\lib\crt0.s, 0x140008-0x1401E0); src/main/crt0.s
 0x001801C8 0x8 _exit  # MAIN unaligned; by body (crt0's _exit: Exit(0) whatever the status; newlib's abort calls _exit(1) through it, as the demo's abort calls its crt0 stub 0x1401D0, unnamed there)
-0x001801D0 0x10 func_001801D0  # MAIN; s1~ ExitThread (one of 2)
+0x001801D0 0x10 _root  # MAIN; s1~ ExitThread (one of 2); by hand (MAIN runtime lane round 2): crt0.s's thread root, ExitThread (syscall 35) -- the last function of SOCOM 1's crt0.s unit (0x1401D0, its own name stripped); src/main/crt0.s
 0x001801E0 0x9C _strdup__FPCcPCci  # MAIN; s1:calls (SOCOM 1's CNode::SetName and SetModelname call _strdup where SOCOM II's call this)
 0x00180280 0x314 _free__FPvPCci  # MAIN; s1:calls (SOCOM 1's CNode::SetName and SetModelname call _free where SOCOM II's call this; file and line passed as 0 here)
 0x001805A0 0x500 func_001805A0  # MAIN
@@ -12,18 +12,18 @@
 0x00180AD0 0x324 __dl__FPv  # MAIN; s1:callee
 0x00180E00 0x10 __nwa__FUi  # MAIN; s1:exact
 0x00180E10 0x508 __nw__FUi  # MAIN; s1:callee
-0x00181320 0x48 func_00181320  # MAIN
-0x00181370 0xAC func_00181370  # MAIN
-0x00181420 0x48 func_00181420  # MAIN
-0x00181470 0xAC func_00181470  # MAIN
-0x00181520 0x48 func_00181520  # MAIN
-0x00181570 0xB4 func_00181570  # MAIN
-0x00181630 0x48 func_00181630  # MAIN
-0x00181680 0xAC func_00181680  # MAIN
-0x00181730 0x48 func_00181730  # MAIN
-0x00181780 0xBC func_00181780  # MAIN
-0x00181840 0x48 func_00181840  # MAIN
-0x00181890 0xB4 func_00181890  # MAIN
+0x00181320 0x48 __ct__15_zmalloc<4four>FUi  # MAIN; by hand (MAIN runtime lane round 2): the 4-byte pool's constructor (m_bytes 4, the count, five counters cleared, init_page) -- SOCOM 1's __ct__15_zmalloc<4four>FUi in main.cpp; src/main/zmalloc.cpp
+0x00181370 0xAC init_page__15_zmalloc<4four>Fv  # MAIN; by hand (MAIN runtime lane round 2): the 4-byte pool's init_page (_calloc(4, count), the free list linked) -- SOCOM 1's init_page__15_zmalloc<4four>Fv; src/main/zmalloc.cpp
+0x00181420 0x48 __ct__16_zmalloc<5eight>FUi  # MAIN; by hand (MAIN runtime lane round 2): the 8-byte pool's constructor (the block class name ours, after SOCOM 1's four/twelve); src/main/zmalloc.cpp
+0x00181470 0xAC init_page__16_zmalloc<5eight>Fv  # MAIN; by hand (MAIN runtime lane round 2): the 8-byte pool's init_page (_calloc(8, count)); src/main/zmalloc.cpp
+0x00181520 0x48 __ct__17_zmalloc<6twelve>FUi  # MAIN; by hand (MAIN runtime lane round 2): the 12-byte pool's constructor -- SOCOM 1's __ct__17_zmalloc<6twelve>FUi; src/main/zmalloc.cpp
+0x00181570 0xB4 init_page__17_zmalloc<6twelve>Fv  # MAIN; by hand (MAIN runtime lane round 2): the 12-byte pool's init_page (_calloc(12, count)) -- SOCOM 1's init_page__17_zmalloc<6twelve>Fv; src/main/zmalloc.cpp
+0x00181630 0x48 __ct__18_zmalloc<7sixteen>FUi  # MAIN; by hand (MAIN runtime lane round 2): the 16-byte pool's constructor (the block class name ours); src/main/zmalloc.cpp
+0x00181680 0xAC init_page__18_zmalloc<7sixteen>Fv  # MAIN; by hand (MAIN runtime lane round 2): the 16-byte pool's init_page (_calloc(16, count)); src/main/zmalloc.cpp
+0x00181730 0x48 __ct__17_zmalloc<6twenty>FUi  # MAIN; by hand (MAIN runtime lane round 2): the 20-byte pool's constructor (the block class name ours); src/main/zmalloc.cpp
+0x00181780 0xBC init_page__17_zmalloc<6twenty>Fv  # MAIN; by hand (MAIN runtime lane round 2): the 20-byte pool's init_page (_calloc(20, count)); src/main/zmalloc.cpp
+0x00181840 0x48 __ct__22_zmalloc<10twentyfour>FUi  # MAIN; by hand (MAIN runtime lane round 2): the 24-byte pool's constructor (the block class name ours); src/main/zmalloc.cpp
+0x00181890 0xB4 init_page__22_zmalloc<10twentyfour>Fv  # MAIN; by hand (MAIN runtime lane round 2): the 24-byte pool's init_page (_calloc(24, count)); src/main/zmalloc.cpp
 0x00181950 0x7C func_00181950  # MAIN; zsys_memory.cpp's _strdup, MAIN's copy (SOCOM 1's order; the name is taken by the pool's _strdup, 0x1801E0, which the game calls): src/main/zsys_memory.cpp
 0x001819D0 0x70 func_001819D0  # MAIN; the same words as _calloc__FUiUiPCci (0x34eae0) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies); ovl-copy: _calloc__FUiUiPCci (MAIN's copy of zsys_memory.cpp: src/main/zsys_memory.cpp)
 0x00181A40 0x60 func_00181A40  # MAIN; ovl-copy: _malloc__FUiPCci (MAIN's copy of zsys_memory.cpp: src/main/zsys_memory.cpp)
@@ -167,10 +167,10 @@
 0x00188F30 0x190 func_00188F30  # MAIN
 0x001890C0 0x1E0 func_001890C0  # MAIN
 0x001892A0 0x1C4 write2__Q23std39basic_filebuf<c,Q23std14char_traits<c>>Fic  # MAIN; s1:align
-0x00189470 0xE0 __use_facet<Q23std8ctype<c>>__3stdFRCQ23std6localeQ23std12__chooser<1>  # MAIN; s1:calls
-0x00189550 0xD8 __use_facet<Q23std8ctype<w>>__3stdFRCQ23std6localeQ23std12__chooser<1>  # MAIN; s1:calls
-0x00189630 0xDC func_00189630  # MAIN
-0x00189710 0xDC func_00189710  # MAIN
+0x00189470 0xE0 __use_facet<Q23std8ctype<c>>__3stdFRCQ23std6localeQ23std12__chooser<1>_RCQ23std8ctype<c>  # MAIN; s1:calls; by hand (MAIN runtime lane round 2): SOCOM 1's name with the return type MW 3.0 appends to a function template instance's name (min<i>__3stdFRCiRCi_RCi alike) -- the name basic_ios<char>::init's widen calls (src/main/msl/msl.h)
+0x00189550 0xD8 __use_facet<Q23std8ctype<w>>__3stdFRCQ23std6localeQ23std12__chooser<1>_RCQ23std8ctype<w>  # MAIN; s1:calls; by hand (MAIN runtime lane round 2): SOCOM 1's name with MW 3.0's return-type suffix (as 0x189470) -- the name basic_ios<wchar_t>::init's widen calls (src/main/msl/msl.h)
+0x00189630 0xDC __use_facet<Q23std14codecvt<c,c,i>>__3stdFRCQ23std6localeQ23std12__chooser<1>_RCQ23std14codecvt<c,c,i>  # MAIN; by hand (MAIN runtime lane round 2): SOCOM 1's __use_facet<codecvt<char,char,int>> (0x149640, the same position after the ctype pair; it builds the facet with codecvt<char,char,int>'s vtable 0x1D51D0), with MW 3.0's return-type suffix
+0x00189710 0xDC __use_facet<Q23std14codecvt<w,c,i>>__3stdFRCQ23std6localeQ23std12__chooser<1>_RCQ23std14codecvt<w,c,i>  # MAIN; by hand (MAIN runtime lane round 2): SOCOM 1's __use_facet<codecvt<wchar_t,char,int>> (0x149720; builds the facet with codecvt<wchar_t,char,int>'s vtable 0x1D51A0), with MW 3.0's return-type suffix
 0x001897F0 0x10 do_out__Q23std14codecvt<c,c,i>CFRiPCcPCcRPCcPcPcRPc  # MAIN; vtable (slot +12 of codecvt<char,char,int>'s vtable 0x1D51D0; noconv); src/main/msl/iostream.cpp
 0x00189800 0x10 do_in__Q23std14codecvt<c,c,i>CFRiPCcPCcRPCcPcPcRPc  # MAIN; vtable (slot +16 of 0x1D51D0; noconv); src/main/msl/iostream.cpp
 0x00189810 0xC do_unshift__Q23std14codecvt<c,c,i>CFRiPcPcRPc  # MAIN; vtable (slot +20 of 0x1D51D0); src/main/msl/iostream.cpp
@@ -183,7 +183,7 @@
 0x0018A210 0x2D4 func_0018A210  # MAIN
 0x0018A4F0 0x8 do_max_length__Q23std14codecvt<c,c,i>CFv  # MAIN; vtable (slot +36 of 0x1D51D0; 1); src/main/msl/iostream.cpp
 0x0018A500 0x30 do_length__Q23std14codecvt<c,c,i>CFRiPCcPCcUi  # MAIN; s1:align
-0x0018A530 0x18 func_0018A530  # MAIN
+0x0018A530 0x18 min<i>__3stdFRCiRCi_RCi  # MAIN; by hand (MAIN runtime lane round 2): std::min<int> (b < a ? b : a by reference), generated after its first user codecvt<char>::do_length 0x18A500, which calls it; src/main/msl/iostream.cpp
 0x0018A550 0x5C __dt__Q23std14codecvt<c,c,i>Fv  # MAIN; vtable (slot +8 of 0x1D51D0); src/main/msl/iostream.cpp
 0x0018A5B0 0x5C __dt__Q23std14codecvt<w,c,i>Fv  # MAIN; vtable (slot +8 of 0x1D51A0); src/main/msl/iostream.cpp
 0x0018A610 0xA0 do_out__Q23std14codecvt<w,c,i>CFRiPCwPCwRPCwPcPcRPc  # MAIN; s1:align
@@ -220,10 +220,10 @@
 0x0018CD40 0x8 what__Q23std11logic_errorCFv  # MAIN; vtable (slot +12 of logic_error's 0x1D5250, inherited by length_error 0x1D5240 and out_of_range 0x1D5290)
 0x0018CD50 0xB8 func_0018CD50  # MAIN
 0x0018CE10 0xD0 func_0018CE10  # MAIN
-0x0018CEE0 0x10 func_0018CEE0  # MAIN
-0x0018CEF0 0x10 func_0018CEF0  # MAIN
-0x0018CF00 0x10 func_0018CF00  # MAIN
-0x0018CF10 0x10 func_0018CF10  # MAIN
+0x0018CEE0 0x10 @8@72@__dt__Q23std39basic_ostream<c,Q23std14char_traits<c>>Fv  # MAIN; by hand (MAIN runtime lane round 2): MW's thunk for ~basic_ostream<char> in basic_ios's table inside basic_ostream's vtable (0x1D5114: this - 8 plus the virtual base's displacement word at +72), the name MW gives it; src/main/msl/iostream.cpp
+0x0018CEF0 0x10 @24@72@__dt__Q23std39basic_istream<c,Q23std14char_traits<c>>Fv  # MAIN; by hand (MAIN runtime lane round 2): MW's thunk for ~basic_istream<char> (0x1D50E4: this - 24 plus the displacement word at +72), the name MW gives it; src/main/msl/iostream.cpp
+0x0018CF00 0x10 @8@72@__dt__Q23std39basic_ostream<w,Q23std14char_traits<w>>Fv  # MAIN; by hand (MAIN runtime lane round 2): MW's thunk for ~basic_ostream<wchar_t> (0x1D5044), the name MW gives it; src/main/msl/iostream.cpp
+0x0018CF10 0x10 @24@72@__dt__Q23std39basic_istream<w,Q23std14char_traits<w>>Fv  # MAIN; by hand (MAIN runtime lane round 2): MW's thunk for ~basic_istream<wchar_t> (0x1D5014), the name MW gives it; src/main/msl/iostream.cpp
 0x0018CF20 0x94 global__Q23std6localeFv  # MAIN; s1:callee
 0x0018CFC0 0xD8 classic__Q23std6localeFv  # MAIN; s1:align
 0x0018D0A0 0x60 __ct__Q23std8ctype<c>FPCUcbUi  # MAIN; s1:align
@@ -1365,7 +1365,7 @@
 0x001CCF20 0x130 func_001CCF20  # MAIN
 0x001CD078 0x122C func_001CD078  # MAIN unaligned
 0x001CF830 0x44 inflate_mask  # MAIN data: zlib infutil.c, uInt[17]
-0x001D4B00 0x74 func_001D4B00  # MAIN
+0x001D4B00 0x74 __sinit_zmalloc.cpp  # MAIN; by hand (MAIN runtime lane round 2): the pool unit's static initialiser -- constructs the six pools (24-byte first, 2200 blocks, ... 4-byte last, 8800) at 0x1D5690..0x1D5780; the unit's file name ours; src/main/zmalloc.cpp
 0x001D4B80 0x64 func_001D4B80  # MAIN
 0x001D4BF0 0x28 func_001D4BF0  # MAIN
 0x001D4C20 0x370 func_001D4C20  # MAIN
