@@ -24,22 +24,16 @@ int func_00621458(char type, int conn, int to, int msg, int size, unsigned char 
 int func_00622CC0(int *count, int conn);   /* the connection's object count */
 int func_006220F0(int *index, NetOwnershipStatus own, NetObjectLifespan life, unsigned int a, int b,
                   unsigned int c, int d, void *data, char *name, int e);   /* NetCreateObject */
-int func_006236C0();   /* NetUpdate */
-int func_00622E10(int *t);   /* NetGetLocalTime */
-int func_00622EA8(int *t);   /* NetGetTime */
-int func_0064A008();   /* the Medius library's last update error */
+int NetUpdate();
+int NetGetLocalTime(int *t);
+int NetGetTime(int *t);
+int MediusGetLastNetUpdateError();   /* the Medius library's last update error */
 
 int func_003006D0();   /* the Medius connection updated (the lobby's) */
 void func_0030BF20();   /* (the IOP stretch's per-frame update) */
 }
 
-/* the lobby's LAN flag ('ComeFromLan', a valve cached by the second room unit's object 0x44FE10;
- * its class unnamed yet) */
-class CLanRoom;
-extern "C" {
-bool func_003045B0(CLanRoom *room);
-extern CLanRoom data_0044FE10;
-}
+/* the LAN lobby (zonline.h's CZLANLobby, 0x44FE10: IsActive tests its 'ComeFromLan' valve) */
 
 void zRemoteDelayedAction(CZNetwork::TypeRTimeFixStruct *fix);
 
@@ -171,7 +165,7 @@ int CZNetwork::zNetInitialize()
     p.m_message = func_0030DCE0;
     p.m_18 = 0;
     NetInitialize(&p, &r);
-    if (func_003045B0(&data_0044FE10))
+    if (data_0044FE10.IsActive())
         func_00623330(0x8000, 0x8000);
     else
         func_00623330(8192, 0x8000);
@@ -214,14 +208,14 @@ int CZNetwork::zNetUpdate()
     if (m_bNetwork) {
         if (m_message_list.size())
             zNetFlushMessages();
-        if (!func_003045B0(&data_0044FE10)) {
+        if (!data_0044FE10.IsActive()) {
             if (func_003006D0() < 0) {
-                err = func_0064A008();
+                err = MediusGetLastNetUpdateError();
                 theLobby.RecoverFromNetError(err);
             }
             theLobby.Tick();
         } else {
-            err = func_006236C0();
+            err = NetUpdate();
             if (err)
                 theLobby.RecoverFromNetError(err);
             theLobby.Tick();
@@ -241,11 +235,11 @@ int CZNetwork::zNetUpdate()
         }
         int t = 0;
 
-        if (!func_00622E10(&t))
+        if (!NetGetLocalTime(&t))
             m_local_time = t;
         int n = 0;
 
-        if (!func_00622EA8(&n))
+        if (!NetGetTime(&n))
             m_net_time = n;
     }
     return err;
@@ -391,7 +385,7 @@ int CZNetwork::zNetConnect(NetClientConnectCallback connect, NetClientConnectCal
     func_0030FC70(data_0045B718, &p.m_voice);
     p.m_connect = connect;
     p.m_disconnect = disconnect;
-    if (func_003045B0(&data_0044FE10)) {
+    if (data_0044FE10.IsActive()) {
         m_e8 = 0;
         CUIVariable *var = theUIVarManager.Find("PlayerGamePassword");
 
@@ -438,7 +432,6 @@ extern "C" {
 int func_006218B8(NetLanConnectParams *p);   /* (the DME: its LAN connect's defaults) */
 int func_00621950(NetLanConnectParams *p, NetConnectResult *r);   /* (and the connect) */
 int func_00622FE8(int *status, int conn);   /* (a connection's state: 2 still connecting) */
-void func_00303780(CLanRoom *room, LanGameInfo *info);   /* the LAN lobby's game info (GetGameInfo) */
 }
 
 /* the LAN game's server connected and waited for: the LAN lobby's game info (its clients' limit),
@@ -462,7 +455,7 @@ extern "C" int func_0030D1B0(CZNetwork *net, NetClientConnectCallback connect,
     if (err)
         return err;
     theLobby.SetConnectionInfo(&info);
-    func_00303780(&data_0044FE10, (LanGameInfo *)&game);
+    data_0044FE10.GetGameInfo(&game);
     p.m_maxClients = game.m_maxPlayers;
     func_0030FC70(data_0045B718, &p.m_voice);
     p.m_connect = connect;
@@ -484,7 +477,7 @@ extern "C" int func_0030D1B0(CZNetwork *net, NetClientConnectCallback connect,
     net->m_GameConnectionIndex = r.m_index;
     status = 2;
     do {
-        if ((err = func_006236C0()) != 0 && err != 12) {
+        if ((err = NetUpdate()) != 0 && err != 12) {
             NetDisconnect(net->m_GameConnectionIndex);
             return err;
         }
@@ -646,17 +639,16 @@ void func_00620C60(void *base, void *field, int size, int count);   /* a field d
 void func_006210D0(int *type, int (*cb)(int, int, int, void *));   /* the type registered */
 int func_00621178(int flags, void *to, int a, int type, int size, void *data);   /* a message sent */
 int func_00622C28(int *client);   /* (the DME's: our client) */
-int func_00622A20(void **client, int conn, int index);   /* a client of the connection */
+int NetGetClient(void **client, int conn, int index);   /* a client of the connection */
 void func_00623138(int a, int conn);
-void func_006233D8(int a);
-void func_00303780(CLanRoom *room, LanGameInfo *info);   /* the room's game described */
+void NetSetMyClientObject(int a);
 int func_0030BE80(void);   /* (the network start-up's: the time since the link changed) */
 }
 
 /* (OVL1 0x30CDE0) */
 extern "C" void func_0030CDE0(CZNetwork *net, int a)
 {
-    func_006233D8(a);
+    NetSetMyClientObject(a);
 }
 
 /* (OVL1 0x30CDD0) */
@@ -670,7 +662,7 @@ extern "C" int func_0030CD90(CZNetwork *net, int index)
 {
     unsigned char *client = 0;
 
-    func_00622A20((void **)&client, net->m_GameConnectionIndex, index);
+    NetGetClient((void **)&client, net->m_GameConnectionIndex, index);
     if (client)
         return *(unsigned short *)(client + 4);
     return -1;
@@ -738,7 +730,7 @@ extern "C" int func_0030CA80(int a, int b, int c, void *data)
     if (!func_00622C28(&me)) {
         LanGameInfo info = {0};
 
-        func_00303780(&data_0044FE10, &info);
+        data_0044FE10.GetGameInfo((LANGameInfo *)&info);
         info.m_1c = ((int *)data)[0];
         info.m_28[3] = ((int *)data)[1];
         func_00621178(0x40, &me, 2, theNetwork.m_infoType, sizeof(info), &info);

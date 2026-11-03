@@ -481,6 +481,7 @@ public:
     float loop_timer;   // 0x18
 };   // 0x1c bytes
 
+#ifndef ZUI_H
 /* a ZRDR value (SOCOM 1's DWARF): a typed word -- 3 a string, 4 an array of length values */
 struct _zrdr {
     unsigned int type : 8;   // 0x0
@@ -521,6 +522,7 @@ struct _zrdr {
             return 0.0f;
     }
 };   // 0x8 bytes
+#endif
 
 /* SOCOM 1's zrdr_findtag, matched in its own unit under its address's name */
 extern "C" _zrdr *func_0032F0D0(_zrdr *rdr, const char *tag);

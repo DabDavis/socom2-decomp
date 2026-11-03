@@ -137,18 +137,6 @@ struct MediusJoinGameResponse {
     NetConnectionInfo ConnectInfo;   // 0x20
 };
 
-/* a room of the room list (SOCOM 1's BriefingRoom: only what is read here) */
-struct ChatRoom {
-    unsigned char _0[0x28];
-    int m_worldID;   // 0x28
-    unsigned char _2c[0x2e - 0x2c];
-    unsigned short m_maxPlayers;   // 0x2e
-    unsigned char _30[0x38 - 0x30];
-    char m_name[64];   // 0x38
-    unsigned char _78[0x94 - 0x78];
-    char *m_password;   // 0x94
-};
-
 /* a game created (SOCOM 1's MediusCreateGame, wider: the three generic fields and the host's type
  * SOCOM II's) */
 struct MediusCreateGameRequest {
@@ -296,7 +284,6 @@ MediusErrorCode func_0064AB98(MediusSetLocalizationParamsRequest *req,
 MediusErrorCode func_00647EC0(MediusMachineSignaturePost *req);   /* the DNAS id posted */
 void func_002EF3B0(int, int, int, MediusSetLocalizationParamsResponse *);   /* its callback */
 int func_002EF340(unsigned char language);   /* the console's language as Medius's */
-unsigned char func_003A4460();   /* the console's language */
 extern NetConnectionInfo data_0066A840;   /* the account's lobby server (OVL2 bss) */
 extern int data_0066A5E0;   /* the lobby server's connection (OVL2 bss) */
 extern float data_0044F8D0;   /* when the lobby server was asked for */
@@ -336,27 +323,26 @@ extern NetConnectionInfo data_0066A8F0;   /* the game's server (OVL2 bss) */
 extern int LobbyWorldID;   /* the room we are in, -1 none (SOCOM 1's) */
 extern int MediusWorldID;   /* the game joined (SOCOM 1's) */
 extern unsigned char g_bJoiningRandomGame;
-extern unsigned char data_0044F568[];   /* the room list (the rooms' unit's) */
 extern float data_004A44A0;   /* (a clock) */
 extern float data_0044F9E8;   /* when the room was joined */
-ChatRoom *func_002E4470(void *rooms, const char *name);   /* the room list's FindRoom */
 int func_002F6D00(CZOnlineLobby *lobby);   /* we join as a spectator */
 void func_002F4080(void *msg, int type);   /* a request put into the network's order (empty) */
 
 void func_00300680();   /* the Medius connection closed */
-const char *func_00361B40(int id);   /* a localised text */
 void func_002FA870(CZOnlineLobby *lobby);   /* the player's info asked for (the lobby unit's) */
 void func_002FAA80(CZOnlineLobby *lobby);   /* and refreshed */
 }
 
+extern BriefingRoomDB data_0044F568;   /* the room list (the rooms' unit's) */
+unsigned char GetLanguage();   /* the console's language (util_loc.cpp's) */
+const char *GetString(int id);   /* a localised text (util_loc.cpp's) */
+
 void UpdateChatDisplay();   /* the room's chat shown (below) */
 
 /* the lobby's state changed: pushed onto its queue (SOCOM 1 pushed inline; OVL1 0x2EFE20) */
-extern "C" void func_002E1610(void *fifo, const LOBBY_STATE *state);   /* the queue's push_back */
-
 void CZOnlineLobby::ChangeState(LOBBY_STATE state)
 {
-    func_002E1610(&m_state_change_fifo, &state);
+    m_state_change_fifo.push(state);
 }
 
 /* --- the state handlers (SOCOM 1's; the table the lobby's 0x2ED460 fills, by state) ---------- */
@@ -574,10 +560,10 @@ void cbCreateRoom(int, int, int, MediusCreateChannelResponse *resp)
 {
     if (CheckMediusCallbackStatus("CreateRoom", resp->StatusCode)) {
         LobbyWorldID = resp->MediusWorldID;
-        ChatRoom *room = func_002E4470(data_0044F568, ZString(theLobby.uiv_LobbyWorldNameVar));
+        BriefingRoom *room = data_0044F568.FindRoom(ZString(theLobby.uiv_LobbyWorldNameVar));
 
         if (room)
-            room->m_worldID = resp->MediusWorldID;
+            room->MediusWorldID = resp->MediusWorldID;
         theLobby.ChangeState(JOIN_ROOM);
     } else if (resp->StatusCode == (MediusCallbackStatus)-974) {
         MediusFindWorldByNameRequest req;
@@ -602,7 +588,7 @@ void CreateRoomStateHandler(LOBBY_STATE_FLAG flag)
     case REGISTER:
         break;
     case ENTRY: {
-        ChatRoom *room = func_002E4470(data_0044F568, ZString(theLobby.uiv_LobbyWorldNameVar));
+        BriefingRoom *room = data_0044F568.FindRoom(ZString(theLobby.uiv_LobbyWorldNameVar));
 
         if (room) {
             MediusCreateChannelRequest req;
@@ -610,8 +596,8 @@ void CreateRoomStateHandler(LOBBY_STATE_FLAG flag)
             memset(&req, 0, sizeof(req));
             SetSessionKey(req.SessionKey);
             req.ApplicationID = 10472;
-            req.MaxPlayers = room->m_maxPlayers;
-            CopyFrom(req.LobbyName, room->m_name, sizeof(req.LobbyName));
+            req.MaxPlayers = room->MaxPlayers;
+            CopyFrom(req.LobbyName, room->LobbyName, sizeof(req.LobbyName));
             CopyFrom(req.LobbyPassword, room->m_password, sizeof(req.LobbyPassword));
             CheckMediusError(MediusCreateChannel(&req, cbCreateRoom));
         }
@@ -801,7 +787,7 @@ void AccountLoginStateHandler(LOBBY_STATE_FLAG flag)
         memset(&loc, 0, sizeof(loc));
         SetSessionKey(loc.SessionKey);
         loc.CharacterEncoding = 2;
-        loc.Language = func_002EF340(func_003A4460());
+        loc.Language = func_002EF340(GetLanguage());
         CheckMediusError(func_0064AB98(&loc, func_002EF3B0));
         unsigned char *id = GetDNASUniqueID(&len);
         if (id && len > 0 && len < 33) {
@@ -992,7 +978,7 @@ void ConnectErrorStateHandler(LOBBY_STATE_FLAG flag)
         break;
     case ENTRY:
         func_00300680();
-        LobbyEvent("MP_MEDIUS_ERROR", func_00361B40(450));
+        LobbyEvent("MP_MEDIUS_ERROR", GetString(450));
         break;
     case TICK:
         break;
@@ -1049,7 +1035,15 @@ struct MediusPlayerInfoRequest {
     int AccountID;   // 0x28
 };   // 0x2c
 
-struct MediusPlayerInfoResponse { MEDIUS_RESPONSE_HEAD };
+/* the player's info (the SDK's MediusPlayerInfoResponse: the account's stats as text at 0x48) */
+struct MediusPlayerInfoResponse {
+    MEDIUS_RESPONSE_HEAD
+    char AccountName[32];   // 0x1c
+    int ApplicationID;   // 0x3c
+    int PlayerStatus;   // 0x40
+    int ConnectionClass;   // 0x44
+    char Stats[256];   // 0x48
+};
 
 /* a chat line (SOCOM 1's MediusChatMessage: 1 private, the target looked up first) */
 struct MediusChatMessage {
@@ -1102,7 +1096,6 @@ CChatQueue data_0044FA20;   /* the public lines waiting for the filter */
 CChatQueue data_0044FA50;   /* the private lines waiting for their player */
 
 extern "C" {
-void func_002F5290(void *queue, const MediusChatMessage *msg);   /* a line queued */
 MediusErrorCode MediusFindPlayer(MediusFindPlayerRequest *req,
                               void (*cb)(int, int, int, MediusFindPlayerResponse *));   /* MediusFindPlayer */
 MediusErrorCode MediusGetPlayerInfo(MediusPlayerInfoRequest *req,
@@ -1140,7 +1133,7 @@ bool CZOnlineLobby::SendChat(const char *text, const char *to)
     if (to) {
         msg.MessageType = 1;
         msg.TargetID = -1;
-        func_002F5290(&data_0044FA50, &msg);
+        data_0044FA50.push(msg);
         MediusFindPlayerRequest find;
 
         memset(&find, 0, sizeof(find));
@@ -1153,10 +1146,158 @@ bool CZOnlineLobby::SendChat(const char *text, const char *to)
     } else {
         msg.TargetID = -1;
         msg.MessageType = 0;
-        func_002F5290(&data_0044FA20, &msg);
+        data_0044FA20.push(msg);
         Censor(msg.Message, cbFilterChat, &msg);
     }
     return true;
+}
+
+/* the room's players asked for (the SDK's MediusLobbyWorldPlayerListRequest: no session key) */
+struct MediusLobbyWorldPlayerListRequest {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    int MediusWorldID;   // 0x18
+};   // 0x1c
+struct MediusLobbyWorldPlayerListResponse;
+
+extern "C" {
+extern unsigned char data_0044F9F0;   /* the room's player list being asked for */
+extern float data_0044F9F8;   /* when it may next be asked */
+MediusErrorCode func_0064AF78(MediusLobbyWorldPlayerListRequest *req,
+                              void (*cb)(int, int, int, MediusLobbyWorldPlayerListResponse *));
+void func_002F13F0(int, int, int, MediusLobbyWorldPlayerListResponse *);   /* a page of them (below) */
+
+/* the room's players asked for again, at most every ten seconds and one answer at a time: each
+ * player's state cleared, the page told it is waiting while it is empty (SOCOM II's; OVL1
+ * 0x2F1240: 0x2F11F0, 'RefreshRoomPlayerList', calls it) */
+void func_002F1240(C2D *page)
+{
+    if (data_0044F9F0)
+        return;
+    float now = data_004A44A0;
+
+    if (now < data_0044F9F8)
+        return;
+    data_0044F9F8 = 10.0f + now;
+    BriefingRoom *room = data_0044F568.FindRoom(ZString(theLobby.uiv_LobbyWorldNameVar));
+
+    if (!room)
+        return;
+    data_0044F9F0 = 1;
+    for (std::vector<RoomPlayer>::iterator i = room->m_players.begin(); i != room->m_players.end(); ++i)
+        (*i).OnlineState.ConnectStatus = 0;
+    if (!theLobby.uiv_RoomPlayerList->Count()) {
+        CRdrEditor ed;
+
+        ed.push(0);
+        ed.addstringnode("Retrieving player list from server...");
+        ed.pop();
+        theLobby.uiv_RoomPlayerList->Set(&ed);
+    }
+    MediusLobbyWorldPlayerListRequest req;
+
+    memset(&req, 0, sizeof(req));
+    req.MediusWorldID = LobbyWorldID;
+    CheckMediusError(func_0064AF78(&req, func_002F13F0));
+}
+}
+
+extern "C" void func_002F1670();   /* the room's players shown (below) */
+
+/* a room player's info come in (the 'PlayerListInfo' requests 0x2F0EA0 makes, the account in the
+ * message id): the player found in the room we are in, its clan's tag shown in its record's
+ * first bytes when it has a clan and the players shown again -- else the record marked (SOCOM
+ * II's; OVL1 0x2F10B0) */
+extern "C" void func_002F10B0(int, int, int, MediusPlayerInfoResponse *resp)
+{
+    if (CheckMediusCallbackStatus("PlayerListInfo", resp->StatusCode)) {
+        BriefingRoom *room = data_0044F568.FindRoom(ZString(theLobby.uiv_LobbyWorldNameVar));
+        GamePlayerStats stats;
+
+        func_002F9AC0(&stats, resp->Stats);
+        if (room) {
+            int id = atoi(resp->MessageID);
+
+            for (std::vector<RoomPlayer>::iterator i = room->m_players.begin();
+                 i != room->m_players.end(); ++i) {
+                if (id == (*i).AccountID) {
+                    if (stats.m_clan[0]) {
+                        char tag[32];
+
+                        sprintf(tag, "[%s]", stats.m_clan);
+                        CopyTo((*i).MessageID, tag, MEDIUS_MESSAGEID_MAXLEN);
+                        func_002F1670();
+                    } else {
+                        (*i).MessageID[0] = 1;
+                    }
+                    /* a return, not a break: the nested ifs keep their join, a `b` to the
+                     * epilogue (AddFriend's tell); a break is threaded through */
+                    return;
+                }
+            }
+        }
+    }
+}
+
+/* the room player list's page (only what is read here: its height, a row's height, the first row
+ * shown) */
+struct PlayerListPage {
+    unsigned char _0[0x78];
+    int m_height;   // 0x78
+    unsigned char _7c[0xac - 0x7c];
+    int m_rowheight;   // 0xac
+    unsigned char _b0[0xb8 - 0xb0];
+    int m_top;   // 0xb8
+};
+
+extern "C" {
+const char *func_00374B50(PlayerListPage *page, int row);   /* a row's text (the UI's) */
+
+/* the info of the room's players the page shows asked for, each one not yet known (its record's
+ * first byte still clear) by the account id its row holds -- the request's message id carries the
+ * id back (SOCOM II's; OVL1 0x2F0EA0: UIRefreshRoomPlayerList calls it on theLobby) */
+bool func_002F0EA0(CZOnlineLobby *lobby, C2D *list)
+{
+    PlayerListPage *page = 0;
+
+    if (!lobby->m_isopen)
+        return false;
+    if (list)
+        page = (PlayerListPage *)list;
+    if (page) {
+        /* the room and the first row numbered first; the bound `top + rows` is the loop
+         * optimiser's hoisted temporary, numbered after SetSessionKey's hoisted address, so it
+         * takes s0 (a named bound, or rows += top, is numbered early) */
+        BriefingRoom *room;
+        int top;
+        int rows = page->m_height / page->m_rowheight;
+
+        top = page->m_top;
+        room = data_0044F568.FindRoom(ZString(theLobby.uiv_LobbyWorldNameVar));
+        if (room) {
+            for (int row = top; row <= top + rows; row++) {
+                const char *s = func_00374B50(page, row);
+
+                if (s && s[0]) {
+                    int id = atoi(s);
+
+                    for (std::vector<RoomPlayer>::iterator i = room->m_players.begin();
+                         i != room->m_players.end(); ++i) {
+                        if (id == (*i).AccountID && !(*i).MessageID[0]) {
+                            MediusPlayerInfoRequest req;
+
+                            memset(&req, 0, sizeof(req));
+                            SetSessionKey(req.SessionKey);
+                            sprintf(req.MessageID, "%d", id);
+                            req.AccountID = id;
+                            MediusGetPlayerInfo(&req, func_002F10B0);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return true;
+}
 }
 
 /* a player's info asked for, the menu's fields blanked meanwhile; the request's message id names
@@ -1221,11 +1362,11 @@ void CZOnlineLobby::RecoverFromNetError(int err)
         handled = m_net_error_handler(err);
     if (!handled) {
         if (m_current_state == READY_TO_CONNECT) {
-            LobbyEvent("MP_MEDIUS_ERROR", func_00361B40(1067));
+            LobbyEvent("MP_MEDIUS_ERROR", GetString(1067));
         } else if (m_current_state == LOBBY_ACTIVE) {
-            LobbyEvent("MP_MEDIUS_ERROR", func_00361B40(1068));
+            LobbyEvent("MP_MEDIUS_ERROR", GetString(1068));
         } else {
-            LobbyEvent("MP_MEDIUS_ERROR", func_00361B40(1068));
+            LobbyEvent("MP_MEDIUS_ERROR", GetString(1068));
             theLobby.Bailout();
         }
     }
@@ -1314,7 +1455,7 @@ void cbFindChatPlayerID(int, int, int, MediusFindPlayerResponse *resp)
 
         data_0044FA50.pop();
         msg.TargetID = resp->AccountID;
-        func_002F5290(&data_0044FA20, &msg);
+        data_0044FA20.push(msg);
         theLobby.Censor(msg.Message, cbFilterChat, 0);
     } else {
         data_0044FA50.pop();
@@ -1335,7 +1476,7 @@ void UpdateChatDisplay()
         CRdrEditor ed;
 
         ed.push(0);
-        BriefingRoom *room = ((BriefingRoomDB *)data_0044F568)->FindRoom(ZString(theLobby.uiv_LobbyWorldNameVar));
+        BriefingRoom *room = data_0044F568.FindRoom(ZString(theLobby.uiv_LobbyWorldNameVar));
 
         if (room) {
             n = 1;

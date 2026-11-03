@@ -233,7 +233,19 @@ public:
 /* the CD file system's flag that a sound stream owns the drive (SOCOM 1's static) */
 class CFileCD {
 public:
+    /* (util_sonyio.cpp's real class, out of line there: the DNAS client reads its file so) */
+    CFileCD();
+    ~CFileCD();
+    int Read(char *buf, int size);
+    bool OpenSector(unsigned int sector);
+
     static bool m_streamingSndActive;
+
+    void *m_toc;            // 0x0 (util_sonyio.cpp's layout)
+    unsigned int m_pos;     // 0x4
+    int m_headSector;       // 0x8
+    char *m_sector;         // 0xc
+    char *m_buf;            // 0x10
 };
 
 /* the sounds file, read once (SOCOM 1's GetSoundRdrFile) */

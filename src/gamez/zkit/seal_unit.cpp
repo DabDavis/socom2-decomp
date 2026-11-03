@@ -161,6 +161,11 @@ public:
     /* the index'th SEAL of the squad, counted on through the squads under it to a depth, or 0
      * (SOCOM 1's GetSealByIndex(unsigned int), the depth new; OVL2 0x5EDBB0) */
     CZSealBody *GetSealByIndex(int index, int depth);
+    /* the squad's last SEAL: the last squad under it asked first, then its own SEALs', escortees'
+     * and dead's last; and its leader, the first SEAL, else the first squad's (SOCOM 1's GetTail and
+     * const GetLeader, before CommandNotifyFromChild in both builds: OVL2 0x5E8850, 0x5E8A90) */
+    CZSealBody *GetTail();
+    CZSealBody *GetLeader() const;
 
     class CCompassAnchor *m_compassanchor;   // 0x0
     /* the table at 4: IssueCommand, AllowCommand (0x669650) */
@@ -275,6 +280,27 @@ void CSealUnit::EscorteeJoinUnit(CZSealBody *seal)
     func_005E7830(this);
 }
 
+/* (OVL2 0x5E7830) the squad's four lists walked and nothing done -- the bodies compiled out: the
+ * SEALs, the dead, the escortees, the squads under it. One slist iterator ASSIGNED from each begin()
+ * in turn and a ulist one declared after it: an assigned wrapper iterator stays in its stack slot,
+ * the base iterator copied in through $f0 (the MSL headers round 15; a fresh iterator per walk, or
+ * all four declared at the top, gives other slots) */
+extern "C" void func_005E7830(CSealUnit *unit)
+{
+    CSealUnit::slist::iterator i;
+
+    for (i = unit->m_seals.begin(); i != unit->m_seals.end(); ++i) {
+    }
+    for (i = unit->m_dead_guys.begin(); i != unit->m_dead_guys.end(); ++i) {
+    }
+    for (i = unit->m_escortees.begin(); i != unit->m_escortees.end(); ++i) {
+    }
+    CSealUnit::ulist::iterator u;
+
+    for (u = unit->m_sub_units.begin(); u != unit->m_sub_units.end(); ++u) {
+    }
+}
+
 /* the squad of a number, made and listed when there is none; team 24's gets the radio channel's
  * valve (OVL2 0x5EF380; SOCOM 1's, the word after the valve zeroed with it) */
 CSealUnit *CSealUnit::Create(unsigned int team)
@@ -373,7 +399,17 @@ bool CSealUnit::GetMyPointOutTurnDir(CZSealBody *seal, CPnt3D **dir)
  * -- the third size() itself, 0x510B80). Tried in a scratch include/list (reverted): both changes
  * move the size and begin() calls to the target's copies, but then the third copy inlines the
  * wrapper's != one level more than the target (0x1B0); the real depths are the MSL lane's work
- * (README "Open, and next", level 6) */
+ * (README "Open, and next", level 6).
+ * Measured again (the MSL headers round 15, build/p15/incB, untracked): with include/list's sz() under
+ * size() and the wrapper's begin()/end() through the base's, every call this function makes is the
+ * target's, copy by copy (sz 0x5E8A80, the base's begin 0x5ED9A0 and the wrapper's constructor 0x5ED980,
+ * end 0x5ED8F0, the base's != 0x5ED880 in the first self-copy; size 0x510B80, begin 0x5ED950, the
+ * wrapper's != 0x5ED8D0, * 0x5ED940, i++ 0x5ED920 in the second) -- the "third copy" is the raw one, so
+ * nothing there inlines. What is left (0x1B0 against 0x1F8) is the outer copy: the target builds
+ * begin()'s and end()'s base iterators in stack slots and copies each into the wrapper's through $f0
+ * (the by-value parameter kept in memory), then loads the iterator into s0; MW scalarises all of it
+ * here. Not it: the iterator assigned from begin() (0x1F4, but in memory through the whole walk), direct
+ * initialisation, a while loop, the base iterator's field in a base class (no change) */
 int CSealUnit::GetSealCount(int depth)
 {
     int n = m_seals.size();
@@ -504,6 +540,39 @@ void CSealUnit::CommandNotifyFromChild(CSealUnit *child, CZSealBody *seal, FT_CO
     }
 }
 
+/* (OVL2 0x5E8A90: recursive, inlined into itself four times -- SOCOM 1's three -- each copy cutting
+ * front() and empty() a level shorter: include/list's accessors, the pieces 0x5E8C40-0x5E8C90 in its
+ * tail, empty() and sz() shared with GetTail's 0x5E8A60/0x5E8A80) */
+CZSealBody *CSealUnit::GetLeader() const
+{
+    if (!m_seals.empty())
+        return m_seals.front();
+    if (!m_sub_units.empty())
+        return m_sub_units.front()->GetLeader();
+    return 0;
+}
+
+/* (OVL2 0x5E8850: recursive, inlined into itself twice; its pieces 0x5E8A40-0x5E8A80 follow it). The
+ * squad under it taken into a local first: called with back() as its argument, MW expands that
+ * back() a level deeper than the copy's other calls (the target's d1 calls the base's back()) */
+CZSealBody *CSealUnit::GetTail()
+{
+    CZSealBody *t = 0;
+
+    if (!m_sub_units.empty()) {
+        CSealUnit *unit = m_sub_units.back();
+
+        t = unit->GetTail();
+    }
+    if (!t && !m_seals.empty())
+        t = m_seals.back();
+    if (!t && !m_escortees.empty())
+        t = m_escortees.back();
+    if (!t && !m_dead_guys.empty())
+        t = m_dead_guys.back();
+    return t;
+}
+
 /* (OVL2 0x5EAA70) */
 bool CSealUnit::GetAiModes(signed char *a, signed char *b)
 {
@@ -620,10 +689,8 @@ bool CSealUnit::GetData(void *data, unsigned int size)
 }
 
 extern "C" {
-/* the squad's leader (OVL2 0x5E8A90, unwritten: SOCOM 1's GetLeader by position), its awareness
- * (0x5E76D0: SOCOM 1's GetAwareCounter by position), a squad sound by number with a chance (0x5EAF20)
- * and the squad's formation set (0x5EB6D0) */
-CZSealBody *func_005E8A90(CSealUnit *unit);
+/* the squad's awareness (0x5E76D0: SOCOM 1's GetAwareCounter by position), a squad sound by number
+ * with a chance (0x5EAF20) and the squad's formation set (0x5EB6D0) */
 int func_005E76D0(CSealUnit *unit);
 void func_005EAF20(CSealUnit *unit, int sound, int b, float chance);
 }
@@ -639,7 +706,7 @@ void func_005EB6D0(CSealUnit *unit, UNIT_FORMATION f, int b);
  * formation byte and the name ours) */
 extern "C" void func_005EB8A0(CSealUnit *unit)
 {
-    CZSealBody *leader = func_005E8A90(unit);
+    CZSealBody *leader = unit->GetLeader();
 
     if (leader) {
         UNIT_FORMATION f;

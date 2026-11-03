@@ -122,8 +122,8 @@ class CSMDownloadPatch : public CSimpleStateMachine {
 public:
     CSMDownloadPatch(CValve *valve, const char *url)
     {
-        m_byteCount = func_003857C0(&theUIVarManager, "DownloadByteCount", 0, (UIVAR_LONGEVITY)1);
-        m_stateName = func_003857C0(&theUIVarManager, "DownloadState", 0, (UIVAR_LONGEVITY)1);
+        m_byteCount = theUIVarManager.Add("DownloadByteCount", 0, (UIVAR_LONGEVITY)1);
+        m_stateName = theUIVarManager.Add("DownloadState", 0, (UIVAR_LONGEVITY)1);
         m_stateValve = CValve::Create("DownloadStateValve", (VALVE_TYPE)2);
         m_archive = 0;
         m_length = 0;
@@ -184,7 +184,7 @@ public:
     /* the HTTP library let go of and the machine finished */
     void Shutdown()
     {
-        func_003862A0(m_stateName, "Finish");
+        *m_stateName = "Finish";
         if (func_00544860())
             theGame.m_menuState.RunEventAnim("MP_DOWNLOAD_ERROR", "Download Error: sceHTTPTerminate failed\n");
         func_004C73F0();
@@ -258,7 +258,7 @@ void CSMDownloadPatch::Receive(unsigned char event)
         HTTPResponse *response;
 
         sprintf(text, "Received %s", FileName());
-        func_003862A0(m_stateName, text);
+        *m_stateName = text;
         if (!(response = func_00544708(m_client))) {
             Error("Empty response", 0);
         } else {
@@ -304,7 +304,7 @@ void CSMDownloadPatch::Get(unsigned char event)
         int err;
 
         sprintf(text, "Get %s", FileName());
-        func_003862A0(m_stateName, text);
+        *m_stateName = text;
         if ((err = func_00545800(m_client, 9, 0)) < 0) {
             Error("sceHTTPSetOption(sceHTTPO_BlockingMode) failed", err);
             break;
@@ -514,7 +514,7 @@ void CSMDownloadPatch::Open(unsigned char event)
         int err;
 
         sprintf(text, "Open %s", FileName());
-        func_003862A0(m_stateName, text);
+        *m_stateName = text;
         if (!(m_client = func_00541C10())) {
             Error("sceHTTPCreate failed\n", 0);
             break;
@@ -557,7 +557,7 @@ void CSMDownloadPatch::InitializeDNAS(unsigned char event)
 {
     switch (event) {
     case 0:
-        func_003862A0(m_stateName, "Initialize DNAS");
+        *m_stateName = "Initialize DNAS";
         break;
     case 1: {
         int err;
@@ -577,7 +577,7 @@ void CSMDownloadPatch::InitializeDNAS(unsigned char event)
 bool CSMDownloadPatch::Start()
 {
     CSimpleStateMachine::Start();
-    func_003862A0(m_stateName, "Start");
+    *m_stateName = "Start";
     if (func_003515D0(data_0049E7E8, 3))
         SetState((SSMState)&CSMDownloadPatch::InitializeDNAS);
     if (func_005447D8() < 0)
@@ -593,13 +593,13 @@ bool UIDownloadPatch(C2DAnimCmdHdr *hdr, float *dT)
     CValve *valve = func_002846F0(hdr);
 
     if (!data_004416D0) {
-        CUIVariable *url = func_003857C0(&theUIVarManager, "PatchServerURL", 0, (UIVAR_LONGEVITY)1);
+        CUIVariable *url = theUIVarManager.Add("PatchServerURL", 0, (UIVAR_LONGEVITY)1);
 
         data_004416D0 = new CSMDownloadPatch(valve, url->String());
         data_004416D0->Start();
     } else {
-        func_003A5C30(data_004416D0);
-        if (func_003A5C10(data_004416D0)) {
+        data_004416D0->Tick();
+        if (data_004416D0->IsDone()) {
             delete data_004416D0;
             data_004416D0 = 0;
             done = true;

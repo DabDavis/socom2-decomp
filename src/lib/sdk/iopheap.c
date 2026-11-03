@@ -9,7 +9,10 @@
  *
  * OPEN: sceSifInitIopHeap (3 words): the target fills the bind test's delay slot with _bind's
  * %hi in v0 and clears v0 for the return after the store; here the return's clear is scheduled
- * first and the %hi takes v1 (return _bind = 0, return _bind: the same). */
+ * first and the %hi takes v1 (return _bind = 0, return _bind: the same; round 17a: the store and
+ * return inside the loop, 0x90, or the bind test positive with -1 after the loop, 0x8C, neither).
+ * cd and rdata are data.txt's cd@iopheap and rdata@iopheap (round 17a: the IOP reset and loadfile
+ * objects label statics of the same names). */
 
 typedef unsigned int u_int;
 
