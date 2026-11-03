@@ -12471,7 +12471,7 @@
 0x00630370 0x6C KM_DeleteKeys  # OVL2; s1:align
 0x006303E0 0x124 KM_Destroy  # OVL2; s1:calls
 0x00630508 0xBC KM_Cleanup  # OVL2 unaligned; s1:callee
-0x006305C8 0x38 func_006305C8  # OVL2 unaligned
+0x006305C8 0x38 KM_GenerateRSAKeyPair  # OVL2 unaligned; s1:order+body (round 18b: SOCOM 1's rt_crypt object has KM_Destroy, KM_Cleanup, KM_GenerateRSAKeyPair, KM_CreateRandomRCKey; here its body -- InitializePRNG, then RSAGenerateKeyPair -- sits between KM_Cleanup and KM_CreateRandomRCKey, with a twin 0x630600 for the table-prime generator)
 0x00630600 0x38 func_00630600  # OVL2
 0x00630638 0x58 KM_CreateRandomRCKey  # OVL2 unaligned; s1:align
 0x00630690 0x2A8 KM_Encrypt  # OVL2; s1:order (the gcc lane, round 12b): SOCOM 1's rt_crypt object ends KM_Encrypt, KM_Decrypt; this is its body grown -- GetKeyMaster, the 4-byte SHA of the data masked to 29 bits, GetKeyChain, then RCSaltyInitialize/RCEncrypt under the client's or the session's RC key (tags 0x60000000/0x20000000) or RSAEncrypt under the client's public key (0xE0000000), plus SOCOM II's KM_GetSoftwareKeyPair path (0x80000000)
