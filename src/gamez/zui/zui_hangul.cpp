@@ -39,6 +39,7 @@
 #include <string.h>
 #include "zui.h"
 #include "zui_skb.h"
+#include "zui_hangul.h"
 
 /* the keyboard display unit's reader of UiParams.rdr (0x397070) */
 extern "C" void func_00397070(CRdrFile *file);
@@ -104,34 +105,6 @@ static const char *s_jamoNames[JAMO_COUNT] = {
     "Ye", "Yeo", "Yo", "Yu"
 };
 
-/* SOCOM II's MSL vectors here test `this` once more in their destructors than include/vector's do
- * (the static rule list's 0x3940F0: four tests where a pointer vector's 0x38D5C0 has three; the
- * index vectors inside 0x390690's and the completions' elements: four) -- a stand-in level (ours) */
-template <class T>
-class CSkbVec : public std::vector<T> {
-};
-
-/* a syllable's jamo (ours: five tests in its destructor 0x3912A0, its constructor 0x391280) */
-class CJamoStr : public CSkbVec<char> {
-};
-
-/* a composed piece: its jamo and its character code (16 bytes; ours: the destructor 0x390760, six
- * tests; the code's own constructor 0x392760) */
-struct SKBPIECE {
-    CJamoStr m_jamo;   // 0x0
-    CInit<unsigned short, 0> m_code;   // 0xc
-};
-
-/* a sequence of a production: the jamo it reads and the two values it adds (KoreanInputRules'
- * Seq/Val/Val2; ours, 20 bytes) */
-struct SKBSEQ {
-    SKBSEQ() : m_val(0), m_val2(0) {}
-
-    std::vector<char> m_jamo;   // 0x0
-    int m_val;   // 0xc
-    int m_val2;   // 0x10
-};
-
 /* a production: its name and its sequences (24 bytes, new'd by the rules' parser) */
 struct SKBRULE {
     SKBSEQ *Seq(int i);
@@ -154,17 +127,6 @@ struct SKBCOMPLETE {
 class CSkbCompleteVec : public CSkbVec<SKBCOMPLETE> {
 };
 
-/* the pieces composed so far (a vector of SKBPIECE; the members ours) */
-class CSkbPieces : public std::vector<SKBPIECE> {
-public:
-    void AddPiece();
-    void RemovePiece();
-    void PopPiece();
-    unsigned short PrevCode();
-    unsigned short LastCode();
-    char LastJamo(int i);
-    void Append(SKBSEQ &seq, bool second);
-};
 
 /* a fixed array built and destroyed in place (ours: the composition's single jamo string at
  * 0x49ED40 -- the count zeroed by the initialiser, nothing registered; its members out of line,

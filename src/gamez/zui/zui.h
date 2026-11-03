@@ -77,6 +77,18 @@ struct _zrdr {
     }
     /* a string's text, or 0 (ours: the image specs read a texture name so, a ternary) */
     const char *String() { return type == 3 ? string : 0; }
+    /* the two read through a const item (ours: CreateSoftKeyboard's grid items -- through a const
+     * pointer the type tested once serves both, through a non-const one each reloads it) */
+    int Integer() const
+    {
+        if (type == 1)
+            return integer;
+        else if (type == 2)
+            return (int)real;
+        else
+            return 0;
+    }
+    const char *String() const { return type == 3 ? string : 0; }
 };   // 0x8 bytes
 
 /* how long a variable lives (SOCOM 1's DWARF, names and values; a dormant variable is a free

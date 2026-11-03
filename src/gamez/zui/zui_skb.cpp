@@ -13,6 +13,7 @@
  * addresses them. */
 
 #include <map>
+#include <string.h>
 #include <algorithm>
 #include "zui_2d.h"
 #include "../zsys/zsys.h"
@@ -45,6 +46,22 @@ std::vector<CSoftKeyboard *> g_arrSkbs;
 
 CSkbKey StrToSkbKey(const char *s);
 void CreateSoftKeyboard(_zrdr *rdr);
+
+/* the key an rdr item names: a key name, or a code (ours) */
+inline CSkbKey SkbItemKey(_zrdr *item)
+{
+    return item->Type() == 3 ? StrToSkbKey(item->String()) : CSkbKey(0, item->Integer());
+}
+
+/* the grid grown to hold (x, y) and the key set there (ours) */
+inline void SkbSetGridKey(CSoftKeyboard *skb, int x, int y, const CSkbKey &key)
+{
+    if (skb->m_grid.size() <= y)
+        skb->m_grid.resize(y + 1);
+    if (skb->m_grid[y].size() <= x)
+        skb->m_grid[y].resize(x + 1);
+    skb->m_grid[y][x] = key;
+}
 
 /* a keyboard deleted (as a function object, std::for_each's) */
 struct DeleteSkb {
@@ -106,14 +123,21 @@ namespace {
 /* a keyboard made from its rdr block and added to the keyboards: its look, its key props, its grid
  * of keys (rows of names or codes) and whether an unchanged string counts (SOCOM 1's
  * CreateSoftKeyboard, SOCOM II's split three ways).
- * OPEN, 0x10 bytes long: the target calls the key map's default constructor out of line with no
- * arguments (0x38E740, which builds the tree from two unconstructed stack slots) where include/map
- * has only map(const Compare & = Compare(), const Allocator & = Allocator()), so the call site
- * builds the allocator (its copy called) and passes both; and it calls the fonts' constructor
- * 0x38E550 (C2DFont's, 0x38E590: a glyph map through 0x1FEAC0, a pointer vector, a string), which
- * the stand-in C2DFont has not got. The grid loop's registers follow once both are in (the target
- * keeps the grid in s8). It stays for the member constructors it emits (0x38E620, 0x38E730,
- * 0x38E770, 0x38E890, 0x38E8D0 byte-exact) and the grid's vector instances */
+ * OPEN, the target's size, ~100 instructions shifted: one register short. Round 12 put in C2DFont
+ * (the fonts' constructor 0x38E550 now called as the target does), an int column counter (Item's
+ * unsigned index then recomputes x*8 each pass, as the target, which an unsigned counter
+ * strength-reduces), the grid store through an inline taking the keyboard (the target reloads skb
+ * once a pass into s0), the key bound to a const reference (the ternary's copy then lives at
+ * 184(sp), the target's slot) and a const item (its type byte loaded once for Type(), String() and
+ * Integer(), as the target). What is left: the grid store reads the key's byte off a REMATERIALISED
+ * &key (`addiu v0,sp,184` each pass) and its code through the copy's hoisted &key.m_code (s6),
+ * where this build hoists &key itself into a saved register for both reads and so spills the grid
+ * (s8 in the target) to the stack. Tried: the key by value, through an inline returning it, passed
+ * straight to the store's inline (by reference and by value), a written operator= (casts or the
+ * union views, either order) -- none moves the reads off one base. It stays for the member
+ * constructors it emits (0x38E550, 0x38E620, 0x38E730, 0x38E770, 0x38E890, 0x38E8D0 byte-exact),
+ * CSkbLook() (0x38E790, code-exact: its sources' destructor 0x38D130 is ~vector of a 0x2C-byte
+ * record, not of CSkbKey -- zui_skb.h's m_sources) and the key vectors' instances */
 void CreateSoftKeyboard(_zrdr *rdr)
 {
     CSoftKeyboard *skb = new CSoftKeyboard;
@@ -124,15 +148,11 @@ void CreateSoftKeyboard(_zrdr *rdr)
     _zrdr *grid = zrdr_findtag(rdr, "Grid");
     for (int y = 0; y < func_003910B0(grid); y++) {
         _zrdr *row = grid->Item(y);
-        for (unsigned int x = 0; x < row->Count(); x++) {
-            _zrdr *item = row->Item(x);
-            CSkbKey key = item->Type() == 3 ? StrToSkbKey(item->String()) : CSkbKey(0, item->Integer());
+        for (int x = 0; x < row->Count(); x++) {
+            const _zrdr *item = row->Item(x);
+            const CSkbKey &key = item->Type() == 3 ? StrToSkbKey(item->String()) : CSkbKey(0, item->Integer());
 
-            if (skb->m_grid.size() <= y)
-                skb->m_grid.resize(y + 1);
-            if (skb->m_grid[y].size() <= x)
-                skb->m_grid[y].resize(x + 1);
-            skb->m_grid[y][x] = key;
+            SkbSetGridKey(skb, x, y, key);
         }
     }
     skb->m_ignoreUnchangedString = zrdr_findtag(rdr, "IgnoreUnchangedString") != 0;
@@ -140,11 +160,9 @@ void CreateSoftKeyboard(_zrdr *rdr)
 
 }
 
-/* (the next units' and this one's not yet written, by address: the node lists' layout from a grid
- * size, a keyboard's elements shown or hidden) */
+/* (the next units' and this one's not yet written, by address: a keyboard's elements shown or
+ * hidden) */
 extern "C" {
-void func_00395140(int w, int h, CSkbTexLists *lists, CSoftKeyboard *skb);
-void func_0038B580(CSoftKeyboard *skb, int which);
 void func_00394420();
 void func_00398B50();
 void func_00399C10(CSoftKeyboard *skb);
@@ -162,6 +180,167 @@ void func_00399D20(CGameMenu *menu);
 void func_0038C000(CSoftKeyboard *skb, CGameMenu *menu);
 }
 
+/* (the next unit's node lists' layout from a grid size, 0x395140; this unit's elements shown or
+ * hidden, 0x38B580) */
+extern "C" {
+void func_00395140(int w, int h, CSkbTexLists *lists, CSoftKeyboard *skb);
+void func_0038B580(CSoftKeyboard *skb, int which);
+}
+
+/* (this unit's out-of-line copies of SOCOM 1's CIntPair members and the look's start position,
+ * after their first caller 0x38B440 -- SOCOM 1's zui_skb.cpp called its CIntPair's members out of
+ * line too, while zui_skbview.cpp inlines them: the start position's address (0x38B570), the pair's
+ * copy (0x38B550) and its halves (0x38B540, 0x38B530); and the cursor put at a grid position,
+ * 0x38B8A0) */
+struct SKBINTPAIR {
+    int m_1st;
+    int m_2nd;
+};
+extern "C" {
+SKBINTPAIR *func_0038B570(CSoftKeyboard *skb);
+SKBINTPAIR *func_0038B550(SKBINTPAIR *dst, const SKBINTPAIR *src);
+int func_0038B540(const SKBINTPAIR *p);
+int func_0038B530(const SKBINTPAIR *p);
+void func_0038B8A0(CSoftKeyboard *skb, int x, int y);
+}
+
+/* (the units after this one, by address: the keyboard's captions and text shown with its fonts and
+ * the text (0x398EA0), its key caps (0x395540); zui.cpp's menu fade, 0x36A210) */
+extern "C" {
+void func_00398EA0(CSoftKeyboard *skb, CSkbFonts *fonts, const char *text);
+void func_00395540(CSoftKeyboard *skb, C2DFont *font);
+void func_0036A210(float t);
+}
+
+/* the keyboard shown with a text, unless one is showing: its cursor at its start position, its
+ * node lists laid out, its text, captions and caps made, its node on, the active one, its first
+ * element set shown, the menu faded to half, its IgnoreUnchangedString taken (SOCOM 1's ShowSkb,
+ * SOCOM II's with the text; 0x38B440, the first caller of the CIntPair copies before it; SkbOpen
+ * calls it out of line: pinned) */
+#pragma auto_inline off
+void CSoftKeyboard::ShowSkb(const char *text)
+{
+    if (!g_pActiveSkb) {
+        SKBINTPAIR pos;
+
+        func_0038B550(&pos, func_0038B570(this));
+        int x = func_0038B540(&pos) - 1;
+        func_0038B8A0(this, x, func_0038B530(&pos) - 1);
+        func_00395140(m_17c, m_180, &m_texLists, this);
+        func_00398EA0(this, &m_fonts, text);
+        func_00395540(this, &m_fonts.m_fonts[1]);
+        m_node->SetActive(true);
+        g_pActiveSkb = this;
+        func_0038B580(this, 0);
+        func_0036A210(0.5f);
+        g_bIgnoreUnchanged = m_ignoreUnchangedString;
+    }
+}
+#pragma auto_inline reset
+
+/* a keyboard by its name, or none (ours) */
+static inline CSoftKeyboard *FindSkb(const char *name)
+{
+    for (int i = 0; i < g_arrSkbs.size(); i++)
+        if (!strcasecmp(g_arrSkbs[i]->m_name.c_str(), name))
+            return g_arrSkbs[i];
+    return 0;
+}
+
+/* the keyboard named by the look's i'th string switched to, its cursor at its start position
+ * (0x38BE80; the name ours: the key handler 0x38D200 calls it with a key's code). The null name's
+ * arm first: the target lays `to = 0` ahead of the search */
+void CSoftKeyboard::SwitchToNamed(int i)
+{
+    const char *name = i < m_strings.size() ? m_strings[i].c_str() : 0;
+    CSoftKeyboard *to;
+
+    if (!name)
+        to = 0;
+    else
+        to = FindSkb(name);
+
+    if (to) {
+        SKBINTPAIR pos;
+
+        SwitchTo(to);
+        func_0038B550(&pos, func_0038B570(to));
+        int x = func_0038B540(&pos) - 1;
+        func_0038B8A0(to, x, func_0038B530(&pos) - 1);
+    }
+}
+
+/* a valve (zanim.h's CValve; the stand-in util_memcard.cpp and util_loc.cpp carry: the unit
+ * reaches only its value and callbacks) */
+enum VALVE_TYPE {};
+enum VALVE_STATE {
+    VALVE_SAME,
+    VALVE_ON,
+    VALVE_OFF
+};
+class CValve {
+public:
+    static CValve *Create(const char *name, VALVE_TYPE type);
+    void MakeCallbacks(VALVE_STATE state);
+
+    char *m_name;   // 0x0
+    unsigned int m_value : 16;   // 0x4
+};
+
+/* CValve::SetValue, inlined (util_memcard.cpp's SetValveValue, taking a bool here: the target
+ * re-extends the value at each use) */
+static inline void SetValveValue(CValve *valve, bool value)
+{
+    VALVE_STATE state = VALVE_SAME;
+
+    if (valve->m_value != value)
+        state = value == 0 ? VALVE_OFF : VALVE_ON;
+    valve->m_value = value;
+    if (state != VALVE_SAME)
+        valve->MakeCallbacks(state);
+}
+
+/* the display unit's: the name of the keyboard to open (0x397640) and its root node */
+extern "C" const char *func_00397640();
+extern zdb::CNode *g_skbDisplayNode;
+
+namespace {
+
+/* the text the keyboard opens with (0x49EC70, the unit's first static: only SkbOpen reads it, an
+ * empty string; the name ours) */
+char s_openText[0x40];
+
+}
+
+/* the UI command opening the keyboard the display unit names (KEYBOARD's when it names none) with
+ * the empty text, the display's root on, skb_done set to whether none was found, the sound played
+ * (0x38D770; the name ours: the command table's handler 0x2808D0 jumps here). The valve's value
+ * a ternary: the target computes it at each of the setter's uses, after the value's load (`!skb`
+ * is computed once, ahead of it) */
+bool SkbOpen()
+{
+    const char *p = func_00397640();
+    const char *name;
+
+    if (*p)
+        name = p;
+    else
+        name = "KEYBOARD";
+    CSoftKeyboard *skb;
+
+    if (!name)
+        skb = 0;
+    else
+        skb = FindSkb(name);
+    if (skb) {
+        skb->ShowSkb(s_openText);
+        g_skbDisplayNode->SetActive(true);
+    }
+    SetValveValue(CValve::Create("skb_done", (VALVE_TYPE)1), skb ? false : true);
+    func_00395DE0(0);
+    return true;
+}
+
 /* the cursor's axis (ours: a byte enum, passed as `li 1; movz`) */
 enum SKBAXIS { SKB_AXIS_ROW, SKB_AXIS_COLUMN };
 
@@ -171,6 +350,26 @@ extern "C" {
 void func_0038C130(CSoftKeyboard *skb, SKBAXIS axis, int (*step)(int));
 int func_0038C4B0(int i);
 int func_0038C4C0(int i);
+}
+
+/* the keyboard's display forgotten: no node and no grid size, its texture lists freed, its six
+ * bitmaps' nodes cleared, its fonts unloaded and every key's display forgotten (SOCOM 1's,
+ * rewritten for SOCOM II's members; the constructor calls it) */
+void CSoftKeyboard::InvalidateDisplay()
+{
+    m_node = 0;
+    m_17c = 0;
+    m_180 = 0;
+    m_texLists.Free();
+    m_1c0.Slot10(0);
+    m_270.Slot10(0);
+    m_480.Slot10(0);
+    m_530.Slot10(0);
+    m_320.Slot10(0);
+    m_3d0.Slot10(0);
+    m_fonts.Unload();
+    for (CSkbKeyMap::iterator it = m_keyProps.begin(); it != m_keyProps.end(); ++it)
+        (*it).second->InvalidateDisplay();
 }
 
 /* up or down (directions 1 and 2) move within the column (ours) */

@@ -128,6 +128,26 @@ const char *SkbGetText(bool edited)
     return edited ? s_editText : s_openText.c_str();
 }
 
+/* the key's display forgotten: its node, and its button deleted (0x394320; ours: the keyboard's
+ * InvalidateDisplay calls it for every key) */
+void CSkbKeyProps::InvalidateDisplay()
+{
+    m_node = 0;
+    delete m_button;
+    m_button = 0;
+}
+
+/* the key's button made by its spec and put on a node of its own under the parent, at the key's
+ * place (0x394290; ours: the keyboard's PrepForDisplay calls it for every key) */
+void CSkbKeyProps::PrepForDisplay(zdb::CTextureRelocMgr *mgr, C2DFont *font, zdb::CNode *parent)
+{
+    if (m_spec) {
+        m_button = (C2DButton *)m_spec->CreateDisplayObj(font, mgr);
+        m_node = func_0036AB20(m_button, mgr, parent);
+        m_node->SetPosition((float)m_x, (float)m_y, 0.0f);
+    }
+}
+
 /* the key's button spec replaced (0x394210; ours) */
 void CSkbKeyProps::SetSpec(_zrdr *rdr)
 {

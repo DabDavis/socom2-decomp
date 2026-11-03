@@ -24,6 +24,8 @@
 #include <map>
 #include <vector>
 #include "zui_2d.h"
+/* the fonts (the HUD lane's c2dfont.h: SOCOM II's 0x64-byte C2DFont), after zui_spec.h's CSaferStr */
+#include "../ztwod/c2dfont.h"
 
 namespace zdb {
 class CNode;
@@ -68,13 +70,6 @@ public:
     CRdrFile *m_file;
 };
 
-/* a font (zui.cpp's C2DFont, 0x64 bytes in SOCOM II: its glyph map's constructor 0x1FEAC0, its
- * destructor 0x369EB0 -- a stand-in of what the keyboard's three need) */
-class C2DFont {
-public:
-    unsigned char _0[0x64];
-};
-
 /* a member zeroed by its own constructor (SOCOM 1's CInit<T, v>: its constructor, copy, assignment
  * from T and conversion back are the demo's symbols) */
 template <class T, int v>
@@ -93,7 +88,15 @@ public:
 
 /* a key: a row byte, then a 16-bit code. SOCOM II's tree compares the byte unsigned, then the
  * halfword at 2 (SOCOM 1's had two bytes), and copies the byte with lb: a signed member compared
- * through unsigned casts, the copy member-wise */
+ * through unsigned casts, the copy member-wise. Its ASSIGNMENT reads the other way, the byte
+ * with lbu and the code with lh (the key vector's erase 0x38F090 and insert 0x38F1F0, the grid's
+ * store in CreateSoftKeyboard: every copy construction lb/lhu, every assignment lbu/lh), which no
+ * plain members give -- MW's implicit operator= is member-wise in the members' own types, and a
+ * cast of a byte or half that is only stored is folded away. Each member a union does it: the
+ * implicit assignment copies a union as its FIRST member (the weapons lane's round 14), the copy
+ * constructor reads the named views. A written operator= through casts gives the same loads, but
+ * reads the source through its own reference (the grid store's addresses differ: the UI lane,
+ * round 12; ours: the views' names) */
 class CSkbKey {
 public:
     CSkbKey() : m_row(0), m_code(0) {}
@@ -106,8 +109,14 @@ public:
         return m_code < k.m_code;
     }
 
-    signed char m_row;   // 0x0
-    unsigned short m_code;   // 0x2
+    union {
+        unsigned char m_urow;
+        signed char m_row;
+    };   // 0x0
+    union {
+        short m_scode;
+        unsigned short m_code;
+    };   // 0x2
 };
 
 class CSoftKeyboard;
@@ -120,6 +129,11 @@ public:
     void SetButtonState(void (C2DButton::*state)());
     /* its button's spec replaced by one read from an rdr block, or none (0x394210; ours) */
     void SetSpec(_zrdr *rdr);
+    /* its button made by the spec and put on a node of its own under the keyboard's, at the key's
+     * place (0x394290; ours) */
+    void PrepForDisplay(zdb::CTextureRelocMgr *mgr, C2DFont *font, zdb::CNode *parent);
+    /* its node forgotten and its button deleted (0x394320; ours) */
+    void InvalidateDisplay();
 
     int m_x;   // 0x0: the key's place and size (SkbPlaceCursor's; the names ours)
     int m_y;   // 0x4
@@ -163,8 +177,17 @@ public:
     zdb::CNode *m_node;   // 0xa0
 } __attribute__((aligned(16)));   // 0xb0 bytes
 
-/* the keyboard's three fonts (the constructor's out-of-line copy is 0x38E550) */
+/* the keyboard's three fonts: the implicit constructor's out-of-line copy is 0x38E550,
+ * `__construct_array(this, C2DFont(), ~C2DFont(), 0x64, 3)` -- C2DFont's constructor zui_skb.cpp's
+ * copy (0x38E590), its destructor zui.cpp's (0x369EB0, the linker keeping the first unit's) */
 struct CSkbFonts {
+    /* the three unloaded (ours: InvalidateDisplay's loop walks the fonts themselves) */
+    void Unload()
+    {
+        for (int i = 0; i < 3; i++)
+            func_0035A650(&m_fonts[i]);
+    }
+
     C2DFont m_fonts[3];
 };
 
@@ -172,6 +195,18 @@ struct CSkbFonts {
  * vector<zdb::CTexHandle *>'s constructor and destructor copies 0x1FB3D0/0x1FB300, so the elements
  * are texture handles, not nodes; the name ours) */
 struct CSkbTexLists {
+    /* the four freed (ours: InvalidateDisplay's loop walks the lists themselves, so a member of
+     * theirs; FreeVector written out -- called, it is a level too deep and stays a call) */
+    void Free()
+    {
+        for (int i = 0; i < 4; i++) {
+            std::vector<zdb::CTexHandle *> tmp;
+
+            m_lists[i].clear();
+            m_lists[i].swap(tmp);
+        }
+    }
+
     std::vector<zdb::CTexHandle *> m_lists[4];
 };
 
@@ -273,6 +308,8 @@ public:
     void ParseLook(_zrdr *rdr);
     void ParseKeyProps(_zrdr *rdr);
     void SwitchTo(CSoftKeyboard *to);
+    void SwitchToNamed(int i);
+    void ShowSkb(const char *text);
     void ShutdownBegin(CGameMenu *menu);
     void OnEnterKey(CGameMenu *menu);
 
