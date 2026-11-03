@@ -7487,13 +7487,13 @@
 0x00399530 0x17C func_00399530  # OVL1
 0x003996B0 0x138 func_003996B0  # OVL1
 0x003997F0 0xA4 func_003997F0  # OVL1
-0x003998A0 0x12C func_003998A0  # OVL1
+0x003998A0 0x12C SkbTextUnchanged__Fv  # OVL1; the UI lane round 9: ours, by its body (the UI variable SkbGetText(false) names, if a string, against string 1's text then string 2's: OnEnterKey's IgnoreUnchangedString test)
 0x003999D0 0x158 func_003999D0  # OVL1
 0x00399B30 0xC8 SkbClearText__FP13CSoftKeyboard  # OVL1; the UI lane round 9: ours, by its body (whether the edited string showed text, then 0x39A5B0 with an empty string, 0x39A1D0, the composition flushed, state 3) -- byte-exact in zui_skbkeys.cpp
 0x00399C00 0xC func_00399C00  # OVL1
 0x00399C10 0x8 func_00399C10  # OVL1
 0x00399C20 0x100 func_00399C20  # OVL1
-0x00399D20 0x16C func_00399D20  # OVL1
+0x00399D20 0x16C SkbTakeText__FP9CGameMenu  # OVL1; the UI lane round 9: ours, by its body (string 1's text then string 2's into the UI variable SkbGetText(false) names, string 0's into SkbGetText(true)'s, the menu's event 15 or 14 by 0x396EF0 run with the text: OnEnterKey's taking of the text)
 0x00399E90 0x30 func_00399E90  # OVL1
 0x00399EC0 0x310 func_00399EC0  # OVL1
 0x0039A1D0 0x20C func_0039A1D0  # OVL1

@@ -32,6 +32,18 @@ static inline const char *ShownText(const C2DString *s)
     return s->m_string + s->m_firstCharPos;
 }
 
+/* the text typed: string 1's, then string 2's (ours: built in the caller's temporary) */
+static inline CSaferStr TypedText()
+{
+    CSaferStr text(ShownText(&s_textString1));
+
+    text += ShownText(&s_textString2);
+    return text;
+}
+
+/* the keyboard's text variables' names (zui_skbview.cpp's): the edited one's, or the opened one's */
+const char *SkbGetText(bool edited);
+
 /* a USB key as the loop hands it on: its HID usage and whether shift is held (the names ours) */
 struct SKBUSBKEY {
     unsigned char m_usage;   // 0x0
@@ -103,6 +115,33 @@ void func_00394920(CSoftKeyboard *skb);
 int func_00396E60(CSoftKeyboard *skb);
 }
 
+extern "C" {
+int func_00396EF0();
+/* CGameMenu::RunEventAnim (zui.cpp's 0x367810: the menu, an event, here the text) */
+void func_00367810(CGameMenu *menu, int event, const char *text);
+}
+
+/* the text taken: the typed text into the variable SkbGetText(false) names, string 0's into the
+ * other's, the menu's event 15 (or 14, by 0x396EF0) run with it (0x399D20, OnEnterKey's; the name
+ * ours).
+ * OPEN, 2 instructions long: the target keeps the string's address in s1 from before its zeroing
+ * through the assign and the append (and SkbTextUnchanged builds the same text the same way in a
+ * conditional temporary), the shape of an inlined function returning the string by value, its
+ * hidden result pointer a variable; MW folds the local's address into each use here. TypedText()
+ * as such an inline is never inlined (static or not; warn_notinlined gives no reason), and the
+ * local written out loses the register */
+void SkbTakeText(CGameMenu *menu)
+{
+    CSaferStr text(ShownText(&s_textString1));
+
+    text += ShownText(&s_textString2);
+    *theUIVarManager.Add(SkbGetText(false), 0, UIVL_TEMPORARY) = text.c_str();
+    const char *s = ShownText(&s_textString0);
+
+    *theUIVarManager.Add(SkbGetText(true), 0, UIVL_TEMPORARY) = s ? s : "";
+    func_00367810(menu, func_00396EF0() ? 15 : 14, text.c_str());
+}
+
 /* the text cleared: whether there was any, the composition flushed and the keyboard put in state 3
  * (0x399B30; the name ours) */
 bool SkbClearText(CSoftKeyboard *skb)
@@ -116,6 +155,20 @@ bool SkbClearText(CSoftKeyboard *skb)
     func_00391350();
     func_00395DE0(3);
     return had;
+}
+
+/* whether the typed text is the string variable SkbGetText(false) names already holds (0x3998A0,
+ * OnEnterKey's IgnoreUnchangedString test; the name ours).
+ * OPEN, 0x60 bytes short: the target builds the typed text in a temporary only when the variable
+ * is a string (a flag in s1 guards its destructor), its address held in s1 through the assign and
+ * the append and c_str() read off the temporary, not append's result -- TypedText() inlined, which
+ * MW refuses here (see SkbTakeText) */
+bool SkbTextUnchanged()
+{
+    CUIVariable *v = theUIVarManager.Find(SkbGetText(false));
+    const char *val = v ? v->String() : 0;
+
+    return val && !strcmp(val, TypedText().c_str());
 }
 
 /* string 0's edit closed: its node hidden, its text emptied, the text laid out again if it was the
