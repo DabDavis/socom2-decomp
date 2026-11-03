@@ -103,6 +103,8 @@
 0x001D4FC0 0x10 __vt__Q23std13bad_exception  # MAIN; s1:data-seq (size SOCOM 1's; via __dt__Q23std13bad_exceptionFv +1)
 0x001D4FD0 0xC __vt__Q23std8ios_base  # MAIN; s1:data-seq (size SOCOM 1's; via __dt__Q23std8ios_baseFv)
 0x001D4FF0 0xC __vt__Q33std6locale5facet  # MAIN; s1:data-seq (size SOCOM 1's; via __ct__Q23std8ctype<c>FPCUcbUi +2)
+0x001D5050 0x3C __vt__Q23std41basic_streambuf<w,Q23std14char_traits<w>>  # MAIN; basic_streambuf<wchar_t>'s vtable (RTTI 'std::basic_streambuf<wchar_t, std::char_traits<wchar_t>>', 13 slots); 1 reference: its destructor 0x185760 (src/main/msl/iostream.cpp)
+0x001D5120 0x3C __vt__Q23std41basic_streambuf<c,Q23std14char_traits<c>>  # MAIN; basic_streambuf<char>'s vtable (RTTI 'std::basic_streambuf<char, std::char_traits<char>>', 13 slots); 1 reference: its destructor 0x185830 (src/main/msl/iostream.cpp)
 0x001D5260 0x2C __vt__Q23std8ctype<c>  # MAIN; s1:data-seq (size SOCOM 1's; via __ct__Q23std8ctype<c>FPCUcbUi +1)
 0x001D52A0 0x0 __exception_table_end__  # MAIN; s1:data-seq (size SOCOM 1's; via __FindExceptionTable__FP13ExceptionInfoPc)
 0x001D52A0 0x0 __exception_table_start__  # MAIN; SOCOM 1's linker symbol, mwInit's third argument (an empty table: the same address as __exception_table_end__); 1 reference: func_00181E00 (src/main/runtime/mwoverlay.c)
