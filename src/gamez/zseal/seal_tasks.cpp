@@ -58,12 +58,14 @@ bool zrdr_toRfloat(const _zrdr *rdr, Rfloat *out);
 bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
 bool zrdr_tobool(const _zrdr *rdr, bool *out);
 char *zrdr_findstring(const _zrdr *rdr, const char *tag);
+bool zrdr_isitemtype(const _zrdr *rdr, int index, int type);
 bool zrdr_finduint(const _zrdr *rdr, const char *tag, unsigned int *out, int n);
 /* a tag's values as a team mask (SOCOM 1's ftmask_create; OVL2 0x5B8190, seal_ex.cpp's) */
 unsigned int ftmask_create(_zrdr *rdr);
-/* a state by its name (OVL2 0x575410, seal_ai.cpp's) */
+/* a state and a stance by their names (OVL2 0x575410, 0x575100: seal_ai.cpp's) */
 namespace sealai {
 AI_STATE get_state(const char *name);
+SEAL_STANCE get_stance(const char *name);
 }
 /* a state by name or alias (below) */
 AI_STATE get_state_fixup(const char *name);
@@ -252,6 +254,7 @@ struct CTSound : TASK_HDR {
 
 /* ai::SELECT (SOCOM 1's CTSelect) */
 struct CTSelect : TASK_HDR {
+    static _zanim_cmd_hdr *Parse(_zrdr *rdr);
     static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
     static TASK_PARAM *Create(CZSealBody *seal);
 };
@@ -411,17 +414,28 @@ struct CTWait : TASK_HDR {
     }
 };
 
-/* ai::STANCE (SOCOM 1's CTStance): a stance taken for a time */
+/* ai::STANCE (SOCOM 1's CTStance): a stance taken, and a peek (left -1, up 0, right 1, none 2) for a
+ * time -- words the parser stores sign-extended from byte-enum locals, the callees taking the byte
+ * (the names ours but the tags') */
 struct CTStance : TASK_HDR {
-    SEAL_STANCE m_stance;   // 0x8 (a word; the callees take the byte)
-    unsigned char _9[0xc - 0x9];
-    SEAL_STANCE m_c;   // 0xc
-    unsigned char _d[0x10 - 0xd];
-    float m_time;   // 0x10
+    int m_peek;   // 0x8: the tag "peek"
+    int m_stance;   // 0xc: the tag "stance"
+    float m_time;   // 0x10: the tag "delay"
     float m_timer;   // 0x14
 
+    static _zanim_cmd_hdr *Parse(_zrdr *rdr);
     static void Begin(_zanim_cmd_hdr *hdr);
     static void End(_zanim_cmd_hdr *hdr);
+    /* a block made (inline: its by-value arguments read before the allocation) */
+    static CTStance *Create(SEAL_STANCE stance, SEAL_STANCE peek, float time)
+    {
+        CTStance *cmd = NewTask<CTStance>();
+
+        cmd->m_time = time;
+        cmd->m_peek = peek;
+        cmd->m_stance = stance;
+        return cmd;
+    }
 };
 
 /* ai::PAINT (SOCOM 1's CTPaint): a region of the AI maps given a soil, a tile or a type -- the
@@ -442,12 +456,52 @@ struct CTMove : TASK_HDR {
     static void End(_zanim_cmd_hdr *hdr);
 };
 
-/* ai::MACRO (SOCOM 1's CTMacro): an anim of the set, by name */
-struct CTMacro : TASK_HDR {
-    CZAnim *m_anim;   // 0x8
-    unsigned char _c[0x10 - 0xc];
-    char m_name[16];   // 0x10
+/* a name's length, 0 for none, and the name copied, "" for none -- its length returned (inline;
+ * the names ours) */
+inline unsigned int TaskStrLen(const char *s)
+{
+    return s ? strlen(s) : 0;
+}
 
+/* a name a block carries at its end, sized to it (its Set an inline member, the name's address a
+ * local of its own: the target computes it once, ahead of the test, and stores the empty name
+ * through it -- written m_str in place MW folds it into each arm; the names ours) */
+struct TASK_NAME {
+    unsigned int Set(const char *s)
+    {
+        char *d = m_str;
+
+        if (s) {
+            strcpy(d, s);
+            return strlen(s);
+        }
+        *d = 0;
+        return 0;
+    }
+
+    char m_str[16];
+};
+
+/* a size rounded up to words (inline; the name ours) */
+inline unsigned int TaskAlign(unsigned int n)
+{
+    if (n & 3)
+        n += 4 - (n & 3);
+    return n;
+}
+
+/* ai::MACRO (SOCOM 1's CTMacro): an anim of the set, by name -- the block sized to the name */
+struct CTMacro : TASK_HDR {
+    /* (the name ours) */
+    void SetBlocking(bool b) { m_blocking = b; }
+
+    CZAnim *m_anim;   // 0x8
+    unsigned char m_blocking : 1;   // 0xc bit 0: the tag "blocking"
+    unsigned char _c1 : 7;
+    unsigned char _d[0x10 - 0xd];
+    TASK_NAME m_name;   // 0x10
+
+    static _zanim_cmd_hdr *Parse(_zrdr *rdr);
     static void Begin(_zanim_cmd_hdr *hdr);
 };
 
@@ -559,6 +613,48 @@ void CTDrain::End(_zanim_cmd_hdr *hdr)
 
     if (!seal || !ctrl)
         return;
+}
+
+/* (OVL2 0x5D7170: the block 0x14 bytes and the name's, rounded to words) */
+_zanim_cmd_hdr *CTMacro::Parse(_zrdr *rdr)
+{
+    CTMacro *cmd = 0;
+    const char *name = zrdr_findstring(rdr, "anim");
+    bool blocking = zrdr_findtag(rdr, "blocking") != 0;
+
+    if (name) {
+        unsigned int size = TaskAlign(TaskStrLen(name)) + 20;
+
+        cmd = (CTMacro *)_calloc(size, 1, 0, 0);
+        cmd->hdr.data_size = size;
+        cmd->hdr.data_type = ai_cmdid[0];
+        cmd->m_anim = 0;
+        cmd->SetBlocking(blocking);
+        cmd->m_name.Set(name);
+    }
+    return &cmd->hdr;
+}
+
+/* (OVL2 0x5D0B40: the peek a byte-enum local, 2 when there is none) */
+_zanim_cmd_hdr *CTStance::Parse(_zrdr *rdr)
+{
+    float delay = 0.0f;
+    const char *stance = zrdr_findstring(rdr, "stance");
+    const char *peek = zrdr_findstring(rdr, "peek");
+
+    zrdr_findreal(rdr, "delay", &delay, 1);
+    SEAL_STANCE st = sealai::get_stance(stance);
+    SEAL_STANCE pk = STANCE_PRONE;
+
+    if (peek) {
+        if (!strcmp(peek, "left"))
+            pk = STANCE_NONE;
+        else if (!strcmp(peek, "right"))
+            pk = STANCE_CROUCH;
+        else if (!strcmp(peek, "up"))
+            pk = STANCE_STAND;
+    }
+    return &Create(st, pk, delay)->hdr;
 }
 
 /* (OVL2 0x5DD610) */
@@ -794,7 +890,7 @@ void CTMacro::Begin(_zanim_cmd_hdr *hdr)
     CTMacro *cmd = (CTMacro *)hdr;
 
     if (cmd->GetAi())
-        cmd->m_anim = ZAnim.GetAnim(cmd->m_name, 0);
+        cmd->m_anim = ZAnim.GetAnim(cmd->m_name.m_str, 0);
 }
 
 /* (OVL2 0x5D5A20) */
@@ -889,8 +985,8 @@ void CTStance::Begin(_zanim_cmd_hdr *hdr)
     CSealCtrlAi *ai = cmd->GetAi();
 
     if (ai) {
-        func_005631A0(ai, cmd->m_c);
-        func_005631B0(ai, cmd->m_stance, true, CAiTimer::infinite);
+        func_005631A0(ai, (SEAL_STANCE)cmd->m_stance);
+        func_005631B0(ai, (SEAL_STANCE)cmd->m_peek, true, CAiTimer::infinite);
         cmd->m_timer = cmd->m_time;
     }
 }
@@ -902,7 +998,7 @@ void CTStance::End(_zanim_cmd_hdr *hdr)
     CTStance *cmd = (CTStance *)hdr;
     CSealCtrlAi *ai = cmd->GetAi();
 
-    if (ai && cmd->m_time != 0.0f && cmd->m_stance != STANCE_PRONE)
+    if (ai && cmd->m_time != 0.0f && cmd->m_peek != STANCE_PRONE)
         func_005631B0(ai, STANCE_PRONE, true, 0.0f);
 }
 
@@ -957,6 +1053,22 @@ _zanim_cmd_hdr *CTStopAll::Parse(_zrdr *rdr)
     if (zrdr_findtag(rdr, "inactive"))
         inactive = true;
     return &Create(enable, inactive)->hdr;
+}
+
+/* the SEAL of a name, by the entity list: the first item a string (OVL2 0x5D28A0; Create
+ * inlined) */
+_zanim_cmd_hdr *CTSelect::Parse(_zrdr *rdr)
+{
+    TASK_PARAM *p = 0;
+
+    if (zrdr_isitemtype(rdr, 0, 3)) {
+        CEntity *e = CEntity::GetEntityList().GetEntity(rdr->Item(0)->String());
+        CZSealBody *seal = e && e->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)e : 0;
+
+        if (seal)
+            p = Create(seal);
+    }
+    return &p->hdr;
 }
 
 /* (OVL2 0x5D2890) */
