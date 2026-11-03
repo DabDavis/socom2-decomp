@@ -153,16 +153,17 @@ its directive (`/* sc: compiler=mwcps2-3.0b52-030722; flags=... */`), as the GCC
 
 | group | units (src/main/) | build | flags | evidence |
 |---|---|---|---|---|
-| the game's own MAIN units | the pool unit 0x1801E0-0x18194F (alloc.cpp?), MAIN's copies of zsys_memory.cpp (0x181950-0x181C1F) and zvid.cpp (0x181C20) | 3.0b52 | the game's | `__nwa__FUi` is a tail call (`j`), which needs exceptions off; `_delete_vec` exact on every 3.0 build |
+| the game's own MAIN units | the pool unit zmalloc.cpp 0x1801E0-0x18194F (the name ours; its `__sinit` 0x1D4B00), MAIN's copies of zsys_memory.cpp (0x181950-0x181C1F) and zvid.cpp (0x181C20) | 3.0b52 | the game's | `__nwa__FUi` is a tail call (`j`), which needs exceptions off; `_delete_vec` exact on every 3.0 build; round 2: the pool unit's 17 rows and its initialiser at the game's flags |
 | MW's C++ runtime | runtime/: gcc_wrapper.c 0x181C50, mwoverlay.c 0x181C90-0x181E2F, NMWException.cpp 0x181E30-0x18280F, global_destructor_chain.c 0x182810, __init_cpp_rts.c 0x182840, ptmf.c 0x1828A0; the exception-handling unit 0x182930-0x1845FF | 3.0b38, b50 or b52 | the game's plus `-Cpp_exceptions on`, deferred | `__destroy_arr`/`__destroy_new_array` match only on 3.0b22-020926 and 3.0b38+; `__initialize_cpp_rts`'s short-loop nops rule out 3.0b22-020926; with exceptions off `terminate`/`unexpected` become tail calls (9 words off); `,p` required; without `-sdatathreshold 0` `__register_global_object` is 8 words off; the image holds the PowerPC runtime's source order reversed |
-| MSL C++'s prebuilt library | msl/: ios.cpp 0x184600, iostream.cpp 0x184C80, locale.cpp 0x18CF20-0x18DB8F (SOCOM 1's DWARF spans), with its own msl/msl.h | 3.0b38, b50 or b52 | `-O4,p -sdatathreshold 0 -inline auto -enum min -Cpp_exceptions on -wchar_t on`, NOT deferred | `showmanyc<wchar_t>` divides by 4 where SOCOM 1's divides by 2: a 4-byte `wchar_t`, which only 3.0b22-020926 and later give; `do_widen<wchar_t>`'s six-instruction loop rules out 3.0b22-020926; `getloc` keeps its frame (exceptions on); SOCOM 1's DWARF lines rise with the addresses (source order) |
+| MSL C++'s prebuilt library | msl/: ios.cpp 0x184600, iostream.cpp 0x184C80, locale.cpp 0x18CF20-0x18DB8F (SOCOM 1's DWARF spans), with its own msl/msl.h | 3.0b38, b50 or b52 | `-O4,p -inline auto,bottomup,level=5 -enum min -Cpp_exceptions on -wchar_t on`, NOT deferred (round 2: the default small-data threshold, not 0 -- `locale::global`'s 8-byte static locale is `addiu a0,gp,-31928` and `__use_facet`'s facet ids `lw -31904(gp)`; round 1 had carried the runtime group's 0 over; and an explicit level: `~__locale_imp<1>` inlines the facet vector's three destructor levels only at level>=3 or with bottomup, plain auto calls it -- nothing tells the two apart, so the game's pair) | `showmanyc<wchar_t>` divides by 4 where SOCOM 1's divides by 2: a 4-byte `wchar_t`, which only 3.0b22-020926 and later give; `do_widen<wchar_t>`'s six-instruction loop rules out 3.0b22-020926; `getloc` keeps its frame (exceptions on); SOCOM 1's DWARF lines rise with the addresses (source order) |
 
 So SOCOM II's prebuilt MSL is **not CodeWarrior 2.4's build**, though SOCOM 1's DWARF names that
 install; and none of the 81 rows separates 3.0b38 from 3.0b50 or 3.0b52. The `.comment`'s
 2.4.1.01 comes from none of these groups -- MW's assembler writes DWARF but no `.comment`, and
 crt0.s (`_start`, `_exit`, `_root` 0x1801D0) is one MW-assembled object (SOCOM 1's DWARF has its
-unit), which scdiff has no MW assembler path for (GNU as through tools/asmunit.py should give the
-same bytes). Rules measured on the way: with `-wchar_t on` a `wchar_t` is a 4-byte built-in from
+unit), which scdiff has no MW assembler path for -- GNU as gives the same bytes (round 2: src/main/crt0.s
+through the assembler path, all three byte-exact; `_start` ends `Exit(main(argc, argv))`, so 0x1C4CC0 is
+the boot ELF's main, unnamed only because OVL1's main.cpp holds the map's `main`). Rules measured on the way: with `-wchar_t on` a `wchar_t` is a 4-byte built-in from
 3.0b22-020926 on yet loaded and stored 16-bit (`sh`/`lhu` with a 4-byte step); six-instruction loops
 tell builds apart (3.0b38+ leave the delay slot empty and pad two nops, 3.0b22-020926 fills it); in
 the non-deferred library an inline callee is inlined only if generated before its caller (`template
@@ -171,7 +172,32 @@ templates (one source order reproduces MAIN's and OVL1's zsys_memory.cpp); the P
 bodies compile byte-exact on MIPS once adapted to the ABI (the destructor flag `short`, 64-bit
 `long`); MW inline `asm` functions reproduce an assembly runtime function byte-exact; a local copy of
 a pointer parameter is numbered right after the parameters. The sweep (ccsweep extended to the MW
-builds, adapting flags the older builds reject) is build/scratch/rt-r1/mwsweep.py.
+builds, adapting flags the older builds reject) is tools/mwsweep.py (round 2 moved it there; it
+defaults to the unit's own `sc: flags=`).
+
+Round 2 (2026-11-03, 136 of 141 in src/main: the pool unit zmalloc.cpp, ios.cpp whole, the
+istream/ostream classes over a virtual basic_ios, crt0.s) measured: `~ios_base` matches only under
+`#pragma opt_strength_reduction off` (the image recomputes `n*8` on every pass of the callback loop,
+as SOCOM 1's copy does; `~__locale_imp`'s loop is strength-reduced, so it is not library-wide, and no
+command-line option does it); MW 3.0 appends a function template instance's RETURN TYPE to its
+mangled name (`min<i>__3stdFRCiRCi_RCi`, `..._RCQ23std8ctype<c>`), so names carried from SOCOM 1 for
+template functions need the suffix; a virtual-base destructor thunk is `@offset@dispoffset@name`
+(`@8@72@__dt__...`: a class with a virtual base keeps the base's displacement word just past the
+base, +72 for basic_ios); `delete (--p->ref_ == 0 ? p : 0)` is the image's `movn` null-test merge;
+case labels written ascending give a descending compare chain; `T *p = a = b = f();` keeps the
+result in v0 for every use; in the non-deferred library an inline template defined before a caller
+is always inlined, defined after it is called there and then everywhere else too (RefCountedPtr's
+operator= defined after the streambuf instantiations keeps their `imbue` calls out of line); ios.cpp
+(0x184600-0x184C7F) holds three functions the image dead-strips (failure's constructor, `imbue`,
+`~_MSLstring`) -- `no-target` rows, two more in NMWException.cpp -- and they are what makes the unit
+emit `~locale` and the RefCountedPtr<char> pair; 0x1D4B80 is iostream.cpp's initialiser (`__nInit`,
+`__wInit` and their destructors). Open: `__nw__` (0x508 against 0x4E0) and func_001805A0 (0x500
+against 0x4DC) -- the switch's compare chain is right but the image puts each case constant in a0 and
+leaves every delay slot empty, ours uses v0; `do_length<wchar_t>` (0x38 against 0x3C) -- the image
+calls `min<int>` from its first user and inlines it in the later ones, which no definition order or
+inline flag reproduces both of. Not started: the filebuf bodies (26 rows), the exception-handling
+unit (18), `__nInit`/`__wInit`, `ctype<wchar_t>`'s range maps, `__locale_imp::replace`, the rest of
+locale.cpp, the logic_error family, the other three `__sinit` rows.
 
 ## What the source has to reproduce
 
