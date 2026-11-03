@@ -5,9 +5,14 @@
  * CSpawners code. Only some of it so far. Defined in reverse of their image order
  * (-inline deferred). */
 
+#include <iostream>
 #include <vector>
 
+/* the UI variables first: zui.h's _zrdr is the one the unit sees (zanim.h leaves its own out
+ * after zui.h's), as the original's one zrdr.h served both (the states lane, round 22) */
+#include "../zui/zui.h"
 #include "../zanim/zanim.h"
+#include "../zsav/zsav_lobby.h"
 #include "../zsys/zsys.h"
 #include "../../Apps/FTS/hud_letterbox.h"
 #include "../../Apps/FTS/hud_missioncams.h"
@@ -194,6 +199,8 @@ extern CAiMaps AiMaps;
 /* the mission (only what this unit touches, at SOCOM II's offsets) */
 class CMission {
 public:
+    CMission();    /* 0x2ADBC0 */
+    ~CMission();   /* 0x2AD940 */
     void CreateCompassNavPoints();
     CZNetGame *CreateNetGame();
     bool ReOpen_Unload2();
@@ -224,7 +231,53 @@ public:
     float m_music_hold;   // 0x1860: how long the music's raised intensity holds (SOCOM II's; the name ours)
 };
 
-extern CMission theMission;
+/* ---- the unit's statics with constructors, in the order its initialiser (0x400160) builds them,
+ * after <iostream>'s two (SOCOM 1's __sinit_fts_mission.cpp builds the same, but for the lobby's
+ * save manager, SOCOM II's, and the extra string tables below) ---- */
+CMemCard theMemCard;                        // 0x436460
+CLobbySaveManager theLobbySaveManager;      // 0x4364A0 (zsav_lobby.h's; the name ours)
+CMission theMission;                        // 0x4364E0
+
+/* the UI variables' manager, a module of the game's save: 256 dormant slots (SOCOM 1's inline, as
+ * its initialiser shows) */
+inline CUIVarManager::CUIVarManager() : CSaveModule("CUIVarManager", theMemCard.m_gameSave)
+{
+    m_currtab = 0;
+    resize(256);
+}
+
+CUIVarManager theUIVarManager;              // 0x437E80
+
+/* the persistent valves' part of the game's save (valve_main.cpp's class, SOCOM 1's: its slots
+ * CSaveModule's, its implicit destructor's copy this unit's, 0x2B1910) */
+class CValveSaveManager : public CSaveModule {
+public:
+    CValveSaveManager() : CSaveModule("CValveSaveManager", theMemCard.m_gameSave) {}
+    void Serialize(int flags);
+    void UnSerialize(const char *name, CRdrFile *file, int flags);
+};
+
+CValveSaveManager theValveSaveManager;      // 0x43FF00
+
+/* the template tail these statics bring (resize<CUIVariable> and what it calls, emitted after the
+ * objective cameras' vector):
+ * OPEN, resize<CUIVariable> 0x2B1390 (0x240 against 0x19C): the target inlines CUIVariable() one
+ * level -- _zrdr() 0x2B17E0, UIVarMixin() 0x2B17C0, vector<UIVarMixin *>() 0x2B17A0 and the watchers'
+ * reserve 0x2B1600 (a reserve of its own whose body is the pod's, its string this unit's) called --
+ * where MW inlines the whole constructor, four high here (the pointer vector's constructor three);
+ * the original's is taller or past inline_max_size. A forwarder reserve in the pointer vector
+ * (include/vector) changes nothing alone (probe: still inlined whole, the pod's reserve called).
+ * OPEN, insert<CUIVariable> 0x2B1BD0 (0x510, 46 instructions, registers only): the copy loops'
+ * end pointer takes s6 where the target's takes s0 (and the cursors s1/s6 against s0/s1) -- the
+ * class insert's end register, as the cue vector's 0x1EED40 (include/vector's, the MSL lane's) */
+
+/* the lobby's save manager (SOCOM II's; CMenuState::UnInit closes it through this, CAcctDB registers
+ * with it; OVL1 0x2AFBA0, the name ours) */
+CLobbySaveManager *GetLobbySaveManager()
+{
+    return &theLobbySaveManager;
+}
+
 extern "C" char *strncpy(char *dst, const char *src, unsigned int n);
 
 /* the world, the entities, the AI events, the scheduler and the sound (their units'; called by their
@@ -887,6 +940,12 @@ _zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
 /* a custom type's weapons' UI variables (SOCOM 1's; OVL1 0x2AF190, not written yet) */
 void UpdateCharWeaponUiVars(int i);
 
+/* an array's count and its items through a non-const value (zanim.h's members, non-const and the
+ * index an int: the HUD's parsers reuse the type they tested, where zui.h's const accessors -- the
+ * _zrdr this unit now sees -- reload it) */
+inline unsigned int ZCount(_zrdr *z) { return z->type == 4 ? z->length : 0; }
+inline _zrdr *ZItem(_zrdr *z, int i) { return i < ZCount(z) ? &z->array[i] : 0; }
+
 /* an array's element by an unsigned index (zrdr.h's Item: zanim.h's takes an int, which lets MW
  * walk the element address with the int counter where the target recomputes it each pass) */
 inline _zrdr *ListItem(_zrdr *rdr, unsigned int i)
@@ -1032,12 +1091,15 @@ struct MissionBankList {
         m_count = n;
     }
 
+    /* (none to begin with: the unit's initialiser clears the count last) */
+    MissionBankList() : m_count(0) {}
+
     int m_count;
     char m_banks[1][10];
 };
 
 extern "C" {
-extern MissionBankList data_00440B80;
+MissionBankList data_00440B80;
 }
 
 /* the localised string tables (util_loc.cpp's; only the load), the language a word as st_mpexit.cpp
@@ -1243,13 +1305,13 @@ _zanim_cmd_hdr *HUDTriggerMissionCamParse(_zrdr *rdr)
 
     if (!rdr)
         return 0;
-    if (rdr->type == 4 && rdr->Count() && rdr->Item(0)->type == 3) {
+    if (rdr->type == 4 && ZCount(rdr) && ZItem(rdr, 0)->type == 3) {
         CZAnim *anim = ZAnim.m_CurAnim;
 
         cmd = (_trigger_mission_cam_cmd *)_calloc(1, sizeof(_trigger_mission_cam_cmd), 0, 0);
         cmd->hdr.data_size = sizeof(_trigger_mission_cam_cmd);
         cmd->hdr.timeless = 1;
-        cmd->name = anim->AddName(rdr->Item(0)->String());
+        cmd->name = anim->AddName(ZItem(rdr, 0)->String());
     }
     return (_zanim_cmd_hdr *)cmd;
 }
@@ -1305,13 +1367,13 @@ extern "C" _zanim_cmd_hdr *func_002AE3A0(_zrdr *rdr)
 
     if (!rdr)
         return 0;
-    if (rdr->type == 4 && rdr->Count() && rdr->Item(0)->type == 3) {
+    if (rdr->type == 4 && ZCount(rdr) && ZItem(rdr, 0)->type == 3) {
         CZAnim *anim = ZAnim.m_CurAnim;
 
         cmd = (_trigger_popup_cmd *)_calloc(1, sizeof(_trigger_popup_cmd), 0, 0);
         cmd->hdr.data_size = sizeof(_trigger_popup_cmd);
         cmd->hdr.timeless = 1;
-        cmd->name = anim->AddName(rdr->Item(0)->String());
+        cmd->name = anim->AddName(ZItem(rdr, 0)->String());
     }
     return (_zanim_cmd_hdr *)cmd;
 }
@@ -1351,9 +1413,9 @@ _zanim_cmd_hdr *HUDStartDefuseTimerParse(_zrdr *rdr)
         return 0;
     time = 0.001f;
     countup = false;
-    if (rdr->type == 4 && rdr->Count()) {
-        if (IsNumber(rdr->Item(0)))
-            time = rdr->Item(0)->Real();
+    if (rdr->type == 4 && ZCount(rdr)) {
+        if (IsNumber(ZItem(rdr, 0)))
+            time = ZItem(rdr, 0)->Real();
         else
             return 0;
         if (zrdr_findtag(rdr, "COUNT_UP"))

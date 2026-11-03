@@ -747,6 +747,7 @@
 0x00407BE0 0x90 __vt__10C2DCounter  # vtable of C2DCounter: found by its RTTI's name
 0x00407C90 0x24 __vt__10CClockSpec  # vtable of CClockSpec: found by its RTTI's name
 0x00407CC0 0x24 __vt__12CCounterSpec  # vtable of CCounterSpec: found by its RTTI's name
+0x00407CF0 0x30 __vt__13CUIVarManager  # vtable of CUIVarManager (by hand, the states lane, round 22: SOCOM 1's __vt__13CUIVarManager is 0x30 too): its own part {RTTI, 0} at +0, the CSaveModule base's slots from +8 -- __sinit_fts_mission.cpp 0x400160 and ~CUIVarManager 0x385CE0 store both (at +0x24 and +0xC)
 0x00407D20 0x1C __vt__12CUIVarSTable  # vtable of CUIVarSTable: found by its RTTI's name
 0x00407D40 0x24 __vt__14CUIMapCtrlSpec  # vtable of CUIMapCtrlSpec: found by its RTTI's name
 0x00407D70 0x24 __vt__15CRadioStripSpec  # vtable of CRadioStripSpec: found by its RTTI's name
@@ -958,8 +959,10 @@
 0x00436370 0xC m_target_rem__7CEntity  # OVL1 bss; SOCOM 1's (0x4BC4A0, the third list ent_target.cpp's initialiser builds); RemoveAll clears it
 0x00436390 0xC theCompass  # OVL1 bss; SOCOM 1's m_compass__10CZSealBody (0x5064E0, a static of the seal there, seal.cpp's; the CCompass CreateAnchor and DeleteAnchor work on: a vector of anchor pointers) moved to OVL1 with its own initialiser; __sinit_compass.cpp builds it and registers ~CCompass (0x2A2E30), MapCompass::Tick walks it -- the name is ours (the entity lane); 16 references
 0x00436460 0x28 theMemCard  # OVL1 bss; SOCOM 1's (0x28 there): IsMemCardInserted, IsMemCardFormatted and FormatMemCard tail-call CMemCard's IsInserted, IsFormatted and Format with it, as SOCOM 1's do with theMemCard; references reach +0x24 and the next object (0x436488) is another unit's initialiser's; 45 references in 24 functions
+0x004364A0 0x2C theLobbySaveManager  # OVL1 bss; by hand (the states lane, round 22): the lobby's save manager (zsav_lobby.h's CLobbySaveManager; the name ours, SOCOM II's) -- __sinit_fts_mission.cpp 0x400160 builds it with 0x33EE20 and registers ~CLobbySaveManager 0x33ED70, func_002AFBA0 returns its address (CMenuState::UnInit closes it through that, CAcctDB registers with it); 2 functions
 0x004364E0 0x18EC theMission  # OVL1 bss; SOCOM 1's is 0x670, SOCOM II's runs to at least 0x18EC (CMission::InitalizeTeamValves stores the player valve at this+0x18E8; CMission's own methods reach this+0x1808, the online game, this+0x183C, a string ~CMission destroys, and this+0x1854, the objectives; the menu state's network queue at 0x11B0 lies inside); moved from 0x437764, which nothing references: 70 references take 0x4364E0 as the object (COurGame::StartEngine, CCoreState::OnPop, CExitState::Init among them)
 0x00437E80 0x8064 theUIVarManager  # OVL1 bss; s1:data-seq (size SOCOM 1's; via PasswordSecurity__13CZOnlineLobbyFv +4)
+0x0043FF00 0x18 theValveSaveManager  # OVL1 bss; by hand (the states lane, round 22): SOCOM 1's theValveSaveManager (0x4C4D00 there, the last object its __sinit_fts_mission.cpp builds) -- 0x400160 builds it inline (CSaveModule("CValveSaveManager", theMemCard.m_gameSave), the vtable 0x406BF0) and registers ~CValveSaveManager 0x2B1910
 0x0043FF20 0x800 g_arrDefCharTypeNames__25@unnamed@fts_mission_cpp@  # OVL1 bss; s1:data-exact (size SOCOM 1's; via GetDefCharTypeName__Fi)
 0x00440720 0x3E0 g_arrMapVis__25@unnamed@fts_mission_cpp@  # OVL1 bss; s1:data-seq (via ftsGetVisibleMap__FUii); size SOCOM II's by hand (the states lane: 32 lists of 31 -- ftsGetVisibleMap's stride is 31 and ftsIsMapInVisibleList tests the list < 32 -- running to g_arrMapVisCounts)
 0x00440B00 0x80 g_arrMapVisCounts__25@unnamed@fts_mission_cpp@  # OVL1 bss; s1:data-seq (via ftsGetNumVisibleMaps__FUi); size SOCOM II's by hand (the states lane: ftsGetNumVisibleMaps indexes it under 32)
