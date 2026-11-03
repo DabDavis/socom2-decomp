@@ -14,6 +14,15 @@
 #include "zonline.h"
 #include "../znet/znet.h"
 
+/* The unit's inline size limit, lowered (measured, round 10): the target's initialiser inlines the
+ * chat queues' constructor one level -- its own body, the queue's members called out of line
+ * (0x2F5EE0, 0x2F5EC0, 0x2F5ED0, the queue's constructor 0x2F5F50) -- the size cut of an expanded
+ * body past the limit. With these MSL headers that constructor expands to between 100 and 200
+ * units, under the default 256, where the original's (deeper) MSL put it over; every other
+ * function of the unit compiles the same at 100. The pragma acts through its state at the unit's
+ * end, so it is set here, once. */
+#pragma inline_max_size(100)
+
 /* --- the Medius requests the state handlers make (SOCOM 1's; only what is passed) ----------- */
 
 /* the account logged in or registered (OVL2 bss; SOCOM 1's AccountInfo, 0x44 bytes) */
@@ -1061,9 +1070,27 @@ struct MediusFindPlayerRequest {
 
 struct MediusFindPlayerResponse { MEDIUS_RESPONSE_HEAD };
 
+/* a queue of chat lines (the name ours): four blank lines pushed and popped at the start, so its
+ * first block is there before the first line -- the constructor is too tall to inline whole into
+ * the initialiser, which calls the queue's members out of line (0x2F5EE0, 0x2F5EC0, 0x2F5ED0) */
+class CChatQueue : public std::queue<MediusChatMessage> {
+public:
+    CChatQueue()
+    {
+        MediusChatMessage msg;
+
+        for (int i = 0; i < 4; i++)
+            push(msg);
+        while (!empty())
+            pop();
+    }
+};
+
+/* the unit's two queues, built by its initialiser 0x4020E0, their destructor 0x2F5E50 registered */
+CChatQueue data_0044FA20;   /* the public lines waiting for the filter */
+CChatQueue data_0044FA50;   /* the private lines waiting for their player */
+
 extern "C" {
-extern unsigned char data_0044FA20[];   /* the public lines waiting for the filter (a queue) */
-extern unsigned char data_0044FA50[];   /* the private lines waiting for their player */
 void func_002F5290(void *queue, const MediusChatMessage *msg);   /* a line queued */
 MediusErrorCode func_00648F10(MediusFindPlayerRequest *req,
                               void (*cb)(int, int, int, MediusFindPlayerResponse *));   /* MediusFindPlayer */
@@ -1101,7 +1128,7 @@ bool CZOnlineLobby::SendChat(const char *text, const char *to)
     if (to) {
         msg.MessageType = 1;
         msg.TargetID = -1;
-        func_002F5290(data_0044FA50, &msg);
+        func_002F5290(&data_0044FA50, &msg);
         MediusFindPlayerRequest find;
 
         memset(&find, 0, sizeof(find));
@@ -1114,7 +1141,7 @@ bool CZOnlineLobby::SendChat(const char *text, const char *to)
     } else {
         msg.TargetID = -1;
         msg.MessageType = 0;
-        func_002F5290(data_0044FA20, &msg);
+        func_002F5290(&data_0044FA20, &msg);
         Censor(msg.Message, func_002F4BA0, &msg);
     }
     return true;
@@ -1275,7 +1302,7 @@ void CZOnlineLobby::Censor(const char *text, CensorCallback cb, void *data)
 }
 
 extern "C" {
-void func_002F3EF0(void *part);   /* a type-129 response's tail converted */
+void func_002F3EF0(char *rules);   /* a game's rules written out (below) */
 
 /* the first free slot of two looked for, and nothing done with it: the search survives, its
  * result does not (a void leaf: v1 is its only temporary; OVL1 0x2F3FF0). LobbyServerConnect's
@@ -1289,6 +1316,49 @@ void func_002F3FF0(ChatSlot *slots)
     }
 }
 #pragma auto_inline reset
+
+/* a game's rules written out as a list of numbers -- the 32 bytes after an 'A' block's five-byte
+ * head or a 'B' block's six -- into a buffer nothing reads (a debug print gone; OVL1 0x2F3EF0:
+ * the converter below and the LAN unit's JoinGame and CreateGame call it).
+ * OPEN, 12 instructions (0xFC both): the target's stack puts 'A''s number buffer highest (sp+240),
+ * 'B''s next (224) and the text lowest (48) -- this order gives text 80, the numbers 64 and 48 --
+ * and case 'A' swaps s0/s1 (the target keeps the bytes' base in s1 and the counter in s0 in both
+ * cases). Measured on the way: the base must be copied per case (a local pointer in each case:
+ * the parameter used directly is copied to s0 at the entry) and indexed `p[i + 5]` with the counter
+ * outside the loop (a `bytes[i]` pointer or `rules + 5` folds the offset and strength-reduces the
+ * walk: 0x104); per-case text buffers do not share a slot (a 432-byte frame) */
+void func_002F3EF0(char *rules)
+{
+    char text[176];
+    int i;
+
+    switch (rules[0]) {
+    case 'A': {
+        const unsigned char *p = (const unsigned char *)rules;
+        char num[16];
+
+        sprintf(text, "[");
+        for (i = 0; i < 32; i++) {
+            sprintf(num, "%d, ", p[i + 5]);
+            strcat(text, num);
+        }
+        strcat(text, "]");
+        break;
+    }
+    case 'B': {
+        const unsigned char *p = (const unsigned char *)rules;
+        char num[16];
+
+        sprintf(text, "[");
+        for (i = 0; i < 32; i++) {
+            sprintf(num, "%d, ", p[i + 6]);
+            strcat(text, num);
+        }
+        strcat(text, "]");
+        break;
+    }
+    }
+}
 
 /* a response put into the host's order: only the type-129 ones carry anything to convert (OVL1
  * 0x2F4030; the request side, 0x2F4080, is empty) */

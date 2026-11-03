@@ -4950,28 +4950,28 @@
 0x002F4EF0 0xCC cbChatMessage__FiiiP20MediusChatFwdMessage  # OVL1; s1 by hand (MediusInit 0x300840 hands it as the library's first callback, where SOCOM 1's AuxInitNetwork hands cbChatMessage: a MediusChatFwdMessage shown with sprintf '%s: %s' through 0x2A4050, private and clan ones anywhere)
 0x002F4FC0 0x60 func_002F4FC0  # OVL1
 0x002F5020 0x1B8 func_002F5020  # OVL1
-0x002F51E0 0xA8 func_002F51E0  # OVL1
-0x002F5290 0x420 func_002F5290  # OVL1
+0x002F51E0 0xA8 pop_front__Q23std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>Fv  # OVL1; ours, the online lane round 10 (the chat deque's pop: the private-line callbacks and the queue's pop 0x2F5ED0; open in include/deque)
+0x002F5290 0x420 push_back__Q23std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>FRC17MediusChatMessage  # OVL1; ours, the online lane round 10 (the chat deque's push: SendChat and the queue's push 0x2F5EE0; open in include/deque, 0x370 against 0x420)
 0x002F56B0 0x50 swap__Q210Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>FRQ210Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>  # OVL1; s1:exact
 0x002F5700 0x238 func_002F5700  # OVL1
 0x002F5940 0xE4 func_002F5940  # OVL1
 0x002F5A30 0xD8 func_002F5A30  # OVL1
 0x002F5B10 0x1F8 func_002F5B10  # OVL1
 0x002F5D10 0x13C func_002F5D10  # OVL1
-0x002F5E50 0x70 func_002F5E50  # OVL1
-0x002F5EC0 0x10 func_002F5EC0  # OVL1
-0x002F5ED0 0x8 func_002F5ED0  # OVL1
-0x002F5EE0 0x8 func_002F5EE0  # OVL1
-0x002F5EF0 0x60 func_002F5EF0  # OVL1
-0x002F5F50 0x28 func_002F5F50  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
-0x002F5F80 0x68 func_002F5F80  # OVL1
+0x002F5E50 0x70 __dt__10CChatQueueFv  # OVL1; ours, the online lane round 10 (the chat queues' destructor: __sinit_zNetMediusChat.cpp registers it for both)
+0x002F5EC0 0x10 empty__Q23std100queue<17MediusChatMessage,Q23std65deque<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>>CFv  # OVL1; ours, the online lane round 10 (the chat queue's empty(), out of line from the initialiser; byte-exact)
+0x002F5ED0 0x8 pop__Q23std100queue<17MediusChatMessage,Q23std65deque<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>>Fv  # OVL1; ours, the online lane round 10 (the chat queue's pop(), `j pop_front`, out of line from the initialiser; byte-exact)
+0x002F5EE0 0x8 push__Q23std100queue<17MediusChatMessage,Q23std65deque<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>>FRC17MediusChatMessage  # OVL1; ours, the online lane round 10 (the chat queue's push(), `j push_back`, out of line from the initialiser; byte-exact)
+0x002F5EF0 0x60 __dt__Q23std65deque<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>Fv  # OVL1; ours, the online lane round 10 (the chat deque's destructor: the initialiser destroys the queue's Container() temporary through it, with -1)
+0x002F5F50 0x28 __ct__Q23std100queue<17MediusChatMessage,Q23std65deque<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>>FRCQ23std65deque<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); ours, the online lane round 10 (the chat queue's constructor from its container, `c(x)`, out of line from the initialiser)
+0x002F5F80 0x68 __ct__Q23std65deque<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>FRCQ23std65deque<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>  # OVL1; ours, the online lane round 10 (the chat deque's copy constructor, called by the queue's 0x2F5F50: open in include/deque -- 0x70 against 0x68, the image's chain runs 0x2F5FF0, 0x2F6060, 0x2F6090 below it, not the lobby queue's begin/end/init)
 0x002F5FF0 0x68 func_002F5FF0  # OVL1
 0x002F6060 0x2C func_002F6060  # OVL1
 0x002F6090 0x19C func_002F6090  # OVL1
-0x002F6230 0x28 func_002F6230  # OVL1; tu: vis_mesh.cpp~ (1.0 beta)
+0x002F6230 0x28 __ct__Q23std65deque<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>Fv  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); ours, the online lane round 10 (the chat deque's default constructor: the initialiser builds the queue's Container() temporary with it; the draft stands, this unit's copy 0x30 against 0x28 as the lobby queue's)
 0x002F6260 0x30 func_002F6260  # OVL1
 0x002F6290 0x18 func_002F6290  # OVL1
-0x002F62B0 0x88 func_002F62B0  # OVL1
+0x002F62B0 0x88 __dt__Q23std71__deque_buf<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>Fv  # OVL1; ours, the online lane round 10 (the chat deque's block buffer's out-of-class destructor: the chat queues' destructors 0x2F5E50 and 0x2F5EF0 call it -- the chat unit's tail, not the lobby unit's first function; it walks the elements through 0x2F5D10 and destroys them with 0x2F5B10; open in include/deque, 0x110 against 0x88)
 0x002F6340 0x2BC func_002F6340  # OVL1
 0x002F6600 0x444 func_002F6600  # OVL1
 0x002F6A50 0x8 func_002F6A50  # OVL1
@@ -8552,7 +8552,7 @@
 0x00401E70 0x34 __sinit_zNetMediusRoom.cpp  # OVL1 data area; a static initialiser; ours, the online lane round 10 (zNetMediusRoom.cpp's static initialiser: the room list 0x44F568 zeroed and its destructor 0x2E5F60 registered, a tail call; byte-exact)
 0x00401EB0 0xE4 __sinit_zNetMediusClan.cpp  # OVL1 data area; a static initialiser; ours, the online lane round 10 (zNetMediusClan.cpp's static initialiser: the unit's four lists 0x44F700-0x44F760 zeroed and their destructors 0x2EA540/0x2EA4C0/0x2EA440/0x2EA3C0 registered, in definition order; byte-exact)
 0x00401FA0 0x134 __sinit_zNetMediusLadder.cpp  # OVL1 data area; a static initialiser; ours, the online lane round 10 (zNetMediusLadder.cpp's static initialiser: the four ladder lists built -- LadderList() sets +0xC to 2, ClanLadderList() +0x10 -- and their destructors registered, in definition order; byte-exact)
-0x004020E0 0x168 func_004020E0  # OVL1 data area; a static initialiser
+0x004020E0 0x168 __sinit_zNetMediusChat.cpp  # OVL1 data area; a static initialiser; ours, the online lane round 10 (zNetMediusChat.cpp's static initialiser: the two chat queues 0x44FA20/0x44FA50 built -- CChatQueue()'s body inlined one level: the queue's Container() temporary, four blank lines pushed and popped, the queue's members called -- and their destructor 0x2F5E50 registered; byte-exact with the unit's inline_max_size at 100)
 0x00402250 0x78 __sinit_zNetMediusLobby.cpp  # OVL1 data area; a static initialiser; ours, the online lane round 10 (zNetMediusLobby.cpp's static initialiser, between the chat unit's 0x4020E0 and the universe unit's 0x4022D0: the room 0x44FAB0 built empty -- BriefingRoom(0) inlined one level -- and ~BriefingRoom 0x2E48C0 registered; byte-exact)
 0x004022D0 0x144 __sinit_zNetMediusUniverse.cpp  # OVL1 data area; a static initialiser; ours, the online lane round 10 (zNetMediusUniverse.cpp's static initialiser: the server object 0x44FC60 built -- CAcctDB() inlined whole, its two save modules, its tables, reserve(48) -- and its destructor 0x300570 registered, then the two universe lists reserved 16; open at level 5, byte-exact at level 6: the wrapper's constructor and CAcctDB()'s tree are one level too tall for these headers)
 0x00402420 0xD0 __sinit_zNetMediusFriends.cpp  # OVL1 data area; a static initialiser; ours, the online lane round 10 (zNetMediusFriends.cpp's static initialiser: FriendVec 0x44FDC0 zeroed, the ignore list 0x44FDE0 resized to 64, the friend invitations 0x44FE00 reserved 64, their destructors 0x303410/0x303390/0x303310 registered, in definition order; byte-exact)
