@@ -56,6 +56,60 @@ static inline float RandSize(float lo, float hi)
     return lo + Rand01() * (hi - hi);
 }
 
+/* a material's extension (int_material.cpp's, held in zweapon.h's CMaterialExArray): only the
+ * footfall sounds by gait (the names ours) */
+struct CMaterialEx {
+    unsigned char _0[8];
+    CSnd *m_runsound;   // 0x8
+    CSnd *m_walksound;   // 0xc
+    CSnd *m_pronesound;   // 0x10
+};
+
+/* a material's extension, the first one for an index past the table (SOCOM 1's bounds-checked
+ * read; the name ours) */
+static inline CMaterialEx *MaterialEx(unsigned int i)
+{
+    if (i >= CMaterialExArray::m_materialex_list.size())
+        i = 0;
+    return (CMaterialEx *)CMaterialExArray::m_materialex_list[i];
+}
+
+/* a footfall's sound at a point, by the material underfoot and the gait -- prone, a creep (each of
+ * the three throttles within a half) or a run -- heard flat by the player looking through his own
+ * eyes (OVL2 0x5A39B0; SOCOM 1's tested two throttles and played it at the point always) */
+void CZSealBody::HandleFootfallSound(CPnt3D *pos)
+{
+    int mat = m_onMaterial;
+
+    if (mat < (int)CMaterialExArray::m_materialex_list.size()) {
+        CMaterialEx *ex = MaterialEx(mat);
+
+        if (ex) {
+            CSnd *snd;
+
+            if (GetStance(false) == stateProne)
+                snd = ex->m_pronesound;
+            else {
+                float x = m_control->m_throttle[0];
+                float y = m_control->m_throttle[1];
+                float z = m_control->m_throttle[2];
+
+                if (x > 0.5f || y > 0.5f || x < -0.5f || y < -0.5f || z > 0.5f || z < -0.5f)
+                    snd = ex->m_runsound;
+                else
+                    snd = ex->m_walksound;
+            }
+            if (snd) {
+                if (IsPlayer() && m_zoomstate > ZOOMSTATE_3RDPERSON) {
+                    snd->PlaySound((CSndInstance *)0, 255);
+                    return;
+                }
+                snd->PlaySound3D(pos, 1.0f, 0, 0, 255);
+            }
+        }
+    }
+}
+
 /* now and then a wounded SEAL drips blood: offline only, a random decal of the set at random size
  * under it, along its altitude hit (OVL2 0x5A33B0; SOCOM 1's word for word, the timer at 0x214 --
  * its size range is min + r * (max - max), as both builds have it).
@@ -97,6 +151,43 @@ void CZSealBody::HandleBloodDrip(float dT)
                              def->m_texture, size, 0);
         }
     }
+}
+
+extern "C" {
+/* the decal textures by material (OVL1 bss: a buffer of handles UninitDatabaseHandles frees) */
+extern void *data_0044D550;
+}
+
+/* a footprint left at a point: on the polygon the SEAL last stood on, unless its decal node refuses
+ * decals, the texture its material names, 3.5 deep, turned as the hips face (OVL2 0x5A3280, just
+ * before HandleBloodDrip; new in SOCOM II, the name ours) */
+extern "C" void func_005A3280(CZSealBody *seal, CPnt3D *pos)
+{
+    zdb::CNode *node;
+    zdb::CNode *decal;
+    zdb::IntersectStruct *alt = &seal->m_last_altitude;
+
+    if (!alt->m_poly)
+        return;
+    node = GetVisualNode(alt->m_node);
+    if (!node)
+        return;
+    decal = GetDecalNode(alt->m_node);
+    if (decal && (decal->m_socom2_a1 & 4))
+        return;
+    int mat = alt->GetMaterial();
+
+    if (!((zdb::CTexHandle **)data_0044D550)[mat])
+        return;
+    CPnt3D dir;
+
+    alt->m_norm.Scale(-1.0f, &dir);
+    zdb::CNode *hips = seal->m_hips->m_node;
+    CMatrix m;
+
+    hips->m_matrix.Multiply(&seal->m_node->m_matrix, &m);
+    node->ApplyDecal(decal, 100.0f, pos, &dir, &projDirDown, ((zdb::CTexHandle **)data_0044D550)[mat],
+                     3.5f, (CPnt3D *)m.m_matrix[2]);
 }
 
 /* a float negated in place (an inline taking it by reference: the target negates the quaternion's

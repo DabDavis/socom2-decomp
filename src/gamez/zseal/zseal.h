@@ -39,6 +39,12 @@ enum MENU_STATE {
     stateLast = 6
 };
 
+/* the view the player looks through (SOCOM 1's DWARF, a signed byte: SetCurZoomState's argument) */
+enum ZOOMSTATE {
+    ZOOMSTATE_UNKNOWN = -1, ZOOMSTATE_3RDPERSON = 0, ZOOMSTATE_1STPERSON = 1, ZOOMSTATE_NVG = 2,
+    ZOOMSTATE_BINOCS = 3, ZOOMSTATE_WEAPONDEF1 = 4, NUM_ZOOMSTATES = 12
+};
+
 /* the fire trigger's edge state (SOCOM 1's DWARF, a byte) */
 enum TRIGGER { TRIGGER_UP = 0, TRIGGER_DOWN = 1, TRIGGER_FALLING = 2, TRIGGER_RISING = 3, TRIGGER_FINISH = 4 };
 
@@ -1200,6 +1206,8 @@ public:
     void Slide(zdb::IntersectStruct *hit);
     /* a wounded SEAL's blood dripped on the ground now and then (SOCOM 1's; OVL2 0x5A33B0) */
     void HandleBloodDrip(float dT);
+    /* a footfall's sound at a point (SOCOM 1's; OVL2 0x5A39B0) */
+    void HandleFootfallSound(CPnt3D *pos);
     /* the blood decals, one picked at random (SOCOM 1's static vector<CZDecalDef>; OVL1 bss
      * 0x44D568) */
     static std::vector<class CZDecalDef> m_blooddriptexhandles;
@@ -1389,7 +1397,14 @@ public:
     static class CSndInstance *m_heartbeat_sndisnt;
     static int m_heartbeat_curindex;
 
-    unsigned char _200[0x214 - 0x200];
+    ZOOMSTATE m_zoomstate;   // 0x200 (SOCOM 1's 0x160: DecrZoomState reads it, lb)
+    unsigned char _201[0x20c - 0x201];
+    /* the material underfoot and the feet's step flags (SOCOM 1's 0x168-0x16D; HandleSealStep and
+     * HandleFootfallSound read them) */
+    int m_onMaterial;   // 0x20c
+    unsigned char m_didrstep;   // 0x210
+    unsigned char m_didlstep;   // 0x211
+    unsigned char _212[0x214 - 0x212];
     float m_blooddriptimer;   // 0x214 (SOCOM 1's 0x170)
     /* the SEAL whose node 0x3DC holds, kept while bit 0 of 0x21C is set (0x5AA620, the radio menu's
      * toggle; the names ours) */
