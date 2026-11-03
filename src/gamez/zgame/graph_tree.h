@@ -100,13 +100,22 @@ public:
     CGNodeList m_nodes;   // 0x0
 };
 
+class CFileIO;
+
 class CGraph {
 public:
+    /* a node's or an edge's fixup, handed each one read with the file's word for it (SOCOM 1's
+     * signatures, the map file's _fixupNode/_fixupEdge) */
+    typedef void (*NodeFixup)(CGraph *graph, CGNode *node, bool read, unsigned int &n, void *data);
+    typedef void (*EdgeFixup)(CGraph *graph, CGEdge *edge, bool read, unsigned int &n, void *data);
+
     CGraph(const char *name);
     ~CGraph();
+    bool Read(CFileIO &f, NodeFixup node, EdgeFixup edge, void *data);
     static CGraph *Create(const char *name);
     static void Destroy(CGraph *graph);
-    CGNode *CreateNode(const char *name);
+    /* a node made and added (SOCOM II's takes no name: CGraph::Read and the AI maps leave a1 unset) */
+    CGNode *CreateNode();
     void DeleteNode(CGNode *node);
     CGEdge *CreateEdge(CGNode *a, CGNode *b);
     CGNode *GetNodeByIndex(unsigned int index);
