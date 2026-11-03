@@ -418,15 +418,24 @@ public:
     static void ResetGears();
     static const char *match_name_to_chartype(CRdrFile *rdr, const char *group, const char *name);
     EQUIP_ITEM GetWeaponByIndex(unsigned int i) const;
+    /* the first holder loads the model and each gear's (from the model cache, else the world, then
+     * cached); the type counted and handed back, none without a model (SOCOM 1's; OVL2 0x53CCA0) */
+    CCharacterType *Acquire() const;
     char *GetBaseName();
     /* the character's model instanced under a name (SOCOM 1's; OVL2 0x53C9B0) -- the SEAL lane */
     zdb::CNode *CreateInstance(const char *name);
+    /* the count dropped; at none every gear let go and the model and sounds forgotten, the count
+     * returned (SOCOM 1's; OVL2 0x53CA40) */
+    int Release();
+    /* each level of detail's model (cached, else the world's, then cached) added to the node's
+     * mesh as a level, when both hold one mesh (SOCOM 1's; OVL2 0x53CB20) */
+    void CreateLODs(zdb::CNode *node);
     /* a sound by kind, none out of range (new in SOCOM II, the name ours: CSealCtrlAi::OnStunDamage
      * calls it) */
     CSnd *GetSound(CHARACTER_SOUND s) const;
 
     char *m_name;   // 0x0
-    int m_ref_count;   // 0x4
+    mutable int m_ref_count;   // 0x4: mutable -- Acquire, const in both builds, counts
     char *m_model_file;   // 0x8
     char *m_model_name;   // 0xc
     unsigned int m_parentID;   // 0x10
@@ -435,7 +444,7 @@ public:
     LODVec m_LODs;   // 0x2bc
     CAnimSetVec m_anim_sets;   // 0x2c8
     char *m_texture_asset;   // 0x2d4
-    CModel *m_model;   // 0x2d8
+    mutable CModel *m_model;   // 0x2d8: mutable -- Acquire loads it
     CCharacterGearList m_gear;   // 0x2dc
     CCharacterWeapList m_weapons;   // 0x2e8
     int m_strength;   // 0x2f4

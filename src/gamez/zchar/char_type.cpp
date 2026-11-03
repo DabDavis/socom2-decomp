@@ -412,6 +412,110 @@ const char *GetCharacterSoundTypeString(CHARACTER_SOUND s)
     return "CHRSND_NONE";
 }
 
+/* the gears' models, shared by name (SOCOM 1's CCharacterModelCache::m_ModelCache, a static of
+ * char_type.cpp there at the demo's 0x506420, 0x60 after m_char_list; SOCOM II's is OVL1 bss at
+ * 0x44CDA8, the same 0x60 after its m_char_list) */
+class CCharacterModelCache {
+public:
+    static zdb::CModelVector m_ModelCache;
+};
+
+/* each level of detail's model, from the model cache or else the world (then cached); when it and
+ * the node each hold one visual, both meshes, the node's mesh takes the model's as a level at its
+ * distance (SOCOM 1's, whose LODs were 12 bytes). The distance in a local loads it ahead of the size
+ * tests, and the model's visuals through a reference keep their address in a0 (its data read at +8
+ * after the node's size test), as the target does: written out, both fold away */
+void CCharacterType::CreateLODs(zdb::CNode *node)
+{
+    for (LODVec::iterator i = m_LODs.begin(); i != m_LODs.end(); ++i) {
+        zdb::CModel *model = CCharacterModelCache::m_ModelCache.GetModel(i->m_file.c_str());
+
+        if (!model) {
+            model = (zdb::CModel *)zdb::CWorld::GetModel(i->m_file.c_str());
+            if (model) {
+                /* a copy pushed, so the model stays in its register */
+                zdb::CModel *kept = model;
+
+                CCharacterModelCache::m_ModelCache.push_back(kept);
+            }
+        }
+        if (model) {
+            float dist = i->m_dist;
+            zdb::CVisualVector &visuals = model->m_visual;
+
+            if (visuals.size() == 1 && node->m_visual.size() == 1) {
+                zdb::CVisual *lod = visuals[0];
+                zdb::CVisual *mesh = node->m_visual[0];
+
+                if (lod && lod->m_type == 1 && mesh && mesh->m_type == 1)
+                    ((zdb::CMesh *)mesh)->AddLOD((zdb::CMesh *)lod, dist);
+            }
+        }
+    }
+}
+
+/* the first holder loads the type's model, and each gear without one its own -- from the model
+ * cache, else the world, then put in the cache with its mode tree set; every gear with a model
+ * counted. None without a model; otherwise its mode tree set and the type counted and handed back
+ * (SOCOM 1's, whose gear list was a list) */
+CCharacterType *CCharacterType::Acquire() const
+{
+    if (m_ref_count == 0) {
+        m_model = (CModel *)zdb::CWorld::GetModel(m_model_name);
+        for (CCharacterGearList::iterator i = ((CCharacterGearList &)m_gear).begin();
+             i != ((CCharacterGearList &)m_gear).end(); ++i) {
+            CCharacterGear *g = *i;
+
+            if (!g->m_model) {
+                g->m_model = CCharacterModelCache::m_ModelCache.GetModel(g->m_model_name);
+                if (!g->m_model) {
+                    g->m_model = zdb::CWorld::GetModel(g->m_model_name);
+                    if (g->m_model) {
+                        ((zdb::CNode *)g->m_model)->SetModeTree(2);
+                        /* a copy pushed: the target reloads the model after the call into a
+                         * stack slot and passes its address */
+                        zdb::CModel *model = (zdb::CModel *)g->m_model;
+
+                        CCharacterModelCache::m_ModelCache.push_back(model);
+                    }
+                }
+            }
+            if (g->m_model)
+                g->m_ref_count++;
+        }
+    }
+    if (m_model) {
+        ((zdb::CNode *)m_model)->SetModeTree(2);
+        m_ref_count++;
+        return (CCharacterType *)this;
+    }
+    return 0;
+}
+
+/* the count dropped; at none -- clamped there, new in SOCOM II -- each gear's count dropped and at
+ * none zeroed with its model, then the type's model and sounds forgotten (SOCOM 1's, whose gear
+ * list was a list and whose model stores were null-tested) */
+int CCharacterType::Release()
+{
+    m_ref_count--;
+    if (m_ref_count <= 0) {
+        if (m_ref_count < 0)
+            m_ref_count = 0;
+        for (CCharacterGearList::iterator i = m_gear.begin(); i != m_gear.end(); ++i) {
+            CCharacterGear *g = *i;
+
+            g->m_ref_count--;
+            if (g->m_ref_count <= 0) {
+                g->m_ref_count = 0;
+                g->m_model = 0;
+            }
+        }
+        m_model = 0;
+        memset(m_sounds, 0, sizeof(m_sounds));
+    }
+    return m_ref_count;
+}
+
 /* the type's model instanced and named; none without a model (SOCOM 1's). The model's byte at
  * 0xC0 is set first (new in SOCOM II: zdb's CModel is not laid out here) */
 zdb::CNode *CCharacterType::CreateInstance(const char *name)
