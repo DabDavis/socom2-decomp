@@ -1818,6 +1818,26 @@ the mask is likely a two-byte enum whose `operator|` is a function, which rename
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 23** (the radio command menu: hud_tcmcmds.cpp and hud_tcm.cpp):
+  - the menu 0x22EDB0-0x23775F is THREE units, cut where calls stop inlining: hud_tcmcmds.cpp 0x22EDB0-0x231A2F (its
+    initialiser 0x3FF430 matches; the tree calls its two 8-byte node setters out of line), the tree 0x231A30-0x23624F
+    (no initialiser; statics 0x4130A0-0x4130BF; unwritten), hud_tcm.cpp 0x236250-0x23775F (initialiser 0x3FF4A0;
+    the other units call its 8-byte mode setter out of line); its handlers are named by the item each registers with
+    in the builder 0x2344E0 (no SOCOM 1 counterpart); theTCM is 0x413120 (0x13C0 bytes);
+  - a file static whose address is never taken has its load hoisted above calls -- a target that reloads after each
+    call has a GLOBAL; in `f() != g` MW loads g before the call, the target's load after it is `bool v = f(); if (v
+    != g)`; an inline accessor as `&`'s right operand is expanded first while the AND keeps source order; a bitfield
+    through an inline bool accessor keeps its `sltu` only written `IsEnabled() != false`;
+  - `const CPnt4D &c = CPnt4D(...)` keeps the colour on the stack, a named CPnt4D or float array is scalarised;
+    clearing a list through a reference local computes the end node from the list's own address (`m_root.clear()`
+    does not); ternary defaults in an argument list evaluate right to left; an early `unsigned char c = cmd;` gives
+    the target's narrowing at entry (passed on to an int parameter a uchar local is re-extended: the callees take
+    unsigned char);
+  - UIVarMixin now lives in src/gamez/zui/zui_uivar.h (zui.h includes it ahead of CUIVariable, zui_2d.h too), so the
+    UI lane can make it CUIVariable's base; include/vector's scalar vectors gain pop_back(), additively;
+  - open: tcmVote 0x22F3C0 (5), tcmSelectPlayer 0x22F5B0 (19: the index parameter numbered last, as if the walk were
+    an inline helper), tcmUpdatePlayer 0x22F6E0 (7: a2/a3), tcmUpdateTeamMember 0x230050 (4 bytes short: the narrowed
+    member passed to CanOrder without re-extension).
 - **Tells from the world, rdr and sound, round 4** (zrdr's real element, zrdr_parse.cpp's symbol table):
   - zrdr's element is SOCOM 1's `zrdr_sym` (0x1C bytes: a `#undef` flag byte and two plain std::strings -- a class
     element's string member destroyed with one this-test is std::string, a CSaferStr gives two); the table at
