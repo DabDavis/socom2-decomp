@@ -9403,7 +9403,7 @@
 0x005132B0 0x1A8 func_005132B0  # OVL2
 0x00513460 0x24C func_00513460  # OVL2
 0x005136B0 0x6E4 insert__Q23std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>FP9CAiMapLocUiRC9CAiMapLoc  # OVL2; by hand, the MSL lane (vector<CAiMapLoc>'s class insert: the byte-exact resize 0x51C4A0 calls it with (end, n - size, T()); include/vector's copy is 8 bytes short -- the in-place branch's end pointer in other registers, as the 8-byte-element inserts')
-0x00513DA0 0x1F0 func_00513DA0  # OVL2
+0x00513DA0 0x1F0 reserve__Q23std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>FUi  # OVL2; by hand, the AI core round 16 (vector<CAiMapLoc>'s reserve: UpdateActionTables 0x52BB70 reserves each of CAiMaps' seven region lists (CAiMapLocVec, this+0x84+12k) with it, CTGoto::Parse and 0x5128F0 call it too; ai_astar.cpp's copy, the first linked -- the demo's A* unit holds its node vector's reserve at the same place, 0x1F0 bytes as this)
 0x00513F90 0x8F4 insert__Q23std68__vector_imp<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>,0>FPQ27CAiPath5pointUiRCQ27CAiPath5point  # OVL2; by hand (the points' resize 0x528430 calls it with the end, the count and its 8-byte temporary, as MSL's resize calls insert; ai_astar.cpp's template tail holds the program's copy)
 0x00514890 0x754 func_00514890  # OVL2
 0x00514FF0 0x200 func_00514FF0  # OVL2
@@ -9433,8 +9433,8 @@
 0x00516910 0xC GetDir__Q26CAiMap6actionCFv  # OVL2; ours (GetCellCenter's: the action's side, m_offset's four bits, 8 for none)
 0x00516920 0x14 HasAction__7CAiCellCFv  # OVL2; ours (CAiMap::GetCellCenter's action test, inlined one level wherever the centre is: the cell's action bit as a bool -- CAiMaps::GetCellCenter, the look and cover searches, the WalkLines call this copy)
 0x00516940 0x70 GetAltitude__6CAiMapCFPC7CAiCellRf  # OVL2; ours (new in SOCOM II: the box's floor plus m_alt_quant times the cell's ten altitude bits, true; false for no cell)
-0x005169B0 0x558 func_005169B0  # OVL2
-0x00516F10 0xA4 func_00516F10  # OVL2
+0x005169B0 0x558 GetCellRepelParams__6CAiMapFRC9CAiMapLocPC6CPnt3DfR6CPnt3DRfR9CAiMapLoc  # OVL2; s1:order by hand, the AI core round 16 (the demo's CAiMap::GetCellRepelParams 0x1853A0, before the CAiMaps wrapper and TransformTo in both builds: CAiMaps::GetCellRepelParams 0x516F10 calls it; the length written through the fifth (a float &: the direction's sqrt), the new sixth a CAiMapLoc & (a 4-byte cell copied from a local whose +2 is the cell's y))
+0x00516F10 0xA4 GetCellRepelParams__7CAiMapsFRC9CAiMapLocPC6CPnt3DfR6CPnt3DRfR9CAiMapLoc  # OVL2; s1:order by hand, the AI core round 16 (the demo's CAiMaps::GetCellRepelParams 0x185AB0 follows CAiMap's in ai_map.cpp as this follows 0x5169B0: AiMaps.GetMapByIndex(loc's map) and the map's call, the same code with one pointer more -- a CAiMapLoc & the map's copies a cell into; the SEALs' 0x5483D0 calls it)
 0x00516FC0 0x88 Alloc__7CAiCellFUi  # OVL2; ours (new in SOCOM II: n cells from _calloc, each through CAiCell::Reset; the layers' allocation 0x53A8F0 calls it)
 0x00517050 0x388 TransformTo__6CAiMapFRC9CAiMapLocP6CAiMapR9CAiMapLoc  # OVL2; s1:order by hand, the AI core round 15 (the demo's TransformTo 0x185B50, after GetCellRepelParams and before GetMapRegion/ResetCells as here; GetLocationDelta 0x52C320 calls it twice with (loc, map, &out) as the demo's calls it)
 0x005173E0 0x84 GetMapRegion__6CAiMapCFRQ26CAiMap6region  # OVL2; s1:order by hand (the demo's 0x185FF0, the same 0x84 bytes: a CAiMapLoc(0, 0, 0) temporary copied into the region's cell, then m_nx and m_ny as its width and height; 0x517470 and ValidateCells call it)
@@ -9630,16 +9630,16 @@
 0x0052A6B0 0xB8 Tile__7CAiMapsFPCQ26CAiMap6regionUiUi  # OVL2; s1:order by hand (SOCOM 1's CAiMaps::Tile 0x197F70 step for step: the region null-tested, GetMapByIndex(region mapid), the map's Tile then ResetPathPlan, its bool kept; SOCOM II inlines the lookup whole and passes layer 0)
 0x0052A770 0xAC GetCellNameString__7CAiMapsCFRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x198060: GetCellName inlined, the name's string or "")
 0x0052A820 0x94 GetCellName__7CAiMapsCFRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x1980C0, after GetCellNameString: the cell's map's GetCellName)
-0x0052A8C0 0x400 func_0052A8C0  # OVL2
-0x0052ACC0 0x158 func_0052ACC0  # OVL2
-0x0052AE20 0x2AC func_0052AE20  # OVL2
-0x0052B0D0 0x204 func_0052B0D0  # OVL2
-0x0052B2E0 0x178 func_0052B2E0  # OVL2
-0x0052B460 0x158 func_0052B460  # OVL2
-0x0052B5C0 0x21C func_0052B5C0  # OVL2
+0x0052A8C0 0x400 CreateGraph__7CAiMapsFb  # OVL2; s1:callee by hand, the AI core round 16 (ReadMapSet 0x52B0D0's last call, with false, as the demo's calls CreateGraph__7CAiMapsFb; CGraph::Create, nodes and edges, PathPlanImmediate between links)
+0x0052ACC0 0x158 FindLinkEdge__7CAiMapsFRC9CAiMapLocRC9CAiMapLoc  # OVL2; ours, the AI core round 16 (new in SOCOM II, between CAiMaps::CreateGraph and ValidateLinks: CZSealBody::UpdateAiMapLoc's; walks the set graph's edge list (CGraph+0x10), each edge's link (+0x14, the edge fixup's) joining the two cells' maps either way, the nearest by link::GetDistance, 0 ending the search; none for one map)
+0x0052AE20 0x2AC ValidateLinks__7CAiMapsFv  # OVL2; s1:callee by hand, the AI core round 16 (ReadMapSet 0x52B0D0's third table call, as the demo's calls ValidateLinks__7CAiMapsFv; GetCellLink and SetCellLink over the maps)
+0x0052B0D0 0x204 ReadMapSet__7CAiMapsFPCcPCc  # OVL2; s1:order by hand, the AI core round 16 (the demo's ReadMapSet 0x198680, after CreateGraph and ValidateLinks in both builds: CMission::Open calls it as the demo's does; a CFileIO and a 2 KB path, the header read through the AIMAPS_PARAMS base, new CAiMap(size()) and Read per map, CGraph::Create with the set's two fixups, ReadCellTable<spores>, then the same four calls in the same order; SOCOM II adds the path copy at 0xDD, Close() first, the id before the push and flag bit 1)
+0x0052B2E0 0x178 _fixupMapsEdge__FP6CGraphP6CGEdgebRUiPv  # OVL2; ours, the AI core round 16 (ai_maps.cpp's edge fixup: ReadMapSet 0x52B0D0 hands it to CGraph::Create as the edge fixup (a2 = 0x52B2E0), it writes a link at the edge's 0x14; SOCOM 1's _fixupNode was this unit's, the demo's 0x198870 -- the same inlined GetMapByIndex walk and GetCellLink -- while SOCOM II's per-map pair in ai_mapio.cpp holds SOCOM 1's names; byte-exact)
+0x0052B460 0x158 _fixupMapsNode__FP6CGraphP6CGNodebRUiPv  # OVL2; ours, the AI core round 16 (ai_maps.cpp's node fixup: ReadMapSet 0x52B0D0 hands it to CGraph::Create as the node fixup (a1 = 0x52B460), it writes a link at the node's 8 -- the demo's ai_maps.cpp _fixupNode 0x198870 likewise looks the packed cell's link up on the cell's map; byte-exact)
+0x0052B5C0 0x21C GetSporeLocation__7CAiMapsFUiUiP6CPnt3DP6CPnt3D  # OVL2; s1:order by hand, the AI core round 16 (the demo's GetSporeLocation 0x198A00, after ReadMapSet and the fixups in both builds: GetRange of the id, the n-th spore wrapped round the run, the cell's centre, the same eight direction vectors (0.707f) in a jump table, negated -- called from OVL1 0x2B7EE0/0x2B8100 as the demo's from ftsNetworkPlayerInit/findAlign)
 0x0052B7E0 0x34 GetSporeCount__7CAiMapsFUi  # OVL2; ours (new in SOCOM II, after GetSporeLocation: a zeroed range filled by spores::GetRange, its count returned)
-0x0052B820 0x350 func_0052B820  # OVL2
-0x0052BB70 0x274 func_0052BB70  # OVL2
+0x0052B820 0x350 UpdateNameTables__7CAiMapsFv  # OVL2; s1:callee by hand, the AI core round 16 (ReadMapSet 0x52B0D0's second table call, as the demo's calls UpdateNameTables__7CAiMapsFv; it clears, refills and Sorts the name tables)
+0x0052BB70 0x274 UpdateActionTables__7CAiMapsFv  # OVL2; s1:callee by hand, the AI core round 16 (ReadMapSet 0x52B0D0's first call after ReadCellTable<spores>, as the demo's ReadMapSet calls UpdateActionTables__7CAiMapsFv there; it reads action::invalid)
 0x0052BDF0 0x518 func_0052BDF0  # OVL2
 0x0052C310 0x8 func_0052C310  # OVL2
 0x0052C320 0x284 GetLocationDelta__7CAiMapsFRC9CAiMapLocRC9CAiMapLoc  # OVL2; s1:order by hand, the AI core round 15 (the demo's GetLocationDelta 0x199610, between SmoothPath and RegisterPathPlan as 0x52C310/0x52C5B0 are here: the same-map Manhattan sum, two TransformTo calls, _max<Ui> of the maps' cell counts; SOCOM II adds map 0 as the common grid)
@@ -9680,17 +9680,17 @@
 0x0052EB40 0x18 _max<Ui>__2aiFRCUiRCUi_RCUi  # OVL2; s1:exact; by hand: MW 3.0 mangles the return type (SOCOM 1's _max<Ui>__2aiFRCUiRCUi)
 0x0052EB60 0x38 func_0052EB60  # OVL2; OVL2's copy of _close_enough<f> (OVL1 0x28F1E0, the same 0x38 bytes word for word; ai_maps.cpp's template tail after _max<Ui>, as SOCOM 1's 0x19D950 follows _max<Ui> at 0x19D930; CSealCtrlAi::Tick and 57 other OVL2 call sites call it); ovl-copy: _close_enough<f>__FRCfRCfRCf_b
 0x0052EBA0 0xB4 remove_copy<Q33std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>8iterator,Q33std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>8iterator,9CAiMapLoc>__3stdFQ33std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>8iteratorQ33std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>8iteratorQ33std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>8iteratorRC9CAiMapLoc_Q33std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>8iterator  # OVL2; by hand (std::remove's remove_copy over the class iterators, ai_maps.cpp's template tail: CAiMaps::SetRegionType's Remove, inlined one level, calls it out of line; its copy emitted by ai_maps.cpp byte-exact at this address)
-0x0052EC60 0x240 func_0052EC60  # OVL2
+0x0052EC60 0x240 reserve__Q23std64__vector_imp<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>,0>FUi  # OVL2; by hand, the AI core round 16 (vector<CAiMap::name>'s reserve, in ai_maps.cpp's template tail after remove_copy as the demo's reserve<name> 0x19DA30 closes its ai_maps.cpp: UpdateNameTables 0x52B820 calls it with the kind's count before refilling the table, as the demo's does)
 0x0052EEA0 0x3C DestroyGraph__6CAiMapFv  # OVL2; s1:order by hand (the demo's 0x19DCA0, the first of SOCOM 1's map-table stretch as this is of SOCOM II's: the same 0x3C -- CGraph::Destroy(m_graph), m_graph = 0, bit 0 of m_flags cleared)
 0x0052EEE0 0x410 CreateGraph__6CAiMapFb  # OVL2; s1:callee by hand (CAiMap::Read's last call, with false, as SOCOM 1's Read's is CreateGraph__6CAiMapFb; right after DestroyGraph in both builds)
-0x0052F2F0 0x18 func_0052F2F0  # OVL2
-0x0052F310 0x18 func_0052F310  # OVL2
-0x0052F330 0x64 func_0052F330  # OVL2
-0x0052F3A0 0x14 func_0052F3A0  # OVL2
+0x0052F2F0 0x18 __ne__Q33std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>14const_iteratorCFRCQ33std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>14const_iterator  # OVL2; by hand, the AI core round 16 (the const iterator's !=: ComputeLength's walk test in CreateGraph 0x52EEE0)
+0x0052F310 0x18 end__Q23std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>CFv  # OVL2; by hand, the AI core round 16 (vector<CAiMapLoc>'s end() const: ComputeLength's walk test in CreateGraph 0x52EEE0)
+0x0052F330 0x64 GetCellDistance__FRC9CAiMapLocRC9CAiMapLoc  # OVL2; ours, the AI core round 16 (the straight distance between two cells, sqrt.s of dx*dx + dy*dy: ComputeLength's step in CreateGraph 0x52EEE0, where the demo's ComputeLength called sqrtf in place)
+0x0052F3A0 0x14 __pp__Q33std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>14const_iteratorFi  # OVL2; by hand, the AI core round 16 (the const iterator's postfix ++: ComputeLength's walk in CreateGraph 0x52EEE0, its two temporaries)
 0x0052F3C0 0x10 __as__9CAiMapLocFRC9CAiMapLoc  # OVL2; tu: char_type.cpp~ (1.0 beta); by hand (CAiMapLoc's implicit assignment, a word copy: out of line where SetCellLink's Add is inlined one level)
-0x0052F3D0 0x8 func_0052F3D0  # OVL2
-0x0052F3E0 0xC func_0052F3E0  # OVL2
-0x0052F3F0 0x10 func_0052F3F0  # OVL2
+0x0052F3D0 0x8 __ml__Q33std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>14const_iteratorCFv  # OVL2; by hand, the AI core round 16 (the const iterator's *: ComputeLength's walk in CreateGraph 0x52EEE0, twice)
+0x0052F3E0 0xC begin__Q23std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>CFv  # OVL2; by hand, the AI core round 16 (vector<CAiMapLoc>'s begin() const: ComputeLength's walk, called out of line from CreateGraph 0x52EEE0 -- a copy of its own, apart from the non-const begin 0x529E90 the earlier unit's copy, so const as the demo's ComputeLength__12CAiMapLocVecCFv)
+0x0052F3F0 0x10 empty__Q23std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>CFv  # OVL2; by hand, the AI core round 16 (vector<CAiMapLoc>'s empty(): CAiMap::CreateGraph 0x52EEE0 inlines CAiMapLocVec::ComputeLength one level and calls it first on the route's path, as the demo's ComputeLength tests the size)
 0x0052F400 0x70 GetRouteIndex__6CAiMapFPCQ26CAiMap5route  # OVL2; ours (new in SOCOM II, among the routes' functions after CreateGraph: the 0x24-byte routes at 0x140 walked for the pointer, its index or -1)
 0x0052F470 0x2C GetRoute__6CAiMapFUi  # OVL2; ours (new in SOCOM II, next to GetRouteIndex: the route of an index below the routes' size, or 0)
 0x0052F4A0 0x438 ValidateRoutes__6CAiMapFb  # OVL2; s1:callee by hand (CAiMap::Read calls it with false after ValidateCells, as SOCOM 1's Read calls ValidateRoutes__6CAiMapFb; the map-table stretch's order agrees -- _invalid_route follows it in both builds)

@@ -445,6 +445,56 @@ int CAiMap::GetRouteIndex(const route *r)
     return -1;
 }
 
+/* SOCOM II's CGraph::CreateNode (OVL1 0x2D0930) takes no name: it never reads a1, and both its AI
+ * callers leave a1 unset -- its row still carries SOCOM 1's CreateNode(const char *), so it is
+ * called here by its address */
+extern "C" CGNode *func_002D0930(CGraph *graph);
+
+/* the region a route's end lies on (SOCOM 1's FindByLocation<regions, region>, inlined here) */
+inline CAiMap::region *find_region(CAiMap::regions &t, const CAiMapLoc &loc)
+{
+    for (CAiMap::regions::iterator i = t.begin(); i != t.end(); ++i)
+        if ((*i).m_loc == loc)
+            return &*i;
+    return 0;
+}
+
+/* the map's graph built unless it has one and no rebuild is asked: a node per region of kind 4,
+ * an edge per route between its two regions' nodes, the edge's length the route's path's and its
+ * route kept with it (SOCOM 1's; the old graph given up first, none for no routes) */
+void CAiMap::CreateGraph(bool force)
+{
+    if (m_graph && !force)
+        return;
+    DestroyGraph();
+    if (m_routeTable.size() == 0) {
+        DestroyGraph();
+        return;
+    }
+    CGraph *g = CGraph::Create("AiMap Graph");
+
+    for (regions::iterator r = m_regionTable.begin(); r != m_regionTable.end(); ++r) {
+        if ((*r).m_type == 4) {
+            CGNode *node = func_002D0930(g);
+
+            ((CAiMap::region **)node)[2] = &*r;
+        }
+    }
+    for (routes::iterator rt = m_routeTable.begin(); rt != m_routeTable.end(); ++rt) {
+        if (!((*rt).m_flags & 1)) {
+            region *a = find_region(m_regionTable, (*rt).m_region[0]);
+            region *b = find_region(m_regionTable, (*rt).m_region[1]);
+            CGEdge *edge = g->CreateEdge(g->GetNodeByNodeEx(a), g->GetNodeByNodeEx(b));
+
+            ((float *)edge)[1] = (*rt).m_path.ComputeLength();
+            ((route **)edge)[5] = &*rt;
+        }
+    }
+    m_graph = g;
+    if (m_graph)
+        SetFlags(1, 0);
+}
+
 /* the graph given up, its flag cleared (SOCOM 1's) */
 void CAiMap::DestroyGraph()
 {

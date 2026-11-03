@@ -8,6 +8,7 @@
 
 #include "ai_maps.h"
 #include "../gamez/zsys/zsys.h"
+#include "../gamez/zutil/zutil.h"
 
 /* ai.h's _max defined (as ai_map.cpp does: MW auto-inlines no template function -- the unsigned
  * instance opens this unit's template tail, 0x52EB40) */
@@ -17,6 +18,94 @@ const T &_max(const T &a, const T &b)
 {
     return a >= b ? a : b;
 }
+}
+
+/* the five name tables rebuilt, one per kind of name (1 to 5, a name's second byte after its
+ * characters): each emptied, its maps' names of the kind counted, the table reserved for them,
+ * each copied in with its map's index, the table sorted (SOCOM 1's; SOCOM II counts and reserves
+ * first, and skips a kind no map has). The copy is the name's implicit one (CAiMapLoc's written
+ * copy, the characters' 2-byte loop, the two bytes), the walks' iterators assigned (in memory), the
+ * first walk's end taken once ahead of the kinds' loop: that saved register spills the kind and
+ * `this` to the stack as the target's do (frame, registers and spills alike).
+ * OPEN, 11 instructions short (0x324 against 0x350): block layout only -- the target keeps both
+ * loops' entry tests, the kinds' loop entered through a preheader laid out after the body (the
+ * field addresses, both ends, then a jump to the `k < 6` test) and the count walk's set-up and first
+ * `n != end` test in a block after the function's body that jumps back to the loop's test; MW folds
+ * both here (k starts at 1; the count loop's test inline). A `for` with `int k` before it, `while`
+ * for the count walk and either compare order give the same 0x324 */
+void CAiMaps::UpdateNameTables()
+{
+    iterator last = end();
+
+    for (int k = 1; k < 6; k++) {
+        m_names[k].clear();
+        int count = 0;
+        iterator i;
+
+        for (i = begin(); i != last; ++i) {
+            CAiMap::names &names = (*i)->m_namesTable;
+
+            for (CAiMap::names::iterator n = names.begin(); n != names.end(); ++n)
+                if ((*n).m_15 == k)
+                    count++;
+        }
+        if (count > 0) {
+            m_names[k].reserve(count);
+            unsigned int mapid = 0;
+            iterator e = end();
+
+            for (i = begin(); i != e; ++i, mapid++) {
+                CAiMap::names &names = (*i)->m_namesTable;
+
+                for (CAiMap::names::iterator n = names.begin(); n != names.end(); ++n) {
+                    if ((*n).m_15 == k) {
+                        CAiMap::name nm = *n;
+
+                        nm.m_loc.m_mapid = mapid;
+                        m_names[k].push_back(nm);
+                    }
+                }
+            }
+        }
+        m_names[k].Sort();
+    }
+}
+
+/* the region lists rebuilt: each list reserved for every region of every map, then each map's
+ * actions given no id and the map's index, each region the map's index and its cell listed under
+ * its type (SOCOM 1's; SOCOM II reserves the lists first, and gives the actions' own cells the
+ * index where SOCOM 1 gave it to their six extra cells) */
+void CAiMaps::UpdateActionTables()
+{
+    unsigned int count = 0;
+    unsigned int mapid = 0;
+    iterator i;
+    iterator last = end();
+
+    for (i = begin(); i != last; ++i)
+        count += (*i)->m_regionTable.size();
+    for (int t = 0; t < 7; t++)
+        m_regions[t].reserve(count);
+    iterator e = end();
+
+    for (i = begin(); i != e; ++i, mapid++) {
+        CAiMap *map = *i;
+        CAiMap::actions &actions = map->m_actionTable;
+
+        for (CAiMap::actions::iterator a = actions.begin(); a != actions.end(); ++a) {
+            (*a).m_actionId = CAiMap::action::invalid;
+            (*a).m_loc.m_mapid = mapid;
+        }
+        CAiMap::regions &regions = map->m_regionTable;
+
+        for (CAiMap::regions::iterator r = regions.begin(); r != regions.end(); ++r) {
+            (*r).m_loc.m_mapid = mapid;
+            unsigned int type = (*r).m_type;
+
+            if (type < 7)
+                m_regions[type].push_back((*r).m_loc);
+        }
+    }
 }
 
 /* the run of an id's spores, counted (new in SOCOM II) */
@@ -30,6 +119,264 @@ int CAiMaps::GetSporeCount(unsigned int id)
     r.m_count = 0;
     m_spores.GetRange(id, r);
     return r.GetCount();
+}
+
+/* a spore of an id as a place to start: the n-th of its run (n wrapped round the run), its cell's
+ * centre and the way it faces -- its direction's unit step, turned round (SOCOM 1's, the same eight
+ * vectors spelled out, not GetDirVec's; SOCOM II returns the centre's test where SOCOM 1 returned
+ * true, and looks the spore's centre up on the maps, not its map) */
+bool CAiMaps::GetSporeLocation(unsigned int id, unsigned int n, CPnt3D *pos, CPnt3D *dir)
+{
+    CAiMap::spores::range r;
+
+    r.m_id = 0;
+    r.m_first = 0;
+    r.m_last = 0;
+    r.m_count = 0;
+    m_spores.GetRange(id, r);
+    if (r.m_count <= 0)
+        return false;
+    if (n >= r.m_count)
+        n %= r.m_count;
+    CAiMap::spore &s = m_spores[n + r.m_first];
+    bool ok = GetCellCenter(s.m_loc, pos) != 0;
+
+    if (ok) {
+        switch (s.m_dir) {
+        case CAiMap::N:
+            dir->x = 0.0f;
+            dir->y = 0.0f;
+            dir->z = -1.0f;
+            break;
+        case CAiMap::NE:
+            dir->x = 0.707f;
+            dir->y = 0.0f;
+            dir->z = -0.707f;
+            break;
+        case CAiMap::E:
+            dir->x = 1.0f;
+            dir->y = 0.0f;
+            dir->z = 0.0f;
+            break;
+        case CAiMap::SE:
+            dir->x = 0.707f;
+            dir->y = 0.0f;
+            dir->z = 0.707f;
+            break;
+        case CAiMap::S:
+            dir->x = 0.0f;
+            dir->y = 0.0f;
+            dir->z = 1.0f;
+            break;
+        case CAiMap::SW:
+            dir->x = -0.707f;
+            dir->y = 0.0f;
+            dir->z = 0.707f;
+            break;
+        case CAiMap::W:
+            dir->x = -1.0f;
+            dir->y = 0.0f;
+            dir->z = 0.0f;
+            break;
+        case CAiMap::NW:
+            dir->x = -0.707f;
+            dir->y = 0.0f;
+            dir->z = -0.707f;
+            break;
+        default:
+            dir->x = 0.0f;
+            dir->y = 0.0f;
+            dir->z = -1.0f;
+            break;
+        }
+        dir->x = -dir->x;
+        dir->y = -dir->y;
+        dir->z = -dir->z;
+    }
+    return ok;
+}
+
+/* the map set's graph as its fixups see it (graph_tree.cpp's CGEdge and CGNode: a link at an edge's
+ * 0x14 and at a node's 8, where the per-map graph's fixups in ai_mapio.cpp keep a route and a region) */
+class CGEdge {
+public:
+    unsigned char _0[0x14];
+    CAiMap::link *m_link;   // 0x14
+};
+
+class CGNode {
+public:
+    unsigned char _0[0x8];
+    CAiMap::link *m_link;   // 0x8
+};
+
+/* the map set's graph saved and read back (ReadMapSet hands them to CGraph::Create): each node's and
+ * edge's link as the packed cell it lies on, looked up again on that cell's map -- SOCOM 1's
+ * _fixupNode in this unit, which kept the region instead; the names ours, the per-map pair in
+ * ai_mapio.cpp holding SOCOM 1's. The cell a CAiMapLoc left unbuilt, its fields assigned one by one
+ * from a local copy of the packed word; an edge on no cell (0) has no link */
+void _fixupMapsNode(CGraph *, CGNode *node, bool fix, unsigned int &n, void *data)
+{
+    if (fix) {
+        CAiMapLoc loc;
+        unsigned int packed = n;
+
+        loc.m_mapid = packed >> 26;
+        loc.x = (packed >> 13) & 0x1fff;
+        loc.y = packed & 0x1fff;
+        node->m_link = ((CAiMaps *)data)->GetCellLink(loc);
+    } else {
+        const CAiMapLoc &loc = node->m_link->m_loc;
+
+        n = loc.m_mapid << 26 | loc.x << 13 | loc.y;
+    }
+}
+
+void _fixupMapsEdge(CGraph *, CGEdge *edge, bool fix, unsigned int &n, void *data)
+{
+    if (fix) {
+        unsigned int packed = n;
+
+        if (!packed) {
+            edge->m_link = 0;
+            return;
+        }
+        CAiMapLoc loc;
+
+        loc.m_mapid = packed >> 26;
+        loc.x = (packed >> 13) & 0x1fff;
+        loc.y = packed & 0x1fff;
+        edge->m_link = ((CAiMaps *)data)->GetCellLink(loc);
+    } else {
+        CAiMap::link *l = edge->m_link;
+
+        n = l ? l->m_loc.m_mapid << 26 | l->m_loc.x << 13 | l->m_loc.y : 0;
+    }
+}
+
+/* ReadCellTable<spores, spore> is ai_mapio.cpp's (0x51B9A0) */
+template <class C, class T>
+bool ReadCellTable(CFileIO &f, C &table);
+
+/* whether a link joins two cells' maps, either way round (the name ours: an inline bool, which the
+ * caller materialises -- each way's test, then the either) */
+inline bool link_joins(const CAiMap::link *l, unsigned int a, unsigned int b)
+{
+    return l->m_loc.m_mapid == a && l->m_link.m_mapid == b || l->m_loc.m_mapid == b && l->m_link.m_mapid == a;
+}
+
+/* the edge of the map set's graph whose link joins the two cells' maps and lies nearest the walk
+ * between them, none for two cells of one map (new in SOCOM II, the name ours: CZSealBody::
+ * UpdateAiMapLoc's) -- a link no farther than 0 ends the search */
+CGEdge *CAiMaps::FindLinkEdge(const CAiMapLoc &from, const CAiMapLoc &to)
+{
+    CGEdge *found = 0;
+    CGEdge *best = 0;
+    int bestDist = 0;
+    CGraph *g = m_graph;
+
+    if (g && from.m_mapid != to.m_mapid) {
+        std::list<CGEdge *> &edges = g->m_edges;
+        std::list<CGEdge *>::iterator e = edges.end();
+
+        for (std::list<CGEdge *>::iterator i = edges.begin(); i != e; ++i) {
+            CGEdge *edge = *i;
+            CAiMap::link *l = edge->m_link;
+
+            if (l && link_joins(l, from.m_mapid, to.m_mapid)) {
+                int d = l->GetDistance(from, to);
+
+                if (!best || d < bestDist) {
+                    best = edge;
+                    bestDist = d;
+                    if (d == 0)
+                        break;
+                }
+            }
+        }
+        found = best;
+    }
+    return found;
+}
+
+/* every map's links checked: each link given its map's index, and a link whose far cell has no link
+ * back to its own cell (on the far cell's map) gathered and taken off after the walk (SOCOM 1's) */
+void CAiMaps::ValidateLinks()
+{
+    iterator i;
+    iterator e = end();
+
+    for (i = begin(); i != e; ++i) {
+        CAiMap *map = *i;
+        std::vector<CAiMapLoc> bad;
+        CAiMap::links &links = map->m_linksTable;
+
+        for (CAiMap::links::iterator l = links.begin(); l != links.end(); ++l) {
+            (*l).m_loc.m_mapid = map->m_mapid;
+            bool ok = false;
+            CAiMap *far = GetMapByIndex((*l).m_link.m_mapid);
+
+            if (far) {
+                CAiMap::link *back = far->GetCellLink((*l).m_link);
+
+                if (back && back->m_link == (*l).m_loc)
+                    ok = true;
+            }
+            if (!ok)
+                bad.push_back((*l).m_loc);
+        }
+        for (std::vector<CAiMapLoc>::iterator b = bad.begin(); b != bad.end(); ++b)
+            map->SetCellLink(*b, false);
+    }
+}
+
+/* the map set read from its file, the path put in front of the name when one is given: a word, the
+ * header, each map (given its place in the set as its id), the set's graph through the two fixups
+ * above, the spores, then the tables built from the maps -- false when the file does not open
+ * (SOCOM 1's; SOCOM II keeps the path, closes the old set first, sets each map's id before the push
+ * and marks the set loading while it reads) */
+bool CAiMaps::ReadMapSet(const char *name, const char *path)
+{
+    CFileIO f;
+    char buf[2048];
+    bool ok = false;
+
+    if (path) {
+        strcpy(buf, path);
+        strcat(buf, name);
+    } else {
+        strcpy(buf, name);
+    }
+    if (f.Open(buf, 1)) {
+        ok = true;
+        strncpy(m_path, buf, 512);
+        Close();
+        unsigned int version = 0;
+
+        f.fread(&version, 4);
+        AIMAPS_PARAMS *params = this;
+
+        f.fread(params, sizeof(AIMAPS_PARAMS));
+        for (unsigned int i = 0; i < params->m_map_count; i++) {
+            CAiMap *map = new CAiMap(size());
+
+            if (map->Read(f)) {
+                CAiMap *m = map;
+
+                map->m_mapid = size();
+                push_back(m);
+                m_flags |= 2;
+            }
+        }
+        m_graph = CGraph::Create(f, _fixupMapsNode, _fixupMapsEdge, this);
+        ReadCellTable<CAiMap::spores, CAiMap::spore>(f, m_spores);
+        UpdateActionTables();
+        UpdateNameTables();
+        ValidateLinks();
+        CreateGraph(false);
+        m_flags &= ~2;
+    }
+    return ok;
 }
 
 /* every map deleted, front first, then the tables (SOCOM 1's Close inlined this). Pinned: Close
@@ -65,7 +412,9 @@ void CAiMaps::FreeTables()
     m_graph = 0;
 }
 
-/* the maps closed: the planner's queue flushed first, the cookie bumped last (SOCOM 1's) */
+/* the maps closed: the planner's queue flushed first, the cookie bumped last (SOCOM 1's). Pinned:
+ * ReadMapSet calls it out of line in the target */
+#pragma auto_inline off
 void CAiMaps::Close()
 {
     ai::FlushPlannerQueue();
@@ -73,6 +422,7 @@ void CAiMaps::Close()
     ai::ClearOverlays();
     m_cookie++;
 }
+#pragma auto_inline reset
 
 /* every map's cells back to their loaded state, the overlays dropped (SOCOM 1's) */
 void CAiMaps::Reset()

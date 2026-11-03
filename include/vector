@@ -588,6 +588,8 @@ public:                                                                         
         bool operator==(const const_iterator &o) const { return m_p == o.m_p; }                 \
         bool operator!=(const const_iterator &o) const { return !(*this == o); }                \
         const_iterator &operator++() { ++m_p; return *this; }                                   \
+        /* (the AI lane, round 16: CAiMapLocVec::ComputeLength's walk, OVL2 0x52F3A0) */          \
+        const_iterator operator++(int) { const_iterator t(*this); ++*this; return t; }          \
         const elem_t &operator*() const { return *m_p; }                                        \
                                                                                                 \
         const elem_t *m_p;                                                                      \
@@ -633,6 +635,11 @@ class __vector_imp : public __vector_deleter<T, Allocator> {
      * std::sort's) MW folds the step into the load, where CAiPath::PopPoint (0x524D00) and
      * CTargetList::AddTarget (0x2A0200) compute the element's address first */
     T &back() { return *(end().m_p - 1); }
+    /* the const walk's ends, straight off the members (the AI lane, round 16: CAiMapLocVec::
+     * ComputeLength, inlined one level into CAiMap::CreateGraph, calls them out of line -- OVL2
+     * 0x52F3E0 and 0x52F310, ai_maptable.cpp's own copies apart from the non-const 0x529E90/0x529EB0) */
+    const_iterator begin() const { return const_iterator(this->data_); }
+    const_iterator end() const { return const_iterator(this->data_ + this->size_); }
     void clear() { __vector_deleter<T, Allocator>::clear(); }
     static unsigned int max_size() { return (unsigned int)-1 / sizeof(T); }
     T &at(unsigned int n);

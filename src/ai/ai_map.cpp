@@ -17,7 +17,7 @@
 
 #include <string.h>
 
-#include "ai.h"
+#include "ai_maps.h"
 
 /* MAIN's debug calloc (SOCOM 1's _calloc__FUiUiPCci: a file and line, passed none) */
 void *_calloc(unsigned int n, unsigned int size, const char *file, int line);
@@ -505,6 +505,16 @@ CAiCell *CAiCell::Alloc(unsigned int n)
             cells[i].Reset();
     }
     return cells;
+}
+
+/* the repel parameters of a cell on its map, false off the maps (SOCOM 1's; like SOCOM 1's it asks
+ * the maps through AiMaps, its `this` unread) */
+bool CAiMaps::GetCellRepelParams(const CAiMapLoc &loc, const CPnt3D *pos, float range, CPnt3D &dir, float &len,
+                                 CAiMapLoc &cell)
+{
+    CAiMap *map = AiMaps.GetMapByIndex(loc.m_mapid);
+
+    return map ? map->GetCellRepelParams(loc, pos, range, dir, len, cell) : false;
 }
 
 /* called, not inlined, by the initialiser (the target's jal 0x515720): pinned */
