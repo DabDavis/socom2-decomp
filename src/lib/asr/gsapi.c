@@ -32,6 +32,10 @@ extern void *memset(void *p, int c, unsigned int n);
 #define GSAPI_ERR_NOT_LOADED 0x80CC000E
 #define GSAPI_ERR_NO_CONTEXT 0x80CC000D
 #define GSAPI_ERR_NULL_ARG   0x80CC0083
+#define GSAPI_ERR_BAD_MODE   0x80CC0007
+
+extern int RestartEngine(GSENGINE *e);
+extern int ProcessAudio(GSENGINE *e);
 
 extern int ContextAPIDeActivate(GSENGINE *e);
 extern int ContextActivate(GSENGINE *e, void *ctx);
@@ -246,6 +250,38 @@ int gsapi_EngineDisableAllWords(GSENGINE *eng)
     all.first = -1;
     all.count = 0;
     return gsapi_EngineDisableWords(eng, all);
+}
+
+int gsapi_EngineSetMode(GSENGINE *e, int mode)
+{
+    if (safeh_HandlesEqual(gGSAPI.handle, g_lhNullHandle))
+        return GSAPI_ERR_NOT_OPEN;
+    if (!CheckEngineHandle(e))
+        return GSAPI_ERR_NULL_CTX;
+    if (mode == 0)
+        return GSAPI_ERR_BAD_MODE;
+    if ((mode & 3) == 3)
+        return GSAPI_ERR_BAD_MODE;
+    e->flags = mode;
+    return 0;
+}
+
+/* the server's tick: each engine restarted when it asked to be, then fed its audio */
+void gsapi_ExecServer(void)
+{
+    GSENGINE *e;
+    int i;
+
+    if (safeh_HandlesEqual(gGSAPI.handle, g_lhNullHandle))
+        return;
+    for (i = 0; i < gGSAPI.nengines; i++) {
+        e = &gGSAPI.engines[i];
+        if (e->f96 == 1) {
+            RestartEngine(e);
+            e->f96 = 0;
+        }
+        gGSAPI.status = ProcessAudio(e);
+    }
 }
 
 int gsapi_NotifySetCallback(GSCALLBACK cb)

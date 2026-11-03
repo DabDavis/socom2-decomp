@@ -8666,7 +8666,7 @@
 0x004C7E18 0x118 func_004C7E18  # OVL2 unaligned
 0x004C7F30 0xC0 func_004C7F30  # OVL2
 0x004C7FF0 0x134 func_004C7FF0  # OVL2
-0x004C8128 0x104 func_004C8128  # OVL2 unaligned
+0x004C8128 0x104 gsapi_EngineSetMode  # OVL2 unaligned; s1:order (SOCOM 1's gsapi object, before gsapi_ExecServer: the handle and engine checks, a mode of 0 or with both low bits set refused with 0x80CC0007, stored at the engine's +4)
 0x004C8230 0xC0 gsapi_ExecServer  # OVL2; s1:calls
 0x004C82F0 0x13C func_004C82F0  # OVL2
 0x004C8430 0x5C gsapi_NotifySetCallback  # OVL2; s1:align
@@ -9287,9 +9287,9 @@
 0x0050D988 0x10 osspi_IsGoodReadPtr  # OVL2 unaligned; s1:order (SOCOM 1's osspi object, the 2nd; safeh_HandleCheck calls it first, as the demo's)
 0x0050D998 0x10 osspi_IsGoodWritePtr  # OVL2 unaligned; s1:order (SOCOM 1's osspi object, the 3rd; safeh_HandleCheck calls it second, as the demo's)
 0x0050D9A8 0x10 osspi_IsGoodStringPtr  # OVL2 unaligned; s1:order (SOCOM 1's osspi object, the 4th)
-0x0050D9B8 0xE8 func_0050D9B8  # OVL2 unaligned
-0x0050DAA0 0xE4 func_0050DAA0  # OVL2
-0x0050DB88 0xC0 func_0050DB88  # OVL2 unaligned
+0x0050D9B8 0xE8 rsrc_Open  # OVL2 unaligned; s1:calls (SOCOM 1's rsrc object at 0x3780C8, after osspi's: osspi_IsGoodWritePtr on the out handle, a 20-byte heap calloc, the 0x1E61 magic, the block freed on failure -- as the demo's rsrc_Open)
+0x0050DAA0 0xE4 rsrc_Close  # OVL2; s1:calls (SOCOM 1's rsrc object: safeh_HandlesEqual against the null handle, safeh_HandleCheck(h, 0x1E61, 20), the magic cleared and the block freed -- the demo's rsrc_Close with its static FreeRsrc inlined)
+0x0050DB88 0xC0 InitRsrcFunction  # OVL2 unaligned; s1:calls (SOCOM 1's rsrc object, its last: safeh_HandlesEqual, safeh_HandleCheck(h, 0x1E61, 20), the block handed out -- as the demo's)
 0x0050DC50 0x1C8 get_clock_direction__2aiFPC6CPnt3D  # OVL2; s1:order by hand (the demo's 0x17DE90, the first function before quadratic: the same fabsf of x, the same three constants 0.2833, 0.708, -0.2833 and the same twelve hour returns in the same branch shape)
 0x0050DE20 0xF0 quadratic__2aiFfffRfRf  # OVL2; s1:order by hand (the SEAL lane's lead, vetted: the demo's 0x17E070 -- the same 4.0/1.0/2.0 constants, the bool through a local, and the linear case storing its root twice into r2; SOCOM II inlines sqrtf)
 0x0050DF10 0x20 elevate__2aiFR6CPnt3Dff  # OVL2; s1:exact
