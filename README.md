@@ -6406,7 +6406,7 @@ GetpCachedDistances, GetDistanceOffset, CalculateDistance (`s1:order`, each body
 process and control functions). casr.h's LANGVT gains five slots (GetNbrState, GetNbrErgodicPhenomes,
 GetNbrGastone, GetpGastone, GetpProbMatrix). No tool changed.
 
-**Round 17c: DynProgUserWords, four objects' small functions by SOCOM 1's bodies.**
+**Round 17c: DynProgUserWords, the iso-word DP object, six objects' small functions by SOCOM 1's bodies.**
 
 - **A field read twice is a halfword pseudo across a branch; a short local is one load.**
   DynProgUserWords' garbage penalty (+52) is `e->f52` in both cells: GCSE's PRE then keeps it as a
@@ -6435,17 +6435,32 @@ GetNbrGastone, GetpGastone, GetpProbMatrix). No tool changed.
   target's `addiu a1,a0,136`); a `for (; k < n; )` where a `while` gets its exit test copied to the
   top (FindBestRecognised, 8 bytes); the sum loop's own entry test the only one (an `if (n)` around
   it adds a second `beqz`).
+- **The iso-word token DP object is SOCOM 1's with one word inserted after +64** (fields from SOCOM
+  1's +68 on are 4 higher): the node wheel at +72 is a ring of tree-node pointers (base, head, tail,
+  end, size); a tree node is 12 bytes (children, the fast-allocator node, the word, the child count),
+  given back by size into the scheduler's fastallo lists at `tos + 104 + 4n`. A difference of two
+  halfword addresses into one array is the target's `sll 1; sra 1` (GCC divides the scaled difference
+  back); CalcNrNodes reads the child count before the depth test and steps the child pointer in the
+  `for` (`c++` inside the call gives each unrolled copy a pointer of its own).
 - **Open, diagnosed in place**: the language file's offset sums (`_langGetpErgodicPhenomes` 6,
   `_langGetpErgodicPenalty` 15-18: thirteen more spellings -- a pointer local of each type, the counts
-  summed into an int first, the base added last -- leave fold's and combine's reassociation as it was).
+  summed into an int first, the base added last -- leave fold's and combine's reassociation as it was);
+  InitNewUtterance (right size, 14 words: the word table's next entry loaded first in the target, as
+  SOCOM 1's, the other way here in every spelling of the base, the word and the count; the closing
+  stores' order -- 120 orders by `tools/ccperm.py`, the nearest 13).
 
 Hand-written in round 17c: `asr/dpgenuw.c` (DynProgUserWords closed: 9 of 10), `asr/ctxinfo.c` (new:
 SOCOM 1's context-information object 0x33E418 -- CalcAccuracyCtxInfo, CreateMenuMasks; 2 of 2),
 `asr/distsil.c` (+1, CalculateDistance4Bit: 7 of 7), `asr/pitchcomb.c` (new: SOCOM 1's pitch
 combiner object 0x36CE48 -- NormE_Processing, 1 of 1), `asr/shs.c` (new: SOCOM 1's SHS/VUV object
-0x36E330 -- ControlSHS_VUV, 1 of 1), `asr/nbestdp.c` (+1, FindBestRecognised: 3 of 3); `asr/pitchdp.c`
-calls powf by name. 7 rows new to the map's byte-exact rows; 1 row named (CalculateDistance4Bit,
-`s1:order`). No tool changed.
+0x36E330 -- ControlSHS_VUV, 1 of 1), `asr/nbestdp.c` (+1, FindBestRecognised: 3 of 3), `asr/isowdp.c`
+(+6: FreeIsoWordTokenDp, ExpandGarbageArrays@isowdp, InitIsoWordTokenDpProcess, CalcNrNodes@isowdp,
+ConstructIsoWordTokenDp and IdleProcess@isowdp over their drafts; InitNewUtterance OPEN; 7 of 8);
+`asr/pitchdp.c` calls powf by name -- 11 rows new to the map's byte-exact rows, 2 matched drafts
+superseded; `src/lib/asr` 470 of 514 (457 of 501 before). 4 rows named (`s1:order`, SOCOM 1's
+LOCALs at the same positions, each body checked: CalculateDistance4Bit, ExpandGarbageArrays@isowdp,
+CalcNrNodes@isowdp, IdleProcess@isowdp -- the N-best object's copies keep the bare names). No tool
+changed.
 
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
