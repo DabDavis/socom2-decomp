@@ -1237,6 +1237,10 @@
 0x004B5338 0x4 pFlyout_Model_Ally__14CFlyoutMachine  # OVL1 bss; SOCOM 1's static (HookupReset's "tracer_ally") -- the wep lane; 3 references in 2 functions
 0x004B5340 0x4 pFlyout_Anim_Ally__14CFlyoutMachine  # OVL1 bss; by hand (the wep lane: HookupReset's "tracer_ally_anim", new in SOCOM II -- the name ours); 4 references in 2 functions
 0x004B5348 0x4 pFlyout_Anim_Enemy__14CFlyoutMachine  # OVL1 bss; by hand (the wep lane: HookupReset's "tracer_enemy_anim", new in SOCOM II -- the name ours); 4 references in 2 functions
+0x0064F780 0x18 AsrSpiSignalCallBacks  # OVL2 data; s1:data (SOCOM 1's GLOBAL 0x43B7D8, 24 bytes, the asrspi_cb object's .data: asrspi_cbAbnorm, cbSpeechDetected, cbTsDetected, cbAgc, cbEnergyLevel, cbSNRLevel in both; gsapi_EngineStart and RestartEngine set or clear the last two) -- the gcc lane, round 10c
+0x0064F798 0x8 AsrSpiRecogCallBacks  # OVL2 data; s1:data (SOCOM 1's GLOBAL 0x43B7F0, 8 bytes after it: asrspi_cbResult and &AsrSpiSignalCallBacks in both; asrspi_Start's third argument) -- the gcc lane, round 10c
+0x0064F7A0 0x2 MAXRECOGNIZERS  # OVL2 data; s1:data (SOCOM 1's GLOBAL 0x43B7F8, 2 bytes, the gsapi object's .data, 4 in both: gsapi_Init sizes the engine array by it) -- the gcc lane, round 10c
+0x0064F7A2 0x2 DEFAULTENERGYINTERVAL  # OVL2 data; s1:data (SOCOM 1's GLOBAL 0x43B7FA, 2 bytes, 500 in both) -- the gcc lane, round 10c
 0x0064F7A8 0x8C gGSAPI  # OVL2; s1:data-seq (size SOCOM 1's; via CreateWordIdList +1)
 0x0064F8A0 0x4 bit_count__8CAiEvent  # OVL2; s1:data-seq (size SOCOM 1's; via __ct__8CAiEventFv)
 0x0064F8A8 0x4 s_eventMinDuration  # OVL2 data; ours (ai_events.cpp's static, 0.1: CAiEvent::Create clamps a running event's duration to it, read from data; 1 reference in 1 function)
@@ -1321,6 +1325,8 @@
 0x006562E8 0x4 geQueuedRequestType  # OVL2 data; s1:data by hand (round 7b): SOCOM 1's static geQueuedRequestType (0x43BA28): MediusSetQueuedRequest stores its type there first, MediusGetQueuedRequestType returns it
 0x00656348 0x40 pubKey.0  # OVL2; s1:data-exact (size SOCOM 1's; via KM_GetSoftwareKeyPair)
 0x00656388 0x40 priKey.1  # OVL2; s1:data-exact (size SOCOM 1's; via KM_GetSoftwareKeyPair)
+0x00656818 0x2F szGSAPIVersion  # OVL2 rodata; s1:data (SOCOM 1's LOCAL 0x45C0A0, the gsapi object's .rodata head: the API's version string, "Game Speech API V2.02.01 for Sony PlayStation2" here; gsapi_GetVersion copies it) -- the gcc lane, round 10c
+0x00656848 0x48 TranslateParamTable  # OVL2 rodata; s1:data (SOCOM 1's GLOBAL 0x45C0C8, 72 bytes after the version string: 18 asrspi parameter ids by gsapi id, 255 none; ActivateDefaultParams and TranslateGsapiParamId2AsrSpiParamId read it) -- the gcc lane, round 10c
 0x00656900 0x4 UswVersionCode  # OVL2; s1:data (SOCOM 1's LOCAL 0x45C150 in the asrspi object's .rodata, 4 bytes, the same value 0x16000001 -- asrspi_GetUswVersion's literal; the object's four statics in SOCOM 1's order and sizes) -- the gcc lane, round 7c
 0x00656904 0x4 g_ApiVersion  # OVL2; s1:data (SOCOM 1's LOCAL 0x45C154, 4 bytes, 0 in both) -- the gcc lane, round 7c
 0x00656908 0x4 _sizeof_asrspi_engine  # OVL2; s1:data (SOCOM 1's GLOBAL 0x45C158, 4 bytes: 0xD8 in both, the engine block asrspi_OpenEngine allocates) -- the gcc lane, round 7c
