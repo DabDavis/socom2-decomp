@@ -2432,9 +2432,9 @@
 0x00246F10 0x7C func_00246F10  # OVL1
 0x00246F90 0x78 func_00246F90  # OVL1
 0x00247008 0x34 func_00247008  # OVL1 unaligned
-0x00247040 0xC func_00247040  # OVL1
+0x00247040 0xC sceBInetGetVersionStringPtr  # OVL1; s1:order (the demo's libnetb object 0x423D38 opens with sceBInetGetVersionStringPtr, 0xC bytes, returning the version string's pointer as this does)
 0x00247050 0x154 sceBInetGetBuildTimestamp  # OVL1; s1:exact
-0x002471A8 0x11C func_002471A8  # OVL1 unaligned
+0x002471A8 0x11C sceBInetCreate  # OVL1 unaligned; s1:calls (rt_memory_allocate_init_zero, libnetb_alloc_bufs, sceInetCreate, as the demo's sceBInetCreate 0x423EA0; after sceBInetGetBuildTimestamp as there)
 0x002472C8 0x198 func_002472C8  # OVL1 unaligned
 0x00247460 0x98 sceBInetClose  # OVL1; s1:exact
 0x002474F8 0x144 func_002474F8  # OVL1 unaligned
@@ -2454,7 +2454,7 @@
 0x00247F58 0x8C func_00247F58  # OVL1 unaligned
 0x00247FE8 0x210 libnetb_send_to  # OVL1 unaligned; s1:calls
 0x002481F8 0x80 func_002481F8  # OVL1 unaligned
-0x00248278 0x7C func_00248278  # OVL1 unaligned
+0x00248278 0x7C libnetb_alloc_bufs  # OVL1 unaligned; s1:callee (sceBInetCreate calls it where the demo's calls libnetb_alloc_bufs; before libnetb_free_bufs as there)
 0x002482F8 0x54 libnetb_free_bufs  # OVL1 unaligned; s1:callee
 0x00248350 0xA8 func_00248350  # OVL1
 0x002483F8 0xA8 func_002483F8  # OVL1 unaligned
