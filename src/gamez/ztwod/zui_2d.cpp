@@ -120,28 +120,77 @@ class CRenderableString : public C2DString, public UIVarMixin {
 public:
     virtual ~CRenderableString();
     virtual int GetZAnimCmdType(const char *name);
+    /* its own slot after the tables (+0xA0; 0x37A630, empty -- SOCOM 1's Update, between Draw and
+     * the destructor in both builds), then UpdateUIVar's primary slot (+0xA4, 0x379260) */
+    virtual void Update();
+    virtual void UpdateUIVar(CUIVariable *var);
 
     unsigned char _a0[0xc0 - 0xa0];
 };   // 0xc0 bytes
+
+/* wrapped text (SOCOM 1's CWrappedText; zui_2d.h's layout, 0x250 bytes), its destructor declared
+ * first so that this unit does not take its table */
+class CWrappedText : public CRenderableString {
+public:
+    virtual ~CWrappedText();
+
+    unsigned char _c0[0x250 - 0xc0];
+};   // 0x250 bytes
+
+/* wrapped text scrolling by itself (SOCOM 1's CScrollText; SOCOM II's 0x270 bytes, zui_2d.h's
+ * layout: the line to show at 0x258, the scroll position, a float, at 0x260) */
+class CScrollText : public CWrappedText {
+public:
+    virtual ~CScrollText();
+    virtual void Tick(float dT);
+
+    int m_250;   // 0x250
+    bool m_254;   // 0x254
+    int m_line;   // 0x258
+    int m_25c;   // 0x25c
+    float m_scroll;   // 0x260
+};   // 0x270 bytes
 
 /* a string whose destructor runs MSL's as a base's (passing 0: SOCOM 1's CSaferStr) */
 class CSaferStr : public std::string {
 public:
     CSaferStr();
+    /* never null: no text empties it (SOCOM 1's zutil.h; nothing returned, as 0x22DCC0) */
+    void operator=(const char *sz)
+    {
+        if (sz)
+            assign(sz);
+        else
+            erase();
+    }
 };
 
 /* a teletype: text typed out, its cursor a plain bitmap (SOCOM 1's CTeleType; SOCOM II's 0x1B0
- * bytes: the text a string at 0xC0, the cursor at 0x100 -- zui_2d.h's layout) */
+ * bytes: the text a string at 0xC0, the cursor at 0x100 -- zui_2d.h's layout; the counters'
+ * names ours, by what SetString clears: SOCOM 1's from 0x3AC) */
 class CTeleType : public CRenderableString {
 public:
     virtual ~CTeleType();
     virtual int GetZAnimCmdType(const char *name);
+    virtual void SetString(const char *s, bool translate);
 
     CSaferStr m_text;   // 0xc0
-    unsigned char _cc[0x100 - 0xcc];
+    int m_cc;   // 0xcc
+    int m_len;   // 0xd0: the text's length
+    int m_typed;   // 0xd4: the characters shown
+    int m_d8;   // 0xd8
+    unsigned char _dc[0xe8 - 0xdc];
+    int m_e8;   // 0xe8
+    unsigned char _ec[0xf0 - 0xec];
+    int m_f0;   // 0xf0
+    unsigned char _f4[0x100 - 0xf4];
     CPlainBmp m_cursor;   // 0x100
     int m_1a0;   // 0x1a0
+    int m_1a4;   // 0x1a4
+    int m_1a8;   // 0x1a8
 } __attribute__((aligned(16)));   // 0x1b0 bytes
+
+const char *TranslateString(const char *s);
 
 /* a button's caption and states (SOCOM 1's DWARF: : C2D; SOCOM II's 0xC0 bytes, its vtable 29
  * slots: C2D's 26 and three new, DrawBackground the last) */
@@ -183,6 +232,7 @@ public:
     virtual ~C2DButton();
     /* slot 26: the background's alpha, a fraction of 128 (0x37C2C0) */
     virtual void SetBackgroundAlpha(float a) { m_background.SetTrans(128.0f * a); }
+    virtual void DrawBackground(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     virtual void SetCanHandleInput(bool val);
     virtual void SetNormal();
     virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
@@ -198,7 +248,9 @@ public:
     ButtonState *m_state;   // 0x198
     unsigned char _19c[0x1a0 - 0x19c];
     CPlainBmp m_background;   // 0x1a0
-    unsigned char _240[0x24c - 0x240];
+    float _fWidth;   // 0x240 (SOCOM 1's names, 0x30 later)
+    float _fHeight;   // 0x244
+    unsigned char _248[0x24c - 0x248];
     int m_24c;   // 0x24c: zeroed when the normal state is shown
     unsigned char _250[0x440 - 0x250];
 } __attribute__((aligned(16)));   // 0x440 bytes
@@ -317,6 +369,71 @@ public:
     C2D m_790;   // 0x790
 };
 
+
+/* the text from the string's own variable, written out and formatted in, then brought up to date
+ * (SOCOM 1's CRenderableString::UpdateUIVar; reached through the thunk 0x37D150) */
+void CRenderableString::UpdateUIVar(CUIVariable *var)
+{
+    char buf[10500] = {0};
+
+    if (UIVarMixin::m_uivar && UIVarMixin::m_uivar == var) {
+        Format(func_003860F0(UIVarMixin::m_uivar, buf, 10499));
+        Update();
+    }
+}
+
+/* the text to type out (looked up first when asked): the string shown emptied, the counters
+ * cleared and the text kept, then the string brought up to date -- nothing to type, the length
+ * and the count zeroed (SOCOM 1's CTeleType::SetString, sprintf'ing into a buffer; SOCOM II's
+ * takes C2DString's translate flag) */
+void CTeleType::SetString(const char *s, bool translate)
+{
+    if (translate)
+        s = TranslateString(s);
+    C2DString::SetString("", true);
+    if (!s || !*s) {
+        m_len = 0;
+        m_typed = 0;
+        return;
+    }
+    m_typed = 0;
+    m_d8 = 0;
+    m_e8 = 0;
+    m_f0 = 0;
+    m_len = strlen(s);
+    m_cc = 0;
+    m_text = s;
+    m_1a8 = 0;
+    Update();
+}
+
+/* the text scrolled toward its line, 30 a second, snapped once within a step (SOCOM 1's
+ * CScrollText::Tick). The step computed after the distance (computed first, the constant 30 takes
+ * the scratch register m_scroll's load wants) and the test `!(speed <= |diff|)` (as `|diff| <
+ * speed` MW branches on c.lt with the other polarity) */
+void CScrollText::Tick(float dT)
+{
+    float pos = m_line * GetSpacing();
+    float diff = pos - m_scroll;
+    float speed = 30.0f * dT;
+
+    if (!(speed <= (float)fabs(diff)))
+        m_scroll = pos;
+    else {
+        if (diff < 0.0f)
+            speed = -speed;
+        m_scroll += speed;
+    }
+}
+
+/* the background drawn, first placed under a centred caption: centred on the button's own
+ * width, as wide as half the button and as tall as it (SOCOM 1's C2DButton::DrawBackground) */
+void C2DButton::DrawBackground(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
+{
+    if (_bCaptionCentered)
+        m_background.SetPos(-(m_background.m_iWidth / 2), 0, (int)(_fWidth / 2.0f), (int)_fHeight);
+    m_background.Draw(m, mgr);
+}
 
 /* the caption from the button's own variable, as text (SOCOM 1's C2DButton::UpdateUIVar; reached
  * through the thunk 0x37D0E0) */
