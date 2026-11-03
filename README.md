@@ -1841,6 +1841,29 @@ the mask is likely a two-byte enum whose `operator|` is a function, which rename
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 18** (seal_look.cpp's look setters, seal_handsig.cpp, seal_ailines.cpp,
+  CAiSFollow's setters):
+  - three units by SOCOM 1's: seal_look.cpp (its seal_aiscan.cpp, 0x600550-0x60187F) holds the look setters as
+    CSealCtrl members -- SetLookDirR/W, SetLookPosW for a cell, an entity and a point, ClearLook, SetScanAngle,
+    ModifyLookFlags, SetLookFlags, SetLookTimer, SetLookRate (13 of 13; SetDefaultLookParams 0x601400 named, not
+    written); seal_handsig.cpp (0x600290-0x60054F, its initialiser 0x6690C0; InitHandSignals static: its caller passes
+    no `this`); seal_ailines.cpp ends at 0x600287;
+  - a CPnt3D returned by value from an inline and passed straight to another inline's const reference stays in the
+    frame -- y stored as a word zero, y and z read back off the stack (`LenSq(SubXZ(a, b))`); a named point, a
+    pointer parameter or the sum written out keep it in registers (a lead for the stack point's field addresses; it
+    did not close FaceXZ);
+  - a member's address passed to a call and stored through again after stays in a saved register; spelling the
+    second use as an offset (`*(T *)((char *)this + K)`) makes MW add the offset at each store -- the same for two
+    reads of one member around a call (one through the header's member, one through a view);
+  - a CPnt3D built field by field computes its components one after another, the three-float constructor
+    interleaves their products; an `unsigned char` converted to float gets a sign test (the target's plain `cvt.s.w`
+    converts each byte as an `int`); a float field read twice in place keeps the target's registers, taken into a
+    named local it swaps with a later value's; an 8-byte-spaced table of function-local `static float`s matches by
+    content, and a -1.0 loaded from data (not built with `lui`) is a variable;
+  - open: FaceXZ 0x60CAD0 (36: NormalizeXZ by reference in three shapes, the normalise written out, 3.0b50/b38/b22
+    through an `sc: compiler=` line -- which may not take effect without a flags list), seal_tasks.cpp's
+    register-only handlers; sized, not written: 0x5FCF10 (a follow master's update at +0x5D4, its follower count at
+    +0x520), 0x5CC6C0/0x5CC800 (pointer-list shapes: MSL depth questions).
 - **Tells from the UI, round 13** (CUIVariable's UIVarMixin base, the look's background pieces, the hangul functions,
   CGameMenu's background film):
   - CUIVariable is `: _zrdr, UIVarMixin` -- the mixin at 0x8 with its own vptr at 0x10 (vtable 0x4062B0), an inline
