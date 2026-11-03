@@ -1796,6 +1796,27 @@ the mask is likely a two-byte enum whose `operator|` is a function, which rename
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 22** (zui_2d.cpp's renderable strings and ZAnim commands; C2DFont's real layout):
+  - with a secondary base MW lays the vtable out as: the primary base's slots, the secondary base's part, the
+    class's own new virtuals, then the primary slot of an override of a secondary-base virtual -- calls through
+    the primary vptr reach past the secondary part (CRenderableString: Update +0xA0, UpdateUIVar +0xA4); SOCOM 1's
+    vtable names had slid one class (0x379C50/0x379B10 are CWrappedText's, CRenderableString's own parser and tick
+    0x36FE40/0x36FCC0);
+  - `v /= 100.0f` on a float local keeps the quotient in the dividend's register, `x / 100.0f` does not; the
+    compare chain's `li v0,1` can serve a case's `return true` when cases return directly, a bool local gives
+    `daddiu` and an `andi 0xff` on the base call's result; `!(a <= (float)fabs(d))` gives the target's c.le/bc1t,
+    `fabs(d) < a` c.lt with the other polarity; a member loaded before a virtual call and kept in a saved register
+    (`lines * GetSpacing()`'s left operand) wants its own local;
+  - C2DFont is 0x64 bytes (src/gamez/ztwod/c2dfont.h, the name ours): a map<unsigned short, C2DGlyph> at 0 (the
+    glyph a 0x30-byte 16-aligned record -- a 16-aligned map value moves the tree node's data from 0xC to 0x10), a
+    vector<zdb::CTexHandle *> at 0x10, SOCOM 1's scalars from 0x20, a CPnt3D at 0x48, a CSaferStr at 0x58 -- its
+    constructor 0x38E590, destructor 0x369EB0 and CSkbFonts() 0x38E550 are code-exact in a probe
+    (build/scratch/hud-r22/font/probe.cpp); it cannot live in ztwod.h (zui_skb.h reaches ztwod.h and defines its
+    own C2DFont); 0x1FEAC0/0x1FE760/0x1FB3F0 are the glyph map's tree constructor, destroy and map();
+  - leads: the radio command menu's global 0x413120 (initialiser 0x3FF4A0, constructor 0x237390, destructor
+    0x237580) and a second at 0x4144F0 (destructor 0x230620), its handlers from 0x22EDB0 referenced by the menu
+    builder func_002344E0; the font unit 0x359740-0x35D4xx (Unload 0x35A650, the glyph tree's clear 0x35C800 and
+    swap 0x35C840, the hangul composition 0x3599D0, an int-keyed map's operator[] 0x35C6B0).
 - **Tells from the kit and AI states, round 16** (ai_group.cpp written as a unit, 0x60C190-0x60EDFF):
   - a for_each whose functor inlines a member walk is cut to one level even at level 5: its iterator pieces, the
     functor call and the implicit copy for the return go out of line, their copies following the caller
