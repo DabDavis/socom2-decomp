@@ -5493,7 +5493,8 @@ rt_p2p by address -- six rows at once.
   jump past `return 37` with v0 still the call's result and deletes the target's copy into the return
   register, so reorg cannot put the constant in the branch's slot. Not the vendor's flag: it reallocates
   func_00614168 (s0/s1) and costs six of the unit. The target's CSE follows jumps but keeps a copy into
-  v0 -- a toolchain difference, with the bnez/bnezl word (round 12c) and the runtime's DFmode slots.
+  v0 -- a toolchain difference, with the runtime's DFmode slots (round 12c's bnez/bnezl word, once counted
+  here too, is the callee's definition order -- round 13c).
 - **Shapes, each measured**: SOCOM 1's comparison operands as written (`anDelay[j] > anDelay[j + 1]`
   loads a[j] first; `nPort == entry.nPort`); a clamp as a guard (`if (n < 1) n = 1;` -- the ternary
   if-converts the other way); a sub-record's address taken once before its tests (NetConnect's kinds);
