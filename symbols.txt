@@ -8707,10 +8707,10 @@
 0x004CB4D8 0x390 asrspi_DeActivateWords  # OVL2 unaligned; s1:align
 0x004CB868 0x28C asrspi_Start  # OVL2 unaligned; s1:align
 0x004CBAF8 0x170 asrspi_Stop  # OVL2 unaligned; s1:align
-0x004CBC68 0x104 func_004CBC68  # OVL2 unaligned
+0x004CBC68 0x104 asrspi_GainSet  # OVL2 unaligned; s1:calls (SOCOM 1's asrspi_GainSet, 0x100, moved: SOCOM 1's object holds it after GetCtxVersion, SOCOM II's after asrspi_Stop; the same body -- the gain as an unsigned short, casrGainSet under the busy flag, ConvErr on failure -- and the same callee sequence) -- the gcc lane, round 7c
 0x004CBD70 0x1F4 intAcquisition  # OVL2; s1:align
 0x004CBF68 0x178 asrspi_Acquisition  # OVL2 unaligned; s1:calls (SOCOM 1's ProcessAudio calls asrspi_Acquisition where ours call this row, 1 call site; the same position in SOCOM 1's object)
-0x004CC0E0 0x178 func_004CC0E0  # OVL2
+0x004CC0E0 0x178 asrspi_UswAcquisition  # OVL2; s1:order (SOCOM 1's asrspi_UswAcquisition, 0x16C, after asrspi_Acquisition in the asrspi object: the same body, intAcquisition in the user-word recording state 4, state 5 once the utterance is in) -- the gcc lane, round 7c
 0x004CC258 0x10C asrspi_EnableAGC  # OVL2 unaligned; s1:align
 0x004CC368 0xF8 asrspi_DisableAGC  # OVL2 unaligned; s1:align
 0x004CC460 0x1C0 asrspi_ExportSessionData  # OVL2; s1:calls

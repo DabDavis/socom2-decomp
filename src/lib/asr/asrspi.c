@@ -30,8 +30,8 @@ typedef struct SIGNALCB {
     int (*speech_detected)(int frame, int user);        /* +4 */
     int (*ts_detected)(int frame, int user);            /* +8 */
     int (*agc)(int gain, int user);                     /* +12 */
-    int (*energy_level)(int level, int user);           /* +16 */
-    int (*snr_level)(int level, int user);              /* +20 */
+    int (*energy_level)(short level, int user);         /* +16 */
+    int (*snr_level)(short snr, int user);              /* +20 */
 } SIGNALCB;
 
 /* the host's recognition callbacks (SOCOM 1's AsrSpiRecogCallBacks: asrspi_cbResult and the
@@ -87,7 +87,7 @@ typedef struct ASRSPI {
     int verdict;                        /* +48 */
     int state;                          /* +52 */
     int busy;                           /* +56 */
-    int mode;                           /* +60 */
+    int level_interval;                 /* +60: frames between the level callbacks */
     RESULT result;                      /* +64 */
     SIGNALCB signal;                    /* +76 */
     int (*result_cb)(RESULT *r, int user);      /* +100 */
@@ -141,6 +141,10 @@ extern int casrActivateData(CASR *c, void *data);
 extern int casrActivateContext(CASR *c, void *ctx, int a2);
 extern int casrGetSPIVersion(void);
 extern int casrGainSet(CASR *c, unsigned short gain);
+extern int casrGetState(CASR *c, int *state);
+extern int casrAcquisition(CASR *c, int fmt, char *samples, unsigned int count);
+extern int casrGetSignalLevel(CASR *c, short *level);
+extern int casrGetSNR(CASR *c, short *snr);
 extern void FillContextV2VirtualTable(CONTEXTV2 *vt);
 extern void FillLanguageVirtualTable(LANG *vt);
 extern void *heap_Alloc(void *heap, int size);
@@ -323,13 +327,13 @@ static const CASRCALLBACKS g_APIRecogCallBacks = {
     ASRSPICBTRAIN, ASRSPICBABNORM, ASRSPICBAGC, ASRSPICBASKCURRENTGAIN,
 };
 
-int asrspi_UswStartRecording(ASRSPI *e, int mode, RECOGCB *cb, int user, int setparams)
+int asrspi_UswStartRecording(ASRSPI *e, int interval, RECOGCB *cb, int user, int setparams)
 {
     int err;
 
     if (cb == 0)
         return ASRSPI_E_NULLPTR;
-    if (mode == 0 && cb->signal && (cb->signal->energy_level || cb->signal->snr_level))
+    if (interval == 0 && cb->signal && (cb->signal->energy_level || cb->signal->snr_level))
         return 0x80040016;
     ENGINE_CHECK(e);
     ENGINE_ENTER(e);
@@ -342,7 +346,7 @@ int asrspi_UswStartRecording(ASRSPI *e, int mode, RECOGCB *cb, int user, int set
     e->trained = 0;
     if (e->state == 6 && e->rec)
         heap_Free(e->heap, e->rec);
-    e->mode = mode;
+    e->level_interval = interval;
     e->rec = 0;
     e->rec_info = 0;
     if (cb->signal)
@@ -660,6 +664,177 @@ int asrspi_ActivateCtx(ASRSPI *e, int *ctxdata, int a2)
         e->state = 2;
     else
         e->state = 1;
+    ENGINE_LEAVE(e);
+    return 0;
+}
+
+int asrspi_Stop(ASRSPI *e)
+{
+    int err, state;
+
+    ENGINE_CHECK(e);
+    ENGINE_ENTER(e);
+    err = StateError1(e, 3);
+    if (err) {
+        ENGINE_LEAVE(e);
+        return err;
+    }
+    if (casrStop(e->casr) != 0) {
+        casrGetState(e->casr, &state);
+        if (state == 2)
+            e->state = state;
+        ENGINE_LEAVE(e);
+        return ConvErr(e, casrGetLastError(e->casr));
+    }
+    e->state = 2;
+    ENGINE_LEAVE(e);
+    return 0;
+}
+
+int asrspi_GainSet(ASRSPI *e, unsigned short gain)
+{
+    ENGINE_CHECK(e);
+    ENGINE_ENTER(e);
+    if (casrGainSet(e->casr, gain) != 0) {
+        ENGINE_LEAVE(e);
+        return ConvErr(e, casrGetLastError(e->casr));
+    }
+    ENGINE_LEAVE(e);
+    return 0;
+}
+
+/* the host's sample format, as the casr engine's */
+static __inline__ int ConvSampleFormat(unsigned int mode, int *fmt)
+{
+    switch (mode) {
+    case 0: *fmt = 0; break;
+    case 2: *fmt = 1; break;
+    case 4: *fmt = 2; break;
+    case 6: *fmt = 4; break;
+    default: return 0x80040004;
+    }
+    return 0;
+}
+
+/* feed the samples to the engine; with a level callback (and 8- or 16-bit samples) in chunks of
+ * the level interval, the signal level and SNR reported after each */
+/* the loop is the vendor's goto: a for or while loop rotates its exit test or inverts the
+ * last-chunk test (20 words), and returning 0 from the top takes v1 for the flag */
+static int intAcquisition(ASRSPI *e, unsigned int mode, char *samples, unsigned int count)
+{
+    int fmt, err, last;
+    unsigned int chunk, n, left;
+    char *p;
+    short level, snr;
+
+    err = ConvSampleFormat(mode, &fmt);
+    if (err)
+        return err;
+    if ((e->signal.energy_level || e->signal.snr_level) && mode < 2) {
+        left = count;
+        p = samples;
+        last = 0;
+        if (mode == 0)
+            chunk = e->level_interval * 22;
+        else
+            chunk = e->level_interval * 16;
+    again:
+        if (e->got_result)
+            goto done;
+        n = chunk;
+        if (chunk >= left) {
+            n = left;
+            last = 1;
+        }
+        if (casrAcquisition(e->casr, fmt, p, n) != 0
+            || casrGetSignalLevel(e->casr, &level) != 0 || casrGetSNR(e->casr, &snr) != 0)
+            return ConvErr(e, casrGetLastError(e->casr));
+        if (e->signal.snr_level && (err = e->signal.snr_level(snr, e->user)) != 0)
+            return err;
+        if (e->signal.energy_level && (err = e->signal.energy_level(level, e->user)) != 0)
+            return err;
+        left -= n;
+        p += chunk;
+        if (!last)
+            goto again;
+    } else if (casrAcquisition(e->casr, fmt, samples, count) != 0)
+        return ConvErr(e, casrGetLastError(e->casr));
+done:
+    return 0;
+}
+
+int asrspi_Acquisition(ASRSPI *e, char *samples, unsigned int count, int *done)
+{
+    int err;
+
+    if (done == 0 || samples == 0)
+        return ASRSPI_E_NULLPTR;
+    *done = 0;
+    ENGINE_CHECK(e);
+    ENGINE_ENTER(e);
+    err = StateError1(e, 3);
+    if (err) {
+        ENGINE_LEAVE(e);
+        return err;
+    }
+    err = intAcquisition(e, e->open_mode, samples, count);
+    *done = e->got_result;
+    if (e->got_result)
+        e->state = 2;
+    if (err) {
+        ENGINE_LEAVE(e);
+        return err;
+    }
+    ENGINE_LEAVE(e);
+    return 0;
+}
+
+int asrspi_UswAcquisition(ASRSPI *e, char *samples, unsigned int count, int *done)
+{
+    int err;
+
+    if (done == 0 || samples == 0)
+        return ASRSPI_E_NULLPTR;
+    ENGINE_CHECK(e);
+    ENGINE_ENTER(e);
+    err = StateError1(e, 4);
+    if (err) {
+        ENGINE_LEAVE(e);
+        return err;
+    }
+    err = intAcquisition(e, e->open_mode, samples, count);
+    *done = e->got_result;
+    if (e->got_result)
+        e->state = 5;
+    if (err) {
+        ENGINE_LEAVE(e);
+        return err;
+    }
+    ENGINE_LEAVE(e);
+    return 0;
+}
+
+int asrspi_EnableAGC(ASRSPI *e, unsigned short gain)
+{
+    ENGINE_CHECK(e);
+    ENGINE_ENTER(e);
+    e->gain = gain;
+    if (casrSetParam(e->casr, 11, 1) != 0) {
+        ENGINE_LEAVE(e);
+        return ConvErr(e, casrGetLastError(e->casr));
+    }
+    ENGINE_LEAVE(e);
+    return 0;
+}
+
+int asrspi_DisableAGC(ASRSPI *e)
+{
+    ENGINE_CHECK(e);
+    ENGINE_ENTER(e);
+    if (casrSetParam(e->casr, 11, 0) != 0) {
+        ENGINE_LEAVE(e);
+        return ConvErr(e, casrGetLastError(e->casr));
+    }
     ENGINE_LEAVE(e);
     return 0;
 }
