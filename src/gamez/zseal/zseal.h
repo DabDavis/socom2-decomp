@@ -1127,6 +1127,10 @@ public:
      * control cleared and the SEAL asked to go prone (SOCOM 1's ClearStack, after PopBlend: OVL2
      * 0x58A5E0 -- SOCOM II adds the limit; the stances inline it) */
     void ClearStack(unsigned int count, bool clear);
+    /* the blends popped down to a base stance's (anims 1, 18 or 26 on top), twelve at most, and one
+     * more when asked; the top blend's control cleared and stance 2 asked; the new top returned
+     * (SOCOM 1's ClearToBase: OVL2 0x58A4D0 -- SOCOM II asks IsCurrentBlend and adds the limit) */
+    CZBodyAnimBlend *ClearToBase(bool pop);
     /* the top blend turned at a rate from the turn, capped per state (SOCOM 1's TurnControl after
      * ProneControl: OVL2 0x583960 -- SOCOM II's takes the turn alone) */
     CZBodyAnimBlend *TurnControl(float turn);
@@ -1391,7 +1395,10 @@ public:
     unsigned int m_unused_bits : 1;
     unsigned int m_bit9 : 1;   // bit 9: a remote SEAL with it set is skipped by 0x57DFE0 (the name ours)
     unsigned int m_bit10 : 1;   // bit 10: cleared with bit 9 set by 0x57DF20/0x57E050 (the name ours)
-    unsigned int m_unused_bits2 : 5;
+    unsigned int m_1060_bit11 : 1;
+    unsigned int m_1060_bit12 : 1;
+    unsigned int m_1060_bit13 : 1;   // bit 13: online, 0x589900 refuses the SEAL with it set (the name ours)
+    unsigned int m_unused_bits2 : 2;
     /* the ladder the SEAL is on, an index into the mission's list (new in SOCOM II: read with lhu
      * and re-masked for an int argument, as a 16-bit field is; the name ours) */
     unsigned int m_ladder : 16;   // 0x1062

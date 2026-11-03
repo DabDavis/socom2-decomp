@@ -393,6 +393,54 @@ extern "C" bool func_005804E0(CZSealBody *seal)
     return true;
 }
 
+extern "C" {
+/* three more anim types read as variables (OVL1 data, -1 in the image) */
+extern short data_003DEEF0;
+extern short data_003DEEE8;
+extern short data_003DEAD8;
+}
+
+/* whether the top blend is in one of the two anims 0x5804E0 starts a move from (an inline: its `||`
+ * is materialised before the test) */
+static inline bool InMoveAnim(CZSealBody *seal)
+{
+    bool r = seal->IsCurrentBlend((AnimType)data_003DEED0) || seal->IsCurrentBlend((AnimType)data_003DEED8);
+
+    return r;
+}
+
+/* whether the SEAL may go on: always with no blend; never online with bit 13 of 0x1060 set; never
+ * stunned in one of four anims (a dead SEAL's top blend then put in state 8); not in a dead top blend
+ * outside state 10 unless in a move's anims; not alive in the anim of 0x3DEAD8 (OVL2 0x589900, new in
+ * SOCOM II; the name unknown -- 0x57E130, 0x57F7D0 and 0x57DDF0 ask it) */
+extern "C" bool func_00589900(CZSealBody *seal)
+{
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+
+    if (!top)
+        return true;
+    if (theNetwork.m_9 && seal->m_1060_bit13)
+        return false;
+    if (seal->m_am_stunned) {
+        if (seal->IsCurrentBlend((AnimType)data_003DEED0) || seal->IsCurrentBlend((AnimType)data_003DEED8) ||
+            seal->IsCurrentBlend((AnimType)data_003DEEF0) || seal->IsCurrentBlend((AnimType)data_003DEEE8)) {
+            if (!seal->m_isAlive) {
+                CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+
+                b->m_state = 8;
+            }
+            return false;
+        }
+    }
+    if (seal->m_state != 10 && top->m_state == 8) {
+        if (!InMoveAnim(seal))
+            return false;
+    }
+    if (seal->m_isAlive && seal->IsCurrentBlend((AnimType)data_003DEAD8))
+        return false;
+    return true;
+}
+
 /* the top blend, in anim 46, made to play backwards from state 5 with its flag 0x20 set, and the push
  * told to the network for a SEAL this console plays (OVL2 0x57F5B0, new in SOCOM II) */
 extern "C" CZBodyAnimBlend *func_0057F5B0(CZSealBody *seal)
@@ -966,9 +1014,38 @@ extern "C" bool func_00588080(CZSealBody *seal)
 }
 
 extern "C" {
-/* (OVL2 0x58A4D0 and seal.cpp's 0x555170: what the SEAL holds, on a ladder or off it) */
-void *func_0058A4D0(CZSealBody *seal, int a);
+/* (seal.cpp's 0x555170: the blend stack's top) */
 void *func_00555170(void *v);
+}
+
+/* the blends' count, compared signed (SOCOM 1's ClearToBase tests it with `slti` too) */
+static inline int SignedBlendCount(CBodyAnimBlendStack *stack)
+{
+    return stack->m_top + 1;
+}
+
+/* the blends popped down to the base stance's, twelve at most -- stopping at a stand (1), a crouch
+ * (18) or a prone (26) on top -- and one more when asked and there is one; the top blend's control
+ * cleared and stance 2 asked; the new top returned (OVL2 0x58A4D0: SOCOM 1's ClearToBase, the same
+ * three base anims and the extra pop; CSealCtrl::PreTick reaches it through 0x57DC80 from a peek) */
+CZBodyAnimBlend *CZSealBody::ClearToBase(bool pop)
+{
+    int n = 12;
+    CBodyAnimBlendStack *stack = &m_blends;
+
+    while (SignedBlendCount(stack) > 1 && n > 0) {
+        if (IsCurrentBlend((AnimType)1) || IsCurrentBlend((AnimType)18) || IsCurrentBlend((AnimType)26))
+            break;
+        func_00589AA0(this);
+        n--;
+    }
+    if (n <= 0)
+        return (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+    if (pop && SignedBlendCount(stack) > 1)
+        func_00589AA0(this);
+    ((CZBodyAnimBlend *)func_00555170(&m_blends))->m_ctrl = 0;
+    m_desiredStance = STANCE_PRONE;
+    return (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
 }
 
 /* bits of a halfword set or cleared (OVL2 0x58A920; seal_body.cpp's and seal_env.cpp's callers --
@@ -1124,11 +1201,70 @@ extern "C" void func_0058A950(CTripleTable *t)
 }
 #pragma auto_inline reset
 
+/* whether the SEAL can act on another: not on a SEAL of its own team, of the 0x20000 team bit, that
+ * is no SEAL, a ghost, or whose node is inactive -- and only alive, played by this console and as
+ * 0x589900 allows (OVL2 0x57DDF0, new in SOCOM II; the name unknown) */
+extern "C" bool func_0057DDF0(CZSealBody *seal, CZSealBody *other)
+{
+    bool ok = true;
+
+    if (other) {
+        unsigned int team = other->m_team;
+
+        if ((team & seal->m_team) || (team & 0x20000) || other->m_type != CEntity::ENT_TYPE_SEAL ||
+            other->m_deathType == DEATH_GHOST || (other->GetNode() && !other->GetNode()->m_active))
+            ok = false;
+    }
+    if (!seal->m_isAlive)
+        ok = false;
+    else if (seal->IsRemote())
+        ok = false;
+    else if (!func_00589900(seal))
+        ok = false;
+    return ok;
+}
+
+extern "C" {
+/* an anim type read as a variable (OVL1 data, -1 in the image) and AnimSet's variant pick and the
+ * script of a variant (OVL2 0x5E3DA0, GetVariantIndex__7AnimSetF8AnimTypeii, and 0x5E3B20: anim.cpp's,
+ * the kit lane's -- AnimSet is declared there alone) */
+extern short data_003DF130;
+int func_005E3DA0(AnimSet *set, AnimType type, int kind, int anim);
+CZSIScriptCommon *func_005E3B20(AnimSet *set, AnimType type, int kind, int variant);
+}
+
+/* the anim of 0x3DF130 pushed over the base stance, kind 13, at a variant of the held weapon's --
+ * the one given, or below zero the one the top script's id picks -- and the variant told to the
+ * network for a SEAL this console plays (OVL2 0x57DCC0, new in SOCOM II; the name unknown).
+ * OPEN, 6 instructions (the size right): in both AnimSet calls the target loads the kind (a2) and the
+ * set (a0) before the type's global (a1), ours the type first -- the same as member calls on a
+ * declared AnimSet, with the global volatile, const or typed AnimType, the arguments cast to int, or
+ * the set assigned in the call; rep declared ahead of b fixed their saved registers */
+extern "C" CZBodyAnimBlend *func_0057DCC0(CZSealBody *seal, int variant)
+{
+    ACTIVE_ANIM *rep;
+
+    seal->ClearToBase(false);
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00588BC0(seal, (AnimType)data_003DF130, seal->m_state, 0, 13);
+
+    if (!b)
+        return 0;
+    rep = b->Representative();
+
+    if (variant < 0)
+        variant = func_005E3DA0(seal->m_animset, (AnimType)data_003DF130, seal->m_weapon_id,
+                                rep->m_anim->m_id);
+    rep->m_anim = func_005E3B20(seal->m_animset, (AnimType)data_003DF130, seal->m_weapon_id, variant);
+    if (theNetwork.m_9 && !seal->IsRemote())
+        func_002BBAF0(seal->m_id, 34, variant, false, 12);
+    return b;
+}
+
 /* (OVL2 0x57DC80; CSealCtrl::PreTick calls it twice) */
 extern "C" void *func_0057DC80(CZSealBody *seal)
 {
     if (seal->m_state == 3)
-        return func_0058A4D0(seal, 0);
+        return seal->ClearToBase(false);
     return func_00555170((char *)seal + 0x1c0);
 }
 

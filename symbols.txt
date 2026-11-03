@@ -10513,7 +10513,7 @@
 0x00589900 0x19C func_00589900  # OVL2
 0x00589AA0 0x9C4 func_00589AA0  # OVL2
 0x0058A470 0x58 func_0058A470  # OVL2
-0x0058A4D0 0x10C func_0058A4D0  # OVL2
+0x0058A4D0 0x10C ClearToBase__10CZSealBodyFb  # OVL2; s1:calls by hand (SOCOM 1 ClearToBase__10CZSealBodyFb: the same pops stopping at the base anims 1, 18 and 26 with signed counts, the extra pop when the bool says, the top blend control cleared and stance 2 asked, the top returned; SOCOM II adds a limit of twelve; the SEALs round 16)
 0x0058A5E0 0xC8 ClearStack__10CZSealBodyFUib  # OVL2; s1:order by hand (SOCOM 1 ClearStack__10CZSealBodyFUib, after PopBlend and before BodySetState in both builds: the blends popped down to a count, the top blend control cleared and stance 2 asked when the bool says; SOCOM II adds a limit of twelve; the SEALs round 16)
 0x0058A6B0 0x60 BodySetState__10CZSealBodyFi  # OVL2; s1:exact by hand (SOCOM 1's BodySetState__10CZSealBodyFi: the controller's OnStateChange (slot 0x64) when the state changes, then CBody's; SOCOM II's tests m_control first, and is virtual: CZSealBody's slot 0x90, through the thunk 0x555290 in its CBody table) -- the SEAL lane, round 4
 0x0058A710 0x8 func_0058A710  # OVL2; slot 0x64 of __vt__9CSealCtrl, which CSealCtrlSquirm and CRemoteCtrl inherit (the vtables pass withheld it: CRemoteCtrl's misnamed OnMissionStart override at 0x5E6270 pulled the alignment); s1~ OnStateChange__9CSealCtrlF10SEAL_STATE10SEAL_STATE after all: CSealCtrlCopy's OVL1 table holds an OVL1 copy at slot 0x64 (0x2B3BE0), so the base's OnStateChange is inline and this is OVL2's copy (one of 2 copies of an inline)
