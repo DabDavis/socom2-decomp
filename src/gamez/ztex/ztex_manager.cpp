@@ -650,26 +650,30 @@ void CTexManager::ClearPktBufs(CTexManager &tm, bool all)
 
 /* the buffer's palettes and textures moved to their places from its start, each texture's selects
  * rewritten to the new place (SOCOM 1's UpdateTextureSelects, the interrupt's after a load).
- * OPEN, register-only (23 instructions): the palette walk loads m_nextAddress into v1 and the
- * palette's address into a0 (here a0 and v1), and the texture walk loads the handle's texture
- * before its old address (here last, as the call's this). A texture local, the handle read twice
- * and the palette written through *i (0x148) were tried */
+ * OPEN, 11 instructions, register-only: both walks' end tests load the size into a0 and the cursor
+ * into a1 (here a1 and a0), and the palette test branches `beq next, address` where the operands
+ * written that way load into the other registers (written `address != next`, the loads are the
+ * target's and the beq's operands swap: 23 the other way). The texture walk matches with the next
+ * address taken first and the texture before the old address. Tried: `!(i == end())` (0x120), `end()
+ * != i` (0x144), the palette's address through a local (16), *i read twice (0x148) */
 void CGSTexBuffer::UpdateTextureSelects()
 {
     m_nextAddress = m_startAddress;
     for (CTexPalList::iterator i = m_dyntex_list.m_pal_list.begin(); i != m_dyntex_list.m_pal_list.end(); i++) {
         CTexPalette *pal = *i;
 
-        if (m_nextAddress != pal->m_gsaddr)
+        if (pal->m_gsaddr != m_nextAddress)
             pal->m_gsaddr = m_nextAddress;
         m_nextAddress += (unsigned int)pal->m_size >> 8;
     }
     for (CTexList::iterator i = m_dyntex_list.m_tex_list.begin(); i != m_dyntex_list.m_tex_list.end(); i++) {
+        unsigned int addr = m_nextAddress;
         CTexHandle *h = *i;
+        CTexture *tex = h->m_texture;
         unsigned int old = h->m_gsAddr;
 
-        h->m_gsAddr = m_nextAddress;
-        m_nextAddress = h->m_texture->UpdateTextureSelect(old, m_nextAddress);
+        h->m_gsAddr = addr;
+        m_nextAddress = tex->UpdateTextureSelect(old, m_nextAddress);
     }
     asm volatile { sync }
 }
