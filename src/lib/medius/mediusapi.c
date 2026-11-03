@@ -1975,6 +1975,96 @@ MediusErrorCode func_0064A1F8(MediusRequest_0064A1F8 *request, MediusCallback ca
  * error codes' names, in the vendor's enum order -- MediusWorldCreatedSizeReduced (3, a status code
  * the server also sends as an error) sits after MediusErrorItemAlreadyExists there, and its case
  * block does here: GCC lays the cases out in source order. */
+/* every MediusCallbackStatus named, in the enum's order: 40 cases over 1005 values, so no table --
+ * 2.96 builds the balanced decision tree the target has (round 7b) */
+char *MediusGetCallbackStatusString(MediusCallbackStatus status)
+{
+    switch (status) {
+    case MediusBeginSessionFailed:
+        return "MediusBeginSessionFailed";
+    case MediusAccountAlreadyExists:
+        return "MediusAccountAlreadyExists";
+    case MediusAccountNotFound:
+        return "MediusAccountNotFound";
+    case MediusAccountLoggedIn:
+        return "MediusAccountLoggedIn";
+    case MediusEndSessionFailed:
+        return "MediusEndSessionFailed";
+    case MediusLoginFailed:
+        return "MediusLoginFailed";
+    case MediusRegistrationFailed:
+        return "MediusRegistrationFailed";
+    case MediusIncorrectLoginStep:
+        return "MediusIncorrectLoginStep";
+    case MediusAlreadyLeaderOfClan:
+        return "MediusAlreadyLeaderOfClan";
+    case MediusWMError:
+        return "MediusWMError";
+    case MediusNotClanLeader:
+        return "MediusNotClanLeader";
+    case MediusPlayerNotPrivileged:
+        return "MediusPlayerNotPrivileged";
+    case MediusDBError:
+        return "MediusDBError";
+    case MediusDMEError:
+        return "MediusDMEError";
+    case MediusExceedsMaxWorlds:
+        return "MediusExceedsMaxWorlds";
+    case MediusRequestDenied:
+        return "MediusRequestDenied";
+    case MediusSetGameListFilterFailed:
+        return "MediusSetGameListFilterFailed";
+    case MediusClearGameListFilterFailed:
+        return "MediusClearGameListFilterFailed";
+    case MediusGetGameListFilterFailed:
+        return "MediusGetGameListFilterFailed";
+    case MediusNumFiltersAtMax:
+        return "MediusNumFiltersAtMax";
+    case MediusFilterNotFound:
+        return "MediusFilterNotFound";
+    case MediusInvalidRequestMsg:
+        return "MediusInvalidRequestMsg";
+    case MediusInvalidPassword:
+        return "MediusInvalidPassword";
+    case MediusGameNotFound:
+        return "MediusGameNotFound";
+    case MediusChannelNotFound:
+        return "MediusChannelNotFound";
+    case MediusGameNameExists:
+        return "MediusGameNameExists";
+    case MediusChannelNameExists:
+        return "MediusChannelNameExists";
+    case MediusGameNameNotFound:
+        return "MediusGameNameNotFound";
+    case MediusPlayerBanned:
+        return "MediusPlayerBanned";
+    case MediusClanNotFound:
+        return "MediusClanNotFound";
+    case MediusClanNameInUse:
+        return "MediusClanNameInUse";
+    case MediusSessionKeyInvalid:
+        return "MediusSessionKeyInvalid";
+    case MediusTextStringInvalid:
+        return "MediusTextStringInvalid";
+    case MediusFilterFailed:
+        return "MediusFilterFailed";
+    case MediusFail:
+        return "MediusFail";
+    case MediusSuccess:
+        return "MediusSuccess";
+    case MediusNoResult:
+        return "MediusNoResult";
+    case MediusRequestAccepted:
+        return "MediusRequestAccepted";
+    case MediusWorldCreatedSizeReduced:
+        return "MediusWorldCreatedSizeReduced";
+    case MediusPass:
+        return "MediusPass";
+    default:
+        return "UNKNOWN MEDIUSCALLBACKSTATUS";
+    }
+}
+
 char *MediusGetErrorCodeString(MediusErrorCode code)
 {
     switch (code) {

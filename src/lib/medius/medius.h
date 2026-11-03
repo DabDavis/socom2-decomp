@@ -40,6 +40,50 @@ typedef enum MediusErrorCode {
     MediusErrorWorldCreatedSizeReduced = 3   /* named MediusWorldCreatedSizeReduced */
 } MediusErrorCode;
 
+/* the callbacks' status (MediusGetCallbackStatusString, 0x64A298, names each one) */
+typedef enum MediusCallbackStatus {
+    MediusBeginSessionFailed = -1000,
+    MediusAccountAlreadyExists,
+    MediusAccountNotFound,
+    MediusAccountLoggedIn,
+    MediusEndSessionFailed,
+    MediusLoginFailed,
+    MediusRegistrationFailed,
+    MediusIncorrectLoginStep,
+    MediusAlreadyLeaderOfClan,
+    MediusWMError,
+    MediusNotClanLeader,
+    MediusPlayerNotPrivileged,
+    MediusDBError,
+    MediusDMEError,
+    MediusExceedsMaxWorlds,
+    MediusRequestDenied,
+    MediusSetGameListFilterFailed,
+    MediusClearGameListFilterFailed,
+    MediusGetGameListFilterFailed,
+    MediusNumFiltersAtMax,
+    MediusFilterNotFound,
+    MediusInvalidRequestMsg,
+    MediusInvalidPassword,
+    MediusGameNotFound,
+    MediusChannelNotFound,
+    MediusGameNameExists,
+    MediusChannelNameExists,
+    MediusGameNameNotFound,
+    MediusPlayerBanned,
+    MediusClanNotFound,
+    MediusClanNameInUse,
+    MediusSessionKeyInvalid,
+    MediusTextStringInvalid,
+    MediusFilterFailed,
+    MediusFail,
+    MediusSuccess = 0,
+    MediusNoResult,
+    MediusRequestAccepted,
+    MediusWorldCreatedSizeReduced,
+    MediusPass
+} MediusCallbackStatus;
+
 /* a response's handler: the request's own callback type in the vendor's headers; one here */
 typedef void (*MediusCallback)(void);
 
