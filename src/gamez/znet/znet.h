@@ -61,6 +61,7 @@ public:
     {
     }
 
+    int zNetInitialize();
     int zNetLookupHost(const char *host, char *ip, int len);
     int zNetGetMyGameClientIndex();
     /* the clients in the game (0x30D510; the LAN lobby counts its players with it) */
@@ -92,7 +93,8 @@ public:
     unsigned char m_menu_skip;   // 0x4
     unsigned char m_network_init;   // 0x5
     unsigned char m_monitor_ok;   // 0x6
-    unsigned char _7[0xe0 - 0x7];   // the addresses and ports (SOCOM 1's 0xf-0xbf, wider)
+    unsigned char _7[0xd0 - 0x7];   // the addresses and ports (SOCOM 1's 0xf-0xbf, wider)
+    char m_my_ip[16];   // 0xd0: our address as text (SOCOM 1's at 0xaf: zNetInitialize asks the DME for it)
     int m_WorldID;   // 0xe0 (SOCOM 1's at 0xc0)
     int m_ClientIndex;   // 0xe4
     int m_e8;   // 0xe8 (SOCOM II's)

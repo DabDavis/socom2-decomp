@@ -1048,7 +1048,7 @@ public:
     virtual void OnPop(int userdata);
     virtual void SetSkipSwap(int swap);
     virtual void DisplayMessage(const char *text, const char *who, int a, int b, int c,
-                                unsigned char d, unsigned char e, int type);
+                                int d, unsigned char e, int type);
 };
 
 /* the game's stack of states (zgame.h's CGame: the current state's index at 0xC, the stack 0x14) */

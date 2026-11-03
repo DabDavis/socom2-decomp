@@ -90,6 +90,102 @@ int func_00621E50(NetJoinParams *p, NetJoinResult *r);   /* NetJoin */
 const char *func_002FA7E0(CZOnlineLobby *lobby);   /* the game's session name (the lobby's) */
 }
 
+/* --- the DME's start (SOCOM 1's zNetInitialize, SOCOM II's newer library) ------------------- */
+
+/* a message from the server, as the DME hands it on in parts (the names ours) */
+struct NetServerMessage {
+    int m_0;   // 0x0
+    unsigned char m_level;   // 0x4: below 128 urgent, below 192 a warning
+    unsigned char _5[0x10 - 0x5];
+    unsigned char m_last;   // 0x10: the message's last part
+    const char *m_text;   // 0x14
+};
+
+/* the DME's start-up parameters (SOCOM II's library; 0x20 bytes) */
+struct NetInitializeParams {
+    int m_0;   // 0x0
+    int m_4;   // 0x4: 10472
+    void *m_state;   // 0x8: the lobby's DME state
+    int m_c;   // 0xc
+    int m_10;   // 0x10
+    void (*m_message)(NetServerMessage *msg);   // 0x14
+    int m_18;   // 0x18
+    int m_1c;   // 0x1c
+};
+
+/* what the start-up answers (24 bytes) */
+struct NetInitializeResult {
+    int m_0;   // 0x0
+    int m_err;   // 0x4
+    int m_8[4];
+};
+
+extern "C" {
+void NetSetDefaultInitializeParams(NetInitializeParams *p);
+int NetInitialize(NetInitializeParams *p, NetInitializeResult *r);
+int NetClose();
+void func_00623330(int a, int b);   /* (the DME's buffers sized) */
+void func_00622AD8(char *ip);   /* (the DME: our address as text -- SOCOM 1's NetGetMyIpAddress) */
+extern char data_0045B330[];   /* the server's message so far */
+}
+
+/* the server's message, a part at a time: kept until its last part and then shown, its level
+ * deciding how (SOCOM II's; OVL1 0x30DCE0, the DME's message callback zNetInitialize registers).
+ * The part's fit is a bool of its own (the target materialises the compare into v0 before the
+ * branch; tested in the ternary itself MW branches on it), the level an int (each case a `li`) */
+extern "C" void func_0030DCE0(NetServerMessage *msg)
+{
+    const char *text = msg->m_text;
+
+    if (strlen(data_0045B330) + strlen(text) < 1000) {
+        strcat(data_0045B330, text);
+    } else {
+        bool fits = strlen(text) < 1000;
+
+        strcpy(data_0045B330, fits ? text : "[Server message too long]");
+    }
+    if (msg->m_last) {
+        int level = 0;
+
+        if (msg->m_level < 128)
+            level = 2;
+        else if (msg->m_level < 192)
+            level = 1;
+        theGame.GetCurrentState()->DisplayMessage(data_0045B330, "Server", 0, 0, 0, level, 0, 1);
+        data_0045B330[0] = 0;
+    }
+}
+
+/* the DME started: its defaults, the lobby's DME state and the server's messages to the callback
+ * above, its buffers sized for a LAN game or for the lobby, the network's start flag set (else the
+ * DME closed again), our address fetched and the objects' changed flags cleared; the error
+ * returned (SOCOM 1's; OVL1 0x30DBB0: UIDMEInit calls it on theNetwork) */
+int CZNetwork::zNetInitialize()
+{
+    NetInitializeParams p;
+    NetInitializeResult r = {0};
+
+    NetSetDefaultInitializeParams(&p);
+    p.m_4 = 10472;
+    p.m_state = theLobby.DMEInit();
+    p.m_message = func_0030DCE0;
+    p.m_18 = 0;
+    NetInitialize(&p, &r);
+    if (func_003045B0(&data_0044FE10))
+        func_00623330(0x8000, 0x8000);
+    else
+        func_00623330(8192, 0x8000);
+    if (!r.m_err)
+        theNetwork.m_network_init = 1;
+    else
+        NetClose();
+    m_my_ip[0] = 0;
+    func_00622AD8(m_my_ip);
+    for (int i = 0; i < 4096; i++)
+        m_ObjectFieldUpdate[i] = 0;
+    return r.m_err;
+}
+
 /* a host name's address as text, 30 when it cannot be had (SOCOM II's; OVL1 0x30DE30: the server
  * list's connect, 0x2FDF60, asks it of theNetwork; the name ours) */
 int CZNetwork::zNetLookupHost(const char *host, char *ip, int len)
