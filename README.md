@@ -1842,6 +1842,29 @@ the mask is likely a two-byte enum whose `operator|` is a function, which rename
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 21** (the ~CSpawners chain, two initialisers, the mission's commands, the
+  placeholders respelled):
+  - A MEMBER DESTRUCTOR CODED `this-test; call X(0)` MEANS X IS THE BASE DESTRUCTOR OF THE MEMBER'S TYPE, and one
+    extra test beyond the declared type's levels means the member is a class over it: 0x2B3F20 is ~list<spawn_map>
+    (two this-tests before its call to 0x2B3F80), so CSpawners' list is a class of its own over std::list
+    (`spawn_list`, ours) -- SOCOM 1's ~CSpawners agrees (three this-tests above the deleter's destructor);
+  - an element class's user-declared empty destructor adds one inline level to a list's range erase in tail code
+    (through the allocator's destroy) -- spawn_map's is marked a STAND-IN for the original MSL's deeper node
+    allocator, which gives the same chain in a probe; an 8-byte element with a user-declared constructor is copied
+    lw/sw through a0 in a list insert too, not through the FPRs; CSpawners::Clear is pinned (the target calls it out
+    of line) -- fts_player.cpp whole, 31 of 31;
+  - __sinit_st_shutdown.cpp 0x3FF350 and __sinit_st_reboot.cpp 0x3FF3C0 come right with the units' iostream statics
+    defined; a bitfield behind an inline bool accessor gives the target's `sltu` only written `? true : false`; a
+    global array's address the target keeps across a test needs a pointer local initialised from it; `if (c) x =
+    ...; else return 0;` puts the return-0 block after the body;
+  - RESPELLING ABOUT 60 C PLACEHOLDER CALLS AS SAME-SIGNATURE MEMBER CALLS CHANGED NO CODE (st_core.cpp 33 of 34,
+    st_exit, st_load, st_menu's film trio, the zfts/zgame units, thezoom.cpp); fts_state.h's string stand-in gains
+    out-of-line assign/append/replace (st_core.cpp's tail emits 0x1EEB40/0x1EEB70/0x1EF390 under their names);
+  - 0x2AE4F0 is HUDClearTimerTick (it calls CZWeapon::ClearTimer(0); SOCOM 1's defuse-tick name had come by alignment),
+    0x2AE580/0x2AE5B0 the START_DEFUSE_TIMER pair; fts_mission.cpp's CUIVariable tail named by its call sites
+    (resize/insert<CUIVariable>, _zrdr(), UIVarMixin(), vector<UIVarMixin *>()) -- its unit includes zanim.h, so the
+    tail and __sinit_fts_mission.cpp (it needs 0x33EE20 named) wait; 0x2B1600 is a second OVL1 copy of the pod
+    reserve's body, likely a pointer-vector reserve forwarder include/vector lacks.
 - **Tells from the SEALs, round 17** (seal_body.cpp's initialiser, seal_cfg.cpp's gear, CanPitch):
   - __sinit_seal_body.cpp 0x668940 needs the unit's statics defined in BUILD ORDER: three offsets new in SOCOM II,
     newanims (a CActiveAnimList of 8 -- SOCOM 1 had 12), then SOCOM 1's ten throw offsets; the tail's RTList<ACTIVE_ANIM>
