@@ -3,10 +3,12 @@
 
 #include <algorithm>
 #include <new>
+#include <stdio.h>
 #include <string.h>
 
 #include "zchar.h"
 #include "../zsys/zsys.h"
+#include "../zutil/util_stable.h"
 #include "../zsnd/zsnd.h"
 #include "../zanim/zanim.h"
 #include "../zentity/zentity.h"
@@ -554,7 +556,53 @@ void CCharacterType::ClearMultiplayerMessageSounds()
 {
     for (CCharTypeVec::iterator i = m_char_list.begin(); i != m_char_list.end(); ++i)
         for (CMultiplayerMsgVec::iterator j = (*i)->m_mpMessages.begin(); j != (*i)->m_mpMessages.end(); ++j)
-            (*j)->m_sound = 0;
+            (*j)->sound_pointer = 0;
+}
+
+/* a command's id by name in the SEAL lane's two tables, 0 for none (OVL2 0x58E0A0, 0x58E020:
+ * seal_cfg.cpp's) */
+extern "C" unsigned char func_0058E0A0(const char *name);
+extern "C" unsigned char func_0058E020(const char *name);
+
+/* the strings the messages keep (SOCOM 1's MultiplayerMsgStrings, OVL1 bss 0x44CCF0) */
+extern CSTable MultiplayerMsgStrings;
+
+/* the sound list's "multiplayer" items, each a message: its command (by the first table's name, else
+ * the second's), the text, the sound and the TCM tag -- the text when the item has no fourth --
+ * kept when it has a text (SOCOM 1's; SOCOM II's command lookup is two tables where SOCOM 1 asked
+ * CSealCtrl::GetCommandId, and its zrdr counts are the array's own) */
+void CCharacterType::InitMultiplayerMessages(_zrdr *rdr)
+{
+    _zrdr *list = func_0032F0D0(rdr, "multiplayer");
+
+    if (list) {
+        m_mpMessages.reserve(list->Count());
+        for (unsigned int i = 0; i < list->Count(); i++) {
+            _zrdr *item = list->Item(i);
+            MultiplayerMsg *msg = new MultiplayerMsg;
+            char message[128];
+            char tcmtag[128];
+
+            sprintf(message, "%s", item->Item(2)->String());
+            char *sound = item->Item(1)->String();
+            _zrdr *tag = item->Item(3);
+
+            if (!tag)
+                tag = item->Item(2);
+            sprintf(tcmtag, "%s", tag->String());
+            _zrdr *id = item->Item(0);
+
+            msg->idx = func_0058E0A0(id->String());
+            if (!msg->idx)
+                msg->idx = func_0058E020(id->String());
+            msg->message = MultiplayerMsgStrings.CreateString(message);
+            msg->sound = MultiplayerMsgStrings.CreateString(sound);
+            msg->tcmtag = MultiplayerMsgStrings.CreateString(tcmtag);
+            msg->sound_pointer = 0;
+            if (msg->message)
+                m_mpMessages.push_back(msg);
+        }
+    }
 }
 
 /* a type let go (SOCOM 1's): each string freed and cleared -- the name, the texture asset, the

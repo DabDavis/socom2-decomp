@@ -325,11 +325,23 @@ public:
     void PadWeaponSlots();
 };
 
-/* a multiplayer message a type can say (SOCOM 1's MultiplayerMsg; only the sound laid out) */
+/* a multiplayer message a type can say (SOCOM 1's MultiplayerMsg, DWARF, 0x14 bytes) */
 class MultiplayerMsg {
 public:
-    unsigned char m_unk0[0x10];   // 0x0
-    CSnd *m_sound;   // 0x10
+    /* all cleared (InitMultiplayerMessages' `new`, both builds: the index, then the three strings
+     * right to left -- one chained assignment -- then the sound) */
+    MultiplayerMsg()
+    {
+        idx = 0;
+        message = sound = tcmtag = 0;
+        sound_pointer = 0;
+    }
+
+    unsigned int idx;   // 0x0
+    char *message;   // 0x4
+    char *sound;   // 0x8
+    char *tcmtag;   // 0xc
+    CSnd *sound_pointer;   // 0x10
 };
 
 /* a type's multiplayer messages (SOCOM 1's CMultiplayerMsgVec: a vector of pointers) */
