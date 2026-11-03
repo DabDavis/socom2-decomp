@@ -684,7 +684,22 @@ struct MediusGameListResponse {
 };   // 0x190
 typedef MediusGameListResponse LANGameInfo;
 
-struct GameRules;
+/* a game's rules as its info carries them (at 0x8c; a RoomGame keeps them at 0x19a): a version
+ * letter, then the round count and time, the side byte, the spectators, the equipment limit, the
+ * sort order and the rank restrictions, then the mission sequence -- 'D', 40 bytes (the lobby
+ * unit's builder 0x2F7C40 and reader 0x2F7D90; the names ours) */
+struct GameRules {
+    char m_version;   // 0x0: 'D'
+    unsigned char m_rounds;   // 0x1
+    unsigned char m_minutes;   // 0x2
+    unsigned char m_side;   // 0x3
+    unsigned char m_spectators;   // 0x4
+    unsigned char m_eqlimit;   // 0x5
+    unsigned char m_sort;   // 0x6
+    unsigned char m_rank;   // 0x7
+    unsigned char m_missions[32];   // 0x8
+};   // 0x28
+
 extern "C" GameRules *func_002F7D90(GameRules *dst, const GameRules *src);   /* a game's rules read, an older version brought up to date (the lobby unit's) */
 
 /* a game in a room (SOCOM 1's RoomGame: a table, but not a virtual destructor -- its delete calls
@@ -974,6 +989,7 @@ public:
     bool RejoinRoom();
     bool JoinRoom(const char *name);
     bool RefreshGameList(C2D *page);
+    bool RefreshGamePlayerList(C2D *page);
     void GetLadderInfo();
     void GetLadderRanking();
     int GetRankTier(int rank);
