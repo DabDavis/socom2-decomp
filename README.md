@@ -4383,8 +4383,9 @@ hand) do not recur. automatch does not score: scdiff.py, sccheck.py, scdecomp.py
 byte-identical to master's (046cfe21), so no unit can score differently. automatch over this lane's
 ranges (`--max-size 0x400 --emit --no-prune --jobs 1 --obj-dir` the lane's `src/lib` build): MAIN
 `18DB90 1C4CC0` 233 tried, 0 hits (62 build failures, 26 m2c refusals), `1CCD78 1CE2A4` 6 tried, 0
-hits, OVL1 `1E7F58 1E8FD4` 12 tried, 0 hits; the hand-written rows (CB_DelayTh, sceCdSync,
-sceCdGetDiskType ...) were not retried.
+hits, OVL1 `1E7F58 1E8FD4` 12 tried, 0 hits, `243000 256FD0` 145 tried, 0 hits (27 build failures, 9
+refusals): 396 tried, none byte-exact, and the hand-written rows (CB_DelayTh, sceCdSync,
+sceCdGetDiskType ...) were not retried. What is left to the generator in these ranges is near misses.
 
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
