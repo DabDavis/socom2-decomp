@@ -7266,7 +7266,7 @@
 0x0038C000 0x3C func_0038C000  # OVL1
 0x0038C040 0xEC OnEnterKey__13CSoftKeyboardFP9CGameMenu  # OVL1; ours, by its body (unless 0x3999D0: an unchanged string while IgnoreUnchangedString holds, or an empty one, goes to 0x38C000; else 0x399D20, ShutdownBegin and 0x395DE0(4)) -- zui_skb.cpp; the UI lane round 9: out of zui_skb.cpp's unnamed namespace with the keyboard's classes, now zui_skb.h's (SOCOM II's RTTI string is plain "CBmpWithNode" where SOCOM 1's is "@unnamed@zui_skb_cpp@::CBmpWithNode"; the display unit takes zui_skb.cpp's CBmpWithNode copies, 0x398AA0/0x398A40/0x403800; ~CSkbKeyProps 0x394370 is the Korean unit's, called from here): byte-identical code under the new name
 0x0038C130 0x320 func_0038C130  # OVL1
-0x0038C450 0x58 func_0038C450  # OVL1
+0x0038C450 0x58 SkbMoveCursor__FP13CSoftKeyboardUc  # OVL1; the UI lane round 11: ours, by its body (zui_skb.cpp: 0x38C130 with the axis, column for directions 1 and 2 as a byte enum, and the step 0x38C4C0 (+1) for 2 and 4, else 0x38C4B0 (-1); 0x38CB80 jumps here)
 0x0038C4B0 0x8 func_0038C4B0  # OVL1
 0x0038C4C0 0x8 func_0038C4C0  # OVL1
 0x0038C4D0 0x158 InvalidateDisplay__13CSoftKeyboardFv  # OVL1; s1:calls by hand (SOCOM 1's CSoftKeyboard::InvalidateDisplay: InvalidateSkbsDisplay calls it per keyboard, the constructor at its end) -- zui_skb.cpp; the UI lane round 9: out of zui_skb.cpp's unnamed namespace with the keyboard's classes, now zui_skb.h's (SOCOM II's RTTI string is plain "CBmpWithNode" where SOCOM 1's is "@unnamed@zui_skb_cpp@::CBmpWithNode"; the display unit takes zui_skb.cpp's CBmpWithNode copies, 0x398AA0/0x398A40/0x403800; ~CSkbKeyProps 0x394370 is the Korean unit's, called from here): byte-identical code under the new name
@@ -7299,7 +7299,7 @@
 0x0038E550 0x40 func_0038E550  # OVL1
 0x0038E590 0x88 func_0038E590  # OVL1
 0x0038E620 0xD0 __ct__12CBmpWithNodeFv  # OVL1; by hand (CPlainBmp's inline constructor, then CBmpWithNode's tables and the node zeroed: CreateSoftKeyboard calls it six times, 0x1C0 on) -- zui_skb.cpp; the UI lane round 9: out of zui_skb.cpp's unnamed namespace with the keyboard's classes, now zui_skb.h's (SOCOM II's RTTI string is plain "CBmpWithNode" where SOCOM 1's is "@unnamed@zui_skb_cpp@::CBmpWithNode"; the display unit takes zui_skb.cpp's CBmpWithNode copies, 0x398AA0/0x398A40/0x403800; ~CSkbKeyProps 0x394370 is the Korean unit's, called from here): byte-identical code under the new name
-0x0038E6F0 0x40 func_0038E6F0  # OVL1
+0x0038E6F0 0x40 __ct__12CSkbTexListsFv  # OVL1; the UI lane round 11: zui_skb.cpp's CSkbTexLists() (__construct_array over vector<zdb::CTexHandle *>'s constructor and destructor copies 0x1FB3D0/0x1FB300, four of 12 bytes) -- the keyboard's 0x184 lists are texture handles; byte-exact
 0x0038E730 0xC __ct__10CInit<b,0>Fv  # OVL1; s1:order by hand (SOCOM 1's CInit<b,0> template, its constructor a zero byte: CreateSoftKeyboard calls it for 0x174 and 0x175) -- zui_skb.cpp; the UI lane round 9: out of zui_skb.cpp's unnamed namespace with the keyboard's classes, now zui_skb.h's (SOCOM II's RTTI string is plain "CBmpWithNode" where SOCOM 1's is "@unnamed@zui_skb_cpp@::CBmpWithNode"; the display unit takes zui_skb.cpp's CBmpWithNode copies, 0x398AA0/0x398A40/0x403800; ~CSkbKeyProps 0x394370 is the Korean unit's, called from here): byte-identical code under the new name
 0x0038E740 0x30 __ct__Q23std111map<7CSkbKey,P12CSkbKeyProps,Q23std14less<7CSkbKey>,Q23std50allocator<Q23std31pair<C7CSkbKey,P12CSkbKeyProps>>>Fv  # OVL1; the MSL headers round 7: include/memory's inline allocator() -- the soft keyboard's std::map<CSkbKey, CSkbKeyProps *> no-argument constructor, the tree built with a bare stack slot for the allocator temporary; byte-exact from zui_skb.cpp; the UI lane round 9: out of zui_skb.cpp's unnamed namespace with the keyboard's classes, now zui_skb.h's (SOCOM II's RTTI string is plain "CBmpWithNode" where SOCOM 1's is "@unnamed@zui_skb_cpp@::CBmpWithNode"; the display unit takes zui_skb.cpp's CBmpWithNode copies, 0x398AA0/0x398A40/0x403800; ~CSkbKeyProps 0x394370 is the Korean unit's, called from here): byte-identical code under the new name
 0x0038E770 0x14 __ct__8CSkbGridFv  # OVL1; by hand (CSkbGrid's implicit constructor out of line, the grid's vector zeroed: CreateSoftKeyboard calls it for this + 0x158, the keyboard's constructor inlined one level) -- zui_skb.cpp; the UI lane round 9: out of zui_skb.cpp's unnamed namespace with the keyboard's classes, now zui_skb.h's (SOCOM II's RTTI string is plain "CBmpWithNode" where SOCOM 1's is "@unnamed@zui_skb_cpp@::CBmpWithNode"; the display unit takes zui_skb.cpp's CBmpWithNode copies, 0x398AA0/0x398A40/0x403800; ~CSkbKeyProps 0x394370 is the Korean unit's, called from here): byte-identical code under the new name
@@ -7410,16 +7410,16 @@
 0x003940F0 0x78 __dt__18CSkbVec<P7SKBRULE>Fv  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, s_rules' destructor (four this-tests; the initialiser registers it)
 0x00394170 0x60 __dt__15CSkbCompleteVecFv  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, s_complete's destructor (the initialiser registers it; ~vector 0x394090 called); the UI lane round 10: zui_hangul.cpp, s_complete's destructor (the initialiser registers it; two this-tests, ~vector<SKBCOMPLETE> 0x394090 called)
 0x003941D0 0x34 func_003941D0  # OVL1
-0x00394210 0x80 func_00394210  # OVL1
+0x00394210 0x80 SetSpec__12CSkbKeyPropsFP5_zrdr  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: the key props' button spec at 0x10 deleted through its virtual destructor, then a new CButtonSpec(rdr) of 0x118 bytes, or none)
 0x00394290 0x88 func_00394290  # OVL1
 0x00394320 0x44 func_00394320  # OVL1
 0x00394370 0x68 func_00394370  # OVL1
 0x003943E0 0x40 SkbLoadUiParams__Fv  # OVL1; ours (zui_hangul.cpp: UiParams.rdr from data/common held for the call to the display unit's 0x397070 and freed, ZuiInit's holder; CMission::Init calls it)
 0x00394420 0xFC func_00394420  # OVL1
 0x00394520 0x2A4 func_00394520  # OVL1
-0x003947D0 0x64 func_003947D0  # OVL1
+0x003947D0 0x64 SkbToggleShiftLock__Fb  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: bitmap 5's node toggled when the flag is set, else hidden when it exists)
 0x00394840 0xA8 SkbToggleCaption1__FP13CSoftKeyboard  # OVL1; the UI lane round 9: ours, by its body (the caption's mode byte 0x4A0A60 toggled between 1 and 0, its node 0x4A1118 placed at the second cap's position raised by the look's float at 0x64 when on, its text 0x4A0930 or 0x4A08F0; returns whether on: SkbSwitchText's test)
-0x003948F0 0x28 func_003948F0  # OVL1; size 0x28 (a tail call through t9; the seed ran on into the padding)
+0x003948F0 0x28 SkbToggleLock2__Fv  # OVL1; size 0x28 (a tail call through t9; the seed ran on into the padding); the UI lane round 11: ours, by its body (zui_skbview.cpp: bitmap 0's node SetActive(!active), a tail call through the table)
 0x00394920 0x94 SkbToggleCaption2__FP13CSoftKeyboard  # OVL1; the UI lane round 9: ours, by its body (the caption's mode toggled between 2 and 0, its text 0x4A09B0 or 0x4A08F0, its node placed at the second cap's position)
 0x003949C0 0x3D4 func_003949C0  # OVL1
 0x00394DA0 0x1B4 func_00394DA0  # OVL1
@@ -7429,29 +7429,29 @@
 0x00395140 0x1B0 func_00395140  # OVL1
 0x003952F0 0xC func_003952F0  # OVL1
 0x00395300 0x140 ReadIntPair__FP5_zrdrPCc  # OVL1; SOCOM 1's name by its body (zui_skbview.cpp: SOCOM 1's zui_skb.cpp ReadIntPair -- the tag's array items 0 and 1 as ints through GetRdrArrayInt's shape, a CIntPair returned; the look parser 0x3963F0 calls it seven times, zui_skb.cpp's 0x38DCB0 twice)
-0x00395440 0xF8 func_00395440  # OVL1
+0x00395440 0xF8 SkbApplyCapLook__FP9C2DStringPQ23zdb5CNodeP13CSoftKeyboardUcP7C2DFontf  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: a C2DString given cap i's look -- the font at 0x4A1120 when the cap's name at 8 is empty, its colour and scale -- its node placed at the cap's x, y + dy and hidden; 0x398EA0 calls it three times)
 0x00395540 0x390 func_00395540  # OVL1
 0x003958D0 0x47C func_003958D0  # OVL1
-0x00395D50 0x90 func_00395D50  # OVL1
-0x00395DE0 0x154 func_00395DE0  # OVL1
+0x00395D50 0x90 SkbLoadBitmap__FP12CBmpWithNodePQ23zdb5CNodeiiPCcPQ23zdb16CTextureRelocMgr  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: a bitmap loaded with PrepTexture's handle at w x h, then 0x36AB20 gives it a node under the parent)
+0x00395DE0 0x154 SkbPlaySound__FUc  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: one of six CSnd pointers played once, PlaySound(true, 0, 255) through slot 0x1C, by a byte's switch)
 0x00395F40 0x2D4 func_00395F40  # OVL1
-0x00396220 0xDC func_00396220  # OVL1
-0x00396300 0xE4 func_00396300  # OVL1
+0x00396220 0xDC SkbTogglePair__FP12CBmpWithNodeP12CBmpWithNodePFb_v  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: two bitmaps' nodes toggled when both exist, a callback told whether the second is on, sound 3)
+0x00396300 0xE4 SkbToggleBmp4__Fv  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: bitmap 4's node toggled, bitmap 3's shown when it comes on, the float 0x3E04C8 cleared, sound 3)
 0x003963F0 0x7D8 func_003963F0  # OVL1
-0x00396BD0 0x30 func_00396BD0  # OVL1
+0x00396BD0 0x30 SetRect__8CSkbLookFUcRC8CSkbRect  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: the look's rectangle i (0x70 + 16 i) assigned, a block copy; the look parser 0x3963F0 calls it five times)
 0x00396C00 0x70 ReadSkbRect__FP8CSkbRectP5_zrdr  # OVL1; ours (zui_skbview.cpp: a look rectangle from its block's Pos and Size pairs through ReadIntPair; the look parser 0x3963F0 calls it)
 0x00396C70 0x8 func_00396C70  # OVL1
 0x00396C80 0x28 func_00396C80  # OVL1
-0x00396CB0 0x88 func_00396CB0  # OVL1
-0x00396D40 0x118 func_00396D40  # OVL1
-0x00396E60 0x54 func_00396E60  # OVL1
+0x00396CB0 0x88 SkbShifted2__FP4CPad  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: SkbShifted inlined, then against bitmap 0's node active; 0x38D200 asks)
+0x00396D40 0x118 SkbTextFits__FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>b  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: a std::string within the look's byte and UTF-8 character limits for string 0 or 1, 0x4A10C8-0x4A10E0; 0x399EC0 asks)
+0x00396E60 0x54 SkbShifted__FP4CPad  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: CPad's L1 state, 0xD, held or falling, against bitmap 5's node active -- the shift lock; SkbTypeJamo 0x399070 asks)
 0x00396EC0 0x10 func_00396EC0  # OVL1
 0x00396ED0 0x14 func_00396ED0  # OVL1
 0x00396EF0 0x14 func_00396EF0  # OVL1
 0x00396F10 0x14 func_00396F10  # OVL1
-0x00396F30 0x134 func_00396F30  # OVL1
+0x00396F30 0x134 SkbForgetDisplay__Fv  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: the bitmaps' nodes, the 40 key-row bitmaps' through slot 0x30, the six sounds, the display's root node 0x49ED50 and the caption's node zeroed, the caption's text set to none; InvalidateSkbsDisplay calls it)
 0x00397070 0x520 func_00397070  # OVL1
-0x00397590 0xA8 func_00397590  # OVL1
+0x00397590 0xA8 SkbPlaceCursor__FP12CSkbKeyProps  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: bitmap 2 reloaded at the key's size with its own texture, its node put at the key's place, the key's button SetActive through a member pointer {0, 0x50, 0xC})
 0x00397640 0x1FC func_00397640  # OVL1
 0x00397840 0xC func_00397840  # OVL1
 0x00397850 0x3C SkbGetText__Fb  # OVL1; ours (zui_skbview.cpp: the edited text's buffer 0x4A0A30, or the c_str() of the string the keyboard opened with, 0x4A1300; 0x3998A0 and 0x399D20 call it)
@@ -7459,7 +7459,7 @@
 0x003978C0 0xC func_003978C0  # OVL1
 0x003978D0 0x74 func_003978D0  # OVL1
 0x00397950 0x268 func_00397950  # OVL1
-0x00397BC0 0x164 func_00397BC0  # OVL1
+0x00397BC0 0x164 SkbFindSounds__Fv  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: the six CSnd statics from CSnd::GetSoundByName of strings 2, 3, 4, 5, 6 and 1; 0x3958D0 calls it)
 0x00397D30 0x2AC func_00397D30  # OVL1
 0x00397FE0 0xE4 func_00397FE0  # OVL1
 0x003980D0 0x220 func_003980D0  # OVL1
@@ -7476,7 +7476,7 @@
 0x00398EA0 0x118 func_00398EA0  # OVL1
 0x00398FC0 0x7C func_00398FC0  # OVL1
 0x00399040 0x24 func_00399040  # OVL1
-0x00399070 0x88 SkbTypeJamo__FiScP13CSoftKeyboard  # OVL1; the UI lane round 9: ours, by its body (a jamo replaced by its doubled form from the seven pairs at 0x3FB840 when 0x396E60 says so, then typed through 0x399200) -- byte-exact in zui_skbkeys.cpp
+0x00399070 0x88 SkbTypeJamo__FiScP4CPad  # OVL1; the UI lane round 9: ours, by its body (a jamo replaced by its doubled form from the seven pairs at 0x3FB840 when 0x396E60 says so, then typed through 0x399200) -- byte-exact in zui_skbkeys.cpp; the UI lane round 11: the third parameter is the pad (0x38D200's, CPad's L1 state read by SkbShifted)
 0x00399100 0x48 func_00399100  # OVL1
 0x00399150 0xA4 SkbSwitchText__FP13CSoftKeyboard  # OVL1; the UI lane round 9: ours, by its body (0x394840's mode switch decides whether string 0 is current; its node shown or hidden, 0x39A400 when either was string 0, string 0 emptied) -- byte-exact in zui_skbkeys.cpp
 0x00399200 0x74 func_00399200  # OVL1
