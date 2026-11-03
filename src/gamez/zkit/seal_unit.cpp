@@ -4,11 +4,19 @@
  * EscorteeJoinUnit, the constructor (with the orders list's deleter copy), TickAll, the auto-message
  * pair, GetMyPointOutTurnDir and both IsMemberOfUnit; round 14: the order data's GetData and
  * pointer pair, ClearAiStates, UnInit, Notify, PlayRemoteMsg, run_anim (SOCOM 1's can_run_anim
- * inlined), CZSealBody::IsAi's copy, 0x5EAEB0, 0x5EB8A0 and the orders' range erase (0x5EF610).
- * Open: 0x5ED8F0/0x5ED950/0x5ED980 are iterator copies only 0x5ED9B0 emits; 0x5EBDC0 is an
- * implicit operator= whose list assignment calls 0x5EF7F0 and 0x5EF470 (with 0x5EF8D0, OVL2's
- * list init copy, and 0x5EF950, a splice). Defined in reverse of their image order (-inline
- * deferred) where it matters. */
+ * inlined), CZSealBody::IsAi's copy, 0x5EAEB0, 0x5EB8A0 and the orders' range erase (0x5EF610);
+ * round 15: the destructor (the lists as SOCOM 1's slist/ulist/clist classes) and GetSealCount
+ * (0x5ED9B0, open on the MSL's depths: 0x5ED8F0/0x5ED950/0x5ED980 are its iterator copies).
+ * Open: 0x5EBDC0 is CAiState's implicit operator= (0x5EBB50 assigns a breach state to the one it
+ * pushed: the vptr skipped, m_time, the stack -- the list's assignment, then its words at 0xC-0x1B
+ * copied as one aggregate through the FPU, lwc1/swc1, m_result with lw/sw -- then CAiState's
+ * members, m_loc an aggregate too). The list assignment is MSL's: x.end(), then
+ * min(size(), x.size()) through references, the element at that index found from the nearer end
+ * (0x5EF7F0, an advance either way), and the assign of [first, mid, last) (0x5EF470: past mid a
+ * temporary list built on this one's allocator (0x5EF9B0) and init'ed (0x5EF8D0), the overlap
+ * copied, the temporary spliced on (0x5EF950) and destroyed (0x510110); else the overlap copied
+ * and the rest erased inline). include/list has none of it. Defined in reverse of their image
+ * order (-inline deferred) where it matters. */
 
 #include <list>
 #include <string.h>
@@ -136,6 +144,9 @@ public:
      * asked of a squad by number (SOCOM 1's; OVL2 0x5EDCC0, 0x5EDDD0) */
     bool IsMemberOfUnit(CZSealBody *seal, bool recurse);
     static bool IsMemberOfUnit(unsigned int team, CZSealBody *seal, bool recurse);
+    /* the squad's SEALs counted, with those of the squads under it to a depth (OVL2 0x5ED9B0, new in
+     * SOCOM II: recursive, inlined into itself twice; the name ours) */
+    int GetSealCount(int depth);
 
     class CCompassAnchor *m_compassanchor;   // 0x0
     /* the table at 4: IssueCommand, AllowCommand (0x669650) */
@@ -174,11 +185,20 @@ public:
     unsigned int m_unit_num;   // 0x58 (SOCOM 1's 0x38)
     unsigned int m_5c;   // 0x5c: the squad's bit, 1 << (number & 31) (new in SOCOM II; the name ours)
     CSealUnit *m_parent;   // 0x60 (SOCOM 1's 0x3c): the squad this one is a part of
-    std::list<CZSealBody *> m_seals;   // 0x64 (SOCOM 1's 0x40): the squad's SEALs, the leader first
-    std::list<CZSealBody *> m_escortees;   // 0x70: the escorted SEALs (SOCOM 1's at 0x4c)
-    std::list<CSealUnit *> m_sub_units;   // 0x7c: the squads under this one (SOCOM 1's ulist at 0x58)
-    std::list<CZSealBody *> m_dead_guys;   // 0x88 (SOCOM 1's 0x64)
-    std::list<FT_COMMAND> m_commands;   // 0x94 (SOCOM 1's clist at 0x70): the squad's orders
+    /* SOCOM 1's DWARF: the squad's three list types, classes over std::list (each adds a this-tested
+     * level to its implicit destructor: the destructor's four tests per list) */
+    class slist : public std::list<CZSealBody *> {
+    };
+    class ulist : public std::list<CSealUnit *> {
+    };
+    class clist : public std::list<FT_COMMAND> {
+    };
+
+    slist m_seals;   // 0x64 (SOCOM 1's 0x40): the squad's SEALs, the leader first
+    slist m_escortees;   // 0x70: the escorted SEALs (SOCOM 1's at 0x4c)
+    ulist m_sub_units;   // 0x7c: the squads under this one (SOCOM 1's at 0x58)
+    slist m_dead_guys;   // 0x88 (SOCOM 1's 0x64)
+    clist m_commands;   // 0x94 (SOCOM 1's at 0x70): the squad's orders
     unsigned char m_a0;   // 0xa0: set when an escortee joins so (SOCOM 1's m_issue_unit_follow, 0x7c)
     unsigned char m_a1;   // 0xa1 (SOCOM 1's m_issue_sub_unit_follow)
     unsigned char _a2;
@@ -321,6 +341,28 @@ bool CSealUnit::GetMyPointOutTurnDir(CZSealBody *seal, CPnt3D **dir)
     return false;
 }
 
+/* (OVL2 0x5ED9B0: the walk's postfix step and its iterator's out-of-line pieces in the inner
+ * copies -- 0x5ED880-0x5ED9A0 before it, as CGTree::FindNode's and Destroy's precede them).
+ * OPEN, 0x1A8 against 0x1F8: the shape is right (two self-inlined copies, the third a call with
+ * depth - 3; postfix i++), the MSL under it too shallow -- include/list is the MSL lane's. The
+ * target's wrapper begin()/end() are `iterator(base::begin())`/`iterator(base::end())` (the
+ * outer copy passes the base iterator by value, lwc1/swc1 through the frame; the second copy calls
+ * the base's begin() 0x5ED9A0 and the wrapper's constructor 0x5ED980), and its size() is two levels
+ * (the second copy calls 0x5E8A80, a const reference to size_ -- SOCOM 1's compressed_pair first()
+ * -- the third size() itself, 0x510B80). Tried in a scratch include/list (reverted): both changes
+ * move the size and begin() calls to the target's copies, but then the third copy inlines the
+ * wrapper's != one level more than the target (0x1B0); the real depths are the MSL lane's work
+ * (README "Open, and next", level 6) */
+int CSealUnit::GetSealCount(int depth)
+{
+    int n = m_seals.size();
+
+    if (depth > 0)
+        for (ulist::iterator i = m_sub_units.begin(); i != m_sub_units.end(); i++)
+            n += (*i)->GetSealCount(depth - 1);
+    return n;
+}
+
 /* (OVL2 0x5EDDD0; GetUnitByTeam inlined) */
 bool CSealUnit::IsMemberOfUnit(unsigned int team, CZSealBody *seal, bool recurse)
 {
@@ -361,6 +403,18 @@ CSealUnit::CSealUnit(unsigned int team) : m_8(1), m_unit_num(team)
     m_point_ticks = 0;
     m_compassanchor = 0;
     m_5c = 1 << (team & 0x1f);
+}
+
+/* (OVL2 0x5EE4D0; after the constructor in the source: the compass anchor deleted, the squads
+ * under it and the SEALs cleared, then the five lists' implicit destructors) */
+CSealUnit::~CSealUnit()
+{
+    if (m_compassanchor) {
+        CCompass::DeleteAnchor(m_compassanchor);
+        m_compassanchor = 0;
+    }
+    m_sub_units.clear();
+    m_seals.clear();
 }
 
 /* (OVL2 0x5EA880) */

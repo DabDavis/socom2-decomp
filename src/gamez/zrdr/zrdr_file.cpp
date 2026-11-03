@@ -35,12 +35,8 @@ int zrdr_free(CRdrFile *file)
     return 0;
 }
 
-/* SOCOM 1's: the value cleared, the string table built for 1024 strings.
- * OPEN, 16 instructions: the target clears the value's six bitfields with word read-modify-
- * writes (lw, and, or with `andi zero,mask`, sw) where _zrdr's constructor here compiles to
- * byte stores; SOCOM 1's constructor did the same word writes for its two flags while its Clone
- * wrote bytes, so it is the constructor's form, not the fields' declaration -- not found yet
- * (default arguments and an inline setter with parameters compile to the same bytes) */
+/* SOCOM 1's: the value cleared (_zrdr's initialiser list: six word read-mask-writes), the string
+ * table built for 1024 strings */
 CRdrFile::CRdrFile()
 {
     func_0039FBD0(&m_strings, 0, 1024);
@@ -74,25 +70,33 @@ struct RdrHeader {
 };
 
 /* SOCOM 1's: a packed buffer's offsets made pointers (or, packing, made offsets again), the
- * root's value and count copied into the file's own.
- * OPEN, 6 instructions: the target tests m_buffer as first loaded (v1) at each ternary but takes
- * the header from a second load (s0) -- here one load serves both (a local copy, the Root()
- * accessor: the same); and before setting the resolved flag it stores the flags word back
- * unchanged (lhu/sh), a no-op MW drops however it is spelled here (`&= ~0x10000`, a bitfield
- * header -- byte stores) */
+ * root's value and count copied into the file's own. The header is read through the const
+ * Buffer() (a second load, as the target's), the ternaries' tests reuse the first; root declared
+ * ahead of h gives h s0. Before setting the resolved flag the target stores the flags back
+ * unchanged (lhu/sh): MW drops every plain spelling of that no-op (`= h->flags`, `&= 0xffff`,
+ * `&= ~0x10000`, a bitfield header), a volatile store keeps it -- the original's form is not
+ * known */
 bool CRdrFile::Resolve(bool pack)
 {
+    _zrdr *root;
+    RdrHeader *h;
+
     if (!m_buffer)
         return false;
-    RdrHeader *h = (RdrHeader *)m_buffer;
-    _zrdr *root = m_buffer ? (_zrdr *)((char *)h + h->root) : 0;
-    char *strings = m_buffer ? (char *)(h + 1) : 0;
+    h = (RdrHeader *)Buffer();
+    root = 0;
+    if (m_buffer)
+        root = (_zrdr *)((char *)h + h->root);
+    char *strings = 0;
+    if (m_buffer)
+        strings = (char *)(h + 1);
     if (pack) {
         func_0032CCB0(root, root, strings);
         h->flags &= ~1;
     } else {
         if (!(h->flags & 1)) {
             func_0032CB90(root, root, strings);
+            *(volatile unsigned short *)&h->flags = h->flags;
             h->flags |= 1;
         } else {
             switch (root->type) {
@@ -106,7 +110,10 @@ bool CRdrFile::Resolve(bool pack)
         }
         integer = root->integer;
         length = root->length;
-        m_strings.LoadTable(m_buffer ? m_buffer + 12 : 0, h->strings, false);
+        unsigned char *table = 0;
+        if (m_buffer)
+            table = Buffer() + 12;
+        m_strings.LoadTable(table, h->strings, false);
     }
     return true;
 }
@@ -146,8 +153,7 @@ zar::CKey *CRdrFile::Insert(zar::CZAR *zar, zar::CKey *key)
 }
 
 /* a packed buffer made a file, unless its version is not the reader's (SOCOM II's; the name
- * ours -- SOCOM 1's Load built the file in place).
- * OPEN, 16 instructions: the inlined constructor's bitfield writes (CRdrFile's above) */
+ * ours -- SOCOM 1's Load built the file in place) */
 CRdrFile *CRdrFile::Create(void *buf, unsigned int size, int flags)
 {
     CRdrFile *file = 0;
