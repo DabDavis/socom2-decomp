@@ -596,10 +596,7 @@ extern MediusCallback GetLocationsCallbackFunctionPtr;
 extern int data_00686D8C;
 extern MediusCallback PickLocationCallbackFunctionPtr;
 extern int data_00686D94;
-/* SOCOM 1's MediusLadderPositionCallbackFunctionPtr by the slots' order (MediusLadderPosition is
- * 0x64A018, settled); no data row yet */
-extern MediusCallback data_00656278;
-#define MediusLadderPositionCallbackFunctionPtr data_00656278
+extern MediusCallback MediusLadderPositionCallbackFunctionPtr;
 extern int data_00686DA4;
 extern MediusCallback MediusLadderListCallbackFunctionPtr;
 extern int data_00686DAC;

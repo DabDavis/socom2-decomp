@@ -263,7 +263,9 @@ public:
     unsigned char _98[0xbc - 0x98];
     /* the weapon's icon (the kit lane's: kit.h reads a texture there; the name ours) */
     zdb::CTexture *m_icon;   // 0xbc
-    unsigned char _c0[0xc4 - 0xc0];
+    /* its decal set (CZMarkList::AddNewMark takes the material's decal from it and its permanence
+     * byte; the name ours) */
+    class CZDecalSet *m_decalSet;   // 0xc0
     CZAmmoList m_LegalAmmoList;   // 0xc4 (SOCOM 1: 0x9c)
     unsigned char m_hasFireModes[5];   // 0xd0 (SOCOM 1: 0xa8)
     unsigned char m_socom2_d5;   // 0xd5

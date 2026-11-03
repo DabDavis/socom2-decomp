@@ -30,23 +30,6 @@ public:
     unsigned short m_temp;   // 0xe: 1 for a temporary decal
 };
 
-/* a level of detail's band of squared distances: drawn between the near minimum and the far
- * maximum, faded in up to the far minimum and out past the near maximum (SOCOM 1's DWARF, 0x20
- * bytes) */
-class CLOD_band {
-public:
-    float m_minRangeNearSq;   // 0x0
-    float m_minRangeFarSq;   // 0x4
-    float m_minInvDeltaRangeSq;   // 0x8
-    float m_maxRangeNearSq;   // 0xc
-    float m_maxRangeFarSq;   // 0x10
-    float m_maxInvDeltaRangeSq;   // 0x14
-    unsigned int m_minFade : 1;   // 0x18
-    unsigned int m_maxFade : 1;
-    unsigned int m_unused : 30;
-    unsigned int m_padding;   // 0x1c
-};
-
 /* the local lights (SOCOM 1's statics) */
 CVisual::LOCAL_LIGHT CVisual::localLightBuf[10];
 CLight *CVisual::localLightPtr[10];
