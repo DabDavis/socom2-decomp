@@ -346,6 +346,38 @@ void CVehicle::SampleDynamics(float dT)
     }
 }
 
+/* whether a point lies inside a quad of four corners in XZ (no edge's cross with it below zero),
+ * the nearest point of the edges given back while it does (0x3ACC10's test, made twice -- new in
+ * SOCOM II, not named). The edge's start is a pointer of its own walked with the index, stepped
+ * first (`&corners[i]` strength-reduced, or declared in the loop, swaps it with the end's register) */
+extern "C" bool func_003AD1F0(const CPnt3D *corners, const CPnt3D *p, CPnt3D *nearest)
+{
+    bool inside = true;
+    float best;
+    int i;
+    const CPnt3D *a;
+
+    for (i = 0, a = corners; i < 4 && inside; a++, i++) {
+        const CPnt3D *b = &corners[(i + 1) % 4];
+        CPnt3D e = *b - *a;
+        CPnt3D d = *p - *a;
+
+        if (e.z * d.x - e.x * d.z < 0.0f)
+            inside = false;
+        if (inside && nearest) {
+            CPnt3D q;
+            float t;
+
+            p->DistToVector(a, b, &q, &t);
+            if (i == 0 || t < best) {
+                best = t;
+                *nearest = q;
+            }
+        }
+    }
+    return inside;
+}
+
 void CVehicle::PrePostTick(float dT)
 {
     CEntity::UpdateCompassAnchor();
