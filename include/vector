@@ -654,6 +654,18 @@ class __vector_imp : public __vector_deleter<T, Allocator> {
     __vector_imp(const __vector_imp &x) { init((const T *)x.data_, (const T *)x.data_ + x.size_, forward_iterator_tag()); }
     template <class InputIterator>
     void init(InputIterator first, InputIterator last, forward_iterator_tag);
+    /* the assignment: the other's elements copied over these through the range assign (out of class,
+     * called) unless it is this one -- the empty tag a byte read off the stack, as the pods' (the AI
+     * core's round 14: CCharacterType's constructor 0x53D7C0 copies its base's weapons and levels of
+     * detail so, 0x53F370 and 0x53F730) */
+    __vector_imp &operator=(const __vector_imp &x)
+    {
+        if (this != &x)
+            assign((const T *)x.data_, (const T *)x.data_ + x.size_, forward_iterator_tag());
+        return *this;
+    }
+    template <class InputIterator>
+    void assign(InputIterator first, InputIterator last, forward_iterator_tag);
 };
 
 template <class T, class Allocator>
@@ -1225,6 +1237,62 @@ void __vector_imp<T, Allocator, IsPOD>::init(InputIterator first, InputIterator 
     if (this->size_ > max_size())
         __msl_error("vector length error\n");
     if (n) {
+        this->data() = this->allocate(n);
+        this->capacity_.n_ = n;
+        for (T *p = this->data_; first != last; ++first, ++p) {
+            this->construct(p, *first);
+            ++this->size_;
+        }
+    }
+}
+
+/* the smaller of two by reference (std::min's shape, include/string's: both read through their
+ * references -- written in the expression, the count's first load was reused) */
+/* a range copied over the contents (MSL's do_assign(first, last, forward_iterator_tag); SOCOM 1's
+ * do_assign<PC14CCharacterWeap> 0x1D7700 and do_assign<PC3LOD> 0x24B2E0, SOCOM II's 0x53F370 and
+ * 0x53F730, char_type.cpp's template tail -- the name the pods' here): the count kept in memory (min
+ * takes its address); when it fits, the elements there assigned over, then the rest destroyed or
+ * built in place and counted; else, past the length check, every element destroyed (clear), the
+ * block freed and forgotten, a new one allocated through data()'s reference, and each built and
+ * counted */
+template <class T>
+inline const T &__vector_min(const T &a, const T &b)
+{
+    return b < a ? b : a;
+}
+
+template <class T, class Allocator, bool IsPOD>
+template <class InputIterator>
+void __vector_imp<T, Allocator, IsPOD>::assign(InputIterator first, InputIterator last, forward_iterator_tag)
+{
+    unsigned int n = last - first;
+
+    if (n <= this->capacity_) {
+        const unsigned int &m = __vector_min(n, this->size_);
+        T *p = this->data_;
+        T *e = p + m;
+
+        for (; p < e; ++p, ++first)
+            *p = *first;
+        if (n < this->size_) {
+            for (T *q = p, *l = this->data_ + this->size_; q < l; ++q)
+                q->~T();
+            this->size_ = n;
+        } else if (this->size_ < n) {
+            for (; first != last; ++first, ++p) {
+                this->construct(p, *first);
+                ++this->size_;
+            }
+        }
+    } else {
+        if (n > max_size())
+            __msl_error("vector::assign length error\n");
+        this->clear();
+        if (this->data_) {
+            operator delete(this->data_);
+            this->data_ = 0;
+            this->capacity_.n_ = 0;
+        }
         this->data() = this->allocate(n);
         this->capacity_.n_ = n;
         for (T *p = this->data_; first != last; ++first, ++p) {
