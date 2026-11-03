@@ -125,7 +125,10 @@ typedef struct CASR {
     unsigned short f906;
     unsigned short *signal;             /* +908: the input level */
     int *frame_base;                    /* +912: the frame count the talk spurts are told from */
-    char pad916[12];
+    unsigned char training;             /* +916: a user-word training is under way */
+    char pad917[3];
+    int f920;                           /* +920: cleared on a cancel */
+    int f924;                           /* +924 */
     int uw_recs_needed;                 /* +928 */
     unsigned short uw_recs_done;        /* +932 */
     char pad934[6];

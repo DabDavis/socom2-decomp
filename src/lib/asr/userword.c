@@ -9,13 +9,13 @@
  * its user-word fields by offset. The utterance callbacks index the records through a local index
  * (cbUserWordResultAvailable: every other spelling reloads it or keeps a record pointer), and the
  * accepted ones store the count, the flag, then the state (ccperm: one order fits both).
- * OPEN: SendPartOfLabelsToEngine (36s, diagnosed in place), cbDoUserWordTraining (1 word; 10 before round
- * 11c, when the flag test and the last call were separate guards and 2.96 folded the last into
- * sltu: as one `&&` the final `return 0` is a join and keeps its branch): the flag test is `bnezl`
- * here and `bnez` in the target -- reorg takes the return's `move v0,zero` into the slot and
- * annuls it, though the fall-through is a call that sets v0. tosCallControlFunc (tos.c) and
- * UpdateExevStatus (casr.c) miss by the same word; round 12c toggled every optimisation switch of
- * 2.96-ee-001003-1 on all three and none moves it -- a later SCE 2.96's reorg (README). */
+ * OPEN: SendPartOfLabelsToEngine (36s, diagnosed in place).
+ *
+ * cbDoUserWordTraining's flag test (open since round 4b: `bnezl` here, `bnez` in the target, the
+ * return's `move v0,zero` in the slot with a call to ExitUserWordTraining as the fall-through) is
+ * byte-exact once ExitUserWordTraining is defined above it: with the callee compiled earlier in
+ * the object, reorg leaves the slot unannulled. Not a toolchain question after all (round 12c);
+ * tos.c's tosCallControlFunc is the same case (ConstructBlock, its fall-through's callee). */
 
 #include "casr.h"
 
@@ -41,6 +41,25 @@ typedef struct QUEUE {
 
 extern int qEnQueue(void *q, void *p, int n);
 extern int tosRun(CASR *c, const unsigned char *blocks);
+
+/* the training over: the utterances' segmentations freed, the scheduler told (35, 21, 16) */
+int ExitUserWordTraining(CASR *c)
+{
+    unsigned int i;
+
+    for (i = 0; i < c->uw_recs_needed; i++)
+        if (c->utt[i].seg != 0)
+            heap_Free(c->heap, c->utt[i].seg);
+    c->train_state = 3;
+    if (_tosControl(c->event, 35, 0, 0) != 0)
+        return 1;
+    if (_tosControl(c->event, 21, 0, 0) != 0)
+        return 1;
+    if (_tosControl(c->event, 16, 0, 0) != 0)
+        return 1;
+    c->training = 0;
+    return 0;
+}
 
 /* labels [start, end) of utterance n -- clipped to what was written -- into the label queue one at
  * a time, the engine run on each.
