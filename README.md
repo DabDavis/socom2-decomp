@@ -1647,6 +1647,19 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the game states, round 18** (two initialisers, the controller's stick and button readers):
+  - an array static of a class with an inline empty constructor gives an `__sinit` that tail-calls
+    `__construct_array` with the constructor's out-of-line copy and no destructor (fts_message.cpp);
+  - a static's registered destructor inlines its whole chain only if nothing in the unit's own code
+    requested its out-of-line copy first -- FreeVector's temporary does (st_core.cpp's
+    ~vector<CMovieCue>, 0x1EF8C0, a draft's match);
+  - `bool b = !A() || !B();` over inline bools materialises both negations, `daddiu b,zero,1` in the
+    first branch's delay slot; a switch case assigning a ternary joins the arms before its break;
+  - `return c ? -x : x;` leaves no nop before `jr ra`, `if (c) x = -x; return x;` does; chained early
+    returns ending in `return 0.0f` land the later branch on the zero's padding nop (a result local
+    avoids it);
+  - the 0x437Dxx words are fields of theMission (0x4364E0): 0x437D08 is CMission::m_subtitles
+    (+0x1828); 0x1E91C0-0x1EB06F matches SOCOM 1's database.cpp (testLoad, testUnload), unwritten.
 - **Tells from the weapons, round 11** (vis_data.cpp, CZMarkList::AddNewMark):
   - a user-declared out-of-line empty destructor keeps a band's member list teardown at its
     definition point, and -inline auto then refuses it to the vector's clear (~CPreLight_band);

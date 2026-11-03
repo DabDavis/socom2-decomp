@@ -686,7 +686,7 @@
 0x001EF400 func_001EF400
 0x001EF450 __sort132<Q33std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>8iterator,7CueLess>__3stdFQ33std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>8iteratorQ33std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>8iteratorQ33std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>8iterator7CueLess_v
 0x001EF700 __selection_sort<Q33std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>8iterator,7CueLess>__3stdFQ33std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>8iteratorQ33std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>8iterator7CueLess_v
-0x001EF8C0 func_001EF8C0
+0x001EF8C0 __dt__Q23std48vector<9CMovieCue,Q23std21allocator<9CMovieCue>>Fv
 0x001EF940 ResetLensColors__10CameraZoomFv
 0x001EFA50 HoldLensFx__10CameraZoomFUc
 0x001EFC30 ReleaseLensFx__10CameraZoomFUc
@@ -2588,12 +2588,16 @@
 0x002C6030 func_002C6030
 0x002C6040 func_002C6040
 0x002C6050 func_002C6050
+0x002C6110 func_002C6110
+0x002C61E0 func_002C61E0
 0x002C6220 func_002C6220
 0x002C6230 func_002C6230
 0x002C6280 func_002C6280
 0x002C63D0 IsJumpAndActionShared__13CCtrlrConfigsFv
 0x002C6430 func_002C6430
 0x002C6460 func_002C6460
+0x002C6520 func_002C6520
+0x002C65B0 func_002C65B0
 0x002C6ED0 func_002C6ED0
 0x002C6F40 Reset__24CMissionObjectiveCamListFv
 0x002C7000 ClearValves__24CMissionObjectiveCamListFv
@@ -5821,6 +5825,7 @@
 0x003D57D0 __ct__14CFlyoutMachineFv
 0x003D5800 __dt__7CFlyoutFv
 0x003D5860 __ct__7CFlyoutFv
+0x003FD7B0 __sinit_st_core.cpp
 0x003FE450 __sinit_hud_mapcompass.cpp
 0x003FE490 __sinit_hud_bitmapreticule.cpp
 0x003FE500 __sinit_hud_weaponsel.cpp
@@ -5837,6 +5842,7 @@
 0x003FFFB0 __sinit_ent_main.cpp
 0x00400030 __sinit_ent_target.cpp
 0x004000C0 __sinit_compass.cpp
+0x004003E0 __sinit_fts_message.cpp
 0x00400650 __sinit_fts_net_seal.cpp
 0x00400770 __sinit_fts_net_platform.cpp
 0x00401BD0 __sinit_game_state.cpp
