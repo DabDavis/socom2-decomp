@@ -9051,11 +9051,11 @@
 0x004FC168 0x98 Vq1500Process  # OVL2 unaligned; s1:align
 0x004FC200 0x40 FreeVq1500  # OVL2; s1:calls (SOCOM 1's ControlVq1500Process calls LoadCodeBooks and FreeVq1500 where ours call LoadCodeBooks and this row; the same body, the codebooks freed then tosBaseBlockDestruct; SOCOM II defines it last in the object) -- the gcc lane, round 8c
 0x004FC240 0x3E0 WindowFlush  # OVL2; s1:align
-0x004FC620 0x50C func_004FC620  # OVL2
-0x004FCB30 0x274 func_004FCB30  # OVL2
+0x004FC620 0x50C ProcessWindow  # OVL2; s1:order (ConstructWindow's process slot, as SOCOM 1's ConstructWindow hands its LOCAL ProcessWindow; the window object's first row here -- SOCOM 1's WindowFlush, called only by ProcessWindow, has no row: inlined) -- the gcc lane, round 10c
+0x004FCB30 0x274 InitWindow  # OVL2; s1:order (ConstructWindow's init slot, as SOCOM 1's LOCAL InitWindow; the row before the constructor, as there) -- the gcc lane, round 10c
 0x004FCDA8 0x3C ConstructWindow  # OVL2 unaligned; s1:align
 0x004FCDE8 0xBC ControlWindow  # OVL2 unaligned; s1:align
-0x004FCEA8 0x3FC func_004FCEA8  # OVL2 unaligned
+0x004FCEA8 0x3FC CombinerProcess  # OVL2 unaligned; s1:order (ConstructCombiner's process slot, as SOCOM 1's LOCAL CombinerProcess, the first function of SOCOM 1's combiner object at 0x368FC0) -- the gcc lane, round 10c
 0x004FD2A8 0x3C ConstructCombiner  # OVL2 unaligned; s1:align
 0x004FD2E8 0xFC func_004FD2E8  # OVL2 unaligned
 0x004FD3E8 0xFC CombinerControl  # OVL2 unaligned; s1:calls
