@@ -99,7 +99,10 @@ public:
     /* the item at an index let go with its ammunition (SOCOM 1's; OVL2 0x5B9BB0, the kit lane's) */
     void RemoveItemAndAmmo(int index);
 
-    unsigned int m_0;
+    /* kit.h's flags (the kit lane's names): only bit 12 here */
+    unsigned int m_bits0 : 12;   // 0x0
+    unsigned int m_requested_item : 1;   // bit 12: an item asked for (IsChangingWeapons tests it)
+    unsigned int m_bits13 : 19;
 };
 
 class CSealCtrlAi;
@@ -1055,6 +1058,16 @@ public:
      * 0x5A8790, 0x5A9420) */
     void AimWeapon();
     AnimType FindDeathAnimTypeCQB(CZSealBody *victim);
+    /* whether the top blend is a throw's, whether the SEAL's hands are free for its item (SOCOM 1's
+     * CanFire, two flags added; OVL2 0x5A7D10, 0x5A7DE0 -- not written yet) and whether it may change
+     * what it holds (SOCOM 1's; OVL2 0x5A8CB0) */
+    bool IsThrowing(bool started);
+    bool CanFire(bool a, bool b);
+    /* whether a weapon change, or a reload, is under way (SOCOM 1's; OVL2 0x5A7980, and 0x5A7AB0 not
+     * written yet) */
+    bool IsChangingWeapons(bool kit);
+    bool IsReloading();
+    bool CanChangeItem();
     /* the SEAL's own AI event made where it stands (SOCOM 1's; OVL2 0x550E50, seal.cpp) */
     void CreateAiEvent();
     /* the SEAL's adrenaline, its level first (SOCOM 1's; OVL2 0x5781B0, seal_anim.cpp's last) */

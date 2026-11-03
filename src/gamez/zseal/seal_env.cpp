@@ -446,6 +446,59 @@ void ParentPistolToRHandCallback(void *data, void *arg)
 extern "C" {
 /* the blend on top of the body's stack (seal.cpp's tail copy, OVL2 0x555170) */
 void *func_00555170(void *stack);
+/* the throws' anims (OVL1 data, an anim type's id each, the first short; SOCOM 1's small-data
+ * statics) -- the second is tested twice in both builds -- and the two a throw's start adds (the
+ * anims a jump cannot start from, below) */
+extern short data_003DEBC8;
+extern short data_003DEBB8;
+extern short data_003DEBA8;
+extern short data_003DEBE8;
+extern short data_003DEBF0;
+extern short data_003DEBD8;
+extern short data_003DEBE0;
+extern short data_003DEB20;
+extern short data_003DEB30;
+/* the weapon changes' anims (OVL1 data, an anim type's id each: four blends, three overlays) */
+extern short data_003DF0E0;
+extern short data_003DF0E8;
+extern short data_003DF108;
+extern short data_003DF110;
+extern short data_003DEC68;
+extern short data_003DF0F0;
+extern short data_003DF0F8;
+}
+
+/* whether the top blend is a throw's, the start's two too unless told not (OVL2 0x5A7D10; SOCOM 1's
+ * IsThrowing, before CanFire in both builds, the same tests) */
+bool CZSealBody::IsThrowing(bool started)
+{
+    short type = ((CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0))->m_animType;
+
+    if (type == data_003DEBC8 || type == data_003DEBB8 || type == data_003DEBA8 || type == data_003DEBE8 ||
+        type == data_003DEBF0 || type == data_003DEBD8 || type == data_003DEBE0 || type == data_003DEBB8 ||
+        (!started && (type == data_003DEB20 || type == data_003DEB30)))
+        return true;
+    return false;
+}
+
+/* whether a weapon change is under way: the kit's asked item when told to count it, a change's blend
+ * on top, or its overlay running (OVL2 0x5A7980; SOCOM 1's IsChangingWeapons, first of the stretch
+ * IsChangingWeapons, IsReloading, IsThrowing, CanFire in both builds -- SOCOM II's takes the flag and
+ * the kit test, its top blend fetched and left unread) */
+bool CZSealBody::IsChangingWeapons(bool kit)
+{
+    if (kit && m_kit.m_requested_item)
+        return true;
+    func_00555170((char *)this + 0x1c0);
+    if (IsCurrentBlend((AnimType)53) || IsCurrentBlend((AnimType)54) || IsCurrentBlend((AnimType)55) ||
+        IsCurrentBlend((AnimType)data_003DF0E0) || IsCurrentBlend((AnimType)data_003DF0E8) ||
+        IsCurrentBlend((AnimType)data_003DF108) || IsCurrentBlend((AnimType)data_003DF110))
+        return true;
+    ACTIVE_ANIM *a = m_overlay.m_anim;
+
+    if (a && a->m_anim && (a->m_id == data_003DEC68 || a->m_id == data_003DF0F0 || a->m_id == data_003DF0F8))
+        return true;
+    return false;
 }
 
 /* whether the first-person camera stays off: never without a blend; hanging, or (each when asked)
@@ -560,6 +613,32 @@ AnimType CZSealBody::FindDeathAnimTypeCQB(CZSealBody *victim)
     if (Dot(d, fwd) < 0.0f)
         return data_003DEE38;
     return data_003DEE30;
+}
+
+extern "C" {
+/* (OVL2 0x5B4340, not written yet: a test of the SEAL's state against a kind -- CanTraverse and
+ * PreTick ask it too; the name unknown) */
+bool func_005B4340(CZSealBody *seal, int kind);
+}
+
+/* whether the SEAL may change what it holds: alive, its hands free (CanFire), the state test passed,
+ * not in the air, working no turret, its trigger not held (OVL2 0x5A8CB0; SOCOM 1's, which tested the
+ * first two and the air) */
+bool CZSealBody::CanChangeItem()
+{
+    if (!m_isAlive)
+        return false;
+    if (!CanFire(true, true))
+        return false;
+    if (!func_005B4340(this, 4))
+        return false;
+    if (m_airborne || m_state == stateInAir)
+        return false;
+    if (m_eb8)
+        return false;
+    if (m_control && ((CSealCtrl *)m_control)->m_trigger == TRIGGER_DOWN)
+        return false;
+    return true;
 }
 
 /* the aim along the item in hand: its gear part's x axis, or straight ahead without one (OVL2
@@ -1109,9 +1188,8 @@ extern short data_003DEBD8;
 extern short data_003DEBE0;
 extern short data_003DEBE8;
 extern short data_003DEBF0;
-/* (OVL2 0x5A7DE0: whether the stance leaves room to jump, two flags; the name ours) */
-bool func_005A7DE0(CZSealBody *seal, bool a, bool b);
-/* the body's current blend (seal.cpp's tail, OVL2 0x555170) */
+/* (OVL2 0x5A7DE0 is CZSealBody::CanFire, zseal.h's) the body's current blend (seal.cpp's tail, OVL2
+ * 0x555170) */
 void *func_00555170(void *stack);
 }
 
@@ -1134,7 +1212,7 @@ extern "C" bool func_0059D830(CZSealBody *seal)
         return false;
     if (IsNoJumpAnim(((CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0))->m_animType))
         return false;
-    if (!func_005A7DE0(seal, true, true))
+    if (!seal->CanFire(true, true))
         return false;
     if (seal->m_airborne || seal->m_state == stateInAir)
         return false;
